@@ -1,0 +1,65 @@
+# ============================================================
+#  .gitignore — dépôt lolo_python
+#  On versionne le CODE, pas les secrets, les environnements,
+#  les données générées ni les gros fichiers binaires.
+# ============================================================
+
+# --- Dossiers gardés en local uniquement (hors GitHub) ---
+/Export/
+/Extract_youtube/
+/lolo_python_old/
+/Map/
+/Scripts_windows/
+
+# --- Secrets et identifiants (JAMAIS sur GitHub) ---
+.env
+.env.*
+!.env.example
+client_secret*.json
+token.json
+token.pickle
+cookies.txt
+*.pem
+*.key
+.cache
+.cache-*
+
+# --- Environnements Python ---
+.venv/
+venv/
+env/
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+.ipynb_checkpoints/
+.pytest_cache/
+
+# --- Builds (on garde les .spec) ---
+build/
+dist/
+*.exe
+
+# --- Éditeurs / OS ---
+.vscode/
+.idea/
+Thumbs.db
+desktop.ini
+.DS_Store
+
+# --- Données générées, journaux, bases locales ---
+*.log
+*.db
+*.sqlite
+**/Sport/data/
+**/Sport/export/
+Photos/gps_cache.json
+**/brain_log.txt
+**/training_stats.csv
+**/training_report.html
+**/analysis_plots/
+
+# --- Gros fichiers binaires (limite GitHub : 100 Mo par fichier) ---
+*.pth
+*.mp3
+test_models/

@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Game Data (Generated)
+# training_stats.csv
+# brain_log.txt
+# training_report.html
+# analysis_plots/
+
+# Models (Large binary files)
+# assets/models/*.pth
+assets/models/arena_brain_gen_*.pth
+test_models/
+
+# Local Environment
+.env
+.venv
+env/
+venv/
+.vscode/
+.idea/

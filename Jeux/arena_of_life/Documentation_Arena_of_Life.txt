@@ -1,0 +1,200 @@
+
+# 🛡️ DOCUMENTATION : ARENA OF LIFE (SIMULATION DRL MULTI-AGENTS)
+
+## 1. Présentation Générale
+
+**Arena of Life** est une simulation de survie multi-agents basée sur l'**Apprentissage par Renforcement Profond (DRL)**.
+
+Des agents contrôlés par une IA évoluent dans une **arène torique** (les bords se rejoignent) où ils doivent survivre, récolter des ressources, combattre des prédateurs et collaborer.
+
+Le but est d'entraîner une IA capable de développer des **stratégies complexes** et des **comportements de groupe émergents** (partage de ressources, protection mutuelle, chasse en meute).
+
+---
+
+## 2. Système de Classes (Rôles)
+
+Chaque agent se voit attribuer un rôle aléatoire à la naissance, définissant ses statistiques, son équipement et ses priorités.
+
+### A. GUERRIER (Warrior)
+* **Rôle :** Tank / DPS au corps-à-corps
+* **Arme :** Épée (Dégâts élevés, Coût endurance élevé)
+* **Stats :** PV élevés (150), Force élevée (20), Armure (15)
+* **Couleur :** Bleu
+
+### B. ÉCLAIREUR (Scout)
+* **Rôle :** Récolteur / DPS à distance
+* **Arme :** Arc (Portée 5 cases, nécessite des flèches)
+* **Stats :** Endurance élevée (150), Précision élevée (20)
+* **Couleur :** Jaune
+
+### C. SOIGNEUR (Healer)
+* **Rôle :** Soutien / Soin
+* **Arme :** Baguette (Portée 3 cases, Dégâts magiques)
+* **Stats :** Magie élevée (15), PV faibles (80)
+* **Passif :** Soigne automatiquement les alliés proches (Portée 2) à chaque tour.
+* **Couleur :** Vert
+
+---
+
+## 3. Bonus de Classe (Spécialisations)
+
+Pour encourager la spécialisation, chaque classe reçoit des récompenses accrues pour certaines actions.
+
+* **GUERRIER : Tueur de Monstres**
+    * **Bonus :** +50 points supplémentaires pour avoir tué un Prédateur.
+    * **Total :** 100 points par kill (50 base + 50 bonus).
+* **ÉCLAIREUR : Maître Récolteur**
+    * **Bonus :** +10 points supplémentaires pour la récolte de Bois et de Fer.
+    * **Total :** 15 points par ressource (5 base + 10 bonus).
+* **SOIGNEUR : Maître des Arcanes**
+    * **Bonus 1 :** +10 points supplémentaires pour la récolte de Potions Magiques.
+    * **Total :** 15 points par potion (5 base + 10 bonus).
+    * **Bonus 2 (Soin Passif) :** +2 points par allié soigné à chaque tour.
+
+---
+
+## 4. Système de Loot et Potions
+
+Les objets apparaissent aléatoirement sur la carte.
+
+### A. Potions
+
+* **Potion de Santé (Rouge) :**
+    * **Effet :** Rend $20 \, \text{PV} + (\text{Valeur de Magie de l'agent})$.
+    * **Utilité :** Survie immédiate.
+* **Potion d'Énergie (Bleue) :**
+    * **Effet :** Rend $30$ points d'Endurance (Stamina).
+    * **Utilité :** Permet de continuer à attaquer, courir ou crier.
+* **Potion de Magie (Violette) :**
+    * **Effet :** Augmente **PERMANEMMENT** la statistique Magie de $+1$.
+    * **Utilité :** Augmente l'efficacité des soins futurs et les dégâts de la Baguette.
+
+### B. Ressources (Crafting)
+
+* **Bois (Arbre) :**
+    * **Effet :** Ajoute +1 Bois à l'inventaire.
+    * **Craft :** $3 \, \text{Bois} = 5 \, \text{Flèches}$ (Automatique avec l'action *Wait*).
+* **Fer (Rocher) :**
+    * **Effet :** Ajoute +1 Fer à l'inventaire.
+    * **Craft :** $3 \, \text{Fer} = +10 \, \text{Armure}$ (Automatique avec l'action *Wait*).
+
+---
+
+## 5. Système de Saisons
+
+Le jeu cycle à travers 4 saisons, modifiant les paramètres de l'environnement pour forcer l'IA à s'adapter.
+
+### A. PRINTEMPS (Spring) - L'Équilibre
+* **Paramètres :** Repousse du Bois Normale (3%), Apparition Potions Normale, Temps limite $1500$ pas, $10$ Prédateurs.
+* **Objectif :** Saison standard pour apprendre les bases.
+
+### B. ÉTÉ (Summer) - La Sécheresse
+* **Paramètres :** Repousse du Bois Faible (1%), Apparition Potions Très Rare, Temps limite $1200$ pas, $15$ Prédateurs (**Danger élevé**).
+* **Objectif :** Survie en milieu hostile, compétition pour les ressources.
+
+### C. AUTOMNE (Autumn) - L'Abondance
+* **Paramètres :** Repousse du Bois Très Élevée (5%), Apparition Potions Fréquente, Temps limite $2000$ pas (**Générations longues**), $5$ Prédateurs.
+* **Objectif :** Maximisation du score, récolte massive, exploration.
+
+### D. HIVER (Winter) - La Survie
+* **Paramètres :** Repousse du Bois Quasi nulle (0.5%), Apparition Potions Quasi nulle, Temps limite $800$ pas (**Très court**), $12$ Prédateurs.
+* **Objectif :** Urgence absolue. Il faut survivre vite et efficacement.
+
+---
+
+## 6. Récapitulatif des Récompenses (Rewards)
+
+L'IA apprend en maximisant ses récompenses cumulées.
+
+### GAINS :
+* Kill Prédateur : **+50** (Total **+100** pour le Guerrier)
+* Hit Prédateur : +5
+* Bois/Fer : +5 (Total **+15** pour l'Éclaireur)
+* Potion Magie : +5 (Total **+15** pour le Soigneur)
+* Potion Santé/Énergie : +2
+* Craft : +5
+* Soin Passif : +2/allié
+* Communication (Cri) : +0.2
+* Survie : +0.1 par pas
+
+### PERTES :
+* Mort : **-100**
+* Attaque ratée (Pas d'endurance) : -1.0
+* Attaque dans le vide : -0.5
+* Collision : -0.1
+
+---
+
+## 7. Intelligence Artificielle (Réseau de Neurones)
+
+L'IA utilise un modèle **"Multi-Head DQN"** (Deep Q-Network) avec mémoire **LSTM**.
+
+### Architecture :
+1.  **Tronc Commun ("Cerveau Reptilien") :** Traite la vision (Grille 7x7 autour de l'agent) et les stats internes (PV, Endurance, Inventaire). Utilise un **LSTM** (Mémoire) pour se souvenir des événements passés.
+2.  **Têtes Spécialisées ("Personnalités") :** Le réseau se divise en **3 sorties distinctes** (Guerrier, Éclaireur, Soigneur). Seule la "tête" correspondant au rôle de l'agent est utilisée.
+
+---
+
+## 8. Comportement et Principe du Programme
+
+Le programme fonctionne selon une boucle de simulation continue, découpée en **Générations**.
+
+### A. Cycle de Vie d'une Génération
+1.  **Initialisation :** La carte est générée, les agents et prédateurs sont placés aléatoirement.
+2.  **Boucle de Simulation (Steps) :**
+    *   Chaque agent observe son environnement (Vision + Stats).
+    *   Le réseau de neurones décide d'une action (ou action aléatoire si exploration).
+    *   L'action est exécutée (Mouvement, Attaque, Récolte).
+    *   Une récompense est attribuée.
+    *   L'expérience (État, Action, Récompense, Nouvel État) est stockée en mémoire.
+3.  **Entraînement (Training) :**
+    *   Périodiquement, le programme pioche des expériences passées dans la mémoire.
+    *   Il ajuste les poids du réseau de neurones pour maximiser les récompenses futures.
+4.  **Fin de Génération :**
+    *   La génération se termine si tous les agents sont morts OU si le temps limite est atteint.
+    *   Les statistiques sont sauvegardées.
+    *   Le "Cerveau" est sauvegardé.
+    *   Une nouvelle génération commence.
+
+### B. Modes de Fonctionnement
+*   **Mode Visuel (Visuals ON) :** Affiche le jeu en temps réel. Utile pour observer les comportements. Lenteur de l'entraînement.
+*   **Mode Turbo (Visuals OFF) :** Désactive l'affichage. La simulation tourne à vitesse maximale (x1000). Idéal pour l'entraînement rapide.
+
+---
+
+## 9. Structure Détaillée du Projet
+
+Voici l'organisation des fichiers et dossiers du projet :
+
+### 📂 Racine (`/`)
+*   `main.py` : **Point d'entrée**. Lance le jeu et initialise la boucle principale.
+*   `Documentation_Arena_of_Life.txt` : Ce fichier.
+*   `training_stats.csv` : Historique complet des performances (Génération, Saison, Récompenses, Kills, Morts, Epsilon, Loss, CV) au format CSV.
+*   `brain_log.txt` : Logs techniques du chargement/sauvegarde de l'IA.
+
+### 📂 `config/`
+*   `constants.py` : **Cœur de l'équilibrage**. Contient toutes les variables : taille de grille, dégâts des armes, couleurs, hyperparamètres de l'IA, paramètres des saisons.
+
+### 📂 `game/` (Moteur de Jeu)
+*   `arena_game.py` : **Chef d'orchestre**. Coordonne le Moteur, l'IA et l'Affichage. Contient la boucle principale `run()`.
+*   `game_engine.py` : **Logique Métier**. Gère la physique, les collisions, l'application des dégâts, le système de saisons, le spawn des ressources.
+*   `renderer.py` : **Affichage**. Gère Pygame, le dessin de la grille, les sprites, les particules et les sons.
+*   `ui_manager.py` : **Interface Utilisateur**. Gère les boutons, les sliders et les clics souris.
+*   `spatial_grid.py` : **Optimisation**. Système de grille spatiale pour accélérer la détection des voisins (évite de comparer chaque agent avec tous les autres).
+
+### 📂 `entities/` (Entités)
+*   `agent.py` : **L'Agent**. Définit ses stats (PV, Stamina), son inventaire, et prépare les données pour le réseau de neurones (`get_state`).
+*   `predator.py` : **L'Ennemi**. IA simple (non-neuronale) qui chasse l'agent le plus proche.
+
+### 📂 `ai/` (Intelligence Artificielle)
+*   `neural_network.py` : **Le Cerveau**. Définit l'architecture PyTorch (Multi-Head DQN + LSTM).
+*   `trainer.py` : **L'Entraîneur**. Gère l'algorithme d'apprentissage (Calcul de la perte, Backpropagation, Optimiseur Adam).
+*   `replay_memory.py` : **La Mémoire**. Stocke les millions d'expériences passées pour l'entraînement.
+
+### 📂 `ui/` (Composants Graphiques)
+*   `rendering.py` : Fonctions de dessin bas niveau (Grille, Agents).
+*   `widgets.py` : Classes pour les Sliders et Boutons.
+
+### 📂 `assets/`
+*   `models/` : Contient `arena_brain.pth` (Le fichier de sauvegarde du réseau de neurones).
+*   `sounds/` : Effets sonores (WAV).
