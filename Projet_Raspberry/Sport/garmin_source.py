@@ -43,7 +43,9 @@ def parse_stats(s):
     return {k: _pos(v) for k, v in dict(resting_hr=dig(s, "restingHeartRate"), steps=dig(s, "totalSteps"),
                 body_battery_high=dig(s, "bodyBatteryHighestValue"),
                 body_battery_low=dig(s, "bodyBatteryLowestValue"),
-                stress_avg=dig(s, "averageStressLevel")).items()}
+                stress_avg=dig(s, "averageStressLevel"),
+                im_moderate=dig(s, "moderateIntensityMinutes"),
+                im_vigorous=dig(s, "vigorousIntensityMinutes")).items()}
 
 
 def parse_hrv(h):
@@ -73,13 +75,72 @@ def parse_vo2(m):
     return dict(vo2max=g.get("vo2MaxPreciseValue") or g.get("vo2MaxValue"))
 
 
+def find(obj, key):
+    """Première valeur de `key` trouvée en profondeur (structure Garmin variable selon les versions)."""
+    if isinstance(obj, dict):
+        if key in obj:
+            return obj[key]
+        obj = list(obj.values())
+    if isinstance(obj, list):
+        for v in obj:
+            r = find(v, key)
+            if r is not None:
+                return r
+    return None
+
+
+def _primary(m):
+    """Dans une table {appareil: données}, prend l'appareil principal d'entraînement."""
+    if not isinstance(m, dict) or not m:
+        return {}
+    vals = [v for v in m.values() if isinstance(v, dict)]
+    return next((v for v in vals if v.get("primaryTrainingDevice")), vals[0] if vals else {})
+
+
+def parse_training_status(p):
+    """Statut d'entraînement : charge aiguë/chronique, rapport, répartition de charge sur 4 semaines."""
+    st = _primary(find(p, "latestTrainingStatusData")) or {}
+    acute = st.get("acuteTrainingLoadDTO") or find(p, "acuteTrainingLoadDTO") or {}
+    bal = _primary(find(p, "metricsTrainingLoadBalanceDTOMap")) or {}
+    a, c = acute.get("dailyTrainingLoadAcute"), acute.get("dailyTrainingLoadChronic")
+    ratio = acute.get("dailyAcuteChronicWorkloadRatio")
+    if ratio is None and a is not None and c:
+        ratio = round(a / c, 2)
+    phrase = st.get("trainingStatusFeedbackPhrase")
+    return dict(acute_load=a, chronic_load=c, acwr=ratio, acwr_status=acute.get("acwrStatus"),
+                training_status=phrase.rsplit("_", 1)[0] if phrase and phrase.rsplit("_", 1)[-1].isdigit() else phrase,
+                load_aer_low=bal.get("monthlyLoadAerobicLow"), load_aer_high=bal.get("monthlyLoadAerobicHigh"),
+                load_anaer=bal.get("monthlyLoadAnaerobic"),
+                load_aer_low_min=bal.get("monthlyLoadAerobicLowTargetMin"), load_aer_low_max=bal.get("monthlyLoadAerobicLowTargetMax"),
+                load_aer_high_min=bal.get("monthlyLoadAerobicHighTargetMin"), load_aer_high_max=bal.get("monthlyLoadAerobicHighTargetMax"),
+                load_anaer_min=bal.get("monthlyLoadAnaerobicTargetMin"), load_anaer_max=bal.get("monthlyLoadAnaerobicTargetMax"),
+                load_balance=bal.get("trainingBalanceFeedbackPhrase"))
+
+
+def parse_ftp(p):
+    v = find(p, "functionalThresholdPower")
+    return dict(ftp_w=v if isinstance(v, (int, float)) and v > 0 else None)
+
+
+def parse_hr_zones(p):
+    """Temps passé dans chaque zone cardiaque (get_activity_hr_in_timezones)."""
+    out = {}
+    for z in p if isinstance(p, list) else []:
+        n = z.get("zoneNumber")
+        if isinstance(n, int) and 1 <= n <= 5:
+            out[f"z{n}_s"] = z.get("secsInZone")
+    return out
+
+
 ENDPOINTS = [  # (nom, méthode de la bibliothèque, parseur)
     ("stats", "get_stats", parse_stats),
     ("hrv", "get_hrv_data", parse_hrv),
     ("sleep", "get_sleep_data", parse_sleep),
     ("readiness", "get_training_readiness", parse_readiness),
     ("maxmetrics", "get_max_metrics", parse_vo2),
+    ("training_status", "get_training_status", parse_training_status),
 ]
+PARSERS = {name: parser for name, _, parser in ENDPOINTS}
 
 
 def parse_activity(a):
@@ -90,7 +151,10 @@ def parse_activity(a):
                 avg_hr=a.get("averageHR"), max_hr=a.get("maxHR"),
                 avg_power=a.get("avgPower"), norm_power=a.get("normPower"),
                 elevation_gain_m=a.get("elevationGain"), calories=a.get("calories"),
-                training_load=a.get("activityTrainingLoad"))
+                training_load=a.get("activityTrainingLoad"),
+                aerobic_te=a.get("aerobicTrainingEffect"), anaerobic_te=a.get("anaerobicTrainingEffect"),
+                te_label=a.get("trainingEffectLabel"),
+                **{f"z{i}_s": a.get(f"hrTimeInZone_{i}") for i in range(1, 6)})
 
 
 def parse_sets(payload, activity_id):
@@ -131,6 +195,24 @@ def reparse_sets(con):
         n += 1
     con.commit()
     return n
+
+
+def reparse_daily(con):
+    """Réapplique les parseurs à toutes les réponses quotidiennes stockées (nouveaux champs, sans réseau)."""
+    for day, ep, payload in con.execute("SELECT day, endpoint, payload FROM raw_garmin "
+                                        "WHERE day NOT LIKE 'activity:%'").fetchall():
+        parser = PARSERS.get(ep) or (parse_ftp if ep == "ftp" else None)
+        if parser:
+            row = {k: v for k, v in parser(json.loads(payload)).items() if v is not None}
+            if row:
+                db.upsert(con, "daily", {"day": day, **row}, "day")
+    for day, ep, payload in con.execute("SELECT day, endpoint, payload FROM raw_garmin "
+                                        "WHERE endpoint IN ('activity', 'hr_zones')").fetchall():
+        aid = int(day.split(":", 1)[1])
+        data = json.loads(payload)
+        row = parse_activity(data) if ep == "activity" else {"activity_id": aid, **parse_hr_zones(data)}
+        db.upsert(con, "activities", {k: v for k, v in row.items() if v is not None or k == "activity_id"}, "activity_id")
+    con.commit()
 
 
 # ---------- connexion ----------
@@ -195,15 +277,57 @@ class Collector:
             d += timedelta(days=1)
         self._activities(start, end)
         self._weights(start, end)
-        reparse_sets(self.con)   # applique les règles de lecture actuelles à tout l'historique
+        self._ftp(end)
+        self._hr_zones()
+        reparse_daily(self.con)  # applique les règles de lecture actuelles à tout l'historique
+        reparse_sets(self.con)
         self._strength_sets()
         self.con.commit()
+
+    def activities_only(self, start, end):
+        """Rattrapage : liste des activités (effet d'entraînement) + zones cardiaques, sans le reste."""
+        self._activities(start, end)
+        self._hr_zones(limit=400, days=(end - start).days)
+        reparse_daily(self.con)
+        self.con.commit()
+
+    def _ftp(self, day):
+        if not hasattr(self.api, "get_cycling_ftp"):
+            return
+        payload = self._call("get_cycling_ftp")
+        if payload is not None:
+            self._raw(day.isoformat(), "ftp", payload)
+            row = parse_ftp(payload)
+            if row["ftp_w"]:
+                db.upsert(self.con, "daily", {"day": day.isoformat(), **row}, "day")
+
+    def _hr_zones(self, limit=60, days=120):
+        """Temps en zones cardiaques des activités d'endurance qui ne l'ont pas encore."""
+        if not hasattr(self.api, "get_activity_hr_in_timezones"):
+            return
+        todo = [r[0] for r in self.con.execute(
+            "SELECT activity_id FROM activities WHERE type <> 'strength_training' AND avg_hr IS NOT NULL "
+            "AND z1_s IS NULL AND day >= date('now', ?) "
+            "AND 'activity:' || activity_id NOT IN (SELECT day FROM raw_garmin WHERE endpoint='hr_zones') "
+            "ORDER BY start_local DESC LIMIT ?", (f"-{days} day", limit))]
+        for aid in todo:
+            payload = self._call("get_activity_hr_in_timezones", aid)
+            if payload is None:
+                continue
+            self._raw(f"activity:{aid}", "hr_zones", payload)
+            row = parse_hr_zones(payload)
+            if row:
+                db.upsert(self.con, "activities", {"activity_id": aid, **row}, "activity_id")
+            self.con.commit()
+        if todo:
+            log.info("Garmin : zones cardiaques lues pour %d activité(s)", len(todo))
 
     def _activities(self, start, end):
         acts = self._call("get_activities_by_date", start.isoformat(), end.isoformat()) or []
         for a in acts:
             row = parse_activity(a)
             if row["activity_id"]:
+                self._raw(f"activity:{row['activity_id']}", "activity", a)
                 db.upsert(self.con, "activities", row, "activity_id")
         log.info("Garmin : %d activités", len(acts))
 

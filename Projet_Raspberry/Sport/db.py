@@ -35,6 +35,9 @@ CREATE TABLE IF NOT EXISTS weather_hourly (
   temp_c REAL, feels_c REAL, humidity REAL, precip_mm REAL, wind_kmh REAL,
   source TEXT);                   -- 'archive' (observé) ou 'recent' (modèle/prévision)
 
+"""
+
+VIEWS = """
 DROP VIEW IF EXISTS v_activity_weather;
 DROP VIEW IF EXISTS v_duplicates;
 DROP VIEW IF EXISTS v_activities;
@@ -74,16 +77,36 @@ CREATE VIEW v_activity_weather AS
 """
 
 
+# Colonnes ajoutées après la première version (migration automatique des bases existantes)
+EXTRA_COLS = {
+    "daily": [
+        ("im_moderate", "REAL"), ("im_vigorous", "REAL"),            # minutes d'intensité (OMS)
+        ("acute_load", "REAL"), ("chronic_load", "REAL"), ("acwr", "REAL"), ("acwr_status", "TEXT"),
+        ("training_status", "TEXT"),
+        ("load_aer_low", "REAL"), ("load_aer_high", "REAL"), ("load_anaer", "REAL"),   # répartition 4 semaines
+        ("load_aer_low_min", "REAL"), ("load_aer_low_max", "REAL"),
+        ("load_aer_high_min", "REAL"), ("load_aer_high_max", "REAL"),
+        ("load_anaer_min", "REAL"), ("load_anaer_max", "REAL"),
+        ("load_balance", "TEXT"), ("ftp_w", "REAL")],
+    "activities": [
+        ("aerobic_te", "REAL"), ("anaerobic_te", "REAL"), ("te_label", "TEXT"),
+        ("z1_s", "REAL"), ("z2_s", "REAL"), ("z3_s", "REAL"), ("z4_s", "REAL"), ("z5_s", "REAL")],
+    "strength_sets": [("probability", "REAL"), ("wkt_step", "INTEGER")],
+}
+
+
 def connect(path):
     p = Path(path).expanduser()
     p.parent.mkdir(parents=True, exist_ok=True)
     con = sqlite3.connect(p)
     con.row_factory = sqlite3.Row
     con.executescript(SCHEMA)
-    cols = {r[1] for r in con.execute("PRAGMA table_info(strength_sets)")}
-    for c, t in (("probability", "REAL"), ("wkt_step", "INTEGER")):
-        if c not in cols:
-            con.execute(f"ALTER TABLE strength_sets ADD COLUMN {c} {t}")
+    for table, extra in EXTRA_COLS.items():
+        cols = {r[1] for r in con.execute(f"PRAGMA table_info({table})")}
+        for c, t in extra:
+            if c not in cols:
+                con.execute(f"ALTER TABLE {table} ADD COLUMN {c} {t}")
+    con.executescript(VIEWS)  # après la migration : les vues voient toutes les colonnes
     # valeurs sentinelles de Garmin (-1, -2 = « pas de mesure ») -> absent
     for col in ("resting_hr", "hrv_last_night", "sleep_seconds", "sleep_score", "body_battery_high",
                 "body_battery_low", "stress_avg", "steps", "training_readiness", "vo2max", "weight_kg"):

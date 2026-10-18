@@ -13,7 +13,27 @@ TODAY = date(2026, 10, 16)
 class FakeGarmin:
     def get_stats(self, d):
         return {"restingHeartRate": 52 + random.randint(-2, 2), "totalSteps": 8000,
-                "bodyBatteryHighestValue": 90, "bodyBatteryLowestValue": 20, "averageStressLevel": 30}
+                "bodyBatteryHighestValue": 90, "bodyBatteryLowestValue": 20, "averageStressLevel": 30,
+                "moderateIntensityMinutes": 20, "vigorousIntensityMinutes": 10}
+
+    def get_training_status(self, d):
+        return {"mostRecentTrainingStatus": {"latestTrainingStatusData": {"123": {
+                    "trainingStatusFeedbackPhrase": "PRODUCTIVE_6", "primaryTrainingDevice": True,
+                    "acuteTrainingLoadDTO": {"dailyTrainingLoadAcute": 281, "dailyTrainingLoadChronic": 260,
+                                             "dailyAcuteChronicWorkloadRatio": 1.1, "acwrStatus": "OPTIMAL"}}}},
+                "mostRecentTrainingLoadBalance": {"metricsTrainingLoadBalanceDTOMap": {"123": {
+                    "primaryTrainingDevice": True, "monthlyLoadAerobicLow": 792, "monthlyLoadAerobicHigh": 0,
+                    "monthlyLoadAnaerobic": 119, "monthlyLoadAerobicLowTargetMin": 300, "monthlyLoadAerobicLowTargetMax": 650,
+                    "monthlyLoadAerobicHighTargetMin": 300, "monthlyLoadAerobicHighTargetMax": 650,
+                    "monthlyLoadAnaerobicTargetMin": 0, "monthlyLoadAnaerobicTargetMax": 200,
+                    "trainingBalanceFeedbackPhrase": "AEROBIC_HIGH_SHORTAGE"}}}}
+
+    def get_cycling_ftp(self):
+        return {"functionalThresholdPower": 262, "sport": "CYCLING"}
+
+    def get_activity_hr_in_timezones(self, aid):
+        return [{"zoneNumber": 1, "secsInZone": 1500}, {"zoneNumber": 2, "secsInZone": 5400},
+                {"zoneNumber": 3, "secsInZone": 300}, {"zoneNumber": 4, "secsInZone": 0}, {"zoneNumber": 5, "secsInZone": 0}]
 
     def get_hrv_data(self, d):
         return {"hrvSummary": {"lastNightAvg": 60 + random.randint(-6, 6), "weeklyAvg": 60, "status": "BALANCED"}}
@@ -44,7 +64,12 @@ class FakeGarmin:
         return [{"activityId": 1, "activityName": "Sortie Z2", "startTimeLocal": "2026-10-11 08:30:00",
                  "activityType": {"typeKey": "road_biking"}, "duration": 7200, "distance": 55000,
                  "averageHR": 135, "maxHR": 160, "avgPower": 170, "normPower": 180,
-                 "elevationGain": 400, "calories": 1300, "activityTrainingLoad": 150.0},
+                 "elevationGain": 400, "calories": 1300, "activityTrainingLoad": 150.0,
+                 "aerobicTrainingEffect": 3.1, "anaerobicTrainingEffect": 0.2, "trainingEffectLabel": "BASE"},
+                {"activityId": 3, "activityName": "4x4 HT", "startTimeLocal": "2026-10-15 19:00:00",
+                 "activityType": {"typeKey": "indoor_cycling"}, "duration": 2700, "averageHR": 150, "avgPower": 220,
+                 "aerobicTrainingEffect": 4.3, "anaerobicTrainingEffect": 1.8, "trainingEffectLabel": "VO2MAX",
+                 "hrTimeInZone_1": 600, "hrTimeInZone_2": 900, "hrTimeInZone_3": 300, "hrTimeInZone_4": 300, "hrTimeInZone_5": 840},
                 {"activityId": 2, "activityName": "Musculation", "startTimeLocal": "2026-10-12 18:37:00",
                  "activityType": {"typeKey": "strength_training"}, "duration": 2400, "averageHR": 80}]
 
@@ -73,7 +98,24 @@ def main():
         out = report.export(con, Path(t) / "export", today=TODAY)
 
         assert con.execute("SELECT COUNT(*) FROM daily").fetchone()[0] == 41
-        assert con.execute("SELECT COUNT(*) FROM raw_garmin WHERE endpoint<>'exercise_sets'").fetchone()[0] == 41 * 5
+        assert con.execute("SELECT COUNT(*) FROM raw_garmin WHERE day NOT LIKE 'activity:%' AND endpoint<>'ftp'").fetchone()[0] == 41 * 6
+        # nouveaux indicateurs : charge, répartition, FTP, effet d'entraînement, zones, minutes OMS
+        import training
+        m = training.metrics(con, TODAY)
+        assert m["load"]["acwr"] == 1.1 and m["load"]["training_status"] == "Productif", m["load"]
+        assert m["balance"]["aer_high"]["state"] == "sous la cible" and m["balance"]["feedback"] == "Déficit aérobie intense"
+        assert m["ftp"]["watts"] == 262 and m["ftp"]["wkg"] == round(262 / 78.5, 2), m["ftp"]
+        assert m["last_4x4"]["day"] == "2026-10-15" and m["last_4x4"]["z5_min"] == 14, m.get("last_4x4")
+        assert [x["day"] for x in m["intense_week"]] == ["2026-10-15"], m["intense_week"]
+        assert m["sunday"]["day"] == "2026-10-11" and m["sunday"]["ok"] is True, m["sunday"]   # 300 s en Z3 / 7200 s
+        # natation étiquetée « Base » malgré du temps en Z4 : pas intense ; CrossFit ≥ 30 min : intense
+        mk = lambda **k: {**dict(type="lap_swimming", duration_s=2700, te_label="AEROBIC_BASE", aerobic_te=3.7,
+                                 anaerobic_te=2.3, z4_s=840, z5_s=120), **k}
+        assert not training.is_intense(mk()) and training.is_intense(mk(type="indoor_cardio", te_label=None, aerobic_te=1.6))
+        assert m["oms"]["total"] == 7 * (20 + 2 * 10), m["oms"]
+        z = con.execute("SELECT z2_s, te_label FROM activities WHERE activity_id=1").fetchone()
+        assert z["z2_s"] == 5400 and z["te_label"] == "BASE"
+        assert (out / "coach_metrics.json").exists()
         assert con.execute("SELECT weight_kg FROM daily WHERE day=?", (TODAY.isoformat(),)).fetchone()[0] == 78.5
         assert con.execute("SELECT sleep_start_min FROM daily LIMIT 1").fetchone()[0] == 23 * 60 + 15
         a = con.execute("SELECT * FROM v_activity_weather").fetchone()
