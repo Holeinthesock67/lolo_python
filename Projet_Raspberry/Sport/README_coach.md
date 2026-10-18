@@ -1,17 +1,18 @@
 # Coach sportif hybride – mémo du système
 
-Mis à jour le 17/10/2026. Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
+Mis à jour le 18/10/2026. Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
 
 ## Vue d'ensemble
 
 ### 1. Synthèse Intégrale (le programme)
 - Version qui fait foi : texte dans le projet Claude « Coach Sportif » (`claude/Synthèse Intégrale v2 - …txt`, contenu v2.2).
-- PDF v2.2 et script générateur `build.py` (reportlab + polices DejaVu) : `D:\Sauvegarde\Documents\Laurent\lolo_python\Sport\sources\`.
+- PDF v2.2 et script générateur `build.py` (reportlab + polices DejaVu) : `D:\Sauvegarde\Documents\Laurent\lolo_python\Projet_Raspberry\Sport\sources\`.
 - Pour une nouvelle version : donner `build.py` à Claude dans une conversation du projet, il le modifie et régénère le PDF et le texte.
 
 ### 2. Carnet du coach (saisies manuelles)
 - Page de saisie (téléphone), épinglée dans Claude : https://claude.ai/artifact/WAux9mehWeAnC7DU3vJ65e
   Onglets : Aujourd'hui (séance du jour, check-in matin, bilan soir RPE × durée), Mesures, Perf, Tendances.
+  L'onglet Perf affiche aussi « Charge et intensité » (Garmin), lu dans `coach_metrics.json` du Drive « Coach - Garmin export » via le connecteur Google Drive.
 - Données : feuille Google « Coach – Carnet », dans le dossier Drive « Santé et Musculation ».
   ID `1rwXH-2Fop758Bk-6VTDATiySnkO9D7eyVEHn7yuZCt8`.
   Onglets : Quotidien, Soir, Mesures, Tension, FTP, Biologie, Réglages (taille 176, cou 40, semaines du 4×4, début créatine, âge).
@@ -32,11 +33,11 @@ Mis à jour le 17/10/2026. Ce document est la référence pour reprendre le syst
 - Faire le check-in du matin avant 7 h 24 pour un point à jour.
 
 ### 5. Le PC Windows
-- Dossier : `D:\Sauvegarde\Documents\Laurent\lolo_python\Sport` (script, `.venv` Windows, `data\coach.db` = sauvegarde du 17/10/2026).
+- Dossier : `D:\Sauvegarde\Documents\Laurent\lolo_python\Projet_Raspberry\Sport` (script, `.venv` Windows, `data\coach.db` = sauvegarde du 17/10/2026).
 - Rôle : sauvegarde, et seul endroit pour refaire la connexion Garmin (`.venv\Scripts\python coach.py login`, voir « Pannes possibles »).
 - Python Windows : `.venv\Scripts\python …` (le Pi utilise `.venv/bin/python …`).
 - Fichier `.env` : identifiants Garmin. Ne jamais le copier sur le Pi, ni le partager, ni l'envoyer à Claude.
-- Commandes du script : `login`, `sync`, `garmin`, `weather`, `report`, `integrity` (rapport `export\integrite.html`), option `--days N`.
+- Commandes du script : `login`, `sync`, `garmin`, `activities` (rattrapage de l'effet d'entraînement et des zones, `--days 120` par défaut), `weather`, `report`, `integrity` (rapport `export\integrite.html`), option `--days N`.
 - Ne plus lancer `sync` sur le PC : la base de référence est celle du Pi.
 
 ### 6. Règles de travail
@@ -46,6 +47,7 @@ Mis à jour le 17/10/2026. Ce document est la référence pour reprendre le syst
 
 ### Ce qui reste ouvert
 - Séance B dans Garmin : nombre de tours à aligner sur la synthèse (élévations latérales, leg curl, rowing anneaux) ou synthèse à aligner sur Garmin.
+- Calories Garmin volontairement non utilisées (erreur de 20 à 40 %) : le poids moyen 15 j sert de bilan énergétique.
 - Idées pour plus tard : efficacité aérobie (EF) et découplage Pa:HR à partir des données seconde par seconde ; suivi de la double progression à partir des séries confirmées.
 
 ---
@@ -60,7 +62,9 @@ Mis à jour le 17/10/2026. Ce document est la référence pour reprendre le syst
 | 7 h 15 | Synchro Garmin + météo, exports, puis copie sur Google Drive | Raspberry Pi (cron) |
 | 7 h 24 | « Point coach du matin » : verdict du jour envoyé sur le téléphone | tâche planifiée Claude |
 
-Le Pi remplit le dossier Drive **« Coach - Garmin export »** avec `coach_snapshot.md`, `integrite.html`, `daily.csv`, `activities.csv` et `weather_daily.csv`. Le coach lit ce dossier, ton carnet (feuille « Coach – Carnet ») et la Synthèse Intégrale.
+Le Pi remplit le dossier Drive **« Coach - Garmin export »** avec `coach_snapshot.md`, `coach_metrics.json`, `integrite.html`, `daily.csv`, `activities.csv` et `weather_daily.csv`.
+
+Données Garmin importées : FC repos, VFC, sommeil, Body Battery, stress, pas, Training Readiness, VO2max, poids, minutes d'intensité OMS, statut d'entraînement (charge aiguë/chronique, rapport, répartition sur 4 semaines et cibles), FTP estimé, activités (durée, FC, puissance, charge, effet d'entraînement aérobie/anaérobie et étiquette, temps en zones cardiaques) et séries de musculation. Calculs dans `training.py` : séances intenses de la semaine, dernier 4×4 probable (étiquette VO2max ou ≥ 8 min en zone 5, vélo ou course), conformité Zone 2 de la sortie longue du week-end (zones 3 à 5 ≤ 10 % du temps) ; le CrossFit compte comme séance intense, la natation suit l'étiquette Garmin. Le coach lit ce dossier, ton carnet (feuille « Coach – Carnet ») et la Synthèse Intégrale.
 
 ## Le Raspberry Pi
 
@@ -102,7 +106,7 @@ Ligne programmée (cron) :
 ## Pannes possibles
 
 **Jeton Garmin expiré** (le journal affiche « Jeton Garmin expiré », en général après plusieurs mois)
-1. Sur le PC, dans `D:\Sauvegarde\Documents\Laurent\lolo_python\Sport` : `.venv\Scripts\python coach.py login`
+1. Sur le PC, dans `D:\Sauvegarde\Documents\Laurent\lolo_python\Projet_Raspberry\Sport` : `.venv\Scripts\python coach.py login`
 2. Toujours dans PowerShell sur le PC : `scp -r $HOME\.garminconnect laurent@coachpi:~/`
 
 **Garmin répond 429** (trop de requêtes) : rien à faire. La synchro suivante relit les 3 derniers jours.
@@ -137,7 +141,7 @@ La base du PC (`Sport\data\coach.db`) n'est qu'une sauvegarde du 17/10/2026. Ne 
 Dans PowerShell sur le PC :
 
 ```
-scp laurent@coachpi:~/garmin_coach/data/coach.db D:\Sauvegarde\Documents\Laurent\lolo_python\Sport\data\coach_pi.db
+scp laurent@coachpi:~/garmin_coach/data/coach.db D:\Sauvegarde\Documents\Laurent\lolo_python\Projet_Raspberry\Sport\data\coach_pi.db
 ```
 
 ## Tout réinstaller (carte SD morte, nouveau Pi)

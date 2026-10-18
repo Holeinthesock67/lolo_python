@@ -1,7 +1,9 @@
 """Instantané Markdown pour le coach + exports CSV."""
 import csv
+import json
 
 import exercises as ex_mod
+import training
 import statistics as st
 from datetime import date, timedelta
 from pathlib import Path
@@ -68,16 +70,17 @@ def snapshot(con, today=None, k_sd=0.75):
     L += ["", "## Activités des 7 derniers jours"]
     acts = con.execute("SELECT * FROM v_activity_weather WHERE day>=? ORDER BY start_local", (w_start,)).fetchall()
     if acts:
-        L += ["| Date | Type | Durée | FC moy | P moy | PN | Charge | Météo |", "|---|---|---|---|---|---|---|---|"]
+        L += ["| Date | Type | Durée | FC moy | P moy | PN | Charge | Effet Garmin | Météo |", "|---|---|---|---|---|---|---|---|---|"]
         for a in acts:
             meteo = f"{_f(a['temp_c'])}°C, {_f(a['humidity'])} %, vent {_f(a['wind_kmh'])} km/h" if a["temp_c"] is not None else "n/d"
             L.append(f"| {a['start_local'][:16]} | {a['type']} | {_f((a['duration_s'] or 0) / 60)} min | {_f(a['avg_hr'])} | "
-                     f"{_f(a['avg_power'])} | {_f(a['norm_power'])} | {_f(a['training_load'])} | {meteo} |")
+                     f"{_f(a['avg_power'])} | {_f(a['norm_power'])} | {_f(a['training_load'])} | {training.effect(a)} | {meteo} |")
     else:
         L.append("Aucune activité.")
     t7 = con.execute("SELECT SUM(duration_s) s FROM v_activities WHERE day>=?", (w_start,)).fetchone()["s"] or 0
     t28 = con.execute("SELECT SUM(duration_s) s FROM v_activities WHERE day>=? AND day<=?", (b_start, b_end)).fetchone()["s"] or 0
     L.append(f"\nVolume 7 j : {t7 / 3600:.1f} h (moyenne hebdo des 28 j précédents : {t28 / 3600 / 4:.1f} h)")
+    L += training.section(training.metrics(con, today))
 
     # --- musculation : détail des séries (Garmin) ---
     sess = con.execute(
@@ -138,6 +141,8 @@ def export(con, out_dir, today=None):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
     (out / "coach_snapshot.md").write_text(snapshot(con, today), encoding="utf-8")
+    (out / "coach_metrics.json").write_text(json.dumps(training.metrics(con, today), ensure_ascii=False, indent=1),
+                                            encoding="utf-8")
     for name, sql in [("daily", "SELECT * FROM daily ORDER BY day"),
                       ("activities", "SELECT * FROM v_activity_weather ORDER BY start_local"),
                       ("weather_daily", "SELECT * FROM v_weather_daily ORDER BY day")]:
