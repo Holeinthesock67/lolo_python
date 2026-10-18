@@ -1,10 +1,14 @@
 #!/usr/bin/env python3
-"""Veille pour podcast personnalisé.
+"""Veille pour les podcasts personnalisés.
+
+Les émissions et leurs sources sont décrites dans le Google Sheet « Configuration podcasts »
+(voir commun.py). Sans --emission, chaque commande traite toutes les émissions actives.
 
 Commandes :
   check       teste chaque source et affiche le dernier élément trouvé
-  collect     collecte quotidienne des nouveautés (à lancer chaque nuit)
-  build-week  compile les 7 derniers jours en un fichier pour Claude
+  collect     collecte quotidienne des nouveautés (à lancer chaque jour)
+  build-week  compile les 7 derniers jours et l'envoie sur le Drive, pour les
+              émissions dont c'est le jour (ou celle donnée par --emission)
 """
 import argparse
 import datetime as dt
@@ -20,17 +24,13 @@ from pathlib import Path
 import feedparser
 from bs4 import BeautifulSoup
 
-BASE = Path(__file__).resolve().parent
-CONFIG = BASE / "sources.json"
+from commun import load_emissions, log, rclone_copy, select, today_name
+
 UA = "Mozilla/5.0 (X11; Linux aarch64) veille-podcast/1.0"
 NOW = dt.datetime.now(dt.timezone.utc)
 
 
 # ---------- utilitaires ----------
-
-def load_config():
-    return json.loads(CONFIG.read_text(encoding="utf-8"))
-
 
 def data_dir(cfg):
     d = Path(cfg["data_dir"]).expanduser()
@@ -50,10 +50,6 @@ def save_json(path, obj):
     tmp = path.with_suffix(".tmp")
     tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
     tmp.replace(path)
-
-
-def log(msg):
-    print(f"[{dt.datetime.now():%Y-%m-%d %H:%M}] {msg}", file=sys.stderr)
 
 
 def html_to_text(raw):
@@ -145,9 +141,15 @@ def yt_list_videos(src, cache):
     les vidéos déjà vues avec l'ancien flux RSS soient reconnues. La date est ajoutée
     plus tard par yt_video_date, seulement pour les vidéos nouvelles."""
     cid = src.get("channel_id") or cache.get(src.get("handle"))
-    url = (f"https://www.youtube.com/channel/{cid}/videos" if cid
-           else f"https://www.youtube.com/@{src['handle']}/videos")
+    if src.get("playlist_id"):
+        url = f"https://www.youtube.com/playlist?list={src['playlist_id']}"
+    elif cid:
+        url = f"https://www.youtube.com/channel/{cid}/videos"
+    else:
+        url = f"https://www.youtube.com/@{src['handle']}/videos"
+    # youtube:lang : titres dans la langue de la source, pas traduits automatiquement
     res = run_ytdlp(["--flat-playlist", "--playlist-items", f"1:{src.get('max_items', 5)}",
+                     "--extractor-args", f"youtube:lang={src.get('lang', 'fr')}",
                      "--print", "%(id)s\t%(title)s", url], timeout=180)
     entries = []
     for line in res.stdout.splitlines():
@@ -207,6 +209,9 @@ def cmd_check(cfg):
     cache = load_json(d / "yt_channels.json", {})
     ok = 0
     for src in cfg["sources"]:
+        if not src.get("enabled", True):
+            print(f"—       {src['name']} — désactivée dans le Sheet, non testée")
+            continue
         try:
             feed = fetch_feed(src, cache)
             last = feed.entries[0]
@@ -308,7 +313,7 @@ def cmd_build_week(cfg, days):
     year, week, _ = today.isocalendar()
     start = today - dt.timedelta(days=days - 1)
 
-    lines = [f"# Veille IA — semaine {year}-S{week:02d}",
+    lines = [f"# Veille {cfg.get('nom', '')} — semaine {year}-S{week:02d}",
              f"Période : du {start} au {today} — {len(items)} éléments.", "",
              "## Sources et positions", ""]
     for src in cfg["sources"]:
@@ -322,19 +327,48 @@ def cmd_build_week(cfg, days):
 
     out = d / "weekly" / f"{year}-W{week:02d}_source.md"
     out.write_text("\n".join(lines), encoding="utf-8")
-    print(out)
     log(f"Compilation : {len(items)} éléments, {out.stat().st_size // 1024} Ko -> {out.name}")
+    return out
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("command", choices=["check", "collect", "build-week"])
+    p.add_argument("--emission", help="identifiant d'une émission (sinon : toutes les actives)")
     p.add_argument("--days", type=int, default=7, help="nombre de jours pour build-week")
+    p.add_argument("--no-upload", action="store_true", help="build-week sans envoi sur le Drive")
     args = p.parse_args()
-    cfg = load_config()
-    {"check": lambda: cmd_check(cfg),
-     "collect": lambda: cmd_collect(cfg),
-     "build-week": lambda: cmd_build_week(cfg, args.days)}[args.command]()
+
+    emissions, warnings = load_emissions()
+    for w in warnings:
+        log(f"CONFIGURATION : {w}")
+    todo = select(emissions, args.emission)
+    if not todo:
+        log("Aucune émission active dans le Sheet.")
+        return
+
+    for cfg in todo:
+        if args.command == "check":
+            print(f"\n=== {cfg['nom']} ({cfg['id']}) — {len(cfg['sources'])} sources")
+            cmd_check(cfg)
+        elif args.command == "collect":
+            log(f"[{cfg['id']}] collecte")
+            cmd_collect(cfg)
+        else:
+            if not args.emission and cfg["jour"] != today_name():
+                continue
+            log(f"[{cfg['id']}] compilation de la semaine")
+            out = cmd_build_week(cfg, args.days)
+            if out and not args.no_upload:
+                try:
+                    rclone_copy(str(out), f"{cfg['remote']}/sources")
+                    log(f"  envoyé sur le Drive : {cfg['dossier']}/sources/{out.name}")
+                except RuntimeError as exc:
+                    log(f"  ENVOI ÉCHOUÉ : {exc}")
+    if args.command == "check" and warnings:
+        print("\nProblèmes dans le Sheet :")
+        for w in warnings:
+            print(f"  - {w}")
 
 
 if __name__ == "__main__":
