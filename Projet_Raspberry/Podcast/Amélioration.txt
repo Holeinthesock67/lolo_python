@@ -1,0 +1,15 @@
+Les trois fichiers sont sains : ils se compilent, et les en-têtes de ton Sheet correspondent bien à ce que le code attend. J'ai aussi testé la question restée ouverte.
+
+**Plusieurs versions du même script : ça marche**
+`podcast.py` prend la version au numéro le plus élevé (testé : `_v10` passe bien devant `_v3`). Il compare le nom du fichier à celui du dernier MP3 produit. Une nouvelle version déclenche donc un nouveau MP3, qui remplace celui de la semaine sur le Drive. La correction de tout à l'heure fonctionnera de bout en bout.
+
+**Deux vrais problèmes**
+1. **Le repli sur Piper est trop rapide.** Si un seul morceau échoue trois fois chez edge-tts, soit environ 30 secondes de coupure Wi-Fi, tout l'épisode bascule définitivement sur Piper. La voix est nettement moins bonne, et la synthèse prend des heures sur le Pi 3. Mieux vaut s'arrêter et réessayer edge-tts au passage suivant, et ne passer à Piper qu'après plusieurs passages ratés.
+2. **Rien n'empêche deux lancements simultanés.** Si `podcast.py` tourne toutes les heures et qu'une synthèse Piper dure plus d'une heure, une deuxième instance travaille dans le même dossier que la première. Le MP3 obtenu peut être corrompu. Un `flock` dans la crontab suffit.
+
+**Mineurs**
+- Une vidéo YouTube sans date n'est jamais écartée pour ancienneté. Sans sous-titres, elle peut finir dans la veille avec un texte vide.
+- La liste « Sources et positions » du fichier de veille inclut les sources désactivées, avec « 0 éléments ».
+- À vérifier sur le Pi : `~/podcast-data/ia/episodes/state.json` doit exister. Sinon, au prochain passage, `podcast.py` refera les MP3 de toutes les semaines passées.
+
+Je corrige les points 1 et 2 ?
