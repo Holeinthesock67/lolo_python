@@ -1,60 +1,77 @@
-# Podcast IA (Raspberry Pi + Claude)
+# Podcasts personnalisés (Raspberry Pi + Claude)
 
-Podcast hebdomadaire sur l'IA : débat de 20 min entre Camille (A) et Thomas (B), puis revue de sujets.
+Des podcasts audio produits automatiquement à partir d'une veille de sources (YouTube, flux RSS).
+Chaque émission a son thème, ses sources et son format (débat ou revue). Premier podcast : « Podcast IA »,
+un débat de 30 minutes chaque dimanche entre Camille (A) et Thomas (B).
+
+## Configuration : le Google Sheet « Configuration podcasts »
+
+Dans le dossier **Podcasts** du Drive. Rien n'est à modifier sur le Pi pour ajouter une émission ou une source.
+
+- Onglet **Émissions** : une ligne par podcast (format, jour, durée, voix, prénoms, mots-clés, consignes).
+- Un onglet de sources par émission (ex. **Sources IA**) : une ligne par source (type, chaîne ou URL,
+  langue, camp, thèse, filtre, active).
+- Onglet **Mode d'emploi** : le sens de chaque colonne.
+
+Le Pi télécharge le Sheet en .xlsx avant chaque passage et garde la dernière copie en secours.
+Claude le lit avec le connecteur Google Sheets.
 
 ## Chaîne de production
 
-1. **`veille.py`** (Pi) : collecte chaque nuit les sources (YouTube, RSS, newsletters), classées par camp.
-   Le dimanche, il compile la semaine dans `~/podcast-data/weekly/AAAA-Wss_source.md`.
-2. **rclone** envoie ce fichier dans `Drive > Podcast IA > sources` (remote `podcast:`).
-3. **Skill Claude `podcast-debat-ia`** (tâche planifiée le dimanche à 9 h 52) : lit le fichier et écrit
-   `AAAA-Wss_script.txt` dans `Drive > Podcast IA > scripts`.
-4. **`podcast.py`** (Pi) récupère le script, génère les voix avec Piper (une voix à la fois),
-   produit le MP3 et l'envoie dans `Drive > Podcast IA > episodes`.
+1. **Chaque jour à 8 h 15, `veille.py collect`** (Pi) : nouveautés de chaque source des émissions actives,
+   dans `~/podcast-data/<émission>/daily/`.
+2. **Chaque jour à 9 h 15, `veille.py build-week`** (Pi) : pour les émissions dont c'est le jour, compile les
+   7 derniers jours en `AAAA-Wss_source.md` et l'envoie dans `Podcasts/<dossier>/sources`.
+3. **Chaque jour à 9 h 52, tâche planifiée Claude + skill `podcast-ecriture`** : pour les émissions du jour,
+   écrit `AAAA-Wss_script.txt` dans `Podcasts/<dossier>/scripts`, selon le format (débat ou revue).
+4. **Toutes les heures de 10 h 30 à 22 h 30, `podcast.py`** (Pi) : récupère les nouveaux scripts, génère les
+   voix (edge-tts, Piper en secours), produit le MP3 et l'envoie dans `Podcasts/<dossier>/episodes`.
 
 ## Fichiers
 
 | Fichier | Où il tourne | Rôle |
 |---|---|---|
-| `veille.py` | Pi, `~/veille/` | collecte et compilation hebdo |
-| `sources.json` | Pi, `~/veille/` | liste des sources, camps, mots-clés, réglages |
-| `podcast.py` | Pi, `~/veille/` | synthèse vocale et MP3 |
-| `SKILL_podcast-debat-ia.md` | Claude (skill) | consignes d'écriture du script |
+| `commun.py` | Pi, `~/veille/` | journal, rclone avec délai et 3 essais, lecture du Sheet |
+| `veille.py` | Pi, `~/veille/` | collecte, compilation hebdo, envoi des sources |
+| `podcast.py` | Pi, `~/veille/` | synthèse vocale et MP3, par émission |
+| `SKILL_podcast-ecriture.md` | Claude (skill) | consignes d'écriture, formats débat et revue |
+| `BASCULE.md` | — | procédure de passage de l'ancien système (sources.json) au Sheet |
 
 ## Environnements Python sur le Pi
 
-- `~/veille-env` : `feedparser beautifulsoup4 yt-dlp` (+ `piper-tts` pour podcast.py)
-- Voix Piper dans `~/piper-voices/` : `fr_FR-siwis-medium` (A) et `fr_FR-tom-medium` (B)
-- La synchro Garmin garde son propre environnement (`~/garmin_coach/.venv`), sans interaction.
+- `~/veille-env` : `feedparser beautifulsoup4 yt-dlp openpyxl` (veille.py)
+- `~/piper-env` : `piper-tts edge-tts openpyxl` (podcast.py)
+- Voix Piper de secours dans `~/piper-voices/` : `fr_FR-siwis-medium` (A) et `fr_FR-tom-medium` (B)
+- La synchro Garmin garde son propre environnement (`~/garmin_coach/.venv`).
 
-## Crontab du Pi (au moment de la sauvegarde)
+## Données sur le Pi
 
-```
-15 7 * * *  synchro Garmin (inchangée)
-15 8 * * *  ~/veille-env/bin/python ~/veille/veille.py collect    >> ~/podcast-data/veille.log 2>&1
-15 9 * * 0  ~/veille-env/bin/python ~/veille/veille.py build-week >> ~/podcast-data/veille.log 2>&1
-45 10 * * 0 ~/veille-env/bin/pip install -q -U yt-dlp
-```
-
-Vérifier la version réelle avec `crontab -l` sur le Pi (l'envoi rclone et `podcast.py` peuvent y avoir été ajoutés).
+`~/podcast-data/<identifiant de l'émission>/` : `daily/`, `weekly/`, `seen.json`, `scripts/`, `episodes/`
+(avec `state.json`), `work/` (fichiers temporaires de synthèse). Journaux : `~/podcast-data/veille.log`
+et `~/podcast-data/podcast.log`.
 
 ## Accès Drive (rclone)
 
-- `gdrive:` : remote de la synchro Garmin, `scope = drive.file` (ne voit que ses propres fichiers).
-- `podcast:` : remote dédié, `scope = drive`, racine = dossier « Podcast IA »
-  (`root_folder_id = 1nmED0Eokrr8kyCm4YbacvyRl0PFtX0Ko`).
-  Configuré via tunnel SSH : `ssh -L 53682:localhost:53682 utilisateur@coachpi`.
+- `podcast:` : remote dédié, `scope = drive`, racine = dossier **Podcasts**
+  (`root_folder_id = 1K2xwn7U5MN-irF0ZSy3o6cTHKBkRhIOi`).
+- `gdrive:` : remote de la synchro Garmin, `scope = drive.file`, sans rapport avec les podcasts.
 
 ## Commandes utiles
 
 ```bash
-~/veille-env/bin/python ~/veille/veille.py check        # teste chaque source
-~/veille-env/bin/python ~/veille/podcast.py --test      # lit seulement l'ouverture du dernier script
-~/veille-env/bin/python ~/veille/podcast.py             # produit les épisodes manquants
+~/veille-env/bin/python ~/veille/veille.py check                   # teste toutes les sources et le Sheet
+~/veille-env/bin/python ~/veille/veille.py check --emission ia     # une seule émission
+~/veille-env/bin/python ~/veille/veille.py build-week --emission ia   # compile et envoie, quel que soit le jour
+~/piper-env/bin/python ~/veille/podcast.py --test                  # ouverture du dernier script seulement
+~/piper-env/bin/python ~/veille/podcast.py --emission ia           # produit les épisodes manquants
+tail -f ~/podcast-data/podcast.log                                 # suivre la génération
 ```
 
-## Rapatrier les fichiers du Pi vers ce PC
+## Ajouter une émission
 
-```bash
-scp utilisateur@coachpi:~/veille/{veille.py,sources.json,podcast.py} .
-```
+1. Une ligne dans l'onglet **Émissions** (identifiant court, sans espace ni accent).
+2. Un onglet de sources, avec les mêmes colonnes que **Sources IA**, dont le nom va dans « Onglet des sources ».
+3. Sur le Pi : `veille.py check --emission <identifiant>`.
+
+Le dossier de l'émission dans **Podcasts** et ses sous-dossiers sont créés automatiquement à la première
+compilation (sources), puis à la première écriture du script (scripts) et au premier MP3 (episodes).
