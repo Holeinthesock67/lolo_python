@@ -6,9 +6,12 @@ Usage :
   podcast.py --test     ne lit que l'ouverture du dernier script (pour tester les voix)
   podcast.py --file X   produit l'épisode d'un script local précis
 
-Économe en mémoire (Pi 3, 1 Go) : une seule voix chargée à la fois, répliques
-découpées en morceaux courts, fichiers de travail sur la carte SD. Si le programme
-est interrompu, il reprend là où il s'était arrêté.
+Voix : edge-tts (Vivienne et Rémy, service en ligne de Microsoft) par défaut.
+Si edge-tts échoue, tout l'épisode est refait avec Piper en local, et le log le dit.
+
+Économe en mémoire (Pi 3, 1 Go) : avec Piper, une seule voix chargée à la fois et
+répliques découpées en morceaux courts. Fichiers de travail sur la carte SD. Si le
+programme est interrompu, il reprend là où il s'était arrêté, avec le même moteur.
 """
 import argparse
 import datetime as dt
@@ -25,9 +28,14 @@ from pathlib import Path
 # ---------- réglages ----------
 HOME = Path.home()
 DATA = HOME / "podcast-data"
+ENGINE = "edge"        # "edge" (edge-tts) ou "piper" (local)
+EDGE_VOICES = {"A": "fr-FR-VivienneMultilingualNeural",   # Camille
+               "B": "fr-FR-RemyMultilingualNeural"}       # Thomas
+EDGE_CHUNK_CHARS = 1500  # edge-tts lit les répliques entières : meilleure intonation
+EDGE_RETRIES = 3
 VOICE_DIR = HOME / "piper-voices"
-VOICES = {"A": "fr_FR-siwis-medium",   # Camille
-          "B": "fr_FR-tom-medium"}     # Thomas
+VOICES = {"A": "fr_FR-siwis-medium",   # Camille (secours Piper)
+          "B": "fr_FR-tom-medium"}     # Thomas (secours Piper)
 REMOTE_SCRIPTS = "podcast:scripts"
 REMOTE_EPISODES = "podcast:episodes"
 PAUSE_LINE = 0.35      # silence entre deux répliques (secondes)
@@ -47,11 +55,31 @@ def log(msg):
     print(f"[{dt.datetime.now():%Y-%m-%d %H:%M}] {msg}", file=sys.stderr, flush=True)
 
 
-def run(cmd):
-    res = subprocess.run(cmd, capture_output=True, text=True)
+def run(cmd, timeout=None):
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     if res.returncode != 0:
         raise RuntimeError(f"{cmd[0]} a échoué : {res.stderr.strip()[-300:]}")
     return res
+
+
+RCLONE_TIMEOUT = 300   # durée maximale d'un transfert (secondes) avant abandon
+RCLONE_TRIES = 3
+
+
+def rclone_copy(src, dst):
+    """rclone copy avec délai maximal et nouvelles tentatives.
+    --contimeout / --timeout : rclone abandonne lui-même une connexion muette."""
+    cmd = ["rclone", "copy", "--contimeout", "30s", "--timeout", "60s", src, dst]
+    for attempt in range(1, RCLONE_TRIES + 1):
+        try:
+            return run(cmd, timeout=RCLONE_TIMEOUT)
+        except (subprocess.TimeoutExpired, RuntimeError) as exc:
+            reason = (f"bloqué plus de {RCLONE_TIMEOUT} s" if isinstance(exc, subprocess.TimeoutExpired)
+                      else str(exc)[:200])
+            if attempt == RCLONE_TRIES:
+                raise RuntimeError(f"rclone {src} -> {dst} : échec après {RCLONE_TRIES} essais ({reason})")
+            log(f"  rclone essai {attempt}/{RCLONE_TRIES} raté ({reason}), nouvel essai dans {30 * attempt} s")
+            time.sleep(30 * attempt)
 
 
 # ---------- choix et lecture des scripts ----------
@@ -128,7 +156,68 @@ def load_voice(speaker):
     return PiperVoice.load(str(model))
 
 
+def edge_to_wav(text, voice, wav_path):
+    """Un morceau de texte -> WAV via edge-tts. Réessaie avant d'abandonner."""
+    import asyncio
+    import edge_tts
+    mp3 = wav_path.with_suffix(".mp3")
+    last = None
+    for attempt in range(EDGE_RETRIES):
+        try:
+            asyncio.run(edge_tts.Communicate(text, voice).save(str(mp3)))
+            if not mp3.exists() or mp3.stat().st_size == 0:
+                raise RuntimeError("fichier audio vide")
+            break
+        except Exception as exc:
+            last = exc
+            time.sleep(5 * (attempt + 1))
+    else:
+        raise RuntimeError(f"échec après {EDGE_RETRIES} essais : {last}")
+    run(["ffmpeg", "-y", "-loglevel", "error", "-i", str(mp3),
+         "-ac", "1", "-ar", "24000", "-sample_fmt", "s16", str(wav_path)])
+    mp3.unlink()
+
+
+def synthesize_edge(items, workdir):
+    total = sum(1 for k, _ in items if k != "SECTION")
+    done = 0
+    t0 = time.time()
+    for i, (kind, text) in enumerate(items):
+        if kind == "SECTION":
+            continue
+        done += 1
+        if (workdir / f"{i:03d}.done").exists():
+            continue
+        for j, piece in enumerate(chunks(text, EDGE_CHUNK_CHARS)):
+            edge_to_wav(piece, EDGE_VOICES[kind], workdir / f"{i:03d}_{j:02d}.wav")
+        (workdir / f"{i:03d}.done").touch()
+        if done % 10 == 0:
+            log(f"  {done}/{total} répliques ({time.time() - t0:.0f} s)")
+    log(f"  synthèse edge-tts terminée en {(time.time() - t0) / 60:.1f} min")
+
+
 def synthesize_parts(items, workdir):
+    """Choisit le moteur. Un épisode commencé avec un moteur est fini avec le même,
+    pour ne jamais mélanger deux jeux de voix."""
+    engine_file = workdir / "engine.txt"
+    engine = engine_file.read_text().strip() if engine_file.exists() else ENGINE
+    if engine == "edge":
+        engine_file.write_text("edge")
+        try:
+            log("  moteur : edge-tts")
+            synthesize_edge(items, workdir)
+            return
+        except Exception as exc:
+            log(f"  edge-tts indisponible ({str(exc)[:200]}) : épisode entièrement refait avec Piper")
+            for f in workdir.iterdir():
+                if f.is_file():
+                    f.unlink()
+    engine_file.write_text("piper")
+    log("  moteur : Piper")
+    synthesize_piper(items, workdir)
+
+
+def synthesize_piper(items, workdir):
     """Écrit un fichier WAV par morceau, voix par voix. Saute ce qui existe déjà."""
     total = sum(1 for k, _ in items if k != "SECTION")
     done = 0
@@ -209,7 +298,11 @@ def main():
         m = NAME_RE.match(args.file.name)
         todo = {m.group(1) if m else args.file.stem: args.file}
     else:
-        run(["rclone", "copy", REMOTE_SCRIPTS, str(SCRIPTS)])
+        try:
+            rclone_copy(REMOTE_SCRIPTS, str(SCRIPTS))
+        except RuntimeError as exc:
+            log(f"RÉCUPÉRATION DES SCRIPTS ÉCHOUÉE : {exc}. Nouvel essai au prochain passage.")
+            return
         todo = latest_versions()
         if args.test:
             todo = dict(list(todo.items())[-1:])
@@ -232,14 +325,27 @@ def main():
         workdir.mkdir(parents=True, exist_ok=True)
         year, wk = (week.split("-W") + [""])[:2]
         title = f"Podcast IA — semaine {wk} de {year}" if wk else week
-        log(f"{path.name} : génération de {mp3.name}")
-        synthesize_parts(items, workdir)
-        assemble(items, workdir, mp3, title)
-        shutil.rmtree(workdir)
-        log(f"  MP3 prêt : {mp3.name}")
+        # trace du script dont est issu le MP3 : si seul l'envoi a échoué, on ne resynthétise pas
+        made_from = mp3.with_suffix(".src")
+        if (not args.test and mp3.exists() and made_from.exists()
+                and made_from.read_text().strip() == path.name):
+            log(f"{path.name} : {mp3.name} déjà produit, nouvel essai d'envoi seulement")
+            shutil.rmtree(workdir, ignore_errors=True)
+        else:
+            log(f"{path.name} : génération de {mp3.name}")
+            synthesize_parts(items, workdir)
+            assemble(items, workdir, mp3, title)
+            shutil.rmtree(workdir)
+            made_from.write_text(path.name)
+            log(f"  MP3 prêt : {mp3.name}")
         if args.test or args.file:
             continue
-        run(["rclone", "copy", str(mp3), REMOTE_EPISODES])
+        try:
+            rclone_copy(str(mp3), REMOTE_EPISODES)
+        except RuntimeError as exc:
+            # le MP3 reste sur le Pi ; l'envoi sera retenté au prochain passage (sans resynthèse)
+            log(f"  ENVOI ÉCHOUÉ : {exc}. MP3 conservé : {mp3}")
+            continue
         state[week] = path.name
         STATE.write_text(json.dumps(state, indent=1))
         log(f"  envoyé sur le Drive : {REMOTE_EPISODES}/{mp3.name}")
