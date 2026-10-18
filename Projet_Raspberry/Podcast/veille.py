@@ -1,0 +1,341 @@
+#!/usr/bin/env python3
+"""Veille pour podcast personnalisé.
+
+Commandes :
+  check       teste chaque source et affiche le dernier élément trouvé
+  collect     collecte quotidienne des nouveautés (à lancer chaque nuit)
+  build-week  compile les 7 derniers jours en un fichier pour Claude
+"""
+import argparse
+import datetime as dt
+import hashlib
+import html
+import json
+import re
+import subprocess
+import sys
+import tempfile
+from pathlib import Path
+
+import feedparser
+from bs4 import BeautifulSoup
+
+BASE = Path(__file__).resolve().parent
+CONFIG = BASE / "sources.json"
+UA = "Mozilla/5.0 (X11; Linux aarch64) veille-podcast/1.0"
+NOW = dt.datetime.now(dt.timezone.utc)
+
+
+# ---------- utilitaires ----------
+
+def load_config():
+    return json.loads(CONFIG.read_text(encoding="utf-8"))
+
+
+def data_dir(cfg):
+    d = Path(cfg["data_dir"]).expanduser()
+    (d / "daily").mkdir(parents=True, exist_ok=True)
+    (d / "weekly").mkdir(parents=True, exist_ok=True)
+    return d
+
+
+def load_json(path, default):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default
+
+
+def save_json(path, obj):
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(path)
+
+
+def log(msg):
+    print(f"[{dt.datetime.now():%Y-%m-%d %H:%M}] {msg}", file=sys.stderr)
+
+
+def html_to_text(raw):
+    soup = BeautifulSoup(raw or "", "html.parser")
+    for tag in soup(["script", "style", "figure", "img", "iframe"]):
+        tag.decompose()
+    text = soup.get_text("\n")
+    text = re.sub(r"[ \t]+", " ", text)
+    return re.sub(r"\n\s*\n+", "\n\n", text).strip()
+
+
+def truncate(text, limit):
+    if len(text) <= limit:
+        return text
+    return text[:limit].rsplit(" ", 1)[0] + " […tronqué]"
+
+
+def compile_keywords(keywords):
+    """'mot*' = préfixe, sinon mot entier. Insensible à la casse."""
+    parts = []
+    for k in keywords:
+        if k.endswith("*"):
+            parts.append(r"(?<!\w)" + re.escape(k[:-1]))
+        else:
+            parts.append(r"(?<!\w)" + re.escape(k) + r"(?!\w)")
+    return re.compile("|".join(parts), re.IGNORECASE)
+
+
+def entry_date(entry):
+    if entry.get("_date"):  # vidéo YouTube datée par yt_video_date
+        return entry["_date"]
+    t = entry.get("published_parsed") or entry.get("updated_parsed")
+    return dt.datetime(*t[:6], tzinfo=dt.timezone.utc) if t else None
+
+
+def item_id(src, entry):
+    key = entry.get("id") or entry.get("link") or entry.get("title", "")
+    return hashlib.sha1(f"{src['name']}|{key}".encode()).hexdigest()[:16]
+
+
+# ---------- YouTube ----------
+
+def run_ytdlp(args, timeout=300):
+    return subprocess.run([sys.executable, "-m", "yt_dlp", *args],
+                          capture_output=True, text=True, timeout=timeout)
+
+
+def yt_channel_id(handle, cache):
+    if handle in cache:
+        return cache[handle]
+    res = run_ytdlp(["--print", "channel_id", "--playlist-items", "1",
+                     f"https://www.youtube.com/@{handle}/videos"], timeout=120)
+    lines = res.stdout.strip().splitlines()
+    if res.returncode != 0 or not lines:
+        raise RuntimeError(f"chaîne @{handle} introuvable ({res.stderr.strip()[-150:]})")
+    cache[handle] = lines[0]
+    return lines[0]
+
+
+def vtt_to_text(vtt):
+    out, prev = [], None
+    for line in vtt.splitlines():
+        line = line.strip()
+        if (not line or "-->" in line or line.isdigit()
+                or line.startswith(("WEBVTT", "Kind:", "Language:", "NOTE"))):
+            continue
+        line = html.unescape(re.sub(r"<[^>]+>", "", line)).strip()
+        if line and line != prev:  # les sous-titres auto répètent les lignes
+            out.append(line)
+            prev = line
+    return " ".join(out)
+
+
+def yt_transcript(url, lang):
+    with tempfile.TemporaryDirectory() as tmp:
+        run_ytdlp(["--skip-download", "--write-subs", "--write-auto-subs",
+                   "--sub-langs", lang, "--sub-format", "vtt",
+                   "-o", f"{tmp}/%(id)s.%(ext)s", url])
+        files = sorted(Path(tmp).glob("*.vtt"))
+        if not files:
+            return None
+        return vtt_to_text(files[0].read_text(encoding="utf-8", errors="ignore"))
+
+
+def yt_list_videos(src, cache):
+    """Dernières vidéos d'une chaîne, via yt-dlp (le flux RSS de YouTube renvoie 404).
+
+    Les entrées imitent celles de feedparser (id « yt:video:… », link, title) pour que
+    les vidéos déjà vues avec l'ancien flux RSS soient reconnues. La date est ajoutée
+    plus tard par yt_video_date, seulement pour les vidéos nouvelles."""
+    cid = src.get("channel_id") or cache.get(src.get("handle"))
+    url = (f"https://www.youtube.com/channel/{cid}/videos" if cid
+           else f"https://www.youtube.com/@{src['handle']}/videos")
+    res = run_ytdlp(["--flat-playlist", "--playlist-items", f"1:{src.get('max_items', 5)}",
+                     "--print", "%(id)s\t%(title)s", url], timeout=180)
+    entries = []
+    for line in res.stdout.splitlines():
+        vid, _, title = line.partition("\t")
+        if vid.strip():
+            entries.append({"id": f"yt:video:{vid.strip()}",
+                            "link": f"https://www.youtube.com/watch?v={vid.strip()}",
+                            "title": title.strip() or "(sans titre)"})
+    if not entries:
+        raise RuntimeError(f"aucune vidéo trouvée ({res.stderr.strip()[-150:]})")
+    return entries
+
+
+def yt_video_date(entry):
+    """Date de publication d'une vidéo (un appel yt-dlp). None si introuvable."""
+    res = run_ytdlp(["--skip-download", "--print", "%(timestamp)s %(upload_date)s",
+                     entry["link"]], timeout=120)
+    parts = (res.stdout.strip().splitlines() or [""])[-1].split()
+    if parts and parts[0].isdigit():
+        date = dt.datetime.fromtimestamp(int(parts[0]), tz=dt.timezone.utc)
+    elif len(parts) > 1 and parts[1].isdigit():
+        date = dt.datetime.strptime(parts[1], "%Y%m%d").replace(tzinfo=dt.timezone.utc)
+    else:
+        return None
+    entry["_date"] = date
+    return date
+
+
+# ---------- collecte ----------
+
+class YouTubeFeed:
+    def __init__(self, entries):
+        self.entries = entries
+
+
+def fetch_feed(src, cache):
+    if src["type"] == "youtube":
+        return YouTubeFeed(yt_list_videos(src, cache))
+    url = src["url"]
+    feed = feedparser.parse(url, agent=UA)
+    if not feed.entries:
+        reason = feed.get("bozo_exception") or f"HTTP {feed.get('status', '?')}"
+        raise RuntimeError(f"flux vide ou illisible ({reason})")
+    return feed
+
+
+def entry_body(src, entry):
+    if src["type"] == "youtube":
+        return yt_transcript(entry.get("link", ""), src.get("lang", "fr"))
+    if entry.get("content"):
+        return html_to_text(entry["content"][0].get("value", ""))
+    return html_to_text(entry.get("summary", ""))
+
+
+def cmd_check(cfg):
+    d = data_dir(cfg)
+    cache = load_json(d / "yt_channels.json", {})
+    ok = 0
+    for src in cfg["sources"]:
+        try:
+            feed = fetch_feed(src, cache)
+            last = feed.entries[0]
+            date = entry_date(last)
+            if date is None and src["type"] == "youtube":
+                date = yt_video_date(last)
+            print(f"OK      {src['name']} — {len(feed.entries)} éléments, dernier : "
+                  f"{last.get('title', '?')[:60]} ({date:%Y-%m-%d})" if date else
+                  f"OK      {src['name']} — {len(feed.entries)} éléments")
+            ok += 1
+        except Exception as exc:
+            print(f"ERREUR  {src['name']} — {exc}")
+    save_json(d / "yt_channels.json", cache)
+    print(f"\n{ok}/{len(cfg['sources'])} sources fonctionnelles.")
+
+
+def cmd_collect(cfg):
+    d = data_dir(cfg)
+    seen = load_json(d / "seen.json", {})
+    cache = load_json(d / "yt_channels.json", {})
+    kw = compile_keywords(cfg["keywords"])
+    cutoff = NOW - dt.timedelta(days=cfg["max_age_days"])
+    new_items, errors = [], []
+
+    for src in cfg["sources"]:
+        if not src.get("enabled", True):
+            continue
+        try:
+            feed = fetch_feed(src, cache)
+        except Exception as exc:
+            errors.append(f"{src['name']} : {exc}")
+            continue
+
+        for entry in feed.entries[:src.get("max_items", 5)]:
+            iid = item_id(src, entry)
+            if iid in seen:
+                continue
+            date = entry_date(entry)
+            if date is None and src["type"] == "youtube":
+                try:
+                    date = yt_video_date(entry)
+                except Exception as exc:
+                    errors.append(f"{src['name']} / date de {entry.get('title', '?')[:40]} : {exc}")
+            if date and date < cutoff:
+                seen[iid] = NOW.isoformat()
+                continue
+            title = entry.get("title", "(sans titre)")
+            try:
+                body = entry_body(src, entry)
+            except Exception as exc:
+                errors.append(f"{src['name']} / {title[:40]} : {exc}")
+                continue
+            if body is None:
+                # sous-titres YouTube pas encore prêts : on réessaiera demain
+                if date and NOW - date < dt.timedelta(days=2):
+                    continue
+                body = html_to_text(entry.get("summary", ""))
+            if src.get("filter") and not kw.search(f"{title}\n{body}"):
+                seen[iid] = NOW.isoformat()
+                continue
+            new_items.append({
+                "source": src["name"], "camp": src["camp"], "lang": src.get("lang", "?"),
+                "title": title, "link": entry.get("link", ""),
+                "date": date.isoformat() if date else None,
+                "text": truncate(body, cfg["max_chars_per_item"]),
+            })
+            seen[iid] = NOW.isoformat()
+
+    # on oublie les identifiants de plus de 90 jours
+    limit = (NOW - dt.timedelta(days=90)).isoformat()
+    seen = {k: v for k, v in seen.items() if v >= limit}
+
+    out = d / "daily" / f"{dt.date.today()}.jsonl"
+    with out.open("a", encoding="utf-8") as f:
+        for item in new_items:
+            f.write(json.dumps(item, ensure_ascii=False) + "\n")
+    save_json(d / "seen.json", seen)
+    save_json(d / "yt_channels.json", cache)
+
+    log(f"{len(new_items)} nouveaux éléments -> {out.name}")
+    for err in errors:
+        log(f"ERREUR {err}")
+
+
+def cmd_build_week(cfg, days):
+    d = data_dir(cfg)
+    today = dt.date.today()
+    items = []
+    for i in range(days - 1, -1, -1):
+        f = d / "daily" / f"{today - dt.timedelta(days=i)}.jsonl"
+        if f.exists():
+            items += [json.loads(l) for l in f.read_text(encoding="utf-8").splitlines() if l.strip()]
+    if not items:
+        log("Aucun élément cette semaine, rien à compiler.")
+        return
+
+    # budget par élément pour rester sous la taille totale
+    budget = min(cfg["max_chars_per_item"], cfg["max_total_chars"] // len(items))
+    year, week, _ = today.isocalendar()
+    start = today - dt.timedelta(days=days - 1)
+
+    lines = [f"# Veille IA — semaine {year}-S{week:02d}",
+             f"Période : du {start} au {today} — {len(items)} éléments.", "",
+             "## Sources et positions", ""]
+    for src in cfg["sources"]:
+        n = sum(1 for it in items if it["source"] == src["name"])
+        lines.append(f"- **{src['name']}** — camp : {src['camp']} — {src['these']} ({n} éléments)")
+    lines += ["", "## Contenus", ""]
+    for it in sorted(items, key=lambda x: (x["camp"], x["source"], x["date"] or "")):
+        lines += [f"### [{it['camp']}] {it['source']} — {it['title']}",
+                  f"Date : {(it['date'] or '?')[:10]} | Langue : {it['lang']} | Lien : {it['link']}",
+                  "", truncate(it["text"], budget), "", "---", ""]
+
+    out = d / "weekly" / f"{year}-W{week:02d}_source.md"
+    out.write_text("\n".join(lines), encoding="utf-8")
+    print(out)
+    log(f"Compilation : {len(items)} éléments, {out.stat().st_size // 1024} Ko -> {out.name}")
+
+
+def main():
+    p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    p.add_argument("command", choices=["check", "collect", "build-week"])
+    p.add_argument("--days", type=int, default=7, help="nombre de jours pour build-week")
+    args = p.parse_args()
+    cfg = load_config()
+    {"check": lambda: cmd_check(cfg),
+     "collect": lambda: cmd_collect(cfg),
+     "build-week": lambda: cmd_build_week(cfg, args.days)}[args.command]()
+
+
+if __name__ == "__main__":
+    main()

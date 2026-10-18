@@ -1,0 +1,16 @@
+# Lieu des sorties (météo). À MODIFIER : coordonnées de ta ville ou de ton point de départ vélo.
+[location]
+name = "Sarre-Union"
+latitude = 48.9406
+longitude = 7.0939
+timezone = "Europe/Paris"
+
+[sync]
+days_back_first_run = 90   # historique récupéré au tout premier lancement
+refetch_days = 3           # les derniers jours sont ré-lus (VFC/sommeil se finalisent plus tard)
+pause_seconds = 0.7        # pause entre appels Garmin (évite le blocage 429)
+
+[paths]
+database = "data/coach.db"
+tokenstore = "~/.garminconnect"
+export_dir = "export"
