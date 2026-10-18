@@ -22,6 +22,8 @@ METRICS = [  # (colonne, libellé, unité, min plausible, max plausible)
     ("training_readiness", "Training Readiness", "", 1, 100),
     ("vo2max", "VO2max", "", 25, 80),
     ("weight_kg", "Poids", "kg", 50, 150),
+    ("acute_load", "Charge aiguë Garmin", "", 0, 3000),
+    ("im_moderate", "Minutes d'intensité modérée", "min", 0, 600),
 ]
 DAILY_EXPECTED = {"resting_hr", "hrv_last_night", "sleep_seconds", "body_battery_high", "stress_avg", "steps", "training_readiness"}
 
@@ -56,7 +58,9 @@ TYPES = {"cycling": "Vélo", "road_biking": "Vélo route", "indoor_cycling": "Ho
 
 
 SOURCES = {"stats": "Résumé du jour (FC repos, pas, stress, Body Battery)", "hrv": "VFC nocturne", "sleep": "Sommeil",
-           "readiness": "Training Readiness", "maxmetrics": "VO2max", "exercise_sets": "Séries de musculation (par séance)"}
+           "readiness": "Training Readiness", "maxmetrics": "VO2max", "exercise_sets": "Séries de musculation (par séance)",
+           "training_status": "Statut d'entraînement (charge aiguë/chronique, répartition 4 semaines)", "ftp": "FTP estimé",
+           "activity": "Activités (effet d'entraînement)", "hr_zones": "Zones cardiaques (par activité)"}
 
 
 def _type(t):

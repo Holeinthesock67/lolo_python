@@ -3,6 +3,7 @@
 
   python coach.py login     # première connexion Garmin (MFA) -> enregistre le jeton
   python coach.py sync      # Garmin + météo + exports (à planifier chaque matin)
+  python coach.py activities --days 120   # rattrapage : effet d'entraînement + zones des activités
   python coach.py garmin | weather | report | integrity
   options : --days N (rattrapage), --config chemin
 """
@@ -40,7 +41,7 @@ def start_day(con, cfg, days):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    ap.add_argument("command", choices=["login", "sync", "garmin", "weather", "report", "integrity"])
+    ap.add_argument("command", choices=["login", "sync", "garmin", "activities", "weather", "report", "integrity"])
     ap.add_argument("--days", type=int, help="remonter de N jours (rattrapage)")
     ap.add_argument("--config", default=str(HERE / "config.toml"))
     a = ap.parse_args(argv)
@@ -60,10 +61,14 @@ def main(argv=None):
 
     start = start_day(con, cfg, a.days)
     rc = 0
-    if a.command in ("sync", "garmin"):
+    if a.command in ("sync", "garmin", "activities"):
         try:
             api = garmin_source.login(os.getenv("GARMIN_EMAIL"), os.getenv("GARMIN_PASSWORD"), tokenstore)
-            garmin_source.Collector(api, con, cfg["sync"]["pause_seconds"]).run(start, date.today())
+            col = garmin_source.Collector(api, con, cfg["sync"]["pause_seconds"])
+            if a.command == "activities":
+                col.activities_only(date.today() - timedelta(days=a.days or 120), date.today())
+            else:
+                col.run(start, date.today())
         except garmin_source.RateLimited:
             logging.error("Garmin demande de ralentir (429) : réessaie dans quelques heures.")
             rc = 1
@@ -77,7 +82,7 @@ def main(argv=None):
         except RuntimeError as e:
             logging.error("%s", e)
             rc = 1
-    if a.command in ("sync", "report"):
+    if a.command in ("sync", "report", "activities"):
         out = report.export(con, rel(p["export_dir"]))
         logging.info("Exports écrits dans %s", out)
     if a.command in ("sync", "report", "integrity"):
