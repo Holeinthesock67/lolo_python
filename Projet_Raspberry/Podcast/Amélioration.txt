@@ -13,3 +13,6 @@ Les trois fichiers sont sains : ils se compilent, et les en-têtes de ton Sheet 
 - À vérifier sur le Pi : `~/podcast-data/ia/episodes/state.json` doit exister. Sinon, au prochain passage, `podcast.py` refera les MP3 de toutes les semaines passées.
 
 Je corrige les points 1 et 2 ?
+
+
+SKILL_podcast-ecriture.md : il ne contient pas encore la nouvelle règle « script plus récent que la source ». Une fois la carte enregistrée, remplace-le par la nouvelle version pour que ta sauvegarde reste à jour.
