@@ -1,0 +1,4 @@
+feedparser
+beautifulsoup4
+# synthèse vocale (utilisée par podcast.py, surtout sur la Raspberry)
+piper-tts
