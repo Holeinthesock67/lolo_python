@@ -1,1438 +1,684 @@
-<!doctype html>
-<html>
-
-<head>
-  <meta charset=utf8>
-  <meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <style>
-    :root {
-      color-scheme: light;
-      box-sizing: border-box;
-      padding-top: env(safe-area-inset-top, 0px);
-      padding-bottom: env(safe-area-inset-bottom, 0px)
-    }
-
-    html {
-      scroll-padding-top: env(safe-area-inset-top, 0px)
-    }
-
-    body {
-      margin: 0;
-      padding: 0;
-      font: 14px -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #fff;
-      color: #000
-    }
-
-    img {
-      max-width: 100%
-    }
-
-    [hidden]:not([hidden=until-found i]) {
-      display: none !important
-    }
-  </style>
-</head>
-
-<body>
-  <title>Carnet du coach</title>
-  <meta name="claude:viewport-fit-sides" content="cover">
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="stylesheet"
-    href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
-  <style>
-    /* Layout : appli mobile, une colonne de 560px max, barre d'onglets fixe en bas */
-    :root {
-      --bg: #F3F5F4;
-      --surface: #FFFFFF;
-      --ink: #16282E;
-      --muted: #5C6E73;
-      --line: #D9E1E0;
-      --accent: #1F4E5F;
-      --accent-soft: #E2ECEE;
-      --on-accent: #FFFFFF;
-      --good: #2E7D57;
-      --good-soft: #E3F2EA;
-      --warn: #B26A00;
-      --warn-soft: #FBEFD9;
-      --bad: #B3392F;
-      --bad-soft: #F8E3E0;
-      --display: "Archivo Narrow", "Arial Narrow", system-ui, sans-serif;
-      --body: "IBM Plex Sans", system-ui, -apple-system, "Segoe UI", sans-serif;
-      --mono: "IBM Plex Mono", ui-monospace, Menlo, monospace;
-    }
-
-    @media (prefers-color-scheme:dark) {
-      :root:not([data-theme="light"]) {
-        --bg: #0F181B;
-        --surface: #172429;
-        --ink: #E4ECEC;
-        --muted: #93A6AA;
-        --line: #2A3A3F;
-        --accent: #7FB8C9;
-        --accent-soft: #1E3239;
-        --on-accent: #0F181B;
-        --good: #6CC79A;
-        --good-soft: #173328;
-        --warn: #E9B25A;
-        --warn-soft: #352A16;
-        --bad: #EF8A7F;
-        --bad-soft: #3A1F1C;
-        color-scheme: dark
-      }
-    }
-
-    :root[data-theme="dark"] {
-      --bg: #0F181B;
-      --surface: #172429;
-      --ink: #E4ECEC;
-      --muted: #93A6AA;
-      --line: #2A3A3F;
-      --accent: #7FB8C9;
-      --accent-soft: #1E3239;
-      --on-accent: #0F181B;
-      --good: #6CC79A;
-      --good-soft: #173328;
-      --warn: #E9B25A;
-      --warn-soft: #352A16;
-      --bad: #EF8A7F;
-      --bad-soft: #3A1F1C;
-      color-scheme: dark
-    }
-
-    * {
-      box-sizing: border-box
-    }
-
-    body {
-      background: var(--bg);
-      color: var(--ink);
-      font-family: var(--body);
-      font-size: 15px;
-      line-height: 1.45
-    }
-
-    .wrap {
-      max-width: 560px;
-      margin: 0 auto;
-      padding-left: max(16px, env(safe-area-inset-left, 0px));
-      padding-right: max(16px, env(safe-area-inset-right, 0px));
-      padding-block: 12px calc(88px + env(safe-area-inset-bottom, 0px));
-      display: grid;
-      gap: 14px
-    }
-
-    .status {
-      border-radius: 8px;
-      padding: 8px 12px;
-      font-size: 13px;
-      font-weight: 500;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 10px;
-      flex-wrap: wrap;
-      background: var(--accent-soft);
-      color: var(--accent)
-    }
-
-    .status.warn {
-      background: var(--warn-soft);
-      color: var(--warn)
-    }
-
-    .status.bad {
-      background: var(--bad-soft);
-      color: var(--bad)
-    }
-
-    .status button {
-      font: 600 13px var(--body);
-      border: 1px solid currentColor;
-      background: transparent;
-      color: inherit;
-      border-radius: 6px;
-      padding: 4px 10px;
-      cursor: pointer
-    }
-
-    header h1 {
-      font-family: var(--display);
-      font-weight: 700;
-      font-size: 28px;
-      letter-spacing: .2px;
-      margin: 0;
-      text-wrap: balance
-    }
-
-    header p {
-      margin: 2px 0 0;
-      color: var(--muted);
-      font-size: 14px
-    }
-
-    .tab {
-      display: grid;
-      gap: 14px
-    }
-
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--line);
-      border-radius: 12px;
-      padding: 16px;
-      display: grid;
-      gap: 12px;
-      min-width: 0
-    }
-
-    .card h2 {
-      font-family: var(--display);
-      font-weight: 600;
-      font-size: 19px;
-      margin: 0;
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 8px;
-      flex-wrap: wrap
-    }
-
-    .card h2 small {
-      font-family: var(--body);
-      font-weight: 400;
-      font-size: 12px;
-      color: var(--muted)
-    }
-
-    .label {
-      font-size: 13px;
-      font-weight: 600;
-      color: var(--muted);
-      text-transform: uppercase;
-      letter-spacing: .6px
-    }
-
-    .row {
-      display: grid;
-      gap: 6px
-    }
-
-    .scale {
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 6px
-    }
-
-    .scale.s11 {
-      grid-template-columns: repeat(11, 1fr);
-      gap: 3px
-    }
-
-    .scale.s4 {
-      grid-template-columns: repeat(4, 1fr)
-    }
-
-    .scale.s2 {
-      grid-template-columns: repeat(2, 1fr)
-    }
-
-    .seg {
-      font: 600 16px var(--mono);
-      min-height: 44px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      background: var(--bg);
-      color: var(--ink);
-      cursor: pointer;
-      padding: 0
-    }
-
-    .s11 .seg {
-      font-size: 13px;
-      min-height: 40px
-    }
-
-    .seg[aria-pressed="true"] {
-      background: var(--accent);
-      border-color: var(--accent);
-      color: var(--on-accent)
-    }
-
-    .seg:focus-visible,
-    .chip:focus-visible,
-    .btn:focus-visible,
-    input:focus-visible,
-    select:focus-visible,
-    nav button:focus-visible,
-    a:focus-visible {
-      outline: 2px solid var(--accent);
-      outline-offset: 2px
-    }
-
-    .ends {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
-      color: var(--muted)
-    }
-
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 6px
-    }
-
-    .chip {
-      font: 500 14px var(--body);
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid var(--line);
-      background: var(--bg);
-      color: var(--ink);
-      cursor: pointer
-    }
-
-    .chip[aria-pressed="true"] {
-      background: var(--accent-soft);
-      border-color: var(--accent);
-      color: var(--accent)
-    }
-
-    .btn {
-      font: 600 16px var(--body);
-      min-height: 48px;
-      border-radius: 10px;
-      border: 0;
-      background: var(--accent);
-      color: var(--on-accent);
-      cursor: pointer;
-      width: 100%
-    }
-
-    .btn.ghost {
-      background: transparent;
-      color: var(--accent);
-      border: 1px solid var(--accent)
-    }
-
-    .btn:disabled {
-      opacity: .5;
-      cursor: not-allowed
-    }
-
-    input[type=number],
-    input[type=date],
-    select {
-      font: 500 17px var(--mono);
-      width: 100%;
-      min-width: 0;
-      max-width: 100%;
-      min-height: 46px;
-      border-radius: 8px;
-      border: 1px solid var(--line);
-      background: var(--bg);
-      color: var(--ink);
-      padding: 0 10px
-    }
-
-    select {
-      font-family: var(--body);
-      font-size: 15px
-    }
-
-    .grid3 {
-      display: grid;
-      grid-template-columns: repeat(3, minmax(0, 1fr));
-      gap: 8px
-    }
-
-    .grid2 {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(0, 1fr));
-      gap: 8px
-    }
-
-    .grid3 label,
-    .grid2 label {
-      font-size: 12px;
-      color: var(--muted);
-      display: grid;
-      gap: 4px;
-      min-width: 0
-    }
-
-    .todo div {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      font-size: 14px;
-      padding: 8px 0;
-      border-bottom: 1px solid var(--line)
-    }
-
-    .todo div:last-child {
-      border-bottom: 0
-    }
-
-    .pill {
-      font: 600 12px var(--body);
-      padding: 3px 9px;
-      border-radius: 999px;
-      display: inline-block
-    }
-
-    .todo .pill {
-      white-space: nowrap
-    }
-
-    .pill.good {
-      background: var(--good-soft);
-      color: var(--good)
-    }
-
-    .pill.warn {
-      background: var(--warn-soft);
-      color: var(--warn)
-    }
-
-    .pill.bad {
-      background: var(--bad-soft);
-      color: var(--bad)
-    }
-
-    .pill.info {
-      background: var(--accent-soft);
-      color: var(--accent)
-    }
-
-    .coach {
-      border-left: 4px solid var(--accent)
-    }
-
-    .coach.warn {
-      border-left-color: var(--warn)
-    }
-
-    .coach.info {
-      border-left-color: var(--accent)
-    }
-
-    .cfield {
-      display: grid;
-      gap: 2px;
-      font-size: 14px
-    }
-
-    .cfield .label {
-      font-size: 12px
-    }
-
-    .cfield p {
-      margin: 0
-    }
-
-    details.more summary {
-      cursor: pointer;
-      color: var(--accent);
-      font-size: 14px;
-      font-weight: 600;
-      list-style-position: inside
-    }
-
-    details.more[open] summary {
-      margin-bottom: 8px
-    }
-
-    .hint {
-      font-size: 13px;
-      color: var(--muted);
-      margin: 0
-    }
-
-    .coach.bad {
-      border-left-color: var(--bad)
-    }
-
-    .coach.good {
-      border-left-color: var(--good)
-    }
-
-    .verdict {
-      font-family: var(--display);
-      font-size: 22px;
-      font-weight: 700;
-      margin: 0
-    }
-
-    .list {
-      margin: 0;
-      padding-left: 18px;
-      display: grid;
-      gap: 5px;
-      font-size: 14px
-    }
-
-    .list b {
-      font-weight: 600
-    }
-
-    .big {
-      font: 500 38px var(--mono);
-      line-height: 1
-    }
-
-    .big small {
-      font-size: 15px;
-      color: var(--muted);
-      margin-left: 4px
-    }
-
-    .gauge {
-      height: 14px;
-      border-radius: 7px;
-      overflow: hidden;
-      display: flex
-    }
-
-    .gauge span {
-      height: 100%
-    }
-
-    .gmark {
-      position: relative;
-      height: 18px
-    }
-
-    .gmark i {
-      position: absolute;
-      top: 0;
-      width: 3px;
-      height: 18px;
-      background: var(--ink);
-      border-radius: 2px;
-      transform: translateX(-1px)
-    }
-
-    .gticks {
-      position: relative;
-      height: 16px;
-      font: 12px var(--mono);
-      color: var(--muted)
-    }
-
-    .gticks span {
-      position: absolute;
-      top: 0;
-      transform: translateX(-50%)
-    }
-
-    .gticks span:first-child {
-      transform: none
-    }
-
-    .gticks span:last-child {
-      transform: translateX(-100%)
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-      font-size: 14px;
-      font-variant-numeric: tabular-nums
-    }
-
-    th,
-    td {
-      text-align: left;
-      padding: 7px 6px;
-      border-bottom: 1px solid var(--line)
-    }
-
-    th {
-      font-size: 12px;
-      color: var(--muted);
-      font-weight: 600;
-      text-transform: uppercase;
-      letter-spacing: .5px
-    }
-
-    td.num {
-      font-family: var(--mono)
-    }
-
-    .tbl {
-      overflow-x: auto
-    }
-
-    .spark {
-      width: 100%;
-      height: 70px;
-      display: block
-    }
-
-    .bars {
-      width: 100%;
-      height: 150px;
-      display: block
-    }
-
-    [hidden] {
-      display: none !important
-    }
-
-    #gBody {
-      display: grid;
-      gap: 10px
-    }
-
-    .kv {
-      display: flex;
-      justify-content: space-between;
-      gap: 8px;
-      font-size: 14px
-    }
-
-    .kv b {
-      font-family: var(--mono);
-      font-weight: 500;
-      text-align: right
-    }
-
-    .muted {
-      color: var(--muted);
-      font-size: 13px;
-      margin: 0
-    }
-
-    .empty {
-      color: var(--muted);
-      font-size: 14px;
-      margin: 0;
-      padding: 8px 0
-    }
-
-    a {
-      color: var(--accent)
-    }
-
-    nav {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: var(--surface);
-      border-top: 1px solid var(--line);
-      display: flex;
-      justify-content: center;
-      padding-bottom: env(safe-area-inset-bottom, 0px);
-      padding-left: env(safe-area-inset-left, 0px);
-      padding-right: env(safe-area-inset-right, 0px);
-      z-index: 5
-    }
-
-    nav div {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      width: 100%;
-      max-width: 560px
-    }
-
-    nav button {
-      font: 600 13px var(--body);
-      background: none;
-      border: 0;
-      color: var(--muted);
-      min-height: 60px;
-      cursor: pointer;
-      display: grid;
-      place-items: center;
-      gap: 2px;
-      padding: 6px 0
-    }
-
-    nav button svg {
-      width: 22px;
-      height: 22px
-    }
-
-    nav button[aria-current="page"] {
-      color: var(--accent)
-    }
-
-    .toast {
-      position: fixed;
-      left: 50%;
-      bottom: calc(76px + env(safe-area-inset-bottom, 0px));
-      transform: translateX(-50%);
-      background: var(--ink);
-      color: var(--bg);
-      padding: 10px 16px;
-      border-radius: 8px;
-      font-size: 14px;
-      font-weight: 500;
-      opacity: 0;
-      transition: opacity .2s;
-      pointer-events: none;
-      z-index: 6;
-      max-width: 90vw
-    }
-
-    .toast.on {
-      opacity: 1
-    }
-
-    @media (prefers-reduced-motion:reduce) {
-      .toast {
-        transition: none
-      }
-    }
-  </style>
-
-  <div class="wrap">
-    <div class="status" id="status" role="status"><span id="statusText">Connexion à ta feuille Google…</span></div>
-    <header>
-      <h1>Carnet du coach</h1>
-      <p id="today"></p>
-    </header>
-
-    <!-- ============ AUJOURD'HUI ============ -->
-    <section id="tab-jour" class="tab">
-      <div class="card coach" id="coachCard">
-        <div class="label" id="coachLabel">Recommandation du coach</div>
-        <p class="verdict" id="coachVerdict">Lecture en cours…</p>
-        <div id="coachBody" style="display:grid;gap:10px"></div>
-      </div>
-
-      <div class="card coach" id="sessionCard">
-        <div class="label">Programme prévu (semainier)</div>
-        <p class="verdict" id="sessionTitle" style="font-size:19px"></p>
-        <details class="more" id="sessionMore" open>
-          <summary>Détail du programme</summary>
-          <ul class="list" id="sessionDetail"></ul>
-        </details>
-      </div>
-
-      <div class="card coach" id="readCard">
-        <div class="label">Lecture rapide de ton ressenti</div>
-        <p class="verdict" id="verdict"></p>
-        <ul class="list" id="advice"></ul>
-        <p class="muted" id="readNote">La lecture complète (VFC, FC repos, sommeil Garmin, météo) est faite par le coach
-          dans Claude.</p>
-      </div>
-
-      <div class="card">
-        <h2>À faire <small id="todoCount"></small></h2>
-        <div class="todo" id="todo"></div>
-      </div>
-
-      <form class="card" id="fMatin">
-        <h2>Check-in du matin <small id="matinDone">≈ 20 s</small></h2>
-        <div class="row">
-          <div class="label">Charge mentale</div>
-          <div class="scale" data-k="mental"></div>
-          <div class="ends"><span>légère</span><span>saturée</span></div>
-        </div>
-        <div class="row">
-          <div class="label">Fatigue</div>
-          <div class="scale" data-k="fatigue"></div>
-          <div class="ends"><span>frais</span><span>épuisé</span></div>
-        </div>
-        <div class="row">
-          <div class="label">Sommeil ressenti</div>
-          <div class="scale" data-k="sleep"></div>
-          <div class="ends"><span>très mauvais</span><span>excellent</span></div>
-        </div>
-        <div class="row">
-          <div class="label">Douleurs</div>
-          <div class="chips" id="zones"></div>
-        </div>
-        <div class="row" id="painRow" hidden>
-          <div class="label">Intensité max (0–10)</div>
-          <div class="scale s11" data-k="pain" data-min="0" data-max="10"></div>
-        </div>
-        <div class="row">
-          <div class="label">Créatine prise</div>
-          <div class="scale s2" data-k="creatine" data-opts="oui|non"></div>
-        </div>
-        <button class="btn save" type="submit">Enregistrer le check-in</button>
-      </form>
-
-      <form class="card" id="fSoir">
-        <h2>Bilan du soir <small id="soirDone">≈ 10 s</small></h2>
-        <div class="row">
-          <div class="label">Repas conformes au pivot</div>
-          <div class="scale s4" data-k="meals" data-opts="0/3|1/3|2/3|3/3"></div>
-        </div>
-        <div class="row">
-          <div class="label">Collation hors plan</div>
-          <div class="scale s2" data-k="snack" data-opts="oui|non"></div>
-        </div>
-        <div class="row">
-          <div class="label">Séance du jour : effort perçu (RPE)</div>
-          <div class="scale s11" data-k="rpe" data-min="0" data-max="10"></div>
-          <div class="ends"><span>pas de séance</span><span>maximal</span></div>
-        </div>
-        <div class="grid2"><label>Durée de la séance (min)<input id="dur" type="number" inputmode="numeric" min="0"
-              max="300" placeholder="40"></label>
-          <div></div>
-        </div>
-        <p class="muted">RPE × durée = charge de la séance, utile surtout pour la musculation que Garmin sous-estime.
-        </p>
-        <button class="btn save" type="submit">Enregistrer le bilan</button>
-      </form>
-    </section>
-
-    <!-- ============ MESURES ============ -->
-    <section id="tab-mesures" class="tab" hidden>
-      <form class="card" id="fTaille">
-        <h2>Composition corporelle <small>tous les 5 jours · moyenne 15 j</small></h2>
-        <p class="muted">À jeun. Taille au nombril en fin d'expiration, cou juste sous la pomme d'Adam. Taille : <span
-            id="hCm">176</span> cm.</p>
-        <div class="grid3">
-          <label>Tour de taille (cm)<input id="waist" type="number" inputmode="decimal" step="0.1" min="50" max="150"
-              placeholder="88"></label>
-          <label>Tour de cou (cm)<input id="neck" type="number" inputmode="decimal" step="0.1" min="25" max="60"
-              placeholder="40"></label>
-          <label>Poids (kg)<input id="kgIn" type="number" inputmode="decimal" step="0.1" min="40" max="200"
-              placeholder="kg"></label>
-        </div>
-        <p class="hint" id="prefillHint"></p>
-        <p class="muted">Cou : à mesurer tous les 2 mois, laisse vide sinon. Taille et poids sont préremplis avec tes
-          dernières valeurs : corrige ce qui a changé, puis enregistre.</p>
-        <div class="grid2">
-          <div>
-            <div class="label">WHtR · moy. 15 j</div>
-            <div class="big" id="whtr">–</div>
-          </div>
-          <div>
-            <div class="label">Masse grasse · moy. 15 j</div>
-            <div class="big" id="bf">–</div>
-          </div>
-        </div>
-        <div class="row">
-          <div class="label">WHtR · repères NICE 2022</div>
-          <div id="gWhtr"></div>
-          <div id="whtrPill"></div>
-        </div>
-        <div class="row">
-          <div class="label">Masse grasse · repères hommes 40–59 ans</div>
-          <div id="gBf"></div>
-          <div id="bfPill"></div>
-        </div>
-        <div class="kv"><span>Moyenne 15 j</span><b id="avg15">–</b></div>
-        <div class="kv"><span>Cette mesure seule (WHtR · MG)</span><b id="single">–</b></div>
-        <div class="kv"><span>Masse grasse / masse maigre</span><b id="masses">–</b></div>
-        <p class="muted">Formule US Navy : précision d'environ ±3–4 points, fiable en tendance.</p>
-        <button class="btn save" type="submit">Enregistrer la mesure</button>
-      </form>
-
-      <form class="card" id="fTension">
-        <h2>Tension, règle des 3 <small id="bpProg"></small></h2>
-        <p class="muted">Assis, au calme, 3 mesures à 1 min d'intervalle, matin et soir pendant 3 jours. Pour chaque
-          mesure : systolique, diastolique, pouls.</p>
-        <div class="tbl">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Moment</th>
-                <th>Moyenne</th>
-                <th>Pouls</th>
-              </tr>
-            </thead>
-            <tbody id="bpTable"></tbody>
-          </table>
-        </div>
-        <div class="kv"><span>Moyenne de la campagne</span><b id="bpMean">–</b></div>
-        <div id="bpPill"></div>
-        <div class="grid2"><label>Moment<select id="bpMoment">
-              <option>matin</option>
-              <option>soir</option>
-            </select></label>
-          <div></div>
-        </div>
-        <div class="grid3" id="bpInputs"></div>
-        <button class="btn save" type="submit">Enregistrer les 3 mesures</button>
-      </form>
-
-      <form class="card" id="fBio">
-        <h2>Bilan biologique <small>1 fois par an</small></h2>
-        <div class="tbl">
-          <table>
-            <thead>
-              <tr>
-                <th>Analyse</th>
-                <th>Dernière valeur</th>
-                <th>Date</th>
-              </tr>
-            </thead>
-            <tbody id="bioTable"></tbody>
-          </table>
-        </div>
-        <div class="grid2">
-          <label>Analyse<select id="bioName"></select></label>
-          <label>Valeur<input id="bioVal" type="number" inputmode="decimal" step="any"></label>
-          <label>Date du prélèvement<input id="bioDate" type="date"></label>
-        </div>
-        <p class="muted">Pense à arrêter la créatine 1 à 2 semaines avant la prise de sang.</p>
-        <button class="btn ghost save" type="submit">Enregistrer le résultat</button>
-      </form>
-    </section>
-
-    <!-- ============ PERFORMANCE ============ -->
-    <section id="tab-perf" class="tab" hidden>
-      <form class="card" id="fFtp">
-        <h2>FTP <small>test tous les 2–3 mois</small></h2>
-        <svg class="spark" id="spFtp" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"></svg>
-        <div class="tbl">
-          <table>
-            <thead>
-              <tr>
-                <th>Test</th>
-                <th>FTP</th>
-                <th>Poids</th>
-                <th>W/kg</th>
-              </tr>
-            </thead>
-            <tbody id="ftpTable"></tbody>
-          </table>
-        </div>
-        <div class="grid2">
-          <label>Nouveau test (W)<input id="ftp" type="number" inputmode="numeric" min="50" max="600"></label>
-          <label>Poids moyen 15 j (kg)<input id="ftpKg" type="number" inputmode="decimal" step="0.1"></label>
-        </div>
-        <div class="kv"><span>Soit</span><b id="wkg">–</b></div>
-        <button class="btn ghost save" type="submit">Enregistrer le test</button>
-      </form>
-
-      <div class="card">
-        <h2>Charge par le ressenti <small>RPE × durée, 8 semaines</small></h2>
-        <svg class="bars" id="barsRpe" viewBox="0 0 300 150" preserveAspectRatio="none" role="img"
-          aria-label="Charge hebdomadaire par le ressenti"></svg>
-        <div class="kv"><span>Semaine en cours / moyenne des 4 précédentes</span><b id="rpeRatio">–</b></div>
-        <div class="tbl">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Durée</th>
-                <th>RPE</th>
-                <th>Charge</th>
-              </tr>
-            </thead>
-            <tbody id="rpeTable"></tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card" id="gCard">
-        <h2>Charge et intensité <small id="gDate">Garmin</small></h2>
-        <div class="status" id="gStatus"><span id="gStatusText">Lecture des données Garmin…</span></div>
-        <div id="gBody" hidden>
-          <div class="kv"><span>Charge aiguë / chronique</span><b id="gLoad">–</b></div>
-          <div class="kv"><span>Rapport (signal au-dessus de 1,3)</span><b id="gAcwr">–</b></div>
-          <div>
-            <div class="kv"><span>Répartition sur 4 semaines</span><b id="gBal">–</b></div>
-            <svg id="gBars" viewBox="0 0 300 96" role="img"
-              aria-label="Charge sur 4 semaines par catégorie, avec la cible Garmin"
-              style="width:100%;height:auto;display:block;margin-top:6px"></svg>
-            <p class="muted" style="margin:2px 0 0">Barre : charge des 4 dernières semaines. Cadre pointillé : cible
-              Garmin.</p>
-          </div>
-          <div class="kv"><span>Séances intenses cette semaine</span><b id="gInt">–</b></div>
-          <div class="kv"><span>Dernier 4×4 probable</span><b id="g44">–</b></div>
-          <div class="kv"><span>Dernière sortie du dimanche</span><b id="gSun">–</b></div>
-          <div class="kv"><span>Minutes d'intensité OMS, 7 j</span><b id="gOms">–</b></div>
-          <div class="kv"><span>FTP estimé par Garmin</span><b id="gFtp">–</b></div>
-          <div class="kv"><span>Statut Garmin (contexte)</span><b id="gStat">–</b></div>
-          <p class="muted" style="margin:0">Calculé chaque matin par le Raspberry à partir de Garmin. Charges basées sur
-            la FC : la musculation y est sous-estimée, d'où le RPE × durée ci-dessus. Le FTP de Garmin est une
-            estimation ; ton test fait foi.</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- ============ TENDANCES ============ -->
-    <section id="tab-tendances" class="tab" hidden>
-      <div class="card">
-        <h2>Charge mentale <small>14 derniers check-ins</small></h2><svg class="spark" id="spMental"
-          viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"></svg>
-        <div class="kv"><span>Moyenne 7 derniers</span><b id="avMental">–</b></div>
-      </div>
-      <div class="card">
-        <h2>Fatigue <small>14 derniers check-ins</small></h2><svg class="spark" id="spFatigue" viewBox="0 0 300 70"
-          preserveAspectRatio="none" aria-hidden="true"></svg>
-        <div class="kv"><span>Moyenne 7 derniers</span><b id="avFatigue">–</b></div>
-      </div>
-      <div class="card">
-        <h2>Poids <small>pesée tous les 5 jours</small></h2><svg class="spark" id="spKg" viewBox="0 0 300 70"
-          preserveAspectRatio="none" aria-hidden="true"></svg>
-        <div class="kv"><span>Moyenne 15 j</span><b id="avKg">–</b></div>
-        <p class="muted">Pointillés : début de la créatine (1 à 2 kg d'eau dans le muscle). Pour la graisse, c'est le
-          tour de taille qui fait foi.</p>
-      </div>
-      <div class="card">
-        <h2>Masse grasse (Navy) <small>toutes les mesures</small></h2><svg class="spark" id="spBf" viewBox="0 0 300 70"
-          preserveAspectRatio="none" aria-hidden="true"></svg>
-        <div class="kv"><span>Évolution</span><b id="avBf">–</b></div>
-      </div>
-      <div class="card">
-        <h2>Composition <small>mesures</small></h2>
-        <div class="tbl">
-          <table>
-            <thead>
-              <tr>
-                <th>Date</th>
-                <th>Poids</th>
-                <th>Taille</th>
-                <th>WHtR</th>
-                <th>MG</th>
-              </tr>
-            </thead>
-            <tbody id="compTable"></tbody>
-          </table>
-        </div>
-      </div>
-      <div class="card">
-        <h2>Tes données</h2>
-        <p class="muted">Toutes tes saisies sont dans ta feuille Google « Coach – Carnet », un onglet par type de
-          mesure. Tu peux y corriger une saisie directement.</p><a class="btn ghost"
-          style="display:grid;place-items:center;text-decoration:none"
-          href="https://docs.google.com/spreadsheets/d/1rwXH-2Fop758Bk-6VTDATiySnkO9D7eyVEHn7yuZCt8/edit"
-          target="_blank" rel="noopener">Ouvrir la feuille Google</a>
-      </div>
-    </section>
-  </div>
-
-  <nav aria-label="Onglets">
-    <div>
-      <button data-tab="jour" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
-          stroke-width="2">
-          <circle cx="12" cy="12" r="4" />
-          <path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1" />
-        </svg>Aujourd'hui</button>
-      <button data-tab="mesures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="8" width="20" height="8" rx="1.5" />
-          <path d="M6 8v3M10 8v4M14 8v3M18 8v4" />
-        </svg>Mesures</button>
-      <button data-tab="perf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="14" r="8" />
-          <path d="M12 14l4-4M9 2h6" />
-        </svg>Perf</button>
-      <button data-tab="tendances"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M3 17l6-6 4 4 8-8" />
-          <path d="M15 7h6v6" />
-        </svg>Tendances</button>
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Carnet du coach</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo+Narrow:wght@500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout : appli mobile, une colonne de 560px max, barre d'onglets fixe en bas */
+:root{
+  --bg:#F3F5F4; --surface:#FFFFFF; --ink:#16282E; --muted:#5C6E73; --line:#D9E1E0;
+  --accent:#1F4E5F; --accent-soft:#E2ECEE; --on-accent:#FFFFFF;
+  --good:#2E7D57; --good-soft:#E3F2EA; --warn:#B26A00; --warn-soft:#FBEFD9; --bad:#B3392F; --bad-soft:#F8E3E0;
+  --display:"Archivo Narrow","Arial Narrow",system-ui,sans-serif;
+  --body:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0F181B; --surface:#172429; --ink:#E4ECEC; --muted:#93A6AA; --line:#2A3A3F;
+  --accent:#7FB8C9; --accent-soft:#1E3239; --on-accent:#0F181B;
+  --good:#6CC79A; --good-soft:#173328; --warn:#E9B25A; --warn-soft:#352A16; --bad:#EF8A7F; --bad-soft:#3A1F1C; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0F181B; --surface:#172429; --ink:#E4ECEC; --muted:#93A6AA; --line:#2A3A3F;
+  --accent:#7FB8C9; --accent-soft:#1E3239; --on-accent:#0F181B;
+  --good:#6CC79A; --good-soft:#173328; --warn:#E9B25A; --warn-soft:#352A16; --bad:#EF8A7F; --bad-soft:#3A1F1C; color-scheme:dark}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.45}
+.wrap{max-width:560px;margin:0 auto;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:12px calc(88px + env(safe-area-inset-bottom,0px));display:grid;gap:14px}
+.status{border-radius:8px;padding:8px 12px;font-size:13px;font-weight:500;display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;background:var(--accent-soft);color:var(--accent)}
+.status.warn{background:var(--warn-soft);color:var(--warn)}.status.bad{background:var(--bad-soft);color:var(--bad)}
+.status button{font:600 13px var(--body);border:1px solid currentColor;background:transparent;color:inherit;border-radius:6px;padding:4px 10px;cursor:pointer}
+header h1{font-family:var(--display);font-weight:700;font-size:28px;letter-spacing:.2px;margin:0;text-wrap:balance}
+header p{margin:2px 0 0;color:var(--muted);font-size:14px}
+.tab{display:grid;gap:14px}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:16px;display:grid;gap:12px;min-width:0}
+.card h2{font-family:var(--display);font-weight:600;font-size:19px;margin:0;display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.card h2 small{font-family:var(--body);font-weight:400;font-size:12px;color:var(--muted)}
+.label{font-size:13px;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:.6px}
+.row{display:grid;gap:6px}
+.scale{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.scale.s11{grid-template-columns:repeat(11,1fr);gap:3px}
+.scale.s4{grid-template-columns:repeat(4,1fr)}
+.scale.s2{grid-template-columns:repeat(2,1fr)}
+.scale.s3{grid-template-columns:repeat(3,1fr)}
+.s3 .seg{font:600 14px var(--body);line-height:1.2;padding:4px}
+.seg{font:600 16px var(--mono);min-height:44px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer;padding:0}
+.s11 .seg{font-size:13px;min-height:40px}
+.seg[aria-pressed="true"]{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.seg:focus-visible,.chip:focus-visible,.btn:focus-visible,input:focus-visible,select:focus-visible,nav button:focus-visible,a:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.ends{display:flex;justify-content:space-between;font-size:12px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{font:500 14px var(--body);padding:8px 12px;border-radius:999px;border:1px solid var(--line);background:var(--bg);color:var(--ink);cursor:pointer}
+.chip[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent)}
+.btn{font:600 16px var(--body);min-height:48px;border-radius:10px;border:0;background:var(--accent);color:var(--on-accent);cursor:pointer;width:100%}
+.btn.ghost{background:transparent;color:var(--accent);border:1px solid var(--accent)}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+textarea{font:15px var(--body);width:100%;min-width:0;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:10px;resize:vertical}
+textarea:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+input[type=number],input[type=date],input[inputmode=decimal],select{font:500 17px var(--mono);width:100%;min-width:0;max-width:100%;min-height:46px;border-radius:8px;border:1px solid var(--line);background:var(--bg);color:var(--ink);padding:0 10px}
+select{font-family:var(--body);font-size:15px}
+.grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.grid3 label,.grid2 label{font-size:12px;color:var(--muted);display:grid;gap:4px;min-width:0}
+.todo div{display:flex;justify-content:space-between;align-items:center;gap:8px;font-size:14px;padding:8px 0;border-bottom:1px solid var(--line)}
+.todo div:last-child{border-bottom:0}
+.pill{font:600 12px var(--body);padding:3px 9px;border-radius:999px;display:inline-block}
+.todo .pill{white-space:nowrap}
+.pill.good{background:var(--good-soft);color:var(--good)}.pill.warn{background:var(--warn-soft);color:var(--warn)}.pill.bad{background:var(--bad-soft);color:var(--bad)}.pill.info{background:var(--accent-soft);color:var(--accent)}
+.coach{border-left:4px solid var(--accent)}
+.coach.warn{border-left-color:var(--warn)}.coach.info{border-left-color:var(--accent)}
+.cfield{display:grid;gap:2px;font-size:14px}
+.cfield .label{font-size:12px}
+.cfield p{margin:0}
+details.more summary{cursor:pointer;color:var(--accent);font-size:14px;font-weight:600;list-style-position:inside}
+details.more[open] summary{margin-bottom:8px}
+.hint{font-size:13px;color:var(--muted);margin:0}.coach.bad{border-left-color:var(--bad)}.coach.good{border-left-color:var(--good)}
+.verdict{font-family:var(--display);font-size:22px;font-weight:700;margin:0}
+.list{margin:0;padding-left:18px;display:grid;gap:5px;font-size:14px}
+.list b{font-weight:600}
+.big{font:500 38px var(--mono);line-height:1}
+.big small{font-size:15px;color:var(--muted);margin-left:4px}
+.gauge{height:14px;border-radius:7px;overflow:hidden;display:flex}
+.gauge span{height:100%}
+.gmark{position:relative;height:18px}
+.gmark i{position:absolute;top:0;width:3px;height:18px;background:var(--ink);border-radius:2px;transform:translateX(-1px)}
+.gticks{position:relative;height:16px;font:12px var(--mono);color:var(--muted)}
+.gticks span{position:absolute;top:0;transform:translateX(-50%)}
+.gticks span:first-child{transform:none}.gticks span:last-child{transform:translateX(-100%)}
+table{border-collapse:collapse;width:100%;font-size:14px;font-variant-numeric:tabular-nums}
+th,td{text-align:left;padding:7px 6px;border-bottom:1px solid var(--line)}
+th{font-size:12px;color:var(--muted);font-weight:600;text-transform:uppercase;letter-spacing:.5px}
+td.num{font-family:var(--mono)}
+.tbl{overflow-x:auto}
+.spark{width:100%;height:70px;display:block}
+.bars{width:100%;height:150px;display:block}
+[hidden]{display:none!important}
+#gBody{display:grid;gap:10px}
+.kv{display:flex;justify-content:space-between;gap:8px;font-size:14px}
+.kv b{font-family:var(--mono);font-weight:500;text-align:right}
+.muted{color:var(--muted);font-size:13px;margin:0}
+.empty{color:var(--muted);font-size:14px;margin:0;padding:8px 0}
+a{color:var(--accent)}
+nav{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-top:1px solid var(--line);display:flex;justify-content:center;padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px);z-index:5}
+nav div{display:grid;grid-template-columns:repeat(4,1fr);width:100%;max-width:560px}
+nav button{font:600 13px var(--body);background:none;border:0;color:var(--muted);min-height:60px;cursor:pointer;display:grid;place-items:center;gap:2px;padding:6px 0}
+nav button svg{width:22px;height:22px}
+nav button[aria-current="page"]{color:var(--accent)}
+.toast{position:fixed;left:50%;bottom:calc(76px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:10px 16px;border-radius:8px;font-size:14px;font-weight:500;opacity:0;transition:opacity .2s;pointer-events:none;z-index:6;max-width:90vw}
+.toast.on{opacity:1}
+@media (prefers-reduced-motion:reduce){.toast{transition:none}}
+</style>
+
+<div class="wrap">
+  <div class="status" id="status" role="status"><span id="statusText">Connexion à ta feuille Google…</span></div>
+  <header><h1>Carnet du coach</h1><p id="today"></p></header>
+
+  <!-- ============ AUJOURD'HUI ============ -->
+  <section id="tab-jour" class="tab">
+    <div class="card coach" id="coachCard">
+      <div class="label" id="coachLabel">Recommandation du coach</div>
+      <p class="verdict" id="coachVerdict">Lecture en cours…</p>
+      <div id="coachBody" style="display:grid;gap:10px"></div>
     </div>
-  </nav>
-  <div class="toast" id="toast" role="status"></div>
 
-  <script>
-    const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
-    const SHEET = "1rwXH-2Fop758Bk-6VTDATiySnkO9D7eyVEHn7yuZCt8", SERVER = "Google Sheets";
-    const TABS = { q: "Quotidien", s: "Soir", m: "Mesures", t: "Tension", f: "FTP", b: "Biologie", r: "'Réglages'", c: "Coach" };
-    const COLS = { q: "A:G", s: "A:F", m: "A:G", t: "A:N", f: "A:D", b: "A:E", r: "A:B", c: "A:G" };
-    const D = { q: [], s: [], m: [], t: [], f: [], b: [], r: {}, c: [] };
-    let mcp = null, perms = null, busy = false;
+    <div class="card coach" id="sessionCard">
+      <div class="label">Programme prévu (semainier)</div>
+      <p class="verdict" id="sessionTitle" style="font-size:19px"></p>
+      <details class="more" id="sessionMore" open><summary>Détail du programme</summary><ul class="list" id="sessionDetail"></ul></details>
+    </div>
 
-    /* ---------- utilitaires ---------- */
-    const num = v => { if (v == null) return null; const s = String(v).replace(/[\s  ]/g, "").replace(",", "."); if (s === "") return null; const n = parseFloat(s); return isNaN(n) ? null : n };
-    const fmt = (n, d = 0) => n == null || isNaN(n) ? "–" : n.toLocaleString("fr-FR", { minimumFractionDigits: d, maximumFractionDigits: d });
-    const iso = d => new Date(d.getTime() - d.getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
-    const now = new Date(), TODAY = iso(now);
-    const days = (a, b) => Math.round((Date.parse(a) - Date.parse(b)) / 864e5);
-    const dstr = s => { const d = new Date(s + "T12:00:00"); return isNaN(d) ? s : d.toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) };
-    const avg = a => a.length ? a.reduce((x, y) => x + y, 0) / a.length : null;
-    const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-    function toast(t) { const e = $("#toast"); e.textContent = t; e.classList.add("on"); clearTimeout(e._t); e._t = setTimeout(() => e.classList.remove("on"), 2600) }
-    const H = () => num(D.r["Taille (cm)"]) || 176, NECK = () => num(D.r["Tour de cou de référence (cm)"]) || 40;
-    const CREA = () => D.r["Début de la créatine"] || "2026-07-23";
-    const navy = (w, n, h) => 495 / (1.0324 - 0.19077 * Math.log10(w - n) + 0.15456 * Math.log10(h)) - 450;
+    <div class="card coach" id="readCard">
+      <div class="label">Lecture rapide de ton ressenti</div>
+      <p class="verdict" id="verdict"></p>
+      <ul class="list" id="advice"></ul>
+      <p class="muted" id="readNote">La lecture complète (VFC, FC repos, sommeil Garmin, météo) est faite par le coach dans Claude.</p>
+    </div>
 
-    /* ---------- semainier v2.2 ---------- */
-    function isoWeek(d) { const t = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate())); const day = t.getUTCDay() || 7; t.setUTCDate(t.getUTCDate() + 4 - day); const y = new Date(Date.UTC(t.getUTCFullYear(), 0, 1)); return Math.ceil(((t - y) / 864e5 + 1) / 7) }
-    const SESSION_A = ["<b>Bloc 1, 4 tours</b>", "<b>1A</b> Développé incliné à 30° aux haltères : 4 × 8–10 (RIR 1–2)", "<b>1B</b> Tractions neutres : 4 × 5–8 (RIR 1–2) ; lest à partir de 4 × 8", "Pull-apart à l'élastique pendant les récupérations : 4 × 15", "<b>Bloc 2, 6 tours en alternant les jambes</b>", "<b>2A</b> Bulgarian split squat, une main en appui : 3 × 8–12 / jambe (RIR 1–2)", "<b>2B</b> Relevés de genoux suspendu : 6 × 5–8"];
-    const SESSION_B = ["<b>1A</b> Élévations latérales, poulie basse : 3 × 12–15 (RIR 1–2)", "<b>1B</b> B-Stance RDL aux haltères : 3 × 8–12 / jambe (RIR 1–2)", "<b>2</b> Leg curl debout, poulie basse : 2 × 10–15 / jambe", "<b>3A</b> Lat prayer bilatéral, poulie haute : 3 × 10–12 (RIR 1–2)", "<b>3B</b> Pompes lestées : 3 × 8–15", "<b>4A</b> Triceps à la corde : 2 × 10–12 (RIR 1)", "<b>4B</b> Curl marteau, haltères 8 kg : 2 × 10–12 (RIR 1)", "<b>5</b> Rowing aux anneaux : 3 × 8–12"];
-    function plan(d) {
-      const dow = d.getDay(), winter = [10, 11, 0, 1, 2].includes(d.getMonth());
-      const par = String(D.r["4×4 du jeudi : semaines ISO"] || "paires").toLowerCase().startsWith("p") ? 0 : 1;
-      const vo2Week = isoWeek(d) % 2 === par;
-      const tue = new Date(d); tue.setDate(d.getDate() - ((dow + 5) % 7)); /* mardi de la semaine */
-      const fifthTue = tue.getDate() >= 29;
-      const v44 = ["Échauffement 10–15 min", "4 × 4 min à 90–95 % FCmax (≈ 106–120 % FTP)", "3 min de récupération active entre chaque", "Retour au calme 5–10 min ; finir 1–2 h avant le coucher", winter ? "Home trainer piloté en watts, ventilateur puissant" : "Côte régulière d'au moins 4 min, en soirée avec la lumière du jour"];
-      switch (dow) {
-        case 1: return { t: "gym", n: "Home Gym A · ≈ 40 min", d: SESSION_A };
-        case 2: return fifthTue ? { t: "vo2", n: "4×4 VO2max (5e mardi, pas de CrossFit)", d: v44 } : { t: "wod", n: "CrossFit · 1 h", d: ["WOD métabolique", "Veto sur les mouvements balistiques d'épaule lourds (kipping, snatch)"] };
-        case 3: return { t: "rest", n: "Repos actif", d: ["Marche de 30–60 min, mobilité légère", "Objectif 7 000–8 000 pas"] };
-        case 4: return vo2Week && !fifthTue ? { t: "vo2", n: "Piscine facile + 4×4 VO2max", d: ["Midi : nage facile de 30 min, en récupération pure", "Soir : 4×4 VO2max", ...v44] } : { t: "swim", n: "Piscine · 45 min en Zone 2", d: ["Zones FC environ 10 bpm plus basses qu'à vélo"] };
-        case 5: return { t: "gym", n: "Home Gym B · ≈ 40 min", d: SESSION_B };
-        case 6: return { t: "rest", n: "Repos / mobilité", d: ["Recharge [2–2–2] au dîner si la sortie de demain est maintenue"] };
-        default: return { t: "bike", n: "Vélo route · 2 h en Zone 2", d: ["IF ≈ 0,60–0,65, sortie identique chaque semaine", "Eau + électrolytes ; glucides seulement au-delà de 2h30 ou par forte chaleur", "Pluie : 40–45 min de home trainer en Zone 2 (140–160 W)", "Fatigue : repos, sans culpabilité"] };
-      }
-    }
+    <div class="card">
+      <h2>À faire <small id="todoCount"></small></h2>
+      <div class="todo" id="todo"></div>
+    </div>
 
-    /* ---------- composants échelle ---------- */
-    const S = { mental: null, fatigue: null, sleep: null, pain: null, zones: [], creatine: null, meals: null, snack: null, rpe: null };
-    $$(".scale").forEach(el => {
-      const k = el.dataset.k, opts = el.dataset.opts ? el.dataset.opts.split("|") : null;
-      const min = +(el.dataset.min ?? 1), max = +(el.dataset.max ?? 5);
-      const vals = opts || [...Array(max - min + 1)].map((_, i) => String(i + min));
-      vals.forEach((v, i) => {
-        const b = document.createElement("button"); b.type = "button"; b.className = "seg"; b.textContent = v; b.id = `${k}-${i}`; b.setAttribute("aria-pressed", "false");
-        b.onclick = () => { el.querySelectorAll(".seg").forEach(x => x.setAttribute("aria-pressed", "false")); b.setAttribute("aria-pressed", "true"); S[k] = opts ? v : +v; renderRead() }; el.appendChild(b)
-      });
-    });
-    function resetScales(form) { form.querySelectorAll(".seg").forEach(x => x.setAttribute("aria-pressed", "false")); form.querySelectorAll(".scale").forEach(el => S[el.dataset.k] = null) }
-    const ZONES = ["Aucune", "Épaule", "Coude", "Dos", "Hanche", "Genou", "Ischios", "Mollet / Achille", "Autre"];
-    function renderZones() {
-      $("#zones").innerHTML = ""; ZONES.forEach(z => {
-        const c = document.createElement("button"); c.type = "button"; c.className = "chip"; c.textContent = z;
-        c.setAttribute("aria-pressed", String(z === "Aucune" ? S.zones.length === 0 : S.zones.includes(z)));
-        c.onclick = () => { S.zones = z === "Aucune" ? [] : (S.zones.includes(z) ? S.zones.filter(x => x !== z) : [...S.zones, z]); if (!S.zones.length) S.pain = null; $("#painRow").hidden = !S.zones.length; renderZones(); renderRead() }; $("#zones").appendChild(c)
-      })
-    }
-    renderZones();
+    <form class="card" id="fMatin">
+      <h2>Check-in du matin <small id="matinDone">≈ 20 s</small></h2>
+      <p class="hint">Pour toutes les notes : à gauche, ça va bien ; à droite, ça va mal.</p>
+      <div class="row"><div class="label">Charge mentale</div><div class="scale" data-k="mental"></div><div class="ends"><span>légère</span><span>saturée</span></div></div>
+      <div class="row"><div class="label">Fatigue</div><div class="scale" data-k="fatigue"></div><div class="ends"><span>frais</span><span>épuisé</span></div></div>
+      <div class="row"><div class="label">Sommeil ressenti</div><div class="scale" data-k="sleep"></div><div class="ends"><span>excellent</span><span>très mauvais</span></div></div>
+      <div class="row"><div class="grid2"><label>Score sommeil Garmin (0–100)<input id="gSleep" type="number" inputmode="numeric" min="0" max="100" placeholder="score"></label><div><div class="label" style="font-size:12px">Sommeil consolidé</div><div class="big" style="font-size:28px" id="consol">–</div></div></div><p class="hint" id="gSleepHint">Recherche du score Garmin de la nuit…</p></div>
+      <div class="row"><div class="label">Douleurs</div><div class="chips" id="zones"></div></div>
+      <div class="row" id="painRow" hidden><div class="label">Intensité max (0–10)</div><div class="scale s11" data-k="pain" data-min="0" data-max="10"></div></div>
+      <div class="row"><div class="label">Symptômes de maladie</div><div class="scale s3" data-k="ill" data-opts="aucun|au-dessus du cou|général"></div><p class="hint">Au-dessus du cou : nez qui coule, gorge irritée. Général : fièvre, courbatures, toux grasse, troubles digestifs.</p></div>
+      <div class="row"><div class="label">Remarquable <span style="text-transform:none;letter-spacing:0;font-weight:400">(facultatif)</span></div><textarea id="remark" rows="2" maxlength="300" placeholder="Voyage, soirée arrosée, nuit hachée, stress inhabituel, décalage horaire…"></textarea></div>
+      <button class="btn save" type="submit">Enregistrer le check-in</button>
+    </form>
 
-    /* ---------- connexion Google Sheets ---------- */
-    const ERR = {
-      server_not_connected: ["Ajoute le connecteur Google Sheets dans claude.ai : Réglages → Connecteurs.", "bad"],
-      needs_reauth: ["Reconnecte Google Sheets dans claude.ai : Réglages → Connecteurs.", "bad"],
-      selection_required: ["Choisis le compte Google Sheets à utiliser dans la fenêtre de Claude, puis actualise.", "warn"],
-      not_in_manifest: ["Le carnet n'a pas l'autorisation d'utiliser Google Sheets.", "warn"],
-      approval_required: ["Le carnet attend ton autorisation pour utiliser Google Sheets.", "warn"],
-      blocked_by_policy: ["Google Sheets est bloqué par une règle de ton compte.", "bad"],
-      server_unavailable: ["Google Sheets ne répond pas pour l'instant.", "warn"],
-      tool_error: ["Google Sheets a refusé la requête. La feuille « Coach – Carnet » a peut-être été renommée ou supprimée.", "bad"],
-      not_granted: ["Ce carnet n'a pas accès aux connecteurs dans cette vue.", "bad"],
-      capability_disabled: ["Ce carnet n'a pas accès aux connecteurs dans cette vue.", "bad"]
-    };
-    function setStatus(text, cls = "", btn) {
-      const el = $("#status"); el.className = "status " + cls; $("#statusText").textContent = text; el.querySelector("button")?.remove();
-      if (btn) { const b = document.createElement("button"); b.type = "button"; b.textContent = btn[0]; b.onclick = btn[1]; el.appendChild(b) }
-    }
-    function showError(e) {
-      const code = e?.code || "upstream_error"; const [msg, cls] = ERR[code] || ["Lecture impossible de ta feuille Google (" + code + ").", "warn"];
-      const btn = (code === "not_in_manifest" || code === "approval_required") ? ["Autoriser", askPermission] : ["Réessayer", () => loadAll()];
-      setStatus(msg, cls, btn)
-    }
-    async function askPermission() { try { await perms?.request(["mcp:" + SERVER]) } catch (_) { } loadAll() }
-    async function readTab(k) {
-      const res = await mcp.callTool(SERVER, "get_values", { spreadsheetId: SHEET, range: TABS[k] + "!" + COLS[k] }, { cache: false });
-      const p = res.payload; const vals = (p && p.values) || (p && p.result && p.result.values) || []; return vals.slice(1)
-    }
-    async function loadAll() {
-      if (!mcp) { setStatus("Ouvre le carnet dans Claude, connecté à ton compte, pour lire et enregistrer tes données.", "warn"); return }
-      setStatus("Lecture de ta feuille Google…");
-      try {
-        const keys = Object.keys(TABS); const out = await Promise.all(keys.map(k => k === "c" ? readTab(k).catch(() => []) : readTab(k)));
-        keys.forEach((k, i) => { if (k === "r") { D.r = {}; out[i].forEach(r => { if (r[0]) D.r[r[0]] = r[1] }) } else D[k] = out[i].filter(r => r && r[0]).sort((a, b) => a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0) });
-        setStatus("Feuille « Coach – Carnet » · lue à " + new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }), "", ["Actualiser", () => loadAll()]);
-        renderAll();
-      } catch (e) { showError(e) }
-    }
-    async function append(k, row, okMsg) {
-      if (!mcp) { toast("Ouvre le carnet dans Claude pour enregistrer."); return false }
-      if (busy) return false; busy = true; $$(".save").forEach(b => b.disabled = true);
-      try {
-        await mcp.callTool(SERVER, "append_values", { spreadsheetId: SHEET, range: TABS[k] + "!A1", values: [row] }, { cache: false });
-        toast(okMsg); await loadAll(); return true;
-      } catch (e) {
-        const code = e?.code;
-        if (code === "server_unavailable" || code === "upstream_error" || code === "cancelled") toast("Enregistrement non confirmé : vérifie la feuille avant de réessayer.");
-        else if (code === "not_in_manifest" || code === "approval_required") { toast("Autorise d'abord le carnet à utiliser Google Sheets."); showError(e) }
-        else toast((ERR[code] || ["Enregistrement impossible (" + code + ")."])[0]);
-        return false;
-      } finally { busy = false; $$(".save").forEach(b => b.disabled = false) }
-    }
+    <form class="card" id="fSoir">
+      <h2>Bilan du soir <small id="soirDone">≈ 5 s</small></h2>
+      <div class="row"><div class="label">Séance du jour : effort perçu (RPE)</div><div class="scale s11" data-k="rpe" data-min="0" data-max="10"></div><div class="ends"><span>pas de séance</span><span>maximal</span></div></div>
+      <div class="grid2"><label>Durée de la séance (min)<input id="dur" type="number" inputmode="numeric" min="0" max="300" placeholder="40"></label><div></div></div>
+      <p class="muted">RPE × durée = charge de la séance, utile surtout pour la musculation que Garmin sous-estime.</p>
+      <button class="btn save" type="submit">Enregistrer le bilan</button>
+    </form>
+  </section>
 
-    /* ---------- rendus ---------- */
-    function renderSession() {
-      const p = plan(now); $("#today").textContent = now.toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long" });
-      $("#sessionTitle").textContent = p.n; $("#sessionDetail").innerHTML = p.d.map(x => `<li>${x}</li>`).join("")
-    }
+  <!-- ============ MESURES ============ -->
+  <section id="tab-mesures" class="tab" hidden>
+    <form class="card" id="fTaille">
+      <h2>Composition corporelle <small>tous les 5 jours · moyenne 15 j</small></h2>
+      <p class="muted">À jeun. Taille au nombril en fin d'expiration, cou juste sous la pomme d'Adam. Taille : <span id="hCm">176</span> cm.</p>
+      <div class="grid3">
+        <label>Tour de taille (cm)<input id="waist" type="text" inputmode="decimal" autocomplete="off" step="0.1" min="50" max="150" placeholder="88"></label>
+        <label>Tour de cou (cm)<input id="neck" type="text" inputmode="decimal" autocomplete="off" step="0.1" min="25" max="60" placeholder="40"></label>
+        <label>Poids (kg)<input id="kgIn" type="text" inputmode="decimal" autocomplete="off" step="0.1" min="40" max="200" placeholder="kg"></label>
+      </div>
+      <p class="hint" id="prefillHint"></p>
+      <p class="muted">Cou : à mesurer tous les 2 mois, laisse vide sinon. Taille et poids sont préremplis avec tes dernières valeurs : corrige ce qui a changé, puis enregistre.</p>
+      <div class="grid2">
+        <div><div class="label">WHtR · moy. 15 j</div><div class="big" id="whtr">–</div></div>
+        <div><div class="label">Masse grasse · moy. 15 j</div><div class="big" id="bf">–</div></div>
+      </div>
+      <div class="row"><div class="label">WHtR · repères NICE 2022</div><div id="gWhtr"></div><div id="whtrPill"></div></div>
+      <div class="row"><div class="label">Masse grasse · repères hommes 40–59 ans</div><div id="gBf"></div><div id="bfPill"></div></div>
+      <div class="kv"><span>Moyenne 15 j</span><b id="avg15">–</b></div>
+      <div class="kv"><span>Cette mesure seule (WHtR · MG)</span><b id="single">–</b></div>
+      <div class="kv"><span>Masse grasse / masse maigre</span><b id="masses">–</b></div>
+      <p class="muted">Formule US Navy : précision d'environ ±3–4 points, fiable en tendance.</p>
+      <button class="btn save" type="submit">Enregistrer la mesure</button>
+    </form>
 
-    function todayCheck() { return [...D.q].reverse().find(r => r[0] === TODAY) }
-    function coachToday() { return [...D.c].reverse().find(r => r[0] === TODAY) }
-    function renderCoach() {
-      const card = $("#coachCard"), row = coachToday(), last = D.c.at(-1);
-      if (row) {
-        const v = String(row[1] || "").trim(), k = v.toLowerCase();
-        const cls = k.startsWith("maint") ? "good" : k.startsWith("all") ? "warn" : k.startsWith("rempl") ? "info" : k.startsWith("repos") ? "warn" : "";
-        card.className = "card coach " + cls; $("#coachLabel").textContent = "Recommandation du coach · ce matin";
-        $("#coachVerdict").textContent = v || "Point du jour";
-        const F = [["Séance du jour", row[2]], ["Pourquoi", row[3]], ["Nutrition", row[4]], ["À faire", row[5]], ["Fiabilité", row[6]]];
-        $("#coachBody").innerHTML = F.filter(f => f[1]).map(([l, t]) => `<div class="cfield"><div class="label">${l}</div><p>${esc(t)}</p></div>`).join("");
-        $("#sessionMore").open = false;
-      } else {
-        card.className = "card coach"; $("#coachLabel").textContent = "Recommandation du coach";
-        $("#coachVerdict").textContent = mcp ? "Point du jour pas encore rendu" : "Recommandation indisponible";
-        $("#coachBody").innerHTML = `<p class="muted">Le coach publie son point vers 7 h 30, après l'instantané Garmin. En attendant, suis le programme prévu ci-dessous.${last ? ` Dernier point : ${dstr(last[0])} (${esc(last[1])}).` : ""}</p>`;
-        $("#sessionMore").open = true;
-      }
-    }
-    function renderRead() {
-      const row = todayCheck();
-      const m = S.mental ?? num(row?.[1]), f = S.fatigue ?? num(row?.[2]), sl = S.sleep ?? num(row?.[3]);
-      const zones = S.zones.length ? S.zones : (row?.[4] ? String(row[4]).split(", ").filter(z => z && z !== "aucune") : []);
-      const pain = S.pain ?? num(row?.[5]);
-      const p = plan(now), c = $("#readCard"), sig = [], adv = []; let v, cls = "";
-      if (m >= 4) sig.push(`charge mentale ${m}/5`); if (f >= 4) sig.push(`fatigue ${f}/5`); if (sl != null && sl <= 2) sig.push(`sommeil ressenti ${sl}/5`);
-      const hurt = zones.length && pain >= 4; if (hurt) sig.push(`douleur ${pain}/10`);
-      if (m == null && f == null) { v = "Fais ton check-in" }
-      else if (p.t === "rest") { v = "Journée de repos"; cls = "good"; if (sig.length >= 2) adv.push("Plusieurs signaux de fatigue : couche-toi à heure fixe ce soir.") }
-      else if (!sig.length) { v = "Séance maintenue"; cls = "good" }
-      else if (sig.length === 1 && !hurt) { v = "Maintenue, à l'écoute"; cls = "warn"; adv.push("Un signal : garde la séance, mais arrête si le RPE monte plus que d'habitude.") }
-      else { v = "Séance allégée"; cls = "bad"; adv.push({ gym: "Home gym : 1 série de moins par exercice, RIR 3.", wod: "CrossFit : scaling, charges −20 %, pas de sprint final.", vo2: "Remplacer le 4×4 par 45 min en Zone 2.", bike: "Vélo : Zone 2 raccourcie à 60–90 min.", swim: "Piscine : 30 min faciles." }[p.t]) }
-      if (hurt) adv.push(`Éviter les mouvements qui sollicitent : ${zones.join(", ").toLowerCase()}. Au-delà de 5 jours, consulter.`);
-      if (sig.length) adv.unshift("Signaux : " + sig.join(" · "));
-      if (coachToday() && m != null) {
-        v = !sig.length ? "Check-in : aucun signal" : (sig.length === 1 && !hurt) ? "Check-in : 1 signal, reste à l'écoute" : "Check-in : plusieurs signaux, allège";
-        $("#readNote").textContent = "Le verdict du coach ci-dessus prime. Si ton check-in signale un point (≥ 4/5, douleur ≥ 4/10), applique en plus l'allègement indiqué ici.";
-      }
-      else $("#readNote").textContent = "La lecture complète (VFC, FC repos, sommeil Garmin, météo) est faite par le coach dans Claude.";
-      c.className = "card coach " + cls; $("#verdict").textContent = v; $("#advice").innerHTML = adv.map(a => `<li>${esc(a)}</li>`).join("");
-    }
+    <form class="card" id="fTension">
+      <h2>Tension, règle des 3 <small id="bpProg"></small></h2>
+      <p class="muted">Assis, au calme, 3 mesures à 1 min d'intervalle, matin et soir pendant 3 jours. Pour chaque mesure : systolique, diastolique, pouls.</p>
+      <div class="tbl"><table><thead><tr><th>Date</th><th>Moment</th><th>Moyenne</th><th>Pouls</th></tr></thead><tbody id="bpTable"></tbody></table></div>
+      <div class="kv"><span>Moyenne de la campagne</span><b id="bpMean">–</b></div>
+      <div id="bpPill"></div>
+      <div class="grid2"><label>Moment<select id="bpMoment"><option>matin</option><option>soir</option></select></label><div></div></div>
+      <div class="grid3" id="bpInputs"></div>
+      <button class="btn save" type="submit">Enregistrer les 3 mesures</button>
+    </form>
 
-    function campaign() {
-      const last = D.t.at(-1); if (!last) return { rows: [], open: false };
-      const rows = D.t.filter(r => days(last[0], r[0]) <= 3); return { rows, open: rows.length < 6 && days(TODAY, last[0]) <= 3 }
-    }
-    function renderTodo() {
-      const items = [];
-      items.push(["Check-in du matin", todayCheck() ? ["Fait", "good"] : ["À faire", "warn"]]);
-      items.push(["Bilan du soir", D.s.some(r => r[0] === TODAY) ? ["Fait", "good"] : ["Ce soir", "info"]]);
-      const lastM = D.m.at(-1); const dM = lastM ? days(TODAY, lastM[0]) : null;
-      items.push(["Tour de taille + pesée (tous les 5 j)", dM == null ? ["À faire", "warn"] : dM >= 5 ? ["À mesurer", "warn"] : [`Dans ${5 - dM} j`, "info"]]);
-      const lastNeck = [...D.m].reverse().find(r => num(r[3]) != null); const dN = lastNeck ? days(TODAY, lastNeck[0]) : null;
-      items.push(["Tour de cou (tous les 2 mois)", dN == null ? ["Jamais mesuré", "warn"] : dN >= 60 ? ["À mesurer", "warn"] : [`Dans ${60 - dN} j`, "info"]]);
-      const camp = campaign(); const lastT = D.t.at(-1);
-      items.push(["Tension (règle des 3)", !lastT ? ["Première campagne à faire", "warn"] : camp.open ? [`${camp.rows.length}/6 prises`, "warn"] : days(TODAY, lastT[0]) >= 90 ? ["Nouvelle campagne", "warn"] : [`Dans ${90 - days(TODAY, lastT[0])} j`, "info"]]);
-      const lastB = D.b.at(-1); items.push(["Bilan biologique", !lastB ? ["À planifier", "warn"] : days(TODAY, lastB[0]) >= 365 ? ["À faire", "warn"] : [`Dans ${Math.ceil((365 - days(TODAY, lastB[0])) / 30)} mois`, "info"]]);
-      $("#todo").innerHTML = items.map(([t, [p, c]]) => `<div><span>${t}</span><span class="pill ${c}">${p}</span></div>`).join("");
-      $("#todoCount").textContent = items.filter(i => i[1][1] === "warn").length + " en attente";
-      $("#matinDone").textContent = todayCheck() ? "déjà fait aujourd'hui" : "≈ 20 s"; $("#soirDone").textContent = D.s.some(r => r[0] === TODAY) ? "déjà fait aujourd'hui" : "≈ 10 s";
-    }
+    <form class="card" id="fBio">
+      <h2>Bilan biologique <small>1 fois par an</small></h2>
+      <div class="tbl"><table><thead><tr><th>Analyse</th><th>Dernière valeur</th><th>Date</th></tr></thead><tbody id="bioTable"></tbody></table></div>
+      <div class="grid2">
+        <label>Analyse<select id="bioName"></select></label>
+        <label>Valeur<input id="bioVal" type="text" inputmode="decimal" autocomplete="off" step="any"></label>
+        <label>Date du prélèvement<input id="bioDate" type="date"></label>
+      </div>
+      <p class="muted">Pense à arrêter la créatine 1 à 2 semaines avant la prise de sang.</p>
+      <button class="btn ghost save" type="submit">Enregistrer le résultat</button>
+    </form>
+  </section>
 
-    function gauge(id, val, min, max, zones, ticks) {
-      const pct = v => Math.min(100, Math.max(0, (v - min) / (max - min) * 100));
-      $(id).innerHTML = (val == null ? "" : `<div class="gmark"><i style="left:${pct(val)}%"></i></div>`) + `<div class="gauge">${zones.map(([a, b, c]) => `<span style="flex:${(b - a) * 100};background:var(--${c})"></span>`).join("")}</div><div class="gticks">${ticks.map(t => `<span style="left:${pct(t)}%">${t.toLocaleString("fr-FR", { minimumFractionDigits: t < 1 ? 2 : 0 })}</span>`).join("")}</div>`
-    }
-    const GW = [[.40, .50, "good"], [.50, .60, "warn"], [.60, .65, "bad"]], TW = [.40, .50, .60, .65], GB = [[5, 11, "accent"], [11, 22, "good"], [22, 28, "warn"], [28, 35, "bad"]], TB = [5, 11, 22, 28, 35];
-    function win15() { const w = D.m.filter(r => days(TODAY, r[0]) <= 15); return w.length ? w : D.m.slice(-3) }
-    const lastNeckVal = () => { const r = [...D.m].reverse().find(r => num(r[3]) != null); return r ? num(r[3]) : NECK() };
-    function prefill() {
-      const lw = [...D.m].reverse().find(r => num(r[2]) != null), lk = [...D.m].reverse().find(r => num(r[1]) != null);
-      [["#waist", lw, 2], ["#kgIn", lk, 1]].forEach(([id, r, i]) => { const el = $(id); if (r && !el.value && document.activeElement !== el) { el.value = String(num(r[i])); el.dataset.pre = "1" } });
-      const parts = []; if (lw) parts.push(`taille ${fmt(num(lw[2]), 1)} cm le ${dstr(lw[0])}`); if (lk) parts.push(`poids ${fmt(num(lk[1]), 1)} kg le ${dstr(lk[0])}`);
-      $("#prefillHint").textContent = parts.length ? "Dernières valeurs : " + parts.join(" · ") : "";
-    }
-    function renderBody() {
-      $("#hCm").textContent = H(); $("#neck").placeholder = lastNeckVal(); prefill();
-      const win = win15(); const w = avg(win.map(r => num(r[2])).filter(x => x != null)), kg = avg(win.map(r => num(r[1])).filter(x => x != null));
-      if (w == null) { $("#whtr").textContent = "–"; $("#bf").textContent = "–"; gauge("#gWhtr", null, .40, .65, GW, TW); gauge("#gBf", null, 5, 35, GB, TB); renderSingle(); return }
-      const r = w / H(), bf = navy(w, lastNeckVal(), H());
-      $("#whtr").textContent = fmt(r, 2); $("#bf").innerHTML = fmt(bf, 1) + "<small>%</small>";
-      gauge("#gWhtr", r, .40, .65, GW, TW); gauge("#gBf", bf, 5, 35, GB, TB);
-      const [t, c] = r < .40 ? ["Sous 0,40 : vérifie la mesure", "info"] : r < .50 ? ["Sain (< 0,50)", "good"] : r < .60 ? [`Risque modérément accru (0,50–0,59). Objectif : moins de ${fmt(H() * .5, 0)} cm.`, "warn"] : ["Risque élevé (≥ 0,60)", "bad"];
-      $("#whtrPill").innerHTML = `<span class="pill ${c}">${t}</span>`;
-      const [t2, c2] = bf < 11 ? ["Bas (< 11 %)", "info"] : bf < 22 ? ["Sain (11–21 %)", "good"] : bf < 28 ? ["Surpoids (22–27 %)", "warn"] : ["Obésité (≥ 28 %)", "bad"];
-      $("#bfPill").innerHTML = `<span class="pill ${c2}">${t2}</span>`;
-      $("#avg15").textContent = `${fmt(w, 1)} cm${kg != null ? " · " + fmt(kg, 1) + " kg" : ""} (${win.length} mesures)`;
-      $("#masses").textContent = kg != null ? `${fmt(kg * bf / 100, 1)} kg / ${fmt(kg * (1 - bf / 100), 1)} kg` : "–";
-      renderSingle();
-      if (kg != null && !$("#ftpKg").value) $("#ftpKg").value = kg.toFixed(1);
-    }
-    function renderSingle() {
-      const wi = num($("#waist").value), ni = num($("#neck").value) ?? lastNeckVal();
-      $("#single").textContent = wi && wi > ni ? `${fmt(wi / H(), 2)} · ${fmt(navy(wi, ni, H()), 1)} %` : "–"
-    }
-    ["#waist", "#neck"].forEach(i => $(i).addEventListener("input", renderSingle));
+  <!-- ============ PERFORMANCE ============ -->
+  <section id="tab-perf" class="tab" hidden>
+    <form class="card" id="fFtp">
+      <h2>FTP <small>test tous les 2–3 mois</small></h2>
+      <svg class="spark" id="spFtp" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="tbl"><table><thead><tr><th>Test</th><th>FTP</th><th>Poids</th><th>W/kg</th></tr></thead><tbody id="ftpTable"></tbody></table></div>
+      <div class="grid2">
+        <label>Nouveau test (W)<input id="ftp" type="number" inputmode="numeric" min="50" max="600"></label>
+        <label>Poids moyen 15 j (kg)<input id="ftpKg" type="text" inputmode="decimal" autocomplete="off" step="0.1"></label>
+      </div>
+      <div class="kv"><span>Soit</span><b id="wkg">–</b></div>
+      <button class="btn ghost save" type="submit">Enregistrer le test</button>
+    </form>
 
-    function renderBp() {
-      const camp = campaign(); $("#bpProg").textContent = camp.rows.length ? `${Math.min(camp.rows.length, 6)}/6` : "";
-      $("#bpTable").innerHTML = camp.rows.length ? camp.rows.map(r => {
-        const s = avg([2, 5, 8].map(i => num(r[i])).filter(x => x != null)), d = avg([3, 6, 9].map(i => num(r[i])).filter(x => x != null)), p = avg([4, 7, 10].map(i => num(r[i])).filter(x => x != null));
-        return `<tr><td>${dstr(r[0])}</td><td>${esc(r[1])}</td><td class="num">${fmt(s)}/${fmt(d)}</td><td class="num">${fmt(p)}</td></tr>`
-      }).join("") : `<tr><td colspan="4" class="empty">Aucune mesure pour l'instant. La première prise lance la campagne.</td></tr>`;
-      const all = camp.rows.flatMap(r => [[2, 3], [5, 6], [8, 9]].map(([a, b]) => [num(r[a]), num(r[b])])).filter(x => x[0] != null && x[1] != null);
-      if (all.length) {
-        const ms = avg(all.map(x => x[0])), md = avg(all.map(x => x[1])); $("#bpMean").textContent = `${fmt(ms)}/${fmt(md)} mmHg`;
-        const [t, c] = ms >= 135 || md >= 85 ? ["≥ 135/85 à domicile : hypertension probable (ESC 2024), avis médical", "bad"] : ms < 120 && md < 70 ? ["Optimale (< 120/70, ESC 2024)", "good"] : ["Normale, au-dessus de la cible optimale 120/70", "warn"];
-        $("#bpPill").innerHTML = `<span class="pill ${c}">${t}</span>` + (camp.rows.length < 6 ? ` <span class="muted">provisoire</span>` : "")
-      }
-      else { $("#bpMean").textContent = "–"; $("#bpPill").innerHTML = "" }
-    }
-    $("#bpMoment").value = now.getHours() < 14 ? "matin" : "soir";
-    $("#bpInputs").innerHTML = [1, 2, 3].map(n => `<label>Mesure ${n}<input id="bps${n}" type="number" inputmode="numeric" placeholder="sys" aria-label="Systolique ${n}"><input id="bpd${n}" type="number" inputmode="numeric" placeholder="dia" aria-label="Diastolique ${n}"><input id="bpp${n}" type="number" inputmode="numeric" placeholder="pouls" aria-label="Pouls ${n}"></label>`).join("");
+    <div class="card">
+      <h2>Charge par le ressenti <small>RPE × durée, 8 semaines</small></h2>
+      <svg class="bars" id="barsRpe" viewBox="0 0 300 150" preserveAspectRatio="none" role="img" aria-label="Charge hebdomadaire par le ressenti"></svg>
+      <div class="kv"><span>Semaine en cours / moyenne des 4 précédentes</span><b id="rpeRatio">–</b></div>
+      <div class="tbl"><table><thead><tr><th>Date</th><th>Durée</th><th>RPE</th><th>Charge</th></tr></thead><tbody id="rpeTable"></tbody></table></div>
+    </div>
 
-    const BIO = [["ApoB", "g/L", "selon le risque global (ESC/EAS)"], ["LDL", "g/L", "selon le risque global (ESC/EAS)"], ["HbA1c", "%", "< 5,7 % normal ; 5,7–6,4 % prédiabète (ADA)"], ["Ferritine", "µg/L", "selon le laboratoire"], ["Lp(a)", "mg/dL", "< 50 mg/dL (EAS 2022), une fois dans la vie"], ["Créatinine", "mg/L", "créatine arrêtée avant la prise de sang"]];
-    $("#bioName").innerHTML = BIO.map(b => `<option>${b[0]}</option>`).join(""); $("#bioDate").value = TODAY;
-    function renderBio() { $("#bioTable").innerHTML = BIO.map(([n, u]) => { const r = [...D.b].reverse().find(x => x[1] === n); return `<tr><td>${n}</td><td class="num">${r ? esc(r[2]) + " " + esc(r[3] || u) : "–"}</td><td>${r ? dstr(r[0]) : "à faire"}</td></tr>` }).join("") }
+    <div class="card" id="gCard">
+      <h2>Charge et intensité <small id="gDate">Garmin</small></h2>
+      <div class="status" id="gStatus"><span id="gStatusText">Lecture des données Garmin…</span></div>
+      <div id="gBody" hidden>
+        <div class="kv"><span>Charge aiguë / chronique</span><b id="gLoad">–</b></div>
+        <div class="kv"><span>Rapport (signal au-dessus de 1,3)</span><b id="gAcwr">–</b></div>
+        <div>
+          <div class="kv"><span>Répartition sur 4 semaines</span><b id="gBal">–</b></div>
+          <svg id="gBars" viewBox="0 0 300 96" role="img" aria-label="Charge sur 4 semaines par catégorie, avec ta cible" style="width:100%;height:auto;display:block;margin-top:6px"></svg>
+          <p class="muted" style="margin:2px 0 0">Barre : charge Garmin des 4 dernières semaines. Cadre pointillé : ta cible (onglet Réglages). Trait pointillé : minimum seulement. Trait rouge : plafond seulement.</p>
+        </div>
+        <div class="kv"><span>Minutes d'intensité OMS, 7 j</span><b id="gOms">–</b></div>
+        <div class="kv"><span>FTP estimé par Garmin</span><b id="gFtp">–</b></div>
+        <div class="kv"><span>Statut Garmin (contexte)</span><b id="gStat">–</b></div>
+        <p class="muted" style="margin:0">Calculé chaque matin par le Raspberry à partir de Garmin. Charges basées sur la FC : la musculation y est sous-estimée, d'où le RPE × durée ci-dessus. Le FTP de Garmin est une estimation ; ton test fait foi.</p>
+      </div>
+    </div>
+  </section>
 
-    function spark(svg, vals, band, markIdx) {
-      const W = 300, Hh = 70, p = 6; if (vals.length < 2) { svg.innerHTML = `<text x="150" y="40" text-anchor="middle" font-size="12" fill="var(--muted)" font-family="IBM Plex Sans,sans-serif">Pas encore assez de données</text>`; return }
-      let lo = Math.min(...vals), hi = Math.max(...vals); if (band) { lo = Math.min(lo, band[0]); hi = Math.max(hi, band[1]) } const pad = (hi - lo) * .15 || 1; lo -= pad; hi += pad;
-      const x = i => p + i * (W - 2 * p) / (vals.length - 1), y = v => Hh - p - (v - lo) / (hi - lo) * (Hh - 2 * p); const pts = vals.map((v, i) => `${x(i)},${y(v)}`).join(" ");
-      svg.innerHTML = (band ? `<rect x="0" y="${y(band[1])}" width="${W}" height="${y(band[0]) - y(band[1])}" fill="var(--good-soft)"/>` : "") +
-        `<polygon points="${p},${Hh - p} ${pts} ${x(vals.length - 1)},${Hh - p}" fill="var(--accent-soft)"/>` +
-        `<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>` +
-        `<circle cx="${x(vals.length - 1)}" cy="${y(vals.at(-1))}" r="4" fill="var(--accent)"/>` +
-        (markIdx != null && markIdx >= 0 ? `<line x1="${x(markIdx)}" x2="${x(markIdx)}" y1="0" y2="${Hh}" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>` : "")
-    }
-    function renderTrends() {
-      const q = D.q.slice(-14);
-      spark($("#spMental"), q.map(r => num(r[1])).filter(x => x != null)); spark($("#spFatigue"), q.map(r => num(r[2])).filter(x => x != null));
-      const l7 = D.q.slice(-7); const am = avg(l7.map(r => num(r[1])).filter(x => x != null)), af = avg(l7.map(r => num(r[2])).filter(x => x != null));
-      $("#avMental").textContent = am != null ? fmt(am, 1) + "/5" : "–"; $("#avFatigue").textContent = af != null ? fmt(af, 1) + "/5" : "–";
-      const mk = D.m.filter(r => num(r[1]) != null); spark($("#spKg"), mk.map(r => num(r[1])), null, mk.findIndex(r => r[0] >= CREA()));
-      const kw = win15().map(r => num(r[1])).filter(x => x != null); $("#avKg").textContent = kw.length ? `${fmt(avg(kw), 1)} kg (${kw.length} pesées)` : "–";
-      const bfRows = D.m.filter(r => num(r[2]) != null).map(r => ({ r, bf: navy(num(r[2]), num(r[3]) ?? NECK(), H()) }));
-      spark($("#spBf"), bfRows.map(x => x.bf), [11, 21]);
-      if (bfRows.length > 1) { const a = bfRows[0], b = bfRows.at(-1); const ka = num(a.r[1]), kb = num(b.r[1]); $("#avBf").textContent = `${fmt(a.bf, 1)} % → ${fmt(b.bf, 1)} %` + (ka && kb ? ` (−${fmt(ka * a.bf / 100 - kb * b.bf / 100, 1)} kg de gras)` : "") }
-      $("#compTable").innerHTML = bfRows.length ? [...bfRows].reverse().map(({ r, bf }) => `<tr><td>${dstr(r[0])}</td><td class="num">${fmt(num(r[1]), 1)}</td><td class="num">${fmt(num(r[2]), 1)}</td><td class="num">${fmt(num(r[2]) / H(), 2)}</td><td class="num">${fmt(bf, 1)} %</td></tr>`).join("") : `<tr><td colspan="5" class="empty">Aucune mesure.</td></tr>`;
-    }
-    function renderPerf() {
-      const f = D.f.filter(r => num(r[1]) && num(r[2]));
-      spark($("#spFtp"), f.map(r => num(r[1]) / num(r[2])));
-      $("#ftpTable").innerHTML = f.length ? [...f].reverse().map(r => `<tr><td>${dstr(r[0])}</td><td class="num">${fmt(num(r[1]))} W</td><td class="num">${fmt(num(r[2]), 1)}</td><td class="num">${fmt(num(r[1]) / num(r[2]), 2)}</td></tr>`).join("") : `<tr><td colspan="4" class="empty">Aucun test enregistré. Ton prochain test FTP apparaîtra ici.</td></tr>`;
-      renderWkg();
-      const monday = s => { const x = new Date(s + "T12:00:00"); x.setDate(x.getDate() - ((x.getDay() + 6) % 7)); return iso(x) };
-      const wk = {}; D.s.forEach(r => { const l = (num(r[3]) || 0) * (num(r[4]) || 0); if (l > 0) { const k = monday(r[0]); wk[k] = (wk[k] || 0) + l } });
-      const thisMon = monday(TODAY); const keys = [...Array(8)].map((_, i) => { const x = new Date(thisMon + "T12:00:00"); x.setDate(x.getDate() - 7 * (7 - i)); return iso(x) });
-      const vals = keys.map(k => wk[k] || 0); const W = 300, Hh = 150, bw = W / 8, mx = Math.max(...vals, 1) * 1.18;
-      $("#barsRpe").innerHTML = vals.some(v => v > 0) ? vals.map((v, i) => { const hh = v / mx * (Hh - 18); return `<rect x="${i * bw + 5}" y="${Hh - hh}" width="${bw - 10}" height="${hh}" fill="var(--warn)"/><text x="${i * bw + bw / 2}" y="${Hh - hh - 4}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${v ? Math.round(v) : ""}</text>` }).join("") : `<text x="150" y="80" text-anchor="middle" font-size="12" fill="var(--muted)" font-family="IBM Plex Sans,sans-serif">Le bilan du soir alimentera ce graphique</text>`;
-      const prev = vals.slice(3, 7).filter(v => v > 0);
-      if (prev.length >= 2 && vals[7]) { const rr = vals[7] / avg(prev); $("#rpeRatio").innerHTML = `${fmt(rr, 2)} <span class="pill ${rr > 1.3 ? "warn" : "good"}">${rr > 1.3 ? "hausse rapide" : "stable"}</span>` } else $("#rpeRatio").textContent = "–";
-      const rs = D.s.filter(r => num(r[3]) > 0).slice(-6).reverse();
-      $("#rpeTable").innerHTML = rs.length ? rs.map(r => `<tr><td>${dstr(r[0])}</td><td class="num">${num(r[4]) ? fmt(num(r[4])) + " min" : "–"}</td><td class="num">${fmt(num(r[3]))}</td><td class="num">${num(r[4]) ? fmt(num(r[3]) * num(r[4])) : "–"}</td></tr>`).join("") : `<tr><td colspan="4" class="empty">Aucune séance notée.</td></tr>`;
-    }
-    function renderWkg() { const w = num($("#ftp").value), k = num($("#ftpKg").value); $("#wkg").textContent = w && k ? fmt(w / k, 2) + " W/kg" : "–" }
-    ["#ftp", "#ftpKg"].forEach(i => $(i).addEventListener("input", renderWkg));
+  <!-- ============ TENDANCES ============ -->
+  <section id="tab-tendances" class="tab" hidden>
+    <div class="card"><h2>Charge mentale <small>14 derniers check-ins</small></h2><svg class="spark" id="spMental" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"></svg><div class="kv"><span>Moyenne 7 derniers</span><b id="avMental">–</b></div></div>
+    <div class="card"><h2>Fatigue <small>14 derniers check-ins</small></h2><svg class="spark" id="spFatigue" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"></svg><div class="kv"><span>Moyenne 7 derniers</span><b id="avFatigue">–</b></div></div>
+    <div class="card"><h2>Poids <small>pesée tous les 5 jours</small></h2><svg class="spark" id="spKg" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"></svg><div class="kv"><span>Moyenne 15 j</span><b id="avKg">–</b></div><p class="muted">Pointillés : début de la créatine (1 à 2 kg d'eau dans le muscle). Pour la graisse, c'est le tour de taille qui fait foi.</p></div>
+    <div class="card"><h2>Masse grasse (Navy) <small>toutes les mesures</small></h2><svg class="spark" id="spBf" viewBox="0 0 300 70" preserveAspectRatio="none" aria-hidden="true"></svg><div class="kv"><span>Évolution</span><b id="avBf">–</b></div></div>
+    <div class="card"><h2>Composition <small>mesures</small></h2><div class="tbl"><table><thead><tr><th>Date</th><th>Poids</th><th>Taille</th><th>WHtR</th><th>MG</th></tr></thead><tbody id="compTable"></tbody></table></div></div>
+    <div class="card"><h2>Tes données</h2><p class="muted">Toutes tes saisies sont dans ta feuille Google « Coach – Carnet », un onglet par type de mesure. Tu peux y corriger une saisie directement.</p><a class="btn ghost" style="display:grid;place-items:center;text-decoration:none" href="https://docs.google.com/spreadsheets/d/1rwXH-2Fop758Bk-6VTDATiySnkO9D7eyVEHn7yuZCt8/edit" target="_blank" rel="noopener">Ouvrir la feuille Google</a></div>
+  </section>
+</div>
 
-    /* ---------- données Garmin (fichier coach_metrics.json déposé dans le Drive par le Raspberry) ---------- */
-    const GSERVER = "Google Drive";
-    function gStatus(text, cls = "", btn) {
-      const el = $("#gStatus"); el.hidden = false; el.className = "status " + cls; $("#gStatusText").textContent = text; el.querySelector("button")?.remove();
-      if (btn) { const b = document.createElement("button"); b.type = "button"; b.textContent = btn[0]; b.onclick = btn[1]; el.appendChild(b) }
-    }
-    async function askDrive() { try { await perms?.request(["mcp:" + GSERVER]) } catch (_) { } loadGarmin() }
-    async function loadGarmin() {
-      if (!mcp) { gStatus("Ouvre le carnet dans Claude pour voir tes données Garmin.", "warn"); return }
-      gStatus("Lecture des données Garmin…");
-      try {
-        const s = await mcp.callTool(GSERVER, "search_files", { query: "title = 'coach_metrics.json'", excludeContentSnippets: true }, { cache: false });
-        const files = ((s.payload && s.payload.files) || []).slice().sort((a, b) => String(b.modifiedTime).localeCompare(String(a.modifiedTime)));
-        if (!files.length) { gStatus("Pas encore de données : elles arriveront avec la prochaine synchro du Raspberry (7 h 15).", "warn", ["Actualiser", loadGarmin]); return }
-        const d = await mcp.callTool(GSERVER, "download_file_content", { fileId: files[0].id }, { cache: false });
-        const b64 = d.payload && d.payload.content; if (!b64) throw { code: "tool_error" };
-        const bin = atob(b64); const G = JSON.parse(new TextDecoder().decode(Uint8Array.from(bin, c => c.charCodeAt(0))));
-        renderGarmin(G);
-      } catch (e) {
-        const code = e && e.code || "upstream_error";
-        const MSG = {
-          server_not_connected: "Ajoute le connecteur Google Drive dans claude.ai : Réglages → Connecteurs.", needs_reauth: "Reconnecte Google Drive dans claude.ai : Réglages → Connecteurs.",
-          not_in_manifest: "Le carnet attend ton autorisation pour lire Google Drive.", approval_required: "Le carnet attend ton autorisation pour lire Google Drive.",
-          server_unavailable: "Google Drive ne répond pas pour l'instant."
-        };
-        const btn = (code === "not_in_manifest" || code === "approval_required") ? ["Autoriser", askDrive] : ["Réessayer", loadGarmin];
-        gStatus(MSG[code] || "Lecture impossible des données Garmin (" + code + ").", code === "server_not_connected" || code === "needs_reauth" ? "bad" : "warn", btn)
-      }
-    }
-    function gBars(b) {
-      const svg = $("#gBars"); if (!b) { svg.innerHTML = ""; return }
-      const rows = [["Aérobie léger", b.aer_low, "var(--accent)"], ["Aérobie intense", b.aer_high, "var(--warn)"], ["Anaérobie", b.anaer, "var(--bad)"]];
-      const mx = Math.max(1, ...rows.flatMap(([, x]) => [x.value || 0, x.max || 0])) * 1.08, X0 = 104, W = 300 - X0 - 34, sc = v => X0 + W * (v || 0) / mx;
-      svg.innerHTML = rows.map(([l, x, c], i) => {
-        const y = 6 + i * 30;
-        const band = x.min != null && x.max != null ? `<rect x="${sc(x.min)}" y="${y - 2}" width="${Math.max(2, sc(x.max) - sc(x.min))}" height="20" fill="none" stroke="var(--muted)" stroke-dasharray="3 3" rx="3"/>` : "";
-        return `<text x="0" y="${y + 12}" font-size="11" fill="var(--ink)" font-family="IBM Plex Sans,sans-serif">${l}</text>
-      <rect x="${X0}" y="${y + 2}" width="${Math.max(0, sc(x.value) - X0)}" height="12" rx="2" fill="${c}"/>${band}
-      <text x="${Math.min(296, sc(Math.max(x.value || 0, x.max || 0)) + 4)}" y="${y + 12}" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${x.value == null ? "–" : Math.round(x.value)}</text>`
-      }).join("")
-    }
-    function renderGarmin(G) {
-      const old = G.date !== TODAY;
-      $("#gDate").textContent = "Garmin · " + (G.date ? dstr(G.date) : "date inconnue");
-      if (old) gStatus("Données du " + (G.date ? dstr(G.date) : "?") + " : la synchro de ce matin n'est pas encore passée ou a échoué.", "warn", ["Actualiser", loadGarmin]); else $("#gStatus").hidden = true;
-      $("#gBody").hidden = false;
-      const L = G.load, B = G.balance;
-      $("#gLoad").textContent = L ? `${fmt(L.acute)} / ${fmt(L.chronic)}` : "–";
-      $("#gAcwr").innerHTML = L && L.acwr != null ? `${fmt(L.acwr, 2)} <span class="pill ${L.acwr > 1.3 ? "warn" : L.acwr < 0.8 ? "info" : "good"}">${L.acwr > 1.3 ? "signal" : L.acwr < 0.8 ? "sous-charge" : esc(L.status)}</span>` : "–";
-      $("#gBal").textContent = B ? B.feedback : "–"; gBars(B);
-      const iw = G.intense_week || []; $("#gInt").innerHTML = `${iw.length} <span class="pill ${iw.length > 2 ? "warn" : "good"}">max 2</span>`;
-      const f4 = G.last_4x4; $("#g44").innerHTML = f4 ? `${dstr(f4.day)} · ${fmt(f4.z5_min)} min Z5 <span class="pill ${f4.days_ago > 14 ? "warn" : "good"}">il y a ${fmt(f4.days_ago)} j</span>` : `aucun en 90 j <span class="pill warn">à vérifier</span>`;
-      const su = G.sunday; $("#gSun").innerHTML = su && su.minutes ? `${dstr(su.day)} · Z1–2 ${fmt(su.z12)} % <span class="pill ${su.ok ? "good" : "warn"}">${su.ok ? "Zone 2 respectée" : "trop intense"}</span>` : su ? "zones indisponibles" : "–";
-      const o = G.oms; $("#gOms").innerHTML = o ? `${fmt(o.total)} <span class="pill ${o.total < 150 ? "warn" : "good"}">repère 150–300</span>` : "–";
-      const fp = G.ftp; $("#gFtp").textContent = fp ? `${fmt(fp.watts)} W · ${fmt(fp.wkg, 2)} W/kg` : "–";
-      $("#gStat").textContent = L ? L.training_status : "–";
-    }
+<nav aria-label="Onglets"><div>
+  <button data-tab="jour" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="4"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>Aujourd'hui</button>
+  <button data-tab="mesures"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="8" width="20" height="8" rx="1.5"/><path d="M6 8v3M10 8v4M14 8v3M18 8v4"/></svg>Mesures</button>
+  <button data-tab="perf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="14" r="8"/><path d="M12 14l4-4M9 2h6"/></svg>Perf</button>
+  <button data-tab="tendances"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 17l6-6 4 4 8-8"/><path d="M15 7h6v6"/></svg>Tendances</button>
+</div></nav>
+<div class="toast" id="toast" role="status"></div>
 
-    function renderAll() { renderCoach(); renderSession(); renderRead(); renderTodo(); renderBody(); renderBp(); renderBio(); renderTrends(); renderPerf() }
+<script>
+const $=s=>document.querySelector(s), $$=s=>[...document.querySelectorAll(s)];
+const SHEET="1rwXH-2Fop758Bk-6VTDATiySnkO9D7eyVEHn7yuZCt8", SERVER="Google Sheets";
+const TABS={q:"Quotidien",s:"Soir",m:"Mesures",t:"Tension",f:"FTP",b:"Biologie",r:"'Réglages'",c:"Coach"};
+const COLS={q:"A:J",s:"A:D",m:"A:G",t:"A:N",f:"A:D",b:"A:E",r:"A:B",c:"A:G"};
+const D={q:[],s:[],m:[],t:[],f:[],b:[],r:{},c:[]};
+let mcp=null, perms=null, busy=false;
 
-    /* ---------- formulaires ---------- */
-    $("#fMatin").addEventListener("submit", async e => {
-      e.preventDefault();
-      if (S.mental == null || S.fatigue == null || S.sleep == null) { toast("Renseigne charge mentale, fatigue et sommeil."); return }
-      if (S.zones.length && S.pain == null) { toast("Indique l'intensité de la douleur."); return }
-      const ok = await append("q", ["'" + TODAY, S.mental, S.fatigue, S.sleep, S.zones.length ? S.zones.join(", ") : "aucune", S.zones.length ? S.pain : "", S.creatine || ""], "Check-in enregistré dans ta feuille");
-      if (ok) { resetScales($("#fMatin")); S.zones = []; $("#painRow").hidden = true; renderZones(); renderRead(); window.scrollTo({ top: 0, behavior: "smooth" }) }
-    });
-    $("#fSoir").addEventListener("submit", async e => {
-      e.preventDefault();
-      if (S.meals == null) { toast("Indique le nombre de repas conformes."); return }
-      const dur = num($("#dur").value);
-      const ok = await append("s", ["'" + TODAY, +S.meals[0], S.snack || "", S.rpe ?? "", dur ?? ""], "Bilan du soir enregistré");
-      if (ok) { resetScales($("#fSoir")); $("#dur").value = "" }
-    });
-    $("#fTaille").addEventListener("submit", async e => {
-      e.preventDefault();
-      const w = num($("#waist").value), n = num($("#neck").value), k = num($("#kgIn").value);
-      if (w == null && n == null && k == null) { toast("Saisis au moins une mesure."); return }
-      if (w != null && (w < 50 || w > 150)) { toast("Tour de taille : vérifie la valeur (50–150 cm)."); return }
-      if (n != null && (n < 25 || n > 60)) { toast("Tour de cou : vérifie la valeur (25–60 cm)."); return }
-      const same = (a, b) => (a == null && b == null) || (a != null && b != null && Math.abs(a - b) < 0.05);
-      if (D.m.some(r => r[0] === TODAY && same(num(r[1]), k) && same(num(r[2]), w) && same(num(r[3]), n))) { toast("Cette mesure est déjà enregistrée aujourd'hui."); return }
-      const ok = await append("m", ["'" + TODAY, k ?? "", w ?? "", n ?? "", "", "", "Carnet"], "Mesure enregistrée");
-      if (ok) { $("#waist").value = ""; $("#neck").value = ""; $("#kgIn").value = ""; renderSingle() }
-    });
-    $("#fTension").addEventListener("submit", async e => {
-      e.preventDefault();
-      const v = [1, 2, 3].flatMap(n => [num($("#bps" + n).value), num($("#bpd" + n).value), num($("#bpp" + n).value)]);
-      if (v[0] == null || v[1] == null) { toast("Saisis au moins la première mesure (sys et dia)."); return }
-      if (v.some((x, i) => x != null && (i % 3 === 0 ? (x < 70 || x > 250) : i % 3 === 1 ? (x < 40 || x > 150) : (x < 30 || x > 200)))) { toast("Une valeur semble hors limites : vérifie la saisie."); return }
-      const ok = await append("t", ["'" + TODAY, $("#bpMoment").value, ...v.map(x => x ?? "")], "Mesures de tension enregistrées");
-      if (ok) $$("#bpInputs input").forEach(i => i.value = "")
-    });
-    $("#fBio").addEventListener("submit", async e => {
-      e.preventDefault();
-      const name = $("#bioName").value, b = BIO.find(x => x[0] === name), val = num($("#bioVal").value), d = $("#bioDate").value || TODAY;
-      if (val == null) { toast("Saisis la valeur du résultat."); return }
-      const ok = await append("b", ["'" + d, name, val, b[1], b[2]], "Résultat enregistré"); if (ok) $("#bioVal").value = ""
-    });
-    $("#fFtp").addEventListener("submit", async e => {
-      e.preventDefault();
-      const w = num($("#ftp").value), k = num($("#ftpKg").value);
-      if (!w || !k) { toast("Saisis la FTP et le poids."); return }
-      const ok = await append("f", ["'" + TODAY, w, k], "Test FTP enregistré"); if (ok) $("#ftp").value = ""
-    });
+/* ---------- utilitaires ---------- */
+const num=v=>{if(v==null)return null;const s=String(v).replace(/[\s  ]/g,"").replace(",",".");if(s==="")return null;const n=parseFloat(s);return isNaN(n)?null:n};
+const fmt=(n,d=0)=>n==null||isNaN(n)?"–":n.toLocaleString("fr-FR",{minimumFractionDigits:d,maximumFractionDigits:d});
+const iso=d=>new Date(d.getTime()-d.getTimezoneOffset()*6e4).toISOString().slice(0,10);
+const now=new Date(), TODAY=iso(now);
+const days=(a,b)=>Math.round((Date.parse(a)-Date.parse(b))/864e5);
+const dstr=s=>{const d=new Date(s+"T12:00:00");return isNaN(d)?s:d.toLocaleDateString("fr-FR",{day:"numeric",month:"short"})};
+const avg=a=>a.length?a.reduce((x,y)=>x+y,0)/a.length:null;
+const esc=s=>String(s??"").replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function toast(t){const e=$("#toast");e.textContent=t;e.classList.add("on");clearTimeout(e._t);e._t=setTimeout(()=>e.classList.remove("on"),2600)}
+const H=()=>num(D.r["Taille (cm)"])||176, NECK=()=>num(D.r["Tour de cou de référence (cm)"])||40;
+const CREA=()=>D.r["Début de la créatine"]||"2026-07-23";
+const navy=(w,n,h)=>495/(1.0324-0.19077*Math.log10(w-n)+0.15456*Math.log10(h))-450;
 
-    /* ---------- onglets ---------- */
-    $$("nav button").forEach(b => b.onclick = () => {
-      $$("nav button").forEach(x => x.removeAttribute("aria-current")); b.setAttribute("aria-current", "page");
-      $$(".tab").forEach(t => t.hidden = t.id !== "tab-" + b.dataset.tab); window.scrollTo({ top: 0 })
-    });
+/* ---------- FTP de référence : dernier test, sinon estimation Garmin ---------- */
+let GFTP=null;
+function ftpRef(){const t=D.f.filter(r=>num(r[1])).at(-1);return t?{w:num(t[1]),src:"test du "+dstr(t[0])}:GFTP?{w:GFTP,src:"FTP estimé par Garmin"}:null}
+function htText(){const pct=String(D.r["Home trainer Zone 2 (% FTP)"]||"55–62");const [a,b]=pct.split(/[–-]/).map(num);const f=ftpRef();
+  return f&&a&&b?`${pct} % du FTP, soit ${Math.round(f.w*a/100)}–${Math.round(f.w*b/100)} W, ${f.src}`:`${pct} % du FTP`}
 
-    /* ---------- démarrage ---------- */
+/* ---------- semainier v2.2 ---------- */
+function isoWeek(d){const t=new Date(Date.UTC(d.getFullYear(),d.getMonth(),d.getDate()));const day=t.getUTCDay()||7;t.setUTCDate(t.getUTCDate()+4-day);const y=new Date(Date.UTC(t.getUTCFullYear(),0,1));return Math.ceil(((t-y)/864e5+1)/7)}
+const SESSION_A=["<b>Bloc 1, 4 tours</b>","<b>1A</b> Développé incliné à 30° aux haltères : 4 × 8–10 (RIR 1–2)","<b>1B</b> Tractions neutres : 4 × 5–8 (RIR 1–2) ; lest à partir de 4 × 8","Pull-apart à l'élastique pendant les récupérations : 4 × 15","<b>Bloc 2, 6 tours en alternant les jambes</b>","<b>2A</b> Bulgarian split squat, une main en appui : 3 × 8–12 / jambe (RIR 1–2)","<b>2B</b> Relevés de genoux suspendu : 6 × 5–8"];
+const SESSION_B=["<b>1A</b> Élévations latérales, poulie basse : 3 × 12–15 (RIR 1–2)","<b>1B</b> B-Stance RDL aux haltères : 3 × 8–12 / jambe (RIR 1–2)","<b>2</b> Leg curl debout, poulie basse : 2 × 10–15 / jambe","<b>3A</b> Lat prayer bilatéral, poulie haute : 3 × 10–12 (RIR 1–2)","<b>3B</b> Pompes lestées : 3 × 8–15","<b>4A</b> Triceps à la corde : 2 × 10–12 (RIR 1)","<b>4B</b> Curl marteau, haltères 8 kg : 2 × 10–12 (RIR 1)","<b>5</b> Rowing aux anneaux : 3 × 8–12"];
+function plan(d){
+  const dow=d.getDay(), winter=[10,11,0,1,2].includes(d.getMonth());
+  const par=String(D.r["4×4 du jeudi : semaines ISO"]||"paires").toLowerCase().startsWith("p")?0:1;
+  const vo2Week=isoWeek(d)%2===par;
+  const tue=new Date(d);tue.setDate(d.getDate()-((dow+5)%7)); /* mardi de la semaine */
+  const fifthTue=tue.getDate()>=29;
+  const v44=["Échauffement 10–15 min","4 × 4 min à 90–95 % FCmax (≈ 106–120 % FTP)","3 min de récupération active entre chaque","Retour au calme 5–10 min ; finir 1–2 h avant le coucher",winter?"Home trainer piloté en watts, ventilateur puissant":"Côte régulière d'au moins 4 min, en soirée avec la lumière du jour"];
+  switch(dow){
+    case 1:return{t:"gym",n:"Home Gym A · ≈ 40 min",d:SESSION_A};
+    case 2:return fifthTue?{t:"vo2",n:"4×4 VO2max (5e mardi, pas de CrossFit)",d:v44}:{t:"wod",n:"CrossFit · 1 h",d:["WOD métabolique","Veto sur les mouvements balistiques d'épaule lourds (kipping, snatch)"]};
+    case 3:return{t:"rest",n:"Repos actif",d:["Marche de 30–60 min, mobilité légère","Objectif 7 000–8 000 pas"]};
+    case 4:return vo2Week&&!fifthTue?{t:"vo2",n:"Piscine facile + 4×4 VO2max",d:["Midi : nage facile de 30 min, en récupération pure","Soir : 4×4 VO2max",...v44]}:{t:"swim",n:"Piscine · 45 min en Zone 2",d:["Zones FC environ 10 bpm plus basses qu'à vélo"]};
+    case 5:return{t:"gym",n:"Home Gym B · ≈ 40 min",d:SESSION_B};
+    case 6:return{t:"rest",n:"Repos / mobilité",d:["Recharge [2–2–2] au dîner si la sortie de demain est maintenue"]};
+    default:return{t:"bike",n:"Vélo route · 2 h en Zone 2",d:["IF ≈ 0,60–0,65, sortie identique chaque semaine","Eau + électrolytes ; glucides seulement au-delà de 2h30 ou par forte chaleur",`Pluie : 40–45 min de home trainer en Zone 2 (${htText()})`,"Fatigue : repos, sans culpabilité"]};
+  }
+}
+
+/* ---------- composants échelle ---------- */
+const S={mental:null,fatigue:null,sleep:null,pain:null,zones:[],ill:null,rpe:null};
+/* Sommeil consolidé : 60 % ressenti + 40 % score Garmin ramené sur 1–5 (catégories Garmin), arrondi à 0,5 ; même calcul que la colonne J de la feuille */
+const gNote=g=>g>=90?1:g>=80?2:g>=70?3:g>=60?4:5;
+const consol=(sl,g)=>sl==null?null:g==null?sl:Math.round((0.6*sl+0.4*gNote(g))*2)/2;
+let GSLEEP=null;
+$$(".scale").forEach(el=>{
+  const k=el.dataset.k, opts=el.dataset.opts?el.dataset.opts.split("|"):null;
+  const min=+(el.dataset.min??1), max=+(el.dataset.max??5);
+  const vals=opts||[...Array(max-min+1)].map((_,i)=>String(i+min));
+  vals.forEach((v,i)=>{const b=document.createElement("button");b.type="button";b.className="seg";b.textContent=v;b.id=`${k}-${i}`;b.setAttribute("aria-pressed","false");
+    b.onclick=()=>{el.querySelectorAll(".seg").forEach(x=>x.setAttribute("aria-pressed","false"));b.setAttribute("aria-pressed","true");S[k]=opts?v:+v;renderRead()};el.appendChild(b)});
+});
+function resetScales(form){form.querySelectorAll(".seg").forEach(x=>x.setAttribute("aria-pressed","false"));form.querySelectorAll(".scale").forEach(el=>S[el.dataset.k]=null)}
+const ZONES=["Aucune","Épaule","Coude","Dos","Hanche","Genou","Ischios","Mollet / Achille","Autre"];
+function renderZones(){$("#zones").innerHTML="";ZONES.forEach(z=>{const c=document.createElement("button");c.type="button";c.className="chip";c.textContent=z;
+  c.setAttribute("aria-pressed",String(z==="Aucune"?S.zones.length===0:S.zones.includes(z)));
+  c.onclick=()=>{S.zones=z==="Aucune"?[]:(S.zones.includes(z)?S.zones.filter(x=>x!==z):[...S.zones,z]);if(!S.zones.length)S.pain=null;$("#painRow").hidden=!S.zones.length;renderZones();renderRead()};$("#zones").appendChild(c)})}
+renderZones();
+
+/* ---------- connexion Google Sheets ---------- */
+const ERR={
+  server_not_connected:["Ajoute le connecteur Google Sheets dans claude.ai : Réglages → Connecteurs.","bad"],
+  needs_reauth:["Reconnecte Google Sheets dans claude.ai : Réglages → Connecteurs.","bad"],
+  selection_required:["Choisis le compte Google Sheets à utiliser dans la fenêtre de Claude, puis actualise.","warn"],
+  not_in_manifest:["Le carnet n'a pas l'autorisation d'utiliser Google Sheets.","warn"],
+  approval_required:["Le carnet attend ton autorisation pour utiliser Google Sheets.","warn"],
+  blocked_by_policy:["Google Sheets est bloqué par une règle de ton compte.","bad"],
+  server_unavailable:["Google Sheets ne répond pas pour l'instant.","warn"],
+  tool_error:["Google Sheets a refusé la requête. La feuille « Coach – Carnet » a peut-être été renommée ou supprimée.","bad"],
+  not_granted:["Ce carnet n'a pas accès aux connecteurs dans cette vue.","bad"],
+  capability_disabled:["Ce carnet n'a pas accès aux connecteurs dans cette vue.","bad"]
+};
+function setStatus(text,cls="",btn){const el=$("#status");el.className="status "+cls;$("#statusText").textContent=text;el.querySelector("button")?.remove();
+  if(btn){const b=document.createElement("button");b.type="button";b.textContent=btn[0];b.onclick=btn[1];el.appendChild(b)}}
+function showError(e){const code=e?.code||"upstream_error";const [msg,cls]=ERR[code]||["Lecture impossible de ta feuille Google ("+code+").","warn"];
+  const btn=(code==="not_in_manifest"||code==="approval_required")?["Autoriser",askPermission]:["Réessayer",()=>loadAll()];
+  setStatus(msg,cls,btn)}
+async function askPermission(){try{await perms?.request(["mcp:"+SERVER])}catch(_){}loadAll()}
+async function readTab(k){const res=await mcp.callTool(SERVER,"get_values",{spreadsheetId:SHEET,range:TABS[k]+"!"+COLS[k]},{cache:false});
+  const p=res.payload;const vals=(p&&p.values)||(p&&p.result&&p.result.values)||[];return vals.slice(1)}
+/* Plusieurs saisies le même jour : seule la dernière compte (la feuille garde tout l'historique).
+   Mesures : fusion champ par champ, la valeur la plus récente l'emporte (taille le matin + poids le soir = une seule mesure).
+   Tension : une par date et par moment (matin / soir). Biologie : une par date et par analyse. */
+function dedupe(k,rows){
+  const key=k==="t"?r=>r[0]+"|"+r[1]:k==="b"?r=>r[0]+"|"+r[1]:r=>r[0];
+  const m=new Map();
+  rows.forEach(r=>{const id=key(r),prev=m.get(id);
+    if(k==="m"&&prev){const merged=prev.slice();r.forEach((v,j)=>{if(v!==""&&v!=null)merged[j]=v});m.delete(id);m.set(id,merged)}
+    else{m.delete(id);m.set(id,r)}});
+  return [...m.values()].sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0)}
+async function loadAll(){
+  if(!mcp){setStatus("Ouvre le carnet dans Claude, connecté à ton compte, pour lire et enregistrer tes données.","warn");return}
+  setStatus("Lecture de ta feuille Google…");
+  try{
+    const keys=Object.keys(TABS);const out=await Promise.all(keys.map(k=>k==="c"?readTab(k).catch(()=>[]):readTab(k)));
+    keys.forEach((k,i)=>{if(k==="r"){D.r={};out[i].forEach(r=>{if(r[0])D.r[r[0]]=r[1]})}else D[k]=dedupe(k,out[i].filter(r=>r&&r[0]).sort((a,b)=>a[0]<b[0]?-1:a[0]>b[0]?1:0))});
+    setStatus("Feuille « Coach – Carnet » · lue à "+new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"}),"",["Actualiser",()=>loadAll()]);
     renderAll();
-    (async () => {
-      try { perms = await window.claude?.use?.("permissions") } catch (_) { perms = null }
-      try { mcp = await window.claude?.use?.("mcp") } catch (_) { mcp = null }
-      loadAll(); loadGarmin();
-    })();
-  </script>
+  }catch(e){showError(e)}
+}
+async function append(k,row,okMsg){
+  if(!mcp){toast("Ouvre le carnet dans Claude pour enregistrer.");return false}
+  if(busy)return false;busy=true;$$(".save").forEach(b=>b.disabled=true);
+  try{
+    await mcp.callTool(SERVER,"append_values",{spreadsheetId:SHEET,range:TABS[k]+"!A1",values:[row]},{cache:false});
+    toast(okMsg);await loadAll();return true;
+  }catch(e){
+    const code=e?.code;
+    if(code==="server_unavailable"||code==="upstream_error"||code==="cancelled")toast("Enregistrement non confirmé : vérifie la feuille avant de réessayer.");
+    else if(code==="not_in_manifest"||code==="approval_required"){toast("Autorise d'abord le carnet à utiliser Google Sheets.");showError(e)}
+    else toast((ERR[code]||["Enregistrement impossible ("+code+")."])[0]);
+    return false;
+  }finally{busy=false;$$(".save").forEach(b=>b.disabled=false)}
+}
 
-</body>
+/* ---------- rendus ---------- */
+function renderSession(){const p=plan(now);$("#today").textContent=now.toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long"});
+  $("#sessionTitle").textContent=p.n;$("#sessionDetail").innerHTML=p.d.map(x=>`<li>${x}</li>`).join("")}
 
-</html>
+function todayCheck(){return [...D.q].reverse().find(r=>r[0]===TODAY)}
+function coachToday(){return [...D.c].reverse().find(r=>r[0]===TODAY)}
+function renderCoach(){
+  const card=$("#coachCard"),row=coachToday(),last=D.c.at(-1);
+  if(row){
+    const v=String(row[1]||"").trim(),k=v.toLowerCase();
+    const cls=k.startsWith("maint")?"good":k.startsWith("all")?"warn":k.startsWith("rempl")?"info":k.startsWith("repos")?"warn":"";
+    card.className="card coach "+cls;$("#coachLabel").textContent="Recommandation du coach · ce matin";
+    $("#coachVerdict").textContent=v||"Point du jour";
+    const F=[["Séance du jour",row[2]],["Pourquoi",row[3]],["Nutrition",row[4]],["À faire",row[5]],["Fiabilité",row[6]]];
+    $("#coachBody").innerHTML=F.filter(f=>f[1]).map(([l,t])=>`<div class="cfield"><div class="label">${l}</div><p>${esc(t)}</p></div>`).join("");
+    $("#sessionMore").open=false;
+  }else{
+    card.className="card coach";$("#coachLabel").textContent="Recommandation du coach";
+    $("#coachVerdict").textContent=mcp?"Point du jour pas encore rendu":"Recommandation indisponible";
+    $("#coachBody").innerHTML=`<p class="muted">Le coach publie son point vers 7 h 30, après l'instantané Garmin. En attendant, suis le programme prévu ci-dessous.${last?` Dernier point : ${dstr(last[0])} (${esc(last[1])}).`:""}</p>`;
+    $("#sessionMore").open=true;
+  }
+}
+function renderRead(){
+  const row=todayCheck();
+  const m=S.mental??num(row?.[1]), f=S.fatigue??num(row?.[2]), sl=S.sleep??num(row?.[3]);
+  const zones=S.zones.length?S.zones:(row?.[4]?String(row[4]).split(", ").filter(z=>z&&z!=="aucune"):[]);
+  const pain=S.pain??num(row?.[5]);
+  const ill=S.ill??String(row?.[6]||""), sick=ill==="général", cold=ill==="au-dessus du cou";
+  const gIn=num($("#gSleep").value), g=gIn??num(row?.[7]), cs=S.sleep!=null?consol(S.sleep,gIn):(num(row?.[9])??consol(sl,g));
+  $("#consol").textContent=cs==null?"–":fmt(cs,1).replace(/,0$/,"")+"/5";
+  const p=plan(now), c=$("#readCard"), sig=[], adv=[];let v,cls="";
+  if(m>=4)sig.push(`charge mentale ${m}/5`);if(f>=4)sig.push(`fatigue ${f}/5`);if(cs!=null&&cs>=4)sig.push(`sommeil consolidé ${fmt(cs,1).replace(/,0$/,"")}/5`);
+  const hurt=zones.length&&pain>=4;if(hurt)sig.push(`douleur ${pain}/10`);
+  if(sick)sig.push("symptômes généraux");else if(cold)sig.push("rhume léger");
+  if(sick){v="Repos : symptômes généraux";cls="bad";adv.push("Fièvre ou symptômes sous le cou : pas d'entraînement aujourd'hui. Reprends en douceur une fois les symptômes passés.")}
+  else if(m==null&&f==null){v="Fais ton check-in"}
+  else if(p.t==="rest"){v="Journée de repos";cls="good";if(sig.length>=2)adv.push("Plusieurs signaux de fatigue : couche-toi à heure fixe ce soir.")}
+  else if(cold){v="Séance facile seulement";cls="warn";adv.push("Rhume léger : séance courte et facile en Zone 2, sans intensité.")}
+  else if(!sig.length){v="Séance maintenue";cls="good"}
+  else if(sig.length===1&&!hurt){v="Maintenue, à l'écoute";cls="warn";adv.push("Un signal : garde la séance, mais arrête si le RPE monte plus que d'habitude.")}
+  else{v="Séance allégée";cls="bad";adv.push({gym:"Home gym : 1 série de moins par exercice, RIR 3.",wod:"CrossFit : scaling, charges −20 %, pas de sprint final.",vo2:"Remplacer le 4×4 par 45 min en Zone 2.",bike:"Vélo : Zone 2 raccourcie à 60–90 min.",swim:"Piscine : 30 min faciles."}[p.t])}
+  if(hurt)adv.push(`Éviter les mouvements qui sollicitent : ${zones.join(", ").toLowerCase()}. Au-delà de 5 jours, consulter.`);
+  if(sig.length)adv.unshift("Signaux : "+sig.join(" · "));
+  if(coachToday()&&m!=null&&!sick&&!cold){v=!sig.length?"Check-in : aucun signal":(sig.length===1&&!hurt)?"Check-in : 1 signal, reste à l'écoute":"Check-in : plusieurs signaux, allège";
+    $("#readNote").textContent="Le verdict du coach ci-dessus prime. Si ton check-in signale un point (≥ 4/5, douleur ≥ 4/10), applique en plus l'allègement indiqué ici.";}
+  else $("#readNote").textContent="La lecture complète (VFC, FC repos, sommeil Garmin, météo) est faite par le coach dans Claude.";
+  c.className="card coach "+cls;$("#verdict").textContent=v;$("#advice").innerHTML=adv.map(a=>`<li>${esc(a)}</li>`).join("");
+}
+
+function campaign(){const last=D.t.at(-1);if(!last)return{rows:[],open:false};
+  const rows=D.t.filter(r=>days(last[0],r[0])<=3);return{rows,open:rows.length<6&&days(TODAY,last[0])<=3}}
+function renderTodo(){
+  const items=[];
+  items.push(["Check-in du matin",todayCheck()?["Fait","good"]:["À faire","warn"]]);
+  items.push(["Bilan du soir",D.s.some(r=>r[0]===TODAY)?["Fait","good"]:["Ce soir","info"]]);
+  const lastM=D.m.at(-1);const dM=lastM?days(TODAY,lastM[0]):null;
+  items.push(["Tour de taille + pesée (tous les 5 j)",dM==null?["À faire","warn"]:dM>=5?["À mesurer","warn"]:[`Dans ${5-dM} j`,"info"]]);
+  const lastNeck=[...D.m].reverse().find(r=>num(r[3])!=null);const dN=lastNeck?days(TODAY,lastNeck[0]):null;
+  items.push(["Tour de cou (tous les 2 mois)",dN==null?["Jamais mesuré","warn"]:dN>=60?["À mesurer","warn"]:[`Dans ${60-dN} j`,"info"]]);
+  const camp=campaign();const lastT=D.t.at(-1);
+  items.push(["Tension (règle des 3)",!lastT?["Première campagne à faire","warn"]:camp.open?[`${camp.rows.length}/6 prises`,"warn"]:days(TODAY,lastT[0])>=90?["Nouvelle campagne","warn"]:[`Dans ${90-days(TODAY,lastT[0])} j`,"info"]]);
+  const lastB=D.b.at(-1);items.push(["Bilan biologique",!lastB?["À planifier","warn"]:days(TODAY,lastB[0])>=365?["À faire","warn"]:[`Dans ${Math.ceil((365-days(TODAY,lastB[0]))/30)} mois`,"info"]]);
+  $("#todo").innerHTML=items.map(([t,[p,c]])=>`<div><span>${t}</span><span class="pill ${c}">${p}</span></div>`).join("");
+  $("#todoCount").textContent=items.filter(i=>i[1][1]==="warn").length+" en attente";
+  $("#matinDone").textContent=todayCheck()?"déjà fait aujourd'hui":"≈ 20 s";$("#soirDone").textContent=D.s.some(r=>r[0]===TODAY)?"déjà fait aujourd'hui":"≈ 10 s";
+}
+
+function gauge(id,val,min,max,zones,ticks){const pct=v=>Math.min(100,Math.max(0,(v-min)/(max-min)*100));
+  $(id).innerHTML=(val==null?"":`<div class="gmark"><i style="left:${pct(val)}%"></i></div>`)+`<div class="gauge">${zones.map(([a,b,c])=>`<span style="flex:${(b-a)*100};background:var(--${c})"></span>`).join("")}</div><div class="gticks">${ticks.map(t=>`<span style="left:${pct(t)}%">${t.toLocaleString("fr-FR",{minimumFractionDigits:t<1?2:0})}</span>`).join("")}</div>`}
+const GW=[[.40,.50,"good"],[.50,.60,"warn"],[.60,.65,"bad"]],TW=[.40,.50,.60,.65],GB=[[5,11,"accent"],[11,22,"good"],[22,28,"warn"],[28,35,"bad"]],TB=[5,11,22,28,35];
+function win15(){const w=D.m.filter(r=>days(TODAY,r[0])<=15);return w.length?w:D.m.slice(-3)}
+const lastNeckVal=()=>{const r=[...D.m].reverse().find(r=>num(r[3])!=null);return r?num(r[3]):NECK()};
+function prefill(){
+  const lw=[...D.m].reverse().find(r=>num(r[2])!=null),lk=[...D.m].reverse().find(r=>num(r[1])!=null);
+  [["#waist",lw,2],["#kgIn",lk,1]].forEach(([id,r,i])=>{const el=$(id);if(r&&!el.value&&document.activeElement!==el){el.value=String(num(r[i])).replace(".",",");el.dataset.pre="1"}});
+  const parts=[];if(lw)parts.push(`taille ${fmt(num(lw[2]),1)} cm le ${dstr(lw[0])}`);if(lk)parts.push(`poids ${fmt(num(lk[1]),1)} kg le ${dstr(lk[0])}`);
+  $("#prefillHint").textContent=parts.length?"Dernières valeurs : "+parts.join(" · "):"";
+}
+function renderBody(){
+  $("#hCm").textContent=H();$("#neck").placeholder=lastNeckVal();prefill();
+  const win=win15();const w=avg(win.map(r=>num(r[2])).filter(x=>x!=null)), kg=avg(win.map(r=>num(r[1])).filter(x=>x!=null));
+  if(w==null){$("#whtr").textContent="–";$("#bf").textContent="–";gauge("#gWhtr",null,.40,.65,GW,TW);gauge("#gBf",null,5,35,GB,TB);renderSingle();return}
+  const r=w/H(),bf=navy(w,lastNeckVal(),H());
+  $("#whtr").textContent=fmt(r,2);$("#bf").innerHTML=fmt(bf,1)+"<small>%</small>";
+  gauge("#gWhtr",r,.40,.65,GW,TW);gauge("#gBf",bf,5,35,GB,TB);
+  const [t,c]=r<.40?["Sous 0,40 : vérifie la mesure","info"]:r<.50?["Sain (< 0,50)","good"]:r<.60?[`Risque modérément accru (0,50–0,59). Objectif : moins de ${fmt(H()*.5,0)} cm.`,"warn"]:["Risque élevé (≥ 0,60)","bad"];
+  $("#whtrPill").innerHTML=`<span class="pill ${c}">${t}</span>`;
+  const [t2,c2]=bf<11?["Bas (< 11 %)","info"]:bf<22?["Sain (11–21 %)","good"]:bf<28?["Surpoids (22–27 %)","warn"]:["Obésité (≥ 28 %)","bad"];
+  $("#bfPill").innerHTML=`<span class="pill ${c2}">${t2}</span>`;
+  $("#avg15").textContent=`${fmt(w,1)} cm${kg!=null?" · "+fmt(kg,1)+" kg":""} (${win.length} mesures)`;
+  $("#masses").textContent=kg!=null?`${fmt(kg*bf/100,1)} kg / ${fmt(kg*(1-bf/100),1)} kg`:"–";
+  renderSingle();
+  if(kg!=null&&!$("#ftpKg").value)$("#ftpKg").value=kg.toFixed(1).replace(".",",");
+}
+function renderSingle(){const wi=num($("#waist").value),ni=num($("#neck").value)??lastNeckVal();
+  $("#single").textContent=wi&&wi>ni?`${fmt(wi/H(),2)} · ${fmt(navy(wi,ni,H()),1)} %`:"–"}
+["#waist","#neck"].forEach(i=>$(i).addEventListener("input",renderSingle));
+
+function renderBp(){
+  const camp=campaign();$("#bpProg").textContent=camp.rows.length?`${Math.min(camp.rows.length,6)}/6`:"";
+  $("#bpTable").innerHTML=camp.rows.length?camp.rows.map(r=>{const s=avg([2,5,8].map(i=>num(r[i])).filter(x=>x!=null)),d=avg([3,6,9].map(i=>num(r[i])).filter(x=>x!=null)),p=avg([4,7,10].map(i=>num(r[i])).filter(x=>x!=null));
+    return`<tr><td>${dstr(r[0])}</td><td>${esc(r[1])}</td><td class="num">${fmt(s)}/${fmt(d)}</td><td class="num">${fmt(p)}</td></tr>`}).join(""):`<tr><td colspan="4" class="empty">Aucune mesure pour l'instant. La première prise lance la campagne.</td></tr>`;
+  const all=camp.rows.flatMap(r=>[[2,3],[5,6],[8,9]].map(([a,b])=>[num(r[a]),num(r[b])])).filter(x=>x[0]!=null&&x[1]!=null);
+  if(all.length){const ms=avg(all.map(x=>x[0])),md=avg(all.map(x=>x[1]));$("#bpMean").textContent=`${fmt(ms)}/${fmt(md)} mmHg`;
+    const [t,c]=ms>=135||md>=85?["≥ 135/85 à domicile : hypertension probable (ESC 2024), avis médical","bad"]:ms<120&&md<70?["Optimale (< 120/70, ESC 2024)","good"]:["Normale, au-dessus de la cible optimale 120/70","warn"];
+    $("#bpPill").innerHTML=`<span class="pill ${c}">${t}</span>`+(camp.rows.length<6?` <span class="muted">provisoire</span>`:"")}
+  else{$("#bpMean").textContent="–";$("#bpPill").innerHTML=""}
+}
+$("#bpMoment").value=now.getHours()<14?"matin":"soir";
+$("#bpInputs").innerHTML=[1,2,3].map(n=>`<label>Mesure ${n}<input id="bps${n}" type="number" inputmode="numeric" placeholder="sys" aria-label="Systolique ${n}"><input id="bpd${n}" type="number" inputmode="numeric" placeholder="dia" aria-label="Diastolique ${n}"><input id="bpp${n}" type="number" inputmode="numeric" placeholder="pouls" aria-label="Pouls ${n}"></label>`).join("");
+
+const BIO=[["ApoB","g/L","selon le risque global (ESC/EAS)"],["LDL","g/L","selon le risque global (ESC/EAS)"],["HbA1c","%","< 5,7 % normal ; 5,7–6,4 % prédiabète (ADA)"],["Ferritine","µg/L","selon le laboratoire"],["Lp(a)","mg/dL","< 50 mg/dL (EAS 2022), une fois dans la vie"],["Créatinine","mg/L","créatine arrêtée avant la prise de sang"]];
+$("#bioName").innerHTML=BIO.map(b=>`<option>${b[0]}</option>`).join("");$("#bioDate").value=TODAY;
+function renderBio(){$("#bioTable").innerHTML=BIO.map(([n,u])=>{const r=[...D.b].reverse().find(x=>x[1]===n);return`<tr><td>${n}</td><td class="num">${r?esc(r[2])+" "+esc(r[3]||u):"–"}</td><td>${r?dstr(r[0]):"à faire"}</td></tr>`}).join("")}
+
+function spark(svg,vals,band,markIdx){
+  const W=300,Hh=70,p=6;if(vals.length<2){svg.innerHTML=`<text x="150" y="40" text-anchor="middle" font-size="12" fill="var(--muted)" font-family="IBM Plex Sans,sans-serif">Pas encore assez de données</text>`;return}
+  let lo=Math.min(...vals),hi=Math.max(...vals);if(band){lo=Math.min(lo,band[0]);hi=Math.max(hi,band[1])}const pad=(hi-lo)*.15||1;lo-=pad;hi+=pad;
+  const x=i=>p+i*(W-2*p)/(vals.length-1),y=v=>Hh-p-(v-lo)/(hi-lo)*(Hh-2*p);const pts=vals.map((v,i)=>`${x(i)},${y(v)}`).join(" ");
+  svg.innerHTML=(band?`<rect x="0" y="${y(band[1])}" width="${W}" height="${y(band[0])-y(band[1])}" fill="var(--good-soft)"/>`:"")+
+   `<polygon points="${p},${Hh-p} ${pts} ${x(vals.length-1)},${Hh-p}" fill="var(--accent-soft)"/>`+
+   `<polyline points="${pts}" fill="none" stroke="var(--accent)" stroke-width="2" vector-effect="non-scaling-stroke"/>`+
+   `<circle cx="${x(vals.length-1)}" cy="${y(vals.at(-1))}" r="4" fill="var(--accent)"/>`+
+   (markIdx!=null&&markIdx>=0?`<line x1="${x(markIdx)}" x2="${x(markIdx)}" y1="0" y2="${Hh}" stroke="var(--warn)" stroke-width="1.5" stroke-dasharray="4 3" vector-effect="non-scaling-stroke"/>`:"")}
+function renderTrends(){
+  const q=D.q.slice(-14);
+  spark($("#spMental"),q.map(r=>num(r[1])).filter(x=>x!=null));spark($("#spFatigue"),q.map(r=>num(r[2])).filter(x=>x!=null));
+  const l7=D.q.slice(-7);const am=avg(l7.map(r=>num(r[1])).filter(x=>x!=null)),af=avg(l7.map(r=>num(r[2])).filter(x=>x!=null));
+  $("#avMental").textContent=am!=null?fmt(am,1)+"/5":"–";$("#avFatigue").textContent=af!=null?fmt(af,1)+"/5":"–";
+  const mk=D.m.filter(r=>num(r[1])!=null);spark($("#spKg"),mk.map(r=>num(r[1])),null,mk.findIndex(r=>r[0]>=CREA()));
+  const kw=win15().map(r=>num(r[1])).filter(x=>x!=null);$("#avKg").textContent=kw.length?`${fmt(avg(kw),1)} kg (${kw.length} pesées)`:"–";
+  const bfRows=D.m.filter(r=>num(r[2])!=null).map(r=>({r,bf:navy(num(r[2]),num(r[3])??NECK(),H())}));
+  spark($("#spBf"),bfRows.map(x=>x.bf),[11,21]);
+  if(bfRows.length>1){const a=bfRows[0],b=bfRows.at(-1);const ka=num(a.r[1]),kb=num(b.r[1]);$("#avBf").textContent=`${fmt(a.bf,1)} % → ${fmt(b.bf,1)} %`+(ka&&kb?` (−${fmt(ka*a.bf/100-kb*b.bf/100,1)} kg de gras)`:"")}
+  $("#compTable").innerHTML=bfRows.length?[...bfRows].reverse().map(({r,bf})=>`<tr><td>${dstr(r[0])}</td><td class="num">${fmt(num(r[1]),1)}</td><td class="num">${fmt(num(r[2]),1)}</td><td class="num">${fmt(num(r[2])/H(),2)}</td><td class="num">${fmt(bf,1)} %</td></tr>`).join(""):`<tr><td colspan="5" class="empty">Aucune mesure.</td></tr>`;
+}
+function renderPerf(){
+  const f=D.f.filter(r=>num(r[1])&&num(r[2]));
+  spark($("#spFtp"),f.map(r=>num(r[1])/num(r[2])));
+  $("#ftpTable").innerHTML=f.length?[...f].reverse().map(r=>`<tr><td>${dstr(r[0])}</td><td class="num">${fmt(num(r[1]))} W</td><td class="num">${fmt(num(r[2]),1)}</td><td class="num">${fmt(num(r[1])/num(r[2]),2)}</td></tr>`).join(""):`<tr><td colspan="4" class="empty">Aucun test enregistré. Ton prochain test FTP apparaîtra ici.</td></tr>`;
+  renderWkg();
+  const monday=s=>{const x=new Date(s+"T12:00:00");x.setDate(x.getDate()-((x.getDay()+6)%7));return iso(x)};
+  const wk={};D.s.forEach(r=>{const l=(num(r[1])||0)*(num(r[2])||0);if(l>0){const k=monday(r[0]);wk[k]=(wk[k]||0)+l}});
+  const thisMon=monday(TODAY);const keys=[...Array(8)].map((_,i)=>{const x=new Date(thisMon+"T12:00:00");x.setDate(x.getDate()-7*(7-i));return iso(x)});
+  const vals=keys.map(k=>wk[k]||0);const W=300,Hh=150,bw=W/8,mx=Math.max(...vals,1)*1.18;
+  $("#barsRpe").innerHTML=vals.some(v=>v>0)?vals.map((v,i)=>{const hh=v/mx*(Hh-18);return`<rect x="${i*bw+5}" y="${Hh-hh}" width="${bw-10}" height="${hh}" fill="var(--warn)"/><text x="${i*bw+bw/2}" y="${Hh-hh-4}" text-anchor="middle" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${v?Math.round(v):""}</text>`}).join(""):`<text x="150" y="80" text-anchor="middle" font-size="12" fill="var(--muted)" font-family="IBM Plex Sans,sans-serif">Le bilan du soir alimentera ce graphique</text>`;
+  const prev=vals.slice(3,7).filter(v=>v>0);
+  if(prev.length>=2&&vals[7]){const rr=vals[7]/avg(prev);$("#rpeRatio").innerHTML=`${fmt(rr,2)} <span class="pill ${rr>1.3?"warn":"good"}">${rr>1.3?"hausse rapide":"stable"}</span>`}else $("#rpeRatio").textContent="–";
+  const rs=D.s.filter(r=>num(r[1])>0).slice(-6).reverse();
+  $("#rpeTable").innerHTML=rs.length?rs.map(r=>`<tr><td>${dstr(r[0])}</td><td class="num">${num(r[2])?fmt(num(r[2]))+" min":"–"}</td><td class="num">${fmt(num(r[1]))}</td><td class="num">${num(r[2])?fmt(num(r[1])*num(r[2])):"–"}</td></tr>`).join(""):`<tr><td colspan="4" class="empty">Aucune séance notée.</td></tr>`;
+}
+function renderWkg(){const w=num($("#ftp").value),k=num($("#ftpKg").value);$("#wkg").textContent=w&&k?fmt(w/k,2)+" W/kg":"–"}
+["#ftp","#ftpKg"].forEach(i=>$(i).addEventListener("input",renderWkg));
+
+/* ---------- données Garmin (fichier coach_metrics.json déposé dans le Drive par le Raspberry) ---------- */
+const GSERVER="Google Drive";
+function gStatus(text,cls="",btn){const el=$("#gStatus");el.hidden=false;el.className="status "+cls;$("#gStatusText").textContent=text;el.querySelector("button")?.remove();
+  if(btn){const b=document.createElement("button");b.type="button";b.textContent=btn[0];b.onclick=btn[1];el.appendChild(b)}}
+async function askDrive(){try{await perms?.request(["mcp:"+GSERVER])}catch(_){}loadGarmin()}
+async function loadGarmin(){
+  if(!mcp){gStatus("Ouvre le carnet dans Claude pour voir tes données Garmin.","warn");return}
+  gStatus("Lecture des données Garmin…");
+  try{
+    const s=await mcp.callTool(GSERVER,"search_files",{query:"title = 'coach_metrics.json'",excludeContentSnippets:true},{cache:false});
+    const files=((s.payload&&s.payload.files)||[]).slice().sort((a,b)=>String(b.modifiedTime).localeCompare(String(a.modifiedTime)));
+    if(!files.length){gStatus("Pas encore de données : elles arriveront avec la prochaine synchro du Raspberry (7 h 15).","warn",["Actualiser",loadGarmin]);return}
+    const d=await mcp.callTool(GSERVER,"download_file_content",{fileId:files[0].id},{cache:false});
+    const b64=d.payload&&d.payload.content;if(!b64)throw{code:"tool_error"};
+    const bin=atob(b64);const G=JSON.parse(new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0))));
+    renderGarmin(G);
+  }catch(e){const code=e&&e.code||"upstream_error";
+    const MSG={server_not_connected:"Ajoute le connecteur Google Drive dans claude.ai : Réglages → Connecteurs.",needs_reauth:"Reconnecte Google Drive dans claude.ai : Réglages → Connecteurs.",
+      not_in_manifest:"Le carnet attend ton autorisation pour lire Google Drive.",approval_required:"Le carnet attend ton autorisation pour lire Google Drive.",
+      server_unavailable:"Google Drive ne répond pas pour l'instant."};
+    const btn=(code==="not_in_manifest"||code==="approval_required")?["Autoriser",askDrive]:["Réessayer",loadGarmin];
+    gStatus(MSG[code]||"Lecture impossible des données Garmin ("+code+").",code==="server_not_connected"||code==="needs_reauth"?"bad":"warn",btn)}
+}
+/* Score de sommeil de la nuit : daily.csv du Raspberry, ligne du jour (date de réveil, convention Garmin) */
+async function loadSleep(){
+  const hint=$("#gSleepHint");
+  if(!mcp){hint.textContent="Saisis le score de ta montre, ou laisse vide.";return}
+  try{
+    const s=await mcp.callTool(GSERVER,"search_files",{query:"title = 'daily.csv'",excludeContentSnippets:true},{cache:false});
+    const f=((s.payload&&s.payload.files)||[]).slice().sort((a,b)=>String(b.modifiedTime).localeCompare(String(a.modifiedTime)))[0];
+    if(!f)throw{code:"none"};
+    const d=await mcp.callTool(GSERVER,"download_file_content",{fileId:f.id},{cache:false});
+    const bin=atob(d.payload&&d.payload.content||"");const txt=new TextDecoder().decode(Uint8Array.from(bin,c=>c.charCodeAt(0)));
+    const lines=txt.trim().split(/\r?\n/);const h=lines[0].split(",");const iD=h.indexOf("day"),iS=h.indexOf("sleep_score");
+    const r=lines.map(l=>l.split(",")).find(c=>c[iD]===TODAY);const sc=r?num(r[iS]):null;
+    GSLEEP=sc;const el=$("#gSleep");
+    if(sc!=null){if(!el.value)el.value=Math.round(sc);hint.textContent="Prérempli avec le score Garmin de cette nuit : corrige-le si la montre s'est trompée."}
+    else hint.textContent="Pas encore synchronisé par le Raspberry : saisis le score de ta montre, ou laisse vide (le ressenti seul compte alors).";
+    renderRead();
+  }catch(_){hint.textContent="Score Garmin introuvable : saisis celui de ta montre, ou laisse vide."}
+}
+$("#gSleep").addEventListener("input",renderRead);
+/* ---------- cibles personnelles (onglet Réglages) : le 4×4 se pilote sur l'aérobie intense ---------- */
+const range=s=>{const [a,b]=String(s||"").split(/[–-]/).map(num);return[a??null,b??null]};
+function myBalance(B){if(!B)return null;
+  const [hMin,hMax]=range(D.r["Cible aérobie intense 4 sem (charge Garmin)"]||"150–300");
+  const aCap=num(D.r["Plafond anaérobie 4 sem (charge Garmin)"])??250;
+  const b={aer_low:{value:B.aer_low.value,min:B.aer_low.min,max:null},aer_high:{value:B.aer_high.value,min:hMin,max:hMax},anaer:{value:B.anaer.value,min:null,max:aCap}};
+  const lo=b.aer_low.value,hi=b.aer_high.value,an=b.anaer.value;
+  if(hMax!=null&&hi>hMax)return{b,txt:"Au-dessus de ta cible : 4×4 remplacé par 45 min en Zone 2",cls:"warn"};
+  if(an!=null&&an>aCap)return{b,txt:"Trop d'anaérobie",cls:"warn"};
+  if(lo!=null&&b.aer_low.min!=null&&lo<b.aer_low.min)return{b,txt:"Volume Zone 2 insuffisant",cls:"warn"};
+  if(hMin!=null&&hi<hMin)return{b,txt:"Aérobie intense sous ta cible : 4×4 recommandé au prochain créneau",cls:"info"};
+  return{b,txt:"Conforme à ton plan",cls:"good"}}
+function gBars(b){const svg=$("#gBars");if(!b){svg.innerHTML="";return}
+  const rows=[["Aérobie léger",b.aer_low,"var(--accent)"],["Aérobie intense",b.aer_high,"var(--warn)"],["Anaérobie",b.anaer,"var(--bad)"]];
+  const mx=Math.max(1,...rows.flatMap(([,x])=>[x.value||0,x.max||0]))*1.08,X0=104,W=300-X0-34,sc=v=>X0+W*(v||0)/mx;
+  svg.innerHTML=rows.map(([l,x,c],i)=>{const y=6+i*30;
+    const band=x.min!=null&&x.max!=null?`<rect x="${sc(x.min)}" y="${y-2}" width="${Math.max(2,sc(x.max)-sc(x.min))}" height="20" fill="none" stroke="var(--muted)" stroke-dasharray="3 3" rx="3"/>`
+      :x.min!=null?`<line x1="${sc(x.min)}" x2="${sc(x.min)}" y1="${y-2}" y2="${y+18}" stroke="var(--muted)" stroke-dasharray="3 3"/>`
+      :x.max!=null?`<line x1="${sc(x.max)}" x2="${sc(x.max)}" y1="${y-2}" y2="${y+18}" stroke="var(--bad)" stroke-width="2"/>`:"";
+    return`<text x="0" y="${y+12}" font-size="11" fill="var(--ink)" font-family="IBM Plex Sans,sans-serif">${l}</text>
+      <rect x="${X0}" y="${y+2}" width="${Math.max(0,sc(x.value)-X0)}" height="12" rx="2" fill="${c}"/>${band}
+      <text x="${Math.min(296,sc(Math.max(x.value||0,x.max||0))+4)}" y="${y+12}" font-size="10" fill="var(--muted)" font-family="IBM Plex Mono,monospace">${x.value==null?"–":Math.round(x.value)}</text>`}).join("")}
+function renderGarmin(G){
+  GFTP=G.ftp&&num(G.ftp.watts)||null;renderSession();
+  const old=G.date!==TODAY;
+  $("#gDate").textContent="Garmin · "+(G.date?dstr(G.date):"date inconnue");
+  if(old)gStatus("Données du "+(G.date?dstr(G.date):"?")+" : la synchro de ce matin n'est pas encore passée ou a échoué.","warn",["Actualiser",loadGarmin]);else $("#gStatus").hidden=true;
+  $("#gBody").hidden=false;
+  const L=G.load,B=G.balance;
+  $("#gLoad").textContent=L?`${fmt(L.acute)} / ${fmt(L.chronic)}`:"–";
+  $("#gAcwr").innerHTML=L&&L.acwr!=null?`${fmt(L.acwr,2)} <span class="pill ${L.acwr>1.3?"warn":L.acwr<0.8?"info":"good"}">${L.acwr>1.3?"signal":L.acwr<0.8?"sous-charge":esc(L.status)}</span>`:"–";
+  const MB=myBalance(B);$("#gBal").innerHTML=MB?`<span class="pill ${MB.cls}">${MB.txt}</span>`:"–";gBars(MB&&MB.b);
+  const o=G.oms;$("#gOms").innerHTML=o?`${fmt(o.total)} <span class="pill ${o.total<150?"warn":"good"}">repère 150–300</span>`:"–";
+  const fp=G.ftp;$("#gFtp").textContent=fp?`${fmt(fp.watts)} W · ${fmt(fp.wkg,2)} W/kg`:"–";
+  $("#gStat").textContent=L?L.training_status:"–";
+}
+
+function renderAll(){renderCoach();renderSession();renderRead();renderTodo();renderBody();renderBp();renderBio();renderTrends();renderPerf()}
+
+/* ---------- formulaires ---------- */
+$("#fMatin").addEventListener("submit",async e=>{e.preventDefault();
+  if(S.mental==null||S.fatigue==null||S.sleep==null){toast("Renseigne charge mentale, fatigue et sommeil.");return}
+  if(S.zones.length&&S.pain==null){toast("Indique l'intensité de la douleur.");return}
+  const gs=num($("#gSleep").value);if(gs!=null&&(gs<0||gs>100)){toast("Score Garmin : entre 0 et 100.");return}
+  const ok=await append("q",["'"+TODAY,S.mental,S.fatigue,S.sleep,S.zones.length?S.zones.join(", "):"aucune",S.zones.length?S.pain:"",S.ill||"aucun",gs??"",$("#remark").value.trim()],"Check-in enregistré dans ta feuille");
+  if(ok){resetScales($("#fMatin"));$("#remark").value="";S.zones=[];$("#painRow").hidden=true;renderZones();renderRead();window.scrollTo({top:0,behavior:"smooth"})}});
+$("#fSoir").addEventListener("submit",async e=>{e.preventDefault();
+  if(S.rpe==null){toast("Indique l'effort perçu (0 s'il n'y a pas eu de séance).");return}
+  const dur=num($("#dur").value);
+  if(S.rpe>0&&dur==null){toast("Indique la durée de la séance.");return}
+  const ok=await append("s",["'"+TODAY,S.rpe,dur??""],"Bilan du soir enregistré");
+  if(ok){resetScales($("#fSoir"));$("#dur").value=""}});
+$("#fTaille").addEventListener("submit",async e=>{e.preventDefault();
+  const w=num($("#waist").value),n=num($("#neck").value),k=num($("#kgIn").value);
+  if(w==null&&n==null&&k==null){toast("Saisis au moins une mesure.");return}
+  if(w!=null&&(w<50||w>150)){toast("Tour de taille : vérifie la valeur (50–150 cm).");return}
+  if(n!=null&&(n<25||n>60)){toast("Tour de cou : vérifie la valeur (25–60 cm).");return}
+  const same=(a,b)=>(a==null&&b==null)||(a!=null&&b!=null&&Math.abs(a-b)<0.05);
+  if(D.m.some(r=>r[0]===TODAY&&same(num(r[1]),k)&&same(num(r[2]),w)&&same(num(r[3]),n))){toast("Cette mesure est déjà enregistrée aujourd'hui.");return}
+  const ok=await append("m",["'"+TODAY,k??"",w??"",n??"","","","Carnet"],"Mesure enregistrée");
+  if(ok){$("#waist").value="";$("#neck").value="";$("#kgIn").value="";renderSingle()}});
+$("#fTension").addEventListener("submit",async e=>{e.preventDefault();
+  const v=[1,2,3].flatMap(n=>[num($("#bps"+n).value),num($("#bpd"+n).value),num($("#bpp"+n).value)]);
+  if(v[0]==null||v[1]==null){toast("Saisis au moins la première mesure (sys et dia).");return}
+  if(v.some((x,i)=>x!=null&&(i%3===0?(x<70||x>250):i%3===1?(x<40||x>150):(x<30||x>200)))){toast("Une valeur semble hors limites : vérifie la saisie.");return}
+  const ok=await append("t",["'"+TODAY,$("#bpMoment").value,...v.map(x=>x??"")],"Mesures de tension enregistrées");
+  if(ok)$$("#bpInputs input").forEach(i=>i.value="")});
+$("#fBio").addEventListener("submit",async e=>{e.preventDefault();
+  const name=$("#bioName").value,b=BIO.find(x=>x[0]===name),val=num($("#bioVal").value),d=$("#bioDate").value||TODAY;
+  if(val==null){toast("Saisis la valeur du résultat.");return}
+  const ok=await append("b",["'"+d,name,val,b[1],b[2]],"Résultat enregistré");if(ok)$("#bioVal").value=""});
+$("#fFtp").addEventListener("submit",async e=>{e.preventDefault();
+  const w=num($("#ftp").value),k=num($("#ftpKg").value);
+  if(!w||!k){toast("Saisis la FTP et le poids.");return}
+  const ok=await append("f",["'"+TODAY,w,k],"Test FTP enregistré");if(ok)$("#ftp").value=""});
+
+/* ---------- onglets ---------- */
+$$("nav button").forEach(b=>b.onclick=()=>{$$("nav button").forEach(x=>x.removeAttribute("aria-current"));b.setAttribute("aria-current","page");
+  $$(".tab").forEach(t=>t.hidden=t.id!=="tab-"+b.dataset.tab);window.scrollTo({top:0})});
+
+/* ---------- démarrage ---------- */
+renderAll();
+(async()=>{
+  try{perms=await window.claude?.use?.("permissions")}catch(_){perms=null}
+  try{mcp=await window.claude?.use?.("mcp")}catch(_){mcp=null}
+  loadAll();loadGarmin();loadSleep();
+})();
+</script>
+
+</body></html>
