@@ -1,21 +1,26 @@
 # Coach sportif hybride – mémo du système
 
-Mis à jour le 18/10/2026. Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
+Mis à jour le 20/10/2026 (synthèse v2.3, GitHub). Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
 
 ## Vue d'ensemble
 
 ### 1. Synthèse Intégrale (le programme)
-- Version qui fait foi : texte dans le projet Claude « Coach Sportif » (`claude/Synthèse Intégrale v2 - …txt`, contenu v2.2).
-- PDF v2.2 et script générateur `build.py` (reportlab + polices DejaVu) : `D:\Sauvegarde\Documents\utilisateur\lolo_python\Projet_Raspberry\Sport\sources\`.
+- Version qui fait foi : texte dans le projet Claude « Coach Sportif » (`claude/Synthèse Intégrale v2.3 - …txt`). C'est la seule synthèse du projet. Historique : v2.2 (16/10) ; v2.3 (20/10) : 4×4 piloté par la charge « aérobie intense » sur 4 semaines, plus de décompte des séances intenses, rapport de charge aiguë / chronique Garmin, calories Garmin exclues.
+- PDF v2.3 et script générateur `build.py` (reportlab + polices DejaVu) : `D:\Sauvegarde\Documents\utilisateur\lolo_python\Projet_Raspberry\Sport\sources\`.
 - Pour une nouvelle version : donner `build.py` à Claude dans une conversation du projet, il le modifie et régénère le PDF et le texte.
 
 ### 2. Carnet du coach (saisies manuelles)
 - Page de saisie (téléphone), épinglée dans Claude : https://claude.ai/artifact/WAux9mehWeAnC7DU3vJ65e
-  Onglets : Aujourd'hui (séance du jour, check-in matin, bilan soir RPE × durée), Mesures, Perf, Tendances.
-  L'onglet Perf affiche aussi « Charge et intensité » (Garmin), lu dans `coach_metrics.json` du Drive « Coach - Garmin export » via le connecteur Google Drive.
+  Onglets : Aujourd'hui (recommandation du coach du matin, programme prévu, check-in matin, bilan soir RPE × durée), Mesures (tour de taille et poids préremplis avec les dernières valeurs), Perf, Tendances.
+  L'onglet Perf affiche aussi « Charge et intensité » (Garmin), lu dans `coach_metrics.json` du Drive « Coach - Garmin export » via le connecteur Google Drive : charge aiguë / chronique, répartition sur 4 semaines comparée aux cibles de l'onglet Réglages (avec la recommandation 4×4 qui en découle), minutes OMS, FTP estimé. Le nombre de séances intenses a été retiré le 20/10 (faussé par le CrossFit).
 - Données : feuille Google « Coach – Carnet », dans le dossier Drive « Santé et Musculation ».
   ID `1rwXH-2Fop758Bk-6VTDATiySnkO9D7eyVEHn7yuZCt8`.
-  Onglets : Quotidien, Soir, Mesures, Tension, FTP, Biologie, Réglages (taille 176, cou 40, semaines du 4×4, début créatine, âge).
+  Onglets :
+  - Quotidien (A:J) : date, charge mentale, fatigue, sommeil ressenti, zones et intensité de douleur, maladie, score de sommeil Garmin, remarque, sommeil consolidé (calculé).
+  - Soir (A:D) : date, RPE, durée, charge RPE × min (calculée).
+  - Mesures, Tension, FTP, Biologie.
+  - Réglages (valeurs personnelles lues par le coach et le carnet) : taille, tour de cou de référence, semaines ISO du 4×4, début de la créatine, âge, protéines par jour, seuil de poids pour [2–2–2] au déjeuner, Zone 2 au home trainer (% FTP), cible aérobie intense sur 4 semaines, plafond anaérobie sur 4 semaines. Les modifier dans la feuille suffit.
+  - Coach (A:G) : date, verdict, séance du jour, pourquoi, nutrition, à faire, fiabilité — écrit chaque matin par la tâche planifiée.
   La feuille est en paramètres français : formules avec `;` et virgule décimale.
 - Source de la page : `Sport\sources\carnet-du-coach.html` (à donner à Claude pour la modifier).
 
@@ -26,11 +31,18 @@ Mis à jour le 18/10/2026. Ce document est la référence pour reprendre le syst
 
 ### 4. Tâche planifiée « Point coach du matin »
 - Tous les jours à 7 h 24 (heure de Paris), notification sur le téléphone.
-- Lit, sans rien modifier : le skill, la synthèse, `coach_snapshot.md` (Drive « Coach - Garmin export »), le carnet, la météo.
+- Lit : le skill, la synthèse, `coach_snapshot.md` (Drive « Coach - Garmin export »), le carnet (y compris l'onglet Coach), la météo.
+- Écrit une seule chose : une ligne par jour dans l'onglet « Coach » de la feuille (pas de doublon si la ligne du jour existe), que le carnet affiche en haut de l'onglet Aujourd'hui. Rien d'autre n'est modifié.
 - Répond en 10 lignes : Verdict, Séance du jour, Pourquoi, Nutrition, À faire, Fiabilité.
 - La ligne **Fiabilité** signale les sources manquantes ou périmées et les conclusions à moins de 70 % de certitude. Le même problème plusieurs jours de suite = chaîne cassée.
 - Modifier, mettre en pause ou supprimer : dans la liste des tâches planifiées de Claude. Elle ne dépend d'aucune conversation.
 - Faire le check-in du matin avant 7 h 24 pour un point à jour.
+
+### 4 bis. Tâche planifiée « Propreté des données coach »
+- Tous les soirs à 21 h 56, skill « verif-donnees-coach ».
+- Contrôle la feuille « Coach – Carnet » (en-têtes, dates, plages plausibles, doublons) et l'export Garmin du Pi (fraîcheur, trous, doublons d'activités).
+- Corrige seulement le sans-ambiguïté (format de date, nombre écrit avec un point, espaces, doublon strictement identique), après une copie de sauvegarde dans le dossier Drive « Coach - Sauvegardes du carnet ». Ne touche jamais à l'export Garmin.
+- Silencieuse si tout est propre ; sinon un message avec des points numérotés à valider (« 1 oui, 2 non »).
 
 ### 5. Le PC Windows
 - Dossier : `D:\Sauvegarde\Documents\utilisateur\lolo_python\Projet_Raspberry\Sport` (script, `.venv` Windows, `data\coach.db` = sauvegarde du 17/10/2026).
@@ -41,14 +53,20 @@ Mis à jour le 18/10/2026. Ce document est la référence pour reprendre le syst
 - Ne plus lancer `sync` sur le PC : la base de référence est celle du Pi.
 
 ### 6. Règles de travail
-- Toute modification du programme, des documents, du skill ou du carnet est d'abord proposée, puis validée par le propriétaire.
-- On ne touche pas au dossier Drive « Santé et Musculation » (seul rclone écrit, et uniquement dans « Coach - Garmin export »).
+- Toute modification du programme, des documents, du skill, du carnet ou de la tâche planifiée est d'abord proposée, puis validée par le propriétaire.
+- On ne touche pas au dossier Drive « Santé et Musculation », sauf : la ligne quotidienne du coach dans l'onglet « Coach », et les corrections sûres de la tâche du soir (après sauvegarde). rclone n'écrit que dans « Coach - Garmin export ».
 - Une conversation par sujet dans le projet « Coach Sportif » : coaching au quotidien d'un côté, script / Pi de l'autre.
 
 ### Ce qui reste ouvert
-- Séance B dans Garmin : nombre de tours à aligner sur la synthèse (élévations latérales, leg curl, rowing anneaux) ou synthèse à aligner sur Garmin.
+- Séance B dans Garmin (constat du 17/10) : élévations latérales 6 séries (synthèse 3), RDL 5 séries (synthèse 3 / jambe), leg curl 1 série (synthèse 2 / jambe), rowing anneaux 2 séries (synthèse 3) ; le lat prayer était enregistré comme « barbell upright row » ; il sera enregistré comme « tirage à la poulie » (Lat pulldown), le plus proche dans le catalogue Garmin. Reste à trancher le nombre de séries : corriger Garmin ou la synthèse.
+- 4×4 : piloté depuis le 20/10 par la charge « aérobie intense » sur 4 semaines (sous la cible de Réglages → 4×4 recommandé au prochain créneau ; dans la cible → semainier normal ; au-dessus → remplacé par 45 min en Zone 2). Plus de détection des séances 4×4 : les home trainer étaient classés « Tempo » sans zone 5. Premier 4×4 le 18/10 (aérobie intense passée de 0 à 85). La synthèse recommande un avis cardiologique avant le 4×4 régulier.
 - Calories Garmin volontairement non utilisées (erreur de 20 à 40 %) : le poids moyen 15 j sert de bilan énergétique.
 - Idées pour plus tard : efficacité aérobie (EF) et découplage Pa:HR à partir des données seconde par seconde ; suivi de la double progression à partir des séries confirmées.
+
+### 7. Code sur GitHub
+- Dépôt privé `Holeinthesock67/lolo_python`, dossier `Projet_Raspberry/Sport` (script, README, `sources/` : carnet, `build.py`, PDF de la synthèse).
+- Jamais sur GitHub (exclus par `.gitignore`) : `.env`, jeton Garmin, `data/` (base), `export/`, fichiers `.db`.
+- Claude peut lire et mettre à jour le dépôt depuis le projet, même PC éteint. Déploiement actuel : sur le PC `git pull`, puis `scp` des fichiers modifiés vers le Pi. Option prévue : `git pull` directement sur le Pi (clé de déploiement en lecture seule).
 
 ---
 
@@ -64,7 +82,7 @@ Mis à jour le 18/10/2026. Ce document est la référence pour reprendre le syst
 
 Le Pi remplit le dossier Drive **« Coach - Garmin export »** avec `coach_snapshot.md`, `coach_metrics.json`, `integrite.html`, `daily.csv`, `activities.csv` et `weather_daily.csv`.
 
-Données Garmin importées : FC repos, VFC, sommeil, Body Battery, stress, pas, Training Readiness, VO2max, poids, minutes d'intensité OMS, statut d'entraînement (charge aiguë/chronique, rapport, répartition sur 4 semaines et cibles), FTP estimé, activités (durée, FC, puissance, charge, effet d'entraînement aérobie/anaérobie et étiquette, temps en zones cardiaques) et séries de musculation. Calculs dans `training.py` : séances intenses de la semaine, dernier 4×4 probable (étiquette VO2max ou ≥ 8 min en zone 5, vélo ou course), conformité Zone 2 de la sortie longue du week-end (zones 3 à 5 ≤ 10 % du temps) ; le CrossFit compte comme séance intense, la natation suit l'étiquette Garmin. Le coach lit ce dossier, ton carnet (feuille « Coach – Carnet ») et la Synthèse Intégrale.
+Données Garmin importées : FC repos, VFC, sommeil, Body Battery, stress, pas, Training Readiness, VO2max, poids, minutes d'intensité OMS, statut d'entraînement (charge aiguë/chronique, rapport, répartition sur 4 semaines et cibles), FTP estimé, activités (durée, FC, puissance, charge, effet d'entraînement aérobie/anaérobie et étiquette, temps en zones cardiaques) et séries de musculation. Calculs dans `training.py` : minutes OMS, FTP en W/kg. L'intensité se pilote uniquement par la répartition Garmin sur 4 semaines (aérobie intense et anaérobie) : ni détection des 4×4, ni décompte des séances intenses. Le coach lit ce dossier, ton carnet (feuille « Coach – Carnet ») et la Synthèse Intégrale.
 
 ## Le Raspberry Pi
 

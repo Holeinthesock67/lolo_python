@@ -30,16 +30,17 @@ P = lambda t, s=body: S.append(Paragraph(t, s))
 B = lambda t: S.append(Paragraph(t, bul, bulletText="●"))
 BB = lambda t: S.append(Paragraph(t, sub, bulletText="○"))
 
-P("Synthèse Intégrale v2.2 : Performance, Entraînement, Home Gym, Nutrition et Santé (Homme, 45 ans)", h1)
-P("Version 2.2 – octobre 2026 – révisée selon l'état actuel de la littérature scientifique.", meta)
+P("Synthèse Intégrale v2.3 : Performance, Entraînement, Home Gym, Nutrition et Santé (Homme, 45 ans)", h1)
+P("Version 2.3 – 20 octobre 2026 – révisée selon l'état actuel de la littérature scientifique ; pilotage de l'intensité par la charge Garmin sur 4 semaines.", meta)
 P("Ce document rassemble les métriques et principes essentiels pour piloter la performance, la charge "
   "d'entraînement, le home gym, la nutrition empirique et la santé cardiométabolique à 45 ans, en s'appuyant "
   "sur la montre Garmin 265, les pédales de puissance Favero Assioma, une balance, un mètre ruban, un "
   "tensiomètre et une approche probabiliste.")
 
 P("1. Semainier de l'Athlète Hybride", h2)
-P("<b>Toute l'année :</b> 5 séances, ≈ 5h05 par semaine, plus un 4×4 une semaine sur deux. Deux séances intenses au maximum par semaine, "
-  "et un seul 4×4 par semaine.")
+P("<b>Toute l'année :</b> 5 séances, ≈ 5h05 par semaine, plus un 4×4 VO2max environ une semaine sur deux, au rythme fixé par la charge "
+  "« aérobie intense » (voir jeudi soir). Un seul 4×4 par semaine, jamais la veille ni le lendemain du CrossFit. L'intensité se pilote par "
+  "la répartition de la charge Garmin sur 4 semaines, pas par un décompte des séances intenses : le CrossFit, mal mesuré au poignet, le fausse.")
 B("<b>Lundi soir – Home Gym (Séance A) :</b> pectoraux, dos et unique créneau quadriceps de la semaine (Bulgarian split squat). "
   "21 séries en supersets (blocs de 4 et 6 tours), ≈ 40 min. Pas de sauts : le CrossFit du mardi en contient déjà. Détail ci-dessous.")
 B("<b>Mardi soir – CrossFit (ancre haute intensité) :</b> WOD métabolique, 4 séances par mois. "
@@ -50,8 +51,12 @@ B("<b>Mercredi – Repos actif :</b> marche de 30–60 min et mobilité légère
 B("<b>Jeudi midi – Piscine :</b> 45 min en Zone 2 (cardio porté, décharge articulaire). "
   "Zones FC abaissées d'environ 10 bpm par rapport au vélo (la FC est plus basse dans l'eau). "
   "Les semaines de 4×4 : nage courte et facile de 30 min, en récupération pure.")
-B("<b>Jeudi soir, une semaine sur deux – 4×4 VO2max (≈ 40 min) :</b> échauffement 10–15 min, 4 × 4 min à 90–95 % FCmax "
+B("<b>Jeudi soir – 4×4 VO2max (≈ 40 min) :</b> échauffement 10–15 min, 4 × 4 min à 90–95 % FCmax "
   "(≈ 106–120 % FTP), 3 min de récupération active entre chaque, retour au calme 5–10 min. Finir 1–2 h avant le coucher.")
+BB("<b>Quand :</b> selon la charge « aérobie intense » de Garmin sur 4 semaines, comparée à la cible de l'onglet Réglages du carnet. "
+   "Sous la cible → 4×4 au prochain créneau (jeudi soir ou 5e mardi), même une semaine où il n'était pas prévu, si aucun signal n'est levé ; "
+   "dans la cible → une semaine sur deux (semaines ISO de l'onglet Réglages) ; au-dessus → remplacé par 45 min en Zone 2. "
+   "L'indicateur couvre 4 semaines glissantes : il remonte lentement, ce n'est pas une raison d'enchaîner les 4×4.")
 BB("<b>Hiver (novembre–mars) :</b> home trainer, piloté en watts, avec un ventilateur puissant.")
 BB("<b>Été (avril–octobre) :</b> côte régulière d'au moins 4 min en extérieur, en soirée (jour jusqu'à 21h–21h30 de mai à août), "
    "pour éviter la chaleur du home trainer.")
@@ -60,7 +65,7 @@ B("<b>Vendredi soir – Home Gym (Séance B) :</b> épaules (V-taper), dos, pect
 B("<b>Samedi – Repos / Mobilité.</b>")
 B("<b>Dimanche matin – Vélo route (2h00), 100 % Zone 2 :</b> IF ≈ 0,60–0,65. Sortie identique chaque semaine, "
   "donc Efficiency Factor et découplage comparables d'un dimanche à l'autre.")
-BB("<b>Dimanche dégradé :</b> pluie mais envie d'aérobie → 40–45 min de home trainer en Zone 2 (140–160 W) ; "
+BB("<b>Dimanche dégradé :</b> pluie mais envie d'aérobie → 40–45 min de home trainer en Zone 2 (55–62 % du FTP, soit ≈ 140–160 W) ; "
    "envie de plein air mais pas de route → VTT ou footing souple de 35 min en Zone 2 ; fatigue ou démotivation → repos, sans culpabilité "
    "(et pas de recharge glucidique).")
 B("<b>Quotidien :</b> objectif de 7 000–8 000 pas. Repère OMS 2020 : 150–300 min d'activité modérée ou 75–150 min d'activité intense par semaine, "
@@ -108,7 +113,7 @@ B("<b>Efficiency Factor (Watts/FC) et découplage Pa:FC :</b> rapport puissance/
   "sur la partie Zone 2 : cible &lt; 5 %.")
 B("<b>VO2max :</b> estimation Garmin, à lire en tendance et non en valeur absolue. C'est l'un des plus forts prédicteurs de longévité.")
 B("<b>TSS & IF :</b> quantification de la charge cycliste.")
-B("<b>Modèle d'endurance :</b> vélo très majoritairement en Zone 2, avec un 4×4 toutes les deux semaines (modèle polarisé). "
+B("<b>Modèle d'endurance :</b> vélo très majoritairement en Zone 2, avec un 4×4 environ toutes les deux semaines, ajusté selon la charge « aérobie intense » (modèle polarisé). "
   "Avec 2 h de vélo par semaine, le facteur limitant est le volume total plus que la répartition des intensités.")
 B("<b>Course à pied (note pour plus tard) :</b> non pratiquée actuellement. En cas de reprise : 3–4 semaines de "
   "footings faciles avant toute intensité, et aucune sortie dépassant de plus de 10 % la plus longue des 30 derniers jours.")
@@ -126,9 +131,12 @@ B("<b>Concurrence force/endurance :</b> les méta-analyses récentes montrent qu
   "sur des jours différents, force et endurance intense.")
 B("<b>Suivi Home Gym (surcharge progressive & RIR) :</b> consigner les mouvements phares au format "
   "Poids × Séries × Reps @RIR. Viser 1–2 RIR.")
-B("<b>Charge d'entraînement :</b> charge Garmin (basée sur la FC) pour le cardio (vélo, CrossFit, natation). "
-  "Pour la musculation, où la FC reste basse et sous-estime l'effort : charge session-RPE = RPE de la séance × durée en minutes. "
-  "Repère : rapport 7 j / 28 j entre 0,8 et 1,3.")
+B("<b>Charge d'entraînement :</b> pour le cardio, rapport charge aiguë / charge chronique calculé par Garmin (basé sur la FC) : "
+  "repère 0,8–1,3, au-delà de 1,3 c'est un signal, qui ne suffit jamais seul à imposer le repos. Pour la musculation et le CrossFit, "
+  "où la FC au poignet sous-estime l'effort : charge session-RPE = RPE de la séance × durée en minutes (bilan du soir).")
+B("<b>Répartition de la charge sur 4 semaines (Garmin) :</b> aérobie intense comparée à la cible de l'onglet Réglages (elle pilote le 4×4) ; "
+  "anaérobie comparée au plafond de l'onglet Réglages ; aérobie léger : seul le minimum compte. Les cibles par défaut de Garmin, calibrées "
+  "pour un programme d'endurance plus intense, ne sont pas utilisées. Les calories estimées par Garmin ne sont pas utilisées (erreur de 20 à 40 %).")
 
 P("5. Anthropométrie, Santé Métabolique & Nutrition Empirique", h2)
 B("<b>Ratio Tour de Taille / Taille (WHtR), mesure tous les 5 jours, moyenne sur 15 jours, repères NICE 2022 :</b> &lt; 0,50 sain ; 0,50–0,59 risque modérément accru ; "
@@ -183,8 +191,8 @@ rows = [
  ["N2 Activité", "Pas quotidiens", "Garmin (quotidien)", "7 000–8 000 ; OMS : 150–300 min/sem.", "Baisse durable"],
  ["N2 Nutrition", "Portions de main", "Visuel (3 repas)", "[2P-2V-1G] ou [2P-2V-2G]", "Dérive pondérale ou baisse des watts"],
  ["N3 Mécanique & force", "Surcharge home gym", "Carnet + Garmin", "1–2 RIR, 40 min par séance", "Stagnation, douleurs tendineuses, fatigue"],
- ["N3 Charge", "Cardio : Garmin ; muscu : RPE × durée", "Garmin + bilan du soir", "Rapport 7 j / 28 j : 0,8–1,3", "> 1,3 → alléger la semaine"],
- ["N4 Performance", "VO2max (4×4 / 2 sem.)", "Garmin (tendance)", "Progression ou maintien", "Baisse durable"],
+ ["N3 Charge", "Cardio : aiguë / chronique Garmin ; muscu et CrossFit : RPE × durée", "Garmin + bilan du soir", "Rapport 0,8–1,3", "> 1,3 → signal (jamais seul pour imposer le repos)"],
+ ["N4 Performance", "VO2max ; aérobie intense 4 sem.", "Garmin (tendance)", "Aérobie intense dans la cible (Réglages)", "Sous la cible → 4×4 au prochain créneau ; baisse durable du VO2max"],
  ["N4 Performance", "FTP & découplage", "Assioma + Garmin (FTP 2–3 mois)", "Progression, découplage < 5 %", "Baisse inexpliquée des W/kg"],
 ]
 data = [[Paragraph(h, cellb) for h in hdr]] + [[Paragraph(c, cell) for c in r] for r in rows]
@@ -202,9 +210,9 @@ S.append(t)
 
 def footer(c, d):
     c.saveState(); c.setFont("DV", 7.5); c.setFillColor(colors.grey)
-    c.drawString(2*cm, 1.2*cm, "Synthèse Intégrale v2.2 – octobre 2026 – ne remplace pas un avis médical")
+    c.drawString(2*cm, 1.2*cm, "Synthèse Intégrale v2.3 – octobre 2026 – ne remplace pas un avis médical")
     c.drawRightString(A4[0]-2*cm, 1.2*cm, str(d.page)); c.restoreState()
 
-doc = SimpleDocTemplate("Synthese_Integrale_v2-2.pdf", pagesize=A4, leftMargin=1.8*cm, rightMargin=1.8*cm,
-                        topMargin=1.6*cm, bottomMargin=1.8*cm, title="Synthèse Intégrale v2.2")
+doc = SimpleDocTemplate("Synthese_Integrale_v2-3.pdf", pagesize=A4, leftMargin=1.8*cm, rightMargin=1.8*cm,
+                        topMargin=1.6*cm, bottomMargin=1.8*cm, title="Synthèse Intégrale v2.3")
 doc.build(S, onFirstPage=footer, onLaterPages=footer)
