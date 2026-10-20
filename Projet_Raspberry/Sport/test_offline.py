@@ -105,9 +105,7 @@ def main():
         assert m["load"]["acwr"] == 1.1 and m["load"]["training_status"] == "Productif", m["load"]
         assert m["balance"]["aer_high"]["state"] == "sous la cible" and m["balance"]["feedback"] == "Déficit aérobie intense"
         assert m["ftp"]["watts"] == 262 and m["ftp"]["wkg"] == round(262 / 78.5, 2), m["ftp"]
-        assert m["last_4x4"]["day"] == "2026-10-15" and m["last_4x4"]["z5_min"] == 14, m.get("last_4x4")
-        assert [x["day"] for x in m["intense_week"]] == ["2026-10-15"], m["intense_week"]
-        assert m["sunday"]["day"] == "2026-10-11" and m["sunday"]["ok"] is True, m["sunday"]   # 300 s en Z3 / 7200 s
+        assert "last_4x4" not in m and "sunday" not in m   # le 4×4 se pilote sur la charge aérobie intense
         # natation étiquetée « Base » malgré du temps en Z4 : pas intense ; CrossFit ≥ 30 min : intense
         mk = lambda **k: {**dict(type="lap_swimming", duration_s=2700, te_label="AEROBIC_BASE", aerobic_te=3.7,
                                  anaerobic_te=2.3, z4_s=840, z5_s=120), **k}

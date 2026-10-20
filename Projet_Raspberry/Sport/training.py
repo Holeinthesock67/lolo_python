@@ -41,11 +41,6 @@ def is_intense(a):
     return (a["aerobic_te"] or 0) >= 4.0
 
 
-def is_4x4(a):
-    """4×4 probable : support d'endurance et étiquette VO2max, ou au moins 8 min en zone 5."""
-    return is_endurance(a["type"]) and (a["te_label"] == "VO2MAX" or (a["z5_s"] or 0) >= 480)
-
-
 def effect(a):
     if a["te_label"] is None and a["aerobic_te"] is None:
         return "n/d"
@@ -94,31 +89,6 @@ def metrics(con, today=None):
         wt = sum(w15) / len(w15) if w15 else None
         m["ftp"] = dict(day=r["day"], watts=r["ftp_w"], weight=wt, wkg=round(r["ftp_w"] / wt, 2) if wt else None)
 
-    acts = con.execute("SELECT * FROM v_activities WHERE day>=? AND day<=? ORDER BY start_local",
-                       (iso(today - timedelta(days=90)), iso(today))).fetchall()
-    # --- séances intenses de la semaine (lundi -> aujourd'hui) ---
-    monday = today - timedelta(days=today.weekday())
-    m["intense_week"] = [dict(day=a["day"], type=a["type"], effect=effect(a)) for a in acts
-                         if a["day"] >= iso(monday) and is_intense(a)]
-    # --- dernier 4×4 probable ---
-    last4 = [a for a in acts if is_4x4(a)]
-    if last4:
-        a = last4[-1]
-        m["last_4x4"] = dict(day=a["day"], type=a["type"], z5_min=round((a["z5_s"] or 0) / 60),
-                             effect=effect(a), days_ago=(today - date.fromisoformat(a["day"])).days)
-    # --- dernière sortie longue du week-end (samedi ou dimanche, ≥ 90 min, 8 derniers jours) : Zone 2 ? ---
-    rides = [a for a in acts if is_endurance(a["type"]) and (a["duration_s"] or 0) >= 5400
-             and date.fromisoformat(a["day"]).weekday() >= 5 and a["day"] >= iso(today - timedelta(days=8))]
-    if rides:
-        a = rides[-1]
-        z = [a[f"z{i}_s"] or 0 for i in range(1, 6)]
-        tot = sum(z)
-        if tot:
-            low, z3, high = 100 * (z[0] + z[1]) / tot, 100 * z[2] / tot, 100 * (z[3] + z[4]) / tot
-            m["sunday"] = dict(day=a["day"], minutes=round((a["duration_s"] or 0) / 60), z12=round(low), z3=round(z3),
-                               z45=round(high), ok=z3 + high <= 10)
-        else:
-            m["sunday"] = dict(day=a["day"], minutes=None, ok=None)
     # --- minutes d'intensité OMS (7 derniers jours complets) ---
     rows = con.execute("SELECT im_moderate, im_vigorous FROM daily WHERE day>=? AND day<=?",
                        (iso(today - timedelta(days=7)), iso(today - timedelta(days=1)))).fetchall()
@@ -151,21 +121,7 @@ def section(m):
             return f"{lbl} {_n(x['value'])}{tgt}"
         L.append(f"- Répartition 4 semaines : {p('aérobie léger', b['aer_low'])} ; {p('aérobie intense', b['aer_high'])} ; "
                  f"{p('anaérobie', b['anaer'])} → {b['feedback']}")
-    iw = m.get("intense_week", [])
-    L.append(f"- Séances intenses cette semaine (lundi → aujourd'hui) : {len(iw)}"
-             + (" — " + " ; ".join(f"{x['day']} {x['type']} {x['effect']}" for x in iw) if iw else ""))
-    l4 = m.get("last_4x4")
-    L.append(f"- Dernier 4×4 probable : {l4['day']} (il y a {l4['days_ago']} j, {l4['type']}, {l4['z5_min']} min en zone 5, {l4['effect']})"
-             if l4 else "- Dernier 4×4 probable : aucun sur 90 jours (critère : étiquette VO2max ou ≥ 8 min en zone 5, vélo ou course)")
-    sd = m.get("sunday")
-    if sd and sd.get("minutes"):
-        verdict = "conforme 100 % Zone 2" if sd["ok"] else "trop d'intensité pour une sortie Zone 2"
-        L.append(f"- Sortie longue du week-end {sd['day']} : {sd['minutes']} min ; temps en zones 1–2 {sd['z12']} %, zone 3 {sd['z3']} %, "
-                 f"zones 4–5 {sd['z45']} % → {verdict} (tolérance : zones 3–5 ≤ 10 %)")
-    elif sd:
-        L.append(f"- Sortie longue du week-end {sd['day']} : zones cardiaques indisponibles")
-    else:
-        L.append("- Sortie longue du week-end : aucune (≥ 90 min, samedi ou dimanche) sur les 8 derniers jours")
+        L.append("  (le 4×4 se pilote sur l'aérobie intense, comparée à la cible de l'onglet Réglages du carnet)")
     o = m.get("oms")
     if o:
         L.append(f"- Minutes d'intensité OMS (7 j) : {_n(o['total'])} (modérées {_n(o['moderate'])} + 2 × intenses {_n(o['vigorous'])}) ; "
