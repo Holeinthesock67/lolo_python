@@ -9,8 +9,9 @@ Usage :
   podcast.py --file X --emission ia   produit l'épisode d'un script local précis
 
 Émissions, voix et dossiers : Google Sheet « Configuration podcasts » (voir commun.py).
-Voix : edge-tts (service en ligne de Microsoft) par défaut. Si edge-tts échoue, tout
-l'épisode est refait avec Piper en local, et le log le dit.
+Voix : edge-tts (service en ligne de Microsoft) par défaut. Si edge-tts échoue, le passage
+s'arrête et reprend au suivant ; après EDGE_MAX_PASSES passages ratés, tout l'épisode est
+refait avec Piper en local, et une alerte le dit.
 
 Économe en mémoire (Pi 3, 1 Go) : avec Piper, une seule voix chargée à la fois et
 répliques découpées en morceaux courts. Fichiers de travail sur la carte SD. Si le
@@ -18,19 +19,20 @@ programme est interrompu, il reprend là où il s'était arrêté, avec le même
 """
 import argparse
 import gc
-import json
 import re
 import shutil
 import time
 import wave
 from pathlib import Path
 
-from commun import HOME, load_emissions, log, rclone_copy, run, select
+from commun import (HOME, alerte, load_emissions, load_json, log, publier_etat, rclone_copy,
+                    run, save_json, select)
 
 # ---------- réglages ----------
 ENGINE = "edge"        # "edge" (edge-tts) ou "piper" (local)
 EDGE_CHUNK_CHARS = 1500  # edge-tts lit les répliques entières : meilleure intonation
 EDGE_RETRIES = 3
+EDGE_MAX_PASSES = 3    # passages ratés d'edge-tts (un par heure) avant de basculer sur Piper
 VOICE_DIR = HOME / "piper-voices"
 VOICES = {"A": "fr_FR-siwis-medium",   # voix A de secours (Piper)
           "B": "fr_FR-tom-medium"}     # voix B de secours (Piper)
@@ -105,16 +107,21 @@ def chunks(text, limit=CHUNK_CHARS):
             cur = f"{cur} {p}".strip()
     if cur:
         out.append(cur)
-    return out
+    # un morceau sans lettre ni chiffre (« … » seul) ne produit aucun son : edge-tts échoue dessus
+    return [c for c in out if re.search(r"\w", c)]
 
 
 # ---------- synthèse ----------
 
+def piper_models():
+    return {speaker: VOICE_DIR / f"{name}.onnx" for speaker, name in VOICES.items()}
+
+
 def load_voice(speaker):
     from piper import PiperVoice
-    model = VOICE_DIR / f"{VOICES[speaker]}.onnx"
+    model = piper_models()[speaker]
     if not model.exists():
-        raise SystemExit(f"Voix introuvable : {model}")
+        raise RuntimeError(f"voix Piper introuvable : {model}")
     return PiperVoice.load(str(model))
 
 
@@ -160,17 +167,33 @@ def synthesize_edge(items, workdir, voices):
 
 def synthesize_parts(items, workdir, voices):
     """Choisit le moteur. Un épisode commencé avec un moteur est fini avec le même,
-    pour ne jamais mélanger deux jeux de voix."""
+    pour ne jamais mélanger deux jeux de voix.
+
+    Si edge-tts échoue, le passage s'arrête (RuntimeError) en gardant les répliques déjà lues,
+    et le suivant reprend. Piper ne prend le relais qu'après EDGE_MAX_PASSES passages ratés,
+    et seulement si ses voix sont installées."""
     engine_file = workdir / "engine.txt"
     engine = engine_file.read_text().strip() if engine_file.exists() else ENGINE
     if engine == "edge":
         engine_file.write_text("edge")
+        fails_file = workdir / "edge_echecs.txt"
         try:
             log(f"  moteur : edge-tts ({voices['A']} / {voices['B']})")
             synthesize_edge(items, workdir, voices)
             return
         except Exception as exc:
-            log(f"  edge-tts indisponible ({str(exc)[:200]}) : épisode entièrement refait avec Piper")
+            fails = (int(fails_file.read_text()) if fails_file.exists() else 0) + 1
+            reason = str(exc)[:200]
+            missing = [str(m) for m in piper_models().values() if not m.exists()]
+            if fails < EDGE_MAX_PASSES or missing:
+                fails_file.write_text(str(fails))
+                fallback = (f"voix Piper absentes ({', '.join(missing)}), pas de repli possible"
+                            if missing and fails >= EDGE_MAX_PASSES
+                            else f"passage raté {fails}/{EDGE_MAX_PASSES} avant repli sur Piper")
+                raise RuntimeError(f"edge-tts indisponible ({reason}) ; {fallback}. "
+                                   "Nouvel essai au prochain passage")
+            alerte(f"edge-tts indisponible {fails} passages de suite ({reason}) : "
+                   f"{workdir.name} entièrement refait avec Piper (voix moins bonne, plusieurs heures)")
             for f in workdir.iterdir():
                 if f.is_file():
                     f.unlink()
@@ -234,7 +257,8 @@ def assemble(items, workdir, out_mp3, title, artist, album):
                 out.writeframes(w.readframes(w.getnframes()))
             if n < len(parts) - 1:
                 silence(PAUSE_CHUNK)
-        silence(PAUSE_LINE)
+        if out:  # une réplique sans texte lisible n'a aucun morceau
+            silence(PAUSE_LINE)
     if out is None:
         raise RuntimeError("aucune réplique à lire")
     out.close()
@@ -266,13 +290,13 @@ def process(em, args):
             log(f"[{em['id']}] Pas encore de dossier scripts sur le Drive.")
             return
         except RuntimeError as exc:
-            log(f"[{em['id']}] RÉCUPÉRATION DES SCRIPTS ÉCHOUÉE : {exc}. Nouvel essai au prochain passage.")
+            alerte(f"[{em['id']}] récupération des scripts échouée : {exc}. Nouvel essai au prochain passage")
             return
         todo = latest_versions(scripts)
         if args.test:
             todo = dict(list(todo.items())[-1:])
 
-    state = {} if args.test or args.file else json.loads(state_file.read_text()) if state_file.exists() else {}
+    state = {} if args.test or args.file else load_json(state_file, {})
     pending = {w: f for w, f in todo.items() if state.get(w) != f.name}
     if not pending:
         log(f"[{em['id']}] Rien de nouveau.")
@@ -299,8 +323,13 @@ def process(em, args):
             shutil.rmtree(workdir, ignore_errors=True)
         else:
             log(f"[{em['id']}] {path.name} : génération de {mp3.name}")
-            synthesize_parts(items, workdir, voices)
-            assemble(items, workdir, mp3, title, artist, em["nom"])
+            try:
+                synthesize_parts(items, workdir, voices)
+                assemble(items, workdir, mp3, title, artist, em["nom"])
+            except Exception as exc:
+                # le dossier de travail est gardé : le prochain passage reprend là où on en est
+                alerte(f"[{em['id']}] {path.name} : épisode non produit ({str(exc)[:300]})")
+                continue
             shutil.rmtree(workdir)
             made_from.write_text(path.name)
             log(f"  MP3 prêt : {mp3.name}")
@@ -310,10 +339,10 @@ def process(em, args):
             rclone_copy(str(mp3), f"{em['remote']}/episodes")
         except RuntimeError as exc:
             # le MP3 reste sur le Pi ; l'envoi sera retenté au prochain passage (sans resynthèse)
-            log(f"  ENVOI ÉCHOUÉ : {exc}. MP3 conservé : {mp3}")
+            alerte(f"[{em['id']}] envoi de {mp3.name} échoué : {exc}. MP3 conservé, nouvel essai au prochain passage")
             continue
         state[week] = path.name
-        state_file.write_text(json.dumps(state, indent=1))
+        save_json(state_file, state)
         log(f"  envoyé sur le Drive : {em['dossier']}/episodes/{mp3.name}")
 
 
@@ -327,17 +356,28 @@ def main():
         ap.error("--file demande --emission, pour savoir quelles voix utiliser")
 
     try:
+        run_all(args)
+    finally:
+        if not (args.test or args.file):   # les essais à la main ne touchent pas à l'état publié
+            publier_etat("podcast")
+
+
+def run_all(args):
+    try:
         emissions, warnings = load_emissions()
     except RuntimeError as exc:
-        log(f"CONFIGURATION ILLISIBLE : {exc}")
+        alerte(f"configuration illisible : {exc}")
         return
     for w in warnings:
-        log(f"CONFIGURATION : {w}")
+        alerte(f"CONFIGURATION : {w}")
     todo = select(emissions, args.emission)
     if not todo:
         log("Aucune émission active dans le Sheet.")
     for em in todo:
-        process(em, args)
+        try:   # une émission en panne ne bloque pas les suivantes
+            process(em, args)
+        except Exception as exc:
+            alerte(f"[{em['id']}] erreur inattendue : {type(exc).__name__} : {str(exc)[:300]}")
 
 
 if __name__ == "__main__":

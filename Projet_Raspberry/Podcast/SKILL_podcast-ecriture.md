@@ -13,8 +13,12 @@ Tu écris le script d'un ou plusieurs podcasts personnels du propriétaire, en f
 2. Choisis les émissions à traiter :
    - si l'utilisateur ou la tâche planifiée nomme une émission (par son nom ou son identifiant), uniquement celle-là, même si elle est inactive ou que ce n'est pas son jour ;
    - sinon, les émissions dont la colonne `Active` vaut `oui` et dont la colonne `Jour` est le jour d'aujourd'hui (heure de Paris ; demande la date et l'heure avec l'outil prévu pour ça, ne la devine pas).
-3. S'il n'y a aucune émission à traiter, réponds en une ligne « Aucune émission à écrire aujourd'hui. » et arrête-toi là.
-4. Pour chaque émission retenue, lis son onglet de sources (colonne `Onglet des sources`) : nom, camp et thèse de chaque source.
+3. Avec le connecteur Google Drive, lis le fichier `etat_du_pi.md` du dossier `Podcasts` (identifiant `1K2xwn7U5MN-irF0ZSy3o6cTHKBkRhIOi`). Le Pi le met à jour à chaque passage : une rubrique par programme (`veille collect`, `veille build-week`, `veille upload`, `podcast`), avec l'heure du dernier passage et ses alertes. Retiens pour la ligne « Pi » de ta réponse (section 8) :
+   - les alertes listées, regroupées et résumées (une source en panne, un envoi raté, un repli sur Piper…) ;
+   - un programme dont le dernier passage date de plus de 26 heures, ou un fichier absent ou mis à jour il y a plus de 26 heures : le Pi ne tourne plus ou n'arrive plus à joindre le Drive.
+   Ne corrige rien toi-même : signale seulement.
+4. S'il n'y a aucune émission à traiter, réponds « Aucune émission à écrire aujourd'hui. », suivie de la ligne « Pi » s'il y a quelque chose à signaler, et arrête-toi là.
+5. Pour chaque émission retenue, lis son onglet de sources (colonne `Onglet des sources`) : nom, camp et thèse de chaque source.
 
 Colonnes utiles de l'onglet `Émissions` : `Nom`, `Format` (`debat` ou `revue`), `Durée (min)`, `Dossier Drive`, `Prénom A`, `Prénom B`, `Consignes`. Les consignes de l'émission complètent ce skill ; en cas de contradiction, elles l'emportent.
 
@@ -142,3 +146,5 @@ Dépôt :
 ## 8. Réponse
 
 Pour chaque émission traitée, réponds en trois lignes au maximum : le nom de l'émission, les sujets retenus, et le nom du fichier déposé. Pour une émission non écrite, une ligne qui dit pourquoi.
+
+Termine par une ligne « Pi : … » (trois lignes au plus) si l'état du Pi signale un problème (section 1, étape 3). Si tout va bien, n'en parle pas.
