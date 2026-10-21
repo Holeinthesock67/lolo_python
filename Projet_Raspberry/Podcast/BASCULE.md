@@ -72,6 +72,7 @@ Le `lsf` doit afficher `Configuration podcasts.xlsx` et `Podcast IA/`.
 ```
 15 8 * * *  ~/veille-env/bin/python ~/veille/veille.py collect >> ~/podcast-data/veille.log 2>&1
 15 9 * * *  ~/veille-env/bin/python ~/veille/veille.py build-week >> ~/podcast-data/veille.log 2>&1
+35 9-21 * * *  ~/veille-env/bin/python ~/veille/veille.py upload >> ~/podcast-data/veille.log 2>&1
 45 10 * * 0  ~/veille-env/bin/pip install -q -U yt-dlp
 30 10-22 * * *  flock -n /tmp/podcast.lock ~/piper-env/bin/python ~/veille/podcast.py >> ~/podcast-data/podcast.log 2>&1
 ```
