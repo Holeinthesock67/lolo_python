@@ -1,0 +1,27 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openride-core"
+version = "0.1.0"
+description = "OpenRide Linux – core : BLE, physique, braquets, ERG, journal, FIT, IPC"
+requires-python = ">=3.11"
+dependencies = [
+    "bleak>=0.22",
+    "fit-tool>=0.9",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8"]
+
+[project.scripts]
+openride-core = "openride_core.__main__:main"
+openride-ble-diag = "openride_core.tools.ble_diag:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
