@@ -22,10 +22,27 @@ Claude le lit avec le connecteur Google Sheets.
    dans `~/podcast-data/<émission>/daily/`.
 2. **Chaque jour à 9 h 15, `veille.py build-week`** (Pi) : pour les émissions dont c'est le jour, compile les
    7 derniers jours en `AAAA-Wss_source.md` et l'envoie dans `Podcasts/<dossier>/sources`.
+   **Toutes les heures de 9 h 35 à 21 h 35, `veille.py upload`** (Pi) : renvoie une compilation dont l'envoi
+   a échoué. Ne fait rien si tout est déjà parti.
 3. **Chaque jour à 9 h 52, tâche planifiée Claude + skill `podcast-ecriture`** : pour les émissions du jour,
    écrit `AAAA-Wss_script.txt` dans `Podcasts/<dossier>/scripts`, selon le format (débat ou revue).
+   Signale aussi les problèmes du Pi (voir « Alertes »).
 4. **Toutes les heures de 10 h 30 à 22 h 30, `podcast.py`** (Pi) : récupère les nouveaux scripts, génère les
    voix (edge-tts, Piper en secours), produit le MP3 et l'envoie dans `Podcasts/<dossier>/episodes`.
+   Si edge-tts échoue, le passage s'arrête et reprend à l'heure suivante ; Piper ne prend le relais
+   qu'après 3 passages ratés, et seulement si ses voix sont installées.
+
+## Alertes
+
+À la fin de chaque passage, le Pi met à jour `Podcasts/etat_du_pi.md` sur le Drive : pour chaque programme,
+l'heure du dernier passage et ses alertes (source en panne, Sheet injoignable, envoi raté, épisode non
+produit, repli sur Piper…). Les alertes d'un passage remplacent celles du passage précédent du même
+programme. Le skill `podcast-ecriture` lit ce fichier chaque matin et termine sa réponse par une ligne
+« Pi : … » s'il y a un problème, ou si un programme n'a pas tourné depuis plus de 26 heures.
+Copie locale : `~/podcast-data/etat_du_pi.md`. Les essais à la main (`check`, `podcast.py --test`,
+`--file`) ne modifient pas l'état publié.
+
+Une émission en panne ne bloque pas les autres : l'erreur devient une alerte et le programme continue.
 
 ## Fichiers
 
@@ -46,7 +63,7 @@ Claude le lit avec le connecteur Google Sheets.
 
 ## Données sur le Pi
 
-`~/podcast-data/<identifiant de l'émission>/` : `daily/`, `weekly/`, `seen.json`, `scripts/`, `episodes/`
+`~/podcast-data/<identifiant de l'émission>/` : `daily/`, `weekly/` (avec `envoyes.json`), `seen.json`, `scripts/`, `episodes/`
 (avec `state.json`), `work/` (fichiers temporaires de synthèse). Journaux : `~/podcast-data/veille.log`
 et `~/podcast-data/podcast.log`.
 
@@ -62,6 +79,8 @@ et `~/podcast-data/podcast.log`.
 ~/veille-env/bin/python ~/veille/veille.py check                   # teste toutes les sources et le Sheet
 ~/veille-env/bin/python ~/veille/veille.py check --emission ia     # une seule émission
 ~/veille-env/bin/python ~/veille/veille.py build-week --emission ia   # compile et envoie, quel que soit le jour
+~/veille-env/bin/python ~/veille/veille.py upload                  # renvoie les compilations pas encore envoyées
+cat ~/podcast-data/etat_du_pi.md                                   # alertes du dernier passage de chaque programme
 ~/piper-env/bin/python ~/veille/podcast.py --test                  # ouverture du dernier script seulement
 ~/piper-env/bin/python ~/veille/podcast.py --emission ia           # produit les épisodes manquants
 tail -f ~/podcast-data/podcast.log                                 # suivre la génération

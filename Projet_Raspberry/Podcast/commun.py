@@ -1,11 +1,14 @@
 """Outils partagés par veille.py et podcast.py.
 
 - journal (log) et exécution de commandes (run) ;
+- alertes : chaque passage publie l'état de la chaîne dans « Podcasts/etat_du_pi.md »,
+  que Claude lit chaque matin (skill podcast-ecriture) pour signaler les problèmes ;
 - rclone avec délai maximal et nouvelles tentatives ;
 - lecture de la configuration des émissions depuis le Google Sheet « Configuration podcasts »,
   téléchargé en .xlsx par rclone. Si le Drive est injoignable, la dernière copie est utilisée.
 """
 import datetime as dt
+import json
 import re
 import subprocess
 import sys
@@ -18,6 +21,8 @@ DATA = HOME / "podcast-data"
 REMOTE = "podcast:"                     # racine : dossier « Podcasts » sur le Drive
 CONFIG_REMOTE = REMOTE + "Configuration podcasts.xlsx"
 CONFIG_LOCAL = DATA / "configuration.xlsx"
+ETAT_LOCAL = DATA / "etat.json"
+ETAT_REMOTE = REMOTE + "etat_du_pi.md"
 
 JOURS = ["lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche"]
 FORMATS = ["debat", "revue"]
@@ -39,15 +44,63 @@ def run(cmd, timeout=None):
     return res
 
 
+def load_json(path, default):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except (FileNotFoundError, json.JSONDecodeError):
+        return default
+
+
+def save_json(path, obj):
+    """Écriture atomique : un fichier à moitié écrit ne remplace jamais le bon."""
+    tmp = path.with_suffix(".tmp")
+    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
+    tmp.replace(path)
+
+
+# ---------- alertes ----------
+
+_alertes = []
+
+
+def alerte(msg):
+    """Problème à signaler : journal, et fichier d'état envoyé sur le Drive par publier_etat."""
+    log(f"ALERTE {msg}")
+    _alertes.append(msg)
+
+
+def publier_etat(programme):
+    """Enregistre les alertes de ce passage (elles remplacent celles du passage précédent
+    du même programme) et envoie l'état de toute la chaîne sur le Drive."""
+    DATA.mkdir(parents=True, exist_ok=True)
+    now = f"{dt.datetime.now():%Y-%m-%d %H:%M}"
+    etat = load_json(ETAT_LOCAL, {})
+    etat[programme] = {"date": now, "alertes": list(_alertes)}
+    save_json(ETAT_LOCAL, etat)
+    lines = ["# État de la chaîne podcast du Pi", "", f"Mis à jour le {now}.", ""]
+    for prog, e in sorted(etat.items()):
+        lines += [f"## {prog} — dernier passage : {e['date']}", ""]
+        lines += [f"- {a}" for a in e["alertes"]] or ["- aucun problème"]
+        lines.append("")
+    md = DATA / "etat_du_pi.md"
+    md.write_text("\n".join(lines), encoding="utf-8")
+    try:
+        rclone("copyto", str(md), ETAT_REMOTE, tries=1)
+    except Exception as exc:
+        log(f"état non envoyé sur le Drive : {str(exc)[:150]}")
+
+
+# ---------- rclone ----------
+
 RCLONE_TIMEOUT = 300   # durée maximale d'un transfert (secondes) avant abandon
 RCLONE_TRIES = 3
 
 
-def rclone(verb, src, dst):
+def rclone(verb, src, dst, tries=RCLONE_TRIES):
     """rclone copy / copyto avec délai maximal et nouvelles tentatives.
     --contimeout / --timeout : rclone abandonne lui-même une connexion muette."""
     cmd = ["rclone", verb, "--contimeout", "30s", "--timeout", "60s", src, dst]
-    for attempt in range(1, RCLONE_TRIES + 1):
+    for attempt in range(1, tries + 1):
         try:
             return run(cmd, timeout=RCLONE_TIMEOUT)
         except (subprocess.TimeoutExpired, RuntimeError) as exc:
@@ -55,9 +108,9 @@ def rclone(verb, src, dst):
                 raise FileNotFoundError(f"{src} : dossier introuvable")
             reason = (f"bloqué plus de {RCLONE_TIMEOUT} s" if isinstance(exc, subprocess.TimeoutExpired)
                       else str(exc)[:200])
-            if attempt == RCLONE_TRIES:
-                raise RuntimeError(f"rclone {src} -> {dst} : échec après {RCLONE_TRIES} essais ({reason})")
-            log(f"  rclone essai {attempt}/{RCLONE_TRIES} raté ({reason}), nouvel essai dans {30 * attempt} s")
+            if attempt == tries:
+                raise RuntimeError(f"rclone {src} -> {dst} : échec après {tries} essai(s) ({reason})")
+            log(f"  rclone essai {attempt}/{tries} raté ({reason}), nouvel essai dans {30 * attempt} s")
             time.sleep(30 * attempt)
 
 
@@ -217,8 +270,8 @@ def load_emissions(refresh=True):
             if not CONFIG_LOCAL.exists():
                 raise RuntimeError(f"configuration introuvable : {exc}")
             age = dt.datetime.now() - dt.datetime.fromtimestamp(CONFIG_LOCAL.stat().st_mtime)
-            log(f"ATTENTION : Sheet injoignable ({str(exc)[:150]}). "
-                f"Copie locale utilisée, vieille de {age.days} j {age.seconds // 3600} h.")
+            alerte(f"Sheet injoignable ({str(exc)[:150]}). "
+                   f"Copie locale utilisée, vieille de {age.days} j {age.seconds // 3600} h.")
     return parse_config(CONFIG_LOCAL)
 
 
