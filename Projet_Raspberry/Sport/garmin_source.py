@@ -6,6 +6,7 @@ parseur et on ré-analyse les données brutes.
 """
 import json
 import logging
+import re
 import time
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
@@ -17,6 +18,48 @@ log = logging.getLogger("garmin")
 
 class RateLimited(Exception):
     """Garmin demande de ralentir (HTTP 429)."""
+
+
+class GarminUnavailable(Exception):
+    """Garmin injoignable (réseau, DNS, panne) : la synchro Garmin est sautée, le reste continue."""
+
+
+def _chain(e):
+    """L'exception et ses causes (garminconnect enveloppe l'erreur HTTP d'origine)."""
+    seen = []
+    while e is not None and e not in seen:
+        seen.append(e)
+        e = e.__cause__ or e.__context__
+    return seen
+
+
+def classify(e):
+    """'rate' (429), 'auth' (401) ou None, d'après le code HTTP ou le type d'exception.
+    Le texte du message ne sert qu'en dernier recours, sans confondre avec un numéro d'activité de l'URL."""
+    chain = _chain(e)
+    names = " ".join(type(x).__name__ for x in chain)
+    codes = [c for c in (getattr(getattr(x, "response", None), "status_code", None) for x in chain) if isinstance(c, int)]
+    if 429 in codes or "TooManyRequests" in names:
+        return "rate"
+    if 401 in codes or "Authentication" in names:
+        return "auth"
+    if codes:
+        return None
+    msg = " ".join(str(x) for x in chain)
+    if re.search(r"(?<![\d/])429(?![\d/])|Too Many Requests", msg):
+        return "rate"
+    if re.search(r"(?<![\d/])401(?![\d/])|unauthori", msg, re.I):
+        return "auth"
+    return None
+
+
+def _reachable(url="https://connect.garmin.com", timeout=10):
+    try:
+        import requests
+        requests.head(url, timeout=timeout)
+        return True
+    except Exception:
+        return False
 
 
 def dig(d, *path, default=None):
@@ -216,15 +259,28 @@ def reparse_daily(con):
 
 
 # ---------- connexion ----------
-def login(email, password, tokenstore):
-    """Utilise le jeton enregistré ; sinon connexion par identifiants (+ code MFA saisi)."""
+def login(email, password, tokenstore, interactive=False):
+    """Utilise le jeton enregistré. Si le jeton ne marche pas :
+    - interactive (commande `login`) : connexion par identifiants (+ code MFA saisi) ;
+    - sinon (synchro planifiée) : RateLimited, GarminUnavailable si Garmin est injoignable,
+      PermissionError si le jeton est absent ou refusé. Jamais de saisie au clavier."""
     from garminconnect import Garmin
     ts = str(Path(tokenstore).expanduser())
+    if not interactive and not Path(ts).exists():
+        raise PermissionError(f"Pas de jeton Garmin dans {ts} : lance `python coach.py login` sur le PC.")
     try:
         api = Garmin()
         api.login(ts)
         return api
     except Exception as e:
+        if not interactive:
+            if classify(e) == "rate":
+                raise RateLimited(str(e)) from e
+            if not _reachable():
+                raise GarminUnavailable(f"Garmin injoignable ({type(e).__name__}) : synchro Garmin sautée, "
+                                        "elle rattrapera ces jours au prochain lancement.") from e
+            raise PermissionError(f"Jeton Garmin refusé ({type(e).__name__}: {str(e)[:120]}) : "
+                                  "relance `python coach.py login` sur le PC.") from e
         log.info("Pas de jeton valide (%s) : connexion par identifiants.", type(e).__name__)
     if not (email and password):
         raise SystemExit("Identifiants manquants : renseigne GARMIN_EMAIL et GARMIN_PASSWORD "
@@ -248,9 +304,10 @@ class Collector:
             return getattr(self.api, method)(*args)
         except Exception as e:
             msg = str(e)
-            if "429" in msg or "Too Many" in msg:
+            kind = classify(e)
+            if kind == "rate":
                 raise RateLimited(msg) from e
-            if "401" in msg or "nauthori" in msg:
+            if kind == "auth":
                 raise PermissionError("Jeton Garmin expiré : relance `python coach.py login`.") from e
             log.warning("%s%s : %s", method, args, msg[:150])
             return None
@@ -323,13 +380,28 @@ class Collector:
             log.info("Garmin : zones cardiaques lues pour %d activité(s)", len(todo))
 
     def _activities(self, start, end):
-        acts = self._call("get_activities_by_date", start.isoformat(), end.isoformat()) or []
+        payload = self._call("get_activities_by_date", start.isoformat(), end.isoformat())
+        acts = payload if isinstance(payload, list) else []
         for a in acts:
             row = parse_activity(a)
             if row["activity_id"]:
                 self._raw(f"activity:{row['activity_id']}", "activity", a)
                 db.upsert(self.con, "activities", row, "activity_id")
         log.info("Garmin : %d activités", len(acts))
+        if isinstance(payload, list):  # réponse valide : ce qui manque a été supprimé dans Garmin Connect
+            self._purge_deleted(start, end, {a.get("activityId") for a in acts})
+
+    def _purge_deleted(self, start, end, kept):
+        gone = [r for r in self.con.execute(
+            "SELECT activity_id, start_local, type FROM activities WHERE day>=? AND day<=?",
+            (start.isoformat(), end.isoformat())) if r[0] not in kept]
+        for aid, when, typ in gone:
+            self.con.execute("DELETE FROM activities WHERE activity_id=?", (aid,))
+            self.con.execute("DELETE FROM strength_sets WHERE activity_id=?", (aid,))
+            self.con.execute("DELETE FROM strength_fetched WHERE activity_id=?", (aid,))
+            self.con.execute("DELETE FROM raw_garmin WHERE day=?", (f"activity:{aid}",))  # sinon reparse la recrée
+            log.info("Garmin : activité %s (%s, %s) supprimée dans Garmin Connect, retirée de la base", aid, when, typ)
+        self.con.commit()
 
     def _strength_sets(self, limit=120):
         """Détail série par série des séances de musculation pas encore lues."""
