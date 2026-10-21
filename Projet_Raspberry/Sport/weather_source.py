@@ -33,6 +33,8 @@ def _get(url, params, tries=3):
 def _store(con, js, source):
     h = js["hourly"]
     for i, ts in enumerate(h["time"]):
+        if source == "archive" and h["temperature_2m"][i] is None:
+            continue  # heure pas encore publiée dans l'archive : on garde la valeur « recent »
         db.upsert(con, "weather_hourly", dict(
             ts=ts, temp_c=h["temperature_2m"][i], feels_c=h["apparent_temperature"][i],
             humidity=h["relative_humidity_2m"][i], precip_mm=h["precipitation"][i],
@@ -41,17 +43,17 @@ def _store(con, js, source):
     return len(h["time"])
 
 
-def sync(con, lat, lon, tz, start, today=None, forecast_days=4):
+def sync(con, lat, lon, tz, start, today=None, forecast_days=4, archive_refresh_days=7):
     today = today or date.today()
     cut = today - timedelta(days=7)          # au-delà : archive ; en deçà : forecast
     base = dict(latitude=lat, longitude=lon, hourly=HOURLY, timezone=tz)
     n = 0
-    if start <= cut:
-        n += _store(con, _get(ARCHIVE, dict(base, start_date=start.isoformat(),
-                                            end_date=cut.isoformat())), "archive")
-        recent_start = cut + timedelta(days=1)
-    else:
-        recent_start = start
+    # L'archive est toujours relue sur la dernière semaine qu'elle couvre : les jours récupérés en
+    # « recent » lors des synchros précédentes y passent ainsi en valeurs observées.
+    arch_start = min(start, cut - timedelta(days=archive_refresh_days))
+    n += _store(con, _get(ARCHIVE, dict(base, start_date=arch_start.isoformat(),
+                                        end_date=cut.isoformat())), "archive")
+    recent_start = max(start, cut + timedelta(days=1))
     past = min(max((today - recent_start).days, 0), 92)
     n += _store(con, _get(FORECAST, dict(base, past_days=past, forecast_days=forecast_days)),
                 "recent")
