@@ -1,6 +1,6 @@
 # Coach sportif hybride – mémo du système
 
-Mis à jour le 20/10/2026 (synthèse v2.3, GitHub). Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
+Mis à jour le 21/10/2026 (synthèse v2.3, mise à jour automatique du Pi depuis GitHub). Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
 
 ## Vue d'ensemble
 
@@ -66,7 +66,14 @@ Mis à jour le 20/10/2026 (synthèse v2.3, GitHub). Ce document est la référen
 ### 7. Code sur GitHub
 - Dépôt privé `Holeinthesock67/lolo_python`, dossier `Projet_Raspberry/Sport` (script, README, `sources/` : carnet, `build.py`, PDF de la synthèse).
 - Jamais sur GitHub (exclus par `.gitignore`) : `.env`, jeton Garmin, `data/` (base), `export/`, fichiers `.db`.
-- Claude peut lire et mettre à jour le dépôt depuis le projet, même PC éteint. Déploiement actuel : sur le PC `git pull`, puis `scp` des fichiers modifiés vers le Pi. Option prévue : `git pull` directement sur le Pi (clé de déploiement en lecture seule).
+- Claude peut lire et mettre à jour le dépôt depuis le projet, même PC éteint.
+- **Déploiement automatique (depuis le 21/10/2026)** : le Pi garde une copie du dossier `Projet_Raspberry` dans `~/lolo_python` (clé de déploiement GitHub en lecture seule `~/.ssh/github_deploy`, titre « coachpi »). Chaque matin à 7 h 05, `update_code.sh` récupère GitHub, compare le code à celui installé, teste chaque programme modifié (test hors ligne pour Sport, vérification de syntaxe pour Podcast) et ne le remplace que si le test passe. Seul le code est copié : données, environnements, jeton Garmin, rclone et crons ne bougent pas.
+  - Sport → `~/garmin_coach` : `coach.py`, `db.py`, `garmin_source.py`, `report.py`, `training.py`, `integrity.py`, `exercises.py`, `weather_source.py`, `test_offline.py` (pas `config.toml`).
+  - Podcast → `~/veille` : `commun.py`, `veille.py`, `podcast.py`.
+  - Une modification poussée sur GitHub est donc en place le lendemain à 7 h 05. Pour l'appliquer tout de suite : `bash ~/lolo_python/Projet_Raspberry/update_code.sh`.
+  - Voir ce qui changerait sans rien modifier : `bash ~/lolo_python/Projet_Raspberry/update_code.sh check`. Journal : `~/update_code.log`.
+  - Ne jamais modifier le code directement sur le Pi : il serait écrasé par la version GitHub. Passer par GitHub (Claude ou le PC).
+- Sur le PC, `git pull` dans `lolo_python` pour garder une copie à jour (plus nécessaire pour le Pi).
 
 ---
 
@@ -77,6 +84,7 @@ Mis à jour le 20/10/2026 (synthèse v2.3, GitHub). Ce document est la référen
 | Heure | Étape | Où |
 |---|---|---|
 | nuit | La montre enregistre ; le téléphone envoie à Garmin Connect | montre / téléphone |
+| 7 h 05 | Mise à jour du code depuis GitHub (`update_code.sh`), après test | Raspberry Pi (cron) |
 | 7 h 15 | Synchro Garmin + météo, exports, puis copie sur Google Drive | Raspberry Pi (cron) |
 | 7 h 24 | « Point coach du matin » : verdict du jour envoyé sur le téléphone | tâche planifiée Claude |
 
@@ -114,12 +122,20 @@ ssh laurent@coachpi
 | Synchro manuelle | `cd ~/garmin_coach && .venv/bin/python coach.py sync` |
 | Renvoyer les exports sur le Drive | `rclone copy ~/garmin_coach/export "gdrive:Coach - Garmin export" -v` |
 | Test hors ligne du script | `cd ~/garmin_coach && .venv/bin/python test_offline.py` |
+| Dernière mise à jour du code | `tail -5 ~/update_code.log` |
 
-Ligne programmée (cron) :
+Programmation complète du Pi (`crontab -l`, sauvegarde dans `~/crontab.bak2`) :
 
 ```
+5 7 * * * bash ~/lolo_python/Projet_Raspberry/update_code.sh >> ~/update_code.log 2>&1
 15 7 * * * cd /home/laurent/garmin_coach && { .venv/bin/python coach.py sync; rclone copy export "gdrive:Coach - Garmin export" -v; } >> data/sync.log 2>&1
+15 8 * * *  ~/veille-env/bin/python ~/veille/veille.py collect >> ~/podcast-data/veille.log 2>&1
+15 9 * * *  ~/veille-env/bin/python ~/veille/veille.py build-week >> ~/podcast-data/veille.log 2>&1
+45 10 * * 0  ~/veille-env/bin/pip install -q -U yt-dlp
+30 10-22 * * *  flock -n /tmp/podcast.lock ~/piper-env/bin/python ~/veille/podcast.py >> ~/podcast-data/podcast.log 2>&1
 ```
+
+Les lignes 8 h 15 à 22 h 30 concernent les podcasts (voir `Projet_Raspberry/Podcast/README.md`).
 
 ## Pannes possibles
 
@@ -133,6 +149,10 @@ Ligne programmée (cron) :
 
 **Le point du matin signale « instantané daté d'hier »** : regarde `sync.log` sur le Pi (synchro ou Drive en échec ?).
 
+**`update_code.log` affiche « TEST ÉCHOUÉ »** : l'ancienne version est restée en place, rien n'est cassé. Donner les lignes du journal à Claude, qui corrige sur GitHub.
+
+**`update_code.log` affiche « GitHub injoignable »** : pas de mise à jour ce jour-là, le Pi tourne avec la version précédente. Si ça dure : vérifier la clé de déploiement (`ssh -T git@github.com` doit répondre « successfully authenticated »).
+
 ## Entretien
 
 - Mises à jour (environ une fois par mois) : `sudo apt update && sudo apt full-upgrade -y`
@@ -144,7 +164,9 @@ Ligne programmée (cron) :
 
 | Élément | Emplacement |
 |---|---|
-| Script | `~/garmin_coach/` |
+| Script installé | `~/garmin_coach/` |
+| Copie du dépôt GitHub (`Projet_Raspberry`) | `~/lolo_python/` |
+| Clé de déploiement GitHub (lecture seule) | `~/.ssh/github_deploy` |
 | Réglages (lieu, jours relus, chemins) | `~/garmin_coach/config.toml` |
 | Base de données (**référence**) | `~/garmin_coach/data/coach.db` |
 | Journal | `~/garmin_coach/data/sync.log` |
@@ -183,4 +205,5 @@ scp laurent@coachpi:~/garmin_coach/data/coach.db D:\Sauvegarde\Documents\Laurent
    ```
 6. rclone : `rclone config`, puis nouveau remote `gdrive`, type `drive`, scope `drive.file`, pas de navigateur automatique (autorisation via `rclone authorize` sur le PC).
    Avec le scope `drive.file`, un nouveau rclone ne voit pas l'ancien dossier : il en créera un nouveau. Supprime l'ancien « Coach - Garmin export » dans le Drive avant le premier envoi.
-7. Remettre la ligne cron (section « Vérifier que tout tourne ») : `crontab -e`
+7. Remettre les lignes cron (section « Vérifier que tout tourne ») : `crontab -e`.
+8. GitHub : `sudo apt install -y git`, nouvelle clé `ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N "" -C coachpi`, l'ajouter dans GitHub (dépôt → Settings → Deploy keys, sans accès en écriture), `printf 'Host github.com\n  IdentityFile ~/.ssh/github_deploy\n  IdentitiesOnly yes\n' >> ~/.ssh/config`, puis `git clone --filter=blob:none --sparse git@github.com:Holeinthesock67/lolo_python.git ~/lolo_python && cd ~/lolo_python && git sparse-checkout set Projet_Raspberry`. Avec GitHub en place, les étapes 4 et 5 peuvent copier le code depuis `~/lolo_python/Projet_Raspberry/Sport` au lieu du PC (le jeton Garmin vient toujours du PC).
