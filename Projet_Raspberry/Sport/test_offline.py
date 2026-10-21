@@ -1,11 +1,14 @@
 """Test hors ligne : fausses réponses Garmin/Open-Meteo, base temporaire."""
 import random
+import sys
 import tempfile
+import types
 from datetime import date, datetime, timedelta, timezone
 from pathlib import Path
 
-import db, garmin_source as gs, report, weather_source as ws
+import coach, db, garmin_source as gs, report, weather_source as ws
 
+sys.stdout.reconfigure(encoding="utf-8")  # console Windows (cp1252) : l'instantané contient des « → »
 random.seed(1)
 TODAY = date(2026, 10, 16)
 
@@ -84,12 +87,13 @@ def fake_weather(url, params):
         times += [f"{d.isoformat()}T{h:02d}:00" for h in range(24)]
         d += timedelta(days=1)
     n = len(times)
-    return {"hourly": {"time": times, "temperature_2m": [12.0] * n, "apparent_temperature": [10.0] * n,
+    temp = 11.0 if "start_date" in params else 12.0   # observé (archive) ≠ modèle (forecast)
+    return {"hourly": {"time": times, "temperature_2m": [temp] * n, "apparent_temperature": [10.0] * n,
                        "relative_humidity_2m": [70] * n, "precipitation": [0.1] * n, "wind_speed_10m": [15] * n}}
 
 
 def main():
-    with tempfile.TemporaryDirectory() as t:
+    with tempfile.TemporaryDirectory(ignore_cleanup_errors=True) as t:  # coach.main ne ferme pas sa base
         con = db.connect(Path(t) / "c.db")
         start = TODAY - timedelta(days=40)
         gs.Collector(FakeGarmin(), con, pause=0).run(start, TODAY)
@@ -131,10 +135,144 @@ def main():
         # parseur tolérant
         assert gs.parse_hrv({}) == dict(hrv_last_night=None, hrv_weekly_avg=None, hrv_status=None)
         assert gs.parse_vo2(None)["vo2max"] is None
+
+        test_error_classification()
+        test_login(Path(t))
+        test_weather_archive_refresh(con)
+        test_deleted_activities(con)
         print(f"Météo : {n} heures ; fichiers : {sorted(p.name for p in out.iterdir())}\n")
         print((out / "coach_snapshot.md").read_text(encoding="utf-8"))
         print("TOUS LES TESTS OK")
         con.close()  # Windows : fermer la base avant de supprimer le dossier temporaire
+
+
+def garmin_error(cls_name, code, url):
+    """Exception façon garminconnect : erreur HTTP d'origine (avec son code) enveloppée."""
+    inner = Exception(f"{code} Client Error: for url: {url}")
+    inner.response = types.SimpleNamespace(status_code=code)
+    outer = type(cls_name, (Exception,), {})(f"API client error ({code}): {inner}")
+    outer.__cause__ = inner
+    return outer
+
+
+class Raising:
+    def __init__(self, exc):
+        self.exc = exc
+
+    def get_activity_hr_in_timezones(self, aid):
+        raise self.exc
+
+
+def test_error_classification():
+    """Bug 1 : un numéro d'activité contenant 429 ou 401 ne doit pas passer pour un 429 / 401."""
+    url = "https://connect.garmin.com/activity-service/activity/{}/hrTimeInZones"
+    call = lambda exc: gs.Collector(Raising(exc), None, pause=0)._call("get_activity_hr_in_timezones", 1)
+    assert call(garmin_error("GarminConnectConnectionError", 404, url.format(20871429000))) is None
+    assert call(garmin_error("GarminConnectConnectionError", 404, url.format(20871401000))) is None
+    assert call(Exception("404 Client Error: Not Found for url: " + url.format(20871429000))) is None
+    for exc, expected in [(garmin_error("GarminConnectTooManyRequestsError", 429, url.format(1)), gs.RateLimited),
+                          (Exception("429 Client Error: Too Many Requests"), gs.RateLimited),
+                          (type("GarminConnectTooManyRequestsError", (Exception,), {})("Rate limit exceeded"), gs.RateLimited),
+                          (garmin_error("GarminConnectAuthenticationError", 401, url.format(1)), PermissionError)]:
+        try:
+            call(exc)
+            raise AssertionError(f"{exc!r} aurait dû lever {expected.__name__}")
+        except expected:
+            pass
+
+
+def test_login(t):
+    """Bug 2 : sans .env (le Pi), un jeton inutilisable ne demande jamais d'identifiants ; la synchro continue."""
+    tok = t / "tok"
+    tok.mkdir()
+    fail = {"exc": None}
+
+    class FakeApi:
+        def __init__(self, **k):
+            pass
+
+        def login(self, ts):
+            if fail["exc"]:
+                raise fail["exc"]
+
+    sys.modules["garminconnect"] = types.SimpleNamespace(Garmin=FakeApi)
+    reachable = gs._reachable
+    try:
+        def expect(exc_type, ts=tok):
+            try:
+                gs.login(None, None, ts)
+                raise AssertionError(f"login aurait dû lever {exc_type.__name__}")
+            except exc_type:
+                pass
+
+        assert isinstance(gs.login(None, None, tok), FakeApi)                 # jeton valide
+        expect(PermissionError, t / "absent")                                 # pas de jeton
+        fail["exc"] = ConnectionError("Name or service not known")
+        gs._reachable = lambda: False
+        expect(gs.GarminUnavailable)                                          # réseau coupé
+        gs._reachable = lambda: True
+        fail["exc"] = type("GarminConnectAuthenticationError", (Exception,), {})("Username and password are required")
+        expect(PermissionError)                                               # jeton refusé
+        fail["exc"] = garmin_error("GarminConnectTooManyRequestsError", 429, "https://sso.garmin.com")
+        expect(gs.RateLimited)
+
+        # bout en bout : Garmin injoignable -> code retour 1, mais météo, exports et intégrité produits
+        fail["exc"] = ConnectionError("Name or service not known")
+        gs._reachable = lambda: False
+        cfg = t / "config.toml"
+        cfg.write_text(f"[location]\nname='x'\nlatitude=48.9\nlongitude=7.1\ntimezone='Europe/Paris'\n"
+                       f"[sync]\ndays_back_first_run=10\nrefetch_days=3\npause_seconds=0\n"
+                       f"[paths]\ndatabase='{(t / 'e2e.db').as_posix()}'\ntokenstore='{tok.as_posix()}'\n"
+                       f"export_dir='{(t / 'e2e').as_posix()}'\n", encoding="utf-8")
+        assert coach.main(["sync", "--config", str(cfg)]) == 1
+        for f in ("coach_snapshot.md", "daily.csv", "integrite.html"):
+            assert (t / "e2e" / f).exists(), f
+        e2e = db.connect(t / "e2e.db")
+        assert e2e.execute("SELECT COUNT(*) FROM weather_hourly").fetchone()[0] > 0
+        e2e.close()
+    finally:
+        gs._reachable = reachable
+        del sys.modules["garminconnect"]
+
+
+def test_weather_archive_refresh(con):
+    """Bug 3 : une synchro quotidienne (début récent) remplace les heures « recent » par l'archive observée."""
+    day = (TODAY - timedelta(days=4)).isoformat()
+    row = lambda: con.execute("SELECT source, temp_c FROM weather_hourly WHERE ts=?", (f"{day}T10:00",)).fetchone()
+    assert tuple(row()) == ("recent", 12.0)
+    later = TODAY + timedelta(days=5)
+    ws.sync(con, 48.85, 2.35, "Europe/Paris", later - timedelta(days=3), today=later)
+    assert tuple(row()) == ("archive", 11.0), tuple(row())
+    # heure absente de l'archive (pas encore publiée) : la valeur « recent » est conservée
+    ts = f"{TODAY.isoformat()}T10:00"
+    ws._store(con, {"hourly": {"time": [ts], "temperature_2m": [None], "apparent_temperature": [None],
+                               "relative_humidity_2m": [None], "precipitation": [None], "wind_speed_10m": [None]}}, "archive")
+    assert con.execute("SELECT source FROM weather_hourly WHERE ts=?", (ts,)).fetchone()[0] == "recent"
+
+
+class FakeGarminDown(FakeGarmin):
+    def get_activities_by_date(self, a, b):
+        raise Exception("500 Server Error: Internal Server Error")
+
+
+class FakeGarminDeleted(FakeGarmin):
+    def get_activities_by_date(self, a, b):
+        return [x for x in super().get_activities_by_date(a, b) if x["activityId"] != 3]
+
+
+def test_deleted_activities(con):
+    """Bug 4 : une activité supprimée dans Garmin Connect disparaît de la base (sauf si l'appel a échoué)."""
+    ids = lambda: {r[0] for r in con.execute("SELECT activity_id FROM activities")}
+    assert ids() == {1, 2, 3}
+    gs.Collector(FakeGarminDown(), con, pause=0).run(TODAY - timedelta(days=5), TODAY)
+    assert ids() == {1, 2, 3}, "réponse en erreur : rien ne doit être supprimé"
+    gs.Collector(FakeGarminDeleted(), con, pause=0).run(TODAY - timedelta(days=2), TODAY)
+    assert ids() == {1, 2}, ids()
+    assert not con.execute("SELECT 1 FROM raw_garmin WHERE day='activity:3'").fetchone(), "le brut recréerait l'activité"
+    gs.reparse_daily(con)
+    assert ids() == {1, 2}
+    # la musculation (activité 2, hors de la fenêtre relue) garde ses séries
+    assert con.execute("SELECT COUNT(*) FROM strength_sets WHERE activity_id=2").fetchone()[0] == 3
 
 
 main()
