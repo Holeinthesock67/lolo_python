@@ -1,6 +1,6 @@
 ---
-name: podcast-ecriture
-description: Écrit les scripts des podcasts du propriétaire (débat ou revue) à partir du Google Sheet « Configuration podcasts » et des fichiers de veille déposés sur Drive.
+name: "podcast-ecriture"
+description: "Écrit les scripts des podcasts du propriétaire (débat ou revue) à partir du Google Sheet « Configuration podcasts » et des fichiers de veille déposés sur Drive."
 ---
 
 # Écriture des scripts de podcast
@@ -29,7 +29,9 @@ Traite les émissions l'une après l'autre, entièrement (sections 2 à 7), avan
 1. Le dossier de l'émission s'appelle comme la colonne `Dossier Drive`. Cherche-le dans le dossier `Podcasts` (identifiant `1K2xwn7U5MN-irF0ZSy3o6cTHKBkRhIOi`) ; s'il n'y est pas, cherche un dossier de ce nom dans tout le Drive.
 2. Dans son sous-dossier `sources`, prends le fichier `AAAA-Wss_source.md` de la semaine en cours (semaine ISO, ex. `2026-W42_source.md`). Si l'utilisateur joint ou désigne un autre fichier, utilise celui-là.
    - S'il n'existe pas, n'écris rien pour cette émission et signale-le dans ta réponse : la veille du Pi n'a pas tourné ou n'a pas pu envoyer le fichier.
-3. Dans le sous-dossier `scripts`, regarde si un script de cette semaine existe déjà (`AAAA-Wss_script.txt` ou `AAAA-Wss_script_v2.txt`…). Si oui et que la demande vient de la tâche planifiée, n'écris rien et signale-le : le script de la semaine est déjà fait. Si l'utilisateur demande explicitement une nouvelle version, écris-la (section 7).
+3. Dans le sous-dossier `scripts`, regarde si un script de cette semaine existe déjà (`AAAA-Wss_script.txt`, `AAAA-Wss_script_v2.txt`…). Si oui, compare la date de modification du plus récent de ces scripts à celle du fichier source :
+   - si le script est plus récent que la source, la matière n'a pas changé depuis : n'écris rien et signale que le script de la semaine est déjà fait, sauf si l'utilisateur demande explicitement une nouvelle version ;
+   - si la source a été modifiée après ce script, la veille a été mise à jour depuis : écris une nouvelle version (`_v2`, `_v3`…, voir section 7) à partir de la source actuelle, et signale-le dans ta réponse.
 4. Regarde aussi les scripts des 4 dernières semaines, pour ne pas refaire le même sujet et pouvoir y faire référence (« il y a trois semaines, on parlait de… »).
 5. Le fichier source commence par la liste des sources avec leur camp et leur thèse. Sers-t'en pour savoir qui défend quoi.
 
@@ -145,6 +147,6 @@ Dépôt :
 
 ## 8. Réponse
 
-Pour chaque émission traitée, réponds en trois lignes au maximum : le nom de l'émission, les sujets retenus, et le nom du fichier déposé. Pour une émission non écrite, une ligne qui dit pourquoi.
+Pour chaque émission traitée, réponds en trois lignes au maximum : le nom de l'émission, les sujets retenus, et le nom du fichier déposé. Pour une émission non écrite, une ligne qui dit pourquoi. Si tu as écrit une nouvelle version parce que la source avait été mise à jour, dis-le.
 
 Termine par une ligne « Pi : … » (trois lignes au plus) si l'état du Pi signale un problème (section 1, étape 3). Si tout va bien, n'en parle pas.
