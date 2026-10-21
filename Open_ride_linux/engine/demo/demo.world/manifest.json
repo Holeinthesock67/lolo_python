@@ -1,0 +1,49 @@
+{
+  "format": "openride-world",
+  "format_version": "1.0",
+  "name": "demo",
+  "created": "2026-10-21T21:21:52+02:00",
+  "compiler": {
+    "name": "openride-fake-world",
+    "version": "0.1.0"
+  },
+  "source": {
+    "gpx": null,
+    "gpx_sha256": null
+  },
+  "origin": {
+    "lat": 45.09,
+    "lon": 6.06,
+    "alt_m": 1120.0,
+    "utm_zone": "32T"
+  },
+  "projection": "local_equirectangular",
+  "route": {
+    "present": true,
+    "version": "1.0",
+    "file": "route.json",
+    "length_m": 4000.0,
+    "ds_m": 10.0,
+    "n": 401,
+    "type": "open",
+    "grade_clamped_points": 0
+  },
+  "layers": {
+    "terrain": {
+      "present": false
+    },
+    "buildings": {
+      "present": false
+    },
+    "vegetation": {
+      "present": false,
+      "source": "none"
+    },
+    "poi": {
+      "present": false
+    },
+    "water": {
+      "present": false
+    }
+  }
+}

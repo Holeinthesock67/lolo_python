@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideStateMessage",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "seq",
+    "t",
+    "session_state",
+    "pause_reason",
+    "trainer_status",
+    "input_status",
+    "mode",
+    "route_id",
+    "route_length_m",
+    "s",
+    "v",
+    "grade",
+    "grade_sent",
+    "power",
+    "power_3s",
+    "cadence",
+    "hr",
+    "gear",
+    "gears_total",
+    "lat",
+    "lon",
+    "alt",
+    "erg",
+    "summary",
+    "last_cmd_id"
+  ],
+  "properties": {
+    "type": { "const": "state" },
+    "v": { "type": "integer", "const": 1 },
+    "seq": { "type": "integer", "minimum": 0 },
+    "t": { "type": "number", "minimum": 0 },
+    "session_state": {
+      "type": "string",
+      "enum": ["IDLE", "LOADING", "READY", "RUNNING", "PAUSED", "FINISHED", "ERROR"]
+    },
+    "pause_reason": {
+      "type": ["string", "null"],
+      "enum": ["user", "trainer_lost", "engine_lost", null]
+    },
+    "trainer_status": {
+      "type": "string",
+      "enum": ["CONNECTED", "RECONNECTING", "LOST", "MOCK"]
+    },
+    "input_status": {
+      "type": "string",
+      "enum": ["CONNECTED", "LOST", "KEYBOARD"]
+    },
+    "mode": {
+      "type": "string",
+      "enum": ["SIM", "ERG"]
+    },
+    "route_id": { "type": ["string", "null"] },
+    "route_length_m": { "type": ["number", "null"] },
+    "s": { "type": "number" },
+    "v": { "type": "number" },
+    "grade": { "type": "number" },
+    "grade_sent": { "type": "number" },
+    "power": { "type": "number" },
+    "power_3s": { "type": "number" },
+    "cadence": { "type": "number" },
+    "hr": { "type": ["integer", "null"] },
+    "gear": { "type": "integer", "minimum": 1 },
+    "gears_total": { "type": "integer", "minimum": 1 },
+    "lat": { "type": "number" },
+    "lon": { "type": "number" },
+    "alt": { "type": "number" },
+    "erg": {
+      "type": ["object", "null"],
+      "properties": {
+        "workout_name": { "type": "string" },
+        "block_index": { "type": "integer", "minimum": 1 },
+        "block_count": { "type": "integer", "minimum": 1 },
+        "block_type": {
+          "type": "string",
+          "enum": ["warmup", "steady", "interval_on", "interval_off", "ramp", "cooldown", "freeride"]
+        },
+        "block_remaining_s": { "type": "number" },
+        "block_total_s": { "type": "number" },
+        "target_w": { "type": "number" },
+        "next_target_w": { "type": ["number", "null"] },
+        "bias_pct": { "type": "number" },
+        "paused": { "type": "boolean" }
+      },
+      "required": [
+        "workout_name",
+        "block_index",
+        "block_count",
+        "block_type",
+        "block_remaining_s",
+        "block_total_s",
+        "target_w",
+        "next_target_w",
+        "bias_pct",
+        "paused"
+      ]
+    },
+    "summary": {
+      "type": ["object", "null"],
+      "properties": {
+        "duration_s": { "type": "number" },
+        "distance_m": { "type": "number" },
+        "avg_power_w": { "type": "number" },
+        "fit_path": { "type": "string" }
+      },
+      "required": ["duration_s", "distance_m", "avg_power_w", "fit_path"]
+    },
+    "last_cmd_id": { "type": "integer" }
+  }
+}
