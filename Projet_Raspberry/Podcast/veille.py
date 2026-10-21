@@ -9,6 +9,7 @@ Commandes :
   collect     collecte quotidienne des nouveautés (à lancer chaque jour)
   build-week  compile les 7 derniers jours et l'envoie sur le Drive, pour les
               émissions dont c'est le jour (ou celle donnée par --emission)
+  upload      renvoie sur le Drive les compilations récentes dont l'envoi a échoué
 """
 import argparse
 import datetime as dt
@@ -24,7 +25,8 @@ from pathlib import Path
 import feedparser
 from bs4 import BeautifulSoup
 
-from commun import load_emissions, log, rclone_copy, select, today_name
+from commun import (alerte, load_emissions, load_json, log, publier_etat, rclone_copy, save_json,
+                    select, today_name)
 
 UA = "Mozilla/5.0 (X11; Linux aarch64) veille-podcast/1.0"
 NOW = dt.datetime.now(dt.timezone.utc)
@@ -37,19 +39,6 @@ def data_dir(cfg):
     (d / "daily").mkdir(parents=True, exist_ok=True)
     (d / "weekly").mkdir(parents=True, exist_ok=True)
     return d
-
-
-def load_json(path, default):
-    try:
-        return json.loads(path.read_text(encoding="utf-8"))
-    except (FileNotFoundError, json.JSONDecodeError):
-        return default
-
-
-def save_json(path, obj):
-    tmp = path.with_suffix(".tmp")
-    tmp.write_text(json.dumps(obj, ensure_ascii=False, indent=1), encoding="utf-8")
-    tmp.replace(path)
 
 
 def html_to_text(raw):
@@ -265,10 +254,15 @@ def cmd_collect(cfg):
                 errors.append(f"{src['name']} / {title[:40]} : {exc}")
                 continue
             if body is None:
-                # sous-titres YouTube pas encore prêts : on réessaiera demain
-                if date and NOW - date < dt.timedelta(days=2):
+                # sous-titres YouTube pas encore prêts, ou date inconnue : on réessaiera demain
+                if date is None or NOW - date < dt.timedelta(days=2):
                     continue
                 body = html_to_text(entry.get("summary", ""))
+            if not body.strip():
+                # pas de texte du tout (vidéo sans sous-titres, article vide) : rien à en dire
+                log(f"  {src['name']} / {title[:40]} : aucun texte, ignoré")
+                seen[iid] = NOW.isoformat()
+                continue
             if src.get("filter") and not kw.search(f"{title}\n{body}"):
                 seen[iid] = NOW.isoformat()
                 continue
@@ -293,7 +287,7 @@ def cmd_collect(cfg):
 
     log(f"{len(new_items)} nouveaux éléments -> {out.name}")
     for err in errors:
-        log(f"ERREUR {err}")
+        alerte(f"[{cfg['id']}] {err}")
 
 
 def cmd_build_week(cfg, days):
@@ -302,8 +296,15 @@ def cmd_build_week(cfg, days):
     items = []
     for i in range(days - 1, -1, -1):
         f = d / "daily" / f"{today - dt.timedelta(days=i)}.jsonl"
-        if f.exists():
-            items += [json.loads(l) for l in f.read_text(encoding="utf-8").splitlines() if l.strip()]
+        if not f.exists():
+            continue
+        for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), start=1):
+            if not line.strip():
+                continue
+            try:
+                items.append(json.loads(line))
+            except json.JSONDecodeError:   # ligne abîmée (coupure pendant l'écriture) : on saute
+                alerte(f"[{cfg['id']}] {f.name}, ligne {n} illisible, ignorée")
     if not items:
         log("Aucun élément cette semaine, rien à compiler.")
         return
@@ -331,40 +332,77 @@ def cmd_build_week(cfg, days):
     return out
 
 
+def cmd_upload(cfg, max_age_days=8):
+    """Envoie les compilations récentes pas encore envoyées, ou refaites depuis le dernier envoi.
+    Un envoi raté à 9 h 15 est ainsi retenté aux passages suivants de « upload »."""
+    d = data_dir(cfg)
+    sent_file = d / "weekly" / "envoyes.json"
+    sent = load_json(sent_file, {})
+    oldest = NOW.timestamp() - max_age_days * 86400
+    for f in sorted((d / "weekly").glob("*_source.md")):
+        mtime = f.stat().st_mtime
+        if mtime < oldest or sent.get(f.name) == mtime:
+            continue
+        try:
+            rclone_copy(str(f), f"{cfg['remote']}/sources")
+        except RuntimeError as exc:
+            alerte(f"[{cfg['id']}] envoi de {f.name} échoué : {exc}. Nouvel essai au prochain « veille.py upload »")
+            continue
+        sent[f.name] = mtime
+        save_json(sent_file, sent)
+        log(f"  envoyé sur le Drive : {cfg['dossier']}/sources/{f.name}")
+
+
+def run_command(cfg, args):
+    if args.command == "check":
+        print(f"\n=== {cfg['nom']} ({cfg['id']}) — {len(cfg['sources'])} sources")
+        cmd_check(cfg)
+    elif args.command == "collect":
+        log(f"[{cfg['id']}] collecte")
+        cmd_collect(cfg)
+    elif args.command == "upload":
+        cmd_upload(cfg)
+    else:
+        if not args.emission and cfg["jour"] != today_name():
+            return
+        log(f"[{cfg['id']}] compilation de la semaine")
+        if cmd_build_week(cfg, args.days) and not args.no_upload:
+            cmd_upload(cfg)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("command", choices=["check", "collect", "build-week"])
+    p.add_argument("command", choices=["check", "collect", "build-week", "upload"])
     p.add_argument("--emission", help="identifiant d'une émission (sinon : toutes les actives)")
     p.add_argument("--days", type=int, default=7, help="nombre de jours pour build-week")
     p.add_argument("--no-upload", action="store_true", help="build-week sans envoi sur le Drive")
     args = p.parse_args()
+    try:
+        run_all(args)
+    finally:
+        if args.command != "check":   # check se lance à la main et affiche ses résultats
+            publier_etat(f"veille {args.command}")
 
-    emissions, warnings = load_emissions()
-    for w in warnings:
-        log(f"CONFIGURATION : {w}")
+
+def run_all(args):
+    try:
+        emissions, warnings = load_emissions()
+    except RuntimeError as exc:
+        alerte(f"configuration illisible : {exc}")
+        return
+    if args.command != "check":
+        for w in warnings:
+            alerte(f"CONFIGURATION : {w}")
     todo = select(emissions, args.emission)
     if not todo:
         log("Aucune émission active dans le Sheet.")
         return
 
     for cfg in todo:
-        if args.command == "check":
-            print(f"\n=== {cfg['nom']} ({cfg['id']}) — {len(cfg['sources'])} sources")
-            cmd_check(cfg)
-        elif args.command == "collect":
-            log(f"[{cfg['id']}] collecte")
-            cmd_collect(cfg)
-        else:
-            if not args.emission and cfg["jour"] != today_name():
-                continue
-            log(f"[{cfg['id']}] compilation de la semaine")
-            out = cmd_build_week(cfg, args.days)
-            if out and not args.no_upload:
-                try:
-                    rclone_copy(str(out), f"{cfg['remote']}/sources")
-                    log(f"  envoyé sur le Drive : {cfg['dossier']}/sources/{out.name}")
-                except RuntimeError as exc:
-                    log(f"  ENVOI ÉCHOUÉ : {exc}")
+        try:   # une émission en panne ne bloque pas les suivantes
+            run_command(cfg, args)
+        except Exception as exc:
+            alerte(f"[{cfg['id']}] erreur inattendue : {type(exc).__name__} : {str(exc)[:300]}")
     if args.command == "check" and warnings:
         print("\nProblèmes dans le Sheet :")
         for w in warnings:
