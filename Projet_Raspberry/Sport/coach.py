@@ -55,7 +55,7 @@ def main(argv=None):
     tokenstore = Path(p["tokenstore"]).expanduser()
 
     if a.command == "login":
-        garmin_source.login(os.getenv("GARMIN_EMAIL"), os.getenv("GARMIN_PASSWORD"), tokenstore)
+        garmin_source.login(os.getenv("GARMIN_EMAIL"), os.getenv("GARMIN_PASSWORD"), tokenstore, interactive=True)
         print(f"Connexion OK. Jeton enregistré dans {tokenstore}")
         return 0
 
@@ -72,8 +72,8 @@ def main(argv=None):
         except garmin_source.RateLimited:
             logging.error("Garmin demande de ralentir (429) : réessaie dans quelques heures.")
             rc = 1
-        except PermissionError as e:
-            logging.error("%s", e)
+        except (PermissionError, garmin_source.GarminUnavailable) as e:
+            logging.error("%s", e)   # la météo et les exports tournent quand même
             rc = 1
     if a.command in ("sync", "weather"):
         loc = cfg["location"]
