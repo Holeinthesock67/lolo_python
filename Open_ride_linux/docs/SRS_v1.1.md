@@ -317,7 +317,7 @@ crr = 0.004
 drivetrain_efficiency = 0.97
 
 [trainer]
-device_name = "JetBlack Victory"
+device_name = "Victory"
 latency_tau_s = 0.8
 difficulty_pct = 100
 grade_min_pct = -10
