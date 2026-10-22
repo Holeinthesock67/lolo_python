@@ -211,3 +211,29 @@ def test_session_grade_is_rate_limited(tmp_path, monkeypatch):
             s._step(0.02, 50.0 + i * 0.02)
         assert abs(s._grade_sent) <= 2.0 * 0.5 + 1e-6    # ≤ 2 points/s sur 0,5 s
     asyncio.run(scenario())
+
+
+def test_ble_connections_are_serialized():
+    """Trainer et Click ne doivent jamais scanner/se connecter en même temps (BlueZ InProgress)."""
+    async def scenario():
+        active, peak = [0], [0]
+
+        async def slow_finder(name, address, timeout):
+            active[0] += 1
+            peak[0] = max(peak[0], active[0])
+            await asyncio.sleep(0.05)
+            active[0] -= 1
+            return "dev"
+
+        c1 = FakeClient([ftms.INDOOR_BIKE_DATA])
+        c2 = FakeClient([zwift_click.ZWIFT_ASYNC])
+        drv = FtmsDriver(TrainerConfig(), BikeConfig(), device_finder=slow_finder,
+                         client_factory=make_factory(c1))
+        click = ZwiftClickProvider(device_finder=slow_finder, client_factory=make_factory(c2))
+        tasks = [asyncio.create_task(drv.run()), asyncio.create_task(click.run())]
+        await wait_for(lambda: click.status == "CONNECTED" and drv.status == "CONNECTED")
+        assert peak[0] == 1
+        drv.stop()
+        click.stop()
+        await asyncio.wait_for(asyncio.gather(*tasks), 3)
+    asyncio.run(scenario())

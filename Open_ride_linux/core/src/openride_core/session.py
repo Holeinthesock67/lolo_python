@@ -118,6 +118,7 @@ class CoreSession:
         self._journal_path: Path | None = None
         self._next_record = 0.0
         self._trainer_lost_since: float | None = None
+        self._autoresume = False
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -216,6 +217,9 @@ class CoreSession:
         m = self.driver.poll(self._t_session)
         self.state.trainer_status = getattr(self.driver, "status", "MOCK")
 
+        if (self._autoresume and m.connected and self.state.session_state == "PAUSED"
+                and self.state.pause_reason == "trainer_lost"):
+            self._on_command("resume", {}, 0)   # essais sans engine : reprise automatique
         if self.state.session_state != "RUNNING":
             return
         if not m.connected:
@@ -273,7 +277,7 @@ class CoreSession:
     async def run(self, autostart: bool = False) -> None:
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
-                 for p in [*self.inputs, self.driver] if hasattr(p, "run")]
+                 for p in [self.driver, *self.inputs] if hasattr(p, "run")]  # trainer prioritaire
         loop = asyncio.get_running_loop()
         for sig in (signal.SIGINT, signal.SIGTERM):
             try:
@@ -281,6 +285,7 @@ class CoreSession:
             except NotImplementedError:
                 pass
         if autostart:
+            self._autoresume = True
             self._on_command("select_route", {"route_id": "demo"}, 0)
             self._on_command("start", {}, 0)
         log.info("Core démarré (trainer=%s, entrées=%s).", self.cfg.drivers.trainer,
