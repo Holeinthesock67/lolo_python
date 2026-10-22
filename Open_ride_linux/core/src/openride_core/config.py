@@ -33,7 +33,7 @@ class BikeConfig:
 
 @dataclass
 class TrainerConfig:
-    device_name: str = "JetBlack Victory"
+    device_name: str = "Victory"   # fragment du nom annoncé (ex. « Victory 9908 »)
     latency_tau_s: float = 0.8
     difficulty_pct: float = 100.0
     grade_min_pct: float = -10.0
