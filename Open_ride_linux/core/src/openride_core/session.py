@@ -200,14 +200,19 @@ class CoreSession:
     # --- entrées utilisateur -------------------------------------------------------------
 
     def _handle_input(self, ev: InputEvent) -> None:
+        # Toujours relayé à l'engine : menu hors séance, retour sonore (bips) pendant la séance.
+        self.server.send_input_event(ev.value)
         if self.state.session_state != "RUNNING":
-            self.server.send_input_event(ev.value)   # menu piloté par l'engine
             return
+        n = self.cfg.gearing.long_press_gears
         if ev == InputEvent.PLUS_SHORT:
             self.gearing.shift_up()
         elif ev == InputEvent.MINUS_SHORT:
             self.gearing.shift_down()
-        # Appuis longs : sans effet en SIM en v1 (SRS §4.4).
+        elif ev == InputEvent.PLUS_LONG:
+            self.gearing.shift_up(n)     # SIM : saut de plusieurs braquets (essai ; ERG : bloc suivant)
+        elif ev == InputEvent.MINUS_LONG:
+            self.gearing.shift_down(n)
         self.state.gear = self.gearing.k
         self._shift_pending = True   # le changement de braquet doit se sentir tout de suite
 
