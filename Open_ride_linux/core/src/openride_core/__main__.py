@@ -2,7 +2,7 @@
 
 Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
-    openride-core run [--trainer mock|ftms] [--input click|keyboard|none] [--autostart]
+    openride-core run [--trainer mock|ftms] [--input click|keyboard|none] [--gear N] [--autostart]
                                       boucle de séance (BLE, physique, IPC, journal)
 """
 
@@ -38,6 +38,8 @@ def cmd_run(args: argparse.Namespace) -> int:
         cfg.drivers.trainer = args.trainer
     if args.input:
         cfg.drivers.input = args.input
+    if args.gear:
+        cfg.gearing.start_gear = args.gear
     asyncio.run(CoreSession(cfg).run(autostart=args.autostart))
     return 0
 
@@ -52,6 +54,7 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     run.add_argument("--trainer", choices=["mock", "ftms"])
     run.add_argument("--input", choices=["click", "keyboard", "none"])
+    run.add_argument("--gear", type=int, help="braquet de départ, 1 (léger) à 24 (dur) ; défaut 12")
     run.add_argument("--autostart", action="store_true",
                      help="charge le parcours factice et démarre aussitôt (essais sans engine)")
     args = p.parse_args(argv)
