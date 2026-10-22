@@ -65,6 +65,7 @@ Valider les hypothèses techniques critiques avant le développement des modules
 - Validé : appuis courts, appuis longs et sens des boutons corrects.
 - Durées mesurées : appuis courts de 0,1 à 0,3 s ; des appuis « longs » naturels de 0,7 à 1,1 s tombent dans la zone ignorée (0,5 à 1,2 s) ; résolution de mesure 0,1 s.
 
-## 5. Restant au sprint 0
-- Ouvrir un FIT généré (`python -m openride_core.tools.fit_demo`) dans GoldenCheetah et Garmin Connect.
-- Lancer `run_mock_session` et la scène Godot (`engine/scenes/main.tscn`) : mouvement de la caméra, HUD, images par seconde.
+## 5. Fin du sprint 0 (22 octobre 2026)
+- FIT : séance de démo et séance réelle importées sans erreur (validé).
+- Godot 4.3 + core simulé : HUD mis à jour, caméra qui avance, `+` / `−` pris en compte (validé). Les images par seconde n'ont pas été relevées ; la ligne bleue du parcours est peu visible (décor encore vide, prévu au sprint 3).
+- Restant : relever les FPS sur une scène plus chargée ; confirmer le comportement de la fenêtre Godot en arrière-plan (cause exacte des gels du heartbeat non établie, contournée par un fil séparé).
