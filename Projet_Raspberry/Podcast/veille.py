@@ -288,6 +288,34 @@ def cmd_collect(cfg):
     log(f"{len(new_items)} nouveaux éléments -> {out.name}")
     for err in errors:
         alerte(f"[{cfg['id']}] {err}")
+    clean_old_files(cfg, d)
+
+
+KEEP_DAYS = 60   # fichiers de veille gardés sur le Pi ; la compilation n'utilise que 7 jours
+
+
+def clean_old_files(cfg, d):
+    """Supprime les collectes quotidiennes et les compilations de plus de KEEP_DAYS jours.
+    Une compilation pas encore envoyée sur le Drive n'est jamais supprimée."""
+    limit = dt.date.today() - dt.timedelta(days=KEEP_DAYS)
+    removed = 0
+    for f in (d / "daily").glob("*.jsonl"):
+        try:
+            day = dt.date.fromisoformat(f.stem)
+        except ValueError:
+            continue
+        if day < limit:
+            f.unlink()
+            removed += 1
+    sent = load_json(d / "weekly" / "envoyes.json", {})
+    oldest = NOW.timestamp() - KEEP_DAYS * 86400
+    for f in (d / "weekly").glob("*_source.md"):
+        mtime = f.stat().st_mtime
+        if mtime < oldest and sent.get(f.name) == mtime:
+            f.unlink()
+            removed += 1
+    if removed:
+        log(f"[{cfg['id']}] {removed} fichiers de veille de plus de {KEEP_DAYS} jours supprimés du Pi")
 
 
 def cmd_build_week(cfg, days):
