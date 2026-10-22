@@ -29,6 +29,7 @@ from commun import (HOME, REMOTE, alerte, load_emissions, load_json, log, publie
                     rclone_copy, run, save_json, select)
 
 EPISODES_FOLDER = "Episodes"   # dossier commun à toutes les émissions, à la racine de « Podcasts »
+KEEP_MP3_DAYS = 28             # au-delà, les MP3 déjà envoyés sont supprimés du Pi (le Drive garde tout)
 
 # ---------- réglages ----------
 ENGINE = "edge"        # "edge" (edge-tts) ou "piper" (local)
@@ -273,6 +274,29 @@ def assemble(items, workdir, out_mp3, title, artist, album):
 
 # ---------- programme principal ----------
 
+def clean_old_episodes(em, episodes, state):
+    """Supprime du Pi les MP3 de plus de KEEP_MP3_DAYS jours déjà envoyés sur le Drive.
+    Un MP3 dont l'envoi n'a pas réussi (semaine absente de state.json, ou MP3 issu d'un autre
+    script que celui envoyé) n'est jamais supprimé. Les MP3 d'essai (_test) le sont sans condition."""
+    limit = time.time() - KEEP_MP3_DAYS * 86400
+    freed = []
+    for mp3 in episodes.glob("*.mp3"):
+        if mp3.stat().st_mtime >= limit:
+            continue
+        src = mp3.with_suffix(".src")
+        week = mp3.stem
+        made_from = src.read_text().strip() if src.exists() else None
+        sent = week in state and made_from in (None, state[week])
+        if not (mp3.stem.endswith("_test") or sent):
+            continue
+        freed.append(mp3.name)
+        mp3.unlink()
+        src.unlink(missing_ok=True)
+    if freed:
+        log(f"[{em['id']}] MP3 de plus de {KEEP_MP3_DAYS} jours, déjà sur le Drive, supprimés du Pi : "
+            + ", ".join(sorted(freed)))
+
+
 def process(em, args):
     """Produit les épisodes manquants d'une émission."""
     data = Path(em["data_dir"])
@@ -299,6 +323,8 @@ def process(em, args):
             todo = dict(list(todo.items())[-1:])
 
     state = {} if args.test or args.file else load_json(state_file, {})
+    if not (args.test or args.file):
+        clean_old_episodes(em, episodes, state)
     pending = {w: f for w, f in todo.items() if state.get(w) != f.name}
     if not pending:
         log(f"[{em['id']}] Rien de nouveau.")

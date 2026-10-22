@@ -68,6 +68,12 @@ Une émission en panne ne bloque pas les autres : l'erreur devient une alerte et
 (avec `state.json`), `work/` (fichiers temporaires de synthèse). Journaux : `~/podcast-data/veille.log`
 et `~/podcast-data/podcast.log`.
 
+Nettoyage automatique (le Drive reste l'archive complète) :
+- `podcast.py` supprime du Pi les MP3 de plus de 28 jours déjà envoyés sur le Drive (`KEEP_MP3_DAYS`) ;
+  un MP3 dont l'envoi a échoué n'est jamais supprimé.
+- `veille.py collect` supprime les collectes quotidiennes et les compilations de plus de 60 jours
+  (`KEEP_DAYS`) ; une compilation pas encore envoyée n'est jamais supprimée.
+
 ## Accès Drive (rclone)
 
 - `podcast:` : remote dédié, `scope = drive`, racine = dossier **Podcasts**
