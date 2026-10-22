@@ -95,7 +95,8 @@ func _on_state_received(state: Dictionary) -> void:
 	hud_power.text = "PUISSANCE: %d W (3s: %d W)" % [int(round(p)), int(round(p3s))]
 	hud_speed.text = "VITESSE: %.1f km/h  [Braquet: %d/%d]" % [v_kmh, gear, gears_tot]
 	hud_cadence.text = "CADENCE: %d rpm" % int(round(cad))
-	hud_grade.text = "PENTE: %.1f %%" % grade
+	var grade_sent := float(state.get("grade_sent", grade))
+	hud_grade.text = "PENTE: %.1f %%  (envoyée au trainer: %.1f %%)" % [grade, grade_sent]
 	hud_distance.text = "DISTANCE: %.2f km" % dist_km
 	var pause = state.get("pause_reason", null)
 	status_label.text = "ÉTAT: %s%s | TRAINER: %s | ENTRÉE: %s" % [
