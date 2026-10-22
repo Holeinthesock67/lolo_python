@@ -119,6 +119,7 @@ class CoreSession:
         self._next_record = 0.0
         self._trainer_lost_since: float | None = None
         self._autoresume = False
+        self._shift_pending = False
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -203,6 +204,7 @@ class CoreSession:
             self.gearing.shift_down()
         # Appuis longs : sans effet en SIM en v1 (SRS §4.4).
         self.state.gear = self.gearing.k
+        self._shift_pending = True   # le changement de braquet doit se sentir tout de suite
 
     def _drain_inputs(self) -> None:
         for provider in self.inputs:
@@ -242,7 +244,11 @@ class CoreSession:
         # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
         target = self.gearing.effective_grade(ahead)
         max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
-        self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
+        if self._shift_pending:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
+            self._shift_pending = False
+            self._grade_sent = target
+        else:
+            self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
         self.driver.set_sim_grade(self._grade_sent)
 
         self.physics.step(m.power_w, grade, alt, dt)
