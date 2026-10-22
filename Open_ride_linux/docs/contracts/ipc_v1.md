@@ -102,6 +102,7 @@ Les bots, quand ils existeront, s'ajouteront dans un champ optionnel `bots` (lis
 | `pause` | `{}` | Met en pause (`pause_reason` = `user`) |
 | `resume` | `{}` | Reprend après une pause, quelle qu'en soit la raison |
 | `end_session` | `{ "save": booléen }` | Termine ; avec `save` vrai, produit le FIT puis passe à `FINISHED` |
+| `input_event` | `{ "event": chaîne }` | Touches lues par l'engine, même effet qu'un appui sur le Click (`PLUS_SHORT`, `MINUS_SHORT`, …) |
 | `skip_block` | `{}` | Équivalent de l'appui long + en ERG, pour le clavier ou le menu |
 
 **Événements du Click.** Hors séance (`IDLE`, `READY`), le core transmet les boutons à l'engine pour qu'il pilote le menu : `type: "input"`, `event` parmi `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Pendant `RUNNING`, le core les consomme lui-même (braquet, biais, saut de bloc, pause). Un événement `input` perdu n'est pas rejoué : sur localhost la perte est négligeable et un appui de menu manqué se refait.
