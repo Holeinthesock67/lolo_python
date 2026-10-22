@@ -33,7 +33,7 @@ class BikeConfig:
 
 @dataclass
 class TrainerConfig:
-    device_name: str = "HomeTrainer"
+    device_name: str = "HomeTrainer"   # fragment du nom annoncé (ex. « HomeTrainer 0000 »)
     latency_tau_s: float = 0.8
     difficulty_pct: float = 100.0
     grade_min_pct: float = -10.0
