@@ -133,6 +133,8 @@ Ces tests doivent être exécutés avec le PC portable sous Ubuntu (Bluetooth ac
 - [ ] Mesurer le délai entre un appui et l'écriture de la commande au HomeTrainer (lag ressenti au sprint 0).
 - [x] Appuis longs en SIM : braquet ± 3 (`long_press_gears`), bips distincts par type d'appui dans l'engine (à valider à l'oreille sur le vélo).
 - [x] `scripts/openride-dev.sh` : lance core et Godot depuis un seul terminal (remplace les deux terminaux pour les essais).
+- [ ] **Click : déconnexions spontanées** (22 octobre : environ 2 en 3 min d'usage, reconnexion en ~4 s, appuis perdus pendant ce délai). À instruire : cause de la coupure (veille, paramètres de connexion, messages d'entretien attendus par le Click), temps de reconnexion à réduire, réveil par un appui.
+- [x] Click resté « connecté » côté BlueZ (donc invisible au scan) : repli sur les appareils connus de BlueZ, vérifié en conditions réelles.
 - [ ] Rendre le braquet de départ réglable dans `config.toml` (aujourd'hui `--gear N` en ligne de commande).
 - [ ] Remplacer le parcours factice par la lecture d'un vrai `.world` (dépend du sprint 2).
 
