@@ -81,11 +81,15 @@ def summarize(records: list[dict], events: list[dict]) -> Summary:
     cads = [r["cadence"] for r in records if r.get("cadence")]
     speeds = [r.get("speed", 0.0) for r in records]
     distance = max((r.get("distance", 0.0) for r in records), default=0.0)
+    max_speed = max(speeds, default=0.0)
+    # Garde-fou : un chrono aberrant (horloge déréglée) ne doit pas produire une vitesse absurde,
+    # que le format FIT refuse (uint16) et qui ferait échouer tout l'export.
+    avg_speed = min(distance / timer, max_speed) if timer > 0 else 0.0
     return Summary(
         start_ts=start, end_ts=end, elapsed_s=end - start, timer_s=timer,
         distance_m=distance,
-        avg_speed=distance / timer if timer > 0 else 0.0,
-        max_speed=max(speeds, default=0.0),
+        avg_speed=avg_speed,
+        max_speed=max_speed,
         avg_power=_avg(powers), max_power=max(powers) if powers else None,
         avg_hr=round(_avg(hrs)) if hrs else None, max_hr=max(hrs) if hrs else None,
         avg_cadence=round(_avg(cads)) if cads else None,
