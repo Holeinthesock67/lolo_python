@@ -91,7 +91,7 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 
 - Connexion BLE, handshake propriétaire, notifications des boutons + et − (référence : projet ouvert jat255/zwift_click_handling, à valider au sprint 0). Le Click n'accepte qu'un client à la fois : l'application Zwift et le téléphone doivent être déconnectés.
 - **Format mesuré (22 octobre 2026) :** le Click testé (handshake `RideOn` sans chiffrement) envoie en continu, à environ 10 Hz, un message de type `0x23` dont le champ 1 est un tableau de bits ; un bit à 0 signifie « appuyé » (bit 12 = +, bit 8 = −). Le niveau de batterie arrive dans un message `0x19` toutes les 5 s. L'ancien format `0x37` reste pris en charge. La durée d'un appui est connue à 0,1 s près.
-- Événements normalisés : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Appui court : moins de 500 ms ; appui long : 1 200 ms ou plus ; entre les deux : ignoré. Des appuis longs naturels durent 0,7 à 1,1 s : le seuil de l'appui long est à réévaluer (environ 0,9 s) après essai en conditions réelles.
+- Événements normalisés : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : ignoré. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
 - Repli : un fournisseur clavier (flèches, touches +/−) produit les mêmes événements.
 
 ### 4.3 Braquets virtuels

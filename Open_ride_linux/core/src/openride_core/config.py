@@ -71,7 +71,7 @@ class DriversConfig:
     trainer_address: str = ""      # adresse MAC (vide : recherche par nom)
     click_address: str = ""
     click_short_max_s: float = 0.5
-    click_long_min_s: float = 1.2
+    click_long_min_s: float = 0.9
 
 
 @dataclass
