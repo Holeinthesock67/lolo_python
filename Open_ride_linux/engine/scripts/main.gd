@@ -2,7 +2,11 @@ extends Node3D
 
 ## Scène principale du moteur Godot : affiche la polyligne de la route, la caméra subjective et le HUD.
 
-@onready var ipc: IpcClient = $IpcClient
+# Chargement explicite : sans passer par l'éditeur, Godot ne connaît pas encore les class_name.
+const IpcClientScript := preload("res://scripts/ipc_client.gd")
+const RouteDataScript := preload("res://scripts/route_data.gd")
+
+@onready var ipc: Node = $IpcClient
 @onready var camera: Camera3D = $Camera3D
 @onready var polyline_instance: MeshInstance3D = $RouteMesh
 @onready var hud_power: Label = $HUD/Margin/VBox/PowerLabel
@@ -11,9 +15,10 @@ extends Node3D
 @onready var hud_grade: Label = $HUD/Margin/VBox/GradeLabel
 @onready var hud_distance: Label = $HUD/Margin/VBox/DistanceLabel
 
-var route: RouteData
+var route
 var current_s: float = 0.0
 var target_s: float = 0.0
+var _first_state_logged := false
 
 
 func _ready() -> void:
@@ -21,7 +26,7 @@ func _ready() -> void:
 	
 	# Charger la route de démonstration factice
 	var demo_path := "res://demo/demo.world/route.json"
-	route = RouteData.load_from_file(demo_path)
+	route = RouteDataScript.load_from_file(demo_path)
 	if route:
 		_build_route_mesh()
 
@@ -31,12 +36,12 @@ func _process(delta: float) -> void:
 	current_s = lerpf(current_s, target_s, clampf(delta * 10.0, 0.0, 1.0))
 	
 	if route:
-		var pos := route.sample_point(current_s)
+		var pos: Vector3 = route.sample_point(current_s)
 		# Caméra subjective placée à 1.4 m de hauteur (hauteur des yeux du cycliste)
 		camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
 		
 		# Orienter la caméra selon le cap de la route
-		var heading := route.sample_heading(current_s)
+		var heading: float = route.sample_heading(current_s)
 		# Dans Godot : -Z est le nord. La rotation Y s'applique sur le cap horaire.
 		camera.rotation.y = -heading
 
@@ -56,6 +61,9 @@ func _build_route_mesh() -> void:
 
 
 func _on_state_received(state: Dictionary) -> void:
+	if not _first_state_logged:
+		_first_state_logged = true
+		print("Premier état reçu du core : ", state.get("session_state", "?"), " trainer=", state.get("trainer_status", "?"))
 	target_s = float(state.get("s", 0.0))
 	
 	var p := float(state.get("power", 0.0))
