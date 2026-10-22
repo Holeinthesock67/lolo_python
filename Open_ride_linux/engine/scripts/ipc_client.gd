@@ -30,6 +30,9 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# Diagnostic : un gel de l'engine (rendu bloqué, fenêtre masquée…) coupe les heartbeats.
+	if delta > 0.4:
+		print("[diag] gel de l'engine : image de %.2f s (FPS moyen %d)" % [delta, Engine.get_frames_per_second()])
 	# Contrat IPC §5 : hello répété chaque seconde jusqu'au hello_ack (le core peut démarrer après).
 	if not _hello_acked:
 		_hello_timer += delta
@@ -70,7 +73,9 @@ func _poll_incoming() -> void:
 func _send_json(dict: Dictionary) -> void:
 	var payload := JSON.stringify(dict).to_utf8_buffer()
 	_peer.set_dest_address(SERVER_HOST, PORT_COMMANDS)
-	_peer.put_packet(payload)
+	var err := _peer.put_packet(payload)
+	if err != OK:
+		print("[diag] envoi UDP en échec (code ", err, ") : ", dict.get("type", "?"))
 
 
 func send_hello() -> void:
