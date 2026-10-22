@@ -21,14 +21,31 @@ var target_s: float = 0.0
 var _first_state_logged := false
 
 
+var status_label: Label
+
+
 func _ready() -> void:
 	ipc.state_received.connect(_on_state_received)
+	# Ligne d'état de diagnostic : séance, trainer, entrée, raison de pause.
+	status_label = Label.new()
+	status_label.text = "ÉTAT: en attente du core…"
+	$HUD/Margin/VBox.add_child(status_label)
 	
 	# Charger la route de démonstration factice
 	var demo_path := "res://demo/demo.world/route.json"
 	route = RouteDataScript.load_from_file(demo_path)
 	if route:
 		_build_route_mesh()
+
+
+func _unhandled_input(event: InputEvent) -> void:
+	# Touches + / − (ou flèches haut / bas) = boutons du Click, utiles sans Click ou en test.
+	if event is InputEventKey and event.pressed and not event.echo:
+		match event.keycode:
+			KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_UP:
+				ipc.send_command("input_event", {"event": "PLUS_SHORT"})
+			KEY_MINUS, KEY_KP_SUBTRACT, KEY_DOWN:
+				ipc.send_command("input_event", {"event": "MINUS_SHORT"})
 
 
 func _process(delta: float) -> void:
@@ -80,3 +97,9 @@ func _on_state_received(state: Dictionary) -> void:
 	hud_cadence.text = "CADENCE: %d rpm" % int(round(cad))
 	hud_grade.text = "PENTE: %.1f %%" % grade
 	hud_distance.text = "DISTANCE: %.2f km" % dist_km
+	var pause = state.get("pause_reason", null)
+	status_label.text = "ÉTAT: %s%s | TRAINER: %s | ENTRÉE: %s" % [
+		state.get("session_state", "?"),
+		(" (" + str(pause) + ")") if pause != null else "",
+		state.get("trainer_status", "?"),
+		state.get("input_status", "?")]
