@@ -10,10 +10,11 @@ import asyncio
 import logging
 import sys
 import time
+from contextlib import AsyncExitStack
 from typing import Any, Awaitable, Callable
 
 from . import zwift_click
-from .ble_util import backoff_delays, default_client_factory, find_device
+from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device
 from .zwift_click import InputEvent, PressClassifier
 
 log = logging.getLogger("input")
@@ -66,10 +67,7 @@ class ZwiftClickProvider:
         delays = backoff_delays()
         while not self._stop.is_set():
             try:
-                dev = await self._find(zwift_click.CLICK_NAME, self.address, 15.0)
-                if dev is None:
-                    raise ConnectionError("Zwift Click introuvable (appuyez sur un bouton)")
-                await self._session(dev)
+                await self._session()
                 delays = backoff_delays()
             except asyncio.CancelledError:
                 raise
@@ -83,14 +81,19 @@ class ZwiftClickProvider:
             except asyncio.TimeoutError:
                 pass
 
-    async def _session(self, dev: Any) -> None:
+    async def _session(self) -> None:
         loop = asyncio.get_running_loop()
         dropped = asyncio.Event()
         # Un bouton « appuyé » à la coupure ne doit pas survivre à la reconnexion.
         self._classifier = PressClassifier(self.short_max_s, self.long_min_s)
-        async with self._client_factory(
-                dev, disconnected_callback=lambda _c: loop.call_soon_threadsafe(dropped.set),
-                timeout=15.0) as client:
+        async with AsyncExitStack() as stack:
+            async with ble_lock():   # un seul scan/connexion BLE à la fois (BlueZ)
+                dev = await self._find(zwift_click.CLICK_NAME, self.address, 6.0)
+                if dev is None:
+                    raise ConnectionError("Zwift Click introuvable (appuyez sur un bouton)")
+                client = await stack.enter_async_context(self._client_factory(
+                    dev, disconnected_callback=lambda _c: loop.call_soon_threadsafe(dropped.set),
+                    timeout=15.0))
             await client.start_notify(zwift_click.ZWIFT_ASYNC, self._on_async)
             await client.start_notify(zwift_click.ZWIFT_SYNC_TX, lambda _c, _d: None)
             await client.write_gatt_char(zwift_click.ZWIFT_SYNC_RX, zwift_click.RIDE_ON,
