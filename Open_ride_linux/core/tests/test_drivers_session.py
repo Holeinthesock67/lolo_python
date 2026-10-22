@@ -271,3 +271,20 @@ def test_input_event_command_and_autoresume(tmp_path, monkeypatch):
         s._step(0.02, 5.0)
         assert s.state.session_state == "RUNNING"
     asyncio.run(scenario())
+
+
+def test_long_press_jumps_three_gears(tmp_path, monkeypatch):
+    async def scenario():
+        s = make_session(tmp_path, monkeypatch, base_port=5750)
+        s._on_command("select_route", {}, 1)
+        s._on_command("start", {}, 2)
+        k = s.gearing.k
+        s._handle_input(InputEvent.PLUS_LONG)
+        assert s.gearing.k == k + 3
+        s._handle_input(InputEvent.MINUS_LONG)
+        s._handle_input(InputEvent.MINUS_LONG)
+        assert s.gearing.k == k - 3
+        s.gearing.k = s.gearing.n_gears - 1          # butée haute respectée
+        s._handle_input(InputEvent.PLUS_LONG)
+        assert s.gearing.k == s.gearing.n_gears
+    asyncio.run(scenario())

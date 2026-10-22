@@ -22,10 +22,26 @@ var _first_state_logged := false
 
 
 var status_label: Label
+var _beep_player: AudioStreamPlayer
+
+const BEEPS := {
+	"PLUS_SHORT": [[880.0, 0.08]],
+	"MINUS_SHORT": [[440.0, 0.08]],
+	"PLUS_LONG": [[660.0, 0.10], [990.0, 0.14]],
+	"MINUS_LONG": [[550.0, 0.10], [330.0, 0.14]],
+}
 
 
 func _ready() -> void:
 	ipc.state_received.connect(_on_state_received)
+	ipc.input_event_received.connect(_on_input_event)
+	var gen := AudioStreamGenerator.new()
+	gen.mix_rate = 44100.0
+	gen.buffer_length = 0.6
+	_beep_player = AudioStreamPlayer.new()
+	_beep_player.stream = gen
+	add_child(_beep_player)
+	_beep_player.play()
 	# Ligne d'état de diagnostic : séance, trainer, entrée, raison de pause.
 	status_label = Label.new()
 	status_label.text = "ÉTAT: en attente du core…"
@@ -38,6 +54,23 @@ func _ready() -> void:
 		_build_route_mesh()
 
 
+func _on_input_event(event_name: String) -> void:
+	# Bips distincts : court + aigu, court − grave, long + montant, long − descendant.
+	if not BEEPS.has(event_name):
+		return
+	print("Bip : ", event_name)
+	var pb := _beep_player.get_stream_playback() as AudioStreamGeneratorPlayback
+	if pb == null:
+		return
+	var rate := 44100.0
+	for note in BEEPS[event_name]:
+		var n := int(rate * float(note[1]))
+		for i in range(n):
+			var env := minf(1.0, minf(float(i), float(n - i)) / 200.0)  # évite les claquements
+			var v := sin(TAU * float(note[0]) * float(i) / rate) * 0.3 * env
+			pb.push_frame(Vector2(v, v))
+
+
 func _unhandled_input(event: InputEvent) -> void:
 	# Touches + / − (ou flèches haut / bas) = boutons du Click, utiles sans Click ou en test.
 	if event is InputEventKey and event.pressed and not event.echo:
@@ -46,6 +79,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				ipc.send_command("input_event", {"event": "PLUS_SHORT"})
 			KEY_MINUS, KEY_KP_SUBTRACT, KEY_DOWN:
 				ipc.send_command("input_event", {"event": "MINUS_SHORT"})
+			KEY_PAGEUP:
+				ipc.send_command("input_event", {"event": "PLUS_LONG"})
+			KEY_PAGEDOWN:
+				ipc.send_command("input_event", {"event": "MINUS_LONG"})
 
 
 func _process(delta: float) -> void:
