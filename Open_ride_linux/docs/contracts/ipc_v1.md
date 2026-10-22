@@ -41,7 +41,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 - Les ports sont modifiables dans `config.toml` (section `ipc`) ; si un port est occupé, le programme s'arrête avec un message explicite.
 - Taille maximale d'un datagramme : 1 400 octets.
 - Un datagramme illisible (JSON invalide) est ignoré et compté dans les journaux.
-- Le trainer notifie à 1 à 4 Hz ; la fréquence de 30 Hz du message `state` est indépendante et vient de la physique du core (50 Hz).
+- Le trainer notifie à environ 1 Hz (mode puissance) à 8 Hz (mode pente), mesuré ; la fréquence de 30 Hz du message `state` est indépendante et vient de la physique du core (50 Hz).
 
 ## 3. Message core vers engine : état de séance
 
