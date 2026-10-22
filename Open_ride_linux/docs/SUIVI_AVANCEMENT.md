@@ -1,6 +1,6 @@
 # OpenRide Linux - Bilan et Suivi d'Avancement
 
-Date : 21 octobre 2026  
+Date : 22 octobre 2026 (mise à jour en fin de journée)  
 Version de référence : SRS v1.1 / Contrats IPC v1 & World v1
 
 ---
@@ -20,13 +20,15 @@ Version de référence : SRS v1.1 / Contrats IPC v1 & World v1
 - [x] **Protocoles BLE purs** (sans dépendance I/O) :
   - `ftms.py` : décodeur Indoor Bike Data (0x2AD2), Machine Features (0x2ACC), Power Range (0x2AD8), Cardio (0x2A37) et encodeur des commandes Control Point (0x11 SIM, 0x05 ERG).
   - `zwift_click.py` : décodage varints protobuf, capture des boutons +/- (type 0x37), classificateur des durées d'appui (court < 500 ms, long ≥ 1 200 ms).
-- [x] **Journalisation atomique** (`journal.py`) : écriture continue JSONL à 1 Hz avec `fsync`, tolérante aux crashs et lignes incomplètes.
+- [x] **Journalisation atomique** (`journal.py`) : écriture continue JSONL à 1 Hz (`flush` à chaque ligne, `fsync` toutes les 5 s), tolérante aux crashs et lignes incomplètes.
 - [x] **Export FIT minimal** (`fit_export.py`) : génération de fichiers `.fit` valides via `fit-tool` (`file_id`, `event` avec gestion des pauses, `record`, `lap`, `session`, `activity`).
 - [x] **Outil de récupération** : commande CLI `openride-core recover [journal]` pour convertir tout journal orphelin en FIT.
 - [x] **Outil de diagnostic BLE** (`openride-ble-diag` / `ble_diag.py`) : sous-commandes `scan`, `trainer` (avec tests de commandes et remise sécurisée à 0 %) et `click`.
 - [x] **Simulateur MockDriver** (`mock_driver.py`) : simulation d'un home trainer (SIM & ERG, cadence, fréquence cardiaque, déconnexion/reconnexion).
 - [x] **Serveur IPC UDP** (`ipc_server.py`) : gestion des flux UDP (ports 5005 et 5006), diffusion d'état à 30 Hz, acquittement de commandes avec `cmd_id` et contrôle du heartbeat engine.
 - [x] **Boucle de session mock** (`run_mock_session.py`) : exécutable autonome faisant tourner la physique 50 Hz + le MockDriver + l'IPC 30 Hz.
+
+- [x] **Pilotes et boucle de séance (sprint 1)** : `ftms_driver.py`, `input_providers.py`, `session.py`, `ble_util.py` ; lancement par `openride-core run`.
 
 ### Module Engine Godot (`openride-engine`)
 - [x] Projet Godot 4 initialisé dans `engine/project.godot`.
@@ -61,6 +63,27 @@ Version de référence : SRS v1.1 / Contrats IPC v1 & World v1
 **Total des tests unitaires automatisés (`pytest`)** : **31 passés avec succès**.
 
 ---
+
+### Essais sur le PC Linux cible, 22 octobre 2026 (Python 3.14.4, bleak 3.0.2, Godot 4.3, GTX 1060)
+- **Environnement** : dépôt cloné par git, branche de travail récupérée avec `git fetch origin <branche>`, 41 tests verts.
+- **Victory (BLE)** : détection, FTMS, SIM, ERG, plage 0–1000 W, FC (0 bpm = pas de mesure). Connexion stable de plusieurs minutes avec le pilote réel.
+- **Click (BLE)** : handshake sans chiffrement, format récent `0x23` (bit 12 = +, bit 8 = −), appuis courts et longs reconnus dans le bon sens.
+- **FIT** : séance de démo et séance réelle importées sans erreur.
+- **Moteur Godot** : fenêtre, HUD et caméra mis à jour par le core ; touches `+` / `−` et flèches envoyées au core.
+- **Performance du core** : pas de physique p50 0,2 ms, retard de boucle max 3 à 19 ms, CPU 3 à 4 % : aucun seuil Rust approché (le pic de 7 ms venait du `fsync` du journal, corrigé).
+
+### Défauts trouvés et corrigés pendant les essais
+| Défaut | Cause | Correction |
+| --- | --- | --- |
+| `org.bluez.Error.InProgress` | Trainer et Click scannaient en même temps (BlueZ n'accepte qu'une opération à la fois) | Verrou commun, trainer prioritaire |
+| Trainer « introuvable » | Nom cherché « JetBlack Victory », annoncé « Victory 9908 » | Nom par défaut « Victory » |
+| Pas de physique p99 à 7 ms | `fsync` du journal à chaque ligne | `fsync` toutes les 5 s (flush à chaque ligne conservé) |
+| Lag perçu sur les commandes de braquet | Pente envoyée limitée à 2 points/s, même pour un changement de braquet | Le braquet saute à la cible ; la limite ne vaut que pour le relief |
+| Export FIT en échec | Vitesse moyenne hors plage avec un chrono aberrant | Vitesse moyenne bornée par la vitesse max |
+| HUD vide dans Godot | `class_name` inconnus quand le projet n'est pas importé par l'éditeur | Chargement explicite des scripts |
+| Moteur « perdu » toutes les 4 s | Heartbeat lié au rendu | Heartbeat dans un fil séparé |
+| Séance en pause sans reprise | Aucun bouton de reprise à l'écran | `--autostart` reprend seul après `engine_lost` / `trainer_lost` |
+| Click intermittent | Recherche par fenêtres de 6 s puis attente jusqu'à 10 s ; le Click ne s'annonce qu'après un appui | Recherche continue (5 s, pause 0,5 à 2 s) |
 
 ## 3. Ce qui reste à tester
 
@@ -100,11 +123,16 @@ Ces tests doivent être exécutés avec le PC portable sous Ubuntu (Bluetooth ac
 
 ## 4. Ce qui reste à faire (Prochaines étapes de développement)
 
-### Sprint 1 : Intégration Core finale
-- [ ] Implémenter le pilote BLE réel `FtmsDriver` dans `core/src/openride_core/ftms_driver.py` (en reprenant la logique validée dans `ble_diag.py`).
-- [ ] Implémenter le fournisseur d'entrées Click réel `ZwiftClickProvider` avec bascule automatique sur repli clavier (`KeyboardProvider`).
-- [ ] Finaliser la boucle principale officielle de `openride-core` intégrant le basculement automatique entre matériel réel et MockDriver via `config.toml`.
-- [ ] Valider une séance de 10 minutes sur le vélo réel avec braquets perceptibles au pédalage.
+### Sprint 1 : Intégration Core finale (en grande partie fait, 22 octobre)
+- [x] `FtmsDriver` réel (`ftms_driver.py`) : reconnexion à délai croissant, prise de contrôle, consigne SIM bornée, lissage temporel de la puissance, FC 0 → null, résistance relâchée à l'arrêt.
+- [x] `ZwiftClickProvider` + clavier (`input_providers.py`) : le Click est cherché en continu, le clavier reste actif en parallèle.
+- [x] Boucle principale officielle (`session.py`, `openride-core run`) : physique 50 Hz, IPC 30 Hz, journal 1 Hz, FIT en fin de séance, bascule réel/simulé par `--trainer` / `--input` ou `[drivers]` de `config.toml`.
+- [x] Séance courte sur le Victory réel avec changements de braquet (essais du 22 octobre, voir §2).
+- [ ] Séance réelle de 10 minutes ou plus avec braquets perceptibles, puis relecture des mesures de performance (`Perf` dans le log).
+- [ ] Réévaluer le seuil d'appui long du Click (environ 0,9 s).
+- [ ] Mesurer le délai entre un appui et l'écriture de la commande au Victory (lag ressenti au sprint 0).
+- [ ] Rendre le braquet de départ réglable dans `config.toml` (aujourd'hui `--gear N` en ligne de commande).
+- [ ] Remplacer le parcours factice par la lecture d'un vrai `.world` (dépend du sprint 2).
 
 ### Sprint 2 : Compilateur de parcours minimal (`openride-compiler`)
 - [ ] Créer le package `openride-compiler` (CLI `openride-compiler build`).
@@ -125,15 +153,3 @@ Ces tests doivent être exécutés avec le PC portable sous Ubuntu (Bluetooth ac
 - [ ] Lecteur XML `.zwo`, gestion des blocs (Warmup, SteadyState, IntervalsT, FreeRide).
 - [ ] Couches OpenStreetMap (bâtiments extrudés 3D, forêts).
 - [ ] Système de thèmes (`~/OpenRide/Themes/<nom>/`) avec packs de textures interchangeables.
-
-## Sprint 1 (22 octobre) : pilotes réels et boucle du core
-
-Branche `claude/openride-sprint1-drivers`.
-
-- `ftms_driver.py` : pilote Victory (reconnexion à délai croissant, prise de contrôle, consigne SIM bornée et renvoyée toutes les 2 s, lissage temporel de la puissance, FC 0 → null, pause après 3 s sans donnée, résistance relâchée à l'arrêt).
-- `input_providers.py` : Zwift Click (réutilise le décodeur mesuré) avec clavier du terminal en parallèle (`+` `-` `u` `d`).
-- `session.py` : boucle asyncio unique (physique 50 Hz au pas réel, IPC 30 Hz, journal 1 Hz, FIT en fin de séance, pente anticipée et limitée à 2 points/s, mesures de perf toutes les 60 s pour la décision Rust).
-- Lancement : `openride-core run --trainer ftms --input click` (ou `mock` / `keyboard` ; clés équivalentes dans `[drivers]` de `config.toml`).
-- Limite connue : le parcours reste factice tant que le compilateur `.world` n'existe pas.
-- Garde-fou FIT : vitesse moyenne bornée par la vitesse max (chrono aberrant).
-- Tests : 38 verts (client BLE simulé).
