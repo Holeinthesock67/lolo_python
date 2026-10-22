@@ -31,7 +31,7 @@ B = lambda t: S.append(Paragraph(t, bul, bulletText="●"))
 BB = lambda t: S.append(Paragraph(t, sub, bulletText="○"))
 
 P("Synthèse Intégrale v2.3 : Performance, Entraînement, Home Gym, Nutrition et Santé (Homme, 45 ans)", h1)
-P("Version 2.3 – 20 octobre 2026 – révisée selon l'état actuel de la littérature scientifique ; pilotage de l'intensité par la charge Garmin sur 4 semaines.", meta)
+P("Version 2.3 – 20 octobre 2026 (mise à jour du 22/10 : tension, 2 mesures par séance) – révisée selon l'état actuel de la littérature scientifique ; pilotage de l'intensité par la charge Garmin sur 4 semaines.", meta)
 P("Ce document rassemble les métriques et principes essentiels pour piloter la performance, la charge "
   "d'entraînement, le home gym, la nutrition empirique et la santé cardiométabolique à 45 ans, en s'appuyant "
   "sur la montre Garmin 265, les pédales de puissance Favero Assioma, une balance, un mètre ruban, un "
@@ -158,7 +158,7 @@ B("<b>Créatine monohydrate (optionnel) :</b> 3–5 g/j, le complément le mieux
   "Pause de 1–2 semaines avant chaque prise de sang (elle élève la créatinine et fausse l'estimation de la fonction rénale), ou prévenir le médecin.")
 
 P("6. L'Angle Mort : Tension Artérielle, Sommeil, Biologie & Charge Mentale", h2)
-B("<b>Tension artérielle (tensiomètre huméral) :</b> règle des 3 (3 mesures matin et soir pendant 3 jours, 2 à 4 fois par an). "
+B("<b>Tension artérielle (tensiomètre huméral) :</b> 2 mesures à 1 minute d'intervalle, matin et soir, pendant 3 jours (ESH 2023 / ESC 2024 ; une 3e est facultative), 2 à 4 fois par an. La première mesure est souvent plus haute : ne jamais se fier à une mesure isolée. "
   "Cible : &lt; 120/70 mmHg (ESC 2024). Alerte à domicile : ≥ 135/85 mmHg.")
 B("<b>Sommeil :</b> 7–9 h par nuit (National Sleep Foundation, 26–64 ans ; AASM : au moins 7 h), avec des horaires réguliers (±30 min).")
 B("<b>Bilan biologique annuel :</b> bilan lipidique avec ApoB (cible selon le risque global, ESC/EAS) ; HbA1c (&lt; 5,7 % normal, "
@@ -183,7 +183,7 @@ rows = [
  ["N1 Santé & SNA", "Statut VFC (rMSSD 7 j)", "Garmin 265 (nocturne)", "Dans le corridor 3 sem.", "Sortie > 3 j → alerte de gradient, écoute des sensations"],
  ["N1 Santé & SNA", "Charge mentale", "Auto-évaluation (quotidien)", "Maîtrisée / flux stable", "Stress chronique ou RPE dissocié → scaling"],
  ["N1 Santé", "Sommeil", "Garmin + ressenti (quotidien)", "7–9 h (NSF), horaires ±30 min", "Dette répétée → alléger la semaine"],
- ["N1 Sécurité", "Tension artérielle", "Tensiomètre (2–4×/an)", "< 120/70 mmHg (ESC 2024)", "≥ 135/85 à domicile → avis médical"],
+ ["N1 Sécurité", "Tension artérielle", "Tensiomètre (2 mesures × matin et soir × 3 j, 2–4×/an)", "< 120/70 mmHg (ESC 2024)", "≥ 135/85 à domicile → avis médical"],
  ["N1 Sécurité", "Bilan biologique", "Prise de sang (1×/an)", "HbA1c < 5,7 % (ADA) ; Lp(a) < 50 mg/dL (EAS)", "Valeur hors norme → avis médical"],
  ["N2 Métabolisme", "Poids moyen (15 j)", "Balance → Garmin (1 pesée / 5 j)", "Stable (maintien)", "Variation > 0,8 %/sem."],
  ["N2 Métabolisme", "Ratio WHtR", "Mètre ruban (1×/5 j, moyenne 15 j)", "< 0,50 (NICE 2022)", "0,50–0,59 accru ; ≥ 0,60 élevé"],
