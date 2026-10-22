@@ -1,4 +1,3 @@
-class_name RouteData
 extends RefCounted
 
 ## Charge et échantillonne la couche route.json d'un .world selon le Format .world v1.
@@ -16,7 +15,7 @@ var grade_pct: PackedFloat32Array = PackedFloat32Array()
 var heading_deg: PackedFloat32Array = PackedFloat32Array()
 
 
-static func load_from_file(route_json_path: String) -> RouteData:
+static func load_from_file(route_json_path: String) -> RefCounted:
 	if not FileAccess.file_exists(route_json_path):
 		push_error("Fichier route introuvable: " + route_json_path)
 		return null
@@ -28,7 +27,7 @@ static func load_from_file(route_json_path: String) -> RouteData:
 		push_error("route.json invalide: " + route_json_path)
 		return null
 	
-	var r := RouteData.new()
+	var r = (load("res://scripts/route_data.gd") as GDScript).new()
 	r.version = json_res.get("version", "1.0")
 	r.ds_m = float(json_res.get("ds_m", 10.0))
 	r.n = int(json_res.get("n", 0))
