@@ -65,6 +65,9 @@ Version de référence : SRS v1.1 / Contrats IPC v1 & World v1
 ## 3. Ce qui reste à tester
 
 ### A. Sur le PC Linux cible avec le matériel réel (Home Trainer & Click)
+
+**Mise à jour du 22 octobre 2026 :** scan, diagnostic du Victory (lecture, cardio, commandes pente et puissance) et diagnostic du Zwift Click (appuis courts et longs, sens des boutons) sont validés. Détails dans `docs/spikes.md` §4. Restent : ouverture d'un FIT dans GoldenCheetah / Garmin Connect et l'affichage Godot avec le mock.
+
 Ces tests doivent être exécutés avec le PC portable sous Ubuntu (Bluetooth activé, Zwift déconnecté du smartphone et du PC) :
 
 1. **Scan BLE (`openride-ble-diag scan`)**
