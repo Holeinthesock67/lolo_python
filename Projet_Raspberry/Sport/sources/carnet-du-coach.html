@@ -187,14 +187,14 @@ nav button[aria-current="page"]{color:var(--accent)}
     </form>
 
     <form class="card" id="fTension">
-      <h2>Tension, règle des 3 <small id="bpProg"></small></h2>
-      <p class="muted">Assis, au calme, 3 mesures à 1 min d'intervalle, matin et soir pendant 3 jours. Pour chaque mesure : systolique, diastolique, pouls.</p>
+      <h2>Tension à domicile <small id="bpProg"></small></h2>
+      <p class="muted">Assis, au calme, 2 mesures à 1 min d'intervalle (une 3e est facultative), matin et soir pendant 3 jours. Pour chaque mesure : systolique, diastolique, pouls.</p>
       <div class="tbl"><table><thead><tr><th>Date</th><th>Moment</th><th>Moyenne</th><th>Pouls</th></tr></thead><tbody id="bpTable"></tbody></table></div>
       <div class="kv"><span>Moyenne de la campagne</span><b id="bpMean">–</b></div>
       <div id="bpPill"></div>
       <div class="grid2"><label>Moment<select id="bpMoment"><option>matin</option><option>soir</option></select></label><div></div></div>
       <div class="grid3" id="bpInputs"></div>
-      <button class="btn save" type="submit">Enregistrer les 3 mesures</button>
+      <button class="btn save" type="submit">Enregistrer les mesures</button>
     </form>
 
     <form class="card" id="fBio">
@@ -456,7 +456,7 @@ function renderTodo(){
   const lastNeck=[...D.m].reverse().find(r=>num(r[3])!=null);const dN=lastNeck?days(TODAY,lastNeck[0]):null;
   items.push(["Tour de cou (tous les 2 mois)",dN==null?["Jamais mesuré","warn"]:dN>=60?["À mesurer","warn"]:[`Dans ${60-dN} j`,"info"]]);
   const camp=campaign();const lastT=D.t.at(-1);
-  items.push(["Tension (règle des 3)",!lastT?["Première campagne à faire","warn"]:camp.open?[`${camp.rows.length}/6 prises`,"warn"]:days(TODAY,lastT[0])>=90?["Nouvelle campagne","warn"]:[`Dans ${90-days(TODAY,lastT[0])} j`,"info"]]);
+  items.push(["Tension (2 mesures, matin et soir, 3 jours)",!lastT?["Première campagne à faire","warn"]:camp.open?[`${camp.rows.length}/6 prises`,"warn"]:days(TODAY,lastT[0])>=90?["Nouvelle campagne","warn"]:[`Dans ${90-days(TODAY,lastT[0])} j`,"info"]]);
   const lastB=D.b.at(-1);items.push(["Bilan biologique",!lastB?["À planifier","warn"]:days(TODAY,lastB[0])>=365?["À faire","warn"]:[`Dans ${Math.ceil((365-days(TODAY,lastB[0]))/30)} mois`,"info"]]);
   $("#todo").innerHTML=items.map(([t,[p,c]])=>`<div><span>${t}</span><span class="pill ${c}">${p}</span></div>`).join("");
   $("#todoCount").textContent=items.filter(i=>i[1][1]==="warn").length+" en attente";
@@ -505,7 +505,7 @@ function renderBp(){
   else{$("#bpMean").textContent="–";$("#bpPill").innerHTML=""}
 }
 $("#bpMoment").value=now.getHours()<14?"matin":"soir";
-$("#bpInputs").innerHTML=[1,2,3].map(n=>`<label>Mesure ${n}<input id="bps${n}" type="number" inputmode="numeric" placeholder="sys" aria-label="Systolique ${n}"><input id="bpd${n}" type="number" inputmode="numeric" placeholder="dia" aria-label="Diastolique ${n}"><input id="bpp${n}" type="number" inputmode="numeric" placeholder="pouls" aria-label="Pouls ${n}"></label>`).join("");
+$("#bpInputs").innerHTML=[1,2,3].map(n=>`<label>${n===3?"Mesure 3 (option)":"Mesure "+n}<input id="bps${n}" type="number" inputmode="numeric" placeholder="sys" aria-label="Systolique ${n}"><input id="bpd${n}" type="number" inputmode="numeric" placeholder="dia" aria-label="Diastolique ${n}"><input id="bpp${n}" type="number" inputmode="numeric" placeholder="pouls" aria-label="Pouls ${n}"></label>`).join("");
 
 const BIO=[["ApoB","g/L","selon le risque global (ESC/EAS)"],["LDL","g/L","selon le risque global (ESC/EAS)"],["HbA1c","%","< 5,7 % normal ; 5,7–6,4 % prédiabète (ADA)"],["Ferritine","µg/L","selon le laboratoire"],["Lp(a)","mg/dL","< 50 mg/dL (EAS 2022), une fois dans la vie"],["Créatinine","mg/L","créatine arrêtée avant la prise de sang"]];
 $("#bioName").innerHTML=BIO.map(b=>`<option>${b[0]}</option>`).join("");$("#bioDate").value=TODAY;
@@ -655,7 +655,7 @@ $("#fTaille").addEventListener("submit",async e=>{e.preventDefault();
   if(ok){$("#waist").value="";$("#neck").value="";$("#kgIn").value="";renderSingle()}});
 $("#fTension").addEventListener("submit",async e=>{e.preventDefault();
   const v=[1,2,3].flatMap(n=>[num($("#bps"+n).value),num($("#bpd"+n).value),num($("#bpp"+n).value)]);
-  if(v[0]==null||v[1]==null){toast("Saisis au moins la première mesure (sys et dia).");return}
+  if(v[0]==null||v[1]==null||v[3]==null||v[4]==null){toast("Saisis au moins les mesures 1 et 2 (sys et dia).");return}
   if(v.some((x,i)=>x!=null&&(i%3===0?(x<70||x>250):i%3===1?(x<40||x>150):(x<30||x>200)))){toast("Une valeur semble hors limites : vérifie la saisie.");return}
   const ok=await append("t",["'"+TODAY,$("#bpMoment").value,...v.map(x=>x??"")],"Mesures de tension enregistrées");
   if(ok)$$("#bpInputs input").forEach(i=>i.value="")});
