@@ -114,8 +114,8 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 | Action | Mode SIM | Mode ERG |
 | --- | --- | --- |
 | Appui court + / − | Braquet k + 1 / k − 1 | Biais d'intensité ± 2 % (plage 80 % à 120 %) |
-| Appui long + | Sans effet en v1 | Passer au bloc suivant |
-| Appui long − | Sans effet en v1 | Pause / reprise ERG (pente 0 %) |
+| Appui long + | Braquet + 3 (essai, `long_press_gears`) | Passer au bloc suivant |
+| Appui long − | Braquet − 3 (essai, `long_press_gears`) | Pause / reprise ERG (pente 0 %) |
 
 Le demi-tour sur la route et le réglage des bots sont reportés (§14).
 

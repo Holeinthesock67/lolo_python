@@ -49,6 +49,7 @@ class GearingConfig:
     ratio_min: float = 0.50
     ratio_max: float = 2.25
     g_base_pct: float = 2.0
+    long_press_gears: int = 3     # appui long en SIM : nombre de braquets sautés
 
 
 @dataclass
