@@ -159,6 +159,11 @@ class CoreSession:
         elif name == "resume" and st == "PAUSED":
             self._trainer_lost_since = None
             self._set_state("RUNNING")
+        elif name == "input_event":   # touches lues par l'engine (fenêtre active) : même effet que le Click
+            try:
+                self._handle_input(InputEvent(args.get("event", "")))
+            except ValueError:
+                log.warning("input_event inconnu : %s", args.get("event"))
         elif name == "end_session" and st in ("RUNNING", "PAUSED"):
             self._finish(bool(args.get("save", True)))
 
@@ -219,9 +224,11 @@ class CoreSession:
         m = self.driver.poll(self._t_session)
         self.state.trainer_status = getattr(self.driver, "status", "MOCK")
 
-        if (self._autoresume and m.connected and self.state.session_state == "PAUSED"
-                and self.state.pause_reason == "trainer_lost"):
-            self._on_command("resume", {}, 0)   # essais sans engine : reprise automatique
+        if self._autoresume and self.state.session_state == "PAUSED":
+            reason = self.state.pause_reason
+            if (reason == "trainer_lost" and m.connected) or \
+                    (reason == "engine_lost" and self.server.engine_connected):
+                self._on_command("resume", {}, 0)   # essais sans menu : reprise automatique
         if self.state.session_state != "RUNNING":
             return
         if not m.connected:

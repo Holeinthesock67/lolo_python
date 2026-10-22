@@ -253,3 +253,21 @@ def test_gear_shift_bypasses_grade_rate_limit(tmp_path, monkeypatch):
         target = s.gearing.effective_grade(s.route.sample("grade_pct", s.physics.s))
         assert abs(s._grade_sent - target) < 0.5 and abs(s._grade_sent - before) > 0.04
     asyncio.run(scenario())
+
+
+def test_input_event_command_and_autoresume(tmp_path, monkeypatch):
+    async def scenario():
+        s = make_session(tmp_path, monkeypatch, base_port=5740)
+        s._autoresume = True
+        s._on_command("select_route", {}, 1)
+        s._on_command("start", {}, 2)
+        k = s.gearing.k
+        s._on_command("input_event", {"event": "PLUS_SHORT"}, 3)
+        s._on_command("input_event", {"event": "n'importe quoi"}, 4)   # ignoré sans planter
+        assert s.gearing.k == k + 1
+        s._on_engine_lost()
+        assert s.state.pause_reason == "engine_lost"
+        s.server.engine_connected = True
+        s._step(0.02, 5.0)
+        assert s.state.session_state == "RUNNING"
+    asyncio.run(scenario())
