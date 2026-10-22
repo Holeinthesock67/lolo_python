@@ -153,6 +153,10 @@ class FtmsDriver:
         if resp.ok:
             self.control_refused = False
             return
+        if resp.request_op == ftms.OP_START_RESUME:
+            # « Démarrer » refusé = le trainer tourne déjà (mesuré sur le HomeTrainer) : sans gravité.
+            log.debug("Start/Resume refusé (%s) : trainer déjà démarré", resp.result_name)
+            return
         log.warning("Commande 0x%02x refusée : %s", resp.request_op, resp.result_name)
         if resp.result == 0x05:  # CONTROL_NOT_PERMITTED : le contrôle a été perdu
             self.control_refused = True
