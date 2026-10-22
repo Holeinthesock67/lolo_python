@@ -14,11 +14,12 @@ import asyncio
 import logging
 import math
 import time
+from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from . import ftms
-from .ble_util import backoff_delays, default_client_factory, find_device
+from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device
 from .config import BikeConfig, TrainerConfig
 from .mock_driver import TrainerMetrics
 from .physics import RHO0
@@ -163,10 +164,7 @@ class FtmsDriver:
         delays = backoff_delays()
         while not self._stop.is_set():
             try:
-                dev = await self._find(self.cfg.device_name, self.address, 15.0)
-                if dev is None:
-                    raise ConnectionError("trainer introuvable")
-                await self._session(dev)
+                await self._session()
                 delays = backoff_delays()   # connexion réussie puis perdue : on repart à 1 s
             except asyncio.CancelledError:
                 raise
@@ -183,15 +181,20 @@ class FtmsDriver:
             except asyncio.TimeoutError:
                 pass
 
-    async def _session(self, dev: Any) -> None:
+    async def _session(self) -> None:
         loop = asyncio.get_running_loop()
         dropped = asyncio.Event()
 
         def on_disconnect(_client: Any) -> None:
             loop.call_soon_threadsafe(dropped.set)
 
-        async with self._client_factory(dev, disconnected_callback=on_disconnect,
-                                        timeout=15.0) as client:
+        async with AsyncExitStack() as stack:
+            async with ble_lock():   # un seul scan/connexion BLE à la fois (BlueZ)
+                dev = await self._find(self.cfg.device_name, self.address, 8.0)
+                if dev is None:
+                    raise ConnectionError("trainer introuvable")
+                client = await stack.enter_async_context(
+                    self._client_factory(dev, disconnected_callback=on_disconnect, timeout=15.0))
             services = client.services
             if services.get_characteristic(ftms.INDOOR_BIKE_DATA) is None:
                 raise ConnectionError("pas de service FTMS sur cet appareil")

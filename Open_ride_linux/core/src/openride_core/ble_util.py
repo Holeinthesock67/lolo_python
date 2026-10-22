@@ -2,10 +2,28 @@
 
 from __future__ import annotations
 
+import asyncio
 import logging
+import weakref
 from typing import Any, Iterator
 
 log = logging.getLogger("ble")
+
+_locks: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock]" = (
+    weakref.WeakKeyDictionary())
+
+
+def ble_lock() -> asyncio.Lock:
+    """Verrou commun : BlueZ n'accepte qu'un scan ou une connexion à la fois.
+
+    Tenu pendant la recherche et l'établissement de la connexion, relâché dès qu'elle est
+    établie (la suite de la session BLE n'a pas besoin d'exclusivité).
+    """
+    loop = asyncio.get_running_loop()
+    lock = _locks.get(loop)
+    if lock is None:
+        lock = _locks[loop] = asyncio.Lock()
+    return lock
 
 
 async def find_device(name: str, address: str | None, timeout: float) -> Any | None:
