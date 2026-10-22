@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import json
 import os
+import time
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import IO, Iterator
@@ -20,6 +21,8 @@ from typing import IO, Iterator
 from .config import OPENRIDE_HOME
 
 JOURNAL_DIR = OPENRIDE_HOME / "Activities" / ".journal"
+
+FSYNC_EVERY_S = 5.0   # fsync bloque la boucle ~7 ms ; flush à chaque ligne protège déjà d'un plantage du programme
 
 EVENTS = ("start", "pause", "resume", "stop")
 
@@ -47,12 +50,16 @@ class JournalWriter:
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
         self._fh: IO[str] = path.open("a", encoding="utf-8")
+        self._last_sync = 0.0
         self._write({"kind": "header", "version": 1, "route_id": route_id})
 
     def _write(self, obj: dict) -> None:
         self._fh.write(json.dumps(obj, separators=(",", ":")) + "\n")
-        self._fh.flush()
-        os.fsync(self._fh.fileno())
+        self._fh.flush()   # survit à un plantage du programme
+        now = time.monotonic()
+        if now - self._last_sync >= FSYNC_EVERY_S:   # survit aussi à une coupure de courant (à 5 s près)
+            os.fsync(self._fh.fileno())
+            self._last_sync = now
 
     def record(self, rec: Record) -> None:
         self._write({"kind": "record", **asdict(rec)})
@@ -64,6 +71,8 @@ class JournalWriter:
 
     def close(self) -> None:
         if not self._fh.closed:
+            self._fh.flush()
+            os.fsync(self._fh.fileno())
             self._fh.close()
 
     def __enter__(self) -> "JournalWriter":
