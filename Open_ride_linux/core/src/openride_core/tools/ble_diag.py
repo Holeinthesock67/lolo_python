@@ -264,7 +264,7 @@ async def cmd_click(args: argparse.Namespace) -> None:
                                       lambda _c, d: log.debug("UNKNOWN_6 : %s", d.hex()))
         log.info("Handshake : envoi de %r", zwift_click.RIDE_ON)
         await client.write_gatt_char(zwift_click.ZWIFT_SYNC_RX, zwift_click.RIDE_ON, response=True)
-        log.info("Prêt. Testez : appuis courts (< 0,5 s) et longs (≥ 1,2 s) sur + et −, %.0f s.",
+        log.info("Prêt. Testez : appuis courts (< 0,5 s) et longs (≥ 0,9 s) sur + et −, %.0f s.",
                  args.duration)
         await asyncio.sleep(args.duration)
 

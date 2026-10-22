@@ -34,7 +34,7 @@ KEYPAD_PLUS_BIT = 12   # bit à 0 = appuyé ; à confirmer sur le matériel (spr
 KEYPAD_MINUS_BIT = 8
 
 SHORT_MAX_S = 0.500
-LONG_MIN_S = 1.200
+LONG_MIN_S = 0.900   # abaissé de 1,2 s après essai réel (appuis longs naturels : 0,7 à 1,1 s)
 
 
 class InputEvent(str, enum.Enum):
@@ -113,7 +113,7 @@ def parse_click_buttons(data: bytes) -> ClickButtons | None:
 class PressClassifier:
     """Transforme les états appuyé/relâché horodatés en événements normalisés.
 
-    L'événement est émis au relâchement : moins de 500 ms -> court, 1 200 ms ou plus -> long,
+    L'événement est émis au relâchement : moins de 500 ms -> court, 900 ms ou plus -> long,
     entre les deux -> ignoré (SRS §4.2).
     """
 
