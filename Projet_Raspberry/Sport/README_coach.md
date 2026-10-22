@@ -1,6 +1,6 @@
 # Coach sportif hybride – mémo du système
 
-Mis à jour le 21/10/2026 (synthèse v2.3, mise à jour automatique du Pi depuis GitHub). Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
+Mis à jour le 22/10/2026 (feuille déplacée dans « Coach - Garmin export », tension à 2 mesures). Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
 
 ## Vue d'ensemble
 
@@ -13,7 +13,11 @@ Mis à jour le 21/10/2026 (synthèse v2.3, mise à jour automatique du Pi depuis
 - Page de saisie (téléphone), épinglée dans Claude : https://claude.ai/artifact/WAux9mehWeAnC7DU3vJ65e
   Onglets : Aujourd'hui (recommandation du coach du matin, programme prévu, check-in matin, bilan soir RPE × durée), Mesures (tour de taille et poids préremplis avec les dernières valeurs), Perf, Tendances.
   L'onglet Perf affiche aussi « Charge et intensité » (Garmin), lu dans `coach_metrics.json` du Drive « Coach - Garmin export » via le connecteur Google Drive : charge aiguë / chronique, répartition sur 4 semaines comparée aux cibles de l'onglet Réglages (avec la recommandation 4×4 qui en découle), minutes OMS, FTP estimé. Le nombre de séances intenses a été retiré le 20/10 (faussé par le CrossFit).
-- Données : feuille Google « Coach – Carnet », dans le dossier Drive « Santé et Musculation ».
+- Données : feuille Google « Coach – Carnet », dans le dossier Drive « Coach - Garmin export » (déplacée le 22/10/2026 depuis « Santé et Musculation » ; l'identifiant n'a pas changé, rien d'autre à modifier).
+- Organisation du Drive :
+  - « Coach - Garmin export » (racine du Drive, **ne pas le déplacer ni le renommer** sans modifier la ligne cron du Pi) : exports du Pi (réécrits chaque matin par rclone), feuille « Coach – Carnet », sous-dossier « Coach - Sauvegardes du carnet ».
+  - « Coach - Sauvegardes du carnet » : copies faites par la tâche du soir avant toute correction.
+  - rclone ne voit et ne remplace que ses propres fichiers (exports) : la feuille et les sauvegardes ne risquent rien.
   ID `1rwXH-2Fop758Bk-6VTDATiySnkO9D7eyVEHn7yuZCt8`.
   Onglets :
   - Quotidien (A:J) : date, charge mentale, fatigue, sommeil ressenti, zones et intensité de douleur, maladie, score de sommeil Garmin, remarque, sommeil consolidé (calculé).
@@ -54,7 +58,7 @@ Mis à jour le 21/10/2026 (synthèse v2.3, mise à jour automatique du Pi depuis
 
 ### 6. Règles de travail
 - Toute modification du programme, des documents, du skill, du carnet ou de la tâche planifiée est d'abord proposée, puis validée par le propriétaire.
-- On ne touche pas au dossier Drive « Santé et Musculation », sauf : la ligne quotidienne du coach dans l'onglet « Coach », et les corrections sûres de la tâche du soir (après sauvegarde). rclone n'écrit que dans « Coach - Garmin export ».
+- On ne touche pas au dossier Drive « Santé et Musculation » (il ne contient plus rien du coach). Dans la feuille « Coach – Carnet », seules écritures automatiques : la ligne quotidienne du coach dans l'onglet « Coach », et les corrections sûres de la tâche du soir (après sauvegarde). rclone n'écrit que dans « Coach - Garmin export ».
 - Une conversation par sujet dans le projet « Coach Sportif » : coaching au quotidien d'un côté, script / Pi de l'autre.
 
 ### Ce qui reste ouvert
