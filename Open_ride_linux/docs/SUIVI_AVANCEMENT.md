@@ -129,7 +129,7 @@ Ces tests doivent être exécutés avec le PC portable sous Ubuntu (Bluetooth ac
 - [x] Boucle principale officielle (`session.py`, `openride-core run`) : physique 50 Hz, IPC 30 Hz, journal 1 Hz, FIT en fin de séance, bascule réel/simulé par `--trainer` / `--input` ou `[drivers]` de `config.toml`.
 - [x] Séance courte sur le Victory réel avec changements de braquet (essais du 22 octobre, voir §2).
 - [ ] Séance réelle de 10 minutes ou plus avec braquets perceptibles, puis relecture des mesures de performance (`Perf` dans le log).
-- [ ] Réévaluer le seuil d'appui long du Click (environ 0,9 s).
+- [x] Seuil d'appui long du Click abaissé de 1,2 s à 0,9 s (essai du 22 octobre) ; parcours factice adouci (pente de 0,5 à 4,5 %, moyenne 2,5 %) pour l'essai de 10 minutes à environ 150 W. À reconfirmer sur la séance longue.
 - [ ] Mesurer le délai entre un appui et l'écriture de la commande au Victory (lag ressenti au sprint 0).
 - [x] Appuis longs en SIM : braquet ± 3 (`long_press_gears`), bips distincts par type d'appui dans l'engine (validé à l'oreille sur le vélo le 22 octobre, appuis courts et longs).
 - [x] `scripts/openride-dev.sh` : lance core et Godot depuis un seul terminal (remplace les deux terminaux pour les essais).
