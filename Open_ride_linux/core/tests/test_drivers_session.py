@@ -237,3 +237,19 @@ def test_ble_connections_are_serialized():
         click.stop()
         await asyncio.wait_for(asyncio.gather(*tasks), 3)
     asyncio.run(scenario())
+
+
+def test_gear_shift_bypasses_grade_rate_limit(tmp_path, monkeypatch):
+    async def scenario():
+        s = make_session(tmp_path, monkeypatch, base_port=5730)
+        s._on_command("select_route", {}, 1)
+        s._on_command("start", {}, 2)
+        for i in range(10):
+            s._step(0.02, 60.0 + i * 0.02)
+        before = s._grade_sent
+        for _ in range(8):
+            s._handle_input(InputEvent.PLUS_SHORT)
+        s._step(0.02, 61.0)
+        target = s.gearing.effective_grade(s.route.sample("grade_pct", s.physics.s))
+        assert abs(s._grade_sent - target) < 0.5 and abs(s._grade_sent - before) > 0.04
+    asyncio.run(scenario())
