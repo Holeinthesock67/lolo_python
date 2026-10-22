@@ -64,11 +64,14 @@ class ZwiftClickProvider:
             self.events.put_nowait(ev)
 
     async def run(self) -> None:
-        delays = backoff_delays()
+        # Le Click ne s'annonce que réveillé par un appui : on le cherche en continu, par
+        # fenêtres de 5 s séparées de 0,5 à 2 s, pour qu'un appui tombe toujours dans une fenêtre.
+        delays = backoff_delays(first=0.5, maximum=2.0)
         while not self._stop.is_set():
             try:
                 await self._session()
-                delays = backoff_delays()
+                log.warning("Zwift Click déconnecté (veille ?) : appuyez sur un bouton pour le réveiller")
+                delays = backoff_delays(first=0.5, maximum=2.0)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
@@ -88,7 +91,7 @@ class ZwiftClickProvider:
         self._classifier = PressClassifier(self.short_max_s, self.long_min_s)
         async with AsyncExitStack() as stack:
             async with ble_lock():   # un seul scan/connexion BLE à la fois (BlueZ)
-                dev = await self._find(zwift_click.CLICK_NAME, self.address, 6.0)
+                dev = await self._find(zwift_click.CLICK_NAME, self.address, 5.0)
                 if dev is None:
                     raise ConnectionError("Zwift Click introuvable (appuyez sur un bouton)")
                 client = await stack.enter_async_context(self._client_factory(
