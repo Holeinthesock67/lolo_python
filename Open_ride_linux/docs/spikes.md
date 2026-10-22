@@ -43,3 +43,28 @@ Valider les hypothèses techniques critiques avant le développement des modules
 ## 3. Générateur de Monde Synthétique (Sprint 0 / Godot MVP)
 - **Outil** : [fake_world.py](file:///d:/Sauvegarde/Documents/utilisateur/lolo_python/Open_ride_linux/core/src/openride_core/tools/fake_world.py)
 - Produit un dossier `.world` conforme au contrat [world_format_v1.md](file:///d:/Sauvegarde/Documents/utilisateur/lolo_python/Open_ride_linux/docs/contracts/world_format_v1.md) (`manifest.json` + `route.json`) pour tester l'affichage de la route dans Godot.
+
+---
+
+## 4. Résultats sur le matériel (22 octobre 2026, PC Linux cible, Python 3.14.4, bleak 3.0.2)
+
+### HomeTrainer (« HomeTrainer 0000 »)
+- Services présents : FTMS (0x1826), Cycling Power (0x1818), Cycling Speed and Cadence (0x1816), Heart Rate (0x180D), plus des services propriétaires.
+- Capacités annoncées : vitesse moyenne, cadence, distance, niveau de résistance, fréquence cardiaque, puissance. Consignes possibles : niveau de résistance, puissance cible, simulation de piste (0x11), circonférence de roue, spin-down. Plage de puissance : 0 à 1 000 W, pas de 1 W.
+- Fréquence d'Indoor Bike Data : environ 1 Hz au repos et en mode puissance (écart 0,81 à 1,17 s) ; environ 8 Hz après une commande de simulation de piste (notifications en rafale).
+- Cardio : la fréquence cardiaque arrive dans Indoor Bike Data **et** par le service 0x180D ; 0 bpm au départ signifie « pas de mesure ».
+- Contrôle : `request_control` (0x00), `start_resume` (0x07), simulation 4 % (0x11), puissance cible 150 W (0x05) et retour à 0 % : toutes les réponses `SUCCESS`.
+- Mode puissance : 150 W atteint en 1 à 4 s, tenu entre 147 et 154 W alors que la cadence passe de 43 à 39 tr/min.
+- Mode pente : la vitesse affichée par le trainer baisse de 24,7 à environ 19 km/h en 7 à 8 s après la commande ; léger retard ressenti. `latency_tau_s` (0,8 s) à ajuster à l'usage.
+- La cadence arrive 2 à 3 s après la puissance au démarrage d'un coup de pédale.
+
+### Zwift Click
+- Deux Click à portée (`C1:1C:00:00:00:01` et `C1:1C:00:00:00:03`) ; test fait sur le premier.
+- Handshake `RideOn` sans chiffrement ; la réponse est `RideOn`.
+- Format récent : message `0x23` en continu (~10 Hz), champ 1 = tableau de bits, 0 = appuyé ; bit 12 = +, bit 8 = −. Batterie : message `0x19` toutes les 5 s. Message `0x2a` de statut (non exploité).
+- Validé : appuis courts, appuis longs et sens des boutons corrects.
+- Durées mesurées : appuis courts de 0,1 à 0,3 s ; des appuis « longs » naturels de 0,7 à 1,1 s tombent dans la zone ignorée (0,5 à 1,2 s) ; résolution de mesure 0,1 s.
+
+## 5. Restant au sprint 0
+- Ouvrir un FIT généré (`python -m openride_core.tools.fit_demo`) dans GoldenCheetah et Garmin Connect.
+- Lancer `run_mock_session` et la scène Godot (`engine/scenes/main.tscn`) : mouvement de la caméra, HUD, images par seconde.

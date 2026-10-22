@@ -83,13 +83,15 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 - **Mode SIM :** Set Indoor Bike Simulation Parameters (0x11) avec pente (résolution 0,01 %), Crr, Cw et vent nul. La pente est limitée à −10 % / +16 %, envoyée au plus à 2 Hz ou quand elle varie de plus de 0,2 point.
 - **Mode ERG :** Set Target Power (0x05), en watts entiers, bornée par la plage annoncée par le trainer.
 - La cardio vient du pont cardio du HomeTrainer si sa caractéristique est exposée (à vérifier au sprint 0), sinon d'une ceinture connectée séparément.
-- Le trainer notifie souvent entre 1 et 4 Hz : la puissance est maintenue et lissée entre deux notifications ; la physique ne dépend pas de la cadence de réception.
+- Fréquence des données **mesurée** sur le HomeTrainer (22 octobre 2026) : environ 1 Hz au repos et en mode puissance, environ 8 Hz en mode pente. Le core ne suppose donc aucune cadence fixe : la puissance est maintenue et lissée sur une fenêtre de temps réel (3 s) entre deux notifications, et la physique ne dépend pas de la cadence de réception.
+- Plage de puissance annoncée par le HomeTrainer : 0 à 1 000 W, par pas de 1 W. Une fréquence cardiaque de 0 bpm signifie « pas de mesure » et est traitée comme `null`.
 - États : `CONNECTED`, `RECONNECTING`, `LOST`, avec reconnexion automatique à délai croissant.
 
 ### 4.2 Zwift Click
 
 - Connexion BLE, handshake propriétaire, notifications des boutons + et − (référence : projet ouvert jat255/zwift_click_handling, à valider au sprint 0). Le Click n'accepte qu'un client à la fois : l'application Zwift et le téléphone doivent être déconnectés.
-- Événements normalisés : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Appui court : moins de 500 ms ; appui long : 1 200 ms ou plus ; entre les deux : ignoré.
+- **Format mesuré (22 octobre 2026) :** le Click testé (handshake `RideOn` sans chiffrement) envoie en continu, à environ 10 Hz, un message de type `0x23` dont le champ 1 est un tableau de bits ; un bit à 0 signifie « appuyé » (bit 12 = +, bit 8 = −). Le niveau de batterie arrive dans un message `0x19` toutes les 5 s. L'ancien format `0x37` reste pris en charge. La durée d'un appui est connue à 0,1 s près.
+- Événements normalisés : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Appui court : moins de 500 ms ; appui long : 1 200 ms ou plus ; entre les deux : ignoré. Des appuis longs naturels durent 0,7 à 1,1 s : le seuil de l'appui long est à réévaluer (environ 0,9 s) après essai en conditions réelles.
 - Repli : un fournisseur clavier (flèches, touches +/−) produit les mêmes événements.
 
 ### 4.3 Braquets virtuels
