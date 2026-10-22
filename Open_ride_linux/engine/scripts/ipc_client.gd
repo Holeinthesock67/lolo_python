@@ -1,4 +1,3 @@
-class_name IpcClient
 extends Node
 
 ## Client IPC UDP localhost pour OpenRide Engine (Contrat IPC v1).
@@ -17,6 +16,8 @@ var _peer := PacketPeerUDP.new()
 var _heartbeat_timer := 0.0
 var _cmd_id_counter := 0
 var last_state_seq := -1
+var _hello_acked := false
+var _hello_timer := 0.0
 
 
 func _ready() -> void:
@@ -29,6 +30,12 @@ func _ready() -> void:
 
 
 func _process(delta: float) -> void:
+	# Contrat IPC §5 : hello répété chaque seconde jusqu'au hello_ack (le core peut démarrer après).
+	if not _hello_acked:
+		_hello_timer += delta
+		if _hello_timer >= 1.0:
+			_hello_timer = 0.0
+			send_hello()
 	_heartbeat_timer += delta
 	if _heartbeat_timer >= 0.5: # 2 Hz
 		_heartbeat_timer = 0.0
@@ -56,6 +63,7 @@ func _poll_incoming() -> void:
 				var ev_name: String = json_obj.get("event", "")
 				input_event_received.emit(ev_name)
 			"hello_ack":
+				_hello_acked = true
 				hello_ack_received.emit(json_obj)
 
 
