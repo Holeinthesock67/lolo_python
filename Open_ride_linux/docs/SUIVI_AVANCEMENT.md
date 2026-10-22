@@ -131,8 +131,16 @@ Ces tests doivent être exécutés avec le PC portable sous Ubuntu (Bluetooth ac
 - [ ] Séance réelle de 10 minutes ou plus avec braquets perceptibles, puis relecture des mesures de performance (`Perf` dans le log).
 - [ ] Réévaluer le seuil d'appui long du Click (environ 0,9 s).
 - [ ] Mesurer le délai entre un appui et l'écriture de la commande au Victory (lag ressenti au sprint 0).
+- [x] Appuis longs en SIM : braquet ± 3 (`long_press_gears`), bips distincts par type d'appui dans l'engine (à valider à l'oreille sur le vélo).
+- [x] `scripts/openride-dev.sh` : lance core et Godot depuis un seul terminal (remplace les deux terminaux pour les essais).
 - [ ] Rendre le braquet de départ réglable dans `config.toml` (aujourd'hui `--gear N` en ligne de commande).
 - [ ] Remplacer le parcours factice par la lecture d'un vrai `.world` (dépend du sprint 2).
+
+### Lanceur et menus (à planifier, après le sprint 2)
+- [ ] Lanceur unique `openride` (commande et icône de bureau) : démarre le core selon `config.toml`, attend sa réponse, lance Godot en plein écran, arrête tout à la fermeture de la fenêtre (FIT écrit, résistance relâchée).
+- [ ] Supervision : relance du core ou de l'engine en cas de plantage, sans perdre la séance (le journal existe déjà).
+- [ ] Menu à l'écran piloté au Click et au clavier : choix du parcours, démarrage, pause, reprise, fin de séance (remplace `--autostart`).
+- [ ] Écran d'état des appareils (trainer, Click, batterie du Click) et message d'aide quand le Click dort.
 
 ### Sprint 2 : Compilateur de parcours minimal (`openride-compiler`)
 - [ ] Créer le package `openride-compiler` (CLI `openride-compiler build`).
