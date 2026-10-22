@@ -18,6 +18,8 @@ var _cmd_id_counter := 0
 var last_state_seq := -1
 var _hello_acked := false
 var _hello_timer := 0.0
+var _hb_thread: Thread
+var _hb_stop := false
 
 
 func _ready() -> void:
@@ -27,6 +29,25 @@ func _ready() -> void:
 	else:
 		print("IpcClient attaché sur ", SERVER_HOST, ":", PORT_STATE)
 		send_hello()
+		# Heartbeat dans un fil séparé : il prouve que le programme est vivant même si le rendu
+		# saccade ou se bloque (fenêtre masquée, vsync…). Socket propre à ce fil.
+		_hb_thread = Thread.new()
+		_hb_thread.start(_heartbeat_loop)
+
+
+func _heartbeat_loop() -> void:
+	var sock := PacketPeerUDP.new()
+	sock.set_dest_address(SERVER_HOST, PORT_COMMANDS)
+	while not _hb_stop:
+		var payload := JSON.stringify({
+			"type": "heartbeat",
+			"v": CONTRACT_VERSION,
+			"seq": Time.get_ticks_msec(),
+			"fps": Engine.get_frames_per_second()
+		}).to_utf8_buffer()
+		sock.put_packet(payload)
+		OS.delay_msec(500)
+	sock.close()
 
 
 func _process(delta: float) -> void:
@@ -39,11 +60,6 @@ func _process(delta: float) -> void:
 		if _hello_timer >= 1.0:
 			_hello_timer = 0.0
 			send_hello()
-	_heartbeat_timer += delta
-	if _heartbeat_timer >= 0.5: # 2 Hz
-		_heartbeat_timer = 0.0
-		send_heartbeat()
-	
 	_poll_incoming()
 
 
@@ -108,6 +124,9 @@ func send_command(cmd_name: String, args: Dictionary = {}) -> int:
 
 
 func _exit_tree() -> void:
+	_hb_stop = true
+	if _hb_thread:
+		_hb_thread.wait_to_finish()
 	_send_json({
 		"type": "bye",
 		"v": CONTRACT_VERSION
