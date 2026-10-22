@@ -2,7 +2,8 @@
 
 Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
-La boucle de séance (BLE, physique, IPC) arrive au sprint 1.
+    openride-core run [--trainer mock|ftms] [--input click|keyboard|none] [--autostart]
+                                      boucle de séance (BLE, physique, IPC, journal)
 """
 
 from __future__ import annotations
@@ -26,15 +27,37 @@ def cmd_recover(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_run(args: argparse.Namespace) -> int:
+    import asyncio
+
+    from . import config as config_mod
+    from .session import CoreSession
+
+    cfg = config_mod.load(args.config)
+    if args.trainer:
+        cfg.drivers.trainer = args.trainer
+    if args.input:
+        cfg.drivers.input = args.input
+    asyncio.run(CoreSession(cfg).run(autostart=args.autostart))
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="openride-core")
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="command", required=True)
     r = sub.add_parser("recover", help="convertir un journal de séance en FIT")
     r.add_argument("journal", nargs="?", type=Path)
+    run = sub.add_parser("run", help="lancer la boucle de séance")
+    run.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    run.add_argument("--trainer", choices=["mock", "ftms"])
+    run.add_argument("--input", choices=["click", "keyboard", "none"])
+    run.add_argument("--autostart", action="store_true",
+                     help="charge le parcours factice et démarre aussitôt (essais sans engine)")
     args = p.parse_args(argv)
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
-    return {"recover": cmd_recover}[args.command](args)
+    logging.basicConfig(level=logging.INFO, force=True,
+                        format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
+    return {"recover": cmd_recover, "run": cmd_run}[args.command](args)
 
 
 if __name__ == "__main__":

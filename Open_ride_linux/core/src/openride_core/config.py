@@ -38,6 +38,8 @@ class TrainerConfig:
     difficulty_pct: float = 100.0
     grade_min_pct: float = -10.0
     grade_max_pct: float = 16.0
+    power_smooth_tau_s: float = 0.7   # lissage temporel de la puissance (indépendant de la cadence BLE)
+    grade_rate_pct_per_s: float = 2.0  # vitesse maximale de variation de la pente envoyée
 
 
 @dataclass
@@ -62,6 +64,16 @@ class IpcConfig:
 
 
 @dataclass
+class DriversConfig:
+    trainer: str = "mock"          # "mock" ou "ftms"
+    input: str = "keyboard"        # "click", "keyboard" ou "none"
+    trainer_address: str = ""      # adresse MAC (vide : recherche par nom)
+    click_address: str = ""
+    click_short_max_s: float = 0.5
+    click_long_min_s: float = 1.2
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -69,6 +81,7 @@ class Config:
     gearing: GearingConfig = field(default_factory=GearingConfig)
     render: RenderConfig = field(default_factory=RenderConfig)
     ipc: IpcConfig = field(default_factory=IpcConfig)
+    drivers: DriversConfig = field(default_factory=DriversConfig)
 
     @property
     def total_mass_kg(self) -> float:

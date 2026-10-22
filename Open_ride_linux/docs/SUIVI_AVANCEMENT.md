@@ -125,3 +125,15 @@ Ces tests doivent être exécutés avec le PC portable sous Ubuntu (Bluetooth ac
 - [ ] Lecteur XML `.zwo`, gestion des blocs (Warmup, SteadyState, IntervalsT, FreeRide).
 - [ ] Couches OpenStreetMap (bâtiments extrudés 3D, forêts).
 - [ ] Système de thèmes (`~/OpenRide/Themes/<nom>/`) avec packs de textures interchangeables.
+
+## Sprint 1 (22 octobre) : pilotes réels et boucle du core
+
+Branche `claude/openride-sprint1-drivers`.
+
+- `ftms_driver.py` : pilote Victory (reconnexion à délai croissant, prise de contrôle, consigne SIM bornée et renvoyée toutes les 2 s, lissage temporel de la puissance, FC 0 → null, pause après 3 s sans donnée, résistance relâchée à l'arrêt).
+- `input_providers.py` : Zwift Click (réutilise le décodeur mesuré) avec clavier du terminal en parallèle (`+` `-` `u` `d`).
+- `session.py` : boucle asyncio unique (physique 50 Hz au pas réel, IPC 30 Hz, journal 1 Hz, FIT en fin de séance, pente anticipée et limitée à 2 points/s, mesures de perf toutes les 60 s pour la décision Rust).
+- Lancement : `openride-core run --trainer ftms --input click` (ou `mock` / `keyboard` ; clés équivalentes dans `[drivers]` de `config.toml`).
+- Limite connue : le parcours reste factice tant que le compilateur `.world` n'existe pas.
+- Garde-fou FIT : vitesse moyenne bornée par la vitesse max (chrono aberrant).
+- Tests : 38 verts (client BLE simulé).
