@@ -28,7 +28,8 @@ Claude le lit avec le connecteur Google Sheets.
    écrit `AAAA-Wss_script.txt` dans `Podcasts/<dossier>/scripts`, selon le format (débat ou revue).
    Signale aussi les problèmes du Pi (voir « Alertes »).
 4. **Toutes les heures de 10 h 30 à 22 h 30, `podcast.py`** (Pi) : récupère les nouveaux scripts, génère les
-   voix (edge-tts, Piper en secours), produit le MP3 et l'envoie dans `Podcasts/<dossier>/episodes`.
+   voix (edge-tts, Piper en secours), produit le MP3 et l'envoie dans `Podcasts/Episodes`, dossier commun
+   à toutes les émissions, sous le nom `AAAA-Wss <Nom de l'émission>.mp3`.
    Si edge-tts échoue, le passage s'arrête et reprend à l'heure suivante ; Piper ne prend le relais
    qu'après 3 passages ratés, et seulement si ses voix sont installées.
 
@@ -93,4 +94,5 @@ tail -f ~/podcast-data/podcast.log                                 # suivre la g
 3. Sur le Pi : `veille.py check --emission <identifiant>`.
 
 Le dossier de l'émission dans **Podcasts** et ses sous-dossiers sont créés automatiquement à la première
-compilation (sources), puis à la première écriture du script (scripts) et au premier MP3 (episodes).
+compilation (sources), puis à la première écriture du script (scripts). Les MP3 vont dans le dossier
+commun `Podcasts/Episodes`.

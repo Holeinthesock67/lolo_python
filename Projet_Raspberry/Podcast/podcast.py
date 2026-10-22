@@ -25,8 +25,10 @@ import time
 import wave
 from pathlib import Path
 
-from commun import (HOME, alerte, load_emissions, load_json, log, publier_etat, rclone_copy,
-                    run, save_json, select)
+from commun import (HOME, REMOTE, alerte, load_emissions, load_json, log, publier_etat, rclone,
+                    rclone_copy, run, save_json, select)
+
+EPISODES_FOLDER = "Episodes"   # dossier commun à toutes les émissions, à la racine de « Podcasts »
 
 # ---------- réglages ----------
 ENGINE = "edge"        # "edge" (edge-tts) ou "piper" (local)
@@ -335,15 +337,17 @@ def process(em, args):
             log(f"  MP3 prêt : {mp3.name}")
         if args.test or args.file:
             continue
+        # tous les épisodes, toutes émissions confondues, dans un seul dossier du Drive
+        remote_name = f"{week} {em['nom']}.mp3".replace("/", "-")
         try:
-            rclone_copy(str(mp3), f"{em['remote']}/episodes")
+            rclone("copyto", str(mp3), f"{REMOTE}{EPISODES_FOLDER}/{remote_name}")
         except RuntimeError as exc:
             # le MP3 reste sur le Pi ; l'envoi sera retenté au prochain passage (sans resynthèse)
             alerte(f"[{em['id']}] envoi de {mp3.name} échoué : {exc}. MP3 conservé, nouvel essai au prochain passage")
             continue
         state[week] = path.name
         save_json(state_file, state)
-        log(f"  envoyé sur le Drive : {em['dossier']}/episodes/{mp3.name}")
+        log(f"  envoyé sur le Drive : {EPISODES_FOLDER}/{remote_name}")
 
 
 def main():
