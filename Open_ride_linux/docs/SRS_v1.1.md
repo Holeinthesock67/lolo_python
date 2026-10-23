@@ -334,8 +334,8 @@ g_base_pct = 2.0
 long_press_gears = 3
 
 [drivers]
-trainer = "ftms"             # "ftms" ou "mock"
-input = "click"              # "click", "keyboard" ou "none"
+trainer = "mock"             # "ftms" ou "mock"
+input = "keyboard"           # "click", "keyboard" ou "none"
 trainer_address = ""         # adresse MAC facultative
 click_address = ""
 click_short_max_s = 0.5
