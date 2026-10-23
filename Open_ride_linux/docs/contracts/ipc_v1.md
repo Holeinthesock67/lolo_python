@@ -41,7 +41,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 - Les ports sont modifiables dans `config.toml` (section `ipc`) ; si un port est occupé, le programme s'arrête avec un message explicite.
 - Taille maximale d'un datagramme : 1 400 octets.
 - Un datagramme illisible (JSON invalide) est ignoré et compté dans les journaux.
-- Le trainer notifie à 1 à 4 Hz ; la fréquence de 30 Hz du message `state` est indépendante et vient de la physique du core (50 Hz).
+- Le trainer notifie à environ 1 Hz (mode puissance) à 8 Hz (mode pente), mesuré ; la fréquence de 30 Hz du message `state` est indépendante et vient de la physique du core (50 Hz).
 
 ## 3. Message core vers engine : état de séance
 
@@ -102,9 +102,10 @@ Les bots, quand ils existeront, s'ajouteront dans un champ optionnel `bots` (lis
 | `pause` | `{}` | Met en pause (`pause_reason` = `user`) |
 | `resume` | `{}` | Reprend après une pause, quelle qu'en soit la raison |
 | `end_session` | `{ "save": booléen }` | Termine ; avec `save` vrai, produit le FIT puis passe à `FINISHED` |
+| `input_event` | `{ "event": chaîne }` | Touches lues par l'engine, même effet qu'un appui sur le Click (`PLUS_SHORT`, `MINUS_SHORT`, …) |
 | `skip_block` | `{}` | Équivalent de l'appui long + en ERG, pour le clavier ou le menu |
 
-**Événements du Click.** Hors séance (`IDLE`, `READY`), le core transmet les boutons à l'engine pour qu'il pilote le menu : `type: "input"`, `event` parmi `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Pendant `RUNNING`, le core les consomme lui-même (braquet, biais, saut de bloc, pause). Un événement `input` perdu n'est pas rejoué : sur localhost la perte est négligeable et un appui de menu manqué se refait.
+**Événements du Click.** Hors séance (`IDLE`, `READY`), le core transmet les boutons à l'engine pour qu'il pilote le menu : `type: "input"`, `event` parmi `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Pendant `RUNNING`, le core les consomme lui-même (braquet, biais, saut de bloc, pause) et les relaie aussi à l'engine, qui les utilise pour le retour sonore (bips) et doit ignorer leur sens de menu. Un événement `input` perdu n'est pas rejoué : sur localhost la perte est négligeable et un appui de menu manqué se refait.
 
 ## 5. Messages de session : hello, heartbeat, fin
 
