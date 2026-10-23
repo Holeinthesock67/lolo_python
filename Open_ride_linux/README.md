@@ -1,5 +1,7 @@
 # OpenRide Linux
 
+[![Tests OpenRide](https://github.com/Holeinthesock67/lolo_python/actions/workflows/openride.yml/badge.svg)](https://github.com/Holeinthesock67/lolo_python/actions/workflows/openride.yml)
+
 Simulateur de cyclisme indoor 3D à usage personnel, natif Linux, plus léger que Zwift.
 Matériel de référence : home trainer JetBlack Victory (FTMS), Zwift Cog, Zwift Click, PC Ubuntu.
 
@@ -26,7 +28,7 @@ Open_ride_linux/
   compiler/    openride-compiler (Python) : GPX vers .world, couches route et terrain (lots B1 et B2)
 ```
 
-## État (23 octobre 2026, après les lots A, A2, B1, B2, C, D et F)
+## État (23 octobre 2026, après les lots A, A2, B1, B2, C, D, F et H1 à H8)
 
 - **Sprint 0 terminé :** Victory, Click et FIT validés sur le matériel.
 - **Sprint 1 presque terminé :**
@@ -36,7 +38,7 @@ Open_ride_linux/
   - conformité au contrat IPC (lot C) ;
   - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
   - Godot conforme au contrat : renvoi des commandes, extrapolation de la caméra, core injoignable (lot D) ;
-  - 75 tests automatiques côté core ; côté Godot, 42 vecteurs de route et 8 scénarios IPC sans écran.
+  - 146 tests automatiques côté core (dont recherche BLE sans matériel, rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal et outils d'entraînements `.zwo`) et 113 côté compilateur (dont validation des thèmes `theme-check`) ; côté Godot, 42 vecteurs de route et 8 scénarios IPC sans écran, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
   - **Reste :** séance de 10 minutes et stabilité du Click.
 - **Sprint 2 terminé côté code :** compilateur GPX vers `.world`, couches route (lot B1) et terrain avec le MNT Copernicus (lot B2). Reste la comparaison avec Garmin Connect sur une vraie trace.
 - **Pas encore commencés :** rendu 3D (sprint 3, lot E1) et entraînements ERG (lot F).
@@ -51,6 +53,8 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest -q
 ```
+
+Les versions de référence validées en Python 3.14 sont figées dans `constraints.txt` (`pip install -c ../constraints.txt -e ".[dev]"` ; mettre ce fichier à jour après une montée de version testée).
 
 Compilateur de parcours (GPX vers `.world`, couches route et terrain) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (`verify` et `info` pour contrôler). Le premier `build` télécharge les tuiles d'altitude Copernicus (environ 42 Mo par degré carré) dans `~/.cache/openride/dem/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain` régénère le terrain seul.
 
@@ -108,8 +112,12 @@ Chaque type d'appui a son bip.
 **Commandes utiles du core :**
 
 ```bash
-openride-core run --trainer ftms|mock --input click|keyboard|none [--gear N] [--autostart]
+openride-core run --trainer ftms|mock --input click|keyboard|none [--gear N] [--replay CHEMIN] [--autostart]
 openride-core recover            # transforme le dernier journal en FIT après un plantage
+python -m openride_core.tools.log_report [~/run_victory.log] [--json] [--all]   # analyse le journal de séance
+python -m openride_core.tools.workouts install                   # copie les 5 entraînements .zwo de référence
+python -m openride_core.tools.workouts list                      # liste les entraînements de ~/OpenRide/Workouts/
+python -m openride_core.tools.workouts check FICHIER.zwo --ftp 250   # vérifie un fichier .zwo et estime NP/IF/TSS
 ```
 
 ## Diagnostic matériel

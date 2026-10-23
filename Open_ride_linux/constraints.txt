@@ -1,0 +1,13 @@
+# Versions exactes des dépendances directes et de test (Python 3.14, audit F6).
+# Utilisé par l'intégration continue en Python 3.14 :
+#   pip install -c constraints.txt -e "core[dev]" -e "compiler[dev]"
+bleak==3.0.2
+dbus-fast==5.2.0
+fit-tool==0.9.16
+garmin-fit-sdk==21.218.0
+jsonschema==4.26.0
+numpy==2.4.6
+pyproj==3.7.2
+pytest==9.1.1
+rasterio==1.4.4
+scipy==1.17.1

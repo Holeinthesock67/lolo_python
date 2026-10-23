@@ -66,3 +66,10 @@ Aucune. `workout.py` n'est pas modifié ; si un besoin apparaît, le signaler.
 
 - Menu de choix d'un entraînement (lot G), bandeau ERG dans l'engine (lot F2).
 - Autres formats que `.zwo`.
+
+
+## 9. Livraison (23 octobre 2026, PR #18)
+
+- `core/src/openride_core/tools/workouts.py` : sous-commandes `list`, `check` (avec estimation Pmoy, NP par paliers de 1 s, IF et TSS) et `install` (copie sans écrasement dans `~/OpenRide/Workouts/`).
+- `core/workouts/*.zwo` : 5 entraînements de référence (`endurance_60`, `sweet_spot_3x10`, `seuil_2x20`, `vo2_5x3`, `rampe_test`) lus sans avertissement.
+- `core/tests/test_workout_tools.py` : 4 tests unitaires couvrant les 5 critères d'acceptation.

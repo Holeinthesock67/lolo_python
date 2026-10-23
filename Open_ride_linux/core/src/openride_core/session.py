@@ -79,7 +79,15 @@ def build_driver(cfg: Config) -> Any:
     if cfg.drivers.trainer == "ftms":
         from .ftms_driver import FtmsDriver
         return FtmsDriver(cfg.trainer, cfg.bike, cfg.drivers.trainer_address or None)
-    return MockDriver()
+    replay = None
+    if cfg.drivers.mock_replay:
+        from .replay import ReplayError, load_replay
+        try:
+            replay = load_replay(Path(cfg.drivers.mock_replay).expanduser())
+            log.info("Rejeu chargé depuis %s (%d échantillons).", cfg.drivers.mock_replay, len(replay))
+        except ReplayError as exc:
+            log.error("Rejeu impossible (%s) : démarrage avec le simulateur ordinaire.", exc)
+    return MockDriver(replay=replay)
 
 
 def build_inputs(cfg: Config) -> list[Any]:

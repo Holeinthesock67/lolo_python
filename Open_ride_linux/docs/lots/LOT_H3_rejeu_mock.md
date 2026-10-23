@@ -76,3 +76,12 @@ Aucune. La clé `mock_replay` étend `config.toml` (SRS §11) : l'ajouter à l'e
 
 - Rejeu de la position ou de la pente (le parcours reste celui de la séance).
 - Commande de vitesse de rejeu (accéléré, ralenti).
+
+
+## 9. Livraison (23 octobre 2026)
+
+Branche `lot-h3-rejeu-mock` (PR #13), fusionnée dans `main`. Les 7 critères d'acceptation du §7 sont tenus (8 tests dans `core/tests/test_replay.py`) :
+- `replay.py` charge `.jsonl` et `.fit`, ramène `t` à 0 s, remplace puissance/cadence absentes par `0.0` et FC absente/0 par `None`, et lève `ReplayError` sur fichier introuvable, vide, illisible ou d'extension inconnue.
+- `MockDriver` interpole linéairement puissance et cadence en SIM, conserve la FC de l'échantillon précédent, reboucle au-delà de la durée du rejeu et garde le comportement ERG inchangé.
+- Clé `mock_replay = ""` dans `DriversConfig` (`config.py` et exemple de `docs/SRS_v1.1.md` §11), option `openride-core run --replay CHEMIN`, repli sans plantage dans `build_driver`.
+- Aucun écart.
