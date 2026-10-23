@@ -8,6 +8,8 @@ Simulateur de cyclisme indoor 3D à usage personnel, natif Linux, plus léger qu
 - `docs/contracts/ipc_v1.md` : contrat de messages core ↔ engine
 - `docs/contracts/world_format_v1.md` : format des parcours compilés `.world`
 - `docs/SUIVI_AVANCEMENT.md` : état d'avancement, tests effectués et tests restants
+- `docs/AUDIT_2026-10-23.md` : audit du projet (constats et recommandations)
+- `docs/lots/` : cahiers des charges des lots confiables à une autre IA (commencer par `00_INDEX.md`)
 
 ## Structure prévue
 
