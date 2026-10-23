@@ -20,8 +20,8 @@ Propriétaire : Laurent (francophone). **Réponds toujours en français**, de fa
 - `docs/contracts/ipc_v1.md` et schémas `docs/contracts/ipc/*.schema.json` : messages core ↔ engine.
 - `docs/contracts/world_format_v1.md` et `docs/contracts/world/` : format des parcours `.world`, schémas et vecteurs de test de la route.
 - `docs/SUIVI_AVANCEMENT.md` : état, tests faits, reste à faire.
-- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H et I sont faites pour être confiées à une autre IA.
-- `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8).
+- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H, I et J sont faites pour être confiées à une autre IA.
+- `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8 et §9).
 - `docs/spikes.md` : faits mesurés sur le matériel.
 
 **Règle :** un contrat ne se modifie que par ajout compatible, avec une ligne au journal des changements du document. Si un contrat paraît faux, le signaler au lieu de l'interpréter.
@@ -79,7 +79,7 @@ python -m openride_core.tools.workouts install | list | check FICHIER.zwo --ftp 
 # Parcours
 openride-compiler build trace.gpx      # route + terrain ; puis : verify / info
 openride-compiler list                 # liste les parcours (.world et .gpx) et leur statut
-openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées
+openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées (route,terrain ; --layers pour OSM)
 openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude déjà en cache
 openride-compiler build trace.gpx --layers route,terrain,buildings,vegetation,poi,water
 openride-compiler add-layer <nom>.world terrain|buildings|vegetation|poi|water  # régénère une couche seule
