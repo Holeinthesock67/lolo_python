@@ -83,6 +83,23 @@ def build_parser() -> argparse.ArgumentParser:
 
     tc = sub.add_parser("theme-check", help="contrôle un dossier de thème visuel")
     tc.add_argument("theme_dir", type=Path)
+
+    default_gpx = Path.home() / "OpenRide" / "GPX"
+    ls = sub.add_parser("list", help="liste les parcours (.world et .gpx) et leur statut")
+    ls.add_argument("--gpx-dir", type=Path, default=default_gpx,
+                    help=f"dossier des traces GPX (défaut : {default_gpx})")
+    ls.add_argument("--routes-dir", type=Path, default=C.ROUTES_DIR,
+                    help=f"dossier des parcours .world (défaut : {C.ROUTES_DIR})")
+
+    ba = sub.add_parser("build-all", help="compile toutes les traces GPX nouvelles ou modifiées")
+    ba.add_argument("--gpx-dir", type=Path, default=default_gpx,
+                    help=f"dossier des traces GPX (défaut : {default_gpx})")
+    ba.add_argument("--routes-dir", type=Path, default=C.ROUTES_DIR,
+                    help=f"dossier de sortie des .world (défaut : {C.ROUTES_DIR})")
+    ba.add_argument("--offline", action="store_true",
+                    help="interdit le réseau : les tuiles d'altitude doivent être en cache")
+    ba.add_argument("--dry-run", action="store_true",
+                    help="affiche les compilations prévues sans rien écrire")
     return parser
 
 
@@ -197,12 +214,127 @@ def cmd_theme_check(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _catalog_entries(routes_dir: Path, gpx_dir: Path) -> list:
+    """Utilise openride_core.catalog.list_routes si installé, sinon lecture minimale équivalente."""
+    try:
+        from openride_core.catalog import list_routes
+        return list_routes(routes_dir, gpx_dir)
+    except ImportError:
+        pass
+
+    from dataclasses import dataclass
+
+    @dataclass(frozen=True)
+    class _Entry:
+        id: str
+        name: str
+        status: str
+        length_m: float | None
+        route_type: str | None
+        has_terrain: bool
+        gpx_path: Path | None
+        error: str | None = None
+
+    gpx_by_name: dict[str, tuple[Path, str, str]] = {}
+    gpx_by_norm: dict[str, Path] = {}
+    if gpx_dir.is_dir():
+        for gf in sorted(p for p in gpx_dir.iterdir() if p.is_file() and p.suffix.lower() == ".gpx"):
+            gpx_by_name[gf.name] = (gf, sha256_of(gf), normalize_name(gf.stem))
+            gpx_by_norm.setdefault(normalize_name(gf.stem), gf)
+
+    matched: set[Path] = set()
+    entries: list[_Entry] = []
+    if routes_dir.is_dir():
+        for wdir in sorted(p for p in routes_dir.iterdir() if p.is_dir() and p.name.endswith(".world")):
+            rid = wdir.name[: -len(".world")]
+            problems = verify_world(wdir)
+            if problems:
+                entries.append(_Entry(rid, rid, "invalid", None, None, False, gpx_by_norm.get(rid), problems[0]))
+                if rid in gpx_by_norm:
+                    matched.add(gpx_by_norm[rid])
+                continue
+            m = json.loads((wdir / "manifest.json").read_text(encoding="utf-8"))
+            src = m.get("source") or {}
+            gname, gsha = src.get("gpx"), src.get("gpx_sha256")
+            gpath = gpx_by_name[gname][0] if gname in gpx_by_name else gpx_by_norm.get(rid)
+            if gpath:
+                matched.add(gpath)
+            st = "outdated" if (gpath and gsha and sha256_of(gpath) != gsha) else "ready"
+            rinfo = m.get("route") or {}
+            tlayer = (m.get("layers") or {}).get("terrain") or {}
+            entries.append(_Entry(
+                rid, str(m.get("name") or rid), st,
+                float(rinfo.get("length_m", 0.0)), str(rinfo.get("type", "open")),
+                bool(tlayer.get("present")), gpath, None,
+            ))
+    for gname, (gpath, _sha, nid) in gpx_by_name.items():
+        if gpath not in matched:
+            entries.append(_Entry(nid, gpath.stem, "to_compile", None, None, False, gpath, None))
+    return entries
+
+
+def cmd_list(args: argparse.Namespace) -> int:
+    entries = _catalog_entries(Path(args.routes_dir).expanduser(), Path(args.gpx_dir).expanduser())
+    print(f"{'ID':<22} {'Statut':<12} {'Longueur':>10} {'Type':<13} {'Terrain':<8} Détail")
+    print("-" * 80)
+    for e in entries:
+        length_str = f"{e.length_m / 1000:.2f} km" if e.length_m is not None else "-"
+        type_str = e.route_type or "-"
+        terr_str = "oui" if e.has_terrain else "non"
+        detail = e.error or (e.gpx_path.name if e.gpx_path else "")
+        print(f"{e.id:<22} {e.status:<12} {length_str:>10} {type_str:<13} {terr_str:<8} {detail}")
+    return EXIT_OK
+
+
+def cmd_build_all(args: argparse.Namespace) -> int:
+    routes_dir = Path(args.routes_dir).expanduser()
+    gpx_dir = Path(args.gpx_dir).expanduser()
+    entries = _catalog_entries(routes_dir, gpx_dir)
+
+    compiled_count = 0
+    skipped_count = 0
+    error_count = 0
+
+    for e in entries:
+        if e.status not in ("to_compile", "outdated") or e.gpx_path is None:
+            skipped_count += 1
+            continue
+        if args.dry_run:
+            print(f"[dry-run] à compiler : {e.id} ({e.status}, {e.gpx_path.name})")
+            compiled_count += 1
+            continue
+        try:
+            sub_args = argparse.Namespace(
+                gpx=e.gpx_path,
+                name=e.id,
+                out=routes_dir,
+                out_and_back=False,
+                force=True,
+                layers=LAYERS,
+                offline=args.offline,
+            )
+            cmd_build(sub_args)
+            compiled_count += 1
+        except CompileError as exc:
+            error_count += 1
+            print(f"openride-compiler : erreur ({e.gpx_path.name}) : {exc}", file=sys.stderr)
+
+    if args.dry_run:
+        print(f"Résumé (dry-run) : {compiled_count} à compiler, {skipped_count} ignoré(s)")
+        return EXIT_OK
+
+    print(f"Résumé : {compiled_count} compilé(s), {skipped_count} ignoré(s), {error_count} en erreur")
+    return EXIT_INPUT if error_count > 0 else EXIT_OK
+
+
 COMMANDS = {
     "build": cmd_build,
     "add-layer": cmd_add_layer,
     "verify": cmd_verify,
     "info": cmd_info,
     "theme-check": cmd_theme_check,
+    "list": cmd_list,
+    "build-all": cmd_build_all,
 }
 
 
