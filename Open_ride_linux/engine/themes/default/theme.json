@@ -1,0 +1,48 @@
+{
+  "version": "1.0",
+  "name": "Alpes été",
+  "terrain": {
+    "grass": {
+      "texture": null,
+      "color": "#6f9a4a",
+      "scale_m": 6.0
+    },
+    "rock": {
+      "texture": null,
+      "color": "#9a9488",
+      "scale_m": 12.0
+    },
+    "snow": {
+      "texture": null,
+      "color": "#f2f5f8",
+      "scale_m": 8.0
+    },
+    "slope_threshold_deg": 22,
+    "snow_line_m": 2200,
+    "blend_sharpness": 4.0
+  },
+  "road": {
+    "texture": null,
+    "color": "#4a4a4d",
+    "width_m": 6.0
+  },
+  "buildings": {
+    "walls": [
+      "#d9c9a3",
+      "#e6d8b8",
+      "#cdb48a"
+    ],
+    "roofs": [
+      "#a65a3a",
+      "#4d535c"
+    ]
+  },
+  "vegetation": {
+    "treeline_m": 2000,
+    "max_density_per_ha": 400
+  },
+  "sky": {
+    "sun_elevation_deg": 40,
+    "fog_density": 0.0008
+  }
+}
