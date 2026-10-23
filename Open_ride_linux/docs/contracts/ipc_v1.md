@@ -29,6 +29,8 @@ Ce contrat fixe les messages échangés en direct entre openride-core (Python) e
 
 **Champs communs à tout message :** `type` (chaîne), `v` (version majeure du contrat, ici 1) et, pour les messages périodiques, `seq` (entier croissant propre à chaque émetteur, remis à 0 au démarrage).
 
+**Exception connue :** dans le message `state`, le champ `v` est la vitesse virtuelle (§3), pas la version : les deux noms se recouvrent et la vitesse l'emporte. La version est vérifiée par `hello` et `hello_ack` (§5), ce qui suffit. Le renommage de la vitesse en `speed` est prévu pour la version 2 du contrat.
+
 ## 2. Transport : UDP localhost, ports, fréquences
 
 Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque programme écoute sur son port et envoie vers l'autre.
@@ -52,7 +54,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `seq` | entier | Numéro croissant des trames d'état |
 | `t` | nombre | Temps de séance en secondes (horloge du core, arrêtée en pause) |
 | `session_state` | chaîne | `IDLE`, `LOADING`, `READY`, `RUNNING`, `PAUSED`, `FINISHED`, `ERROR` |
-| `pause_reason` | chaîne ou `null` | `user`, `trainer_lost`, `engine_lost` quand `session_state` vaut `PAUSED` |
+| `pause_reason` | chaîne ou `null` | `user`, `trainer_lost`, `engine_lost`, `recording_failed` quand `session_state` vaut `PAUSED` |
 | `trainer_status` | chaîne | `CONNECTED`, `RECONNECTING`, `LOST`, `MOCK` |
 | `input_status` | chaîne | `CONNECTED`, `LOST`, `KEYBOARD` |
 | `mode` | chaîne | `SIM` ou `ERG` |
@@ -70,7 +72,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `gears_total` | entier | Nombre de vitesses |
 | `lat`, `lon`, `alt` | nombres | Position géographique correspondant à `s` |
 | `erg` | objet ou `null` | Présent en mode ERG, voir ci-dessous |
-| `summary` | objet ou `null` | Présent quand `session_state` vaut `FINISHED` : `duration_s`, `distance_m`, `avg_power_w`, `fit_path` |
+| `summary` | objet ou `null` | Présent quand `session_state` vaut `FINISHED` (ou `ERROR` après une séance) : `duration_s` (temps chronométré), `distance_m`, `avg_power_w`, `fit_path` (`null` si aucun FIT n'a été produit) |
 | `last_cmd_id` | entier | Dernier `cmd_id` traité par le core (§4) |
 
 **Objet `erg`**
@@ -92,7 +94,7 @@ Les bots, quand ils existeront, s'ajouteront dans un champ optionnel `bots` (lis
 
 `type: "cmd"`, envoyé sur événement. L'UDP peut perdre ou dupliquer un datagramme, donc chaque commande porte un `cmd_id` entier croissant propre à l'engine.
 
-**Fiabilité.** L'engine renvoie la commande toutes les 200 ms jusqu'à voir son `cmd_id` dans le champ `last_cmd_id` du message `state` (abandon après 3 s avec un message d'erreur à l'écran). Le core ignore un `cmd_id` déjà traité : toutes les commandes sont donc idempotentes.
+**Fiabilité.** L'engine renvoie la commande toutes les 200 ms jusqu'à voir son `cmd_id` dans le champ `last_cmd_id` du message `state` (abandon après 3 s avec un message d'erreur à l'écran). Le core ignore un `cmd_id` déjà traité : toutes les commandes sont donc idempotentes. Le compteur `cmd_id` est propre à une instance de l'engine : le core remet `last_cmd_id` à 0 à chaque `hello`, si bien qu'un engine relancé peut renuméroter ses commandes à partir de 1.
 
 | `name` | `args` | Effet |
 | --- | --- | --- |
@@ -136,7 +138,7 @@ Règle générale : la séance ne se perd jamais ; en cas de doute, le core met 
 | Trame perdue ou en désordre | `seq` plus ancien que le dernier reçu | — | Ignore la trame ; un saut de `seq` est compté, pas signalé |
 | Datagramme illisible | JSON invalide | Ignoré, compteur incrémenté | Idem |
 | Refus du contrôle FTMS | Réponse du Control Point | Erreur `trainer_control_refused`, `session_state` = `ERROR` | Affiche le message |
-| Échec d'écriture du journal | Exception d'écriture | Erreur `recording_failed`, pause | Affiche le message |
+| Échec d'écriture du journal | Exception d'écriture | Erreur `recording_failed`, pause (`pause_reason` = `recording_failed`), séance gardée en mémoire ; à la reprise, nouveau journal contenant toute la séance | Affiche le message |
 
 Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` valide. Une fois la séance démarrée, la perte de l'engine ne l'arrête pas : elle la suspend.
 
@@ -188,3 +190,5 @@ Le champ `v` est la version majeure du contrat.
 | Version | Date | Changement |
 | --- | --- | --- |
 | 1 | 21 octobre 2026 | Première version : état à 30 Hz, commandes avec accusé, heartbeat, gestion des pannes |
+| 1 | 22 octobre 2026 | Ajout compatible : commande `input_event` ; événements `input` relayés aussi pendant `RUNNING` (retour sonore) |
+| 1 | 23 octobre 2026 | Ajouts compatibles : remise à zéro de `last_cmd_id` à chaque `hello` ; `pause_reason` = `recording_failed` ; `summary.fit_path` peut valoir `null` ; schémas de tous les messages publiés ; clarification du double sens de `v` dans `state` |

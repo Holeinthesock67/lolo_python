@@ -2,11 +2,25 @@
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideCommandMessage",
   "type": "object",
-  "required": ["type", "v", "cmd_id", "name", "args"],
+  "required": [
+    "type",
+    "v",
+    "cmd_id",
+    "name",
+    "args"
+  ],
   "properties": {
-    "type": { "const": "cmd" },
-    "v": { "type": "integer", "const": 1 },
-    "cmd_id": { "type": "integer", "minimum": 0 },
+    "type": {
+      "const": "cmd"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
     "name": {
       "type": "string",
       "enum": [
@@ -16,7 +30,8 @@
         "pause",
         "resume",
         "end_session",
-        "skip_block"
+        "skip_block",
+        "input_event"
       ]
     },
     "args": {

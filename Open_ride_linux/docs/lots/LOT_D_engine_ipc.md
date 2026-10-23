@@ -52,7 +52,7 @@ Ce lot corrige les constats M3 et F9 de l'audit. Il reste dans le démonstrateur
 - **Position affichée :** `s_aff = s_dernier + v_dernier × (maintenant − t_reçu_dernier)`, bornée à 1 s d'extrapolation.
 - **Correction douce :** quand une nouvelle trame arrive, l'écart entre la position affichée et la position extrapolée de la nouvelle trame est rattrapé en 150 ms, sans saut. La position ne recule jamais pendant `RUNNING`.
 - **Hors `RUNNING` :** la caméra se cale sur `s` sans extrapolation.
-- **Parcours en boucle** : appliquer `route.wrap(s)` si `route_data.gd` le propose (lot A).
+- **Parcours en boucle** : appliquer `route.wrap_s(s)` (lot A ; la méthode ne s'appelle pas `wrap`, nom déjà pris par une fonction globale de Godot).
 
 ### D5. Paramètres et parcours
 
@@ -66,7 +66,7 @@ Ce lot corrige les constats M3 et F9 de l'audit. Il reste dans le démonstrateur
   - Chargement à chaque changement de `route_id`, en tâche de fond si possible.
   - Repli sur `res://demo/demo.world` si `route_id` vaut `demo` et que le dossier utilisateur manque.
   - Un parcours introuvable affiche un bandeau, sans planter.
-  - **Si le lot A n'est pas livré**, cette partie se limite au repli sur la démo, et le reste est livré plus tard. À signaler dans le rapport.
+  - Chargement avec `route_data.gd` du lot A : `var r = preload("res://scripts/route_data.gd").new()`, puis `r.load_world_dir(chemin)` (renvoie vrai ou faux ; message dans `r.load_error`). Méthodes : `sample(s)` (dictionnaire complet), `sample_point(s)`, `sample_heading_deg(s)`, `sample_grade(s)`, `wrap_s(s)`, `is_loop()` ; propriétés `length_m`, `type`, `n`, `x`, `z`, `alt_m`.
 
 ### D6. Tests automatiques sans écran (audit F9)
 

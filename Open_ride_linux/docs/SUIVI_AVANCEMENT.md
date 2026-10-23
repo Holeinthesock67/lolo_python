@@ -12,6 +12,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] [Contrat IPC v1](contracts/ipc_v1.md) core ↔ engine, avec les schémas JSON `state` et `cmd`.
 - [x] [Format `.world` v1](contracts/world_format_v1.md), en couches.
 - [x] [Audit du 23 octobre](AUDIT_2026-10-23.md) et [cahiers des charges des lots sous-traitables](lots/00_INDEX.md).
+- [x] Schémas JSON de tous les messages IPC (`docs/contracts/ipc/`) et du `.world` (`docs/contracts/world/`, avec vecteurs de test de la route).
 
 ### Module core (`openride-core`, Python)
 - [x] **Paquet :** Python 3.11 minimum, essais réels en 3.14 ; installation en mode éditable.
@@ -29,6 +30,8 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] **Journal** (`journal.py`) : JSONL à 1 Hz, `flush` à chaque ligne, `fsync` toutes les 5 s, tolérant aux plantages.
 - [x] **Export FIT** (`fit_export.py`) et récupération (`openride-core recover`).
 - [x] **Diagnostic BLE** (`openride-ble-diag`) : `scan`, `trainer`, `click`.
+- [x] **Conformité au contrat IPC** (lot C, 23 octobre) : commandes acceptées après un redémarrage de Godot, panne d'écriture du journal sans arrêt de la boucle (`recorder.py` : séance en mémoire, nouveau journal à la reprise), résumé de fin conforme, refus du contrôle FTMS remonté (`ERROR`), consigne ERG bornée, `hello_ack` et coefficient de difficulté tirés de la configuration.
+- [x] **Lecture des parcours** (lot A, 23 octobre) : `route.py` charge et valide un `.world`, interpole la route (Catmull-Rom centripète) et gère les boucles ; la séance charge le parcours demandé par son nom ; parcours de démonstration unique (`demo_world.py`).
 - [x] **Simulateur** (`mock_driver.py`) : SIM, ERG, cadence, cardio, déconnexion.
 
 ### Module engine (`openride-engine`, Godot 4.3)
@@ -36,6 +39,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] Scène de démonstration (`main.gd`) : polyligne du parcours, caméra subjective, HUD (puissance, vitesse, braquet, cadence, pente réelle et envoyée, distance, état de la séance).
 - [x] Touches `+` / `−` / flèches (appuis courts), `Page haut` / `Page bas` (appuis longs) ; un bip distinct par type d'appui.
 - [x] Scripts chargés par `preload` : le projet se lance sans passer par l'éditeur.
+- [x] `route_data.gd` : même lecture et même interpolation que le core, vérifiées par 42 vecteurs de test partagés (`engine/tests/test_route_vectors.gd`).
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
@@ -45,7 +49,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**42 tests `pytest` passent** (physique, braquets, FTMS, Click, journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance). Couverture globale : 64 % ; modules de calcul de 89 à 100 % (détail dans l'audit, §4).
+**75 tests `pytest` passent** (physique, braquets, FTMS, Click, journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale : 72 %. Côté Godot : 42 vecteurs de route vérifiés sans écran (`godot --headless --path engine --script res://tests/test_route_vectors.gd`).
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
@@ -71,12 +75,16 @@ PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
 | Click intermittent | Recherche par fenêtres de 6 s puis attente jusqu'à 10 s ; le Click ne s'annonce qu'après un appui | Recherche continue (5 s, pause de 0,5 à 2 s) |
 | Click invisible au scan | Resté « connecté » côté BlueZ après une coupure | Repli sur les appareils connus de BlueZ |
 
-### Défauts relevés par l'audit du 23 octobre (non corrigés, confiés au lot C)
-- Commandes ignorées après un redémarrage de Godot.
-- Panne d'écriture du journal qui arrête la boucle.
-- Résumé de fin de séance non conforme au schéma.
+### Défauts relevés par l'audit du 23 octobre
+Corrigés le jour même par les lots C et A :
+- commandes ignorées après un redémarrage de Godot ;
+- panne d'écriture du journal qui arrêtait la boucle ;
+- résumé de fin non conforme ;
+- core et Godot sur deux parcours différents.
 
-Détail et autres écarts dans l'[audit](AUDIT_2026-10-23.md), §3.
+Un défaut de contrat a aussi été trouvé et clarifié : `v` désigne la vitesse dans la trame `state`.
+
+Restent ouverts : la conformité de Godot au contrat (lot D) et la stabilité du Click (interne). Détail dans l'[audit](AUDIT_2026-10-23.md), §3 et §7.
 
 ---
 
@@ -96,10 +104,10 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 ### Sprint 1 : fin
 - [ ] Séance de 10 minutes (§3).
 - [ ] Braquet de départ réglable dans `config.toml` (aujourd'hui `--gear N` en ligne de commande).
-- [ ] Corrections de conformité du core (lot C).
+- [x] Corrections de conformité du core (lot C).
 
 ### Lecture des parcours (lot A)
-- [ ] Lecteur `.world` commun au core et à Godot, interpolation de Catmull-Rom, vecteurs de test partagés, parcours en boucle.
+- [x] Lecteur `.world` commun au core et à Godot, interpolation de Catmull-Rom, vecteurs de test partagés, parcours en boucle.
 
 ### Sprint 2 : compilateur (lots B1 et B2)
 - [ ] GPX vers couche route (ré-échantillonnage à 10 m, lissage de Savitzky-Golay, pente, cap, projection UTM).

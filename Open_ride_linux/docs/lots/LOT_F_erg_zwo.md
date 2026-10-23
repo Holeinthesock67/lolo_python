@@ -25,7 +25,7 @@ Ce lot couvre la partie core du sprint 4 de la SRS. Les bips d'annonce et le ban
 
 ## 3. Prérequis
 
-**Lot C livré.** Il modifie `session.py` et ajoute les tests de contrat qui valideront l'objet `erg`. Partir de `main` après la fusion de C.
+**Lot C livré** (23 octobre). Partir de `main` à jour. Points utiles du lot C : `session.py` délègue l'enregistrement à `recorder.py` (`SessionRecorder`) ; les tests de contrat sont dans `core/tests/test_contract_ipc.py` (classe `Capture` pour capter les trames) ; le parcours se charge par `route_id` (lot A), et `routes_root` se passe à `CoreSession` dans les tests.
 
 ## 4. Travail demandé
 

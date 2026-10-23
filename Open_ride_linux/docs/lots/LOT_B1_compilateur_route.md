@@ -11,7 +11,7 @@ Ce lot correspond à la première moitié du sprint 2 de la SRS.
 1. `docs/lots/00_INDEX.md` (règles communes).
 2. `docs/SRS_v1.1.md` §7 (compilateur) et §11 (arborescence).
 3. `docs/contracts/world_format_v1.md` §2, §3, §4, §10 et §11.
-4. Si le lot A est livré : `core/src/openride_core/route.py` et `docs/contracts/world/*.schema.json`. Sinon, les sections du format suffisent.
+4. Lot A (livré) : `core/src/openride_core/route.py` (`load_world`) et `docs/contracts/world/*.schema.json`, pour la vérification croisée du critère 8. La projection des parcours compilés est `utm` ; `local_equirectangular` est réservée aux parcours synthétiques.
 
 ## 3. Travail demandé
 
@@ -101,7 +101,7 @@ Aucune. Si un point du format est ambigu (exemple : `utm_zone` pour une trace à
 5. **Altitude absente.** Une trace sans altitude donne l'erreur prévue (code 1).
 6. **Doublons.** Les points en double et les arrêts (50 points identiques) ne changent pas la longueur à 1 m près.
 7. **Pente limitée.** Une marche de 30 m d'altitude sur 10 m produit des points limités à 25 %, et `grade_clamped_points` > 0.
-8. **Formats.** Si le lot A est livré, les sorties valident les schémas `docs/contracts/world/*.schema.json` et se chargent avec `openride_core.route.load_world`. Sinon, le test est marqué « à activer après le lot A ».
+8. **Formats.** Les sorties valident les schémas `docs/contracts/world/*.schema.json` et se chargent avec `openride_core.route.load_world` (installer `openride-core` en dépendance de test seulement).
 9. **Écriture atomique.** Une erreur simulée au milieu de l'écriture ne laisse aucun dossier `<nom>.world` visible. Une compilation sans `--force` sur un dossier existant échoue sans le modifier.
 10. **`verify`** détecte un tableau tronqué (code 1) et valide une sortie normale (code 0).
 11. **Performance.** Un GPX synthétique de 30 km (environ 30 000 points d'entrée) compile en moins de 10 s.

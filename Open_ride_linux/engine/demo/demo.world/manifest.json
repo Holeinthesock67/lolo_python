@@ -2,7 +2,7 @@
   "format": "openride-world",
   "format_version": "1.0",
   "name": "demo",
-  "created": "2026-10-21T21:21:52+02:00",
+  "created": "2026-10-23T00:00:00+02:00",
   "compiler": {
     "name": "openride-fake-world",
     "version": "0.1.0"
@@ -22,9 +22,9 @@
     "present": true,
     "version": "1.0",
     "file": "route.json",
-    "length_m": 4000.0,
+    "length_m": 5000.0,
     "ds_m": 10.0,
-    "n": 401,
+    "n": 501,
     "type": "open",
     "grade_clamped_points": 0
   },
