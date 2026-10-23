@@ -71,3 +71,10 @@ Aucune. Les messages du journal ne changent pas : si un message est trop ambigu 
 
 - Analyse du journal JSONL de séance (`.journal/`) : c'est le travail de `recover` et du FIT.
 - Graphiques.
+
+
+## 9. Livraison (23 octobre 2026, PR #16)
+
+- `core/src/openride_core/tools/log_report.py` : fonction pure `analyse` et CLI `python -m openride_core.tools.log_report [JOURNAL] [--json] [--all]`.
+- Trois journaux synthétiques écrits à la main dans `core/tests/data/logs/` (`seance_normale.log`, `seance_coupures.log`, `seance_tronquee_multi.log`).
+- `core/tests/test_log_report.py` : 7 tests unitaires vérifiant les métriques, le déclenchement du seuil Rust SRS §14.1 après 3 dépassements consécutifs, le décompte des lignes tronquées et la correspondance exacte de chaque motif avec les chaînes de format du code source du core.

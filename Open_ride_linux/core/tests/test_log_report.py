@@ -100,11 +100,12 @@ def test_seance_tronquee_et_multi_lancements() -> None:
     assert rep_last.perf.step_p99_breaches == 1
     assert rep_last.rust_threshold_reached is False
 
-    # Avec --all : les deux séances sont agrégées
+    # Avec --all : les deux séances sont agrégées et les 2 lignes tronquées comptées
     rep_all = analyse(lines, all_sessions=True)
     assert rep_all.sessions_count == 2
     assert len(rep_all.sessions) == 2
     assert rep_all.perf.count == 4
+    assert rep_all.unreadable_lines == 2
 
 
 def test_rust_threshold_only_after_three_consecutive_breaches() -> None:
