@@ -14,7 +14,7 @@ Aide Laurent à faire un essai réel sur le JetBlack Victory avec le Zwift Click
    - que Zwift et le téléphone doivent être déconnectés ;
    - si le Click ne répond pas : `bluetoothctl disconnect F4:C4:59:15:E1:E7`, puis appuyer sur un bouton.
 
-**Après l'essai** (fenêtre fermée ou Ctrl+C), analyse `~/run_victory.log` :
+**Après l'essai** (fenêtre fermée ou Ctrl+C), analyse `~/run_victory.log` (avec `python -m openride_core.tools.log_report ~/run_victory.log --json` depuis `core/`) :
 - connexions, déconnexions et reconnexions du trainer et du Click, avec leurs heures ;
 - pauses (`PAUSED`) et leur raison ;
 - lignes `Perf`, comparées aux seuils de la SRS §14.1 (pas p99 > 5 ms, retard p99 > 20 ms, CPU > 15 % ; seuil atteint après trois relevés consécutifs) ;

@@ -54,3 +54,10 @@ Aucune.
 
 - Envoi vers Garmin Connect ou tout service en ligne (hors périmètre du projet).
 - Nouveaux champs FIT (puissance normalisée, zones, etc.).
+
+
+## 9. Livraison (23 octobre 2026, PR #15)
+
+- `garmin-fit-sdk>=21` ajouté aux dépendances de test (`core/pyproject.toml` et `constraints.txt`).
+- `core/tests/test_fit_sdk.py` : 5 fonctions de test couvrant les 8 cas exigés (séance simple de 10 min / 600 échantillons, `file_id`, `session`, précision des coordonnées demi-cercles $\leftrightarrow$ degrés à $10^{-6}$ près, séance avec deux pauses, séance sans FC, séance de 3 h / 10 800 échantillons, conversion `journal_to_fit`).
+- Aucun défaut ni avertissement signalé par `garmin_fit_sdk.Decoder` : `fit_export.py` est resté strictement inchangé.
