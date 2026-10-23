@@ -13,7 +13,7 @@
 | [C](LOT_C_core_conformite.md) | Mise en conformité du core avec le contrat IPC (défauts de l'audit) | Python | — | Petite | **Livré le 23 octobre** |
 | [D](LOT_D_engine_ipc.md) | Mise en conformité de l'engine avec le contrat IPC | GDScript | A (livré) | Moyenne | **Livré le 23 octobre** (tests sans écran 8/8 revérifiés) |
 | [E1](LOT_E1_rendu_route_terrain.md) | Rendu 3D : ruban de route et terrain par tronçons | GDScript | A (livré), D ; tuiles du format (B2 ou générateur fourni) | Grande | Oui (A et D livrés) |
-| [F](LOT_F_erg_zwo.md) | Entraînements ERG : lecteur `.zwo` et pilotage ERG dans le core | Python | C (livré) | Moyenne | Oui |
+| [F](LOT_F_erg_zwo.md) | Entraînements ERG : lecteur `.zwo` et pilotage ERG dans le core | Python | C (livré) | Moyenne | **Livré le 23 octobre** (essai ERG sur le Victory à faire) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -27,7 +27,7 @@
 
 Leur forme dépendra des choix faits dans E1 et D.
 
-**Ordre conseillé :** A, B1, C et D sont livrés (23 octobre). Peuvent démarrer maintenant : B2, E1 (avec son générateur de terrain synthétique si B2 n'est pas prêt) et F.
+**Ordre conseillé :** A, A2, B1, C, D et F sont livrés (23 octobre). E1 est fait et attend l'essai sur le PC cible (PR #7). Peut démarrer maintenant : B2.
 
 Les lots livrés gardent leur cahier des charges, complété d'une section « Livraison » qui liste les écarts assumés.
 

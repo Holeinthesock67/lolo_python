@@ -127,3 +127,47 @@ def test_full_state_frame_fits_in_datagram():
              "bots": [{"id": f"bot-{i}", "s": 12873.456 + i, "v": 9.123} for i in range(10)]}
     size = len(json.dumps(frame, separators=(",", ":")).encode())
     assert size <= MAX_DATAGRAM, f"trame de {size} octets"
+
+
+ERG_ZWO = """<workout_file><name>Contrat ERG</name><workout>
+<Warmup Duration="60" PowerLow="0.5" PowerHigh="0.75"/>
+<IntervalsT Repeat="2" OnDuration="20" OffDuration="20" OnPower="1.2" OffPower="0.5"/>
+<FreeRide Duration="30"/>
+<Cooldown Duration="30" PowerLow="0.7" PowerHigh="0.4"/>
+</workout></workout_file>"""
+
+
+def test_state_frames_in_erg(tmp_path, monkeypatch):
+    """Lot F : trames state en ERG (blocs, pause ERG, roue libre, fin) et erreur workout_invalid."""
+    async def scenario():
+        workouts = tmp_path / "Workouts"
+        workouts.mkdir()
+        (workouts / "erg.zwo").write_text(ERG_ZWO, encoding="utf-8")
+        (workouts / "casse.zwo").write_text("<workout_file><workout>", encoding="utf-8")
+        s, cap = make_session(tmp_path, monkeypatch, port=5920)
+        s.workouts_dir = workouts
+        s._on_command("select_route", {"route_id": "demo"}, 1)
+        s._on_command("select_workout", {"workout_id": "casse"}, 2)
+        assert cap.of("error")[-1]["code"] == "workout_invalid"
+        s._on_command("select_workout", {"workout_id": "erg"}, 3)
+        s._on_command("start", {}, 4)
+        types = set()
+        for step in range(230):                     # 200 s de blocs + 5 s de pause ERG
+            run_steps(s, 50, 100.0 + step)          # 1 s par tour
+            if step == 10:
+                s._handle_input(__import__("openride_core.zwift_click", fromlist=["InputEvent"])
+                                .InputEvent.MINUS_LONG)   # pause ERG puis reprise
+            if step == 15:
+                s._on_command("input_event", {"event": "MINUS_LONG"}, 5)
+            s.server.send_state(s.state)
+            if s.state.erg:
+                types.add(s.state.erg["block_type"])
+        erg_frames = [f for f in cap.of("state") if f["erg"] is not None]
+        assert {"warmup", "interval_on", "interval_off", "freeride", "cooldown"} <= types
+        assert any(f["erg"]["paused"] for f in erg_frames)
+        assert any(f["mode"] == "ERG" for f in erg_frames)
+        assert any(f["erg"]["next_target_w"] is None for f in erg_frames)
+        assert cap.of("state")[-1]["erg"] is None and cap.of("state")[-1]["mode"] == "SIM"
+        for frame in cap.frames:
+            assert_valid(frame)
+    asyncio.run(scenario())
