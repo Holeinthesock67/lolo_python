@@ -72,7 +72,7 @@ Tests côté Godot, sans écran (depuis `Open_ride_linux/`) :
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 ```
 
-Le script vérifie les vecteurs de route, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`).
+Le script lance les tests unitaires de `engine/tests/unit/` (vecteurs de route, thèmes…), le rendu par tronçons, l'ERG, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`).
 
 **Arguments de l'engine** (après `--`, hors contrat IPC) :
 
