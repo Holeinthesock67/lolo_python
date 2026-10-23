@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "jsonschema>=4"]
+dev = ["pytest>=8", "jsonschema>=4", "garmin-fit-sdk>=21"]
 
 [project.scripts]
 openride-core = "openride_core.__main__:main"
