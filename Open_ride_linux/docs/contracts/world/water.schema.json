@@ -1,0 +1,119 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldWaterChunk",
+  "description": "Tronçon de 1 km de la couche eau (Format .world v1, §8).",
+  "type": "object",
+  "required": [
+    "version",
+    "lines",
+    "areas"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "point2d": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "point3d_xzy": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    },
+    "ring": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "$ref": "#/$defs/point2d"
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "width_m",
+          "points"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "river",
+              "stream",
+              "canal"
+            ]
+          },
+          "width_m": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "$ref": "#/$defs/point3d_xzy"
+            }
+          }
+        }
+      }
+    },
+    "areas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "level_y",
+          "outer",
+          "holes"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "lake",
+              "pond",
+              "reservoir"
+            ]
+          },
+          "level_y": {
+            "type": "number"
+          },
+          "outer": {
+            "$ref": "#/$defs/ring"
+          },
+          "holes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ring"
+            }
+          }
+        }
+      }
+    }
+  }
+}
