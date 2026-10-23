@@ -63,7 +63,11 @@ def cmd_release_trainer(args: argparse.Namespace) -> int:
     from . import config as config_mod
     from .ftms_driver import release_trainer
 
-    cfg = config_mod.load(args.config)
+    try:
+        cfg = config_mod.load(args.config)
+    except config_mod.ConfigError as exc:
+        print(f"openride-core : configuration invalide : {exc}", file=sys.stderr)
+        return 1
     ok = asyncio.run(release_trainer(cfg.trainer, cfg.bike, cfg.drivers.trainer_address or None))
     print("Trainer libéré." if ok else "Trainer non libéré (voir les messages ci-dessus).")
     return 0 if ok else 1
