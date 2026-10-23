@@ -40,6 +40,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         cfg.drivers.input = args.input
     if args.gear:
         cfg.gearing.start_gear = args.gear
+    if args.replay:
+        cfg.drivers.trainer = "mock"
+        cfg.drivers.mock_replay = str(args.replay)
     asyncio.run(CoreSession(cfg).run(autostart=args.autostart))
     return 0
 
@@ -55,6 +58,8 @@ def main(argv: list[str] | None = None) -> int:
     run.add_argument("--trainer", choices=["mock", "ftms"])
     run.add_argument("--input", choices=["click", "keyboard", "none"])
     run.add_argument("--gear", type=int, help="braquet de départ, 1 (léger) à 24 (dur) ; défaut 12")
+    run.add_argument("--replay", type=Path,
+                     help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
     run.add_argument("--autostart", action="store_true",
                      help="charge le parcours factice et démarre aussitôt (essais sans engine)")
     args = p.parse_args(argv)
