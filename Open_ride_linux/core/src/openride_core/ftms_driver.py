@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from . import ftms
-from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device
+from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, note_trainer_write
 from .config import BikeConfig, TrainerConfig
 from .mock_driver import TrainerMetrics
 from .physics import RHO0
@@ -257,6 +257,7 @@ class FtmsDriver:
                     await self._release(client)
 
     async def _write(self, client: Any, payload: bytes) -> None:
+        note_trainer_write()
         await client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True)
 
     async def _take_control(self, client: Any) -> None:
