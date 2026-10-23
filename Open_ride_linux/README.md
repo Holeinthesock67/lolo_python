@@ -71,9 +71,10 @@ Tests côté Godot, sans écran (depuis `Open_ride_linux/`) :
 
 ```bash
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh
 ```
 
-Le script vérifie les vecteurs de route, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`).
+Le premier script vérifie les vecteurs de route, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`). Le second fait un essai de bout en bout avec le vrai core (trainer simulé) et le vrai engine, dans un dossier personnel temporaire, en une dizaine de secondes.
 
 **Arguments de l'engine** (après `--`, hors contrat IPC) :
 

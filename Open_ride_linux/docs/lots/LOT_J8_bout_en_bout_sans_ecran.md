@@ -53,3 +53,12 @@ Aucune. Un écart entre le vrai core et le contrat est signalé, pas corrigé ic
 
 - Matériel réel, rendu visuel, images par seconde.
 - Modification de `main.gd`, `ipc_client.gd` ou des scripts de rendu d'E1.
+
+## 9. Livraison (23 octobre 2026, fait directement à la demande du propriétaire, sans sous-traitance)
+
+- `engine/tests/run_e2e.sh` (enveloppe) et `engine/tests/e2e_check.py` (orchestration et vérifications) : vrai core et vrai engine, `HOME` temporaire, ports UDP libres, lignes `[OK]` / `[ÉCHEC]` avec mesure, journaux gardés en cas d'échec. Environ 8 s en local.
+- Étape ajoutée au job `engine` de `.github/workflows/openride.yml`, après les tests existants. `main.gd` et `run_engine_tests.sh` non modifiés (E1 pas encore fusionné). J5 n'est pas fini mais ne touche plus `openride.yml` d'ici là : pas de conflit.
+- Écarts assumés : l'engine n'a pas de ligne `[test]` pour un événement `input` ; le script lit la ligne « Bip : PLUS_SHORT » qu'il imprime déjà. Le braquet est lu dans les trames que le script reçoit après l'arrêt de l'engine (le port d'état est tenu par l'engine avant). La longueur du core est `route_length_m` de ces trames ; l'engine lit le même dossier de parcours que le core.
+- Vérifications en plus du §4 : aucune erreur ni avertissement de Godot, code de sortie 0 du core, durée totale.
+- **Écart au contrat trouvé** : le core n'envoyait que 25 trames `state` par seconde au lieu de 30 (échéance « maintenant + 1/30 s » avec des pas de 20 ms). Signalé et corrigé dans une PR séparée, avec son propre test (`core/tests/test_state_rate.py`) ; cette branche part de ce correctif. Mesure avant : 24,4 trames/s (échec) ; après : 30,0 à 30,2.
+- Démonstration du critère 3 : avec une copie de `demo` de 4 800 m donnée à l'engine (`--engine-routes-dir`), le script échoue sur « même parcours demo des deux côtés : core 5000.0 m, engine 4800.0 m » et renvoie 1.
