@@ -4,6 +4,8 @@ Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
     openride-core run [--trainer mock|ftms] [--input click|keyboard|none] [--gear N] [--autostart]
                                       boucle de séance (BLE, physique, IPC, journal)
+    openride-core release-trainer     dépannage : annule la consigne du trainer, lui rend sa
+                                      liberté et le déconnecte (après un arrêt brutal)
 """
 
 from __future__ import annotations
@@ -47,6 +49,18 @@ def cmd_run(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_release_trainer(args: argparse.Namespace) -> int:
+    import asyncio
+
+    from . import config as config_mod
+    from .ftms_driver import release_trainer
+
+    cfg = config_mod.load(args.config)
+    ok = asyncio.run(release_trainer(cfg.trainer, cfg.bike, cfg.drivers.trainer_address or None))
+    print("Trainer libéré." if ok else "Trainer non libéré (voir les messages ci-dessus).")
+    return 0 if ok else 1
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="openride-core")
     p.add_argument("--version", action="version", version=__version__)
@@ -62,10 +76,14 @@ def main(argv: list[str] | None = None) -> int:
                      help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
     run.add_argument("--autostart", action="store_true",
                      help="charge le parcours factice et démarre aussitôt (essais sans engine)")
+    rel = sub.add_parser("release-trainer",
+                         help="libérer le trainer resté réservé (consigne annulée, contrôle rendu)")
+    rel.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
-    return {"recover": cmd_recover, "run": cmd_run}[args.command](args)
+    return {"recover": cmd_recover, "run": cmd_run,
+            "release-trainer": cmd_release_trainer}[args.command](args)
 
 
 if __name__ == "__main__":

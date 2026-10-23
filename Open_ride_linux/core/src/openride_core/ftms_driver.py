@@ -32,6 +32,7 @@ RESEND_S = 2.0           # la consigne est renvoyée au moins toutes les 2 s
 MIN_SEND_INTERVAL_S = 0.2
 GRADE_EPSILON_PCT = 0.1
 ERG_EPSILON_W = 1.0
+RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (arrêt jamais bloqué)
 MAX_CONTROL_RETRIES = 2  # reprises de contrôle tentées avant de déclarer le refus
 DEFAULT_POWER_RANGE = (0.0, 2000.0)
 
@@ -172,6 +173,10 @@ class FtmsDriver:
             # « Démarrer » refusé = le trainer tourne déjà (mesuré sur le Victory) : sans gravité.
             log.debug("Start/Resume refusé (%s) : trainer déjà démarré", resp.result_name)
             return
+        if resp.request_op == ftms.OP_RESET:
+            # Reset refusé : la déconnexion qui suit rend quand même le contrôle.
+            log.debug("Reset refusé (%s)", resp.result_name)
+            return
         log.warning("Commande 0x%02x refusée : %s", resp.request_op, resp.result_name)
         if resp.result == 0x05:  # CONTROL_NOT_PERMITTED : le contrôle a été perdu
             self._refusals += 1
@@ -278,8 +283,64 @@ class FtmsDriver:
         self._last_sent, self._last_sent_at = (mode, value), now
 
     async def _release(self, client: Any) -> None:
-        """Relâche la résistance en partant (pente 0 %), même après une erreur."""
+        """Rend le trainer libre en partant, même après une erreur.
+
+        Pente 0 % d'abord (aucune consigne ERG ne reste active), puis Reset, qui retire le
+        contrôle FTMS à OpenRide : une autre application peut le prendre aussitôt. Chaque
+        écriture est bornée dans le temps ; la déconnexion BLE suit (sortie du `async with`).
+        """
+        await release_control(client, self._crr, self._cw)
+
+
+async def release_control(client: Any, crr: float = 0.004, cw_kg_m: float = 0.20) -> bool:
+    """Pente 0 % puis Reset sur le Control Point ; True si les deux écritures ont abouti."""
+    ok = True
+    for label, payload in (("pente 0 %", ftms.cmd_set_sim_params(0.0, crr, cw_kg_m)),
+                           ("reset (contrôle rendu)", ftms.cmd_reset())):
         try:
-            await self._write(client, ftms.cmd_set_sim_params(0.0, self._crr, self._cw))
+            await asyncio.wait_for(
+                client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True),
+                timeout=RELEASE_WRITE_TIMEOUT_S)
+        except asyncio.CancelledError:
+            raise
         except Exception as exc:
-            log.debug("Relâche de la résistance impossible : %s", exc)
+            ok = False
+            log.warning("Relâche du trainer, %s impossible : %s", label, exc or type(exc).__name__)
+    if ok:
+        log.info("Trainer relâché : pente 0 %, contrôle FTMS rendu.")
+    return ok
+
+
+async def release_trainer(
+    trainer: TrainerConfig,
+    bike: BikeConfig,
+    address: str | None = None,
+    *,
+    device_finder: Callable[[str, str | None, float], Awaitable[Any]] = find_device,
+    client_factory: Callable[..., Any] = default_client_factory,
+) -> bool:
+    """Dépannage : se connecte au trainer, annule toute consigne, rend le contrôle et déconnecte.
+
+    Sert après un arrêt brutal du core (processus tué, PC éteint en pleine séance) : BlueZ peut
+    garder la liaison ouverte et le trainer reste alors réservé. La connexion reprend cette
+    liaison (appareil connu de BlueZ) puis la ferme proprement.
+    """
+    async with ble_lock():
+        dev = await device_finder(trainer.device_name, address or None, 8.0)
+        if dev is None:
+            log.warning("Trainer introuvable : il est déjà libre ou éteint.")
+            return False
+        async with client_factory(dev, timeout=15.0) as client:
+            if client.services.get_characteristic(ftms.CONTROL_POINT) is None:
+                log.warning("Pas de Control Point FTMS sur cet appareil.")
+                return False
+            try:
+                await asyncio.wait_for(
+                    client.write_gatt_char(ftms.CONTROL_POINT, ftms.cmd_request_control(),
+                                           response=True),
+                    timeout=RELEASE_WRITE_TIMEOUT_S)
+            except Exception as exc:
+                log.debug("Prise de contrôle avant relâche refusée : %s", exc)
+            ok = await release_control(client, bike.crr, 0.5 * RHO0 * bike.cda_m2)
+    log.info("Trainer déconnecté.")
+    return ok
