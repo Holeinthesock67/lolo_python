@@ -386,7 +386,7 @@ def cmd_build_all(args: argparse.Namespace) -> int:
                 out=routes_dir,
                 out_and_back=False,
                 force=True,
-                layers=LAYERS,
+                layers=DEFAULT_LAYERS,
                 offline=args.offline,
             )
             cmd_build(sub_args)
