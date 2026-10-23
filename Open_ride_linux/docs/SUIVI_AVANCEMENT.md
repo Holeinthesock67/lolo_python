@@ -16,7 +16,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 
 ### Module core (`openride-core`, Python)
 - [x] **Paquet :** Python 3.11 minimum, essais réels en 3.14 ; installation en mode éditable.
-- [x] **Configuration** (`config.py`) : valeurs par défaut complètes, lecture tolérante de `~/OpenRide/config.toml`, section `[drivers]` (trainer réel ou simulé, Click ou clavier, `mock_replay`).
+- [x] **Configuration** (`config.py`) : valeurs par défaut complètes, clés absentes tolérées, types et bornes contrôlés avec un message qui cite la section et la clé (lot J3), clé inconnue signalée, section `[drivers]` (trainer réel ou simulé, Click ou clavier, `mock_replay`).
 - [x] **Physique** (`physics.py`) : bilan d'énergie cinétique à 50 Hz, stable à l'arrêt, sans recul en côte, vitesse plafonnée.
 - [x] **Braquets** (`gearing.py`) : 24 vitesses de 0,50 à 2,25, pente effective bornée de −10 à +16 %, saut de plusieurs vitesses (appui long).
 - [x] **Protocoles BLE purs :**
@@ -30,6 +30,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] **Journal** (`journal.py`) : JSONL à 1 Hz, `flush` à chaque ligne, `fsync` toutes les 5 s, tolérant aux plantages.
 - [x] **Export FIT** (`fit_export.py`) et récupération (`openride-core recover`).
 - [x] **Diagnostic BLE** (`openride-ble-diag`) : `scan`, `trainer`, `click`.
+- [x] **Robustesse IPC** (lot J2, 23 octobre) : un message JSON non conforme (liste, `cmd_id` non entier, `args` invalide) est ignoré et compté au lieu d'arrêter la boucle ; une erreur dans une commande est journalisée sans arrêter la séance.
 - [x] **Conformité au contrat IPC** (lot C, 23 octobre) : commandes acceptées après un redémarrage de Godot, panne d'écriture du journal sans arrêt de la boucle (`recorder.py` : séance en mémoire, nouveau journal à la reprise), résumé de fin conforme, refus du contrôle FTMS remonté (`ERROR`), consigne ERG bornée, `hello_ack` et coefficient de difficulté tirés de la configuration.
 - [x] **Lecture des parcours** (lot A, 23 octobre) : `route.py` charge et valide un `.world`, interpole la route (Catmull-Rom centripète) et gère les boucles ; la séance charge le parcours demandé par son nom ; parcours de démonstration unique (`demo_world.py`).
 - [x] **Entraînements ERG** (lot F, 23 octobre) : `workout.py` lit les `.zwo` de `~/OpenRide/Workouts/` (intervalles dépliés, fichiers invalides listés avec leur erreur) ; la séance envoie la cible ERG lissée sur 2 s, biais ± 2 % et saut de bloc au Click, pause ERG à pente 0 %, roue libre en SIM avec les braquets, objet `erg` des trames `state` et `mode` / `block` dans le journal.
@@ -46,7 +47,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
-- [x] Intégration continue GitHub Actions (`.github/workflows/openride.yml`, lot H1) : suites du core, du compilateur et des vecteurs de route en Python 3.11 et 3.14 (`constraints.txt`), et tests de l'engine Godot 4.3 sans écran.
+- [x] Intégration continue GitHub Actions (`.github/workflows/openride.yml`, lot H1) : suites du core, du compilateur et des vecteurs de route en Python 3.11 et 3.14 (`constraints.txt`), et tests de l'engine Godot 4.3 sans écran. Depuis J5 (en partie) : chaque envoi sur `main` testé jusqu'au bout, exécution hebdomadaire, `pip check`.
 - [x] Analyseur de journal de séance (`python -m openride_core.tools.log_report`, lot H6) : résumé texte et `--json` de `~/run_victory.log` (trainer, Click, pauses, seuils Rust SRS §14.1).
 - [x] Schéma et validateur de thèmes (`docs/contracts/world/theme.schema.json`, `engine/themes/default/theme.json`, `openride-compiler theme-check`, lot H7).
 - [x] Outils et bibliothèque d'entraînements ERG (`python -m openride_core.tools.workouts list|check|install` et 5 fichiers `.zwo` de référence dans `core/workouts/`, lot H8).
@@ -58,7 +59,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**153 tests pytest passent dans le core et 123 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lot I1), catalogue des parcours `list` et `build-all` (lot I2), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 54 vérifications ERG (lot I6) et 8 scénarios IPC vérifiés sans écran (`engine/tests/run_engine_tests.sh`). Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
+**222 tests pytest passent dans le core et 123 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lot I1), catalogue des parcours `list` et `build-all` (lot I2), robustesse IPC aux messages malformés (lot J2), validation de `config.toml` (lot J3), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 54 vérifications ERG (lot I6) et 8 scénarios IPC vérifiés sans écran (`engine/tests/run_engine_tests.sh`). Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
@@ -113,7 +114,7 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 
 ## 4. Ce qui reste à faire
 
-Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 et I1 à I6 ont tous été livrés et fusionnés le 23 octobre (tests de cohérence documentation/code, catalogue de parcours, couches OSM bâtiments/végétation/points d'intérêt/eau, chargeur de thèmes GDScript et logique ERG Godot testée sans écran). La série J (J1 à J8, audit J du 23 octobre au soir) est prête à confier : lancement d'un parcours et d'un entraînement choisis, robustesse IPC, configuration validée, paquets autonomes, intégration continue, catalogue unique, cohérence de la documentation et essai de bout en bout sans écran.
+Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 et I1 à I6 ont tous été livrés et fusionnés le 23 octobre (tests de cohérence documentation/code, catalogue de parcours, couches OSM bâtiments/végétation/points d'intérêt/eau, chargeur de thèmes GDScript et logique ERG Godot testée sans écran). Série J (audit J du 23 octobre au soir) : J2 (robustesse IPC) et J3 (configuration validée) faits directement, J4 et J5 en partie ; restent à confier J1 (parcours et entraînement au lancement), la fin de J4 et J5, J6 (catalogue unique), J7 (cohérence de la documentation) et J8 (bout en bout sans écran).
 
 ### Sprint 1 : fin
 - [ ] Séance de 10 minutes (§3).
@@ -130,7 +131,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Sprint 3 : rendu 3D (lots D, E1, puis E2 et E3 à rédiger)
 - [x] Godot conforme au contrat (renvoi des commandes, extrapolation, core injoignable), lot D.
-- [ ] Ruban de route et terrain par tronçons (lot E1 fait, PR #7 : attend l'essai sur la GTX 1060 ; conflit avec `main` à résoudre sur `engine/tests/run_engine_tests.sh` et `engine/tests/README.md` depuis la fusion d'I5 et I6).
+- [ ] Ruban de route et terrain par tronçons (lot E1 fait, PR #7 : attend l'essai sur la GTX 1060 ; conflit avec `main` résolu le 23 octobre au soir, tests sans écran verts).
 - [ ] Shader triplanaire et thèmes (E2, après le chargeur de thèmes GDScript du lot I5), arbres, HUD final avec profil d'altitude (E3).
 
 ### Lanceur et menus (lot G, à rédiger)

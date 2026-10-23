@@ -18,7 +18,7 @@ Ce lot ajoute deux options à `openride-core run`, en attendant le menu du lot G
 
 ## 3. Prérequis
 
-Aucun. Partir de `main` à jour.
+Aucun. Partir de `main` à jour. `__main__.py` a été modifié par J3 (livré : lecture de configuration protégée par `ConfigError`, contrôle de `--gear`) ; garder ce comportement.
 
 ## 4. Travail demandé
 
