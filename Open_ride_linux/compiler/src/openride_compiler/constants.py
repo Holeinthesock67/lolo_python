@@ -46,3 +46,29 @@ ROAD_HALF_WIDTH_M = 3.0
 BLEND_INNER_M = 4.0          # en deçà (depuis le bord du ruban) : altitude de la route − 5 cm
 BLEND_OUTER_M = 25.0         # au-delà : MNT seul
 ROAD_SINK_M = 0.05
+
+# Couches OpenStreetMap : bâtiments et végétation (format §6 et §7, lot I3).
+BUILDINGS_VERSION = "1.0"
+VEGETATION_VERSION = "1.0"
+CHUNK_LENGTH_M = 1000.0
+OSM_BAND_M = 400.0
+DENSITY_WOOD = 0.8
+DENSITY_SCRUB = 0.4
+DENSITY_ORCHARD = 0.5
+
+# Couches OpenStreetMap : points d'intérêt et eau (format §8, lot I4).
+POI_VERSION = "1.0"
+WATER_VERSION = "1.0"
+POI_KINDS = ("church_bell", "river", "livestock", "village", "viewpoint")
+POI_RADIUS_CHURCH_BELL_M = 300
+POI_RADIUS_VILLAGE_M = 300
+POI_RADIUS_VIEWPOINT_M = 200
+POI_RADIUS_LIVESTOCK_M = 150
+POI_RADIUS_RIVER_M = 150
+POI_RIVER_PASSAGE_DIST_M = 50.0
+WATER_LINE_KINDS = ("river", "stream", "canal")
+WATER_AREA_KINDS = ("lake", "pond", "reservoir")
+WATER_WIDTH_DEFAULT_M = 2.0
+WATER_WIDTH_RIVER_M = 6.0
+WATER_WIDTH_STREAM_M = 2.0
+WATER_WIDTH_CANAL_M = 8.0
