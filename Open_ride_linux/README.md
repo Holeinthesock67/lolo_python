@@ -114,6 +114,9 @@ Chaque type d'appui a son bip.
 ```bash
 openride-core run --trainer ftms|mock --input click|keyboard|none [--gear N] [--replay CHEMIN] [--autostart]
 openride-core recover            # transforme le dernier journal en FIT après un plantage
+python -m openride_core.tools.workouts install                   # copie les 5 entraînements .zwo de référence
+python -m openride_core.tools.workouts list                      # liste les entraînements de ~/OpenRide/Workouts/
+python -m openride_core.tools.workouts check FICHIER.zwo --ftp 250   # vérifie un fichier .zwo et estime NP/IF/TSS
 ```
 
 ## Diagnostic matériel
