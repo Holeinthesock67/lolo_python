@@ -36,6 +36,14 @@
 | [J6](LOT_J6_parite_catalogue.md) | Une seule logique de catalogue des parcours (core et repli du compilateur) | Python | — | Petite | Oui |
 | [J7](LOT_J7_coherence_doc_etendue.md) | Cohérence de la documentation, deuxième passe (caractères, liens, nombres de tests) | Python | — | Petite | Oui |
 | [J8](LOT_J8_bout_en_bout_sans_ecran.md) | Essai de bout en bout sans écran : vrai core et vrai engine | Bash + Python | J5 (`openride.yml`) | Moyenne | Après J5 |
+| [K1](LOT_K1_tests_godot_par_decouverte.md) | Tests Godot sans écran lancés par découverte (`engine/tests/unit/`) | Bash + GDScript | E1 fusionné | Petite | Après la fusion de la PR #7 |
+| [K2](LOT_K2_modele_hud_profil.md) | Modèle de vue du HUD et profil d'altitude, sans affichage (prépare E3) | GDScript | K1 | Petite | Après K1 |
+| [K3](LOT_K3_placement_vegetation.md) | Placement déterministe de la végétation, sans affichage (prépare E3 et E4) | GDScript | K1 | Petite | Après K1 |
+| [K4](LOT_K4_lecture_couches_osm_godot.md) | Lecture des couches OSM dans l'engine, sans affichage (prépare E4) | GDScript + Python | K1, I3, I4 (livrés) | Moyenne | Après K1 |
+| [K5](LOT_K5_navigation_menus.md) | Navigation des menus au Click, machine à états sans affichage (prépare G) | GDScript | K1 | Petite | Après K1 |
+| [K6](LOT_K6_lanceur_supervision.md) | Lanceur unique `openride` et supervision du core et de l'engine | Python | — | Moyenne | Oui |
+| [K7](LOT_K7_bilan_seance.md) | Bilan d'une séance : `openride-core summary` (NP, IF, TSS, zones, records) | Python | — | Petite | Oui |
+| [K8](LOT_K8_diagnostic_click.md) | Diagnostic des déconnexions du Zwift Click (journal et analyseur) | Python | — | Petite | Oui |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -44,16 +52,18 @@
 
 **À rédiger plus tard** (contrôle visuel ou décision du propriétaire nécessaire) :
 - E2 : shader triplanaire et application du thème (s'appuie sur I5) ;
-- E3 : ciel, végétation par bruit, HUD final avec profil d'altitude ;
-- E4 : rendu des bâtiments et des forêts (s'appuie sur I3) ;
+- E3 : ciel, végétation par bruit, HUD final avec profil d'altitude (s'appuie sur K2 et K3) ;
+- E4 : rendu des bâtiments, des forêts, de l'eau et sons des points d'intérêt (s'appuie sur I3, I4, K3 et K4) ;
 - F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) ;
-- G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), lanceur unique et menus pilotés au Click (s'appuie sur I2).
+- G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), affichage des menus pilotés au Click et écran de fin de séance (s'appuie sur I2, K5, K6 et K7).
 
 Leur forme dépendra des choix faits dans E1 et D.
 
 **Ordre conseillé :** A, A2, B1, B2, C, D, F, H1 à H8 et I1 à I6 sont livrés (23 octobre). E1 est fait et attend l'essai sur le PC cible (PR #7). I5 et I6 ont été fusionnés **avant** E1, contrairement à l'ordre prévu ; le conflit qui en résultait dans `engine/tests/` est résolu sur la branche d'E1 (les trois étapes rendu, thèmes et ERG s'enchaînent). Série J (audit J du 23 octobre au soir) : J2 et J3 sont livrés, J4 et J5 en partie ; J1, le reste de J4 et J5, J6 et J7 peuvent démarrer en parallèle, J8 après J5. J1 est le plus utile pour les essais sur le vélo (parcours compilés et essai ERG). Le conflit de la PR #7 avec `main` a été résolu sur sa branche le 23 octobre au soir.
 
-**Lots H, I et J (23 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I et J ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
+**Série K (23 octobre au soir) :** K6, K7 et K8 (Python) peuvent démarrer tout de suite, en parallèle de J1 et des lots J restants. K1 attend la fusion de la PR #7 (E1), puis K2 à K5 (GDScript, sans affichage) peuvent partir en parallèle : chacun dépose son test dans `engine/tests/unit/` et ne touche plus `run_engine_tests.sh` (sauf K4, une étape de génération de données). J1, K7 et K6 modifient `__main__.py` ou `pyproject.toml` du core : fusionner l'un après l'autre. Les lots K préparent E3 (K2, K3), E4 (K3, K4) et G (K5, K6, K7) sans les remplacer : le rendu, l'affichage et le contrat IPC v1.1 restent internes.
+
+**Lots H, I, J et K (23 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I, J et K ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
 
 **Lots H, détail :** petits lots hors du chemin critique, recettés uniquement par des tests automatiques, sans essai sur le matériel. Ils peuvent être confiés en parallèle : aucun ne partage de fichier de code avec un autre (seuls `docs/SUIVI_AVANCEMENT.md` et parfois `README.md` sont communs, à fusionner à la main). H3 est le seul à toucher `config.py`, `session.py` et `__main__.py` ; H5 et H4 touchent tous deux `core/pyproject.toml` (sections différentes).
 
@@ -66,6 +76,10 @@ A ──► B1 ──► B2 ──┬──► E1 ──┬──► I5 ──�
 B2 ──► I2 ──► G       B2 ──► I3 ──► I4 ;  I3 ──► E4
 C ──► F ──► H8        H1 à H8, I1 : indépendants
 J5 ──► J8             J1, J4, J6, J7 : indépendants (J2, J3 livrés)
+E1 ──► K1 ──┬──► K2 ──► E3        K3 ──► E3, E4      K4 ──► E4
+            ├──► K3              K5, K6, K7 ──► G
+            ├──► K4              K6, K7, K8 : indépendants
+            └──► K5
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
