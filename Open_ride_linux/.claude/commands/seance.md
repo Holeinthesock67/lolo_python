@@ -17,7 +17,7 @@ Aide le propriétaire à faire un essai réel sur le HomeTrainer avec le Zwift C
 **Après l'essai** (fenêtre fermée ou Ctrl+C), analyse `~/run_trainer.log` :
 - connexions, déconnexions et reconnexions du trainer et du Click, avec leurs heures ;
 - pauses (`PAUSED`) et leur raison ;
-- lignes `Perf`, comparées aux seuils de la SRS §14.1 (pas p99 > 5 ms, retard > 20 ms, CPU > 15 %) ;
+- lignes `Perf`, comparées aux seuils de la SRS §14.1 (pas p99 > 5 ms, retard p99 > 20 ms, CPU > 15 % ; seuil atteint après trois relevés consécutifs) ;
 - appuis du Click reconnus, et FIT produit (`~/OpenRide/Activities/`).
 
 Résume en français, en 5 à 10 lignes : ce qui marche, ce qui ne marche pas, la cause probable, et la prochaine action. Note les faits nouveaux sur le matériel dans `docs/spikes.md` ou `docs/SUIVI_AVANCEMENT.md` (section « Ce qui reste à tester »).

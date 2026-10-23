@@ -101,7 +101,7 @@ Restent ouverts : la conformité de Godot au contrat (lot D) et la stabilité du
 
 ## 4. Ce qui reste à faire
 
-Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md).
+Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 (23 octobre) sont de petits lots indépendants, recettés sans matériel : intégration continue, tests Bluetooth, rejeu dans le simulateur, endurance simulée, validation FIT, analyseur de journal, schéma des thèmes, outils d'entraînements.
 
 ### Sprint 1 : fin
 - [ ] Séance de 10 minutes (§3).
