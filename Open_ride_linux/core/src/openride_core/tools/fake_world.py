@@ -35,9 +35,9 @@ def build_route(length_m: float = 8000.0, origin_lat: float = 45.09, origin_lon:
                 rate += 180.0 / 150.0
         return rate
 
-    # Pente : montée de 3 à 9 % qui ondule, replat en milieu de parcours.
+    # Pente : montée douce de 1 à 4 % qui ondule (confortable vers 150 W), replat en milieu de parcours.
     def grade(s: float) -> float:
-        g = 6.0 + 3.0 * math.sin(s / 900.0) + 1.0 * math.sin(s / 170.0)
+        g = 2.5 + 1.5 * math.sin(s / 900.0) + 0.5 * math.sin(s / 170.0)
         if 0.3 * length_m < s < 0.35 * length_m:
             g = 1.0
         return g

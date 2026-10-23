@@ -76,6 +76,30 @@ def test_click_buttons():
     assert parse_click_buttons(bytes([0x19, 0x10, 0x5D])) is None  # batterie
 
 
+def test_click_keypad_status_new_model():
+    # Trames mesurées : 0xFFFFFFFF = rien ; bit 12 à 0 = +, bit 8 à 0 = −
+    def frame(mask):
+        out = bytearray([0x23, 0x08])
+        v = mask
+        while v > 0x7F:
+            out.append((v & 0x7F) | 0x80)
+            v >>= 7
+        out.append(v)
+        return bytes(out)
+
+    none = parse_click_buttons(frame(0xFFFFFFFF))
+    assert not none.plus_pressed and not none.minus_pressed
+    plus = parse_click_buttons(frame(0xFFFFEFFF))
+    assert plus.plus_pressed and not plus.minus_pressed
+    minus = parse_click_buttons(frame(0xFFFFFEFF))
+    assert minus.minus_pressed and not minus.plus_pressed
+    both = parse_click_buttons(frame(0xFFFFEEFF))
+    assert both.plus_pressed and both.minus_pressed
+    # trame réelle du rapport : 2308ffffffff0f
+    real = parse_click_buttons(bytes.fromhex("2308ffffffff0f"))
+    assert not real.plus_pressed and not real.minus_pressed
+
+
 def test_press_classifier_thresholds():
     c = PressClassifier()
     assert c.update("PLUS", True, 0.0) is None
