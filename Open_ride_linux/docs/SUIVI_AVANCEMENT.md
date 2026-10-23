@@ -59,7 +59,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**222 tests pytest passent dans le core et 123 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lot I1), catalogue des parcours `list` et `build-all` (lot I2), robustesse IPC aux messages malformés (lot J2), validation de `config.toml` (lot J3), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 54 vérifications ERG (lot I6) et 8 scénarios IPC vérifiés sans écran (`engine/tests/run_engine_tests.sh`). Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
+**231 tests pytest passent dans le core et 123 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lot I1), catalogue des parcours `list` et `build-all` (lot I2), robustesse IPC aux messages malformés (lot J2), validation de `config.toml` (lot J3), libération du trainer à l'arrêt (PR #28), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 54 vérifications ERG (lot I6) et 8 scénarios IPC vérifiés sans écran (`engine/tests/run_engine_tests.sh`). Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
@@ -84,6 +84,7 @@ PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
 | Séance en pause sans reprise | Aucun bouton de reprise à l'écran | `--autostart` reprend seul après `engine_lost` / `trainer_lost` |
 | Click intermittent | Recherche par fenêtres de 6 s puis attente jusqu'à 10 s ; le Click ne s'annonce qu'après un appui | Recherche continue (5 s, pause de 0,5 à 2 s) |
 | Click invisible au scan | Resté « connecté » côté BlueZ après une coupure | Repli sur les appareils connus de BlueZ |
+| Victory réservé après une séance (23 octobre) : une autre application ne pouvait plus le piloter | Le contrôle FTMS n'était jamais rendu (pas de Reset) ; fermer le terminal (SIGHUP) tuait le core sans relâcher le trainer, BlueZ gardant la liaison | Pente 0 %, Reset puis déconnexion à l'arrêt, SIGHUP géré, commande `openride-core release-trainer` (PR #28) |
 
 ### Défauts relevés par l'audit du 23 octobre
 Corrigés le jour même par les lots C, A, D et H1 à H4 :
@@ -105,6 +106,7 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 ## 3. Ce qui reste à tester (matériel, en interne)
 
 - [ ] Séance réelle de 10 minutes ou plus avec braquets perceptibles, puis relecture des mesures `Perf` du log.
+- [ ] Après une séance ERG, quitter OpenRide puis piloter le Victory depuis une autre application (vérifie la PR #28 ; secours : `openride-core release-trainer`).
 - [ ] Délai entre un appui et l'écriture de la commande au Victory.
 - [ ] Click : cause des déconnexions spontanées (environ 2 en 3 minutes le 22 octobre, reconnexion en 4 s environ).
 - [ ] Images par seconde de Godot, à relever quand le décor sera chargé (lot E1).

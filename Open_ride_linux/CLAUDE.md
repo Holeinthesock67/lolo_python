@@ -85,6 +85,7 @@ openride-compiler build trace.gpx --layers route,terrain,buildings,vegetation,po
 openride-compiler add-layer <nom>.world terrain|buildings|vegetation|poi|water  # régénère une couche seule
 openride-compiler theme-check ~/OpenRide/Themes/<nom>  # contrôle un thème (défaut : engine/themes/default/)
 openride-core recover                  # FIT depuis le dernier journal après un plantage
+openride-core release-trainer          # libère le trainer resté réservé après un arrêt brutal
 
 # Diagnostic matériel
 openride-ble-diag scan | trainer --name Victory --duration 30 | click --duration 60
