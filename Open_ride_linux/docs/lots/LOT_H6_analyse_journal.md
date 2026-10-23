@@ -3,7 +3,7 @@
 ## 1. Objectif
 
 Après chaque essai sur le vélo, Laurent colle des extraits de `~/run_victory.log` pour qu'on les analyse. Ce lot fournit un outil qui produit directement le résumé utile :
-- mesures de performance (`Perf`) comparées aux seuils de décision Rust (pas p99 > 5 ms, retard > 20 ms, CPU > 15 %) ;
+- mesures de performance (`Perf`) comparées aux seuils de passage à Rust de la SRS §14.1 ;
 - connexions, pertes et reconnexions du trainer et du Click, avec leurs heures ;
 - changements d'état de la séance et leurs raisons ;
 - appuis du Click reconnus ;
@@ -12,8 +12,8 @@ Après chaque essai sur le vélo, Laurent colle des extraits de `~/run_victory.l
 ## 2. À lire
 
 1. `docs/lots/00_INDEX.md`.
-2. `.claude/commands/seance.md` : ce que l'analyse manuelle regarde aujourd'hui, et les seuils (pas p99 > 5 ms, retard > 20 ms, CPU > 15 %). `CLAUDE.md` et ce fichier les attribuent à la SRS §14.1, mais la SRS v1.1 ne les contient pas : les reprendre comme constantes nommées en tête du module, avec ce renvoi.
-3. `docs/SRS_v1.1.md` §12 (exigences non fonctionnelles).
+2. `docs/SRS_v1.1.md` §14.1 : seuils (pas p99 > 5 ms, retard p99 > 20 ms, CPU > 15 %) et règle des trois relevés consécutifs. Les reprendre comme constantes nommées en tête du module.
+3. `.claude/commands/seance.md` : ce que l'analyse manuelle regarde aujourd'hui.
 4. Code, pour les messages exacts du journal :
    - format des lignes : `__main__.py` (`%(asctime)s %(levelname)-7s %(name)s %(message)s`) ;
    - `session.py` (lignes `Perf :`, `Séance : X -> Y (raison)`, `Trainer perdu`, `Engine perdu`, `Parcours … chargé`, `Entraînement …`) ;
@@ -32,7 +32,7 @@ Aucun. Partir de `main` à jour.
 Lancement : `python -m openride_core.tools.log_report [JOURNAL] [--json]` (défaut : `~/run_victory.log`). Pas de nouvelle entrée dans `pyproject.toml` ni dans `__main__.py`, pour ne pas toucher aux fichiers d'autres lots.
 
 **Analyse (fonction pure `analyse(lines: Iterable[str]) -> Report`, testable) :**
-- **Perf :** nombre de relevés ; maximum et médiane de chaque mesure ; liste des relevés au-delà des seuils, avec l'heure.
+- **Perf :** nombre de relevés ; maximum et médiane de chaque mesure ; liste des relevés au-delà des seuils, avec l'heure ; seuil « atteint » au sens de la SRS §14.1 (trois relevés consécutifs).
 - **Trainer :** heures de connexion, de perte, de reconnexion ; durée totale de déconnexion ; commandes refusées.
 - **Click :** heures de connexion et de déconnexion ; nombre de déconnexions par heure ; délai moyen de reconnexion ; nombre d'appuis par type (`plus_short`, `minus_short`, `plus_long`, `minus_long`).
 - **Séance :** transitions d'état avec raison ; pauses automatiques (`engine_lost`, `trainer_lost`) et leur durée.
@@ -62,7 +62,7 @@ Aucune. Les messages du journal ne changent pas : si un message est trop ambigu 
 
 1. `cd core && pytest -q` passe en entier.
 2. Sur le journal à déconnexions, le rapport compte exactement 2 déconnexions du Click et 1 perte du trainer, avec les bonnes heures et durées.
-3. Un relevé `Perf` avec un pas p99 de 6 ms est signalé comme dépassement ; un relevé à 4 ms ne l'est pas.
+3. Un relevé `Perf` avec un pas p99 de 6 ms est signalé comme dépassement ; un relevé à 4 ms ne l'est pas ; trois relevés consécutifs au-delà marquent le seuil comme atteint, deux ne suffisent pas.
 4. Le journal tronqué est analysé sans exception, et la ligne illisible est comptée.
 5. `--json` produit un JSON valide qui contient les mêmes nombres que la sortie texte.
 6. Un test vérifie que chaque motif reconnu correspond à un message réellement présent dans le code source (recherche du texte dans `src/`), pour détecter qu'un message a changé.
