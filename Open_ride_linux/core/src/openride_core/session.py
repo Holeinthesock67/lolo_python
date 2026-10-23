@@ -18,13 +18,13 @@ from pathlib import Path
 from typing import Any
 
 from .config import Config
-from .fit_export import journal_to_fit
 from .gearing import Gearing
 from .input_providers import KeyboardProvider, NullProvider, ZwiftClickProvider
 from .ipc_server import IpcServer, IpcState
-from .journal import JOURNAL_DIR, JournalWriter, Record
+from .journal import JOURNAL_DIR, Record
 from .mock_driver import MockDriver
 from .physics import PhysicsParams, RiderPhysics
+from .recorder import SessionRecorder
 from .tools.fake_world import build_route
 from .tools.fit_demo import LinearRoute
 from .zwift_click import InputEvent
@@ -107,15 +107,16 @@ class CoreSession:
         self.server = IpcServer(
             port_state=cfg.ipc.port_state, port_commands=cfg.ipc.port_commands,
             on_command=self._on_command, on_engine_lost=self._on_engine_lost,
-            on_engine_returned=lambda: log.info("Engine connecté."))
+            on_engine_returned=lambda: log.info("Engine connecté."),
+            hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
+                          "theme": cfg.render.theme})
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
 
         self._t_session = 0.0
         self._grade_sent = 0.0
         self._power_window: list[tuple[float, float]] = []
-        self._journal: JournalWriter | None = None
-        self._journal_path: Path | None = None
+        self._rec: SessionRecorder | None = None
         self._next_record = 0.0
         self._trainer_lost_since: float | None = None
         self._autoresume = False
@@ -128,12 +129,12 @@ class CoreSession:
         self.state.session_state, self.state.pause_reason = new, reason
         log.info("Séance : %s -> %s%s", old, new, f" ({reason})" if reason else "")
         now = time.time()
-        if self._journal:
+        if self._rec:
             if new == "PAUSED" and old == "RUNNING":
-                self._journal.event("pause", now)
+                self._rec.event("pause", now)
             elif new == "RUNNING" and old == "PAUSED":
-                self._journal.event("resume", now)
-        if new in ("PAUSED", "READY", "FINISHED", "IDLE"):
+                self._rec.event("resume", now)
+        if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
             self._release_trainer()
 
     def _release_trainer(self) -> None:
@@ -143,7 +144,10 @@ class CoreSession:
     def _on_command(self, name: str, args: dict, cmd_id: int) -> None:
         log.info("Commande %s %s (id=%d)", name, args, cmd_id)
         st = self.state.session_state
-        if name == "select_route" and st in ("IDLE", "READY", "FINISHED"):
+        if name == "select_route" and st in ("IDLE", "READY", "FINISHED", "ERROR"):
+            reset = getattr(self.driver, "reset_control", None)
+            if reset:
+                reset()   # sortie de ERROR : nouvelle prise de contrôle du trainer
             # Provisoire : le lecteur .world arrive avec le compilateur ; parcours factice.
             self.route = LinearRoute(build_route(5000.0))
             self.state.route_id = args.get("route_id", "demo")
@@ -157,6 +161,10 @@ class CoreSession:
         elif name == "pause" and st == "RUNNING":
             self._set_state("PAUSED", "user")
         elif name == "resume" and st == "PAUSED":
+            if self._rec and self._rec.failed and not self._rec.reopen():
+                self.server.send_error("recording_failed",
+                                       "Journal toujours impossible à écrire : séance en pause.")
+                return
             self._trainer_lost_since = None
             self._set_state("RUNNING")
         elif name == "input_event":   # touches lues par l'engine (fenêtre active) : même effet que le Click
@@ -175,27 +183,32 @@ class CoreSession:
     # --- journal et FIT ----------------------------------------------------------------
 
     def _open_journal(self) -> None:
-        self._journal_path = self.journal_dir / f"{time.strftime('%Y-%m-%d_%H-%M-%S')}.jsonl"
-        self._journal = JournalWriter(self._journal_path, route_id=self.state.route_id)
-        self._journal.event("start", time.time())
+        self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
+                                    on_failure=self._on_recording_failure)
+        self._rec.event("start", time.time())
         self._next_record = 0.0
 
-    def _finish(self, save: bool) -> None:
+    def _on_recording_failure(self, exc: Exception) -> None:
+        """Panne d'écriture du journal : erreur à l'écran et pause (contrat IPC §6)."""
+        self.server.send_error("recording_failed", f"Écriture du journal impossible : {exc}")
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self._set_state("PAUSED", "recording_failed")
+
+    def _finish(self, save: bool, final_state: str = "FINISHED") -> None:
         summary = None
-        if self._journal:
-            self._journal.event("stop", time.time())
-            self._journal.close()
-            if save:
-                try:
-                    fit_path, s = journal_to_fit(self._journal_path)
-                    summary = {"fit_path": str(fit_path), "distance_m": round(s.distance_m, 1),
-                               "timer_s": round(s.timer_s, 1)}
-                except Exception as exc:
-                    log.error("Export FIT impossible : %s", exc)
-                    self.server.send_error("recording_failed", str(exc))
-            self._journal = None
+        if self._rec:
+            rec, self._rec = self._rec, None
+            fit_path, s, fit_error = rec.finish(save)
+            if fit_error and save:
+                self.server.send_error("recording_failed", f"FIT non produit : {fit_error}")
+            summary = {
+                "duration_s": round(s.timer_s, 1),
+                "distance_m": round(s.distance_m, 1),
+                "avg_power_w": round(s.avg_power or 0.0, 1),
+                "fit_path": str(fit_path) if fit_path else None,
+            }
         self.state.summary = summary
-        self._set_state("FINISHED")
+        self._set_state(final_state)
 
     # --- entrées utilisateur -------------------------------------------------------------
 
@@ -229,6 +242,17 @@ class CoreSession:
         m = self.driver.poll(self._t_session)
         self.state.trainer_status = getattr(self.driver, "status", "MOCK")
 
+        if getattr(self.driver, "control_refused", False) and \
+                self.state.session_state in ("READY", "RUNNING", "PAUSED"):
+            log.error("Le trainer refuse le contrôle FTMS après deux reprises.")
+            self.server.send_error("trainer_control_refused",
+                                   "Le trainer refuse les consignes (contrôle FTMS refusé).")
+            if self._rec:
+                self._finish(True, final_state="ERROR")   # la séance n'est jamais perdue
+            else:
+                self._set_state("ERROR")
+            return
+
         if self._autoresume and self.state.session_state == "PAUSED":
             reason = self.state.pause_reason
             if (reason == "trainer_lost" and m.connected) or \
@@ -254,7 +278,7 @@ class CoreSession:
         alt = route.sample("alt_m", s) if route else 0.0
 
         # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
-        target = self.gearing.effective_grade(ahead)
+        target = self.gearing.effective_grade(ahead, self.cfg.trainer.difficulty_pct / 100.0)
         max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
         if self._shift_pending:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
             self._shift_pending = False
@@ -278,9 +302,9 @@ class CoreSession:
         if route:
             st.lat, st.lon, st.alt = route.sample("lat", st.s), route.sample("lon", st.s), alt
 
-        if self._journal and self._t_session >= self._next_record:
+        if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
-            self._journal.record(Record(
+            self._rec.record(Record(
                 ts=round(time.time(), 3), t=round(self._t_session, 2), lat=st.lat, lon=st.lon,
                 alt=round(alt, 2), distance=round(st.s, 2), speed=round(st.v, 3),
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
@@ -350,7 +374,7 @@ class CoreSession:
 
     async def _shutdown(self, tasks: list[asyncio.Task]) -> None:
         log.info("Arrêt du core…")
-        if self._journal:
+        if self._rec:
             self._finish(True)   # la séance n'est jamais perdue
         self.driver.set_sim_grade(0.0)
         for p in [*self.inputs, self.driver]:

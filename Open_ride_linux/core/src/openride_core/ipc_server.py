@@ -66,6 +66,7 @@ class IpcServer:
         on_command: Callable[[str, dict[str, Any], int], None] | None = None,
         on_engine_lost: Callable[[], None] | None = None,
         on_engine_returned: Callable[[], None] | None = None,
+        hello_config: dict[str, Any] | None = None,
     ) -> None:
         self.host = host
         self.port_state = port_state
@@ -73,6 +74,8 @@ class IpcServer:
         self.on_command = on_command
         self.on_engine_lost = on_engine_lost
         self.on_engine_returned = on_engine_returned
+        # Configuration utile à l'affichage, renvoyée dans hello_ack (contrat §5).
+        self.hello_config = dict(hello_config or {"ftp_w": 250, "gears_total": 24, "theme": "default"})
 
         self.last_heartbeat_time: float | None = None
         self.engine_connected: bool = False
@@ -205,12 +208,13 @@ class IpcServer:
                 return
             self.engine_version = msg.get("engine_version")
             self.last_heartbeat_time = time.monotonic()
+            # Le compteur cmd_id est propre à une instance de l'engine : un engine relancé
+            # renumérote à partir de 1 (contrat §4).
+            self.last_cmd_id = 0
             was_connected = self.engine_connected
             self.engine_connected = True
             log.info("Reçu 'hello' de l'engine version %s", self.engine_version)
-            self.send_hello_ack(
-                {"ftp_w": 250, "gears_total": 24, "theme": "default"}
-            )
+            self.send_hello_ack(self.hello_config)
             if not was_connected and self.on_engine_returned:
                 self.on_engine_returned()
 

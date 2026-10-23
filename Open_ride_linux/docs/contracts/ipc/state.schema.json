@@ -15,7 +15,6 @@
     "route_id",
     "route_length_m",
     "s",
-    "v",
     "grade",
     "grade_sent",
     "power",
@@ -32,61 +31,174 @@
     "last_cmd_id"
   ],
   "properties": {
-    "type": { "const": "state" },
-    "v": { "type": "integer", "const": 1 },
-    "seq": { "type": "integer", "minimum": 0 },
-    "t": { "type": "number", "minimum": 0 },
+    "type": {
+      "const": "state"
+    },
+    "v": {
+      "type": "number",
+      "minimum": 0,
+      "description": "Vitesse virtuelle en m/s. Exception du contrat v1 : dans state, v n'est pas la version (vérifiée par hello/hello_ack)."
+    },
+    "seq": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "t": {
+      "type": "number",
+      "minimum": 0
+    },
     "session_state": {
       "type": "string",
-      "enum": ["IDLE", "LOADING", "READY", "RUNNING", "PAUSED", "FINISHED", "ERROR"]
+      "enum": [
+        "IDLE",
+        "LOADING",
+        "READY",
+        "RUNNING",
+        "PAUSED",
+        "FINISHED",
+        "ERROR"
+      ]
     },
     "pause_reason": {
-      "type": ["string", "null"],
-      "enum": ["user", "trainer_lost", "engine_lost", null]
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "user",
+        "trainer_lost",
+        "engine_lost",
+        "recording_failed",
+        null
+      ]
     },
     "trainer_status": {
       "type": "string",
-      "enum": ["CONNECTED", "RECONNECTING", "LOST", "MOCK"]
+      "enum": [
+        "CONNECTED",
+        "RECONNECTING",
+        "LOST",
+        "MOCK"
+      ]
     },
     "input_status": {
       "type": "string",
-      "enum": ["CONNECTED", "LOST", "KEYBOARD"]
+      "enum": [
+        "CONNECTED",
+        "LOST",
+        "KEYBOARD"
+      ]
     },
     "mode": {
       "type": "string",
-      "enum": ["SIM", "ERG"]
+      "enum": [
+        "SIM",
+        "ERG"
+      ]
     },
-    "route_id": { "type": ["string", "null"] },
-    "route_length_m": { "type": ["number", "null"] },
-    "s": { "type": "number" },
-    "v": { "type": "number" },
-    "grade": { "type": "number" },
-    "grade_sent": { "type": "number" },
-    "power": { "type": "number" },
-    "power_3s": { "type": "number" },
-    "cadence": { "type": "number" },
-    "hr": { "type": ["integer", "null"] },
-    "gear": { "type": "integer", "minimum": 1 },
-    "gears_total": { "type": "integer", "minimum": 1 },
-    "lat": { "type": "number" },
-    "lon": { "type": "number" },
-    "alt": { "type": "number" },
+    "route_id": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "route_length_m": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "s": {
+      "type": "number"
+    },
+    "grade": {
+      "type": "number"
+    },
+    "grade_sent": {
+      "type": "number"
+    },
+    "power": {
+      "type": "number"
+    },
+    "power_3s": {
+      "type": "number"
+    },
+    "cadence": {
+      "type": "number"
+    },
+    "hr": {
+      "type": [
+        "integer",
+        "null"
+      ]
+    },
+    "gear": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "gears_total": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "lat": {
+      "type": "number"
+    },
+    "lon": {
+      "type": "number"
+    },
+    "alt": {
+      "type": "number"
+    },
     "erg": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "properties": {
-        "workout_name": { "type": "string" },
-        "block_index": { "type": "integer", "minimum": 1 },
-        "block_count": { "type": "integer", "minimum": 1 },
+        "workout_name": {
+          "type": "string"
+        },
+        "block_index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "block_count": {
+          "type": "integer",
+          "minimum": 1
+        },
         "block_type": {
           "type": "string",
-          "enum": ["warmup", "steady", "interval_on", "interval_off", "ramp", "cooldown", "freeride"]
+          "enum": [
+            "warmup",
+            "steady",
+            "interval_on",
+            "interval_off",
+            "ramp",
+            "cooldown",
+            "freeride"
+          ]
         },
-        "block_remaining_s": { "type": "number" },
-        "block_total_s": { "type": "number" },
-        "target_w": { "type": "number" },
-        "next_target_w": { "type": ["number", "null"] },
-        "bias_pct": { "type": "number" },
-        "paused": { "type": "boolean" }
+        "block_remaining_s": {
+          "type": "number"
+        },
+        "block_total_s": {
+          "type": "number"
+        },
+        "target_w": {
+          "type": "number"
+        },
+        "next_target_w": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "bias_pct": {
+          "type": "number"
+        },
+        "paused": {
+          "type": "boolean"
+        }
       },
       "required": [
         "workout_name",
@@ -102,15 +214,36 @@
       ]
     },
     "summary": {
-      "type": ["object", "null"],
+      "type": [
+        "object",
+        "null"
+      ],
       "properties": {
-        "duration_s": { "type": "number" },
-        "distance_m": { "type": "number" },
-        "avg_power_w": { "type": "number" },
-        "fit_path": { "type": "string" }
+        "duration_s": {
+          "type": "number"
+        },
+        "distance_m": {
+          "type": "number"
+        },
+        "avg_power_w": {
+          "type": "number"
+        },
+        "fit_path": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
       },
-      "required": ["duration_s", "distance_m", "avg_power_w", "fit_path"]
+      "required": [
+        "duration_s",
+        "distance_m",
+        "avg_power_w",
+        "fit_path"
+      ]
     },
-    "last_cmd_id": { "type": "integer" }
+    "last_cmd_id": {
+      "type": "integer"
+    }
   }
 }

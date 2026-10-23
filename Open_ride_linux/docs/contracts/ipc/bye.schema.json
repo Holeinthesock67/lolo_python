@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideByeMessage",
+  "type": "object",
+  "required": [
+    "type",
+    "v"
+  ],
+  "properties": {
+    "type": {
+      "const": "bye"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    }
+  }
+}

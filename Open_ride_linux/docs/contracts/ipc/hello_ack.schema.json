@@ -1,0 +1,44 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideHelloAckMessage",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "core_version",
+    "config"
+  ],
+  "properties": {
+    "type": {
+      "const": "hello_ack"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "core_version": {
+      "type": "string"
+    },
+    "config": {
+      "type": "object",
+      "required": [
+        "ftp_w",
+        "gears_total",
+        "theme"
+      ],
+      "properties": {
+        "ftp_w": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "gears_total": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "theme": {
+          "type": "string"
+        }
+      }
+    }
+  }
+}
