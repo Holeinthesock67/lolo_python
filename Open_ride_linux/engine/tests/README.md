@@ -10,8 +10,26 @@ GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engin
 Le script renvoie 0 si tout passe. Il enchaîne :
 
 1. **Vecteurs de route** (`test_route_vectors.gd`, lot A) : `route_data.gd` contre `docs/contracts/world/route_test_vectors.json`.
-2. **Scénarios IPC** : `fake_core.py` (Python 3, bibliothèque standard) joue le rôle du core ; l'engine tourne sans écran avec `--test-mode`.
-3. **Contrôle de la sortie de Godot** : aucune erreur ni aucun avertissement de script, hors avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
+2. **Rendu par tronçons** (`test_world_streamer.gd`, lot E1) : le script écrit d'abord la démo avec terrain synthétique (`python -m openride_core.tools.fake_world --demo --terrain`, lancé avec `PYTHONPATH=core/src`, bibliothèque standard seulement) dans un dossier temporaire, puis vérifie le ruban, les tuiles et la fenêtre de chargement (tableau ci-dessous). Ce test ne doit écrire aucune erreur ni aucun avertissement.
+3. **Scénarios IPC** : `fake_core.py` (Python 3, bibliothèque standard) joue le rôle du core ; l'engine tourne sans écran avec `--test-mode` et charge la démo avec terrain du même dossier temporaire.
+4. **Contrôle de la sortie de Godot** : aucune erreur ni aucun avertissement de script, hors avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
+
+Lancement seul du test de rendu :
+
+```bash
+PYTHONPATH=core/src python3 -m openride_core.tools.fake_world --demo --terrain --out /tmp/routes
+"$GODOT" --headless --path engine --script res://tests/test_world_streamer.gd -- /tmp/routes/demo.world
+```
+
+## Rendu par tronçons (lot E1)
+
+| N° | Test | Vérification |
+| --- | --- | --- |
+| 1 | Raccord route-terrain | À s = 0 puis 2 500 m : objets chargés = fenêtre attendue (calculée à part) ; centre du ruban = `sample_point(s).y` à 1 cm ; à 3 m du bord, terrain affiché sous la route de 0 à 20 cm ; tuile lointaine abaissée de 2 m |
+| 2 | Durée sans fuite | De 0 à la fin à 20 m/s simulés (60 images/s, sans attente réelle) : `MeshInstance3D` bornés, aucun tronçon manquant sous la caméra ni 10 s plus loin, `Performance.OBJECT_COUNT` en fin à ± 5 % du premier tiers |
+| 3 | Jointures | Dernière coupe d'un tronçon = première du suivant, sommet par sommet (démo avec et sans terrain) |
+| 4 | Terrain absent | `res://demo/demo.world` : sol plat 5 m sous l'altitude minimale, ruban affiché |
+| – | Compléments | `NaN` (moyenne des voisins, puis replis), faces tournées vers le haut ; temps de construction d'un tronçon et d'une tuile |
 
 Variables facultatives : `STATE_PORT` et `CMD_PORT` (ports de test, 15005 et 15006 par défaut, pour ne pas gêner un core réel), `SCENARIOS` (par exemple `1,2,3` ; le 1 doit venir en premier car il exige un engine qui vient de démarrer), `ENGINE_LOG` (fichier où garder le journal de l'engine).
 
@@ -36,7 +54,7 @@ Ils se donnent après `--` (lecture par `OS.get_cmdline_user_args()`, voir `engi
 | --- | --- | --- |
 | `--ipc-state-port=N` | 5005 | Port d'écoute des trames du core. S'il est occupé, l'engine affiche un message et quitte avec le code 1 |
 | `--ipc-cmd-port=N` | 5006 | Port du core vers lequel partent `hello`, `heartbeat`, `cmd`, `bye` |
-| `--routes-dir=CHEMIN` | `~/.local/share/openride/routes` | Dossier des parcours : l'engine charge `<dossier>/<route_id>.world` ; pour `demo`, repli sur `res://demo/demo.world` si le dossier manque |
+| `--routes-dir=CHEMIN` | `~/.local/share/openride/routes` | Dossier des parcours : l'engine charge `<dossier>/<route_id>.world` ; pour `demo`, repli sur `res://demo/demo.world` (sans terrain) si le dossier manque |
 | `--test-mode` | absent | Journal de test et messages de test (ci-dessous) ; limite le rendu à 60 images par seconde |
 
 ## Ce que l'engine expose aux tests
@@ -54,7 +72,7 @@ Avec `--test-mode`, l'engine écrit sur la sortie standard des lignes `[test] cl
 | `core_lost age_ms=…` / `core_returned` | Core injoignable depuis 1 s / trames reprises |
 | `shutdown` | Message `shutdown` reçu |
 | `banner text=…` | Texte du bandeau à chaque changement (lignes séparées par ` \| `, vide quand il disparaît) |
-| `route_loaded id=… length_m=… path=…` / `route_missing id=…` | Parcours chargé / introuvable |
+| `route_loaded id=… length_m=… path=…` / `route_missing id=…` | Parcours chargé / introuvable (la ligne d'information qui précède dit si le terrain est présent) |
 | `cam s=… age_ms=… frozen=0\|1 moved=0\|1` | Position affichée de la caméra, à 20 Hz ; `age_ms` : âge de la dernière trame |
 
 Le faux core déclenche une commande par un message de test `{"type": "_test", "action": "send_command", "name": …, "args": {…}}` envoyé sur le port d'état. Hors `--test-mode`, ce type est inconnu et donc ignoré (contrat §1).
