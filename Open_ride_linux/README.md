@@ -56,7 +56,7 @@ pytest -q
 
 Les versions de référence validées en Python 3.14 sont figées dans `constraints.txt` (`pip install -c ../constraints.txt -e ".[dev]"` ; mettre ce fichier à jour après une montée de version testée).
 
-Compilateur de parcours (GPX vers `.world`, couches route et terrain) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (`verify`, `info`, `list` et `build-all` pour contrôler ou compiler tout `~/OpenRide/GPX/`). Le premier `build` télécharge les tuiles d'altitude Copernicus (environ 42 Mo par degré carré) dans `~/.cache/openride/dem/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain` régénère le terrain seul.
+Compilateur de parcours (GPX vers `.world`, couches route, terrain, bâtiments, végétation, points d'intérêt et eau) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (`verify`, `info`, `list` et `build-all` pour contrôler ou compiler tout `~/OpenRide/GPX/` ; `--layers route,terrain,buildings,vegetation,poi,water` pour inclure les couches OpenStreetMap). Le premier `build` télécharge les tuiles d'altitude Copernicus dans `~/.cache/openride/dem/` et les réponses Overpass dans `~/.cache/openride/osm/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain|buildings|vegetation|poi|water` régénère une couche seule.
 
 Godot 4.3 (version standard, pas .NET) :
 
