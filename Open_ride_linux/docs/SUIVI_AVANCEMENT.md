@@ -33,7 +33,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] **Conformité au contrat IPC** (lot C, 23 octobre) : commandes acceptées après un redémarrage de Godot, panne d'écriture du journal sans arrêt de la boucle (`recorder.py` : séance en mémoire, nouveau journal à la reprise), résumé de fin conforme, refus du contrôle FTMS remonté (`ERROR`), consigne ERG bornée, `hello_ack` et coefficient de difficulté tirés de la configuration.
 - [x] **Lecture des parcours** (lot A, 23 octobre) : `route.py` charge et valide un `.world`, interpole la route (Catmull-Rom centripète) et gère les boucles ; la séance charge le parcours demandé par son nom ; parcours de démonstration unique (`demo_world.py`).
 - [x] **Entraînements ERG** (lot F, 23 octobre) : `workout.py` lit les `.zwo` de `~/OpenRide/Workouts/` (intervalles dépliés, fichiers invalides listés avec leur erreur) ; la séance envoie la cible ERG lissée sur 2 s, biais ± 2 % et saut de bloc au Click, pause ERG à pente 0 %, roue libre en SIM avec les braquets, objet `erg` des trames `state` et `mode` / `block` dans le journal.
-- [x] **Simulateur** (`mock_driver.py`) : SIM, ERG, cadence, cardio, déconnexion.
+- [x] **Simulateur** (`mock_driver.py`, `replay.py`) : SIM, ERG, cadence, cardio, déconnexion, rejeu d'une séance enregistrée (`.jsonl` ou `.fit`, lot H3).
 
 ### Module engine (`openride-engine`, Godot 4.3)
 - [x] Client IPC (`ipc_client.gd`) : `hello` répété jusqu'à la réponse, heartbeat dans un fil séparé, commandes vers le core.

@@ -112,7 +112,7 @@ Chaque type d'appui a son bip.
 **Commandes utiles du core :**
 
 ```bash
-openride-core run --trainer ftms|mock --input click|keyboard|none [--gear N] [--autostart]
+openride-core run --trainer ftms|mock --input click|keyboard|none [--gear N] [--replay CHEMIN] [--autostart]
 openride-core recover            # transforme le dernier journal en FIT après un plantage
 ```
 
