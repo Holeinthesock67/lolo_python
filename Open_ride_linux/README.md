@@ -1,5 +1,7 @@
 # OpenRide Linux
 
+[![Tests OpenRide](https://github.com/Holeinthesock67/lolo_python/actions/workflows/openride.yml/badge.svg)](https://github.com/Holeinthesock67/lolo_python/actions/workflows/openride.yml)
+
 Simulateur de cyclisme indoor 3D à usage personnel, natif Linux, plus léger que Zwift.
 Matériel de référence : home trainer JetBlack Victory (FTMS), Zwift Cog, Zwift Click, PC Ubuntu.
 
@@ -51,6 +53,8 @@ python3 -m venv .venv && source .venv/bin/activate
 pip install -e ".[dev]"
 pytest -q
 ```
+
+Les versions de référence validées en Python 3.14 sont figées dans `constraints.txt` (`pip install -c ../constraints.txt -e ".[dev]"` ; mettre ce fichier à jour après une montée de version testée).
 
 Compilateur de parcours (GPX vers `.world`, couches route et terrain) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (`verify` et `info` pour contrôler). Le premier `build` télécharge les tuiles d'altitude Copernicus (environ 42 Mo par degré carré) dans `~/.cache/openride/dem/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain` régénère le terrain seul.
 
