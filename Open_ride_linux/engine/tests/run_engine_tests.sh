@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
-# Tests de l'engine sans écran (lot D6) : vecteurs de route, puis scénarios IPC face au faux core.
+# Tests de l'engine sans écran (lots D6 et E1) : vecteurs de route, rendu par tronçons, puis scénarios
+# IPC face au faux core (parcours de démonstration avec terrain synthétique).
 #
 #   GODOT=/chemin/vers/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 #
@@ -12,7 +13,8 @@ GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.3-stable_linux.x86_64}"
 STATE_PORT="${STATE_PORT:-15005}"
 CMD_PORT="${CMD_PORT:-15006}"
 ENGINE_LOG="${ENGINE_LOG:-$(mktemp -t openride-engine-test.XXXXXX.log)}"
-ROUTES_DIR="$(mktemp -d -t openride-routes.XXXXXX)"   # vide : repli sur res://demo/demo.world
+ROUTES_DIR="$(mktemp -d -t openride-routes.XXXXXX)"   # reçoit demo.world avec terrain synthétique
+CORE_SRC="$(cd "$ENGINE_DIR/../core/src" && pwd)"
 
 if [ ! -x "$GODOT" ]; then
   echo "Godot introuvable : $GODOT (définir GODOT=/chemin/vers/godot)"; exit 2
@@ -25,6 +27,19 @@ if ! "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_route_ve
   :
 fi
 if [ "${PIPESTATUS[0]}" -ne 0 ]; then status=1; fi
+
+echo "== Rendu par tronçons (lot E1) =="
+# Démo commune avec couche terrain synthétique (bibliothèque standard de Python seulement).
+if ! PYTHONPATH="$CORE_SRC" python3 -m openride_core.tools.fake_world --demo --terrain --out "$ROUTES_DIR" >/dev/null; then
+  echo "Génération du terrain synthétique impossible"; status=1
+fi
+STREAM_LOG="$(mktemp -t openride-stream-test.XXXXXX.log)"
+"$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_world_streamer.gd -- "$ROUTES_DIR/demo.world" \
+  >"$STREAM_LOG" 2>&1
+stream_status=$?
+grep -v "^Godot Engine" "$STREAM_LOG"
+if [ "$stream_status" -ne 0 ] || grep -q -E "SCRIPT ERROR|ERROR:|WARNING:" "$STREAM_LOG"; then status=1; fi
+rm -f "$STREAM_LOG"
 
 echo "== Scénarios IPC (journal de l'engine : $ENGINE_LOG) =="
 : >"$ENGINE_LOG"
@@ -46,8 +61,15 @@ kill -TERM "$GODOT_PID" 2>/dev/null
 for _ in $(seq 50); do kill -0 "$GODOT_PID" 2>/dev/null || break; sleep 0.1; done
 kill -KILL "$GODOT_PID" 2>/dev/null
 wait "$GODOT_PID" 2>/dev/null
-rmdir "$ROUTES_DIR" 2>/dev/null
+rm -rf "$ROUTES_DIR"
 if [ "$fake_status" -ne 0 ]; then status=1; fi
+
+echo "== Parcours affiché pendant les scénarios =="
+if grep -q "route_loaded id=demo" "$ENGINE_LOG" && grep -q "terrain présent" "$ENGINE_LOG"; then
+  echo "demo avec terrain synthétique chargé"
+else
+  echo "demo avec terrain non chargé"; status=1
+fi
 
 echo "== Erreurs et avertissements de Godot =="
 # Tolérés : avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).

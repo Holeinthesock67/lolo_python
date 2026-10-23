@@ -126,7 +126,7 @@ Le terrain est une grille d'altitudes dans le repère du monde, en deux niveaux 
 
 **Cohérence avec la route.** Les altitudes sont déjà corrigées par le compilateur : autour du ruban, le terrain suit l'altitude lissée de la route, puis se fond progressivement dans le MNT entre 4 m et 25 m du bord. L'engine n'a donc aucune correction à faire et la route ne flotte pas ni ne s'enterre. Ponts et tunnels sont traités comme du terrain ordinaire en v1.
 
-**Terrain lointain.** Il masque le bord du terrain proche. Les tuiles lointaines recouvrent le terrain proche ; l'engine dessine le proche par-dessus, légèrement relevé de quelques centimètres pour éviter le scintillement.
+**Terrain lointain.** Il masque le bord du terrain proche. Les tuiles lointaines recouvrent le terrain proche ; l'engine dessine le proche à son altitude exacte et le lointain 2 m plus bas que ses valeurs, pour éviter le scintillement entre les deux niveaux sans rapprocher le terrain proche de la chaussée.
 
 **Manifeste :** `terrain.sources` indique le MNT utilisé (`copernicus_glo30`, `ign_rge_alti`), avec sa résolution native, pour que le compilateur sache quand régénérer.
 
@@ -332,3 +332,4 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | --- | --- | --- |
 | 1.0 | 21 octobre 2026 | Première version |
 | 1.0 | 23 octobre 2026 | Précision, sans changement de format : règle exacte d'interpolation de la route (§4), vecteurs de test et schémas publiés. Projection `local_equirectangular` tolérée pour les parcours synthétiques de démonstration |
+| 1.0 | 23 octobre 2026 | Précision de rendu, sans changement des données (lot E1) : le terrain lointain est dessiné 2 m plus bas, au lieu de relever le proche de quelques centimètres (§5) |
