@@ -130,3 +130,25 @@ Fichiers : `terrain/near/tile_<ix>_<iz>.f32` et `terrain/far/tile_<ix>_<iz>.f32`
 - OpenStreetMap.
 - La source IGN.
 - La couverture du sol.
+
+## 8. Livraison (23 octobre 2026)
+
+Réalisé par Claude, branche `lot-b2-compilateur-terrain`. Critères 1 à 7 et 9 tenus par les tests automatiques (95 tests, réseau coupé, en Python 3.11, 3.13 et 3.14 ; 75 tests du core inchangés). Critère 8 vérifié sur le service réel (voir ci-dessous).
+
+**Nommage Copernicus vérifié sur le service réel :** `tileList.txt` (26 450 tuiles) et `https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N45_00_E006_00_DEM/Copernicus_DSM_COG_10_N45_00_E006_00_DEM.tif` répondent ; tuile de 3 600 × 3 600 `float32`, EPSG:4326, pixels centrés sur la grille (bord gauche à 5,99986°), sans valeur `nodata`, environ 42 Mo.
+
+**Essai réel (critère 8)** : trace approchée de 30,6 km de Bourg-d'Oisans au col du Lautaret, sans altitude (segments droits entre des points de passage, donc pentes non représentatives).
+- Première passe : 4 tuiles (N44/N45 × E005/E006) et la liste, 165 Mo, 17 s en tout (2 s par tuile).
+- Seconde passe avec `--offline` : 6 s, aucun accès réseau.
+- Résultat : 65 tuiles proches, 24 lointaines, 3,7 Mo ; `verify` valide.
+
+**Écarts assumés :**
+- Une compilation consulte toujours le MNT, même avec `--layers route`, pour contrôler l'altitude GPX (§3.3).
+- Seuil d'altitude aberrante : 50 m sur plus de 5 % des points, inchangé. `build` affiche l'écart médian, l'écart maximal et la part de points hors seuil. **Valeurs sur traces réelles à relever par le propriétaire** (aucune vraie trace avec altitude n'était disponible).
+- Bord des tuiles Copernicus : un point situé entre le dernier centre de pixel d'une tuile et la tuile voisine (bande de 30 m le long des degrés entiers) prend la valeur du bord, soit un écart d'au plus une maille.
+- Fondu : la distance est mesurée à la polyligne de la route (et non au sommet le plus proche), et `y_route` est l'altitude interpolée au point le plus proche de l'axe. Si le MNT est inconnu à moins de 25 m du ruban, le terrain prend l'altitude de la route.
+- Manifeste 1.1 : en plus de `route.alt_source` et de `layers.terrain.tiles`, ajout de `native_resolution_m` (demandé par le §5 du format) et de `road_half_width_m`.
+- Sans fournisseur (usage en bibliothèque), `compile_route` garde le refus du lot B1, avec le message « altitude absente et aucune source MNT fournie ».
+- `add-layer` repasse `format_version` à 1.1.
+- `CLAUDE.md` mentionne encore « la couche terrain viendra avec le lot B2 » : fichier hors périmètre du lot, à corriger par le propriétaire.
+
