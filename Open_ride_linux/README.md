@@ -51,6 +51,8 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
+Compilateur de parcours (GPX vers `.world`, couche route) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (`verify` et `info` pour contrôler).
+
 Godot 4.3 (version standard, pas .NET) :
 
 ```bash
