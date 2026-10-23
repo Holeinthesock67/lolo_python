@@ -18,10 +18,10 @@
 | [H2](LOT_H2_tests_ble.md) | Tests de la recherche Bluetooth sans matériel (audit F8) | Python | — | Petite | **Livré le 23 octobre** (PR #12, couverture 100 %) |
 | [H3](LOT_H3_rejeu_mock.md) | Rejeu d'une séance réelle (JSONL ou FIT) dans le simulateur | Python | — | Petite | **Livré le 23 octobre** (PR #13) |
 | [H4](LOT_H4_endurance_simulee.md) | Endurance simulée : séance de 3 h en temps accéléré (audit F7) | Python | — | Petite | **Livré le 23 octobre** (PR #14) |
-| [H5](LOT_H5_validation_fit.md) | Validation des FIT par le SDK officiel Garmin | Python | — | Petite | Oui |
-| [H6](LOT_H6_analyse_journal.md) | Analyseur du journal de séance (`run_victory.log`) | Python | — | Petite | Oui |
-| [H7](LOT_H7_schema_themes.md) | Schéma, validateur et thème par défaut (prépare E2) | Python + JSON | — | Petite | Oui |
-| [H8](LOT_H8_outils_entrainements.md) | Outils et bibliothèque d'entraînements `.zwo` | Python | F (livré) | Petite | Oui |
+| [H5](LOT_H5_validation_fit.md) | Validation des FIT par le SDK officiel Garmin | Python | — | Petite | **Livré le 23 octobre** (PR #15) |
+| [H6](LOT_H6_analyse_journal.md) | Analyseur du journal de séance (`run_victory.log`) | Python | — | Petite | **Livré le 23 octobre** (PR #16) |
+| [H7](LOT_H7_schema_themes.md) | Schéma, validateur et thème par défaut (prépare E2) | Python + JSON | — | Petite | **Livré le 23 octobre** (PR #17) |
+| [H8](LOT_H8_outils_entrainements.md) | Outils et bibliothèque d'entraînements `.zwo` | Python | F (livré) | Petite | **Livré le 23 octobre** (PR #18) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
