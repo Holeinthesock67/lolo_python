@@ -26,6 +26,15 @@ if ! "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_route_ve
 fi
 if [ "${PIPESTATUS[0]}" -ne 0 ]; then status=1; fi
 
+echo "== Thèmes (lot I5) =="
+THEME_OUT="$("$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_theme_loader.gd 2>&1)"
+theme_rc=$?
+echo "$THEME_OUT" | grep -v "^Godot Engine" || true
+if [ "$theme_rc" -ne 0 ]; then status=1; fi
+theme_issues="$(echo "$THEME_OUT" | grep -E "SCRIPT ERROR|ERROR:|WARNING:" \
+  | grep -v -E "ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)" || true)"
+if [ -n "$theme_issues" ]; then echo "$theme_issues"; status=1; fi
+
 echo "== Scénarios IPC (journal de l'engine : $ENGINE_LOG) =="
 : >"$ENGINE_LOG"
 FAKE_ARGS=(--state-port "$STATE_PORT" --cmd-port "$CMD_PORT" --engine-log "$ENGINE_LOG")
