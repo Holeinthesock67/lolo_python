@@ -109,3 +109,6 @@ jobs:
         run: |
           chmod +x ~/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64
           GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_engine_tests.sh
+
+      - name: Essai de bout en bout (vrai core et vrai engine, lot J8)
+        run: GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_e2e.sh

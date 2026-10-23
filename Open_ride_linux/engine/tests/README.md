@@ -61,6 +61,28 @@ Avec `--test-mode`, l'engine écrit sur la sortie standard des lignes `[test] cl
 
 Le faux core déclenche une commande par un message de test `{"type": "_test", "action": "send_command", "name": …, "args": {…}}` envoyé sur le port d'état. Hors `--test-mode`, ce type est inconnu et donc ignoré (contrat §1).
 
+## Bout en bout (lot J8)
+
+```bash
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh [--keep]
+```
+
+`run_e2e.sh` appelle `e2e_check.py`, qui lance le vrai core (`openride-core run --trainer mock --input none --autostart`) puis l'engine en `--test-mode`, tous deux avec un `HOME` temporaire et deux ports UDP libres. Chaque vérification imprime une ligne `[OK]` ou `[ÉCHEC]` avec sa mesure :
+
+| Vérification | Attendu |
+| --- | --- |
+| hello puis hello_ack | moins de 3 s entre `Reçu 'hello'` (core) et `hello_ack reçu` (engine) |
+| trames state | au moins 25 par seconde sur 5 s (lignes `[test] state`), `seq` croissant |
+| input_event relayé | commande `input_event` `PLUS_SHORT` (`cmd_id` 10 000) envoyée par le script : traitée par le core, `Bip : PLUS_SHORT` dans la sortie de l'engine |
+| perte de l'engine | engine arrêté : le script écoute le port d'état, `PAUSED` (`engine_lost`) en moins de 3 s |
+| braquet | `gear` passé de 12 à 13 dans les trames du core |
+| même parcours demo | `route_length_m` du core égal (à 0,05 m près) à la longueur de `route_loaded` de l'engine, qui lit le même dossier de parcours que le core |
+| end_session | `FINISHED`, résumé présent, trame conforme à `docs/contracts/ipc/state.schema.json` |
+| fichier FIT | écrit dans le dossier temporaire |
+| Godot, core, HOME | aucune erreur ni avertissement de Godot (mêmes tolérances que `run_engine_tests.sh`), core arrêté avec le code 0, `~/OpenRide` et `~/run_trainer.log` du vrai `HOME` inchangés, moins de 60 s au total |
+
+Le script renvoie 0 si tout passe. En cas d'échec, ou avec `--keep`, `core.log` et `engine.log` restent dans le dossier temporaire indiqué. `e2e_check.py --engine-routes-dir DOSSIER` donne à l'engine un autre dossier de parcours que le core (sert à vérifier que la comparaison des longueurs échoue).
+
 ## Essai avec le vrai core (critère 3 du lot D)
 
 ```bash

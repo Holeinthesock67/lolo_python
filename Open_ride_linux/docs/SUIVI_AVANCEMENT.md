@@ -47,6 +47,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
+- [x] **Bout en bout sans écran** (lot J8, 23 octobre) : `engine/tests/run_e2e.sh` lance le vrai core (trainer simulé) et le vrai engine dans un dossier personnel temporaire et vérifie hello, cadence des trames, parcours, entrées, perte de l'engine, fin de séance et FIT, en une dizaine de secondes ; exécuté en intégration continue. Il a trouvé que le core n'envoyait que 25 trames `state` par seconde au lieu de 30 (corrigé à part).
 - [x] Intégration continue GitHub Actions (`.github/workflows/openride.yml`, lot H1) : suites du core, du compilateur et des vecteurs de route en Python 3.11 et 3.14 (`constraints.txt`), et tests de l'engine Godot 4.3 sans écran. Depuis J5 (en partie) : chaque envoi sur `main` testé jusqu'au bout, exécution hebdomadaire, `pip check`.
 - [x] Analyseur de journal de séance (`python -m openride_core.tools.log_report`, lot H6) : résumé texte et `--json` de `~/run_trainer.log` (trainer, Click, pauses, seuils Rust SRS §14.1).
 - [x] Schéma et validateur de thèmes (`docs/contracts/world/theme.schema.json`, `engine/themes/default/theme.json`, `openride-compiler theme-check`, lot H7).
