@@ -197,3 +197,14 @@ Ajouter dans `world_format_v1.md` §4 la règle exacte du §4.1 ci-dessus et le 
 - La lecture des tuiles de terrain.
 - Le choix du parcours par l'engine selon `route_id` (lot D).
 - Le rendu en ruban (lot E1).
+
+## 9. Livraison (23 octobre 2026)
+
+Réalisé par Claude, branche `lot-a-route`, fusionné dans `main`. Tous les critères du §7 sont tenus : 75 tests Python, 42 vecteurs vérifiés en GDScript (`code 0`), séance de démonstration core + engine sans erreur.
+
+**Écarts assumés :**
+- Le générateur de démonstration a été déplacé de `tools/fake_world.py` vers un module de production, `demo_world.py`, pour que `session.py` n'importe rien de `tools/` (critère 10). `tools/fake_world.py` reste la ligne de commande et réexporte les anciennes fonctions.
+- En GDScript, la méthode s'appelle `wrap_s` et non `wrap` : `wrap()` est une fonction globale de Godot qui masquait la méthode.
+- Les schémas tolèrent la projection `local_equirectangular` pour les parcours synthétiques (journal du format).
+- Critère 3 précisé avant livraison : près d'un segment plus court que `ds_m`, la spline centripète n'avance pas exactement au rythme de `s` (jusqu'à 25 cm). Le parcours reste sur la droite, ce qui est attendu.
+- `CoreSession` accepte `routes_root` (dossier des parcours) pour les tests.

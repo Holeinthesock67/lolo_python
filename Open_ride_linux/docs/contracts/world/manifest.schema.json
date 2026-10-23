@@ -1,0 +1,150 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldManifest",
+  "description": "Manifeste d'un .world (Format .world v1, §2 et §11).",
+  "type": "object",
+  "required": [
+    "format",
+    "format_version",
+    "name",
+    "origin",
+    "projection",
+    "route"
+  ],
+  "properties": {
+    "format": {
+      "const": "openride-world"
+    },
+    "format_version": {
+      "type": "string",
+      "pattern": "^[0-9]+\\.[0-9]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "created": {
+      "type": "string"
+    },
+    "compiler": {
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string"
+        },
+        "version": {
+          "type": "string"
+        }
+      }
+    },
+    "source": {
+      "type": "object",
+      "properties": {
+        "gpx": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "gpx_sha256": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      }
+    },
+    "origin": {
+      "type": "object",
+      "required": [
+        "lat",
+        "lon",
+        "alt_m"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "lon": {
+          "type": "number",
+          "minimum": -180,
+          "maximum": 180
+        },
+        "alt_m": {
+          "type": "number"
+        },
+        "utm_zone": {
+          "type": "string"
+        }
+      }
+    },
+    "projection": {
+      "type": "string",
+      "description": "« utm » pour un parcours compilé ; « local_equirectangular » pour les parcours synthétiques de démonstration."
+    },
+    "route": {
+      "type": "object",
+      "required": [
+        "present",
+        "file",
+        "length_m",
+        "ds_m",
+        "n",
+        "type"
+      ],
+      "properties": {
+        "present": {
+          "const": true
+        },
+        "version": {
+          "type": "string"
+        },
+        "file": {
+          "type": "string"
+        },
+        "length_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "ds_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "n": {
+          "type": "integer",
+          "minimum": 2
+        },
+        "type": {
+          "enum": [
+            "open",
+            "loop",
+            "out_and_back"
+          ]
+        },
+        "grade_clamped_points": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "layers": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "object",
+        "required": [
+          "present"
+        ],
+        "properties": {
+          "present": {
+            "type": "boolean"
+          },
+          "version": {
+            "type": "string"
+          }
+        }
+      }
+    }
+  }
+}

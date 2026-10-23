@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideInputMessage",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "event"
+  ],
+  "properties": {
+    "type": {
+      "const": "input"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "event": {
+      "type": "string",
+      "enum": [
+        "PLUS_SHORT",
+        "MINUS_SHORT",
+        "PLUS_LONG",
+        "MINUS_LONG"
+      ]
+    }
+  }
+}

@@ -32,6 +32,8 @@ RESEND_S = 2.0           # la consigne est renvoyée au moins toutes les 2 s
 MIN_SEND_INTERVAL_S = 0.2
 GRADE_EPSILON_PCT = 0.1
 ERG_EPSILON_W = 1.0
+MAX_CONTROL_RETRIES = 2  # reprises de contrôle tentées avant de déclarer le refus
+DEFAULT_POWER_RANGE = (0.0, 2000.0)
 
 
 @dataclass
@@ -75,6 +77,8 @@ class FtmsDriver:
         self._hr_service: int | None = None
         self._last_poll_at: float | None = None
         self.control_refused = False
+        self._refusals = 0
+        self.power_range = DEFAULT_POWER_RANGE   # remplacée par la plage annoncée (0x2AD8)
         self.supports_sim = True
         self.supports_erg = True
         self.reconnect_count = 0
@@ -92,8 +96,15 @@ class FtmsDriver:
         return self._last_data_at is not None and self._clock() - self._last_data_at <= STALE_S
 
     def set_target_power(self, watts: float) -> bool:
-        self._want = _Want("erg", max(0.0, float(watts)))
+        lo, hi = self.power_range
+        self._want = _Want("erg", min(max(float(watts), lo), hi))
         return True
+
+    def reset_control(self) -> None:
+        """Oublie un refus de contrôle et force une nouvelle prise de contrôle."""
+        self._refusals = 0
+        self.control_refused = False
+        self._last_sent = None
 
     def set_sim_grade(self, grade_pct: float) -> bool:
         lo, hi = self.cfg.grade_min_pct, self.cfg.grade_max_pct
@@ -151,7 +162,11 @@ class FtmsDriver:
         if resp is None:
             return
         if resp.ok:
-            self.control_refused = False
+            # Seule une consigne acceptée prouve que le contrôle est retrouvé : une prise de
+            # contrôle acceptée suivie d'une consigne refusée ne doit pas remettre le compteur à 0.
+            if resp.request_op in (ftms.OP_SET_SIM_PARAMS, ftms.OP_SET_TARGET_POWER):
+                self._refusals = 0
+                self.control_refused = False
             return
         if resp.request_op == ftms.OP_START_RESUME:
             # « Démarrer » refusé = le trainer tourne déjà (mesuré sur le Victory) : sans gravité.
@@ -159,8 +174,12 @@ class FtmsDriver:
             return
         log.warning("Commande 0x%02x refusée : %s", resp.request_op, resp.result_name)
         if resp.result == 0x05:  # CONTROL_NOT_PERMITTED : le contrôle a été perdu
-            self.control_refused = True
-            self._last_sent = None   # forcera la reprise du contrôle
+            self._refusals += 1
+            if self._refusals > MAX_CONTROL_RETRIES:
+                # Deux reprises de contrôle ont échoué : la session passera en ERROR.
+                self.control_refused = True
+            else:
+                self._last_sent = None   # forcera une nouvelle prise de contrôle
 
     # --- boucle de connexion ----------------------------------------------------------
 
@@ -205,6 +224,12 @@ class FtmsDriver:
             if services.get_characteristic(ftms.FEATURE) is not None:
                 feats = ftms.parse_features(bytes(await client.read_gatt_char(ftms.FEATURE)))
                 self.supports_sim, self.supports_erg = feats.supports_sim, feats.supports_erg
+            if services.get_characteristic(ftms.SUPPORTED_POWER_RANGE) is not None:
+                pr = ftms.parse_power_range(
+                    bytes(await client.read_gatt_char(ftms.SUPPORTED_POWER_RANGE)))
+                if pr.max_w > pr.min_w:
+                    self.power_range = (float(max(pr.min_w, 0)), float(pr.max_w))
+                    log.info("Plage de puissance du trainer : %d à %d W", pr.min_w, pr.max_w)
             await client.start_notify(ftms.CONTROL_POINT, self._on_cp)
             await client.start_notify(ftms.INDOOR_BIKE_DATA, self._on_ibd)
             if services.get_characteristic(ftms.HR_MEASUREMENT) is not None:

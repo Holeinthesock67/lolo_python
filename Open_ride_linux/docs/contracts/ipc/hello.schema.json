@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideHelloMessage",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "engine_version"
+  ],
+  "properties": {
+    "type": {
+      "const": "hello"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "engine_version": {
+      "type": "string"
+    }
+  }
+}
