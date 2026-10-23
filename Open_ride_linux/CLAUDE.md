@@ -45,7 +45,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `route.py`, `catalog.py` : lecture des `.world`, interpolation et catalogue des parcours (`.world` et `.gpx`) ;
 - `demo_world.py` : parcours de démonstration ;
 - `workout.py` : lecture des `.zwo` et contrôleur ERG ;
-- `replay.py` : rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) par le `MockDriver` ;
+- `mock_driver.py`, `replay.py` : simulateur de trainer et rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) ;
 - `journal.py`, `fit_export.py`, `ipc_server.py`, `config.py` : journal JSONL, export FIT, serveur IPC, configuration ;
 - `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py` ;
 - `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties.
