@@ -26,7 +26,7 @@ Open_ride_linux/
   compiler/    openride-compiler (Python) : GPX vers .world, couches route et terrain (lots B1 et B2)
 ```
 
-## État (23 octobre 2026, après les lots A, B1, B2, C et D)
+## État (23 octobre 2026, après les lots A, A2, B1, B2, C, D et F)
 
 - **Sprint 0 terminé :** HomeTrainer, Click et FIT validés sur le matériel.
 - **Sprint 1 presque terminé :**

@@ -2,7 +2,8 @@
 
 Sert au parcours de démonstration commun au core et à l'engine, et aux tests.
 La ligne de commande est dans `tools/fake_world.py`.
-La route est une montée sinueuse synthétique avec quelques lacets ; les coordonnées
+La route est une montée sinueuse synthétique avec un lacet (deux épingles de sens opposés),
+qui ne repasse jamais sur elle-même ; les coordonnées
 géographiques sont obtenues par une projection locale équirectangulaire (suffisante pour
 des données factices, le compilateur utilisera UTM via pyproj).
 
@@ -26,6 +27,8 @@ DS_M = 10.0
 DEMO_NAME = "demo"
 DEMO_LENGTH_M = 5000.0
 DEMO_CREATED = "2026-10-23T00:00:00+02:00"   # fixe : le fichier de démo est reproductible
+HAIRPIN_GAP_M = 500.0       # distance entre les deux épingles du lacet (au plus 0,15 × longueur)
+HAIRPIN_GAP_MIN_M = 250.0
 
 
 def build_route(length_m: float = 8000.0, origin_lat: float = 45.09, origin_lon: float = 6.06,
@@ -35,12 +38,21 @@ def build_route(length_m: float = 8000.0, origin_lat: float = 45.09, origin_lon:
         n += 1
     s_values = [min(i * DS_M, length_m) for i in range(n)]
 
-    # Cap : dérive lente + virages, avec deux épingles (rotation de ~180° sur 150 m).
+    # Cap : dérive lente + virages, avec un lacet : deux épingles de sens opposés (rotation de
+    # ~180° sur 150 m chacune), proches l'une de l'autre. La route repart ensuite dans sa direction
+    # d'origine, décalée d'environ 190 m : elle ne repasse jamais sur elle-même.
+    hairpin_1 = 0.45 * length_m
+    hairpin_2 = hairpin_1 + min(HAIRPIN_GAP_M, max(HAIRPIN_GAP_MIN_M, 0.15 * length_m))
+
+    lacet_zone = (hairpin_1 - HAIRPIN_GAP_M, hairpin_2 + HAIRPIN_GAP_M)
+
     def heading_rate(s: float) -> float:  # degrés par mètre
-        rate = 0.04 * math.sin(s / 700.0) + 0.02 * math.sin(s / 230.0 + 1.0)
-        for center in (0.45 * length_m, 0.7 * length_m):
+        rate = 0.0
+        if not lacet_zone[0] <= s <= lacet_zone[1]:   # branches du lacet droites et parallèles
+            rate = 0.04 * math.sin(s / 700.0) + 0.02 * math.sin(s / 230.0 + 1.0)
+        for center, turn in ((hairpin_1, 1.0), (hairpin_2, -1.0)):
             if abs(s - center) < 75.0:
-                rate += 180.0 / 150.0
+                rate += turn * 180.0 / 150.0
         return rate
 
     # Pente : montée douce de 1 à 4 % qui ondule (confortable vers 150 W), replat en milieu de parcours.
