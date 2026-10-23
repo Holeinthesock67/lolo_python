@@ -110,11 +110,11 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Lecteur `.world` commun au core et à Godot, interpolation de Catmull-Rom, vecteurs de test partagés, parcours en boucle.
 
 ### Sprint 2 : compilateur (lots B1 et B2)
-- [ ] GPX vers couche route (ré-échantillonnage à 10 m, lissage de Savitzky-Golay, pente, cap, projection UTM).
+- [x] GPX vers couche route (ré-échantillonnage à 10 m, lissage de Savitzky-Golay, pente, cap, projection UTM).
 - [ ] Couche terrain (MNT Copernicus GLO-30, tuiles proches et lointaines, cache sans réseau à la relance).
 
 ### Sprint 3 : rendu 3D (lots D, E1, puis E2 et E3 à rédiger)
-- [ ] Godot conforme au contrat (renvoi des commandes, extrapolation, core injoignable).
+- [x] Godot conforme au contrat (renvoi des commandes, extrapolation, core injoignable), lot D.
 - [ ] Ruban de route et terrain par tronçons.
 - [ ] Shader triplanaire et thèmes, arbres, HUD final avec profil d'altitude.
 
