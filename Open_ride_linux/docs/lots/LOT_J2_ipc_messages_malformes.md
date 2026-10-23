@@ -53,3 +53,9 @@ Aucune : le lot applique la règle « datagramme illisible » de §6 aux message
 
 - Validation côté engine Godot (`ipc_client.gd`).
 - Authentification ou filtrage des adresses sources (localhost uniquement, usage personnel).
+
+## 9. Livraison (23 octobre 2026, fait directement à la demande du propriétaire, sans sous-traitance)
+
+- `ipc_server.py` : contrôle léger `_invalid_reason` (objet, `type` textuel ; pour `cmd` : `cmd_id` entier ≥ 1 hors booléen, `name` chaîne non vide, `args` objet, absent ou nul), compteur `invalid_datagrams`, avertissement limité à un par tranche de 10 s, exception d'`on_command` rattrapée et journalisée.
+- Tests : `core/tests/test_ipc_robustesse.py` (13 datagrammes malformés par une vraie socket UDP, 2 000 messages aléatoires à graine fixe, rappel qui lève, limitation des avertissements), moins de 1 s.
+- Écart assumé : `args: null` est accepté et vaut `{}` (même effet qu'un `args` absent).
