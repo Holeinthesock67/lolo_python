@@ -1,6 +1,6 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
-Mise à jour : 23 octobre 2026 (fusions A2, F et H1 à H8)
+Mise à jour : 23 octobre 2026 (fusions A2, B2, F et H1 à H8 ; audit du soir et cahiers I1 à I6)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 
 ---
@@ -109,11 +109,11 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 
 ## 4. Ce qui reste à faire
 
-Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 ont tous été livrés et fusionnés le 23 octobre.
+Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 ont tous été livrés et fusionnés le 23 octobre. Les lots I1 à I6 (même jour, au soir) sont prêts à confier : tests de cohérence documentation/code, catalogue de parcours, couches OSM (bâtiments, végétation, points d'intérêt, eau) et logique Godot testée sans écran (thèmes, ERG).
 
 ### Sprint 1 : fin
 - [ ] Séance de 10 minutes (§3).
-- [ ] Braquet de départ réglable dans `config.toml` (aujourd'hui `--gear N` en ligne de commande).
+- [x] Braquet de départ réglable : `[gearing] start_gear` dans `config.toml` (vérifié le 23 octobre), `--gear N` le remplace en ligne de commande.
 - [x] Corrections de conformité du core (lot C).
 
 ### Lecture des parcours (lot A)
@@ -126,8 +126,8 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Sprint 3 : rendu 3D (lots D, E1, puis E2 et E3 à rédiger)
 - [x] Godot conforme au contrat (renvoi des commandes, extrapolation, core injoignable), lot D.
-- [ ] Ruban de route et terrain par tronçons.
-- [ ] Shader triplanaire et thèmes, arbres, HUD final avec profil d'altitude.
+- [ ] Ruban de route et terrain par tronçons (lot E1 fait, PR #7 : attend l'essai sur la GTX 1060).
+- [ ] Shader triplanaire et thèmes (E2, après le chargeur de thèmes GDScript du lot I5), arbres, HUD final avec profil d'altitude (E3).
 
 ### Lanceur et menus (lot G, à rédiger)
 - [ ] Lanceur unique `openride` (commande et icône de bureau), qui arrête tout à la fermeture de la fenêtre.
@@ -137,5 +137,5 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Sprint 4 et suivants
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le Victory à faire).
-- [ ] Couches OpenStreetMap (bâtiments, forêts).
+- [ ] Couches OpenStreetMap : compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau), puis rendu dans l'engine (à rédiger).
 - [ ] Thèmes avec packs de textures.
