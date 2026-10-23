@@ -46,7 +46,8 @@ def make_session(tmp_path, monkeypatch, driver=None, port=5900):
     cfg = Config()
     cfg.ipc.port_state, cfg.ipc.port_commands = port, port + 1
     s = CoreSession(cfg, driver=driver or MockDriver(), inputs=[NullProvider()],
-                    journal_dir=tmp_path / "journal")
+                    journal_dir=tmp_path / "journal",
+                       routes_root=tmp_path / "routes")
     return s, Capture(s.server)
 
 
