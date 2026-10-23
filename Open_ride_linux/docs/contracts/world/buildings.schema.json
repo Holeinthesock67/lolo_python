@@ -1,0 +1,95 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldBuildingsChunk",
+  "description": "Tronçon de 1 km de la couche bâtiments (Format .world v1, §6).",
+  "type": "object",
+  "required": [
+    "version",
+    "buildings"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "point2d": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "ring": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "$ref": "#/$defs/point2d"
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "buildings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "outer",
+          "holes",
+          "base_y",
+          "height_m",
+          "roof",
+          "hint"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "outer": {
+            "$ref": "#/$defs/ring"
+          },
+          "holes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ring"
+            }
+          },
+          "base_y": {
+            "type": "number"
+          },
+          "height_m": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "roof": {
+            "enum": [
+              "flat",
+              "gabled"
+            ]
+          },
+          "hint": {
+            "type": "object",
+            "properties": {
+              "building": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "colour": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}
