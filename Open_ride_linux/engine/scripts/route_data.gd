@@ -3,7 +3,7 @@ extends RefCounted
 ## Lecture d'un parcours compilé `.world` et interpolation de sa couche route (Format .world v1).
 ##
 ## Traduction exacte de `core/src/openride_core/route.py` ; les deux sont tenues identiques par
-## `docs/contracts/world/route_test_vectors.json` (test : engine/tests/test_route_vectors.gd).
+## `docs/contracts/world/route_test_vectors.json` (test : engine/tests/unit/test_route_vectors.gd).
 ## Règle (format §4.5) : scalaires linéaires, cap par l'écart le plus court, position par
 ## Catmull-Rom centripète (α = 0,5) ; points fantômes aux extrémités, indices circulaires en boucle.
 ## Les calculs se font en float 64 bits ; seule la sortie Vector3 est en 32 bits.
