@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+    <author>OpenRide</author>
+    <name>Sweet Spot 3 × 10 min</name>
+    <description>Échauffement 10 min, 3 × 10 min à 90 % FTP avec 5 min de récupération à 55 %, retour au calme 5 min.</description>
+    <sportType>bike</sportType>
+    <workout>
+        <Warmup Duration="600" PowerLow="0.50" PowerHigh="0.75"/>
+        <IntervalsT Repeat="3" OnDuration="600" OffDuration="300" OnPower="0.90" OffPower="0.55"/>
+        <Cooldown Duration="300" PowerLow="0.60" PowerHigh="0.45"/>
+    </workout>
+</workout_file>

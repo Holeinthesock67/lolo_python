@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<workout_file>
+    <author>OpenRide</author>
+    <name>Test de rampe</name>
+    <description>5 min à 40 % FTP, puis paliers de 1 min de +6 % de 40 % à 148 % FTP.</description>
+    <sportType>bike</sportType>
+    <workout>
+        <SteadyState Duration="300" Power="0.40"/>
+        <SteadyState Duration="60" Power="0.40"/>
+        <SteadyState Duration="60" Power="0.46"/>
+        <SteadyState Duration="60" Power="0.52"/>
+        <SteadyState Duration="60" Power="0.58"/>
+        <SteadyState Duration="60" Power="0.64"/>
+        <SteadyState Duration="60" Power="0.70"/>
+        <SteadyState Duration="60" Power="0.76"/>
+        <SteadyState Duration="60" Power="0.82"/>
+        <SteadyState Duration="60" Power="0.88"/>
+        <SteadyState Duration="60" Power="0.94"/>
+        <SteadyState Duration="60" Power="1.00"/>
+        <SteadyState Duration="60" Power="1.06"/>
+        <SteadyState Duration="60" Power="1.12"/>
+        <SteadyState Duration="60" Power="1.18"/>
+        <SteadyState Duration="60" Power="1.24"/>
+        <SteadyState Duration="60" Power="1.30"/>
+        <SteadyState Duration="60" Power="1.36"/>
+        <SteadyState Duration="60" Power="1.42"/>
+        <SteadyState Duration="60" Power="1.48"/>
+    </workout>
+</workout_file>
