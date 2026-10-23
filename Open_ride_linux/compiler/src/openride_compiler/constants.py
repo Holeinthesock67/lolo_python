@@ -46,3 +46,12 @@ ROAD_HALF_WIDTH_M = 3.0
 BLEND_INNER_M = 4.0          # en deçà (depuis le bord du ruban) : altitude de la route − 5 cm
 BLEND_OUTER_M = 25.0         # au-delà : MNT seul
 ROAD_SINK_M = 0.05
+
+# Couches OpenStreetMap : bâtiments et végétation (format §6 et §7, lot I3).
+BUILDINGS_VERSION = "1.0"
+VEGETATION_VERSION = "1.0"
+CHUNK_LENGTH_M = 1000.0
+OSM_BAND_M = 400.0
+DENSITY_WOOD = 0.8
+DENSITY_SCRUB = 0.4
+DENSITY_ORCHARD = 0.5
