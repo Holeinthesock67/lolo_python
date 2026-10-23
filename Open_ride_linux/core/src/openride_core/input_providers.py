@@ -2,6 +2,17 @@
 
 Les deux fournissent la même interface : `events` (file asyncio d'`InputEvent`), `status`
 (valeur d'`input_status` du contrat IPC) et une tâche `run()`.
+
+Journal du Click (lot K8, diagnostic des coupures), une ligne par événement, émise par la
+tâche du Click (jamais par la boucle à 50 Hz) :
+- connexion : `Zwift Click connecté (adresse A, recherche 3.2 s, 2 tentative(s))` ; la recherche
+  court depuis le lancement ou la coupure précédente ;
+- coupure : `Zwift Click déconnecté après 75.0 s de connexion : dernière notification il y a
+  0.1 s, dernier appui il y a 12.3 s, 750 notification(s), dernière écriture au trainer il y a
+  0.4 s, raison : R ; appuyez sur un bouton pour le réveiller` (« jamais » si l'événement n'a
+  pas eu lieu ; bleak ne donne pas la raison BlueZ : R vaut « lien perdu (rappel bleak) »,
+  « fin de session », « arrêt du core » ou le texte de l'erreur) ;
+- toutes les 60 s de connexion : `Click : 600 notification(s) en 60 s (10.0 par seconde)`.
 """
 
 from __future__ import annotations
@@ -14,10 +25,21 @@ from contextlib import AsyncExitStack
 from typing import Any, Awaitable, Callable
 
 from . import zwift_click
-from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device
+from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, last_trainer_write_at
 from .zwift_click import InputEvent, PressClassifier
 
 log = logging.getLogger("input")
+
+CLICK_CONNECTED_FMT = "Zwift Click connecté (adresse %s, recherche %.1f s, %d tentative(s))"
+CLICK_DISCONNECTED_FMT = ("Zwift Click déconnecté après %.1f s de connexion : dernière notification il y a %s, "
+                          "dernier appui il y a %s, %d notification(s), dernière écriture au trainer il y a %s, "
+                          "raison : %s ; appuyez sur un bouton pour le réveiller")
+CLICK_RATE_FMT = "Click : %d notification(s) en %.0f s (%.1f par seconde)"
+RATE_PERIOD_S = 60.0
+
+
+def _ago(now: float, then: float | None) -> str:
+    return "jamais" if then is None else f"{max(now - then, 0.0):.1f} s"
 
 
 class ZwiftClickProvider:
@@ -40,6 +62,16 @@ class ZwiftClickProvider:
         self._link_up = False
         self._ever_connected = False
         self._stop = asyncio.Event()
+        # Diagnostic des coupures (lot K8)
+        self._connected_at: float | None = None
+        self._last_notify_at: float | None = None
+        self._last_press_at: float | None = None
+        self._notify_count = 0
+        self._rate_since = 0.0
+        self._rate_count = 0
+        self._search_since = 0.0
+        self._attempts = 0
+        self._drop_reason = ""
 
     @property
     def status(self) -> str:
@@ -51,6 +83,10 @@ class ZwiftClickProvider:
         self._stop.set()
 
     def _on_async(self, _ch: Any, data: bytearray) -> None:
+        now = self._clock()
+        self._last_notify_at = now
+        self._notify_count += 1
+        self._rate_count += 1
         raw = bytes(data)
         msg_type, fields = zwift_click.parse_async(raw)
         if msg_type == zwift_click.MSG_BATTERY_LEVEL:
@@ -59,7 +95,8 @@ class ZwiftClickProvider:
         buttons = zwift_click.parse_click_buttons(raw)
         if buttons is None:
             return
-        for ev in self._classifier.feed(buttons, self._clock()):
+        for ev in self._classifier.feed(buttons, now):
+            self._last_press_at = now
             log.info("Click : %s", ev.value)
             self.events.put_nowait(ev)
 
@@ -67,15 +104,20 @@ class ZwiftClickProvider:
         # Le Click ne s'annonce que réveillé par un appui : on le cherche en continu, par
         # fenêtres de 5 s séparées de 0,5 à 2 s, pour qu'un appui tombe toujours dans une fenêtre.
         delays = backoff_delays(first=0.5, maximum=2.0)
+        self._search_since, self._attempts = self._clock(), 0
         while not self._stop.is_set():
             try:
+                self._attempts += 1
                 await self._session()
-                log.warning("Zwift Click déconnecté (veille ?) : appuyez sur un bouton pour le réveiller")
+                self._log_drop(self._drop_reason)
                 delays = backoff_delays(first=0.5, maximum=2.0)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                log.warning("Click : %s", exc)
+                if self._connected_at is not None:
+                    self._log_drop(str(exc) or type(exc).__name__)
+                else:
+                    log.warning("Click : %s", exc)
             self._link_up = False
             if self._stop.is_set():
                 break
@@ -83,6 +125,16 @@ class ZwiftClickProvider:
                 await asyncio.wait_for(self._stop.wait(), timeout=next(delays))
             except asyncio.TimeoutError:
                 pass
+
+    def _log_drop(self, reason: str) -> None:
+        now = self._clock()
+        connected = now - self._connected_at if self._connected_at is not None else 0.0
+        write_at = last_trainer_write_at()
+        since_write = "jamais" if write_at is None else f"{max(time.monotonic() - write_at, 0.0):.1f} s"
+        log.warning(CLICK_DISCONNECTED_FMT, connected, _ago(now, self._last_notify_at),
+                    _ago(now, self._last_press_at), self._notify_count, since_write, reason or "fin de session")
+        self._connected_at = None
+        self._search_since, self._attempts = now, 0
 
     async def _session(self) -> None:
         loop = asyncio.get_running_loop()
@@ -102,9 +154,20 @@ class ZwiftClickProvider:
             await client.write_gatt_char(zwift_click.ZWIFT_SYNC_RX, zwift_click.RIDE_ON,
                                          response=True)
             self._link_up = self._ever_connected = True
-            log.info("Zwift Click connecté")
+            now = self._clock()
+            log.info(CLICK_CONNECTED_FMT, getattr(dev, "address", dev), now - self._search_since, self._attempts)
+            self._connected_at = self._rate_since = now
+            self._last_notify_at = self._last_press_at = None
+            self._notify_count = self._rate_count = 0
             while not (dropped.is_set() or self._stop.is_set()):
                 await asyncio.sleep(0.2)
+                now = self._clock()
+                if now - self._rate_since >= RATE_PERIOD_S:
+                    span = now - self._rate_since
+                    log.info(CLICK_RATE_FMT, self._rate_count, span, self._rate_count / span)
+                    self._rate_since, self._rate_count = now, 0
+            self._drop_reason = ("lien perdu (rappel bleak)" if dropped.is_set()
+                                 else "arrêt du core" if self._stop.is_set() else "fin de session")
         self._link_up = False
 
 
