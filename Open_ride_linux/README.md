@@ -97,6 +97,7 @@ scripts/openride-dev.sh --trainer mock --input keyboard --autostart   # sans vé
 ```
 
 - Le script lance le core en arrière-plan, puis la fenêtre Godot.
+- Nouveau lanceur équivalent, installé avec le core (lot K6) : `openride [options de openride-core run]`, par exemple `openride --trainer mock --input keyboard --autostart`. Il fait la même chose et, en plus, relance Godot s'il plante (3 fois en 2 minutes au plus, la séance reste en pause pendant ce temps). Si le core plante, il ferme Godot et rappelle `openride-core recover`.
 - Fermer la fenêtre, Ctrl+C ou fermer le terminal arrête le core proprement : la consigne (pente ou ERG) est annulée, le contrôle FTMS est rendu au trainer (Reset), le Bluetooth est déconnecté et le FIT écrit. Une autre application peut alors utiliser le Victory.
 - Si le Victory reste réservé après un arrêt brutal (processus tué, PC éteint en pleine séance) : `openride-core release-trainer` annule la consigne, rend le contrôle et déconnecte le trainer. À défaut : `bluetoothctl disconnect <adresse>`.
 - **Journal :** `~/run_victory.log` ; **FIT :** `~/OpenRide/Activities/`.

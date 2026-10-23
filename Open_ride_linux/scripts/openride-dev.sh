@@ -2,6 +2,7 @@
 # Lanceur de développement : core en arrière-plan + moteur Godot au premier plan, un seul terminal.
 # Fermer la fenêtre Godot, Ctrl+C ou fermer le terminal arrête le core proprement : consigne
 # annulée, contrôle FTMS rendu au trainer, déconnexion BLE, FIT écrit.
+# Remplacement en Python, avec supervision (relance de Godot s'il plante) : `openride` (lot K6).
 #
 #   scripts/openride-dev.sh                              # Victory + Click, démarrage automatique
 #   scripts/openride-dev.sh --trainer mock --input keyboard --autostart
