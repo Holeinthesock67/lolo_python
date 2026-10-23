@@ -33,7 +33,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 | Dossier | Programme | Rôle |
 | --- | --- | --- |
 | `core/` | `openride-core` (Python, asyncio, bleak) | BLE (HomeTrainer, Click), physique à 50 Hz, braquets, journal, FIT, serveur IPC UDP (état à 30 Hz sur le port 5005, commandes sur le port 5006) |
-| `compiler/` | `openride-compiler` (Python, numpy, scipy, pyproj) | GPX vers dossier `.world`, couche route (la couche terrain viendra avec le lot B2) |
+| `compiler/` | `openride-compiler` (Python, numpy, scipy, pyproj, rasterio) | GPX vers dossier `.world` : couche route et couche terrain (MNT Copernicus GLO-30 mis en cache dans `~/.cache/openride/dem/`) |
 | `engine/` | Godot 4.3 (GDScript) | Rendu, HUD, caméra interpolée et extrapolée, bips des appuis |
 
 **Modules clés du core** (`core/src/openride_core/`) :
@@ -56,7 +56,7 @@ cd compiler && pip install -e ".[dev]" -e ../core
 
 # Tests (tous doivent passer avant chaque commit)
 (cd core && pytest -q)
-(cd compiler && pytest -q)
+(cd compiler && pytest -q)            # réseau coupé ; `pytest -m network` pour l'essai Copernicus réel
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
@@ -64,7 +64,9 @@ scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
 scripts/openride-dev.sh --trainer mock --input keyboard --autostart        # sans vélo
 
 # Parcours
-openride-compiler build trace.gpx      # puis : verify / info
+openride-compiler build trace.gpx      # route + terrain ; puis : verify / info
+openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude déjà en cache
+openride-compiler add-layer <nom>.world terrain       # régénère le terrain seul
 openride-core recover                  # FIT depuis le dernier journal après un plantage
 
 # Diagnostic matériel
