@@ -173,6 +173,7 @@ def test_session_without_heart_rate(tmp_path: Path) -> None:
         assert "heart_rate" not in rec
 
 
+@pytest.mark.slow
 def test_synthetic_3h_session(tmp_path: Path) -> None:
     """Cas 7 : séance synthétique de 3 h (10 800 enregistrements)."""
     records, events = _make_records(10_800, with_hr=True)

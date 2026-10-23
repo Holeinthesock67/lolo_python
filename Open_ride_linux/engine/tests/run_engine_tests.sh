@@ -41,6 +41,29 @@ grep -v "^Godot Engine" "$STREAM_LOG"
 if [ "$stream_status" -ne 0 ] || grep -q -E "SCRIPT ERROR|ERROR:|WARNING:" "$STREAM_LOG"; then status=1; fi
 rm -f "$STREAM_LOG"
 
+echo "== Thèmes (lot I5) =="
+THEME_OUT="$("$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_theme_loader.gd 2>&1)"
+theme_rc=$?
+echo "$THEME_OUT" | grep -v "^Godot Engine" || true
+if [ "$theme_rc" -ne 0 ]; then status=1; fi
+theme_issues="$(echo "$THEME_OUT" | grep -E "SCRIPT ERROR|WARNING:" \
+  | grep -v -E "ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)" || true)"
+if [ -n "$theme_issues" ]; then echo "$theme_issues"; status=1; fi
+
+echo "== ERG (lot I6) =="
+python3 "$ENGINE_DIR/tests/fake_core.py" --erg-workout --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &
+ERG_FAKE_PID=$!
+sleep 0.2
+ERG_OUT="$("$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_erg_view_model.gd -- --ipc-state-port="$STATE_PORT" --ipc-cmd-port="$CMD_PORT" 2>&1)"
+erg_rc=$?
+wait "$ERG_FAKE_PID"
+erg_fake_rc=$?
+echo "$ERG_OUT" | grep -v "^Godot Engine" || true
+if [ "$erg_rc" -ne 0 ] || [ "$erg_fake_rc" -ne 0 ]; then status=1; fi
+erg_issues="$(echo "$ERG_OUT" | grep -E "SCRIPT ERROR|ERROR:|WARNING:" \
+  | grep -v -E "ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)" || true)"
+if [ -n "$erg_issues" ]; then echo "$erg_issues"; status=1; fi
+
 echo "== Scénarios IPC (journal de l'engine : $ENGINE_LOG) =="
 : >"$ENGINE_LOG"
 FAKE_ARGS=(--state-port "$STATE_PORT" --cmd-port "$CMD_PORT" --engine-log "$ENGINE_LOG")

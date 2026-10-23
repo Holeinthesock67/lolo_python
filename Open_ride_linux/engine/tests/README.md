@@ -11,8 +11,10 @@ Le script renvoie 0 si tout passe. Il enchaîne :
 
 1. **Vecteurs de route** (`test_route_vectors.gd`, lot A) : `route_data.gd` contre `docs/contracts/world/route_test_vectors.json`.
 2. **Rendu par tronçons** (`test_world_streamer.gd`, lot E1) : le script écrit d'abord la démo avec terrain synthétique (`python -m openride_core.tools.fake_world --demo --terrain`, lancé avec `PYTHONPATH=core/src`, bibliothèque standard seulement) dans un dossier temporaire, puis vérifie le ruban, les tuiles et la fenêtre de chargement (tableau ci-dessous). Ce test ne doit écrire aucune erreur ni aucun avertissement.
-3. **Scénarios IPC** : `fake_core.py` (Python 3, bibliothèque standard) joue le rôle du core ; l'engine tourne sans écran avec `--test-mode` et charge la démo avec terrain du même dossier temporaire.
-4. **Contrôle de la sortie de Godot** : aucune erreur ni aucun avertissement de script, hors avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
+3. **Thèmes** (`test_theme_loader.gd`, lot I5) : validation, fusion avec le thème `default` et chargement de textures dans `theme_loader.gd`.
+4. **ERG** (`test_erg_view_model.gd`, lot I6) : modèle de vue ERG (`erg_view_model.gd`), histogramme `profile_bars` et scénario des 10 blocs face à `fake_core.py --erg-workout` (bips à T − 3 s ± 0,1 s).
+5. **Scénarios IPC** : `fake_core.py` (Python 3, bibliothèque standard) joue le rôle du core ; l'engine tourne sans écran avec `--test-mode` et charge la démo avec terrain du même dossier temporaire.
+6. **Contrôle de la sortie de Godot** : aucune erreur ni aucun avertissement de script, hors avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
 
 Lancement seul du test de rendu :
 
