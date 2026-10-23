@@ -1,6 +1,6 @@
 # OpenRide Linux – SRS v1.1
 
-21 octobre 2026 ; mise à jour du 23 octobre 2026 (alignement sur le code et les essais sur le vélo)
+21 octobre 2026 ; mises à jour du 23 octobre 2026 (alignement sur le code et les essais sur le vélo ; §14.1, seuils de passage à Rust)
 
 ## 1. Objectifs et périmètre
 
@@ -430,3 +430,22 @@ Le MVP utilisable est atteint à la fin du sprint 3 : pédaler sur une trace GPX
 | Ressenti des braquets | Résistance peu naturelle | Paramètres en configuration, réglage à l'usage |
 | Lenteur d'Overpass | Compilation longue | Segments, délais d'attente, cache brut |
 | Dérive entre documents | Modules incompatibles | Contrats versionnés et tests de contrat |
+
+### 14.1 Seuils de passage à Rust
+
+Le core reste en Python tant que les mesures de performance restent sous les seuils ci-dessous. Le core les écrit dans son journal toutes les 60 s (ligne `Perf`, `session.py`), sur la fenêtre écoulée depuis le relevé précédent.
+
+| Mesure | Définition | Seuil | Mesuré le 22 octobre (PC cible) |
+| --- | --- | --- | --- |
+| Durée du pas de physique, p99 | Temps d'un tour de boucle : IPC, entrées, physique, envoi de la consigne | 5 ms (le quart du pas de 20 ms à 50 Hz) | p50 0,2 ms (p99 à 7 ms avant que le `fsync` du journal ne soit espacé) |
+| Retard de boucle, p99 | Écart entre l'heure prévue d'un tour et son heure réelle | 20 ms (un pas de physique entier) | max de 3 à 19 ms |
+| CPU du processus core | Temps processeur / temps écoulé | 15 % d'un cœur | 3 à 4 % |
+
+**Règle de décision**
+
+- Un dépassement isolé (gel du système, swap, démarrage) ne compte pas. Le seuil est atteint quand **trois relevés `Perf` consécutifs** le dépassent pendant une séance réelle, sur le PC cible.
+- Le retard **maximal** est relevé pour information, sans seuil : un pic isolé est absorbé par `MAX_STEP_S` (pas borné à 0,1 s) et par l'extrapolation de l'engine.
+- Avant Rust, chercher d'abord la cause en Python (entrée-sortie bloquante dans la boucle, `fsync`, journalisation excessive), comme pour le `fsync` du journal corrigé le 22 octobre.
+- Si Rust devient nécessaire, seuls les modules purs sont concernés (`physics.py`, puis `gearing.py`), derrière la même interface, avec les mêmes tests.
+
+Les essais du 22 octobre restent loin de ces seuils (`docs/SUIVI_AVANCEMENT.md` §2).
