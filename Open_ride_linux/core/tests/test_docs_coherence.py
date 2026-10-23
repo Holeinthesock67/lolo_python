@@ -187,6 +187,11 @@ def _build_core_parser() -> argparse.ArgumentParser:
     run.add_argument("--autostart", action="store_true")
     rel = sub.add_parser("release-trainer")
     rel.add_argument("--config")
+    summ = sub.add_parser("summary")
+    summ.add_argument("file", nargs="?")
+    summ.add_argument("--ftp", type=float)
+    summ.add_argument("--json", action="store_true")
+    summ.add_argument("--config")
     return p
 
 
