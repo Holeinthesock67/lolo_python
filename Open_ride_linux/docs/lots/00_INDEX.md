@@ -6,13 +6,13 @@
 
 | Lot | Titre | Langage | Dépend de | Taille | Prêt à confier |
 | --- | --- | --- | --- | --- | --- |
-| [A](LOT_A_route.md) | Lecteur `.world` et interpolation de route partagés core/engine | Python + GDScript | — | Moyenne | Oui |
-| [B1](LOT_B1_compilateur_route.md) | Compilateur : GPX vers `.world` (couche route) | Python | Aucune (A utile pour la vérification croisée) | Moyenne | Oui |
+| [A](LOT_A_route.md) | Lecteur `.world` et interpolation de route partagés core/engine | Python + GDScript | — | Moyenne | **Livré le 23 octobre** |
+| [B1](LOT_B1_compilateur_route.md) | Compilateur : GPX vers `.world` (couche route) | Python | Aucune (A, livré, sert à la vérification croisée) | Moyenne | Oui |
 | [B2](LOT_B2_compilateur_terrain.md) | Compilateur : couche terrain (MNT Copernicus, tuiles) | Python | B1 | Grande | Après B1 |
-| [C](LOT_C_core_conformite.md) | Mise en conformité du core avec le contrat IPC (défauts de l'audit) | Python | — | Petite | Oui |
-| [D](LOT_D_engine_ipc.md) | Mise en conformité de l'engine avec le contrat IPC | GDScript | A (lecture du parcours par `route_id`) | Moyenne | Oui, partie route après A |
-| [E1](LOT_E1_rendu_route_terrain.md) | Rendu 3D : ruban de route et terrain par tronçons | GDScript | A, D ; tuiles du format (B2 ou générateur fourni) | Grande | Après A et D |
-| [F](LOT_F_erg_zwo.md) | Entraînements ERG : lecteur `.zwo` et pilotage ERG dans le core | Python | C | Moyenne | Après C |
+| [C](LOT_C_core_conformite.md) | Mise en conformité du core avec le contrat IPC (défauts de l'audit) | Python | — | Petite | **Livré le 23 octobre** |
+| [D](LOT_D_engine_ipc.md) | Mise en conformité de l'engine avec le contrat IPC | GDScript | A (livré) | Moyenne | Oui |
+| [E1](LOT_E1_rendu_route_terrain.md) | Rendu 3D : ruban de route et terrain par tronçons | GDScript | A (livré), D ; tuiles du format (B2 ou générateur fourni) | Grande | Après D |
+| [F](LOT_F_erg_zwo.md) | Entraînements ERG : lecteur `.zwo` et pilotage ERG dans le core | Python | C (livré) | Moyenne | Oui |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -26,7 +26,9 @@
 
 Leur forme dépendra des choix faits dans E1 et D.
 
-**Ordre conseillé :** C et A en parallèle, puis B1 et D, puis B2, E1 et F.
+**Ordre conseillé :** C et A sont livrés (23 octobre). Peuvent démarrer maintenant, en parallèle : B1, D et F. Ensuite B2, puis E1.
+
+Les lots livrés gardent leur cahier des charges, complété d'une section « Livraison » qui liste les écarts assumés.
 
 ```text
 A ──► B1 ──► B2 ──┐
@@ -37,7 +39,7 @@ C ──► F
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
 
-1. Fusionner la branche `claude/openride-sprint1-drivers` dans `main` (audit, E4).
+1. Partir de `main` à jour (fusions du 23 octobre faites).
 2. Donner à l'IA un accès en écriture au dépôt `Holeinthesock67/lolo_python`, ou lui remettre une copie et récupérer un correctif.
 3. Lui transmettre le texte du lot et les documents listés dans sa section « À lire ».
 

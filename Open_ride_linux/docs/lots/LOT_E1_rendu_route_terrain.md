@@ -24,7 +24,7 @@ Les deux sont générés et libérés par tronçons au fil de la progression, sa
 
 ## 3. Prérequis
 
-- **Lots A et D livrés.**
+- **Lot A livré** (23 octobre ; API de `route_data.gd` décrite dans le lot D, §D5). **Lot D livré.**
 - **Données de test :** si le lot B2 n'est pas livré, ce lot fournit son propre générateur de tuiles synthétiques (§4.5). Le format des tuiles est figé par le contrat ; le rendu ne dépend donc pas de B2.
 
 ## 4. Travail demandé
