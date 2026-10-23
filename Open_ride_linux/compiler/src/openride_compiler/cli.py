@@ -17,6 +17,7 @@ import argparse
 import json
 import sys
 import time
+from dataclasses import dataclass
 from pathlib import Path
 
 from . import constants as C
@@ -294,63 +295,118 @@ def cmd_theme_check(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+# Parcours de démonstration du core (`openride_core.demo_world`), repris ici pour que le repli
+# fonctionne sans le core ; `test_catalog_parity.py` vérifie que les deux valeurs restent égales.
+DEMO_NAME = "demo"
+DEMO_LENGTH_M = 5000.0
+
+
+@dataclass(frozen=True)
+class CatalogEntry:
+    """Mêmes champs que `openride_core.catalog.RouteEntry`."""
+    id: str
+    name: str
+    status: str                  # "ready", "to_compile", "outdated", "invalid"
+    length_m: float | None
+    route_type: str | None
+    has_terrain: bool
+    gpx_path: Path | None
+    error: str | None = None
+
+
 def _catalog_entries(routes_dir: Path, gpx_dir: Path) -> list:
-    """Utilise openride_core.catalog.list_routes si installé, sinon lecture minimale équivalente."""
+    """Utilise openride_core.catalog.list_routes si installé, sinon le repli équivalent ci-dessous."""
     try:
         from openride_core.catalog import list_routes
-        return list_routes(routes_dir, gpx_dir)
     except ImportError:
-        pass
+        return fallback_catalog(routes_dir, gpx_dir)
+    return list_routes(routes_dir, gpx_dir)
 
-    from dataclasses import dataclass
 
-    @dataclass(frozen=True)
-    class _Entry:
-        id: str
-        name: str
-        status: str
-        length_m: float | None
-        route_type: str | None
-        has_terrain: bool
-        gpx_path: Path | None
-        error: str | None = None
+def _manifest_source(manifest: object) -> tuple[str | None, str | None]:
+    src = manifest.get("source") if isinstance(manifest, dict) else None
+    if not isinstance(src, dict):
+        return None, None
+    name, sha = src.get("gpx"), src.get("gpx_sha256")
+    return (name if isinstance(name, str) and name else None,
+            sha if isinstance(sha, str) and sha else None)
 
+
+def fallback_catalog(routes_dir: Path, gpx_dir: Path) -> list[CatalogEntry]:
+    """Catalogue sans le core, même règles que `openride_core.catalog.list_routes` (lot J6).
+
+    Seule différence assumée : un `.world` est jugé par `verify_world` du compilateur au lieu de
+    `load_world` du core.
+    """
+    routes_dir, gpx_dir = Path(routes_dir), Path(gpx_dir)
     gpx_by_name: dict[str, tuple[Path, str, str]] = {}
+    gpx_by_sha: dict[str, list[Path]] = {}
     gpx_by_norm: dict[str, Path] = {}
     if gpx_dir.is_dir():
         for gf in sorted(p for p in gpx_dir.iterdir() if p.is_file() and p.suffix.lower() == ".gpx"):
-            gpx_by_name[gf.name] = (gf, sha256_of(gf), normalize_name(gf.stem))
-            gpx_by_norm.setdefault(normalize_name(gf.stem), gf)
+            try:
+                sha = sha256_of(gf)
+            except OSError:
+                continue
+            norm = normalize_name(gf.stem)
+            gpx_by_name[gf.name] = (gf, sha, norm)
+            gpx_by_sha.setdefault(sha, []).append(gf)
+            gpx_by_norm.setdefault(norm, gf)
 
     matched: set[Path] = set()
-    entries: list[_Entry] = []
+    entries: list[CatalogEntry] = []
+    demo: CatalogEntry | None = None
     if routes_dir.is_dir():
-        for wdir in sorted(p for p in routes_dir.iterdir() if p.is_dir() and p.name.endswith(".world")):
+        for wdir in sorted(p for p in routes_dir.iterdir()
+                           if p.is_dir() and p.name.endswith(".world") and not p.name.startswith(".")):
             rid = wdir.name[: -len(".world")]
+            try:
+                manifest = json.loads((wdir / "manifest.json").read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                manifest = None
             problems = verify_world(wdir)
-            if problems:
-                entries.append(_Entry(rid, rid, "invalid", None, None, False, gpx_by_norm.get(rid), problems[0]))
-                if rid in gpx_by_norm:
-                    matched.add(gpx_by_norm[rid])
-                continue
-            m = json.loads((wdir / "manifest.json").read_text(encoding="utf-8"))
-            src = m.get("source") or {}
-            gname, gsha = src.get("gpx"), src.get("gpx_sha256")
-            gpath = gpx_by_name[gname][0] if gname in gpx_by_name else gpx_by_norm.get(rid)
-            if gpath:
+            src_name, src_sha = _manifest_source(manifest)
+
+            # GPX source : par nom, puis par SHA-256 (GPX renommé), puis par identifiant normalisé.
+            gpath: Path | None = None
+            gsha: str | None = None
+            if src_name and src_name in gpx_by_name:
+                gpath, gsha, _ = gpx_by_name[src_name]
+            elif src_sha and src_sha in gpx_by_sha:
+                gpath, gsha = gpx_by_sha[src_sha][0], src_sha
+            elif rid in gpx_by_norm:
+                gpath = gpx_by_norm[rid]
+                gsha = gpx_by_name[gpath.name][1]
+            if gpath is not None:
                 matched.add(gpath)
-            st = "outdated" if (gpath and gsha and sha256_of(gpath) != gsha) else "ready"
-            rinfo = m.get("route") or {}
-            tlayer = (m.get("layers") or {}).get("terrain") or {}
-            entries.append(_Entry(
-                rid, str(m.get("name") or rid), st,
-                float(rinfo.get("length_m", 0.0)), str(rinfo.get("type", "open")),
-                bool(tlayer.get("present")), gpath, None,
-            ))
-    for gname, (gpath, _sha, nid) in gpx_by_name.items():
+
+            if problems:
+                entry = CatalogEntry(rid, rid, "invalid", None, None, False, gpath, problems[0])
+            else:
+                assert isinstance(manifest, dict)   # verify_world a lu le manifeste
+                mroute = manifest.get("route") if isinstance(manifest.get("route"), dict) else {}
+                route = json.loads((wdir / str(mroute.get("file", "route.json"))).read_text(encoding="utf-8"))
+                status = "ready"
+                if gpath is not None and src_sha is not None and gsha != src_sha:
+                    status = "outdated"
+                elif gpath is not None and src_sha is None and rid != DEMO_NAME:
+                    status = "outdated"
+                tlayer = (manifest.get("layers") or {}).get("terrain")
+                entry = CatalogEntry(
+                    rid, str(manifest.get("name") or rid), status,
+                    float(route["length_m"]), str(route.get("type", "open")),
+                    bool(isinstance(tlayer, dict) and tlayer.get("present")), gpath, None)
+            if rid == DEMO_NAME:
+                demo = entry
+            else:
+                entries.append(entry)
+
+    if demo is None:
+        demo = CatalogEntry(DEMO_NAME, DEMO_NAME, "ready", DEMO_LENGTH_M, "open", False, None, None)
+    for gpath, _sha, norm in gpx_by_name.values():
         if gpath not in matched:
-            entries.append(_Entry(nid, gpath.stem, "to_compile", None, None, False, gpath, None))
-    return entries
+            entries.append(CatalogEntry(norm, gpath.stem, "to_compile", None, None, False, gpath, None))
+    return [demo, *sorted(entries, key=lambda e: (e.id, e.name))]
 
 
 def cmd_list(args: argparse.Namespace) -> int:

@@ -49,3 +49,14 @@ Aucune. Les documents de contrat peuvent recevoir une correction de lien ou de c
 
 - Orthographe et style.
 - Liens externes (`https://`).
+
+## 9. Livraison (23 octobre 2026, fait directement à la demande du propriétaire, sans sous-traitance)
+
+- Quatre contrôles ajoutés à `core/tests/test_docs_coherence.py`, chacun avec un test réel et un test négatif sur texte fabriqué :
+  - caractères interdits (contrôle hors `\n`, `\r`, `\t`, U+FFFD, double encodage) dans les `*.md` et `*.json` du projet ; le double encodage est cherché hors du code entre accents graves, où ce cahier cite les séquences ;
+  - liens Markdown relatifs et ancres, avec la règle des ancres GitHub (titres en double suffixés `-1`, `-2`) ;
+  - nombres de tests du `README.md` et du suivi comparés à `pytest --collect-only -q` lancé en sous-processus dans `core/` et `compiler/` (options du paquet, donc sans les tests `network`) ; le message donne la valeur à écrire ; test sauté si le compilateur n'est pas installé ;
+  - chemins `core/…`, `compiler/…`, `engine/…`, `docs/…`, `scripts/…` cités entre accents graves. Exceptions motivées : les cahiers des lots non livrés (ils citent les fichiers qu'ils créeront), `core/.venv` (environnement local) et les trois scripts du lot E1, pas encore fusionné.
+- Durées mesurées : 2,2 s pour les nombres de tests (pas de marque `slow`), moins de 0,1 s pour les trois autres.
+- Écart trouvé sur `main` et corrigé : le nombre de tests du core était faux dans le `README.md` et le suivi (222 annoncés au lieu de 236 au moment du lot ; 261 après la fusion de J6, du correctif de cadence, de K6 et de K7). Aucun lien cassé ni caractère interdit trouvé.
+- `CLAUDE.md` : la règle de livraison rappelle que ces nombres sont vérifiés.
