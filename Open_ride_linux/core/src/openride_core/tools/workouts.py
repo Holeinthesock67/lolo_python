@@ -90,7 +90,14 @@ def cmd_list(args: argparse.Namespace) -> int:
 
 def cmd_check(args: argparse.Namespace) -> int:
     path = Path(args.file).expanduser()
-    ftp_w = float(args.ftp) if args.ftp is not None else float(config_mod.load().rider.ftp_w)
+    if args.ftp is not None:
+        ftp_w = float(args.ftp)
+    else:
+        try:
+            ftp_w = float(config_mod.load().rider.ftp_w)
+        except config_mod.ConfigError as exc:
+            print(f"configuration invalide : {exc} (utiliser --ftp)", file=sys.stderr)
+            return 1
 
     w_logger = logging.getLogger("workout")
     collector = _WarningCollector()
