@@ -55,3 +55,20 @@ OSM_BAND_M = 400.0
 DENSITY_WOOD = 0.8
 DENSITY_SCRUB = 0.4
 DENSITY_ORCHARD = 0.5
+
+# Couches OpenStreetMap : points d'intérêt et eau (format §8, lot I4).
+POI_VERSION = "1.0"
+WATER_VERSION = "1.0"
+POI_KINDS = ("church_bell", "river", "livestock", "village", "viewpoint")
+POI_RADIUS_CHURCH_BELL_M = 300
+POI_RADIUS_VILLAGE_M = 300
+POI_RADIUS_VIEWPOINT_M = 200
+POI_RADIUS_LIVESTOCK_M = 150
+POI_RADIUS_RIVER_M = 150
+POI_RIVER_PASSAGE_DIST_M = 50.0
+WATER_LINE_KINDS = ("river", "stream", "canal")
+WATER_AREA_KINDS = ("lake", "pond", "reservoir")
+WATER_WIDTH_DEFAULT_M = 2.0
+WATER_WIDTH_RIVER_M = 6.0
+WATER_WIDTH_STREAM_M = 2.0
+WATER_WIDTH_CANAL_M = 8.0
