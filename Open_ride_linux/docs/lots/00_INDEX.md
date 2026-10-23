@@ -22,30 +22,41 @@
 | [H6](LOT_H6_analyse_journal.md) | Analyseur du journal de séance (`run_victory.log`) | Python | — | Petite | **Livré le 23 octobre** (PR #16) |
 | [H7](LOT_H7_schema_themes.md) | Schéma, validateur et thème par défaut (prépare E2) | Python + JSON | — | Petite | **Livré le 23 octobre** (PR #17) |
 | [H8](LOT_H8_outils_entrainements.md) | Outils et bibliothèque d'entraînements `.zwo` | Python | F (livré) | Petite | **Livré le 23 octobre** (PR #18) |
+| [I1](LOT_I1_coherence_doc_code.md) | Tests de cohérence entre la documentation et le code | Python | — | Petite | **Livré le 23 octobre** (PR #20) |
+| [I2](LOT_I2_catalogue_parcours.md) | Catalogue de parcours : `build-all` et `list` | Python | B2 (livré) | Petite | **Livré le 23 octobre** (PR #21) |
+| [I3](LOT_I3_osm_batiments_forets.md) | Compilateur : couches OSM bâtiments et végétation | Python | B2 (livré) | Moyenne | **Livré le 23 octobre** (PR #22) |
+| [I4](LOT_I4_osm_poi_eau.md) | Compilateur : couches points d'intérêt et eau | Python | I3 | Petite | **Livré le 23 octobre** (PR #23) |
+| [I5](LOT_I5_chargeur_themes_godot.md) | Chargeur de thèmes en GDScript (sans shader) | GDScript | H7 (livré), E1 fusionné | Petite | **Livré le 23 octobre** (PR #24) |
+| [I6](LOT_I6_logique_erg_godot.md) | Logique de l'entraînement ERG côté Godot (bandeau, bip, histogramme, sans affichage) | GDScript | F (livré), E1 fusionné | Petite | **Livré le 23 octobre** (PR #25) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
 - essais sur le vélo ;
 - validation des fichiers FIT dans GoldenCheetah et Garmin Connect.
 
-**À rédiger plus tard :**
-- E2 : shader triplanaire et chargeur de thèmes ;
-- E3 : végétation par bruit ;
-- G : lanceur unique et menus pilotés au Click.
+**À rédiger plus tard** (contrôle visuel ou décision de Laurent nécessaire) :
+- E2 : shader triplanaire et application du thème (s'appuie sur I5) ;
+- E3 : ciel, végétation par bruit, HUD final avec profil d'altitude ;
+- E4 : rendu des bâtiments et des forêts (s'appuie sur I3) ;
+- F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) ;
+- G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), lanceur unique et menus pilotés au Click (s'appuie sur I2).
 
 Leur forme dépendra des choix faits dans E1 et D.
 
-**Ordre conseillé :** A, A2, B1, B2, C, D et F sont livrés (23 octobre). E1 est fait et attend l'essai sur le PC cible (PR #7).
+**Ordre conseillé :** A, A2, B1, B2, C, D, F et H1 à H8 sont livrés (23 octobre). E1 est fait et attend l'essai sur le PC cible (PR #7). Peuvent démarrer maintenant, en parallèle : I1, I2 et I3 ; puis I4 après I3 ; I5 et I6 dès qu'E1 est fusionné (ils ajoutent une étape à `run_engine_tests.sh`, que modifie E1).
 
-**Lots H (23 octobre) :** petits lots hors du chemin critique, recettés uniquement par des tests automatiques, sans essai sur le matériel. Ils peuvent être confiés en parallèle : aucun ne partage de fichier de code avec un autre (seuls `docs/SUIVI_AVANCEMENT.md` et parfois `README.md` sont communs, à fusionner à la main). H3 est le seul à toucher `config.py`, `session.py` et `__main__.py` ; H5 et H4 touchent tous deux `core/pyproject.toml` (sections différentes).
+**Lots H et I (23 octobre) :** les séries H (livrée) et I (à confier) sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Pour la série I, aucun lot ne touche `main.gd` ni les scripts de rendu d'E1.
+
+**Lots H, détail :** petits lots hors du chemin critique, recettés uniquement par des tests automatiques, sans essai sur le matériel. Ils peuvent être confiés en parallèle : aucun ne partage de fichier de code avec un autre (seuls `docs/SUIVI_AVANCEMENT.md` et parfois `README.md` sont communs, à fusionner à la main). H3 est le seul à toucher `config.py`, `session.py` et `__main__.py` ; H5 et H4 touchent tous deux `core/pyproject.toml` (sections différentes).
 
 Les lots livrés gardent leur cahier des charges, complété d'une section « Livraison » qui liste les écarts assumés.
 
 ```text
-A ──► B1 ──► B2 ──┐
-│                 ├──► E1
+A ──► B1 ──► B2 ──┬──► E1 ──┬──► I5 ──► E2
+│                 │          └──► I6 ──► F2
 └──► D ───────────┘
-C ──► F
+B2 ──► I2 ──► G       B2 ──► I3 ──► I4 ;  I3 ──► E4
+C ──► F ──► H8        H1 à H8, I1 : indépendants
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
