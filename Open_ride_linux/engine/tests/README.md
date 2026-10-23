@@ -25,6 +25,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | --- | --- | --- |
 | `test_route_vectors.gd` | A | `route_data.gd` contre `docs/contracts/world/route_test_vectors.json` (42 vecteurs) |
 | `test_theme_loader.gd` | I5 | Validation, fusion avec le thème `default` et chargement de textures dans `theme_loader.gd` (40 vérifications) |
+| `test_menu_model.gd` | K5 | Navigation des menus (`menu_model.gd`) : 12 scénarios d'événements du Click (focus, éléments désactivés, boucle, retour, confirmation, liste vide), événements inconnus, clavier, aucun nœud créé |
 
 ## Étapes du script
 
