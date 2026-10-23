@@ -65,3 +65,8 @@ Aucune. Si un champ manque à l'objet `erg` pour une règle du §4.1, s'arrêter
 
 - Dessin du bandeau et de l'histogramme, son du bip (lot F2, avec contrôle visuel et à l'oreille).
 - Messages IPC donnant la liste des blocs (lot G).
+
+## 9. Livraison (23 octobre 2026, PR #25)
+
+- `engine/scripts/erg_view_model.gd` : modèle de vue du bandeau ERG, interpolation du temps restant, bip unique à T − 3 s et géométrie de l'histogramme `profile_bars`.
+- Option `--erg-workout` dans `engine/tests/fake_core.py`, tests `engine/tests/test_erg_view_model.gd` (cas unitaires et scénario UDP des 10 blocs du lot F) et étape « ERG (lot I6) » dans `engine/tests/run_engine_tests.sh`.

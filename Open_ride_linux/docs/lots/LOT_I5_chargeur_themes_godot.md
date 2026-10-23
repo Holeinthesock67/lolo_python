@@ -65,3 +65,8 @@ Aucune. Une divergence entre le §9, le schéma et le validateur Python est sign
 
 - Shader triplanaire, matériaux, ciel, brouillard (lot E2).
 - Packs de textures réels (sprint 6).
+
+## 9. Livraison (23 octobre 2026, PR #24)
+
+- `engine/scripts/theme_loader.gd` (`load_theme`, `load_named`, `texture_for`), fusion récursive avec `res://themes/default/theme.json`, validation des couleurs, bornes numériques et dimensions PNG/JPEG.
+- `engine/tests/test_theme_loader.gd` (40 vérifications sans écran) et étape « Thèmes (lot I5) » dans `engine/tests/run_engine_tests.sh`.
