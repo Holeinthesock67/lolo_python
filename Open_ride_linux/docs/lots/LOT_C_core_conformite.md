@@ -136,3 +136,14 @@ Chaque modification a sa ligne au journal des changements du contrat (§8).
 - Le côté engine du contrat (lot D).
 - Le mode ERG (lot F).
 - La stabilité du Click, à traiter en interne avec le matériel.
+
+## 8. Livraison (23 octobre 2026)
+
+Réalisé par Claude, branche `lot-c-conformite`, fusionné dans `main`. Tous les critères du §6 sont tenus (55 tests à la livraison du lot, 75 après le lot A). Couverture : `ipc_server.py` de 77 à 81 %, `session.py` de 66 à 68 %, totale de 64 à 70 %.
+
+**Écarts assumés :**
+- C2 est porté par un nouveau module, `recorder.py` (`SessionRecorder`), plutôt que par `journal.py` : copie complète de la séance en mémoire, réouverture d'un journal `…_reprise-N.jsonl`, FIT produit depuis la mémoire.
+- C3 : `summary.fit_path` peut valoir `null`. Le schéma a été élargi (ajout compatible, journal du contrat).
+- C4 : le compteur de refus n'est remis à zéro que par une **consigne** acceptée. Une prise de contrôle acceptée suivie d'une consigne refusée aurait sinon bouclé sans fin.
+- **Défaut de contrat découvert en écrivant les tests :** dans la trame `state`, le champ `v` désigne à la fois la version et la vitesse, et la vitesse l'emporte. Le schéma `state` contenait ce champ en double. Correction par clarification du contrat (§1) ; renommage en `speed` prévu pour un contrat v2.
+- Le ré-envoi d'un `hello` par un même engine remet aussi `last_cmd_id` à 0 : une ancienne commande renvoyée après ce `hello` serait retraitée. Risque faible, noté pour le lot D.
