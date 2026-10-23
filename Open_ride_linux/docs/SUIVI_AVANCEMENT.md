@@ -1,6 +1,6 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
-Mise à jour : 23 octobre 2026
+Mise à jour : 23 octobre 2026 (fusions A2 et F)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 
 ---
@@ -32,6 +32,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] **Diagnostic BLE** (`openride-ble-diag`) : `scan`, `trainer`, `click`.
 - [x] **Conformité au contrat IPC** (lot C, 23 octobre) : commandes acceptées après un redémarrage de Godot, panne d'écriture du journal sans arrêt de la boucle (`recorder.py` : séance en mémoire, nouveau journal à la reprise), résumé de fin conforme, refus du contrôle FTMS remonté (`ERROR`), consigne ERG bornée, `hello_ack` et coefficient de difficulté tirés de la configuration.
 - [x] **Lecture des parcours** (lot A, 23 octobre) : `route.py` charge et valide un `.world`, interpole la route (Catmull-Rom centripète) et gère les boucles ; la séance charge le parcours demandé par son nom ; parcours de démonstration unique (`demo_world.py`).
+- [x] **Entraînements ERG** (lot F, 23 octobre) : `workout.py` lit les `.zwo` de `~/OpenRide/Workouts/` (intervalles dépliés, fichiers invalides listés avec leur erreur) ; la séance envoie la cible ERG lissée sur 2 s, biais ± 2 % et saut de bloc au Click, pause ERG à pente 0 %, roue libre en SIM avec les braquets, objet `erg` des trames `state` et `mode` / `block` dans le journal.
 - [x] **Simulateur** (`mock_driver.py`) : SIM, ERG, cadence, cardio, déconnexion.
 
 ### Module engine (`openride-engine`, Godot 4.3)
@@ -49,7 +50,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**75 tests `pytest` passent** (physique, braquets, FTMS, Click, journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale : 72 %. Côté Godot : 42 vecteurs de route vérifiés sans écran (`godot --headless --path engine --script res://tests/test_route_vectors.gd`).
+**103 tests `pytest` passent dans le core et 53 dans le compilateur** (physique, braquets, FTMS, Click, journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale : 72 %. Côté Godot : 42 vecteurs de route vérifiés sans écran (`godot --headless --path engine --script res://tests/test_route_vectors.gd`).
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
@@ -94,12 +95,13 @@ Restent ouverts : la conformité de Godot au contrat (lot D) et la stabilité du
 - [ ] Délai entre un appui et l'écriture de la commande au Victory.
 - [ ] Click : cause des déconnexions spontanées (environ 2 en 3 minutes le 22 octobre, reconnexion en 4 s environ).
 - [ ] Images par seconde de Godot, à relever quand le décor sera chargé (lot E1).
+- [ ] ERG (lot F) : un `.zwo` standard exécuté en entier sur le Victory, cibles tenues (critère 11 du lot F).
 
 ---
 
 ## 4. Ce qui reste à faire
 
-Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md).
+Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 (23 octobre) sont de petits lots indépendants, recettés sans matériel : intégration continue, tests Bluetooth, rejeu dans le simulateur, endurance simulée, validation FIT, analyseur de journal, schéma des thèmes, outils d'entraînements.
 
 ### Sprint 1 : fin
 - [ ] Séance de 10 minutes (§3).
@@ -110,11 +112,12 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Lecteur `.world` commun au core et à Godot, interpolation de Catmull-Rom, vecteurs de test partagés, parcours en boucle.
 
 ### Sprint 2 : compilateur (lots B1 et B2)
-- [ ] GPX vers couche route (ré-échantillonnage à 10 m, lissage de Savitzky-Golay, pente, cap, projection UTM).
-- [ ] Couche terrain (MNT Copernicus GLO-30, tuiles proches et lointaines, cache sans réseau à la relance).
+- [x] GPX vers couche route (ré-échantillonnage à 10 m, lissage de Savitzky-Golay, pente, cap, projection UTM).
+- [x] Couche terrain (MNT Copernicus GLO-30, tuiles proches et lointaines, cache sans réseau à la relance), lot B2. Essai réel : trace de 30 km dans l'Oisans, 4 tuiles (165 Mo) téléchargées en 17 s, recompilation hors ligne en 6 s.
+- [ ] Comparer la pente maximale d'une vraie trace de col avec Garmin Connect (à ± 1 point) et relever les écarts GPX / MNT affichés par `build`, pour ajuster le seuil d'altitude aberrante.
 
 ### Sprint 3 : rendu 3D (lots D, E1, puis E2 et E3 à rédiger)
-- [ ] Godot conforme au contrat (renvoi des commandes, extrapolation, core injoignable).
+- [x] Godot conforme au contrat (renvoi des commandes, extrapolation, core injoignable), lot D.
 - [ ] Ruban de route et terrain par tronçons.
 - [ ] Shader triplanaire et thèmes, arbres, HUD final avec profil d'altitude.
 
@@ -125,6 +128,6 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Écran d'état des appareils (trainer, Click, batterie du Click).
 
 ### Sprint 4 et suivants
-- [ ] Entraînements ERG `.zwo` (lot F).
+- [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le Victory à faire).
 - [ ] Couches OpenStreetMap (bâtiments, forêts).
 - [ ] Thèmes avec packs de textures.
