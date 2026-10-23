@@ -8,7 +8,7 @@
 | --- | --- | --- | --- | --- | --- |
 | [A](LOT_A_route.md) | Lecteur `.world` et interpolation de route partagés core/engine | Python + GDScript | — | Moyenne | **Livré le 23 octobre** |
 | [B1](LOT_B1_compilateur_route.md) | Compilateur : GPX vers `.world` (couche route) | Python | Aucune (A, livré, sert à la vérification croisée) | Moyenne | **Livré le 23 octobre** (fusionné ; tests non relancés par Claude : dépendances non installables dans son environnement) |
-| [B2](LOT_B2_compilateur_terrain.md) | Compilateur : couche terrain (MNT Copernicus, tuiles) | Python | B1 | Grande | Oui (B1 livré) |
+| [B2](LOT_B2_compilateur_terrain.md) | Compilateur : couche terrain (MNT Copernicus, tuiles) | Python | B1 | Grande | **Livré le 23 octobre** |
 | [C](LOT_C_core_conformite.md) | Mise en conformité du core avec le contrat IPC (défauts de l'audit) | Python | — | Petite | **Livré le 23 octobre** |
 | [D](LOT_D_engine_ipc.md) | Mise en conformité de l'engine avec le contrat IPC | GDScript | A (livré) | Moyenne | **Livré le 23 octobre** (tests sans écran 8/8 revérifiés) |
 | [E1](LOT_E1_rendu_route_terrain.md) | Rendu 3D : ruban de route et terrain par tronçons | GDScript | A (livré), D ; tuiles du format (B2 ou générateur fourni) | Grande | Oui (A et D livrés) |
@@ -26,7 +26,7 @@
 
 Leur forme dépendra des choix faits dans E1 et D.
 
-**Ordre conseillé :** A, B1, C et D sont livrés (23 octobre). Peuvent démarrer maintenant : B2, E1 (avec son générateur de terrain synthétique si B2 n'est pas prêt) et F.
+**Ordre conseillé :** A, B1, B2, C et D sont livrés (23 octobre). Peuvent démarrer maintenant : E1 (avec les tuiles réelles de B2) et F.
 
 Les lots livrés gardent leur cahier des charges, complété d'une section « Livraison » qui liste les écarts assumés.
 
