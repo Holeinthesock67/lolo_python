@@ -50,3 +50,8 @@ Aucune. `theme.schema.json` de `docs/contracts/` reste la référence.
 
 - Publication sur PyPI, paquet Debian, lanceur de bureau (lot G).
 - `route_vectors.py` (outil de développement, utilisé depuis le dépôt).
+
+## 9. Livraison partielle (23 octobre 2026)
+
+- **Fait directement :** `jsonschema>=4` passe dans les dépendances d'exécution du compilateur (`compiler/pyproject.toml`) ; `openride-compiler` démarre sans l'extra `[dev]`.
+- **Reste à confier :** ressources embarquées (`theme.schema.json`, `.zwo` de référence) avec test d'identité, et essai d'installation par roue (critères 2 et 3).

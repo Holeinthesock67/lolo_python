@@ -42,3 +42,8 @@ Aucune.
 
 - Test de bout en bout core + Godot (lot J8, qui ajoutera une étape à ce fichier après J5).
 - Publication de paquets ou de versions.
+
+## 9. Livraison partielle (23 octobre 2026)
+
+- **Fait directement :** concurrence (annulation seulement sur les demandes de fusion, chaque envoi sur `main` testé jusqu'au bout), exécution hebdomadaire (lundi 5 h UTC), étape `pip check`, `actions/checkout@v5` et `actions/setup-python@v6`.
+- **Reste à confier :** rapports JUnit publiés en artefact (critère 4), et vérification qu'aucun avertissement Node.js 20 ne subsiste (critère 5, `actions/cache` compris).
