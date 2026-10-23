@@ -56,6 +56,8 @@ INVALID_ZWOS = {
     "puissance_negative": "<workout_file><workout><Warmup Duration='60' PowerLow='-0.1' PowerHigh='0.5'/>"
                           "</workout></workout_file>",
     "trop_fort": "<workout_file><workout><SteadyState Duration='60' Power='3.5'/></workout></workout_file>",
+    "course_a_pied": "<workout_file><sportType>run</sportType><workout>"
+                     "<SteadyState Duration='60' Power='0.8'/></workout></workout_file>",
     "aucun_bloc": "<workout_file><name>vide</name><workout><textevent message='rien'/></workout></workout_file>",
 }
 
@@ -93,6 +95,14 @@ def test_reference_file_blocks(workouts_dir):
     expected += [("interval_on", 60, 1.2, 1.2), ("interval_off", 60, 0.5, 0.5)] * 3
     expected += [("freeride", 120, None, None), ("cooldown", 300, 0.7, 0.4)]
     assert [(b.type, b.duration_s, b.start_frac, b.end_frac) for b in w.blocks] == expected
+
+
+def test_metadata_tags_logged_at_debug_only(workouts_dir, caplog):
+    with caplog.at_level(logging.DEBUG, logger="workout"):
+        load_workout(workouts_dir / "reference.zwo")
+    assert not [r for r in caplog.records if r.levelno >= logging.WARNING]
+    debug = " ".join(r.getMessage() for r in caplog.records if r.levelno == logging.DEBUG)
+    assert "« author »" in debug and "« sportType »" in debug
 
 
 def test_unknown_tags_warn_once_per_name(workouts_dir, caplog):

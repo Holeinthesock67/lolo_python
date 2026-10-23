@@ -10,6 +10,8 @@
 Arrondi : la cible est arrondie au watt par `round()` de Python, qui arrondit les demis au pair
 (237,5 W donne 238 W, 212,5 W donne 212 W).
 Pendant un bloc `freeride`, il n'y a pas de cible : `target_w` vaut 0 et le core repasse en SIM.
+Les métadonnées `author`, `sportType` et `tags` sont notées au niveau DEBUG ; les autres balises
+inconnues (`textevent`, …) donnent un avertissement. Un `sportType` autre que `bike` est refusé.
 """
 
 from __future__ import annotations
@@ -40,7 +42,8 @@ _BLOCK_ATTRS: dict[str, set[str]] = {
     "intervalst": {"repeat", "onduration", "offduration", "onpower", "offpower"},
     "freeride": {"duration"},
 }
-_TOP_TAGS = {"name", "description", "workout"}
+# Métadonnées courantes des fichiers Zwift : sans effet sur la cible, notées au niveau DEBUG seulement.
+_META_TAGS = {"author", "sporttype", "tags"}
 
 
 class WorkoutError(Exception):
@@ -175,6 +178,10 @@ def parse_workout(text: str, workout_id: str, source: str = "<zwo>") -> Workout:
             description = (child.text or "").strip()
         elif tag == "workout":
             workout_el = child
+        elif tag in _META_TAGS:
+            if tag == "sporttype" and (child.text or "").strip().lower() not in ("", "bike"):
+                raise WorkoutError(f"entraînement de type « {child.text.strip()} », pas de vélo")
+            log.debug("%s : métadonnée « %s » ignorée.", source, child.tag)
         else:
             reader.warn("balise", child.tag)
     if workout_el is None:
