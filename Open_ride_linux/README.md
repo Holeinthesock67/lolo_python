@@ -62,8 +62,21 @@ unzip Godot_v4.3-stable_linux.x86_64.zip && chmod +x Godot_v4.3-stable_linux.x86
 Tests côté Godot, sans écran (depuis `Open_ride_linux/`) :
 
 ```bash
-~/Applications/godot/Godot_v4.3-stable_linux.x86_64 --headless --path engine --script res://tests/test_route_vectors.gd
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 ```
+
+Le script vérifie les vecteurs de route, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`).
+
+**Arguments de l'engine** (après `--`, hors contrat IPC) :
+
+| Argument | Défaut | Rôle |
+| --- | --- | --- |
+| `--ipc-state-port=N` | 5005 | Port d'écoute des trames du core ; s'il est occupé, l'engine quitte avec le code 1 |
+| `--ipc-cmd-port=N` | 5006 | Port de commandes du core |
+| `--routes-dir=CHEMIN` | `~/.local/share/openride/routes` | Dossier des parcours `<route_id>.world` (repli sur la démo embarquée pour `demo`) |
+| `--test-mode` | absent | Journal `[test]` pour les tests sans écran |
+
+Exemple : `godot --path engine -- --ipc-state-port=5005 --ipc-cmd-port=5006`. `scripts/openride-dev.sh` passe les ports de `config.toml`.
 
 ## Lancer une séance
 
