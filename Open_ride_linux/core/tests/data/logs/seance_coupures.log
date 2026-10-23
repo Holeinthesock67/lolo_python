@@ -1,0 +1,23 @@
+2026-10-22 19:00:00,000 INFO    core    Core démarré (trainer=ftms, entrées=click).
+2026-10-22 19:00:01,000 INFO    ftms_driver Trainer connecté (HomeTrainer 0000)
+2026-10-22 19:00:02,000 INFO    input   Zwift Click connecté
+2026-10-22 19:00:02,100 INFO    core    Séance : READY -> RUNNING
+2026-10-22 19:00:30,000 INFO    input   Click : PLUS_SHORT
+2026-10-22 19:01:00,000 INFO    core    Perf : pas p50 0.22 / p99 0.55 / max 1.40 ms ; retard p99 2.1 / max 6.0 ms ; CPU 3.8 %
+2026-10-22 19:01:10,000 WARNING input   Zwift Click déconnecté (veille ?) : appuyez sur un bouton pour le réveiller
+2026-10-22 19:01:16,000 WARNING input   Click : Zwift Click introuvable (appuyez sur un bouton)
+2026-10-22 19:01:22,000 INFO    input   Zwift Click connecté
+2026-10-22 19:01:25,000 INFO    input   Click : MINUS_SHORT
+2026-10-22 19:01:40,000 WARNING ftms_driver Trainer : plus de données du trainer
+2026-10-22 19:01:40,010 INFO    ftms_driver Reconnexion au trainer dans 1 s
+2026-10-22 19:01:43,000 WARNING core    Trainer perdu : pause automatique.
+2026-10-22 19:01:43,005 INFO    core    Séance : RUNNING -> PAUSED (trainer_lost)
+2026-10-22 19:01:48,000 INFO    ftms_driver Trainer connecté (HomeTrainer 0000)
+2026-10-22 19:01:48,020 INFO    core    Commande resume {} (id=0)
+2026-10-22 19:01:48,025 INFO    core    Séance : PAUSED -> RUNNING
+2026-10-22 19:02:00,000 INFO    core    Perf : pas p50 0.24 / p99 0.60 / max 1.80 ms ; retard p99 2.5 / max 8.0 ms ; CPU 4.0 %
+2026-10-22 19:02:15,000 WARNING input   Zwift Click déconnecté (veille ?) : appuyez sur un bouton pour le réveiller
+2026-10-22 19:02:21,000 INFO    input   Zwift Click connecté
+2026-10-22 19:02:30,000 WARNING ftms_driver Commande 0x11 refusée : CONTROL_NOT_PERMITTED
+2026-10-22 19:03:00,000 INFO    core    Arrêt du core…
+2026-10-22 19:03:00,050 INFO    core    Séance : RUNNING -> FINISHED
