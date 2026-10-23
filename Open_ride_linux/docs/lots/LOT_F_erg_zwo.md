@@ -176,3 +176,17 @@ Aucune. L'objet `erg` et les commandes existent déjà dans le contrat v1.
 - Bandeau d'entraînement, bips à T − 3 s et histogramme des blocs dans l'engine : lot à rédiger. Les champs `erg` du contrat suffisent.
 - Messages IPC pour lister les entraînements et les parcours dans un menu : à concevoir avec le lot G. Le contrat v1 n'en a pas encore.
 - Autres formats d'entraînement.
+
+## Livraison
+
+Livré le 23 octobre 2026 (PR #6, branche `lot-f-erg-zwo`), recetté et fusionné dans `main` le même jour.
+
+**Critères tenus :** 1 à 10, prouvés par `cd core && pytest -q tests/test_workout.py tests/test_contract_ipc.py` (suite complète du core verte).
+- Arrondi : `round()` de Python, demis au pair (237,5 W donne 238 W), documenté dans `workout.py`.
+- Roue libre : `target_w` vaut 0, le core repasse en SIM et les braquets fonctionnent.
+
+**Écarts assumés :**
+- `mock_driver.py` : `set_sim_grade` quitte le mode ERG, comme le trainer réel (nécessaire aux tests).
+- Un `sportType` autre que `bike` est refusé ; `author`, `sportType` et `tags` sont notés au niveau DEBUG.
+
+**Reste à faire sur le matériel :** critère 11, un `.zwo` standard exécuté en entier sur le Victory.
