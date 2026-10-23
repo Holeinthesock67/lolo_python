@@ -340,6 +340,7 @@ trainer_address = ""         # adresse MAC facultative
 click_address = ""
 click_short_max_s = 0.5
 click_long_min_s = 0.9
+mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
 
 [render]
 quality = "low"      # low, medium, high

@@ -73,6 +73,7 @@ class DriversConfig:
     click_address: str = ""
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
+    mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
 
 
 @dataclass
