@@ -7,6 +7,7 @@
 | Lot | Titre | Langage | Dépend de | Taille | Prêt à confier |
 | --- | --- | --- | --- | --- | --- |
 | [A](LOT_A_route.md) | Lecteur `.world` et interpolation de route partagés core/engine | Python + GDScript | — | Moyenne | **Livré le 23 octobre** |
+| [A2](LOT_A2_trace_demo.md) | Tracé de démonstration sans recouvrement (lacet) | Python | A (livré) | Petite | **Livré le 23 octobre** |
 | [B1](LOT_B1_compilateur_route.md) | Compilateur : GPX vers `.world` (couche route) | Python | Aucune (A, livré, sert à la vérification croisée) | Moyenne | Oui |
 | [B2](LOT_B2_compilateur_terrain.md) | Compilateur : couche terrain (MNT Copernicus, tuiles) | Python | B1 | Grande | Après B1 |
 | [C](LOT_C_core_conformite.md) | Mise en conformité du core avec le contrat IPC (défauts de l'audit) | Python | — | Petite | **Livré le 23 octobre** |
