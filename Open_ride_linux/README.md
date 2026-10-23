@@ -24,20 +24,22 @@ Open_ride_linux/
   compiler/    openride-compiler (Python) : GPX vers .world, à venir (lots B1 et B2)
 ```
 
-## État (23 octobre 2026)
+## État (23 octobre 2026, après les lots A et C)
 
 - **Sprint 0 terminé :** Victory, Click et FIT validés sur le matériel.
 - **Sprint 1 presque terminé :**
   - pilotes réels du Victory et du Click ;
   - boucle de séance (`openride-core run`) ;
   - Godot relié au core ;
-  - 42 tests automatiques.
-  - **Reste :** séance de 10 minutes, stabilité du Click et corrections de conformité (lot C).
+  - conformité au contrat IPC (lot C) ;
+  - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
+  - 75 tests automatiques côté core, 42 vecteurs de route vérifiés côté Godot.
+  - **Reste :** séance de 10 minutes et stabilité du Click.
 - **Pas encore commencés :**
-  - lecture des vrais parcours (lot A) ;
-  - compilateur GPX (sprint 2) ;
-  - rendu 3D (sprint 3).
-  - Le parcours utilisé est pour l'instant un parcours de démonstration.
+  - compilateur GPX (sprint 2, lots B1 et B2) ;
+  - Godot conforme au contrat (lot D) ;
+  - rendu 3D (sprint 3, lot E1).
+  - Le parcours utilisé est le parcours de démonstration `demo`, créé automatiquement dans `~/.local/share/openride/routes/`.
 
 ## Installation (PC Ubuntu)
 
@@ -55,6 +57,12 @@ Godot 4.3 (version standard, pas .NET) :
 mkdir -p ~/Applications/godot && cd ~/Applications/godot
 wget https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
 unzip Godot_v4.3-stable_linux.x86_64.zip && chmod +x Godot_v4.3-stable_linux.x86_64
+```
+
+Tests côté Godot, sans écran (depuis `Open_ride_linux/`) :
+
+```bash
+~/Applications/godot/Godot_v4.3-stable_linux.x86_64 --headless --path engine --script res://tests/test_route_vectors.gd
 ```
 
 ## Lancer une séance
