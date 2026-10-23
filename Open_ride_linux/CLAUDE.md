@@ -38,6 +38,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 
 **Modules clés du core** (`core/src/openride_core/`) :
 - `session.py` : boucle principale ;
+- `launcher.py` : lanceur unique `openride` (core + Godot, relance de Godot s'il plante, arrêt propre sur fermeture et signaux) ;
 - `ftms_driver.py` : pilote du HomeTrainer ;
 - `input_providers.py` : Click et clavier ;
 - `ble_util.py` : verrou BLE, repli BlueZ ;
@@ -68,6 +69,7 @@ GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engin
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
 scripts/openride-dev.sh --trainer mock --input keyboard --autostart        # sans vélo
+openride --trainer mock --input keyboard --autostart                       # même chose en Python, avec relance de Godot (lot K6)
 openride-core run --replay ~/OpenRide/Activities/<séance>.fit --input keyboard --autostart   # rejoue une séance réelle
 
 # Après un essai (depuis core/) : résumé du journal (Perf, pertes trainer et Click, pauses)
