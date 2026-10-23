@@ -28,7 +28,7 @@ Open_ride_linux/
   compiler/    openride-compiler (Python) : GPX vers .world, couches route et terrain (lots B1 et B2)
 ```
 
-## État (23 octobre 2026, après les lots A, A2, B1, B2, C, D et F)
+## État (23 octobre 2026, après les lots A, A2, B1, B2, C, D, F et H1 à H4)
 
 - **Sprint 0 terminé :** HomeTrainer, Click et FIT validés sur le matériel.
 - **Sprint 1 presque terminé :**
@@ -38,7 +38,7 @@ Open_ride_linux/
   - conformité au contrat IPC (lot C) ;
   - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
   - Godot conforme au contrat : renvoi des commandes, extrapolation de la caméra, core injoignable (lot D) ;
-  - 75 tests automatiques côté core ; côté Godot, 42 vecteurs de route et 8 scénarios IPC sans écran.
+  - 130 tests automatiques côté core (dont recherche BLE sans matériel, rejeu JSONL/FIT et endurance de 3 h) ; côté Godot, 42 vecteurs de route et 8 scénarios IPC sans écran, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
   - **Reste :** séance de 10 minutes et stabilité du Click.
 - **Sprint 2 terminé côté code :** compilateur GPX vers `.world`, couches route (lot B1) et terrain avec le MNT Copernicus (lot B2). Reste la comparaison avec Garmin Connect sur une vraie trace.
 - **Pas encore commencés :** rendu 3D (sprint 3, lot E1) et entraînements ERG (lot F).
