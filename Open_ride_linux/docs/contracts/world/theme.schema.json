@@ -1,0 +1,137 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideTheme",
+  "description": "Thème visuel OpenRide (Format .world v1, §9).",
+  "type": "object",
+  "required": [
+    "version"
+  ],
+  "additionalProperties": true,
+  "$defs": {
+    "hexColor": {
+      "type": "string",
+      "pattern": "^#[0-9a-fA-F]{6}$"
+    },
+    "surfaceLayer": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "texture": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "color": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "scale_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1
+    },
+    "terrain": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "grass": {
+          "$ref": "#/$defs/surfaceLayer"
+        },
+        "rock": {
+          "$ref": "#/$defs/surfaceLayer"
+        },
+        "snow": {
+          "$ref": "#/$defs/surfaceLayer"
+        },
+        "slope_threshold_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 90
+        },
+        "snow_line_m": {
+          "type": "number"
+        },
+        "blend_sharpness": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "road": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "texture": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "color": {
+          "$ref": "#/$defs/hexColor"
+        },
+        "width_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        }
+      }
+    },
+    "buildings": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "walls": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hexColor"
+          }
+        },
+        "roofs": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/hexColor"
+          }
+        }
+      }
+    },
+    "vegetation": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "treeline_m": {
+          "type": "number"
+        },
+        "max_density_per_ha": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "sky": {
+      "type": "object",
+      "additionalProperties": true,
+      "properties": {
+        "sun_elevation_deg": {
+          "type": "number",
+          "minimum": -90,
+          "maximum": 90
+        },
+        "fog_density": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    }
+  }
+}
