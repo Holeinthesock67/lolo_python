@@ -26,6 +26,20 @@ if ! "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_route_ve
 fi
 if [ "${PIPESTATUS[0]}" -ne 0 ]; then status=1; fi
 
+echo "== ERG (lot I6) =="
+python3 "$ENGINE_DIR/tests/fake_core.py" --erg-workout --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &
+ERG_FAKE_PID=$!
+sleep 0.2
+ERG_OUT="$("$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_erg_view_model.gd -- --ipc-state-port="$STATE_PORT" --ipc-cmd-port="$CMD_PORT" 2>&1)"
+erg_rc=$?
+wait "$ERG_FAKE_PID"
+erg_fake_rc=$?
+echo "$ERG_OUT" | grep -v "^Godot Engine" || true
+if [ "$erg_rc" -ne 0 ] || [ "$erg_fake_rc" -ne 0 ]; then status=1; fi
+erg_issues="$(echo "$ERG_OUT" | grep -E "SCRIPT ERROR|ERROR:|WARNING:" \
+  | grep -v -E "ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)" || true)"
+if [ -n "$erg_issues" ]; then echo "$erg_issues"; status=1; fi
+
 echo "== Scénarios IPC (journal de l'engine : $ENGINE_LOG) =="
 : >"$ENGINE_LOG"
 FAKE_ARGS=(--state-port "$STATE_PORT" --cmd-port "$CMD_PORT" --engine-log "$ENGINE_LOG")

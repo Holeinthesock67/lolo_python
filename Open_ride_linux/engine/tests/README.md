@@ -10,6 +10,7 @@ GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engin
 Le script renvoie 0 si tout passe. Il enchaîne :
 
 1. **Vecteurs de route** (`test_route_vectors.gd`, lot A) : `route_data.gd` contre `docs/contracts/world/route_test_vectors.json`.
+2. **ERG** (`test_erg_view_model.gd`, lot I6) : modèle de vue ERG (`erg_view_model.gd`), histogramme `profile_bars` et scénario des 10 blocs face à `fake_core.py --erg-workout` (bips à T − 3 s ± 0,1 s).
 2. **Scénarios IPC** : `fake_core.py` (Python 3, bibliothèque standard) joue le rôle du core ; l'engine tourne sans écran avec `--test-mode`.
 3. **Contrôle de la sortie de Godot** : aucune erreur ni aucun avertissement de script, hors avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
 
