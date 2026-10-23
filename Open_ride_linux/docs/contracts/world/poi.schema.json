@@ -1,0 +1,67 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldPoiChunk",
+  "description": "Tronçon de 1 km de la couche points d'intérêt (Format .world v1, §8).",
+  "type": "object",
+  "required": [
+    "version",
+    "points"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "points": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "x",
+          "y",
+          "z",
+          "radius_m",
+          "name"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "church_bell",
+              "river",
+              "livestock",
+              "village",
+              "viewpoint"
+            ]
+          },
+          "x": {
+            "type": "number"
+          },
+          "y": {
+            "type": "number"
+          },
+          "z": {
+            "type": "number"
+          },
+          "radius_m": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

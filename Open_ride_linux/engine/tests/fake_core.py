@@ -420,15 +420,111 @@ SCENARIOS: dict[int, tuple[str, Callable[[FakeCore], str]]] = {
 # Ordre d'exécution : le scénario 1 exige un engine qui vient de démarrer.
 RUN_ORDER = [1, 2, 3, 6, 7, 4, 5, 8]
 
+REFERENCE_ERG_BLOCKS: list[tuple[str, float, int, int | None]] = [
+    ("warmup", 600.0, 125, 238),
+    ("steady", 1200.0, 238, 300),
+    ("interval_on", 60.0, 300, 125),
+    ("interval_off", 60.0, 125, 300),
+    ("interval_on", 60.0, 300, 125),
+    ("interval_off", 60.0, 125, 300),
+    ("interval_on", 60.0, 300, 125),
+    ("interval_off", 60.0, 125, 0),
+    ("freeride", 120.0, 0, 175),
+    ("cooldown", 300.0, 175, None),
+]
+
+
+def run_erg_workout_stream(state_port: int, cmd_port: int) -> int:
+    """Émet les trames `state` avec `erg` pour les 10 blocs de référence du lot F (lot I6 §4.2)."""
+    rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    rx.bind(("127.0.0.1", cmd_port))
+    rx.settimeout(5.0)
+    tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    try:
+        # Attend le signal de démarrage (« hello ») du script de test Godot
+        rx.recvfrom(4096)
+    except TimeoutError:
+        print("fake_core --erg-workout : aucun hello reçu sur le port de commandes", file=sys.stderr)
+        return 1
+    finally:
+        rx.close()
+
+    dt = 1.0 / STATE_HZ
+    seq = 0
+    sim_t = 0.0
+
+    def send_workout_pass(workout_name: str, pause_block_idx: int | None) -> None:
+        nonlocal seq, sim_t
+        n_blocks = len(REFERENCE_ERG_BLOCKS)
+        for idx, (b_type, b_total, target_w, next_w) in enumerate(REFERENCE_ERG_BLOCKS, start=1):
+            # Pour chaque bloc (tous >= 60 s), on émet les 4,5 dernières secondes à 30 Hz
+            steps = int(round(4.5 * STATE_HZ))
+            for step in range(steps):
+                rem_s = round(max(4.5 - step * dt, 0.0), 2)
+                paused = (pause_block_idx == idx and rem_s <= 3.1)
+                seq += 1
+                sim_t += dt
+                frame = {
+                    "v": SPEED_MPS,
+                    "type": "state",
+                    "seq": seq,
+                    "ts_ms": int(round(sim_t * 1000.0)),
+                    "session": "RUNNING",
+                    "mode": "ERG",
+                    "route_id": "demo",
+                    "s": 100.0,
+                    "d": 100.0,
+                    "t": round(sim_t, 2),
+                    "p": target_w,
+                    "p3": target_w,
+                    "cad": 90,
+                    "hr": None,
+                    "gear": 12,
+                    "gear_max": 24,
+                    "g": 0.0,
+                    "g_sim": 0.0,
+                    "erg": {
+                        "workout_name": workout_name,
+                        "block_index": idx,
+                        "block_count": n_blocks,
+                        "block_type": b_type,
+                        "block_remaining_s": rem_s,
+                        "block_total_s": b_total,
+                        "target_w": target_w,
+                        "next_target_w": next_w,
+                        "bias_pct": 100,
+                        "paused": paused,
+                    },
+                    "ble": {"trainer": "connected", "click": "connected"},
+                    "last_cmd_id": 0,
+                }
+                tx.sendto(json.dumps(frame, separators=(",", ":")).encode("utf-8"), ("127.0.0.1", state_port))
+                time.sleep(0.001)
+
+    # Passe 1 : 10 blocs sans pause -> 10 bips attendus
+    send_workout_pass("Référence lot F", pause_block_idx=None)
+    # Passe 2 : 10 blocs avec pause pendant les 3 dernières secondes du bloc 4 -> 0 bip au bloc 4
+    send_workout_pass("Référence lot F (pause)", pause_block_idx=4)
+
+    tx.sendto(json.dumps({"type": "shutdown", "v": CONTRACT_VERSION}).encode("utf-8"), ("127.0.0.1", state_port))
+    tx.close()
+    return 0
+
 
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--state-port", type=int, default=5005)
     ap.add_argument("--cmd-port", type=int, default=5006)
-    ap.add_argument("--engine-log", type=Path, required=True)
+    ap.add_argument("--engine-log", type=Path, default=None)
     ap.add_argument("--scenarios", default=",".join(map(str, RUN_ORDER)),
                     help="numéros à jouer, dans l'ordre (le 1 doit venir en premier)")
+    ap.add_argument("--erg-workout", action="store_true",
+                    help="émet un entraînement ERG simulé (10 blocs du lot F) pour le test du lot I6")
     args = ap.parse_args()
+    if args.erg_workout:
+        return run_erg_workout_stream(args.state_port, args.cmd_port)
+    if args.engine_log is None:
+        ap.error("--engine-log est requis hors --erg-workout")
     wanted = [int(x) for x in args.scenarios.split(",") if x.strip()]
 
     core = FakeCore(args.state_port, args.cmd_port, EngineLog(args.engine_log))
