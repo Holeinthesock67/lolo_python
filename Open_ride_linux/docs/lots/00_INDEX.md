@@ -33,7 +33,7 @@
 | [J3](LOT_J3_configuration_validee.md) | Configuration validée (types, bornes) et erreurs lisibles | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
 | [J4](LOT_J4_paquetage_autonome.md) | Paquets installables hors du dépôt (dépendance `jsonschema`, ressources embarquées) | Python | — | Petite | Oui (dépendance `jsonschema` faite ; reste les ressources embarquées) |
 | [J5](LOT_J5_integration_continue_v2.md) | Intégration continue : chaque état de `main` testé, exécution hebdomadaire, actions à jour | YAML | — | Petite | Oui (concurrence, hebdomadaire, `pip check` et actions faits ; reste JUnit) |
-| [J6](LOT_J6_parite_catalogue.md) | Une seule logique de catalogue des parcours (core et repli du compilateur) | Python | — | Petite | Oui |
+| [J6](LOT_J6_parite_catalogue.md) | Une seule logique de catalogue des parcours (core et repli du compilateur) | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
 | [J7](LOT_J7_coherence_doc_etendue.md) | Cohérence de la documentation, deuxième passe (caractères, liens, nombres de tests) | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
 | [J8](LOT_J8_bout_en_bout_sans_ecran.md) | Essai de bout en bout sans écran : vrai core et vrai engine | Bash + Python | J5 (`openride.yml`) | Moyenne | Après J5 |
 
@@ -51,7 +51,7 @@
 
 Leur forme dépendra des choix faits dans E1 et D.
 
-**Ordre conseillé :** A, A2, B1, B2, C, D, F, H1 à H8 et I1 à I6 sont livrés (23 octobre). E1 est fait et attend l'essai sur le PC cible (PR #7). I5 et I6 ont été fusionnés **avant** E1, contrairement à l'ordre prévu ; le conflit qui en résultait dans `engine/tests/` est résolu sur la branche d'E1 (les trois étapes rendu, thèmes et ERG s'enchaînent). Série J (audit J du 23 octobre au soir) : J2, J3 et J7 sont livrés, J4 et J5 en partie ; J1, le reste de J4 et J5 et J6 peuvent démarrer en parallèle, J8 après J5. J1 est le plus utile pour les essais sur le vélo (parcours compilés et essai ERG). Le conflit de la PR #7 avec `main` a été résolu sur sa branche le 23 octobre au soir.
+**Ordre conseillé :** A, A2, B1, B2, C, D, F, H1 à H8 et I1 à I6 sont livrés (23 octobre). E1 est fait et attend l'essai sur le PC cible (PR #7). I5 et I6 ont été fusionnés **avant** E1, contrairement à l'ordre prévu ; le conflit qui en résultait dans `engine/tests/` est résolu sur la branche d'E1 (les trois étapes rendu, thèmes et ERG s'enchaînent). Série J (audit J du 23 octobre au soir) : J2, J3, J6 et J7 sont livrés, J4 et J5 en partie ; J1 et le reste de J4 et J5 peuvent démarrer en parallèle, J8 après J5. J1 est le plus utile pour les essais sur le vélo (parcours compilés et essai ERG). Le conflit de la PR #7 avec `main` a été résolu sur sa branche le 23 octobre au soir.
 
 **Lots H, I et J (23 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I et J ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
 
@@ -65,7 +65,7 @@ A ──► B1 ──► B2 ──┬──► E1 ──┬──► I5 ──�
 └──► D ───────────┘
 B2 ──► I2 ──► G       B2 ──► I3 ──► I4 ;  I3 ──► E4
 C ──► F ──► H8        H1 à H8, I1 : indépendants
-J5 ──► J8             J1, J4, J6 : indépendants (J2, J3, J7 livrés)
+J5 ──► J8             J1, J4 : indépendants (J2, J3, J6, J7 livrés)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)

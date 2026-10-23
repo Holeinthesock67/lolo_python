@@ -466,7 +466,10 @@ class CoreSession:
                 next_check = now + 0.5
                 self.server.check_liveness()
             if now >= next_state:
-                next_state = now + DT_STATE
+                # Échéances fixes : « now + DT_STATE » ne tomberait qu'un pas de 20 ms sur deux (25 Hz).
+                next_state += DT_STATE
+                if next_state <= now:   # retard de plus d'une trame : on se recale
+                    next_state = now + DT_STATE
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S
