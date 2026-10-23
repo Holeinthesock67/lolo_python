@@ -32,12 +32,12 @@ class Gearing:
     def ratio(self) -> float:
         return self.ratios[self.k - 1]
 
-    def shift_up(self) -> int:
-        self.k = min(self.k + 1, self.cfg.n_gears)
+    def shift_up(self, n: int = 1) -> int:
+        self.k = min(self.k + n, self.cfg.n_gears)
         return self.k
 
-    def shift_down(self) -> int:
-        self.k = max(self.k - 1, 1)
+    def shift_down(self, n: int = 1) -> int:
+        self.k = max(self.k - n, 1)
         return self.k
 
     def effective_grade(self, terrain_grade_pct: float) -> float:

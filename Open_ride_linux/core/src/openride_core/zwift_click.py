@@ -5,7 +5,8 @@ sprint 0 :
 - service propriétaire 00000001-19ca-4651-86e5-fa29dcdd09d1 ;
 - handshake sans chiffrement : écrire b"RideOn" sur SYNC_RX, la réponse arrive sur SYNC_TX ;
 - notifications des boutons sur ASYNC : 1 octet de type puis un message protobuf.
-  Type 0x37 (Click) : champ 1 = bouton +, champ 2 = bouton −, valeur 0 = appuyé, 1 = relâché.
+  Type 0x37 (Click ancien) : champ 1 = bouton +, champ 2 = bouton −, valeur 0 = appuyé, 1 = relâché.
+  Type 0x23 (Click récent, mesuré) : champ 1 = tableau de bits, 0 = appuyé ; bit 12 = +, bit 8 = −.
 """
 
 from __future__ import annotations
@@ -26,9 +27,14 @@ MSG_CONTROLLER_NOTIFICATION = 0x07  # Zwift Play
 MSG_EMPTY = 0x15
 MSG_BATTERY_LEVEL = 0x19
 MSG_CLICK_NOTIFICATION = 0x37
+# Zwift Click récent (mesuré au sprint 0) : état des boutons envoyé en continu (~10 Hz).
+MSG_KEYPAD_STATUS = 0x23
+KEYPAD_ALL_RELEASED = 0xFFFFFFFF
+KEYPAD_PLUS_BIT = 12   # bit à 0 = appuyé ; à confirmer sur le matériel (sprint 0)
+KEYPAD_MINUS_BIT = 8
 
 SHORT_MAX_S = 0.500
-LONG_MIN_S = 1.200
+LONG_MIN_S = 0.900   # abaissé de 1,2 s après essai réel (appuis longs naturels : 0,7 à 1,1 s)
 
 
 class InputEvent(str, enum.Enum):
@@ -93,6 +99,11 @@ def parse_async(data: bytes) -> tuple[int, dict[int, int]]:
 
 def parse_click_buttons(data: bytes) -> ClickButtons | None:
     msg_type, fields = parse_async(data)
+    if msg_type == MSG_KEYPAD_STATUS:
+        # Tableau de bits : un bit à 0 signifie « appuyé » ; champ absent = rien d'appuyé.
+        mask = fields.get(1, KEYPAD_ALL_RELEASED) & 0xFFFFFFFF
+        return ClickButtons(plus_pressed=not (mask >> KEYPAD_PLUS_BIT) & 1,
+                            minus_pressed=not (mask >> KEYPAD_MINUS_BIT) & 1)
     if msg_type != MSG_CLICK_NOTIFICATION:
         return None
     # Sémantique proto3 : un champ absent vaut 0, c'est-à-dire « appuyé ».
@@ -102,7 +113,7 @@ def parse_click_buttons(data: bytes) -> ClickButtons | None:
 class PressClassifier:
     """Transforme les états appuyé/relâché horodatés en événements normalisés.
 
-    L'événement est émis au relâchement : moins de 500 ms -> court, 1 200 ms ou plus -> long,
+    L'événement est émis au relâchement : moins de 500 ms -> court, 900 ms ou plus -> long,
     entre les deux -> ignoré (SRS §4.2).
     """
 

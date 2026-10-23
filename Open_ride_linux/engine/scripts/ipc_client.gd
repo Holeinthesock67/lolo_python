@@ -1,4 +1,3 @@
-class_name IpcClient
 extends Node
 
 ## Client IPC UDP localhost pour OpenRide Engine (Contrat IPC v1).
@@ -17,6 +16,10 @@ var _peer := PacketPeerUDP.new()
 var _heartbeat_timer := 0.0
 var _cmd_id_counter := 0
 var last_state_seq := -1
+var _hello_acked := false
+var _hello_timer := 0.0
+var _hb_thread: Thread
+var _hb_stop := false
 
 
 func _ready() -> void:
@@ -26,14 +29,37 @@ func _ready() -> void:
 	else:
 		print("IpcClient attaché sur ", SERVER_HOST, ":", PORT_STATE)
 		send_hello()
+		# Heartbeat dans un fil séparé : il prouve que le programme est vivant même si le rendu
+		# saccade ou se bloque (fenêtre masquée, vsync…). Socket propre à ce fil.
+		_hb_thread = Thread.new()
+		_hb_thread.start(_heartbeat_loop)
+
+
+func _heartbeat_loop() -> void:
+	var sock := PacketPeerUDP.new()
+	sock.set_dest_address(SERVER_HOST, PORT_COMMANDS)
+	while not _hb_stop:
+		var payload := JSON.stringify({
+			"type": "heartbeat",
+			"v": CONTRACT_VERSION,
+			"seq": Time.get_ticks_msec(),
+			"fps": Engine.get_frames_per_second()
+		}).to_utf8_buffer()
+		sock.put_packet(payload)
+		OS.delay_msec(500)
+	sock.close()
 
 
 func _process(delta: float) -> void:
-	_heartbeat_timer += delta
-	if _heartbeat_timer >= 0.5: # 2 Hz
-		_heartbeat_timer = 0.0
-		send_heartbeat()
-	
+	# Diagnostic : un gel de l'engine (rendu bloqué, fenêtre masquée…) coupe les heartbeats.
+	if delta > 0.4:
+		print("[diag] gel de l'engine : image de %.2f s (FPS moyen %d)" % [delta, Engine.get_frames_per_second()])
+	# Contrat IPC §5 : hello répété chaque seconde jusqu'au hello_ack (le core peut démarrer après).
+	if not _hello_acked:
+		_hello_timer += delta
+		if _hello_timer >= 1.0:
+			_hello_timer = 0.0
+			send_hello()
 	_poll_incoming()
 
 
@@ -56,13 +82,16 @@ func _poll_incoming() -> void:
 				var ev_name: String = json_obj.get("event", "")
 				input_event_received.emit(ev_name)
 			"hello_ack":
+				_hello_acked = true
 				hello_ack_received.emit(json_obj)
 
 
 func _send_json(dict: Dictionary) -> void:
 	var payload := JSON.stringify(dict).to_utf8_buffer()
 	_peer.set_dest_address(SERVER_HOST, PORT_COMMANDS)
-	_peer.put_packet(payload)
+	var err := _peer.put_packet(payload)
+	if err != OK:
+		print("[diag] envoi UDP en échec (code ", err, ") : ", dict.get("type", "?"))
 
 
 func send_hello() -> void:
@@ -95,6 +124,9 @@ func send_command(cmd_name: String, args: Dictionary = {}) -> int:
 
 
 func _exit_tree() -> void:
+	_hb_stop = true
+	if _hb_thread:
+		_hb_thread.wait_to_finish()
 	_send_json({
 		"type": "bye",
 		"v": CONTRACT_VERSION

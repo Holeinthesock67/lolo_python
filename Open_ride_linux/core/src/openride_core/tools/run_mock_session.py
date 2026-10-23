@@ -173,6 +173,7 @@ class CoreSession:
 
 def main() -> None:
     logging.basicConfig(
+        force=True,
         level=logging.INFO,
         format="%(asctime)s %(levelname)-7s %(name)s %(message)s",
         datefmt="%H:%M:%S",
