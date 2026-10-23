@@ -10,7 +10,6 @@ et Garmin Connect.
 from __future__ import annotations
 
 import argparse
-import bisect
 import math
 import time
 from pathlib import Path
@@ -19,28 +18,8 @@ from ..config import Config
 from ..fit_export import journal_to_fit
 from ..journal import JournalWriter, Record
 from ..physics import DT_DEFAULT, PhysicsParams, RiderPhysics
-from .fake_world import build_route
-
-
-class LinearRoute:
-    """Lecture simplifiée de la couche route (interpolation linéaire).
-
-    Provisoire : la règle officielle (Catmull-Rom centripète pour la position) arrivera
-    avec le module route du sprint 1.
-    """
-
-    def __init__(self, route: dict) -> None:
-        self.r = route
-        self.length = route["length_m"]
-        self.s = [min(i * route["ds_m"], self.length) for i in range(route["n"])]
-
-    def sample(self, key: str, s: float) -> float:
-        s = min(max(s, 0.0), self.length)
-        i = min(bisect.bisect_right(self.s, s) - 1, len(self.s) - 2)
-        s0, s1 = self.s[i], self.s[i + 1]
-        u = (s - s0) / (s1 - s0) if s1 > s0 else 0.0
-        a, b = self.r[key][i], self.r[key][i + 1]
-        return a + (b - a) * u
+from ..route import Route
+from ..demo_world import build_route
 
 
 def demo_power(t: float, total: float) -> float:
@@ -58,7 +37,7 @@ def demo_power(t: float, total: float) -> float:
 
 def run(minutes: float, out_dir: Path) -> Path:
     cfg = Config()
-    route = LinearRoute(build_route(30_000.0))
+    route = Route(build_route(30_000.0))
     phys = RiderPhysics(PhysicsParams.from_config(cfg))
     total = minutes * 60.0
     start_wall = time.time() - total - 60.0   # séance « passée » pour des horodatages réalistes
@@ -76,8 +55,8 @@ def run(minutes: float, out_dir: Path) -> Path:
                 j.event("resume", wall)
                 paused = True
             p = demo_power(t_session, total)
-            grade = route.sample("grade_pct", phys.s)
-            alt = route.sample("alt_m", phys.s)
+            here = route.sample(phys.s)
+            grade, alt = here.grade_pct, here.alt_m
             phys.step(p, grade, alt, DT_DEFAULT)
             t_session += DT_DEFAULT
             wall += DT_DEFAULT
@@ -85,7 +64,7 @@ def run(minutes: float, out_dir: Path) -> Path:
                 next_log += 1.0
                 j.record(Record(
                     ts=round(wall, 3), t=round(t_session, 2),
-                    lat=route.sample("lat", phys.s), lon=route.sample("lon", phys.s),
+                    lat=here.lat, lon=here.lon,
                     alt=round(alt, 2), distance=round(phys.s, 2), speed=round(phys.v, 3),
                     power=round(p), cadence=round(85 + 5 * math.sin(t_session / 11.0)),
                     hr=int(110 + 0.15 * p), grade=round(grade, 2), gear=12,

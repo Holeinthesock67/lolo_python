@@ -93,7 +93,18 @@ Chaque tableau compte exactement `n` valeurs.
 | `heading_deg` | Cap lissé sur environ 30 m |
 | `x`, `z` | Position dans le repère du monde (§3) |
 
-**Règle d'interpolation, identique en Python et en GDScript :** entre deux points, la position (x, alt_m, z) est interpolée par spline de Catmull-Rom centripète ; `grade_pct` et les autres grandeurs scalaires le sont linéairement ; le cap est interpolé par l'angle le plus court. Des vecteurs de test (valeurs de `s` et résultats attendus) sont publiés avec le format pour que les deux implémentations donnent les mêmes valeurs.
+**Règle d'interpolation, identique en Python et en GDScript (précisée le 23 octobre 2026) :**
+
+- Abscisses des points : `s_i = i × ds_m` pour `i < n − 1`, et `s_{n−1} = length_m`.
+- Pour une position `s` : un parcours `loop` la ramène modulo `length_m`, les autres la bornent à `[0, length_m]`. Le segment `[i, i+1]` qui contient `s` donne `u = (s − s_i) / (s_{i+1} − s_i)` ; au point final, `i = n − 2`.
+- `grade_pct`, `lat`, `lon`, `alt_m` : interpolation linéaire en `u`.
+- Cap : `h_i + u × d`, où `d` est l'écart le plus court de `h_i` vers `h_{i+1}` (dans ]−180, 180]), ramené dans [0, 360).
+- Position `(x, alt_m, z)` : Catmull-Rom centripète (Barry-Goldman, α = 0,5) sur `P_{i−1}, P_i, P_{i+1}, P_{i+2}`, distances mesurées en 3D. Nœuds `t0 = 0`, `t1 = t0 + |P_i − P_{i−1}|^0,5`, `t2 = t1 + |P_{i+1} − P_i|^0,5`, `t3 = t2 + |P_{i+2} − P_{i+1}|^0,5` (toute distance inférieure à 1e-6 m vaut 1e-6 m), paramètre `t = t1 + u × (t2 − t1)`, puis :
+  `A1 = (t1−t)/(t1−t0)·P_{i−1} + (t−t0)/(t1−t0)·P_i`, `A2 = (t2−t)/(t2−t1)·P_i + (t−t1)/(t2−t1)·P_{i+1}`, `A3 = (t3−t)/(t3−t2)·P_{i+1} + (t−t2)/(t3−t2)·P_{i+2}`, `B1 = (t2−t)/(t2−t0)·A1 + (t−t0)/(t2−t0)·A2`, `B2 = (t3−t)/(t3−t1)·A2 + (t−t1)/(t3−t1)·A3`, `C = (t2−t)/(t2−t1)·B1 + (t−t1)/(t2−t1)·B2`.
+- Extrémités d'un parcours ouvert : points fantômes `P_{−1} = 2·P_0 − P_1` et `P_n = 2·P_{n−1} − P_{n−2}`. Boucle : indices circulaires sur les `n − 1` points distincts (le voisin avant `P_0` est `P_{n−2}`, le voisin après `P_{n−1} = P_0` est `P_1`). `out_and_back` se lit comme `open`.
+- Près d'un segment plus court que `ds_m`, la spline centripète avance à vitesse légèrement non uniforme : c'est attendu.
+
+**Vecteurs de test :** `docs/contracts/world/route_test_vectors.json`, générés par l'implémentation de référence (`python -m openride_core.tools.route_vectors`) et vérifiés en GDScript (`engine/tests/test_route_vectors.gd`). Schémas : `docs/contracts/world/manifest.schema.json` et `route.schema.json`.
 
 Le core lit cette couche pour la pente, les coordonnées géographiques et la longueur ; l'engine pour la position et l'orientation de la caméra.
 
@@ -314,3 +325,10 @@ Themes/alpes-ete/
 | Total | 5 à 15 Mo environ |
 
 Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
+
+## 12. Journal des changements
+
+| Version | Date | Changement |
+| --- | --- | --- |
+| 1.0 | 21 octobre 2026 | Première version |
+| 1.0 | 23 octobre 2026 | Précision, sans changement de format : règle exacte d'interpolation de la route (§4), vecteurs de test et schémas publiés. Projection `local_equirectangular` tolérée pour les parcours synthétiques de démonstration |

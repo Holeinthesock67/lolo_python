@@ -163,7 +163,8 @@ def make_session(tmp_path, monkeypatch, driver=None, base_port=5700):
     cfg = Config()
     cfg.ipc.port_state, cfg.ipc.port_commands = base_port, base_port + 1
     return CoreSession(cfg, driver=driver or MockDriver(), inputs=[NullProvider()],
-                       journal_dir=tmp_path / "journal")
+                       journal_dir=tmp_path / "journal",
+                       routes_root=tmp_path / "routes")
 
 
 def test_session_ride_gears_and_fit(tmp_path, monkeypatch):
@@ -250,7 +251,7 @@ def test_gear_shift_bypasses_grade_rate_limit(tmp_path, monkeypatch):
         for _ in range(8):
             s._handle_input(InputEvent.PLUS_SHORT)
         s._step(0.02, 61.0)
-        target = s.gearing.effective_grade(s.route.sample("grade_pct", s.physics.s))
+        target = s.gearing.effective_grade(s.route.grade_at(s.physics.s))
         assert abs(s._grade_sent - target) < 0.5 and abs(s._grade_sent - before) > 0.04
     asyncio.run(scenario())
 

@@ -25,8 +25,8 @@ from .journal import JOURNAL_DIR, Record
 from .mock_driver import MockDriver
 from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
-from .tools.fake_world import build_route
-from .tools.fit_demo import LinearRoute
+from .demo_world import ensure_demo_world
+from .route import Route, WorldError, find_world, load_world, routes_dir
 from .zwift_click import InputEvent
 
 log = logging.getLogger("core")
@@ -94,14 +94,15 @@ def build_inputs(cfg: Config) -> list[Any]:
 
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
-                 journal_dir: Path = JOURNAL_DIR) -> None:
+                 journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None) -> None:
         self.cfg = cfg
         self.driver = driver if driver is not None else build_driver(cfg)
         self.inputs = inputs if inputs is not None else build_inputs(cfg)
         self.journal_dir = journal_dir
+        self.routes_root = routes_root or routes_dir()
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
         self.physics = RiderPhysics(PhysicsParams.from_config(cfg))
-        self.route: LinearRoute | None = None
+        self.route: Route | None = None
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
                               gear=self.gearing.k)
         self.server = IpcServer(
@@ -148,13 +149,7 @@ class CoreSession:
             reset = getattr(self.driver, "reset_control", None)
             if reset:
                 reset()   # sortie de ERROR : nouvelle prise de contrôle du trainer
-            # Provisoire : le lecteur .world arrive avec le compilateur ; parcours factice.
-            self.route = LinearRoute(build_route(5000.0))
-            self.state.route_id = args.get("route_id", "demo")
-            self.state.route_length_m = self.route.length
-            self.physics.s = self.physics.v = 0.0
-            self._t_session = 0.0
-            self._set_state("READY")
+            self._select_route(str(args.get("route_id") or "demo"), previous=st)
         elif name == "start" and st == "READY":
             self._open_journal()
             self._set_state("RUNNING")
@@ -174,6 +169,27 @@ class CoreSession:
                 log.warning("input_event inconnu : %s", args.get("event"))
         elif name == "end_session" and st in ("RUNNING", "PAUSED"):
             self._finish(bool(args.get("save", True)))
+
+    def _select_route(self, route_id: str, previous: str) -> None:
+        """LOADING, lecture de la couche route du .world, puis READY (contrat §7, étape 6)."""
+        self._set_state("LOADING")
+        try:
+            if route_id == "demo":
+                ensure_demo_world(self.routes_root)   # parcours de démonstration commun
+            world = load_world(find_world(route_id, self.routes_root))
+        except WorldError as exc:
+            log.error("Parcours « %s » refusé : %s", route_id, exc)
+            self.server.send_error(exc.code, str(exc))
+            self._set_state(previous)
+            return
+        self.route = world.route
+        self.state.route_id = route_id
+        self.state.route_length_m = world.route.length_m
+        self.physics.s = self.physics.v = 0.0
+        self._t_session = 0.0
+        log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
+                 world.route.type)
+        self._set_state("READY")
 
     def _on_engine_lost(self) -> None:
         if self.state.session_state == "RUNNING":
@@ -273,9 +289,10 @@ class CoreSession:
         s = self.physics.s
         tau = self.cfg.trainer.latency_tau_s
         route = self.route
-        grade = route.sample("grade_pct", s) if route else 0.0
-        ahead = route.sample("grade_pct", s + self.physics.v * tau) if route else 0.0
-        alt = route.sample("alt_m", s) if route else 0.0
+        here = route.sample(s) if route else None           # sample ramène s sur le parcours (boucle)
+        grade = here.grade_pct if here else 0.0
+        ahead = route.grade_at(s + self.physics.v * tau) if route else 0.0
+        alt = here.alt_m if here else 0.0
 
         # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
         target = self.gearing.effective_grade(ahead, self.cfg.trainer.difficulty_pct / 100.0)
@@ -299,8 +316,8 @@ class CoreSession:
         st.grade, st.grade_sent = grade, round(self._grade_sent, 2)
         st.power, st.power_3s, st.cadence, st.hr = m.power_w, round(p3, 1), m.cadence_rpm, m.hr_bpm
         st.gear = self.gearing.k
-        if route:
-            st.lat, st.lon, st.alt = route.sample("lat", st.s), route.sample("lon", st.s), alt
+        if here:
+            st.lat, st.lon, st.alt = here.lat, here.lon, alt
 
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
@@ -310,7 +327,7 @@ class CoreSession:
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(grade, 2), gear=self.gearing.k))
 
-        if route and st.s >= route.length:
+        if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
             log.info("Arrivée atteinte.")
             self._finish(True)
 
