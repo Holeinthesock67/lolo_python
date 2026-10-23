@@ -44,6 +44,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] `theme_loader.gd` : lecture, validation et fusion des thèmes visuels avec repli sur `res://themes/default/theme.json` et chargement des textures utilisateur (`engine/tests/unit/test_theme_loader.gd`, lot I5).
 - [x] `erg_view_model.gd` : logique d'affichage du bandeau ERG, déclenchement unique du bip à T − 3 s et géométrie de l'histogramme `profile_bars`, testés sans écran face à `fake_core.py --erg-workout` (`engine/tests/test_erg_view_model.gd`, lot I6).
 - [x] Tests unitaires GDScript lancés par découverte : chaque `engine/tests/unit/test_*.gd` est lancé par `run_engine_tests.sh`, avec résumé final et `UNIT=nom` pour un seul test (lot K1).
+- [x] `menu_model.gd` : navigation des menus au Click et au clavier (accueil, parcours, entraînements, prêt, confirmation, pause), machine à états sans affichage qui renvoie les actions à exécuter, testée sans écran (`engine/tests/unit/test_menu_model.gd`, lot K5) ; l'affichage et les listes du contrat v1.1 restent à G.
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
