@@ -226,7 +226,8 @@ def add_terrain_layer(world: Path) -> Path:
     manifest["layers"]["terrain"] = {
         "present": True, "version": "1.0", "sources": ["synthetic"],
         "near_cell_m": int(NEAR[1]), "far_cell_m": int(FAR[1]),
-        "near_tiles": written["near"], "far_tiles": written["far"],
+        "road_half_width_m": ROAD_HALF_WIDTH_M,
+        "tiles": {"near": written["near"], "far": written["far"]},
     }
     manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")
     return world

@@ -12,7 +12,7 @@
 | [B2](LOT_B2_compilateur_terrain.md) | Compilateur : couche terrain (MNT Copernicus, tuiles) | Python | B1 | Grande | **Livré le 23 octobre** |
 | [C](LOT_C_core_conformite.md) | Mise en conformité du core avec le contrat IPC (défauts de l'audit) | Python | — | Petite | **Livré le 23 octobre** |
 | [D](LOT_D_engine_ipc.md) | Mise en conformité de l'engine avec le contrat IPC | GDScript | A (livré) | Moyenne | **Livré le 23 octobre** (tests sans écran 8/8 revérifiés) |
-| [E1](LOT_E1_rendu_route_terrain.md) | Rendu 3D : ruban de route et terrain par tronçons | GDScript | A (livré), D ; tuiles du format (B2 ou générateur fourni) | Grande | Oui (A et D livrés) |
+| [E1](LOT_E1_rendu_route_terrain.md) | Rendu 3D : ruban de route et terrain par tronçons | GDScript | A (livré), D ; tuiles du format (B2 ou générateur fourni) | Grande | **Fait** (PR #7, essai sur le PC cible à faire) |
 | [F](LOT_F_erg_zwo.md) | Entraînements ERG : lecteur `.zwo` et pilotage ERG dans le core | Python | C (livré) | Moyenne | **Livré le 23 octobre** (essai ERG sur le HomeTrainer à faire) |
 | [H1](LOT_H1_integration_continue.md) | Intégration continue GitHub Actions et fichier de contraintes (audit F6) | YAML | — | Petite | Oui (exception de dossier accordée) |
 | [H2](LOT_H2_tests_ble.md) | Tests de la recherche Bluetooth sans matériel (audit F8) | Python | — | Petite | Oui |
