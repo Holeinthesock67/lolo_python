@@ -14,6 +14,14 @@
 | [D](LOT_D_engine_ipc.md) | Mise en conformité de l'engine avec le contrat IPC | GDScript | A (livré) | Moyenne | **Livré le 23 octobre** (tests sans écran 8/8 revérifiés) |
 | [E1](LOT_E1_rendu_route_terrain.md) | Rendu 3D : ruban de route et terrain par tronçons | GDScript | A (livré), D ; tuiles du format (B2 ou générateur fourni) | Grande | Oui (A et D livrés) |
 | [F](LOT_F_erg_zwo.md) | Entraînements ERG : lecteur `.zwo` et pilotage ERG dans le core | Python | C (livré) | Moyenne | **Livré le 23 octobre** (essai ERG sur le Victory à faire) |
+| [H1](LOT_H1_integration_continue.md) | Intégration continue GitHub Actions et fichier de contraintes (audit F6) | YAML | — | Petite | Oui (exception de dossier accordée) |
+| [H2](LOT_H2_tests_ble.md) | Tests de la recherche Bluetooth sans matériel (audit F8) | Python | — | Petite | Oui |
+| [H3](LOT_H3_rejeu_mock.md) | Rejeu d'une séance réelle (JSONL ou FIT) dans le simulateur | Python | — | Petite | Oui |
+| [H4](LOT_H4_endurance_simulee.md) | Endurance simulée : séance de 3 h en temps accéléré (audit F7) | Python | — | Petite | Oui |
+| [H5](LOT_H5_validation_fit.md) | Validation des FIT par le SDK officiel Garmin | Python | — | Petite | Oui |
+| [H6](LOT_H6_analyse_journal.md) | Analyseur du journal de séance (`run_victory.log`) | Python | — | Petite | Oui |
+| [H7](LOT_H7_schema_themes.md) | Schéma, validateur et thème par défaut (prépare E2) | Python + JSON | — | Petite | Oui |
+| [H8](LOT_H8_outils_entrainements.md) | Outils et bibliothèque d'entraînements `.zwo` | Python | F (livré) | Petite | Oui |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -28,6 +36,8 @@
 Leur forme dépendra des choix faits dans E1 et D.
 
 **Ordre conseillé :** A, A2, B1, B2, C, D et F sont livrés (23 octobre). E1 est fait et attend l'essai sur le PC cible (PR #7).
+
+**Lots H (23 octobre) :** petits lots hors du chemin critique, recettés uniquement par des tests automatiques, sans essai sur le matériel. Ils peuvent être confiés en parallèle : aucun ne partage de fichier de code avec un autre (seuls `docs/SUIVI_AVANCEMENT.md` et parfois `README.md` sont communs, à fusionner à la main). H3 est le seul à toucher `config.py`, `session.py` et `__main__.py` ; H5 et H4 touchent tous deux `core/pyproject.toml` (sections différentes).
 
 Les lots livrés gardent leur cahier des charges, complété d'une section « Livraison » qui liste les écarts assumés.
 
