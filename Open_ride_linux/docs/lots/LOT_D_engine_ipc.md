@@ -112,3 +112,9 @@ Aucune. Les arguments de ligne de commande de l'engine ne font pas partie du con
 - Ruban de route, terrain, ciel et arbres (lot E1 et suivants).
 - Menus de sélection (lot G, à rédiger).
 - Bips des appuis : déjà faits, à conserver.
+
+
+## 9. Livraison (23 octobre 2026)
+
+- Conformité de l'engine Godot 4.3 au contrat IPC v1 (`ipc_client.gd`, `main.gd`, extrapolation de caméra bornée à 200 ms, renvoi des commandes toutes les 200 ms jusqu'à `cmd_ack`).
+- Suite de 8 scénarios IPC sans écran face à `engine/tests/fake_core.py`, exécutée par `engine/tests/run_engine_tests.sh`.

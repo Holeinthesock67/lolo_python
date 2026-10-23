@@ -75,8 +75,9 @@ def plane(x, z):
 
 @pytest.fixture(autouse=True)
 def offline_and_synthetic(request, monkeypatch, tmp_path):
-    """Réseau coupé (sauf tests `network`), cache MNT temporaire, MNT synthétique pour la CLI."""
+    """Réseau coupé (sauf tests `network`), cache MNT/OSM temporaire, MNT synthétique pour la CLI."""
     monkeypatch.setenv("OPENRIDE_DEM_CACHE", str(tmp_path / "dem-cache"))
+    monkeypatch.setenv("OPENRIDE_OSM_CACHE", str(tmp_path / "osm-cache"))
     if request.node.get_closest_marker("network"):
         return
     def no_network(*args, **kwargs):
