@@ -41,5 +41,21 @@ sleep 2
 if ! kill -0 "$CORE_PID" 2>/dev/null; then
   echo "Le core s'est arrêté au démarrage :"; tail -20 "$LOG"; exit 1
 fi
+# Ports IPC lus dans config.toml (section ipc), le même fichier que le core (--config éventuel).
+CONFIG_ARG=""
+for ((i = 0; i < ${#CORE_ARGS[@]}; i++)); do
+  case "${CORE_ARGS[$i]}" in
+    --config=*) CONFIG_ARG="${CORE_ARGS[$i]#--config=}" ;;
+    --config) CONFIG_ARG="${CORE_ARGS[$((i + 1))]:-}" ;;
+  esac
+done
+read -r STATE_PORT CMD_PORT < <(python3 - "$CONFIG_ARG" <<'PY' 2>/dev/null || echo "5005 5006"
+import sys
+from pathlib import Path
+from openride_core.config import load
+cfg = load(Path(sys.argv[1]) if sys.argv[1] else None)
+print(cfg.ipc.port_state, cfg.ipc.port_commands)
+PY
+)
 # shellcheck disable=SC2086
-"$GODOT" --path "$ROOT/engine" ${GODOT_ARGS:-}
+"$GODOT" --path "$ROOT/engine" ${GODOT_ARGS:-} -- --ipc-state-port="${STATE_PORT:-5005}" --ipc-cmd-port="${CMD_PORT:-5006}"
