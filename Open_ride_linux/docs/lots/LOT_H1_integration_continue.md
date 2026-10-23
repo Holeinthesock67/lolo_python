@@ -73,3 +73,13 @@ Aucune.
 
 - Publication de paquets, analyse de couverture en ligne, outils de style (`ruff`, etc.) : à proposer séparément.
 - Tests sur le matériel (impossibles en intégration continue).
+
+
+## 9. Livraison (23 octobre 2026)
+
+Branche `lot-h1-integration-continue` (PR #11), fusionnée dans `main`. Les 5 critères d'acceptation du §7 sont tenus :
+- Tâches `python (3.11)`, `python (3.14)` (avec `-c constraints.txt`) et `engine (Godot 4.3)` vertes en ~45 s ([run 39957459543](https://github.com/Holeinthesock67/lolo_python/actions/runs/39957459543)).
+- Test volontairement cassé sur une branche temporaire `test-h1-echec` (supprimée ensuite) en échec comme attendu ([run 39950579981](https://github.com/Holeinthesock67/lolo_python/actions/runs/39950579981)).
+- Cache de Godot 4.3 restauré dès la seconde exécution (`Cache restored from key: godot-4.3-stable-linux-x86_64`).
+- `rasterio 1.4.4` s'installe en roue binaire `manylinux_2_28_x86_64` sans paquet `apt` supplémentaire.
+- Aucun écart.
