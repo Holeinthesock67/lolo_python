@@ -210,6 +210,7 @@ class Report:
     fit_path: str | None = None
     errors: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
+    unreadable_lines: int = 0
     sessions_count: int = 1
     sessions: list[dict[str, Any]] = field(default_factory=list)
 
@@ -264,6 +265,8 @@ def _analyse_single_session(lines: list[str]) -> Report:
     for line in lines:
         m = LINE_RE.match(line)
         if not m:
+            if line.strip():
+                rep.unreadable_lines += 1
             continue
         ts_str = m.group("ts")
         level = m.group("level")
@@ -476,6 +479,7 @@ def _merge_reports(reports: list[Report]) -> Report:
             merged.fit_path = r.fit_path
         merged.errors.extend(r.errors)
         merged.warnings.extend(r.warnings)
+        merged.unreadable_lines += r.unreadable_lines
 
     return merged
 

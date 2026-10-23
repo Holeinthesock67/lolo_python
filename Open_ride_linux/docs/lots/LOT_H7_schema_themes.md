@@ -70,3 +70,11 @@ Ajout compatible seulement : publication du schéma des thèmes et ligne au jour
 
 - Chargement du thème et shader dans Godot (lot E2).
 - Production de vraies textures (thèmes avec packs de textures, sprint 6).
+
+
+## 9. Livraison (23 octobre 2026, PR #17)
+
+- `docs/contracts/world/theme.schema.json` : schéma JSON Draft 2020-12 du format `.world` v1 §9.
+- `engine/themes/default/theme.json` : thème par défaut complet servant d'unique source des valeurs par défaut.
+- `compiler/src/openride_compiler/theme.py` et sous-commande `openride-compiler theme-check DOSSIER` : validation du schéma (`error`), contrôle des clés inconnues et des textures PNG/JPEG (présence et dimensions en puissances de 2 lues en pur Python, `warning`), fusion récursive `resolve_theme`.
+- `compiler/tests/test_theme.py` : 17 tests unitaires passants.
