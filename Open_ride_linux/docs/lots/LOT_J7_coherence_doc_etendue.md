@@ -58,5 +58,5 @@ Aucune. Les documents de contrat peuvent recevoir une correction de lien ou de c
   - nombres de tests du `README.md` et du suivi comparés à `pytest --collect-only -q` lancé en sous-processus dans `core/` et `compiler/` (options du paquet, donc sans les tests `network`) ; le message donne la valeur à écrire ; test sauté si le compilateur n'est pas installé ;
   - chemins `core/…`, `compiler/…`, `engine/…`, `docs/…`, `scripts/…` cités entre accents graves. Exceptions motivées : les cahiers des lots non livrés (ils citent les fichiers qu'ils créeront), `core/.venv` (environnement local) et les trois scripts du lot E1, pas encore fusionné.
 - Durées mesurées : 2,2 s pour les nombres de tests (pas de marque `slow`), moins de 0,1 s pour les trois autres.
-- Écart trouvé sur `main` et corrigé : le nombre de tests du core était faux dans le `README.md` et le suivi (222 annoncés au lieu de 236 au moment du lot ; 237 après la fusion de J6 et du correctif de cadence). Aucun lien cassé ni caractère interdit trouvé.
+- Écart trouvé sur `main` et corrigé : le nombre de tests du core était faux dans le `README.md` et le suivi (222 annoncés au lieu de 236 au moment du lot ; 250 après la fusion de J6, du correctif de cadence et de K7). Aucun lien cassé ni caractère interdit trouvé.
 - `CLAUDE.md` : la règle de livraison rappelle que ces nombres sont vérifiés.
