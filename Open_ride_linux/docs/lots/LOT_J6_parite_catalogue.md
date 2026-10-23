@@ -50,3 +50,11 @@ Aucune.
 ## 8. Hors périmètre
 
 - Messages IPC de liste des parcours (lot G).
+
+## 9. Livraison (23 octobre 2026, fait directement à la demande du propriétaire, sans sous-traitance)
+
+- Voie A retenue : le repli reste dans `compiler/src/openride_compiler/cli.py` (`fallback_catalog`, entrée `CatalogEntry` aux mêmes champs que `RouteEntry`) et suit maintenant les règles du core : GPX retrouvé par nom de source, puis par SHA-256 (GPX renommé), puis par identifiant normalisé ; `outdated` aussi pour un manifeste sans SHA-256 ; `demo` toujours en tête (entrée de 5 000 m si absente) ; le reste trié par identifiant.
+- Écart assumé : un `.world` est jugé par `verify_world` côté compilateur au lieu de `load_world` ; seul le texte de l'erreur d'un parcours `invalid` peut donc différer.
+- Tests : `compiler/tests/test_catalog_parity.py` (31 tests, moins de 1 s) compare `list_routes` et le repli champ par champ, core masqué dans `sys.modules`, sur les 7 situations du §4 séparément, réunies, et sur un dossier de parcours absent ; garde-fou sur les statuts attendus ; normalisation des noms sur 20 noms ; constantes de la démo et champs identiques. Tests ignorés si le core n'est pas installé.
+- Démonstration du critère 2 (modification volontaire du repli, puis retour au code livré) : sans la recherche par SHA-256, 3 tests échouent ; sans le tri, 1 ; démo hors de la tête, 5 ; sans le cas « manifeste sans SHA-256 », 3 ; sans la recherche par identifiant normalisé, 3.
+- `test_build_all.py` et `test_catalog.py` (lot I2) passent sans changement.
