@@ -50,7 +50,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**103 tests `pytest` passent dans le core et 53 dans le compilateur** (physique, braquets, FTMS, Click, journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale : 72 %. Côté Godot : 42 vecteurs de route vérifiés sans écran (`godot --headless --path engine --script res://tests/test_route_vectors.gd`).
+**108 tests `pytest` passent dans le core (dont 5 tests d'endurance simulée de 3 h, lot H4) et 53 dans le compilateur** (physique, braquets, FTMS, Click, journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, endurance 3 h, tests de contrat, lecture des parcours). Couverture globale : 72 %. Côté Godot : 42 vecteurs de route vérifiés sans écran (`godot --headless --path engine --script res://tests/test_route_vectors.gd`).
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
