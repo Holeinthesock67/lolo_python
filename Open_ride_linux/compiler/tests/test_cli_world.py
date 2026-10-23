@@ -50,7 +50,10 @@ def test_outputs_match_schemas_and_load_in_core(shape, make_gpx, tmp_path):
 
     assert manifest["projection"] == "utm"
     assert manifest["origin"]["utm_zone"] == "32T"
-    assert manifest["layers"]["terrain"]["present"] is False
+    assert manifest["format_version"] == "1.1"
+    assert manifest["layers"]["terrain"]["present"] is True
+    assert manifest["layers"]["terrain"]["sources"] == ["synthetic"]
+    assert manifest["route"]["alt_source"] in ("gpx", "synthetic")
     assert manifest["source"]["gpx"] == "trace.gpx" and len(manifest["source"]["gpx_sha256"]) == 64
     assert manifest["compiler"]["name"] == "openride-compiler"
     assert manifest["route"]["type"] == route["type"]
@@ -71,11 +74,13 @@ def test_cli_short_trace_code_1(make_gpx, tmp_path, capsys):
     assert not (tmp_path / "court.world").exists()
 
 
-def test_cli_missing_altitude_code_1(make_gpx, tmp_path, capsys):
+def test_cli_missing_altitude_uses_dem(make_gpx, tmp_path, capsys):
     x, z, _ = straight_north()
     gpx = make_gpx("plat.gpx", x, z)
-    assert run("build", gpx, "--out", tmp_path) == 1
-    assert "altitude absente : la source MNT arrive avec le lot B2" in capsys.readouterr().err
+    assert run("build", gpx, "--out", tmp_path, "--layers", "route") == 0
+    manifest = json.loads((tmp_path / "plat.world" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["route"]["alt_source"] == "synthetic"
+    assert "altitude de la route : synthetic" in capsys.readouterr().err
 
 
 def test_cli_invalid_gpx_and_usage_code_1(tmp_path):
@@ -94,7 +99,7 @@ def test_error_during_write_leaves_nothing(make_gpx, tmp_path, monkeypatch, caps
     gpx = make_gpx("essai.gpx", *straight_north())
     real = writer._write_files
 
-    def broken(folder, manifest, route):
+    def broken(folder, *args):
         (folder / "route.json").write_text("{", encoding="utf-8")   # écriture à moitié faite
         raise OSError("disque plein (simulé)")
 
@@ -109,11 +114,14 @@ def test_error_during_write_leaves_nothing(make_gpx, tmp_path, monkeypatch, caps
 
 
 def test_existing_world_needs_force(built, make_gpx, capsys):
-    before = {p.name: p.read_bytes() for p in built.iterdir()}
+    def snapshot():
+        return {str(p.relative_to(built)): p.read_bytes() for p in built.rglob("*") if p.is_file()}
+
+    before = snapshot()
     gpx = make_gpx("col-d-essai.gpx", *circle())
     assert run("build", gpx, "--out", built.parent) == 1
     assert "--force" in capsys.readouterr().err
-    assert {p.name: p.read_bytes() for p in built.iterdir()} == before
+    assert snapshot() == before
 
     assert run("build", gpx, "--out", built.parent, "--force") == 0
     route = json.loads((built / "route.json").read_text(encoding="utf-8"))
@@ -125,7 +133,7 @@ def test_failed_replace_keeps_old_world(built, make_gpx, monkeypatch):
     before = (built / "route.json").read_bytes()
     gpx = make_gpx("autre.gpx", *circle())
 
-    def broken(folder, manifest, route):
+    def broken(folder, *args):
         raise OSError("simulé")
 
     monkeypatch.setattr(writer, "_write_files", broken)
@@ -185,6 +193,8 @@ def test_info(built, capsys):
     assert "Pente maximale    : 5.0 %" in out
     assert "Dénivelé positif  : 100 m" in out
     assert "Points limités    : 0" in out
+    assert "Altitude          : gpx" in out
+    assert "Terrain           : " in out and "(synthetic)" in out
 
 
 def test_info_invalid_world(tmp_path):
