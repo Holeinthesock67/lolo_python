@@ -1,12 +1,12 @@
 # OpenRide Linux – SRS v1.1
 
-21 octobre 2026
+21 octobre 2026 ; mise à jour du 23 octobre 2026 (alignement sur le code et les essais sur le vélo)
 
 ## 1. Objectifs et périmètre
 
 OpenRide est un simulateur de cyclisme indoor 3D à usage personnel, natif Linux, plus léger que Zwift. La v1 doit être simple, stable et extensible par couches, sans jamais casser ce qui existe déjà.
 
-**Matériel de référence :** JetBlack Victory (FTMS et pont cardio), Zwift Cog 14 dents, Zwift Click, PC portable Ubuntu.
+**Matériel de référence :** JetBlack Victory (FTMS et pont cardio), Zwift Cog 14 dents, Zwift Click, PC de bureau MSI sous Ubuntu avec carte graphique GTX 1060.
 
 **Dans la v1**
 
@@ -36,7 +36,7 @@ La v1.1 garde le découplage matériel/rendu et le modèle 1D sur rail, et corri
 | IPC | Trame JSON sans version | Versionné, numéro de séquence, heartbeat | Détecter les pertes et les incompatibilités |
 | Intégration de la vitesse | P/v avec seuil v_min | Bilan d'énergie cinétique | Stable à l'arrêt, plus de contournement |
 | Braquets | R1 = 0,55, R24 = 1,85 | R1 = 0,50, R24 = 2,25, étagement calculé | Rapport 4,5 cohérent avec 34x32 et 52x11 |
-| Zwift Click | Appuis longs actifs en SIM | Appuis longs seulement en ERG | Évite les déclenchements accidentels |
+| Zwift Click | Appuis longs actifs en SIM | Appuis longs : ± 3 vitesses en SIM (essai du 22 octobre), saut de bloc et pause en ERG | Changer vite de braquet en côte ; actions dédiées en ERG |
 | Route | B-spline | Polyligne à 10 m lissée | Une B-spline ne passe pas par les points du tracé |
 | Altitude | API à points | Tuiles raster avec cache | Pas de limite de débit, parcours longs possibles |
 | Fichier de parcours | Un fichier `.world` | Un dossier `.world` en couches | Ajouter une couche sans réécrire le reste |
@@ -80,10 +80,10 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 
 - À la connexion : lecture de Fitness Machine Feature (0x2ACC) et de la plage de puissance (0x2AD8), abonnement à Indoor Bike Data (0x2AD2).
 - Avant toute commande : Request Control (0x00) puis Start/Resume (0x07) ; les réponses du Control Point (0x2AD9) sont vérifiées.
-- **Mode SIM :** Set Indoor Bike Simulation Parameters (0x11) avec pente (résolution 0,01 %), Crr, Cw et vent nul. La pente est limitée à −10 % / +16 %, envoyée au plus à 2 Hz ou quand elle varie de plus de 0,2 point.
+- **Mode SIM :** Set Indoor Bike Simulation Parameters (0x11) avec pente (résolution 0,01 %), Crr, Cw et vent nul. La pente est limitée à −10 % / +16 %, envoyée dès qu'elle varie d'au moins 0,1 point, au plus toutes les 0,2 s, et renvoyée au moins toutes les 2 s (réglages validés sur le Victory le 22 octobre 2026).
 - **Mode ERG :** Set Target Power (0x05), en watts entiers, bornée par la plage annoncée par le trainer.
 - La cardio vient du pont cardio du Victory si sa caractéristique est exposée (à vérifier au sprint 0), sinon d'une ceinture connectée séparément.
-- Fréquence des données **mesurée** sur le Victory (22 octobre 2026) : environ 1 Hz au repos et en mode puissance, environ 8 Hz en mode pente. Le core ne suppose donc aucune cadence fixe : la puissance est maintenue et lissée sur une fenêtre de temps réel (3 s) entre deux notifications, et la physique ne dépend pas de la cadence de réception.
+- Fréquence des données **mesurée** sur le Victory (22 octobre 2026) : environ 1 Hz au repos et en mode puissance, environ 8 Hz en mode pente. Le core ne suppose donc aucune cadence fixe : la dernière puissance reçue est maintenue entre deux notifications et lissée dans le temps (filtre exponentiel, constante de temps 0,7 s, clé `power_smooth_tau_s`) ; une moyenne glissante sur 3 s est calculée à part pour l'affichage. La physique ne dépend pas de la cadence de réception.
 - Plage de puissance annoncée par le Victory : 0 à 1 000 W, par pas de 1 W. Une fréquence cardiaque de 0 bpm signifie « pas de mesure » et est traitée comme `null`.
 - États : `CONNECTED`, `RECONNECTING`, `LOST`, avec reconnexion automatique à délai croissant.
 
@@ -236,7 +236,7 @@ L'engine reçoit l'état du core, charge les couches du `.world` qui existent et
 - Trois préréglages de qualité (bas, moyen, haut) dans la configuration : distance de vue, densité de végétation, SSAO, brouillard, MSAA.
 - Le brouillard volumétrique n'existe qu'avec le moteur de rendu Forward+ ; sur GPU intégré, le préréglage bas utilise le moteur Mobile ou Compatibility.
 - La génération des maillages se fait dans des threads (`WorkerThreadPool`), par tronçon, en avance sur la caméra ; elle peut aussi être précalculée plus tard.
-- Objectif : 30 images par seconde au minimum sur le portable cible en préréglage bas.
+- Objectif : 30 images par seconde au minimum sur le PC cible en préréglage bas.
 
 **Bâtiments (module ultérieur) :** triangulation par `Geometry2D.triangulate_polygon` (pas de bibliothèque Earcut externe) ; les polygones OSM avec trous (multipolygones) sont traités à part ; toits plats d'abord, toits à deux pans ensuite ; hauteurs tirées de `height` et `building:levels`, sinon d'une valeur aléatoire stable.
 
@@ -255,7 +255,7 @@ Le core enregistre la séance tout seul, sans dépendre de l'engine, et la conve
 
 **Journal continu**
 
-- Un fichier JSONL par séance dans `~/OpenRide/Activities/.journal/`, une ligne par seconde, vidée sur disque à chaque ligne.
+- Un fichier JSONL par séance dans `~/OpenRide/Activities/.journal/`, une ligne par seconde, vidée (`flush`) à chaque ligne et synchronisée sur disque (`fsync`) toutes les 5 s.
 - Champs : temps, latitude, longitude, altitude, distance, vitesse, puissance, cadence, fréquence cardiaque, pente, mode, braquet, bloc d'entraînement.
 - Après un plantage, la commande `openride-core recover` transforme le dernier journal en FIT.
 
@@ -317,11 +317,13 @@ crr = 0.004
 drivetrain_efficiency = 0.97
 
 [trainer]
-device_name = "Victory"
+device_name = "Victory"      # fragment du nom annoncé (« Victory 9908 »)
 latency_tau_s = 0.8
 difficulty_pct = 100
 grade_min_pct = -10
 grade_max_pct = 16
+power_smooth_tau_s = 0.7
+grade_rate_pct_per_s = 2.0   # limite de variation due au relief (pas aux braquets)
 
 [gearing]
 n_gears = 24
@@ -329,6 +331,15 @@ start_gear = 12
 ratio_min = 0.50
 ratio_max = 2.25
 g_base_pct = 2.0
+long_press_gears = 3
+
+[drivers]
+trainer = "ftms"             # "ftms" ou "mock"
+input = "click"              # "click", "keyboard" ou "none"
+trainer_address = ""         # adresse MAC facultative
+click_address = ""
+click_short_max_s = 0.5
+click_long_min_s = 0.9
 
 [render]
 quality = "low"      # low, medium, high
@@ -364,7 +375,7 @@ Le `.world` est désormais un dossier, et non un fichier unique comme dans la v1
 
 - Délai entre une notification du trainer et son effet à l'écran : moins de 100 ms hors rendu.
 - Boucle de physique stable à 50 Hz, sans dérive sur une séance de 3 h.
-- Engine : 30 images par seconde au minimum en préréglage bas sur le portable cible ; pas de fuite de mémoire visible sur 3 h.
+- Engine : 30 images par seconde au minimum en préréglage bas sur le PC cible ; pas de fuite de mémoire visible sur 3 h.
 - Un plantage de l'engine ne fait perdre aucune donnée de séance.
 - Fonctionnement sans connexion Internet une fois le parcours compilé.
 - Journaux lisibles (niveau, horodatage) pour chaque programme.
@@ -392,7 +403,7 @@ Le MVP utilisable est atteint à la fin du sprint 3 : pédaler sur une trace GPX
 | 0. Spikes | Connexion BLE réelle au Victory (lecture, commandes 0x11 et 0x05) et au Click ; FIT minimal ; Godot affiche une polyligne avec des données factices | Les faits vérifiés (capacités du Victory, fréquences réelles, handshake du Click) sont notés dans `docs/spikes.md` ; le FIT s'ouvre dans GoldenCheetah |
 | 1. Core et mock | BLE, braquets, physique, serveur IPC, journal, FIT, MockDriver, tests | 10 min avec MockDriver produisent un journal et un FIT valides ; 10 min sur le vrai trainer avec des braquets perceptibles |
 | 2. Compilateur minimal | GPX vers `.world` (route et terrain), caches | Un GPX de 30 km compile ; pente maximale à ± 1 point près de celle de Garmin Connect ; la relance n'utilise pas le réseau |
-| 3. Moteur minimal | Route, terrain, ciel, arbres, HUD, caméra interpolée | 30 images par seconde sur le portable cible ; 1 h sans plantage ; mouvement sans saccade visible |
+| 3. Moteur minimal | Route, terrain, ciel, arbres, HUD, caméra interpolée | 30 images par seconde sur le PC cible ; 1 h sans plantage ; mouvement sans saccade visible |
 | 4. ERG et ZWO | Lecteur, rampes lissées, biais, saut de bloc, bandeau | Un `.zwo` standard s'exécute en entier ; cibles atteintes ; bip à T − 3 s |
 | 5. Couches OSM | Bâtiments puis forêts, préréglages de qualité | Traversée d'un village sans trous ni artefacts ; 30 images par seconde en préréglage bas |
 | 6. Thèmes, audio, POI | Thèmes avec textures, ambiances sonores, points d'intérêt, eau | Changer de thème modifie le rendu sans recompiler |
