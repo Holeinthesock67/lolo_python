@@ -1,0 +1,459 @@
+#!/usr/bin/env python3
+"""Faux core OpenRide pour tester l'engine sans écran (lot D6, audit F9).
+
+Bibliothèque standard seulement. Le faux core :
+- écoute le port de commandes (hello, heartbeat, cmd, bye) et répond comme le vrai core
+  (hello_ack, remise à zéro de last_cmd_id à chaque hello) ;
+- envoie des trames `state` à 30 Hz au format de core/src/openride_core/ipc_server.py ;
+- rejoue les scénarios du lot D et lit le journal de l'engine (lignes « [test] clé=valeur »,
+  voir engine/tests/README.md) pour vérifier ses réactions.
+
+Usage : fake_core.py --engine-log FICHIER [--state-port 5005] [--cmd-port 5006] [--scenarios 1,2,…]
+Code de sortie : 0 si tous les scénarios passent, 1 sinon.
+"""
+
+from __future__ import annotations
+
+import argparse
+import json
+import re
+import socket
+import sys
+import threading
+import time
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any, Callable
+
+CONTRACT_VERSION = 1
+STATE_HZ = 30.0
+SPEED_MPS = 8.0
+
+
+def now() -> float:
+    return time.monotonic()
+
+
+@dataclass
+class Received:
+    t: float
+    msg: dict[str, Any]
+
+
+class EngineLog:
+    """Lit au fil de l'eau le journal de l'engine et garde les lignes « [test] » horodatées."""
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self.lines: list[tuple[float, str]] = []
+        self._pos = 0
+        self._partial = ""
+
+    def poll(self) -> None:
+        if not self.path.exists():
+            return
+        with self.path.open("r", encoding="utf-8", errors="replace") as fh:
+            fh.seek(self._pos)
+            chunk = fh.read()
+            self._pos = fh.tell()
+        if not chunk:
+            return
+        data = self._partial + chunk
+        parts = data.split("\n")
+        self._partial = parts.pop()
+        t = now()
+        for line in parts:
+            if line.startswith("[test] "):
+                self.lines.append((t, line[len("[test] "):]))
+
+    def mark(self) -> int:
+        self.poll()
+        return len(self.lines)
+
+    def since(self, mark: int) -> list[tuple[float, str]]:
+        self.poll()
+        return self.lines[mark:]
+
+    def wait_for(self, pattern: str, timeout: float, mark: int = 0) -> tuple[float, re.Match[str]] | None:
+        rx = re.compile(pattern)
+        deadline = now() + timeout
+        idx = mark
+        while True:
+            self.poll()
+            while idx < len(self.lines):
+                t, line = self.lines[idx]
+                idx += 1
+                m = rx.search(line)
+                if m:
+                    return t, m
+            if now() > deadline:
+                return None
+            time.sleep(0.01)
+
+
+@dataclass
+class FakeCore:
+    state_port: int
+    cmd_port: int
+    log: EngineLog
+    received: list[Received] = field(default_factory=list)
+    lock: threading.Lock = field(default_factory=threading.Lock)
+    # Comportement réglable par les scénarios.
+    streaming: bool = False
+    silent: bool = False          # core muet : n'émet plus rien du tout
+    auto_hello_ack: bool = False
+    session_state: str = "IDLE"
+    route_id: str | None = "demo"
+    accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
+    seq: int = 0
+    last_cmd_id: int = 0
+    _cmd_counts: dict[int, int] = field(default_factory=dict)
+    _s0: float = 0.0
+    _t0: float = field(default_factory=now)
+    _stop: bool = False
+
+    def start(self) -> None:
+        self.rx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.rx.bind(("127.0.0.1", self.cmd_port))
+        self.rx.settimeout(0.05)
+        self.tx = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        threading.Thread(target=self._rx_loop, daemon=True).start()
+        threading.Thread(target=self._state_loop, daemon=True).start()
+
+    def stop(self) -> None:
+        self._stop = True
+
+    # --- émission ------------------------------------------------------------------------
+
+    def send(self, msg: dict[str, Any]) -> None:
+        if self.silent:
+            return
+        self.tx.sendto(json.dumps(msg, separators=(",", ":")).encode("utf-8"),
+                       ("127.0.0.1", self.state_port))
+
+    def current_s(self) -> float:
+        if self.session_state != "RUNNING":
+            return self._s0
+        return self._s0 + SPEED_MPS * (now() - self._t0)
+
+    def set_running(self, running: bool) -> None:
+        self._s0 = self.current_s()
+        self._t0 = now()
+        self.session_state = "RUNNING" if running else "READY"
+
+    def state_msg(self, seq: int | None = None, s: float | None = None) -> dict[str, Any]:
+        running = self.session_state == "RUNNING"
+        return {
+            "type": "state", "v": SPEED_MPS if running else 0.0,
+            "seq": self.seq if seq is None else seq, "t": now() - self._t0,
+            "session_state": self.session_state, "pause_reason": None,
+            "trainer_status": "MOCK", "input_status": "KEYBOARD", "mode": "SIM",
+            "route_id": self.route_id, "route_length_m": None,
+            "s": self.current_s() if s is None else s,
+            "grade": 0.0, "grade_sent": 0.0, "power": 200.0, "power_3s": 200.0, "cadence": 85.0,
+            "hr": None, "gear": 12, "gears_total": 24, "lat": 0.0, "lon": 0.0, "alt": 0.0,
+            "erg": None, "summary": None, "last_cmd_id": self.last_cmd_id,
+        }
+
+    def send_state(self) -> None:
+        self.seq += 1
+        self.send(self.state_msg())
+
+    def _state_loop(self) -> None:
+        period = 1.0 / STATE_HZ
+        nxt = now()
+        while not self._stop:
+            if self.streaming and not self.silent:
+                with self.lock:
+                    self.send_state()
+            nxt += period
+            time.sleep(max(0.0, nxt - now()))
+
+    # --- réception -----------------------------------------------------------------------
+
+    def _rx_loop(self) -> None:
+        while not self._stop:
+            try:
+                data, _ = self.rx.recvfrom(2048)
+            except socket.timeout:
+                continue
+            except OSError:
+                return
+            try:
+                msg = json.loads(data.decode("utf-8"))
+            except ValueError:
+                continue
+            with self.lock:
+                self.received.append(Received(now(), msg))
+                self._handle(msg)
+
+    def _handle(self, msg: dict[str, Any]) -> None:
+        kind = msg.get("type")
+        if kind == "hello" and not self.silent:
+            self.last_cmd_id = 0      # comme le vrai core (contrat §4)
+            self._cmd_counts.clear()
+            if self.auto_hello_ack:
+                self.send_hello_ack()
+        elif kind == "cmd" and not self.silent:
+            cmd_id = int(msg.get("cmd_id", 0))
+            count = self._cmd_counts.get(cmd_id, 0) + 1
+            self._cmd_counts[cmd_id] = count
+            if cmd_id > self.last_cmd_id and self.accept_cmd(msg, count):
+                self.last_cmd_id = cmd_id
+
+    def send_hello_ack(self) -> None:
+        self.send({"type": "hello_ack", "v": CONTRACT_VERSION, "core_version": "fake",
+                   "config": {"ftp_w": 250, "gears_total": 24, "theme": "default"}})
+
+    def messages(self, kind: str, since: float = 0.0, name: str | None = None) -> list[Received]:
+        with self.lock:
+            return [r for r in self.received if r.msg.get("type") == kind and r.t >= since
+                    and (name is None or r.msg.get("name") == name)]
+
+    def test_command(self, name: str, args: dict[str, Any] | None = None) -> None:
+        """Demande à l'engine (lancé avec --test-mode) d'envoyer une commande."""
+        self.send({"type": "_test", "v": CONTRACT_VERSION, "action": "send_command",
+                   "name": name, "args": args or {}})
+
+
+# --- scénarios -------------------------------------------------------------------------------
+
+class ScenarioFailed(Exception):
+    pass
+
+
+def check(cond: bool, message: str) -> None:
+    if not cond:
+        raise ScenarioFailed(message)
+
+
+def last_banner(core: FakeCore, mark: int = 0) -> str | None:
+    text = None
+    for _t, line in core.log.since(mark):
+        if line.startswith("banner text="):
+            text = line[len("banner text="):]
+    return text
+
+
+def scenario_hello(core: FakeCore) -> str:
+    """1. hello répété jusqu'au hello_ack, puis arrêt des hello."""
+    deadline = now() + 6.0
+    while len(core.messages("hello")) < 3 and now() < deadline:
+        time.sleep(0.05)
+    hellos = core.messages("hello")
+    check(len(hellos) >= 3, f"seulement {len(hellos)} hello en 6 s")
+    gaps = [b.t - a.t for a, b in zip(hellos[-3:], hellos[-2:])]
+    check(all(0.7 <= g <= 1.3 for g in gaps), f"hello non espacés d'1 s : {gaps}")
+    mark = core.log.mark()
+    with core.lock:
+        core.send_hello_ack()
+    t_ack = now()
+    core.auto_hello_ack = True
+    core.streaming = True
+    check(core.log.wait_for(r"^hello_ack config=.*gears_total", 2.0, mark) is not None,
+          "hello_ack non journalisé par l'engine")
+    time.sleep(2.5)
+    late = core.messages("hello", since=t_ack + 0.1)
+    check(not late, f"{len(late)} hello encore envoyés après le hello_ack")
+    return f"{len(hellos)} hello espacés de {gaps[-1]:.2f} s, aucun après le hello_ack"
+
+
+def scenario_retry(core: FakeCore) -> str:
+    """2. Commande ignorée trois fois : renvoyée, puis acquittée."""
+    core.accept_cmd = lambda msg, count: msg.get("name") != "pause" or count >= 4
+    mark = core.log.mark()
+    t0 = now()
+    core.test_command("pause")
+    hit = core.log.wait_for(r"^cmd_acked name=pause id=(\d+) sends=(\d+)", 3.0, mark)
+    check(hit is not None, "commande « pause » jamais acquittée")
+    time.sleep(0.6)
+    sends = core.messages("cmd", since=t0, name="pause")
+    check(len(sends) == 4, f"{len(sends)} envois reçus au lieu de 4")
+    gaps = [b.t - a.t for a, b in zip(sends, sends[1:])]
+    check(all(0.15 <= g <= 0.30 for g in gaps), f"renvois mal espacés : {gaps}")
+    check(len({r.msg["cmd_id"] for r in sends}) == 1, "cmd_id changé entre les renvois")
+    core.accept_cmd = lambda msg, count: True
+    return f"4 envois (écarts {', '.join(f'{g:.2f}' for g in gaps)} s), acquittée, plus de renvoi"
+
+
+def scenario_timeout(core: FakeCore) -> str:
+    """3. Commande jamais acquittée : abandon au bout de 3 s ± 0,3 s, signal émis."""
+    core.accept_cmd = lambda msg, count: msg.get("name") != "resume"
+    mark = core.log.mark()
+    t0 = now()
+    core.test_command("resume")
+    hit = core.log.wait_for(r"^cmd_failed name=resume id=\d+ after_ms=(\d+)", 4.5, mark)
+    check(hit is not None, "aucun abandon de « resume » en 4,5 s")
+    after_ms = int(hit[1].group(1))
+    check(2700 <= after_ms <= 3300, f"abandon après {after_ms} ms")
+    banner = core.log.wait_for(r"^banner text=.*resume", 1.0, mark)
+    check(banner is not None, "pas de message à l'écran pour la commande abandonnée")
+    time.sleep(0.5)
+    sends = core.messages("cmd", since=t0, name="resume")
+    check(sends[-1].t - sends[0].t <= 3.3, "renvois après l'abandon")
+    core.accept_cmd = lambda msg, count: True
+    return f"abandon après {after_ms} ms, {len(sends)} envois, bandeau affiché"
+
+
+def scenario_out_of_order(core: FakeCore) -> str:
+    """6. Trames state en désordre : seule la plus récente est appliquée."""
+    core.streaming = False
+    time.sleep(0.1)
+    mark = core.log.mark()
+    with core.lock:
+        base = core.seq
+        s = core.current_s()
+        core.send(core.state_msg(seq=base + 1, s=s))
+        core.send(core.state_msg(seq=base + 3, s=s + 0.6))
+        core.send(core.state_msg(seq=base + 2, s=s + 0.3))
+        core.seq = base + 3
+    check(core.log.wait_for(rf"^state_late seq={base + 2}\b", 1.0, mark) is not None,
+          "trame en retard non signalée comme ignorée")
+    applied = [ln for _t, ln in core.log.since(mark) if ln.startswith("state seq=")]
+    seqs = [int(re.match(r"state seq=(\d+)", ln).group(1)) for ln in applied]
+    check(base + 2 not in seqs, f"trame {base + 2} appliquée malgré son retard")
+    check(seqs[-1:] == [base + 3], f"dernière trame appliquée : {seqs}")
+    core.streaming = True
+    return f"trames {base + 1}, {base + 3} appliquées, {base + 2} ignorée"
+
+
+def scenario_error(core: FakeCore) -> str:
+    """7. Trame error : le bandeau contient le code."""
+    mark = core.log.mark()
+    with core.lock:
+        core.send({"type": "error", "v": CONTRACT_VERSION, "code": "route_invalid",
+                   "message": "parcours de test illisible"})
+    hit = core.log.wait_for(r"^banner text=.*route_invalid", 1.0, mark)
+    check(hit is not None, "le bandeau ne montre pas le code route_invalid")
+    return "bandeau : " + hit[1].string[len("banner text="):]
+
+
+def scenario_core_silent(core: FakeCore) -> str:
+    """4. Faux core muet 1,5 s : bandeau, extrapolation ≤ 1 s puis caméra figée, reprise."""
+    with core.lock:
+        core.set_running(True)
+    time.sleep(1.0)
+    mark = core.log.mark()
+    with core.lock:
+        core.silent = True
+    time.sleep(1.5)
+    with core.lock:
+        core.silent = False
+    t_back = now()
+    check(core.log.wait_for(r"^banner text=.*non joignable", 0.1, mark) is not None,
+          "bandeau « core non joignable » absent")
+    returned = core.log.wait_for(r"^core_returned", 1.0, mark)
+    check(returned is not None, "reprise des trames non vue par l'engine")
+    time.sleep(0.5)
+    cams = []
+    for _t, ln in core.log.since(mark):
+        m = re.match(r"cam s=([\d.]+) age_ms=(\d+) frozen=(\d) moved=(\d)", ln)
+        if m:
+            cams.append((float(m.group(1)), int(m.group(2)), int(m.group(3)), int(m.group(4))))
+    silent_cams = [c for c in cams if c[1] >= 200]
+    check(len(silent_cams) >= 10, f"trop peu de positions de caméra pendant le silence ({len(silent_cams)})")
+    moved_ages = [c[1] for c in silent_cams if c[3]]
+    last_move_ms = max(moved_ages) if moved_ages else 0
+    check(last_move_ms <= 1100, f"caméra encore en mouvement {last_move_ms} ms après la dernière trame")
+    early = [c[0] for c in silent_cams if c[1] <= 400]
+    late = [c[0] for c in silent_cams if 900 <= c[1] <= 1000]
+    check(bool(early) and bool(late) and late[0] - early[0] >= SPEED_MPS * 0.4,
+          "pas d'extrapolation pendant la première seconde de silence")
+    frozen = [c for c in silent_cams if c[1] > 1100]
+    check(bool(frozen) and all(c[2] == 1 and c[3] == 0 for c in frozen), "caméra non figée après 1,1 s")
+    check(all(b[0] >= a[0] for a, b in zip(cams, cams[1:])), "la caméra a reculé")
+    banner = last_banner(core, mark) or ""
+    check("non joignable" not in banner, f"bandeau encore affiché après la reprise : {banner!r}")
+    return (f"bandeau affiché ; dernier mouvement {last_move_ms} ms après la dernière trame, "
+            f"figée ensuite ; reprise vue {returned[0] - t_back:.2f} s après, bandeau retiré")
+
+
+def scenario_shutdown(core: FakeCore) -> str:
+    """5. shutdown : l'engine ne quitte pas et renvoie des hello."""
+    mark = core.log.mark()
+    with core.lock:
+        core.send({"type": "shutdown", "v": CONTRACT_VERSION})
+        core.silent = True
+        core.streaming = False
+    t0 = now()
+    check(core.log.wait_for(r"^banner text=.*Le core s'est arrêté", 1.0, mark) is not None,
+          "bandeau « Le core s'est arrêté » absent")
+    time.sleep(2.6)
+    hellos = core.messages("hello", since=t0)
+    beats = core.messages("heartbeat", since=now() - 1.0)
+    check(len(hellos) >= 2, f"{len(hellos)} hello après le shutdown")
+    check(len(beats) >= 1, "plus de heartbeat : l'engine a quitté ?")
+    # Nouveau core : seq repart de zéro.
+    with core.lock:
+        core.seq = 0
+        core.silent = False
+        core.streaming = True
+    hit = core.log.wait_for(r"^state seq=[1-9]\d? ", 2.5, mark)
+    check(hit is not None, "trames du nouveau core (seq remis à 0) non appliquées")
+    time.sleep(1.2)
+    banner = last_banner(core, mark) or ""
+    check("arrêté" not in banner and "non joignable" not in banner, f"bandeau resté : {banner!r}")
+    return f"{len(hellos)} hello en 2,6 s, heartbeats continus, nouveau core accepté (seq repart à 1)"
+
+
+def scenario_heartbeat(core: FakeCore) -> str:
+    """8. Heartbeats à 2 Hz ± 20 % pendant 10 s."""
+    t0 = now()
+    time.sleep(10.0)
+    beats = core.messages("heartbeat", since=t0)
+    rate = len(beats) / 10.0
+    check(1.6 <= rate <= 2.4, f"{len(beats)} heartbeats en 10 s ({rate:.2f} Hz)")
+    gaps = [b.t - a.t for a, b in zip(beats, beats[1:])]
+    return f"{len(beats)} heartbeats en 10 s ({rate:.2f} Hz, écart max {max(gaps):.2f} s)"
+
+
+SCENARIOS: dict[int, tuple[str, Callable[[FakeCore], str]]] = {
+    1: ("hello jusqu'au hello_ack", scenario_hello),
+    2: ("commande renvoyée puis acquittée", scenario_retry),
+    3: ("commande abandonnée après 3 s", scenario_timeout),
+    4: ("core injoignable", scenario_core_silent),
+    5: ("shutdown du core", scenario_shutdown),
+    6: ("trames en désordre", scenario_out_of_order),
+    7: ("trame error", scenario_error),
+    8: ("heartbeats à 2 Hz", scenario_heartbeat),
+}
+# Ordre d'exécution : le scénario 1 exige un engine qui vient de démarrer.
+RUN_ORDER = [1, 2, 3, 6, 7, 4, 5, 8]
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--state-port", type=int, default=5005)
+    ap.add_argument("--cmd-port", type=int, default=5006)
+    ap.add_argument("--engine-log", type=Path, required=True)
+    ap.add_argument("--scenarios", default=",".join(map(str, RUN_ORDER)),
+                    help="numéros à jouer, dans l'ordre (le 1 doit venir en premier)")
+    args = ap.parse_args()
+    wanted = [int(x) for x in args.scenarios.split(",") if x.strip()]
+
+    core = FakeCore(args.state_port, args.cmd_port, EngineLog(args.engine_log))
+    core.start()
+    if 1 not in wanted:
+        core.auto_hello_ack = True
+        core.streaming = True
+    results: list[tuple[int, bool, str]] = []
+    for num in wanted:
+        title, func = SCENARIOS[num]
+        try:
+            detail = func(core)
+            ok = True
+        except ScenarioFailed as exc:
+            detail, ok = str(exc), False
+            # Remet un état sain pour les scénarios suivants.
+            core.silent, core.streaming, core.auto_hello_ack = False, True, True
+            core.accept_cmd = lambda msg, count: True
+        results.append((num, ok, detail))
+        print(f"[{'OK' if ok else 'ÉCHEC'}] scénario {num} – {title} : {detail}", flush=True)
+    core.stop()
+    failed = [r for r in results if not r[1]]
+    print(f"Scénarios : {len(results) - len(failed)}/{len(results)} réussis", flush=True)
+    return 1 if failed else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

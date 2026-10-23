@@ -1,7 +1,15 @@
-[gd_scene load_steps=5 format=3 uid="uid://c3m7x3y5w6w8a"]
+[gd_scene load_steps=8 format=3 uid="uid://c3m7x3y5w6w8a"]
 
 [ext_resource type="Script" path="res://scripts/main.gd" id="1_main"]
 [ext_resource type="Script" path="res://scripts/ipc_client.gd" id="2_ipc"]
+[ext_resource type="Script" path="res://scripts/banner.gd" id="3_banner"]
+
+[sub_resource type="StyleBoxFlat" id="StyleBoxFlat_banner"]
+content_margin_left = 16.0
+content_margin_top = 8.0
+content_margin_right = 16.0
+content_margin_bottom = 8.0
+bg_color = Color(0.6, 0.1, 0.05, 0.85)
 
 [sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
 sky_top_color = Color(0.38, 0.65, 0.98, 1)
@@ -71,3 +79,16 @@ text = "PENTE: -- %"
 [node name="DistanceLabel" type="Label" parent="HUD/Margin/VBox"]
 layout_mode = 2
 text = "DISTANCE: -- km"
+
+[node name="Banner" type="Label" parent="HUD"]
+anchors_preset = 10
+anchor_right = 1.0
+offset_left = 360.0
+offset_top = 20.0
+offset_right = -20.0
+grow_horizontal = 2
+theme_override_font_sizes/font_size = 22
+theme_override_styles/normal = SubResource("StyleBoxFlat_banner")
+horizontal_alignment = 1
+autowrap_mode = 3
+script = ExtResource("3_banner")
