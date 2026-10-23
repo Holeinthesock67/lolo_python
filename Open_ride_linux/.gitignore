@@ -13,3 +13,7 @@ spike_reports/
 # Godot
 .godot/
 *.translation
+
+# Mesure de couverture
+.coverage
+htmlcov/
