@@ -6,6 +6,8 @@ Sous-commandes disponibles à ce stade :
                                       boucle de séance (BLE, physique, IPC, journal)
     openride-core release-trainer     dépannage : annule la consigne du trainer, lui rend sa
                                       liberté et le déconnecte (après un arrêt brutal)
+    openride-core summary [FICHIER] [--ftp W] [--json]
+                                      bilan d'une séance (.jsonl ou .fit ; défaut : dernier journal)
 """
 
 from __future__ import annotations
@@ -69,6 +71,12 @@ def cmd_release_trainer(args: argparse.Namespace) -> int:
     return 0 if ok else 1
 
 
+def cmd_summary(args: argparse.Namespace) -> int:
+    from .tools.session_summary import run
+
+    return run(args.file, args.ftp, args.json, args.config)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="openride-core")
     p.add_argument("--version", action="version", version=__version__)
@@ -87,11 +95,16 @@ def main(argv: list[str] | None = None) -> int:
     rel = sub.add_parser("release-trainer",
                          help="libérer le trainer resté réservé (consigne annulée, contrôle rendu)")
     rel.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    summ = sub.add_parser("summary", help="bilan d'une séance : NP, IF, TSS, zones, meilleures puissances")
+    summ.add_argument("file", nargs="?", type=Path, help="journal .jsonl ou .fit (défaut : dernier journal)")
+    summ.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
+    summ.add_argument("--json", action="store_true", help="sortie JSON")
+    summ.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
-            "release-trainer": cmd_release_trainer}[args.command](args)
+            "release-trainer": cmd_release_trainer, "summary": cmd_summary}[args.command](args)
 
 
 if __name__ == "__main__":
