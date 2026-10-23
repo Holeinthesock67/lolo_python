@@ -133,7 +133,7 @@ Fichiers : `terrain/near/tile_<ix>_<iz>.f32` et `terrain/far/tile_<ix>_<iz>.f32`
 
 ## 8. Livraison (23 octobre 2026)
 
-Réalisé par Claude, branche `lot-b2-compilateur-terrain`. Critères 1 à 7 et 9 tenus par les tests automatiques (95 tests, réseau coupé, en Python 3.11, 3.13 et 3.14 ; 75 tests du core inchangés). Critère 8 vérifié sur le service réel (voir ci-dessous).
+Réalisé par Claude, branche `lot-b2-compilateur-terrain`, fusionné dans `main` (PR #9). Critères 1 à 7 et 9 tenus par les tests automatiques (95 tests, réseau coupé, en Python 3.11, 3.13 et 3.14 ; 75 tests du core inchangés). Critère 8 vérifié sur le service réel (voir ci-dessous).
 
 **Nommage Copernicus vérifié sur le service réel :** `tileList.txt` (26 450 tuiles) et `https://copernicus-dem-30m.s3.amazonaws.com/Copernicus_DSM_COG_10_N45_00_E006_00_DEM/Copernicus_DSM_COG_10_N45_00_E006_00_DEM.tif` répondent ; tuile de 3 600 × 3 600 `float32`, EPSG:4326, pixels centrés sur la grille (bord gauche à 5,99986°), sans valeur `nodata`, environ 42 Mo.
 
@@ -150,5 +150,5 @@ Réalisé par Claude, branche `lot-b2-compilateur-terrain`. Critères 1 à 7 et 
 - Manifeste 1.1 : en plus de `route.alt_source` et de `layers.terrain.tiles`, ajout de `native_resolution_m` (demandé par le §5 du format) et de `road_half_width_m`.
 - Sans fournisseur (usage en bibliothèque), `compile_route` garde le refus du lot B1, avec le message « altitude absente et aucune source MNT fournie ».
 - `add-layer` repasse `format_version` à 1.1.
-- `CLAUDE.md` mentionne encore « la couche terrain viendra avec le lot B2 » : fichier hors périmètre du lot, à corriger par le propriétaire.
+- `CLAUDE.md` mis à jour à la fusion (couche terrain, `--offline`, `add-layer`), avec l'accord du propriétaire.
 
