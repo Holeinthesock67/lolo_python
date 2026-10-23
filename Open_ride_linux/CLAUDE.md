@@ -42,7 +42,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `input_providers.py` : Click et clavier ;
 - `ble_util.py` : verrou BLE, repli BlueZ ;
 - `recorder.py` : journal, mémoire, FIT ;
-- `route.py` : lecture des `.world` et interpolation ;
+- `route.py`, `catalog.py` : lecture des `.world`, interpolation et catalogue des parcours (`.world` et `.gpx`) ;
 - `demo_world.py` : parcours de démonstration ;
 - `workout.py` : lecture des `.zwo` et contrôleur ERG ;
 - `mock_driver.py`, `replay.py` : simulateur de trainer et rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) ;
@@ -78,6 +78,8 @@ python -m openride_core.tools.workouts install | list | check FICHIER.zwo --ftp 
 
 # Parcours
 openride-compiler build trace.gpx      # route + terrain ; puis : verify / info
+openride-compiler list                 # liste les parcours (.world et .gpx) et leur statut
+openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées
 openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude déjà en cache
 openride-compiler add-layer <nom>.world terrain       # régénère le terrain seul
 openride-compiler theme-check ~/OpenRide/Themes/<nom>  # contrôle un thème (défaut : engine/themes/default/)
