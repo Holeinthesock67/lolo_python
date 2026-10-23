@@ -70,3 +70,9 @@ Ajouts compatibles seulement : schémas JSON des deux couches, conformes aux §6
 - Rendu des bâtiments et des arbres dans Godot (lot engine à rédiger).
 - Toits à deux pans, couverture du sol ESA WorldCover.
 - Points d'intérêt et eau (lot I4).
+
+## 9. Livraison (23 octobre 2026, PR #22)
+
+- Client Overpass `osm.py` (cache `~/.cache/openride/osm/<sha256>.json`, découpage par tronçon de 1 km élargi de 400 m, `--offline`).
+- Couches `buildings` et `vegetation` dans `osm_layers.py` (assemblage des multipolygones, anneaux `outer` antihoraires et `holes` horaires, `height_m` déterministe, `base_y`).
+- Schémas `buildings.schema.json` et `vegetation.schema.json`, extension de `cli.py` et `verify.py`, tests `compiler/tests/test_osm.py` (dont l'essai réseau réel Overpass).

@@ -66,3 +66,8 @@ Ajouts compatibles seulement : schémas JSON des deux couches, conformes au §8 
 ## 8. Hors périmètre
 
 - Sons, rendu de l'eau et affichage des noms dans l'engine.
+
+## 9. Livraison (23 octobre 2026, PR #23)
+
+- Extension de `osm.py` et `osm_layers.py` aux couches `poi` (`church_bell`, `village`, `viewpoint`, `livestock`, `river` à ≤ 50 m de la route) et `water` (`lines` découpées par tronçon de 1 km et `areas` avec îles).
+- Schémas `poi.schema.json` et `water.schema.json`, extension de `cli.py` et `verify.py`, tests `compiler/tests/test_osm_poi_water.py`.
