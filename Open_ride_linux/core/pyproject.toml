@@ -17,6 +17,7 @@ dev = ["pytest>=8", "jsonschema>=4", "garmin-fit-sdk>=21"]
 
 [project.scripts]
 openride-core = "openride_core.__main__:main"
+openride = "openride_core.launcher:main"
 openride-ble-diag = "openride_core.tools.ble_diag:main"
 
 [tool.setuptools.packages.find]
