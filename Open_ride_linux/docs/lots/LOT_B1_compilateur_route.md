@@ -113,3 +113,9 @@ Aucune. Si un point du format est ambigu (exemple : `utm_zone` pour une trace à
 - OpenStreetMap.
 - Le lancement du compilateur depuis le menu de l'engine.
 - La lecture du parcours par le core (lot A).
+
+
+## 8. Livraison (23 octobre 2026)
+
+- Paquet `openride-compiler` livré et fusionné (`cli.py`, `gpx.py`, `pipeline.py`, `frame.py`, `writer.py`, `verify.py`, `constants.py`, `errors.py`).
+- 53 tests unitaires et de contrat passants dans `compiler/tests/`.

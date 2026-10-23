@@ -41,6 +41,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] Touches `+` / `−` / flèches (appuis courts), `Page haut` / `Page bas` (appuis longs) ; un bip distinct par type d'appui.
 - [x] Scripts chargés par `preload` : le projet se lance sans passer par l'éditeur.
 - [x] `route_data.gd` : même lecture et même interpolation que le core, vérifiées par 42 vecteurs de test partagés (`engine/tests/test_route_vectors.gd`).
+- [x] `theme_loader.gd` : lecture, validation et fusion des thèmes visuels avec repli sur `res://themes/default/theme.json` et chargement des textures utilisateur (`engine/tests/test_theme_loader.gd`, lot I5).
 - [x] `erg_view_model.gd` : logique d'affichage du bandeau ERG, déclenchement unique du bip à T − 3 s et géométrie de l'histogramme `profile_bars`, testés sans écran face à `fake_core.py --erg-workout` (`engine/tests/test_erg_view_model.gd`, lot I6).
 
 ### Outils
@@ -49,13 +50,15 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] Analyseur de journal de séance (`python -m openride_core.tools.log_report`, lot H6) : résumé texte et `--json` de `~/run_victory.log` (trainer, Click, pauses, seuils Rust SRS §14.1).
 - [x] Schéma et validateur de thèmes (`docs/contracts/world/theme.schema.json`, `engine/themes/default/theme.json`, `openride-compiler theme-check`, lot H7).
 - [x] Outils et bibliothèque d'entraînements ERG (`python -m openride_core.tools.workouts list|check|install` et 5 fichiers `.zwo` de référence dans `core/workouts/`, lot H8).
+- [x] Couches OpenStreetMap `buildings` et `vegetation` du compilateur (`osm.py`, `osm_layers.py`, cache brut `~/.cache/openride/osm/`, schémas `buildings.schema.json` et `vegetation.schema.json`, lot I3).
+- [x] Couches OpenStreetMap `poi` et `water` du compilateur (points d'intérêt sonores/visuels, cours d'eau découpés par tronçon de 1 km et plans d'eau avec îles, schémas `poi.schema.json` et `water.schema.json`, lot I4).
 
 ---
 
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**146 tests `pytest` passent dans le core et 113 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot : 42 vecteurs de route et 8 scénarios IPC vérifiés sans écran (`engine/tests/run_engine_tests.sh`).
+**153 tests pytest passent dans le core et 115 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par garmin-fit-sdk (lot H5), analyseur de journal log_report (lot H6), schéma et validateur de thèmes 	heme-check (lot H7), outils et bibliothèque d'entraînements .zwo (lot H8), cohérence documentation/code (lot I1), catalogue des parcours list et uild-all (lot I2), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (le_util.py à 100 %). Côté Godot : 42 vecteurs de route et 8 scénarios IPC vérifiés sans écran (engine/tests/run_engine_tests.sh).
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.

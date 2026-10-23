@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldVegetationChunk",
+  "description": "Tronçon de 1 km de la couche végétation (Format .world v1, §7).",
+  "type": "object",
+  "required": [
+    "version",
+    "areas"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "point2d": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "ring": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "$ref": "#/$defs/point2d"
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "areas": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "outer",
+          "holes",
+          "density"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "wood",
+              "scrub",
+              "orchard"
+            ]
+          },
+          "outer": {
+            "$ref": "#/$defs/ring"
+          },
+          "holes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ring"
+            }
+          },
+          "density": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          }
+        }
+      }
+    }
+  }
+}
