@@ -126,6 +126,10 @@
         "grade_clamped_points": {
           "type": "integer",
           "minimum": 0
+        },
+        "alt_source": {
+          "type": "string",
+          "description": "Origine de l'altitude de la route : « gpx » ou nom de la source MNT (format 1.1)."
         }
       }
     },
@@ -142,6 +146,72 @@
           },
           "version": {
             "type": "string"
+          }
+        }
+      },
+      "properties": {
+        "terrain": {
+          "type": "object",
+          "required": [
+            "present"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": "string"
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "native_resolution_m": {
+              "type": "number",
+              "minimum": 0
+            },
+            "near_cell_m": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "far_cell_m": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "road_half_width_m": {
+              "type": "number",
+              "minimum": 0
+            },
+            "tiles": {
+              "type": "object",
+              "description": "Tuiles écrites, par niveau (format 1.1).",
+              "properties": {
+                "near": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "far": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
           }
         }
       }

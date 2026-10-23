@@ -156,6 +156,17 @@ def test_schemas_validate_demo_vectors_and_format_example():
     assert not list(mv.iter_errors(example))
 
 
+@pytest.mark.parametrize("length_m", [1234.0, 1500.0, 5000.0, 8000.0, 30_000.0])
+def test_demo_route_never_overlaps_itself(length_m):
+    # Deux points distants de plus de 300 m le long de la route restent à plus de 90 m l'un de
+    # l'autre en plan (les branches du lacet sont à ~95 m) : le terrain peut suivre chaque passage.
+    r = build_route(length_m)
+    x, z, n = r["x"], r["z"], r["n"]
+    closest = min(math.hypot(x[i] - x[j], z[i] - z[j])
+                  for i in range(0, n, 3) for j in range(i + 30, n, 3))
+    assert closest > 90.0
+
+
 def test_engine_demo_is_the_core_demo(tmp_path):
     core_demo = write_demo_world(tmp_path)
     for f in ("route.json", "manifest.json"):

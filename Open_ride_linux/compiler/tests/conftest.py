@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 import math
+import socket
 from pathlib import Path
 
 import numpy as np
 import pytest
 
+from openride_compiler import cli
+from openride_compiler.elevation import SyntheticProvider
 from openride_compiler.pipeline import utm_transformer, utm_zone_of
 
 ORIGIN = (45.09, 6.06)          # près de Bourg-d'Oisans, zone 32T
@@ -62,3 +65,22 @@ def make_gpx(tmp_path):
     def make(name, x, z, alt=None, **kw):
         return write_gpx(tmp_path / name, x, z, alt, **kw)
     return make
+
+
+def plane(x, z):
+    """MNT de test par défaut : plan qui monte de 5 % vers le nord, égal à l'altitude de
+    `straight_north` sur son tracé (l'altitude GPX y est donc jugée correcte)."""
+    return 1000.0 - 0.05 * np.asarray(z, dtype=float) + 0.0 * np.asarray(x, dtype=float)
+
+
+@pytest.fixture(autouse=True)
+def offline_and_synthetic(request, monkeypatch, tmp_path):
+    """Réseau coupé (sauf tests `network`), cache MNT temporaire, MNT synthétique pour la CLI."""
+    monkeypatch.setenv("OPENRIDE_DEM_CACHE", str(tmp_path / "dem-cache"))
+    if request.node.get_closest_marker("network"):
+        return
+    def no_network(*args, **kwargs):
+        raise OSError("réseau interdit pendant les tests")
+    monkeypatch.setattr(socket.socket, "connect", no_network)
+    monkeypatch.setattr(socket, "create_connection", no_network)
+    monkeypatch.setattr(cli, "make_provider", lambda offline, log=None: SyntheticProvider(*ORIGIN, plane))
