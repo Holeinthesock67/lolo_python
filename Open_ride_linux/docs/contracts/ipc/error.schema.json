@@ -1,0 +1,34 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideErrorMessage",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "code",
+    "message"
+  ],
+  "properties": {
+    "type": {
+      "const": "error"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "code": {
+      "type": "string",
+      "enum": [
+        "version_mismatch",
+        "route_not_found",
+        "route_invalid",
+        "workout_invalid",
+        "trainer_control_refused",
+        "recording_failed"
+      ]
+    },
+    "message": {
+      "type": "string"
+    }
+  }
+}

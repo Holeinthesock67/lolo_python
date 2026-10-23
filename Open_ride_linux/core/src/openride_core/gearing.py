@@ -40,8 +40,12 @@ class Gearing:
         self.k = max(self.k - n, 1)
         return self.k
 
-    def effective_grade(self, terrain_grade_pct: float) -> float:
-        """Pente à envoyer au trainer pour le braquet courant, bornée à la plage autorisée."""
+    def effective_grade(self, terrain_grade_pct: float, difficulty: float = 1.0) -> float:
+        """Pente à envoyer au trainer pour le braquet courant, bornée à la plage autorisée.
+
+        `difficulty` (coefficient de difficulté, SRS §5) multiplie la pente effective avant le
+        bornage ; la vitesse virtuelle, elle, utilise toujours la pente réelle.
+        """
         g_base = self.cfg.g_base_pct
-        g = (terrain_grade_pct + g_base) * self.ratio - g_base
+        g = ((terrain_grade_pct + g_base) * self.ratio - g_base) * difficulty
         return min(max(g, self.grade_min), self.grade_max)
