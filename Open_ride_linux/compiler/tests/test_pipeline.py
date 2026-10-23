@@ -85,7 +85,7 @@ def test_short_trace_refused():
 
 def test_missing_altitude_refused():
     x, z, _ = straight_north()
-    with pytest.raises(CompileError, match="altitude absente : la source MNT arrive avec le lot B2"):
+    with pytest.raises(CompileError, match="altitude absente et aucune source MNT fournie"):
         compile_route(points(x, z))
 
 
