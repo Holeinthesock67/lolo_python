@@ -1,0 +1,64 @@
+"""Outils communs : GPX synthétiques générés à partir de coordonnées calculées."""
+
+from __future__ import annotations
+
+import math
+from pathlib import Path
+
+import numpy as np
+import pytest
+
+from openride_compiler.pipeline import utm_transformer, utm_zone_of
+
+ORIGIN = (45.09, 6.06)          # près de Bourg-d'Oisans, zone 32T
+REPO = Path(__file__).resolve().parents[2]
+WORLD_CONTRACTS = REPO / "docs" / "contracts" / "world"
+
+
+def to_latlon(x, z, origin=ORIGIN):
+    """Repère du monde (x vers l'est, z vers le sud) → (lat, lon), dans la zone UTM de l'origine."""
+    number, _, south = utm_zone_of(*origin)
+    tr = utm_transformer(number, south)
+    e0, n0 = tr.transform(origin[1], origin[0])
+    lon, lat = tr.transform(np.asarray(x, float) + e0, n0 - np.asarray(z, float), direction="INVERSE")
+    return np.atleast_1d(lat), np.atleast_1d(lon)
+
+
+def gpx_text(lat, lon, ele=None, version="1.1", tag="trkpt") -> str:
+    ns = "http://www.topografix.com/GPX/1/1" if version == "1.1" else "http://www.topografix.com/GPX/1/0"
+    pts = []
+    for k, (a, o) in enumerate(zip(lat, lon)):
+        e = "" if ele is None or ele[k] is None else f"<ele>{ele[k]:.4f}</ele>"
+        pts.append(f'<{tag} lat="{a:.10f}" lon="{o:.10f}">{e}</{tag}>')
+    body = "".join(pts)
+    if tag == "trkpt":
+        body = f"<trk><name>essai</name><trkseg>{body}</trkseg></trk>"
+    else:
+        body = f"<rte>{body}</rte>"
+    return (f'<?xml version="1.0" encoding="UTF-8"?>\n'
+            f'<gpx version="{version}" creator="tests" xmlns="{ns}">{body}</gpx>\n')
+
+
+def write_gpx(path: Path, x, z, alt=None, **kw) -> Path:
+    lat, lon = to_latlon(x, z)
+    path.write_text(gpx_text(lat, lon, None if alt is None else list(alt), **kw), encoding="utf-8")
+    return path
+
+
+def straight_north(length=2000.0, step=5.0, grade=5.0):
+    s = np.arange(0.0, length + 1e-9, step)
+    return np.zeros_like(s), -s, 1000.0 + grade / 100.0 * s
+
+
+def circle(radius=1000.0, n_points=1000):
+    a = np.linspace(0.0, 2 * math.pi, n_points, endpoint=False)
+    x, z = radius * np.sin(a), -radius * (1 - np.cos(a))         # départ en (0, 0)
+    alt = 500.0 + 20.0 * np.sin(a)
+    return x, z, alt
+
+
+@pytest.fixture
+def make_gpx(tmp_path):
+    def make(name, x, z, alt=None, **kw):
+        return write_gpx(tmp_path / name, x, z, alt, **kw)
+    return make
