@@ -23,7 +23,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
   - `ftms.py` : Indoor Bike Data, capacités, plage de puissance, cardio, commandes SIM et ERG ;
   - `zwift_click.py` : formats `0x37` (ancien Click) et `0x23` (Click récent), appui court sous 0,5 s, appui long à partir de 0,9 s.
 - [x] **Pilotes réels :**
-  - `ftms_driver.py` : Victory, avec reconnexion à délai croissant, prise de contrôle, lissage de la puissance, FC à 0 traitée comme absente, résistance relâchée à l'arrêt ;
+  - `ftms_driver.py` : Victory, avec reconnexion à délai croissant, prise de contrôle, lissage de la puissance, FC à 0 traitée comme absente, à l'arrêt : pente 0 %, Reset (contrôle FTMS rendu) et déconnexion, y compris sur SIGHUP ; dépannage `openride-core release-trainer` ;
   - `input_providers.py` : Click avec recherche continue, clavier en parallèle ;
   - `ble_util.py` : une seule opération Bluetooth à la fois, repli sur les appareils connus de BlueZ.
 - [x] **Boucle de séance** (`session.py`, `openride-core run`) : physique à 50 Hz, IPC à 30 Hz, journal à 1 Hz, FIT en fin de séance, pente anticipée et lissée, mesures de performance toutes les 60 s.
