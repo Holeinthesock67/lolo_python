@@ -56,3 +56,10 @@ Aucune.
 
 - Écriture ou migration automatique de `config.toml`.
 - Menu de réglages (lot G).
+
+## 9. Livraison (23 octobre 2026, fait directement à la demande de Laurent, sans sous-traitance)
+
+- `config.py` : `ConfigError`, conversion stricte des types (un booléen n'est jamais un nombre ; un entier écrit `20.0` est accepté), bornes `BOUNDS` et choix `CHOICES` documentés dans le code, cohérences (`start_gear` ≤ `n_gears`, `ratio_min` < `ratio_max`, `grade_min_pct` < `grade_max_pct`, ports différents), avertissement pour une clé ou une section inconnue, TOML invalide signalé avec sa ligne.
+- `__main__.py` : configuration invalide → message sur la sortie d'erreur et code 1 ; `--gear` hors de 1 à `n_gears` → code 2 (contrôle fait après la lecture de la configuration, car `n_gears` en dépend). `tools/workouts.py check` : message et code 1 au lieu d'une trace.
+- Tests : `core/tests/test_config_validation.py` (bornes paramétrées, choix, types, ligne TOML, clé inconnue, exemple de la SRS §11 sans avertissement, codes de sortie).
+- Bornes ajoutées au-delà du cahier : `bike.cda_m2`, `bike.crr`, `drivetrain_efficiency`, constantes de temps du trainer, `g_base_pct`, `long_press_gears` et seuils du Click.

@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 
 from . import __version__
@@ -33,12 +34,19 @@ def cmd_run(args: argparse.Namespace) -> int:
     from . import config as config_mod
     from .session import CoreSession
 
-    cfg = config_mod.load(args.config)
+    try:
+        cfg = config_mod.load(args.config)
+    except config_mod.ConfigError as exc:
+        print(f"openride-core : configuration invalide : {exc}", file=sys.stderr)
+        return 1
     if args.trainer:
         cfg.drivers.trainer = args.trainer
     if args.input:
         cfg.drivers.input = args.input
-    if args.gear:
+    if args.gear is not None:
+        if not 1 <= args.gear <= cfg.gearing.n_gears:
+            print(f"openride-core : --gear {args.gear} hors de 1 à {cfg.gearing.n_gears}", file=sys.stderr)
+            return 2
         cfg.gearing.start_gear = args.gear
     if args.replay:
         cfg.drivers.trainer = "mock"
