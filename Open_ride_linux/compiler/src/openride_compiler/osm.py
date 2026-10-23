@@ -69,7 +69,7 @@ def chunk_bboxes(
 
 
 def build_overpass_query(bboxes: list[tuple[float, float, float, float]]) -> str:
-    """Construit la requête Overpass QL pour un paquet de boîtes englobantes."""
+    """Construit la requête Overpass QL pour un paquet de boîtes englobantes (Lots I3 et I4)."""
     parts: list[str] = []
     for south, west, north, east in bboxes:
         b = f"({south:.5f},{west:.5f},{north:.5f},{east:.5f})"
@@ -84,6 +84,22 @@ def build_overpass_query(bboxes: list[tuple[float, float, float, float]]) -> str
             f'  relation["natural"="scrub"]{b};',
             f'  way["landuse"="orchard"]{b};',
             f'  relation["landuse"="orchard"]{b};',
+            f'  node["amenity"="place_of_worship"]{b};',
+            f'  way["amenity"="place_of_worship"]{b};',
+            f'  relation["amenity"="place_of_worship"]{b};',
+            f'  node["place"~"^(village|hamlet|town)$"]{b};',
+            f'  way["place"~"^(village|hamlet|town)$"]{b};',
+            f'  node["tourism"="viewpoint"]{b};',
+            f'  way["tourism"="viewpoint"]{b};',
+            f'  way["landuse"="farmyard"]{b};',
+            f'  relation["landuse"="farmyard"]{b};',
+            f'  way["landuse"="meadow"]["animal"]{b};',
+            f'  relation["landuse"="meadow"]["animal"]{b};',
+            f'  way["waterway"~"^(river|stream|canal)$"]{b};',
+            f'  way["natural"="water"]{b};',
+            f'  relation["natural"="water"]{b};',
+            f'  way["landuse"="reservoir"]{b};',
+            f'  relation["landuse"="reservoir"]{b};',
         ])
     union_body = "\n".join(parts)
     return f"[out:json][timeout:60];\n(\n{union_body}\n);\nout body geom;\n"
