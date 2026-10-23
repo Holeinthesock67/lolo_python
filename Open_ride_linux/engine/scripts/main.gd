@@ -47,11 +47,13 @@ func _ready() -> void:
 	status_label.text = "ÉTAT: en attente du core…"
 	$HUD/Margin/VBox.add_child(status_label)
 	
-	# Charger la route de démonstration factice
-	var demo_path := "res://demo/demo.world/route.json"
-	route = RouteDataScript.load_from_file(demo_path)
-	if route:
+	# Parcours de démonstration, identique à celui du core (lot A). Le choix par route_id
+	# reçu du core arrive avec le lot D.
+	route = RouteDataScript.new()
+	if route.load_world_dir("res://demo/demo.world"):
 		_build_route_mesh()
+	else:
+		route = null
 
 
 func _on_input_event(event_name: String) -> void:
@@ -95,7 +97,7 @@ func _process(delta: float) -> void:
 		camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
 		
 		# Orienter la caméra selon le cap de la route
-		var heading: float = route.sample_heading(current_s)
+		var heading: float = deg_to_rad(route.sample_heading_deg(current_s))
 		# Dans Godot : -Z est le nord. La rotation Y s'applique sur le cap horaire.
 		camera.rotation.y = -heading
 

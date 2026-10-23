@@ -19,7 +19,8 @@ def make_session(tmp_path, monkeypatch, cfg=None, driver=None, port=5950):
     cfg = cfg or Config()
     cfg.ipc.port_state, cfg.ipc.port_commands = port, port + 1
     s = CoreSession(cfg, driver=driver or MockDriver(), inputs=[NullProvider()],
-                    journal_dir=tmp_path / "journal")
+                    journal_dir=tmp_path / "journal",
+                       routes_root=tmp_path / "routes")
     frames = []
     s.server.send_raw = frames.append
     return s, frames
@@ -166,7 +167,7 @@ def test_c6_difficulty_halves_sent_grade_not_speed(tmp_path, monkeypatch):
         s._on_command("start", {}, 2)
         steps(s, 500, 10.0)
         expected = s.gearing.effective_grade(
-            s.route.sample("grade_pct", s.physics.s + s.physics.v * cfg.trainer.latency_tau_s))
+            s.route.grade_at(s.physics.s + s.physics.v * cfg.trainer.latency_tau_s))
         return s, expected
 
     async def scenario():
