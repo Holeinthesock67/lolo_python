@@ -98,8 +98,9 @@ def test_ftms_driver_data_and_commands():
 
         drv.stop()
         await asyncio.wait_for(task, 3)
-        last = client.writes[-1][1]                  # résistance relâchée en partant
+        last = client.writes[-2][1]                  # résistance relâchée en partant…
         assert last[0] == ftms.OP_SET_SIM_PARAMS and struct.unpack_from("<h", last, 3)[0] == 0
+        assert client.writes[-1][1] == ftms.cmd_reset()   # … puis contrôle FTMS rendu
     asyncio.run(scenario())
 
 
