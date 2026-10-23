@@ -28,10 +28,14 @@ from .osm_layers import (
     build_osm_layers,
     buildings_manifest,
     load_existing_near_tiles,
+    poi_manifest,
     replace_layer_dir,
     vegetation_manifest,
+    water_manifest,
     write_buildings_dir,
+    write_poi_dir,
     write_vegetation_dir,
+    write_water_dir,
 )
 from .pipeline import compile_route
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
@@ -39,8 +43,9 @@ from .theme import check_theme
 from .verify import verify_world, world_info
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
-LAYERS = ("route", "terrain", "buildings", "vegetation")
+LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water")
 DEFAULT_LAYERS = ("route", "terrain")
+OSM_LAYERS = ("buildings", "vegetation", "poi", "water")
 
 
 def make_provider(offline: bool, log: Log = stderr_log) -> ElevationProvider:
@@ -87,7 +92,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     a = sub.add_parser("add-layer", help="régénère une couche d'un .world existant")
     a.add_argument("world", type=Path)
-    a.add_argument("layer", choices=["terrain", "buildings", "vegetation"])
+    a.add_argument("layer", choices=["terrain", "buildings", "vegetation", "poi", "water"])
     a.add_argument("--offline", action="store_true",
                    help="interdit le réseau : les données doivent être en cache")
 
@@ -130,7 +135,7 @@ def cmd_build(args: argparse.Namespace) -> int:
         manifest["layers"]["terrain"] = terrain_manifest(tiles, provider)
 
     osm_res = None
-    if "buildings" in args.layers or "vegetation" in args.layers:
+    if any(la in args.layers for la in OSM_LAYERS):
         osm_client = make_osm_client(args.offline)
         responses = osm_client.fetch_for_route(compiled.route, frame)
         near_tiles = tiles.get("near") if tiles is not None else None
@@ -139,6 +144,10 @@ def cmd_build(args: argparse.Namespace) -> int:
             manifest["layers"]["buildings"] = buildings_manifest(osm_res)
         if "vegetation" in args.layers:
             manifest["layers"]["vegetation"] = vegetation_manifest(osm_res)
+        if "poi" in args.layers:
+            manifest["layers"]["poi"] = poi_manifest(osm_res)
+        if "water" in args.layers:
+            manifest["layers"]["water"] = water_manifest(osm_res)
 
     def extra(folder: Path) -> None:
         if tiles is not None:
@@ -148,6 +157,10 @@ def cmd_build(args: argparse.Namespace) -> int:
                 write_buildings_dir(folder / "buildings", osm_res.buildings_chunks)
             if "vegetation" in args.layers:
                 write_vegetation_dir(folder / "vegetation", osm_res.vegetation_chunks)
+            if "poi" in args.layers:
+                write_poi_dir(folder / "poi", osm_res.poi_chunks)
+            if "water" in args.layers:
+                write_water_dir(folder / "water", osm_res.water_chunks)
 
     world = write_world(args.out, name, manifest, compiled.route, force=args.force, extra=extra)
     r = compiled.route
@@ -184,16 +197,25 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
     osm_client = make_osm_client(args.offline)
     responses = osm_client.fetch_for_route(route, frame)
     near_tiles = load_existing_near_tiles(world)
-    provider = make_provider(args.offline) if (not near_tiles and args.layer == "buildings") else None
+    needs_y = args.layer in ("buildings", "poi", "water")
+    provider = make_provider(args.offline) if (not near_tiles and needs_y) else None
     osm_res = build_osm_layers(route, frame, responses, near_tiles=near_tiles, provider=provider)
     if args.layer == "buildings":
         replace_layer_dir(world, "buildings", write_buildings_dir, osm_res.buildings_chunks)
         manifest.setdefault("layers", {})["buildings"] = buildings_manifest(osm_res)
         count = osm_res.buildings_count
-    else:
+    elif args.layer == "vegetation":
         replace_layer_dir(world, "vegetation", write_vegetation_dir, osm_res.vegetation_chunks)
         manifest.setdefault("layers", {})["vegetation"] = vegetation_manifest(osm_res)
         count = osm_res.vegetation_count
+    elif args.layer == "poi":
+        replace_layer_dir(world, "poi", write_poi_dir, osm_res.poi_chunks)
+        manifest.setdefault("layers", {})["poi"] = poi_manifest(osm_res)
+        count = osm_res.poi_count
+    else:
+        replace_layer_dir(world, "water", write_water_dir, osm_res.water_chunks)
+        manifest.setdefault("layers", {})["water"] = water_manifest(osm_res)
+        count = osm_res.water_lines_count + osm_res.water_areas_count
     manifest["format_version"] = C.FORMAT_VERSION
     replace_manifest(world, manifest)
     print(f"{world} : couche {args.layer} régénérée, {count} objet(s) ({time.monotonic() - t0:.1f} s)")

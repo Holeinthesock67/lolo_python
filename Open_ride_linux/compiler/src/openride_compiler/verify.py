@@ -300,6 +300,133 @@ def _check_vegetation(world: Path, layers: dict, route: dict | None, problems: l
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
 
 
+def _check_poi(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
+    p_layer = layers.get("poi") if isinstance(layers, dict) else None
+    if not isinstance(p_layer, dict) or not p_layer.get("present"):
+        return
+    folder = world / "poi"
+    if not folder.is_dir():
+        problems.append("poi : dossier absent")
+        return
+    axis = RouteAxis(route["x"], route["z"], route["alt_m"]) if route is not None else None
+    for chunk_file in sorted(folder.glob("chunk_*.json")):
+        m = CHUNK_RE.fullmatch(chunk_file.name)
+        if not m:
+            continue
+        k = int(m.group(1))
+        data = _load(chunk_file, problems)
+        if data is None:
+            continue
+        if not str(data.get("version", "")).startswith("1."):
+            problems.append(f"poi/{chunk_file.name} : version inattendue {data.get('version')!r}")
+        items = data.get("points")
+        if not isinstance(items, list):
+            problems.append(f"poi/{chunk_file.name} : « points » n'est pas une liste")
+            continue
+        for item in items:
+            if not isinstance(item, dict):
+                problems.append(f"poi/{chunk_file.name} : élément non objet")
+                continue
+            pid = item.get("id", "?")
+            label = f"poi/{chunk_file.name} ({pid})"
+            if not isinstance(item.get("id"), str) or not item.get("id"):
+                problems.append(f"{label} : id invalide")
+            if item.get("kind") not in C.POI_KINDS:
+                problems.append(f"{label} : kind inconnu {item.get('kind')!r}")
+            x, y, z = item.get("x"), item.get("y"), item.get("z")
+            if not (_is_number(x) and _is_number(y) and _is_number(z)):
+                problems.append(f"{label} : coordonnées (x, y, z) invalides")
+                continue
+            if not (_is_number(item.get("radius_m")) and float(item["radius_m"]) > 0):
+                problems.append(f"{label} : radius_m invalide")
+            if route is not None and axis is not None:
+                expected_k, _ = nearest_chunk_and_y(float(x), float(z), route, axis, C.OSM_BAND_M)
+                if expected_k != k:
+                    problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
+
+
+def _check_water(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
+    w_layer = layers.get("water") if isinstance(layers, dict) else None
+    if not isinstance(w_layer, dict) or not w_layer.get("present"):
+        return
+    folder = world / "water"
+    if not folder.is_dir():
+        problems.append("water : dossier absent")
+        return
+    axis = RouteAxis(route["x"], route["z"], route["alt_m"]) if route is not None else None
+    for chunk_file in sorted(folder.glob("chunk_*.json")):
+        m = CHUNK_RE.fullmatch(chunk_file.name)
+        if not m:
+            continue
+        k = int(m.group(1))
+        data = _load(chunk_file, problems)
+        if data is None:
+            continue
+        if not str(data.get("version", "")).startswith("1."):
+            problems.append(f"water/{chunk_file.name} : version inattendue {data.get('version')!r}")
+        lines = data.get("lines")
+        areas = data.get("areas")
+        if not isinstance(lines, list):
+            problems.append(f"water/{chunk_file.name} : « lines » n'est pas une liste")
+            lines = []
+        if not isinstance(areas, list):
+            problems.append(f"water/{chunk_file.name} : « areas » n'est pas une liste")
+            areas = []
+        for item in lines:
+            if not isinstance(item, dict):
+                problems.append(f"water/{chunk_file.name} : ligne non objet")
+                continue
+            lid = item.get("id", "?")
+            label = f"water/{chunk_file.name} ({lid})"
+            if not isinstance(item.get("id"), str) or not item.get("id"):
+                problems.append(f"{label} : id invalide")
+            if item.get("kind") not in C.WATER_LINE_KINDS:
+                problems.append(f"{label} : kind de ligne inconnu {item.get('kind')!r}")
+            if not (_is_number(item.get("width_m")) and float(item["width_m"]) > 0):
+                problems.append(f"{label} : width_m invalide")
+            pts = item.get("points")
+            if not isinstance(pts, list) or len(pts) < 2:
+                problems.append(f"{label} : points de ligne invalides")
+                continue
+            bad_pt = False
+            for pt in pts:
+                if not isinstance(pt, list) or len(pt) != 3 or not all(_is_number(v) for v in pt):
+                    problems.append(f"{label} : point [x, z, y] invalide {pt!r}")
+                    bad_pt = True
+                    break
+            if not bad_pt and route is not None and axis is not None:
+                mx = sum(p[0] for p in pts) / len(pts)
+                mz = sum(p[1] for p in pts) / len(pts)
+                expected_k, _ = nearest_chunk_and_y(mx, mz, route, axis, C.OSM_BAND_M)
+                if expected_k != k:
+                    problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
+        for item in areas:
+            if not isinstance(item, dict):
+                problems.append(f"water/{chunk_file.name} : zone non objet")
+                continue
+            aid = item.get("id", "?")
+            label = f"water/{chunk_file.name} ({aid})"
+            if not isinstance(item.get("id"), str) or not item.get("id"):
+                problems.append(f"{label} : id invalide")
+            if item.get("kind") not in C.WATER_AREA_KINDS:
+                problems.append(f"{label} : kind de zone inconnu {item.get('kind')!r}")
+            if not _is_number(item.get("level_y")):
+                problems.append(f"{label} : level_y invalide")
+            outer = item.get("outer")
+            holes = item.get("holes")
+            if not isinstance(holes, list):
+                problems.append(f"{label} : holes n'est pas une liste")
+                holes = []
+            outer_ok = _check_ring(outer, True, label, problems)
+            for h in holes:
+                _check_ring(h, False, label, problems)
+            if outer_ok and route is not None and axis is not None:
+                cx, cz = ring_centroid(outer)
+                expected_k, _ = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
+                if expected_k != k:
+                    problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
+
+
 def verify_world(world: Path) -> list[str]:
     """Liste des problèmes d'un `.world` ; liste vide si le parcours est valide."""
     world = Path(world)
@@ -321,6 +448,8 @@ def verify_world(world: Path) -> list[str]:
     _check_terrain(world, layers, route, problems)
     _check_buildings(world, layers, route, problems)
     _check_vegetation(world, layers, route, problems)
+    _check_poi(world, layers, route, problems)
+    _check_water(world, layers, route, problems)
     return problems
 
 

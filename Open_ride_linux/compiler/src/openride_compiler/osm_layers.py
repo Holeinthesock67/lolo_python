@@ -363,6 +363,112 @@ def compute_footprint_base_y(
     return round(float(fallback_y), 2)
 
 
+def sample_terrain_y(
+    xs: np.ndarray,
+    zs: np.ndarray,
+    frame: LocalFrame,
+    near_tiles: dict[tuple[int, int], np.ndarray] | None = None,
+    provider: ElevationProvider | None = None,
+    fallback_ys: np.ndarray | None = None,
+) -> np.ndarray:
+    """Altitude du terrain aux points (xs, zs) : tuiles near, sinon MNT, sinon repli route."""
+    if near_tiles:
+        ys = _sample_near_tiles_at(xs, zs, near_tiles)
+        if ys is not None and len(ys) == len(xs):
+            return ys
+    if provider is not None:
+        lats, lons = frame.to_latlon(xs, zs)
+        ys = np.asarray(provider.elevations(lats, lons), dtype=float)
+        if len(ys) == len(xs) and np.all(np.isfinite(ys)):
+            return ys
+    if fallback_ys is not None and len(fallback_ys) == len(xs):
+        return np.asarray(fallback_ys, dtype=float)
+    return np.zeros(len(xs), dtype=float)
+
+
+def compute_contour_min_y(
+    outer: list[list[float]],
+    frame: LocalFrame,
+    near_tiles: dict[tuple[int, int], np.ndarray] | None = None,
+    provider: ElevationProvider | None = None,
+    fallback_y: float = 0.0,
+) -> float:
+    """Minimum d'altitude du terrain sur le contour d'un plan d'eau (§8, Lot I4 §4.2)."""
+    px = np.array([p[0] for p in outer], dtype=float)
+    pz = np.array([p[1] for p in outer], dtype=float)
+    fb = np.full(len(px), fallback_y, dtype=float)
+    ys = sample_terrain_y(px, pz, frame, near_tiles, provider, fb)
+    finite = ys[np.isfinite(ys)]
+    if len(finite) > 0:
+        return round(float(np.min(finite)), 2)
+    return round(float(fallback_y), 2)
+
+
+def compute_water_width(kind: str, tags: dict[str, Any]) -> float:
+    """Largeur d'un cours d'eau (`width_m`) : étiquette `width`, sinon valeur par type (§8, Lot I4 §4.2)."""
+    raw_w = tags.get("width")
+    if isinstance(raw_w, (int, float)) and raw_w > 0:
+        return round(float(raw_w), 2)
+    if isinstance(raw_w, str):
+        m = HEIGHT_RE.match(raw_w)
+        if m:
+            val = float(m.group(1).replace(",", "."))
+            if val > 0:
+                return round(val, 2)
+    defaults = {
+        "river": C.WATER_WIDTH_RIVER_M,
+        "stream": C.WATER_WIDTH_STREAM_M,
+        "canal": C.WATER_WIDTH_CANAL_M,
+    }
+    return float(defaults.get(kind, C.WATER_WIDTH_DEFAULT_M))
+
+
+def _poi_kind_and_radius(tags: dict[str, Any]) -> tuple[str, int] | None:
+    """Détermine le (kind, radius_m) d'un point d'intérêt hors rivière (Lot I4 §4.1)."""
+    if tags.get("amenity") == "place_of_worship" and tags.get("building") in ("church", "chapel"):
+        return "church_bell", C.POI_RADIUS_CHURCH_BELL_M
+    if tags.get("place") in ("village", "hamlet", "town"):
+        return "village", C.POI_RADIUS_VILLAGE_M
+    if tags.get("tourism") == "viewpoint":
+        return "viewpoint", C.POI_RADIUS_VIEWPOINT_M
+    if tags.get("landuse") == "farmyard" or (tags.get("landuse") == "meadow" and bool(tags.get("animal"))):
+        return "livestock", C.POI_RADIUS_LIVESTOCK_M
+    return None
+
+
+def _water_area_kind(tags: dict[str, Any]) -> str | None:
+    """Détermine le kind d'un plan d'eau (`lake`, `pond`, `reservoir`) d'après les étiquettes OSM."""
+    if tags.get("landuse") == "reservoir":
+        return "reservoir"
+    if tags.get("natural") == "water":
+        w = tags.get("water")
+        if w in ("river", "stream", "canal", "ditch", "drain"):
+            return None
+        if w in ("reservoir", "basin"):
+            return "reservoir"
+        if w == "pond":
+            return "pond"
+        return "lake"
+    return None
+
+
+def _densify_polyline_xz(pts_xz: list[tuple[float, float]], max_step_m: float = 25.0) -> list[tuple[float, float]]:
+    if len(pts_xz) < 2:
+        return pts_xz
+    out: list[tuple[float, float]] = [pts_xz[0]]
+    for i in range(len(pts_xz) - 1):
+        x0, z0 = pts_xz[i]
+        x1, z1 = pts_xz[i + 1]
+        seg_len = math.hypot(x1 - x0, z1 - z0)
+        if seg_len <= 1e-3:
+            continue
+        steps = max(1, int(math.ceil(seg_len / max_step_m)))
+        for s in range(1, steps + 1):
+            t = s / steps
+            out.append((x0 + t * (x1 - x0), z0 + t * (z1 - z0)))
+    return out
+
+
 def nearest_chunk_and_y(
     cx: float,
     cz: float,
@@ -398,10 +504,16 @@ def _vegetation_kind_and_density(tags: dict[str, Any]) -> tuple[str, float] | No
 class OsmLayersResult:
     buildings_chunks: dict[int, list[dict[str, Any]]]
     vegetation_chunks: dict[int, list[dict[str, Any]]]
+    poi_chunks: dict[int, list[dict[str, Any]]]
+    water_chunks: dict[int, dict[str, list[dict[str, Any]]]]
     buildings_count: int
     buildings_ignored: int
     vegetation_count: int
     vegetation_ignored: int
+    poi_count: int
+    water_lines_count: int
+    water_areas_count: int
+    water_ignored: int
     osm_date: str | None
 
 
@@ -416,6 +528,32 @@ def extract_osm_date(responses: list[dict[str, Any]]) -> str | None:
     return min(dates) if dates else None
 
 
+def _element_point_xz(el: dict[str, Any], frame: LocalFrame) -> tuple[float, float] | None:
+    """Renvoie la position (x, z) d'un élément OSM (node, ou centroïde d'un way/relation)."""
+    el_type = el.get("type")
+    if el_type == "node":
+        if "lat" in el and "lon" in el:
+            xs, zs = frame.to_xz(np.array([float(el["lat"])]), np.array([float(el["lon"])]))
+            return float(xs[0]), float(zs[0])
+        return None
+    if el_type == "way":
+        geom = el.get("geometry") or []
+        pts = [(float(p["lat"]), float(p["lon"])) for p in geom if "lat" in p and "lon" in p]
+        if not pts:
+            return None
+        if len(pts) >= 2 and abs(pts[0][0] - pts[-1][0]) < 1e-6 and abs(pts[0][1] - pts[-1][1]) < 1e-6:
+            pts = pts[:-1]
+        lats = np.array([p[0] for p in pts], dtype=float)
+        lons = np.array([p[1] for p in pts], dtype=float)
+        xs, zs = frame.to_xz(lats, lons)
+        return float(np.mean(xs)), float(np.mean(zs))
+    if el_type == "relation":
+        polys, _ = _extract_polygons(el, frame)
+        if polys:
+            return ring_centroid(polys[0][0])
+    return None
+
+
 def build_osm_layers(
     route: dict[str, Any],
     frame: LocalFrame,
@@ -423,15 +561,21 @@ def build_osm_layers(
     near_tiles: dict[tuple[int, int], np.ndarray] | None = None,
     provider: ElevationProvider | None = None,
 ) -> OsmLayersResult:
-    """Construit les couches `buildings` et `vegetation` à partir des réponses Overpass."""
+    """Construit les couches `buildings`, `vegetation`, `poi` et `water` à partir des réponses Overpass."""
     axis = RouteAxis(route["x"], route["z"], route["alt_m"])
     buildings_chunks: dict[int, list[dict[str, Any]]] = {}
     vegetation_chunks: dict[int, list[dict[str, Any]]] = {}
+    poi_chunks: dict[int, list[dict[str, Any]]] = {}
+    water_chunks: dict[int, dict[str, list[dict[str, Any]]]] = {}
 
     buildings_count = 0
     buildings_ignored = 0
     vegetation_count = 0
     vegetation_ignored = 0
+    poi_count = 0
+    water_lines_count = 0
+    water_areas_count = 0
+    water_ignored = 0
 
     seen_ids: set[str] = set()
     prefix_map = {"node": "n", "way": "w", "relation": "r"}
@@ -440,7 +584,7 @@ def build_osm_layers(
         for el in resp.get("elements") or []:
             el_type = str(el.get("type", ""))
             raw_id = el.get("id")
-            if el_type not in ("way", "relation") or raw_id is None:
+            if el_type not in prefix_map or raw_id is None:
                 continue
             obj_id = f"{prefix_map[el_type]}{raw_id}"
             if obj_id in seen_ids:
@@ -451,9 +595,118 @@ def build_osm_layers(
             if not isinstance(tags, dict):
                 continue
 
+            name_val = tags.get("name")
+            poi_name = str(name_val) if isinstance(name_val, str) and name_val else None
+
+            # 1. Points d'intérêt hors cours d'eau (church_bell, village, viewpoint, livestock)
+            poi_info = _poi_kind_and_radius(tags)
+            if poi_info is not None:
+                pt_xz = _element_point_xz(el, frame)
+                if pt_xz is not None:
+                    px, pz = pt_xz
+                    k_poi, y_route_poi = nearest_chunk_and_y(px, pz, route, axis, C.OSM_BAND_M)
+                    if k_poi is not None:
+                        py_arr = sample_terrain_y(
+                            np.array([px]),
+                            np.array([pz]),
+                            frame,
+                            near_tiles,
+                            provider,
+                            np.array([y_route_poi]),
+                        )
+                        p_kind, p_radius = poi_info
+                        poi_chunks.setdefault(k_poi, []).append({
+                            "id": obj_id,
+                            "kind": p_kind,
+                            "x": round(px, 2),
+                            "y": round(float(py_arr[0]), 2),
+                            "z": round(pz, 2),
+                            "radius_m": p_radius,
+                            "name": poi_name,
+                        })
+                        poi_count += 1
+
+            # 2. Cours d'eau (water.lines) et point de passage river (poi)
+            waterway = tags.get("waterway")
+            if el_type == "way" and waterway in C.WATER_LINE_KINDS:
+                geom = el.get("geometry") or []
+                latlons = [(float(p["lat"]), float(p["lon"])) for p in geom if "lat" in p and "lon" in p]
+                if len(latlons) >= 2:
+                    lats = np.array([p[0] for p in latlons], dtype=float)
+                    lons = np.array([p[1] for p in latlons], dtype=float)
+                    xs_w, zs_w = frame.to_xz(lats, lons)
+                    raw_xz = [(float(x), float(z)) for x, z in zip(xs_w, zs_w)]
+                    dense_xz = _densify_polyline_xz(raw_xz, max_step_m=25.0)
+                    width_m = compute_water_width(str(waterway), tags)
+
+                    # Découpage par tronçon de 1 km (en gardant les points à <= 400 m de la route)
+                    pieces_by_chunk: list[tuple[int, list[tuple[float, float, float]]]] = []
+                    for vx, vz in dense_xz:
+                        vk, vy_route = nearest_chunk_and_y(vx, vz, route, axis, C.OSM_BAND_M)
+                        if vk is None:
+                            continue
+                        if not pieces_by_chunk or pieces_by_chunk[-1][0] != vk:
+                            pieces_by_chunk.append((vk, [(vx, vz, vy_route)]))
+                        else:
+                            pieces_by_chunk[-1][1].append((vx, vz, vy_route))
+
+                    valid_pieces = [(ck, pts) for ck, pts in pieces_by_chunk if len(pts) >= 2]
+                    for piece_idx, (ck, pts) in enumerate(valid_pieces):
+                        px_arr = np.array([p[0] for p in pts], dtype=float)
+                        pz_arr = np.array([p[1] for p in pts], dtype=float)
+                        fb_arr = np.array([p[2] for p in pts], dtype=float)
+                        py_arr = sample_terrain_y(px_arr, pz_arr, frame, near_tiles, provider, fb_arr)
+                        points_3d = [
+                            [round(float(px_arr[i]), 2), round(float(pz_arr[i]), 2), round(float(py_arr[i]), 2)]
+                            for i in range(len(pts))
+                        ]
+                        line_id = obj_id if len(valid_pieces) == 1 else f"{obj_id}_{piece_idx}"
+                        chunk_dict = water_chunks.setdefault(ck, {"lines": [], "areas": []})
+                        chunk_dict["lines"].append({
+                            "id": line_id,
+                            "kind": str(waterway),
+                            "width_m": width_m,
+                            "points": points_3d,
+                        })
+                        water_lines_count += 1
+
+                    # Point d'intérêt river si waterway in (river, stream) passe à <= 50 m de la route
+                    if waterway in ("river", "stream"):
+                        dx_arr = np.array([p[0] for p in dense_xz], dtype=float)
+                        dz_arr = np.array([p[1] for p in dense_xz], dtype=float)
+                        dists, y_routes = axis.nearest(dx_arr, dz_arr, C.POI_RIVER_PASSAGE_DIST_M)
+                        if np.isfinite(dists).any():
+                            best_idx = int(np.nanargmin(dists))
+                            bx, bz = float(dx_arr[best_idx]), float(dz_arr[best_idx])
+                            bk, by_route = nearest_chunk_and_y(bx, bz, route, axis, C.POI_RIVER_PASSAGE_DIST_M)
+                            if bk is not None:
+                                by_arr = sample_terrain_y(
+                                    np.array([bx]),
+                                    np.array([bz]),
+                                    frame,
+                                    near_tiles,
+                                    provider,
+                                    np.array([by_route]),
+                                )
+                                poi_chunks.setdefault(bk, []).append({
+                                    "id": obj_id,
+                                    "kind": "river",
+                                    "x": round(bx, 2),
+                                    "y": round(float(by_arr[0]), 2),
+                                    "z": round(bz, 2),
+                                    "radius_m": C.POI_RADIUS_RIVER_M,
+                                    "name": poi_name,
+                                })
+                                poi_count += 1
+
+            # 3. Couches surfaciques (buildings, vegetation, water.areas)
+            if el_type not in ("way", "relation"):
+                continue
+
             is_building = bool(tags.get("building") and tags.get("building") != "no")
             veg_info = _vegetation_kind_and_density(tags)
-            if not is_building and veg_info is None:
+            water_area_kind = _water_area_kind(tags)
+            if not is_building and veg_info is None and water_area_kind is None:
                 continue
 
             polys, deg_count = _extract_polygons(el, frame)
@@ -461,6 +714,8 @@ def build_osm_layers(
                 buildings_ignored += deg_count
             if veg_info is not None:
                 vegetation_ignored += deg_count
+            if water_area_kind is not None:
+                water_ignored += deg_count
 
             for poly_idx, (outer, holes) in enumerate(polys):
                 item_id = obj_id if len(polys) == 1 else f"{obj_id}_{poly_idx}"
@@ -500,13 +755,32 @@ def build_osm_layers(
                     vegetation_chunks.setdefault(k, []).append(v_obj)
                     vegetation_count += 1
 
+                if water_area_kind is not None:
+                    level_y = compute_contour_min_y(outer, frame, near_tiles, provider, fallback_y=y_route)
+                    w_area_obj = {
+                        "id": item_id,
+                        "kind": water_area_kind,
+                        "level_y": level_y,
+                        "outer": outer,
+                        "holes": holes,
+                    }
+                    chunk_dict = water_chunks.setdefault(k, {"lines": [], "areas": []})
+                    chunk_dict["areas"].append(w_area_obj)
+                    water_areas_count += 1
+
     return OsmLayersResult(
         buildings_chunks=buildings_chunks,
         vegetation_chunks=vegetation_chunks,
+        poi_chunks=poi_chunks,
+        water_chunks=water_chunks,
         buildings_count=buildings_count,
         buildings_ignored=buildings_ignored,
         vegetation_count=vegetation_count,
         vegetation_ignored=vegetation_ignored,
+        poi_count=poi_count,
+        water_lines_count=water_lines_count,
+        water_areas_count=water_areas_count,
+        water_ignored=water_ignored,
         osm_date=extract_osm_date(responses),
     )
 
@@ -532,6 +806,26 @@ def vegetation_manifest(res: OsmLayersResult) -> dict[str, Any]:
     }
 
 
+def poi_manifest(res: OsmLayersResult) -> dict[str, Any]:
+    return {
+        "present": True,
+        "version": C.POI_VERSION,
+        "count": res.poi_count,
+        "osm_date": res.osm_date,
+    }
+
+
+def water_manifest(res: OsmLayersResult) -> dict[str, Any]:
+    return {
+        "present": True,
+        "version": C.WATER_VERSION,
+        "lines_count": res.water_lines_count,
+        "areas_count": res.water_areas_count,
+        "ignored_count": res.water_ignored,
+        "osm_date": res.osm_date,
+    }
+
+
 def write_buildings_dir(folder: Path, chunks: dict[int, list[dict[str, Any]]]) -> None:
     folder = Path(folder)
     folder.mkdir(parents=True, exist_ok=True)
@@ -548,6 +842,32 @@ def write_vegetation_dir(folder: Path, chunks: dict[int, list[dict[str, Any]]]) 
     folder.mkdir(parents=True, exist_ok=True)
     for k in sorted(chunks):
         payload = {"version": C.VEGETATION_VERSION, "areas": chunks[k]}
+        (folder / f"chunk_{k}.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def write_poi_dir(folder: Path, chunks: dict[int, list[dict[str, Any]]]) -> None:
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    for k in sorted(chunks):
+        payload = {"version": C.POI_VERSION, "points": chunks[k]}
+        (folder / f"chunk_{k}.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def write_water_dir(folder: Path, chunks: dict[int, dict[str, list[dict[str, Any]]]]) -> None:
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    for k in sorted(chunks):
+        payload = {
+            "version": C.WATER_VERSION,
+            "lines": chunks[k].get("lines", []),
+            "areas": chunks[k].get("areas", []),
+        }
         (folder / f"chunk_{k}.json").write_text(
             json.dumps(payload, ensure_ascii=False, indent=2),
             encoding="utf-8",
