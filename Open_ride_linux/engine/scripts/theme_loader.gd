@@ -329,7 +329,9 @@ static func load_theme(theme_dir: String) -> Dictionary:
 		return {"theme": default_theme, "warnings": warnings, "errors": errors}
 
 	var text := FileAccess.get_file_as_string(theme_file)
-	var data = JSON.parse_string(text)
+	var json := JSON.new()
+	var parse_err := json.parse(text)
+	var data = json.data if parse_err == OK else null
 	if typeof(data) != TYPE_DICTIONARY:
 		errors.append("theme.json illisible ou non objet JSON dans " + theme_dir)
 		print("[theme] erreur : ", errors[0], " ; repli sur default")
