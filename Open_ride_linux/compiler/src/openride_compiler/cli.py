@@ -25,6 +25,7 @@ from .frame import LocalFrame
 from .gpx import read_gpx
 from .pipeline import compile_route
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
+from .theme import check_theme
 from .verify import verify_world, world_info
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
@@ -79,6 +80,9 @@ def build_parser() -> argparse.ArgumentParser:
 
     i = sub.add_parser("info", help="résume un dossier .world")
     i.add_argument("world", type=Path)
+
+    tc = sub.add_parser("theme-check", help="contrôle un dossier de thème visuel")
+    tc.add_argument("theme_dir", type=Path)
     return parser
 
 
@@ -178,7 +182,28 @@ def cmd_info(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
-COMMANDS = {"build": cmd_build, "add-layer": cmd_add_layer, "verify": cmd_verify, "info": cmd_info}
+def cmd_theme_check(args: argparse.Namespace) -> int:
+    issues = check_theme(args.theme_dir)
+    errors = [iss for iss in issues if iss.severity == "error"]
+    warnings = [iss for iss in issues if iss.severity == "warning"]
+    for w in warnings:
+        print(f"avertissement : {w.message}")
+    if errors:
+        print(f"{args.theme_dir} : {len(errors)} erreur(s)")
+        for e in errors:
+            print(f"  - {e.message}")
+        return EXIT_INPUT
+    print(f"{args.theme_dir} : valide")
+    return EXIT_OK
+
+
+COMMANDS = {
+    "build": cmd_build,
+    "add-layer": cmd_add_layer,
+    "verify": cmd_verify,
+    "info": cmd_info,
+    "theme-check": cmd_theme_check,
+}
 
 
 def main(argv: list[str] | None = None) -> int:

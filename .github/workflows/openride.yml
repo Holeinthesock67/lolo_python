@@ -1,0 +1,102 @@
+name: Tests OpenRide
+
+on:
+  push:
+    paths:
+      - "Open_ride_linux/**"
+      - ".github/workflows/openride.yml"
+  pull_request:
+    paths:
+      - "Open_ride_linux/**"
+      - ".github/workflows/openride.yml"
+  workflow_dispatch:
+
+concurrency:
+  group: openride-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    working-directory: Open_ride_linux
+
+jobs:
+  python:
+    name: python (${{ matrix.python-version }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        python-version: ["3.11", "3.14"]
+    steps:
+      - name: Récupération du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installation de Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v5
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: |
+            Open_ride_linux/core/pyproject.toml
+            Open_ride_linux/compiler/pyproject.toml
+
+      - name: Installation des paquets (Python 3.11, sans contraintes)
+        if: matrix.python-version == '3.11'
+        run: |
+          pip install -e "core[dev]"
+          pip install -e "compiler[dev]"
+
+      - name: Installation des paquets (Python 3.14, avec constraints.txt)
+        if: matrix.python-version == '3.14'
+        run: |
+          pip install -c constraints.txt -e "core[dev]"
+          pip install -c constraints.txt -e "compiler[dev]"
+
+      - name: Tests du core
+        run: cd core && pytest -q
+
+      - name: Tests du compilateur
+        run: cd compiler && pytest -q
+
+      - name: Contrôle des vecteurs de route
+        run: python -m openride_core.tools.route_vectors --check
+
+  engine:
+    name: engine (Godot 4.3)
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du dépôt
+        uses: actions/checkout@v4
+
+      - name: Installation de Python 3.14
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.14"
+          cache: pip
+          cache-dependency-path: |
+            Open_ride_linux/core/pyproject.toml
+            Open_ride_linux/compiler/pyproject.toml
+
+      - name: Installation du core
+        run: pip install -c constraints.txt -e "core[dev]"
+
+      - name: Cache de Godot 4.3
+        id: cache-godot
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/godot-4.3
+          key: godot-4.3-stable-linux-x86_64
+
+      - name: Téléchargement de Godot 4.3
+        if: steps.cache-godot.outputs.cache-hit != 'true'
+        run: |
+          mkdir -p ~/.cache/godot-4.3
+          curl -fsSL -o /tmp/Godot_v4.3-stable_linux.x86_64.zip \
+            https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+          unzip -q /tmp/Godot_v4.3-stable_linux.x86_64.zip -d ~/.cache/godot-4.3
+          chmod +x ~/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64
+
+      - name: Tests de l'engine sans écran
+        run: |
+          chmod +x ~/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64
+          GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_engine_tests.sh

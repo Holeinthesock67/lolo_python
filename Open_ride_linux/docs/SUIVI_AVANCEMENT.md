@@ -1,6 +1,6 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
-Mise à jour : 23 octobre 2026 (fusions A2 et F)
+Mise à jour : 23 octobre 2026 (fusions A2, F et H1 à H8)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 
 ---
@@ -16,7 +16,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 
 ### Module core (`openride-core`, Python)
 - [x] **Paquet :** Python 3.11 minimum, essais réels en 3.14 ; installation en mode éditable.
-- [x] **Configuration** (`config.py`) : valeurs par défaut complètes, lecture tolérante de `~/OpenRide/config.toml`, section `[drivers]` (trainer réel ou simulé, Click ou clavier).
+- [x] **Configuration** (`config.py`) : valeurs par défaut complètes, lecture tolérante de `~/OpenRide/config.toml`, section `[drivers]` (trainer réel ou simulé, Click ou clavier, `mock_replay`).
 - [x] **Physique** (`physics.py`) : bilan d'énergie cinétique à 50 Hz, stable à l'arrêt, sans recul en côte, vitesse plafonnée.
 - [x] **Braquets** (`gearing.py`) : 24 vitesses de 0,50 à 2,25, pente effective bornée de −10 à +16 %, saut de plusieurs vitesses (appui long).
 - [x] **Protocoles BLE purs :**
@@ -33,7 +33,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] **Conformité au contrat IPC** (lot C, 23 octobre) : commandes acceptées après un redémarrage de Godot, panne d'écriture du journal sans arrêt de la boucle (`recorder.py` : séance en mémoire, nouveau journal à la reprise), résumé de fin conforme, refus du contrôle FTMS remonté (`ERROR`), consigne ERG bornée, `hello_ack` et coefficient de difficulté tirés de la configuration.
 - [x] **Lecture des parcours** (lot A, 23 octobre) : `route.py` charge et valide un `.world`, interpole la route (Catmull-Rom centripète) et gère les boucles ; la séance charge le parcours demandé par son nom ; parcours de démonstration unique (`demo_world.py`).
 - [x] **Entraînements ERG** (lot F, 23 octobre) : `workout.py` lit les `.zwo` de `~/OpenRide/Workouts/` (intervalles dépliés, fichiers invalides listés avec leur erreur) ; la séance envoie la cible ERG lissée sur 2 s, biais ± 2 % et saut de bloc au Click, pause ERG à pente 0 %, roue libre en SIM avec les braquets, objet `erg` des trames `state` et `mode` / `block` dans le journal.
-- [x] **Simulateur** (`mock_driver.py`) : SIM, ERG, cadence, cardio, déconnexion.
+- [x] **Simulateur** (`mock_driver.py`, `replay.py`) : SIM, ERG, cadence, cardio, déconnexion, rejeu d'une séance enregistrée (`.jsonl` ou `.fit`, lot H3).
 
 ### Module engine (`openride-engine`, Godot 4.3)
 - [x] Client IPC (`ipc_client.gd`) : `hello` répété jusqu'à la réponse, heartbeat dans un fil séparé, commandes vers le core.
@@ -44,13 +44,17 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
+- [x] Intégration continue GitHub Actions (`.github/workflows/openride.yml`, lot H1) : suites du core, du compilateur et des vecteurs de route en Python 3.11 et 3.14 (`constraints.txt`), et tests de l'engine Godot 4.3 sans écran.
+- [x] Analyseur de journal de séance (`python -m openride_core.tools.log_report`, lot H6) : résumé texte et `--json` de `~/run_trainer.log` (trainer, Click, pauses, seuils Rust SRS §14.1).
+- [x] Schéma et validateur de thèmes (`docs/contracts/world/theme.schema.json`, `engine/themes/default/theme.json`, `openride-compiler theme-check`, lot H7).
+- [x] Outils et bibliothèque d'entraînements ERG (`python -m openride_core.tools.workouts list|check|install` et 5 fichiers `.zwo` de référence dans `core/workouts/`, lot H8).
 
 ---
 
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**103 tests `pytest` passent dans le core et 53 dans le compilateur** (physique, braquets, FTMS, Click, journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale : 72 %. Côté Godot : 42 vecteurs de route vérifiés sans écran (`godot --headless --path engine --script res://tests/test_route_vectors.gd`).
+**146 tests `pytest` passent dans le core et 113 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot : 42 vecteurs de route et 8 scénarios IPC vérifiés sans écran (`engine/tests/run_engine_tests.sh`).
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
@@ -77,15 +81,19 @@ PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
 | Click invisible au scan | Resté « connecté » côté BlueZ après une coupure | Repli sur les appareils connus de BlueZ |
 
 ### Défauts relevés par l'audit du 23 octobre
-Corrigés le jour même par les lots C et A :
+Corrigés le jour même par les lots C, A, D et H1 à H4 :
 - commandes ignorées après un redémarrage de Godot ;
 - panne d'écriture du journal qui arrêtait la boucle ;
 - résumé de fin non conforme ;
-- core et Godot sur deux parcours différents.
+- core et Godot sur deux parcours différents ;
+- conformité de Godot au contrat IPC et scénarios sans écran (lot D) ;
+- intégration continue GitHub Actions et fichier `constraints.txt` (F6, lot H1) ;
+- tests unitaires de `ble_util` sans matériel (F8, lot H2) ;
+- endurance simulée de 3 h et taille de la trame `state` en ERG (F7, lot H4).
 
 Un défaut de contrat a aussi été trouvé et clarifié : `v` désigne la vitesse dans la trame `state`.
 
-Restent ouverts : la conformité de Godot au contrat (lot D) et la stabilité du Click (interne). Détail dans l'[audit](AUDIT_2026-10-23.md), §3 et §7.
+Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_2026-10-23.md), §3 et §7.
 
 ---
 
@@ -101,7 +109,7 @@ Restent ouverts : la conformité de Godot au contrat (lot D) et la stabilité du
 
 ## 4. Ce qui reste à faire
 
-Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 (23 octobre) sont de petits lots indépendants, recettés sans matériel : intégration continue, tests Bluetooth, rejeu dans le simulateur, endurance simulée, validation FIT, analyseur de journal, schéma des thèmes, outils d'entraînements.
+Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 ont tous été livrés et fusionnés le 23 octobre.
 
 ### Sprint 1 : fin
 - [ ] Séance de 10 minutes (§3).

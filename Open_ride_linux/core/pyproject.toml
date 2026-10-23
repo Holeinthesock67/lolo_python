@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "jsonschema>=4"]
+dev = ["pytest>=8", "jsonschema>=4", "garmin-fit-sdk>=21"]
 
 [project.scripts]
 openride-core = "openride_core.__main__:main"
@@ -25,3 +25,4 @@ where = ["src"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
+markers = ["slow: tests d'endurance simulée (3 h à 50 Hz)"]

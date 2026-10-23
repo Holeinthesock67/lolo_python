@@ -61,3 +61,12 @@ Aucune.
 
 - Tests de `ftms_driver.py` et `input_providers.py` (déjà couverts par `test_drivers_session.py`).
 - Cause des déconnexions du Click (question matérielle, en interne).
+
+
+## 9. Livraison (23 octobre 2026)
+
+Branche `lot-h2-tests-ble` (PR #12), fusionnée dans `main`. Les 4 critères d'acceptation du §7 sont tenus :
+- 14 tests dans `core/tests/test_ble_util.py` couvrant tous les cas du tableau du §4 (`find_device`, `known_bluez_address`, `ble_lock`, `backoff_delays`, `default_client_factory`).
+- Couverture de `ble_util.py` portée de 31 % à **100 %** (`55 Stmts, 0 Miss`).
+- `ble_util.py` strictement inchangé ; aucun accès D-Bus ni Bluetooth réel.
+- Aucun écart.
