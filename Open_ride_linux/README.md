@@ -114,6 +114,7 @@ Chaque type d'appui a son bip.
 ```bash
 openride-core run --trainer ftms|mock --input click|keyboard|none [--gear N] [--replay CHEMIN] [--autostart]
 openride-core recover            # transforme le dernier journal en FIT après un plantage
+python -m openride_core.tools.log_report [~/run_trainer.log] [--json] [--all]   # analyse le journal de séance
 ```
 
 ## Diagnostic matériel

@@ -1,0 +1,18 @@
+2026-10-22 18:00:00,100 INFO    core    Parcours « demo » chargé : 1200 m, type loop
+2026-10-22 18:00:00,110 INFO    core    Séance : IDLE -> LOADING
+2026-10-22 18:00:00,120 INFO    core    Séance : LOADING -> READY
+2026-10-22 18:00:00,130 INFO    core    Séance : READY -> RUNNING
+2026-10-22 18:00:00,140 INFO    core    Core démarré (trainer=ftms, entrées=click).
+2026-10-22 18:00:01,500 INFO    ftms_driver Plage de puissance du trainer : 0 à 1000 W
+2026-10-22 18:00:01,520 INFO    ftms_driver Trainer connecté (HomeTrainer 0000)
+2026-10-22 18:00:02,300 INFO    input   Zwift Click connecté
+2026-10-22 18:00:15,100 INFO    input   Click : PLUS_SHORT
+2026-10-22 18:00:25,400 INFO    input   Click : PLUS_SHORT
+2026-10-22 18:00:40,800 INFO    input   Click : MINUS_SHORT
+2026-10-22 18:01:00,140 INFO    core    Perf : pas p50 0.21 / p99 0.48 / max 1.12 ms ; retard p99 1.8 / max 4.2 ms ; CPU 3.4 %
+2026-10-22 18:01:12,000 INFO    input   Click : PLUS_LONG
+2026-10-22 18:01:45,200 INFO    input   Click : MINUS_LONG
+2026-10-22 18:02:00,140 INFO    core    Perf : pas p50 0.20 / p99 0.45 / max 0.95 ms ; retard p99 1.6 / max 3.8 ms ; CPU 3.2 %
+2026-10-22 18:03:00,140 INFO    core    Perf : pas p50 0.22 / p99 0.51 / max 1.30 ms ; retard p99 1.9 / max 5.1 ms ; CPU 3.5 %
+2026-10-22 18:03:30,000 INFO    core    Arrêt du core…
+2026-10-22 18:03:30,050 INFO    core    Séance : RUNNING -> FINISHED
