@@ -22,12 +22,12 @@
 | [H6](LOT_H6_analyse_journal.md) | Analyseur du journal de séance (`run_trainer.log`) | Python | — | Petite | **Livré le 23 octobre** (PR #16) |
 | [H7](LOT_H7_schema_themes.md) | Schéma, validateur et thème par défaut (prépare E2) | Python + JSON | — | Petite | **Livré le 23 octobre** (PR #17) |
 | [H8](LOT_H8_outils_entrainements.md) | Outils et bibliothèque d'entraînements `.zwo` | Python | F (livré) | Petite | **Livré le 23 octobre** (PR #18) |
-| [I1](LOT_I1_coherence_doc_code.md) | Tests de cohérence entre la documentation et le code | Python | — | Petite | Oui |
-| [I2](LOT_I2_catalogue_parcours.md) | Catalogue de parcours : `build-all` et `list` | Python | B2 (livré) | Petite | Oui |
-| [I3](LOT_I3_osm_batiments_forets.md) | Compilateur : couches OSM bâtiments et végétation | Python | B2 (livré) | Moyenne | Oui |
-| [I4](LOT_I4_osm_poi_eau.md) | Compilateur : couches points d'intérêt et eau | Python | I3 | Petite | Après I3 |
-| [I5](LOT_I5_chargeur_themes_godot.md) | Chargeur de thèmes en GDScript (sans shader) | GDScript | H7 (livré), E1 fusionné | Petite | Après la fusion d'E1 |
-| [I6](LOT_I6_logique_erg_godot.md) | Logique de l'entraînement ERG côté Godot (bandeau, bip, histogramme, sans affichage) | GDScript | F (livré), E1 fusionné | Petite | Après la fusion d'E1 |
+| [I1](LOT_I1_coherence_doc_code.md) | Tests de cohérence entre la documentation et le code | Python | — | Petite | **Livré le 23 octobre** (PR #20) |
+| [I2](LOT_I2_catalogue_parcours.md) | Catalogue de parcours : `build-all` et `list` | Python | B2 (livré) | Petite | **Livré le 23 octobre** (PR #21) |
+| [I3](LOT_I3_osm_batiments_forets.md) | Compilateur : couches OSM bâtiments et végétation | Python | B2 (livré) | Moyenne | **Livré le 23 octobre** (PR #22) |
+| [I4](LOT_I4_osm_poi_eau.md) | Compilateur : couches points d'intérêt et eau | Python | I3 | Petite | **Livré le 23 octobre** (PR #23) |
+| [I5](LOT_I5_chargeur_themes_godot.md) | Chargeur de thèmes en GDScript (sans shader) | GDScript | H7 (livré), E1 fusionné | Petite | **Livré le 23 octobre** (PR #24) |
+| [I6](LOT_I6_logique_erg_godot.md) | Logique de l'entraînement ERG côté Godot (bandeau, bip, histogramme, sans affichage) | GDScript | F (livré), E1 fusionné | Petite | **Livré le 23 octobre** (PR #25) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;

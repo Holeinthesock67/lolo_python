@@ -1,6 +1,6 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
-Mise à jour : 23 octobre 2026 (fusions A2, B2, F et H1 à H8 ; audit du soir et cahiers I1 à I6)
+Mise à jour : 23 octobre 2026 (fusions A2, B2, F, H1 à H8 et I1 à I6)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 
 ---
@@ -113,7 +113,7 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 
 ## 4. Ce qui reste à faire
 
-Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 ont tous été livrés et fusionnés le 23 octobre. Les lots I1 à I6 (même jour, au soir) sont prêts à confier : tests de cohérence documentation/code, catalogue de parcours, couches OSM (bâtiments, végétation, points d'intérêt, eau) et logique Godot testée sans écran (thèmes, ERG).
+Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 et I1 à I6 ont tous été livrés et fusionnés le 23 octobre (tests de cohérence documentation/code, catalogue de parcours, couches OSM bâtiments/végétation/points d'intérêt/eau, chargeur de thèmes GDScript et logique ERG Godot testée sans écran).
 
 ### Sprint 1 : fin
 - [ ] Séance de 10 minutes (§3).
@@ -141,5 +141,5 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Sprint 4 et suivants
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le HomeTrainer à faire).
-- [ ] Couches OpenStreetMap : compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau), puis rendu dans l'engine (à rédiger).
+- [x] Couches OpenStreetMap côté compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau) ; reste le rendu dans l'engine (à rédiger).
 - [ ] Thèmes avec packs de textures.

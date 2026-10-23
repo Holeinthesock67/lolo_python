@@ -74,3 +74,9 @@ Aucune. Si le manifeste ne permet pas de retrouver le GPX source sans ambiguït�
 
 - Messages IPC pour exposer la liste à l'engine (lot G, contrat à décider par le propriétaire).
 - Compilation lancée par le core en tâche de fond (lot G).
+
+## 9. Livraison (23 octobre 2026, PR #21)
+
+- `core/src/openride_core/catalog.py` (`RouteEntry`, `list_routes`) et `GPX_DIR` dans `config.py`.
+- Sous-commandes `list` et `build-all` ajoutées à `openride-compiler` (`cli.py`), avec repli autonome si `openride-core` n'est pas installé.
+- Tests `core/tests/test_catalog.py` et `compiler/tests/test_build_all.py`.

@@ -53,3 +53,8 @@ Aucune. Les schémas JSON ne sont que lus.
 
 - Vérification orthographique ou de style.
 - Liens internes des documents Markdown (possible plus tard).
+
+## 9. Livraison (23 octobre 2026, PR #20)
+
+- `core/tests/test_docs_coherence.py` livré avec les 5 contrôles automatiques et leurs tests négatifs.
+- Écarts corrigés dans la documentation : ajout de `mock_driver.py` dans `CLAUDE.md`, alignement de `drivers.trainer = "mock"` et `drivers.input = "keyboard"` dans `docs/SRS_v1.1.md` §11, et ajout des sections `Livraison` dans `LOT_B1` et `LOT_D`.
