@@ -192,6 +192,8 @@ def _build_core_parser() -> argparse.ArgumentParser:
     run.add_argument("--gear", type=int)
     run.add_argument("--replay")
     run.add_argument("--autostart", action="store_true")
+    rel = sub.add_parser("release-trainer")
+    rel.add_argument("--config")
     summ = sub.add_parser("summary")
     summ.add_argument("file", nargs="?")
     summ.add_argument("--ftp", type=float)
