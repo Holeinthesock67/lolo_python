@@ -87,6 +87,7 @@ openride-compiler build trace.gpx --layers route,terrain,buildings,vegetation,po
 openride-compiler add-layer <nom>.world terrain|buildings|vegetation|poi|water  # régénère une couche seule
 openride-compiler theme-check ~/OpenRide/Themes/<nom>  # contrôle un thème (défaut : engine/themes/default/)
 openride-core recover                  # FIT depuis le dernier journal après un plantage
+openride-core release-trainer          # libère le trainer resté réservé après un arrêt brutal
 openride-core summary --ftp 250        # bilan du dernier journal (ou d'un .jsonl/.fit) : NP, IF, TSS, zones ; --json
 
 # Diagnostic matériel
@@ -140,5 +141,5 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
 
 - Il teste sur le vrai vélo et colle les journaux dans la conversation. Pour un problème, demander les lignes utiles : `grep -E "WARNING|ERROR|Perf|Click" ~/run_victory.log | tail -30`.
 - Lui donner des commandes complètes, à copier-coller, en partant de `/home/depret/Games/lolo_python`.
-- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, le statut dans `docs/lots/00_INDEX.md` (avec une section « Livraison » dans le lot) et `README.md` si les commandes changent.
+- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, le statut dans `docs/lots/00_INDEX.md` (avec une section « Livraison » dans le lot) et `README.md` si les commandes changent. Les nombres de tests du `README.md` et du suivi doivent rester exacts : `core/tests/test_docs_coherence.py` les compare aux tests collectés et donne la valeur à écrire.
 - Les lots de `docs/lots/` peuvent être réalisés directement ou confiés à une autre IA (modèle de message dans `00_INDEX.md` §4).
