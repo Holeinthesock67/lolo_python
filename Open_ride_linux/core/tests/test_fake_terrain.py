@@ -38,7 +38,7 @@ def test_manifest_declares_terrain(world):
     assert terrain["near_cell_m"] == 10 and terrain["far_cell_m"] == 50
     for level in ("near", "far"):
         files = sorted(p.name for p in (world / "terrain" / level).glob("tile_*.f32"))
-        assert files == sorted(f"tile_{ix}_{iz}.f32" for ix, iz in terrain[f"{level}_tiles"])
+        assert files == sorted(f"tile_{ix}_{iz}.f32" for ix, iz in terrain["tiles"][level])
         assert files
 
 
