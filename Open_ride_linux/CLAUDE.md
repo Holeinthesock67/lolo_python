@@ -20,8 +20,8 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - `docs/contracts/ipc_v1.md` et schémas `docs/contracts/ipc/*.schema.json` : messages core ↔ engine.
 - `docs/contracts/world_format_v1.md` et `docs/contracts/world/` : format des parcours `.world`, schémas et vecteurs de test de la route.
 - `docs/SUIVI_AVANCEMENT.md` : état, tests faits, reste à faire.
-- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut.
-- `docs/AUDIT_2026-10-23.md` : audit et suivi des constats.
+- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H et I sont faites pour être confiées à une autre IA.
+- `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8).
 - `docs/spikes.md` : faits mesurés sur le matériel.
 
 **Règle :** un contrat ne se modifie que par ajout compatible, avec une ligne au journal des changements du document. Si un contrat paraît faux, le signaler au lieu de l'interpréter.
@@ -44,7 +44,13 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `recorder.py` : journal, mémoire, FIT ;
 - `route.py` : lecture des `.world` et interpolation ;
 - `demo_world.py` : parcours de démonstration ;
+- `workout.py` : lecture des `.zwo` et contrôleur ERG ;
+- `replay.py` : rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) par le `MockDriver` ;
+- `journal.py`, `fit_export.py`, `ipc_server.py`, `config.py` : journal JSONL, export FIT, serveur IPC, configuration ;
+- `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py` ;
 - `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties.
+
+**Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `frame.py` (repère), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 
 ## Commandes
 
@@ -54,24 +60,34 @@ cd core && python3 -m venv .venv && source .venv/bin/activate && pip install -e 
 # Compilateur, dans le même environnement
 cd compiler && pip install -e ".[dev]" -e ../core
 
-# Tests (tous doivent passer avant chaque commit)
-(cd core && pytest -q)
+# Tests (tous doivent passer avant chaque commit ; l'intégration continue GitHub Actions les relance à chaque envoi)
+(cd core && pytest -q)                 # ~3 min ; `pytest -q -m "not slow"` (~20 s) pendant le développement
 (cd compiler && pytest -q)            # réseau coupé ; `pytest -m network` pour l'essai Copernicus réel
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
 scripts/openride-dev.sh --trainer mock --input keyboard --autostart        # sans vélo
+openride-core run --replay ~/OpenRide/Activities/<séance>.fit --input keyboard --autostart   # rejoue une séance réelle
+
+# Après un essai (depuis core/) : résumé du journal (Perf, pertes trainer et Click, pauses)
+python -m openride_core.tools.log_report ~/run_trainer.log
+
+# Entraînements ERG
+python -m openride_core.tools.workouts install | list | check FICHIER.zwo --ftp 250
 
 # Parcours
 openride-compiler build trace.gpx      # route + terrain ; puis : verify / info
 openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude déjà en cache
 openride-compiler add-layer <nom>.world terrain       # régénère le terrain seul
+openride-compiler theme-check ~/OpenRide/Themes/<nom>  # contrôle un thème (défaut : engine/themes/default/)
 openride-core recover                  # FIT depuis le dernier journal après un plantage
 
 # Diagnostic matériel
 openride-ble-diag scan | trainer --name HomeTrainer --duration 30 | click --duration 60
 ```
+
+Dépendances : versions de référence validées en 3.14 dans `constraints.txt` (`pip install -c ../constraints.txt -e ".[dev]"`), à mettre à jour après une montée de version testée.
 
 Vecteurs de route : après toute modification de `route.py`, lancer `python -m openride_core.tools.route_vectors` pour les régénérer, puis `--check` pour vérifier qu'ils sont à jour.
 
