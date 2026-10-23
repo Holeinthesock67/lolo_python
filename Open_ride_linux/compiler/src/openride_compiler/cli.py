@@ -1,8 +1,10 @@
 """Ligne de commande `openride-compiler` (lot B1 §3.3).
 
     openride-compiler build <fichier.gpx> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
-                            [--layers route,terrain] [--offline]
-    openride-compiler add-layer <dossier.world> terrain [--offline]
+                            [--layers route,terrain,buildings,vegetation,poi,water] [--offline]
+    openride-compiler add-layer <dossier.world> terrain|buildings|vegetation|poi|water [--offline]
+    openride-compiler list | build-all [--layers ...] [--dry-run] [--offline]
+    openride-compiler theme-check <dossier du thème>
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
 
@@ -117,8 +119,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help=f"dossier des traces GPX (défaut : {default_gpx})")
     ba.add_argument("--routes-dir", type=Path, default=C.ROUTES_DIR,
                     help=f"dossier de sortie des .world (défaut : {C.ROUTES_DIR})")
+    ba.add_argument("--layers", type=parse_layers, default=DEFAULT_LAYERS,
+                    help="couches à produire pour chaque trace (défaut : route,terrain)")
     ba.add_argument("--offline", action="store_true",
-                    help="interdit le réseau : les tuiles d'altitude doivent être en cache")
+                    help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
     ba.add_argument("--dry-run", action="store_true",
                     help="affiche les compilations prévues sans rien écrire")
     return parser
@@ -386,7 +390,7 @@ def cmd_build_all(args: argparse.Namespace) -> int:
                 out=routes_dir,
                 out_and_back=False,
                 force=True,
-                layers=DEFAULT_LAYERS,
+                layers=args.layers,
                 offline=args.offline,
             )
             cmd_build(sub_args)
