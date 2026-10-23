@@ -41,6 +41,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] Touches `+` / `−` / flèches (appuis courts), `Page haut` / `Page bas` (appuis longs) ; un bip distinct par type d'appui.
 - [x] Scripts chargés par `preload` : le projet se lance sans passer par l'éditeur.
 - [x] `route_data.gd` : même lecture et même interpolation que le core, vérifiées par 42 vecteurs de test partagés (`engine/tests/test_route_vectors.gd`).
+- [x] `erg_view_model.gd` : logique d'affichage du bandeau ERG, déclenchement unique du bip à T − 3 s et géométrie de l'histogramme `profile_bars`, testés sans écran face à `fake_core.py --erg-workout` (`engine/tests/test_erg_view_model.gd`, lot I6).
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
