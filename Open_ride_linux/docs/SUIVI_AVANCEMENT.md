@@ -1,6 +1,6 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
-Mise à jour : 23 octobre 2026 (fusions A2, B2, F, H1 à H8 et I1 à I6)
+Mise à jour : 23 octobre 2026 au soir (fusions A2, B2, F, H1 à H8 et I1 à I6, audit J et cahiers J1 à J8)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 
 ---
@@ -58,7 +58,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**153 tests pytest passent dans le core et 115 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par garmin-fit-sdk (lot H5), analyseur de journal log_report (lot H6), schéma et validateur de thèmes 	heme-check (lot H7), outils et bibliothèque d'entraînements .zwo (lot H8), cohérence documentation/code (lot I1), catalogue des parcours list et uild-all (lot I2), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (le_util.py à 100 %). Côté Godot : 42 vecteurs de route et 8 scénarios IPC vérifiés sans écran (engine/tests/run_engine_tests.sh).
+**153 tests pytest passent dans le core et 123 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lot I1), catalogue des parcours `list` et `build-all` (lot I2), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 54 vérifications ERG (lot I6) et 8 scénarios IPC vérifiés sans écran (`engine/tests/run_engine_tests.sh`). Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
@@ -107,13 +107,13 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 - [ ] Délai entre un appui et l'écriture de la commande au HomeTrainer.
 - [ ] Click : cause des déconnexions spontanées (environ 2 en 3 minutes le 22 octobre, reconnexion en 4 s environ).
 - [ ] Images par seconde de Godot, à relever quand le décor sera chargé (lot E1).
-- [ ] ERG (lot F) : un `.zwo` standard exécuté en entier sur le HomeTrainer, cibles tenues (critère 11 du lot F).
+- [ ] ERG (lot F) : un `.zwo` standard exécuté en entier sur le HomeTrainer, cibles tenues (critère 11 du lot F). Bloqué tant qu'aucun moyen ne permet de choisir l'entraînement au lancement : lot J1.
 
 ---
 
 ## 4. Ce qui reste à faire
 
-Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 et I1 à I6 ont tous été livrés et fusionnés le 23 octobre (tests de cohérence documentation/code, catalogue de parcours, couches OSM bâtiments/végétation/points d'intérêt/eau, chargeur de thèmes GDScript et logique ERG Godot testée sans écran).
+Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 et I1 à I6 ont tous été livrés et fusionnés le 23 octobre (tests de cohérence documentation/code, catalogue de parcours, couches OSM bâtiments/végétation/points d'intérêt/eau, chargeur de thèmes GDScript et logique ERG Godot testée sans écran). La série J (J1 à J8, audit J du 23 octobre au soir) est prête à confier : lancement d'un parcours et d'un entraînement choisis, robustesse IPC, configuration validée, paquets autonomes, intégration continue, catalogue unique, cohérence de la documentation et essai de bout en bout sans écran.
 
 ### Sprint 1 : fin
 - [ ] Séance de 10 minutes (§3).
@@ -130,7 +130,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Sprint 3 : rendu 3D (lots D, E1, puis E2 et E3 à rédiger)
 - [x] Godot conforme au contrat (renvoi des commandes, extrapolation, core injoignable), lot D.
-- [ ] Ruban de route et terrain par tronçons (lot E1 fait, PR #7 : attend l'essai sur la GTX 1060).
+- [ ] Ruban de route et terrain par tronçons (lot E1 fait, PR #7 : attend l'essai sur la GTX 1060 ; conflit avec `main` à résoudre sur `engine/tests/run_engine_tests.sh` et `engine/tests/README.md` depuis la fusion d'I5 et I6).
 - [ ] Shader triplanaire et thèmes (E2, après le chargeur de thèmes GDScript du lot I5), arbres, HUD final avec profil d'altitude (E3).
 
 ### Lanceur et menus (lot G, à rédiger)
