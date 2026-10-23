@@ -5,6 +5,7 @@ Une seule boucle asyncio :
 - trame `state` à 30 Hz vers l'engine, commandes et heartbeat lus à chaque tour ;
 - BLE (trainer, Click) dans des tâches asyncio séparées ;
 - journal JSONL à 1 Hz ; FIT en fin de séance ;
+- entraînements ERG (`.zwo`, SRS §6) : cible de puissance au lieu de la pente, hors roue libre ;
 - mesures de performance (durée du pas, retard de boucle, CPU) pour la décision Rust (SRS §14.1).
 """
 
@@ -17,7 +18,7 @@ import time
 from pathlib import Path
 from typing import Any
 
-from .config import Config
+from .config import WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .input_providers import KeyboardProvider, NullProvider, ZwiftClickProvider
 from .ipc_server import IpcServer, IpcState
@@ -27,6 +28,7 @@ from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
+from .workout import ErgController, Workout, WorkoutError, load_workout, workout_path
 from .zwift_click import InputEvent
 
 log = logging.getLogger("core")
@@ -94,12 +96,14 @@ def build_inputs(cfg: Config) -> list[Any]:
 
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
-                 journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None) -> None:
+                 journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
+                 workouts_dir: Path = WORKOUTS_DIR) -> None:
         self.cfg = cfg
         self.driver = driver if driver is not None else build_driver(cfg)
         self.inputs = inputs if inputs is not None else build_inputs(cfg)
         self.journal_dir = journal_dir
         self.routes_root = routes_root or routes_dir()
+        self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
         self.physics = RiderPhysics(PhysicsParams.from_config(cfg))
         self.route: Route | None = None
@@ -122,6 +126,8 @@ class CoreSession:
         self._trainer_lost_since: float | None = None
         self._autoresume = False
         self._shift_pending = False
+        self._workout: Workout | None = None     # entraînement choisi (select_workout)
+        self.erg: ErgController | None = None   # entraînement en cours pendant la séance
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -150,9 +156,18 @@ class CoreSession:
             if reset:
                 reset()   # sortie de ERROR : nouvelle prise de contrôle du trainer
             self._select_route(str(args.get("route_id") or "demo"), previous=st)
+        elif name == "select_workout" and st in ("IDLE", "READY"):
+            self._select_workout(args.get("workout_id"))
         elif name == "start" and st == "READY":
             self._open_journal()
+            if self._workout:
+                self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
+                log.info("Entraînement « %s » démarré : %d blocs, %.0f s.", self._workout.name,
+                         len(self._workout.blocks), self._workout.duration_s)
+                self._sync_erg_state()
             self._set_state("RUNNING")
+        elif name == "skip_block" and self.erg and st in ("RUNNING", "PAUSED"):
+            self._skip_block()
         elif name == "pause" and st == "RUNNING":
             self._set_state("PAUSED", "user")
         elif name == "resume" and st == "PAUSED":
@@ -183,6 +198,8 @@ class CoreSession:
             self._set_state(previous)
             return
         self.route = world.route
+        self.erg = None
+        self._sync_erg_state()
         self.state.route_id = route_id
         self.state.route_length_m = world.route.length_m
         self.physics.s = self.physics.v = 0.0
@@ -190,6 +207,38 @@ class CoreSession:
         log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
                  world.route.type)
         self._set_state("READY")
+
+    def _select_workout(self, workout_id: Any) -> None:
+        """Choisit l'entraînement du prochain `start` ; null revient au SIM (contrat §4)."""
+        if workout_id is None or str(workout_id) == "":
+            self._workout = None
+            log.info("Aucun entraînement : mode SIM.")
+            return
+        try:
+            self._workout = load_workout(workout_path(self.workouts_dir, str(workout_id)))
+        except WorkoutError as exc:
+            self._workout = None
+            log.error("Entraînement « %s » refusé : %s", workout_id, exc)
+            self.server.send_error("workout_invalid", f"Entraînement « {workout_id} » invalide : {exc}")
+            return
+        w = self._workout
+        log.info("Entraînement « %s » choisi : %d blocs, %.0f s.", w.name, len(w.blocks), w.duration_s)
+
+    def _skip_block(self) -> None:
+        assert self.erg is not None
+        self.erg.skip()
+        log.info("Bloc suivant demandé.")
+        self._sync_erg_state()
+
+    def _sync_erg_state(self) -> None:
+        """Recalcule `mode` et l'objet `erg` ; termine l'entraînement après son dernier bloc."""
+        erg = self.erg
+        if erg and erg.finished:
+            log.info("Entraînement « %s » terminé : retour au mode SIM, parcours libre.", erg.workout.name)
+            self.erg = erg = None
+            self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
+        self.state.mode = "ERG" if erg and not erg.is_freeride else "SIM"
+        self.state.erg = erg.to_dict() if erg else None
 
     def _on_engine_lost(self) -> None:
         if self.state.session_state == "RUNNING":
@@ -224,6 +273,8 @@ class CoreSession:
                 "fit_path": str(fit_path) if fit_path else None,
             }
         self.state.summary = summary
+        self.erg = None
+        self._sync_erg_state()
         self._set_state(final_state)
 
     # --- entrées utilisateur -------------------------------------------------------------
@@ -232,6 +283,22 @@ class CoreSession:
         # Toujours relayé à l'engine : menu hors séance, retour sonore (bips) pendant la séance.
         self.server.send_input_event(ev.value)
         if self.state.session_state != "RUNNING":
+            return
+        erg = self.erg
+        if erg and (ev in (InputEvent.PLUS_LONG, InputEvent.MINUS_LONG) or not erg.is_freeride):
+            # ERG (SRS §4.4) : court ± = biais, long + = bloc suivant, long − = pause ERG.
+            # En roue libre, les appuis courts restent des braquets.
+            if ev == InputEvent.PLUS_SHORT:
+                erg.change_bias(+1)
+            elif ev == InputEvent.MINUS_SHORT:
+                erg.change_bias(-1)
+            elif ev == InputEvent.PLUS_LONG:
+                self._skip_block()
+                return
+            else:
+                erg.toggle_pause()
+                log.info("ERG %s.", "en pause (pente 0 %)" if erg.paused else "repris")
+            self._sync_erg_state()
             return
         n = self.cfg.gearing.long_press_gears
         if ev == InputEvent.PLUS_SHORT:
@@ -286,6 +353,10 @@ class CoreSession:
             self._trainer_lost_since = None
 
         self._t_session += dt
+        if self.erg:
+            self.erg.step(dt)        # le temps du bloc ne court que pendant RUNNING
+            self._sync_erg_state()
+        erg = self.erg
         s = self.physics.s
         tau = self.cfg.trainer.latency_tau_s
         route = self.route
@@ -294,15 +365,23 @@ class CoreSession:
         ahead = route.grade_at(s + self.physics.v * tau) if route else 0.0
         alt = here.alt_m if here else 0.0
 
-        # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
-        target = self.gearing.effective_grade(ahead, self.cfg.trainer.difficulty_pct / 100.0)
-        max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
-        if self._shift_pending:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
-            self._shift_pending = False
-            self._grade_sent = target
+        if erg and erg.target_active:
+            # ERG : cible de puissance, aucune pente envoyée ; la physique garde la pente du terrain.
+            self._grade_sent = 0.0
+            self.driver.set_target_power(erg.target_w)
+        elif erg and erg.paused:
+            self._grade_sent = 0.0   # pause ERG : pente 0 % en SIM (SRS §4.4)
+            self.driver.set_sim_grade(0.0)
         else:
-            self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
-        self.driver.set_sim_grade(self._grade_sent)
+            # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
+            target = self.gearing.effective_grade(ahead, self.cfg.trainer.difficulty_pct / 100.0)
+            max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
+            if self._shift_pending:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
+                self._shift_pending = False
+                self._grade_sent = target
+            else:
+                self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
+            self.driver.set_sim_grade(self._grade_sent)
 
         self.physics.step(m.power_w, grade, alt, dt)
 
@@ -325,7 +404,8 @@ class CoreSession:
                 ts=round(time.time(), 3), t=round(self._t_session, 2), lat=st.lat, lon=st.lon,
                 alt=round(alt, 2), distance=round(st.s, 2), speed=round(st.v, 3),
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
-                grade=round(grade, 2), gear=self.gearing.k))
+                grade=round(grade, 2), mode=st.mode, gear=self.gearing.k,
+                block=erg.index + 1 if erg else None))
 
         if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
             log.info("Arrivée atteinte.")

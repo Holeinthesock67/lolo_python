@@ -38,7 +38,8 @@ Les couches vivent par morceaux : `<k>` est l'indice du tronçon de route de 1 k
 - `format`, `format_version` (§10), `name`, date de création, version du compilateur ;
 - la source (nom du GPX et somme SHA-256) ;
 - l'origine et la projection (§3) ;
-- pour chaque couche : `present` (vrai ou faux), `version`, et ses paramètres propres.
+- pour chaque couche : `present` (vrai ou faux), `version`, et ses paramètres propres ;
+- depuis la version 1.1 : `route.alt_source`, origine de l'altitude de la route (`gpx` ou nom de la source MNT, par exemple `copernicus_glo30`).
 
 **Écriture atomique.** Le compilateur écrit dans un dossier temporaire voisin puis le renomme ; un `.world` incomplet n'est jamais visible. `add-layer` fait de même couche par couche.
 
@@ -129,6 +130,12 @@ Le terrain est une grille d'altitudes dans le repère du monde, en deux niveaux 
 **Terrain lointain.** Il masque le bord du terrain proche. Les tuiles lointaines recouvrent le terrain proche ; l'engine dessine le proche à son altitude exacte et le lointain 2 m plus bas que ses valeurs, pour éviter le scintillement entre les deux niveaux sans rapprocher le terrain proche de la chaussée.
 
 **Manifeste :** `terrain.sources` indique le MNT utilisé (`copernicus_glo30`, `ign_rge_alti`), avec sa résolution native, pour que le compilateur sache quand régénérer.
+
+Ajouts compatibles de la version 1.1, dans `layers.terrain` :
+
+- `native_resolution_m` : résolution native du MNT, en mètres (30 pour `copernicus_glo30`) ;
+- `road_half_width_m` : demi-largeur de chaussée utilisée pour le fondu (3 m par défaut) ;
+- `tiles` : liste des tuiles écrites, `{"near": [[ix, iz], …], "far": [[ix, iz], …]}`. `verify` contrôle leur présence. Un lecteur peut s'en servir au lieu de parcourir les dossiers.
 
 ## 6. Couche bâtiments
 
@@ -282,7 +289,7 @@ Themes/alpes-ete/
 - Un lecteur refuse un `.world` dont le majeur est supérieur au sien, et accepte tout mineur du même majeur.
 - Chaque couche a sa propre version dans le manifeste, ce qui permet de régénérer une couche avec un nouvel algorithme sans toucher aux autres.
 
-**Validation.** `openride-compiler verify <nom>.world` contrôle : la structure et le manifeste, le nombre de valeurs de chaque tableau de la route, la cohérence entre `length_m` et les points, les tailles des tuiles de terrain, et les sommes de contrôle SHA-256 optionnelles du manifeste. Des schémas JSON de chaque fichier sont publiés dans `docs/contracts/world/`.
+**Validation.** `openride-compiler verify <nom>.world` contrôle : la structure et le manifeste, le nombre de valeurs de chaque tableau de la route, la cohérence entre `length_m` et les points, les tailles des tuiles de terrain (et, depuis 1.1, la présence des tuiles listées, l'égalité des bords partagés et l'absence de `NaN` à moins de 25 m de la route), et les sommes de contrôle SHA-256 optionnelles du manifeste. Des schémas JSON de chaque fichier sont publiés dans `docs/contracts/world/`.
 
 **Régénération.** Le compilateur peut refaire une couche (`add-layer`) depuis ses caches bruts sans télécharger de nouveau ; refaire la route oblige à refaire les couches qui en dépendent (terrain, bâtiments, végétation, poi, eau).
 
@@ -291,7 +298,7 @@ Themes/alpes-ete/
 ```json
 {
   "format": "openride-world",
-  "format_version": "1.0",
+  "format_version": "1.1",
   "name": "col-du-galibier",
   "created": "2026-10-21T20:30:00+02:00",
   "compiler": {"name": "openride-compiler", "version": "0.1.0"},
@@ -301,10 +308,12 @@ Themes/alpes-ete/
   "route": {
     "present": true, "version": "1.0", "file": "route.json",
     "length_m": 28450.0, "ds_m": 10, "n": 2846, "type": "open",
-    "grade_clamped_points": 0
+    "grade_clamped_points": 0, "alt_source": "gpx"
   },
   "layers": {
-    "terrain":    {"present": true,  "version": "1.0", "sources": ["copernicus_glo30"], "near_cell_m": 10, "far_cell_m": 50},
+    "terrain":    {"present": true,  "version": "1.0", "sources": ["copernicus_glo30"], "native_resolution_m": 30,
+                   "near_cell_m": 10, "far_cell_m": 50, "road_half_width_m": 3.0,
+                   "tiles": {"near": [[0, -1], [0, 0]], "far": [[-1, -1], [-1, 0], [0, -1], [0, 0]]}},
     "buildings":  {"present": false},
     "vegetation": {"present": false, "source": "none"},
     "poi":        {"present": false},
@@ -313,7 +322,7 @@ Themes/alpes-ete/
 }
 ```
 
-**Tailles indicatives pour un parcours de 30 km** (estimations de calcul, à confirmer au sprint 2)
+**Tailles indicatives pour un parcours de 30 km** (estimations de calcul ; mesure du 23 octobre 2026 avec le lot B2 : 65 tuiles proches et 24 lointaines, 3,7 Mo au total pour route et terrain)
 
 | Couche | Ordre de grandeur |
 | --- | --- |
@@ -332,4 +341,5 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | --- | --- | --- |
 | 1.0 | 21 octobre 2026 | Première version |
 | 1.0 | 23 octobre 2026 | Précision, sans changement de format : règle exacte d'interpolation de la route (§4), vecteurs de test et schémas publiés. Projection `local_equirectangular` tolérée pour les parcours synthétiques de démonstration |
-| 1.0 | 23 octobre 2026 | Précision de rendu, sans changement des données (lot E1) : le terrain lointain est dessiné 2 m plus bas, au lieu de relever le proche de quelques centimètres (§5) |
+| 1.1 | 23 octobre 2026 | Ajouts compatibles (lot B2) : `route.alt_source` (§2) ; dans `layers.terrain`, `native_resolution_m`, `road_half_width_m` et la liste `tiles` des tuiles écrites (§5) ; `verify` contrôle aussi la présence des tuiles listées, l'égalité des bords partagés et l'absence de `NaN` à moins de 25 m de la route (§10) |
+| 1.1 | 23 octobre 2026 | Précision de rendu, sans changement des données (lot E1) : le terrain lointain est dessiné 2 m plus bas, au lieu de relever le proche de quelques centimètres (§5) |

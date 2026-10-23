@@ -5,6 +5,8 @@ Matériel de référence : home trainer HomeTrainer (FTMS), Zwift Cog, Zwift Cli
 
 ## Documents de référence (à fournir à l'IA au début de chaque session)
 
+Avec Claude Code, lancer `claude` depuis `Open_ride_linux/` : le fichier `CLAUDE.md` est lu automatiquement, et les commandes `/tests`, `/seance` et `/lot` sont disponibles.
+
 - `docs/SRS_v1.1.md` : spécification logicielle
 - `docs/contracts/ipc_v1.md` : contrat de messages core ↔ engine
 - `docs/contracts/world_format_v1.md` : format des parcours compilés `.world`
@@ -21,10 +23,10 @@ Open_ride_linux/
   core/        openride-core (Python) : BLE, physique, braquets, journal, FIT, IPC
   engine/      openride-engine (Godot 4.3) : rendu, HUD
   scripts/     outils de lancement (openride-dev.sh)
-  compiler/    openride-compiler (Python) : GPX vers .world, à venir (lots B1 et B2)
+  compiler/    openride-compiler (Python) : GPX vers .world, couches route et terrain (lots B1 et B2)
 ```
 
-## État (23 octobre 2026, après les lots A et C)
+## État (23 octobre 2026, après les lots A, A2, B1, B2, C, D et F)
 
 - **Sprint 0 terminé :** HomeTrainer, Click et FIT validés sur le matériel.
 - **Sprint 1 presque terminé :**
@@ -33,12 +35,11 @@ Open_ride_linux/
   - Godot relié au core ;
   - conformité au contrat IPC (lot C) ;
   - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
-  - 75 tests automatiques côté core, 42 vecteurs de route vérifiés côté Godot.
+  - Godot conforme au contrat : renvoi des commandes, extrapolation de la caméra, core injoignable (lot D) ;
+  - 75 tests automatiques côté core ; côté Godot, 42 vecteurs de route et 8 scénarios IPC sans écran.
   - **Reste :** séance de 10 minutes et stabilité du Click.
-- **Pas encore commencés :**
-  - compilateur GPX (sprint 2, lots B1 et B2) ;
-  - Godot conforme au contrat (lot D) ;
-  - rendu 3D (sprint 3, lot E1).
+- **Sprint 2 terminé côté code :** compilateur GPX vers `.world`, couches route (lot B1) et terrain avec le MNT Copernicus (lot B2). Reste la comparaison avec Garmin Connect sur une vraie trace.
+- **Pas encore commencés :** rendu 3D (sprint 3, lot E1) et entraînements ERG (lot F).
   - Le parcours utilisé est le parcours de démonstration `demo`, créé automatiquement dans `~/.local/share/openride/routes/`.
 
 ## Installation (PC Ubuntu)
@@ -51,7 +52,7 @@ pip install -e ".[dev]"
 pytest -q
 ```
 
-Compilateur de parcours (GPX vers `.world`, couche route) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (`verify` et `info` pour contrôler).
+Compilateur de parcours (GPX vers `.world`, couches route et terrain) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (`verify` et `info` pour contrôler). Le premier `build` télécharge les tuiles d'altitude Copernicus (environ 42 Mo par degré carré) dans `~/.cache/openride/dem/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain` régénère le terrain seul.
 
 Godot 4.3 (version standard, pas .NET) :
 

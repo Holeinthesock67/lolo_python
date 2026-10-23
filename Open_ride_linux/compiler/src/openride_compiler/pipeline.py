@@ -11,14 +11,14 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
-from pyproj import CRS, Transformer
 from scipy.signal import savgol_filter
 
 from . import constants as C
+from .elevation import ElevationProvider
 from .errors import CompileError
+from .frame import LocalFrame, utm_transformer, utm_zone_of  # noqa: F401 (réexportés)
 from .gpx import GpxPoint
 
-UTM_BANDS = "CDEFGHJKLMNPQRSTUVWX"
 
 
 @dataclass
@@ -26,25 +26,8 @@ class CompiledRoute:
     route: dict                  # contenu de route.json
     utm_zone: str                # par exemple « 32T »
     grade_clamped_points: int
-
-
-# --- projection -----------------------------------------------------------------------------
-
-def utm_zone_of(lat: float, lon: float) -> tuple[int, str, bool]:
-    """Zone UTM standard (numéro, bande de latitude, hémisphère sud) d'un point.
-
-    Règle simple : zones de 6° sans les exceptions de Norvège et du Svalbard.
-    """
-    if not -80.0 <= lat <= 84.0:
-        raise CompileError(f"départ hors du domaine UTM (latitude {lat:.4f}, de −80 à 84)")
-    number = min(int((lon + 180.0) // 6.0) + 1, 60)
-    band = UTM_BANDS[min(int((lat + 80.0) // 8.0), len(UTM_BANDS) - 1)]
-    return number, band, lat < 0.0
-
-
-def utm_transformer(number: int, south: bool) -> Transformer:
-    crs = CRS.from_epsg((32700 if south else 32600) + number)
-    return Transformer.from_crs(CRS.from_epsg(4326), crs, always_xy=True)
+    alt_source: str = "gpx"      # « gpx » ou nom du fournisseur d'altitude (lot B2)
+    alt_check: dict | None = None  # écarts GPX / MNT observés (lot B2 §3.3)
 
 
 # --- étapes ---------------------------------------------------------------------------------
@@ -151,8 +134,48 @@ def _heading(x: np.ndarray, z: np.ndarray, loop: bool) -> np.ndarray:
 
 # --- chaîne complète ------------------------------------------------------------------------
 
-def compile_route(points: list[GpxPoint], out_and_back: bool = False) -> CompiledRoute:
-    """Transforme les points d'un GPX en couche route (dictionnaire de route.json). Lève CompileError."""
+def _route_altitude(alt_gpx: np.ndarray, lat: np.ndarray, lon: np.ndarray,
+                    provider: ElevationProvider | None) -> tuple[np.ndarray, str, dict | None]:
+    """Altitude brute de la route aux points ré-échantillonnés (lot B2 §3.3).
+
+    - altitude GPX complète et pas de fournisseur : le GPX ;
+    - altitude GPX absente, en tout ou en partie : le MNT ;
+    - altitude GPX aberrante (plus de ALT_OUTLIER_FRACTION des points à plus de
+      ALT_OUTLIER_M du MNT) : le MNT, avec un avertissement.
+    Renvoie (altitude, source, statistiques de l'écart GPX / MNT ou None).
+    """
+    gpx_complete = not np.isnan(alt_gpx).any()
+    if provider is None:
+        if not gpx_complete:
+            raise CompileError("altitude absente et aucune source MNT fournie")
+        return alt_gpx, "gpx", None
+    dem = np.asarray(provider.elevations(lat, lon), dtype=float)
+    stats = None
+    if gpx_complete:
+        known = np.isfinite(dem)
+        if not known.any():
+            return alt_gpx, "gpx", None
+        diff = np.abs(alt_gpx[known] - dem[known])
+        fraction = float(np.mean(diff > C.ALT_OUTLIER_M))
+        stats = {"compared_points": int(known.sum()), "outlier_fraction": round(fraction, 4),
+                 "median_abs_diff_m": round(float(np.median(diff)), 2),
+                 "max_abs_diff_m": round(float(diff.max()), 2)}
+        if fraction <= C.ALT_OUTLIER_FRACTION:
+            return alt_gpx, "gpx", stats
+        stats["warning"] = (f"altitude GPX jugée aberrante : {fraction:.1%} des points à plus de "
+                            f"{C.ALT_OUTLIER_M:.0f} m du MNT ; altitude prise dans {provider.name}")
+    if np.isnan(dem).any():
+        raise CompileError(f"altitude inconnue du MNT {provider.name} sur "
+                           f"{int(np.isnan(dem).sum())} point(s) de la route")
+    return dem, provider.name, stats
+
+
+def compile_route(points: list[GpxPoint], out_and_back: bool = False,
+                  provider: ElevationProvider | None = None) -> CompiledRoute:
+    """Transforme les points d'un GPX en couche route (dictionnaire de route.json). Lève CompileError.
+
+    Sans `provider`, l'altitude du GPX est obligatoire (comportement du lot B1).
+    """
     if len(points) < 2:
         raise CompileError(f"trace trop courte (0 m < {C.MIN_LENGTH_M:.0f} m)")
     lat = np.array([p.lat for p in points])
@@ -160,18 +183,15 @@ def compile_route(points: list[GpxPoint], out_and_back: bool = False) -> Compile
     ele = np.array([np.nan if p.ele is None else p.ele for p in points])
 
     # Projection UTM de la zone du premier point, translatée : x vers l'est, z vers le sud.
-    number, band, south = utm_zone_of(lat[0], lon[0])
-    tr = utm_transformer(number, south)
-    east, north = tr.transform(lon, lat)
-    e0, n0 = float(east[0]), float(north[0])
-    xy = np.column_stack((np.asarray(east) - e0, -(np.asarray(north) - n0)))
+    frame = LocalFrame.at(float(lat[0]), float(lon[0]))
+    xy = np.column_stack(frame.to_xz(lat, lon))
 
     xy, ele = _clean(xy, ele)
     length = float(_cumulative(xy)[-1]) if len(xy) > 1 else 0.0
     if length < C.MIN_LENGTH_M:
         raise CompileError(f"trace trop courte ({length:.0f} m < {C.MIN_LENGTH_M:.0f} m)")
-    if np.isnan(ele).any():
-        raise CompileError("altitude absente : la source MNT arrive avec le lot B2")
+    if provider is None and np.isnan(ele).any():
+        raise CompileError("altitude absente et aucune source MNT fournie")
 
     if out_and_back:
         kind = "out_and_back"
@@ -190,11 +210,14 @@ def compile_route(points: list[GpxPoint], out_and_back: bool = False) -> Compile
     s = sample_positions(length)
     x = np.interp(s, s_in, xy[:, 0])
     z = np.interp(s, s_in, xy[:, 1])
-    alt_raw = np.interp(s, s_in, ele)
+    alt_gpx = np.interp(s, s_in, ele)          # NaN là où l'altitude GPX manque
     if loop:
         x[-1], z[-1] = x[0], z[0]
     if len(s) < C.SAVGOL_WINDOW:   # impossible au-delà de 500 m, gardé par sécurité
         raise CompileError(f"trace trop courte ({length:.0f} m < {C.MIN_LENGTH_M:.0f} m)")
+
+    out_lat, out_lon = frame.to_latlon(x, z)
+    alt_raw, alt_source, alt_check = _route_altitude(alt_gpx, out_lat, out_lon, provider)
 
     alt = _smooth_altitude(alt_raw, s)
     if loop:
@@ -204,8 +227,6 @@ def compile_route(points: list[GpxPoint], out_and_back: bool = False) -> Compile
     clamped = int(np.count_nonzero(np.abs(grade) > C.GRADE_LIMIT_PCT))
     grade = np.clip(grade, -C.GRADE_LIMIT_PCT, C.GRADE_LIMIT_PCT)
     heading = _heading(x, z, loop)
-
-    out_lon, out_lat = tr.transform(x + e0, n0 - z, direction="INVERSE")
 
     def r(values, digits: int) -> list[float]:
         return [round(float(v), digits) for v in values]
@@ -225,4 +246,5 @@ def compile_route(points: list[GpxPoint], out_and_back: bool = False) -> Compile
         "grade_pct": r(grade, 2),
         "heading_deg": [round(float(h), 2) % 360.0 for h in heading],
     }
-    return CompiledRoute(route=route, utm_zone=f"{number}{band}", grade_clamped_points=clamped)
+    return CompiledRoute(route=route, utm_zone=frame.zone, grade_clamped_points=clamped,
+                         alt_source=alt_source, alt_check=alt_check)
