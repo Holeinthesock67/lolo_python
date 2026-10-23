@@ -170,6 +170,12 @@ def cmd_request_control() -> bytes:
     return bytes([OP_REQUEST_CONTROL])
 
 
+def cmd_reset() -> bytes:
+    """Opcode 0x01 : remet les consignes à zéro ; en cas de succès, le client perd le contrôle
+    (FTMS §4.16.2.2), ce qui le rend aux autres applications."""
+    return bytes([OP_RESET])
+
+
 def cmd_start_resume() -> bytes:
     return bytes([OP_START_RESUME])
 

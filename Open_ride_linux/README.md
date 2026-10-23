@@ -97,7 +97,8 @@ scripts/openride-dev.sh --trainer mock --input keyboard --autostart   # sans vé
 ```
 
 - Le script lance le core en arrière-plan, puis la fenêtre Godot.
-- Fermer la fenêtre (ou Ctrl+C) arrête le core proprement : la résistance est relâchée et le FIT écrit.
+- Fermer la fenêtre, Ctrl+C ou fermer le terminal arrête le core proprement : la consigne (pente ou ERG) est annulée, le contrôle FTMS est rendu au trainer (Reset), le Bluetooth est déconnecté et le FIT écrit. Une autre application peut alors utiliser le HomeTrainer.
+- Si le HomeTrainer reste réservé après un arrêt brutal (processus tué, PC éteint en pleine séance) : `openride-core release-trainer` annule la consigne, rend le contrôle et déconnecte le trainer. À défaut : `bluetoothctl disconnect <adresse>`.
 - **Journal :** `~/run_trainer.log` ; **FIT :** `~/OpenRide/Activities/`.
 - **Si Godot est installé ailleurs :** `GODOT=/chemin/vers/godot scripts/openride-dev.sh …`.
 
