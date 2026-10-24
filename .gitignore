@@ -59,6 +59,22 @@ Photos/gps_cache.json
 **/training_report.html
 **/analysis_plots/
 
+# --- Activités sportives (Garmin, OpenRide) : gardées en local, jamais sur GitHub ---
+# Traces GPS et séances réelles : elles révèlent les lieux de départ et les habitudes.
+*.fit
+*.FIT
+*.gpx
+*.GPX
+*.tcx
+*.TCX
+*.kml
+*.kmz
+*.jsonl
+**/Activities/
+**/.journal/
+**/.garminconnect/
+run_trainer.log*
+
 # --- Gros fichiers binaires (limite GitHub : 100 Mo par fichier) ---
 *.pth
 *.mp3
