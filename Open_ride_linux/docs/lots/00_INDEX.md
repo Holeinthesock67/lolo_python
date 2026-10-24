@@ -42,7 +42,7 @@
 | [K2](LOT_K2_modele_hud_profil.md) | Modèle de vue du HUD et profil d'altitude, sans affichage (prépare E3) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #39) |
 | [K3](LOT_K3_placement_vegetation.md) | Placement déterministe de la végétation, sans affichage (prépare E3 et E4) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #40) |
 | [K4](LOT_K4_lecture_couches_osm_godot.md) | Lecture des couches OSM dans l'engine, sans affichage (prépare E4) | GDScript + Python | K1, I3, I4 (livrés) | Moyenne | **Livré le 24 octobre** (PR #41) |
-| [K5](LOT_K5_navigation_menus.md) | Navigation des menus au Click, machine à états sans affichage (prépare G) | GDScript | K1 | Petite | Après K1 (PR #42) |
+| [K5](LOT_K5_navigation_menus.md) | Navigation des menus au Click, machine à états sans affichage (prépare G) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #42) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
