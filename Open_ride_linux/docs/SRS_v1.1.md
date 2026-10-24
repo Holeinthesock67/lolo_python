@@ -115,8 +115,8 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 | Action | Mode SIM | Mode ERG |
 | --- | --- | --- |
 | Appui court + / − | Braquet k + 1 / k − 1 | Biais d'intensité ± 2 % (plage 80 % à 120 %) |
-| Appui long + | Braquet + 3 (essai, `long_press_gears`) | Passer au bloc suivant |
-| Appui long − | Braquet − 3 (essai, `long_press_gears`) | Pause / reprise ERG (pente 0 %) |
+| Appui long + | Braquet + 10, borné à 24 (`long_press_gears`) | Passer au bloc suivant |
+| Appui long − | Braquet − 10, borné à 1 (`long_press_gears`) | Pause / reprise ERG (pente 0 %) |
 
 Le demi-tour sur la route et le réglage des bots sont reportés (§14).
 
@@ -332,7 +332,7 @@ start_gear = 12
 ratio_min = 0.40
 ratio_max = 3.00
 g_base_pct = 2.0
-long_press_gears = 3
+long_press_gears = 10
 
 [drivers]
 trainer = "mock"             # "ftms" ou "mock"
