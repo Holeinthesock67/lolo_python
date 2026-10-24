@@ -65,6 +65,25 @@ Valider les hypothèses techniques critiques avant le développement des modules
 - Validé : appuis courts, appuis longs et sens des boutons corrects.
 - Durées mesurées : appuis courts de 0,1 à 0,3 s ; des appuis « longs » naturels de 0,7 à 1,1 s tombent dans la zone ignorée (0,5 à 1,2 s) ; résolution de mesure 0,1 s.
 
+#### Click V2 : les deux boîtiers (24 octobre 2026)
+- Les deux adresses sont les deux boîtiers d'un même Click V2 : `F4:C4:59:15:E1:E7` = gauche, `F4:C4:59:1F:E3:6A` = droit. OpenRide se connecte aux deux (PR #47).
+- Relevé bouton par bouton (trames `0x23`, écoute de chaque boîtier seul) ; chaque boîtier n'envoie que ses propres boutons :
+
+| Boîtier | Bouton | Bit (0 = appuyé) | Action OpenRide |
+| --- | --- | --- | --- |
+| gauche | − | 8 | « − » |
+| gauche | flèche gauche | 0 | aucune |
+| gauche | flèche haut | 1 | aucune |
+| gauche | flèche droite | 2 | aucune |
+| gauche | flèche bas | 3 | aucune |
+| droit | + | 12 | « + » |
+| droit | A | 4 | aucune |
+| droit | B | 5 | « − » (sans déblocage Zwift) |
+| droit | Y | 6 | aucune |
+| droit | Z | 7 | aucune |
+
+- Bridage : sans passage par l'appli Zwift dans les 24 h, le boîtier gauche n'envoie ses boutons qu'environ 35 s à 1 min après la connexion, puis seulement la batterie (`0x2a` toutes les 5 s) ; deux messages `0xff` chiffrés arrivent dans la première minute. Renvoyer `RideOn` toutes les 15 s n'y change rien. Le boîtier droit marche sans limite : B y fait « − » (PR #87). Sources : BikeControl (blog « Zwift Click V2 with other trainer apps », ticket #68), zwiftboard.
+
 ## 5. Fin du sprint 0 (22 octobre 2026)
 - FIT : séance de démo et séance réelle importées sans erreur (validé).
 - Godot 4.3 + core simulé : HUD mis à jour, caméra qui avance, `+` / `−` pris en compte (validé). Les images par seconde n'ont pas été relevées ; la ligne bleue du parcours est peu visible (décor encore vide, prévu au sprint 3).
