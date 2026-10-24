@@ -17,7 +17,7 @@ from pathlib import Path
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE))
-import db, garmin_source, integrity, report, weather_source  # noqa: E402
+import db, garmin_source, integrity, report, settings_source, weather_source  # noqa: E402
 
 
 def load_env(path):
@@ -75,15 +75,22 @@ def main(argv=None):
         except (PermissionError, garmin_source.GarminUnavailable) as e:
             logging.error("%s", e)   # la météo et les exports tournent quand même
             rc = 1
+    place = None
     if a.command in ("sync", "weather"):
-        loc = cfg["location"]
-        try:
-            weather_source.sync(con, loc["latitude"], loc["longitude"], loc["timezone"], start)
-        except RuntimeError as e:
-            logging.error("%s", e)
+        loc = settings_source.resolve(cfg, rel(p["database"]).parent)
+        if not loc:
+            logging.error("Aucun lieu météo : renseigne « Lieu météo » dans l'onglet Réglages de la feuille.")
             rc = 1
+        else:
+            place = loc["name"]
+            try:
+                weather_source.sync(con, loc["latitude"], loc["longitude"], loc["timezone"], start)
+            except RuntimeError as e:
+                logging.error("%s", e)
+                rc = 1
     if a.command in ("sync", "report", "activities"):
-        out = report.export(con, rel(p["export_dir"]))
+        place = place or settings_source.cached_place(rel(p["database"]).parent)
+        out = report.export(con, rel(p["export_dir"]), place=place)
         logging.info("Exports écrits dans %s", out)
     if a.command in ("sync", "report", "integrity"):
         f = integrity.build(con, rel(p["export_dir"]) / "integrite.html")

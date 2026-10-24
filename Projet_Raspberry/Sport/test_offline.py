@@ -138,6 +138,7 @@ def main():
 
         test_error_classification()
         test_login(Path(t))
+        test_settings(Path(t))
         test_weather_archive_refresh(con)
         test_deleted_activities(con)
         print(f"Météo : {n} heures ; fichiers : {sorted(p.name for p in out.iterdir())}\n")
@@ -221,7 +222,7 @@ def test_login(t):
         gs._reachable = lambda: False
         cfg = t / "config.toml"
         cfg.write_text(f"[location]\nname='x'\nlatitude=48.9\nlongitude=7.1\ntimezone='Europe/Paris'\n"
-                       f"[sync]\ndays_back_first_run=10\nrefetch_days=3\npause_seconds=0\n"
+                       f"[settings]\nremote=''\n[sync]\ndays_back_first_run=10\nrefetch_days=3\npause_seconds=0\n"
                        f"[paths]\ndatabase='{(t / 'e2e.db').as_posix()}'\ntokenstore='{tok.as_posix()}'\n"
                        f"export_dir='{(t / 'e2e').as_posix()}'\n", encoding="utf-8")
         assert coach.main(["sync", "--config", str(cfg)]) == 1
@@ -233,6 +234,68 @@ def test_login(t):
     finally:
         gs._reachable = reachable
         del sys.modules["garminconnect"]
+
+
+def test_settings(t):
+    """Lieu météo lu dans l'onglet Réglages : géocodage, cache, secours, jamais d'exception."""
+    import json
+    from openpyxl import Workbook
+    import settings_source as ss
+    d = t / "settings"
+    xlsx = t / "carnet_test.xlsx"
+
+    def make(value):
+        wb = Workbook()
+        ws_ = wb.active
+        ws_.title = "Réglages"
+        ws_.append(["Paramètre", "Valeur"])
+        ws_.append(["Taille (cm)", 176])
+        if value is not None:
+            ws_.append(["Lieu météo", value])
+        wb.save(xlsx)
+
+    calls = []
+    def geo(q):
+        calls.append(q)
+        return {"Ville A": dict(name="Ville A, Pays", latitude=45.0, longitude=5.0, timezone="Europe/Paris")}.get(q)
+    fetch_ok = lambda remote, dest: xlsx
+    fetch_ko = lambda remote, dest: None
+    cfg = {"location": dict(name="secours", latitude=1.0, longitude=2.0, timezone="UTC")}
+
+    assert ss.resolve({}, d, fetch=fetch_ko, geocode_fn=geo) is None                  # rien du tout
+    assert ss.resolve(cfg, d, fetch=fetch_ko, geocode_fn=geo)["name"] == "secours"     # config.toml en secours
+    make("Ville A")
+    loc = ss.resolve(cfg, d, fetch=fetch_ok, geocode_fn=geo)
+    assert (loc["latitude"], loc["query"]) == (45.0, "Ville A") and calls == ["Ville A"]
+    assert json.loads((d / "location.json").read_text(encoding="utf-8"))["name"] == "Ville A, Pays"
+    ss.resolve(cfg, d, fetch=fetch_ok, geocode_fn=geo)
+    assert calls == ["Ville A"], "même lieu : pas de nouveau géocodage"
+    make("Ville inconnue")
+    assert ss.resolve(cfg, d, fetch=fetch_ok, geocode_fn=geo)["name"] == "Ville A, Pays"   # dernier lieu connu
+    assert ss.resolve(cfg, d, fetch=fetch_ko, geocode_fn=geo)["name"] == "Ville A, Pays"   # feuille injoignable
+    make(None)
+    assert ss.resolve(cfg, d, fetch=fetch_ok, geocode_fn=geo)["name"] == "Ville A, Pays"   # ligne absente
+    def boom(q):
+        raise ConnectionError("réseau coupé")
+    make("Ville B")
+    assert ss.resolve(cfg, d, fetch=fetch_ok, geocode_fn=boom)["name"] == "Ville A, Pays"
+    assert ss.cached_place(d) == "Ville A, Pays"
+    # coordonnées saisies directement, sans appel réseau
+    g = ss.geocode("43,48 ; -1,56")
+    assert (g["latitude"], g["longitude"], g["timezone"]) == (43.48, -1.56, "auto"), g
+    assert ss.geocode("43.48, -1.56")["longitude"] == -1.56
+    # géocodage : premier résultat, filtré par le pays s'il est donné
+    class R:
+        def __init__(self, js): self.js = js
+        def raise_for_status(self): pass
+        def json(self): return self.js
+    res = {"results": [dict(name="Paris", latitude=33.6, longitude=-95.5, timezone="America/Chicago", country="États-Unis", country_code="US"),
+                       dict(name="Paris", latitude=48.85, longitude=2.35, timezone="Europe/Paris", country="France", country_code="FR", admin1="Île-de-France")]}
+    get = lambda url, params, timeout: R(res)
+    assert ss.geocode("Paris", get=get)["latitude"] == 33.6
+    fr = ss.geocode("Paris, France", get=get)
+    assert (fr["latitude"], fr["name"]) == (48.85, "Paris, Île-de-France, France"), fr
+    assert ss.geocode("Paris, Japon", get=get) is None
 
 
 def test_weather_archive_refresh(con):
