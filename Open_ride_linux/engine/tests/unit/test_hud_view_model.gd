@@ -5,6 +5,7 @@ extends SceneTree
 
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -248,8 +249,52 @@ func _test_next_climb() -> void:
 		"boucle : montée trouvée après l'arrivée, à %.0f m" % c4.get("start_m", -1.0))
 
 
+## Lignes du HUD de séance (main.gd) : SIM, ERG, roue libre, fréquence cardiaque.
+func _test_session_lines() -> void:
+	var sim := {"power": 251.6, "power_3s": 245.3, "v": 10.0, "cadence": 88, "hr": 151, "gear": 9,
+		"gears_total": 24, "grade": 4.25, "grade_sent": 2.1, "s": 1234.0, "mode": "SIM", "erg": null}
+	var no_erg: Dictionary = ErgViewModel.new().update(null, 0.0)
+	var l: Dictionary = HudViewModel.session_lines(sim, no_erg)
+	_check(l["power"] == "PUISSANCE: 252 W (3s: 245 W)", "SIM : puissance (%s)" % l["power"])
+	_check(l["speed"] == "VITESSE: 36.0 km/h  [Braquet: 9/24]", "SIM : braquet (%s)" % l["speed"])
+	_check(l["hr"] == "FC: 151 bpm", "fréquence cardiaque affichée (%s)" % l["hr"])
+	_check(l["grade"] == "PENTE: 4.3 %  (envoyée au trainer: 2.1 %)" or l["grade"] == "PENTE: 4.2 %  (envoyée au trainer: 2.1 %)",
+		"SIM : pente envoyée (%s)" % l["grade"])
+	_check(l["distance"] == "DISTANCE: 1.23 km" and l["erg"] == "", "SIM : distance, pas de ligne ERG")
+	sim["gear"] = 10
+	_check(HudViewModel.session_lines(sim, no_erg)["speed"].contains("Braquet: 10/24"),
+		"changement de braquet repris à la trame suivante")
+	for hr in [null, 0, -3, NAN]:
+		sim["hr"] = hr
+		_check(HudViewModel.session_lines(sim, no_erg)["hr"] == "FC: —", "FC %s : « — »" % str(hr))
+
+	var erg := {"workout_name": "Sweet spot 3x10", "block_index": 3, "block_count": 7, "block_type": "interval_on",
+		"block_remaining_s": 512.0, "block_total_s": 600.0, "target_w": 238, "next_target_w": 125,
+		"bias_pct": 100, "paused": false}
+	var st := sim.duplicate()
+	st["mode"] = "ERG"
+	st["erg"] = erg
+	var vm = ErgViewModel.new()
+	l = HudViewModel.session_lines(st, vm.update(erg, 0.0))
+	_check(l["power"].ends_with("|  CIBLE ERG: 238 W"), "ERG : cible envoyée au trainer (%s)" % l["power"])
+	_check(l["speed"].contains("± = intensité en ERG"), "ERG : ± règle l'intensité (%s)" % l["speed"])
+	_check(l["grade"].ends_with("(trainer en ERG)"), "ERG : pas de pente envoyée (%s)" % l["grade"])
+	_check(l["erg"].begins_with("ERG: Sweet spot 3x10 — Bloc 3 / 7  |  reste 8:32"), "ERG : ligne du bloc (%s)" % l["erg"])
+	var erg2 := erg.duplicate()
+	erg2["bias_pct"] = 105
+	erg2["target_w"] = 250
+	l = HudViewModel.session_lines(st, vm.update(erg2, 0.1))
+	_check(l["power"].ends_with("CIBLE ERG: 250 W (105 %)"), "ERG : biais rafraîchi (%s)" % l["power"])
+	var free := erg.duplicate()
+	free["block_type"] = "freeride"
+	l = HudViewModel.session_lines(st.merged({"erg": free}, true), ErgViewModel.new().update(free, 0.0))
+	_check(l["power"].ends_with("CIBLE ERG: roue libre") and l["speed"].ends_with("[Braquet: 10/24]"),
+		"roue libre : braquets actifs (%s / %s)" % [l["power"], l["speed"]])
+
+
 func _init() -> void:
 	_test_texts()
+	_test_session_lines()
 	_test_distance_on_loop()
 	_test_grade_classes()
 	_test_profile_open()
