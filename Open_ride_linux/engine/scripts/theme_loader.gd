@@ -320,13 +320,13 @@ static func load_theme(theme_dir: String) -> Dictionary:
 	if not DirAccess.dir_exists_absolute(ProjectSettings.globalize_path(theme_dir)):
 		errors.append("dossier de thème introuvable : " + theme_dir)
 		print("[theme] erreur : ", errors[0], " ; repli sur default")
-		return {"theme": default_theme, "warnings": warnings, "errors": errors}
+		return {"theme": default_theme, "warnings": warnings, "errors": errors, "theme_dir": DEFAULT_THEME_DIR}
 
 	var theme_file := theme_dir.path_join("theme.json")
 	if not FileAccess.file_exists(theme_file):
 		errors.append("theme.json absent dans " + theme_dir)
 		print("[theme] erreur : ", errors[0], " ; repli sur default")
-		return {"theme": default_theme, "warnings": warnings, "errors": errors}
+		return {"theme": default_theme, "warnings": warnings, "errors": errors, "theme_dir": DEFAULT_THEME_DIR}
 
 	var text := FileAccess.get_file_as_string(theme_file)
 	var json := JSON.new()
@@ -335,7 +335,7 @@ static func load_theme(theme_dir: String) -> Dictionary:
 	if typeof(data) != TYPE_DICTIONARY:
 		errors.append("theme.json illisible ou non objet JSON dans " + theme_dir)
 		print("[theme] erreur : ", errors[0], " ; repli sur default")
-		return {"theme": default_theme, "warnings": warnings, "errors": errors}
+		return {"theme": default_theme, "warnings": warnings, "errors": errors, "theme_dir": DEFAULT_THEME_DIR}
 
 	var dict_data: Dictionary = data
 	_validate_schema(dict_data, errors)
@@ -356,10 +356,10 @@ static func load_theme(theme_dir: String) -> Dictionary:
 
 	if errors.size() > 0:
 		print("[theme] thème invalide (", theme_dir, ") : ", errors[0], " ; repli sur default")
-		return {"theme": default_theme, "warnings": warnings, "errors": errors}
+		return {"theme": default_theme, "warnings": warnings, "errors": errors, "theme_dir": DEFAULT_THEME_DIR}
 
 	var merged := _deep_merge(default_theme, dict_data)
-	return {"theme": merged, "warnings": warnings, "errors": errors}
+	return {"theme": merged, "warnings": warnings, "errors": errors, "theme_dir": theme_dir}
 
 
 ## Charge un thème par son nom de configuration : ~/OpenRide/Themes/<name>/, sinon res://themes/default/.

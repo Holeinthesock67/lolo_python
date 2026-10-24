@@ -61,6 +61,7 @@
 | [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | Oui (issue #84) |
 | [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | Oui (issue #85) |
 | [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | Oui (issue #86) |
+| [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -68,7 +69,6 @@
 - validation des fichiers FIT dans GoldenCheetah et Garmin Connect.
 
 **À rédiger plus tard** (contrôle visuel ou décision de Laurent nécessaire) :
-- E2 : shader triplanaire et application du thème (s'appuie sur I5) ;
 - E3 : ciel, végétation par bruit, HUD final avec profil d'altitude (s'appuie sur K2 et K3) ;
 - E4 : rendu des bâtiments, des forêts, de l'eau et sons des points d'intérêt (s'appuie sur I3, I4, K3 et K4) ;
 - F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) ;
