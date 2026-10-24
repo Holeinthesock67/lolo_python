@@ -20,3 +20,5 @@ Les formats binaires (UUID, drapeaux, opcodes, unités, résolutions, codes de r
 Non corrigé : chiffrement du Control Point laissé à BlueZ (appairer avec `bluetoothctl pair` si un trainer refuse les commandes) ; recherche du trainer par nom plutôt que par le service 0x1826 ; mode ERG ou SIM non annoncé signalé au journal seulement.
 
 À faire sur le HomeTrainer : une séance avec un passage ERG puis SIM, puis `openride-core release-trainer`, sans ligne « Pas de réponse du Control Point » ni « refusée » dans `~/run_trainer.log`.
+
+Essai du 24 octobre (le propriétaire) : à la sortie d'OpenRide, le trainer est bien libéré et une autre application s'y reconnecte. Reste à relire `~/run_trainer.log` pour les deux messages ci-dessus.

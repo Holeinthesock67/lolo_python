@@ -20,7 +20,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - `docs/contracts/ipc_v1.md` et schémas `docs/contracts/ipc/*.schema.json` : messages core ↔ engine.
 - `docs/contracts/world_format_v1.md` et `docs/contracts/world/` : format des parcours `.world`, schémas et vecteurs de test de la route.
 - `docs/SUIVI_AVANCEMENT.md` : état, tests faits, reste à faire.
-- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H, I et J sont faites pour être confiées à une autre IA.
+- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H, I, J et K sont faites pour être confiées à une autre IA.
 - `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8 et §9).
 - `docs/spikes.md` : faits mesurés sur le matériel.
 
