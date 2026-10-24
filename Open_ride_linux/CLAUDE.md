@@ -48,6 +48,8 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `demo_world.py` : parcours de démonstration ;
 - `workout.py` : lecture des `.zwo` et contrôleur ERG ;
 - `mock_driver.py`, `replay.py` : simulateur de trainer et rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) ;
+- `ble_sim.py`, `sim_scenarios.py` : Bluetooth simulé (HomeTrainer, paire de Click, ceinture) derrière les vrais pilotes, scénarios de pannes (`docs/SIMULATION_BLE.md`) ;
+- `hr_monitor.py` : ceinture cardio Bluetooth facultative (service 0x180D) ;
 - `journal.py`, `fit_export.py`, `ipc_server.py`, `config.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), configuration (types et bornes contrôlés, `ConfigError`) ;
 - `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `history.py` (historique des séances et cumul hebdomadaire), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py` ;
 - `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties.
@@ -71,6 +73,8 @@ GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.s
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
 scripts/openride-dev.sh --trainer mock --input keyboard --autostart        # sans vélo
+scripts/openride-dev.sh --trainer sim --input sim --hr sim --autostart     # sans matériel, vrais pilotes BLE (scénario demo)
+scripts/openride-dev.sh --trainer sim --input sim --hr sim --sim-scenario coupures --autostart   # pannes rejouées
 scripts/openride-dev.sh --trainer ftms --input click --autostart --workout sweet_spot_3x10   # ERG (~/OpenRide/Workouts/<ID>.zwo)
 scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcours>          # parcours compilé (défaut : demo)
 openride --trainer mock --input keyboard --autostart                       # même chose en Python, avec relance de Godot (lot K6)
