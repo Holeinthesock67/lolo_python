@@ -116,8 +116,8 @@ scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcou
 
 | Action | Click | Clavier (fenêtre Godot) |
 | --- | --- | --- |
-| Braquet + 1 / − 1 | Appui court + / − | `+` / `−` ou flèches haut / bas |
-| Braquet + 10 / − 10 (bornés de 1 à 24) | Appui long (≥ 0,9 s) + / − | `Page haut` / `Page bas` |
+| Braquet + 1 / − 1 | Appui court + / − (ou B) | `+` / `−` ou flèches haut / bas |
+| Braquet + 10 / − 10 (bornés de 1 à 24) | Appui long (≥ 0,9 s) + / − (ou B) | `Page haut` / `Page bas` |
 
 Chaque type d'appui a son bip.
 
@@ -139,7 +139,7 @@ python -m openride_core.tools.workouts check FICHIER.zwo --ftp 250   # vérifie 
 
 HomeTrainer et Click doivent être déconnectés de Zwift et du téléphone.
 
-Le Zwift Click récent est une paire de boîtiers (« + » et « − ») de même nom : OpenRide se connecte aux deux, et ignore les appuis du « + » que le « − » relaie en double. Avec un seul boîtier, le second est simplement cherché en arrière-plan.
+Le Zwift Click récent est une paire de boîtiers (« + » et « − ») de même nom : OpenRide se connecte aux deux, et ignore les appuis du « + » que le « − » relaie en double. Avec un seul boîtier, le second est simplement cherché en arrière-plan. Le bouton B du boîtier droit fait aussi « − » : sans passage récent par l'appli Zwift (moins de 24 h), le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion, et seul le droit reste utilisable.
 
 Pour remplir `trainer_address`, `click_address` et `hr_address` de `config.toml`, `openride-core devices` recherche les appareils (8 s), les classe (trainer, boîtiers du Click, ceinture ou montre), signale ceux que BlueZ garde connectés et affiche le bloc `[drivers]` à recopier, avec les différences par rapport à la configuration (`--json`, `--all`, `--sim-scenario demo` pour un essai sans matériel).
 
