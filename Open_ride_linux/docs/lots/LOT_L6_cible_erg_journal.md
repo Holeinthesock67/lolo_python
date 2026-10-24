@@ -44,3 +44,10 @@ Aucun. Partir de `main` à jour.
 
 - Champs de développeur FIT ou message `workout` dans le FIT.
 - Affichage de la cible dans l'engine (F2).
+
+## 9. Livraison (24 octobre 2026, PR #69)
+
+- `core/src/openride_core/journal.py` et `session.py` : champ `Record.target_w` écrit à 1 Hz en mode ERG actif (`None` en SIM/FreeRide/pause).
+- `core/src/openride_core/tools/session_summary.py` : moyenne de cible et écart signé par bloc ERG (`openride-core summary`).
+- Tests de non-régression et rétrocompatibilité des anciens journaux validés.
+- Intégration continue GitHub Actions verte.

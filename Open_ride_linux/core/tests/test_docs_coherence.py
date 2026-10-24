@@ -187,6 +187,7 @@ def _build_core_parser() -> argparse.ArgumentParser:
     return build_parser()
 
 
+
 _TOOL_HELP_CACHE: dict[str, str] = {}
 
 
@@ -694,7 +695,7 @@ def test_documented_test_counts_and_negative() -> None:
 
 def test_cited_paths_exist_and_negative() -> None:
     skipped = undelivered_lot_files(INDEX_PATH.read_text(encoding="utf-8"))
-    assert "LOT_L1_maillage_batiments.md" in skipped
+    assert "LOT_J4_paquetage_autonome.md" in skipped
     errors: list[str] = []
     for f in project_files(".md"):
         if f.parent == LOTS_DIR and f.name in skipped:

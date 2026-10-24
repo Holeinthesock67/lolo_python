@@ -238,8 +238,17 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
     config_args = ["--config", str(config_path)] if config_path else []
     return Supervisor(
         core_cmd=[*core, "run", *core_args],
-        engine_cmd=[str(godot), "--path", str(engine_dir), *shlex.split(env.get("GODOT_ARGS", "")), "--",
-                    f"--ipc-state-port={cfg.ipc.port_state}", f"--ipc-cmd-port={cfg.ipc.port_commands}"],
+        engine_cmd=[
+            str(godot),
+            "--path",
+            str(engine_dir),
+            *shlex.split(env.get("GODOT_ARGS", "")),
+            "--",
+            f"--ipc-state-port={cfg.ipc.port_state}",
+            f"--ipc-cmd-port={cfg.ipc.port_commands}",
+            f"--quality={cfg.render.quality}",
+            f"--theme={cfg.render.theme}",
+        ],
         release_cmd=[*core, "release-trainer", *config_args],
         log_path=Path(env.get("OPENRIDE_LOG") or DEFAULT_LOG).expanduser(),
     )
