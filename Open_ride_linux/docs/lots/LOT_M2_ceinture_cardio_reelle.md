@@ -49,3 +49,11 @@ Aucune.
 - Écriture des intervalles RR ou de la batterie au journal de séance et dans le FIT (champs `hrv`) : lot à part après M4.
 - Gel observé quand la montre Garmin s'est connectée (24 octobre) : à instruire avec le matériel ; le rapport note seulement si le simulateur reproduit quelque chose.
 - Ceintures ANT+.
+
+## 9. Livraison (24 octobre 2026)
+
+- `ftms.py` (ajouts) : `HrMeasurement`, `parse_hr_measurement_full`, UUID `BATTERY_SERVICE` et `BATTERY_LEVEL`. `parse_hr_measurement` inchangée.
+- `hr_monitor.py` : contact (mesure ignorée s'il est absent, une ligne par changement), `last_rr_ms` (30 valeurs), `contact`, `battery_pct`, `device_address` ; sans `hr_address`, recherche de 5 s de tous les appareils 0x180D (`scan_hr_devices`, injectable par `device_scanner`), liste au journal, choix par `choose_device` (nom `hr_name`, sinon meilleur RSSI hors `WATCH_NAME_HINTS`, montres seulement s'il n'y a qu'elles), conseil `hr_address = "…"` écrit une fois. Avec le Bluetooth simulé, le scanner est celui du `SimWorld` (repéré par `device_finder.__self__`, car `session.py` est hors périmètre et ne passe que `find_device`).
+- `ble_sim.py` : `SimHrStrap` avec contact, RR, batterie (0x180F) et RSSI ; montre `hr_watch` ; `SimWorld.scan` (rend la main 0,3 s après le premier appareil trouvé, pour garder des séances simulées rapides) ; événement `contact`. `sim_scenarios.py` valide `hr_watch`, `contact`, `battery_pct`, `rssi`.
+- Tests : `core/tests/test_hr_monitor.py` (65 cas, dont les 48 combinaisons de drapeaux). Critère 6 : `test_full_session_without_hardware` inchangé et vert.
+- Le simulateur ne reproduit pas le gel observé quand la montre Garmin s'est connectée (rien de ce côté dans le pilote de la ceinture : la recherche passe par le verrou BLE et dure 5 s au plus).
