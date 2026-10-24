@@ -105,3 +105,12 @@ def test_run_with_gear_out_of_range_returns_2(gear: str, tmp_path: Path,
     assert cli.main(["run", "--config", str(tmp_path / "absent.toml"), "--gear", gear,
                      "--trainer", "mock", "--input", "none"]) == 2
     assert "--gear" in capsys.readouterr().err
+
+
+def test_release_trainer_with_invalid_config_returns_1(tmp_path: Path,
+                                                      capsys: pytest.CaptureFixture[str]) -> None:
+    """`release-trainer` (PR #28) lit la même configuration : même message, sans trace."""
+    f = tmp_path / "config.toml"
+    f.write_text("[ipc]\nport_state = 80\n", encoding="utf-8")
+    assert cli.main(["release-trainer", "--config", str(f)]) == 1
+    assert "[ipc] port_state" in capsys.readouterr().err

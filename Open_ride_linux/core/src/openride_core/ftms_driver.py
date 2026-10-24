@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from . import ftms
-from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device
+from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, note_trainer_write
 from .config import BikeConfig, TrainerConfig
 from .mock_driver import TrainerMetrics
 from .physics import RHO0
@@ -72,6 +72,7 @@ class ControlPoint:
         fut = asyncio.get_running_loop().create_future()
         self._waiting = (payload[0], fut)
         try:
+            note_trainer_write()
             write = self.client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True)
             if write_timeout is None:
                 await write
@@ -115,6 +116,7 @@ class FtmsDriver:
         self._want = _Want()
         self._last_sent: tuple[str, float] | None = None
         self._last_sent_at = 0.0
+        self._immediate = False   # consigne de braquet en attente d'envoi (voir set_sim_grade)
         self._stop = asyncio.Event()
 
         self._link_up = False
@@ -161,9 +163,12 @@ class FtmsDriver:
         self.control_refused = False
         self._last_sent = None
 
-    def set_sim_grade(self, grade_pct: float) -> bool:
+    def set_sim_grade(self, grade_pct: float, immediate: bool = False) -> bool:
+        """`immediate` : changement de braquet, envoyé même sous GRADE_EPSILON_PCT (sans attendre
+        le renvoi de RESEND_S, qui retardait jusqu'à 2 s un petit braquet sur le plat)."""
         lo, hi = self.cfg.grade_min_pct, self.cfg.grade_max_pct
         self._want = _Want("sim", min(max(float(grade_pct), lo), hi))
+        self._immediate = self._immediate or immediate
         return True
 
     def poll(self, t_session: float = 0.0) -> TrainerMetrics:
@@ -350,6 +355,8 @@ class FtmsDriver:
         prev = self._last_sent
         eps = GRADE_EPSILON_PCT if mode == "sim" else ERG_EPSILON_W
         changed = prev is None or prev[0] != mode or abs(prev[1] - value) >= eps
+        changed = changed or (self._immediate and mode == "sim" and prev[1] != value)
+        self._immediate = False
         if not changed and now - self._last_sent_at < RESEND_S:
             return
         supported = self.supports_erg if mode == "erg" else self.supports_sim
