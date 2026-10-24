@@ -44,6 +44,7 @@ class Record:
     gear: int | None = None
     grade_sent: float | None = None   # % envoyé au trainer en SIM (braquet, anticipation, lissage)
     block: int | None = None     # bloc d'entraînement ERG (à partir de 1)
+    target_w: float | None = None  # cible ERG envoyée au trainer (W), None en SIM / FreeRide / pause
 
 
 class JournalWriter:
