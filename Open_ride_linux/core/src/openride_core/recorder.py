@@ -74,6 +74,8 @@ class SessionRecorder:
         try:
             if line["kind"] == "event":
                 self._writer.event(line["event"], line["ts"])
+            elif line["kind"] == "device":
+                self._writer.device(line["device"], line["state"], line["ts"])
             else:
                 fields = {k: v for k, v in line.items() if k != "kind"}
                 self._writer.record(Record(**fields))
@@ -84,6 +86,12 @@ class SessionRecorder:
 
     def event(self, name: str, ts: float) -> None:
         line = {"kind": "event", "event": name, "ts": ts}
+        self.lines.append(line)
+        self._write(line)
+
+    def device(self, device: str, state: str, ts: float) -> None:
+        """Coupure ou retour d'un appareil (lot M4) ; absent du FIT (`records`, `events`)."""
+        line = {"kind": "device", "ts": ts, "device": device, "state": state}
         self.lines.append(line)
         self._write(line)
 
