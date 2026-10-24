@@ -36,7 +36,7 @@ Retirer les couleurs de sommet devenues inutiles des tuiles (`ARRAY_COLOR` dans 
 
 - **Ciel :** `PhysicalSkyMaterial` à la place du `ProceduralSkyMaterial` d'E1 (SRS : « ciel physique avec soleil fixe »). Le soleil est la `DirectionalLight3D` déjà orientée par `sky_params` (E2) ; il ne bouge pas pendant la séance, donc le rayonnement du ciel est calculé une fois (`Sky.process_mode` en qualité, taille de radiance 256 en `low`).
 - **Lumière ambiante** tirée du ciel ; aucune valeur réglée à la main dans le code.
-- **Brouillard de limite (constat R2) :** brouillard en profondeur d'E1 conservé (début 3 000 m, fin au rayon des tuiles lointaines) avec `fog_density = 1.0`, pour que la limite à 12 km soit entièrement couverte. Couleur du brouillard égale à la couleur d'horizon du ciel, pour que les montagnes lointaines se fondent dans le ciel et non dans une bande grise.
+- **Brouillard de limite (constat R2) :** brouillard en profondeur d'E1 conservé (début 3 000 m, fin au rayon des tuiles lointaines) avec `fog_density = 1.0`, pour que la limite à 12 km soit entièrement couverte (déjà fait le 24 octobre pour l'essai d'E2, `render_quality.gd`). Couleur du brouillard égale à la couleur d'horizon du ciel, pour que les montagnes lointaines se fondent dans le ciel et non dans une bande grise.
 - **Brouillard du thème :** `sky.fog_density` ne règle que le brouillard volumétrique (`volumetric_fog_density`), activé seulement quand le préréglage le demande (`fog_volumetric`, préréglage `high`). La ligne d'E2 qui écrit cette valeur dans `fog_density` est supprimée.
 
 ### 4.3 Arbres par bruit (format §7 « sans polygones »)
