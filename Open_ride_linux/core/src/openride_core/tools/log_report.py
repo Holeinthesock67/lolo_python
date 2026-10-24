@@ -3,6 +3,13 @@
 Extrait un résumé structuré (humain ou JSON) d'un fichier de journal du core
 (par défaut ``~/run_victory.log``) : connexions/déconnexions du trainer FTMS et du
 Zwift Click, pauses, performances de la boucle et seuils Rust (SRS §14.1).
+
+Section Click enrichie (lot K8) : durées de connexion et délais de reconnexion (calculés sur
+les horodatages, donc aussi pour les anciens journaux), temps depuis le dernier appui et
+cadence des notifications (nouvelles lignes du lot K8), et coupures « corrélées » au trainer :
+celles qui tombent à moins de ``CORRELATION_WINDOW_S`` d'une écriture au trainer (valeur portée
+par la ligne de coupure) ou d'un événement du trainer dans le journal (connexion, reconnexion,
+perte, commande refusée…).
 """
 
 from __future__ import annotations
@@ -10,6 +17,7 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import statistics
 import sys
 from dataclasses import asdict, dataclass, field
 from datetime import datetime
@@ -20,6 +28,7 @@ STEP_P99_LIMIT_MS = 5.0
 LAG_P99_LIMIT_MS = 20.0
 CPU_LIMIT_PCT = 15.0
 CONSECUTIVE_BREACHES = 3
+CORRELATION_WINDOW_S = 2.0
 
 DEFAULT_LOG_PATH = Path.home() / "run_victory.log"
 
@@ -73,11 +82,17 @@ CORE_FORMAT_STRINGS: dict[str, tuple[str, str]] = {
     ),
     "click_connected": (
         "input_providers.py",
-        "Zwift Click connecté",
+        "Zwift Click connecté (adresse %s, recherche %.1f s, %d tentative(s))",
     ),
     "click_disconnected": (
         "input_providers.py",
-        "Zwift Click déconnecté (veille ?) : appuyez sur un bouton pour le réveiller",
+        'Zwift Click déconnecté après %.1f s de connexion : dernière notification il y a %s, "\n'
+        '                          "dernier appui il y a %s, %d notification(s), dernière écriture au trainer il y a %s, "\n'
+        '                          "raison : %s ; appuyez sur un bouton pour le réveiller',
+    ),
+    "click_rate": (
+        "input_providers.py",
+        "Click : %d notification(s) en %.0f s (%.1f par seconde)",
     ),
     "click_press": (
         "input_providers.py",
@@ -128,9 +143,20 @@ PATTERNS: dict[str, re.Pattern[str]] = {
         r"^Commande 0x(?P<op>[0-9a-fA-F]{2}) refusée : (?P<reason>.+)$"
     ),
     "trainer_warning": re.compile(r"^Trainer : (?P<err>.+)$"),
-    "click_connected": re.compile(r"^Zwift Click connecté$"),
+    # Ancien format (« Zwift Click connecté » seul) et format du lot K8.
+    "click_connected": re.compile(
+        r"^Zwift Click connecté"
+        r"(?: \(adresse (?P<address>.+), recherche (?P<search>[0-9.]+) s, (?P<attempts>\d+) tentative\(s\)\))?$"
+    ),
     "click_disconnected": re.compile(
-        r"^Zwift Click déconnecté \(veille \?\) : appuyez sur un bouton pour le réveiller$"
+        r"^Zwift Click déconnecté (?:\(veille \?\) : appuyez sur un bouton pour le réveiller"
+        r"|après (?P<connected>[0-9.]+) s de connexion : dernière notification il y a (?P<since_notif>[0-9.]+ s|jamais), "
+        r"dernier appui il y a (?P<since_press>[0-9.]+ s|jamais), (?P<notifs>\d+) notification\(s\), "
+        r"dernière écriture au trainer il y a (?P<since_write>[0-9.]+ s|jamais), "
+        r"raison : (?P<reason>.+) ; appuyez sur un bouton pour le réveiller)$"
+    ),
+    "click_rate": re.compile(
+        r"^Click : (?P<count>\d+) notification\(s\) en (?P<span>[0-9.]+) s \((?P<rate>[0-9.]+) par seconde\)$"
     ),
     "click_press": re.compile(
         r"^Click : (?P<ev>PLUS_SHORT|MINUS_SHORT|PLUS_LONG|MINUS_LONG|plus_short|minus_short|plus_long|minus_long)$"
@@ -155,6 +181,20 @@ class TrainerReport:
 
 
 @dataclass
+class ClickDrop:
+    """Une coupure du Click (lot K8). Les champs `None` manquent dans les anciens journaux."""
+    timestamp: str
+    connected_s: float | None = None          # depuis la connexion précédente (horodatages)
+    since_notification_s: float | None = None
+    since_press_s: float | None = None
+    notifications: int | None = None
+    since_trainer_write_s: float | None = None
+    reason: str | None = None
+    nearest_trainer_event_s: float | None = None   # écart au plus proche événement trainer du journal
+    trainer_correlated: bool = False
+
+
+@dataclass
 class ClickReport:
     connections: int = 0
     disconnections: int = 0
@@ -167,6 +207,21 @@ class ClickReport:
             "minus_long": 0,
         }
     )
+    # Lot K8
+    connection_durations_s: list[float] = field(default_factory=list)
+    connection_min_s: float | None = None
+    connection_median_s: float | None = None
+    connection_max_s: float | None = None
+    reconnect_delays_s: list[float] = field(default_factory=list)
+    reconnect_delay_median_s: float | None = None
+    reconnect_delay_max_s: float | None = None
+    search_durations_s: list[float] = field(default_factory=list)
+    since_press_at_drop_s: list[float] = field(default_factory=list)
+    notification_rates: list[float] = field(default_factory=list)
+    notification_rate_min: float | None = None
+    notification_rate_avg: float | None = None
+    drops: list[ClickDrop] = field(default_factory=list)
+    trainer_correlated_drops: int = 0
 
 
 @dataclass
@@ -262,6 +317,11 @@ def _analyse_single_session(lines: list[str]) -> Report:
     consec_lag = 0
     consec_cpu = 0
 
+    click_up_since: datetime | None = None
+    click_down_since: datetime | None = None
+    click_drop_dts: list[datetime | None] = []
+    trainer_event_dts: list[datetime] = []
+
     for line in lines:
         m = LINE_RE.match(line)
         if not m:
@@ -278,6 +338,9 @@ def _analyse_single_session(lines: list[str]) -> Report:
                 rep.start = ts_str
             last_dt = dt
             rep.end = ts_str
+
+        if dt is not None and (m.group("logger") == "ftms_driver" or msg.startswith("Trainer ")):
+            trainer_event_dts.append(dt)
 
         if level == "ERROR":
             rep.errors.append(f"{ts_str} {msg}")
@@ -322,12 +385,43 @@ def _analyse_single_session(lines: list[str]) -> Report:
             rep.trainer.control_refusals += 1
             continue
 
-        if PATTERNS["click_connected"].match(msg):
+        m_click_up = PATTERNS["click_connected"].match(msg)
+        if m_click_up:
             rep.click.connections += 1
+            if m_click_up.group("search") is not None:
+                rep.click.search_durations_s.append(float(m_click_up.group("search")))
+            if dt is not None:
+                if click_down_since is not None:
+                    rep.click.reconnect_delays_s.append(round((dt - click_down_since).total_seconds(), 3))
+                click_down_since = None
+                click_up_since = dt
             continue
 
-        if PATTERNS["click_disconnected"].match(msg):
+        m_click_down = PATTERNS["click_disconnected"].match(msg)
+        if m_click_down:
             rep.click.disconnections += 1
+            drop = ClickDrop(timestamp=ts_str)
+            if m_click_down.group("connected") is not None:
+                drop.since_notification_s = _ago_s(m_click_down.group("since_notif"))
+                drop.since_press_s = _ago_s(m_click_down.group("since_press"))
+                drop.notifications = int(m_click_down.group("notifs"))
+                drop.since_trainer_write_s = _ago_s(m_click_down.group("since_write"))
+                drop.reason = m_click_down.group("reason")
+                if drop.since_press_s is not None:
+                    rep.click.since_press_at_drop_s.append(drop.since_press_s)
+            if dt is not None:
+                if click_up_since is not None:
+                    drop.connected_s = round((dt - click_up_since).total_seconds(), 3)
+                    rep.click.connection_durations_s.append(drop.connected_s)
+                click_up_since = None
+                click_down_since = dt
+            rep.click.drops.append(drop)
+            click_drop_dts.append(dt)
+            continue
+
+        m_rate = PATTERNS["click_rate"].match(msg)
+        if m_rate:
+            rep.click.notification_rates.append(float(m_rate.group("rate")))
             continue
 
         if PATTERNS["click_not_found"].match(msg):
@@ -409,7 +503,36 @@ def _analyse_single_session(lines: list[str]) -> Report:
 
     rep.trainer.connected_duration_s = round(rep.trainer.connected_duration_s, 3)
     rep.trainer.lost_duration_s = round(rep.trainer.lost_duration_s, 3)
+
+    for drop, ddt in zip(rep.click.drops, click_drop_dts):
+        if ddt is not None and trainer_event_dts:
+            drop.nearest_trainer_event_s = round(
+                min(abs((t - ddt).total_seconds()) for t in trainer_event_dts), 3)
+    _finalize_click(rep.click)
     return rep
+
+
+def _ago_s(text: str) -> float | None:
+    return None if text == "jamais" else float(text.removesuffix(" s"))
+
+
+def _finalize_click(c: ClickReport) -> None:
+    """Statistiques dérivées des listes de la section Click (aussi après fusion de lancements)."""
+    d = sorted(c.connection_durations_s)
+    c.connection_min_s = d[0] if d else None
+    c.connection_max_s = d[-1] if d else None
+    c.connection_median_s = round(statistics.median(d), 3) if d else None
+    r = c.reconnect_delays_s
+    c.reconnect_delay_median_s = round(statistics.median(r), 3) if r else None
+    c.reconnect_delay_max_s = max(r) if r else None
+    n = c.notification_rates
+    c.notification_rate_min = min(n) if n else None
+    c.notification_rate_avg = round(sum(n) / len(n), 2) if n else None
+    for drop in c.drops:
+        drop.trainer_correlated = any(
+            v is not None and v <= CORRELATION_WINDOW_S
+            for v in (drop.since_trainer_write_s, drop.nearest_trainer_event_s))
+    c.trainer_correlated_drops = sum(1 for drop in c.drops if drop.trainer_correlated)
 
 
 def _merge_reports(reports: list[Report]) -> Report:
@@ -449,6 +572,12 @@ def _merge_reports(reports: list[Report]) -> Report:
         merged.click.failed_attempts += r.click.failed_attempts
         for k, v in r.click.presses.items():
             merged.click.presses[k] = merged.click.presses.get(k, 0) + v
+        merged.click.connection_durations_s.extend(r.click.connection_durations_s)
+        merged.click.reconnect_delays_s.extend(r.click.reconnect_delays_s)
+        merged.click.search_durations_s.extend(r.click.search_durations_s)
+        merged.click.since_press_at_drop_s.extend(r.click.since_press_at_drop_s)
+        merged.click.notification_rates.extend(r.click.notification_rates)
+        merged.click.drops.extend(r.click.drops)
 
         merged.pauses.extend(r.pauses)
         merged.transitions.extend(r.transitions)
@@ -481,6 +610,7 @@ def _merge_reports(reports: list[Report]) -> Report:
         merged.warnings.extend(r.warnings)
         merged.unreadable_lines += r.unreadable_lines
 
+    _finalize_click(merged.click)
     return merged
 
 
@@ -517,6 +647,7 @@ def format_report(rep: Report) -> str:
         f"{rep.click.failed_attempts} échec(s) de scan",
         f"Appuis : {total_presses} (court +{pr['plus_short']} / -{pr['minus_short']}, "
         f"long +{pr['plus_long']} / -{pr['minus_long']})",
+        *_format_click_details(rep.click),
         f"Pauses : {len(rep.pauses)} ({pauses_desc})",
         f"Perf   : {rep.perf.count} relevé(s) — pas p99 max {rep.perf.step_p99_max_ms:.2f} ms "
         f"(seuil {STEP_P99_LIMIT_MS} ms), retard p99 max {rep.perf.lag_p99_max_ms:.1f} ms "
@@ -525,6 +656,28 @@ def format_report(rep: Report) -> str:
         f"Alertes: {len(rep.errors)} erreur(s), {len(rep.warnings)} avertissement(s)",
     ]
     return "\n".join(lines)
+
+
+def _fmt_s(v: float | None) -> str:
+    return "?" if v is None else f"{v:.1f} s"
+
+
+def _format_click_details(c: ClickReport) -> list[str]:
+    """Lignes du diagnostic des coupures (lot K8), seulement s'il y a de quoi dire."""
+    out: list[str] = []
+    if c.connection_durations_s:
+        out.append(f"         connexions : min {_fmt_s(c.connection_min_s)}, médiane {_fmt_s(c.connection_median_s)}, "
+                   f"max {_fmt_s(c.connection_max_s)} ; reconnexion médiane {_fmt_s(c.reconnect_delay_median_s)}, "
+                   f"max {_fmt_s(c.reconnect_delay_max_s)}")
+    if c.notification_rates:
+        out.append(f"         notifications : {c.notification_rate_avg:.1f}/s en moyenne, "
+                   f"min {c.notification_rate_min:.1f}/s")
+    if c.drops:
+        presses = ", ".join(f"{v:.0f} s" for v in c.since_press_at_drop_s) or "?"
+        out.append(f"         coupures : dernier appui avant coupure {presses} ; "
+                   f"{c.trainer_correlated_drops}/{len(c.drops)} à moins de {CORRELATION_WINDOW_S:.0f} s "
+                   "d'une écriture ou d'un événement du trainer")
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:

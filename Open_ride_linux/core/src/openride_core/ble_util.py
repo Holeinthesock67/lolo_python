@@ -4,13 +4,27 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import weakref
-from typing import Any, Iterator
+from typing import Any, Collection, Iterator
 
 log = logging.getLogger("ble")
 
 _locks: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock]" = (
     weakref.WeakKeyDictionary())
+
+
+_last_trainer_write_at: float | None = None
+
+
+def note_trainer_write() -> None:
+    """Note l'heure (time.monotonic) d'une écriture au trainer, pour le diagnostic du Click (lot K8)."""
+    global _last_trainer_write_at
+    _last_trainer_write_at = time.monotonic()
+
+
+def last_trainer_write_at() -> float | None:
+    return _last_trainer_write_at
 
 
 def ble_lock() -> asyncio.Lock:
@@ -26,8 +40,12 @@ def ble_lock() -> asyncio.Lock:
     return lock
 
 
-async def known_bluez_address(name: str) -> str | None:
-    """Adresse d'un appareil déjà connu de BlueZ (même déjà connecté, donc muet en scan)."""
+async def known_bluez_address(name: str, exclude: Collection[str] = ()) -> str | None:
+    """Adresse d'un appareil déjà connu de BlueZ (même déjà connecté, donc muet en scan).
+
+    `exclude` : adresses à ignorer (l'autre Zwift Click de la paire, déjà pris).
+    """
+    skip = {a.upper() for a in exclude}
     try:
         from dbus_fast import BusType
         from dbus_fast.aio import MessageBus
@@ -46,15 +64,16 @@ async def known_bluez_address(name: str) -> str | None:
             if not dev:
                 continue
             label = " ".join(str(dev[k].value) for k in ("Name", "Alias") if k in dev).lower()
-            if needle in label and "Address" in dev:
+            if needle in label and "Address" in dev and str(dev["Address"].value).upper() not in skip:
                 return str(dev["Address"].value)
     except Exception as exc:   # BlueZ absent, droits, version : on retombe sur le scan seul
         log.debug("Liste BlueZ indisponible : %s", exc)
     return None
 
 
-async def find_device(name: str, address: str | None, timeout: float) -> Any | None:
-    """Cherche un appareil par adresse, sinon par fragment de nom.
+async def find_device(name: str, address: str | None, timeout: float,
+                      exclude: Collection[str] = ()) -> Any | None:
+    """Cherche un appareil par adresse, sinon par fragment de nom, hors adresses `exclude`.
 
     Scan d'abord ; si rien n'est annoncé, repli sur les appareils connus de BlueZ, car un
     appareil déjà connecté (Click resté accroché) n'émet plus de publicité. Renvoie un
@@ -66,11 +85,13 @@ async def find_device(name: str, address: str | None, timeout: float) -> Any | N
         dev = await BleakScanner.find_device_by_address(address, timeout=timeout)
         return dev or address
     needle = name.lower()
+    skip = {a.upper() for a in exclude}
     dev = await BleakScanner.find_device_by_filter(
-        lambda d, ad: needle in (d.name or ad.local_name or "").lower(), timeout=timeout)
+        lambda d, ad: needle in (d.name or ad.local_name or "").lower() and d.address.upper() not in skip,
+        timeout=timeout)
     if dev is not None:
         return dev
-    known = await known_bluez_address(name)
+    known = await known_bluez_address(name, exclude)
     if known:
         log.info("%s non annoncé : connexion directe à l'appareil connu de BlueZ (%s)", name, known)
     return known
