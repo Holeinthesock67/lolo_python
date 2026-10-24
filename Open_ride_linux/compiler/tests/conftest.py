@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import importlib
 import math
+import os
 import socket
 from pathlib import Path
 
@@ -16,6 +18,18 @@ from openride_compiler.pipeline import utm_transformer, utm_zone_of
 ORIGIN = (45.09, 6.06)          # près de Bourg-d'Oisans, zone 32T
 REPO = Path(__file__).resolve().parents[2]
 WORLD_CONTRACTS = REPO / "docs" / "contracts" / "world"
+
+
+def require_core(module: str):
+    """Module d'openride-core pour un test de vérification croisée (lot M9, constat S2).
+
+    `pip install -e "compiler[dev]"` seul n'installe pas le core : ces tests sont alors sautés.
+    En intégration continue (variable `CI`), les deux paquets sont installés : l'absence du
+    core y est une erreur, jamais un saut silencieux.
+    """
+    if os.environ.get("CI"):
+        return importlib.import_module(module)
+    return pytest.importorskip(module, reason="openride-core absent : `pip install -e ../core` pour ce test")
 
 
 def to_latlon(x, z, origin=ORIGIN):

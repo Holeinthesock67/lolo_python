@@ -125,22 +125,124 @@ def test_ftms_driver_erg_sim_and_release():
     asyncio.run(scenario())
 
 
-def test_att_error_0x80_then_recovery(caplog):
-    """Erreur ATT 0x80 ponctuelle (essai du 24 octobre) : le pilote reconnecte et reprend la main."""
+async def _watch_status(driver, seen: set) -> None:
+    while True:
+        seen.add(driver.status)
+        await asyncio.sleep(0.01)
+
+
+def test_att_error_0x80_is_resent_without_reconnecting(caplog):
+    """Erreur ATT 0x80 ponctuelle (essai du 24 octobre) : renvoi de la consigne, liaison gardée (M1)."""
     async def scenario():
         rig = Rig(READY).start()
-        await wait_for(lambda: rig.driver.status == "CONNECTED")
-        rig.driver.set_sim_grade(1.0)
-        await wait_for(lambda: rig.trainer.grade_pct == 1.0)
-        await rig.world.apply({"t": 0, "device": "trainer", "action": "att_error"})
-        rig.driver.set_sim_grade(3.0)
-        await wait_for(lambda: rig.driver.reconnect_count == 1)
-        await wait_for(lambda: rig.trainer.grade_pct == 3.0 and rig.trainer.control, timeout=6)
-        assert rig.trainer.connections == 2
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_target_power(200)
+        await wait_for(lambda: rig.trainer.target_w == 200)
+        seen: set = set()
+        watcher = asyncio.create_task(_watch_status(rig.driver, seen))
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "att_error", "count": 1})
+        rig.driver.set_target_power(240)
+        await wait_for(lambda: rig.trainer.commands[-1].result is None)   # l'écriture ratée
+        t_err = rig.trainer.commands[-1].t
+        await wait_for(lambda: rig.trainer.target_w == 240)
+        ok = next(c for c in rig.trainer.commands if c.t >= t_err and c.result == 0x01)
+        assert ok.t - t_err < 0.6
+        await asyncio.sleep(0.3)
+        watcher.cancel()
+        assert seen == {"CONNECTED"}
+        assert rig.driver.reconnect_count == 0 and rig.driver.att_retries == 1
+        assert rig.trainer.connections == 1
         await rig.stop()
     with caplog.at_level("INFO"):
         asyncio.run(scenario())
-    assert any("ATT error: 0x80" in r.getMessage() for r in caplog.records)
+    msgs = [r.getMessage() for r in caplog.records]
+    assert "Trainer : écriture 0x05 refusée (ATT 0x80), renvoi 1/2" in msgs
+    assert "Trainer : écriture 0x05 acceptée au renvoi 1" in msgs
+    assert not any("Reconnexion au trainer" in m for m in msgs)
+
+
+@pytest.mark.parametrize("count, reconnects", [(2, 0), (3, 1)])
+def test_repeated_att_errors(count, reconnects):
+    """Deux erreurs de suite : renvois ; trois : reconnexion, puis contrôle et consigne repris."""
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_sim_grade(1.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 1.0)
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "att_error", "count": count})
+        rig.driver.set_sim_grade(3.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 3.0 and rig.trainer.control, timeout=6)
+        assert rig.driver.reconnect_count == reconnects
+        assert rig.trainer.connections == 1 + reconnects
+        assert rig.driver.att_retries == 2
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_att_error_0xfe_waits_for_the_running_procedure(monkeypatch):
+    """0xFE : le renvoi attend la réponse 0x80 de la procédure en cours (ordre relevé)."""
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_sim_grade(1.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 1.0)
+        replies: list[float] = []
+        respond = rig.trainer._respond
+
+        def spy(reply):
+            replies.append(rig.world.now())
+            respond(reply)
+        monkeypatch.setattr(rig.trainer, "_respond", spy)
+        rig.trainer.cp_latency_s = 1.4   # réponse plus lente que CP_RESPONSE_TIMEOUT_S (1 s)
+        rig.driver.set_sim_grade(2.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 2.0)
+        rig.trainer.cp_latency_s = 0.05
+        rig.driver.set_sim_grade(3.0)   # écrite pendant la procédure lente : 0xFE
+        await wait_for(lambda: rig.trainer.grade_pct == 3.0, timeout=4)
+        cmds = rig.trainer.commands
+        i = next(i for i, c in enumerate(cmds) if c.result is None)
+        refused, resent = cmds[i], cmds[i + 1]
+        late_reply = next(t for t in replies if t > refused.t)
+        assert resent.result == 0x01 and resent.t >= late_reply
+        assert rig.driver.reconnect_count == 0 and rig.driver.att_retries == 1
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_drop_during_write_reconnects_without_resend(monkeypatch):
+    """Liaison coupée pendant l'écriture : reconnexion, pas de renvoi."""
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        write = rig.trainer.write
+
+        def dropping(uuid, data):
+            if data and data[0] == ftms.OP_SET_TARGET_POWER:
+                monkeypatch.setattr(rig.trainer, "write", write)
+                rig.trainer.drop()
+                raise ble_sim.SimBleError("Not connected")
+            return write(uuid, data)
+        monkeypatch.setattr(rig.trainer, "write", dropping)
+        rig.driver.set_target_power(210)
+        await wait_for(lambda: rig.driver.reconnect_count == 1)
+        await wait_for(lambda: rig.trainer.target_w == 210, timeout=6)
+        assert rig.driver.att_retries == 0
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+@pytest.mark.parametrize("message, code", [
+    ("[org.bluez.Error.Failed] Operation failed with ATT error: 0x80", 0x80),
+    ("[org.bluez.Error.Failed] Operation failed with ATT error: 0xfe", 0xFE),
+    ("[org.bluez.Error.Failed] Operation failed with ATT error: 0xFD (Unlikely Error)", 0xFD),
+    ("OPERATION FAILED WITH ATT ERROR: 0X0E", 0x0E),
+    ("[org.bluez.Error.Failed] Not connected", None),
+    ("", None),
+])
+def test_att_error_code(message, code):
+    from openride_core.ftms_driver import att_error_code
+    assert att_error_code(Exception(message)) == code
+    assert att_error_code(asyncio.TimeoutError()) is None
 
 
 def test_control_lost_is_taken_back():
@@ -414,3 +516,25 @@ def test_full_session_without_hardware(tmp_path, monkeypatch):
         assert s.sim.trainer.released and s.sim.trainer.client is None
         assert list((tmp_path / "act").glob("*.fit"))
     asyncio.run(scenario())
+
+
+@pytest.mark.slow
+def test_erreur_0x80_scenario_full_session(tmp_path, monkeypatch, caplog):
+    """Scénario `erreur_0x80` en séance complète : aucun ERROR, une seule connexion du trainer (M1)."""
+    monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
+    cfg = sim_config("erreur_0x80")
+    cfg.ipc.port_state, cfg.ipc.port_commands = 5792, 5793
+
+    async def scenario():
+        s = CoreSession(cfg, journal_dir=tmp_path / "journal", routes_root=tmp_path / "routes")
+        task = asyncio.create_task(s.run(autostart=True))
+        await wait_for(lambda: s.driver.att_retries == 1, timeout=30)
+        await asyncio.sleep(1.0)
+        assert s.state.session_state == "RUNNING" and s.state.trainer_status == "CONNECTED"
+        s.stop_event.set()
+        await asyncio.wait_for(task, 10)
+        assert s.sim.trainer.connections == 1 and s.driver.reconnect_count == 0
+        assert s.sim.trainer.released
+    with caplog.at_level("INFO"):
+        asyncio.run(scenario())
+    assert not [r for r in caplog.records if r.levelname == "ERROR"]
