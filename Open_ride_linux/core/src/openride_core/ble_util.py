@@ -72,8 +72,9 @@ async def known_bluez_address(name: str, exclude: Collection[str] = ()) -> str |
 
 
 async def find_device(name: str, address: str | None, timeout: float,
-                      exclude: Collection[str] = ()) -> Any | None:
-    """Cherche un appareil par adresse, sinon par fragment de nom, hors adresses `exclude`.
+                      exclude: Collection[str] = (), service: str | None = None) -> Any | None:
+    """Cherche un appareil par adresse, sinon par fragment de nom ou par service annoncé
+    (`service`, UUID complet), hors adresses `exclude`.
 
     Scan d'abord ; si rien n'est annoncé, repli sur les appareils connus de BlueZ, car un
     appareil déjà connecté (Click resté accroché) n'émet plus de publicité. Renvoie un
@@ -86,11 +87,18 @@ async def find_device(name: str, address: str | None, timeout: float,
         return dev or address
     needle = name.lower()
     skip = {a.upper() for a in exclude}
-    dev = await BleakScanner.find_device_by_filter(
-        lambda d, ad: needle in (d.name or ad.local_name or "").lower() and d.address.upper() not in skip,
-        timeout=timeout)
+    def wanted(d: Any, ad: Any) -> bool:
+        if d.address.upper() in skip:
+            return False
+        if service and service in (getattr(ad, "service_uuids", None) or ()):
+            return True
+        return bool(needle or not service) and needle in (d.name or ad.local_name or "").lower()
+
+    dev = await BleakScanner.find_device_by_filter(wanted, timeout=timeout)
     if dev is not None:
         return dev
+    if not name:   # recherche par service seul : BlueZ ne sait chercher que par nom
+        return None
     known = await known_bluez_address(name, exclude)
     if known:
         log.info("%s non annoncé : connexion directe à l'appareil connu de BlueZ (%s)", name, known)
