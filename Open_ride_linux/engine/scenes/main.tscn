@@ -4,6 +4,7 @@
 [ext_resource type="Script" path="res://scripts/ipc_client.gd" id="2_ipc"]
 [ext_resource type="Script" path="res://scripts/banner.gd" id="3_banner"]
 [ext_resource type="Script" path="res://scripts/world_streamer.gd" id="4_streamer"]
+[ext_resource type="Script" path="res://scripts/hud_view.gd" id="5_hud"]
 
 [sub_resource type="StyleBoxFlat" id="StyleBoxFlat_banner"]
 content_margin_left = 16.0
@@ -12,12 +13,19 @@ content_margin_right = 16.0
 content_margin_bottom = 8.0
 bg_color = Color(0.6, 0.1, 0.05, 0.85)
 
-[sub_resource type="ProceduralSkyMaterial" id="ProceduralSkyMaterial_sky"]
-sky_top_color = Color(0.38, 0.65, 0.98, 1)
-sky_horizon_color = Color(0.65, 0.75, 0.85, 1)
+[sub_resource type="PhysicalSkyMaterial" id="PhysicalSkyMaterial_sky"]
+rayleigh_coefficient = 2.0
+rayleigh_color = Color(0.3, 0.405, 0.6, 1)
+mie_coefficient = 0.005
+mie_eccentricity = 0.8
+turbidity = 10.0
+sun_disk_scale = 1.0
+ground_color = Color(0.1, 0.07, 0.034, 1)
 
 [sub_resource type="Sky" id="Sky_env"]
-sky_material = SubResource("ProceduralSkyMaterial_sky")
+sky_material = SubResource("PhysicalSkyMaterial_sky")
+process_mode = 3
+radiance_size = 1
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 2
@@ -56,47 +64,14 @@ far = 12000.0
 script = ExtResource("4_streamer")
 
 [node name="HUD" type="CanvasLayer" parent="."]
-
-[node name="Margin" type="MarginContainer" parent="HUD"]
-anchors_preset = 0
-offset_right = 320.0
-offset_bottom = 180.0
-theme_override_constants/margin_left = 20
-theme_override_constants/margin_top = 20
-
-[node name="Panel" type="Panel" parent="HUD/Margin"]
-layout_mode = 2
-
-[node name="VBox" type="VBoxContainer" parent="HUD/Margin"]
-layout_mode = 2
-theme_override_constants/separation = 6
-
-[node name="PowerLabel" type="Label" parent="HUD/Margin/VBox"]
-layout_mode = 2
-text = "PUISSANCE: -- W"
-
-[node name="SpeedLabel" type="Label" parent="HUD/Margin/VBox"]
-layout_mode = 2
-text = "VITESSE: -- km/h"
-
-[node name="CadenceLabel" type="Label" parent="HUD/Margin/VBox"]
-layout_mode = 2
-text = "CADENCE: -- rpm"
-
-[node name="GradeLabel" type="Label" parent="HUD/Margin/VBox"]
-layout_mode = 2
-text = "PENTE: -- %"
-
-[node name="DistanceLabel" type="Label" parent="HUD/Margin/VBox"]
-layout_mode = 2
-text = "DISTANCE: -- km"
+script = ExtResource("5_hud")
 
 [node name="Banner" type="Label" parent="HUD"]
 anchors_preset = 10
 anchor_right = 1.0
 offset_left = 360.0
 offset_top = 20.0
-offset_right = -20.0
+offset_right = -360.0
 grow_horizontal = 2
 theme_override_font_sizes/font_size = 22
 theme_override_styles/normal = SubResource("StyleBoxFlat_banner")

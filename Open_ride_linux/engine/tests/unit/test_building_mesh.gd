@@ -209,6 +209,16 @@ func _test_performance_500() -> void:
 		"500 bâtiments rectangulaires maillés en %.2f ms (< 100 ms)" % elapsed_ms)
 
 
+func _test_skirt() -> void:
+	var b := _building("b_skirt", [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]], 100.0, 5.0)
+	var res: Dictionary = BuildingMesh.build([b], _theme, 3.0)
+	var verts: PackedVector3Array = res["vertices"]
+	var min_y := INF
+	for v in verts:
+		min_y = minf(min_y, v.y)
+	_check(absf(min_y - 97.0) < 1e-4, "jupe de 3 m sous base_y : min_y = %.2f (attendu 97.0)" % min_y)
+
+
 func _init() -> void:
 	var tl = ThemeLoader.new()
 	_theme = tl.load_named("default")["theme"]
@@ -218,5 +228,6 @@ func _init() -> void:
 	_test_determinism_and_colors()
 	_test_invalid_cases()
 	_test_performance_500()
+	_test_skirt()
 	print("test_building_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
