@@ -39,7 +39,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 
 **Modules clés du core** (`core/src/openride_core/`) :
 - `session.py` : boucle principale ;
-- `launcher.py` : lanceur unique `openride` (core + Godot, relance de Godot s'il plante, arrêt propre sur fermeture et signaux) ;
+- `launcher.py` : lanceur unique `openride` (core + Godot, relance de Godot s'il plante, arrêt propre sur fermeture et signaux ; un journal par lancement dans `~/OpenRide/Logs/`, lien `~/run_victory.log` vers le dernier, lot M8) ;
 - `ftms_driver.py` : pilote du Victory ;
 - `input_providers.py` : Click et clavier ;
 - `ble_util.py` : verrou BLE, repli BlueZ ;

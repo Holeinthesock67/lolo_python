@@ -369,6 +369,8 @@ Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
   Themes/<nom>/        theme.json et textures
   Activities/          fichiers .fit
     .journal/          journaux JSONL de séance
+  Logs/                journaux du lanceur openride (20 derniers, 200 Mo au plus)
+~/run_victory.log                             lien vers le dernier journal du lanceur
 ~/.local/share/openride/routes/<nom>.world/   parcours compilés (dossier)
 ~/.cache/openride/dem/                        tuiles d'altitude brutes
 ~/.cache/openride/osm/                        réponses OpenStreetMap brutes
