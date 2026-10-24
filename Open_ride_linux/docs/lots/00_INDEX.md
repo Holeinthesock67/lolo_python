@@ -58,7 +58,7 @@
 | [M4](LOT_M4_journal_biais_coupures.md) | Journal de séance : biais ERG et coupures des appareils | Python | — | Petite | **Livré le 24 octobre** (issue #81) |
 | [M5](LOT_M5_scenario_depuis_journal.md) | Rejouer une panne réelle : scénario de simulation tiré de `run_trainer.log` | Python | — | Petite | **Livré le 24 octobre** (issue #82) |
 | [M6](LOT_M6_matrice_scenarios_simules.md) | Recette sans matériel : chaque scénario simulé joué en séance complète | Python | — | Petite | **Livré le 24 octobre** (issue #83) |
-| [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | Oui (issue #84) |
+| [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | **Livré le 24 octobre** (issue #84) |
 | [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | Oui (issue #85) |
 | [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | Oui (issue #86) |
 

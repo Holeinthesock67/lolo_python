@@ -25,7 +25,7 @@ from .cache import Log, stderr_log
 from .elevation import CopernicusGlo30Provider, ElevationProvider
 from .errors import EXIT_INPUT, EXIT_INTERNAL, EXIT_OK, CompileError
 from .frame import LocalFrame
-from .gpx import read_gpx
+from .track_formats import read_track
 from .osm import OverpassClient
 from .osm_layers import (
     build_osm_layers,
@@ -79,11 +79,11 @@ class _Parser(argparse.ArgumentParser):
 
 
 def build_parser() -> argparse.ArgumentParser:
-    parser = _Parser(prog="openride-compiler", description="Compile une trace GPX en parcours .world.")
+    parser = _Parser(prog="openride-compiler", description="Compile une trace GPX, FIT ou TCX en parcours .world.")
     sub = parser.add_subparsers(dest="command", required=True, parser_class=_Parser)
 
-    b = sub.add_parser("build", help="compile un GPX en dossier .world")
-    b.add_argument("gpx", type=Path)
+    b = sub.add_parser("build", help="compile une trace GPX, FIT ou TCX en dossier .world")
+    b.add_argument("gpx", type=Path, help="trace GPX, FIT ou TCX (format reconnu par l'extension ou le contenu)")
     b.add_argument("--name", help="nom du parcours (défaut : nom du fichier normalisé)")
     b.add_argument("--out", type=Path, default=C.ROUTES_DIR, help=f"dossier de sortie (défaut : {C.ROUTES_DIR})")
     b.add_argument("--out-and-back", action="store_true", help="aller-retour : la trace puis son inverse")
@@ -142,7 +142,7 @@ def _report_alt(compiled) -> None:
 def cmd_build(args: argparse.Namespace) -> int:
     t0 = time.monotonic()
     name = normalize_name(args.name if args.name else args.gpx.stem)
-    points = read_gpx(args.gpx)
+    points = read_track(args.gpx)
     final = Path(args.out) / f"{name}.world"
     if final.exists() and not args.force:   # avant tout téléchargement
         raise CompileError(f"{final} existe déjà (utiliser --force pour le remplacer)")

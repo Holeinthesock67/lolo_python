@@ -13,6 +13,7 @@ dependencies = [
     "pyproj>=3.6",
     "rasterio>=1.3",
     "jsonschema>=4",   # theme-check (theme.py), importé au chargement de la ligne de commande
+    "fit-tool>=0.9",   # lecture des traces FIT (track_formats.py, lot M7), comme le core
 ]
 
 [project.optional-dependencies]
