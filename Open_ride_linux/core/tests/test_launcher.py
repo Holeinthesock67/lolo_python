@@ -170,9 +170,10 @@ def test_signal_stops_both_cleanly(fake, sig):
     assert signal.getsignal(signal.SIGHUP) is not sup._on_signal   # gestionnaires rendus
 
 
-def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path):
+def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("openride_core.config.CONFIG_PATH", tmp_path / "absent_default.toml")
     cfg = tmp_path / "config.toml"
-    cfg.write_text("[ipc]\nport_state = 6005\nport_commands = 6006\n")
+    cfg.write_text("[ipc]\nport_state = 6005\nport_commands = 6006\n[render]\nquality = \"high\"\ntheme = \"alpes\"\n")
     godot = tmp_path / "godot"
     godot.write_text("#!/bin/sh\n")
     godot.chmod(0o755)
@@ -181,14 +182,25 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path):
     sup = launcher.build_supervisor(["--trainer", "mock", "--config", str(cfg)], env)
     assert sup.core_cmd[-5:] == ["run", "--trainer", "mock", "--config", str(cfg)]
     assert sup.engine_cmd[0] == str(godot) and "--verbose" in sup.engine_cmd
-    assert sup.engine_cmd[-2:] == ["--ipc-state-port=6005", "--ipc-cmd-port=6006"]
+    assert sup.engine_cmd[-4:] == [
+        "--ipc-state-port=6005",
+        "--ipc-cmd-port=6006",
+        "--quality=high",
+        "--theme=alpes",
+    ]
     assert sup.release_cmd[-3:] == ["release-trainer", "--config", str(cfg)]
     assert sup.log_path == tmp_path / "x.log"
 
     default = launcher.build_supervisor([f"--config={cfg}"], env)
     assert default.core_cmd[-1] == f"--config={cfg}"
-    assert launcher.build_supervisor([], {**env}).core_cmd[-6:] == [
-        "run", *launcher.DEFAULT_CORE_ARGS]
+    no_cfg = launcher.build_supervisor([], {**env})
+    assert no_cfg.core_cmd[-6:] == ["run", *launcher.DEFAULT_CORE_ARGS]
+    assert no_cfg.engine_cmd[-4:] == [
+        "--ipc-state-port=5005",
+        "--ipc-cmd-port=5006",
+        "--quality=low",
+        "--theme=default",
+    ]
 
     with pytest.raises(FileNotFoundError, match="Godot introuvable"):
         launcher.build_supervisor(["--config", str(cfg)], {**env, "GODOT": str(tmp_path / "absent")})
