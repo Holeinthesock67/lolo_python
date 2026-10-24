@@ -12,7 +12,7 @@ Aujourd'hui, si le core plante, le lanceur `openride` arrête Godot et rappelle 
 
 ## 3. Prérequis
 
-- Lot N1 fusionné (valeur `core_restarted`) : **bloqué** jusque-là.
+- Lot N1 livré le 24 octobre (valeur `core_restarted`) : contrat v1.1 sur `main`.
 - Lots M4 et M8 (PR #90 et #96) et PR #91 : fusionnés le 24 octobre, partir de `main` à jour (ils ont modifié `journal.py`, `recorder.py`, `session.py` et `launcher.py`).
 
 ## 4. Travail demandé

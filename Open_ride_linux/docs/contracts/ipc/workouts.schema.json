@@ -1,0 +1,110 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorkoutsMessage",
+  "description": "Réponse à cmd list_workouts (révision 1.1) ; datagramme de 60 000 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "part",
+    "parts",
+    "items",
+    "truncated"
+  ],
+  "properties": {
+    "type": {
+      "const": "workouts"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "part": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "duration_s",
+          "block_count",
+          "selectable",
+          "error",
+          "profile"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "duration_s": {
+            "type": "number",
+            "minimum": 0
+          },
+          "block_count": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "selectable": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "profile": {
+            "type": "array",
+            "maxItems": 30,
+            "items": {
+              "type": "array",
+              "minItems": 3,
+              "maxItems": 3,
+              "prefixItems": [
+                {
+                  "type": "number",
+                  "minimum": 0
+                },
+                {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                }
+              ]
+            }
+          },
+          "profile_truncated": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

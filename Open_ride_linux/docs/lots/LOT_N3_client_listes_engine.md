@@ -12,7 +12,7 @@ Côté Godot, demander les listes de parcours et d'entraînements au core (contr
 
 ## 3. Prérequis
 
-Lot N1 fusionné : **bloqué** jusque-là. Ne dépend pas de la PR #91 (fichiers distincts), ni de N2 (le faux core suffit).
+Lot N1 livré le 24 octobre : contrat v1.1 sur `main`. Ne dépend pas de la PR #91 (fichiers distincts), ni de N2 (le faux core suffit).
 
 ## 4. Travail demandé
 

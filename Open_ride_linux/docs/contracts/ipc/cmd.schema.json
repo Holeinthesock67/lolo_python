@@ -31,7 +31,9 @@
         "resume",
         "end_session",
         "skip_block",
-        "input_event"
+        "input_event",
+        "list_routes",
+        "list_workouts"
       ]
     },
     "args": {
