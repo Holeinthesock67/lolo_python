@@ -75,13 +75,17 @@ class IpcConfig:
 
 @dataclass
 class DriversConfig:
-    trainer: str = "mock"          # "mock" ou "ftms"
-    input: str = "keyboard"        # "click", "keyboard" ou "none"
+    trainer: str = "mock"          # "mock", "ftms" ou "sim" (Victory simulé, voir ble_sim.py)
+    input: str = "keyboard"        # "click", "keyboard", "none" ou "sim" (Click simulé)
     trainer_address: str = ""      # adresse MAC (vide : recherche par nom)
     click_address: str = ""
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
+    hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
+    hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
+    hr_name: str = ""              # fragment du nom BLE (vide : tout appareil annonçant le service 0x180D)
+    sim_scenario: str = ""         # Bluetooth simulé : scénario intégré ou fichier JSON (vide : demo)
 
 
 @dataclass
@@ -131,8 +135,9 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
 # Valeurs permises des champs textuels à choix fermé.
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
-    ("drivers", "trainer"): ("mock", "ftms"),
-    ("drivers", "input"): ("click", "keyboard", "none"),
+    ("drivers", "trainer"): ("mock", "ftms", "sim"),
+    ("drivers", "input"): ("click", "keyboard", "none", "sim"),
+    ("drivers", "hr"): ("none", "ble", "sim"),
 }
 
 

@@ -245,6 +245,11 @@ class KeyboardProvider:
     def stop(self) -> None:
         self._stop.set()
 
+    def on_char(self, ch: str) -> None:
+        ev = self.KEYS.get(ch)
+        if ev is not None:
+            self.events.put_nowait(ev)
+
     async def run(self) -> None:
         if not sys.stdin.isatty():
             log.info("Pas de terminal interactif : entrées clavier désactivées")
@@ -259,9 +264,7 @@ class KeyboardProvider:
 
         def on_key() -> None:
             for ch in sys.stdin.read(1):
-                ev = self.KEYS.get(ch)
-                if ev is not None:
-                    self.events.put_nowait(ev)
+                self.on_char(ch)
 
         try:
             tty.setcbreak(fd)
@@ -271,6 +274,25 @@ class KeyboardProvider:
         finally:
             loop.remove_reader(fd)
             termios.tcsetattr(fd, termios.TCSADRAIN, old)
+
+
+class SimClickKeyboard(KeyboardProvider):
+    """Clavier du terminal qui appuie sur le Zwift Click simulé (`--input sim`).
+
+    Mêmes touches que `KeyboardProvider`, mais l'appui passe par le Bluetooth simulé : un boîtier
+    endormi ou déconnecté perd l'appui, comme le vrai. Aucun événement direct (`events` vide).
+    """
+
+    PRESSES = {"+": ("+", 0.12), "=": ("+", 0.12), "-": ("-", 0.12), "u": ("+", 1.0), "d": ("-", 1.0)}
+
+    def __init__(self, world: Any) -> None:
+        super().__init__()
+        self._world = world
+
+    def on_char(self, ch: str) -> None:
+        press = self.PRESSES.get(ch)
+        if press is not None:
+            asyncio.get_running_loop().create_task(self._world.press(*press))
 
 
 class NullProvider:
