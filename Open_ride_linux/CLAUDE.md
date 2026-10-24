@@ -20,8 +20,8 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - `docs/contracts/ipc_v1.md` et schémas `docs/contracts/ipc/*.schema.json` : messages core ↔ engine.
 - `docs/contracts/world_format_v1.md` et `docs/contracts/world/` : format des parcours `.world`, schémas et vecteurs de test de la route.
 - `docs/SUIVI_AVANCEMENT.md` : état, tests faits, reste à faire.
-- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H et I sont faites pour être confiées à une autre IA.
-- `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8).
+- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H, I et J sont faites pour être confiées à une autre IA.
+- `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8 et §9).
 - `docs/spikes.md` : faits mesurés sur le matériel.
 
 **Règle :** un contrat ne se modifie que par ajout compatible, avec une ligne au journal des changements du document. Si un contrat paraît faux, le signaler au lieu de l'interpréter.
@@ -38,6 +38,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 
 **Modules clés du core** (`core/src/openride_core/`) :
 - `session.py` : boucle principale ;
+- `launcher.py` : lanceur unique `openride` (core + Godot, relance de Godot s'il plante, arrêt propre sur fermeture et signaux) ;
 - `ftms_driver.py` : pilote du HomeTrainer ;
 - `input_providers.py` : Click et clavier ;
 - `ble_util.py` : verrou BLE, repli BlueZ ;
@@ -46,8 +47,8 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `demo_world.py` : parcours de démonstration ;
 - `workout.py` : lecture des `.zwo` et contrôleur ERG ;
 - `mock_driver.py`, `replay.py` : simulateur de trainer et rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) ;
-- `journal.py`, `fit_export.py`, `ipc_server.py`, `config.py` : journal JSONL, export FIT, serveur IPC, configuration ;
-- `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py` ;
+- `journal.py`, `fit_export.py`, `ipc_server.py`, `config.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), configuration (types et bornes contrôlés, `ConfigError`) ;
+- `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py` ;
 - `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties.
 
 **Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
@@ -64,10 +65,12 @@ cd compiler && pip install -e ".[dev]" -e ../core
 (cd core && pytest -q)                 # ~3 min ; `pytest -q -m "not slow"` (~20 s) pendant le développement
 (cd compiler && pytest -q)            # réseau coupé ; `pytest -m network` pour l'essai Copernicus réel
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh   # vrai core + vrai engine, ~10 s
 
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
 scripts/openride-dev.sh --trainer mock --input keyboard --autostart        # sans vélo
+openride --trainer mock --input keyboard --autostart                       # même chose en Python, avec relance de Godot (lot K6)
 openride-core run --replay ~/OpenRide/Activities/<séance>.fit --input keyboard --autostart   # rejoue une séance réelle
 
 # Après un essai (depuis core/) : résumé du journal (Perf, pertes trainer et Click, pauses)
@@ -79,12 +82,14 @@ python -m openride_core.tools.workouts install | list | check FICHIER.zwo --ftp 
 # Parcours
 openride-compiler build trace.gpx      # route + terrain ; puis : verify / info
 openride-compiler list                 # liste les parcours (.world et .gpx) et leur statut
-openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées
+openride-compiler build-all            # compile toutes les traces GPX nouvelles ou modifiées (route,terrain ; --layers pour OSM)
 openride-compiler build trace.gpx --offline --force   # sans réseau, tuiles d'altitude déjà en cache
 openride-compiler build trace.gpx --layers route,terrain,buildings,vegetation,poi,water
 openride-compiler add-layer <nom>.world terrain|buildings|vegetation|poi|water  # régénère une couche seule
 openride-compiler theme-check ~/OpenRide/Themes/<nom>  # contrôle un thème (défaut : engine/themes/default/)
 openride-core recover                  # FIT depuis le dernier journal après un plantage
+openride-core release-trainer          # libère le trainer resté réservé après un arrêt brutal
+openride-core summary --ftp 250        # bilan du dernier journal (ou d'un .jsonl/.fit) : NP, IF, TSS, zones ; --json
 
 # Diagnostic matériel
 openride-ble-diag scan | trainer --name HomeTrainer --duration 30 | click --duration 60
@@ -136,5 +141,5 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
 
 - Il teste sur le vrai vélo et colle les journaux dans la conversation. Pour un problème, demander les lignes utiles : `grep -E "WARNING|ERROR|Perf|Click" ~/run_trainer.log | tail -30`.
 - Lui donner des commandes complètes, à copier-coller, en partant de `/home/utilisateur/Games/lolo_python`.
-- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, le statut dans `docs/lots/00_INDEX.md` (avec une section « Livraison » dans le lot) et `README.md` si les commandes changent.
+- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, le statut dans `docs/lots/00_INDEX.md` (avec une section « Livraison » dans le lot) et `README.md` si les commandes changent. Les nombres de tests du `README.md` et du suivi doivent rester exacts : `core/tests/test_docs_coherence.py` les compare aux tests collectés et donne la valeur à écrire.
 - Les lots de `docs/lots/` peuvent être réalisés directement ou confiés à une autre IA (modèle de message dans `00_INDEX.md` §4).

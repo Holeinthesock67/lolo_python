@@ -7,6 +7,15 @@ Contrôles :
    citées dans `README.md` et `CLAUDE.md` vs sous-commandes et options `argparse`.
 4. Statut « Livré » dans `docs/lots/00_INDEX.md` vs section « Livraison » dans chaque cahier.
 5. Validité JSON Schema Draft 2020-12 de tous les schémas `docs/contracts/**/*.schema.json`.
+
+Deuxième passe (lot J7) :
+6. Caractères interdits (contrôle, U+FFFD, double encodage) dans les `*.md` et `*.json`.
+7. Liens Markdown relatifs : fichier cible existant, ancre présente parmi les titres de la cible.
+8. Nombres de tests du `README.md` et de `SUIVI_AVANCEMENT.md` vs tests réellement collectés.
+9. Chemins du projet cités entre accents graves (`core/…`, `docs/…`, etc.) existants.
+
+Vérification du 24 octobre :
+10. Lots numérotés cités dans `README.md`, `CLAUDE.md` et `SUIVI_AVANCEMENT.md` présents dans `00_INDEX.md`.
 """
 
 from __future__ import annotations
@@ -33,6 +42,7 @@ README_PATH = REPO_ROOT / "README.md"
 LOTS_DIR = REPO_ROOT / "docs" / "lots"
 INDEX_PATH = LOTS_DIR / "00_INDEX.md"
 CONTRACTS_DIR = REPO_ROOT / "docs" / "contracts"
+SUIVI_PATH = REPO_ROOT / "docs" / "SUIVI_AVANCEMENT.md"
 
 CORE_SRC_DIR = REPO_ROOT / "core" / "src" / "openride_core"
 CORE_TOOLS_DIR = CORE_SRC_DIR / "tools"
@@ -185,6 +195,13 @@ def _build_core_parser() -> argparse.ArgumentParser:
     run.add_argument("--gear", type=int)
     run.add_argument("--replay")
     run.add_argument("--autostart", action="store_true")
+    rel = sub.add_parser("release-trainer")
+    rel.add_argument("--config")
+    summ = sub.add_parser("summary")
+    summ.add_argument("file", nargs="?")
+    summ.add_argument("--ftp", type=float)
+    summ.add_argument("--json", action="store_true")
+    summ.add_argument("--config")
     return p
 
 
@@ -364,6 +381,27 @@ def check_lots_index(index_text: str, lots_dir: Path = LOTS_DIR) -> list[str]:
     return errors
 
 
+# Citation d'un ou plusieurs lots numérotés : « lot K6 », « lots I3 et I4 », « lots H1 à H8 ».
+_LOT_CITATION_RE = re.compile(r"\b[Ll]ots?\s+((?:[A-Z]\d+(?:\s*(?:,|et|à|puis)\s*)?)+)")
+
+
+def check_cited_lots(docs: dict[str, str], index_text: str) -> list[str]:
+    """Vérifie que chaque lot numéroté cité dans la documentation figure dans 00_INDEX.md.
+
+    Sont connus les lots du tableau et ceux de la liste « À rédiger plus tard » (« - E2 : … »).
+    """
+    known = set(re.findall(r"^\|\s*\[([A-Z]\d*)\]\(LOT_", index_text, flags=re.MULTILINE))
+    known |= set(re.findall(r"^- ([A-Z]\d+) :", index_text, flags=re.MULTILINE))
+    errors: list[str] = []
+    for name, text in docs.items():
+        cited: set[str] = set()
+        for m in _LOT_CITATION_RE.finditer(text):
+            cited |= set(re.findall(r"[A-Z]\d+", m.group(1)))
+        for lot_id in sorted(cited - known):
+            errors.append(f"{name} : lot {lot_id} cité mais absent de docs/lots/00_INDEX.md")
+    return errors
+
+
 # --- 5. Validité des schémas JSON ----------------------------------------------------
 
 def check_json_schemas(contracts_dir: Path = CONTRACTS_DIR) -> list[str]:
@@ -434,6 +472,23 @@ def test_lots_index_status_and_negative(tmp_path: Path) -> None:
     assert any("LOT_Z9_fictif.md" in e and "Livraison" in e for e in errs)
 
 
+def test_cited_lots_are_indexed_and_negative() -> None:
+    index_text = INDEX_PATH.read_text(encoding="utf-8")
+    docs = {
+        "README.md": README_PATH.read_text(encoding="utf-8"),
+        "CLAUDE.md": CLAUDE_MD_PATH.read_text(encoding="utf-8"),
+        "SUIVI_AVANCEMENT.md": SUIVI_PATH.read_text(encoding="utf-8"),
+    }
+    assert check_cited_lots(docs, index_text) == []
+
+    # Test négatif : un lot cité sans cahier dans l'index (cas de K6 et K7, vérification du 24 octobre)
+    errs = check_cited_lots({"README.md": "lanceur (lot Z9), couches (lots Y1 et I3)"}, index_text)
+    assert errs == [
+        "README.md : lot Y1 cité mais absent de docs/lots/00_INDEX.md",
+        "README.md : lot Z9 cité mais absent de docs/lots/00_INDEX.md",
+    ]
+
+
 def test_contracts_json_schemas_and_negative(tmp_path: Path) -> None:
     assert check_json_schemas(CONTRACTS_DIR) == []
 
@@ -443,3 +498,231 @@ def test_contracts_json_schemas_and_negative(tmp_path: Path) -> None:
     errs = check_json_schemas(tmp_path)
     assert len(errs) == 1
     assert "bad.schema.json" in errs[0]
+
+
+# --- 6. Caractères interdits (lot J7) ------------------------------------------------
+
+# Dossiers non versionnés ou générés, jamais parcourus.
+SKIPPED_DIRS = {".git", ".godot", ".venv", "venv", "__pycache__", ".pytest_cache", "build", "dist",
+                "node_modules"}
+
+CONTROL_CHARS_RE = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f�]")
+# Séquences d'un texte UTF-8 relu en Latin-1 / Windows-1252 (« é », « è », « ’ » abîmés).
+MOJIBAKE_RE = re.compile(r"Ã©|Ã¨|Ã |Ãª|Ã§|â€™|â€œ|â€\x9d|Â ")
+
+
+def project_files(suffix: str, root: Path = REPO_ROOT) -> list[Path]:
+    return sorted(
+        p for p in root.rglob(f"*{suffix}")
+        if p.is_file() and not any(part in SKIPPED_DIRS or part.endswith(".egg-info")
+                                   for part in p.relative_to(root).parts)
+    )
+
+
+def check_forbidden_chars(text: str, doc_name: str) -> list[str]:
+    """Caractères de contrôle (hors \n, \r, \t), U+FFFD et double encodage.
+
+    Le double encodage est cherché hors du code entre accents graves, où un cahier peut citer
+    les séquences à détecter (lot J7 §4).
+    """
+    errors: list[str] = []
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        m = CONTROL_CHARS_RE.search(line)
+        if m:
+            errors.append(f"{doc_name}:{line_no} : caractère interdit U+{ord(m.group()):04X}")
+        m = MOJIBAKE_RE.search(re.sub(r"`[^`]*`", "", line))
+        if m:
+            errors.append(f"{doc_name}:{line_no} : texte doublement encodé {m.group()!r}")
+    return errors
+
+
+# --- 7. Liens Markdown relatifs (lot J7) ---------------------------------------------
+
+FENCE_RE = re.compile(r"^(```|~~~).*?^\1[^\n]*$", flags=re.MULTILINE | re.DOTALL)
+LINK_RE = re.compile(r"\[(?:[^\[\]]|\[[^\]]*\])*\]\(\s*<?([^)\s>]+)>?(?:\s+\"[^\"]*\")?\s*\)")
+
+
+def github_anchor(title: str) -> str:
+    """Ancre générée par GitHub pour un titre : minuscules, ponctuation retirée, espaces en `-`."""
+    title = re.sub(r"\[([^\]]*)\]\([^)]*\)", r"\1", title)       # [texte](lien) -> texte
+    title = re.sub(r"<[^>]+>|[`*]", "", title).strip().lower()
+    return re.sub(r"[^\w\- ]", "", title).replace(" ", "-")
+
+
+def markdown_anchors(text: str) -> set[str]:
+    anchors: set[str] = set()
+    seen: dict[str, int] = {}
+    for m in re.finditer(r"^#{1,6}\s+(.*?)\s*#*\s*$", FENCE_RE.sub("", text), flags=re.MULTILINE):
+        slug = github_anchor(m.group(1))
+        n = seen.get(slug, 0)
+        anchors.add(slug if n == 0 else f"{slug}-{n}")
+        seen[slug] = n + 1
+    return anchors
+
+
+def check_markdown_links(text: str, doc_path: Path, root: Path = REPO_ROOT) -> list[str]:
+    """Chaque lien relatif vise un fichier existant ; l'ancre, si présente, un titre de la cible."""
+    errors: list[str] = []
+    name = doc_path.relative_to(root) if doc_path.is_relative_to(root) else doc_path.name
+    prose = re.sub(r"`[^`\n]*`", "", FENCE_RE.sub("", text))
+    for m in LINK_RE.finditer(prose):
+        target = m.group(1)
+        if re.match(r"^[a-z][a-z0-9+.-]*:", target, flags=re.IGNORECASE):
+            continue                                              # https:, mailto:, ...
+        path, _, anchor = target.partition("#")
+        dest = (doc_path.parent / path).resolve() if path else doc_path
+        if not dest.exists():
+            errors.append(f"{name} : lien vers un fichier absent : {target}")
+        elif anchor and dest.suffix == ".md":
+            dest_text = text if dest == doc_path else dest.read_text(encoding="utf-8")
+            if anchor not in markdown_anchors(dest_text):
+                errors.append(f"{name} : ancre absente de {dest.name} : #{anchor}")
+    return errors
+
+
+# --- 8. Nombres de tests dans la documentation (lot J7) ------------------------------
+
+# (paquet, motif) : chaque motif doit figurer dans chaque document de TEST_COUNT_DOCS.
+TEST_COUNT_PATTERNS: dict[str, dict[str, str]] = {
+    "README.md": {
+        "core": r"(\d+) tests automatiques côté core",
+        "compiler": r"et (\d+) côté compilateur",
+    },
+    "docs/SUIVI_AVANCEMENT.md": {
+        "core": r"(\d+) tests pytest passent dans le core",
+        "compiler": r"et (\d+) dans le compilateur",
+    },
+}
+
+
+def collected_test_count(package_dir: Path) -> int:
+    """Nombre de tests que `pytest -q` lance dans `package_dir` (options du paquet, donc sans
+    les tests `network` du compilateur)."""
+    proc = subprocess.run(
+        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"],
+        cwd=package_dir, capture_output=True, text=True, timeout=60,
+    )
+    m = re.search(r"^(\d+)(?:/\d+)? tests? collected", proc.stdout, flags=re.MULTILINE)
+    if proc.returncode != 0 or m is None:
+        raise RuntimeError(f"collecte impossible dans {package_dir} :\n{proc.stdout[-2000:]}")
+    return int(m.group(1))
+
+
+def check_test_counts(text: str, doc_name: str, actual: dict[str, int]) -> list[str]:
+    errors: list[str] = []
+    for package, pattern in TEST_COUNT_PATTERNS[doc_name].items():
+        found = re.findall(pattern, text)
+        if not found:
+            errors.append(f"{doc_name} : phrase du nombre de tests {package} absente ({pattern})")
+        for value in found:
+            if int(value) != actual[package]:
+                errors.append(f"{doc_name} : {value} tests {package} annoncés, "
+                              f"écrire {actual[package]} (tests collectés)")
+    return errors
+
+
+# --- 9. Chemins du projet cités (lot J7) ---------------------------------------------
+
+CITED_PATH_RE = re.compile(r"`((?:core|compiler|engine|docs|scripts)/[^`\s]+)`")
+
+# Chemins cités volontairement absents du dépôt, avec leur motif.
+CITED_PATH_EXCEPTIONS: dict[str, str] = {
+    "core/.venv": "environnement virtuel local, non versionné",
+    # Lot E1 (PR #7, en attente de l'essai sur le PC cible) : scripts créés par ce lot.
+    "engine/scripts/road_builder.gd": "créé par le lot E1, pas encore fusionné",
+    "engine/scripts/terrain_tiles.gd": "créé par le lot E1, pas encore fusionné",
+    "engine/scripts/world_streamer.gd": "créé par le lot E1, pas encore fusionné",
+}
+
+
+def undelivered_lot_files(index_text: str) -> set[str]:
+    """Cahiers dont le lot n'est pas « Livré » : ils citent les fichiers que le lot créera."""
+    names: set[str] = set()
+    for line in index_text.splitlines():
+        m = re.match(r"^\|\s*\[[^\]]+\]\((LOT_[^)]+\.md)\)\s*\|(.*)\|$", line.strip())
+        if m and "Livré" not in m.group(2).split("|")[-1]:
+            names.add(m.group(1))
+    return names
+
+
+def check_cited_paths(text: str, doc_name: str, root: Path = REPO_ROOT) -> list[str]:
+    errors: list[str] = []
+    for line_no, line in enumerate(text.splitlines(), start=1):
+        for m in CITED_PATH_RE.finditer(line):
+            cited = m.group(1)
+            if re.search(r"[*<>{}…]|\.\.\.", cited):
+                continue                                          # motif ou gabarit, pas un chemin
+            path = re.sub(r":\d+(-\d+)?$", "", cited).rstrip("/.,;")
+            if path not in CITED_PATH_EXCEPTIONS and not (root / path).exists():
+                errors.append(f"{doc_name}:{line_no} : chemin cité absent : {cited}")
+    return errors
+
+
+# === Tests du lot J7 =================================================================
+
+def test_no_forbidden_chars_and_negative() -> None:
+    files = project_files(".md") + project_files(".json")
+    assert len(files) > 20
+    errors: list[str] = []
+    for f in files:
+        errors += check_forbidden_chars(f.read_text(encoding="utf-8"), str(f.relative_to(REPO_ROOT)))
+    assert errors == []
+
+    for bad in ("retour\barrière", "remplacé �", "rÃ©glage", "lâ€™IPC"):
+        assert len(check_forbidden_chars(f"ligne 1\n{bad}\n", "faux.md")) == 1
+    assert check_forbidden_chars("tab\tet `Ã©` cité\r\n", "faux.md") == []
+
+
+def test_markdown_links_and_negative(tmp_path: Path) -> None:
+    errors: list[str] = []
+    for f in project_files(".md"):
+        errors += check_markdown_links(f.read_text(encoding="utf-8"), f)
+    assert errors == []
+
+    (tmp_path / "cible.md").write_text("# Titre\n\n## 2. Prérequis et « suite » ici\n", encoding="utf-8")
+    doc = tmp_path / "doc.md"
+    ok = "[a](cible.md) [b](cible.md#2-prérequis-et--suite--ici) [c](#local) [d](https://x.org/y.md)\n# Local\n"
+    doc.write_text(ok, encoding="utf-8")
+    assert check_markdown_links(ok, doc, tmp_path) == []
+    errs = check_markdown_links("[a](absent.md) [b](cible.md#nulle-part) `[c](ignoré.md)`\n", doc, tmp_path)
+    assert len(errs) == 2
+    assert any("absent.md" in e for e in errs) and any("#nulle-part" in e for e in errs)
+
+
+def test_github_anchors() -> None:
+    assert github_anchor("9. Livraison (23 octobre 2026)") == "9-livraison-23-octobre-2026"
+    assert github_anchor("Lots `H`, I et J") == "lots-h-i-et-j"
+    assert markdown_anchors("# A\n## A\n```\n# pas un titre\n```\n") == {"a", "a-1"}
+
+
+def test_documented_test_counts_and_negative() -> None:
+    actual = {"core": collected_test_count(REPO_ROOT / "core")}
+    try:
+        import openride_compiler  # noqa: F401
+    except ImportError:
+        pytest.skip("openride-compiler non installé : nombre de tests du compilateur inconnu")
+    actual["compiler"] = collected_test_count(REPO_ROOT / "compiler")
+
+    errors: list[str] = []
+    for doc_name in TEST_COUNT_PATTERNS:
+        errors += check_test_counts((REPO_ROOT / doc_name).read_text(encoding="utf-8"), doc_name, actual)
+    assert errors == []
+
+    text = "231 tests automatiques côté core (dont x) et 123 côté compilateur"
+    errs = check_test_counts(text, "README.md", {"core": 230, "compiler": 123})
+    assert errs == ["README.md : 231 tests core annoncés, écrire 230 (tests collectés)"]
+    assert len(check_test_counts("aucun nombre", "README.md", {"core": 1, "compiler": 1})) == 2
+
+
+def test_cited_paths_exist_and_negative() -> None:
+    skipped = undelivered_lot_files(INDEX_PATH.read_text(encoding="utf-8"))
+    assert "LOT_J1_lancement_parcours_entrainement.md" in skipped
+    errors: list[str] = []
+    for f in project_files(".md"):
+        if f.parent == LOTS_DIR and f.name in skipped:
+            continue
+        errors += check_cited_paths(f.read_text(encoding="utf-8"), str(f.relative_to(REPO_ROOT)))
+    assert errors == []
+
+    text = "`core/src/openride_core/session.py:12` `docs/lots/` `core/tests/test_*.py` `core/absent.py`\n"
+    assert check_cited_paths(text, "faux.md") == ["faux.md:1 : chemin cité absent : core/absent.py"]
