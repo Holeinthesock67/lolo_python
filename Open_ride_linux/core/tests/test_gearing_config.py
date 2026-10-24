@@ -30,15 +30,30 @@ def test_step_about_9_2_percent():
 def test_effective_grade_formula_and_bounds():
     g = Gearing(GearingConfig())
     g.k = 24
-    assert g.effective_grade(0.0) == pytest.approx((0 + 4) * 3.00 - 4)
+    assert g.effective_grade(0.0) == pytest.approx((0 + 2) * 3.00 - 2)
     assert g.effective_grade(12.0) == 16.0          # borne haute
     assert g.effective_grade(-10.0) == -10.0        # borne basse : -20 % bornée
     g.k = 1
-    assert g.effective_grade(-10.0) == pytest.approx(-6.4)  # petit braquet : descente adoucie
+    assert g.effective_grade(-10.0) == pytest.approx(-5.2)  # petit braquet : descente adoucie
     for k in range(1, 25):
         g.k = k
         for terrain in (-25, -5, 0, 5, 25):
             assert -10.0 <= g.effective_grade(terrain) <= 16.0
+
+
+def test_effective_grade_keeps_terrain_sign():
+    """Essai du 24 octobre : un petit braquet ne doit pas faire d'une montée une descente."""
+    g = Gearing(GearingConfig())
+    for k in range(1, 25):
+        g.k = k
+        for terrain in (0.5, 1.0, 3.0, 6.0):
+            assert g.effective_grade(terrain) >= 0.0
+            assert g.effective_grade(-terrain) <= 0.0
+    g.k = 1
+    assert g.effective_grade(1.0) == 0.0          # (1 + 2) × 0,4 − 2 < 0 : ramené à plat
+    assert g.effective_grade(6.0) == pytest.approx((6 + 2) * 0.40 - 2)
+    g.k = 24
+    assert g.effective_grade(-1.0) == 0.0         # (−1 + 2) × 3 − 2 > 0 : ramené à plat
 
 
 def test_shift_limits():

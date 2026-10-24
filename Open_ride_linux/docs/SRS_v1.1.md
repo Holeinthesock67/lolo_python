@@ -107,7 +107,7 @@ La chaîne reste sur le pignon fixe du Zwift Cog ; le braquet n'agit que sur la 
 G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 ```
 
-- G_base = 4 % (résistance de base sur le plat ; avec 2 %, un braquet ne changeait la pente que de 0,1 % sur le plat, soit quelques watts, à peine sensible sur le Victory). Le résultat est limité à −10 % / +16 %.
+- G_base = 2 % (résistance de base sur le plat, équivalent du roulement et de l'air). Essayé à 4 % le 24 octobre : en petit braquet, une montée de 3 % devenait une descente pour le trainer. Le résultat ne change jamais de signe par rapport au terrain (une montée reste au moins plate, une descente aussi), puis il est limité à −10 % / +16 %.
 - R_min, R_max, G_base et le nombre de vitesses sont dans la configuration (§11) : la formule est heuristique et se règle au ressenti.
 
 ### 4.4 Actions du Click en v1
@@ -115,8 +115,8 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 | Action | Mode SIM | Mode ERG |
 | --- | --- | --- |
 | Appui court + / − | Braquet k + 1 / k − 1 | Biais d'intensité ± 2 % (plage 80 % à 120 %) |
-| Appui long + | Braquet + 3 (essai, `long_press_gears`) | Passer au bloc suivant |
-| Appui long − | Braquet − 3 (essai, `long_press_gears`) | Pause / reprise ERG (pente 0 %) |
+| Appui long + | Braquet + 10, borné à 24 (`long_press_gears`) | Passer au bloc suivant |
+| Appui long − | Braquet − 10, borné à 1 (`long_press_gears`) | Pause / reprise ERG (pente 0 %) |
 
 Le demi-tour sur la route et le réglage des bots sont reportés (§14).
 
@@ -331,8 +331,8 @@ n_gears = 24
 start_gear = 12
 ratio_min = 0.40
 ratio_max = 3.00
-g_base_pct = 4.0
-long_press_gears = 3
+g_base_pct = 2.0
+long_press_gears = 10
 
 [drivers]
 trainer = "mock"             # "ftms" ou "mock"
