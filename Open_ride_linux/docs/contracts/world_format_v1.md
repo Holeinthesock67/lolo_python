@@ -105,7 +105,7 @@ Chaque tableau compte exactement `n` valeurs.
 - Extrémités d'un parcours ouvert : points fantômes `P_{−1} = 2·P_0 − P_1` et `P_n = 2·P_{n−1} − P_{n−2}`. Boucle : indices circulaires sur les `n − 1` points distincts (le voisin avant `P_0` est `P_{n−2}`, le voisin après `P_{n−1} = P_0` est `P_1`). `out_and_back` se lit comme `open`.
 - Près d'un segment plus court que `ds_m`, la spline centripète avance à vitesse légèrement non uniforme : c'est attendu.
 
-**Vecteurs de test :** `docs/contracts/world/route_test_vectors.json`, générés par l'implémentation de référence (`python -m openride_core.tools.route_vectors`) et vérifiés en GDScript (`engine/tests/test_route_vectors.gd`). Schémas : `docs/contracts/world/manifest.schema.json` et `route.schema.json`.
+**Vecteurs de test :** `docs/contracts/world/route_test_vectors.json`, générés par l'implémentation de référence (`python -m openride_core.tools.route_vectors`) et vérifiés en GDScript (`engine/tests/unit/test_route_vectors.gd`). Schémas : `docs/contracts/world/manifest.schema.json` et `route.schema.json`.
 
 Le core lit cette couche pour la pente, les coordonnées géographiques et la longueur ; l'engine pour la position et l'orientation de la caméra.
 
@@ -127,7 +127,7 @@ Le terrain est une grille d'altitudes dans le repère du monde, en deux niveaux 
 
 **Cohérence avec la route.** Les altitudes sont déjà corrigées par le compilateur : autour du ruban, le terrain suit l'altitude lissée de la route, puis se fond progressivement dans le MNT entre 4 m et 25 m du bord. L'engine n'a donc aucune correction à faire et la route ne flotte pas ni ne s'enterre. Ponts et tunnels sont traités comme du terrain ordinaire en v1.
 
-**Terrain lointain.** Il masque le bord du terrain proche. Les tuiles lointaines recouvrent le terrain proche ; l'engine dessine le proche par-dessus, légèrement relevé de quelques centimètres pour éviter le scintillement.
+**Terrain lointain.** Il masque le bord du terrain proche. Les tuiles lointaines recouvrent le terrain proche ; l'engine dessine le proche à son altitude exacte et le lointain 2 m plus bas que ses valeurs, pour éviter le scintillement entre les deux niveaux sans rapprocher le terrain proche de la chaussée.
 
 **Manifeste :** `terrain.sources` indique le MNT utilisé (`copernicus_glo30`, `ign_rge_alti`), avec sa résolution native, pour que le compilateur sache quand régénérer.
 
@@ -342,6 +342,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.0 | 21 octobre 2026 | Première version |
 | 1.0 | 23 octobre 2026 | Précision, sans changement de format : règle exacte d'interpolation de la route (§4), vecteurs de test et schémas publiés. Projection `local_equirectangular` tolérée pour les parcours synthétiques de démonstration |
 | 1.1 | 23 octobre 2026 | Ajouts compatibles (lot B2) : `route.alt_source` (§2) ; dans `layers.terrain`, `native_resolution_m`, `road_half_width_m` et la liste `tiles` des tuiles écrites (§5) ; `verify` contrôle aussi la présence des tuiles listées, l'égalité des bords partagés et l'absence de `NaN` à moins de 25 m de la route (§10) |
+| 1.1 | 23 octobre 2026 | Précision de rendu, sans changement des données (lot E1) : le terrain lointain est dessiné 2 m plus bas, au lieu de relever le proche de quelques centimètres (§5) |
 | 1.1 | 23 octobre 2026 | Publication du schéma JSON des thèmes `docs/contracts/world/theme.schema.json`, du thème par défaut `engine/themes/default/theme.json` et de la sous-commande `openride-compiler theme-check` (§9, lot H7) |
 | 1.1 | 23 octobre 2026 | Publication des schémas JSON `buildings.schema.json` et `vegetation.schema.json` (§6 et §7), compteurs `count`, `ignored_count` et `osm_date` dans le manifeste de ces couches, validation `verify` et sous-commande `add-layer buildings\|vegetation` (lot I3) |
 | 1.1 | 23 octobre 2026 | Publication des schémas JSON `poi.schema.json` et `water.schema.json` (§8), compteurs `count` / `lines_count` / `areas_count` / `ignored_count` et `osm_date` dans le manifeste, validation `verify` et sous-commande `add-layer poi\|water` (lot I4) |

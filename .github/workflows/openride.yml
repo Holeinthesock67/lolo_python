@@ -86,8 +86,9 @@ jobs:
             Open_ride_linux/core/pyproject.toml
             Open_ride_linux/compiler/pyproject.toml
 
-      - name: Installation du core
-        run: pip install -c constraints.txt -e "core[dev]"
+      - name: Installation du core et du compilateur
+        # Le compilateur produit les données du test des couches OSM (lot K4, make_osm_world.py).
+        run: pip install -c constraints.txt -e "core[dev]" -e compiler
 
       - name: Cache de Godot 4.3
         id: cache-godot

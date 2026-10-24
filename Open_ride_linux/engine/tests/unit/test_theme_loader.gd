@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Tests sans écran du chargeur de thèmes `theme_loader.gd` (Lot I5).
 ## Reprend tous les cas de `compiler/tests/test_theme.py` (Lot H7).
-## Lancement : godot --headless --path engine --script res://tests/test_theme_loader.gd
+## Lancement : godot --headless --path engine --script res://tests/unit/test_theme_loader.gd
 
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 
@@ -12,7 +12,9 @@ var _checked := 0
 
 func _check(cond: bool, msg: String) -> void:
 	_checked += 1
-	if not cond:
+	if cond:
+		print("[OK] ", msg)
+	else:
 		_failures += 1
 		printerr("[ÉCHEC] ", msg)
 
@@ -176,5 +178,5 @@ func _init() -> void:
 	_check(named_res["warnings"].size() == 1, "load_named inexistant: 1 avertissement")
 	_check(_dicts_equal(named_res["theme"], default_theme), "load_named inexistant: renvoie default")
 
-	print("Tests de thèmes vérifiés : %d, échecs : %d" % [_checked, _failures])
+	print("test_theme_loader : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
