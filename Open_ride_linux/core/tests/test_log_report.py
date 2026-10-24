@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from openride_core.tools import log_report
 from openride_core.tools.log_report import (
     CONSECUTIVE_BREACHES,
     CORE_FORMAT_STRINGS,
@@ -192,7 +191,7 @@ def test_patterns_match_exact_core_source_format_strings() -> None:
         "trainer_cmd_refused": (0x11, "CONTROL_NOT_PERMITTED"),
         "trainer_warning": ("plus de données du trainer",),
         "click_connected": ("F4:C4:59:15:E1:E7", 3.24, 2),
-        "click_disconnected": (75.0, "0.1 s", "jamais", 750, "0.4 s", "lien perdu (rappel bleak)"),
+        "click_disconnected": ("F4:C4:59:15:E1:E7", 75.0, "0.1 s", "jamais", 750, "0.4 s", "lien perdu (rappel bleak)"),
         "click_rate": (598, 60.0, 9.97),
         "click_press": ("PLUS_SHORT",),
         "click_not_found": (),
@@ -260,3 +259,38 @@ def test_click_diagnostic_old_logs_and_json_keys(capsys: pytest.CaptureFixture[s
                      all_sessions=True)
     assert merged.click.connection_durations_s == [75.0, 70.0, 10.0] * 2
     assert merged.click.trainer_correlated_drops == 4
+
+
+def _click_lines(*events: tuple[str, str]) -> list[str]:
+    head = "2026-10-24 19:00:00,000 INFO    core    Core démarré (trainer=ftms, entrées=click)."
+    tail = (" après {d} s de connexion : dernière notification il y a 0.1 s, dernier appui il y a jamais, "
+            "10 notification(s), dernière écriture au trainer il y a jamais, raison : lien perdu (rappel bleak) ; "
+            "appuyez sur un bouton pour le réveiller")
+    out = [head]
+    for ts, ev in events:
+        kind, _, rest = ev.partition(" ")
+        if kind == "up":
+            msg = f"INFO    input   Zwift Click connecté (adresse {rest}, recherche 1.0 s, 1 tentative(s))"
+        else:
+            addr, _, d = rest.partition(" ")
+            msg = "WARNING input   Zwift Click déconnecté" + (f" (adresse {addr})" if addr != "-" else "") \
+                + tail.format(d=d)
+        out.append(f"2026-10-24 {ts},000 {msg}")
+    return out
+
+
+def test_click_diagnostic_two_boxes() -> None:
+    """Click récent à deux boîtiers : durées et reconnexions comptées par adresse (audit du 24 octobre)."""
+    rep = analyse(_click_lines(
+        ("19:00:05", "up AA:01"), ("19:00:55", "up AA:02"),
+        ("19:01:05", "down AA:01 60.0"),       # le boîtier 1 est resté 60 s, pas 10 s
+        ("19:01:09", "up AA:01"),              # reconnexion du boîtier 1 en 4 s
+        ("19:01:15", "down AA:02 20.0"),
+    ))
+    assert rep.click.connection_durations_s == [60.0, 20.0]
+    assert rep.click.reconnect_delays_s == [4.0]
+
+    # Journal d'avant la correction : coupure sans adresse, deux boîtiers connectés → durée de la ligne.
+    rep = analyse(_click_lines(("19:00:05", "up AA:01"), ("19:00:55", "up AA:02"),
+                               ("19:01:05", "down - 60.0")))
+    assert rep.click.connection_durations_s == [60.0]

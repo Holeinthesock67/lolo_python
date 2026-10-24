@@ -10,12 +10,9 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from conftest import ORIGIN, WORLD_CONTRACTS, plane, straight_north
+from conftest import WORLD_CONTRACTS, plane, straight_north
 from openride_compiler import cache, cli
-from openride_compiler.elevation import SyntheticProvider
-from openride_compiler.errors import CompileError
-from openride_compiler.frame import LocalFrame
-from openride_compiler.osm import OverpassClient, build_overpass_query, chunk_bboxes
+from openride_compiler.osm import OverpassClient
 from openride_compiler.osm_layers import compute_building_height, signed_area
 
 DATA_DIR = Path(__file__).parent / "data" / "osm"

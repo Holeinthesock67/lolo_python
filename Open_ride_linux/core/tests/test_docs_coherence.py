@@ -28,7 +28,6 @@ import sys
 import tomllib
 from dataclasses import fields
 from pathlib import Path
-from typing import Any
 
 import jsonschema
 import pytest
@@ -183,26 +182,9 @@ def _collect_parser_spec(parser: argparse.ArgumentParser) -> tuple[set[str], set
 
 
 def _build_core_parser() -> argparse.ArgumentParser:
-    p = argparse.ArgumentParser(prog="openride-core")
-    p.add_argument("--version", action="version", version="0.1.0")
-    sub = p.add_subparsers(dest="command", required=True)
-    r = sub.add_parser("recover")
-    r.add_argument("journal", nargs="?")
-    run = sub.add_parser("run")
-    run.add_argument("--config")
-    run.add_argument("--trainer", choices=["mock", "ftms"])
-    run.add_argument("--input", choices=["click", "keyboard", "none"])
-    run.add_argument("--gear", type=int)
-    run.add_argument("--replay")
-    run.add_argument("--autostart", action="store_true")
-    rel = sub.add_parser("release-trainer")
-    rel.add_argument("--config")
-    summ = sub.add_parser("summary")
-    summ.add_argument("file", nargs="?")
-    summ.add_argument("--ftp", type=float)
-    summ.add_argument("--json", action="store_true")
-    summ.add_argument("--config")
-    return p
+    # Le vrai analyseur du core : une sous-commande ajoutée est connue sans copie à tenir à jour.
+    from openride_core.__main__ import build_parser
+    return build_parser()
 
 
 _TOOL_HELP_CACHE: dict[str, str] = {}
@@ -628,10 +610,6 @@ CITED_PATH_RE = re.compile(r"`((?:core|compiler|engine|docs|scripts)/[^`\s]+)`")
 # Chemins cités volontairement absents du dépôt, avec leur motif.
 CITED_PATH_EXCEPTIONS: dict[str, str] = {
     "core/.venv": "environnement virtuel local, non versionné",
-    # Lot E1 (PR #7, en attente de l'essai sur le PC cible) : scripts créés par ce lot.
-    "engine/scripts/road_builder.gd": "créé par le lot E1, pas encore fusionné",
-    "engine/scripts/terrain_tiles.gd": "créé par le lot E1, pas encore fusionné",
-    "engine/scripts/world_streamer.gd": "créé par le lot E1, pas encore fusionné",
 }
 
 
