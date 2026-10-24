@@ -18,7 +18,15 @@ cd "$REPO" || { echo "$(STAMP) dépôt introuvable : $REPO"; exit 1; }
 if ! git fetch -q origin main; then
     echo "$(STAMP) GitHub injoignable : aucune mise à jour"; exit 1
 fi
+SELF="$SRC/update_code.sh"
+BEFORE="$(sha1sum "$SELF" 2>/dev/null)"
 git reset -q --hard origin/main        # copie en lecture seule : on suit toujours GitHub
+# Si ce script vient lui-même de changer, on relance la nouvelle version (une seule fois),
+# sinon bash continuerait avec l'ancienne déjà chargée.
+if [ -z "${UPDATE_CODE_REEXEC:-}" ] && [ "$BEFORE" != "$(sha1sum "$SELF")" ]; then
+    echo "$(STAMP) update_code.sh mis à jour : relance avec la nouvelle version"
+    UPDATE_CODE_REEXEC=1 exec bash "$SELF" "$MODE"
+fi
 echo "$(STAMP) dépôt à la version $(git log -1 --format='%h %s')"
 
 # deploy NOM DOSSIER_SOURCE DOSSIER_CIBLE COMMANDE_DE_TEST FICHIERS...
