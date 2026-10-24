@@ -45,3 +45,10 @@ Aucune. Un écart entre le format écrit et ce que produit le compilateur est si
 
 - Triangulation, maillages, matériaux, sons (E4).
 - Placement des arbres dans les zones (K3).
+
+## 9. Livraison (24 octobre 2026, PR #41)
+
+- `engine/scripts/osm_layers.gd`, `engine/tests/make_osm_world.py`, `engine/tests/test_osm_layers.gd` (27 vérifications) et une étape « Couches OSM » de `run_engine_tests.sh`, après les tests unitaires.
+- **Écart assumé :** le job `engine` de l'intégration continue installe aussi le compilateur (une ligne de `.github/workflows/openride.yml`), sans quoi les données du test ne peuvent pas être produites.
+- **Écart signalé au format :** le compilateur range dans le tronçon `floor(s / 1000)` ce qui est le plus près du dernier point de la route ; une route de 3 000 m a donc un `chunk_3`. `chunks_for_window` suit le compilateur.
+- Mesure : tronçon de 200 bâtiments lu en 3,6 ms environ (seuil 20 ms).
