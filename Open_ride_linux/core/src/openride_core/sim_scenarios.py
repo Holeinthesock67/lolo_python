@@ -6,11 +6,12 @@ Un scénario est un dictionnaire (ou un fichier JSON du même format) :
       "seed": 0,
       "trainer": {"appear_at": 2, "connect_delay_s": 0.5, "rider_power_w": 180},
       "click": {"appear_at": 4, "plus": {...}, "minus": {...}, "relay_delay_s": [0.005, 0.04]},
-      "hr": {"appear_at": 3, "rest_bpm": 60},
+      "hr": {"appear_at": 3, "rest_bpm": 60, "contact": true, "battery_pct": 80},
+      "hr_watch": {"appear_at": 0, "rssi": -45},
       "events": [{"t": 30, "device": "trainer", "action": "att_error", "code": 128}, ...]
     }
 
-Une section absente (« trainer », « click », « hr ») retire l'appareil ; `null` aussi. Les temps
+Une section absente (« trainer », « click », « hr », « hr_watch ») retire l'appareil ; `null` aussi. Les temps
 sont en secondes depuis le démarrage du monde simulé (lancement du core). Les scénarios
 intégrés reproduisent les essais réels ; `openride-core run --sim-scenario NOM|FICHIER`.
 """
@@ -22,7 +23,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .ble_sim import SimClickBox, SimHrStrap, SimTrainer, SimWorld
+from .ble_sim import WATCH_ADDRESS, WATCH_NAME, SimClickBox, SimHrStrap, SimTrainer, SimWorld
 
 
 class SimScenarioError(Exception):
@@ -36,10 +37,10 @@ CLICK_BOX_KEYS = {"address", "appear_at", "connect_delay_s", "connect_failures",
                   "status_hz", "battery_pct", "sleep_on_drop"}
 CLICK_KEYS = CLICK_BOX_KEYS - {"address"} | {"plus", "minus", "relay_delay_s"}
 HR_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
-           "rest_bpm", "max_bpm", "ftp_w", "tau_s", "bpm"}
-TOP_KEYS = {"description", "seed", "trainer", "click", "hr", "events"}
+           "rest_bpm", "max_bpm", "ftp_w", "tau_s", "bpm", "contact", "battery_pct", "rssi"}
+TOP_KEYS = {"description", "seed", "trainer", "click", "hr", "hr_watch", "events"}
 ACTIONS = {"press", "drop", "wake", "sleep", "connect_failures", "connect_delay", "att_error",
-           "cp_silent", "silence", "control_lost", "refuse_control", "rider", "bpm"}
+           "cp_silent", "silence", "control_lost", "refuse_control", "rider", "bpm", "contact"}
 EVENT_KEYS = {"t", "device", "action", "button", "duration_s", "count", "code", "seconds",
               "value", "watts", "cadence_rpm", "bpm"}
 
@@ -143,9 +144,17 @@ def _num(section: str, value: Any) -> float:
 
 def validate(spec: Any) -> dict[str, Any]:
     spec = _check_keys("scénario", spec, TOP_KEYS)
-    for section, keys in (("trainer", TRAINER_KEYS), ("click", CLICK_KEYS), ("hr", HR_KEYS)):
+    for section, keys in (("trainer", TRAINER_KEYS), ("click", CLICK_KEYS), ("hr", HR_KEYS),
+                          ("hr_watch", HR_KEYS)):
         if spec.get(section) is not None:
             _check_keys(section, spec[section], keys)
+    for section in ("hr", "hr_watch"):
+        hr = spec.get(section) or {}
+        if hr.get("contact") is not None and not isinstance(hr["contact"], bool):
+            raise SimScenarioError(f"{section}.contact : vrai, faux ou null attendu")
+        if hr.get("battery_pct") is not None and not 0 <= _num(f"{section}.battery_pct",
+                                                               hr["battery_pct"]) <= 100:
+            raise SimScenarioError(f"{section}.battery_pct : entre 0 et 100")
     click = spec.get("click") or {}
     for role in ("plus", "minus"):
         if click.get(role) is not None:
@@ -163,6 +172,8 @@ def validate(spec: Any) -> dict[str, Any]:
         if ev["action"] not in ACTIONS:
             raise SimScenarioError(f"{where} : action {ev['action']!r} inconnue "
                                    f"(permises : {', '.join(sorted(ACTIONS))})")
+        if ev["action"] == "contact" and not isinstance(ev.get("value", True), (bool, type(None))):
+            raise SimScenarioError(f"{where}.value : vrai, faux ou null attendu pour contact")
         if ev["action"] in ("silence", "connect_delay") and "seconds" not in ev:
             raise SimScenarioError(f"{where} : « seconds » obligatoire pour {ev['action']}")
     return spec
@@ -205,7 +216,10 @@ def build_world(spec: dict[str, Any], name: str = "sim", *, trainer: bool = True
                         SimClickBox(world, "-", **{"address": MINUS_ADDRESS, **c, **minus})]
     if hr and spec.get("hr") is not None:
         world.hr = SimHrStrap(world, **spec["hr"])
-    devices = {"trainer": world.trainer, "hr": world.hr, "click_plus": world.clicks[:1],
+    if hr and spec.get("hr_watch") is not None:
+        world.hr_watch = SimHrStrap(world, **{"name": WATCH_NAME, "address": WATCH_ADDRESS,
+                                              "rssi": -50, **spec["hr_watch"]})
+    devices = {"trainer": world.trainer, "hr": world.hr, "hr_watch": world.hr_watch, "click_plus": world.clicks[:1],
                "click_minus": world.clicks[1:]}
     world.events = []
     for ev in spec.get("events") or []:

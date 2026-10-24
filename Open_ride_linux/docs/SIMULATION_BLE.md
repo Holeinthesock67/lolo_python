@@ -22,7 +22,8 @@ Dans `config.toml`, section `[drivers]` : `trainer = "sim"`, `input = "sim"`, `h
 | --- | --- |
 | HomeTrainer (FTMS) | Nom « HomeTrainer 0000 (sim) ». Fitness Machine Feature (SIM et ERG), plage de puissance 0 à 2000 W. Control Point : une procédure à la fois (erreur ATT 0xFE si l'on écrit avant la réponse 0x80), 0xFD sans abonnement aux indications, 0x05 sans contrôle, « Start/Resume » refusé quand il tourne déjà, Reset qui rend le contrôle, Fitness Machine Status (0x08, 0x12, 0xFF). Indoor Bike Data à 4 Hz ; en ERG la puissance rejoint la cible en ~1,5 s ; en SIM le cycliste pousse un peu plus en montée. |
 | Zwift Click | Deux boîtiers « Zwift Click » (« + » à l'adresse réelle `C1:1C:00:00:00:01`, « − » à `…:E8`). Handshake `RideOn`, niveau de batterie, état des touches (type 0x23) à 10 Hz. Le « − » relaie les appuis du « + » 5 à 40 ms plus tard. Un boîtier endormi ne s'annonce qu'après un appui, et cet appui est perdu ; après une coupure il se rendort. |
-| Ceinture cardio | Service Heart Rate (0x180D), une mesure par seconde, fréquence qui suit la puissance du trainer simulé avec ~20 s de retard. |
+| Ceinture cardio | Service Heart Rate (0x180D), une mesure par seconde, fréquence qui suit la puissance du trainer simulé avec ~20 s de retard ; bit de contact du capteur, intervalle RR cohérent avec la fréquence, niveau de batterie (service 0x180F, 80 % par défaut), RSSI annoncé (lot M2). |
+| Montre qui diffuse (`hr_watch`, facultative) | Même appareil que la ceinture, nommé « Forerunner 265 (sim) » (adresse `C0:FF:EE:00:57:A7`, RSSI −50 par défaut) : sert à vérifier que la ceinture est préférée à une montre Garmin qui diffuse sa fréquence. |
 
 Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie sur le Click simulé ; un appui sur un boîtier endormi ou déconnecté est perdu, comme sur le vrai. `openride-dev.sh` détache le core du terminal : les appuis viennent alors du scénario (le scénario `demo` en contient).
 
@@ -58,13 +59,13 @@ Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie s
 
 Une section absente retire l'appareil. Les temps sont en secondes depuis le lancement du core. Une clé ou une action inconnue est refusée au lancement, avec un message clair.
 
-**Réglages communs** (`trainer`, `click`, `click.plus`, `click.minus`, `hr`) : `appear_at` (s), `connect_delay_s`, `connect_failures` (connexions refusées avant la première réussie), `asleep`, `address` (sauf `click`).
+**Réglages communs** (`trainer`, `click`, `click.plus`, `click.minus`, `hr`, `hr_watch`) : `appear_at` (s), `connect_delay_s`, `connect_failures` (connexions refusées avant la première réussie), `asleep`, `address` (sauf `click`).
 
 - **trainer :** `name`, `ibd_hz`, `rider_power_w`, `cadence_rpm`, `erg_tau_s`, `cp_latency_s`, `power_range` ([min, max, pas]), `refuse_control`.
 - **click :** `status_hz`, `battery_pct`, `sleep_on_drop`, `relay_delay_s` ([min, max]).
-- **hr :** `name`, `rest_bpm`, `max_bpm`, `ftp_w`, `tau_s`, `bpm` (valeur fixe).
+- **hr** et **hr_watch :** `name`, `rest_bpm`, `max_bpm`, `ftp_w`, `tau_s`, `bpm` (valeur fixe), `contact` (vrai par défaut ; faux : contact absent ; null : non géré), `battery_pct` (0 à 100 ; null : pas de service Battery), `rssi`.
 
-**Événements** (`device` : `trainer`, `click_plus`, `click_minus`, `hr` ; `trainer` par défaut) :
+**Événements** (`device` : `trainer`, `click_plus`, `click_minus`, `hr`, `hr_watch` ; `trainer` par défaut) :
 
 | Action | Paramètres | Effet |
 | --- | --- | --- |
@@ -80,8 +81,11 @@ Une section absente retire l'appareil. Les temps sont en secondes depuis le lanc
 | `refuse_control` | `value` (vrai par défaut) | Les demandes de contrôle sont refusées (0x05). |
 | `rider` | `watts`, `cadence_rpm` | Effort du cycliste en SIM (0 : arrêt de pédalage). |
 | `bpm` | `bpm` (null : suit la puissance) | Fréquence de la ceinture. |
+| `contact` | `value` (vrai par défaut, faux : absent, null : non géré) | Contact du capteur de la ceinture (ou de la montre). |
 
 ## Tests automatiques
+
+`core/tests/test_hr_monitor.py` (lot M2) vérifie le décodage complet de 0x2A37, le contact absent puis retrouvé, le choix de la ceinture face à une montre, `hr_name`, `hr_address` et la batterie faible avec la ceinture et la montre simulées.
 
 `core/tests/test_ble_sim.py` rejoue ces comportements par de courts scénarios (quelques secondes chacun) dans la CI : règles du Control Point, ERG et SIM, relâche à l'arrêt, erreur ATT 0x80 suivie d'un renvoi sans reconnexion (une ou deux erreurs de suite ; reconnexion à la troisième), erreur 0xFE renvoyée après la réponse de la procédure en cours, liaison coupée pendant une écriture (reconnexion sans renvoi), lecture du code ATT dans les messages de BlueZ, scénario `erreur_0x80` en séance complète (lot M1, marqué `slow`), contrôle perdu puis repris, contrôle refusé, réveil tardif et connexion refusée, coupure et silence du trainer, relais et appuis longs du Click, Click endormi, ceinture, et une séance complète `CoreSession` sans matériel.
 
