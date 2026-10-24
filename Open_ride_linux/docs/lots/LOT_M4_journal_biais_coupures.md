@@ -46,3 +46,11 @@ Aucun.
 - Biais ou coupures dans le FIT (champs de développeur).
 - Affichage dans l'engine (F2, G).
 - Intervalles RR (voir M2, §8).
+
+## 9. Livraison (24 octobre 2026)
+
+- `journal.py` : `Record.erg_bias_pct` (biais − 100 %, `None` hors ERG actif), `JournalWriter.device(device, state, ts)` (valeurs contrôlées), en-tête du module.
+- `session.py` : état des appareils lu à chaque pas sur ce que la session connaît déjà (`status` du pilote ou `connected` de `MockDriver`, `status` des `ZwiftClickProvider` et adresse du boîtier tenu, `connected` de la ceinture) ; une ligne `device` par changement, l'état à l'ouverture du journal servant de référence. Le boîtier « + » est celui de `click_address` (à défaut l'adresse du « + » réel, `sim_scenarios.PLUS_ADDRESS`) ; un boîtier jamais connecté n'a pas d'état.
+- **Fichier hors liste, indispensable :** `recorder.py` (`SessionRecorder.device`, réécriture des lignes `device` à la réouverture du journal) : la session écrit par lui et non directement par `JournalWriter`. `records` et `events` ne voient pas ces lignes : le FIT de fin de séance ne change pas.
+- `session_summary.py` : par bloc, `bias_pct`, `target_nobias_w`, `delta_nobias_w` ; section `devices` ({drops, down_s}). Ces clés n'apparaissent que si le journal porte ces informations : un journal antérieur donne exactement le même bilan (tests existants inchangés).
+- Tests : `core/tests/test_journal_devices.py` (critère 2 : `test_erg_bias_is_journaled`, `test_bias_is_null_in_sim` ; 3 : `test_coupures_scenario_device_lines`, marqué `slow`, ~65 s ; 4 : `test_recover_ignores_device_lines` ; bilan : `test_summary_devices_section`). Critère 5 : `test_session_summary.py` inchangé et vert.
