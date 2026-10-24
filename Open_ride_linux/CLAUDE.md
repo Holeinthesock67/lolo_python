@@ -8,7 +8,7 @@ Propriétaire : Laurent (francophone). **Réponds toujours en français**, de fa
 - **Matériel :**
   - home trainer JetBlack Victory (FTMS), annoncé en Bluetooth sous le nom « Victory 9908 » ;
   - Zwift Cog ;
-  - Zwift Click, adresse `F4:C4:59:15:E1:E7`, modèle récent, messages de type `0x23`.
+  - Zwift Click V2, paire de boîtiers : gauche `F4:C4:59:15:E1:E7` (−, flèches), droit `F4:C4:59:1F:E3:6A` (+, A, B, Y, Z), messages de type `0x23` (table `KEYPAD_BITS`). Le gauche est bridé une minute après la connexion sans passage récent par l'appli Zwift : B du droit fait aussi « − ».
 - **PC cible :** PC de bureau MSI (`depret-MS-7A67`), Ubuntu, GTX 1060, Python 3.14, Godot 4.3 dans `~/Applications/godot/`.
   - Utilisateur `depret` ; dépôt dans `/home/depret/Games/lolo_python`.
   - Un lien `~/Games/Open_ride_linux` pointe vers le dossier du projet.
