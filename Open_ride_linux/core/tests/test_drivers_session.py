@@ -135,6 +135,32 @@ def test_ftms_driver_smoothing_and_loss():
     asyncio.run(scenario())
 
 
+def test_ftms_driver_small_shift_sent_at_once():
+    """Un braquet sur le plat change la pente de moins de GRADE_EPSILON_PCT : il part quand même
+    tout de suite, au lieu d'attendre le renvoi périodique (RESEND_S)."""
+    async def scenario():
+        client = FakeClient([ftms.INDOOR_BIKE_DATA])
+        now = [100.0]
+        drv = FtmsDriver(TrainerConfig(), BikeConfig(), device_finder=fake_finder,
+                         client_factory=make_factory(client), clock=lambda: now[0])
+        task = asyncio.create_task(drv.run())
+
+        def grades():
+            return [struct.unpack_from("<h", w, 3)[0] for _, w in client.writes
+                    if w[0] == ftms.OP_SET_SIM_PARAMS]
+        drv.set_sim_grade(-0.61)
+        await wait_for(lambda: -61 in grades())
+        now[0] += 0.5
+        drv.set_sim_grade(-0.55)                     # relief : 0,06 % < seuil, pas d'envoi
+        await asyncio.sleep(0.2)
+        assert -55 not in grades()
+        drv.set_sim_grade(-0.52, immediate=True)     # braquet : envoyé sans attendre
+        await wait_for(lambda: -52 in grades())
+        drv.stop()
+        await asyncio.wait_for(task, 3)
+    asyncio.run(scenario())
+
+
 def click_frame(mask):
     out = bytearray([zwift_click.MSG_KEYPAD_STATUS, 0x08])
     v = mask
