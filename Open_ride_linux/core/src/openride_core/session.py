@@ -385,12 +385,13 @@ class CoreSession:
             # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
             target = self.gearing.effective_grade(ahead, self.cfg.trainer.difficulty_pct / 100.0)
             max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
-            if self._shift_pending:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
+            shifted = self._shift_pending
+            if shifted:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
                 self._shift_pending = False
                 self._grade_sent = target
             else:
                 self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
-            self.driver.set_sim_grade(self._grade_sent)
+            self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
         self.physics.step(m.power_w, grade, alt, dt)
 
