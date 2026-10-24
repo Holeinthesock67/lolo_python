@@ -62,7 +62,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 # Environnement du core (une fois)
 cd core && python3 -m venv .venv && source .venv/bin/activate && pip install -e ".[dev]"
 # Compilateur, dans le même environnement
-cd compiler && pip install -e ".[dev]" -e ../core
+cd compiler && pip install -e ".[dev]" -e ../core   # sans ../core, les tests qui lisent le core sont sautés (erreur si CI est défini)
 
 # Tests (tous doivent passer avant chaque commit ; l'intégration continue GitHub Actions les relance à chaque envoi)
 (cd core && pytest -q)                 # ~3 min ; `pytest -q -m "not slow"` (~20 s) pendant le développement

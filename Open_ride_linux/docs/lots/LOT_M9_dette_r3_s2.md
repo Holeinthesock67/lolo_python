@@ -42,3 +42,22 @@ Aucune.
 
 - C5 (dossier de l'engine déduit de l'emplacement du paquet) : lot J4, issue #50.
 - R4 (pente NaN) : déjà corrigé par la PR #62.
+
+## 9. Livraison (24 octobre 2026)
+
+- **R3.** `ErgController.__init__` refuse une FTP ≤ 0 ou non finie (« FTP invalide »). `step(dt)` refuse un `dt` négatif, infini ou NaN (« pas de temps invalide ») avant de toucher l'état, et `dt == 0` reste permis. La docstring de la classe note que la session ne peut pas produire ces valeurs : la FTP vient de `rider.ftp_w`, que la validation de la configuration borne à 50–600 W, et `dt = min(now - last, MAX_STEP_S)` vient de `time.monotonic`. Tests : `test_step_refuses_invalid_dt` (5 cas), `test_step_zero_is_accepted` et `test_constructor_refuses_invalid_ftp` (4 cas). Les tests ERG existants n'ont pas changé.
+- **S2, voie choisie : la seconde (saut propre, erreur en CI).** La première voie supposait de déclarer `openride-core` par chemin local dans l'extra `dev`. pip n'accepte qu'une URL `file://` absolue dans une dépendance (PEP 508) : elle n'est pas portable d'une machine à l'autre, et elle installerait le core une seconde fois en CI, où il est déjà installé en mode éditable. `compiler/tests/conftest.py` a donc une fonction `require_core(module)`. Elle appelle `pytest.importorskip` avec une raison claire, sauf quand `CI` est défini : là, l'import se fait directement et l'absence du core devient une erreur. Les 4 fichiers de tests qui lisent le core l'utilisent, et `test_core_present_in_ci` le vérifie aussi.
+- Critère 3 (environnement neuf, Python 3.13) :
+
+  ```
+  python3 -m venv venv-s2
+  venv-s2/bin/pip install -c constraints.txt -e "compiler[dev]"   # code 0
+  venv-s2/bin/python -c "import openride_core"                   # ModuleNotFoundError
+  cd compiler && ../venv-s2/bin/python -m pytest -q -rs
+  SKIPPED [6] tests/conftest.py:32: openride-core absent : `pip install -e ../core` pour ce test
+  136 passed, 6 skipped, 2 deselected
+  CI=true ../venv-s2/bin/python -m pytest -q   # ERROR tests/test_catalog_parity.py (attendu)
+  ```
+
+  Le module `test_catalog_parity.py` compte pour un seul saut.
+- Critère 4 : avec les deux paquets installés, 172 passés et aucun sauté (avec et sans `CI=true`). Le core compte 491 tests et le compilateur 172.
