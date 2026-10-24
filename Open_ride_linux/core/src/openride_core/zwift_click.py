@@ -8,8 +8,9 @@ sprint 0 :
   Type 0x37 (Click ancien) : champ 1 = bouton +, champ 2 = bouton −, valeur 0 = appuyé, 1 = relâché.
   Type 0x23 (Click récent, mesuré) : champ 1 = tableau de bits, 0 = appuyé ; bit 12 = +, bit 8 = −.
 
-Click V2 (paire, mesuré le 24 octobre) : boîtier droit + (bit 12), A (4), B (5), Y (6), Z (7) ;
-boîtier gauche − (bit 8) et flèches. Sans « déblocage » par l'appli Zwift dans les 24 h, le
+Click V2 (paire, relevé bouton par bouton sur le matériel le 24 octobre, voir KEYPAD_BITS) :
+boîtier droit + (bit 12), A (4), B (5), Y (6), Z (7) ; boîtier gauche − (bit 8), flèches gauche
+(0), haut (1), droite (2), bas (3). Chaque boîtier n'envoie que ses propres boutons. Sans « déblocage » par l'appli Zwift dans les 24 h, le
 boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion (la liaison
 reste active ; constat aussi publié par BikeControl et zwiftboard) : le bouton B du boîtier
 droit fait donc aussi « − ».
@@ -39,6 +40,14 @@ KEYPAD_ALL_RELEASED = 0xFFFFFFFF
 KEYPAD_PLUS_BIT = 12   # bit à 0 = appuyé ; à confirmer sur le matériel (sprint 0)
 KEYPAD_MINUS_BIT = 8
 KEYPAD_B_BIT = 5      # bouton B du boîtier droit : « − » qui marche sans déblocage Zwift
+# Tous les boutons du Click V2 (bit du tableau 0x23, à 0 quand le bouton est appuyé). Seuls +,
+# − et B sont utilisés ; les autres sont relevés pour de futures commandes (menus, ERG).
+KEYPAD_BITS = {
+    "LEFT": 0, "UP": 1, "RIGHT": 2, "DOWN": 3,   # flèches, boîtier gauche
+    "A": 4, "B": 5, "Y": 6, "Z": 7,              # boîtier droit
+    "MINUS": 8,                                  # boîtier gauche
+    "PLUS": 12,                                  # boîtier droit
+}
 
 SHORT_MAX_S = 0.500
 LONG_MIN_S = 0.900   # abaissé de 1,2 s après essai réel (appuis longs naturels : 0,7 à 1,1 s)
