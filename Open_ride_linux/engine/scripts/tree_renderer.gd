@@ -81,22 +81,27 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 			flat_alt = route.alt_m[0]
 		height_fn = func(_x: float, _z: float) -> float: return flat_alt
 	else:
-		var origin_x := float(tile_x * 1000)
-		var origin_z := float(tile_z * 1000)
-		height_fn = func(x: float, z: float) -> float:
-			var fi := clampf((x - origin_x) / 10.0, 0.0, 100.0)
-			var fj := clampf((z - origin_z) / 10.0, 0.0, 100.0)
-			var i := mini(int(fi), 99)
-			var j := mini(int(fj), 99)
-			var u := fi - i
-			var v := fj - j
-			var a := heights[j * 101 + i]
-			var b := heights[j * 101 + i + 1]
-			var c := heights[(j + 1) * 101 + i]
-			var d := heights[(j + 1) * 101 + i + 1]
-			if u + v <= 1.0:
-				return a + u * (b - a) + v * (c - a)
-			return d + (1.0 - u) * (c - d) + (1.0 - v) * (b - d)
+		var h0 := heights[0]
+		# Optimisation terrain plat (évite interpolation bilinéaire inutile pour sol uniforme)
+		if heights[heights.size() - 1] == h0 and heights[heights.size() / 2] == h0 and heights[101] == h0 and heights[1020] == h0:
+			height_fn = func(_x: float, _z: float) -> float: return h0
+		else:
+			var origin_x := float(tile_x * 1000)
+			var origin_z := float(tile_z * 1000)
+			height_fn = func(x: float, z: float) -> float:
+				var fi := clampf((x - origin_x) / 10.0, 0.0, 100.0)
+				var fj := clampf((z - origin_z) / 10.0, 0.0, 100.0)
+				var i := mini(int(fi), 99)
+				var j := mini(int(fj), 99)
+				var u := fi - i
+				var v := fj - j
+				var a := heights[j * 101 + i]
+				var b := heights[j * 101 + i + 1]
+				var c := heights[(j + 1) * 101 + i]
+				var d := heights[(j + 1) * 101 + i + 1]
+				if u + v <= 1.0:
+					return a + u * (b - a) + v * (c - a)
+				return d + (1.0 - u) * (c - d) + (1.0 - v) * (b - d)
 
 	# 1. Placement selon zones OSM ou bruit de base (Lots E3 & E4)
 	var trees: PackedVector4Array = placer.place_tile(tile_x, tile_z, 1000.0, height_fn, route, tile_theme, areas)
