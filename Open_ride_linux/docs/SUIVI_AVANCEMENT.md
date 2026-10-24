@@ -54,6 +54,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] `building_mesh.gd` : maillage 3D des bâtiments extrudés (murs, toit plat avec cours intérieures par couture de ponts, couleurs stables tirées de `id`), testé sans écran (`engine/tests/unit/test_building_mesh.gd`, lot L1) ; le rendu reste à E4.
 - [x] `water_mesh.gd` : maillage 3D de la couche eau (cours d'eau en ruban à coudes bornés et plans d'eau avec îles), testé sans écran (`engine/tests/unit/test_water_mesh.gd`, lot L2).
 - [x] `theme_render_params.gd` : paramètres de rendu tirés du thème (terrain, route, ciel) et fonction de référence du mélange triplanaire herbe / roche / neige, testés sans écran (`engine/tests/unit/test_theme_render_params.gd`, lot L3) ; le shader reste à E2.
+- [x] `quality_presets.gd` : table des préréglages de qualité (`low`, `medium`, `high`) et transmission de `--quality` et `--theme` du lanceur `openride` à `engine_args.gd`, testées sans écran (`engine/tests/unit/test_quality_presets.gd`, lot L4).
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
