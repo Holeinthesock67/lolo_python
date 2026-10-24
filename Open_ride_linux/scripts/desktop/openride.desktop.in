@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=OpenRide
+Comment=Simulateur de cyclisme indoor 3D natif Linux
+Exec=@OPENRIDE@
+Icon=openride
+Terminal=false
+Categories=Game;Sports;
+StartupWMClass=OpenRide Engine
