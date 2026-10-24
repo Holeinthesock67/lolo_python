@@ -52,15 +52,15 @@
 | [L6](LOT_L6_cible_erg_journal.md) | Cible ERG enregistrée dans le journal de séance | Python | — | Petite | **Livré le 24 octobre** (PR #69, issue #58) |
 | [L7](LOT_L7_historique_seances.md) | Historique des séances : `openride-core history` | Python | — | Petite | **Livré le 24 octobre** (PR #70, issue #59) |
 | [L8](LOT_L8_raccourci_bureau.md) | Raccourci de bureau : fichier `.desktop`, icône, script d'installation | Bash | — | Petite | **Livré le 24 octobre** (PR #71, issue #60) |
-| [M1](LOT_M1_erreur_att_renvoi.md) | Erreur d'écriture du Control Point (ATT 0x80) : renvoyer la commande au lieu de reconnecter | Python | — | Petite | Oui (issue à venir) |
-| [M2](LOT_M2_ceinture_cardio_reelle.md) | Ceinture cardio réelle : mesure complète, contact, choix de l'appareil, batterie | Python | — | Petite | Oui (issue à venir) |
-| [M3](LOT_M3_inventaire_appareils.md) | Inventaire des appareils Bluetooth : `openride-core devices` | Python | — | Petite | Oui (issue à venir) |
-| [M4](LOT_M4_journal_biais_coupures.md) | Journal de séance : biais ERG et coupures des appareils | Python | — | Petite | Oui (issue à venir) |
-| [M5](LOT_M5_scenario_depuis_journal.md) | Rejouer une panne réelle : scénario de simulation tiré de `run_trainer.log` | Python | — | Petite | Oui (issue à venir) |
-| [M6](LOT_M6_matrice_scenarios_simules.md) | Recette sans matériel : chaque scénario simulé joué en séance complète | Python | — | Petite | Oui (issue à venir) |
-| [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | Oui (issue à venir) |
-| [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | Oui (issue à venir) |
-| [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | Oui (issue à venir) |
+| [M1](LOT_M1_erreur_att_renvoi.md) | Erreur d'écriture du Control Point (ATT 0x80) : renvoyer la commande au lieu de reconnecter | Python | — | Petite | Oui (issue #78) |
+| [M2](LOT_M2_ceinture_cardio_reelle.md) | Ceinture cardio réelle : mesure complète, contact, choix de l'appareil, batterie | Python | — | Petite | Oui (issue #79) |
+| [M3](LOT_M3_inventaire_appareils.md) | Inventaire des appareils Bluetooth : `openride-core devices` | Python | — | Petite | Oui (issue #80) |
+| [M4](LOT_M4_journal_biais_coupures.md) | Journal de séance : biais ERG et coupures des appareils | Python | — | Petite | Oui (issue #81) |
+| [M5](LOT_M5_scenario_depuis_journal.md) | Rejouer une panne réelle : scénario de simulation tiré de `run_trainer.log` | Python | — | Petite | Oui (issue #82) |
+| [M6](LOT_M6_matrice_scenarios_simules.md) | Recette sans matériel : chaque scénario simulé joué en séance complète | Python | — | Petite | Oui (issue #83) |
+| [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | Oui (issue #84) |
+| [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | Oui (issue #85) |
+| [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | Oui (issue #86) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
