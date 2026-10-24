@@ -19,6 +19,7 @@ log = logging.getLogger("ipc_server")
 
 CONTRACT_VERSION = 1
 MAX_DATAGRAM_SIZE = 1400
+INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
 
 @dataclass
@@ -82,6 +83,10 @@ class IpcServer:
         self.engine_version: str | None = None
         self.last_cmd_id: int = 0
         self.seq: int = 0
+        # Datagrammes illisibles ou non conformes, ignorés (contrat §6).
+        self.invalid_datagrams: int = 0
+        self._invalid_logged_at: float | None = None
+        self._invalid_since_log: int = 0
 
         self._running: bool = False
         self._rx_sock: socket.socket | None = None
@@ -189,10 +194,25 @@ class IpcServer:
             try:
                 msg = json.loads(data.decode("utf-8"))
             except Exception:
-                log.warning("Datagramme reçu illisible (JSON invalide)")
+                self._reject("JSON invalide")
                 continue
 
+            reason = _invalid_reason(msg)
+            if reason:
+                self._reject(reason)
+                continue
             self._handle_message(msg)
+
+    def _reject(self, reason: str) -> None:
+        """Datagramme illisible : ignoré et compté ; avertissement limité pour ne pas noyer le journal."""
+        self.invalid_datagrams += 1
+        self._invalid_since_log += 1
+        now = time.monotonic()
+        if self._invalid_logged_at is None or now - self._invalid_logged_at >= INVALID_LOG_PERIOD_S:
+            log.warning("Datagramme reçu ignoré (%s) ; %d rejeté(s) depuis le dernier avertissement, %d au total",
+                        reason, self._invalid_since_log, self.invalid_datagrams)
+            self._invalid_logged_at = now
+            self._invalid_since_log = 0
 
     def _handle_message(self, msg: dict[str, Any]) -> None:
         msg_type = msg.get("type")
@@ -226,15 +246,18 @@ class IpcServer:
                     self.on_engine_returned()
 
         elif msg_type == "cmd":
-            cmd_id = msg.get("cmd_id", 0)
-            name = msg.get("name")
-            args = msg.get("args", {})
+            cmd_id = msg["cmd_id"]
+            name = msg["name"]
+            args = msg.get("args") or {}
             self.last_heartbeat_time = time.monotonic()
             if cmd_id > self.last_cmd_id:
                 self.last_cmd_id = cmd_id
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)
-                if self.on_command and name:
-                    self.on_command(name, args, cmd_id)
+                if self.on_command:
+                    try:
+                        self.on_command(name, args, cmd_id)
+                    except Exception:   # un bogue de commande ne doit pas arrêter la boucle du core
+                        log.exception("Erreur pendant la commande %s (id=%d), ignorée", name, cmd_id)
             else:
                 log.debug("Commande redondante ignorée (id=%d <= last=%d)", cmd_id, self.last_cmd_id)
 
@@ -255,3 +278,23 @@ class IpcServer:
             self.engine_connected = False
             if self.on_engine_lost:
                 self.on_engine_lost()
+
+
+def _is_int(value: Any) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
+def _invalid_reason(msg: Any) -> str | None:
+    """Contrôle léger des messages reçus (sans jsonschema) ; renvoie la raison du rejet ou None."""
+    if not isinstance(msg, dict):
+        return "pas un objet JSON"
+    if not isinstance(msg.get("type"), str):
+        return "champ type absent ou non textuel"
+    if msg["type"] == "cmd":
+        if not _is_int(msg.get("cmd_id")) or msg["cmd_id"] < 1:
+            return "cmd_id doit être un entier >= 1"
+        if not isinstance(msg.get("name"), str) or not msg["name"]:
+            return "name doit être une chaîne non vide"
+        if msg.get("args") is not None and not isinstance(msg["args"], dict):
+            return "args doit être un objet"
+    return None

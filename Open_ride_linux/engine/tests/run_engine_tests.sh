@@ -1,6 +1,7 @@
 #!/usr/bin/env bash
-# Tests de l'engine sans écran (lots D6, E1 et K1) : tests unitaires découverts dans tests/unit/, rendu
-# par tronçons, puis scénarios IPC face au faux core (parcours de démonstration avec terrain synthétique).
+# Tests de l'engine sans écran (lots D6, E1, K1 et K4) : tests unitaires découverts dans tests/unit/,
+# couches OSM (données produites par le compilateur installé), rendu par tronçons, puis scénarios IPC
+# face au faux core (parcours de démonstration avec terrain synthétique).
 #
 #   GODOT=/chemin/vers/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 #
@@ -75,6 +76,22 @@ if [ -n "${UNIT:-}" ]; then
   if [ "$status" -eq 0 ]; then echo "RÉSULTAT : tous les tests de l'engine passent"; else echo "RÉSULTAT : ÉCHEC"; fi
   exit "$status"
 fi
+
+echo "== Couches OSM (lot K4) =="
+# Données produites par le vrai compilateur (installé), sans réseau, puis lues par osm_layers.gd.
+OSM_DIR="$(mktemp -d -t openride-osm.XXXXXX)"
+if python3 "$ENGINE_DIR/tests/make_osm_world.py" --out "$OSM_DIR"; then
+  OSM_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_osm_layers.gd \
+    -- "$OSM_DIR/osm-test.world" "$OSM_DIR/expected.json" 2>&1)"
+  osm_rc=$?
+  echo "$OSM_OUT" | grep -v "^Godot Engine" || true
+  osm_issues="$(echo "$OSM_OUT" | godot_issues)"
+  if [ -n "$osm_issues" ]; then echo "$osm_issues"; osm_rc=1; fi
+  record "test_osm_layers (couches OSM K4)" "$osm_rc" "$(echo "$OSM_OUT" | grep -E "^test_osm_layers : " | tail -1 | sed 's/^test_osm_layers : //')"
+else
+  record "test_osm_layers (couches OSM K4)" 1 "données non produites par make_osm_world.py (compilateur installé ?)"
+fi
+rm -rf "$OSM_DIR"
 
 echo "== Rendu par tronçons (lot E1) =="
 # Démo commune avec couche terrain synthétique (bibliothèque standard de Python seulement).
