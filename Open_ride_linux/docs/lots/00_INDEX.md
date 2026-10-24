@@ -52,6 +52,15 @@
 | [L6](LOT_L6_cible_erg_journal.md) | Cible ERG enregistrée dans le journal de séance | Python | — | Petite | **Livré le 24 octobre** (PR #69, issue #58) |
 | [L7](LOT_L7_historique_seances.md) | Historique des séances : `openride-core history` | Python | — | Petite | **Livré le 24 octobre** (PR #70, issue #59) |
 | [L8](LOT_L8_raccourci_bureau.md) | Raccourci de bureau : fichier `.desktop`, icône, script d'installation | Bash | — | Petite | **Livré le 24 octobre** (PR #71, issue #60) |
+| [M1](LOT_M1_erreur_att_renvoi.md) | Erreur d'écriture du Control Point (ATT 0x80) : renvoyer la commande au lieu de reconnecter | Python | — | Petite | Oui (issue #78) |
+| [M2](LOT_M2_ceinture_cardio_reelle.md) | Ceinture cardio réelle : mesure complète, contact, choix de l'appareil, batterie | Python | — | Petite | Oui (issue #79) |
+| [M3](LOT_M3_inventaire_appareils.md) | Inventaire des appareils Bluetooth : `openride-core devices` | Python | — | Petite | Oui (issue #80) |
+| [M4](LOT_M4_journal_biais_coupures.md) | Journal de séance : biais ERG et coupures des appareils | Python | — | Petite | Oui (issue #81) |
+| [M5](LOT_M5_scenario_depuis_journal.md) | Rejouer une panne réelle : scénario de simulation tiré de `run_victory.log` | Python | — | Petite | Oui (issue #82) |
+| [M6](LOT_M6_matrice_scenarios_simules.md) | Recette sans matériel : chaque scénario simulé joué en séance complète | Python | — | Petite | Oui (issue #83) |
+| [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | Oui (issue #84) |
+| [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | Oui (issue #85) |
+| [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | Oui (issue #86) |
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 
 **Restent en interne** (matériel nécessaire) :
@@ -71,9 +80,11 @@ Leur forme dépendra des choix faits dans E1 et D.
 
 **Série K (23 octobre au soir) :** tous les lots sont livrés le 24 octobre (K6 et K7 faits directement le 23). K2 à K5 déposent leur test dans `engine/tests/unit/` (découverte par `run_engine_tests.sh`, lot K1). Les lots K préparent E3 (K2, K3), E4 (K3, K4) et G (K5, K6, K7) sans les remplacer : le rendu, l'affichage et le contrat IPC v1.1 restent internes.
 
+**Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
+
 **Série L (24 octobre) :** tous les lots L1 à L8 sont livrés le 24 octobre (PR #64 à #71). L1 à L5 (GDScript, sans affichage) déposent leur test dans `engine/tests/unit/` ; L4 modifie aussi `engine_args.gd` et `launcher.py` ; L6 à L8 enrichissent le journal (cible ERG), le core (`history`) et le bureau (`.desktop`).
 
-**Lots H, I, J, K et L (23 et 24 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I, J, K et L ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
+**Lots H, I, J, K, L et M (23 et 24 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I, J, K, L et M ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
 
 **Lots H, détail :** petits lots hors du chemin critique, recettés uniquement par des tests automatiques, sans essai sur le matériel. Ils peuvent être confiés en parallèle : aucun ne partage de fichier de code avec un autre (seuls `docs/SUIVI_AVANCEMENT.md` et parfois `README.md` sont communs, à fusionner à la main). H3 est le seul à toucher `config.py`, `session.py` et `__main__.py` ; H5 et H4 touchent tous deux `core/pyproject.toml` (sections différentes).
 
@@ -89,6 +100,7 @@ J4, J5 : indépendants (J1, J2, J3, J6, J7, J8 livrés)
 K6, K7, K8 : indépendants (livrés)
 E1 ──► K1 ──► K2, K3, K4, K5 (livrés ; préparent E3, E4 et G)
 K1 ──► L1, L2, L3, L4, L5 ;  L6, L7, L8 : indépendants
+M1 à M9 : indépendants (simulateur Bluetooth de la PR #74)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
@@ -148,7 +160,7 @@ Si un contrat te semble faux ou incomplet, arrête-toi et pose la question au li
 
 ## 5. Partage des lots par issues GitHub
 
-Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J` ou `série L`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
+Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L` ou `série M`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
 
 1. Choisir une issue ouverte sans l'étiquette `bloqué`, sans assigné ni commentaire « Je prends ce lot ».
 2. Commenter « Je prends ce lot » sur l'issue, pour que deux IA ne fassent pas le même lot.
