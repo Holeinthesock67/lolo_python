@@ -27,6 +27,7 @@ from typing import Any
 log = logging.getLogger("workout")
 
 MAX_POWER_FRAC = 3.0
+MAX_REPEAT = 100                    # borne de Repeat (IntervalsT) : un fichier aberrant ne doit pas épuiser la mémoire
 SMOOTH_S = 2.0                      # lissage des changements de bloc (SRS §6)
 BIAS_DEFAULT_PCT = 100
 BIAS_STEP_PCT = 2
@@ -152,6 +153,8 @@ class _Reader:
         repeat = self.number(a, "repeat", tag)
         if repeat < 1 or repeat != int(repeat):
             raise WorkoutError(f"bloc {tag} : Repeat doit être un entier positif ({repeat:g})")
+        if repeat > MAX_REPEAT:
+            raise WorkoutError(f"bloc {tag} : Repeat = {repeat:g} dépasse {MAX_REPEAT}")
         on_d, off_d = self.duration(a, "onduration", tag), self.duration(a, "offduration", tag)
         on_p, off_p = self.power(a, "onpower", tag), self.power(a, "offpower", tag)
         out: list[Block] = []

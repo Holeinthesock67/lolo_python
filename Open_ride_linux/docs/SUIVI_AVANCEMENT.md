@@ -1,7 +1,8 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
-Mise à jour : 23 octobre 2026 au soir (fusions A2, B2, F, H1 à H8 et I1 à I6, audit J et cahiers J1 à J8)
+Mise à jour : 24 octobre 2026 (vérification et correctifs R1, R2, S1, PR #44) ; précédente : 23 octobre au soir (fusions A2, B2, F, H1 à H8 et I1 à I6, audit J et cahiers J1 à J8)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
+Vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) : constats R1, R2 et S1 corrigés.
 
 ---
 
@@ -54,6 +55,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 - [x] Schéma et validateur de thèmes (`docs/contracts/world/theme.schema.json`, `engine/themes/default/theme.json`, `openride-compiler theme-check`, lot H7).
 - [x] Outils et bibliothèque d'entraînements ERG (`python -m openride_core.tools.workouts list|check|install` et 5 fichiers `.zwo` de référence dans `core/workouts/`, lot H8).
 - [x] Bilan de séance (`openride-core summary [FICHIER] [--ftp W] [--json]`, lot K7) : durée hors pauses, distance, dénivelé, puissance moyenne et normalisée, IF, TSS, zones de Coggan, meilleures puissances 5 s à 20 min, cadence et FC, puissance par bloc ERG (cible absente du journal v1 : écart signalé indisponible) ; `.jsonl` et `.fit` donnent les mêmes chiffres.
+- [x] Vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) : `Repeat` des `.zwo` borné à 100 (R1), FTP nulle, négative ou non finie refusée par `workouts check` (R2), cahiers des lots K6 et K7 rédigés et inscrits à l'index, et contrôle des lots cités dans la documentation (S1).
 - [x] Couches OpenStreetMap `buildings` et `vegetation` du compilateur (`osm.py`, `osm_layers.py`, cache brut `~/.cache/openride/osm/`, schémas `buildings.schema.json` et `vegetation.schema.json`, lot I3).
 - [x] Couches OpenStreetMap `poi` et `water` du compilateur (points d'intérêt sonores/visuels, cours d'eau découpés par tronçon de 1 km et plans d'eau avec îles, schémas `poi.schema.json` et `water.schema.json`, lot I4).
 
@@ -62,7 +64,7 @@ Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**261 tests pytest passent dans le core et 154 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lots I1 et J7 : caractères, liens, nombres de tests, chemins cités), catalogue des parcours `list` et `build-all` (lot I2) et parité de son repli sans core (lot J6), robustesse IPC aux messages malformés (lot J2), validation de `config.toml` (lot J3), libération du trainer à l'arrêt (PR #28), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 54 vérifications ERG (lot I6) et 8 scénarios IPC vérifiés sans écran (`engine/tests/run_engine_tests.sh`). Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
+**267 tests pytest passent dans le core et 154 dans le compilateur** (physique, braquets, FTMS, Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lots I1 et J7 : caractères, liens, nombres de tests, chemins cités), catalogue des parcours `list` et `build-all` (lot I2) et parité de son repli sans core (lot J6), robustesse IPC aux messages malformés (lot J2), validation de `config.toml` (lot J3), libération du trainer à l'arrêt (PR #28), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 54 vérifications ERG (lot I6) et 8 scénarios IPC vérifiés sans écran (`engine/tests/run_engine_tests.sh`). Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
