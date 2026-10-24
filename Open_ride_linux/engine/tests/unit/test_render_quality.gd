@@ -36,6 +36,8 @@ func _test_presets_application() -> void:
 	var env := Environment.new()
 	var streamer := DummyStreamer.new()
 
+	# Sans écran (ou en Compatibility), pas de RenderingDevice : SSAO et brouillard volumétrique restent éteints.
+	var fp := RenderingServer.get_rendering_device() != null
 	for name in ["low", "medium", "high"]:
 		RenderQuality.apply_preset(name, cam, light, env, vp, streamer)
 		var p: Dictionary = QualityPresets.preset(name)
@@ -43,7 +45,7 @@ func _test_presets_application() -> void:
 			"%s : cam.near/far conformes (near=%.3f, far=%.1f)" % [name, cam.near, cam.far])
 		_check(light.shadow_enabled and absf(light.directional_shadow_max_distance - QualityPresets.shadow_distance_m(name)) < 1e-4,
 			"%s : distance d'ombre = %.0f m" % [name, QualityPresets.shadow_distance_m(name)])
-		_check(env.ssao_enabled == bool(p["ssao"]),
+		_check(env.ssao_enabled == (bool(p["ssao"]) and fp),
 			"%s : ssao_enabled = %s" % [name, str(p["ssao"])])
 		var want_msaa = Viewport.MSAA_DISABLED
 		if int(p["msaa"]) == 2:
@@ -51,7 +53,7 @@ func _test_presets_application() -> void:
 		elif int(p["msaa"]) == 4:
 			want_msaa = Viewport.MSAA_4X
 		_check(vp.msaa_3d == want_msaa, "%s : msaa_3d conforme" % name)
-		_check(env.volumetric_fog_enabled == bool(p["fog_volumetric"]),
+		_check(env.volumetric_fog_enabled == (bool(p["fog_volumetric"]) and fp),
 			"%s : volumetric_fog_enabled = %s" % [name, str(p["fog_volumetric"])])
 		_check(streamer.chunks_ahead == int(p["chunks_ahead"]) and streamer.chunks_behind == int(p["chunks_behind"]),
 			"%s : tronçons ahead=%d, behind=%d" % [name, p["chunks_ahead"], p["chunks_behind"]])
@@ -61,7 +63,7 @@ func _test_presets_application() -> void:
 	# Préréglage inconnu donne low
 	RenderQuality.apply_preset("inconnu_xyz", cam, light, env, vp, streamer)
 	var p_low: Dictionary = QualityPresets.preset("low")
-	_check(env.ssao_enabled == bool(p_low["ssao"]) and light.directional_shadow_max_distance == QualityPresets.shadow_distance_m("low"),
+	_check(env.ssao_enabled == (bool(p_low["ssao"]) and fp) and light.directional_shadow_max_distance == QualityPresets.shadow_distance_m("low"),
 		"préréglage inconnu replie sur low")
 
 	vp.queue_free()
@@ -91,6 +93,13 @@ func _test_fog() -> void:
 	RenderQuality.apply_fog(env, true, horizon, 0.035)
 	_check(env.volumetric_fog_enabled and absf(env.volumetric_fog_density - 0.035) < 1e-4,
 		"brouillard volumétrique actif avec densité du thème")
+
+	# Avant le chargement du parcours, la scène garde aussi un brouillard à pleine opacité (revue E2, R2).
+	var scene: PackedScene = load("res://scenes/main.tscn")
+	var main_node := scene.instantiate()
+	var env_node := main_node.get_node("WorldEnvironment") as WorldEnvironment
+	_check(absf(env_node.environment.fog_density - 1.0) < 1e-4, "main.tscn : fog_density = 1 avant le chargement du parcours")
+	main_node.free()
 
 
 func _init() -> void:

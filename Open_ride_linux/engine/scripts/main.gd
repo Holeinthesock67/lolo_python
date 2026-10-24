@@ -81,6 +81,13 @@ func _ready() -> void:
 	if streamer.tree_renderer != null:
 		streamer.tree_renderer.set_preset(_quality_name)
 	RenderQuality.apply_fog(world_env.environment, false)
+	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
+	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
+	if RenderingServer.get_rendering_device() == null:   # Compatibility : pas de RenderingDevice
+		var sky_mat := ProceduralSkyMaterial.new()
+		sky_mat.sky_top_color = Color(0.38, 0.65, 0.98)
+		sky_mat.sky_horizon_color = Color(0.65, 0.75, 0.85)
+		world_env.environment.sky.sky_material = sky_mat
 	var theme_res := ThemeLoader.load_named(cfg.get("theme", "default"))
 	var theme_dict: Dictionary = theme_res.get("theme", {})
 	var theme_dir: String = theme_res.get("theme_dir", "")
@@ -94,6 +101,7 @@ func _ready() -> void:
 	ipc.core_lost.connect(_on_core_lost)
 	ipc.core_returned.connect(_on_core_returned)
 	ipc.command_failed.connect(_on_command_failed)
+	ipc.test_message_received.connect(_on_test_message)
 	banner.changed.connect(func(text: String) -> void:
 		ipc.test_log("banner text=" + text.replace("\n", " | ")))
 	var gen := AudioStreamGenerator.new()
@@ -103,6 +111,12 @@ func _ready() -> void:
 	_beep_player.stream = gen
 	add_child(_beep_player)
 	_beep_player.play()
+	# Le bandeau passe sous le panneau central du HUD (ERG, montée, état) pour ne jamais le recouvrir.
+	var center: Control = hud.panel_center
+	var place_banner := func() -> void: banner.offset_top = center.get_global_rect().end.y + banner.MARGIN / 2.0
+	center.resized.connect(place_banner)
+	get_viewport().size_changed.connect(place_banner)
+	place_banner.call()
 
 
 func _apply_sky_params(theme_dict: Dictionary) -> void:
@@ -270,6 +284,48 @@ func _poll_route_job() -> void:
 
 
 # --- messages du core --------------------------------------------------------------------
+
+## Messages de test (--test-mode) : « screenshot » enregistre l'image affichée en PNG et journalise
+## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py.
+func _on_test_message(msg: Dictionary) -> void:
+	if str(msg.get("action", "")) == "screenshot":
+		_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+
+
+func _test_screenshot(path: String, tag: String) -> void:
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
+	var widgets := {}
+	var nodes := {
+		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
+		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
+		"status": hud.status_label, "banner": banner,
+	}
+	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
+	var to_pixels := get_viewport().get_final_transform()
+	for key in nodes:
+		var c: Control = nodes[key]
+		var r := to_pixels * c.get_global_rect()
+		widgets[key] = {
+			"text": c.text if c is Label else "",
+			"visible": c.is_visible_in_tree(),
+			"rect": [r.position.x, r.position.y, r.size.x, r.size.y],
+		}
+	var meshes := 0
+	for n in streamer.find_children("*", "MeshInstance3D", true, false):
+		if (n as MeshInstance3D).is_visible_in_tree():
+			meshes += 1
+	var info := {
+		"tag": tag, "path": path, "ok": err == OK, "size": [img.get_width(), img.get_height()],
+		"fps": Engine.get_frames_per_second(), "meshes": meshes, "ticks_ms": Time.get_ticks_msec(),
+		"ui_scale": to_pixels.get_scale().x,
+		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
+		"widgets": widgets,
+	}
+	ipc.test_log("screenshot " + JSON.stringify(info))
+
 
 func _on_hello_ack(_ack: Dictionary) -> void:
 	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage.

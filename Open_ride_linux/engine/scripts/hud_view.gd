@@ -34,6 +34,7 @@ var panel_center: Panel
 
 # Nœuds d'affichage
 var power_val: Label
+var target_val: Label
 var cadence_val: Label
 var hr_val: Label
 var speed_val: Label
@@ -64,7 +65,7 @@ func _build_ui() -> void:
 		return
 
 	# Panneau gauche (haut) : Puissance, Cadence, Fréquence cardiaque
-	panel_left = _create_panel(Vector2(20.0, 20.0), Vector2(300.0, 240.0), false, false)
+	panel_left = _create_panel(Vector2(20.0, 20.0), Vector2(300.0, 320.0), false, false)
 	var left_vbox := VBoxContainer.new()
 	left_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 10)
 	panel_left.add_child(left_vbox)
@@ -72,6 +73,9 @@ func _build_ui() -> void:
 	power_val = _create_metric(left_vbox, "PUISSANCE (W)", HudViewModel.NO_VALUE)
 	cadence_val = _create_metric(left_vbox, "CADENCE (RPM)", HudViewModel.NO_VALUE)
 	hr_val = _create_metric(left_vbox, "CARDIO (BPM)", HudViewModel.NO_VALUE)
+	# Cible ERG sous les mesures, affichée seulement en ERG (« roue libre » sur un bloc libre).
+	target_val = _create_metric(left_vbox, "CIBLE ERG", HudViewModel.NO_VALUE, 40, 20)
+	target_val.get_parent().visible = false
 
 	# Panneau droit (haut) : Vitesse, Pente, Braquet, Distance, Temps
 	panel_right = _create_panel(Vector2(-320.0, 20.0), Vector2(300.0, 320.0), true, false)
@@ -85,8 +89,8 @@ func _build_ui() -> void:
 	distance_val = _create_metric(right_vbox, "DISTANCE", HudViewModel.NO_VALUE, 32, 20)
 	time_val = _create_metric(right_vbox, "TEMPS", HudViewModel.NO_VALUE, 32, 20)
 
-	# Bandeau supérieur central : ERG et Prochaine montée
-	panel_center = _create_panel(Vector2(340.0, 20.0), Vector2(-680.0, 80.0), false, false, true)
+	# Bandeau supérieur central : ERG, prochaine montée et ligne d'état de diagnostic
+	panel_center = _create_panel(Vector2(340.0, 20.0), Vector2(-680.0, 110.0), false, false, true)
 	var center_vbox := VBoxContainer.new()
 	center_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 8)
 	panel_center.add_child(center_vbox)
@@ -94,12 +98,21 @@ func _build_ui() -> void:
 	climb_label = Label.new()
 	climb_label.add_theme_font_size_override("font_size", 24)
 	climb_label.text = ""
+	climb_label.clip_text = true
 	center_vbox.add_child(climb_label)
 
 	erg_label = Label.new()
 	erg_label.add_theme_font_size_override("font_size", 22)
 	erg_label.text = ""
+	erg_label.clip_text = true
 	center_vbox.add_child(erg_label)
+
+	# Ligne d'état de diagnostic : séance, raison de pause, trainer, entrée (affichée depuis le lot D).
+	status_label = Label.new()
+	status_label.add_theme_font_size_override("font_size", 18)
+	status_label.text = "ÉTAT: en attente du core…"
+	status_label.clip_text = true
+	center_vbox.add_child(status_label)
 
 	# Panneau inférieur : Profil d'altitude
 	profile_panel = Control.new()
@@ -141,7 +154,7 @@ func _create_panel(pos: Vector2, size: Vector2, anchor_right := false, anchor_bo
 		p.anchor_left = 0.0
 		p.anchor_right = 1.0
 		p.offset_left = pos.x
-		p.offset_right = size.x
+		p.offset_right = pos.x + size.x   # size.x négatif : marge droite égale à la marge gauche
 		p.offset_top = pos.y
 		p.offset_bottom = pos.y + size.y
 	elif anchor_right:
@@ -211,6 +224,20 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 	if erg_label != null:
 		erg_label.text = lines.get("erg", "")
 		erg_label.visible = lines.get("erg", "") != ""
+
+	if target_val != null:
+		# Même texte que la ligne de puissance du HUD d'origine (« 230 W » ou « roue libre »).
+		var has_target: bool = lines["power"].contains("CIBLE ERG: ")
+		target_val.text = lines["power"].get_slice("CIBLE ERG: ", 1) if has_target else HudViewModel.NO_VALUE
+		target_val.get_parent().visible = has_target
+
+	if status_label != null:
+		var pause = state.get("pause_reason", null)
+		status_label.text = "ÉTAT: %s%s | TRAINER: %s | ENTRÉE: %s" % [
+			state.get("session_state", "?"),
+			(" (" + str(pause) + ")") if pause != null else "",
+			state.get("trainer_status", "?"),
+			state.get("input_status", "?")]
 
 	# Prochaine montée (rafraîchie avec le profil)
 	if route != null and climb_label != null:

@@ -75,9 +75,10 @@ Tests côté Godot, sans écran (depuis `Open_ride_linux/`) :
 ```bash
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
 ```
 
-Le premier script lance les tests unitaires de `engine/tests/unit/` (vecteurs de route, thèmes…), le rendu par tronçons, l'ERG, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`). Le second fait un essai de bout en bout avec le vrai core (trainer simulé) et le vrai engine, dans un dossier personnel temporaire, en une dizaine de secondes.
+Le premier script lance les tests unitaires de `engine/tests/unit/` (vecteurs de route, thèmes…), le rendu par tronçons, l'ERG, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`). Le second fait un essai de bout en bout avec le vrai core (trainer simulé) et le vrai engine, dans un dossier personnel temporaire, en une dizaine de secondes. Le troisième fait les tests graphiques de la scène principale, sans rien à faire (deux minutes environ) : l'engine est rendu sous Xvfb en 1280×720, 1920×1080 et 1024×600, ses captures d'écran sont analysées (textes et mise en page du HUD, bandeau, ciel et sol, caméra qui avance puis se fige) et comparées aux images de référence, et `--open` ouvre le rapport (`~/OpenRide/visual_tests/<date>/rapport.html`) ; paquets : `xvfb`, `xauth`, `libgl1-mesa-dri` (détail : `engine/tests/README.md`).
 
 **Arguments de l'engine** (après `--`, hors contrat IPC) :
 
@@ -116,8 +117,8 @@ scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcou
 
 | Action | Click | Clavier (fenêtre Godot) |
 | --- | --- | --- |
-| Braquet + 1 / − 1 | Appui court + / − | `+` / `−` ou flèches haut / bas |
-| Braquet + 10 / − 10 (bornés de 1 à 24) | Appui long (≥ 0,9 s) + / − | `Page haut` / `Page bas` |
+| Braquet + 1 / − 1 | Appui court + / − (ou B) | `+` / `−` ou flèches haut / bas |
+| Braquet + 10 / − 10 (bornés de 1 à 24) | Appui long (≥ 0,9 s) + / − (ou B) | `Page haut` / `Page bas` |
 
 Chaque type d'appui a son bip.
 
@@ -143,7 +144,7 @@ python -m openride_core.tools.workouts check FICHIER.zwo --ftp 250   # vérifie 
 
 Victory et Click doivent être déconnectés de Zwift et du téléphone.
 
-Le Zwift Click récent est une paire de boîtiers (« + » et « − ») de même nom : OpenRide se connecte aux deux, et ignore les appuis du « + » que le « − » relaie en double. Avec un seul boîtier, le second est simplement cherché en arrière-plan.
+Le Zwift Click récent est une paire de boîtiers (« + » et « − ») de même nom : OpenRide se connecte aux deux, et ignore les appuis du « + » que le « − » relaie en double. Avec un seul boîtier, le second est simplement cherché en arrière-plan. Le bouton B du boîtier droit fait aussi « − » : sans passage récent par l'appli Zwift (moins de 24 h), le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion, et seul le droit reste utilisable.
 
 ```bash
 openride-ble-diag scan

@@ -28,7 +28,9 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 	camera.far = CAMERA_FAR_M
 	light.shadow_enabled = true
 	light.directional_shadow_max_distance = QualityPresets.shadow_distance_m(key)
-	env.ssao_enabled = bool(p["ssao"])
+	# SSAO et brouillard volumétrique n'existent qu'en Forward+ (sans RenderingDevice : Compatibility).
+	var forward_plus := RenderingServer.get_rendering_device() != null
+	env.ssao_enabled = bool(p["ssao"]) and forward_plus
 	match int(p["msaa"]):
 		2:
 			viewport.msaa_3d = Viewport.MSAA_2X
@@ -36,7 +38,7 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 			viewport.msaa_3d = Viewport.MSAA_4X
 		_:
 			viewport.msaa_3d = Viewport.MSAA_DISABLED
-	env.volumetric_fog_enabled = bool(p["fog_volumetric"])
+	env.volumetric_fog_enabled = bool(p["fog_volumetric"]) and forward_plus
 
 	if streamer != null:
 		if "chunks_ahead" in streamer:
