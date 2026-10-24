@@ -71,6 +71,8 @@ GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.s
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
 scripts/openride-dev.sh --trainer mock --input keyboard --autostart        # sans vélo
+scripts/openride-dev.sh --trainer ftms --input click --autostart --workout sweet_spot_3x10   # ERG (~/OpenRide/Workouts/<ID>.zwo)
+scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcours>          # parcours compilé (défaut : demo)
 openride --trainer mock --input keyboard --autostart                       # même chose en Python, avec relance de Godot (lot K6)
 openride-core run --replay ~/OpenRide/Activities/<séance>.fit --input keyboard --autostart   # rejoue une séance réelle
 

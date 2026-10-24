@@ -28,7 +28,7 @@
 | [I4](LOT_I4_osm_poi_eau.md) | Compilateur : couches points d'intérêt et eau | Python | I3 | Petite | **Livré le 23 octobre** (PR #23) |
 | [I5](LOT_I5_chargeur_themes_godot.md) | Chargeur de thèmes en GDScript (sans shader) | GDScript | H7 (livré), E1 fusionné | Petite | **Livré le 23 octobre** (PR #24) |
 | [I6](LOT_I6_logique_erg_godot.md) | Logique de l'entraînement ERG côté Godot (bandeau, bip, histogramme, sans affichage) | GDScript | F (livré), E1 fusionné | Petite | **Livré le 23 octobre** (PR #25) |
-| [J1](LOT_J1_lancement_parcours_entrainement.md) | Lancer une séance sur un parcours et un entraînement choisis (`run --route`, `--workout`) | Python | — | Petite | Oui |
+| [J1](LOT_J1_lancement_parcours_entrainement.md) | Lancer une séance sur un parcours et un entraînement choisis (`run --route`, `--workout`) | Python | — | Petite | **Livré le 24 octobre** (fait directement, issue #49) |
 | [J2](LOT_J2_ipc_messages_malformes.md) | Robustesse du serveur IPC face aux messages malformés | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
 | [J3](LOT_J3_configuration_validee.md) | Configuration validée (types, bornes) et erreurs lisibles | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
 | [J4](LOT_J4_paquetage_autonome.md) | Paquets installables hors du dépôt (dépendance `jsonschema`, ressources embarquées) | Python | — | Petite | Oui (dépendance `jsonschema` faite ; reste les ressources embarquées) |
@@ -85,7 +85,7 @@ A ──► B1 ──► B2 ──┬──► E1 ──┬──► I5 ──�
 └──► D ───────────┘
 B2 ──► I2 ──► G       B2 ──► I3 ──► I4 ;  I3 ──► E4
 C ──► F ──► H8        H1 à H8, I1 : indépendants
-J1, J4, J5 : indépendants (J2, J3, J6, J7, J8 livrés)
+J4, J5 : indépendants (J1, J2, J3, J6, J7, J8 livrés)
 K6, K7, K8 : indépendants (livrés)
 E1 ──► K1 ──► K2, K3, K4, K5 (livrés ; préparent E3, E4 et G)
 K1 ──► L1, L2, L3, L4, L5 ;  L6, L7, L8 : indépendants
