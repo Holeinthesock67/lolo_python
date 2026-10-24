@@ -245,9 +245,17 @@ class ErgController:
       nouvelle en 2 s ; le biais s'applique sans lissage. Après un bloc `freeride` (sans cible),
       le bloc suivant démarre directement à sa cible.
     - Pause ERG : le temps du bloc et le lissage s'arrêtent.
+
+    Entrées refusées (`ValueError`, constat R3 de la vérification du 24 octobre) : FTP ≤ 0 ou
+    non finie, `dt` négatif, infini ou NaN (`dt == 0` reste permis). La session ne peut pas en
+    produire : sa FTP vient de `rider.ftp_w`, bornée à 50–600 W par la validation de la
+    configuration, et son `dt` d'une horloge monotone (`time.monotonic`, borné par `MAX_STEP_S`).
+    Le contrôle protège un futur appelant (outils, tests).
     """
 
     def __init__(self, workout: Workout, ftp_w: float) -> None:
+        if not (math.isfinite(ftp_w) and ftp_w > 0):
+            raise ValueError(f"FTP invalide : {ftp_w!r} W (attendu un nombre fini > 0)")
         self.workout = workout
         self.ftp_w = ftp_w
         self.index = 0
@@ -305,6 +313,8 @@ class ErgController:
 
     def step(self, dt: float) -> None:
         """Avance le temps de l'entraînement de dt secondes (rien en pause ou après la fin)."""
+        if not (math.isfinite(dt) and dt >= 0):
+            raise ValueError(f"pas de temps invalide : {dt!r} s (attendu un nombre fini ≥ 0)")
         if self.finished or self.paused:
             return
         self.t_block += dt

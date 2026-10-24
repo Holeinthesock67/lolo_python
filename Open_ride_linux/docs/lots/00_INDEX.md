@@ -60,7 +60,7 @@
 | [M6](LOT_M6_matrice_scenarios_simules.md) | Recette sans matériel : chaque scénario simulé joué en séance complète | Python | — | Petite | **Livré le 24 octobre** (issue #83) |
 | [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | **Livré le 24 octobre** (issue #84) |
 | [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | **Livré le 24 octobre** (issue #85) |
-| [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | Oui (issue #86) |
+| [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | **Livré le 24 octobre** (issue #86) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
