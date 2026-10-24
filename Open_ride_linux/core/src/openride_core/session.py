@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import re
 import signal
 import time
 from pathlib import Path
@@ -105,6 +106,13 @@ def build_inputs(cfg: Config) -> list[Any]:
     if kind == "keyboard":
         return [KeyboardProvider()]
     return [NullProvider()]
+
+
+ROUTE_ID_RE = re.compile(r"^[^/\\.][^/\\]*$")   # un nom de dossier simple, comme les entraînements
+
+
+class AutostartError(Exception):
+    """Parcours ou entraînement demandé au lancement (`--route`, `--workout`) refusé."""
 
 
 class CoreSession:
@@ -433,7 +441,35 @@ class CoreSession:
 
     # --- boucle principale ---------------------------------------------------------------
 
-    async def run(self, autostart: bool = False) -> None:
+    def check_autostart(self, route_id: str, workout_id: str | None) -> None:
+        """Vérifie parcours et entraînement d'un `--autostart` avant d'ouvrir les ports (lot J1).
+
+        Lève `AutostartError` avec un message clair : aucune séance ne démarre sur un mauvais
+        parcours ou sans l'entraînement demandé.
+        """
+        if not ROUTE_ID_RE.match(route_id):
+            raise AutostartError(f"identifiant de parcours invalide : {route_id!r}")
+        try:
+            if route_id == "demo":
+                ensure_demo_world(self.routes_root)
+            load_world(find_world(route_id, self.routes_root))
+        except WorldError as exc:
+            raise AutostartError(f"parcours « {route_id} » refusé : {exc}") from exc
+        if workout_id:
+            try:
+                load_workout(workout_path(self.workouts_dir, workout_id))
+            except WorkoutError as exc:
+                raise AutostartError(f"entraînement « {workout_id} » refusé : {exc}") from exc
+
+    async def run(self, autostart: bool = False, route_id: str = "demo",
+                  workout_id: str | None = None) -> None:
+        """Boucle de séance. Avec `autostart` : select_route, select_workout éventuel, puis start.
+
+        Lève `AutostartError` avant d'ouvrir les ports IPC si le parcours ou l'entraînement
+        demandé est refusé.
+        """
+        if autostart:
+            self.check_autostart(route_id, workout_id)
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
                  for p in [self.driver, *self.inputs] if hasattr(p, "run")]  # trainer prioritaire
@@ -447,7 +483,9 @@ class CoreSession:
                 pass
         if autostart:
             self._autoresume = True
-            self._on_command("select_route", {"route_id": "demo"}, 0)
+            self._on_command("select_route", {"route_id": route_id}, 0)
+            if workout_id:
+                self._on_command("select_workout", {"workout_id": workout_id}, 0)
             self._on_command("start", {}, 0)
         log.info("Core démarré (trainer=%s, entrées=%s).", self.cfg.drivers.trainer,
                  self.cfg.drivers.input)

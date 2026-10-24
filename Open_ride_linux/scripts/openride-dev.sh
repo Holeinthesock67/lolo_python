@@ -7,6 +7,11 @@
 #   scripts/openride-dev.sh                              # HomeTrainer + Click, démarrage automatique
 #   scripts/openride-dev.sh --trainer mock --input keyboard --autostart
 #   scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
+#   scripts/openride-dev.sh --trainer ftms --input click --autostart --workout sweet_spot_3x10
+#   scripts/openride-dev.sh --trainer mock --input keyboard --autostart --route <parcours compilé>
+#
+# Tous les arguments sont transmis tels quels à « openride-core run » (--route et --workout
+# demandent --autostart).
 #
 # Variables : GODOT (chemin de l'exécutable), OPENRIDE_LOG (journal du core), GODOT_ARGS.
 set -u
