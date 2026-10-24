@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Vérifie route_data.gd contre les vecteurs partagés docs/contracts/world/route_test_vectors.json.
-## Lancement : godot --headless --path engine --script res://tests/test_route_vectors.gd [-- <vecteurs.json>]
+## Lancement : godot --headless --path engine --script res://tests/unit/test_route_vectors.gd [-- <vecteurs.json>]
 ## Code de sortie : 0 si tous les vecteurs passent, 1 sinon.
 
 const RouteDataScript := preload("res://scripts/route_data.gd")
@@ -23,7 +23,8 @@ func _init() -> void:
 	var path := _vectors_path()
 	var doc = JSON.parse_string(FileAccess.get_file_as_string(path))
 	if typeof(doc) != TYPE_DICTIONARY:
-		printerr("Vecteurs illisibles : ", path)
+		printerr("[ÉCHEC] vecteurs illisibles : ", path)
+		print("test_route_vectors : 1 vérifications, 1 échecs")
 		quit(1)
 		return
 	var tol: Dictionary = doc["tolerances"]
@@ -32,7 +33,8 @@ func _init() -> void:
 	for case in doc["cases"]:
 		var route = RouteDataScript.new()
 		if not route.load_route_dict(case["route"]):
-			printerr("[", case["name"], "] chargement refusé : ", route.load_error)
+			printerr("[ÉCHEC] ", case["name"], " : chargement refusé : ", route.load_error)
+			checked += 1
 			failures += 1
 			continue
 		for expected in case["samples"]:
@@ -55,6 +57,8 @@ func _init() -> void:
 			checked += 1
 			if errs.size() > 0:
 				failures += 1
-				printerr("[", case["name"], "] s = ", expected["s"], " : ", ", ".join(errs))
-	print("Vecteurs de route vérifiés : %d, échecs : %d" % [checked, failures])
+				printerr("[ÉCHEC] ", case["name"], " s = ", expected["s"], " : ", ", ".join(errs))
+			else:
+				print("[OK] ", case["name"], " s = ", expected["s"])
+	print("test_route_vectors : %d vérifications, %d échecs" % [checked, failures])
 	quit(1 if failures > 0 else 0)
