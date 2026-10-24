@@ -39,7 +39,7 @@ Open_ride_linux/
   - conformité au contrat IPC (lot C) ;
   - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
   - Godot conforme au contrat : renvoi des commandes, extrapolation de la caméra, core injoignable (lot D) ;
-  - 353 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop` et outils d'entraînements `.zwo`) et 154 côté compilateur (dont `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation des thèmes `theme-check`) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 76 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
+  - 491 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop` et outils d'entraînements `.zwo`) et 172 côté compilateur (dont traces FIT et TCX, `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation des thèmes `theme-check`) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 76 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
   - **Reste :** séance de 10 minutes et stabilité du Click.
 - **Sprint 2 terminé côté code :** compilateur GPX vers `.world`, couches route (lot B1) et terrain avec le MNT Copernicus (lot B2). Reste la comparaison avec Garmin Connect sur une vraie trace.
 - **Sprint 3 en cours :** ruban de route et terrain par tronçons (lot E1, fusionné le 24 octobre ; reste l'essai sur la GTX 1060) ; chargeur de thèmes et logique du bandeau ERG côté Godot prêts (lots I5 et I6), à brancher sur l'affichage (E2, F2).
@@ -58,7 +58,7 @@ pytest -q
 
 Les versions de référence validées en Python 3.14 sont figées dans `constraints.txt` (`pip install -c ../constraints.txt -e ".[dev]"` ; mettre ce fichier à jour après une montée de version testée).
 
-Compilateur de parcours (GPX vers `.world`, couches route, terrain, bâtiments, végétation, points d'intérêt et eau) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (`verify`, `info`, `list` et `build-all` pour contrôler ou compiler tout `~/OpenRide/GPX/` ; `--layers route,terrain,buildings,vegetation,poi,water` pour inclure les couches OpenStreetMap). Le premier `build` télécharge les tuiles d'altitude Copernicus dans `~/.cache/openride/dem/` et les réponses Overpass dans `~/.cache/openride/osm/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain|buildings|vegetation|poi|water` régénère une couche seule.
+Compilateur de parcours (GPX vers `.world`, couches route, terrain, bâtiments, végétation, points d'intérêt et eau) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (ou directement l'export Garmin Connect : `build sortie.fit`, `build sortie.tcx`, lot M7 ; `verify`, `info`, `list` et `build-all` pour contrôler ou compiler tout `~/OpenRide/GPX/` ; `--layers route,terrain,buildings,vegetation,poi,water` pour inclure les couches OpenStreetMap). Le premier `build` télécharge les tuiles d'altitude Copernicus dans `~/.cache/openride/dem/` et les réponses Overpass dans `~/.cache/openride/osm/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain|buildings|vegetation|poi|water` régénère une couche seule.
 
 Raccourci de bureau et icône utilisateur (sans `sudo`, depuis `Open_ride_linux/`) : `scripts/install-desktop.sh` installe `~/.local/share/applications/openride.desktop` et l'icône `scripts/desktop/openride.svg` (`scripts/install-desktop.sh --uninstall` pour les retirer).
 
@@ -110,7 +110,7 @@ scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcou
 - Nouveau lanceur équivalent, installé avec le core (lot K6) : `openride [options de openride-core run]`, par exemple `openride --trainer mock --input keyboard --autostart`. Il fait la même chose et, en plus, relance Godot s'il plante (3 fois en 2 minutes au plus, la séance passe en pause si Godot reste absent plus de 2 s). Si le core plante, il ferme Godot et rappelle `openride-core recover`.
 - Fermer la fenêtre, Ctrl+C ou fermer le terminal arrête le core proprement : la consigne (pente ou ERG) est annulée, le contrôle FTMS est rendu au trainer (Reset), le Bluetooth est déconnecté et le FIT écrit. Une autre application peut alors utiliser le Victory.
 - Si le Victory reste réservé après un arrêt brutal (processus tué, PC éteint en pleine séance) : `openride-core release-trainer` annule la consigne, rend le contrôle et déconnecte le trainer. À défaut : `bluetoothctl disconnect <adresse>`.
-- **Journal :** `~/run_victory.log` ; **FIT :** `~/OpenRide/Activities/`.
+- **Journal :** `~/run_victory.log` (avec `openride`, lien vers le dernier journal du lanceur, `~/OpenRide/Logs/openride_AAAA-MM-JJ_HH-MM-SS.log` : sortie du core, de Godot préfixée `[engine]` et messages du lanceur `[openride]` ; 20 derniers lancements et 200 Mo gardés ; `OPENRIDE_LOG=fichier` remplace ce journal tournant) ; **FIT :** `~/OpenRide/Activities/`.
 - **Si Godot est installé ailleurs :** `GODOT=/chemin/vers/godot scripts/openride-dev.sh …`.
 
 **Commandes pendant la séance :**
@@ -146,7 +146,10 @@ Victory et Click doivent être déconnectés de Zwift et du téléphone.
 
 Le Zwift Click récent est une paire de boîtiers (« + » et « − ») de même nom : OpenRide se connecte aux deux, et ignore les appuis du « + » que le « − » relaie en double. Avec un seul boîtier, le second est simplement cherché en arrière-plan. Le bouton B du boîtier droit fait aussi « − » : sans passage récent par l'appli Zwift (moins de 24 h), le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion, et seul le droit reste utilisable.
 
+Pour remplir `trainer_address`, `click_address` et `hr_address` de `config.toml`, `openride-core devices` recherche les appareils (8 s), les classe (trainer, boîtiers du Click, ceinture ou montre), signale ceux que BlueZ garde connectés et affiche le bloc `[drivers]` à recopier, avec les différences par rapport à la configuration (`--json`, `--all`, `--sim-scenario demo` pour un essai sans matériel).
+
 ```bash
+openride-core devices
 openride-ble-diag scan
 openride-ble-diag trainer --name "Victory" --duration 30
 openride-ble-diag trainer --name "Victory" --control --sim-grade 4 --erg 150

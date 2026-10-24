@@ -9,7 +9,7 @@ import math
 import numpy as np
 import pytest
 
-from conftest import ORIGIN, circle, straight_north
+from conftest import ORIGIN, circle, require_core, straight_north
 from openride_compiler import cli
 from openride_compiler import constants as C
 from openride_compiler.elevation import SyntheticProvider, default_relief
@@ -273,7 +273,7 @@ def test_add_layer_bad_world(tmp_path):
 
 
 def test_add_layer_refuses_synthetic_demo_world(tmp_path, capsys):
-    from openride_core.demo_world import write_demo_world
+    write_demo_world = require_core("openride_core.demo_world").write_demo_world
 
     demo = write_demo_world(tmp_path)
     assert run("add-layer", demo, "terrain") == 1
