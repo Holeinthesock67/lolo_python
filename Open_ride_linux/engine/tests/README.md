@@ -9,6 +9,14 @@ GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engin
 
 Le script renvoie 0 si tout passe et finit par un résumé (une ligne par test et son résultat).
 
+## Tests de rendu hors écran (`engine/tests/render/`, lot E2)
+
+En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'est compilé. Les tests de `engine/tests/render/` rendent donc une vraie image, sous Xvfb avec l'OpenGL logiciel de Mesa (moteur Compatibility), et lisent la couleur des pixels. Même contrat que les tests unitaires (lignes `[OK]`, ligne finale, code de sortie). Paquets : `xvfb`, `xauth`, `libgl1-mesa-dri`. Sans `xvfb-run`, `run_engine_tests.sh` saute cette étape, sauf avec `REQUIRE_RENDER=1` (intégration continue), qui la fait échouer.
+
+| Fichier | Lot | Vérifie |
+| --- | --- | --- |
+| `test_terrain_render.gd` | E2 | Shader triplanaire compilé et rendu : herbe, roche, neige et trois mélanges égaux à `blend_weights` (L3) à 3/255 près, seuil de pente du thème, texture utilisée à la place de la couleur |
+
 ## Tests unitaires (`engine/tests/unit/`, lot K1)
 
 Pour ajouter un test, il suffit de déposer un fichier dans `engine/tests/unit/` : le script le découvre, sans modification. Contrat d'un test unitaire :
@@ -31,6 +39,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_building_mesh.gd` | L1 | Maillage 3D des bâtiments extrudés (`building_mesh.gd`) : murs à arêtes vives, toit plat avec cour intérieure, sens des anneaux, couleurs déterministes par `id`, cas invalides et temps de 500 bâtiments |
 | `test_water_mesh.gd` | L2 | Maillage de l'eau (`water_mesh.gd`) : cours d'eau en ruban (droits et en coude), plans d'eau avec îles, largeur par défaut, cas invalides et déterminisme |
 | `test_theme_render_params.gd` | L3 | Paramètres de rendu tirés du thème (`theme_render_params.gd`) : uniforms terrain, fonction de référence du mélange herbe/roche/neige, poids triplanaires, route et direction du soleil |
+| `test_terrain_material.gd` | E2 | Instanciation et configuration du shader triplanaire (`terrain_material.gd` et `terrain.gdshader`) : uniforms du thème et constantes de L3, textures, ligne médiane de la route sur une texture de thème, tuiles sans couleur de sommet (le rendu réel est vérifié dans `tests/render/`) |
 | `test_quality_presets.gd` | L4 | Préréglages de qualité (`quality_presets.gd`) et arguments `--quality` / `--theme` de `engine_args.gd` |
 | `test_sound_model.gd` | L5 | Modèle sonore sans affichage (`sound_model.gd`) : vent, roue libre (délai 0,5 s et arrêt à > 10 W), hystérésis des points d'intérêt, lissage 12 dB/s et déterminisme |
 
