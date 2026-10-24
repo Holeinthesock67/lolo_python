@@ -95,6 +95,12 @@ def test_click_keypad_status_new_model():
     assert minus.minus_pressed and not minus.plus_pressed
     both = parse_click_buttons(frame(0xFFFFEEFF))
     assert both.plus_pressed and both.minus_pressed
+    # Click V2 : B du boîtier droit (bit 5, trame mesurée ffffffdf) = « − » ; A, Y, Z ignorés
+    b = parse_click_buttons(frame(0xFFFFFFDF))
+    assert b.minus_pressed and not b.plus_pressed
+    for other in (0xFFFFFFEF, 0xFFFFFFBF, 0xFFFFFF7F):
+        o = parse_click_buttons(frame(other))
+        assert not o.minus_pressed and not o.plus_pressed
     # trame réelle du rapport : 2308ffffffff0f
     real = parse_click_buttons(bytes.fromhex("2308ffffffff0f"))
     assert not real.plus_pressed and not real.minus_pressed
