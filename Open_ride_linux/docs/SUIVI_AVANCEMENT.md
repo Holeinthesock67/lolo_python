@@ -50,6 +50,7 @@ Vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) : constats R1, R
 - [x] `osm_layers.gd` : lecture et validation des couches `buildings`, `vegetation`, `poi` et `water` d'un `.world` et tronçons à charger pour une fenêtre de distance, testées sans écran contre un `.world` produit par le vrai compilateur (`engine/tests/test_osm_layers.gd`, `make_osm_world.py`, lot K4) ; le rendu reste à E4.
 - [x] `vegetation_placer.gd` : placement déterministe des arbres d'une tuile (zones `vegetation` du `.world` ou bruit de densité sous la limite des arbres), exclusions de la route, de la pente et des trous, testé sans écran (`engine/tests/unit/test_vegetation_placer.gd`, lot K3) ; l'affichage reste à E3 et E4.
 - [x] `hud_view_model.gd` : modèle de vue du HUD sans affichage (textes, profil d'altitude devant le cycliste, prochaine montée), testé sans écran (`engine/tests/unit/test_hud_view_model.gd`, lot K2) ; le dessin reste à E3.
+- [x] `building_mesh.gd` : maillage 3D des bâtiments extrudés (murs, toit plat avec cours intérieures par couture de ponts, couleurs stables tirées de `id`), testé sans écran (`engine/tests/unit/test_building_mesh.gd`, lot L1) ; le rendu reste à E4.
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
