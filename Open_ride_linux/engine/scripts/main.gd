@@ -12,6 +12,9 @@ const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
+const TreeRenderer := preload("res://scripts/tree_renderer.gd")
+const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const SoundPlayer := preload("res://scripts/sound_player.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -39,6 +42,7 @@ var _test_cam_last_s := NAN
 
 var erg_view = ErgViewModel.new()
 var _beep_player: AudioStreamPlayer
+var sound_player = null
 var _quality_name: String = "low"
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
@@ -57,6 +61,22 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
+	if streamer.tree_renderer == null:
+		var tree_rend = TreeRenderer.new()
+		tree_rend.name = "TreeRenderer"
+		streamer.add_child(tree_rend)
+		streamer.tree_renderer = tree_rend
+	if streamer.osm_streamer == null:
+		var osm_st = OsmStreamer.new()
+		osm_st.name = "OsmStreamer"
+		streamer.add_child(osm_st)
+		streamer.osm_streamer = osm_st
+	if sound_player == null:
+		sound_player = SoundPlayer.new()
+		sound_player.name = "SoundPlayer"
+		add_child(sound_player)
+		if streamer.osm_streamer != null:
+			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
 	if streamer.tree_renderer != null:
 		streamer.tree_renderer.set_preset(_quality_name)
@@ -168,7 +188,7 @@ func _record_frame_perf(delta: float) -> void:
 			var p50: float = sorted[int(floor(float(n) * 0.50))]
 			var p99: float = sorted[mini(int(floor(float(n) * 0.99)), n - 1)]
 			var max_ms: float = sorted[n - 1]
-			var trees := streamer.tree_renderer.get_active_tree_count() if streamer.tree_renderer != null else 0
+			var trees: int = streamer.tree_renderer.get_active_tree_count() if streamer.tree_renderer != null else 0
 			var draw_calls := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
 			print("[perf-rendu] images/s moy %.1f ; temps d'image p50 %.1f / p99 %.1f / max %.1f ms ; arbres %d ; appels de dessin %d ; préréglage %s" % [
 				avg_fps, p50, p99, max_ms, trees, draw_calls, _quality_name])
@@ -303,6 +323,10 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+
+	if sound_player != null and camera != null:
+		var now_s := float(Time.get_ticks_msec()) / 1000.0
+		sound_player.update_audio(state, now_s, camera.position)
 
 
 func _exit_tree() -> void:

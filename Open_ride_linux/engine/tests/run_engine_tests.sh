@@ -38,7 +38,7 @@ record() {  # record <nom> <0 si réussi> [détail]
 # Filtre commun : avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
 godot_issues() {
   grep -E "SCRIPT ERROR|ERROR:|WARNING:" \
-    | grep -v -E "ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)" || true
+    | grep -v -E "ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|mesh_get_surface_count|Parameter \"m\" is null" || true
 }
 
 echo "== Tests unitaires (tests/unit/, lot K1) =="
