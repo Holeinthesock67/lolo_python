@@ -16,7 +16,7 @@ Terminer le MVP visuel du sprint 3 (SRS §8 « MVP visuel », §13 sprint 3) : c
 
 ## 3. Prérequis
 
-- E2 fusionné **avec les corrections bloquantes de la revue** (R1 à R3) : shader `terrain.gdshader`, `terrain_material.gd`, `set_theme` du gestionnaire de tronçons.
+- E2 fusionné (PR #75, corrigée après la revue) : shader `terrain.gdshader`, `terrain_material.gd`, `set_theme` du gestionnaire de tronçons, test de rendu sous Xvfb (`engine/tests/render/`), que ce lot étend pour le décor du §4.1.
 - K2, K3, L3 et L4 livrés (c'est le cas sur `main`).
 - Pas de prérequis matériel pour coder ; la recette visuelle se fait sur le PC cible.
 
@@ -92,6 +92,7 @@ Temps d'image mesurés sur la fenêtre de 30 s (pas `Engine.get_frames_per_secon
   - `engine/scripts/render_quality.gd`, `engine/scripts/quality_presets.gd` (une seule table, §4.4) ;
   - `engine/scripts/hud_view_model.gd` (fusion des deux chemins, temps écoulé) ;
   - `engine/scripts/main.gd`, `engine/scenes/main.tscn` (ciel, brouillard, HUD) ;
+  - `engine/tests/render/test_terrain_render.gd` (décor : couleurs d'E2 inchangées avec `detail_strength = 0`, variation de l'herbe bornée à ± 8 % sinon) ;
   - `engine/tests/test_world_streamer.gd`, `engine/tests/unit/test_hud_view_model.gd`, `engine/tests/README.md` ;
   - `docs/lots/00_INDEX.md`, `docs/SUIVI_AVANCEMENT.md` (une ligne chacun).
 - **Interdits :** `vegetation_placer.gd` (lecture seule ; un défaut trouvé est signalé), `theme_render_params.gd`, le core, le compilateur, les contrats.
