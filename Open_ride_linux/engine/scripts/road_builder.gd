@@ -99,22 +99,34 @@ static func center_height(arrays: Array, route, k: int, s_pos: float) -> float:
 	return NAN
 
 
-## Matériau provisoire : gris uni et ligne médiane blanche discontinue (3 m peints, 3 m vides),
-## texture générée en mémoire. À créer sur le fil principal.
+## Matériau de la route : couleur ou texture du thème (lot E2), avec la ligne médiane blanche
+## discontinue (3 m peints, 3 m vides) peinte par-dessus. Avec les UV d'E1 (v = s / 6 m), une
+## texture de thème se répète tous les 6 m le long de la route. À créer sur le fil principal.
 static func make_material(road_color: Color = ROAD_COLOR, road_texture: Texture2D = null) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
-	if road_texture != null:
-		mat.albedo_texture = road_texture
-	else:
-		var w := 64
-		var hgt := 64
-		var img := Image.create(w, hgt, true, Image.FORMAT_RGB8)
-		img.fill(road_color)
-		for y in range(hgt / 2):
-			for x in [w / 2 - 1, w / 2]:
-				img.set_pixel(x, y, LINE_COLOR)
-		img.generate_mipmaps()
-		mat.albedo_texture = ImageTexture.create_from_image(img)
+	var src: Image = road_texture.get_image() if road_texture != null else null
+	mat.albedo_texture = ImageTexture.create_from_image(road_image(road_color, src))
 	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	mat.roughness = 0.9
 	return mat
+
+
+## Image de la chaussée : image du thème si elle est lisible (non vide, non compressée), sinon couleur
+## unie ; ligne médiane d'une largeur de 1/32 de l'image (au moins 2 pixels) sur la moitié haute.
+static func road_image(road_color: Color, src: Image = null) -> Image:
+	var img: Image = null
+	if src != null:
+		if not src.is_empty() and not src.is_compressed():
+			img = src.duplicate()
+			img.clear_mipmaps()
+			img.convert(Image.FORMAT_RGB8)
+	if img == null:
+		img = Image.create(64, 64, false, Image.FORMAT_RGB8)
+		img.fill(road_color)
+	var w := img.get_width()
+	var half_line := maxi(1, w / 64)
+	for y in range(img.get_height() / 2):
+		for x in range(w / 2 - half_line, w / 2 + half_line):
+			img.set_pixel(x, y, LINE_COLOR)
+	img.generate_mipmaps()
+	return img
