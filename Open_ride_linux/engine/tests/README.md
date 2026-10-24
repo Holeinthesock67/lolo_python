@@ -28,6 +28,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_menu_model.gd` | K5 | Navigation des menus (`menu_model.gd`) : 12 scénarios d'événements du Click (focus, éléments désactivés, boucle, retour, confirmation, liste vide), événements inconnus, clavier, aucun nœud créé |
 | `test_vegetation_placer.gd` | K3 | Placement des arbres (`vegetation_placer.gd`) : déterminisme et empreinte figée, densité par `kind`, bruit sans zone, exclusions (route, limite des arbres, pente, trous), temps d'une tuile |
 | `test_hud_view_model.gd` | K2 | Modèle de vue du HUD (`hud_view_model.gd`) : textes et valeurs limites, profil d'altitude (ouvert et boucle), prochaine montée, temps de `profile` |
+| `test_theme_render_params.gd` | L3 | Paramètres de rendu tirés du thème (`theme_render_params.gd`) : uniforms terrain, fonction de référence du mélange herbe/roche/neige, poids triplanaires, route et direction du soleil |
 
 ## Étapes du script
 
