@@ -57,7 +57,7 @@ DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 GODOT_TOLERATED = re.compile(
     r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
-HUD_LABELS = ("power", "speed", "cadence", "hr", "grade", "distance", "erg", "status")
+HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status")
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -480,11 +480,14 @@ class Session:
         whole = stats(img)
         self.check(scene, "image ni noire ni uniforme", whole["lum"] > 0.05 and whole["std"] > 0.02,
                    f"luminance {whole['lum']:.2f}, écart type {whole['std']:.3f}")
-        top = (self.width * 0.55, 0, self.width, self.height * 0.12)
+        # Ciel au centre, sous le panneau central du HUD (et sous le bandeau s'il est affiché) : les
+        # panneaux latéraux du HUD (lot E3) couvrent les coins hauts.
+        below = info["widgets"]["panel"]["rect"]
+        y0 = below[1] + below[3] + 4
         banner = info["widgets"]["banner"]
         if banner["visible"]:
-            top = (self.width * 0.55, banner["rect"][1] + banner["rect"][3] + 4, self.width,
-                   banner["rect"][1] + banner["rect"][3] + 4 + self.height * 0.08)
+            y0 = max(y0, banner["rect"][1] + banner["rect"][3] + 4)
+        top = (self.width * 0.35, y0, self.width * 0.65, y0 + self.height * 0.06)
         sky = fraction(img, top, is_sky)
         self.check(scene, "ciel en haut de l'image", sky >= 0.8, f"{sky:.0%} de pixels de ciel")
         bottom = (0, self.height * 0.75, self.width, self.height)
@@ -559,7 +562,7 @@ def _scenes(s: Session) -> None:
     shot = s.capture("attente")
     if shot:
         img, info = shot
-        s.check_texts("attente", info, {"status": "ÉTAT: en attente du core…", "power": "PUISSANCE: -- W"})
+        s.check_texts("attente", info, {"status": "ÉTAT: en attente du core…", "power": "—"})
         s.check_layout("attente", info)
         st = stats(img)
         s.check("attente", "image affichée (ni noire ni uniforme)", st["lum"] > 0.05, f"luminance {st['lum']:.2f}")
@@ -577,11 +580,10 @@ def _scenes(s: Session) -> None:
     if shot:
         img, info = shot
         s.check_texts("vue_fixe", info, {
-            "power": "PUISSANCE: 250 W (3s: 248 W)", "speed": "VITESSE: 0.0 km/h  [Braquet: 12/24]",
-            "cadence": "CADENCE: 90 rpm", "hr": "FC: 142 bpm",
-            "grade": "PENTE: 4.5 %  (envoyée au trainer: 4.5 %)", "distance": "DISTANCE: 1.50 km",
+            "power": "248", "speed": "0.0", "cadence": "90", "hr": "142", "grade": "+4.5 %", "distance": "1.50 km",
             "status": "ÉTAT: RUNNING | TRAINER: CONNECTED | ENTRÉE: CONNECTED"})
         s.check("vue_fixe", "ligne ERG cachée en SIM", not info["widgets"]["erg"]["visible"])
+        s.check("vue_fixe", "cible ERG cachée en SIM", not info["widgets"]["target"]["visible"])
         s.check_banner("vue_fixe", img, info, None)
         s.check_layout("vue_fixe", info)
         s.check_hud_pixels("vue_fixe", img, info)
@@ -595,7 +597,7 @@ def _scenes(s: Session) -> None:
     b = s.capture("mouvement_2")
     if a and b:
         (img_a, info_a), (img_b, info_b) = a, b
-        s.check_texts("mouvement_2", info_b, {"speed": "VITESSE: 28.8 km/h  [Braquet: 12/24]"})
+        s.check_texts("mouvement_2", info_b, {"speed": "28.8"})
         s.check("mouvement_2", "distance affichée qui avance",
                 info_a["widgets"]["distance"]["text"] != info_b["widgets"]["distance"]["text"],
                 f"{info_a['widgets']['distance']['text']} → {info_b['widgets']['distance']['text']}")
@@ -617,7 +619,7 @@ def _scenes(s: Session) -> None:
     shot = s.capture("erg")
     if shot:
         img, info = shot
-        s.check_texts("erg", info, {"erg": "ERG:", "power": "CIBLE ERG: 230 W", "grade": "(trainer en ERG)"},
+        s.check_texts("erg", info, {"erg": "ERG:", "target": "230 W"},
                       contains=True)
         s.check_layout("erg", info)
         s.check_hud_pixels("erg", img, info)

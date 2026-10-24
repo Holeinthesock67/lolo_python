@@ -347,7 +347,7 @@ static func _append_wall_ring(
 
 
 ## Construit les tableaux de maillage pour la liste de bâtiments d'un tronçon.
-static func build(buildings: Array, theme: Dictionary) -> Dictionary:
+static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0) -> Dictionary:
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var colors := PackedColorArray()
@@ -474,9 +474,10 @@ static func build(buildings: Array, theme: Dictionary) -> Dictionary:
 		var wall_color := pair[0]
 		var roof_color := pair[1]
 
-		_append_wall_ring(outer, base_y, top_y, wall_color, vertices, normals, colors, indices)
+		var wall_base_y := base_y - skirt_m
+		_append_wall_ring(outer, wall_base_y, top_y, wall_color, vertices, normals, colors, indices)
 		for h_ring in holes:
-			_append_wall_ring(h_ring, base_y, top_y, wall_color, vertices, normals, colors, indices)
+			_append_wall_ring(h_ring, wall_base_y, top_y, wall_color, vertices, normals, colors, indices)
 
 		for tri in roof_tris:
 			var a2: Vector2 = tri[0]

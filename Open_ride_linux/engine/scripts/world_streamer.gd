@@ -1,10 +1,10 @@
 extends Node3D
 
-## Chargement par tronçons du ruban de route et des tuiles de terrain (lot E1, §4.3).
+## Chargement par tronçons du ruban de route et des tuiles de terrain (lots E1 et E3).
 ##
 ## Fenêtre active, recalculée par update_window(s, v, caméra) à chaque image :
 ## - ruban : tronçons k dont l'intervalle [k × 1 000, (k + 1) × 1 000] touche (au sens strict)
-##   [s − 1 000 ; s + 3 000 + v × 10 s] ;
+##   [s − chunks_behind × 1 000 ; s + chunks_ahead × 1 000 + v × 10 s] ;
 ## - tuiles proches dont le carré passe à moins de 1 500 m de la caméra ou du point visé v × 10 s
 ##   plus loin ; tuiles lointaines présentes à moins de 12 km ;
 ## - tuile proche manquante : rien si une tuile lointaine couvre l'endroit (elle est dessinée dessous),
@@ -20,9 +20,9 @@ const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const TerrainMaterial := preload("res://scripts/terrain_material.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
+const TreeRenderer := preload("res://scripts/tree_renderer.gd")
+const OsmLayers := preload("res://scripts/osm_layers.gd")
 
-const ROAD_BEHIND_M := 1000.0
-const ROAD_AHEAD_M := 3000.0
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
 const FAR_RADIUS_M := 12000.0
@@ -34,6 +34,11 @@ const FLAT_GROUND_COLOR := Color(0.33, 0.42, 0.28)
 var route = null
 var world_dir := ""
 var has_terrain := false
+var chunks_ahead: int = 3
+var chunks_behind: int = 1
+var vegetation_density_factor: float = 0.3
+var tree_renderer: Node3D = null
+var osm_streamer: Node3D = null
 
 var _near_index: Dictionary = {}     # Vector2i -> true
 var _far_index: Dictionary = {}
@@ -47,6 +52,8 @@ var _terrain_material: Material
 var _road_width_m: float = RoadBuilder.ROAD_WIDTH_M
 var _ground_color: Color = FLAT_GROUND_COLOR
 var _ground: MeshInstance3D = null
+var _theme_dict: Dictionary = {}
+var _manifest: Variant = null
 
 ## Mesures pour le rapport de performance : clé de type -> [nombre, µs cumulées].
 var build_stats: Dictionary = {}
@@ -72,10 +79,10 @@ func set_world(new_route, new_world_dir: String) -> void:
 	route = new_route
 	world_dir = new_world_dir
 	has_terrain = false
-	var manifest = JSON.parse_string(FileAccess.get_file_as_string(world_dir.path_join("manifest.json"))) \
+	_manifest = JSON.parse_string(FileAccess.get_file_as_string(world_dir.path_join("manifest.json"))) \
 		if FileAccess.file_exists(world_dir.path_join("manifest.json")) else null
-	if typeof(manifest) == TYPE_DICTIONARY:
-		var layers = manifest.get("layers", {})
+	if typeof(_manifest) == TYPE_DICTIONARY:
+		var layers = _manifest.get("layers", {})
 		if typeof(layers) == TYPE_DICTIONARY and typeof(layers.get("terrain")) == TYPE_DICTIONARY:
 			has_terrain = bool(layers["terrain"].get("present", false))
 	if has_terrain:
@@ -86,6 +93,35 @@ func set_world(new_route, new_world_dir: String) -> void:
 			has_terrain = false
 	if not has_terrain:
 		_make_ground()
+	if osm_streamer != null:
+		osm_streamer.set_world(route, world_dir)
+
+
+func _has_layer(layer_name: String) -> bool:
+	if typeof(_manifest) == TYPE_DICTIONARY:
+		var layers = _manifest.get("layers", {})
+		if typeof(layers) == TYPE_DICTIONARY and typeof(layers.get(layer_name)) == TYPE_DICTIONARY:
+			return bool(layers[layer_name].get("present", false))
+	return false
+
+
+func _get_vegetation_areas(t: Vector2i) -> Array:
+	if not _has_layer("vegetation") or world_dir == "":
+		return []
+	var areas := []
+	var tile_rect := Rect2(t.x * 1000.0, t.y * 1000.0, 1000.0, 1000.0)
+	var count := RoadBuilder.chunk_count(route) if route != null else 0
+	for k in range(count):
+		var s0 := k * RoadBuilder.CHUNK_LENGTH_M
+		var s1 := (k + 1) * RoadBuilder.CHUNK_LENGTH_M
+		var p0: Vector3 = route.sample_point(s0)
+		var p1: Vector3 = route.sample_point(s1)
+		var r_bounds := Rect2(Vector2(p0.x, p0.z), Vector2.ZERO).expand(Vector2(p1.x, p1.z)).grow(100.0)
+		if r_bounds.intersects(tile_rect):
+			var res := OsmLayers.load_chunk(world_dir, "vegetation", k)
+			if res.get("ok", false):
+				areas.append_array(res.get("items", []))
+	return areas
 
 
 ## Retire tout : objets de scène, travaux en cours (attendus puis ignorés), sol plat.
@@ -97,6 +133,10 @@ func clear() -> void:
 	_wanted.clear()
 	for key in _instances.keys():
 		_free_instance(key)
+	if tree_renderer != null:
+		tree_renderer.clear()
+	if osm_streamer != null:
+		osm_streamer.clear()
 	if _ground != null:
 		remove_child(_ground)
 		_ground.mesh = null
@@ -114,9 +154,11 @@ func road_window(s_pos: float, v: float) -> Array:
 	var out := []
 	if route == null:
 		return out
-	var count: int = RoadBuilder.chunk_count(route)
-	var lo := s_pos - ROAD_BEHIND_M
-	var hi := s_pos + ROAD_AHEAD_M + maxf(v, 0.0) * LOOKAHEAD_S
+	var count := RoadBuilder.chunk_count(route)
+	if count == 0:
+		return out
+	var lo := s_pos - float(chunks_behind) * RoadBuilder.CHUNK_LENGTH_M
+	var hi := s_pos + float(chunks_ahead) * RoadBuilder.CHUNK_LENGTH_M + maxf(v, 0.0) * LOOKAHEAD_S
 	var k_lo := floori(lo / RoadBuilder.CHUNK_LENGTH_M)
 	var k_hi := ceili(hi / RoadBuilder.CHUNK_LENGTH_M) - 1
 	for k in range(k_lo, k_hi + 1):
@@ -200,6 +242,10 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 	_start_jobs()
 	if _ground != null:
 		_ground.position = Vector3(cam_pos.x, _ground.position.y, cam_pos.z)
+	if tree_renderer != null:
+		tree_renderer.enforce_budget(cam_pos)
+	if osm_streamer != null and route != null:
+		osm_streamer.update_window(s_pos - float(chunks_behind) * 1000.0, s_pos + float(chunks_ahead) * 1000.0 + v * LOOKAHEAD_S)
 
 
 func _start_jobs() -> void:
@@ -236,12 +282,19 @@ func _build_job(job: Dictionary) -> void:
 			var edges := TerrainTiles.load_neighbour_edges(job["world_dir"], spec["kind"], t.x, t.y)
 			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
+			if spec["kind"] == "near" and tree_renderer != null:
+				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
+					vegetation_density_factor, _get_vegetation_areas(t))
 		"flat":
 			var t: Vector2i = spec["tile"]
 			var c := TerrainTiles.tile_origin("near", t.x, t.y) + Vector3(500.0, 0.0, 500.0)
 			var alt := TerrainTiles.nearest_route_alt(r, c.x, c.z)
-			job["arrays"] = TerrainTiles.build_arrays(TerrainTiles.flat_heights(alt), "near")
+			var flat_h := TerrainTiles.flat_heights(alt)
+			job["arrays"] = TerrainTiles.build_arrays(flat_h, "near")
 			job["origin"] = TerrainTiles.tile_origin("near", t.x, t.y)
+			if tree_renderer != null:
+				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, flat_h, r, _theme_dict,
+					vegetation_density_factor, [])
 	var dt := Time.get_ticks_usec() - t0
 	_stats_mutex.lock()
 	var st: Array = build_stats.get(spec["kind"], [0, 0])
@@ -257,7 +310,10 @@ func _poll_jobs(wait: bool) -> void:
 		WorkerThreadPool.wait_for_task_completion(job["task"])
 		_jobs.erase(key)
 		if job["gen"] == _generation and _wanted.has(key) and not (job["arrays"] as Array).is_empty():
-			_ready.append({"key": key, "arrays": job["arrays"], "origin": job["origin"], "kind": job["spec"]["kind"]})
+			var ready_item := {"key": key, "arrays": job["arrays"], "origin": job["origin"], "kind": job["spec"]["kind"]}
+			if job.has("trees_data"):
+				ready_item["trees_data"] = job["trees_data"]
+			_ready.append(ready_item)
 
 
 func _wait_all_jobs() -> void:
@@ -282,6 +338,8 @@ func integrate(max_new: int) -> int:
 		mi.position = r["origin"]
 		add_child(mi)
 		_instances[r["key"]] = mi
+		if r.has("trees_data") and tree_renderer != null and not (r["trees_data"] as Dictionary).is_empty():
+			tree_renderer.add_tile(r["trees_data"])
 		created += 1
 	_start_jobs()
 	return created
@@ -307,10 +365,14 @@ func _free_instance(key: String) -> void:
 	remove_child(mi)
 	mi.mesh = null   # maillage libéré avant le nœud (évite une erreur du rendu factice sans écran)
 	mi.free()
+	if key.begins_with("near:") and tree_renderer != null:
+		var parts := key.split(":")
+		tree_renderer.remove_tile(Vector2i(int(parts[1]), int(parts[2])))
 
 
 ## Configure les matériaux de route et de terrain selon le thème (Lot E2).
 func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
+	_theme_dict = theme_dict
 	var r_params := ThemeRenderParams.road_params(theme_dict)
 	_road_width_m = float(r_params["width_m"])
 	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture") if theme_dir != "" else null
@@ -318,25 +380,22 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 
 	if _terrain_material is ShaderMaterial:
 		TerrainMaterial.apply_to_material(_terrain_material, theme_dict, theme_dir)
-	else:
-		_terrain_material = TerrainMaterial.create_material(theme_dict, theme_dir)
 
-	var t_params := ThemeRenderParams.terrain_uniforms(theme_dict)
-	_ground_color = t_params["grass_color"]
+	var tu := ThemeRenderParams.terrain_uniforms(theme_dict)
+	_ground_color = tu["grass_color"]
 	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
 		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
 
-	for key in _instances:
-		var mi: MeshInstance3D = _instances[key]
-		if mi != null and mi.mesh != null and mi.mesh.get_surface_count() > 0:
-			var is_road: bool = (key as String).begins_with("road:")
-			mi.mesh.surface_set_material(0, _road_material if is_road else _terrain_material)
-
 
 func _make_ground() -> void:
+	if _ground != null:
+		return
 	var min_alt := INF
-	for a in route.alt_m:
-		min_alt = minf(min_alt, a)
+	if route:
+		for a in route.alt_m:
+			min_alt = minf(min_alt, a)
+	if is_inf(min_alt):
+		min_alt = 0.0
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(2.0 * FAR_RADIUS_M, 2.0 * FAR_RADIUS_M)
 	var mat := StandardMaterial3D.new()

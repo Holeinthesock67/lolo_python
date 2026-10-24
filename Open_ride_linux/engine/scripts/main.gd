@@ -12,6 +12,9 @@ const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
+const TreeRenderer := preload("res://scripts/tree_renderer.gd")
+const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const SoundPlayer := preload("res://scripts/sound_player.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -24,11 +27,7 @@ const TEST_CAM_PERIOD_US := 50_000   # journal de la caméra à 20 Hz en mode te
 @onready var world_env: WorldEnvironment = $WorldEnvironment
 @onready var sun: DirectionalLight3D = $DirectionalLight3D
 @onready var banner: Label = $HUD/Banner
-@onready var hud_power: Label = $HUD/Margin/VBox/PowerLabel
-@onready var hud_speed: Label = $HUD/Margin/VBox/SpeedLabel
-@onready var hud_cadence: Label = $HUD/Margin/VBox/CadenceLabel
-@onready var hud_grade: Label = $HUD/Margin/VBox/GradeLabel
-@onready var hud_distance: Label = $HUD/Margin/VBox/DistanceLabel
+@onready var hud: CanvasLayer = $HUD
 
 var route
 var routes_dir: String = ""
@@ -41,12 +40,12 @@ var _route_job: Dictionary = {}
 var _test_cam_last_us := 0
 var _test_cam_last_s := NAN
 
-
-var status_label: Label
-var hud_hr: Label
-var hud_erg: Label
 var erg_view = ErgViewModel.new()
 var _beep_player: AudioStreamPlayer
+var sound_player = null
+var _quality_name: String = "low"
+var _frame_times: Array[float] = []
+var _last_perf_log_us: int = 0
 
 const BEEPS := {
 	"PLUS_SHORT": [[880.0, 0.08]],
@@ -61,8 +60,34 @@ func _ready() -> void:
 	routes_dir = cfg["routes_dir"]
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
-	RenderQuality.apply_preset(RenderQuality.DEFAULT_PRESET, camera, sun, world_env.environment, get_viewport())
+	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
+	if streamer.tree_renderer == null:
+		var tree_rend = TreeRenderer.new()
+		tree_rend.name = "TreeRenderer"
+		streamer.add_child(tree_rend)
+		streamer.tree_renderer = tree_rend
+	if streamer.osm_streamer == null:
+		var osm_st = OsmStreamer.new()
+		osm_st.name = "OsmStreamer"
+		streamer.add_child(osm_st)
+		streamer.osm_streamer = osm_st
+	if sound_player == null:
+		sound_player = SoundPlayer.new()
+		sound_player.name = "SoundPlayer"
+		add_child(sound_player)
+		if streamer.osm_streamer != null:
+			streamer.osm_streamer.sound_player = sound_player
+	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+	if streamer.tree_renderer != null:
+		streamer.tree_renderer.set_preset(_quality_name)
 	RenderQuality.apply_fog(world_env.environment, false)
+	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
+	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
+	if RenderingServer.get_rendering_device() == null:   # Compatibility : pas de RenderingDevice
+		var sky_mat := ProceduralSkyMaterial.new()
+		sky_mat.sky_top_color = Color(0.38, 0.65, 0.98)
+		sky_mat.sky_horizon_color = Color(0.65, 0.75, 0.85)
+		world_env.environment.sky.sky_material = sky_mat
 	var theme_res := ThemeLoader.load_named(cfg.get("theme", "default"))
 	var theme_dict: Dictionary = theme_res.get("theme", {})
 	var theme_dir: String = theme_res.get("theme_dir", "")
@@ -86,24 +111,12 @@ func _ready() -> void:
 	_beep_player.stream = gen
 	add_child(_beep_player)
 	_beep_player.play()
-	# Fréquence cardiaque sous la cadence, puis ligne de l'entraînement ERG (cachée en SIM).
-	var vbox := $HUD/Margin/VBox
-	hud_hr = Label.new()
-	hud_hr.text = "FC: " + HudViewModel.NO_VALUE
-	vbox.add_child(hud_hr)
-	vbox.move_child(hud_hr, hud_cadence.get_index() + 1)
-	hud_erg = Label.new()
-	hud_erg.visible = false
-	vbox.add_child(hud_erg)
-	# Ligne d'état de diagnostic : séance, trainer, entrée, raison de pause.
-	status_label = Label.new()
-	status_label.text = "ÉTAT: en attente du core…"
-	$HUD/Margin/VBox.add_child(status_label)
-	# Le HUD s'élargit avec ses textes (ligne ERG…) : le bandeau se replace pour ne jamais le recouvrir.
-	var panel: Control = $HUD/Margin/Panel
-	panel.resized.connect(func() -> void: banner.place_beside(panel.get_global_rect()))
-	get_viewport().size_changed.connect(func() -> void: banner.place_beside(panel.get_global_rect()))
-	# Le parcours est chargé d'après le route_id reçu dans state (_request_route).
+	# Le bandeau passe sous le panneau central du HUD (ERG, montée, état) pour ne jamais le recouvrir.
+	var center: Control = hud.panel_center
+	var place_banner := func() -> void: banner.offset_top = center.get_global_rect().end.y + banner.MARGIN / 2.0
+	center.resized.connect(place_banner)
+	get_viewport().size_changed.connect(place_banner)
+	place_banner.call()
 
 
 func _apply_sky_params(theme_dict: Dictionary) -> void:
@@ -111,8 +124,9 @@ func _apply_sky_params(theme_dict: Dictionary) -> void:
 	if sun != null:
 		var sun_dir: Vector3 = sky["sun_direction"]
 		sun.basis = Basis.looking_at(-sun_dir, Vector3.UP)
-	# sky.fog_density est réservé au brouillard volumétrique (lot E3) : le brouillard en profondeur
-	# d'E1, qui masque la limite des tuiles lointaines, n'est pas modifié ici.
+	var horizon: Color = sky.get("horizon_color", RenderQuality.FOG_COLOR)
+	var fog_dens: float = float(sky.get("fog_density", 0.01))
+	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
 
 
 func _on_input_event(event_name: String) -> void:
@@ -146,8 +160,9 @@ func _unhandled_input(event: InputEvent) -> void:
 				ipc.send_command("input_event", {"event": "MINUS_LONG"})
 
 
-func _process(_delta: float) -> void:
+func _process(delta: float) -> void:
 	_poll_route_job()
+	_record_frame_perf(delta)
 	var now := Time.get_ticks_usec()
 	if not follow.has_frame():
 		return
@@ -166,6 +181,33 @@ func _process(_delta: float) -> void:
 		camera.rotation.y = -heading
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
+
+
+## Mesure des images par seconde et statistiques toutes les 30 s (Lot E3 §4.6)
+func _record_frame_perf(delta: float) -> void:
+	_frame_times.append(delta * 1000.0)
+	var now := Time.get_ticks_usec()
+	if _last_perf_log_us == 0:
+		_last_perf_log_us = now
+		return
+	if now - _last_perf_log_us >= 30_000_000:
+		var n := _frame_times.size()
+		if n > 0:
+			var total_ms := 0.0
+			for t in _frame_times:
+				total_ms += t
+			var avg_fps := float(n) / (total_ms / 1000.0) if total_ms > 0.0 else 0.0
+			var sorted := _frame_times.duplicate()
+			sorted.sort()
+			var p50: float = sorted[int(floor(float(n) * 0.50))]
+			var p99: float = sorted[mini(int(floor(float(n) * 0.99)), n - 1)]
+			var max_ms: float = sorted[n - 1]
+			var trees: int = streamer.tree_renderer.get_active_tree_count() if streamer.tree_renderer != null else 0
+			var draw_calls := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
+			print("[perf-rendu] images/s moy %.1f ; temps d'image p50 %.1f / p99 %.1f / max %.1f ms ; arbres %d ; appels de dessin %d ; préréglage %s" % [
+				avg_fps, p50, p99, max_ms, trees, draw_calls, _quality_name])
+		_frame_times.clear()
+		_last_perf_log_us = now
 
 
 func _test_log_camera(now: int, s_disp: float) -> void:
@@ -230,7 +272,10 @@ func _poll_route_job() -> void:
 	follow.reset()
 	# Changement de parcours : tronçons et tuiles vidés puis reconstruits autour de s = 0.
 	streamer.set_world(route, job["path"])
-	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain)
+	var sky_params := ThemeRenderParams.sky_params(streamer._theme_dict)
+	var horizon: Color = sky_params.get("horizon_color", RenderQuality.FOG_COLOR)
+	var fog_dens: float = float(sky_params.get("fog_density", 0.01))
+	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
 	banner.clear_message("route")
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
@@ -253,9 +298,9 @@ func _test_screenshot(path: String, tag: String) -> void:
 	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
 	var widgets := {}
 	var nodes := {
-		"panel": $HUD/Margin/Panel, "power": hud_power, "speed": hud_speed, "cadence": hud_cadence,
-		"hr": hud_hr, "grade": hud_grade, "distance": hud_distance, "erg": hud_erg,
-		"status": status_label, "banner": banner,
+		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
+		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
+		"status": hud.status_label, "banner": banner,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -331,21 +376,13 @@ func _on_state_received(state: Dictionary) -> void:
 	if not state.has("gears_total"):
 		state["gears_total"] = ipc.core_config.get("gears_total", 24)
 	var erg_eval: Dictionary = erg_view.update(state.get("erg", null), Time.get_ticks_usec() / 1e6)
-	var lines := HudViewModel.session_lines(state, erg_eval)
-	hud_power.text = lines["power"]
-	hud_speed.text = lines["speed"]
-	hud_cadence.text = lines["cadence"]
-	hud_hr.text = lines["hr"]
-	hud_grade.text = lines["grade"]
-	hud_distance.text = lines["distance"]
-	hud_erg.text = lines["erg"]
-	hud_erg.visible = lines["erg"] != ""
-	var pause = state.get("pause_reason", null)
-	status_label.text = "ÉTAT: %s%s | TRAINER: %s | ENTRÉE: %s" % [
-		state.get("session_state", "?"),
-		(" (" + str(pause) + ")") if pause != null else "",
-		state.get("trainer_status", "?"),
-		state.get("input_status", "?")]
+
+	if hud != null and hud.has_method("update_display"):
+		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+
+	if sound_player != null and camera != null:
+		var now_s := float(Time.get_ticks_msec()) / 1000.0
+		sound_player.update_audio(state, now_s, camera.position)
 
 
 func _exit_tree() -> void:
