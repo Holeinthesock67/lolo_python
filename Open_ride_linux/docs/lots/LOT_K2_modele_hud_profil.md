@@ -49,3 +49,9 @@ Aucune.
 
 - Dessin du HUD et du profil (E3, interne : contrôle visuel).
 - Bandeau ERG (déjà dans `erg_view_model.gd`, affichage F2).
+
+## 9. Livraison (24 octobre 2026, PR #39)
+
+- `engine/scripts/hud_view_model.gd` et `engine/tests/unit/test_hud_view_model.gd` (60 vérifications, découvert par K1).
+- **Écarts assumés :** si `s` est déjà dans une montée, `next_climb` renvoie ce qu'il en reste (`in_progress` vrai) ; une montée commence à 2 % sur 10 m et finit au premier replat de plus de 50 m. Altitude et pente sont lues par l'interpolation linéaire de `route_data.sample()`, sans calcul de position.
+- Mesure : `profile` sur 120 colonnes en 0,35 ms environ (seuil 2 ms).
