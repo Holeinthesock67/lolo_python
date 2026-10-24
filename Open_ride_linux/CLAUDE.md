@@ -100,6 +100,7 @@ openride-core summary --ftp 250        # bilan du dernier journal (ou d'un .json
 openride-core history --weeks 8        # historique des séances et cumul par semaine ISO ; --json
 
 # Diagnostic matériel
+openride-core devices                  # appareils classés (trainer, Click, ceinture) et bloc [drivers] à recopier ; --json
 openride-ble-diag scan | trainer --name Victory --duration 30 | click --duration 60
 ```
 
