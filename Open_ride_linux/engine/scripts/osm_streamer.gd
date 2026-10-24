@@ -92,9 +92,9 @@ func _free_chunk(k: int) -> void:
 		return
 	var nodes: Array = _chunk_instances[k]
 	for mi in nodes:
-		if mi is MeshInstance3D:
-			remove_child(mi)
-			mi.mesh = null
+		if mi is Node:
+			if mi.get_parent() == self:
+				remove_child(mi)
 			mi.free()
 	_chunk_instances.erase(k)
 	_pois_by_chunk.erase(k)

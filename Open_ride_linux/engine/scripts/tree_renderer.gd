@@ -81,8 +81,22 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 			flat_alt = route.alt_m[0]
 		height_fn = func(_x: float, _z: float) -> float: return flat_alt
 	else:
+		var origin_x := float(tile_x * 1000)
+		var origin_z := float(tile_z * 1000)
 		height_fn = func(x: float, z: float) -> float:
-			return TerrainTiles.mesh_height_at(heights, "near", tile_x, tile_z, x, z)
+			var fi := clampf((x - origin_x) / 10.0, 0.0, 100.0)
+			var fj := clampf((z - origin_z) / 10.0, 0.0, 100.0)
+			var i := mini(int(fi), 99)
+			var j := mini(int(fj), 99)
+			var u := fi - i
+			var v := fj - j
+			var a := heights[j * 101 + i]
+			var b := heights[j * 101 + i + 1]
+			var c := heights[(j + 1) * 101 + i]
+			var d := heights[(j + 1) * 101 + i + 1]
+			if u + v <= 1.0:
+				return a + u * (b - a) + v * (c - a)
+			return d + (1.0 - u) * (c - d) + (1.0 - v) * (b - d)
 
 	# 1. Placement selon zones OSM ou bruit de base (Lots E3 & E4)
 	var trees: PackedVector4Array = placer.place_tile(tile_x, tile_z, 1000.0, height_fn, route, tile_theme, areas)
@@ -236,9 +250,13 @@ func remove_tile(tile_key: Vector2i) -> void:
 		var mmi0: MultiMeshInstance3D = cell_info["lod0"]
 		var mmi1: MultiMeshInstance3D = cell_info["lod1"]
 		if mmi0 != null:
-			mmi0.queue_free()
+			if mmi0.get_parent() == self:
+				remove_child(mmi0)
+			mmi0.free()
 		if mmi1 != null:
-			mmi1.queue_free()
+			if mmi1.get_parent() == self:
+				remove_child(mmi1)
+			mmi1.free()
 	_tiles.erase(tile_key)
 
 
@@ -250,9 +268,13 @@ func clear() -> void:
 			var mmi0: MultiMeshInstance3D = cell_info["lod0"]
 			var mmi1: MultiMeshInstance3D = cell_info["lod1"]
 			if mmi0 != null:
-				mmi0.queue_free()
+				if mmi0.get_parent() == self:
+					remove_child(mmi0)
+				mmi0.free()
 			if mmi1 != null:
-				mmi1.queue_free()
+				if mmi1.get_parent() == self:
+					remove_child(mmi1)
+				mmi1.free()
 	_tiles.clear()
 	_active_tree_count = 0
 
@@ -281,9 +303,13 @@ func enforce_budget(cam_pos: Vector3) -> void:
 		var mmi0: MultiMeshInstance3D = cell_info["lod0"]
 		var mmi1: MultiMeshInstance3D = cell_info["lod1"]
 		if mmi0 != null:
-			mmi0.queue_free()
+			if mmi0.get_parent() == self:
+				remove_child(mmi0)
+			mmi0.free()
 		if mmi1 != null:
-			mmi1.queue_free()
+			if mmi1.get_parent() == self:
+				remove_child(mmi1)
+			mmi1.free()
 		_tiles[item["tile_key"]].erase(item["cell_idx"])
 
 
