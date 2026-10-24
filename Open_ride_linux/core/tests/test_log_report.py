@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 from pathlib import Path
 
 import pytest
@@ -16,6 +17,7 @@ from openride_core.tools.log_report import (
     PATTERNS,
     STEP_P99_LIMIT_MS,
     analyse,
+    format_report,
      main,
 )
 
@@ -189,8 +191,9 @@ def test_patterns_match_exact_core_source_format_strings() -> None:
         "trainer_reconnect": (2.0,),
         "trainer_cmd_refused": (0x11, "CONTROL_NOT_PERMITTED"),
         "trainer_warning": ("plus de données du trainer",),
-        "click_connected": (),
-        "click_disconnected": (),
+        "click_connected": ("F4:C4:59:15:E1:E7", 3.24, 2),
+        "click_disconnected": (75.0, "0.1 s", "jamais", 750, "0.4 s", "lien perdu (rappel bleak)"),
+        "click_rate": (598, 60.0, 9.97),
         "click_press": ("PLUS_SHORT",),
         "click_not_found": (),
         "journal_write_error": ("No space left on device",),
@@ -203,9 +206,57 @@ def test_patterns_match_exact_core_source_format_strings() -> None:
             f"La chaîne de format pour '{key}' ({raw_fmt!r}) est absente de {filename}"
         )
         # Reconstitue la chaîne Python si elle est concaténée sur deux lignes dans le source
-        fmt = raw_fmt.replace('"\n                         "', "")
+        fmt = re.sub(r'"\n\s+"', "", raw_fmt)
         args = sample_args[key]
         rendered = fmt % args if args else fmt
         assert PATTERNS[key].match(rendered), (
             f"Le motif '{key}' ne reconnaît pas le message formaté : {rendered!r}"
         )
+
+
+def test_click_diagnostic_k8() -> None:
+    """Lot K8 : durées de connexion, reconnexions, appuis, cadence et corrélation au trainer."""
+    rep = analyse((LOGS_DIR / "seance_click_coupures.log").read_text(encoding="utf-8").splitlines())
+    c = rep.click
+    assert (c.connections, c.disconnections) == (4, 3)
+    assert c.connection_durations_s == [75.0, 70.0, 10.0]
+    assert (c.connection_min_s, c.connection_median_s, c.connection_max_s) == (10.0, 70.0, 75.0)
+    assert c.reconnect_delays_s == [3.0, 8.0, 4.0]
+    assert (c.reconnect_delay_median_s, c.reconnect_delay_max_s) == (4.0, 8.0)
+    assert c.search_durations_s == [4.0, 3.0, 8.0, 4.0]
+    assert c.since_press_at_drop_s == [12.0, 45.0]
+    assert c.notification_rates == [10.0, 9.8] and c.notification_rate_min == 9.8
+    # 1 s après une écriture au trainer : corrélée ; 10 s : non ; 1 s après une perte du trainer : corrélée.
+    assert [d.trainer_correlated for d in c.drops] == [True, False, True]
+    assert c.drops[0].since_trainer_write_s == 1.0 and c.drops[1].since_trainer_write_s == 10.0
+    assert c.drops[2].since_press_s is None and c.drops[2].nearest_trainer_event_s == 1.0
+    assert c.drops[0].reason == "lien perdu (rappel bleak)" and c.drops[0].notifications == 750
+    assert c.trainer_correlated_drops == 2
+
+    text = format_report(rep)
+    assert "médiane 70.0 s" in text and "2/3 à moins de 2 s" in text
+
+
+def test_click_diagnostic_old_logs_and_json_keys(capsys: pytest.CaptureFixture[str]) -> None:
+    # Ancien format : compteurs inchangés, durées calculées sur les horodatages.
+    rep = analyse((LOGS_DIR / "seance_coupures.log").read_text(encoding="utf-8").splitlines())
+    assert (rep.click.connections, rep.click.disconnections, rep.click.failed_attempts) == (3, 2, 1)
+    assert rep.click.connection_durations_s == [68.0, 53.0]
+    assert rep.click.reconnect_delays_s == [12.0, 6.0]
+    assert all(d.notifications is None for d in rep.click.drops)
+
+    assert main([str(LOGS_DIR / "seance_click_coupures.log"), "--json"]) == 0
+    click = json.loads(capsys.readouterr().out)["click"]
+    for old_key in ("connections", "disconnections", "failed_attempts", "presses"):
+        assert old_key in click
+    for new_key in ("connection_durations_s", "connection_median_s", "reconnect_delays_s",
+                    "since_press_at_drop_s", "notification_rates", "drops", "trainer_correlated_drops"):
+        assert new_key in click
+    assert set(click["drops"][0]) == {"timestamp", "connected_s", "since_notification_s", "since_press_s",
+                                      "notifications", "since_trainer_write_s", "reason",
+                                      "nearest_trainer_event_s", "trainer_correlated"}
+
+    merged = analyse((LOGS_DIR / "seance_click_coupures.log").read_text(encoding="utf-8").splitlines() * 2,
+                     all_sessions=True)
+    assert merged.click.connection_durations_s == [75.0, 70.0, 10.0] * 2
+    assert merged.click.trainer_correlated_drops == 4
