@@ -180,7 +180,7 @@ def list_routes(routes_root: Path = ROUTES_DIR, gpx_dir: Path = GPX_DIR) -> list
 
     # GPX non encore compilés
     uncompiled_entries: list[RouteEntry] = []
-    for gpx_name, (gpx_path, _sha, norm_id) in gpx_by_name.items():
+    for gpx_path, _sha, norm_id in gpx_by_name.values():
         if gpx_path in matched_gpx:
             continue
         uncompiled_entries.append(

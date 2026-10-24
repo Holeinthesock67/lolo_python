@@ -17,7 +17,7 @@ import numpy as np
 from . import constants as C
 from .elevation import ElevationProvider
 from .frame import LocalFrame
-from .terrain import NEAR, RouteAxis, read_tile, tile_filename
+from .terrain import NEAR, RouteAxis, read_tile
 
 HEIGHT_RE = re.compile(r"^\s*([0-9]+(?:[.,][0-9]+)?)\s*(?:m|meters|metres)?\s*$", re.IGNORECASE)
 
@@ -878,7 +878,7 @@ def replace_layer_dir(
     world: Path,
     layer_name: str,
     writer_fn: Any,
-    chunks: dict[int, list[dict[str, Any]]],
+    chunks: dict[int, Any],
 ) -> None:
     """Remplace atomiquement `world/<layer_name>` sans toucher aux autres couches."""
     world = Path(world)

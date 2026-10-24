@@ -5,7 +5,8 @@ Extrait un résumé structuré (humain ou JSON) d'un fichier de journal du core
 Zwift Click, pauses, performances de la boucle et seuils Rust (SRS §14.1).
 
 Section Click enrichie (lot K8) : durées de connexion et délais de reconnexion (calculés sur
-les horodatages, donc aussi pour les anciens journaux), temps depuis le dernier appui et
+les horodatages, donc aussi pour les anciens journaux, et par boîtier quand la ligne porte
+l'adresse : le Click récent en a deux), temps depuis le dernier appui et
 cadence des notifications (nouvelles lignes du lot K8), et coupures « corrélées » au trainer :
 celles qui tombent à moins de ``CORRELATION_WINDOW_S`` d'une écriture au trainer (valeur portée
 par la ligne de coupure) ou d'un événement du trainer dans le journal (connexion, reconnexion,
@@ -86,7 +87,7 @@ CORE_FORMAT_STRINGS: dict[str, tuple[str, str]] = {
     ),
     "click_disconnected": (
         "input_providers.py",
-        'Zwift Click déconnecté après %.1f s de connexion : dernière notification il y a %s, "\n'
+        'Zwift Click déconnecté (adresse %s) après %.1f s de connexion : dernière notification il y a %s, "\n'
         '                          "dernier appui il y a %s, %d notification(s), dernière écriture au trainer il y a %s, "\n'
         '                          "raison : %s ; appuyez sur un bouton pour le réveiller',
     ),
@@ -150,7 +151,7 @@ PATTERNS: dict[str, re.Pattern[str]] = {
     ),
     "click_disconnected": re.compile(
         r"^Zwift Click déconnecté (?:\(veille \?\) : appuyez sur un bouton pour le réveiller"
-        r"|après (?P<connected>[0-9.]+) s de connexion : dernière notification il y a (?P<since_notif>[0-9.]+ s|jamais), "
+        r"|(?:\(adresse (?P<address>[^)]+)\) )?après (?P<connected>[0-9.]+) s de connexion : dernière notification il y a (?P<since_notif>[0-9.]+ s|jamais), "
         r"dernier appui il y a (?P<since_press>[0-9.]+ s|jamais), (?P<notifs>\d+) notification\(s\), "
         r"dernière écriture au trainer il y a (?P<since_write>[0-9.]+ s|jamais), "
         r"raison : (?P<reason>.+) ; appuyez sur un bouton pour le réveiller)$"
@@ -317,8 +318,9 @@ def _analyse_single_session(lines: list[str]) -> Report:
     consec_lag = 0
     consec_cpu = 0
 
-    click_up_since: datetime | None = None
-    click_down_since: datetime | None = None
+    # Par boîtier (le Click récent en a deux, « + » et « − ») ; clé None : ligne sans adresse.
+    click_up_since: dict[str | None, datetime] = {}
+    click_down_since: dict[str | None, datetime] = {}
     click_drop_dts: list[datetime | None] = []
     trainer_event_dts: list[datetime] = []
 
@@ -391,10 +393,15 @@ def _analyse_single_session(lines: list[str]) -> Report:
             if m_click_up.group("search") is not None:
                 rep.click.search_durations_s.append(float(m_click_up.group("search")))
             if dt is not None:
-                if click_down_since is not None:
-                    rep.click.reconnect_delays_s.append(round((dt - click_down_since).total_seconds(), 3))
-                click_down_since = None
-                click_up_since = dt
+                key = _click_key(m_click_up.group("address"))
+                if key not in click_down_since and None in click_down_since and len(click_down_since) == 1:
+                    key_down: str | None = None   # coupure d'un ancien journal, sans adresse
+                else:
+                    key_down = key
+                if key_down in click_down_since:
+                    down_dt = click_down_since.pop(key_down)
+                    rep.click.reconnect_delays_s.append(round((dt - down_dt).total_seconds(), 3))
+                click_up_since[key] = dt
             continue
 
         m_click_down = PATTERNS["click_disconnected"].match(msg)
@@ -410,11 +417,19 @@ def _analyse_single_session(lines: list[str]) -> Report:
                 if drop.since_press_s is not None:
                     rep.click.since_press_at_drop_s.append(drop.since_press_s)
             if dt is not None:
-                if click_up_since is not None:
-                    drop.connected_s = round((dt - click_up_since).total_seconds(), 3)
-                    rep.click.connection_durations_s.append(drop.connected_s)
-                click_up_since = None
-                click_down_since = dt
+                key = _click_key(m_click_down.group("address"))
+                if key is None and len(click_up_since) == 1:
+                    key = next(iter(click_up_since))   # un seul boîtier connecté : c'est lui
+                if key is None and len(click_up_since) > 1:
+                    # Ligne sans adresse et deux boîtiers connectés : durée lue dans la ligne.
+                    if m_click_down.group("connected") is not None:
+                        drop.connected_s = float(m_click_down.group("connected"))
+                        rep.click.connection_durations_s.append(drop.connected_s)
+                else:
+                    if key in click_up_since:
+                        drop.connected_s = round((dt - click_up_since.pop(key)).total_seconds(), 3)
+                        rep.click.connection_durations_s.append(drop.connected_s)
+                    click_down_since[key] = dt
             rep.click.drops.append(drop)
             click_drop_dts.append(dt)
             continue
@@ -510,6 +525,10 @@ def _analyse_single_session(lines: list[str]) -> Report:
                 min(abs((t - ddt).total_seconds()) for t in trainer_event_dts), 3)
     _finalize_click(rep.click)
     return rep
+
+
+def _click_key(address: str | None) -> str | None:
+    return address.strip().upper() if address else None
 
 
 def _ago_s(text: str) -> float | None:
