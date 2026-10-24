@@ -20,7 +20,7 @@ from typing import Any
 
 from .config import WORKOUTS_DIR, Config
 from .gearing import Gearing
-from .input_providers import KeyboardProvider, NullProvider, ZwiftClickProvider
+from .input_providers import ClickPair, KeyboardProvider, NullProvider, ZwiftClickProvider
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
 from .mock_driver import MockDriver
@@ -94,9 +94,13 @@ def build_driver(cfg: Config) -> Any:
 def build_inputs(cfg: Config) -> list[Any]:
     kind = cfg.drivers.input
     if kind == "click":
-        # Le clavier reste actif en parallèle (contrat IPC §6).
-        return [ZwiftClickProvider(cfg.drivers.click_address or None,
-                                   cfg.drivers.click_short_max_s, cfg.drivers.click_long_min_s),
+        # Deux fournisseurs pour la paire du Click récent (boîtiers « + » et « − », même nom) ;
+        # le clavier reste actif en parallèle (contrat IPC §6).
+        d, pair = cfg.drivers, ClickPair()
+        return [ZwiftClickProvider(d.click_address or None, d.click_short_max_s, d.click_long_min_s,
+                                   pair=pair),
+                ZwiftClickProvider(None, d.click_short_max_s, d.click_long_min_s,
+                                   pair=pair, optional=True),
                 KeyboardProvider()]
     if kind == "keyboard":
         return [KeyboardProvider()]
@@ -325,8 +329,13 @@ class CoreSession:
         for provider in self.inputs:
             while not provider.events.empty():
                 self._handle_input(provider.events.get_nowait())
-        # Statut d'entrée : celui du premier fournisseur (Click s'il est configuré).
-        self.state.input_status = self.inputs[0].status if self.inputs else "KEYBOARD"
+        # Statut d'entrée : celui du premier fournisseur (Click s'il est configuré) ; la paire de
+        # Click est « connectée » dès qu'un des deux boîtiers l'est.
+        clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
+        if any(p.status == "CONNECTED" for p in clicks):
+            self.state.input_status = "CONNECTED"
+        else:
+            self.state.input_status = self.inputs[0].status if self.inputs else "KEYBOARD"
 
     # --- pas de simulation ---------------------------------------------------------------
 
