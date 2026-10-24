@@ -16,12 +16,12 @@ from pathlib import Path
 
 import pytest
 
-from conftest import straight_north
+from conftest import require_core, straight_north
 from openride_compiler import cli
 from openride_compiler.writer import normalize_name
 
-core_catalog = pytest.importorskip("openride_core.catalog")
-core_demo = pytest.importorskip("openride_core.demo_world")
+core_catalog = require_core("openride_core.catalog")
+core_demo = require_core("openride_core.demo_world")
 
 
 def run(*argv) -> int:

@@ -10,7 +10,7 @@ import sys
 import jsonschema
 import pytest
 
-from conftest import WORLD_CONTRACTS, circle, straight_north
+from conftest import WORLD_CONTRACTS, circle, require_core, straight_north
 from openride_compiler import cli, writer
 from openride_compiler.writer import normalize_name
 
@@ -36,7 +36,7 @@ def built(make_gpx, tmp_path):
 
 @pytest.mark.parametrize("shape", ["straight", "loop", "out_and_back"])
 def test_outputs_match_schemas_and_load_in_core(shape, make_gpx, tmp_path):
-    from openride_core.route import load_world
+    load_world = require_core("openride_core.route").load_world
 
     pts = circle() if shape == "loop" else straight_north()
     gpx = make_gpx("trace.gpx", *pts)
