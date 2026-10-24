@@ -110,7 +110,7 @@ scripts/openride-dev.sh --trainer mock --input keyboard --autostart   # sans vé
 | Action | Click | Clavier (fenêtre Godot) |
 | --- | --- | --- |
 | Braquet + 1 / − 1 | Appui court + / − | `+` / `−` ou flèches haut / bas |
-| Braquet + 3 / − 3 | Appui long (≥ 0,9 s) + / − | `Page haut` / `Page bas` |
+| Braquet + 10 / − 10 (bornés de 1 à 24) | Appui long (≥ 0,9 s) + / − | `Page haut` / `Page bas` |
 
 Chaque type d'appui a son bip.
 
