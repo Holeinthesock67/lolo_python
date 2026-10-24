@@ -139,3 +139,23 @@ Ils s'exécutent dans le cadre de `engine/tests/` créé par le lot D.
 - Bâtiments, eau, points d'intérêt.
 - HUD final et profil d'altitude.
 - Menus.
+
+## 9. Livraison (23 octobre 2026)
+
+Réalisé par Claude, branche `lot-e1-rendu-route-terrain` (PR #7), remise à jour sur `main` après les lots A2, F et B2. Critères 1 à 3 tenus par les tests automatiques sans écran (Godot 4.3-stable) ; **critère 4 (essai sur le PC cible) à faire par le propriétaire**.
+
+**Tests revérifiés après la mise à jour sur `main` :**
+- `pytest` : 109 tests dans `core/`, 95 dans `compiler/`.
+- `engine/tests/run_engine_tests.sh` : tout passe, aucune erreur ni avertissement de Godot. À s = 2 500 m, en plein lacet du lot A2, le terrain est de 4,5 à 4,8 cm sous la route à 3 m du bord. Au plus 27 `MeshInstance3D` vivants (borne 32), aucun trou, nombre d'objets stable (−1,1 %).
+- Temps CPU sans écran : tronçon de route 7,4 ms, tuile proche 9,6 ms, `ArrayMesh` d'une tuile 0,8 ms.
+- La démo avec terrain synthétique passe `openride-compiler verify`.
+
+**Écarts assumés :**
+- Module supplémentaire `engine/scripts/render_quality.gd` pour les préréglages d'image (`low` par défaut ; `medium` et `high` provisoires).
+- Format §5 : le terrain lointain est dessiné 2 m plus bas (`FAR_DROP_M`), seule modification autorisée, notée au journal du format.
+- Générateur synthétique : fondu linéaire de 4 à 25 m (B2 utilise un smoothstep). Le manifeste suit le format 1.1 (`tiles`, `road_half_width_m`), avec `sources: ["synthetic"]`.
+- Au-delà de ± 5 km, faute de tuiles lointaines, on voit le ciel ; le brouillard (3 à 12 km) l'atténue.
+- Sans écran, le maillage est détaché avant `free()` pour éviter `Parameter "m" is null` du rendu factice.
+- Le recouvrement du tracé de démo signalé à la livraison est corrigé par le lot A2.
+
+**Avant l'essai sur le PC cible :** supprimer `~/.local/share/openride/routes/demo.world`, puis suivre le §5 de la PR #7. Avec une trace réelle, compiler d'abord avec `openride-compiler` (B2 est livré).
