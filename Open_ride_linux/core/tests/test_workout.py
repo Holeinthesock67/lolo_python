@@ -358,9 +358,42 @@ def test_full_workout_journal(tmp_path, monkeypatch, workouts_dir):
                    if r["kind"] == "record"]
         erg_records = [r for r in records if r["mode"] == "ERG"]
         assert len(erg_records) > 2000
+        assert all(r["target_w"] is not None and r["target_w"] > 0 for r in erg_records)
         blocks = [r["block"] for r in records if r["block"] is not None]
         assert blocks == sorted(blocks) and blocks[0] == 1 and blocks[-1] == 10
         assert set(blocks) == set(range(1, 11))
         assert {r["mode"] for r in records if r["block"] == 9} == {"SIM"}   # roue libre
-        assert records[-1]["block"] is None                                   # après la fin
+        assert all(r["target_w"] is None for r in records if r["block"] == 9)
+        assert records[-1]["block"] is None and records[-1]["target_w"] is None  # après la fin
+
+        # Critère 2 du lot L6 : SteadyState 0,8 × FTP = 200 W, biais 110 % = 220 W, puis FreeRide.
+        (workouts_dir / "l6_cible.zwo").write_text(
+            "<workout_file><name>L6</name><workout>"
+            "<SteadyState Duration='10' Power='0.8'/>"
+            "<FreeRide Duration='5'/>"
+            "</workout></workout_file>",
+            encoding="utf-8",
+        )
+        jdir2 = tmp_path / "journal_l6"
+        s2 = CoreSession(
+            s.cfg, driver=MockDriver(), inputs=[NullProvider()], journal_dir=jdir2,
+            routes_root=tmp_path / "routes", workouts_dir=workouts_dir,
+        )
+        s2._on_command("select_route", {"route_id": "long"}, 10)
+        s2._on_command("select_workout", {"workout_id": "l6_cible"}, 11)
+        s2._on_command("start", {}, 12)
+        run(s2, 4.0)   # t = 1..4 s : avant biais (200 W)
+        for _ in range(5):
+            s2._handle_input(InputEvent.PLUS_SHORT)  # bias_pct = 110 % -> 220 W
+        run(s2, 14.0)  # jusqu'à t = 18 s (traverse fin du SteadyState à 10 s, FreeRide 10..15 s, puis fin)
+        s2._on_command("end_session", {"save": False}, 13)
+        recs2 = [r for r in read_journal(next(jdir2.glob("*.jsonl"))) if r["kind"] == "record"]
+        before_bias = [r for r in recs2 if r["t"] <= 4.0]
+        after_bias = [r for r in recs2 if 5.0 <= r["t"] <= 9.5]
+        freeride_recs = [r for r in recs2 if r["block"] == 2]
+        post_workout = [r for r in recs2 if r["block"] is None]
+        assert before_bias and all(r["target_w"] == 200 for r in before_bias)
+        assert after_bias and all(r["target_w"] == 220 for r in after_bias)
+        assert freeride_recs and all(r["target_w"] is None for r in freeride_recs)
+        assert post_workout and all(r["target_w"] is None for r in post_workout)
     asyncio.run(scenario())

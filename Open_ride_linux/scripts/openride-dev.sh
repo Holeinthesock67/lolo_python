@@ -66,14 +66,14 @@ sleep 2
 if ! kill -0 "$CORE_PID" 2>/dev/null; then
   echo "Le core s'est arrêté au démarrage :"; tail -20 "$LOG"; exit 1
 fi
-# Ports IPC lus dans config.toml (section ipc), le même fichier que le core (--config éventuel).
-read -r STATE_PORT CMD_PORT < <(python3 - "$CONFIG_ARG" <<'PY' 2>/dev/null || echo "5005 5006"
+# Ports IPC et réglages de rendu lus dans config.toml (sections ipc et render), le même fichier que le core.
+read -r STATE_PORT CMD_PORT QUALITY THEME < <(python3 - "$CONFIG_ARG" <<'PY' 2>/dev/null || echo "5005 5006 low default"
 import sys
 from pathlib import Path
 from openride_core.config import load
 cfg = load(Path(sys.argv[1]) if sys.argv[1] else None)
-print(cfg.ipc.port_state, cfg.ipc.port_commands)
+print(cfg.ipc.port_state, cfg.ipc.port_commands, cfg.render.quality, cfg.render.theme)
 PY
 )
 # shellcheck disable=SC2086
-"$GODOT" --path "$ROOT/engine" ${GODOT_ARGS:-} -- --ipc-state-port="${STATE_PORT:-5005}" --ipc-cmd-port="${CMD_PORT:-5006}"
+"$GODOT" --path "$ROOT/engine" ${GODOT_ARGS:-} -- --ipc-state-port="${STATE_PORT:-5005}" --ipc-cmd-port="${CMD_PORT:-5006}" --quality="${QUALITY:-low}" --theme="${THEME:-default}"
