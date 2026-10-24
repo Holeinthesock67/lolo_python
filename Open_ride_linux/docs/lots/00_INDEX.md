@@ -12,7 +12,7 @@
 | [B2](LOT_B2_compilateur_terrain.md) | Compilateur : couche terrain (MNT Copernicus, tuiles) | Python | B1 | Grande | **Livré le 23 octobre** |
 | [C](LOT_C_core_conformite.md) | Mise en conformité du core avec le contrat IPC (défauts de l'audit) | Python | — | Petite | **Livré le 23 octobre** |
 | [D](LOT_D_engine_ipc.md) | Mise en conformité de l'engine avec le contrat IPC | GDScript | A (livré) | Moyenne | **Livré le 23 octobre** (tests sans écran 8/8 revérifiés) |
-| [E1](LOT_E1_rendu_route_terrain.md) | Rendu 3D : ruban de route et terrain par tronçons | GDScript | A (livré), D ; tuiles du format (B2 ou générateur fourni) | Grande | **Fait** (PR #7, essai sur le PC cible à faire) |
+| [E1](LOT_E1_rendu_route_terrain.md) | Rendu 3D : ruban de route et terrain par tronçons | GDScript | A (livré), D ; tuiles du format (B2 ou générateur fourni) | Grande | **Livré le 24 octobre** (PR #7 ; essai sur la GTX 1060 à faire) |
 | [F](LOT_F_erg_zwo.md) | Entraînements ERG : lecteur `.zwo` et pilotage ERG dans le core | Python | C (livré) | Moyenne | **Livré le 23 octobre** (essai ERG sur le Victory à faire) |
 | [H1](LOT_H1_integration_continue.md) | Intégration continue GitHub Actions et fichier de contraintes (audit F6) | YAML | — | Petite | **Livré le 23 octobre** (PR #11) |
 | [H2](LOT_H2_tests_ble.md) | Tests de la recherche Bluetooth sans matériel (audit F8) | Python | — | Petite | **Livré le 23 octobre** (PR #12, couverture 100 %) |
@@ -43,6 +43,7 @@
 | [K3](LOT_K3_placement_vegetation.md) | Placement déterministe de la végétation, sans affichage (prépare E3 et E4) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #40) |
 | [K4](LOT_K4_lecture_couches_osm_godot.md) | Lecture des couches OSM dans l'engine, sans affichage (prépare E4) | GDScript + Python | K1, I3, I4 (livrés) | Moyenne | **Livré le 24 octobre** (PR #41) |
 | [K5](LOT_K5_navigation_menus.md) | Navigation des menus au Click, machine à états sans affichage (prépare G) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #42) |
+| [K8](LOT_K8_diagnostic_click.md) | Diagnostic des déconnexions du Zwift Click (journal et analyseur) | Python | — | Petite | **Livré le 24 octobre** (PR #34 ; séance de 20 min avec le Click à faire) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -51,16 +52,18 @@
 
 **À rédiger plus tard** (contrôle visuel ou décision de Laurent nécessaire) :
 - E2 : shader triplanaire et application du thème (s'appuie sur I5) ;
-- E3 : ciel, végétation par bruit, HUD final avec profil d'altitude ;
-- E4 : rendu des bâtiments et des forêts (s'appuie sur I3) ;
+- E3 : ciel, végétation par bruit, HUD final avec profil d'altitude (s'appuie sur K2 et K3) ;
+- E4 : rendu des bâtiments, des forêts, de l'eau et sons des points d'intérêt (s'appuie sur I3, I4, K3 et K4) ;
 - F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) ;
-- G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), lanceur unique et menus pilotés au Click (s'appuie sur I2).
+- G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), affichage des menus pilotés au Click et écran de fin de séance (s'appuie sur I2, K5, K6 et K7).
 
 Leur forme dépendra des choix faits dans E1 et D.
 
-**Ordre conseillé :** A, A2, B1, B2, C, D, F, H1 à H8 et I1 à I6 sont livrés (23 octobre). E1 est fait et attend l'essai sur le PC cible (PR #7). I5 et I6 ont été fusionnés **avant** E1, contrairement à l'ordre prévu ; le conflit qui en résultait dans `engine/tests/` est résolu sur la branche d'E1 (les trois étapes rendu, thèmes et ERG s'enchaînent). Série J (audit J du 23 octobre au soir) : J2, J3, J6, J7 et J8 sont livrés, J4 et J5 en partie ; J1 et le reste de J4 et J5 peuvent démarrer en parallèle. J1 est le plus utile pour les essais sur le vélo (parcours compilés et essai ERG). Le conflit de la PR #7 avec `main` a été résolu sur sa branche le 23 octobre au soir.
+**Ordre conseillé :** A, A2, B1, B2, C, D, F, H1 à H8 et I1 à I6 sont livrés (23 octobre). E1 est livré (PR #7, fusionnée le 24 octobre) ; reste l'essai sur le PC cible. I5 et I6 ont été fusionnés **avant** E1, contrairement à l'ordre prévu ; le conflit qui en résultait dans `engine/tests/` est résolu sur la branche d'E1 (les trois étapes rendu, thèmes et ERG s'enchaînent). Série J (audit J du 23 octobre au soir) : J2, J3, J6, J7 et J8 sont livrés, J4 et J5 en partie ; J1 et le reste de J4 et J5 peuvent démarrer en parallèle. J1 est le plus utile pour les essais sur le vélo (parcours compilés et essai ERG).
 
-**Lots H, I et J (23 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I et J ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
+**Série K (23 octobre au soir) :** tous les lots sont livrés le 24 octobre (K6 et K7 faits directement le 23). K2 à K5 déposent leur test dans `engine/tests/unit/` (découverte par `run_engine_tests.sh`, lot K1). Les lots K préparent E3 (K2, K3), E4 (K3, K4) et G (K5, K6, K7) sans les remplacer : le rendu, l'affichage et le contrat IPC v1.1 restent internes.
+
+**Lots H, I, J et K (23 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I, J et K ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
 
 **Lots H, détail :** petits lots hors du chemin critique, recettés uniquement par des tests automatiques, sans essai sur le matériel. Ils peuvent être confiés en parallèle : aucun ne partage de fichier de code avec un autre (seuls `docs/SUIVI_AVANCEMENT.md` et parfois `README.md` sont communs, à fusionner à la main). H3 est le seul à toucher `config.py`, `session.py` et `__main__.py` ; H5 et H4 touchent tous deux `core/pyproject.toml` (sections différentes).
 
@@ -73,8 +76,8 @@ A ──► B1 ──► B2 ──┬──► E1 ──┬──► I5 ──�
 B2 ──► I2 ──► G       B2 ──► I3 ──► I4 ;  I3 ──► E4
 C ──► F ──► H8        H1 à H8, I1 : indépendants
 J1, J4, J5 : indépendants (J2, J3, J6, J7, J8 livrés)
-K6, K7 : indépendants (livrés)
-E1 ──► K1 ──► K2, K3, K4, K5 (prépare E3, E4 et G)
+K6, K7, K8 : indépendants (livrés)
+E1 ──► K1 ──► K2, K3, K4, K5 (livrés ; préparent E3, E4 et G)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)

@@ -6,7 +6,7 @@ import struct
 from openride_core import fit_export, ftms, zwift_click
 from openride_core.config import Config, TrainerConfig, BikeConfig
 from openride_core.ftms_driver import FtmsDriver
-from openride_core.input_providers import NullProvider, ZwiftClickProvider
+from openride_core.input_providers import ClickPair, NullProvider, ZwiftClickProvider
 from openride_core.mock_driver import MockDriver, TrainerMetrics
 from openride_core.session import CoreSession
 from openride_core.zwift_click import InputEvent
@@ -135,6 +135,32 @@ def test_ftms_driver_smoothing_and_loss():
     asyncio.run(scenario())
 
 
+def test_ftms_driver_small_shift_sent_at_once():
+    """Un braquet sur le plat change la pente de moins de GRADE_EPSILON_PCT : il part quand même
+    tout de suite, au lieu d'attendre le renvoi périodique (RESEND_S)."""
+    async def scenario():
+        client = FakeClient([ftms.INDOOR_BIKE_DATA])
+        now = [100.0]
+        drv = FtmsDriver(TrainerConfig(), BikeConfig(), device_finder=fake_finder,
+                         client_factory=make_factory(client), clock=lambda: now[0])
+        task = asyncio.create_task(drv.run())
+
+        def grades():
+            return [struct.unpack_from("<h", w, 3)[0] for _, w in client.writes
+                    if w[0] == ftms.OP_SET_SIM_PARAMS]
+        drv.set_sim_grade(-0.61)
+        await wait_for(lambda: -61 in grades())
+        now[0] += 0.5
+        drv.set_sim_grade(-0.55)                     # relief : 0,06 % < seuil, pas d'envoi
+        await asyncio.sleep(0.2)
+        assert -55 not in grades()
+        drv.set_sim_grade(-0.52, immediate=True)     # braquet : envoyé sans attendre
+        await wait_for(lambda: -52 in grades())
+        drv.stop()
+        await asyncio.wait_for(task, 3)
+    asyncio.run(scenario())
+
+
 def click_frame(mask):
     out = bytearray([zwift_click.MSG_KEYPAD_STATUS, 0x08])
     v = mask
@@ -167,6 +193,69 @@ def test_click_provider_events_and_status():
         prov.stop()
         await asyncio.wait_for(task, 3)
     asyncio.run(scenario())
+
+
+def test_click_pair_two_providers_connect_both_units():
+    """Click récent : deux boîtiers de même nom ; chaque fournisseur prend le sien, et le boîtier
+    libéré par une coupure peut être repris."""
+    async def scenario():
+        plus_c, minus_c = FakeClient([zwift_click.ZWIFT_ASYNC]), FakeClient([zwift_click.ZWIFT_ASYNC])
+        clients = {"F4:C4:59:1F:E3:6A": plus_c, "F4:C4:59:15:E1:E7": minus_c}
+        seen_exclude = []
+
+        async def finder(name, address, timeout, exclude=()):
+            seen_exclude.append(set(exclude))
+            return next((a for a in clients if a not in exclude), None)
+
+        def factory(dev, disconnected_callback=None, timeout=None):
+            clients[dev].disconnected_cb = disconnected_callback
+            return clients[dev]
+
+        now = [0.0]
+        pair = ClickPair()
+        claimed = pair.claimed
+        first = ZwiftClickProvider(device_finder=finder, client_factory=factory, pair=pair,
+                                   clock=lambda: now[0])
+        second = ZwiftClickProvider(device_finder=finder, client_factory=factory, pair=pair,
+                                    optional=True, clock=lambda: now[0])
+        tasks = [asyncio.create_task(p.run()) for p in (first, second)]
+        await wait_for(lambda: first.status == second.status == "CONNECTED")
+        assert claimed == set(clients)
+        assert {"F4:C4:59:1F:E3:6A"} in seen_exclude   # le second a écarté le boîtier déjà pris
+        assert zwift_click.ZWIFT_ASYNC in plus_c.cbs and zwift_click.ZWIFT_ASYNC in minus_c.cbs
+
+        # Le « − » relaie le « + » : le même appui arrive des deux boîtiers, émis une seule fois.
+        for c in (plus_c, minus_c):
+            c.cbs[zwift_click.ZWIFT_ASYNC](None, click_frame(0xFFFFEFFF))
+        now[0] += 0.2
+        plus_c.cbs[zwift_click.ZWIFT_ASYNC](None, click_frame(0xFFFFFFFF))
+        now[0] += 0.04
+        minus_c.cbs[zwift_click.ZWIFT_ASYNC](None, click_frame(0xFFFFFFFF))
+        events = [p.events.get_nowait() for p in (first, second) for _ in range(p.events.qsize())]
+        assert events == [InputEvent.PLUS_SHORT]
+        minus_c.cbs[zwift_click.ZWIFT_ASYNC](None, click_frame(0xFFFFFEFF))   # « − » seul
+        now[0] += 0.2
+        minus_c.cbs[zwift_click.ZWIFT_ASYNC](None, click_frame(0xFFFFFFFF))
+        assert second.events.get_nowait() == InputEvent.MINUS_SHORT
+        for p in (first, second):
+            p.stop()
+        await asyncio.wait_for(asyncio.gather(*tasks), 3)
+        assert claimed == set()                          # adresses rendues à l'arrêt
+    asyncio.run(scenario())
+
+
+def test_click_optional_unit_absent_is_quiet(caplog):
+    async def scenario():
+        async def finder(name, address, timeout, exclude=()):
+            return None
+        prov = ZwiftClickProvider(device_finder=finder, pair=ClickPair(), optional=True)
+        task = asyncio.create_task(prov.run())
+        await asyncio.sleep(0.1)
+        prov.stop()
+        await asyncio.wait_for(task, 3)
+    with caplog.at_level("INFO", logger="input"):
+        asyncio.run(scenario())
+    assert not [r for r in caplog.records if r.levelname == "WARNING"]
 
 
 def make_session(tmp_path, monkeypatch, driver=None, base_port=5700):
