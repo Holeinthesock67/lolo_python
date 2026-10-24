@@ -11,8 +11,9 @@ Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de réf�
 Supervision :
 - l'engine se ferme normalement (code 0) → arrêt propre du core (SIGINT), 10 s au plus, puis
   SIGKILL et `openride-core release-trainer` ;
-- l'engine plante (code ≠ 0) → il est relancé, au plus 3 fois en 2 minutes ; pendant ce temps le
-  core met la séance en pause (`engine_lost`, contrat IPC §6) et la reprend au retour de l'engine ;
+- l'engine plante (code ≠ 0) → il est relancé, au plus 3 fois en 2 minutes ; s'il reste absent
+  plus de 2 s (heartbeat perdu), le core met la séance en pause (`engine_lost`, contrat IPC §6) et
+  la reprend au retour de l'engine ; une relance plus rapide passe sans pause ;
   au-delà, abandon : arrêt propre du core, code 1 ;
 - le core s'arrête ou plante → l'engine est arrêté ; en cas de plantage, rappel de
   `openride-core recover` (le journal de la séance reste sur disque) ;
@@ -168,7 +169,7 @@ class Supervisor:
                         self.say(f"l'engine a planté {len(crashes)} fois en {self.restart_window_s:.0f} s : abandon.")
                         return self._finish(core, engine, 1)
                     self.say(f"l'engine a planté (code {code}) : relance {len(crashes)}/{self.max_restarts}, "
-                             "la séance est en pause en attendant.")
+                             "la séance passe en pause si l'engine reste absent plus de 2 s.")
                     if self.restart_delay_s > 0:
                         time.sleep(self.restart_delay_s)
                     engine = self._start_engine()

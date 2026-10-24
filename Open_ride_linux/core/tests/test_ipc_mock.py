@@ -3,7 +3,6 @@
 import socket
 import json
 import time
-import pytest
 
 from openride_core.ipc_server import IpcServer, IpcState, CONTRACT_VERSION
 from openride_core.mock_driver import MockDriver

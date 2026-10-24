@@ -15,7 +15,7 @@ from openride_core.config import Config
 from openride_core.demo_world import build_route, write_demo_world, write_world
 from openride_core.input_providers import NullProvider
 from openride_core.mock_driver import MockDriver
-from openride_core.route import Route, WorldError, find_world, load_world
+from openride_core.route import Route, WorldError, load_world
 from openride_core.session import CoreSession
 from openride_core.tools import route_vectors
 
