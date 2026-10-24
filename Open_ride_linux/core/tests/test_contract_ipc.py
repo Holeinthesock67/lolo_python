@@ -6,13 +6,12 @@ import re
 from pathlib import Path
 
 import jsonschema
-import pytest
 
 from openride_core import fit_export
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
 from openride_core.ipc_server import IpcServer, IpcState
-from openride_core.mock_driver import MockDriver, TrainerMetrics
+from openride_core.mock_driver import MockDriver
 from openride_core.session import CoreSession
 
 CONTRACTS = Path(__file__).resolve().parents[2] / "docs" / "contracts"

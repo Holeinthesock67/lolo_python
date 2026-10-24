@@ -81,7 +81,8 @@ def cmd_summary(args: argparse.Namespace) -> int:
     return run(args.file, args.ftp, args.json, args.config)
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
+    """Analyseur de la ligne de commande ; aussi lu par `test_docs_coherence.py` (commandes citées)."""
     p = argparse.ArgumentParser(prog="openride-core")
     p.add_argument("--version", action="version", version=__version__)
     sub = p.add_subparsers(dest="command", required=True)
@@ -104,7 +105,11 @@ def main(argv: list[str] | None = None) -> int:
     summ.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
     summ.add_argument("--json", action="store_true", help="sortie JSON")
     summ.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
-    args = p.parse_args(argv)
+    return p
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,

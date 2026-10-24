@@ -1,7 +1,6 @@
 """Lot C : écarts au contrat IPC relevés par l'audit du 23 octobre 2026."""
 
 import asyncio
-import json
 
 from openride_core import fit_export, ftms
 from openride_core.config import BikeConfig, Config, TrainerConfig

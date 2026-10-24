@@ -7,8 +7,8 @@ Journal du Click (lot K8, diagnostic des coupures), une ligne par événement, �
 tâche du Click (jamais par la boucle à 50 Hz) :
 - connexion : `Zwift Click connecté (adresse A, recherche 3.2 s, 2 tentative(s))` ; la recherche
   court depuis le lancement ou la coupure précédente ;
-- coupure : `Zwift Click déconnecté après 75.0 s de connexion : dernière notification il y a
-  0.1 s, dernier appui il y a 12.3 s, 750 notification(s), dernière écriture au trainer il y a
+- coupure : `Zwift Click déconnecté (adresse A) après 75.0 s de connexion : dernière
+  notification il y a 0.1 s, dernier appui il y a 12.3 s, 750 notification(s), dernière écriture au trainer il y a
   0.4 s, raison : R ; appuyez sur un bouton pour le réveiller` (« jamais » si l'événement n'a
   pas eu lieu ; bleak ne donne pas la raison BlueZ : R vaut « lien perdu (rappel bleak) »,
   « fin de session », « arrêt du core » ou le texte de l'erreur) ;
@@ -31,7 +31,7 @@ from .zwift_click import InputEvent, PressClassifier
 log = logging.getLogger("input")
 
 CLICK_CONNECTED_FMT = "Zwift Click connecté (adresse %s, recherche %.1f s, %d tentative(s))"
-CLICK_DISCONNECTED_FMT = ("Zwift Click déconnecté après %.1f s de connexion : dernière notification il y a %s, "
+CLICK_DISCONNECTED_FMT = ("Zwift Click déconnecté (adresse %s) après %.1f s de connexion : dernière notification il y a %s, "
                           "dernier appui il y a %s, %d notification(s), dernière écriture au trainer il y a %s, "
                           "raison : %s ; appuyez sur un bouton pour le réveiller")
 CLICK_RATE_FMT = "Click : %d notification(s) en %.0f s (%.1f par seconde)"
@@ -102,6 +102,7 @@ class ZwiftClickProvider:
         self._search_since = 0.0
         self._attempts = 0
         self._drop_reason = ""
+        self._conn_address = "?"   # boîtier de la dernière connexion, repris dans la ligne de coupure
 
     @property
     def status(self) -> str:
@@ -168,7 +169,7 @@ class ZwiftClickProvider:
         connected = now - self._connected_at if self._connected_at is not None else 0.0
         write_at = last_trainer_write_at()
         since_write = "jamais" if write_at is None else f"{max(time.monotonic() - write_at, 0.0):.1f} s"
-        log.warning(CLICK_DISCONNECTED_FMT, connected, _ago(now, self._last_notify_at),
+        log.warning(CLICK_DISCONNECTED_FMT, self._conn_address, connected, _ago(now, self._last_notify_at),
                     _ago(now, self._last_press_at), self._notify_count, since_write, reason or "fin de session")
         self._connected_at = None
         self._search_since, self._attempts = now, 0
@@ -211,8 +212,8 @@ class ZwiftClickProvider:
                                          response=True)
             self._link_up = self._ever_connected = True
             now = self._clock()
-            log.info(CLICK_CONNECTED_FMT, self._mine or getattr(dev, "address", dev), now - self._search_since,
-                     self._attempts)
+            self._conn_address = str(self._mine or getattr(dev, "address", dev))
+            log.info(CLICK_CONNECTED_FMT, self._conn_address, now - self._search_since, self._attempts)
             self._connected_at = self._rate_since = now
             self._last_notify_at = self._last_press_at = None
             self._notify_count = self._rate_count = 0
