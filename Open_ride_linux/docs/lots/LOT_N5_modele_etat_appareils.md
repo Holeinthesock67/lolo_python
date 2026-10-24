@@ -12,7 +12,7 @@ Avant de rouler, il faut voir d'un coup d'œil si le trainer, les deux boîtiers
 
 ## 3. Prérequis
 
-Lot N1 fusionné : **bloqué** jusque-là. Ne dépend ni de la PR #91 ni de N2 (trames écrites à la main dans le test).
+Lot N1 livré le 24 octobre : contrat v1.1 sur `main`. Ne dépend ni de la PR #91 ni de N2 (trames écrites à la main dans le test).
 
 ## 4. Travail demandé
 

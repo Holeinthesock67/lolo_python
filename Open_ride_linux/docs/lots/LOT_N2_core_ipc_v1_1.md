@@ -12,13 +12,13 @@ Faire parler le core selon le contrat IPC v1.1 rédigé dans le lot N1 : répond
 
 ## 3. Prérequis
 
-- Lot N1 fusionné (contrat validé par le propriétaire) : **bloqué** jusque-là.
+- Lot N1 livré le 24 octobre : contrat v1.1 sur `main`.
 - E3/E4 (PR #91) et lots M2 et M4 (PR #89 et #90) : fusionnés le 24 octobre, partir de `main` à jour (ils ont modifié `session.py`, `hr_monitor.py` et `input_providers.py`).
 
 ## 4. Travail demandé
 
 - `list_routes` : appelle `catalog.list_routes()` hors de la boucle à 50 Hz (`asyncio.to_thread` ou équivalent), convertit chaque `RouteEntry` au format du contrat, coupe à 200 éléments. Réponse renvoyée à chaque demande, même pour un `cmd_id` déjà traité.
-- `list_workouts` : idem avec la liste des entraînements (`WorkoutInfo`), profil réduit à 60 couples au plus (fusion des blocs voisins, durée totale conservée).
+- `list_workouts` : idem avec la liste des entraînements (`WorkoutInfo`), profil de 30 triplets au plus (`profile_truncated` au-delà), réponse découpée en parties de 60 000 octets au plus (contrat §4).
 - `devices` : construit à partir des pilotes (trainer, un ou deux boîtiers Click, ceinture ou cardio du trainer), envoyé une trame sur 30 et à chaque changement d'état ; aucune lecture Bluetooth supplémentaire (on publie ce que les pilotes savent déjà).
 - `summary` enrichi : réutilise les calculs de `session_summary.py` sur les enregistrements de la séance, sans relire le journal.
 - Les messages restent validés par les schémas en test (comme les messages v1).
@@ -37,7 +37,7 @@ Aucune : le contrat est celui du lot N1. Un écart trouvé est signalé, pas cor
 
 1. `pytest -q` passe en entier dans `core/`.
 2. Avec 3 parcours prêts, 1 à compiler et 1 invalide dans un dossier temporaire : `routes` contient 5 éléments aux bons statuts, validé par `routes.schema.json`.
-3. 250 parcours : 200 éléments, `truncated` vrai, datagramme sous 60 ko, réponse en moins de 500 ms.
+3. 250 parcours : 200 éléments, `truncated` vrai, chaque partie sous 60 000 octets, réponse en moins de 500 ms.
 4. Pendant la lecture du catalogue, la boucle à 50 Hz ne prend pas de retard de plus de 20 ms (mesure dans le test avec un catalogue ralenti artificiellement).
 5. Bluetooth simulé, scénario `demo` (`--trainer sim --input sim --hr sim`) : `devices` présent une trame sur 30, deux boîtiers Click avec leur batterie, ceinture `strap` ; coupure d'un boîtier du scénario : `devices` envoyé à la trame suivante avec `LOST`.
 6. Fin de séance ERG simulée : `summary` contient `np_w`, `tss` et `blocks`, égaux à `openride-core summary` sur le journal produit (à 1 W ou 0,1 TSS près).

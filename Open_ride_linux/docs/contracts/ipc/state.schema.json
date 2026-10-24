@@ -69,6 +69,7 @@
         "trainer_lost",
         "engine_lost",
         "recording_failed",
+        "core_restarted",
         null
       ]
     },
@@ -233,6 +234,78 @@
             "string",
             "null"
           ]
+        },
+        "np_w": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "intensity_factor": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "tss": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "elevation_gain_m": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "avg_cadence_rpm": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "avg_hr_bpm": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "max_power_w": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "blocks": {
+          "type": [
+            "array",
+            "null"
+          ],
+          "maxItems": 24,
+          "items": {
+            "type": "array",
+            "minItems": 3,
+            "maxItems": 3,
+            "prefixItems": [
+              {
+                "type": "integer",
+                "minimum": 1
+              },
+              {
+                "type": "number"
+              },
+              {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              }
+            ]
+          }
+        },
+        "blocks_truncated": {
+          "type": "boolean"
         }
       },
       "required": [
@@ -244,6 +317,162 @@
     },
     "last_cmd_id": {
       "type": "integer"
+    },
+    "devices": {
+      "type": "object",
+      "description": "Facultatif (révision 1.1) : une trame sur 30 et après chaque changement.",
+      "required": [
+        "trainer",
+        "click",
+        "hr"
+      ],
+      "properties": {
+        "trainer": {
+          "type": "object",
+          "required": [
+            "status",
+            "name",
+            "address"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "CONNECTED",
+                "RECONNECTING",
+                "LOST",
+                "MOCK"
+              ]
+            },
+            "name": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "address": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
+        },
+        "click": {
+          "type": "array",
+          "maxItems": 2,
+          "items": {
+            "type": "object",
+            "required": [
+              "side",
+              "status",
+              "battery_pct"
+            ],
+            "properties": {
+              "side": {
+                "type": "string",
+                "enum": [
+                  "plus",
+                  "minus",
+                  "single"
+                ]
+              },
+              "status": {
+                "type": "string",
+                "enum": [
+                  "CONNECTED",
+                  "SEARCHING",
+                  "LOST"
+                ]
+              },
+              "battery_pct": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 0,
+                "maximum": 100
+              }
+            }
+          }
+        },
+        "hr": {
+          "type": "object",
+          "required": [
+            "status",
+            "source",
+            "battery_pct"
+          ],
+          "properties": {
+            "status": {
+              "type": "string",
+              "enum": [
+                "CONNECTED",
+                "SEARCHING",
+                "LOST",
+                "NONE"
+              ]
+            },
+            "source": {
+              "type": [
+                "string",
+                "null"
+              ],
+              "enum": [
+                "strap",
+                "trainer",
+                null
+              ]
+            },
+            "battery_pct": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 0,
+              "maximum": 100
+            }
+          }
+        }
+      }
+    },
+    "bots": {
+      "type": "array",
+      "maxItems": 5,
+      "description": "Facultatif : concurrents virtuels (lot N9).",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "s",
+          "v",
+          "kind"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 8
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "s": {
+            "type": "number"
+          },
+          "v": {
+            "type": "number"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "constant",
+              "ghost"
+            ]
+          }
+        }
+      }
     }
   }
 }
