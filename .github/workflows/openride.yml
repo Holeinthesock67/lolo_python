@@ -10,10 +10,16 @@ on:
       - "Open_ride_linux/**"
       - ".github/workflows/openride.yml"
   workflow_dispatch:
+  # Une fois par semaine (lundi 5 h UTC) : détecte une dérive des dépendances non bornées
+  # de la colonne Python 3.11, installée sans constraints.txt.
+  schedule:
+    - cron: "0 5 * * 1"
 
+# Sur une demande de fusion, un nouvel envoi annule l'exécution en cours. Sur main, chaque
+# envoi est testé jusqu'au bout (audit J : des fusions rapprochées avaient annulé les runs de main).
 concurrency:
-  group: openride-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: openride-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 defaults:
   run:
@@ -29,10 +35,10 @@ jobs:
         python-version: ["3.11", "3.14"]
     steps:
       - name: Récupération du dépôt
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Installation de Python ${{ matrix.python-version }}
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: ${{ matrix.python-version }}
           cache: pip
@@ -52,6 +58,9 @@ jobs:
           pip install -c constraints.txt -e "core[dev]"
           pip install -c constraints.txt -e "compiler[dev]"
 
+      - name: Cohérence des paquets installés
+        run: pip check
+
       - name: Tests du core
         run: cd core && pytest -q
 
@@ -66,10 +75,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Récupération du dépôt
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Installation de Python 3.14
-        uses: actions/setup-python@v5
+        uses: actions/setup-python@v6
         with:
           python-version: "3.14"
           cache: pip
@@ -101,3 +110,6 @@ jobs:
         run: |
           chmod +x ~/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64
           GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_engine_tests.sh
+
+      - name: Essai de bout en bout (vrai core et vrai engine, lot J8)
+        run: GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_e2e.sh
