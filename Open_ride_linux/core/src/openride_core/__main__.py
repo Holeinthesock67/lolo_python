@@ -2,8 +2,11 @@
 
 Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
-    openride-core run [--trainer mock|ftms] [--input click|keyboard|none] [--gear N] [--autostart]
-                                      boucle de séance (BLE, physique, IPC, journal)
+    openride-core run [--trainer mock|ftms] [--input click|keyboard|none] [--gear N]
+                      [--autostart [--route ID] [--workout ID]]
+                                      boucle de séance (BLE, physique, IPC, journal) ; avec
+                                      --autostart, parcours <routes>/<ID>.world (défaut demo) et
+                                      entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)
     openride-core release-trainer     dépannage : annule la consigne du trainer, lui rend sa
                                       liberté et le déconnecte (après un arrêt brutal)
     openride-core summary [FICHIER] [--ftp W] [--json]
@@ -36,7 +39,7 @@ def cmd_run(args: argparse.Namespace) -> int:
     import asyncio
 
     from . import config as config_mod
-    from .session import CoreSession
+    from .session import AutostartError, CoreSession
 
     try:
         cfg = config_mod.load(args.config)
@@ -55,7 +58,13 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.replay:
         cfg.drivers.trainer = "mock"
         cfg.drivers.mock_replay = str(args.replay)
-    asyncio.run(CoreSession(cfg).run(autostart=args.autostart))
+    try:
+        asyncio.run(CoreSession(cfg).run(autostart=args.autostart, route_id=args.route or "demo",
+                                         workout_id=args.workout))
+    except AutostartError as exc:
+        logging.getLogger("openride_core").error("Séance non lancée : %s", exc)
+        print(f"openride-core : {exc}", file=sys.stderr)
+        return 1
     return 0
 
 
@@ -96,7 +105,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--replay", type=Path,
                      help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
     run.add_argument("--autostart", action="store_true",
-                     help="charge le parcours factice et démarre aussitôt (essais sans engine)")
+                     help="charge le parcours (--route, défaut demo) et démarre aussitôt")
+    run.add_argument("--route", metavar="ID",
+                     help="avec --autostart : parcours <routes>/<ID>.world (défaut : demo)")
+    run.add_argument("--workout", metavar="ID",
+                     help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
     rel = sub.add_parser("release-trainer",
                          help="libérer le trainer resté réservé (consigne annulée, contrôle rendu)")
     rel.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
@@ -109,7 +122,14 @@ def build_parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    args = build_parser().parse_args(argv)
+    parser = build_parser()
+    args = parser.parse_args(argv)
+    if args.command == "run" and not args.autostart:
+        given = [opt for opt, val in (("--route", args.route), ("--workout", args.workout)) if val]
+        if given:
+            print(f"openride-core run : erreur : {' et '.join(given)} demande --autostart (sans lui,"
+                  " l'engine choisit le parcours et l'entraînement)", file=sys.stderr)
+            raise SystemExit(2)   # code d'argparse pour une ligne de commande refusée
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
