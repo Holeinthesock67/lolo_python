@@ -31,7 +31,7 @@ def test_click_connection_notifications_and_drop_are_journaled(caplog, monkeypat
         cb = client.cbs[zwift_click.ZWIFT_ASYNC]
         # 25 notifications, dont 3 appuis (appui puis relâche) ; le dernier appui à t = 110.
         sent = 0
-        for i in range(19):
+        for _ in range(19):
             now[0] += 0.1
             cb(None, click_frame(RELEASED))
             sent += 1

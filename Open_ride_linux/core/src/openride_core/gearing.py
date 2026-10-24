@@ -7,6 +7,8 @@ avec R_k en progression géométrique entre R_min et R_max.
 
 from __future__ import annotations
 
+import math
+
 from .config import GearingConfig, TrainerConfig
 
 
@@ -44,8 +46,11 @@ class Gearing:
         """Pente à envoyer au trainer pour le braquet courant, bornée à la plage autorisée.
 
         `difficulty` (coefficient de difficulté, SRS §5) multiplie la pente effective avant le
-        bornage ; la vitesse virtuelle, elle, utilise toujours la pente réelle.
+        bornage ; la vitesse virtuelle, elle, utilise toujours la pente réelle. Un résultat NaN
+        donne 0 % : le bornage `min`/`max` le laisserait passer jusqu'à l'encodage FTMS.
         """
         g_base = self.cfg.g_base_pct
         g = ((terrain_grade_pct + g_base) * self.ratio - g_base) * difficulty
+        if math.isnan(g):
+            return 0.0
         return min(max(g, self.grade_min), self.grade_max)
