@@ -68,3 +68,23 @@ func _refresh() -> void:
 	text = "\n".join(lines)
 	visible = not lines.is_empty()
 	changed.emit(text)
+
+
+## Place le bandeau à droite du HUD (rectangle `hud` à l'écran) s'il y reste au moins MIN_WIDTH pixels,
+## sinon sous le HUD sur toute la largeur. Renvoie {left, top} pour offset_left et offset_top
+## (ancres : haut, toute la largeur ; offset_right reste à −MARGIN).
+const MARGIN := 20.0
+const MIN_WIDTH := 360.0
+
+
+static func layout_for(hud: Rect2, viewport_width: float) -> Dictionary:
+	var left := hud.end.x + MARGIN
+	if viewport_width - MARGIN - left >= MIN_WIDTH:
+		return {"left": left, "top": MARGIN}
+	return {"left": MARGIN, "top": hud.end.y + MARGIN / 2.0}
+
+
+func place_beside(hud: Rect2) -> void:
+	var pos := layout_for(hud, get_viewport_rect().size.x)
+	offset_left = pos["left"]
+	offset_top = pos["top"]
