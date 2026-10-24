@@ -20,7 +20,32 @@ from .zwift_click import InputEvent, PressClassifier
 log = logging.getLogger("input")
 
 
+class ClickPair:
+    """État partagé par les deux boîtiers d'un Zwift Click récent (« + » et « − », même nom BLE).
+
+    `claimed` : adresses déjà tenues, pour que chaque fournisseur prenne un boîtier différent.
+    Le boîtier « − » relaie aussi les appuis du « + » (mesuré le 24 octobre : même événement
+    reçu des deux, à 5–40 ms d'écart) : `first_report` ne laisse passer que le premier.
+    """
+
+    DEDUP_S = 0.15   # bien moins qu'un appui court réel entre deux relâchements
+
+    def __init__(self) -> None:
+        self.claimed: set[str] = set()
+        self._last: dict[InputEvent, float] = {}
+
+    def first_report(self, ev: InputEvent, t: float) -> bool:
+        last = self._last.get(ev)
+        self._last[ev] = t
+        return last is None or t - last > self.DEDUP_S
+
+
 class ZwiftClickProvider:
+    """Un boîtier Zwift Click. Pour la paire du Click récent, `build_inputs` crée deux
+    fournisseurs qui partagent un `ClickPair`. `optional` : second boîtier, absent chez qui n'en
+    a qu'un ; son absence ne s'écrit qu'en DEBUG.
+    """
+
     def __init__(
         self,
         address: str | None = None,
@@ -30,8 +55,13 @@ class ZwiftClickProvider:
         device_finder: Callable[[str, str | None, float], Awaitable[Any]] = find_device,
         client_factory: Callable[..., Any] = default_client_factory,
         clock: Callable[[], float] = time.monotonic,
+        pair: ClickPair | None = None,
+        optional: bool = False,
     ) -> None:
         self.address = address or None
+        self._pair, self._optional = pair, optional
+        self._claimed = pair.claimed if pair is not None else None
+        self._mine: str | None = None   # adresse du boîtier tenu, retirée de `claimed` à la coupure
         self.short_max_s, self.long_min_s = short_max_s, long_min_s
         self._find, self._client_factory, self._clock = device_finder, client_factory, clock
         self.events: asyncio.Queue[InputEvent] = asyncio.Queue()
@@ -59,23 +89,32 @@ class ZwiftClickProvider:
         buttons = zwift_click.parse_click_buttons(raw)
         if buttons is None:
             return
-        for ev in self._classifier.feed(buttons, self._clock()):
+        now = self._clock()
+        for ev in self._classifier.feed(buttons, now):
+            if self._pair is not None and not self._pair.first_report(ev, now):
+                log.debug("Click : %s relayé par l'autre boîtier, ignoré", ev.value)
+                continue
             log.info("Click : %s", ev.value)
             self.events.put_nowait(ev)
 
     async def run(self) -> None:
         # Le Click ne s'annonce que réveillé par un appui : on le cherche en continu, par
         # fenêtres de 5 s séparées de 0,5 à 2 s, pour qu'un appui tombe toujours dans une fenêtre.
-        delays = backoff_delays(first=0.5, maximum=2.0)
+        # Second boîtier : fenêtres plus espacées, pour laisser le Bluetooth au trainer.
+        maximum = 5.0 if self._optional else 2.0
+        delays = backoff_delays(first=0.5, maximum=maximum)
         while not self._stop.is_set():
             try:
                 await self._session()
                 log.warning("Zwift Click déconnecté (veille ?) : appuyez sur un bouton pour le réveiller")
-                delays = backoff_delays(first=0.5, maximum=2.0)
+                delays = backoff_delays(first=0.5, maximum=maximum)
             except asyncio.CancelledError:
                 raise
             except Exception as exc:
-                log.warning("Click : %s", exc)
+                if self._optional and isinstance(exc, ConnectionError):
+                    log.debug("Click (second boîtier) : %s", exc)
+                else:
+                    log.warning("Click : %s", exc)
             self._link_up = False
             if self._stop.is_set():
                 break
@@ -89,11 +128,30 @@ class ZwiftClickProvider:
         dropped = asyncio.Event()
         # Un bouton « appuyé » à la coupure ne doit pas survivre à la reconnexion.
         self._classifier = PressClassifier(self.short_max_s, self.long_min_s)
+        try:
+            await self._connected_session(loop, dropped)
+        finally:
+            if self._claimed is not None and self._mine is not None:
+                self._claimed.discard(self._mine)
+            self._mine = None
+            self._link_up = False
+
+    async def _connected_session(self, loop: asyncio.AbstractEventLoop, dropped: asyncio.Event) -> None:
         async with AsyncExitStack() as stack:
             async with ble_lock():   # un seul scan/connexion BLE à la fois (BlueZ)
-                dev = await self._find(zwift_click.CLICK_NAME, self.address, 5.0)
+                if self._claimed is None:
+                    dev = await self._find(zwift_click.CLICK_NAME, self.address, 5.0)
+                else:
+                    dev = await self._find(zwift_click.CLICK_NAME, self.address, 5.0,
+                                           exclude=frozenset(self._claimed))
                 if dev is None:
                     raise ConnectionError("Zwift Click introuvable (appuyez sur un bouton)")
+                addr = str(getattr(dev, "address", dev)).upper()
+                if self._claimed is not None:
+                    if addr in self._claimed:   # adresse imposée déjà tenue par l'autre fournisseur
+                        raise ConnectionError(f"Zwift Click {addr} déjà connecté")
+                    self._claimed.add(addr)
+                    self._mine = addr
                 client = await stack.enter_async_context(self._client_factory(
                     dev, disconnected_callback=lambda _c: loop.call_soon_threadsafe(dropped.set),
                     timeout=15.0))
@@ -102,10 +160,9 @@ class ZwiftClickProvider:
             await client.write_gatt_char(zwift_click.ZWIFT_SYNC_RX, zwift_click.RIDE_ON,
                                          response=True)
             self._link_up = self._ever_connected = True
-            log.info("Zwift Click connecté")
+            log.info("Zwift Click connecté (%s)", self._mine or getattr(dev, "address", dev))
             while not (dropped.is_set() or self._stop.is_set()):
                 await asyncio.sleep(0.2)
-        self._link_up = False
 
 
 class KeyboardProvider:
