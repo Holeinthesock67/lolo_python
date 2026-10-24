@@ -1,15 +1,16 @@
-"""Tests du lanceur `openride` (lot K6) avec de faux programmes à la place du core et de l'engine."""
+"""Tests du lanceur `openride` (lots K6 et M8) avec de faux programmes à la place du core et de l'engine."""
 
 import os
 import signal
 import sys
 import threading
+import time
 from pathlib import Path
 
 import pytest
 
 from openride_core import launcher
-from openride_core.launcher import Supervisor
+from openride_core.launcher import LogRotation, Supervisor
 
 FAKE = r'''
 import os, signal, sys, time
@@ -19,6 +20,10 @@ def mark(name):
     with (marks / name).open("a") as fh:
         fh.write(f"{os.getpid()}\n")
 mark(f"{role}_start")
+if mode.startswith("say:"):               # say:N:MODE : écrit N lignes d'un coup, puis MODE
+    _, n, mode = mode.split(":", 2)
+    sys.stdout.write("".join(f"{role} ligne {k}\n" for k in range(int(n))))
+    sys.stdout.flush()
 if mode == "ignore":                      # core qui ignore SIGINT
     signal.signal(signal.SIGINT, signal.SIG_IGN)
     while True:
@@ -55,6 +60,7 @@ def fake(tmp_path: Path):
 
     def make(core: str = "run", engine: str = "run", **kw) -> tuple[Supervisor, list[str]]:
         said: list[str] = []
+        kw.setdefault("echo", lambda: True)
         sup = Supervisor(
             core_cmd=[sys.executable, str(script), "core", core, str(marks)],
             engine_cmd=[sys.executable, str(script), "engine", engine, str(marks)],
@@ -211,3 +217,135 @@ def test_main_reports_invalid_config(tmp_path: Path, capsys):
     bad.write_text("[ipc]\nport_state = 5005\nport_commands = 5005\n")
     assert launcher.main(["--config", str(bad)]) == 1
     assert "configuration invalide" in capsys.readouterr().err
+
+
+# --- lot M8 : journal du lanceur ------------------------------------------------------------
+
+@pytest.fixture
+def rotation(tmp_path: Path) -> LogRotation:
+    return LogRotation(logs_dir=tmp_path / "Logs", link=tmp_path / "run_victory.log")
+
+
+def test_log_has_core_engine_and_launcher_lines(fake, rotation):
+    """Critère 2 : sortie du core telle quelle, de l'engine préfixée, messages du lanceur horodatés."""
+    sup, said = fake(core="say:3:run", engine="say:2:exit0:0.3", rotation=rotation)
+    assert sup.run() == 0
+    assert sup.log_path.parent == rotation.logs_dir and sup.log_path.name.startswith("openride_")
+    lines = sup.log_path.read_text(encoding="utf-8").splitlines()
+    assert {"core ligne 0", "core ligne 2"} <= set(lines)
+    assert {"[engine] engine ligne 0", "[engine] engine ligne 1"} <= set(lines)
+    ours = [ln for ln in lines if "[openride]" in ln]
+    assert any(ln.endswith("[openride] arrêté. Journal complet : " + str(sup.log_path)) for ln in ours)
+    from openride_core.tools.log_report import LINE_RE
+    assert all(LINE_RE.match(ln) for ln in ours)   # même format que le core : log_report les lit
+    assert said   # avec un terminal, aussi à l'écran
+    assert_no_orphans(sup)
+
+
+def test_run_victory_link_follows_the_last_log(fake, rotation, tmp_path):
+    """Critère 3 : lien vers le dernier journal ; l'ancien fichier ordinaire est renommé une fois."""
+    rotation.link.write_text("séance d'hier\n", encoding="utf-8")
+    first, _ = fake(engine="exit0:0.1", rotation=rotation)
+    assert first.run() == 0
+    old = tmp_path / "run_victory.log.ancien"
+    assert old.read_text(encoding="utf-8") == "séance d'hier\n"
+    assert rotation.link.is_symlink() and rotation.link.resolve() == first.log_path.resolve()
+    second, _ = fake(engine="exit0:0.1", rotation=rotation)
+    assert second.run() == 0
+    assert second.log_path != first.log_path and first.log_path.exists()
+    assert rotation.link.resolve() == second.log_path.resolve()
+    assert old.read_text(encoding="utf-8") == "séance d'hier\n"
+    assert "Journal complet" in rotation.link.read_text(encoding="utf-8")
+
+
+def _fake_logs(d: Path, n: int, size: int = 10) -> list[Path]:
+    d.mkdir(parents=True, exist_ok=True)
+    out = []
+    for k in range(n):
+        p = d / f"openride_2026-01-{k + 1:02d}_10-00-00.log"
+        with p.open("wb") as fh:
+            fh.truncate(size)   # fichier creux
+        out.append(p)
+    return out
+
+
+def test_rotation_keeps_the_last_20(rotation):
+    """Critère 4 : 25 journaux factices, il en reste 20 après un lancement (dont le nouveau)."""
+    old = _fake_logs(rotation.logs_dir, 25)
+    new = rotation.prepare()
+    logs = rotation.logs()
+    assert len(logs) == 20 and new in logs
+    assert not any(p.exists() for p in old[:6]) and all(p.exists() for p in old[6:])
+
+
+def test_rotation_keeps_at_most_200_mb(rotation):
+    old = _fake_logs(rotation.logs_dir, 6, size=60 * 1024 * 1024)   # 360 Mo creux
+    rotation.prepare()
+    assert [p.exists() for p in old] == [False, False, False, True, True, True]
+    assert sum(p.stat().st_size for p in rotation.logs()) <= rotation.max_bytes
+
+
+def test_two_launches_in_the_same_second(rotation):
+    a, b = rotation.prepare(now=1_761_300_000.0), rotation.prepare(now=1_761_300_000.0)
+    assert a != b and b.name.endswith("_2.log")
+
+
+def test_engine_flood_does_not_delay_the_stop(fake, rotation):
+    """Critère 5 : 10 000 lignes d'un coup ; arrêt propre dans les délais, toutes au journal."""
+    sup, _ = fake(engine="say:10000:run", rotation=rotation)
+    timer = threading.Timer(1.0, lambda: os.kill(os.getpid(), signal.SIGTERM))
+    t0 = time.monotonic()
+    timer.start()
+    try:
+        assert sup.run() == 0
+    finally:
+        timer.cancel()
+    assert time.monotonic() - t0 < 1.0 + sup.engine_stop_timeout_s + sup.stop_timeout_s
+    lines = sup.log_path.read_text(encoding="utf-8").splitlines()
+    assert sum(ln.startswith("[engine] engine ligne ") for ln in lines) == 10000
+    assert count(fake.marks, "engine_SIGTERM") == 1
+    assert_no_orphans(sup)
+
+
+def test_without_terminal_messages_only_in_the_log(fake, rotation, capsys):
+    """Critère 6 : sortie standard qui n'est pas un terminal : messages au journal seulement, une fois."""
+    sup, said = fake(engine="exit0:0.1", rotation=rotation, echo=lambda: False)
+    sup.say = launcher.Supervisor.__dataclass_fields__["say"].default
+    assert sup.run() == 0
+    assert capsys.readouterr().out == ""
+    lines = sup.log_path.read_text(encoding="utf-8").splitlines()
+    assert sum("Journal complet" in ln for ln in lines) == 1
+
+
+def test_default_echo_follows_isatty(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    master, slave = os.openpty()
+    try:
+        with os.fdopen(slave, "w", closefd=False) as tty:
+            monkeypatch.setattr(sys, "stdout", tty)
+            assert launcher._default_echo() is True
+        with (tmp_path / "sortie.txt").open("w") as fh:
+            monkeypatch.setattr(sys, "stdout", fh)
+            assert launcher._default_echo() is False
+    finally:
+        os.close(master)
+        os.close(slave)
+
+
+def test_openride_log_replaces_the_rotating_log(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    monkeypatch.setattr("openride_core.config.DEFAULT_CONFIG_PATH", tmp_path / "absent.toml")
+    godot = tmp_path / "godot"
+    godot.write_text("#!/bin/sh\n")
+    godot.chmod(0o755)
+    env = {"GODOT": str(godot)}
+    rotating = launcher.build_supervisor([], env)
+    assert isinstance(rotating.rotation, LogRotation) and rotating.rotation.link == launcher.DEFAULT_LOG
+    fixed = launcher.build_supervisor([], {**env, "OPENRIDE_LOG": str(tmp_path / "x.log")})
+    assert fixed.rotation is None and fixed.log_path == tmp_path / "x.log"
+
+
+def test_openride_log_file_is_written_without_link(fake, tmp_path):
+    sup, _ = fake(core="say:1:run", engine="say:1:exit0:0.2")
+    assert sup.run() == 0
+    text = (tmp_path / "run.log").read_text(encoding="utf-8")
+    assert "core ligne 0" in text and "[engine] engine ligne 0" in text
+    assert not (tmp_path / "Logs").exists()
