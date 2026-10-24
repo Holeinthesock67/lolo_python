@@ -58,3 +58,11 @@ Aucune. Les commandes IPC utilisées existent déjà.
 
 - `scripts/openride-dev.sh --trainer ftms --input click --autostart --workout sweet_spot_3x10` après `python -m openride_core.tools.workouts install` : critère 11 du lot F.
 - `scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcours compilé>`.
+
+## 10. Livraison (24 octobre 2026, fait directement à la demande de Laurent, issue #49)
+
+- `openride-core run` : options `--route ID` (défaut `demo`) et `--workout ID` (absent : SIM). Sans `--autostart`, elles sont refusées (code 2, message en français).
+- `CoreSession.run(autostart, route_id="demo", workout_id=None)` : séquence `select_route`, `select_workout` éventuel, `start`, par `_on_command`.
+- `CoreSession.check_autostart` vérifie parcours (identifiant simple, `.world` lisible et valide) et entraînement (`.zwo` présent et valide) **avant** `IpcServer.start` ; un refus lève `AutostartError`, que `__main__.py` transforme en message (journal et sortie d'erreur) et code 1.
+- Tests : `core/tests/test_run_cli.py` (10 tests : parcours choisi, ERG dès la première trame, refus sans port ouvert, `main` et codes 1 et 2).
+- Essais sur le matériel (§9) : à faire par Laurent.
