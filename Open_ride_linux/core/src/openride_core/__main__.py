@@ -2,11 +2,13 @@
 
 Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
-    openride-core run [--trainer mock|ftms] [--input click|keyboard|none] [--gear N]
+    openride-core run [--trainer mock|ftms|sim] [--input click|keyboard|none|sim]
+                      [--hr none|ble|sim] [--sim-scenario NOM|FICHIER] [--gear N]
                       [--autostart [--route ID] [--workout ID]]
                                       boucle de séance (BLE, physique, IPC, journal) ; avec
                                       --autostart, parcours <routes>/<ID>.world (défaut demo) et
-                                      entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)
+                                      entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM) ;
+                                      « sim » : Victory, Click ou ceinture simulés (Bluetooth simulé)
     openride-core release-trainer     dépannage : annule la consigne du trainer, lui rend sa
                                       liberté et le déconnecte (après un arrêt brutal)
     openride-core summary [FICHIER] [--ftp W] [--json]
@@ -42,6 +44,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     from . import config as config_mod
     from .session import AutostartError, CoreSession
+    from .sim_scenarios import SimScenarioError
 
     try:
         cfg = config_mod.load(args.config)
@@ -52,6 +55,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         cfg.drivers.trainer = args.trainer
     if args.input:
         cfg.drivers.input = args.input
+    if args.hr:
+        cfg.drivers.hr = args.hr
+    if args.sim_scenario:
+        cfg.drivers.sim_scenario = args.sim_scenario
     if args.gear is not None:
         if not 1 <= args.gear <= cfg.gearing.n_gears:
             print(f"openride-core : --gear {args.gear} hors de 1 à {cfg.gearing.n_gears}", file=sys.stderr)
@@ -61,8 +68,13 @@ def cmd_run(args: argparse.Namespace) -> int:
         cfg.drivers.trainer = "mock"
         cfg.drivers.mock_replay = str(args.replay)
     try:
-        asyncio.run(CoreSession(cfg).run(autostart=args.autostart, route_id=args.route or "demo",
-                                         workout_id=args.workout))
+        session = CoreSession(cfg)
+    except SimScenarioError as exc:
+        print(f"openride-core : scénario de simulation refusé : {exc}", file=sys.stderr)
+        return 1
+    try:
+        asyncio.run(session.run(autostart=args.autostart, route_id=args.route or "demo",
+                                workout_id=args.workout))
     except AutostartError as exc:
         logging.getLogger("openride_core").error("Séance non lancée : %s", exc)
         print(f"openride-core : {exc}", file=sys.stderr)
@@ -107,8 +119,15 @@ def build_parser() -> argparse.ArgumentParser:
     r.add_argument("journal", nargs="?", type=Path)
     run = sub.add_parser("run", help="lancer la boucle de séance")
     run.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
-    run.add_argument("--trainer", choices=["mock", "ftms"])
-    run.add_argument("--input", choices=["click", "keyboard", "none"])
+    run.add_argument("--trainer", choices=["mock", "ftms", "sim"],
+                     help="sim : Victory simulé derrière le vrai pilote FTMS (sans matériel)")
+    run.add_argument("--input", choices=["click", "keyboard", "none", "sim"],
+                     help="sim : paire de Zwift Click simulée (le clavier y appuie)")
+    run.add_argument("--hr", choices=["none", "ble", "sim"],
+                     help="ceinture cardio : ble (réelle), sim (simulée) ; défaut none")
+    run.add_argument("--sim-scenario", metavar="NOM|FICHIER",
+                     help="scénario du Bluetooth simulé : demo (défaut), nominal, reveil_tardif, "
+                          "erreur_0x80, connexions_retardees, coupures, controle_refuse, ou JSON")
     run.add_argument("--gear", type=int, help="braquet de départ, 1 (léger) à 24 (dur) ; défaut 12")
     run.add_argument("--replay", type=Path,
                      help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
