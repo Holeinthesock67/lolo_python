@@ -52,3 +52,9 @@ Aucune. Si une règle du §7 est ambiguë (par exemple la densité par `kind`), 
 
 - Modèles, matériaux, `MultiMeshInstance3D`, niveaux de détail (E3, E4).
 - Lecture des fichiers `vegetation/chunk_<k>.json` (K4).
+
+## 9. Livraison (24 octobre 2026, PR #40)
+
+- `engine/scripts/vegetation_placer.gd` et `engine/tests/unit/test_vegetation_placer.gd` (19 vérifications, empreinte figée de la tuile de référence).
+- **Écarts assumés :** la pente est lue sur une grille de 10 m de la tuile (hauteurs aux quatre coins de la maille) plutôt que par trois appels de `height_at` par arbre ; `y` reste `height_at.call(x, z)`. Le bruit ne sert que si `areas` est vide (format §7, couche absente ou vide). Densités par `kind` : valeurs du cahier, que le format ne fixe pas.
+- Mesure : tuile de 500 m × 500 m à densité maximale (10 000 arbres) en 27 ms environ (seuil 50 ms, 150 ms en intégration continue).
