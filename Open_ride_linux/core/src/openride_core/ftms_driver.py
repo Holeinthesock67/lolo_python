@@ -19,7 +19,7 @@ from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
 from . import ftms
-from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device
+from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, note_trainer_write
 from .config import BikeConfig, TrainerConfig
 from .mock_driver import TrainerMetrics
 from .physics import RHO0
@@ -72,6 +72,7 @@ class ControlPoint:
         fut = asyncio.get_running_loop().create_future()
         self._waiting = (payload[0], fut)
         try:
+            note_trainer_write()
             write = self.client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True)
             if write_timeout is None:
                 await write

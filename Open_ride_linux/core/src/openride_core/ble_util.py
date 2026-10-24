@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 import logging
+import time
 import weakref
 from typing import Any, Collection, Iterator
 
@@ -11,6 +12,19 @@ log = logging.getLogger("ble")
 
 _locks: "weakref.WeakKeyDictionary[asyncio.AbstractEventLoop, asyncio.Lock]" = (
     weakref.WeakKeyDictionary())
+
+
+_last_trainer_write_at: float | None = None
+
+
+def note_trainer_write() -> None:
+    """Note l'heure (time.monotonic) d'une écriture au trainer, pour le diagnostic du Click (lot K8)."""
+    global _last_trainer_write_at
+    _last_trainer_write_at = time.monotonic()
+
+
+def last_trainer_write_at() -> float | None:
+    return _last_trainer_write_at
 
 
 def ble_lock() -> asyncio.Lock:
