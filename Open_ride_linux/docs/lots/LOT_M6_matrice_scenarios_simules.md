@@ -51,3 +51,12 @@ Aucune.
 
 - Accélération du temps du simulateur (les délais de `FtmsDriver` sont en temps réel).
 - Modification de l'intégration continue (J5).
+
+## 9. Livraison (24 octobre 2026)
+
+- `core/tests/test_sim_matrix.py` (marque `slow`) : paramétré par `SCENARIOS` × {ERG, SIM} ; tables `EXPECTED_ERRORS`, `EXPECTATIONS`, `FINAL_STATE`, `MIN_DURATION_S` en tête. `connexions_retardees` (aucun événement, connexions de ~15 s) et `reveil_tardif` reçoivent une durée minimale (30 et 45 s) : « durée du scénario + 10 s » ne laisserait pas le temps aux connexions.
+- Chaque séance tourne dans son propre processus (`spawn`), toutes en parallèle : le verrou BLE est propre à la boucle asyncio (en série dans une boucle, un Click endormi bloquerait les autres séances) et `CoreSession.run` installe des gestionnaires de signaux, possibles seulement dans le fil principal.
+- Critère 2 : 14 cas, chaque message d'échec nomme le scénario et le mode. Critère 4 : `test_added_scenario_is_played_without_changes`.
+- Critère 3 (essai local, non livré) : avec `FtmsDriver._release` court-circuité, la matrice échoue sur tous les cas avec « relâche absente (dernières commandes ['0x5', '0x5', '0x5']) » (ERG) ou `['0x11', …]` (SIM).
+- Critère 5 : matrice 2 min 28 s (15 tests, machine du cloud), reste de la suite du core ~5 min 30 s. Sous les 6 min : aucun découpage proposé.
+- Aucun défaut trouvé dans `core/src/` : pas de test `xfail`.
