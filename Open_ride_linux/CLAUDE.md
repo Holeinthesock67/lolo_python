@@ -22,6 +22,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - `docs/SUIVI_AVANCEMENT.md` : état, tests faits, reste à faire.
 - `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H, I, J et K sont faites pour être confiées à une autre IA.
 - `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8 et §9).
+- `docs/VERIFICATION_2026-10-24.md`, `docs/AUDIT_FTMS_2026-10-24.md`, `docs/REVUE_CODE_2026-10-24.md` : vérification, audit FTMS et revue de code du 24 octobre (constats ouverts : §5 de la revue).
 - `docs/spikes.md` : faits mesurés sur le matériel.
 
 **Règle :** un contrat ne se modifie que par ajout compatible, avec une ligne au journal des changements du document. Si un contrat paraît faux, le signaler au lieu de l'interpréter.

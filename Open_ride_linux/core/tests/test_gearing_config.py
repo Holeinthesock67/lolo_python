@@ -51,6 +51,15 @@ def test_shift_limits():
     assert g.k == 1
 
 
+def test_nan_grade_gives_flat_and_infinite_grade_is_clamped():
+    # Audit du 24 octobre (R4) : NaN passait le bornage et faisait lever l'encodage FTMS.
+    g = Gearing(GearingConfig())
+    assert g.effective_grade(float("nan")) == 0.0
+    assert g.effective_grade(5.0, difficulty=float("nan")) == 0.0
+    assert g.effective_grade(float("inf")) == g.grade_max
+    assert g.effective_grade(float("-inf")) == g.grade_min
+
+
 def test_config_defaults_and_partial_override(tmp_path: Path):
     assert load(tmp_path / "absent.toml") == Config()
     f = tmp_path / "config.toml"
