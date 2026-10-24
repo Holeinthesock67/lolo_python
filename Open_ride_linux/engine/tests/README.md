@@ -17,6 +17,34 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 | --- | --- | --- |
 | `test_terrain_render.gd` | E2 | Shader triplanaire compilé et rendu : herbe, roche, neige et trois mélanges égaux à `blend_weights` (L3) à 3/255 près, seuil de pente du thème, texture utilisée à la place de la couleur |
 
+## Tests graphiques de la scène principale (`visual_check.py`)
+
+```bash
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
+```
+
+Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux core (`VisualCore`, dérivé de `fake_core.py`), pour chaque configuration `résolution:qualité` (défaut `1280x720:low,1920x1080:high,1024x600:medium`). Le parcours est la démo avec terrain synthétique. À chaque scène, le script envoie le message de test `{"type": "_test", "action": "screenshot", "path": …, "tag": …}` : l'engine enregistre l'image affichée en PNG et écrit une ligne `[test] screenshot {…}` (textes, visibilité et rectangles en pixels des éléments du HUD, images par seconde, maillages visibles, position de la caméra, `ticks_ms`). PNG lus et écrits avec la bibliothèque standard de Python.
+
+| Scène | Vérifications |
+| --- | --- |
+| `attente` | Aucun core : ligne d'état « en attente du core… », valeurs `--`, éléments dans l'écran |
+| `vue_fixe` | Séance à l'arrêt à s = 1 500 m : les sept lignes du HUD exactes, ligne ERG cachée, bandeau caché, éléments dans l'écran sans chevauchement, texte dessiné (pixels clairs), image ni noire ni uniforme, ciel en haut, sol en bas, maillages affichés |
+| `mouvement_1`, `mouvement_2` | 8 m/s : vitesse 28.8 km/h, distance qui avance, caméra à 8 m/s ± 25 % (temps de l'engine), sol qui défile |
+| `erg` | Ligne ERG visible, cible dans la ligne de puissance, pente « trainer en ERG », mise en page |
+| `pause` | « PAUSED (trainer_lost) » et « RECONNECTING » dans la ligne d'état |
+| `core_muet_1`, `core_muet_2` | Core muet : `core_lost`, bandeau « Core non joignable » rouge et sans recouvrir le HUD, caméra et image figées |
+| `reprise` | Bandeau disparu, image normale |
+| `erreur` | Trame `error` : code `route_invalid` dans le bandeau rouge, sans recouvrir le HUD |
+| `journal` | Aucune erreur ni avertissement Godot (mêmes tolérances que ci-dessous), rendu actif |
+
+Images de référence : avec `--golden DOSSIER`, les scènes reproductibles (`attente`, `vue_fixe`, `pause`, `erreur` : s fixé, rien ne bouge) sont comparées aux références ; échec si l'écart moyen dépasse 6 niveaux sur 255 ou si plus de 1 % des pixels changent de plus de 40 niveaux (un défaut localisé, comme une ligne du HUD disparue, ne pèse que quelques niveaux en moyenne). Le rapport montre alors les écarts en rouge. `--update-golden` enregistre les captures comme références. `run_visual_tests.sh` garde les références dans `~/.cache/openride/visual_golden` (`VISUAL_GOLDEN`) et les crée au premier lancement ; après un changement graphique voulu, le relancer avec `--update-golden`.
+
+Sortie : une ligne `[OK]` ou `[ÉCHEC]` par vérification, `rapport.html` (captures, textes du HUD, mesures, tableau des vérifications) et les PNG dans le dossier `--out` (`run_visual_tests.sh` : `~/OpenRide/visual_tests/<date>`, ou `VISUAL_OUT`). Code de sortie 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque. `--native` lance l'engine sur l'écran réel avec son rendu habituel (Forward+, GTX 1060) au lieu de Xvfb : la fenêtre s'ouvre environ une minute par configuration, sans rien à faire (références distinctes à prévoir, le rendu n'étant pas celui de Mesa).
+
+`run_engine_tests.sh` lance la même vérification sur `VISUAL_CONFIGS` (défaut `1280x720:low`, environ 40 s, sans références ; `none` pour la sauter), donc aussi en intégration continue.
+
+Premier défaut trouvé : le bandeau d'alerte (placé à 360 px du bord) recouvrait le HUD dès que celui-ci s'élargissait (ligne d'état, ligne ERG). Il se place désormais à droite du HUD s'il reste 360 px, sinon dessous (`banner.gd`, `layout_for`, test `unit/test_banner_layout.gd`).
+
 ## Tests unitaires (`engine/tests/unit/`, lot K1)
 
 Pour ajouter un test, il suffit de déposer un fichier dans `engine/tests/unit/` : le script le découvre, sans modification. Contrat d'un test unitaire :
@@ -42,6 +70,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_terrain_material.gd` | E2 | Instanciation et configuration du shader triplanaire (`terrain_material.gd` et `terrain.gdshader`) : uniforms du thème et constantes de L3, textures (avec mipmaps), ligne médiane de la route sur une texture de thème, tuiles sans couleur de sommet (le rendu réel est vérifié dans `tests/render/`) |
 | `test_render_quality.gd` | E1 | Brouillard de limite (`render_quality.gd`, `main.tscn`) : mode profondeur à pleine opacité (`fog_density` = 1), début et fin avec et sans terrain |
 | `test_quality_presets.gd` | L4 | Préréglages de qualité (`quality_presets.gd`) et arguments `--quality` / `--theme` de `engine_args.gd` |
+| `test_banner_layout.gd` | – | Placement du bandeau d'alerte (`banner.gd`, `layout_for`) : à droite du HUD s'il reste 360 px, sinon dessous, jamais par-dessus, de 800 à 3 840 px de large |
 | `test_sound_model.gd` | L5 | Modèle sonore sans affichage (`sound_model.gd`) : vent, roue libre (délai 0,5 s et arrêt à > 10 W), hystérésis des points d'intérêt, lissage 12 dB/s et déterminisme |
 
 ## Étapes du script
@@ -113,10 +142,11 @@ Avec `--test-mode`, l'engine écrit sur la sortie standard des lignes `[test] cl
 | `core_lost age_ms=…` / `core_returned` | Core injoignable depuis 1 s / trames reprises |
 | `shutdown` | Message `shutdown` reçu |
 | `banner text=…` | Texte du bandeau à chaque changement (lignes séparées par ` \| `, vide quand il disparaît) |
+| `screenshot {…}` | Capture demandée par le message de test `screenshot` (tests graphiques, ci-dessus) |
 | `route_loaded id=… length_m=… path=…` / `route_missing id=…` | Parcours chargé / introuvable (la ligne d'information qui précède dit si le terrain est présent) |
 | `cam s=… age_ms=… frozen=0\|1 moved=0\|1` | Position affichée de la caméra, à 20 Hz ; `age_ms` : âge de la dernière trame |
 
-Le faux core déclenche une commande par un message de test `{"type": "_test", "action": "send_command", "name": …, "args": {…}}` envoyé sur le port d'état. Hors `--test-mode`, ce type est inconnu et donc ignoré (contrat §1).
+Le faux core déclenche une commande par un message de test `{"type": "_test", "action": "send_command", "name": …, "args": {…}}` envoyé sur le port d'état, et une capture d'écran par `{"type": "_test", "action": "screenshot", "path": …, "tag": …}`. Hors `--test-mode`, ce type est inconnu et donc ignoré (contrat §1).
 
 ## Bout en bout (lot J8)
 
