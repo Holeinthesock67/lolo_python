@@ -48,3 +48,11 @@ Aucune.
 
 - Paquet `.deb`, Flatpak ou AppImage.
 - Démarrage automatique à l'ouverture de session.
+
+## 9. Livraison (24 octobre 2026, PR #71)
+
+- `scripts/desktop/openride.desktop.in` : modèle `.desktop` avec `StartupWMClass=OpenRide Engine` et `Terminal=false`.
+- `scripts/desktop/openride.svg` : icône vectorielle deux couleurs < 8 Ko.
+- `scripts/install-desktop.sh` : script d'installation utilisateur idempotent (`--uninstall`, `--prefix`).
+- `core/tests/test_desktop_entry.py` : 4 tests de validation.
+- Intégration continue GitHub Actions verte.

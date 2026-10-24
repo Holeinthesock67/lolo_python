@@ -45,3 +45,11 @@ Aucune. Les arguments de l'engine ne font pas partie du contrat IPC.
 
 - Application des préréglages au rendu (E1, E3, E4) et changement de moteur de rendu à chaud.
 - Menu de réglages (G).
+
+## 9. Livraison (24 octobre 2026, PR #67)
+
+- `engine/scripts/quality_presets.gd` : préréglages `low`, `medium`, `high`.
+- `engine/scripts/engine_args.gd` : options CLI `--quality` et `--theme`.
+- `core/src/openride_core/launcher.py` et `scripts/openride-dev.sh` : passage de la qualité et du thème à Godot.
+- `engine/tests/unit/test_quality_presets.gd` : 11 vérifications sans écran ; test du lanceur complété.
+- Intégration continue GitHub Actions verte.

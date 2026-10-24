@@ -44,14 +44,14 @@
 | [K4](LOT_K4_lecture_couches_osm_godot.md) | Lecture des couches OSM dans l'engine, sans affichage (prépare E4) | GDScript + Python | K1, I3, I4 (livrés) | Moyenne | **Livré le 24 octobre** (PR #41) |
 | [K5](LOT_K5_navigation_menus.md) | Navigation des menus au Click, machine à états sans affichage (prépare G) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #42) |
 | [K8](LOT_K8_diagnostic_click.md) | Diagnostic des déconnexions du Zwift Click (journal et analyseur) | Python | — | Petite | **Livré le 24 octobre** (PR #34 ; séance de 20 min avec le Click à faire) |
-| [L1](LOT_L1_maillage_batiments.md) | Maillage des bâtiments extrudés, sans affichage (prépare E4) | GDScript | K1 (livré) | Petite | Oui (issue #53) |
-| [L2](LOT_L2_maillage_eau.md) | Maillage de l'eau : rivières en ruban et lacs avec îles, sans affichage | GDScript | K1 (livré) | Petite | Oui (issue #54) |
-| [L3](LOT_L3_parametres_rendu_theme.md) | Paramètres de rendu tirés du thème et fonction de référence du mélange herbe, roche, neige (prépare E2) | GDScript | K1, I5 (livrés) | Petite | Oui (issue #55) |
-| [L4](LOT_L4_prereglages_qualite.md) | Préréglages de qualité et thème transmis du lanceur à l'engine | GDScript + Python | K1, K6 (livrés) | Petite | Oui (issue #56) |
-| [L5](LOT_L5_modele_sonore.md) | Modèle sonore sans affichage : vent, roue libre, points d'intérêt | GDScript | K1 (livré) | Petite | Oui (issue #57) |
-| [L6](LOT_L6_cible_erg_journal.md) | Cible ERG enregistrée dans le journal de séance | Python | — | Petite | Oui (issue #58) |
-| [L7](LOT_L7_historique_seances.md) | Historique des séances : `openride-core history` | Python | — | Petite | Oui (issue #59) |
-| [L8](LOT_L8_raccourci_bureau.md) | Raccourci de bureau : fichier `.desktop`, icône, script d'installation | Bash | — | Petite | Oui (issue #60) |
+| [L1](LOT_L1_maillage_batiments.md) | Maillage des bâtiments extrudés, sans affichage (prépare E4) | GDScript | K1 (livré) | Petite | **Livré le 24 octobre** (PR #64, issue #53) |
+| [L2](LOT_L2_maillage_eau.md) | Maillage de l'eau : rivières en ruban et lacs avec îles, sans affichage | GDScript | K1 (livré) | Petite | **Livré le 24 octobre** (PR #65, issue #54) |
+| [L3](LOT_L3_parametres_rendu_theme.md) | Paramètres de rendu tirés du thème et fonction de référence du mélange herbe, roche, neige (prépare E2) | GDScript | K1, I5 (livrés) | Petite | **Livré le 24 octobre** (PR #66, issue #55) |
+| [L4](LOT_L4_prereglages_qualite.md) | Préréglages de qualité et thème transmis du lanceur à l'engine | GDScript + Python | K1, K6 (livrés) | Petite | **Livré le 24 octobre** (PR #67, issue #56) |
+| [L5](LOT_L5_modele_sonore.md) | Modèle sonore sans affichage : vent, roue libre, points d'intérêt | GDScript | K1 (livré) | Petite | **Livré le 24 octobre** (PR #68, issue #57) |
+| [L6](LOT_L6_cible_erg_journal.md) | Cible ERG enregistrée dans le journal de séance | Python | — | Petite | **Livré le 24 octobre** (PR #69, issue #58) |
+| [L7](LOT_L7_historique_seances.md) | Historique des séances : `openride-core history` | Python | — | Petite | **Livré le 24 octobre** (PR #70, issue #59) |
+| [L8](LOT_L8_raccourci_bureau.md) | Raccourci de bureau : fichier `.desktop`, icône, script d'installation | Bash | — | Petite | **Livré le 24 octobre** (PR #71, issue #60) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -71,7 +71,7 @@ Leur forme dépendra des choix faits dans E1 et D.
 
 **Série K (23 octobre au soir) :** tous les lots sont livrés le 24 octobre (K6 et K7 faits directement le 23). K2 à K5 déposent leur test dans `engine/tests/unit/` (découverte par `run_engine_tests.sh`, lot K1). Les lots K préparent E3 (K2, K3), E4 (K3, K4) et G (K5, K6, K7) sans les remplacer : le rendu, l'affichage et le contrat IPC v1.1 restent internes.
 
-**Série L (24 octobre) :** huit petits lots délégables, chacun suivi par une issue GitHub (§5). L1 à L5 (GDScript, sans affichage) déposent leur test dans `engine/tests/unit/` et ne touchent ni `main.gd`, ni les scripts de rendu d'E1, ni `run_engine_tests.sh` ; L4 modifie aussi `engine_args.gd` et `launcher.py`. L6 à L8 sont en Python ou en Bash. J1 et L7 modifient tous deux `core/src/openride_core/__main__.py`, J1 et L6 `session.py` : fusionner l'un après l'autre. L1 et L2 écrivent chacun une triangulation de polygones à trous ; la mise en commun se fera après la fusion des deux.
+**Série L (24 octobre) :** tous les lots L1 à L8 sont livrés le 24 octobre (PR #64 à #71). L1 à L5 (GDScript, sans affichage) déposent leur test dans `engine/tests/unit/` ; L4 modifie aussi `engine_args.gd` et `launcher.py` ; L6 à L8 enrichissent le journal (cible ERG), le core (`history`) et le bureau (`.desktop`).
 
 **Lots H, I, J, K et L (23 et 24 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I, J, K et L ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
 

@@ -56,3 +56,9 @@ Aucune. Si un cas du §6 n'est pas tranché (anneau auto-intersecté, trou qui t
 - Création du `MeshInstance3D`, matériaux, ombres, niveaux de détail (E4).
 - Toits à deux pans (`gabled`, `roof_dir_deg`) : évolution future (SRS §14).
 - Lecture des fichiers `buildings/chunk_<k>.json` (K4).
+
+## 9. Livraison (24 octobre 2026, PR #64)
+
+- `engine/scripts/building_mesh.gd` : module pur de maillage 3D des bâtiments (murs extrudés à normales horizontales sortantes, toits plats triangulés avec normales vers le haut, découpe des cours intérieures, couleurs par hachage déterministe de `id`).
+- `engine/tests/unit/test_building_mesh.gd` : 18 vérifications sans écran (15 ms pour 500 bâtiments).
+- Intégration continue GitHub Actions verte.

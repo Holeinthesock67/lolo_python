@@ -125,6 +125,10 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 
 ## 3. Ce qui reste à tester (matériel, en interne)
 
+- [ ] Raccourci de bureau (lot L8) : tester `scripts/install-desktop.sh` sur le PC Ubuntu et vérifier la classe de fenêtre Godot (`xprop WM_CLASS` : `"OpenRide Engine"`).
+- [ ] Historique (lot L7) : tester `openride-core history --weeks 8` sur `~/OpenRide/Activities/` avec les séances réelles.
+- [ ] Cible ERG (lot L6) : vérifier lors d'une séance ERG réelle que la cible est bien écrite dans le `.jsonl` et que `openride-core summary` affiche l'écart à la cible par bloc.
+- [ ] Modules graphiques et sonores (lots L1 à L5) : valider le rendu visuel et sonore (bâtiments, eau, thème triplanaire, qualité graphique, vent, roue libre et bips) une fois raccordés à la scène principale (E2, E3, E4).
 - [ ] Séance réelle de 10 minutes ou plus avec braquets perceptibles, puis relecture des mesures `Perf` du log.
 - [x] Après une séance ERG, quitter OpenRide puis piloter le HomeTrainer depuis une autre application (PR #28 et #45) : validé par le propriétaire le 24 octobre, le trainer est libéré et une autre application s'y reconnecte.
 - [ ] Délai entre un appui et l'écriture de la commande au HomeTrainer.
@@ -136,7 +140,7 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 
 ## 4. Ce qui reste à faire
 
-Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 et I1 à I6 ont tous été livrés et fusionnés le 23 octobre (tests de cohérence documentation/code, catalogue de parcours, couches OSM bâtiments/végétation/points d'intérêt/eau, chargeur de thèmes GDScript et logique ERG Godot testée sans écran). Série J (audit J du 23 octobre au soir) : J2 (robustesse IPC), J3 (configuration validée), J6 (catalogue unique) et J7 (cohérence de la documentation) et J8 (bout en bout sans écran) faits directement, J4 et J5 en partie ; restent à confier J1 (parcours et entraînement au lancement) et la fin de J4 et J5. Série L (24 octobre) : huit lots délégables (maillages des bâtiments et de l'eau, paramètres de rendu du thème, préréglages de qualité, modèle sonore, cible ERG au journal, historique des séances, raccourci de bureau). Chaque lot ouvert a son issue GitHub, regroupée dans l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48) (procédure : [`docs/lots/00_INDEX.md`](lots/00_INDEX.md) §5).
+Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 et I1 à I6 ont tous été livrés et fusionnés le 23 octobre (tests de cohérence documentation/code, catalogue de parcours, couches OSM bâtiments/végétation/points d'intérêt/eau, chargeur de thèmes GDScript et logique ERG Godot testée sans écran). Série J (audit J du 23 octobre au soir) : J2 (robustesse IPC), J3 (configuration validée), J6 (catalogue unique) et J7 (cohérence de la documentation) et J8 (bout en bout sans écran) faits directement, J4 et J5 en partie ; restent à confier J1 (parcours et entraînement au lancement) et la fin de J4 et J5. Série L (24 octobre) : les huit lots délégables L1 à L8 ont tous été livrés et fusionnés le 24 octobre (maillage bâtiments/eau, paramètres de rendu du thème, préréglages de qualité, modèle sonore, cible ERG au journal, historique des séances, raccourci de bureau).
 
 ### Sprint 1 : fin
 - [ ] Séance de 10 minutes (§3).
@@ -157,7 +161,8 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Shader triplanaire et thèmes (E2, après le chargeur de thèmes GDScript du lot I5), arbres, HUD final avec profil d'altitude (E3).
 
 ### Lanceur et menus (lot G, à rédiger)
-- [ ] Lanceur unique `openride` (commande et icône de bureau), qui arrête tout à la fermeture de la fenêtre.
+- [x] Lanceur unique `openride` (`launcher.py`, lot K6) et raccourci de bureau (`scripts/desktop/openride.desktop.in`, `scripts/desktop/openride.svg`, `scripts/install-desktop.sh`, lot L8).
+- [ ] Améliorer la journalisation du lanceur sans terminal (`Terminal=false`) : rediriger la sortie de `launcher.py` et de Godot vers un journal (signalé lors du lot L8).
 - [ ] Supervision : relance du core ou de l'engine sans perdre la séance.
 - [ ] Menu piloté au Click et au clavier (parcours, démarrage, pause, fin), à la place de `--autostart`. Le contrat IPC devra gagner des messages pour lister parcours et entraînements.
 - [ ] Écran d'état des appareils (trainer, Click, batterie du Click).
