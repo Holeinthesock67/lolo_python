@@ -61,6 +61,9 @@
 | [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | **Livré le 24 octobre** (issue #84) |
 | [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | Oui (issue #85) |
 | [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | Oui (issue #86) |
+| [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
+| [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | Non : interne (contrôle visuel sur la GTX 1060), cahier rédigé le 24 octobre |
+| [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés sauf E3) | Grande | Non : interne (contrôle visuel et sonore), cahier rédigé le 24 octobre |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -68,9 +71,6 @@
 - validation des fichiers FIT dans GoldenCheetah et Garmin Connect.
 
 **À rédiger plus tard** (contrôle visuel ou décision de Laurent nécessaire) :
-- E2 : shader triplanaire et application du thème (s'appuie sur I5) ;
-- E3 : ciel, végétation par bruit, HUD final avec profil d'altitude (s'appuie sur K2 et K3) ;
-- E4 : rendu des bâtiments, des forêts, de l'eau et sons des points d'intérêt (s'appuie sur I3, I4, K3 et K4) ;
 - F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) ;
 - G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), affichage des menus pilotés au Click et écran de fin de séance (s'appuie sur I2, K5, K6 et K7).
 
@@ -99,6 +99,7 @@ C ──► F ──► H8        H1 à H8, I1 : indépendants
 J4, J5 : indépendants (J1, J2, J3, J6, J7, J8 livrés)
 K6, K7, K8 : indépendants (livrés)
 E1 ──► K1 ──► K2, K3, K4, K5 (livrés ; préparent E3, E4 et G)
+E2 ──► E3 ──► E4 ;  K2, K3, L3, L4 ──► E3 ;  K4, L1, L2, L5 ──► E4
 K1 ──► L1, L2, L3, L4, L5 ;  L6, L7, L8 : indépendants
 M1 à M9 : indépendants (simulateur Bluetooth de la PR #74)
 ```
