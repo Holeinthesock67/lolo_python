@@ -21,8 +21,14 @@ class FakeServices:
 
 
 class FakeClient:
-    def __init__(self, uuids):
+    """Trainer simulé. Le Control Point est exposé par défaut (`cp=False` pour l'ôter) et
+    répond à chaque écriture par l'indication 0x80 `cp_result` (None : pas de réponse)."""
+
+    def __init__(self, uuids, cp=True, cp_result=0x01):
+        if cp and ftms.INDOOR_BIKE_DATA in uuids:
+            uuids = [*uuids, ftms.CONTROL_POINT]
         self.services = FakeServices(uuids)
+        self.cp_result = cp_result
         self.cbs, self.writes = {}, []
         self.is_connected = True
         self.disconnected_cb = None
@@ -41,6 +47,10 @@ class FakeClient:
 
     async def write_gatt_char(self, uuid, data, response=True):
         self.writes.append((uuid, bytes(data)))
+        cb = self.cbs.get(ftms.CONTROL_POINT)
+        if uuid == ftms.CONTROL_POINT and cb is not None and self.cp_result is not None:
+            reply = bytearray([ftms.OP_RESPONSE, data[0], self.cp_result])
+            asyncio.get_running_loop().call_soon(cb, None, reply)
 
     def drop(self):
         self.disconnected_cb(self)
@@ -98,8 +108,9 @@ def test_ftms_driver_data_and_commands():
 
         drv.stop()
         await asyncio.wait_for(task, 3)
-        last = client.writes[-1][1]                  # résistance relâchée en partant
+        last = client.writes[-2][1]                  # résistance relâchée en partant…
         assert last[0] == ftms.OP_SET_SIM_PARAMS and struct.unpack_from("<h", last, 3)[0] == 0
+        assert client.writes[-1][1] == ftms.cmd_reset()   # … puis contrôle FTMS rendu
     asyncio.run(scenario())
 
 
