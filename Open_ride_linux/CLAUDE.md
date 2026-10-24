@@ -8,7 +8,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - **Matériel :**
   - home trainer HomeTrainer (FTMS), annoncé en Bluetooth sous le nom « HomeTrainer 0000 » ;
   - Zwift Cog ;
-  - Zwift Click, adresse `C1:1C:00:00:00:01`, modèle récent, messages de type `0x23`.
+  - Zwift Click V2, paire de boîtiers : gauche `C1:1C:00:00:00:01` (−, flèches), droit `C1:1C:00:00:00:03` (+, A, B, Y, Z), messages de type `0x23` (table `KEYPAD_BITS`). Le gauche est bridé une minute après la connexion sans passage récent par l'appli Zwift : B du droit fait aussi « − ».
 - **PC cible :** PC de bureau MSI (`pc-cible`), Ubuntu, GTX 1060, Python 3.14, Godot 4.3 dans `~/Applications/godot/`.
   - Utilisateur `utilisateur` ; dépôt dans `/home/utilisateur/Games/lolo_python`.
   - Un lien `~/Games/Open_ride_linux` pointe vers le dossier du projet.
