@@ -96,7 +96,7 @@ def test_contact_lost_then_back(monkeypatch, caplog):
         await asyncio.wait(tasks, timeout=3)
     with caplog.at_level(logging.INFO, logger="hr"):
         asyncio.run(scenario())
-    lines = [r.getMessage() for r in caplog.records if "contact" in r.getMessage()]
+    lines = [r.getMessage() for r in caplog.records if r.name == "hr" and "contact" in r.getMessage()]
     assert len(lines) == 2, lines
     assert "absent" in lines[0] and "retrouvé" in lines[1]
 
