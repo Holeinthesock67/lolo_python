@@ -423,7 +423,7 @@ class CoreSession:
                 ts=round(time.time(), 3), t=round(self._t_session, 2), lat=st.lat, lon=st.lon,
                 alt=round(alt, 2), distance=round(st.s, 2), speed=round(st.v, 3),
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
-                grade=round(grade, 2), mode=st.mode, gear=self.gearing.k,
+                grade=round(grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
                 block=erg.index + 1 if erg else None))
 
         if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
