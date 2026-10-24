@@ -52,6 +52,8 @@
 | [L6](LOT_L6_cible_erg_journal.md) | Cible ERG enregistrée dans le journal de séance | Python | — | Petite | **Livré le 24 octobre** (PR #69, issue #58) |
 | [L7](LOT_L7_historique_seances.md) | Historique des séances : `openride-core history` | Python | — | Petite | **Livré le 24 octobre** (PR #70, issue #59) |
 | [L8](LOT_L8_raccourci_bureau.md) | Raccourci de bureau : fichier `.desktop`, icône, script d'installation | Bash | — | Petite | **Livré le 24 octobre** (PR #71, issue #60) |
+| [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75, après corrections), K2, K3, L3, L4 (livrés) | Grande | Non : interne (contrôle visuel sur la GTX 1060), cahier rédigé le 24 octobre |
+| [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés sauf E3) | Grande | Non : interne (contrôle visuel et sonore), cahier rédigé le 24 octobre |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -59,9 +61,7 @@
 - validation des fichiers FIT dans GoldenCheetah et Garmin Connect.
 
 **À rédiger plus tard** (contrôle visuel ou décision du propriétaire nécessaire) :
-- E2 : shader triplanaire et application du thème (s'appuie sur I5) ;
-- E3 : ciel, végétation par bruit, HUD final avec profil d'altitude (s'appuie sur K2 et K3) ;
-- E4 : rendu des bâtiments, des forêts, de l'eau et sons des points d'intérêt (s'appuie sur I3, I4, K3 et K4) ;
+- E2 : shader triplanaire et application du thème (s'appuie sur I5 et L3) ; cahier et code proposés dans la PR #75, revus le 24 octobre dans [`docs/REVUE_E2_2026-10-24.md`](../REVUE_E2_2026-10-24.md) (trois corrections bloquantes avant fusion) ;
 - F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) ;
 - G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), affichage des menus pilotés au Click et écran de fin de séance (s'appuie sur I2, K5, K6 et K7).
 
@@ -88,6 +88,7 @@ C ──► F ──► H8        H1 à H8, I1 : indépendants
 J4, J5 : indépendants (J1, J2, J3, J6, J7, J8 livrés)
 K6, K7, K8 : indépendants (livrés)
 E1 ──► K1 ──► K2, K3, K4, K5 (livrés ; préparent E3, E4 et G)
+E2 ──► E3 ──► E4 ;  K2, K3, L3, L4 ──► E3 ;  K4, L1, L2, L5 ──► E4
 K1 ──► L1, L2, L3, L4, L5 ;  L6, L7, L8 : indépendants
 ```
 
