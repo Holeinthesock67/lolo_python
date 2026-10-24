@@ -46,3 +46,9 @@ Aucune.
 
 - Graphiques, export CSV, synchronisation avec un service en ligne (exclue par le SRS §9).
 - Affichage dans l'engine (G).
+
+## 9. Livraison (24 octobre 2026, PR #70)
+
+- `core/src/openride_core/tools/history.py` : sous-commande `openride-core history` (liste dédoublonnée, cumul hebdomadaire ISO, cache rapide).
+- `core/tests/test_history.py` : 5 tests automatisés (dédoublonnage, semaines ISO, robustesse aux fichiers corrompus, cache 10x plus rapide).
+- Intégration continue GitHub Actions verte.

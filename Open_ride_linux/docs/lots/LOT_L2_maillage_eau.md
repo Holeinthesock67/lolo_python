@@ -53,3 +53,9 @@ Aucune.
 
 - Matériau et shader de l'eau, reflets, sons des rivières (sprint 6).
 - Creusement du terrain sous la rivière.
+
+## 9. Livraison (24 octobre 2026, PR #65)
+
+- `engine/scripts/water_mesh.gd` : maillage 3D des cours d'eau (rubans à largeur et normales contrôlées) et plans d'eau triangulés avec découpe des îles.
+- `engine/tests/unit/test_water_mesh.gd` : 12 vérifications sans écran.
+- Intégration continue GitHub Actions verte.
