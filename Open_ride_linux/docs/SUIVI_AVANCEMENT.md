@@ -1,6 +1,6 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
-Mise à jour : 24 octobre 2026 (fusions E1, K1 à K5, K8, braquets réactifs et deux boîtiers du Click ; libération du trainer validée sur le Victory) ; précédente : 24 octobre au matin (vérification et correctifs R1, R2, S1, PR #44)
+Mise à jour : 24 octobre 2026 (cahiers de la série N ; fusions E1, K1 à K5, K8, braquets réactifs et deux boîtiers du Click ; libération du trainer validée sur le Victory) ; précédente : 24 octobre au matin (vérification et correctifs R1, R2, S1, PR #44)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 Vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) : constats R1, R2 et S1 corrigés.
 Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Click à deux boîtiers, message du lanceur, pente NaN et lint corrigés.
@@ -143,7 +143,7 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 
 ## 4. Ce qui reste à faire
 
-Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 et I1 à I6 ont tous été livrés et fusionnés le 23 octobre (tests de cohérence documentation/code, catalogue de parcours, couches OSM bâtiments/végétation/points d'intérêt/eau, chargeur de thèmes GDScript et logique ERG Godot testée sans écran). Série J (audit J du 23 octobre au soir) : J1 (parcours et entraînement au lancement, `run --autostart --route ID --workout ID`, 24 octobre), J2 (robustesse IPC), J3 (configuration validée), J6 (catalogue unique), J7 (cohérence de la documentation) et J8 (bout en bout sans écran) faits directement, J4 et J5 en partie ; restent à confier la fin de J4 et J5. Série L (24 octobre) : les huit lots délégables L1 à L8 ont tous été livrés et fusionnés le 24 octobre (maillage bâtiments/eau, paramètres de rendu du thème, préréglages de qualité, modèle sonore, cible ERG au journal, historique des séances, raccourci de bureau). Série M (24 octobre, cahiers rédigés) : neuf lots Python délégables M1 à M9, testés avec le Bluetooth simulé (renvoi après l'erreur ATT 0x80, ceinture cardio réelle, inventaire des appareils, biais ERG et coupures au journal, scénario tiré d'un journal réel, matrice des scénarios simulés, compilateur FIT et TCX, journal du lanceur, dette R3 et S2). Chaque lot ouvert a son issue GitHub, regroupée dans l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48) (procédure : [`docs/lots/00_INDEX.md`](lots/00_INDEX.md) §5).
+Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00_INDEX.md). Les lots H1 à H8 et I1 à I6 ont tous été livrés et fusionnés le 23 octobre (tests de cohérence documentation/code, catalogue de parcours, couches OSM bâtiments/végétation/points d'intérêt/eau, chargeur de thèmes GDScript et logique ERG Godot testée sans écran). Série J (audit J du 23 octobre au soir) : J1 (parcours et entraînement au lancement, `run --autostart --route ID --workout ID`, 24 octobre), J2 (robustesse IPC), J3 (configuration validée), J6 (catalogue unique), J7 (cohérence de la documentation) et J8 (bout en bout sans écran) faits directement, J4 et J5 en partie ; restent à confier la fin de J4 et J5. Série L (24 octobre) : les huit lots délégables L1 à L8 ont tous été livrés et fusionnés le 24 octobre (maillage bâtiments/eau, paramètres de rendu du thème, préréglages de qualité, modèle sonore, cible ERG au journal, historique des séances, raccourci de bureau). Série M (24 octobre, cahiers rédigés) : neuf lots Python délégables M1 à M9, testés avec le Bluetooth simulé (renvoi après l'erreur ATT 0x80, ceinture cardio réelle, inventaire des appareils, biais ERG et coupures au journal, scénario tiré d'un journal réel, matrice des scénarios simulés, compilateur FIT et TCX, journal du lanceur, dette R3 et S2). Série N (24 octobre au soir, cahiers rédigés) : suite du chemin du MVP après E3 et E4, onze lots N1 à N11 (contrat IPC v1.1, core et client des listes, modèles de l'écran de fin et de l'état des appareils, affichage des menus, ERG à l'écran, reprise après un plantage du core, bots, packs de thèmes, compilation au lancement) ; N1, N6 et N7 restent internes, N4 est délégable tout de suite, les autres après N1 ou la fusion de la PR #91 et des lots M. Chaque lot ouvert a son issue GitHub, regroupée dans l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48) (procédure : [`docs/lots/00_INDEX.md`](lots/00_INDEX.md) §5).
 
 
 ### Sprint 1 : fin
@@ -166,14 +166,17 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Shader triplanaire et application du thème (lot E2, PR #75, 24 octobre) : projection en mètres, mélange herbe/roche/neige selon pente et altitude (constantes du lot L3 transmises au shader), route et soleil pilotés par le thème ; vrai rendu vérifié sous Xvfb (`engine/tests/render/test_terrain_render.gd`) : reste l'essai sur la GTX 1060 (images par seconde avec et sans textures, limite du terrain lointain), procédure dans `docs/ESSAI_GRAPHIQUE_E2.md` ; brouillard de limite réglé à pleine opacité et mipmaps des textures du thème ajoutés pour cet essai.
 - [ ] Arbres, HUD final avec profil d'altitude (E3).
 
-### Lanceur et menus (lot G, à rédiger)
+### Lanceur et menus (ancien lot G, série N rédigée le 24 octobre)
 - [x] Lanceur unique `openride` (`launcher.py`, lot K6) et raccourci de bureau (`scripts/desktop/openride.desktop.in`, `scripts/desktop/openride.svg`, `scripts/install-desktop.sh`, lot L8).
 - [ ] Améliorer la journalisation du lanceur sans terminal (`Terminal=false`) : rediriger la sortie de `launcher.py` et de Godot vers un journal (signalé lors du lot L8 ; cahier : lot M8).
-- [ ] Supervision : relance du core ou de l'engine sans perdre la séance.
-- [ ] Menu piloté au Click et au clavier (parcours, démarrage, pause, fin), à la place de `--autostart`. Le contrat IPC devra gagner des messages pour lister parcours et entraînements.
-- [ ] Écran d'état des appareils (trainer, Click, batterie du Click).
+- [ ] Supervision : relance du core ou de l'engine sans perdre la séance (relance de Godot faite par K6 ; reprise après un plantage du core : lot N8).
+- [ ] Menu piloté au Click et au clavier (parcours, démarrage, pause, fin), à la place de `--autostart` : contrat IPC v1.1 (lot N1, décision de Laurent), core (N2), client des listes (N3), écran de fin (N4), affichage (N6).
+- [ ] Compiler les nouvelles traces GPX au lancement (lot N11).
+- [ ] Écran d'état des appareils (trainer, Click, batterie du Click) : modèle (lot N5), affichage (N6).
 
 ### Sprint 4 et suivants
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le Victory à faire).
 - [x] Couches OpenStreetMap côté compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau) ; reste le rendu dans l'engine (à rédiger).
-- [ ] Thèmes avec packs de textures.
+- [ ] Thèmes avec packs de textures : liste et installation (lot N10).
+- [ ] Bandeau ERG, histogramme et bip à T − 3 s à l'écran (lot N7, ancien F2).
+- [ ] Bots à puissance constante et fantôme d'une séance passée, côté core (lot N9) ; affichage à rédiger.
