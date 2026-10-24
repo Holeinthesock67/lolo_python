@@ -8,6 +8,8 @@ Sous-commandes disponibles à ce stade :
                                       liberté et le déconnecte (après un arrêt brutal)
     openride-core summary [FICHIER] [--ftp W] [--json]
                                       bilan d'une séance (.jsonl ou .fit ; défaut : dernier journal)
+    openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
+                                      historique des séances et cumul par semaine ISO
 """
 
 from __future__ import annotations
@@ -81,6 +83,12 @@ def cmd_summary(args: argparse.Namespace) -> int:
     return run(args.file, args.ftp, args.json, args.config)
 
 
+def cmd_history(args: argparse.Namespace) -> int:
+    from .tools.history import run
+
+    return run(args.directory, args.weeks, args.ftp, args.json, args.config)
+
+
 def main(argv: list[str] | None = None) -> int:
     p = argparse.ArgumentParser(prog="openride-core")
     p.add_argument("--version", action="version", version=__version__)
@@ -104,11 +112,19 @@ def main(argv: list[str] | None = None) -> int:
     summ.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
     summ.add_argument("--json", action="store_true", help="sortie JSON")
     summ.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    hist = sub.add_parser("history", help="historique des séances et cumul par semaine ISO")
+    hist.add_argument("--dir", type=Path, dest="directory",
+                      help="dossier des séances (défaut : ~/OpenRide/Activities)")
+    hist.add_argument("--weeks", type=int, default=8, help="nombre de semaines ISO (défaut : 8)")
+    hist.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
+    hist.add_argument("--json", action="store_true", help="sortie JSON")
+    hist.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
-            "release-trainer": cmd_release_trainer, "summary": cmd_summary}[args.command](args)
+            "release-trainer": cmd_release_trainer, "summary": cmd_summary,
+            "history": cmd_history}[args.command](args)
 
 
 if __name__ == "__main__":
