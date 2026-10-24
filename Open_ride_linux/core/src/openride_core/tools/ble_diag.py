@@ -208,6 +208,8 @@ async def cmd_trainer(args: argparse.Namespace) -> None:
                 # Toujours relâcher la résistance en partant, même après une interruption.
                 commands.append(await control(client, "sim grade 0% (relâche)",
                                               ftms.cmd_set_sim_params(0.0)))
+                # Puis rendre le contrôle FTMS, pour qu'une autre application puisse le prendre.
+                commands.append(await control(client, "reset (contrôle rendu)", ftms.cmd_reset()))
             report["commands"] = commands
 
     report["indoor_bike_data_rate"] = rate_stats(ibd_times)

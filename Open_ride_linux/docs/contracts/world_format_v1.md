@@ -105,7 +105,7 @@ Chaque tableau compte exactement `n` valeurs.
 - Extrémités d'un parcours ouvert : points fantômes `P_{−1} = 2·P_0 − P_1` et `P_n = 2·P_{n−1} − P_{n−2}`. Boucle : indices circulaires sur les `n − 1` points distincts (le voisin avant `P_0` est `P_{n−2}`, le voisin après `P_{n−1} = P_0` est `P_1`). `out_and_back` se lit comme `open`.
 - Près d'un segment plus court que `ds_m`, la spline centripète avance à vitesse légèrement non uniforme : c'est attendu.
 
-**Vecteurs de test :** `docs/contracts/world/route_test_vectors.json`, générés par l'implémentation de référence (`python -m openride_core.tools.route_vectors`) et vérifiés en GDScript (`engine/tests/test_route_vectors.gd`). Schémas : `docs/contracts/world/manifest.schema.json` et `route.schema.json`.
+**Vecteurs de test :** `docs/contracts/world/route_test_vectors.json`, générés par l'implémentation de référence (`python -m openride_core.tools.route_vectors`) et vérifiés en GDScript (`engine/tests/unit/test_route_vectors.gd`). Schémas : `docs/contracts/world/manifest.schema.json` et `route.schema.json`.
 
 Le core lit cette couche pour la pente, les coordonnées géographiques et la longueur ; l'engine pour la position et l'orientation de la caméra.
 
