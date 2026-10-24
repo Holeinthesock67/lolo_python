@@ -4,12 +4,17 @@ Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
     openride-core run [--trainer mock|ftms] [--input click|keyboard|none] [--gear N] [--autostart]
                                       boucle de séance (BLE, physique, IPC, journal)
+    openride-core release-trainer     dépannage : annule la consigne du trainer, lui rend sa
+                                      liberté et le déconnecte (après un arrêt brutal)
+    openride-core summary [FICHIER] [--ftp W] [--json]
+                                      bilan d'une séance (.jsonl ou .fit ; défaut : dernier journal)
 """
 
 from __future__ import annotations
 
 import argparse
 import logging
+import sys
 from pathlib import Path
 
 from . import __version__
@@ -33,18 +38,43 @@ def cmd_run(args: argparse.Namespace) -> int:
     from . import config as config_mod
     from .session import CoreSession
 
-    cfg = config_mod.load(args.config)
+    try:
+        cfg = config_mod.load(args.config)
+    except config_mod.ConfigError as exc:
+        print(f"openride-core : configuration invalide : {exc}", file=sys.stderr)
+        return 1
     if args.trainer:
         cfg.drivers.trainer = args.trainer
     if args.input:
         cfg.drivers.input = args.input
-    if args.gear:
+    if args.gear is not None:
+        if not 1 <= args.gear <= cfg.gearing.n_gears:
+            print(f"openride-core : --gear {args.gear} hors de 1 à {cfg.gearing.n_gears}", file=sys.stderr)
+            return 2
         cfg.gearing.start_gear = args.gear
     if args.replay:
         cfg.drivers.trainer = "mock"
         cfg.drivers.mock_replay = str(args.replay)
     asyncio.run(CoreSession(cfg).run(autostart=args.autostart))
     return 0
+
+
+def cmd_release_trainer(args: argparse.Namespace) -> int:
+    import asyncio
+
+    from . import config as config_mod
+    from .ftms_driver import release_trainer
+
+    cfg = config_mod.load(args.config)
+    ok = asyncio.run(release_trainer(cfg.trainer, cfg.bike, cfg.drivers.trainer_address or None))
+    print("Trainer libéré." if ok else "Trainer non libéré (voir les messages ci-dessus).")
+    return 0 if ok else 1
+
+
+def cmd_summary(args: argparse.Namespace) -> int:
+    from .tools.session_summary import run
+
+    return run(args.file, args.ftp, args.json, args.config)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -62,10 +92,19 @@ def main(argv: list[str] | None = None) -> int:
                      help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
     run.add_argument("--autostart", action="store_true",
                      help="charge le parcours factice et démarre aussitôt (essais sans engine)")
+    rel = sub.add_parser("release-trainer",
+                         help="libérer le trainer resté réservé (consigne annulée, contrôle rendu)")
+    rel.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    summ = sub.add_parser("summary", help="bilan d'une séance : NP, IF, TSS, zones, meilleures puissances")
+    summ.add_argument("file", nargs="?", type=Path, help="journal .jsonl ou .fit (défaut : dernier journal)")
+    summ.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
+    summ.add_argument("--json", action="store_true", help="sortie JSON")
+    summ.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     args = p.parse_args(argv)
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
-    return {"recover": cmd_recover, "run": cmd_run}[args.command](args)
+    return {"recover": cmd_recover, "run": cmd_run,
+            "release-trainer": cmd_release_trainer, "summary": cmd_summary}[args.command](args)
 
 
 if __name__ == "__main__":
