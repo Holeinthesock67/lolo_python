@@ -2,7 +2,8 @@
 
 Le braquet n'agit que sur la pente envoyée au trainer, jamais sur la vitesse virtuelle :
     G_eff = (G_terrain + G_base) * R_k - G_base
-avec R_k en progression géométrique entre R_min et R_max.
+avec R_k en progression géométrique entre R_min et R_max. G_eff ne change jamais de signe par
+rapport au terrain : un petit braquet adoucit une montée sans la transformer en descente.
 """
 
 from __future__ import annotations
@@ -53,4 +54,10 @@ class Gearing:
         g = ((terrain_grade_pct + g_base) * self.ratio - g_base) * difficulty
         if math.isnan(g):
             return 0.0
+        # Essai du 24 octobre : en braquets 3 à 5 sur 3 % (G_base 4 %), le trainer recevait une
+        # descente près d'une seconde sur deux ; une montée reste au moins plate, une descente aussi.
+        if terrain_grade_pct > 0:
+            g = max(g, 0.0)
+        elif terrain_grade_pct < 0:
+            g = min(g, 0.0)
         return min(max(g, self.grade_min), self.grade_max)
