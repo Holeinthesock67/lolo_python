@@ -46,6 +46,7 @@ Vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) : constats R1, R
 - [x] `theme_loader.gd` : lecture, validation et fusion des thèmes visuels avec repli sur `res://themes/default/theme.json` et chargement des textures utilisateur (`engine/tests/unit/test_theme_loader.gd`, lot I5).
 - [x] `erg_view_model.gd` : logique d'affichage du bandeau ERG, déclenchement unique du bip à T − 3 s et géométrie de l'histogramme `profile_bars`, testés sans écran face à `fake_core.py --erg-workout` (`engine/tests/test_erg_view_model.gd`, lot I6).
 - [x] Tests unitaires GDScript lancés par découverte : chaque `engine/tests/unit/test_*.gd` est lancé par `run_engine_tests.sh`, avec résumé final et `UNIT=nom` pour un seul test (lot K1).
+- [x] `hud_view_model.gd` : modèle de vue du HUD sans affichage (textes, profil d'altitude devant le cycliste, prochaine montée), testé sans écran (`engine/tests/unit/test_hud_view_model.gd`, lot K2) ; le dessin reste à E3.
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
