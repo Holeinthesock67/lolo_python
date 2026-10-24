@@ -43,6 +43,7 @@ class Record:
     mode: str = "SIM"
     gear: int | None = None
     block: int | None = None     # bloc d'entraînement ERG (à partir de 1)
+    target_w: float | None = None  # cible ERG envoyée au trainer (W), None en SIM / FreeRide / pause
 
 
 class JournalWriter:
