@@ -67,7 +67,8 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_building_mesh.gd` | L1 | Maillage 3D des bâtiments extrudés (`building_mesh.gd`) : murs à arêtes vives, toit plat avec cour intérieure, sens des anneaux, couleurs déterministes par `id`, cas invalides et temps de 500 bâtiments |
 | `test_water_mesh.gd` | L2 | Maillage de l'eau (`water_mesh.gd`) : cours d'eau en ruban (droits et en coude), plans d'eau avec îles, largeur par défaut, cas invalides et déterminisme |
 | `test_theme_render_params.gd` | L3 | Paramètres de rendu tirés du thème (`theme_render_params.gd`) : uniforms terrain, fonction de référence du mélange herbe/roche/neige, poids triplanaires, route et direction du soleil |
-| `test_terrain_material.gd` | E2 | Instanciation et configuration du shader triplanaire (`terrain_material.gd` et `terrain.gdshader`) : uniforms du thème et constantes de L3, textures, ligne médiane de la route sur une texture de thème, tuiles sans couleur de sommet (le rendu réel est vérifié dans `tests/render/`) |
+| `test_terrain_material.gd` | E2 | Instanciation et configuration du shader triplanaire (`terrain_material.gd` et `terrain.gdshader`) : uniforms du thème et constantes de L3, textures (avec mipmaps), ligne médiane de la route sur une texture de thème, tuiles sans couleur de sommet (le rendu réel est vérifié dans `tests/render/`) |
+| `test_render_quality.gd` | E1 | Brouillard de limite (`render_quality.gd`, `main.tscn`) : mode profondeur à pleine opacité (`fog_density` = 1), début et fin avec et sans terrain |
 | `test_quality_presets.gd` | L4 | Préréglages de qualité (`quality_presets.gd`) et arguments `--quality` / `--theme` de `engine_args.gd` |
 | `test_banner_layout.gd` | – | Placement du bandeau d'alerte (`banner.gd`, `layout_for`) : à droite du HUD s'il reste 360 px, sinon dessous, jamais par-dessus, de 800 à 3 840 px de large |
 | `test_sound_model.gd` | L5 | Modèle sonore sans affichage (`sound_model.gd`) : vent, roue libre (délai 0,5 s et arrêt à > 10 W), hystérésis des points d'intérêt, lissage 12 dB/s et déterminisme |
@@ -80,6 +81,8 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 4. **ERG** (`test_erg_view_model.gd`, lot I6) : modèle de vue ERG (`erg_view_model.gd`), histogramme `profile_bars` et scénario des 10 blocs face à `fake_core.py --erg-workout` (bips à T − 3 s ± 0,1 s).
 5. **Scénarios IPC** : `fake_core.py` (Python 3, bibliothèque standard) joue le rôle du core ; l'engine tourne sans écran avec `--test-mode` et charge la démo avec terrain du même dossier temporaire.
 6. **Contrôle de la sortie de Godot** : aucune erreur ni aucun avertissement de script, hors avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
+
+Thème d'essai pour le PC cible (hors du script) : `make_texture_theme.py` écrit un thème à trois textures 2 048² dans `~/OpenRide/Themes/essai_textures` ; procédure dans [docs/ESSAI_GRAPHIQUE_E2.md](../../docs/ESSAI_GRAPHIQUE_E2.md).
 
 Lancement seul du test de rendu :
 
