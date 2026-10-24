@@ -10,6 +10,7 @@ extends RefCounted
 ##   le relief proche recouvre le lointain sans scintillement (écart voulu au format §5, voir lot E1).
 ## - Triangles : (a, b, c) et (b, d, c) pour la cellule a = (i, j), b = (i+1, j), c = (i, j+1),
 ##   d = (i+1, j+1), dans le sens horaire vu du dessus (faces avant de Godot).
+## - Pas de couleur de sommet : herbe, roche et neige viennent du shader triplanaire du thème (lot E2).
 ## Pas de class_name (charger par preload).
 
 const SAMPLES := 101
@@ -21,13 +22,6 @@ const LEVELS := {
 	"near": {"dir": "near", "cell": 10.0, "size": 1000.0, "y_offset": 0.0},
 	"far": {"dir": "far", "cell": 50.0, "size": 5000.0, "y_offset": -FAR_DROP_M},
 }
-
-## Couleurs provisoires de sommet (le lot E2 les remplacera par le shader triplanaire du thème).
-const SLOPE_THRESHOLD_DEG := 22.0
-const SNOW_LINE_M := 2200.0
-const GRASS_COLOR := Color(0.36, 0.52, 0.24)
-const ROCK_COLOR := Color(0.55, 0.53, 0.50)
-const SNOW_COLOR := Color(0.95, 0.96, 0.97)
 
 
 static func tile_path(world_dir: String, level: String, ix: int, iz: int) -> String:
@@ -184,14 +178,6 @@ static func load_neighbour_edges(world_dir: String, level: String, ix: int, iz: 
 	}
 
 
-static func _vertex_color(height: float, normal: Vector3) -> Color:
-	if height > SNOW_LINE_M:
-		return SNOW_COLOR
-	if rad_to_deg(acos(clampf(normal.y, -1.0, 1.0))) > SLOPE_THRESHOLD_DEG:
-		return ROCK_COLOR
-	return GRASS_COLOR
-
-
 ## Tableaux de maillage (Mesh.ARRAY_MAX) d'une tuile, en coordonnées locales à son coin (ix·T, iz·T).
 ## `edges` : valeurs voisines (load_neighbour_edges) ; une valeur NaN ou absente donne une
 ## différence d'un seul côté.
@@ -200,10 +186,8 @@ static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dict
 	var y_offset: float = LEVELS[level]["y_offset"]
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
-	var colors := PackedColorArray()
 	vertices.resize(SAMPLES * SAMPLES)
 	normals.resize(SAMPLES * SAMPLES)
-	colors.resize(SAMPLES * SAMPLES)
 	var west: PackedFloat32Array = edges.get("west", PackedFloat32Array())
 	var east: PackedFloat32Array = edges.get("east", PackedFloat32Array())
 	var north: PackedFloat32Array = edges.get("north", PackedFloat32Array())
@@ -234,7 +218,6 @@ static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dict
 			var idx := j * SAMPLES + i
 			vertices[idx] = Vector3(i * cell, h + y_offset, j * cell)
 			normals[idx] = normal
-			colors[idx] = _vertex_color(h, normal)
 	var indices := PackedInt32Array()
 	indices.resize(CELLS * CELLS * 6)
 	var w := 0
@@ -255,7 +238,6 @@ static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dict
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
-	arrays[Mesh.ARRAY_COLOR] = colors
 	arrays[Mesh.ARRAY_INDEX] = indices
 	return arrays
 

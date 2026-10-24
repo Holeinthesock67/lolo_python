@@ -106,10 +106,13 @@ jobs:
           unzip -q /tmp/Godot_v4.3-stable_linux.x86_64.zip -d ~/.cache/godot-4.3
           chmod +x ~/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64
 
+      - name: Xvfb et OpenGL logiciel (tests de rendu du shader, lot E2)
+        run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends xvfb xauth libgl1-mesa-dri
+
       - name: Tests de l'engine sans écran
         run: |
           chmod +x ~/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64
-          GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_engine_tests.sh
+          REQUIRE_RENDER=1 GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_engine_tests.sh
 
       - name: Essai de bout en bout (vrai core et vrai engine, lot J8)
         run: GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_e2e.sh
