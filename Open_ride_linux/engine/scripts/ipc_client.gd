@@ -13,6 +13,8 @@ signal core_lost
 signal core_returned
 signal command_acked(cmd_name: String, cmd_id: int)
 signal command_failed(cmd_name: String)
+## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
+signal test_message_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -195,11 +197,14 @@ func _on_state(msg: Dictionary) -> void:
 
 
 ## Messages de test (type « _test », seulement avec --test-mode) : permettent au faux core de
-## déclencher une commande sans clavier. Hors mode test, ce type inconnu est ignoré (contrat §1).
+## déclencher une commande sans clavier, ou une capture d'écran (action « screenshot », traitée par
+## main.gd, tests graphiques de tests/visual_check.py). Hors mode test, ce type inconnu est ignoré (contrat §1).
 func _on_test_message(msg: Dictionary) -> void:
 	if str(msg.get("action", "")) == "send_command":
 		var args = msg.get("args", {})
 		send_command(str(msg.get("name", "")), args if typeof(args) == TYPE_DICTIONARY else {})
+	else:
+		test_message_received.emit(msg)
 
 
 func _send_json(dict: Dictionary) -> void:
