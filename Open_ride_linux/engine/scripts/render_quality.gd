@@ -22,6 +22,7 @@ const CAMERA_FAR_M := WorldStreamer.FAR_RADIUS_M
 const FOG_TERRAIN := {"begin": 3000.0, "end": WorldStreamer.FAR_RADIUS_M}
 const FOG_FLAT := {"begin": 300.0, "end": 3000.0}
 const FOG_COLOR := Color(0.70, 0.78, 0.86)
+const FOG_DEPTH_DENSITY := 1.0
 
 
 static func apply_preset(preset_name: String, camera: Camera3D, light: DirectionalLight3D,
@@ -43,3 +44,6 @@ static func apply_fog(env: Environment, has_terrain: bool) -> void:
 	env.fog_depth_begin = fog["begin"]
 	env.fog_depth_end = fog["end"]
 	env.fog_depth_curve = 1.0
+	# En mode profondeur, Godot 4.3 multiplie l'opacité par fog_density (0,01 par défaut) :
+	# à 1, le brouillard couvre entièrement la limite du terrain (revue E2, R2 ; cahier E3 §4.2).
+	env.fog_density = FOG_DEPTH_DENSITY
