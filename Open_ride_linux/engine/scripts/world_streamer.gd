@@ -62,9 +62,6 @@ var _stats_mutex := Mutex.new()
 func _init() -> void:
 	_road_material = RoadBuilder.make_material()
 	_terrain_material = TerrainMaterial.create_material()
-	tree_renderer = TreeRenderer.new()
-	tree_renderer.name = "TreeRenderer"
-	add_child(tree_renderer)
 
 
 func _process(_delta: float) -> void:

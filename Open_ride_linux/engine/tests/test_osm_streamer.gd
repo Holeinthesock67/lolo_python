@@ -149,7 +149,8 @@ func _test_window_and_node_count(world_dir: String, route: Variant) -> void:
 	_check(streamer.loaded_chunk_count() == expected_late.size(),
 		"s = 2500 : tronçons chargés = %d (attendu %d)" % [streamer.loaded_chunk_count(), expected_late.size()])
 
-	streamer.queue_free()
+	streamer.clear()
+	streamer.free()
 
 
 func _test_tolerance(world_dir: String, route: Variant) -> void:
@@ -168,7 +169,8 @@ func _test_tolerance(world_dir: String, route: Variant) -> void:
 	streamer.flush()
 	_check(true, "version majeure 2 gérée sans plantage ni exception")
 
-	streamer.queue_free()
+	streamer.clear()
+	streamer.free()
 
 
 func _test_skirt_presence(world_dir: String, route: Variant) -> void:
@@ -193,7 +195,8 @@ func _test_skirt_presence(world_dir: String, route: Variant) -> void:
 		# base_y = 500, jupe de 3 m -> min_y = 497 m
 		_check(absf(min_y - 497.0) < 0.05, "jupe de 3 m sous base_y dans la scène : min_y = %.2f (attendu 497.0)" % min_y)
 
-	streamer.queue_free()
+	streamer.clear()
+	streamer.free()
 
 
 func _init() -> void:
