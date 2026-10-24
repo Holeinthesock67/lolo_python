@@ -38,6 +38,8 @@ static func apply_to_material(mat: ShaderMaterial, theme: Dictionary = {}, theme
 	mat.set_shader_parameter("steep_snow_max_deg", ThemeRenderParams.STEEP_SNOW_MAX_DEG)
 	mat.set_shader_parameter("min_slope_half_band_deg", ThemeRenderParams.MIN_SLOPE_HALF_BAND_DEG)
 	mat.set_shader_parameter("max_slope_half_band_deg", ThemeRenderParams.MAX_SLOPE_HALF_BAND_DEG)
+	mat.set_shader_parameter("rock_facet_strength", 0.6)
+	mat.set_shader_parameter("detail_strength", 1.0)
 
 	var tex_grass: Texture2D = null
 	var tex_rock: Texture2D = null

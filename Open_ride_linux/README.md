@@ -121,6 +121,10 @@ scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcou
 
 Chaque type d'appui a son bip.
 
+### Sons du parcours et sons personnalisés (Lot E4)
+
+L'engine synthétise ses sons procéduraux au démarrage (vent qui suit la vitesse, roue libre en coupant l'effort, cloches d'église, rivières, bétail, village). Un fichier audio OGG déposé dans `~/OpenRide/Sounds/<nom>.ogg` (par exemple `wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) remplace automatiquement le son généré correspondant.
+
 **Commandes utiles du core :**
 
 ```bash

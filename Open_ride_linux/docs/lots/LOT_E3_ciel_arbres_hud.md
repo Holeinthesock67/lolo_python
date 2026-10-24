@@ -132,3 +132,21 @@ Aucune. Les couleurs des arbres et l'azimut du soleil ne sont pas dans le format
 - Bandeau ERG détaillé, histogramme des blocs, bip à T − 3 s (F2).
 - Menus, écran de fin de séance, choix du moteur de rendu au lancement (G).
 - Herbe en brins, vent dans les arbres, cycle jour-nuit.
+## 9. Livraison (24 octobre 2026, branche lot-e3-e4)
+
+- **Ciel physique et brouillard** : PhysicalSkyMaterial avec 
+adiance_size = 1 dans engine/scenes/main.tscn et main.gd ; brouillard de profondeur avec og_density = 1.0 et og_depth_end = 12000.0 (teinte d'horizon) ; brouillard volumétrique activé uniquement en préréglage high avec la densité du thème (
+ender_quality.gd).
+- **Variation du terrain** : modulation procédurale de l'herbe par bruit (+- 8 %) et facettes de la roche dans engine/shaders/terrain.gdshader et 	errain_material.gd (detail_strength = 1.0, 
+ock_facet_strength = 0.6).
+- **Arbres par bruit** : engine/scripts/tree_renderer.gd avec deux niveaux de détail (LOD0 0–300 m avec ombres <= 120 triangles, LOD1 300–1 500 m sans ombres 4 triangles en croix), partitionnement par cellules de 250 m, hauteur exacte extraite par TerrainTiles.mesh_height_at, respect strict du budget d'instances (20 000 en low, 50 000 en medium, 100 000 en high).
+- **Préréglages unifiés** : table centralisée dans engine/scripts/quality_presets.gd et 
+ender_quality.gd pilotant distance d'ombres, budget d'arbres et visibilité des bâtiments.
+- **HUD final** : engine/scripts/hud_view.gd sur le canvas $HUD, typographie grande taille (>= 48 px pour les valeurs, >= 24 px pour les unités), bandeau profil d'altitude 120 colonnes teinté selon grade_class, prochaine montée et temps écoulé.
+- **Métriques périodiques** : émission de lignes [perf-rendu] toutes les 30 secondes dans engine/scripts/main.gd.
+- **Tests unitaires et headless** :
+  - engine/tests/unit/test_tree_renderer.gd (9 vérifications) ;
+  - engine/tests/unit/test_hud_view.gd (24 vérifications) ;
+  - engine/tests/unit/test_render_quality.gd (28 vérifications) ;
+  - test de rendu terrain 	est_terrain_render.gd mis à jour (10 vérifications).
+- **Reste à faire par le propriétaire** : validation visuelle et de performance sur la machine cible (critères 8 à 11).

@@ -30,6 +30,10 @@ uniform float steep_snow_max_deg = 50.0;
 uniform float min_slope_half_band_deg = 1.5;
 uniform float max_slope_half_band_deg = 3.0;
 
+// Décor du terrain (Lot E3 / SRS §8.1) : variation de l'herbe et facettes de la roche
+uniform float rock_facet_strength : hint_range(0.0, 1.0) = 0.6;
+uniform float detail_strength : hint_range(0.0, 1.0) = 1.0;
+
 // Poids en dessous duquel une couche n'est pas échantillonnée (économie de lectures de texture).
 const float MIN_LAYER_WEIGHT = 0.001;
 
@@ -46,6 +50,30 @@ vec4 sample_triplanar(sampler2D tex, vec3 pos, float inv_scale, vec3 weights) {
 	vec2 uv_y = pos.xz * inv_scale;
 	vec2 uv_z = pos.xy * inv_scale;
 	return texture(tex, uv_x) * weights.x + texture(tex, uv_y) * weights.y + texture(tex, uv_z) * weights.z;
+}
+
+// Bruit de valeur 2D procédural pour la variation d'herbe à deux échelles (~8 m et ~60 m)
+float _hash21(vec2 p) {
+	p = fract(p * vec2(123.34, 456.21));
+	p += dot(p, p + 45.32);
+	return fract(p.x * p.y);
+}
+
+float _val_noise(vec2 p) {
+	vec2 i = floor(p);
+	vec2 f = fract(p);
+	f = f * f * (3.0 - 2.0 * f);
+	float a = _hash21(i);
+	float b = _hash21(i + vec2(1.0, 0.0));
+	float c = _hash21(i + vec2(0.0, 1.0));
+	float d = _hash21(i + vec2(1.0, 1.0));
+	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
+}
+
+float _grass_noise(vec3 pos) {
+	float n8 = _val_noise(pos.xz / 8.0);
+	float n60 = _val_noise(pos.xz / 60.0);
+	return (n8 * 0.6 + n60 * 0.4) * 2.0 - 1.0;
 }
 
 void fragment() {
@@ -76,7 +104,9 @@ void fragment() {
 	vec3 final_color = vec3(0.0);
 	if (w_grass > MIN_LAYER_WEIGHT) {
 		vec4 c = has_grass_texture ? sample_triplanar(grass_texture, v_world_pos, grass_inv_scale, tri_weights) : grass_color;
-		final_color += c.rgb * w_grass;
+		float gn = _grass_noise(v_world_pos);
+		float grass_mod = 1.0 + gn * 0.08 * detail_strength;
+		final_color += c.rgb * grass_mod * w_grass;
 	}
 	if (w_rock > MIN_LAYER_WEIGHT) {
 		vec4 c = has_rock_texture ? sample_triplanar(rock_texture, v_world_pos, rock_inv_scale, tri_weights) : rock_color;
@@ -86,6 +116,15 @@ void fragment() {
 		vec4 c = has_snow_texture ? sample_triplanar(snow_texture, v_world_pos, snow_inv_scale, tri_weights) : snow_color;
 		final_color += c.rgb * w_snow;
 	}
+
+	// Facettes de la roche (Lot E3 / SRS §8.1)
+	vec3 flat_n = normalize(cross(dFdx(v_world_pos), dFdy(v_world_pos)));
+	if (dot(flat_n, n) < 0.0) {
+		flat_n = -flat_n;
+	}
+	vec3 rock_n = normalize(mix(n, flat_n, rock_facet_strength * detail_strength));
+	NORMAL = normalize(mix(n, rock_n, clamp(w_rock, 0.0, 1.0)));
+
 	ALBEDO = final_color;
 	ROUGHNESS = roughness;
 }

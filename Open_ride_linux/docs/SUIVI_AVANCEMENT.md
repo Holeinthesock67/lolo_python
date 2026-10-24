@@ -163,7 +163,8 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Cahiers E3 (ciel, arbres par bruit, HUD final) et E4 (bâtiments, forêts OSM, eau, sons) rédigés le 24 octobre, avec la revue du lot E2 (`docs/REVUE_E2_2026-10-24.md`) : à faire après la fusion d'E2 corrigé.
 - [ ] Ruban de route et terrain par tronçons (lot E1 fusionné le 24 octobre, PR #7, tests sans écran verts) : reste l'essai sur la GTX 1060 (images par seconde, à-coups, trous).
 - [ ] Shader triplanaire et application du thème (lot E2, PR #75, 24 octobre) : projection en mètres, mélange herbe/roche/neige selon pente et altitude (constantes du lot L3 transmises au shader), route et soleil pilotés par le thème ; vrai rendu vérifié sous Xvfb (`engine/tests/render/test_terrain_render.gd`) : reste l'essai sur la GTX 1060 (images par seconde avec et sans textures, limite du terrain lointain).
-- [ ] Arbres, HUD final avec profil d'altitude (E3).
+- [x] **Ciel, arbres par bruit et HUD final** (lot E3, 24 octobre) : ciel physique PhysicalSkyMaterial, brouillard de limite à 12 km, arbres instanciés en LOD0/LOD1 avec respect du budget d'instances, HUD avec profil d'altitude et prochaine montée, mesure périodique `[perf-rendu]`.
+- [x] **Bâtiments, forêts OSM, eau et sons du parcours** (lot E4, 24 octobre) : streaming des tronçons OSM (`osm_streamer.gd`), bâtiments avec jupe de 3 m sous `base_y`, rivières et plans d'eau (`water_mesh.gd`), modèle sonore spatialisé (`sound_player.gd`).
 
 ### Lanceur et menus (lot G, à rédiger)
 - [x] Lanceur unique `openride` (`launcher.py`, lot K6) et raccourci de bureau (`scripts/desktop/openride.desktop.in`, `scripts/desktop/openride.svg`, `scripts/install-desktop.sh`, lot L8).

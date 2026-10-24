@@ -95,6 +95,21 @@ else
 fi
 rm -rf "$OSM_DIR"
 
+echo "-- test_osm_streamer (streaming OSM E4)"
+STREAMER_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_osm_streamer.gd 2>&1)"
+streamer_rc=$?
+echo "$STREAMER_OUT" | grep -v "^Godot Engine" || true
+streamer_issues="$(echo "$STREAMER_OUT" | godot_issues)"
+streamer_count="$(echo "$STREAMER_OUT" | grep -E "^test_osm_streamer : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+if [ "$streamer_rc" -ne 0 ] || [ -n "$streamer_issues" ] || [ -z "$streamer_count" ]; then
+  reason="code $streamer_rc"
+  if [ -n "$streamer_issues" ]; then echo "$streamer_issues"; reason="$reason, erreurs ou avertissements Godot"; fi
+  if [ -z "$streamer_count" ]; then reason="$reason, ligne finale absente"; fi
+  record "test_osm_streamer (streaming OSM E4)" 1 "$reason${streamer_count:+, ${streamer_count#*: }}"
+else
+  record "test_osm_streamer (streaming OSM E4)" 0 "${streamer_count#*: }"
+fi
+
 echo "== Rendu hors écran du shader (tests/render/, lot E2) =="
 # Vraie image rendue (Xvfb, OpenGL logiciel de Mesa) : le shader compilé reproduit la fonction de L3.
 # Sans xvfb-run, l'étape est sautée, sauf si REQUIRE_RENDER=1 (intégration continue) : elle échoue alors.
