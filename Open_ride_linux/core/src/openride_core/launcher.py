@@ -3,7 +3,11 @@
     openride [options de « openride-core run »]      # défaut : --trainer ftms --input click --autostart
 
 Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de référence :
-- le core (`openride-core run …`) écrit son journal dans `~/run_trainer.log` (ou `OPENRIDE_LOG`) ;
+- un journal par lancement, `~/OpenRide/Logs/openride_AAAA-MM-JJ_HH-MM-SS.log` (lot M8) : sortie du
+  core, sortie de Godot (lignes préfixées `[engine] `) et messages du lanceur (`[openride] `,
+  horodatés comme le core). `~/run_trainer.log` est un lien vers le dernier journal ; on garde
+  les 20 derniers et 200 Mo au plus. `OPENRIDE_LOG` remplace ce journal tournant (sans lien ni
+  rotation). Sans terminal (raccourci de bureau), les messages ne vont que dans le journal ;
 - l'engine (`GODOT --path engine -- --ipc-state-port=… --ipc-cmd-port=…`) reçoit les ports de la
   configuration (`--config` éventuel, sinon `~/OpenRide/config.toml`) ; variables `GODOT`,
   `GODOT_ARGS` et `OPENRIDE_ENGINE` (dossier du projet Godot).
@@ -31,17 +35,97 @@ import shlex
 import signal
 import subprocess
 import sys
+import threading
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Callable
 
 DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.3-stable_linux.x86_64"
-DEFAULT_LOG = Path.home() / "run_trainer.log"
+DEFAULT_LOG = Path.home() / "run_trainer.log"   # lien vers le dernier journal du lanceur
+LOGS_DIR = Path.home() / "OpenRide" / "Logs"
+LOG_PREFIX = "openride_"
+KEEP_LOGS = 20
+MAX_LOGS_BYTES = 200 * 1024 * 1024
 DEFAULT_ENGINE_DIR = Path(__file__).resolve().parents[3] / "engine"
 DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click", "--autostart"]
 
 STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+
+
+def log_timestamp(t: float | None = None) -> str:
+    """Horodatage au format `asctime` du module logging, celui du journal du core."""
+    t = time.time() if t is None else t
+    return time.strftime("%Y-%m-%d %H:%M:%S", time.localtime(t)) + f",{int(t % 1 * 1000):03d}"
+
+
+@dataclass
+class LogRotation:
+    """Journal tournant du lanceur : un fichier par lancement, lien `run_trainer.log` vers le dernier."""
+    logs_dir: Path = LOGS_DIR
+    link: Path | None = DEFAULT_LOG
+    keep: int = KEEP_LOGS
+    max_bytes: int = MAX_LOGS_BYTES
+    notes: list[str] = field(default_factory=list, init=False)   # messages pour le journal
+
+    def logs(self) -> list[Path]:
+        """Journaux existants, du plus ancien au plus récent (le nom porte la date)."""
+        return sorted(p for p in self.logs_dir.glob(f"{LOG_PREFIX}*.log") if p.is_file())
+
+    def prune(self) -> list[Path]:
+        """Supprime les plus anciens pour qu'avec le nouveau il en reste `keep` et `max_bytes` au plus."""
+        logs, removed = self.logs(), []
+        sizes = {p: p.stat().st_size for p in logs}
+        total = sum(sizes.values())
+        while logs and (len(logs) > self.keep - 1 or total > self.max_bytes):
+            old = logs.pop(0)
+            total -= sizes[old]
+            try:
+                old.unlink()
+                removed.append(old)
+            except OSError as exc:
+                self.notes.append(f"journal ancien non supprimé : {old} ({exc})")
+        return removed
+
+    def prepare(self, now: float | None = None) -> Path:
+        """Crée le dossier, fait la rotation, choisit le nom du journal et pose le lien."""
+        self.logs_dir.mkdir(parents=True, exist_ok=True)
+        removed = self.prune()
+        if removed:
+            self.notes.append(f"{len(removed)} ancien(s) journal(aux) supprimé(s) dans {self.logs_dir}")
+        stamp = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime(time.time() if now is None else now))
+        path, n = self.logs_dir / f"{LOG_PREFIX}{stamp}.log", 2
+        while path.exists():   # deux lancements dans la même seconde
+            path, n = self.logs_dir / f"{LOG_PREFIX}{stamp}_{n}.log", n + 1
+        path.touch()
+        if self.link is not None:
+            self._link(path)
+        return path
+
+    def _link(self, target: Path) -> None:
+        link = self.link
+        assert link is not None
+        try:
+            if link.exists() and not link.is_symlink():
+                old = link.with_name(link.name + ".ancien")
+                if old.exists() or old.is_symlink():
+                    self.notes.append(f"{link} est un fichier ordinaire et {old} existe déjà : lien non posé")
+                    return
+                link.rename(old)   # l'ancien journal unique est gardé, une seule fois
+                self.notes.append(f"ancien {link.name} renommé en {old.name}")
+            tmp = link.with_name(f".{link.name}.{os.getpid()}.tmp")
+            tmp.unlink(missing_ok=True)
+            tmp.symlink_to(target)
+            os.replace(tmp, link)
+        except OSError as exc:
+            self.notes.append(f"lien {link} impossible : {exc}")
+
+
+def _default_echo() -> bool:
+    try:
+        return sys.stdout.isatty()
+    except (AttributeError, ValueError):
+        return False
 
 
 @dataclass
@@ -59,11 +143,57 @@ class Supervisor:
     poll_s: float = 0.1
     say: Callable[[str], None] = field(default=lambda msg: print(f"openride : {msg}", flush=True))
     clock: Callable[[], float] = time.monotonic
+    rotation: LogRotation | None = None   # journal tournant ; None : `log_path` tel quel
+    echo: Callable[[], bool] = _default_echo   # vrai : messages aussi au terminal (`say`)
+    reader_join_s: float = 2.0         # délai pour vider la sortie de l'engine après son arrêt
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
     _stop_signal: int | None = field(default=None, init=False)
     _log: IO[bytes] | None = field(default=None, init=False)
+    _log_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
+    _readers: list[threading.Thread] = field(default_factory=list, init=False)
+
+    # --- journal -----------------------------------------------------------------------
+
+    def _write_log(self, data: bytes) -> None:
+        if self._log is None:
+            return
+        with self._log_lock:
+            try:
+                self._log.write(data)
+            except (OSError, ValueError):
+                pass
+
+    def _say(self, msg: str) -> None:
+        """Message du lanceur : au journal (horodaté, `[openride] `) et au terminal s'il y en a un."""
+        self._write_log(f"{log_timestamp()} INFO    [openride] {msg}\n".encode())
+        if self._log is None or self.echo():
+            self.say(msg)
+
+    def _open_log(self) -> None:
+        if self.rotation is not None:
+            self.log_path = self.rotation.prepare()
+            self._log = self.log_path.open("ab", buffering=0)
+            for note in self.rotation.notes:
+                self._say(note)
+            self.rotation.notes.clear()
+        else:
+            self.log_path.parent.mkdir(parents=True, exist_ok=True)
+            self._log = self.log_path.open("wb", buffering=0)
+        self._say(f"journal : {self.log_path}")
+
+    def _pump(self, stream: IO[bytes]) -> None:
+        """Recopie la sortie de l'engine dans le journal, ligne à ligne, préfixée `[engine] `."""
+        try:
+            for line in iter(stream.readline, b""):
+                if not line.endswith(b"\n"):
+                    line += b"\n"
+                self._write_log(b"[engine] " + line)
+        except (OSError, ValueError):
+            pass
+        finally:
+            stream.close()
 
     # --- processus ---------------------------------------------------------------------
 
@@ -74,12 +204,24 @@ class Supervisor:
         return p
 
     def _start_core(self) -> subprocess.Popen:
-        self.log_path.parent.mkdir(parents=True, exist_ok=True)
-        self._log = self.log_path.open("wb")
+        if self._log is None:
+            self._open_log()
         return self._spawn(self.core_cmd, stdin=subprocess.DEVNULL, stdout=self._log, stderr=subprocess.STDOUT)
 
     def _start_engine(self) -> subprocess.Popen:
-        return self._spawn(self.engine_cmd, stdin=subprocess.DEVNULL)
+        if self._log is None:
+            return self._spawn(self.engine_cmd, stdin=subprocess.DEVNULL)
+        p = self._spawn(self.engine_cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+        reader = threading.Thread(target=self._pump, args=(p.stdout,), name="engine-log", daemon=True)
+        reader.start()
+        self._readers.append(reader)
+        return p
+
+    def _join_readers(self) -> None:
+        deadline = time.monotonic() + self.reader_join_s
+        for r in self._readers:
+            r.join(max(0.0, deadline - time.monotonic()))
+        self._readers = [r for r in self._readers if r.is_alive()]
 
     @staticmethod
     def _wait(p: subprocess.Popen, timeout: float) -> bool:
@@ -93,7 +235,7 @@ class Supervisor:
         if core.poll() is None:
             core.send_signal(signal.SIGINT)
             if not self._wait(core, self.stop_timeout_s):
-                self.say(f"le core ne s'arrête pas en {self.stop_timeout_s:.0f} s : arrêt forcé puis libération du trainer.")
+                self._say(f"le core ne s'arrête pas en {self.stop_timeout_s:.0f} s : arrêt forcé puis libération du trainer.")
                 core.kill()
                 core.wait()
                 self._release_trainer()
@@ -107,7 +249,7 @@ class Supervisor:
                 p.kill()
                 p.wait()
         except OSError as exc:
-            self.say(f"libération du trainer impossible : {exc}")
+            self._say(f"libération du trainer impossible : {exc}")
 
     def _stop_engine(self, engine: subprocess.Popen | None) -> None:
         if engine is None:
@@ -117,6 +259,7 @@ class Supervisor:
             if not self._wait(engine, self.engine_stop_timeout_s):
                 engine.kill()
         engine.wait()
+        self._join_readers()
 
     # --- signaux -----------------------------------------------------------------------
 
@@ -135,7 +278,7 @@ class Supervisor:
             while self.clock() < deadline and core.poll() is None and self._stop_signal is None:
                 time.sleep(self.poll_s)
             if core.poll() is not None:
-                self.say(f"le core s'est arrêté au démarrage (code {core.returncode}) ; voir {self.log_path}")
+                self._say(f"le core s'est arrêté au démarrage (code {core.returncode}) ; voir {self.log_path}")
                 self._print_log_tail(20, only_alerts=False)
                 return 1
             if self._stop_signal is not None:
@@ -146,14 +289,14 @@ class Supervisor:
             while True:
                 time.sleep(self.poll_s)
                 if self._stop_signal is not None:
-                    self.say(f"signal {signal.Signals(self._stop_signal).name} reçu : arrêt de la séance.")
+                    self._say(f"signal {signal.Signals(self._stop_signal).name} reçu : arrêt de la séance.")
                     return self._finish(core, engine, 0)
 
                 if core.poll() is not None:
                     code = core.returncode
                     self._stop_engine(engine)
                     if code != 0:
-                        self.say(f"le core s'est arrêté brutalement (code {code}). La séance est dans le journal : "
+                        self._say(f"le core s'est arrêté brutalement (code {code}). La séance est dans le journal : "
                                  "`openride-core recover` en fait un FIT.")
                         self._release_trainer()
                         return self._finish(core, engine, 1)
@@ -166,9 +309,9 @@ class Supervisor:
                     now = self.clock()
                     crashes = [t for t in crashes if now - t < self.restart_window_s] + [now]
                     if len(crashes) > self.max_restarts:
-                        self.say(f"l'engine a planté {len(crashes)} fois en {self.restart_window_s:.0f} s : abandon.")
+                        self._say(f"l'engine a planté {len(crashes)} fois en {self.restart_window_s:.0f} s : abandon.")
                         return self._finish(core, engine, 1)
-                    self.say(f"l'engine a planté (code {code}) : relance {len(crashes)}/{self.max_restarts}, "
+                    self._say(f"l'engine a planté (code {code}) : relance {len(crashes)}/{self.max_restarts}, "
                              "la séance passe en pause si l'engine reste absent plus de 2 s.")
                     if self.restart_delay_s > 0:
                         time.sleep(self.restart_delay_s)
@@ -179,9 +322,11 @@ class Supervisor:
                 if p is not None and p.poll() is None:   # filet de sécurité : jamais d'orphelin
                     p.kill()
                     p.wait()
+            self._join_readers()
             if self._log is not None:
-                self._log.close()
-                self._log = None
+                with self._log_lock:
+                    self._log.close()
+                    self._log = None
             for s, h in previous.items():
                 signal.signal(s, h)
 
@@ -190,11 +335,13 @@ class Supervisor:
         self._stop_core(core)
         if self._log is not None:
             self._log.flush()
-        self.say(f"arrêté. Journal complet : {self.log_path}")
+        self._say(f"arrêté. Journal complet : {self.log_path}")
         self._print_log_tail(15, only_alerts=True)
         return code
 
     def _print_log_tail(self, n: int, only_alerts: bool) -> None:
+        if not self.echo():   # sans terminal, le journal suffit : rien en double
+            return
         try:
             lines = self.log_path.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError:
@@ -250,7 +397,8 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--theme={cfg.render.theme}",
         ],
         release_cmd=[*core, "release-trainer", *config_args],
-        log_path=Path(env.get("OPENRIDE_LOG") or DEFAULT_LOG).expanduser(),
+        log_path=Path(env["OPENRIDE_LOG"]).expanduser() if env.get("OPENRIDE_LOG") else DEFAULT_LOG,
+        rotation=None if env.get("OPENRIDE_LOG") else LogRotation(),
     )
 
 

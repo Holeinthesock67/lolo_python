@@ -225,6 +225,27 @@ def test_freeride_and_end(workouts_dir):
 
 # --- session ------------------------------------------------------------------------------
 
+@pytest.mark.parametrize("dt", [-10.0, -1e-9, float("nan"), float("inf"), float("-inf")])
+def test_step_refuses_invalid_dt(workouts_dir, dt):
+    """Lot M9 (constat R3) : pas de temps négatif, infini ou NaN refusé ; l'état ne bouge pas."""
+    reference = ErgController(load_workout(workouts_dir / "reference.zwo"), FTP)
+    with pytest.raises(ValueError, match="pas de temps invalide"):
+        reference.step(dt)
+    assert reference.t_block == 0.0 and reference.index == 0
+
+
+def test_step_zero_is_accepted(workouts_dir):
+    reference = ErgController(load_workout(workouts_dir / "reference.zwo"), FTP)
+    reference.step(0.0)
+    assert reference.t_block == 0.0 and not reference.finished
+
+
+@pytest.mark.parametrize("ftp", [0, -200.0, float("nan"), float("inf")])
+def test_constructor_refuses_invalid_ftp(workouts_dir, ftp):
+    with pytest.raises(ValueError, match="FTP invalide"):
+        ErgController(load_workout(workouts_dir / "reference.zwo"), ftp)
+
+
 def make_session(tmp_path, monkeypatch, workouts_dir, port=5950):
     monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
     cfg = Config()

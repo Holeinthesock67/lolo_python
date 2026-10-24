@@ -49,3 +49,11 @@ Aucune. Si `docs/SRS_v1.1.md` §11 (arborescence de `~/OpenRide/`) ne cite pas `
 
 - Relance du core sans perdre la séance (supervision, lot G ou suivant).
 - Journal structuré (JSON) du lanceur.
+
+## 9. Livraison (24 octobre 2026)
+
+- `launcher.py` : nouvelle classe `LogRotation` (dossier `~/OpenRide/Logs/`, lien `~/run_trainer.log`, 20 journaux, 200 Mo). `prepare()` supprime d'abord les plus anciens, de sorte qu'avec le nouveau journal il en reste 20 au plus et que les anciens pèsent 200 Mo au plus. Elle crée ensuite `openride_AAAA-MM-JJ_HH-MM-SS.log` (suffixe `_2` si deux lancements tombent dans la même seconde), puis remplace le lien de façon atomique (lien temporaire puis `os.replace`). Un `run_trainer.log` qui est un fichier ordinaire est renommé `run_trainer.log.ancien`. Si ce nom est déjà pris, le lien n'est pas posé et le journal le dit : rien n'est jamais effacé.
+- `Supervisor` : le journal est ouvert sans tampon, en ajout. Le core y écrit directement, comme avant. La sortie de Godot passe par un tube lu par un fil dédié (`[engine] ` devant chaque ligne), vidé au plus 2 s après l'arrêt de l'engine. Les messages du lanceur (`_say`) prennent la forme `AAAA-MM-JJ HH:MM:SS,mmm INFO    [openride] …` : c'est le format du core, donc `log_report` les reconnaît. Ils ne s'affichent au terminal que si la sortie standard en est un, et les dernières alertes ne s'affichent qu'avec un terminal.
+- `OPENRIDE_LOG` : fichier écrasé à chaque lancement comme avant, sans lien ni rotation (`rotation=None`).
+- `log_report.py` et `scripts/desktop/` inchangés. SRS §11 : `Logs/` et le lien ajoutés à l'arborescence.
+- Tests (`test_launcher.py`, +10) : critère 2 (lignes du core, de l'engine préfixées, du lanceur au format du core), critère 3 (lien après deux lancements, ancien fichier renommé), critère 4 (25 journaux → 20 ; 6 × 60 Mo creux → 3 gardés), critère 5 (10 000 lignes d'un coup, arrêt dans les délais, toutes au journal), critère 6 (sans terminal : rien sur la sortie standard, message présent une seule fois), `isatty` par pseudo-terminal, `OPENRIDE_LOG`.

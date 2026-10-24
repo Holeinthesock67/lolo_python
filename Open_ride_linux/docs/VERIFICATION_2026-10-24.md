@@ -98,7 +98,8 @@ Les autres concernent `verify.py` (valeurs `None` déjà rejetées par `_is_numb
 | R2 | Corrigé le 24 octobre | `tools/workouts.py` (`check`) : FTP nulle, négative ou non finie refusée (message « FTP invalide », code 1). Test paramétré `test_check_rejects_invalid_ftp` (`core/tests/test_workout_tools.py`, 4 cas). |
 | S1 | Corrigé le 24 octobre | Cahiers rétrospectifs `docs/lots/LOT_K6_lanceur_unique.md` et `docs/lots/LOT_K7_bilan_seance.md`, avec leur section « Livraison », inscrits dans `00_INDEX.md`. Nouveau contrôle `check_cited_lots` dans `core/tests/test_docs_coherence.py` : un lot numéroté cité dans `README.md`, `CLAUDE.md` ou `SUIVI_AVANCEMENT.md` doit figurer dans l'index. |
 | R4 | Corrigé le 24 octobre | Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : pente NaN ramenée à 0 % dans `gearing.py`. Lint (§5.2, F401 et B007) et annotation de `replace_layer_dir` (§5.3) corrigés en même temps. |
-| R3, S2 | Ouverts | À traiter au fil de l'eau. |
+| R3 | Corrigé (lot M9) | `workout.py` : `ErgController.step` refuse un `dt` négatif, infini ou NaN, le constructeur une FTP ≤ 0 ou non finie (`ValueError`). Tests `test_step_refuses_invalid_dt`, `test_step_zero_is_accepted`, `test_constructor_refuses_invalid_ftp` (`core/tests/test_workout.py`). |
+| S2 | Corrigé (lot M9) | Tests du compilateur qui lisent le core : `require_core` (`compiler/tests/conftest.py`), saut propre si le core manque, erreur en CI (variable `CI`) ; `test_core_present_in_ci`. |
 
 Après correction : 267 tests du core (au lieu de 261) et 154 du compilateur passent.
 

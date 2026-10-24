@@ -52,3 +52,11 @@ Aucune.
 - Cause de l'erreur 0x80 côté HomeTrainer (interne, matériel).
 - Stabilité du Zwift Click.
 - Analyse de ces lignes par `log_report` (à proposer dans le rapport si utile).
+
+## 9. Livraison (24 octobre 2026)
+
+- `core/src/openride_core/ftms_driver.py` : `att_error_code(exc)` lit le code ATT dans le message BlueZ/bleak ; `FtmsDriver._call_retrying` renvoie une écriture ratée jusqu'à 2 fois (`ATT_RETRIES`), 0,25 s plus tard, en reconstruisant la commande à chaque essai (consigne la plus récente du même mode) ; 0xFE attend d'abord la réponse de la procédure en cours (`ControlPoint.wait_idle`, au plus `CP_RESPONSE_TIMEOUT_S`), 0xFD refait `cp.enable()`. Utilisé par `_take_control` et `_flush_command` ; `release_control` inchangé.
+- Compteur public `att_retries`. Il n'existe pas de ligne de bilan de fin de séance dans `session.py` (fichier hors périmètre) : le pilote écrit à la fin de `run()` une ligne « Trainer : N reconnexion(s), M renvoi(s) après erreur ATT. » quand l'un des deux est non nul.
+- Tests (`core/tests/test_ble_sim.py`) : critère 2 (`test_att_error_0x80_is_resent_without_reconnecting`), 3 (`test_repeated_att_errors`, 2 et 3 erreurs), 4 (`test_att_error_0xfe_waits_for_the_running_procedure` : réponse du trainer simulé ralentie à 1,4 s pour provoquer un vrai 0xFE), 5 (`test_drop_during_write_reconnects_without_resend`), 6 (`test_erreur_0x80_scenario_full_session`, marqué `slow`, ~25 s), 7 (`test_att_error_code`).
+- Écart : le simulateur n'a pas eu besoin d'être modifié.
+- Sur le vélo : relire `~/run_trainer.log` après une séance ERG (« renvoi 1/2 » au lieu de « Reconnexion au trainer »).
