@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import re
 import time
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
@@ -36,6 +37,20 @@ RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (a
 CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
 MAX_CONTROL_RETRIES = 2  # reprises de contrôle tentées avant de déclarer le refus
 DEFAULT_POWER_RANGE = (0.0, 2000.0)
+ATT_RETRIES = 2          # renvois après une erreur ATT (3 essais en tout), lot M1
+ATT_RETRY_DELAY_S = 0.25
+
+_ATT_ERROR_RE = re.compile(r"ATT error:\s*0x([0-9a-f]{1,2})\b", re.IGNORECASE)
+
+
+def att_error_code(exc: BaseException) -> int | None:
+    """Code de l'erreur ATT lu dans le message BlueZ/bleak (« ... ATT error: 0x80 »).
+
+    None pour toute autre exception (liaison perdue, délai dépassé, etc.) : celles-là
+    déclenchent la reconnexion, sans renvoi.
+    """
+    m = _ATT_ERROR_RE.search(str(exc))
+    return int(m.group(1), 16) if m else None
 
 
 class ControlPoint:
@@ -51,6 +66,8 @@ class ControlPoint:
         self.client = client
         self._on_response = on_response
         self._waiting: tuple[int, asyncio.Future] | None = None
+        self._idle = asyncio.Event()   # aucune procédure en attente de sa réponse 0x80
+        self._idle.set()
 
     async def enable(self) -> None:
         """Abonnement aux indications : obligatoire avant toute écriture (FTMS §4.16.3)."""
@@ -60,6 +77,7 @@ class ControlPoint:
         resp = ftms.parse_control_response(bytes(data))
         if resp is None:
             return
+        self._idle.set()
         if self._waiting is not None:
             op, fut = self._waiting
             if op == resp.request_op and not fut.done():
@@ -73,6 +91,7 @@ class ControlPoint:
         self._waiting = (payload[0], fut)
         try:
             note_trainer_write()
+            self._idle.clear()
             write = self.client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True)
             if write_timeout is None:
                 await write
@@ -85,6 +104,14 @@ class ControlPoint:
                 return None
         finally:
             self._waiting = None
+
+    async def wait_idle(self, timeout: float = CP_RESPONSE_TIMEOUT_S) -> bool:
+        """Attend la réponse 0x80 de la procédure en cours (au plus `timeout`) ; False sinon."""
+        try:
+            await asyncio.wait_for(self._idle.wait(), timeout=timeout)
+            return True
+        except asyncio.TimeoutError:
+            return False
 
 
 @dataclass
@@ -136,6 +163,7 @@ class FtmsDriver:
         self.supports_sim = True
         self.supports_erg = True
         self.reconnect_count = 0
+        self.att_retries = 0   # renvois après une erreur ATT ponctuelle (lot M1)
 
     # --- interface synchrone, commune avec MockDriver ---------------------------------
 
@@ -295,6 +323,9 @@ class FtmsDriver:
                 await asyncio.wait_for(self._stop.wait(), timeout=delay)
             except asyncio.TimeoutError:
                 pass
+        if self.reconnect_count or self.att_retries:
+            log.info("Trainer : %d reconnexion(s), %d renvoi(s) après erreur ATT.",
+                     self.reconnect_count, self.att_retries)
 
     async def _session(self) -> None:
         loop = asyncio.get_running_loop()
@@ -355,8 +386,39 @@ class FtmsDriver:
                     await self._release(cp)
 
     async def _take_control(self, cp: ControlPoint) -> None:
-        await cp.call(ftms.cmd_request_control())
-        await cp.call(ftms.cmd_start_resume())
+        await self._call_retrying(cp, ftms.cmd_request_control)
+        await self._call_retrying(cp, ftms.cmd_start_resume)
+
+    async def _call_retrying(self, cp: ControlPoint, build: Callable[[], bytes]) -> None:
+        """Écrit `build()` ; renvoie après une erreur ATT ponctuelle, au plus ATT_RETRIES fois.
+
+        `build` est rappelé à chaque essai : un renvoi porte la consigne la plus récente. Toute
+        autre exception, ou une erreur ATT au troisième essai, remonte jusqu'à `run` (reconnexion).
+        """
+        attempt = 0
+        while True:
+            payload = build()
+            try:
+                await cp.call(payload)
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                code = att_error_code(exc)
+                if code is None or attempt >= ATT_RETRIES:
+                    raise
+                attempt += 1
+                self.att_retries += 1
+                log.warning("Trainer : écriture 0x%02x refusée (ATT 0x%02x), renvoi %d/%d",
+                            payload[0], code, attempt, ATT_RETRIES)
+                if code == ftms.ATT_PROCEDURE_IN_PROGRESS:
+                    await cp.wait_idle()   # fin de la procédure en cours d'abord
+                elif code == ftms.ATT_CCCD_IMPROPERLY_CONFIGURED:
+                    await cp.enable()      # indications à nouveau demandées
+                await asyncio.sleep(ATT_RETRY_DELAY_S)
+                continue
+            if attempt:
+                log.info("Trainer : écriture 0x%02x acceptée au renvoi %d", payload[0], attempt)
+            return
 
     async def _flush_command(self, cp: ControlPoint) -> None:
         now = self._clock()
@@ -380,14 +442,22 @@ class FtmsDriver:
         forgotten = self._forgotten
         if prev is None:   # première consigne ou contrôle perdu
             await self._take_control(cp)
-        if mode == "erg":
-            payload = ftms.cmd_set_target_power(value)
-        else:
-            payload = ftms.cmd_set_sim_params(value, self._crr, self._cw)
-        await cp.call(payload)
+        sent = (mode, value)
+
+        def build() -> bytes:
+            nonlocal sent
+            want = self._want   # au renvoi : la consigne la plus récente, du même mode
+            if want.mode != mode:
+                want = _Want(mode, value)
+            sent = (want.mode, want.value)
+            if want.mode == "erg":
+                return ftms.cmd_set_target_power(want.value)
+            return ftms.cmd_set_sim_params(want.value, self._crr, self._cw)
+
+        await self._call_retrying(cp, build)
         self._last_sent_at = now
         if self._forgotten == forgotten:   # sinon refus ou contrôle perdu pendant l'écriture
-            self._last_sent = (mode, value)
+            self._last_sent = sent
 
     async def _release(self, cp: ControlPoint) -> None:
         """Rend le trainer libre en partant, même après une erreur.

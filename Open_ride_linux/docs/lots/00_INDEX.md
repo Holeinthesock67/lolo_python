@@ -52,7 +52,7 @@
 | [L6](LOT_L6_cible_erg_journal.md) | Cible ERG enregistrée dans le journal de séance | Python | — | Petite | **Livré le 24 octobre** (PR #69, issue #58) |
 | [L7](LOT_L7_historique_seances.md) | Historique des séances : `openride-core history` | Python | — | Petite | **Livré le 24 octobre** (PR #70, issue #59) |
 | [L8](LOT_L8_raccourci_bureau.md) | Raccourci de bureau : fichier `.desktop`, icône, script d'installation | Bash | — | Petite | **Livré le 24 octobre** (PR #71, issue #60) |
-| [M1](LOT_M1_erreur_att_renvoi.md) | Erreur d'écriture du Control Point (ATT 0x80) : renvoyer la commande au lieu de reconnecter | Python | — | Petite | Oui (issue #78) |
+| [M1](LOT_M1_erreur_att_renvoi.md) | Erreur d'écriture du Control Point (ATT 0x80) : renvoyer la commande au lieu de reconnecter | Python | — | Petite | **Livré le 24 octobre** (issue #78) |
 | [M2](LOT_M2_ceinture_cardio_reelle.md) | Ceinture cardio réelle : mesure complète, contact, choix de l'appareil, batterie | Python | — | Petite | Oui (issue #79) |
 | [M3](LOT_M3_inventaire_appareils.md) | Inventaire des appareils Bluetooth : `openride-core devices` | Python | — | Petite | Oui (issue #80) |
 | [M4](LOT_M4_journal_biais_coupures.md) | Journal de séance : biais ERG et coupures des appareils | Python | — | Petite | Oui (issue #81) |

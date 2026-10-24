@@ -33,7 +33,7 @@ Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie s
 | `demo` (défaut) | Tout se connecte en une seconde ; appuis courts toutes les 6 s, deux appuis longs, effort du cycliste variable. |
 | `nominal` | Tout se connecte en une seconde, aucun événement. |
 | `reveil_tardif` | Trainer allumé à 6 s, ceinture à 10 s, boîtiers du Click réveillés par un appui (perdu) à 15 s et 25 s. |
-| `erreur_0x80` | Une écriture du Control Point échoue avec l'erreur ATT 0x80 à 20 s (vue le 24 octobre). |
+| `erreur_0x80` | Une écriture du Control Point échoue avec l'erreur ATT 0x80 à 20 s (vue le 24 octobre). Depuis le lot M1, le pilote renvoie la commande 0,25 s plus tard, sans couper la liaison. |
 | `connexions_retardees` | Trainer : 4 s de connexion et deux échecs ; Click : 2 s ; ceinture : 3 s et un échec. |
 | `coupures` | Trainer coupé à 30 s, Click « − » à 40 s (réveillé à 50 s), ceinture à 45 s, trainer muet 12 s à 70 s, contrôle FTMS retiré à 100 s. |
 | `controle_refuse` | Le trainer refuse le contrôle à partir de 10 s : la séance passe en ERROR après deux reprises. |
@@ -83,7 +83,7 @@ Une section absente retire l'appareil. Les temps sont en secondes depuis le lanc
 
 ## Tests automatiques
 
-`core/tests/test_ble_sim.py` rejoue ces comportements par de courts scénarios (quelques secondes chacun) dans la CI : règles du Control Point, ERG et SIM, relâche à l'arrêt, erreur 0x80 puis reconnexion, contrôle perdu puis repris, contrôle refusé, réveil tardif et connexion refusée, coupure et silence du trainer, relais et appuis longs du Click, Click endormi, ceinture, et une séance complète `CoreSession` sans matériel.
+`core/tests/test_ble_sim.py` rejoue ces comportements par de courts scénarios (quelques secondes chacun) dans la CI : règles du Control Point, ERG et SIM, relâche à l'arrêt, erreur ATT 0x80 suivie d'un renvoi sans reconnexion (une ou deux erreurs de suite ; reconnexion à la troisième), erreur 0xFE renvoyée après la réponse de la procédure en cours, liaison coupée pendant une écriture (reconnexion sans renvoi), lecture du code ATT dans les messages de BlueZ, scénario `erreur_0x80` en séance complète (lot M1, marqué `slow`), contrôle perdu puis repris, contrôle refusé, réveil tardif et connexion refusée, coupure et silence du trainer, relais et appuis longs du Click, Click endormi, ceinture, et une séance complète `CoreSession` sans matériel.
 
 **Défaut trouvé à la mise en place :** quand le trainer refuse une consigne (0x05) ou annonce la perte du contrôle (0xFF) pendant une écriture, `FtmsDriver` effaçait la consigne envoyée puis la réécrivait au retour de l'écriture : la reprise de contrôle n'avait jamais lieu et la séance finissait en ERROR après trois refus. Corrigé (`_forget_sent`).
 
