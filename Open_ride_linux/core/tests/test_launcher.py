@@ -155,10 +155,7 @@ def test_core_dying_at_startup(fake):
     assert_no_orphans(sup)
 
 
-_TEST_SIGNALS = [getattr(signal, "SIGHUP", signal.SIGTERM), signal.SIGINT]
-
-
-@pytest.mark.parametrize("sig", _TEST_SIGNALS)
+@pytest.mark.parametrize("sig", [signal.SIGHUP, signal.SIGINT])
 def test_signal_stops_both_cleanly(fake, sig):
     sup, said = fake()
     timer = threading.Timer(0.8, lambda: os.kill(os.getpid(), sig))
@@ -170,8 +167,7 @@ def test_signal_stops_both_cleanly(fake, sig):
     assert count(fake.marks, "core_SIGINT") == 1 and count(fake.marks, "engine_SIGTERM") == 1
     assert count(fake.marks, "release_start") == 0
     assert_no_orphans(sup)
-    if hasattr(signal, "SIGHUP"):
-        assert signal.getsignal(signal.SIGHUP) is not sup._on_signal   # gestionnaires rendus
+    assert signal.getsignal(signal.SIGHUP) is not sup._on_signal   # gestionnaires rendus
 
 
 def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):

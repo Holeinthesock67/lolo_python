@@ -94,7 +94,6 @@ def test_control_permission_lost_takes_control_again():
         client = FakeClient([ftms.INDOOR_BIKE_DATA, ftms.MACHINE_STATUS])
         drv, task = await start(client)
         await wait_for(lambda: ftms.OP_SET_SIM_PARAMS in cp_ops(client))
-        await asyncio.sleep(0.05)
         assert ftms.MACHINE_STATUS in client.cbs
         n = cp_ops(client).count(ftms.OP_REQUEST_CONTROL)
         client.cbs[ftms.MACHINE_STATUS](None, bytearray([ftms.STATUS_CONTROL_LOST]))
