@@ -1,12 +1,14 @@
 #!/usr/bin/env bash
-# Tests de l'engine sans écran (lots D6, E1, K1 et K4) : tests unitaires découverts dans tests/unit/,
-# couches OSM (données produites par le compilateur installé), rendu par tronçons, puis scénarios IPC
-# face au faux core (parcours de démonstration avec terrain synthétique).
+# Tests de l'engine sans écran (lots D6, E1, E2, K1 et K4) : tests unitaires découverts dans tests/unit/,
+# couches OSM (données produites par le compilateur installé), rendu hors écran du shader (tests/render/,
+# sous Xvfb), rendu par tronçons, puis scénarios IPC face au faux core (parcours de démonstration avec
+# terrain synthétique).
 #
 #   GODOT=/chemin/vers/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 #
 # Variables : GODOT (exécutable Godot 4.3), STATE_PORT / CMD_PORT (ports de test, défaut 15005 / 15006),
 # SCENARIOS (ex. « 1,2,3 »), ENGINE_LOG (journal de l'engine, défaut : fichier temporaire),
+# REQUIRE_RENDER (1 : échec si xvfb-run manque, au lieu de sauter les tests de rendu),
 # UNIT (ex. « test_route_vectors » : ne lance que ce test unitaire et saute les autres étapes),
 # UNIT_TIMEOUT (durée maximale d'un test unitaire en secondes, défaut 120 : une erreur de script dans
 # _init laisse Godot tourner sans quitter).
@@ -92,6 +94,30 @@ else
   record "test_osm_layers (couches OSM K4)" 1 "données non produites par make_osm_world.py (compilateur installé ?)"
 fi
 rm -rf "$OSM_DIR"
+
+echo "== Rendu hors écran du shader (tests/render/, lot E2) =="
+# Vraie image rendue (Xvfb, OpenGL logiciel de Mesa) : le shader compilé reproduit la fonction de L3.
+# Sans xvfb-run, l'étape est sautée, sauf si REQUIRE_RENDER=1 (intégration continue) : elle échoue alors.
+if command -v xvfb-run >/dev/null 2>&1; then
+  while IFS= read -r render_file; do
+    render_name="$(basename "$render_file" .gd)"
+    echo "-- $render_name"
+    RENDER_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" xvfb-run -a "$GODOT" --path "$ENGINE_DIR" --rendering-driver opengl3 \
+      --rendering-method gl_compatibility --audio-driver Dummy --script "res://tests/render/$render_name.gd" 2>&1)"
+    render_rc=$?
+    echo "$RENDER_OUT" | grep -v "^Godot Engine" || true
+    # Avertissement connu sous Xvfb : synchronisation verticale non réglable.
+    render_issues="$(echo "$RENDER_OUT" | grep -v -E "V-Sync|set_use_vsync" | godot_issues)"
+    render_count="$(echo "$RENDER_OUT" | grep -E "^$render_name : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+    if [ -n "$render_issues" ]; then echo "$render_issues"; render_rc=1; fi
+    if [ -z "$render_count" ]; then render_rc=1; fi
+    record "render/$render_name" "$render_rc" "${render_count#*: }"
+  done < <(find "$ENGINE_DIR/tests/render" -maxdepth 1 -name 'test_*.gd' | LC_ALL=C sort)
+elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
+  record "render (tests/render/)" 1 "xvfb-run introuvable alors que REQUIRE_RENDER=1"
+else
+  echo "xvfb-run introuvable : tests de rendu sautés (installer xvfb, ou REQUIRE_RENDER=1 pour échouer)"
+fi
 
 echo "== Rendu par tronçons (lot E1) =="
 # Démo commune avec couche terrain synthétique (bibliothèque standard de Python seulement).

@@ -10,6 +10,8 @@ const EngineArgs := preload("res://scripts/engine_args.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
+const ThemeLoader := preload("res://scripts/theme_loader.gd")
+const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -61,6 +63,11 @@ func _ready() -> void:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	RenderQuality.apply_preset(RenderQuality.DEFAULT_PRESET, camera, sun, world_env.environment, get_viewport())
 	RenderQuality.apply_fog(world_env.environment, false)
+	var theme_res := ThemeLoader.load_named(cfg.get("theme", "default"))
+	var theme_dict: Dictionary = theme_res.get("theme", {})
+	var theme_dir: String = theme_res.get("theme_dir", "")
+	streamer.set_theme(theme_dict, theme_dir)
+	_apply_sky_params(theme_dict)
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
@@ -92,6 +99,15 @@ func _ready() -> void:
 	status_label.text = "ÉTAT: en attente du core…"
 	$HUD/Margin/VBox.add_child(status_label)
 	# Le parcours est chargé d'après le route_id reçu dans state (_request_route).
+
+
+func _apply_sky_params(theme_dict: Dictionary) -> void:
+	var sky := ThemeRenderParams.sky_params(theme_dict)
+	if sun != null:
+		var sun_dir: Vector3 = sky["sun_direction"]
+		sun.basis = Basis.looking_at(-sun_dir, Vector3.UP)
+	# sky.fog_density est réservé au brouillard volumétrique (lot E3) : le brouillard en profondeur
+	# d'E1, qui masque la limite des tuiles lointaines, n'est pas modifié ici.
 
 
 func _on_input_event(event_name: String) -> void:
