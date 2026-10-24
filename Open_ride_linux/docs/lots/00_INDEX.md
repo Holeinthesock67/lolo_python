@@ -38,6 +38,11 @@
 | [J8](LOT_J8_bout_en_bout_sans_ecran.md) | Essai de bout en bout sans écran : vrai core et vrai engine | Bash + Python | J5 (`openride.yml`) | Moyenne | **Livré le 23 octobre** (fait directement) |
 | [K6](LOT_K6_lanceur_unique.md) | Lanceur unique `openride` : core et Godot supervisés, arrêt propre | Python | — | Petite | **Livré le 23 octobre** (fait directement ; cahier rédigé le 24 octobre) |
 | [K7](LOT_K7_bilan_seance.md) | Bilan de séance `openride-core summary` (NP, IF, TSS, zones) | Python | — | Petite | **Livré le 23 octobre** (fait directement ; cahier rédigé le 24 octobre) |
+| [K1](LOT_K1_tests_godot_par_decouverte.md) | Tests Godot sans écran lancés par découverte (`engine/tests/unit/`) | Bash + GDScript | E1 fusionné | Petite | **Livré le 24 octobre** (PR #38) |
+| [K2](LOT_K2_modele_hud_profil.md) | Modèle de vue du HUD et profil d'altitude, sans affichage (prépare E3) | GDScript | K1 | Petite | Après K1 (PR #39) |
+| [K3](LOT_K3_placement_vegetation.md) | Placement déterministe de la végétation, sans affichage (prépare E3 et E4) | GDScript | K1 | Petite | Après K1 (PR #40) |
+| [K4](LOT_K4_lecture_couches_osm_godot.md) | Lecture des couches OSM dans l'engine, sans affichage (prépare E4) | GDScript + Python | K1, I3, I4 (livrés) | Moyenne | Après K1 (PR #41) |
+| [K5](LOT_K5_navigation_menus.md) | Navigation des menus au Click, machine à états sans affichage (prépare G) | GDScript | K1 | Petite | Après K1 (PR #42) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -69,6 +74,7 @@ B2 ──► I2 ──► G       B2 ──► I3 ──► I4 ;  I3 ──► E
 C ──► F ──► H8        H1 à H8, I1 : indépendants
 J1, J4, J5 : indépendants (J2, J3, J6, J7, J8 livrés)
 K6, K7 : indépendants (livrés)
+E1 ──► K1 ──► K2, K3, K4, K5 (prépare E3, E4 et G)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
