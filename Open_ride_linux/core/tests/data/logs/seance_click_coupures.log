@@ -1,0 +1,18 @@
+2026-10-24 19:00:00,000 INFO    core    Core démarré (trainer=ftms, entrées=click).
+2026-10-24 19:00:01,000 INFO    ftms_driver Trainer connecté (HomeTrainer 0000)
+2026-10-24 19:00:05,000 INFO    input   Zwift Click connecté (adresse C1:1C:00:00:00:01, recherche 4.0 s, 1 tentative(s))
+2026-10-24 19:00:06,000 INFO    core    Séance : READY -> RUNNING
+2026-10-24 19:01:05,000 INFO    input   Click : 600 notification(s) en 60 s (10.0 par seconde)
+2026-10-24 19:01:08,000 INFO    input   Click : PLUS_SHORT
+2026-10-24 19:01:20,000 WARNING input   Zwift Click déconnecté après 75.0 s de connexion : dernière notification il y a 0.1 s, dernier appui il y a 12.0 s, 750 notification(s), dernière écriture au trainer il y a 1.0 s, raison : lien perdu (rappel bleak) ; appuyez sur un bouton pour le réveiller
+2026-10-24 19:01:23,000 INFO    input   Zwift Click connecté (adresse C1:1C:00:00:00:01, recherche 3.0 s, 2 tentative(s))
+2026-10-24 19:02:00,000 INFO    core    Perf : pas p50 0.22 / p99 0.55 / max 1.40 ms ; retard p99 2.1 / max 6.0 ms ; CPU 3.8 %
+2026-10-24 19:02:23,000 INFO    input   Click : 590 notification(s) en 60 s (9.8 par seconde)
+2026-10-24 19:02:33,000 WARNING input   Zwift Click déconnecté après 70.0 s de connexion : dernière notification il y a 0.2 s, dernier appui il y a 45.0 s, 698 notification(s), dernière écriture au trainer il y a 10.0 s, raison : lien perdu (rappel bleak) ; appuyez sur un bouton pour le réveiller
+2026-10-24 19:02:41,000 INFO    input   Zwift Click connecté (adresse C1:1C:00:00:00:01, recherche 8.0 s, 3 tentative(s))
+2026-10-24 19:02:50,000 WARNING ftms_driver Trainer : plus de données du trainer
+2026-10-24 19:02:51,000 WARNING input   Zwift Click déconnecté après 10.0 s de connexion : dernière notification il y a 0.1 s, dernier appui il y a jamais, 100 notification(s), dernière écriture au trainer il y a jamais, raison : lien perdu (rappel bleak) ; appuyez sur un bouton pour le réveiller
+2026-10-24 19:02:55,000 INFO    input   Zwift Click connecté (adresse C1:1C:00:00:00:01, recherche 4.0 s, 1 tentative(s))
+2026-10-24 19:02:58,000 INFO    ftms_driver Trainer connecté (HomeTrainer 0000)
+2026-10-24 19:03:30,000 INFO    core    Arrêt du core…
+2026-10-24 19:03:30,050 INFO    core    Séance : RUNNING -> FINISHED

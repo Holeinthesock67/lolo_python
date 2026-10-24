@@ -55,9 +55,9 @@ class TrainerConfig:
 class GearingConfig:
     n_gears: int = 24
     start_gear: int = 12
-    ratio_min: float = 0.50
-    ratio_max: float = 2.25
-    g_base_pct: float = 2.0
+    ratio_min: float = 0.40
+    ratio_max: float = 3.00
+    g_base_pct: float = 4.0
     long_press_gears: int = 3     # appui long en SIM : nombre de braquets sautés
 
 
