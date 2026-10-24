@@ -97,6 +97,8 @@ Correspondances : première connexion d'un appareil → `appear_at` ; « Reconne
 
 ## Tests automatiques
 
+`core/tests/test_sim_matrix.py` (lot M6, marqué `slow`) joue chaque scénario de `SCENARIOS` en séance complète `CoreSession`, en ERG (`.zwo` court) et en SIM, pendant la durée du scénario plus 10 s (au plus 130 s), chaque séance dans son processus, en parallèle (~2 min 30 en tout) ; il vérifie l'absence d'erreur inattendue, l'état final (`FINISHED`, `ERROR` pour `controle_refuse`), le FIT (SDK Garmin, autant d'échantillons que de lignes `record`), la relâche du trainer (pente 0 % puis Reset), les bornes des consignes, la lecture par `summary` et `log_report`, et une table d'attentes propre à chaque scénario. Un scénario ajouté à `SCENARIOS` est joué sans modifier le test.
+
 `core/tests/test_log_scenario.py` (lot M5) convertit des journaux d'exemple (deux boîtiers du Click, anciens formats, fenêtre, choix de séance, journaux inutilisables), charge le scénario produit dans une séance de 20 s, et fait l'aller-retour séance `coupures` → journal → scénario (marqué `slow`, ~105 s).
 
 `core/tests/test_hr_monitor.py` (lot M2) vérifie le décodage complet de 0x2A37, le contact absent puis retrouvé, le choix de la ceinture face à une montre, `hr_name`, `hr_address` et la batterie faible avec la ceinture et la montre simulées.
