@@ -202,6 +202,12 @@ def _build_core_parser() -> argparse.ArgumentParser:
     summ.add_argument("--ftp", type=float)
     summ.add_argument("--json", action="store_true")
     summ.add_argument("--config")
+    hist = sub.add_parser("history")
+    hist.add_argument("--dir")
+    hist.add_argument("--weeks", type=int)
+    hist.add_argument("--ftp", type=float)
+    hist.add_argument("--json", action="store_true")
+    hist.add_argument("--config")
     return p
 
 
