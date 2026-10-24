@@ -43,6 +43,14 @@
 | [K3](LOT_K3_placement_vegetation.md) | Placement déterministe de la végétation, sans affichage (prépare E3 et E4) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #40) |
 | [K4](LOT_K4_lecture_couches_osm_godot.md) | Lecture des couches OSM dans l'engine, sans affichage (prépare E4) | GDScript + Python | K1, I3, I4 (livrés) | Moyenne | **Livré le 24 octobre** (PR #41) |
 | [K5](LOT_K5_navigation_menus.md) | Navigation des menus au Click, machine à états sans affichage (prépare G) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #42) |
+| [L1](LOT_L1_maillage_batiments.md) | Maillage des bâtiments extrudés, sans affichage (prépare E4) | GDScript | K1 (livré) | Petite | Oui (issue #53) |
+| [L2](LOT_L2_maillage_eau.md) | Maillage de l'eau : rivières en ruban et lacs avec îles, sans affichage | GDScript | K1 (livré) | Petite | Oui (issue #54) |
+| [L3](LOT_L3_parametres_rendu_theme.md) | Paramètres de rendu tirés du thème et fonction de référence du mélange herbe, roche, neige (prépare E2) | GDScript | K1, I5 (livrés) | Petite | Oui (issue #55) |
+| [L4](LOT_L4_prereglages_qualite.md) | Préréglages de qualité et thème transmis du lanceur à l'engine | GDScript + Python | K1, K6 (livrés) | Petite | Oui (issue #56) |
+| [L5](LOT_L5_modele_sonore.md) | Modèle sonore sans affichage : vent, roue libre, points d'intérêt | GDScript | K1 (livré) | Petite | Oui (issue #57) |
+| [L6](LOT_L6_cible_erg_journal.md) | Cible ERG enregistrée dans le journal de séance | Python | — | Petite | Oui (issue #58) |
+| [L7](LOT_L7_historique_seances.md) | Historique des séances : `openride-core history` | Python | — | Petite | Oui (issue #59) |
+| [L8](LOT_L8_raccourci_bureau.md) | Raccourci de bureau : fichier `.desktop`, icône, script d'installation | Bash | — | Petite | Oui (issue #60) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -60,6 +68,8 @@ Leur forme dépendra des choix faits dans E1 et D.
 
 **Ordre conseillé :** A, A2, B1, B2, C, D, F, H1 à H8 et I1 à I6 sont livrés (23 octobre). E1 est fait et attend l'essai sur le PC cible (PR #7). I5 et I6 ont été fusionnés **avant** E1, contrairement à l'ordre prévu ; le conflit qui en résultait dans `engine/tests/` est résolu sur la branche d'E1 (les trois étapes rendu, thèmes et ERG s'enchaînent). Série J (audit J du 23 octobre au soir) : J2, J3, J6, J7 et J8 sont livrés, J4 et J5 en partie ; J1 et le reste de J4 et J5 peuvent démarrer en parallèle. J1 est le plus utile pour les essais sur le vélo (parcours compilés et essai ERG). Le conflit de la PR #7 avec `main` a été résolu sur sa branche le 23 octobre au soir.
 
+**Série L (24 octobre) :** huit petits lots délégables, chacun suivi par une issue GitHub (§5). L1 à L5 (GDScript, sans affichage) déposent leur test dans `engine/tests/unit/` et ne touchent ni `main.gd`, ni les scripts de rendu d'E1, ni `run_engine_tests.sh` ; L4 modifie aussi `engine_args.gd` et `launcher.py`. L6 à L8 sont en Python ou en Bash. J1 et L7 modifient tous deux `core/src/openride_core/__main__.py`, J1 et L6 `session.py` : fusionner l'un après l'autre. L1 et L2 écrivent chacun une triangulation de polygones à trous ; la mise en commun se fera après la fusion des deux.
+
 **Lots H, I et J (23 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I et J ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
 
 **Lots H, détail :** petits lots hors du chemin critique, recettés uniquement par des tests automatiques, sans essai sur le matériel. Ils peuvent être confiés en parallèle : aucun ne partage de fichier de code avec un autre (seuls `docs/SUIVI_AVANCEMENT.md` et parfois `README.md` sont communs, à fusionner à la main). H3 est le seul à toucher `config.py`, `session.py` et `__main__.py` ; H5 et H4 touchent tous deux `core/pyproject.toml` (sections différentes).
@@ -75,6 +85,7 @@ C ──► F ──► H8        H1 à H8, I1 : indépendants
 J1, J4, J5 : indépendants (J2, J3, J6, J7, J8 livrés)
 K6, K7 : indépendants (livrés)
 E1 ──► K1 ──► K2, K3, K4, K5 (prépare E3, E4 et G)
+K1 ──► L1, L2, L3, L4, L5 ;  L6, L7, L8 : indépendants
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
@@ -131,3 +142,14 @@ contrats. Crée la branche lot-<x>-<sujet> depuis main, fais le travail, fais pa
 puis ouvre une pull request avec la liste des critères d'acceptation cochés et la sortie des tests.
 Si un contrat te semble faux ou incomplet, arrête-toi et pose la question au lieu d'improviser.
 ```
+
+## 5. Partage des lots par issues GitHub
+
+Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J` ou `série L`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
+
+1. Choisir une issue ouverte sans l'étiquette `bloqué`, sans assigné ni commentaire « Je prends ce lot ».
+2. Commenter « Je prends ce lot » sur l'issue, pour que deux IA ne fassent pas le même lot.
+3. Suivre le message du §4, puis écrire `Closes #<numéro de l'issue>` dans la description de la pull request : l'issue se ferme à la fusion.
+4. Le propriétaire fusionne ; l'IA ne fusionne pas.
+
+Un nouveau lot reçoit son issue au moment où son cahier est ajouté à l'index.
