@@ -51,3 +51,9 @@ Aucune.
 
 - Fichiers sons, `AudioStreamPlayer3D`, bus audio et réglages de volume (sprint 6).
 - Sons choisis par thème pour chaque `kind`.
+
+## 9. Livraison (24 octobre 2026, PR #68)
+
+- `engine/scripts/sound_model.gd` : modèle acoustique pur (vent, cliquetis de roue libre, bips d'événements et compte à rebours ERG, 4 POI sonores les plus proches).
+- `engine/tests/unit/test_sound_model.gd` : 16 vérifications sans écran.
+- Intégration continue GitHub Actions verte.

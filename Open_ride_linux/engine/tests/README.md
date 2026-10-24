@@ -28,6 +28,11 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_menu_model.gd` | K5 | Navigation des menus (`menu_model.gd`) : 12 scénarios d'événements du Click (focus, éléments désactivés, boucle, retour, confirmation, liste vide), événements inconnus, clavier, aucun nœud créé |
 | `test_vegetation_placer.gd` | K3 | Placement des arbres (`vegetation_placer.gd`) : déterminisme et empreinte figée, densité par `kind`, bruit sans zone, exclusions (route, limite des arbres, pente, trous), temps d'une tuile |
 | `test_hud_view_model.gd` | K2 | Modèle de vue du HUD (`hud_view_model.gd`) : textes et valeurs limites, profil d'altitude (ouvert et boucle), prochaine montée, temps de `profile` |
+| `test_building_mesh.gd` | L1 | Maillage 3D des bâtiments extrudés (`building_mesh.gd`) : murs à arêtes vives, toit plat avec cour intérieure, sens des anneaux, couleurs déterministes par `id`, cas invalides et temps de 500 bâtiments |
+| `test_water_mesh.gd` | L2 | Maillage de l'eau (`water_mesh.gd`) : cours d'eau en ruban (droits et en coude), plans d'eau avec îles, largeur par défaut, cas invalides et déterminisme |
+| `test_theme_render_params.gd` | L3 | Paramètres de rendu tirés du thème (`theme_render_params.gd`) : uniforms terrain, fonction de référence du mélange herbe/roche/neige, poids triplanaires, route et direction du soleil |
+| `test_quality_presets.gd` | L4 | Préréglages de qualité (`quality_presets.gd`) et arguments `--quality` / `--theme` de `engine_args.gd` |
+| `test_sound_model.gd` | L5 | Modèle sonore sans affichage (`sound_model.gd`) : vent, roue libre (délai 0,5 s et arrêt à > 10 W), hystérésis des points d'intérêt, lissage 12 dB/s et déterminisme |
 
 ## Étapes du script
 

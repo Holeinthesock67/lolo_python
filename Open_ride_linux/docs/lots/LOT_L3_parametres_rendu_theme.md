@@ -8,7 +8,7 @@ Préparer E2 (shader triplanaire et thèmes) et le ciel d'E3 : convertir un thè
 
 1. `docs/lots/00_INDEX.md`, `docs/lots/LOT_I5_chargeur_themes_godot.md` (livraison).
 2. `docs/SRS_v1.1.md` §8 et §8.1 (shader triplanaire), §10 (thèmes) ; `docs/contracts/world_format_v1.md` §9 ; `docs/contracts/world/theme.schema.json`.
-3. Code : `engine/scripts/theme_loader.gd` (`load_theme`, `load_named`, `texture_for`), `engine/themes/default/theme.json`, `engine/tests/test_theme_loader.gd`.
+3. Code : `engine/scripts/theme_loader.gd` (`load_theme`, `load_named`, `texture_for`), `engine/themes/default/theme.json`, `engine/tests/unit/test_theme_loader.gd`.
 
 ## 3. Prérequis
 
@@ -49,3 +49,9 @@ Aucune. L'azimut du soleil n'est pas dans le format §9 : constante du script, s
 
 - Shader `.gdshader`, matériaux, environnement Godot, textures (E2, E3).
 - Bruit de variation de l'herbe et facettes de la roche (E2).
+
+## 9. Livraison (24 octobre 2026, PR #66)
+
+- `engine/scripts/theme_render_params.gd` : calcul des paramètres de rendu d'un thème (uniforms triplanaires, poids herbe/roche/neige, ciel et brouillard volumétrique).
+- `engine/tests/unit/test_theme_render_params.gd` : 15 vérifications sans écran sur thème complet et thème minimal.
+- Intégration continue GitHub Actions verte.
