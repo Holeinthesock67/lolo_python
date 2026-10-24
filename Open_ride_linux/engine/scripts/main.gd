@@ -76,6 +76,7 @@ func _ready() -> void:
 	ipc.core_lost.connect(_on_core_lost)
 	ipc.core_returned.connect(_on_core_returned)
 	ipc.command_failed.connect(_on_command_failed)
+	ipc.test_message_received.connect(_on_test_message)
 	banner.changed.connect(func(text: String) -> void:
 		ipc.test_log("banner text=" + text.replace("\n", " | ")))
 	var gen := AudioStreamGenerator.new()
@@ -98,6 +99,10 @@ func _ready() -> void:
 	status_label = Label.new()
 	status_label.text = "ÉTAT: en attente du core…"
 	$HUD/Margin/VBox.add_child(status_label)
+	# Le HUD s'élargit avec ses textes (ligne ERG…) : le bandeau se replace pour ne jamais le recouvrir.
+	var panel: Control = $HUD/Margin/Panel
+	panel.resized.connect(func() -> void: banner.place_beside(panel.get_global_rect()))
+	get_viewport().size_changed.connect(func() -> void: banner.place_beside(panel.get_global_rect()))
 	# Le parcours est chargé d'après le route_id reçu dans state (_request_route).
 
 
@@ -234,6 +239,48 @@ func _poll_route_job() -> void:
 
 
 # --- messages du core --------------------------------------------------------------------
+
+## Messages de test (--test-mode) : « screenshot » enregistre l'image affichée en PNG et journalise
+## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py.
+func _on_test_message(msg: Dictionary) -> void:
+	if str(msg.get("action", "")) == "screenshot":
+		_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+
+
+func _test_screenshot(path: String, tag: String) -> void:
+	await RenderingServer.frame_post_draw
+	var img := get_viewport().get_texture().get_image()
+	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
+	var widgets := {}
+	var nodes := {
+		"panel": $HUD/Margin/Panel, "power": hud_power, "speed": hud_speed, "cadence": hud_cadence,
+		"hr": hud_hr, "grade": hud_grade, "distance": hud_distance, "erg": hud_erg,
+		"status": status_label, "banner": banner,
+	}
+	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
+	var to_pixels := get_viewport().get_final_transform()
+	for key in nodes:
+		var c: Control = nodes[key]
+		var r := to_pixels * c.get_global_rect()
+		widgets[key] = {
+			"text": c.text if c is Label else "",
+			"visible": c.is_visible_in_tree(),
+			"rect": [r.position.x, r.position.y, r.size.x, r.size.y],
+		}
+	var meshes := 0
+	for n in streamer.find_children("*", "MeshInstance3D", true, false):
+		if (n as MeshInstance3D).is_visible_in_tree():
+			meshes += 1
+	var info := {
+		"tag": tag, "path": path, "ok": err == OK, "size": [img.get_width(), img.get_height()],
+		"fps": Engine.get_frames_per_second(), "meshes": meshes, "ticks_ms": Time.get_ticks_msec(),
+		"ui_scale": to_pixels.get_scale().x,
+		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
+		"widgets": widgets,
+	}
+	ipc.test_log("screenshot " + JSON.stringify(info))
+
 
 func _on_hello_ack(_ack: Dictionary) -> void:
 	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage.
