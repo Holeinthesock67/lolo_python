@@ -268,6 +268,7 @@ static func session_lines(state: Dictionary, erg_view: Dictionary) -> Dictionary
 	var grade := _clean(state.get("grade", null), MAX_GRADE_PCT, false)
 	var grade_sent := _clean(state.get("grade_sent", state.get("grade", null)), MAX_GRADE_PCT, false)
 	var s := _clean(state.get("s", null), MAX_DISTANCE_M)
+	var t := _clean(state.get("t", null), MAX_ELAPSED_S)
 	var gears_total = state.get("gears_total", 24)
 	var gtot: int = int(gears_total) if _finite(gears_total) and int(gears_total) > 0 else 24
 	var gear = state.get("gear", null)
@@ -294,6 +295,20 @@ static func session_lines(state: Dictionary, erg_view: Dictionary) -> Dictionary
 	else:
 		out["grade"] = "PENTE: %s  (envoyée au trainer: %s)" % [pct.call(grade), pct.call(grade_sent)]
 	out["distance"] = "DISTANCE: %s" % (NO_VALUE if is_nan(s) else "%.2f km" % (s / 1000.0))
+	out["time"] = "TEMPS: %s" % (format_hms(t) if not is_nan(t) else NO_VALUE)
+	out["elapsed"] = format_hms(t)
+
+	# Champs individuels pour l'affichage moderne du HUD (hud_view.gd)
+	out["power_val"] = "%d" % int(round(p3s)) if not is_nan(p3s) else NO_VALUE
+	out["speed_val"] = "%.1f" % v if not is_nan(v) else NO_VALUE
+	out["cadence_val"] = "%d" % int(round(cad)) if not is_nan(cad) else NO_VALUE
+	out["hr_val"] = "%d" % int(round(hr)) if not is_nan(hr) and hr > 0.0 else NO_VALUE
+	out["grade_val"] = format_grade(grade)
+	out["grade_class"] = grade_class(grade) if not is_nan(grade) else "flat"
+	out["distance_val"] = "%.2f km" % (s / 1000.0) if not is_nan(s) else NO_VALUE
+	out["gear_val"] = gear_text
+	out["time_val"] = format_hms(t)
+
 	var erg_line := ""
 	if erg_on:
 		erg_line = "ERG: %s  |  reste %s" % [erg_view.get("title", ""), erg_view.get("remaining_text", "")]

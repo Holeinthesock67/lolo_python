@@ -90,7 +90,9 @@ func _write_png(file_path: String, color: Color) -> void:
 
 func _run() -> void:
 	# 1. Cas du critère 2 de L3 (thème par défaut), plus deux cas de transition (pente au seuil, fonte de la neige).
+	# Couleurs d'E2 inchangées avec detail_strength = 0 (Lot E3 / SRS §8.1).
 	var mat := TerrainMaterial.create_material({})
+	mat.set_shader_parameter("detail_strength", 0.0)
 	var cases := [
 		[0.0, 1000.0, "sol plat à 1 000 m : herbe"],
 		[30.0, 1000.0, "pente de 30° à 1 000 m : roche"],
@@ -107,7 +109,9 @@ func _run() -> void:
 
 	# 2. Thème personnalisé : seuil de pente à 30°, une pente de 26° reste en herbe.
 	var custom := {"terrain": {"slope_threshold_deg": 30.0, "grass": {"color": "#336699"}}}
-	var got_custom := await _shot(TerrainMaterial.create_material(custom), 26.0, 1000.0)
+	var mat_custom := TerrainMaterial.create_material(custom)
+	mat_custom.set_shader_parameter("detail_strength", 0.0)
+	var got_custom := await _shot(mat_custom, 26.0, 1000.0)
 	_check(_close(got_custom, _expected(custom, 26.0, 1000.0)), "seuil de 30° du thème : pente de 26° en herbe #336699 (rendu #%s)" % got_custom.to_html(false))
 
 	# 3. Texture d'herbe unie : la couleur rendue est celle de la texture, pas la couleur de repli.
@@ -115,8 +119,18 @@ func _run() -> void:
 	var tex_color := Color.html("#c08040")
 	_write_png(tmp_dir.path_join("textures/grass.png"), tex_color)
 	var tex_theme := {"terrain": {"grass": {"texture": "textures/grass.png", "color": "#6f9a4a", "scale_m": 6.0}}}
-	var got_tex := await _shot(TerrainMaterial.create_material(tex_theme, tmp_dir), 0.0, 1000.0)
+	var mat_tex := TerrainMaterial.create_material(tex_theme, tmp_dir)
+	mat_tex.set_shader_parameter("detail_strength", 0.0)
+	var got_tex := await _shot(mat_tex, 0.0, 1000.0)
 	_check(_close(got_tex, tex_color), "texture d'herbe utilisée (rendu #%s, attendu #%s)" % [got_tex.to_html(false), tex_color.to_html(false)])
+
+	# 4. Décor activé (detail_strength = 1.0) : variation de l'herbe bornée à ± 8 %
+	var mat_detail := TerrainMaterial.create_material({})
+	mat_detail.set_shader_parameter("detail_strength", 1.0)
+	var got_detail := await _shot(mat_detail, 0.0, 1000.0)
+	var want_flat := _expected({}, 0.0, 1000.0)
+	var ratio := got_detail.r / want_flat.r if want_flat.r > 0.0 else 1.0
+	_check(abs(ratio - 1.0) <= 0.08 + TOLERANCE, "variation d herbe avec detail=1.0 bornee a +- 8 %% (ratio %.3f)" % ratio)
 
 	print("test_terrain_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

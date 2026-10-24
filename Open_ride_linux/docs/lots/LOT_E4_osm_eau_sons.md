@@ -109,3 +109,14 @@ Aucune. La couleur de l'eau, les sons par `kind` et la règle de mélange bruit 
 - Affichage du nom des points d'intérêt, panneaux de belvédère.
 - Couche de couverture du sol (ESA WorldCover), bots, sons de foule.
 - Vagues, réflexions en temps réel, rivières animées.
+## 9. Livraison (24 octobre 2026, branche lot-e3-e4)
+
+- **Jupe des bâtiments** : paramètre skirt_m: float = 0.0 dans engine/scripts/building_mesh.gd, parois descendant à base_y - skirt_m (3 mètres par défaut dans le streamer) pour compenser les irrégularités du relief.
+- **Arbres avec forêts OSM** : intégration dans engine/scripts/tree_renderer.gd des polygones de végétation OSM (densité nominale) et peuplement aléatoire hors polygones selon p_region.
+- **Modèle sonore spatialisé et synthèse procédurale** : engine/scripts/sound_player.gd synthétisant au lancement en < 100 ms (seuil 500 ms) les sons de vent (modulé par la vitesse), roue libre, cloche d'église, rivière, bétail et clameur de village ; gestion de 4 lecteurs 3D actifs avec fondu ; surcharge possible via fichiers .ogg dans ~/OpenRide/Sounds/.
+- **Diffusion continue OSM** : engine/scripts/osm_streamer.gd chargeant les tronçons OSM en arrière-plan sans à-coup, avec au plus 3 nœuds mesh par tronçon (bâtiments, cours d'eau, plans d'eau) ; intégration dans world_streamer.gd et main.gd.
+- **Tests unitaires et headless** :
+  - engine/tests/unit/test_building_mesh.gd (19 vérifications avec test de la jupe) ;
+  - engine/tests/unit/test_sound_player.gd (5 vérifications de synthèse et de lecture) ;
+  - engine/tests/test_osm_streamer.gd (6 vérifications de partitionnement et fusion de maillages).
+- **Reste à faire par Laurent** : validation visuelle et sonore sur le parcours réel avec machine cible (critères 9 à 11).
