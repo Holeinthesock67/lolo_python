@@ -14,7 +14,7 @@ from openride_core.journal import read_journal
 from openride_core.mock_driver import MockDriver
 from openride_core.session import CoreSession
 from openride_core.workout import (
-    ErgController, WorkoutError, list_workouts, load_workout, parse_workout,
+    MAX_REPEAT, ErgController, WorkoutError, list_workouts, load_workout, parse_workout,
 )
 from openride_core.zwift_click import InputEvent
 
@@ -137,6 +137,17 @@ def test_intervals_repeat_must_be_integer():
     with pytest.raises(WorkoutError):
         parse_workout("<workout_file><workout><IntervalsT Repeat='1.5' OnDuration='30' OffDuration='30'"
                       " OnPower='1' OffPower='0.5'/></workout></workout_file>", "x")
+
+
+def test_intervals_repeat_is_bounded():
+    """Un Repeat aberrant est refusé au lieu de déplier des millions de blocs (vérification du 24 octobre, R1)."""
+    zwo = ("<workout_file><workout><IntervalsT Repeat='{}' OnDuration='1' OffDuration='1'"
+           " OnPower='1' OffPower='0.5'/></workout></workout_file>")
+    assert len(parse_workout(zwo.format(MAX_REPEAT), "x").blocks) == 2 * MAX_REPEAT
+    with pytest.raises(WorkoutError, match="dépasse"):
+        parse_workout(zwo.format(MAX_REPEAT + 1), "x")
+    with pytest.raises(WorkoutError):
+        parse_workout(zwo.format(2_000_000), "x")
 
 
 # --- contrôleur ---------------------------------------------------------------------------

@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
 
 from conftest import straight_north
 from openride_compiler import cli
+from openride_compiler.errors import CompileError
 
 
 def run(*argv) -> int:
@@ -87,3 +89,44 @@ def test_build_all_invalid_trace_does_not_stop_others(
     assert (routes_dir / "01-valide-a.world").is_dir()
     assert (routes_dir / "03-valide-b.world").is_dir()
     assert not (routes_dir / "02-trop-courte.world").exists()
+
+
+def test_build_all_default_layers_without_osm(
+    make_gpx,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    """Régression (audit J du 23 octobre) : build-all produit route et terrain par défaut, sans Overpass.
+
+    Après la fusion d'I3, build-all demandait toutes les couches de `LAYERS`, donc OpenStreetMap :
+    sans réseau, chaque trace échouait. Les couches OSM restent possibles avec --layers.
+    """
+    gpx_dir = tmp_path / "GPX"
+    routes_dir = tmp_path / "routes"
+    gpx_dir.mkdir()
+    routes_dir.mkdir()
+    make_gpx("GPX/trace.gpx", *straight_north(length=1000.0))
+
+    def no_osm(*args, **kwargs):
+        raise AssertionError("build-all ne doit pas interroger Overpass sans --layers OSM")
+
+    monkeypatch.setattr(cli, "make_osm_client", no_osm)
+    assert run("build-all", "--gpx-dir", gpx_dir, "--routes-dir", routes_dir) == 0
+    assert "1 compilé(s)" in capsys.readouterr().out
+    manifest = json.loads((routes_dir / "trace.world" / "manifest.json").read_text(encoding="utf-8"))
+    assert manifest["layers"]["terrain"]["present"] is True
+    assert manifest["layers"]["buildings"]["present"] is False
+
+    # Avec --layers, les couches OSM sont bien demandées (le client Overpass est construit).
+    calls: list[bool] = []
+
+    def failing_osm(offline, log=None):
+        calls.append(offline)
+        raise CompileError("Overpass indisponible (test)")
+
+    make_gpx("GPX/autre.gpx", *straight_north(length=1000.0))
+    monkeypatch.setattr(cli, "make_osm_client", failing_osm)
+    assert run("build-all", "--gpx-dir", gpx_dir, "--routes-dir", routes_dir,
+               "--layers", "route,buildings") == 1
+    assert calls == [False]

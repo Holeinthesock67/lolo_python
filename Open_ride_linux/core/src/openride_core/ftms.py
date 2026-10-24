@@ -37,6 +37,10 @@ OP_STOP_PAUSE = 0x08
 OP_SET_SIM_PARAMS = 0x11
 OP_RESPONSE = 0x80
 
+# Codes d'erreur ATT renvoyés par l'écriture elle-même (FTMS §4.16.3, CSS partie B §1.2).
+ATT_PROCEDURE_IN_PROGRESS = 0xFE
+ATT_CCCD_IMPROPERLY_CONFIGURED = 0xFD
+
 RESULT_CODES = {
     0x01: "SUCCESS",
     0x02: "OP_CODE_NOT_SUPPORTED",
@@ -44,6 +48,21 @@ RESULT_CODES = {
     0x04: "OPERATION_FAILED",
     0x05: "CONTROL_NOT_PERMITTED",
 }
+
+# Fitness Machine Status (0x2ADA), FTMS §4.17 tableau 4.26 : codes utiles à un vélo.
+MACHINE_STATUS_CODES = {
+    0x01: "RESET",
+    0x02: "STOPPED_OR_PAUSED_BY_USER",
+    0x03: "STOPPED_BY_SAFETY_KEY",
+    0x04: "STARTED_OR_RESUMED_BY_USER",
+    0x07: "TARGET_RESISTANCE_CHANGED",
+    0x08: "TARGET_POWER_CHANGED",
+    0x12: "SIM_PARAMS_CHANGED",
+    0x13: "WHEEL_CIRCUMFERENCE_CHANGED",
+    0x14: "SPIN_DOWN_STATUS",
+    0xFF: "CONTROL_PERMISSION_LOST",
+}
+STATUS_CONTROL_LOST = 0xFF
 
 MACHINE_FEATURE_BITS = {
     0: "average_speed", 1: "cadence", 2: "total_distance", 3: "inclination",
@@ -96,6 +115,13 @@ def parse_power_range(data: bytes) -> PowerRange:
     return PowerRange(*struct.unpack_from("<hhH", data, 0))
 
 
+def parse_machine_status(data: bytes) -> tuple[int, str] | None:
+    """Décode 0x2ADA : (code, nom) ; None si la trame est vide."""
+    if not data:
+        return None
+    return data[0], MACHINE_STATUS_CODES.get(data[0], f"0x{data[0]:02x}")
+
+
 @dataclass
 class IndoorBikeData:
     speed_kmh: float | None = None
@@ -112,8 +138,29 @@ class IndoorBikeData:
     remaining_time_s: int | None = None
 
 
+# Taille de chaque champ optionnel d'Indoor Bike Data, par bit de drapeau (GATT Specification
+# Supplement). Le niveau de résistance (bit 5) fait 2 octets (sint16) dans la définition XML
+# d'origine, suivie par la plupart des trainers, mais 1 octet (uint8) dans le supplément actuel.
+_IBD_SIZES = ((1, 2), (2, 2), (3, 2), (4, 3), (5, 2), (6, 2), (7, 2), (8, 5), (9, 1), (10, 1),
+              (11, 2), (12, 2))
+ENERGY_NOT_AVAILABLE = 0xFFFF   # FTMS §4.9.1.10 : « Data Not Available »
+
+
+def _resistance_size(flags: int, length: int) -> int:
+    """2 octets sauf si la longueur de la trame ne s'explique qu'avec 1 octet."""
+    if not flags & 0x0020:
+        return 0
+    expected = 2 + (0 if flags & 0x0001 else 2)
+    expected += sum(size for bit, size in _IBD_SIZES if flags >> bit & 1)
+    return 1 if length == expected - 1 else 2
+
+
 def parse_indoor_bike_data(data: bytes) -> IndoorBikeData:
-    """Décode la caractéristique 0x2AD2 (champs présents selon les drapeaux)."""
+    """Décode la caractéristique 0x2AD2 (champs présents selon les drapeaux).
+
+    Un enregistrement peut être réparti sur plusieurs notifications (bit 0 « More Data » à 1,
+    FTMS §4.19) : chaque trame ne porte alors qu'une partie des champs, les autres restent None.
+    """
     flags = struct.unpack_from("<H", data, 0)[0]
     off = 2
     out = IndoorBikeData()
@@ -138,13 +185,14 @@ def parse_indoor_bike_data(data: bytes) -> IndoorBikeData:
         off += 3
         out.total_distance_m = lo | hi << 16
     if flags & 0x0020:
-        out.resistance_level = take("h")
+        out.resistance_level = take("h" if _resistance_size(flags, len(data)) == 2 else "B")
     if flags & 0x0040:
         out.power_w = take("h")
     if flags & 0x0080:
         out.avg_power_w = take("h")
     if flags & 0x0100:
-        out.total_energy_kcal = take("H")
+        energy = take("H")
+        out.total_energy_kcal = None if energy == ENERGY_NOT_AVAILABLE else energy
         off += 3  # énergie par heure (uint16) et par minute (uint8)
     if flags & 0x0200:
         out.heart_rate_bpm = take("B")
@@ -170,6 +218,12 @@ def cmd_request_control() -> bytes:
     return bytes([OP_REQUEST_CONTROL])
 
 
+def cmd_reset() -> bytes:
+    """Opcode 0x01 : remet les consignes à zéro ; en cas de succès, le client perd le contrôle
+    (FTMS §4.16.2.2), ce qui le rend aux autres applications."""
+    return bytes([OP_RESET])
+
+
 def cmd_start_resume() -> bytes:
     return bytes([OP_START_RESUME])
 
@@ -182,8 +236,13 @@ def cmd_pause() -> bytes:
     return bytes([OP_STOP_PAUSE, 0x02])
 
 
+def _sint16(value: float) -> int:
+    return max(-32768, min(32767, int(round(value))))
+
+
 def cmd_set_target_power(watts: float) -> bytes:
-    return struct.pack("<Bh", OP_SET_TARGET_POWER, int(round(watts)))
+    """Opcode 0x05 : sint16 en watts, résolution 1 W."""
+    return struct.pack("<Bh", OP_SET_TARGET_POWER, _sint16(watts))
 
 
 def cmd_set_sim_params(grade_pct: float, crr: float = 0.004, cw_kg_m: float = 0.20,
@@ -196,8 +255,8 @@ def cmd_set_sim_params(grade_pct: float, crr: float = 0.004, cw_kg_m: float = 0.
     return struct.pack(
         "<BhhBB",
         OP_SET_SIM_PARAMS,
-        int(round(wind_mps * 1000)),
-        int(round(grade_pct * 100)),
+        _sint16(wind_mps * 1000),
+        _sint16(grade_pct * 100),
         max(0, min(255, int(round(crr * 10000)))),
         max(0, min(255, int(round(cw_kg_m * 100)))),
     )
