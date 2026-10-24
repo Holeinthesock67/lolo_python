@@ -24,6 +24,8 @@ CONTROL_POINT = uuid16(0x2AD9)
 MACHINE_STATUS = uuid16(0x2ADA)
 HR_SERVICE = uuid16(0x180D)
 HR_MEASUREMENT = uuid16(0x2A37)
+BATTERY_SERVICE = uuid16(0x180F)
+BATTERY_LEVEL = uuid16(0x2A19)
 CYCLING_POWER_SERVICE = uuid16(0x1818)
 BATTERY_SERVICE = uuid16(0x180F)
 DEVICE_INFO_SERVICE = uuid16(0x180A)
@@ -210,6 +212,45 @@ def parse_hr_measurement(data: bytes) -> int:
     if data[0] & 0x01:
         return struct.unpack_from("<H", data, 1)[0]
     return data[1]
+
+
+@dataclass
+class HrMeasurement:
+    """Heart Rate Measurement 0x2A37 décodée en entier (Heart Rate Service 1.0, lot M2).
+
+    `contact` : True ou False si la ceinture gère le contact du capteur, None sinon.
+    `rr_ms` : intervalles RR en millisecondes (transmis en 1/1024 s).
+    """
+    bpm: int
+    contact: bool | None = None
+    energy_kj: int | None = None
+    rr_ms: list[float] = field(default_factory=list)
+
+
+def parse_hr_measurement_full(data: bytes) -> HrMeasurement:
+    """Décode tous les champs de 0x2A37 ; trame trop courte : ValueError.
+
+    Drapeaux : bit 0 format 16 bits, bits 1-2 contact (2 = géré absent, 3 = géré présent),
+    bit 3 énergie dépensée (uint16, kJ), bit 4 intervalles RR (uint16, 1/1024 s).
+    """
+    try:
+        flags = data[0]
+        if flags & 0x01:
+            bpm, i = struct.unpack_from("<H", data, 1)[0], 3
+        else:
+            bpm, i = data[1], 2
+        energy = None
+        if flags & 0x08:
+            energy = struct.unpack_from("<H", data, i)[0]
+            i += 2
+    except (IndexError, struct.error):
+        raise ValueError(f"Heart Rate Measurement trop courte : {bytes(data).hex()}") from None
+    contact = bool(flags & 0x02) if flags & 0x04 else None
+    rr: list[float] = []
+    if flags & 0x10:
+        for j in range(i, len(data) - 1, 2):
+            rr.append(struct.unpack_from("<H", data, j)[0] * 1000.0 / 1024.0)
+    return HrMeasurement(bpm=bpm, contact=contact, energy_kj=energy, rr_ms=rr)
 
 
 # --- Commandes du Control Point -------------------------------------------------------
