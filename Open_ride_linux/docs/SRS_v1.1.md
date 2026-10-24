@@ -257,7 +257,7 @@ Le core enregistre la séance tout seul, sans dépendre de l'engine, et la conve
 **Journal continu**
 
 - Un fichier JSONL par séance dans `~/OpenRide/Activities/.journal/`, une ligne par seconde, vidée (`flush`) à chaque ligne et synchronisée sur disque (`fsync`) toutes les 5 s.
-- Champs : temps, latitude, longitude, altitude, distance, vitesse, puissance, cadence, fréquence cardiaque, pente, mode, braquet, bloc d'entraînement.
+- Champs : temps, latitude, longitude, altitude, distance, vitesse, puissance, cadence, fréquence cardiaque, pente, mode, braquet, bloc d'entraînement, cible ERG (absente des journaux antérieurs au 24 octobre 2026).
 - Après un plantage, la commande `openride-core recover` transforme le dernier journal en FIT.
 
 **Export FIT** (bibliothèque `fit-tool`) vers `~/OpenRide/Activities/AAAA-MM-JJ_HH-MM_parcours.fit`
