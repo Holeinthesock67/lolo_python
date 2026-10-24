@@ -21,6 +21,10 @@ concurrency:
   group: openride-${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.ref || github.sha }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
+# Jeton GitHub en lecture seule : les tests n'écrivent rien dans le dépôt.
+permissions:
+  contents: read
+
 defaults:
   run:
     working-directory: Open_ride_linux
