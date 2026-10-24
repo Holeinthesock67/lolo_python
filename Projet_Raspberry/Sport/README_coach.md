@@ -1,6 +1,6 @@
 # Coach sportif hybride – mémo du système
 
-Mis à jour le 22/10/2026 (feuille déplacée dans « Coach - Garmin export », tension à 2 mesures). Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
+Mis à jour le 24/10/2026 (lieu de la météo lu dans l'onglet Réglages). Ce document est la référence pour reprendre le système dans une nouvelle conversation : le donner à Claude, ou lui dire de lire `claude/README_coach.md` dans le projet « Coach Sportif ».
 
 ## Vue d'ensemble
 
@@ -23,7 +23,7 @@ Mis à jour le 22/10/2026 (feuille déplacée dans « Coach - Garmin export », 
   - Quotidien (A:J) : date, charge mentale, fatigue, sommeil ressenti, zones et intensité de douleur, maladie, score de sommeil Garmin, remarque, sommeil consolidé (calculé).
   - Soir (A:D) : date, RPE, durée, charge RPE × min (calculée).
   - Mesures, Tension, FTP, Biologie.
-  - Réglages (valeurs personnelles lues par le coach et le carnet) : taille, tour de cou de référence, semaines ISO du 4×4, début de la créatine, âge, protéines par jour, seuil de poids pour [2–2–2] au déjeuner, Zone 2 au home trainer (% FTP), cible aérobie intense sur 4 semaines, plafond anaérobie sur 4 semaines. Les modifier dans la feuille suffit.
+  - Réglages (valeurs personnelles lues par le coach et le carnet) : taille, tour de cou de référence, semaines ISO du 4×4, début de la créatine, âge, protéines par jour, seuil de poids pour [2–2–2] au déjeuner, Zone 2 au home trainer (% FTP), cible aérobie intense sur 4 semaines, plafond anaérobie sur 4 semaines, **lieu météo** (ville, « ville, pays » ou « latitude ; longitude » : à changer en vacances, pris en compte le lendemain à 7 h 15). Les modifier dans la feuille suffit.
   - Coach (A:G) : date, verdict, séance du jour, pourquoi, nutrition, à faire, fiabilité — écrit chaque matin par la tâche planifiée.
   La feuille est en paramètres français : formules avec `;` et virgule décimale.
 - Source de la page : `Sport\sources\carnet-du-coach.html` (à donner à Claude pour la modifier).
@@ -93,6 +93,8 @@ Mis à jour le 22/10/2026 (feuille déplacée dans « Coach - Garmin export », 
 | 7 h 24 | « Point coach du matin » : verdict du jour envoyé sur le téléphone | tâche planifiée Claude |
 
 Le Pi remplit le dossier Drive **« Coach - Garmin export »** avec `coach_snapshot.md`, `coach_metrics.json`, `integrite.html`, `daily.csv`, `activities.csv` et `weather_daily.csv`.
+
+Lieu de la météo : lu chaque matin par le Pi dans l'onglet Réglages (« Lieu météo ») via `settings_source.py` : la feuille est téléchargée en .xlsx par le remote rclone `coachro:` (lecture seule, limité au dossier « Coach - Garmin export »), le nom est converti en coordonnées par le géocodage d'Open-Meteo, et le dernier lieu connu est gardé dans `data/location.json`. Si la feuille ou le géocodage échouent, le dernier lieu connu sert ; l'instantané affiche le lieu dans « Météo à venir (lieu) ». Aucun lieu n'est écrit dans le code ni dans GitHub.
 
 Données Garmin importées : FC repos, VFC, sommeil, Body Battery, stress, pas, Training Readiness, VO2max, poids, minutes d'intensité OMS, statut d'entraînement (charge aiguë/chronique, rapport, répartition sur 4 semaines et cibles), FTP estimé, activités (durée, FC, puissance, charge, effet d'entraînement aérobie/anaérobie et étiquette, temps en zones cardiaques) et séries de musculation. Calculs dans `training.py` : minutes OMS, FTP en W/kg. L'intensité se pilote uniquement par la répartition Garmin sur 4 semaines (aérobie intense et anaérobie) : ni détection des 4×4, ni décompte des séances intenses. Le coach lit ce dossier, ton carnet (feuille « Coach – Carnet ») et la Synthèse Intégrale.
 
@@ -176,7 +178,8 @@ Les lignes 8 h 15 à 22 h 30 concernent les podcasts (voir `Projet_Raspberry/Pod
 | Journal | `~/garmin_coach/data/sync.log` |
 | Exports | `~/garmin_coach/export/` |
 | Jeton Garmin | `~/.garminconnect/` |
-| Configuration rclone (accès Google limité à ses propres fichiers) | `~/.config/rclone/rclone.conf` |
+| Configuration rclone : `gdrive:` (exports, accès limité à ses propres fichiers) et `coachro:` (lecture seule du dossier « Coach - Garmin export », pour la feuille) | `~/.config/rclone/rclone.conf` |
+| Lieu météo en cache, copie de la feuille | `~/garmin_coach/data/location.json`, `data/carnet.xlsx` |
 
 La base du PC (`Sport\data\coach.db`) n'est qu'une sauvegarde du 17/10/2026. Ne pas lancer `sync` sur le PC, sinon les deux bases divergent.
 
@@ -209,5 +212,6 @@ scp utilisateur@coachpi:~/garmin_coach/data/coach.db D:\Sauvegarde\Documents\uti
    ```
 6. rclone : `rclone config`, puis nouveau remote `gdrive`, type `drive`, scope `drive.file`, pas de navigateur automatique (autorisation via `rclone authorize` sur le PC).
    Avec le scope `drive.file`, un nouveau rclone ne voit pas l'ancien dossier : il en créera un nouveau. Supprime l'ancien « Coach - Garmin export » dans le Drive avant le premier envoi.
+   Second remote `coachro` : type `drive`, scope `drive.readonly`, `root_folder_id` = identifiant du dossier « Coach - Garmin export » (dans son adresse Drive), même autorisation via le PC. Test : `rclone lsf coachro:` doit lister « Coach – Carnet.xlsx ». Puis `.venv/bin/pip install openpyxl`.
 7. Remettre les lignes cron (section « Vérifier que tout tourne ») : `crontab -e`.
 8. GitHub : `sudo apt install -y git`, nouvelle clé `ssh-keygen -t ed25519 -f ~/.ssh/github_deploy -N "" -C coachpi`, l'ajouter dans GitHub (dépôt → Settings → Deploy keys, sans accès en écriture), `printf 'Host github.com\n  IdentityFile ~/.ssh/github_deploy\n  IdentitiesOnly yes\n' >> ~/.ssh/config`, puis `git clone --filter=blob:none --sparse git@github.com:Holeinthesock67/lolo_python.git ~/lolo_python && cd ~/lolo_python && git sparse-checkout set Projet_Raspberry`. Avec GitHub en place, les étapes 4 et 5 peuvent copier le code depuis `~/lolo_python/Projet_Raspberry/Sport` au lieu du PC (le jeton Garmin vient toujours du PC).
