@@ -46,3 +46,8 @@ Aucune. Les actions renvoyées reprennent les noms de commandes du contrat v1 qu
 
 - Affichage des menus, police, sons (G, interne).
 - Messages IPC de liste (contrat v1.1, décision de Laurent).
+
+## 9. Livraison (24 octobre 2026, PR #42)
+
+- `engine/scripts/menu_model.gd` et `engine/tests/unit/test_menu_model.gd` (19 vérifications, dont 12 scénarios d'événements).
+- **Écarts assumés :** un écran « Prêt » (Démarrer, Choisir un entraînement, Changer de parcours) s'ajoute entre le choix du parcours et le départ : `select_route` part dès le choix, puis « Démarrer » envoie `start`. Le retour depuis la pause reprend la séance (`resume`). La confirmation a le focus sur « Non » ; le retour rend l'écran et le focus d'origine.
