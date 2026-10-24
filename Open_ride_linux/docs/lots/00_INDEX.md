@@ -61,6 +61,17 @@
 | [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | **Livré le 24 octobre** (issue #84) |
 | [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | **Livré le 24 octobre** (issue #85) |
 | [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | **Livré le 24 octobre** (issue #86) |
+| [N1](LOT_N1_contrat_ipc_v1_1.md) | Contrat IPC v1.1 : listes des parcours et des entraînements, état des appareils, bilan enrichi | Markdown + JSON | — | Petite | Non : interne (décision de contrat du propriétaire), cahier rédigé le 24 octobre |
+| [N2](LOT_N2_core_ipc_v1_1.md) | Core : messages du contrat IPC v1.1 (listes, appareils, bilan enrichi) | Python | N1 ; E3, E4, M2, M4 (livrés) | Moyenne | Oui, après N1 (issue #101, étiquette `bloqué`) |
+| [N3](LOT_N3_client_listes_engine.md) | Engine : client des listes v1.1 et branchement au modèle de menu, sans affichage | GDScript + Python | N1, K5 (livré) | Petite | Oui, après N1 (issue #102, étiquette `bloqué`) |
+| [N4](LOT_N4_modele_fin_seance.md) | Modèle de l'écran de fin de séance, sans affichage | GDScript | K1, K5 (livrés) | Petite | Oui (issue #103) |
+| [N5](LOT_N5_modele_etat_appareils.md) | Modèle de l'écran d'état des appareils et de ses alertes, sans affichage | GDScript | N1, K1 (livré) | Petite | Oui, après N1 (issue #104, étiquette `bloqué`) |
+| [N6](LOT_N6_affichage_menus.md) | Affichage des menus, de l'état des appareils et du bilan ; lanceur sans `--autostart` par défaut | GDScript | E3, E4 (livrés), N2 à N5 | Grande | Non : interne (`main.gd`, contrôle visuel et au Click) |
+| [N7](LOT_N7_affichage_erg.md) | Entraînement ERG à l'écran : bandeau, histogramme et bip à T − 3 s (ancien F2) | GDScript | E3, I6 (livrés) | Moyenne | Non : interne (contrôle visuel et sonore sur le HomeTrainer) |
+| [N8](LOT_N8_reprise_plantage_core.md) | Reprise d'une séance après un plantage du core | Python | N1 ; E3, M4, M8 (livrés) | Moyenne | Oui, après N1 (issue #105, étiquette `bloqué`) |
+| [N9](LOT_N9_bots_core.md) | Bots côté core : puissance constante et fantôme d'une séance passée | Python | E3, M3, M4 (livrés) | Moyenne | Oui (issue #106) |
+| [N10](LOT_N10_packs_themes.md) | Packs de thèmes : `theme-list` et `theme-install` | Python | H7, M7 (livrés) | Petite | Oui (issue #107) |
+| [N11](LOT_N11_compilation_au_lancement.md) | Compilation des nouvelles traces GPX au lancement d'OpenRide | Python | I2, M8 (livrés) | Petite | Oui (issue #108) |
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle sur GTX 1060 à faire) |
 | [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle et sonore sur GTX 1060 à faire) |
@@ -71,8 +82,9 @@
 - validation des fichiers FIT dans GoldenCheetah et Garmin Connect.
 
 **À rédiger plus tard** (contrôle visuel ou décision du propriétaire nécessaire) :
-- F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) ;
-- G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), affichage des menus pilotés au Click et écran de fin de séance (s'appuie sur I2, K5, K6 et K7).
+- F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) : rédigé le 24 octobre sous le nom N7 ;
+- G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), affichage des menus pilotés au Click et écran de fin de séance (s'appuie sur I2, K5, K6 et K7) : rédigé le 24 octobre et découpé en N1 (contrat), N2 et N3 (core et client), N4 et N5 (modèles sans affichage), N6 (affichage) ;
+- affichage des bots dans l'engine (après N9) et réglages modifiables depuis le menu (après N6).
 
 Leur forme dépendra des choix faits dans E1 et D.
 
@@ -80,11 +92,13 @@ Leur forme dépendra des choix faits dans E1 et D.
 
 **Série K (23 octobre au soir) :** tous les lots sont livrés le 24 octobre (K6 et K7 faits directement le 23). K2 à K5 déposent leur test dans `engine/tests/unit/` (découverte par `run_engine_tests.sh`, lot K1). Les lots K préparent E3 (K2, K3), E4 (K3, K4) et G (K5, K6, K7) sans les remplacer : le rendu, l'affichage et le contrat IPC v1.1 restent internes.
 
+**Série N (24 octobre, après E3 et E4) :** lanceur et menus (ancien lot G), ERG à l'écran (ancien F2), reprise après un plantage du core, bots, packs de thèmes et compilation au lancement. N1 (contrat IPC v1.1) est une décision du propriétaire et bloque N2, N3, N5 et N8. N6 et N7 restent internes : ils modifient `main.gd` et se recettent à l'œil. Délégables tout de suite : N4, N9, N10 et N11 ; après N1 : N2, N3, N5 et N8. Fichiers partagés : `ipc_client.gd` et `fake_core.py` (N3 seul) ; `session.py` (N2, N8, N9 : à faire l'un après l'autre) ; `launcher.py` (N8, N11, puis N6) ; `__main__.py` (N8, N9) ; `docs/contracts/ipc/state.schema.json` (N1, puis N9 pour `bots`). N4 et N5 ne touchent que leur propre script et leur test.
+
 **Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
 
 **Série L (24 octobre) :** tous les lots L1 à L8 sont livrés le 24 octobre (PR #64 à #71). L1 à L5 (GDScript, sans affichage) déposent leur test dans `engine/tests/unit/` ; L4 modifie aussi `engine_args.gd` et `launcher.py` ; L6 à L8 enrichissent le journal (cible ERG), le core (`history`) et le bureau (`.desktop`).
 
-**Lots H, I, J, K, L et M (23 et 24 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel. Aucun lot des séries I, J, K, L et M ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
+**Lots H, I, J, K, L et M (23 et 24 octobre) :** ces séries sont faites pour une IA externe : recette entièrement automatique, sans essai sur le matériel (série N : seulement les lots marqués « Oui »). Aucun lot des séries I, J, K, L et M, ni aucun lot délégable de la série N, ne touche `main.gd` ni les scripts de rendu d'E1. Fichiers partagés dans la série J : `.github/workflows/openride.yml` (J5 puis J8) ; J1 touche `__main__.py`, déjà modifié par J3 (livré) ; `docs/SUIVI_AVANCEMENT.md` est commun à tous (une ligne chacun, à fusionner à la main).
 
 **Lots H, détail :** petits lots hors du chemin critique, recettés uniquement par des tests automatiques, sans essai sur le matériel. Ils peuvent être confiés en parallèle : aucun ne partage de fichier de code avec un autre (seuls `docs/SUIVI_AVANCEMENT.md` et parfois `README.md` sont communs, à fusionner à la main). H3 est le seul à toucher `config.py`, `session.py` et `__main__.py` ; H5 et H4 touchent tous deux `core/pyproject.toml` (sections différentes).
 
@@ -102,6 +116,8 @@ E1 ──► K1 ──► K2, K3, K4, K5 (livrés ; préparent E3, E4 et G)
 E2 ──► E3 ──► E4 ;  K2, K3, L3, L4 ──► E3 ;  K4, L1, L2, L5 ──► E4
 K1 ──► L1, L2, L3, L4, L5 ;  L6, L7, L8 : indépendants
 M1 à M9 : indépendants (simulateur Bluetooth de la PR #74)
+N1 ──► N2, N3, N5, N8 ;  N2, N3, N4, N5 ──► N6 ;  E3 ──► N6, N7
+N4, N9, N10, N11 : indépendants (prérequis livrés)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
@@ -161,7 +177,7 @@ Si un contrat te semble faux ou incomplet, arrête-toi et pose la question au li
 
 ## 5. Partage des lots par issues GitHub
 
-Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L` ou `série M`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
+Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L`, `série M` ou `série N`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
 
 1. Choisir une issue ouverte sans l'étiquette `bloqué`, sans assigné ni commentaire « Je prends ce lot ».
 2. Commenter « Je prends ce lot » sur l'issue, pour que deux IA ne fassent pas le même lot.
