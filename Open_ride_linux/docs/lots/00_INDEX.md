@@ -62,16 +62,16 @@
 | [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | Oui (issue #85) |
 | [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | Oui (issue #86) |
 | [N1](LOT_N1_contrat_ipc_v1_1.md) | Contrat IPC v1.1 : listes des parcours et des entraînements, état des appareils, bilan enrichi | Markdown + JSON | — | Petite | Non : interne (décision de contrat de Laurent), cahier rédigé le 24 octobre |
-| [N2](LOT_N2_core_ipc_v1_1.md) | Core : messages du contrat IPC v1.1 (listes, appareils, bilan enrichi) | Python | N1 ; PR #91, M2, M4 fusionnés | Moyenne | Oui, après N1 (issue à l'étiquette `bloqué`) |
-| [N3](LOT_N3_client_listes_engine.md) | Engine : client des listes v1.1 et branchement au modèle de menu, sans affichage | GDScript + Python | N1, K5 (livré) | Petite | Oui, après N1 (issue à l'étiquette `bloqué`) |
-| [N4](LOT_N4_modele_fin_seance.md) | Modèle de l'écran de fin de séance, sans affichage | GDScript | K1, K5 (livrés) | Petite | Oui (prêt tout de suite) |
-| [N5](LOT_N5_modele_etat_appareils.md) | Modèle de l'écran d'état des appareils et de ses alertes, sans affichage | GDScript | N1, K1 (livré) | Petite | Oui, après N1 (issue à l'étiquette `bloqué`) |
+| [N2](LOT_N2_core_ipc_v1_1.md) | Core : messages du contrat IPC v1.1 (listes, appareils, bilan enrichi) | Python | N1 ; PR #91, M2, M4 fusionnés | Moyenne | Oui, après N1 (issue #101, étiquette `bloqué`) |
+| [N3](LOT_N3_client_listes_engine.md) | Engine : client des listes v1.1 et branchement au modèle de menu, sans affichage | GDScript + Python | N1, K5 (livré) | Petite | Oui, après N1 (issue #102, étiquette `bloqué`) |
+| [N4](LOT_N4_modele_fin_seance.md) | Modèle de l'écran de fin de séance, sans affichage | GDScript | K1, K5 (livrés) | Petite | Oui (issue #103) |
+| [N5](LOT_N5_modele_etat_appareils.md) | Modèle de l'écran d'état des appareils et de ses alertes, sans affichage | GDScript | N1, K1 (livré) | Petite | Oui, après N1 (issue #104, étiquette `bloqué`) |
 | [N6](LOT_N6_affichage_menus.md) | Affichage des menus, de l'état des appareils et du bilan ; lanceur sans `--autostart` par défaut | GDScript | PR #91, N2 à N5 | Grande | Non : interne (`main.gd`, contrôle visuel et au Click) |
 | [N7](LOT_N7_affichage_erg.md) | Entraînement ERG à l'écran : bandeau, histogramme et bip à T − 3 s (ancien F2) | GDScript | PR #91, I6 (livré) | Moyenne | Non : interne (contrôle visuel et sonore sur le Victory) |
-| [N8](LOT_N8_reprise_plantage_core.md) | Reprise d'une séance après un plantage du core | Python | N1 ; PR #91, M4, M8 fusionnés | Moyenne | Oui, après N1 et M8 (issue à l'étiquette `bloqué`) |
-| [N9](LOT_N9_bots_core.md) | Bots côté core : puissance constante et fantôme d'une séance passée | Python | PR #91, M3, M4 fusionnés | Moyenne | Oui, après la fusion de la PR #91 et des lots M (issue à l'étiquette `bloqué`) |
-| [N10](LOT_N10_packs_themes.md) | Packs de thèmes : `theme-list` et `theme-install` | Python | H7 (livré), M7 fusionné | Petite | Oui, après la fusion de M7 (issue à l'étiquette `bloqué`) |
-| [N11](LOT_N11_compilation_au_lancement.md) | Compilation des nouvelles traces GPX au lancement d'OpenRide | Python | I2 (livré), M8 fusionné | Petite | Oui, après la fusion de M8 (issue à l'étiquette `bloqué`) |
+| [N8](LOT_N8_reprise_plantage_core.md) | Reprise d'une séance après un plantage du core | Python | N1 ; PR #91, M4, M8 fusionnés | Moyenne | Oui, après N1 et M8 (issue #105, étiquette `bloqué`) |
+| [N9](LOT_N9_bots_core.md) | Bots côté core : puissance constante et fantôme d'une séance passée | Python | PR #91, M3, M4 fusionnés | Moyenne | Oui, après la fusion de la PR #91 et des lots M (issue #106, étiquette `bloqué`) |
+| [N10](LOT_N10_packs_themes.md) | Packs de thèmes : `theme-list` et `theme-install` | Python | H7 (livré), M7 fusionné | Petite | Oui, après la fusion de M7 (issue #107, étiquette `bloqué`) |
+| [N11](LOT_N11_compilation_au_lancement.md) | Compilation des nouvelles traces GPX au lancement d'OpenRide | Python | I2 (livré), M8 fusionné | Petite | Oui, après la fusion de M8 (issue #108, étiquette `bloqué`) |
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | Non : interne (contrôle visuel sur la GTX 1060), cahier rédigé le 24 octobre |
 | [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés sauf E3) | Grande | Non : interne (contrôle visuel et sonore), cahier rédigé le 24 octobre |
