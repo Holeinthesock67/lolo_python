@@ -156,11 +156,12 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Couche terrain (MNT Copernicus GLO-30, tuiles proches et lointaines, cache sans réseau à la relance), lot B2. Essai réel : trace de 30 km dans l'Oisans, 4 tuiles (165 Mo) téléchargées en 17 s, recompilation hors ligne en 6 s.
 - [ ] Comparer la pente maximale d'une vraie trace de col avec Garmin Connect (à ± 1 point) et relever les écarts GPX / MNT affichés par `build`, pour ajuster le seuil d'altitude aberrante.
 
-### Sprint 3 : rendu 3D (lots D, E1, puis E2 et E3 à rédiger)
+### Sprint 3 : rendu 3D (lots D, E1, E2, puis E3 à rédiger)
 - [x] Godot conforme au contrat (renvoi des commandes, extrapolation, core injoignable), lot D.
 - [ ] Cahiers E3 (ciel, arbres par bruit, HUD final) et E4 (bâtiments, forêts OSM, eau, sons) rédigés le 24 octobre, avec la revue du lot E2 (`docs/REVUE_E2_2026-10-24.md`) : à faire après la fusion d'E2 corrigé.
 - [ ] Ruban de route et terrain par tronçons (lot E1 fusionné le 24 octobre, PR #7, tests sans écran verts) : reste l'essai sur la GTX 1060 (images par seconde, à-coups, trous).
-- [ ] Shader triplanaire et thèmes (E2, après le chargeur de thèmes GDScript du lot I5), arbres, HUD final avec profil d'altitude (E3).
+- [ ] Shader triplanaire et application du thème (lot E2, PR #75, 24 octobre) : projection en mètres, mélange herbe/roche/neige selon pente et altitude (constantes du lot L3 transmises au shader), route et soleil pilotés par le thème ; vrai rendu vérifié sous Xvfb (`engine/tests/render/test_terrain_render.gd`) : reste l'essai sur la GTX 1060 (images par seconde avec et sans textures, limite du terrain lointain).
+- [ ] Arbres, HUD final avec profil d'altitude (E3).
 
 ### Lanceur et menus (lot G, à rédiger)
 - [x] Lanceur unique `openride` (`launcher.py`, lot K6) et raccourci de bureau (`scripts/desktop/openride.desktop.in`, `scripts/desktop/openride.svg`, `scripts/install-desktop.sh`, lot L8).
