@@ -8,6 +8,8 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
+const HudViewModel := preload("res://scripts/hud_view_model.gd")
+const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 
@@ -41,6 +43,9 @@ var _test_cam_last_s := NAN
 
 
 var status_label: Label
+var hud_hr: Label
+var hud_erg: Label
+var erg_view = ErgViewModel.new()
 var _beep_player: AudioStreamPlayer
 
 const BEEPS := {
@@ -56,7 +61,7 @@ func _ready() -> void:
 	routes_dir = cfg["routes_dir"]
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
-	RenderQuality.apply_preset(cfg.get("quality", RenderQuality.DEFAULT_PRESET), camera, sun, world_env.environment, get_viewport())
+	RenderQuality.apply_preset(RenderQuality.DEFAULT_PRESET, camera, sun, world_env.environment, get_viewport())
 	RenderQuality.apply_fog(world_env.environment, false)
 	var theme_res := ThemeLoader.load_named(cfg.get("theme", "default"))
 	var theme_dict: Dictionary = theme_res.get("theme", {})
@@ -80,6 +85,15 @@ func _ready() -> void:
 	_beep_player.stream = gen
 	add_child(_beep_player)
 	_beep_player.play()
+	# Fréquence cardiaque sous la cadence, puis ligne de l'entraînement ERG (cachée en SIM).
+	var vbox := $HUD/Margin/VBox
+	hud_hr = Label.new()
+	hud_hr.text = "FC: " + HudViewModel.NO_VALUE
+	vbox.add_child(hud_hr)
+	vbox.move_child(hud_hr, hud_cadence.get_index() + 1)
+	hud_erg = Label.new()
+	hud_erg.visible = false
+	vbox.add_child(hud_erg)
 	# Ligne d'état de diagnostic : séance, trainer, entrée, raison de pause.
 	status_label = Label.new()
 	status_label.text = "ÉTAT: en attente du core…"
@@ -92,8 +106,8 @@ func _apply_sky_params(theme_dict: Dictionary) -> void:
 	if sun != null:
 		var sun_dir: Vector3 = sky["sun_direction"]
 		sun.basis = Basis.looking_at(-sun_dir, Vector3.UP)
-	if world_env != null and world_env.environment != null:
-		world_env.environment.fog_density = float(sky["fog_density"])
+	# sky.fog_density est réservé au brouillard volumétrique (lot E3) : le brouillard en profondeur
+	# d'E1, qui masque la limite des tuiles lointaines, n'est pas modifié ici.
 
 
 func _on_input_event(event_name: String) -> void:
@@ -267,21 +281,18 @@ func _on_state_received(state: Dictionary) -> void:
 	follow.push_frame(Time.get_ticks_usec(), float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
 	ipc.test_log("state seq=%d s=%.3f session=%s" % [int(state.get("seq", 0)), float(state.get("s", 0.0)), session_state])
 
-	var p := float(state.get("power", 0.0))
-	var p3s := float(state.get("power_3s", p))
-	var v_kmh := float(state.get("v", 0.0)) * 3.6
-	var cad := float(state.get("cadence", 0.0))
-	var grade := float(state.get("grade", 0.0))
-	var dist_km := float(state.get("s", 0.0)) / 1000.0
-	var gear := int(state.get("gear", 12))
-	var gears_tot := int(state.get("gears_total", ipc.core_config.get("gears_total", 24)))
-
-	hud_power.text = "PUISSANCE: %d W (3s: %d W)" % [int(round(p)), int(round(p3s))]
-	hud_speed.text = "VITESSE: %.1f km/h  [Braquet: %d/%d]" % [v_kmh, gear, gears_tot]
-	hud_cadence.text = "CADENCE: %d rpm" % int(round(cad))
-	var grade_sent := float(state.get("grade_sent", grade))
-	hud_grade.text = "PENTE: %.1f %%  (envoyée au trainer: %.1f %%)" % [grade, grade_sent]
-	hud_distance.text = "DISTANCE: %.2f km" % dist_km
+	if not state.has("gears_total"):
+		state["gears_total"] = ipc.core_config.get("gears_total", 24)
+	var erg_eval: Dictionary = erg_view.update(state.get("erg", null), Time.get_ticks_usec() / 1e6)
+	var lines := HudViewModel.session_lines(state, erg_eval)
+	hud_power.text = lines["power"]
+	hud_speed.text = lines["speed"]
+	hud_cadence.text = lines["cadence"]
+	hud_hr.text = lines["hr"]
+	hud_grade.text = lines["grade"]
+	hud_distance.text = lines["distance"]
+	hud_erg.text = lines["erg"]
+	hud_erg.visible = lines["erg"] != ""
 	var pause = state.get("pause_reason", null)
 	status_label.text = "ÉTAT: %s%s | TRAINER: %s | ENTRÉE: %s" % [
 		state.get("session_state", "?"),
