@@ -52,3 +52,13 @@ Aucune.
 - `list` et `build-all` sur les FIT et TCX (demande un changement du catalogue partagé : lot à part).
 - Lecture de la puissance, de la fréquence cardiaque ou du temps de l'activité (fantôme : SRS §14).
 - Fichiers FIT compressés (`.fit.gz`) : à signaler si Garmin Connect les produit.
+
+## 9. Livraison (24 octobre 2026)
+
+- `track_formats.py` : `read_track(path)` lit GPX, FIT et TCX. Le contenu prime sur l'extension (en-tête « .FIT », `TrainingCenterDatabase`, `<gpx`) ; l'extension ne sert que si le contenu n'est pas reconnu, ce qui couvre à la fois le `.fit` qui est un GPX et le fichier sans extension (critère 5). `cmd_build` appelle `read_track` ; `gpx.py` et `pipeline.py` inchangés.
+- FIT : `fit-tool` rend déjà `position_lat`/`position_long` en degrés ; une valeur hors de ± 180 (encore en semi-cercles) serait convertie par × 180 / 2³¹. `enhanced_altitude` préférée à `altitude`. Points sans position ignorés ; aucun → « aucune position GPS dans ce FIT ».
+- TCX : `xml.etree`, espaces de noms ignorés, `Trackpoint` pris dans l'ordre du document (tours d'une activité bout à bout, `Track` d'un `Course`). Points consécutifs identiques fusionnés (FIT et TCX).
+- `compiler/pyproject.toml` : `fit-tool>=0.9` (même contrainte que le core ; `constraints.txt` fixe déjà 0.9.16).
+- Écart avec le critère 4 : le code de sortie est **1** et non 2. Dans `errors.py`, toute `CompileError` (trace invalide ou trop courte) sort en 1 (`EXIT_INPUT`) et 2 est réservé aux erreurs internes ; le FIT sans position suit donc « les autres erreurs de compilation », comme le demande le critère.
+- Critère 2 : `test_fit_gives_same_route_as_gpx` et `test_tcx_gives_same_route_as_gpx` comparent tout `route.json` à 1 cm ou 0,01 % près. La trace de test a ses altitudes arrondies à 0,2 m (résolution de l'altitude FIT) ; les caps sont comparés modulo 360° (plein nord : 0 et 359,99).
+- `compiler/tests/test_track_formats.py` : 17 tests ; compilateur 171 tests (au lieu de 154).
