@@ -4,7 +4,7 @@ import struct
 
 import pytest
 
-from openride_core import ftms
+from openride_core import ftms, zwift_click
 from openride_core.zwift_click import (
     InputEvent, PressClassifier, decode_protobuf_varints, parse_click_buttons,
 )
@@ -100,6 +100,14 @@ def test_click_keypad_status_new_model():
     assert b.minus_pressed and not b.plus_pressed
     for other in (0xFFFFFFEF, 0xFFFFFFBF, 0xFFFFFF7F):
         o = parse_click_buttons(frame(other))
+        assert not o.minus_pressed and not o.plus_pressed
+    # Trames relevées sur le boîtier gauche : − fffffeff, flèches fffffffe/fd/fb/f7
+    assert parse_click_buttons(frame(0xFFFFFEFF)).minus_pressed
+    assert zwift_click.KEYPAD_BITS["MINUS"] == zwift_click.KEYPAD_MINUS_BIT
+    assert zwift_click.KEYPAD_BITS["PLUS"] == zwift_click.KEYPAD_PLUS_BIT
+    assert zwift_click.KEYPAD_BITS["B"] == zwift_click.KEYPAD_B_BIT
+    for arrow in ("LEFT", "UP", "RIGHT", "DOWN"):
+        o = parse_click_buttons(frame(0xFFFFFFFF & ~(1 << zwift_click.KEYPAD_BITS[arrow])))
         assert not o.minus_pressed and not o.plus_pressed
     # trame réelle du rapport : 2308ffffffff0f
     real = parse_click_buttons(bytes.fromhex("2308ffffffff0f"))
