@@ -6,6 +6,8 @@
 #
 #   scripts/openride-dev.sh                              # Victory + Click, démarrage automatique
 #   scripts/openride-dev.sh --trainer mock --input keyboard --autostart
+#   scripts/openride-dev.sh --trainer sim --input sim --hr sim --autostart   # Bluetooth simulé
+#   scripts/openride-dev.sh --trainer sim --input sim --hr sim --sim-scenario coupures --autostart
 #   scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
 #   scripts/openride-dev.sh --trainer ftms --input click --autostart --workout sweet_spot_3x10
 #   scripts/openride-dev.sh --trainer mock --input keyboard --autostart --route <parcours compilé>
@@ -24,11 +26,15 @@ if [ ${#CORE_ARGS[@]} -eq 0 ]; then
   CORE_ARGS=(--trainer ftms --input click --autostart)
 fi
 # --config éventuel, transmis aussi à « openride-core release-trainer » en cas d'arrêt forcé.
+# --trainer sim : rien à libérer (pas de vrai trainer) en cas d'arrêt forcé.
 CONFIG_ARG=""
+SIM_TRAINER=0
 for ((i = 0; i < ${#CORE_ARGS[@]}; i++)); do
   case "${CORE_ARGS[$i]}" in
     --config=*) CONFIG_ARG="${CORE_ARGS[$i]#--config=}" ;;
     --config) CONFIG_ARG="${CORE_ARGS[$((i + 1))]:-}" ;;
+    --trainer=sim) SIM_TRAINER=1 ;;
+    --trainer) [ "${CORE_ARGS[$((i + 1))]:-}" = sim ] && SIM_TRAINER=1 ;;
   esac
 done
 CONFIG_ARG_LIST=()
@@ -52,7 +58,7 @@ cleanup() {
     echo "Le core ne s'arrête pas : arrêt forcé puis libération du trainer."
     kill -KILL "$CORE_PID" 2>/dev/null
     wait "$CORE_PID" 2>/dev/null
-    openride-core release-trainer "${CONFIG_ARG_LIST[@]}" >>"$LOG" 2>&1 || true
+    [ "$SIM_TRAINER" = 1 ] || openride-core release-trainer "${CONFIG_ARG_LIST[@]}" >>"$LOG" 2>&1 || true
   fi
   wait "$CORE_PID" 2>/dev/null
   echo

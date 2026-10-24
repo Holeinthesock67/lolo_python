@@ -21,7 +21,8 @@ from typing import Any
 
 from .config import WORKOUTS_DIR, Config
 from .gearing import Gearing
-from .input_providers import ClickPair, KeyboardProvider, NullProvider, ZwiftClickProvider
+from .hr_monitor import HeartRateProvider
+from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
 from .mock_driver import MockDriver
@@ -77,9 +78,29 @@ class LoopStats:
         return out
 
 
-def build_driver(cfg: Config) -> Any:
-    if cfg.drivers.trainer == "ftms":
+def build_sim_world(cfg: Config) -> Any:
+    """Bluetooth simulé (`ble_sim.py`) si un pilote vaut « sim », sinon None.
+
+    Lève `SimScenarioError` si le scénario (`drivers.sim_scenario`) est inconnu ou invalide.
+    """
+    d = cfg.drivers
+    if "sim" not in (d.trainer, d.input, d.hr):
+        return None
+    from .sim_scenarios import build_world, load_scenario
+
+    name = d.sim_scenario or "demo"
+    world = build_world(load_scenario(name), name, trainer=d.trainer == "sim",
+                        click=d.input == "sim", hr=d.hr == "sim")
+    log.info("Bluetooth simulé, scénario « %s » (%d événement(s)).", name, len(world.events))
+    return world
+
+
+def build_driver(cfg: Config, sim: Any = None) -> Any:
+    if cfg.drivers.trainer in ("ftms", "sim"):
         from .ftms_driver import FtmsDriver
+        if cfg.drivers.trainer == "sim":   # vrai pilote, radio simulée
+            return FtmsDriver(cfg.trainer, cfg.bike, None, device_finder=sim.find_device,
+                              client_factory=sim.client_factory)
         return FtmsDriver(cfg.trainer, cfg.bike, cfg.drivers.trainer_address or None)
     replay = None
     if cfg.drivers.mock_replay:
@@ -92,8 +113,17 @@ def build_driver(cfg: Config) -> Any:
     return MockDriver(replay=replay)
 
 
-def build_inputs(cfg: Config) -> list[Any]:
+def build_inputs(cfg: Config, sim: Any = None) -> list[Any]:
     kind = cfg.drivers.input
+    if kind == "sim":
+        # Vrais fournisseurs du Click contre la paire simulée ; le clavier appuie sur le Click simulé.
+        d, pair = cfg.drivers, ClickPair()
+        return [ZwiftClickProvider(None, d.click_short_max_s, d.click_long_min_s, pair=pair,
+                                   device_finder=sim.find_device, client_factory=sim.client_factory),
+                ZwiftClickProvider(None, d.click_short_max_s, d.click_long_min_s, pair=pair,
+                                   optional=True, device_finder=sim.find_device,
+                                   client_factory=sim.client_factory),
+                SimClickKeyboard(sim)]
     if kind == "click":
         # Deux fournisseurs pour la paire du Click récent (boîtiers « + » et « − », même nom) ;
         # le clavier reste actif en parallèle (contrat IPC §6).
@@ -108,6 +138,16 @@ def build_inputs(cfg: Config) -> list[Any]:
     return [NullProvider()]
 
 
+def build_hr(cfg: Config, sim: Any = None) -> HeartRateProvider | None:
+    d = cfg.drivers
+    if d.hr == "ble":
+        return HeartRateProvider(d.hr_address or None, d.hr_name)
+    if d.hr == "sim":
+        return HeartRateProvider(None, "", device_finder=sim.find_device,
+                                 client_factory=sim.client_factory)
+    return None
+
+
 ROUTE_ID_RE = re.compile(r"^[^/\\.][^/\\]*$")   # un nom de dossier simple, comme les entraînements
 
 
@@ -120,8 +160,10 @@ class CoreSession:
                  journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
                  workouts_dir: Path = WORKOUTS_DIR) -> None:
         self.cfg = cfg
-        self.driver = driver if driver is not None else build_driver(cfg)
-        self.inputs = inputs if inputs is not None else build_inputs(cfg)
+        self.sim = build_sim_world(cfg)
+        self.driver = driver if driver is not None else build_driver(cfg, self.sim)
+        self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
+        self.hr = build_hr(cfg, self.sim)
         self.journal_dir = journal_dir
         self.routes_root = routes_root or routes_dir()
         self.workouts_dir = workouts_dir
@@ -350,6 +392,8 @@ class CoreSession:
     def _step(self, dt: float, now_mono: float) -> None:
         m = self.driver.poll(self._t_session)
         self.state.trainer_status = getattr(self.driver, "status", "MOCK")
+        if self.hr is not None and self.hr.bpm is not None:
+            m.hr_bpm = self.hr.bpm   # la ceinture passe avant la fréquence lue par le trainer
 
         if getattr(self.driver, "control_refused", False) and \
                 self.state.session_state in ("READY", "RUNNING", "PAUSED"):
@@ -472,7 +516,7 @@ class CoreSession:
             self.check_autostart(route_id, workout_id)
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
-                 for p in [self.driver, *self.inputs] if hasattr(p, "run")]  # trainer prioritaire
+                 for p in self._services() if hasattr(p, "run")]  # trainer prioritaire
         loop = asyncio.get_running_loop()
         # SIGHUP : terminal fermé. Sans gestionnaire, le processus mourrait sans relâcher le
         # trainer et BlueZ garderait la liaison ouverte (trainer réservé pour les autres applis).
@@ -488,11 +532,18 @@ class CoreSession:
                 self._on_command("select_workout", {"workout_id": workout_id}, 0)
             self._on_command("start", {}, 0)
         log.info("Core démarré (trainer=%s, entrées=%s).", self.cfg.drivers.trainer,
-                 self.cfg.drivers.input)
+                 self.cfg.drivers.input)   # format lu par tools/log_report.py
+        if self.hr is not None:
+            log.info("Ceinture cardio : %s.", self.cfg.drivers.hr)
         try:
             await self._loop()
         finally:
             await self._shutdown(tasks)
+
+    def _services(self) -> list[Any]:
+        """Tâches de fond : trainer, entrées, ceinture, puis le déroulé du Bluetooth simulé."""
+        return [self.driver, *self.inputs, *([self.hr] if self.hr else []),
+                *([self.sim] if self.sim else [])]
 
     async def _loop(self) -> None:
         mono = time.monotonic
@@ -550,7 +601,8 @@ class CoreSession:
             self.driver.set_sim_grade(0.0)
         except Exception:
             log.exception("Consigne 0 % impossible")
-        for p in [*self.inputs, self.driver]:
+        for p in [*self.inputs, *([self.hr] if self.hr else []), self.driver,
+                  *([self.sim] if self.sim else [])]:
             if hasattr(p, "stop"):
                 p.stop()
         # Le pilote écrit pente 0 % puis Reset (chacun borné à 1,5 s) puis se déconnecte.
