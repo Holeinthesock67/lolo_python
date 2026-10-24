@@ -415,4 +415,8 @@ static func texture_for(theme: Dictionary, theme_dir: String, key_path: String) 
 	var img := Image.load_from_file(full)
 	if img == null or img.is_empty():
 		return null
+	# Sans mipmaps, le filtrage anisotrope du shader n'a rien à lire : scintillement au loin
+	# et lectures de texture coûteuses sur les tuiles lointaines.
+	if not img.has_mipmaps():
+		img.generate_mipmaps()
 	return ImageTexture.create_from_image(img)

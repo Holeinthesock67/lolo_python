@@ -91,6 +91,8 @@ func _init() -> void:
 	var tex_mat: ShaderMaterial = TerrainMaterial.create_material(theme_with_tex, tmp_dir)
 	_check(bool(tex_mat.get_shader_parameter("has_grass_texture")) == true, "has_grass_texture true avec texture valide")
 	_check(tex_mat.get_shader_parameter("grass_texture") is Texture2D, "grass_texture est une Texture2D")
+	var grass_tex: Texture2D = tex_mat.get_shader_parameter("grass_texture")
+	_check(grass_tex != null and grass_tex.get_image().has_mipmaps(), "texture du thème avec mipmaps (filtrage anisotrope)")
 	_check(bool(tex_mat.get_shader_parameter("has_rock_texture")) == false, "has_rock_texture false car texture null")
 	_check(bool(tex_mat.get_shader_parameter("has_snow_texture")) == false, "has_snow_texture false car texture null")
 
