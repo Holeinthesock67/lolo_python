@@ -7,6 +7,7 @@ Mes programmes Python personnels.
 | `Projet_Raspberry/Sport/` | Coach hybride : synchro Garmin + météo, base locale, rapports (tourne sur la Raspberry) |
 | `Projet_Raspberry/Podcast/` | Veille IA et génération du podcast hebdo |
 | `Jeux/` | Arena of Life, Battle Royale 3.0 (IA d'agents, PyTorch) |
+| `Jeux/Cours_camarade/` | « Cours, camarade » : runner façon Subway Surfers, fichier HTML unique (voir son `README.md`) |
 | `Photos/` | Pré-tri de photos par date / GPS |
 | `hasch/` | Vérification d'empreintes de fichiers |
 | `QR/` | Générateurs de QR codes (SVG, STL, Wi-Fi) |

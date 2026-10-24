@@ -37,7 +37,7 @@ static func texture_for(theme: Dictionary, theme_dir: String, key_path: String) 
 - clé inconnue : avertissement ;
 - les textures d'un dossier utilisateur (hors `res://`) sont chargées avec `Image.load_from_file` puis `ImageTexture.create_from_image`.
 
-### 4.2 Tests sans écran : `engine/tests/test_theme_loader.gd` (nouveau)
+### 4.2 Tests sans écran : `engine/tests/unit/test_theme_loader.gd` (nouveau ; déplacé dans `engine/tests/unit/` par le lot K1)
 
 - Reprendre les cas de `compiler/tests/test_theme.py` (thème minimal `{"version": "1.0"}`, thème complet, couleur invalide, seuil de pente hors bornes, texture manquante, clé inconnue, JSON mal formé), avec des dossiers de thème créés dans `user://` ou un dossier temporaire par le test.
 - Vérifier que le thème complet obtenu pour `{"version": "1.0"}` est égal, clé par clé, au thème `default`.
@@ -46,7 +46,7 @@ static func texture_for(theme: Dictionary, theme_dir: String, key_path: String) 
 
 ## 5. Fichiers concernés
 
-- **Nouveaux :** `engine/scripts/theme_loader.gd`, `engine/tests/test_theme_loader.gd`.
+- **Nouveaux :** `engine/scripts/theme_loader.gd`, `engine/tests/unit/test_theme_loader.gd` (déplacé par le lot K1).
 - **Modifiés :** `engine/tests/run_engine_tests.sh` (une étape), `engine/tests/README.md`, `docs/SUIVI_AVANCEMENT.md` (une ligne).
 - **Interdit :** `main.gd` et les scripts de rendu de E1 (le branchement à l'écran est pour E2).
 
@@ -69,4 +69,4 @@ Aucune. Une divergence entre le §9, le schéma et le validateur Python est sign
 ## 9. Livraison (23 octobre 2026, PR #24)
 
 - `engine/scripts/theme_loader.gd` (`load_theme`, `load_named`, `texture_for`), fusion récursive avec `res://themes/default/theme.json`, validation des couleurs, bornes numériques et dimensions PNG/JPEG.
-- `engine/tests/test_theme_loader.gd` (40 vérifications sans écran) et étape « Thèmes (lot I5) » dans `engine/tests/run_engine_tests.sh`.
+- `engine/tests/unit/test_theme_loader.gd` (40 vérifications sans écran ; déplacé par le lot K1) et étape « Thèmes (lot I5) », remplacée depuis par l'étape « Tests unitaires » du lot K1, dans `engine/tests/run_engine_tests.sh`.

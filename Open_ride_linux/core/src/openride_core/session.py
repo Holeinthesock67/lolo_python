@@ -36,6 +36,7 @@ log = logging.getLogger("core")
 DT_PHYSICS = 0.02        # 50 Hz
 DT_STATE = 1.0 / 30.0    # 30 Hz
 STATS_PERIOD_S = 60.0
+SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer et se déconnecter
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 
 
@@ -426,7 +427,9 @@ class CoreSession:
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
                  for p in [self.driver, *self.inputs] if hasattr(p, "run")]  # trainer prioritaire
         loop = asyncio.get_running_loop()
-        for sig in (signal.SIGINT, signal.SIGTERM):
+        # SIGHUP : terminal fermé. Sans gestionnaire, le processus mourrait sans relâcher le
+        # trainer et BlueZ garderait la liaison ouverte (trainer réservé pour les autres applis).
+        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
             try:
                 loop.add_signal_handler(sig, self.stop_event.set)
             except NotImplementedError:
@@ -463,7 +466,10 @@ class CoreSession:
                 next_check = now + 0.5
                 self.server.check_liveness()
             if now >= next_state:
-                next_state = now + DT_STATE
+                # Échéances fixes : « now + DT_STATE » ne tomberait qu'un pas de 20 ms sur deux (25 Hz).
+                next_state += DT_STATE
+                if next_state <= now:   # retard de plus d'une trame : on se recale
+                    next_state = now + DT_STATE
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S
@@ -479,16 +485,29 @@ class CoreSession:
 
     async def _shutdown(self, tasks: list[asyncio.Task]) -> None:
         log.info("Arrêt du core…")
-        if self._rec:
-            self._finish(True)   # la séance n'est jamais perdue
-        self.driver.set_sim_grade(0.0)
+        try:
+            if self._rec:
+                self._finish(True)   # la séance n'est jamais perdue
+        except Exception:
+            # Une panne du journal ou du FIT ne doit pas empêcher de relâcher le trainer.
+            log.exception("Fin de séance incomplète")
+        finally:
+            await self._stop_drivers(tasks)
+            self.server.stop()
+
+    async def _stop_drivers(self, tasks: list[asyncio.Task]) -> None:
+        """Annule la consigne, arrête les pilotes et leur laisse le temps de rendre le trainer."""
+        try:
+            self.driver.set_sim_grade(0.0)
+        except Exception:
+            log.exception("Consigne 0 % impossible")
         for p in [*self.inputs, self.driver]:
             if hasattr(p, "stop"):
                 p.stop()
-        # Laisse le pilote relâcher la résistance (écriture BLE) avant d'annuler.
-        done, pending = await asyncio.wait(tasks, timeout=3.0) if tasks else (set(), set())
+        # Le pilote écrit pente 0 % puis Reset (chacun borné à 1,5 s) puis se déconnecte.
+        done, pending = await asyncio.wait(tasks, timeout=SHUTDOWN_GRACE_S) if tasks else (set(), set())
         for t in pending:
+            log.warning("Arrêt forcé de %s", t.get_name())
             t.cancel()
         if pending:
             await asyncio.gather(*pending, return_exceptions=True)
-        self.server.stop()
