@@ -23,7 +23,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] **Braquets** (`gearing.py`) : 24 vitesses de 0,50 à 2,25, pente effective bornée de −10 à +16 %, saut de plusieurs vitesses (appui long).
 - [x] **Protocoles BLE purs :**
   - `ftms.py` : Indoor Bike Data, capacités, plage de puissance, cardio, commandes SIM et ERG ;
-  - `zwift_click.py` : formats `0x37` (ancien Click) et `0x23` (Click récent), appui court sous 0,5 s, appui long à partir de 0,9 s.
+  - `zwift_click.py` : formats `0x37` (ancien Click) et `0x23` (Click récent), appui court sous 0,5 s, appui long à partir de 0,9 s ; Click V2 : dix boutons relevés (`KEYPAD_BITS`), B du boîtier droit lu comme « − » car le boîtier gauche est bridé sans déblocage Zwift (PR #87, 24 octobre).
 - [x] **Pilotes réels :**
   - `ftms_driver.py` : HomeTrainer, avec reconnexion à délai croissant, prise de contrôle, lissage de la puissance, FC à 0 traitée comme absente, à l'arrêt : pente 0 %, Reset (contrôle FTMS rendu) et déconnexion, y compris sur SIGHUP ; dépannage `openride-core release-trainer` ;
   - `input_providers.py` : Click avec recherche continue, clavier en parallèle ;
