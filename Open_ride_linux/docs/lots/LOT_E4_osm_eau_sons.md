@@ -39,8 +39,14 @@ Recette du sprint 5 (SRS §13) : traverser un village sans trous ni artefacts, �
 ### 4.3 Forêts OSM (format §7, K3 et E3)
 
 - Pour chaque tuile proche, les polygones `vegetation` des tronçons qui la touchent sont passés à `place_tile(..., areas)` ; l'affichage, les niveaux de détail et le budget sont ceux d'E3, sans second chemin de rendu.
-- **Règle bruit ou OSM (format §7) :** si la couche `vegetation` est présente et contient au moins un polygone sur le parcours, seules les zones OSM portent des arbres ; sinon le bruit d'E3 s'applique partout. Ce choix est fait **une fois par parcours**, pas tuile par tuile, pour éviter des bordures nettes entre une tuile OSM et une tuile à bruit.
-  - Question ouverte pour le propriétaire : OSM étant lacunaire en montagne, un mélange (bruit atténué hors des zones OSM) pourrait être plus beau. Le lot prévoit une constante `NOISE_OUTSIDE_OSM = 0.0` pour pouvoir essayer sans changer le code ailleurs.
+- **Zones OSM et arbres au hasard en dehors** (choix du propriétaire, 24 octobre) : les zones OSM portent leurs arbres (K3 avec `areas`), et le bruit d'E3 sème aussi des arbres **hors de ces zones**, gardés avec une probabilité `p_region` qui dépend de la région. OSM est lacunaire en montagne : sans ce semis, une vallée mal cartographiée resterait nue.
+  - **Réalisation sans toucher à K3 :** pour chaque tuile, deux appels à `place_tile`, l'un avec les zones OSM, l'autre avec `areas = []` (bruit). Les arbres du bruit qui tombent dans une zone OSM (trous exclus) sont retirés ; les autres sont gardés si un tirage déterministe, haché de leur position (même hachage que K3), est inférieur à `p_region(x, z)`.
+  - **`p_region`** est le produit de trois facteurs, chacun dans [0, 1], calculés au centre de chaque tuile proche puis **interpolés de façon bilinéaire** entre centres, pour n'avoir aucune bordure nette entre tuiles :
+    - couverture OSM : `f` est la part boisée OSM des 3 × 3 tuiles autour. Une région bien cartographiée (beaucoup de forêts OSM) a des trouées sans doute réelles (prés, champs), donc moins d'arbres au hasard : `1 − 0,8 × min(1, f / 0,4)` ;
+    - habitat : `b` est la part de surface bâtie (empreintes de la couche `buildings`) des 3 × 3 tuiles. Pas d'arbres au hasard en plein village : `1 − min(1, b / 0,1)` ;
+    - altitude : forêt qui s'éclaircit en approchant la limite des arbres, `smoothstep(treeline_m, treeline_m − 300 m, altitude)`.
+  - **Couche `vegetation` absente ou vide** sur le parcours : `p_region` vaut le seul facteur d'altitude, et le résultat est alors celui d'E3 hors de la bande des 300 m sous la limite.
+  - Les seuils (0,8 ; 0,4 ; 0,1 ; 300 m) sont des constantes en tête de `tree_renderer.gd`, à ajuster à l'écran ; la région n'est pas une donnée du `.world` ni du thème.
 - `kind` : `wood`, `scrub`, `orchard` avec les densités de K3 ; les vergers en rangées ne sont pas demandés.
 
 ### 4.4 Eau (format §8, L2)
@@ -83,7 +89,12 @@ Aucune. La couleur de l'eau, les sons par `kind` et la règle de mélange bruit 
 3. Défilement de bout en bout à 20 m/s simulés : nœuds vivants bornés, nombre d'objets en fin de parcours à ± 5 % de sa valeur au premier tiers.
 4. Couches absentes, fichier absent, fichier à version majeure 2, élément invalide : aucune erreur Godot, éléments ignorés comptés dans le journal.
 5. Bâtiments : chaque sommet du bas des murs est à `base_y − 3 m` ; les tests de L1 passent avec la jupe à 0.
-6. Forêts : parcours avec zones OSM, aucun arbre hors d'un polygone (trous compris) ; parcours sans couche `vegetation`, positions identiques à celles d'E3 (même empreinte).
+6. Forêts :
+   - dans une zone OSM, les arbres sont exactement ceux de `place_tile` avec cette zone (empreinte) ; aucun arbre du bruit dans une zone OSM ni dans un trou ;
+   - `p_region` : chacun des trois facteurs vérifié sur des cas construits (région sans forêt OSM, région boisée à 40 %, village, 150 m sous la limite des arbres) ; continuité, aucun saut de plus de 0,05 entre deux points distants de 10 m le long d'une ligne qui traverse quatre tuiles ;
+   - hors zones OSM, le nombre d'arbres d'une tuile est proche de `p_region` moyen × celui d'E3 (± 10 % sur une tuile à densité maximale) ;
+   - parcours sans couche `vegetation` : positions identiques à celles d'E3 (même empreinte) hors de la bande des 300 m sous la limite des arbres ;
+   - même parcours relancé : mêmes arbres.
 7. Sons, sur une suite de trames simulées (arrêt, 30 km/h, roue libre, passage près de 6 points d'intérêt) : jamais plus de 4 lecteurs 3D actifs, volumes à 0,5 dB près de ceux de `sound_model.gd`, aucun nœud créé après le démarrage ; un fichier `<kind>.ogg` présent remplace le son généré.
 8. Temps CPU sans écran, relevés dans le rapport : lecture et maillage d'un tronçon de 300 bâtiments (seuil 40 ms en intégration continue), génération de tous les sons au démarrage (seuil 500 ms).
 
