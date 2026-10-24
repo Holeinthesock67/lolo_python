@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128" width="128" height="128">
+  <title>OpenRide</title>
+  <!-- Fond circulaire bleu nuit (#1b2a4a) -->
+  <circle cx="64" cy="64" r="60" fill="#1b2a4a"/>
+  <!-- Roue de vélo stylisée orange vif (#f47c20) -->
+  <g fill="none" stroke="#f47c20" stroke-linecap="round">
+    <circle cx="64" cy="64" r="44" stroke-width="7"/>
+    <circle cx="64" cy="64" r="34" stroke-width="2.5"/>
+    <!-- Rayons -->
+    <line x1="64" y1="20" x2="64" y2="108" stroke-width="3"/>
+    <line x1="20" y1="64" x2="108" y2="64" stroke-width="3"/>
+    <line x1="32.9" y1="32.9" x2="95.1" y2="95.1" stroke-width="3"/>
+    <line x1="95.1" y1="32.9" x2="32.9" y2="95.1" stroke-width="3"/>
+  </g>
+  <!-- Moyeu central -->
+  <circle cx="64" cy="64" r="9" fill="#f47c20"/>
+  <circle cx="64" cy="64" r="4" fill="#1b2a4a"/>
+</svg>
