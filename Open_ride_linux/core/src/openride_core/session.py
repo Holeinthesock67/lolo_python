@@ -30,7 +30,7 @@ from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
-from .workout import ErgController, Workout, WorkoutError, load_workout, workout_path
+from .workout import BIAS_DEFAULT_PCT, ErgController, Workout, WorkoutError, load_workout, workout_path
 from .zwift_click import InputEvent
 
 log = logging.getLogger("core")
@@ -185,6 +185,7 @@ class CoreSession:
         self._grade_sent = 0.0
         self._power_window: list[tuple[float, float]] = []
         self._rec: SessionRecorder | None = None
+        self._device_up: dict[str, bool] = {}   # dernier état écrit au journal (lignes `device`)
         self._next_record = 0.0
         self._trainer_lost_since: float | None = None
         self._autoresume = False
@@ -314,7 +315,46 @@ class CoreSession:
         self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
                                     on_failure=self._on_recording_failure)
         self._rec.event("start", time.time())
+        self._device_up = self._device_states()   # état de départ : seuls les changements s'écrivent
         self._next_record = 0.0
+
+    def _click_device(self, address: str) -> str:
+        """Boîtier « + » : celui de `click_address` (adresse du « + » réel par défaut)."""
+        from .sim_scenarios import PLUS_ADDRESS   # adresse du boîtier « + » réel (CLAUDE.md)
+        plus = (self.cfg.drivers.click_address or PLUS_ADDRESS).upper()
+        return "click_plus" if address.upper() == plus else "click_minus"
+
+    def _device_states(self) -> dict[str, bool]:
+        """État des appareils d'après ce que la session connaît déjà (aucune entrée-sortie BLE)."""
+        out: dict[str, bool] = {}
+        status = getattr(self.driver, "status", None)
+        if status is not None:
+            out["trainer"] = status == "CONNECTED"
+        elif hasattr(self.driver, "connected"):   # MockDriver
+            out["trainer"] = bool(self.driver.connected)
+        for p in self.inputs:
+            if isinstance(p, ZwiftClickProvider):
+                addr = str(getattr(p, "_conn_address", "?"))
+                if addr != "?":   # boîtier jamais connecté : inconnu
+                    key = self._click_device(addr)
+                    out[key] = out.get(key, False) or p.status == "CONNECTED"
+        if self.hr is not None:
+            out["hr"] = bool(self.hr.connected)
+        return out
+
+    def _journal_devices(self) -> None:
+        """Écrit une ligne `device` à chaque coupure ou retour (lot M4)."""
+        if not self._rec:
+            return
+        states = self._device_states()
+        if states == self._device_up:
+            return
+        now = round(time.time(), 3)
+        for dev, up in states.items():
+            before = self._device_up.get(dev)
+            if before is not None and before != up:
+                self._rec.device(dev, "up" if up else "down", now)
+        self._device_up = states
 
     def _on_recording_failure(self, exc: Exception) -> None:
         """Panne d'écriture du journal : erreur à l'écran et pause (contrat IPC §6)."""
@@ -392,6 +432,7 @@ class CoreSession:
     def _step(self, dt: float, now_mono: float) -> None:
         m = self.driver.poll(self._t_session)
         self.state.trainer_status = getattr(self.driver, "status", "MOCK")
+        self._journal_devices()
         if self.hr is not None and self.hr.bpm is not None:
             m.hr_bpm = self.hr.bpm   # la ceinture passe avant la fréquence lue par le trainer
 
@@ -477,7 +518,8 @@ class CoreSession:
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
                 block=erg.index + 1 if erg else None,
-                target_w=erg.target_w if erg and erg.target_active else None))
+                target_w=erg.target_w if erg and erg.target_active else None,
+                erg_bias_pct=erg.bias_pct - BIAS_DEFAULT_PCT if erg and erg.target_active else None))
 
         if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
             log.info("Arrivée atteinte.")
