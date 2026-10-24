@@ -15,7 +15,8 @@
 # Tous les arguments sont transmis tels quels à « openride-core run » (--route et --workout
 # demandent --autostart).
 #
-# Variables : GODOT (chemin de l'exécutable), OPENRIDE_LOG (journal du core), GODOT_ARGS.
+# Variables : GODOT (chemin de l'exécutable), OPENRIDE_LOG (journal du core), GODOT_ARGS,
+# QUALITY et THEME (préréglage et thème, à la place de ceux de config.toml).
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.3-stable_linux.x86_64}"
@@ -73,7 +74,8 @@ if ! kill -0 "$CORE_PID" 2>/dev/null; then
   echo "Le core s'est arrêté au démarrage :"; tail -20 "$LOG"; exit 1
 fi
 # Ports IPC et réglages de rendu lus dans config.toml (sections ipc et render), le même fichier que le core.
-read -r STATE_PORT CMD_PORT QUALITY THEME < <(python3 - "$CONFIG_ARG" <<'PY' 2>/dev/null || echo "5005 5006 low default"
+# QUALITY et THEME, s'ils sont définis, l'emportent sur config.toml (essais graphiques).
+read -r STATE_PORT CMD_PORT CFG_QUALITY CFG_THEME < <(python3 - "$CONFIG_ARG" <<'PY' 2>/dev/null || echo "5005 5006 low default"
 import sys
 from pathlib import Path
 from openride_core.config import load
@@ -81,5 +83,7 @@ cfg = load(Path(sys.argv[1]) if sys.argv[1] else None)
 print(cfg.ipc.port_state, cfg.ipc.port_commands, cfg.render.quality, cfg.render.theme)
 PY
 )
+QUALITY="${QUALITY:-$CFG_QUALITY}"
+THEME="${THEME:-$CFG_THEME}"
 # shellcheck disable=SC2086
 "$GODOT" --path "$ROOT/engine" ${GODOT_ARGS:-} -- --ipc-state-port="${STATE_PORT:-5005}" --ipc-cmd-port="${CMD_PORT:-5006}" --quality="${QUALITY:-low}" --theme="${THEME:-default}"
