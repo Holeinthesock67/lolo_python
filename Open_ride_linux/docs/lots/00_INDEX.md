@@ -36,6 +36,8 @@
 | [J6](LOT_J6_parite_catalogue.md) | Une seule logique de catalogue des parcours (core et repli du compilateur) | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
 | [J7](LOT_J7_coherence_doc_etendue.md) | Cohérence de la documentation, deuxième passe (caractères, liens, nombres de tests) | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
 | [J8](LOT_J8_bout_en_bout_sans_ecran.md) | Essai de bout en bout sans écran : vrai core et vrai engine | Bash + Python | J5 (`openride.yml`) | Moyenne | **Livré le 23 octobre** (fait directement) |
+| [K6](LOT_K6_lanceur_unique.md) | Lanceur unique `openride` : core et Godot supervisés, arrêt propre | Python | — | Petite | **Livré le 23 octobre** (fait directement ; cahier rédigé le 24 octobre) |
+| [K7](LOT_K7_bilan_seance.md) | Bilan de séance `openride-core summary` (NP, IF, TSS, zones) | Python | — | Petite | **Livré le 23 octobre** (fait directement ; cahier rédigé le 24 octobre) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -66,6 +68,7 @@ A ──► B1 ──► B2 ──┬──► E1 ──┬──► I5 ──�
 B2 ──► I2 ──► G       B2 ──► I3 ──► I4 ;  I3 ──► E4
 C ──► F ──► H8        H1 à H8, I1 : indépendants
 J1, J4, J5 : indépendants (J2, J3, J6, J7, J8 livrés)
+K6, K7 : indépendants (livrés)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)

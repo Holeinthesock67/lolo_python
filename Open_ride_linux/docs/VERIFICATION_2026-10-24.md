@@ -89,3 +89,14 @@ Les autres concernent `verify.py` (valeurs `None` déjà rejetées par `_is_numb
 ## Annexe A – Tests exploratoires
 
 Écrits hors du dépôt pour ne pas casser la règle « tous les tests passent avant chaque commit ». 20 tests : 17 passés, 3 en échec (R1, R3 et le constructeur ERG avec FTP 0, qui relève de R3). Les cas en échec sont reproductibles avec les commandes de la colonne « Reproduction » du §5.1, depuis `core/` avec l'environnement activé.
+
+## 7. Suivi des constats
+
+| N° | État | Correction |
+| --- | --- | --- |
+| R1 | Corrigé le 24 octobre | `workout.py` : `MAX_REPEAT = 100` ; un `Repeat` plus grand lève `WorkoutError`. Test `test_intervals_repeat_is_bounded` (`core/tests/test_workout.py`). |
+| R2 | Corrigé le 24 octobre | `tools/workouts.py` (`check`) : FTP nulle, négative ou non finie refusée (message « FTP invalide », code 1). Test paramétré `test_check_rejects_invalid_ftp` (`core/tests/test_workout_tools.py`, 4 cas). |
+| S1 | Corrigé le 24 octobre | Cahiers rétrospectifs `docs/lots/LOT_K6_lanceur_unique.md` et `docs/lots/LOT_K7_bilan_seance.md`, avec leur section « Livraison », inscrits dans `00_INDEX.md`. Nouveau contrôle `check_cited_lots` dans `core/tests/test_docs_coherence.py` : un lot numéroté cité dans `README.md`, `CLAUDE.md` ou `SUIVI_AVANCEMENT.md` doit figurer dans l'index. |
+| R3, R4, S2 | Ouverts | À traiter au fil de l'eau. |
+
+Après correction : 267 tests du core (au lieu de 261) et 154 du compilateur passent.
