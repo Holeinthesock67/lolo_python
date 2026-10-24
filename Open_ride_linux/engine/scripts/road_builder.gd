@@ -41,8 +41,8 @@ static func section_s(route, k: int) -> PackedFloat64Array:
 
 
 ## Tableaux de maillage (Mesh.ARRAY_MAX) du tronçon k.
-static func build_chunk_arrays(route, k: int) -> Array:
-	var half := ROAD_WIDTH_M * 0.5
+static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M) -> Array:
+	var half := road_width_m * 0.5
 	var outer := half + SHOULDER_WIDTH_M
 	# Décalages en travers (m, vers la droite) et descente de chaque sommet de la coupe.
 	var offsets := [-outer, -half, -half, half, half, outer]
@@ -101,17 +101,20 @@ static func center_height(arrays: Array, route, k: int, s_pos: float) -> float:
 
 ## Matériau provisoire : gris uni et ligne médiane blanche discontinue (3 m peints, 3 m vides),
 ## texture générée en mémoire. À créer sur le fil principal.
-static func make_material() -> StandardMaterial3D:
-	var w := 64
-	var hgt := 64
-	var img := Image.create(w, hgt, true, Image.FORMAT_RGB8)
-	img.fill(ROAD_COLOR)
-	for y in range(hgt / 2):
-		for x in [w / 2 - 1, w / 2]:
-			img.set_pixel(x, y, LINE_COLOR)
-	img.generate_mipmaps()
+static func make_material(road_color: Color = ROAD_COLOR, road_texture: Texture2D = null) -> StandardMaterial3D:
 	var mat := StandardMaterial3D.new()
-	mat.albedo_texture = ImageTexture.create_from_image(img)
+	if road_texture != null:
+		mat.albedo_texture = road_texture
+	else:
+		var w := 64
+		var hgt := 64
+		var img := Image.create(w, hgt, true, Image.FORMAT_RGB8)
+		img.fill(road_color)
+		for y in range(hgt / 2):
+			for x in [w / 2 - 1, w / 2]:
+				img.set_pixel(x, y, LINE_COLOR)
+		img.generate_mipmaps()
+		mat.albedo_texture = ImageTexture.create_from_image(img)
 	mat.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	mat.roughness = 0.9
 	return mat
