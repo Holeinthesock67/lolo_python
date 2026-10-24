@@ -1,6 +1,6 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
-Mise à jour : 23 octobre 2026 au soir (fusions A2, B2, F, H1 à H8 et I1 à I6, audit J et cahiers J1 à J8)
+Mise à jour : 24 octobre 2026 (vérification et correctifs R1, R2, S1, PR #44) ; précédente : 23 octobre au soir (fusions A2, B2, F, H1 à H8 et I1 à I6, audit J et cahiers J1 à J8)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 Vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) : constats R1, R2 et S1 corrigés.
 
