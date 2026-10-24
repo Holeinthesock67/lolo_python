@@ -1,0 +1,728 @@
+#!/usr/bin/env python3
+"""Tests graphiques automatiques de l'engine : vraie scène principale rendue, captures analysées.
+
+Usage : visual_check.py --godot CHEMIN [--configs 1280x720:low,…] [--out DOSSIER] [--native]
+                        [--golden DOSSIER [--update-golden]] [--keep]
+
+Pour chaque configuration (résolution et préréglage de qualité), le script lance l'engine avec sa
+vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux
+core de `fake_core.py`, et lui fait parcourir des scènes de séance : attente du core, vue fixe,
+mouvement, ERG, pause, core muet, reprise, erreur. À chaque étape, l'engine (en `--test-mode`)
+enregistre l'image affichée et l'état de son HUD (textes, visibilité, rectangles à l'écran) ; le
+script vérifie alors :
+
+- les textes du HUD, calculés à partir des valeurs envoyées ;
+- la mise en page : éléments visibles dans l'écran, sans chevauchement (HUD, bandeau) ;
+- l'image : ni noire ni uniforme, ciel en haut, sol en bas, texte du HUD lisible, bandeau rouge ;
+- l'animation : la caméra avance en mouvement, se fige quand le core se tait ;
+- le journal de Godot : aucune erreur ni avertissement de script ;
+- avec `--golden` : l'écart moyen aux images de référence (`--update-golden` les enregistre).
+
+Sortie : une ligne [OK] / [ÉCHEC] par vérification, un rapport `rapport.html` (captures, mesures,
+écarts aux références) et les PNG dans le dossier de sortie. Code de sortie 0 si tout passe, 1 si
+une vérification échoue, 2 si Godot ou xvfb-run manque.
+
+`--native` lance l'engine sur l'écran réel avec son moteur de rendu habituel (Forward+ sur la
+GTX 1060) au lieu de Xvfb : la fenêtre s'ouvre pendant une minute, sans rien à faire.
+
+Bibliothèque standard seulement (PNG lu et écrit avec zlib).
+"""
+
+from __future__ import annotations
+
+import argparse
+import base64
+import html
+import json
+import os
+import re
+import shutil
+import struct
+import subprocess
+import sys
+import tempfile
+import time
+import zlib
+from dataclasses import dataclass, field
+from pathlib import Path
+from typing import Any
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
+
+ENGINE_DIR = Path(__file__).resolve().parents[1]
+CORE_SRC = ENGINE_DIR.parent / "core" / "src"
+DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
+# Mêmes tolérances que run_engine_tests.sh, plus la synchronisation verticale sous Xvfb.
+GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
+GODOT_TOLERATED = re.compile(
+    r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
+HUD_LABELS = ("power", "speed", "cadence", "hr", "grade", "distance", "erg", "status")
+BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
+GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
+GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
+CHANGED_LEVEL = 40
+ROUTE_TIMEOUT_S = 20.0
+SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
+SPEED_MPS = 8.0
+# Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
+GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur")
+FIXED_S = 1500.0
+
+
+# --- PNG (bibliothèque standard) ------------------------------------------------------------------
+
+@dataclass
+class Image:
+    width: int
+    height: int
+    rgb: bytes                    # 3 octets par pixel, ligne par ligne
+
+    def pixel(self, x: int, y: int) -> tuple[int, int, int]:
+        i = (y * self.width + x) * 3
+        return self.rgb[i], self.rgb[i + 1], self.rgb[i + 2]
+
+    def pixels(self, box: tuple[int, int, int, int] | None = None, step: int = 2):
+        """Pixels d'un rectangle (x0, y0, x1, y1), un sur `step` dans chaque direction."""
+        x0, y0, x1, y1 = box if box else (0, 0, self.width, self.height)
+        x0, y0 = max(0, int(x0)), max(0, int(y0))
+        x1, y1 = min(self.width, int(x1)), min(self.height, int(y1))
+        for y in range(y0, y1, step):
+            row = y * self.width * 3
+            for x in range(x0, x1, step):
+                i = row + x * 3
+                yield self.rgb[i], self.rgb[i + 1], self.rgb[i + 2]
+
+
+def _paeth(a: int, b: int, c: int) -> int:
+    p = a + b - c
+    pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
+    if pa <= pb and pa <= pc:
+        return a
+    return b if pb <= pc else c
+
+
+def read_png(path: Path) -> Image:
+    data = path.read_bytes()
+    if data[:8] != b"\x89PNG\r\n\x1a\n":
+        raise ValueError(f"{path} : pas un PNG")
+    pos, idat, width = 8, bytearray(), 0
+    height = depth = ctype = 0
+    while pos < len(data):
+        (length,) = struct.unpack(">I", data[pos:pos + 4])
+        kind = data[pos + 4:pos + 8]
+        body = data[pos + 8:pos + 8 + length]
+        pos += 12 + length
+        if kind == b"IHDR":
+            width, height, depth, ctype, _, _, interlace = struct.unpack(">IIBBBBB", body)
+            if depth != 8 or ctype not in (2, 6) or interlace:
+                raise ValueError(f"{path} : PNG non pris en charge (profondeur {depth}, type {ctype})")
+        elif kind == b"IDAT":
+            idat += body
+        elif kind == b"IEND":
+            break
+    bpp = 3 if ctype == 2 else 4
+    raw = zlib.decompress(bytes(idat))
+    stride = width * bpp
+    out = bytearray(width * height * 3)
+    prev = bytearray(stride)
+    for y in range(height):
+        f = raw[y * (stride + 1)]
+        line = bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
+        if f == 1:
+            for i in range(bpp, stride):
+                line[i] = (line[i] + line[i - bpp]) & 0xFF
+        elif f == 2:
+            for i in range(stride):
+                line[i] = (line[i] + prev[i]) & 0xFF
+        elif f == 3:
+            for i in range(stride):
+                left = line[i - bpp] if i >= bpp else 0
+                line[i] = (line[i] + ((left + prev[i]) >> 1)) & 0xFF
+        elif f == 4:
+            for i in range(stride):
+                left = line[i - bpp] if i >= bpp else 0
+                up_left = prev[i - bpp] if i >= bpp else 0
+                line[i] = (line[i] + _paeth(left, prev[i], up_left)) & 0xFF
+        if bpp == 3:
+            out[y * width * 3:(y + 1) * width * 3] = line
+        else:
+            o = y * width * 3
+            for x in range(width):
+                out[o + x * 3:o + x * 3 + 3] = line[x * 4:x * 4 + 3]
+        prev = line
+    return Image(width, height, bytes(out))
+
+
+def write_png(path: Path, img: Image) -> None:
+    stride = img.width * 3
+    raw = b"".join(b"\x00" + img.rgb[y * stride:(y + 1) * stride] for y in range(img.height))
+
+    def chunk(kind: bytes, body: bytes) -> bytes:
+        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body))
+
+    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", img.width, img.height, 8, 2, 0, 0, 0))
+                     + chunk(b"IDAT", zlib.compress(raw, 6)) + chunk(b"IEND", b""))
+
+
+# --- mesures sur l'image -------------------------------------------------------------------------
+
+def luminance(p: tuple[int, int, int]) -> float:
+    return (0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]) / 255.0
+
+
+def is_sky(p: tuple[int, int, int]) -> bool:
+    """Bleu du ciel procédural (zénith à l'horizon) ou brume de l'horizon."""
+    r, g, b = p
+    return b >= 190 and b >= r + 25 and b >= g + 5
+
+
+def stats(img: Image, box=None) -> dict[str, float]:
+    n = 0
+    s = [0.0, 0.0, 0.0]
+    s2 = 0.0
+    for p in img.pixels(box, step=4):
+        n += 1
+        for k in range(3):
+            s[k] += p[k]
+        lum = luminance(p)
+        s2 += lum * lum
+    if n == 0:
+        return {"n": 0, "mean": (0.0, 0.0, 0.0), "lum": 0.0, "std": 0.0}
+    mean = tuple(v / n for v in s)
+    lum = luminance(mean)  # type: ignore[arg-type]
+    return {"n": n, "mean": mean, "lum": lum, "std": max(0.0, s2 / n - lum * lum) ** 0.5}
+
+
+def fraction(img: Image, box, pred, step: int = 2) -> float:
+    n = hit = 0
+    for p in img.pixels(box, step):
+        n += 1
+        hit += 1 if pred(p) else 0
+    return hit / n if n else 0.0
+
+
+def mean_abs_diff(a: Image, b: Image, box=None, step: int = 2) -> float:
+    """Écart moyen par composante, en niveaux sur 255 (images de même taille)."""
+    if (a.width, a.height) != (b.width, b.height):
+        return 255.0
+    n = 0
+    total = 0
+    for pa, pb in zip(a.pixels(box, step), b.pixels(box, step)):
+        n += 1
+        total += abs(pa[0] - pb[0]) + abs(pa[1] - pb[1]) + abs(pa[2] - pb[2])
+    return total / (3 * n) if n else 0.0
+
+
+def changed_fraction(a: Image, b: Image, level: int = CHANGED_LEVEL, step: int = 2) -> float:
+    """Part des pixels dont une composante change de plus de `level` niveaux (défaut localisé)."""
+    if (a.width, a.height) != (b.width, b.height):
+        return 1.0
+    n = hit = 0
+    for pa, pb in zip(a.pixels(None, step), b.pixels(None, step)):
+        n += 1
+        if max(abs(pa[0] - pb[0]), abs(pa[1] - pb[1]), abs(pa[2] - pb[2])) > level:
+            hit += 1
+    return hit / n if n else 0.0
+
+
+def diff_image(a: Image, b: Image) -> Image:
+    """Écarts amplifiés ×4, en rouge sur l'image de référence assombrie."""
+    out = bytearray(len(a.rgb))
+    for i in range(0, len(a.rgb), 3):
+        d = (abs(a.rgb[i] - b.rgb[i]) + abs(a.rgb[i + 1] - b.rgb[i + 1]) + abs(a.rgb[i + 2] - b.rgb[i + 2])) // 3
+        base = (a.rgb[i] + a.rgb[i + 1] + a.rgb[i + 2]) // 12
+        out[i] = min(255, base + 4 * d)
+        out[i + 1] = base
+        out[i + 2] = base
+    return Image(a.width, a.height, bytes(out))
+
+
+def rect_box(rect: list[float]) -> tuple[int, int, int, int]:
+    x, y, w, h = rect
+    return int(x), int(y), int(x + w), int(y + h)
+
+
+def overlap(a: list[float], b: list[float]) -> float:
+    """Aire commune de deux rectangles [x, y, w, h], en pixels."""
+    w = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
+    h = min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1])
+    return max(0.0, w) * max(0.0, h)
+
+
+# --- faux core piloté pas à pas -------------------------------------------------------------------
+
+@dataclass
+class VisualCore(FakeCore):
+    """Faux core dont les trames `state` reprennent les valeurs fixées par chaque scène."""
+
+    fields: dict[str, Any] = field(default_factory=dict)
+    speed: float = 0.0            # m/s ; s avance de speed × temps écoulé depuis la dernière scène
+    s_origin: float = 0.0
+    t_origin: float = field(default_factory=now)
+
+    def set_scene(self, speed: float | None = None, s: float | None = None, **values: Any) -> None:
+        with self.lock:
+            s_now = self.current_s()
+            self.s_origin = s_now if s is None else s
+            self.t_origin = now()
+            if speed is not None:
+                self.speed = speed
+            self.fields.update(values)
+            self.fields["v"] = self.speed
+
+    def current_s(self) -> float:
+        return self.s_origin + self.speed * (now() - self.t_origin)
+
+    def state_msg(self, seq: int | None = None, s: float | None = None) -> dict[str, Any]:
+        msg = super().state_msg(seq, s)
+        msg.update(self.fields)
+        msg["s"] = self.current_s() if s is None else s
+        msg["session_state"] = self.fields.get("session_state", "RUNNING")
+        return msg
+
+    def send_raw(self, msg: dict[str, Any]) -> None:
+        """Envoi même quand le core joue le core muet (messages de test)."""
+        self.tx.sendto(json.dumps(msg).encode("utf-8"), ("127.0.0.1", self.state_port))
+
+
+# --- rapport -------------------------------------------------------------------------------------
+
+@dataclass
+class Check:
+    config: str
+    scene: str
+    name: str
+    ok: bool
+    detail: str
+
+
+@dataclass
+class Capture:
+    config: str
+    scene: str
+    png: Path
+    info: dict[str, Any]
+    golden_diff: float | None = None
+    diff_png: Path | None = None
+
+
+@dataclass
+class Report:
+    checks: list[Check] = field(default_factory=list)
+    captures: list[Capture] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+    def check(self, config: str, scene: str, name: str, ok: bool, detail: str = "") -> bool:
+        self.checks.append(Check(config, scene, name, ok, detail))
+        print(f"[{'OK' if ok else 'ÉCHEC'}] {config} · {scene} · {name}{' : ' + detail if detail else ''}", flush=True)
+        return ok
+
+    def failures(self) -> list[Check]:
+        return [c for c in self.checks if not c.ok]
+
+
+def _img_tag(path: Path, width: int = 480) -> str:
+    data = base64.b64encode(path.read_bytes()).decode("ascii")
+    return f'<a href="{html.escape(path.name)}"><img src="data:image/png;base64,{data}" width="{width}"></a>'
+
+
+def write_html(report: Report, out_dir: Path, elapsed: float) -> Path:
+    fails = report.failures()
+    verdict = "tous les tests graphiques passent" if not fails else f"{len(fails)} échec(s)"
+    parts = [
+        "<!doctype html><html lang='fr'><head><meta charset='utf-8'><title>Tests graphiques OpenRide</title>",
+        "<style>body{font-family:sans-serif;margin:16px;background:#fafafa;color:#222}"
+        "table{border-collapse:collapse;margin:8px 0}td,th{border:1px solid #ccc;padding:3px 6px;font-size:13px;"
+        "vertical-align:top}.ok{color:#176b2c}.ko{color:#b00020;font-weight:bold}"
+        ".cap{display:inline-block;margin:6px;padding:6px;background:#fff;border:1px solid #ddd;vertical-align:top}"
+        ".cap.ko{border:2px solid #b00020}pre{white-space:pre-wrap;font-size:12px;max-width:480px}</style></head><body>",
+        f"<h1>Tests graphiques OpenRide</h1><p><b>Résultat : {html.escape(verdict)}</b> "
+        f"({len(report.checks)} vérifications, {elapsed:.0f} s, {time.strftime('%Y-%m-%d %H:%M')})</p>",
+    ]
+    for note in report.notes:
+        parts.append(f"<p>{html.escape(note)}</p>")
+    if fails:
+        parts.append("<h2>Échecs</h2><table><tr><th>Configuration</th><th>Scène</th><th>Vérification</th><th>Détail</th></tr>")
+        for c in fails:
+            parts.append(f"<tr><td>{html.escape(c.config)}</td><td>{html.escape(c.scene)}</td>"
+                         f"<td>{html.escape(c.name)}</td><td>{html.escape(c.detail)}</td></tr>")
+        parts.append("</table>")
+    for config in dict.fromkeys(c.config for c in report.checks):
+        parts.append(f"<h2>{html.escape(config)}</h2>")
+        for cap in [c for c in report.captures if c.config == config]:
+            bad = [c for c in report.checks if c.config == config and c.scene == cap.scene and not c.ok]
+            info = cap.info
+            meta = (f"fps {info.get('fps')} · {info.get('meshes')} maillages · {info.get('draw_calls')} appels de dessin"
+                    + (f" · écart à la référence {cap.golden_diff:.2f}" if cap.golden_diff is not None else ""))
+            parts.append(f"<div class='cap{' ko' if bad else ''}'><b>{html.escape(cap.scene)}</b><br>"
+                         + _img_tag(cap.png) + f"<br><small>{html.escape(meta)}</small>")
+            if cap.diff_png is not None:
+                parts.append("<br><small>écarts à la référence (rouge)</small><br>" + _img_tag(cap.diff_png))
+            texts = "\n".join(f"{k}: {w['text']}" for k, w in info.get("widgets", {}).items()
+                              if w.get("visible") and w.get("text"))
+            parts.append(f"<pre>{html.escape(texts)}</pre></div>")
+        parts.append("<table><tr><th>Scène</th><th>Vérification</th><th>Résultat</th><th>Détail</th></tr>")
+        for c in [c for c in report.checks if c.config == config]:
+            parts.append(f"<tr><td>{html.escape(c.scene)}</td><td>{html.escape(c.name)}</td>"
+                         f"<td class='{'ok' if c.ok else 'ko'}'>{'OK' if c.ok else 'ÉCHEC'}</td>"
+                         f"<td>{html.escape(c.detail)}</td></tr>")
+        parts.append("</table>")
+    parts.append("</body></html>")
+    path = out_dir / "rapport.html"
+    path.write_text("\n".join(parts), encoding="utf-8")
+    return path
+
+
+# --- une configuration ---------------------------------------------------------------------------
+
+def free_udp_ports(n: int) -> list[int]:
+    import socket
+    socks = []
+    for _ in range(n):
+        s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        s.bind(("127.0.0.1", 0))
+        socks.append(s)
+    ports = [s.getsockname()[1] for s in socks]
+    for s in socks:
+        s.close()
+    return ports
+
+
+@dataclass
+class Session:
+    name: str
+    width: int
+    height: int
+    core: VisualCore
+    out_dir: Path
+    report: Report
+    golden_dir: Path | None
+    update_golden: bool
+
+    def check(self, scene: str, name: str, ok: bool, detail: str = "") -> bool:
+        return self.report.check(self.name, scene, name, ok, detail)
+
+    def capture(self, scene: str) -> tuple[Image, dict[str, Any]] | None:
+        png = self.out_dir / f"{self.name}_{scene}.png"
+        mark = self.core.log.mark()
+        self.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "screenshot",
+                            "path": str(png), "tag": scene})
+        hit = self.core.log.wait_for(r"^screenshot (\{.*\})$", 10.0, mark)
+        if not self.check(scene, "capture enregistrée", hit is not None and png.exists(),
+                          "" if hit else "aucune ligne « screenshot » dans le journal de l'engine"):
+            return None
+        info = json.loads(hit[1].group(1))
+        img = read_png(png)
+        cap = Capture(self.name, scene, png, info)
+        self.report.captures.append(cap)
+        self.check(scene, "taille de l'image", (img.width, img.height) == (self.width, self.height),
+                   f"{img.width}x{img.height}, attendu {self.width}x{self.height}")
+        self._golden(cap, img)
+        return img, info
+
+    def _golden(self, cap: Capture, img: Image) -> None:
+        if self.golden_dir is None or cap.scene not in GOLDEN_SCENES:
+            return
+        ref_path = self.golden_dir / cap.png.name
+        if self.update_golden:
+            self.golden_dir.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(cap.png, ref_path)
+            return
+        if not ref_path.exists():
+            self.check(cap.scene, "image de référence", False, f"{ref_path} absente (lancer avec --update-golden)")
+            return
+        ref = read_png(ref_path)
+        d = mean_abs_diff(ref, img)
+        cap.golden_diff = d
+        if d > 0.5 and (ref.width, ref.height) == (img.width, img.height):
+            cap.diff_png = self.out_dir / f"{self.name}_{cap.scene}_ecart.png"
+            write_png(cap.diff_png, diff_image(ref, img))
+        changed = changed_fraction(ref, img)
+        self.check(cap.scene, "écart à l'image de référence", d <= GOLDEN_TOLERANCE and changed <= GOLDEN_CHANGED_MAX,
+                   f"écart moyen {d:.2f} niveaux sur 255 (seuil {GOLDEN_TOLERANCE}), {changed:.2%} de pixels "
+                   f"très différents (seuil {GOLDEN_CHANGED_MAX:.0%})")
+
+    # --- vérifications communes ---
+
+    def check_texts(self, scene: str, info: dict[str, Any], expected: dict[str, str], contains: bool = False) -> None:
+        w = info["widgets"]
+        for key, text in expected.items():
+            got = w[key]["text"]
+            ok = (text in got) if contains else (got == text)
+            self.check(scene, f"texte {key}", ok and w[key]["visible"], f"« {got} »" + ("" if ok else f", attendu « {text} »"))
+
+    def check_layout(self, scene: str, info: dict[str, Any]) -> None:
+        w = info["widgets"]
+        vis = {k: v for k, v in w.items() if v["visible"]}
+        outside = [k for k, v in vis.items() if v["rect"][0] < -0.5 or v["rect"][1] < -0.5
+                   or v["rect"][0] + v["rect"][2] > self.width + 0.5 or v["rect"][1] + v["rect"][3] > self.height + 0.5]
+        self.check(scene, "éléments dans l'écran", not outside, "hors écran : " + ", ".join(outside) if outside else
+                   f"{len(vis)} éléments visibles")
+        labels = [k for k in HUD_LABELS if k in vis]
+        pairs = [f"{a}/{b}" for i, a in enumerate(labels) for b in labels[i + 1:]
+                 if overlap(vis[a]["rect"], vis[b]["rect"]) > 1.0]
+        self.check(scene, "lignes du HUD sans chevauchement", not pairs, ", ".join(pairs))
+        if "banner" in vis:
+            hit = [k for k in labels + ["panel"] if k in vis and overlap(vis[k]["rect"], vis["banner"]["rect"]) > 1.0]
+            self.check(scene, "bandeau sans chevauchement du HUD", not hit, "recouvre : " + ", ".join(hit) if hit else "")
+
+    def check_hud_pixels(self, scene: str, img: Image, info: dict[str, Any]) -> None:
+        w = info["widgets"]
+        for key in ("power", "status"):
+            if not w[key]["visible"]:
+                continue
+            frac = fraction(img, rect_box(w[key]["rect"]), lambda p: luminance(p) > 0.75, step=1)
+            self.check(scene, f"texte {key} dessiné (pixels clairs)", 0.01 <= frac <= 0.6, f"{frac:.1%} de pixels clairs")
+
+    def check_world(self, scene: str, img: Image, info: dict[str, Any]) -> None:
+        """Image non noire, non uniforme ; ciel en haut à droite (hors HUD), sol en bas."""
+        whole = stats(img)
+        self.check(scene, "image ni noire ni uniforme", whole["lum"] > 0.05 and whole["std"] > 0.02,
+                   f"luminance {whole['lum']:.2f}, écart type {whole['std']:.3f}")
+        top = (self.width * 0.55, 0, self.width, self.height * 0.12)
+        banner = info["widgets"]["banner"]
+        if banner["visible"]:
+            top = (self.width * 0.55, banner["rect"][1] + banner["rect"][3] + 4, self.width,
+                   banner["rect"][1] + banner["rect"][3] + 4 + self.height * 0.08)
+        sky = fraction(img, top, is_sky)
+        self.check(scene, "ciel en haut de l'image", sky >= 0.8, f"{sky:.0%} de pixels de ciel")
+        bottom = (0, self.height * 0.75, self.width, self.height)
+        ground = 1.0 - fraction(img, bottom, is_sky)
+        self.check(scene, "sol en bas de l'image", ground >= 0.8, f"{ground:.0%} de pixels hors ciel")
+        self.check(scene, "maillages affichés", info["meshes"] > 0, f"{info['meshes']} maillages visibles")
+
+    def check_banner(self, scene: str, img: Image, info: dict[str, Any], text: str | None) -> None:
+        b = info["widgets"]["banner"]
+        if text is None:
+            self.check(scene, "bandeau caché", not b["visible"], f"« {b['text']} »" if b["visible"] else "")
+            return
+        self.check(scene, "bandeau affiché", b["visible"] and text in b["text"], f"« {b['text']} »")
+        if b["visible"]:
+            def red(p):
+                return abs(p[0] - BANNER_RGB[0]) < 50 and p[1] < 80 and p[2] < 70
+            frac = fraction(img, rect_box(b["rect"]), red, step=1)
+            self.check(scene, "bandeau rouge dessiné", frac >= 0.4, f"{frac:.0%} de pixels rouges")
+
+
+def ground_box(s: Session, info: dict[str, Any]) -> tuple[int, int, int, int]:
+    """Bas de l'image hors HUD : là où la route et le terrain défilent."""
+    return 0, int(s.height * 0.6), s.width, s.height
+
+
+def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Report) -> None:
+    size, _, quality = config.partition(":")
+    quality = quality or "low"
+    width, height = (int(v) for v in size.lower().split("x"))
+    name = f"{width}x{height}_{quality}"
+    state_port, cmd_port = free_udp_ports(2)
+    engine_log = out_dir / f"{name}_engine.log"
+    engine_log.write_text("")
+    core = VisualCore(state_port, cmd_port, EngineLog(engine_log))
+    core.start()
+    cmd = [args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}", "--audio-driver", "Dummy"]
+    if not args.native:
+        cmd = ["xvfb-run", "-a", "-s", f"-screen 0 {width}x{height}x24"] + cmd + [
+            "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
+    cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
+            "--test-mode", f"--quality={quality}"]
+    gold = Path(args.golden) / name if args.golden else None
+    s = Session(name, width, height, core, out_dir, report, gold, args.update_golden)
+    print(f"== {name} ==", flush=True)
+    with engine_log.open("w") as log_fh:
+        proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True)
+    try:
+        _scenes(s)
+    finally:
+        core.stop()
+        try:
+            os.killpg(proc.pid, 15)
+            proc.wait(timeout=10)
+        except (ProcessLookupError, subprocess.TimeoutExpired):
+            try:
+                os.killpg(proc.pid, 9)
+            except ProcessLookupError:
+                pass
+    issues = [ln for ln in engine_log.read_text(errors="replace").splitlines()
+              if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
+    s.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
+
+
+def _scenes(s: Session) -> None:
+    core = s.core
+    t0 = now()
+    while now() - t0 < 20.0 and "IpcClient attaché" not in core.log.path.read_text(errors="replace"):
+        time.sleep(0.1)
+    time.sleep(1.5)
+
+    # 1. Attente du core : aucun hello_ack, aucune trame.
+    shot = s.capture("attente")
+    if shot:
+        img, info = shot
+        s.check_texts("attente", info, {"status": "ÉTAT: en attente du core…", "power": "PUISSANCE: -- W"})
+        s.check_layout("attente", info)
+        st = stats(img)
+        s.check("attente", "image affichée (ni noire ni uniforme)", st["lum"] > 0.05, f"luminance {st['lum']:.2f}")
+
+    # 2. Vue fixe : séance à l'arrêt sur le parcours, valeurs connues (image comparable aux références).
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="RUNNING", power=250.0, power_3s=248.0, cadence=90.0, hr=142,
+                   grade=4.5, grade_sent=4.5, gear=12, gears_total=24, mode="SIM", erg=None, pause_reason=None,
+                   trainer_status="CONNECTED", input_status="CONNECTED")
+    core.auto_hello_ack = True
+    core.streaming = True
+    loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
+    s.check("vue_fixe", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(SETTLE_S)
+    shot = s.capture("vue_fixe")
+    if shot:
+        img, info = shot
+        s.check_texts("vue_fixe", info, {
+            "power": "PUISSANCE: 250 W (3s: 248 W)", "speed": "VITESSE: 0.0 km/h  [Braquet: 12/24]",
+            "cadence": "CADENCE: 90 rpm", "hr": "FC: 142 bpm",
+            "grade": "PENTE: 4.5 %  (envoyée au trainer: 4.5 %)", "distance": "DISTANCE: 1.50 km",
+            "status": "ÉTAT: RUNNING | TRAINER: CONNECTED | ENTRÉE: CONNECTED"})
+        s.check("vue_fixe", "ligne ERG cachée en SIM", not info["widgets"]["erg"]["visible"])
+        s.check_banner("vue_fixe", img, info, None)
+        s.check_layout("vue_fixe", info)
+        s.check_hud_pixels("vue_fixe", img, info)
+        s.check_world("vue_fixe", img, info)
+
+    # 3. Mouvement : à 8 m/s, la route défile et la distance avance.
+    core.set_scene(speed=SPEED_MPS)
+    time.sleep(1.0)
+    a = s.capture("mouvement_1")
+    time.sleep(1.0)
+    b = s.capture("mouvement_2")
+    if a and b:
+        (img_a, info_a), (img_b, info_b) = a, b
+        s.check_texts("mouvement_2", info_b, {"speed": "VITESSE: 28.8 km/h  [Braquet: 12/24]"})
+        s.check("mouvement_2", "distance affichée qui avance",
+                info_a["widgets"]["distance"]["text"] != info_b["widgets"]["distance"]["text"],
+                f"{info_a['widgets']['distance']['text']} → {info_b['widgets']['distance']['text']}")
+        moved = sum((p - q) ** 2 for p, q in zip(info_a["camera"], info_b["camera"])) ** 0.5
+        dt = (info_b["ticks_ms"] - info_a["ticks_ms"]) / 1000.0
+        speed = moved / dt if dt > 0 else 0.0
+        s.check("mouvement_2", "caméra à la vitesse du core (8 m/s ± 25 %)", abs(speed - SPEED_MPS) <= 0.25 * SPEED_MPS,
+                f"{moved:.1f} m en {dt:.2f} s, soit {speed:.1f} m/s")
+        d = mean_abs_diff(img_a, img_b, ground_box(s, info_b))
+        s.check("mouvement_2", "le sol défile à l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
+        s.check_world("mouvement_2", img_b, info_b)
+
+    # 4. ERG : ligne de l'entraînement et cible dans la ligne de puissance.
+    core.set_scene(speed=7.0, mode="ERG", erg={
+        "workout_name": "Sweet spot 3x10", "block_index": 2, "block_count": 7, "block_type": "interval_on",
+        "block_remaining_s": 95.0, "block_total_s": 600.0, "target_w": 230.0, "next_target_w": 150.0,
+        "bias_pct": 100, "paused": False})
+    time.sleep(1.0)
+    shot = s.capture("erg")
+    if shot:
+        img, info = shot
+        s.check_texts("erg", info, {"erg": "ERG:", "power": "CIBLE ERG: 230 W", "grade": "(trainer en ERG)"},
+                      contains=True)
+        s.check_layout("erg", info)
+        s.check_hud_pixels("erg", img, info)
+
+    # 5. Pause : trainer perdu, raison visible dans la ligne d'état.
+    core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",
+                   trainer_status="RECONNECTING", power=0.0, power_3s=0.0, cadence=0.0)
+    time.sleep(SETTLE_S)
+    shot = s.capture("pause")
+    if shot:
+        img, info = shot
+        s.check_texts("pause", info, {"status": "ÉTAT: PAUSED (trainer_lost) | TRAINER: RECONNECTING"}, contains=True)
+        s.check_layout("pause", info)
+
+    # 6. Core muet : bandeau, caméra extrapolée puis figée.
+    core.set_scene(speed=SPEED_MPS, session_state="RUNNING", pause_reason=None, trainer_status="CONNECTED",
+                   power=250.0, power_3s=248.0, cadence=90.0)
+    time.sleep(1.0)
+    core.silent = True
+    lost = core.log.wait_for(r"^core_lost", 3.0, core.log.mark())
+    s.check("core_muet", "core_lost signalé", lost is not None)
+    time.sleep(0.6)
+    a = s.capture("core_muet_1")
+    time.sleep(0.6)
+    b = s.capture("core_muet_2")
+    if a and b:
+        (img_a, info_a), (img_b, info_b) = a, b
+        s.check_banner("core_muet_2", img_b, info_b, "Core non joignable")
+        s.check_layout("core_muet_2", info_b)
+        moved = sum((p - q) ** 2 for p, q in zip(info_a["camera"], info_b["camera"])) ** 0.5
+        dt = (info_b["ticks_ms"] - info_a["ticks_ms"]) / 1000.0
+        s.check("core_muet_2", "caméra figée", moved < 0.05, f"{moved:.3f} m en {dt:.2f} s")
+        d = mean_abs_diff(img_a, img_b, ground_box(s, info_b))
+        s.check("core_muet_2", "image figée", d < 0.1, f"écart moyen {d:.2f} niveaux")
+
+    # 7. Reprise : le bandeau disparaît.
+    core.silent = False
+    core.log.wait_for(r"^core_returned", 3.0)
+    time.sleep(1.5)
+    shot = s.capture("reprise")
+    if shot:
+        img, info = shot
+        s.check_banner("reprise", img, info, None)
+        s.check_world("reprise", img, info)
+
+    # 8. Erreur du core : code dans le bandeau, sans recouvrir le HUD.
+    # READY : en RUNNING, la caméra ne recule jamais et ne reviendrait pas à FIXED_S.
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="READY")
+    time.sleep(SETTLE_S)
+    core.send({"type": "error", "v": CONTRACT_VERSION, "code": "route_invalid", "message": "parcours de test illisible"})
+    time.sleep(0.6)
+    shot = s.capture("erreur")
+    if shot:
+        img, info = shot
+        s.check_banner("erreur", img, info, "route_invalid")
+        s.check_layout("erreur", info)
+    fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
+    s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
+
+
+def main() -> int:
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("--godot", default=os.environ.get(
+        "GODOT", str(Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+    ap.add_argument("--configs", default=DEFAULT_CONFIGS,
+                    help=f"résolution:qualité, séparées par des virgules (défaut {DEFAULT_CONFIGS})")
+    ap.add_argument("--out", type=Path, default=None, help="dossier des captures et du rapport (défaut : dossier temporaire)")
+    ap.add_argument("--native", action="store_true", help="écran réel et rendu habituel, sans Xvfb")
+    ap.add_argument("--golden", default=None, help="dossier des images de référence (un sous-dossier par configuration)")
+    ap.add_argument("--update-golden", action="store_true", help="enregistre les captures comme nouvelles références")
+    args = ap.parse_args()
+
+    if not (Path(args.godot).is_file() and os.access(args.godot, os.X_OK)):
+        print(f"Godot introuvable : {args.godot} (définir GODOT=/chemin/vers/godot)")
+        return 2
+    if not args.native and shutil.which("xvfb-run") is None:
+        print("xvfb-run introuvable : installer xvfb, xauth et libgl1-mesa-dri (ou lancer avec --native)")
+        return 2
+    if args.update_golden and not args.golden:
+        ap.error("--update-golden demande --golden DOSSIER")
+
+    out_dir = args.out or Path(tempfile.mkdtemp(prefix="openride-visual-"))
+    out_dir.mkdir(parents=True, exist_ok=True)
+    routes_dir = Path(tempfile.mkdtemp(prefix="openride-visual-routes-"))
+    report = Report()
+    t0 = now()
+    try:
+        gen = subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--terrain",
+                              "--out", str(routes_dir)], env={**os.environ, "PYTHONPATH": str(CORE_SRC)},
+                             capture_output=True, text=True)
+        if gen.returncode != 0:
+            print("Génération du parcours demo avec terrain impossible :\n" + gen.stderr)
+            return 1
+        for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
+            run_config(config, args, routes_dir, out_dir, report)
+    finally:
+        shutil.rmtree(routes_dir, ignore_errors=True)
+    if args.update_golden:
+        report.notes.append(f"Références enregistrées dans {args.golden}.")
+    page = write_html(report, out_dir, now() - t0)
+    fails = report.failures()
+    print(f"Tests graphiques : {len(report.checks) - len(fails)}/{len(report.checks)} vérifications réussies")
+    print(f"Rapport : {page}")
+    return 1 if fails else 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())
