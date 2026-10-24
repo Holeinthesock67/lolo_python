@@ -136,7 +136,7 @@ def find_world(route_id: str, root: Path | None = None) -> Path: ...   # <root>/
   - expose `sample_point(s) -> Vector3`, `sample_heading_deg(s) -> float`, `sample_grade(s) -> float`, `wrap(s) -> float`, `length_m`, `type`.
   - Calculer en `float` GDScript (64 bits) et ne convertir en `Vector3` (32 bits) qu'à la fin.
 - `engine/scripts/main.gd` : adapter les appels. La caméra prend `deg_to_rad(sample_heading_deg(s))`, avec la même convention de signe qu'aujourd'hui.
-- `engine/tests/test_route_vectors.gd` (nouveau) : script lancé par `godot --headless --path engine --script res://tests/test_route_vectors.gd`. Il lit `route_test_vectors.json` (chemin passé en argument, ou relatif au dépôt), compare chaque vecteur et quitte avec le code 0 si tout passe, 1 sinon.
+- `engine/tests/unit/test_route_vectors.gd` (nouveau ; déplacé dans `engine/tests/unit/` par le lot K1) : script lancé par `godot --headless --path engine --script res://tests/test_route_vectors.gd`. Il lit `route_test_vectors.json` (chemin passé en argument, ou relatif au dépôt), compare chaque vecteur et quitte avec le code 0 si tout passe, 1 sinon.
 - **Tolérances :** 1 cm sur la position, 1e-4 sur la pente, 1e-3 degré sur le cap.
 
 ### 4.7 Clarification du format
@@ -152,7 +152,7 @@ Ajouter dans `world_format_v1.md` §4 la règle exacte du §4.1 ci-dessus et le 
   - `docs/contracts/world/manifest.schema.json`
   - `docs/contracts/world/route.schema.json`
   - `docs/contracts/world/route_test_vectors.json`
-  - `engine/tests/test_route_vectors.gd`
+  - `engine/tests/unit/test_route_vectors.gd` (déplacé par le lot K1)
 - **Modifiés :**
   - `core/src/openride_core/session.py`
   - `core/src/openride_core/tools/fake_world.py`

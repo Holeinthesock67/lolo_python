@@ -80,6 +80,7 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 
 - À la connexion : lecture de Fitness Machine Feature (0x2ACC) et de la plage de puissance (0x2AD8), abonnement à Indoor Bike Data (0x2AD2).
 - Avant toute commande : Request Control (0x00) puis Start/Resume (0x07) ; les réponses du Control Point (0x2AD9) sont vérifiées.
+- Le Control Point traite une procédure à la fois (FTMS v1.0 §4.16.3) : chaque commande attend l'indication de réponse (0x80) avant la suivante, au plus 1 s. Fitness Machine Status (0x2ADA) est écouté : « Control Permission Lost » (0xFF) déclenche une reprise du contrôle. Une consigne ERG ou SIM que Fitness Machine Feature n'annonce pas n'est pas envoyée (ajout du 24 octobre 2026, audit FTMS).
 - **Mode SIM :** Set Indoor Bike Simulation Parameters (0x11) avec pente (résolution 0,01 %), Crr, Cw et vent nul. La pente est limitée à −10 % / +16 %, envoyée dès qu'elle varie d'au moins 0,1 point, au plus toutes les 0,2 s, et renvoyée au moins toutes les 2 s (réglages validés sur le Victory le 22 octobre 2026).
 - **Mode ERG :** Set Target Power (0x05), en watts entiers, bornée par la plage annoncée par le trainer.
 - La cardio vient du pont cardio du Victory si sa caractéristique est exposée (à vérifier au sprint 0), sinon d'une ceinture connectée séparément.
