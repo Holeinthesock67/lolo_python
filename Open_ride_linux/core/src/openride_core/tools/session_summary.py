@@ -33,6 +33,15 @@ Clés de la sortie `--json` (stables) :
     erg (null ou {target_available, note, blocks : [{block, seconds, avg_power_w,
     target_w, delta_w}]}).
 Les puissances sont arrondies à 0,1 W, IF à 0,01, TSS à 0,1.
+
+Clés ajoutées par le lot M4, présentes seulement pour un journal qui porte ces informations
+(un journal antérieur donne exactement le même bilan qu'avant) :
+- dans chaque bloc ERG, si le journal porte `erg_bias_pct` : `bias_pct` (biais moyen du Click,
+  en %), `target_nobias_w` (cible moyenne sans biais : cible du `.zwo` × FTP, soit
+  `target_w / (1 + biais / 100)`) et `delta_nobias_w` (puissance moyenne − cible sans biais) ;
+- `devices` : {appareil : {drops, down_s}} (nombre de coupures et durée totale hors liaison,
+  arrondie à 0,1 s ; une coupure non refermée court jusqu'à la fin de la séance), pour un
+  journal qui contient des lignes `device`.
 """
 
 from __future__ import annotations
@@ -41,7 +50,7 @@ import argparse
 import json
 import math
 import sys
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
@@ -67,6 +76,7 @@ class Session:
     records: list[dict]
     events: list[dict]
     fmt: str
+    devices: list[dict] = field(default_factory=list)   # lignes `device` (lot M4)
 
 
 # --- lecture ----------------------------------------------------------------------------
@@ -90,7 +100,7 @@ def load_session(path: Path) -> Session:
 
 
 def _load_jsonl(path: Path) -> Session:
-    records, events = [], []
+    records, events, devices = [], [], []
     for line in read_journal(path):
         if not isinstance(line, dict):
             continue
@@ -98,7 +108,9 @@ def _load_jsonl(path: Path) -> Session:
             records.append(line)
         elif line.get("kind") == "event" and line.get("event") and line.get("ts") is not None:
             events.append(line)
-    return Session(records, events, "jsonl")
+        elif line.get("kind") == "device" and line.get("device") and line.get("ts") is not None:
+            devices.append(line)
+    return Session(records, events, "jsonl", devices)
 
 
 def _load_fit(path: Path) -> Session:
@@ -230,7 +242,7 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
     cads = [float(r["cadence"]) for r in recs if r.get("cadence")]
     hrs = [float(r["hr"]) for r in recs if r.get("hr")]
 
-    return {
+    out = {
         "source": source,
         "format": session.fmt,
         "ftp_w": round(ftp_w, 1),
@@ -249,6 +261,31 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
         "hr": _avg_max(hrs),
         "erg": _erg_blocks(recs, powers),
     }
+    if session.devices:
+        out["devices"] = _device_drops(session)
+    return out
+
+
+def _device_drops(session: Session) -> dict[str, dict[str, float]]:
+    """Coupures par appareil : nombre de passages à `down` et durée jusqu'au retour (`up`)."""
+    ends = [r["ts"] for r in session.records] + [e["ts"] for e in session.events]
+    end_ts = max(ends) if ends else None
+    out: dict[str, dict[str, float]] = {}
+    down_since: dict[str, float] = {}
+    for line in sorted(session.devices, key=lambda d: d["ts"]):
+        dev, ts = str(line["device"]), float(line["ts"])
+        stats = out.setdefault(dev, {"drops": 0, "down_s": 0.0})
+        if line.get("state") == "down" and dev not in down_since:
+            stats["drops"] += 1
+            down_since[dev] = ts
+        elif line.get("state") == "up" and dev in down_since:
+            stats["down_s"] += ts - down_since.pop(dev)
+    for dev, since in down_since.items():
+        if end_ts is not None:
+            out[dev]["down_s"] += max(end_ts - since, 0.0)
+    for stats in out.values():
+        stats["down_s"] = round(stats["down_s"], 1)
+    return out
 
 
 def _erg_blocks(recs: list[dict], powers: list[float]) -> dict[str, Any] | None:
@@ -262,13 +299,28 @@ def _erg_blocks(recs: list[dict], powers: list[float]) -> dict[str, Any] | None:
     for r in recs:
         if r.get("block") is not None and r.get("mode", "ERG") == "ERG" and r.get("target_w") is not None:
             targets.setdefault(int(r["block"]), []).append(float(r["target_w"]))
+    biases: dict[int, list[float]] = {}
+    nobias: dict[int, list[float]] = {}
+    has_bias = any(r.get("erg_bias_pct") is not None for r in recs)
+    for r in recs:
+        if r.get("block") is not None and r.get("mode", "ERG") == "ERG" and \
+                r.get("erg_bias_pct") is not None and r.get("target_w") is not None:
+            b, bias = int(r["block"]), float(r["erg_bias_pct"])
+            biases.setdefault(b, []).append(bias)
+            nobias.setdefault(b, []).append(float(r["target_w"]) / (1.0 + bias / 100.0))
     out = []
     for b in sorted(blocks):
         avg_w = round(sum(blocks[b]) / len(blocks[b]), 1)
         tgt_w = round(sum(targets[b]) / len(targets[b]), 1) if b in targets else None
-        out.append({"block": b, "seconds": len(blocks[b]), "avg_power_w": avg_w,
-                    "target_w": tgt_w,
-                    "delta_w": round(avg_w - tgt_w, 1) if tgt_w is not None else None})
+        row = {"block": b, "seconds": len(blocks[b]), "avg_power_w": avg_w,
+               "target_w": tgt_w,
+               "delta_w": round(avg_w - tgt_w, 1) if tgt_w is not None else None}
+        if has_bias:
+            nb = round(sum(nobias[b]) / len(nobias[b]), 1) if b in nobias else None
+            row.update({"bias_pct": round(sum(biases[b]) / len(biases[b]), 1) if b in biases else None,
+                        "target_nobias_w": nb,
+                        "delta_nobias_w": round(avg_w - nb, 1) if nb is not None else None})
+        out.append(row)
     available = bool(targets)
     return {"target_available": available,
             "note": None if available else "cible ERG absente du journal : écart à la cible indisponible",
@@ -308,9 +360,16 @@ def format_text(r: dict[str, Any]) -> str:
         for b in r["erg"]["blocks"]:
             target = (f" / cible {b['target_w']:.0f} W, écart {b['delta_w']:+.0f} W"
                       if b["target_w"] is not None and b["delta_w"] is not None else "")
+            if b.get("bias_pct") and b.get("delta_nobias_w") is not None:
+                target += (f" (biais {b['bias_pct']:+.0f} % ; sans biais : cible "
+                           f"{b['target_nobias_w']:.0f} W, écart {b['delta_nobias_w']:+.0f} W)")
             lines.append(f"  bloc {b['block']:>2} : {_hms(b['seconds'])}, {b['avg_power_w']:.0f} W{target}")
         if r["erg"]["note"]:
             lines.append(f"  ({r['erg']['note']})")
+    if r.get("devices"):
+        lines.append("Coupures des appareils :")
+        for dev, d in r["devices"].items():
+            lines.append(f"  {dev} : {d['drops']} coupure(s), {_hms(d['down_s'])} hors liaison")
     return "\n".join(lines)
 
 
