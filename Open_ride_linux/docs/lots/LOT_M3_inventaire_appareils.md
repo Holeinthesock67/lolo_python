@@ -50,3 +50,10 @@ Aucune.
 
 - Écriture automatique de `config.toml`.
 - Écran d'état des appareils dans l'engine (lot G).
+
+## 9. Livraison (24 octobre 2026)
+
+- `core/src/openride_core/tools/devices.py` : recherche injectable (`ble_scan` par `BleakScanner.discover`, `bluez_connected` par D-Bus, `sim_sources` pour le Bluetooth simulé), `classify`, `propose`, `differences`, sortie texte et `--json` (clés en tête du module). M2 étant fusionné avant, la liste des noms de montres est celle de `hr_monitor.WATCH_NAME_HINTS`.
+- `openride-core devices [--timeout S] [--json] [--all] [--config FICHIER] [--sim-scenario NOM|FICHIER]` dans `__main__.py`.
+- Choix assumés : le Click récent a deux boîtiers de même nom, impossibles à distinguer en recherche ; le bloc propose le premier (par adresse) pour `click_address` et cite le second en commentaire (`click_other_address` en JSON). La ceinture est proposée avant une montre. Un appareil connecté mais muet reste proposé.
+- Tests : `core/tests/test_devices.py` (critères 2 à 6 ; la doublure de `BleakClient` échoue si on la construit). Le test de cohérence des commandes citées passe.
