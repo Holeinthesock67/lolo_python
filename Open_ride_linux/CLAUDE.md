@@ -20,7 +20,7 @@ Propriétaire : Laurent (francophone). **Réponds toujours en français**, de fa
 - `docs/contracts/ipc_v1.md` et schémas `docs/contracts/ipc/*.schema.json` : messages core ↔ engine.
 - `docs/contracts/world_format_v1.md` et `docs/contracts/world/` : format des parcours `.world`, schémas et vecteurs de test de la route.
 - `docs/SUIVI_AVANCEMENT.md` : état, tests faits, reste à faire.
-- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H, I et J sont faites pour être confiées à une autre IA.
+- `docs/lots/00_INDEX.md` : lots de travail (cahiers des charges autonomes) et leur statut ; les séries H, I, J et K sont faites pour être confiées à une autre IA.
 - `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8 et §9).
 - `docs/spikes.md` : faits mesurés sur le matériel.
 
@@ -131,6 +131,7 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
   - appui court sous 0,5 s, appui long à partir de 0,9 s ;
   - il ne s'annonce qu'après un appui ;
   - il se déconnecte parfois de lui-même (question ouverte) ;
+  - diagnostic (lot K8) : chaque coupure est journalisée avec la durée de connexion, le temps depuis la dernière notification, le dernier appui et la dernière écriture au trainer ; cadence des notifications toutes les 60 s ; `log_report` en tire médianes et corrélations avec le trainer ;
   - s'il reste « connecté » côté BlueZ : `bluetoothctl disconnect F4:C4:59:15:E1:E7`.
 - **Godot :** heartbeat dans un fil séparé (lié au rendu, il provoquait des pertes de liaison) ; commandes renvoyées toutes les 200 ms jusqu'à l'accusé.
 - **Contrat :** dans la trame `state`, `v` est la **vitesse**, pas la version (clarifié ; renommage prévu pour un contrat v2). Le core remet `last_cmd_id` à 0 à chaque `hello`.

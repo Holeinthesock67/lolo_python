@@ -56,7 +56,7 @@ class MockDriver:
         self.target_power_w = max(0.0, watts)
         return True
 
-    def set_sim_grade(self, grade_pct: float) -> bool:
+    def set_sim_grade(self, grade_pct: float, immediate: bool = False) -> bool:
         """Mode SIM (quitte le mode ERG, comme le trainer réel)."""
         self.target_power_w = None
         self.sim_grade_pct = grade_pct
