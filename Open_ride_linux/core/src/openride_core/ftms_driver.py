@@ -33,8 +33,57 @@ MIN_SEND_INTERVAL_S = 0.2
 GRADE_EPSILON_PCT = 0.1
 ERG_EPSILON_W = 1.0
 RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (arrêt jamais bloqué)
+CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
 MAX_CONTROL_RETRIES = 2  # reprises de contrôle tentées avant de déclarer le refus
 DEFAULT_POWER_RANGE = (0.0, 2000.0)
+
+
+class ControlPoint:
+    """Fitness Machine Control Point (0x2AD9) : une procédure à la fois (FTMS §4.16.3).
+
+    Une procédure n'est finie qu'à l'indication de réponse (0x80) ; écrire avant expose à
+    l'erreur ATT « Procedure Already In Progress ». Chaque écriture attend donc cette
+    indication, au plus `CP_RESPONSE_TIMEOUT_S`, puis on continue même sans réponse.
+    """
+
+    def __init__(self, client: Any,
+                 on_response: Callable[[ftms.ControlResponse], None] | None = None) -> None:
+        self.client = client
+        self._on_response = on_response
+        self._waiting: tuple[int, asyncio.Future] | None = None
+
+    async def enable(self) -> None:
+        """Abonnement aux indications : obligatoire avant toute écriture (FTMS §4.16.3)."""
+        await self.client.start_notify(ftms.CONTROL_POINT, self.on_indication)
+
+    def on_indication(self, _ch: Any, data: bytearray) -> None:
+        resp = ftms.parse_control_response(bytes(data))
+        if resp is None:
+            return
+        if self._waiting is not None:
+            op, fut = self._waiting
+            if op == resp.request_op and not fut.done():
+                fut.set_result(resp)
+        if self._on_response is not None:
+            self._on_response(resp)
+
+    async def call(self, payload: bytes, write_timeout: float | None = None) -> ftms.ControlResponse | None:
+        """Écrit une commande et attend sa réponse ; None si le trainer n'a pas répondu à temps."""
+        fut = asyncio.get_running_loop().create_future()
+        self._waiting = (payload[0], fut)
+        try:
+            write = self.client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True)
+            if write_timeout is None:
+                await write
+            else:
+                await asyncio.wait_for(write, timeout=write_timeout)
+            try:
+                return await asyncio.wait_for(fut, timeout=CP_RESPONSE_TIMEOUT_S)
+            except asyncio.TimeoutError:
+                log.info("Pas de réponse du Control Point à 0x%02x", payload[0])
+                return None
+        finally:
+            self._waiting = None
 
 
 @dataclass
@@ -80,6 +129,7 @@ class FtmsDriver:
         self.control_refused = False
         self._refusals = 0
         self.power_range = DEFAULT_POWER_RANGE   # remplacée par la plage annoncée (0x2AD8)
+        self.power_increment = 1.0
         self.supports_sim = True
         self.supports_erg = True
         self.reconnect_count = 0
@@ -98,7 +148,11 @@ class FtmsDriver:
 
     def set_target_power(self, watts: float) -> bool:
         lo, hi = self.power_range
-        self._want = _Want("erg", min(max(float(watts), lo), hi))
+        watts = min(max(float(watts), lo), hi)
+        if self.power_increment > 1.0:   # multiple du pas annoncé, sans sortir de la plage
+            steps = math.floor((watts - lo) / self.power_increment + 0.5)
+            watts = min(lo + steps * self.power_increment, hi)
+        self._want = _Want("erg", watts)
         return True
 
     def reset_control(self) -> None:
@@ -149,7 +203,8 @@ class FtmsDriver:
             self._raw_power = max(float(d.power_w), 0.0)
         if d.cadence_rpm is not None:
             self._cadence = d.cadence_rpm
-        self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
+        if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
+            self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
 
     def _on_hr(self, _ch: Any, data: bytearray) -> None:
         try:
@@ -158,10 +213,26 @@ class FtmsDriver:
             return
         self._hr_service = bpm or None
 
-    def _on_cp(self, _ch: Any, data: bytearray) -> None:
-        resp = ftms.parse_control_response(bytes(data))
-        if resp is None:
+    def _on_status(self, _ch: Any, data: bytearray) -> None:
+        status = ftms.parse_machine_status(bytes(data))
+        if status is None:
             return
+        code, name = status
+        if code == ftms.STATUS_CONTROL_LOST:
+            # Contrôle retiré (autre application, interface du trainer) : on le redemande à la
+            # prochaine consigne ; un refus passe ensuite par le compteur de `_on_response`.
+            log.warning("Trainer : contrôle FTMS perdu (Fitness Machine Status 0xFF)")
+            self._last_sent = None
+        elif code == 0x01:
+            log.info("Trainer : consignes remises à zéro par un tiers (Reset), renvoi")
+            self._last_sent = None
+        elif code in (0x02, 0x03):
+            # Arrêt voulu sur le trainer (ou clé de sécurité) : pas de redémarrage forcé.
+            log.info("Trainer : état machine %s", name)
+        else:
+            log.debug("Trainer : état machine %s %s", name, bytes(data[1:]).hex())
+
+    def _on_response(self, resp: ftms.ControlResponse) -> None:
         if resp.ok:
             # Seule une consigne acceptée prouve que le contrôle est retrouvé : une prise de
             # contrôle acceptée suivie d'une consigne refusée ne doit pas remettre le compteur à 0.
@@ -234,8 +305,17 @@ class FtmsDriver:
                     bytes(await client.read_gatt_char(ftms.SUPPORTED_POWER_RANGE)))
                 if pr.max_w > pr.min_w:
                     self.power_range = (float(max(pr.min_w, 0)), float(pr.max_w))
-                    log.info("Plage de puissance du trainer : %d à %d W", pr.min_w, pr.max_w)
-            await client.start_notify(ftms.CONTROL_POINT, self._on_cp)
+                    self.power_increment = float(max(pr.increment_w, 1))
+                    log.info("Plage de puissance du trainer : %d à %d W, pas de %d W",
+                             pr.min_w, pr.max_w, pr.increment_w)
+            cp: ControlPoint | None = None
+            if services.get_characteristic(ftms.CONTROL_POINT) is not None:
+                cp = ControlPoint(client, self._on_response)
+                await cp.enable()
+            else:
+                log.warning("Trainer sans Control Point FTMS : mesures seules, aucune consigne")
+            if services.get_characteristic(ftms.MACHINE_STATUS) is not None:
+                await client.start_notify(ftms.MACHINE_STATUS, self._on_status)
             await client.start_notify(ftms.INDOOR_BIKE_DATA, self._on_ibd)
             if services.get_characteristic(ftms.HR_MEASUREMENT) is not None:
                 await client.start_notify(ftms.HR_MEASUREMENT, self._on_hr)
@@ -245,25 +325,24 @@ class FtmsDriver:
             self._last_sent = None
             log.info("Trainer connecté (%s)", getattr(dev, "name", dev))
             try:
-                await self._take_control(client)
+                if cp is not None:
+                    await self._take_control(cp)
                 while not (dropped.is_set() or self._stop.is_set()):
                     if self._clock() - (self._last_data_at or 0.0) > FORCE_RECONNECT_S:
                         raise ConnectionError("plus de données du trainer")
-                    await self._flush_command(client)
+                    if cp is not None:
+                        await self._flush_command(cp)
                     await asyncio.sleep(0.05)
             finally:
                 self._link_up = False
-                if client.is_connected:
-                    await self._release(client)
+                if cp is not None and client.is_connected:
+                    await self._release(cp)
 
-    async def _write(self, client: Any, payload: bytes) -> None:
-        await client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True)
+    async def _take_control(self, cp: ControlPoint) -> None:
+        await cp.call(ftms.cmd_request_control())
+        await cp.call(ftms.cmd_start_resume())
 
-    async def _take_control(self, client: Any) -> None:
-        await self._write(client, ftms.cmd_request_control())
-        await self._write(client, ftms.cmd_start_resume())
-
-    async def _flush_command(self, client: Any) -> None:
+    async def _flush_command(self, cp: ControlPoint) -> None:
         now = self._clock()
         if now - self._last_sent_at < MIN_SEND_INTERVAL_S:
             return
@@ -273,34 +352,47 @@ class FtmsDriver:
         changed = prev is None or prev[0] != mode or abs(prev[1] - value) >= eps
         if not changed and now - self._last_sent_at < RESEND_S:
             return
+        supported = self.supports_erg if mode == "erg" else self.supports_sim
+        if not supported:   # opcode exclu par Fitness Machine Feature (FTMS tableau 4.15)
+            if prev != (mode, value):
+                log.warning("Trainer : mode %s non annoncé (Fitness Machine Feature), consigne "
+                            "non envoyée", mode.upper())
+            self._last_sent, self._last_sent_at = (mode, value), now
+            return
         if prev is None:   # première consigne ou contrôle perdu
-            await self._take_control(client)
+            await self._take_control(cp)
         if mode == "erg":
             payload = ftms.cmd_set_target_power(value)
         else:
             payload = ftms.cmd_set_sim_params(value, self._crr, self._cw)
-        await self._write(client, payload)
+        await cp.call(payload)
         self._last_sent, self._last_sent_at = (mode, value), now
 
-    async def _release(self, client: Any) -> None:
+    async def _release(self, cp: ControlPoint) -> None:
         """Rend le trainer libre en partant, même après une erreur.
 
         Pente 0 % d'abord (aucune consigne ERG ne reste active), puis Reset, qui retire le
         contrôle FTMS à OpenRide : une autre application peut le prendre aussitôt. Chaque
         écriture est bornée dans le temps ; la déconnexion BLE suit (sortie du `async with`).
         """
-        await release_control(client, self._crr, self._cw)
+        await release_control(cp, self._crr, self._cw, sim=self.supports_sim)
 
 
-async def release_control(client: Any, crr: float = 0.004, cw_kg_m: float = 0.20) -> bool:
-    """Pente 0 % puis Reset sur le Control Point ; True si les deux écritures ont abouti."""
+async def release_control(cp: ControlPoint, crr: float = 0.004, cw_kg_m: float = 0.20,
+                          sim: bool = True) -> bool:
+    """Pente 0 % (si le mode SIM existe) puis Reset ; True si les écritures ont abouti.
+
+    Le Reset suffirait (il remet les consignes à leur valeur par défaut, FTMS §4.16.2.2) ; la
+    pente 0 % est une sécurité si le Reset est refusé. Chaque commande attend sa réponse avant
+    la suivante, sinon le Reset risquerait l'erreur « Procedure Already In Progress ».
+    """
     ok = True
-    for label, payload in (("pente 0 %", ftms.cmd_set_sim_params(0.0, crr, cw_kg_m)),
-                           ("reset (contrôle rendu)", ftms.cmd_reset())):
+    steps = [("reset (contrôle rendu)", ftms.cmd_reset())]
+    if sim:
+        steps.insert(0, ("pente 0 %", ftms.cmd_set_sim_params(0.0, crr, cw_kg_m)))
+    for label, payload in steps:
         try:
-            await asyncio.wait_for(
-                client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True),
-                timeout=RELEASE_WRITE_TIMEOUT_S)
+            await cp.call(payload, write_timeout=RELEASE_WRITE_TIMEOUT_S)
         except asyncio.CancelledError:
             raise
         except Exception as exc:
@@ -334,13 +426,16 @@ async def release_trainer(
             if client.services.get_characteristic(ftms.CONTROL_POINT) is None:
                 log.warning("Pas de Control Point FTMS sur cet appareil.")
                 return False
+            cp = ControlPoint(client)
             try:
-                await asyncio.wait_for(
-                    client.write_gatt_char(ftms.CONTROL_POINT, ftms.cmd_request_control(),
-                                           response=True),
-                    timeout=RELEASE_WRITE_TIMEOUT_S)
+                # Sans abonnement aux indications, le trainer doit refuser toute écriture
+                # (erreur ATT 0xFD, FTMS §4.16.3).
+                await cp.enable()
+                await cp.call(ftms.cmd_request_control(), write_timeout=RELEASE_WRITE_TIMEOUT_S)
+            except asyncio.CancelledError:
+                raise
             except Exception as exc:
                 log.debug("Prise de contrôle avant relâche refusée : %s", exc)
-            ok = await release_control(client, bike.crr, 0.5 * RHO0 * bike.cda_m2)
+            ok = await release_control(cp, bike.crr, 0.5 * RHO0 * bike.cda_m2)
     log.info("Trainer déconnecté.")
     return ok
