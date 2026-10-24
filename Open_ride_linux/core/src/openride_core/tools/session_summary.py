@@ -260,15 +260,15 @@ def _erg_blocks(recs: list[dict], powers: list[float]) -> dict[str, Any] | None:
         return None
     targets: dict[int, list[float]] = {}
     for r in recs:
-        if r.get("block") is not None and r.get("target_w") is not None:
+        if r.get("block") is not None and r.get("mode", "ERG") == "ERG" and r.get("target_w") is not None:
             targets.setdefault(int(r["block"]), []).append(float(r["target_w"]))
     out = []
     for b in sorted(blocks):
-        avg = sum(blocks[b]) / len(blocks[b])
-        tgt = sum(targets[b]) / len(targets[b]) if b in targets else None
-        out.append({"block": b, "seconds": len(blocks[b]), "avg_power_w": round(avg, 1),
-                    "target_w": round(tgt, 1) if tgt is not None else None,
-                    "delta_w": round(avg - tgt, 1) if tgt is not None else None})
+        avg_w = round(sum(blocks[b]) / len(blocks[b]), 1)
+        tgt_w = round(sum(targets[b]) / len(targets[b]), 1) if b in targets else None
+        out.append({"block": b, "seconds": len(blocks[b]), "avg_power_w": avg_w,
+                    "target_w": tgt_w,
+                    "delta_w": round(avg_w - tgt_w, 1) if tgt_w is not None else None})
     available = bool(targets)
     return {"target_available": available,
             "note": None if available else "cible ERG absente du journal : écart à la cible indisponible",
@@ -306,8 +306,9 @@ def format_text(r: dict[str, Any]) -> str:
     if r["erg"]:
         lines.append("ERG, par bloc :")
         for b in r["erg"]["blocks"]:
-            delta = f", écart {b['delta_w']:+.0f} W" if b["delta_w"] is not None else ""
-            lines.append(f"  bloc {b['block']:>2} : {_hms(b['seconds'])}, {b['avg_power_w']:.0f} W{delta}")
+            target = (f" / cible {b['target_w']:.0f} W, écart {b['delta_w']:+.0f} W"
+                      if b["target_w"] is not None and b["delta_w"] is not None else "")
+            lines.append(f"  bloc {b['block']:>2} : {_hms(b['seconds'])}, {b['avg_power_w']:.0f} W{target}")
         if r["erg"]["note"]:
             lines.append(f"  ({r['erg']['note']})")
     return "\n".join(lines)
