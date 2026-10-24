@@ -15,6 +15,10 @@ Sous-commandes disponibles à ce stade :
                                       bilan d'une séance (.jsonl ou .fit ; défaut : dernier journal)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
+    openride-core devices [--timeout S] [--json] [--all] [--config FICHIER]
+                          [--sim-scenario NOM|FICHIER]
+                                      inventaire des appareils Bluetooth (trainer, Click,
+                                      ceinture) et bloc [drivers] proposé pour config.toml
 """
 
 from __future__ import annotations
@@ -110,6 +114,12 @@ def cmd_history(args: argparse.Namespace) -> int:
     return run(args.directory, args.weeks, args.ftp, args.json, args.config)
 
 
+def cmd_devices(args: argparse.Namespace) -> int:
+    from .tools.devices import run
+
+    return run(args.timeout, args.json, args.config, args.sim_scenario, args.all)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Analyseur de la ligne de commande ; aussi lu par `test_docs_coherence.py` (commandes citées)."""
     p = argparse.ArgumentParser(prog="openride-core")
@@ -152,6 +162,13 @@ def build_parser() -> argparse.ArgumentParser:
     hist.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
     hist.add_argument("--json", action="store_true", help="sortie JSON")
     hist.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    dev = sub.add_parser("devices", help="inventaire des appareils Bluetooth et bloc [drivers] proposé")
+    dev.add_argument("--timeout", type=float, default=8.0, help="durée de la recherche en s (défaut : 8)")
+    dev.add_argument("--json", action="store_true", help="sortie JSON")
+    dev.add_argument("--all", action="store_true", help="montre aussi les appareils sans rôle")
+    dev.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    dev.add_argument("--sim-scenario", metavar="NOM|FICHIER",
+                     help="recherche dans le Bluetooth simulé (mêmes noms que run --sim-scenario)")
     return p
 
 
@@ -168,7 +185,7 @@ def main(argv: list[str] | None = None) -> int:
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary,
-            "history": cmd_history}[args.command](args)
+            "history": cmd_history, "devices": cmd_devices}[args.command](args)
 
 
 if __name__ == "__main__":
