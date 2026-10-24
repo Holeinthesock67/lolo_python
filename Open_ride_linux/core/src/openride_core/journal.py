@@ -3,9 +3,13 @@
 Un fichier JSONL par séance, une ligne par seconde, vidée sur disque à chaque ligne : après
 un plantage, `openride-core recover` peut transformer le dernier journal en FIT.
 
-Deux sortes de lignes :
+Sortes de lignes :
+- `{"kind": "header", "version": 1, "route_id": ...}` en tête ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
-- `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}`.
+- `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ;
+- `{"kind": "device", "ts": ..., "device": "trainer" | "click_plus" | "click_minus" | "hr",
+  "state": "up" | "down"}` au changement d'état d'un appareil (lot M4, absentes des journaux
+  antérieurs au 24 octobre 2026). Les lectures qui ne connaissent pas cette sorte l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """
 
@@ -25,6 +29,8 @@ JOURNAL_DIR = OPENRIDE_HOME / "Activities" / ".journal"
 FSYNC_EVERY_S = 5.0   # fsync bloque la boucle ~7 ms ; flush à chaque ligne protège déjà d'un plantage du programme
 
 EVENTS = ("start", "pause", "resume", "stop")
+DEVICES = ("trainer", "click_plus", "click_minus", "hr")
+DEVICE_STATES = ("up", "down")
 
 
 @dataclass
@@ -45,6 +51,7 @@ class Record:
     grade_sent: float | None = None   # % envoyé au trainer en SIM (braquet, anticipation, lissage)
     block: int | None = None     # bloc d'entraînement ERG (à partir de 1)
     target_w: float | None = None  # cible ERG envoyée au trainer (W), None en SIM / FreeRide / pause
+    erg_bias_pct: float | None = None  # biais du Click appliqué à la cible (%, 0 sans appui), None hors ERG actif
 
 
 class JournalWriter:
@@ -70,6 +77,14 @@ class JournalWriter:
         if name not in EVENTS:
             raise ValueError(f"événement inconnu : {name}")
         self._write({"kind": "event", "event": name, "ts": ts})
+
+    def device(self, device: str, state: str, ts: float) -> None:
+        """Changement d'état d'un appareil (coupure ou retour), lot M4."""
+        if device not in DEVICES:
+            raise ValueError(f"appareil inconnu : {device}")
+        if state not in DEVICE_STATES:
+            raise ValueError(f"état d'appareil inconnu : {state}")
+        self._write({"kind": "device", "ts": ts, "device": device, "state": state})
 
     def close(self) -> None:
         if not self._fh.closed:
