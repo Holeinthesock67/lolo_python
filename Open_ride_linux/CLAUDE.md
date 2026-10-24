@@ -8,7 +8,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - **Matériel :**
   - home trainer HomeTrainer (FTMS), annoncé en Bluetooth sous le nom « HomeTrainer 0000 » ;
   - Zwift Cog ;
-  - Zwift Click, adresse `C1:1C:00:00:00:01`, modèle récent, messages de type `0x23`.
+  - Zwift Click V2, paire de boîtiers : gauche `C1:1C:00:00:00:01` (−, flèches), droit `C1:1C:00:00:00:03` (+, A, B, Y, Z), messages de type `0x23` (table `KEYPAD_BITS`). Le gauche est bridé une minute après la connexion sans passage récent par l'appli Zwift : B du droit fait aussi « − ».
 - **PC cible :** PC de bureau MSI (`pc-cible`), Ubuntu, GTX 1060, Python 3.14, Godot 4.3 dans `~/Applications/godot/`.
   - Utilisateur `utilisateur` ; dépôt dans `/home/utilisateur/Games/lolo_python`.
   - Un lien `~/Games/Open_ride_linux` pointe vers le dossier du projet.
@@ -69,6 +69,7 @@ cd compiler && pip install -e ".[dev]" -e ../core
 (cd compiler && pytest -q)            # réseau coupé ; `pytest -m network` pour l'essai Copernicus réel
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh   # vrai core + vrai engine, ~10 s
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open   # tests graphiques (Xvfb, captures analysées, références, rapport HTML), ~2 min
 
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
