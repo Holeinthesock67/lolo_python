@@ -52,6 +52,7 @@
 | [L6](LOT_L6_cible_erg_journal.md) | Cible ERG enregistrée dans le journal de séance | Python | — | Petite | **Livré le 24 octobre** (PR #69, issue #58) |
 | [L7](LOT_L7_historique_seances.md) | Historique des séances : `openride-core history` | Python | — | Petite | **Livré le 24 octobre** (PR #70, issue #59) |
 | [L8](LOT_L8_raccourci_bureau.md) | Raccourci de bureau : fichier `.desktop`, icône, script d'installation | Bash | — | Petite | **Livré le 24 octobre** (PR #71, issue #60) |
+| [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, ciel) | GDScript + GLSL | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -59,7 +60,6 @@
 - validation des fichiers FIT dans GoldenCheetah et Garmin Connect.
 
 **À rédiger plus tard** (contrôle visuel ou décision du propriétaire nécessaire) :
-- E2 : shader triplanaire et application du thème (s'appuie sur I5) ;
 - E3 : ciel, végétation par bruit, HUD final avec profil d'altitude (s'appuie sur K2 et K3) ;
 - E4 : rendu des bâtiments, des forêts, de l'eau et sons des points d'intérêt (s'appuie sur I3, I4, K3 et K4) ;
 - F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) ;

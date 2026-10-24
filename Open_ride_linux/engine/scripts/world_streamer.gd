@@ -17,6 +17,9 @@ extends Node3D
 
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
+const TerrainMaterial := preload("res://scripts/terrain_material.gd")
+const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
+const ThemeLoader := preload("res://scripts/theme_loader.gd")
 
 const ROAD_BEHIND_M := 1000.0
 const ROAD_AHEAD_M := 3000.0
@@ -40,7 +43,9 @@ var _jobs: Dictionary = {}           # clé -> {task, arrays, origin, gen}
 var _ready: Array = []               # travaux terminés, à instancier : {key, arrays, origin}
 var _generation := 0
 var _road_material: StandardMaterial3D
-var _terrain_material: StandardMaterial3D
+var _terrain_material: Material
+var _road_width_m: float = RoadBuilder.ROAD_WIDTH_M
+var _ground_color: Color = FLAT_GROUND_COLOR
 var _ground: MeshInstance3D = null
 
 ## Mesures pour le rapport de performance : clé de type -> [nombre, µs cumulées].
@@ -50,9 +55,7 @@ var _stats_mutex := Mutex.new()
 
 func _init() -> void:
 	_road_material = RoadBuilder.make_material()
-	_terrain_material = StandardMaterial3D.new()
-	_terrain_material.vertex_color_use_as_albedo = true
-	_terrain_material.roughness = 1.0
+	_terrain_material = TerrainMaterial.create_material()
 
 
 func _process(_delta: float) -> void:
@@ -212,7 +215,7 @@ func _start_jobs() -> void:
 		if _jobs.size() >= MAX_RUNNING_TASKS:
 			break
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
-			"route": route, "world_dir": world_dir}
+			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m}
 		job["task"] = WorkerThreadPool.add_task(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
 
@@ -224,7 +227,7 @@ func _build_job(job: Dictionary) -> void:
 	var r = job["route"]
 	match spec["kind"]:
 		"road":
-			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"])
+			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)))
 		"near", "far":
 			var t: Vector2i = spec["tile"]
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
@@ -306,6 +309,30 @@ func _free_instance(key: String) -> void:
 	mi.free()
 
 
+## Configure les matériaux de route et de terrain selon le thème (Lot E2).
+func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
+	var r_params := ThemeRenderParams.road_params(theme_dict)
+	_road_width_m = float(r_params["width_m"])
+	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture") if theme_dir != "" else null
+	_road_material = RoadBuilder.make_material(r_params["color"], road_tex)
+
+	if _terrain_material is ShaderMaterial:
+		TerrainMaterial.apply_to_material(_terrain_material, theme_dict, theme_dir)
+	else:
+		_terrain_material = TerrainMaterial.create_material(theme_dict, theme_dir)
+
+	var t_params := ThemeRenderParams.terrain_uniforms(theme_dict)
+	_ground_color = t_params["grass_color"]
+	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
+		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
+
+	for key in _instances:
+		var mi: MeshInstance3D = _instances[key]
+		if mi != null and mi.mesh != null and mi.mesh.get_surface_count() > 0:
+			var is_road: bool = (key as String).begins_with("road:")
+			mi.mesh.surface_set_material(0, _road_material if is_road else _terrain_material)
+
+
 func _make_ground() -> void:
 	var min_alt := INF
 	for a in route.alt_m:
@@ -313,7 +340,7 @@ func _make_ground() -> void:
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(2.0 * FAR_RADIUS_M, 2.0 * FAR_RADIUS_M)
 	var mat := StandardMaterial3D.new()
-	mat.albedo_color = FLAT_GROUND_COLOR
+	mat.albedo_color = _ground_color
 	mat.roughness = 1.0
 	plane.material = mat
 	_ground = MeshInstance3D.new()

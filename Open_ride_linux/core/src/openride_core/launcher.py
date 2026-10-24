@@ -41,7 +41,7 @@ DEFAULT_LOG = Path.home() / "run_trainer.log"
 DEFAULT_ENGINE_DIR = Path(__file__).resolve().parents[3] / "engine"
 DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click", "--autostart"]
 
-STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+STOP_SIGNALS = tuple(s for s in (signal.SIGINT, signal.SIGTERM, getattr(signal, "SIGHUP", None)) if s is not None)
 
 
 @dataclass

@@ -8,6 +8,8 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
+const ThemeLoader := preload("res://scripts/theme_loader.gd")
+const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -54,8 +56,13 @@ func _ready() -> void:
 	routes_dir = cfg["routes_dir"]
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
-	RenderQuality.apply_preset(RenderQuality.DEFAULT_PRESET, camera, sun, world_env.environment, get_viewport())
+	RenderQuality.apply_preset(cfg.get("quality", RenderQuality.DEFAULT_PRESET), camera, sun, world_env.environment, get_viewport())
 	RenderQuality.apply_fog(world_env.environment, false)
+	var theme_res := ThemeLoader.load_named(cfg.get("theme", "default"))
+	var theme_dict: Dictionary = theme_res.get("theme", {})
+	var theme_dir: String = theme_res.get("theme_dir", "")
+	streamer.set_theme(theme_dict, theme_dir)
+	_apply_sky_params(theme_dict)
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
@@ -78,6 +85,15 @@ func _ready() -> void:
 	status_label.text = "ÉTAT: en attente du core…"
 	$HUD/Margin/VBox.add_child(status_label)
 	# Le parcours est chargé d'après le route_id reçu dans state (_request_route).
+
+
+func _apply_sky_params(theme_dict: Dictionary) -> void:
+	var sky := ThemeRenderParams.sky_params(theme_dict)
+	if sun != null:
+		var sun_dir: Vector3 = sky["sun_direction"]
+		sun.basis = Basis.looking_at(-sun_dir, Vector3.UP)
+	if world_env != null and world_env.environment != null:
+		world_env.environment.fog_density = float(sky["fog_density"])
 
 
 func _on_input_event(event_name: String) -> void:
