@@ -161,6 +161,42 @@ def test_text_output_and_errors(tmp_path: Path, capsys):
     out = capsys.readouterr().out
     assert "NP 200 W" in out and "IF 0.80" in out and "Z3" in out
 
+    # Critère 3 et 5 du lot L6 : journal ERG avec target_w, bilan JSON/texte, FIT, recover, replay.
+    from openride_core.fit_export import journal_to_fit
+    from openride_core.replay import load_replay
+    from openride_core.tools.session_summary import format_text
+
+    erg_path = tmp_path / "erg_l6.jsonl"
+    with JournalWriter(erg_path, route_id="test") as j:
+        j.event("start", T0)
+        for i in range(120):
+            blk = 1 if i < 60 else 2
+            pw = 195.0 if i < 60 else 308.0
+            tw = 200.0 if i < 60 else 300.0
+            j.record(Record(
+                ts=T0 + i + 1, t=float(i + 1), alt=100.0, distance=8.0 * (i + 1),
+                speed=8.0, power=pw, cadence=85.0, hr=140, grade=0.0, gear=12,
+                mode="ERG", block=blk, target_w=tw,
+            ))
+        j.event("stop", T0 + 120)
+    res_l6 = summary_of(erg_path)
+    assert res_l6["erg"]["target_available"] is True
+    assert res_l6["erg"]["note"] is None
+    assert res_l6["erg"]["blocks"][0] == {
+        "block": 1, "seconds": 60, "avg_power_w": 195.0, "target_w": 200.0, "delta_w": -5.0,
+    }
+    assert res_l6["erg"]["blocks"][1] == {
+        "block": 2, "seconds": 60, "avg_power_w": 308.0, "target_w": 300.0, "delta_w": 8.0,
+    }
+    txt_l6 = format_text(res_l6)
+    assert "bloc  1 : 0:01:00, 195 W / cible 200 W, écart -5 W" in txt_l6
+    assert "bloc  2 : 0:01:00, 308 W / cible 300 W, écart +8 W" in txt_l6
+    sess_l6 = load_session(erg_path)
+    write_fit(sess_l6.records, sess_l6.events, tmp_path / "erg_l6.fit")
+    rec_fit, _ = journal_to_fit(erg_path, tmp_path / "recovered_l6.fit")
+    assert rec_fit.is_file()
+    assert len(load_replay(erg_path)) == 120
+
     assert run(tmp_path / "absent.jsonl", 250.0, False) == 1
     assert "introuvable" in capsys.readouterr().err
     (tmp_path / "x.txt").write_text("rien")
