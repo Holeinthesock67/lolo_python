@@ -39,7 +39,7 @@ Open_ride_linux/
   - conformité au contrat IPC (lot C) ;
   - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
   - Godot conforme au contrat : renvoi des commandes, extrapolation de la caméra, core injoignable (lot D) ;
-  - 301 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal et outils d'entraînements `.zwo`) et 154 côté compilateur (dont `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation des thèmes `theme-check`) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 60 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
+  - 311 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal et outils d'entraînements `.zwo`) et 154 côté compilateur (dont `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation des thèmes `theme-check`) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 60 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
   - **Reste :** séance de 10 minutes et stabilité du Click.
 - **Sprint 2 terminé côté code :** compilateur GPX vers `.world`, couches route (lot B1) et terrain avec le MNT Copernicus (lot B2). Reste la comparaison avec Garmin Connect sur une vraie trace.
 - **Sprint 3 en cours :** ruban de route et terrain par tronçons (lot E1, fusionné le 24 octobre ; reste l'essai sur la GTX 1060) ; chargeur de thèmes et logique du bandeau ERG côté Godot prêts (lots I5 et I6), à brancher sur l'affichage (E2, F2).
@@ -96,9 +96,12 @@ Depuis `Open_ride_linux/`, un seul terminal suffit :
 scripts/openride-dev.sh                                          # HomeTrainer + Click, démarrage immédiat
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
 scripts/openride-dev.sh --trainer mock --input keyboard --autostart   # sans vélo
+scripts/openride-dev.sh --trainer ftms --input click --autostart --workout sweet_spot_3x10   # entraînement ERG
+scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcours>          # parcours compilé
 ```
 
 - Le script lance le core en arrière-plan, puis la fenêtre Godot.
+- Avec `--autostart`, `--route ID` choisit le parcours `~/.local/share/openride/routes/<ID>.world` (défaut : `demo`) et `--workout ID` l'entraînement ERG `~/OpenRide/Workouts/<ID>.zwo` (sans lui : mode SIM). Un parcours ou un entraînement refusé arrête le core aussitôt, avec un message dans le journal (code 1) ; sans `--autostart`, ces deux options sont refusées.
 - Nouveau lanceur équivalent, installé avec le core (lot K6) : `openride [options de openride-core run]`, par exemple `openride --trainer mock --input keyboard --autostart`. Il fait la même chose et, en plus, relance Godot s'il plante (3 fois en 2 minutes au plus, la séance passe en pause si Godot reste absent plus de 2 s). Si le core plante, il ferme Godot et rappelle `openride-core recover`.
 - Fermer la fenêtre, Ctrl+C ou fermer le terminal arrête le core proprement : la consigne (pente ou ERG) est annulée, le contrôle FTMS est rendu au trainer (Reset), le Bluetooth est déconnecté et le FIT écrit. Une autre application peut alors utiliser le HomeTrainer.
 - Si le HomeTrainer reste réservé après un arrêt brutal (processus tué, PC éteint en pleine séance) : `openride-core release-trainer` annule la consigne, rend le contrôle et déconnecte le trainer. À défaut : `bluetoothctl disconnect <adresse>`.
@@ -117,7 +120,7 @@ Chaque type d'appui a son bip.
 **Commandes utiles du core :**
 
 ```bash
-openride-core run --trainer ftms|mock --input click|keyboard|none [--gear N] [--replay CHEMIN] [--autostart]
+openride-core run --trainer ftms|mock --input click|keyboard|none [--gear N] [--replay CHEMIN] [--autostart [--route ID] [--workout ID]]
 openride-core recover            # transforme le dernier journal en FIT après un plantage
 openride-core release-trainer    # libère le HomeTrainer resté réservé (consigne annulée, contrôle FTMS rendu, déconnexion)
 openride-core summary [CHEMIN] [--ftp W] [--json]   # bilan : NP, IF, TSS, zones, meilleures puissances
