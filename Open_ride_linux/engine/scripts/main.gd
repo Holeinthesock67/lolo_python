@@ -1,12 +1,13 @@
 extends Node3D
 
-## Scène principale du moteur Godot : affiche la polyligne de la route, la caméra subjective et le HUD.
+## Scène principale du moteur Godot : ruban de route et terrain par tronçons, caméra subjective et HUD.
 
 # Chargement explicite : sans passer par l'éditeur, Godot ne connaît pas encore les class_name.
 const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const RenderQuality := preload("res://scripts/render_quality.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -15,7 +16,9 @@ const TEST_CAM_PERIOD_US := 50_000   # journal de la caméra à 20 Hz en mode te
 
 @onready var ipc: Node = $IpcClient
 @onready var camera: Camera3D = $Camera3D
-@onready var polyline_instance: MeshInstance3D = $RouteMesh
+@onready var streamer: Node3D = $WorldStreamer
+@onready var world_env: WorldEnvironment = $WorldEnvironment
+@onready var sun: DirectionalLight3D = $DirectionalLight3D
 @onready var banner: Label = $HUD/Banner
 @onready var hud_power: Label = $HUD/Margin/VBox/PowerLabel
 @onready var hud_speed: Label = $HUD/Margin/VBox/SpeedLabel
@@ -51,6 +54,8 @@ func _ready() -> void:
 	routes_dir = cfg["routes_dir"]
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
+	RenderQuality.apply_preset(RenderQuality.DEFAULT_PRESET, camera, sun, world_env.environment, get_viewport())
+	RenderQuality.apply_fog(world_env.environment, false)
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
@@ -124,6 +129,8 @@ func _process(_delta: float) -> void:
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
 		# Dans Godot : -Z est le nord. La rotation Y s'applique sur le cap horaire.
 		camera.rotation.y = -heading
+		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
+		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 
 
 func _test_log_camera(now: int, s_disp: float) -> void:
@@ -134,20 +141,6 @@ func _test_log_camera(now: int, s_disp: float) -> void:
 	ipc.test_log("cam s=%.4f age_ms=%d frozen=%d moved=%d" % [s_disp, age_ms, int(follow.is_frozen(now)),
 			int(is_nan(_test_cam_last_s) or s_disp != _test_cam_last_s)])
 	_test_cam_last_s = s_disp
-
-
-func _build_route_mesh() -> void:
-	var im := ImmediateMesh.new()
-	var mat := StandardMaterial3D.new()
-	mat.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-	mat.albedo_color = Color(0.2, 0.7, 1.0, 1.0) # Bleu lumineux pour la polyligne du Spike 0
-
-	im.surface_begin(Mesh.PRIMITIVE_LINE_STRIP, mat)
-	for i in range(route.n):
-		im.surface_add_vertex(Vector3(route.x[i], route.alt_m[i], route.z[i]))
-	im.surface_end()
-
-	polyline_instance.mesh = im
 
 
 # --- parcours ----------------------------------------------------------------------------
@@ -200,9 +193,13 @@ func _poll_route_job() -> void:
 	route = job["route"]
 	follow.loop_length_m = route.length_m if route.is_loop() else 0.0
 	follow.reset()
-	_build_route_mesh()
+	# Changement de parcours : tronçons et tuiles vidés puis reconstruits autour de s = 0.
+	streamer.set_world(route, job["path"])
+	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain)
+	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
 	banner.clear_message("route")
-	print("Parcours « %s » chargé : %.0f m, type %s (%s)" % [job["id"], route.length_m, route.type, job["path"]])
+	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
+			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"]])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
 
 
