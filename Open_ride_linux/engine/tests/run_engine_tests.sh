@@ -11,7 +11,9 @@
 # REQUIRE_RENDER (1 : échec si xvfb-run manque, au lieu de sauter les tests de rendu),
 # UNIT (ex. « test_route_vectors » : ne lance que ce test unitaire et saute les autres étapes),
 # UNIT_TIMEOUT (durée maximale d'un test unitaire en secondes, défaut 120 : une erreur de script dans
-# _init laisse Godot tourner sans quitter).
+# _init laisse Godot tourner sans quitter),
+# VISUAL_CONFIGS (configurations des tests graphiques de la scène principale, défaut « 1280x720:low » ;
+# « none » pour les sauter ; matrice complète et rapport : run_visual_tests.sh).
 # Code de sortie : 0 si tout passe.
 set -u
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -117,6 +119,25 @@ elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
   record "render (tests/render/)" 1 "xvfb-run introuvable alors que REQUIRE_RENDER=1"
 else
   echo "xvfb-run introuvable : tests de rendu sautés (installer xvfb, ou REQUIRE_RENDER=1 pour échouer)"
+fi
+
+echo "== Tests graphiques de la scène principale (visual_check.py) =="
+# Vraie scène sous Xvfb face au faux core : captures d'écran analysées (HUD, bandeau, ciel et sol, caméra).
+VISUAL_CONFIGS="${VISUAL_CONFIGS:-1280x720:low}"
+if [ "$VISUAL_CONFIGS" = "none" ]; then
+  echo "VISUAL_CONFIGS=none : tests graphiques sautés"
+elif command -v xvfb-run >/dev/null 2>&1; then
+  VISUAL_DIR="$(mktemp -d -t openride-visual.XXXXXX)"
+  VISUAL_OUT="$(timeout -k 5 600 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
+    --configs "$VISUAL_CONFIGS" --out "$VISUAL_DIR" 2>&1)"
+  visual_rc=$?
+  echo "$VISUAL_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
+  if [ "$visual_rc" -eq 0 ]; then rm -rf "$VISUAL_DIR"; else echo "Captures, journaux et rapport gardés : $VISUAL_DIR/rapport.html"; fi
+  record "tests graphiques ($VISUAL_CONFIGS)" "$visual_rc" "$(echo "$VISUAL_OUT" | grep -E "^Tests graphiques" | tail -1 | sed 's/^Tests graphiques : //')"
+elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
+  record "tests graphiques" 1 "xvfb-run introuvable alors que REQUIRE_RENDER=1"
+else
+  echo "xvfb-run introuvable : tests graphiques sautés"
 fi
 
 echo "== Rendu par tronçons (lot E1) =="
