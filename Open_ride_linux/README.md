@@ -98,11 +98,13 @@ Depuis `Open_ride_linux/`, un seul terminal suffit :
 scripts/openride-dev.sh                                          # Victory + Click, démarrage immédiat
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
 scripts/openride-dev.sh --trainer mock --input keyboard --autostart   # sans vélo
+scripts/openride-dev.sh --trainer sim --input sim --hr sim --autostart   # sans matériel, Bluetooth simulé
 scripts/openride-dev.sh --trainer ftms --input click --autostart --workout sweet_spot_3x10   # entraînement ERG
 scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcours>          # parcours compilé
 ```
 
 - Le script lance le core en arrière-plan, puis la fenêtre Godot.
+- **Sans matériel :** `--trainer sim`, `--input sim` et `--hr sim` font tourner les vrais pilotes contre un Victory, une paire de Zwift Click et une ceinture cardio simulés ; `--sim-scenario` rejoue les pannes vues aux essais (réveil tardif, erreur 0x80, connexions lentes, coupures). Voir [docs/SIMULATION_BLE.md](docs/SIMULATION_BLE.md).
 - Avec `--autostart`, `--route ID` choisit le parcours `~/.local/share/openride/routes/<ID>.world` (défaut : `demo`) et `--workout ID` l'entraînement ERG `~/OpenRide/Workouts/<ID>.zwo` (sans lui : mode SIM). Un parcours ou un entraînement refusé arrête le core aussitôt, avec un message dans le journal (code 1) ; sans `--autostart`, ces deux options sont refusées.
 - Nouveau lanceur équivalent, installé avec le core (lot K6) : `openride [options de openride-core run]`, par exemple `openride --trainer mock --input keyboard --autostart`. Il fait la même chose et, en plus, relance Godot s'il plante (3 fois en 2 minutes au plus, la séance passe en pause si Godot reste absent plus de 2 s). Si le core plante, il ferme Godot et rappelle `openride-core recover`.
 - Fermer la fenêtre, Ctrl+C ou fermer le terminal arrête le core proprement : la consigne (pente ou ERG) est annulée, le contrôle FTMS est rendu au trainer (Reset), le Bluetooth est déconnecté et le FIT écrit. Une autre application peut alors utiliser le Victory.
@@ -122,7 +124,7 @@ Chaque type d'appui a son bip.
 **Commandes utiles du core :**
 
 ```bash
-openride-core run --trainer ftms|mock --input click|keyboard|none [--gear N] [--replay CHEMIN] [--autostart [--route ID] [--workout ID]]
+openride-core run --trainer ftms|mock|sim --input click|keyboard|none|sim [--hr none|ble|sim] [--sim-scenario NOM] [--gear N] [--replay CHEMIN] [--autostart [--route ID] [--workout ID]]
 openride-core recover            # transforme le dernier journal en FIT après un plantage
 openride-core release-trainer    # libère le Victory resté réservé (consigne annulée, contrôle FTMS rendu, déconnexion)
 openride-core summary [CHEMIN] [--ftp W] [--json]   # bilan : NP, IF, TSS, zones, meilleures puissances
