@@ -83,7 +83,21 @@ Une section absente retire l'appareil. Les temps sont en secondes depuis le lanc
 | `bpm` | `bpm` (null : suit la puissance) | Fréquence de la ceinture. |
 | `contact` | `value` (vrai par défaut, faux : absent, null : non géré) | Contact du capteur de la ceinture (ou de la montre). |
 
+## Rejouer une panne vue sur le vélo
+
+Après une coupure ou une erreur sur le vélo, `tools/log_scenario.py` (lot M5) convertit le journal du core en scénario : mêmes connexions, coupures, erreurs ATT, pertes de contrôle et appuis du Click, aux mêmes instants (secondes depuis « Core démarré »).
+
+```bash
+cd core && python -m openride_core.tools.log_scenario -o ~/panne.json          # dernière séance de ~/run_trainer.log
+python -m openride_core.tools.log_scenario ~/run_trainer.log --session 2 --from 60 --to 180 -o ~/panne.json
+cd .. && scripts/openride-dev.sh --trainer sim --input sim --hr sim --sim-scenario ~/panne.json --autostart
+```
+
+Correspondances : première connexion d'un appareil → `appear_at` ; « Reconnexion au trainer » → `drop` (sauf juste après « plus de données du trainer », qui devient un `silence` commencé 10 s plus tôt) ; erreur ATT lue (« ATT error: 0xNN » ou « renvoi ») → `att_error` avec son code ; « contrôle FTMS perdu » et commande refusée → `control_lost` (`refuse_control` si la séance a fini sur un refus du contrôle) ; coupure d'un boîtier du Click → `drop` sur `click_plus` (adresse du « + », `…E1:E7`) ou `click_minus`, puis `wake` avant sa reconnexion ; appuis → `press` (long : 1 s) ; ceinture connectée puis coupée → `drop`. Le reste (pauses, mesures `Perf`, transitions) est ignoré et compté dans le résumé écrit sur la sortie d'erreur. Le format de scénario n'a pas de clé pour l'origine : elle est écrite dans `description`.
+
 ## Tests automatiques
+
+`core/tests/test_log_scenario.py` (lot M5) convertit des journaux d'exemple (deux boîtiers du Click, anciens formats, fenêtre, choix de séance, journaux inutilisables), charge le scénario produit dans une séance de 20 s, et fait l'aller-retour séance `coupures` → journal → scénario (marqué `slow`, ~105 s).
 
 `core/tests/test_hr_monitor.py` (lot M2) vérifie le décodage complet de 0x2A37, le contact absent puis retrouvé, le choix de la ceinture face à une montre, `hr_name`, `hr_address` et la batterie faible avec la ceinture et la montre simulées.
 

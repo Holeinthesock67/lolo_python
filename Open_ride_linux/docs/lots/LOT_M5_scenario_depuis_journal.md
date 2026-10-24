@@ -49,3 +49,11 @@ Aucune.
 
 - Rejouer la puissance ou la cadence mesurées (c'est le rôle de `--replay`, lot H3).
 - Sous-commande de `openride-core` (ce module suffit ; à ajouter plus tard si utile).
+
+## 9. Livraison (24 octobre 2026)
+
+- `core/src/openride_core/tools/log_scenario.py` : `convert(lines, session, t_from, t_to)` et `main`. Réutilise `LINE_RE`, `PATTERNS`, `_split_sessions`, `_parse_ts` et `_click_key` de `log_report.py` par import ; les lignes absentes de `PATTERNS` (ceinture connectée et coupée, contrôle perdu 0xFF, renvoi après erreur ATT du lot M1) sont dans `EXTRA_FORMAT_STRINGS`, vérifiées contre le code source par un test.
+- Manque du format de scénario, signalé et non contourné : `validate` refuse une clé `source` ; l'origine (chemin, séance, fenêtre) est écrite dans `description` et le résumé le dit.
+- Choix assumés : une ligne de coupure du Click sans adresse (ancien format) est rattachée au dernier boîtier connecté ; un boîtier jamais vu est simulé endormi (`asleep`) ; une commande refusée seule devient `control_lost` (le simulateur n'a pas de refus ponctuel), `refuse_control` seulement si la séance a fini sur le refus du contrôle.
+- Journal d'exemple ajouté : `core/tests/data/logs/seance_deux_boitiers.log` (deux boîtiers, erreur ATT renvoyée, contrôle perdu, ceinture).
+- Tests : `core/tests/test_log_scenario.py` (critère 2 : `test_roundtrip_with_coupures`, marqué `slow`, ~105 s ; 3 : `test_two_click_boxes_are_told_apart` ; 4 : `test_generated_scenario_runs_as_a_file` ; 5 : `test_window_keeps_and_shifts_events` ; 6 : `test_unusable_journal_exits_1`, `test_missing_journal_exits_1`).
