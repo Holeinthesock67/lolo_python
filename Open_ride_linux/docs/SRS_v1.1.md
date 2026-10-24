@@ -335,13 +335,17 @@ g_base_pct = 2.0
 long_press_gears = 10
 
 [drivers]
-trainer = "mock"             # "ftms" ou "mock"
-input = "keyboard"           # "click", "keyboard" ou "none"
+trainer = "mock"             # "ftms", "mock" ou "sim" (Bluetooth simulé)
+input = "keyboard"           # "click", "keyboard", "none" ou "sim" (Click simulé)
 trainer_address = ""         # adresse MAC facultative
 click_address = ""
 click_short_max_s = 0.5
 click_long_min_s = 0.9
 mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
+hr = "none"                  # ceinture cardio : "none", "ble" ou "sim"
+hr_address = ""
+hr_name = ""                 # vide : tout appareil annonçant le service Heart Rate (0x180D)
+sim_scenario = ""            # scénario du Bluetooth simulé (vide : demo), voir docs/SIMULATION_BLE.md
 
 [render]
 quality = "low"      # low, medium, high
@@ -383,6 +387,8 @@ Le `.world` est désormais un dossier, et non un fichier unique comme dans la v1
 - Journaux lisibles (niveau, horodatage) pour chaque programme.
 
 **Mode mock.** `MockDriver` remplace le trainer : puissance constante, profil en rampe, pilotage au clavier ou rejeu d'un FIT ou d'un journal, avec simulation de déconnexion. Avec le clavier comme `InputProvider`, toute l'application se développe et se teste sans le vélo.
+
+**Bluetooth simulé** (ajout du 24 octobre 2026). `--trainer sim`, `--input sim` et `--hr sim` gardent les vrais pilotes (FTMS, Click, ceinture) et simulent les appareils derrière eux (`ble_sim.py`) : Control Point avec indications et refus, relais du boîtier « − », réveil du Click par un appui, pannes scénarisées (`sim_scenarios.py`, guide `docs/SIMULATION_BLE.md`). Une ceinture cardio réelle (`hr = "ble"`) passe avant la fréquence lue par le trainer.
 
 **Tests**
 
