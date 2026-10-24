@@ -171,7 +171,7 @@ def test_signal_stops_both_cleanly(fake, sig):
 
 
 def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr("openride_core.config.CONFIG_PATH", tmp_path / "absent_default.toml")
+    monkeypatch.setattr("openride_core.config.DEFAULT_CONFIG_PATH", tmp_path / "absent_default.toml")
     cfg = tmp_path / "config.toml"
     cfg.write_text("[ipc]\nport_state = 6005\nport_commands = 6006\n[render]\nquality = \"high\"\ntheme = \"alpes\"\n")
     godot = tmp_path / "godot"
