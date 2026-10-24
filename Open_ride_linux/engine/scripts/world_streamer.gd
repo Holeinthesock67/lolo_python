@@ -38,6 +38,7 @@ var chunks_ahead: int = 3
 var chunks_behind: int = 1
 var vegetation_density_factor: float = 0.3
 var tree_renderer: Node3D = null
+var osm_streamer: Node3D = null
 
 var _near_index: Dictionary = {}     # Vector2i -> true
 var _far_index: Dictionary = {}
@@ -92,6 +93,8 @@ func set_world(new_route, new_world_dir: String) -> void:
 			has_terrain = false
 	if not has_terrain:
 		_make_ground()
+	if osm_streamer != null:
+		osm_streamer.set_world(route, world_dir)
 
 
 func _has_layer(layer_name: String) -> bool:
@@ -132,6 +135,8 @@ func clear() -> void:
 		_free_instance(key)
 	if tree_renderer != null:
 		tree_renderer.clear()
+	if osm_streamer != null:
+		osm_streamer.clear()
 	if _ground != null:
 		remove_child(_ground)
 		_ground.mesh = null
@@ -239,6 +244,8 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 		_ground.position = Vector3(cam_pos.x, _ground.position.y, cam_pos.z)
 	if tree_renderer != null:
 		tree_renderer.enforce_budget(cam_pos)
+	if osm_streamer != null and route != null:
+		osm_streamer.update_window(s_pos - float(chunks_behind) * 1000.0, s_pos + float(chunks_ahead) * 1000.0 + v * LOOKAHEAD_S)
 
 
 func _start_jobs() -> void:
