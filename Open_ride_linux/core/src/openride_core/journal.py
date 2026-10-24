@@ -42,6 +42,7 @@ class Record:
     grade: float | None = None   # %
     mode: str = "SIM"
     gear: int | None = None
+    grade_sent: float | None = None   # % envoyé au trainer en SIM (braquet, anticipation, lissage)
     block: int | None = None     # bloc d'entraînement ERG (à partir de 1)
 
 
