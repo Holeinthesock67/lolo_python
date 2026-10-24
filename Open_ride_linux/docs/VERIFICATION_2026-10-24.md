@@ -100,3 +100,20 @@ Les autres concernent `verify.py` (valeurs `None` déjà rejetées par `_is_numb
 | R3, R4, S2 | Ouverts | À traiter au fil de l'eau. |
 
 Après correction : 267 tests du core (au lieu de 261) et 154 du compilateur passent.
+
+## 8. Intégration continue et fusion
+
+- **Demande de fusion :** PR #44 (branche `ccr-42b033bb-3arrvr` vers `main`).
+- **Intégration continue (GitHub Actions, `Tests OpenRide`) :** runs 119 (rapport seul) et 120 (correctifs) verts sur la branche ; run 121 sur la PR. Aucun échec constaté : `python (3.11)`, `python (3.14)` et `engine (Godot 4.3)` passent.
+- **Fusion dans `main` :** par commit de fusion (`--no-ff`), seulement une fois l'intégration continue verte, conformément à `CLAUDE.md`.
+- **Sur le PC de Laurent, après la fusion :**
+
+```bash
+cd /home/depret/Games/lolo_python && git checkout main && git pull
+cd Open_ride_linux/core && source .venv/bin/activate && pytest -q -m "not slow"
+```
+
+- **Autres PR encore ouvertes, non concernées par celle-ci :**
+  - #7 (E1) et la chaîne K1 à K5 (#38 à #42), qui part de la branche d'E1 ;
+  - #29 (cahiers K1 à K8) ;
+  - #34 (K8, qui annonce 265 tests du core : à remettre à jour après cette fusion, `test_docs_coherence.py` donne la valeur à écrire).
