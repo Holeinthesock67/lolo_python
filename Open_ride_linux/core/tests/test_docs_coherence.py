@@ -13,6 +13,9 @@ Deuxième passe (lot J7) :
 7. Liens Markdown relatifs : fichier cible existant, ancre présente parmi les titres de la cible.
 8. Nombres de tests du `README.md` et de `SUIVI_AVANCEMENT.md` vs tests réellement collectés.
 9. Chemins du projet cités entre accents graves (`core/…`, `docs/…`, etc.) existants.
+
+Vérification du 24 octobre :
+10. Lots numérotés cités dans `README.md`, `CLAUDE.md` et `SUIVI_AVANCEMENT.md` présents dans `00_INDEX.md`.
 """
 
 from __future__ import annotations
@@ -378,6 +381,27 @@ def check_lots_index(index_text: str, lots_dir: Path = LOTS_DIR) -> list[str]:
     return errors
 
 
+# Citation d'un ou plusieurs lots numérotés : « lot K6 », « lots I3 et I4 », « lots H1 à H8 ».
+_LOT_CITATION_RE = re.compile(r"\b[Ll]ots?\s+((?:[A-Z]\d+(?:\s*(?:,|et|à|puis)\s*)?)+)")
+
+
+def check_cited_lots(docs: dict[str, str], index_text: str) -> list[str]:
+    """Vérifie que chaque lot numéroté cité dans la documentation figure dans 00_INDEX.md.
+
+    Sont connus les lots du tableau et ceux de la liste « À rédiger plus tard » (« - E2 : … »).
+    """
+    known = set(re.findall(r"^\|\s*\[([A-Z]\d*)\]\(LOT_", index_text, flags=re.MULTILINE))
+    known |= set(re.findall(r"^- ([A-Z]\d+) :", index_text, flags=re.MULTILINE))
+    errors: list[str] = []
+    for name, text in docs.items():
+        cited: set[str] = set()
+        for m in _LOT_CITATION_RE.finditer(text):
+            cited |= set(re.findall(r"[A-Z]\d+", m.group(1)))
+        for lot_id in sorted(cited - known):
+            errors.append(f"{name} : lot {lot_id} cité mais absent de docs/lots/00_INDEX.md")
+    return errors
+
+
 # --- 5. Validité des schémas JSON ----------------------------------------------------
 
 def check_json_schemas(contracts_dir: Path = CONTRACTS_DIR) -> list[str]:
@@ -446,6 +470,23 @@ def test_lots_index_status_and_negative(tmp_path: Path) -> None:
     fake_index = "| [Z9](LOT_Z9_fictif.md) | Lot fictif | Python | — | Petite | **Livré le 23 octobre** |\n"
     errs = check_lots_index(fake_index, tmp_path)
     assert any("LOT_Z9_fictif.md" in e and "Livraison" in e for e in errs)
+
+
+def test_cited_lots_are_indexed_and_negative() -> None:
+    index_text = INDEX_PATH.read_text(encoding="utf-8")
+    docs = {
+        "README.md": README_PATH.read_text(encoding="utf-8"),
+        "CLAUDE.md": CLAUDE_MD_PATH.read_text(encoding="utf-8"),
+        "SUIVI_AVANCEMENT.md": SUIVI_PATH.read_text(encoding="utf-8"),
+    }
+    assert check_cited_lots(docs, index_text) == []
+
+    # Test négatif : un lot cité sans cahier dans l'index (cas de K6 et K7, vérification du 24 octobre)
+    errs = check_cited_lots({"README.md": "lanceur (lot Z9), couches (lots Y1 et I3)"}, index_text)
+    assert errs == [
+        "README.md : lot Y1 cité mais absent de docs/lots/00_INDEX.md",
+        "README.md : lot Z9 cité mais absent de docs/lots/00_INDEX.md",
+    ]
 
 
 def test_contracts_json_schemas_and_negative(tmp_path: Path) -> None:
