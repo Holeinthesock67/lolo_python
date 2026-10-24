@@ -31,7 +31,7 @@ def _f(x, nd=0, unit=""):
     return "n/d" if x is None else f"{x:.{nd}f}{unit}"
 
 
-def snapshot(con, today=None, k_sd=0.75):
+def snapshot(con, today=None, k_sd=0.75, place=None):
     today = today or date.today()
     iso = lambda d: d.isoformat()
     w_start, b_end, b_start = iso(today - timedelta(days=6)), iso(today - timedelta(days=7)), iso(today - timedelta(days=34))
@@ -131,16 +131,16 @@ def snapshot(con, today=None, k_sd=0.75):
                      f"FC {_f(d['avg_hr'])} · P {_f(d['avg_power'])}")
 
     # --- météo à venir ---
-    L += ["", "## Météo à venir"]
+    L += ["", f"## Météo à venir ({place})" if place else "## Météo à venir"]
     for w in con.execute("SELECT * FROM v_weather_daily WHERE day>=? ORDER BY day LIMIT 4", (iso(today),)):
         L.append(f"- {w['day']} : {_f(w['tmin'])}–{_f(w['tmax'])} °C, pluie {_f(w['precip_mm'], 1)} mm, vent max {_f(w['wind_max_kmh'])} km/h")
     return "\n".join(L) + "\n"
 
 
-def export(con, out_dir, today=None):
+def export(con, out_dir, today=None, place=None):
     out = Path(out_dir)
     out.mkdir(parents=True, exist_ok=True)
-    (out / "coach_snapshot.md").write_text(snapshot(con, today), encoding="utf-8")
+    (out / "coach_snapshot.md").write_text(snapshot(con, today, place=place), encoding="utf-8")
     (out / "coach_metrics.json").write_text(json.dumps(training.metrics(con, today), ensure_ascii=False, indent=1),
                                             encoding="utf-8")
     for name, sql in [("daily", "SELECT * FROM daily ORDER BY day"),

@@ -1,9 +1,16 @@
-# Lieu des sorties (météo). À MODIFIER : coordonnées de ta ville ou de ton point de départ vélo.
-[location]
-name = "Sarre-Union"
-latitude = 48.9
-longitude = 7.1
-timezone = "Europe/Paris"
+# Lieu de la météo : PAS ici. Il se règle dans la feuille « Coach – Carnet », onglet Réglages, ligne « Lieu météo »
+# (ville, « ville, pays » ou « latitude ; longitude »). Le Pi la lit chaque matin (settings_source.py) et garde
+# le dernier lieu connu dans data/location.json.
+[settings]
+remote = "coachro:Coach – Carnet.xlsx"   # accès rclone en lecture seule au dossier « Coach - Garmin export »
+key = "Lieu météo"
+
+# Secours facultatif, utilisé seulement si la feuille n'a jamais pu être lue :
+# [location]
+# name = "Ma ville"
+# latitude = 0.0
+# longitude = 0.0
+# timezone = "Europe/Paris"
 
 [sync]
 days_back_first_run = 90   # historique récupéré au tout premier lancement

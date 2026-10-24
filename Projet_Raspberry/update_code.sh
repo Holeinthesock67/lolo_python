@@ -48,7 +48,7 @@ deploy() {
 
 deploy "Sport" "$SRC/Sport" "$HOME/garmin_coach" \
     "$HOME/garmin_coach/.venv/bin/python test_offline.py" \
-    coach.py db.py garmin_source.py report.py training.py integrity.py exercises.py weather_source.py test_offline.py
+    coach.py db.py garmin_source.py report.py training.py integrity.py exercises.py weather_source.py settings_source.py test_offline.py
 
 deploy "Podcast" "$SRC/Podcast" "$HOME/veille" \
     "$HOME/veille-env/bin/python -m py_compile commun.py veille.py && $HOME/piper-env/bin/python -m py_compile podcast.py" \
