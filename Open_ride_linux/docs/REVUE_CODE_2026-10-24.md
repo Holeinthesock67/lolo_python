@@ -62,8 +62,8 @@ Le code fusionné cette nuit est solide : toutes les suites passent et la relect
 | --- | --- | --- |
 | C5 | Cette revue | Ouvert, rattaché au lot J4. |
 | C6 | Cette revue | Prévu : lots E3 (HUD, arbres, OSM) et G (menus). |
-| R3 | Vérification du 24 octobre | Ouvert (`ErgController.step` accepte un `dt` négatif ; inatteignable aujourd'hui). |
-| S2 | Vérification du 24 octobre | Ouvert (tests du compilateur qui importent le core sans le déclarer dans l'extra `dev`). |
+| R3 | Vérification du 24 octobre | Corrigé (lot M9) : `dt` négatif, infini ou NaN et FTP ≤ 0 refusés (`ValueError`). |
+| S2 | Vérification du 24 octobre | Corrigé (lot M9) : ces tests sautent proprement sans le core, et échouent en CI s'il manque. |
 | Click | Audit du 23 octobre | Stabilité à mesurer sur le PC cible ; le rapport `log_report` est maintenant juste avec deux boîtiers (C1). |
 
 ## 6. Résultats des suites (après corrections)
