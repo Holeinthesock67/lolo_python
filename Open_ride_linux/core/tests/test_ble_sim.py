@@ -1,0 +1,416 @@
+"""Bluetooth simulé (`ble_sim.py`, `sim_scenarios.py`) : vrais pilotes contre des appareils simulés.
+
+Chaque test déroule un petit scénario en temps réel (quelques secondes au plus) : c'est le même
+code que `openride-core run --trainer sim --input sim --hr sim`, sans matériel.
+"""
+
+from __future__ import annotations
+
+import asyncio
+import json
+import re
+
+import pytest
+
+from openride_core import ble_sim, ble_util, fit_export, ftms, hr_monitor
+from openride_core.__main__ import build_parser, main
+from openride_core.config import Config, ConfigError, from_dict
+from openride_core.ftms_driver import FtmsDriver
+from openride_core.input_providers import SimClickKeyboard, ZwiftClickProvider
+from openride_core.session import CoreSession, build_driver, build_hr, build_inputs, build_sim_world
+from openride_core.sim_scenarios import (SCENARIOS, SimScenarioError, build_world, load_scenario,
+                                         validate)
+from openride_core.zwift_click import InputEvent
+
+READY = {"trainer": {"appear_at": 0.0, "connect_delay_s": 0.05},
+         "click": {"appear_at": 0.05, "connect_delay_s": 0.05},
+         "hr": {"appear_at": 0.0, "connect_delay_s": 0.05, "tau_s": 1.0}}
+
+
+def sim_config(scenario: str = "nominal") -> Config:
+    cfg = Config()
+    cfg.drivers.trainer = cfg.drivers.input = cfg.drivers.hr = "sim"
+    cfg.drivers.sim_scenario = scenario
+    return cfg
+
+
+async def wait_for(cond, timeout=5.0):
+    end = asyncio.get_running_loop().time() + timeout
+    while not cond():
+        assert asyncio.get_running_loop().time() < end, "délai dépassé"
+        await asyncio.sleep(0.02)
+
+
+class Rig:
+    """Monde simulé et vrais pilotes, lancés comme dans la séance."""
+
+    def __init__(self, spec: dict, cfg: Config | None = None) -> None:
+        cfg = cfg or sim_config()
+        self.world = build_world(spec)
+        self.driver = build_driver(cfg, self.world)
+        self.inputs = build_inputs(cfg, self.world)
+        self.hr = build_hr(cfg, self.world)
+        self.parts = [self.driver, *self.inputs, self.hr, self.world]
+        self.tasks: list[asyncio.Task] = []
+
+    @property
+    def trainer(self) -> ble_sim.SimTrainer:
+        assert self.world.trainer is not None
+        return self.world.trainer
+
+    def start(self) -> "Rig":
+        self.tasks = [asyncio.create_task(p.run()) for p in self.parts]
+        return self
+
+    async def stop(self) -> None:
+        for p in self.parts:
+            p.stop()
+        done, pending = await asyncio.wait(self.tasks, timeout=5)
+        assert not pending, "arrêt trop long"
+
+    def events(self) -> list[InputEvent]:
+        out = []
+        for p in self.inputs:
+            while not p.events.empty():
+                out.append(p.events.get_nowait())
+        return out
+
+    def ops(self) -> list[int]:
+        return [c.op for c in self.trainer.commands]
+
+
+# --- trainer FTMS simulé ----------------------------------------------------------------
+
+def test_control_point_rules():
+    """0xFD sans indications, 0x05 sans contrôle, 0xFE pendant une procédure, Reset = contrôle rendu."""
+    async def scenario():
+        world = build_world(READY, hr=False, click=False)
+        replies = []
+        async with world.client_factory(await world.find_device("HomeTrainer", None, 1.0)) as client:
+            with pytest.raises(ble_sim.SimBleError, match="0xfd"):
+                await client.write_gatt_char(ftms.CONTROL_POINT, ftms.cmd_request_control())
+            await client.start_notify(ftms.CONTROL_POINT, lambda _c, d: replies.append(bytes(d)))
+            await client.write_gatt_char(ftms.CONTROL_POINT, ftms.cmd_set_target_power(200))
+            with pytest.raises(ble_sim.SimBleError, match="0xfe"):
+                await client.write_gatt_char(ftms.CONTROL_POINT, ftms.cmd_request_control())
+            await wait_for(lambda: replies)
+            assert replies[-1] == bytes([0x80, ftms.OP_SET_TARGET_POWER, 0x05])   # pas de contrôle
+            for payload in (ftms.cmd_request_control(), ftms.cmd_start_resume(),
+                            ftms.cmd_start_resume(), ftms.cmd_set_target_power(220)):
+                n = len(replies)
+                await client.write_gatt_char(ftms.CONTROL_POINT, payload)
+                await wait_for(lambda: len(replies) > n)
+            assert [r[2] for r in replies[-4:]] == [0x01, 0x01, 0x04, 0x01]   # 2e Start : déjà démarré
+            assert world.trainer.mode == "erg" and world.trainer.target_w == 220
+            await client.write_gatt_char(ftms.CONTROL_POINT, ftms.cmd_reset())
+            await wait_for(lambda: replies[-1][1] == ftms.OP_RESET)
+            assert world.trainer.released
+    asyncio.run(scenario())
+
+
+def test_ftms_driver_erg_sim_and_release():
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED")
+        rig.driver.set_target_power(250)
+        await wait_for(lambda: rig.trainer.mode == "erg" and rig.trainer.target_w == 250)
+        await wait_for(lambda: abs(rig.driver.poll().power_w - 250) < 25, timeout=6)
+        rig.driver.set_sim_grade(4.0)
+        await wait_for(lambda: rig.trainer.mode == "sim" and rig.trainer.grade_pct == 4.0)
+        await rig.stop()
+        # Relâche : pente 0 % puis Reset, contrôle rendu, plus aucune consigne active.
+        assert rig.ops()[-2:] == [ftms.OP_SET_SIM_PARAMS, ftms.OP_RESET]
+        assert rig.trainer.released and rig.trainer.client is None
+        assert ftms.OP_REQUEST_CONTROL in rig.ops()
+    asyncio.run(scenario())
+
+
+def test_att_error_0x80_then_recovery(caplog):
+    """Erreur ATT 0x80 ponctuelle (essai du 24 octobre) : le pilote reconnecte et reprend la main."""
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED")
+        rig.driver.set_sim_grade(1.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 1.0)
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "att_error"})
+        rig.driver.set_sim_grade(3.0)
+        await wait_for(lambda: rig.driver.reconnect_count == 1)
+        await wait_for(lambda: rig.trainer.grade_pct == 3.0 and rig.trainer.control, timeout=6)
+        assert rig.trainer.connections == 2
+        await rig.stop()
+    with caplog.at_level("INFO"):
+        asyncio.run(scenario())
+    assert any("ATT error: 0x80" in r.getMessage() for r in caplog.records)
+
+
+def test_control_lost_is_taken_back():
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_sim_grade(2.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 2.0)
+        n = rig.ops().count(ftms.OP_REQUEST_CONTROL)
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "control_lost"})
+        rig.driver.set_sim_grade(2.5)
+        await wait_for(lambda: rig.ops().count(ftms.OP_REQUEST_CONTROL) > n)
+        await wait_for(lambda: rig.trainer.grade_pct == 2.5)
+        assert rig.driver.reconnect_count == 0 and not rig.driver.control_refused
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_silent_control_loss_is_taken_back_after_a_refusal():
+    """Contrôle retiré sans état 0xFF : la consigne suivante est refusée (0x05, vu le 22 octobre).
+
+    Le refus arrive pendant l'écriture ; le pilote doit reprendre le contrôle au lieu de
+    renvoyer la consigne jusqu'à l'erreur (défaut trouvé avec ce simulateur).
+    """
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_sim_grade(2.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 2.0)
+        n = rig.ops().count(ftms.OP_REQUEST_CONTROL)
+        rig.trainer.control = False
+        rig.driver.set_sim_grade(3.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 3.0)
+        assert rig.ops().count(ftms.OP_REQUEST_CONTROL) == n + 1
+        await asyncio.sleep(0.3)
+        assert not rig.driver.control_refused and rig.driver._refusals == 0
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_refused_control_raises_the_flag():
+    async def scenario():
+        spec = {**READY, "trainer": {**READY["trainer"], "refuse_control": True}}
+        rig = Rig(spec).start()
+        rig.driver.set_sim_grade(2.0)
+        await wait_for(lambda: rig.driver.control_refused, timeout=8)
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_late_trainer_and_slow_connection():
+    """Réveil tardif et connexion refusée une fois : RECONNECTING, puis CONNECTED."""
+    async def scenario():
+        spec = {**READY, "trainer": {"appear_at": 0.5, "connect_delay_s": 0.3, "connect_failures": 1}}
+        rig = Rig(spec).start()
+        await asyncio.sleep(0.3)
+        assert rig.driver.status == "RECONNECTING"
+        await wait_for(lambda: rig.driver.status == "CONNECTED", timeout=6)
+        assert rig.driver.reconnect_count == 1 and rig.trainer.connections == 1
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_trainer_drop_and_silence_reconnect(monkeypatch):
+    import openride_core.ftms_driver as fd
+    monkeypatch.setattr(fd, "FORCE_RECONNECT_S", 1.0)
+
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED")
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "drop"})
+        await wait_for(lambda: rig.driver.status != "CONNECTED")
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.connections == 2,
+                       timeout=6)
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "silence", "seconds": 1.5})
+        await wait_for(lambda: rig.trainer.connections == 3, timeout=6)   # « plus de données »
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+# --- Zwift Click simulé -----------------------------------------------------------------
+
+def test_click_pair_relay_short_and_long_presses():
+    async def scenario():
+        rig = Rig(READY).start()
+        clicks = [p for p in rig.inputs if isinstance(p, ZwiftClickProvider)]
+        await wait_for(lambda: all(p.status == "CONNECTED" for p in clicks))
+        await rig.world.press("+")              # relayé par le boîtier « − » : un seul événement
+        await rig.world.press("-", 1.0)
+        await rig.world.press("+", 0.7)         # entre court et long : ignoré
+        await asyncio.sleep(0.2)
+        assert rig.events() == [InputEvent.PLUS_SHORT, InputEvent.MINUS_LONG]
+        assert {p.battery_pct for p in clicks} == {80}
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_sleeping_click_loses_the_waking_press():
+    async def scenario():
+        spec = {**READY, "click": {"asleep": True, "connect_delay_s": 0.05}}
+        rig = Rig(spec).start()
+        plus = rig.world.device("click_plus")
+        await asyncio.sleep(0.3)
+        assert plus.client is None              # endormi : ne s'annonce pas
+        await rig.world.press("+")
+        await wait_for(lambda: plus.client is not None, timeout=4)
+        await asyncio.sleep(0.2)
+        assert rig.events() == [] and plus.presses_lost == 1
+        await wait_for(lambda: plus.ride_on)
+        await rig.world.press("+")
+        await asyncio.sleep(0.1)
+        assert rig.events() == [InputEvent.PLUS_SHORT]
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_click_drop_sleeps_until_pressed():
+    async def scenario():
+        rig = Rig(READY).start()
+        minus = rig.world.device("click-")
+        await wait_for(lambda: minus.client is not None and minus.ride_on)
+        await rig.world.apply({"t": 0, "device": "click_minus", "action": "drop"})
+        assert minus.asleep
+        await asyncio.sleep(1.5)
+        assert minus.client is None
+        await rig.world.press("-")
+        await wait_for(lambda: minus.ride_on, timeout=6)
+        await rig.world.press("-")
+        await asyncio.sleep(0.1)
+        assert rig.events() == [InputEvent.MINUS_SHORT]
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_sim_keyboard_presses_the_simulated_click():
+    async def scenario():
+        rig = Rig(READY).start()
+        keys = next(p for p in rig.inputs if isinstance(p, SimClickKeyboard))
+        await wait_for(lambda: all(b.ride_on for b in rig.world.clicks))
+        keys.on_char("u")
+        await asyncio.sleep(1.2)
+        assert rig.events() == [InputEvent.PLUS_LONG] and keys.events.empty()
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+# --- ceinture cardio ---------------------------------------------------------------------
+
+def test_hr_strap_follows_power_and_goes_stale(monkeypatch):
+    monkeypatch.setattr(hr_monitor, "STALE_S", 1.5)
+
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.hr.bpm is not None, timeout=4)
+        rest = rig.hr.bpm
+        rig.driver.set_target_power(300)
+        await wait_for(lambda: rig.hr.bpm > rest + 20, timeout=8)
+        await rig.world.apply({"t": 0, "device": "hr", "action": "sleep"})
+        await rig.world.apply({"t": 0, "device": "hr", "action": "drop"})
+        await wait_for(lambda: rig.hr.bpm is None, timeout=4)
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_find_device_by_service(monkeypatch):
+    from test_ble_util import FakeAdv, FakeDevice, install_fake_bleak
+
+    class Adv(FakeAdv):
+        def __init__(self, uuids):
+            super().__init__(None)
+            self.service_uuids = uuids
+
+    strap = FakeDevice("AA:BB:CC:DD:EE:01", "Polar H10 1234")
+    other = FakeDevice("AA:BB:CC:DD:EE:02", "HomeTrainer 0000")
+    install_fake_bleak(monkeypatch, candidates=[(other, Adv([ftms.FTMS_SERVICE])),
+                                                (strap, Adv([ftms.HR_SERVICE]))])
+    found = asyncio.run(ble_util.find_device("", None, 1.0, service=ftms.HR_SERVICE))
+    assert found is strap
+    assert asyncio.run(ble_util.find_device("HomeTrainer", None, 1.0)) is other
+
+
+# --- scénarios ---------------------------------------------------------------------------
+
+@pytest.mark.parametrize("name", sorted(SCENARIOS))
+def test_builtin_scenarios_build(name):
+    world = build_world(load_scenario(name))
+    assert world.trainer and len(world.clicks) == 2 and world.hr
+    assert all(ev["action"] in {"press"} or ev.get("device") for ev in world.events)
+
+
+@pytest.mark.parametrize("spec, message", [
+    ({"trainer": {"puissance": 3}}, "clé(s) inconnue(s) puissance"),
+    ({"events": [{"t": 1, "action": "exploser"}]}, "action 'exploser' inconnue"),
+    ({"events": [{"action": "drop"}]}, "« t » et « action »"),
+    ({"events": [{"t": 1, "action": "silence"}]}, "« seconds » obligatoire"),
+    ({"events": [{"t": -1, "action": "drop"}]}, "doit être positif"),
+    ({"click": {"plus": {"name": "x"}}}, "click.plus"),
+])
+def test_scenario_validation(spec, message):
+    with pytest.raises(SimScenarioError, match=re.escape(message)):
+        validate(spec)
+
+
+def test_scenario_from_json_file(tmp_path):
+    path = tmp_path / "mon_scenario.json"
+    path.write_text(json.dumps({"trainer": {"rider_power_w": 150},
+                                "events": [{"t": 2, "device": "trainer", "action": "att_error"}]}))
+    world = build_world(load_scenario(str(path)))
+    assert world.trainer.rider_power_w == 150 and not world.clicks and world.hr is None
+    assert len(world.events) == 1
+    with pytest.raises(SimScenarioError, match="inconnu"):
+        load_scenario(str(tmp_path / "absent.json"))
+
+
+def test_scenario_events_play_in_order():
+    async def scenario():
+        spec = {**READY, "events": [{"t": 0.2, "device": "trainer", "action": "rider", "watts": 90},
+                                    {"t": 0.1, "device": "hr", "action": "bpm", "bpm": 150}]}
+        world = build_world(spec)
+        task = asyncio.create_task(world.run())
+        await asyncio.sleep(0.15)
+        assert world.hr.fixed_bpm == 150 and world.trainer.rider_power_w == 180
+        await asyncio.sleep(0.15)
+        assert world.trainer.rider_power_w == 90
+        world.stop()
+        await asyncio.wait_for(task, 1)
+    asyncio.run(scenario())
+
+
+# --- configuration, ligne de commande et séance complète ------------------------------------
+
+def test_config_accepts_sim_choices():
+    cfg = from_dict({"drivers": {"trainer": "sim", "input": "sim", "hr": "sim",
+                                 "sim_scenario": "coupures"}})
+    assert (cfg.drivers.trainer, cfg.drivers.input, cfg.drivers.hr) == ("sim", "sim", "sim")
+    with pytest.raises(ConfigError, match="hr"):
+        from_dict({"drivers": {"hr": "montre"}})
+    assert build_sim_world(Config()) is None   # mock + clavier : pas de Bluetooth simulé
+
+
+def test_cli_sim_options(capsys):
+    args = build_parser().parse_args(["run", "--trainer", "sim", "--input", "sim", "--hr", "sim",
+                                      "--sim-scenario", "erreur_0x80"])
+    assert (args.trainer, args.input, args.hr, args.sim_scenario) == ("sim", "sim", "sim", "erreur_0x80")
+    assert main(["run", "--trainer", "sim", "--sim-scenario", "inexistant"]) == 1
+    assert "scénario de simulation refusé" in capsys.readouterr().err
+
+
+def test_full_session_without_hardware(tmp_path, monkeypatch):
+    """Séance complète : trainer, Click et ceinture simulés, braquets, FC, puis relâche."""
+    monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
+    spec = {**READY, "events": [{"t": 1.2, "action": "press", "button": "+"},
+                                {"t": 1.6, "action": "press", "button": "+"},
+                                {"t": 2.0, "action": "press", "button": "-", "duration_s": 1.0}]}
+    monkeypatch.setitem(SCENARIOS, "test_complet", spec)
+    cfg = sim_config("test_complet")
+    cfg.ipc.port_state, cfg.ipc.port_commands = 5790, 5791
+
+    async def scenario():
+        s = CoreSession(cfg, journal_dir=tmp_path / "journal", routes_root=tmp_path / "routes")
+        assert isinstance(s.driver, FtmsDriver) and s.sim is not None
+        k0 = s.gearing.k
+        task = asyncio.create_task(s.run(autostart=True))
+        await wait_for(lambda: s.state.session_state == "RUNNING" and s.state.trainer_status == "CONNECTED")
+        await wait_for(lambda: s.state.gear == k0 + 2, timeout=4)
+        await wait_for(lambda: s.state.gear < k0, timeout=4)   # appui long : 10 braquets plus bas
+        await wait_for(lambda: s.state.hr is not None and s.state.input_status == "CONNECTED")
+        assert s.state.s > 0 and s.sim.trainer.mode == "sim"
+        s.stop_event.set()
+        await asyncio.wait_for(task, 10)
+        assert s.sim.trainer.released and s.sim.trainer.client is None
+        assert list((tmp_path / "act").glob("*.fit"))
+    asyncio.run(scenario())

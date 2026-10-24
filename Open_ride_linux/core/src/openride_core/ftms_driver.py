@@ -116,6 +116,7 @@ class FtmsDriver:
         self._want = _Want()
         self._last_sent: tuple[str, float] | None = None
         self._last_sent_at = 0.0
+        self._forgotten = 0   # compte les oublis de consigne (contrôle perdu ou refusé), voir _forget_sent
         self._immediate = False   # consigne de braquet en attente d'envoi (voir set_sim_grade)
         self._stop = asyncio.Event()
 
@@ -161,7 +162,17 @@ class FtmsDriver:
         """Oublie un refus de contrôle et force une nouvelle prise de contrôle."""
         self._refusals = 0
         self.control_refused = False
+        self._forget_sent()
+
+    def _forget_sent(self) -> None:
+        """Force une nouvelle prise de contrôle et le renvoi de la consigne.
+
+        Souvent appelé pendant qu'une commande attend sa réponse (refus 0x05, état 0xFF) :
+        `_flush_command` ne doit pas alors réécrire `_last_sent` au retour de l'écriture, sinon
+        la reprise de contrôle n'a jamais lieu (trouvé avec le Bluetooth simulé, ble_sim.py).
+        """
         self._last_sent = None
+        self._forgotten += 1
 
     def set_sim_grade(self, grade_pct: float, immediate: bool = False) -> bool:
         """`immediate` : changement de braquet, envoyé même sous GRADE_EPSILON_PCT (sans attendre
@@ -227,10 +238,10 @@ class FtmsDriver:
             # Contrôle retiré (autre application, interface du trainer) : on le redemande à la
             # prochaine consigne ; un refus passe ensuite par le compteur de `_on_response`.
             log.warning("Trainer : contrôle FTMS perdu (Fitness Machine Status 0xFF)")
-            self._last_sent = None
+            self._forget_sent()
         elif code == 0x01:
             log.info("Trainer : consignes remises à zéro par un tiers (Reset), renvoi")
-            self._last_sent = None
+            self._forget_sent()
         elif code in (0x02, 0x03):
             # Arrêt voulu sur le trainer (ou clé de sécurité) : pas de redémarrage forcé.
             log.info("Trainer : état machine %s", name)
@@ -260,7 +271,7 @@ class FtmsDriver:
                 # Deux reprises de contrôle ont échoué : la session passera en ERROR.
                 self.control_refused = True
             else:
-                self._last_sent = None   # forcera une nouvelle prise de contrôle
+                self._forget_sent()   # forcera une nouvelle prise de contrôle
 
     # --- boucle de connexion ----------------------------------------------------------
 
@@ -366,6 +377,7 @@ class FtmsDriver:
                             "non envoyée", mode.upper())
             self._last_sent, self._last_sent_at = (mode, value), now
             return
+        forgotten = self._forgotten
         if prev is None:   # première consigne ou contrôle perdu
             await self._take_control(cp)
         if mode == "erg":
@@ -373,7 +385,9 @@ class FtmsDriver:
         else:
             payload = ftms.cmd_set_sim_params(value, self._crr, self._cw)
         await cp.call(payload)
-        self._last_sent, self._last_sent_at = (mode, value), now
+        self._last_sent_at = now
+        if self._forgotten == forgotten:   # sinon refus ou contrôle perdu pendant l'écriture
+            self._last_sent = (mode, value)
 
     async def _release(self, cp: ControlPoint) -> None:
         """Rend le trainer libre en partant, même après une erreur.
