@@ -42,6 +42,8 @@ log = logging.getLogger("ble_sim")
 
 TRAINER_NAME = "HomeTrainer 0000 (sim)"
 HR_NAME = "HRM (sim)"
+WATCH_NAME = "Forerunner 265 (sim)"   # montre Garmin qui diffuse sa fréquence (lot M2)
+WATCH_ADDRESS = "C0:FF:EE:00:57:A7"
 
 
 class SimBleError(Exception):
@@ -65,6 +67,7 @@ class SimAdvertisement:
     """Ce que renvoie la recherche : un BLEDevice réduit à son nom et son adresse."""
     name: str
     address: str
+    rssi: int | None = None
 
 
 class SimDevice:
@@ -503,18 +506,34 @@ class SimClickBox(SimDevice):
 # --- ceinture cardio ----------------------------------------------------------------------
 
 class SimHrStrap(SimDevice):
-    uuids = (ftms.HR_SERVICE, ftms.HR_MEASUREMENT)
+    """Ceinture (ou montre qui diffuse sa fréquence) : 0x2A37 à 1 Hz, contact, RR, batterie.
+
+    `contact` : True (présent), False (absent), None (non géré par l'appareil) ;
+    `battery_pct` : None retire le service Battery 0x180F ; `rssi` : force du signal annoncé.
+    """
 
     def __init__(self, world: "SimWorld", name: str = HR_NAME, address: str = "C0:FF:EE:00:18:0D",
                  *, rest_bpm: int = 62, max_bpm: int = 185, ftp_w: float = 250.0,
-                 tau_s: float = 20.0, bpm: int | None = None, **kw: Any) -> None:
+                 tau_s: float = 20.0, bpm: int | None = None, contact: bool | None = True,
+                 battery_pct: int | None = 80, rssi: int = -60, **kw: Any) -> None:
         super().__init__(world, name, address, **kw)
         self.rest_bpm, self.max_bpm, self.ftp_w, self.tau_s = rest_bpm, max_bpm, ftp_w, tau_s
         self.fixed_bpm = bpm
         self.bpm = float(bpm if bpm is not None else rest_bpm + 25)
+        self.contact = contact
+        self.battery_pct = battery_pct
+        self.rssi = rssi
+        self.uuids = (ftms.HR_SERVICE, ftms.HR_MEASUREMENT)
+        if battery_pct is not None:
+            self.uuids += (ftms.BATTERY_SERVICE, ftms.BATTERY_LEVEL)
 
     def on_connect(self) -> None:
         self.spawn(self._loop())
+
+    def read(self, uuid: str) -> bytes:
+        if uuid == ftms.BATTERY_LEVEL and self.battery_pct is not None:
+            return bytes([max(0, min(100, int(self.battery_pct)))])
+        return super().read(uuid)
 
     def _goal(self) -> float:
         if self.fixed_bpm is not None:
@@ -524,12 +543,21 @@ class SimHrStrap(SimDevice):
         frac = min(max(power / self.ftp_w, 0.0), 1.3)
         return self.rest_bpm + 25 + (self.max_bpm - self.rest_bpm - 25) * frac / 1.3
 
+    def measurement(self) -> bytes:
+        """Trame 0x2A37 : bpm sur 8 bits, contact s'il est géré, un intervalle RR cohérent."""
+        bpm = max(30, min(240, int(round(self.bpm))))
+        flags = 0x10   # intervalles RR présents
+        if self.contact is not None:
+            flags |= 0x04 | (0x02 if self.contact else 0)
+        rr = int(round(60.0 / bpm * 1024))
+        return bytes([flags, bpm]) + struct.pack("<H", rr)
+
     async def _loop(self) -> None:
         while True:
             await asyncio.sleep(1.0)
             alpha = 1.0 - math.exp(-1.0 / max(self.tau_s, 1e-3))
             self.bpm += alpha * (self._goal() - self.bpm)
-            self.notify(ftms.HR_MEASUREMENT, bytes([0x00, max(30, min(240, int(round(self.bpm))))]))
+            self.notify(ftms.HR_MEASUREMENT, self.measurement())
 
 
 # --- monde simulé -------------------------------------------------------------------------
@@ -548,6 +576,7 @@ class SimWorld:
         self.trainer: SimTrainer | None = None
         self.clicks: list[SimClickBox] = []
         self.hr: SimHrStrap | None = None
+        self.hr_watch: SimHrStrap | None = None   # montre qui diffuse sa fréquence (lot M2)
         self.events: list[dict[str, Any]] = []
         self.relay_delay_s: tuple[float, float] = (0.005, 0.040)
         self.name = "sim"
@@ -556,7 +585,7 @@ class SimWorld:
 
     @property
     def devices(self) -> list[SimDevice]:
-        return [d for d in (self.trainer, *self.clicks, self.hr) if d is not None]
+        return [d for d in (self.trainer, *self.clicks, self.hr, self.hr_watch) if d is not None]
 
     def now(self) -> float:
         loop_time = asyncio.get_running_loop().time()
@@ -565,12 +594,14 @@ class SimWorld:
         return loop_time - self._t0
 
     def device(self, key: str) -> SimDevice:
-        """« trainer », « hr », « click_plus » / « click+ », « click_minus » / « click- »."""
+        """« trainer », « hr », « hr_watch », « click_plus » / « click+ », « click_minus » / « click- »."""
         k = key.lower().replace("_", "").replace(" ", "")
         if k == "trainer" and self.trainer is not None:
             return self.trainer
         if k == "hr" and self.hr is not None:
             return self.hr
+        if k == "hrwatch" and self.hr_watch is not None:
+            return self.hr_watch
         for box in self.clicks:
             if k in (f"click{box.role}", "clickplus" if box.role == "+" else "clickminus"):
                 return box
@@ -595,6 +626,24 @@ class SimWorld:
             if self.now() >= end:
                 # Comme `find_device` : une adresse imposée est rendue telle quelle (connexion directe).
                 return address or None
+            await asyncio.sleep(0.1)
+
+    async def scan(self, timeout: float, service: str | None = None) -> list[SimAdvertisement]:
+        """Recherche de tous les appareils annoncés (avec leur RSSI), filtrés par service.
+
+        Rend la main 0,3 s après le premier appareil trouvé (pas les 5 s d'une vraie recherche),
+        pour que les séances simulées restent rapides.
+        """
+        end = self.now() + timeout
+        found_at: float | None = None
+        while True:
+            found = [SimAdvertisement(d.name, d.address, getattr(d, "rssi", None))
+                     for d in self.devices
+                     if d.advertising() and (service is None or service in d.uuids)]
+            if found and found_at is None:
+                found_at = self.now()
+            if self.now() >= end or (found_at is not None and self.now() - found_at >= 0.3):
+                return found
             await asyncio.sleep(0.1)
 
     def client_factory(self, device: Any, **kwargs: Any) -> SimClient:
@@ -681,6 +730,8 @@ class SimWorld:
                 dev.cadence_rpm = float(ev["cadence_rpm"])
         elif isinstance(dev, SimHrStrap) and action == "bpm":
             dev.fixed_bpm = None if ev.get("bpm") is None else int(ev["bpm"])
+        elif isinstance(dev, SimHrStrap) and action == "contact":
+            dev.contact = None if ev.get("value", True) is None else bool(ev.get("value", True))
         else:
             raise ValueError(f"action {action!r} sans effet sur {ev.get('device', 'trainer')}")
 
