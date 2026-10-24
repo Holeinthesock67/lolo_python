@@ -161,6 +161,26 @@ def test_find_device_by_adv_local_name_when_device_name_is_none(monkeypatch: pyt
     assert res is dev
 
 
+def test_find_device_skips_excluded_addresses(monkeypatch: pytest.MonkeyPatch) -> None:
+    plus = FakeDevice(address="C1:1C:00:00:00:03", name="Zwift Click")
+    minus = FakeDevice(address="C1:1C:00:00:00:01", name="Zwift Click")
+    install_fake_bleak(monkeypatch, candidates=[(plus, FakeAdv()), (minus, FakeAdv())])
+
+    res = asyncio.run(ble_util.find_device("Click", None, timeout=5.0, exclude={"c1:1c:00:00:00:03"}))
+    assert res is minus
+
+
+def test_find_device_bluez_fallback_skips_excluded(monkeypatch: pytest.MonkeyPatch) -> None:
+    install_fake_bleak(monkeypatch, candidates=[])
+    install_fake_dbus(monkeypatch, objects={
+        f"/org/bluez/hci0/dev_{a.replace(':', '_')}": {
+            "org.bluez.Device1": {"Name": FakeVariant("Zwift Click"), "Address": FakeVariant(a)}}
+        for a in ("C1:1C:00:00:00:03", "C1:1C:00:00:00:01")})
+
+    res = asyncio.run(ble_util.find_device("Click", None, timeout=5.0, exclude={"C1:1C:00:00:00:03"}))
+    assert res == "C1:1C:00:00:00:01"
+
+
 def test_find_device_falls_back_to_bluez_and_logs_info(
     monkeypatch: pytest.MonkeyPatch, caplog: pytest.LogCaptureFixture
 ) -> None:
