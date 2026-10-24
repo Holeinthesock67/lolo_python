@@ -35,7 +35,7 @@ La v1.1 garde le découplage matériel/rendu et le modèle 1D sur rail, et corri
 | Physique | Dans Godot | Dans le core Python | Source de vérité unique ; l'enregistrement survit à un plantage du rendu ; testable sans Godot |
 | IPC | Trame JSON sans version | Versionné, numéro de séquence, heartbeat | Détecter les pertes et les incompatibilités |
 | Intégration de la vitesse | P/v avec seuil v_min | Bilan d'énergie cinétique | Stable à l'arrêt, plus de contournement |
-| Braquets | R1 = 0,55, R24 = 1,85 | R1 = 0,50, R24 = 2,25, étagement calculé | Rapport 4,5 cohérent avec 34x32 et 52x11 |
+| Braquets | R1 = 0,55, R24 = 1,85 | R1 = 0,40, R24 = 3,00, étagement calculé | Rapport 7,5 : un braquet doit se sentir sur le plat (essai HomeTrainer du 24 octobre) |
 | Zwift Click | Appuis longs actifs en SIM | Appuis longs : ± 3 vitesses en SIM (essai du 22 octobre), saut de bloc et pause en ERG | Changer vite de braquet en côte ; actions dédiées en ERG |
 | Route | B-spline | Polyligne à 10 m lissée | Une B-spline ne passe pas par les points du tracé |
 | Altitude | API à points | Tuiles raster avec cache | Pas de limite de débit, parcours longs possibles |
@@ -100,14 +100,14 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 La chaîne reste sur le pignon fixe du Zwift Cog ; le braquet n'agit que sur la résistance ressentie, donc sur la cadence pour une puissance donnée. La vitesse virtuelle est calculée avec la puissance mesurée et la pente réelle du terrain, jamais avec le braquet.
 
 - Index `k` de 1 à 24, 12 au lancement.
-- Rapport géométrique entre R_min = 0,50 et R_max = 2,25 (rapport 4,5, soit environ 6,8 % par clic) ; R_12 vaut alors environ 1,03, ce qui est accepté comme « neutre ».
+- Rapport géométrique entre R_min = 0,40 et R_max = 3,00 (rapport 7,5, soit environ 9,2 % par clic) ; R_12 vaut alors environ 1,05, ce qui est accepté comme « neutre ».
 - Pente envoyée au trainer :
 
 ```latex
 G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 ```
 
-- G_base = 2 % (résistance de base sur le plat). Le résultat est limité à −10 % / +16 %.
+- G_base = 4 % (résistance de base sur le plat ; avec 2 %, un braquet ne changeait la pente que de 0,1 % sur le plat, soit quelques watts, à peine sensible sur le HomeTrainer). Le résultat est limité à −10 % / +16 %.
 - R_min, R_max, G_base et le nombre de vitesses sont dans la configuration (§11) : la formule est heuristique et se règle au ressenti.
 
 ### 4.4 Actions du Click en v1
@@ -329,9 +329,9 @@ grade_rate_pct_per_s = 2.0   # limite de variation due au relief (pas aux braque
 [gearing]
 n_gears = 24
 start_gear = 12
-ratio_min = 0.50
-ratio_max = 2.25
-g_base_pct = 2.0
+ratio_min = 0.40
+ratio_max = 3.00
+g_base_pct = 4.0
 long_press_gears = 3
 
 [drivers]
@@ -389,7 +389,7 @@ Le `.world` est désormais un dossier, et non un fichier unique comme dans la v1
 | Domaine | Test |
 | --- | --- |
 | Physique | 250 W à plat ≈ 10,2 m/s ± 3 % ; stabilité à l'arrêt ; pas de recul en montée à 0 W ; descente à 0 W accélère |
-| Braquets | Rapports strictement croissants de k = 1 à 24 ; R_12 ≈ 1,03 ; pente effective bornée |
+| Braquets | Rapports strictement croissants de k = 1 à 24 ; R_12 ≈ 1,05 ; pente effective bornée |
 | ERG | Calcul des cibles à partir d'un `.zwo` de référence ; lissage de 2 s ; saut de bloc |
 | IPC | Chaque trame d'exemple valide son schéma JSON ; comportement sur perte et désordre |
 | Compilateur | Pente et longueur d'un GPX de référence ; relance sans nouveau téléchargement |
