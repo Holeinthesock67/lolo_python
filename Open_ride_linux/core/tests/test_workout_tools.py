@@ -66,6 +66,21 @@ def test_check_reference_zwo_and_invalid_zwo(
     assert "invalide.zwo" in err
 
 
+@pytest.mark.parametrize("ftp", ["0", "-100", "nan", "inf"])
+def test_check_rejects_invalid_ftp(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    ftp: str,
+) -> None:
+    """Une FTP nulle, négative ou non finie est refusée, comme par `summary` (vérification du 24 octobre, R2)."""
+    ref_path = tmp_path / "reference.zwo"
+    ref_path.write_text(REFERENCE_ZWO, encoding="utf-8")
+    assert workouts_main(["check", str(ref_path), "--ftp", ftp]) == 1
+    captured = capsys.readouterr()
+    assert "FTP invalide" in captured.err
+    assert captured.out == ""
+
+
 def test_install_copies_five_files_and_does_not_overwrite(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
