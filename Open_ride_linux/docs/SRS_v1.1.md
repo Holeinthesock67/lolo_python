@@ -36,7 +36,7 @@ La v1.1 garde le découplage matériel/rendu et le modèle 1D sur rail, et corri
 | IPC | Trame JSON sans version | Versionné, numéro de séquence, heartbeat | Détecter les pertes et les incompatibilités |
 | Intégration de la vitesse | P/v avec seuil v_min | Bilan d'énergie cinétique | Stable à l'arrêt, plus de contournement |
 | Braquets | R1 = 0,55, R24 = 1,85 | R1 = 0,40, R24 = 3,00, étagement calculé | Rapport 7,5 : un braquet doit se sentir sur le plat (essai HomeTrainer du 24 octobre) |
-| Zwift Click | Appuis longs actifs en SIM | Appuis longs : ± 3 vitesses en SIM (essai du 22 octobre), saut de bloc et pause en ERG | Changer vite de braquet en côte ; actions dédiées en ERG |
+| Zwift Click | Appuis longs actifs en SIM | Appuis longs : ± 10 vitesses en SIM (essai du 24 octobre), saut de bloc et pause en ERG | Changer vite de braquet en côte ; actions dédiées en ERG |
 | Route | B-spline | Polyligne à 10 m lissée | Une B-spline ne passe pas par les points du tracé |
 | Altitude | API à points | Tuiles raster avec cache | Pas de limite de débit, parcours longs possibles |
 | Fichier de parcours | Un fichier `.world` | Un dossier `.world` en couches | Ajouter une couche sans réécrire le reste |
@@ -92,6 +92,22 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 
 - Connexion BLE, handshake propriétaire, notifications des boutons + et − (référence : projet ouvert jat255/zwift_click_handling, à valider au sprint 0). Le Click n'accepte qu'un client à la fois : l'application Zwift et le téléphone doivent être déconnectés.
 - **Format mesuré (22 octobre 2026) :** le Click testé (handshake `RideOn` sans chiffrement) envoie en continu, à environ 10 Hz, un message de type `0x23` dont le champ 1 est un tableau de bits ; un bit à 0 signifie « appuyé » (bit 12 = +, bit 8 = −). Le niveau de batterie arrive dans un message `0x19` toutes les 5 s. L'ancien format `0x37` reste pris en charge. La durée d'un appui est connue à 0,1 s près.
+- **Click V2, paire de boîtiers (relevé du 24 octobre 2026) :** deux appareils BLE de même nom (`C1:1C:00:00:00:01` gauche, `C1:1C:00:00:00:03` droit), connectés tous les deux ; chacun n'envoie que ses propres boutons (table `KEYPAD_BITS` de `zwift_click.py`) :
+
+| Boîtier | Bouton | Bit (0 = appuyé) | Action OpenRide |
+| --- | --- | --- | --- |
+| gauche | − | 8 | « − » |
+| gauche | flèche gauche | 0 | aucune |
+| gauche | flèche haut | 1 | aucune |
+| gauche | flèche droite | 2 | aucune |
+| gauche | flèche bas | 3 | aucune |
+| droit | + | 12 | « + » |
+| droit | A | 4 | aucune |
+| droit | B | 5 | « − » (sans déblocage Zwift) |
+| droit | Y | 6 | aucune |
+| droit | Z | 7 | aucune |
+
+- **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
 - Événements normalisés : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : ignoré. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
 - Repli : un fournisseur clavier (flèches, touches +/−) produit les mêmes événements.
 
