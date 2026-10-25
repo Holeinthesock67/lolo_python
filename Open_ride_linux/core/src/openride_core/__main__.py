@@ -18,7 +18,7 @@ Sous-commandes disponibles à ce stade :
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
     openride-core devices [--timeout S] [--json] [--all] [--config FICHIER]
-                          [--sim-scenario NOM|FICHIER]
+                          [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
                                       ceinture) et bloc [drivers] proposé pour config.toml
 """
@@ -142,7 +142,8 @@ def cmd_history(args: argparse.Namespace) -> int:
 def cmd_devices(args: argparse.Namespace) -> int:
     from .tools.devices import run
 
-    return run(args.timeout, args.json, args.config, args.sim_scenario, args.all)
+    return run(args.timeout, args.json, args.config, args.sim_scenario, args.all,
+               save=args.save, assume_yes=args.yes)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -200,6 +201,9 @@ def build_parser() -> argparse.ArgumentParser:
     dev.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     dev.add_argument("--sim-scenario", metavar="NOM|FICHIER",
                      help="recherche dans le Bluetooth simulé (mêmes noms que run --sim-scenario)")
+    dev.add_argument("--save", action="store_true",
+                     help="enregistre le matériel trouvé dans config.toml (appui « + » demandé, lot N12)")
+    dev.add_argument("--yes", action="store_true", help="avec --save : sans demander de confirmation")
     return p
 
 
