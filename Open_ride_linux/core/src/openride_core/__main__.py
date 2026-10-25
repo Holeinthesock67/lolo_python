@@ -73,8 +73,31 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.replay:
         cfg.drivers.trainer = "mock"
         cfg.drivers.mock_replay = str(args.replay)
+
+    bots_list = []
+    if args.bot:
+        if len(args.bot) > 4:
+            print("openride-core run : erreur : au plus 4 bots à puissance constante (--bot)", file=sys.stderr)
+            return 2
+        from .bots import ConstantPowerBot, BotError
+        from .physics import PhysicsParams
+        phys_params = PhysicsParams.from_config(cfg)
+        for i, w in enumerate(args.bot):
+            try:
+                bots_list.append(ConstantPowerBot(w, bot_id=f"bot{i+1}", params=phys_params))
+            except BotError as exc:
+                print(f"openride-core run : erreur : {exc}", file=sys.stderr)
+                return 2
+    if args.ghost:
+        from .bots import GhostBot, BotError
+        try:
+            bots_list.append(GhostBot(args.ghost))
+        except BotError as exc:
+            print(f"openride-core run : erreur : {exc}", file=sys.stderr)
+            return 1
+
     try:
-        session = CoreSession(cfg)
+        session = CoreSession(cfg, bots=bots_list)
     except SimScenarioError as exc:
         print(f"openride-core : scénario de simulation refusé : {exc}", file=sys.stderr)
         return 1
@@ -143,6 +166,10 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--gear", type=int, help="braquet de départ, 1 (léger) à 24 (dur) ; défaut 12")
     run.add_argument("--replay", type=Path,
                      help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
+    run.add_argument("--bot", action="append", type=float, metavar="W",
+                     help="ajoute un bot à puissance constante en watts (répétable, au plus 4)")
+    run.add_argument("--ghost", type=Path, metavar="FICHIER",
+                     help="ajoute un fantôme rejouant une séance enregistrée (.jsonl ou .fit)")
     run.add_argument("--resume", type=Path, metavar="JOURNAL",
                      help="reprend en pause la séance d'un journal non terminé (après un plantage du core)")
     run.add_argument("--autostart", action="store_true",

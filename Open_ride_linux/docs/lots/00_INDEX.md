@@ -114,6 +114,12 @@
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle sur GTX 1060 à faire) |
 | [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle et sonore sur GTX 1060 à faire) |
+| [Q1](LOT_Q1_difficulte_en_jeu.md) | Difficulté du trainer : défaut 50 %, commande `set_difficulty` pendant la séance, HUD (curseur dans O4) | Python + GDScript | — | Petite | Oui (contrat IPC v1.2 accepté le 25 octobre) ; issue #168 |
+| [Q2](LOT_Q2_pentes_a_l_ecran.md) | Pentes plus lisibles à l'écran : caméra inclinée et relief exagéré à l'affichage | GDScript | — | Moyenne | Oui (valeur par défaut choisie par le propriétaire sur la GTX 1060) ; issue #169 |
+| [Q3](LOT_Q3_journal_ftms.md) | Journal des commandes FTMS et des accusés du trainer, délais dans `log_report` | Python | — | Petite | Oui ; issue #170 |
+| [Q4](LOT_Q4_rampe_de_pente.md) | Rampe de pente plus rapide, vitesses distinctes à la montée et à la descente | Python | Q1 (`session.py`) | Petite | Oui ; issue #171 |
+| [Q5](LOT_Q5_fc_relayee_figee.md) | Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui ; issue #172 |
+| [Q6](LOT_Q6_boitier_gauche_click.md) | Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -136,6 +142,8 @@ Leur forme dépendra des choix faits dans E1 et D.
 **Série O (25 octobre, dernière avant la 1.0) :** ce qui manque encore après la série N pour une version 1.0 jouable (liste du 25 octobre). Délégables : O1 tout de suite ; O2 après N3 ; O3 après N12 ; O5 après N11 ; O6 après N14. Internes : O4 (contrat et menu), O7 (bots à l'écran, facultatif) et O8 (recette sur le matériel et publication, par le propriétaire). Fichiers partagés : `config.toml` écrit par N12 puis O3 (module commun `config_writer.py`) ; révision du contrat de N13 reprise par O4 puis O7 (l'un après l'autre) ; `catalog.py` (O5 seul) ; `README.md` (O6 en dernier). Les fins de J4 (#50) et J5 (#51) restent ouvertes ; J4 compte pour l'installation hors du dépôt (O8). Ajouts du 25 octobre au soir (demande du propriétaire : entraînement « comme GoldenCheetah ») : O9 formats `.erg`/`.mrc`, O10 test de FTP, O11 plans d'entraînement, O13 modèle des courbes en direct, O15 bibliothèque de parcours, O16 pack de cols célèbres (délégables) ; O12 menu de ces fonctions et O14 courbes à l'écran (internes). Fichiers partagés : `workout.py` (O9 seul ; O10 et O11 le lisent), `journal.py` (O10 puis O11), `catalog.py` (O5 puis O15), révision du contrat reprise par O4, O12 puis O7.
 
 **Série P (25 octobre, après la 1.0) : décor vivant, vent et aspiration.** Demande du propriétaire : rendre le décor plus vivant, rendre le vent et l'aspiration physiques avec leur indicateur, améliorer le son du vent et de la roue libre. Tous les lots attendent la publication de la 1.0 (O8) : leurs issues portent l'étiquette `bloqué` jusque-là. Jour, nuit et saisons (P7, P18, P19) sont reportés à la **version 2.0** par décision du propriétaire, comme les packs de textures selon les performances (P20, demande du même jour). P1 (contrat) est une décision du propriétaire et bloque le reste. Délégables : P2 à P15, P18 et P20, dans l'ordre du graphe ; internes : P16 et P17 (et P19 en 2.0), qui branchent les lots dans `main.gd` et font la recette sur le matériel. Ordre conseillé, du plus rentable au plus coûteux : P2, P4, P5, P6, P9, P10, puis P16 ; ensuite P3, P8, P11 à P15, puis P17. **Budget de rendu :** sur le PC cible (GTX 1060), qualité `low`, toute la série activée, 55 images/s ou plus en moyenne et temps d'image p99 sous 25 ms (ligne `[perf-rendu]` d'E3) ; chaque lot délégable mesure le coût de sa mise à jour par image dans son test, et tout se coupe par `living(preset)` (P4) ou `[render] living`. Fichiers partagés : `session.py` (P2 puis P3) ; `quality_presets.gd` (P4 seul) ; `theme_render_params.gd` (P6, P7) ; `tree_sway.gdshader` (P5 puis P18) ; `sound_player.gd` (P9, P10, P13, P15, l'un après l'autre) ; `weather_particles.gd` et `ambience_model.gd` (P8 et P9, puis P18) ; `osm_layers.gd` et `water_mesh.gd` (P12 seul) ; `main.gd`, `hud_view.gd` et `osm_streamer.gd` (P16, P17, P19 seulement). Les bots à l'écran restent dans O7 ; P3 leur ajoute l'abri.
+
+**Série Q (25 octobre, retours de l'essai sur le HomeTrainer) :** six lots tirés de l'essai de 1 h 27 sur le circuit synthétique `essai-69` (séance trop dure, pente qui paraît faible à l'écran, environ 22 s avant que la résistance se relâche, FC relayée figée, boîtier gauche du Click muet). Aucun ne demande de matériel pour sa recette automatique ; chacun se termine par un essai court du propriétaire sur le PC cible. Q1 ajoute la commande `set_difficulty` au contrat (v1.2, accepté par le propriétaire le 25 octobre, avec un défaut à 50 % et un réglage par curseur dans le menu, sans bouton du Click) ; le curseur lui-même est ajouté à O3 et O4. Q2 ne touche que l'engine et n'exagère que l'affichage, jamais la physique. Fichiers partagés : `session.py` (Q1 puis Q4) ; `ftms_driver.py` (Q3 puis Q5) ; `config.py` (Q2 à Q6, sections différentes) ; `main.gd` (Q2 seul). Q3 avant Q4 permet de mesurer le gain sur le trainer.
 
 **Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
 
@@ -163,11 +171,12 @@ N1 ──► N2, N3, N5, N8 ;  N2, N3, N4, N5 ──► N6 ;  E3 ──► N6, N
 N4, N9, N10, N11 : indépendants (prérequis livrés)
 N6, N12 ──► N13 ;  N12 : indépendant (M3 livré)
 N11 ──► N14 ──► N6
-E3 ──► O1 ;  N3 ──► O2 ;  N12 ──► O3 ──► O4 ;  N6, N13 ──► O4 ;  N11 ──► O5 ;  N14 ──► O6 ;  N6, N9 ──► O7
+E3 ──► O1 ;  N3 ──► O2 ;  N12 ──► O3 ──► O4 ;  Q1 ──► O4 ;  N6, N13 ──► O4 ;  N11 ──► O5 ;  N14 ──► O6 ;  N6, N9 ──► O7
 O9 ──► O11 ;  O3 ──► O10 ──► O11 ;  O5 ──► O15 ──► O16 ;  N6, O4, O10, O11, O15 ──► O12 ;  O13, N7 ──► O14
 N, O1, O2, O6 ──► O8 (recette 1.0)
 O8 ──► P1 ──► P2 ──► P3 (avec N9) ;  P1 ──► P4 ──► P5, P6, P8, P9, P10, P11, P12, P14
 P9 ──► P13 ;  P9, P14 ──► P15 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, O7)
+Q1 ──► Q4 ;  Q3 ──► Q5 ;  Q2, Q6 : indépendants
 Version 2.0 : P17 ──► P7 ;  P7, P17 ──► P18 ──► P19 ;  N10, O3, P17 ──► P20
 ```
 
@@ -228,7 +237,7 @@ Si un contrat te semble faux ou incomplet, arrête-toi et pose la question au li
 
 ## 5. Partage des lots par issues GitHub
 
-Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L`, `série M`, `série N`, `série O` ou `série P`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
+Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L`, `série M`, `série N`, `série O`, `série P` ou `série Q`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
 
 1. Choisir une issue ouverte sans l'étiquette `bloqué`, sans assigné ni commentaire « Je prends ce lot ».
 2. Commenter « Je prends ce lot » sur l'issue, pour que deux IA ne fassent pas le même lot.
