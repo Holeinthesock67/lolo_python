@@ -71,7 +71,7 @@ Les bots de N9 roulent à puissance constante. En 2.0, chaque bot a un profil ph
 | Diesel | Moyenne | Un peu plus haute | Presque nulle | Régulier, ne répond pas aux attaques | — |
 
 - **Modèle :** même réserve W'bal que la série R (lot R2), un seul module pour le joueur et les bots.
-- **Équilibrage :** niveau choisi au départ (90, 100 ou 110 % de la FTP du joueur). Avant le départ, le core simule le parcours et ajuste la CP de chaque bot pour qu'il finisse dans le même temps qu'un cycliste qui roule à ce niveau. Le profil change l'endroit où le bot est fort, pas son niveau global.
+- **Équilibrage :** niveau choisi au départ (90, 100 ou 110 % de la FTP du joueur, ou valeur libre dans les options). Avant le départ, le core simule le parcours et ajuste la CP de chaque bot pour qu'il finisse dans le même temps qu'un cycliste qui roule à ce niveau. Le profil change l'endroit où le bot est fort, pas son niveau global.
 - **Stratégie :** règles simples tirées des segments (montée, sprint) et de la réserve restante ; pas d'intelligence artificielle.
 - **Maillots :** le vert et le maillot à pois vont, pendant la séance, à qui a le plus de points sur les segments de sprint et de montée, bots compris.
 - **HUD :** pour chaque bot, maillot, profil, FTP en W et en W/kg, écart en secondes, jauge de réserve W'.
@@ -126,5 +126,5 @@ Ordre conseillé : T1 après P1, puis T2, T4 et T6 en parallèle ; T3, T5, T7 et
 - [ ] **T-Q2 ERG :** bonus désactivés en ERG, segments chronométrés quand même ? (Recommandé : oui.)
 - [ ] **T-Q3 Ressenti :** les bonus ne changent pas la résistance du trainer, hors vent et aspiration ? (Recommandé : oui, comme Zwift.)
 - [ ] **T-Q4 Valeurs :** légèreté −10 % de masse, aéro −25 % de CdA, puissance +10 %, 15 s chacun, un bonus par segment et tous les 5 km ? (Recommandé : oui, modifiable dans le fichier de données.)
-- [ ] **T-Q5 Maillots :** maillots vert et à pois attribués pendant la séance aux points, bots compris, plutôt qu'au détenteur d'un record ? (Recommandé : oui.)
-- [ ] **T-Q6 Niveaux des bots :** 90, 100 et 110 % de ta FTP suffisent-ils, ou faut-il un réglage libre ? (Recommandé : les trois niveaux, plus un réglage libre dans les options.)
+- [x] **T-Q5 Maillots (oui, 25 octobre) :** maillots vert et à pois attribués pendant la séance aux points, bots compris, plutôt qu'au détenteur d'un record ? (Recommandé : oui.)
+- [x] **T-Q6 Niveaux des bots (oui, avec réglage libre en option, 25 octobre) :** 90, 100 et 110 % de ta FTP suffisent-ils, ou faut-il un réglage libre ? (Recommandé : les trois niveaux, plus un réglage libre dans les options.)
