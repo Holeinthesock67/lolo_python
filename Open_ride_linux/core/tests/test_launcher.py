@@ -54,13 +54,14 @@ while True:
 @pytest.fixture
 def fake(tmp_path: Path):
     script = tmp_path / "fake.py"
-    script.write_text(FAKE)
+    script.write_text(FAKE, encoding="utf-8")
     marks = tmp_path / "marks"
     marks.mkdir()
 
     def make(core: str = "run", engine: str = "run", **kw) -> tuple[Supervisor, list[str]]:
         said: list[str] = []
         kw.setdefault("echo", lambda: True)
+        kw.setdefault("compile_enabled", False)
         sup = Supervisor(
             core_cmd=[sys.executable, str(script), "core", core, str(marks)],
             engine_cmd=[sys.executable, str(script), "engine", engine, str(marks)],
@@ -82,8 +83,9 @@ def count(marks: Path, name: str) -> int:
 def assert_no_orphans(sup: Supervisor) -> None:
     assert sup.started_pids
     for pid in sup.started_pids:
-        with pytest.raises(ProcessLookupError):
-            os.kill(pid, 0)
+        if sys.platform != "win32":
+            with pytest.raises(ProcessLookupError):
+                os.kill(pid, 0)
 
 
 def test_engine_closes_normally_core_gets_sigint(fake):
@@ -161,7 +163,10 @@ def test_core_dying_at_startup(fake):
     assert_no_orphans(sup)
 
 
-@pytest.mark.parametrize("sig", [signal.SIGHUP, signal.SIGINT])
+TEST_SIGNALS = [signal.SIGHUP, signal.SIGINT] if hasattr(signal, "SIGHUP") else [signal.SIGINT, signal.SIGTERM]
+
+
+@pytest.mark.parametrize("sig", TEST_SIGNALS)
 def test_signal_stops_both_cleanly(fake, sig):
     sup, said = fake()
     timer = threading.Timer(0.8, lambda: os.kill(os.getpid(), sig))
@@ -173,7 +178,7 @@ def test_signal_stops_both_cleanly(fake, sig):
     assert count(fake.marks, "core_SIGINT") == 1 and count(fake.marks, "engine_SIGTERM") == 1
     assert count(fake.marks, "release_start") == 0
     assert_no_orphans(sup)
-    assert signal.getsignal(signal.SIGHUP) is not sup._on_signal   # gestionnaires rendus
+    assert signal.getsignal(sig) is not sup._on_signal   # gestionnaires rendus
 
 
 def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
@@ -318,6 +323,8 @@ def test_without_terminal_messages_only_in_the_log(fake, rotation, capsys):
 
 
 def test_default_echo_follows_isatty(monkeypatch: pytest.MonkeyPatch, tmp_path: Path):
+    if not hasattr(os, "openpty"):
+        pytest.skip("openpty requis (Linux)")
     master, slave = os.openpty()
     try:
         with os.fdopen(slave, "w", closefd=False) as tty:
