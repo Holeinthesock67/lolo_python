@@ -1,9 +1,12 @@
-"""Outils en ligne de commande pour les entraînements ERG (`.zwo`, Lot H8, SRS §6).
+"""Outils en ligne de commande pour les entraînements ERG (`.zwo`, `.erg`, `.mrc`, Lot H8 et O9, SRS §6).
 
 Commandes :
 - ``python -m openride_core.tools.workouts list [--dir D]``
-- ``python -m openride_core.tools.workouts check FICHIER.zwo [--ftp W]``
-- ``python -m openride_core.tools.workouts install [--dir D]``
+- ``python -m openride_core.tools.workouts check FICHIER.zwo|.erg|.mrc [--ftp W]``
+- ``python -m openride_core.tools.workouts install [--dir D] [--erg-relative]``
+
+``install --erg-relative`` installe les `.erg` de référence convertis en `.mrc` (% de la FTP de
+leur en-tête), pour qu'ils suivent la FTP du cycliste.
 
 Estimation de charge dans ``check`` :
 La puissance normalisée approchée (NP), le facteur d'intensité (IF) et le score de charge
@@ -25,7 +28,14 @@ from pathlib import Path
 
 from .. import config as config_mod
 from ..config import WORKOUTS_DIR
-from ..workout import Workout, WorkoutError, list_workouts, load_workout
+from ..workout import (
+    WORKOUT_SUFFIXES,
+    Workout,
+    WorkoutError,
+    list_workouts,
+    load_workout,
+)
+from ..workout_formats import to_mrc
 
 BUILTIN_WORKOUTS_DIR = Path(__file__).resolve().parents[3] / "workouts"
 
@@ -43,9 +53,8 @@ def estimate_metrics(workout: Workout, ftp_w: float) -> dict[str, float]:
     for blk in workout.blocks:
         dur = max(int(round(blk.duration_s)), 1)
         for sec in range(dur):
-            frac = blk.frac_at(sec + 0.5)
-            w = ftp_w * frac if frac is not None else 0.0
-            samples_w.append(w)
+            w = blk.watts_at(sec + 0.5, ftp_w)
+            samples_w.append(w if w is not None else 0.0)
 
     if not samples_w or ftp_w <= 0:
         return {"avg_w": 0.0, "np_w": 0.0, "if": 0.0, "tss": 0.0}
@@ -120,8 +129,11 @@ def cmd_check(args: argparse.Namespace) -> int:
         f"{workout.duration_s:.0f} s ({format_hms(workout.duration_s)}), FTP {ftp_w:.0f} W"
     )
     for idx, blk in enumerate(workout.blocks, start=1):
-        if blk.start_frac is None or blk.end_frac is None:
+        if blk.free:
             target_str = "roue libre (SIM)"
+        elif blk.absolute:
+            target_str = (f"{blk.start_w:.0f} W (absolu)" if blk.start_w == blk.end_w else
+                          f"{blk.start_w:.0f} -> {blk.end_w:.0f} W (absolu)")
         elif blk.start_frac == blk.end_frac:
             w = round(ftp_w * blk.start_frac)
             target_str = f"{w} W ({blk.start_frac * 100:.0f} %)"
@@ -146,17 +158,26 @@ def cmd_install(args: argparse.Namespace) -> int:
     target_dir = Path(args.dir).expanduser()
     target_dir.mkdir(parents=True, exist_ok=True)
 
-    sources = sorted(BUILTIN_WORKOUTS_DIR.glob("*.zwo"))
+    sources = sorted(p for p in BUILTIN_WORKOUTS_DIR.iterdir() if p.suffix.lower() in WORKOUT_SUFFIXES)
     copied: list[str] = []
     skipped: list[str] = []
 
     for src in sources:
-        dst = target_dir / src.name
+        convert = getattr(args, "erg_relative", False) and src.suffix.lower() == ".erg"
+        dst = target_dir / (src.stem + ".mrc" if convert else src.name)
         if dst.exists():
-            skipped.append(src.name)
+            skipped.append(dst.name)
+            continue
+        if convert:
+            try:
+                w = load_workout(src, erg_relative=True)
+            except WorkoutError as exc:
+                print(f"Erreur ({src.name}) : {exc}", file=sys.stderr)
+                return 1
+            dst.write_text(to_mrc(w, 1.0), encoding="utf-8")
         else:
             shutil.copy2(src, dst)
-            copied.append(src.name)
+        copied.append(dst.name)
 
     print(
         f"Installation dans {target_dir} : "
@@ -169,7 +190,7 @@ def cmd_install(args: argparse.Namespace) -> int:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m openride_core.tools.workouts",
-        description="Outils de gestion et vérification des entraînements ERG (.zwo).",
+        description="Outils de gestion et vérification des entraînements ERG (.zwo, .erg, .mrc).",
     )
     sub = parser.add_subparsers(dest="command", required=True)
 
@@ -181,8 +202,8 @@ def main(argv: list[str] | None = None) -> int:
         help=f"Dossier des entraînements (défaut : {WORKOUTS_DIR})",
     )
 
-    p_check = sub.add_parser("check", help="valide et détaille un fichier .zwo")
-    p_check.add_argument("file", type=Path, help="Fichier .zwo à vérifier")
+    p_check = sub.add_parser("check", help="valide et détaille un fichier .zwo, .erg ou .mrc")
+    p_check.add_argument("file", type=Path, help="Fichier .zwo, .erg ou .mrc à vérifier")
     p_check.add_argument("--ftp", type=float, default=None, help="FTP en watts (défaut : config.toml)")
 
     p_install = sub.add_parser("install", help="copie la bibliothèque d'entraînements de référence")
@@ -192,6 +213,8 @@ def main(argv: list[str] | None = None) -> int:
         default=WORKOUTS_DIR,
         help=f"Dossier cible (défaut : {WORKOUTS_DIR})",
     )
+    p_install.add_argument("--erg-relative", action="store_true",
+                           help="installer les .erg convertis en .mrc (%% de la FTP de leur en-tête)")
 
     args = parser.parse_args(argv)
     if args.command == "list":

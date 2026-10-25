@@ -282,7 +282,8 @@ class CoreSession:
         from .ipc_lists import build_workouts_messages
 
         try:
-            msgs = await asyncio.to_thread(build_workouts_messages, cmd_id, self.workouts_dir)
+            msgs = await asyncio.to_thread(build_workouts_messages, cmd_id, self.workouts_dir,
+                                           ftp_w=self.cfg.rider.ftp_w)
             for m in msgs:
                 self.server.send_raw(m)
         except Exception:
