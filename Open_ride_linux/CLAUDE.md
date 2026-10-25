@@ -50,9 +50,10 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `mock_driver.py`, `replay.py` : simulateur de trainer et rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) ;
 - `ble_sim.py`, `sim_scenarios.py` : Bluetooth simulé (HomeTrainer, paire de Click, ceinture) derrière les vrais pilotes, scénarios de pannes (`docs/SIMULATION_BLE.md`) ;
 - `hr_monitor.py` : ceinture cardio Bluetooth facultative (service 0x180D) ;
-- `journal.py`, `fit_export.py`, `ipc_server.py`, `config.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), configuration (types et bornes contrôlés, `ConfigError`) ;
+- `journal.py`, `fit_export.py`, `ipc_server.py`, `ipc_lists.py`, `config.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), découpage des listes IPC v1.1, configuration (types et bornes contrôlés, `ConfigError`) ;
 - `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `history.py` (historique des séances et cumul hebdomadaire), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py` ;
-- `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties.
+- `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties ;
+- `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9).
 
 **Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 
@@ -82,6 +83,7 @@ openride --trainer mock --input keyboard --autostart                       # mê
 openride --compile-only                                                   # compile les traces GPX nouvelles/modifiées puis quitte (lot N11)
 openride --no-compile                                                     # lance la séance sans compiler les traces GPX (lot N11)
 openride-core run --replay ~/OpenRide/Activities/<séance>.fit --input keyboard --autostart   # rejoue une séance réelle
+openride-core run --bot 200 --ghost ~/OpenRide/Activities/<séance>.fit --autostart   # bots virtuels (lot N9)
 
 # Après un essai (depuis core/) : résumé du journal (Perf, pertes trainer et Click, pauses)
 python -m openride_core.tools.log_report ~/run_trainer.log
