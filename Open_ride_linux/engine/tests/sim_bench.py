@@ -601,8 +601,11 @@ def main(argv: list[str] | None = None) -> int:
         rep = Bench(args, sname, spec, settings, sarg, args.out / sname).run()
         results.append((sname, rep))
     after = snapshot_home(real_home)
+    # Le dossier des rapports et ses parents (dont la date de modification change) sont attendus.
+    out = args.out.resolve()
+    expected = {out, *out.parents}
     changed = sorted({p for p, _ in set(before.items()) ^ set(after.items())
-                      if not Path(p).is_relative_to(args.out)})
+                      if not Path(p).resolve().is_relative_to(out) and Path(p).resolve() not in expected})
     ok_home = not changed
     print(f"[{'OK' if ok_home else 'ÉCHEC'}] HOME réel inchangé : "
           + ("oui" if ok_home else f"modifiés : {changed[:5]}"))
