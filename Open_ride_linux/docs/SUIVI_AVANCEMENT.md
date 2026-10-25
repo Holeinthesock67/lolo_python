@@ -63,6 +63,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] `summary_view_model.gd` : modèle de l'écran de fin de séance sans affichage (10 lignes du bilan enrichi dans l'ordre fixé, 3 lignes en v1, blocs ERG avec déviations et couleurs, fichier FIT seul, écran de menu avec confirmation de quitter), testé sans écran (`engine/tests/unit/test_summary_view_model.gd`, lot N4) ; l'affichage reste à N6.
 - [x] `devices_view_model.gd` : modèle de l'état des appareils sans affichage (lignes d'état en v1.1 et repli v1, alertes de perte/reconnexion et batterie sous 20 % / 10 %, `ready_to_ride`), testé sans écran (`engine/tests/unit/test_devices_view_model.gd`, lot N5) ; l'affichage reste à N6.
 - [x] `catalog_model.gd` et client des listes v1.1 (`ipc_client.gd`) : commandes `list_routes` et `list_workouts` avec assemblage des parties par `request_cmd_id` et relance après 1 s, conversion en éléments de menu et scénario complet au Click, testés sans écran (`engine/tests/unit/test_catalog_model.gd`, `test_menu_ipc.gd`, lot N3) ; l'affichage reste à N6.
+- [x] `cue_model.gd` : consignes d'essai affichées dans le bandeau avec un bip quand la distance est atteinte, lues dans `~/OpenRide/Essais/<parcours>.consignes.json` (facultatif) et notées `[essai]` dans le journal du lanceur, testées sans écran (`engine/tests/unit/test_cue_model.gd`, essai sur le HomeTrainer du 25 octobre).
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
