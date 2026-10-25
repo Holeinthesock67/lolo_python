@@ -26,7 +26,7 @@ Compromis réalisme et performance demandé par le propriétaire (25 octobre) : 
   - `best_draft(rider_s, bots, route, wind) -> (alpha, bot_id)` : le bot (ou la file) qui abrite le plus, devant le cycliste sur le parcours (boucles et aller-retour comme `route.py`) ;
   - le fantôme abrite aussi (choix à confirmer par le propriétaire, constante `GHOST_GIVES_DRAFT = True`).
 - Vent : l'abri multiplie le terme aérodynamique complet `(1 − α)`, vent compris (SRS §5) ; l'abri compte donc davantage à grande vitesse et presque plus en côte raide, sans règle particulière.
-- Ressenti en SIM : même calcul que P2 (`ΔF` total vent et aspiration, borné), pas de deuxième voie.
+- Ressenti en SIM : même calcul que P2 (`ΔF` total vent et aspiration, borné, avec les `PhysicsParams` courants à chaque pas), pas de deuxième voie.
 - Lissage : `alpha` suit sa cible avec une constante de temps de 1 s, pour éviter un à-coup de résistance en entrant ou en sortant de la roue.
 - Trame `state` : `draft` et `draft_bot` quand il y a au moins un bot.
 - Journal : `draft` en champ facultatif à 1 Hz ; bilan (`summary`) : temps passé à l'abri (`draft_time_s`), facultatif.
