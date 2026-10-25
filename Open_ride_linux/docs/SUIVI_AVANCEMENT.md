@@ -212,6 +212,14 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Menu des plans, du test de FTP et de la bibliothèque (lot O12).
 - [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
 
+### Retours de l'essai du 25 octobre sur le HomeTrainer (série Q rédigée le 25 octobre)
+- [ ] Difficulté du trainer réglable pendant la séance, au clavier et dans le HUD (lot Q1, contrat IPC v1.2 à décider).
+- [ ] Pentes plus lisibles à l'écran : caméra inclinée, relief exagéré à l'affichage seulement (lot Q2).
+- [ ] Journal des commandes FTMS et des accusés, délais dans `log_report` (lot Q3).
+- [ ] Rampe de pente plus rapide, surtout à la descente (lot Q4).
+- [ ] FC relayée par le trainer figée : écrite comme absente (lot Q5).
+- [ ] Boîtier gauche du Click muet après la connexion : trace, détection, reprise (lot Q6).
+
 ### Après la 1.0 : décor vivant, vent et aspiration (série P rédigée le 25 octobre)
 - [ ] Contrat : vent et aspiration dans `state`, configuration `[wind]`, thème 1.2 (lot P1, décision du propriétaire).
 - [ ] Vent physique et aspiration derrière les bots, côté core (lots P2 et P3).
