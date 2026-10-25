@@ -203,6 +203,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Plans d'entraînement sur plusieurs semaines et séance du jour (lot O11).
 - [ ] Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle (lot O13), écran (lot O14).
 - [ ] Bibliothèque de parcours : fiches, tri, filtres, packs (lot O15).
+- [ ] Pack de départ de cols célèbres (Alpe d'Huez, Teide, Ventoux…) construit depuis OpenStreetMap (lot O16).
 - [ ] Menu des plans, du test de FTP et de la bibliothèque (lot O12).
 - [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
 
