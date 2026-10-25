@@ -22,7 +22,7 @@ P1 livré (contrat v1.2 et `[wind]` validés). Version 1.0 publiée.
   - `head_component(sample, heading_deg) -> float` : composante de face (cos de l'écart entre la direction d'où vient le vent et le cap de la route), positive de face.
 - Physique : `PhysicsParams.wind_mps` reçoit `head_mps` à chaque pas de 50 Hz (ou un paramètre de `step`, au choix, sans changer le cas de référence de la SRS §5).
 - Ressenti en SIM, selon `[wind] feel` :
-  - `"grade"` : supplément de pente `100 × ΔF / (m g)`, où `ΔF` est l'écart de force aérodynamique dû au vent (et à l'aspiration, voir P3), borné par `max_grade_offset_pct`, ajouté **avant** la limitation de variation et les bornes −10 % / +16 % existantes ;
+  - `"grade"` : supplément de pente `100 × ΔF / (m g)`, où `ΔF` est l'écart de force aérodynamique dû au vent (et à l'aspiration, voir P3), calculé à chaque pas avec les `PhysicsParams` courants (`cda_m2`, masse) et non avec des constantes lues dans la configuration : un bonus temporaire qui modifie `cda_m2` ou la masse (série T de la 2.0) réduit alors aussi ce supplément, sans deuxième voie, borné par `max_grade_offset_pct`, ajouté **avant** la limitation de variation et les bornes −10 % / +16 % existantes ;
   - `"ftms"` : `head_mps` passé dans le champ vent de la commande 0x11, pente inchangée.
 - ERG : vitesse virtuelle seulement, aucune incidence sur la commande au trainer.
 - Pause : vent figé (comme le chronomètre).
