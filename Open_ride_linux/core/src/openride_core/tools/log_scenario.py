@@ -16,7 +16,8 @@ Correspondances :
   plus tôt, jusqu'à la connexion suivante) ; erreur ATT lue (« ATT error: 0xNN », « renvoi »)
   → `att_error` avec le code ; « contrôle FTMS perdu » (0xFF) → `control_lost` ; commande
   refusée → `control_lost`, ou `refuse_control` si la séance a fini sur un refus du contrôle ;
-- Click, par boîtier (adresse de `click_address` du simulateur, « …E7 », = `click_plus`,
+- Click, par boîtier (adresse de `click_address` de la configuration, sinon celle du « + »
+  simulé, = `click_plus`,
   sinon `click_minus`) : première connexion → `appear_at`, coupure → `drop`, reconnexion
   suivante → `wake` ; appuis → `press` (long : 1 s) ;
 - ceinture : première connexion → `appear_at`, coupure → `drop`.
@@ -62,14 +63,20 @@ class LogScenarioError(Exception):
     """Journal introuvable, illisible ou sans séance ; message lisible."""
 
 
-def _box(address: str | None, last: str | None) -> str:
+def _box(address: str | None, last: str | None, plus: str = PLUS_ADDRESS) -> str:
     addr = _click_key(address) or last
-    return "click_plus" if addr == PLUS_ADDRESS else "click_minus"
+    return "click_plus" if addr is not None and addr.upper() == plus.upper() else "click_minus"
 
 
 def convert(lines: list[str], session: int | None = None, t_from: float | None = None,
-            t_to: float | None = None, source: str = "") -> tuple[dict[str, Any], dict[str, Any]]:
-    """Renvoie (scénario validé, résumé) pour la séance `session` (1 = première ; défaut : dernière)."""
+            t_to: float | None = None, source: str = "",
+            plus_address: str | None = None) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Renvoie (scénario validé, résumé) pour la séance `session` (1 = première ; défaut : dernière).
+
+    `plus_address` : boîtier « + » du journal (`click_address` de la configuration, lot N12) ;
+    défaut : adresse simulée du « + ».
+    """
+    plus = plus_address or PLUS_ADDRESS
     chunks = [c for c in _split_sessions(lines)
               if any(PATTERNS["core_started"].match(m.group("msg"))
                      for m in map(LINE_RE.match, c) if m)]
@@ -153,14 +160,14 @@ def convert(lines: list[str], session: int | None = None, t_from: float | None =
                 last_warn = (t, "link")
                 ignored["trainer_info"] = ignored.get("trainer_info", 0) + 1
         elif (m := PATTERNS["click_connected"].match(msg)):
-            box = _box(m.group("address"), last_click)
+            box = _box(m.group("address"), last_click, plus)
             last_click = _click_key(m.group("address")) or last_click
             first.setdefault(box, t)
             if box in asleep_boxes:
                 ev(max(t - CONNECT_LEAD_S, 0.0), "wake", box)
                 asleep_boxes.discard(box)
         elif (m := PATTERNS["click_disconnected"].match(msg)):
-            box = _box(m.group("address"), last_click)
+            box = _box(m.group("address"), last_click, plus)
             ev(t, "drop", box)
             asleep_boxes.add(box)
         elif (m := PATTERNS["click_press"].match(msg)):
@@ -217,14 +224,21 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--session", type=int, help="numéro de séance, 1 = première (défaut : dernière)")
     p.add_argument("--from", dest="t_from", type=float, help="début de la fenêtre (s)")
     p.add_argument("--to", dest="t_to", type=float, help="fin de la fenêtre (s)")
+    p.add_argument("--config", type=Path, help="configuration dont `click_address` désigne le boîtier « + »")
     a = p.parse_args(argv)
+    from .. import config as config_mod
+    try:
+        plus = config_mod.load(a.config).drivers.click_address or None
+    except config_mod.ConfigError as exc:
+        print(f"log_scenario : configuration invalide : {exc}", file=sys.stderr)
+        return 1
     try:
         try:
             lines = a.journal.read_text(encoding="utf-8", errors="replace").splitlines()
         except OSError as exc:
             raise LogScenarioError(f"lecture impossible de {a.journal} : {exc.strerror or exc}") \
                 from None
-        spec, summary = convert(lines, a.session, a.t_from, a.t_to, str(a.journal))
+        spec, summary = convert(lines, a.session, a.t_from, a.t_to, str(a.journal), plus)
     except (LogScenarioError, SimScenarioError) as exc:
         print(f"log_scenario : {exc}", file=sys.stderr)
         return 1

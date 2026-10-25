@@ -132,8 +132,8 @@ def build_inputs(cfg: Config, sim: Any = None) -> list[Any]:
         d, pair = cfg.drivers, ClickPair()
         return [ZwiftClickProvider(d.click_address or None, d.click_short_max_s, d.click_long_min_s,
                                    pair=pair),
-                ZwiftClickProvider(None, d.click_short_max_s, d.click_long_min_s,
-                                   pair=pair, optional=True),
+                ZwiftClickProvider(d.click_minus_address or None, d.click_short_max_s,
+                                   d.click_long_min_s, pair=pair, optional=True),
                 KeyboardProvider()]
     if kind == "keyboard":
         return [KeyboardProvider()]
@@ -195,6 +195,7 @@ class CoreSession:
         self._shift_pending = False
         self._workout: Workout | None = None     # entraînement choisi (select_workout)
         self._workout_id: str | None = None
+        self._click_seen: dict[str, str] = {}   # boîtiers du Click vus, sans adresse configurée
         self.erg: ErgController | None = None   # entraînement en cours pendant la séance
         self._frame_count = 0
         self._last_devices: dict[str, Any] | None = None
@@ -360,10 +361,22 @@ class CoreSession:
         self._next_record = 0.0
 
     def _click_device(self, address: str) -> str:
-        """Boîtier « + » : celui de `click_address` (adresse du « + » réel par défaut)."""
-        from .sim_scenarios import PLUS_ADDRESS   # adresse du boîtier « + » réel (CLAUDE.md)
-        plus = (self.cfg.drivers.click_address or PLUS_ADDRESS).upper()
-        return "click_plus" if address.upper() == plus else "click_minus"
+        """Boîtier « + » ou « − » (lot N12) : d'après `click_address` et `click_minus_address`.
+
+        Sans adresse configurée : adresse simulée du « + » en simulation ; sinon le premier
+        boîtier vu est le « + », l'autre le « − ».
+        """
+        d = self.cfg.drivers
+        addr = address.upper()
+        if d.click_address:
+            return "click_plus" if addr == d.click_address.upper() else "click_minus"
+        if d.click_minus_address:
+            return "click_minus" if addr == d.click_minus_address.upper() else "click_plus"
+        if d.input == "sim":
+            from .sim_scenarios import PLUS_ADDRESS
+            return "click_plus" if addr == PLUS_ADDRESS else "click_minus"
+        seen = self._click_seen.setdefault(addr, "click_plus" if not self._click_seen else "click_minus")
+        return seen
 
     def _device_states(self) -> dict[str, bool]:
         """État des appareils d'après ce que la session connaît déjà (aucune entrée-sortie BLE)."""
@@ -437,9 +450,6 @@ class CoreSession:
 
         clicks: list[dict[str, Any]] = []
         click_providers = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
-        from .sim_scenarios import PLUS_ADDRESS
-        plus_addr = (self.cfg.drivers.click_address or PLUS_ADDRESS).upper()
-
         if len(click_providers) == 1:
             p = click_providers[0]
             st = "CONNECTED" if getattr(p, "_link_up", False) else ("LOST" if getattr(p, "_ever_connected", False) else "SEARCHING")
@@ -452,7 +462,7 @@ class CoreSession:
             for p in click_providers[:2]:
                 addr = getattr(p, "_conn_address", "")
                 if addr and addr != "?":
-                    side = "plus" if addr.upper() == plus_addr else "minus"
+                    side = "plus" if self._click_device(addr) == "click_plus" else "minus"
                 else:
                     side = "minus" if getattr(p, "_optional", False) else "plus"
                 st = "CONNECTED" if getattr(p, "_link_up", False) else ("LOST" if getattr(p, "_ever_connected", False) else "SEARCHING")
