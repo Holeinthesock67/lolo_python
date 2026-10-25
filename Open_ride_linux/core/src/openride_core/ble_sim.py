@@ -441,16 +441,27 @@ class SimClickBox(SimDevice):
              zwift_click.ZWIFT_SYNC_TX)
 
     def __init__(self, world: "SimWorld", role: str, address: str, *, status_hz: float = 10.0,
-                 battery_pct: int = 80, sleep_on_drop: bool = True, **kw: Any) -> None:
+                 battery_pct: int = 80, sleep_on_drop: bool = True,
+                 mute_after_s: float | None = None, unlock_on_ride_on: bool = False, **kw: Any) -> None:
         kw.setdefault("asleep", True)   # un Click ne s'annonce qu'après un appui
         super().__init__(world, zwift_click.CLICK_NAME, address, **kw)
         self.role = role
         self.status_hz, self.battery_pct = status_hz, battery_pct
         self.sleep_on_drop = sleep_on_drop
+        self.mute_after_s = mute_after_s
+        self.unlock_on_ride_on = unlock_on_ride_on
+        self.ride_on_count = 0
         self.pressed: set[str] = set()
         self.ride_on = False
         self.presses_lost = 0
+        self._connected_at: float | None = None
         self._timed_wake = self.asleep and self.appear_at > 0
+
+    @property
+    def is_muted(self) -> bool:
+        if self.mute_after_s is None or self._connected_at is None:
+            return False
+        return (self.world.now() - self._connected_at) >= self.mute_after_s
 
     def advertising(self) -> bool:
         if self._timed_wake and self.world.now() >= self.appear_at:
@@ -458,12 +469,14 @@ class SimClickBox(SimDevice):
         return super().advertising()
 
     def on_connect(self) -> None:
+        self._connected_at = self.world.now()
         self.ride_on = False
         self.pressed.clear()
         self.spawn(self._status_loop())
 
     def on_disconnect(self) -> None:
         self.ride_on = False
+        self._connected_at = None
 
     def drop(self) -> None:
         had_client = self.client is not None
@@ -475,7 +488,10 @@ class SimClickBox(SimDevice):
         if uuid != zwift_click.ZWIFT_SYNC_RX:
             super().write(uuid, data)
         if data == zwift_click.RIDE_ON:
+            self.ride_on_count += 1
             self.ride_on = True
+            if self.unlock_on_ride_on and self.ride_on_count >= 2:
+                self.mute_after_s = None
             self.notify(zwift_click.ZWIFT_SYNC_TX, b"RideOn\x01\x03")
             self.notify(zwift_click.ZWIFT_ASYNC, battery_message(self.battery_pct))
 
@@ -491,11 +507,16 @@ class SimClickBox(SimDevice):
                 self.presses_lost += 1
                 log.info("Simulation : Click %s réveillé par l'appui (appui perdu)", self.role)
             return
+        if self.is_muted:
+            return
         self._send_status()
 
     def _send_status(self) -> None:
         if self.ride_on:
-            self.notify(zwift_click.ZWIFT_ASYNC, keypad_message("+" in self.pressed, "-" in self.pressed))
+            if self.is_muted:
+                self.notify(zwift_click.ZWIFT_ASYNC, bytes([zwift_click.MSG_EMPTY, 0x00]))
+            else:
+                self.notify(zwift_click.ZWIFT_ASYNC, keypad_message("+" in self.pressed, "-" in self.pressed))
 
     async def _status_loop(self) -> None:
         while True:

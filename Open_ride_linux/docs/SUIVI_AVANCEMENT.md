@@ -219,7 +219,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Journal des commandes FTMS et des accusés, délais dans `log_report` (lot Q3).
 - [ ] Rampe de pente plus rapide, surtout à la descente (lot Q4).
 - [ ] FC relayée par le trainer figée : écrite comme absente (lot Q5).
-- [ ] Boîtier gauche du Click muet après la connexion : trace, détection, reprise (lot Q6).
+- [x] Boîtier gauche du Click muet après la connexion : trace, détection, reprise (lot Q6).
 
 ### Après la 1.0 : décor vivant, vent et aspiration (série P rédigée le 25 octobre)
 - [ ] Contrat : vent et aspiration dans `state`, configuration `[wind]`, thème 1.2 (lot P1, décision du propriétaire).

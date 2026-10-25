@@ -165,7 +165,10 @@ openride-ble-diag scan
 openride-ble-diag trainer --name "HomeTrainer" --duration 30
 openride-ble-diag trainer --name "HomeTrainer" --control --sim-grade 4 --erg 150
 openride-ble-diag click --duration 60
+openride-ble-diag trace ~/run_trainer.log   # analyse d'une trace brute du Click
 ```
+
+Diagnostic du Zwift Click V2 : `[drivers] click_trace_raw = true` (trace brute par notification), `click_mute_after_s = 60` (détection de boîtier muet) et `click_rehandshake_s = 30` (tentatives de reprise échelonnées : renvoi de RideOn, réabonnement, reconnexion). Voir `docs/DIAG_CLICK_GAUCHE.md`.
 
 Les rapports sont écrits dans `spike_reports/`.
 
