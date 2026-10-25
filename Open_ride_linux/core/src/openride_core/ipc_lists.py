@@ -8,8 +8,11 @@ ERG limités à 30 triplets.
 from __future__ import annotations
 
 import json
+import logging
 from pathlib import Path
 from typing import Any
+
+log = logging.getLogger("ipc_lists")
 
 MAX_ITEMS = 200
 MAX_DATAGRAM_BYTES = 60_000
@@ -157,3 +160,53 @@ def build_workouts_messages(
     truncated = len(workouts) > max_items
     items = [workout_info_to_dict(w) for w in workouts[:max_items]]
     return chunk_list_message("workouts", request_cmd_id, items, truncated, max_bytes=max_bytes)
+
+
+MAX_SUMMARY_BLOCKS = 24
+
+
+def summary_extras(records: list[dict[str, Any]], events: list[dict[str, Any]],
+                   ftp_w: float) -> dict[str, Any]:
+    """Champs du bilan enrichi (contrat v1.1), calculés comme `openride-core summary`.
+
+    Reprend `tools/session_summary.py` sur les enregistrements en mémoire, sans relire le
+    journal ; tout champ incalculable vaut `null`.
+    """
+    from .tools.session_summary import Session, compute_summary
+
+    res: dict[str, Any] | None = None
+    if records:
+        try:
+            res = compute_summary(Session(records, events, "jsonl"), ftp_w)
+        except Exception:
+            log.exception("Erreur lors du calcul du bilan enrichi")
+
+    def pick(key: str, ndigits: int) -> float | None:
+        value = res.get(key) if res else None
+        return round(value, ndigits) if value is not None else None
+
+    blocks = None
+    blocks_truncated = False
+    if res and res.get("erg") and res["erg"].get("blocks"):
+        triplets = [
+            [int(b["block"]), float(b["avg_power_w"]),
+             float(b["target_w"]) if b.get("target_w") is not None else None]
+            for b in res["erg"]["blocks"]
+        ]
+        blocks_truncated = len(triplets) > MAX_SUMMARY_BLOCKS
+        blocks = triplets[:MAX_SUMMARY_BLOCKS]
+
+    powers = [max(0.0, float(r["power"])) for r in records if r.get("power") is not None]
+    cads = [float(r["cadence"]) for r in records if r.get("cadence")]
+    hrs = [float(r["hr"]) for r in records if r.get("hr")]
+    return {
+        "np_w": pick("np_w", 1),
+        "intensity_factor": pick("if", 2),
+        "tss": pick("tss", 1),
+        "elevation_gain_m": pick("elevation_gain_m", 1),
+        "avg_cadence_rpm": round(sum(cads) / len(cads), 1) if cads else None,
+        "avg_hr_bpm": round(sum(hrs) / len(hrs), 1) if hrs else None,
+        "max_power_w": round(max(powers), 1) if powers else None,
+        "blocks": blocks,
+        "blocks_truncated": blocks_truncated,
+    }

@@ -23,6 +23,7 @@ from .config import WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
+from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
 from .mock_driver import MockDriver
@@ -194,6 +195,7 @@ class CoreSession:
         self.erg: ErgController | None = None   # entraînement en cours pendant la séance
         self._frame_count = 0
         self._last_devices: dict[str, Any] | None = None
+        self._bg_tasks: set[asyncio.Task[Any]] = set()
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -251,9 +253,15 @@ class CoreSession:
         elif name == "end_session" and st in ("RUNNING", "PAUSED"):
             self._finish(bool(args.get("save", True)))
         elif name == "list_routes":
-            asyncio.create_task(self._handle_list_routes(cmd_id))
+            self._spawn(self._handle_list_routes(cmd_id))
         elif name == "list_workouts":
-            asyncio.create_task(self._handle_list_workouts(cmd_id))
+            self._spawn(self._handle_list_workouts(cmd_id))
+
+    def _spawn(self, coro: Any) -> None:
+        """Lance une tâche de fond en gardant sa référence jusqu'à la fin."""
+        task = asyncio.create_task(coro)
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
 
     async def _handle_list_routes(self, cmd_id: int) -> None:
         from .config import GPX_DIR
@@ -398,47 +406,12 @@ class CoreSession:
             if fit_error and save:
                 self.server.send_error("recording_failed", f"FIT non produit : {fit_error}")
 
-            from .tools.session_summary import Session as SummarySession, compute_summary
-            sum_res = None
-            if records:
-                try:
-                    sum_res = compute_summary(SummarySession(records, events, "jsonl"), self.cfg.rider.ftp_w)
-                except Exception:
-                    log.exception("Erreur lors du calcul du bilan enrichi")
-
-            blocks = None
-            blocks_truncated = False
-            if sum_res and sum_res.get("erg") and sum_res["erg"].get("blocks"):
-                raw_blocks = sum_res["erg"]["blocks"]
-                triplets = [
-                    [
-                        int(b["block"]),
-                        float(b["avg_power_w"]),
-                        float(b["target_w"]) if b.get("target_w") is not None else None,
-                    ]
-                    for b in raw_blocks
-                ]
-                blocks_truncated = len(triplets) > 24
-                blocks = triplets[:24]
-
-            powers = [max(0.0, float(r["power"])) for r in records if r.get("power") is not None]
-            cads = [float(r["cadence"]) for r in records if r.get("cadence")]
-            hrs = [float(r["hr"]) for r in records if r.get("hr")]
-
             summary = {
                 "duration_s": round(s.timer_s, 1),
                 "distance_m": round(s.distance_m, 1),
                 "avg_power_w": round(s.avg_power or 0.0, 1),
                 "fit_path": str(fit_path) if fit_path else None,
-                "np_w": round(sum_res["np_w"], 1) if sum_res and sum_res.get("np_w") is not None else None,
-                "intensity_factor": round(sum_res["if"], 2) if sum_res and sum_res.get("if") is not None else None,
-                "tss": round(sum_res["tss"], 1) if sum_res and sum_res.get("tss") is not None else None,
-                "elevation_gain_m": round(sum_res["elevation_gain_m"], 1) if sum_res and sum_res.get("elevation_gain_m") is not None else None,
-                "avg_cadence_rpm": round(sum(cads) / len(cads), 1) if cads else None,
-                "avg_hr_bpm": round(sum(hrs) / len(hrs), 1) if hrs else None,
-                "max_power_w": round(max(powers), 1) if powers else None,
-                "blocks": blocks,
-                "blocks_truncated": blocks_truncated,
+                **summary_extras(records, events, self.cfg.rider.ftp_w),
             }
         self.state.summary = summary
         self.erg = None
@@ -547,8 +520,6 @@ class CoreSession:
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
         if any(p.status == "CONNECTED" for p in clicks):
             self.state.input_status = "CONNECTED"
-        elif clicks:
-            self.state.input_status = "LOST"
         else:
             self.state.input_status = self.inputs[0].status if self.inputs else "KEYBOARD"
 
