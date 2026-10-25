@@ -221,6 +221,9 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] FC relayée par le trainer figée : écrite comme absente (lot Q5).
 - [ ] Boîtier gauche du Click muet après la connexion : trace, détection, reprise (lot Q6).
 
+### Performances du rendu (série S rédigée le 25 octobre)
+- [ ] Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible (lot S1).
+
 ### Après la 1.0 : décor vivant, vent et aspiration (série P rédigée le 25 octobre)
 - [ ] Contrat : vent et aspiration dans `state`, configuration `[wind]`, thème 1.2 (lot P1, décision du propriétaire).
 - [ ] Vent physique et aspiration derrière les bots, côté core (lots P2 et P3).

@@ -120,6 +120,7 @@
 | [Q4](LOT_Q4_rampe_de_pente.md) | Rampe de pente plus rapide, vitesses distinctes à la montée et à la descente | Python | Q1 (`session.py`) | Petite | Oui ; issue #171 |
 | [Q5](LOT_Q5_fc_relayee_figee.md) | Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui ; issue #172 |
 | [Q6](LOT_Q6_boitier_gauche_click.md) | Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
+| [S1](LOT_S1_rendu_invisible.md) | Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible | GDScript | O1, Q2 (mêmes fichiers) | Moyenne | Oui (essai sur la GTX 1060 par le propriétaire) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -144,6 +145,8 @@ Leur forme dépendra des choix faits dans E1 et D.
 **Série P (25 octobre, après la 1.0) : décor vivant, vent et aspiration.** Demande du propriétaire : rendre le décor plus vivant, rendre le vent et l'aspiration physiques avec leur indicateur, améliorer le son du vent et de la roue libre. Tous les lots attendent la publication de la 1.0 (O8) : leurs issues portent l'étiquette `bloqué` jusque-là. Jour, nuit et saisons (P7, P18, P19) sont reportés à la **version 2.0** par décision du propriétaire, comme les packs de textures selon les performances (P20, demande du même jour). P1 (contrat) est une décision du propriétaire et bloque le reste. Délégables : P2 à P15, P18 et P20, dans l'ordre du graphe ; internes : P16 et P17 (et P19 en 2.0), qui branchent les lots dans `main.gd` et font la recette sur le matériel. Ordre conseillé, du plus rentable au plus coûteux : P2, P4, P5, P6, P9, P10, puis P16 ; ensuite P3, P8, P11 à P15, puis P17. **Budget de rendu :** sur le PC cible (GTX 1060), qualité `low`, toute la série activée, 55 images/s ou plus en moyenne et temps d'image p99 sous 25 ms (ligne `[perf-rendu]` d'E3) ; chaque lot délégable mesure le coût de sa mise à jour par image dans son test, et tout se coupe par `living(preset)` (P4) ou `[render] living`. Fichiers partagés : `session.py` (P2 puis P3) ; `quality_presets.gd` (P4 seul) ; `theme_render_params.gd` (P6, P7) ; `tree_sway.gdshader` (P5 puis P18) ; `sound_player.gd` (P9, P10, P13, P15, l'un après l'autre) ; `weather_particles.gd` et `ambience_model.gd` (P8 et P9, puis P18) ; `osm_layers.gd` et `water_mesh.gd` (P12 seul) ; `main.gd`, `hud_view.gd` et `osm_streamer.gd` (P16, P17, P19 seulement). Les bots à l'écran restent dans O7 ; P3 leur ajoute l'abri.
 
 **Série Q (25 octobre, retours de l'essai sur le HomeTrainer) :** six lots tirés de l'essai de 1 h 27 sur le circuit synthétique `essai-69` (séance trop dure, pente qui paraît faible à l'écran, environ 22 s avant que la résistance se relâche, FC relayée figée, boîtier gauche du Click muet). Aucun ne demande de matériel pour sa recette automatique ; chacun se termine par un essai court du propriétaire sur le PC cible. Q1 ajoute la commande `set_difficulty` au contrat (v1.2, accepté par le propriétaire le 25 octobre, avec un défaut à 50 % et un réglage par curseur dans le menu, sans bouton du Click) ; le curseur lui-même est ajouté à O3 et O4. Q2 ne touche que l'engine et n'exagère que l'affichage, jamais la physique. Fichiers partagés : `session.py` (Q1 puis Q4) ; `ftms_driver.py` (Q3 puis Q5) ; `config.py` (Q2 à Q6, sections différentes) ; `main.gd` (Q2 seul). Q3 avant Q4 permet de mesurer le gain sur le trainer.
+
+**Série S (25 octobre, performances du rendu) :** demande du propriétaire d'explorer l'optimisation du moteur graphique en ne modélisant pas ce qui est invisible pour le cycliste (au-delà du brouillard, derrière la caméra, masqué par le relief, ombres hors champ). S1 commence par une mesure au banc simulé (`engine/tests/sim_bench.py`) et ne garde que les pistes qui font gagner des images par seconde sans changement visible. Fichiers partagés : `tree_renderer.gd` (O1 d'abord), `terrain_tiles.gd` (Q2 d'abord).
 
 **Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
 
@@ -177,6 +180,7 @@ N, O1, O2, O6 ──► O8 (recette 1.0)
 O8 ──► P1 ──► P2 ──► P3 (avec N9) ;  P1 ──► P4 ──► P5, P6, P8, P9, P10, P11, P12, P14
 P9 ──► P13 ;  P9, P14 ──► P15 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, O7)
 Q1 ──► Q4 ;  Q3 ──► Q5 ;  Q2, Q6 : indépendants
+O1, Q2 ──► S1
 Version 2.0 : P17 ──► P7 ;  P7, P17 ──► P18 ──► P19 ;  N10, O3, P17 ──► P20
 ```
 
@@ -237,7 +241,7 @@ Si un contrat te semble faux ou incomplet, arrête-toi et pose la question au li
 
 ## 5. Partage des lots par issues GitHub
 
-Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L`, `série M`, `série N`, `série O`, `série P` ou `série Q`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
+Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L`, `série M`, `série N`, `série O`, `série P`, `série Q` ou `série S`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
 
 1. Choisir une issue ouverte sans l'étiquette `bloqué`, sans assigné ni commentaire « Je prends ce lot ».
 2. Commenter « Je prends ce lot » sur l'issue, pour que deux IA ne fassent pas le même lot.
