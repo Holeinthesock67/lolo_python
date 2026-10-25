@@ -32,8 +32,11 @@ def route_entry_to_dict(entry: Any) -> dict[str, Any]:
     }
 
 
-def workout_info_to_dict(w: Any) -> dict[str, Any]:
-    """Convertit un WorkoutInfo vers la structure du contrat workouts.schema.json."""
+def workout_info_to_dict(w: Any, ftp_w: float = 250.0) -> dict[str, Any]:
+    """Convertit un WorkoutInfo vers la structure du contrat workouts.schema.json.
+
+    Les blocs en watts absolus d'un `.erg` (lot O9) sont ramenés à `ftp_w` dans le profil.
+    """
     if w.error is not None:
         return {
             "id": w.id,
@@ -48,10 +51,11 @@ def workout_info_to_dict(w: Any) -> dict[str, Any]:
 
     profile_triplets: list[list[float | None]] = []
     for b in w.profile[:MAX_PROFILE_TRIPLETS]:
+        start, end = b.profile_fracs(ftp_w)
         profile_triplets.append([
             round(b.duration_s, 1),
-            round(b.start_frac, 4) if b.start_frac is not None else None,
-            round(b.end_frac, 4) if b.end_frac is not None else None,
+            round(start, 4) if start is not None else None,
+            round(end, 4) if end is not None else None,
         ])
 
     return {
@@ -152,13 +156,14 @@ def build_workouts_messages(
     workouts_dir: Path,
     max_items: int = MAX_ITEMS,
     max_bytes: int = MAX_DATAGRAM_BYTES,
+    ftp_w: float = 250.0,
 ) -> list[dict[str, Any]]:
     """Lit les entraînements et produit les messages `workouts` (1 à parts parties)."""
     from .workout import list_workouts
 
     workouts = list_workouts(workouts_dir)
     truncated = len(workouts) > max_items
-    items = [workout_info_to_dict(w) for w in workouts[:max_items]]
+    items = [workout_info_to_dict(w, ftp_w) for w in workouts[:max_items]]
     return chunk_list_message("workouts", request_cmd_id, items, truncated, max_bytes=max_bytes)
 
 
