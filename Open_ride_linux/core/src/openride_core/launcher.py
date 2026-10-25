@@ -635,6 +635,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--ipc-cmd-port={cfg.ipc.port_commands}",
             f"--quality={cfg.render.quality}",
             f"--theme={cfg.render.theme}",
+            f"--visual-grade={cfg.render.visual_grade_scale}",
         ],
         release_cmd=[*core, "release-trainer", *config_args],
         recover_cmd=[*core, "recover"],

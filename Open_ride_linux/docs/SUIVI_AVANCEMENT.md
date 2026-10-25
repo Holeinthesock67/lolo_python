@@ -215,7 +215,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Retours de l'essai du 25 octobre sur le HomeTrainer (série Q rédigée le 25 octobre)
 - [ ] Difficulté du trainer à 50 % par défaut, réglable pendant la séance par un curseur du menu, affichée dans le HUD (lot Q1, contrat IPC v1.2 accepté ; curseur dans O4).
-- [ ] Pentes plus lisibles à l'écran : caméra inclinée, relief exagéré à l'affichage seulement (lot Q2).
+- [x] Pentes plus lisibles à l'écran : caméra inclinée, relief exagéré à l'affichage seulement (lot Q2, `camera_follow.gd`, `road_builder.gd`, `terrain_tiles.gd`, `world_streamer.gd`, `osm_streamer.gd`, option `--visual-grade=K`, tests unitaires `test_camera_pitch.gd` et `test_visual_grade_scale.gd`, captures `visual_check.py`).
 - [ ] Journal des commandes FTMS et des accusés, délais dans `log_report` (lot Q3).
 - [ ] Rampe de pente plus rapide, surtout à la descente (lot Q4).
 - [ ] FC relayée par le trainer figée : écrite comme absente (lot Q5).

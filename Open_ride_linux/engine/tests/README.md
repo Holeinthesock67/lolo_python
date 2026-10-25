@@ -35,6 +35,7 @@ Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sou
 | `core_muet_1`, `core_muet_2` | Core muet : `core_lost`, bandeau « Core non joignable » rouge et sans recouvrir le HUD, caméra et image figées |
 | `reprise` | Bandeau disparu, image normale |
 | `erreur` | Trame `error` : code `route_invalid` dans le bandeau rouge, sans recouvrir le HUD |
+| `pente_0pct`, `pente_4pct`, `pente_8pct` | Pentes à 0 %, ~4 % et ~8 % : inclinaison caméra et exagération visuelle vérifiées |
 | `journal` | Aucune erreur ni avertissement Godot (mêmes tolérances que ci-dessous), rendu actif |
 
 Images de référence : avec `--golden DOSSIER`, les scènes reproductibles (`attente`, `vue_fixe`, `pause`, `erreur` : s fixé, rien ne bouge) sont comparées aux références ; échec si l'écart moyen dépasse 6 niveaux sur 255 ou si plus de 1 % des pixels changent de plus de 40 niveaux (un défaut localisé, comme une ligne du HUD disparue, ne pèse que quelques niveaux en moyenne). Le rapport montre alors les écarts en rouge. `--update-golden` enregistre les captures comme références. `run_visual_tests.sh` garde les références dans `~/.cache/openride/visual_golden` (`VISUAL_GOLDEN`) et les crée au premier lancement ; après un changement graphique voulu, le relancer avec `--update-golden`.
@@ -87,6 +88,8 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_osm_decor_route.gd` | – | Décor OSM et route : aucun arbre dans un bâtiment ni à moins de 3 m de ses murs (`tree_renderer.gd`, `exclude_buildings`), cours d'eau coupés au passage de la chaussée et ruisseau sur le bas-côté retiré (`osm_streamer.gd`, `cut_lines_at_road`) |
 | `test_far_terrain_carve.gd` | – | Terrain lointain abaissé sous la route (`terrain_tiles.gd`, `carve_under_route`) : vallée en V à 30 % et route en S à 7 %, dépassement de 8 m sans correctif, au moins 2 m sous la chaussée après, aucun sommet relevé, bord commun de deux tuiles identique |
 | `test_sound_player.gd` | E4 | Lecteurs et sons procéduraux du parcours (`sound_player.gd`) : synthèse au démarrage (< 500 ms), vent, roue libre, limitation à 4 lecteurs 3D actifs, volumes à 0,5 dB de `sound_model.gd` |
+| `test_camera_pitch.gd` | Q2 | Inclinaison de la caméra selon la pente (`camera_follow.gd`) : 0° sur le plat, atan(pente) à 8 %, lissage temporel (saut < 1° par image), bornes ±12° |
+| `test_visual_grade_scale.gd` | Q2 | Facteur d'exagération visuelle (`road_builder.gd`, `terrain_tiles.gd`, `world_streamer.gd`, `osm_streamer.gd`) : élévations k=1.0 et k=1.5, terrain sous la route, hauteur des bâtiments inchangée et base au sol, HUD inchangé, surcoût < 5% |
 
 ## Étapes du script
 

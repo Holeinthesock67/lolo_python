@@ -41,7 +41,7 @@ static func section_s(route, k: int) -> PackedFloat64Array:
 
 
 ## Tableaux de maillage (Mesh.ARRAY_MAX) du tronçon k.
-static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M) -> Array:
+static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M, visual_grade_scale: float = 1.0) -> Array:
 	var half := road_width_m * 0.5
 	var outer := half + SHOULDER_WIDTH_M
 	# Décalages en travers (m, vers la droite) et descente de chaque sommet de la coupe.
@@ -52,13 +52,17 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()
+	var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
 	for s_cut in s_values:
 		var smp: Dictionary = route.sample(s_cut)
 		var center := Vector3(smp["x"], smp["y"], smp["z"])
+		if visual_grade_scale != 1.0:
+			center.y = alt_orig + (center.y - alt_orig) * visual_grade_scale
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		# Cap horaire depuis le nord (−z) : avant = (sin h, 0, −cos h), droite = (cos h, 0, sin h).
 		var right := Vector3(cos(h), 0.0, sin(h))
-		var forward := Vector3(sin(h), float(smp["grade_pct"]) / 100.0, -cos(h))
+		var grade := (float(smp["grade_pct"]) / 100.0) * visual_grade_scale
+		var forward := Vector3(sin(h), grade, -cos(h))
 		var up_road := right.cross(forward).normalized()
 		var left_shoulder := (right * SHOULDER_WIDTH_M + Vector3.UP * SHOULDER_DROP_M).cross(forward).normalized()
 		var right_shoulder := (right * SHOULDER_WIDTH_M - Vector3.UP * SHOULDER_DROP_M).cross(forward).normalized()

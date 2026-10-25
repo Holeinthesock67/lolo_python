@@ -97,6 +97,7 @@ Le premier script lance les tests unitaires de `engine/tests/unit/` (vecteurs de
 | `--ipc-state-port=N` | 5005 | Port d'écoute des trames du core ; s'il est occupé, l'engine quitte avec le code 1 |
 | `--ipc-cmd-port=N` | 5006 | Port de commandes du core |
 | `--routes-dir=CHEMIN` | `~/.local/share/openride/routes` | Dossier des parcours `<route_id>.world` (repli sur la démo embarquée pour `demo`) |
+| `--visual-grade=K` | 1.0 | Facteur d'exagération visuelle du relief (borné entre 1.0 et 2.0, lot Q2) |
 | `--test-mode` | absent | Journal `[test]` pour les tests sans écran |
 
 Exemple : `godot --path engine -- --ipc-state-port=5005 --ipc-cmd-port=5006`. `scripts/openride-dev.sh` passe les ports de `config.toml`.
