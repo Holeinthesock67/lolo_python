@@ -13,7 +13,7 @@ Changer sa FTP, son thème ou sa qualité graphique depuis le menu, au Click ou 
 
 ## 3. Prérequis
 
-N6, N13 (même révision de contrat, à faire l'un après l'autre) et O3 fusionnés ; O2 pour la version ; N10 pour plus d'un thème.
+N6, N13 (même révision de contrat, à faire l'un après l'autre), O3 et Q1 (commande `set_difficulty`) fusionnés ; O2 pour la version ; N10 pour plus d'un thème.
 
 ## 4. Proposition de contrat (ajouts compatibles à la révision de N13)
 
@@ -29,6 +29,7 @@ Le core n'accepte `set_setting` qu'**en dehors d'une séance** (état `IDLE` ou 
 
 - Core : traiter les trois messages en appelant `settings.current`, `settings.step` (côté engine) et `settings.apply` ; après écriture, recharger la configuration pour la séance suivante ; `hello_ack.config` reflète les nouvelles valeurs.
 - Engine : état `SETTINGS` dans `menu_model.gd` (entrée depuis l'accueil, + et − pour changer la valeur, appui long pour valider, retour), vue `settings_view.gd` dans le style de N6, bips existants ; thème et qualité appliqués tout de suite au décor de fond du menu quand `applies` vaut `now`.
+- **Difficulté du trainer** (lot Q1, décision du propriétaire du 25 octobre) : affichée en curseur horizontal de 0 à 100 % par pas de 10 % (+ et − pour le déplacer). Dans les réglages, elle s'enregistre par `set_setting` comme les autres. Le même curseur est proposé sur l'écran de pause de N6 : il envoie `set_difficulty` (Q1, accepté pendant la séance) et ne touche pas `config.toml`. Aucun bouton du Click ni touche dédiée.
 - Ligne « OpenRide X.Y.Z » en bas de l'écran (version de `hello_ack.core_version` et de l'engine ; alerte discrète si elles diffèrent).
 - Tests : modèle sans affichage (`engine/tests/unit/test_menu_model.gd` étendu), core (`core/tests/test_ipc_settings.py`), schémas, et une capture ajoutée à `engine/tests/run_visual_tests.sh`.
 

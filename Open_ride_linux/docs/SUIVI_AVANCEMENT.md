@@ -213,7 +213,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
 
 ### Retours de l'essai du 25 octobre sur le HomeTrainer (série Q rédigée le 25 octobre)
-- [ ] Difficulté du trainer réglable pendant la séance, au clavier et dans le HUD (lot Q1, contrat IPC v1.2 à décider).
+- [ ] Difficulté du trainer à 50 % par défaut, réglable pendant la séance par un curseur du menu, affichée dans le HUD (lot Q1, contrat IPC v1.2 accepté ; curseur dans O4).
 - [ ] Pentes plus lisibles à l'écran : caméra inclinée, relief exagéré à l'affichage seulement (lot Q2).
 - [ ] Journal des commandes FTMS et des accusés, délais dans `log_report` (lot Q3).
 - [ ] Rampe de pente plus rapide, surtout à la descente (lot Q4).
