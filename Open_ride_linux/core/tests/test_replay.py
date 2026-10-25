@@ -203,7 +203,7 @@ def test_cli_run_replay_option_forces_mock(tmp_path: Path, monkeypatch: pytest.M
     captured: dict[str, Config] = {}
 
     class DummySession:
-        def __init__(self, cfg: Config) -> None:
+        def __init__(self, cfg: Config, **kwargs: object) -> None:
             captured["cfg"] = cfg
 
         async def run(self, autostart: bool = False, **kwargs: object) -> None:
