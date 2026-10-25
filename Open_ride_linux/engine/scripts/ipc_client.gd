@@ -13,6 +13,10 @@ signal core_lost
 signal core_returned
 signal command_acked(cmd_name: String, cmd_id: int)
 signal command_failed(cmd_name: String)
+## Listes v1.1 (routes et workouts, lot N3)
+signal routes_received(items: Array, msg: Dictionary)
+signal workouts_received(items: Array, msg: Dictionary)
+signal list_failed(list_name: String, error_message: String)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
 
@@ -43,6 +47,8 @@ var _peer := PacketPeerUDP.new()
 var _cmd_id_counter := 0
 ## Commandes en attente d'accusé : {cmd_id, name, args, first_us, last_us, sends}.
 var _pending: Array[Dictionary] = []
+var _pending_list_routes: Dictionary = {}
+var _pending_list_workouts: Dictionary = {}
 var _hello_acked := false
 var _hello_timer := 0.0
 var _last_state_us := 0
@@ -134,6 +140,33 @@ func _process(delta: float) -> void:
 		if _hello_timer >= HELLO_PERIOD_S:
 			_hello_timer = 0.0
 			send_hello()
+	# Gestion des relances de listes (lot N3 : redemande après 1 s, 3 fois au plus)
+	if not _pending_list_routes.is_empty():
+		_pending_list_routes["timer"] = float(_pending_list_routes.get("timer", 0.0)) + delta
+		if _pending_list_routes["timer"] >= 1.0:
+			_pending_list_routes["timer"] = 0.0
+			_pending_list_routes["retries"] = int(_pending_list_routes.get("retries", 0)) + 1
+			if _pending_list_routes["retries"] <= 3:
+				var cid := send_command("list_routes", {})
+				_pending_list_routes["cmd_id"] = cid
+			else:
+				var err_msg := "Aucune réponse pour la liste des parcours après 3 tentatives"
+				_pending_list_routes.clear()
+				list_failed.emit("routes", err_msg)
+
+	if not _pending_list_workouts.is_empty():
+		_pending_list_workouts["timer"] = float(_pending_list_workouts.get("timer", 0.0)) + delta
+		if _pending_list_workouts["timer"] >= 1.0:
+			_pending_list_workouts["timer"] = 0.0
+			_pending_list_workouts["retries"] = int(_pending_list_workouts.get("retries", 0)) + 1
+			if _pending_list_workouts["retries"] <= 3:
+				var cid := send_command("list_workouts", {})
+				_pending_list_workouts["cmd_id"] = cid
+			else:
+				var err_msg := "Aucune réponse pour la liste des entraînements après 3 tentatives"
+				_pending_list_workouts.clear()
+				list_failed.emit("workouts", err_msg)
+
 	_resend_pending(now)
 
 
@@ -171,6 +204,14 @@ func _poll_incoming() -> void:
 				_hello_timer = HELLO_PERIOD_S   # hello dès l'image suivante, puis chaque seconde
 				last_state_seq = -1
 				shutdown_received.emit()
+			"routes":
+				_pending_list_routes.clear()
+				var r_items: Array = json_obj.get("items", [])
+				routes_received.emit(r_items, json_obj)
+			"workouts":
+				_pending_list_workouts.clear()
+				var w_items: Array = json_obj.get("items", [])
+				workouts_received.emit(w_items, json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -213,6 +254,20 @@ func _send_json(dict: Dictionary) -> void:
 	var err := _peer.put_packet(payload)
 	if err != OK:
 		print("[diag] envoi UDP en échec (code ", err, ") : ", dict.get("type", "?"))
+
+
+## Demande la liste des parcours au core (lot N3, contrat v1.1).
+func list_routes() -> int:
+	var cmd_id := send_command("list_routes", {})
+	_pending_list_routes = {"cmd_id": cmd_id, "retries": 0, "timer": 0.0}
+	return cmd_id
+
+
+## Demande la liste des entraînements au core (lot N3, contrat v1.1).
+func list_workouts() -> int:
+	var cmd_id := send_command("list_workouts", {})
+	_pending_list_workouts = {"cmd_id": cmd_id, "retries": 0, "timer": 0.0}
+	return cmd_id
 
 
 func send_hello() -> void:
