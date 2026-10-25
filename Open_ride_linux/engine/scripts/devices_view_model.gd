@@ -13,6 +13,19 @@ const LEVEL_ERROR := "error"
 const LEVEL_OFF := "off"
 
 
+## Valeur du contrat qui peut valoir null : dictionnaire vide, liste vide ou texte vide à la place.
+static func _dict(v) -> Dictionary:
+	return v if v is Dictionary else {}
+
+
+static func _arr(v) -> Array:
+	return v if v is Array else []
+
+
+static func _text(v) -> String:
+	return "" if v == null else str(v)
+
+
 ## Formate les lignes d'état des appareils à partir d'une trame state.
 ## Renvoie une liste de dictionnaires : {id, label, status_text, level}.
 func rows(state: Dictionary) -> Array:
@@ -21,9 +34,9 @@ func rows(state: Dictionary) -> Array:
 
 	if devices is Dictionary and not devices.is_empty():
 		# 1. Trainer
-		var trainer: Dictionary = devices.get("trainer", {})
+		var trainer: Dictionary = _dict(devices.get("trainer"))
 		var t_status: String = str(trainer.get("status", state.get("trainer_status", "LOST")))
-		var t_name: String = str(trainer.get("name", "")).strip_edges()
+		var t_name: String = _text(trainer.get("name")).strip_edges()
 		var t_label := "Trainer" if t_name == "" else ("Trainer %s" % t_name)
 		var t_text := "connecté"
 		var t_level := LEVEL_OK
@@ -107,7 +120,7 @@ func rows(state: Dictionary) -> Array:
 				})
 
 		# 3. Cardio
-		var hr: Dictionary = devices.get("hr", {})
+		var hr: Dictionary = _dict(devices.get("hr"))
 		var hr_status: String = str(hr.get("status", "NONE"))
 		var hr_source = hr.get("source", null)
 		var hr_text := "absente"
@@ -200,15 +213,15 @@ func alerts(prev_state: Dictionary, state: Dictionary) -> Array:
 		return []
 
 	var out: Array = []
-	var prev_dev: Dictionary = prev_state.get("devices", {})
-	var curr_dev: Dictionary = state.get("devices", {})
+	var prev_dev: Dictionary = _dict(prev_state.get("devices"))
+	var curr_dev: Dictionary = _dict(state.get("devices"))
 
 	if curr_dev.is_empty() or prev_dev.is_empty():
 		return []
 
 	# 1. Vérification des boîtiers Click
-	var prev_clicks: Array = prev_dev.get("click", [])
-	var curr_clicks: Array = curr_dev.get("click", [])
+	var prev_clicks: Array = _arr(prev_dev.get("click"))
+	var curr_clicks: Array = _arr(curr_dev.get("click"))
 
 	var prev_click_map := {}
 	for c in prev_clicks:
@@ -223,7 +236,7 @@ func alerts(prev_state: Dictionary, state: Dictionary) -> Array:
 		var label := "Click" if side_label == "" else ("Click %s" % side_label)
 
 		var cur_status: String = str(c.get("status", ""))
-		var prev_c: Dictionary = prev_click_map.get(side, {})
+		var prev_c: Dictionary = _dict(prev_click_map.get(side))
 		var prv_status: String = str(prev_c.get("status", ""))
 
 		# Perte / Reconnexion
@@ -263,8 +276,8 @@ func alerts(prev_state: Dictionary, state: Dictionary) -> Array:
 				})
 
 	# 2. Ceinture cardio perdue (passage de strap à trainer ou status LOST)
-	var prev_hr: Dictionary = prev_dev.get("hr", {})
-	var curr_hr: Dictionary = curr_dev.get("hr", {})
+	var prev_hr: Dictionary = _dict(prev_dev.get("hr"))
+	var curr_hr: Dictionary = _dict(curr_dev.get("hr"))
 	var prv_hr_source: String = str(prev_hr.get("source", ""))
 	var cur_hr_source: String = str(curr_hr.get("source", ""))
 	var prv_hr_status: String = str(prev_hr.get("status", ""))
@@ -288,7 +301,7 @@ func ready_to_ride(state: Dictionary) -> Dictionary:
 	var has_click := false
 
 	if devices is Dictionary and not devices.is_empty():
-		var t: Dictionary = devices.get("trainer", {})
+		var t: Dictionary = _dict(devices.get("trainer"))
 		trainer_status = str(t.get("status", state.get("trainer_status", "LOST")))
 
 		var clicks = devices.get("click", [])
