@@ -39,7 +39,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 
 **Modules clés du core** (`core/src/openride_core/`) :
 - `session.py` : boucle principale ;
-- `launcher.py`, `launch_compile.py` : lanceur unique `openride` (core + Godot, compilation au lancement des traces GPX, relance de Godot s'il plante, arrêt propre sur fermeture et signaux ; un journal par lancement dans `~/OpenRide/Logs/`, lien `~/run_trainer.log` vers le dernier, lots M8 et N11) ;
+- `launcher.py`, `launch_compile.py` : lanceur unique `openride` (core + Godot, compilation au lancement des traces GPX, relance de Godot s'il plante, relance du core avec reprise de la séance en pause s'il plante (lot N8, `resume.py`), arrêt propre sur fermeture et signaux ; un journal par lancement dans `~/OpenRide/Logs/`, lien `~/run_trainer.log` vers le dernier, lots M8 et N11) ;
 - `ftms_driver.py` : pilote du HomeTrainer ;
 - `input_providers.py` : Click et clavier ;
 - `ble_util.py` : verrou BLE, repli BlueZ ;
