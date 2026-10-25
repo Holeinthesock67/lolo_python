@@ -47,6 +47,9 @@ var _peer := PacketPeerUDP.new()
 var _cmd_id_counter := 0
 ## Commandes en attente d'accusé : {cmd_id, name, args, first_us, last_us, sends}.
 var _pending: Array[Dictionary] = []
+## Relance des listes v1.1 (contrat §4) : une seconde sans réponse complète, 3 fois au plus.
+const LIST_RETRY_S := 1.0
+const LIST_MAX_RETRIES := 3
 var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
 var _hello_acked := false
@@ -140,32 +143,12 @@ func _process(delta: float) -> void:
 		if _hello_timer >= HELLO_PERIOD_S:
 			_hello_timer = 0.0
 			send_hello()
-	# Gestion des relances de listes (lot N3 : redemande après 1 s, 3 fois au plus)
-	if not _pending_list_routes.is_empty():
-		_pending_list_routes["timer"] = float(_pending_list_routes.get("timer", 0.0)) + delta
-		if _pending_list_routes["timer"] >= 1.0:
-			_pending_list_routes["timer"] = 0.0
-			_pending_list_routes["retries"] = int(_pending_list_routes.get("retries", 0)) + 1
-			if _pending_list_routes["retries"] <= 3:
-				var cid := send_command("list_routes", {})
-				_pending_list_routes["cmd_id"] = cid
-			else:
-				var err_msg := "Aucune réponse pour la liste des parcours après 3 tentatives"
-				_pending_list_routes.clear()
-				list_failed.emit("routes", err_msg)
-
-	if not _pending_list_workouts.is_empty():
-		_pending_list_workouts["timer"] = float(_pending_list_workouts.get("timer", 0.0)) + delta
-		if _pending_list_workouts["timer"] >= 1.0:
-			_pending_list_workouts["timer"] = 0.0
-			_pending_list_workouts["retries"] = int(_pending_list_workouts.get("retries", 0)) + 1
-			if _pending_list_workouts["retries"] <= 3:
-				var cid := send_command("list_workouts", {})
-				_pending_list_workouts["cmd_id"] = cid
-			else:
-				var err_msg := "Aucune réponse pour la liste des entraînements après 3 tentatives"
-				_pending_list_workouts.clear()
-				list_failed.emit("workouts", err_msg)
+	# Relances des listes (lot N3, contrat v1.1 §4) : sans réponse complète une seconde après la demande
+	# ou après la dernière partie reçue, nouvelle demande avec un nouveau cmd_id, 3 fois au plus.
+	_tick_list(_pending_list_routes, "list_routes", "routes",
+		"Aucune réponse pour la liste des parcours après 3 tentatives", delta)
+	_tick_list(_pending_list_workouts, "list_workouts", "workouts",
+		"Aucune réponse pour la liste des entraînements après 3 tentatives", delta)
 
 	_resend_pending(now)
 
@@ -205,13 +188,9 @@ func _poll_incoming() -> void:
 				last_state_seq = -1
 				shutdown_received.emit()
 			"routes":
-				_pending_list_routes.clear()
-				var r_items: Array = json_obj.get("items", [])
-				routes_received.emit(r_items, json_obj)
+				_on_list_part(_pending_list_routes, "routes", json_obj)
 			"workouts":
-				_pending_list_workouts.clear()
-				var w_items: Array = json_obj.get("items", [])
-				workouts_received.emit(w_items, json_obj)
+				_on_list_part(_pending_list_workouts, "workouts", json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -256,18 +235,81 @@ func _send_json(dict: Dictionary) -> void:
 		print("[diag] envoi UDP en échec (code ", err, ") : ", dict.get("type", "?"))
 
 
-## Demande la liste des parcours au core (lot N3, contrat v1.1).
+## Demande la liste des parcours au core (lot N3, contrat v1.1). Réponse : signal routes_received.
 func list_routes() -> int:
 	var cmd_id := send_command("list_routes", {})
-	_pending_list_routes = {"cmd_id": cmd_id, "retries": 0, "timer": 0.0}
+	_reset_list_request(_pending_list_routes, cmd_id)
 	return cmd_id
 
 
-## Demande la liste des entraînements au core (lot N3, contrat v1.1).
+## Demande la liste des entraînements au core (lot N3, contrat v1.1). Réponse : signal workouts_received.
 func list_workouts() -> int:
 	var cmd_id := send_command("list_workouts", {})
-	_pending_list_workouts = {"cmd_id": cmd_id, "retries": 0, "timer": 0.0}
+	_reset_list_request(_pending_list_workouts, cmd_id)
 	return cmd_id
+
+
+## Demande en cours : {cmd_id (dernier envoyé), cmd_ids, retries, timer, answers}. `answers` range les parties
+## reçues par request_cmd_id : {request_cmd_id: {parts, got: {part: items}, truncated}}. Le dictionnaire est
+## modifié sur place (pas réaffecté) pour que les références gardées par _process restent valables.
+static func _reset_list_request(req: Dictionary, cmd_id: int) -> void:
+	req.clear()
+	req.merge({"cmd_id": cmd_id, "cmd_ids": [cmd_id], "retries": 0, "timer": 0.0, "answers": {}})
+
+
+func _tick_list(req: Dictionary, cmd_name: String, list_name: String, error_message: String, delta: float) -> void:
+	if req.is_empty():
+		return
+	req["timer"] = float(req.get("timer", 0.0)) + delta
+	if req["timer"] < LIST_RETRY_S:
+		return
+	req["timer"] = 0.0
+	req["retries"] = int(req.get("retries", 0)) + 1
+	if req["retries"] > LIST_MAX_RETRIES:
+		req.clear()
+		list_failed.emit(list_name, error_message)
+		return
+	var cid := send_command(cmd_name, {})
+	req["cmd_id"] = cid
+	if not req.has("cmd_ids"):
+		req["cmd_ids"] = []
+	req["cmd_ids"].append(cid)
+
+
+## Une partie de `routes` ou `workouts` : rangée sous son request_cmd_id ; liste émise quand toutes les
+## parties d'une même réponse sont là. Une réponse à une demande qui n'est plus en cours est ignorée.
+func _on_list_part(req: Dictionary, list_name: String, msg: Dictionary) -> void:
+	if req.is_empty():
+		return
+	var rid := int(msg.get("request_cmd_id", -1))
+	if not rid in req.get("cmd_ids", [req.get("cmd_id", -1)]):
+		return
+	var parts := maxi(1, int(msg.get("parts", 1)))
+	var part := int(msg.get("part", 1))
+	if part < 1 or part > parts:
+		return
+	if not req.has("answers"):
+		req["answers"] = {}
+	var answers: Dictionary = req["answers"]
+	if not answers.has(rid) or int(answers[rid]["parts"]) != parts:
+		answers[rid] = {"parts": parts, "got": {}, "truncated": false}
+	var answer: Dictionary = answers[rid]
+	var raw_items = msg.get("items", [])
+	answer["got"][part] = raw_items if raw_items is Array else []
+	answer["truncated"] = bool(answer["truncated"]) or bool(msg.get("truncated", false))
+	req["timer"] = 0.0   # une seconde de plus pour la partie suivante
+	if answer["got"].size() < parts:
+		return
+	var items: Array = []
+	for i in range(1, parts + 1):
+		items.append_array(answer["got"][i])
+	var whole := {"type": list_name, "request_cmd_id": rid, "parts": parts, "items": items,
+		"truncated": answer["truncated"]}
+	req.clear()
+	if list_name == "routes":
+		routes_received.emit(items, whole)
+	else:
+		workouts_received.emit(items, whole)
 
 
 func send_hello() -> void:
