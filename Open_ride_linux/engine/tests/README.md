@@ -77,6 +77,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_hud_view.gd` | E3 | Affichage du HUD (`hud_view.gd`) : valeurs principales (>= 48 px), libellés (>= 24 px), profil d'altitude (120 colonnes), prochaine montée, mise en page sans chevauchement à 1280x720 et 1920x1080 |
 | `test_erg_view.gd` | N7 | Bandeau et histogramme ERG (`erg_view.gd`) : textes du bandeau (bloc i/n, type, cible biais compris, temps restant, cible suivante, pause), zones de Coggan aux seuils de `openride-core summary`, largeurs des blocs selon le profil v1.1, curseur juste à la seconde, repli en cases égales sans profil, caché en SIM, mise en page à 1280x720 et 1920x1080 |
 | `test_summary_view_model.gd` | N4 | Modèle de l'écran de fin de séance (`summary_view_model.gd`) : 10 lignes du bilan enrichi dans l'ordre fixé, 3 lignes en v1, blocs ERG avec déviations et couleurs, fichier FIT seul, écran de menu avec confirmation de quitter, aucun nœud créé |
+| `test_devices_view_model.gd` | N5 | Modèle d'état des appareils (`devices_view_model.gd`) : lignes d'état en v1.1 et repli v1, alertes de perte/reconnexion et batterie sous 20 % / 10 %, `ready_to_ride`, aucun nœud créé |
 | `test_sound_player.gd` | E4 | Lecteurs et sons procéduraux du parcours (`sound_player.gd`) : synthèse au démarrage (< 500 ms), vent, roue libre, limitation à 4 lecteurs 3D actifs, volumes à 0,5 dB de `sound_model.gd` |
 
 ## Étapes du script
