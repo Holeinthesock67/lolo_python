@@ -6,7 +6,7 @@ import pytest
 
 from openride_core import ftms, zwift_click
 from openride_core.zwift_click import (
-    InputEvent, PressClassifier, decode_protobuf_varints, parse_click_buttons,
+    ClickButtons, InputEvent, PressClassifier, decode_protobuf_varints, parse_click_buttons,
 )
 
 
@@ -95,12 +95,15 @@ def test_click_keypad_status_new_model():
     assert minus.minus_pressed and not minus.plus_pressed
     both = parse_click_buttons(frame(0xFFFFEEFF))
     assert both.plus_pressed and both.minus_pressed
-    # Click V2 : B du boîtier droit (bit 5, trame mesurée ffffffdf) = « − » ; A, Y, Z ignorés
+    # Click V2 : B du boîtier droit (bit 5, trame mesurée ffffffdf) = « − » ; Y (bit 6) = pause ;
+    # A et Z ignorés
     b = parse_click_buttons(frame(0xFFFFFFDF))
-    assert b.minus_pressed and not b.plus_pressed
-    for other in (0xFFFFFFEF, 0xFFFFFFBF, 0xFFFFFF7F):
+    assert b.minus_pressed and not b.plus_pressed and not b.y_pressed
+    y = parse_click_buttons(frame(0xFFFFFFBF))
+    assert y.y_pressed and not y.minus_pressed and not y.plus_pressed
+    for other in (0xFFFFFFEF, 0xFFFFFF7F):
         o = parse_click_buttons(frame(other))
-        assert not o.minus_pressed and not o.plus_pressed
+        assert not o.minus_pressed and not o.plus_pressed and not o.y_pressed
     # Trames relevées sur le boîtier gauche : − fffffeff, flèches fffffffe/fd/fb/f7
     assert parse_click_buttons(frame(0xFFFFFEFF)).minus_pressed
     assert zwift_click.KEYPAD_BITS["MINUS"] == zwift_click.KEYPAD_MINUS_BIT
@@ -124,3 +127,12 @@ def test_press_classifier_thresholds():
     c.update("PLUS", True, 5.0)
     assert c.update("PLUS", False, 5.8) is None       # zone morte 500–1200 ms
     assert c.update("PLUS", False, 6.0) is None       # relâché sans appui
+
+
+def test_y_button_is_pause_whatever_the_duration():
+    """Lot N6 : bouton Y du boîtier droit = pause ou reprise, appui court ou long."""
+    c = PressClassifier()
+    assert c.feed(ClickButtons(False, False, y_pressed=True), 0.0) == []
+    assert c.feed(ClickButtons(False, False), 0.2) == [InputEvent.PAUSE]
+    c.feed(ClickButtons(False, False, y_pressed=True), 1.0)
+    assert c.feed(ClickButtons(False, False), 2.0) == [InputEvent.PAUSE]   # zone morte ignorée

@@ -15,6 +15,9 @@ const WaterMesh := preload("res://scripts/water_mesh.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 
 const SKIRT_M := 3.0
+const CHUNK_M := 1000.0
+## Demi-largeur dégagée autour de l'axe de la route pour les cours d'eau (chaussée de 6 m, bas-côtés).
+const ROAD_CLEAR_M := 4.0
 const WATER_COLOR := Color(0.12, 0.32, 0.38, 1.0)
 
 var route = null
@@ -133,6 +136,7 @@ func _start_jobs() -> void:
 				"world_dir": world_dir,
 				"layers": layers_present.duplicate(),
 				"theme": _theme,
+				"route": route,
 			}
 			job["task"] = WorkerThreadPool.add_task(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
 			_jobs[k] = job
@@ -164,6 +168,8 @@ func _build_chunk_job(job: Dictionary) -> void:
 		var w_res := OsmLayers.load_chunk(w_dir, "water", k)
 		if w_res.get("ok", false):
 			var lines: Array = w_res.get("lines", [])
+			if job.get("route") != null:
+				lines = cut_lines_at_road(lines, road_polyline(job["route"], k))
 			if not lines.is_empty():
 				var l_mesh := WaterMesh.build_lines(lines)
 				if int(l_mesh.get("built", 0)) > 0:
@@ -190,6 +196,67 @@ func _build_chunk_job(job: Dictionary) -> void:
 		"meshes_data": meshes_data,
 		"pois": pois,
 	}
+
+
+## Axe de la route (x, z) sur le tronçon k, élargi de 200 m de part et d'autre.
+static func road_polyline(r, k: int) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	if r == null or r.n < 2:
+		return out
+	var ds: float = maxf(r.ds_m, 0.01)
+	var i0 := clampi(floori((k * CHUNK_M - 200.0) / ds), 0, r.n - 1)
+	var i1 := clampi(ceili(((k + 1) * CHUNK_M + 200.0) / ds), 0, r.n - 1)
+	for i in range(i0, i1 + 1):
+		out.append(Vector2(r.x[i], r.z[i]))
+	return out
+
+
+## Cours d'eau coupés là où ils croisent la chaussée : un segment qui coupe l'axe de la route ou
+## passe à moins de ROAD_CLEAR_M + largeur / 2 de l'axe est retiré (passage sous un pont), et la
+## ligne est scindée. Défaut vu au banc simulé le 25 octobre : le ruban d'eau, posé au niveau du
+## terrain (donc de la chaussée près de la route), recouvrait la route.
+static func cut_lines_at_road(lines: Array, road: PackedVector2Array) -> Array:
+	if road.size() < 2:
+		return lines
+	var out := []
+	for line in lines:
+		if typeof(line) != TYPE_DICTIONARY:
+			continue
+		var pts: Array = line.get("points", [])
+		var clear := ROAD_CLEAR_M + float(line.get("width_m", 0.0)) * 0.5
+		var part := []
+		for i in range(pts.size()):
+			if i > 0:
+				var a := Vector2(float(pts[i - 1][0]), float(pts[i - 1][1]))
+				var b := Vector2(float(pts[i][0]), float(pts[i][1]))
+				if _segment_near_road(a, b, road, clear):
+					if part.size() >= 2:
+						var piece: Dictionary = line.duplicate()
+						piece["points"] = part
+						out.append(piece)
+					part = []
+			part.append(pts[i])
+		if part.size() >= 2:
+			var piece: Dictionary = line.duplicate()
+			piece["points"] = part
+			out.append(piece)
+	return out
+
+
+static func _segment_near_road(a: Vector2, b: Vector2, road: PackedVector2Array, clear: float) -> bool:
+	var lo := Vector2(minf(a.x, b.x), minf(a.y, b.y)) - Vector2(clear, clear)
+	var hi := Vector2(maxf(a.x, b.x), maxf(a.y, b.y)) + Vector2(clear, clear)
+	for i in range(road.size() - 1):
+		var c := road[i]
+		var d := road[i + 1]
+		if maxf(c.x, d.x) < lo.x or minf(c.x, d.x) > hi.x or maxf(c.y, d.y) < lo.y or minf(c.y, d.y) > hi.y:
+			continue
+		if Geometry2D.segment_intersects_segment(a, b, c, d) != null:
+			return true
+		var pts := Geometry2D.get_closest_points_between_segments(a, b, c, d)
+		if (pts[0] as Vector2).distance_to(pts[1]) < clear:
+			return true
+	return false
 
 
 static func _arrays_from_mesh_dict(d: Dictionary) -> Array:

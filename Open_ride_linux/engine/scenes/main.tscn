@@ -25,7 +25,7 @@ ground_color = Color(0.1, 0.07, 0.034, 1)
 [sub_resource type="Sky" id="Sky_env"]
 sky_material = SubResource("PhysicalSkyMaterial_sky")
 process_mode = 3
-radiance_size = 1
+radiance_size = 3
 
 [sub_resource type="Environment" id="Environment_main"]
 background_mode = 2

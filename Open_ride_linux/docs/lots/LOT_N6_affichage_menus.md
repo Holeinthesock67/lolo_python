@@ -44,3 +44,15 @@ Aucune (contrat v1.1 du lot N1).
 
 - Réglages modifiables depuis le menu (FTP, thème, qualité) : lot ultérieur.
 - Compilation depuis le menu (N11 compile au lancement).
+
+## 9. Livraison (25 octobre)
+
+- `engine/scripts/menu_flow.gd` : déroulé sans nœud (menu visible hors RUNNING, PAUSED → pause, FINISHED → bilan, listes demandées au premier état visible et à chaque « Nouvelle séance », liste indisponible signalée dans le menu), testé par `engine/tests/unit/test_menu_flow.gd`.
+- `menu_view.gd` (titre, cinq éléments à la fois autour du focus, fond jaune du focus, raison d'un élément désactivé), `devices_view.gd` (lignes d'état et « prêt à rouler », accueil et écran « Prêt »), `summary_view.gd` (bilan en deux colonnes, fichier FIT, blocs ERG sur demande).
+- `main.gd` : menu au-dessus de la vue 3D, entre les panneaux du HUD ; clavier local quand le menu est affiché (flèches, Entrée, Échap, bips) ; pendant la séance, P, Espace ou Échap demandent la pause ; parcours de démonstration et caméra lente en fond des menus (sauf en mode test, pour garder les images de référence reproductibles).
+- `menu_model.gd` : `add_screen()`, `open_screen()`, `confirm()` publics ; un écran ajouté renvoie `{"action": "item", …}`.
+- Geste de pause au Click choisi par le propriétaire : bouton Y du boîtier droit (`zwift_click.py`, événement interne `PAUSE`, traité par le core sans nouvel événement IPC : pause en RUNNING, reprise en PAUSED).
+- Lanceur `openride` sans `--autostart` par défaut ; `scripts/openride-dev.sh` le garde pour les essais.
+- Tests graphiques : écran de pause, accueil avec appareils, liste des parcours au Click (« à compiler » visible), bilan. Les images de référence locales de `pause` et `erreur` changent (menu affiché) : vérifier le rapport puis relancer `run_visual_tests.sh --update-golden` sur le PC.
+- Bandeau ERG (retour d'essai du 25 octobre) : la liste des entraînements est demandée dès le premier état, même avec `--autostart`, et donne à `erg_view.gd` les durées réelles de tous les blocs (`set_profiles`) ; les blocs autres que le bloc en cours restent bien visibles (opacité 0,85 au lieu de 0,45).
+- Reste la recette sur le PC (critères 2, 4 et 5).
