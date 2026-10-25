@@ -60,6 +60,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] `theme_render_params.gd` : paramètres de rendu tirés du thème (terrain, route, ciel) et fonction de référence du mélange triplanaire herbe / roche / neige, testés sans écran (`engine/tests/unit/test_theme_render_params.gd`, lot L3) ; le shader reste à E2.
 - [x] `quality_presets.gd` : table des préréglages de qualité (`low`, `medium`, `high`) et transmission de `--quality` et `--theme` du lanceur `openride` à `engine_args.gd`, testées sans écran (`engine/tests/unit/test_quality_presets.gd`, lot L4).
 - [x] `sound_model.gd` : modèle sonore sans affichage (vent proportionnel à la vitesse jusqu'à 60 km/h, roue libre après 0,5 s à 0 W, hystérésis 1,1× et plafond à 4 sources des points d'intérêt, lissage à 12 dB/s), testé sans écran (`engine/tests/unit/test_sound_model.gd`, lot L5).
+- [x] `catalog_model.gd` et client des listes v1.1 (`ipc_client.gd`) : commandes `list_routes` et `list_workouts` avec relance après 1 s, conversion en éléments de menu et scénario complet au Click, testés sans écran (`engine/tests/unit/test_catalog_model.gd`, `test_menu_ipc.gd`, lot N3) ; l'affichage reste à N6.
 
 ### Outils
 - [x] `scripts/openride-dev.sh` : lance le core et Godot depuis un seul terminal, et arrête proprement le core à la fermeture de la fenêtre.
