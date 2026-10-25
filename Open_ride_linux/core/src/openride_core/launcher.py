@@ -1,6 +1,14 @@
 """Lanceur unique `openride` : démarre le core et l'engine, les surveille, arrête tout proprement (lot K6).
 
     openride [options de « openride-core run »]      # défaut : --trainer ftms --input click --autostart
+             [--no-compile] [--compile-only] [--compile-timeout SECONDES]
+
+Compilation au lancement (lot N11) :
+- Au démarrage, vérifie les traces GPX nouvelles ou modifiées (`to_compile` ou `outdated`).
+- Les compile via `openride-compiler build-all` avec journalisation et notification bureau (`notify-send`).
+- `--no-compile` : saute cette étape.
+- `--compile-only` : effectue la compilation puis quitte immédiatement.
+- `--compile-timeout` : délai maximal en secondes (défaut : 300 s).
 
 Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de référence :
 - un journal par lancement, `~/OpenRide/Logs/openride_AAAA-MM-JJ_HH-MM-SS.log` (lot M8) : sortie du
@@ -50,7 +58,7 @@ MAX_LOGS_BYTES = 200 * 1024 * 1024
 DEFAULT_ENGINE_DIR = Path(__file__).resolve().parents[3] / "engine"
 DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click", "--autostart"]
 
-STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+STOP_SIGNALS = tuple(s for s in (signal.SIGINT, signal.SIGTERM, getattr(signal, "SIGHUP", None)) if s is not None)
 
 
 def log_timestamp(t: float | None = None) -> str:
@@ -146,6 +154,13 @@ class Supervisor:
     rotation: LogRotation | None = None   # journal tournant ; None : `log_path` tel quel
     echo: Callable[[], bool] = _default_echo   # vrai : messages aussi au terminal (`say`)
     reader_join_s: float = 2.0         # délai pour vider la sortie de l'engine après son arrêt
+    compile_enabled: bool = True       # compilation au lancement (lot N11)
+    compile_only: bool = False         # quitte après la compilation sans lancer le core
+    compile_timeout_s: float = 300.0   # délai maximal de compilation
+    compiler_cmd: list[str] | None = None
+    routes_dir: Path | None = None
+    gpx_dir: Path | None = None
+    notify: Callable[[str], None] | None = None
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
@@ -170,6 +185,12 @@ class Supervisor:
         self._write_log(f"{log_timestamp()} INFO    [openride] {msg}\n".encode())
         if self._log is None or self.echo():
             self.say(msg)
+
+    def _say_warning(self, msg: str) -> None:
+        """Avertissement du lanceur : au journal (`WARNING [openride]`) et au terminal s'il y en a un."""
+        self._write_log(f"{log_timestamp()} WARNING [openride] {msg}\n".encode())
+        if self._log is None or self.echo():
+            self.say(f"avertissement : {msg}")
 
     def _open_log(self) -> None:
         if self.rotation is not None:
@@ -261,6 +282,22 @@ class Supervisor:
         engine.wait()
         self._join_readers()
 
+    # --- compilation au lancement ------------------------------------------------------
+
+    def _run_compilation(self) -> int:
+        from .launch_compile import run_startup_compilation
+
+        return run_startup_compilation(
+            routes_dir=self.routes_dir,
+            gpx_dir=self.gpx_dir,
+            timeout_s=self.compile_timeout_s,
+            compiler_cmd=self.compiler_cmd,
+            log_file=self._log,
+            say=self._say,
+            say_warning=self._say_warning,
+            notify=self.notify,
+        )
+
     # --- signaux -----------------------------------------------------------------------
 
     def _on_signal(self, signum: int, _frame) -> None:
@@ -273,6 +310,15 @@ class Supervisor:
         core: subprocess.Popen | None = None
         engine: subprocess.Popen | None = None
         try:
+            if self.compile_enabled:
+                if self._log is None:
+                    self._open_log()
+                compile_code = self._run_compilation()
+                if self.compile_only:
+                    return compile_code
+                if self._stop_signal is not None:
+                    return 0
+
             core = self._start_core()
             deadline = self.clock() + self.startup_grace_s
             while self.clock() < deadline and core.poll() is None and self._stop_signal is None:
@@ -356,6 +402,35 @@ class Supervisor:
 
 # --- ligne de commande -------------------------------------------------------------------
 
+def extract_launcher_args(args: list[str]) -> tuple[list[str], bool, bool, float]:
+    """Extrait les arguments propres au lanceur (--no-compile, --compile-only, --compile-timeout)."""
+    core_args: list[str] = []
+    no_compile = False
+    compile_only = False
+    compile_timeout = 300.0
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--no-compile":
+            no_compile = True
+            i += 1
+        elif a == "--compile-only":
+            compile_only = True
+            i += 1
+        elif a == "--compile-timeout":
+            if i + 1 >= len(args):
+                raise ValueError("--compile-timeout requiert une valeur en secondes")
+            compile_timeout = float(args[i + 1])
+            i += 2
+        elif a.startswith("--compile-timeout="):
+            compile_timeout = float(a.split("=", 1)[1])
+            i += 1
+        else:
+            core_args.append(a)
+            i += 1
+    return core_args, no_compile, compile_only, compile_timeout
+
+
 def _config_arg(args: list[str]) -> Path | None:
     for i, a in enumerate(args):
         if a.startswith("--config="):
@@ -370,8 +445,10 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
     from . import config as config_mod
 
     env = os.environ if env is None else env
-    core_args = core_args or list(DEFAULT_CORE_ARGS)
-    config_path = _config_arg(core_args)
+    raw_args = list(core_args) if core_args else list(DEFAULT_CORE_ARGS)
+    clean_core_args, no_compile, compile_only, compile_timeout = extract_launcher_args(raw_args)
+    clean_core_args = clean_core_args or list(DEFAULT_CORE_ARGS)
+    config_path = _config_arg(clean_core_args)
     cfg = config_mod.load(config_path)   # ConfigError si invalide
 
     godot = Path(env.get("GODOT") or DEFAULT_GODOT).expanduser()
@@ -384,7 +461,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
     core = [sys.executable, "-m", "openride_core"]
     config_args = ["--config", str(config_path)] if config_path else []
     return Supervisor(
-        core_cmd=[*core, "run", *core_args],
+        core_cmd=[*core, "run", *clean_core_args],
         engine_cmd=[
             str(godot),
             "--path",
@@ -399,6 +476,9 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
         release_cmd=[*core, "release-trainer", *config_args],
         log_path=Path(env["OPENRIDE_LOG"]).expanduser() if env.get("OPENRIDE_LOG") else DEFAULT_LOG,
         rotation=None if env.get("OPENRIDE_LOG") else LogRotation(),
+        compile_enabled=not no_compile,
+        compile_only=compile_only,
+        compile_timeout_s=compile_timeout,
     )
 
 
@@ -413,6 +493,9 @@ def main(argv: list[str] | None = None) -> int:
         sup = build_supervisor(args)
     except ConfigError as exc:
         print(f"openride : configuration invalide : {exc}", file=sys.stderr)
+        return 1
+    except ValueError as exc:
+        print(f"openride : {exc}", file=sys.stderr)
         return 1
     except FileNotFoundError as exc:
         print(f"openride : {exc}", file=sys.stderr)
