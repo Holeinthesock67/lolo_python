@@ -39,6 +39,7 @@ Rédiger les ajouts, chacun avec sa ligne au journal des changements du document
   - `from_deg` : direction d'où vient le vent, en degrés dans le sens horaire depuis le nord (convention du cap de `world_format_v1.md` §3) ;
   - `head_mps` : composante de face le long du cap de la route à `s` (positive de face, négative de dos), celle qu'utilise la physique ;
   - `gust` : facteur de rafale de 0 à 1, pour l'animation (arbres, drapeaux, son).
+- Ces quatre champs suffisent à l'indicateur du HUD demandé par le propriétaire le 25 octobre (vent favorable ou non, et son intensité) : le verdict vient du signe de `head_mps`, l'intensité de `speed_mps` (calcul dans `wind_view_model.gd`, lot P4). Aucun champ de plus.
 - Envoyé **2 fois par seconde** (décision du propriétaire), dans une trame sur quinze environ (environ 70 octets) ; la physique du core utilise le vent exact à 50 Hz et l'engine lisse les valeurs reçues. Vérifier que la trame la plus chargée (ERG, `devices`, 5 bots, `wind`, `draft`) tient toujours dans 1 400 octets.
 
 ### 4.2 IPC v1.2 : champ `draft` de `state`
