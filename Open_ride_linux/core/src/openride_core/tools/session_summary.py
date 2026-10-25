@@ -55,7 +55,7 @@ from pathlib import Path
 from typing import Any
 
 from ..fit_export import summarize
-from ..journal import read_journal
+from ..journal import TIMER_EVENTS, read_journal
 
 ZONES: tuple[tuple[str, float, float | None], ...] = (
     ("Z1", 0.0, 55.0), ("Z2", 55.0, 75.0), ("Z3", 75.0, 90.0), ("Z4", 90.0, 105.0),
@@ -106,7 +106,7 @@ def _load_jsonl(path: Path) -> Session:
             continue
         if line.get("kind") == "record" and line.get("ts") is not None:
             records.append(line)
-        elif line.get("kind") == "event" and line.get("event") and line.get("ts") is not None:
+        elif line.get("kind") == "event" and line.get("event") in TIMER_EVENTS and line.get("ts") is not None:
             events.append(line)
         elif line.get("kind") == "device" and line.get("device") and line.get("ts") is not None:
             devices.append(line)

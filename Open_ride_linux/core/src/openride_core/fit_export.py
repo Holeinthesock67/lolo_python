@@ -135,6 +135,8 @@ def write_fit(records: list[dict], events: list[dict], path: Path) -> Summary:
     type_map = {"start": EventType.START, "resume": EventType.START,
                 "pause": EventType.STOP_ALL, "stop": EventType.STOP_ALL}
     for ev in events:
+        if ev["event"] not in type_map:   # resume_after_crash (lot N8) : pas un événement du chronomètre
+            continue
         # À horodatage égal : start avant records, stop après.
         order = 0 if ev["event"] in ("start", "resume") else 2
         timeline.append((ev["ts"], order, _event(ev["ts"], type_map[ev["event"]])))
