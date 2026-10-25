@@ -50,7 +50,6 @@ class IpcState:
     erg: dict[str, Any] | None = None
     summary: dict[str, Any] | None = None
     devices: dict[str, Any] | None = None
-    bots: list[dict[str, Any]] | None = None
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -61,8 +60,6 @@ class IpcState:
         }
         if self.devices is None:
             d.pop("devices", None)
-        if self.bots is None:
-            d.pop("bots", None)
         return d
 
 
