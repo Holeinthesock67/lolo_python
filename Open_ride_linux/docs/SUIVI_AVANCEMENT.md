@@ -191,6 +191,15 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Compiler les nouvelles traces GPX au lancement (lot N11).
 - [ ] Écran d'état des appareils (trainer, Click, batterie du Click) : modèle (lot N5), affichage (N6).
 
+### Version 1.0 (série O rédigée le 25 octobre)
+- [ ] Arbres : préparation d'une tuile sous 150 ms, 210 ms mesurés sur le PC cible (lot O1).
+- [ ] Numéro de version unique et notes de version (lot O2).
+- [ ] Réglages FTP, thème et qualité depuis le menu : core (lot O3), écran (lot O4).
+- [ ] Traces FIT, TCX et archives Garmin déposées dans `~/OpenRide/GPX/` (lot O5).
+- [ ] Guide d'utilisation sans terminal et README de la 1.0 (lot O6).
+- [ ] Bots à l'écran, facultatif pour la 1.0 (lot O7).
+- [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
+
 ### Sprint 4 et suivants
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le HomeTrainer à faire).
 - [x] Couches OpenStreetMap côté compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau) ; reste le rendu dans l'engine (à rédiger).
