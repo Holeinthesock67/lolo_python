@@ -496,6 +496,13 @@ class CoreSession:
     # --- entrées utilisateur -------------------------------------------------------------
 
     def _handle_input(self, ev: InputEvent) -> None:
+        if ev == InputEvent.PAUSE:   # bouton Y du Click (lot N6) : pause ou reprise, pas relayé
+            st = self.state.session_state
+            if st == "RUNNING":
+                self._on_command("pause", {}, 0)
+            elif st == "PAUSED":
+                self._on_command("resume", {}, 0)
+            return
         # Toujours relayé à l'engine : menu hors séance, retour sonore (bips) pendant la séance.
         self.server.send_input_event(ev.value)
         if self.state.session_state != "RUNNING":

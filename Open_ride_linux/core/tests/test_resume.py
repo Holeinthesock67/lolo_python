@@ -171,3 +171,19 @@ def test_cli_run_accepts_resume():
 
     args = build_parser().parse_args(["run", "--autostart", "--resume", "/tmp/x.jsonl"])
     assert args.resume == Path("/tmp/x.jsonl") and args.autostart
+
+
+def test_click_y_pauses_and_resumes_without_relay(env):
+    """Lot N6 : bouton Y du Click, pause puis reprise ; rien n'est relayé à l'engine."""
+    make, run_for, wall = env
+    s = make(6414)
+    sent: list[str] = []
+    s.server.send_input_event = sent.append
+    s._on_command("select_route", {"route_id": "demo"}, 1)
+    s._on_command("start", {}, 2)
+    run_for(s, 2.0)
+    s._handle_input(InputEvent.PAUSE)
+    assert (s.state.session_state, s.state.pause_reason) == ("PAUSED", "user")
+    s._handle_input(InputEvent.PAUSE)
+    assert s.state.session_state == "RUNNING"
+    assert sent == []

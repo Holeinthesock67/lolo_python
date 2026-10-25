@@ -1,6 +1,6 @@
 """Lanceur unique `openride` : démarre le core et l'engine, les surveille, arrête tout proprement (lot K6).
 
-    openride [options de « openride-core run »]      # défaut : --trainer ftms --input click --autostart
+    openride [options de « openride-core run »]      # défaut : --trainer ftms --input click (menus, lot N6)
              [--no-compile] [--compile-only] [--compile-timeout SECONDES]
 
 Compilation au lancement (lot N11) :
@@ -71,7 +71,8 @@ LOG_PREFIX = "openride_"
 KEEP_LOGS = 20
 MAX_LOGS_BYTES = 200 * 1024 * 1024
 DEFAULT_ENGINE_DIR = Path(__file__).resolve().parents[3] / "engine"
-DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click", "--autostart"]
+# Sans --autostart depuis le lot N6 : parcours et entraînement se choisissent dans les menus de l'engine.
+DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click"]
 
 STOP_SIGNALS = tuple(s for s in (signal.SIGINT, signal.SIGTERM, getattr(signal, "SIGHUP", None)) if s is not None)
 

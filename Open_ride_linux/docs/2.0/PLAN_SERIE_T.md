@@ -76,6 +76,11 @@ Les bots de N9 roulent à puissance constante. En 2.0, chaque bot a un profil ph
 - **Stratégie :** règles simples tirées des segments (montée, sprint) et de la réserve restante ; pas d'intelligence artificielle.
 - **Maillots :** le vert et le maillot à pois vont, pendant la séance, à qui a le plus de points sur les segments de sprint et de montée, bots compris.
 - **HUD :** pour chaque bot, maillot, profil, FTP en W et en W/kg, écart en secondes, jauge de réserve W'.
+- **Écart avec le bot devant et le bot derrière (demande du 25 octobre) :** un encart permanent donne les deux voisins immédiats, par exemple « ▲ Grimpeur +8,4 s » et « ▼ Diesel −3,1 s », même quand d'autres bots sont plus loin.
+    - **Calcul en temps de passage, comme en course :** pour le bot devant, l'écart est le temps écoulé depuis son passage au point où tu te trouves ; pour le bot derrière, c'est le temps écoulé depuis ton propre passage au point où il se trouve. Le core garde pour cela les passages (`s`, `t`) de chaque coureur sur les dernières minutes.
+    - **Pourquoi pas distance ÷ vitesse :** l'estimation du lot O7 (1.0) suffit pour un bot à puissance constante, mais elle saute dans les montées et quand la vitesse change vite ; le temps de passage reste stable et c'est ce qu'affichent les retransmissions.
+    - **Cas limites :** au départ, avant que le bot devant ait un passage enregistré, l'écart retombe sur l'estimation distance ÷ vitesse ; en boucle, le voisin est cherché sur le tour en cours ; sans bot devant (ou derrière), la ligne disparaît.
+    - Le calcul se fait dans le core, une fois par trame, et l'engine affiche la valeur reçue (règle « le core est le maître »).
 - **Aspiration :** les bots abritent le joueur comme dans P3 ; l'aspiration entre bots reste hors périmètre.
 - **Bonus :** les bots n'en prennent pas.
 
@@ -84,7 +89,7 @@ Les bots de N9 roulent à puissance constante. En 2.0, chaque bot a un profil ph
 Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC (lot P1). La série T, comme la série R, passe donc en **v1.3**, par ajouts compatibles :
 
 - **Format `.world` 1.x :** couche facultative `segments` (`segments.json` : identifiant, nom, type `sprint` ou `climb`, `s_start`, `s_end`, longueur, pente moyenne, gain, catégorie, source `auto` ou `manual`). L'engine la lit lui-même, comme les autres couches.
-- **Trame `state` :** champ facultatif `segment` (segment en cours ou prochain, distance, chrono, écart au record) et champ `powerup` (bonus en réserve, bonus actif, temps restant). Chaque élément de `bots` gagne `profile`, `cp_w`, `mass_kg`, `wbal_pct` et `jersey`.
+- **Trame `state` :** champ facultatif `segment` (segment en cours ou prochain, distance, chrono, écart au record) et champ `powerup` (bonus en réserve, bonus actif, temps restant). Chaque élément de `bots` gagne `profile`, `cp_w`, `mass_kg`, `wbal_pct`, `jersey` et `gap_s` (écart en temps de passage, positif si le bot est devant). La trame gagne `bot_ahead` et `bot_behind` (identifiants des deux voisins immédiats, ou `null`). Les 5 bots au plus de N9 tiennent toujours dans 1 400 octets avec ces champs, à vérifier par les tests de taille de `core/tests/test_contract_ipc.py`.
 - **Message `segment_result` :** temps, record battu ou non, classement du passage.
 - **Événements `input` Z et A :** communs aux séries R et T ; le premier des lots de contrat (R1 ou T1) les ajoute. Y arrive avant, avec la pause du lot N6.
 
@@ -117,9 +122,10 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 | T12 | Bots à profil : CP, W', masse, pic sur 10 s, stratégie par segment (grimpeur, sprinteur, puncheur, diesel) | N9, R2, T2 | Délégable |
 | T13 | Équilibrage des bots : niveau 90, 100 ou 110 % de la FTP, calibrage par simulation du parcours | T12 | Délégable |
 | T14 | Points et maillots de la séance (vert, à pois), bots compris | T4, T12 | Délégable |
-| T15 | Engine : HUD des bots (maillot, profil, FTP en W et W/kg, écart, jauge W') | O7, T9 | Interne |
+| T15 | Engine : HUD des bots (maillot, profil, FTP en W et W/kg, écart, jauge W') et encart des deux voisins (devant, derrière) | O7, T9, T16 | Interne |
+| T16 | Écarts en temps de passage : historique des passages, `gap_s`, `bot_ahead`, `bot_behind`, repli distance ÷ vitesse, boucles | T1, N9 | Délégable |
 
-Ordre conseillé : T1 après P1, puis T2, T4 et T6 en parallèle ; T3, T5, T7 et T12 ensuite, puis T13 et T14 ; enfin l'engine (T8 à T10, T15) et la recette T11. Les numéros T ne se confondent pas avec les constats d'audit, et les lots R non plus (les constats « R3 » et « S2 » du lot M9 sont sans rapport).
+Ordre conseillé : T1 après P1, puis T2, T4 et T6 en parallèle ; T3, T5, T7 et T12 ensuite, puis T13, T14 et T16 ; enfin l'engine (T8 à T10, T15) et la recette T11. Les numéros T ne se confondent pas avec les constats d'audit, et les lots R non plus (les constats « R3 » et « S2 » du lot M9 sont sans rapport).
 
 ## 6. Questions pour le propriétaire
 

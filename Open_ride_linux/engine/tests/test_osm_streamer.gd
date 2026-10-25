@@ -7,6 +7,7 @@ const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
+const WorldStreamer := preload("res://scripts/world_streamer.gd")
 
 var _failures := 0
 var _checked := 0
@@ -199,6 +200,29 @@ func _test_skirt_presence(world_dir: String, route: Variant) -> void:
 	streamer.free()
 
 
+## Dans la scène, seul WorldStreamer reçoit _process : il doit faire entrer les tronçons OSM
+## préparés (bâtiments et eau), sans flush() (défaut trouvé au banc simulé le 25 octobre).
+func _test_pumped_by_world_streamer(world_dir: String, route: Variant) -> void:
+	var ws = WorldStreamer.new()
+	var osm = OsmStreamer.new()
+	ws.osm_streamer = osm
+	ws.add_child(osm)
+	root.add_child(ws)
+	osm.set_world(route, world_dir)
+	osm.update_window(-1000.0, 3000.0)
+	var expected := OsmLayers.chunks_for_window(-1000.0, 3000.0, route).size()
+	var frames := 0
+	while osm.loaded_chunk_count() < expected and frames < 500:
+		OS.delay_msec(5)
+		ws._process(1.0 / 60.0)
+		frames += 1
+	_check(osm.loaded_chunk_count() == expected,
+		"tronçons OSM entrés dans la scène par WorldStreamer._process : %d/%d en %d images"
+		% [osm.loaded_chunk_count(), expected, frames])
+	osm.clear()
+	ws.free()
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -210,6 +234,7 @@ func _run() -> void:
 	_test_window_and_node_count(tmp_world, route)
 	_test_tolerance(tmp_world, route)
 	_test_skirt_presence(tmp_world, route)
+	_test_pumped_by_world_streamer(tmp_world, route)
 
 	print("test_osm_streamer : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
