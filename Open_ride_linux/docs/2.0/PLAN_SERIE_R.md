@@ -4,7 +4,7 @@
 
 ## 1. En résumé
 
-Le mode tient sur le socle actuel : le core pilote déjà le trainer en pente avec des braquets virtuels, connaît la FTP et décode les cinq boutons du boîtier droit du Click. Il faut surtout un moteur de partie dans le core, des ajouts compatibles à l'IPC (v1.2) et une scène Godot séparée. Le risque principal est le temps de réponse du frein, jamais mesuré.
+Le mode tient sur le socle actuel : le core pilote déjà le trainer en pente avec des braquets virtuels, connaît la FTP et décode les cinq boutons du boîtier droit du Click. Il faut surtout un moteur de partie dans le core, des ajouts compatibles à l'IPC (v1.3, après la v1.2 de la série P) et une scène Godot séparée. Le risque principal est le temps de réponse du frein, jamais mesuré.
 
 ## 2. Décisions du propriétaire (25 octobre 2026)
 
@@ -18,6 +18,8 @@ Le mode tient sur le socle actuel : le core pilote déjà le trainer en pente av
 | Q6 | Durée de la run ? | Durée et objectif (VO2max, seuil, endurance) se choisissent dans le menu ; le jeu compose le scénario de la run à partir de ces deux paramètres |
 | Q7 | Que donnent les châssis permanents ? | Des bonus de jeu, pas seulement l'apparence |
 | Q8 | Enregistrer dans le dépôt ? | Oui : ce dossier et une issue de suivi « série R » |
+
+**Pause :** en mode classique, Y met en pause (lot N6, accord du 25 octobre). Dans le mode Cyber-Rogue, Y sert à l'attaque ; la pause y passe par un appui long sur A (proposition, à confirmer au lot R1), pour qu'une attaque un peu longue ne coupe jamais un combat.
 
 Conséquence de Q2 : la variation de la pente envoyée est limitée à 2 % par seconde (`grade_rate_pct_per_s`), soit 4,5 s pour passer de 0 à 9 %. Le mode Cyber-Rogue aura sa propre limite, fixée après l'essai R0.
 
@@ -43,7 +45,7 @@ Ne servent pas : compilateur GPX, terrain, OSM, végétation, thèmes de paysage
 
 **Core (modules purs) :** modèle W'bal (Skiba, CP ≈ FTP par défaut) ; postures de cadence avec hystérésis ; générateur de salles à graine (profil transformé en route en mémoire, physique et interpolation inchangées) ; Firewall (cycliste virtuel à X % de FTP calculé avec `physics.py`) ; combat (bouclier, adrénaline, dégâts, fenêtres de timing, surchauffe) ; run (machine à états, deck, or, reliques, boss) ; scénariste (objectif × durée vers une suite de salles) ; progression permanente sous `~/OpenRide/` ; événements de jeu dans le journal.
 
-**Contrat IPC v1.2 (ajouts compatibles) :** événements `input` `Y_SHORT`, `Z_SHORT`, `A_SHORT` (B reste « − ») ; champ facultatif `rogue` de `state` (phase, salle, bouclier, adrénaline, W'bal, posture, écart au Firewall, fenêtres actives) ; message `room` (profil et marqueurs, gros datagramme comme `routes`) ; message `loot` (3 cartes) ; commandes `start_run` (objectif, durée, graine) et `abandon_run`.
+**Contrat IPC v1.3 (ajouts compatibles, après la v1.2 du lot P1) :** événements `input` `Y_SHORT`, `Z_SHORT`, `A_SHORT` (B reste « − » ; communs avec la série T, ajoutés par le premier des lots R1 ou T1) ; champ facultatif `rogue` de `state` (phase, salle, bouclier, adrénaline, W'bal, posture, écart au Firewall, fenêtres actives) ; message `room` (profil et marqueurs, gros datagramme comme `routes`) ; message `loot` (3 cartes) ; commandes `start_run` (objectif, durée, graine) et `abandon_run`.
 
 **Engine (scène séparée de la scène classique) :** ruban 3D construit depuis `room`, shader de couleur par pente, arches et zones ; décor néon (grille, glow, particules) ; ennemis géométriques et boss ; HUD diégétique (hologramme, arcs, FOV, tremblement) ; menu Cyber-Rogue (objectif, durée, W'), couloirs, cartes, fin de run.
 
@@ -65,7 +67,7 @@ Ne servent pas : compilateur GPX, terrain, OSM, végétation, thèmes de paysage
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
 | R0 | Mesure du délai du frein : saut de pente, temps jusqu'au couple ressenti et jusqu'à la puissance stable (script fourni) | — | Propriétaire (vélo) |
-| R1 | Contrat IPC v1.2 : événements Y, Z, A, champ `rogue`, messages `room` et `loot`, commandes de run | — | Interne (décision) |
+| R1 | Contrat IPC v1.3 : événements Y, Z, A, champ `rogue`, messages `room` et `loot`, commandes de run | P1 (série P) | Interne (décision) |
 | R2 | Modèle W'bal et postures de cadence avec hystérésis | — | Délégable |
 | R3 | Générateur de salles : profils des 5 archétypes et du boss, graine, marqueurs | — | Délégable |
 | R4 | Firewall : cycliste virtuel à X % de FTP, écart au joueur | R3 | Délégable |
@@ -73,7 +75,7 @@ Ne servent pas : compilateur GPX, terrain, OSM, végétation, thèmes de paysage
 | R6 | Run : machine à états, couloirs, deck et cartes, or, reliques, boss en 3 phases | R5 | Délégable |
 | R7 | Table d'équilibrage en données et run simulée avec cyclistes types | R6 | Délégable |
 | R8 | Intégration dans la session du core : formule centrée, boutons Y, Z, A, journal, pause et reprise | R1, R6 | Interne |
-| R9 | Progression permanente : châssis à bonus de jeu, statistiques de runs | R6 | Délégable |
+| R9 | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies achetées avec les pièces de la série V (une vie évite la dégradation du butin après une défaite), dans le système de déblocage commun de la série V | R6, V2, V3b | Délégable |
 | R10 | Engine : scène néon, ruban 3D, shader de pente, arches et zones | R1 | Interne (rendu) |
 | R11 | Engine : HUD diégétique, arcs au sol, FOV et tremblement | R1 | Interne (rendu) |
 | R12 | Engine : ennemis et boss géométriques, effets d'impact | R10 | Interne (rendu) |
