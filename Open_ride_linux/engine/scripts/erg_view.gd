@@ -24,7 +24,9 @@ const ZONE_COLORS := [
 	Color(0.65, 0.25, 0.80),   # Z7 neuromusculaire
 ]
 const FREERIDE_COLOR := Color(0.40, 0.42, 0.45)
-const DIM_ALPHA := 0.45        # blocs autres que le bloc en cours
+## Blocs autres que le bloc en cours : bien visibles du début à la fin, pour se préparer aux efforts
+## (retour d'essai du 25 octobre) ; le bloc en cours garde son cadre et son curseur.
+const DIM_ALPHA := 0.85
 const PAST_DARKEN := 0.35      # blocs déjà faits, assombris
 
 const BLOCK_TYPE_LABELS := {
