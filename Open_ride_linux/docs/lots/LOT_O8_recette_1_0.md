@@ -12,7 +12,7 @@ Déclarer la 1.0 quand OpenRide a été installé, utilisé et validé de bout e
 
 ## 3. Prérequis
 
-Série N fusionnée, O1, O2 et O6 fusionnés ; O3, O4, O5 et O7 selon le choix du propriétaire. Fin de J4 (issue #50) pour l'installation hors du dépôt.
+Série N fusionnée, O1 à O6 et O9 à O15 fusionnés ; O7 selon le choix du propriétaire. Fin de J4 (issue #50) pour l'installation hors du dépôt.
 
 ## 4. Liste de recette
 
@@ -33,21 +33,27 @@ Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, 
 10. Délai appui → commande au trainer relevé dans le journal.
 11. Trainer libéré après la séance : une autre application s'y connecte (déjà validé le 24 octobre, à revérifier depuis l'icône).
 
+**Entraînement (série O, ajouts du 25 octobre)**
+12. **Test de FTP par rampe complet sur le HomeTrainer, fin détectée, nouvelle FTP acceptée depuis le menu (O10, O12).**
+13. **Une séance du jour d'un plan, roulée puis comptée (O11, O12).**
+14. **Courbes de cible, puissance, FC et cadence justes et lisibles pendant une séance ERG (O14).**
+15. Un `.erg` exporté de GoldenCheetah roulé en entier (O9) ; un parcours choisi par la bibliothèque avec ses filtres (O15).
+
 **Rendu (GTX 1060, 1 920 × 1 080)**
-12. **Recette E3/E4 (`docs/RECETTE_E3_E4.md`) : ciel, brouillard, arbres, bâtiments, eau, sons.**
-13. **30 images/s en qualité basse sur un parcours avec village (SRS sprints 3 et 5), relevé `[perf-rendu]`.**
-14. **1 h de séance sans plantage ni saccade visible.**
-15. Préparation des arbres sous 150 ms (`UNIT=test_tree_renderer`, O1).
-16. Menus, écran Appareils, Réglages (si O4), bilan lisibles à 2 m et pilotables au Click.
+16. **Recette E3/E4 (`docs/RECETTE_E3_E4.md`) : ciel, brouillard, arbres, bâtiments, eau, sons.**
+17. **30 images/s en qualité basse sur un parcours avec village (SRS sprints 3 et 5), relevé `[perf-rendu]`.**
+18. **1 h de séance sans plantage ni saccade visible.**
+19. Préparation des arbres sous 150 ms (`UNIT=test_tree_renderer`, O1).
+20. Menus, écran Appareils, Réglages (si O4), bilan lisibles à 2 m et pilotables au Click.
 
 **Fichiers et parcours**
-17. **Un FIT de séance OpenRide importé sans erreur dans Garmin Connect et dans GoldenCheetah.**
-18. Pente maximale d'une vraie trace de col à ± 1 point de Garmin Connect (sprint 2).
-19. Parcours tiré d'un vrai FIT Garmin, déposé tel quel dans `~/OpenRide/GPX/` (M7, O5), roulé.
-20. Historique des séances réelles (`openride-core history --weeks 8`, L7).
+21. **Un FIT de séance OpenRide importé sans erreur dans Garmin Connect et dans GoldenCheetah.**
+22. Pente maximale d'une vraie trace de col à ± 1 point de Garmin Connect (sprint 2).
+23. Parcours tiré d'un vrai FIT Garmin, déposé tel quel dans `~/OpenRide/GPX/` (M7, O5), roulé.
+24. Historique des séances réelles (`openride-core history --weeks 8`, L7).
 
 **Documentation**
-21. **Le guide d'utilisation (O6) suivi du début à la fin sans terminal, hors installation.**
+25. **Le guide d'utilisation (O6) suivi du début à la fin sans terminal, hors installation.**
 
 ## 5. Publication
 
