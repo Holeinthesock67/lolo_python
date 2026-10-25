@@ -120,7 +120,7 @@ scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcou
 - Nouveau lanceur équivalent, installé avec le core (lot K6) : `openride [options de openride-core run] [--no-compile] [--compile-only] [--compile-timeout SECONDES]`, par exemple `openride --trainer mock --input keyboard --autostart`. Sans option, il démarre sans `--autostart` (lot N6) : parcours, entraînement, pause, fin et bilan se choisissent dans les menus de Godot, au Click (+ / − pour choisir, appui long + pour valider, appui long − pour revenir, bouton Y du boîtier droit pour la pause) ou au clavier (flèches, Entrée, Échap ; P, Espace ou Échap pendant la séance pour la pause). Il compile au démarrage les nouvelles traces GPX de `~/OpenRide/GPX/` avec notification de bureau (lot N11) et, en plus, relance Godot s'il plante (3 fois en 2 minutes au plus, la séance passe en pause si Godot reste absent plus de 2 s). Si le core plante pendant une séance, il relâche le trainer et relance le core avec `--resume` sans fermer Godot : la séance reprend en pause au même endroit, dans le même journal (lot N8, 3 relances en 10 minutes au plus, puis `openride-core recover`).
 - Fermer la fenêtre, Ctrl+C ou fermer le terminal arrête le core proprement : la consigne (pente ou ERG) est annulée, le contrôle FTMS est rendu au trainer (Reset), le Bluetooth est déconnecté et le FIT écrit. Une autre application peut alors utiliser le HomeTrainer.
 - Si le HomeTrainer reste réservé après un arrêt brutal (processus tué, PC éteint en pleine séance) : `openride-core release-trainer` annule la consigne, rend le contrôle et déconnecte le trainer. À défaut : `bluetoothctl disconnect <adresse>`.
-- **Journal :** `~/run_trainer.log` (avec `openride`, lien vers le dernier journal du lanceur, `~/OpenRide/Logs/openride_AAAA-MM-JJ_HH-MM-SS.log` : sortie du core, de Godot préfixée `[engine]` et messages du lanceur `[openride]` ; 20 derniers lancements et 200 Mo gardés ; `OPENRIDE_LOG=fichier` remplace ce journal tournant) ; **FIT :** `~/OpenRide/Activities/`.
+- **Journal :** `~/run_trainer.log` (trace détaillée des commandes FTMS et accusés activable par `[trainer] trace_ftms = true` ou `--trace-ftms`, lot Q3 ; avec `openride`, lien vers le dernier journal du lanceur, `~/OpenRide/Logs/openride_AAAA-MM-JJ_HH-MM-SS.log` : sortie du core, de Godot préfixée `[engine]` et messages du lanceur `[openride]` ; 20 derniers lancements et 200 Mo gardés ; `OPENRIDE_LOG=fichier` remplace ce journal tournant) ; **FIT :** `~/OpenRide/Activities/`.
 - **Si Godot est installé ailleurs :** `GODOT=/chemin/vers/godot scripts/openride-dev.sh …`.
 
 **Commandes pendant la séance :**
@@ -139,12 +139,12 @@ L'engine synthétise ses sons procéduraux au démarrage (vent qui suit la vites
 **Commandes utiles du core :**
 
 ```bash
-openride-core run --trainer ftms|mock|sim --input click|keyboard|none|sim [--hr none|ble|sim] [--sim-scenario NOM] [--gear N] [--replay CHEMIN] [--autostart [--route ID] [--workout ID]] [--resume JOURNAL]
+openride-core run --trainer ftms|mock|sim --input click|keyboard|none|sim [--hr none|ble|sim] [--sim-scenario NOM] [--gear N] [--replay CHEMIN] [--trace-ftms] [--autostart [--route ID] [--workout ID]] [--resume JOURNAL]
 openride-core recover            # transforme le dernier journal en FIT après un plantage
 openride-core release-trainer    # libère le HomeTrainer resté réservé (consigne annulée, contrôle FTMS rendu, déconnexion)
 openride-core summary [CHEMIN] [--ftp W] [--json]   # bilan : NP, IF, TSS, zones, meilleures puissances
 openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]   # historique et cumul par semaine ISO
-python -m openride_core.tools.log_report [~/run_trainer.log] [--json] [--all]   # analyse le journal de séance
+python -m openride_core.tools.log_report [~/run_trainer.log] [--json] [--all]   # analyse le journal de séance (connexions, Click, commandes FTMS et délais)
 python -m openride_core.tools.workouts install                   # copie les 7 entraînements de référence (5 .zwo, un .erg, un .mrc)
 python -m openride_core.tools.workouts install --erg-relative    # idem, .erg convertis en .mrc (% de la FTP de leur en-tête)
 python -m openride_core.tools.workouts list                      # liste les entraînements de ~/OpenRide/Workouts/

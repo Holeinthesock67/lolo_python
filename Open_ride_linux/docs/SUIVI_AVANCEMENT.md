@@ -216,7 +216,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 ### Retours de l'essai du 25 octobre sur le HomeTrainer (série Q rédigée le 25 octobre)
 - [ ] Difficulté du trainer à 50 % par défaut, réglable pendant la séance par un curseur du menu, affichée dans le HUD (lot Q1, contrat IPC v1.2 accepté ; curseur dans O4).
 - [ ] Pentes plus lisibles à l'écran : caméra inclinée, relief exagéré à l'affichage seulement (lot Q2).
-- [ ] Journal des commandes FTMS et des accusés, délais dans `log_report` (lot Q3).
+- [x] Journal des commandes FTMS et des accusés, délais dans `log_report` (lot Q3, `ftms_driver.py`, option `--trace-ftms`, clé `[trainer] trace_ftms`, analyse des délais et statuts dans `log_report`, testé par `test_ftms_trace.py`).
 - [ ] Rampe de pente plus rapide, surtout à la descente (lot Q4).
 - [ ] FC relayée par le trainer figée : écrite comme absente (lot Q5).
 - [ ] Boîtier gauche du Click muet après la connexion : trace, détection, reprise (lot Q6).
