@@ -200,6 +200,13 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Bots à l'écran, facultatif pour la 1.0 (lot O7).
 - [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
 
+### Après la 1.0 : décor vivant, vent et aspiration (série P rédigée le 25 octobre)
+- [ ] Contrat : vent et aspiration dans `state`, configuration `[wind]`, thème 1.2 (lot P1, décision du propriétaire).
+- [ ] Vent physique et aspiration derrière les bots, côté core (lots P2 et P3).
+- [ ] Indicateur du vent et de l'abri, arbres et herbe au vent, nuages, sons d'ambiance, sons du vent et de la roue libre (lots P4, P5, P6, P9, P10 ; intégration P16).
+- [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs (lots P8, P11 à P15 ; intégration P17).
+- [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
+
 ### Sprint 4 et suivants
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le HomeTrainer à faire).
 - [x] Couches OpenStreetMap côté compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau) ; reste le rendu dans l'engine (à rédiger).
