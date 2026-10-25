@@ -158,8 +158,9 @@ class AutostartError(Exception):
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
-                 workouts_dir: Path = WORKOUTS_DIR) -> None:
+                 workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None) -> None:
         self.cfg = cfg
+        self.bots = list(bots) if bots else []
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
@@ -496,6 +497,8 @@ class CoreSession:
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
         self.physics.step(m.power_w, grade, alt, dt)
+        for bot in self.bots:
+            bot.step(dt, route)
 
         self._power_window.append((self._t_session, m.power_w))
         while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
@@ -562,11 +565,12 @@ class CoreSession:
         loop = asyncio.get_running_loop()
         # SIGHUP : terminal fermé. Sans gestionnaire, le processus mourrait sans relâcher le
         # trainer et BlueZ garderait la liaison ouverte (trainer réservé pour les autres applis).
-        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-            try:
-                loop.add_signal_handler(sig, self.stop_event.set)
-            except NotImplementedError:
-                pass
+        for name in ("SIGINT", "SIGTERM", "SIGHUP"):
+            if hasattr(signal, name):
+                try:
+                    loop.add_signal_handler(getattr(signal, name), self.stop_event.set)
+                except NotImplementedError:
+                    pass
         if autostart:
             self._autoresume = True
             self._on_command("select_route", {"route_id": route_id}, 0)
@@ -612,6 +616,10 @@ class CoreSession:
                 next_state += DT_STATE
                 if next_state <= now:   # retard de plus d'une trame : on se recale
                     next_state = now + DT_STATE
+                if self.bots:
+                    self.state.bots = [b.to_dict() for b in self.bots]
+                else:
+                    self.state.bots = None
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S

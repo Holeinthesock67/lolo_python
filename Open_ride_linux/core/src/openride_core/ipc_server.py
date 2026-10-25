@@ -48,14 +48,18 @@ class IpcState:
     alt: float = 0.0
     erg: dict[str, Any] | None = None
     summary: dict[str, Any] | None = None
+    bots: list[dict[str, Any]] | None = None
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
-        return {
+        d = {
             "type": "state",
             "v": CONTRACT_VERSION,
             **asdict(self),
         }
+        if self.bots is None:
+            d.pop("bots", None)
+        return d
 
 
 class IpcServer:
