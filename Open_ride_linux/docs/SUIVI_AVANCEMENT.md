@@ -195,5 +195,5 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le HomeTrainer à faire).
 - [x] Couches OpenStreetMap côté compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau) ; reste le rendu dans l'engine (à rédiger).
 - [ ] Thèmes avec packs de textures : liste et installation (lot N10).
-- [ ] Bandeau ERG, histogramme et bip à T − 3 s à l'écran (lot N7, ancien F2).
+- [ ] Bandeau ERG, histogramme et bip à T − 3 s à l'écran (lot N7, ancien F2) : code et tests sans écran et graphiques livrés le 25 octobre (`erg_view.gd`) ; restent l'essai de `sweet_spot_3x10` sur le HomeTrainer et l'histogramme aux vraies durées, qui attend la liste `workouts` du contrat v1.1 (N2 côté core, N3 côté engine, branchement dans N6).
 - [ ] Bots à puissance constante et fantôme d'une séance passée, côté core (lot N9) ; affichage à rédiger.
