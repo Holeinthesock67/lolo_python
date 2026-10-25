@@ -159,8 +159,9 @@ class AutostartError(Exception):
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
-                 workouts_dir: Path = WORKOUTS_DIR) -> None:
+                 workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None) -> None:
         self.cfg = cfg
+        self.bots = list(bots) if bots else []
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
@@ -592,6 +593,8 @@ class CoreSession:
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
         self.physics.step(m.power_w, grade, alt, dt)
+        for bot in self.bots:
+            bot.step(dt, route)
 
         self._power_window.append((self._t_session, m.power_w))
         while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
@@ -716,6 +719,10 @@ class CoreSession:
                     self._last_devices = curr_dev
                 else:
                     self.state.devices = None
+                if self.bots:
+                    self.state.bots = [b.to_dict() for b in self.bots]
+                else:
+                    self.state.bots = None
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S
