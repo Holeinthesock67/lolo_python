@@ -5,6 +5,8 @@
     openride-compiler add-layer <dossier.world> terrain|buildings|vegetation|poi|water [--offline]
     openride-compiler list | build-all [--layers ...] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
+    openride-compiler theme-list [--themes-dir D] [--json]
+    openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
 
@@ -126,6 +128,19 @@ def build_parser() -> argparse.ArgumentParser:
                     help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
     ba.add_argument("--dry-run", action="store_true",
                     help="affiche les compilations prévues sans rien écrire")
+
+    tl = sub.add_parser("theme-list", help="liste les thèmes installés et intégrés")
+    tl.add_argument("--themes-dir", type=Path, default=None,
+                    help="dossier des thèmes (défaut : ~/OpenRide/Themes)")
+    tl.add_argument("--json", action="store_true", help="sortie au format JSON")
+
+    ti = sub.add_parser("theme-install", help="installe un pack de thème depuis un dossier ou une archive .zip")
+    ti.add_argument("source", type=Path, help="dossier du pack ou archive .zip")
+    ti.add_argument("--name", help="nom du thème (défaut : tiré de theme.json ou du dossier)")
+    ti.add_argument("--force", action="store_true", help="remplace un thème existant")
+    ti.add_argument("--themes-dir", type=Path, default=None,
+                    help="dossier d'installation des thèmes (défaut : ~/OpenRide/Themes)")
+
     return parser
 
 
@@ -277,6 +292,33 @@ def cmd_info(args: argparse.Namespace) -> int:
               f"{len(tiles.get('far', []))} lointaine(s) ({', '.join(terrain.get('sources', []))})")
     else:
         print("Terrain           : absent")
+    return EXIT_OK
+
+
+def cmd_theme_list(args: argparse.Namespace) -> int:
+    from .theme_packs import format_themes_text, list_themes
+    themes = list_themes(themes_dir=args.themes_dir)
+    if args.json:
+        print(json.dumps(themes, indent=2, ensure_ascii=False))
+    else:
+        print(format_themes_text(themes))
+    return EXIT_OK
+
+
+def cmd_theme_install(args: argparse.Namespace) -> int:
+    from .theme_packs import install_theme
+    name, warnings = install_theme(
+        source=args.source,
+        name=args.name,
+        force=args.force,
+        themes_dir=args.themes_dir,
+    )
+    for w in warnings:
+        print(f"avertissement : {w}")
+    print(f"Thème « {name} » installé avec succès.")
+    print("À ajouter dans config.toml :")
+    print("[render]")
+    print(f'theme = "{name}"')
     return EXIT_OK
 
 
@@ -469,6 +511,8 @@ COMMANDS = {
     "verify": cmd_verify,
     "info": cmd_info,
     "theme-check": cmd_theme_check,
+    "theme-list": cmd_theme_list,
+    "theme-install": cmd_theme_install,
     "list": cmd_list,
     "build-all": cmd_build_all,
 }
