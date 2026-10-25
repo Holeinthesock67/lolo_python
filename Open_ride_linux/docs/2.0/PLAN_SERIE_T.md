@@ -54,7 +54,7 @@ Ce plan réutilise ce que la série R a déjà prévu : règles du jeu dans le c
 - **Activation :** bouton Z du Click, appui court (touche du clavier en secours). Pas d'activation automatique.
 - **Boutons du mode classique :** + et B changent de braquet (appui long : 10 braquets), Y met en pause (lot N6, accord du propriétaire du 25 octobre), Z active le bonus ; A reste libre.
 - **Valeurs :** dans un fichier de données modifiable, comme la table d'équilibrage de la série R.
-- **Résistance au trainer :** inchangée par les bonus, comme dans Zwift. Seule exception, voulue : le supplément de pente dû au vent et à l'aspiration (série P, `feel = "grade"`) se calcule avec le CdA courant, donc le bonus aéro l'allège aussi, sans deuxième calcul.
+- **Résistance au trainer :** inchangée par les bonus, comme dans Zwift. Seule exception, voulue : le supplément de pente dû au vent et à l'aspiration (série P, `feel = "grade"`) se calcule avec le CdA courant, donc le bonus aéro l'allège aussi, sans deuxième calcul : P2 et P3 calculent ce supplément à chaque pas avec les `PhysicsParams` courants (CdA et masse).
 - **Fichiers :** la puissance du FIT et du journal reste la puissance mesurée. La vitesse et la distance restent les valeurs virtuelles, comme aujourd'hui. Les bonus utilisés vont au journal.
 - **ERG :** les segments sont chronométrés, les bonus sont désactivés (entraînement structuré).
 
@@ -75,7 +75,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 | 2 | Records faussés par les bonus | Records « avec bonus » et « sans bonus » séparés (question T-Q1) |
 | 3 | Bonus puissance perçu comme une triche dans l'historique (NP, TSS) | Bilan calculé sur la puissance mesurée, jamais sur la puissance bonifiée |
 | 4 | Conflit de version du contrat avec les séries P et R | Ordre fixé : P1 en v1.2, puis R et T en v1.3 |
-| 5 | HUD chargé (vent, abri, ERG, segment, bonus) | Disposition à fixer avec le lot P4 de la série P |
+| 5 | HUD chargé (vent, abri, ERG, segment, bonus) | Blocs segment et bonus dans le coin supérieur droit, hors de la colonne HUD de gauche ; le lot P16 laisse cette zone libre |
 
 ## 5. Lots de la série T
 
@@ -89,7 +89,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 | T6 | Bonus : types, obtention, activation par Z, effets sur `PhysicsParams`, fichier de valeurs, désactivés en ERG | T1 | Délégable |
 | T7 | Bonus et série P : supplément vent et aspiration calculé avec le CdA courant, essais combinés | T6, P2, P3 | Délégable |
 | T8 | Engine : lignes de départ et d'arrivée en 3D, arches de bonus, panneaux « Sprint » et « Montée » | T1 | Interne (rendu) |
-| T9 | Engine : HUD segment (approche, chrono, écart au record, résultat) et HUD bonus (icône, compte à rebours) | T1, P4 | Interne |
+| T9 | Engine : HUD segment (approche, chrono, écart au record, résultat) et HUD bonus (icône, compte à rebours), coin supérieur droit | T1, P16 | Interne |
 | T10 | Menu : records par parcours, option bonus | T5, N6 | Interne |
 | T11 | Recette sur ton PC et ton vélo : un sprint, une montée réelle, chaque bonus | T3 à T10 | Propriétaire |
 
