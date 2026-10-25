@@ -24,12 +24,12 @@ Aucun pour la rédaction. La fusion attend l'accord du propriétaire sur les que
 | --- | --- | --- |
 | commande `list_routes` | engine vers core | `args` : `{}` |
 | commande `list_workouts` | engine vers core | `args` : `{}` |
-| `routes` | core vers engine | `request_cmd_id`, `items` (liste), `truncated` (booléen) |
-| `workouts` | core vers engine | `request_cmd_id`, `items` (liste), `truncated` (booléen) |
+| `routes` | core vers engine | `request_cmd_id`, `part`, `parts`, `items` (liste), `truncated` (booléen) |
+| `workouts` | core vers engine | `request_cmd_id`, `part`, `parts`, `items` (liste), `truncated` (booléen) |
 
 - Élément de `routes` : `id`, `name`, `status` (`ready`, `to_compile`, `outdated`, `invalid`, valeurs de `catalog.py`), `length_m` (nombre ou `null`), `route_type` (`open`, `loop`, `out_and_back` ou `null`), `has_terrain`, `error` (chaîne ou `null`).
-- Élément de `workouts` : `id`, `name`, `duration_s`, `block_count`, `selectable`, `error` (chaîne ou `null`), `profile` (liste d'au plus 60 couples `[durée_s, fraction de FTP]`, pour l'aperçu).
-- Au plus 200 éléments par message (`truncated` vrai au-delà) : un datagramme reste sous 60 ko.
+- Élément de `workouts` : `id`, `name`, `duration_s`, `block_count`, `selectable`, `error` (chaîne ou `null`), `profile` (au plus 30 triplets `[durée_s, fraction de FTP au début, fraction à la fin]`, pour l'aperçu ; `profile_truncated` au-delà).
+- Au plus 200 éléments au total (`truncated` vrai au-delà), en une ou plusieurs parties de 60 000 octets au plus (exception à la limite de 1 400 octets, sur `127.0.0.1` seulement).
 - Fiabilité : la commande suit la règle du §4 (renvoi jusqu'à `last_cmd_id`). La réponse peut se perdre : l'engine redemande si aucun `routes` ou `workouts` portant son `request_cmd_id` n'arrive dans la seconde (au plus 3 fois). Le core répond à chaque demande, y compris un `cmd_id` déjà traité.
 - Le core ne lit le disque qu'à la demande, hors de la boucle à 50 Hz (fil ou tâche séparée), et répond dans les 500 ms pour 200 parcours.
 
@@ -47,11 +47,11 @@ Champ facultatif `devices` de la trame `state`, envoyé une fois par seconde (un
 
 ### 4.3 Bilan enrichi
 
-Champs facultatifs ajoutés à `summary` : `np_w`, `if_pct`, `tss`, `elevation_gain_m`, `avg_cadence_rpm`, `avg_hr_bpm`, `max_power_w`, `blocks` (en ERG : liste de `{index, type, avg_w, target_w}`). Mêmes définitions que `openride-core summary` (lot K7) ; `null` quand la donnée manque.
+Champs facultatifs ajoutés à `summary` : `np_w`, `intensity_factor` (rapport, par exemple 0,85), `tss`, `elevation_gain_m`, `avg_cadence_rpm`, `avg_hr_bpm`, `max_power_w`, `blocks` (en ERG : au plus 24 triplets `[index, puissance moyenne, cible moyenne]`, `blocks_truncated` au-delà). Mêmes définitions que `openride-core summary` (lot K7) ; `null` quand la donnée manque.
 
 ### 4.4 Bots
 
-Le champ `bots` déjà annoncé au §3 est précisé : liste de `{id, name, s, v, kind}` où `kind` vaut `constant` ou `ghost` (lot N9). Aucun autre changement.
+Le champ `bots` déjà annoncé au §3 est précisé : au plus 5 éléments `{id, name, s, v, kind}` (4 bots et un fantôme, lot N9), `kind` valant `constant` ou `ghost`, `id` de 8 caractères et `name` de 16 au plus, pour que la trame la plus chargée tienne dans 1 400 octets.
 
 ### 4.5 Reprise après un plantage du core
 
@@ -84,3 +84,12 @@ Celles du §4, une fois validées par le propriétaire. `v` reste 1.
 
 - Implémentation côté core (N2, N8, N9) et côté engine (N3, N5, N6).
 - Compilation depuis le menu, si le propriétaire la reporte.
+
+## 9. Livraison (24 octobre 2026)
+
+Le propriétaire a validé les trois propositions du §4.6 le 24 octobre à 21 h 26 : listes par l'IPC, `devices` dans `state`, compilation depuis le menu reportée (lot N11).
+
+- `docs/contracts/ipc_v1.md` : révision 1.1 (§2 taille des listes, §3 `devices`, bilan enrichi et `bots`, §4 `list_routes`, `list_workouts`, `routes`, `workouts`, §6 plantage du core, §7 trames d'exemple, §8 journal).
+- Schémas : `state.schema.json` et `cmd.schema.json` complétés, `routes.schema.json` et `workouts.schema.json` nouveaux.
+- `core/tests/test_contract_ipc.py` : trames d'exemple v1.1 validées, contrôles négatifs, trame d'état la plus chargée (ERG, `devices`, 5 bots : 1 396 octets) et bilan complet sous 1 400 octets, listes de 200 éléments sous 60 000 octets par partie.
+- Écarts avec la proposition initiale : `if_pct` devient `intensity_factor` (un rapport, comme `openride-core summary`) ; le profil passe de 60 couples à 30 triplets (début et fin de chaque bloc, pour les rampes) ; les listes se découpent en parties ; les bots sont limités à 5.

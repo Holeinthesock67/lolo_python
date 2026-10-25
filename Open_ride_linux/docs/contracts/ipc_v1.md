@@ -1,6 +1,6 @@
 # OpenRide Linux – Contrat IPC v1
 
-21 octobre 2026
+21 octobre 2026, révision 1.1 du 24 octobre 2026 (ajouts compatibles, `v` reste 1)
 
 ## 1. Objet, principes et conventions
 
@@ -37,11 +37,11 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 
 | Sens | Port par défaut | Contenu | Fréquence |
 | --- | --- | --- | --- |
-| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown` | `state` à 30 Hz ; le reste sur événement |
+| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown`, `routes`, `workouts` | `state` à 30 Hz ; le reste sur événement |
 | engine vers core | 5006 | `hello`, `heartbeat`, `cmd`, `bye` | `heartbeat` à 2 Hz ; `cmd` sur événement |
 
 - Les ports sont modifiables dans `config.toml` (section `ipc`) ; si un port est occupé, le programme s'arrête avec un message explicite.
-- Taille maximale d'un datagramme : 1 400 octets.
+- Taille maximale d'un datagramme : 1 400 octets, sauf `routes` et `workouts` (§4) : 60 000 octets. Ces deux messages restent sur `127.0.0.1`, où un datagramme de cette taille passe sans fragmentation ; l'engine lit sa socket avec un tampon d'au moins 65 536 octets.
 - Un datagramme illisible (JSON invalide) est ignoré et compté dans les journaux.
 - Le trainer notifie à environ 1 Hz (mode puissance) à 8 Hz (mode pente), mesuré ; la fréquence de 30 Hz du message `state` est indépendante et vient de la physique du core (50 Hz).
 
@@ -54,7 +54,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `seq` | entier | Numéro croissant des trames d'état |
 | `t` | nombre | Temps de séance en secondes (horloge du core, arrêtée en pause) |
 | `session_state` | chaîne | `IDLE`, `LOADING`, `READY`, `RUNNING`, `PAUSED`, `FINISHED`, `ERROR` |
-| `pause_reason` | chaîne ou `null` | `user`, `trainer_lost`, `engine_lost`, `recording_failed` quand `session_state` vaut `PAUSED` |
+| `pause_reason` | chaîne ou `null` | `user`, `trainer_lost`, `engine_lost`, `recording_failed`, `core_restarted` (§6) quand `session_state` vaut `PAUSED` |
 | `trainer_status` | chaîne | `CONNECTED`, `RECONNECTING`, `LOST`, `MOCK` |
 | `input_status` | chaîne | `CONNECTED`, `LOST`, `KEYBOARD` |
 | `mode` | chaîne | `SIM` ou `ERG` |
@@ -72,7 +72,9 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `gears_total` | entier | Nombre de vitesses |
 | `lat`, `lon`, `alt` | nombres | Position géographique correspondant à `s` |
 | `erg` | objet ou `null` | Présent en mode ERG, voir ci-dessous |
-| `summary` | objet ou `null` | Présent quand `session_state` vaut `FINISHED` (ou `ERROR` après une séance) : `duration_s` (temps chronométré), `distance_m`, `avg_power_w`, `fit_path` (`null` si aucun FIT n'a été produit) |
+| `summary` | objet ou `null` | Présent quand `session_state` vaut `FINISHED` (ou `ERROR` après une séance) : `duration_s` (temps chronométré), `distance_m`, `avg_power_w`, `fit_path` (`null` si aucun FIT n'a été produit) ; champs facultatifs du bilan enrichi ci-dessous |
+| `devices` | objet, facultatif | État détaillé des appareils, voir ci-dessous ; envoyé une trame sur 30 (une fois par seconde) et dans la trame qui suit un changement, absent des autres trames |
+| `bots` | liste, facultatif | Concurrents virtuels, voir ci-dessous |
 | `last_cmd_id` | entier | Dernier `cmd_id` traité par le core (§4) |
 
 **Objet `erg`**
@@ -88,7 +90,35 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `bias_pct` | nombre | Biais d'intensité (80 à 120) |
 | `paused` | booléen | ERG en pause |
 
-Les bots, quand ils existeront, s'ajouteront dans un champ optionnel `bots` (liste de `{id, s, v}`) sans changer la version du contrat.
+**Bilan enrichi (champs facultatifs de `summary`)**
+
+Mêmes définitions que `openride-core summary` (lot K7). Chaque champ vaut `null` quand la donnée manque (pas de cardio, pas de cadence, séance trop courte).
+
+| Champ | Type | Description |
+| --- | --- | --- |
+| `np_w` | nombre ou `null` | Puissance normalisée |
+| `intensity_factor` | nombre ou `null` | NP divisée par la FTP (par exemple 0,85) |
+| `tss` | nombre ou `null` | Training Stress Score |
+| `elevation_gain_m` | nombre ou `null` | Dénivelé positif |
+| `avg_cadence_rpm` | nombre ou `null` | Cadence moyenne en roulant |
+| `avg_hr_bpm` | nombre ou `null` | Fréquence cardiaque moyenne |
+| `max_power_w` | nombre ou `null` | Puissance maximale |
+| `blocks` | liste ou `null` | En ERG seulement : au plus 24 triplets `[index, puissance moyenne, cible moyenne ou null]`, index compté à partir de 1 ; au-delà, les premiers 24 et `blocks_truncated` vrai |
+| `blocks_truncated` | booléen | Vrai si `blocks` a été coupé |
+
+**Objet `devices`**
+
+| Clé | Contenu |
+| --- | --- |
+| `trainer` | `{status, name, address}` : `status` reprend `trainer_status` ; `name` (nom annoncé) et `address` sont des chaînes ou `null` |
+| `click` | Liste de `{side, status, battery_pct}` : `side` vaut `plus`, `minus` ou `single` ; `status` vaut `CONNECTED`, `SEARCHING` ou `LOST` ; `battery_pct` est un entier de 0 à 100 ou `null`. Liste vide sans Click configuré |
+| `hr` | `{status, source, battery_pct}` : `status` vaut `CONNECTED`, `SEARCHING`, `LOST` ou `NONE` ; `source` vaut `strap`, `trainer` ou `null` |
+
+`trainer_status` et `input_status` restent présents dans toutes les trames et gardent leur sens : un lecteur qui ignore `devices` fonctionne comme en v1. L'engine garde le dernier objet `devices` reçu jusqu'au suivant.
+
+**Liste `bots`**
+
+Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et un fantôme), pour que la trame la plus chargée (ERG, `devices` et bots) tienne dans 1 400 octets : `id` (au plus 8 caractères) et `name` (au plus 16 caractères) sont des chaînes, `s` et `v` des nombres (mêmes unités que la trame), `kind` vaut `constant` (puissance fixe) ou `ghost` (rejeu d'une séance passée, lot N9). Champ absent quand il n'y a pas de bot.
 
 ## 4. Message engine vers core : commandes
 
@@ -106,6 +136,22 @@ Les bots, quand ils existeront, s'ajouteront dans un champ optionnel `bots` (lis
 | `end_session` | `{ "save": booléen }` | Termine ; avec `save` vrai, produit le FIT puis passe à `FINISHED` |
 | `input_event` | `{ "event": chaîne }` | Touches lues par l'engine, même effet qu'un appui sur le Click (`PLUS_SHORT`, `MINUS_SHORT`, …) |
 | `skip_block` | `{}` | Équivalent de l'appui long + en ERG, pour le clavier ou le menu |
+| `list_routes` | `{}` | Demande la liste des parcours ; réponse `routes` |
+| `list_workouts` | `{}` | Demande la liste des entraînements ; réponse `workouts` |
+
+**Listes des parcours et des entraînements.** Le core est la seule source de vérité : l'engine ne lit ni le dossier des parcours ni les fichiers `.zwo`. Le core lit le disque à la demande, hors de la boucle physique à 50 Hz, et répond dans les 500 ms pour 200 parcours.
+
+| Message | Sens | Champs |
+| --- | --- | --- |
+| `routes` | core vers engine | `v`, `request_cmd_id`, `part`, `parts`, `items`, `truncated` |
+| `workouts` | core vers engine | `v`, `request_cmd_id`, `part`, `parts`, `items`, `truncated` |
+
+- `request_cmd_id` reprend le `cmd_id` de la demande. Le core répond à chaque demande reçue, y compris quand ce `cmd_id` est déjà traité, puisque la réponse a pu se perdre.
+- Une réponse tient en un ou plusieurs datagrammes de 60 000 octets au plus : `part` va de 1 à `parts`, et chaque élément est dans une seule partie. L'engine assemble les parties d'une même réponse. S'il lui en manque une seconde après la première reçue, il renvoie la commande avec un nouveau `cmd_id`, au plus 3 fois.
+- Au plus 200 éléments au total, triés par nom ; `truncated` est vrai s'il y en a davantage.
+- Élément de `routes` : `id` (nom du `.world`, sert à `select_route`), `name`, `status` (`ready`, `to_compile`, `outdated`, `invalid`, comme `catalog.py`), `length_m` (nombre ou `null`), `route_type` (`open`, `loop`, `out_and_back` ou `null`), `has_terrain` (booléen), `error` (chaîne ou `null`). Seul un parcours `ready` ou `outdated` peut être choisi.
+- Élément de `workouts` : `id` (sert à `select_workout`), `name`, `duration_s`, `block_count`, `selectable` (booléen), `error` (chaîne ou `null`), `profile` : au plus 30 triplets `[durée_s, fraction de FTP au début, fraction à la fin]` pour l'aperçu, fractions `null` en roue libre ; au-delà, les premiers 30 et `profile_truncated` vrai.
+- La compilation d'une trace GPX depuis le menu n'est pas prévue en v1.1 : le lanceur compile les traces nouvelles au démarrage (lot N11). Un parcours `to_compile` est affiché mais pas sélectionnable.
 
 **Événements du Click.** Hors séance (`IDLE`, `READY`), le core transmet les boutons à l'engine pour qu'il pilote le menu : `type: "input"`, `event` parmi `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Pendant `RUNNING`, le core les consomme lui-même (braquet, biais, saut de bloc, pause) et les relaie aussi à l'engine, qui les utilise pour le retour sonore (bips) et doit ignorer leur sens de menu. Un événement `input` perdu n'est pas rejoué : sur localhost la perte est négligeable et un appui de menu manqué se refait.
 
@@ -138,6 +184,7 @@ Règle générale : la séance ne se perd jamais ; en cas de doute, le core met 
 | Trame perdue ou en désordre | `seq` plus ancien que le dernier reçu | — | Ignore la trame ; un saut de `seq` est compté, pas signalé |
 | Datagramme illisible | JSON invalide | Ignoré, compteur incrémenté | Idem |
 | Refus du contrôle FTMS | Réponse du Control Point | Erreur `trainer_control_refused`, `session_state` = `ERROR` | Affiche le message |
+| Core planté pendant une séance | Sortie du core en erreur, vue par le lanceur | Relancé par le lanceur (au plus 3 fois en 10 min) : reprend la séance de son journal en pause (`pause_reason` = `core_restarted`), `t` et `s` restaurés ; au-delà, séance sauvée par `recover` (lot N8) | Ne quitte pas ; bandeau « core non joignable », puis à la reprise « Séance reprise après un incident » et attente de `resume` |
 | Échec d'écriture du journal | Exception d'écriture | Erreur `recording_failed`, pause (`pause_reason` = `recording_failed`), séance gardée en mémoire ; à la reprise, nouveau journal contenant toute la séance | Affiche le message |
 
 Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` valide. Une fois la séance démarrée, la perte de l'engine ne l'arrête pas : elle la suspend.
@@ -162,6 +209,24 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 {"type":"cmd","v":1,"cmd_id":7,"name":"select_route","args":{"route_id":"col-du-galibier"}}
 ```
 
+**Objet `devices`** (ajouté à la trame d'état une fois par seconde)
+
+```json
+{"trainer":{"status":"CONNECTED","name":"HomeTrainer 0000","address":"C1:1C:00:00:00:03"},"click":[{"side":"plus","status":"CONNECTED","battery_pct":80},{"side":"minus","status":"SEARCHING","battery_pct":null}],"hr":{"status":"CONNECTED","source":"strap","battery_pct":null}}
+```
+
+**Liste des parcours** (réponse à `cmd list_routes` portant `cmd_id` 3)
+
+```json
+{"type":"routes","v":1,"request_cmd_id":3,"part":1,"parts":1,"truncated":false,"items":[{"id":"col-du-galibier","name":"Col du Galibier","status":"ready","length_m":28450.0,"route_type":"open","has_terrain":true,"error":null},{"id":"tour-du-lac","name":"Tour du lac","status":"to_compile","length_m":null,"route_type":null,"has_terrain":false,"error":null}]}
+```
+
+**Liste des entraînements**
+
+```json
+{"type":"workouts","v":1,"request_cmd_id":4,"part":1,"parts":1,"truncated":false,"items":[{"id":"seuil-2x20","name":"Seuil 2x20","duration_s":4200.0,"block_count":5,"selectable":true,"error":null,"profile":[[600,0.5,0.75],[1200,0.95,0.95],[600,0.55,0.55],[1200,0.95,0.95],[600,0.6,0.4]],"profile_truncated":false},{"id":"casse","name":"casse.zwo","duration_s":0,"block_count":0,"selectable":false,"error":"XML invalide ligne 3","profile":[]}]}
+```
+
 **Séquence nominale**
 
 | Étape | Sens | Message ou événement |
@@ -169,7 +234,7 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 | 1 | core | Démarre, se connecte au trainer et au Click, émet `state` avec `session_state` = `IDLE` |
 | 2 | engine vers core | `hello` |
 | 3 | core vers engine | `hello_ack` |
-| 4 | core vers engine | `input` (menu piloté au Click ou au clavier) |
+| 4 | engine et core | `cmd list_routes` et `cmd list_workouts`, réponses `routes` et `workouts` ; `input` (menu piloté au Click ou au clavier) |
 | 5 | engine vers core | `cmd select_route`, éventuellement `select_workout` |
 | 6 | core | `LOADING`, lit la couche route, puis `READY` |
 | 7 | engine vers core | `cmd start` |
@@ -192,3 +257,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 | 21 octobre 2026 | Première version : état à 30 Hz, commandes avec accusé, heartbeat, gestion des pannes |
 | 1 | 22 octobre 2026 | Ajout compatible : commande `input_event` ; événements `input` relayés aussi pendant `RUNNING` (retour sonore) |
 | 1 | 23 octobre 2026 | Ajouts compatibles : remise à zéro de `last_cmd_id` à chaque `hello` ; `pause_reason` = `recording_failed` ; `summary.fit_path` peut valoir `null` ; schémas de tous les messages publiés ; clarification du double sens de `v` dans `state` |
+| 1 (révision 1.1) | 24 octobre 2026 | Ajouts compatibles (lot N1) : commandes `list_routes` et `list_workouts`, messages `routes` et `workouts` (jusqu'à 60 000 octets, en parties) ; objet `devices` dans `state` une fois par seconde ; bilan enrichi dans `summary` ; forme de `bots` ; `pause_reason` = `core_restarted` et reprise après un plantage du core |

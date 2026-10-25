@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideRoutesMessage",
+  "description": "Réponse à cmd list_routes (révision 1.1) ; datagramme de 60 000 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "part",
+    "parts",
+    "items",
+    "truncated"
+  ],
+  "properties": {
+    "type": {
+      "const": "routes"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "part": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "status",
+          "length_m",
+          "route_type",
+          "has_terrain",
+          "error"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "ready",
+              "to_compile",
+              "outdated",
+              "invalid"
+            ]
+          },
+          "length_m": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "route_type": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "open",
+              "loop",
+              "out_and_back",
+              null
+            ]
+          },
+          "has_terrain": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
