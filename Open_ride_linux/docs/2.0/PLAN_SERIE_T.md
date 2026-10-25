@@ -8,7 +8,7 @@ Presque tout tient dans le core, sans toucher au pilotage du trainer :
 
 - **Segments :** un segment est un intervalle `[s_début, s_fin]` de la route. Il est détecté automatiquement sur le profil (montées) ou déclaré à la main (sprints), puis rangé dans une nouvelle couche facultative `segments` du `.world`.
 - **Chronométrage :** le core chronomètre chaque passage à 50 Hz, avec l'heure de franchissement interpolée. Il compare au record personnel et publie l'écart en direct.
-- **Bonus :** ils modifient pendant quelques secondes les paramètres de `core/src/openride_core/physics.py` (masse, CdA, puissance prise en compte) et n'agissent que sur la vitesse virtuelle, comme dans Zwift. Ils s'activent avec le bouton Y du Click, libre en mode classique.
+- **Bonus :** ils modifient pendant quelques secondes les paramètres de `core/src/openride_core/physics.py` (masse, CdA, puissance prise en compte) et n'agissent que sur la vitesse virtuelle, comme dans Zwift. Ils s'activent avec le bouton Z du Click, libre en mode classique (Y y met en pause depuis le lot N6).
 
 Ce plan réutilise ce que la série R a déjà prévu : règles du jeu dans le core, boutons Y, Z et A dans le contrat, données d'équilibrage dans un fichier modifiable. Il s'articule aussi avec la série P (décor vivant), qui ajoute le vent physique (P2) et l'aspiration derrière les bots (P3).
 
@@ -21,7 +21,7 @@ Ce plan réutilise ce que la série R a déjà prévu : règles du jeu dans le c
 | Masse, CdA, rendement, terme d'aspiration | `PhysicsParams`, `alpha_draft` | `core/src/openride_core/physics.py` |
 | Bots et fantôme à chronométrer aussi | Lot N9 | `docs/lots/LOT_N9_bots_core.md` |
 | Historique des séances | Lecture des séances passées | `core/src/openride_core/tools/history.py` |
-| Bouton Y décodé | `KEYPAD_BITS` du boîtier droit | `core/src/openride_core/zwift_click.py` |
+| Bouton Z décodé | `KEYPAD_BITS` du boîtier droit | `core/src/openride_core/zwift_click.py` |
 | Bandeaux et HUD | Modèle du HUD, bandeau | `engine/scripts/hud_view_model.gd`, `engine/scripts/banner.gd` |
 
 ## 3. Choix de conception proposés
@@ -51,7 +51,8 @@ Ce plan réutilise ce que la série R a déjà prévu : règles du jeu dans le c
 | Puissance | Puissance prise en compte par la physique × 1,10 | 15 s |
 
 - **Obtention :** un bonus au hasard à la fin de chaque segment, et sous une arche tous les 5 km. Un seul bonus en réserve ; un nouveau remplace l'ancien.
-- **Activation :** bouton Y du Click (touche du clavier en secours). Pas d'activation automatique.
+- **Activation :** bouton Z du Click, appui court (touche du clavier en secours). Pas d'activation automatique.
+- **Boutons du mode classique :** + et B changent de braquet (appui long : 10 braquets), Y met en pause (lot N6, accord du propriétaire du 25 octobre), Z active le bonus ; A reste libre.
 - **Valeurs :** dans un fichier de données modifiable, comme la table d'équilibrage de la série R.
 - **Résistance au trainer :** inchangée par les bonus, comme dans Zwift. Seule exception, voulue : le supplément de pente dû au vent et à l'aspiration (série P, `feel = "grade"`) se calcule avec le CdA courant, donc le bonus aéro l'allège aussi, sans deuxième calcul.
 - **Fichiers :** la puissance du FIT et du journal reste la puissance mesurée. La vitesse et la distance restent les valeurs virtuelles, comme aujourd'hui. Les bonus utilisés vont au journal.
@@ -64,7 +65,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 - **Format `.world` 1.x :** couche facultative `segments` (`segments.json` : identifiant, nom, type `sprint` ou `climb`, `s_start`, `s_end`, longueur, pente moyenne, gain, catégorie, source `auto` ou `manual`). L'engine la lit lui-même, comme les autres couches.
 - **Trame `state` :** champ facultatif `segment` (segment en cours ou prochain, distance, chrono, écart au record) et champ `powerup` (bonus en réserve, bonus actif, temps restant).
 - **Message `segment_result` :** temps, record battu ou non, classement du passage.
-- **Événements `input` Y, Z et A :** communs aux séries R et T ; le premier des lots de contrat (R1 ou T1) les ajoute.
+- **Événements `input` Z et A :** communs aux séries R et T ; le premier des lots de contrat (R1 ou T1) les ajoute. Y arrive avant, avec la pause du lot N6.
 
 ## 4. Risques
 
@@ -80,12 +81,12 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
-| T1 | Contrat : couche `segments` du `.world`, champs `segment` et `powerup`, message `segment_result`, événements Y, Z, A (IPC v1.3) | P1 | Interne (décision) |
+| T1 | Contrat : couche `segments` du `.world`, champs `segment` et `powerup`, message `segment_result`, événements Z et A (IPC v1.3) | P1 | Interne (décision) |
 | T2 | Détection automatique des montées et des sprints (module pur, vecteurs de test) | — | Délégable |
 | T3 | Compilateur : couche `segments` par `add-layer`, sprints déclarés à la main, segments du parcours de démonstration | T1, T2 | Délégable |
 | T4 | Chronométrage dans le core : franchissements interpolés, pauses, boucles et aller-retour, journal | T1, T2 | Délégable |
 | T5 | Records personnels et classement local (historique, bots, fantôme) | T4, N9 | Délégable |
-| T6 | Bonus : types, obtention, activation par Y, effets sur `PhysicsParams`, fichier de valeurs, désactivés en ERG | T1 | Délégable |
+| T6 | Bonus : types, obtention, activation par Z, effets sur `PhysicsParams`, fichier de valeurs, désactivés en ERG | T1 | Délégable |
 | T7 | Bonus et série P : supplément vent et aspiration calculé avec le CdA courant, essais combinés | T6, P2, P3 | Délégable |
 | T8 | Engine : lignes de départ et d'arrivée en 3D, arches de bonus, panneaux « Sprint » et « Montée » | T1 | Interne (rendu) |
 | T9 | Engine : HUD segment (approche, chrono, écart au record, résultat) et HUD bonus (icône, compte à rebours) | T1, P4 | Interne |

@@ -19,6 +19,8 @@ Le mode tient sur le socle actuel : le core pilote déjà le trainer en pente av
 | Q7 | Que donnent les châssis permanents ? | Des bonus de jeu, pas seulement l'apparence |
 | Q8 | Enregistrer dans le dépôt ? | Oui : ce dossier et une issue de suivi « série R » |
 
+**Pause :** en mode classique, Y met en pause (lot N6, accord du 25 octobre). Dans le mode Cyber-Rogue, Y sert à l'attaque ; la pause y passe par un appui long sur A (proposition, à confirmer au lot R1), pour qu'une attaque un peu longue ne coupe jamais un combat.
+
 Conséquence de Q2 : la variation de la pente envoyée est limitée à 2 % par seconde (`grade_rate_pct_per_s`), soit 4,5 s pour passer de 0 à 9 %. Le mode Cyber-Rogue aura sa propre limite, fixée après l'essai R0.
 
 ## 3. Ce qui se réutilise
