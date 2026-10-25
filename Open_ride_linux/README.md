@@ -132,6 +132,9 @@ scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcou
 
 Chaque type d'appui a son bip.
 
+**Difficulté du trainer :**
+Le paramètre `[trainer] difficulty_pct` (de 0 à 100 %, défaut 50 %) réduit proportionnellement la pente envoyée au trainer, à l'image du réglage de difficulté de Zwift, sans altérer la vitesse virtuelle calculée par la physique. La difficulté est modifiable pendant la séance par la commande IPC `set_difficulty` (`{"pct": nombre}`) et son pourcentage est affiché dans le HUD (masqué lorsque la valeur est à 100 %).
+
 ### Sons du parcours et sons personnalisés (Lot E4)
 
 L'engine synthétise ses sons procéduraux au démarrage (vent qui suit la vitesse, roue libre en coupant l'effort, cloches d'église, rivières, bétail, village). Un fichier audio OGG déposé dans `~/OpenRide/Sounds/<nom>.ogg` (par exemple `wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) remplace automatiquement le son généré correspondant.

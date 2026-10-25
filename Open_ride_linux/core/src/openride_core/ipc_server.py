@@ -38,6 +38,7 @@ class IpcState:
     v: float = 0.0
     grade: float = 0.0
     grade_sent: float = 0.0
+    difficulty_pct: int = 50
     power: float = 0.0
     power_3s: float = 0.0
     cadence: float = 0.0
