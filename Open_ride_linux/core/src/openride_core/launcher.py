@@ -50,7 +50,7 @@ MAX_LOGS_BYTES = 200 * 1024 * 1024
 DEFAULT_ENGINE_DIR = Path(__file__).resolve().parents[3] / "engine"
 DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click", "--autostart"]
 
-STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+STOP_SIGNALS = tuple(getattr(signal, s) for s in ("SIGINT", "SIGTERM", "SIGHUP") if hasattr(signal, s))
 
 
 def log_timestamp(t: float | None = None) -> str:
