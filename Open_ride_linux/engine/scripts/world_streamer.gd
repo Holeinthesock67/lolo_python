@@ -67,6 +67,10 @@ func _init() -> void:
 
 func _process(_delta: float) -> void:
 	integrate(MAX_NEW_PER_FRAME)
+	# Bâtiments et eau (lot E4) : sans cet appel, les tronçons OSM préparés n'entraient jamais
+	# dans la scène (seuls les tests appelaient flush()).
+	if osm_streamer != null:
+		osm_streamer.integrate(MAX_NEW_PER_FRAME)
 
 
 func _exit_tree() -> void:
@@ -352,6 +356,8 @@ func flush() -> void:
 		integrate(1 << 30)
 		if _jobs.is_empty() and _ready.is_empty():
 			break
+	if osm_streamer != null:
+		osm_streamer.flush()
 
 
 ## Attend les travaux en cours sans dépasser le budget d'objets par image (tests en temps simulé).
