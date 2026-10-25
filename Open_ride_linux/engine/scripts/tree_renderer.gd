@@ -18,6 +18,8 @@ const CELL_SIZE_M := 250.0
 const CELLS_PER_TILE := 4   # 4 x 4 = 16 cases par tuile de 1000 m
 const LOD0_MAX_DIST_M := 300.0
 const LOD1_MAX_DIST_M := 1500.0
+## Distance minimale entre un tronc et le mur d'un bâtiment OSM (houppier compris).
+const BUILDING_CLEARANCE_M := 3.0
 
 # Constantes de région pour le semis hors polygones OSM (Lot E4 §4.3)
 const REGION_OSM_COVERAGE_FACTOR := 0.8
@@ -65,7 +67,7 @@ func get_active_tree_count() -> int:
 ## Génère les données de placement des arbres d'une tuile (exécutable en thread secondaire).
 ## Renvoie un dictionnaire avec la clé de tuile et les listes d'arbres par case [0..15].
 func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary,
-		density_factor: float, areas: Array = []) -> Dictionary:
+		density_factor: float, areas: Array = [], buildings: Array = []) -> Dictionary:
 	var tile_theme := theme.duplicate(true)
 	var veg = tile_theme.get("vegetation", {})
 	if typeof(veg) != TYPE_DICTIONARY:
@@ -132,6 +134,11 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 			if draw < p_region:
 				trees.append(tree)
 
+	# 3. Aucun arbre dans un bâtiment OSM ni à moins de BUILDING_CLEARANCE_M de ses murs
+	#    (défaut vu au banc simulé le 25 octobre : sapins plantés dans les maisons des villages).
+	if not buildings.is_empty():
+		trees = exclude_buildings(trees, buildings)
+
 	# Répartition des arbres dans les 16 cases de 250 m x 250 m
 	var tile_origin_x := float(tile_x * 1000)
 	var tile_origin_z := float(tile_z * 1000)
@@ -152,6 +159,45 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		"cells": cells,
 		"tile_origin": Vector3(tile_origin_x, 0.0, tile_origin_z),
 	}
+
+
+## Retire les arbres situés dans l'emprise d'un bâtiment (anneau `outer`) ou à moins de
+## BUILDING_CLEARANCE_M de ses murs. Exécutable en thread secondaire.
+static func exclude_buildings(trees: PackedVector4Array, buildings: Array) -> PackedVector4Array:
+	var rings: Array[PackedVector2Array] = []
+	var boxes: Array[Rect2] = []
+	for b in buildings:
+		if typeof(b) != TYPE_DICTIONARY:
+			continue
+		var outer = b.get("outer", [])
+		if typeof(outer) != TYPE_ARRAY or outer.size() < 3:
+			continue
+		rings.append(VegetationPlacer._packed_ring(outer))
+		boxes.append(VegetationPlacer._ring_bounds(outer).grow(BUILDING_CLEARANCE_M))
+	if rings.is_empty():
+		return trees
+	var out := PackedVector4Array()
+	for tree in trees:
+		var p := Vector2(tree.x, tree.z)
+		var blocked := false
+		for i in range(rings.size()):
+			if not boxes[i].has_point(p):
+				continue
+			if VegetationPlacer._in_ring(p.x, p.y, rings[i]) or _ring_distance(p, rings[i]) < BUILDING_CLEARANCE_M:
+				blocked = true
+				break
+		if not blocked:
+			out.append(tree)
+	return out
+
+
+static func _ring_distance(p: Vector2, ring: PackedVector2Array) -> float:
+	var best := INF
+	var n := ring.size()
+	for i in range(n):
+		var q := Geometry2D.get_closest_point_to_segment(p, ring[i], ring[(i + 1) % n])
+		best = minf(best, p.distance_to(q))
+	return best
 
 
 ## Instancie les MultiMesh pour une tuile préparée (doit être appelé sur le fil principal).
