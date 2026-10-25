@@ -160,8 +160,10 @@ class AutostartError(Exception):
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
-                 workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None) -> None:
+                 workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None,
+                 config_path: Path | None = None) -> None:
         self.cfg = cfg
+        self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
@@ -202,6 +204,10 @@ class CoreSession:
         self._frame_count = 0
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
+        # Appairage depuis le menu (lot N13) : dernière recherche et identification du « + » en cours.
+        self._scan_items: list[dict[str, Any]] = []
+        self._scanning = False
+        self._identify: dict[str, Any] | None = None
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -275,6 +281,91 @@ class CoreSession:
             self._spawn(self._handle_list_routes(cmd_id))
         elif name == "list_workouts":
             self._spawn(self._handle_list_workouts(cmd_id))
+        elif name in ("scan_devices", "identify_click_plus", "pair_devices"):
+            self._on_pairing_command(name, args, cmd_id)
+
+    # --- appairage depuis le menu (lot N13, contrat IPC révision 1.2) -------------------------
+
+    def _on_pairing_command(self, name: str, args: dict, cmd_id: int) -> None:
+        from . import pairing
+
+        if self.state.session_state not in pairing.SCAN_STATES:
+            self.server.send_error("busy", "Recherche des appareils impossible pendant une séance.")
+            return
+        if name == "scan_devices":
+            if self._scanning:
+                return
+            try:
+                timeout = min(30.0, max(1.0, float(args.get("timeout_s", pairing.SCAN_TIMEOUT_S))))
+            except (TypeError, ValueError):
+                timeout = pairing.SCAN_TIMEOUT_S
+            self._scanning = True
+            self.server.send_raw(pairing.scan_results_message(cmd_id, self._scan_items, False))
+            self._spawn(self._scan_devices(cmd_id, timeout))
+        elif name == "identify_click_plus":
+            self._identify = {"cmd_id": cmd_id, "until": time.monotonic() + pairing.IDENTIFY_TIMEOUT_S}
+            log.info("Appairage : appui sur « + » attendu (%.0f s).", pairing.IDENTIFY_TIMEOUT_S)
+            if not any(isinstance(p, ZwiftClickProvider) and getattr(p, "_link_up", False) for p in self.inputs):
+                # Aucun boîtier relié à la séance : connexion directe aux boîtiers trouvés (comme N12).
+                addresses = [it["address"] for it in self._scan_items if it["role"] == "click"]
+                if addresses and self.sim is None:
+                    self._spawn(self._identify_direct(cmd_id, addresses))
+        elif name == "pair_devices":
+            self._pair_devices(args)
+
+    async def _scan_devices(self, cmd_id: int, timeout: float) -> None:
+        from . import pairing
+        from .tools import devices as devices_tool
+
+        try:
+            if self.sim is not None:
+                scanner, connected = devices_tool.sim_sources(self.sim)
+            else:
+                scanner, connected = devices_tool.ble_scan, devices_tool.bluez_connected
+            inv = await devices_tool.inventory(scanner, connected, timeout, {})
+            self._scan_items = pairing.scan_items(inv, pairing.configured_addresses(self.cfg))
+            log.info("Appairage : %d appareil(s) trouvé(s).", len(self._scan_items))
+        except Exception as exc:   # Bluetooth éteint, BlueZ absent
+            log.warning("Appairage : recherche impossible : %s", exc)
+            self.server.send_error("scan_failed", f"Recherche des appareils impossible : {exc}")
+        finally:
+            self._scanning = False
+        self.server.send_raw(pairing.scan_results_message(cmd_id, self._scan_items, True))
+
+    async def _identify_direct(self, cmd_id: int, addresses: list[str]) -> None:
+        from . import pairing
+
+        addr = await pairing.wait_plus_press(addresses, pairing.IDENTIFY_TIMEOUT_S)
+        if self._identify and self._identify["cmd_id"] == cmd_id:
+            self._identify_done(addr)
+
+    def _identify_done(self, address: str | None) -> None:
+        from . import pairing
+
+        cmd_id = self._identify["cmd_id"] if self._identify else 0
+        self._identify = None
+        log.info("Appairage : %s", f"« + » reçu de {address}" if address else "aucun appui sur « + »")
+        self.server.send_raw(pairing.scan_results_message(cmd_id, self._scan_items, True,
+                                                          address.upper() if address else None))
+
+    def _pair_devices(self, args: dict) -> None:
+        from . import pairing
+
+        if self.sim is not None and self.config_path is None:
+            self.server.send_error("pairing_failed", "Bluetooth simulé : préciser --config pour enregistrer.")
+            return
+        try:
+            paired = pairing.paired_from_args(args, self._scan_items)
+            changed = pairing.save(paired, self.config_path)
+        except pairing.PairingError as exc:
+            log.warning("Appairage refusé : %s", exc)
+            self.server.send_error("pairing_failed", str(exc))
+            return
+        log.info("Appairage enregistré (%s) : %s ; prise en compte au prochain lancement.",
+                 self.config_path or "config.toml", "; ".join(changed) if changed else "aucun changement")
+        for it in self._scan_items:
+            it["configured"] = it["address"] in {paired.trainer_address, paired.click_plus_address,
+                                                 paired.click_minus_address, paired.hr_address}
 
     def _spawn(self, coro: Any) -> None:
         """Lance une tâche de fond en gardant sa référence jusqu'à la fin."""
@@ -551,9 +642,16 @@ class CoreSession:
         self._shift_pending = True   # le changement de braquet doit se sentir tout de suite
 
     def _drain_inputs(self) -> None:
+        if self._identify and time.monotonic() > self._identify["until"]:
+            self._identify_done(None)
         for provider in self.inputs:
             while not provider.events.empty():
-                self._handle_input(provider.events.get_nowait())
+                ev = provider.events.get_nowait()
+                if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
+                        and getattr(provider, "_conn_address", "") not in ("", "?", None):
+                    self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
+                    continue
+                self._handle_input(ev)
         # Statut d'entrée : celui du premier fournisseur (Click s'il est configuré) ; la paire de
         # Click est « connectée » dès qu'un des deux boîtiers l'est.
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]

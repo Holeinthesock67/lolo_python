@@ -135,3 +135,68 @@ async def wait_plus_press(addresses: list[str], timeout: float) -> str | None:
         for t in tasks:
             t.cancel()
         await asyncio.gather(*tasks, return_exceptions=True)
+
+
+# --- recherche et appairage depuis le menu (lot N13, contrat IPC révision 1.2) -----------------
+
+SCAN_TIMEOUT_S = 8.0
+SCAN_MAX_ITEMS = 12
+SCAN_NAME_MAX = 24
+SCAN_ROLES = ("trainer", "click", "hr_strap", "hr_watch")
+SCAN_STATES = ("IDLE", "READY")   # recherche et enregistrement hors séance seulement
+MAX_SCAN_DATAGRAM = 1400
+
+
+def configured_addresses(cfg: config_mod.Config) -> set[str]:
+    d = cfg.drivers
+    return {a.upper() for a in (d.trainer_address, d.click_address, d.click_minus_address, d.hr_address) if a}
+
+
+def scan_items(inventory: dict[str, Any], configured: set[str]) -> list[dict[str, Any]]:
+    """Éléments de `scan_results` : appareils utiles, rôle puis RSSI, au plus 12, noms coupés à 24."""
+    seen: set[str] = set()
+    out: list[dict[str, Any]] = []
+    for d in list(inventory.get("devices", [])) + list(inventory.get("connected", [])):
+        role, addr = d.get("role"), str(d.get("address", "")).upper()
+        if role not in SCAN_ROLES or not addr or addr in seen:
+            continue
+        seen.add(addr)
+        out.append({"role": role, "name": str(d.get("name") or "")[:SCAN_NAME_MAX], "address": addr,
+                    "rssi": d.get("rssi"), "configured": addr in configured})
+    out.sort(key=lambda it: (SCAN_ROLES.index(it["role"]), -(it["rssi"] if it["rssi"] is not None else -999)))
+    return out[:SCAN_MAX_ITEMS]
+
+
+def scan_results_message(request_cmd_id: int, items: list[dict[str, Any]], done: bool,
+                         plus_address: str | None = None, version: int = 1) -> dict[str, Any]:
+    """Message `scan_results` tenant en 1 400 octets (éléments en trop retirés par la fin)."""
+    import json
+
+    items = list(items)
+    while True:
+        msg = {"type": "scan_results", "v": version, "request_cmd_id": request_cmd_id, "done": done,
+               "items": items, "plus_address": plus_address}
+        if len(json.dumps(msg, separators=(",", ":")).encode("utf-8")) <= MAX_SCAN_DATAGRAM or not items:
+            return msg
+        items = items[:-1]
+
+
+def paired_from_args(args: dict[str, Any], items: list[dict[str, Any]]) -> PairedDevices:
+    """Commande `pair_devices` : adresses choisies (null : valeur actuelle gardée) et noms trouvés."""
+    names = {it["address"]: it.get("name", "") for it in items}
+    out = PairedDevices()
+    for key, field_name in (("trainer", "trainer_address"), ("click_plus", "click_plus_address"),
+                            ("click_minus", "click_minus_address"), ("hr", "hr_address")):
+        value = args.get(key)
+        if value is None:
+            continue
+        if not isinstance(value, str):
+            raise PairingError(f"pair_devices : « {key} » doit être une adresse ou null")
+        setattr(out, field_name, value.upper())
+    if out.trainer_address and names.get(out.trainer_address):
+        out.trainer_name = names[out.trainer_address]
+    if out.hr_address and names.get(out.hr_address):
+        out.hr_name = names[out.hr_address]
+    if out.click_plus_address and out.click_plus_address == out.click_minus_address:
+        raise PairingError("pair_devices : le même boîtier ne peut pas être à la fois « + » et « − »")
+    return out
