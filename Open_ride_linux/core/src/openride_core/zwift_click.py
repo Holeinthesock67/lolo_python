@@ -40,8 +40,9 @@ KEYPAD_ALL_RELEASED = 0xFFFFFFFF
 KEYPAD_PLUS_BIT = 12   # bit à 0 = appuyé ; à confirmer sur le matériel (sprint 0)
 KEYPAD_MINUS_BIT = 8
 KEYPAD_B_BIT = 5      # bouton B du boîtier droit : « − » qui marche sans déblocage Zwift
+KEYPAD_Y_BIT = 6      # bouton Y du boîtier droit : pause et reprise (lot N6)
 # Tous les boutons du Click V2 (bit du tableau 0x23, à 0 quand le bouton est appuyé). Seuls +,
-# − et B sont utilisés ; les autres sont relevés pour de futures commandes (menus, ERG).
+# −, B et Y sont utilisés ; les autres sont relevés pour de futures commandes (menus, ERG).
 KEYPAD_BITS = {
     "LEFT": 0, "UP": 1, "RIGHT": 2, "DOWN": 3,   # flèches, boîtier gauche
     "A": 4, "B": 5, "Y": 6, "Z": 7,              # boîtier droit
@@ -58,6 +59,9 @@ class InputEvent(str, enum.Enum):
     MINUS_SHORT = "MINUS_SHORT"
     PLUS_LONG = "PLUS_LONG"
     MINUS_LONG = "MINUS_LONG"
+    # Bouton Y du boîtier droit (Click V2, choix du propriétaire du 25 octobre) : pause ou reprise.
+    # Interne au core : la séance passe en pause (contrat §4) sans nouvel événement IPC.
+    PAUSE = "PAUSE"
 
 
 def decode_protobuf_varints(payload: bytes) -> dict[int, int]:
@@ -104,6 +108,7 @@ def decode_protobuf_varints(payload: bytes) -> dict[int, int]:
 class ClickButtons:
     plus_pressed: bool
     minus_pressed: bool
+    y_pressed: bool = False
 
 
 def parse_async(data: bytes) -> tuple[int, dict[int, int]]:
@@ -120,7 +125,8 @@ def parse_click_buttons(data: bytes) -> ClickButtons | None:
         mask = fields.get(1, KEYPAD_ALL_RELEASED) & 0xFFFFFFFF
         return ClickButtons(plus_pressed=not (mask >> KEYPAD_PLUS_BIT) & 1,
                             minus_pressed=not (mask >> KEYPAD_MINUS_BIT) & 1
-                            or not (mask >> KEYPAD_B_BIT) & 1)
+                            or not (mask >> KEYPAD_B_BIT) & 1,
+                            y_pressed=not (mask >> KEYPAD_Y_BIT) & 1)
     if msg_type != MSG_CLICK_NOTIFICATION:
         return None
     # Sémantique proto3 : un champ absent vaut 0, c'est-à-dire « appuyé ».
@@ -137,7 +143,7 @@ class PressClassifier:
     def __init__(self, short_max_s: float = SHORT_MAX_S, long_min_s: float = LONG_MIN_S) -> None:
         self.short_max_s = short_max_s
         self.long_min_s = long_min_s
-        self._down_since: dict[str, float | None] = {"PLUS": None, "MINUS": None}
+        self._down_since: dict[str, float | None] = {"PLUS": None, "MINUS": None, "Y": None}
 
     def update(self, button: str, pressed: bool, t: float) -> InputEvent | None:
         since = self._down_since[button]
@@ -148,6 +154,8 @@ class PressClassifier:
         if since is None:
             return None
         self._down_since[button] = None
+        if button == "Y":
+            return InputEvent.PAUSE   # toute durée : un seul geste, pause ou reprise
         duration = t - since
         if duration < self.short_max_s:
             return InputEvent[f"{button}_SHORT"]
@@ -157,7 +165,8 @@ class PressClassifier:
 
     def feed(self, buttons: ClickButtons, t: float) -> list[InputEvent]:
         events = []
-        for name, pressed in (("PLUS", buttons.plus_pressed), ("MINUS", buttons.minus_pressed)):
+        for name, pressed in (("PLUS", buttons.plus_pressed), ("MINUS", buttons.minus_pressed),
+                              ("Y", buttons.y_pressed)):
             ev = self.update(name, pressed, t)
             if ev is not None:
                 events.append(ev)

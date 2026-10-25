@@ -81,6 +81,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_catalog_model.gd` | N3 | Modèle de catalogue (`catalog_model.gd`) : conversion des parcours et entraînements au format de menu, labels, tri, focus sautant les éléments désactivés, aucun nœud créé |
 | `test_cue_model.gd` | essai | Consignes d'essai (`cue_model.gd`) : lecture et tri du fichier `~/OpenRide/Essais/<parcours>.consignes.json`, consignes invalides ignorées, chaque consigne donnée une seule fois à sa distance, réarmement après un nouveau départ, aucun nœud créé |
 | `test_osm_decor_route.gd` | – | Décor OSM et route : aucun arbre dans un bâtiment ni à moins de 3 m de ses murs (`tree_renderer.gd`, `exclude_buildings`), cours d'eau coupés au passage de la chaussée et ruisseau sur le bas-côté retiré (`osm_streamer.gd`, `cut_lines_at_road`) |
+| `test_far_terrain_carve.gd` | – | Terrain lointain abaissé sous la route (`terrain_tiles.gd`, `carve_under_route`) : vallée en V à 30 % et route en S à 7 %, dépassement de 8 m sans correctif, au moins 2 m sous la chaussée après, aucun sommet relevé, bord commun de deux tuiles identique |
 | `test_sound_player.gd` | E4 | Lecteurs et sons procéduraux du parcours (`sound_player.gd`) : synthèse au démarrage (< 500 ms), vent, roue libre, limitation à 4 lecteurs 3D actifs, volumes à 0,5 dB de `sound_model.gd` |
 
 ## Étapes du script
