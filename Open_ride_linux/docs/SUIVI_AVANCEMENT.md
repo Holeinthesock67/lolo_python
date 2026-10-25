@@ -198,6 +198,12 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Traces FIT, TCX et archives Garmin déposées dans `~/OpenRide/GPX/` (lot O5).
 - [ ] Guide d'utilisation sans terminal et README de la 1.0 (lot O6).
 - [ ] Bots à l'écran, facultatif pour la 1.0 (lot O7).
+- [ ] Entraînements GoldenCheetah `.erg` et `.mrc` (lot O9).
+- [ ] Test de FTP par rampe ou sur 20 minutes, nouvelle FTP enregistrée après accord (lot O10).
+- [ ] Plans d'entraînement sur plusieurs semaines et séance du jour (lot O11).
+- [ ] Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle (lot O13), écran (lot O14).
+- [ ] Bibliothèque de parcours : fiches, tri, filtres, packs (lot O15).
+- [ ] Menu des plans, du test de FTP et de la bibliothèque (lot O12).
 - [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
 
 ### Après la 1.0 : décor vivant, vent et aspiration (série P rédigée le 25 octobre)
