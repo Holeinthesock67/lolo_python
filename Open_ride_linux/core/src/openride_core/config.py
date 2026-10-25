@@ -69,6 +69,11 @@ class RenderConfig:
 
 
 @dataclass
+class EngineConfig:
+    godot: str = ""   # chemin de Godot 4.3 (vide : variable GODOT ou ~/Applications/godot), lot N14
+
+
+@dataclass
 class IpcConfig:
     port_state: int = 5005
     port_commands: int = 5006
@@ -98,6 +103,7 @@ class Config:
     gearing: GearingConfig = field(default_factory=GearingConfig)
     render: RenderConfig = field(default_factory=RenderConfig)
     ipc: IpcConfig = field(default_factory=IpcConfig)
+    engine: EngineConfig = field(default_factory=EngineConfig)
     drivers: DriversConfig = field(default_factory=DriversConfig)
 
     @property
