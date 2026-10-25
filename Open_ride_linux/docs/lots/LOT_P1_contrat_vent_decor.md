@@ -1,0 +1,77 @@
+# Lot P1 – Contrat : vent, aspiration et décor vivant (IPC v1.2, thème 1.2, configuration `[wind]`)
+
+## 1. Objectif
+
+La série P anime le décor après la 1.0 (vent, nuages, météo, sons, animaux, objets mobiles, bord de route ; jour, nuit et saisons en 2.0) et rend le vent et l'aspiration **physiques**. Le core reste le maître : il calcule le vent et l'abri derrière un bot, et l'engine affiche ce qu'il reçoit (arbres, nuages, sons et indicateur du HUD suivent le même vent que les jambes). Ce lot fixe, **avant tout code**, les ajouts compatibles aux trois contrats concernés. C'est une décision du propriétaire, comme N1.
+
+## 2. À lire
+
+1. `docs/lots/00_INDEX.md` (paragraphe « Série P »), `docs/contracts/ipc_v1.md` §3 et §8, `docs/contracts/world_format_v1.md` §8 et §9, `docs/contracts/world/theme.schema.json`, `docs/contracts/world/poi.schema.json`.
+2. `docs/SRS_v1.1.md` §5 (formule de la résistance, terme de vent et `alpha_draft`), §4.1 (paramètres SIM envoyés au trainer), §11 (configuration).
+3. Code : `core/src/openride_core/physics.py` (`wind_mps`, `alpha_draft`), `core/src/openride_core/ftms.py` (champ vent de la commande 0x11), `engine/scripts/theme_render_params.gd`.
+
+## 3. Prérequis
+
+Version 1.0 publiée (lot O8). N9 n'est pas requis pour écrire le contrat, seulement pour P3.
+
+## 4. Travail demandé
+
+Rédiger les ajouts, chacun avec sa ligne au journal des changements du document. Propositions de départ, à trancher par le propriétaire :
+
+### 4.1 IPC v1.2 : champ `wind` de `state`
+
+- Objet facultatif `wind`, absent quand le vent est désactivé (trames inchangées) : `{speed_mps, from_deg, head_mps, gust}`.
+  - `speed_mps` : vitesse du vent au sol, rafale comprise (≥ 0) ;
+  - `from_deg` : direction d'où vient le vent, en degrés dans le sens horaire depuis le nord (convention du cap de `world_format_v1.md` §3) ;
+  - `head_mps` : composante de face le long du cap de la route à `s` (positive de face, négative de dos), celle qu'utilise la physique ;
+  - `gust` : facteur de rafale de 0 à 1, pour l'animation (arbres, drapeaux, son).
+- Envoyé dans chaque trame à 30 Hz (environ 70 octets) ; vérifier que la trame la plus chargée (ERG, `devices`, 5 bots, `wind`, `draft`) tient toujours dans 1 400 octets, sinon passer `wind` à 2 Hz.
+
+### 4.2 IPC v1.2 : champ `draft` de `state`
+
+- Nombre facultatif `draft` de 0 à 0,45 : coefficient d'aspiration appliqué au cycliste (SRS §5), absent sans bot. Champ facultatif `draft_bot` : `id` du bot qui abrite, ou absent.
+
+### 4.3 Configuration `[wind]` (SRS §11)
+
+- `mode` = `"off"` (défaut : comportement actuel), `"fixed"`, `"gusty"`, `"theme"` ; `speed_kmh` (0 à 60), `from_deg` (0 à 360), `gust_pct` (0 à 100), `seed` (entier).
+- `feel` = `"grade"` (défaut) ou `"ftms"` : en SIM, la résistance due au vent et à l'aspiration est transmise au trainer soit sous forme de **supplément de pente**, soit dans le champ vent de la commande FTMS 0x11. `"grade"` est le choix sûr (pente validée sur le trainer le 22 octobre) ; `"ftms"` reste à essayer sur le matériel.
+- `max_grade_offset_pct` (défaut 4,0) : borne du supplément de pente.
+- En ERG, ni le vent ni l'aspiration ne changent la résistance (puissance imposée) ; seule la vitesse virtuelle change.
+
+### 4.4 Thème 1.2 (`theme.schema.json`, `world_format_v1.md` §9)
+
+Clés facultatives, toutes ignorées par un engine qui ne les connaît pas :
+- `sky.clouds` : `{coverage, speed_factor, color, altitude_m}` ;
+- `sky.time_of_day` : `{mode: "fixed" | "real" | "accelerated", hour, factor}` (utilisé en 2.0 par P7) ;
+- `weather` : `{kind: "clear" | "mist" | "rain" | "snow", intensity, morning_mist}` ;
+- `season` : `"spring" | "summer" | "autumn" | "winter"` (feuilles qui tombent, couleur des arbres ; utilisé en 2.0 par P18) ;
+- `wind` : `{speed_kmh, from_deg, gust_pct}`, lu quand `[wind] mode = "theme"` ;
+- `ambience` : `{volume, birds, insects}` ;
+- `fauna` : `{birds, livestock, deer}` (densités de 0 à 1).
+- Mettre à jour `engine/themes/default/theme.json` avec des valeurs d'été calmes.
+
+### 4.5 Format `.world` : points d'intérêt
+
+- Ajouter les sortes `wind_turbine` (OSM `power=generator` et `generator:source=wind`, avec `height_m` facultatif) et `flag` (OSM `man_made=flagpole`) à l'énumération de `poi.schema.json` (§8).
+
+## 5. Fichiers concernés
+
+- **Modifiés :** `docs/contracts/ipc_v1.md`, `docs/contracts/ipc/state.schema.json`, `docs/contracts/world_format_v1.md`, `docs/contracts/world/theme.schema.json`, `docs/contracts/world/poi.schema.json`, `engine/themes/default/theme.json`, `docs/SRS_v1.1.md` (§5 et §11), `docs/SUIVI_AVANCEMENT.md` (une ligne).
+- **Interdits :** tout code.
+
+## 6. Modifications de contrat autorisées
+
+Ajouts compatibles décrits au §4, et seulement eux.
+
+## 7. Critères d'acceptation
+
+1. `(cd core && pytest -q)` passe, dont `core/tests/test_docs_coherence.py` (schémas valides, exemple `config.toml` de la SRS §11 cohérent ; si `[wind]` y figure avant P2, l'ajouter comme exception commentée jusqu'à P2).
+2. Une trame `state` d'exemple avec `wind` et `draft` est valide pour le schéma ; la même sans ces champs aussi.
+3. `openride-compiler theme-check engine/themes/default` accepte le thème mis à jour.
+4. Le propriétaire a validé les choix du §4 (notés en tête du lot à la livraison).
+
+## 8. Hors périmètre
+
+- Vent de travers sur la physique (seule la composante de face compte), vent qui varie selon le relief.
+- Aspiration entre bots, peloton.
+- Météo réelle téléchargée (aucun réseau à l'exécution).
