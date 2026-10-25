@@ -19,6 +19,7 @@ log = logging.getLogger("ipc_server")
 
 CONTRACT_VERSION = 1
 MAX_DATAGRAM_SIZE = 1400
+MAX_LIST_DATAGRAM_SIZE = 60000
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
 
@@ -48,6 +49,7 @@ class IpcState:
     alt: float = 0.0
     erg: dict[str, Any] | None = None
     summary: dict[str, Any] | None = None
+    devices: dict[str, Any] | None = None
     bots: list[dict[str, Any]] | None = None
     last_cmd_id: int = 0
 
@@ -57,6 +59,8 @@ class IpcState:
             "v": CONTRACT_VERSION,
             **asdict(self),
         }
+        if self.devices is None:
+            d.pop("devices", None)
         if self.bots is None:
             d.pop("bots", None)
         return d
@@ -133,12 +137,15 @@ class IpcServer:
             self._rx_sock = None
         log.info("IPC arrêté.")
 
-    def send_raw(self, msg_dict: dict[str, Any]) -> None:
+    def send_raw(self, msg_dict: dict[str, Any], max_size: int | None = None) -> None:
         if not self._tx_sock:
             return
+        limit = max_size if max_size is not None else (
+            MAX_LIST_DATAGRAM_SIZE if msg_dict.get("type") in ("routes", "workouts") else MAX_DATAGRAM_SIZE
+        )
         payload = json.dumps(msg_dict, separators=(",", ":")).encode("utf-8")
-        if len(payload) > MAX_DATAGRAM_SIZE:
-            log.warning("Datagramme IPC trop grand (%d octets), ignoré", len(payload))
+        if len(payload) > limit:
+            log.warning("Datagramme IPC trop grand (%d octets > %d), ignoré", len(payload), limit)
             return
         try:
             self._tx_sock.sendto(payload, (self.host, self.port_state))
@@ -254,8 +261,9 @@ class IpcServer:
             name = msg["name"]
             args = msg.get("args") or {}
             self.last_heartbeat_time = time.monotonic()
-            if cmd_id > self.last_cmd_id:
-                self.last_cmd_id = cmd_id
+            is_query = name in ("list_routes", "list_workouts")
+            if cmd_id > self.last_cmd_id or is_query:
+                self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)
                 if self.on_command:
                     try:

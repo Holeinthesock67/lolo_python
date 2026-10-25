@@ -116,6 +116,7 @@ class HeartRateProvider:
         self._contact: bool | None = None
         self._rr: deque[float] = deque(maxlen=RR_KEEP)
         self._link_up = False
+        self._ever_connected = False
         self._advised = False
         self.battery_pct: int | None = None
         self.device_address: str | None = None   # appareil retenu à la dernière connexion
@@ -130,6 +131,12 @@ class HeartRateProvider:
     @property
     def connected(self) -> bool:
         return self._link_up
+
+    @property
+    def status(self) -> str:
+        if self._link_up:
+            return "CONNECTED"
+        return "LOST" if self._ever_connected else "SEARCHING"
 
     @property
     def contact(self) -> bool | None:
@@ -228,7 +235,7 @@ class HeartRateProvider:
             self.device_address = str(getattr(dev, "address", dev))
             await self._read_battery(client)
             await client.start_notify(ftms.HR_MEASUREMENT, self._on_hr)
-            self._link_up = True
+            self._link_up = self._ever_connected = True
             since = self._clock()
             log.info("Ceinture cardio connectée (%s)", getattr(dev, "name", None) or dev)
             try:

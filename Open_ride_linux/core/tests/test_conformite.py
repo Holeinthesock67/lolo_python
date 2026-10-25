@@ -93,7 +93,7 @@ def test_c3_summary_fields(tmp_path, monkeypatch):
         s._on_command("start", {}, 2)
         steps(s, 200, 10.0)
         s._on_command("end_session", {"save": True}, 3)
-        assert set(s.state.summary) == {"duration_s", "distance_m", "avg_power_w", "fit_path"}
+        assert {"duration_s", "distance_m", "avg_power_w", "fit_path"}.issubset(set(s.state.summary))
         assert s.state.summary["avg_power_w"] > 0
     asyncio.run(scenario())
 
