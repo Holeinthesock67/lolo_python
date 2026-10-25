@@ -1,7 +1,10 @@
-"""Entraînements structurés ERG (SRS §6) : lecture des fichiers `.zwo` et calcul de la cible.
+"""Entraînements structurés ERG (SRS §6) : lecture des fichiers `.zwo`, `.erg` et `.mrc` et calcul de la cible.
 
 - `load_workout` lit un `.zwo` (XML ouvert de Zwift) et le déplie en blocs simples ;
   les intervalles `IntervalsT` deviennent des paires `interval_on` / `interval_off`.
+  Les `.erg` (cibles en watts) et `.mrc` (cibles en % de la FTP) de GoldenCheetah sont lus par
+  `workout_formats.parse_erg` (lot O9) : un bloc `steady` ou `ramp` par segment ; les blocs
+  d'un `.erg` portent des cibles absolues (`start_w`, `end_w`) que la FTP ne change pas.
 - `list_workouts` liste un dossier pour le futur menu : un fichier invalide y figure avec son
   erreur et n'est pas sélectionnable.
 - `ErgController` donne, à chaque pas de 50 Hz, la cible de puissance en watts et l'objet `erg`
@@ -33,6 +36,8 @@ BIAS_DEFAULT_PCT = 100
 BIAS_STEP_PCT = 2
 BIAS_MIN_PCT, BIAS_MAX_PCT = 80, 120
 WORKOUT_ID_RE = re.compile(r"^[^/\\.][^/\\]*$")   # un nom de fichier simple, sans dossier
+# Extensions lues, par priorité : en cas de conflit de nom (`x.zwo` et `x.erg`), la première gagne.
+WORKOUT_SUFFIXES = (".zwo", ".erg", ".mrc")
 
 # Attributs lus pour chaque balise de bloc (noms en minuscules).
 _BLOCK_ATTRS: dict[str, set[str]] = {
@@ -48,22 +53,48 @@ _META_TAGS = {"author", "sporttype", "tags"}
 
 
 class WorkoutError(Exception):
-    """Fichier `.zwo` invalide ; le message est lisible par l'utilisateur."""
+    """Fichier d'entraînement invalide ; le message est lisible par l'utilisateur."""
 
 
 @dataclass(frozen=True)
 class Block:
     type: str                  # warmup, steady, interval_on, interval_off, ramp, cooldown, freeride
     duration_s: float
-    start_frac: float | None   # None pour freeride
+    start_frac: float | None   # None pour freeride et pour un bloc en watts absolus
     end_frac: float | None
+    start_w: float | None = None   # cibles absolues en watts (`.erg`, lot O9), sans la FTP
+    end_w: float | None = None
+
+    @property
+    def absolute(self) -> bool:
+        return self.start_w is not None and self.end_w is not None
+
+    @property
+    def free(self) -> bool:
+        """Bloc sans cible (roue libre)."""
+        return not self.absolute and (self.start_frac is None or self.end_frac is None)
 
     def frac_at(self, t: float) -> float | None:
-        """Fraction de la FTP à t secondes du début du bloc (linéaire dans une rampe)."""
+        """Fraction de la FTP à t secondes du début du bloc (linéaire dans une rampe) ; None en
+        roue libre et pour un bloc en watts absolus."""
         if self.start_frac is None or self.end_frac is None:
             return None
         u = min(max(t / self.duration_s, 0.0), 1.0)
         return self.start_frac + (self.end_frac - self.start_frac) * u
+
+    def watts_at(self, t: float, ftp_w: float) -> float | None:
+        """Cible en watts à t secondes du début du bloc, sans biais (None en roue libre)."""
+        if self.absolute:
+            u = min(max(t / self.duration_s, 0.0), 1.0)
+            return self.start_w + (self.end_w - self.start_w) * u
+        frac = self.frac_at(t)
+        return None if frac is None else ftp_w * frac
+
+    def profile_fracs(self, ftp_w: float) -> tuple[float | None, float | None]:
+        """(début, fin) en fraction de la FTP, pour le profil affiché (watts absolus ramenés à la FTP)."""
+        if self.absolute:
+            return self.start_w / ftp_w, self.end_w / ftp_w
+        return self.start_frac, self.end_frac
 
 
 @dataclass(frozen=True)
@@ -72,6 +103,9 @@ class Workout:
     name: str
     blocks: tuple[Block, ...]
     description: str = ""
+    # Messages `[COURSE TEXT]` d'un `.erg` / `.mrc` : (temps en s, texte, durée en s), pour un
+    # affichage futur (lot O9) ; vide pour un `.zwo`.
+    texts: tuple[tuple[float, str, float], ...] = ()
 
     @property
     def duration_s(self) -> float:
@@ -201,21 +235,62 @@ def parse_workout(text: str, workout_id: str, source: str = "<zwo>") -> Workout:
     return Workout(id=workout_id, name=name, blocks=tuple(blocks), description=description)
 
 
-def load_workout(path: Path) -> Workout:
-    """Lit un fichier `.zwo` ; son identifiant est le nom du fichier sans extension."""
+def load_workout(path: Path, erg_relative: bool = False) -> Workout:
+    """Lit un fichier `.zwo`, `.erg` ou `.mrc` ; son identifiant est le nom du fichier sans extension.
+
+    `erg_relative` : un `.erg` est converti en % de la FTP de son en-tête (`FTP = …`).
+    """
+    suffix = path.suffix.lower()
+    if suffix not in WORKOUT_SUFFIXES:
+        raise WorkoutError(f"{path.name} : format inconnu (attendu {', '.join(WORKOUT_SUFFIXES)})")
     try:
-        text = path.read_text(encoding="utf-8")
+        raw = path.read_bytes()
+        text = raw.decode("utf-8") if suffix == ".zwo" else _decode_text(raw)
     except (OSError, UnicodeDecodeError) as exc:
         raise WorkoutError(f"lecture impossible de {path.name} : {exc}") from None
-    return parse_workout(text, path.stem, source=path.name)
+    if suffix == ".zwo":
+        return parse_workout(text, path.stem, source=path.name)
+    from .workout_formats import parse_erg
+    return parse_erg(text, path.stem, source=path.name, percent=suffix == ".mrc", relative=erg_relative)
+
+
+def _decode_text(raw: bytes) -> str:
+    """Fichiers texte de GoldenCheetah : UTF-8 (avec ou sans BOM), sinon Latin-1 (exports Windows)."""
+    try:
+        return raw.decode("utf-8-sig")
+    except UnicodeDecodeError:
+        return raw.decode("latin-1")
+
+
+def _workout_files(directory: Path) -> dict[str, list[Path]]:
+    """Fichiers d'entraînement par identifiant, dans l'ordre de priorité des extensions."""
+    found: dict[str, list[Path]] = {}
+    for p in directory.iterdir():
+        if p.suffix.lower() in WORKOUT_SUFFIXES and p.is_file():
+            found.setdefault(p.stem, []).append(p)
+    for paths in found.values():
+        paths.sort(key=lambda p: WORKOUT_SUFFIXES.index(p.suffix.lower()))
+    return found
+
+
+def _chosen(workout_id: str, paths: list[Path]) -> Path:
+    if len(paths) > 1:
+        log.warning("Entraînement « %s » en plusieurs formats (%s) : %s retenu.", workout_id,
+                    ", ".join(p.name for p in paths), paths[0].name)
+    return paths[0]
 
 
 def list_workouts(directory: Path) -> list[WorkoutInfo]:
-    """Entraînements d'un dossier (`~/OpenRide/Workouts/`), triés par identifiant."""
+    """Entraînements d'un dossier (`~/OpenRide/Workouts/`), triés par identifiant.
+
+    `.zwo`, `.erg` et `.mrc` ; un même identifiant en plusieurs formats est signalé une fois
+    au journal et le `.zwo` gagne (puis `.erg`, puis `.mrc`).
+    """
     if not directory.is_dir():
         return []
     out: list[WorkoutInfo] = []
-    for path in sorted(p for p in directory.iterdir() if p.suffix.lower() == ".zwo" and p.is_file()):
+    files = _workout_files(directory)
+    for path in (_chosen(wid, files[wid]) for wid in sorted(files)):
         try:
             w = load_workout(path)
         except WorkoutError as exc:
@@ -226,13 +301,14 @@ def list_workouts(directory: Path) -> list[WorkoutInfo]:
 
 
 def workout_path(directory: Path, workout_id: str) -> Path:
-    """Chemin de `<dossier>/<workout_id>.zwo` ; refuse un identifiant qui sortirait du dossier."""
+    """Chemin de `<dossier>/<workout_id>.zwo` (ou `.erg`, `.mrc`, dans cet ordre de priorité) ;
+    refuse un identifiant qui sortirait du dossier."""
     if not WORKOUT_ID_RE.match(workout_id):
         raise WorkoutError(f"identifiant d'entraînement invalide : {workout_id!r}")
-    path = directory / f"{workout_id}.zwo"
-    if not path.is_file():
+    paths = _workout_files(directory).get(workout_id, []) if directory.is_dir() else []
+    if not paths:
         raise WorkoutError(f"entraînement « {workout_id} » introuvable dans {directory}")
-    return path
+    return _chosen(workout_id, paths)
 
 
 # --- contrôleur ERG -----------------------------------------------------------------------
@@ -240,9 +316,10 @@ def workout_path(directory: Path, workout_id: str) -> Path:
 class ErgController:
     """Cible de puissance d'un entraînement, avancée par pas de temps (SRS §6, §4.4).
 
-    - Cible = FTP × fraction × biais / 100, arrondie au watt.
-    - À chaque changement de bloc, la fraction passe linéairement de l'ancienne valeur à la
-      nouvelle en 2 s ; le biais s'applique sans lissage. Après un bloc `freeride` (sans cible),
+    - Cible = FTP × fraction × biais / 100, arrondie au watt ; pour un bloc en watts absolus
+      (`.erg`, lot O9) : watts × biais / 100, quelle que soit la FTP.
+    - À chaque changement de bloc, la cible sans biais passe linéairement de l'ancienne valeur à
+      la nouvelle en 2 s ; le biais s'applique sans lissage. Après un bloc `freeride` (sans cible),
       le bloc suivant démarre directement à sa cible.
     - Pause ERG : le temps du bloc et le lissage s'arrêtent.
 
@@ -263,7 +340,7 @@ class ErgController:
         self.bias_pct = BIAS_DEFAULT_PCT
         self.paused = False
         self.finished = False
-        self._from_frac: float | None = None   # début du lissage en cours (None : aucun)
+        self._from_w: float | None = None   # début du lissage en cours, en watts sans biais (None : aucun)
         self._smooth_t = 0.0
 
     @property
@@ -272,42 +349,47 @@ class ErgController:
 
     @property
     def is_freeride(self) -> bool:
-        return self.block.start_frac is None
+        return self.block.free
 
     @property
     def target_active(self) -> bool:
         """Vrai quand le trainer doit recevoir une cible ERG (ni roue libre, ni pause, ni fin)."""
         return not (self.finished or self.paused or self.is_freeride)
 
+    def base_w(self) -> float | None:
+        """Cible en cours en watts, lissage compris, sans biais (None en roue libre)."""
+        w = self.block.watts_at(self.t_block, self.ftp_w)
+        if w is None or self._from_w is None or self._smooth_t >= SMOOTH_S:
+            return w
+        return self._from_w + (w - self._from_w) * (self._smooth_t / SMOOTH_S)
+
     def fraction(self) -> float | None:
         """Fraction de la FTP en cours, lissage compris (None en roue libre)."""
-        frac = self.block.frac_at(self.t_block)
-        if frac is None or self._from_frac is None or self._smooth_t >= SMOOTH_S:
-            return frac
-        return self._from_frac + (frac - self._from_frac) * (self._smooth_t / SMOOTH_S)
+        w = self.base_w()
+        return None if w is None else w / self.ftp_w
 
-    def _watts(self, frac: float | None) -> int | None:
-        if frac is None:
+    def _watts(self, base_w: float | None) -> int | None:
+        if base_w is None:
             return None
-        return round(self.ftp_w * frac * self.bias_pct / 100.0)
+        return round(base_w * self.bias_pct / 100.0)
 
     @property
     def target_w(self) -> int:
         """Cible lissée en watts, biais compris ; 0 en roue libre."""
-        return self._watts(self.fraction()) or 0
+        return self._watts(self.base_w()) or 0
 
     @property
     def next_target_w(self) -> int | None:
         if self.index + 1 >= len(self.workout.blocks):
             return None
-        return self._watts(self.workout.blocks[self.index + 1].start_frac)
+        return self._watts(self.workout.blocks[self.index + 1].watts_at(0.0, self.ftp_w))
 
     def _enter(self, index: int, carry_s: float = 0.0) -> None:
         if index >= len(self.workout.blocks):
             self.finished = True
             self.t_block = self.block.duration_s
             return
-        self._from_frac = self.fraction()
+        self._from_w = self.base_w()
         self._smooth_t = carry_s
         self.index, self.t_block = index, carry_s
 

@@ -24,6 +24,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - `docs/AUDIT_2026-10-23.md` : audit et suivi des constats (complété le soir du 23 octobre, §8 et §9).
 - `docs/VERIFICATION_2026-10-24.md`, `docs/AUDIT_FTMS_2026-10-24.md`, `docs/REVUE_CODE_2026-10-24.md` : vérification, audit FTMS et revue de code du 24 octobre (constats ouverts : §5 de la revue).
 - `docs/spikes.md` : faits mesurés sur le matériel.
+- `docs/OUTILS_DE_TEST.md` : liste des outils de test (suites, matériel simulé, banc d'essai simulé, parcours d'essai, diagnostic).
 
 **Règle :** un contrat ne se modifie que par ajout compatible, avec une ligne au journal des changements du document. Si un contrat paraît faux, le signaler au lieu de l'interpréter.
 
@@ -39,20 +40,21 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 
 **Modules clés du core** (`core/src/openride_core/`) :
 - `session.py` : boucle principale ;
-- `launcher.py`, `launch_compile.py` : lanceur unique `openride` (core + Godot, compilation au lancement des traces GPX, relance de Godot s'il plante, arrêt propre sur fermeture et signaux ; un journal par lancement dans `~/OpenRide/Logs/`, lien `~/run_trainer.log` vers le dernier, lots M8 et N11) ;
+- `launcher.py`, `launch_compile.py` : lanceur unique `openride` (core + Godot, compilation au lancement des traces GPX, relance de Godot s'il plante, relance du core avec reprise de la séance en pause s'il plante (lot N8, `resume.py`), arrêt propre sur fermeture et signaux ; un journal par lancement dans `~/OpenRide/Logs/`, lien `~/run_trainer.log` vers le dernier, lots M8 et N11) ;
 - `ftms_driver.py` : pilote du HomeTrainer ;
 - `input_providers.py` : Click et clavier ;
 - `ble_util.py` : verrou BLE, repli BlueZ ;
 - `recorder.py` : journal, mémoire, FIT ;
 - `route.py`, `catalog.py` : lecture des `.world`, interpolation et catalogue des parcours (`.world` et `.gpx`) ;
 - `demo_world.py` : parcours de démonstration ;
-- `workout.py` : lecture des `.zwo` et contrôleur ERG ;
+- `workout.py`, `workout_formats.py` : lecture des `.zwo`, des `.erg` et `.mrc` de GoldenCheetah (lot O9) et contrôleur ERG ;
 - `mock_driver.py`, `replay.py` : simulateur de trainer et rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) ;
 - `ble_sim.py`, `sim_scenarios.py` : Bluetooth simulé (HomeTrainer, paire de Click, ceinture) derrière les vrais pilotes, scénarios de pannes (`docs/SIMULATION_BLE.md`) ;
 - `hr_monitor.py` : ceinture cardio Bluetooth facultative (service 0x180D) ;
-- `journal.py`, `fit_export.py`, `ipc_server.py`, `config.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), configuration (types et bornes contrôlés, `ConfigError`) ;
+- `journal.py`, `fit_export.py`, `ipc_server.py`, `ipc_lists.py`, `config.py`, `config_edit.py`, `pairing.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), découpage des listes IPC v1.1, configuration (types et bornes contrôlés, `ConfigError`), modification ciblée de `config.toml` qui garde les commentaires et appairage (lots N12 et N14) ;
 - `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `history.py` (historique des séances et cumul hebdomadaire), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py` ;
-- `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties.
+- `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties ;
+- `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9).
 
 **Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 
@@ -70,6 +72,7 @@ cd compiler && pip install -e ".[dev]" -e ../core   # sans ../core, les tests qu
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh   # vrai core + vrai engine, ~10 s
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open   # tests graphiques (Xvfb, captures analysées, références, rapport HTML), ~2 min
+python3 engine/tests/sim_bench.py --scenario coupures_village [--native]   # banc simulé : vrai core sur BLE simulé + vrai engine, captures et rapport (docs/OUTILS_DE_TEST.md)
 
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
 scripts/openride-dev.sh --trainer ftms --input click --gear 6 --autostart
@@ -82,6 +85,7 @@ openride --trainer mock --input keyboard --autostart                       # mê
 openride --compile-only                                                   # compile les traces GPX nouvelles/modifiées puis quitte (lot N11)
 openride --no-compile                                                     # lance la séance sans compiler les traces GPX (lot N11)
 openride-core run --replay ~/OpenRide/Activities/<séance>.fit --input keyboard --autostart   # rejoue une séance réelle
+openride-core run --bot 200 --ghost ~/OpenRide/Activities/<séance>.fit --autostart   # bots virtuels (lot N9)
 
 # Après un essai (depuis core/) : résumé du journal (Perf, pertes trainer et Click, pauses)
 python -m openride_core.tools.log_report ~/run_trainer.log
@@ -105,7 +109,7 @@ openride-core summary --ftp 250        # bilan du dernier journal (ou d'un .json
 openride-core history --weeks 8        # historique des séances et cumul par semaine ISO ; --json
 
 # Diagnostic matériel
-openride-core devices                  # appareils classés (trainer, Click, ceinture) et bloc [drivers] à recopier ; --json
+openride-core devices                  # appareils classés (trainer, Click, ceinture) et bloc [drivers] à recopier ; --json ; --save : écrit dans ~/OpenRide/config.toml (pairing.py, lot N12)
 openride-ble-diag scan | trainer --name HomeTrainer --duration 30 | click --duration 60
 ```
 

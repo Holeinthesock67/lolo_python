@@ -1,0 +1,63 @@
+{
+  "description": "Ceinture cardio : une montre qui diffuse aussi (la ceinture doit être préférée), contact perdu puis retrouvé, batterie faible, fréquence figée, coupure puis retour.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2,
+    "battery_pct": 8
+  },
+  "hr_watch": {
+    "appear_at": 0.2,
+    "connect_delay_s": 0.2,
+    "rssi": -50
+  },
+  "events": [
+    {
+      "t": 20,
+      "device": "hr",
+      "action": "contact",
+      "value": false
+    },
+    {
+      "t": 32,
+      "device": "hr",
+      "action": "contact",
+      "value": true
+    },
+    {
+      "t": 45,
+      "device": "hr",
+      "action": "bpm",
+      "bpm": 178
+    },
+    {
+      "t": 60,
+      "device": "hr",
+      "action": "bpm",
+      "bpm": null
+    },
+    {
+      "t": 70,
+      "device": "hr",
+      "action": "drop"
+    },
+    {
+      "t": 85,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 320
+    }
+  ],
+  "bench": {
+    "world": "demo",
+    "duration_s": 110,
+    "every_s": 10
+  }
+}

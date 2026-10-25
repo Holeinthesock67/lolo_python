@@ -17,7 +17,7 @@ from pathlib import Path
 from typing import Callable
 
 from .fit_export import Summary, default_fit_path, summarize, write_fit
-from .journal import JournalWriter, Record
+from .journal import TIMER_EVENTS, JournalWriter, Record
 
 log = logging.getLogger("recorder")
 
@@ -27,17 +27,27 @@ WRITE_ERRORS = (OSError, ValueError)
 class SessionRecorder:
     def __init__(self, journal_dir: Path, route_id: str | None,
                  on_failure: Callable[[Exception], None] | None = None,
-                 fit_dir: Path | None = None) -> None:
+                 fit_dir: Path | None = None, workout_id: str | None = None,
+                 resume_path: Path | None = None, lines: list[dict] | None = None) -> None:
+        """Nouvelle séance, ou suite d'une séance (`resume_path` et ses `lines`, lot N8).
+
+        En reprise, le journal existant est continué sans nouvel en-tête et les lignes déjà
+        écrites sont reprises en mémoire : le FIT final contient toute la séance.
+        """
         self.journal_dir = journal_dir
         self.route_id = route_id
+        self.workout_id = workout_id
         self.on_failure = on_failure
         self.fit_dir = fit_dir
-        self.lines: list[dict] = []          # séance complète, dans l'ordre : événements et relevés
+        self.lines: list[dict] = list(lines or [])   # séance complète, dans l'ordre : événements et relevés
         self.failed = False
         self.path: Path | None = None
         self._writer: JournalWriter | None = None
         self._reopen_count = 0
-        self._open(self._new_path())
+        if resume_path is not None:
+            self._open(resume_path, header=False)
+        else:
+            self._open(self._new_path())
 
     # --- fichier -------------------------------------------------------------------------
 
@@ -46,9 +56,10 @@ class SessionRecorder:
         suffix = f"_reprise-{self._reopen_count}" if self._reopen_count else ""
         return self.journal_dir / f"{stamp}{suffix}.jsonl"
 
-    def _open(self, path: Path) -> bool:
+    def _open(self, path: Path, header: bool = True) -> bool:
         try:
-            self._writer = JournalWriter(path, route_id=self.route_id)
+            self._writer = JournalWriter(path, route_id=self.route_id, workout_id=self.workout_id,
+                                         header=header)
             self.path = path
             return True
         except WRITE_ERRORS as exc:
@@ -121,7 +132,7 @@ class SessionRecorder:
 
     @property
     def events(self) -> list[dict]:
-        return [ln for ln in self.lines if ln["kind"] == "event"]
+        return [ln for ln in self.lines if ln["kind"] == "event" and ln["event"] in TIMER_EVENTS]
 
     def finish(self, save: bool, ts: float | None = None) -> tuple[Path | None, Summary, str | None]:
         """Clôt la séance. Renvoie (chemin du FIT ou None, résumé, erreur éventuelle du FIT)."""
