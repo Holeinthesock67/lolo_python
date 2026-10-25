@@ -12,6 +12,13 @@ import pytest
 from openride_core import launcher
 from openride_core.launcher import LogRotation, Supervisor
 
+pytestmark = pytest.mark.skipif(
+    sys.platform == "win32",
+    reason="Le lanceur s'appuie sur la gestion des signaux POSIX sous Linux",
+)
+
+TEST_SIGNALS = [signal.SIGHUP, signal.SIGINT] if hasattr(signal, "SIGHUP") else [signal.SIGINT, signal.SIGTERM]
+
 FAKE = r'''
 import os, signal, sys, time
 from pathlib import Path
@@ -54,7 +61,7 @@ while True:
 @pytest.fixture
 def fake(tmp_path: Path):
     script = tmp_path / "fake.py"
-    script.write_text(FAKE)
+    script.write_text(FAKE, encoding="utf-8")
     marks = tmp_path / "marks"
     marks.mkdir()
 
@@ -161,7 +168,7 @@ def test_core_dying_at_startup(fake):
     assert_no_orphans(sup)
 
 
-@pytest.mark.parametrize("sig", [signal.SIGHUP, signal.SIGINT])
+@pytest.mark.parametrize("sig", TEST_SIGNALS)
 def test_signal_stops_both_cleanly(fake, sig):
     sup, said = fake()
     timer = threading.Timer(0.8, lambda: os.kill(os.getpid(), sig))

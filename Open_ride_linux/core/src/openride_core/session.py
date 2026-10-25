@@ -192,6 +192,8 @@ class CoreSession:
         self._shift_pending = False
         self._workout: Workout | None = None     # entraînement choisi (select_workout)
         self.erg: ErgController | None = None   # entraînement en cours pendant la séance
+        self._frame_count = 0
+        self._last_devices: dict[str, Any] | None = None
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -248,6 +250,31 @@ class CoreSession:
                 log.warning("input_event inconnu : %s", args.get("event"))
         elif name == "end_session" and st in ("RUNNING", "PAUSED"):
             self._finish(bool(args.get("save", True)))
+        elif name == "list_routes":
+            asyncio.create_task(self._handle_list_routes(cmd_id))
+        elif name == "list_workouts":
+            asyncio.create_task(self._handle_list_workouts(cmd_id))
+
+    async def _handle_list_routes(self, cmd_id: int) -> None:
+        from .config import GPX_DIR
+        from .ipc_lists import build_routes_messages
+
+        try:
+            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root, GPX_DIR)
+            for m in msgs:
+                self.server.send_raw(m)
+        except Exception:
+            log.exception("Erreur lors de la préparation de routes (cmd_id=%d)", cmd_id)
+
+    async def _handle_list_workouts(self, cmd_id: int) -> None:
+        from .ipc_lists import build_workouts_messages
+
+        try:
+            msgs = await asyncio.to_thread(build_workouts_messages, cmd_id, self.workouts_dir)
+            for m in msgs:
+                self.server.send_raw(m)
+        except Exception:
+            log.exception("Erreur lors de la préparation de workouts (cmd_id=%d)", cmd_id)
 
     def _select_route(self, route_id: str, previous: str) -> None:
         """LOADING, lecture de la couche route du .world, puis READY (contrat §7, étape 6)."""
@@ -362,23 +389,119 @@ class CoreSession:
         if self.state.session_state in ("RUNNING", "PAUSED"):
             self._set_state("PAUSED", "recording_failed")
 
-    def _finish(self, save: bool, final_state: str = "FINISHED") -> None:
+    def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
         if self._rec:
             rec, self._rec = self._rec, None
-            fit_path, s, fit_error = rec.finish(save)
+            fit_path, s, fit_error = rec.finish(save, ts=ts)
+            records, events = rec.records, rec.events
             if fit_error and save:
                 self.server.send_error("recording_failed", f"FIT non produit : {fit_error}")
+
+            from .tools.session_summary import Session as SummarySession, compute_summary
+            sum_res = None
+            if records:
+                try:
+                    sum_res = compute_summary(SummarySession(records, events, "jsonl"), self.cfg.rider.ftp_w)
+                except Exception:
+                    log.exception("Erreur lors du calcul du bilan enrichi")
+
+            blocks = None
+            blocks_truncated = False
+            if sum_res and sum_res.get("erg") and sum_res["erg"].get("blocks"):
+                raw_blocks = sum_res["erg"]["blocks"]
+                triplets = [
+                    [
+                        int(b["block"]),
+                        float(b["avg_power_w"]),
+                        float(b["target_w"]) if b.get("target_w") is not None else None,
+                    ]
+                    for b in raw_blocks
+                ]
+                blocks_truncated = len(triplets) > 24
+                blocks = triplets[:24]
+
+            powers = [max(0.0, float(r["power"])) for r in records if r.get("power") is not None]
+            cads = [float(r["cadence"]) for r in records if r.get("cadence")]
+            hrs = [float(r["hr"]) for r in records if r.get("hr")]
+
             summary = {
                 "duration_s": round(s.timer_s, 1),
                 "distance_m": round(s.distance_m, 1),
                 "avg_power_w": round(s.avg_power or 0.0, 1),
                 "fit_path": str(fit_path) if fit_path else None,
+                "np_w": round(sum_res["np_w"], 1) if sum_res and sum_res.get("np_w") is not None else None,
+                "intensity_factor": round(sum_res["if"], 2) if sum_res and sum_res.get("if") is not None else None,
+                "tss": round(sum_res["tss"], 1) if sum_res and sum_res.get("tss") is not None else None,
+                "elevation_gain_m": round(sum_res["elevation_gain_m"], 1) if sum_res and sum_res.get("elevation_gain_m") is not None else None,
+                "avg_cadence_rpm": round(sum(cads) / len(cads), 1) if cads else None,
+                "avg_hr_bpm": round(sum(hrs) / len(hrs), 1) if hrs else None,
+                "max_power_w": round(max(powers), 1) if powers else None,
+                "blocks": blocks,
+                "blocks_truncated": blocks_truncated,
             }
         self.state.summary = summary
         self.erg = None
         self._sync_erg_state()
         self._set_state(final_state)
+
+    def _build_devices(self) -> dict[str, Any]:
+        """Construit l'objet `devices` du contrat v1.1 à partir de l'état connu des pilotes."""
+        trainer_st = getattr(self.driver, "status", "MOCK")
+        trainer_name = getattr(self.driver, "device_name", None) or getattr(self.cfg.trainer, "device_name", None)
+        trainer_addr = getattr(self.driver, "device_address", None) or self.cfg.drivers.trainer_address or None
+        trainer_info = {
+            "status": trainer_st,
+            "name": str(trainer_name) if trainer_name else None,
+            "address": str(trainer_addr) if trainer_addr else None,
+        }
+
+        clicks: list[dict[str, Any]] = []
+        click_providers = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
+        from .sim_scenarios import PLUS_ADDRESS
+        plus_addr = (self.cfg.drivers.click_address or PLUS_ADDRESS).upper()
+
+        if len(click_providers) == 1:
+            p = click_providers[0]
+            st = "CONNECTED" if getattr(p, "_link_up", False) else ("LOST" if getattr(p, "_ever_connected", False) else "SEARCHING")
+            clicks.append({
+                "side": "single",
+                "status": st,
+                "battery_pct": getattr(p, "battery_pct", None),
+            })
+        elif len(click_providers) >= 2:
+            for p in click_providers[:2]:
+                addr = getattr(p, "_conn_address", "")
+                if addr and addr != "?":
+                    side = "plus" if addr.upper() == plus_addr else "minus"
+                else:
+                    side = "minus" if getattr(p, "_optional", False) else "plus"
+                st = "CONNECTED" if getattr(p, "_link_up", False) else ("LOST" if getattr(p, "_ever_connected", False) else "SEARCHING")
+                clicks.append({
+                    "side": side,
+                    "status": st,
+                    "battery_pct": getattr(p, "battery_pct", None),
+                })
+
+        if self.hr is not None:
+            hr_st = "CONNECTED" if getattr(self.hr, "connected", False) else ("LOST" if getattr(self.hr, "_ever_connected", False) else "SEARCHING")
+            hr_source = "strap" if hr_st in ("CONNECTED", "LOST") else None
+            hr_info = {
+                "status": hr_st,
+                "source": hr_source,
+                "battery_pct": getattr(self.hr, "battery_pct", None),
+            }
+        else:
+            if getattr(self.state, "hr", None) is not None:
+                hr_info = {"status": "CONNECTED", "source": "trainer", "battery_pct": None}
+            else:
+                hr_info = {"status": "NONE", "source": None, "battery_pct": None}
+
+        return {
+            "trainer": trainer_info,
+            "click": clicks,
+            "hr": hr_info,
+        }
 
     # --- entrées utilisateur -------------------------------------------------------------
 
@@ -424,6 +547,8 @@ class CoreSession:
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
         if any(p.status == "CONNECTED" for p in clicks):
             self.state.input_status = "CONNECTED"
+        elif clicks:
+            self.state.input_status = "LOST"
         else:
             self.state.input_status = self.inputs[0].status if self.inputs else "KEYBOARD"
 
@@ -562,11 +687,12 @@ class CoreSession:
         loop = asyncio.get_running_loop()
         # SIGHUP : terminal fermé. Sans gestionnaire, le processus mourrait sans relâcher le
         # trainer et BlueZ garderait la liaison ouverte (trainer réservé pour les autres applis).
-        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
-            try:
-                loop.add_signal_handler(sig, self.stop_event.set)
-            except NotImplementedError:
-                pass
+        for name in ("SIGINT", "SIGTERM", "SIGHUP"):
+            if hasattr(signal, name):
+                try:
+                    loop.add_signal_handler(getattr(signal, name), self.stop_event.set)
+                except NotImplementedError:
+                    pass
         if autostart:
             self._autoresume = True
             self._on_command("select_route", {"route_id": route_id}, 0)
@@ -612,6 +738,13 @@ class CoreSession:
                 next_state += DT_STATE
                 if next_state <= now:   # retard de plus d'une trame : on se recale
                     next_state = now + DT_STATE
+                self._frame_count += 1
+                curr_dev = self._build_devices()
+                if (curr_dev != self._last_devices) or (self._frame_count % 30 == 0):
+                    self.state.devices = curr_dev
+                    self._last_devices = curr_dev
+                else:
+                    self.state.devices = None
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S
