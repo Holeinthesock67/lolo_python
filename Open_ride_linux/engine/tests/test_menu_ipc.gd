@@ -72,6 +72,43 @@ func _test_retry_and_failure_logic() -> void:
 	_check(failed["name"] == "routes", "échec notifié pour la liste des routes")
 	_check("Aucune réponse" in failed["msg"], "erreur lisible : " + str(failed["msg"]))
 
+	# Assemblage des parties (contrat v1.1 §4) : réponse en 2 datagrammes, dans le désordre
+	var got := {"n": 0, "items": [], "msg": {}}
+	dummy_client.routes_received.connect(func(items: Array, msg: Dictionary):
+		got["n"] += 1
+		got["items"] = items
+		got["msg"] = msg
+	)
+	dummy_client._reset_list_request(dummy_client._pending_list_routes, 10)
+	dummy_client._on_list_part(dummy_client._pending_list_routes, "routes",
+		{"type": "routes", "request_cmd_id": 10, "part": 2, "parts": 2, "items": [{"id": "c"}], "truncated": false})
+	_check(got["n"] == 0, "parties : rien n'est émis tant qu'il manque la partie 1")
+	dummy_client._on_list_part(dummy_client._pending_list_routes, "routes",
+		{"type": "routes", "request_cmd_id": 99, "part": 1, "parts": 2, "items": [{"id": "x"}], "truncated": false})
+	_check(got["n"] == 0, "parties : une réponse à une autre demande (request_cmd_id 99) est ignorée")
+	dummy_client._on_list_part(dummy_client._pending_list_routes, "routes",
+		{"type": "routes", "request_cmd_id": 10, "part": 1, "parts": 2, "items": [{"id": "a"}, {"id": "b"}], "truncated": true})
+	_check(got["n"] == 1 and got["items"].size() == 3, "parties : liste émise une fois, 3 éléments assemblés")
+	_check(str(got["items"][0]["id"]) == "a" and str(got["items"][2]["id"]) == "c", "parties : ordre des parties respecté")
+	_check(got["msg"].get("truncated") == true, "parties : truncated repris d'une des parties")
+	_check(dummy_client._pending_list_routes.is_empty(), "parties : demande terminée")
+	dummy_client._on_list_part(dummy_client._pending_list_routes, "routes",
+		{"type": "routes", "request_cmd_id": 10, "part": 1, "parts": 2, "items": [{"id": "a"}], "truncated": false})
+	_check(got["n"] == 1, "parties : un doublon tardif après la fin est ignoré")
+
+	# Partie manquante : une seconde après la première partie, nouvelle demande avec un nouveau cmd_id
+	dummy_client._reset_list_request(dummy_client._pending_list_routes, 20)
+	dummy_client._process(0.6)
+	dummy_client._on_list_part(dummy_client._pending_list_routes, "routes",
+		{"type": "routes", "request_cmd_id": 20, "part": 1, "parts": 2, "items": [{"id": "a"}], "truncated": false})
+	dummy_client._process(0.6)
+	_check(int(dummy_client._pending_list_routes.get("retries", 0)) == 0, "partie manquante : délai compté depuis la première partie reçue")
+	dummy_client._process(0.5)
+	var resent_ids: Array = dummy_client._pending_list_routes.get("cmd_ids", [])
+	_check(int(dummy_client._pending_list_routes.get("retries", 0)) == 1 and resent_ids.size() == 2 and int(resent_ids[1]) != 20,
+		"partie manquante : redemande avec un nouveau cmd_id après 1 s")
+	dummy_client._pending_list_routes.clear()
+
 	# En cas d'erreur de liste, le menu reçoit une liste vide et affiche « Aucun parcours »
 	var fallback_menu = MenuModel.new()
 	fallback_menu.set_items("routes", [])
@@ -122,6 +159,7 @@ func _start_ipc_test() -> void:
 
 	_check(_got_routes, "réponse 'routes' reçue du faux core")
 	_check(_got_workouts, "réponse 'workouts' reçue du faux core")
+	_check(_routes_data.size() == 4 and _workouts_data.size() == 3, "listes complètes : 4 parcours et 3 entraînements (%d, %d)" % [_routes_data.size(), _workouts_data.size()])
 
 	# Injection dans le modèle de menu
 	var r_items: Array = _catalog.route_items(_routes_data)

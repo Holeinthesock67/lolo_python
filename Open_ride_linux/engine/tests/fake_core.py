@@ -208,23 +208,13 @@ class FakeCore:
                         if getattr(self, "drop_first_catalog", False) and "routes" not in getattr(self, "_dropped_lists", set()):
                             self._dropped_lists.add("routes")
                         else:
-                            self.send({
-                                "type": "routes", "v": CONTRACT_VERSION,
-                                "request_cmd_id": cmd_id, "part": 1, "parts": 1,
-                                "items": self.catalog_data.get("routes", []),
-                                "truncated": False
-                            })
+                            self.send_list("routes", cmd_id, self.catalog_data.get("routes", []))
                 elif name == "list_workouts":
                     if not getattr(self, "drop_all_catalog", False):
                         if getattr(self, "drop_first_catalog", False) and "workouts" not in getattr(self, "_dropped_lists", set()):
                             self._dropped_lists.add("workouts")
                         else:
-                            self.send({
-                                "type": "workouts", "v": CONTRACT_VERSION,
-                                "request_cmd_id": cmd_id, "part": 1, "parts": 1,
-                                "items": self.catalog_data.get("workouts", []),
-                                "truncated": False
-                            })
+                            self.send_list("workouts", cmd_id, self.catalog_data.get("workouts", []))
                 elif name == "select_route":
                     args = msg.get("args", {})
                     self.route_id = str(args.get("route_id", self.route_id))
@@ -233,6 +223,20 @@ class FakeCore:
                     self.workout_id = args.get("workout_id")
                 elif name == "start":
                     self.set_running(True)
+
+    def send_list(self, kind: str, cmd_id: int, items: list) -> None:
+        """Réponse `routes` ou `workouts` (contrat v1.1 §4), en deux parties avec --split-catalog.
+
+        Avec --split-catalog, la partie 2 part avant la partie 1 pour vérifier l'assemblage de l'engine.
+        """
+        if getattr(self, "split_catalog", False) and len(items) >= 2:
+            half = len(items) // 2
+            chunks = [(2, items[half:]), (1, items[:half])]
+        else:
+            chunks = [(1, items)]
+        for part, chunk in chunks:
+            self.send({"type": kind, "v": CONTRACT_VERSION, "request_cmd_id": cmd_id,
+                       "part": part, "parts": len(chunks), "items": chunk, "truncated": False})
 
     def send_hello_ack(self) -> None:
         self.send({"type": "hello_ack", "v": CONTRACT_VERSION, "core_version": "fake",
@@ -545,7 +549,8 @@ def run_erg_workout_stream(state_port: int, cmd_port: int) -> int:
 
 
 
-def run_catalog_server(state_port: int, cmd_port: int, catalog_path: Path, drop_first: bool = False, drop_all: bool = False) -> int:
+def run_catalog_server(state_port: int, cmd_port: int, catalog_path: Path, drop_first: bool = False,
+                       drop_all: bool = False, split: bool = False) -> int:
     try:
         catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
     except Exception as exc:
@@ -556,6 +561,7 @@ def run_catalog_server(state_port: int, cmd_port: int, catalog_path: Path, drop_
     core.catalog_data = catalog
     core.drop_first_catalog = drop_first
     core.drop_all_catalog = drop_all
+    core.split_catalog = split
     core._dropped_lists = set()
     core.auto_hello_ack = True
     core.streaming = True
@@ -589,11 +595,14 @@ def main() -> int:
                     help="ignore la 1re demande de chaque liste pour tester la relance (lot N3)")
     ap.add_argument("--drop-all-catalog", action="store_true",
                     help="ignore toutes les demandes de listes pour tester l'erreur (lot N3)")
+    ap.add_argument("--split-catalog", action="store_true",
+                    help="envoie chaque liste en deux parties, la 2e d'abord (assemblage, lot N3)")
     args = ap.parse_args()
     if args.erg_workout:
         return run_erg_workout_stream(args.state_port, args.cmd_port)
     if args.catalog:
-        return run_catalog_server(args.state_port, args.cmd_port, args.catalog, args.drop_first_catalog, args.drop_all_catalog)
+        return run_catalog_server(args.state_port, args.cmd_port, args.catalog, args.drop_first_catalog,
+                                  args.drop_all_catalog, args.split_catalog)
     if args.engine_log is None:
         ap.error("--engine-log est requis hors --erg-workout")
     wanted = [int(x) for x in args.scenarios.split(",") if x.strip()]
