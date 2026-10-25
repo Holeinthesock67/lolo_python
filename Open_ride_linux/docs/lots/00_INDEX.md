@@ -75,6 +75,14 @@
 | [N12](LOT_N12_appairage_core.md) | Appairage côté core : enregistrer le nom et l'adresse du matériel trouvé dans `~/OpenRide/config.toml` | Python | M3 (livré) | Petite | Oui (issue #112) |
 | [N13](LOT_N13_menu_appareils.md) | Section « Appareils » du menu : rechercher et appairer le matériel | GDScript + Python | N6, N12 | Moyenne | Non : interne (ajout au contrat IPC, écran du menu) |
 | [N14](LOT_N14_lancement_sans_terminal.md) | Lancement sans terminal : premier démarrage, erreurs dans une fenêtre, « Libérer le trainer » et « Mettre à jour » depuis le bureau, installation en une commande | Python + shell | L8 (livré), N11 | Moyenne | Oui, après N11 (issue #114, étiquette `bloqué`) |
+| [O1](LOT_O1_preparation_arbres.md) | Arbres : préparer une tuile en moins de 150 ms (210 ms mesurés sur le PC cible) | GDScript | E3, E4 (livrés) | Petite | Oui |
+| [O2](LOT_O2_version_1_0.md) | Numéro de version unique (`VERSION`) et notes de version (`CHANGELOG.md`) | Python + GDScript | N3 ; de préférence fin de J4 | Petite | Oui, après N3 |
+| [O3](LOT_O3_reglages_core.md) | Réglages côté core : FTP, masse, braquet de départ, thème et qualité écrits dans `~/OpenRide/config.toml` | Python | N12 ; N10 pour les thèmes | Petite | Oui, après N12 |
+| [O4](LOT_O4_menu_reglages.md) | Section « Réglages » du menu et version affichée | GDScript + Python | N6, N13, O3 ; O2 | Moyenne | Non : interne (ajout au contrat IPC, écran du menu) |
+| [O5](LOT_O5_traces_garmin_dossier.md) | Traces FIT, TCX et archives Garmin (`.zip`, `.gz`) déposées dans le dossier des traces | Python | N11 | Petite | Oui, après N11 |
+| [O6](LOT_O6_guide_utilisation.md) | Guide d'utilisation sans terminal et README de la 1.0 | Markdown + Python | N6, N13, N14 | Petite | Oui, après N14 |
+| [O7](LOT_O7_affichage_bots.md) | Bots à l'écran : silhouettes, écarts, choix au menu (facultatif pour la 1.0) | GDScript | N6, N9 | Moyenne | Non : interne (rendu, contrôle visuel) |
+| [O8](LOT_O8_recette_1_0.md) | Recette de la version 1.0 sur le matériel et publication (`v1.0.0`) | — | série N, O1, O2, O6 | Moyenne | Non : interne (propriétaire, matériel) |
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle sur GTX 1060 à faire) |
 | [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle et sonore sur GTX 1060 à faire) |
@@ -87,7 +95,7 @@
 **À rédiger plus tard** (contrôle visuel ou décision du propriétaire nécessaire) :
 - F2 : affichage du bandeau ERG, de l'histogramme et son du bip (s'appuie sur I6) : rédigé le 24 octobre sous le nom N7 ;
 - G : contrat IPC v1.1 (listes de parcours et d'entraînements, état des appareils), affichage des menus pilotés au Click et écran de fin de séance (s'appuie sur I2, K5, K6 et K7) : rédigé le 24 octobre et découpé en N1 (contrat), N2 et N3 (core et client), N4 et N5 (modèles sans affichage), N6 (affichage) ;
-- affichage des bots dans l'engine (après N9) et réglages modifiables depuis le menu (après N6).
+- affichage des bots dans l'engine (après N9) et réglages modifiables depuis le menu (après N6) : rédigés le 25 octobre sous les noms O7 et O4 (réglages côté core : O3).
 
 Leur forme dépendra des choix faits dans E1 et D.
 
@@ -96,6 +104,8 @@ Leur forme dépendra des choix faits dans E1 et D.
 **Série K (23 octobre au soir) :** tous les lots sont livrés le 24 octobre (K6 et K7 faits directement le 23). K2 à K5 déposent leur test dans `engine/tests/unit/` (découverte par `run_engine_tests.sh`, lot K1). Les lots K préparent E3 (K2, K3), E4 (K3, K4) et G (K5, K6, K7) sans les remplacer : le rendu, l'affichage et le contrat IPC v1.1 restent internes.
 
 **Série N (24 octobre, après E3 et E4) :** lanceur et menus (ancien lot G), ERG à l'écran (ancien F2), reprise après un plantage du core, bots, packs de thèmes et compilation au lancement. N1 (contrat IPC v1.1) est une décision du propriétaire et bloque N2, N3, N5 et N8. N6 et N7 restent internes : ils modifient `main.gd` et se recettent à l'œil. Délégables tout de suite : N4, N9, N10 et N11 ; après N1 : N2, N3, N5 et N8. Fichiers partagés : `ipc_client.gd` et `fake_core.py` (N3 seul) ; `session.py` (N2, N8, N9 : à faire l'un après l'autre) ; `launcher.py` (N8, N11, puis N6) ; `__main__.py` (N8, N9) ; `docs/contracts/ipc/state.schema.json` (N1, puis N9 pour `bots`). N4 et N5 ne touchent que leur propre script et leur test. Ajout du 25 octobre (demande du propriétaire) : N12 enregistre le matériel trouvé dans la configuration locale, délégable tout de suite (`session.py` aussi, après N2) ; N13, interne, en fait une section « Appareils » du menu après N6. N14 (même demande : lancer sans ligne de commande) complète L8, N6, N11 et N13 : `launcher.py` après N11 et avant N6.
+
+**Série O (25 octobre, dernière avant la 1.0) :** ce qui manque encore après la série N pour une version 1.0 jouable (liste du 25 octobre). Délégables : O1 tout de suite ; O2 après N3 ; O3 après N12 ; O5 après N11 ; O6 après N14. Internes : O4 (contrat et menu), O7 (bots à l'écran, facultatif) et O8 (recette sur le matériel et publication, par le propriétaire). Fichiers partagés : `config.toml` écrit par N12 puis O3 (module commun `config_writer.py`) ; révision du contrat de N13 reprise par O4 puis O7 (l'un après l'autre) ; `catalog.py` (O5 seul) ; `README.md` (O6 en dernier). Les fins de J4 (#50) et J5 (#51) restent ouvertes ; J4 compte pour l'installation hors du dépôt (O8).
 
 **Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
 
@@ -123,6 +133,8 @@ N1 ──► N2, N3, N5, N8 ;  N2, N3, N4, N5 ──► N6 ;  E3 ──► N6, N
 N4, N9, N10, N11 : indépendants (prérequis livrés)
 N6, N12 ──► N13 ;  N12 : indépendant (M3 livré)
 N11 ──► N14 ──► N6
+E3 ──► O1 ;  N3 ──► O2 ;  N12 ──► O3 ──► O4 ;  N6, N13 ──► O4 ;  N11 ──► O5 ;  N14 ──► O6 ;  N6, N9 ──► O7
+N, O1, O2, O6 ──► O8 (recette 1.0)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
