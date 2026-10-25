@@ -30,7 +30,8 @@ Ce plan réutilise ce que la série R a déjà prévu : règles du jeu dans le c
 ### 3.1 Segments
 
 - **Montées (détection automatique) :** au moins 500 m, une pente moyenne d'au moins 3 % et un gain d'au moins 30 m. Les montées voisines séparées par moins de 200 m de replat sont fusionnées. Une catégorie de 4 à HC est calculée à partir du produit longueur × pente.
-- **Sprints :** déclarés à la main dans un petit fichier à côté du GPX (début et fin en km), ou proposés automatiquement sur un tronçon de 200 à 500 m entre −1 et +2 %, au plus un tous les 10 km.
+- **Segments manuels :** sprints ou montées déclarés dans un petit fichier à côté du GPX (début et fin en km) ; ils s'ajoutent aux segments automatiques ou les remplacent.
+- **Sprints :** déclarés à la main, ou proposés automatiquement sur un tronçon de 200 à 500 m entre −1 et +2 %, au plus un tous les 10 km.
 - **Parcours de démonstration :** un sprint et une montée, pour tester sans trace réelle.
 - **Boucles et aller-retour :** un segment se chronomètre à chaque passage ; sur un aller-retour, il ne compte que dans le sens où il a été défini.
 
@@ -38,7 +39,7 @@ Ce plan réutilise ce que la série R a déjà prévu : règles du jeu dans le c
 
 - L'heure d'entrée et de sortie est interpolée entre deux pas de 50 Hz : la précision est d'environ 0,02 s.
 - Une pause pendant un segment l'annule ; une pause `trainer_lost` aussi.
-- Chaque passage garde : temps, puissance moyenne, W/kg, vitesse moyenne, bonus utilisés.
+- Chaque passage garde : temps, puissance moyenne, W/kg, vitesse moyenne, bonus utilisés. Les records « avec bonus » et « sans bonus » sont tenus séparément (décision T-Q1).
 - Les records personnels par parcours et par segment sont dans `~/OpenRide/`, recalculables depuis le journal des séances.
 - En direct : distance jusqu'au prochain segment, chrono, écart au record (« −3,2 s »), puis le résultat à l'arrivée.
 - Classement local du passage : toi, tes records passés, les bots et le fantôme (N9).
@@ -92,7 +93,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 | # | Risque | Parade |
 | --- | --- | --- |
 | 1 | Profil bruité : faux départs de montée sur une trace GPS | Détection sur la pente lissée déjà utilisée par la route, seuils en constantes, vecteurs de test |
-| 2 | Records faussés par les bonus | Records « avec bonus » et « sans bonus » séparés (question T-Q1) |
+| 2 | Records faussés par les bonus | Records « avec bonus » et « sans bonus » séparés (décision T-Q1) |
 | 3 | Bonus puissance perçu comme une triche dans l'historique (NP, TSS) | Bilan calculé sur la puissance mesurée, jamais sur la puissance bonifiée |
 | 4 | Conflit de version du contrat avec les séries P et R | Ordre fixé : P1 en v1.2, puis R et T en v1.3 |
 | 6 | Bots à profil trop forts ou trop faibles selon le parcours | Calibrage par simulation du parcours avant le départ, vérifié par une matrice de parcours types (plat, vallonné, col) |
@@ -122,9 +123,9 @@ Ordre conseillé : T1 après P1, puis T2, T4 et T6 en parallèle ; T3, T5, T7 et
 
 ## 6. Questions pour le propriétaire
 
-- [ ] **T-Q1 Records :** séparer « avec bonus » et « sans bonus » ? (Recommandé : oui.)
-- [ ] **T-Q2 ERG :** bonus désactivés en ERG, segments chronométrés quand même ? (Recommandé : oui.)
-- [ ] **T-Q3 Ressenti :** les bonus ne changent pas la résistance du trainer, hors vent et aspiration ? (Recommandé : oui, comme Zwift.)
-- [ ] **T-Q4 Valeurs :** légèreté −10 % de masse, aéro −25 % de CdA, puissance +10 %, 15 s chacun, un bonus par segment et tous les 5 km ? (Recommandé : oui, modifiable dans le fichier de données.)
+- [x] **T-Q1 Records (oui, 25 octobre) :** séparer « avec bonus » et « sans bonus » ? (Recommandé : oui.)
+- [x] **T-Q2 ERG (oui, 25 octobre) :** bonus désactivés en ERG, segments chronométrés quand même ? (Recommandé : oui.)
+- [x] **T-Q3 Ressenti (oui, 25 octobre) :** les bonus ne changent pas la résistance du trainer, hors vent et aspiration ? (Recommandé : oui, comme Zwift.)
+- [x] **T-Q4 Valeurs (25 octobre : un bonus tous les 5 km et à chaque segment, valeurs proposées gardées) :** légèreté −10 % de masse, aéro −25 % de CdA, puissance +10 %, 15 s chacun, un bonus par segment et tous les 5 km ? (Recommandé : oui, modifiable dans le fichier de données.)
 - [x] **T-Q5 Maillots (oui, 25 octobre) :** maillots vert et à pois attribués pendant la séance aux points, bots compris, plutôt qu'au détenteur d'un record ? (Recommandé : oui.)
 - [x] **T-Q6 Niveaux des bots (oui, avec réglage libre en option, 25 octobre) :** 90, 100 et 110 % de ta FTP suffisent-ils, ou faut-il un réglage libre ? (Recommandé : les trois niveaux, plus un réglage libre dans les options.)
