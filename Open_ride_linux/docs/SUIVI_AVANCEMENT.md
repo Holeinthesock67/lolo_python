@@ -187,6 +187,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Supervision : relance du core ou de l'engine sans perdre la séance (relance de Godot faite par K6 ; reprise après un plantage du core : lot N8).
 - [ ] Menu piloté au Click et au clavier (parcours, démarrage, pause, fin), à la place de `--autostart` : contrat IPC v1.1 (lot N1, livré le 24 octobre : listes, `devices`, bilan enrichi, `bots`, reprise du core), core (N2), client des listes (N3), écran de fin (N4), affichage (N6).
 - [ ] Section « Appareils » du menu : rechercher le trainer, les boîtiers du Click et la ceinture, puis garder leur nom et leur adresse dans `~/OpenRide/config.toml`, jamais dans le dépôt (demande du 25 octobre) : enregistrement côté core (lot N12), écran du menu (N13).
+- [ ] Lancer et utiliser OpenRide sans ligne de commande après une installation en une commande (demande du 25 octobre) : icône (L8, livré), menus (N6), compilation au lancement (N11), appareils (N12, N13), premier démarrage, erreurs dans une fenêtre et mise à jour depuis le bureau (N14).
 - [ ] Compiler les nouvelles traces GPX au lancement (lot N11).
 - [ ] Écran d'état des appareils (trainer, Click, batterie du Click) : modèle (lot N5), affichage (N6).
 
