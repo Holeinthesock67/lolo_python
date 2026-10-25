@@ -56,7 +56,7 @@ La 2.0 apporte quatre saisons uniformes (P18). En 3.0, chaque biome a son propre
 | Végétation | Placement déterministe, arbres en `MultiMesh` | `engine/scripts/vegetation_placer.gd`, `engine/scripts/tree_renderer.gd` |
 | Sons | Modèle et synthèse | `engine/scripts/sound_model.gd`, `engine/scripts/sound_player.gd` |
 | Budgets par préréglage | Table des préréglages | `engine/scripts/quality_presets.gd` |
-| Packs de textures | Lot N10 (`theme-list`, `theme-install`) | [LOT_N10_packs_themes.md](../lots/LOT_N10_packs_themes.md) |
+| Packs de textures | Lot N10 (`theme-list`, `theme-install`) ; niveaux de textures selon les performances en 2.0 (P20) | [LOT_N10_packs_themes.md](../lots/LOT_N10_packs_themes.md), [LOT_P20_packs_textures_performance.md](../lots/LOT_P20_packs_textures_performance.md) |
 | Vent, météo, ambiance, faune, saisons | Série P | [00_INDEX.md](../lots/00_INDEX.md) |
 
 ## 6. Ce qu'il faut ajouter
