@@ -83,7 +83,7 @@
 | [O6](LOT_O6_guide_utilisation.md) | Guide d'utilisation sans terminal et README de la 1.0 | Markdown + Python | N6, N13, N14 | Petite | Oui, après N14 |
 | [O7](LOT_O7_affichage_bots.md) | Bots à l'écran : silhouettes, écarts, choix au menu (facultatif pour la 1.0) | GDScript | N6, N9 | Moyenne | Non : interne (rendu, contrôle visuel) |
 | [O8](LOT_O8_recette_1_0.md) | Recette de la version 1.0 sur le matériel et publication (`v1.0.0`) | — | série N, O1, O2, O6 | Moyenne | Non : interne (propriétaire, matériel) |
-| [O9](LOT_O9_formats_erg_mrc.md) | Entraînements au format GoldenCheetah : `.erg` (watts) et `.mrc` (% de FTP) | Python | F, H8 (livrés) | Petite | Oui |
+| [O9](LOT_O9_formats_erg_mrc.md) | Entraînements au format GoldenCheetah : `.erg` (watts) et `.mrc` (% de FTP) | Python | F, H8 (livrés) | Petite | **Livré le 25 octobre** (issue #153) |
 | [O10](LOT_O10_test_ftp.md) | Test de FTP (rampe et 20 min) côté core, nouvelle FTP proposée puis enregistrée | Python | O3 ; O9 utile | Moyenne | Oui, après O3 |
 | [O11](LOT_O11_plans_entrainement.md) | Plans d'entraînement sur plusieurs semaines, séance du jour et suivi, import d'un dossier | Python | O9 ; O10 pour les jours de test | Moyenne | Oui, après O9 |
 | [O12](LOT_O12_menu_entrainement.md) | Menu : plans, test de FTP et bibliothèque de parcours (ajouts au contrat IPC) | GDScript + Python | N6, O4, O10, O11, O15 | Grande | Non : interne (contrat, écrans du menu) |
