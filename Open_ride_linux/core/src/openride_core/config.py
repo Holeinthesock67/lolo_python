@@ -11,6 +11,7 @@ avec un message qui cite le fichier, la section et la clé. Une clé ou une sect
 from __future__ import annotations
 
 import logging
+import re
 import tomllib
 from dataclasses import dataclass, field, fields, is_dataclass
 from pathlib import Path
@@ -49,6 +50,7 @@ class TrainerConfig:
     grade_max_pct: float = 16.0
     power_smooth_tau_s: float = 0.7   # lissage temporel de la puissance (indépendant de la cadence BLE)
     grade_rate_pct_per_s: float = 2.0  # vitesse maximale de variation de la pente envoyée
+    trace_ftms: bool = False          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 
 
 @dataclass
@@ -68,6 +70,11 @@ class RenderConfig:
 
 
 @dataclass
+class EngineConfig:
+    godot: str = ""   # chemin de Godot 4.3 (vide : variable GODOT ou ~/Applications/godot), lot N14
+
+
+@dataclass
 class IpcConfig:
     port_state: int = 5005
     port_commands: int = 5006
@@ -78,7 +85,8 @@ class DriversConfig:
     trainer: str = "mock"          # "mock", "ftms" ou "sim" (HomeTrainer simulé, voir ble_sim.py)
     input: str = "keyboard"        # "click", "keyboard", "none" ou "sim" (Click simulé)
     trainer_address: str = ""      # adresse MAC (vide : recherche par nom)
-    click_address: str = ""
+    click_address: str = ""        # boîtier « + » du Click (lot N12 : `openride-core devices --save`)
+    click_minus_address: str = ""  # boîtier « − » du Click (vide : l'autre boîtier trouvé)
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
@@ -96,6 +104,7 @@ class Config:
     gearing: GearingConfig = field(default_factory=GearingConfig)
     render: RenderConfig = field(default_factory=RenderConfig)
     ipc: IpcConfig = field(default_factory=IpcConfig)
+    engine: EngineConfig = field(default_factory=EngineConfig)
     drivers: DriversConfig = field(default_factory=DriversConfig)
 
     @property
@@ -132,6 +141,11 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
 }
+# Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
+ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
+                ("drivers", "click_minus_address"), ("drivers", "hr_address"))
+ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
+
 # Valeurs permises des champs textuels à choix fermé.
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
@@ -143,7 +157,11 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
 
 def _convert(current: Any, value: Any, where: str) -> Any:
     """Valeur TOML vers le type de la valeur par défaut ; un booléen n'est jamais un nombre."""
-    if isinstance(current, bool) or isinstance(value, bool):
+    if isinstance(current, bool):
+        if not isinstance(value, bool):
+            raise ConfigError(f"{where} : booléen attendu, reçu {value!r}")
+        return value
+    if isinstance(value, bool):
         raise ConfigError(f"{where} : valeur {value!r} invalide")
     if isinstance(current, float):
         if not isinstance(value, (int, float)):
@@ -193,6 +211,11 @@ def validate(cfg: Config, source: str = "config.toml") -> Config:
         value = getattr(getattr(cfg, sec), key)
         if value not in allowed:
             raise ConfigError(f"{source}, [{sec}] {key} : {value!r} n'est pas parmi {', '.join(allowed)}")
+    for sec, key in ADDRESS_KEYS:
+        value = getattr(getattr(cfg, sec), key)
+        if value and not ADDRESS_RE.match(value):
+            raise ConfigError(f"{source}, [{sec}] {key} : adresse Bluetooth {value!r} mal formée "
+                              "(attendu AA:BB:CC:DD:EE:FF)")
     g, t, ipc = cfg.gearing, cfg.trainer, cfg.ipc
     if not 1 <= g.start_gear <= g.n_gears:
         raise ConfigError(f"{source}, [gearing] start_gear : {g.start_gear} hors de 1 à n_gears ({g.n_gears})")

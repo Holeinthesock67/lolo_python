@@ -65,3 +65,15 @@ Aucune : l'objet `erg` du contrat porte déjà la cible en watts.
 ## 8. Hors périmètre
 
 - Formats `.crs`, `.pgmf` (parcours vidéo de GoldenCheetah) et entraînements TrainerRoad au format JSON.
+
+## 9. Livraison
+
+Livré le 25 octobre 2026 (issue #153), thread « Valider et avancer les lots en simulation ».
+
+- `core/src/openride_core/workout_formats.py` : `parse_erg(text, id, source, percent=, relative=)` (en-tête, données, `[COURSE TEXT]`, UTF-8 avec ou sans BOM sinon Latin-1, virgule décimale acceptée) et `to_mrc` ; un bloc `steady` ou `ramp` par segment, marches sautées.
+- `workout.py` : `Block.start_w` / `end_w` (watts absolus), `absolute`, `free`, `watts_at`, `profile_fracs` ; `Workout.texts` ; `ErgController` lisse la cible en watts sans biais (`base_w`), `fraction()` gardée ; `load_workout` choisit le lecteur selon l'extension ; `list_workouts` et `workout_path` lisent `.zwo`, `.erg`, `.mrc` (extension sans casse), conflit de nom signalé au journal, priorité `.zwo` > `.erg` > `.mrc`.
+- `tools/workouts.py` : `check` affiche les cibles absolues, `install` copie aussi `.erg` / `.mrc` et, avec `--erg-relative`, installe les `.erg` convertis en `.mrc`.
+- `ipc_lists.py` : le profil d'un `.erg` est ramené à la FTP du cycliste (`ftp_w`) ; **`session.py` modifié d'une ligne** (passage de `cfg.rider.ftp_w` à `build_workouts_messages`), seul moyen de donner la FTP au profil.
+- Références : `core/workouts/sweet_spot_3x10_gc.mrc` (même entraînement que `sweet_spot_3x10.zwo`) et `core/workouts/tempo_2x15.erg` (watts fixes, `FTP = 250`).
+- Tests : `core/tests/test_workout_erg.py` (critères 2 à 5, découverte, conflit, profil IPC, outils, séance ERG sur un `.erg`) ; `test_workout_tools.py` compte 7 fichiers installés.
+- Écart : un `.erg` sans FTP d'en-tête reste lisible (watts absolus) ; seule la conversion `--erg-relative` l'exige.

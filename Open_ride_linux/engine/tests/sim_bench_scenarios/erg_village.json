@@ -1,0 +1,59 @@
+{
+  "description": "ERG court (5 min 30) sur le village simulé : biais de la cible au Click (appuis courts + et −), appui long, coupure brève du Click « + ».",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [
+    {
+      "t": 75,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 78,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 140,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 200,
+      "action": "press",
+      "button": "+",
+      "duration_s": 1.0
+    },
+    {
+      "t": 240,
+      "device": "click_plus",
+      "action": "drop"
+    },
+    {
+      "t": 250,
+      "device": "click_plus",
+      "action": "wake"
+    },
+    {
+      "t": 260,
+      "action": "press",
+      "button": "-"
+    }
+  ],
+  "bench": {
+    "world": "village",
+    "workout": "erg_court",
+    "duration_s": 345,
+    "every_s": 15
+  }
+}

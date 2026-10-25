@@ -16,6 +16,10 @@ extends RefCounted
 const SAMPLES := 101
 const CELLS := SAMPLES - 1
 const FAR_DROP_M := 2.0
+## Terrain lointain abaissé sous la route (carve_under_route) : demi-largeur dégagée autour de
+## l'axe (chaussée de 6 m et bas-côtés de 0,5 m) et marge sous l'altitude de la route.
+const ROAD_CLEAR_HALF_M := 4.0
+const FAR_CARVE_MARGIN_M := 0.5
 
 ## Niveaux : dossier, maille, taille de tuile, décalage vertical au dessin.
 const LEVELS := {
@@ -143,6 +147,47 @@ static func load_filled(world_dir: String, level: String, ix: int, iz: int, rout
 					return h
 		return nearest_route_alt(route, x, z)
 	return fill_nan(raw, level, ix, iz, fallback)
+
+
+## Abaisse le terrain sous la route (niveau lointain) : tout sommet d'une cellule que touche la
+## chaussée (± ROAD_CLEAR_HALF_M autour de l'axe) passe sous l'altitude de la route moins
+## `margin`. Sans cela, la maille de 50 m, non fondue avec la route par le compilateur, dépassait
+## la route à la corde des virages et sur les flancs raides malgré FAR_DROP_M (défaut vu au banc
+## simulé le 25 octobre : jusqu'à 8 cm au-dessus de la chaussée sur le village simulé, bien plus
+## dans une vallée encaissée). Chaque tuile traite aussi les points de route proches de ses bords :
+## les sommets partagés de deux tuiles voisines reçoivent la même valeur.
+## Exécutable dans une tâche de fond.
+static func carve_under_route(heights: PackedFloat32Array, level: String, ix: int, iz: int, route,
+		margin: float = FAR_CARVE_MARGIN_M) -> PackedFloat32Array:
+	if route == null or route.n < 2:
+		return heights
+	var out := heights.duplicate()
+	var cell: float = LEVELS[level]["cell"]
+	var size: float = LEVELS[level]["size"]
+	var x0 := ix * size
+	var z0 := iz * size
+	var pad := cell + ROAD_CLEAR_HALF_M
+	for k in range(route.n):
+		# Point de route et milieu du segment suivant (route échantillonnée à ds ≤ maille / 2).
+		for f in [0.0, 0.5]:
+			if f > 0.0 and k + 1 >= route.n:
+				continue
+			var k1: int = mini(k + 1, route.n - 1)
+			var px: float = lerpf(route.x[k], route.x[k1], f)
+			var pz: float = lerpf(route.z[k], route.z[k1], f)
+			if px < x0 - pad or px > x0 + size + pad or pz < z0 - pad or pz > z0 + size + pad:
+				continue
+			var alt: float = minf(route.alt_m[k], route.alt_m[k1]) - margin
+			var i0 := clampi(floori((px - x0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)
+			var i1 := clampi(floori((px - x0 + ROAD_CLEAR_HALF_M) / cell) + 1, 0, CELLS)
+			var j0 := clampi(floori((pz - z0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)
+			var j1 := clampi(floori((pz - z0 + ROAD_CLEAR_HALF_M) / cell) + 1, 0, CELLS)
+			for j in range(j0, j1 + 1):
+				for i in range(i0, i1 + 1):
+					var idx := j * SAMPLES + i
+					if out[idx] > alt:
+						out[idx] = alt
+	return out
 
 
 ## Tuile plate à une altitude donnée (tuile manquante sans niveau lointain, format §10).

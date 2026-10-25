@@ -355,7 +355,8 @@ long_press_gears = 10
 trainer = "mock"             # "ftms", "mock" ou "sim" (Bluetooth simulé)
 input = "keyboard"           # "click", "keyboard", "none" ou "sim" (Click simulé)
 trainer_address = ""         # adresse MAC facultative
-click_address = ""
+click_address = ""          # boîtier « + » du Click (openride-core devices --save)
+click_minus_address = ""    # boîtier « − » du Click
 click_short_max_s = 0.5
 click_long_min_s = 0.9
 mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
@@ -371,6 +372,9 @@ theme = "default"
 [ipc]
 port_state = 5005
 port_commands = 5006
+
+[engine]
+godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide : ~/Applications/godot)
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).

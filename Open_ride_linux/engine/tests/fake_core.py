@@ -304,7 +304,10 @@ def scenario_hello(core: FakeCore) -> str:
 
 def scenario_retry(core: FakeCore) -> str:
     """2. Commande ignorée trois fois : renvoyée, puis acquittée."""
-    core.accept_cmd = lambda msg, count: msg.get("name") != "pause" or count >= 4
+    # Les demandes de listes des menus (lot N6) ont un cmd_id plus grand : les accepter acquitterait
+    # « pause » par cumul (contrat §4) avant le 4ᵉ envoi.
+    core.accept_cmd = lambda msg, count: (count >= 4 if msg.get("name") == "pause"
+                                          else not str(msg.get("name", "")).startswith("list_"))
     mark = core.log.mark()
     t0 = now()
     core.test_command("pause")
