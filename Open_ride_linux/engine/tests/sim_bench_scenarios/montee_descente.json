@@ -1,0 +1,104 @@
+{
+  "description": "Parcours complet du village simulé en SIM : plat, montée à 7 %, sommet, descente à −6 %, village du haut ; braquets changés au Click, effort qui suit la pente.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3,
+    "rider_power_w": 250,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [
+    {
+      "t": 10,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 14,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 60,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 300,
+      "cadence_rpm": 80
+    },
+    {
+      "t": 70,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 75,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 80,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 200,
+      "action": "press",
+      "button": "-",
+      "duration_s": 1.0
+    },
+    {
+      "t": 330,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 220,
+      "cadence_rpm": 90
+    },
+    {
+      "t": 380,
+      "action": "press",
+      "button": "+",
+      "duration_s": 1.0
+    },
+    {
+      "t": 420,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 120,
+      "cadence_rpm": 70
+    },
+    {
+      "t": 430,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 433,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 436,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 600,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 200,
+      "cadence_rpm": 90
+    }
+  ],
+  "bench": {
+    "world": "village",
+    "duration_s": 840,
+    "every_s": 20
+  }
+}
