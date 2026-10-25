@@ -24,7 +24,7 @@ Compromis réalisme et performance demandé par le propriétaire (25 octobre) : 
   - **poussée vers l'avant :** un bot suivi de près par le cycliste (moins de 1 m) gagne 2 à 3 % de résistance aérodynamique en moins (constante `PUSH_FROM_BEHIND`), ce qui rend les relais crédibles ; facultatif, désactivable ;
   - **vent de travers :** l'abri baisse avec l'angle du vent apparent (P2), jusqu'à − 50 % à 45° de travers, faute de pouvoir se placer en éventail sur une route à une dimension ; vent nul ou de face : aucun effet ;
   - `best_draft(rider_s, bots, route, wind) -> (alpha, bot_id)` : le bot (ou la file) qui abrite le plus, devant le cycliste sur le parcours (boucles et aller-retour comme `route.py`) ;
-  - le fantôme abrite aussi (choix à confirmer par le propriétaire, constante `GHOST_GIVES_DRAFT = True`).
+  - le fantôme n'abrite pas (décision du propriétaire du 25 octobre) : seuls les bots à puissance constante comptent.
 - Vent : l'abri multiplie le terme aérodynamique complet `(1 − α)`, vent compris (SRS §5) ; l'abri compte donc davantage à grande vitesse et presque plus en côte raide, sans règle particulière.
 - Ressenti en SIM : même calcul que P2 (`ΔF` total vent et aspiration, borné, avec les `PhysicsParams` courants à chaque pas), pas de deuxième voie.
 - Lissage : `alpha` suit sa cible avec une constante de temps de 1 s, pour éviter un à-coup de résistance en entrant ou en sortant de la roue.

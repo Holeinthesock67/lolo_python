@@ -26,7 +26,8 @@ P1 livré (contrat v1.2 et `[wind]` validés). Version 1.0 publiée.
   - `"ftms"` : `head_mps` passé dans le champ vent de la commande 0x11, pente inchangée.
 - ERG : vitesse virtuelle seulement, aucune incidence sur la commande au trainer.
 - Pause : vent figé (comme le chronomètre).
-- Trame `state` : champ `wind` du contrat v1.2 quand `mode` n'est pas `"off"`.
+- Trame `state` : champ `wind` du contrat v1.2, 2 fois par seconde, quand `mode` n'est pas `"off"` ; la physique utilise le vent exact à chaque pas de 50 Hz.
+- `max_grade_offset_pct` réglable dans la section « Réglages » du menu : clé ajoutée aux réglages écrits par le core (même mécanisme qu'O3) ; l'écran lui-même vient avec P16.
 - Journal : `head_mps` et le supplément de pente ajoutés en champs facultatifs de l'enregistrement à 1 Hz (le format reste lisible par `openride-core summary` et `history`).
 - `config.py` : section `[wind]` validée (types et bornes, `ConfigError` lisible) ; SRS §11 mise à jour.
 
