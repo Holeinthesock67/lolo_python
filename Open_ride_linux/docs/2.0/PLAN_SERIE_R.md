@@ -4,7 +4,7 @@
 
 ## 1. En résumé
 
-Le mode tient sur le socle actuel : le core pilote déjà le trainer en pente avec des braquets virtuels, connaît la FTP et décode les cinq boutons du boîtier droit du Click. Il faut surtout un moteur de partie dans le core, des ajouts compatibles à l'IPC (v1.2) et une scène Godot séparée. Le risque principal est le temps de réponse du frein, jamais mesuré.
+Le mode tient sur le socle actuel : le core pilote déjà le trainer en pente avec des braquets virtuels, connaît la FTP et décode les cinq boutons du boîtier droit du Click. Il faut surtout un moteur de partie dans le core, des ajouts compatibles à l'IPC (v1.3, après la v1.2 de la série P) et une scène Godot séparée. Le risque principal est le temps de réponse du frein, jamais mesuré.
 
 ## 2. Décisions du propriétaire (25 octobre 2026)
 
@@ -43,7 +43,7 @@ Ne servent pas : compilateur GPX, terrain, OSM, végétation, thèmes de paysage
 
 **Core (modules purs) :** modèle W'bal (Skiba, CP ≈ FTP par défaut) ; postures de cadence avec hystérésis ; générateur de salles à graine (profil transformé en route en mémoire, physique et interpolation inchangées) ; Firewall (cycliste virtuel à X % de FTP calculé avec `physics.py`) ; combat (bouclier, adrénaline, dégâts, fenêtres de timing, surchauffe) ; run (machine à états, deck, or, reliques, boss) ; scénariste (objectif × durée vers une suite de salles) ; progression permanente sous `~/OpenRide/` ; événements de jeu dans le journal.
 
-**Contrat IPC v1.2 (ajouts compatibles) :** événements `input` `Y_SHORT`, `Z_SHORT`, `A_SHORT` (B reste « − ») ; champ facultatif `rogue` de `state` (phase, salle, bouclier, adrénaline, W'bal, posture, écart au Firewall, fenêtres actives) ; message `room` (profil et marqueurs, gros datagramme comme `routes`) ; message `loot` (3 cartes) ; commandes `start_run` (objectif, durée, graine) et `abandon_run`.
+**Contrat IPC v1.3 (ajouts compatibles, après la v1.2 du lot P1) :** événements `input` `Y_SHORT`, `Z_SHORT`, `A_SHORT` (B reste « − » ; communs avec la série T, ajoutés par le premier des lots R1 ou T1) ; champ facultatif `rogue` de `state` (phase, salle, bouclier, adrénaline, W'bal, posture, écart au Firewall, fenêtres actives) ; message `room` (profil et marqueurs, gros datagramme comme `routes`) ; message `loot` (3 cartes) ; commandes `start_run` (objectif, durée, graine) et `abandon_run`.
 
 **Engine (scène séparée de la scène classique) :** ruban 3D construit depuis `room`, shader de couleur par pente, arches et zones ; décor néon (grille, glow, particules) ; ennemis géométriques et boss ; HUD diégétique (hologramme, arcs, FOV, tremblement) ; menu Cyber-Rogue (objectif, durée, W'), couloirs, cartes, fin de run.
 
@@ -65,7 +65,7 @@ Ne servent pas : compilateur GPX, terrain, OSM, végétation, thèmes de paysage
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
 | R0 | Mesure du délai du frein : saut de pente, temps jusqu'au couple ressenti et jusqu'à la puissance stable (script fourni) | — | Propriétaire (vélo) |
-| R1 | Contrat IPC v1.2 : événements Y, Z, A, champ `rogue`, messages `room` et `loot`, commandes de run | — | Interne (décision) |
+| R1 | Contrat IPC v1.3 : événements Y, Z, A, champ `rogue`, messages `room` et `loot`, commandes de run | P1 (série P) | Interne (décision) |
 | R2 | Modèle W'bal et postures de cadence avec hystérésis | — | Délégable |
 | R3 | Générateur de salles : profils des 5 archétypes et du boss, graine, marqueurs | — | Délégable |
 | R4 | Firewall : cycliste virtuel à X % de FTP, écart au joueur | R3 | Délégable |
