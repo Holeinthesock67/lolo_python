@@ -38,7 +38,7 @@ P1 livré. P2 n'est pas requis : le modèle se teste avec des trames écrites à
 ### 4.3 Budgets dans `quality_presets.gd`
 
 - Nouvelle table `LIVING` et fonction `living(preset) -> Dictionary`, par préréglage `low`, `medium`, `high` :
-  `tree_sway` (bool), `grass_tufts` (nombre max), `clouds` (`"off"`, `"flat"`, `"layered"`), `weather_particles` (max), `birds` (max), `animals` (max), `vehicles` (max), `spectators` (max), `ambience_voices` (max de sources simultanées), `water_shimmer` (bool).
+  `tree_sway` (bool), `grass_tufts` (nombre max), `clouds` (`"off"`, `"flat"`, `"layered"`), `weather_particles` (max), `birds` (max), `animals` (max), `vehicles` (max), `spectators` (max), `passersby` (max, clé ajoutée par P21), `ambience_voices` (max de sources simultanées), `water_shimmer` (bool).
 - Valeurs de départ pour `low` (GTX 1060 du PC cible) : balancement des arbres oui, 0 touffe d'herbe, nuages `flat`, 600 particules, 12 oiseaux, 20 animaux, 3 véhicules, 40 spectateurs, 4 voix, scintillement oui. `medium` et `high` plus généreux.
 - Un réglage `[render] living = false` (ou un préréglage) doit pouvoir tout couper : `living("low", false)` renvoie tous les budgets à zéro.
 
