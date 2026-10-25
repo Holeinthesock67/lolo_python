@@ -16,6 +16,7 @@ const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
+const CueModel := preload("res://scripts/cue_model.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -61,6 +62,10 @@ const BEEP_LEVEL := 0.3
 ## forte que les bips d'appui, pour passer au-dessus du vent et de la roue libre (SoundPlayer).
 const ERG_BEEP := [[1320.0, 0.30]]
 const ERG_BEEP_LEVEL := 0.6
+## Consignes d'essai (cue_model.gd) : deux notes montantes, aussi fortes que le bip ERG.
+const CUE_BEEP := [[880.0, 0.15], [1320.0, 0.25]]
+
+var _cues = CueModel.new()
 
 
 func _ready() -> void:
@@ -293,6 +298,11 @@ func _poll_route_job() -> void:
 	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
 	banner.clear_message("route")
+	banner.clear_message("cue")
+	if _cues.load_for_route(job["id"]):
+		print("[essai] %d consignes chargées (%s)" % [_cues.cues.size(), CueModel.path_for(job["id"])])
+	elif _cues.load_error != "":
+		print("[essai] consignes ignorées (%s) : %s" % [CueModel.path_for(job["id"]), _cues.load_error])
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
 			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"]])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
@@ -390,6 +400,9 @@ func _on_state_received(state: Dictionary) -> void:
 	follow.push_frame(Time.get_ticks_usec(), float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
 	ipc.test_log("state seq=%d s=%.3f session=%s" % [int(state.get("seq", 0)), float(state.get("s", 0.0)), session_state])
 
+	if running and route != null:
+		_give_cues(state)
+
 	if not state.has("gears_total"):
 		state["gears_total"] = ipc.core_config.get("gears_total", 24)
 	var erg_eval: Dictionary = erg_view.update(state.get("erg", null), Time.get_ticks_usec() / 1e6)
@@ -407,6 +420,18 @@ func _on_state_received(state: Dictionary) -> void:
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
 		sound_player.update_audio(state, now_s, camera.position)
+
+
+## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur.
+func _give_cues(state: Dictionary) -> void:
+	var s := float(state.get("s", 0.0))
+	for c in _cues.update(s):
+		banner.show_message("cue", "Consigne %d/%d : %s" % [c["index"], c["count"], c["text"]], c["duration_s"])
+		if c["beep"]:
+			_play_tones(CUE_BEEP, ERG_BEEP_LEVEL)
+		print("[essai] consigne %d/%d à %.0f m, t = %.0f s, braquet %s : %s" % [c["index"], c["count"], s,
+				float(state.get("t", 0.0)), str(state.get("gear", "?")), c["text"]])
+		ipc.test_log("cue index=%d s=%.1f" % [c["index"], s])
 
 
 func _exit_tree() -> void:
