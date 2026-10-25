@@ -45,3 +45,12 @@ Contrat et schémas (`ipc_v1.md`, nouveau `scan_results.schema.json`, `cmd.schem
 ## 8. Hors périmètre
 
 - Mise à jour du micrologiciel des appareils, étalonnage du trainer (spindown).
+
+## 9. État au 25 octobre : en pause (décision du propriétaire)
+
+Contrat révision 1.2 accepté par le propriétaire le 25 octobre (tableau §4 tel quel, plus les codes d'erreur `busy`, `scan_failed`, `pairing_failed`). Lot mis en pause le même jour, après la partie core :
+
+- Fait (branche du lot, PR en brouillon) : contrat `ipc_v1.md` révision 1.2, `scan_results.schema.json`, `cmd.schema.json`, `error.schema.json` ; `pairing.py` (`scan_items`, `scan_results_message`, `paired_from_args`) ; `session.py` (commandes `scan_devices`, `identify_click_plus`, `pair_devices`, appui « + » d'identification non relayé au menu) ; `run --config` transmis à la séance ; tests `core/tests/test_pairing_menu.py`, dont le scénario « recherche puis enregistrement » en Bluetooth simulé.
+- Écart au §4 : le core ne coupe pas ses connexions pendant la recherche (les appareils reliés sont listés par BlueZ) et la nouvelle configuration sert au prochain lancement (critère 2 : quitter et relancer).
+- Reste : client engine (`ipc_client.gd` : `scan_devices`, signal `scan_results`), `pairing_view_model.gd` et son test, écran « Appareils » dans `menu_flow.gd` / `menu_view.gd` (élément de l'accueil, confirmation avec les changements), scénario IPC du faux core, README et suivi, recette sur le PC (critère 2).
+- Numérotation : les séries P (lot P1) et Q (lot Q1) annoncent aussi une « révision 1.2 » ; à renuméroter quand elles prendront le contrat (Q1 peut rejoindre la 1.2, P1 passerait en 1.3, R et T en 1.4).
