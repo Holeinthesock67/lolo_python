@@ -372,6 +372,9 @@ theme = "default"
 [ipc]
 port_state = 5005
 port_commands = 5006
+
+[engine]
+godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide : ~/Applications/godot)
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).

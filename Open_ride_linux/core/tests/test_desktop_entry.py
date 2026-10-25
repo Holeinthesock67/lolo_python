@@ -1,4 +1,4 @@
-"""Tests du raccourci de bureau `.desktop`, de l'icône SVG et de `scripts/install-desktop.sh` (lot L8)."""
+"""Tests des raccourcis de bureau `.desktop`, de l'icône SVG et de `scripts/install-desktop.sh` (lots L8 et N14)."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ ROOT_DIR = Path(__file__).resolve().parents[2]
 DESKTOP_IN = ROOT_DIR / "scripts" / "desktop" / "openride.desktop.in"
 ICON_SVG = ROOT_DIR / "scripts" / "desktop" / "openride.svg"
 INSTALL_SH = ROOT_DIR / "scripts" / "install-desktop.sh"
+ENTRIES = ("openride", "openride-release", "openride-update")
 
 
 def _read_desktop(path: Path) -> configparser.ConfigParser:
@@ -100,6 +101,12 @@ def test_install_and_uninstall_desktop_script(tmp_path: Path):
 
     cp = _read_desktop(desktop_out)
     assert cp["Desktop Entry"]["Exec"] == expected_exec
+    apps = prefix_dir / "applications"
+    assert sorted(p.name for p in apps.glob("*.desktop")) == sorted(f"{e}.desktop" for e in ENTRIES)
+    release = _read_desktop(apps / "openride-release.desktop")["Desktop Entry"]
+    assert release["Exec"] == f"{expected_exec} --release-trainer" and release["Terminal"] == "false"
+    update = _read_desktop(apps / "openride-update.desktop")["Desktop Entry"]
+    assert update["Exec"].endswith("/scripts/update.sh") and "@" not in update["Exec"]
 
     # 2) Deuxième installation de suite : résultat identique.
     r2 = subprocess.run(
@@ -142,13 +149,13 @@ def test_svg_icon_and_desktop_file_validate(tmp_path: Path):
     validator = shutil.which("desktop-file-validate")
     if not validator:
         pytest.skip("desktop-file-validate non installé")
-    rendered = tmp_path / "openride.desktop"
-    rendered.write_text(
-        DESKTOP_IN.read_text(encoding="utf-8").replace("@OPENRIDE@", "/usr/bin/env"),
-        encoding="utf-8",
-    )
-    res = subprocess.run([validator, str(rendered)], capture_output=True, text=True, check=False)
-    assert res.returncode == 0, res.stdout + res.stderr
+    for entry in ENTRIES:
+        rendered = tmp_path / f"{entry}.desktop"
+        template = DESKTOP_IN.with_name(f"{entry}.desktop.in").read_text(encoding="utf-8")
+        rendered.write_text(template.replace("@OPENRIDE@", "/usr/bin/env").replace("@UPDATE@", "/usr/bin/env"),
+                            encoding="utf-8")
+        res = subprocess.run([validator, str(rendered)], capture_output=True, text=True, check=False)
+        assert res.returncode == 0, res.stdout + res.stderr
 
 
 def test_shellcheck_install_script():
@@ -156,5 +163,6 @@ def test_shellcheck_install_script():
     sc = shutil.which("shellcheck")
     if not sc:
         pytest.skip("shellcheck non installé")
-    res = subprocess.run([sc, str(INSTALL_SH)], capture_output=True, text=True, check=False)
+    scripts = [str(INSTALL_SH), str(INSTALL_SH.with_name("install.sh")), str(INSTALL_SH.with_name("update.sh"))]
+    res = subprocess.run([sc, *scripts], capture_output=True, text=True, check=False)
     assert res.returncode == 0, res.stdout + res.stderr

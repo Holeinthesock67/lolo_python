@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OpenRide – Libérer le trainer
+Comment=Rend le home trainer aux autres applications (après un arrêt brutal)
+Exec=@OPENRIDE@ --release-trainer
+Icon=openride
+Terminal=false
+Categories=Game;Sports;

@@ -39,7 +39,7 @@ Open_ride_linux/
   - conformité au contrat IPC (lot C) ;
   - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
   - Godot conforme au contrat : renvoi des commandes, extrapolation de la caméra, core injoignable (lot D) ;
-  - 536 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop` et outils d'entraînements `.zwo`) et 183 côté compilateur (dont traces FIT et TCX, `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 76 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
+  - 548 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop` et outils d'entraînements `.zwo`) et 183 côté compilateur (dont traces FIT et TCX, `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 76 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
   - **Reste :** séance de 10 minutes et stabilité du Click.
 - **Sprint 2 terminé côté code :** compilateur GPX vers `.world`, couches route (lot B1) et terrain avec le MNT Copernicus (lot B2). Reste la comparaison avec Garmin Connect sur une vraie trace.
 - **Sprint 3 en cours :** ruban de route et terrain par tronçons (lot E1, fusionné le 24 octobre ; reste l'essai sur la GTX 1060) ; chargeur de thèmes et logique du bandeau ERG côté Godot prêts (lots I5 et I6), à brancher sur l'affichage (E2, F2).
@@ -47,6 +47,16 @@ Open_ride_linux/
   - Le parcours utilisé est le parcours de démonstration `demo`, créé automatiquement dans `~/.local/share/openride/routes/` (le choix d'un autre parcours ou d'un entraînement au lancement est prévu par le lot J1).
 
 ## Installation (PC Ubuntu)
+
+En une commande (lot N14), depuis `Open_ride_linux/` après `sudo apt install python3-venv bluez` et le téléchargement de Godot 4.3 :
+
+```bash
+scripts/install.sh
+```
+
+Le script crée l'environnement Python `core/.venv`, y installe le core et le compilateur, relie `openride` et `openride-core` dans `~/.local/bin`, crée `~/OpenRide/config.toml` depuis `scripts/config.example.toml`, demande une fois le chemin de Godot 4.3 (gardé dans `[engine] godot`) et installe trois entrées de menu : **OpenRide**, **OpenRide – Libérer le trainer** et **OpenRide – Mettre à jour** (`scripts/update.sh` : `git pull --ff-only` puis réinstallation, refusée s'il y a des modifications locales). Il peut être relancé sans dommage. Ensuite, tout se fait depuis l'icône : au premier lancement, OpenRide crée `~/OpenRide/GPX/` et `~/OpenRide/Workouts/` et rappelle de configurer les appareils ; une erreur au lancement (Godot introuvable, configuration invalide, port occupé, trainer réservé par une autre application, plantages répétés) s'affiche dans une fenêtre avec le chemin du journal.
+
+Installation manuelle, pour le développement :
 
 ```bash
 sudo apt install python3-venv python3-pip bluez
@@ -60,7 +70,7 @@ Les versions de référence validées en Python 3.14 sont figées dans `constrai
 
 Compilateur de parcours (GPX vers `.world`, couches route, terrain, bâtiments, végétation, points d'intérêt et eau) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (ou directement l'export Garmin Connect : `build sortie.fit`, `build sortie.tcx`, lot M7 ; `verify`, `info`, `list` et `build-all` pour contrôler ou compiler tout `~/OpenRide/GPX/` ; `--layers route,terrain,buildings,vegetation,poi,water` pour inclure les couches OpenStreetMap). Le premier `build` télécharge les tuiles d'altitude Copernicus dans `~/.cache/openride/dem/` et les réponses Overpass dans `~/.cache/openride/osm/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain|buildings|vegetation|poi|water` régénère une couche seule.
 
-Raccourci de bureau et icône utilisateur (sans `sudo`, depuis `Open_ride_linux/`) : `scripts/install-desktop.sh` installe `~/.local/share/applications/openride.desktop` et l'icône `scripts/desktop/openride.svg` (`scripts/install-desktop.sh --uninstall` pour les retirer).
+Raccourcis de bureau et icône utilisateur (sans `sudo`, depuis `Open_ride_linux/`, appelé par `install.sh`) : `scripts/install-desktop.sh` installe `~/.local/share/applications/openride.desktop`, `openride-release.desktop` (`openride --release-trainer`), `openride-update.desktop` et l'icône `scripts/desktop/openride.svg` (`scripts/install-desktop.sh --uninstall` pour les retirer).
 
 Godot 4.3 (version standard, pas .NET) :
 
