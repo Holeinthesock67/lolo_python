@@ -39,6 +39,8 @@ python3 engine/tests/sim_bench.py --scenario erreur_0x80 --world village --durat
 
 Options : `--world demo|village|osm|DOSSIER.world`, `--workout erg_court|FICHIER.zwo`, `--duration S`, `--every S` (intervalle des captures), `--difficulty PCT` (`[trainer] difficulty_pct`), `--size 1280x720`, `--quality low|medium|high`, `--native`, `--out DOSSIER` (défaut `~/OpenRide/sim_bench/<date>`), `--keep` (garde le HOME temporaire). Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
 
+Images par seconde : relevées à chaque capture (avec le nombre de maillages affichés et d'appels de dessin), sous chaque image du rapport, en courbe dans le rapport, dans `fps.csv` et dans `engine.log` (lignes `[test] screenshot`) ; la console affiche minimum, médiane et maximum. Journaux gardés dans le dossier de sortie de chaque scénario : `core.log`, `engine.log`, `seance.jsonl`, `log_report.txt`, `summary.txt`, `fps.csv`, captures et `rapport.html`.
+
 Vérifications : démarrage du core, liaison de l'engine, parcours chargé, captures enregistrées, aucune erreur Godot, aucune exception du core, journal et FIT écrits, `summary` et `log_report` lisibles, fin de séance, HOME réel inchangé ; selon le scénario : chaque coupure suivie d'une ligne `down` puis `up` au journal, pause `PAUSED (trainer_lost)` visible pendant un silence du trainer puis reprise, consignes ERG et bandeau ERG à l'écran, fréquence cardiaque au journal.
 
 Scénarios du banc (`engine/tests/sim_bench_scenarios/`, format de `SIMULATION_BLE.md` plus une section `bench` : `world`, `workout`, `duration_s`, `every_s`, `difficulty_pct`) :
@@ -59,7 +61,7 @@ Défaut trouvé à la mise en place : en séance, les bâtiments et l'eau OSM n'
 | Outil | Parcours produit |
 | --- | --- |
 | `python -m openride_core.tools.fake_world --demo --terrain --out DOSSIER` | `demo` : parcours synthétique avec terrain |
-| `python3 engine/tests/make_sim_world.py --out DOSSIER [--seed N]` | `village-simule` : 5 km, plat, montée à 7 %, descente à −6 %, deux villages (178 bâtiments de hauteurs et couleurs variées, église), fermes, forêts, verger, rivière, ruisseau, lac, points d'intérêt ; compilé par le vrai compilateur (relief et réponse Overpass fabriqués, origine fictive des tests) |
+| `python3 engine/tests/make_sim_world.py --out DOSSIER [--seed N]` | `village-simule` (bâtiments sans texture pour l'instant : une couleur unie par bâtiment, `building:colour` ou couleur déterministe) : 5 km, plat, montée à 7 %, descente à −6 %, deux villages (178 bâtiments de hauteurs et couleurs variées, église), fermes, forêts, verger, rivière, ruisseau, lac, points d'intérêt ; compilé par le vrai compilateur (relief et réponse Overpass fabriqués, origine fictive des tests) |
 | `python3 engine/tests/make_osm_world.py --out DOSSIER` | `osm-test` : 3 km à 5 % avec les réponses Overpass enregistrées des tests du compilateur |
 | `python3 engine/tests/make_texture_theme.py` | Thème à trois textures 2 048² pour mesurer le shader (essai E2) |
 
