@@ -17,6 +17,8 @@ extends RefCounted
 ## Actions renvoyées ({"action": nom, …}) : noms des commandes du contrat v1 quand elles existent
 ## (select_route + route_id, select_workout + workout_id, start, resume, end_session + save), sinon
 ## internes à l'engine (quit). Une action ouvre au besoin l'écran suivant dans le même appel.
+## Écrans ajoutés par add_screen() (bilan de fin du lot N4) : valider un élément renvoie
+## {"action": "item", "screen": écran, "id": élément}, à traiter par l'appelant (menu_flow.gd, lot N6).
 
 const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG"]
 
@@ -121,6 +123,29 @@ func open_pause() -> Dictionary:
 	_focus_stack.clear()
 	_pending = {}
 	_open(PAUSE, false)
+	return state()
+
+
+## Ajoute ou remplace un écran {id, title, on_back, items} (bilan de fin, lot N4).
+func add_screen(screen: Dictionary) -> void:
+	var id := str(screen.get("id", ""))
+	if id != "":
+		_screens[id] = screen.duplicate(true)
+
+
+## Ouvre un écran en vidant l'historique (bilan de fin de séance) ; écran inconnu : rien.
+func open_screen(screen_id: String) -> Dictionary:
+	if _screens.has(screen_id):
+		_stack.clear()
+		_focus_stack.clear()
+		_pending = {}
+		_open(screen_id, false)
+	return state()
+
+
+## Demande de confirmation d'une action destructrice (focus sur « Non »), depuis l'écran courant.
+func confirm(title: String, action: Dictionary) -> Dictionary:
+	_confirm(title, action)
 	return state()
 
 
@@ -274,4 +299,6 @@ func _validate() -> Dictionary:
 					return {"action": "end_session", "save": true}
 				"abandon":
 					_confirm("Abandonner la séance ?", {"action": "end_session", "save": false})
+		_:
+			return {"action": "item", "screen": _screen, "id": id}
 	return {}

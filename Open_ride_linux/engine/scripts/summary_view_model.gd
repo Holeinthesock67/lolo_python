@@ -253,7 +253,9 @@ func menu_screen() -> Dictionary:
 
 ## Branche cet écran sur une instance de menu_model.gd.
 func attach_to_menu(menu: RefCounted) -> void:
-	if menu != null and "_screens" in menu:
+	if menu != null and menu.has_method("add_screen"):
+		menu.add_screen(menu_screen())
+	elif menu != null and "_screens" in menu:
 		menu._screens["summary"] = menu_screen()
 
 
@@ -267,7 +269,9 @@ func handle_action(item_id: String, menu: RefCounted) -> Dictionary:
 		"details":
 			return {"action": "details"}
 		"quit":
-			if menu != null and menu.has_method("_confirm"):
+			if menu != null and menu.has_method("confirm"):
+				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
+			elif menu != null and menu.has_method("_confirm"):
 				menu._confirm("Quitter OpenRide ?", {"action": "quit"})
 			return {}
 	return {}
