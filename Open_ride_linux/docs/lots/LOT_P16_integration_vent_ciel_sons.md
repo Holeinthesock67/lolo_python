@@ -17,12 +17,13 @@ Puis faire la recette sur le matériel. Lot interne : il modifie `main.gd` et `h
 
 ## 3. Prérequis
 
-P2, P4, P5, P6, P9 et P10 livrés. Version 1.0 publiée.
+P2, P4, P5, P6, P9 et P10 livrés ; O4 (section « Réglages » du menu). Version 1.0 publiée.
 
 ## 4. Travail demandé
 
 - `main.gd` : un `WindModel` alimenté par chaque trame ; paramètres globaux du vent (P5, P6) mis à jour une fois par image ; matériaux d'arbres et nœud des touffes selon `living(preset)` ; ciel de P6 à la place du ciel actuel ; voisinage sonore (part de forêt et de bâti, eau la plus proche, altitude) calculé au plus 2 fois par seconde à partir des couches déjà chargées et passé à P9.
 - `hud_view.gd` : indicateur du vent (flèche, « 18 km/h face ») d'après `wind_view_model.gd`, placé sans recouvrir les autres éléments (règle de `banner.gd`), sous les lignes actuelles du HUD ; laisser libre une zone pour les blocs « segment » (chrono, écart au record) et « bonus » (icône, compte à rebours) de la série T de la 2.0 (`docs/2.0/`) ; caché sans vent.
+- Section « Réglages » du menu (O4) : mode du vent (coupé, fixe, rafales, thème), force, direction et plafond du supplément de pente (4 points par défaut, de 0 à 8), décisions du propriétaire du 25 octobre (P1).
 - Réglage `[render] living` (oui par défaut) relayé par le lanceur comme le préréglage de qualité (L4), pour tout couper en cas de souci de performance.
 - `visual_check.py` : une scène `vent` (trame avec `wind`, indicateur visible et dans l'écran) et une scène `nuages` (pixels clairs au-dessus de l'horizon) ; références mises à jour.
 - Nouveau `docs/RECETTE_P16.md` : liste d'essais du §7, à cocher par le propriétaire.
