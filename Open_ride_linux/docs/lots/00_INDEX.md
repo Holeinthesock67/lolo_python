@@ -114,12 +114,12 @@
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle sur GTX 1060 à faire) |
 | [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle et sonore sur GTX 1060 à faire) |
-| [Q1](LOT_Q1_difficulte_en_jeu.md) | Difficulté du trainer réglable pendant la séance (clavier, HUD) | Python + GDScript | — | Petite | Après décision du propriétaire (contrat IPC v1.2, §9 du cahier) |
-| [Q2](LOT_Q2_pentes_a_l_ecran.md) | Pentes plus lisibles à l'écran : caméra inclinée et relief exagéré à l'affichage | GDScript | — | Moyenne | Oui (valeur par défaut choisie par le propriétaire sur la GTX 1060) |
-| [Q3](LOT_Q3_journal_ftms.md) | Journal des commandes FTMS et des accusés du trainer, délais dans `log_report` | Python | — | Petite | Oui |
-| [Q4](LOT_Q4_rampe_de_pente.md) | Rampe de pente plus rapide, vitesses distinctes à la montée et à la descente | Python | Q1 (`session.py`) | Petite | Oui |
-| [Q5](LOT_Q5_fc_relayee_figee.md) | Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui |
-| [Q6](LOT_Q6_boitier_gauche_click.md) | Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire |
+| [Q1](LOT_Q1_difficulte_en_jeu.md) | Difficulté du trainer réglable pendant la séance (clavier, HUD) | Python + GDScript | — | Petite | Après décision du propriétaire (contrat IPC v1.2, §9 du cahier) ; issue #168 |
+| [Q2](LOT_Q2_pentes_a_l_ecran.md) | Pentes plus lisibles à l'écran : caméra inclinée et relief exagéré à l'affichage | GDScript | — | Moyenne | Oui (valeur par défaut choisie par le propriétaire sur la GTX 1060) ; issue #169 |
+| [Q3](LOT_Q3_journal_ftms.md) | Journal des commandes FTMS et des accusés du trainer, délais dans `log_report` | Python | — | Petite | Oui ; issue #170 |
+| [Q4](LOT_Q4_rampe_de_pente.md) | Rampe de pente plus rapide, vitesses distinctes à la montée et à la descente | Python | Q1 (`session.py`) | Petite | Oui ; issue #171 |
+| [Q5](LOT_Q5_fc_relayee_figee.md) | Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui ; issue #172 |
+| [Q6](LOT_Q6_boitier_gauche_click.md) | Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
