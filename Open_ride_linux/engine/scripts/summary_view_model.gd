@@ -22,6 +22,7 @@ const KEY_FIT_PATH := "fit_path"
 const COLOR_GREEN := "vert"
 const COLOR_ORANGE := "orange"
 const COLOR_RED := "rouge"
+const COLOR_NEUTRAL := "neutre"   # bloc sans cible (roue libre)
 
 
 static func _format_fr_float(val: float, decimals: int) -> String:
@@ -152,29 +153,45 @@ func blocks(summary: Dictionary) -> Array:
 	for i in range(raw_blocks.size()):
 		var b = raw_blocks[i]
 		var idx: int = i + 1
-		var avg_w: float = 0.0
-		var tgt_w: float = 0.0
+		var avg_raw = null
+		var tgt_raw = null
 
 		if b is Array:
-			# Format triplet [index, puissance moyenne, cible moyenne]
+			# Format triplet [index, puissance moyenne, cible moyenne ou null]
 			if b.size() >= 3:
-				idx = int(b[0])
-				avg_w = float(b[1])
-				tgt_w = float(b[2])
+				idx = int(b[0]) if b[0] != null else idx
+				avg_raw = b[1]
+				tgt_raw = b[2]
 			elif b.size() >= 2:
-				avg_w = float(b[0])
-				tgt_w = float(b[1])
+				avg_raw = b[0]
+				tgt_raw = b[1]
 		elif b is Dictionary:
 			idx = int(b.get("block", b.get("index", i + 1)))
-			avg_w = float(b.get("avg_power_w", b.get("avg_w", 0.0)))
-			tgt_w = float(b.get("target_w", 0.0))
+			avg_raw = b.get("avg_power_w", b.get("avg_w", null))
+			tgt_raw = b.get("target_w", null)
 		else:
 			continue
 
+		# Cible null (roue libre) ou moyenne absente : pas d'écart, couleur neutre.
+		if avg_raw == null or tgt_raw == null or float(tgt_raw) <= 0.0:
+			out.append({
+				"block": idx,
+				"index": idx,
+				"avg_power_w": float(avg_raw) if avg_raw != null else null,
+				"target_w": float(tgt_raw) if tgt_raw != null else null,
+				"delta_w": null,
+				"delta_pct": null,
+				"delta_w_text": "",
+				"delta_pct_text": "",
+				"color": COLOR_NEUTRAL,
+				"couleur": COLOR_NEUTRAL,
+			})
+			continue
+
+		var avg_w := float(avg_raw)
+		var tgt_w := float(tgt_raw)
 		var delta_w := avg_w - tgt_w
-		var delta_pct := 0.0
-		if tgt_w > 0.0:
-			delta_pct = (delta_w / tgt_w) * 100.0
+		var delta_pct := (delta_w / tgt_w) * 100.0
 
 		var abs_pct := absf(delta_pct)
 		var color := COLOR_GREEN

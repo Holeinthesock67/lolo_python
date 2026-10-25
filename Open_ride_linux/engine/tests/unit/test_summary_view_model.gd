@@ -85,13 +85,18 @@ func _init() -> void:
 	_check(blks[0]["color"] == "vert", "bloc +2 % : couleur vert")
 	_check(blks[1]["color"] == "orange", "bloc −7 % : couleur orange")
 	_check(blks[2]["color"] == "rouge", "bloc +12 % : couleur rouge")
+	# Bloc en roue libre : cible null autorisée par le contrat v1.1 (§3, blocks)
+	var free_blks: Array = vm.blocks({"blocks": [[1, 150.0, null], [2, 250.0, 250.0]]})
+	_check(free_blks.size() == 2, "ERG : bloc à cible null gardé, les autres aussi")
+	_check(free_blks[0]["color"] == "neutre" and free_blks[0]["delta_w"] == null, "bloc à cible null : couleur neutre, pas d'écart")
+	_check(free_blks[1]["color"] == "vert", "bloc suivant le bloc à cible null : traité normalement")
 
 	# 4. fit_path à null / vide : « Séance non enregistrée » ; chemin absolu : nom seul
 	_check(vm.fit_line({}) == "Séance non enregistrée", "fit_line sans fit_path : « Séance non enregistrée »")
 	_check(vm.fit_line({"fit_path": null}) == "Séance non enregistrée", "fit_line avec fit_path null : « Séance non enregistrée »")
 	_check(vm.fit_line({"fit_path": ""}) == "Séance non enregistrée", "fit_line avec fit_path vide : « Séance non enregistrée »")
 	_check(vm.fit_line({"fit_path": "/var/data/openride/ma_sortie.fit"}) == "Séance enregistrée : ma_sortie.fit", "fit_line Unix absolu : seul le nom de fichier apparaît")
-	_check(vm.fit_line({"fit_path": "C:\\Users\\Lolo\\OpenRide\\autre_sortie.fit"}) == "Séance enregistrée : autre_sortie.fit", "fit_line Windows absolu : seul le nom de fichier apparaît")
+	_check(vm.fit_line({"fit_path": "C:\\Users\\cycliste\\OpenRide\\autre_sortie.fit"}) == "Séance enregistrée : autre_sortie.fit", "fit_line Windows absolu : seul le nom de fichier apparaît")
 
 	# 5. Écran de menu et intégration avec menu_model.gd (« Quitter » demande confirmation)
 	var scr: Dictionary = vm.menu_screen()
