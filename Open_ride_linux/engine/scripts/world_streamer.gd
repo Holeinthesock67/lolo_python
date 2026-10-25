@@ -110,7 +110,16 @@ func _has_layer(layer_name: String) -> bool:
 
 
 func _get_vegetation_areas(t: Vector2i) -> Array:
-	if not _has_layer("vegetation") or world_dir == "":
+	return _get_osm_items(t, "vegetation")
+
+
+## Bâtiments OSM des tronçons proches d'une tuile proche (arbres exclus de leur emprise).
+func _get_buildings(t: Vector2i) -> Array:
+	return _get_osm_items(t, "buildings")
+
+
+func _get_osm_items(t: Vector2i, layer: String) -> Array:
+	if not _has_layer(layer) or world_dir == "":
 		return []
 	var areas := []
 	var tile_rect := Rect2(t.x * 1000.0, t.y * 1000.0, 1000.0, 1000.0)
@@ -122,7 +131,7 @@ func _get_vegetation_areas(t: Vector2i) -> Array:
 		var p1: Vector3 = route.sample_point(s1)
 		var r_bounds := Rect2(Vector2(p0.x, p0.z), Vector2.ZERO).expand(Vector2(p1.x, p1.z)).grow(100.0)
 		if r_bounds.intersects(tile_rect):
-			var res := OsmLayers.load_chunk(world_dir, "vegetation", k)
+			var res := OsmLayers.load_chunk(world_dir, layer, k)
 			if res.get("ok", false):
 				areas.append_array(res.get("items", []))
 	return areas
@@ -290,7 +299,7 @@ func _build_job(job: Dictionary) -> void:
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
 			if spec["kind"] == "near" and tree_renderer != null:
 				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
-					vegetation_density_factor, _get_vegetation_areas(t))
+					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t))
 		"flat":
 			var t: Vector2i = spec["tile"]
 			var c := TerrainTiles.tile_origin("near", t.x, t.y) + Vector3(500.0, 0.0, 500.0)
