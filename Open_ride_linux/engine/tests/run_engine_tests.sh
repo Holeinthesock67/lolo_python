@@ -185,6 +185,25 @@ erg_issues="$(echo "$ERG_OUT" | godot_issues)"
 if [ -n "$erg_issues" ]; then echo "$erg_issues"; erg_ok=1; fi
 record "test_erg_view_model (ERG I6, faux core)" "$erg_ok" "$(echo "$ERG_OUT" | grep -E "^Tests ERG vérifiés" | tail -1)"
 
+# Deux passages : réponses normales, puis 1re réponse perdue et listes en deux parties (critère 3 du lot N3).
+for menu_variant in normal perte-et-parties; do
+  if [ "$menu_variant" = normal ]; then MENU_FAKE_ARGS=(); else MENU_FAKE_ARGS=(--drop-first-catalog --split-catalog); fi
+  echo "== Menu et listes v1.1 (lot N3, $menu_variant) =="
+  python3 "$ENGINE_DIR/tests/fake_core.py" --catalog "$ENGINE_DIR/tests/data/catalog_test.json" "${MENU_FAKE_ARGS[@]}" --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &
+  MENU_FAKE_PID=$!
+  sleep 0.2
+  MENU_OUT="$("$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_menu_ipc.gd -- --ipc-state-port="$STATE_PORT" --ipc-cmd-port="$CMD_PORT" 2>&1)"
+  menu_rc=$?
+  wait "$MENU_FAKE_PID"
+  menu_fake_rc=$?
+  echo "$MENU_OUT" | grep -v "^Godot Engine" || true
+  menu_ok=0
+  if [ "$menu_rc" -ne 0 ] || [ "$menu_fake_rc" -ne 0 ]; then menu_ok=1; fi
+  menu_issues="$(echo "$MENU_OUT" | godot_issues)"
+  if [ -n "$menu_issues" ]; then echo "$menu_issues"; menu_ok=1; fi
+  record "test_menu_ipc (listes v1.1 et menu N3, faux core, $menu_variant)" "$menu_ok" "$(echo "$MENU_OUT" | grep -E "^test_menu_ipc : " | tail -1 | sed 's/^test_menu_ipc : //')"
+done
+
 echo "== Scénarios IPC (journal de l'engine : $ENGINE_LOG) =="
 : >"$ENGINE_LOG"
 FAKE_ARGS=(--state-port "$STATE_PORT" --cmd-port "$CMD_PORT" --engine-log "$ENGINE_LOG")
