@@ -1,11 +1,14 @@
 #!/usr/bin/env bash
-# Installation (ou désinstallation) du raccourci de bureau OpenRide pour l'utilisateur.
+# Installation (ou désinstallation) des raccourcis de bureau OpenRide pour l'utilisateur :
+# OpenRide, OpenRide – Libérer le trainer et OpenRide – Mettre à jour (lots L8 et N14).
 # Usage : scripts/install-desktop.sh [--uninstall] [--prefix DOSSIER]
 
 set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-DESKTOP_IN="${SCRIPT_DIR}/desktop/openride.desktop.in"
+DESKTOP_DIR_IN="${SCRIPT_DIR}/desktop"
+UPDATE_SH="${SCRIPT_DIR}/update.sh"
+ENTRIES=(openride openride-release openride-update)
 ICON_SRC="${SCRIPT_DIR}/desktop/openride.svg"
 
 PREFIX="${HOME}/.local/share"
@@ -17,7 +20,7 @@ Usage : scripts/install-desktop.sh [--uninstall] [--prefix DOSSIER]
 
 Options :
   --prefix DOSSIER   Dossier cible (défaut : ~/.local/share)
-  --uninstall        Supprime le fichier .desktop et l'icône installés
+  --uninstall        Supprime les fichiers .desktop et l'icône installés
   -h, --help         Affiche cette aide
 EOF
 }
@@ -57,7 +60,6 @@ done
 
 APP_DIR="${PREFIX}/applications"
 ICON_DIR="${PREFIX}/icons/hicolor/scalable/apps"
-DESKTOP_DEST="${APP_DIR}/openride.desktop"
 ICON_DEST="${ICON_DIR}/openride.svg"
 
 refresh_caches() {
@@ -70,9 +72,12 @@ refresh_caches() {
 }
 
 if [[ "${UNINSTALL}" -eq 1 ]]; then
-    rm -f "${DESKTOP_DEST}" "${ICON_DEST}"
+    for entry in "${ENTRIES[@]}"; do
+        rm -f "${APP_DIR}/${entry}.desktop"
+    done
+    rm -f "${ICON_DEST}"
     refresh_caches
-    echo "Raccourci OpenRide désinstallé de ${PREFIX}."
+    echo "Raccourcis OpenRide désinstallés de ${PREFIX}."
     exit 0
 fi
 
@@ -93,10 +98,13 @@ if [[ "${OPENRIDE_BIN}" != /* ]]; then
 fi
 
 mkdir -p "${APP_DIR}" "${ICON_DIR}"
-sed "s|@OPENRIDE@|${OPENRIDE_BIN}|g" "${DESKTOP_IN}" > "${DESKTOP_DEST}"
-chmod 0644 "${DESKTOP_DEST}"
+for entry in "${ENTRIES[@]}"; do
+    sed -e "s|@OPENRIDE@|${OPENRIDE_BIN}|g" -e "s|@UPDATE@|${UPDATE_SH}|g" \
+        "${DESKTOP_DIR_IN}/${entry}.desktop.in" > "${APP_DIR}/${entry}.desktop"
+    chmod 0644 "${APP_DIR}/${entry}.desktop"
+done
 cp -f "${ICON_SRC}" "${ICON_DEST}"
 chmod 0644 "${ICON_DEST}"
 
 refresh_caches
-echo "Raccourci OpenRide installé dans ${DESKTOP_DEST} (Exec=${OPENRIDE_BIN})."
+echo "Raccourcis OpenRide installés dans ${APP_DIR} (Exec=${OPENRIDE_BIN})."
