@@ -96,6 +96,9 @@ def cmd_run(args: argparse.Namespace) -> int:
             print(f"openride-core run : erreur : {exc}", file=sys.stderr)
             return 1
 
+    if args.first_run:
+        logging.getLogger("openride_core").info(
+            "Premier démarrage : configurez vos appareils avec openride-core devices --save.")
     try:
         session = CoreSession(cfg, bots=bots_list)
     except SimScenarioError as exc:
@@ -171,6 +174,8 @@ def build_parser() -> argparse.ArgumentParser:
                      help="ajoute un bot à puissance constante en watts (répétable, au plus 4)")
     run.add_argument("--ghost", type=Path, metavar="FICHIER",
                      help="ajoute un fantôme rejouant une séance enregistrée (.jsonl ou .fit)")
+    run.add_argument("--first-run", action="store_true",
+                     help="premier démarrage (passé par le lanceur ; le menu ouvrira « Appareils », lot N13)")
     run.add_argument("--resume", type=Path, metavar="JOURNAL",
                      help="reprend en pause la séance d'un journal non terminé (après un plantage du core)")
     run.add_argument("--autostart", action="store_true",
