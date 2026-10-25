@@ -1,0 +1,53 @@
+{
+  "description": "Scénario « coupures » du core sur le village simulé (bâtiments à l'écran) : trainer coupé à 30 s, Click « − » à 40 s, ceinture à 45 s, trainer muet 12 s à 70 s, contrôle FTMS retiré à 100 s.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [
+    {
+      "t": 30,
+      "device": "trainer",
+      "action": "drop"
+    },
+    {
+      "t": 40,
+      "device": "click_minus",
+      "action": "drop"
+    },
+    {
+      "t": 45,
+      "device": "hr",
+      "action": "drop"
+    },
+    {
+      "t": 50,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 70,
+      "device": "trainer",
+      "action": "silence",
+      "seconds": 12
+    },
+    {
+      "t": 100,
+      "device": "trainer",
+      "action": "control_lost"
+    }
+  ],
+  "bench": {
+    "world": "village",
+    "duration_s": 130,
+    "every_s": 10
+  }
+}
