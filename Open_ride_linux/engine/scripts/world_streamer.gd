@@ -283,6 +283,8 @@ func _build_job(job: Dictionary) -> void:
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
 			if heights.is_empty():
 				return
+			if spec["kind"] == "far":
+				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r)
 			var edges := TerrainTiles.load_neighbour_edges(job["world_dir"], spec["kind"], t.x, t.y)
 			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
