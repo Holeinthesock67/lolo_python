@@ -20,7 +20,7 @@ from pathlib import Path
 from typing import Any
 
 from .errors import CompileError
-from .theme import DEFAULT_THEME_DIR, Issue, check_theme
+from .theme import DEFAULT_THEME_DIR, check_theme
 
 MAX_THEME_UNCOMPRESSED_BYTES = 500 * 1024 * 1024  # 500 Mo
 DEFAULT_THEMES_DIR = Path.home() / "OpenRide" / "Themes"
@@ -44,8 +44,8 @@ def _read_current_config_theme(config_path: Path | None = None) -> str:
         render = data.get("render", {})
         if isinstance(render, dict) and "theme" in render:
             return str(render["theme"])
-    except Exception:
-        pass
+    except (OSError, ValueError):   # config illisible ou TOML invalide : thème intégré
+        return "default"
     return "default"
 
 
@@ -167,7 +167,7 @@ def _extract_zip_securely(zip_path: Path, target_dir: Path) -> Path:
 
             # Refus des chemins absolus ou contenant ..
             filename = info.filename
-            if filename.startswith("/") or filename.startswith("\\") or ".." in filename.replace("\\", "/").split("/"):
+            if filename.startswith(("/", "\\")) or ".." in filename.replace("\\", "/").split("/"):
                 raise CompileError(f"Chemin interdit dans l'archive zip : {filename!r}")
 
             # Refus des liens symboliques (attribut UNIX S_IFLNK)
@@ -200,7 +200,6 @@ def install_theme(
         raise CompileError(f"Source introuvable : {source}")
 
     t_dir = Path(themes_dir) if themes_dir is not None else DEFAULT_THEMES_DIR
-    t_dir.mkdir(parents=True, exist_ok=True)
 
     with tempfile.TemporaryDirectory() as tmp_str:
         tmp_path = Path(tmp_str)
@@ -250,8 +249,8 @@ def install_theme(
                 theme_data = json.loads(theme_json_path.read_text(encoding="utf-8"))
                 if isinstance(theme_data, dict) and "name" in theme_data:
                     theme_name = normalize_theme_name(str(theme_data["name"]))
-            except Exception:
-                pass
+            except (OSError, ValueError):   # theme.json déjà validé par check_theme ; repli sur le dossier
+                theme_name = ""
             if not theme_name:
                 theme_name = normalize_theme_name(source.stem)
 
@@ -262,25 +261,22 @@ def install_theme(
         if target_path.exists() and not force:
             raise CompileError(f"Le thème '{theme_name}' existe déjà dans {t_dir} (utiliser --force)")
 
-        # Installation atomique
+        # Installation atomique : copie dans un dossier temporaire du dossier des thèmes, puis renommage.
+        # En cas d'échec, l'ancien thème est remis en place et le dossier temporaire supprimé.
+        t_dir.mkdir(parents=True, exist_ok=True)
         staging_dir = t_dir / f".staging_{theme_name}_{uuid.uuid4().hex}"
         backup_dir = t_dir / f".backup_{theme_name}_{uuid.uuid4().hex}"
 
         try:
             shutil.copytree(extracted_theme_dir, staging_dir, symlinks=False)
             if target_path.exists():
-                staging_dir.rename(backup_dir)  # vérifie le renommage atomique
-                backup_dir.rename(staging_dir)
                 target_path.rename(backup_dir)
                 try:
                     staging_dir.rename(target_path)
-                except Exception:
-                    if backup_dir.exists():
-                        backup_dir.rename(target_path)
+                except BaseException:
+                    backup_dir.rename(target_path)
                     raise
-                finally:
-                    if backup_dir.exists():
-                        shutil.rmtree(backup_dir, ignore_errors=True)
+                shutil.rmtree(backup_dir, ignore_errors=True)
             else:
                 staging_dir.rename(target_path)
         finally:

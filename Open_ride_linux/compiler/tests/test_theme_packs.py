@@ -2,20 +2,16 @@
 
 from __future__ import annotations
 
-import io
 import json
 import os
 import shutil
 import stat
 import sys
-import tempfile
 import zipfile
 from pathlib import Path
-from unittest.mock import patch
 
 import jsonschema
 import pytest
-
 from openride_compiler.cli import main
 from openride_compiler.errors import CompileError
 from openride_compiler.theme import DEFAULT_THEME_PATH
@@ -88,7 +84,7 @@ def test_install_valid_dir_and_list(tmp_path: Path) -> None:
     _create_minimal_valid_theme(source_dir, name="Mon Theme Test")
 
     # Installation depuis dossier
-    name, warnings = install_theme(source_dir, themes_dir=themes_dir)
+    name, _warnings = install_theme(source_dir, themes_dir=themes_dir)
     assert name == "mon-theme-test"
     assert (themes_dir / "mon-theme-test" / "theme.json").is_file()
 
@@ -129,7 +125,7 @@ def test_install_zipped_make_texture_theme(tmp_path: Path) -> None:
                 zf.write(full_p, arcname=str(rel_p))
 
     themes_dir = tmp_path / "Themes"
-    name, warnings = install_theme(zip_path, themes_dir=themes_dir)
+    name, _warnings = install_theme(zip_path, themes_dir=themes_dir)
     assert name == "essai-textures-64"
     assert (themes_dir / "essai-textures-64" / "theme.json").is_file()
     assert (themes_dir / "essai-textures-64" / "textures" / "grass.png").is_file()
@@ -218,6 +214,61 @@ def test_force_and_atomic_rollback(tmp_path: Path) -> None:
     # Réinstallation avec force -> remplacé
     install_theme(pack_v2, themes_dir=themes_dir, force=True)
     assert (themes_dir / "mytheme" / "tag.txt").read_text() == "version 2"
+
+
+def test_interrupted_install_keeps_old_theme(tmp_path: Path, monkeypatch) -> None:
+    """Installation interrompue (exception simulée) : ni dossier partiel ni ancien thème cassé."""
+    import openride_compiler.theme_packs as tp
+
+    themes_dir = tmp_path / "Themes"
+    pack_v1 = tmp_path / "v1"
+    _create_minimal_valid_theme(pack_v1, name="MyTheme")
+    (pack_v1 / "tag.txt").write_text("version 1")
+    install_theme(pack_v1, themes_dir=themes_dir)
+
+    pack_v2 = tmp_path / "v2"
+    _create_minimal_valid_theme(pack_v2, name="MyTheme")
+    (pack_v2 / "tag.txt").write_text("version 2")
+
+    real_copytree = shutil.copytree
+
+    def copy_then_fail(src, dst, *args, **kwargs):
+        real_copytree(src, dst, *args, **kwargs)
+        if Path(dst).parent == themes_dir:
+            raise OSError("disque plein (simulé)")
+        return dst
+
+    monkeypatch.setattr(tp.shutil, "copytree", copy_then_fail)
+    with pytest.raises(OSError, match="simulé"):
+        install_theme(pack_v2, themes_dir=themes_dir, force=True)
+    assert (themes_dir / "mytheme" / "tag.txt").read_text() == "version 1"
+    assert sorted(p.name for p in themes_dir.iterdir()) == ["mytheme"]
+
+    # Échec du renommage final : l'ancien thème est remis en place.
+    monkeypatch.setattr(tp.shutil, "copytree", real_copytree)
+    real_rename = Path.rename
+
+    def rename_fails_on_target(self, target):
+        if Path(target) == themes_dir / "mytheme" and self.name.startswith(".staging_"):
+            raise OSError("renommage interrompu (simulé)")
+        return real_rename(self, target)
+
+    monkeypatch.setattr(Path, "rename", rename_fails_on_target)
+    with pytest.raises(OSError, match="simulé"):
+        install_theme(pack_v2, themes_dir=themes_dir, force=True)
+    monkeypatch.setattr(Path, "rename", real_rename)
+    assert (themes_dir / "mytheme" / "tag.txt").read_text() == "version 1"
+    assert sorted(p.name for p in themes_dir.iterdir()) == ["mytheme"]
+
+
+def test_refused_install_writes_nothing(tmp_path: Path) -> None:
+    themes_dir = tmp_path / "Themes"
+    zip_path = tmp_path / "evil.zip"
+    with zipfile.ZipFile(zip_path, "w") as zf:
+        zf.writestr("../evil.txt", "x")
+    with pytest.raises(CompileError):
+        install_theme(zip_path, themes_dir=themes_dir)
+    assert not themes_dir.exists()
 
 
 def test_cli_theme_list_and_install(tmp_path: Path, monkeypatch, capsys) -> None:
