@@ -90,6 +90,16 @@ func _init() -> void:
 	_check(st_no_click["ok"] == true, "ready_to_ride : Click absent accepté")
 	_check("clavier seul" in st_no_click["reason"], "ready_to_ride : raison mentionne 'clavier seul'")
 
+	# Champs à null permis par le contrat v1.1 (nom et adresse du trainer, objets absents)
+	var st_nulls := {"trainer_status": "CONNECTED", "input_status": "KEYBOARD", "devices": {
+		"trainer": {"status": "CONNECTED", "name": null, "address": null},
+		"click": [], "hr": {"status": "NONE", "source": null, "battery_pct": null}}}
+	var null_rows: Array = vm.rows(st_nulls)
+	_check(null_rows[0]["label"] == "Trainer", "nom du trainer à null : libellé « Trainer » sans « <null> »")
+	var st_dev_null := {"trainer_status": "CONNECTED", "input_status": "KEYBOARD", "devices": null}
+	_check(vm.rows(st_dev_null).size() == 2, "devices à null : repli v1 sur 2 lignes")
+	_check(vm.alerts(st_dev_null, st_nulls).is_empty(), "devices à null puis présent : aucune alerte, aucune erreur")
+
 	# 6. Performance : aucun nœud créé
 	var nodes_after := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	_check(nodes_after == nodes_before, "aucun nœud créé (Performance.OBJECT_NODE_COUNT constant)")
