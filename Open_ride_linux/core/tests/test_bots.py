@@ -29,7 +29,6 @@ from openride_core.session import CoreSession
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 IPC_DIR = REPO_ROOT / "docs" / "contracts" / "ipc"
-SPIKE_DIR = Path(__file__).resolve().parents[1] / "spike_reports"
 
 
 def state_schema() -> dict:
@@ -89,17 +88,26 @@ def test_climb_8_percent_speed_ratio():
     assert abs(actual_ratio - expected_ratio) / expected_ratio < 0.02
 
 
-def test_ghost_bot_fit_and_jsonl_parity():
-    """Critère 4 : Fantôme FIT à t=600s égal à la distance du FIT (à 5 m près), et parité FIT / JSONL."""
-    fit_path = SPIKE_DIR / "fit_demo_1792609599.fit"
-    jsonl_path = SPIKE_DIR / "fit_demo_1792609599.jsonl"
-    if not fit_path.is_file() or not jsonl_path.is_file():
-        pytest.skip("Fichiers de spike fit_demo absents")
+@pytest.fixture(scope="module")
+def demo_session(tmp_path_factory) -> tuple[Path, Path]:
+    """Séance factice de 12 min avec une pause de 30 s au milieu (outil fit_demo)."""
+    from openride_core.tools import fit_demo
+
+    out = tmp_path_factory.mktemp("ghost")
+    fit_path = fit_demo.run(12.0, out)
+    return fit_path, fit_path.with_suffix(".jsonl")
+
+
+def test_ghost_bot_fit_and_jsonl_parity(demo_session):
+    """Critère 4 : fantôme d'un FIT à t = 600 s égal à la distance du FIT (à 5 m près), parité FIT / JSONL."""
+    fit_path, jsonl_path = demo_session
+    rows = [json.loads(line) for line in jsonl_path.read_text(encoding="utf-8").splitlines()]
+    expected = next(r["distance"] for r in rows if r.get("t") is not None and r["t"] >= 600.0)
 
     ghost_fit = GhostBot(fit_path)
     ghost_jsonl = GhostBot(jsonl_path)
 
-    assert "Fantôme" in ghost_fit.name
+    assert ghost_fit.name.startswith("Fantôme du ")
     assert ghost_fit.kind == "ghost"
     assert ghost_jsonl.kind == "ghost"
 
@@ -108,19 +116,14 @@ def test_ghost_bot_fit_and_jsonl_parity():
         ghost_fit.step(dt)
         ghost_jsonl.step(dt)
 
-    # À t = 600 s, la distance doit être égale à celle du FIT (1663.81 m)
-    assert abs(ghost_fit.s - 1663.81) <= 5.0
-    # Et parité quasi-exacte entre le rejeu du .fit et du .jsonl
+    # Le temps chronométré exclut la pause de 30 s : sinon l'écart dépasserait 100 m.
+    assert abs(ghost_fit.s - expected) <= 5.0
     assert abs(ghost_fit.s - ghost_jsonl.s) <= 1.0
 
 
-def test_ghost_bot_stops_at_session_end():
-    """Fantôme arrêté (v=0) en bout de séance enregistrée."""
-    fit_path = SPIKE_DIR / "fit_demo_1792609599.fit"
-    if not fit_path.is_file():
-        pytest.skip("Fichier fit_demo absent")
-    ghost = GhostBot(fit_path)
-    # Avance au-delà de la fin (600s)
+def test_ghost_bot_stops_at_session_end(demo_session):
+    """Fantôme arrêté (v = 0) en bout de séance enregistrée."""
+    ghost = GhostBot(demo_session[0])
     ghost.step(1000.0)
     assert ghost.s == ghost.distances[-1]
     assert ghost.v == 0.0
@@ -215,17 +218,11 @@ def test_four_bots_performance_under_0_2_ms():
         ConstantPowerBot(300.0, bot_id="b4"),
     ]
 
-    class MockRoute:
-        is_loop = True
-        length_m = 10000.0
+    # Vrai parcours (30 km de montée factice) : le coût mesuré inclut route.sample().
+    from openride_core.route import Route
+    from openride_core.demo_world import build_route
 
-        def sample(self, s: float):
-            class Sample:
-                grade_pct = 2.0
-                alt_m = 120.0
-            return Sample()
-
-    route = MockRoute()
+    route = Route(build_route(30_000.0))
     dt = 0.02
 
     # Warmup
@@ -266,7 +263,7 @@ def test_cli_bot_and_ghost_parsing(tmp_path: Path):
     parser = build_parser()
 
     # Parsage valide avec 4 bots et un ghost
-    fit_path = SPIKE_DIR / "fit_demo_1792609599.fit"
+    fit_path = tmp_path / "seance.fit"
     args = parser.parse_args(["run", "--bot", "150", "--bot", "200", "--ghost", str(fit_path)])
     assert args.bot == [150.0, 200.0]
     assert args.ghost == fit_path
