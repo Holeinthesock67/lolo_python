@@ -90,7 +90,7 @@
 | [O13](LOT_O13_modele_courbes.md) | Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle sans affichage | GDScript | K1 (livré) ; N3 utile | Petite | Oui |
 | [O14](LOT_O14_affichage_courbes.md) | Courbes de la séance à l'écran | GDScript | O13, N7 | Moyenne | Non : interne (contrôle visuel) |
 | [O15](LOT_O15_bibliotheque_parcours.md) | Bibliothèque de parcours : fiches (dénivelé, montée, difficulté), tri, filtres, packs de parcours | Python | O5 | Moyenne | Oui, après O5 |
-| [O16](LOT_O16_pack_cols_celebres.md) | Pack de départ : cols célèbres (Alpe d'Huez, Teide, Ventoux…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | Oui, après O15 |
+| [O16](LOT_O16_pack_cols_celebres.md) | Pack de départ : cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | Oui, après O15 |
 | [P1](LOT_P1_contrat_vent_decor.md) | Contrat : vent et aspiration dans `state` (IPC v1.2), configuration `[wind]`, thème 1.2 (nuages, météo, ambiance, faune, saison, heure), points d'intérêt `wind_turbine` et `flag` | Markdown + JSON | O8 | Petite | Non : interne (décision du propriétaire) (issue #125) |
 | [P2](LOT_P2_vent_physique_core.md) | Vent physique côté core : rafales, composante de face, vitesse virtuelle et résistance ressentie en SIM | Python | P1 | Moyenne | Oui, après P1 (issue #126) |
 | [P3](LOT_P3_aspiration_bots.md) | Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | Oui, après P2 et N9 (issue #127) |
