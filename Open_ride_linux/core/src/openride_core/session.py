@@ -300,14 +300,9 @@ class CoreSession:
 
     async def _scan_devices(self, cmd_id: int, timeout: float) -> None:
         from . import pairing
-        from .tools import devices as devices_tool
 
         try:
-            if self.sim is not None:
-                scanner, connected = devices_tool.sim_sources(self.sim)
-            else:
-                scanner, connected = devices_tool.ble_scan, devices_tool.bluez_connected
-            inv = await devices_tool.inventory(scanner, connected, timeout, {})
+            inv = await pairing.scan_inventory(self.sim, timeout)
             self._scan_items = pairing.scan_items(inv, pairing.configured_addresses(self.cfg))
             log.info("Appairage : %d appareil(s) trouvé(s).", len(self._scan_items))
         except Exception as exc:   # Bluetooth éteint, BlueZ absent
