@@ -15,6 +15,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
+const ErgView := preload("res://scripts/erg_view.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -41,6 +42,8 @@ var _test_cam_last_us := 0
 var _test_cam_last_s := NAN
 
 var erg_view = ErgViewModel.new()
+## Bandeau et histogramme ERG (lot N7), dans le HUD.
+var erg_panel = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
@@ -53,6 +56,11 @@ const BEEPS := {
 	"PLUS_LONG": [[660.0, 0.10], [990.0, 0.14]],
 	"MINUS_LONG": [[550.0, 0.10], [330.0, 0.14]],
 }
+const BEEP_LEVEL := 0.3
+## Bip de changement de bloc ERG à T − 3 s (lot N7) : une seule note, plus aiguë, plus longue et plus
+## forte que les bips d'appui, pour passer au-dessus du vent et de la roue libre (SoundPlayer).
+const ERG_BEEP := [[1320.0, 0.30]]
+const ERG_BEEP_LEVEL := 0.6
 
 
 func _ready() -> void:
@@ -117,6 +125,9 @@ func _ready() -> void:
 	center.resized.connect(place_banner)
 	get_viewport().size_changed.connect(place_banner)
 	place_banner.call()
+	erg_panel = ErgView.new()
+	hud.add_child(erg_panel)
+	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
 
 
 func _apply_sky_params(theme_dict: Dictionary) -> void:
@@ -134,15 +145,19 @@ func _on_input_event(event_name: String) -> void:
 	if not BEEPS.has(event_name):
 		return
 	print("Bip : ", event_name)
+	_play_tones(BEEPS[event_name], BEEP_LEVEL)
+
+
+func _play_tones(notes: Array, level: float) -> void:
 	var pb := _beep_player.get_stream_playback() as AudioStreamGeneratorPlayback
 	if pb == null:
 		return
 	var rate := 44100.0
-	for note in BEEPS[event_name]:
+	for note in notes:
 		var n := int(rate * float(note[1]))
 		for i in range(n):
 			var env := minf(1.0, minf(float(i), float(n - i)) / 200.0)  # évite les claquements
-			var v := sin(TAU * float(note[0]) * float(i) / rate) * 0.3 * env
+			var v := sin(TAU * float(note[0]) * float(i) / rate) * level * env
 			pb.push_frame(Vector2(v, v))
 
 
@@ -301,6 +316,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner,
+		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
+		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -376,6 +393,13 @@ func _on_state_received(state: Dictionary) -> void:
 	if not state.has("gears_total"):
 		state["gears_total"] = ipc.core_config.get("gears_total", 24)
 	var erg_eval: Dictionary = erg_view.update(state.get("erg", null), Time.get_ticks_usec() / 1e6)
+	if erg_eval.get("beep", false):
+		_play_tones(ERG_BEEP, ERG_BEEP_LEVEL)
+		print("Bip ERG : bloc ", int(state["erg"].get("block_index", 0)))
+		ipc.test_log("erg_beep block=%d" % int(state["erg"].get("block_index", 0)))
+	if erg_panel != null:
+		erg_panel.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
+		erg_panel.update_display(state.get("erg", null), erg_eval)
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))

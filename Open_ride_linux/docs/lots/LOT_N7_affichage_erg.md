@@ -40,3 +40,10 @@ Aucune : l'objet `erg` du contrat v1 suffit.
 ## 8. Hors périmètre
 
 - Choix de l'entraînement dans le menu (N3, N6).
+
+## 9. Livraison (25 octobre 2026, code et tests ; essai sur le HomeTrainer à faire)
+
+- Nouveau `engine/scripts/erg_view.gd` : bandeau en bas de l'écran, au-dessus du profil d'altitude (nom, bloc `i/n`, type en français, cible biais compris, temps restant, cible suivante, « (pause) »), et histogramme des blocs sur toute la largeur : bloc en cours entouré, blocs faits assombris, curseur au temps écoulé, couleurs des zones de Coggan aux seuils de `session_summary.ZONES`. Caché en SIM.
+- `main.gd` : bandeau ajouté au HUD ; bip unique à T − 3 s (1 320 Hz, 0,3 s, niveau 0,6 contre 0,3 pour les bips d'appui) déclenché par `erg_view_model.gd`, journalisé (`erg_beep block=N` en mode test). La ligne ERG du panneau central est cachée (`hud_view.gd`, `show_erg_line`), le bandeau la remplace.
+- Tests : `engine/tests/unit/test_erg_view.gd` (38 vérifications) ; scène `erg` de `visual_check.py` complétée (textes du bandeau, ligne centrale cachée, histogramme sur toute la largeur au-dessus du profil, bloc en cours en couleur de zone). La scène ERG reste hors des images de référence (la caméra roule et le temps restant défile).
+- **Écart au cahier :** l'objet `erg` du contrat v1 ne donne pas la durée des autres blocs. Les vraies largeurs viennent du `profile` des éléments `workouts` (contrat v1.1), donné par `set_profiles(items)` ; tant que la liste n'est pas reçue (core v1, ou N2/N3/N6 pas encore fusionnés), l'histogramme se replie sur `block_count` cases égales, bloc en cours coloré par sa cible. Le branchement de `set_profiles` se fait dans N6, avec le client des listes de N3.

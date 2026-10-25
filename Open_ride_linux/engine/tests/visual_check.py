@@ -57,7 +57,8 @@ DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 GODOT_TOLERATED = re.compile(
     r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
-HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status")
+HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
+              "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist")
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -584,6 +585,7 @@ def _scenes(s: Session) -> None:
             "status": "ÉTAT: RUNNING | TRAINER: CONNECTED | ENTRÉE: CONNECTED"})
         s.check("vue_fixe", "ligne ERG cachée en SIM", not info["widgets"]["erg"]["visible"])
         s.check("vue_fixe", "cible ERG cachée en SIM", not info["widgets"]["target"]["visible"])
+        s.check("vue_fixe", "bandeau ERG caché en SIM", not info["widgets"]["erg_hist"]["visible"])
         s.check_banner("vue_fixe", img, info, None)
         s.check_layout("vue_fixe", info)
         s.check_hud_pixels("vue_fixe", img, info)
@@ -610,7 +612,7 @@ def _scenes(s: Session) -> None:
         s.check("mouvement_2", "le sol défile à l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
         s.check_world("mouvement_2", img_b, info_b)
 
-    # 4. ERG : ligne de l'entraînement et cible dans la ligne de puissance.
+    # 4. ERG : cible dans la ligne de puissance, bandeau et histogramme des blocs (lot N7).
     core.set_scene(speed=7.0, mode="ERG", erg={
         "workout_name": "Sweet spot 3x10", "block_index": 2, "block_count": 7, "block_type": "interval_on",
         "block_remaining_s": 95.0, "block_total_s": 600.0, "target_w": 230.0, "next_target_w": 150.0,
@@ -619,10 +621,23 @@ def _scenes(s: Session) -> None:
     shot = s.capture("erg")
     if shot:
         img, info = shot
-        s.check_texts("erg", info, {"erg": "ERG:", "target": "230 W"},
-                      contains=True)
+        s.check_texts("erg", info, {"target": "230 W", "erg_title": "Sweet spot 3x10 — Bloc 2 / 7 · Effort",
+                                    "erg_target": "230 W", "erg_next": "Ensuite : 150 W"}, contains=True)
+        narrow = [k for k in ("erg_title", "erg_target", "erg_remaining", "erg_next") if info["widgets"][k]["rect"][2] < 20]
+        s.check("erg", "textes du bandeau ERG de largeur lisible", not narrow, "trop étroits : " + ", ".join(narrow))
+        s.check("erg", "ligne ERG du panneau central laissée au bandeau", not info["widgets"]["erg"]["visible"])
         s.check_layout("erg", info)
         s.check_hud_pixels("erg", img, info)
+        hist = info["widgets"]["erg_hist"]
+        s.check("erg", "histogramme des blocs affiché", hist["visible"] and hist["rect"][2] >= 0.8 * s.width
+                and hist["rect"][3] >= 40 * info["ui_scale"] and hist["rect"][1] + hist["rect"][3] <= s.height - 120 * info["ui_scale"],
+                f"rectangle {hist['rect']}")
+        if hist["visible"]:
+            # Case du bloc en cours (2 sur 7) colorée en zone 4 (230 W pour une FTP de 250 W) : jaune.
+            def yellow(p):
+                return p[0] > 150 and p[1] > 120 and p[2] < 110
+            frac = fraction(img, rect_box(hist["rect"]), yellow, step=2)
+            s.check("erg", "bloc en cours dessiné en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
 
     # 5. Pause : trainer perdu, raison visible dans la ligne d'état.
     core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",
