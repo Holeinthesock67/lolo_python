@@ -20,6 +20,8 @@ def mark(name):
     with (marks / name).open("a") as fh:
         fh.write(f"{os.getpid()}\n")
 mark(f"{role}_start")
+with (marks / f"{role}_argv").open("a") as fh:   # options ajoutées par le lanceur (--resume, journal)
+    fh.write(" ".join(sys.argv[4:]) + "\n")
 if mode.startswith("say:"):               # say:N:MODE : écrit N lignes d'un coup, puis MODE
     _, n, mode = mode.split(":", 2)
     sys.stdout.write("".join(f"{role} ligne {k}\n" for k in range(int(n))))
@@ -38,6 +40,15 @@ if mode.startswith("crash"):              # crash:N:T : plante N fois (après T 
     if n <= limit:
         time.sleep(delay)
         sys.exit(3)
+if mode.startswith("jcrash"):             # jcrash:N:DOSSIER : séance en cours au journal, tué N fois (SIGKILL)
+    _, limit, jdir = mode.split(":", 2)
+    journal = Path(jdir) / "seance.jsonl"
+    if not journal.exists():
+        journal.write_text('{"kind":"header","version":1,"route_id":"demo"}\n'
+                           '{"kind":"event","event":"start","ts":1}\n')
+    if len((marks / f"{role}_start").read_text().split()) <= int(limit):
+        time.sleep(0.5)                   # après le délai de démarrage (0,3 s dans ces tests)
+        os.kill(os.getpid(), signal.SIGKILL)
 if mode.startswith("exit0"):              # exit0:T : se ferme normalement au bout de T s
     time.sleep(float(mode.split(":")[1]))
     sys.exit(0)
@@ -66,6 +77,7 @@ def fake(tmp_path: Path):
             core_cmd=[sys.executable, str(script), "core", core, str(marks)],
             engine_cmd=[sys.executable, str(script), "engine", engine, str(marks)],
             release_cmd=[sys.executable, str(script), "release", "release", str(marks)],
+            recover_cmd=[sys.executable, str(script), "recover", "release", str(marks)],
             log_path=tmp_path / "run.log",
             stop_timeout_s=kw.pop("stop_timeout_s", 2.0), engine_stop_timeout_s=1.0,
             restart_delay_s=0.0, startup_grace_s=kw.pop("startup_grace_s", 0.3), poll_s=0.02, say=said.append, **kw)
@@ -150,8 +162,66 @@ def test_old_engine_crashes_leave_the_window(fake):
 def test_core_crash_stops_engine_and_mentions_recover(fake):
     sup, said = fake(core="crash:99:0.6")
     assert sup.run() == 1
+    assert count(fake.marks, "core_start") == 4   # trois relances (lot N8), puis abandon
     assert count(fake.marks, "engine_SIGTERM") == 1
     assert any("openride-core recover" in m for m in said)
+    assert_no_orphans(sup)
+
+
+def lines(marks: Path, name: str) -> list[str]:
+    f = marks / name
+    return f.read_text().splitlines() if f.exists() else []
+
+
+def test_core_crash_during_session_is_relaunched_with_resume(fake, tmp_path: Path):
+    """Lot N8 : relance avec --resume, trainer relâché, engine laissé ouvert."""
+    jdir = tmp_path / "journal"
+    jdir.mkdir()
+    sup, said = fake(core=f"jcrash:2:{jdir}", journal_dir=jdir)
+    timer = threading.Timer(3.0, lambda: os.kill(os.getpid(), signal.SIGTERM))
+    timer.start()
+    try:
+        assert sup.run() == 0
+    finally:
+        timer.cancel()
+    journal = jdir / "seance.jsonl"
+    assert lines(fake.marks, "core_argv") == ["", f"--resume {journal}", f"--resume {journal}"]
+    assert sup.core_restarts == 2 and count(fake.marks, "release_start") == 2
+    assert count(fake.marks, "engine_start") == 1 and count(fake.marks, "engine_SIGTERM") == 1
+    assert sum("reprise de la séance en pause" in m for m in said) == 2
+    assert count(fake.marks, "recover_start") == 0
+    assert_no_orphans(sup)
+
+
+def test_four_core_crashes_in_ten_minutes_call_recover(fake, tmp_path: Path):
+    """Critère 4 : pas de quatrième relance, `recover` sur le journal, message clair."""
+    jdir = tmp_path / "journal"
+    jdir.mkdir()
+    sup, said = fake(core=f"jcrash:99:{jdir}", journal_dir=jdir)
+    assert sup.run() == 1
+    assert count(fake.marks, "core_start") == 4 and sup.core_restarts == 3
+    assert lines(fake.marks, "recover_argv") == [str(jdir / "seance.jsonl")]
+    assert count(fake.marks, "engine_SIGTERM") == 1
+    assert any("abandon" in m and "recover" in m for m in said)
+    assert_no_orphans(sup)
+
+
+def test_core_crash_outside_a_session_is_relaunched_without_resume(fake, tmp_path: Path):
+    """Critère 6 : plantage hors séance (aucun journal non terminé de ce lancement)."""
+    jdir = tmp_path / "journal"
+    jdir.mkdir()
+    old = jdir / "ancienne.jsonl"   # séance plantée d'un lancement précédent : pas reprise
+    old.write_text('{"kind":"header","version":1}\n{"kind":"event","event":"start","ts":1}\n')
+    os.utime(old, (time.time() - 3600, time.time() - 3600))
+    sup, said = fake(core="crash:1:0.4", journal_dir=jdir)
+    timer = threading.Timer(1.5, lambda: os.kill(os.getpid(), signal.SIGTERM))
+    timer.start()
+    try:
+        assert sup.run() == 0
+    finally:
+        timer.cancel()
+    assert lines(fake.marks, "core_argv") == ["", ""]
+    assert any("hors séance" in m for m in said)
     assert_no_orphans(sup)
 
 

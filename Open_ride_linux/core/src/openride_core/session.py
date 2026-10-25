@@ -28,6 +28,7 @@ from .journal import JOURNAL_DIR, Record
 from .mock_driver import MockDriver
 from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
+from .resume import ResumeError, ResumeState, load_resume_state
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from .workout import BIAS_DEFAULT_PCT, ErgController, Workout, WorkoutError, load_workout, workout_path
@@ -191,6 +192,7 @@ class CoreSession:
         self._autoresume = False
         self._shift_pending = False
         self._workout: Workout | None = None     # entraînement choisi (select_workout)
+        self._workout_id: str | None = None
         self.erg: ErgController | None = None   # entraînement en cours pendant la séance
 
     # --- machine à états ---------------------------------------------------------------
@@ -274,6 +276,7 @@ class CoreSession:
 
     def _select_workout(self, workout_id: Any) -> None:
         """Choisit l'entraînement du prochain `start` ; null revient au SIM (contrat §4)."""
+        self._workout_id = None
         if workout_id is None or str(workout_id) == "":
             self._workout = None
             log.info("Aucun entraînement : mode SIM.")
@@ -285,6 +288,7 @@ class CoreSession:
             log.error("Entraînement « %s » refusé : %s", workout_id, exc)
             self.server.send_error("workout_invalid", f"Entraînement « {workout_id} » invalide : {exc}")
             return
+        self._workout_id = str(workout_id)
         w = self._workout
         log.info("Entraînement « %s » choisi : %d blocs, %.0f s.", w.name, len(w.blocks), w.duration_s)
 
@@ -313,7 +317,8 @@ class CoreSession:
 
     def _open_journal(self) -> None:
         self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
-                                    on_failure=self._on_recording_failure)
+                                    on_failure=self._on_recording_failure,
+                                    workout_id=self._workout_id)
         self._rec.event("start", time.time())
         self._device_up = self._device_states()   # état de départ : seuls les changements s'écrivent
         self._next_record = 0.0
@@ -450,7 +455,8 @@ class CoreSession:
         if self._autoresume and self.state.session_state == "PAUSED":
             reason = self.state.pause_reason
             if (reason == "trainer_lost" and m.connected) or \
-                    (reason == "engine_lost" and self.server.engine_connected):
+                    (reason == "engine_lost" and self.server.engine_connected) or \
+                    (reason == "core_restarted" and m.connected and self.server.engine_connected):
                 self._on_command("resume", {}, 0)   # essais sans menu : reprise automatique
         if self.state.session_state != "RUNNING":
             return
@@ -527,6 +533,53 @@ class CoreSession:
 
     # --- boucle principale ---------------------------------------------------------------
 
+    def resume_session(self, path: Path) -> ResumeState:
+        """Reprend une séance après un plantage du core (lot N8), en `PAUSED` / `core_restarted`.
+
+        Recharge le parcours et l'entraînement du journal, restaure temps, distance, braquet,
+        bloc ERG et biais, puis continue le même journal (événement `resume_after_crash`).
+        Lève `ResumeError` si le journal ne peut pas être repris.
+        """
+        rs = load_resume_state(path)
+        route_id = rs.route_id or "demo"
+        self._select_route(route_id, previous="IDLE")
+        if self.state.session_state != "READY":
+            raise ResumeError(f"parcours « {route_id} » du journal introuvable")
+        if rs.workout_id:
+            self._select_workout(rs.workout_id)
+            if self._workout is None:
+                raise ResumeError(f"entraînement « {rs.workout_id} » du journal introuvable")
+
+        self._t_session = rs.t
+        self.physics.s, self.physics.v = rs.s, 0.0
+        if rs.gear is not None and 1 <= int(rs.gear) <= self.gearing.n_gears:
+            self.gearing.k = int(rs.gear)
+        self.state.gear = self.gearing.k
+        if self._workout and rs.block is not None:
+            erg = ErgController(self._workout, self.cfg.rider.ftp_w)
+            erg.index = min(max(int(rs.block) - 1, 0), len(self._workout.blocks) - 1)
+            erg.t_block = min(rs.t_block, erg.block.duration_s)
+            if rs.erg_bias_pct is not None:
+                erg.bias_pct = BIAS_DEFAULT_PCT + rs.erg_bias_pct
+            self.erg = erg
+        self._sync_erg_state()
+        st = self.state
+        st.t, st.s, st.v = rs.t, rs.s, 0.0
+
+        self._rec = SessionRecorder(self.journal_dir, route_id, on_failure=self._on_recording_failure,
+                                    workout_id=rs.workout_id, resume_path=path, lines=rs.lines)
+        if rs.running:
+            # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
+            self._rec.event("pause", rs.last_ts)
+        self._rec.event("resume_after_crash", time.time())
+        self._device_up = self._device_states()
+        self._next_record = float(int(rs.t)) + 1.0
+        self.state.session_state = "PAUSED"   # la pause est déjà au journal
+        self._set_state("PAUSED", "core_restarted")
+        log.info("Séance reprise après un plantage du core : %s (t %.0f s, %.0f m%s).", path, rs.t, rs.s,
+                 f", bloc {rs.block}" if rs.block else "")
+        return rs
+
     def check_autostart(self, route_id: str, workout_id: str | None) -> None:
         """Vérifie parcours et entraînement d'un `--autostart` avant d'ouvrir les ports (lot J1).
 
@@ -548,13 +601,15 @@ class CoreSession:
                 raise AutostartError(f"entraînement « {workout_id} » refusé : {exc}") from exc
 
     async def run(self, autostart: bool = False, route_id: str = "demo",
-                  workout_id: str | None = None) -> None:
+                  workout_id: str | None = None, resume: Path | None = None) -> None:
         """Boucle de séance. Avec `autostart` : select_route, select_workout éventuel, puis start.
 
         Lève `AutostartError` avant d'ouvrir les ports IPC si le parcours ou l'entraînement
-        demandé est refusé.
+        demandé est refusé. Avec `resume` (lot N8) : reprise du journal donné à la place du
+        lancement ; `autostart` garde la reprise automatique dès que l'engine et le trainer
+        sont là (essais sans menu).
         """
-        if autostart:
+        if autostart and resume is None:
             self.check_autostart(route_id, workout_id)
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
@@ -567,7 +622,15 @@ class CoreSession:
                 loop.add_signal_handler(sig, self.stop_event.set)
             except NotImplementedError:
                 pass
-        if autostart:
+        if resume is not None:
+            self._autoresume = autostart
+            try:
+                self.resume_session(resume)
+            except ResumeError as exc:
+                log.error("Reprise impossible : %s ; le core démarre sans séance.", exc)
+                self._rec = None
+                self._set_state("IDLE")
+        elif autostart:
             self._autoresume = True
             self._on_command("select_route", {"route_id": route_id}, 0)
             if workout_id:

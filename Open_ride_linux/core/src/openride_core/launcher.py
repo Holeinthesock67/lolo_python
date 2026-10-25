@@ -27,8 +27,12 @@ Supervision :
   plus de 2 s (heartbeat perdu), le core met la séance en pause (`engine_lost`, contrat IPC §6) et
   la reprend au retour de l'engine ; une relance plus rapide passe sans pause ;
   au-delà, abandon : arrêt propre du core, code 1 ;
-- le core s'arrête ou plante → l'engine est arrêté ; en cas de plantage, rappel de
-  `openride-core recover` (le journal de la séance reste sur disque) ;
+- le core s'arrête normalement → l'engine est arrêté ;
+- le core plante (code ≠ 0, lot N8) → le trainer est relâché (`release-trainer`), puis le core est
+  relancé sans arrêter l'engine, au plus 3 fois en 10 minutes : avec `--resume JOURNAL` si une
+  séance était en cours (journal de ce lancement non terminé), elle reprend alors en pause
+  (`core_restarted`) au même endroit ; sinon relance simple. Au-delà, l'engine est arrêté et
+  `openride-core recover` fait le FIT de la séance ;
 - SIGINT, SIGTERM ou SIGHUP (terminal fermé) reçus par le lanceur → même arrêt propre des deux.
 
 Les commandes du core, de l'engine et de la libération du trainer sont des paramètres de
@@ -161,9 +165,15 @@ class Supervisor:
     routes_dir: Path | None = None
     gpx_dir: Path | None = None
     notify: Callable[[str], None] | None = None
+    journal_dir: Path | None = None    # journaux de séance (reprise après plantage, lot N8) ; None : pas de reprise
+    recover_cmd: list[str] | None = None   # `openride-core recover` ; le chemin du journal est ajouté
+    core_max_restarts: int = 3
+    core_restart_window_s: float = 600.0
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
+    core_restarts: int = field(default=0, init=False)
+    _launched_at: float = field(default=0.0, init=False)   # heure Unix du lancement (journaux de ce lancement)
     _stop_signal: int | None = field(default=None, init=False)
     _log: IO[bytes] | None = field(default=None, init=False)
     _log_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
@@ -224,10 +234,35 @@ class Supervisor:
         self.started_pids.append(p.pid)
         return p
 
-    def _start_core(self) -> subprocess.Popen:
+    def _start_core(self, extra: list[str] | None = None) -> subprocess.Popen:
         if self._log is None:
             self._open_log()
-        return self._spawn(self.core_cmd, stdin=subprocess.DEVNULL, stdout=self._log, stderr=subprocess.STDOUT)
+        return self._spawn([*self.core_cmd, *(extra or [])], stdin=subprocess.DEVNULL,
+                           stdout=self._log, stderr=subprocess.STDOUT)
+
+    def _unfinished_journal(self) -> Path | None:
+        """Journal d'une séance de ce lancement que le core n'a pas terminée (lot N8)."""
+        if self.journal_dir is None:
+            return None
+        from .resume import find_unfinished_journal
+
+        return find_unfinished_journal(self.journal_dir, since=self._launched_at - 1.0)
+
+    def _recover(self, journal: Path | None) -> None:
+        if journal is None or self.recover_cmd is None:
+            return
+        try:
+            p = self._spawn([*self.recover_cmd, str(journal)], stdin=subprocess.DEVNULL,
+                            stdout=self._log or subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            if not self._wait(p, 60.0):
+                p.kill()
+                p.wait()
+            if p.returncode == 0:
+                self._say(f"séance enregistrée en FIT depuis {journal}.")
+            else:
+                self._say(f"`openride-core recover` a échoué (code {p.returncode}) ; le journal reste : {journal}")
+        except OSError as exc:
+            self._say(f"`openride-core recover` impossible : {exc}")
 
     def _start_engine(self) -> subprocess.Popen:
         if self._log is None:
@@ -309,6 +344,7 @@ class Supervisor:
         previous = {s: signal.signal(s, self._on_signal) for s in STOP_SIGNALS}
         core: subprocess.Popen | None = None
         engine: subprocess.Popen | None = None
+        self._launched_at = time.time()
         try:
             if self.compile_enabled:
                 if self._log is None:
@@ -332,6 +368,7 @@ class Supervisor:
 
             engine = self._start_engine()
             crashes: list[float] = []
+            core_crashes: list[float] = []
             while True:
                 time.sleep(self.poll_s)
                 if self._stop_signal is not None:
@@ -340,13 +377,30 @@ class Supervisor:
 
                 if core.poll() is not None:
                     code = core.returncode
-                    self._stop_engine(engine)
-                    if code != 0:
-                        self._say(f"le core s'est arrêté brutalement (code {code}). La séance est dans le journal : "
-                                 "`openride-core recover` en fait un FIT.")
-                        self._release_trainer()
+                    if code == 0:
+                        self._stop_engine(engine)
+                        return self._finish(core, engine, 0)
+                    journal = self._unfinished_journal()
+                    now = self.clock()
+                    core_crashes = [t for t in core_crashes if now - t < self.core_restart_window_s] + [now]
+                    self._release_trainer()   # le core n'a pas pu rendre le trainer
+                    if len(core_crashes) > self.core_max_restarts:
+                        self._say(f"le core a planté {len(core_crashes)} fois en "
+                                  f"{self.core_restart_window_s / 60:.0f} min (code {code}) : abandon. "
+                                  "La séance est dans le journal : `openride-core recover` en fait un FIT.")
+                        self._stop_engine(engine)
+                        self._recover(journal)
                         return self._finish(core, engine, 1)
-                    return self._finish(core, engine, 0)
+                    n = len(core_crashes)
+                    if journal is not None:
+                        self._say(f"le core a planté (code {code}) : relance {n}/{self.core_max_restarts} "
+                                  f"avec reprise de la séance en pause ({journal.name}).")
+                        core = self._start_core(["--resume", str(journal)])
+                    else:
+                        self._say(f"le core a planté hors séance (code {code}) : relance {n}/{self.core_max_restarts}.")
+                        core = self._start_core()
+                    self.core_restarts += 1
+                    continue
 
                 if engine.poll() is not None:
                     code = engine.returncode
@@ -443,6 +497,7 @@ def _config_arg(args: list[str]) -> Path | None:
 def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) -> Supervisor:
     """Construit le superviseur réel ; lève `ConfigError` ou `FileNotFoundError` avec un message lisible."""
     from . import config as config_mod
+    from .journal import JOURNAL_DIR
 
     env = os.environ if env is None else env
     raw_args = list(core_args) if core_args else list(DEFAULT_CORE_ARGS)
@@ -474,6 +529,8 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--theme={cfg.render.theme}",
         ],
         release_cmd=[*core, "release-trainer", *config_args],
+        recover_cmd=[*core, "recover"],
+        journal_dir=JOURNAL_DIR,
         log_path=Path(env["OPENRIDE_LOG"]).expanduser() if env.get("OPENRIDE_LOG") else DEFAULT_LOG,
         rotation=None if env.get("OPENRIDE_LOG") else LogRotation(),
         compile_enabled=not no_compile,

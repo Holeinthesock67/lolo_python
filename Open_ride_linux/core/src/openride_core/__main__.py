@@ -4,11 +4,13 @@ Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
     openride-core run [--trainer mock|ftms|sim] [--input click|keyboard|none|sim]
                       [--hr none|ble|sim] [--sim-scenario NOM|FICHIER] [--gear N]
-                      [--autostart [--route ID] [--workout ID]]
+                      [--autostart [--route ID] [--workout ID]] [--resume JOURNAL]
                                       boucle de séance (BLE, physique, IPC, journal) ; avec
                                       --autostart, parcours <routes>/<ID>.world (défaut demo) et
                                       entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM) ;
-                                      « sim » : HomeTrainer, Click ou ceinture simulés (Bluetooth simulé)
+                                      « sim » : HomeTrainer, Click ou ceinture simulés (Bluetooth simulé) ;
+                                      --resume : reprend en pause la séance d'un journal non terminé
+                                      (relance par le lanceur après un plantage du core, lot N8)
     openride-core release-trainer     dépannage : annule la consigne du trainer, lui rend sa
                                       liberté et le déconnecte (après un arrêt brutal)
     openride-core summary [FICHIER] [--ftp W] [--json]
@@ -78,7 +80,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         return 1
     try:
         asyncio.run(session.run(autostart=args.autostart, route_id=args.route or "demo",
-                                workout_id=args.workout))
+                                workout_id=args.workout, resume=args.resume))
     except AutostartError as exc:
         logging.getLogger("openride_core").error("Séance non lancée : %s", exc)
         print(f"openride-core : {exc}", file=sys.stderr)
@@ -141,6 +143,8 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--gear", type=int, help="braquet de départ, 1 (léger) à 24 (dur) ; défaut 12")
     run.add_argument("--replay", type=Path,
                      help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
+    run.add_argument("--resume", type=Path, metavar="JOURNAL",
+                     help="reprend en pause la séance d'un journal non terminé (après un plantage du core)")
     run.add_argument("--autostart", action="store_true",
                      help="charge le parcours (--route, défaut demo) et démarre aussitôt")
     run.add_argument("--route", metavar="ID",
