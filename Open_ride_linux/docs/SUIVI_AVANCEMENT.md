@@ -83,6 +83,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`), après la fusion d'E1 et des lots K : `log_report` compte les connexions et coupures par boîtier (Click à deux boîtiers ; la ligne de coupure porte l'adresse), le lanceur n'annonce plus une pause qu'il ne fait pas, pente NaN ramenée à 0 %, analyseur du core partagé avec le test de cohérence, lint propre.
 - [x] Couches OpenStreetMap `buildings` et `vegetation` du compilateur (`osm.py`, `osm_layers.py`, cache brut `~/.cache/openride/osm/`, schémas `buildings.schema.json` et `vegetation.schema.json`, lot I3).
 - [x] Couches OpenStreetMap `poi` et `water` du compilateur (points d'intérêt sonores/visuels, cours d'eau découpés par tronçon de 1 km et plans d'eau avec îles, schémas `poi.schema.json` et `water.schema.json`, lot I4).
+- [x] **Packs de thèmes** (`openride-compiler theme-list` et `theme-install`, lot N10, `theme_packs.py`) : liste avec statut, textures et taille, installation depuis dossier ou archive `.zip` avec contrôle d'intégrité (rejet des liens symboliques, chemins `..` et taille > 500 Mo) et validation complète avant copie atomique, testés par `compiler/tests/test_theme_packs.py`.
 
 ---
 
