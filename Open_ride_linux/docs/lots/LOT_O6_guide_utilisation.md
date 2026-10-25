@@ -21,7 +21,7 @@ N6, N13 et N14 fusionnés (les écrans et l'installation décrits doivent existe
   2. Installer et mettre à jour (commande unique de N14, bouton « Mettre à jour »).
   3. Premier démarrage et appairage (section « Appareils », identification du bouton +).
   4. Rouler un parcours : déposer un GPX (ou FIT/TCX si O5 est livré) dans `~/OpenRide/GPX/`, choix au menu, pause, fin, bilan.
-  5. Faire un entraînement ERG : ajouter un `.zwo`, biais au Click, saut de bloc.
+  5. Faire un entraînement ERG : ajouter un `.zwo`, `.erg` ou `.mrc`, biais au Click, saut de bloc, courbes à l'écran ; suivre un plan d'entraînement ; passer un test de FTP (si O9 à O14 sont livrés).
   6. Commandes du Click et du clavier (tableau, en reprenant le code : `menu_model.gd`, `zwift_click.py`, et non de mémoire).
   7. Réglages (FTP, thème, qualité) et thèmes supplémentaires.
   8. Retrouver ses séances (`~/OpenRide/Activities/`, import dans Garmin Connect ou GoldenCheetah).
