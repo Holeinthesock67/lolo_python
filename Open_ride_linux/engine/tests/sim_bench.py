@@ -291,6 +291,7 @@ class Bench:
             try:
                 data = json.loads(got[1].group(1))
                 info.update(ok=bool(data.get("ok")), fps=data.get("fps"), meshes=data.get("meshes"),
+                            draw_calls=data.get("draw_calls"),
                             widgets={k: v.get("text", "") for k, v in data.get("widgets", {}).items()
                                      if v.get("visible")})
             except ValueError:
@@ -346,7 +347,12 @@ class Bench:
                 f"{len(ok)}/{len(self.shots)} images enregistrées")
         fps = [s["fps"] for s in ok if isinstance(s.get("fps"), (int, float)) and s["tag"].startswith("t")]
         if fps:
-            print(f"   images par seconde de l'engine : min {min(fps):.0f}, médiane {sorted(fps)[len(fps) // 2]:.0f}")
+            fps_line = (f"images par seconde de l'engine : min {min(fps):.0f}, médiane "
+                        f"{sorted(fps)[len(fps) // 2]:.0f}, max {max(fps):.0f} ({len(fps)} relevés)")
+            print("   " + fps_line)
+            (self.out / "fps.csv").write_text("t_s,fps,maillages,appels_de_dessin,capture\n" + "".join(
+                f"{s['t']:.1f},{s.get('fps')},{s.get('meshes')},{s.get('draw_calls')},{s['file']}\n"
+                for s in ok), encoding="utf-8")
         # Erreurs Godot.
         log = (self.out / "engine.log").read_text(encoding="utf-8", errors="replace").splitlines()
         issues = [ln for ln in log if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
@@ -478,6 +484,20 @@ def svg_chart(records: list[dict[str, Any]], key: str, label: str, color: str, e
     return "".join(parts)
 
 
+def svg_fps(shots: list[dict[str, Any]], width: int = 900, height: int = 120) -> str:
+    """Images par seconde de l'engine relevées à chaque capture, en fonction du temps."""
+    pts = [(s["t"], float(s["fps"])) for s in shots if isinstance(s.get("fps"), (int, float))]
+    if len(pts) < 2:
+        return ""
+    tmax = max(max(t for t, _ in pts), 1.0)
+    hi = max(max(v for _, v in pts), 1.0)
+    line = " ".join(f"{40 + t / tmax * (width - 50):.1f},{10 + (1 - v / hi) * (height - 25):.1f}" for t, v in pts)
+    return (f'<svg viewBox="0 0 {width} {height}" class="chart" role="img" aria-label="Images par seconde">'
+            f'<text x="2" y="12" class="lbl">Images par seconde de l\'engine (à chaque capture)</text>'
+            f'<text x="2" y="{height - 8}" class="lbl">0</text><text x="2" y="26" class="lbl">{hi:.0f}</text>'
+            f'<polyline points="{line}" fill="none" stroke="#27ae60" stroke-width="1.6"/></svg>')
+
+
 def write_html(b: Bench) -> None:
     rows = "".join(f'<tr class="{"ok" if ok else "ko"}"><td>{"OK" if ok else "ÉCHEC"}</td><td>{html.escape(lb)}</td>'
                    f"<td>{html.escape(ms)}</td></tr>" for ok, lb, ms in b.report.rows)
@@ -491,6 +511,7 @@ def write_html(b: Bench) -> None:
                   "grade_sent", "#16a085"),
         svg_chart(b.records, "gear", "Braquet", "#2980b9", events),
         svg_chart(b.records, "speed", "Vitesse (m/s)", "#34495e", events),
+        svg_fps(b.shots),
     ])
     shots = []
     for s in b.shots:
@@ -499,6 +520,7 @@ def write_html(b: Bench) -> None:
                          ("power", "speed", "grade", "hr", "status", "banner", "erg_title", "erg_target"))
         shots.append(f'<figure><a href="{s["file"]}"><img src="{s["file"]}" loading="lazy" alt="{html.escape(s["tag"])}"></a>'
                      f'<figcaption><b>{s["t"]:.0f} s · {html.escape(s["tag"])}</b> · {s.get("fps", "?")} img/s'
+                     f' · {s.get("meshes", "?")} maillages · {s.get("draw_calls", "?")} appels de dessin'
                      f'<br>{html.escape(txt)}</figcaption></figure>')
     evlines = "\n".join(f"{t:7.1f} s  {line}" for t, line in b.core_events[-400:])
     banners = "\n".join(f"{t:7.1f} s  {txt}" for t, txt in b.banners) or "(aucun)"
