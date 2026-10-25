@@ -17,6 +17,7 @@ from openride_core.session import CoreSession
 CONTRACTS = Path(__file__).resolve().parents[2] / "docs" / "contracts"
 IPC_DIR = CONTRACTS / "ipc"
 MAX_DATAGRAM = 1400
+MAX_LIST_DATAGRAM = 60000   # routes et workouts (révision 1.1, §2)
 
 
 def schema(name: str) -> dict:
@@ -26,7 +27,8 @@ def schema(name: str) -> dict:
 def assert_valid(msg: dict) -> None:
     errors = [e.message for e in jsonschema.Draft202012Validator(schema(msg["type"])).iter_errors(msg)]
     assert not errors, f"{msg['type']} invalide : {errors}"
-    assert len(json.dumps(msg, separators=(",", ":")).encode()) <= MAX_DATAGRAM
+    limit = MAX_LIST_DATAGRAM if msg["type"] in ("routes", "workouts") else MAX_DATAGRAM
+    assert len(json.dumps(msg, separators=(",", ":")).encode()) <= limit
 
 
 class Capture:
@@ -56,7 +58,8 @@ def run_steps(s, n, t0=100.0):
 
 
 def test_all_message_schemas_exist():
-    for name in ("state", "cmd", "hello", "hello_ack", "heartbeat", "input", "error", "shutdown", "bye"):
+    for name in ("state", "cmd", "hello", "hello_ack", "heartbeat", "input", "error", "shutdown", "bye",
+                 "routes", "workouts"):
         jsonschema.Draft202012Validator.check_schema(schema(name))
 
 
@@ -109,10 +112,52 @@ def contract_json_blocks() -> list[dict]:
 
 
 def test_contract_examples_are_valid():
-    state, erg, cmd = contract_json_blocks()
+    state, erg, cmd, devices, routes, workouts = contract_json_blocks()
     assert_valid(state)
     assert_valid({**state, "mode": "ERG", "erg": erg})
     assert_valid(cmd)
+    assert_valid({**state, "devices": devices})
+    assert_valid(routes)
+    assert_valid(workouts)
+    assert_valid({"type": "cmd", "v": 1, "cmd_id": 3, "name": "list_routes", "args": {}})
+
+
+def test_v1_1_additions_are_optional_and_checked():
+    """Révision 1.1 : une trame v1 reste valide ; les nouvelles valeurs sont contrôlées."""
+    state, _erg, _cmd, devices, routes, workouts = contract_json_blocks()
+    assert "devices" not in state and "bots" not in state
+    assert_valid({**state, "session_state": "PAUSED", "pause_reason": "core_restarted"})
+    validator = jsonschema.Draft202012Validator(schema("state"))
+    bad_devices = {**devices, "click": [{"side": "left", "status": "CONNECTED", "battery_pct": 80}]}
+    assert list(validator.iter_errors({**state, "devices": bad_devices}))
+    bad_bots = [{"id": "b1", "name": "Bot", "s": 1.0, "v": 2.0, "kind": "robot"}]
+    assert list(validator.iter_errors({**state, "bots": bad_bots}))
+    summary = {"duration_s": 3600.0, "distance_m": 30000.0, "avg_power_w": 200.0, "fit_path": None,
+               "np_w": None, "intensity_factor": None, "tss": None, "blocks": [[1, 150.0, None]]}
+    assert_valid({**state, "session_state": "FINISHED", "summary": summary})
+    routes_validator = jsonschema.Draft202012Validator(schema("routes"))
+    bad_route = {**routes["items"][0], "status": "compiled"}
+    assert list(routes_validator.iter_errors({**routes, "items": [bad_route]}))
+    workouts_validator = jsonschema.Draft202012Validator(schema("workouts"))
+    bad_profile = {**workouts["items"][0], "profile": [[600, 0.5]]}
+    assert list(workouts_validator.iter_errors({**workouts, "items": [bad_profile]}))
+
+
+def test_worst_case_lists_fit_in_list_datagrams():
+    """200 parcours tiennent en une partie ; 200 entraînements de 30 blocs en 4 parties."""
+    route = {"id": "x" * 60, "name": "Parcours au nom assez long " * 2, "status": "outdated",
+             "length_m": 123456.7, "route_type": "out_and_back", "has_terrain": True,
+             "error": None}
+    routes = {"type": "routes", "v": 1, "request_cmd_id": 1, "part": 1, "parts": 1,
+              "truncated": True, "items": [route] * 200}
+    assert_valid(routes)
+    workout = {"id": "w" * 40, "name": "Entraînement au nom long", "duration_s": 5400.0,
+               "block_count": 60, "selectable": True, "error": None,
+               "profile": [[300.0, 0.55, 1.25]] * 30, "profile_truncated": True}
+    per_part = 50
+    for start in range(0, 200, per_part):
+        assert_valid({"type": "workouts", "v": 1, "request_cmd_id": 1, "part": start // per_part + 1,
+                      "parts": 4, "truncated": False, "items": [workout] * per_part})
 
 
 def test_full_state_frame_fits_in_datagram():
@@ -122,10 +167,30 @@ def test_full_state_frame_fits_in_datagram():
                        "block_count": 40, "block_type": "interval_on", "block_remaining_s": 512.25,
                        "block_total_s": 1200.0, "target_w": 238.0, "next_target_w": 125.0,
                        "bias_pct": 102.0, "paused": False})
-    frame = {**st.to_dict(), "seq": 123456789,
-             "bots": [{"id": f"bot-{i}", "s": 12873.456 + i, "v": 9.123} for i in range(10)]}
+    devices = {"trainer": {"status": "RECONNECTING", "name": "HomeTrainer 0000 avec un nom long",
+                           "address": "C1:1C:00:00:00:03"},
+               "click": [{"side": "plus", "status": "CONNECTED", "battery_pct": 100},
+                         {"side": "minus", "status": "SEARCHING", "battery_pct": 100}],
+               "hr": {"status": "CONNECTED", "source": "trainer", "battery_pct": 100}}
+    frame = {**st.to_dict(), "seq": 123456789, "devices": devices,
+             "bots": [{"id": f"bot-{i}", "name": "Fantôme du 24/10", "s": 12873.456 + i,
+                       "v": 9.123, "kind": "ghost"} for i in range(5)]}
+    assert_valid(frame)
     size = len(json.dumps(frame, separators=(",", ":")).encode())
     assert size <= MAX_DATAGRAM, f"trame de {size} octets"
+
+
+def test_full_summary_frame_fits_in_datagram():
+    st = IpcState(route_id="col-du-galibier-par-le-lautaret-version-longue", route_length_m=48000.0,
+                  session_state="FINISHED", mode="ERG",
+                  summary={"duration_s": 5400.25, "distance_m": 45123.4, "avg_power_w": 212.3,
+                           "fit_path": "/home/utilisateur/OpenRide/Activities/2026-10-24-213000-openride.fit",
+                           "np_w": 231.4, "intensity_factor": 0.874, "tss": 114.6,
+                           "elevation_gain_m": 1834.2, "avg_cadence_rpm": 87.3, "avg_hr_bpm": 148.2,
+                           "max_power_w": 612.0,
+                           "blocks": [[i, 238.4, 240.0] for i in range(1, 25)], "blocks_truncated": True})
+    frame = {**st.to_dict(), "seq": 123456789}
+    assert_valid(frame)
 
 
 ERG_ZWO = """<workout_file><name>Contrat ERG</name><workout>

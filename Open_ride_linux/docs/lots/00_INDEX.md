@@ -61,14 +61,14 @@
 | [M7](LOT_M7_compilateur_fit_tcx.md) | Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | **Livré le 24 octobre** (issue #84) |
 | [M8](LOT_M8_journal_lanceur.md) | Journal du lanceur sans terminal (sortie de Godot, rotation) | Python | — | Petite | **Livré le 24 octobre** (issue #85) |
 | [M9](LOT_M9_dette_r3_s2.md) | Petite dette des vérifications du 24 octobre (R3 et S2) | Python | — | Petite | **Livré le 24 octobre** (issue #86) |
-| [N1](LOT_N1_contrat_ipc_v1_1.md) | Contrat IPC v1.1 : listes des parcours et des entraînements, état des appareils, bilan enrichi | Markdown + JSON | — | Petite | Non : interne (décision de contrat du propriétaire), cahier rédigé le 24 octobre |
-| [N2](LOT_N2_core_ipc_v1_1.md) | Core : messages du contrat IPC v1.1 (listes, appareils, bilan enrichi) | Python | N1 ; E3, E4, M2, M4 (livrés) | Moyenne | Oui, après N1 (issue #101, étiquette `bloqué`) |
-| [N3](LOT_N3_client_listes_engine.md) | Engine : client des listes v1.1 et branchement au modèle de menu, sans affichage | GDScript + Python | N1, K5 (livré) | Petite | Oui, après N1 (issue #102, étiquette `bloqué`) |
+| [N1](LOT_N1_contrat_ipc_v1_1.md) | Contrat IPC v1.1 : listes des parcours et des entraînements, état des appareils, bilan enrichi | Markdown + JSON | — | Petite | **Livré le 24 octobre** (interne, contrat validé par le propriétaire) |
+| [N2](LOT_N2_core_ipc_v1_1.md) | Core : messages du contrat IPC v1.1 (listes, appareils, bilan enrichi) | Python | N1, E3, E4, M2, M4 (livrés) | Moyenne | Oui (issue #101) |
+| [N3](LOT_N3_client_listes_engine.md) | Engine : client des listes v1.1 et branchement au modèle de menu, sans affichage | GDScript + Python | N1, K5 (livrés) | Petite | Oui (issue #102) |
 | [N4](LOT_N4_modele_fin_seance.md) | Modèle de l'écran de fin de séance, sans affichage | GDScript | K1, K5 (livrés) | Petite | Oui (issue #103) |
-| [N5](LOT_N5_modele_etat_appareils.md) | Modèle de l'écran d'état des appareils et de ses alertes, sans affichage | GDScript | N1, K1 (livré) | Petite | Oui, après N1 (issue #104, étiquette `bloqué`) |
+| [N5](LOT_N5_modele_etat_appareils.md) | Modèle de l'écran d'état des appareils et de ses alertes, sans affichage | GDScript | N1, K1 (livrés) | Petite | Oui (issue #104) |
 | [N6](LOT_N6_affichage_menus.md) | Affichage des menus, de l'état des appareils et du bilan ; lanceur sans `--autostart` par défaut | GDScript | E3, E4 (livrés), N2 à N5 | Grande | Non : interne (`main.gd`, contrôle visuel et au Click) |
 | [N7](LOT_N7_affichage_erg.md) | Entraînement ERG à l'écran : bandeau, histogramme et bip à T − 3 s (ancien F2) | GDScript | E3, I6 (livrés) | Moyenne | Non : interne (contrôle visuel et sonore sur le HomeTrainer) |
-| [N8](LOT_N8_reprise_plantage_core.md) | Reprise d'une séance après un plantage du core | Python | N1 ; E3, M4, M8 (livrés) | Moyenne | Oui, après N1 (issue #105, étiquette `bloqué`) |
+| [N8](LOT_N8_reprise_plantage_core.md) | Reprise d'une séance après un plantage du core | Python | N1, E3, M4, M8 (livrés) | Moyenne | Oui (issue #105) |
 | [N9](LOT_N9_bots_core.md) | Bots côté core : puissance constante et fantôme d'une séance passée | Python | E3, M3, M4 (livrés) | Moyenne | Oui (issue #106) |
 | [N10](LOT_N10_packs_themes.md) | Packs de thèmes : `theme-list` et `theme-install` | Python | H7, M7 (livrés) | Petite | Oui (issue #107) |
 | [N11](LOT_N11_compilation_au_lancement.md) | Compilation des nouvelles traces GPX au lancement d'OpenRide | Python | I2, M8 (livrés) | Petite | Oui (issue #108) |

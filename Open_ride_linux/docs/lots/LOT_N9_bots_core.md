@@ -13,7 +13,7 @@ Premier pas du sprint 7 de la SRS (optionnel) : rouler avec un partenaire virtue
 ## 3. Prérequis
 
 - PR #91, lots M3 et M4 (PR #92 et #90) : fusionnés le 24 octobre, partir de `main` à jour (ils ont modifié `session.py` et `__main__.py`).
-- Lot N1 : si la forme de `bots` y change, suivre N1 ; sinon la forme ci-dessus fait foi (le contrat v1 annonce déjà `{id, s, v}`, `name` et `kind` sont des ajouts facultatifs).
+- Lot N1 (livré le 24 octobre) : la forme de `bots` est fixée par le contrat v1.1 §3 (au plus 5 éléments, `id` de 8 caractères et `name` de 16 au plus) ; le schéma la décrit déjà.
 
 ## 4. Travail demandé
 
@@ -28,12 +28,12 @@ Premier pas du sprint 7 de la SRS (optionnel) : rouler avec un partenaire virtue
 ## 5. Fichiers concernés
 
 - **Nouveaux :** `core/src/openride_core/bots.py`, `core/tests/test_bots.py`.
-- **Modifiés :** `session.py`, `ipc_server.py` (`IpcState`), `__main__.py`, `docs/contracts/ipc/state.schema.json` (propriété `bots` décrite, facultative), `README.md` et `CLAUDE.md` (options citées), `docs/SUIVI_AVANCEMENT.md` (une ligne).
+- **Modifiés :** `session.py`, `ipc_server.py` (`IpcState`), `__main__.py`, `README.md` et `CLAUDE.md` (options citées), `docs/SUIVI_AVANCEMENT.md` (une ligne).
 - **Interdits :** `physics.py` (lecture seule ; une fonction manquante se signale), l'engine.
 
 ## 6. Modifications de contrat autorisées
 
-Description de la propriété facultative `bots` dans `state.schema.json`, à la forme du §1 ; journal des changements du contrat complété (ajout compatible).
+Aucune : la propriété `bots` est décrite dans le contrat v1.1 et dans `state.schema.json` (lot N1).
 
 ## 7. Critères d'acceptation
 
