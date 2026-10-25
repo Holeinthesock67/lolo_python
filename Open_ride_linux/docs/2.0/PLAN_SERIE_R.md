@@ -75,7 +75,7 @@ Ne servent pas : compilateur GPX, terrain, OSM, végétation, thèmes de paysage
 | R6 | Run : machine à états, couloirs, deck et cartes, or, reliques, boss en 3 phases | R5 | Délégable |
 | R7 | Table d'équilibrage en données et run simulée avec cyclistes types | R6 | Délégable |
 | R8 | Intégration dans la session du core : formule centrée, boutons Y, Z, A, journal, pause et reprise | R1, R6 | Interne |
-| R9 | Progression permanente : châssis à bonus de jeu, statistiques de runs | R6 | Délégable |
+| R9 | Progression permanente : châssis à bonus de jeu, statistiques de runs, dans le système de déblocage commun de la série V | R6, V2 | Délégable |
 | R10 | Engine : scène néon, ruban 3D, shader de pente, arches et zones | R1 | Interne (rendu) |
 | R11 | Engine : HUD diégétique, arcs au sol, FOV et tremblement | R1 | Interne (rendu) |
 | R12 | Engine : ennemis et boss géométriques, effets d'impact | R10 | Interne (rendu) |
