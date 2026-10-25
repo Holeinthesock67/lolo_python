@@ -249,6 +249,11 @@ func list_workouts() -> int:
 	return cmd_id
 
 
+## Modifie la difficulté du trainer pendant la séance (lot Q1, contrat v1.2).
+func send_set_difficulty(pct: int) -> int:
+	return send_command("set_difficulty", {"pct": pct})
+
+
 ## Demande en cours : {cmd_id (dernier envoyé), cmd_ids, retries, timer, answers}. `answers` range les parties
 ## reçues par request_cmd_id : {request_cmd_id: {parts, got: {part: items}, truncated}}. Le dictionnaire est
 ## modifié sur place (pas réaffecté) pour que les références gardées par _process restent valables.

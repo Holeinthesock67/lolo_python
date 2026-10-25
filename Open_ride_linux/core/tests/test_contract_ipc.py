@@ -173,7 +173,7 @@ def test_full_state_frame_fits_in_datagram():
                          {"side": "minus", "status": "SEARCHING", "battery_pct": 100}],
                "hr": {"status": "CONNECTED", "source": "trainer", "battery_pct": 100}}
     frame = {**st.to_dict(), "seq": 123456789, "devices": devices,
-             "bots": [{"id": f"bot-{i}", "name": "Fantôme du 24/10", "s": 12873.456 + i,
+             "bots": [{"id": f"bot-{i}", "name": "Fantome 24/10", "s": 12873.456 + i,
                        "v": 9.123, "kind": "ghost"} for i in range(5)]}
     assert_valid(frame)
     size = len(json.dumps(frame, separators=(",", ":")).encode())

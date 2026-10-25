@@ -105,6 +105,7 @@ class FakeCore:
     session_state: str = "IDLE"
     route_id: str | None = "demo"
     accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
+    difficulty_pct: int = 50
     seq: int = 0
     last_cmd_id: int = 0
     _cmd_counts: dict[int, int] = field(default_factory=dict)
@@ -150,7 +151,7 @@ class FakeCore:
             "trainer_status": "MOCK", "input_status": "KEYBOARD", "mode": "SIM",
             "route_id": self.route_id, "route_length_m": None,
             "s": self.current_s() if s is None else s,
-            "grade": 0.0, "grade_sent": 0.0, "power": 200.0, "power_3s": 200.0, "cadence": 85.0,
+            "grade": 0.0, "grade_sent": 0.0, "difficulty_pct": self.difficulty_pct, "power": 200.0, "power_3s": 200.0, "cadence": 85.0,
             "hr": None, "gear": 12, "gears_total": 24, "lat": 0.0, "lon": 0.0, "alt": 0.0,
             "erg": None, "summary": None, "last_cmd_id": self.last_cmd_id,
         }
@@ -223,6 +224,11 @@ class FakeCore:
                     self.workout_id = args.get("workout_id")
                 elif name == "start":
                     self.set_running(True)
+                elif name == "set_difficulty":
+                    args = msg.get("args", {})
+                    pct = args.get("pct")
+                    if isinstance(pct, (int, float)):
+                        self.difficulty_pct = int(round(max(0, min(100, pct))))
 
     def send_list(self, kind: str, cmd_id: int, items: list) -> None:
         """Réponse `routes` ou `workouts` (contrat v1.1 §4), en deux parties avec --split-catalog.
@@ -240,7 +246,8 @@ class FakeCore:
 
     def send_hello_ack(self) -> None:
         self.send({"type": "hello_ack", "v": CONTRACT_VERSION, "core_version": "fake",
-                   "config": {"ftp_w": 250, "gears_total": 24, "theme": "default"}})
+                   "config": {"ftp_w": 250, "gears_total": 24, "theme": "default",
+                              "difficulty_pct": self.difficulty_pct}})
 
     def messages(self, kind: str, since: float = 0.0, name: str | None = None) -> list[Received]:
         with self.lock:

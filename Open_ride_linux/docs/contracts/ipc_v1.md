@@ -1,6 +1,6 @@
 # OpenRide Linux – Contrat IPC v1
 
-21 octobre 2026, révision 1.1 du 24 octobre 2026 (ajouts compatibles, `v` reste 1)
+21 octobre 2026, révision 1.1 du 24 octobre 2026, révision 1.2 du 25 octobre 2026 (ajouts compatibles, `v` reste 1)
 
 ## 1. Objet, principes et conventions
 
@@ -64,6 +64,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `v` | nombre | Vitesse virtuelle |
 | `grade` | nombre | Pente réelle du terrain à `s` |
 | `grade_sent` | nombre | Pente effective envoyée au trainer |
+| `difficulty_pct` | entier | Difficulté du trainer appliquée (0 à 100 %, défaut 50) |
 | `power` | nombre | Puissance mesurée, lissage court |
 | `power_3s` | nombre | Puissance moyennée sur 3 s |
 | `cadence` | nombre | Cadence |
@@ -138,6 +139,7 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 | `skip_block` | `{}` | Équivalent de l'appui long + en ERG, pour le clavier ou le menu |
 | `list_routes` | `{}` | Demande la liste des parcours ; réponse `routes` |
 | `list_workouts` | `{}` | Demande la liste des entraînements ; réponse `workouts` |
+| `set_difficulty` | `{ "pct": nombre }` | Change la difficulté du trainer (0 à 100) pour la séance en cours |
 
 **Listes des parcours et des entraînements.** Le core est la seule source de vérité : l'engine ne lit ni le dossier des parcours ni les fichiers `.zwo`. Le core lit le disque à la demande, hors de la boucle physique à 50 Hz, et répond dans les 500 ms pour 200 parcours.
 
@@ -160,7 +162,7 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 | Message | Sens | Champs | Rôle |
 | --- | --- | --- | --- |
 | `hello` | engine vers core | `v`, `engine_version` | Premier message de l'engine, répété chaque seconde jusqu'au `hello_ack` |
-| `hello_ack` | core vers engine | `v`, `core_version`, `config` (pour l'affichage : `ftp_w`, `gears_total`, `theme`) | Confirme la version du contrat et donne la configuration utile |
+| `hello_ack` | core vers engine | `v`, `core_version`, `config` (pour l'affichage : `ftp_w`, `gears_total`, `theme`, `difficulty_pct`) | Confirme la version du contrat et donne la configuration utile |
 | `heartbeat` | engine vers core | `seq`, `fps` (nombre, facultatif) | À 2 Hz ; prouve que l'engine est vivant |
 | `error` | core vers engine | `code`, `message` | Erreur à afficher (voir codes ci-dessous) |
 | `bye` | engine vers core | — | L'engine se ferme volontairement |
@@ -258,3 +260,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 | 22 octobre 2026 | Ajout compatible : commande `input_event` ; événements `input` relayés aussi pendant `RUNNING` (retour sonore) |
 | 1 | 23 octobre 2026 | Ajouts compatibles : remise à zéro de `last_cmd_id` à chaque `hello` ; `pause_reason` = `recording_failed` ; `summary.fit_path` peut valoir `null` ; schémas de tous les messages publiés ; clarification du double sens de `v` dans `state` |
 | 1 (révision 1.1) | 24 octobre 2026 | Ajouts compatibles (lot N1) : commandes `list_routes` et `list_workouts`, messages `routes` et `workouts` (jusqu'à 60 000 octets, en parties) ; objet `devices` dans `state` une fois par seconde ; bilan enrichi dans `summary` ; forme de `bots` ; `pause_reason` = `core_restarted` et reprise après un plantage du core |
+| 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot Q1) : commande `set_difficulty`, champ `difficulty_pct` (entier) dans `state` et `hello_ack.config` |

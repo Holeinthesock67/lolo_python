@@ -112,6 +112,8 @@ func on_state(state: Dictionary, now_s: float) -> void:
 	var hr := _clean(state.get("hr", null), MAX_HR_BPM)
 	if hr == 0.0:
 		hr = NAN
+	var diff_val = state.get("difficulty_pct", null)
+	var diff_clean := _clean(diff_val, 100.0) if diff_val != null else NAN
 	_raw = {
 		"power_w": _clean(state.get("power_3s", state.get("power", null)), MAX_POWER_W),
 		"speed_kmh": _clean(float(state.get("v", NAN)) * 3.6 if _finite(state.get("v", null)) else NAN, MAX_SPEED_KMH),
@@ -120,6 +122,7 @@ func on_state(state: Dictionary, now_s: float) -> void:
 		"gear": int(gear) if _finite(gear) else -1,
 		"gears_total": int(gears_total) if _finite(gears_total) and int(gears_total) > 0 else 24,
 		"grade_pct": _clean(state.get("grade", null), MAX_GRADE_PCT, false),
+		"difficulty_pct": int(round(diff_clean)) if not is_nan(diff_clean) else 100,
 		"distance_m": NAN if is_nan(s_now) else s_now + _laps * (length if not is_nan(length) else 0.0),
 		"elapsed_s": _clean(state.get("t", null), MAX_ELAPSED_S),
 	}
@@ -145,6 +148,10 @@ func evaluate(now_s: float) -> Dictionary:
 	out["grade_text"] = format_grade(r["grade_pct"])
 	out["distance_text"] = NO_VALUE if is_nan(r["distance_m"]) else "%.2f km" % (r["distance_m"] / 1000.0)
 	out["elapsed_text"] = format_hms(r["elapsed_s"])
+	var diff_int: int = r.get("difficulty_pct", 100)
+	out["difficulty_pct"] = diff_int
+	out["difficulty_text"] = "Difficulté %d %%" % diff_int
+	out["difficulty_visible"] = _has_state and (diff_int != 100)
 	return out
 
 
@@ -317,4 +324,12 @@ static func session_lines(state: Dictionary, erg_view: Dictionary) -> Dictionary
 		if str(erg_view.get("paused_text", "")) != "":
 			erg_line += "  |  " + str(erg_view["paused_text"])
 	out["erg"] = erg_line
+
+	var diff_val: Variant = state.get("difficulty_pct", null)
+	var diff_clean := _clean(diff_val, 100.0) if diff_val != null else NAN
+	var diff_pct: int = int(round(diff_clean)) if not is_nan(diff_clean) else 100
+	var diff_visible: bool = (diff_pct != 100) and not is_nan(diff_clean)
+	out["difficulty_pct"] = diff_pct
+	out["difficulty_text"] = "Difficulté %d %%" % diff_pct if not is_nan(diff_clean) else NO_VALUE
+	out["difficulty_visible"] = diff_visible
 	return out
