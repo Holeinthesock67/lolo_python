@@ -67,6 +67,10 @@ func _init() -> void:
 
 func _process(_delta: float) -> void:
 	integrate(MAX_NEW_PER_FRAME)
+	# Bâtiments et eau (lot E4) : sans cet appel, les tronçons OSM préparés n'entraient jamais
+	# dans la scène (seuls les tests appelaient flush()).
+	if osm_streamer != null:
+		osm_streamer.integrate(MAX_NEW_PER_FRAME)
 
 
 func _exit_tree() -> void:
@@ -288,6 +292,8 @@ func _build_job(job: Dictionary) -> void:
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
 			if heights.is_empty():
 				return
+			if spec["kind"] == "far":
+				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r)
 			var edges := TerrainTiles.load_neighbour_edges(job["world_dir"], spec["kind"], t.x, t.y)
 			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
@@ -361,6 +367,8 @@ func flush() -> void:
 		integrate(1 << 30)
 		if _jobs.is_empty() and _ready.is_empty():
 			break
+	if osm_streamer != null:
+		osm_streamer.flush()
 
 
 ## Attend les travaux en cours sans dépasser le budget d'objets par image (tests en temps simulé).

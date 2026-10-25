@@ -275,7 +275,8 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     default = launcher.build_supervisor([f"--config={cfg}"], env)
     assert default.core_cmd[-1] == f"--config={cfg}"
     no_cfg = launcher.build_supervisor([], {**env})
-    assert no_cfg.core_cmd[-6:] == ["run", *launcher.DEFAULT_CORE_ARGS]
+    assert no_cfg.core_cmd[-(len(launcher.DEFAULT_CORE_ARGS) + 1):] == ["run", *launcher.DEFAULT_CORE_ARGS]
+    assert "--autostart" not in launcher.DEFAULT_CORE_ARGS   # menus de l'engine (lot N6)
     assert no_cfg.engine_cmd[-4:] == [
         "--ipc-state-port=5005",
         "--ipc-cmd-port=5006",
