@@ -73,6 +73,8 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.replay:
         cfg.drivers.trainer = "mock"
         cfg.drivers.mock_replay = str(args.replay)
+    if args.trace_ftms:
+        cfg.trainer.trace_ftms = True
 
     bots_list = []
     if args.bot:
@@ -184,6 +186,8 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : parcours <routes>/<ID>.world (défaut : demo)")
     run.add_argument("--workout", metavar="ID",
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
+    run.add_argument("--trace-ftms", action="store_true",
+                     help="trace horodatée de chaque échange Control Point FTMS (lot Q3)")
     rel = sub.add_parser("release-trainer",
                          help="libérer le trainer resté réservé (consigne annulée, contrôle rendu)")
     rel.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
