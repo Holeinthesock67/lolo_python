@@ -50,6 +50,7 @@ class TrainerConfig:
     grade_max_pct: float = 16.0
     power_smooth_tau_s: float = 0.7   # lissage temporel de la puissance (indépendant de la cadence BLE)
     grade_rate_pct_per_s: float = 2.0  # vitesse maximale de variation de la pente envoyée
+    trace_ftms: bool = False          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 
 
 @dataclass
@@ -156,7 +157,11 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
 
 def _convert(current: Any, value: Any, where: str) -> Any:
     """Valeur TOML vers le type de la valeur par défaut ; un booléen n'est jamais un nombre."""
-    if isinstance(current, bool) or isinstance(value, bool):
+    if isinstance(current, bool):
+        if not isinstance(value, bool):
+            raise ConfigError(f"{where} : booléen attendu, reçu {value!r}")
+        return value
+    if isinstance(value, bool):
         raise ConfigError(f"{where} : valeur {value!r} invalide")
     if isinstance(current, float):
         if not isinstance(value, (int, float)):

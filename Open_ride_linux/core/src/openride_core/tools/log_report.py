@@ -17,6 +17,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import re
 import statistics
 import sys
@@ -120,6 +121,14 @@ LINE_RE = re.compile(
     r"(?P<msg>.+)$"
 )
 
+
+FTMS_PATTERNS: dict[str, re.Pattern[str]] = {
+    "write": re.compile(r"^FTMS > (?P<op>[A-Za-z0-9_]+)(?: (?P<args>.*?))? \((?P<hex>[0-9a-fA-F ]+)\)$"),
+    "response": re.compile(r"^FTMS < réponse (?P<op>[A-Za-z0-9_]+) (?P<result>[A-Za-z0-9_]+) en (?P<ms>[0-9.]+) ms$"),
+    "timeout": re.compile(r"^FTMS < sans réponse(?: à (?P<op>[A-Za-z0-9_]+))? après (?P<ms>[0-9.]+) ms$"),
+    "status": re.compile(r"^FTMS < statut (?P<name>[A-Za-z0-9_]+)(?: (?P<args>.*?))? \((?P<origin>écho probable de notre commande|par un tiers)\)$"),
+}
+
 PATTERNS: dict[str, re.Pattern[str]] = {
     "core_started": re.compile(
         r"^Core démarré \(trainer=(?P<trainer>[^,]+), entrées=(?P<input>[^)]+)\)\.$"
@@ -169,6 +178,28 @@ PATTERNS: dict[str, re.Pattern[str]] = {
     "fit_export_error": re.compile(r"^Export FIT impossible : (?P<err>.+)$"),
 }
 
+
+@dataclass
+class FtmsReport:
+    """Statistiques de la trace Control Point FTMS (lot Q3)."""
+    writes: dict[str, int] = field(default_factory=dict)
+    delays_ms: list[float] = field(default_factory=list)
+    delay_median_ms: float | None = None
+    delay_p95_ms: float | None = None
+    delay_max_ms: float | None = None
+    timeouts: int = 0
+    third_party_statuses: int = 0
+    echo_statuses: int = 0
+    third_party_status_details: list[str] = field(default_factory=list)
+    echo_status_details: list[str] = field(default_factory=list)
+
+    @property
+    def total_writes(self) -> int:
+        return sum(self.writes.values())
+
+    @property
+    def has_trace(self) -> bool:
+        return bool(self.writes or self.delays_ms or self.timeouts or self.third_party_statuses or self.echo_statuses)
 
 @dataclass
 class TrainerReport:
@@ -258,6 +289,7 @@ class Report:
     trainer_mode: str | None = None
     input_mode: str | None = None
     trainer: TrainerReport = field(default_factory=TrainerReport)
+    ftms: FtmsReport = field(default_factory=FtmsReport)
     click: ClickReport = field(default_factory=ClickReport)
     pauses: list[PauseEvent] = field(default_factory=list)
     transitions: list[PauseEvent] = field(default_factory=list)
@@ -385,6 +417,33 @@ def _analyse_single_session(lines: list[str]) -> Report:
 
         if PATTERNS["trainer_cmd_refused"].match(msg) or PATTERNS["trainer_control_refused_fatal"].match(msg):
             rep.trainer.control_refusals += 1
+            continue
+
+        m_ftms_w = FTMS_PATTERNS["write"].match(msg)
+        if m_ftms_w:
+            op = m_ftms_w.group("op")
+            rep.ftms.writes[op] = rep.ftms.writes.get(op, 0) + 1
+            continue
+
+        m_ftms_r = FTMS_PATTERNS["response"].match(msg)
+        if m_ftms_r:
+            rep.ftms.delays_ms.append(float(m_ftms_r.group("ms")))
+            continue
+
+        m_ftms_to = FTMS_PATTERNS["timeout"].match(msg)
+        if m_ftms_to:
+            rep.ftms.timeouts += 1
+            continue
+
+        m_ftms_st = FTMS_PATTERNS["status"].match(msg)
+        if m_ftms_st:
+            origin = m_ftms_st.group("origin")
+            if "écho" in origin:
+                rep.ftms.echo_statuses += 1
+                rep.ftms.echo_status_details.append(m_ftms_st.group("name"))
+            else:
+                rep.ftms.third_party_statuses += 1
+                rep.ftms.third_party_status_details.append(m_ftms_st.group("name"))
             continue
 
         m_click_up = PATTERNS["click_connected"].match(msg)
@@ -524,6 +583,7 @@ def _analyse_single_session(lines: list[str]) -> Report:
             drop.nearest_trainer_event_s = round(
                 min(abs((t - ddt).total_seconds()) for t in trainer_event_dts), 3)
     _finalize_click(rep.click)
+    _finalize_ftms(rep.ftms)
     return rep
 
 
@@ -534,6 +594,27 @@ def _click_key(address: str | None) -> str | None:
 def _ago_s(text: str) -> float | None:
     return None if text == "jamais" else float(text.removesuffix(" s"))
 
+
+
+def _p95(values: list[float]) -> float:
+    if not values:
+        return 0.0
+    s = sorted(values)
+    k = (len(s) - 1) * 0.95
+    f = math.floor(k)
+    c = math.ceil(k)
+    if f == c:
+        return round(s[int(k)], 1)
+    d0 = s[int(f)] * (c - k)
+    d1 = s[int(c)] * (k - f)
+    return round(d0 + d1, 1)
+
+
+def _finalize_ftms(f: FtmsReport) -> None:
+    if f.delays_ms:
+        f.delay_median_ms = round(statistics.median(f.delays_ms), 1)
+        f.delay_p95_ms = _p95(f.delays_ms)
+        f.delay_max_ms = round(max(f.delays_ms), 1)
 
 def _finalize_click(c: ClickReport) -> None:
     """Statistiques dérivées des listes de la section Click (aussi après fusion de lancements)."""
@@ -625,11 +706,22 @@ def _merge_reports(reports: list[Report]) -> Report:
             merged.rust_threshold_reached = True
         if r.fit_path:
             merged.fit_path = r.fit_path
+
+        mf, rf = merged.ftms, r.ftms
+        for op, count in rf.writes.items():
+            mf.writes[op] = mf.writes.get(op, 0) + count
+        mf.delays_ms.extend(rf.delays_ms)
+        mf.timeouts += rf.timeouts
+        mf.third_party_statuses += rf.third_party_statuses
+        mf.echo_statuses += rf.echo_statuses
+        mf.third_party_status_details.extend(rf.third_party_status_details)
+        mf.echo_status_details.extend(rf.echo_status_details)
         merged.errors.extend(r.errors)
         merged.warnings.extend(r.warnings)
         merged.unreadable_lines += r.unreadable_lines
 
     _finalize_click(merged.click)
+    _finalize_ftms(merged.ftms)
     return merged
 
 
@@ -645,6 +737,25 @@ def analyse(lines: Iterable[str], all_sessions: bool = False) -> Report:
     reports = [_analyse_single_session(c) for c in chunks]
     return _merge_reports(reports)
 
+
+
+def _format_ftms_details(f: FtmsReport) -> list[str]:
+    """Lignes de la trace FTMS (lot Q3) ; section absente sans trace."""
+    if not f.has_trace:
+        return []
+    writes_desc = ", ".join(f"{op} {count}" for op, count in sorted(f.writes.items()))
+    w_str = f"{f.total_writes} écriture(s)" + (f" ({writes_desc})" if writes_desc else "")
+    lines = [f"Commandes FTMS : {w_str}"]
+    if f.delays_ms:
+        med = f"{f.delay_median_ms:.1f} ms" if f.delay_median_ms is not None else "?"
+        p95_val = f"{f.delay_p95_ms:.1f} ms" if f.delay_p95_ms is not None else "?"
+        max_val = f"{f.delay_max_ms:.1f} ms" if f.delay_max_ms is not None else "?"
+        lines.append(f"                 délai écriture → accusé : médiane {med}, p95 {p95_val}, max {max_val} ; {f.timeouts} expiration(s)")
+    elif f.timeouts:
+        lines.append(f"                 délai écriture → accusé : aucun accusé ; {f.timeouts} expiration(s)")
+    if f.third_party_statuses or f.echo_statuses:
+        lines.append(f"                 statuts : {f.third_party_statuses} par un tiers, {f.echo_statuses} écho(s) probable(s)")
+    return lines
 
 def format_report(rep: Report) -> str:
     """Formate le rapport en français lisible (~10 lignes)."""
@@ -662,6 +773,7 @@ def format_report(rep: Report) -> str:
         f"Trainer: {rep.trainer.connections} connexion(s), {rep.trainer.disconnections} perte(s), "
         f"{rep.trainer.reconnections} reconnexion(s), {rep.trainer.control_refusals} refus "
         f"(connecté {rep.trainer.connected_duration_s:.1f} s / perdu {rep.trainer.lost_duration_s:.1f} s)",
+        *_format_ftms_details(rep.ftms),
         f"Click  : {rep.click.connections} connexion(s), {rep.click.disconnections} déconnexion(s), "
         f"{rep.click.failed_attempts} échec(s) de scan",
         f"Appuis : {total_presses} (court +{pr['plus_short']} / -{pr['minus_short']}, "
