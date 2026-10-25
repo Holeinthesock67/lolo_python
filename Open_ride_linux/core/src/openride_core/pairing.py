@@ -147,6 +147,17 @@ SCAN_STATES = ("IDLE", "READY")   # recherche et enregistrement hors séance seu
 MAX_SCAN_DATAGRAM = 1400
 
 
+async def scan_inventory(sim: Any, timeout: float) -> dict[str, Any]:
+    """Inventaire de `tools.devices` : Bluetooth simulé si `sim` est donné, sinon BlueZ."""
+    from .tools import devices as devices_tool
+
+    if sim is not None:
+        scanner, connected = devices_tool.sim_sources(sim)
+    else:
+        scanner, connected = devices_tool.ble_scan, devices_tool.bluez_connected
+    return await devices_tool.inventory(scanner, connected, timeout, {})
+
+
 def configured_addresses(cfg: config_mod.Config) -> set[str]:
     d = cfg.drivers
     return {a.upper() for a in (d.trainer_address, d.click_address, d.click_minus_address, d.hr_address) if a}
