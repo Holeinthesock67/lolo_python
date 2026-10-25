@@ -54,6 +54,9 @@ var _last_profile_s := -99999.0
 var _last_profile_time_s := 0.0
 var _profile_data: Dictionary = {}
 var _route = null
+## Faux quand le bandeau ERG (erg_view.gd, lot N7) affiche l'entraînement : la ligne ERG du panneau
+## central reste alors cachée.
+var show_erg_line := true
 
 
 func _init() -> void:
@@ -223,7 +226,7 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 
 	if erg_label != null:
 		erg_label.text = lines.get("erg", "")
-		erg_label.visible = lines.get("erg", "") != ""
+		erg_label.visible = show_erg_line and lines.get("erg", "") != ""
 
 	if target_val != null:
 		# Même texte que la ligne de puissance du HUD d'origine (« 230 W » ou « roue libre »).
