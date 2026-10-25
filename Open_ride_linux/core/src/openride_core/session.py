@@ -170,14 +170,16 @@ class CoreSession:
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
         self.physics = RiderPhysics(PhysicsParams.from_config(cfg))
         self.route: Route | None = None
+        self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
-                              gear=self.gearing.k)
+                              gear=self.gearing.k, difficulty_pct=round(self.difficulty_pct))
         self.server = IpcServer(
             port_state=cfg.ipc.port_state, port_commands=cfg.ipc.port_commands,
             on_command=self._on_command, on_engine_lost=self._on_engine_lost,
             on_engine_returned=lambda: log.info("Engine connecté."),
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
-                          "theme": cfg.render.theme})
+                          "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct)})
+        log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
 
@@ -248,6 +250,19 @@ class CoreSession:
                 log.warning("input_event inconnu : %s", args.get("event"))
         elif name == "end_session" and st in ("RUNNING", "PAUSED"):
             self._finish(bool(args.get("save", True)))
+        elif name == "set_difficulty":
+            raw_pct = args.get("pct") if isinstance(args, dict) else None
+            if raw_pct is None or isinstance(raw_pct, bool) or not isinstance(raw_pct, (int, float)):
+                self.server.send_error("bad_args", "set_difficulty attend un nombre 'pct'")
+                return
+            new_val = int(round(max(0, min(100, float(raw_pct)))))
+            old_val = round(self.difficulty_pct)
+            if new_val != old_val:
+                log.info("Difficulté : %d %% -> %d %%", old_val, new_val)
+            self.difficulty_pct = float(new_val)
+            self.state.difficulty_pct = new_val
+            if self.server.hello_config:
+                self.server.hello_config["difficulty_pct"] = new_val
 
     def _select_route(self, route_id: str, previous: str) -> None:
         """LOADING, lecture de la couche route du .world, puis READY (contrat §7, étape 6)."""
@@ -485,7 +500,7 @@ class CoreSession:
             self.driver.set_sim_grade(0.0)
         else:
             # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
-            target = self.gearing.effective_grade(ahead, self.cfg.trainer.difficulty_pct / 100.0)
+            target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0)
             max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
             shifted = self._shift_pending
             if shifted:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
@@ -517,6 +532,7 @@ class CoreSession:
                 alt=round(alt, 2), distance=round(st.s, 2), speed=round(st.v, 3),
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
+                difficulty_pct=round(self.difficulty_pct),
                 block=erg.index + 1 if erg else None,
                 target_w=erg.target_w if erg and erg.target_active else None,
                 erg_bias_pct=erg.bias_pct - BIAS_DEFAULT_PCT if erg and erg.target_active else None))
@@ -562,7 +578,7 @@ class CoreSession:
         loop = asyncio.get_running_loop()
         # SIGHUP : terminal fermé. Sans gestionnaire, le processus mourrait sans relâcher le
         # trainer et BlueZ garderait la liaison ouverte (trainer réservé pour les autres applis).
-        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        for sig in tuple(s for s in (signal.SIGINT, signal.SIGTERM, getattr(signal, "SIGHUP", None)) if s is not None):
             try:
                 loop.add_signal_handler(sig, self.stop_event.set)
             except NotImplementedError:

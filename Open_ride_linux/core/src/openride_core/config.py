@@ -44,7 +44,7 @@ class BikeConfig:
 class TrainerConfig:
     device_name: str = "HomeTrainer"   # fragment du nom annoncé (ex. « HomeTrainer 0000 »)
     latency_tau_s: float = 0.8
-    difficulty_pct: float = 100.0
+    difficulty_pct: float = 50.0
     grade_min_pct: float = -10.0
     grade_max_pct: float = 16.0
     power_smooth_tau_s: float = 0.7   # lissage temporel de la puissance (indépendant de la cadence BLE)
