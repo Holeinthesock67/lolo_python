@@ -120,6 +120,8 @@ def test_session_shutdown_releases_trainer_even_if_fit_fails(tmp_path, monkeypat
 
 def test_sighup_stops_the_core_cleanly(tmp_path, monkeypatch):
     """Terminal fermé (SIGHUP) : arrêt propre au lieu d'une mort sans relâcher le trainer."""
+    if not hasattr(signal, "SIGHUP"):
+        pytest.skip("SIGHUP non disponible sur cette plateforme")
     stopped = []
 
     class Driver(MockDriver):
