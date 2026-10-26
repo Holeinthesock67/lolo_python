@@ -209,7 +209,7 @@ Les cahiers V1 à V11 et les questions V-Q4 à V-Q13 sont en revue (PR #238).
 | --- | --- | --- | --- |
 | 2.0-MON-1 | Départ choisi sur un globe ou par recherche de lieu, puis sur une carte régionale | W11 | Planifié |
 | 2.0-MON-2 | Monde généré en direct par `openride-worldgen` ; au moins 3 km de route engagée devant le cycliste ; choix au carrefour jusqu'à 30 m avant, sinon le navigateur choisit | W1, W4 à W9 | W0 et W1 en revue (PR #279, #282) ; cahiers en revue (PR #272) |
-| 2.0-MON-3 | Cache local de 5 Go par défaut, éviction des moins récemment utilisés, régions épinglées ; rien n'est retéléchargé au retour au même endroit | W2 | Planifié |
+| 2.0-MON-3 | Cache local de 5 Go par défaut, éviction des moins récemment utilisés, régions épinglées ; rien n'est retéléchargé au retour au même endroit | W2 | En revue (PR #285) |
 | 2.0-MON-4 | Cartes : tuiles vectorielles mondiales au fil de la balade et préchargées autour des lieux de départ habituels ; extrait régional facultatif ; Overpass jamais pendant la séance | W3, W13 | Planifié |
 | 2.0-MON-5 | Monde ouvert autorisé en ERG ; balade, destination ou boucle de X km ; balade enregistrable comme parcours | W6, W14 | Planifié |
 | 2.0-MON-6 | Recette : une heure sans pause d'attente, 55 images/s, gigue de la physique sous 5 ms | W16 | Planifié |
