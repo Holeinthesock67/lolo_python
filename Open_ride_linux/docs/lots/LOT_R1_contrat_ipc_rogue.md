@@ -4,7 +4,7 @@
 
 Fixer, **avant tout code**, les ajouts compatibles au contrat IPC dont le mode Cyber-Rogue a besoin. Le core reste le maître : il compose la run, calcule les règles et pilote le trainer ; l'engine affiche ce qu'il reçoit et envoie les commandes du menu. C'est une décision du propriétaire, comme N1 et P1.
 
-Numérotation (confirmée le 26 octobre) : la révision 1.2 est prise par Q1 et N13, la 1.3 par P1 ; les séries R, T et V ajoutent la **1.4**. Les ajouts communs avec la série T (événements Y, Z, A) et la série V sont rédigés une seule fois, par le premier des lots R1, T1 ou V1.
+Numérotation (confirmée le 26 octobre) : la révision 1.2 est prise par Q1, N13 et O4, la 1.3 par P1 ; les séries R, T et V ajoutent la **1.4**. Les ajouts communs avec la série T (événements Y, Z, A) et la série V sont rédigés une seule fois, par le premier des lots R1, T1 ou V1.
 
 ## 2. À lire
 

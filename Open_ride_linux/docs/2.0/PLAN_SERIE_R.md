@@ -4,7 +4,7 @@
 
 ## 1. En résumé
 
-Le mode tient sur le socle actuel : le core pilote déjà le trainer en pente avec des braquets virtuels, connaît la FTP et décode les cinq boutons du boîtier droit du Click. Il faut surtout un moteur de partie dans le core, des ajouts compatibles à l'IPC (révision 1.4 ; la 1.2 est prise par Q1 et N13, la 1.3 par la série P) et une scène Godot séparée. Le risque principal est le temps de réponse du frein, jamais mesuré.
+Le mode tient sur le socle actuel : le core pilote déjà le trainer en pente avec des braquets virtuels, connaît la FTP et décode les cinq boutons du boîtier droit du Click. Il faut surtout un moteur de partie dans le core, des ajouts compatibles à l'IPC (révision 1.4 ; la 1.2 est prise par Q1, N13 et O4, la 1.3 par la série P) et une scène Godot séparée. Le risque principal est le temps de réponse du frein, jamais mesuré.
 
 ## 2. Décisions du propriétaire (25 octobre 2026)
 
@@ -90,7 +90,7 @@ Accueil (entrées construites depuis hello_ack.config.modes)
                           └─► fin de run ─► bilan (summary.rogue) ─► Accueil
 ```
 
-- **Côté 1.0 (lanceur et menu principal) :** pas d'entrée « Cyber-Rogue » grisée. L'accueil se construit à partir d'une table locale de modes, filtrée par la liste `modes` que le core annoncera dans `hello_ack.config` (absente en 1.0 : `["ride", "erg"]`). Ainsi la 2.0 n'ajoute qu'une ligne à la table, et l'entrée apparaît seule quand le core sait lancer le mode. Rien à changer au contrat de la 1.0.
+- **Côté 1.0 (lanceur et menu principal, lot N15 de la PR #230) :** pas d'entrée « Cyber-Rogue » grisée ; `menu_model.gd` construit déjà l'accueil depuis une table `HOME_MODES` filtrée par `modes` (`set_modes`, appelé à chaque `hello_ack`). L'accueil se construit à partir d'une table locale de modes, filtrée par la liste `modes` que le core annoncera dans `hello_ack.config` (absente en 1.0 : `["ride", "erg"]`). Ainsi la 2.0 n'ajoute qu'une ligne à la table, et l'entrée apparaît seule quand le core sait lancer le mode. Rien à changer au contrat de la 1.0.
 - Détail : cahiers de R1 (§4.2, §4.3), R8 (§4.1) et R13 (§4.1).
 
 ## 7. Questions ouvertes (à trancher par le propriétaire)
