@@ -240,13 +240,13 @@ Le champ `v` reste 1 : tous les ajouts sont compatibles. Chaque révision est no
 | --- | --- | --- | --- | --- |
 | 1.0 | État à 30 Hz, commandes, heartbeat, pannes | C, D | 1.0 | Livré |
 | 1.1 | Listes des parcours et entraînements, `devices`, bilan enrichi, reprise après plantage | N1 | 1.0 | Livré |
-| 1.2 | `set_difficulty`, `difficulty_pct` ; appairage depuis le menu (`scan_devices`, `pair_devices`…) ; ajouts des réglages | Q1, N13, O4 | 1.0 | Livré (Q1, N13) ; O4 en revue |
+| 1.2 | `set_difficulty`, `difficulty_pct` ; appairage depuis le menu (`scan_devices`, `pair_devices`…) ; réglages (`list_settings`, `set_setting`, message `settings`) ; précisions de X25. La 1.2 se ferme à la sortie de la 1.0 | Q1, N13, O3, O4, X25 | 1.0 | Livré (Q1, N13) ; O3/O4 et X25 en revue (PR #248, #233) |
 | 1.3 | Champs `wind` et `draft` de `state` | P1 | 1.x | Spécifié (le cahier P1 dit encore « v1.2 », C1) |
 | 1.4 | Événements `input` Y, Z et A ; champs `rogue`, `segment`, `powerup` ; champs des bots à profil ; messages `room`, `loot`, `segment_result`, `xp` ; commandes de run, `equip`, `set_avatar` | R1, T1, V1 | 2.0 | Planifié (cahier R1 en revue, PR #244) |
 | 1.5 | Monde ouvert : `start_open_world`, `choose_branch`, champ `open_world`, `world_status` et messages de la carte | W1 | 2.0 | En revue (PR #282, numéro provisoire) |
 | — | Série U : aucun ajout à l'IPC prévu ; le forçage du biome au menu (U16) passera par la révision suivante si besoin | U16 | 3.0 | Planifié |
 
-Règles de numérotation : une révision est réservée par série, dans l'ordre ci-dessus ; R1, T1 et V1 se partagent la 1.4, le premier fusionné ajoute les événements de boutons communs ; un lot de contrat prend le premier numéro libre à sa fusion. La numérotation 1.2 est confirmée par le propriétaire (26 octobre) ; 1.3 à 1.5 suivent l'ordre adopté dans la PR #244 et la PR #282, à vérifier par l'audit de cohérence de l'IPC en cours.
+Règles de numérotation : une révision est réservée par série, dans l'ordre ci-dessus ; R1, T1 et V1 se partagent la 1.4, le premier fusionné ajoute les événements de boutons communs ; un lot de contrat prend le premier numéro libre à sa fusion. La numérotation 1.2 est confirmée par le propriétaire (26 octobre) ; 1.3 à 1.5 suivent l'ordre adopté dans la PR #244 et la PR #282, et l'audit de l'IPC du 26 octobre (PR #288) arrive à la même numérotation ; elle reste à confirmer par le propriétaire. L'ancienne proposition N13 = 1.3, P1 = 1.4, R/T = 1.5 est périmée.
 
 ### 6.2 Format `.world` et thèmes
 
@@ -291,7 +291,7 @@ Le clavier double toujours le Click. Pas de bouton pour la difficulté (décisio
 
 ## 9. Contradictions et points à trancher
 
-Écarts relevés en rassemblant les documents. Les points C1 à C3 sont des corrections à appliquer dans les documents détaillés ; C4 à C9 demandent une décision du propriétaire.
+Écarts relevés en rassemblant les documents. Les points C1 à C3 et C9 sont des corrections à appliquer dans les documents détaillés ; C4 à C8 et C10 demandent une décision du propriétaire.
 
 | # | Écart | Où | Proposition |
 | --- | --- | --- | --- |
@@ -304,6 +304,7 @@ Le clavier double toujours le Click. Pas de bouton pour la difficulté (décisio
 | C7 | Bouton A : libre en classique (T), branches du carrefour en monde ouvert (W-Q1), pause en Cyber-Rogue (proposé, R1). Sans conflit tant que ces modes ne se combinent pas ; à vérifier pour le Cyber-Rogue en monde ouvert, que rien n'exclut | Plans R, T, W | Exclure le Cyber-Rogue du monde ouvert en 2.0 |
 | C8 | Programmes : la SRS §3 annonce trois programmes ; le lot W1 en ajoute un quatrième (`openride-worldgen`) | SRS §3, PR #282 | Accepter, noté au §3 |
 | C9 | L'état « Livré » de Q1 et Q3 n'est pas reporté dans l'index des lots, alors que leur code est sur `main` (révision 1.2 de l'IPC, clé `trace_ftms`) | `docs/lots/00_INDEX.md` | À corriger par la série Q (tenue par une autre IA) |
+| C10 | Taille de la trame `state` : le contrat promet 1 400 octets, mais une trame réaliste en fait déjà environ 1 520 sur `main`, et les séries P, R, T et W ajoutent toutes des champs à `state`. Aucune exigence de ce document ne promet donc de tenir dans 1 400 octets | `docs/contracts/ipc_v1.md`, plans T et W, audit IPC (PR #288) | Trancher la décision D1 de l'audit avant la 1.3 : arrondir les flottants, puis relever la limite de `state` à 4 096 octets en 1.3, ou créer un message `state_ext` |
 
 ## 10. Tenue de ce document
 
@@ -313,4 +314,4 @@ Le clavier double toujours le Click. Pas de bouton pour la difficulté (décisio
 
 | Date | Changement |
 | --- | --- |
-| 26 octobre 2026 | Première version : SRS v1.1, série P, plans R, T, V, W et U rassemblés ; révisions IPC 1.0 à 1.5 ; contradictions C1 à C9 |
+| 26 octobre 2026 | Première version : SRS v1.1, série P, plans R, T, V, W et U rassemblés ; révisions IPC 1.0 à 1.5 ; contradictions C1 à C10 ; numérotation alignée sur l'audit IPC (PR #288) |
