@@ -46,7 +46,7 @@
         },
         "open_world_dir": {
           "type": "string",
-          "description": "Facultatif (révision 1.5 provisoire, lot W1) : dossier des séances de monde ouvert ; `route_id` `ow:<id>` désigne `<open_world_dir>/<id>.world`."
+          "description": "Facultatif (révision 1.5, lot W1) : dossier des séances de monde ouvert ; `route_id` `ow:<id>` désigne `<open_world_dir>/<id>.world`."
         }
       }
     }

@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideWorldRegionsMessage",
-  "description": "Réponse à world_regions (révision 1.5 provisoire, lot W1) : régions du cache local ; parties de 60 000 octets au plus.",
+  "description": "Réponse à world_regions (révision 1.5, lot W1) : régions du cache local ; parties de 60 000 octets au plus.",
   "type": "object",
   "required": [
     "type",

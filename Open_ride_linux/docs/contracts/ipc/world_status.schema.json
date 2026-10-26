@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideWorldStatusMessage",
-  "description": "Préparation du monde ouvert (révision 1.5 provisoire, lot W1) ; 1 400 octets au plus.",
+  "description": "Préparation du monde ouvert (révision 1.5, lot W1) ; 1 400 octets au plus.",
   "type": "object",
   "required": [
     "type",
