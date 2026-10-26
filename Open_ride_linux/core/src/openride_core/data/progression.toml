@@ -78,3 +78,237 @@ name = "Premier boss Cyber-Rogue vaincu"
 stat = "rogue_bosses"
 threshold = 1
 reward = "kit_neon"
+
+# Catalogue d'équipement (lot V3). Effets en masse (kg) et CdA (%) sur la vitesse virtuelle
+# seulement, bornés ensemble à −3 % de la masse totale et −6 % du CdA (plan V §2.2).
+# `level` : niveau où la pièce devient achetable ; `price` : en pièces (lot V3b) ;
+# `buyable = false` : pièce offerte par un défi seulement ; `default` : possédée au départ.
+# `terrain` : flat, rolling, climb ou all ; `look` : forme dessinée par l'engine (lot V7).
+
+[[items]]
+id = "frame_allround"
+slot = "frame"
+name = "Polyvalent"
+level = 1
+price = 0
+mass_delta_kg = 0.0
+cda_delta_pct = 0.0
+terrain = "all"
+look = "frame_round"
+default = true
+
+[[items]]
+id = "frame_climber"
+slot = "frame"
+name = "Grimpeur"
+level = 5
+price = 150
+mass_delta_kg = -1.5
+cda_delta_pct = 0.0
+terrain = "climb"
+look = "frame_light"
+
+[[items]]
+id = "frame_aero"
+slot = "frame"
+name = "Aéro"
+level = 10
+price = 250
+mass_delta_kg = 0.5
+cda_delta_pct = -3.0
+terrain = "flat"
+look = "frame_aero"
+
+[[items]]
+id = "frame_allround_light"
+slot = "frame"
+name = "Polyvalent léger"
+level = 25
+price = 450
+mass_delta_kg = -0.8
+cda_delta_pct = -1.5
+terrain = "rolling"
+look = "frame_round_light"
+
+[[items]]
+id = "frame_tt"
+slot = "frame"
+name = "Contre-la-montre"
+level = 30
+price = 500
+mass_delta_kg = 0.5
+cda_delta_pct = -4.0
+terrain = "flat"
+look = "frame_tt"
+
+[[items]]
+id = "wheels_standard"
+slot = "wheels"
+name = "Standard"
+level = 1
+price = 0
+mass_delta_kg = 0.0
+cda_delta_pct = 0.0
+terrain = "all"
+look = "wheels_spoked"
+default = true
+
+[[items]]
+id = "wheels_light"
+slot = "wheels"
+name = "Légères"
+level = 3
+price = 100
+mass_delta_kg = -0.5
+cda_delta_pct = 0.0
+terrain = "climb"
+look = "wheels_spoked_light"
+
+[[items]]
+id = "wheels_deep"
+slot = "wheels"
+name = "Profilées"
+level = 8
+price = 200
+mass_delta_kg = 0.2
+cda_delta_pct = -2.0
+terrain = "rolling"
+look = "wheels_deep"
+
+[[items]]
+id = "wheels_disc"
+slot = "wheels"
+name = "Lenticulaire"
+level = 15
+price = 350
+mass_delta_kg = 0.5
+cda_delta_pct = -3.0
+terrain = "flat"
+look = "wheels_disc"
+
+# Apparence seulement (aucun effet).
+[[items]]
+id = "helmet_route"
+slot = "helmet"
+name = "Casque route"
+level = 1
+price = 0
+look = "helmet_road"
+default = true
+
+[[items]]
+id = "helmet_aero"
+slot = "helmet"
+name = "Casque aéro"
+level = 6
+price = 80
+look = "helmet_aero"
+
+[[items]]
+id = "helmet_sommet"
+slot = "helmet"
+name = "Casque « Sommet »"
+buyable = false
+look = "helmet_summit"
+
+[[items]]
+id = "kit_uni"
+slot = "kit"
+name = "Tenue unie"
+level = 1
+price = 0
+look = "kit_plain"
+default = true
+
+[[items]]
+id = "kit_bandes"
+slot = "kit"
+name = "Tenue à bandes"
+level = 2
+price = 50
+look = "kit_stripes"
+
+[[items]]
+id = "kit_club"
+slot = "kit"
+name = "Maillot de club"
+level = 12
+price = 120
+look = "kit_club"
+
+[[items]]
+id = "kit_mille_bornes"
+slot = "kit"
+name = "Tenue « Mille bornes »"
+buyable = false
+look = "kit_milestones"
+
+[[items]]
+id = "kit_pois"
+slot = "kit"
+name = "Maillot à pois"
+buyable = false
+look = "kit_polka"
+
+[[items]]
+id = "kit_neon"
+slot = "kit"
+name = "Tenue « Néon »"
+buyable = false
+look = "kit_neon"
+
+[[items]]
+id = "socks_blanches"
+slot = "socks"
+name = "Chaussettes blanches"
+level = 1
+price = 0
+look = "socks_white"
+default = true
+
+[[items]]
+id = "socks_rayees"
+slot = "socks"
+name = "Chaussettes rayées"
+level = 4
+price = 30
+look = "socks_striped"
+
+[[items]]
+id = "socks_hautes"
+slot = "socks"
+name = "Chaussettes hautes"
+level = 9
+price = 60
+look = "socks_tall"
+
+[[items]]
+id = "socks_longue_distance"
+slot = "socks"
+name = "Chaussettes « Longue distance »"
+buyable = false
+look = "socks_long_distance"
+
+[[items]]
+id = "glasses_claires"
+slot = "glasses"
+name = "Lunettes claires"
+level = 1
+price = 0
+look = "glasses_clear"
+default = true
+
+[[items]]
+id = "glasses_miroir"
+slot = "glasses"
+name = "Lunettes miroir"
+level = 7
+price = 70
+look = "glasses_mirror"
+
+[[items]]
+id = "glasses_metronome"
+slot = "glasses"
+name = "Lunettes « Métronome »"
+buyable = false
+look = "glasses_metronome"
