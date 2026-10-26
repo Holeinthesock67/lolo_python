@@ -102,7 +102,7 @@ def cmd_run(args: argparse.Namespace) -> int:
         logging.getLogger("openride_core").info(
             "Premier démarrage : configurez vos appareils avec openride-core devices --save.")
     try:
-        session = CoreSession(cfg, bots=bots_list)
+        session = CoreSession(cfg, bots=bots_list, config_path=args.config)
     except SimScenarioError as exc:
         print(f"openride-core : scénario de simulation refusé : {exc}", file=sys.stderr)
         return 1
