@@ -87,7 +87,7 @@
 | [O10](LOT_O10_test_ftp.md) | Test de FTP (rampe et 20 min) côté core, nouvelle FTP proposée puis enregistrée | Python | O3 ; O9 utile | Moyenne | Oui, après O3 |
 | [O11](LOT_O11_plans_entrainement.md) | Plans d'entraînement sur plusieurs semaines, séance du jour et suivi, import d'un dossier | Python | O9 ; O10 pour les jours de test | Moyenne | Oui, après O9 |
 | [O12](LOT_O12_menu_entrainement.md) | Menu : plans, test de FTP et bibliothèque de parcours (ajouts au contrat IPC) | GDScript + Python | N6, O4, O10, O11, O15 | Grande | Non : interne (contrat, écrans du menu) |
-| [O13](LOT_O13_modele_courbes.md) | Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle sans affichage | GDScript | K1 (livré) ; N3 utile | Petite | Oui |
+| [O13](LOT_O13_modele_courbes.md) | Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle sans affichage | GDScript | K1 (livré) ; N3 utile | Petite | **Livré le 26 octobre** (issue #156 ; tests Godot à lancer sur le PC) |
 | [O14](LOT_O14_affichage_courbes.md) | Courbes de la séance à l'écran | GDScript | O13, N7 | Moyenne | Non : interne (contrôle visuel) |
 | [O15](LOT_O15_bibliotheque_parcours.md) | Bibliothèque de parcours : fiches (dénivelé, montée, difficulté), tri, filtres, packs de parcours | Python | O5 | Moyenne | Oui, après O5 |
 | [O16](LOT_O16_pack_cols_celebres.md) | Pack de départ : cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | Oui, après O15 |

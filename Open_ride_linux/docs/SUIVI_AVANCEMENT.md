@@ -207,7 +207,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Entraînements GoldenCheetah `.erg` et `.mrc` (lot O9, 25 octobre) : lecture dans `workout_formats.py`, cibles en watts absolues pour les `.erg` (`--erg-relative` pour les ramener à la FTP), `list`, `check` et `install` ; reste l'essai d'un `.erg` exporté de GoldenCheetah sur le PC cible.
 - [ ] Test de FTP par rampe ou sur 20 minutes, nouvelle FTP enregistrée après accord (lot O10).
 - [ ] Plans d'entraînement sur plusieurs semaines et séance du jour (lot O11).
-- [ ] Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle (lot O13), écran (lot O14).
+- [ ] Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle fait (lot O13, 26 octobre, `workout_chart_model.gd`, `test_workout_chart_model.gd` à lancer sur le PC), écran (lot O14).
 - [ ] Bibliothèque de parcours : fiches, tri, filtres, packs (lot O15).
 - [ ] Pack de départ de cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construit depuis OpenStreetMap (lot O16).
 - [ ] Menu des plans, du test de FTP et de la bibliothèque (lot O12).
