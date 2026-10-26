@@ -210,11 +210,13 @@ def test_update_script_fast_forward_only(tmp_path: Path):
     other = tmp_path / "other"
     git(tmp_path, "clone", "-q", str(origin), str(other))
 
-    env = {**os.environ, "OPENRIDE_NO_PIP": "1", "PATH": "/usr/bin:/bin"}
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {**os.environ, "OPENRIDE_NO_PIP": "1", "PATH": "/usr/bin:/bin", "HOME": str(home)}
 
     def update() -> subprocess.CompletedProcess:
         return subprocess.run([BASH, str(proj / "scripts" / "update.sh")], env=env,
-                              capture_output=True, text=True)
+                              stdin=subprocess.DEVNULL, capture_output=True, text=True)
 
     r = update()
     assert r.returncode == 0 and "déjà à jour" in r.stdout, r.stdout + r.stderr
@@ -239,7 +241,89 @@ def test_update_script_fast_forward_only(tmp_path: Path):
     head = git(work, "rev-parse", "HEAD")
     r = update()
     assert r.returncode == 1 and "avance rapide" in r.stdout
+    assert "1 commit(s)" in r.stdout and "git branch sauvegarde-" in r.stdout   # quoi faire
     assert git(work, "rev-parse", "HEAD") == head
+    log = (home / "OpenRide" / "Logs" / "update.log").read_text(encoding="utf-8")
+    assert "local" in log   # le commit local est listé au journal
+
+
+def _update_repo(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
+    """Dépôt de test à jour d'un commit (v2 publié après le clone) ; renvoie (work, proj, env)."""
+    origin = tmp_path / "origin.git"
+    git(tmp_path, "init", "-q", "--bare", "-b", "main", str(origin))
+    work = tmp_path / "work"
+    git(tmp_path, "clone", "-q", str(origin), str(work))
+    proj = work / "Open_ride_linux"
+    (proj / "scripts").mkdir(parents=True)
+    shutil.copy(SCRIPTS / "update.sh", proj / "scripts" / "update.sh")
+    (proj / "README.md").write_text("v1\n", encoding="utf-8")
+    git(work, "add", "-A")
+    git(work, "commit", "-q", "-m", "v1")
+    git(work, "push", "-q", "-u", "origin", "main")
+    other = tmp_path / "other"
+    git(tmp_path, "clone", "-q", str(origin), str(other))
+    (other / "Open_ride_linux" / "README.md").write_text("v2\n", encoding="utf-8")
+    git(other, "commit", "-q", "-am", "v2")
+    git(other, "push", "-q")
+    home = tmp_path / "home"
+    home.mkdir()
+    env = {**os.environ, "OPENRIDE_NO_PIP": "1", "PATH": "/usr/bin:/bin", "HOME": str(home)}
+    return work, proj, env
+
+
+def _run_update(proj: Path, env: dict[str, str]) -> subprocess.CompletedProcess:
+    return subprocess.run([BASH, str(proj / "scripts" / "update.sh")], env=env,
+                          stdin=subprocess.DEVNULL, capture_output=True, text=True, timeout=60)
+
+
+@pytest.mark.skipif(not (BASH and GIT) or not Path("/proc/self/cmdline").exists(),
+                    reason="bash, git ou /proc absent")
+@pytest.mark.parametrize("kind", ["venv", "godot"])
+def test_update_script_refuses_while_game_open(tmp_path: Path, kind: str):
+    """Jeu ouvert (Python du venv ou Godot sur `engine`) : refus lisible, dépôt intact ; puis succès."""
+    work, proj, env = _update_repo(tmp_path)
+    if kind == "venv":
+        bin_dir = proj / "core" / ".venv" / "bin"
+        bin_dir.mkdir(parents=True)
+        fake = bin_dir / "python3"
+        fake.symlink_to(sys.executable)
+        cmd = [str(fake), "-c", "import time; time.sleep(60)", str(bin_dir / "openride")]
+    else:
+        cmd = [sys.executable, "-c", "import time; time.sleep(60)", "--path", str(proj / "engine")]
+    head = git(work, "rev-parse", "HEAD")
+    game = subprocess.Popen(cmd)
+    try:
+        r = _run_update(proj, env)
+        assert r.returncode == 1 and "OpenRide est ouvert" in r.stdout, r.stdout + r.stderr
+        assert git(work, "rev-parse", "HEAD") == head   # rien n'a bougé
+    finally:
+        game.kill()
+        game.wait()
+    r = _run_update(proj, env)
+    assert r.returncode == 0 and "mis à jour" in r.stdout, r.stdout + r.stderr
+
+
+@pytest.mark.skipif(not (BASH and GIT) or not shutil.which("flock"), reason="bash, git ou flock absent")
+def test_update_lock_blocks_second_update_and_launcher(tmp_path: Path, monkeypatch):
+    """Verrou ~/OpenRide/.update.lock : seconde mise à jour refusée, lanceur refusé."""
+    import fcntl
+
+    work, proj, env = _update_repo(tmp_path)
+    lock = Path(env["HOME"]) / "OpenRide" / ".update.lock"
+    lock.parent.mkdir(parents=True)
+    assert not launcher.update_in_progress(lock)
+    with lock.open("a") as fh:
+        fcntl.flock(fh, fcntl.LOCK_EX)
+        assert launcher.update_in_progress(lock)
+        r = _run_update(proj, env)
+        assert r.returncode == 1 and "déjà en cours" in r.stdout, r.stdout + r.stderr
+
+        monkeypatch.setattr(launcher, "update_in_progress", lambda: True)
+        messages: list[tuple[str, bool]] = []
+        assert launcher.main([], message=lambda t, e: messages.append((t, e))) == 1
+        assert messages and "mise à jour est en cours" in messages[0][0]
+        monkeypatch.undo()
+    assert not launcher.update_in_progress(lock)
 
 
 # --- install.sh ----------------------------------------------------------------------------------
