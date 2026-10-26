@@ -4,11 +4,13 @@ Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
     openride-core run [--trainer mock|ftms|sim] [--input click|keyboard|none|sim]
                       [--hr none|ble|sim] [--sim-scenario NOM|FICHIER] [--gear N]
-                      [--autostart [--route ID] [--workout ID]]
+                      [--autostart [--route ID] [--workout ID]] [--resume JOURNAL]
                                       boucle de séance (BLE, physique, IPC, journal) ; avec
                                       --autostart, parcours <routes>/<ID>.world (défaut demo) et
                                       entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM) ;
-                                      « sim » : HomeTrainer, Click ou ceinture simulés (Bluetooth simulé)
+                                      « sim » : HomeTrainer, Click ou ceinture simulés (Bluetooth simulé) ;
+                                      --resume : reprend en pause la séance d'un journal non terminé
+                                      (relance par le lanceur après un plantage du core, lot N8)
     openride-core release-trainer     dépannage : annule la consigne du trainer, lui rend sa
                                       liberté et le déconnecte (après un arrêt brutal)
     openride-core summary [FICHIER] [--ftp W] [--json]
@@ -16,7 +18,7 @@ Sous-commandes disponibles à ce stade :
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
     openride-core devices [--timeout S] [--json] [--all] [--config FICHIER]
-                          [--sim-scenario NOM|FICHIER]
+                          [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
                                       ceinture) et bloc [drivers] proposé pour config.toml
 """
@@ -71,14 +73,42 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.replay:
         cfg.drivers.trainer = "mock"
         cfg.drivers.mock_replay = str(args.replay)
+    if args.trace_ftms:
+        cfg.trainer.trace_ftms = True
+
+    bots_list = []
+    if args.bot:
+        if len(args.bot) > 4:
+            print("openride-core run : erreur : au plus 4 bots à puissance constante (--bot)", file=sys.stderr)
+            return 2
+        from .bots import ConstantPowerBot, BotError
+        from .physics import PhysicsParams
+        phys_params = PhysicsParams.from_config(cfg)
+        for i, w in enumerate(args.bot):
+            try:
+                bots_list.append(ConstantPowerBot(w, bot_id=f"bot{i+1}", params=phys_params))
+            except BotError as exc:
+                print(f"openride-core run : erreur : {exc}", file=sys.stderr)
+                return 2
+    if args.ghost:
+        from .bots import GhostBot, BotError
+        try:
+            bots_list.append(GhostBot(args.ghost))
+        except BotError as exc:
+            print(f"openride-core run : erreur : {exc}", file=sys.stderr)
+            return 1
+
+    if args.first_run:
+        logging.getLogger("openride_core").info(
+            "Premier démarrage : configurez vos appareils avec openride-core devices --save.")
     try:
-        session = CoreSession(cfg)
+        session = CoreSession(cfg, bots=bots_list)
     except SimScenarioError as exc:
         print(f"openride-core : scénario de simulation refusé : {exc}", file=sys.stderr)
         return 1
     try:
         asyncio.run(session.run(autostart=args.autostart, route_id=args.route or "demo",
-                                workout_id=args.workout))
+                                workout_id=args.workout, resume=args.resume))
     except AutostartError as exc:
         logging.getLogger("openride_core").error("Séance non lancée : %s", exc)
         print(f"openride-core : {exc}", file=sys.stderr)
@@ -117,7 +147,8 @@ def cmd_history(args: argparse.Namespace) -> int:
 def cmd_devices(args: argparse.Namespace) -> int:
     from .tools.devices import run
 
-    return run(args.timeout, args.json, args.config, args.sim_scenario, args.all)
+    return run(args.timeout, args.json, args.config, args.sim_scenario, args.all,
+               save=args.save, assume_yes=args.yes)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -141,12 +172,22 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--gear", type=int, help="braquet de départ, 1 (léger) à 24 (dur) ; défaut 12")
     run.add_argument("--replay", type=Path,
                      help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
+    run.add_argument("--bot", action="append", type=float, metavar="W",
+                     help="ajoute un bot à puissance constante en watts (répétable, au plus 4)")
+    run.add_argument("--ghost", type=Path, metavar="FICHIER",
+                     help="ajoute un fantôme rejouant une séance enregistrée (.jsonl ou .fit)")
+    run.add_argument("--first-run", action="store_true",
+                     help="premier démarrage (passé par le lanceur ; le menu ouvrira « Appareils », lot N13)")
+    run.add_argument("--resume", type=Path, metavar="JOURNAL",
+                     help="reprend en pause la séance d'un journal non terminé (après un plantage du core)")
     run.add_argument("--autostart", action="store_true",
                      help="charge le parcours (--route, défaut demo) et démarre aussitôt")
     run.add_argument("--route", metavar="ID",
                      help="avec --autostart : parcours <routes>/<ID>.world (défaut : demo)")
     run.add_argument("--workout", metavar="ID",
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
+    run.add_argument("--trace-ftms", action="store_true",
+                     help="trace horodatée de chaque échange Control Point FTMS (lot Q3)")
     rel = sub.add_parser("release-trainer",
                          help="libérer le trainer resté réservé (consigne annulée, contrôle rendu)")
     rel.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
@@ -169,6 +210,9 @@ def build_parser() -> argparse.ArgumentParser:
     dev.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     dev.add_argument("--sim-scenario", metavar="NOM|FICHIER",
                      help="recherche dans le Bluetooth simulé (mêmes noms que run --sim-scenario)")
+    dev.add_argument("--save", action="store_true",
+                     help="enregistre le matériel trouvé dans config.toml (appui « + » demandé, lot N12)")
+    dev.add_argument("--yes", action="store_true", help="avec --save : sans demander de confirmation")
     return p
 
 

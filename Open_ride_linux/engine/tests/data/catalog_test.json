@@ -1,0 +1,66 @@
+{
+  "routes": [
+    {
+      "id": "galibier",
+      "name": "Col du Galibier",
+      "status": "ready",
+      "length_m": 17700.0,
+      "route_type": "open",
+      "has_terrain": true,
+      "error": null
+    },
+    {
+      "id": "alpe_huez",
+      "name": "Alpe d'Huez",
+      "status": "ready",
+      "length_m": 13800.0,
+      "route_type": "open",
+      "has_terrain": true,
+      "error": null
+    },
+    {
+      "id": "ventoux_gpx",
+      "name": "Mont Ventoux",
+      "status": "to_compile",
+      "length_m": 21500.0,
+      "route_type": "open",
+      "has_terrain": false,
+      "error": null
+    },
+    {
+      "id": "parcours_casse",
+      "name": "Parcours Cassé",
+      "status": "invalid",
+      "length_m": null,
+      "route_type": null,
+      "has_terrain": false,
+      "error": "manifest.json manquant"
+    }
+  ],
+  "workouts": [
+    {
+      "id": "recup",
+      "name": "Récupération",
+      "duration_s": 1800,
+      "block_count": 3,
+      "selectable": true,
+      "error": null
+    },
+    {
+      "id": "sweet_spot",
+      "name": "Sweet Spot 3x10",
+      "duration_s": 3600,
+      "block_count": 8,
+      "selectable": true,
+      "error": null
+    },
+    {
+      "id": "casse",
+      "name": "Fichier cassé",
+      "duration_s": 0,
+      "block_count": 0,
+      "selectable": false,
+      "error": "balise <workout> absente"
+    }
+  ]
+}

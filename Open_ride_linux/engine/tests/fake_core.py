@@ -105,6 +105,7 @@ class FakeCore:
     session_state: str = "IDLE"
     route_id: str | None = "demo"
     accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
+    difficulty_pct: int = 50
     seq: int = 0
     last_cmd_id: int = 0
     _cmd_counts: dict[int, int] = field(default_factory=dict)
@@ -150,7 +151,7 @@ class FakeCore:
             "trainer_status": "MOCK", "input_status": "KEYBOARD", "mode": "SIM",
             "route_id": self.route_id, "route_length_m": None,
             "s": self.current_s() if s is None else s,
-            "grade": 0.0, "grade_sent": 0.0, "power": 200.0, "power_3s": 200.0, "cadence": 85.0,
+            "grade": 0.0, "grade_sent": 0.0, "difficulty_pct": self.difficulty_pct, "power": 200.0, "power_3s": 200.0, "cadence": 85.0,
             "hr": None, "gear": 12, "gears_total": 24, "lat": 0.0, "lon": 0.0, "alt": 0.0,
             "erg": None, "summary": None, "last_cmd_id": self.last_cmd_id,
         }
@@ -196,14 +197,57 @@ class FakeCore:
                 self.send_hello_ack()
         elif kind == "cmd" and not self.silent:
             cmd_id = int(msg.get("cmd_id", 0))
+            name = str(msg.get("name", ""))
             count = self._cmd_counts.get(cmd_id, 0) + 1
             self._cmd_counts[cmd_id] = count
             if cmd_id > self.last_cmd_id and self.accept_cmd(msg, count):
                 self.last_cmd_id = cmd_id
 
+            if getattr(self, "catalog_data", None):
+                if name == "list_routes":
+                    if not getattr(self, "drop_all_catalog", False):
+                        if getattr(self, "drop_first_catalog", False) and "routes" not in getattr(self, "_dropped_lists", set()):
+                            self._dropped_lists.add("routes")
+                        else:
+                            self.send_list("routes", cmd_id, self.catalog_data.get("routes", []))
+                elif name == "list_workouts":
+                    if not getattr(self, "drop_all_catalog", False):
+                        if getattr(self, "drop_first_catalog", False) and "workouts" not in getattr(self, "_dropped_lists", set()):
+                            self._dropped_lists.add("workouts")
+                        else:
+                            self.send_list("workouts", cmd_id, self.catalog_data.get("workouts", []))
+                elif name == "select_route":
+                    args = msg.get("args", {})
+                    self.route_id = str(args.get("route_id", self.route_id))
+                elif name == "select_workout":
+                    args = msg.get("args", {})
+                    self.workout_id = args.get("workout_id")
+                elif name == "start":
+                    self.set_running(True)
+                elif name == "set_difficulty":
+                    args = msg.get("args", {})
+                    pct = args.get("pct")
+                    if isinstance(pct, (int, float)):
+                        self.difficulty_pct = int(round(max(0, min(100, pct))))
+
+    def send_list(self, kind: str, cmd_id: int, items: list) -> None:
+        """Réponse `routes` ou `workouts` (contrat v1.1 §4), en deux parties avec --split-catalog.
+
+        Avec --split-catalog, la partie 2 part avant la partie 1 pour vérifier l'assemblage de l'engine.
+        """
+        if getattr(self, "split_catalog", False) and len(items) >= 2:
+            half = len(items) // 2
+            chunks = [(2, items[half:]), (1, items[:half])]
+        else:
+            chunks = [(1, items)]
+        for part, chunk in chunks:
+            self.send({"type": kind, "v": CONTRACT_VERSION, "request_cmd_id": cmd_id,
+                       "part": part, "parts": len(chunks), "items": chunk, "truncated": False})
+
     def send_hello_ack(self) -> None:
         self.send({"type": "hello_ack", "v": CONTRACT_VERSION, "core_version": "fake",
-                   "config": {"ftp_w": 250, "gears_total": 24, "theme": "default"}})
+                   "config": {"ftp_w": 250, "gears_total": 24, "theme": "default",
+                              "difficulty_pct": self.difficulty_pct}})
 
     def messages(self, kind: str, since: float = 0.0, name: str | None = None) -> list[Received]:
         with self.lock:
@@ -260,7 +304,10 @@ def scenario_hello(core: FakeCore) -> str:
 
 def scenario_retry(core: FakeCore) -> str:
     """2. Commande ignorée trois fois : renvoyée, puis acquittée."""
-    core.accept_cmd = lambda msg, count: msg.get("name") != "pause" or count >= 4
+    # Les demandes de listes des menus (lot N6) ont un cmd_id plus grand : les accepter acquitterait
+    # « pause » par cumul (contrat §4) avant le 4ᵉ envoi.
+    core.accept_cmd = lambda msg, count: (count >= 4 if msg.get("name") == "pause"
+                                          else not str(msg.get("name", "")).startswith("list_"))
     mark = core.log.mark()
     t0 = now()
     core.test_command("pause")
@@ -511,6 +558,38 @@ def run_erg_workout_stream(state_port: int, cmd_port: int) -> int:
     return 0
 
 
+
+def run_catalog_server(state_port: int, cmd_port: int, catalog_path: Path, drop_first: bool = False,
+                       drop_all: bool = False, split: bool = False) -> int:
+    try:
+        catalog = json.loads(catalog_path.read_text(encoding="utf-8"))
+    except Exception as exc:
+        print(f"Erreur lecture catalogue {catalog_path} : {exc}", file=sys.stderr)
+        return 1
+
+    core = FakeCore(state_port, cmd_port, EngineLog(Path("engine.log")))
+    core.catalog_data = catalog
+    core.drop_first_catalog = drop_first
+    core.drop_all_catalog = drop_all
+    core.split_catalog = split
+    core._dropped_lists = set()
+    core.auto_hello_ack = True
+    core.streaming = True
+    core.start()
+
+    deadline = now() + 30.0
+    while now() < deadline:
+        time.sleep(0.05)
+        with core.lock:
+            # Sortir quand un message bye arrive ou après start
+            byes = [r for r in core.received if r.msg.get("type") == "bye"]
+            starts = [r for r in core.received if r.msg.get("type") == "cmd" and r.msg.get("name") == "start"]
+            if byes or (starts and (now() - starts[0].t > 1.0)):
+                break
+
+    core.stop()
+    return 0
+
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--state-port", type=int, default=5005)
@@ -520,9 +599,20 @@ def main() -> int:
                     help="numéros à jouer, dans l'ordre (le 1 doit venir en premier)")
     ap.add_argument("--erg-workout", action="store_true",
                     help="émet un entraînement ERG simulé (10 blocs du lot F) pour le test du lot I6")
+    ap.add_argument("--catalog", type=Path, default=None,
+                    help="fichier JSON du catalogue (lot N3)")
+    ap.add_argument("--drop-first-catalog", action="store_true",
+                    help="ignore la 1re demande de chaque liste pour tester la relance (lot N3)")
+    ap.add_argument("--drop-all-catalog", action="store_true",
+                    help="ignore toutes les demandes de listes pour tester l'erreur (lot N3)")
+    ap.add_argument("--split-catalog", action="store_true",
+                    help="envoie chaque liste en deux parties, la 2e d'abord (assemblage, lot N3)")
     args = ap.parse_args()
     if args.erg_workout:
         return run_erg_workout_stream(args.state_port, args.cmd_port)
+    if args.catalog:
+        return run_catalog_server(args.state_port, args.cmd_port, args.catalog, args.drop_first_catalog,
+                                  args.drop_all_catalog, args.split_catalog)
     if args.engine_log is None:
         ap.error("--engine-log est requis hors --erg-workout")
     wanted = [int(x) for x in args.scenarios.split(",") if x.strip()]

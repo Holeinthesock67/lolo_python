@@ -45,6 +45,10 @@ Sortie : une ligne `[OK]` ou `[ÉCHEC]` par vérification, `rapport.html` (captu
 
 Premier défaut trouvé : le bandeau d'alerte (placé à 360 px du bord) recouvrait le HUD dès que celui-ci s'élargissait (ligne d'état, ligne ERG). Il se place désormais à droite du HUD s'il reste 360 px, sinon dessous (`banner.gd`, `layout_for`, test `unit/test_banner_layout.gd`).
 
+## Banc d'essai simulé (`sim_bench.py`)
+
+Vrai core sur Bluetooth simulé et vraie scène, captures et rapport HTML, sur le parcours `demo` ou le « village simulé » de `make_sim_world.py` (178 bâtiments, montée et descente) : voir [docs/OUTILS_DE_TEST.md](../../docs/OUTILS_DE_TEST.md) §3. Hors de `run_engine_tests.sh` (plusieurs minutes par scénario).
+
 ## Tests unitaires (`engine/tests/unit/`, lot K1)
 
 Pour ajouter un test, il suffit de déposer un fichier dans `engine/tests/unit/` : le script le découvre, sans modification. Contrat d'un test unitaire :
@@ -76,6 +80,12 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_tree_renderer.gd` | E3 | Rendu et gestion des arbres (`tree_renderer.gd`) : LOD0 (0-300 m avec ombres) et LOD1 (300-1500 m sans ombre), déterminisme, exclusions (route, pente, limite des arbres), budget d'instances |
 | `test_hud_view.gd` | E3 | Affichage du HUD (`hud_view.gd`) : valeurs principales (>= 48 px), libellés (>= 24 px), profil d'altitude (120 colonnes), prochaine montée, mise en page sans chevauchement à 1280x720 et 1920x1080 |
 | `test_erg_view.gd` | N7 | Bandeau et histogramme ERG (`erg_view.gd`) : textes du bandeau (bloc i/n, type, cible biais compris, temps restant, cible suivante, pause), zones de Coggan aux seuils de `openride-core summary`, largeurs des blocs selon le profil v1.1, curseur juste à la seconde, repli en cases égales sans profil, caché en SIM, mise en page à 1280x720 et 1920x1080 |
+| `test_summary_view_model.gd` | N4 | Modèle de l'écran de fin de séance (`summary_view_model.gd`) : 10 lignes du bilan enrichi dans l'ordre fixé, 3 lignes en v1, blocs ERG avec déviations et couleurs, fichier FIT seul, écran de menu avec confirmation de quitter, aucun nœud créé |
+| `test_devices_view_model.gd` | N5 | Modèle d'état des appareils (`devices_view_model.gd`) : lignes d'état en v1.1 et repli v1, alertes de perte/reconnexion et batterie sous 20 % / 10 %, `ready_to_ride`, aucun nœud créé |
+| `test_catalog_model.gd` | N3 | Modèle de catalogue (`catalog_model.gd`) : conversion des parcours et entraînements au format de menu, labels, tri, focus sautant les éléments désactivés, aucun nœud créé |
+| `test_cue_model.gd` | essai | Consignes d'essai (`cue_model.gd`) : lecture et tri du fichier `~/OpenRide/Essais/<parcours>.consignes.json`, consignes invalides ignorées, chaque consigne donnée une seule fois à sa distance, réarmement après un nouveau départ, aucun nœud créé |
+| `test_osm_decor_route.gd` | – | Décor OSM et route : aucun arbre dans un bâtiment ni à moins de 3 m de ses murs (`tree_renderer.gd`, `exclude_buildings`), cours d'eau coupés au passage de la chaussée et ruisseau sur le bas-côté retiré (`osm_streamer.gd`, `cut_lines_at_road`) |
+| `test_far_terrain_carve.gd` | – | Terrain lointain abaissé sous la route (`terrain_tiles.gd`, `carve_under_route`) : vallée en V à 30 % et route en S à 7 %, dépassement de 8 m sans correctif, au moins 2 m sous la chaussée après, aucun sommet relevé, bord commun de deux tuiles identique |
 | `test_sound_player.gd` | E4 | Lecteurs et sons procéduraux du parcours (`sound_player.gd`) : synthèse au démarrage (< 500 ms), vent, roue libre, limitation à 4 lecteurs 3D actifs, volumes à 0,5 dB de `sound_model.gd` |
 
 ## Étapes du script

@@ -351,7 +351,7 @@ def test_gear_shift_bypasses_grade_rate_limit(tmp_path, monkeypatch):
         for _ in range(8):
             s._handle_input(InputEvent.PLUS_SHORT)
         s._step(0.02, 61.0)
-        target = s.gearing.effective_grade(s.route.grade_at(s.physics.s))
+        target = s.gearing.effective_grade(s.route.grade_at(s.physics.s), s.difficulty_pct / 100.0)
         assert abs(s._grade_sent - target) < 0.5 and abs(s._grade_sent - before) > 0.04
     asyncio.run(scenario())
 

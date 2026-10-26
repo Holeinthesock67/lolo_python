@@ -1,0 +1,8 @@
+[Desktop Entry]
+Type=Application
+Name=OpenRide – Mettre à jour
+Comment=Met OpenRide à jour depuis le dépôt (avance rapide seulement)
+Exec=@UPDATE@
+Icon=openride
+Terminal=false
+Categories=Game;Sports;

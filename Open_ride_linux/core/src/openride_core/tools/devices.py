@@ -1,11 +1,14 @@
 """Inventaire des appareils Bluetooth utiles à OpenRide (lot M3) : `openride-core devices`.
 
     openride-core devices [--timeout S] [--json] [--all] [--config FICHIER]
-                          [--sim-scenario NOM|FICHIER]
+                          [--sim-scenario NOM|FICHIER] [--save [--yes]]
 
 Recherche les appareils qui s'annoncent (8 s par défaut), les classe et propose le bloc
-`[drivers]` de `config.toml` à recopier. Aucune connexion aux appareils, aucune écriture de
-`config.toml`. Les appareils que BlueZ garde connectés (donc muets en recherche : Click resté
+`[drivers]` de `config.toml` à recopier. Sans `--save` : aucune connexion aux appareils, aucune
+écriture de `config.toml`. Avec `--save` (lot N12, `pairing.py`) : demande un appui sur « + »
+pour reconnaître ce boîtier du Click (15 s au plus), montre les changements, demande
+confirmation (sauf `--yes`) et les écrit dans la configuration (`--config` ou
+`~/OpenRide/config.toml`), avec une copie `config.toml.bak`. Les appareils que BlueZ garde connectés (donc muets en recherche : Click resté
 accroché, trainer réservé) sont listés à part.
 
 Rôles : `trainer` (service FTMS 0x1826), `click` (nom « Zwift Click » ou service Zwift, comme
@@ -231,9 +234,53 @@ def format_text(r: dict[str, Any]) -> str:
     return "\n".join(lines)
 
 
+def save_devices(result: dict[str, Any], config_path: Path | None, assume_yes: bool,
+                 plus_waiter: Any, ask: Callable[[str], str] = input) -> int:
+    """Suite de `--save` : identification du « + », différences, confirmation, écriture."""
+    from .. import pairing
+
+    clicks = sorted({d["address"] for d in result["devices"] + result["connected"] if d["role"] == "click"})
+    plus = None
+    if len(clicks) > 1:
+        print("Appuyez sur le bouton + du Click…", flush=True)
+        try:
+            plus = asyncio.run(plus_waiter(clicks, pairing.IDENTIFY_TIMEOUT_S)) if plus_waiter else None
+        except Exception as exc:   # Bluetooth indisponible pendant l'identification
+            print(f"identification impossible : {exc}")
+        if plus is None:
+            print("Aucun appui reçu : le premier boîtier trouvé est pris pour le « + ».")
+        else:
+            print(f"Boîtier « + » : {plus}")
+    paired = pairing.from_inventory(result, plus)
+    path = config_path or pairing.config_mod.DEFAULT_CONFIG_PATH
+    try:
+        old = path.read_text(encoding="utf-8") if path.exists() else ""
+    except OSError as exc:
+        print(f"openride-core devices : {path} : lecture impossible : {exc}", file=sys.stderr)
+        return 1
+    _, changes = pairing.plan(paired, old)
+    if not changes:
+        print(f"Aucun changement : {path} contient déjà ces appareils.")
+        return 0
+    print(f"Changements prévus dans {path} :")
+    for line in changes:
+        print(f"  {line}")
+    if not assume_yes and ask("Enregistrer ? [o/N] ").strip().lower() not in ("o", "oui", "y", "yes"):
+        print("Rien n'a été écrit.")
+        return 1
+    try:
+        pairing.save(paired, path)
+    except pairing.PairingError as exc:
+        print(f"openride-core devices : {exc}", file=sys.stderr)
+        return 1
+    print(f"Enregistré dans {path} (copie de l'ancien fichier : {path.name}.bak).")
+    return 0
+
+
 def run(timeout: float = DEFAULT_TIMEOUT_S, as_json: bool = False, config_path: Path | None = None,
         sim_scenario: str | None = None, show_all: bool = False,
-        scanner: Scanner | None = None, connected: Connected | None = None) -> int:
+        scanner: Scanner | None = None, connected: Connected | None = None,
+        save: bool = False, assume_yes: bool = False, plus_waiter: Any = None) -> int:
     from .. import config as config_mod
     from ..sim_scenarios import SimScenarioError, build_world, load_scenario
 
@@ -265,7 +312,13 @@ def run(timeout: float = DEFAULT_TIMEOUT_S, as_json: bool = False, config_path: 
         print(f"openride-core devices : recherche impossible : {exc}", file=sys.stderr)
         return 1
     print(json.dumps(result, ensure_ascii=False, indent=2) if as_json else format_text(result))
-    return 0
+    if not save:
+        return 0
+    if plus_waiter is None and not sim_scenario:
+        from ..pairing import wait_plus_press
+        plus_waiter = wait_plus_press
+    print()
+    return save_devices(result, config_path, assume_yes, plus_waiter)
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -275,8 +328,10 @@ def main(argv: list[str] | None = None) -> int:
     p.add_argument("--all", action="store_true")
     p.add_argument("--config", type=Path)
     p.add_argument("--sim-scenario")
+    p.add_argument("--save", action="store_true")
+    p.add_argument("--yes", action="store_true")
     a = p.parse_args(argv)
-    return run(a.timeout, a.json, a.config, a.sim_scenario, a.all)
+    return run(a.timeout, a.json, a.config, a.sim_scenario, a.all, save=a.save, assume_yes=a.yes)
 
 
 if __name__ == "__main__":

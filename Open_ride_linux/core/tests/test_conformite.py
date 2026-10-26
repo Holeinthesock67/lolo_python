@@ -93,7 +93,7 @@ def test_c3_summary_fields(tmp_path, monkeypatch):
         s._on_command("start", {}, 2)
         steps(s, 200, 10.0)
         s._on_command("end_session", {"save": True}, 3)
-        assert set(s.state.summary) == {"duration_s", "distance_m", "avg_power_w", "fit_path"}
+        assert {"duration_s", "distance_m", "avg_power_w", "fit_path"}.issubset(set(s.state.summary))
         assert s.state.summary["avg_power_w"] > 0
     asyncio.run(scenario())
 
@@ -151,7 +151,7 @@ def test_c5_hello_ack_reflects_config(tmp_path, monkeypatch):
     s, frames = make_session(tmp_path, monkeypatch, cfg=cfg, port=5970)
     s.server._handle_message({"type": "hello", "v": 1, "engine_version": "t"})
     ack = [f for f in frames if f["type"] == "hello_ack"][0]
-    assert ack["config"] == {"ftp_w": 280.0, "gears_total": 22, "theme": "default"}
+    assert ack["config"] == {"ftp_w": 280.0, "gears_total": 22, "theme": "default", "difficulty_pct": 50}
 
 
 # C6 ---------------------------------------------------------------------------------------

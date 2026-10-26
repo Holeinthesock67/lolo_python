@@ -67,8 +67,26 @@ ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
-GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur")
+GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur", "menu_accueil", "bilan")
 FIXED_S = 1500.0
+# Listes servies par le faux core aux menus (lot N6) : un parcours « à compiler » non choisissable.
+MENU_CATALOG = {
+    "routes": [
+        {"id": "demo", "name": "Démo", "length_m": 4000.0, "is_loop": True, "status": "ready"},
+        {"id": "vallee", "name": "Vallée de test", "length_m": 32500.0, "is_loop": False, "status": "ready"},
+        {"id": "nouveau", "name": "Nouveau GPX", "length_m": 12000.0, "is_loop": False, "status": "to_compile"},
+    ],
+    # Profil de la scène « erg » : tous les blocs dessinés à leur durée et leur couleur de zone.
+    "workouts": [{"id": "sweet_spot", "name": "Sweet spot 3x10", "duration_s": 3600, "selectable": True,
+                  "profile": [[600, 0.5, 0.75], [600, 0.92, 0.92], [300, 0.6, 0.6], [600, 0.92, 0.92],
+                              [300, 0.6, 0.6], [600, 0.92, 0.92], [600, 0.6, 0.4]],
+                  "profile_truncated": False}],
+}
+MENU_DEVICES = {
+    "trainer": {"status": "CONNECTED", "name": "HomeTrainer 0001"},
+    "click": [{"status": "CONNECTED", "role": "plus"}, {"status": "LOST", "role": "minus"}],
+    "hr": {"status": "CONNECTED", "name": "Ceinture"},
+}
 
 
 # --- PNG (bibliothèque standard) ------------------------------------------------------------------
@@ -573,6 +591,7 @@ def _scenes(s: Session) -> None:
                    grade=4.5, grade_sent=4.5, gear=12, gears_total=24, mode="SIM", erg=None, pause_reason=None,
                    trainer_status="CONNECTED", input_status="CONNECTED")
     core.auto_hello_ack = True
+    core.catalog_data = MENU_CATALOG
     core.streaming = True
     loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
     s.check("vue_fixe", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
@@ -586,6 +605,7 @@ def _scenes(s: Session) -> None:
         s.check("vue_fixe", "ligne ERG cachée en SIM", not info["widgets"]["erg"]["visible"])
         s.check("vue_fixe", "cible ERG cachée en SIM", not info["widgets"]["target"]["visible"])
         s.check("vue_fixe", "bandeau ERG caché en SIM", not info["widgets"]["erg_hist"]["visible"])
+        s.check("vue_fixe", "menu caché pendant la séance", not info["widgets"]["menu"]["visible"])
         s.check_banner("vue_fixe", img, info, None)
         s.check_layout("vue_fixe", info)
         s.check_hud_pixels("vue_fixe", img, info)
@@ -638,6 +658,11 @@ def _scenes(s: Session) -> None:
                 return p[0] > 150 and p[1] > 120 and p[2] < 110
             frac = fraction(img, rect_box(hist["rect"]), yellow, step=2)
             s.check("erg", "bloc en cours dessiné en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
+            # Blocs à venir (4 et 6, zone 4) visibles dès maintenant : du jaune hors du bloc en cours.
+            x0, y0, x1, y1 = rect_box(hist["rect"])
+            later = (x0 + (x1 - x0) * 0.55, y0, x1, y1)
+            frac = fraction(img, later, yellow, step=2)
+            s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
 
     # 5. Pause : trainer perdu, raison visible dans la ligne d'état.
     core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",
@@ -647,6 +672,7 @@ def _scenes(s: Session) -> None:
     if shot:
         img, info = shot
         s.check_texts("pause", info, {"status": "ÉTAT: PAUSED (trainer_lost) | TRAINER: RECONNECTING"}, contains=True)
+        s.check_texts("pause", info, {"menu_title": "Pause", "menu": "[Reprendre] | Terminer et enregistrer"}, contains=True)
         s.check_layout("pause", info)
 
     # 6. Core muet : bandeau, caméra extrapolée puis figée.
@@ -691,8 +717,46 @@ def _scenes(s: Session) -> None:
         img, info = shot
         s.check_banner("erreur", img, info, "route_invalid")
         s.check_layout("erreur", info)
+    _menu_scenes(s)
     fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
+
+
+def _menu_scenes(s: Session) -> None:
+    """Lot N6 : accueil avec l'état des appareils, liste des parcours au Click, bilan de fin."""
+    core = s.core
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=MENU_DEVICES, summary=None)
+    time.sleep(SETTLE_S + 3.0)   # le bandeau d'erreur de la scène précédente reste 5 s au moins
+    shot = s.capture("menu_accueil")
+    if shot:
+        img, info = shot
+        s.check_texts("menu_accueil", info, {"menu_title": "OpenRide", "menu": "[Rouler] | Entraînements"}, contains=True)
+        s.check_texts("menu_accueil", info, {"menu": "Trainer HomeTrainer 0001 : connecté"}, contains=True)
+        s.check_layout("menu_accueil", info)
+        s.check_banner("menu_accueil", img, info, None)
+        m = info["widgets"]["menu"]
+        s.check("menu_accueil", "menu entre les panneaux du HUD", m["rect"][2] >= 0.4 * s.width
+                and overlap(m["rect"], info["widgets"]["power"]["rect"]) == 0.0, f"rectangle {m['rect']}")
+        focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] > 200 and p[1] > 150 and p[2] < 90, step=2)
+        s.check("menu_accueil", "focus très visible (fond jaune)", focus >= 0.01, f"{focus:.1%} de pixels jaunes")
+    # Appui long « + » du Click relayé par le core : liste des parcours.
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "PLUS_LONG"})
+    time.sleep(0.8)
+    shot = s.capture("menu_parcours")
+    if shot:
+        img, info = shot
+        s.check_texts("menu_parcours", info, {"menu_title": "Parcours", "menu": "[Démo"}, contains=True)
+        s.check_texts("menu_parcours", info, {"menu": "Nouveau GPX (12,0 km) — à compiler"}, contains=True)
+    core.set_scene(session_state="FINISHED", summary={
+        "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
+        "elevation_gain_m": 180.0, "fit_path": "/tmp/openride/seance.fit"})
+    time.sleep(1.0)
+    shot = s.capture("bilan")
+    if shot:
+        img, info = shot
+        s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance : 15,23 km"}, contains=True)
+        s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
+        s.check_layout("bilan", info)
 
 
 def main() -> int:

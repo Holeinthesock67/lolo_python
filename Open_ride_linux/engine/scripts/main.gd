@@ -16,11 +16,17 @@ const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
+const CueModel := preload("res://scripts/cue_model.gd")
+const MenuFlow := preload("res://scripts/menu_flow.gd")
+const MenuModel := preload("res://scripts/menu_model.gd")
+const MenuView := preload("res://scripts/menu_view.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
 const ERROR_MIN_S := 5.0
 const TEST_CAM_PERIOD_US := 50_000   # journal de la caméra à 20 Hz en mode test
+## Décor en fond des menus (lot N6) : caméra lente le long du parcours choisi (ou de la démo).
+const MENU_CAMERA_MPS := 4.0
 
 @onready var ipc: Node = $IpcClient
 @onready var camera: Camera3D = $Camera3D
@@ -61,6 +67,15 @@ const BEEP_LEVEL := 0.3
 ## forte que les bips d'appui, pour passer au-dessus du vent et de la roue libre (SoundPlayer).
 const ERG_BEEP := [[1320.0, 0.30]]
 const ERG_BEEP_LEVEL := 0.6
+## Consignes d'essai (cue_model.gd) : deux notes montantes, aussi fortes que le bip ERG.
+const CUE_BEEP := [[880.0, 0.15], [1320.0, 0.25]]
+
+var _cues = CueModel.new()
+## Menus (lot N6) : déroulé (menu_flow.gd) et affichage (menu_view.gd).
+var menu_flow = MenuFlow.new()
+var menu_view = null
+var _last_state: Dictionary = {}
+var _menu_s := 0.0
 
 
 func _ready() -> void:
@@ -128,6 +143,20 @@ func _ready() -> void:
 	erg_panel = ErgView.new()
 	hud.add_child(erg_panel)
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
+	menu_view = MenuView.new()
+	hud.add_child(menu_view)
+	hud.move_child(banner, -1)   # le bandeau reste lisible au-dessus du menu
+	ipc.routes_received.connect(func(items: Array, _msg: Dictionary) -> void:
+		menu_flow.set_routes(items)
+		_refresh_menu())
+	ipc.workouts_received.connect(func(items: Array, _msg: Dictionary) -> void:
+		menu_flow.set_workouts(items)
+		if erg_panel != null and erg_panel.has_method("set_profiles"):
+			erg_panel.set_profiles(items)
+		_refresh_menu())
+	ipc.list_failed.connect(func(list_name: String, _message: String) -> void:
+		menu_flow.list_failed(list_name)
+		_refresh_menu())
 
 
 func _apply_sky_params(theme_dict: Dictionary) -> void:
@@ -146,6 +175,48 @@ func _on_input_event(event_name: String) -> void:
 		return
 	print("Bip : ", event_name)
 	_play_tones(BEEPS[event_name], BEEP_LEVEL)
+	_menu_event(event_name)
+
+
+# --- menus (lot N6) ----------------------------------------------------------------------
+
+## Événement du Click (relayé par le core) ou du clavier, menu affiché : navigation et action.
+func _menu_event(event_name: String) -> void:
+	if not menu_flow.is_visible():
+		return
+	_run_menu_action(menu_flow.handle(event_name))
+	_refresh_menu()
+
+
+func _run_menu_action(act: Dictionary) -> void:
+	var name := str(act.get("action", ""))
+	if name == "":
+		return
+	ipc.test_log("menu_action " + JSON.stringify(act))
+	match name:
+		"list":
+			ipc.list_routes()
+			ipc.list_workouts()
+		"quit":
+			print("Quitter demandé depuis le menu.")
+			get_tree().quit()
+		"select_route":
+			ipc.send_command("select_route", {"route_id": act["route_id"]})
+		"select_workout":
+			ipc.send_command("select_workout", {"workout_id": act["workout_id"]})
+		"end_session":
+			ipc.send_command("end_session", {"save": bool(act.get("save", true))})
+		"start", "resume":
+			ipc.send_command(name)
+
+
+func _refresh_menu() -> void:
+	if menu_view == null:
+		return
+	var shown: bool = menu_flow.is_visible()
+	menu_view.visible = shown
+	if shown:
+		menu_view.update_display(menu_flow.state(), _last_state, menu_flow.summary, menu_flow.show_details)
 
 
 func _play_tones(notes: Array, level: float) -> void:
@@ -164,7 +235,16 @@ func _play_tones(notes: Array, level: float) -> void:
 func _unhandled_input(event: InputEvent) -> void:
 	# Touches + / − (ou flèches haut / bas) = boutons du Click, utiles sans Click ou en test.
 	if event is InputEventKey and event.pressed and not event.echo:
+		if menu_flow.is_visible():
+			# Menu affiché : navigation locale (Entrée valide, Échap revient), bip sans passer par le core.
+			var ev := MenuModel.key_to_event(event.keycode)
+			if ev != "":
+				_play_tones(BEEPS[ev], BEEP_LEVEL)
+				_menu_event(ev)
+			return
 		match event.keycode:
+			KEY_P, KEY_SPACE, KEY_ESCAPE:
+				ipc.send_command("pause")   # l'écran de pause s'ouvre quand le core passe en PAUSED
 			KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_UP:
 				ipc.send_command("input_event", {"event": "PLUS_SHORT"})
 			KEY_MINUS, KEY_KP_SUBTRACT, KEY_DOWN:
@@ -179,6 +259,8 @@ func _process(delta: float) -> void:
 	_poll_route_job()
 	_record_frame_perf(delta)
 	var now := Time.get_ticks_usec()
+	if _menu_camera(delta):
+		return
 	if not follow.has_frame():
 		return
 	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd).
@@ -196,6 +278,20 @@ func _process(delta: float) -> void:
 		camera.rotation.y = -heading
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
+
+
+## Décor en fond des menus hors séance (accueil, choix, bilan) : la caméra avance lentement sur le
+## parcours chargé. En pause, la vue reste où la séance s'est arrêtée. Pas en mode test : les captures
+## de référence des tests graphiques restent reproductibles.
+func _menu_camera(delta: float) -> bool:
+	if ipc.test_mode or route == null or not session_state in ["IDLE", "READY", "FINISHED"]:
+		return false
+	_menu_s = route.wrap_s(_menu_s + MENU_CAMERA_MPS * delta)
+	var pos: Vector3 = route.sample_point(_menu_s)
+	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
+	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
+	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
+	return true
 
 
 ## Mesure des images par seconde et statistiques toutes les 30 s (Lot E3 §4.6)
@@ -285,6 +381,7 @@ func _poll_route_job() -> void:
 	route = job["route"]
 	follow.loop_length_m = route.length_m if route.is_loop() else 0.0
 	follow.reset()
+	_menu_s = 0.0
 	# Changement de parcours : tronçons et tuiles vidés puis reconstruits autour de s = 0.
 	streamer.set_world(route, job["path"])
 	var sky_params := ThemeRenderParams.sky_params(streamer._theme_dict)
@@ -293,6 +390,11 @@ func _poll_route_job() -> void:
 	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
 	banner.clear_message("route")
+	banner.clear_message("cue")
+	if _cues.load_for_route(job["id"]):
+		print("[essai] %d consignes chargées (%s)" % [_cues.cues.size(), CueModel.path_for(job["id"])])
+	elif _cues.load_error != "":
+		print("[essai] consignes ignorées (%s) : %s" % [CueModel.path_for(job["id"]), _cues.load_error])
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
 			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"]])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
@@ -315,7 +417,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 	var nodes := {
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
-		"status": hud.status_label, "banner": banner,
+		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram,
 	}
@@ -325,7 +427,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		var c: Control = nodes[key]
 		var r := to_pixels * c.get_global_rect()
 		widgets[key] = {
-			"text": c.text if c is Label else "",
+			"text": c.text if c is Label else _widget_text(key),
 			"visible": c.is_visible_in_tree(),
 			"rect": [r.position.x, r.position.y, r.size.x, r.size.y],
 		}
@@ -344,9 +446,18 @@ func _test_screenshot(path: String, tag: String) -> void:
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
 
+## Texte des zones composées du menu (éléments, appareils, bilan), pour les tests graphiques.
+func _widget_text(key: String) -> String:
+	if key == "menu":
+		return "%s || %s || %s" % [menu_view.items_text(), menu_view.devices.text() if menu_view.devices.visible else "",
+				menu_view.summary.text() if menu_view.summary.visible else ""]
+	return ""
+
+
 func _on_hello_ack(_ack: Dictionary) -> void:
-	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage.
-	pass
+	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage. Core (re)démarré : listes
+	# redemandées au prochain état affichant le menu.
+	menu_flow.lists_needed()
 
 
 func _on_core_error(code: String, message: String) -> void:
@@ -355,6 +466,8 @@ func _on_core_error(code: String, message: String) -> void:
 
 
 func _on_core_shutdown() -> void:
+	menu_flow.session_state = ""   # plus de core : menu caché jusqu'à la trame suivante
+	_refresh_menu()
 	banner.clear_message("core_lost")
 	banner.show_message("shutdown", "Le core s'est arrêté")
 
@@ -369,6 +482,8 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
+	if cmd_name in ["list_routes", "list_workouts"]:
+		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 
 
@@ -377,6 +492,10 @@ func _on_state_received(state: Dictionary) -> void:
 		_first_state_logged = true
 		print("Premier état reçu du core : ", state.get("session_state", "?"), " trainer=", state.get("trainer_status", "?"))
 	banner.clear_message("shutdown")
+	_last_state = state
+	for act in menu_flow.on_state(state):
+		_run_menu_action(act)
+	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
 	if new_session_state != session_state:
 		session_state = new_session_state
@@ -384,11 +503,16 @@ func _on_state_received(state: Dictionary) -> void:
 		if banner.has_message("error"):
 			banner.set_sticky("error", session_state == "ERROR")
 	var route_id = state.get("route_id", null)
+	if (route_id == null or str(route_id) == "") and menu_flow.is_visible():
+		route_id = DEMO_ROUTE_ID   # aucun parcours choisi : la démo tourne en fond des menus (lot N6)
 	if route_id != _route_id_requested:
 		_request_route(route_id)
 	var running := session_state == "RUNNING"
 	follow.push_frame(Time.get_ticks_usec(), float(state.get("s", 0.0)), float(state.get("v", 0.0)), running)
 	ipc.test_log("state seq=%d s=%.3f session=%s" % [int(state.get("seq", 0)), float(state.get("s", 0.0)), session_state])
+
+	if running and route != null:
+		_give_cues(state)
 
 	if not state.has("gears_total"):
 		state["gears_total"] = ipc.core_config.get("gears_total", 24)
@@ -407,6 +531,18 @@ func _on_state_received(state: Dictionary) -> void:
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
 		sound_player.update_audio(state, now_s, camera.position)
+
+
+## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur.
+func _give_cues(state: Dictionary) -> void:
+	var s := float(state.get("s", 0.0))
+	for c in _cues.update(s):
+		banner.show_message("cue", "Consigne %d/%d : %s" % [c["index"], c["count"], c["text"]], c["duration_s"])
+		if c["beep"]:
+			_play_tones(CUE_BEEP, ERG_BEEP_LEVEL)
+		print("[essai] consigne %d/%d à %.0f m, t = %.0f s, braquet %s : %s" % [c["index"], c["count"], s,
+				float(state.get("t", 0.0)), str(state.get("gear", "?")), c["text"]])
+		ipc.test_log("cue index=%d s=%.1f" % [c["index"], s])
 
 
 func _exit_tree() -> void:
