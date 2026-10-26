@@ -1,0 +1,92 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldRegionsMessage",
+  "description": "Réponse à world_regions (révision 1.5 provisoire, lot W1) : régions du cache local ; parties de 60 000 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "part",
+    "parts",
+    "items",
+    "cache_bytes",
+    "cache_max_bytes"
+  ],
+  "properties": {
+    "type": {
+      "const": "world_regions"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "part": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "cache_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cache_max_bytes": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "bytes",
+          "pinned",
+          "last_used",
+          "bbox"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "bytes": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "pinned": {
+            "type": "boolean"
+          },
+          "last_used": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bbox": {
+            "type": "array",
+            "minItems": 4,
+            "maxItems": 4,
+            "items": {
+              "type": "number"
+            },
+            "description": "min_lon, min_lat, max_lon, max_lat"
+          }
+        }
+      }
+    }
+  }
+}

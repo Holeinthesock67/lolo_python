@@ -37,7 +37,13 @@
         "set_difficulty",
         "scan_devices",
         "identify_click_plus",
-        "pair_devices"
+        "pair_devices",
+        "start_open_world",
+        "choose_branch",
+        "world_search",
+        "world_map",
+        "world_regions",
+        "world_pin"
       ]
     },
     "args": {

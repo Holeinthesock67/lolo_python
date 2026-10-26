@@ -27,7 +27,10 @@
         "recording_failed",
         "busy",
         "scan_failed",
-        "pairing_failed"
+        "pairing_failed",
+        "branch_locked",
+        "unknown_junction",
+        "world_unavailable"
       ]
     },
     "message": {

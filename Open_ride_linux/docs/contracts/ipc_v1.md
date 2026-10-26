@@ -1,6 +1,6 @@
 # OpenRide Linux – Contrat IPC v1
 
-21 octobre 2026, révision 1.1 du 24 octobre 2026, révision 1.2 du 25 octobre 2026 (ajouts compatibles, `v` reste 1)
+21 octobre 2026, révision 1.1 du 24 octobre 2026, révision 1.2 du 25 octobre 2026, révision du monde ouvert (1.5 provisoire, lot W1) du 26 octobre 2026 (ajouts compatibles, `v` reste 1)
 
 ## 1. Objet, principes et conventions
 
@@ -37,11 +37,11 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 
 | Sens | Port par défaut | Contenu | Fréquence |
 | --- | --- | --- | --- |
-| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown`, `routes`, `workouts` | `state` à 30 Hz ; le reste sur événement |
+| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown`, `routes`, `workouts` ; monde ouvert : `world_status`, `places`, `world_map`, `world_regions` | `state` à 30 Hz ; le reste sur événement |
 | engine vers core | 5006 | `hello`, `heartbeat`, `cmd`, `bye` | `heartbeat` à 2 Hz ; `cmd` sur événement |
 
 - Les ports sont modifiables dans `config.toml` (section `ipc`) ; si un port est occupé, le programme s'arrête avec un message explicite.
-- Taille maximale d'un datagramme : 1 400 octets, sauf `routes` et `workouts` (§4) : 60 000 octets. Ces deux messages restent sur `127.0.0.1`, où un datagramme de cette taille passe sans fragmentation ; l'engine lit sa socket avec un tampon d'au moins 65 536 octets.
+- Taille maximale d'un datagramme : 1 400 octets, sauf `routes` et `workouts` (§4) et, en monde ouvert, `places`, `world_map` et `world_regions` (§4) : 60 000 octets. Ces deux messages restent sur `127.0.0.1`, où un datagramme de cette taille passe sans fragmentation ; l'engine lit sa socket avec un tampon d'au moins 65 536 octets.
 - Un datagramme illisible (JSON invalide) est ignoré et compté dans les journaux.
 - Le trainer notifie à environ 1 Hz (mode puissance) à 8 Hz (mode pente), mesuré ; la fréquence de 30 Hz du message `state` est indépendante et vient de la physique du core (50 Hz).
 
@@ -54,7 +54,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `seq` | entier | Numéro croissant des trames d'état |
 | `t` | nombre | Temps de séance en secondes (horloge du core, arrêtée en pause) |
 | `session_state` | chaîne | `IDLE`, `LOADING`, `READY`, `RUNNING`, `PAUSED`, `FINISHED`, `ERROR` |
-| `pause_reason` | chaîne ou `null` | `user`, `trainer_lost`, `engine_lost`, `recording_failed`, `core_restarted` (§6) quand `session_state` vaut `PAUSED` |
+| `pause_reason` | chaîne ou `null` | `user`, `trainer_lost`, `engine_lost`, `recording_failed`, `core_restarted`, `world_data` (§6) quand `session_state` vaut `PAUSED` |
 | `trainer_status` | chaîne | `CONNECTED`, `RECONNECTING`, `LOST`, `MOCK` |
 | `input_status` | chaîne | `CONNECTED`, `LOST`, `KEYBOARD` |
 | `mode` | chaîne | `SIM` ou `ERG` |
@@ -76,6 +76,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `summary` | objet ou `null` | Présent quand `session_state` vaut `FINISHED` (ou `ERROR` après une séance) : `duration_s` (temps chronométré), `distance_m`, `avg_power_w`, `fit_path` (`null` si aucun FIT n'a été produit) ; champs facultatifs du bilan enrichi ci-dessous |
 | `devices` | objet, facultatif | État détaillé des appareils, voir ci-dessous ; envoyé une trame sur 30 (une fois par seconde) et dans la trame qui suit un changement, absent des autres trames |
 | `bots` | liste, facultatif | Concurrents virtuels, voir ci-dessous |
+| `open_world` | objet, facultatif | Monde ouvert seulement : révision du monde, prochain carrefour, état des données (§4, « Monde ouvert ») |
 | `last_cmd_id` | entier | Dernier `cmd_id` traité par le core (§4) |
 
 **Objet `erg`**
@@ -143,6 +144,12 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 | `scan_devices` | `{ "timeout_s": nombre }` (8 par défaut, 1 à 30) | Révision 1.2 : recherche des appareils Bluetooth ; réponses `scan_results` |
 | `identify_click_plus` | `{}` | Révision 1.2 : attend un appui « + » du Click pendant 15 s ; réponse `scan_results` avec `plus_address` |
 | `pair_devices` | `{ "trainer", "click_plus", "click_minus", "hr" }` : adresse ou `null` | Révision 1.2 : écrit les appareils choisis dans `config.toml` ; `error` `pairing_failed` en cas d'échec |
+| `start_open_world` | `{ "lat", "lon", "heading_deg", "nav", "target", "loop_km", "seed" }` | Monde ouvert : prépare le départ ; `LOADING`, messages `world_status`, puis `READY` avec `route_id` = `ow:<id>` |
+| `choose_branch` | `{ "junction_id": chaîne, "branch": entier }` | Monde ouvert : choisit la branche d'un carrefour avant son verrouillage |
+| `world_search` | `{ "query": chaîne }` | Monde ouvert, menu : recherche de lieu ; réponse `places` |
+| `world_map` | `{ "lat", "lon", "radius_m" }` | Monde ouvert, menu : routes autour d'un point ; réponse `world_map` |
+| `world_regions` | `{}` | Monde ouvert, menu : régions du cache local ; réponse `world_regions` |
+| `world_pin` | `{ "region_id": chaîne, "pinned": booléen }` | Monde ouvert, menu : épingle ou libère une région du cache ; réponse `world_regions` |
 
 **Listes des parcours et des entraînements.** Le core est la seule source de vérité : l'engine ne lit ni le dossier des parcours ni les fichiers `.zwo`. Le core lit le disque à la demande, hors de la boucle physique à 50 Hz, et répond dans les 500 ms pour 200 parcours.
 
@@ -169,20 +176,37 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 - `identify_click_plus` : le core attend un appui « + » pendant 15 s sur le Click relié à la séance (ou, s'il n'y en a pas, en se connectant aux boîtiers trouvés). Cet appui ne pilote pas le menu (pas d'`input`). Réponse : `scan_results` avec `done` vrai, `request_cmd_id` de la commande et `plus_address` (`null` sans appui).
 - `pair_devices` : une adresse `null` garde la valeur actuelle ; le nom du trainer et de la ceinture vient de la dernière recherche. L'écriture garde le reste du fichier (copie `config.toml.bak`) et la nouvelle configuration sert au prochain lancement. Adresse mal formée ou même boîtier en « + » et « − » : `error` `pairing_failed`, rien n'est écrit.
 
-**Événements du Click.** Hors séance (`IDLE`, `READY`), le core transmet les boutons à l'engine pour qu'il pilote le menu : `type: "input"`, `event` parmi `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Pendant `RUNNING`, le core les consomme lui-même (braquet, biais, saut de bloc, pause) et les relaie aussi à l'engine, qui les utilise pour le retour sonore (bips) et doit ignorer leur sens de menu. Un événement `input` perdu n'est pas rejoué : sur localhost la perte est négligeable et un appui de menu manqué se refait.
+**Monde ouvert (révision 1.5 provisoire, lot W1).** Le monde ouvert (`docs/2.0/PLAN_SERIE_W.md`) est généré pendant la séance par le processus `openride-worldgen`, que le core pilote selon `docs/contracts/worldgen_v1.md`. Le core lit la route engagée et publie le prochain carrefour ; l'engine lit le monde vivant (`world_format_v1.md` §13) et ne parle qu'au core. La révision prend le premier numéro libre à sa fusion (1.5 si P1 prend 1.3 et les séries R, T et V 1.4).
+
+- `start_open_world` : `nav` vaut `ride` (balade), `destination` (`target` = `{lat, lon}`) ou `loop` (`loop_km`) ; `seed` entier. Hors séance seulement (`IDLE` ou `READY`), sinon `error` `busy`. Pendant la préparation, `world_status` (au plus 4 par seconde) ; départ hors cache sans réseau ou sans route à moins de 200 m : `error` `world_unavailable`, retour à `IDLE`. `hello_ack.config.open_world_dir` donne le dossier des séances : `ow:<id>` désigne `<open_world_dir>/<id>.world`.
+- `choose_branch` : accepté tant que `s` est avant le point de verrouillage du carrefour (30 m avant) ; ensuite `error` `branch_locked` ; identifiant inconnu : `error` `unknown_junction`. Le Click fait le même choix (décision W-Q1) : pendant un monde ouvert, quand un carrefour est proposé (à moins de 300 m) et non verrouillé, la flèche gauche ou droite du boîtier gauche (événements `LEFT_SHORT`, `RIGHT_SHORT`) prend la branche voisine dans ce sens, et `A_SHORT` du boîtier droit passe à la branche suivante, en boucle ; ces événements sont relayés à l'engine comme les autres. Sans appui, la branche par défaut du navigateur est prise.
+- Champ `open_world` de `state`, dans les trames d'une séance en monde ouvert, sauf celles qui portent `devices` (une sur 30 : l'engine garde le dernier `open_world` reçu) : `rev` (révision du monde vivant : l'engine relit `live.json`, les parties de route et `junctions.json` quand elle change), `next` (prochain carrefour devant, ou `null`) et `data` (`cached`, `downloading`, `offline`, `missing`). `next` : `id`, `d_m` (distance le long de la route engagée), `default`, `chosen`, `locked`, `b` = au plus 4 triplets `[angle, classe, pente]` : angle relatif au cap d'arrivée en degrés entiers, positif à droite ; classe `p` (grande route), `s`, `t`, `m` (petite route), `c` (piste cyclable), `k` (chemin revêtu) ; pente moyenne des 500 premiers mètres à 0,1 % près. La trame la plus chargée (ERG, 5 bots, carrefour à 4 branches) reste sous 1 400 octets.
+- `pause_reason` = `world_data` : moins de 200 m de route connue devant et générateur sans données ; reprise automatique quand 500 m sont de nouveau connus.
+- En ERG, le monde ouvert est permis (décision W-Q5) : la pente ne change pas la résistance.
+
+| Message | Sens | Champs |
+| --- | --- | --- |
+| `world_status` | core vers engine | `v`, `phase` (`dem`, `osm`, `tiles`, `generate`, `ready`, `error`), `done_bytes`, `total_bytes` (ou `null`), `squares_ready`, `squares_needed`, `message` |
+| `places` | core vers engine | `v`, `request_cmd_id`, `part`, `parts`, `truncated`, `items` : au plus 50 `{name, kind, lat, lon, cached, source}` |
+| `world_map` | core vers engine | `v`, `request_cmd_id`, `part`, `parts`, `lat`, `lon`, `radius_m`, `truncated`, `roads` : `{c, xz}`, classe et suite plate de coordonnées en mètres entiers depuis le point demandé, simplifiée à 20 m |
+| `world_regions` | core vers engine | `v`, `request_cmd_id`, `part`, `parts`, `cache_bytes`, `cache_max_bytes`, `items` : `{id, name, bytes, pinned, last_used, bbox}` |
+
+`places`, `world_map` et `world_regions` suivent les règles de `routes` (parties de 60 000 octets, `request_cmd_id`, nouvelle demande si une partie manque). `world_search` lit d'abord la liste embarquée et les bases locales ; il n'interroge Nominatim que si le réseau est permis, à la demande du cycliste, une requête par seconde au plus.
+
+**Événements du Click.** Hors séance (`IDLE`, `READY`), le core transmet les boutons à l'engine pour qu'il pilote le menu : `type: "input"`, `event` parmi `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG` (monde ouvert : aussi `LEFT_SHORT`, `RIGHT_SHORT`, `A_SHORT`). Pendant `RUNNING`, le core les consomme lui-même (braquet, biais, saut de bloc, pause) et les relaie aussi à l'engine, qui les utilise pour le retour sonore (bips) et doit ignorer leur sens de menu. Un événement `input` perdu n'est pas rejoué : sur localhost la perte est négligeable et un appui de menu manqué se refait.
 
 ## 5. Messages de session : hello, heartbeat, fin
 
 | Message | Sens | Champs | Rôle |
 | --- | --- | --- | --- |
 | `hello` | engine vers core | `v`, `engine_version` | Premier message de l'engine, répété chaque seconde jusqu'au `hello_ack` |
-| `hello_ack` | core vers engine | `v`, `core_version`, `config` (pour l'affichage : `ftp_w`, `gears_total`, `theme`, `difficulty_pct`) | Confirme la version du contrat et donne la configuration utile |
+| `hello_ack` | core vers engine | `v`, `core_version`, `config` (pour l'affichage : `ftp_w`, `gears_total`, `theme`, `difficulty_pct` ; facultatif `open_world_dir`) | Confirme la version du contrat et donne la configuration utile |
 | `heartbeat` | engine vers core | `seq`, `fps` (nombre, facultatif) | À 2 Hz ; prouve que l'engine est vivant |
 | `error` | core vers engine | `code`, `message` | Erreur à afficher (voir codes ci-dessous) |
 | `bye` | engine vers core | — | L'engine se ferme volontairement |
 | `shutdown` | core vers engine | — | Le core se ferme : l'engine quitte ou revient à l'écran d'attente |
 
-**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche demandée pendant une séance), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée).
+**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche demandée pendant une séance), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée) ; monde ouvert : `branch_locked` (choix après le verrouillage), `unknown_junction`, `world_unavailable` (départ impossible : hors cache sans réseau, ou aucune route proche).
 
 **Version.** Le core refuse un `hello` dont `v` diffère du sien, répond par une erreur `version_mismatch` et n'ouvre pas la séance. La règle d'évolution est au §8.
 
@@ -197,6 +221,7 @@ Règle générale : la séance ne se perd jamais ; en cas de doute, le core met 
 | Trainer perdu | Pas de données depuis 3 s | Pause (`trainer_lost`), reconnexion avec délai croissant | Bandeau d'alerte à partir de `trainer_status` |
 | Trainer revenu | Notifications reprises | Reste en pause jusqu'à `resume` | Affiche le choix de reprise |
 | Click perdu | Déconnexion BLE | `input_status` = `LOST`, la séance continue, le clavier reste actif | Affiche l'état du Click |
+| Plus de route connue (monde ouvert) | Moins de 200 m de route engagée devant et générateur sans données | Pause (`world_data`), pente 0 % ; reprise automatique à 500 m connus | Message d'attente à partir de `pause_reason` et de `open_world.data` |
 | Trame perdue ou en désordre | `seq` plus ancien que le dernier reçu | — | Ignore la trame ; un saut de `seq` est compté, pas signalé |
 | Datagramme illisible | JSON invalide | Ignoré, compteur incrémenté | Idem |
 | Refus du contrôle FTMS | Réponse du Control Point | Erreur `trainer_control_refused`, `session_state` = `ERROR` | Affiche le message |
@@ -276,3 +301,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.1) | 24 octobre 2026 | Ajouts compatibles (lot N1) : commandes `list_routes` et `list_workouts`, messages `routes` et `workouts` (jusqu'à 60 000 octets, en parties) ; objet `devices` dans `state` une fois par seconde ; bilan enrichi dans `summary` ; forme de `bots` ; `pause_reason` = `core_restarted` et reprise après un plantage du core |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot Q1) : commande `set_difficulty`, champ `difficulty_pct` (entier) dans `state` et `hello_ack.config` |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot N13, accepté par le propriétaire le 25 octobre ; même révision que Q1, numérotation confirmée par le propriétaire le 26 octobre) : commandes `scan_devices`, `identify_click_plus` et `pair_devices`, message `scan_results`, codes d'erreur `busy`, `scan_failed` et `pairing_failed` |
+| 1 (révision 1.5 provisoire) | 26 octobre 2026 | Ajouts compatibles (lot W1, monde ouvert de la 2.0, à valider par le propriétaire ; numéro définitif à la fusion) : commandes `start_open_world`, `choose_branch`, `world_search`, `world_map`, `world_regions`, `world_pin` ; messages `world_status`, `places`, `world_map`, `world_regions` ; champ `open_world` de `state` ; `hello_ack.config.open_world_dir` ; événements `LEFT_SHORT`, `RIGHT_SHORT`, `A_SHORT` ; `pause_reason` = `world_data` ; codes `branch_locked`, `unknown_junction`, `world_unavailable` |

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldMapMessage",
+  "description": "Réponse à world_map (révision 1.5 provisoire, lot W1) : routes autour d'un point, en mètres depuis ce point (x vers l'est, z vers le sud), simplifiées à 20 m ; parties de 60 000 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "part",
+    "parts",
+    "lat",
+    "lon",
+    "radius_m",
+    "roads",
+    "truncated"
+  ],
+  "properties": {
+    "type": {
+      "const": "world_map"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "part": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "lat": {
+      "type": "number"
+    },
+    "lon": {
+      "type": "number"
+    },
+    "radius_m": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "roads": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "c",
+          "xz"
+        ],
+        "properties": {
+          "c": {
+            "enum": [
+              "p",
+              "s",
+              "t",
+              "m",
+              "c",
+              "k",
+              "x"
+            ]
+          },
+          "xz": {
+            "type": "array",
+            "minItems": 4,
+            "items": {
+              "type": "integer"
+            },
+            "description": "Suite plate x0, z0, x1, z1… en mètres entiers."
+          }
+        }
+      }
+    }
+  }
+}

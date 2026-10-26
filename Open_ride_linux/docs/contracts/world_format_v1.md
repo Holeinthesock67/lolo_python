@@ -346,3 +346,65 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.1 | 23 octobre 2026 | Publication du schéma JSON des thèmes `docs/contracts/world/theme.schema.json`, du thème par défaut `engine/themes/default/theme.json` et de la sous-commande `openride-compiler theme-check` (§9, lot H7) |
 | 1.1 | 23 octobre 2026 | Publication des schémas JSON `buildings.schema.json` et `vegetation.schema.json` (§6 et §7), compteurs `count`, `ignored_count` et `osm_date` dans le manifeste de ces couches, validation `verify` et sous-commande `add-layer buildings\|vegetation` (lot I3) |
 | 1.1 | 23 octobre 2026 | Publication des schémas JSON `poi.schema.json` et `water.schema.json` (§8), compteurs `count` / `lines_count` / `areas_count` / `ignored_count` et `osm_date` dans le manifeste, validation `verify` et sous-commande `add-layer poi\|water` (lot I4) |
+| 1.x | 26 octobre 2026 | Ajout compatible (lot W1, à valider ; mineur définitif à la fusion) : monde vivant du monde ouvert (§13) : `live`, `origin_kind`, `grid` dans le manifeste, `live.json`, route par parties, couches par tuile en coordonnées relatives au coin, `junctions.json` ; schémas `live`, `route_part`, `junctions` |
+
+## 13. Monde vivant (monde ouvert, série W)
+
+Ajout compatible du 26 octobre 2026 (lot W1, à valider par le propriétaire ; le mineur de `format_version` est le premier libre à la fusion). Un monde vivant est un `.world` que le générateur `openride-worldgen` prolonge pendant la séance (`docs/2.0/PLAN_SERIE_W.md`, `docs/contracts/worldgen_v1.md`). Il se lit comme un parcours compilé, avec les différences ci-dessous ; un lecteur qui ne connaît pas `live` ne doit pas l'ouvrir (il n'est jamais rangé dans `~/.local/share/openride/routes/`).
+
+**Dossier.** `<cache_dir>/seances/<id>.world/`, avec `<id>` = `ow-<AAAAMMJJ-HHMMSS>` et `cache_dir` = `~/OpenRide/Cache/monde` par défaut.
+
+```text
+ow-20261026-201500.world/
+  manifest.json            live: true, origin_kind: "utm_grid", grid
+  live.json                état courant, réécrit à chaque révision
+  junctions.json           carrefours à venir
+  route/part_<k>.json      route engagée, par parties de 1 km
+  terrain/near/tile_<ix>_<iz>.f32, terrain/far/tile_<ix>_<iz>.f32
+  buildings/tile_<ix>_<iz>.json, vegetation/…, water/…, poi/…
+```
+
+**Origine et grille.** L'origine est le coin de la grille de 5 km de la zone UTM le plus proche du départ : `E0` et `N0` sont des multiples de 5 000 m. Le manifeste porte `live: true`, `origin_kind: "utm_grid"`, `origin` (latitude, longitude et altitude de ce coin, `utm_zone`) et `grid: {"near_m": 1000, "far_m": 5000, "e0": E0, "n0": N0}`. Les tuiles de la séance coïncident donc avec une grille globale : la tuile proche `(ix, iz)` est le carré global `IX = E0 / 1000 + ix`, `IN = N0 / 1000 − iz − 1` (indices de l'est et du nord, en kilomètres) ; même règle à 5 km pour les tuiles lointaines. Toute la séance reste dans la zone UTM du départ. Dans le manifeste, `route` décrit la route à l'ouverture (`file` = `route/`, longueur et nombre de points de la première révision) ; la longueur courante est dans `live.json`.
+
+**`live.json`** (schéma `live.schema.json`), réécrit de façon atomique à chaque révision :
+
+```json
+{
+  "version": "1.0",
+  "revision": 12,
+  "route": {"parts": 5, "length_m": 4380.0, "changed_from_part": 3},
+  "tiles": {"near": [[0, 0], [1, 0], [1, -1]], "far": [[0, 0], [0, -1]]},
+  "layer_tiles": [[0, 0], [1, 0]],
+  "status": "ok"
+}
+```
+
+**Route par parties** (schéma `route_part.schema.json`). `route/part_<k>.json` a les colonnes de `route.json` (§4) plus `s0_m` = 1 000 × `k`. La partie `k` contient les points de `s` = 1 000 `k` à `s` = 1 000 (`k` + 1) inclus, au pas de 10 m (la dernière partie s'arrête à `length_m`) ; le bord est partagé avec la partie suivante. `s` est croissant, `type` vaut `open`. Une partie publiée n'est réécrite qu'au-delà du point de verrouillage du carrefour dont la branche change : `changed_from_part` dit à partir de quelle partie relire. La route assemblée suit la règle d'interpolation du §4.
+
+**Couches par carré.** Le terrain garde le format du §5. Les couches `buildings`, `vegetation`, `water` et `poi` sont rangées par tuile proche, `<couche>/tile_<ix>_<iz>.json`, avec les schémas des fichiers `chunk_<k>.json` (§6 à §8), à une différence près : **les coordonnées horizontales sont relatives au coin de la tuile** (`x − 1 000 ix`, `z − 1 000 iz`) ; les altitudes `y`, `base_y` et `level_y` restent absolues. Ainsi les carrés du cache, communs à toutes les séances, sont liés dans le dossier de séance (liens symboliques) sans être réécrits. Un objet appartient à la tuile qui contient son centre.
+
+**`junctions.json`** (schéma `junctions.schema.json`), réécrit de façon atomique : carrefours à moins de 3 km devant le cycliste.
+
+```json
+{
+  "version": "1.0",
+  "revision": 12,
+  "junctions": [
+    {"id": "j123456", "s_m": 2410.0, "x": 1520.4, "z": -830.2, "lock_s_m": 2380.0,
+     "default": 1, "chosen": 1, "locked": false,
+     "branches": [
+       {"index": 0, "heading_deg": 275.0, "angle_deg": -85.0, "road_class": "m", "grade_pct_500m": 6.2,
+        "dead_end": false, "preview": {"x": [1520.4, 1510.4], "y": [612.0, 612.6], "z": [-830.2, -831.0]}},
+       {"index": 1, "heading_deg": 2.0, "angle_deg": 0.0, "road_class": "t", "grade_pct_500m": -1.4,
+        "dead_end": false, "preview": {"x": [1520.4, 1520.7], "y": [612.0, 611.9], "z": [-830.2, -840.2]}}
+     ]}
+  ]
+}
+```
+
+- `lock_s_m` = `s_m` − 30 : au-delà, `locked` est vrai et le choix est figé.
+- `angle_deg` : relatif au cap d'arrivée, positif à droite, dans ]−180, 180] ; au plus 4 branches, demi-tour exclu.
+- `road_class` : `p` (primary), `s` (secondary), `t` (tertiary), `m` (unclassified, residential, living_street, road, service hors parkings et allées privées), `c` (piste cyclable, chemin cyclable revêtu), `k` (track revêtue). Jamais d'autoroute, de voie rapide (trunk), de voie non revêtue (décision W-Q2) ni de voie interdite aux vélos.
+- `preview` : amorce de 500 m de la branche (51 points au pas de 10 m, positions dans le repère de la séance, altitude du profil), calculée avant que le carrefour soit à moins de 300 m.
+
+**Écriture.** Le générateur écrit chaque fichier dans un fichier temporaire voisin puis le renomme ; `live.json` est écrit en dernier, après les parties, les tuiles et `junctions.json` qu'il annonce.

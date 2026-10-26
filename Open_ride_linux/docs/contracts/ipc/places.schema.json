@@ -1,0 +1,90 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRidePlacesMessage",
+  "description": "Réponse à world_search (révision 1.5 provisoire, lot W1) ; parties de 60 000 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "part",
+    "parts",
+    "items",
+    "truncated"
+  ],
+  "properties": {
+    "type": {
+      "const": "places"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "part": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": [
+          "name",
+          "kind",
+          "lat",
+          "lon",
+          "source"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "maxLength": 80
+          },
+          "kind": {
+            "enum": [
+              "city",
+              "town",
+              "village",
+              "hamlet",
+              "pass",
+              "peak",
+              "other"
+            ]
+          },
+          "lat": {
+            "type": "number",
+            "minimum": -90,
+            "maximum": 90
+          },
+          "lon": {
+            "type": "number",
+            "minimum": -180,
+            "maximum": 180
+          },
+          "cached": {
+            "type": "boolean"
+          },
+          "source": {
+            "enum": [
+              "embedded",
+              "local",
+              "nominatim"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
