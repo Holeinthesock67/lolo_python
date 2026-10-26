@@ -300,7 +300,7 @@ class CoreSession:
         from . import settings
 
         if self.state.session_state in ("RUNNING", "PAUSED"):
-            self.server.send_error("setting_busy", "Réglage impossible pendant une séance (terminer d'abord).")
+            self.server.send_error("busy", "Réglage impossible pendant une séance (terminer d'abord).")
             return
         key = args.get("key") if isinstance(args, dict) else None
         try:
