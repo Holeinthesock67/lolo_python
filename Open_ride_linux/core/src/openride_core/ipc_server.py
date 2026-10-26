@@ -15,6 +15,8 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, Callable
 
+from .ipc_budget import encode, fit_state
+
 log = logging.getLogger("ipc_server")
 
 CONTRACT_VERSION = 1
@@ -95,6 +97,7 @@ class IpcServer:
         # Datagrammes illisibles ou non conformes, ignorés (contrat §6).
         self.invalid_datagrams: int = 0
         self._invalid_logged_at: float | None = None
+        self._trimmed_logged_at: float | None = None   # dernier avertissement « trame allégée »
         self._invalid_since_log: int = 0
 
         self._running: bool = False
@@ -144,7 +147,15 @@ class IpcServer:
         limit = max_size if max_size is not None else (
             MAX_LIST_DATAGRAM_SIZE if msg_dict.get("type") in ("routes", "workouts") else MAX_DATAGRAM_SIZE
         )
-        payload = json.dumps(msg_dict, separators=(",", ":")).encode("utf-8")
+        payload = encode(msg_dict)
+        if len(payload) > limit and msg_dict.get("type") == "state":
+            # Trame allégée plutôt que jetée (lot X25) : l'écran garde position et puissance.
+            msg_dict, dropped = fit_state(msg_dict, limit)
+            payload = encode(msg_dict)
+            now = time.monotonic()
+            if self._trimmed_logged_at is None or now - self._trimmed_logged_at >= INVALID_LOG_PERIOD_S:
+                self._trimmed_logged_at = now
+                log.warning("Trame state trop grande, allégée (%s) : %d octets", ", ".join(dropped), len(payload))
         if len(payload) > limit:
             log.warning("Datagramme IPC trop grand (%d octets > %d), ignoré", len(payload), limit)
             return

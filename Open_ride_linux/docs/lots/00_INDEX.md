@@ -151,6 +151,40 @@ Leur forme dépendra des choix faits dans E1 et D.
 
 **Série X (26 octobre, outils de test) :** les 31 outils et programmes de test qui manquent pour mener le projet jusqu'à la 1.0, puis aux versions 2.0 et 3.0 (plan du 26 octobre : besoin, mesure, lieu d'exécution, priorité, taille). Une issue par lot, #199 (X1) à #229 (X31), sous le suivi #48 ; le cahier de chaque lot est écrit à son démarrage. Ordre : X1 (tests de `main` au vert), X25 (pire trame IPC), X23 (scanner de confidentialité), puis les autres lots P0 : X2, X4, X5 (banc de latence du trainer, outil de l'essai R0), X8, X13, X16 et X29. Les essais matériels se font sur le PC cible.
 
+Lots de la série X (cahier écrit au démarrage de chacun ; P0 = avant la 1.0, P1 = pour la 1.0, P2 = 2.0) :
+
+- X1 : remettre la CI de main au vert (Cloud, P0, issue #199) ;
+- X2 : séparer les tests de budget de temps des tests de fonction (Cloud + PC, P0, issue #200) ;
+- X3 : rapport d'instabilité et de durée des tests (Cloud + PC, P1, issue #201) ;
+- X4 : recette du PC en une commande (PC, P0, issue #202) ;
+- X5 : banc de latence du trainer par paliers (Vélo, P0, issue #203) ;
+- X6 : trainer simulé réaliste (Cloud, P1, issue #204) ;
+- X7 : latence appui Click → commande et → écran (Vélo, P1, issue #205) ;
+- X8 : recette guidée du Click (30 min) (Vélo, P0, issue #206) ;
+- X9 : recette de la fréquence cardiaque (Vélo, P1, issue #207) ;
+- X10 : coupures volontaires, attendu contre obtenu (Vélo, P1, issue #208) ;
+- X11 : contrôle d'un FIT de séance réelle (PC, P1, issue #209) ;
+- X12 : analyse automatique d'une séance réelle (PC, P1, issue #210) ;
+- X13 : sonde de performance du moteur (PC, P0, issue #211) ;
+- X14 : parcours de référence et alerte de régression (PC, P1, issue #212) ;
+- X15 : saccades et temps de démarrage (Cloud + PC, P1, issue #213) ;
+- X16 : endurance 1 h et fuites (PC, P0, issue #214) ;
+- X17 : gigue de la boucle physique et de l'IPC (Cloud + PC, P1, issue #215) ;
+- X18 : contrôle d'apparition et comparaison avant/après (Cloud + PC, P1, issue #216) ;
+- X19 : micro-banc par image pour le décor vivant (Cloud, P2, issue #217) ;
+- X20 : non-régression visuelle, version 2 (Cloud + PC, P1, issue #218) ;
+- X21 : tour visuel guidé (PC, P1, issue #219) ;
+- X22 : lisibilité du HUD à 2 m (Cloud, P2, issue #220) ;
+- X23 : scanner de confidentialité (Cloud + PC, P0, issue #221) ;
+- X24 : audit des dépendances (Cloud, P2, issue #222) ;
+- X25 : pire trame IPC et matrice des révisions (Cloud, P0, issue #223) ;
+- X26 : fuzz des fichiers d'entrée (Cloud, P2, issue #224) ;
+- X27 : cycliste virtuel pour les essais simulés (Cloud, P1, issue #225) ;
+- X28 : réseau dégradé pour le monde ouvert (Cloud, P2, issue #226) ;
+- X29 : installation sur un système vierge (Cloud + PC, P0, issue #227) ;
+- X30 : tableau de recette 1.0 (Cloud, P1, issue #228) ;
+- X31 : pente maximale face à Garmin Connect (PC, P2, issue #229).
+
 **Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
 
 **Série L (24 octobre) :** tous les lots L1 à L8 sont livrés le 24 octobre (PR #64 à #71). L1 à L5 (GDScript, sans affichage) déposent leur test dans `engine/tests/unit/` ; L4 modifie aussi `engine_args.gd` et `launcher.py` ; L6 à L8 enrichissent le journal (cible ERG), le core (`history`) et le bureau (`.desktop`).
