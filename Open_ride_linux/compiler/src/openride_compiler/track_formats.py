@@ -13,12 +13,23 @@ aux octets 8 à 11), XML `TrainingCenterDatabase` (TCX) ou `gpx`.
   dans les `Lap` d'une activité (mis bout à bout) ou le `Track` d'un parcours (`Course`) ;
   espaces de noms ignorés comme dans `gpx.py`.
 Les points consécutifs identiques sont fusionnés.
+
+**Exports Garmin (lot O5)** : `.fit.gz` et `.tcx.gz` sont décompressés en mémoire puis reconnus
+par leur contenu ; dans un `.zip`, la première entrée `.fit`, `.tcx` ou `.gpx` (ordre
+alphabétique) est lue, les autres sont ignorées et citées dans `notes`. Archive vide,
+corrompue ou de plus de `MAX_UNPACKED_BYTES` une fois décompressée : `CompileError` claire.
+`TRACK_SUFFIXES`, `track_stem` et `scan_tracks` reprennent les règles de
+`openride_core.catalog` (parité vérifiée par `test_catalog_parity.py`).
 """
 
 from __future__ import annotations
 
+import gzip
+import io
 import math
 import xml.etree.ElementTree as ET
+import zipfile
+import zlib
 from pathlib import Path
 
 from .errors import CompileError
@@ -26,6 +37,76 @@ from .gpx import GpxPoint, _local, parse_gpx
 
 SEMICIRCLES_TO_DEG = 180.0 / 2**31
 FORMATS = (".gpx", ".fit", ".tcx")
+# Extensions des traces, dans l'ordre de priorité en cas de conflit (même ordre que le core).
+TRACK_SUFFIXES = (".gpx", ".fit", ".fit.gz", ".tcx", ".tcx.gz", ".zip")
+MAX_UNPACKED_BYTES = 50 * 1024 * 1024
+
+
+def track_stem(name: str) -> tuple[str, int] | None:
+    """Nom sans extension de trace et rang de l'extension ; None si ce n'est pas une trace."""
+    low = name.lower()
+    for rank, suffix in sorted(enumerate(TRACK_SUFFIXES), key=lambda rs: -len(rs[1])):
+        if low.endswith(suffix) and len(name) > len(suffix):
+            return name[: -len(suffix)], rank
+    return None
+
+
+def scan_tracks(gpx_dir: Path) -> tuple[list[Path], list[tuple[Path, Path]]]:
+    """Traces retenues (une par identifiant, triées par nom) et conflits `(écartée, retenue)`."""
+    from .writer import normalize_name
+
+    candidates: list[tuple[str, int, str, Path]] = []
+    if Path(gpx_dir).is_dir():
+        for p in Path(gpx_dir).iterdir():
+            ts = track_stem(p.name) if p.is_file() else None
+            if ts is not None:
+                candidates.append((normalize_name(ts[0]), ts[1], p.name, p))
+    winners: dict[str, Path] = {}
+    conflicts: list[tuple[Path, Path]] = []
+    for norm, _rank, _name, p in sorted(candidates):
+        if norm in winners:
+            conflicts.append((p, winners[norm]))
+        else:
+            winners[norm] = p
+    return sorted(winners.values(), key=lambda p: p.name), conflicts
+
+
+def _gunzip(data: bytes, name: str) -> bytes:
+    try:
+        with gzip.GzipFile(fileobj=io.BytesIO(data)) as fh:
+            out = fh.read(MAX_UNPACKED_BYTES + 1)
+    except (OSError, EOFError, zlib.error) as exc:
+        raise CompileError(f"{name} : archive .gz corrompue ({exc})") from None
+    if len(out) > MAX_UNPACKED_BYTES:
+        raise CompileError(f"{name} : archive trop grosse une fois décompressée "
+                           f"(plus de {MAX_UNPACKED_BYTES // 2**20} Mo)")
+    return out
+
+
+def _unzip(data: bytes, name: str, notes: list[str] | None) -> tuple[bytes, str]:
+    """Contenu et nom de la première trace de l'archive (ordre alphabétique)."""
+    try:
+        with zipfile.ZipFile(io.BytesIO(data)) as zf:
+            entries = sorted((i for i in zf.infolist()
+                              if not i.is_dir() and Path(i.filename).suffix.lower() in FORMATS),
+                             key=lambda i: i.filename)
+            if not entries:
+                raise CompileError(f"{name} : archive sans trace .fit, .tcx ou .gpx")
+            first = entries[0]
+            if first.file_size > MAX_UNPACKED_BYTES:
+                raise CompileError(f"{name} : {first.filename} trop gros une fois décompressé "
+                                   f"(plus de {MAX_UNPACKED_BYTES // 2**20} Mo)")
+            with zf.open(first) as fh:
+                out = fh.read(MAX_UNPACKED_BYTES + 1)
+    except CompileError:
+        raise
+    except (zipfile.BadZipFile, OSError, EOFError, zlib.error, NotImplementedError) as exc:
+        raise CompileError(f"{name} : archive .zip corrompue ({exc})") from None
+    if len(out) > MAX_UNPACKED_BYTES:
+        raise CompileError(f"{name} : {first.filename} trop gros une fois décompressé")
+    if len(entries) > 1 and notes is not None:
+        notes.append(f"{name} : {first.filename} lu, ignoré(s) : " + ", ".join(i.filename for i in entries[1:]))
+    return out, first.filename
 
 
 def sniff_format(data: bytes) -> str | None:
@@ -40,14 +121,24 @@ def sniff_format(data: bytes) -> str | None:
     return None
 
 
-def read_track(path: Path) -> list[GpxPoint]:
-    """Points de la trace, quel que soit son format (GPX, FIT ou TCX)."""
+def read_track(path: Path, notes: list[str] | None = None) -> list[GpxPoint]:
+    """Points de la trace, quel que soit son format (GPX, FIT ou TCX, éventuellement en `.gz` ou `.zip`).
+
+    `notes` reçoit les remarques à afficher (entrées d'une archive ignorées).
+    """
     try:
         data = Path(path).read_bytes()
     except OSError as exc:
         raise CompileError(f"trace illisible : {exc}") from exc
+    name = Path(path).name
+    inner = name
+    if data[:2] == b"\x1f\x8b" or name.lower().endswith(".gz"):
+        data = _gunzip(data, name)
+        inner = name[:-3] if name.lower().endswith(".gz") else name
+    elif data[:4] == b"PK\x03\x04" or name.lower().endswith(".zip"):
+        data, inner = _unzip(data, name, notes)
     sniffed = sniff_format(data)
-    ext = Path(path).suffix.lower()
+    ext = Path(inner).suffix.lower()
     fmt = sniffed or (ext if ext in FORMATS else None)
     if fmt is None:
         raise CompileError(f"{Path(path).name} : format inconnu (attendu GPX, FIT ou TCX)")
