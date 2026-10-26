@@ -10,6 +10,7 @@ import jsonschema
 from openride_core import fit_export
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
+from openride_core.ipc_budget import encode
 from openride_core.ipc_server import IpcServer, IpcState
 from openride_core.mock_driver import MockDriver
 from openride_core.session import CoreSession
@@ -28,7 +29,7 @@ def assert_valid(msg: dict) -> None:
     errors = [e.message for e in jsonschema.Draft202012Validator(schema(msg["type"])).iter_errors(msg)]
     assert not errors, f"{msg['type']} invalide : {errors}"
     limit = MAX_LIST_DATAGRAM if msg["type"] in ("routes", "workouts") else MAX_DATAGRAM
-    assert len(json.dumps(msg, separators=(",", ":")).encode()) <= limit
+    assert len(encode(msg)) <= limit
 
 
 class Capture:
@@ -173,10 +174,10 @@ def test_full_state_frame_fits_in_datagram():
                          {"side": "minus", "status": "SEARCHING", "battery_pct": 100}],
                "hr": {"status": "CONNECTED", "source": "trainer", "battery_pct": 100}}
     frame = {**st.to_dict(), "seq": 123456789, "devices": devices,
-             "bots": [{"id": f"bot-{i}", "name": "Fantome 24/10", "s": 12873.456 + i,
+             "bots": [{"id": f"bot-{i}", "name": "Fantôme du 24/10", "s": 12873.456 + i,
                        "v": 9.123, "kind": "ghost"} for i in range(5)]}
     assert_valid(frame)
-    size = len(json.dumps(frame, separators=(",", ":")).encode())
+    size = len(encode(frame))
     assert size <= MAX_DATAGRAM, f"trame de {size} octets"
 
 

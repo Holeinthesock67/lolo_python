@@ -1,0 +1,172 @@
+"""Budget de taille des datagrammes IPC (lot X25, contrat IPC v1 §2).
+
+- `encode()` : encodage unique des messages (JSON compact, UTF-8 sans échappement `\\u`).
+  « Fantôme » prend 8 octets au lieu de 12 avec l'échappement ASCII de `json.dumps`.
+- `fit_state()` : allège une trame `state` trop grande au lieu de la jeter. Les champs
+  facultatifs partent dans l'ordre de `STATE_DEGRADATION` ; position, vitesse, puissance et
+  état de séance restent toujours.
+- `worst_state()` : trame la plus lourde attendue pour une révision du contrat, avec les
+  longueurs maximales de `MAX_TEXT`. Chaque révision qui ajoute des champs à `state` ajoute
+  sa fonction dans `REVISION_EXTRAS` ; `tests/test_ipc_budget.py` vérifie que toutes tiennent.
+"""
+
+from __future__ import annotations
+
+import copy
+import json
+from typing import Any, Callable
+
+MAX_DATAGRAM_SIZE = 1400
+
+# Longueurs maximales attendues des textes libres (caractères). Au-delà, `fit_state` raccourcit.
+MAX_TEXT = {
+    "route_id": 64,           # identifiant de parcours du catalogue
+    "workout_name": 48,       # titre d'entraînement affiché dans le bandeau ERG
+    "trainer_name": 32,       # nom annoncé par le trainer (devices.trainer.name)
+    "bot_name": 16,           # contrat : maxLength 16
+    "bot_id": 8,              # contrat : maxLength 8
+}
+
+# Textes de remplissage : lettres accentuées (2 octets en UTF-8) pour le pire cas.
+_FILL = "Fantôme éé à ô û"
+
+
+def encode(msg: dict[str, Any]) -> bytes:
+    """Encodage des datagrammes IPC : JSON compact en UTF-8."""
+    return json.dumps(msg, separators=(",", ":"), ensure_ascii=False).encode("utf-8")
+
+
+def size(msg: dict[str, Any]) -> int:
+    return len(encode(msg))
+
+
+def _text(n: int) -> str:
+    return (_FILL * (n // len(_FILL) + 1))[:n]
+
+
+def _shorten_texts(d: dict[str, Any]) -> None:
+    erg = d.get("erg")
+    if isinstance(erg, dict) and isinstance(erg.get("workout_name"), str):
+        erg["workout_name"] = erg["workout_name"][:MAX_TEXT["workout_name"]]
+    devices = d.get("devices")
+    trainer = devices.get("trainer") if isinstance(devices, dict) else None
+    if isinstance(trainer, dict) and isinstance(trainer.get("name"), str):
+        trainer["name"] = trainer["name"][:MAX_TEXT["trainer_name"]]
+    for bot in d.get("bots") or []:
+        if isinstance(bot, dict) and isinstance(bot.get("name"), str):
+            bot["name"] = bot["name"][:MAX_TEXT["bot_name"]]
+
+
+def _drop(key: str) -> Callable[[dict[str, Any]], None]:
+    return lambda d: d.pop(key, None)
+
+
+def _short_bot_names(d: dict[str, Any]) -> None:
+    for bot in d.get("bots") or []:
+        if isinstance(bot, dict) and isinstance(bot.get("name"), str):
+            bot["name"] = bot["name"][:6]
+
+
+def _bots_if_devices(d: dict[str, Any]) -> None:
+    if "devices" in d:
+        d.pop("bots", None)
+
+
+# Ordre d'allègement, du moins gênant au plus gênant. `devices` n'est que dans une trame sur 30 :
+# sur cette trame-là, les bots peuvent manquer (ils reviennent 33 ms plus tard) ; l'inverse
+# priverait l'engine de l'état des appareils pendant toute la séance.
+STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
+    ("textes raccourcis", _shorten_texts),
+    ("noms des bots raccourcis", _short_bot_names),
+    ("bots (trame avec devices)", _bots_if_devices),
+    ("devices", _drop("devices")),
+    ("summary", _drop("summary")),
+    ("bots", _drop("bots")),
+    ("erg", _drop("erg")),
+]
+
+
+def fit_state(msg: dict[str, Any], limit: int = MAX_DATAGRAM_SIZE) -> tuple[dict[str, Any], list[str]]:
+    """Trame `state` qui tient dans `limit` octets et liste des allègements appliqués.
+
+    La trame d'origine n'est jamais modifiée. Si rien ne suffit, la dernière version est rendue
+    (l'appelant la jette, comme avant).
+    """
+    if size(msg) <= limit:
+        return msg, []
+    out = copy.deepcopy(msg)
+    done: list[str] = []
+    for label, step in STATE_DEGRADATION:
+        step(out)
+        done.append(label)
+        if size(out) <= limit:
+            break
+    return out, done
+
+
+# --- Trames les plus lourdes, par révision du contrat ---
+
+def _worst_1_0() -> dict[str, Any]:
+    return {
+        "type": "state", "v": 1, "seq": 2_147_483_647, "t": 86_399.987,
+        "session_state": "PAUSED", "pause_reason": "trainer_lost",
+        "trainer_status": "RECONNECTING", "input_status": "RECONNECTING", "mode": "ERG",
+        "route_id": ("col-" * 16)[:MAX_TEXT["route_id"]], "route_length_m": 199_999.875,
+        "s": 123_456.789, "v": 16.666, "grade": -12.345, "grade_sent": -10.0,
+        "power": 1234.5, "power_3s": 1234.5, "cadence": 123.4, "hr": 199, "gear": 24, "gears_total": 24,
+        "lat": -45.1234567, "lon": -123.1234567, "alt": 2802.345,
+        "erg": {"workout_name": _text(MAX_TEXT["workout_name"]), "block_index": 120, "block_count": 120,
+                "block_type": "interval_on", "block_remaining_s": 3599.75, "block_total_s": 3600.0,
+                "target_w": 1234.0, "next_target_w": 1234.0, "bias_pct": 110.0, "paused": True},
+        "summary": None, "last_cmd_id": 2_147_483_647,
+    }
+
+
+def _extras_1_1(d: dict[str, Any]) -> None:
+    d["devices"] = {
+        "trainer": {"status": "RECONNECTING", "name": _text(MAX_TEXT["trainer_name"]),
+                    "address": "C1:1C:00:00:00:03"},
+        "click": [{"side": "minus", "status": "RECONNECTING", "battery_pct": 100},
+                  {"side": "minus", "status": "RECONNECTING", "battery_pct": 100}],
+        "hr": {"status": "RECONNECTING", "source": "trainer", "battery_pct": 100},
+    }
+    d["bots"] = [{"id": f"bot-{i}-ab"[:MAX_TEXT["bot_id"]], "name": _text(MAX_TEXT["bot_name"]),
+                  "s": 123_456.789 + i, "v": 16.666, "kind": "constant"} for i in range(5)]
+
+
+def _extras_1_2(d: dict[str, Any]) -> None:
+    d["difficulty_pct"] = 100
+
+
+# Une entrée par révision : chaque révision hérite des ajouts des précédentes.
+REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
+    "1.1": _extras_1_1,
+    "1.2": _extras_1_2,
+}
+
+
+def revisions() -> list[str]:
+    return ["1.0", *REVISION_EXTRAS]
+
+
+def worst_state(revision: str) -> dict[str, Any]:
+    """Trame `state` la plus lourde attendue pour `revision` (ajouts des révisions précédentes compris)."""
+    if revision not in revisions():
+        raise ValueError(f"révision inconnue : {revision}")
+    d = _worst_1_0()
+    for rev in revisions()[1:revisions().index(revision) + 1]:
+        REVISION_EXTRAS[rev](d)
+    return d
+
+
+def report() -> str:
+    """Tableau texte : taille de la pire trame par révision (python -m openride_core.ipc_budget)."""
+    lines = [f"{'révision':<9} {'octets':>6}  marge (limite {MAX_DATAGRAM_SIZE})"]
+    for rev in revisions():
+        n = size(worst_state(rev))
+        lines.append(f"{rev:<9} {n:>6}  {MAX_DATAGRAM_SIZE - n:+d}")
+    return "\n".join(lines)
+
+
+if __name__ == "__main__":
+    print(report())
