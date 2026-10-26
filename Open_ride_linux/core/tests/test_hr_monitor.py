@@ -101,6 +101,19 @@ def test_contact_lost_then_back(monkeypatch, caplog):
     assert "absent" in lines[0] and "retrouvé" in lines[1]
 
 
+def test_strap_removed_without_contact_support():
+    """Ceinture retirée sans gestion du contact (SRS §4.1) : 0 bpm ou fin des mesures -> None."""
+    now = [100.0]
+    hr = HeartRateProvider(None, "", device_finder=lambda *a, **k: None, clock=lambda: now[0])
+    hr._on_hr(None, bytearray(_frame(105, False, "none", None, [])))
+    assert hr.bpm == 105 and hr.contact is None
+    hr._on_hr(None, bytearray(_frame(0, False, "none", None, [])))   # 0 = pas de mesure
+    assert hr.bpm is None
+    hr._on_hr(None, bytearray(_frame(105, False, "none", None, [])))
+    now[0] += hr_monitor.STALE_S + 0.1   # plus aucune notification
+    assert hr.bpm is None
+
+
 def test_rr_history_is_bounded():
     hr = HeartRateProvider(None, "", device_finder=lambda *a, **k: None)
     for _ in range(50):
