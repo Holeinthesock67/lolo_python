@@ -17,7 +17,7 @@ R2, R3 et R4 livrés. Valeurs de R0 (fenêtre de Perfect Shift) ou leurs défaut
 
 ### 4.1 Interface
 
-`combat_step(state, inputs, room, balance, dt) -> (state, events)`, pur et déterministe (tirages des coups critiques par un générateur à graine). `inputs` : puissance, cadence, posture, braquet, `w_bal_j`, état du Firewall, boutons de la trame (`Y_SHORT`, `Z_SHORT`, `A_SHORT`, `PLUS_SHORT`, `MINUS_SHORT`), objectif de la run.
+`combat_step(state, inputs, room, balance, dt) -> (state, events)`, pur et déterministe (tirages des coups critiques par un générateur à graine). `inputs` : puissance, cadence, posture, braquet, `w_bal_j`, état du Firewall, boutons de la trame (`A_SHORT`, `A_LONG`, `Z_SHORT`, `PLUS_SHORT`, `MINUS_SHORT` ; Y est la pause, décision R-Q6), objectif de la run.
 
 ### 4.2 Dégâts
 
@@ -39,7 +39,7 @@ R2, R3 et R4 livrés. Valeurs de R0 (fenêtre de Perfect Shift) ou leurs défaut
 
 ### 4.4 Adrénaline (0 à 100)
 
-- +0,5 par seconde quand la puissance est au moins à la cible du tronçon ; ×0,7 en `ROC`, ×1,5 en `VELOCE` (« recharge de Y plus rapide »).
+- +0,5 par seconde quand la puissance est au moins à la cible du tronçon ; ×0,7 en `ROC`, ×1,5 en `VELOCE` (« recharge de l'attaque plus rapide »).
 - +10 par Perfect Shift réussi (GDD §2.4).
 - **Surchauffe** (objectif endurance seulement, décision Q3) : au-delà de 0,75 FTP pendant plus de 5 s, l'adrénaline perd 2 par seconde et `overheat` est vrai ; aucun dégât en plus pendant la surchauffe.
 
@@ -48,16 +48,18 @@ R2, R3 et R4 livrés. Valeurs de R0 (fenêtre de Perfect Shift) ou leurs défaut
 | Bouton | Règle |
 | --- | --- |
 | + / B | Vitesse +1 ou −1 (1 à 12), sauf piratage du Saboteur |
-| Y | Sur une `y_target` et avec au moins 50 d'adrénaline : consomme 50, inflige 6 % des PV max (brise un point d'armure de verrou ou de rocher). Diesel : libère les charges de tunnel. Hors cible : rien, pas de consommation |
+| A court | Attaque : sur une `strike_target` et avec au moins 50 d'adrénaline : consomme 50, inflige 6 % des PV max (brise un point d'armure de verrou ou de rocher). Diesel : libère les charges de tunnel. Hors cible : rien, pas de consommation |
 | Z | Dans une `z_zone` : parade (onde de choc annulée) ; Puncheur : aspiration accrochée si la puissance des 2 dernières secondes dépasse de 10 % celle des 3 secondes d'avant, la bosse suivante est envoyée à moitié de sa pente. Hors zone : rien |
-| A court | Disjoncteur : −4 vitesses d'un coup (au plus jusqu'à 1), une fois toutes les 30 s ; sur une balise `purge` : purge le piratage. Si une carte de module A est équipée, A court déclenche la carte et le Disjoncteur n'est plus disponible (question R-Q8) |
+| A court (suite) | Sur une balise `purge` : purge le piratage (pas d'attaque) |
+| A long | Disjoncteur : −4 vitesses d'un coup (au plus jusqu'à 1), une fois toutes les 30 s. Si une carte de module A est équipée, A long déclenche la carte et le Disjoncteur n'est plus disponible (décision R-Q8) |
+| Y | Pause et reprise, comme dans les autres modes (décision R-Q6) ; jamais une action de jeu |
 
 ### 4.6 Mécaniques des archétypes
 
 - **Perfect Shift :** changement de braquet dans le sens conseillé, dans une fenêtre de `ps_window_s` (1,5 s par défaut, réglée par R0) centrée sur l'arche : +10 d'adrénaline, événement `perfect_shift`. Un changement dans le mauvais sens ne compte pas.
-- **Diesel, tunnels de cadence :** chaque 10 s dans 90 ± 3 rpm donne une charge (au plus 3) ; Y sur la `y_target` de sortie du tunnel les libère : 4 % des PV max par charge, sans coût d'adrénaline.
+- **Diesel, tunnels de cadence :** chaque 10 s dans 90 ± 3 rpm donne une charge (au plus 3) ; A court sur la `strike_target` de sortie du tunnel les libère : 4 % des PV max par charge, sans coût d'adrénaline.
 - **Puncheur :** voir Z ci-dessus ; bosse non aspirée et effort sous la cible : −10 de bouclier.
-- **Grimpeur :** 5 s continues en `ROC` chargent un coup ; Y sur un rocher avec un coup chargé retire un point d'armure ; rocher brisé = 8 % des PV max.
+- **Grimpeur :** 5 s continues en `ROC` chargent un coup ; A court sur un rocher avec un coup chargé retire un point d'armure ; rocher brisé = 8 % des PV max.
 - **Sprinteur :** sur un `pad`, puissance ≥ 1,40 FTP et vitesse ≥ 10 : dégâts ×3 pendant le pavé.
 - **Saboteur :** toutes les 60 s, un piratage de 15 s : soit + et B bloqués, soit un pignon imposé (tirage) ; la balise `purge` (A) l'annule. Sous piratage, les dégâts dépendent seulement de la puissance et de la cadence.
 
@@ -81,7 +83,7 @@ Aucune (les noms d'événements sont ceux du contrat R1, §4.4).
 3. Même entrée, même graine : mêmes événements, à la trame près.
 4. Bouclier à 0 : événement `defeat`, phase `RECOVERY` de 60 s, or perdu selon le §4.3.
 5. Perfect Shift : réussi à 0,7 s de l'arche, raté à 0,8 s avec une fenêtre de 1,5 s ; mauvais sens refusé.
-6. Disjoncteur : −4 vitesses, refusé pendant 30 s ensuite ; purge sur balise annule le piratage.
+6. Disjoncteur (A long) : −4 vitesses, refusé pendant 30 s ensuite ; A court sur balise annule le piratage sans attaque ; Y n'a aucun effet de jeu.
 7. Surchauffe seulement en objectif endurance, après 5 s au-delà de 0,75 FTP.
 8. Toutes les constantes du lot sont dans `RogueBalance` (test qui modifie une valeur et voit l'effet).
 

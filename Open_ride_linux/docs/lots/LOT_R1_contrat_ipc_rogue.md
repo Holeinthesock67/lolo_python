@@ -1,10 +1,10 @@
-# Lot R1 – Contrat IPC v1.4 : boutons Y, Z et A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run
+# Lot R1 – Contrat IPC v1.4 : boutons Z et A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run
 
 ## 1. Objectif
 
 Fixer, **avant tout code**, les ajouts compatibles au contrat IPC dont le mode Cyber-Rogue a besoin. Le core reste le maître : il compose la run, calcule les règles et pilote le trainer ; l'engine affiche ce qu'il reçoit et envoie les commandes du menu. C'est une décision du propriétaire, comme N1 et P1.
 
-Numérotation (confirmée le 26 octobre) : la révision 1.2 est prise par Q1, N13 et O4, la 1.3 par P1 ; les séries R, T et V ajoutent la **1.4**. Les ajouts communs avec la série T (événements Y, Z, A) et la série V sont rédigés une seule fois, par le premier des lots R1, T1 ou V1.
+Numérotation (confirmée le 26 octobre) : la révision 1.2 est prise par Q1, N13 et O4, la 1.3 par P1 ; les séries R, T et V ajoutent la **1.4**. Les ajouts communs avec la série T (événements Z et A) et la série V sont rédigés une seule fois, par le premier des lots R1, T1 ou V1.
 
 ## 2. À lire
 
@@ -21,13 +21,13 @@ P1 livré (révision 1.3). Les réponses du propriétaire aux questions R-Q1 à 
 
 Rédiger les ajouts suivants dans `ipc_v1.md` et les schémas, chacun avec sa ligne au journal des changements (§8). Propositions de départ, à confirmer par le propriétaire :
 
-### 4.1 Boutons Y, Z et A
+### 4.1 Boutons Z et A
 
-- Nouveaux événements `input` et valeurs de `input_event` : `Y_SHORT`, `Z_SHORT`, `A_SHORT`, `A_LONG`. Mêmes seuils que + et − (court sous 0,5 s, long à partir de 0,9 s, décision au relâchement, entre les deux : ignoré).
+- Nouveaux événements `input` et valeurs de `input_event` : `Z_SHORT`, `A_SHORT`, `A_LONG`. Mêmes seuils que + et − (court sous 0,5 s, long à partir de 0,9 s, décision au relâchement, entre les deux : ignoré).
 - B reste lu comme « − » (contournement du boîtier gauche) ; aucun nouvel événement pour B.
-- **Mode classique : rien ne change.** Y reste la pause du core (lot N6), interne, sans événement.
-- **Mode Cyber-Rogue :** Y, Z, A courts sont consommés par le core (règles du jeu) et relayés à l'engine pour l'effet visuel et sonore ; `A_LONG` met en pause ou reprend (pause `user`), même en combat. Aucun autre bouton ne met en pause pendant une run.
-- Clavier de l'engine (`input_event`) : Y, Z, A pour les appuis courts, A maintenu 0,9 s pour l'appui long ; Échap reste la pause.
+- **Y reste la pause du core dans tous les modes** (lot N6 ; décision R-Q6 du 26 octobre), interne, sans événement.
+- **Mode Cyber-Rogue :** `Z_SHORT`, `A_SHORT` et `A_LONG` sont consommés par le core (A court : attaque, purge, valider en couloir ; A long : Disjoncteur ou carte de module A, deck en couloir ; Z : parade, relance) et relayés à l'engine pour l'effet visuel et sonore.
+- Clavier de l'engine (`input_event`) : Z et A pour les appuis courts, A maintenu 0,9 s pour l'appui long ; Échap et Y restent la pause.
 
 ### 4.2 Liste des modes dans `hello_ack.config`
 
@@ -66,7 +66,7 @@ Nouveau code d'erreur : `run_invalid` (objectif ou durée hors liste).
 | `posture` | chaîne | `ROC`, `FLUIDE`, `VELOCE`, `ARRET` |
 | `firewall_gap_m` | nombre | Avance sur le Firewall (négatif : rattrapé) |
 | `gold` | entier | Or de la run |
-| `windows` | tableau | Fenêtres actives, au plus 4 : `{kind, s_start, s_end}`, `kind` parmi `arch`, `y_target`, `z_zone`, `pad`, `purge`, `tunnel` |
+| `windows` | tableau | Fenêtres actives, au plus 4 : `{kind, s_start, s_end}`, `kind` parmi `arch`, `strike_target`, `z_zone`, `pad`, `purge`, `tunnel` |
 | `hack` | objet ou null | Piratage du Saboteur : `{locked: booléen, forced_gear: entier ou null, until_s}` |
 | `overheat` | booléen | Surchauffe (objectif endurance, décision Q3) |
 | `loot_focus` | entier ou null | En couloir : carte ou porte sélectionnée (0 à 4) |
@@ -76,7 +76,7 @@ Nouveau code d'erreur : `run_invalid` (objectif ou durée hors liste).
 
 ### 4.5 Messages `room` et `loot` (core vers engine, sur événement)
 
-- `room` : `v`, `room_id`, `part`, `parts`, `archetype`, `variant`, `length_m`, `nominal_s`, `profile` (pente tous les 10 m : liste de `[s_m, grade_pct]`, au plus 1 500 points), `markers` (liste de `{kind, s_m, len_m, param}` : `arch`, `y_target`, `z_zone`, `pad`, `purge`, `tunnel`, `rock`, `shockwave`), `next` (`room_id` et archétype de la salle suivante si elle est déjà connue, sinon `null`). Même découpage en parties de 60 000 octets que `routes`. Envoyé au début de chaque salle et, pendant le couloir, pour chacune des deux portes.
+- `room` : `v`, `room_id`, `part`, `parts`, `archetype`, `variant`, `length_m`, `nominal_s`, `profile` (pente tous les 10 m : liste de `[s_m, grade_pct]`, au plus 1 500 points), `markers` (liste de `{kind, s_m, len_m, param}` : `arch`, `strike_target`, `z_zone`, `pad`, `purge`, `tunnel`, `rock`, `shockwave`), `next` (`room_id` et archétype de la salle suivante si elle est déjà connue, sinon `null`). Même découpage en parties de 60 000 octets que `routes`. Envoyé au début de chaque salle et, pendant le couloir, pour chacune des deux portes.
 - `loot` : `v`, `corridor_id`, `cards` (3 cartes : `{id, name, kind, text, replaces_gear}`), `doors` (2 portes : `{side: "left" | "right", room_id, archetype}`), `reroll_cost`, `gold`. Renvoyé après chaque relance.
 - L'engine qui voit un `room_id` ou un `corridor_id` inconnu dans `state.rogue` envoie `rogue_resync`, au plus une fois par seconde.
 

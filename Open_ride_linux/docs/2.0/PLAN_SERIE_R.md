@@ -19,7 +19,7 @@ Le mode tient sur le socle actuel : le core pilote déjà le trainer en pente av
 | Q7 | Que donnent les châssis permanents ? | Des bonus de jeu, pas seulement l'apparence |
 | Q8 | Enregistrer dans le dépôt ? | Oui : ce dossier et une issue de suivi « série R » |
 
-**Pause :** en mode classique, Y met en pause (lot N6, accord du 25 octobre). Dans le mode Cyber-Rogue, Y sert à l'attaque ; la pause y passe par un appui long sur A (question R-Q6), pour qu'une attaque un peu longue ne coupe jamais un combat.
+**Pause :** **Répartition des boutons du mode (décision R-Q6 du 26 octobre : même pause que les autres modes) :** Y = pause et reprise, comme en mode classique (lot N6) ; A court = attaque (l'ancien rôle de Y : consomme l'adrénaline sur une cible) et, en couloir, valider ; sur une balise de purge, A court purge ; A long (0,9 s) = Disjoncteur (−4 vitesses) ou la carte de module A équipée, et, en couloir, affiche le deck ; Z = parade, et relance en couloir ; + et B = vitesses, et navigation en couloir.
 
 Conséquence de Q2 : la variation de la pente envoyée est limitée (2 % par seconde jusqu'au lot Q4, puis 4 %/s à la montée et 8 %/s à la descente), et l'essai 69 du 25 octobre a montré environ 22 s de retard du trainer sur des marches de 0 à 7 %, surtout au relâchement. Le mode Cyber-Rogue aura sa propre limite, et la durée minimale des bosses en dépend : les deux sont fixées après la mesure R0 (règles dans le cahier de R0, §4.3).
 
@@ -61,7 +61,7 @@ Ne servent pas : compilateur GPX, terrain, OSM, végétation, thèmes de paysage
 
 **Core (modules purs) :** modèle W'bal (Skiba, CP ≈ FTP par défaut) ; postures de cadence avec hystérésis ; générateur de salles à graine (profil transformé en route en mémoire, physique et interpolation inchangées) ; Firewall (cycliste virtuel à X % de FTP calculé avec `physics.py`) ; combat (bouclier, adrénaline, dégâts, fenêtres de timing, surchauffe) ; run (machine à états, deck, or, reliques, boss) ; scénariste (objectif × durée vers une suite de salles) ; progression permanente sous `~/OpenRide/` ; événements de jeu dans le journal.
 
-**Contrat IPC v1.4 (ajouts compatibles, après la 1.3 du lot P1) :** événements `input` `Y_SHORT`, `Z_SHORT`, `A_SHORT` et `A_LONG` (B reste « − » ; communs avec la série T, ajoutés par le premier des lots R1 ou T1) ; liste `modes` dans `hello_ack.config` ; valeur `ROGUE` de `mode` et champ facultatif `rogue` de `state` (phase, salle, bouclier, adrénaline, W'bal, posture, écart au Firewall, fenêtres actives) ; message `room` (profil et marqueurs, gros datagramme comme `routes`) ; message `loot` (3 cartes, 2 portes) ; commandes `start_run` (objectif, durée, graine, W') et `rogue_resync` ; fin de run par `end_session` (détail dans le cahier de R1).
+**Contrat IPC v1.4 (ajouts compatibles, après la 1.3 du lot P1) :** événements `input` `Z_SHORT`, `A_SHORT` et `A_LONG` (Y reste la pause interne du core) (B reste « − » ; communs avec la série T, ajoutés par le premier des lots R1 ou T1) ; liste `modes` dans `hello_ack.config` ; valeur `ROGUE` de `mode` et champ facultatif `rogue` de `state` (phase, salle, bouclier, adrénaline, W'bal, posture, écart au Firewall, fenêtres actives) ; message `room` (profil et marqueurs, gros datagramme comme `routes`) ; message `loot` (3 cartes, 2 portes) ; commandes `start_run` (objectif, durée, graine, W') et `rogue_resync` ; fin de run par `end_session` (détail dans le cahier de R1).
 
 **Engine (scène séparée de la scène classique) :** ruban 3D construit depuis `room`, shader de couleur par pente, arches et zones ; décor néon (grille, glow, particules) ; ennemis géométriques et boss ; HUD diégétique (hologramme, arcs, FOV, tremblement) ; menu Cyber-Rogue (objectif, durée, W'), couloirs, cartes, fin de run.
 
@@ -86,7 +86,7 @@ Accueil (entrées construites depuis hello_ack.config.modes)
      └─► Départ : Objectif (Endurance, Seuil, VO2max) · Durée (30, 45, 60, 90 min) · W' · Châssis · Lancer
             └─► start_run ─► LOADING ─► Prêt (salles prévues, graine) ─► start
                    └─► RUNNING en mode ROGUE : main.gd instancie rogue.tscn à la place du monde classique
-                          ├─► A long ou Échap : Pause (Reprendre · Terminer et enregistrer · Abandonner)
+                          ├─► Y ou Échap : Pause (Reprendre · Terminer et enregistrer · Abandonner)
                           └─► fin de run ─► bilan (summary.rogue) ─► Accueil
 ```
 
@@ -95,7 +95,7 @@ Accueil (entrées construites depuis hello_ack.config.modes)
 
 ## 7. Questions ouvertes (à trancher par le propriétaire)
 
-Chaque cahier part de la proposition ; une réponse différente se reporte dans le cahier concerné. **Réponses du propriétaire du 26 octobre (22 h 03) :** R-Q1 à R-Q5 tranchées (colonne « Proposition » devenue décision, avec l'ajout de R-Q2) ; R-Q6 à R-Q10 encore ouvertes.
+Chaque cahier part de la proposition ; une réponse différente se reporte dans le cahier concerné. **Réponses du propriétaire du 26 octobre (22 h 03) :** toutes les questions sont tranchées (22 h 03 et 22 h 05) ; R-Q2 a un ajout et R-Q6 une autre réponse que la proposition.
 
 | # | Question | Proposition | Lots |
 | --- | --- | --- | --- |
@@ -104,25 +104,25 @@ Chaque cahier part de la proposition ; une réponse différente se reporte dans 
 | R-Q3 | Garder une commande `abandon_run` ? | Non : `end_session` suffit, le bilan dit `abandoned`. **Décidé : pas d'`abandon_run`.** | R1, R13 |
 | R-Q4 | Durées proposées au menu | 30, 45, 60 et 90 min. **Décidé.** | R1, R15 |
 | R-Q5 | Seuils de cadence corrigés (Fluide de 70 à 100 rpm, hystérésis 3 rpm, maintien 1,5 s) | À valider sur le vélo en R14. **Décidé comme réglage de départ, à essayer sur le vélo.** | R2 |
-| R-Q6 | Pause par appui long sur A (0,9 s), aucun autre bouton pendant une run | Oui | R1, R8 |
-| R-Q7 | Qu'est-ce qu'une relique de départ ? | Une carte passive parmi 3 (bouclier +20, or +25 %, fenêtre de Perfect Shift +0,3 s) | R6 |
-| R-Q8 | Une carte de module A remplace-t-elle le Disjoncteur ? | Oui, comme le dit le GDD ; une seule carte de module A équipée | R5, R6 |
-| R-Q9 | Valeurs de départ de l'équilibrage (R5, R6) et cibles de R7 | À accepter comme point de départ, calibrées par R7 puis R14 | R5 à R7 |
-| R-Q10 | Châssis : bonus bornés à 10 %, vies à 30 pièces, au plus 3, utilisées automatiquement | Oui | R9 |
+| R-Q6 | Pause par appui long sur A (0,9 s), aucun autre bouton pendant une run | Oui. **Décidé autrement : même pause que les autres modes (Y)** ; l'attaque passe sur A court et le Disjoncteur sur A long (§2) | R1, R5, R6, R8, R13 |
+| R-Q7 | Qu'est-ce qu'une relique de départ ? | Une carte passive parmi 3 (bouclier +20, or +25 %, fenêtre de Perfect Shift +0,3 s). **Décidé.** | R6 |
+| R-Q8 | Une carte de module A remplace-t-elle le Disjoncteur ? | Oui, comme le dit le GDD ; une seule carte de module A équipée (sur A long depuis R-Q6). **Décidé.** | R5, R6 |
+| R-Q9 | Valeurs de départ de l'équilibrage (R5, R6) et cibles de R7 | À accepter comme point de départ, calibrées par R7 puis R14. **Décidé : à ajuster après les essais.** | R5 à R7 |
+| R-Q10 | Châssis : bonus bornés à 10 %, vies à 30 pièces, au plus 3, utilisées automatiquement | Oui. **Décidé.** | R9 |
 
 ## 8. Lots de la série R
 
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
 | R0 | Mesure du délai du frein : saut de pente, temps jusqu'au couple ressenti et jusqu'à la puissance stable (script R0a délégable, même outil que X5 du plan des outils de test ; essai R0b sur le vélo) | Q3, Q4 | Propriétaire (vélo) |
-| R1 | Contrat IPC v1.4 : événements Y, Z, A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run | P1 (série P) | Interne (décision) |
+| R1 | Contrat IPC v1.4 : événements Z et A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run | P1 (série P) | Interne (décision) |
 | R2 | Modèle W'bal et postures de cadence avec hystérésis | — | Délégable |
 | R3 | Générateur de salles : profils des 5 archétypes et du boss, graine, marqueurs | — | Délégable |
 | R4 | Firewall : cycliste virtuel à X % de FTP, écart au joueur | R3 | Délégable |
 | R5 | Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe | R0, R2, R3 | Délégable |
 | R6 | Run : machine à états, couloirs, deck et cartes, or, reliques, boss en 3 phases | R5 | Délégable |
 | R7 | Table d'équilibrage en données et run simulée avec cyclistes types | R6 | Délégable |
-| R8 | Intégration dans la session du core : formule centrée, boutons Y, Z, A, journal, pause et reprise | R1, R6, R15 | Interne |
+| R8 | Intégration dans la session du core : formule centrée, boutons Z et A, pause Y, journal, pause et reprise | R1, R6, R15 | Interne |
 | R9 | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies achetées avec les pièces de la série V (une vie évite la dégradation du butin après une défaite), dans le système de déblocage commun de la série V | R6, V2, V3b | Délégable |
 | R10 | Engine : scène néon, ruban 3D, shader de pente, arches et zones | R1 | Interne (rendu) |
 | R11 | Engine : HUD diégétique, arcs au sol, FOV et tremblement | R1 | Interne (rendu) |

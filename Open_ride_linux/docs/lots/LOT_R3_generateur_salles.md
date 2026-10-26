@@ -43,7 +43,7 @@ Pente de l'ennemi, avant le décalage du braquet (Q2). Les fractions de FTP sont
 | Marqueur | Pose | Paramètre |
 | --- | --- | --- |
 | `arch` (Perfect Shift) | À chaque rupture de pente d'au moins 3 points, `arch_lead_s` avant (défaut 0,8 s, valeur de R0) | Sens conseillé : `up` ou `down` |
-| `y_target` | Diesel : à la fin de chaque tunnel ; Grimpeur : balises d'armure ; boss phase 1 : verrous | Points d'armure |
+| `strike_target` | Diesel : à la fin de chaque tunnel ; Grimpeur : balises d'armure ; boss phase 1 : verrous | Points d'armure |
 | `z_zone` | Puncheur : zone bleue de 2 s avant chaque bosse ; boss phase 2 : ondes de choc | — |
 | `tunnel` | Diesel : tunnels de cadence de 20 s toutes les 40 s | Cadence visée (90) et tolérance (3) |
 | `rock` | Grimpeur : rochers à briser, un par palier | Armure (2) |
@@ -54,7 +54,7 @@ Pente de l'ennemi, avant le décalage du braquet (Q2). Les fractions de FTP sont
 ### 4.4 Le boss « la Chimère centrale »
 
 Une salle par phase, durées d'une run de 45 min (R15 les adapte aux autres durées) :
-1. Blindage, 3 min : rampe à 5 % (3 % en endurance), 4 verrous `y_target` ;
+1. Blindage, 3 min : rampe à 5 % (3 % en endurance), 4 verrous `strike_target` ;
 2. Furie tactique, 4 min : enchaînement 8 / 0 / 10 % par blocs de 40 s (4 / 0 / 5 % en endurance), ondes de choc ;
 3. Exécution, 90 s : 0 %, Firewall à 1,20 FTP (0,85 en endurance).
 30 s de transition à 0 % avant chaque phase (soit 10 min au total pour 8 min 30 de combat).

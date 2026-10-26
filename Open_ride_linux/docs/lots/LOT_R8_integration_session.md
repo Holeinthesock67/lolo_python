@@ -1,8 +1,8 @@
-# Lot R8 – Intégration dans la session du core : mode ROGUE, formule centrée, boutons Y, Z et A, journal, pause et reprise
+# Lot R8 – Intégration dans la session du core : mode ROGUE, formule centrée, boutons Z et A, pause Y, journal, pause et reprise
 
 ## 1. Objectif
 
-Brancher le moteur de run (R6) et le scénariste (R15) dans la session du core : commande `start_run`, mode `ROGUE`, pente envoyée selon la formule centrée de la décision Q2, lecture des boutons Y, Z et A du Click, pause par appui long sur A, champ `rogue` de `state`, messages `room` et `loot`, journal, FIT et reprise après un plantage. Lot interne : il touche `session.py`, cœur de la boucle à 50 Hz.
+Brancher le moteur de run (R6) et le scénariste (R15) dans la session du core : commande `start_run`, mode `ROGUE`, pente envoyée selon la formule centrée de la décision Q2, lecture des boutons Z et A du Click (Y reste la pause, comme dans les autres modes), champ `rogue` de `state`, messages `room` et `loot`, journal, FIT et reprise après un plantage. Lot interne : il touche `session.py`, cœur de la boucle à 50 Hz.
 
 ## 2. À lire
 
@@ -31,14 +31,14 @@ R1 (contrat 1.4), R6 et R15 livrés ; R0 (valeurs de la rampe) ou ses défauts ;
 
 ### 4.3 Boutons
 
-- `zwift_click.py` : décoder aussi A et Z (bits 4 et 7 de `KEYPAD_BITS`) ; événements `Y_SHORT`, `Z_SHORT`, `A_SHORT`, `A_LONG`.
+- `zwift_click.py` : décoder aussi A et Z (bits 4 et 7 de `KEYPAD_BITS`) ; événements `Z_SHORT`, `A_SHORT`, `A_LONG`.
 - Mode classique : inchangé (Y = pause interne, N6 ; A et Z sans effet jusqu'à la série T).
-- Mode `ROGUE` : Y, Z, A courts vers `RunEngine` et relayés à l'engine ; B et + vers le braquet ou la sélection en couloir ; `A_LONG` = pause ou reprise (`pause_reason` = `user`) ; Y n'est **pas** une pause.
+- Mode `ROGUE` : `Z_SHORT`, `A_SHORT` et `A_LONG` vers `RunEngine` et relayés à l'engine ; B et + vers le braquet ou la sélection en couloir ; Y = pause ou reprise, comme en mode classique (décision R-Q6).
 - `input_event` de l'engine (clavier) accepte les mêmes noms.
 
 ### 4.4 Pause, pannes et reprise
 
-- Pause (`A_LONG`, Échap, perte de l'engine, panne du journal) : le moteur de run est figé (Firewall, minuterie des fenêtres et W'bal compris), pente envoyée à 0 %.
+- Pause (Y, Échap, perte de l'engine, panne du journal) : le moteur de run est figé (Firewall, minuterie des fenêtres et W'bal compris), pente envoyée à 0 %.
 - Click perdu : la run continue mais le Firewall s'arrête (R4) ; le clavier reste actif.
 - Reprise après un plantage du core (N8) : `RunEngine.snapshot()` écrit dans le journal toutes les 5 s ; au redémarrage, la run reprend au **début de la salle en cours**, bouclier, or, deck et adrénaline de ce début de salle.
 
@@ -67,7 +67,7 @@ Aucune au-delà de la révision 1.4 de R1.
 2. Session simulée (trainer et Click simulés) : `start_run` puis `start`, une run de 30 min en temps accéléré jusqu'à `RESULTS`, trames `state` valides pour le schéma 1.4, `summary.rogue` valide.
 3. `grade_sent` suit la formule centrée et ses bornes ; `difficulty_pct` n'a pas d'effet en mode `ROGUE` (décision R-Q1).
 4. Mode classique : mêmes trames et même comportement des boutons qu'avant le lot (tests existants inchangés).
-5. `A_LONG` met en pause et reprend ; Y ne met pas en pause en mode `ROGUE`.
+5. Y met en pause et reprend en mode `ROGUE` comme en mode classique ; `A_LONG` déclenche le Disjoncteur et ne met jamais en pause.
 6. Plantage simulé du core au milieu d'une salle : reprise au début de cette salle avec l'état noté.
 7. FIT de la run validé par le SDK officiel (lot H5).
 8. La trame `state` la plus chargée en mode `ROGUE` fait moins de 1 400 octets.

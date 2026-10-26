@@ -2,7 +2,7 @@
 
 ## 1. Objectif
 
-Rendre le mode Cyber-Rogue jouable de bout en bout depuis le menu, au Click seul : entrée « Cyber-Rogue » à l'accueil, écran de départ (objectif, durée, W', châssis), écran « Prêt », run, couloirs avec cartes et portes, pause par appui long sur A, bilan et retour à l'accueil. Lot interne : il touche `main.gd` et le menu.
+Rendre le mode Cyber-Rogue jouable de bout en bout depuis le menu, au Click seul : entrée « Cyber-Rogue » à l'accueil, écran de départ (objectif, durée, W', châssis), écran « Prêt », run, couloirs avec cartes et portes, pause par Y comme dans les autres modes, bilan et retour à l'accueil. Lot interne : il touche `main.gd` et le menu.
 
 ## 2. À lire
 
@@ -24,7 +24,7 @@ Accueil ── « Cyber-Rogue » (affiché seulement si le core annonce "rogue")
           └─► cmd start_run ─► LOADING (« Composition de la run… ») ─► READY
                  └─► Prêt : Démarrer · Changer les choix
                         └─► cmd start ─► RUNNING, mode ROGUE : main.gd instancie rogue.tscn (R10)
-                               ├─► A long ou Échap : Pause (Reprendre · Terminer et enregistrer · Abandonner)
+                               ├─► Y ou Échap : Pause (Reprendre · Terminer et enregistrer · Abandonner)
                                ├─► Couloirs : cartes et portes (au Click, géré par le core)
                                └─► RESULTS ─► FINISHED : bilan de run ─► Accueil (rogue.tscn libérée)
 ```
@@ -32,13 +32,13 @@ Accueil ── « Cyber-Rogue » (affiché seulement si le core annonce "rogue")
 - **Départ Cyber-Rogue :** `Objectif` (Endurance, Seuil, VO2max ; + et − font défiler), `Durée` (30, 45, 60, 90 min), `W'` (valeur de `hello_ack.config.rogue`, avec l'estimation de R16 affichée à côté si elle existe : « estimé 18,4 kJ, utiliser ? »), `Châssis` (R9), `Lancer`. Les derniers choix sont gardés pour la fois suivante.
 - **Avertissement au premier lancement** (risque 5 du plan) : efforts au-delà de 140 % de la FTP possibles en VO2max ; sortie sans pénalité à tout moment ; test de FTP conseillé si la FTP n'a jamais été mesurée (lot O10).
 - **Prêt :** rappel de l'objectif, de la durée, du nombre de salles prévu et de la graine (pour rejouer la même run).
-- **Pause :** `A_LONG` ou Échap. « Terminer et enregistrer » et « Abandonner » passent par l'écran de confirmation (N6) ; les deux envoient `end_session` (`save` vrai ou faux) et la run finit en `abandoned`.
+- **Pause :** Y ou Échap, comme dans les autres modes (décision R-Q6). « Terminer et enregistrer » et « Abandonner » passent par l'écran de confirmation (N6) ; les deux envoient `end_session` (`save` vrai ou faux) et la run finit en `abandoned`.
 - **Bilan :** écran de fin de séance (N4) complété de `summary.rogue` : résultat, salles gagnées, boss, or, cartes, déblocages, puis retour à l'accueil.
 
 ### 4.2 Couloirs
 
 - Écran en surimpression dans la scène : 3 cartes puis 2 portes, sélection suivie de `state.rogue.loot_focus` (le core gère les boutons ; l'engine ne fait qu'afficher). Le clavier envoie les mêmes `input_event`.
-- A en couloir : affiche le deck et les métriques de la run (temps, NP, W'bal), sans arrêter la minuterie du couloir.
+- A long en couloir : affiche le deck et les métriques de la run (temps, NP, W'bal), sans arrêter la minuterie du couloir.
 
 ### 4.3 Accueil construit à partir des modes
 
@@ -55,7 +55,7 @@ Aucune au-delà de la révision 1.4 de R1.
 
 ## 7. Critères d'acceptation
 
-1. Tests sans écran : `hello_ack` sans `modes` = accueil de la 1.0 inchangé ; avec `"rogue"` = entrée « Cyber-Rogue » ; écran de départ qui envoie `start_run` avec les bons arguments ; pause par `A_LONG` ; abandon confirmé qui envoie `end_session`.
+1. Tests sans écran : `hello_ack` sans `modes` = accueil de la 1.0 inchangé ; avec `"rogue"` = entrée « Cyber-Rogue » ; écran de départ qui envoie `start_run` avec les bons arguments ; pause par Y ; abandon confirmé qui envoie `end_session`.
 2. Essai de bout en bout sans écran avec le faux core (lot J8) : accueil, départ, prêt, une salle, un couloir, bilan, accueil.
 3. Run complète au Click seul, sans clavier (contrôle du propriétaire en R14).
 
