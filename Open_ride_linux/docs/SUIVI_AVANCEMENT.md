@@ -159,6 +159,16 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 - [ ] Images par seconde de Godot, à relever quand le décor sera chargé (lot E1).
 - [ ] ERG (lot F) : un `.zwo` standard exécuté en entier sur le HomeTrainer, cibles tenues (critère 11 du lot F). Débloqué par le lot J1 (24 octobre) : `scripts/openride-dev.sh --trainer ftms --input click --autostart --workout sweet_spot_3x10`, après `python -m openride_core.tools.workouts install`.
 
+### Essais des outils de test (série X) à faire sur le PC
+
+Pas à pas, cases à cocher et journaux : [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) (blocs A, G et H). Code : branche de la PR #296, qui contient toute la pile X, tant qu'elle n'est pas fusionnée.
+
+- [ ] Recette du PC en une commande (outil X4, [PR #237](https://github.com/Holeinthesock67/lolo_python/pull/237)) : `python3 scripts/recette_pc.py`, toutes les étapes OK (protocole A1).
+- [ ] Banc de latence du trainer par paliers (outil X5, [PR #245](https://github.com/Holeinthesock67/lolo_python/pull/245)) : `python -m openride_core.tools.trainer_steps --mode sim` sur le vélo, puis `--mode erg` (protocole G1).
+- [ ] Recette guidée du Click sur 30 min (outil X8, [PR #295](https://github.com/Holeinthesock67/lolo_python/pull/295)) : `python -m openride_core.tools.click_recette --minutes 30 --rappel 5` (protocole G2, recette 1.0 ligne 6).
+- [ ] Sonde de performance du moteur (outil X13, [PR #280](https://github.com/Holeinthesock67/lolo_python/pull/280)) : `engine/tests/sim_bench.py --native --probe`, puis une vraie séance avec `OPENRIDE_PERF_PROBE` et `perf_probe.py watch` (protocole H1).
+- [ ] Endurance d'une heure en fenêtre (outil X16, [PR #294](https://github.com/Holeinthesock67/lolo_python/pull/294)) : `engine/tests/sim_bench.py --native --scenario endurance` (protocole H2, recette 1.0 lignes 17 et 18).
+
 ---
 
 ## 4. Ce qui reste à faire
