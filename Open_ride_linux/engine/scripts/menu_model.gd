@@ -37,6 +37,11 @@ const CONFIRM := "confirm"
 const PAUSE := "pause"
 
 const NO_WORKOUT_ID := "_sim"
+## Modes de séance de l'accueil, dans l'ordre d'affichage : {mode: libellé}. Filtrés par `modes`, la
+## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
+## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
+const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG"}
+const DEFAULT_MODES := ["ride", "erg"]
 
 var _screens: Dictionary = {}
 var _stack: Array[String] = []      # écrans précédents, pour le retour
@@ -55,6 +60,8 @@ var mode := "free"
 ## Engine lancé en session simulée (--sim-session) : l'accueil propose de revenir au matériel réel.
 var sim_session := false
 var _routes_return := HOME
+## Modes annoncés par le core (set_modes) ; les modes inconnus de HOME_MODES sont ignorés.
+var modes: Array = DEFAULT_MODES.duplicate()
 
 
 func _init() -> void:
@@ -79,10 +86,13 @@ func _init() -> void:
 
 func _refresh_home() -> void:
 	var world := world_name if world_name != "" else "à choisir"
-	_screens[HOME]["items"] = [
-		_item("world", "Monde : " + world), _item("ride", "Session libre"), _item("erg", "Session ERG"),
-		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée"),
-		_item("settings", "Réglages"), _item("quit", "Quitter")]
+	var items := [_item("world", "Monde : " + world)]
+	for m in HOME_MODES:
+		if m in modes:
+			items.append(_item(m, HOME_MODES[m]))
+	items.append_array([_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée"),
+		_item("settings", "Réglages"), _item("quit", "Quitter")])
+	_screens[HOME]["items"] = items
 	_screens[READY]["items"] = [
 		_item("start", "Démarrer"),
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
@@ -95,6 +105,12 @@ func _refresh_home() -> void:
 func set_world(id: String, name: String) -> void:
 	world_id = id
 	world_name = name if name != "" else id
+	_refresh_home()
+
+
+## Modes annoncés par le core (hello_ack.config.modes) ; null ou absent : DEFAULT_MODES (1.0).
+func set_modes(list) -> void:
+	modes = list.duplicate() if list is Array else DEFAULT_MODES.duplicate()
 	_refresh_home()
 
 
