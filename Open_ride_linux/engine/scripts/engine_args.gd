@@ -7,6 +7,7 @@ extends RefCounted
 ##   --routes-dir=CHEMIN      dossier des parcours (défaut : ~/.local/share/openride/routes)
 ##   --quality=low|medium|high préréglage de qualité graphique (défaut : low, lot L4)
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
+##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
@@ -27,7 +28,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode, sim_session}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -37,6 +38,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"quality": DEFAULT_QUALITY,
 		"theme": DEFAULT_THEME,
 		"test_mode": false,
+		"sim_session": false,
 	}
 	for arg in args:
 		if arg.begins_with("--ipc-state-port="):
@@ -54,6 +56,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["theme"] = _theme(arg, DEFAULT_THEME)
 		elif arg == "--test-mode":
 			out["test_mode"] = true
+		elif arg == "--sim-session":
+			out["sim_session"] = true
 	return out
 
 
