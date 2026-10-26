@@ -35,6 +35,12 @@ Supervision :
   `openride-core recover` fait le FIT de la séance ;
 - SIGINT, SIGTERM ou SIGHUP (terminal fermé) reçus par le lanceur → même arrêt propre des deux.
 
+Relance demandée depuis le menu (lot N13) :
+- l'engine se ferme avec le code 64 (`EXIT_RELAUNCH`, après l'enregistrement de nouveaux appareils)
+  → arrêt propre du core (trainer relâché), puis core et engine relancés : le core relit
+  `config.toml` et se connecte aux appareils choisis. Ce n'est pas un plantage : le compteur de
+  relances de l'engine n'avance pas.
+
 Lancement sans terminal (lot N14) :
 - premier démarrage : sans `~/OpenRide/config.toml`, il est créé depuis
   `scripts/config.example.toml`, avec `~/OpenRide/GPX/` et `~/OpenRide/Workouts/`, et le core
@@ -73,6 +79,9 @@ MAX_LOGS_BYTES = 200 * 1024 * 1024
 DEFAULT_ENGINE_DIR = Path(__file__).resolve().parents[3] / "engine"
 # Sans --autostart depuis le lot N6 : parcours et entraînement se choisissent dans les menus de l'engine.
 DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click"]
+
+# Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
+EXIT_RELAUNCH = 64
 
 STOP_SIGNALS = tuple(s for s in (signal.SIGINT, signal.SIGTERM, getattr(signal, "SIGHUP", None)) if s is not None)
 
@@ -237,6 +246,7 @@ class Supervisor:
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
     core_restarts: int = field(default=0, init=False)
+    relaunches: int = field(default=0, init=False)   # relances demandées depuis le menu (code 64)
     _launched_at: float = field(default=0.0, init=False)   # heure Unix du lancement (journaux de ce lancement)
     _log_scan_pos: int = field(default=0, init=False)
     _next_log_scan: float = field(default=0.0, init=False)
@@ -503,6 +513,18 @@ class Supervisor:
                     code = engine.returncode
                     if code == 0:
                         return self._finish(core, engine, 0)
+                    if code == EXIT_RELAUNCH:
+                        self._say("relance demandée depuis le menu : arrêt du core puis nouveau lancement.")
+                        self._join_readers()
+                        self._stop_core(core)
+                        core = self._start_core()
+                        if not self._core_survives_startup(core):
+                            self._say(f"le core s'est arrêté à la relance (code {core.returncode}) ; voir {self.log_path}")
+                            self._alert(f"OpenRide n'a pas pu redémarrer (le core s'est arrêté, code {core.returncode}).")
+                            return self._finish(core, engine, 1)
+                        engine = self._start_engine()
+                        self.relaunches += 1
+                        continue
                     now = self.clock()
                     crashes = [t for t in crashes if now - t < self.restart_window_s] + [now]
                     if len(crashes) > self.max_restarts:
@@ -526,6 +548,12 @@ class Supervisor:
                     self._log = None
             for s, h in previous.items():
                 signal.signal(s, h)
+
+    def _core_survives_startup(self, core: subprocess.Popen) -> bool:
+        deadline = self.clock() + self.startup_grace_s
+        while self.clock() < deadline and core.poll() is None and self._stop_signal is None:
+            time.sleep(self.poll_s)
+        return core.poll() is None
 
     def _trainer_refused(self) -> bool:
         """Lit au plus une fois par seconde la suite du journal : refus du contrôle FTMS ?"""
