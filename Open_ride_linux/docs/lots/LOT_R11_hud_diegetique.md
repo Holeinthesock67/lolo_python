@@ -33,6 +33,7 @@ R1 livré ; R10 pour l'intégration dans la scène.
 - Arcs : deux demi-cercles au sol autour du vélo, rayon 1,5 m.
 - Caméra : champ de vision de 75° au repos, jusqu'à 95° pendant un sprint (puissance ≥ 1,40 FTP) ou une attaque Y, retour en 1 s ; tremblement léger (amplitude 0,05 m, 0,2 s) aux impacts et aux Perfect Shifts, coupé si le réglage « réduire les mouvements » est actif (O4).
 - Sons : bip de Perfect Shift, impact, parade, alarme de contact du Firewall (`sound_model.gd`).
+- **Salle manquée** (`room_skipped`, décision R-Q2) : bandeau « Salle manquée −10 or » de 3 s, écran qui grésille en rouge 0,5 s et son d'échec distinct de celui de la défaite.
 
 ## 5. Fichiers concernés
 

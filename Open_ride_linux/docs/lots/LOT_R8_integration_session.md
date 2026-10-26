@@ -26,7 +26,7 @@ R1 (contrat 1.4), R6 et R15 livrés ; R0 (valeurs de la rampe) ou ses défauts ;
 
 - Mode `ROGUE` : cassette de 12 vitesses propre au mode (la configuration `n_gears` du mode classique n'est pas touchée), départ en 6.
 - `grade_sent = clamp(pente_ennemi + (vitesse − 6) × 1, grade_min_pct, grade_max_pct)` (décision Q2), puis la rampe propre au mode : `[rogue] grade_rate_up_pct_per_s` et `grade_rate_down_pct_per_s` (défauts 8 et 12 en attendant R0, bornes 0,1 à 100). Changement de braquet : immédiat, comme en mode classique.
-- `difficulty_pct` (Q1) : **non appliqué** en mode `ROGUE` (proposition, question R-Q1) ; le HUD de la run ne l'affiche pas.
+- `difficulty_pct` (Q1) : **non appliqué** en mode `ROGUE` (décision R-Q1 du 26 octobre) ; le HUD de la run ne l'affiche pas.
 - Vitesse virtuelle : physique existante sur la pente de l'ennemi (sans le décalage du braquet), comme le Firewall (R4).
 
 ### 4.3 Boutons
@@ -44,7 +44,7 @@ R1 (contrat 1.4), R6 et R15 livrés ; R0 (valeurs de la rampe) ou ses défauts ;
 
 ### 4.5 Journal et FIT
 
-- Journal JSONL : une ligne `rogue` par événement de jeu (`room_start`, `room_won`, `room_fled`, `defeat`, `card_taken`, `perfect_shift`, `boss_phase`, `run_end`), avec l'empreinte de la table d'équilibrage (R7).
+- Journal JSONL : une ligne `rogue` par événement de jeu (`room_start`, `room_won`, `room_fled`, `room_skipped`, `defeat`, `card_taken`, `perfect_shift`, `boss_phase`, `run_end`), avec l'empreinte de la table d'équilibrage (R7).
 - FIT : séance sans position GPS, distance virtuelle ; sport « cyclisme », sous-sport « virtuel » ; tours au début de chaque salle et de chaque phase du boss.
 - `summary` : objet `rogue` (R1 §4.6).
 
@@ -65,7 +65,7 @@ Aucune au-delà de la révision 1.4 de R1.
 
 1. `(cd core && pytest -q)` passe.
 2. Session simulée (trainer et Click simulés) : `start_run` puis `start`, une run de 30 min en temps accéléré jusqu'à `RESULTS`, trames `state` valides pour le schéma 1.4, `summary.rogue` valide.
-3. `grade_sent` suit la formule centrée et ses bornes ; `difficulty_pct` n'a pas d'effet en mode `ROGUE` (si R-Q1 confirmé).
+3. `grade_sent` suit la formule centrée et ses bornes ; `difficulty_pct` n'a pas d'effet en mode `ROGUE` (décision R-Q1).
 4. Mode classique : mêmes trames et même comportement des boutons qu'avant le lot (tests existants inchangés).
 5. `A_LONG` met en pause et reprend ; Y ne met pas en pause en mode `ROGUE`.
 6. Plantage simulé du core au milieu d'une salle : reprise au début de cette salle avec l'état noté.

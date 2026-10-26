@@ -42,7 +42,7 @@ Rédiger les ajouts suivants dans `ipc_v1.md` et les schémas, chacun avec sa li
 | `start_run` | `{ "objective": chaîne, "duration_min": entier, "seed": entier ou null, "w_prime_j": nombre ou null }` | Depuis `IDLE`, `READY` ou `FINISHED` : compose la run (R15), `session_state` passe à `LOADING` puis `READY`, `mode` = `"ROGUE"`. `start` lance ensuite la run, comme une séance. `seed` nul : tirée par le core ; `w_prime_j` nul : valeur de `config.toml` |
 | `rogue_resync` | `{}` | Demande au core de renvoyer le message `room` de la salle en cours et, en couloir, le message `loot` |
 
-Fin de run : `end_session` (`save` vrai) suffit ; le résultat (`abandoned` si la run n'est pas finie) est dans `summary.rogue`. La commande `abandon_run` du plan n'est pas ajoutée (question R-Q3).
+Fin de run : `end_session` (`save` vrai) suffit ; le résultat (`abandoned` si la run n'est pas finie) est dans `summary.rogue`. La commande `abandon_run` du plan n'est pas ajoutée (décision R-Q3 du 26 octobre).
 
 Nouveau code d'erreur : `run_invalid` (objectif ou durée hors liste).
 
@@ -70,7 +70,7 @@ Nouveau code d'erreur : `run_invalid` (objectif ou durée hors liste).
 | `hack` | objet ou null | Piratage du Saboteur : `{locked: booléen, forced_gear: entier ou null, until_s}` |
 | `overheat` | booléen | Surchauffe (objectif endurance, décision Q3) |
 | `loot_focus` | entier ou null | En couloir : carte ou porte sélectionnée (0 à 4) |
-| `events` | tableau | Événements de jeu de la dernière trame, au plus 4 : `perfect_shift`, `hit`, `crit`, `parry`, `parry_miss`, `firewall_contact`, `room_won`, `room_fled`, `defeat`, `card_taken` |
+| `events` | tableau | Événements de jeu de la dernière trame, au plus 4 : `perfect_shift`, `hit`, `crit`, `parry`, `parry_miss`, `firewall_contact`, `room_won`, `room_fled`, `room_skipped`, `defeat`, `card_taken` |
 
 - Taille : la trame la plus chargée (mode `ROGUE`, `devices`, `rogue` complet avec 4 fenêtres et 4 événements) tient dans 1 400 octets (outil X25 s'il existe, sinon test du lot).
 
@@ -82,7 +82,7 @@ Nouveau code d'erreur : `run_invalid` (objectif ou durée hors liste).
 
 ### 4.6 Bilan
 
-`summary` gagne l'objet facultatif `rogue` : `{ result: "victory" | "defeat" | "abandoned", objective, duration_min, seed, rooms_won, rooms_fled, rooms_total, defeats, boss: "won" | "fled" | "not_reached", gold, cards: [ids], perfect_shifts, unlocks: [ids] }`.
+`summary` gagne l'objet facultatif `rogue` : `{ result: "victory" | "defeat" | "abandoned", objective, duration_min, seed, rooms_won, rooms_fled, rooms_skipped, rooms_total, defeats, boss: "won" | "fled" | "not_reached", gold, cards: [ids], perfect_shifts, unlocks: [ids] }`.
 
 ## 5. Fichiers concernés
 

@@ -95,15 +95,15 @@ Accueil (entrées construites depuis hello_ack.config.modes)
 
 ## 7. Questions ouvertes (à trancher par le propriétaire)
 
-Chaque cahier part de la proposition ; une réponse différente se reporte dans le cahier concerné.
+Chaque cahier part de la proposition ; une réponse différente se reporte dans le cahier concerné. **Réponses du propriétaire du 26 octobre (22 h 03) :** R-Q1 à R-Q5 tranchées (colonne « Proposition » devenue décision, avec l'ajout de R-Q2) ; R-Q6 à R-Q10 encore ouvertes.
 
 | # | Question | Proposition | Lots |
 | --- | --- | --- | --- |
-| R-Q1 | La difficulté du trainer (50 % par défaut, lot Q1) s'applique-t-elle au mode Cyber-Rogue ? | Non : les salles sont dessinées pour la pente réelle et les braquets donnent déjà le contrôle | R8 |
-| R-Q2 | Joueur en retard sur le calendrier : que faire ? | Raccourcir les couloirs (jusqu'à 60 s), puis retirer une salle ; jamais le boss ni le retour au calme | R15 |
-| R-Q3 | Garder une commande `abandon_run` ? | Non : `end_session` suffit, le bilan dit `abandoned` | R1, R13 |
-| R-Q4 | Durées proposées au menu | 30, 45, 60 et 90 min | R1, R15 |
-| R-Q5 | Seuils de cadence corrigés (Fluide de 70 à 100 rpm, hystérésis 3 rpm, maintien 1,5 s) | À valider sur le vélo en R14 | R2 |
+| R-Q1 | La difficulté du trainer (50 % par défaut, lot Q1) s'applique-t-elle au mode Cyber-Rogue ? | Non : les salles sont dessinées pour la pente réelle et les braquets donnent déjà le contrôle. **Décidé : non appliquée.** | R8 |
+| R-Q2 | Joueur en retard sur le calendrier : que faire ? | Raccourcir les couloirs (jusqu'à 60 s), puis retirer une salle ; jamais le boss ni le retour au calme. **Décidé, avec un ajout du propriétaire :** une salle retirée compte comme un échec, avec un malus de points (−10 or et la salle comptée « manquée » au bilan), une animation et un son qui le signalent. | R15 |
+| R-Q3 | Garder une commande `abandon_run` ? | Non : `end_session` suffit, le bilan dit `abandoned`. **Décidé : pas d'`abandon_run`.** | R1, R13 |
+| R-Q4 | Durées proposées au menu | 30, 45, 60 et 90 min. **Décidé.** | R1, R15 |
+| R-Q5 | Seuils de cadence corrigés (Fluide de 70 à 100 rpm, hystérésis 3 rpm, maintien 1,5 s) | À valider sur le vélo en R14. **Décidé comme réglage de départ, à essayer sur le vélo.** | R2 |
 | R-Q6 | Pause par appui long sur A (0,9 s), aucun autre bouton pendant une run | Oui | R1, R8 |
 | R-Q7 | Qu'est-ce qu'une relique de départ ? | Une carte passive parmi 3 (bouclier +20, or +25 %, fenêtre de Perfect Shift +0,3 s) | R6 |
 | R-Q8 | Une carte de module A remplace-t-elle le Disjoncteur ? | Oui, comme le dit le GDD ; une seule carte de module A équipée | R5, R6 |
