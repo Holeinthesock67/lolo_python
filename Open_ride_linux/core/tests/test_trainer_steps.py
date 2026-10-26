@@ -89,7 +89,7 @@ def test_protocols(tmp_path):
 def test_bench_on_simulated_trainer():
     world = build_world(load_scenario("nominal"), "nominal", click=False, hr=False)
     steps = [ts.Step("erg", 150, 4), ts.Step("erg", 250, 6)]
-    rec = asyncio.run(ts.run_bench(steps, config.Config(), sim_world=world, say=lambda *_: None))
+    rec = asyncio.run(ts.run_bench(steps, config.Config(), sim_world=world, lead_in_s=0))
     assert world.trainer.released                       # trainer relâché à la fin
     assert any(e[1] == "write" for e in rec.events) and any(e[1] == "ack" for e in rec.events)
     up = ts.analyse(rec)[1]

@@ -3,6 +3,7 @@
     python -m openride_core.tools.click_recette                  # Click réel, 30 min
     python -m openride_core.tools.click_recette --minutes 10 --rappel 2
     python -m openride_core.tools.click_recette --sim            # sans matériel (Click simulé)
+    python -m openride_core.tools.click_recette --materiel       # matériel à préparer
 
 Avec les vrais fournisseurs du core (deux boîtiers, comme `build_inputs`), l'outil :
 1. attend la connexion des boîtiers (un appui réveille chacun) ;
@@ -12,6 +13,10 @@ Avec les vrais fournisseurs du core (deux boîtiers, comme `build_inputs`), l'ou
    toutes les `--rappel` minutes : silences de chaque boîtier (aucune notification alors que le lien
    tient, le défaut du boîtier gauche de l'essai 69), coupures et reprises, notifications sans bouton
    (types de messages), batterie.
+
+L'essai est guidé (module `guide`) : rappel du matériel, consigne en grand avec compte à rebours,
+bip à chaque appui demandé, bip d'alerte quand un boîtier se tait ou se coupe, résultat de chaque
+appui à l'écran et dans `guide.jsonl`.
 
 Écrit `rapport.txt`, `rapport.json` et `notifications.csv` (une ligne par seconde et par boîtier) dans
 `~/OpenRide/click_recette/<date>_<heure>/`. L'adresse des boîtiers n'est écrite que dans ce dossier local.
@@ -36,6 +41,7 @@ from typing import Any
 from .. import zwift_click
 from ..input_providers import ClickPair, ZwiftClickProvider
 from ..zwift_click import InputEvent
+from .guide import Guide
 
 DEFAULT_OUT = Path.home() / "OpenRide" / "click_recette"
 SILENCE_S = 2.0          # un boîtier connecté envoie environ 10 notifications par seconde
@@ -161,6 +167,10 @@ class Recorder:
             if t - u.last_at > SILENCE_S:
                 self._silent_since[address] = u.last_at
 
+    def silent(self) -> dict[str, float]:
+        """Boîtiers muets en ce moment : adresse → début du silence."""
+        return dict(self._silent_since)
+
     def close(self) -> None:
         t = self.t()
         for address, since in self._silent_since.items():
@@ -200,11 +210,14 @@ class StepResult:
     detail: str
 
 
-async def wait_step(rec: Recorder, step: GuidedStep, timeout: float, after: float) -> StepResult:
+async def wait_step(rec: Recorder, step: GuidedStep, timeout: float, after: float,
+                    tick: Callable[[], None] | None = None) -> StepResult:
     """Attend l'événement de l'étape après `after` ; la touche attendue doit figurer dans la trame."""
     end = rec.t() + timeout
     seen_idx = 0
     while rec.t() < end:
+        if tick:
+            tick()
         for t, address, ev in rec.events[seen_idx:]:
             if t >= after and ev == step.event:
                 u = rec.unit(address)
@@ -225,59 +238,94 @@ def unit_label(rec: Recorder, address: str | None) -> str:
     return "" if address is None else f" du boîtier {rec.unit(address).side} ({address})"
 
 
-def say(text: str) -> None:
-    print(f"\a>>> {text}", flush=True)
+def plain_guide() -> Guide:
+    """Guide sans écran ni son : de simples lignes (tests, sortie redirigée)."""
+    return Guide("Recette du Zwift Click", sound=False, screen=False)
 
 
 async def run_recette(providers: list[TracedClickProvider], rec: Recorder, minutes: float, reminder_min: float,
-                      prompt: Prompter = say, step_timeout: float = STEP_TIMEOUT_S,
-                      connect_timeout: float = 120.0, tick_s: float = 0.25) -> dict[str, Any]:
+                      prompt: Prompter | None = None, step_timeout: float = STEP_TIMEOUT_S,
+                      connect_timeout: float = 120.0, tick_s: float = 0.25,
+                      guide: Guide | None = None) -> dict[str, Any]:
+    g = guide or plain_guide()
     tasks = [asyncio.create_task(p.run()) for p in providers]
     link: dict[int, bool] = {}
     stop = asyncio.Event()
+    n_steps = len(STEPS)
+
+    def ask(text: str, seconds: float, index: int | None = None, total: int | None = None,
+            detail: str = "") -> None:
+        g.step(text, seconds, detail, index=index, total=total)
+        if prompt:
+            prompt(text)
+
+    def show(res: StepResult) -> None:
+        delay = f" en {res.delay_s:.1f} s" if res.delay_s is not None else ""
+        g.measure(res.prompt, f"{res.detail}{unit_label(rec, res.unit)}{delay}", ok=res.ok)
+        if not res.ok:
+            g.sound.play("alerte")
 
     async def watch_links() -> None:
+        alerted: set[str] = set()
         while not stop.is_set():
             for i, p in enumerate(providers):
                 up = p.status == "CONNECTED"
                 if up != link.get(i, False):
                     link[i] = up
                     rec.link(p.unit_address, up)
-                    print(f"    boîtier {p.unit_address} {'connecté' if up else 'coupé'} à {rec.t():.0f} s", flush=True)
+                    side = rec.unit(p.unit_address).side
+                    if up:
+                        g.note(f"boîtier {side} ({p.unit_address}) connecté à {rec.t():.0f} s")
+                    else:
+                        g.alert(f"Boîtier {side} coupé à {rec.t():.0f} s")
             rec.check_silence({p.unit_address: link.get(i, False) for i, p in enumerate(providers)})
+            silent = rec.silent()
+            for address, since in silent.items():
+                if address not in alerted:
+                    alerted.add(address)
+                    g.alert(f"Boîtier {rec.unit(address).side} muet depuis {since:.0f} s : le lien tient "
+                            "mais plus aucune notification")
+            for address in alerted - set(silent):
+                alerted.discard(address)
+                g.banner = ""
+                g.note(f"boîtier {rec.unit(address).side} reparle à {rec.t():.0f} s")
+            g.tick()
             await asyncio.sleep(tick_s)
 
     watcher = asyncio.create_task(watch_links())
     results: list[StepResult] = []
     try:
-        prompt("Appuie sur un bouton de chaque boîtier pour les réveiller")
+        ask("Appuie sur un bouton de chaque boîtier pour les réveiller", connect_timeout)
         end = rec.t() + connect_timeout
         while rec.t() < end and sum(link.values()) < len(providers):
             await asyncio.sleep(0.2)
         connected = sum(link.values())
-        print(f"    {connected} boîtier(s) connecté(s) sur {len(providers)}", flush=True)
+        g.measure("boîtiers connectés", f"{connected} sur {len(providers)}", ok=connected == len(providers))
         await asyncio.sleep(1.0)
-        for step in STEPS:
+        for k, step in enumerate(STEPS):
             after = rec.t()
-            prompt(step.prompt)
-            res = await wait_step(rec, step, step_timeout, after)
-            print(f"    {'OK ' if res.ok else 'NON'} {res.detail}{unit_label(rec, res.unit)}"
-                  + (f" ({res.delay_s:.1f} s)" if res.delay_s is not None else ""), flush=True)
+            ask(step.prompt, step_timeout, k + 1, n_steps)
+            res = await wait_step(rec, step, step_timeout, after, g.tick)
+            show(res)
             results.append(res)
             await asyncio.sleep(0.5)
         # Surveillance.
         soak_end = rec.t() + minutes * 60.0
         next_reminder = rec.t() + reminder_min * 60.0
-        print(f"    surveillance pendant {minutes:g} min ; rappel toutes les {reminder_min:g} min", flush=True)
+        surveil = ("Surveillance : roule normalement, ne touche pas au Click",
+                   f"un appui sera demandé toutes les {reminder_min:g} min (bip)")
+        g.step(surveil[0], soak_end - rec.t(), surveil[1])
         while rec.t() < soak_end:
             if rec.t() >= next_reminder:
                 after = rec.t()
-                prompt(REMINDER.prompt)
-                res = await wait_step(rec, REMINDER, min(step_timeout, soak_end - rec.t() + 1.0), after)
+                ask(REMINDER.prompt, min(step_timeout, soak_end - rec.t() + 1.0))
+                res = await wait_step(rec, REMINDER, min(step_timeout, soak_end - rec.t() + 1.0), after, g.tick)
                 res.key = f"rappel_{int(after // 60)}min"
-                print(f"    {'OK ' if res.ok else 'NON'} {res.detail}{unit_label(rec, res.unit)}", flush=True)
+                show(res)
                 results.append(res)
                 next_reminder += reminder_min * 60.0
+                if rec.t() < soak_end:
+                    g.step(surveil[0], soak_end - rec.t(), surveil[1], beep=False)
             await asyncio.sleep(0.2)
     finally:
         stop.set()
@@ -396,8 +444,12 @@ async def main_async(args: argparse.Namespace) -> int:
     from .. import config as config_mod
 
     cfg = config_mod.load(args.config)
+    out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    guide = Guide("Recette du Zwift Click", out / "guide.jsonl", sound=False if args.muet else None)
+    guide.prepare("click_recette", wait=not args.sim and not args.sans_attente and sys.stdin.isatty(),
+                  auto_s=0 if args.sim else 10.0)
     rec = Recorder(time.monotonic)
-    prompt: Prompter = say
+    prompt: Prompter | None = None
     extra: list[asyncio.Task[Any]] = []
     sim = None
     if args.sim:
@@ -407,22 +459,20 @@ async def main_async(args: argparse.Namespace) -> int:
         sim = sim_scenarios.build_world(spec, trainer=False, hr=False)
         prompts: asyncio.Queue[str] = asyncio.Queue()
 
-        def prompt(text: str) -> None:
-            say(text)
-            prompts.put_nowait(text)
-
+        prompt = prompts.put_nowait
         extra = [asyncio.create_task(sim.run()), asyncio.create_task(sim_user(sim, prompts))]
     providers = make_providers(rec, cfg, sim)
     try:
         report = await run_recette(providers, rec, args.minutes, args.rappel, prompt,
-                                   connect_timeout=20.0 if args.sim else 120.0)
+                                   connect_timeout=20.0 if args.sim else 120.0, guide=guide)
     finally:
         if sim is not None:
             sim.stop()
         for t in extra:
             t.cancel()
         await asyncio.gather(*extra, return_exceptions=True)
-    out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+    guide.finish(report["ok"], "Recette finie : tout passe" if report["ok"] else "Recette finie : voir le rapport")
+    guide.close()
     write_outputs(rec, report, out)
     print()
     print(report_text(report), end="")
@@ -439,12 +489,19 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--scenario", help="avec --sim : scénario (nom ou fichier JSON) pour le Click simulé")
     ap.add_argument("--out", type=Path, help=f"dossier de sortie (défaut : {DEFAULT_OUT}/<date>)")
     ap.add_argument("-v", "--verbose", action="store_true", help="journal du Click à l'écran")
+    ap.add_argument("--materiel", action="store_true", help="affiche le matériel à préparer et quitte")
+    ap.add_argument("--sans-attente", action="store_true", help="démarre sans attendre « Entrée »")
+    ap.add_argument("--muet", action="store_true", help="sans bips")
     args = ap.parse_args(argv)
+    if args.materiel:
+        from .guide import materials_text
+        print(materials_text(["click_recette"]), end="")
+        return 0
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     try:
         return asyncio.run(main_async(args))
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, EOFError):
         print("\nInterrompu.")
         return 1
 

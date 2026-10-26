@@ -11,6 +11,11 @@ le cycliste, et mesure pour chaque palier :
     python -m openride_core.tools.trainer_steps --mode erg --cadence 85
     python -m openride_core.tools.trainer_steps --trainer sim --mode sim --fast   # Bluetooth simulé
     python -m openride_core.tools.trainer_steps --analyse DOSSIER        # relit samples.csv
+    python -m openride_core.tools.trainer_steps --materiel               # matériel à préparer
+
+L'essai est guidé (module `guide`) : rappel du matériel, puis à l'écran le palier en cours, un compte à
+rebours, la puissance et la cadence en direct, une alerte si la cadence s'écarte de plus de 10 rpm, et un
+bip à chaque palier. Le journal de l'essai (`guide.jsonl`) est écrit avec les autres fichiers.
 
 Sortie dans `~/OpenRide/trainer_steps/<date>_<heure>/` : `samples.csv` (chaque trame Indoor
 Bike Data), `events.csv` (consignes, écritures, accusés), `steps.csv` (résultats par palier) et
@@ -22,6 +27,7 @@ from __future__ import annotations
 import argparse
 import asyncio
 import csv
+import io
 import json
 import logging
 import statistics
@@ -33,6 +39,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import config
+from .guide import Guide
 
 DEFAULT_OUT = Path.home() / "OpenRide" / "trainer_steps"
 
@@ -49,6 +56,9 @@ FINAL_S = 5.0           # fenêtre de la valeur finale, fin du palier
 SETTLE_PCT = 10.0       # stable : à ± 10 % du changement de puissance…
 SETTLE_MIN_W = 5.0      # … et au moins ± 5 W (bruit des trames)
 MIN_DELTA_W = 10.0      # en dessous, pas de délai mesurable
+LEAD_IN_S = 10.0        # compte à rebours entre la connexion et le premier palier
+CADENCE_TOL_RPM = 10.0  # alerte si la cadence s'écarte plus que ça de la cadence demandée…
+CADENCE_ALERT_S = 3.0   # … pendant au moins ce temps
 
 
 @dataclass
@@ -266,9 +276,13 @@ class _CpLogTap(logging.Handler):
             self.rec.events.append((self.clock(), "no_ack", msg[7:]))
 
 
+def step_label(step: Step) -> str:
+    return f"pente {step.value:g} %" if step.mode == "sim" else f"ERG {step.value:g} W"
+
+
 async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = None,
                     cadence: float = 85.0, connect_timeout_s: float = 60.0,
-                    say=print) -> Recording:
+                    guide: Guide | None = None, lead_in_s: float = LEAD_IN_S) -> Recording:
     from ..ftms_driver import FtmsDriver
 
     cfg.trainer.trace_ftms = True
@@ -295,29 +309,55 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
     ftms_log.addHandler(handler)
     old_level = ftms_log.level
     ftms_log.setLevel(logging.INFO)
+    g = guide or Guide("Banc de latence du trainer", sound=False, screen=False, out=io.StringIO())
+    off_since: float | None = None
+
+    def live() -> dict[str, Any]:
+        return {"puissance": f"{drv._raw_power:.0f} W", "cadence": f"{drv._cadence or 0:.0f} rpm",
+                "cible": f"{cadence:.0f} rpm"}
+
+    async def hold(seconds: float) -> None:
+        nonlocal off_since
+        end_hold = time.monotonic() + seconds
+        while time.monotonic() < end_hold:
+            drv.poll()
+            if task.done():
+                raise RuntimeError("liaison au trainer perdue pendant l'essai")
+            cad = float(drv._cadence or 0.0)
+            if abs(cad - cadence) > CADENCE_TOL_RPM:
+                off_since = off_since if off_since is not None else time.monotonic()
+                if time.monotonic() - off_since >= CADENCE_ALERT_S and not g.banner:
+                    g.alert(f"Cadence {cad:.0f} rpm : reviens à {cadence:.0f} rpm", beep=False)
+            elif off_since is not None:
+                off_since = None
+                g.banner = ""
+            g.tick(live())
+            await asyncio.sleep(0.1)
+
     task = asyncio.create_task(drv.run())
     try:
+        g.step("Connexion au trainer", connect_timeout_s, "pédale doucement pour le réveiller", beep=False)
         end = time.monotonic() + connect_timeout_s
         while drv.status != "CONNECTED":
             if time.monotonic() > end:
                 raise RuntimeError("trainer introuvable ou muet : vérifier qu'aucune autre application ne le tient")
+            g.tick()
             await asyncio.sleep(0.2)
-        say(f"Trainer relié. Pédale à {cadence:.0f} rpm sans changer de braquet réel pendant tout l'essai.")
+        g.note("Trainer relié")
+        if lead_in_s > 0:
+            g.step(f"Pédale à {cadence:.0f} rpm", lead_in_s,
+                   "garde le même braquet pendant tout l'essai ; premier palier à la fin du compte")
+            await hold(lead_in_s)
         for i, step in enumerate(steps):
-            unit = "%" if step.mode == "sim" else "W"
-            say(f"\a[{i + 1}/{len(steps)}] {step.mode.upper()} {step.value:g} {unit} pendant {step.hold_s:.0f} s")
+            g.step(step_label(step), step.hold_s, f"garde {cadence:.0f} rpm, ne change pas de braquet",
+                   index=i + 1, total=len(steps))
             rec.steps.append((clock(), step))
             rec.events.append((clock(), "command", f"{step.mode} {step.value:g}"))
             if step.mode == "sim":
                 drv.set_sim_grade(step.value, immediate=True)
             else:
                 drv.set_target_power(step.value)
-            end_step = time.monotonic() + step.hold_s
-            while time.monotonic() < end_step:
-                drv.poll()
-                if task.done():
-                    raise RuntimeError("liaison au trainer perdue pendant l'essai")
-                await asyncio.sleep(0.1)
+            await hold(step.hold_s)
     finally:
         drv.stop()
         try:
@@ -352,7 +392,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--fast", action="store_true", help="paliers courts (essai du banc)")
     ap.add_argument("--out", type=Path, help="dossier de sortie")
     ap.add_argument("--analyse", type=Path, metavar="DOSSIER", help="relit un essai et refait l'analyse")
+    ap.add_argument("--materiel", action="store_true", help="affiche le matériel à préparer et quitte")
+    ap.add_argument("--sans-attente", action="store_true", help="démarre sans attendre « Entrée »")
+    ap.add_argument("--muet", action="store_true", help="sans bips")
     args = ap.parse_args(argv)
+    if args.materiel:
+        from .guide import materials_text
+        print(materials_text(["trainer_steps"]), end="")
+        return 0
     logging.basicConfig(level=logging.WARNING, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     for h in logging.getLogger().handlers:   # le journal FTMS passe en INFO pour le banc, pas à l'écran
         h.setLevel(logging.WARNING)
@@ -372,12 +419,25 @@ def main(argv: list[str] | None = None) -> int:
             from ..sim_scenarios import build_world, load_scenario
             world = build_world(load_scenario("nominal"), "nominal", click=False, hr=False)
         out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
+        guide = Guide(f"Banc de latence du trainer ({args.mode})", out / "guide.jsonl",
+                      sound=False if args.muet else None)
         try:
-            rec = asyncio.run(run_bench(steps, cfg, sim_world=world, cadence=args.cadence))
-        except (RuntimeError, KeyboardInterrupt) as exc:
+            interactive = args.trainer == "ftms" and not args.sans_attente and sys.stdin.isatty()
+            guide.prepare("trainer_steps", wait=interactive, auto_s=0 if args.fast else 10.0)
+            rec = asyncio.run(run_bench(steps, cfg, sim_world=world, cadence=args.cadence, guide=guide,
+                                        lead_in_s=2.0 if args.fast else LEAD_IN_S))
+        except (RuntimeError, KeyboardInterrupt, EOFError) as exc:
+            guide.finish(False, f"Essai interrompu : {exc}")
+            guide.close()
             print(f"Essai interrompu : {exc}", file=sys.stderr)
             return 1
         save(rec, out)
+        results = analyse(rec)
+        for r in results:
+            if r.t90_s is not None:
+                guide.measure(f"palier {r.index} ({step_label(Step(r.mode, r.value, 0))})", f"t90 {r.t90_s:g}", "s")
+        guide.finish(True, "Essai fini : tu peux arrêter de pédaler")
+        guide.close()
     results = analyse(rec)
     print(write_results(results, out), end="")
     print(f"Rapport : {write_report(rec, results, out)}")
