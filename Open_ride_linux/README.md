@@ -147,6 +147,7 @@ openride-core recover            # transforme le dernier journal en FIT après u
 openride-core release-trainer    # libère le HomeTrainer resté réservé (consigne annulée, contrôle FTMS rendu, déconnexion)
 openride-core summary [CHEMIN] [--ftp W] [--json]   # bilan : NP, IF, TSS, zones, meilleures puissances
 openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]   # historique et cumul par semaine ISO
+openride-core xp [--dir DOSSIER] [--json]   # progression (série V) : niveau, expérience, défis, depuis le journal
 python -m openride_core.tools.log_report [~/run_trainer.log] [--json] [--all]   # analyse le journal de séance (connexions, Click, commandes FTMS et délais)
 python -m openride_core.tools.workouts install                   # copie les 7 entraînements de référence (5 .zwo, un .erg, un .mrc)
 python -m openride_core.tools.workouts install --erg-relative    # idem, .erg convertis en .mrc (% de la FTP de leur en-tête)
