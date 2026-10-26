@@ -47,3 +47,7 @@ Aucune : `core_restarted` est ajouté par le lot N1.
 
 - Reprise après un redémarrage complet du PC.
 - Affichage du message de reprise dans l'engine (N6).
+
+## 9. Livraison (25 octobre 2026, PR #176)
+
+- Code et tests fusionnés sur `main` par la PR #176 (issue #105 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.

@@ -49,6 +49,12 @@ if mode.startswith("jcrash"):             # jcrash:N:DOSSIER : séance en cours 
     if len((marks / f"{role}_start").read_text().split()) <= int(limit):
         time.sleep(0.5)                   # après le délai de démarrage (0,3 s dans ces tests)
         os.kill(os.getpid(), signal.SIGKILL)
+if mode.startswith("relaunch"):           # relaunch:N:CODE : sort N fois avec CODE (relance, lot N13), puis se ferme
+    _, limit, code = mode.split(":")
+    time.sleep(0.2)
+    if len((marks / f"{role}_start").read_text().split()) <= int(limit):
+        sys.exit(int(code))
+    sys.exit(0)
 if mode.startswith("exit0"):              # exit0:T : se ferme normalement au bout de T s
     time.sleep(float(mode.split(":")[1]))
     sys.exit(0)
@@ -128,6 +134,17 @@ def test_engine_crashing_twice_is_restarted(fake):
     assert count(fake.marks, "engine_start") == 3
     assert count(fake.marks, "engine_SIGTERM") == 1 and count(fake.marks, "core_SIGINT") == 1
     assert sum("relance" in m for m in said) == 2
+    assert_no_orphans(sup)
+
+
+def test_engine_relaunch_code_restarts_core_and_engine(fake):
+    sup, said = fake(engine=f"relaunch:2:{launcher.EXIT_RELAUNCH}")
+    assert sup.run() == 0
+    assert sup.relaunches == 2 and sup.restarts == 0   # pas compté comme un plantage
+    assert count(fake.marks, "core_start") == 3 and count(fake.marks, "engine_start") == 3
+    assert count(fake.marks, "core_SIGINT") == 3       # chaque core arrêté proprement (trainer relâché)
+    assert count(fake.marks, "release_start") == 0
+    assert sum("relance demandée depuis le menu" in m for m in said) == 2
     assert_no_orphans(sup)
 
 

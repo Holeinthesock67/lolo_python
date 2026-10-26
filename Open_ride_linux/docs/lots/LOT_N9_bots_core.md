@@ -49,3 +49,7 @@ Aucune : la propriété `bots` est décrite dans le contrat v1.1 et dans `state.
 
 - Affichage des bots dans l'engine (lot interne à rédiger).
 - Modèle CP / W', réglage des bots au Click, courses.
+
+## 9. Livraison (25 octobre 2026, PR #175)
+
+- Code et tests fusionnés sur `main` par la PR #175 (issue #106 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.
