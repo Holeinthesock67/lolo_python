@@ -267,7 +267,7 @@ Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts
 
 ### 7.1 Une même famille d'action par bouton, dans tous les modes
 
-Demande du propriétaire du 26 octobre (point C7) : chaque bouton garde le même **type** d'action d'un mode à l'autre, pour qu'on n'ait jamais à se demander « dans ce mode, Y fait quoi ? ». **Proposition, à valider.**
+Demande du propriétaire du 26 octobre (point C7) : chaque bouton garde le même **type** d'action d'un mode à l'autre, pour qu'on n'ait jamais à se demander « dans ce mode, Y fait quoi ? ». **Plan validé par le propriétaire le 26 octobre.**
 
 Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches (bridé sans déblocage Zwift, SRS §4.2). B double toujours « − », et rien d'indispensable n'est mis sur le seul boîtier gauche.
 
@@ -289,7 +289,7 @@ Règles communes :
 - **Menus** (inchangé, SRS §4.5) : + et B courts pour défiler, + long pour valider, B long pour revenir ; A long valide aussi, pour garder la famille « valider ».
 - **Clavier :** il double chaque bouton. Pas de bouton pour la difficulté (décision Q1).
 
-Changements par rapport à ce qui existe ou était prévu, à faire si la proposition est retenue :
+Changements par rapport à ce qui existe ou était prévu, à reporter dans les lots concernés :
 
 | Où | Avant | Après | Lot |
 | --- | --- | --- | --- |
@@ -323,7 +323,7 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 
 ## 9. Contradictions et points à trancher
 
-Écarts relevés en rassemblant les documents. Les points C1 à C3 et C9 sont des corrections à appliquer dans les documents détaillés ; C4 à C8 et C10 demandent une décision du propriétaire ; C4 à C6 sont tranchées (26 octobre).
+Écarts relevés en rassemblant les documents. Les points C1 à C3 et C9 sont des corrections à appliquer dans les documents détaillés ; C4 à C8 et C10 demandent une décision du propriétaire ; C4 à C7 sont tranchées (26 octobre).
 
 | # | Écart | Où | Proposition |
 | --- | --- | --- | --- |
@@ -333,7 +333,7 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | C4 | Règle « hors ligne » : la SRS §12 et la décision U-Q2 (« jamais la séance ») contre la météo locale de P1 et le téléchargement des cartes pendant la balade (W-Q4) | SRS §12, plan U §7, cahier P1, plan W §4 | **Décidé le 26 octobre :** R-NET-1 à R-NET-3 (§3), le core n'attend jamais le réseau, seuls les processus annexes téléchargent |
 | C5 | Place de la série P : « après la 1.0 » dans l'index, sans numéro de version, alors que le README de la 2.0 la traite comme le premier contrat de la 2.0 | Index, `docs/2.0/README.md` | **Décidé le 26 octobre :** P1 à P6, P8 à P17 et P21 en mises à jour 1.x ; P7, P18 à P20 en 2.0 |
 | C6 | Caméra : la SRS §8 dit « ni avatar ni vélo, caméra subjective » ; la série V ajoute un avatar visible (question V-Q11 ouverte) | SRS §8, plan V §2.3 | **Décidé le 26 octobre :** la spécification change, plusieurs vues de caméra (§7.2) ; V-Q11 se règle par 2.0-CAM-3 |
-| C7 | Bouton A : libre en classique (T), branches du carrefour en monde ouvert (W-Q1), pause en Cyber-Rogue (proposé, R1). Sans conflit tant que ces modes ne se combinent pas ; à vérifier pour le Cyber-Rogue en monde ouvert, que rien n'exclut | Plans R, T, W | Plan de boutons commun à tous les modes (§7.1), proposé le 26 octobre, à valider |
+| C7 | Bouton A : libre en classique (T), branches du carrefour en monde ouvert (W-Q1), pause en Cyber-Rogue (proposé, R1). Sans conflit tant que ces modes ne se combinent pas ; à vérifier pour le Cyber-Rogue en monde ouvert, que rien n'exclut | Plans R, T, W | **Décidé le 26 octobre :** plan de boutons commun à tous les modes (§7.1) |
 | C8 | Programmes : la SRS §3 annonce trois programmes ; le lot W1 en ajoute un quatrième (`openride-worldgen`) | SRS §3, PR #282 | Accepter, noté au §3 |
 | C9 | L'état « Livré » de Q1 et Q3 n'est pas reporté dans l'index des lots, alors que leur code est sur `main` (révision 1.2 de l'IPC, clé `trace_ftms`) | `docs/lots/00_INDEX.md` | À corriger par la série Q (tenue par une autre IA) |
 | C10 | Taille de la trame `state` : le contrat promet 1 400 octets, mais une trame réaliste en fait déjà environ 1 520 sur `main`, et les séries P, R, T et W ajoutent toutes des champs à `state`. Aucune exigence de ce document ne promet donc de tenir dans 1 400 octets | `docs/contracts/ipc_v1.md`, plans T et W, audit IPC (PR #288) | Trancher la décision D1 de l'audit avant la 1.3 : arrondir les flottants, puis relever la limite de `state` à 4 096 octets en 1.3, ou créer un message `state_ext` |
@@ -347,4 +347,4 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | Date | Changement |
 | --- | --- |
 | 26 octobre 2026 | Première version : SRS v1.1, série P, plans R, T, V, W et U rassemblés ; révisions IPC 1.0 à 1.5 ; contradictions C1 à C10 ; numérotation alignée sur l'audit IPC (PR #288) |
-| 26 octobre 2026 | Décisions C4, C5 et C6 ; vues de caméra (§7.2) ; plan de boutons commun proposé (§7.1) |
+| 26 octobre 2026 | Décisions C4, C5 et C6 ; vues de caméra (§7.2) ; plan de boutons commun (§7.1), validé le même jour |
