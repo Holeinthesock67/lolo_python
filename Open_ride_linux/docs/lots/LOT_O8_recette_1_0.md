@@ -26,7 +26,7 @@ Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, 
 3. **Appairage depuis le menu : trainer, deux boîtiers du Click (bouton + identifié), ceinture (N12, N13).**
 4. **Séance libre de 10 min ou plus en SIM avec braquets perceptibles, puis relecture des mesures `Perf` du journal.**
 5. **Un `.zwo` complet en ERG : cibles tenues, biais ± 2 % au Click, bip à T − 3 s (lot F, N7).**
-6. **Click : boîtier gauche ou contournement par B du boîtier droit utilisable pendant toute une séance de 30 min (journal K8 sans coupure non reprise).**
+6. **Click : boîtier gauche ou contournement par B du boîtier droit utilisable pendant toute une séance de 30 min (journal K8 sans coupure non reprise).** Outil : `python -m openride_core.tools.click_recette` (lot X8), rapport par boîtier (silences, coupures, touches reçues).
 7. Ceinture cardio réelle : contact, choix de l'appareil, batterie (M2).
 8. Erreur ATT éventuelle suivie de « renvoi 1/2 » et non d'une reconnexion (M1).
 9. Biais et coupures dans le bilan (M4) ; cible ERG et écart par bloc (L6).
