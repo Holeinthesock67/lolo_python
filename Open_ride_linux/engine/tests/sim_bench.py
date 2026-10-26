@@ -4,7 +4,7 @@
 Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
-                 [--size 1280x720] [--quality low] [--native] [--out DOSSIER] [--list]
+                 [--size 1280x720] [--quality low] [--native] [--probe] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -19,6 +19,9 @@ du bandeau. À la fin : `end_session`, arrêt propre du core, `log_report` sur l
 core, `openride-core summary` sur la séance, puis `rapport.html` : vérifications, courbes de la
 séance (altitude, puissance et cible, fréquence cardiaque, pente envoyée, braquet) avec les
 événements, et planche des captures.
+
+Avec `--probe`, l'engine écrit chaque seconde ses mesures de rendu et `perf_probe.py` relève nvidia-smi
+et le CPU des processus : rapport dans `<scénario>/sonde/` (lot X13).
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
 qui peuvent fixer `world`, `workout`, `duration_s` et `difficulty_pct` dans une section
@@ -50,6 +53,7 @@ sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(REPO / "core" / "src"))
 
 from e2e_check import Proc, free_udp_ports, now, send_cmd, snapshot_home  # noqa: E402
+import perf_probe  # noqa: E402
 from openride_core import sim_scenarios  # noqa: E402
 
 BENCH_SCENARIOS_DIR = TESTS_DIR / "sim_bench_scenarios"
@@ -184,6 +188,8 @@ class Bench:
         self.records: list[dict[str, Any]] = []
         self.t_core = 0.0
         self.t0_wall = 0.0
+        self.sampler: perf_probe.SystemSampler | None = None
+        self.probe_summary: dict[str, Any] | None = None
 
     # Temps relatif au « Core démarré » (même origine que les événements du scénario).
     def rel(self, t: float) -> float:
@@ -246,6 +252,10 @@ class Bench:
                     "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}"]
+            if a.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
+                cmd.append(f"--perf-probe={(self.out / 'moteur.csv').resolve()}")
+                self.sampler = perf_probe.SystemSampler()
+                self.sampler.start()
             engine = BenchProc("engine", [str(c) for c in cmd], env, self.out / "engine.log")
             ack = engine.wait_for(r"hello_ack reçu", 30.0)
             r.check(ack is not None, "engine relié au core",
@@ -267,6 +277,8 @@ class Bench:
             for p in (engine,):
                 if p is not None:
                     p.stop(signal.SIGTERM, timeout=5.0)
+            if self.sampler is not None:
+                self.sampler.stop()
             rc = core.stop(signal.SIGINT, timeout=15.0) if core is not None else None
             if core is not None:
                 r.check(rc == 0, "arrêt du core", f"code de sortie {rc}")
@@ -341,6 +353,11 @@ class Bench:
     def _after(self, home: Path) -> None:
         r = self.report
         a = self.args
+        if self.sampler is not None:
+            rows = perf_probe.merge(perf_probe.read_engine_csv(self.out / "moteur.csv"), self.sampler.rows)
+            self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}")
+            r.check(self.probe_summary["rows"] > 0, "sonde de performance",
+                    f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
         # Captures.
         ok = [s for s in self.shots if s.get("ok")]
         r.check(len(ok) == len(self.shots) and ok, "captures de l'engine",
@@ -545,6 +562,7 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
 {f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {b.args.quality}
 {"(écran réel)" if b.args.native else "(Xvfb, OpenGL logiciel)"}.</p>
 <h2>Vérifications</h2><table>{rows}</table>
+{'<p><a href="sonde/rapport.html">Sonde de performance du moteur</a> (lot X13).</p>' if b.probe_summary else ""}
 <h2>Courbes de la séance</h2><p>Lignes orange : événements du scénario.</p>{charts}
 <h2>Captures</h2><div class="grid">{"".join(shots)}</div>
 <h2>Bandeau de l'engine</h2><pre>{html.escape(banners)}</pre>
@@ -580,6 +598,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--size", default="1280x720")
     ap.add_argument("--quality", default="low", help="low, medium, high (défaut low)")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
+    ap.add_argument("--probe", action="store_true",
+                    help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))
     ap.add_argument("--keep", action="store_true", help="garder le HOME temporaire")
     ap.add_argument("--list", action="store_true", help="énumérer les scénarios et quitter")

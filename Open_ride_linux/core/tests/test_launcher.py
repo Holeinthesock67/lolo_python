@@ -283,6 +283,8 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
         "--quality=low",
         "--theme=default",
     ]
+    probe = launcher.build_supervisor([], {**env, "OPENRIDE_PERF_PROBE": str(tmp_path / "sonde.csv")})
+    assert probe.engine_cmd[-1] == f"--perf-probe={tmp_path / 'sonde.csv'}"   # lot X13
 
     with pytest.raises(FileNotFoundError, match="Godot introuvable"):
         launcher.build_supervisor(["--config", str(cfg)], {**env, "GODOT": str(tmp_path / "absent")})
