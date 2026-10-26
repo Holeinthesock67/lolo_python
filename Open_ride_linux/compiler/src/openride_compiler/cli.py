@@ -7,6 +7,7 @@
     openride-compiler theme-check <dossier du thème>
     openride-compiler theme-list [--themes-dir D] [--json]
     openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]
+    openride-compiler cache-info [--json] | cache-clean [--generated | --all] [--yes]
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
 
@@ -46,6 +47,7 @@ from .pipeline import compile_route
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
 from .theme import check_theme
 from .verify import verify_world, world_info
+from .worldgen import store
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
 LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water")
@@ -140,6 +142,11 @@ def build_parser() -> argparse.ArgumentParser:
     ti.add_argument("--force", action="store_true", help="remplace un thème existant")
     ti.add_argument("--themes-dir", type=Path, default=None,
                     help="dossier d'installation des thèmes (défaut : ~/OpenRide/Themes)")
+
+    ci = sub.add_parser("cache-info", help="monde ouvert : taille du cache local, par sorte et par région (lot W2)")
+    store.add_info_arguments(ci)
+    cc = sub.add_parser("cache-clean", help="monde ouvert : vide le cache local (carrés générés par défaut)")
+    store.add_clean_arguments(cc)
 
     return parser
 
@@ -515,6 +522,8 @@ COMMANDS = {
     "theme-install": cmd_theme_install,
     "list": cmd_list,
     "build-all": cmd_build_all,
+    "cache-info": store.cmd_cache_info,
+    "cache-clean": store.cmd_cache_clean,
 }
 
 
