@@ -1,4 +1,4 @@
-# Lot P1 – Contrat : vent, aspiration et décor vivant (IPC v1.2, thème 1.2, configuration `[wind]`)
+# Lot P1 – Contrat : vent, aspiration et décor vivant (IPC révision 1.3, thème 1.2, configuration `[wind]`)
 
 ## 1. Objectif
 
@@ -32,7 +32,7 @@ Les propositions ci-dessous sont ajustées à ces décisions.
 
 Rédiger les ajouts, chacun avec sa ligne au journal des changements du document. Propositions de départ, à trancher par le propriétaire :
 
-### 4.1 IPC v1.2 : champ `wind` de `state`
+### 4.1 IPC révision 1.3 : champ `wind` de `state`
 
 - Objet facultatif `wind`, absent quand le vent est désactivé (trames inchangées) : `{speed_mps, from_deg, head_mps, gust}`.
   - `speed_mps` : vitesse du vent au sol, rafale comprise (≥ 0) ;
@@ -40,9 +40,9 @@ Rédiger les ajouts, chacun avec sa ligne au journal des changements du document
   - `head_mps` : composante de face le long du cap de la route à `s` (positive de face, négative de dos), celle qu'utilise la physique ;
   - `gust` : facteur de rafale de 0 à 1, pour l'animation (arbres, drapeaux, son).
 - Ces quatre champs suffisent à l'indicateur du HUD demandé par le propriétaire le 25 octobre (vent favorable ou non, et son intensité) : le verdict vient du signe de `head_mps`, l'intensité de `speed_mps` (calcul dans `wind_view_model.gd`, lot P4). Aucun champ de plus.
-- Envoyé **2 fois par seconde** (décision du propriétaire), dans une trame sur quinze environ (environ 70 octets) ; la physique du core utilise le vent exact à 50 Hz et l'engine lisse les valeurs reçues. Vérifier que la trame la plus chargée (ERG, `devices`, 5 bots, `wind`, `draft`) tient toujours dans 1 400 octets.
+- Envoyé **2 fois par seconde** (décision du propriétaire), dans une trame sur quinze environ (environ 70 octets) ; la physique du core utilise le vent exact à 50 Hz et l'engine lisse les valeurs reçues. Vérifier que la trame la plus chargée (ERG, `devices`, 5 bots, `wind`, `draft`) tient toujours dans 1 400 octets (à la livraison : `wind` jamais dans la trame qui porte `devices`, §9).
 
-### 4.2 IPC v1.2 : champ `draft` de `state`
+### 4.2 IPC révision 1.3 : champ `draft` de `state`
 
 - Nombre facultatif `draft` de 0 à 0,45 : coefficient d'aspiration appliqué au cycliste (SRS §5), absent sans bot. Champ facultatif `draft_bot` : `id` du bot qui abrite, ou absent.
 
@@ -90,3 +90,14 @@ Ajouts compatibles décrits au §4, et seulement eux.
 - Vent de travers sur la physique (seule la composante de face compte), vent qui varie selon le relief.
 - Aspiration entre bots, peloton.
 - Météo réelle téléchargée (aucun réseau à l'exécution).
+
+## 9. Livraison (26 octobre 2026)
+
+Livré sur la branche `lot-p1-contrat-vent-decor`. Les décisions du propriétaire du 25 octobre sont notées en tête du §4 ; la série a été lancée le 26 octobre sans attendre la 1.0 (« Lance les lots O et P »).
+
+- **Numéro de révision :** Q1 et N13 ayant pris la révision 1.2 de l'IPC, le vent et l'aspiration forment la **révision 1.3** (numérotation confirmée par le propriétaire le 26 octobre). Les plans de la 2.0 (séries R, T et V) passent en révision 1.4.
+- **IPC :** objet `wind` (`speed_mps`, `from_deg`, `head_mps`, `gust`) et champs `draft` et `draft_bot` dans `state` (`ipc_v1.md` §3, `state.schema.json`), avec les arrondis d'envoi. Pour tenir dans 1 400 octets, `wind` n'est jamais dans la trame qui porte `devices` (le core le décale d'une trame) : avec ERG, 5 bots et l'aspiration, la trame qui porte `devices` fait environ 1 370 octets et celle qui porte `wind` environ 1 160 octets.
+- **Configuration :** section `[wind]` décrite dans la SRS §11, hors de l'exemple `config.toml` tant que le core ne la lit pas (lot P2 l'y ajoute) ; SRS §5 complétée (composante de face, supplément de pente borné, ERG, fantôme sans abri).
+- **Thème 1.2 :** `sky.clouds`, `sky.time_of_day`, `weather`, `season`, `wind`, `ambience` et `fauna` dans `theme.schema.json` et `world_format_v1.md` §9 ; `engine/themes/default/theme.json` passe en 1.2 avec un été calme (vent de 8 km/h d'ouest, 30 % de nuages).
+- **Points d'intérêt :** `wind_turbine` (avec `height_m`) et `flag` dans `poi.schema.json` et `world_format_v1.md` §8 (format 1.2).
+- **Tests :** `test_v1_3_wind_and_draft_are_optional_and_fit` (trames avec et sans les nouveaux champs, valeurs hors bornes refusées, deux trames les plus chargées) ; `openride-compiler theme-check engine/themes/default` accepte le thème.

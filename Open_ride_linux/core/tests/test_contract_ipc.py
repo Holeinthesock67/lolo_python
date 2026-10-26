@@ -235,3 +235,25 @@ def test_state_frames_in_erg(tmp_path, monkeypatch):
         for frame in cap.frames:
             assert_valid(frame)
     asyncio.run(scenario())
+
+
+def test_v1_3_wind_and_draft_are_optional_and_fit():
+    """Révision 1.3 (lot P1) : `wind`, `draft` et `draft_bot` facultatifs, trame la plus chargée sous 1 400 octets."""
+    state, erg, _cmd, devices, _routes, _workouts = contract_json_blocks()
+    assert "wind" not in state and "draft" not in state
+    assert_valid(state)
+    # Arrondis du contrat : vitesses au centième, direction au dixième, rafale au centième, aspiration au millième
+    wind = {"speed_mps": 16.67, "from_deg": 247.1, "head_mps": -12.35, "gust": 0.99}
+    assert_valid({**state, "wind": wind, "draft": 0.312, "draft_bot": "b1"})
+    bots = [{"id": f"bot{i}xyz", "name": "N" * 16, "s": 123456.79, "v": 16.123, "kind": "constant"}
+            for i in range(4)]
+    bots.append({"id": "ghost", "name": "G" * 16, "s": 123456.79, "v": 16.123, "kind": "ghost"})
+    # `wind` n'est jamais dans la trame qui porte `devices` : les deux trames les plus chargées
+    assert_valid({**state, "mode": "ERG", "erg": erg, "devices": devices, "bots": bots,
+                  "draft": 0.45, "draft_bot": "bot0xyz"})
+    assert_valid({**state, "mode": "ERG", "erg": erg, "bots": bots,
+                  "wind": wind, "draft": 0.45, "draft_bot": "bot0xyz"})
+    validator = jsonschema.Draft202012Validator(schema("state"))
+    assert list(validator.iter_errors({**state, "draft": 0.5}))
+    assert list(validator.iter_errors({**state, "wind": {**wind, "gust": 1.5}}))
+    assert list(validator.iter_errors({**state, "wind": {"speed_mps": 3.0}}))

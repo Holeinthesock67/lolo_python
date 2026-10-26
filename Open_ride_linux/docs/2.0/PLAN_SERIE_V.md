@@ -64,7 +64,7 @@
 
 - Profil local dans `~/OpenRide/` : niveau, équipement débloqué et choisi, réglages de l'avatar. Aucune donnée personnelle dans le dépôt.
 - Expérience et déblocages calculés par le core, module pur testé en pytest (comme les règles des séries R et T).
-- Contrat IPC v1.3, ajouts compatibles : `hello_ack.config` gagne l'équipement et l'avatar choisis et le solde de pièces ; message `xp` en fin de séance (gains détaillés, niveau, déblocages) ; commandes `equip` et `set_avatar` depuis le menu.
+- Contrat IPC révision 1.4, ajouts compatibles : `hello_ack.config` gagne l'équipement et l'avatar choisis et le solde de pièces ; message `xp` en fin de séance (gains détaillés, niveau, déblocages) ; commandes `equip` et `set_avatar` depuis le menu.
 
 ## 3. Risques
 
@@ -79,7 +79,7 @@
 
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
-| V1 | Contrat : équipement et avatar dans `hello_ack`, message `xp`, commandes `equip` et `set_avatar` (IPC v1.3) | P1 | Interne (décision) |
+| V1 | Contrat : équipement et avatar dans `hello_ack`, message `xp`, commandes `equip` et `set_avatar` (IPC révision 1.4) | P1 | Interne (décision) |
 | V2 | Moteur d'expérience : gains, niveaux, défis, recalcul depuis le journal | — | Délégable |
 | V3 | Catalogue d'équipement en données, effets bornés appliqués à `PhysicsParams`, compromis par terrain, calcul du temps gagné par l'équipement | V2 | Délégable |
 | V3b | Pièces : gains, prix, achats, solde dans le profil, vies du mode Cyber-Rogue | V2, V4 | Délégable |
@@ -91,7 +91,7 @@
 | V9 | Fin de séance : expérience et pièces gagnées, temps gagné par l'équipement, passage de niveau, déblocages | V1, N4 | Interne |
 | V10 | Recette sur ton PC et ton vélo : progression sur ton historique réel, effet de l'équipement, rendu de l'avatar | V2 à V9 | Propriétaire |
 
-Ordre conseillé : V1 avec les autres ajouts de la v1.3 ; V2, V3 et V4 en parallèle ; V5 quand les séries T et R sont avancées ; puis l'engine (V6 à V9) et la recette V10.
+Ordre conseillé : V1 avec les autres ajouts de la révision 1.4 ; V2, V3 et V4 en parallèle ; V5 quand les séries T et R sont avancées ; puis l'engine (V6 à V9) et la recette V10.
 
 ## 5. Questions pour le propriétaire
 
