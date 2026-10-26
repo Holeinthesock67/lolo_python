@@ -28,6 +28,9 @@ const HR_MIN := 60.0
 const HR_MAX_DEFAULT := 190.0
 const CADENCE_MAX := 140.0
 const WATTS_ROUND := 50.0
+## Moyennes par groupes de 2, 4… 64 secondes tenues à jour à chaque seconde : la géométrie d'une
+## longue séance lit ces groupes au lieu de reparcourir chaque seconde (critère des 5 ms).
+const LEVELS := [2, 4, 8, 16, 32, 64]
 
 var ftp_w := 0.0
 var duration_s := 0.0
@@ -45,6 +48,11 @@ var _last_t := -INF
 var _max := {}
 var _cache: Dictionary = {}
 var _cache_key := ""
+## Par série : {facteur: Array des moyennes de groupes complets} et accumulateurs du groupe en cours.
+var _levels := {}
+var _lsum := {}
+var _lcnt := {}
+var _lfill := {}
 
 
 func _init() -> void:
@@ -56,8 +64,21 @@ func reset() -> void:
 	_sums = {}
 	_counts = {}
 	_max = {}
+	_levels = {}
+	_lsum = {}
+	_lcnt = {}
+	_lfill = {}
 	for s in SERIES:
 		_raw[s] = []   # Array (référence) : un tableau compact rangé dans un Dictionary serait copié
+		_levels[s] = {}
+		_lsum[s] = {}
+		_lcnt[s] = {}
+		_lfill[s] = {}
+		for f in LEVELS:
+			_levels[s][f] = []
+			_lsum[s][f] = 0.0
+			_lcnt[s][f] = 0
+			_lfill[s][f] = 0
 		_sums[s] = 0.0
 		_counts[s] = 0
 		_max[s] = 0.0
@@ -138,12 +159,12 @@ func push(t_s: float, power_w: Variant, hr_bpm: Variant, cadence_rpm: Variant, t
 		_cur_sec = sec
 		for s in SERIES:
 			for _i in range(sec):
-				_raw[s].append(NAN)   # séance reprise en cours : trous jusqu'ici
+				_append_raw(s, NAN)   # séance reprise en cours : trous jusqu'ici
 	elif sec > _cur_sec:
 		_close_second()
 		for s in SERIES:
 			for _i in range(sec - _cur_sec - 1):
-				_raw[s].append(NAN)   # seconde sans trame : trou
+				_append_raw(s, NAN)   # seconde sans trame : trou
 		_cur_sec = sec
 	var frame := {"power": power_w, "hr": hr_bpm, "cadence": cadence_rpm, "target": target_w}
 	for s in SERIES:
@@ -158,9 +179,46 @@ func _close_second() -> void:
 		if _counts[s] > 0:
 			v = _sums[s] / float(_counts[s])
 			_max[s] = maxf(_max[s], v)
-		_raw[s].append(v)
+		_append_raw(s, v)
 		_sums[s] = 0.0
 		_counts[s] = 0
+
+
+func _append_raw(s: String, v: float) -> void:
+	_raw[s].append(v)
+	var sums: Dictionary = _lsum[s]
+	var cnts: Dictionary = _lcnt[s]
+	var fills: Dictionary = _lfill[s]
+	for f in LEVELS:
+		if not is_nan(v):
+			sums[f] += v
+			cnts[f] += 1
+		fills[f] += 1
+		if fills[f] == f:
+			_levels[s][f].append(NAN if cnts[f] == 0 else sums[f] / float(cnts[f]))
+			sums[f] = 0.0
+			cnts[f] = 0
+			fills[f] = 0
+
+
+## Moyennes par groupes de `f` secondes à partir de `start` (multiple de `f`) jusqu'à `stop`,
+## lues dans les groupes tenus à jour ; le dernier groupe incomplet est calculé ici.
+func _grouped(series: String, f: int, start: int, stop: int) -> PackedFloat32Array:
+	var full: Array = _levels[series][f]
+	var g0 := start / f
+	var g1 := mini(full.size(), stop / f)
+	var out := PackedFloat32Array(full.slice(g0, g1)) if g0 < g1 else PackedFloat32Array()
+	var tail_start := maxi(start, g1 * f)
+	if tail_start < stop:
+		var sum := 0.0
+		var cnt := 0
+		for i in range(tail_start, stop):
+			var v := value_at(series, i)
+			if not is_nan(v):
+				sum += v
+				cnt += 1
+		out.append(NAN if cnt == 0 else sum / float(cnt))
+	return out
 
 
 ## Nombre de points (secondes), seconde en cours comprise.
@@ -335,8 +393,9 @@ func _compute(w: float, h: float) -> Dictionary:
 	var f := group_factor(maxi(0, stop - start))
 	out["group"] = f
 	var curves := {}
+	var fast := f > 1 and smoothing_s <= 1 and start % f == 0 and f in LEVELS
 	for s in ["power", "hr", "cadence"]:
-		var vals := smoothed(s, smoothing_s, start, stop)
+		var vals := _grouped(s, f, start, stop) if fast else smoothed(s, smoothing_s, start, stop)
 		var lo := 0.0
 		var hi := w_top
 		if s == "hr":
@@ -344,14 +403,18 @@ func _compute(w: float, h: float) -> Dictionary:
 			hi = hr_hi
 		elif s == "cadence":
 			hi = CADENCE_MAX
-		curves[s] = _polylines(vals, start, f, w, h, win.x, span, lo, hi)
+		if fast:
+			curves[s] = _polylines(vals, start, 1, w, h, win.x, span, lo, hi, f)
+		else:
+			curves[s] = _polylines(vals, start, f, w, h, win.x, span, lo, hi)
 	out["curves"] = curves
 	return out
 
 
-## Polylignes coupées aux trous ; chaque point = moyenne d'un groupe de `f` secondes.
+## Polylignes coupées aux trous ; chaque point = moyenne d'un groupe de `f` valeurs, chaque
+## valeur couvrant `per_value` secondes (1, ou la taille des groupes déjà moyennés).
 static func _polylines(vals: PackedFloat32Array, start: int, f: int, w: float, h: float,
-		t0: float, span: float, lo: float, hi: float) -> Array:
+		t0: float, span: float, lo: float, hi: float, per_value: int = 1) -> Array:
 	var lines: Array = []
 	var cur := PackedVector2Array()
 	var n := vals.size()
@@ -371,7 +434,7 @@ static func _polylines(vals: PackedFloat32Array, start: int, f: int, w: float, h
 				lines.append(cur)
 				cur = PackedVector2Array()
 		else:
-			var t := float(start + i) + 0.5 * float(j_end - i)
+			var t := float(start) + (float(i) + 0.5 * float(j_end - i)) * float(per_value)
 			var x := (t - t0) / span * w
 			var y := h - clampf((sum / float(cnt) - lo) / range_v, 0.0, 1.0) * h
 			cur.append(Vector2(x, y))
