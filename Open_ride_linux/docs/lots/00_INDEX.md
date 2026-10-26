@@ -79,7 +79,7 @@
 | [O2](LOT_O2_version_1_0.md) | Numéro de version unique (`VERSION`) et notes de version (`CHANGELOG.md`) | Python + GDScript | N3 ; de préférence fin de J4 | Petite | Oui, après N3 |
 | [O3](LOT_O3_reglages_core.md) | Réglages côté core : FTP, masse, braquet de départ, thème et qualité écrits dans `~/OpenRide/config.toml` | Python | N12 ; N10 pour les thèmes | Petite | Oui, après N12 |
 | [O4](LOT_O4_menu_reglages.md) | Section « Réglages » du menu et version affichée | GDScript + Python | N6, N13, O3 ; O2 | Moyenne | Non : interne (ajout au contrat IPC, écran du menu) |
-| [O5](LOT_O5_traces_garmin_dossier.md) | Traces FIT, TCX et archives Garmin (`.zip`, `.gz`) déposées dans le dossier des traces | Python | N11 | Petite | Oui, après N11 |
+| [O5](LOT_O5_traces_garmin_dossier.md) | Traces FIT, TCX et archives Garmin (`.zip`, `.gz`) déposées dans le dossier des traces | Python | N11 | Petite | **Livré le 26 octobre** (issue #122) |
 | [O6](LOT_O6_guide_utilisation.md) | Guide d'utilisation sans terminal et README de la 1.0 | Markdown + Python | N6, N13, N14 | Petite | Oui, après N14 |
 | [O7](LOT_O7_affichage_bots.md) | Bots à l'écran : silhouettes, écarts, choix au menu (facultatif pour la 1.0) | GDScript | N6, N9 | Moyenne | Non : interne (rendu, contrôle visuel) |
 | [O8](LOT_O8_recette_1_0.md) | Recette de la version 1.0 sur le matériel et publication (`v1.0.0`) | — | série N, O1, O2, O6 | Moyenne | Non : interne (propriétaire, matériel) |
