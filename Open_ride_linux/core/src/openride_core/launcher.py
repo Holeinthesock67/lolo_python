@@ -55,7 +55,9 @@ Lancement sans terminal (lot N14) :
   (`zenity`, sinon `kdialog`, sinon `notify-send`), avec l'emplacement du journal, et le lanceur
   sort avec le code 1 ;
 - `openride --release-trainer` (entrée de bureau « Libérer le trainer ») lance
-  `openride-core release-trainer` et en donne le résultat en notification.
+  `openride-core release-trainer` et en donne le résultat en notification ;
+- pendant `scripts/update.sh` (verrou `~/OpenRide/.update.lock`), le lanceur refuse de démarrer ;
+- `OPENRIDE_NO_GUI=1` : ni fenêtre ni notification (tests).
 
 Les commandes du core, de l'engine et de la libération du trainer sont des paramètres de
 `Supervisor` : les tests les remplacent par de faux programmes.
@@ -177,6 +179,28 @@ MSG_TRAINER_REFUSED = ("Le home trainer est réservé par une autre application.
                        "(ou autre) ou lancez OpenRide → Libérer le trainer, puis relancez OpenRide.")
 
 
+UPDATE_LOCK = Path.home() / "OpenRide" / ".update.lock"   # tenu par scripts/update.sh (flock)
+
+
+def update_in_progress(lock: Path = UPDATE_LOCK) -> bool:
+    """Vrai si `scripts/update.sh` tient son verrou : le code et le venv sont en cours de remplacement."""
+    try:
+        import fcntl
+    except ImportError:   # Windows : pas de scripts/update.sh
+        return False
+    try:
+        fd = os.open(lock, os.O_RDONLY)
+    except OSError:
+        return False
+    try:
+        fcntl.flock(fd, fcntl.LOCK_SH | fcntl.LOCK_NB)
+    except OSError:
+        return True
+    finally:
+        os.close(fd)
+    return False
+
+
 def _run_dialog(cmd: list[str]) -> bool:
     try:
         subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
@@ -191,6 +215,8 @@ def desktop_message(message: str, error: bool = True) -> None:
     import shutil
 
     title = "OpenRide"
+    if os.environ.get("OPENRIDE_NO_GUI") == "1":
+        return
     if shutil.which("zenity"):
         _run_dialog(["zenity", "--error" if error else "--info", "--no-wrap", f"--title={title}",
                      f"--text={message}"])
@@ -757,6 +783,8 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
         message(f"OpenRide ne peut pas démarrer : {text}", True)
         return 1
 
+    if update_in_progress():
+        return fail("une mise à jour est en cours. Relancez OpenRide quand elle sera terminée.")
     first_run = False
     if _config_arg(args) is None:
         try:
