@@ -14,6 +14,8 @@ Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. 
 
 Détail des tests de l'engine : [engine/tests/README.md](../engine/tests/README.md).
 
+Protocole pas à pas sur le PC et le vélo, avec la branche à tester pour chaque essai : [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md).
+
 ## 2. Matériel simulé
 
 | Outil | Usage |
