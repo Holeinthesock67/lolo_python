@@ -1,6 +1,6 @@
 # OpenRide Linux – Contrat du générateur du monde ouvert (worldgen v1)
 
-26 octobre 2026, lot W1 (à valider par le propriétaire). Plan : `docs/2.0/PLAN_SERIE_W.md`.
+26 octobre 2026, lot W1 (IPC révision 1.5, validée par le propriétaire le 26 octobre). Plan : `docs/2.0/PLAN_SERIE_W.md`.
 
 ## 1. Rôles
 
@@ -83,4 +83,4 @@ gen  → {"type":"closed"}
 
 | Version | Date | Changement |
 | --- | --- | --- |
-| 1 | 26 octobre 2026 | Première version (lot W1), à valider par le propriétaire |
+| 1 | 26 octobre 2026 | Première version (lot W1) |

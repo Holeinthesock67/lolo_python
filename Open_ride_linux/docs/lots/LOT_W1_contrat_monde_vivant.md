@@ -32,7 +32,7 @@ W0 livré et exécuté sur le PC (ses chiffres ne changent pas la forme du contr
 - **`junctions.json`** (atomique) : `revision`, liste des carrefours à moins de 3 km devant : `id` (chaîne), `s_m`, `x`, `z`, `lock_s_m` (= `s_m − 30`), `default`, `chosen`, `locked`, `branches` : `index`, `heading_deg`, `angle_deg` (relatif au cap d'arrivée, positif à droite), `road_class` (`p`, `s`, `t`, `m`, `c`, `k`, voir §4.5), `grade_pct_500m`, `dead_end`, `preview` (`x`, `y`, `z` au pas de 10 m sur 500 m, 51 points). Au plus 4 branches par carrefour (les autres sont ignorées).
 - Schémas : `live.schema.json`, `route_part.schema.json`, `junctions.schema.json` dans `docs/contracts/world/` ; ajout de `live`, `origin_kind` et `grid` à `manifest.schema.json`.
 
-### 4.3 IPC (révision 1.5 provisoire, ajouts compatibles)
+### 4.3 IPC (révision 1.5, ajouts compatibles)
 
 | Ajout | Forme |
 | --- | --- |
@@ -47,7 +47,9 @@ W0 livré et exécuté sur le PC (ses chiffres ne changent pas la forme du contr
 | `pause_reason` | `world_data` : plus de route connue devant (plan §3.6) |
 | Code d'erreur | `world_unavailable` : départ hors cache sans réseau |
 
-Choix au carrefour (W-Q1) : flèche gauche ou droite → branche voisine dans le sens de l'angle ; `A_SHORT` → branche suivante, en boucle ; clavier ← et → dans l'engine → `choose_branch` directement ; sans appui, la branche par défaut.
+Choix au carrefour (W-Q1) : flèche gauche ou droite → branche voisine dans le sens de l'angle ; `A_SHORT` → branche suivante, en boucle ; clavier ← et → dans l'engine → `choose_branch` directement ; sans appui, la branche par défaut. Tant que le lot Q6 (boîtier gauche muet après 35 à 60 s) n'est pas réglé, `A_SHORT` et le clavier sont les moyens principaux, les flèches un complément (décision D8 de l'audit IPC du 26 octobre).
+
+Décisions de l'audit IPC du 26 octobre (rapport de la PR #288) à reprendre quand cette PR sera remise sur les révisions 1.3 et 1.4 : la révision 1.3 ajoute `rev` à `hello` et `hello_ack` et la liste `modes` de R1, à laquelle W1 ajoute `"open_world"` (D3) ; la 1.3 porte aussi la limite de la trame `state` à 4 096 octets (D1), et le test de taille de W1 vérifie alors la trame la plus chargée, `devices` comprise, sous cette nouvelle limite.
 
 ### 4.4 Dialogue core ↔ générateur (`docs/contracts/worldgen_v1.md`, nouveau)
 

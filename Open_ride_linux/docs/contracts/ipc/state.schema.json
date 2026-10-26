@@ -482,7 +482,7 @@
     },
     "open_world": {
       "type": "object",
-      "description": "Facultatif (révision 1.5 provisoire, lot W1) : monde ouvert ; absent hors monde ouvert et dans les trames qui portent `devices`.",
+      "description": "Facultatif (révision 1.5, lot W1) : monde ouvert ; absent hors monde ouvert et dans les trames qui portent `devices`.",
       "required": [
         "rev",
         "next",
