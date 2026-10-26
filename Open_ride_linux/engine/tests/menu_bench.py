@@ -13,7 +13,9 @@ dans le vrai dossier personnel.
 Parcours (`--list`) :
 - `connexion_auto` : tout se connecte, l'écran « Connexion des appareils » passe seul à l'accueil ;
 - `appareils` : un seul boîtier du Click (unilatéral) → « Passer », puis Réglages → Appareils :
-  recherche, choix, enregistrement dans config.toml, « Relancer » (code de sortie 64 de l'engine).
+  recherche, choix, enregistrement dans config.toml, « Relancer » (code de sortie 64 de l'engine) ;
+- `sessions` : menu principal, choix du monde, session libre démarrée puis terminée, session ERG
+  (entraînement choisi, consigne ERG reçue), puis « Session simulée » (code de sortie 65).
 
 Résultat : captures et `rapport.html` dans `--out` (défaut : dossier temporaire). Code de sortie : 0
 si toutes les vérifications passent, 1 sinon, 2 si Godot ou xvfb-run manque.
@@ -41,7 +43,7 @@ REPO = ENGINE_DIR.parent
 sys.path.insert(0, str(TESTS_DIR))
 
 from e2e_check import free_udp_ports, now  # noqa: E402
-from sim_bench import BenchProc, Report  # noqa: E402
+from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
 
 READY = {"trainer": {"appear_at": 0.3, "connect_delay_s": 0.3},
          "click": {"appear_at": 0.5, "connect_delay_s": 0.3},
@@ -75,6 +77,10 @@ class Run:
         for ev in events:
             self._send({"type": "_test", "action": "menu_input", "event": ev})
             time.sleep(pause)
+
+    def command(self, name: str, args: dict[str, Any] | None = None) -> None:
+        """Commande du contrat envoyée par l'engine (ses numéros de commande restent cohérents)."""
+        self._send({"type": "_test", "action": "command", "name": name, "args": args or {}})
 
     def shot(self, tag: str) -> dict[str, Any]:
         assert self.engine is not None
@@ -111,7 +117,7 @@ class Run:
 
     # --- lancement -------------------------------------------------------------------------
 
-    def start(self, scenario: dict[str, Any], extra_config: str = "") -> bool:
+    def start(self, scenario: dict[str, Any], extra_config: str = "", workout: bool = False) -> bool:
         a = self.args
         r = self.report
         self.out.mkdir(parents=True, exist_ok=True)
@@ -121,6 +127,10 @@ class Run:
         routes = self.home / ".local" / "share" / "openride" / "routes"
         routes.mkdir(parents=True)
         shutil.copytree(ENGINE_DIR / "demo" / "demo.world", routes / "demo.world")
+        if workout:
+            wdir = self.home / "OpenRide" / "Workouts"
+            wdir.mkdir(parents=True)
+            (wdir / "erg_court.zwo").write_text(ERG_SHORT_ZWO, encoding="utf-8")
         self.state_port, self.cmd_port = free_udp_ports(2)
         self.config = tmp / "config.toml"
         self.config.write_text(f"[ipc]\nport_state = {self.state_port}\nport_commands = {self.cmd_port}\n"
@@ -164,7 +174,7 @@ def parcours_connexion_auto(run: Run) -> None:
     if not run.start(READY):
         return
     time.sleep(6.0)   # appareils simulés reliés en une seconde, puis CONNECT_HOLD_S
-    run.expect("accueil_seul", "OpenRide", "[Rouler]", "Trainer")
+    run.expect("accueil_seul", "OpenRide", "[Monde : ", "Session libre", "Trainer")
 
 
 def parcours_appareils(run: Run) -> None:
@@ -174,8 +184,8 @@ def parcours_appareils(run: Run) -> None:
     time.sleep(3.0)
     run.expect("connexion", "Connexion des appareils", "[Passer — ", "Click − : recherche")
     run.press("PLUS_LONG")
-    run.expect("accueil", "OpenRide", "[Rouler]")
-    run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_LONG")
+    run.expect("accueil", "OpenRide", "[Monde : ", "Session ERG")
+    run.press("MINUS_SHORT", "MINUS_SHORT", "PLUS_LONG")
     run.expect("reglages", "Réglages", "[Appareils : rechercher et appairer]")
     t = now()
     run.press("PLUS_LONG")
@@ -206,9 +216,79 @@ def parcours_appareils(run: Run) -> None:
     r.check(rc == 64, "Relancer : l'engine sort avec le code 64 (relance par le lanceur)", f"code {rc}")
 
 
+def _wait_state(run: Run, pattern: str, timeout: float = 10.0, after: float = 0.0) -> bool:
+    assert run.core is not None
+    return run.core.wait_for(pattern, timeout, after=after) is not None
+
+
+def parcours_sessions(run: Run) -> None:
+    r = run.report
+    if not run.start(READY, workout=True):
+        return
+    time.sleep(5.0)
+    run.expect("accueil", "OpenRide", "[Monde : ", "Session libre", "Session ERG", "Session simulée")
+    run.press("PLUS_LONG")
+    run.expect("mondes", "Monde / parcours", "[demo")
+    run.press("PLUS_LONG")
+    run.expect("monde_choisi", "OpenRide", "[Monde : demo")
+    # Session libre : Prêt puis Démarrer.
+    run.press("PLUS_SHORT", "PLUS_LONG")
+    run.expect("pret_libre", "Prêt : session libre — demo", "[Démarrer]")
+    t = now()
+    run.press("PLUS_LONG")
+    r.check(_wait_state(run, r"RUNNING", 10.0, after=t), "session libre démarrée", "core en RUNNING")
+    time.sleep(3.0)
+    info = run.shot("en_seance")
+    r.check(not info["visible"], "menu caché pendant la séance", f"visible={info['visible']}")
+    run.command("pause")   # touche P ou bouton Y : envoyée par l'engine
+    time.sleep(1.5)
+    run.expect("pause", "Pause", "[Reprendre]")
+    t = now()
+    run.press("PLUS_SHORT", "PLUS_LONG")   # Terminer et enregistrer
+    r.check(_wait_state(run, r"-> FINISHED", 15.0, after=t), "séance terminée et enregistrée", "core en FINISHED")
+    time.sleep(1.0)
+    run.expect("bilan", "Fin de séance", "[Nouvelle séance]")
+    run.press("PLUS_LONG")
+    time.sleep(1.0)
+    run.expect("accueil_apres", "OpenRide", "Monde : demo")
+    # Session ERG.
+    run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_LONG")
+    run.expect("erg_liste", "Session ERG : entraînement", "ERG court")
+    if run.focus_to("ERG court"):
+        run.press("PLUS_LONG")
+    run.expect("pret_erg", "Prêt : session ERG — demo", "[Démarrer]")
+    t = now()
+    run.press("PLUS_LONG")
+    r.check(_wait_state(run, r"RUNNING", 10.0, after=t), "session ERG démarrée", "core en RUNNING")
+    time.sleep(4.0)
+    info = run.shot("en_seance_erg")
+    assert run.engine is not None
+    r.check(_wait_state(run, r"ERG court|erg_court", 1.0), "entraînement ERG choisi par le core", "« ERG court » au journal du core")
+    run.command("end_session", {"save": False})
+    time.sleep(2.0)
+    run.press("MINUS_SHORT")   # Quitter (bilan)… ou accueil selon l'état : on revient à l'accueil
+    info = run.shot("_apres_erg")
+    run.shots.pop()
+    if info["title"] == "Fin de séance":
+        run.focus_to("Nouvelle séance")
+        run.press("PLUS_LONG")
+    # Session simulée.
+    run.focus_to("Session simulée")
+    run.press("PLUS_LONG")
+    run.expect("simulee_confirmation", "Session simulée ? OpenRide redémarre sans matériel", "[Non]")
+    run.press("PLUS_SHORT", "PLUS_LONG")
+    rc = None
+    deadline = now() + 10.0
+    while now() < deadline and rc is None:
+        rc = run.engine.p.poll()
+        time.sleep(0.2)
+    r.check(rc == 65, "Session simulée : l'engine sort avec le code 65 (relance sans matériel)", f"code {rc}")
+
+
 PARCOURS: dict[str, Callable[[Run], None]] = {
     "connexion_auto": parcours_connexion_auto,
     "appareils": parcours_appareils,
+    "sessions": parcours_sessions,
 }
 
 

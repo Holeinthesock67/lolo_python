@@ -46,7 +46,8 @@ func _test_full_session() -> void:
 	f.set_routes(ROUTES)
 	f.set_workouts(WORKOUTS)
 	_check(f.is_visible() and f.state()["screen"] == "home", "accueil affiché en IDLE")
-	f.handle("PLUS_LONG")   # Rouler
+	_check(f.state()["items"][0]["label"] == "Monde : à choisir", "accueil : monde à choisir")
+	f.handle("PLUS_LONG")   # Monde
 	_check(f.state()["screen"] == "routes", "liste des parcours")
 	var routes: Array = f.state()["items"]
 	var to_compile: Array = routes.filter(func(it): return it["id"] == "nouveau")
@@ -56,15 +57,18 @@ func _test_full_session() -> void:
 	var sel: Dictionary = f.handle("PLUS_LONG")
 	_check(sel.get("action") == "select_route" and sel.get("route_id") == _ids_route(routes, 1),
 			"2ᵉ parcours choisi : select_route %s" % str(sel))
-	_check(f.state()["screen"] == "ready", "écran Prêt")
-	f.on_state({"session_state": "READY"})
-	f.handle("PLUS_SHORT")   # Choisir un entraînement
+	_check(f.state()["screen"] == "home" and f.state()["items"][0]["label"] == "Monde : Vosges",
+			"retour à l'accueil, monde affiché : %s" % f.state()["items"][0]["label"])
+	f.on_state({"session_state": "READY", "route_id": "vosges"})
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")   # Session ERG
 	f.handle("PLUS_LONG")
+	_check(f.state()["screen"] == "workouts", "Session ERG : liste des entraînements")
 	f.handle("PLUS_SHORT")
 	var wk: Dictionary = f.handle("PLUS_LONG")
 	_check(wk == {"action": "select_workout", "workout_id": "sweet"}, "entraînement choisi : %s" % str(wk))
-	_check(f.state()["screen"] == "ready", "retour à l'écran Prêt")
-	f.handle("MINUS_SHORT")   # le focus revient sur « Choisir un entraînement » : Démarrer est au-dessus
+	_check(f.state()["screen"] == "ready" and "ERG" in f.state()["title"] and "Vosges" in f.state()["title"],
+			"écran Prêt : %s" % f.state()["title"])
 	_check(f.handle("PLUS_LONG") == {"action": "start"}, "Démarrer")
 	f.on_state({"session_state": "RUNNING"})
 	_check(not f.is_visible(), "menu caché en RUNNING")
@@ -82,8 +86,9 @@ func _test_full_session() -> void:
 	f.handle("PLUS_SHORT")
 	_check(f.handle("PLUS_LONG").is_empty() and f.show_details, "Voir le bilan détaillé")
 	f.handle("MINUS_SHORT")
-	_check(f.handle("PLUS_LONG") == {"action": "list"} and f.state()["screen"] == "home",
-			"Nouvelle séance : accueil et listes redemandées")
+	_check(f.handle("PLUS_LONG") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home",
+			"Nouvelle séance : accueil, listes redemandées et monde rechargé")
+	_check(f.state()["items"][0]["label"] == "Monde : Vosges", "le monde reste choisi après la séance")
 	f.on_state({"session_state": "FINISHED"})
 	f.handle("MINUS_SHORT")   # Quitter (dernier élément de l'accueil)
 	f.handle("PLUS_LONG")
@@ -138,7 +143,7 @@ func _test_view() -> void:
 	var v = MenuView.new()
 	var state := {"session_state": "IDLE", "trainer_status": "MOCK", "input_status": "KEYBOARD"}
 	v.update_display(f.state(), state, {}, false)
-	_check(v.title_label.text == "OpenRide" and v.items_text().begins_with("[Rouler]"), "accueil : %s" % v.items_text())
+	_check(v.title_label.text == "OpenRide" and v.items_text().begins_with("[Monde : "), "accueil : %s" % v.items_text())
 	_check(v.devices.visible and v.devices.text().contains("Trainer"), "état des appareils : %s" % v.devices.text())
 	f.handle("PLUS_LONG")
 	for i in range(7):
@@ -217,8 +222,8 @@ func _test_pairing_screen() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
 	f.on_state({"session_state": "IDLE"})
-	f.handle("PLUS_SHORT")
-	f.handle("PLUS_SHORT")   # Réglages
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")   # Réglages (avant Quitter)
 	f.handle("PLUS_LONG")
 	_check(f.state()["screen"] == "settings" and _focus_id(f) == "devices", "Réglages : Appareils")
 	var act: Dictionary = f.handle("PLUS_LONG")
