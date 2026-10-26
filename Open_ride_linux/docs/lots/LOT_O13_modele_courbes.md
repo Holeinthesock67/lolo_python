@@ -7,7 +7,7 @@ En mode entraînement, GoldenCheetah montre le profil des watts cibles de toute 
 ## 2. À lire
 
 1. `docs/lots/00_INDEX.md`, `docs/contracts/ipc_v1.md` (trame `state`, objet `erg`, élément de `workouts` avec `profile`, `hello_ack.config.ftp_w`), `docs/lots/LOT_I6_logique_erg_godot.md`, `docs/lots/LOT_K2_modele_hud_profil.md` (forme des modèles de vue).
-2. Code : `engine/scripts/erg_view_model.gd` (`profile_bars`), `engine/scripts/hud_view_model.gd`, `engine/tests/unit/test_erg_view_model.gd` ou `engine/tests/test_erg_view_model.gd`, `engine/tests/fake_core.py` (`--erg-workout`).
+2. Code : `engine/scripts/erg_view_model.gd` (`profile_bars`), `engine/scripts/hud_view_model.gd`, `engine/tests/test_erg_view_model.gd`, `engine/tests/fake_core.py` (`--erg-workout`).
 
 ## 3. Prérequis
 
