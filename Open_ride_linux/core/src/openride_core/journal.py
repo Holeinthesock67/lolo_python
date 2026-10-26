@@ -58,6 +58,8 @@ class Record:
     block: int | None = None     # bloc d'entraînement ERG (à partir de 1)
     target_w: float | None = None  # cible ERG envoyée au trainer (W), None en SIM / FreeRide / pause
     erg_bias_pct: float | None = None  # biais du Click appliqué à la cible (%, 0 sans appui), None hors ERG actif
+    head_mps: float | None = None      # vent de face (m/s, positif de face), None vent coupé (lot P2)
+    wind_grade_pct: float | None = None  # supplément de pente dû au vent (SIM, feel = "grade"), lot P2
 
 
 class JournalWriter:
