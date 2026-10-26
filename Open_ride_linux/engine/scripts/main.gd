@@ -491,8 +491,10 @@ func _widget_text(key: String) -> String:
 
 func _on_hello_ack(_ack: Dictionary) -> void:
 	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage. Core (re)démarré : listes
-	# redemandées au prochain état affichant le menu.
+	# redemandées au prochain état affichant le menu. Modes de l'accueil : hello_ack.config.modes
+	# (2.0 ; absent en 1.0).
 	menu_flow.lists_needed()
+	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 
 
 func _on_core_error(code: String, message: String) -> void:

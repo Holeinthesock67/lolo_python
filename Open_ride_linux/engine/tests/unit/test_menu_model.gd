@@ -254,7 +254,19 @@ func _test_no_nodes() -> void:
 	_check(after == before, "aucun nœud créé (%d avant, %d après)" % [before, after])
 
 
+func _test_modes() -> void:
+	var m = MenuModel.new()
+	var ids: Array = m.state()["items"].map(func(it): return it["id"])
+	_check(ids == ["world", "ride", "erg", "sim", "settings", "quit"], "modes par défaut : ride et erg (%s)" % str(ids))
+	m.set_modes(["erg", "cyber_rogue"])
+	ids = m.state()["items"].map(func(it): return it["id"])
+	_check(ids == ["world", "erg", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
+	m.set_modes(null)
+	_check(m.state()["items"].size() == 6, "modes absents : retour aux modes par défaut")
+
+
 func _init() -> void:
+	_test_modes()
 	_test_scenarios()
 	_test_lists_and_events()
 	_test_no_nodes()
