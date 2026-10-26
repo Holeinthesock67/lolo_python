@@ -54,7 +54,7 @@ func _init() -> void:
 			_item("start", "Démarrer"), _item("workout", "Choisir un entraînement"),
 			_item("change_route", "Changer de parcours")]},
 		SETTINGS: {"id": SETTINGS, "title": "Réglages", "on_back": HOME, "items": [
-			_item("none", "Aucun réglage pour l'instant", false)]},
+			_item("devices", "Appareils : rechercher et appairer")]},
 		CONFIRM: {"id": CONFIRM, "title": "Confirmer", "on_back": "", "items": [
 			_item("no", "Non"), _item("yes", "Oui")]},
 		PAUSE: {"id": PAUSE, "title": "Pause", "on_back": "", "items": [
@@ -141,6 +141,46 @@ func open_screen(screen_id: String) -> Dictionary:
 		_pending = {}
 		_open(screen_id, false)
 	return state()
+
+
+## Ouvre un écran par-dessus l'écran courant (retour possible) ; écran inconnu : rien.
+func push_screen(screen_id: String) -> Dictionary:
+	if _screens.has(screen_id):
+		_open(screen_id)
+	return state()
+
+
+## Remplace le titre et les éléments d'un écran ajouté par add_screen() (connexion, appairage, lot N13) ;
+## le focus reste sur le même élément s'il existe encore.
+func set_screen_items(screen_id: String, items: Array, title := "") -> void:
+	if not _screens.has(screen_id) or screen_id in [ROUTES, WORKOUTS, CONFIRM]:
+		return
+	var focused_id := ""
+	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
+		focused_id = _screens[screen_id]["items"][_focus]["id"]
+	var clean := []
+	for it in items:
+		clean.append(_item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
+			str(it.get("detail", ""))))
+	_screens[screen_id]["items"] = clean
+	if title != "":
+		_screens[screen_id]["title"] = title
+	if _screen == screen_id:
+		_focus = _first_enabled_from(_index_of(focused_id), 1)
+
+
+## Met le focus sur un élément actif de l'écran courant ; faux s'il n'existe pas ou est désactivé.
+func focus_item(item_id: String) -> bool:
+	var items := _items()
+	for i in range(items.size()):
+		if items[i]["id"] == item_id and items[i]["enabled"]:
+			_focus = i
+			return true
+	return false
+
+
+func current_screen() -> String:
+	return _screen
 
 
 ## Demande de confirmation d'une action destructrice (focus sur « Non »), depuis l'écran courant.

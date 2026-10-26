@@ -337,7 +337,8 @@ drivetrain_efficiency = 0.97
 [trainer]
 device_name = "HomeTrainer"      # fragment du nom annoncé (« HomeTrainer 0000 »)
 latency_tau_s = 0.8
-difficulty_pct = 100
+difficulty_pct = 50
+trace_ftms = false
 grade_min_pct = -10
 grade_max_pct = 16
 power_smooth_tau_s = 0.7
