@@ -49,3 +49,11 @@ Aucune.
 ## 8. Hors périmètre
 
 Usage des vies dans le mode Cyber-Rogue (R9), commandes du menu (V1, V11), affichage (V8, V9).
+
+## 9. Livraison (26 octobre 2026, issue #242)
+
+- Code et tests : `coins.py`, section `[coins]` de `data/progression.toml`, solde affiché par `openride-core xp`, `core/tests/test_coins.py` (16 tests).
+- En ERG, comme pour l'expérience (V-Q7), les minutes remplacent la distance : 0,5 pièce par minute au lieu d'1 par km.
+- `openride-core xp` lit le profil sans le réparer (`profile.peek_profile`) : la commande n'écrit toujours rien.
+- Codes de refus de `buy` : `item_unknown`, `already_owned`, `item_locked`, `not_enough_coins` (les deux derniers sont ceux du contrat V1) ; `use_life` sans vie : `no_life`.
+
