@@ -1,6 +1,14 @@
 """Lanceur unique `openride` : démarre le core et l'engine, les surveille, arrête tout proprement (lot K6).
 
-    openride [options de « openride-core run »]      # défaut : --trainer ftms --input click --autostart
+    openride [options de « openride-core run »]      # défaut : --trainer ftms --input click (menus, lot N6)
+             [--no-compile] [--compile-only] [--compile-timeout SECONDES]
+
+Compilation au lancement (lot N11) :
+- Au démarrage, vérifie les traces GPX nouvelles ou modifiées (`to_compile` ou `outdated`).
+- Les compile via `openride-compiler build-all` avec journalisation et notification bureau (`notify-send`).
+- `--no-compile` : saute cette étape.
+- `--compile-only` : effectue la compilation puis quitte immédiatement.
+- `--compile-timeout` : délai maximal en secondes (défaut : 300 s).
 
 Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de référence :
 - un journal par lancement, `~/OpenRide/Logs/openride_AAAA-MM-JJ_HH-MM-SS.log` (lot M8) : sortie du
@@ -19,9 +27,24 @@ Supervision :
   plus de 2 s (heartbeat perdu), le core met la séance en pause (`engine_lost`, contrat IPC §6) et
   la reprend au retour de l'engine ; une relance plus rapide passe sans pause ;
   au-delà, abandon : arrêt propre du core, code 1 ;
-- le core s'arrête ou plante → l'engine est arrêté ; en cas de plantage, rappel de
-  `openride-core recover` (le journal de la séance reste sur disque) ;
+- le core s'arrête normalement → l'engine est arrêté ;
+- le core plante (code ≠ 0, lot N8) → le trainer est relâché (`release-trainer`), puis le core est
+  relancé sans arrêter l'engine, au plus 3 fois en 10 minutes : avec `--resume JOURNAL` si une
+  séance était en cours (journal de ce lancement non terminé), elle reprend alors en pause
+  (`core_restarted`) au même endroit ; sinon relance simple. Au-delà, l'engine est arrêté et
+  `openride-core recover` fait le FIT de la séance ;
 - SIGINT, SIGTERM ou SIGHUP (terminal fermé) reçus par le lanceur → même arrêt propre des deux.
+
+Lancement sans terminal (lot N14) :
+- premier démarrage : sans `~/OpenRide/config.toml`, il est créé depuis
+  `scripts/config.example.toml`, avec `~/OpenRide/GPX/` et `~/OpenRide/Workouts/`, et le core
+  reçoit `--first-run` ; une fenêtre d'information rappelle `openride-core devices --save` ;
+- un arrêt sur erreur (Godot introuvable, configuration invalide, port IPC occupé, trainer
+  réservé par une autre application, plantages répétés du core) s'affiche dans une fenêtre
+  (`zenity`, sinon `kdialog`, sinon `notify-send`), avec l'emplacement du journal, et le lanceur
+  sort avec le code 1 ;
+- `openride --release-trainer` (entrée de bureau « Libérer le trainer ») lance
+  `openride-core release-trainer` et en donne le résultat en notification.
 
 Les commandes du core, de l'engine et de la libération du trainer sont des paramètres de
 `Supervisor` : les tests les remplacent par de faux programmes.
@@ -48,9 +71,10 @@ LOG_PREFIX = "openride_"
 KEEP_LOGS = 20
 MAX_LOGS_BYTES = 200 * 1024 * 1024
 DEFAULT_ENGINE_DIR = Path(__file__).resolve().parents[3] / "engine"
-DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click", "--autostart"]
+# Sans --autostart depuis le lot N6 : parcours et entraînement se choisissent dans les menus de l'engine.
+DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click"]
 
-STOP_SIGNALS = (signal.SIGINT, signal.SIGTERM, signal.SIGHUP)
+STOP_SIGNALS = tuple(s for s in (signal.SIGINT, signal.SIGTERM, getattr(signal, "SIGHUP", None)) if s is not None)
 
 
 def log_timestamp(t: float | None = None) -> str:
@@ -121,6 +145,57 @@ class LogRotation:
             self.notes.append(f"lien {link} impossible : {exc}")
 
 
+CONFIG_TEMPLATE = Path(__file__).resolve().parents[3] / "scripts" / "config.example.toml"
+FIRST_RUN_INFO = ("Bienvenue dans OpenRide. Configurez vos appareils : openride-core devices --save "
+                  "(la section « Appareils » du menu viendra plus tard).")
+PORT_IN_USE_RE = re.compile(r"Impossible de démarrer l'IPC UDP.*(Address already in use|déjà utilisée|Errno 98)")
+TRAINER_REFUSED_RE = re.compile(r"Le trainer refuse le contrôle FTMS")
+
+MSG_PORT_IN_USE = ("Le port IPC d'OpenRide est déjà utilisé : une autre fenêtre d'OpenRide est sans doute "
+                   "ouverte. Fermez-la puis relancez OpenRide.")
+MSG_TRAINER_REFUSED = ("Le home trainer est réservé par une autre application. Fermez l'application Zwift "
+                       "(ou autre) ou lancez OpenRide → Libérer le trainer, puis relancez OpenRide.")
+
+
+def _run_dialog(cmd: list[str]) -> bool:
+    try:
+        subprocess.Popen(cmd, stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+                         stderr=subprocess.DEVNULL, start_new_session=True)
+        return True
+    except OSError:
+        return False
+
+
+def desktop_message(message: str, error: bool = True) -> None:
+    """Fenêtre de bureau : zenity, sinon kdialog, sinon notify-send ; rien sans aucun des trois."""
+    import shutil
+
+    title = "OpenRide"
+    if shutil.which("zenity"):
+        _run_dialog(["zenity", "--error" if error else "--info", "--no-wrap", f"--title={title}",
+                     f"--text={message}"])
+    elif shutil.which("kdialog"):
+        _run_dialog(["kdialog", f"--title={title}", "--error" if error else "--msgbox", message])
+    elif shutil.which("notify-send"):
+        _run_dialog(["notify-send", "-u", "critical" if error else "normal", title, message])
+
+
+def ensure_first_run(home: Path | None = None, template: Path | None = None) -> bool:
+    """Premier démarrage : crée la configuration et les dossiers ; vrai si la configuration manquait."""
+    from . import config as config_mod
+
+    home = home or config_mod.OPENRIDE_HOME
+    cfg_path = home / "config.toml"
+    for sub in ("GPX", "Workouts"):
+        (home / sub).mkdir(parents=True, exist_ok=True)
+    if cfg_path.exists():
+        return False
+    template = template or CONFIG_TEMPLATE
+    text = template.read_text(encoding="utf-8") if template.is_file() else "# Configuration OpenRide\n"
+    cfg_path.write_text(text, encoding="utf-8")
+    return True
+
+
 def _default_echo() -> bool:
     try:
         return sys.stdout.isatty()
@@ -146,9 +221,25 @@ class Supervisor:
     rotation: LogRotation | None = None   # journal tournant ; None : `log_path` tel quel
     echo: Callable[[], bool] = _default_echo   # vrai : messages aussi au terminal (`say`)
     reader_join_s: float = 2.0         # délai pour vider la sortie de l'engine après son arrêt
+    compile_enabled: bool = True       # compilation au lancement (lot N11)
+    compile_only: bool = False         # quitte après la compilation sans lancer le core
+    compile_timeout_s: float = 300.0   # délai maximal de compilation
+    compiler_cmd: list[str] | None = None
+    routes_dir: Path | None = None
+    gpx_dir: Path | None = None
+    notify: Callable[[str], None] | None = None
+    journal_dir: Path | None = None    # journaux de séance (reprise après plantage, lot N8) ; None : pas de reprise
+    recover_cmd: list[str] | None = None   # `openride-core recover` ; le chemin du journal est ajouté
+    core_max_restarts: int = 3
+    core_restart_window_s: float = 600.0
+    alert: Callable[[str], None] | None = None   # fenêtre d'erreur (lot N14) ; None : journal seul
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
+    core_restarts: int = field(default=0, init=False)
+    _launched_at: float = field(default=0.0, init=False)   # heure Unix du lancement (journaux de ce lancement)
+    _log_scan_pos: int = field(default=0, init=False)
+    _next_log_scan: float = field(default=0.0, init=False)
     _stop_signal: int | None = field(default=None, init=False)
     _log: IO[bytes] | None = field(default=None, init=False)
     _log_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
@@ -170,6 +261,33 @@ class Supervisor:
         self._write_log(f"{log_timestamp()} INFO    [openride] {msg}\n".encode())
         if self._log is None or self.echo():
             self.say(msg)
+
+    def _say_warning(self, msg: str) -> None:
+        """Avertissement du lanceur : au journal (`WARNING [openride]`) et au terminal s'il y en a un."""
+        self._write_log(f"{log_timestamp()} WARNING [openride] {msg}\n".encode())
+        if self._log is None or self.echo():
+            self.say(f"avertissement : {msg}")
+
+    def _alert(self, msg: str) -> None:
+        """Erreur qui arrête le lanceur : au journal et dans une fenêtre, avec le chemin du journal."""
+        self._say_warning(msg)
+        if self.alert is not None:
+            try:
+                self.alert(f"{msg}\n\nJournal : {self.log_path}")
+            except Exception:   # une fenêtre impossible ne doit rien bloquer
+                pass
+
+    def _log_text(self, new_only: bool = False) -> str:
+        try:
+            with self.log_path.open("rb") as fh:
+                if new_only:
+                    fh.seek(self._log_scan_pos)
+                data = fh.read()
+                if new_only:
+                    self._log_scan_pos = fh.tell()
+        except OSError:
+            return ""
+        return data.decode("utf-8", errors="replace")
 
     def _open_log(self) -> None:
         if self.rotation is not None:
@@ -203,10 +321,35 @@ class Supervisor:
         self.started_pids.append(p.pid)
         return p
 
-    def _start_core(self) -> subprocess.Popen:
+    def _start_core(self, extra: list[str] | None = None) -> subprocess.Popen:
         if self._log is None:
             self._open_log()
-        return self._spawn(self.core_cmd, stdin=subprocess.DEVNULL, stdout=self._log, stderr=subprocess.STDOUT)
+        return self._spawn([*self.core_cmd, *(extra or [])], stdin=subprocess.DEVNULL,
+                           stdout=self._log, stderr=subprocess.STDOUT)
+
+    def _unfinished_journal(self) -> Path | None:
+        """Journal d'une séance de ce lancement que le core n'a pas terminée (lot N8)."""
+        if self.journal_dir is None:
+            return None
+        from .resume import find_unfinished_journal
+
+        return find_unfinished_journal(self.journal_dir, since=self._launched_at - 1.0)
+
+    def _recover(self, journal: Path | None) -> None:
+        if journal is None or self.recover_cmd is None:
+            return
+        try:
+            p = self._spawn([*self.recover_cmd, str(journal)], stdin=subprocess.DEVNULL,
+                            stdout=self._log or subprocess.DEVNULL, stderr=subprocess.STDOUT)
+            if not self._wait(p, 60.0):
+                p.kill()
+                p.wait()
+            if p.returncode == 0:
+                self._say(f"séance enregistrée en FIT depuis {journal}.")
+            else:
+                self._say(f"`openride-core recover` a échoué (code {p.returncode}) ; le journal reste : {journal}")
+        except OSError as exc:
+            self._say(f"`openride-core recover` impossible : {exc}")
 
     def _start_engine(self) -> subprocess.Popen:
         if self._log is None:
@@ -261,6 +404,22 @@ class Supervisor:
         engine.wait()
         self._join_readers()
 
+    # --- compilation au lancement ------------------------------------------------------
+
+    def _run_compilation(self) -> int:
+        from .launch_compile import run_startup_compilation
+
+        return run_startup_compilation(
+            routes_dir=self.routes_dir,
+            gpx_dir=self.gpx_dir,
+            timeout_s=self.compile_timeout_s,
+            compiler_cmd=self.compiler_cmd,
+            log_file=self._log,
+            say=self._say,
+            say_warning=self._say_warning,
+            notify=self.notify,
+        )
+
     # --- signaux -----------------------------------------------------------------------
 
     def _on_signal(self, signum: int, _frame) -> None:
@@ -272,7 +431,17 @@ class Supervisor:
         previous = {s: signal.signal(s, self._on_signal) for s in STOP_SIGNALS}
         core: subprocess.Popen | None = None
         engine: subprocess.Popen | None = None
+        self._launched_at = time.time()
         try:
+            if self.compile_enabled:
+                if self._log is None:
+                    self._open_log()
+                compile_code = self._run_compilation()
+                if self.compile_only:
+                    return compile_code
+                if self._stop_signal is not None:
+                    return 0
+
             core = self._start_core()
             deadline = self.clock() + self.startup_grace_s
             while self.clock() < deadline and core.poll() is None and self._stop_signal is None:
@@ -280,27 +449,55 @@ class Supervisor:
             if core.poll() is not None:
                 self._say(f"le core s'est arrêté au démarrage (code {core.returncode}) ; voir {self.log_path}")
                 self._print_log_tail(20, only_alerts=False)
+                if PORT_IN_USE_RE.search(self._log_text()):
+                    self._alert(MSG_PORT_IN_USE)
+                else:
+                    self._alert(f"OpenRide n'a pas pu démarrer (le core s'est arrêté, code {core.returncode}).")
                 return 1
             if self._stop_signal is not None:
                 return self._finish(core, None, 0)
 
             engine = self._start_engine()
             crashes: list[float] = []
+            core_crashes: list[float] = []
             while True:
                 time.sleep(self.poll_s)
                 if self._stop_signal is not None:
                     self._say(f"signal {signal.Signals(self._stop_signal).name} reçu : arrêt de la séance.")
                     return self._finish(core, engine, 0)
 
+                if self._trainer_refused():
+                    self._alert(MSG_TRAINER_REFUSED)
+                    return self._finish(core, engine, 1)
+
                 if core.poll() is not None:
                     code = core.returncode
-                    self._stop_engine(engine)
-                    if code != 0:
-                        self._say(f"le core s'est arrêté brutalement (code {code}). La séance est dans le journal : "
-                                 "`openride-core recover` en fait un FIT.")
-                        self._release_trainer()
+                    if code == 0:
+                        self._stop_engine(engine)
+                        return self._finish(core, engine, 0)
+                    journal = self._unfinished_journal()
+                    now = self.clock()
+                    core_crashes = [t for t in core_crashes if now - t < self.core_restart_window_s] + [now]
+                    self._release_trainer()   # le core n'a pas pu rendre le trainer
+                    if len(core_crashes) > self.core_max_restarts:
+                        self._say(f"le core a planté {len(core_crashes)} fois en "
+                                  f"{self.core_restart_window_s / 60:.0f} min (code {code}) : abandon. "
+                                  "La séance est dans le journal : `openride-core recover` en fait un FIT.")
+                        self._stop_engine(engine)
+                        self._recover(journal)
+                        self._alert(f"Le core d'OpenRide a planté {len(core_crashes)} fois de suite : arrêt. "
+                                    "La séance est enregistrée en FIT si elle avait commencé.")
                         return self._finish(core, engine, 1)
-                    return self._finish(core, engine, 0)
+                    n = len(core_crashes)
+                    if journal is not None:
+                        self._say(f"le core a planté (code {code}) : relance {n}/{self.core_max_restarts} "
+                                  f"avec reprise de la séance en pause ({journal.name}).")
+                        core = self._start_core(["--resume", str(journal)])
+                    else:
+                        self._say(f"le core a planté hors séance (code {code}) : relance {n}/{self.core_max_restarts}.")
+                        core = self._start_core()
+                    self.core_restarts += 1
+                    continue
 
                 if engine.poll() is not None:
                     code = engine.returncode
@@ -330,6 +527,16 @@ class Supervisor:
             for s, h in previous.items():
                 signal.signal(s, h)
 
+    def _trainer_refused(self) -> bool:
+        """Lit au plus une fois par seconde la suite du journal : refus du contrôle FTMS ?"""
+        if self._log is None:
+            return False
+        now = time.monotonic()
+        if now < self._next_log_scan:
+            return False
+        self._next_log_scan = now + 1.0
+        return bool(TRAINER_REFUSED_RE.search(self._log_text(new_only=True)))
+
     def _finish(self, core: subprocess.Popen, engine: subprocess.Popen | None, code: int) -> int:
         self._stop_engine(engine)
         self._stop_core(core)
@@ -356,6 +563,35 @@ class Supervisor:
 
 # --- ligne de commande -------------------------------------------------------------------
 
+def extract_launcher_args(args: list[str]) -> tuple[list[str], bool, bool, float]:
+    """Extrait les arguments propres au lanceur (--no-compile, --compile-only, --compile-timeout)."""
+    core_args: list[str] = []
+    no_compile = False
+    compile_only = False
+    compile_timeout = 300.0
+    i = 0
+    while i < len(args):
+        a = args[i]
+        if a == "--no-compile":
+            no_compile = True
+            i += 1
+        elif a == "--compile-only":
+            compile_only = True
+            i += 1
+        elif a == "--compile-timeout":
+            if i + 1 >= len(args):
+                raise ValueError("--compile-timeout requiert une valeur en secondes")
+            compile_timeout = float(args[i + 1])
+            i += 2
+        elif a.startswith("--compile-timeout="):
+            compile_timeout = float(a.split("=", 1)[1])
+            i += 1
+        else:
+            core_args.append(a)
+            i += 1
+    return core_args, no_compile, compile_only, compile_timeout
+
+
 def _config_arg(args: list[str]) -> Path | None:
     for i, a in enumerate(args):
         if a.startswith("--config="):
@@ -368,15 +604,19 @@ def _config_arg(args: list[str]) -> Path | None:
 def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) -> Supervisor:
     """Construit le superviseur réel ; lève `ConfigError` ou `FileNotFoundError` avec un message lisible."""
     from . import config as config_mod
+    from .journal import JOURNAL_DIR
 
     env = os.environ if env is None else env
-    core_args = core_args or list(DEFAULT_CORE_ARGS)
-    config_path = _config_arg(core_args)
+    raw_args = list(core_args) if core_args else list(DEFAULT_CORE_ARGS)
+    clean_core_args, no_compile, compile_only, compile_timeout = extract_launcher_args(raw_args)
+    clean_core_args = clean_core_args or list(DEFAULT_CORE_ARGS)
+    config_path = _config_arg(clean_core_args)
     cfg = config_mod.load(config_path)   # ConfigError si invalide
 
-    godot = Path(env.get("GODOT") or DEFAULT_GODOT).expanduser()
+    godot = Path(env.get("GODOT") or cfg.engine.godot or DEFAULT_GODOT).expanduser()
     if not (godot.is_file() and os.access(godot, os.X_OK)):
-        raise FileNotFoundError(f"Godot introuvable : {godot} (définir GODOT=/chemin/vers/godot)")
+        raise FileNotFoundError(f"Godot introuvable : {godot} (relancer scripts/install.sh, ou [engine] godot "
+                                "dans ~/OpenRide/config.toml, ou GODOT=/chemin/vers/godot)")
     engine_dir = Path(env.get("OPENRIDE_ENGINE") or DEFAULT_ENGINE_DIR).expanduser()
     if not (engine_dir / "project.godot").is_file():
         raise FileNotFoundError(f"projet Godot introuvable : {engine_dir} (définir OPENRIDE_ENGINE)")
@@ -384,7 +624,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
     core = [sys.executable, "-m", "openride_core"]
     config_args = ["--config", str(config_path)] if config_path else []
     return Supervisor(
-        core_cmd=[*core, "run", *core_args],
+        core_cmd=[*core, "run", *clean_core_args],
         engine_cmd=[
             str(godot),
             "--path",
@@ -397,26 +637,70 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--theme={cfg.render.theme}",
         ],
         release_cmd=[*core, "release-trainer", *config_args],
+        recover_cmd=[*core, "recover"],
+        journal_dir=JOURNAL_DIR,
         log_path=Path(env["OPENRIDE_LOG"]).expanduser() if env.get("OPENRIDE_LOG") else DEFAULT_LOG,
         rotation=None if env.get("OPENRIDE_LOG") else LogRotation(),
+        compile_enabled=not no_compile,
+        compile_only=compile_only,
+        compile_timeout_s=compile_timeout,
     )
 
 
-def main(argv: list[str] | None = None) -> int:
+def release_trainer_from_desktop(args: list[str], notify: Callable[[str, bool], None]) -> int:
+    """Entrée de bureau « Libérer le trainer » : `openride-core release-trainer`, résultat notifié."""
+    config_path = _config_arg(args)
+    cmd = [sys.executable, "-m", "openride_core", "release-trainer",
+           *(["--config", str(config_path)] if config_path else [])]
+    try:
+        code = subprocess.run(cmd, stdin=subprocess.DEVNULL, capture_output=True, timeout=120).returncode
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        notify(f"Trainer non libéré : {exc}", True)
+        return 1
+    if code == 0:
+        notify("Trainer libéré : une autre application peut s'y connecter.", False)
+    else:
+        notify("Trainer non libéré : allumez-le, approchez-le du PC et réessayez.", True)
+    return 0 if code == 0 else 1
+
+
+def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | None = None) -> int:
+    """`openride` ; `message(texte, erreur)` affiche une fenêtre (défaut : sans terminal seulement)."""
     from .config import ConfigError
 
-    args = sys.argv[1:] if argv is None else argv
+    args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] in ("-h", "--help"):
         print(__doc__)
         return 0
+    if message is None:
+        message = (lambda text, error: None) if _default_echo() else desktop_message
+    if "--release-trainer" in args:
+        args.remove("--release-trainer")
+        return release_trainer_from_desktop(args, message)
+
+    def fail(text: str) -> int:
+        print(f"openride : {text}", file=sys.stderr)
+        message(f"OpenRide ne peut pas démarrer : {text}", True)
+        return 1
+
+    first_run = False
+    if _config_arg(args) is None:
+        try:
+            first_run = ensure_first_run()
+        except OSError as exc:
+            return fail(f"création de ~/OpenRide impossible : {exc}")
     try:
         sup = build_supervisor(args)
     except ConfigError as exc:
-        print(f"openride : configuration invalide : {exc}", file=sys.stderr)
-        return 1
+        return fail(f"configuration invalide : {exc}")
+    except ValueError as exc:
+        return fail(str(exc))
     except FileNotFoundError as exc:
-        print(f"openride : {exc}", file=sys.stderr)
-        return 1
+        return fail(str(exc))
+    sup.alert = lambda text: message(text, True)
+    if first_run:
+        sup.core_cmd.append("--first-run")
+        message(FIRST_RUN_INFO, False)
     return sup.run()
 
 

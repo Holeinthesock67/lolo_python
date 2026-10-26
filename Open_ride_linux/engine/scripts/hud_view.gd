@@ -43,6 +43,7 @@ var distance_val: Label
 var time_val: Label
 var gear_val: Label
 var erg_label: Label
+var difficulty_label: Label
 var climb_label: Label
 var status_label: Label
 var profile_panel: Control
@@ -116,6 +117,13 @@ func _build_ui() -> void:
 	status_label.text = "ÉTAT: en attente du core…"
 	status_label.clip_text = true
 	center_vbox.add_child(status_label)
+
+	difficulty_label = Label.new()
+	difficulty_label.add_theme_font_size_override("font_size", 20)
+	difficulty_label.text = ""
+	difficulty_label.clip_text = true
+	difficulty_label.visible = false
+	center_vbox.add_child(difficulty_label)
 
 	# Panneau inférieur : Profil d'altitude
 	profile_panel = Control.new()
@@ -241,6 +249,12 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 			(" (" + str(pause) + ")") if pause != null else "",
 			state.get("trainer_status", "?"),
 			state.get("input_status", "?")]
+
+	if difficulty_label != null:
+		var diff_vis: bool = bool(lines.get("difficulty_visible", false))
+		difficulty_label.visible = diff_vis
+		if diff_vis:
+			difficulty_label.text = str(lines.get("difficulty_text", ""))
 
 	# Prochaine montée (rafraîchie avec le profil)
 	if route != null and climb_label != null:

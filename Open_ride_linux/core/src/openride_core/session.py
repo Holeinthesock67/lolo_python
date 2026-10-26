@@ -23,11 +23,13 @@ from .config import WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
+from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
 from .mock_driver import MockDriver
 from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
+from .resume import ResumeError, ResumeState, load_resume_state
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from .workout import BIAS_DEFAULT_PCT, ErgController, Workout, WorkoutError, load_workout, workout_path
@@ -130,8 +132,8 @@ def build_inputs(cfg: Config, sim: Any = None) -> list[Any]:
         d, pair = cfg.drivers, ClickPair()
         return [ZwiftClickProvider(d.click_address or None, d.click_short_max_s, d.click_long_min_s,
                                    pair=pair),
-                ZwiftClickProvider(None, d.click_short_max_s, d.click_long_min_s,
-                                   pair=pair, optional=True),
+                ZwiftClickProvider(d.click_minus_address or None, d.click_short_max_s,
+                                   d.click_long_min_s, pair=pair, optional=True),
                 KeyboardProvider()]
     if kind == "keyboard":
         return [KeyboardProvider()]
@@ -158,8 +160,9 @@ class AutostartError(Exception):
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
-                 workouts_dir: Path = WORKOUTS_DIR) -> None:
+                 workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None) -> None:
         self.cfg = cfg
+        self.bots = list(bots) if bots else []
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
@@ -170,14 +173,16 @@ class CoreSession:
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
         self.physics = RiderPhysics(PhysicsParams.from_config(cfg))
         self.route: Route | None = None
+        self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
-                              gear=self.gearing.k)
+                              gear=self.gearing.k, difficulty_pct=round(self.difficulty_pct))
         self.server = IpcServer(
             port_state=cfg.ipc.port_state, port_commands=cfg.ipc.port_commands,
             on_command=self._on_command, on_engine_lost=self._on_engine_lost,
             on_engine_returned=lambda: log.info("Engine connecté."),
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
-                          "theme": cfg.render.theme})
+                          "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct)})
+        log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
 
@@ -191,7 +196,12 @@ class CoreSession:
         self._autoresume = False
         self._shift_pending = False
         self._workout: Workout | None = None     # entraînement choisi (select_workout)
+        self._workout_id: str | None = None
+        self._click_seen: dict[str, str] = {}   # boîtiers du Click vus, sans adresse configurée
         self.erg: ErgController | None = None   # entraînement en cours pendant la séance
+        self._frame_count = 0
+        self._last_devices: dict[str, Any] | None = None
+        self._bg_tasks: set[asyncio.Task[Any]] = set()
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -248,6 +258,51 @@ class CoreSession:
                 log.warning("input_event inconnu : %s", args.get("event"))
         elif name == "end_session" and st in ("RUNNING", "PAUSED"):
             self._finish(bool(args.get("save", True)))
+        elif name == "set_difficulty":
+            raw_pct = args.get("pct") if isinstance(args, dict) else None
+            if raw_pct is None or isinstance(raw_pct, bool) or not isinstance(raw_pct, (int, float)):
+                self.server.send_error("bad_args", "set_difficulty attend un nombre 'pct'")
+                return
+            new_val = int(round(max(0, min(100, float(raw_pct)))))
+            old_val = round(self.difficulty_pct)
+            if new_val != old_val:
+                log.info("Difficulté : %d %% -> %d %%", old_val, new_val)
+            self.difficulty_pct = float(new_val)
+            self.state.difficulty_pct = new_val
+            if self.server.hello_config:
+                self.server.hello_config["difficulty_pct"] = new_val
+        elif name == "list_routes":
+            self._spawn(self._handle_list_routes(cmd_id))
+        elif name == "list_workouts":
+            self._spawn(self._handle_list_workouts(cmd_id))
+
+    def _spawn(self, coro: Any) -> None:
+        """Lance une tâche de fond en gardant sa référence jusqu'à la fin."""
+        task = asyncio.create_task(coro)
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
+
+    async def _handle_list_routes(self, cmd_id: int) -> None:
+        from .config import GPX_DIR
+        from .ipc_lists import build_routes_messages
+
+        try:
+            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root, GPX_DIR)
+            for m in msgs:
+                self.server.send_raw(m)
+        except Exception:
+            log.exception("Erreur lors de la préparation de routes (cmd_id=%d)", cmd_id)
+
+    async def _handle_list_workouts(self, cmd_id: int) -> None:
+        from .ipc_lists import build_workouts_messages
+
+        try:
+            msgs = await asyncio.to_thread(build_workouts_messages, cmd_id, self.workouts_dir,
+                                           ftp_w=self.cfg.rider.ftp_w)
+            for m in msgs:
+                self.server.send_raw(m)
+        except Exception:
+            log.exception("Erreur lors de la préparation de workouts (cmd_id=%d)", cmd_id)
 
     def _select_route(self, route_id: str, previous: str) -> None:
         """LOADING, lecture de la couche route du .world, puis READY (contrat §7, étape 6)."""
@@ -274,6 +329,7 @@ class CoreSession:
 
     def _select_workout(self, workout_id: Any) -> None:
         """Choisit l'entraînement du prochain `start` ; null revient au SIM (contrat §4)."""
+        self._workout_id = None
         if workout_id is None or str(workout_id) == "":
             self._workout = None
             log.info("Aucun entraînement : mode SIM.")
@@ -285,6 +341,7 @@ class CoreSession:
             log.error("Entraînement « %s » refusé : %s", workout_id, exc)
             self.server.send_error("workout_invalid", f"Entraînement « {workout_id} » invalide : {exc}")
             return
+        self._workout_id = str(workout_id)
         w = self._workout
         log.info("Entraînement « %s » choisi : %d blocs, %.0f s.", w.name, len(w.blocks), w.duration_s)
 
@@ -313,16 +370,29 @@ class CoreSession:
 
     def _open_journal(self) -> None:
         self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
-                                    on_failure=self._on_recording_failure)
+                                    on_failure=self._on_recording_failure,
+                                    workout_id=self._workout_id)
         self._rec.event("start", time.time())
         self._device_up = self._device_states()   # état de départ : seuls les changements s'écrivent
         self._next_record = 0.0
 
     def _click_device(self, address: str) -> str:
-        """Boîtier « + » : celui de `click_address` (adresse du « + » réel par défaut)."""
-        from .sim_scenarios import PLUS_ADDRESS   # adresse du boîtier « + » réel (CLAUDE.md)
-        plus = (self.cfg.drivers.click_address or PLUS_ADDRESS).upper()
-        return "click_plus" if address.upper() == plus else "click_minus"
+        """Boîtier « + » ou « − » (lot N12) : d'après `click_address` et `click_minus_address`.
+
+        Sans adresse configurée : adresse simulée du « + » en simulation ; sinon le premier
+        boîtier vu est le « + », l'autre le « − ».
+        """
+        d = self.cfg.drivers
+        addr = address.upper()
+        if d.click_address:
+            return "click_plus" if addr == d.click_address.upper() else "click_minus"
+        if d.click_minus_address:
+            return "click_minus" if addr == d.click_minus_address.upper() else "click_plus"
+        if d.input == "sim":
+            from .sim_scenarios import PLUS_ADDRESS
+            return "click_plus" if addr == PLUS_ADDRESS else "click_minus"
+        seen = self._click_seen.setdefault(addr, "click_plus" if not self._click_seen else "click_minus")
+        return seen
 
     def _device_states(self) -> dict[str, bool]:
         """État des appareils d'après ce que la session connaît déjà (aucune entrée-sortie BLE)."""
@@ -362,27 +432,92 @@ class CoreSession:
         if self.state.session_state in ("RUNNING", "PAUSED"):
             self._set_state("PAUSED", "recording_failed")
 
-    def _finish(self, save: bool, final_state: str = "FINISHED") -> None:
+    def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
         if self._rec:
             rec, self._rec = self._rec, None
-            fit_path, s, fit_error = rec.finish(save)
+            fit_path, s, fit_error = rec.finish(save, ts=ts)
+            records, events = rec.records, rec.events
             if fit_error and save:
                 self.server.send_error("recording_failed", f"FIT non produit : {fit_error}")
+
             summary = {
                 "duration_s": round(s.timer_s, 1),
                 "distance_m": round(s.distance_m, 1),
                 "avg_power_w": round(s.avg_power or 0.0, 1),
                 "fit_path": str(fit_path) if fit_path else None,
+                **summary_extras(records, events, self.cfg.rider.ftp_w),
             }
         self.state.summary = summary
         self.erg = None
         self._sync_erg_state()
         self._set_state(final_state)
 
+    def _build_devices(self) -> dict[str, Any]:
+        """Construit l'objet `devices` du contrat v1.1 à partir de l'état connu des pilotes."""
+        trainer_st = getattr(self.driver, "status", "MOCK")
+        trainer_name = getattr(self.driver, "device_name", None) or getattr(self.cfg.trainer, "device_name", None)
+        trainer_addr = getattr(self.driver, "device_address", None) or self.cfg.drivers.trainer_address or None
+        trainer_info = {
+            "status": trainer_st,
+            "name": str(trainer_name) if trainer_name else None,
+            "address": str(trainer_addr) if trainer_addr else None,
+        }
+
+        clicks: list[dict[str, Any]] = []
+        click_providers = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
+        if len(click_providers) == 1:
+            p = click_providers[0]
+            st = "CONNECTED" if getattr(p, "_link_up", False) else ("LOST" if getattr(p, "_ever_connected", False) else "SEARCHING")
+            clicks.append({
+                "side": "single",
+                "status": st,
+                "battery_pct": getattr(p, "battery_pct", None),
+            })
+        elif len(click_providers) >= 2:
+            for p in click_providers[:2]:
+                addr = getattr(p, "_conn_address", "")
+                if addr and addr != "?":
+                    side = "plus" if self._click_device(addr) == "click_plus" else "minus"
+                else:
+                    side = "minus" if getattr(p, "_optional", False) else "plus"
+                st = "CONNECTED" if getattr(p, "_link_up", False) else ("LOST" if getattr(p, "_ever_connected", False) else "SEARCHING")
+                clicks.append({
+                    "side": side,
+                    "status": st,
+                    "battery_pct": getattr(p, "battery_pct", None),
+                })
+
+        if self.hr is not None:
+            hr_st = "CONNECTED" if getattr(self.hr, "connected", False) else ("LOST" if getattr(self.hr, "_ever_connected", False) else "SEARCHING")
+            hr_source = "strap" if hr_st in ("CONNECTED", "LOST") else None
+            hr_info = {
+                "status": hr_st,
+                "source": hr_source,
+                "battery_pct": getattr(self.hr, "battery_pct", None),
+            }
+        else:
+            if getattr(self.state, "hr", None) is not None:
+                hr_info = {"status": "CONNECTED", "source": "trainer", "battery_pct": None}
+            else:
+                hr_info = {"status": "NONE", "source": None, "battery_pct": None}
+
+        return {
+            "trainer": trainer_info,
+            "click": clicks,
+            "hr": hr_info,
+        }
+
     # --- entrées utilisateur -------------------------------------------------------------
 
     def _handle_input(self, ev: InputEvent) -> None:
+        if ev == InputEvent.PAUSE:   # bouton Y du Click (lot N6) : pause ou reprise, pas relayé
+            st = self.state.session_state
+            if st == "RUNNING":
+                self._on_command("pause", {}, 0)
+            elif st == "PAUSED":
+                self._on_command("resume", {}, 0)
+            return
         # Toujours relayé à l'engine : menu hors séance, retour sonore (bips) pendant la séance.
         self.server.send_input_event(ev.value)
         if self.state.session_state != "RUNNING":
@@ -450,7 +585,8 @@ class CoreSession:
         if self._autoresume and self.state.session_state == "PAUSED":
             reason = self.state.pause_reason
             if (reason == "trainer_lost" and m.connected) or \
-                    (reason == "engine_lost" and self.server.engine_connected):
+                    (reason == "engine_lost" and self.server.engine_connected) or \
+                    (reason == "core_restarted" and m.connected and self.server.engine_connected):
                 self._on_command("resume", {}, 0)   # essais sans menu : reprise automatique
         if self.state.session_state != "RUNNING":
             return
@@ -485,7 +621,7 @@ class CoreSession:
             self.driver.set_sim_grade(0.0)
         else:
             # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
-            target = self.gearing.effective_grade(ahead, self.cfg.trainer.difficulty_pct / 100.0)
+            target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0)
             max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
             shifted = self._shift_pending
             if shifted:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
@@ -496,6 +632,8 @@ class CoreSession:
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
         self.physics.step(m.power_w, grade, alt, dt)
+        for bot in self.bots:
+            bot.step(dt, route)
 
         self._power_window.append((self._t_session, m.power_w))
         while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
@@ -517,6 +655,7 @@ class CoreSession:
                 alt=round(alt, 2), distance=round(st.s, 2), speed=round(st.v, 3),
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
+                difficulty_pct=round(self.difficulty_pct),
                 block=erg.index + 1 if erg else None,
                 target_w=erg.target_w if erg and erg.target_active else None,
                 erg_bias_pct=erg.bias_pct - BIAS_DEFAULT_PCT if erg and erg.target_active else None))
@@ -526,6 +665,53 @@ class CoreSession:
             self._finish(True)
 
     # --- boucle principale ---------------------------------------------------------------
+
+    def resume_session(self, path: Path) -> ResumeState:
+        """Reprend une séance après un plantage du core (lot N8), en `PAUSED` / `core_restarted`.
+
+        Recharge le parcours et l'entraînement du journal, restaure temps, distance, braquet,
+        bloc ERG et biais, puis continue le même journal (événement `resume_after_crash`).
+        Lève `ResumeError` si le journal ne peut pas être repris.
+        """
+        rs = load_resume_state(path)
+        route_id = rs.route_id or "demo"
+        self._select_route(route_id, previous="IDLE")
+        if self.state.session_state != "READY":
+            raise ResumeError(f"parcours « {route_id} » du journal introuvable")
+        if rs.workout_id:
+            self._select_workout(rs.workout_id)
+            if self._workout is None:
+                raise ResumeError(f"entraînement « {rs.workout_id} » du journal introuvable")
+
+        self._t_session = rs.t
+        self.physics.s, self.physics.v = rs.s, 0.0
+        if rs.gear is not None and 1 <= int(rs.gear) <= self.gearing.n_gears:
+            self.gearing.k = int(rs.gear)
+        self.state.gear = self.gearing.k
+        if self._workout and rs.block is not None:
+            erg = ErgController(self._workout, self.cfg.rider.ftp_w)
+            erg.index = min(max(int(rs.block) - 1, 0), len(self._workout.blocks) - 1)
+            erg.t_block = min(rs.t_block, erg.block.duration_s)
+            if rs.erg_bias_pct is not None:
+                erg.bias_pct = BIAS_DEFAULT_PCT + rs.erg_bias_pct
+            self.erg = erg
+        self._sync_erg_state()
+        st = self.state
+        st.t, st.s, st.v = rs.t, rs.s, 0.0
+
+        self._rec = SessionRecorder(self.journal_dir, route_id, on_failure=self._on_recording_failure,
+                                    workout_id=rs.workout_id, resume_path=path, lines=rs.lines)
+        if rs.running:
+            # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
+            self._rec.event("pause", rs.last_ts)
+        self._rec.event("resume_after_crash", time.time())
+        self._device_up = self._device_states()
+        self._next_record = float(int(rs.t)) + 1.0
+        self.state.session_state = "PAUSED"   # la pause est déjà au journal
+        self._set_state("PAUSED", "core_restarted")
+        log.info("Séance reprise après un plantage du core : %s (t %.0f s, %.0f m%s).", path, rs.t, rs.s,
+                 f", bloc {rs.block}" if rs.block else "")
+        return rs
 
     def check_autostart(self, route_id: str, workout_id: str | None) -> None:
         """Vérifie parcours et entraînement d'un `--autostart` avant d'ouvrir les ports (lot J1).
@@ -548,13 +734,15 @@ class CoreSession:
                 raise AutostartError(f"entraînement « {workout_id} » refusé : {exc}") from exc
 
     async def run(self, autostart: bool = False, route_id: str = "demo",
-                  workout_id: str | None = None) -> None:
+                  workout_id: str | None = None, resume: Path | None = None) -> None:
         """Boucle de séance. Avec `autostart` : select_route, select_workout éventuel, puis start.
 
         Lève `AutostartError` avant d'ouvrir les ports IPC si le parcours ou l'entraînement
-        demandé est refusé.
+        demandé est refusé. Avec `resume` (lot N8) : reprise du journal donné à la place du
+        lancement ; `autostart` garde la reprise automatique dès que l'engine et le trainer
+        sont là (essais sans menu).
         """
-        if autostart:
+        if autostart and resume is None:
             self.check_autostart(route_id, workout_id)
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
@@ -562,12 +750,21 @@ class CoreSession:
         loop = asyncio.get_running_loop()
         # SIGHUP : terminal fermé. Sans gestionnaire, le processus mourrait sans relâcher le
         # trainer et BlueZ garderait la liaison ouverte (trainer réservé pour les autres applis).
-        for sig in (signal.SIGINT, signal.SIGTERM, signal.SIGHUP):
+        for name in ("SIGINT", "SIGTERM", "SIGHUP"):
+            if hasattr(signal, name):
+                try:
+                    loop.add_signal_handler(getattr(signal, name), self.stop_event.set)
+                except NotImplementedError:
+                    pass
+        if resume is not None:
+            self._autoresume = autostart
             try:
-                loop.add_signal_handler(sig, self.stop_event.set)
-            except NotImplementedError:
-                pass
-        if autostart:
+                self.resume_session(resume)
+            except ResumeError as exc:
+                log.error("Reprise impossible : %s ; le core démarre sans séance.", exc)
+                self._rec = None
+                self._set_state("IDLE")
+        elif autostart:
             self._autoresume = True
             self._on_command("select_route", {"route_id": route_id}, 0)
             if workout_id:
@@ -612,6 +809,17 @@ class CoreSession:
                 next_state += DT_STATE
                 if next_state <= now:   # retard de plus d'une trame : on se recale
                     next_state = now + DT_STATE
+                self._frame_count += 1
+                curr_dev = self._build_devices()
+                if (curr_dev != self._last_devices) or (self._frame_count % 30 == 0):
+                    self.state.devices = curr_dev
+                    self._last_devices = curr_dev
+                else:
+                    self.state.devices = None
+                if self.bots:
+                    self.state.bots = [b.to_dict() for b in self.bots]
+                else:
+                    self.state.bots = None
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S

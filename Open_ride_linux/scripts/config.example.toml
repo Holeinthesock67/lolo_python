@@ -1,0 +1,33 @@
+# Configuration locale d'OpenRide : ~/OpenRide/config.toml (hors du dépôt).
+# Créée au premier lancement depuis scripts/config.example.toml. Toute clé absente prend sa
+# valeur par défaut (docs/SRS_v1.1.md §11). Les adresses et noms réels des appareils ne vont
+# qu'ici : « openride-core devices --save » les écrit pour vous.
+
+[rider]
+ftp_w = 250          # puissance critique (W), utilisée par les séances ERG
+mass_kg = 75         # masse du cycliste (kg)
+
+[bike]
+mass_kg = 9
+
+[trainer]
+device_name = "HomeTrainer"   # fragment du nom annoncé par le home trainer
+difficulty_pct = 100          # 0 à 100 : part de la pente ressentie en SIM
+# trace_ftms = false          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
+
+[drivers]
+trainer = "ftms"              # "ftms" (Bluetooth), "mock" ou "sim" (Bluetooth simulé)
+input = "click"               # "click", "keyboard", "none" ou "sim"
+trainer_address = ""          # rempli par openride-core devices --save
+click_address = ""            # boîtier « + » du Click
+click_minus_address = ""      # boîtier « − » du Click
+hr = "none"                   # ceinture cardio : "none" ou "ble"
+hr_address = ""
+hr_name = ""
+
+[render]
+quality = "low"               # low, medium, high
+theme = "default"
+
+[engine]
+godot = ""                    # chemin de Godot 4.3 (rempli par scripts/install.sh)

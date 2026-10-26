@@ -4,9 +4,13 @@ Un fichier JSONL par séance, une ligne par seconde, vidée sur disque à chaque
 un plantage, `openride-core recover` peut transformer le dernier journal en FIT.
 
 Sortes de lignes :
-- `{"kind": "header", "version": 1, "route_id": ...}` en tête ;
+- `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ...}` en tête
+  (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8) ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
 - `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ;
+- `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un
+  plantage reprend la séance dans le même fichier (lot N8) ; ce n'est pas un événement du
+  chronomètre : les lectures du chronomètre et le FIT ne gardent que `TIMER_EVENTS` ;
 - `{"kind": "device", "ts": ..., "device": "trainer" | "click_plus" | "click_minus" | "hr",
   "state": "up" | "down"}` au changement d'état d'un appareil (lot M4, absentes des journaux
   antérieurs au 24 octobre 2026). Les lectures qui ne connaissent pas cette sorte l'ignorent.
@@ -28,7 +32,8 @@ JOURNAL_DIR = OPENRIDE_HOME / "Activities" / ".journal"
 
 FSYNC_EVERY_S = 5.0   # fsync bloque la boucle ~7 ms ; flush à chaque ligne protège déjà d'un plantage du programme
 
-EVENTS = ("start", "pause", "resume", "stop")
+TIMER_EVENTS = ("start", "pause", "resume", "stop")
+EVENTS = (*TIMER_EVENTS, "resume_after_crash")
 DEVICES = ("trainer", "click_plus", "click_minus", "hr")
 DEVICE_STATES = ("up", "down")
 
@@ -49,18 +54,22 @@ class Record:
     mode: str = "SIM"
     gear: int | None = None
     grade_sent: float | None = None   # % envoyé au trainer en SIM (braquet, anticipation, lissage)
+    difficulty_pct: int | None = None
     block: int | None = None     # bloc d'entraînement ERG (à partir de 1)
     target_w: float | None = None  # cible ERG envoyée au trainer (W), None en SIM / FreeRide / pause
     erg_bias_pct: float | None = None  # biais du Click appliqué à la cible (%, 0 sans appui), None hors ERG actif
 
 
 class JournalWriter:
-    def __init__(self, path: Path, route_id: str | None = None) -> None:
+    def __init__(self, path: Path, route_id: str | None = None, workout_id: str | None = None,
+                 header: bool = True) -> None:
+        """Ouvre le journal en ajout ; `header=False` continue un journal existant (reprise, lot N8)."""
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
         self._fh: IO[str] = path.open("a", encoding="utf-8")
         self._last_sync = 0.0
-        self._write({"kind": "header", "version": 1, "route_id": route_id})
+        if header:
+            self._write({"kind": "header", "version": 1, "route_id": route_id, "workout_id": workout_id})
 
     def _write(self, obj: dict) -> None:
         self._fh.write(json.dumps(obj, separators=(",", ":")) + "\n")

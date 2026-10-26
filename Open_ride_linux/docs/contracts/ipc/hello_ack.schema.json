@@ -24,7 +24,8 @@
       "required": [
         "ftp_w",
         "gears_total",
-        "theme"
+        "theme",
+        "difficulty_pct"
       ],
       "properties": {
         "ftp_w": {
@@ -37,6 +38,11 @@
         },
         "theme": {
           "type": "string"
+        },
+        "difficulty_pct": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 100
         }
       }
     }

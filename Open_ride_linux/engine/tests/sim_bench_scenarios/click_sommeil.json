@@ -1,0 +1,88 @@
+{
+  "description": "Click : boîtiers lents à connecter, appuis longs, « − » coupé qui se rendort puis réveillé par un appui perdu, « + » qui refuse une connexion.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 1.5,
+    "minus": {
+      "connect_failures": 1
+    }
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [
+    {
+      "t": 10,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 14,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 20,
+      "action": "press",
+      "button": "+",
+      "duration_s": 1.2
+    },
+    {
+      "t": 28,
+      "action": "press",
+      "button": "-",
+      "duration_s": 1.2
+    },
+    {
+      "t": 35,
+      "device": "click_minus",
+      "action": "drop"
+    },
+    {
+      "t": 45,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 50,
+      "device": "click_minus",
+      "action": "wake"
+    },
+    {
+      "t": 58,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 62,
+      "device": "click_plus",
+      "action": "connect_failures",
+      "count": 1
+    },
+    {
+      "t": 63,
+      "device": "click_plus",
+      "action": "drop"
+    },
+    {
+      "t": 75,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 80,
+      "action": "press",
+      "button": "+"
+    }
+  ],
+  "bench": {
+    "world": "demo",
+    "duration_s": 95,
+    "every_s": 10
+  }
+}
