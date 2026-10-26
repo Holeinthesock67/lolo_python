@@ -124,3 +124,7 @@ Ordre conseillé : U0 et U1 ; puis le premier jalon (U-Q5) : U2, U4, U5, U6, U7,
 | 4 | Droits des textures | Textures CC0 seulement, téléchargées dans un pack, jamais dans le dépôt |
 | 5 | Biomes lointains invisibles sur des traces françaises | Forçage (U-Q1), parcours de démonstration fictifs |
 | 6 | Données personnelles | Aucune coordonnée réelle dans le dépôt ni dans les tests ; tables régionales à grosse maille |
+
+## 10. Autre ajout prévu pour la 3.0
+
+- **Option « gravel » (décision du propriétaire du 25 octobre 2026, question W-Q2 du [monde ouvert](../2.0/PLAN_SERIE_W.md)) :** un réglage des menus qui ouvre au monde ouvert les chemins de terre et les pistes forestières. Le navigateur peut alors les emprunter, et l'engine leur donne un ruban et une texture de terre ou de gravier. Ce réglage pourra aussi servir aux biomes (pistes de savane ou de désert).
