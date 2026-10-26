@@ -44,12 +44,14 @@ Pente de l'ennemi, avant le décalage du braquet (Q2). Les fractions de FTP sont
 | --- | --- | --- |
 | `arch` (Perfect Shift) | À chaque rupture de pente d'au moins 3 points, `arch_lead_s` avant (défaut 0,8 s, valeur de R0) | Sens conseillé : `up` ou `down` |
 | `strike_target` | Diesel : à la fin de chaque tunnel ; Grimpeur : balises d'armure ; boss phase 1 : verrous | Points d'armure |
-| `z_zone` | Puncheur : zone bleue de 2 s avant chaque bosse ; boss phase 2 : ondes de choc | — |
+| `parry_zone` | Puncheur : zone bleue de 2 s avant chaque bosse ; boss phase 2 : ondes de choc | — |
 | `tunnel` | Diesel : tunnels de cadence de 20 s toutes les 40 s | Cadence visée (90) et tolérance (3) |
 | `rock` | Grimpeur : rochers à briser, un par palier | Armure (2) |
 | `pad` | Sprinteur : pavés de boost de 8 s pendant les salves | Seuil (1,40 FTP) et braquet minimal (10) |
 | `purge` | Saboteur : balise de purge 20 s après chaque piratage | — |
 | `shockwave` | Boss phase 2 : toutes les 30 s | — |
+
+- Cibles (`strike_target`), zones de parade (`parry_zone`) et balises (`purge`) ne se chevauchent jamais, avec au moins 1 s d'écart à la vitesse nominale : un appui sur Z n'a qu'un sens (plan de boutons commun).
 
 ### 4.4 Le boss « la Chimère centrale »
 

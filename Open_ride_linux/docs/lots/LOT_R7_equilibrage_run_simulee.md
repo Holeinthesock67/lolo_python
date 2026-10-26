@@ -26,9 +26,9 @@ R6 livré ; R15 utile (sinon scénarios écrits à la main).
 
 | Profil | FTP | W' | Comportement |
 | --- | --- | --- | --- |
-| Débutant | 150 W | 12 kJ | Tient la cible à ± 8 %, 30 % de Perfect Shifts, A et Z une fois sur deux |
-| Moyen | 250 W | 20 kJ | ± 5 %, 60 % de Perfect Shifts, A et Z trois fois sur quatre |
-| Confirmé | 330 W | 25 kJ | ± 3 %, 90 % de Perfect Shifts, A et Z presque toujours |
+| Débutant | 150 W | 12 kJ | Tient la cible à ± 8 %, 30 % de Perfect Shifts, les appuis sur Z une fois sur deux |
+| Moyen | 250 W | 20 kJ | ± 5 %, 60 % de Perfect Shifts, les appuis sur Z trois fois sur quatre |
+| Confirmé | 330 W | 25 kJ | ± 3 %, 90 % de Perfect Shifts, les appuis sur Z presque toujours |
 | Fatigué | 250 W | 20 kJ | Comme Moyen, puis −15 % de puissance après 30 min |
 
 ### 4.3 Outil et cibles

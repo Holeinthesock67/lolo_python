@@ -23,7 +23,7 @@ R8, R9 et R10 à R13 livrés ; R15 et R16 livrés.
 | 2 | Run de 30 min en endurance | IF entre 0,62 et 0,72 ; surchauffe ressentie comme juste |
 | 3 | Run de 45 min en seuil | Calendrier tenu à ± 1 min ; boss atteint à 30 min |
 | 4 | Run de 45 min en VO2max | Bosses ressenties sur le trainer ; Perfect Shifts réussis quand le geste est bon |
-| 5 | Boutons | +, B, Z, A courts et A long reconnus à chaque appui ; Y met en pause et reprend ; aucune pause involontaire |
+| 5 | Boutons | + et B courts et longs, Z court et long, A court et long reconnus à chaque appui ; Z n'a qu'un sens à chaque instant ; Y met en pause et reprend ; aucune pause involontaire |
 | 6 | Click éteint 30 s pendant une salle | Firewall arrêté, reprise propre |
 | 7 | Core tué pendant une salle | Reprise au début de la salle |
 | 8 | Abandon depuis la pause | Bilan `abandoned`, FIT enregistré |

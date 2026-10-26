@@ -19,7 +19,7 @@ R1 livré ; R10 pour l'intégration dans la scène.
 
 - Entrée : la trame `state` (objet `rogue` compris) et la FTP de `hello_ack`. Sortie : un dictionnaire de valeurs prêtes à afficher :
   - vitesse « 01 » à « 12 », watts en % de FTP (arrondi à 1 %), cadence, posture et sa couleur ;
-  - arc gauche bleu (bouclier / `shield_max`), arc droit orange (adrénaline / 100), seuil de l'attaque A (50) marqué ;
+  - arc gauche bleu (bouclier / `shield_max`), arc droit orange (adrénaline / 100), seuil de l'attaque Z (50) marqué ;
   - W'bal en % de W', rouge sous 25 % ;
   - PV de l'ennemi en %, écart au Firewall en mètres (rouge sous 30 m) ;
   - en couloir : 3 cartes, 2 portes, sélection, coût de relance ;
@@ -31,7 +31,7 @@ R1 livré ; R10 pour l'intégration dans la scène.
 
 - Hologramme à 1,2 m au-dessus de la roue arrière, dans l'axe du regard ; lisible à 180 bpm (gros chiffres, fort contraste).
 - Arcs : deux demi-cercles au sol autour du vélo, rayon 1,5 m.
-- Caméra : champ de vision de 75° au repos, jusqu'à 95° pendant un sprint (puissance ≥ 1,40 FTP) ou une attaque A, retour en 1 s ; tremblement léger (amplitude 0,05 m, 0,2 s) aux impacts et aux Perfect Shifts, coupé si le réglage « réduire les mouvements » est actif (O4).
+- Caméra : champ de vision de 75° au repos, jusqu'à 95° pendant un sprint (puissance ≥ 1,40 FTP) ou une attaque Z, retour en 1 s ; tremblement léger (amplitude 0,05 m, 0,2 s) aux impacts et aux Perfect Shifts, coupé si le réglage « réduire les mouvements » est actif (O4).
 - Sons : bip de Perfect Shift, impact, parade, alarme de contact du Firewall (`sound_model.gd`).
 - **Salle manquée** (`room_skipped`, décision R-Q2) : bandeau « Salle manquée −10 or » de 3 s, écran qui grésille en rouge 0,5 s et son d'échec distinct de celui de la défaite.
 

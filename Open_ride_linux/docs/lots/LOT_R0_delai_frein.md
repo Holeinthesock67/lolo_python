@@ -2,7 +2,7 @@
 
 ## 1. Objectif
 
-Le mode Cyber-Rogue (version 2.0, [plan de la série R](../2.0/PLAN_SERIE_R.md)) repose sur des changements de résistance rapides : bosses de 15 s du Puncheur, fenêtre de 1,5 s du Perfect Shift, purge de −4 vitesses du Disjoncteur. Le temps de réponse du frein n'a jamais été mesuré ; l'essai 69 du 25 octobre a montré un retard d'environ 22 s sur des marches de 0 à 7 %, surtout au relâchement. Ce lot mesure ce délai sur le trainer du propriétaire et en tire les réglages du mode : vitesse de variation de la pente envoyée, durée minimale d'une bosse, avance des arches.
+Le mode Cyber-Rogue (version 2.0, [plan de la série R](../2.0/PLAN_SERIE_R.md)) repose sur des changements de résistance rapides : bosses de 15 s du Puncheur, fenêtre de 1,5 s du Perfect Shift, grand pas de −3 vitesses (appui long sur B). Le temps de réponse du frein n'a jamais été mesuré ; l'essai 69 du 25 octobre a montré un retard d'environ 22 s sur des marches de 0 à 7 %, surtout au relâchement. Ce lot mesure ce délai sur le trainer du propriétaire et en tire les réglages du mode : vitesse de variation de la pente envoyée, durée minimale d'une bosse, avance des arches.
 
 Ce lot a deux parties :
 - **R0a (délégable) :** le script de mesure. C'est le même outil que l'outil X5 (« banc de latence du trainer par paliers ») du plan des outils de test ; si X5 est livré avant, R0a se réduit à vérifier qu'il couvre le §4.1 ;
@@ -24,7 +24,7 @@ Q3 et Q4 livrés (journal des commandes FTMS, rampe à deux vitesses). Pour R0b 
 
 - Nouvel outil `python -m openride_core.tools.step_latency` qui pilote le trainer en SIM, sans engine, et joue une suite de marches. Chaque marche dure 30 s, précédée de 30 s de stabilisation à la pente de départ :
   - pente envoyée : 0→4, 0→7, 0→10, 4→0, 7→0, 10→0 et 0→−3 % ;
-  - braquet (formule centrée de la décision Q2, 1 point par vitesse) sur une pente de 3 % : +1, −1, +4 et −4 vitesses ;
+  - braquet (formule centrée de la décision Q2, 1 point par vitesse) sur une pente de 3 % : +1, −1, +3 et −3 vitesses ;
   - chaque marche est jouée 3 fois, dans un ordre mélangé (graine affichée).
 - Pendant l'essai, la rampe du core est **coupée** (`grade_rate` infini pour l'outil seul) : on mesure le trainer, pas le core.
 - Le cycliste garde une cadence de 85 ± 3 rpm, affichée en grand dans le terminal avec le compte à rebours de la marche suivante. Une marche jouée hors de 82 à 88 rpm est marquée « cadence hors plage » et rejouée une fois à la fin.

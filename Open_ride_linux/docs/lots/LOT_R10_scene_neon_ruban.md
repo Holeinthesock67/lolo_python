@@ -34,7 +34,7 @@ R1 livré. Un faux core (`engine/tests/fake_core.py`) qui joue une salle d'exemp
 | ≥ +6,5 % | Magenta (mur) |
 
 - Les 200 m devant le joueur sont toujours affichés en couleurs franches (10 à 15 s à l'avance).
-- Marqueurs : arches dorées (`arch`), cibles [A] orange, zones [Z] bleues, pavés, balises de purge, tunnels de cadence (anneaux), rochers ; la fenêtre active (`state.rogue.windows`) s'allume.
+- Marqueurs : arches dorées (`arch`), cibles d'attaque [Z] orange, zones de parade [Z] bleues, pavés, balises de purge, tunnels de cadence (anneaux), rochers ; la fenêtre active (`state.rogue.windows`) s'allume.
 
 ### 4.3 Décor et Firewall
 
