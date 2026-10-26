@@ -1,6 +1,6 @@
 # OpenRide 2.0 – Progression : niveaux, équipement et avatar (série V)
 
-25 octobre 2026. Demande du propriétaire, acceptée pour la 2.0 : une progression façon Zwift, avec niveaux et points d'expérience, vélos, roues et tenues à débloquer, et un avatar personnalisable. **La série V commence après la 1.0.** Cahiers des lots rédigés le 26 octobre 2026 (`docs/lots/LOT_V*.md`, index `docs/lots/00_INDEX.md`) ; les choix encore ouverts sont les questions V-Q4 à V-Q13 du §5.
+25 octobre 2026. Demande du propriétaire, acceptée pour la 2.0 : une progression façon Zwift, avec niveaux et points d'expérience, vélos, roues et tenues à débloquer, et un avatar personnalisable. **La série V commence après la 1.0.** Cahiers des lots rédigés le 26 octobre 2026 (`docs/lots/LOT_V*.md`, index `docs/lots/00_INDEX.md`) ; les choix encore ouverts sont les questions V-Q5 à V-Q13 du §5 (V-Q4 réglée le 26 octobre).
 
 ## 1. En résumé
 
@@ -64,7 +64,7 @@
 
 - Profil local dans `~/OpenRide/` : niveau, équipement débloqué et choisi, réglages de l'avatar. Aucune donnée personnelle dans le dépôt.
 - Expérience et déblocages calculés par le core, module pur testé en pytest (comme les règles des séries R et T).
-- Contrat IPC, ajouts compatibles (révision à confirmer, V-Q4 : la 1.2 est prise par Q1 et N13) : `hello_ack.config` gagne l'équipement et l'avatar choisis et le solde de pièces ; message `xp` en fin de séance (gains détaillés, niveau, déblocages) ; commandes `equip` et `set_avatar` depuis le menu ; le cahier V1 ajoute `buy`, `list_garage` et le message `garage`, nécessaires au Garage.
+- Contrat IPC v1.4 avec R1 et T1, ajouts compatibles (V-Q4 réglée le 26 octobre) : `hello_ack.config` gagne l'équipement et l'avatar choisis et le solde de pièces ; message `xp_result` en fin de séance (gains détaillés, niveau, déblocages) ; commandes `equip` et `set_avatar` depuis le menu ; le cahier V1 ajoute `buy`, `list_garage`, le message `garage` et le message `progression` envoyé après un choix (décision D7 de l'audit IPC).
 
 ## 3. Risques
 
@@ -79,7 +79,7 @@
 
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
-| V1 | Contrat : progression dans `hello_ack`, message `xp`, catalogue `garage`, commandes `list_garage`, `buy`, `equip` et `set_avatar` (révision IPC de V-Q4) | P1 | Interne (décision) |
+| V1 | Contrat : progression dans `hello_ack`, messages `progression` et `xp_result`, catalogue `garage`, commandes `list_garage`, `buy`, `equip` et `set_avatar` (révision 1.4, avec R1 et T1) | P1 | Interne (décision) |
 | V2 | Moteur d'expérience : gains, niveaux, défis, recalcul depuis le journal | — | Délégable |
 | V3 | Catalogue d'équipement en données, effets bornés appliqués à `PhysicsParams`, compromis par terrain, calcul du temps gagné par l'équipement | V2 | Délégable |
 | V3b | Pièces : gains, prix, achats, solde dans le profil, vies du mode Cyber-Rogue | V2, V3, V4 | Délégable |
@@ -90,7 +90,7 @@
 | V8 | Menu « Garage » : choix de l'équipement et de l'avatar, aperçu en 3D | V1, V6, V11, N6 | Interne |
 | V9 | Fin de séance : expérience et pièces gagnées, temps gagné par l'équipement, passage de niveau, déblocages | V1, V11, N4 | Interne |
 | V10 | Recette sur ton PC et ton vélo : progression sur ton historique réel, effet de l'équipement, rendu de l'avatar | V2 à V9, V11 | Propriétaire |
-| V11 | Core : progression branchée dans la séance (équipement appliqué, `loadout` au journal, `hello_ack`, `xp`, commandes du Garage) ; lot ajouté le 26 octobre, absent du premier découpage | V1, V2, V3, V3b, V4 | Délégable |
+| V11 | Core : progression branchée dans la séance (équipement appliqué, `loadout` au journal, `hello_ack`, `progression`, `xp_result`, commandes du Garage) ; lot ajouté le 26 octobre, absent du premier découpage | V1, V2, V3, V3b, V4 | Délégable |
 
 Ordre conseillé : V2 tout de suite, puis V3 et V4, puis V3b (modules purs, sans effet sur la séance, développables avant la 1.0) ; V1 avec les autres ajouts de sa révision, puis V11 ; V5 quand les séries T et R sont avancées ; puis l'engine (V6 à V9) et la recette V10.
 
@@ -104,7 +104,7 @@ Ordre conseillé : V2 tout de suite, puis V3 et V4, puis V3b (modules purs, sans
 
 Chaque cahier applique la proposition recommandée en attendant la réponse ; une autre réponse ne change que le fichier de données ou le cahier concerné.
 
-- [ ] **V-Q4 Révision du contrat :** la 1.2 est prise par Q1 et N13 ; P1 passe en 1.3. Proposition : V1 dans la même révision que R1 et T1 (1.4), plutôt qu'une 1.5 à part.
+- [x] **V-Q4 Révision du contrat (26 octobre, décision D2 de l'audit IPC) :** P1 en 1.3 ; V1 dans la révision 1.4 avec R1 et T1, en un seul lot de contrat. Décision D7 : message `progression` dédié après un choix au Garage, bilan nommé `xp_result`.
 - [ ] **V-Q5 Calendrier :** proposition : modules purs du core (V2, V3, V3b, V4) développés dès maintenant, sans branchement ; V1, V11 et l'engine (V6 à V9) après la 1.0, comme prévu.
 - [ ] **V-Q6 Journaux anciens :** avant V2, le journal ne dit pas si la séance était réelle, simulée (banc simulé, `--trainer mock`) ou rejouée. Proposition : tout journal ancien compte ; `openride-core xp` les liste pour que tu repères les séances simulées.
 - [ ] **V-Q7 ERG et distance :** proposition : une séance ERG rapporte 10 points par minute (+ 20 % si terminée) **à la place** de la distance et du dénivelé, pour ne pas compter deux fois (10 points par minute valent 20 points par km à 30 km/h).
