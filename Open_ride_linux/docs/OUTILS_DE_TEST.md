@@ -14,6 +14,8 @@ Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. 
 
 Détail des tests de l'engine : [engine/tests/README.md](../engine/tests/README.md).
 
+**Tout d'un coup sur le PC (lot X4) :** `scripts/recette_pc.py` enchaîne core, compilateur, engine, bout en bout, tests graphiques et scanner de confidentialité, garde un journal par étape dans `~/OpenRide/recettes/<date>_<heure>/` avec `resume.txt`, `resume.json` et `perf.csv` (budgets de temps), et compare au passage précédent (étape passée d'OK à ÉCHEC, nombre de tests changé). Options : `--rapide` (core sans les tests lents, sans tests graphiques), `--seulement core,engine`, `--sans visual`, `--perf-strict`. Utilise `core/.venv` s'il existe.
+
 ## 2. Matériel simulé
 
 | Outil | Usage |
