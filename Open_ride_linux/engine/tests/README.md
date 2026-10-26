@@ -73,7 +73,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_theme_render_params.gd` | L3 | Paramètres de rendu tirés du thème (`theme_render_params.gd`) : uniforms terrain, fonction de référence du mélange herbe/roche/neige, poids triplanaires, route et direction du soleil |
 | `test_terrain_material.gd` | E2 | Instanciation et configuration du shader triplanaire (`terrain_material.gd` et `terrain.gdshader`) : uniforms du thème et constantes de L3, textures (avec mipmaps), ligne médiane de la route sur une texture de thème, tuiles sans couleur de sommet (le rendu réel est vérifié dans `tests/render/`) |
 | `test_render_quality.gd` | E1 | Brouillard de limite (`render_quality.gd`, `main.tscn`) : mode profondeur à pleine opacité (`fog_density` = 1), début et fin avec et sans terrain |
-| `test_quality_presets.gd` | L4 | Préréglages de qualité (`quality_presets.gd`) et arguments `--quality` / `--theme` de `engine_args.gd` |
+| `test_quality_presets.gd` | L4, P4 | Préréglages de qualité (`quality_presets.gd`), budgets du décor vivant `living()` (coupure comprise) et arguments `--quality` / `--theme` de `engine_args.gd` |
 | `test_banner_layout.gd` | – | Placement du bandeau d'alerte (`banner.gd`, `layout_for`) : à droite du HUD s'il reste 360 px, sinon dessous, jamais par-dessus, de 800 à 3 840 px de large |
 | `test_sound_model.gd` | L5 | Modèle sonore sans affichage (`sound_model.gd`) : vent, roue libre (délai 0,5 s et arrêt à > 10 W), hystérésis des points d'intérêt, lissage 12 dB/s et déterminisme |
 | `test_render_quality.gd` | E3 | Application des préréglages de qualité (`render_quality.gd` et `quality_presets.gd`) : caméra, ombres, SSAO, MSAA, brouillard en profondeur et volumétrique |
@@ -87,6 +87,8 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_osm_decor_route.gd` | – | Décor OSM et route : aucun arbre dans un bâtiment ni à moins de 3 m de ses murs (`tree_renderer.gd`, `exclude_buildings`), cours d'eau coupés au passage de la chaussée et ruisseau sur le bas-côté retiré (`osm_streamer.gd`, `cut_lines_at_road`) |
 | `test_far_terrain_carve.gd` | – | Terrain lointain abaissé sous la route (`terrain_tiles.gd`, `carve_under_route`) : vallée en V à 30 % et route en S à 7 %, dépassement de 8 m sans correctif, au moins 2 m sous la chaussée après, aucun sommet relevé, bord commun de deux tuiles identique |
 | `test_sound_player.gd` | E4 | Lecteurs et sons procéduraux du parcours (`sound_player.gd`) : synthèse au démarrage (< 500 ms), vent, roue libre, limitation à 4 lecteurs 3D actifs, volumes à 0,5 dB de `sound_model.gd` |
+| `test_wind_model.gd` | P4 | Modèle du vent (`wind_model.gd`) : repère, lissage (90 % en 1,2 s sans dépassement), phase continue, expiration du vent du core et vent du thème, vent apparent, coût de `evaluate` |
+| `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
 
 ## Étapes du script
 
