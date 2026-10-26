@@ -86,7 +86,7 @@ Les bots de N9 roulent à puissance constante. En 2.0, chaque bot a un profil ph
 
 ### 3.5 Contrat
 
-Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC (lot P1). La série T, comme la série R, passe donc en **v1.3**, par ajouts compatibles :
+Les ajouts suivent ceux de la série P, qui prend la version 1.3 du contrat IPC (lot P1 ; la 1.2 est prise par Q1 et N13). La série T, comme la série R, passe donc en **v1.4**, par ajouts compatibles :
 
 - **Format `.world` 1.x :** couche facultative `segments` (`segments.json` : identifiant, nom, type `sprint` ou `climb`, `s_start`, `s_end`, longueur, pente moyenne, gain, catégorie, source `auto` ou `manual`). L'engine la lit lui-même, comme les autres couches.
 - **Trame `state` :** champ facultatif `segment` (segment en cours ou prochain, distance, chrono, écart au record) et champ `powerup` (bonus en réserve, bonus actif, temps restant). Chaque élément de `bots` gagne `profile`, `cp_w`, `mass_kg`, `wbal_pct`, `jersey` et `gap_s` (écart en temps de passage, positif si le bot est devant). La trame gagne `bot_ahead` et `bot_behind` (identifiants des deux voisins immédiats, ou `null`). Les 5 bots au plus de N9 tiennent toujours dans 1 400 octets avec ces champs, à vérifier par les tests de taille de `core/tests/test_contract_ipc.py`.
@@ -100,7 +100,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 | 1 | Profil bruité : faux départs de montée sur une trace GPS | Détection sur la pente lissée déjà utilisée par la route, seuils en constantes, vecteurs de test |
 | 2 | Records faussés par les bonus | Records « avec bonus » et « sans bonus » séparés (décision T-Q1) |
 | 3 | Bonus puissance perçu comme une triche dans l'historique (NP, TSS) | Bilan calculé sur la puissance mesurée, jamais sur la puissance bonifiée |
-| 4 | Conflit de version du contrat avec les séries P et R | Ordre fixé : P1 en v1.2, puis R et T en v1.3 |
+| 4 | Conflit de version du contrat avec les séries P et R | Ordre fixé : P1 en v1.3, puis R et T en v1.4 (la v1.2 est prise par Q1 et N13) |
 | 6 | Bots à profil trop forts ou trop faibles selon le parcours | Calibrage par simulation du parcours avant le départ, vérifié par une matrice de parcours types (plat, vallonné, col) |
 | 5 | HUD chargé (vent, abri, ERG, segment, bonus) | Blocs segment et bonus dans le coin supérieur droit, hors de la colonne HUD de gauche ; le lot P16 laisse cette zone libre |
 
@@ -108,7 +108,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
-| T1 | Contrat : couche `segments` du `.world`, champs `segment` et `powerup`, message `segment_result`, événements Z et A (IPC v1.3) | P1 | Interne (décision) |
+| T1 | Contrat : couche `segments` du `.world`, champs `segment` et `powerup`, message `segment_result`, événements Z et A (IPC v1.4) | P1 | Interne (décision) |
 | T2 | Détection automatique des montées et des sprints (module pur, vecteurs de test) | — | Délégable |
 | T3 | Compilateur : couche `segments` par `add-layer`, sprints déclarés à la main, segments du parcours de démonstration | T1, T2 | Délégable |
 | T4 | Chronométrage dans le core : franchissements interpolés, pauses, boucles et aller-retour, journal | T1, T2 | Délégable |

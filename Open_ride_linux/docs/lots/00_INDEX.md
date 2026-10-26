@@ -91,7 +91,7 @@
 | [O14](LOT_O14_affichage_courbes.md) | Courbes de la séance à l'écran | GDScript | O13, N7 | Moyenne | Non : interne (contrôle visuel) |
 | [O15](LOT_O15_bibliotheque_parcours.md) | Bibliothèque de parcours : fiches (dénivelé, montée, difficulté), tri, filtres, packs de parcours | Python | O5 | Moyenne | Oui, après O5 |
 | [O16](LOT_O16_pack_cols_celebres.md) | Pack de départ : cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | Oui, après O15 |
-| [P1](LOT_P1_contrat_vent_decor.md) | Contrat : vent et aspiration dans `state` (IPC v1.2), configuration `[wind]`, thème 1.2 (nuages, météo, ambiance, faune, saison, heure), points d'intérêt `wind_turbine` et `flag` | Markdown + JSON | O8 | Petite | Non : interne (décision du propriétaire) (issue #125) |
+| [P1](LOT_P1_contrat_vent_decor.md) | Contrat : vent et aspiration dans `state` (IPC v1.3), configuration `[wind]`, thème 1.2 (nuages, météo, ambiance, faune, saison, heure), points d'intérêt `wind_turbine` et `flag` | Markdown + JSON | O8 | Petite | Non : interne (décision du propriétaire) (issue #125) |
 | [P2](LOT_P2_vent_physique_core.md) | Vent physique côté core : rafales, composante de face, vitesse virtuelle et résistance ressentie en SIM | Python | P1 | Moyenne | Oui, après P1 (issue #126) |
 | [P3](LOT_P3_aspiration_bots.md) | Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | Oui, après P2 et N9 (issue #127) |
 | [P4](LOT_P4_modele_vent_engine.md) | Engine : modèle du vent, indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (sans affichage) | GDScript | P1 | Petite | Oui, après P1 (issue #128) |
@@ -122,6 +122,23 @@
 | [Q5](LOT_Q5_fc_relayee_figee.md) | Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui ; issue #172 |
 | [Q6](LOT_Q6_boitier_gauche_click.md) | Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
 | [S1](LOT_S1_rendu_invisible.md) | Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible | GDScript | O1, Q2 (mêmes fichiers) | Moyenne | Oui (essai sur la GTX 1060 par le propriétaire) ; issue #190 |
+| [R0](LOT_R0_delai_frein.md) | Mesure du délai du frein du trainer (marches de pente et de braquet) : script et essai sur le vélo | Python | Q3, Q4 | Petite | Script oui (même outil que X5) ; essai par le propriétaire ; **version 2.0** |
+| [R1](LOT_R1_contrat_ipc_rogue.md) | Contrat IPC v1.4 : boutons Y, Z et A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run | Markdown + JSON | P1 | Petite | Non : interne (décision du propriétaire), **version 2.0** |
+| [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | Oui, **version 2.0** |
+| [R3](LOT_R3_generateur_salles.md) | Générateur de salles : profils des cinq archétypes et du boss, graine, marqueurs | Python | — | Moyenne | Oui, **version 2.0** |
+| [R4](LOT_R4_firewall.md) | Firewall : cycliste virtuel à une fraction de la FTP, écart au joueur | Python | R3 | Petite | Oui, **version 2.0** |
+| [R5](LOT_R5_combat.md) | Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe | Python | R0, R2, R3, R4 | Moyenne | Oui, **version 2.0** |
+| [R6](LOT_R6_run_deck_boss.md) | Run : machine à états, couloirs, deck et cartes, or, reliques, boss en trois phases | Python | R5 | Grande | Oui, **version 2.0** |
+| [R7](LOT_R7_equilibrage_run_simulee.md) | Table d'équilibrage en données et run simulée avec cyclistes types | Python | R6, R15 | Moyenne | Oui, **version 2.0** |
+| [R8](LOT_R8_integration_session.md) | Intégration dans la session du core : mode ROGUE, formule centrée, boutons Y, Z et A, journal, pause et reprise | Python | R1, R6, R15, Q4 | Grande | Non : interne (`session.py`), **version 2.0** |
+| [R9](LOT_R9_progression_permanente.md) | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies | Python | R6, V2, V3b, V4 | Petite | Oui, **version 2.0** |
+| [R10](LOT_R10_scene_neon_ruban.md) | Engine : scène néon, ruban 3D, shader de pente, arches et zones | GDScript + shader | R1 | Grande | Non : interne (rendu, contrôle visuel), **version 2.0** |
+| [R11](LOT_R11_hud_diegetique.md) | Engine : HUD diégétique, arcs au sol, champ de vision et tremblement | GDScript | R1, R10 | Moyenne | Modèle oui, rendu interne ; **version 2.0** |
+| [R12](LOT_R12_ennemis_boss.md) | Engine : ennemis et boss géométriques, effets d'impact | GDScript + shader | R10 | Moyenne | Non : interne (rendu, contrôle visuel), **version 2.0** |
+| [R13](LOT_R13_menu_cyber_rogue.md) | Engine : lancement depuis l'accueil, écran de départ, couloirs et cartes, pause, fin de run | GDScript | R1, R8, R10, R11, N6, O4 | Moyenne | Non : interne (`main.gd`, menu), **version 2.0** |
+| [R14](LOT_R14_recette.md) | Recette du mode Cyber-Rogue sur le PC et le vélo | — | R8, R9, R10 à R13, R15, R16 | Moyenne | Non : propriétaire, **version 2.0** |
+| [R15](LOT_R15_scenariste_run.md) | Scénariste de run : calendrier et salles composés à partir de l'objectif et de la durée | Python | R3, R6 | Petite | Oui, **version 2.0** |
+| [R16](LOT_R16_estimation_cp_wprime.md) | Estimation de CP et W' à partir des séances passées | Python | — | Petite | Oui, **version 2.0** |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -148,6 +165,8 @@ Leur forme dépendra des choix faits dans E1 et D.
 **Série Q (25 octobre, retours de l'essai sur le HomeTrainer) :** six lots tirés de l'essai de 1 h 27 sur le circuit synthétique `essai-69` (séance trop dure, pente qui paraît faible à l'écran, environ 22 s avant que la résistance se relâche, FC relayée figée, boîtier gauche du Click muet). Aucun ne demande de matériel pour sa recette automatique ; chacun se termine par un essai court du propriétaire sur le PC cible. Q1 ajoute la commande `set_difficulty` au contrat (v1.2, accepté par le propriétaire le 25 octobre, avec un défaut à 50 % et un réglage par curseur dans le menu, sans bouton du Click) ; le curseur lui-même est ajouté à O3 et O4. Q2 ne touche que l'engine et n'exagère que l'affichage, jamais la physique. Fichiers partagés : `session.py` (Q1 puis Q4) ; `ftms_driver.py` (Q3 puis Q5) ; `config.py` (Q2 à Q6, sections différentes) ; `main.gd` (Q2 seul). Q3 avant Q4 permet de mesurer le gain sur le trainer.
 
 **Série S (25 octobre, performances du rendu) :** demande du propriétaire d'explorer l'optimisation du moteur graphique en ne modélisant pas ce qui est invisible pour le cycliste (au-delà du brouillard, derrière la caméra, masqué par le relief, ombres hors champ). S1 commence par une mesure au banc simulé (`engine/tests/sim_bench.py`) et ne garde que les pistes qui font gagner des images par seconde sans changement visible. Fichiers partagés : `tree_renderer.gd` (O1 d'abord), `terrain_tiles.gd` (Q2 d'abord).
+
+**Série R (version 2.0, cahiers rédigés le 26 octobre) : mode Cyber-Rogue.** Plan, décisions du propriétaire, corrections du GDD et questions ouvertes R-Q1 à R-Q10 : `docs/2.0/PLAN_SERIE_R.md`. La série démarre après la 1.0 ; les issues des lots seront ouvertes à ce moment-là, sous l'issue de suivi #117. Seul le script de R0 (même outil que X5) peut être fait avant. R1 (contrat 1.4) est une décision du propriétaire et bloque R8 et l'engine. Délégables : R2, R3, R4, R5, R6, R7, R9, R15, R16, le script de R0 et le modèle de R11 ; internes : R1, R8, R10, R12, R13 ; propriétaire : R0 (essai) et R14. Les modules du jeu sont dans un nouveau paquet `rogue` du core (un fichier par lot), avec une seule table de valeurs `RogueBalance` (`rogue/balance.py`, complétée par R2 à R6 et R15, l'un après l'autre, puis chargée depuis `balance.toml` par R7). Fichiers partagés : `session.py`, `zwift_click.py` et `config.py` (R8 ; R2 ajoute seulement la section `[rogue]`) ; `main.gd` (R10 puis R13) ; `rogue.tscn` (R10, puis R11 et R12) ; `menu_model.gd` (R13).
 
 **Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
 
@@ -182,6 +201,8 @@ O8 ──► P1 ──► P2 ──► P3 (avec N9) ;  P1 ──► P4 ──►
 P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7)
 Q1 ──► Q4 ;  Q3 ──► Q5 ;  Q2, Q6 : indépendants
 O1, Q2 ──► S1
+Version 2.0 : Q3, Q4 ──► R0 ;  P1 ──► R1 ;  R3 ──► R4 ;  R0, R2, R3, R4 ──► R5 ──► R6 ──► R15 ──► R7 ;  R1, R6, R15 ──► R8
+             R6, V2, V3b, V4 ──► R9 ;  R1 ──► R10 ──► R11, R12 ;  R1, R8, R10, R11, N6, O4 ──► R13 ──► R14
 Version 2.0 : P17 ──► P7 ;  P7, P17 ──► P18 ──► P19 ;  N10, O3, P17 ──► P20
 ```
 
@@ -242,7 +263,7 @@ Si un contrat te semble faux ou incomplet, arrête-toi et pose la question au li
 
 ## 5. Partage des lots par issues GitHub
 
-Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L`, `série M`, `série N`, `série O`, `série P`, `série Q` ou `série S`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
+Depuis le 24 octobre, chaque lot ouvert a une issue GitHub, rattachée à l'issue de suivi [#48](https://github.com/Holeinthesock67/lolo_python/issues/48). Étiquettes : `lot`, `délégable` (recette automatique, sans matériel), `série J`, `série L`, `série M`, `série N`, `série O`, `série P`, `série Q`, `série R` ou `série S`, langage (`python`, `gdscript`, `ci`) et `bloqué` tant qu'un prérequis n'est pas sur `main`.
 
 1. Choisir une issue ouverte sans l'étiquette `bloqué`, sans assigné ni commentaire « Je prends ce lot ».
 2. Commenter « Je prends ce lot » sur l'issue, pour que deux IA ne fassent pas le même lot.
