@@ -122,6 +122,18 @@
 | [Q5](LOT_Q5_fc_relayee_figee.md) | Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui ; issue #172 |
 | [Q6](LOT_Q6_boitier_gauche_click.md) | Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
 | [S1](LOT_S1_rendu_invisible.md) | Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible | GDScript | O1, Q2 (mêmes fichiers) | Moyenne | Oui (essai sur la GTX 1060 par le propriétaire) ; issue #190 |
+| [V1](LOT_V1_contrat_progression.md) | Contrat : progression dans `hello_ack`, message `xp`, catalogue `garage`, commandes `list_garage`, `buy`, `equip`, `set_avatar` | Markdown + JSON | P1 ; révision IPC à confirmer (V-Q4) | Petite | Non : interne (décision du propriétaire) |
+| [V2](LOT_V2_moteur_experience.md) | Moteur d'expérience : gains, niveaux, défis, recalcul depuis le journal, commande `openride-core xp` | Python | — | Moyenne | Oui |
+| [V3](LOT_V3_catalogue_equipement.md) | Catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain, temps gagné par l'équipement | Python | V2 | Moyenne | Oui, après V2 |
+| [V3b](LOT_V3b_pieces.md) | Pièces : gains, prix, achats, solde, vies du mode Cyber-Rogue | Python | V2, V3, V4 | Petite | Oui, après V3 et V4 |
+| [V4](LOT_V4_profil_local.md) | Profil local (`~/OpenRide/profile.json`) : choix, achats, avatar, écriture sûre, migration | Python | V2 | Petite | Oui, après V2 |
+| [V5](LOT_V5_liens_series_T_R.md) | Liens avec les séries T et R : segments, maillots, runs, records et calibrage des bots | Python | V3b, V11, T4, T5, T13, T14, R9 | Moyenne | Oui, après les séries T et R |
+| [V6](LOT_V6_avatar_engine.md) | Engine : avatar généré par le code, pédalage synchronisé, danseuse, caméra de suivi | GDScript | V1 ; O7 utile | Grande | Non : interne (rendu) |
+| [V7](LOT_V7_rendu_equipement.md) | Engine : cadres, roues et tenues sur l'avatar, sons des roues, traînées d'air | GDScript | V6 ; P10 pour les sons | Moyenne | Non : interne (rendu) |
+| [V8](LOT_V8_menu_garage.md) | Menu « Garage » : équipement, achats, avatar, aperçu 3D | GDScript | V1, V6, V11, N6 | Moyenne | Non : interne (menu) |
+| [V9](LOT_V9_fin_de_seance_progression.md) | Fin de séance : expérience, pièces, temps gagné, niveau, déblocages | GDScript | V1, V11, N4 | Petite | Non : interne (écran) |
+| [V10](LOT_V10_recette_progression.md) | Recette de la série V sur le PC et le vélo du propriétaire | — | V2 à V9, V11 | Moyenne | Non : propriétaire |
+| [V11](LOT_V11_branchement_core.md) | Core : progression branchée dans la séance et commandes du Garage | Python | V1, V2, V3, V3b, V4 | Moyenne | Oui, après V1 |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -148,6 +160,8 @@ Leur forme dépendra des choix faits dans E1 et D.
 **Série Q (25 octobre, retours de l'essai sur le HomeTrainer) :** six lots tirés de l'essai de 1 h 27 sur le circuit synthétique `essai-69` (séance trop dure, pente qui paraît faible à l'écran, environ 22 s avant que la résistance se relâche, FC relayée figée, boîtier gauche du Click muet). Aucun ne demande de matériel pour sa recette automatique ; chacun se termine par un essai court du propriétaire sur le PC cible. Q1 ajoute la commande `set_difficulty` au contrat (v1.2, accepté par le propriétaire le 25 octobre, avec un défaut à 50 % et un réglage par curseur dans le menu, sans bouton du Click) ; le curseur lui-même est ajouté à O3 et O4. Q2 ne touche que l'engine et n'exagère que l'affichage, jamais la physique. Fichiers partagés : `session.py` (Q1 puis Q4) ; `ftms_driver.py` (Q3 puis Q5) ; `config.py` (Q2 à Q6, sections différentes) ; `main.gd` (Q2 seul). Q3 avant Q4 permet de mesurer le gain sur le trainer.
 
 **Série S (25 octobre, performances du rendu) :** demande du propriétaire d'explorer l'optimisation du moteur graphique en ne modélisant pas ce qui est invisible pour le cycliste (au-delà du brouillard, derrière la caméra, masqué par le relief, ombres hors champ). S1 commence par une mesure au banc simulé (`engine/tests/sim_bench.py`) et ne garde que les pistes qui font gagner des images par seconde sans changement visible. Fichiers partagés : `tree_renderer.gd` (O1 d'abord), `terrain_tiles.gd` (Q2 d'abord).
+
+**Série V (26 octobre, version 2.0) : progression, équipement et avatar.** Plan `docs/2.0/PLAN_SERIE_V.md` ; questions V-Q4 à V-Q13 ouvertes (chaque cahier applique la proposition recommandée). Délégables : V2 tout de suite, puis V3 et V4, puis V3b : modules purs du core, sans effet sur la séance tant que V11 n'est pas livré (V-Q5). V1 (contrat) est une décision du propriétaire et bloque V11, V6, V8 et V9 ; V11, ajouté au découpage du plan, branche les modules dans la séance. V5 attend les séries T et R. Fichiers partagés : `progression.toml` (V2, puis V3 pour le catalogue, puis V3b pour les pièces) ; `progression.py` (V2, puis V5) ; `session.py` et `ipc_server.py` (V11 seul) ; `main.gd` (V6) ; `menu_model.gd` (V8) ; `summary_view.gd` (V9) ; `sound_player.gd` (V7, après P10).
 
 **Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
 
@@ -183,6 +197,7 @@ P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P
 Q1 ──► Q4 ;  Q3 ──► Q5 ;  Q2, Q6 : indépendants
 O1, Q2 ──► S1
 Version 2.0 : P17 ──► P7 ;  P7, P17 ──► P18 ──► P19 ;  N10, O3, P17 ──► P20
+Version 2.0, série V : V2 ──► V3, V4 ──► V3b ;  P1 ──► V1 ;  V1, V2, V3, V3b, V4 ──► V11 ;  V1 ──► V6 ──► V7 ;  V6, V11, N6 ──► V8 ;  V11, N4 ──► V9 ;  V11, T4, T5, T13, T14, R9 ──► V5 ;  V2 à V9, V11 ──► V10
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
