@@ -43,7 +43,11 @@ R3 et R6 livrés (R6 peut être fait en parallèle avec une interface convenue :
 
 ### 4.4 Joueur en retard
 
-Les salles sont en distance (R3) : un joueur sous la cible met plus longtemps. Après chaque salle, le scénariste recalcule la fin prévue ; si elle dépasse la durée choisie de plus de 2 min, il raccourcit les couloirs suivants (jusqu'à 60 s), puis retire une salle avant le boss. Le boss et le retour au calme ne sont jamais retirés. (Question R-Q2.)
+Les salles sont en distance (R3) : un joueur sous la cible met plus longtemps. Après chaque salle, le scénariste recalcule la fin prévue ; si elle dépasse la durée choisie de plus de 2 min, il raccourcit les couloirs suivants (jusqu'à 60 s), puis retire une salle avant le boss. Le boss et le retour au calme ne sont jamais retirés (décision R-Q2 du 26 octobre).
+
+**Salle retirée = échec signalé** (ajout du propriétaire) : malus de 10 or (sans passer sous 0), salle comptée « manquée » (`rooms_skipped` du bilan), événement `room_skipped` pour l'animation et le son de l'engine (R11, R12), ligne `rogue` au journal. Un couloir raccourci n'est pas un échec.
+
+Critère supplémentaire : le joueur simulé 10 % sous la cible du critère 4 qui perd une salle voit `room_skipped` une seule fois par salle retirée et l'or baisser de 10.
 
 ## 5. Fichiers concernés
 
