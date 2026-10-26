@@ -21,7 +21,8 @@ séance (altitude, puissance et cible, fréquence cardiaque, pente envoyée, bra
 événements, et planche des captures.
 
 Avec `--probe`, l'engine écrit chaque seconde ses mesures de rendu et `perf_probe.py` relève nvidia-smi
-et le CPU des processus : rapport dans `<scénario>/sonde/` (lot X13).
+et le CPU des processus : rapport dans `<scénario>/sonde/` (lot X13). Le scénario `endurance` (lot X16)
+roule une heure, relance le parcours à chaque fin et vérifie images/s, saccades et croissance de la mémoire.
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
 qui peuvent fixer `world`, `workout`, `duration_s` et `difficulty_pct` dans une section
@@ -42,6 +43,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 from pathlib import Path
 from typing import Any
@@ -58,6 +60,7 @@ from openride_core import sim_scenarios  # noqa: E402
 
 BENCH_SCENARIOS_DIR = TESTS_DIR / "sim_bench_scenarios"
 CMD_ID_BASE = 20_000
+RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 # Mêmes tolérances que visual_check.py (avertissements connus du mode test et de Xvfb).
 GODOT_TOLERATED = re.compile(
@@ -91,16 +94,17 @@ class BenchProc(Proc):
 
 class Report:
     def __init__(self) -> None:
-        self.rows: list[tuple[bool, str, str]] = []
+        self.rows: list[tuple[bool | None, str, str]] = []
 
-    def check(self, ok: bool, label: str, measure: str) -> bool:
-        print(f"[{'OK' if ok else 'ÉCHEC'}] {label} : {measure}", flush=True)
+    def check(self, ok: bool | None, label: str, measure: str) -> bool:
+        """ok None : mesure donnée à titre indicatif (INFO), jamais comptée comme un échec."""
+        print(f"[{'INFO' if ok is None else 'OK' if ok else 'ÉCHEC'}] {label} : {measure}", flush=True)
         self.rows.append((ok, label, measure))
-        return ok
+        return ok is not False
 
     @property
     def failed(self) -> int:
-        return sum(not ok for ok, _, _ in self.rows)
+        return sum(ok is False for ok, _, _ in self.rows)
 
 
 # --- scénarios ---------------------------------------------------------------------------------
@@ -178,6 +182,11 @@ class Bench:
         self.duration = float(args.duration or settings.get("duration_s") or
                               min(max(scenario_duration(spec) + 15.0, 45.0), 600.0))
         self.every = float(args.every or settings.get("every_s") or 15.0)
+        # Essai d'endurance (lot X16) : sonde de performance et vérifications de durée.
+        self.endurance = bool(settings.get("endurance"))
+        self.probe = bool(args.probe or self.endurance)
+        self.laps = 0
+        self._stop_relaunch = threading.Event()
         self.out = out
         self.report = Report()
         self.shots: list[dict[str, Any]] = []
@@ -252,7 +261,7 @@ class Bench:
                     "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}"]
-            if a.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
+            if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
                 cmd.append(f"--perf-probe={(self.out / 'moteur.csv').resolve()}")
                 self.sampler = perf_probe.SystemSampler()
                 self.sampler.start()
@@ -263,7 +272,19 @@ class Bench:
             loaded = engine.wait_for(rf"route_loaded id={re.escape(route_id)}", 30.0)
             r.check(loaded is not None, "parcours chargé par l'engine",
                     f"{route_id} à {self.rel(loaded[0]):.1f} s" if loaded else f"{route_id} non chargé en 30 s")
+            relauncher = None
+            if self.endurance:   # parcours fini avant la durée voulue : on repart, comme « Rouler encore »
+                relauncher = threading.Thread(target=self._relaunch_loop, args=(core, cmd_port, route_id),
+                                              daemon=True)
+                relauncher.start()
             self._capture_loop(engine, state_port)
+            self._stop_relaunch.set()
+            if relauncher is not None:
+                relauncher.join(timeout=40.0)
+                r.check(True, "tours du parcours", f"{self.laps + 1} (relances après la fin du parcours : {self.laps})")
+            alive = engine.p.poll() is None
+            r.check(alive, "engine vivant jusqu'à la fin",
+                    f"{self.duration:.0f} s" if alive else f"code de sortie {engine.p.returncode}")
             t_end = now()
             send_cmd(cmd_port, CMD_ID_BASE, "end_session", {"save": True})
             fin = core.wait_for(r"FINISHED", 10.0, after=t_end)
@@ -338,6 +359,29 @@ class Bench:
         if wait > 0:
             time.sleep(wait)
 
+    def _relaunch_loop(self, core: Proc, cmd_port: int, route_id: str) -> None:
+        """Essai d'endurance : à chaque fin de parcours, recharge le parcours et repart."""
+        after = now()
+        cmd_id = RELAUNCH_CMD_ID_BASE
+        while not self._stop_relaunch.is_set():
+            fin = core.wait_for(r"-> FINISHED", 1.0, after=after)
+            if fin is None:
+                continue
+            after = fin[0] + 1e-3
+            if self._stop_relaunch.is_set():
+                return
+            cmd_id += 1
+            send_cmd(cmd_port, cmd_id, "select_route", {"route_id": route_id})
+            ready = core.wait_for(r"-> READY", 30.0, after=after)
+            if ready is None or self._stop_relaunch.is_set():
+                return
+            cmd_id += 1
+            send_cmd(cmd_port, cmd_id, "start", {})
+            started = core.wait_for(r"READY -> RUNNING", 10.0, after=ready[0])
+            if started is not None:
+                self.laps += 1
+                after = started[0]
+
     def _final_state(self, core: Proc) -> str:
         states = core.matching(r"\b(RUNNING|PAUSED|FINISHED|ERROR)\b")
         return states[-1][1].group(1) if states else "?"
@@ -358,6 +402,9 @@ class Bench:
             self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}")
             r.check(self.probe_summary["rows"] > 0, "sonde de performance",
                     f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
+            if self.endurance:
+                for ok, label, measure in perf_probe.endurance_checks(rows, real_window=a.native):
+                    r.check(ok, label, measure)
         # Captures.
         ok = [s for s in self.shots if s.get("ok")]
         r.check(len(ok) == len(self.shots) and ok, "captures de l'engine",
@@ -516,7 +563,8 @@ def svg_fps(shots: list[dict[str, Any]], width: int = 900, height: int = 120) ->
 
 
 def write_html(b: Bench) -> None:
-    rows = "".join(f'<tr class="{"ok" if ok else "ko"}"><td>{"OK" if ok else "ÉCHEC"}</td><td>{html.escape(lb)}</td>'
+    rows = "".join(f'<tr class="{"info" if ok is None else "ok" if ok else "ko"}">'
+                   f'<td>{"INFO" if ok is None else "OK" if ok else "ÉCHEC"}</td><td>{html.escape(lb)}</td>'
                    f"<td>{html.escape(ms)}</td></tr>" for ok, lb, ms in b.report.rows)
     events = [(float(e.get("t", 0)), f"{e.get('t')} s : {e.get('device', 'trainer')} {e.get('action')}")
               for e in b.spec.get("events", [])]

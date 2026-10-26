@@ -42,7 +42,7 @@ Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, 
 **Rendu (GTX 1060, 1 920 × 1 080)**
 16. **Recette E3/E4 (`docs/RECETTE_E3_E4.md`) : ciel, brouillard, arbres, bâtiments, eau, sons.**
 17. **30 images/s en qualité basse sur un parcours avec village (SRS sprints 3 et 5), relevé `[perf-rendu]`.**
-18. **1 h de séance sans plantage ni saccade visible.**
+18. **1 h de séance sans plantage ni saccade visible.** Outil : `engine/tests/sim_bench.py --native --scenario endurance --size 1920x1080` (lot X16) vérifie aussi la ligne 17 et la croissance de la mémoire.
 19. Préparation des arbres sous 150 ms (`UNIT=test_tree_renderer`, O1).
 20. Menus, écran Appareils, Réglages (si O4), bilan lisibles à 2 m et pilotables au Click.
 
