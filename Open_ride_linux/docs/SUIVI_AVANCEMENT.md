@@ -89,6 +89,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] Couches OpenStreetMap `buildings` et `vegetation` du compilateur (`osm.py`, `osm_layers.py`, cache brut `~/.cache/openride/osm/`, schémas `buildings.schema.json` et `vegetation.schema.json`, lot I3).
 - [x] Couches OpenStreetMap `poi` et `water` du compilateur (points d'intérêt sonores/visuels, cours d'eau découpés par tronçon de 1 km et plans d'eau avec îles, schémas `poi.schema.json` et `water.schema.json`, lot I4).
 - [x] **Packs de thèmes** (`openride-compiler theme-list` et `theme-install`, lot N10, `theme_packs.py`) : liste avec statut, textures et taille, installation depuis dossier ou archive `.zip` avec contrôle d'intégrité (rejet des liens symboliques, chemins `..` et taille > 500 Mo) et validation complète avant copie atomique, testés par `compiler/tests/test_theme_packs.py`.
+- [x] **Série T (2.0), détection des segments** (lot T2, `segments.py`) : montées trouvées sur la pente lissée de la route (500 m, 3 %, 30 m, fusion sous 200 m de replat, catégories 4 à HC sur longueur × pente), sprints proposés de 200 à 500 m au plus tous les 10 km, segments manuels ajoutés ou à la place ; module pur, branché au `.world` par T3. Les lots T4, T6 et T16 (modules purs) ont leur ligne dans leur cahier, section « Livraison ».
 
 ---
 
