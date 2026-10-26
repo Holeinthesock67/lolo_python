@@ -8,7 +8,11 @@ extends RefCounted
 ## modification : + / − (appui court) changent la valeur, appui long + enregistre, appui long −
 ## annule. La difficulté s'affiche en curseur de 0 à 100 % ; le même curseur sert sur l'écran de
 ## pause, où il envoie `set_difficulty` (lot Q1) sans toucher à config.toml.
+## Le même écran sert aux paramètres de « Créer un entraînement » (lot N16, clés « workout.… ») :
+## commit() renvoie alors l'action interne `builder_set`.
 ## Pas de class_name : charger par preload("res://scripts/settings_view_model.gd").
+
+const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 
 const EDIT_SCREEN := "setting_edit"
 const DIFFICULTY_KEY := "trainer.difficulty_pct"
@@ -41,6 +45,8 @@ static func slider(pct: int) -> String:
 static func format_value(it: Dictionary, value) -> String:
 	if str(it.get("key", "")) in [DIFFICULTY_KEY, PAUSE_DIFFICULTY]:
 		return slider(int(value))
+	if it.has("format"):
+		return WorkoutBuilder.format_param(it, value)
 	var unit := str(it.get("unit", ""))
 	return str(value) + ((" " + unit) if unit != "" else "")
 
@@ -64,6 +70,11 @@ func begin(key: String) -> bool:
 		return false
 	editing = it.duplicate(true)
 	return true
+
+
+## Modification d'une valeur fournie par l'appelant (paramètre de workout_builder.gd, lot N16).
+func begin_with(it: Dictionary) -> void:
+	editing = it.duplicate(true)
 
 
 ## Modification de la difficulté depuis la pause, à partir de la valeur de la séance.
@@ -101,6 +112,9 @@ func commit() -> Dictionary:
 		return {}
 	if e["key"] == PAUSE_DIFFICULTY:
 		return {"action": "set_difficulty", "pct": int(e["value"])}
+	if str(e["key"]).begins_with(WorkoutBuilder.KEY_PREFIX):
+		return {"action": "builder_set", "key": str(e["key"]).substr(WorkoutBuilder.KEY_PREFIX.length()),
+			"value": int(e["value"])}
 	return {"action": "set_setting", "key": e["key"], "value": e["value"]}
 
 

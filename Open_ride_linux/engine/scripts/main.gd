@@ -7,6 +7,7 @@ const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const WorkoutFiles := preload("res://scripts/workout_files.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
@@ -43,6 +44,8 @@ const EXIT_SIM := 65
 
 var route
 var routes_dir: String = ""
+## Dossier des entraînements (lot N16 : création et import depuis le menu ERG).
+var workouts_dir: String = ""
 var follow = CameraFollowScript.new()
 var session_state: String = ""
 var _first_state_logged := false
@@ -87,6 +90,7 @@ var _menu_s := 0.0
 func _ready() -> void:
 	var cfg := EngineArgs.current()
 	routes_dir = cfg["routes_dir"]
+	workouts_dir = cfg["workouts_dir"]
 	if cfg.get("sim_session", false):
 		menu_flow.menu.set_sim_session(true)
 	if cfg["test_mode"]:
@@ -235,7 +239,9 @@ func _run_menu_action(act: Dictionary) -> void:
 	var name := str(act.get("action", ""))
 	if name == "":
 		return
-	ipc.test_log("menu_action " + JSON.stringify(act))
+	var logged := act.duplicate()
+	logged.erase("content")   # fichier .zwo d'un entraînement créé : trop long pour le journal
+	ipc.test_log("menu_action " + JSON.stringify(logged))
 	match name:
 		"list":
 			ipc.list_routes()
@@ -258,6 +264,22 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.pair_devices(act.get("args", {}))
 		"set_setting":
 			ipc.set_setting(str(act["key"]), act["value"])
+		"scan_imports":
+			menu_flow.set_import_candidates(WorkoutFiles.candidates(OS.get_environment("HOME"), workouts_dir))
+		"save_workout":
+			var err := WorkoutFiles.save(workouts_dir, str(act["id"]), str(act["content"]))
+			if err == "":
+				menu_flow.workout_added(str(act["id"]), "Créé : " + str(act["name"]))
+				ipc.list_workouts()
+			else:
+				menu_flow.workout_failed("Échec : " + err)
+		"import_workout":
+			var res: Dictionary = WorkoutFiles.import_file(str(act["path"]), workouts_dir)
+			if res.has("id"):
+				menu_flow.workout_added(str(res["id"]), "Importé : " + str(act["path"]).get_file())
+				ipc.list_workouts()
+			else:
+				menu_flow.workout_failed("Échec : " + str(res["error"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
 		"select_route":

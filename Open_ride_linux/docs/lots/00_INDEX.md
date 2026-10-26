@@ -76,6 +76,7 @@
 | [N13](LOT_N13_menu_appareils.md) | Section « Appareils » du menu : rechercher et appairer le matériel | GDScript + Python | N6, N12 | Moyenne | **Livré le 26 octobre** (interne, PR #197) |
 | [N14](LOT_N14_lancement_sans_terminal.md) | Lancement sans terminal : premier démarrage, erreurs dans une fenêtre, « Libérer le trainer » et « Mettre à jour » depuis le bureau, installation en une commande | Python + shell | L8 (livré), N11 | Moyenne | **Livré le 25 octobre** (issue #114, PR #178) |
 | [N15](LOT_N15_menu_principal.md) | Menu principal : monde, session libre, session ERG, session simulée (relance sans matériel) | GDScript + Python | N6, N13 | Moyenne | **Livré le 26 octobre** (interne, demande du propriétaire) |
+| [N16](LOT_N16_sous_menu_erg.md) | Sous-menu ERG : choisir, créer (intervalles) ou importer un entraînement `.zwo`, `.erg`, `.mrc` | GDScript | N15, O4 | Petite | **Livré le 26 octobre** (interne) |
 | [O1](LOT_O1_preparation_arbres.md) | Arbres : préparer une tuile en moins de 150 ms (210 ms mesurés sur le PC cible) | GDScript | E3, E4 (livrés) | Petite | Oui |
 | [O2](LOT_O2_version_1_0.md) | Numéro de version unique (`VERSION`) et notes de version (`CHANGELOG.md`) | Python + GDScript | N3 ; de préférence fin de J4 | Petite | Oui, après N3 |
 | [O3](LOT_O3_reglages_core.md) | Réglages côté core : FTP, masse, braquet de départ, thème et qualité écrits dans `~/OpenRide/config.toml` | Python | N12 ; N10 pour les thèmes | Petite | **Livré le 26 octobre** (avec O4, issue #121) |

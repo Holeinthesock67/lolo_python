@@ -310,7 +310,68 @@ func _test_settings_screen() -> void:
 			and f.state()["items"][3]["label"] == "Difficulté : ■■■□□□□□□□ 30 %", "pause : set_difficulty à 30 (%s)" % str(act))
 
 
+func _test_erg_submenu() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "route_id": "vosges"})
+	f.set_workouts([{"id": "seuil", "name": "Seuil", "duration_s": 3600}])
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_LONG")   # Session ERG
+	_check(_ids(f) == ["_sim", "seuil", "_create", "_import"], "sous-menu ERG : liste puis Créer et Importer (%s)" % str(_ids(f)))
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "_create", "focus sur Créer un entraînement")
+	_check(f.handle("PLUS_LONG").is_empty() and f.state()["screen"] == "workout_create", "écran Créer un entraînement")
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_LONG")   # Répétitions
+	_check(f.state()["screen"] == "setting_edit" and f.state()["items"][0]["label"] == "5", "modification des répétitions")
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("PLUS_LONG").is_empty() and f.state()["screen"] == "workout_create", "appui long + : retour à l'écran Créer")
+	_check(f.state()["items"][1]["label"] == "Répétitions : 7", "7 répétitions (%s)" % f.state()["items"][1]["label"])
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_LONG")   # Effort
+	f.handle("PLUS_SHORT")
+	_check(f.state()["items"][0]["label"] == "4 min 15 s", "effort par pas de 15 s (%s)" % f.state()["items"][0]["label"])
+	f.handle("MINUS_LONG")  # annulé
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "save", "focus sur Enregistrer")
+	var act: Dictionary = f.handle("PLUS_LONG")
+	_check(act.get("action", "") == "save_workout" and act.get("id", "") == "intervalles_7x240s_105"
+		and str(act.get("content", "")).contains("Repeat=\"7\""), "save_workout : %s" % act.get("id", ""))
+	f.workout_added("intervalles_7x240s_105", "Créé : " + str(act["name"]))
+	_check(f.state()["screen"] == "workouts" and f.state()["status"] == "Créé : Intervalles 7 × 4 min à 105 %",
+		"retour à la liste, ligne d'état (%s)" % f.state()["status"])
+	f.set_workouts([{"id": "intervalles_7x240s_105", "name": "Intervalles", "duration_s": 3540},
+		{"id": "seuil", "name": "Seuil", "duration_s": 3600}])
+	_check(_focus_id(f) == "intervalles_7x240s_105", "focus sur l'entraînement créé à l'arrivée de la liste")
+	act = f.handle("PLUS_LONG")
+	_check(act == {"action": "select_workout", "workout_id": "intervalles_7x240s_105"} and f.state()["screen"] == "ready",
+		"entraînement créé choisi : écran Prêt")
+	# Import.
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_LONG")   # Changer d'entraînement
+	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "_import", "focus sur Importer")
+	_check(f.handle("PLUS_LONG") == {"action": "scan_imports"} and f.state()["screen"] == "workout_import", "scan_imports")
+	f.set_import_candidates([])
+	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg ou .mrc", "aucun fichier")
+	f.set_import_candidates([{"path": "/x/Téléchargements/vo2.zwo", "file": "vo2.zwo", "source": "Téléchargements",
+		"imported": false}, {"path": "/x/b.erg", "file": "b.erg", "source": "Bureau", "imported": true}])
+	_check(f.state()["items"][1]["detail"] == "Bureau, déjà importé", "fichier déjà importé signalé")
+	_check(f.handle("PLUS_LONG") == {"action": "import_workout", "path": "/x/Téléchargements/vo2.zwo"}, "import_workout")
+	f.workout_failed("Échec : copie impossible")
+	_check(f.state()["status"] == "Échec : copie impossible" and f.state()["screen"] == "workout_import", "échec affiché")
+	f.workout_added("vo2", "Importé : vo2.zwo")
+	f.set_workouts([{"id": "vo2", "name": "VO2", "duration_s": 0, "selectable": false, "error": "aucun bloc reconnu"}])
+	_check(f.state()["screen"] == "workouts" and _focus_id(f) != "vo2", "import invalide : désactivé, pas de focus")
+
+
 func _init() -> void:
+	_test_erg_submenu()
 	_test_settings_screen()
 	_test_connect_screen()
 	_test_pairing_screen()
