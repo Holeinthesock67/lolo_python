@@ -59,6 +59,8 @@ class IpcState:
     devices: dict[str, Any] | None = None
     bots: list[dict[str, Any]] | None = None
     wind: dict[str, float] | None = None   # révision 1.3 (lot P2) : 2 fois par seconde, jamais avec devices
+    draft: float | None = None             # révision 1.3 (lot P3) : présent dès qu'il y a un bot
+    draft_bot: str | None = None
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -73,6 +75,10 @@ class IpcState:
             d.pop("bots", None)
         if self.wind is None:
             d.pop("wind", None)
+        if self.draft is None:
+            d.pop("draft", None)
+        if self.draft_bot is None:
+            d.pop("draft_bot", None)
         return d
 
 

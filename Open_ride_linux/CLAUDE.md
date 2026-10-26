@@ -55,7 +55,8 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `history.py` (historique des séances et cumul hebdomadaire), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py` ;
 - `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties ;
 - `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9) ;
-- `wind.py` : vent réglable (calme, fixe, en rafales ou du thème), composante de face et supplément de pente en SIM, module pur (lot P2).
+- `wind.py` : vent réglable (calme, fixe, en rafales ou du thème), composante de face et supplément de pente en SIM, module pur (lot P2) ;
+- `draft.py` : aspiration derrière les bots (courbe exponentielle, effet de file, vent de travers, poussée du bot suivi), module pur (lot P3).
 
 **Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 
