@@ -37,7 +37,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 
 | Sens | Port par défaut | Contenu | Fréquence |
 | --- | --- | --- | --- |
-| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown`, `routes`, `workouts` | `state` à 30 Hz ; le reste sur événement |
+| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown`, `routes`, `workouts`, `scan_results` | `state` à 30 Hz ; le reste sur événement |
 | engine vers core | 5006 | `hello`, `heartbeat`, `cmd`, `bye` | `heartbeat` à 2 Hz ; `cmd` sur événement |
 
 - Les ports sont modifiables dans `config.toml` (section `ipc`) ; si un port est occupé, le programme s'arrête avec un message explicite.

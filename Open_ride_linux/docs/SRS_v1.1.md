@@ -319,7 +319,7 @@ L'engine ignore toute couche absente ; une couche se régénère seule avec `add
 - Toute texture manquante est remplacée par une couleur unie : un thème peut être démarré avec un seul fichier.
 - Un thème ne touche jamais au coureur ; le format est décrit dans « Format .world v1 », section Thèmes.
 
-**Dépôt de code.** Un seul dépôt avec `docs/contracts/` contenant cette SRS, le Contrat IPC v1, le format `.world` et leurs schémas JSON. Ces documents sont fournis à l'IA au début de chaque session de développement ; des tests de contrat vérifient que chaque programme les respecte.
+**Dépôt de code.** Un seul dépôt : cette SRS est dans `docs/`, le Contrat IPC v1, le format `.world` et leurs schémas JSON dans `docs/contracts/`. Ces documents sont fournis à l'IA au début de chaque session de développement ; des tests de contrat vérifient que chaque programme les respecte.
 
 ## 11. Configuration et arborescence
 
