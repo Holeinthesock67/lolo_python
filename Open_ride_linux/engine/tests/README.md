@@ -59,6 +59,12 @@ Pour ajouter un test, il suffit de déposer un fichier dans `engine/tests/unit/`
 
 Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code de sortie n'est pas 0, si sa ligne finale manque, s'il écrit une erreur ou un avertissement Godot (`SCRIPT ERROR`, `ERROR:`, `WARNING:`, hors avertissements connus du mode sans écran) ou s'il dépasse `UNIT_TIMEOUT` secondes (120 par défaut : une erreur de script dans `_init` laisse Godot tourner sans quitter).
 
+**Budgets de temps (lot X2).** Un test unitaire vérifie un résultat, pas une durée : la durée dépend de la machine (le PC cible est plus lent que les machines de GitHub pour la préparation des arbres). Une mesure de temps passe par `tests/perf_budget.gd` : `PerfBudget.measure_ms(fn, runs, warmup)` (médiane après chauffe) puis `PerfBudget.check(nom, ms)`, qui écrit une ligne `[PERF] nom : x ms, budget y ms` et ajoute `(DÉPASSÉ)` au-delà du budget. Budgets dans `tests/perf_budgets.json` (`budget_ms` du cahier pour le PC cible, `ci_ms` quand la variable `CI` existe), remplaçables par machine dans `~/OpenRide/perf_budgets.json` (`{"tree_tile_high": 230}`) ou le fichier nommé par `OPENRIDE_PERF_BUDGETS`. Mode `OPENRIDE_PERF` : `report` (défaut) n'échoue jamais sur un temps, `strict` compte un dépassement comme un échec, `off` ne mesure qu'une fois. `run_engine_tests.sh` résume toutes les mesures avant son résumé final et les ajoute au fichier `PERF_CSV` s'il est donné.
+
+```bash
+OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_tests.sh   # passage dédié aux temps
+```
+
 `UNIT=test_route_vectors engine/tests/run_engine_tests.sh` ne lance que ce test et saute les autres étapes (rendu, ERG, scénarios à faux core).
 
 | Fichier | Lot | Vérifie |
