@@ -143,6 +143,12 @@ func _test_long_session() -> void:
 		drawn += line.size()
 	_check(drawn <= ChartModel.MAX_DRAWN_POINTS and g["group"] == 4, "au plus 1 800 points dessinés (%d, groupes de %d)" % [drawn, g["group"]])
 	_check(dt_ms < 5.0, "géométrie en moins de 5 ms (%.2f ms)" % dt_ms)
+	var w_top: float = g["scales"]["watts"][1]
+	var slow: Array = ChartModel._polylines(m.smoothed("power", 0, 0, 7200), 0, 4, 1600.0, 300.0, 0.0, 7200.0, 0.0, w_top)
+	var fast: PackedVector2Array = g["curves"]["power"][0]
+	_check(slow.size() == 1 and slow[0].size() == fast.size() and slow[0][0].distance_to(fast[0]) < 0.01
+		and slow[0][1799].distance_to(fast[1799]) < 0.01 and slow[0][900].distance_to(fast[900]) < 0.01,
+		"groupes tenus à jour : mêmes points que le calcul seconde par seconde")
 	var t1 := Time.get_ticks_usec()
 	m.geometry(1600.0, 300.0)
 	_check((Time.get_ticks_usec() - t1) / 1000.0 < 0.5, "même seconde : géométrie en cache")
