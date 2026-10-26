@@ -340,9 +340,13 @@ func _test_erg_submenu() -> void:
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "save", "focus sur Enregistrer")
 	var act: Dictionary = f.handle("PLUS_LONG")
-	_check(act.get("action", "") == "save_workout" and act.get("id", "") == "intervalles_7x240s_105"
-		and str(act.get("content", "")).contains("Repeat=\"7\""), "save_workout : %s" % act.get("id", ""))
-	f.workout_added("intervalles_7x240s_105", "Créé : " + str(act["name"]))
+	_check(act.get("action", "") == "create_workout" and act["args"]["reps"] == 7 and act["args"]["on_s"] == 240,
+		"create_workout avec les sept paramètres : %s" % str(act.get("args", {})))
+	f.on_error("bad_args", "reps hors bornes")
+	_check(f.state()["screen"] == "workout_create" and f.state()["status"] == "Échec : reps hors bornes",
+		"erreur du core sur l'écran Créer")
+	f.on_workout_saved({"type": "workout_saved", "request_cmd_id": 9, "workout_id": "intervalles_7x240s_105",
+		"name": "Intervalles 7 × 4 min à 105 %", "created": true})
 	_check(f.state()["screen"] == "workouts" and f.state()["status"] == "Créé : Intervalles 7 × 4 min à 105 %",
 		"retour à la liste, ligne d'état (%s)" % f.state()["status"])
 	f.set_workouts([{"id": "intervalles_7x240s_105", "name": "Intervalles", "duration_s": 3540},
@@ -356,16 +360,20 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_LONG")   # Changer d'entraînement
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_import", "focus sur Importer")
-	_check(f.handle("PLUS_LONG") == {"action": "scan_imports"} and f.state()["screen"] == "workout_import", "scan_imports")
+	_check(f.handle("PLUS_LONG") == {"action": "list_imports"} and f.state()["screen"] == "workout_import", "list_imports")
 	f.set_import_candidates([])
 	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg ou .mrc", "aucun fichier")
 	f.set_import_candidates([{"path": "/x/Téléchargements/vo2.zwo", "file": "vo2.zwo", "source": "Téléchargements",
 		"imported": false}, {"path": "/x/b.erg", "file": "b.erg", "source": "Bureau", "imported": true}])
 	_check(f.state()["items"][1]["detail"] == "Bureau, déjà importé", "fichier déjà importé signalé")
 	_check(f.handle("PLUS_LONG") == {"action": "import_workout", "path": "/x/Téléchargements/vo2.zwo"}, "import_workout")
-	f.workout_failed("Échec : copie impossible")
-	_check(f.state()["status"] == "Échec : copie impossible" and f.state()["screen"] == "workout_import", "échec affiché")
-	f.workout_added("vo2", "Importé : vo2.zwo")
+	f.on_error("workout_invalid", "vo2.zwo : aucun bloc reconnu")
+	_check(f.state()["status"] == "Échec : vo2.zwo : aucun bloc reconnu" and f.state()["screen"] == "workout_import",
+		"échec affiché")
+	f.list_failed("imports")
+	_check(f.state()["items"][0]["label"] == "Fichiers à importer indisponibles", "imports sans réponse")
+	f.on_workout_saved({"workout_id": "vo2", "name": "VO2", "created": false})
+	_check(f.state()["status"] == "Importé : VO2", "import : ligne d'état")
 	f.set_workouts([{"id": "vo2", "name": "VO2", "duration_s": 0, "selectable": false, "error": "aucun bloc reconnu"}])
 	_check(f.state()["screen"] == "workouts" and _focus_id(f) != "vo2", "import invalide : désactivé, pas de focus")
 

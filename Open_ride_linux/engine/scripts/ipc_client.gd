@@ -21,6 +21,10 @@ signal list_failed(list_name: String, error_message: String)
 signal scan_results_received(msg: Dictionary)
 ## Réglages du menu (lots O3 et O4, contrat v1.2), réponse à list_settings ou set_setting.
 signal settings_received(msg: Dictionary)
+## Sous-menu ERG (lot N16, contrat v1.2, décision D4) : fichiers importables (list_imports, en parties
+## comme routes) et entraînement écrit par le core (create_workout, import_workout).
+signal imports_received(items: Array, msg: Dictionary)
+signal workout_saved_received(msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
 
@@ -56,6 +60,7 @@ const LIST_RETRY_S := 1.0
 const LIST_MAX_RETRIES := 3
 var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
+var _pending_list_imports: Dictionary = {}
 var _hello_acked := false
 var _hello_timer := 0.0
 var _last_state_us := 0
@@ -153,6 +158,8 @@ func _process(delta: float) -> void:
 		"Aucune réponse pour la liste des parcours après 3 tentatives", delta)
 	_tick_list(_pending_list_workouts, "list_workouts", "workouts",
 		"Aucune réponse pour la liste des entraînements après 3 tentatives", delta)
+	_tick_list(_pending_list_imports, "list_imports", "imports",
+		"Aucune réponse pour les fichiers à importer après 3 tentatives", delta)
 
 	_resend_pending(now)
 
@@ -195,6 +202,10 @@ func _poll_incoming() -> void:
 				_on_list_part(_pending_list_routes, "routes", json_obj)
 			"workouts":
 				_on_list_part(_pending_list_workouts, "workouts", json_obj)
+			"imports":
+				_on_list_part(_pending_list_imports, "imports", json_obj)
+			"workout_saved":
+				workout_saved_received.emit(json_obj)
 			"scan_results":
 				scan_results_received.emit(json_obj)
 			"settings":
@@ -276,6 +287,25 @@ func pair_devices(args: Dictionary) -> int:
 
 
 ## Réglages du menu (lots O3 et O4, contrat v1.2).
+## Fichiers importables (lot N16, contrat v1.2). Réponse : signal imports_received.
+func list_imports() -> int:
+	var cmd_id := send_command("list_imports", {})
+	_reset_list_request(_pending_list_imports, cmd_id)
+	return cmd_id
+
+
+## Entraînement par intervalles écrit par le core (lot N16) ; args : les sept paramètres entiers.
+## Réponse : workout_saved, ou error (bad_args, busy, workout_write_failed).
+func create_workout(args: Dictionary) -> int:
+	return send_command("create_workout", args)
+
+
+## Copie par le core d'un fichier de la dernière réponse `imports` (lot N16). Réponse : workout_saved,
+## ou error (workout_invalid, busy, workout_write_failed).
+func import_workout(path: String) -> int:
+	return send_command("import_workout", {"path": path})
+
+
 func list_settings() -> int:
 	return send_command("list_settings", {})
 
@@ -341,10 +371,13 @@ func _on_list_part(req: Dictionary, list_name: String, msg: Dictionary) -> void:
 	var whole := {"type": list_name, "request_cmd_id": rid, "parts": parts, "items": items,
 		"truncated": answer["truncated"]}
 	req.clear()
-	if list_name == "routes":
-		routes_received.emit(items, whole)
-	else:
-		workouts_received.emit(items, whole)
+	match list_name:
+		"routes":
+			routes_received.emit(items, whole)
+		"imports":
+			imports_received.emit(items, whole)
+		_:
+			workouts_received.emit(items, whole)
 
 
 func send_hello() -> void:

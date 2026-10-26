@@ -3,9 +3,9 @@ extends RefCounted
 ## Création d'un entraînement par intervalles depuis le menu ERG (lot N16), sans nœud.
 ##
 ## Sept paramètres réglés au Click (échauffement, répétitions, effort et récupération en durée et en
-## % de la FTP, retour au calme) ; `to_zwo()` écrit le fichier `.zwo` (blocs Warmup, IntervalsT,
-## Cooldown) que main.gd enregistre dans ~/OpenRide/Workouts/ sous `workout_id()` + « .zwo ».
-## Les puissances sont en % de la FTP : l'entraînement suit la FTP des réglages (lot O4).
+## % de la FTP, retour au calme), envoyés au core par la commande `create_workout` (contrat v1.2,
+## décision D4) : le core écrit le `.zwo` dans ~/OpenRide/Workouts/. `workout_id()` et `workout_name()`
+## reprennent les règles du core pour l'affichage. Puissances en % de la FTP (réglages du lot O4).
 ## Pas de class_name : charger par preload("res://scripts/workout_builder.gd").
 
 const SCREEN := "workout_create"
@@ -107,27 +107,3 @@ func edit_item(key: String) -> Dictionary:
 		return {}
 	return {"key": KEY_PREFIX + key, "label": p["label"], "type": "int", "value": values[key],
 		"min": p["min"], "max": p["max"], "step": p["step"], "unit": "", "format": p["format"]}
-
-
-static func _f(x: float) -> String:
-	return "%.2f" % x
-
-
-## Contenu du fichier `.zwo` (XML de Zwift, lu par workout.py du core).
-func to_zwo() -> String:
-	var lines := PackedStringArray([
-		"<workout_file>",
-		"  <author>OpenRide</author>",
-		"  <name>%s</name>" % workout_name(),
-		"  <description>Créé dans le menu d'OpenRide.</description>",
-		"  <sportType>bike</sportType>",
-		"  <workout>"])
-	if int(values["warmup_min"]) > 0:
-		lines.append("    <Warmup Duration=\"%d\" PowerLow=\"0.50\" PowerHigh=\"0.75\"/>" % (int(values["warmup_min"]) * 60))
-	lines.append("    <IntervalsT Repeat=\"%d\" OnDuration=\"%d\" OffDuration=\"%d\" OnPower=\"%s\" OffPower=\"%s\"/>" % [
-		int(values["reps"]), int(values["on_s"]), int(values["off_s"]), _f(values["on_pct"] / 100.0),
-		_f(values["off_pct"] / 100.0)])
-	if int(values["cooldown_min"]) > 0:
-		lines.append("    <Cooldown Duration=\"%d\" PowerLow=\"0.65\" PowerHigh=\"0.45\"/>" % (int(values["cooldown_min"]) * 60))
-	lines.append_array(["  </workout>", "</workout_file>", ""])
-	return "\n".join(lines)

@@ -7,7 +7,6 @@ extends RefCounted
 ##   --routes-dir=CHEMIN      dossier des parcours (défaut : ~/.local/share/openride/routes)
 ##   --quality=low|medium|high préréglage de qualité graphique (défaut : low, lot L4)
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
-##   --workouts-dir=CHEMIN    dossier des entraînements (défaut : ~/OpenRide/Workouts, lot N16)
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
@@ -25,22 +24,17 @@ static func _home() -> String:
 	return OS.get_environment("HOME")
 
 
-static func default_workouts_dir() -> String:
-	return _home().path_join("OpenRide/Workouts")
-
-
 static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, workouts_dir, quality, theme, test_mode, sim_session}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode, sim_session}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
 		"state_port": DEFAULT_STATE_PORT,
 		"cmd_port": DEFAULT_CMD_PORT,
 		"routes_dir": default_routes_dir(),
-		"workouts_dir": default_workouts_dir(),
 		"quality": DEFAULT_QUALITY,
 		"theme": DEFAULT_THEME,
 		"test_mode": false,
@@ -56,11 +50,6 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			if path.begins_with("~"):
 				path = _home() + path.substr(1)
 			out["routes_dir"] = path
-		elif arg.begins_with("--workouts-dir="):
-			var wpath := arg.get_slice("=", 1)
-			if wpath.begins_with("~"):
-				wpath = _home() + wpath.substr(1)
-			out["workouts_dir"] = wpath
 		elif arg.begins_with("--quality="):
 			out["quality"] = _quality(arg, DEFAULT_QUALITY)
 		elif arg.begins_with("--theme="):

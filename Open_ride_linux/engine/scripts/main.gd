@@ -7,7 +7,6 @@ const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
-const WorkoutFiles := preload("res://scripts/workout_files.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
@@ -44,8 +43,6 @@ const EXIT_SIM := 65
 
 var route
 var routes_dir: String = ""
-## Dossier des entraînements (lot N16 : création et import depuis le menu ERG).
-var workouts_dir: String = ""
 var follow = CameraFollowScript.new()
 var session_state: String = ""
 var _first_state_logged := false
@@ -90,7 +87,6 @@ var _menu_s := 0.0
 func _ready() -> void:
 	var cfg := EngineArgs.current()
 	routes_dir = cfg["routes_dir"]
-	workouts_dir = cfg["workouts_dir"]
 	if cfg.get("sim_session", false):
 		menu_flow.menu.set_sim_session(true)
 	if cfg["test_mode"]:
@@ -171,6 +167,14 @@ func _ready() -> void:
 		menu_flow.on_scan_results(msg)
 		_refresh_menu())
 	ipc.settings_received.connect(_on_settings)
+	ipc.imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
+		menu_flow.set_import_candidates(items)
+		_refresh_menu())
+	ipc.workout_saved_received.connect(func(msg: Dictionary) -> void:
+		ipc.test_log("workout_saved id=%s" % str(msg.get("workout_id", "")))
+		menu_flow.on_workout_saved(msg)
+		ipc.list_workouts()
+		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
 		_refresh_menu())
@@ -239,9 +243,7 @@ func _run_menu_action(act: Dictionary) -> void:
 	var name := str(act.get("action", ""))
 	if name == "":
 		return
-	var logged := act.duplicate()
-	logged.erase("content")   # fichier .zwo d'un entraînement créé : trop long pour le journal
-	ipc.test_log("menu_action " + JSON.stringify(logged))
+	ipc.test_log("menu_action " + JSON.stringify(act))
 	match name:
 		"list":
 			ipc.list_routes()
@@ -264,22 +266,12 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.pair_devices(act.get("args", {}))
 		"set_setting":
 			ipc.set_setting(str(act["key"]), act["value"])
-		"scan_imports":
-			menu_flow.set_import_candidates(WorkoutFiles.candidates(OS.get_environment("HOME"), workouts_dir))
-		"save_workout":
-			var err := WorkoutFiles.save(workouts_dir, str(act["id"]), str(act["content"]))
-			if err == "":
-				menu_flow.workout_added(str(act["id"]), "Créé : " + str(act["name"]))
-				ipc.list_workouts()
-			else:
-				menu_flow.workout_failed("Échec : " + err)
+		"list_imports":
+			ipc.list_imports()
+		"create_workout":
+			ipc.create_workout(act["args"])
 		"import_workout":
-			var res: Dictionary = WorkoutFiles.import_file(str(act["path"]), workouts_dir)
-			if res.has("id"):
-				menu_flow.workout_added(str(res["id"]), "Importé : " + str(act["path"]).get_file())
-				ipc.list_workouts()
-			else:
-				menu_flow.workout_failed("Échec : " + str(res["error"]))
+			ipc.import_workout(str(act["path"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
 		"select_route":
@@ -576,7 +568,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
-	if cmd_name in ["list_routes", "list_workouts"]:
+	if cmd_name in ["list_routes", "list_workouts", "list_imports"]:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 
