@@ -47,3 +47,14 @@ Aucune.
 
 - Écran du menu et messages IPC (lot O4).
 - Profil de plusieurs cyclistes.
+
+## 9. Livraison
+
+Livré le 26 octobre 2026 (issue #121), thread « Développer les lots O restants ».
+
+- `config_writer.py` : `update_config({(section, clé): valeur}, path=None)` écrit chaque valeur dans son type TOML (texte, entier, décimal, booléen ; un nombre entier sans décimale), en s'appuyant sur `config_edit.py` (N14), qui gagne `write_literals` et `plan_literals` ; `config_edit.update_config` (valeurs textuelles, utilisé par `install.sh`) ne change pas. `pairing.save` passe par `config_writer` ; ses tests restent inchangés.
+- `settings.py` : `SETTINGS` (FTP 5 W, masse 1 kg, difficulté 10 % en `slider`, braquet de départ 1, qualité, thème), `current`, `step`, `apply`, `parse_value`, `available_themes`. Bornes et choix lus dans `config.BOUNDS` et `config.CHOICES` à chaque appel ; le braquet de départ est aussi borné par `n_gears`. Forme JSON documentée en tête du module (base proposée pour le message `settings` du lot O4).
+- Thèmes : le core ne dépend pas du compilateur ; il liste `default` puis les dossiers de `~/OpenRide/Themes/` qui ont un `theme.json`, triés, comme `theme-list`, sans revalider le thème (`theme-check` le fait). `apply` refuse un thème absent.
+- `applies` : `now` pour la qualité et le thème (décor du menu, O4), `next_session` pour le reste (la difficulté se change en séance par `set_difficulty`, lot Q1).
+- `openride-core settings [--json] [--config F]` et `settings set CLÉ VALEUR [--config F]` (code 1 et message qui cite la clé et les bornes en cas de refus).
+- Tests : `core/tests/test_settings.py` (18) et `core/tests/test_config_writer.py` (17).

@@ -21,6 +21,11 @@ Sous-commandes disponibles à ce stade :
                           [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
                                       ceinture) et bloc [drivers] proposé pour config.toml
+    openride-core settings [--json] [--config FICHIER]
+    openride-core settings set CLÉ VALEUR [--config FICHIER]
+                                      réglages du menu (FTP, masse, difficulté, braquet de
+                                      départ, qualité, thème) : lecture ou écriture dans
+                                      config.toml, commentaires gardés (lot O3)
 """
 
 from __future__ import annotations
@@ -151,6 +156,12 @@ def cmd_devices(args: argparse.Namespace) -> int:
                save=args.save, assume_yes=args.yes)
 
 
+def cmd_settings(args: argparse.Namespace) -> int:
+    from .settings import run
+
+    return run(args.action, args.key, args.value, args.json, args.config)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Analyseur de la ligne de commande ; aussi lu par `test_docs_coherence.py` (commandes citées)."""
     p = argparse.ArgumentParser(prog="openride-core")
@@ -213,6 +224,12 @@ def build_parser() -> argparse.ArgumentParser:
     dev.add_argument("--save", action="store_true",
                      help="enregistre le matériel trouvé dans config.toml (appui « + » demandé, lot N12)")
     dev.add_argument("--yes", action="store_true", help="avec --save : sans demander de confirmation")
+    st = sub.add_parser("settings", help="réglages du menu : afficher, ou « set CLÉ VALEUR » pour écrire")
+    st.add_argument("action", nargs="?", choices=["set"], help="set : écrit un réglage dans config.toml")
+    st.add_argument("key", nargs="?", metavar="CLÉ", help="par exemple rider.ftp_w (voir « settings »)")
+    st.add_argument("value", nargs="?", metavar="VALEUR")
+    st.add_argument("--json", action="store_true", help="sortie JSON (forme décrite dans settings.py)")
+    st.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     return p
 
 
@@ -229,7 +246,8 @@ def main(argv: list[str] | None = None) -> int:
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary,
-            "history": cmd_history, "devices": cmd_devices}[args.command](args)
+            "history": cmd_history, "devices": cmd_devices,
+            "settings": cmd_settings}[args.command](args)
 
 
 if __name__ == "__main__":
