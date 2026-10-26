@@ -17,7 +17,8 @@ Le 26 octobre au soir, `main` contient la série N (dont N13, écran « Connexio
 
 | Code à tester | Branche | PR | Tests |
 | --- | --- | --- | --- |
-| `main` | `main` | – | A2, B1, B2, C1, D1, D3, F1 |
+| `main` | `main` | – | A2, B1, B2, C1, D3, F1 |
+| Séances guidées sur le vélo, consignes au temps de séance | `claude/project-thread-66gfit` | #297 (ce protocole) | D1, E0 |
 | Mise à jour, jeu ouvert | `claude/update-game-running` | #290 | A3 |
 | Version unique | `lot-o2-version` | #235 | A4 |
 | Menu principal, réglages, sous-menu ERG (pile) | `claude/project-thread-shezfp-erg` | #230 → #248 → #249 | C2, C3, C4, D2, D4, E1, E2 |
@@ -58,14 +59,32 @@ Le core et le compilateur sont installés en mode éditable, et Godot lit `engin
 | A. PC, installation et mise à jour | bureau, sans pédaler | 45 min (dont 25 sans surveiller) |
 | B. Appareils et ceinture | bureau, matériel allumé | 15 min |
 | C. Menus et réglages | bureau, Click en main | 30 min |
-| D. Séances SIM et session simulée | vélo | 30 min |
-| E. ERG | vélo | 30 min (+ 60 min pour le `sweet_spot_3x10` complet) |
+| D. Séances SIM et session simulée | vélo | 40 min (dont 25 guidées) |
+| E. ERG | vélo | 45 min (dont 13 guidées ; + 60 min pour le `sweet_spot_3x10` complet) |
 | F. Fichiers, plans, courbes | bureau | 20 min |
 | G. Trainer et Click (outils X5, X8) | vélo | 55 min |
 | H. Performance et endurance (X13, X16) | PC seul, fenêtre visible | 75 min (sans surveiller) |
 | I. Clôture | bureau | 10 min |
 
 Les blocs A, F et H se font sans pédaler ; D, E et G le même jour, échauffé. Le bloc H tourne pendant que tu fais autre chose, mais Godot ouvre une fenêtre.
+
+### 0.5 Essais guidés : rien à chronométrer
+
+Sur le vélo, tu n'as pas à lire ce document ni à chronométrer :
+
+- **Dans le jeu** (D1, E0) : `python -m openride_core.tools.seance_guidee` écrit deux parcours d'essai, `recette-velo` (séance libre en SIM, 25 min) et `recette-erg` (ERG, 13 min, entraînement « Recette ERG guidée »), avec leurs consignes. Chaque consigne s'affiche dans le bandeau avec un bip, au bon moment de la séance. Quand il faut du matériel (retirer la ceinture, sprint, fin de séance), un préavis « Dans 1 min, prépare … » arrive une minute avant. À chaque consigne, le journal du lanceur note le temps, la puissance, la cadence, la FC, le braquet et la pente envoyée (lignes `[essai]`).
+- **Dans les outils de test** (X4, X5, X8, X16) : un écran de guidage en grand (consigne, compte à rebours, bip au début et à la fin de chaque étape, relevés horodatés dans `guide.jsonl`) et une option `--materiel` qui donne la liste du matériel et la durée avant de commencer. Il arrive dans une PR du fil des outils de test ; d'ici là, les outils marchent comme décrit en G et H, avec un bip du terminal.
+
+`python -m openride_core.tools.seance_guidee --materiel` affiche ce qu'il faut préparer, sans rien écrire ; `--retirer` efface les parcours d'essai.
+
+### 0.6 Matériel à préparer, par jour
+
+| Jour | Matériel | Préavis dans l'essai |
+| --- | --- | --- |
+| Vélo (D, E, G) | Vélo sur le HomeTrainer, Bluetooth du PC allumé, aucune autre application reliée au trainer ; les deux boîtiers du Click réveillés, pile CR2032 de secours ; ceinture humidifiée ; bidon, serviette ; écran visible depuis le vélo, son audible ; FTP et poids à jour dans les réglages | 1 min avant de retirer la ceinture, avant le sprint, avant la pause ERG et avant chaque fin de séance |
+| X5 (G1) | Le même vélo, un braquet moyen gardé tout l'essai, 5 min d'échauffement avant | Paliers annoncés par l'outil |
+| X8 (G2) | Les deux boîtiers, piles chargées, jeu fermé ; vélo conseillé | Rappel d'appui toutes les 5 min |
+| X16, X13 (H) | Rien (trainer simulé) ; PC sans mise en veille, sur la GTX 1060 | Bip au départ et à la fin |
 
 ---
 
@@ -213,16 +232,18 @@ Commandes de référence : Click + / − pour choisir, appui long + pour valider
 
 ## D. Séances SIM et session simulée
 
-### D1. Séance libre de 10 min en SIM (O8 ligne 4)
+### D1. Séance libre guidée de 25 min en SIM (O8 ligne 4)
 
-- **Code :** `main` (ou la branche des menus pour enchaîner avec C4).
-- **Étapes :** parcours avec village si possible, 10 min ou plus ; 10 appuis courts sur +, 10 sur − (ou B du boîtier droit si le − se tait) ; un appui long + puis un appui long − ; Y pour la pause puis Y pour reprendre ; fermer la fenêtre à la fin.
-- **Attendu :** braquets nets et perceptibles, un bip par appui, braquet borné de 1 à 24 ; pause et reprise par Y ; à la fermeture : consigne annulée, trainer rendu, FIT écrit ; bilan affiché.
+- **Code :** `main` après la fusion de #297 (consignes au temps de séance). Les consignes du curseur de difficulté (#248) et des boutons A et Z (#287) ne servent qu'une fois ces PR fusionnées.
+- **Prérequis :** matériel du jour vélo (0.6) ; `python -m openride_core.tools.seance_guidee` lancé une fois (20 s).
+- **Étapes :** OpenRide par l'icône → « Monde » → `recette-velo` → « Session libre » → « Démarrer », puis suivre les consignes du bandeau : échauffement 5 min, 10 appuis sur +, 10 sur − (ou B du boîtier droit si le − se tait), appuis longs, A et Z, pause par Y avec le curseur de difficulté, ceinture retirée 30 s puis remise, un changement de braquet par minute en montée, roue libre, sprint de 10 s, retour au calme, puis Y → « Terminer et enregistrer ».
+- **Attendu :** chaque consigne arrive avec un bip, les préavis une minute avant ; braquets nets et perceptibles, un bip par appui, braquet borné de 1 à 24 ; pause et reprise par Y ; FC figée ceinture retirée, puis repartie (B2) ; à la fin : consigne annulée, trainer rendu, FIT écrit, bilan affiché.
+- [ ] Consignes et préavis à l'heure, avec bip
 - [ ] Braquets perceptibles, appuis tous reçus
 - [ ] Pause et reprise par Y
 - [ ] Arrêt propre, FIT et bilan
-- **Journaux :** `python -m openride_core.tools.log_report` (dernier journal), `openride-core summary`, mesures `Perf` du journal.
-- **Si échec :** pour un boîtier muet, noter l'heure (problème Q6 connu, lot mené à part) et continuer avec B.
+- **Journaux :** lignes `[essai]` du journal du lanceur (`grep "\[essai\]" ~/run_trainer.log`) ; `python -m openride_core.tools.log_report` (dernier journal), `openride-core summary`, mesures `Perf` du journal.
+- **Si échec :** pour un boîtier muet, noter l'heure (problème Q6 connu, lot mené à part) et continuer avec B. Aucune consigne à l'écran : vérifier `~/OpenRide/Essais/recette-velo.consignes.json` et la ligne `[essai] … consignes chargées` du journal.
 
 ### D2. Session simulée et retour au matériel réel (N15, PR #230)
 
@@ -253,6 +274,17 @@ Commandes de référence : Click + / − pour choisir, appui long + pour valider
 ## E. ERG
 
 Rappel des commandes en ERG : appui court + / − = intensité ± 2 % ; Y = pause.
+
+### E0. Séance ERG guidée de 13 min
+
+- **Code :** `main` après la fusion de #297.
+- **Prérequis :** D1 faite (ou `seance_guidee` lancé), FTP à jour.
+- **Étapes :** « Monde » → `recette-erg` → « Session ERG » → « Recette ERG guidée » → « Démarrer », puis suivre les consignes : intensité + 2 % puis − 2 % au Click, écoute du bip avant le changement de bloc, pause de 10 s en récupération, deuxième effort, retour au calme, bilan.
+- **Attendu :** bandeau ERG avec tous les blocs, cible tenue, biais affiché au bandeau et au bilan, bip à T − 3 s à chaque changement de bloc, trainer relâché pendant la pause, cible et écart par bloc au bilan.
+- [ ] Biais ± 2 % visible et au bilan
+- [ ] Bip à T − 3 s, cible tenue
+- [ ] Pause en ERG et reprise
+- **Journaux :** lignes `[essai]` (puissance et cible au moment de chaque consigne), `openride-core summary`.
 
 ### E1. Créer un entraînement court au Click (N16, PR #249)
 
@@ -333,8 +365,8 @@ Rappel des commandes en ERG : appui court + / − = intensité ± 2 % ; Y = paus
 ### G1. Banc de latence du trainer par paliers (X5, PR #245)
 
 - **Code :** `claude/project-thread-6d8wpm-x29`.
-- **Prérequis :** OpenRide fermé, échauffé, cadence tenue à 85 tr/min.
-- **Étapes :** essai à blanc `python -m openride_core.tools.trainer_steps --trainer sim --mode sim --fast` ; puis sur le vélo `python -m openride_core.tools.trainer_steps --mode sim` (20 min environ) ; si le temps le permet, `--mode erg`.
+- **Prérequis :** OpenRide fermé, aucune autre application reliée au trainer, 5 min d'échauffement, un braquet moyen gardé tout l'essai, cadence tenue à 85 tr/min. Tout est chronométré par l'outil.
+- **Étapes :** essai à blanc `python -m openride_core.tools.trainer_steps --trainer sim --mode sim --fast` ; puis sur le vélo `python -m openride_core.tools.trainer_steps --mode sim` (4 min environ), puis `--mode erg --cadence 85` (3 min environ).
 - **Attendu :** pour chaque palier : délai consigne → écriture → accusé 0x80, t10, t63, t90, stabilisation, dépassement ; délai stable de 1 à 2 s (à noter s'il dépasse 3 s) ; trainer relâché à la fin.
 - [ ] Essai à blanc OK
 - [ ] Mode SIM sur le vélo
@@ -345,6 +377,7 @@ Rappel des commandes en ERG : appui court + / − = intensité ± 2 % ; Y = paus
 ### G2. Recette guidée du Click, 30 min (X8, PR #295, O8 ligne 6)
 
 - **Code :** `claude/project-thread-6d8wpm-x29`.
+- **Prérequis :** les deux boîtiers, piles chargées (une CR2032 de secours), jeu fermé.
 - **Étapes :** essai à blanc `python -m openride_core.tools.click_recette --sim` ; puis `python -m openride_core.tools.click_recette --minutes 30 --rappel 5`, en pédalant ou non : appuyer sur chaque bouton demandé, puis un appui à chaque rappel.
 - **Attendu :** chaque bouton (+, − du boîtier gauche, B et Y du boîtier droit, appuis longs) coché avec le bon boîtier ; sur 30 min, silences, coupures et reprises de chaque boîtier relevés. Défaut connu : le boîtier gauche peut se taire 35 à 60 s après la connexion (B du boîtier droit sert de « − ») ; l'outil dira à quelle minute.
 - [ ] Essai à blanc OK
@@ -369,7 +402,8 @@ Rappel des commandes en ERG : appui court + / − = intensité ± 2 % ; Y = paus
 ### H2. Endurance d'une heure (X16, PR #294, O8 ligne 18)
 
 - **Code :** `claude/project-thread-6d8wpm-x29`.
-- **Étapes :** `python3 engine/tests/sim_bench.py --native --scenario endurance` (1 h, ne pas fermer la fenêtre).
+- **Prérequis :** PC sans mise en veille, rien d'autre de lourd ouvert.
+- **Étapes :** `python3 engine/tests/sim_bench.py --native --scenario endurance --probe` (1 h 05, bip au départ et à la fin, ne pas fermer la fenêtre).
 - **Attendu :** engine vivant jusqu'à la fin, aucune erreur Godot ni exception du core ; médiane ≥ 30 images/s, baisse < 10 % entre début et fin, 6 saccades au plus ; mémoire : moins de 100 Mo/h pour Godot, 20 Mo/h pour le core (une marche d'environ 5 Mo à chaque rechargement du parcours a été vue dans le cloud : à surveiller), 50 Mo/h pour la mémoire vidéo de Godot.
 - [ ] Une heure sans plantage
 - [ ] Images/s et saccades dans les seuils
@@ -388,4 +422,4 @@ Le rendu détaillé (ciel, arbres, bâtiments, eau, sons) reste dans [RECETTE_E3
 - [ ] `~/OpenRide/Logs/recette_notes.txt` relu.
 - [ ] Message dans le fil : blocs faits, cases non cochées. Je lis les journaux sur le PC et ouvre un correctif ou une ligne de suivi par défaut.
 
-Ordre de fusion conseillé si tout passe : #290 et #291 (petits correctifs), puis la pile des menus #230 → #248 → #249, puis #287 (conflit de nombres de tests seulement), puis O2, O5, O11, O13, puis la pile X.
+Ordre de fusion conseillé : #297 d'abord (il porte les séances guidées), puis, si tout passe, #290 et #291 (petits correctifs), puis la pile des menus #230 → #248 → #249, puis #287 (conflit de nombres de tests seulement), puis O2, O5, O11, O13, puis la pile X.

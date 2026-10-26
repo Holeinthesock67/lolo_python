@@ -561,16 +561,23 @@ func _on_state_received(state: Dictionary) -> void:
 		sound_player.update_audio(state, now_s, camera.position)
 
 
-## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur.
+## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les
+## relevés du moment (temps, puissance, cadence, FC, braquet, pente envoyée) : rien à chronométrer à la main.
+## Un préavis (« Dans 1 min, prépare … ») laisse le temps de préparer le matériel.
 func _give_cues(state: Dictionary) -> void:
 	var s := float(state.get("s", 0.0))
-	for c in _cues.update(s):
-		banner.show_message("cue", "Consigne %d/%d : %s" % [c["index"], c["count"], c["text"]], c["duration_s"])
+	for c in _cues.update(s, float(state.get("t", -1.0))):
+		var label := "Préavis %d/%d : %s" % [c["index"], c["count"], c["warn_text"]] if c["warn"] \
+				else "Consigne %d/%d : %s" % [c["index"], c["count"], c["text"]]
+		banner.show_message("cue", label, c["duration_s"])
 		if c["beep"]:
 			_play_tones(CUE_BEEP, ERG_BEEP_LEVEL)
-		print("[essai] consigne %d/%d à %.0f m, t = %.0f s, braquet %s : %s" % [c["index"], c["count"], s,
-				float(state.get("t", 0.0)), str(state.get("gear", "?")), c["text"]])
-		ipc.test_log("cue index=%d s=%.1f" % [c["index"], s])
+		print("[essai] %s %d/%d à %.0f m, t = %.0f s, braquet %s, puissance %s W, cadence %s, FC %s, pente envoyée %s %% : %s" % [
+				"préavis" if c["warn"] else "consigne", c["index"], c["count"], s, float(state.get("t", 0.0)),
+				str(state.get("gear", "?")), str(state.get("power", "?")), str(state.get("cadence", "?")),
+				str(state.get("hr", "?")), str(state.get("grade_sent", "?")),
+				c["warn_text"] if c["warn"] else c["text"]])
+		ipc.test_log("cue index=%d warn=%s s=%.1f" % [c["index"], str(c["warn"]), s])
 
 
 func _exit_tree() -> void:

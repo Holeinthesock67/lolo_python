@@ -24,6 +24,7 @@ Protocole pas à pas sur le PC et le vélo, avec la branche à tester pour chaqu
 | `--trainer mock --input keyboard` | Générateur de puissance sans Bluetooth, clavier du terminal |
 | `openride-core run --replay SEANCE.jsonl\|.fit` | Rejoue une séance enregistrée avec le simulateur |
 | `--bot W`, `--ghost FICHIER` | Bots à puissance constante, fantôme d'une séance passée |
+| `python -m openride_core.tools.seance_guidee [--materiel\|--retirer]` | Séances guidées sur le vrai HomeTrainer : parcours `recette-velo` (SIM, 25 min) et `recette-erg` (ERG, 13 min, entraînement `recette_erg`) avec consignes à l'écran au temps de séance, bip, préavis d'une minute quand il faut préparer du matériel, et une ligne `[essai]` au journal du lanceur par consigne (temps, puissance, cadence, FC, braquet, pente envoyée). Format des consignes : `engine/scripts/cue_model.gd` (`at_m` ou `at_s`, `prepare`, `warn_s`, `warn_m`) |
 | `python -m openride_core.tools.log_scenario` | Convertit un journal du core (panne vue sur le vélo) en scénario simulé |
 | `engine/tests/fake_core.py` | Faux core (bibliothèque standard) pour tester l'engine seul |
 
