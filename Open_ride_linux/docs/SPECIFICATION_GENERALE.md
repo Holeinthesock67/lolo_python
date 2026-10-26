@@ -93,7 +93,7 @@ Ces règles valent pour toutes les versions. Une série qui voudrait en changer 
 - **R-NET-2 :** seuls le compilateur, le lanceur et `openride-worldgen` téléchargent, avec un cache local et un repli hors ligne.
 - **R-NET-3 :** les usages en ligne de la 2.0 sont la météo locale au lancement (vent, décision P1 n° 1, repli sans vent) et les cartes et le relief du monde ouvert (W, repli sur le cache).
 
-Voir le point C4 du §9 : la formulation exacte est à valider.
+Règle adoptée par le propriétaire le 26 octobre (point C4 du §9).
 
 ## 4. Exigences de la 1.0
 
@@ -160,7 +160,7 @@ Détail : paragraphe « Série P » de [lots/00_INDEX.md](lots/00_INDEX.md) et c
 | 2.0-DEC-1 | Jour et nuit : heure, coucher de soleil, nuit étoilée | P7, P19 | Spécifié |
 | 2.0-DEC-2 | Quatre saisons (feuillages, neige, vergers en fleurs), inversées dans l'hémisphère sud | P18, P19 | Spécifié |
 | 2.0-DEC-3 | Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | P20 | Spécifié ; méthode des images générées en revue (PR #231) |
-| 2.0-VNT-1 | Vent activé par défaut d'après la météo locale, repli sans vent hors ligne | P1 (décision n° 1) | À trancher (C4) |
+| 2.0-VNT-1 | Vent activé par défaut d'après la météo locale, repli sans vent hors ligne (règle R-NET-3) | P1 (décision n° 1) | Spécifié |
 
 **Mode Cyber-Rogue (série R)** — détail : [PLAN_SERIE_R.md](2.0/PLAN_SERIE_R.md) et [GDD_CYBER_ROGUE.md](2.0/GDD_CYBER_ROGUE.md)
 
@@ -263,21 +263,53 @@ Règles de numérotation : une révision est réservée par série, dans l'ordre
 
 Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts prévus : `[wind]` (P1), `[render] living` et `texture_level` (P4, P20), `[open_world]` avec `cache_dir` et `cache_max_gb` (W2) ; la série R ajoute le W' du joueur, dont la clé est fixée par R1.
 
-## 7. Boutons du Click selon le mode
+## 7. Boutons du Click et vues de caméra
 
-Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches (bridé sans déblocage Zwift, SRS §4.2).
+### 7.1 Une même famille d'action par bouton, dans tous les modes
 
-| Bouton | Classique SIM (1.0) | ERG (1.0) | Classique 2.0 (T) | Cyber-Rogue (R) | Monde ouvert (W) |
+Demande du propriétaire du 26 octobre (point C7) : chaque bouton garde le même **type** d'action d'un mode à l'autre, pour qu'on n'ait jamais à se demander « dans ce mode, Y fait quoi ? ». **Proposition, à valider.**
+
+Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches (bridé sans déblocage Zwift, SRS §4.2). B double toujours « − », et rien d'indispensable n'est mis sur le seul boîtier gauche.
+
+| Bouton | Famille | Classique SIM | ERG | Cyber-Rogue | Monde ouvert |
 | --- | --- | --- | --- | --- | --- |
-| + court / long | Braquet + 1 / + 10 | Biais + 2 % / bloc suivant | Comme 1.0 | Vitesses du frein | Comme le mode choisi |
-| B ou − court / long | Braquet − 1 / − 10 | Biais − 2 % / pause | Comme 1.0 | Vitesses du frein | Comme le mode choisi |
-| Y | Pause et reprise (N6) | Pause et reprise (N6) | Pause | Attaque | Pause |
-| Z | — | — | Bonus | Défini par R1 | — |
-| A court | — | — | Libre | Défini par R1 | Fait défiler les branches au carrefour si les flèches ne répondent pas |
-| A long | — | — | Libre | Pause (proposé) | — |
-| Flèches gauche, droite | — | — | — | — | Choix de la branche |
+| + / B (ou −), court | Intensité, petit pas | Braquet ± 1 | Biais ± 2 % | Vitesse du frein ± 1 | Comme le mode roulé (SIM ou ERG) |
+| + / B (ou −), long | Intensité, grand pas | Braquet ± 10 | Biais ± 10 % | Vitesse du frein ± 3 | Comme le mode roulé |
+| Y court | Pause et reprise | Pause | Pause | Pause | Pause |
+| Z court | Action du mode | Bonus (T) | Bloc suivant | Attaque | Bonus (T) |
+| Z long | Action spéciale du mode | — | — | Carte ou relique active (défini par R1) | — |
+| A court | Choisir | Changer de vue de caméra | Changer de vue de caméra | Faire défiler couloirs et cartes | Faire défiler les branches au carrefour ; sinon changer de vue |
+| A long | Valider ou revenir | Revenir à la vue par défaut | Revenir à la vue par défaut | Valider le couloir ou la carte | Valider la branche tout de suite |
+| Flèches gauche, droite (boîtier gauche) | Choisir, raccourci | — | — | Couloir ou carte précédent, suivant | Branche à gauche, à droite |
+| Flèches haut, bas (boîtier gauche) | Vue, raccourci | Vue suivante, précédente | idem | idem | idem |
 
-Le clavier double toujours le Click. Pas de bouton pour la difficulté (décision Q1).
+Règles communes :
+
+- **A sert d'abord au choix en attente.** Quand un choix est affiché (carrefour, couloir, carte), A agit sur lui et le HUD le montre ; sinon A change de vue de caméra.
+- **Menus** (inchangé, SRS §4.5) : + et B courts pour défiler, + long pour valider, B long pour revenir ; A long valide aussi, pour garder la famille « valider ».
+- **Clavier :** il double chaque bouton. Pas de bouton pour la difficulté (décision Q1).
+
+Changements par rapport à ce qui existe ou était prévu, à faire si la proposition est retenue :
+
+| Où | Avant | Après | Lot |
+| --- | --- | --- | --- |
+| ERG (1.0, SRS §4.4) | + long : bloc suivant ; − long : pause | ± long : biais ± 10 % ; Z : bloc suivant ; Y : pause (déjà là) | Mise à jour 1.x, petit lot core |
+| Cyber-Rogue (plan R) | Y : attaque ; A long : pause | Z : attaque ; Y : pause | R1 |
+| Monde ouvert (W-Q1) | A court : faire défiler les branches | Inchangé, plus A long : valider | W1 |
+
+Conséquence : avec ce plan de boutons, le Cyber-Rogue n'a plus à être exclu du monde ouvert (point C7 levé).
+
+### 7.2 Vues de caméra
+
+Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS §8 devient un choix de vues.
+
+| Id | Exigence | Lots | Statut |
+| --- | --- | --- | --- |
+| 2.0-CAM-1 | Quatre vues : subjective (celle de la 1.0, avatar masqué), suivi proche derrière l'avatar, suivi éloigné en hauteur (bots, carrefours, peloton), latérale façon retransmission | À créer avec V6 | Planifié |
+| 2.0-CAM-2 | Changement de vue au Click (A court, flèches haut et bas) et au clavier, transition douce de moins d'une demi-seconde ; la dernière vue est retenue dans `[render] camera` | À créer | Planifié |
+| 2.0-CAM-3 | Vue par défaut : subjective tant que l'avatar n'existe pas, suivi proche ensuite ; le Cyber-Rogue garde ses effets de champ de vision et de tremblement dans chaque vue | V6, R11 | Planifié |
+| 2.0-CAM-4 | Lisibilité des pentes (lot Q2 : caméra inclinée, relief exagéré) appliquée à toutes les vues | Q2 | Planifié |
+| 2.0-CAM-5 | Budget : aucune vue ne fait passer sous 55 images/s en `low` ; les vues éloignées utilisent les mêmes préréglages de distance que la vue subjective | P16, S1 | Planifié |
 
 ## 8. Exigences non fonctionnelles par version
 
@@ -291,17 +323,17 @@ Le clavier double toujours le Click. Pas de bouton pour la difficulté (décisio
 
 ## 9. Contradictions et points à trancher
 
-Écarts relevés en rassemblant les documents. Les points C1 à C3 et C9 sont des corrections à appliquer dans les documents détaillés ; C4 à C8 et C10 demandent une décision du propriétaire.
+Écarts relevés en rassemblant les documents. Les points C1 à C3 et C9 sont des corrections à appliquer dans les documents détaillés ; C4 à C8 et C10 demandent une décision du propriétaire ; C4 à C6 sont tranchées (26 octobre).
 
 | # | Écart | Où | Proposition |
 | --- | --- | --- | --- |
 | C1 | Numéros de l'IPC : le cahier P1, l'index et les plans R, T et V disent encore « P = v1.2, R/T/V = v1.3 », alors que la 1.2 est prise par Q1 et N13 | `docs/lots/LOT_P1_contrat_vent_decor.md`, `docs/2.0/README.md`, plans R, T, V | Appliquer 1.3 = P, 1.4 = R/T/V, 1.5 = W ; déjà fait pour R dans la PR #244, à faire pour P1, T et V |
 | C2 | Le README de la 2.0 dit « rien de ceci n'est commencé » alors que des lots T, V et W sont en revue | `docs/2.0/README.md` | Mettre à jour à la fusion de ces PR |
 | C3 | La SRS §4.2 donne « aucune action » au bouton Y, alors que N6 en a fait la pause (corrigé dans cette PR, §4.2 et §4.4 de la SRS ; même correction pour le défaut de 100 % du coefficient de difficulté au §5, passé à 50 % par Q1) | `docs/SRS_v1.1.md` | Fait |
-| C4 | Règle « hors ligne » : la SRS §12 et la décision U-Q2 (« jamais la séance ») contre la météo locale de P1 et le téléchargement des cartes pendant la balade (W-Q4) | SRS §12, plan U §7, cahier P1, plan W §4 | Adopter R-NET-1 à R-NET-3 (§3) : le core n'attend jamais le réseau, seuls les processus annexes téléchargent |
-| C5 | Place de la série P : « après la 1.0 » dans l'index, sans numéro de version, alors que le README de la 2.0 la traite comme le premier contrat de la 2.0 | Index, `docs/2.0/README.md` | Ranger P1 à P6, P8 à P17 et P21 en mises à jour 1.x, et P7, P18 à P20 en 2.0 (choix de ce document) |
-| C6 | Caméra : la SRS §8 dit « ni avatar ni vélo, caméra subjective » ; la série V ajoute un avatar visible (question V-Q11 ouverte) | SRS §8, plan V §2.3 | Trancher V-Q11 (caméra de suivi proposée) |
-| C7 | Bouton A : libre en classique (T), branches du carrefour en monde ouvert (W-Q1), pause en Cyber-Rogue (proposé, R1). Sans conflit tant que ces modes ne se combinent pas ; à vérifier pour le Cyber-Rogue en monde ouvert, que rien n'exclut | Plans R, T, W | Exclure le Cyber-Rogue du monde ouvert en 2.0 |
+| C4 | Règle « hors ligne » : la SRS §12 et la décision U-Q2 (« jamais la séance ») contre la météo locale de P1 et le téléchargement des cartes pendant la balade (W-Q4) | SRS §12, plan U §7, cahier P1, plan W §4 | **Décidé le 26 octobre :** R-NET-1 à R-NET-3 (§3), le core n'attend jamais le réseau, seuls les processus annexes téléchargent |
+| C5 | Place de la série P : « après la 1.0 » dans l'index, sans numéro de version, alors que le README de la 2.0 la traite comme le premier contrat de la 2.0 | Index, `docs/2.0/README.md` | **Décidé le 26 octobre :** P1 à P6, P8 à P17 et P21 en mises à jour 1.x ; P7, P18 à P20 en 2.0 |
+| C6 | Caméra : la SRS §8 dit « ni avatar ni vélo, caméra subjective » ; la série V ajoute un avatar visible (question V-Q11 ouverte) | SRS §8, plan V §2.3 | **Décidé le 26 octobre :** la spécification change, plusieurs vues de caméra (§7.2) ; V-Q11 se règle par 2.0-CAM-3 |
+| C7 | Bouton A : libre en classique (T), branches du carrefour en monde ouvert (W-Q1), pause en Cyber-Rogue (proposé, R1). Sans conflit tant que ces modes ne se combinent pas ; à vérifier pour le Cyber-Rogue en monde ouvert, que rien n'exclut | Plans R, T, W | Plan de boutons commun à tous les modes (§7.1), proposé le 26 octobre, à valider |
 | C8 | Programmes : la SRS §3 annonce trois programmes ; le lot W1 en ajoute un quatrième (`openride-worldgen`) | SRS §3, PR #282 | Accepter, noté au §3 |
 | C9 | L'état « Livré » de Q1 et Q3 n'est pas reporté dans l'index des lots, alors que leur code est sur `main` (révision 1.2 de l'IPC, clé `trace_ftms`) | `docs/lots/00_INDEX.md` | À corriger par la série Q (tenue par une autre IA) |
 | C10 | Taille de la trame `state` : le contrat promet 1 400 octets, mais une trame réaliste en fait déjà environ 1 520 sur `main`, et les séries P, R, T et W ajoutent toutes des champs à `state`. Aucune exigence de ce document ne promet donc de tenir dans 1 400 octets | `docs/contracts/ipc_v1.md`, plans T et W, audit IPC (PR #288) | Trancher la décision D1 de l'audit avant la 1.3 : arrondir les flottants, puis relever la limite de `state` à 4 096 octets en 1.3, ou créer un message `state_ext` |
@@ -315,3 +347,4 @@ Le clavier double toujours le Click. Pas de bouton pour la difficulté (décisio
 | Date | Changement |
 | --- | --- |
 | 26 octobre 2026 | Première version : SRS v1.1, série P, plans R, T, V, W et U rassemblés ; révisions IPC 1.0 à 1.5 ; contradictions C1 à C10 ; numérotation alignée sur l'audit IPC (PR #288) |
+| 26 octobre 2026 | Décisions C4, C5 et C6 ; vues de caméra (§7.2) ; plan de boutons commun proposé (§7.1) |
