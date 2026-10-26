@@ -125,6 +125,7 @@
 | [T2](LOT_T2_detection_segments.md) | 2.0 série T : détection automatique des montées et des sprints (module pur) | Python | — | Petite | Oui (26 octobre, avancé avant la 1.0 : module pur sans contrat) |
 | [T4](LOT_T4_chronometrage_segments.md) | 2.0 série T : chronométrage des segments (franchissements interpolés, pauses, boucles, rejeu du journal) | Python | T2 | Moyenne | Oui (26 octobre, module pur ; branchement avec T1) |
 | [T6](LOT_T6_bonus.md) | 2.0 série T : bonus légèreté, aéro et puissance (obtention, activation, effets, fichier de valeurs, ERG) | Python | — | Moyenne | Oui (26 octobre, module pur ; bouton Z branché avec T1) |
+| [T16](LOT_T16_ecarts_temps_passage.md) | 2.0 série T : écarts en temps de passage avec le bot devant et derrière | Python | N9 (livré) | Petite | Oui (26 octobre, module pur ; champs `gap_s`, `bot_ahead`, `bot_behind` avec T1) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
