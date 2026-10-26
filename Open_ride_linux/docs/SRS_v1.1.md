@@ -175,7 +175,7 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 **Lissage de la pente envoyée au trainer**
 
 - Variation limitée à 2 points de pourcentage par seconde.
-- Coefficient de difficulté (100 % par défaut) : la pente envoyée est multipliée par ce coefficient, alors que la vitesse virtuelle utilise toujours la pente réelle. Mettre 50 % adoucit les cols sans fausser la vitesse affichée.
+- Coefficient de difficulté (50 % par défaut depuis le lot Q1, réglable de 0 à 100 % en séance) : la pente envoyée est multipliée par ce coefficient, alors que la vitesse virtuelle utilise toujours la pente réelle. Mettre 50 % adoucit les cols sans fausser la vitesse affichée.
 
 **Fin de parcours.** La séance s'arrête à la fin de la route (`s` = longueur) ; un parcours marqué en boucle dans le `.world` reboucle sans coupure.
 
@@ -337,11 +337,12 @@ drivetrain_efficiency = 0.97
 [trainer]
 device_name = "HomeTrainer"      # fragment du nom annoncé (« HomeTrainer 0000 »)
 latency_tau_s = 0.8
-difficulty_pct = 100
+difficulty_pct = 50             # 0 à 100 : part de la pente ressentie en SIM (lot Q1)
 grade_min_pct = -10
 grade_max_pct = 16
 power_smooth_tau_s = 0.7
 grade_rate_pct_per_s = 2.0   # limite de variation due au relief (pas aux braquets)
+trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 
 [gearing]
 n_gears = 24
