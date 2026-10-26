@@ -339,11 +339,12 @@ drivetrain_efficiency = 0.97
 [trainer]
 device_name = "HomeTrainer"      # fragment du nom annoncé (« HomeTrainer 0000 »)
 latency_tau_s = 0.8
-difficulty_pct = 100
+difficulty_pct = 50             # réglable en jeu (lot Q1)
 grade_min_pct = -10
 grade_max_pct = 16
 power_smooth_tau_s = 0.7
 grade_rate_pct_per_s = 2.0   # limite de variation due au relief (pas aux braquets)
+trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 
 [gearing]
 n_gears = 24
