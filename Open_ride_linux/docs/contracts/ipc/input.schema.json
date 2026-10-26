@@ -21,7 +21,9 @@
         "PLUS_SHORT",
         "MINUS_SHORT",
         "PLUS_LONG",
-        "MINUS_LONG"
+        "MINUS_LONG",
+        "PLUS_UNCLEAR",
+        "MINUS_UNCLEAR"
       ]
     }
   }

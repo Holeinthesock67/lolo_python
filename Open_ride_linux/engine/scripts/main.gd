@@ -66,6 +66,9 @@ const BEEPS := {
 	"MINUS_LONG": [[550.0, 0.10], [330.0, 0.14]],
 }
 const BEEP_LEVEL := 0.3
+## Durées d'affichage du rappel des commandes en séance et de l'explication d'un appui ambigu.
+const CONTROLS_HINT_S := 10.0
+const PRESS_HINT_S := 4.0
 ## Bip de changement de bloc ERG à T − 3 s (lot N7) : une seule note, plus aiguë, plus longue et plus
 ## forte que les bips d'appui, pour passer au-dessus du vent et de la roue libre (SoundPlayer).
 const ERG_BEEP := [[1320.0, 0.30]]
@@ -149,6 +152,15 @@ func _ready() -> void:
 	menu_view = MenuView.new()
 	hud.add_child(menu_view)
 	hud.move_child(banner, -1)   # le bandeau reste lisible au-dessus du menu
+	menu_view.item_clicked.connect(func(item_id: String) -> void:
+		# Clic sur un élément : focus dessus puis validation, comme un appui long sur +.
+		if menu_flow.is_visible() and menu_flow.menu.focus_item(item_id):
+			_play_tones(BEEPS["PLUS_LONG"], BEEP_LEVEL)
+			_menu_event("PLUS_LONG"))
+	menu_view.mouse_event.connect(func(ev: String) -> void:
+		if menu_flow.is_visible():
+			_play_tones(BEEPS[ev], BEEP_LEVEL)
+			_menu_event(ev))
 	ipc.routes_received.connect(func(items: Array, _msg: Dictionary) -> void:
 		menu_flow.set_routes(items)
 		_refresh_menu())
@@ -181,6 +193,10 @@ func _apply_sky_params(theme_dict: Dictionary) -> void:
 
 
 func _on_input_event(event_name: String) -> void:
+	if event_name in ["PLUS_UNCLEAR", "MINUS_UNCLEAR"]:
+		print("Appui ambigu : ", event_name)
+		banner.show_message("press", HudViewModel.unclear_press_text(event_name, menu_flow.is_visible()), PRESS_HINT_S)
+		return
 	# Bips distincts : court + aigu, court − grave, long + montant, long − descendant.
 	if not BEEPS.has(event_name):
 		return
@@ -527,6 +543,11 @@ func _on_state_received(state: Dictionary) -> void:
 	var new_session_state := str(state.get("session_state", ""))
 	if new_session_state != session_state:
 		session_state = new_session_state
+		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
+		if session_state == "RUNNING":
+			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null), CONTROLS_HINT_S)
+		else:
+			banner.clear_message("controls")
 		# Une erreur reste au moins 5 s ; au-delà, elle reste tant que la séance est en ERROR.
 		if banner.has_message("error"):
 			banner.set_sticky("error", session_state == "ERROR")

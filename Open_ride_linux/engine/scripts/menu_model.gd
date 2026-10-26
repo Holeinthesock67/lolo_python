@@ -71,11 +71,13 @@ static func _item(id: String, label: String, enabled := true, detail := "") -> D
 
 
 ## Touche du clavier vers événement du Click (mêmes touches que main.gd, plus Entrée et Échap).
+## Les flèches suivent l'écran : bas = élément suivant (PLUS_SHORT), haut = précédent (MINUS_SHORT),
+## à l'inverse de la séance où haut = braquet plus dur.
 static func key_to_event(keycode: int) -> String:
 	match keycode:
-		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_UP:
+		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_DOWN:
 			return "PLUS_SHORT"
-		KEY_MINUS, KEY_KP_SUBTRACT, KEY_DOWN:
+		KEY_MINUS, KEY_KP_SUBTRACT, KEY_UP:
 			return "MINUS_SHORT"
 		KEY_PAGEUP, KEY_ENTER, KEY_KP_ENTER:
 			return "PLUS_LONG"

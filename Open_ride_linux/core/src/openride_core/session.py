@@ -604,8 +604,16 @@ class CoreSession:
             elif st == "PAUSED":
                 self._on_command("resume", {}, 0)
             return
+        if ev in (InputEvent.SELECT, InputEvent.BACK):
+            # Boutons A et Z : valider et retour des menus (appui long + et − sans attendre 0,9 s).
+            # Sans effet en séance, pour ne pas sauter dix braquets par erreur.
+            if self.state.session_state != "RUNNING":
+                self.server.send_input_event("PLUS_LONG" if ev == InputEvent.SELECT else "MINUS_LONG")
+            return
         # Toujours relayé à l'engine : menu hors séance, retour sonore (bips) pendant la séance.
         self.server.send_input_event(ev.value)
+        if ev in (InputEvent.PLUS_UNCLEAR, InputEvent.MINUS_UNCLEAR):
+            return   # appui ambigu : l'engine l'explique, rien d'autre
         if self.state.session_state != "RUNNING":
             return
         erg = self.erg

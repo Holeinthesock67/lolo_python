@@ -199,10 +199,10 @@ func _test_lists_and_events() -> void:
 		unknown_ok = unknown_ok and after["action"].is_empty() and after["screen"] == before["screen"] \
 			and after["focus"] == before["focus"] and after["items"] == before["items"]
 	_check(unknown_ok, "événements inconnus : ignorés, état inchangé")
-	var keys_ok: bool = MenuModel.key_to_event(KEY_UP) == "PLUS_SHORT" and MenuModel.key_to_event(KEY_DOWN) == "MINUS_SHORT" \
+	var keys_ok: bool = MenuModel.key_to_event(KEY_DOWN) == "PLUS_SHORT" and MenuModel.key_to_event(KEY_UP) == "MINUS_SHORT" \
 		and MenuModel.key_to_event(KEY_ENTER) == "PLUS_LONG" and MenuModel.key_to_event(KEY_ESCAPE) == "MINUS_LONG" \
 		and MenuModel.key_to_event(KEY_A) == ""
-	_check(keys_ok, "clavier ramené aux quatre événements")
+	_check(keys_ok, "clavier ramené aux quatre événements, flèche bas = suivant")
 	var w = MenuModel.new()
 	w.set_items("workouts", [])
 	w.handle("PLUS_SHORT")

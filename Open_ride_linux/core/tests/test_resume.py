@@ -187,3 +187,24 @@ def test_click_y_pauses_and_resumes_without_relay(env):
     s._handle_input(InputEvent.PAUSE)
     assert s.state.session_state == "RUNNING"
     assert sent == []
+
+
+def test_click_a_and_z_validate_and_go_back_outside_a_ride(env):
+    """Boutons A et Z : PLUS_LONG et MINUS_LONG pour les menus, sans effet en séance."""
+    make, run_for, wall = env
+    s = make(6415)
+    sent: list[str] = []
+    s.server.send_input_event = sent.append
+    s._handle_input(InputEvent.SELECT)
+    s._handle_input(InputEvent.BACK)
+    assert sent == ["PLUS_LONG", "MINUS_LONG"]
+    s._on_command("select_route", {"route_id": "demo"}, 1)
+    s._on_command("start", {}, 2)
+    run_for(s, 2.0)
+    gear = s.state.gear
+    sent.clear()
+    s._handle_input(InputEvent.SELECT)
+    s._handle_input(InputEvent.BACK)
+    assert sent == [] and s.state.gear == gear
+    s._handle_input(InputEvent.PLUS_UNCLEAR)   # appui ambigu : expliqué par l'engine, braquet inchangé
+    assert sent == ["PLUS_UNCLEAR"] and s.state.gear == gear

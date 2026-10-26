@@ -41,8 +41,10 @@ KEYPAD_PLUS_BIT = 12   # bit à 0 = appuyé ; à confirmer sur le matériel (spr
 KEYPAD_MINUS_BIT = 8
 KEYPAD_B_BIT = 5      # bouton B du boîtier droit : « − » qui marche sans déblocage Zwift
 KEYPAD_Y_BIT = 6      # bouton Y du boîtier droit : pause et reprise (lot N6)
-# Tous les boutons du Click V2 (bit du tableau 0x23, à 0 quand le bouton est appuyé). Seuls +,
-# −, B et Y sont utilisés ; les autres sont relevés pour de futures commandes (menus, ERG).
+KEYPAD_A_BIT = 4      # bouton A du boîtier droit : valider dans les menus
+KEYPAD_Z_BIT = 7      # bouton Z du boîtier droit : retour dans les menus
+# Tous les boutons du Click V2 (bit du tableau 0x23, à 0 quand le bouton est appuyé). +, −, A, B,
+# Y et Z sont utilisés ; les flèches sont relevées pour de futures commandes.
 KEYPAD_BITS = {
     "LEFT": 0, "UP": 1, "RIGHT": 2, "DOWN": 3,   # flèches, boîtier gauche
     "A": 4, "B": 5, "Y": 6, "Z": 7,              # boîtier droit
@@ -62,6 +64,14 @@ class InputEvent(str, enum.Enum):
     # Bouton Y du boîtier droit (Click V2, choix du propriétaire du 25 octobre) : pause ou reprise.
     # Interne au core : la séance passe en pause (contrat §4) sans nouvel événement IPC.
     PAUSE = "PAUSE"
+    # Boutons A et Z du boîtier droit : valider et retour dans les menus, toute durée d'appui.
+    # Internes au core : relayés à l'engine en PLUS_LONG et MINUS_LONG hors séance en cours.
+    SELECT = "SELECT"
+    BACK = "BACK"
+    # Appui ni court ni long (zone morte) : sans effet, relayé à l'engine pour l'expliquer au joueur
+    # (contrat IPC, ajout compatible du 26 octobre).
+    PLUS_UNCLEAR = "PLUS_UNCLEAR"
+    MINUS_UNCLEAR = "MINUS_UNCLEAR"
 
 
 def decode_protobuf_varints(payload: bytes) -> dict[int, int]:
@@ -109,6 +119,8 @@ class ClickButtons:
     plus_pressed: bool
     minus_pressed: bool
     y_pressed: bool = False
+    a_pressed: bool = False
+    z_pressed: bool = False
 
 
 def parse_async(data: bytes) -> tuple[int, dict[int, int]]:
@@ -126,7 +138,9 @@ def parse_click_buttons(data: bytes) -> ClickButtons | None:
         return ClickButtons(plus_pressed=not (mask >> KEYPAD_PLUS_BIT) & 1,
                             minus_pressed=not (mask >> KEYPAD_MINUS_BIT) & 1
                             or not (mask >> KEYPAD_B_BIT) & 1,
-                            y_pressed=not (mask >> KEYPAD_Y_BIT) & 1)
+                            y_pressed=not (mask >> KEYPAD_Y_BIT) & 1,
+                            a_pressed=not (mask >> KEYPAD_A_BIT) & 1,
+                            z_pressed=not (mask >> KEYPAD_Z_BIT) & 1)
     if msg_type != MSG_CLICK_NOTIFICATION:
         return None
     # Sémantique proto3 : un champ absent vaut 0, c'est-à-dire « appuyé ».
@@ -137,13 +151,14 @@ class PressClassifier:
     """Transforme les états appuyé/relâché horodatés en événements normalisés.
 
     L'événement est émis au relâchement : moins de 500 ms -> court, 900 ms ou plus -> long,
-    entre les deux -> ignoré (SRS §4.2).
+    entre les deux -> PLUS_UNCLEAR ou MINUS_UNCLEAR, sans effet (SRS §4.2).
     """
 
     def __init__(self, short_max_s: float = SHORT_MAX_S, long_min_s: float = LONG_MIN_S) -> None:
         self.short_max_s = short_max_s
         self.long_min_s = long_min_s
-        self._down_since: dict[str, float | None] = {"PLUS": None, "MINUS": None, "Y": None}
+        self._down_since: dict[str, float | None] = {"PLUS": None, "MINUS": None, "Y": None, "A": None,
+                                                     "Z": None}
 
     def update(self, button: str, pressed: bool, t: float) -> InputEvent | None:
         since = self._down_since[button]
@@ -156,17 +171,20 @@ class PressClassifier:
         self._down_since[button] = None
         if button == "Y":
             return InputEvent.PAUSE   # toute durée : un seul geste, pause ou reprise
+        if button in ("A", "Z"):
+            return InputEvent.SELECT if button == "A" else InputEvent.BACK   # toute durée
         duration = t - since
         if duration < self.short_max_s:
             return InputEvent[f"{button}_SHORT"]
         if duration >= self.long_min_s:
             return InputEvent[f"{button}_LONG"]
-        return None
+        return InputEvent[f"{button}_UNCLEAR"]
 
     def feed(self, buttons: ClickButtons, t: float) -> list[InputEvent]:
         events = []
         for name, pressed in (("PLUS", buttons.plus_pressed), ("MINUS", buttons.minus_pressed),
-                              ("Y", buttons.y_pressed)):
+                              ("Y", buttons.y_pressed), ("A", buttons.a_pressed),
+                              ("Z", buttons.z_pressed)):
             ev = self.update(name, pressed, t)
             if ev is not None:
                 events.append(ev)

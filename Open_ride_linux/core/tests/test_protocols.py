@@ -125,7 +125,7 @@ def test_press_classifier_thresholds():
     c.update("MINUS", True, 1.0)
     assert c.update("MINUS", False, 2.3) == InputEvent.MINUS_LONG
     c.update("PLUS", True, 5.0)
-    assert c.update("PLUS", False, 5.8) is None       # zone morte 500–1200 ms
+    assert c.update("PLUS", False, 5.8) == InputEvent.PLUS_UNCLEAR   # zone morte 500–900 ms
     assert c.update("PLUS", False, 6.0) is None       # relâché sans appui
 
 
@@ -135,4 +135,28 @@ def test_y_button_is_pause_whatever_the_duration():
     assert c.feed(ClickButtons(False, False, y_pressed=True), 0.0) == []
     assert c.feed(ClickButtons(False, False), 0.2) == [InputEvent.PAUSE]
     c.feed(ClickButtons(False, False, y_pressed=True), 1.0)
-    assert c.feed(ClickButtons(False, False), 2.0) == [InputEvent.PAUSE]   # zone morte ignorée
+    assert c.feed(ClickButtons(False, False), 2.0) == [InputEvent.PAUSE]   # zone morte sans effet
+
+
+def test_a_and_z_buttons_select_and_back_whatever_the_duration():
+    """Boutons A et Z du boîtier droit : valider et retour dans les menus, appui court ou long."""
+    def frame(mask):
+        out = bytearray([0x23, 0x08])
+        v = mask
+        while v > 0x7F:
+            out.append((v & 0x7F) | 0x80)
+            v >>= 7
+        out.append(v)
+        return bytes(out)
+
+    a = parse_click_buttons(frame(0xFFFFFFEF))
+    assert a.a_pressed and not a.z_pressed and not a.plus_pressed
+    z = parse_click_buttons(frame(0xFFFFFF7F))
+    assert z.z_pressed and not z.a_pressed and not z.minus_pressed
+    c = PressClassifier()
+    assert c.feed(ClickButtons(False, False, a_pressed=True), 0.0) == []
+    assert c.feed(ClickButtons(False, False), 0.1) == [InputEvent.SELECT]
+    c.feed(ClickButtons(False, False, a_pressed=True), 1.0)
+    assert c.feed(ClickButtons(False, False), 1.7) == [InputEvent.SELECT]   # zone morte ignorée
+    c.feed(ClickButtons(False, False, z_pressed=True), 3.0)
+    assert c.feed(ClickButtons(False, False), 3.2) == [InputEvent.BACK]

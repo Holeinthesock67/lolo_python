@@ -327,7 +327,21 @@ func _test_difficulty() -> void:
 	_check(l30["difficulty_visible"] and l30["difficulty_text"] == "Difficulté 30 %", "session_lines à 30 % : visible")
 
 
+func _test_controls_help() -> void:
+	var sim: String = HudViewModel.controls_text(false)
+	var erg: String = HudViewModel.controls_text(true)
+	_check(sim.contains("Y = pause") and sim.contains("braquet") and not sim.contains("intensité"),
+		"rappel en séance libre : Y = pause, + / − = braquet")
+	_check(erg.contains("Y = pause") and erg.contains("intensité") and erg.contains("bloc suivant"),
+		"rappel en ERG : Y = pause, intensité, bloc suivant")
+	_check(HudViewModel.unclear_press_text("PLUS_UNCLEAR", true).contains("A")
+		and HudViewModel.unclear_press_text("MINUS_UNCLEAR", true).contains("Z")
+		and HudViewModel.unclear_press_text("PLUS_UNCLEAR", false).contains("braquet"),
+		"appui ambigu expliqué : A / Z dans les menus, braquet en séance")
+
+
 func _init() -> void:
+	_test_controls_help()
 	_test_texts()
 	_test_session_lines()
 	_test_distance_on_loop()
