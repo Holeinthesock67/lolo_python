@@ -154,10 +154,12 @@ func _ready() -> void:
 	hud.move_child(banner, -1)   # le bandeau reste lisible au-dessus du menu
 	menu_view.item_clicked.connect(func(item_id: String) -> void:
 		# Clic sur un élément : focus dessus puis validation, comme un appui long sur +.
+		print("Souris : clic sur ", item_id)
 		if menu_flow.is_visible() and menu_flow.menu.focus_item(item_id):
 			_play_tones(BEEPS["PLUS_LONG"], BEEP_LEVEL)
 			_menu_event("PLUS_LONG"))
 	menu_view.mouse_event.connect(func(ev: String) -> void:
+		print("Souris : ", ev)
 		if menu_flow.is_visible():
 			_play_tones(BEEPS[ev], BEEP_LEVEL)
 			_menu_event(ev))

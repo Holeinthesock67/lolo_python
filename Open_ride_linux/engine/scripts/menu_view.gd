@@ -124,6 +124,7 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 		l.clip_text = true
 		p.add_child(l)
 		p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		p.mouse_filter = Control.MOUSE_FILTER_PASS   # clic droit et molette remontent au panneau
 		p.gui_input.connect(_on_item_input.bind(p))
 		items_box.add_child(p)
 		_item_panels.append(p)
