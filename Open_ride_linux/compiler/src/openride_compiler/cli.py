@@ -9,6 +9,7 @@
     openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
+    openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]
 
 Codes de retour : 0 succès, 1 erreur d'entrée, 2 erreur interne.
 """
@@ -46,6 +47,7 @@ from .pipeline import compile_route
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
 from .theme import check_theme
 from .verify import verify_world, world_info
+from .worldgen import measure
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
 LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water")
@@ -140,6 +142,10 @@ def build_parser() -> argparse.ArgumentParser:
     ti.add_argument("--force", action="store_true", help="remplace un thème existant")
     ti.add_argument("--themes-dir", type=Path, default=None,
                     help="dossier d'installation des thèmes (défaut : ~/OpenRide/Themes)")
+
+    wm = sub.add_parser("world-measure",
+                        help="monde ouvert : mesure volumes, temps de génération et débit (lot W0)")
+    measure.add_arguments(wm)
 
     return parser
 
@@ -505,6 +511,10 @@ def cmd_build_all(args: argparse.Namespace) -> int:
     return EXIT_INPUT if error_count > 0 else EXIT_OK
 
 
+def cmd_world_measure(args: argparse.Namespace) -> int:
+    return measure.run_from_args(args)
+
+
 COMMANDS = {
     "build": cmd_build,
     "add-layer": cmd_add_layer,
@@ -515,6 +525,7 @@ COMMANDS = {
     "theme-install": cmd_theme_install,
     "list": cmd_list,
     "build-all": cmd_build_all,
+    "world-measure": cmd_world_measure,
 }
 
 
