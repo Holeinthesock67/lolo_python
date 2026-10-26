@@ -282,6 +282,86 @@ def summary_text(summary: dict[str, Any], title: str) -> str:
     return "\n".join(lines) + "\n"
 
 
+# --- endurance (lot X16) -------------------------------------------------------------------
+
+# Seuils de l'essai d'endurance (recette 1.0, lignes 17 et 18 : 30 images/s en low, 1 h sans plantage
+# ni saccade). Pentes en Mo par heure, mesurées après la mise en route.
+ENDURANCE_LIMITS = {
+    "warmup_s": 300.0,           # chargement du parcours et premières tuiles : hors calcul des pentes
+    "min_fps_p50": 30.0,         # médiane des images/s (fenêtre réelle seulement)
+    "max_fps_drop_pct": 10.0,    # images/s des 10 dernières minutes contre les 10 premières
+    "stutter_ms": 100.0,         # une seconde dont la pire image dépasse ce temps est une saccade
+    "max_stutters_per_h": 6.0,
+    "min_slope_span_s": 1200.0,  # pente jugée sur 20 min au moins, sinon indicative
+    "slopes_mb_per_h": {"godot_rss_mb": 100.0, "core_rss_mb": 20.0, "vram_mb": 50.0, "gpu_mem_mb": 100.0,
+                        "static_mb": 50.0},
+}
+
+
+def slope_per_hour(rows: list[dict[str, Any]], key: str, after_s: float = 0.0) -> float | None:
+    """Pente (unité par heure) de la droite des moindres carrés de `key` en fonction de t_s, calculée sur
+    la médiane de chaque minute (un pic d'une seconde, un processus fils par exemple, ne pèse pas)."""
+    raw = [(float(r["t_s"]), float(r[key])) for r in rows
+           if isinstance(r.get(key), (int, float)) and isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= after_s]
+    if len(raw) < 10:
+        return None
+    minutes: dict[int, list[tuple[float, float]]] = {}
+    for t, v in raw:
+        minutes.setdefault(int(t // 60), []).append((t, v))
+    pts = [(statistics.median(t for t, _ in m), statistics.median(v for _, v in m)) for m in minutes.values()]
+    if len(pts) < 2:
+        pts = raw
+    mt = statistics.fmean(t for t, _ in pts)
+    mv = statistics.fmean(v for _, v in pts)
+    den = sum((t - mt) ** 2 for t, _ in pts)
+    if den <= 0:
+        return None
+    return sum((t - mt) * (v - mv) for t, v in pts) / den * 3600.0
+
+
+def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
+                     limits: dict[str, Any] | None = None) -> list[tuple[bool | None, str, str]]:
+    """Vérifications de l'essai d'endurance : (réussi, libellé, mesure) ; réussi vaut None pour une mesure
+    donnée à titre indicatif (images/s sous Xvfb, rendu logiciel)."""
+    lim = {**ENDURANCE_LIMITS, **(limits or {})}
+    out: list[tuple[bool | None, str, str]] = []
+    ts = values(rows, "t_s")
+    if not ts:
+        return [(False, "endurance : mesures de l'engine", "aucune ligne de la sonde")]
+    warm = min(ts) + lim["warmup_s"]
+    steady = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= warm]
+    fps = values(steady, "fps")
+    if fps:
+        p50 = statistics.median(fps)
+        ok = p50 >= lim["min_fps_p50"] if real_window else None
+        out.append((ok, "endurance : images/s", f"médiane {p50:.1f}, 1er centile {percentile(fps, 0.01):.1f}"
+                    f" (seuil {lim['min_fps_p50']:.0f}{'' if real_window else ', non appliqué sous Xvfb'})"))
+        first = values([r for r in steady if r["t_s"] < warm + 600.0], "fps")
+        last = values([r for r in steady if r["t_s"] > max(ts) - 600.0], "fps")
+        if first and last and max(ts) - warm >= 1800.0:
+            drop = (1.0 - statistics.median(last) / statistics.median(first)) * 100.0 if statistics.median(first) else 0.0
+            out.append((drop <= lim["max_fps_drop_pct"] if real_window else None, "endurance : images/s dans la durée",
+                        f"{statistics.median(first):.1f} au début, {statistics.median(last):.1f} à la fin ({drop:+.0f} %)"))
+    worst = values(steady, "frame_max_ms")
+    if worst:
+        stutters = sum(w > lim["stutter_ms"] for w in worst)
+        hours = max((max(ts) - warm) / 3600.0, 1e-6)
+        rate = stutters / hours
+        out.append((rate <= lim["max_stutters_per_h"] if real_window else None, "endurance : saccades",
+                    f"{stutters} seconde(s) avec une image de plus de {lim['stutter_ms']:.0f} ms, {rate:.1f} par heure"
+                    f" (seuil {lim['max_stutters_per_h']:.0f})"))
+    long_enough = max(ts) - warm >= lim["min_slope_span_s"]
+    labels = {k: lab for k, lab, _ in SUMMARY}
+    for key, max_slope in lim["slopes_mb_per_h"].items():
+        slope = slope_per_hour(rows, key, warm)
+        if slope is None:
+            continue
+        note = "" if long_enough else f", indicatif : moins de {lim['min_slope_span_s'] / 60:.0f} min mesurées"
+        out.append((slope <= max_slope if long_enough else None, f"endurance : croissance de la {labels.get(key, key)}",
+                    f"{slope:+.1f} Mo/h (seuil {max_slope:.0f}{note})"))
+    return out
+
+
 # --- écriture ------------------------------------------------------------------------------
 
 def write_csv(rows: list[dict[str, Any]], path: Path) -> None:
