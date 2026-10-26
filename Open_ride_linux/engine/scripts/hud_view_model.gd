@@ -150,7 +150,7 @@ func evaluate(now_s: float) -> Dictionary:
 	out["elapsed_text"] = format_hms(r["elapsed_s"])
 	var diff_int: int = r.get("difficulty_pct", 100)
 	out["difficulty_pct"] = diff_int
-	out["difficulty_text"] = "Difficulté %d %%" % diff_int
+	out["difficulty_text"] = "Difficulté %d %%" % diff_int if _has_state else NO_VALUE
 	out["difficulty_visible"] = _has_state and (diff_int != 100)
 	return out
 
