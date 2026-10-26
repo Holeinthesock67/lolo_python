@@ -38,7 +38,7 @@ Accueil ── « Cyber-Rogue » (affiché seulement si le core annonce "rogue")
 ### 4.2 Couloirs
 
 - Écran en surimpression dans la scène : 3 cartes puis 2 portes, sélection suivie de `state.rogue.loot_focus` (le core gère les boutons ; l'engine ne fait qu'afficher). Le clavier envoie les mêmes `input_event`.
-- A long en couloir : affiche le deck et les métriques de la run (temps, NP, W'bal), sans arrêter la minuterie du couloir.
+- Deck et métriques de la run (temps, NP, W'bal) : dans l'écran de pause (Y), avec « Reprendre » en premier ; en couloir, A court fait défiler et A long valide (plan de boutons commun).
 
 ### 4.3 Accueil construit à partir des modes
 

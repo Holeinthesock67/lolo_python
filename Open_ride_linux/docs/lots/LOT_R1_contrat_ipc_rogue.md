@@ -23,11 +23,11 @@ Rédiger les ajouts suivants dans `ipc_v1.md` et les schémas, chacun avec sa li
 
 ### 4.1 Boutons Z et A
 
-- Nouveaux événements `input` et valeurs de `input_event` : `Z_SHORT`, `A_SHORT`, `A_LONG`. Mêmes seuils que + et − (court sous 0,5 s, long à partir de 0,9 s, décision au relâchement, entre les deux : ignoré).
+- Nouveaux événements `input` et valeurs de `input_event` : `Z_SHORT`, `Z_LONG`, `A_SHORT`, `A_LONG`. Mêmes seuils que + et − (court sous 0,5 s, long à partir de 0,9 s, décision au relâchement, entre les deux : ignoré). `PLUS_LONG` et `MINUS_LONG` existent déjà.
 - B reste lu comme « − » (contournement du boîtier gauche) ; aucun nouvel événement pour B.
 - **Y reste la pause du core dans tous les modes** (lot N6 ; décision R-Q6 du 26 octobre), interne, sans événement.
-- **Mode Cyber-Rogue :** `Z_SHORT`, `A_SHORT` et `A_LONG` sont consommés par le core (A court : attaque, purge, valider en couloir ; A long : Disjoncteur ou carte de module A, deck en couloir ; Z : parade, relance) et relayés à l'engine pour l'effet visuel et sonore.
-- Clavier de l'engine (`input_event`) : Z et A pour les appuis courts, A maintenu 0,9 s pour l'appui long ; Échap et Y restent la pause.
+- **Mode Cyber-Rogue** (plan de boutons commun, spécification générale, §7.1) : + et B courts = vitesse ±1, longs = ±3 ; `Z_SHORT` = attaque, parade ou purge selon le marqueur, relance en couloir ; `Z_LONG` = carte ou relique active ; `A_SHORT` = faire défiler cartes et portes, sinon changer de vue ; `A_LONG` = valider, sinon vue par défaut. Tous sont consommés par le core et relayés à l'engine pour l'effet visuel et sonore (le changement de vue est fait par l'engine).
+- Clavier de l'engine (`input_event`) : Z et A pour les appuis courts, Z ou A maintenus 0,9 s pour les appuis longs ; Échap et Y restent la pause.
 
 ### 4.2 Liste des modes dans `hello_ack.config`
 
@@ -66,7 +66,7 @@ Nouveau code d'erreur : `run_invalid` (objectif ou durée hors liste).
 | `posture` | chaîne | `ROC`, `FLUIDE`, `VELOCE`, `ARRET` |
 | `firewall_gap_m` | nombre | Avance sur le Firewall (négatif : rattrapé) |
 | `gold` | entier | Or de la run |
-| `windows` | tableau | Fenêtres actives, au plus 4 : `{kind, s_start, s_end}`, `kind` parmi `arch`, `strike_target`, `z_zone`, `pad`, `purge`, `tunnel` |
+| `windows` | tableau | Fenêtres actives, au plus 4 : `{kind, s_start, s_end}`, `kind` parmi `arch`, `strike_target`, `parry_zone`, `pad`, `purge`, `tunnel` |
 | `hack` | objet ou null | Piratage du Saboteur : `{locked: booléen, forced_gear: entier ou null, until_s}` |
 | `overheat` | booléen | Surchauffe (objectif endurance, décision Q3) |
 | `loot_focus` | entier ou null | En couloir : carte ou porte sélectionnée (0 à 4) |
@@ -76,7 +76,7 @@ Nouveau code d'erreur : `run_invalid` (objectif ou durée hors liste).
 
 ### 4.5 Messages `room` et `loot` (core vers engine, sur événement)
 
-- `room` : `v`, `room_id`, `part`, `parts`, `archetype`, `variant`, `length_m`, `nominal_s`, `profile` (pente tous les 10 m : liste de `[s_m, grade_pct]`, au plus 1 500 points), `markers` (liste de `{kind, s_m, len_m, param}` : `arch`, `strike_target`, `z_zone`, `pad`, `purge`, `tunnel`, `rock`, `shockwave`), `next` (`room_id` et archétype de la salle suivante si elle est déjà connue, sinon `null`). Même découpage en parties de 60 000 octets que `routes`. Envoyé au début de chaque salle et, pendant le couloir, pour chacune des deux portes.
+- `room` : `v`, `room_id`, `part`, `parts`, `archetype`, `variant`, `length_m`, `nominal_s`, `profile` (pente tous les 10 m : liste de `[s_m, grade_pct]`, au plus 1 500 points), `markers` (liste de `{kind, s_m, len_m, param}` : `arch`, `strike_target`, `parry_zone`, `pad`, `purge`, `tunnel`, `rock`, `shockwave`), `next` (`room_id` et archétype de la salle suivante si elle est déjà connue, sinon `null`). Même découpage en parties de 60 000 octets que `routes`. Envoyé au début de chaque salle et, pendant le couloir, pour chacune des deux portes.
 - `loot` : `v`, `corridor_id`, `cards` (3 cartes : `{id, name, kind, text, replaces_gear}`), `doors` (2 portes : `{side: "left" | "right", room_id, archetype}`), `reroll_cost`, `gold`. Renvoyé après chaque relance.
 - L'engine qui voit un `room_id` ou un `corridor_id` inconnu dans `state.rogue` envoie `rogue_resync`, au plus une fois par seconde.
 

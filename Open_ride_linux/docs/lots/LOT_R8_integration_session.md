@@ -31,9 +31,9 @@ R1 (contrat 1.4), R6 et R15 livrés ; R0 (valeurs de la rampe) ou ses défauts ;
 
 ### 4.3 Boutons
 
-- `zwift_click.py` : décoder aussi A et Z (bits 4 et 7 de `KEYPAD_BITS`) ; événements `Z_SHORT`, `A_SHORT`, `A_LONG`.
+- `zwift_click.py` : décoder aussi A et Z (bits 4 et 7 de `KEYPAD_BITS`) ; événements `Z_SHORT`, `Z_LONG`, `A_SHORT`, `A_LONG`.
 - Mode classique : inchangé (Y = pause interne, N6 ; A et Z sans effet jusqu'à la série T).
-- Mode `ROGUE` : `Z_SHORT`, `A_SHORT` et `A_LONG` vers `RunEngine` et relayés à l'engine ; B et + vers le braquet ou la sélection en couloir ; Y = pause ou reprise, comme en mode classique (décision R-Q6).
+- Mode `ROGUE` (plan de boutons commun, spécification générale, §7.1) : + et B courts et longs vers le braquet (±1, ±3) ; `Z_SHORT` et `Z_LONG` vers `RunEngine` ; `A_SHORT` et `A_LONG` vers la sélection en couloir, sinon seulement relayés à l'engine (vue de caméra) ; Y = pause ou reprise, comme en mode classique.
 - `input_event` de l'engine (clavier) accepte les mêmes noms.
 
 ### 4.4 Pause, pannes et reprise
@@ -67,7 +67,7 @@ Aucune au-delà de la révision 1.4 de R1.
 2. Session simulée (trainer et Click simulés) : `start_run` puis `start`, une run de 30 min en temps accéléré jusqu'à `RESULTS`, trames `state` valides pour le schéma 1.4, `summary.rogue` valide.
 3. `grade_sent` suit la formule centrée et ses bornes ; `difficulty_pct` n'a pas d'effet en mode `ROGUE` (décision R-Q1).
 4. Mode classique : mêmes trames et même comportement des boutons qu'avant le lot (tests existants inchangés).
-5. Y met en pause et reprend en mode `ROGUE` comme en mode classique ; `A_LONG` déclenche le Disjoncteur et ne met jamais en pause.
+5. Y met en pause et reprend en mode `ROGUE` comme en mode classique ; B long fait −3 vitesses ; A ne change rien au jeu hors couloir.
 6. Plantage simulé du core au milieu d'une salle : reprise au début de cette salle avec l'état noté.
 7. FIT de la run validé par le SDK officiel (lot H5).
 8. La trame `state` la plus chargée en mode `ROGUE` fait moins de 1 400 octets.
