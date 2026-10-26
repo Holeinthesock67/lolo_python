@@ -29,6 +29,19 @@ count = 50
 xp_level_2 = 1000            # points pour passer au niveau 2
 xp_level_max = 100000        # points cumulés pour le dernier niveau
 
+# Pièces (lot V3b) : gagnées avec l'expérience (mêmes séances), dépensées au Garage et pour des
+# vies du mode Cyber-Rogue. En ERG, avec `erg_replaces_distance`, les minutes remplacent la distance.
+[coins]
+per_km = 1
+per_erg_min = 0.5            # question V-Q10 : le plan ne prévoit pas de gain en ERG
+per_segment = 5
+per_jersey = 20
+rogue_boss_default = 10      # boss vaincu absent de la table ci-dessous
+life_price = 30              # une vie du mode Cyber-Rogue (lot R9)
+
+[coins.rogue_boss]
+chimere_centrale = 50
+
 # Défis : `stat` atteint `threshold` ; `reward` = pièce d'équipement offerte (catalogue du lot V3).
 [[challenges]]
 id = "km_1000"
