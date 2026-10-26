@@ -58,3 +58,16 @@ Aucune (P1 les a faites).
 - Indicateur du HUD et animation du décor (P4, P5, P16).
 - Aspiration derrière les bots (P3).
 - Vent de travers, effet sur la stabilité, vent abrité par les forêts ou le relief.
+
+## 9. Livraison (26 octobre 2026)
+
+Livré sur la branche `lot-p2-vent-physique-core`, au-dessus de P1.
+
+- **`wind.py`** (module pur) : `WindModel` (modes `off`, `fixed`, `gusty`, `theme` ; rafales par trois sinusoïdes de 23, 47 et 89 s dont les phases viennent de `seed`, direction qui oscille de ± 15° au plus à 100 % de rafales), `head_component`, `aero_force_delta`, `grade_offset_pct` (100 · ΔF / (m g) avec les `PhysicsParams` courants, borné) et `wind_frame` (arrondis du contrat).
+- **Session** : à chaque pas de 50 Hz, le vent du temps de séance (figé en pause) est projeté sur le cap de la route et donné à `PhysicsParams.wind_mps`. Les bots à puissance constante reçoivent le vent à leur propre position (chaque bot garde désormais sa copie des paramètres, au lieu d'un objet partagé). En SIM avec `feel = "grade"`, le supplément de pente s'ajoute à la pente du braquet **avant** la limitation de variation et les bornes du trainer ; avec `feel = "ftms"`, `head_mps` part dans le champ vent de la commande 0x11 (`set_wind` des pilotes FTMS et mock) et la pente ne change pas. En ERG, ni la cible ni la commande ne changent.
+- **Trame `state`** : `wind` une trame sur quinze ; quand cette trame porte `devices`, `wind` part dans la suivante.
+- **Journal** : `head_mps` et `wind_grade_pct` en champs facultatifs des relevés à 1 Hz (`null` vent coupé).
+- **Configuration** : section `[wind]` dans `config.py` (types, bornes et choix contrôlés), dans l'exemple de la SRS §11. En mode `theme`, le core lit la clé `wind` de `~/OpenRide/Themes/<thème>/theme.json`, sinon du thème par défaut du dépôt.
+- **Menu :** la clé `max_grade_offset_pct` est lue par le core ; son curseur dans « Réglages » viendra avec l'écran des réglages (O3/O4) et P16, puisque `config_edit.py` n'écrit encore que des textes.
+- **Tests** : `core/tests/test_wind.py` (18 tests, plus 10 cas de bornes et de choix ajoutés d'office aux tests de configuration : cas de référence inchangé, vent de face et de dos à 20 km/h contre `steady_speed` à 1 %, projection nord, sud, est, déterminisme, supplément borné et cohérent avec ΔF, ressenti FTMS, ERG, pause, trames avec et sans `wind` sous 1 400 octets, journal, configuration invalide, vent du thème).
+- **Reste sur le vélo (le propriétaire)** : vent de face de 25 km/h en SIM avec `feel = "grade"`, puis `"ftms"` : résistance perceptible et progressive, sans à-coup.
