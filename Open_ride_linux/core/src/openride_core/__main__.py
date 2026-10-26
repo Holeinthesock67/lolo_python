@@ -21,6 +21,10 @@ Sous-commandes disponibles à ce stade :
                           [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
                                       ceinture) et bloc [drivers] proposé pour config.toml
+    openride-core settings [--json] [--config FICHIER]
+    openride-core settings set CLÉ VALEUR [--config FICHIER]
+                                      réglages du menu (FTP, poids, difficulté, braquet de
+                                      départ, qualité, thème) : lecture, ou écriture dans config.toml
 """
 
 from __future__ import annotations
@@ -151,6 +155,15 @@ def cmd_devices(args: argparse.Namespace) -> int:
                save=args.save, assume_yes=args.yes)
 
 
+def cmd_settings(args: argparse.Namespace) -> int:
+    from .settings import run
+
+    if args.action and (args.action[0] != "set" or len(args.action) != 3):
+        print("openride-core settings : usage : settings set CLÉ VALEUR", file=sys.stderr)
+        return 2
+    return run(args.json, args.config, args.action[1:] if args.action else None)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Analyseur de la ligne de commande ; aussi lu par `test_docs_coherence.py` (commandes citées)."""
     p = argparse.ArgumentParser(prog="openride-core")
@@ -213,6 +226,10 @@ def build_parser() -> argparse.ArgumentParser:
     dev.add_argument("--save", action="store_true",
                      help="enregistre le matériel trouvé dans config.toml (appui « + » demandé, lot N12)")
     dev.add_argument("--yes", action="store_true", help="avec --save : sans demander de confirmation")
+    st = sub.add_parser("settings", help="réglages du menu : lecture ou écriture dans config.toml")
+    st.add_argument("action", nargs="*", metavar="set CLÉ VALEUR")
+    st.add_argument("--json", action="store_true", help="sortie JSON")
+    st.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     return p
 
 
@@ -229,7 +246,7 @@ def main(argv: list[str] | None = None) -> int:
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary,
-            "history": cmd_history, "devices": cmd_devices}[args.command](args)
+            "history": cmd_history, "devices": cmd_devices, "settings": cmd_settings}[args.command](args)
 
 
 if __name__ == "__main__":

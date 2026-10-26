@@ -58,6 +58,7 @@ var erg_panel = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
+var _theme_name: String = "default"
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
 
@@ -118,11 +119,7 @@ func _ready() -> void:
 		sky_mat.sky_top_color = Color(0.38, 0.65, 0.98)
 		sky_mat.sky_horizon_color = Color(0.65, 0.75, 0.85)
 		world_env.environment.sky.sky_material = sky_mat
-	var theme_res := ThemeLoader.load_named(cfg.get("theme", "default"))
-	var theme_dict: Dictionary = theme_res.get("theme", {})
-	var theme_dir: String = theme_res.get("theme_dir", "")
-	streamer.set_theme(theme_dict, theme_dir)
-	_apply_sky_params(theme_dict)
+	_apply_theme(str(cfg.get("theme", "default")))
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
@@ -169,9 +166,40 @@ func _ready() -> void:
 				(msg.get("items", []) as Array).size() if msg.get("items") is Array else 0, str(msg.get("plus_address"))])
 		menu_flow.on_scan_results(msg)
 		_refresh_menu())
+	ipc.settings_received.connect(_on_settings)
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
 		_refresh_menu())
+
+
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité et thème appliqués tout de suite au décor.
+func _on_settings(msg: Dictionary) -> void:
+	menu_flow.on_settings(msg)
+	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
+	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
+		_quality_name = q
+		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+		if streamer.tree_renderer != null:
+			streamer.tree_renderer.set_preset(_quality_name)
+		print("Qualité graphique : ", _quality_name)
+	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
+	if th != _theme_name:
+		_apply_theme(th)
+	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
+	if ftp != null:
+		ipc.core_config["ftp_w"] = ftp
+	_refresh_menu()
+
+
+func _apply_theme(name: String) -> void:
+	_theme_name = name
+	var theme_res := ThemeLoader.load_named(name)
+	var theme_dict: Dictionary = theme_res.get("theme", {})
+	streamer.set_theme(theme_dict, theme_res.get("theme_dir", ""))
+	_apply_sky_params(theme_dict)
+	if route != null and _route_job.is_empty():
+		streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le thème
+	print("Thème : ", name)
 
 
 func _apply_sky_params(theme_dict: Dictionary) -> void:
@@ -212,6 +240,7 @@ func _run_menu_action(act: Dictionary) -> void:
 		"list":
 			ipc.list_routes()
 			ipc.list_workouts()
+			ipc.list_settings()
 			if act.get("route_id") != null:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
@@ -227,6 +256,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			menu_flow.pairing.identify_cmd_id = ipc.identify_click_plus()
 		"pair_devices":
 			ipc.pair_devices(act.get("args", {}))
+		"set_setting":
+			ipc.set_setting(str(act["key"]), act["value"])
+		"set_difficulty":
+			ipc.send_set_difficulty(int(act["pct"]))
 		"select_route":
 			ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"select_workout":

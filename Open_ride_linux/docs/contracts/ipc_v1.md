@@ -143,6 +143,8 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 | `scan_devices` | `{ "timeout_s": nombre }` (8 par défaut, 1 à 30) | Révision 1.2 : recherche des appareils Bluetooth ; réponses `scan_results` |
 | `identify_click_plus` | `{}` | Révision 1.2 : attend un appui « + » du Click pendant 15 s ; réponse `scan_results` avec `plus_address` |
 | `pair_devices` | `{ "trainer", "click_plus", "click_minus", "hr" }` : adresse ou `null` | Révision 1.2 : écrit les appareils choisis dans `config.toml` ; `error` `pairing_failed` en cas d'échec |
+| `list_settings` | `{}` | Révision 1.2 : demande les réglages du menu ; réponse `settings` |
+| `set_setting` | `{ "key": texte, "value": nombre ou texte }` | Révision 1.2 : écrit un réglage dans `config.toml` ; réponse `settings`, ou `error` `setting_busy` / `setting_invalid` |
 
 **Listes des parcours et des entraînements.** Le core est la seule source de vérité : l'engine ne lit ni le dossier des parcours ni les fichiers `.zwo`. Le core lit le disque à la demande, hors de la boucle physique à 50 Hz, et répond dans les 500 ms pour 200 parcours.
 
@@ -182,7 +184,16 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 | `bye` | engine vers core | — | L'engine se ferme volontairement |
 | `shutdown` | core vers engine | — | Le core se ferme : l'engine quitte ou revient à l'écran d'attente |
 
-**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche demandée pendant une séance), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée).
+**Réglages depuis le menu (révision 1.2, lots O3 et O4).** Le core lit, valide et écrit ; l'engine affiche et change les valeurs au Click.
+
+| Message | Sens | Champs |
+| --- | --- | --- |
+| `settings` | core vers engine | `v`, `request_cmd_id`, `items` : liste de `{key, label, type, value, applies}` ; `type` vaut `int` (avec `min`, `max`, `step`, `unit`) ou `choice` (avec `choices`) ; `applies` vaut `next_session` (séance suivante, sans relancer) ou `now` (qualité et thème : l'engine les applique tout de suite au décor) |
+
+- Réglages proposés : `rider.ftp_w`, `rider.mass_kg`, `trainer.difficulty_pct`, `gearing.start_gear`, `render.quality`, `render.theme` (`default` et les thèmes de `~/OpenRide/Themes/`). Bornes et choix : ceux de la validation de `config.toml`.
+- `set_setting` : hors séance seulement (`IDLE`, `READY`, `FINISHED`, `ERROR`) ; pendant `RUNNING` ou `PAUSED`, `error` `setting_busy` et rien n'est écrit (pendant la séance, la difficulté se change par `set_difficulty`). Valeur hors bornes ou choix inconnu : `error` `setting_invalid`, rien n'est écrit. Sinon le fichier est modifié comme pour `pair_devices` (copie `.bak`), la valeur sert dès la séance suivante (`hello_ack.config` aussi) et le core renvoie `settings` avec `request_cmd_id` de la commande.
+
+**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche demandée pendant une séance), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée), `setting_busy` (réglage demandé pendant une séance), `setting_invalid` (réglage inconnu ou valeur refusée).
 
 **Version.** Le core refuse un `hello` dont `v` diffère du sien, répond par une erreur `version_mismatch` et n'ouvre pas la séance. La règle d'évolution est au §8.
 
@@ -276,3 +287,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.1) | 24 octobre 2026 | Ajouts compatibles (lot N1) : commandes `list_routes` et `list_workouts`, messages `routes` et `workouts` (jusqu'à 60 000 octets, en parties) ; objet `devices` dans `state` une fois par seconde ; bilan enrichi dans `summary` ; forme de `bots` ; `pause_reason` = `core_restarted` et reprise après un plantage du core |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot Q1) : commande `set_difficulty`, champ `difficulty_pct` (entier) dans `state` et `hello_ack.config` |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot N13, accepté par le propriétaire le 25 octobre ; même révision que Q1, numérotation confirmée par le propriétaire le 26 octobre) : commandes `scan_devices`, `identify_click_plus` et `pair_devices`, message `scan_results`, codes d'erreur `busy`, `scan_failed` et `pairing_failed` |
+| 1 (révision 1.2) | 26 octobre 2026 | Ajouts compatibles (lots O3 et O4, acceptés par le propriétaire le 26 octobre) : commandes `list_settings` et `set_setting`, message `settings`, codes d'erreur `setting_busy` et `setting_invalid` |
