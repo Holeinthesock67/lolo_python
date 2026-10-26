@@ -23,7 +23,7 @@ N6, N13 (même révision de contrat, à faire l'un après l'autre), O3 et Q1 (co
 | `settings` | core vers engine | `items` : liste de `{key, label, type, value, choices?, min?, max?, step?, applies}` (`applies` : `now` ou `next_session`) |
 | `set_setting` | engine vers core (commande) | `key`, `value` ; réponse `ack` ou `error` avec code `setting_invalid` |
 
-Le core n'accepte `set_setting` qu'**en dehors d'une séance** (état `IDLE` ou écran de fin) ; pendant `RUNNING` ou `PAUSED`, il répond `error` `setting_busy`. Les schémas JSON vont dans `docs/contracts/ipc/`.
+Le core n'accepte `set_setting` qu'**en dehors d'une séance** (état `IDLE` ou écran de fin) ; pendant `RUNNING` ou `PAUSED`, il répond `error` `busy` (code de N13 ; décision D6 de l'audit IPC du 26 octobre). Les schémas JSON vont dans `docs/contracts/ipc/`.
 
 ## 5. Travail demandé
 
@@ -52,7 +52,7 @@ Le core n'accepte `set_setting` qu'**en dehors d'une séance** (état `IDLE` ou 
 
 ## 9. Livraison (26 octobre 2026)
 
-Contrat accepté par le propriétaire le 26 octobre (révision 1.2, avec N13 et Q1) : `list_settings`, `set_setting`, message `settings` (`docs/contracts/ipc/settings.schema.json`), erreurs `setting_busy` et `setting_invalid`. `applies` vaut `next_session` ou `now` (qualité et thème).
+Contrat accepté par le propriétaire le 26 octobre (révision 1.2, avec N13 et Q1) : `list_settings`, `set_setting`, message `settings` (`docs/contracts/ipc/settings.schema.json`), erreurs `busy` (pendant une séance, décision D6) et `setting_invalid`. `applies` vaut `next_session` ou `now` (qualité et thème).
 
 - Core (`session.py`) : `settings` en réponse à `list_settings` et après chaque `set_setting` réussi ; refus pendant `RUNNING` et `PAUSED` ; FTP, masse, braquet de départ et difficulté pris en compte dès la séance suivante sans relancer (`hello_ack.config` aussi).
 - Engine : `settings_view_model.gd` ; écran « Réglages » (Appareils puis les six réglages), écran de modification (+ / − pour changer, appui long + pour enregistrer, appui long − pour annuler), difficulté en curseur de 0 à 100 % par pas de 10 % ; **le même curseur sur l'écran de pause** envoie `set_difficulty` (Q1) sans toucher à `config.toml` ; qualité et thème appliqués tout de suite au décor de fond (`main.gd`).

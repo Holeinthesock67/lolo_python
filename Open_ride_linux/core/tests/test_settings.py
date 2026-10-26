@@ -142,7 +142,7 @@ def test_ipc_set_setting_refused_during_a_session_or_out_of_bounds(tmp_path: Pat
     for st in ("RUNNING", "PAUSED"):
         s.state.session_state = st
         s._on_command("set_setting", {"key": "rider.ftp_w", "value": 265}, 10)
-        assert errors[-1][0] == "setting_busy"
+        assert errors[-1][0] == "busy"
     s.state.session_state = "IDLE"
     s._on_command("set_setting", {"key": "rider.ftp_w", "value": 20}, 11)
     assert errors[-1][0] == "setting_invalid" and "50 à 600" in errors[-1][1]

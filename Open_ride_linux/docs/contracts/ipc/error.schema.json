@@ -28,7 +28,6 @@
         "busy",
         "scan_failed",
         "pairing_failed",
-        "setting_busy",
         "setting_invalid"
       ]
     },
