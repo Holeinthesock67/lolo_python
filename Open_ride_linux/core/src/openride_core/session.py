@@ -455,9 +455,11 @@ class CoreSession:
     # --- journal et FIT ----------------------------------------------------------------
 
     def _open_journal(self) -> None:
+        from .plans import active_tag
+
         self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
                                     on_failure=self._on_recording_failure,
-                                    workout_id=self._workout_id)
+                                    workout_id=self._workout_id, plan=active_tag(self._workout_id))
         self._rec.event("start", time.time())
         self._device_up = self._device_states()   # état de départ : seuls les changements s'écrivent
         self._next_record = 0.0

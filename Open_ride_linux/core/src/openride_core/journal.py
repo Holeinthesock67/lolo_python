@@ -6,6 +6,8 @@ un plantage, `openride-core recover` peut transformer le dernier journal en FIT.
 Sortes de lignes :
 - `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ...}` en tête
   (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8) ;
+  champ facultatif `plan` = `{"id": ..., "week": n, "day": "mardi"}` quand la séance réalise une
+  séance d'un plan d'entraînement actif (lot O11), absent sinon ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
 - `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ;
 - `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un
@@ -62,14 +64,17 @@ class Record:
 
 class JournalWriter:
     def __init__(self, path: Path, route_id: str | None = None, workout_id: str | None = None,
-                 header: bool = True) -> None:
+                 header: bool = True, plan: dict | None = None) -> None:
         """Ouvre le journal en ajout ; `header=False` continue un journal existant (reprise, lot N8)."""
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
         self._fh: IO[str] = path.open("a", encoding="utf-8")
         self._last_sync = 0.0
         if header:
-            self._write({"kind": "header", "version": 1, "route_id": route_id, "workout_id": workout_id})
+            head = {"kind": "header", "version": 1, "route_id": route_id, "workout_id": workout_id}
+            if plan:
+                head["plan"] = plan
+            self._write(head)
 
     def _write(self, obj: dict) -> None:
         self._fh.write(json.dumps(obj, separators=(",", ":")) + "\n")
