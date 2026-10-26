@@ -158,6 +158,9 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 - Amorçage : l'énergie est ramenée à celle d'une vitesse plancher de 0,5 m/s quand la puissance est positive ou que la gravité entraîne le vélo (descente). En montée à puissance nulle, la vitesse retombe à 0 et le vélo ne recule pas.
 - La vitesse peut être plafonnée (80 m/s) pour éviter les valeurs aberrantes.
 - Le coefficient d'aspiration `alpha_draft` vaut 0 sans bot ; il n'intervient qu'avec les bots (de 0 à 0,45 selon la distance derrière un bot).
+- **Vent (lots P1 et P2).** `v_vent` est la composante de face du vent le long du cap de la route à `s` (positive de face) ; elle vaut 0 quand le vent est coupé (`[wind] mode = "off"`, défaut des versions 1.x). Le vent de travers ne compte pas.
+- **Ressenti du vent et de l'aspiration.** En SIM, l'écart de résistance dû au vent et à l'aspiration est transmis au trainer comme un **supplément de pente** (`[wind] feel = "grade"`, défaut), borné à ± `max_grade_offset_pct` (4 points par défaut, réglable dans les réglages du menu), ou dans le champ vent de la commande FTMS 0x11 (`feel = "ftms"`, à essayer sur le matériel). En ERG, la puissance demandée ne change jamais : seule la vitesse virtuelle tient compte du vent et de l'aspiration.
+- Seuls les bots à puissance constante abritent ; le fantôme n'abrite pas.
 
 **Paramètres par défaut** (modifiables, §11)
 
@@ -168,7 +171,7 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 | Crr | 0,004 | Pneus route sur home trainer virtuel |
 | Rendement η | 0,97 | Transmission |
 | Densité de l'air ρ | 1,225·e^(−h/8400) kg/m³ | h = altitude en mètres |
-| Vent | 0 m/s | |
+| Vent | 0 m/s | Coupé par défaut en 1.x ; réglé par `[wind]` (§11) |
 
 **Anticipation de latence.** Pour compenser la réponse du trainer (0,5 à 1,0 s), la pente envoyée est lue sur la route à `s_anticipée = s + v · tau` avec tau = 0,8 s par défaut.
 
@@ -379,6 +382,19 @@ godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide 
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
+
+**Section `[wind]` (contrat du lot P1, lue par le core à partir du lot P2).** Elle rejoindra l'exemple ci-dessus quand le core la lira ; d'ici là, elle n'est pas encore acceptée dans `config.toml`.
+
+```text
+[wind]
+mode = "off"                 # "off" (défaut), "fixed", "gusty" ou "theme" (vent du thème 1.2)
+speed_kmh = 0                # 0 à 60
+from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360)
+gust_pct = 0                 # 0 à 100, rafales en mode "gusty"
+seed = 0                     # graine des rafales, pour rejouer une séance
+feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
+max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
+```
 
 **Arborescence**
 

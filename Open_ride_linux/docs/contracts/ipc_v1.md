@@ -1,6 +1,6 @@
 # OpenRide Linux – Contrat IPC v1
 
-21 octobre 2026, révision 1.1 du 24 octobre 2026, révision 1.2 du 25 octobre 2026 (ajouts compatibles, `v` reste 1)
+21 octobre 2026, révision 1.1 du 24 octobre 2026, révision 1.2 du 25 octobre 2026, révision 1.3 du 26 octobre 2026 (ajouts compatibles, `v` reste 1)
 
 ## 1. Objet, principes et conventions
 
@@ -76,6 +76,9 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `summary` | objet ou `null` | Présent quand `session_state` vaut `FINISHED` (ou `ERROR` après une séance) : `duration_s` (temps chronométré), `distance_m`, `avg_power_w`, `fit_path` (`null` si aucun FIT n'a été produit) ; champs facultatifs du bilan enrichi ci-dessous |
 | `devices` | objet, facultatif | État détaillé des appareils, voir ci-dessous ; envoyé une trame sur 30 (une fois par seconde) et dans la trame qui suit un changement, absent des autres trames |
 | `bots` | liste, facultatif | Concurrents virtuels, voir ci-dessous |
+| `wind` | objet, facultatif | Révision 1.3 : vent ressenti au point `s`, voir ci-dessous ; envoyé 2 fois par seconde (une trame sur quinze, jamais avec `devices`) et absent quand le vent est coupé |
+| `draft` | nombre, facultatif | Révision 1.3 : coefficient d'aspiration appliqué au cycliste, de 0 à 0,45 (SRS §5) ; absent sans bot |
+| `draft_bot` | chaîne, facultatif | Révision 1.3 : `id` du bot qui abrite le cycliste ; absent quand `draft` vaut 0 ou manque |
 | `last_cmd_id` | entier | Dernier `cmd_id` traité par le core (§4) |
 
 **Objet `erg`**
@@ -120,6 +123,22 @@ Mêmes définitions que `openride-core summary` (lot K7). Chaque champ vaut `nul
 **Liste `bots`**
 
 Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et un fantôme), pour que la trame la plus chargée (ERG, `devices` et bots) tienne dans 1 400 octets : `id` (au plus 8 caractères) et `name` (au plus 16 caractères) sont des chaînes, `s` et `v` des nombres (mêmes unités que la trame), `kind` vaut `constant` (puissance fixe) ou `ghost` (rejeu d'une séance passée, lot N9). Champ absent quand il n'y a pas de bot.
+
+**Objet `wind` (révision 1.3, lot P1)**
+
+| Champ | Type | Description |
+| --- | --- | --- |
+| `speed_mps` | nombre ≥ 0 | Vitesse du vent au sol, rafale comprise |
+| `from_deg` | nombre, 0 à 360 | Direction d'où vient le vent, en degrés dans le sens horaire depuis le nord (même convention que le cap, `world_format_v1.md` §3) |
+| `head_mps` | nombre | Composante de face le long du cap de la route à `s` : positive de face, négative de dos. C'est celle qu'utilise la physique |
+| `gust` | nombre, 0 à 1 | Force de la rafale en cours, pour l'animation (arbres, drapeaux, son) |
+
+- Arrondis à l'envoi : `speed_mps` et `head_mps` au centième, `from_deg` au dixième, `gust` au centième, `draft` au millième (comme `s` et `v` des bots, au centième et au millième).
+- La physique du core utilise le vent exact à 50 Hz ; l'engine lisse les valeurs reçues 2 fois par seconde. Entre deux envois, l'engine garde le dernier objet `wind` reçu ; s'il n'en reçoit plus pendant 2 s, le vent est considéré comme coupé.
+- L'indicateur du vent du HUD (favorable, défavorable ou neutre, et son intensité) se déduit de ces champs : le verdict du signe de `head_mps` (seuil ± 1 m/s), l'intensité de `speed_mps`. Aucun champ de plus.
+- Le vent est coupé par défaut dans les versions 1.x (`[wind] mode = "off"`, SRS §11) : l'objet `wind` est alors absent et les trames restent celles de la révision 1.2.
+- En ERG, le vent et l'aspiration ne changent que la vitesse virtuelle, jamais la puissance demandée. Le fantôme (`kind` = `ghost`) n'abrite pas : `draft_bot` désigne toujours un bot `constant`.
+- `wind` n'est jamais dans la même trame que `devices` : quand les deux tombent ensemble, le core envoie `wind` dans la trame suivante. Les deux trames les plus chargées (ERG, 5 bots, `draft` et `draft_bot`, avec soit `devices`, soit `wind`) tiennent ainsi dans 1 400 octets ; un test du core le vérifie.
 
 ## 4. Message engine vers core : commandes
 
@@ -276,3 +295,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.1) | 24 octobre 2026 | Ajouts compatibles (lot N1) : commandes `list_routes` et `list_workouts`, messages `routes` et `workouts` (jusqu'à 60 000 octets, en parties) ; objet `devices` dans `state` une fois par seconde ; bilan enrichi dans `summary` ; forme de `bots` ; `pause_reason` = `core_restarted` et reprise après un plantage du core |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot Q1) : commande `set_difficulty`, champ `difficulty_pct` (entier) dans `state` et `hello_ack.config` |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot N13, accepté par le propriétaire le 25 octobre ; même révision que Q1, numérotation confirmée par le propriétaire le 26 octobre) : commandes `scan_devices`, `identify_click_plus` et `pair_devices`, message `scan_results`, codes d'erreur `busy`, `scan_failed` et `pairing_failed` |
+| 1 (révision 1.3) | 26 octobre 2026 | Ajouts compatibles (lot P1, décisions du propriétaire du 25 octobre ; révision 1.3 parce que Q1 et N13 ont pris la 1.2) : objet facultatif `wind` dans `state` (2 fois par seconde, absent quand le vent est coupé), champs facultatifs `draft` et `draft_bot` |
