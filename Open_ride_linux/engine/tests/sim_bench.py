@@ -57,6 +57,7 @@ sys.path.insert(0, str(REPO / "core" / "src"))
 from e2e_check import Proc, free_udp_ports, now, send_cmd, snapshot_home  # noqa: E402
 import perf_probe  # noqa: E402
 from openride_core import sim_scenarios  # noqa: E402
+from openride_core.tools.guide import Guide  # noqa: E402
 
 BENCH_SCENARIOS_DIR = TESTS_DIR / "sim_bench_scenarios"
 CMD_ID_BASE = 20_000
@@ -651,6 +652,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))
     ap.add_argument("--keep", action="store_true", help="garder le HOME temporaire")
     ap.add_argument("--list", action="store_true", help="énumérer les scénarios et quitter")
+    ap.add_argument("--muet", action="store_true", help="sans bips de départ et de fin")
     args = ap.parse_args(argv)
     if args.list:
         list_scenarios()
@@ -664,9 +666,18 @@ def main(argv: list[str] | None = None) -> int:
     real_home = Path.home()
     before = snapshot_home(real_home)
     results: list[tuple[str, Report]] = []
-    for name in args.scenario or ["demo"]:
+    # Bip au départ de chaque scénario et au verdict, journal guide.jsonl : utile pour l'endurance
+    # d'une heure (lot X16), qu'on lance avant de faire autre chose.
+    guide = Guide("Banc simulé", args.out / "guide.jsonl", sound=False if args.muet else None, screen=False)
+    names = args.scenario or ["demo"]
+    for k, name in enumerate(names):
         sname, spec, settings, sarg = resolve_scenario(name)
-        rep = Bench(args, sname, spec, settings, sarg, args.out / sname).run()
+        bench = Bench(args, sname, spec, settings, sarg, args.out / sname)
+        guide.step(f"Scénario {sname}", bench.duration,
+                   "endurance : rien à faire, ne pas mettre le PC en veille" if bench.endurance else "",
+                   index=k + 1, total=len(names))
+        rep = bench.run()
+        guide.measure(sname, "OK" if not rep.failed else f"{rep.failed} échec(s)", ok=not rep.failed)
         results.append((sname, rep))
     after = snapshot_home(real_home)
     # Le dossier des rapports et ses parents (dont la date de modification change) sont attendus.
@@ -680,7 +691,10 @@ def main(argv: list[str] | None = None) -> int:
     write_index(args.out, results)
     failed = sum(r.failed for _, r in results) + (not ok_home)
     print(f"Rapport : {args.out / 'index.html'}")
-    print("RÉSULTAT : " + ("banc simulé OK" if not failed else f"ÉCHEC ({failed} vérification(s))"))
+    verdict = "banc simulé OK" if not failed else f"ÉCHEC ({failed} vérification(s))"
+    guide.finish(not failed, f"Banc fini : {verdict}")
+    guide.close()
+    print("RÉSULTAT : " + verdict)
     return 0 if not failed else 1
 
 
