@@ -66,7 +66,7 @@ python3 engine/tests/menu_bench.py                             # tous les parcou
 python3 engine/tests/menu_bench.py --parcours appareils --native   # fenêtre visible
 ```
 
-Parcours : `connexion_auto` (tout se connecte, l'écran de connexion passe seul à l'accueil) ; `sessions` (lot N15 : monde, session libre, pause, bilan, session ERG, « Session simulée » : code 65) ; `appareils` (un seul boîtier du Click, « Passer », Réglages → Appareils, recherche, enregistrement dans `config.toml`, « Relancer » : code de sortie 64). Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
+Parcours : `reglages` (lots O3 et O4 : FTP écrite dans `config.toml`, qualité appliquée tout de suite, curseur de difficulté de la pause) ; `connexion_auto` (tout se connecte, l'écran de connexion passe seul à l'accueil) ; `sessions` (lot N15 : monde, session libre, pause, bilan, session ERG, « Session simulée » : code 65) ; `appareils` (un seul boîtier du Click, « Passer », Réglages → Appareils, recherche, enregistrement dans `config.toml`, « Relancer » : code de sortie 64). Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
 
 ## 4. Parcours d'essai sans réseau
 

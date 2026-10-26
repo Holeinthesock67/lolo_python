@@ -1,0 +1,86 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideSettingsMessage",
+  "description": "Réponse à cmd list_settings ou set_setting (révision 1.2, lots O3 et O4) : réglages proposés au menu ; datagramme de 1 400 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "items"
+  ],
+  "properties": {
+    "type": {
+      "const": "settings"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": [
+          "key",
+          "label",
+          "type",
+          "value",
+          "applies"
+        ],
+        "properties": {
+          "key": {
+            "type": "string",
+            "pattern": "^[a-z_]+\\.[a-z_]+$"
+          },
+          "label": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "type": {
+            "enum": [
+              "int",
+              "choice"
+            ]
+          },
+          "value": {
+            "type": [
+              "integer",
+              "string"
+            ]
+          },
+          "choices": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "min": {
+            "type": "integer"
+          },
+          "max": {
+            "type": "integer"
+          },
+          "step": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "unit": {
+            "type": "string"
+          },
+          "applies": {
+            "enum": [
+              "next_session",
+              "now"
+            ]
+          }
+        }
+      }
+    }
+  }
+}
