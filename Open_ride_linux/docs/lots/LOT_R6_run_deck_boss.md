@@ -20,13 +20,13 @@ R5 livré.
 `WARMUP` → (`ROOM` → `CORRIDOR`) × n → `BOSS` (phases 1 à 3) → `COOLDOWN` → `RESULTS`, avec `RECOVERY` après une défaite (R5 §4.3). `RunEngine.step(dt, inputs) -> RunOutputs` : pente de l'ennemi à envoyer, verrou de braquet, objet `rogue` de `state`, messages `room` et `loot` à émettre, lignes d'événements pour le journal. `RunEngine.snapshot()` et `RunEngine.restore(snapshot)` pour la reprise après un plantage du core (R8).
 
 - **Échauffement :** pente 0 à 2 %, rampe de 0,50 à 0,75 FTP (cible affichée) ; tirage de la **relique de départ** à la 3e minute (1 parmi 3, mêmes boutons que les cartes) ; calibrage : le joueur essaie chaque vitesse (rien n'est imposé).
-- **Couloir (2 min par défaut, 0 %, zone 1 à 2) :** d'abord 1 carte parmi 3, puis le choix d'une porte parmi 2 (archétypes affichés). B et + déplacent la sélection, Y valide, Z relance le tirage des cartes (coût 15 or, +5 à chaque relance dans le même couloir), A affiche le deck. Sans choix au bout du couloir : pas de carte, porte de gauche.
+- **Couloir (2 min par défaut, 0 %, zone 1 à 2) :** d'abord 1 carte parmi 3, puis le choix d'une porte parmi 2 (archétypes affichés). B et + déplacent la sélection, A court valide, Z relance le tirage des cartes (coût 15 or, +5 à chaque relance dans le même couloir), A long affiche le deck. Sans choix au bout du couloir : pas de carte, porte de gauche.
 - **Boss :** les trois salles de R3 §4.4, avec leurs transitions.
 - **Retour au calme :** pente 0 %, 0,50 FTP conseillés ; coffres de fin (or converti en déblocages, R9) ; aucune perte possible.
 
 ### 4.2 Deck
 
-- Le deck est l'ensemble des cartes gardées pendant la run ; toutes agissent en même temps, sauf les modules A (un seul équipé : le dernier pris remplace l'ancien, question R-Q8).
+- Le deck est l'ensemble des cartes gardées pendant la run ; toutes agissent en même temps, sauf les modules A (un seul équipé, sur A long : le dernier pris remplace l'ancien, décision R-Q8).
 - Pignons spéciaux : une seule carte par vitesse remplacée (la nouvelle remplace l'ancienne sur la même vitesse).
 - Tous les effets sont exprimés **en points de pente** ou en multiplicateurs de jeu, et la pente envoyée reste bornée par la plage du trainer (risque 2 du plan).
 
@@ -41,9 +41,9 @@ R5 livré.
 | Maudit | Pignon (remplace la 10) | En vitesse 10 : dégâts ×1,35, Z sans effet |
 | Shifter électronique pro | Module | Fenêtre de Perfect Shift doublée (au plus 3 s) ; +3 bouclier à chaque réussite |
 | Siphon d'aspiration | Module Z | Aspiration réussie : +50 d'adrénaline |
-| Inversion polaire | Module A | Une fois par salle : pendant 8 s, la pente de l'ennemi est remplacée par son opposé (montée de 7 % → descente de 7 %, bornée à −3 %) |
+| Inversion polaire | Module A (A long) | Une fois par salle : pendant 8 s, la pente de l'ennemi est remplacée par son opposé (montée de 7 % → descente de 7 %, bornée à −3 %) |
 
-Reliques de départ (proposition, question R-Q7) : trois cartes passives tirées dans une liste à part, gardées toute la run : bouclier max +20 ; or +25 % ; fenêtre de Perfect Shift +0,3 s.
+Reliques de départ (décision R-Q7) : trois cartes passives tirées dans une liste à part, gardées toute la run : bouclier max +20 ; or +25 % ; fenêtre de Perfect Shift +0,3 s.
 
 ### 4.4 Bilan
 

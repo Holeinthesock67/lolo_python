@@ -47,6 +47,8 @@ Boîtier droit du Click : +, B, Y, Z, A actifs ; le bouton − n'est pas utilis�
 | Z | Parade, bouclier ou aspiration : timing quand la roue traverse une zone [Z] | Relancer le tirage (coûte de l'or) | Défense active, accrocher la roue |
 | A | Disjoncteur : purge d'urgence (−4 vitesses d'un coup) ou compétence de carte | Afficher le deck et les métriques | Joker de survie, surcharge volontaire |
 
+**Correction (26 octobre, décision R-Q6) :** la pause reste sur Y, comme dans les autres modes. L'attaque passe donc sur **A court** (cibles notées [A] dans les cahiers), qui valide aussi en couloir ; le Disjoncteur ou la carte de module A passent sur **A long**, qui affiche aussi le deck en couloir. Z et + / B ne changent pas. Dans la suite de ce document, lire « A court » là où le GDD dit Y.
+
 ### 2.3 La cadence comme posture de combat
 
 À puissance égale :

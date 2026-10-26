@@ -123,14 +123,14 @@
 | [Q6](LOT_Q6_boitier_gauche_click.md) | Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
 | [S1](LOT_S1_rendu_invisible.md) | Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible | GDScript | O1, Q2 (mêmes fichiers) | Moyenne | Oui (essai sur la GTX 1060 par le propriétaire) ; issue #190 |
 | [R0](LOT_R0_delai_frein.md) | Mesure du délai du frein du trainer (marches de pente et de braquet) : script et essai sur le vélo | Python | Q3, Q4 | Petite | Script oui (même outil que X5) ; essai par le propriétaire ; **version 2.0** |
-| [R1](LOT_R1_contrat_ipc_rogue.md) | Contrat IPC v1.4 : boutons Y, Z et A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run | Markdown + JSON | P1 | Petite | Non : interne (décision du propriétaire), **version 2.0** |
+| [R1](LOT_R1_contrat_ipc_rogue.md) | Contrat IPC v1.4 : boutons Z et A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run | Markdown + JSON | P1 | Petite | Non : interne (décision du propriétaire), **version 2.0** |
 | [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | Oui, **version 2.0** |
 | [R3](LOT_R3_generateur_salles.md) | Générateur de salles : profils des cinq archétypes et du boss, graine, marqueurs | Python | — | Moyenne | Oui, **version 2.0** |
 | [R4](LOT_R4_firewall.md) | Firewall : cycliste virtuel à une fraction de la FTP, écart au joueur | Python | R3 | Petite | Oui, **version 2.0** |
 | [R5](LOT_R5_combat.md) | Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe | Python | R0, R2, R3, R4 | Moyenne | Oui, **version 2.0** |
 | [R6](LOT_R6_run_deck_boss.md) | Run : machine à états, couloirs, deck et cartes, or, reliques, boss en trois phases | Python | R5 | Grande | Oui, **version 2.0** |
 | [R7](LOT_R7_equilibrage_run_simulee.md) | Table d'équilibrage en données et run simulée avec cyclistes types | Python | R6, R15 | Moyenne | Oui, **version 2.0** |
-| [R8](LOT_R8_integration_session.md) | Intégration dans la session du core : mode ROGUE, formule centrée, boutons Y, Z et A, journal, pause et reprise | Python | R1, R6, R15, Q4 | Grande | Non : interne (`session.py`), **version 2.0** |
+| [R8](LOT_R8_integration_session.md) | Intégration dans la session du core : mode ROGUE, formule centrée, boutons Z et A, pause Y, journal, pause et reprise | Python | R1, R6, R15, Q4 | Grande | Non : interne (`session.py`), **version 2.0** |
 | [R9](LOT_R9_progression_permanente.md) | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies | Python | R6, V2, V3b, V4 | Petite | Oui, **version 2.0** |
 | [R10](LOT_R10_scene_neon_ruban.md) | Engine : scène néon, ruban 3D, shader de pente, arches et zones | GDScript + shader | R1 | Grande | Non : interne (rendu, contrôle visuel), **version 2.0** |
 | [R11](LOT_R11_hud_diegetique.md) | Engine : HUD diégétique, arcs au sol, champ de vision et tremblement | GDScript | R1, R10 | Moyenne | Modèle oui, rendu interne ; **version 2.0** |
