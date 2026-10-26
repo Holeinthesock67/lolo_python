@@ -236,8 +236,14 @@ class CoreSession:
             if reset:
                 reset()   # sortie de ERROR : nouvelle prise de contrôle du trainer
             self._select_route(str(args.get("route_id") or "demo"), previous=st)
-        elif name == "select_workout" and st in ("IDLE", "READY"):
-            self._select_workout(args.get("workout_id"))
+        elif name == "select_workout":
+            # Accepté aussi après une séance (FINISHED, ERROR) : le menu choisit l'entraînement avant
+            # le parcours, et le core reste en FINISHED jusqu'au select_route suivant.
+            if st in ("IDLE", "READY", "FINISHED", "ERROR"):
+                self._select_workout(args.get("workout_id"))
+            else:
+                log.warning("Entraînement « %s » refusé : séance %s.", args.get("workout_id"), st)
+                self.server.send_error("busy", "Choix de l'entraînement impossible pendant une séance.")
         elif name == "start" and st == "READY":
             self._open_journal()
             if self._workout:
