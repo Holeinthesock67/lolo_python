@@ -82,6 +82,18 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 | `python -m openride_core.tools.route_vectors` | Vecteurs de test de la route, partagés core et engine |
 | `python -m openride_core.ipc_budget` | Taille de la trame `state` la plus lourde de chaque révision du contrat face à la limite de 1 400 octets (lot X25) ; une trame trop grande est allégée par le core au lieu d'être jetée |
 
-## 6. Ce qui demande encore le matériel
+## 6. Confidentialité (lot X23)
+
+Le dépôt est public. `scripts/privacy/privacy_scan.py` (bibliothèque standard seulement) cherche les mots interdits (noms, lieux, nom du trainer…), les coordonnées dans une zone privée, les adresses Bluetooth qui ne sont pas des adresses de test, les clés et jetons, et les fichiers d'activité ou de secrets. Les mots trouvés sont masqués dans la sortie.
+
+| Commande (depuis la racine du dépôt) | Usage |
+| --- | --- |
+| `Open_ride_linux/scripts/privacy/install_hook.sh` | Installe le crochet pre-commit : un commit qui ajoute une donnée interdite est refusé |
+| `python3 Open_ride_linux/scripts/privacy/privacy_scan.py --all` | Tous les fichiers suivis (à lancer avant une étiquette de version, O8 §5.4) |
+| `python3 Open_ride_linux/scripts/privacy/privacy_scan.py --commits origin/main..HEAD` | Auteur, committer, message et lignes ajoutées de chaque commit d'une branche |
+
+La liste des mots et des zones interdits reste hors du dépôt : `~/OpenRide/privacy_denylist.txt` sur le PC (modèle : `scripts/privacy/privacy_denylist.example.txt`), secret GitHub `PRIVACY_DENYLIST` pour le workflow `.github/workflows/confidentialite.yml`, qui passe chaque PR. Sans liste, seuls les contrôles génériques tournent (avertissement à l'écran).
+
+## 7. Ce qui demande encore le matériel
 
 Le simulateur ne dit rien des délais réels de BlueZ, de la qualité radio, de la réponse exacte du HomeTrainer (latence de la résistance, Reset), du boîtier gauche du Click qui se tait après la connexion, de la vraie ceinture, ni des images par seconde sur la GTX 1060 : le banc sous Xvfb rend en OpenGL logiciel (quelques images par seconde), seul `--native` sur le PC cible mesure le rendu réel.
