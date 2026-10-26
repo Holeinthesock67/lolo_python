@@ -180,6 +180,36 @@ def test_full_state_frame_fits_in_datagram():
     assert size <= MAX_DATAGRAM, f"trame de {size} octets"
 
 
+def test_state_floats_rounded_and_realistic_frame_fits():
+    """Décision D1 de l'audit IPC du 26 octobre : flottants arrondis, trame réaliste sous 1 400 octets.
+
+    Valeurs en pleine précision, comme celles que la physique et la route donnent au core, et vrai nom
+    du fantôme (accentué). Sans `devices` (29 trames sur 30), la trame ERG avec 5 bots doit tenir.
+    """
+    st = IpcState(route_id="col-du-galibier-par-le-lautaret-version-longue", route_length_m=48000.123456789,
+                  hr=172, mode="ERG", seq=123456789, t=3599.123456789012, s=28450.123456789012,
+                  v=11.123456789012345, grade=7.812345678901234, grade_sent=4.123456789,
+                  power=248.12345678901, power_3s=245.3456789, cadence=79.12345678901234,
+                  lat=45.07312345678901, lon=6.402712345678901, alt=1834.2123456789012,
+                  erg={"workout_name": "Seuil 2x20 avec rampes et sprints", "block_index": 12,
+                       "block_count": 40, "block_type": "interval_on", "block_remaining_s": 512.25,
+                       "block_total_s": 1200.0, "target_w": 238.0, "next_target_w": 125.0,
+                       "bias_pct": 102.0, "paused": False},
+                  bots=[{"id": f"bot-{i}", "name": "Fantôme du 24/10", "s": 12873.46 + i, "v": 9.123,
+                         "kind": "ghost"} for i in range(5)])
+    frame = st.to_dict()
+    assert (frame["t"], frame["s"], frame["v"], frame["lat"], frame["lon"]) == (
+        3599.12, 28450.12, 11.123, 45.073123, 6.402712)
+    assert frame["power"] == 248.1 and frame["cadence"] == 79.1 and frame["alt"] == 1834.21
+    assert frame["route_length_m"] == 48000.1 and frame["grade"] == 7.81
+    assert_valid(frame)
+    size = len(json.dumps(frame, separators=(",", ":")).encode())
+    assert size <= MAX_DATAGRAM, f"trame de {size} octets"
+    # Les champs absents ou nuls ne sont pas touchés.
+    idle = IpcState(route_length_m=None).to_dict()
+    assert idle["route_length_m"] is None and idle["t"] == 0.0
+
+
 def test_full_summary_frame_fits_in_datagram():
     st = IpcState(route_id="col-du-galibier-par-le-lautaret-version-longue", route_length_m=48000.0,
                   session_state="FINISHED", mode="ERG",

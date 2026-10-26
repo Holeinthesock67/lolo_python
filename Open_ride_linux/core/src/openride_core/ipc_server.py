@@ -23,6 +23,13 @@ MAX_LIST_DATAGRAM_SIZE = 60000
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
 
+# Décimales gardées dans la trame state : 1 cm, 1 mm/s, 0,01 %, 0,1 W, 0,1 tr/min, 6 décimales de degré (11 cm).
+STATE_ROUNDING = {
+    "t": 2, "s": 2, "v": 3, "grade": 2, "grade_sent": 2, "power": 1, "power_3s": 1, "cadence": 1,
+    "lat": 6, "lon": 6, "alt": 2, "route_length_m": 1,
+}
+
+
 @dataclass
 class IpcState:
     seq: int = 0
@@ -60,6 +67,11 @@ class IpcState:
             "v": CONTRACT_VERSION,
             **asdict(self),
         }
+        # Flottants arrondis pour tenir dans 1 400 octets (audit IPC du 26 octobre, décision D1) :
+        # un float Python s'écrit sur 15 à 18 caractères, soit environ 90 octets de trop par trame.
+        for key, ndigits in STATE_ROUNDING.items():
+            if isinstance(d.get(key), float):
+                d[key] = round(d[key], ndigits)
         if self.devices is None:
             d.pop("devices", None)
         if self.bots is None:

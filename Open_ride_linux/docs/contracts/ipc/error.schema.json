@@ -27,7 +27,8 @@
         "recording_failed",
         "busy",
         "scan_failed",
-        "pairing_failed"
+        "pairing_failed",
+        "bad_args"
       ]
     },
     "message": {
