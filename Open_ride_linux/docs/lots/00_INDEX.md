@@ -122,23 +122,23 @@
 | [Q5](LOT_Q5_fc_relayee_figee.md) | Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui ; issue #172 |
 | [Q6](LOT_Q6_boitier_gauche_click.md) | Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
 | [S1](LOT_S1_rendu_invisible.md) | Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible | GDScript | O1, Q2 (mêmes fichiers) | Moyenne | Oui (essai sur la GTX 1060 par le propriétaire) ; issue #190 |
-| [W0](LOT_W0_mesures_monde_ouvert.md) | Monde ouvert : mesures des volumes, des temps de génération et du débit (script exécuté sur le PC), décodeur de tuiles vectorielles | Python | — | Petite | Oui (script) ; exécution sur le PC par le propriétaire |
-| [W1](LOT_W1_contrat_monde_vivant.md) | Contrat : monde vivant (`live`, grille UTM, route par parties, couches par carré, `junctions.json`), IPC du monde ouvert (révision 1.5 provisoire), dialogue avec `openride-worldgen` | Markdown + JSON | W0 | Petite | Non : interne (décision du propriétaire) |
-| [W2](LOT_W2_cache_local_monde.md) | Cache local du monde : arborescence, versions, plafond de 5 Go, éviction, épinglage, `cache-info`, `cache-clean` | Python | W1 | Moyenne | Oui, après W1 |
-| [W3](LOT_W3_extrait_regional_sqlite.md) | Extrait régional Geofabrik converti en base SQLite indexée (schéma commun avec W13) | Python | W2 | Moyenne | Oui, après W2 |
-| [W4](LOT_W4_graphe_routier.md) | Graphe routier local : arêtes, carrefours, classes, ponts et tunnels, impasses, ronds-points | Python | W3 | Moyenne | Oui, après W3 |
-| [W5](LOT_W5_profil_arete.md) | Profil d'arête : altitude, ponts et tunnels interpolés, lissage, pente bornée, indépendant du chemin | Python | W4 | Petite | Oui, après W4 |
-| [W6](LOT_W6_navigateur.md) | Navigateur : balade, destination, boucle de X km | Python | W4 | Moyenne | Oui, après W4 |
-| [W7](LOT_W7_generateur_carres.md) | Générateur de carrés de 1 km : terrain fondu avec toutes les routes, couches par carré, file de priorités | Python | W2, W3, W5 | Grande | Oui, après W5 |
-| [W8](LOT_W8_processus_worldgen.md) | Processus `openride-worldgen` : horizon de 3 km, amorces de branches, relief en avance, hors ligne | Python | W6, W7 | Grande | Oui, après W7 |
-| [W9](LOT_W9_core_monde_ouvert.md) | Core : séance en monde ouvert, route qui s'allonge, choix au Click et verrouillage, pause `world_data` | Python | W1, W8 (W15 pour commencer) | Moyenne | Non : interne (séance du core) |
-| [W10](LOT_W10_engine_monde_vivant.md) | Engine : lecture du monde vivant, amorces de branches, recentrage tous les 10 km | GDScript | W1 (W15 pour les tests) | Grande | Non : interne (rendu) |
-| [W11](LOT_W11_menu_globe.md) | Engine : menu globe, recherche de lieu, carte régionale, régions en cache, écran de préchargement | GDScript + Python | W1, W3 (W2) | Grande | Non : interne (menu, contrôle visuel) |
-| [W12](LOT_W12_hud_carrefour.md) | Engine : HUD du carrefour (branches, pente, choix, verrouillage) et attributions | GDScript | W1 | Petite | Non : interne (rendu) |
-| [W13](LOT_W13_tuiles_vectorielles.md) | Tuiles vectorielles OpenFreeMap : au fil de la balade et préchargées autour des départs habituels | Python | W2, W7 (W0) | Moyenne | Oui, après W7 |
-| [W14](LOT_W14_balade_en_parcours.md) | Enregistrer la balade comme parcours de la bibliothèque (GPX puis `.world`) | Python | W9 | Petite | Oui, après W9 |
-| [W15](LOT_W15_monde_synthetique.md) | Monde ouvert synthétique : relief analytique, base de routes, monde vivant et faux générateur | Python | W1 | Moyenne | Oui, après W1 |
-| [W16](LOT_W16_recette_monde_ouvert.md) | Recette sur le PC et le vélo : une heure de monde ouvert, retour sans téléchargement | — | W9 à W12 (W13) | Moyenne | Non : propriétaire (matériel) |
+| [W0](LOT_W0_mesures_monde_ouvert.md) | Monde ouvert : mesures des volumes, des temps de génération et du débit (script exécuté sur le PC), décodeur de tuiles vectorielles | Python | — | Petite | Oui (script) ; exécution sur le PC par le propriétaire (issue #254) |
+| [W1](LOT_W1_contrat_monde_vivant.md) | Contrat : monde vivant (`live`, grille UTM, route par parties, couches par carré, `junctions.json`), IPC du monde ouvert (révision 1.5 provisoire), dialogue avec `openride-worldgen` | Markdown + JSON | W0 | Petite | Non : interne (décision du propriétaire) (issue #255) |
+| [W2](LOT_W2_cache_local_monde.md) | Cache local du monde : arborescence, versions, plafond de 5 Go, éviction, épinglage, `cache-info`, `cache-clean` | Python | W1 | Moyenne | Oui, après W1 (issue #256) |
+| [W3](LOT_W3_extrait_regional_sqlite.md) | Extrait régional Geofabrik converti en base SQLite indexée (schéma commun avec W13) | Python | W2 | Moyenne | Oui, après W2 (issue #257) |
+| [W4](LOT_W4_graphe_routier.md) | Graphe routier local : arêtes, carrefours, classes, ponts et tunnels, impasses, ronds-points | Python | W3 | Moyenne | Oui, après W3 (issue #258) |
+| [W5](LOT_W5_profil_arete.md) | Profil d'arête : altitude, ponts et tunnels interpolés, lissage, pente bornée, indépendant du chemin | Python | W4 | Petite | Oui, après W4 (issue #259) |
+| [W6](LOT_W6_navigateur.md) | Navigateur : balade, destination, boucle de X km | Python | W4 | Moyenne | Oui, après W4 (issue #260) |
+| [W7](LOT_W7_generateur_carres.md) | Générateur de carrés de 1 km : terrain fondu avec toutes les routes, couches par carré, file de priorités | Python | W2, W3, W5 | Grande | Oui, après W5 (issue #261) |
+| [W8](LOT_W8_processus_worldgen.md) | Processus `openride-worldgen` : horizon de 3 km, amorces de branches, relief en avance, hors ligne | Python | W6, W7 | Grande | Oui, après W7 (issue #263) |
+| [W9](LOT_W9_core_monde_ouvert.md) | Core : séance en monde ouvert, route qui s'allonge, choix au Click et verrouillage, pause `world_data` | Python | W1, W8 (W15 pour commencer) | Moyenne | Non : interne (séance du core) (issue #264) |
+| [W10](LOT_W10_engine_monde_vivant.md) | Engine : lecture du monde vivant, amorces de branches, recentrage tous les 10 km | GDScript | W1 (W15 pour les tests) | Grande | Non : interne (rendu) (issue #265) |
+| [W11](LOT_W11_menu_globe.md) | Engine : menu globe, recherche de lieu, carte régionale, régions en cache, écran de préchargement | GDScript + Python | W1, W3 (W2) | Grande | Non : interne (menu, contrôle visuel) (issue #266) |
+| [W12](LOT_W12_hud_carrefour.md) | Engine : HUD du carrefour (branches, pente, choix, verrouillage) et attributions | GDScript | W1 | Petite | Non : interne (rendu) (issue #267) |
+| [W13](LOT_W13_tuiles_vectorielles.md) | Tuiles vectorielles OpenFreeMap : au fil de la balade et préchargées autour des départs habituels | Python | W2, W7 (W0) | Moyenne | Oui, après W7 (issue #268) |
+| [W14](LOT_W14_balade_en_parcours.md) | Enregistrer la balade comme parcours de la bibliothèque (GPX puis `.world`) | Python | W9 | Petite | Oui, après W9 (issue #269) |
+| [W15](LOT_W15_monde_synthetique.md) | Monde ouvert synthétique : relief analytique, base de routes, monde vivant et faux générateur | Python | W1 | Moyenne | Oui, après W1 (issue #270) |
+| [W16](LOT_W16_recette_monde_ouvert.md) | Recette sur le PC et le vélo : une heure de monde ouvert, retour sans téléchargement | — | W9 à W12 (W13) | Moyenne | Non : propriétaire (matériel) (issue #271) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
