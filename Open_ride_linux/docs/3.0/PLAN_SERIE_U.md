@@ -78,21 +78,23 @@ La 2.0 apporte quatre saisons uniformes (P18). En 3.0, chaque biome a son propre
 
 ## 7. Décisions
 
-U-Q1 est tranchée par le propriétaire le 25 octobre 2026 ; les autres sont des propositions à confirmer.
+Toutes les questions sont tranchées par le propriétaire le 25 octobre 2026.
 
 | # | Question | Proposition |
 | --- | --- | --- |
 | U-Q1 | Biome automatique, forcé, ou les deux ? | **Décidé : les deux.** automatique d'après les données réelles, avec un forçage au compilateur et au menu. Raison : les traces du propriétaire sont surtout en zone tempérée ; sans forçage, la plupart des biomes ne se verraient jamais |
-| U-Q2 | Télécharger ESA WorldCover dans le compilateur ? | Oui, avec un cache comme le MNT (règle « hors ligne » : seule la compilation accède au réseau, jamais la séance) |
-| U-Q3 | D'où viennent les textures ? | Packs téléchargés par `theme-install` (N10), textures libres de droits (CC0, par exemple ambientCG ou Poly Haven), jamais dans le dépôt ; le dépôt garde des couleurs unies par défaut |
-| U-Q4 | Budget sur la GTX 1060 ? | Quatre biomes au plus par tuile ; textures de 1 024 px en `low`, 2 048 en `medium` et `high`, compressées ; 1,5 Go de mémoire vidéo au plus pour les textures du décor ; 55 images/s ou plus en `low`, comme la série P |
-| U-Q5 | Biomes du premier jalon ? | Les plus utiles sur tes traces : prairie, forêt tempérée, vignobles et cultures, haute montagne, méditerranéen, littoral ; puis les biomes lointains (désert, savane, jungle, polaire, volcanique) |
+| U-Q2 | Télécharger ESA WorldCover dans le compilateur ? | **Décidé : oui**, avec un cache comme le MNT (règle « hors ligne » : seule la compilation accède au réseau, jamais la séance) |
+| U-Q3 | D'où viennent les textures ? | **Décidé :** packs téléchargés par `theme-install` (N10), textures libres de droits (CC0, par exemple ambientCG ou Poly Haven), jamais dans le dépôt ; chaque pack téléchargé reste sur le disque et forme peu à peu une bibliothèque, plafonnée à 5 Go (au-delà, le pack utilisé le moins récemment est retiré) ; le dépôt garde des couleurs unies par défaut |
+| U-Q4 | Budget sur la GTX 1060 ? | **Décidé (compromis qualité et performance) :** `low` : trois biomes au plus par tuile, textures de 1 024 px ; `medium` : quatre biomes, 1 024 px (réglage conseillé s'il tient 55 images/s) ; `high` : quatre biomes, 2 048 px ; deux cartes compressées par sol (couleur, normale et rugosité regroupées) ; 1 Go de mémoire vidéo au plus pour les textures du décor ; 55 images/s ou plus en `low`, comme la série P, vérifié à la recette U18 |
+| U-Q5 | Biomes du premier jalon ? | **Décidé :** les plus utiles sur tes traces : prairie, forêt tempérée, vignobles et cultures, haute montagne, méditerranéen, littoral ; puis les biomes lointains (désert, savane, jungle, polaire, volcanique) |
+| U-G1 | Option « gravel » (§10) | **Décidé :** réglage des menus, coupé par défaut |
+| U-G2 | Ressenti du gravel sur le vélo ? | **Décidé :** résistance au roulement deux à trois fois celle du bitume, transmise en SIM comme supplément de pente, avec le même plafond que le vent (P1, 4 points par défaut) ; en ERG, seule la vitesse virtuelle change |
 
 ## 8. Lots de la série U
 
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
-| U0 | Décisions U-Q2 à U-Q5 (U-Q1 prise), liste définitive des biomes | — | Propriétaire |
+| U0 | Décisions U-Q1 à U-Q5 (prises le 25 octobre 2026), liste définitive des biomes | — | Propriétaire |
 | U1 | Contrat : couche `biome`, variante régionale, sorte d'eau `sea` et couche côte (format `.world`), thème 2.0 en pack de biomes, compatibilité avec les thèmes 1.x | U0 | Interne (décision) |
 | U2 | Compilateur : classification des biomes (WorldCover en cache, OSM, altitude, latitude), option `--biome` | U1 | Délégable |
 | U3 | Compilateur : côte, mer et plages | U1 | Délégable |

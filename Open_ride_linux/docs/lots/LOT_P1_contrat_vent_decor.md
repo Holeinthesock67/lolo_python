@@ -16,6 +16,20 @@ Version 1.0 publiée (lot O8). N9 n'est pas requis pour écrire le contrat, seul
 
 ## 4. Travail demandé
 
+### Décisions du propriétaire (25 octobre 2026)
+
+| # | Question | Décision |
+| --- | --- | --- |
+| 1 | Vent par défaut | Coupé (`mode = "off"`) dans les versions 1.x. En 2.0, activé par défaut d'après la météo locale (lecture au lancement, repli sans vent si le réseau manque) : demande d'assouplir la règle « hors ligne », à trancher en 2.0 |
+| 2 | Ressenti en SIM | Supplément de pente (`feel = "grade"`) ; le champ vent du FTMS reste une option à essayer |
+| 3 | Plafond du supplément | 4 points de pente, réglable dans la section « Réglages » du menu |
+| 4 | ERG | Le vent et l'abri ne changent que la vitesse virtuelle, jamais la puissance demandée |
+| 5 | Fréquence d'envoi du vent | 2 fois par seconde |
+| 6 | Abri derrière le fantôme | Non : seuls les bots à puissance constante abritent |
+| 7 | Éoliennes et drapeaux dans le format | Oui |
+
+Les propositions ci-dessous sont ajustées à ces décisions.
+
 Rédiger les ajouts, chacun avec sa ligne au journal des changements du document. Propositions de départ, à trancher par le propriétaire :
 
 ### 4.1 IPC v1.2 : champ `wind` de `state`
@@ -25,7 +39,8 @@ Rédiger les ajouts, chacun avec sa ligne au journal des changements du document
   - `from_deg` : direction d'où vient le vent, en degrés dans le sens horaire depuis le nord (convention du cap de `world_format_v1.md` §3) ;
   - `head_mps` : composante de face le long du cap de la route à `s` (positive de face, négative de dos), celle qu'utilise la physique ;
   - `gust` : facteur de rafale de 0 à 1, pour l'animation (arbres, drapeaux, son).
-- Envoyé dans chaque trame à 30 Hz (environ 70 octets) ; vérifier que la trame la plus chargée (ERG, `devices`, 5 bots, `wind`, `draft`) tient toujours dans 1 400 octets, sinon passer `wind` à 2 Hz.
+- Ces quatre champs suffisent à l'indicateur du HUD demandé par le propriétaire le 25 octobre (vent favorable ou non, et son intensité) : le verdict vient du signe de `head_mps`, l'intensité de `speed_mps` (calcul dans `wind_view_model.gd`, lot P4). Aucun champ de plus.
+- Envoyé **2 fois par seconde** (décision du propriétaire), dans une trame sur quinze environ (environ 70 octets) ; la physique du core utilise le vent exact à 50 Hz et l'engine lisse les valeurs reçues. Vérifier que la trame la plus chargée (ERG, `devices`, 5 bots, `wind`, `draft`) tient toujours dans 1 400 octets.
 
 ### 4.2 IPC v1.2 : champ `draft` de `state`
 
@@ -35,7 +50,7 @@ Rédiger les ajouts, chacun avec sa ligne au journal des changements du document
 
 - `mode` = `"off"` (défaut : comportement actuel), `"fixed"`, `"gusty"`, `"theme"` ; `speed_kmh` (0 à 60), `from_deg` (0 à 360), `gust_pct` (0 à 100), `seed` (entier).
 - `feel` = `"grade"` (défaut) ou `"ftms"` : en SIM, la résistance due au vent et à l'aspiration est transmise au trainer soit sous forme de **supplément de pente**, soit dans le champ vent de la commande FTMS 0x11. `"grade"` est le choix sûr (pente validée sur le trainer le 22 octobre) ; `"ftms"` reste à essayer sur le matériel.
-- `max_grade_offset_pct` (défaut 4,0) : borne du supplément de pente.
+- `max_grade_offset_pct` (défaut 4,0, bornes 0 à 8) : borne du supplément de pente, réglable dans la section « Réglages » du menu (écrite par les réglages du core, comme O3).
 - En ERG, ni le vent ni l'aspiration ne changent la résistance (puissance imposée) ; seule la vitesse virtuelle change.
 
 ### 4.4 Thème 1.2 (`theme.schema.json`, `world_format_v1.md` §9)

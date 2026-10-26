@@ -9,7 +9,7 @@ Brancher le reste de la série P dans la scène principale et le recetter sur le
 - les éoliennes, drapeaux et l'eau qui scintille (P12) ;
 - les véhicules croisés (P13) ;
 - les panneaux, bornes et marquages (P14) ;
-- les spectateurs (P15).
+- les spectateurs (P15) et les passants des villages et de la campagne (P21).
 
 Lot interne : il modifie `main.gd`, `hud_view.gd`, `osm_streamer.gd` et le matériau de la route.
 
@@ -20,12 +20,12 @@ Lot interne : il modifie `main.gd`, `hud_view.gd`, `osm_streamer.gd` et le maté
 
 ## 3. Prérequis
 
-P16 livré et recetté ; P3, P8 et P11 à P15 livrés ; O7 (bots à l'écran) pour l'abri. Version 1.0 publiée.
+P16 livré et recetté ; P3, P8, P11 à P15 et P21 livrés ; O7 (bots à l'écran) pour l'abri. Version 1.0 publiée.
 
 ## 4. Travail demandé
 
 - Météo (P8) : `fog_boost` appliqué par `render_quality.gd`, particules autour de la caméra, route assombrie sous la pluie (`wetness`).
-- `osm_streamer.gd` : animaux (P11), éoliennes et drapeaux (P12), objets de bord de route (P14) et spectateurs (P15) chargés et retirés avec les tronçons, sans à-coup (même règle qu'E4 : préparation hors du fil principal, au plus 3 nœuds par tronçon et par sorte).
+- `osm_streamer.gd` : animaux (P11), éoliennes et drapeaux (P12), objets de bord de route (P14), spectateurs (P15) et passants (P21) chargés et retirés avec les tronçons, sans à-coup (même règle qu'E4 : préparation hors du fil principal, au plus 3 nœuds par tronçon et par sorte).
 - Route : matériau de P14 (marquages) à la place du matériau actuel, via `road_builder.gd`.
 - Véhicules (P13) : un nœud suivi par `main.gd`, figé en pause.
 - HUD : « Abri 30 % » sous l'indicateur du vent.
