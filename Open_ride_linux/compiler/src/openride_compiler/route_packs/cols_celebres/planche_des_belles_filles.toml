@@ -1,0 +1,8 @@
+name = "La Planche des Belles Filles"
+region = "Haute-Saône, Vosges"
+country = "France"
+side = "depuis Plancher-les-Mines"
+waypoints = [[47.7612, 6.7432], [47.7735, 6.7795]]
+ref_length_m = 5900
+ref_gain_m = 500
+tags = ["col", "classique", "vosges", "raide"]
