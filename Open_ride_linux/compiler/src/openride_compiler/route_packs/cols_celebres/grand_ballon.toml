@@ -1,0 +1,8 @@
+name = "Grand Ballon"
+region = "Haut-Rhin, Vosges"
+country = "France"
+side = "depuis Willer-sur-Thur"
+waypoints = [[47.8430, 7.0724], [47.9010, 7.0985]]
+ref_length_m = 14100
+ref_gain_m = 940
+tags = ["col", "classique", "vosges"]
