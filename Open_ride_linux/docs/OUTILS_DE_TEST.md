@@ -8,11 +8,15 @@ Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. 
 | --- | --- | --- |
 | `(cd core && pytest -q)` | Core : physique, braquets, FTMS, Click, ceinture, journal, FIT, IPC, lanceur, scénarios Bluetooth simulés (`test_sim_matrix.py`, `test_ble_sim.py`), cohérence de la documentation. `-m "not slow"` : ~20 s | ~3 min |
 | `(cd compiler && pytest -q)` | Compilateur : GPX/FIT/TCX, route, terrain, couches OSM, thèmes (réseau coupé ; `-m network` pour Copernicus) | ~1 min |
-| `engine/tests/run_engine_tests.sh` | Engine sans écran : tests unitaires `engine/tests/unit/`, couches OSM, rendu par tronçons, ERG et menus face au faux core, scénarios IPC, rendu Xvfb du shader, tests graphiques à 1280×720 | ~3 min |
+| `engine/tests/run_engine_tests.sh` | Engine sans écran : tests unitaires `engine/tests/unit/`, couches OSM, rendu par tronçons, ERG et menus face au faux core, scénarios IPC, rendu Xvfb du shader, tests graphiques à 1280×720. Budgets de temps à part (lot X2) : `OPENRIDE_PERF=strict` pour qu'un dépassement échoue, `PERF_CSV=FICHIER` pour garder les mesures | ~3 min |
 | `engine/tests/run_e2e.sh` | Bout en bout : vrai core (trainer `mock`) et vrai engine, hello, débit des trames, commande, perte de l'engine, fin de séance, FIT | ~10 s |
 | `engine/tests/run_visual_tests.sh [--open] [--native]` | Tests graphiques de la scène principale face au faux core : captures, HUD, bandeau, images de référence, rapport HTML dans `~/OpenRide/visual_tests/` | ~2 min |
 
 Détail des tests de l'engine : [engine/tests/README.md](../engine/tests/README.md).
+
+**Tout d'un coup sur le PC (lot X4) :** `scripts/recette_pc.py` enchaîne core, compilateur, engine, bout en bout, tests graphiques et scanner de confidentialité, garde un journal par étape dans `~/OpenRide/recettes/<date>_<heure>/` avec `resume.txt`, `resume.json` et `perf.csv` (budgets de temps), et compare au passage précédent (étape passée d'OK à ÉCHEC, nombre de tests changé). Options : `--rapide` (core sans les tests lents, sans tests graphiques), `--seulement core,engine`, `--sans visual`, `--perf-strict`. Utilise `core/.venv` s'il existe.
+
+**Installation sur un système propre (lot X29) :** `scripts/recette_install.py` lance `scripts/recette_install/check_install.sh` dans un compte vierge, avec le code commité (HEAD publié dans un dépôt d'origine temporaire) : par défaut un conteneur Ubuntu 24.04 neuf sans Bluetooth (docker, compte `cycliste`), ou `--mode home` (HOME temporaire sur ce PC ; `--sans-pip` pour un essai rapide avec le venv actuel). Il vérifie le clone, `install.sh` sans terminal, les commandes de `~/.local/bin`, `config.toml` et le chemin de Godot, les raccourcis de bureau et l'icône (`desktop-file-validate`), le premier démarrage (`openride --compile-only`, core sur le trainer simulé), puis la mise à jour : parcours, séance et réglage modifié à la main, nouveau commit sur l'origine, `update.sh` et `install.sh` relancé ; le code avance et les données restent identiques octet pour octet. Journal et résumé dans `~/OpenRide/recettes_install/<date>/`. Avec un mandataire, `--ca-bundle` ajoute son certificat dans le conteneur. Reste à la main : le même essai sur un second compte du PC (`sudo adduser essai`, puis `scripts/install.sh` depuis ce compte).
 
 ## 2. Matériel simulé
 
@@ -66,7 +70,7 @@ python3 engine/tests/menu_bench.py                             # tous les parcou
 python3 engine/tests/menu_bench.py --parcours appareils --native   # fenêtre visible
 ```
 
-Parcours : `connexion_auto` (tout se connecte, l'écran de connexion passe seul à l'accueil) ; `appareils` (un seul boîtier du Click, « Passer », Réglages → Appareils, recherche, enregistrement dans `config.toml`, « Relancer » : code de sortie 64). Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
+Parcours : `reglages` (lots O3 et O4 : FTP écrite dans `config.toml`, qualité appliquée tout de suite, curseur de difficulté de la pause) ; `connexion_auto` (tout se connecte, l'écran de connexion passe seul à l'accueil) ; `sessions` (lot N15 : monde, session libre, pause, bilan, session ERG, « Session simulée » : code 65) ; `appareils` (un seul boîtier du Click, « Passer », Réglages → Appareils, recherche, enregistrement dans `config.toml`, « Relancer » : code de sortie 64). Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
 
 ## 4. Parcours d'essai sans réseau
 
@@ -87,12 +91,30 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 | `openride-core summary [FICHIER]` | Bilan d'une séance : NP, IF, TSS, zones, meilleures puissances |
 | `openride-core history` | Historique des séances et cumul hebdomadaire |
 | `openride-core devices` | Inventaire des appareils Bluetooth et bloc `[drivers]` proposé |
+| `python -m openride_core.tools.trainer_steps --mode sim\|erg` | Banc de latence du trainer (lot X5, outil de l'essai R0) : paliers de pente ou de puissance à cadence tenue ; par palier, délai consigne → écriture → accusé 0x80, t10, t63, t90, stabilisation et dépassement de la puissance ; `samples.csv`, `steps.csv` et `rapport.html` dans `~/OpenRide/trainer_steps/<date>/`. `--trainer sim --fast` pour l'essayer sans matériel, `--analyse DOSSIER` pour refaire l'analyse |
+| `python -m openride_core.tools.click_recette [--minutes 30] [--rappel 5]` | Recette guidée du Zwift Click (lot X8, recette 1.0 ligne 6) : demande chaque bouton (+, − du boîtier gauche, B et Y du boîtier droit, appuis longs) et coche l'événement reçu et le boîtier qui l'a envoyé ; puis surveille 30 min avec un rappel d'appui toutes les 5 min : silences de chaque boîtier (lien tenu, plus de 2 s sans notification), coupures et reprises, messages sans bouton, batterie. `rapport.txt`, `rapport.json` et `notifications.csv` dans `~/OpenRide/click_recette/<date>/`. `--sim` pour l'essayer sans matériel |
+| `engine/tests/sim_bench.py --native --probe` ; `engine/tests/perf_probe.py watch` | Sonde de performance du moteur (lot X13) : chaque seconde, temps d'image p50 et p99, temps CPU et GPU de la vue, appels de dessin, objets, primitives, mémoire vidéo, tuiles et arbres (engine lancé avec `--perf-probe` ou `OPENRIDE_PERF_PROBE`), plus nvidia-smi et CPU de chaque processus ; `sonde.csv`, `sonde.txt` (médianes, p99, dérive) et `rapport.html` (courbes) |
+| `engine/tests/sim_bench.py --native --scenario endurance` | Endurance d'une heure (lot X16, recette 1.0 lignes 17 et 18) : village simulé relancé à chaque fin de parcours, sonde de performance ; images/s (médiane ≥ 30, baisse < 10 %), saccades (≤ 6 par heure), pente de la mémoire de Godot, du core et de la mémoire vidéo, engine vivant jusqu'à la fin, erreurs Godot |
+| `python -m openride_core.tools.guide materiel [ESSAI]` ; `… guide bips` | Guidage des essais sur le PC et sur le vélo : matériel à préparer, durée et commande de chaque essai (`trainer_steps`, `click_recette`, `endurance`, `recette_pc`), à lire à l'avance ; `bips` joue chaque bip pour régler le volume. Pendant l'essai, `trainer_steps` et `click_recette` rappellent le matériel et attendent « Entrée », puis affichent en plein terminal la consigne, un grand compte à rebours, les valeurs en direct (puissance, cadence) et les relevés ; bip au début de chaque étape, à 3, 2, 1 s de la fin et à la fin, bip d'alerte (cadence hors de ± 10 rpm, boîtier Click muet ou coupé), bip de verdict. `sim_bench.py` et `recette_pc.py` bipent au départ et au verdict. Chaque essai écrit `guide.jsonl` (étapes, relevés, alertes, avec l'heure). Options `--materiel`, `--sans-attente`, `--muet` ; son par pw-play, paplay ou aplay, `OPENRIDE_GUIDE_MUET=1` pour le couper. Agrandir la police du terminal (Ctrl + +) pour lire depuis le vélo |
 | `python -m openride_core.tools.ble_diag` | Diagnostic Bluetooth du HomeTrainer et du Click (matériel réel) |
 | `openride-core release-trainer` | Libère un trainer resté réservé |
 | `openride-core recover` | Convertit un journal de séance en FIT après un plantage |
 | `python -m openride_core.tools.workouts check FICHIER.zwo` | Lecture et charge d'un entraînement ERG |
 | `python -m openride_core.tools.route_vectors` | Vecteurs de test de la route, partagés core et engine |
+| `python -m openride_core.ipc_budget` | Taille de la trame `state` la plus lourde de chaque révision du contrat face à la limite de 1 400 octets (lot X25) ; une trame trop grande est allégée par le core au lieu d'être jetée |
 
-## 6. Ce qui demande encore le matériel
+## 6. Confidentialité (lot X23)
+
+Le dépôt est public. `scripts/privacy/privacy_scan.py` (bibliothèque standard seulement) cherche les mots interdits (noms, lieux, nom du trainer…), les coordonnées dans une zone privée, les adresses Bluetooth qui ne sont pas des adresses de test, les clés et jetons, et les fichiers d'activité ou de secrets. Les mots trouvés sont masqués dans la sortie.
+
+| Commande (depuis la racine du dépôt) | Usage |
+| --- | --- |
+| `Open_ride_linux/scripts/privacy/install_hook.sh` | Installe le crochet pre-commit : un commit qui ajoute une donnée interdite est refusé |
+| `python3 Open_ride_linux/scripts/privacy/privacy_scan.py --all` | Tous les fichiers suivis (à lancer avant une étiquette de version, O8 §5.4) |
+| `python3 Open_ride_linux/scripts/privacy/privacy_scan.py --commits origin/main..HEAD` | Auteur, committer, message et lignes ajoutées de chaque commit d'une branche |
+
+La liste des mots et des zones interdits reste hors du dépôt : `~/OpenRide/privacy_denylist.txt` sur le PC (modèle : `scripts/privacy/privacy_denylist.example.txt`), secret GitHub `PRIVACY_DENYLIST` pour le workflow `.github/workflows/confidentialite.yml`, qui passe chaque PR. Sans liste, seuls les contrôles génériques tournent (avertissement à l'écran).
+
+## 7. Ce qui demande encore le matériel
 
 Le simulateur ne dit rien des délais réels de BlueZ, de la qualité radio, de la réponse exacte du HomeTrainer (latence de la résistance, Reset), du boîtier gauche du Click qui se tait après la connexion, de la vraie ceinture, ni des images par seconde sur la GTX 1060 : le banc sous Xvfb rend en OpenGL logiciel (quelques images par seconde), seul `--native` sur le PC cible mesure le rendu réel.
