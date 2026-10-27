@@ -237,6 +237,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Son du vent selon la vitesse dans l'air (vent de face ou de dos, rafales) et roue libre réaliste : déclenchée à cadence nulle, cliquetis qui suit la vitesse de la roue, « clac » à la reprise (lot P10 ; branchement par P16).
 - [x] Vent branché dans la scène : indicateur du HUD sous la colonne de gauche (flèche, « 18 km/h face », niveau, pastille verte, rouge ou grise), arbres et herbe au vent, nuages qui défilent, fonds sonores selon le décor ; réglages du vent ajoutés à la liste du menu, `[render] living` pour tout couper (lot P16 ; recette sur le PC : `docs/RECETTE_P16.md`).
 - [x] Animaux : bandes d'oiseaux au-dessus des forêts, troupeaux près des points `livestock`, chevreuil en lisière qui s'enfuit, dans le budget de `living(preset)` (lot P11 ; branchement par P17).
+- [x] Éoliennes et mâts de drapeau tirés d'OpenStreetMap (`wind_turbine`, `flag`), rotors et drapeaux qui suivent le vent, drapeau par village, eau qui scintille (lot P12 ; branchement par P17).
 - [ ] Indicateur du vent et de l'abri, arbres et herbe au vent, nuages, sons d'ambiance, sons du vent et de la roue libre (lots P4, P5, P6, P9, P10 ; intégration P16).
 - [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs, passants (lots P8, P11 à P15, P21 ; intégration P17).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
