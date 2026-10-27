@@ -7,7 +7,8 @@ Sortes de lignes :
 - `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ..., "source": ...}` en tête
   (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8 ;
   `source` : `live` (trainer réel), `simulated` (trainer `mock` ou `sim`) ou `replay` (rejeu),
-  absent des journaux antérieurs au lot V2, qui le lit pour la progression) ;
+  absent des journaux antérieurs au lot V2, qui le lit pour la progression ; `ftp_w` facultatif :
+  FTP de la séance, lue pour les pièces gagnées à l'effort, lot V3b, écrite à partir de V11) ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
 - `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ;
 - `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un

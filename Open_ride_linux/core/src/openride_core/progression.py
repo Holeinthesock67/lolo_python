@@ -202,6 +202,9 @@ def load_table(user_path: Path | None = USER_TABLE_PATH,
 
 # --- faits d'une séance -------------------------------------------------------------------
 
+POWER_STEP_W = 10   # pas de l'histogramme de puissance d'une séance
+
+
 @dataclass
 class SessionFacts:
     journal: str
@@ -215,6 +218,8 @@ class SessionFacts:
     erg_s: float = 0.0
     erg_completed: bool | None = None
     events: list[dict] = field(default_factory=list)
+    power_s: dict[int, float] = field(default_factory=dict)   # secondes par pas de 10 W (pièces, V3b)
+    ftp_w: float | None = None   # FTP de la séance si l'en-tête la donne (écrite par V11)
 
 
 def _climb(altitudes: Iterable[float], deadband_m: float) -> float:
@@ -246,6 +251,9 @@ def session_facts(path: Path, workout_duration_s: float | None = None,
             facts.workout_id = line.get("workout_id")
             src = line.get("source")
             facts.source = src if src in SOURCES else "live"
+            ftp = line.get("ftp_w")
+            if isinstance(ftp, (int, float)) and not isinstance(ftp, bool) and ftp > 0:
+                facts.ftp_w = float(ftp)
         elif kind == "event":
             if line.get("event") == "start" and facts.start_ts is None:
                 facts.start_ts = float(line.get("ts", 0.0))
@@ -258,6 +266,10 @@ def session_facts(path: Path, workout_duration_s: float | None = None,
                 altitudes.append(float(line["alt"]))
             if line.get("target_w") is not None:
                 facts.erg_s += 1.0   # relevés à 1 Hz pendant la séance chronométrée
+            power = line.get("power")
+            if isinstance(power, (int, float)) and not isinstance(power, bool) and power >= 0:
+                step = int(power // POWER_STEP_W) * POWER_STEP_W
+                facts.power_s[step] = facts.power_s.get(step, 0.0) + 1.0
         elif kind in ("segment", "jersey", "rogue_run"):   # lignes écrites par les séries T et R (V5)
             facts.events.append(dict(line))
     if facts.start_ts is None:
