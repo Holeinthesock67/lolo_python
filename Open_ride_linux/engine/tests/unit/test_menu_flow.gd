@@ -564,8 +564,57 @@ func _test_library() -> void:
 	_check(v.card_label.visible and v.card_label.text.begins_with("10,0 km"), "vue : fiche affichée")
 	v.free()
 
+## Bots choisis sur l'écran Prêt (lot O7) : `start` avec l'argument `bots`.
+func _test_bots_menu() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "route_id": "vosges"})
+	f.set_routes(ROUTES)
+	f.handle("PLUS_SHORT")   # Session libre
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot", "ghost", "records"],
+		"écran Prêt : bot et fantôme avant les records (%s)" % str(_ids(f)))
+	_check(f.state()["items"][3]["label"] == "Bot : aucun" and f.state()["items"][4]["label"] == "Fantôme de la dernière séance : non",
+		"par défaut : aucun bot, pas de fantôme")
+	_check(f.handle("A_LONG") == {"action": "start"}, "sans bot : start sans argument (les bots de la ligne de commande restent)")
+	f.handle("MINUS_SHORT")   # Records (boucle depuis Démarrer)
+	f.handle("MINUS_SHORT")   # Fantôme
+	_check(_focus_id(f) == "ghost", "focus sur le fantôme")
+	f.handle("MINUS_SHORT")   # Bot
+	for i in range(4):
+		f.handle("A_LONG")
+	_check(f.state()["items"][3]["label"] == "Bot : 90 % de la FTP" and f.state()["screen"] == "ready", "A long : bot suivant (%s)" % f.state()["items"][3]["label"])
+	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")
+	_check(f.state()["items"][4]["label"] == "Fantôme de la dernière séance : oui", "fantôme demandé")
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "start", "retour sur Démarrer")
+	var act: Dictionary = f.handle("A_LONG")
+	_check(act == {"action": "start", "args": {"bots": [{"kind": "constant", "ftp_pct": 90}, {"kind": "ghost"}]}},
+		"start avec bot à 90 %% de la FTP et fantôme (%s)" % str(act))
+	f.on_error("bot_invalid", "aucune séance passée sur le parcours « vosges » pour le fantôme")
+	_check(f.state()["status"].begins_with("Échec : aucune séance passée"), "refus du core sur la ligne d'état")
+	f.handle("PLUS_SHORT")
+	_check(f.state()["status"] == "", "ligne d'état effacée à l'appui suivant")
+	# Un bot de 250 W seul, avec un test de FTP préparé : les deux arguments partent ensemble.
+	var g = MenuFlow.new()
+	g.connect_done = true
+	g.on_state({"session_state": "IDLE", "route_id": "vosges"})
+	g.set_routes(ROUTES)
+	g.menu.prepare_start("test de FTP (rampe)", {"ftp_test": "ramp"})
+	g.menu.bot_choice = 2
+	g.menu._refresh_home()
+	_check(g.handle("A_LONG") == {"action": "start", "args": {"ftp_test": "ramp", "bots": [{"kind": "constant", "power_w": 250}]}},
+		"test de FTP et bot : arguments réunis")
+	g.menu.reset()
+	_check(g.menu.bot_choice == 0 and not g.menu.ghost, "nouvelle séance : bots remis à zéro")
+
 
 func _init() -> void:
+	_test_bots_menu()
 	_test_plans()
 	_test_ftp_flow()
 	_test_library()

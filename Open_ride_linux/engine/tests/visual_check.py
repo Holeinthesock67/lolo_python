@@ -60,7 +60,7 @@ GODOT_TOLERATED = re.compile(
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
-              "wind_speed", "wind_level", "wind_verdict", "draft")
+              "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2")
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -690,6 +690,38 @@ def _scenes(s: Session) -> None:
                 f"rectangle {w['draft']['rect']}")
     core.set_scene(wind=None, draft=None)
     time.sleep(2.5)
+
+    # 3 ter bis. Bots (lot O7) : un bot à 20 m devant, un fantôme à 60 m derrière ; silhouettes sur la route,
+    # encart du HUD sous le panneau de droite (au plus 5 lignes), sans chevauchement.
+    # La caméra ne recule jamais pendant une séance (camera_follow.gd) : les bots se placent autour de la
+    # position actuelle du cycliste, sans revenir à FIXED_S.
+    s_now = core.current_s()
+    core.set_scene(speed=0.0, bots=[
+        {"id": "bot1", "name": "Bot 250 W", "s": s_now + 20.0, "v": 0.0, "kind": "constant"},
+        {"id": "ghost", "name": "Fantôme du 26/10", "s": s_now - 60.0, "v": 0.0, "kind": "ghost"}])
+    time.sleep(SETTLE_S)
+    shot = s.capture("bots")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        s.check("bots", "encart des bots affiché", w["bots_panel"]["visible"] and w["bots_line1"]["visible"]
+                and w["bots_line2"]["visible"])
+        s.check_texts("bots", info, {"bots_line1": "Bot 250 W", "bots_line2": "Fantôme du 26/10"}, contains=True)
+        s.check("bots", "encart sous le panneau de droite", w["bots_panel"]["rect"][1] >= w["panel"]["rect"][1],
+                f"rectangle {w['bots_panel']['rect']}")
+        b = info.get("bots", {})
+        s.check("bots", "bot devant visible dans le champ de la caméra", b.get("shown") == 2 and b.get("in_view", 0) >= 1,
+                f"{b}")
+        s.check_layout("bots", info)
+    core.set_scene(speed=SPEED_MPS, bots=None)
+    time.sleep(SETTLE_S)
+    shot = s.capture("sans_bot")
+    if shot:
+        img, info = shot
+        s.check("sans_bot", "sans bot : encart caché, aucune silhouette",
+                not info["widgets"]["bots_panel"]["visible"] and info.get("bots", {}).get("shown") == 0,
+                f"{info.get('bots')}")
+    time.sleep(1.0)
 
     # 3 quater. Pluie (lot P17) : météo imposée, particules autour de la caméra et chaussée mouillée.
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather",
