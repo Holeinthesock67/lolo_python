@@ -37,7 +37,10 @@
         "run_invalid",
         "item_locked",
         "not_enough_coins",
-        "avatar_invalid"
+        "avatar_invalid",
+        "branch_locked",
+        "unknown_junction",
+        "world_unavailable"
       ]
     },
     "message": {

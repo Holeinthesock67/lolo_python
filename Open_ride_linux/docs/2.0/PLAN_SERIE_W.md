@@ -108,6 +108,8 @@ Tout ce qui est téléchargé ou généré reste sur le PC, jamais dans le dép�
 
 ### 5.1 Trois acteurs
 
+Contrats détaillés (lot W1, 26 octobre 2026) : `docs/contracts/worldgen_v1.md` (dialogue entre le core et le générateur, qui possède le graphe, le navigateur et la route engagée), `docs/contracts/world_format_v1.md` §13 (monde vivant) et `docs/contracts/ipc_v1.md` (monde ouvert). Les chiffres du §3 restent des estimations jusqu'à l'essai de W0 sur le PC.
+
 | Acteur | Rôle |
 | --- | --- |
 | `openride-worldgen` (nouveau processus Python, code du compilateur) | Télécharge, convertit, génère les carrés et les profils d'arêtes, gère le cache |
