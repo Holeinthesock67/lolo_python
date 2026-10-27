@@ -25,7 +25,7 @@ import json
 from typing import Any, Callable
 
 MAX_DATAGRAM_SIZE = 1400          # cible de toutes les révisions, et limite jusqu'à la 1.2
-STATE_LIMIT_1_3 = 4096            # limite de `state` depuis la révision 1.3 (MAX_STATE_DATAGRAM_SIZE)
+STATE_LIMIT_1_3 = 4096            # limite de `state` depuis la révision 1.3 (ipc_server.MAX_DATAGRAM_SIZE, tout message depuis la 1.5)
 
 # Longueurs maximales attendues des textes libres (caractères). Au-delà, `fit_state` raccourcit.
 MAX_TEXT = {
