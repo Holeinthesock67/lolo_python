@@ -250,13 +250,18 @@ class SimTrainer(SimDevice):
                  rider_power_w: float = 180.0, cadence_rpm: float = 88.0,
                  erg_tau_s: float = 1.5, cp_latency_s: float = 0.05,
                  power_range: tuple[int, int, int] = (0, 2000, 1),
-                 refuse_control: bool = False, **kw: Any) -> None:
+                 refuse_control: bool = False,
+                 relayed_hr: bool | int | None = None, **kw: Any) -> None:
         super().__init__(world, name, address, **kw)
         self.ibd_hz = ibd_hz
         self.rider_power_w, self.cadence_rpm = rider_power_w, cadence_rpm
         self.erg_tau_s, self.cp_latency_s = erg_tau_s, cp_latency_s
         self.power_range = power_range
         self.refuse_control = refuse_control
+        self.relayed_hr_enabled = bool(relayed_hr)
+        self.fixed_relayed_hr: int | None = (
+            int(relayed_hr) if isinstance(relayed_hr, (int, float)) and not isinstance(relayed_hr, bool) else None
+        )
         # État de la machine (survit aux connexions, comme un vrai trainer)
         self.mode: str | None = None          # "sim", "erg" ou None (aucune consigne)
         self.target_w: float | None = None
@@ -401,9 +406,19 @@ class SimTrainer(SimDevice):
             cadence = self.cadence_rpm + (1.5 * math.sin(t * 0.7) if self.cadence_rpm > 0 else 0.0)
             speed_kmh = 3.6 * (max(self.power_w, 0.0) / 0.9) ** (1 / 3) if self.power_w > 0 else 0.0
             flags = 0x0004 | 0x0040   # vitesse (bit 0 à 0), cadence, puissance
-            self.notify(ftms.INDOOR_BIKE_DATA, struct.pack(
-                "<HHHh", flags, int(round(speed_kmh * 100)), int(round(max(cadence, 0.0) * 2)),
-                int(round(self.power_w))))
+            if self.relayed_hr_enabled:
+                flags |= 0x0200
+                if self.fixed_relayed_hr is not None:
+                    hr_val = self.fixed_relayed_hr
+                else:
+                    hr_val = int(round(130 + 3.0 * math.sin(t * 0.5)))
+                self.notify(ftms.INDOOR_BIKE_DATA, struct.pack(
+                    "<HHHhB", flags, int(round(speed_kmh * 100)), int(round(max(cadence, 0.0) * 2)),
+                    int(round(self.power_w)), max(30, min(240, hr_val))))
+            else:
+                self.notify(ftms.INDOOR_BIKE_DATA, struct.pack(
+                    "<HHHh", flags, int(round(speed_kmh * 100)), int(round(max(cadence, 0.0) * 2)),
+                    int(round(self.power_w))))
 
 
 # --- Zwift Click --------------------------------------------------------------------------
@@ -733,6 +748,9 @@ class SimWorld:
                 dev.rider_power_w = float(ev["watts"])
             if "cadence_rpm" in ev:
                 dev.cadence_rpm = float(ev["cadence_rpm"])
+        elif isinstance(dev, SimTrainer) and action == "bpm":
+            dev.relayed_hr_enabled = True
+            dev.fixed_relayed_hr = None if ev.get("bpm") is None else int(ev["bpm"])
         elif isinstance(dev, SimHrStrap) and action == "bpm":
             dev.fixed_bpm = None if ev.get("bpm") is None else int(ev["bpm"])
         elif isinstance(dev, SimHrStrap) and action == "contact":

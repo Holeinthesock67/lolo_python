@@ -54,6 +54,7 @@ class TrainerConfig:
     grade_rate_up_pct_per_s: float = 4.0   # vitesse maximale quand la pente envoyée augmente (lot Q4)
     grade_rate_down_pct_per_s: float = 8.0 # vitesse maximale quand elle diminue (lot Q4)
     trace_ftms: bool = False          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
+    hr_relay_freeze_s: float = 15.0   # détection cardio relayée figée (lot Q5)
 
 
 @dataclass
@@ -149,6 +150,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("trainer", "grade_rate_pct_per_s"): (0.1, 100),
     ("trainer", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("trainer", "grade_rate_down_pct_per_s"): (0.1, 100),
+    ("trainer", "hr_relay_freeze_s"): (5, 120),
     ("gearing", "n_gears"): (2, 40),
     ("gearing", "start_gear"): (1, 40),
     ("gearing", "ratio_min"): (0.1, 5),
