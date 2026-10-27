@@ -151,6 +151,16 @@ class PowerupsConfig:
 
 
 @dataclass
+class AudioConfig:
+    """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
+    suite par l'engine sur ses bus audio (audio_mix.gd)."""
+    master_pct: int = 100          # volume général (bus Master)
+    ride_pct: int = 100            # vélo : vent dans les oreilles, roue libre, « clac » de reprise
+    ambience_pct: int = 100        # ambiance : fonds, cloches, points sonores, véhicules, foule, passants
+    events_pct: int = 100          # bips et événements : appuis du Click, bloc ERG, consignes, jingles
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -164,6 +174,7 @@ class Config:
     wind: WindConfig = field(default_factory=WindConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
+    audio: AudioConfig = field(default_factory=AudioConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -219,6 +230,10 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rogue", "cp_w"): (0, 1000),
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
+    ("audio", "master_pct"): (0, 100),
+    ("audio", "ride_pct"): (0, 100),
+    ("audio", "ambience_pct"): (0, 100),
+    ("audio", "events_pct"): (0, 100),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),

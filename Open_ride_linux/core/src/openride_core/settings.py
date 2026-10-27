@@ -11,8 +11,8 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
      "step": 5, "unit": "W", "applies": "next_session"}
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer) ou `now` (qualité et thème : l'engine les applique tout de suite
-au décor ; le lanceur les passe aussi à l'engine aux lancements suivants).
+la séance suivante, sans relancer) ou `now` (qualité, thème, courbes et volumes : l'engine les applique
+tout de suite ; le lanceur passe aussi la qualité et le thème à l'engine aux lancements suivants).
 `apply(cfg, changes, path)` valide, écrit dans `config.toml` (commentaires et reste du fichier
 gardés, copie `.bak`) puis met à jour `cfg` en mémoire.
 """
@@ -61,6 +61,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("wind.max_grade_offset_pct", "Plafond du vent", 1, "pts"),
     # Bonus du mode classique (série T, lots T7 et T10)
     Setting("powerups.mode", "Bonus"),
+    # Volumes par catégorie (docs/AUDIO.md, bus audio de l'engine) : appliqués tout de suite, curseur 0 à 100 %
+    Setting("audio.master_pct", "Volume général", 10, "%", "now"),
+    Setting("audio.ride_pct", "Volume vent et roue libre", 10, "%", "now"),
+    Setting("audio.ambience_pct", "Volume de l'ambiance", 10, "%", "now"),
+    Setting("audio.events_pct", "Volume bips et événements", 10, "%", "now"),
 )
 KEYS = tuple(s.key for s in SETTINGS)
 

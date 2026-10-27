@@ -32,7 +32,7 @@ cle = 1
 """
 
 
-def test_current_lists_the_six_settings_with_bounds_from_config():
+def test_current_lists_the_settings_with_bounds_from_config():
     items = settings.current(Config())
     assert [it["key"] for it in items] == list(settings.KEYS)
     ftp = items[0]
@@ -192,3 +192,24 @@ def test_settings_with_installed_themes_is_sent(tmp_path: Path):
     srv.send_raw(msg)
     assert len(sent) == 1 and 1400 < len(sent[0]) <= MAX_DATAGRAM_SIZE
     assert json.loads(sent[0]) == msg
+
+
+def test_audio_volumes_in_menu(tmp_path: Path):
+    """Volumes par catégorie (docs/AUDIO.md) : 0 à 100 % par pas de 10, appliqués tout de suite, écrits
+    dans une section `[audio]` créée au besoin."""
+    cfg = Config()
+    items = {i["key"]: i for i in settings.current(cfg)}
+    keys = ["audio.master_pct", "audio.ride_pct", "audio.ambience_pct", "audio.events_pct"]
+    for key in keys:
+        it = items[key]
+        assert (it["value"], it["min"], it["max"], it["step"], it["unit"], it["applies"]) == (100, 0, 100, 10, "%", "now")
+        assert len(it["label"]) <= 32
+    assert settings.step(cfg, "audio.master_pct", 100, +1) == 100
+    assert settings.step(cfg, "audio.master_pct", 0, -1) == 0
+    path = tmp_path / "config.toml"
+    path.write_text("[rider]\nftp_w = 250\n", encoding="utf-8")
+    settings.apply(cfg, {"audio.ambience_pct": 40}, path)
+    assert cfg.audio.ambience_pct == 40
+    assert config_mod.load(path).audio.ambience_pct == 40
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "audio.master_pct", 101)

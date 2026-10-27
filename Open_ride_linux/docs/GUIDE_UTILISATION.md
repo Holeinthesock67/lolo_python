@@ -66,6 +66,8 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 **Courbes de la séance.** Un graphique façon GoldenCheetah montre la cible, votre puissance, votre fréquence cardiaque et votre cadence. Sa taille se règle dans **Réglages**, **Courbes de la séance** : masquées, réduites (cible et puissance) ou complètes.
 
+**Volume sonore.** Quatre curseurs dans **Réglages**, de 0 (coupé) à 100 % par pas de 10, pris en compte tout de suite : **Volume général**, **Volume vent et roue libre**, **Volume de l'ambiance** (oiseaux, cloches, véhicules, foule) et **Volume bips et événements** (bips du Click, changement de bloc ERG). Détail des catégories : [AUDIO.md](AUDIO.md).
+
 **Plans d'entraînement.** L'accueil affiche **Séance du jour** quand un plan est en cours, sinon **Choisir un plan**. Un plan range des entraînements par semaine et par jour ; il garde en mémoire ce qui est fait et ce qui est en retard. `openride-core plan install` copie deux plans de départ (« Reprise 4 semaines » et « FTP 6 semaines »).
 
 **Test de FTP.** **Test de FTP** à l'accueil propose deux tests : la rampe (paliers d'une minute, +20 W, jusqu'à l'épuisement) et les 20 minutes. Roulez-les de préférence sur une boucle, car un parcours avec arrivée termine la séance. Au bilan, **Accepter** écrit la nouvelle FTP dans la configuration ; **Garder** conserve l'ancienne.

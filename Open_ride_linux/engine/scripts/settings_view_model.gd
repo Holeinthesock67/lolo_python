@@ -6,8 +6,9 @@ extends RefCounted
 ## Le core envoie la liste (`settings` : {key, label, type, value, min, max, step, unit, choices,
 ## applies}) ; ce modèle la met en forme et garde la valeur en cours de modification. Écran de
 ## modification : + / − (appui court) changent la valeur, appui long + enregistre, appui long −
-## annule. La difficulté s'affiche en curseur de 0 à 100 % ; le même curseur sert sur l'écran de
-## pause, où il envoie `set_difficulty` (lot Q1) sans toucher à config.toml.
+## annule. Tout réglage en % de 0 à 100 (difficulté, volumes) s'affiche en curseur ; le curseur de la
+## difficulté sert aussi sur l'écran de pause, où il envoie `set_difficulty` (lot Q1) sans toucher à
+## config.toml.
 ## Le même écran sert aux paramètres de « Créer un entraînement » (lot N16, clés « workout.… ») :
 ## commit() renvoie alors l'action interne `builder_set`.
 ## Pas de class_name : charger par preload("res://scripts/settings_view_model.gd").
@@ -15,7 +16,6 @@ extends RefCounted
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 
 const EDIT_SCREEN := "setting_edit"
-const DIFFICULTY_KEY := "trainer.difficulty_pct"
 ## Clé de l'écran de modification ouvert depuis la pause (difficulté de la séance en cours).
 const PAUSE_DIFFICULTY := "pause.difficulty"
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
@@ -50,8 +50,14 @@ static func slider(pct: int) -> String:
 
 
 
+## Réglage affiché en curseur : entier en %, de 0 à 100 (difficulté, volumes).
+static func is_slider(it: Dictionary) -> bool:
+	return str(it.get("type", "")) == "int" and str(it.get("unit", "")) == "%" \
+		and int(it.get("min", -1)) == 0 and int(it.get("max", -1)) == 100
+
+
 static func format_value(it: Dictionary, value) -> String:
-	if str(it.get("key", "")) in [DIFFICULTY_KEY, PAUSE_DIFFICULTY]:
+	if is_slider(it):
 		return slider(int(value))
 	if it.has("format"):
 		return WorkoutBuilder.format_param(it, value)

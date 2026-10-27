@@ -15,6 +15,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
+const AudioMix := preload("res://scripts/audio_mix.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -221,6 +222,7 @@ func _ready() -> void:
 	gen.buffer_length = 0.6
 	_beep_player = AudioStreamPlayer.new()
 	_beep_player.stream = gen
+	_beep_player.bus = AudioMix.bus(AudioMix.EVENTS)
 	add_child(_beep_player)
 	_beep_player.play()
 	# Le bandeau passe sous le panneau central du HUD (ERG, montée, état) pour ne jamais le recouvrir.
@@ -303,9 +305,11 @@ func _ready() -> void:
 		_refresh_menu())
 
 
-## Réglages reçus du core (lot O4) : menu mis à jour ; qualité et thème appliqués tout de suite au décor.
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité et thème appliqués tout de suite au décor,
+## volumes tout de suite aux bus audio (audio_mix.gd).
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
+	AudioMix.apply_settings(menu_flow.settings.items)
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q

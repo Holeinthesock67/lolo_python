@@ -32,6 +32,7 @@ const BENCH_COLOR := Color(0.42, 0.3, 0.18)
 const KID_SCALE := 0.65
 const VOICE_DB := -4.0
 const PasserbyModel := preload("res://scripts/passersby_model.gd")
+const AudioMix := preload("res://scripts/audio_mix.gd")
 
 var mode := "spectators"         # ou "passersby" (Lot P21)
 var model = null
@@ -80,6 +81,7 @@ func _init(p_mode: String = "spectators") -> void:
 	_audio.unit_size = 20.0 if mode == "spectators" else 8.0
 	_audio.max_distance = 300.0 if mode == "spectators" else 60.0
 	_audio.volume_db = CHEER_MIN_DB if mode == "spectators" else VOICE_DB
+	_audio.bus = AudioMix.bus(AudioMix.AMBIENCE)
 	add_child(_audio)
 	set_preset(QualityPresets.DEFAULT_PRESET)
 
