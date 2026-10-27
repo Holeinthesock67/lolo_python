@@ -375,7 +375,7 @@ def test_v1_4_contract_examples_are_valid():
          "cda_delta_pct": -1.5, "terrain": "rolling", "look": "wheels_carbon_40"}]}
     assert_valid(garage)
     for name, args in (("start_run", {"objective": "threshold", "duration_min": 45, "seed": None,
-                                      "w_prime_j": None}),
+                                      "w_prime_j": None, "chassis": "blinde"}),
                        ("rogue_resync", {}), ("list_garage", {}),
                        ("equip", {"slot": "wheels", "item_id": "wheels-carbon-40"}),
                        ("buy", {"item_id": "helmet-aero"}),
