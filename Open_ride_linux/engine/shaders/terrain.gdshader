@@ -57,6 +57,7 @@ global uniform float wind_phase;
 
 // Poids en dessous duquel une couche n'est pas échantillonnée (économie de lectures de texture).
 const float MIN_LAYER_WEIGHT = 0.001;
+const float SNOW_DRIFT_M = 1.5;           // taille des congères du faux relief de la neige (Lot Y11)
 
 varying vec3 v_world_pos;
 varying vec3 v_world_normal;
@@ -166,9 +167,9 @@ void fragment() {
 		vec4 c = has_snow_texture ? sample_triplanar(snow_texture, v_world_pos, snow_inv_scale, tri_weights) : snow_color;
 		// Neige : congères douces de 1,5 m et grain de 15 cm, presque sans variation de teinte
 		float relief = grass_relief * detail_strength;
-		float drifts = sd_noise(v_world_pos.xz / 1.5);
+		float drifts = sd_noise(v_world_pos.xz / SNOW_DRIFT_M);
 		float crust = sd_noise(v_world_pos.xz / 0.15);
-		snow_h = drifts * 0.04 * sd_visible(v_world_pos.xz, 1.5) * relief + crust * 0.004 * sd_visible(v_world_pos.xz, 0.15) * relief;
+		snow_h = drifts * 0.04 * sd_visible(v_world_pos.xz, SNOW_DRIFT_M) * relief + crust * 0.004 * sd_visible(v_world_pos.xz, 0.15) * relief;
 		final_color += c.rgb * (1.0 - (1.0 - drifts) * 0.04 * relief) * w_snow;
 	}
 
