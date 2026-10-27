@@ -48,6 +48,7 @@ class MockDriver:
 
         self.target_power_w: float | None = None
         self.sim_grade_pct: float = 0.0
+        self.sim_wind_mps: float = 0.0   # champ vent de la commande 0x11 ([wind] feel = "ftms")
         self.connected: bool = True
         self.on_metrics_callback: Callable[[TrainerMetrics], None] | None = None
 
@@ -61,6 +62,9 @@ class MockDriver:
         self.target_power_w = None
         self.sim_grade_pct = grade_pct
         return True
+
+    def set_wind(self, wind_mps: float) -> None:
+        self.sim_wind_mps = wind_mps
 
     def simulate_disconnect(self) -> None:
         self.connected = False
