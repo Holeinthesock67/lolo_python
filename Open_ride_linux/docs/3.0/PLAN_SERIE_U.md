@@ -1,6 +1,6 @@
 # OpenRide 3.0 – Biomes, textures régionales et saisons par biome (série U)
 
-25 octobre 2026. Proposition du propriétaire : pour la 3.0, des biomes (eau, montagne, jungle, savane, désert…), avec des textures différentes selon les régions et les saisons. Ce plan complète la liste, la confronte à l'architecture actuelle et la découpe en lots. **La série U commence après la 2.0** : elle s'appuie sur le décor vivant de la série P (vent, météo, ambiance, faune) et sur les saisons de la 2.0 ([P18](../lots/LOT_P18_saisons.md), intégrées par [P19](../lots/LOT_P19_integration_jour_nuit_saisons.md)). Les cahiers des lots seront rédigés au démarrage de la série et ajoutés à `docs/lots/00_INDEX.md`.
+25 octobre 2026. Proposition du propriétaire : pour la 3.0, des biomes (eau, montagne, jungle, savane, désert…), avec des textures différentes selon les régions et les saisons. Ce plan complète la liste, la confronte à l'architecture actuelle et la découpe en lots. **La série U commence après la 2.0** : elle s'appuie sur le décor vivant de la série P (vent, météo, ambiance, faune) et sur les saisons de la 2.0 ([P18](../lots/LOT_P18_saisons.md), intégrées par [P19](../lots/LOT_P19_integration_jour_nuit_saisons.md)). Les cahiers des lots U0 à U22 sont rédigés (27 octobre 2026) et rangés dans `docs/lots/00_INDEX.md` ; les questions nées de leur rédaction sont au §11.
 
 ## 1. En résumé
 
@@ -110,11 +110,15 @@ Toutes les questions sont tranchées par le propriétaire le 25 octobre 2026.
 | U13 | Engine : calendriers de saisons par biome (saison sèche et saison des pluies, désert, polaire) | U5, P18 | Délégable |
 | U14 | Engine : variantes régionales des roches, terres et bâtiments | U4, U6 | Délégable |
 | U15 | Packs de biomes : thème 2.0 par défaut en couleurs unies, pack de textures libres téléchargeable par `theme-install` | U1, N10 | Délégable |
-| U16 | Choix du biome au menu (forçage, retenu par U-Q1) | U2, O4 | Interne (menu) |
-| U17 | Intégration dans la scène principale | U5 à U15 | Interne (rendu) |
-| U18 | Recette sur le PC : un parcours par biome du premier jalon, performances, mémoire vidéo | U17 | Propriétaire |
+| U16 | Choix du biome et option « gravel » au menu (forçage retenu par U-Q1, U-G1) | U1, U2, O4 | Interne (menu) |
+| U17 | Intégration dans la scène principale | U5 à U15, U19, U22 | Interne (rendu) |
+| U18 | Recette sur le PC : un parcours par biome du premier jalon, performances, mémoire vidéo, ressenti du gravel | U17, U19 à U22 | Propriétaire |
+| U19 | Parcours de démonstration fictifs, un par biome du premier jalon, avec portions non revêtues (ajouté le 27 octobre) | U1 | Délégable |
+| U20 | Gravel : surface de la route d'après OSM au compilateur, chemins de terre au monde ouvert (classe `g`) | U1, W4, W6 | Délégable |
+| U21 | Gravel : résistance au roulement dans le core, supplément de pente sous le plafond du vent, ERG en vitesse seulement | U1, P2 | Délégable |
+| U22 | Gravel : ruban de terre et de gravier, poussière et sons | U1, U19, P10 | Délégable |
 
-Ordre conseillé : U0 et U1 ; puis le premier jalon (U-Q5) : U2, U4, U5, U6, U7, U11, U13, U14 et U15, intégrés par U17 et recettés par U18 ; ensuite U3 et U9 (littoral et mer), U8, U10 et U12 ; enfin les biomes lointains, qui ne demandent plus que des données (palettes, espèces, sons) dans les packs.
+Ordre conseillé : U0 et U1 ; puis U19 (données de test) et le premier jalon (U-Q5, littoral compris) : U2, U3, U4, U5, U6, U7, U9, U11, U13, U14 et U15, intégrés par U17 et recettés par U18 ; l'option « gravel » (U20, U21, U22) en parallèle, recettée avec U18 ; ensuite U8, U10 et U12 ; enfin les biomes lointains, qui ne demandent plus que des données (palettes, espèces, sons) dans les packs. Correction du 27 octobre : la côte et la mer (U3, U9) étaient rangées après le premier jalon, alors que U-Q5 y met le littoral (écart C11 de la spécification générale, question U-Q13).
 
 ## 9. Risques
 
@@ -129,4 +133,20 @@ Ordre conseillé : U0 et U1 ; puis le premier jalon (U-Q5) : U2, U4, U5, U6, U7,
 
 ## 10. Autre ajout prévu pour la 3.0
 
-- **Option « gravel » (décision du propriétaire du 25 octobre 2026, question W-Q2 du [monde ouvert](../2.0/PLAN_SERIE_W.md)) :** un réglage des menus qui ouvre au monde ouvert les chemins de terre et les pistes forestières. Le navigateur peut alors les emprunter, et l'engine leur donne un ruban et une texture de terre ou de gravier. Ce réglage pourra aussi servir aux biomes (pistes de savane ou de désert).
+- **Option « gravel » (décision du propriétaire du 25 octobre 2026, question W-Q2 du [monde ouvert](../2.0/PLAN_SERIE_W.md)) :** un réglage des menus qui ouvre au monde ouvert les chemins de terre et les pistes forestières. Le navigateur peut alors les emprunter, et l'engine leur donne un ruban et une texture de terre ou de gravier. Ce réglage pourra aussi servir aux biomes (pistes de savane ou de désert). Il vaut aussi pour les traces compilées (question U-Q8) : la surface de chaque point est tirée d'OSM. Contrat dans U1 (§4.4 et §4.6), lots U16 (menu), U20 (compilateur et monde ouvert), U21 (core) et U22 (rendu).
+
+## 11. Questions nées de la rédaction des cahiers (27 octobre 2026)
+
+Chaque cahier applique la proposition recommandée ; une réponse différente du propriétaire ne change que les cahiers cités.
+
+| # | Question | Proposition appliquée | Cahiers |
+| --- | --- | --- | --- |
+| U-Q6 | Numérotation des contrats | IPC : révision libre suivante (1.6 si W prend la 1.5), réduite à deux clés facultatives de `hello_ack.config` (`biome`, `gravel`), sans nouveau message ; `.world` : mineur libre suivant celui de W1 ; thème : 2.0, avec lecture des 1.x garantie | U1, U16 |
+| U-Q7 | Forçage du biome au menu : pour un parcours ou pour tous ? | Réglage unique `[render] biome` (`auto` par défaut) dans « Réglages », appliqué au rendu sans recompiler ; le forçage par parcours reste l'option `--biome` du compilateur | U1, U5, U16 |
+| U-Q8 | L'option « gravel » vaut-elle aussi pour les traces GPX ? | Oui : surface de chaque point tirée d'OSM ; option coupée, tout se roule et s'affiche en bitume, comme aujourd'hui | U1, U20, U21, U22 |
+| U-Q9 | Facteurs de résistance au roulement | `compacted` 2,0, `gravel` 2,5, `dirt` 3,0 (bornes 1 à 3), dans `config.toml` seulement, pas au menu ; avec `crr` = 0,004, le gravier ajoute environ 0,6 point de pente sur le plat | U1, U21 |
+| U-Q10 | Finesse de la couche `biome` et identifiants | Grille de 17 × 17 points par tuile (cases de 62,5 m en proche), poids de 0 à 255, identifiants anglais du lot U0 (libellés français au menu) | U0, U1, U2, U5 |
+| U-Q11 | Téléchargement de WorldCover | Lecture par fenêtre des fichiers publics (seulement l'emprise du parcours, pas la tuile entière de 3°), version 2021, cache par carré de 0,1° dans `~/.cache/openride/landcover/` ; licence CC BY 4.0 citée dans le manifeste | U2 |
+| U-Q12 | Parcours de démonstration pour voir les biomes lointains et tester sans trace réelle | Nouveau lot U19 : parcours fictifs générés par code, coordonnées en degrés entiers hors de toute ville | U19, U17, U18 |
+| U-Q13 | Littoral dans le premier jalon (U-Q5) alors que l'ordre du §8 le mettait après | U3 et U9 entrent dans le premier jalon (ordre du §8 corrigé) | U3, U9, U17, U18 |
+
