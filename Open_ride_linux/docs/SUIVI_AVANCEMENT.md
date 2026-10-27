@@ -230,6 +230,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Engine : modèle du vent lissé pour tout le décor, modèle de l'indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (lot P4, sans affichage).
 - [x] Arbres qui se balancent au vent (shader `tree_sway.gdshader`, paramètres globaux du vent) et touffes d'herbe en bord de route au vent apparent en qualité moyenne et haute (lot P5, branchement dans `main.gd` par P16).
 - [x] Nuages qui défilent au vent (shader de ciel `sky_clouds.gdshader`, une couche en `low` et `medium`, deux en `high`) et ombre des nuages sur le terrain en `high` (lot P6, branchement dans `main.gd` par P16).
+- [x] Météo légère du thème 1.2 : brume de vallée, pluie fine et neige légère poussées par le vent, autour de la caméra, au budget de `living(preset)` (lot P8 ; brume appliquée et branchement dans `main.gd` par P17).
 - [ ] Indicateur du vent et de l'abri, arbres et herbe au vent, nuages, sons d'ambiance, sons du vent et de la roue libre (lots P4, P5, P6, P9, P10 ; intégration P16).
 - [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs, passants (lots P8, P11 à P15, P21 ; intégration P17).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
