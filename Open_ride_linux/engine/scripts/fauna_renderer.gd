@@ -9,8 +9,12 @@ extends Node3D
 ## - `update(cam_pos, rider_pos, now_s)` une fois par image : comportements (fauna_behaviour.gd), puis
 ##   transformées des seules bêtes gardées. Les plus proches de la caméra sont gardées, dans la limite
 ##   du budget ; le tri est refait quand la caméra a bougé de RESELECT_M ou que les groupes changent.
-##   Oiseaux et chevreuils sont mis à jour à chaque image, le bétail (rotation lente) par quart, une
-##   image sur HERD_UPDATE_EVERY chacun ; un chevreuil disparu est réduit à rien jusqu'au tri suivant.
+##   Oiseaux en vol et chevreuils sont mis à jour à chaque image, le bétail et les corneilles posées
+##   (rotation lente) par quart, une image sur HERD_UPDATE_EVERY chacun ; un chevreuil disparu est réduit à rien jusqu'au tri suivant.
+## Lot P23 : le MultiMesh des oiseaux porte aussi les rapaces, les volées en V et les corneilles (même
+## silhouette, à l'échelle BIRD_SCALE de leur sorte ; ailes repliées au sol). `setup_sound(sound_player)` :
+## croassements à l'envol des corneilles et cris des rapaces (fauna_behaviour.gd `events`) sur un lecteur 3D,
+## au volume `ambience.volume` du thème.
 ## Tous les nœuds sont créés à l'initialisation ; aucun n'est créé ensuite.
 
 const FaunaBehaviour := preload("res://scripts/fauna_behaviour.gd")
@@ -26,6 +30,12 @@ const ALBEDO := {
 }
 const RESELECT_M := 20.0
 const HERD_UPDATE_EVERY := 4
+## Lot P23 : échelle de la silhouette d'oiseau (0,9 m d'envergure) et battement d'ailes (INSTANCE_CUSTOM.z)
+const BIRD_SCALE := {"birds": 1.0, "raptor": 1.5, "vee": 1.8, "crows": 1.05}
+const BIRD_FLAP := {"birds": 1.0, "raptor": 0.08, "vee": 0.7, "crows": 1.0}
+const FOLDED_WINGS := 0.35        # largeur des ailes repliées d'une corneille au sol
+const CALL_DB := -8.0
+const CALL_MAX_DISTANCE_M := 400.0
 
 var behaviour := FaunaBehaviour.new()
 var budget_birds := 12
@@ -41,6 +51,9 @@ var _sel_animals: Array[Vector2i] = []   # (indice du groupe, indice de la bête
 var _slots: PackedInt32Array = PackedInt32Array()   # case de chaque bête gardée dans son MultiMesh
 var _now_s := 0.0
 var _frame := 0
+var _sound = null
+var _audio: AudioStreamPlayer3D
+var sounds_played: Array = []         # sons joués, pour les tests
 
 
 func _init() -> void:
@@ -61,7 +74,16 @@ func _init() -> void:
 		mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 		add_child(mmi)
 		_mmi[sp] = mmi
+	_audio = AudioStreamPlayer3D.new()
+	_audio.name = "FaunaCall"
+	_audio.max_distance = CALL_MAX_DISTANCE_M
+	add_child(_audio)
 	set_preset(QualityPresets.DEFAULT_PRESET)
+
+
+## sound_player.gd dont les sons `crow_caw` et `raptor_cry` sont joués (facultatif).
+func setup_sound(sound_player) -> void:
+	_sound = sound_player
 
 
 func set_preset(preset_name: String, enabled: bool = true) -> void:
@@ -111,10 +133,9 @@ func _select(cam_pos: Vector3) -> void:
 	for gi in range(groups.size()):
 		var g: Dictionary = groups[gi]
 		match str(g["type"]):
-			"birds":
-				var c: Vector3 = g["center"]
-				var d := c.distance_squared_to(cam_pos)
-				for i in range((g["members"] as Array).size()):
+			"birds", "raptor", "vee", "crows":
+				var d := _bird_anchor(g).distance_squared_to(cam_pos)
+				for i in range(_bird_count(g)):
 					birds.append([d, gi, i])
 			"herd":
 				var members: Array = g["members"]
@@ -132,7 +153,7 @@ func _select(cam_pos: Vector3) -> void:
 		var gi: int = birds[j][1]
 		var i: int = birds[j][2]
 		_sel_birds.append(Vector2i(gi, i))
-		mm_b.set_instance_custom_data(j, Color(float(groups[gi]["members"][i]["phase"]) / TAU, 0.0, 0.0, 0.0))
+		mm_b.set_instance_custom_data(j, _bird_custom(groups[gi], i, _now_s))
 	mm_b.visible_instance_count = _sel_birds.size()
 	# Chaque bête gardée reçoit une case fixe de son espèce jusqu'au tri suivant.
 	_sel_animals.clear()
@@ -166,15 +187,23 @@ func update(cam_pos: Vector3, rider_pos: Vector3, now_s: float) -> void:
 		_select(cam_pos)
 	var groups: Array = behaviour.groups
 
+	# Oiseaux en vol à chaque image ; corneilles au sol (rotation lente) une image sur HERD_UPDATE_EVERY.
+	_frame += 1
 	var mm_b: MultiMesh = _mmi["bird"].multimesh
 	for j in range(_sel_birds.size()):
 		var s := _sel_birds[j]
 		var g: Dictionary = groups[s.x]
-		var basis := Basis(Vector3.UP, FaunaBehaviour.bird_yaw(g, s.y, now_s))
-		mm_b.set_instance_transform(j, Transform3D(basis, FaunaBehaviour.bird_position(g, s.y, now_s)))
+		var t: String = g["type"]
+		if t == "birds":
+			mm_b.set_instance_transform(j, FaunaBehaviour.bird_transform(g, s.y, now_s))
+			continue
+		if t == "crows":
+			if g["state"] != "flight" and (j + _frame) % HERD_UPDATE_EVERY != 0:
+				continue
+			mm_b.set_instance_custom_data(j, _bird_custom(g, s.y, now_s))
+		mm_b.set_instance_transform(j, bird_transform(g, s.y, now_s))
 
 	# Chevreuils à chaque image ; bétail (rotation lente) par quart, une image sur quatre chacun.
-	_frame += 1
 	var mm_d: MultiMesh = _mmi["deer"].multimesh
 	for j in range(_sel_animals.size()):
 		var s := _sel_animals[j]
@@ -191,7 +220,65 @@ func update(cam_pos: Vector3, rider_pos: Vector3, now_s: float) -> void:
 			var m: Dictionary = g["members"][s.y]
 			var mm: MultiMesh = _mmi[str(g["species"])].multimesh
 			mm.set_instance_transform(_slots[j], Transform3D(Basis(Vector3.UP, FaunaBehaviour.herd_yaw(m, now_s)), m["pos"]))
+	for ev in behaviour.events:
+		_play(ev)
 	last_update_usec = Time.get_ticks_usec() - t0
+
+
+## Point de référence d'un groupe d'oiseaux pour le tri par distance.
+static func _bird_anchor(g: Dictionary) -> Vector3:
+	match str(g["type"]):
+		"vee":
+			return g["origin"]
+		"crows":
+			return g["pos"]
+	return g["center"]
+
+
+static func _bird_count(g: Dictionary) -> int:
+	return 1 if str(g["type"]) == "raptor" else (g["members"] as Array).size()
+
+
+## Données d'instance d'un oiseau : (phase du battement 0 à 1, 0, amplitude du battement, 0).
+static func _bird_custom(g: Dictionary, i: int, now_s: float) -> Color:
+	var t: String = g["type"]
+	var phase := fposmod(float(g["members"][i]["phase"]) / TAU, 1.0) if t == "birds" else fposmod(0.137 * i + 0.31, 1.0)
+	var flap: float = BIRD_FLAP[t]
+	if t == "crows" and not FaunaBehaviour.crow_flying(g, i, now_s):
+		flap = 0.0
+	return Color(phase, 0.0, flap, 0.0)
+
+
+## Transformée du `i`-ième oiseau du groupe `g` (bande, rapace, volée en V ou corneilles).
+static func bird_transform(g: Dictionary, i: int, now_s: float) -> Transform3D:
+	var t: String = g["type"]
+	var k: float = BIRD_SCALE[t]
+	match t:
+		"raptor":
+			return Transform3D(Basis(Vector3.UP, FaunaBehaviour.raptor_yaw(g, now_s)).scaled(Vector3.ONE * k),
+				FaunaBehaviour.raptor_position(g, now_s))
+		"vee":
+			var f := maxf(FaunaBehaviour.vee_scale(g, now_s), 0.001)
+			return Transform3D(Basis(Vector3.UP, FaunaBehaviour.vee_yaw(g)).scaled(Vector3.ONE * k * f),
+				FaunaBehaviour.vee_position(g, i, now_s))
+		"crows":
+			var wings := 1.0 if FaunaBehaviour.crow_flying(g, i, now_s) else FOLDED_WINGS
+			return Transform3D(Basis(Vector3.UP, FaunaBehaviour.crow_yaw(g, i, now_s)) * Basis.from_scale(Vector3(wings * k, k, k)),
+				FaunaBehaviour.crow_position(g, i, now_s) + Vector3(0.0, 0.08 * k, 0.0))
+	return FaunaBehaviour.bird_transform(g, i, now_s)
+
+
+func _play(ev: Dictionary) -> void:
+	var kind := str(ev.get("sound", ""))
+	sounds_played.append(kind)
+	_audio.position = ev.get("pos", Vector3.ZERO)
+	var vol := 0.6
+	if _sound != null:
+		vol = float(_sound.ambience.volume)
+		_audio.stream = _sound.stream(kind)
+	_audio.volume_db = CALL_DB + linear_to_db(maxf(vol / 0.6, 0.001))
+	if is_inside_tree() and _audio.stream != null:
+		_audio.play()
 
 
 # --- maillages bas en polygones -------------------------------------------------------------
