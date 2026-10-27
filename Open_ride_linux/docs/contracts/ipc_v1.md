@@ -41,7 +41,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | engine vers core | 5006 | `hello`, `heartbeat`, `cmd`, `bye` | `heartbeat` à 2 Hz ; `cmd` sur événement |
 
 - Les ports sont modifiables dans `config.toml` (section `ipc`) ; si un port est occupé, le programme s'arrête avec un message explicite.
-- Taille maximale d'un datagramme : 1 400 octets, sauf `routes` et `workouts` (§4) : 60 000 octets. Ces deux messages restent sur `127.0.0.1`, où un datagramme de cette taille passe sans fragmentation ; l'engine lit sa socket avec un tampon d'au moins 65 536 octets.
+- Taille maximale d'un datagramme : 1 400 octets, sauf `routes` et `workouts` (§4) : 60 000 octets, et, depuis la révision 1.3, `state` : 4 096 octets. Ces messages restent sur `127.0.0.1`, où un datagramme de cette taille passe sans fragmentation ; l'engine lit sa socket avec un tampon d'au moins 65 536 octets. Un engine antérieur à la 1.3 lit donc déjà ces trames : le changement est compatible (décision D1 de l'audit IPC du 26 octobre, acceptée par le propriétaire). Le core continue de jeter, avec un avertissement, une trame qui dépasse sa limite.
 - Un datagramme illisible (JSON invalide) est ignoré et compté dans les journaux.
 - Le trainer notifie à environ 1 Hz (mode puissance) à 8 Hz (mode pente), mesuré ; la fréquence de 30 Hz du message `state` est indépendante et vient de la physique du core (50 Hz).
 
@@ -122,7 +122,7 @@ Mêmes définitions que `openride-core summary` (lot K7). Chaque champ vaut `nul
 
 **Liste `bots`**
 
-Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et un fantôme), pour que la trame la plus chargée (ERG, `devices` et bots) tienne dans 1 400 octets : `id` (au plus 8 caractères) et `name` (au plus 16 caractères) sont des chaînes, `s` et `v` des nombres (mêmes unités que la trame), `kind` vaut `constant` (puissance fixe) ou `ghost` (rejeu d'une séance passée, lot N9). Champ absent quand il n'y a pas de bot.
+Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et un fantôme), pour que la trame la plus chargée (ERG, `devices` et bots) reste petite (1 400 octets jusqu'à la révision 1.2, 4 096 octets depuis la 1.3, §2) : `id` (au plus 8 caractères) et `name` (au plus 16 caractères) sont des chaînes, `s` et `v` des nombres (mêmes unités que la trame), `kind` vaut `constant` (puissance fixe) ou `ghost` (rejeu d'une séance passée, lot N9). Champ absent quand il n'y a pas de bot.
 
 **Objet `wind` (révision 1.3, lot P1)**
 
@@ -138,7 +138,7 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 - L'indicateur du vent du HUD (favorable, défavorable ou neutre, et son intensité) se déduit de ces champs : le verdict du signe de `head_mps` (seuil ± 1 m/s), l'intensité de `speed_mps`. Aucun champ de plus.
 - Le vent est coupé par défaut dans les versions 1.x (`[wind] mode = "off"`, SRS §11) : l'objet `wind` est alors absent et les trames restent celles de la révision 1.2.
 - En ERG, le vent et l'aspiration ne changent que la vitesse virtuelle, jamais la puissance demandée. Le fantôme (`kind` = `ghost`) n'abrite pas : `draft_bot` désigne toujours un bot `constant`.
-- `wind` n'est jamais dans la même trame que `devices` : quand les deux tombent ensemble, le core envoie `wind` dans la trame suivante. Les deux trames les plus chargées (ERG, 5 bots, `draft` et `draft_bot`, avec soit `devices`, soit `wind`) tiennent ainsi dans 1 400 octets ; un test du core le vérifie.
+- `wind` n'est jamais dans la même trame que `devices` : quand les deux tombent ensemble, le core envoie `wind` dans la trame suivante. Les deux trames les plus chargées (ERG, 5 bots, `draft` et `draft_bot`, avec soit `devices`, soit `wind`) restent ainsi sous 1 400 octets, bien en dessous de la limite de 4 096 octets de la révision 1.3 (§2), ce qui laisse la place aux ajouts de la 2.0 ; un test du core le vérifie.
 
 ## 4. Message engine vers core : commandes
 
@@ -194,8 +194,8 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 
 | Message | Sens | Champs | Rôle |
 | --- | --- | --- | --- |
-| `hello` | engine vers core | `v`, `engine_version` | Premier message de l'engine, répété chaque seconde jusqu'au `hello_ack` |
-| `hello_ack` | core vers engine | `v`, `core_version`, `config` (pour l'affichage : `ftp_w`, `gears_total`, `theme`, `difficulty_pct`) | Confirme la version du contrat et donne la configuration utile |
+| `hello` | engine vers core | `v`, `engine_version`, `rev` (facultatif, révision 1.3) | Premier message de l'engine, répété chaque seconde jusqu'au `hello_ack` |
+| `hello_ack` | core vers engine | `v`, `core_version`, `rev` (facultatif, révision 1.3), `config` (pour l'affichage : `ftp_w`, `gears_total`, `theme`, `difficulty_pct` ; `modes`, facultatif, révision 1.3) | Confirme la version du contrat et donne la configuration utile |
 | `heartbeat` | engine vers core | `seq`, `fps` (nombre, facultatif) | À 2 Hz ; prouve que l'engine est vivant |
 | `error` | core vers engine | `code`, `message` | Erreur à afficher (voir codes ci-dessous) |
 | `bye` | engine vers core | — | L'engine se ferme volontairement |
@@ -204,6 +204,10 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 **Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche demandée pendant une séance), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée).
 
 **Version.** Le core refuse un `hello` dont `v` diffère du sien, répond par une erreur `version_mismatch` et n'ouvre pas la séance. La règle d'évolution est au §8.
+
+**Révision (1.3, décision D3 de l'audit IPC).** `hello` et `hello_ack` portent le champ facultatif `rev`, la révision du contrat que suit l'émetteur, en texte (« 1.3 »). Absent : émetteur antérieur à la 1.3. Une révision différente n'est pas une erreur, puisque les révisions d'une même version sont compatibles : chaque programme l'écrit dans son journal et continue, en ignorant les champs qu'il ne connaît pas.
+
+**Modes de jeu (1.3).** `hello_ack.config.modes` est la liste des modes que ce core sait lancer : `"ride"` (parcours libre) et `"erg"` (entraînement) en 1.3 ; d'autres valeurs s'ajouteront (`"rogue"` avec la série R, `"open_world"` avec la série W). Absent : l'engine suppose `["ride", "erg"]`. L'accueil de l'engine n'affiche que les modes annoncés, sans entrée grisée, et ignore une valeur qu'il ne connaît pas.
 
 ## 6. Gestion des pannes
 
@@ -295,4 +299,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.1) | 24 octobre 2026 | Ajouts compatibles (lot N1) : commandes `list_routes` et `list_workouts`, messages `routes` et `workouts` (jusqu'à 60 000 octets, en parties) ; objet `devices` dans `state` une fois par seconde ; bilan enrichi dans `summary` ; forme de `bots` ; `pause_reason` = `core_restarted` et reprise après un plantage du core |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot Q1) : commande `set_difficulty`, champ `difficulty_pct` (entier) dans `state` et `hello_ack.config` |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot N13, accepté par le propriétaire le 25 octobre ; même révision que Q1, numérotation confirmée par le propriétaire le 26 octobre) : commandes `scan_devices`, `identify_click_plus` et `pair_devices`, message `scan_results`, codes d'erreur `busy`, `scan_failed` et `pairing_failed` |
-| 1 (révision 1.3) | 26 octobre 2026 | Ajouts compatibles (lot P1, décisions du propriétaire du 25 octobre ; révision 1.3 parce que Q1 et N13 ont pris la 1.2) : objet facultatif `wind` dans `state` (2 fois par seconde, absent quand le vent est coupé), champs facultatifs `draft` et `draft_bot` |
+| 1 (révision 1.3) | 26 octobre 2026 | Ajouts compatibles (lot P1, décisions du propriétaire du 25 octobre ; révision 1.3 parce que Q1 et N13 ont pris la 1.2) : objet facultatif `wind` dans `state` (2 fois par seconde, absent quand le vent est coupé), champs facultatifs `draft` et `draft_bot` ; limite de `state` portée à 4 096 octets (§2, décision D1 de l'audit IPC) ; champ facultatif `rev` dans `hello` et `hello_ack`, liste facultative `modes` dans `hello_ack.config` (§5, décision D3 ; décisions acceptées par le propriétaire le 26 octobre) |
