@@ -54,13 +54,13 @@ jobs:
         if: matrix.python-version == '3.11'
         run: |
           pip install -e "core[dev]"
-          pip install -e "compiler[dev]"
+          pip install -e "compiler[dev,worldgen]"
 
       - name: Installation des paquets (Python 3.14, avec constraints.txt)
         if: matrix.python-version == '3.14'
         run: |
           pip install -c constraints.txt -e "core[dev]"
-          pip install -c constraints.txt -e "compiler[dev]"
+          pip install -c constraints.txt -e "compiler[dev,worldgen]"
 
       - name: Cohérence des paquets installés
         run: pip check
