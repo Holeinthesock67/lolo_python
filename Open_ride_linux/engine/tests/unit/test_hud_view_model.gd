@@ -93,12 +93,9 @@ func _test_texts() -> void:
 		["temps nul", {"t": 0}, "elapsed_text", "0:00:00"],
 		["temps négatif", {"t": -5.0}, "elapsed_text", "0:00:00"],
 		["temps NaN", {"t": NAN}, "elapsed_text", "—"],
-		["difficulté 50 %", {"difficulty_pct": 50}, "difficulty_text", "Difficulté 50 %"],
-		["difficulté 100 %", {"difficulty_pct": 100}, "difficulty_text", "Difficulté 100 %"],
-		["difficulté 30 %", {"difficulty_pct": 30}, "difficulty_text", "Difficulté 30 %"],
 	]
 	var text_keys := ["power_text", "speed_text", "cadence_text", "hr_text", "gear_text", "grade_text",
-		"distance_text", "elapsed_text", "difficulty_text"]
+		"distance_text", "elapsed_text"]
 	for case in cases:
 		var vm = HudViewModel.new()
 		vm.on_state(case[1], 10.0)
@@ -296,35 +293,16 @@ func _test_session_lines() -> void:
 
 
 func _test_difficulty() -> void:
-	var vm := HudViewModel.new()
-	# Sans trame : visible faux
-	var eval := vm.evaluate(1.0)
-	_check(not eval["difficulty_visible"], "difficulté sans trame : cachée")
-
-	# Trame à 50 % : visible vrai
-	vm.on_state({"difficulty_pct": 50}, 2.0)
-	eval = vm.evaluate(2.5)
-	_check(eval["difficulty_visible"], "difficulté à 50 % : visible")
-	_check(eval["difficulty_text"] == "Difficulté 50 %", "texte à 50 %% = Difficulté 50 %% (%s)" % eval["difficulty_text"])
-
-	# Trame à 100 % : visible faux
-	vm.on_state({"difficulty_pct": 100}, 3.0)
-	eval = vm.evaluate(3.5)
-	_check(not eval["difficulty_visible"], "difficulté à 100 % : cachée")
-
-	# Trame à 30 % : visible vrai
-	vm.on_state({"difficulty_pct": 30}, 4.0)
-	eval = vm.evaluate(4.5)
-	_check(eval["difficulty_visible"], "difficulté à 30 % : visible")
-	_check(eval["difficulty_text"] == "Difficulté 30 %", "texte à 30 %% = Difficulté 30 %% (%s)" % eval["difficulty_text"])
-
-	# session_lines
-	var l50 := HudViewModel.session_lines({"difficulty_pct": 50}, {})
-	_check(l50["difficulty_visible"] and l50["difficulty_text"] == "Difficulté 50 %", "session_lines à 50 % : visible")
-	var l100 := HudViewModel.session_lines({"difficulty_pct": 100}, {})
-	_check(not l100["difficulty_visible"], "session_lines à 100 % : cachée")
-	var l30 := HudViewModel.session_lines({"difficulty_pct": 30}, {})
-	_check(l30["difficulty_visible"] and l30["difficulty_text"] == "Difficulté 30 %", "session_lines à 30 % : visible")
+	# La difficulté se règle et se lit dans le menu Réglages (et l'écran de pause), pas dans le HUD
+	# permanent (demande du propriétaire du 27 octobre) : aucune sortie du HUD n'en porte le texte.
+	for pct in [30, 50, 100]:
+		var vm := HudViewModel.new()
+		vm.on_state({"difficulty_pct": pct}, 2.0)
+		var eval := vm.evaluate(2.5)
+		var lines := HudViewModel.session_lines({"difficulty_pct": pct}, {})
+		for out in [eval, lines]:
+			_check(not out.has("difficulty_text") and not out.has("difficulty_visible"),
+				"difficulté à %d %% : absente du HUD" % pct)
 
 
 func _test_controls_help() -> void:

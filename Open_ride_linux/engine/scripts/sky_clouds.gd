@@ -3,11 +3,13 @@ extends RefCounted
 ## Ciel avec nuages qui défilent au vent (Lot P6). Pas de class_name : charger par
 ## preload("res://scripts/sky_clouds.gd"). Branché par P16 dans main.gd.
 ##
-## - `build_material(params, quality, current)` : `params` vient de
+## - `build_material(params, quality, current, horizon)` : `params` vient de
 ##   ThemeRenderParams.cloud_params(theme), `quality` est le mode de nuages du préréglage
 ##   (QualityPresets.living(preset).clouds : "off", "flat" ou "layered"). En "off", ou avec une
 ##   couverture nulle, rend `current` (le matériau de ciel actuel) sans le changer ; sans `current`,
-##   le ciel procédural actuel du moteur Compatibility.
+##   le ciel procédural actuel du moteur Compatibility. `horizon` est la couleur de l'horizon du ciel
+##   nuageux : main.gd y passe la couleur du brouillard (`fog_light_color`), pour que le relief qui
+##   disparaît dans le brouillard raccorde au ciel (le brouillard ne touche plus le ciel, render_quality.gd).
 ## - `update(material, wind_eval, dt_s)` une fois par image avec la sortie de wind_model.evaluate() :
 ##   cumule le défilement des nuages (vent × speed_factor). Sans effet sur un autre matériau.
 ## - Ombre des nuages sur le terrain (`high` seulement) : `terrain_shadow_params` donne les uniforms
@@ -33,7 +35,8 @@ static func current_sky_material() -> ProceduralSkyMaterial:
 	return m
 
 
-static func build_material(params: Dictionary, quality: String, current: Material = null) -> Material:
+static func build_material(params: Dictionary, quality: String, current: Material = null,
+		horizon: Color = SKY_HORIZON) -> Material:
 	var mode := quality.strip_edges()
 	var coverage := float(params.get("coverage", 0.0))
 	if mode == "off" or mode == "" or coverage <= 0.0:
@@ -41,7 +44,7 @@ static func build_material(params: Dictionary, quality: String, current: Materia
 	var m := ShaderMaterial.new()
 	m.shader = SkyShader
 	m.set_shader_parameter("sky_top_color", SKY_TOP)
-	m.set_shader_parameter("sky_horizon_color", SKY_HORIZON)
+	m.set_shader_parameter("sky_horizon_color", horizon)
 	m.set_shader_parameter("coverage", coverage)
 	m.set_shader_parameter("cloud_color", params.get("color", Color(0.957, 0.969, 0.984)))
 	m.set_shader_parameter("altitude_m", float(params.get("altitude_m", 2000.0)))

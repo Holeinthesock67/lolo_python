@@ -106,12 +106,14 @@ const ERG_BEEP_LEVEL := 0.6
 const CUE_BEEP := [[880.0, 0.15], [1320.0, 0.25]]
 
 var _cues = CueModel.new()
-## Menus (lot N6) : déroulé (menu_flow.gd) et affichage (menu_view.gd).
+## Menus (lot N6) : déroulé (menu_flow.gd) et affichage (menu_view.gd), plein écran sur une couche
+## au-dessus du HUD, qui est caché pendant un menu (lot « présentation des menus »).
 var menu_flow = MenuFlow.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
 var bots_model = BotsViewModel.new()
 var bots_view: Node3D
 var menu_view = null
+var menu_layer: CanvasLayer = null
 var _last_state: Dictionary = {}
 var _menu_s := 0.0
 ## Décor vivant, première vague (lot P16) : vent, arbres et herbe, nuages, fonds sonores.
@@ -224,9 +226,13 @@ func _ready() -> void:
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
+	menu_layer = CanvasLayer.new()
+	menu_layer.name = "MenuLayer"
+	menu_layer.layer = hud.layer + 1
+	add_child(menu_layer)
 	menu_view = MenuView.new()
-	hud.add_child(menu_view)
-	hud.move_child(banner, -1)   # le bandeau reste lisible au-dessus du menu
+	menu_layer.add_child(menu_view)
+	banner.reparent(menu_layer)   # le bandeau reste lisible au-dessus du menu, HUD caché ou non
 	menu_view.item_clicked.connect(func(item_id: String) -> void:
 		# Clic sur un élément : focus dessus puis validation, comme un appui long sur A.
 		print("Souris : clic sur ", item_id)
@@ -460,6 +466,7 @@ func _refresh_menu() -> void:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
+	hud.visible = not shown   # menu plein écran : rien du HUD de séance derrière lui
 	if shown:
 		menu_view.update_display(menu_flow.state(), _last_state, menu_flow.summary, menu_flow.show_details)
 

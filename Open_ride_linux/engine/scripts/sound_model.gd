@@ -6,11 +6,12 @@ extends RefCounted
 ##
 ## Constantes de comportement :
 ## - `SILENCE_DB = -80.0` : volume de silence (à l'arrêt ou en pause, sans lissage en pause).
-## - Vent (Lot P10) : il suit la vitesse dans l'air `va = v + wind.head_mps` (bornée à 0), selon
-##   `20 × WIND_LOG_K × log10(va / WIND_MAX_KMH)` dB, entre `WIND_MIN_MOVING_DB = -60.0` et
-##   `WIND_MAX_DB = 0.0` (plafond à `WIND_MAX_KMH = 60.0` km/h dans l'air) : à 10 km/h, -39 dB, à
-##   peine audible ; à 50 km/h, -4 dB. Hauteur (`pitch`) de `WIND_PITCH_MIN = 0.8` à
-##   `WIND_PITCH_MAX = 1.3`, linéaire en `va`. La rafale `wind.gust` (0 à 1) module le volume de
+## - Vent (Lot P10, baissé après la recette P16) : il suit la vitesse dans l'air `va = v + wind.head_mps`
+##   (bornée à 0), selon `WIND_MAX_DB + 20 × WIND_LOG_K × log10(va / WIND_MAX_KMH)` dB, entre
+##   `WIND_MIN_MOVING_DB = -60.0` et `WIND_MAX_DB = -12.0` (plafond à `WIND_MAX_KMH = 60.0` km/h dans
+##   l'air) : à 10 km/h, -43 dB, à peine audible ; à 30 km/h, -24 dB ; à 50 km/h, -15 dB. Hauteur
+##   (`pitch`) de `WIND_PITCH_MIN = 0.85` à `WIND_PITCH_MAX = 1.15`, linéaire en `va`. La rafale
+##   `wind.gust` (0 à 1) module le volume de
 ##   ± `GUST_DB = 3.0` dB et la hauteur de ± `GUST_PITCH = 0.05`, sur une période de `GUST_PERIOD_S`.
 ##   Sans objet `wind` depuis `WIND_TIMEOUT_S = 2.0` s (2 envois par seconde), vent coupé.
 ## - `FREEWHEEL_MIN_KMH = 5.0` : vitesse minimale d'activation de la roue libre.
@@ -20,8 +21,8 @@ extends RefCounted
 ##   cadence, la puissance (0 W ou absente : roue libre possible, au-dessus de
 ##   `FREEWHEEL_STOP_POWER_W = 10.0` : reprise), comme en L5.
 ## - Cliquetis : `clicks_per_s = v / WHEEL_CIRCUMFERENCE_M × ENGAGEMENT_POINTS` (roue de 2,1 m,
-##   36 points : 171 coups par seconde à 36 km/h) ; volume de `FREEWHEEL_MIN_DB = -10.0` à 5 km/h à
-##   `FREEWHEEL_MAX_DB = -4.0` à `FREEWHEEL_LOUD_KMH = 40.0` km/h.
+##   36 points : 171 coups par seconde à 36 km/h) ; volume de `FREEWHEEL_MIN_DB = -24.0` à 5 km/h à
+##   `FREEWHEEL_MAX_DB = -16.0` à `FREEWHEEL_LOUD_KMH = 40.0` km/h (baissé après la recette P16).
 ## - Reprise du pédalage pendant la roue libre : `freewheel.clac` vrai pour une seule évaluation.
 ## - `HYSTERESIS_EXIT_FACTOR = 1.1` : un POI entre à `radius_m` et sort à `1,1 × radius_m`.
 ## - `SLEW_RATE_DB_PER_S = 12.0` : variation maximale de tout volume (12 dB/s, soit 1,2 dB pour 0,1 s).
@@ -29,11 +30,11 @@ extends RefCounted
 
 const SILENCE_DB := -80.0
 const WIND_MAX_KMH := 60.0
-const WIND_LOG_K := 2.5
+const WIND_LOG_K := 2.0
 const WIND_MIN_MOVING_DB := -60.0
-const WIND_MAX_DB := 0.0
-const WIND_PITCH_MIN := 0.8
-const WIND_PITCH_MAX := 1.3
+const WIND_MAX_DB := -12.0
+const WIND_PITCH_MIN := 0.85
+const WIND_PITCH_MAX := 1.15
 const GUST_DB := 3.0
 const GUST_PITCH := 0.05
 const GUST_PERIOD_S := 3.0
@@ -43,8 +44,8 @@ const FREEWHEEL_MIN_KMH := 5.0
 const FREEWHEEL_DELAY_S := 0.5
 const FREEWHEEL_STOP_POWER_W := 10.0
 const FREEWHEEL_STOP_CADENCE_RPM := 20.0
-const FREEWHEEL_MIN_DB := -10.0
-const FREEWHEEL_MAX_DB := -4.0
+const FREEWHEEL_MIN_DB := -24.0
+const FREEWHEEL_MAX_DB := -16.0
 const FREEWHEEL_LOUD_KMH := 40.0
 const WHEEL_CIRCUMFERENCE_M := 2.1
 const ENGAGEMENT_POINTS := 36
@@ -229,7 +230,7 @@ static func _target_wind_db(speed_kmh: float, air_kmh: float, paused: bool) -> f
 		return SILENCE_DB
 	if air_kmh <= 0.0:
 		return WIND_MIN_MOVING_DB
-	var db := 20.0 * WIND_LOG_K * log(minf(air_kmh, WIND_MAX_KMH) / WIND_MAX_KMH) / log(10.0)
+	var db := WIND_MAX_DB + 20.0 * WIND_LOG_K * log(minf(air_kmh, WIND_MAX_KMH) / WIND_MAX_KMH) / log(10.0)
 	return clampf(db, WIND_MIN_MOVING_DB, WIND_MAX_DB)
 
 

@@ -795,15 +795,17 @@ def _scenes(s: Session) -> None:
             frac = fraction(img, later, yellow, step=2)
             s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
 
-    # 5. Pause : trainer perdu, raison visible dans la ligne d'état.
+    # 5. Pause : trainer perdu, raison visible sous le titre du menu de pause.
     core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",
                    trainer_status="RECONNECTING", power=0.0, power_3s=0.0, cadence=0.0)
     time.sleep(SETTLE_S)
     shot = s.capture("pause")
     if shot:
         img, info = shot
-        s.check_texts("pause", info, {"status": "ÉTAT: PAUSED (trainer_lost) | TRAINER: RECONNECTING"}, contains=True)
+        # HUD caché pendant un menu (présentation des menus) : la raison de la pause est sous le titre du menu.
         s.check_texts("pause", info, {"menu_title": "Pause", "menu": "[Reprendre] | Terminer et enregistrer"}, contains=True)
+        s.check_texts("pause", info, {"menu": "Trainer perdu : reconnexion en cours…"}, contains=True)
+        s.check("pause", "HUD de séance caché derrière le menu", not info["widgets"]["power"]["visible"])
         s.check_layout("pause", info)
 
     # 6. Core muet : bandeau, caméra extrapolée puis figée.
@@ -883,7 +885,8 @@ def _pentes_scenes(s: Session) -> None:
 
 
 def _menu_scenes(s: Session) -> None:
-    """Lot N6 : accueil avec l'état des appareils, liste des parcours au Click, bilan de fin."""
+    """Lot N6 : accueil avec l'état des appareils, liste des parcours au Click, bilan de fin ; menus en plein
+    écran du lot « présentation des menus » : accueil entier, sélection en cyan, HUD caché."""
     core = s.core
     core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=MENU_DEVICES, summary=None)
     time.sleep(SETTLE_S + 3.0)   # le bandeau d'erreur de la scène précédente reste 5 s au moins
@@ -895,10 +898,11 @@ def _menu_scenes(s: Session) -> None:
         s.check_layout("menu_accueil", info)
         s.check_banner("menu_accueil", img, info, None)
         m = info["widgets"]["menu"]
-        s.check("menu_accueil", "menu entre les panneaux du HUD", m["rect"][2] >= 0.4 * s.width
-                and overlap(m["rect"], info["widgets"]["power"]["rect"]) == 0.0, f"rectangle {m['rect']}")
-        focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] > 200 and p[1] > 150 and p[2] < 90, step=2)
-        s.check("menu_accueil", "focus très visible (fond jaune)", focus >= 0.01, f"{focus:.1%} de pixels jaunes")
+        s.check("menu_accueil", "menu en plein écran, HUD de séance caché", m["rect"][2] >= 0.99 * s.width
+                and m["rect"][3] >= 0.99 * s.height and not info["widgets"]["power"]["visible"], f"rectangle {m['rect']}")
+        s.check_texts("menu_accueil", info, {"menu": "Réglages | Quitter"}, contains=True)
+        focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
+        s.check("menu_accueil", "sélection très visible (cadre cyan)", focus >= 0.003, f"{focus:.2%} de pixels cyan")
     # Appui long sur A du Click relayé par le core : liste des parcours.
     core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
     time.sleep(0.8)
