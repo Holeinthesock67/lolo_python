@@ -85,7 +85,7 @@
 | [O7](LOT_O7_affichage_bots.md) | Bots à l'écran : silhouettes, écarts, choix au menu (facultatif pour la 1.0) | GDScript | N6, N9 | Moyenne | Non : interne (rendu, contrôle visuel) |
 | [O8](LOT_O8_recette_1_0.md) | Recette de la version 1.0 sur le matériel et publication (`v1.0.0`) | — | série N, O1, O2, O6 | Moyenne | Non : interne (propriétaire, matériel) |
 | [O9](LOT_O9_formats_erg_mrc.md) | Entraînements au format GoldenCheetah : `.erg` (watts) et `.mrc` (% de FTP) | Python | F, H8 (livrés) | Petite | **Livré le 25 octobre** (issue #153) |
-| [O10](LOT_O10_test_ftp.md) | Test de FTP (rampe et 20 min) côté core, nouvelle FTP proposée puis enregistrée | Python | O3 ; O9 utile | Moyenne | Oui, après O3 |
+| [O10](LOT_O10_test_ftp.md) | Test de FTP (rampe et 20 min) côté core, nouvelle FTP proposée puis enregistrée | Python | O3 ; O9 utile | Moyenne | **Livré le 27 octobre** (issue #154) |
 | [O11](LOT_O11_plans_entrainement.md) | Plans d'entraînement sur plusieurs semaines, séance du jour et suivi, import d'un dossier | Python | O9 ; O10 pour les jours de test | Moyenne | **Livré le 26 octobre** (issue #155) |
 | [O12](LOT_O12_menu_entrainement.md) | Menu : plans, test de FTP et bibliothèque de parcours (ajouts au contrat IPC) | GDScript + Python | N6, O4, O10, O11, O15 | Grande | Non : interne (contrat, écrans du menu) |
 | [O13](LOT_O13_modele_courbes.md) | Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle sans affichage | GDScript | K1 (livré) ; N3 utile | Petite | **Livré le 26 octobre** (issue #156 ; tests Godot à lancer sur le PC) |

@@ -408,8 +408,13 @@ class ErgController:
 
     def skip(self) -> None:
         """Passe au début du bloc suivant (lissage de 2 s) ; au dernier bloc, termine."""
+        self.goto(self.index + 1)
+
+    def goto(self, index: int) -> None:
+        """Passe au début du bloc `index` (à partir de 0, lissage de 2 s) ; au-delà du dernier,
+        termine. Sert à la fin de la rampe du test de FTP (lot O10), qui saute au retour au calme."""
         if not self.finished:
-            self._enter(self.index + 1)
+            self._enter(index)
 
     def change_bias(self, steps: int) -> None:
         self.bias_pct = min(max(self.bias_pct + steps * BIAS_STEP_PCT, BIAS_MIN_PCT), BIAS_MAX_PCT)

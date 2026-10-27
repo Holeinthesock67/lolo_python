@@ -289,8 +289,8 @@ def plan_summary(plan: Plan, ftp_w: float, workouts_dir: Path | None = None) -> 
                 if d.workout in FTP_TESTS:
                     from . import ftp_test
 
-                    tss_cache[d.workout] = estimate_metrics(ftp_test.workout_for(d.workout.split(":", 1)[1], ftp_w),
-                                                            ftp_w)["tss"]
+                    planned = ftp_test.planned_workout(d.workout.split(":", 1)[1], ftp_w)
+                    tss_cache[d.workout] = estimate_metrics(planned, ftp_w)["tss"]
                 else:
                     tss_cache[d.workout] = estimate_metrics(load_workout(workout_path(workouts_dir, d.workout)),
                                                             ftp_w)["tss"]

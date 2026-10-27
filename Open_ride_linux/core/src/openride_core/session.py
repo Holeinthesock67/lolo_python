@@ -37,6 +37,9 @@ from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
+from .ftp_test import RampWatch, cooldown_index, estimate_ftp
+from .ftp_test import kind_of as ftp_test_kind
+from .ftp_test import workout_for as ftp_test_workout
 from .workout import BIAS_DEFAULT_PCT, ErgController, Workout, WorkoutError, load_workout, workout_path
 from .zwift_click import InputEvent
 
@@ -257,6 +260,7 @@ class CoreSession:
         self._workout_id: str | None = None
         self._click_seen: dict[str, str] = {}   # boîtiers du Click vus, sans adresse configurée
         self.erg: ErgController | None = None   # entraînement en cours pendant la séance
+        self._ramp_watch: RampWatch | None = None   # fin de la rampe d'un test de FTP (lot O10)
         self._frame_count = 0
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
@@ -300,6 +304,7 @@ class CoreSession:
                 self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
                 log.info("Entraînement « %s » démarré : %d blocs, %.0f s.", self._workout.name,
                          len(self._workout.blocks), self._workout.duration_s)
+                self._watch_ramp()
                 self._sync_erg_state()
             self._set_state("RUNNING")
         elif name == "skip_block" and self.erg and st in ("RUNNING", "PAUSED"):
@@ -514,7 +519,7 @@ class CoreSession:
             log.info("Aucun entraînement : mode SIM.")
             return
         try:
-            self._workout = load_workout(workout_path(self.workouts_dir, str(workout_id)))
+            self._workout = self._load_workout(str(workout_id))
         except WorkoutError as exc:
             self._workout = None
             log.error("Entraînement « %s » refusé : %s", workout_id, exc)
@@ -524,8 +529,33 @@ class CoreSession:
         w = self._workout
         log.info("Entraînement « %s » choisi : %d blocs, %.0f s.", w.name, len(w.blocks), w.duration_s)
 
+    def _load_workout(self, workout_id: str) -> Workout:
+        """Entraînement de la bibliothèque, ou test de FTP (`ftp_test:ramp`, `ftp_test:20min`, lot O10)."""
+        kind = ftp_test_kind(workout_id)
+        if kind:
+            return ftp_test_workout(kind, self.cfg.rider.ftp_w)
+        return load_workout(workout_path(self.workouts_dir, workout_id))
+
+    def _watch_ramp(self) -> None:
+        """Surveille la fin de la rampe pendant une séance de test par paliers (lot O10)."""
+        ramp = self._workout is not None and ftp_test_kind(self._workout_id) == "ramp"
+        self._ramp_watch = RampWatch(self._workout) if ramp else None
+
+    def _end_ramp(self, reason: str) -> None:
+        """Fin de la rampe : retour au calme (5 min à 100 W) au lieu d'un arrêt net."""
+        assert self.erg is not None
+        why = {"cadence": "cadence sous 50 tr/min", "power": "puissance sous 80 % de la cible",
+               "abandon": "abandon"}[reason]
+        log.info("Test de FTP : fin de la rampe au palier de %d W (%s), retour au calme.",
+                 self.erg.block.start_w or 0, why)
+        self.erg.goto(cooldown_index(self.erg.workout))
+        self._sync_erg_state()
+
     def _skip_block(self) -> None:
         assert self.erg is not None
+        if self._ramp_watch and self._ramp_watch.abandon(self.erg):
+            self._end_ramp("abandon")   # pendant la rampe, le saut de bloc vaut abandon du test
+            return
         self.erg.skip()
         log.info("Bloc suivant demandé.")
         self._sync_erg_state()
@@ -623,6 +653,7 @@ class CoreSession:
         summary = None
         if self._rec:
             rec, self._rec = self._rec, None
+            self._write_ftp_test(rec)
             fit_path, s, fit_error = rec.finish(save, ts=ts)
             records, events = rec.records, rec.events
             if fit_error and save:
@@ -637,8 +668,19 @@ class CoreSession:
             }
         self.state.summary = summary
         self.erg = None
+        self._ramp_watch = None
         self._sync_erg_state()
         self._set_state(final_state)
+
+    def _write_ftp_test(self, rec: SessionRecorder) -> None:
+        """Séance de test de FTP : résultat au journal (ligne `ftp_test`), rien dans `config.toml`."""
+        kind = ftp_test_kind(rec.workout_id)
+        if not kind or self._workout is None:
+            return
+        result = estimate_ftp(rec.records, kind, rec.events, rec.devices, self.cfg.rider.ftp_w,
+                              self._workout, ts=round(time.time(), 3))
+        log.info("%s.", result.describe())
+        rec.ftp_test(result.to_line())
 
     def _build_devices(self) -> dict[str, Any]:
         """Construit l'objet `devices` du contrat v1.1 à partir de l'état connu des pilotes."""
@@ -796,6 +838,9 @@ class CoreSession:
         self._t_session += dt
         if self.erg:
             self.erg.step(dt)        # le temps du bloc ne court que pendant RUNNING
+            reason = self._ramp_watch.update(dt, m.power_w, m.cadence_rpm, self.erg) if self._ramp_watch else None
+            if reason:
+                self._end_ramp(reason)
             self._sync_erg_state()
         erg = self.erg
         s = self.physics.s
@@ -957,6 +1002,7 @@ class CoreSession:
             if rs.erg_bias_pct is not None:
                 erg.bias_pct = BIAS_DEFAULT_PCT + rs.erg_bias_pct
             self.erg = erg
+            self._watch_ramp()
         self._sync_erg_state()
         st = self.state
         st.t, st.s, st.v = rs.t, rs.s, 0.0
@@ -992,7 +1038,7 @@ class CoreSession:
             raise AutostartError(f"parcours « {route_id} » refusé : {exc}") from exc
         if workout_id:
             try:
-                load_workout(workout_path(self.workouts_dir, workout_id))
+                self._load_workout(workout_id)
             except WorkoutError as exc:
                 raise AutostartError(f"entraînement « {workout_id} » refusé : {exc}") from exc
 
