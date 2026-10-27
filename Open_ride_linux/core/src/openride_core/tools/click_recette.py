@@ -398,6 +398,9 @@ def write_outputs(rec: Recorder, report: dict[str, Any], out: Path) -> None:
         fh.write("t_s;" + ";".join(f"{rec.units[a].side}_{a}" for a in addrs) + "\n")
         for sec in range(last + 1):
             fh.write(f"{sec};" + ";".join(str(rec.units[a].per_second.get(sec, 0)) for a in addrs) + "\n")
+    extra = getattr(rec, "write_extra", None)   # relevé plus fin d'un enregistreur dérivé (click_firmware)
+    if extra:
+        extra(out)
 
 
 def make_providers(rec: Recorder, cfg: Any, sim: Any = None) -> list[TracedClickProvider]:
@@ -440,7 +443,7 @@ async def sim_user(world: Any, prompts: asyncio.Queue[str]) -> None:
             tap(plus, "Y")
 
 
-async def main_async(args: argparse.Namespace) -> int:
+async def main_async(args: argparse.Namespace, recorder_cls: type[Recorder] = Recorder) -> int:
     from .. import config as config_mod
 
     cfg = config_mod.load(args.config)
@@ -448,7 +451,7 @@ async def main_async(args: argparse.Namespace) -> int:
     guide = Guide("Recette du Zwift Click", out / "guide.jsonl", sound=False if args.muet else None)
     guide.prepare("click_recette", wait=not args.sim and not args.sans_attente and sys.stdin.isatty(),
                   auto_s=0 if args.sim else 10.0)
-    rec = Recorder(time.monotonic)
+    rec = recorder_cls(time.monotonic)
     prompt: Prompter | None = None
     extra: list[asyncio.Task[Any]] = []
     sim = None
@@ -480,7 +483,7 @@ async def main_async(args: argparse.Namespace) -> int:
     return 0 if report["ok"] else 1
 
 
-def main(argv: list[str] | None = None) -> int:
+def main(argv: list[str] | None = None, recorder_cls: type[Recorder] = Recorder) -> int:
     ap = argparse.ArgumentParser(description="Recette guidée du Zwift Click (lot X8).")
     ap.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ap.add_argument("--minutes", type=float, default=30.0, help="durée de la surveillance (défaut 30)")
@@ -500,7 +503,7 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO if args.verbose else logging.WARNING,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     try:
-        return asyncio.run(main_async(args))
+        return asyncio.run(main_async(args, recorder_cls))
     except (KeyboardInterrupt, EOFError):
         print("\nInterrompu.")
         return 1
