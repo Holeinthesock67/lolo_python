@@ -8,7 +8,7 @@
 
 ## 2. À lire
 
-1. `docs/3.0/PLAN_SERIE_U.md` §7, `docs/lots/LOT_U1_contrat_biomes.md` §4.6, `docs/lots/LOT_O3_reglages_core.md`, `docs/lots/LOT_O4_menu_reglages.md`.
+1. `docs/3.0/PLAN_SERIE_U.md` §7, `docs/SPECIFICATION_GENERALE.md` §7.1 (boutons), `docs/lots/LOT_U1_contrat_biomes.md` §4.6, `docs/lots/LOT_O3_reglages_core.md`, `docs/lots/LOT_O4_menu_reglages.md`.
 2. Code : `core/src/openride_core/settings.py` (O3), `core/src/openride_core/ipc_server.py`, `engine/scripts/menu_model.gd`, `engine/scripts/settings_view.gd` (O4).
 
 ## 3. Prérequis
@@ -18,7 +18,7 @@ U1, U2 et O4 livrés ; U5 pour l'effet à l'écran.
 ## 4. Travail demandé
 
 - Core : deux réglages de plus dans `settings.py` : `render.biome` (liste `auto` puis les seize biomes, libellés français du lot U0, `applies` = `now`) et `gravel.mode` (« Coupé », « Chemins réels » pour `auto`, « Chemin compact », « Gravier », « Terre » ; `applies` = `next_session`) ; `hello_ack.config` porte `biome` et `gravel` (IPC 1.6 du lot U1).
-- Engine : les deux lignes dans l'écran des réglages ; le biome forcé s'applique tout de suite au décor de fond du menu (`biome_model.gd`).
+- Engine : les deux lignes dans l'écran des réglages, au Click selon le plan de boutons commun (`docs/SPECIFICATION_GENERALE.md` §7.1, sans exception : mêmes boutons que les autres réglages d'O4) ; le biome forcé s'applique tout de suite au décor de fond du menu (`biome_model.gd`).
 - Fiche du parcours (O15) : part des biomes (`shares`) et part de chemins non revêtus, quand elles existent.
 
 ## 5. Fichiers concernés
