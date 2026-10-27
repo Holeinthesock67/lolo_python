@@ -707,7 +707,7 @@ def _scenes(s: Session) -> None:
                 f"rectangle {w['bots_panel']['rect']}")
         b = info.get("bots", {})
         s.check("bots", "bot devant visible dans le champ de la caméra", b.get("shown") == 2 and b.get("in_view", 0) >= 1,
-                f"{b}")
+                f"{b} caméra {info.get('camera')}")
         s.check_layout("bots", info)
     core.set_scene(speed=SPEED_MPS, bots=None)
     shot = s.capture("sans_bot")

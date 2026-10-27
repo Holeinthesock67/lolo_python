@@ -126,7 +126,14 @@ func test_info(camera: Camera3D) -> Dictionary:
 			shown += 1
 			if camera != null and _on_screen(camera, n.global_position + Vector3(0.0, 1.0, 0.0)):
 				in_view += 1
-	return {"shown": shown, "in_view": in_view}
+	var detail: Array = []
+	if camera != null:
+		for key in _nodes:
+			var n2: Node3D = _nodes[key]
+			var pt := n2.global_position + Vector3(0.0, 1.0, 0.0)
+			detail.append({"key": key, "at": [snappedf(pt.x, 0.1), snappedf(pt.y, 0.1), snappedf(pt.z, 0.1)],
+				"behind": camera.is_position_behind(pt), "screen": [snappedf(camera.unproject_position(pt).x, 1.0), snappedf(camera.unproject_position(pt).y, 1.0)]})
+	return {"shown": shown, "in_view": in_view, "detail": detail}
 
 
 ## Devant la caméra et dans l'image (comme les panneaux de col de living_decor.gd).
