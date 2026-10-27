@@ -25,6 +25,8 @@ extends Node
 ## Lot P21 : quatre sons brefs, non bouclés, des passants (`VOICE_KINDS` : « Allez ! », « Bonjour ! »,
 ## aboiement, rire d'enfant), synthétisés par une source glottale filtrée par deux formants, ou lus dans
 ## ~/OpenRide/Sounds/<kind>.ogg (CC0) ; joués par crowd_renderer.gd en mode « passants ».
+## Lot P23 : même synthèse pour deux cris d'oiseaux, `crow_caw` (deux croassements rauques) et `raptor_cry`
+## (miaulement de buse qui descend), joués par fauna_renderer.gd.
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
@@ -42,7 +44,7 @@ const WIND_BAND_HZ := 600.0            # souffle : passe-bande doux, plus discre
 const WIND_BAND_Q := 0.6
 const WIND_RMS := 0.22
 const CLAC_SAMPLES := 1323     # 60 ms
-const VOICE_KINDS := ["voice_allez", "voice_bonjour", "dog_bark", "kid_laugh"]
+const VOICE_KINDS := ["voice_allez", "voice_bonjour", "dog_bark", "kid_laugh", "crow_caw", "raptor_cry"]
 ## Syllabes des sons de passants : [début s, fin s, f0 début Hz, f0 fin Hz, formant 1 Hz, formant 2 Hz, souffle 0 à 1].
 const VOICE_SYLLABLES := {
 	"voice_allez": [[0.0, 0.16, 190.0, 210.0, 800.0, 1250.0, 0.05], [0.2, 0.52, 230.0, 290.0, 420.0, 2000.0, 0.08]],
@@ -50,6 +52,8 @@ const VOICE_SYLLABLES := {
 	"dog_bark": [[0.0, 0.12, 420.0, 260.0, 1000.0, 2200.0, 0.4], [0.3, 0.42, 440.0, 270.0, 1000.0, 2200.0, 0.4]],
 	"kid_laugh": [[0.0, 0.09, 380.0, 360.0, 900.0, 1500.0, 0.5], [0.14, 0.23, 390.0, 370.0, 900.0, 1500.0, 0.5],
 		[0.28, 0.37, 380.0, 350.0, 900.0, 1500.0, 0.5], [0.42, 0.53, 360.0, 300.0, 900.0, 1500.0, 0.5]],
+	"crow_caw": [[0.0, 0.22, 520.0, 430.0, 1100.0, 1900.0, 0.55], [0.36, 0.58, 500.0, 410.0, 1100.0, 1900.0, 0.55]],
+	"raptor_cry": [[0.0, 0.85, 1800.0, 1150.0, 2200.0, 3300.0, 0.12]],
 }
 
 var model := SoundModel.new()
