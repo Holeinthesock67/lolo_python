@@ -12,6 +12,7 @@ const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -57,16 +58,10 @@ func _test_tree_generation_and_determinism() -> void:
 
 	# Échauffement hors mesure
 	var prep1: Dictionary = renderer.prepare_tile(0, 0, heights, route, theme, 1.0)
-	var best_ms := INF
-	for i in range(3):
-		var t0 := Time.get_ticks_usec()
-		prep1 = renderer.prepare_tile(0, 0, heights, route, theme, 1.0)
-		best_ms = minf(best_ms, (Time.get_ticks_usec() - t0) / 1000.0)
-	var prep_time_ms := best_ms
-	print("Mesure : placement tuile high en %.2f ms (meilleur de 3, seuil 150 ms)" % prep_time_ms)
-	# Seuil du cahier : 150 ms ; seuil adapté en intégration continue (machines partagées).
-	var limit := 200.0 if OS.get_environment("CI") != "" else 150.0
-	_check(prep_time_ms < limit, "temps CPU préparation tuile < %.0f ms (%.2f ms)" % [limit, prep_time_ms])
+	# Temps mesuré à part (lot X2) : budget de 150 ms du cahier dans tests/perf_budgets.json.
+	var prep_time_ms := PerfBudget.measure_ms(func(): renderer.prepare_tile(0, 0, heights, route, theme, 1.0), 3, 0)
+	_check(PerfBudget.check("tree_tile_high", prep_time_ms),
+		"temps CPU préparation tuile dans le budget (%.2f ms)" % prep_time_ms)
 
 	var prep2: Dictionary = renderer.prepare_tile(0, 0, heights, route, theme, 1.0)
 
