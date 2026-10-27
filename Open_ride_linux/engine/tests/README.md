@@ -20,6 +20,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 | `test_tree_sway_render.gd` | P5 | Arbre seul au vent (`tree_sway.gdshader`) : vent nul, deux images identiques ; vent fort, pied immobile à 2/255 près, cime qui bouge |
 | `test_fauna_render.gd` | P11 | Shader des animaux (`fauna.gdshader`) compilé : une vache vue de côté à la couleur de son espèce, un oiseau vu de dessus, rien sans animal |
 | `test_water_shimmer_render.gd` | P12 | Shader de l'eau qui scintille (`water_shimmer.gdshader`) compilé : couleur de base de l'eau d'E4, deux images identiques sans défilement (aucun clignotement) |
+| `test_road_markings_render.gd` | P14 | Marquages (`road_markings.gdshader`) sur un vrai ruban de `road_builder.gd` : ligne médiane claire au centre, motif de 13 m (3 m peints), bandes de rive aux deux bords, chiffre « 1 » peint sur la voie de droite |
 
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
@@ -111,6 +112,8 @@ OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_
 | `test_fauna_behaviour.gd` | P11 | Comportement et affichage des animaux (`fauna_behaviour.gd`, `fauna_renderer.gd`) : chevreuil en fuite à 59,5 m, loin de la route, disparu en moins de 6 s ; écart des oiseaux ; budget de `living(preset)` avec 200 candidats (les plus proches gardés), aucun nœud créé ; mise à jour de 200 animaux sous 0,3 ms par image |
 | `test_wind_turbines.gd` | P12 | Éoliennes (`wind_turbines.gd`) : rotor arrêté sous 10 km/h puis de 5 à 17 tr/min, nacelle face au vent en 38 s après un changement de 90°, au plus 3 °/s, 20 éoliennes au plus (les plus proches), aucun nœud créé ; 20 éoliennes et 30 drapeaux mis à jour sous 0,2 ms par image |
 | `test_flags.gd` | P12 | Drapeaux (`flags.gd`) : tissu orienté vers où souffle le vent à 15° près, un drapeau par village sans mât OSM à 150 m, au même endroit à chaque chargement, 30 drapeaux au plus |
+| `test_climb_detector.gd` | P14 | Montées (`climb_detector.gd`) : col de 8 km à 7 % et bosse de 400 m à 5 % (une montée, sommet à ± 20 m, pente 7,0 % ± 0,2), rampes séparées par 200 m fusionnées, 1 km à 9 % gardé, parcours vallonné sans montée |
+| `test_roadside_model.gd` | P14 | Bord de route (`roadside_model.gd`, `roadside_props.gd`) : nombres au format français, panneaux d'approche à 5, 3, 2 et 1 km (« Sommet à 3 km », « Pente moyenne 7 % »), panneau du sommet (nom OSM ou « Sommet », altitude au mètre), une borne par kilomètre sans doublon sur une boucle, rien dans l'eau ni sur un pont, côté droit à 1,5 m du bord, panneaux lisibles à 30 m et face au cycliste, tronçons posés et retirés |
 | `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
 
 ## Étapes du script
