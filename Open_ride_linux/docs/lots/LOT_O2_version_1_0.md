@@ -44,3 +44,14 @@ Aucune.
 
 - Publication (étiquette Git, release GitHub) : lot O8, par le propriétaire.
 - Affichage de la version dans le menu : lot O4 (écran des réglages).
+
+## 9. Livraison
+
+Livré le 26 octobre 2026 (issue #120), thread « Développer les lots O restants ».
+
+- `VERSION` (`0.9.0`) fait foi. Les `pyproject.toml` gardent une version écrite (setuptools refuse de lire un fichier hors du dossier du paquet) : `core/tests/test_version.py` exige l'égalité et `bump-version.sh` les met à jour aussi.
+- `__version__` des deux paquets : le fichier `VERSION` quand le paquet tourne depuis le dépôt (mode éditable), sinon `importlib.metadata`.
+- `hello_ack.core_version` = `__version__` ; l'engine lit `application/config/version` dans `ProjectSettings` (variable `engine_version` de `ipc_client.gd`, qui remplace la constante `ENGINE_VERSION`).
+- `openride --version`, `openride-core --version`, `openride-compiler --version` affichent « programme 0.9.0 » ; première ligne du journal du lanceur : `[openride] OpenRide 0.9.0`, avec ou sans rotation.
+- `CHANGELOG.md`, `scripts/bump-version.sh` (refuse un numéro mal formé, code 2), section « Version » du `README.md`.
+- Tests : `core/tests/test_version.py` (14) et première ligne du journal dans `test_launcher.py`. À vérifier sur le PC : `run_engine_tests.sh` et `run_e2e.sh` (Godot absent du conteneur cloud).
