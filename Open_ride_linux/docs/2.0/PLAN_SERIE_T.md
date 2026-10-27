@@ -114,7 +114,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.3 du contrat IPC 
 | T4 | Chronométrage dans le core : franchissements interpolés, pauses, boucles et aller-retour, journal | T1, T2 | Délégable |
 | T5 | Records personnels et classement local (historique, bots, fantôme) | T4, N9 | Délégable |
 | T6 | Bonus : types, obtention, activation par Z, effets sur `PhysicsParams`, fichier de valeurs, désactivés en ERG | T1 | Délégable |
-| T7 | Bonus et série P : supplément vent et aspiration calculé avec le CdA courant, essais combinés | T6, P2, P3 | Délégable |
+| T7 | Branchement de la série T dans la séance du core ([cahier](../lots/LOT_T7_branchement_seance.md)) : segments, records, bonus et bouton Z, supplément vent et aspiration calculé avec le CdA courant, maillots, écarts, champs de la révision 1.4 (élargi le 27 octobre : le plan n'avait aucun lot de branchement, comme R8 pour la série R et V11 pour la série V) | T1 à T6, T14, T16, P2, P3 | Interne |
 | T8 | Engine : lignes de départ et d'arrivée en 3D, arches de bonus, panneaux « Sprint » et « Montée » | T1 | Interne (rendu) |
 | T9 | Engine : HUD segment (approche, chrono, écart au record, résultat) et HUD bonus (icône, compte à rebours), coin supérieur droit | T1, P16 | Interne |
 | T10 | Menu : records par parcours, option bonus | T5, N6 | Interne |

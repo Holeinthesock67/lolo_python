@@ -228,7 +228,7 @@ def parcours_sessions(run: Run) -> None:
     if not run.start(READY, workout=True):
         return
     time.sleep(5.0)
-    run.expect("accueil", "OpenRide", "[Parcours : ", "Session libre", "Session ERG", "Session simulée")
+    run.expect("accueil", "OpenRide", "[Parcours : ", "Session libre", "Session ERG", "Choisir un plan")
     run.press("A_LONG")
     run.expect("mondes", "Parcours", "[demo")
     run.press("A_LONG")
