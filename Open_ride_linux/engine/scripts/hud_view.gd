@@ -18,8 +18,12 @@ extends CanvasLayer
 ##   du bandeau ERG en 720p ; le bloc bonus n'existe pas en ERG.
 ## - Lot P17 : « Abri 30 % » derrière un bot (`draft_text` de la même sortie), pastille bleue sous
 ##   l'indicateur du vent (à sa place quand il n'y a pas de vent) ; cachée sans abri.
+## - Lot O7 : encart des bots (`update_bots`, sortie de bots_view_model.view()) sous le panneau de
+##   droite, « Bot 200 W  +12 s » (au plus 5 lignes, couleur par `kind`) et points colorés des bots sur
+##   le profil d'altitude ; caché sans bot.
 
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
+const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 
 const COLOR_DESCENT := Color(0.25, 0.60, 0.90, 0.85)
 const COLOR_FLAT := Color(0.25, 0.75, 0.30, 0.85)
@@ -66,7 +70,6 @@ var distance_val: Label
 var time_val: Label
 var gear_val: Label
 var erg_label: Label
-var difficulty_label: Label
 var climb_label: Label
 var status_label: Label
 var profile_panel: Control
@@ -82,6 +85,9 @@ var wind_verdict_label: Label
 var _wind_view: Dictionary = {}
 # Abri derrière un bot (Lot P17)
 var draft_label: Label
+var panel_bots: Panel
+var bots_lines: Array[Label] = []
+var _bots_view: Array = []
 # Blocs segment et bonus (Lot T9)
 var panel_segment: Panel
 var segment_title: Label
@@ -161,15 +167,9 @@ func _build_ui() -> void:
 	status_label.clip_text = true
 	center_vbox.add_child(status_label)
 
-	difficulty_label = Label.new()
-	difficulty_label.add_theme_font_size_override("font_size", 20)
-	difficulty_label.text = ""
-	difficulty_label.clip_text = true
-	difficulty_label.visible = false
-	center_vbox.add_child(difficulty_label)
-
 	_build_wind_panel()
 	_build_draft_label()
+	_build_bots_panel()
 	_build_segment_blocks()
 
 	# Panneau inférieur : Profil d'altitude
@@ -212,8 +212,10 @@ func _build_wind_panel() -> void:
 	panel_wind.add_child(wind_arrow)
 	wind_speed_label = Label.new()
 	wind_speed_label.name = "WindSpeed"
-	wind_speed_label.position = Vector2(92.0, 6.0)
-	wind_speed_label.size = Vector2(200.0, 40.0)
+	# Haut à 4 px : le libellé de 30 px grandit à 43 px de haut, il s'arrête ainsi à 47 px, au-dessus
+	# du niveau (50 px), à toutes les échelles de l'interface (chevauchement vu en 1024x600)
+	wind_speed_label.position = Vector2(92.0, 4.0)
+	wind_speed_label.size = Vector2(200.0, 43.0)
 	wind_speed_label.add_theme_font_size_override("font_size", 30)
 	wind_speed_label.clip_text = true
 	panel_wind.add_child(wind_speed_label)
@@ -225,7 +227,7 @@ func _build_wind_panel() -> void:
 	panel_wind.add_child(wind_bars)
 	wind_level_label = Label.new()
 	wind_level_label.name = "WindLevel"
-	wind_level_label.position = Vector2(172.0, 48.0)
+	wind_level_label.position = Vector2(172.0, 50.0)
 	wind_level_label.size = Vector2(120.0, 32.0)
 	wind_level_label.add_theme_font_size_override("font_size", 22)
 	wind_level_label.modulate = Color(0.75, 0.80, 0.85)
@@ -243,6 +245,37 @@ func _build_wind_panel() -> void:
 	pill.set_corner_radius_all(18)
 	wind_verdict_label.add_theme_stylebox_override("normal", pill)
 	panel_wind.add_child(wind_verdict_label)
+
+
+## Encart des bots (Lot O7), sous le panneau de droite (même largeur), caché tant qu'il n'y a pas de bot.
+func _build_bots_panel() -> void:
+	panel_bots = _create_panel(Vector2(-320.0, 350.0), Vector2(300.0, 16.0 + 30.0 * BotsViewModel.MAX_LINES), true, false)
+	panel_bots.name = "BotsPanel"
+	panel_bots.visible = false
+	var box := VBoxContainer.new()
+	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 8)
+	panel_bots.add_child(box)
+	for i in range(BotsViewModel.MAX_LINES):
+		var l := Label.new()
+		l.add_theme_font_size_override("font_size", 22)
+		l.clip_text = true
+		box.add_child(l)
+		bots_lines.append(l)
+
+
+## Encart et repères du profil : `view` est la sortie de bots_view_model.view().
+func update_bots(view: Array) -> void:
+	_bots_view = view
+	var lines := BotsViewModel.hud_lines(view)
+	panel_bots.visible = not lines.is_empty()
+	panel_bots.size.y = 16.0 + 30.0 * maxi(lines.size(), 1)
+	for i in range(bots_lines.size()):
+		bots_lines[i].visible = i < lines.size()
+		if i < lines.size():
+			bots_lines[i].text = lines[i]["text"]
+			bots_lines[i].modulate = lines[i]["color"]
+	if profile_panel != null:
+		profile_panel.queue_redraw()
 
 
 ## Pastille « Abri 30 % » (Lot P17), même largeur que l'indicateur du vent.
@@ -486,12 +519,6 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 			state.get("trainer_status", "?"),
 			state.get("input_status", "?")]
 
-	if difficulty_label != null:
-		var diff_vis: bool = bool(lines.get("difficulty_visible", false))
-		difficulty_label.visible = diff_vis
-		if diff_vis:
-			difficulty_label.text = str(lines.get("difficulty_text", ""))
-
 	# Prochaine montée (rafraîchie avec le profil)
 	if route != null and climb_label != null:
 		var climb: Dictionary = vm.next_climb(route, s)
@@ -544,6 +571,17 @@ func _on_profile_draw() -> void:
 		var col_grade: String = classes[i] if i < classes.size() else "flat"
 		var color: Color = GRADE_COLORS.get(col_grade, COLOR_FLAT)
 		profile_panel.draw_rect(bar_rect, color)
+
+	# Bots (lot O7) : un point coloré à la hauteur du profil, selon l'écart au cycliste.
+	var from_m: float = float(_profile_data.get("from_m", 0.0))
+	var to_m: float = float(_profile_data.get("to_m", 0.0))
+	if to_m > from_m:
+		for mark in BotsViewModel.profile_marks(_bots_view, from_m, to_m):
+			var idx := clampi(int(round((float(mark["rel_m"]) - from_m) / (to_m - from_m) * float(cols - 1))), 0, cols - 1)
+			var bx := (idx + 0.5) * col_w
+			var by := h - clampf((float(alts[idx]) - alt_min) / alt_range, 0.05, 0.95) * h
+			profile_panel.draw_circle(Vector2(bx, by), 5.0, Color.BLACK)
+			profile_panel.draw_circle(Vector2(bx, by), 3.5, mark["color"])
 
 	# Repère de position
 	if marker_idx >= 0 and marker_idx < cols:
