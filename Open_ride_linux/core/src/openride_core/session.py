@@ -19,7 +19,7 @@ import re
 import signal
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .config import OPENRIDE_HOME, WORKOUTS_DIR, Config
 from .gearing import Gearing
@@ -37,6 +37,9 @@ from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
+from .ftp_test import RampWatch, cooldown_index, estimate_ftp
+from .ftp_test import kind_of as ftp_test_kind
+from .ftp_test import workout_for as ftp_test_workout
 from .workout import BIAS_DEFAULT_PCT, ErgController, Workout, WorkoutError, load_workout, workout_path
 from .zwift_click import InputEvent
 
@@ -122,25 +125,45 @@ def build_driver(cfg: Config, sim: Any = None) -> Any:
     return MockDriver(replay=replay)
 
 
+def click_side_of(d: Any) -> Callable[[str], str | None]:
+    """Côté d'un boîtier du Click d'après son adresse, pour le journal du lot Q6 : « + » à droite, « − » à
+    gauche. None sans adresse configurée (premier boîtier vu inconnu d'avance)."""
+    def side_of(address: str) -> str | None:
+        addr = address.upper()
+        if d.click_address:
+            return "droit" if addr == d.click_address.upper() else "gauche"
+        if d.click_minus_address:
+            return "gauche" if addr == d.click_minus_address.upper() else "droit"
+        if d.input == "sim":
+            from .sim_scenarios import PLUS_ADDRESS
+            return "droit" if addr == PLUS_ADDRESS else "gauche"
+        return None
+    return side_of
+
+
 def build_inputs(cfg: Config, sim: Any = None) -> list[Any]:
     kind = cfg.drivers.input
+    d = cfg.drivers
+    # Réglages du lot Q6 (trace brute, boîtier muet, reprise), communs aux deux boîtiers.
+    q6 = {"trace_raw": d.click_trace_raw, "mute_after_s": d.click_mute_after_s,
+          "rehandshake_s": d.click_rehandshake_s, "side_of": click_side_of(d)}
     if kind == "sim":
         # Vrais fournisseurs du Click contre la paire simulée ; le clavier appuie sur le Click simulé.
-        d, pair = cfg.drivers, ClickPair()
+        pair = ClickPair()
         return [ZwiftClickProvider(None, d.click_short_max_s, d.click_long_min_s, pair=pair,
-                                   device_finder=sim.find_device, client_factory=sim.client_factory),
+                                   device_finder=sim.find_device, client_factory=sim.client_factory, **q6),
                 ZwiftClickProvider(None, d.click_short_max_s, d.click_long_min_s, pair=pair,
                                    optional=True, device_finder=sim.find_device,
-                                   client_factory=sim.client_factory),
+                                   client_factory=sim.client_factory, **q6),
                 SimClickKeyboard(sim)]
     if kind == "click":
         # Deux fournisseurs pour la paire du Click récent (boîtiers « + » et « − », même nom) ;
         # le clavier reste actif en parallèle (contrat IPC §6).
-        d, pair = cfg.drivers, ClickPair()
+        pair = ClickPair()
         return [ZwiftClickProvider(d.click_address or None, d.click_short_max_s, d.click_long_min_s,
-                                   pair=pair),
+                                   pair=pair, **q6),
                 ZwiftClickProvider(d.click_minus_address or None, d.click_short_max_s,
-                                   d.click_long_min_s, pair=pair, optional=True),
+                                   d.click_long_min_s, pair=pair, optional=True, **q6),
                 KeyboardProvider()]
     if kind == "keyboard":
         return [KeyboardProvider()]
@@ -237,11 +260,16 @@ class CoreSession:
         self._workout_id: str | None = None
         self._click_seen: dict[str, str] = {}   # boîtiers du Click vus, sans adresse configurée
         self.erg: ErgController | None = None   # entraînement en cours pendant la séance
+        self._ramp_watch: RampWatch | None = None   # fin de la rampe d'un test de FTP (lot O10)
         self._frame_count = 0
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
         # Appairage depuis le menu (lot N13) : dernière recherche et identification du « + » en cours.
         self._scan_items: list[dict[str, Any]] = []
+        # Menu ERG (lot N16, décision D4 de l'audit IPC) : dossier personnel fouillé par list_imports
+        # et chemins proposés à l'engine, seuls acceptés par import_workout.
+        self.import_home = Path.home()
+        self._import_offer: set[str] = set()
         self._scanning = False
         self._identify: dict[str, Any] | None = None
 
@@ -280,6 +308,7 @@ class CoreSession:
                 self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
                 log.info("Entraînement « %s » démarré : %d blocs, %.0f s.", self._workout.name,
                          len(self._workout.blocks), self._workout.duration_s)
+                self._watch_ramp()
                 self._sync_erg_state()
             self._set_state("RUNNING")
         elif name == "skip_block" and self.erg and st in ("RUNNING", "PAUSED"):
@@ -302,7 +331,8 @@ class CoreSession:
             self._finish(bool(args.get("save", True)))
         elif name == "set_difficulty":
             raw_pct = args.get("pct") if isinstance(args, dict) else None
-            if raw_pct is None or isinstance(raw_pct, bool) or not isinstance(raw_pct, (int, float)):
+            if raw_pct is None or isinstance(raw_pct, bool) or not isinstance(raw_pct, (int, float)) \
+                    or not math.isfinite(raw_pct):
                 self.server.send_error("bad_args", "set_difficulty attend un nombre 'pct'")
                 return
             new_val = int(round(max(0, min(100, float(raw_pct)))))
@@ -323,6 +353,45 @@ class CoreSession:
             self._send_settings(cmd_id)
         elif name == "set_setting":
             self._set_setting(args, cmd_id)
+        elif name in ("list_imports", "create_workout", "import_workout"):
+            self._on_workout_menu_command(name, args, cmd_id)
+
+    # --- entraînements créés ou importés depuis le menu (lot N16, audit IPC D4) ------------------
+
+    def _on_workout_menu_command(self, name: str, args: dict, cmd_id: int) -> None:
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Entraînements modifiables seulement hors séance.")
+            return
+        self._spawn(self._workout_menu(name, args, cmd_id))
+
+    async def _workout_menu(self, name: str, args: dict, cmd_id: int) -> None:
+        from . import workout_menu
+        from .ipc_lists import chunk_list_message, MAX_DATAGRAM_BYTES
+
+        try:
+            if name == "list_imports":
+                items = await asyncio.to_thread(workout_menu.import_candidates, self.import_home,
+                                                self.workouts_dir)
+                self._import_offer = {it["path"] for it in items}
+                for m in chunk_list_message("imports", cmd_id, items, False, MAX_DATAGRAM_BYTES):
+                    self.server.send_raw(m)
+                return
+            if name == "create_workout":
+                res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args)
+            else:
+                path = args.get("path") if isinstance(args, dict) else None
+                if not isinstance(path, str) or path not in self._import_offer:
+                    raise workout_menu.WorkoutMenuError(
+                        "workout_invalid", "Fichier non proposé par list_imports : redemander la liste.")
+                res = await asyncio.to_thread(workout_menu.import_file, Path(path), self.workouts_dir)
+            log.info("Entraînement %s : %s (%s)", "créé" if name == "create_workout" else "importé",
+                     res["workout_id"], "nouveau" if res["created"] else "déjà présent")
+            self.server.send_raw({"type": "workout_saved", "v": 1, "request_cmd_id": cmd_id, **res})
+        except workout_menu.WorkoutMenuError as exc:
+            log.warning("Menu ERG : %s refusé : %s", name, exc)
+            self.server.send_error(exc.code, str(exc))
+        except Exception:
+            log.exception("Erreur pendant %s (cmd_id=%d)", name, cmd_id)
 
     # --- réglages depuis le menu (lots O3 et O4, contrat IPC révision 1.3) -----------------------
 
@@ -493,7 +562,7 @@ class CoreSession:
             log.info("Aucun entraînement : mode SIM.")
             return
         try:
-            self._workout = load_workout(workout_path(self.workouts_dir, str(workout_id)))
+            self._workout = self._load_workout(str(workout_id))
         except WorkoutError as exc:
             self._workout = None
             log.error("Entraînement « %s » refusé : %s", workout_id, exc)
@@ -503,8 +572,33 @@ class CoreSession:
         w = self._workout
         log.info("Entraînement « %s » choisi : %d blocs, %.0f s.", w.name, len(w.blocks), w.duration_s)
 
+    def _load_workout(self, workout_id: str) -> Workout:
+        """Entraînement de la bibliothèque, ou test de FTP (`ftp_test:ramp`, `ftp_test:20min`, lot O10)."""
+        kind = ftp_test_kind(workout_id)
+        if kind:
+            return ftp_test_workout(kind, self.cfg.rider.ftp_w)
+        return load_workout(workout_path(self.workouts_dir, workout_id))
+
+    def _watch_ramp(self) -> None:
+        """Surveille la fin de la rampe pendant une séance de test par paliers (lot O10)."""
+        ramp = self._workout is not None and ftp_test_kind(self._workout_id) == "ramp"
+        self._ramp_watch = RampWatch(self._workout) if ramp else None
+
+    def _end_ramp(self, reason: str) -> None:
+        """Fin de la rampe : retour au calme (5 min à 100 W) au lieu d'un arrêt net."""
+        assert self.erg is not None
+        why = {"cadence": "cadence sous 50 tr/min", "power": "puissance sous 80 % de la cible",
+               "abandon": "abandon"}[reason]
+        log.info("Test de FTP : fin de la rampe au palier de %d W (%s), retour au calme.",
+                 self.erg.block.start_w or 0, why)
+        self.erg.goto(cooldown_index(self.erg.workout))
+        self._sync_erg_state()
+
     def _skip_block(self) -> None:
         assert self.erg is not None
+        if self._ramp_watch and self._ramp_watch.abandon(self.erg):
+            self._end_ramp("abandon")   # pendant la rampe, le saut de bloc vaut abandon du test
+            return
         self.erg.skip()
         log.info("Bloc suivant demandé.")
         self._sync_erg_state()
@@ -602,6 +696,7 @@ class CoreSession:
         summary = None
         if self._rec:
             rec, self._rec = self._rec, None
+            self._write_ftp_test(rec)
             fit_path, s, fit_error = rec.finish(save, ts=ts)
             records, events = rec.records, rec.events
             if fit_error and save:
@@ -616,8 +711,19 @@ class CoreSession:
             }
         self.state.summary = summary
         self.erg = None
+        self._ramp_watch = None
         self._sync_erg_state()
         self._set_state(final_state)
+
+    def _write_ftp_test(self, rec: SessionRecorder) -> None:
+        """Séance de test de FTP : résultat au journal (ligne `ftp_test`), rien dans `config.toml`."""
+        kind = ftp_test_kind(rec.workout_id)
+        if not kind or self._workout is None:
+            return
+        result = estimate_ftp(rec.records, kind, rec.events, rec.devices, self.cfg.rider.ftp_w,
+                              self._workout, ts=round(time.time(), 3))
+        log.info("%s.", result.describe())
+        rec.ftp_test(result.to_line())
 
     def _build_devices(self) -> dict[str, Any]:
         """Construit l'objet `devices` du contrat v1.1 à partir de l'état connu des pilotes."""
@@ -775,6 +881,9 @@ class CoreSession:
         self._t_session += dt
         if self.erg:
             self.erg.step(dt)        # le temps du bloc ne court que pendant RUNNING
+            reason = self._ramp_watch.update(dt, m.power_w, m.cadence_rpm, self.erg) if self._ramp_watch else None
+            if reason:
+                self._end_ramp(reason)
             self._sync_erg_state()
         erg = self.erg
         s = self.physics.s
@@ -863,7 +972,8 @@ class CoreSession:
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
-                draft=round(self._draft, 3) if self.bots else None))
+                draft=round(self._draft, 3) if self.bots else None,
+                hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None))
 
         if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
             log.info("Arrivée atteinte.")
@@ -935,6 +1045,7 @@ class CoreSession:
             if rs.erg_bias_pct is not None:
                 erg.bias_pct = BIAS_DEFAULT_PCT + rs.erg_bias_pct
             self.erg = erg
+            self._watch_ramp()
         self._sync_erg_state()
         st = self.state
         st.t, st.s, st.v = rs.t, rs.s, 0.0
@@ -970,7 +1081,7 @@ class CoreSession:
             raise AutostartError(f"parcours « {route_id} » refusé : {exc}") from exc
         if workout_id:
             try:
-                load_workout(workout_path(self.workouts_dir, workout_id))
+                self._load_workout(workout_id)
             except WorkoutError as exc:
                 raise AutostartError(f"entraînement « {workout_id} » refusé : {exc}") from exc
 

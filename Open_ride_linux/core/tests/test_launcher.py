@@ -305,11 +305,12 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     sup = launcher.build_supervisor(["--trainer", "mock", "--config", str(cfg)], env)
     assert sup.core_cmd[-5:] == ["run", "--trainer", "mock", "--config", str(cfg)]
     assert sup.engine_cmd[0] == str(godot) and "--verbose" in sup.engine_cmd
-    assert sup.engine_cmd[-5:] == [
+    assert sup.engine_cmd[-6:] == [
         "--ipc-state-port=6005",
         "--ipc-cmd-port=6006",
         "--quality=high",
         "--theme=alpes",
+        "--visual-grade=1.0",
         "--living=on",
     ]
     assert sup.release_cmd[-3:] == ["release-trainer", "--config", str(cfg)]
@@ -320,11 +321,12 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     no_cfg = launcher.build_supervisor([], {**env})
     assert no_cfg.core_cmd[-(len(launcher.DEFAULT_CORE_ARGS) + 1):] == ["run", *launcher.DEFAULT_CORE_ARGS]
     assert "--autostart" not in launcher.DEFAULT_CORE_ARGS   # menus de l'engine (lot N6)
-    assert no_cfg.engine_cmd[-5:] == [
+    assert no_cfg.engine_cmd[-6:] == [
         "--ipc-state-port=5005",
         "--ipc-cmd-port=5006",
         "--quality=low",
         "--theme=default",
+        "--visual-grade=1.0",
         "--living=on",
     ]
     probe = launcher.build_supervisor([], {**env, "OPENRIDE_PERF_PROBE": str(tmp_path / "sonde.csv")})

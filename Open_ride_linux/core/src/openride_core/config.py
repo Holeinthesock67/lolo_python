@@ -54,6 +54,7 @@ class TrainerConfig:
     grade_rate_up_pct_per_s: float = 4.0   # vitesse maximale quand la pente envoyée augmente (lot Q4)
     grade_rate_down_pct_per_s: float = 8.0 # vitesse maximale quand elle diminue (lot Q4)
     trace_ftms: bool = False          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
+    hr_relay_freeze_s: float = 15.0   # détection cardio relayée figée (lot Q5)
 
 
 @dataclass
@@ -70,6 +71,7 @@ class GearingConfig:
 class RenderConfig:
     quality: str = "low"
     theme: str = "default"
+    visual_grade_scale: float = 1.0
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
 
 
@@ -93,6 +95,9 @@ class DriversConfig:
     click_minus_address: str = ""  # boîtier « − » du Click (vide : l'autre boîtier trouvé)
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
+    click_trace_raw: bool = False
+    click_mute_after_s: float = 60.0
+    click_rehandshake_s: float = 0.0
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
     hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
     hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
@@ -149,6 +154,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("trainer", "grade_rate_pct_per_s"): (0.1, 100),
     ("trainer", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("trainer", "grade_rate_down_pct_per_s"): (0.1, 100),
+    ("trainer", "hr_relay_freeze_s"): (5, 120),
     ("gearing", "n_gears"): (2, 40),
     ("gearing", "start_gear"): (1, 40),
     ("gearing", "ratio_min"): (0.1, 5),
@@ -157,8 +163,11 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gearing", "long_press_gears"): (1, 10),
     ("ipc", "port_state"): (1024, 65535),
     ("ipc", "port_commands"): (1024, 65535),
+    ("render", "visual_grade_scale"): (1.0, 2.0),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
+    ("drivers", "click_mute_after_s"): (1, 600),
+    ("drivers", "click_rehandshake_s"): (0, 600),
     ("wind", "speed_kmh"): (0, 60),
     ("wind", "from_deg"): (0, 360),
     ("wind", "gust_pct"): (0, 100),

@@ -18,7 +18,12 @@ Sortes de lignes :
   chronomètre : les lectures du chronomètre et le FIT ne gardent que `TIMER_EVENTS` ;
 - `{"kind": "device", "ts": ..., "device": "trainer" | "click_plus" | "click_minus" | "hr",
   "state": "up" | "down"}` au changement d'état d'un appareil (lot M4, absentes des journaux
-  antérieurs au 24 octobre 2026). Les lectures qui ne connaissent pas cette sorte l'ignorent.
+  antérieurs au 24 octobre 2026). Les lectures qui ne connaissent pas cette sorte l'ignorent ;
+- `{"kind": "ftp_test", "ts": ..., "test": "ramp" | "20min", "ftp_w": ..., "method": ...,
+  "ref_power_w": ..., "held_s": ..., "step_w": ..., "warnings": [...], "previous_ftp_w": ...}`
+  à la fin d'une séance de test de FTP, juste avant l'événement `stop` (lot O10, voir
+  `ftp_test.py`) ; `ftp_w`, `ref_power_w` et `step_w` peuvent valoir `null`. Ligne facultative :
+  les journaux sans test restent lus comme avant, et les lectures qui ne la connaissent pas l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """
 
@@ -66,11 +71,12 @@ class Record:
     head_mps: float | None = None      # vent de face (m/s, positif de face), None vent coupé (lot P2)
     wind_grade_pct: float | None = None  # supplément de pente dû au vent et à l'abri (SIM), lots P2 et P3
     draft: float | None = None         # abri derrière un bot (0 à 0,45), None sans bot (lot P3)
+    hr_frozen: bool | None = None      # True : FC relayée par le trainer figée, ignorée (lot Q5)
 
 
 # Champs de la série P absents de la ligne quand ils valent None (vent coupé, pas de bot) :
 # une séance sans vent ni bot garde exactement les lignes d'avant, et la mémoire de la séance aussi.
-OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft")
+OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen")
 
 
 def record_line(rec: Record) -> dict:
@@ -118,6 +124,15 @@ class JournalWriter:
         if state not in DEVICE_STATES:
             raise ValueError(f"état d'appareil inconnu : {state}")
         self._write({"kind": "device", "ts": ts, "device": device, "state": state})
+
+    def ftp_test(self, line: dict) -> None:
+        """Résultat d'un test de FTP (lot O10) : `FtpResult.to_line()`."""
+        self._write({**line, "kind": "ftp_test"})
+
+    def powerup(self, kind: str, t_start: float, duration_s: float, ts: float) -> None:
+        """Bonus activé (série T, lot T5) : type, début en temps chronométré, durée."""
+        self._write({"kind": "powerup", "ts": ts, "powerup": kind, "t": round(t_start, 2),
+                     "duration_s": round(duration_s, 2)})
 
     def close(self) -> None:
         if not self._fh.closed:
