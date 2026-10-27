@@ -851,7 +851,7 @@ def _menu_scenes(s: Session) -> None:
     shot = s.capture("menu_accueil")
     if shot:
         img, info = shot
-        s.check_texts("menu_accueil", info, {"menu_title": "OpenRide", "menu": "Session libre | Session ERG | Session simulée"}, contains=True)
+        s.check_texts("menu_accueil", info, {"menu_title": "OpenRide", "menu": "Session libre | Session ERG | Choisir un plan"}, contains=True)
         s.check_texts("menu_accueil", info, {"menu": "Trainer HomeTrainer 0001 : connecté"}, contains=True)
         s.check_layout("menu_accueil", info)
         s.check_banner("menu_accueil", img, info, None)

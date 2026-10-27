@@ -146,7 +146,7 @@ Le demi-tour sur la route et le réglage des bots sont reportés à la 1.x, dans
 
 ### 4.5 Navigation dans les menus
 
-Hors séance, le core transmet les événements du Click à l'engine, qui pilote le menu selon la spécification générale §7.1 : ± courts pour passer à l'élément suivant ou précédent, ± longs pour sauter de cinq éléments, A court pour l'élément suivant, A long pour valider, Y pour revenir à l'écran précédent ; Z ne fait rien dans un menu. Ce plan remplace l'ancien (+ long pour valider, − long pour revenir), à reporter par la PR #287 avant sa fusion. Le clavier double chaque bouton, touche pour touche (tableau du clavier de la spécification générale §7.1, lot O17).
+Hors séance, le core transmet les événements du Click à l'engine, qui pilote le menu selon la spécification générale §7.1 : ± courts pour passer à l'élément suivant ou précédent, ± longs pour sauter de cinq éléments, A court pour l'élément suivant, A long pour valider, Y pour revenir à l'écran précédent ; Z ne fait rien dans un menu. Ce plan remplace l'ancien (+ long pour valider, − long pour revenir) depuis la PR #287 (27 octobre). Le clavier double chaque bouton, touche pour touche (tableau du clavier de la spécification générale §7.1, lot O17).
 
 ## 5. Physique
 

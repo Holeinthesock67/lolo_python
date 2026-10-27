@@ -98,11 +98,15 @@ func _test_scenarios() -> void:
 		["PLUS_SHORT", "routes", "demo", null],
 		["PLUS_SHORT", "routes", "galibier", null],
 	])
-	_scenario("accueil : boucle sur les six entrées", _routes(ROUTES_4), [
+	_scenario("accueil : boucle sur les huit entrées", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
 		["PLUS_SHORT", "home", "world", null],
 		["PLUS_SHORT", "home", "ride", null],
 		["PLUS_SHORT", "home", "erg", null],
+		["PLUS_SHORT", "home", "plan", null],
+		["A_LONG", "home", "plan", {"action": "item", "screen": "home", "id": "plan"}],
+		["PLUS_SHORT", "home", "ftp", null],
+		["A_LONG", "home", "ftp", {"action": "item", "screen": "home", "id": "ftp"}],
 		["PLUS_SHORT", "home", "sim", null],
 		["PLUS_SHORT", "home", "settings", null],
 		["Y_SHORT", "home", "settings", null],
@@ -260,15 +264,50 @@ func _test_no_nodes() -> void:
 	_check(after == before, "aucun nœud créé (%d avant, %d après)" % [before, after])
 
 
+## Séance préparée avec des arguments de `start` (lot O12) : Prêt, start avec args, annulée par un choix.
+func _test_prepare_start() -> void:
+	var m = MenuModel.new()
+	m.set_items("routes", ROUTES_4)
+	m.set_plan_home("Séance du jour : Seuil", "60 min, TSS 75")
+	var home: Dictionary = m.state()["items"][3]
+	_check(home["id"] == "plan" and home["label"] == "Séance du jour : Seuil" and home["detail"] == "60 min, TSS 75",
+		"accueil : séance du jour avec durée et TSS")
+	var st: Dictionary = m.prepare_start("test de FTP (rampe)", {"ftp_test": "ramp"})
+	_check(st["screen"] == "routes", "sans monde choisi : parcours d'abord")
+	st = m.handle("A_LONG")
+	_check(st["screen"] == "ready" and st["title"] == "Prêt : test de FTP (rampe) — Col du Galibier",
+		"puis écran Prêt (%s)" % st["title"])
+	st = m.handle("A_LONG")
+	_check(st["action"] == {"action": "start", "args": {"ftp_test": "ramp"}}, "start avec ftp_test (%s)" % str(st["action"]))
+	m.handle("PLUS_SHORT")
+	m.handle("A_LONG")   # Changer d'entraînement
+	m.set_items("workouts", WORKOUTS_2)
+	m.handle("PLUS_SHORT")
+	st = m.handle("A_LONG")
+	_check(st["screen"] == "ready" and st["title"].begins_with("Prêt : session ERG") and m.start_args.is_empty(),
+		"entraînement choisi : séance préparée annulée (%s)" % st["title"])
+	m.handle("MINUS_SHORT")
+	_check(m.handle("A_LONG")["action"] == {"action": "start"}, "start sans arguments")
+	m.prepare_start("séance du jour", {"plan_day": true})
+	m.reset()
+	_check(m.start_args.is_empty() and m.start_name == "", "remise à zéro (nouvelle séance) : annulée aussi")
+	m.set_items("routes", ROUTES_4 + [{"id": "_sort", "label": "Trier par : nom"}])
+	m.handle("A_LONG")
+	m.handle("MINUS_SHORT")
+	_check(m.handle("A_LONG")["action"] == {"action": "item", "screen": "routes", "id": "_sort"},
+		"tri des parcours : action pour menu_flow, pas de parcours choisi")
+
+
 func _test_modes() -> void:
 	var m = MenuModel.new()
 	var ids: Array = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "ride", "erg", "sim", "settings", "quit"], "modes par défaut : ride et erg (%s)" % str(ids))
+	_check(ids == ["world", "ride", "erg", "plan", "ftp", "sim", "settings", "quit"],
+		"modes par défaut : ride et erg, puis plans et test de FTP (lot O12) (%s)" % str(ids))
 	m.set_modes(["erg", "cyber_rogue"])
 	ids = m.state()["items"].map(func(it): return it["id"])
-	_check(ids == ["world", "erg", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
+	_check(ids == ["world", "erg", "plan", "ftp", "sim", "settings", "quit"], "modes annoncés filtrés, inconnu ignoré (%s)" % str(ids))
 	m.set_modes(null)
-	_check(m.state()["items"].size() == 6, "modes absents : retour aux modes par défaut")
+	_check(m.state()["items"].size() == 8, "modes absents : retour aux modes par défaut")
 
 
 ## Plan des boutons sans exception (spécification générale §7.1, 27 octobre).
@@ -304,6 +343,7 @@ func _test_button_plan() -> void:
 func _init() -> void:
 	_test_button_plan()
 	_test_modes()
+	_test_prepare_start()
 	_test_scenarios()
 	_test_lists_and_events()
 	_test_no_nodes()
