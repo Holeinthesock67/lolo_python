@@ -1,0 +1,67 @@
+extends SceneTree
+
+## Rendu hors écran des spectateurs du lot P15 (shaders/crowd.gdshader) : le shader compile, un
+## spectateur apparaît avec la couleur de ses vêtements (couleur d'instance) et la peau sur la tête.
+
+const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
+
+const SIZE := 64
+const TOL := 8.0 / 255.0
+
+var _failures := 0
+var _checked := 0
+
+
+func _init() -> void:
+	call_deferred("_run")
+
+
+func _check(cond: bool, msg: String) -> void:
+	_checked += 1
+	if cond:
+		print("[OK] ", msg)
+	else:
+		_failures += 1
+		printerr("[ÉCHEC] ", msg)
+
+
+class FakeModel:
+	var spectators := [{"s": 0.0, "side": 1, "pos": Vector3.ZERO, "yaw": 0.0, "color": 2, "flag": false, "phase": 0.0, "delay": 0.0, "group": 0}]
+	var groups := []
+	var states := {}
+
+
+func _close(a: Color, b: Color) -> bool:
+	return absf(a.r - b.r) <= TOL and absf(a.g - b.g) <= TOL and absf(a.b - b.b) <= TOL
+
+
+func _run() -> void:
+	var vp := SubViewport.new()
+	vp.size = Vector2i(SIZE, SIZE)
+	vp.debug_draw = Viewport.DEBUG_DRAW_UNSHADED
+	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
+	vp.own_world_3d = true
+	vp.transparent_bg = true
+	root.add_child(vp)
+	var r = CrowdRenderer.new()
+	vp.add_child(r)
+	r.setup(FakeModel.new())
+	r.set_preset("low")
+	r.update(Vector3(0.0, 1.0, 5.0), 0.0, 0.0)
+	var cam := Camera3D.new()
+	cam.projection = Camera3D.PROJECTION_ORTHOGONAL
+	cam.size = 2.0
+	vp.add_child(cam)
+	cam.look_at_from_position(Vector3(0.0, 1.0, 10.0), Vector3(0.0, 1.0, 0.0))
+	cam.current = true
+	for i in 5:
+		await process_frame
+	var img := vp.get_texture().get_image()
+	var body := img.get_pixel(img.get_width() / 2, int(cam.unproject_position(Vector3(0.0, 1.17, 0.0)).y))
+	var head := img.get_pixel(img.get_width() / 2, int(cam.unproject_position(Vector3(0.0, 1.57, 0.0)).y))
+	_check(_close(body, CrowdRenderer.PALETTE[2]), "buste à la couleur des vêtements (%s)" % str(body))
+	_check(_close(head, Color(0.85, 0.68, 0.55)), "tête à la couleur de la peau (%s)" % str(head))
+	vp.queue_free()
+	await process_frame
+	print("test_crowd_render : %d vérifications, %d échecs" % [_checked, _failures])
+	quit(0 if _failures == 0 else 1)

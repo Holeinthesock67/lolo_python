@@ -46,3 +46,16 @@ Aucune.
 ## 8. Hors périmètre
 
 - Spectateurs qui courent à côté du cycliste, banderoles écrites, commentateur.
+
+## 9. Livraison
+
+Livré sur la branche `lot-p15-spectateurs`, après P13 (même `sound_player.gd`), avec P14 fusionné (`climb_detector.gd`). Sans toucher à `main.gd`, au core ni au contrat.
+
+- **`crowd_model.gd`** :
+  - Placement : cases de 2 m de chaque côté de la route, dans le dernier kilomètre des montées d'au moins 3 km (toutes avec `crowd_all_climbs`). Probabilité de 12 % au début de la zone à 85 % au sommet, par groupes de 25 m (un groupe sur trois clairsemé), jusqu'à 2 personnes par case. Écart au bord de 0,3 à 3 m. Aucun spectateur dans l'eau. Tirage déterministe par graine.
+  - Réaction : « encourage » à moins de 25 m, après un délai propre de 0 à 0,6 s, sinon « calme ». Seuls les spectateurs à ± 60 m sont examinés (dichotomie).
+  - Clameur de 0 à 1 : distance au groupe le plus proche (nulle au-delà de 150 m), taille du groupe, puissance relative à la FTP si elle est fournie (× 0,8 à × 1,3). `observe_bots` repère un bot qui passe de devant à derrière : + 0,35 qui décroît en 5 s.
+- **`crowd_renderer.gd`** et **`crowd.gdshader`** : silhouettes (jambes, buste, tête, bras, drapeau pour un sur quatre) construites par code, deux `MultiMesh`, huit couleurs d'instance. Bras levés et drapeaux agités par le shader à partir de `TIME`. Budget `living(preset).spectators`, les plus proches de la caméra (tri tous les 20 m). La donnée d'instance n'est réécrite que quand un état change. Un lecteur 3D joue la clameur sur le groupe le plus proche.
+- **`sound_player.gd`** : son `crowd_cheer` (clameur et applaudissements), remplaçable par `.ogg`. Le vent n'est plus synthétisé deux fois (P10) : synthèse de tous les sons en 240 ms ici.
+- **Tests** : `test_crowd_model.gd` (16 vérifications ; 200 spectateurs en 0,11 ms par image ici), `render/test_crowd_render.gd` (2), `test_sound_player.gd` (son de plus).
+- **Reste sur le PC cible (le propriétaire)** : fin de col en `low`, après le branchement par P17 (qui passe la FTP de la configuration et les bots de la trame).
