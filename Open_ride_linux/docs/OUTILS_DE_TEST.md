@@ -89,6 +89,7 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 | `openride-core summary [FICHIER]` | Bilan d'une séance : NP, IF, TSS, zones, meilleures puissances |
 | `openride-core history` | Historique des séances et cumul hebdomadaire |
 | `openride-core devices` | Inventaire des appareils Bluetooth et bloc `[drivers]` proposé |
+| `python -m openride_core.tools.trainer_steps --mode sim\|erg` | Banc de latence du trainer (lot X5, outil de l'essai R0) : paliers de pente ou de puissance à cadence tenue ; par palier, délai consigne → écriture → accusé 0x80, t10, t63, t90, stabilisation et dépassement de la puissance ; `samples.csv`, `steps.csv` et `rapport.html` dans `~/OpenRide/trainer_steps/<date>/`. `--trainer sim --fast` pour l'essayer sans matériel, `--analyse DOSSIER` pour refaire l'analyse |
 | `python -m openride_core.tools.ble_diag` | Diagnostic Bluetooth du HomeTrainer et du Click (matériel réel) |
 | `openride-core release-trainer` | Libère un trainer resté réservé |
 | `openride-core recover` | Convertit un journal de séance en FIT après un plantage |
