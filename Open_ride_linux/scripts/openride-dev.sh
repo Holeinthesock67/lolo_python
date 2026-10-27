@@ -16,7 +16,8 @@
 # demandent --autostart).
 #
 # Variables : GODOT (chemin de l'exécutable), OPENRIDE_LOG (journal du core), GODOT_ARGS,
-# QUALITY et THEME (préréglage et thème, à la place de ceux de config.toml).
+# QUALITY et THEME (préréglage et thème, à la place de ceux de config.toml), OPENRIDE_PERF_PROBE
+# (fichier CSV de la sonde de performance du moteur, lot X13).
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.3-stable_linux.x86_64}"
@@ -86,4 +87,4 @@ PY
 QUALITY="${QUALITY:-$CFG_QUALITY}"
 THEME="${THEME:-$CFG_THEME}"
 # shellcheck disable=SC2086
-"$GODOT" --path "$ROOT/engine" ${GODOT_ARGS:-} -- --ipc-state-port="${STATE_PORT:-5005}" --ipc-cmd-port="${CMD_PORT:-5006}" --quality="${QUALITY:-low}" --theme="${THEME:-default}"
+"$GODOT" --path "$ROOT/engine" ${GODOT_ARGS:-} -- --ipc-state-port="${STATE_PORT:-5005}" --ipc-cmd-port="${CMD_PORT:-5006}" --quality="${QUALITY:-low}" --theme="${THEME:-default}" ${OPENRIDE_PERF_PROBE:+--perf-probe="$OPENRIDE_PERF_PROBE"}
