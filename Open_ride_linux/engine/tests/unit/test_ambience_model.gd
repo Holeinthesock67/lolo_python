@@ -5,6 +5,7 @@ extends SceneTree
 
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -160,7 +161,7 @@ func _test_describe_and_cost() -> void:
 	for i in range(5000):
 		m.evaluate(n, i / 60.0)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0 / 5000.0
-	_check(ms < 0.1, "evaluate : %.4f ms (< 0,1 ms)" % ms)
+	_check(PerfBudget.check("ambience_evaluate", ms), "evaluate : %.4f ms" % ms)
 
 
 func _init() -> void:

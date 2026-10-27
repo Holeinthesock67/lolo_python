@@ -37,6 +37,7 @@ var has_terrain := false
 var chunks_ahead: int = 3
 var chunks_behind: int = 1
 var vegetation_density_factor: float = 0.3
+var visual_grade_scale: float = 1.0
 var tree_renderer: Node3D = null
 var osm_streamer: Node3D = null
 
@@ -47,7 +48,15 @@ var _instances: Dictionary = {}      # clé -> MeshInstance3D
 var _jobs: Dictionary = {}           # clé -> {task, arrays, origin, gen}
 var _ready: Array = []               # travaux terminés, à instancier : {key, arrays, origin}
 var _generation := 0
-var _road_material: StandardMaterial3D
+var _road_material: Material
+## Lot P17 : marquages de P14 (`set_road_markings`), un matériau par tronçon qui porte des chiffres
+## peints (`set_road_marks`), chaussée mouillée (`set_road_wetness`).
+var road_markings := false
+var _road_color: Color = RoadBuilder.ROAD_COLOR
+var _road_texture: Texture2D = null
+var _marks_by_chunk: Dictionary = {}    # k -> [{s, digit}]
+var _chunk_road_materials: Dictionary = {}   # k -> ShaderMaterial (tronçons à chiffres)
+var _road_wetness := 0.0
 var _terrain_material: Material
 var _road_width_m: float = RoadBuilder.ROAD_WIDTH_M
 var _ground_color: Color = FLAT_GROUND_COLOR
@@ -98,6 +107,7 @@ func set_world(new_route, new_world_dir: String) -> void:
 	if not has_terrain:
 		_make_ground()
 	if osm_streamer != null:
+		osm_streamer.visual_grade_scale = visual_grade_scale
 		osm_streamer.set_world(route, world_dir)
 
 
@@ -273,8 +283,10 @@ func _start_jobs() -> void:
 	for key in todo:
 		if _jobs.size() >= MAX_RUNNING_TASKS:
 			break
+		var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
-			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m}
+			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
+			"visual_grade_scale": visual_grade_scale, "alt_orig": alt_orig}
 		job["task"] = WorkerThreadPool.add_task(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
 
@@ -284,31 +296,35 @@ func _build_job(job: Dictionary) -> void:
 	var t0 := Time.get_ticks_usec()
 	var spec: Dictionary = job["spec"]
 	var r = job["route"]
+	var v_scale: float = float(job.get("visual_grade_scale", 1.0))
+	var alt_orig: float = float(job.get("alt_orig", 0.0))
 	match spec["kind"]:
 		"road":
-			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)))
+			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)), v_scale)
 		"near", "far":
 			var t: Vector2i = spec["tile"]
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
 			if heights.is_empty():
 				return
 			if spec["kind"] == "far":
-				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r)
+				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r, TerrainTiles.FAR_CARVE_MARGIN_M, v_scale, alt_orig)
 			var edges := TerrainTiles.load_neighbour_edges(job["world_dir"], spec["kind"], t.x, t.y)
-			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges)
+			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
 			if spec["kind"] == "near" and tree_renderer != null:
-				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
+				var h_scaled := TerrainTiles.scale_heights(heights, alt_orig, v_scale) if v_scale != 1.0 else heights
+				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, h_scaled, r, _theme_dict,
 					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t))
 		"flat":
 			var t: Vector2i = spec["tile"]
 			var c := TerrainTiles.tile_origin("near", t.x, t.y) + Vector3(500.0, 0.0, 500.0)
 			var alt := TerrainTiles.nearest_route_alt(r, c.x, c.z)
 			var flat_h := TerrainTiles.flat_heights(alt)
-			job["arrays"] = TerrainTiles.build_arrays(flat_h, "near")
+			job["arrays"] = TerrainTiles.build_arrays(flat_h, "near", {}, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin("near", t.x, t.y)
 			if tree_renderer != null:
-				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, flat_h, r, _theme_dict,
+				var flat_scaled := TerrainTiles.scale_heights(flat_h, alt_orig, v_scale) if v_scale != 1.0 else flat_h
+				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, flat_scaled, r, _theme_dict,
 					vegetation_density_factor, [])
 	var dt := Time.get_ticks_usec() - t0
 	_stats_mutex.lock()
@@ -346,7 +362,7 @@ func integrate(max_new: int) -> int:
 			continue
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["arrays"])
-		mesh.surface_set_material(0, _road_material if r["kind"] == "road" else _terrain_material)
+		mesh.surface_set_material(0, road_material_for(int((r["key"] as String).get_slice(":", 1))) if r["kind"] == "road" else _terrain_material)
 		var mi := MeshInstance3D.new()
 		mi.name = (r["key"] as String).replace(":", "_")
 		mi.mesh = mesh
@@ -405,7 +421,9 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	var r_params := ThemeRenderParams.road_params(theme_dict)
 	_road_width_m = float(r_params["width_m"])
 	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture") if theme_dir != "" else null
-	_road_material = RoadBuilder.make_material(r_params["color"], road_tex)
+	_road_color = r_params["color"]
+	_road_texture = road_tex
+	_rebuild_road_material()
 
 	if _terrain_material is ShaderMaterial:
 		TerrainMaterial.apply_to_material(_terrain_material, theme_dict, theme_dir)
@@ -414,6 +432,61 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	_ground_color = tu["grass_color"]
 	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
 		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
+
+
+func _rebuild_road_material() -> void:
+	_chunk_road_materials.clear()
+	if road_markings:
+		var mm := RoadBuilder.make_markings_material(_road_color, _road_width_m)
+		mm.set_shader_parameter("wetness", _road_wetness)
+		_road_material = mm
+	else:
+		_road_material = RoadBuilder.make_material(_road_color, _road_texture)
+	for key in _instances:
+		if (key as String).begins_with("road:"):
+			var mi: MeshInstance3D = _instances[key]
+			mi.mesh.surface_set_material(0, road_material_for(int((key as String).get_slice(":", 1))))
+
+
+## Marquages de la route (Lot P17) : à appeler avant le chargement des tronçons (sinon ceux déjà
+## affichés changent de matériau).
+func set_road_markings(on: bool) -> void:
+	if on == road_markings:
+		return
+	road_markings = on
+	_rebuild_road_material()
+
+
+## Chiffres peints par tronçon (roadside_model.paint_marks réparti par tronçon de 1 000 m).
+func set_road_marks(marks_by_chunk: Dictionary) -> void:
+	_marks_by_chunk = marks_by_chunk
+	_rebuild_road_material()
+
+
+func road_material_for(k: int) -> Material:
+	if not road_markings or not _marks_by_chunk.has(k):
+		return _road_material
+	if not _chunk_road_materials.has(k):
+		var m := _road_material.duplicate() as ShaderMaterial
+		RoadBuilder.set_marks(m, _marks_by_chunk[k])
+		_chunk_road_materials[k] = m
+	return _chunk_road_materials[k]
+
+
+## Chaussée mouillée sous la pluie (P8 `wetness`, 0 à 1), avec les marquages seulement.
+func set_road_wetness(w: float) -> void:
+	w = clampf(w, 0.0, 1.0)
+	if absf(w - _road_wetness) < 0.005:
+		return
+	_road_wetness = w
+	if _road_material is ShaderMaterial:
+		(_road_material as ShaderMaterial).set_shader_parameter("wetness", w)
+	for k in _chunk_road_materials:
+		(_chunk_road_materials[k] as ShaderMaterial).set_shader_parameter("wetness", w)
+
+
+func road_wetness() -> float:
+	return _road_wetness
 
 
 func _make_ground() -> void:
@@ -425,6 +498,9 @@ func _make_ground() -> void:
 			min_alt = minf(min_alt, a)
 	if is_inf(min_alt):
 		min_alt = 0.0
+	var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
+	if visual_grade_scale != 1.0:
+		min_alt = alt_orig + (min_alt - alt_orig) * visual_grade_scale
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(2.0 * FAR_RADIUS_M, 2.0 * FAR_RADIUS_M)
 	var mat := StandardMaterial3D.new()
