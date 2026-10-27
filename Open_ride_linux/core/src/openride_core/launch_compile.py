@@ -21,7 +21,7 @@ DEFAULT_COMPILE_TIMEOUT_S = 300.0
 def default_notify(message: str, title: str = "OpenRide") -> None:
     """Notification desktop via notify-send s'il est disponible sur le système."""
     exe = shutil.which("notify-send")
-    if exe:
+    if exe and os.environ.get("OPENRIDE_NO_GUI") != "1":
         try:
             subprocess.run(
                 [exe, title, message],
