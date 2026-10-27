@@ -1,0 +1,80 @@
+# Tables de la progression (série V) : expérience, niveaux et défis.
+#
+# Fichier livré avec le core. Pour changer une valeur, copier seulement les clés voulues dans
+# ~/OpenRide/progression.toml : elles remplacent celles d'ici (une liste [[challenges]] remplace
+# toute la liste). Tout se recalcule depuis le journal des séances : changer une valeur change
+# aussi l'expérience des séances passées.
+
+[xp]
+per_km = 20                  # points par km roulé
+per_climb_m = 2              # points par mètre de dénivelé positif
+erg_per_min = 10             # points par minute d'entraînement ERG
+erg_completed_bonus = 0.20   # + 20 % si l'entraînement est terminé
+per_segment = 50             # série T (lot V5)
+per_segment_pr = 100         # record personnel sur un segment, en plus
+per_jersey = 200             # maillot gagné dans la séance
+rogue_per_min = 10           # run Cyber-Rogue (série R)
+rogue_boss_default = 100     # boss vaincu absent de la table ci-dessous (valeur provisoire)
+
+[xp.rogue_boss]
+chimere_centrale = 300       # boss final (valeur provisoire, à régler avec la série R)
+
+[rules]
+min_session_s = 300          # séance de moins de 5 min chronométrées : rien
+climb_deadband_m = 1.0       # variation d'altitude ignorée sous ce seuil (bruit)
+erg_replaces_distance = true # en ERG, les minutes remplacent la distance et le dénivelé (V-Q7)
+
+[levels]
+count = 50
+xp_level_2 = 1000            # points pour passer au niveau 2
+xp_level_max = 100000        # points cumulés pour le dernier niveau
+
+# Défis : `stat` atteint `threshold` ; `reward` = pièce d'équipement offerte (catalogue du lot V3).
+[[challenges]]
+id = "km_1000"
+name = "1 000 km cumulés"
+stat = "total_km"
+threshold = 1000
+reward = "kit_mille_bornes"
+
+[[challenges]]
+id = "climb_10000"
+name = "10 000 m de dénivelé cumulé"
+stat = "total_climb_m"
+threshold = 10000
+reward = "helmet_sommet"
+
+[[challenges]]
+id = "session_50km"
+name = "Première séance de 50 km"
+stat = "best_session_km"
+threshold = 50
+reward = "socks_longue_distance"
+
+[[challenges]]
+id = "erg_10"
+name = "10 entraînements ERG terminés"
+stat = "erg_completed"
+threshold = 10
+reward = "glasses_metronome"
+
+[[challenges]]
+id = "hc_first"
+name = "Premier col hors catégorie"
+stat = "hc_climbs"
+threshold = 1
+reward = "frame_climber"
+
+[[challenges]]
+id = "kom_first"
+name = "Premier maillot à pois"
+stat = "jerseys_kom"
+threshold = 1
+reward = "kit_pois"
+
+[[challenges]]
+id = "rogue_boss_first"
+name = "Premier boss Cyber-Rogue vaincu"
+stat = "rogue_bosses"
+threshold = 1
+reward = "kit_neon"

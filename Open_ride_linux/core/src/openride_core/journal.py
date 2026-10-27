@@ -4,8 +4,10 @@ Un fichier JSONL par séance, une ligne par seconde, vidée sur disque à chaque
 un plantage, `openride-core recover` peut transformer le dernier journal en FIT.
 
 Sortes de lignes :
-- `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ...}` en tête
-  (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8) ;
+- `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ..., "source": ...}` en tête
+  (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8 ;
+  `source` : `live` (trainer réel), `simulated` (trainer `mock` ou `sim`) ou `replay` (rejeu),
+  absent des journaux antérieurs au lot V2, qui le lit pour la progression) ;
   champ facultatif `plan` = `{"id": ..., "week": n, "day": "mardi"}` quand la séance réalise une
   séance d'un plan d'entraînement actif (lot O11), absent sinon ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
@@ -64,7 +66,7 @@ class Record:
 
 class JournalWriter:
     def __init__(self, path: Path, route_id: str | None = None, workout_id: str | None = None,
-                 header: bool = True, plan: dict | None = None) -> None:
+                 header: bool = True, source: str | None = None, plan: dict | None = None) -> None:
         """Ouvre le journal en ajout ; `header=False` continue un journal existant (reprise, lot N8)."""
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -72,6 +74,8 @@ class JournalWriter:
         self._last_sync = 0.0
         if header:
             head = {"kind": "header", "version": 1, "route_id": route_id, "workout_id": workout_id}
+            if source is not None:
+                head["source"] = source
             if plan:
                 head["plan"] = plan
             self._write(head)
