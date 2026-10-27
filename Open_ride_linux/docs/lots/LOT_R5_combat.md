@@ -22,7 +22,7 @@ R2, R3 et R4 livrés. Valeurs de R0 (fenêtre de Perfect Shift) ou leurs défaut
 ### 4.2 Dégâts
 
 - Par seconde : `d = (P / FTP) × m_gear × m_posture × m_cards`, avec `m_gear = 1 + 0,04 × (vitesse − 6)` (0,80 en 1, 1,24 en 12).
-- Points de vie de l'ennemi : `HP = 0,9 × moyenne(target_frac) × nominal_s` : un cycliste sur la cible, en vitesse 6 et en Fluide, le bat à 90 % de la salle.
+- Points de vie de l'ennemi : `HP = facteur × moyenne(target_frac) × nominal_s`, avec un facteur par objectif (`hp_factor_endurance` 1,038, `hp_factor_threshold` 1,03, `hp_factor_vo2max` 1,02) et `boss_hp_factor` (1,118) pour chaque phase du boss (valeurs du lot R7, 27 octobre ; le cahier partait de 0,9). Un cycliste exactement sur la cible, sans bonus de timing ni de braquet, n'est jamais battu mais ne gagne pas toujours : les Perfect Shifts, les crits et la bonne vitesse font la différence.
 - `ROC` : `m_posture` = 1 ; armure +30 % (les pertes de bouclier sont réduites de 30 %).
 - `FLUIDE` : 1.
 - `VELOCE` : 1, mais chaque seconde a 15 % de chances d'être un coup critique (dégâts doublés) ; armure −20 % (pertes augmentées de 20 %).

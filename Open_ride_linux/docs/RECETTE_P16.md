@@ -99,4 +99,5 @@ Séance de plus de 20 minutes au lieu des 10 prévues : les prochaines recettes 
 - Indicateur du vent : conforme.
 - Sons du vent et de la roue libre : présents, mais le vent était trop fort et les deux sons désagréables. Corrigé : vent baissé d'environ 12 dB, roue libre d'environ 13 dB, les deux sons refaits (voir [LOT_P16](lots/LOT_P16_integration_vent_ciel_sons.md) § 10).
 - Nuages : invisibles. Cause : en Forward+, Godot recouvre tout le ciel de la couleur du brouillard (`fog_sky_affect` vaut 1 par défaut). Corrigé dans `render_quality.gd` (§ 10).
-- À revoir sur le PC en 5 minutes : nuages visibles et qui défilent, volume et timbre du vent et de la roue libre.
+- Revu après le correctif (PR #432, 27 octobre au soir) : nuages visibles en `medium` ; nouveaux sons du vent et de la roue libre validés par le propriétaire.
+- Recette P16 close pour ce qui a été vu. Restent, sans le propriétaire : vent de travers et de dos, `living = false` (§ 2.4) et la mesure de performance sur une route OSM avec forêts et villages.

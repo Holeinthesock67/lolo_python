@@ -9,7 +9,7 @@ import pytest
 from openride_core.physics import PhysicsParams, RiderPhysics
 from openride_core.rogue.balance import DEFAULT_BALANCE
 from openride_core.rogue.combat import (DONE, RECOVERY, CombatInputs, apply_gear_buttons,
-                                        combat_start, combat_step, target_at)
+                                        combat_start, combat_step, target_at, target_mean)
 from openride_core.rogue.firewall import Firewall
 from openride_core.rogue.rooms import BOSS_PHASES, OBJECTIVES, RoomRider, generate_room
 
@@ -44,17 +44,38 @@ CASES = [(a, v, o) for a in ("diesel", "puncheur", "grimpeur", "sprinteur", "sab
 
 
 @pytest.mark.parametrize("a,v,o", CASES)
-def test_rider_on_target_wins_between_85_and_95_percent(a, v, o):
+def test_rider_on_target_is_never_defeated_and_wins_late(a, v, o):
+    """Sans bonus de timing ni de braquet, suivre la cible juste ne suffit pas toujours : la salle se gagne tard
+    (85 à 100 % de la distance) ou l'ennemi fuit, jamais de défaite (PV réglés par le lot R7)."""
     room = generate_room(a, v, o, 300.0, RIDER, 1)
     state, events = ride(room, objective=room.objective)
-    assert state.outcome == "won" and ("room_won" in [e for _, e in events])
-    assert 0.85 <= state.down_s_m / room.length_m <= 0.95, state.down_s_m / room.length_m
+    assert state.outcome in ("won", "fled") and "defeat" not in [e for _, e in events]
+    if state.outcome == "won":
+        assert 0.85 <= state.down_s_m / room.length_m <= 1.0, state.down_s_m / room.length_m
 
 
-def test_puncheur_30_30_wins_too():
+def test_puncheur_30_30_wins_late_or_flees():
     room = generate_room("puncheur", "30_30", "vo2max", 300.0, RIDER, 2)
     state, _ = ride(room, objective="vo2max")
-    assert state.outcome == "won" and 0.85 <= state.down_s_m / room.length_m <= 0.95
+    assert state.outcome in ("won", "fled")
+    if state.outcome == "won":
+        assert 0.85 <= state.down_s_m / room.length_m <= 1.0
+
+
+@pytest.mark.parametrize("objective,field_name", [("endurance", "hp_factor_endurance"), ("threshold", "hp_factor_threshold"),
+                                                   ("vo2max", "hp_factor_vo2max")])
+def test_enemy_hp_follows_the_factor_of_its_objective(objective, field_name):
+    room = generate_room("diesel" if objective != "vo2max" else "grimpeur", "", objective, 300.0, RIDER, 1)
+    for factor in (1.0, 1.5):
+        bal = replace(B, **{field_name: factor})
+        hp = combat_start(room, 1, bal).enemy_hp_max
+        assert hp == pytest.approx(factor * target_mean(room) * room.nominal_s)
+
+
+def test_boss_hp_has_its_own_factor():
+    room = generate_room("boss", "phase1", "threshold", 300.0, RIDER, 1)
+    bal = replace(B, boss_hp_factor=1.5, hp_factor_threshold=1.0)
+    assert combat_start(room, 1, bal).enemy_hp_max == pytest.approx(1.5 * target_mean(room) * room.nominal_s)
 
 
 def test_rider_under_target_is_caught_by_the_wall():
@@ -286,7 +307,7 @@ def test_constants_come_from_balance():
     room = generate_room("diesel", "", "threshold", 240.0, RIDER, 1)
     inp = CombatInputs(power_w=250, cadence_rpm=85, posture="FLUIDE", gear=6, ftp_w=250, s_m=10.0, v_mps=8)
     a, _ = combat_step(combat_start(room, 1), inp, room, B, 1.0)
-    weaker = replace(B, hp_factor=0.45)
+    weaker = replace(B, hp_factor_threshold=B.hp_factor_threshold / 2)
     b, _ = combat_step(combat_start(room, 1, weaker), inp, room, weaker, 1.0)
     assert b.enemy_hp_max == pytest.approx(a.enemy_hp_max / 2)
     gear12 = replace(B, gear_step=0.1)
