@@ -17,7 +17,7 @@ V1 validé par le propriétaire ; V2, V3, V3b et V4 fusionnés ; de préférence
 
 - **Démarrage :** profil chargé, progression recalculée hors de la boucle à 50 Hz (fil séparé ou au lancement, moins de 2 s pour 500 séances ; un cache `~/.cache/openride/progression.json` indexé par nom, taille et date des journaux est permis) ; `hello_ack.config.progression` rempli.
 - **Physique :** `PhysicsParams` de la séance = `apply_equipment(PhysicsParams.from_config(cfg), equipped, catalogue)` en SIM et en ERG ; résistance au trainer inchangée (la pente envoyée ne dépend pas de l'équipement, sauf le supplément de vent et d'aspiration de la série P, qui suit le CdA courant comme prévu par le plan).
-- **Journal :** l'en-tête gagne `loadout` (identifiants du cadre et des roues, et leurs deltas de masse et de CdA) ; ajout compatible.
+- **Journal :** l'en-tête gagne `loadout` (identifiants du cadre et des roues, et leurs deltas de masse et de CdA) et `ftp_w` (FTP de la séance, pour que les pièces gagnées à l'effort ne changent pas quand la FTP change, V-Q10) ; ajouts compatibles.
 - **Fin de séance :** à `FINISHED`, calcul des gains de la séance (V2, V3b), du temps gagné par l'équipement (V3), des déblocages et des défis, puis envoi de `xp_result` selon le contrat. La séance enregistrée est ajoutée au cache.
 - **Commandes :** `list_garage` (réponse `garage` en parties, comme `routes`), `equip`, `buy`, `set_avatar` hors séance seulement (`busy` sinon), profil écrit par `save_profile`, puis message `progression`. Refus avec les codes du contrat.
 - **Liste des parcours :** champ `terrain` de chaque élément de `routes` (`route_terrain` de V3 sur la longueur et le dénivelé du parcours).
@@ -29,7 +29,7 @@ V1 validé par le propriétaire ; V2, V3, V3b et V4 fusionnés ; de préférence
 
 ## 6. Modifications de contrat autorisées
 
-Aucune au-delà de V1. Journal : champ facultatif `loadout` de l'en-tête.
+Aucune au-delà de V1. Journal : champs facultatifs `loadout` et `ftp_w` de l'en-tête.
 
 ## 7. Critères d'acceptation
 
