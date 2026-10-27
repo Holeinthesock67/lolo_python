@@ -43,7 +43,7 @@ uniform float cloud_shadow_altitude_m = 2000.0;
 uniform float cloud_shadow_strength = 0.35;
 uniform float cloud_shadow_scale_m = 2600.0;
 
-// Herbe (Lot Y11, techniques H1 à H3, procédurales) : faux relief de brins (3 cm) et de mottes (30 cm)
+// Herbe (Lot Y11, techniques H1 à H3, procédurales ; roche et neige suivent le même principe) : faux relief de brins (3 cm) et de mottes (30 cm)
 // effacé quand il devient plus fin qu'un pixel, mouchetures de brins clairs et sombres de près,
 // plaques d'herbe plus sèche ou plus verte (40 à 120 m), vagues de vent qui défilent dans le sens du
 // vent du modèle P4 (mêmes paramètres globaux que tree_sway.gdshader). Réglé par `grass_relief` × `detail_strength`
@@ -146,13 +146,30 @@ void fragment() {
 		g *= 1.0 + (sd_noise(wq / 6.0) - 0.5) * 0.18 * wind_strength * relief;
 		final_color += g * grass_mod * w_grass;
 	}
+	float rock_h = 0.0;
 	if (w_rock > MIN_LAYER_WEIGHT) {
 		vec4 c = has_rock_texture ? sample_triplanar(rock_texture, v_world_pos, rock_inv_scale, tri_weights) : rock_color;
-		final_color += c.rgb * w_rock;
+		// Roche (Y11, même principe que l'herbe) : blocs de 60 cm et grain de 8 cm projetés sur les trois
+		// plans, strates horizontales plus claires ou plus sombres
+		float relief = grass_relief * detail_strength;
+		vec3 p3 = v_world_pos;
+		float blocks = sd_noise(p3.zy / 0.6) * tri_weights.x + sd_noise(p3.xz / 0.6) * tri_weights.y + sd_noise(p3.xy / 0.6) * tri_weights.z;
+		float grit = sd_noise(p3.zy / 0.08) * tri_weights.x + sd_noise(p3.xz / 0.08) * tri_weights.y + sd_noise(p3.xy / 0.08) * tri_weights.z;
+		float vis_blocks = sd_visible(p3.xz + p3.y, 0.6) * relief;
+		float vis_grit = sd_visible(p3.xz + p3.y, 0.08) * relief;
+		rock_h = blocks * 0.06 * vis_blocks + grit * 0.008 * vis_grit;
+		float strata = sd_noise(vec2(p3.y / 1.2, (p3.x + p3.z) / 40.0)) - 0.5;
+		final_color += c.rgb * (1.0 + (strata * 0.25 + (blocks - 0.5) * 0.15) * relief + (grit - 0.5) * 0.15 * vis_grit) * w_rock;
 	}
+	float snow_h = 0.0;
 	if (w_snow > MIN_LAYER_WEIGHT) {
 		vec4 c = has_snow_texture ? sample_triplanar(snow_texture, v_world_pos, snow_inv_scale, tri_weights) : snow_color;
-		final_color += c.rgb * w_snow;
+		// Neige : congères douces de 1,5 m et grain de 15 cm, presque sans variation de teinte
+		float relief = grass_relief * detail_strength;
+		float drifts = sd_noise(v_world_pos.xz / 1.5);
+		float crust = sd_noise(v_world_pos.xz / 0.15);
+		snow_h = drifts * 0.04 * sd_visible(v_world_pos.xz, 1.5) * relief + crust * 0.004 * sd_visible(v_world_pos.xz, 0.15) * relief;
+		final_color += c.rgb * (1.0 - (1.0 - drifts) * 0.04 * relief) * w_snow;
 	}
 
 	// Facettes de la roche (Lot E3 / SRS §8.1)
@@ -163,8 +180,10 @@ void fragment() {
 	vec3 rock_n = normalize(mix(n, flat_n, rock_facet_strength * detail_strength));
 	// Normale du monde ramenée dans l'espace de la vue, celui de NORMAL
 	NORMAL = normalize((VIEW_MATRIX * vec4(mix(n, rock_n, clamp(w_rock, 0.0, 1.0)), 0.0)).xyz);
-	if (grass_h > 0.0) {
-		NORMAL = sd_bump(NORMAL, VERTEX, grass_h * w_grass);
+	// Faux relief des trois couches (Y11) : une seule perturbation de la normale
+	float surface_h = grass_h * w_grass + rock_h * w_rock + snow_h * w_snow;
+	if (surface_h > 0.0) {
+		NORMAL = sd_bump(NORMAL, VERTEX, surface_h);
 	}
 
 	if (cloud_shadow_enabled && cloud_shadow_coverage > 0.0) {
