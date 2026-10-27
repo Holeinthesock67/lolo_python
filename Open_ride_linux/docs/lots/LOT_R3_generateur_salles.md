@@ -84,3 +84,12 @@ Aucune.
 
 - Choix des archétypes et enchaînement des salles (lot R15).
 - Règles de combat liées aux marqueurs (lot R5).
+
+## 9. Livraison (27 octobre 2026)
+
+- `rogue/rooms.py` (`generate_room`, `room_to_route`, `Room.to_message`), paramètres des profils dans `RogueBalance.room_profiles` et ses champs de salle (`rogue/balance.py`). Tests : `core/tests/test_rogue_rooms.py` (157 cas).
+- **Conception en secondes, conversion en mètres** par la physique complète (inertie comprise) du cycliste de référence qui tient la cible de chaque tronçon, parti à la vitesse d'équilibre du premier tronçon (la vitesse d'équilibre seule donnait 5 % d'écart sur le Puncheur) ; `Room.time_s` donne le temps nominal à chaque point du profil, `firewall_plan` et `target_frac` sont des tronçons `Stretch` en distance (égaux au départ : le joueur tient le rythme du Firewall, R7 pourra les séparer).
+- **Choix de lecture du cahier :** `variant` vaut `""` ou `"30_30"` (Puncheur, imposé quand `min_bump_s` dépasse la bosse de 15 s) et `"phase1"` à `"phase3"` pour le boss (archétype `boss`) ; l'objectif choisit la colonne du tableau, et la colonne la plus proche est prise quand l'archétype n'en a pas (Diesel en VO2max donne le seuil, Puncheur en endurance donne le VO2max). Grimpeur : le dernier palier se prolonge si la durée dépasse les paliers prévus. Sprinteur et Puncheur : la graine décale la première salve ou le premier creux ; Diesel : la graine décale la rampe de ±0,2 point ; Saboteur : somme de deux sinusoïdes de période 30 à 60 s.
+- Les fractions de FTP du boss (phase 1 : 0,90 et 0,70 en endurance ; phase 2 : 1,00 / 0,70 / 1,05 et 0,80 / 0,60 / 0,85 ; transition : 0,50) ne figuraient pas au cahier : valeurs de départ à valider en R14.
+- `param` des marqueurs est un nombre ou un texte (schéma de `room`) : cadence visée des tunnels, armure, seuil de FTP des pavés, délai de piratage des balises de purge, sens `up`/`down` des arches. La tolérance des tunnels (3 rpm) et le braquet minimal des pavés (10) sont dans `RogueBalance`.
+- Les chutes de pente sont étalées (au plus `max_drop_pts` en 10 s), les montées restent brusques ; les arches (`arch_lead_s` avant) sont posées au début de chaque rupture de 3 points ou plus.

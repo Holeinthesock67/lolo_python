@@ -28,6 +28,9 @@ signal workout_saved_received(msg: Dictionary)
 ## Plans d'entraînement et suivi du plan actif (lot O12, contrat v1.3) : réponse à list_plans,
 ## start_plan et stop_plan, en un seul datagramme.
 signal plans_received(msg: Dictionary)
+
+## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
+signal world_status_received(msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
 
@@ -50,6 +53,11 @@ var test_mode := false
 
 ## Configuration reçue dans hello_ack (ftp_w, gears_total, theme) ; vide tant que le core n'a pas répondu.
 var core_config: Dictionary = {}
+## Dernier champ `open_world` reçu dans un `state` (une trame sur 30 porte `devices` et l'omet : on garde
+## le précédent, contrat §4 « Monde ouvert »). Vide hors monde ouvert.
+var open_world: Dictionary = {}
+## Dernier `world_status` reçu.
+var world_status: Dictionary = {}
 var core_version: String = ""
 ## Révision du contrat annoncée par le core (vide : core antérieur à la révision 1.3).
 var core_rev: String = ""
@@ -222,6 +230,9 @@ func _poll_incoming() -> void:
 				workout_saved_received.emit(json_obj)
 			"plans":
 				plans_received.emit(json_obj)
+			"world_status":
+				world_status = json_obj
+				world_status_received.emit(json_obj)
 			"scan_results":
 				scan_results_received.emit(json_obj)
 			"settings":
@@ -248,7 +259,17 @@ func _on_state(msg: Dictionary) -> void:
 		test_log("core_returned")
 		core_returned.emit()
 	_ack_pending(int(msg.get("last_cmd_id", 0)))
+	_track_open_world(msg)
 	state_received.emit(msg)
+
+
+## Garde le dernier `open_world` tant que la séance est un monde ouvert (route `ow:<id>`) ; le vide sinon.
+func _track_open_world(msg: Dictionary) -> void:
+	var ow = msg.get("open_world", null)
+	if typeof(ow) == TYPE_DICTIONARY:
+		open_world = ow
+	elif not str(msg.get("route_id", "")).begins_with("ow:"):
+		open_world = {}
 
 
 ## Messages de test (type « _test », seulement avec --test-mode) : permettent au faux core de

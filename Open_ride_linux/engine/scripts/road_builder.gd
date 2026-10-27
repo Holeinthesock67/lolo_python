@@ -90,6 +90,62 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 	return arrays
 
 
+## Ruban le long d'une polyligne (amorce de branche d'un carrefour, lot W10) : chaussée de `width_m`,
+## alpha de 1 à 0 sur les `fade_m` derniers mètres (couleur de sommet ; le matériau doit s'en servir).
+## `xs`, `ys`, `zs` : positions du monde, au moins deux points. Renvoie [] sinon.
+static func build_polyline_arrays(xs: Array, ys: Array, zs: Array, width_m: float, fade_m: float) -> Array:
+	var count := xs.size()
+	if count < 2 or ys.size() != count or zs.size() != count:
+		return []
+	var cum := PackedFloat64Array([0.0])
+	for i in range(1, count):
+		cum.append(cum[i - 1] + Vector2(float(xs[i]) - float(xs[i - 1]), float(zs[i]) - float(zs[i - 1])).length())
+	var total: float = cum[count - 1]
+	var vertices := PackedVector3Array()
+	var normals := PackedVector3Array()
+	var uvs := PackedVector2Array()
+	var colors := PackedColorArray()
+	for i in range(count):
+		var a := maxi(i - 1, 0)
+		var b := mini(i + 1, count - 1)
+		var dx := float(xs[b]) - float(xs[a])
+		var dz := float(zs[b]) - float(zs[a])
+		var norm := Vector2(dx, dz).length()
+		var dir := Vector2(dx, dz) / norm if norm > 1e-9 else Vector2(0.0, -1.0)
+		var right := Vector3(-dir.y, 0.0, dir.x)
+		var centre := Vector3(float(xs[i]), float(ys[i]), float(zs[i]))
+		var alpha := 1.0
+		if fade_m > 0.0:
+			alpha = clampf((total - float(cum[i])) / fade_m, 0.0, 1.0)
+		for side in [-1.0, 1.0]:
+			vertices.append(centre + right * (0.5 * width_m * side))
+			normals.append(Vector3.UP)
+			uvs.append(Vector2(0.5 + 0.5 * side, float(cum[i]) / V_REPEAT_M))
+			colors.append(Color(1.0, 1.0, 1.0, alpha))
+	var indices := PackedInt32Array()
+	for j in range(count - 1):
+		var l0 := j * 2
+		indices.append_array(PackedInt32Array([l0, l0 + 2, l0 + 1, l0 + 1, l0 + 2, l0 + 3]))
+	var arrays := []
+	arrays.resize(Mesh.ARRAY_MAX)
+	arrays[Mesh.ARRAY_VERTEX] = vertices
+	arrays[Mesh.ARRAY_NORMAL] = normals
+	arrays[Mesh.ARRAY_TEX_UV] = uvs
+	arrays[Mesh.ARRAY_COLOR] = colors
+	arrays[Mesh.ARRAY_INDEX] = indices
+	return arrays
+
+
+## Matériau des amorces : couleur de la route, transparence portée par la couleur de sommet.
+static func make_preview_material(road_color: Color = ROAD_COLOR) -> StandardMaterial3D:
+	var mat := StandardMaterial3D.new()
+	mat.albedo_color = road_color
+	mat.vertex_color_use_as_albedo = true
+	mat.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
+	mat.roughness = 0.9
+	return mat
+
+
 ## Hauteur du centre de la chaussée en s, lue dans les tableaux du tronçon (pour les tests).
 static func center_height(arrays: Array, route, k: int, s_pos: float) -> float:
 	var s_values := section_s(route, k)
