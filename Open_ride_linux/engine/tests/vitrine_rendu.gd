@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Vitrine de rendu : route, herbe et personnages vus de près, sans core ni parcours, pour comparer avant et
+## Vitrine de rendu : route, herbe, personnages et animaux vus de près, sans core ni parcours, pour comparer avant et
 ## après une retouche graphique (captures PNG et compte de triangles et d'appels de dessin par vue).
 ## Mêmes scripts que la scène principale (grass_tufts.gd, crowd_renderer.gd, terrain.gdshader), posés
 ## sur une route droite de démonstration ; les modèles de foule et de passants sont remplacés par des
@@ -22,6 +22,8 @@ const RoadBuilder := preload("res://scripts/road_builder.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
+const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
+const FaunaShader := preload("res://shaders/fauna.gdshader")
 
 const SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
@@ -36,7 +38,16 @@ const VIEWS := {
 	"cyclistes": [Vector3(-1.6, 1.5, -3.0), Vector3(1.0, 0.9, -9.5), 55.0],
 	"cycliste_profil": [Vector3(-2.5, 1.0, -7.2), Vector3(1.2, 0.9, -7.2), 45.0],
 	"passants": [Vector3(0.5, 1.5, -24.0), Vector3(5.0, 0.9, -31.0), 60.0],
+	"animaux": [Vector3(-1.5, 1.6, -3.0), Vector3(-7.0, 0.8, -12.5), 55.0],
+	"animaux_pres": [Vector3(-4.0, 1.2, -9.6), Vector3(-7.5, 0.9, -13.0), 50.0],
 }
+## Animaux (fauna_renderer.gd build_mesh et fauna.gdshader) : espèce, position, cap (radians), phase, tête levée.
+const ANIMALS := [
+	["cow", Vector3(-7.5, 0.0, -13.0), 1.75, 0.1, 1.0], ["cow", Vector3(-10.5, 0.0, -17.0), 2.6, 0.7, 0.0],
+	["sheep", Vector3(-5.2, 0.0, -14.5), -0.4, 0.2, 1.0], ["sheep", Vector3(-6.0, 0.0, -16.0), 0.9, 0.5, 0.0],
+	["sheep", Vector3(-4.4, 0.0, -16.8), 2.2, 0.8, 1.0], ["deer", Vector3(-12.0, 0.0, -11.5), 0.6, 0.3, 1.0],
+	["bird", Vector3(-4.5, 2.4, -8.5), 1.2, 0.0, 0.0], ["bird", Vector3(-6.5, 3.0, -10.0), 0.9, 0.4, 0.0],
+]
 
 
 ## Route droite le long de -z (cap 0, comme route_data.gd) : seules les méthodes lues par grass_tufts.gd.
@@ -185,6 +196,7 @@ func _build_world(preset: String) -> SubViewport:
 	passersby.setup_passersby(FixedPassersby.new())
 	passersby.update_passersby(Vector3(0.5, 1.5, -24.0), 24.0, 0.0)
 	_add_cyclists(vp)
+	_add_animals(vp)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
 	cam.far = 2000.0
@@ -231,6 +243,34 @@ func _add_cyclists(vp: SubViewport) -> void:
 			mm.set_instance_color(i, places[i][1] if kind == "rider" else places[i][1].darkened(0.3))
 			var anim := 7.0 if kind == "rider" else 8.0
 			mm.set_instance_custom_data(i, Color(0.3 * i, places[i][2], anim, PeopleMesh.outfit(i * 2, i + 1, PeopleMesh.RIDER_OUTFIT_TROUSERS)))
+		var mmi := MultiMeshInstance3D.new()
+		mmi.multimesh = mm
+		mmi.material_override = mat
+		vp.add_child(mmi)
+
+
+## Bêtes et oiseaux posés à la main (ANIMALS), avec les maillages et le shader de fauna_renderer.gd ; oiseaux
+## à l'échelle des rapaces, ailes battantes.
+func _add_animals(vp: SubViewport) -> void:
+	for sp in FaunaRenderer.SPECIES:
+		var mat := ShaderMaterial.new()
+		mat.shader = FaunaShader
+		mat.set_shader_parameter("mode", 0 if sp == "bird" else 1)
+		for key in ["albedo", "accent", "light"]:
+			var table: Dictionary = {"albedo": FaunaRenderer.ALBEDO, "accent": FaunaRenderer.ACCENT, "light": FaunaRenderer.LIGHT}[key]
+			mat.set_shader_parameter(key, table[sp])
+		mat.set_shader_parameter("patches", FaunaRenderer.PATCHES[sp])
+		var mine := ANIMALS.filter(func(a): return a[0] == sp)
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_custom_data = true
+		mm.mesh = FaunaRenderer.build_mesh(sp)
+		mm.instance_count = mine.size()
+		for i in range(mine.size()):
+			var a: Array = mine[i]
+			var scale := FaunaRenderer.BIRD_SCALE["raptor"] if sp == "bird" else 1.0
+			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, a[2]).scaled(Vector3.ONE * scale), a[1]))
+			mm.set_instance_custom_data(i, Color(a[3], a[4], 1.0 if sp == "bird" else 0.0, 0.0))
 		var mmi := MultiMeshInstance3D.new()
 		mmi.multimesh = mm
 		mmi.material_override = mat

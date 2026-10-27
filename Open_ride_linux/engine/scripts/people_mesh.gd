@@ -113,17 +113,18 @@ class Builder:
 		st.begin(Mesh.PRIMITIVE_TRIANGLES)
 		st.set_custom_format(0, SurfaceTool.CUSTOM_RGBA_FLOAT)
 
-	func vertex(p: Vector3, n: Vector3, flag_w: float = -1.0) -> void:
+	func vertex(p: Vector3, n: Vector3, flag_w: float = -1.0, weight_y: float = -1.0) -> void:
 		st.set_normal((xform.basis * n).normalized())
-		st.set_uv(Vector2(uv.x if flag_w < 0.0 else flag_w, uv.y))
+		st.set_uv(Vector2(uv.x if flag_w < 0.0 else flag_w, uv.y if weight_y < 0.0 else weight_y))
 		st.set_uv2(uv2)
 		st.set_color(Color.WHITE)
 		st.set_custom(0, Color(float(region), shin, holder, extra))
 		st.add_vertex(xform * p)
 
 	## Prisme effilé de `a` à `b` (axe quelconque), section elliptique (rayons x et z du repère de la pièce)
-	## `ra` en bas et `rb` en haut, bouts fermés ; normales lissées sur le pourtour.
-	func prism(a: Vector3, b: Vector3, ra: Vector2, rb: Vector2, sides: int = SIDES) -> void:
+	## `ra` en bas et `rb` en haut, bouts fermés ; normales lissées sur le pourtour. `wb` ≥ 0 : UV.y au bout `b`
+	## (UV.y de la pièce au bout `a`), pour un cou qui plie progressivement (animaux).
+	func prism(a: Vector3, b: Vector3, ra: Vector2, rb: Vector2, sides: int = SIDES, wb: float = -1.0) -> void:
 		var axis := (b - a).normalized()
 		var ref := Vector3.FORWARD if absf(axis.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT
 		var u := axis.cross(ref).normalized()
@@ -142,11 +143,11 @@ class Builder:
 			var a1: Array = ring.call(a, ra, i + 1)
 			var b0: Array = ring.call(b, rb, i)
 			var b1: Array = ring.call(b, rb, i + 1)
-			for v in [a0, b1, b0, a0, a1, b1]:
-				vertex(v[0], v[1])
+			for v in [[a0, -1.0], [b1, wb], [b0, wb], [a0, -1.0], [a1, -1.0], [b1, wb]]:
+				vertex(v[0][0], v[0][1], -1.0, v[1])
 			# Bouts
 			vertex(a, -axis); vertex(a0[0], -axis); vertex(a1[0], -axis)
-			vertex(b, axis); vertex(b1[0], axis); vertex(b0[0], axis)
+			vertex(b, axis, -1.0, wb); vertex(b1[0], axis, -1.0, wb); vertex(b0[0], axis, -1.0, wb)
 
 	## Ellipsoïde de centre `c` et de rayons `r`, limité aux anneaux d'élévation entre `from_deg` et 90°.
 	func ellipsoid(c: Vector3, r: Vector3, from_deg: float = -90.0, rings: int = 6) -> void:
