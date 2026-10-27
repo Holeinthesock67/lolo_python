@@ -112,7 +112,8 @@ Retours du propriétaire (25 octobre) : bâtiments sans texture et tous à toit 
 
 1. **Tonalité et étalonnage** : AgX (4.4) et ses réglages (4.6), ajustements de luminosité, contraste et saturation de l'`Environment`. Coût nul ou presque. [Environment and post-processing](https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html).
 2. **Bâtiments** : toits à deux ou quatre pans générés, textures de façade par thème en atlas (une seule texture par village, peu de changements de matériau), fenêtres par shader plutôt que par géométrie. C'est le « lot habillage » déjà évoqué.
-3. **Marquages et détails de route** : décalques (`Decal`) pour les marques, taches et bords ; coût par pixel couvert, à limiter en distance. [Using decals](https://docs.godotengine.org/en/stable/tutorials/3d/using_decals.html).
+3. **Chaussée et herbe** (demande du 27 octobre, lot proposé Y11) : cartes de normales et rugosité variable, détail à deux échelles, décalques (`Decal`, coût par pixel couvert, limités en distance), route mouillée, parallaxe en `high` ; pour l'herbe, normale par le dessus, vagues de vent, touffes raccordées au sol, coquilles en essai. [Using decals](https://docs.godotengine.org/en/stable/tutorials/3d/using_decals.html), [Standard Material 3D](https://docs.godotengine.org/en/stable/tutorials/3d/standard_material_3d.html). Cahier : `docs/lots/LOT_Y11_chaussee_herbe_relief.md`.
+8. **Lumière et particules** (demande du 27 octobre, lot proposé Y12) : glow léger, rayons de soleil, ombre des nuages en `medium`, reflets SSR, poussière, pollen, feuilles, lucioles, éclaboussures, kit d'étincelles du Cyber-Rogue ; budgets par préréglage et échelle commune avec R17. [Particle systems (3D)](https://docs.godotengine.org/en/stable/tutorials/3d/particles/index.html), [Volumetric fog](https://docs.godotengine.org/en/stable/tutorials/3d/volumetric_fog.html). Cahier : `docs/lots/LOT_Y12_lumieres_particules.md`.
 4. **Eau** : SSR refait en 4.6 (demi-résolution) et sondes de réflexion octaédriques ; seulement en `medium` et `high`.
 5. **Occlusion ambiante** : SSAO en demi-résolution en `medium` ; occlusion spéculaire automatique (4.5).
 6. **Foule et passants** (P15, P21) : animation dans le shader de sommets à partir d'une texture, comme l'exemple « des milliers de poissons » de la documentation, avec `MultiMesh` et données par instance. [Animating thousands of fish](https://docs.godotengine.org/en/stable/tutorials/performance/vertex_animation/animating_thousands_of_fish.html).
@@ -141,11 +142,27 @@ Validée par le propriétaire le 27 octobre (§0). Toute la série vient **aprè
 | Y5 | Arbres lointains en imposteurs écrits par nous (décision du 27 octobre, sans extension externe), feuillage en `alpha scissor`, densité par `visible_instance_count` (T5, T10) | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) |
 | Y6 | Résolution 3D par préréglage et résolution adaptative (FSR 1.0, temps GPU), anticrénelage FXAA/SMAA en `low` (T6, T12) | Y2, X13 | Petite | Oui |
 | Y7 | Essai du moteur Mobile pour `low` (T13) : mesure seule, décision du propriétaire | Y2 | Petite | Oui (mesure) |
-| Y8 | Habillage, dans l'ordre validé : toits à pans et textures de façade en atlas, puis étalonnage AgX, puis décalques de route (§6) | Y3, P20 | Grande | En partie |
+| Y8 | Habillage, dans l'ordre validé : toits à pans et textures de façade en atlas, puis étalonnage AgX (§6) ; les décalques de route passent dans Y11 (proposition du 27 octobre) | Y3, P20 | Grande | En partie |
 | Y9 | Lissage des bots : mémoire de trames, Hermite, déplacements latéraux, LOD des bots (§7) | O7 | Moyenne | Oui |
 | Y10 | Comportement des bots (profils, attaques, abri) côté core | Y9, séries T et R | Moyenne | Oui |
+| Y11 (proposé) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée, parallaxe en `high`) et faux relief de l'herbe (normale, teinte, vagues de vent, touffes, coquilles en essai) ; enveloppe +1,0 ms GPU en `medium` | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie |
+| Y12 (proposé) | Lumière (glow, rayons, ombre des nuages, SSR, halo) et particules (poussière, pollen, feuilles, lucioles, éclaboussures, foules, kit Cyber-Rogue) ; enveloppe +1,5 ms GPU en `medium` | Y2, Y1, P17, R17, Y11 | Moyenne | Oui |
 
-Ordre conseillé : Y1, Y2, puis Y4, Y6 et Y3 (les plus rentables), Y5, Y7, et enfin Y8, Y9, Y10. Ce qui relève de « ne pas dessiner l'invisible » (tuiles derrière, construction inutile, occlusion par le relief) reste dans S1, pour ne pas faire deux fois le même travail.
+Ordre conseillé : Y1, Y2, puis Y4, Y6 et Y3 (les plus rentables), Y5, Y7, et enfin Y8, Y11, Y12, Y9, Y10 (proposition du 27 octobre pour Y11 et Y12 : les gains de performance d'abord, ils paient l'habillage). Essai de rendu mesuré avec les outils de la série X : `docs/ESSAI_RENDU_Y11_Y12.md`. Ce qui relève de « ne pas dessiner l'invisible » (tuiles derrière, construction inutile, occlusion par le relief) reste dans S1, pour ne pas faire deux fois le même travail.
+
+## 10. Chaussée, herbe, lumière et particules : questions au propriétaire (27 octobre)
+
+Recommandations en premier ; cahiers `LOT_Y11_chaussee_herbe_relief.md`, `LOT_Y12_lumieres_particules.md`, essai `docs/ESSAI_RENDU_Y11_Y12.md`.
+
+1. **Valider Y11 et Y12** dans la série Y, à faire après Y8 (ordre : Y8, Y11, Y12, puis Y9, Y10). *Recommandé : oui.*
+2. **Enveloppe** : au plus +2,5 ms de GPU en `medium` pour Y11 et Y12 ensemble (+1,0 et +1,5), +1 ms au plus sur le p99, `low` inchangé dans ses budgets (55 images/s, p99 sous 25 ms). *Recommandé : oui.*
+3. **Étape 0 de l'essai** (référence sans code, environ 35 min sur le PC, sans le vélo) : à lancer après Y1. *Recommandé : oui, après Y1.*
+4. **Étape 1** (maquette pour mesurer, petit code d'essai inactif par défaut, environ 1 h 15 de mesures plus l'endurance) : maintenant, ou au début de la phase finale après Y2. *Recommandé : après Y2*, car le glow et le SSR changent en 4.6 et une mesure sur 4.3 serait à refaire.
+5. **Textures de sol** : packs CC0 seulement (décision du 26 octobre), Gemini réservé aux décalques fictifs (inscriptions dans les cols). *Recommandé : garder cette règle.*
+6. **Décalques de route** : déplacés d'Y8 vers Y11 (un seul lot pour la chaussée). *Recommandé : oui.*
+7. **Herbe** : budgets des touffes 1 500 / 8 000 / 20 000 (aujourd'hui 0 / 4 000 / 12 000) sous réserve de la mesure, coquilles d'herbe en essai `high` seulement, parallaxe de l'herbe écartée. *Recommandé : oui.*
+8. **Halo du soleil** (L6) : seulement en `high`, coupé par défaut en `medium`. *Recommandé : oui* (effet de goût, presque gratuit).
+9. **Lucioles** (P3) : présentes dès la 1.x quand le soleil du thème est bas, ou réservées à la 2.0 avec le jour et la nuit. *Recommandé : 2.0*, pour ne pas avoir un effet qui dépend de l'heure avant que l'heure existe.
 
 ## 9. Sources
 
