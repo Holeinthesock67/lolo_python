@@ -27,7 +27,7 @@ MAX_STATE_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
 CONTRACT_REV = "1.3"
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
-CORE_MODES = ("ride", "erg")
+CORE_MODES = ("ride", "erg", "open_world")   # monde ouvert : révision 1.5, lot W9
 MAX_LIST_DATAGRAM_SIZE = 60000
 # Messages en parties (`part`, `parts`) : 60 000 octets au plus par partie (contrat §2).
 LIST_MESSAGE_TYPES = ("routes", "workouts", "imports")
@@ -73,6 +73,7 @@ class IpcState:
     wind: dict[str, float] | None = None   # révision 1.3 (lot P2) : 2 fois par seconde, jamais avec devices
     draft: float | None = None             # révision 1.3 (lot P3) : présent dès qu'il y a un bot
     draft_bot: str | None = None
+    open_world: dict[str, Any] | None = None   # révision 1.5 (lot W9) : jamais dans une trame avec devices
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -96,6 +97,8 @@ class IpcState:
             d.pop("draft", None)
         if self.draft_bot is None:
             d.pop("draft_bot", None)
+        if self.open_world is None or self.devices is not None:
+            d.pop("open_world", None)
         return d
 
 
@@ -233,6 +236,10 @@ class IpcServer:
             "message": message,
         }
         self.send_raw(msg)
+
+    def send_world_status(self, status: dict[str, Any]) -> None:
+        """`world_status` (révision 1.5) : avancement de la préparation du monde ouvert."""
+        self.send_raw({"type": "world_status", "v": CONTRACT_VERSION, **status})
 
     def send_shutdown(self) -> None:
         msg = {

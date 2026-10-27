@@ -1,6 +1,7 @@
 """Lot C : écarts au contrat IPC relevés par l'audit du 23 octobre 2026."""
 
 import asyncio
+from pathlib import Path
 
 from openride_core import fit_export, ftms
 from openride_core.config import BikeConfig, Config, TrainerConfig
@@ -152,7 +153,8 @@ def test_c5_hello_ack_reflects_config(tmp_path, monkeypatch):
     s.server._handle_message({"type": "hello", "v": 1, "engine_version": "t"})
     ack = [f for f in frames if f["type"] == "hello_ack"][0]
     assert ack["config"] == {"ftp_w": 280.0, "gears_total": 22, "theme": "default", "difficulty_pct": 50,
-                             "modes": ["ride", "erg"]}   # modes : révision 1.3
+                             "modes": ["ride", "erg", "open_world"],     # modes : révision 1.3, monde ouvert 1.5
+                             "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")}
 
 
 # C6 ---------------------------------------------------------------------------------------
