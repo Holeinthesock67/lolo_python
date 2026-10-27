@@ -69,7 +69,7 @@ def chunk_bboxes(
 
 
 def build_overpass_query(bboxes: list[tuple[float, float, float, float]]) -> str:
-    """Construit la requête Overpass QL pour un paquet de boîtes englobantes (Lots I3 et I4)."""
+    """Construit la requête Overpass QL pour un paquet de boîtes englobantes (Lots I3, I4 et P22)."""
     parts: list[str] = []
     for south, west, north, east in bboxes:
         b = f"({south:.5f},{west:.5f},{north:.5f},{east:.5f})"
@@ -93,8 +93,11 @@ def build_overpass_query(bboxes: list[tuple[float, float, float, float]]) -> str
             f'  way["tourism"="viewpoint"]{b};',
             f'  way["landuse"="farmyard"]{b};',
             f'  relation["landuse"="farmyard"]{b};',
-            f'  way["landuse"="meadow"]["animal"]{b};',
-            f'  relation["landuse"="meadow"]["animal"]{b};',
+            f'  way["landuse"~"^(meadow|farmland|grass)$"]{b};',
+            f'  relation["landuse"~"^(meadow|farmland|grass)$"]{b};',
+            f'  way["natural"~"^(grassland|heath)$"]{b};',
+            f'  relation["natural"~"^(grassland|heath)$"]{b};',
+            f'  way["highway"~"^({"|".join(C.ROAD_KINDS)})$"]{b};',
             f'  node["power"="generator"]["generator:source"="wind"]{b};',
             f'  node["man_made"="flagpole"]{b};',
             f'  way["waterway"~"^(river|stream|canal)$"]{b};',

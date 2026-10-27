@@ -115,6 +115,7 @@
 | [P19](LOT_P19_integration_jour_nuit_saisons.md) | Intégration du jour, de la nuit et des saisons | GDScript | P7, P17, P18 | Moyenne | Non : interne, **version 2.0** (issue #143) |
 | [P20](LOT_P20_packs_textures_performance.md) | Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | Python + GDScript | N10, O3, P17 | Moyenne | Oui, **version 2.0** (issue #147) |
 | [P21](LOT_P21_passants_villages.md) | Passants dans les villages et le long de la route : gestes au passage, voix et aboiements | GDScript + shader | P15 | Petite | **Livré le 27 octobre** (issue #183) |
+| [P22](LOT_P22_pres_champs_routes_voisines.md) | Format `.world` 1.5 : prés, champs et prairies dans la végétation, couche facultative des routes voisines | Python + GDScript | I3, I4, K4, T1 | Moyenne | **Livré le 27 octobre** (deuxième vague du décor vivant ; affichage par P24 et P25) |
 | [P23](LOT_P23_oiseaux_campagne.md) | Oiseaux de la campagne : rapace en cercle, volées en V, corneilles qui s'envolent au passage, cris | GDScript + shader | P11, P17, P21 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire (deuxième vague du décor vivant, P22 à P27 proposés le 27 octobre) |
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (PR #91, recette visuelle sur la GTX 1060 à faire) |
@@ -332,7 +333,7 @@ E3 ──► O1 ;  N3 ──► O2 ;  N12 ──► O3 ──► O4 ;  Q1 ──
 O9 ──► O11 ;  O3 ──► O10 ──► O11 ;  O5 ──► O15 ──► O16 ;  N6, O4, O10, O11, O15 ──► O12 ;  O13, N7 ──► O14
 N, O1, O2, O6 ──► O8 (recette 1.0)
 O8 ──► P1 ──► P2 ──► P3 (avec N9) ;  P1 ──► P4 ──► P5, P6, P8, P9, P10, P11, P12, P14
-P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7) ;  P11, P17, P21 ──► P23
+P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7) ;  P11, P17, P21 ──► P23 ;  I3, I4, K4, T1 ──► P22
 Q1 ──► Q4 ;  Q3 ──► Q5 ;  Q2, Q6 : indépendants
 O1, Q2 ──► S1
 Version 2.0 : Q3, Q4 ──► R0 ;  P1, PR #287 ──► T1 ;  R3 ──► R4 ;  R0, R2, R3, R4 ──► R5 ──► R6 ──► R15 ──► R7 ;  T1, R6, R15 ──► R8

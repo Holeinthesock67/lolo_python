@@ -60,7 +60,7 @@ def test_manifest_terrain_block(world):
     assert t["near_cell_m"] == 10 and t["far_cell_m"] == 50
     assert len(t["tiles"]["near"]) > 0 and len(t["tiles"]["far"]) > 0
     assert manifest["route"]["alt_source"] == "synthetic"
-    assert manifest["format_version"] == "1.3"
+    assert manifest["format_version"] == "1.5"
 
 
 # Critère 2 : tuile proche ------------------------------------------------------------------
