@@ -389,12 +389,34 @@ func _cycle_routes(item_id: String) -> void:
 	menu.focus_item(item_id)
 
 
-## Fiche du parcours choisi (écran Prêt) : lignes de catalog_model.route_card(), vide sans fiche.
-func route_card() -> Array:
-	for r in routes_raw:
-		if r is Dictionary and str(r.get("id", "")) == menu.world_id:
-			return CatalogModel.route_card(r)
-	return []
+## Carte de détail de l'écran (lot « présentation des menus », étape 2), {} sans carte : fiche du
+## parcours choisi (Prêt), du parcours ou de l'entraînement sous le focus (listes), aperçu de
+## l'entraînement en création, en-tête du bilan (le bilan lui-même vient de `summary`). Fiches de
+## catalog_model.gd (route_sheet, workout_sheet).
+func card(st: Dictionary) -> Dictionary:
+	var focus := int(st.get("focus", -1))
+	var focused := str(st["items"][focus]["id"]) if focus >= 0 and focus < st["items"].size() else ""
+	var screen := str(st["screen"])
+	if screen == MenuModel.READY:
+		return _sheet(routes_raw, menu.world_id, func(r): return CatalogModel.route_sheet(r))
+	if screen == MenuModel.ROUTES:
+		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
+	if screen == MenuModel.WORKOUTS:
+		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
+	if screen == WORKOUT_CREATE:
+		var blocks: Array = builder.profile()
+		return CatalogModel.workout_sheet({"id": builder.workout_id(), "name": builder.workout_name(),
+			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
+	if screen == SUMMARY:
+		return {"title": "Bilan de la séance"}
+	return {}
+
+
+func _sheet(raw: Array, id: String, make: Callable) -> Dictionary:
+	for r in raw:
+		if r is Dictionary and id != "" and str(r.get("id", "")) == id:
+			return make.call(r)
+	return {}
 
 
 # --- plans et test de FTP (lot O12) -----------------------------------------------------------
@@ -839,5 +861,5 @@ func state() -> Dictionary:
 		st["status"] = ready_message
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
-	st["card"] = route_card() if st["screen"] == MenuModel.READY else []
+	st["card"] = card(st)
 	return st
