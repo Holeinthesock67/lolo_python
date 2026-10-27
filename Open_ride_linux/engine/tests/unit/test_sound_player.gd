@@ -9,6 +9,8 @@ extends SceneTree
 ## - Temps CPU de génération des sons au démarrage < 500 ms.
 ## - Lot P9 : fonds d'ambiance générés (ou .ogg de remplacement), lecteurs réglés par le modèle,
 ##   cloches de l'heure pleine sur les points church_bell.
+## - Lot P10 : vent en bruit passe-bande bouclé sans clic, cliquetis calé sur le modèle, un « clac » par
+##   reprise du pédalage.
 
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const SoundModel := preload("res://scripts/sound_model.gd")
@@ -162,6 +164,42 @@ func _test_ambience_and_bells() -> void:
 	sp.queue_free()
 
 
+# Lot P10 : boucle du vent sans clic, pitch du cliquetis égal au rythme du modèle, un « clac » par reprise
+func _test_p10_wind_and_freewheel() -> void:
+	var sp = SoundPlayer.new()
+	root.add_child(sp)
+	await process_frame
+	var n0: int = sp.get_child_count()
+	var wind: AudioStreamWAV = sp._streams["wind"]
+	var d := wind.data
+	var last := d.decode_s16(d.size() - 2)
+	var first := d.decode_s16(0)
+	var max_step := 0
+	for i in range(1, d.size() / 2):
+		max_step = maxi(max_step, absi(d.decode_s16(i * 2) - d.decode_s16(i * 2 - 2)))
+	_check(absi(first - last) <= max_step, "boucle du vent : raccord (%d) pas plus brusque que le bruit lui-même (%d)" % [
+		absi(first - last), max_step])
+	var clac: AudioStreamWAV = sp._streams["clac"]
+	_check(clac.loop_mode == AudioStreamWAV.LOOP_DISABLED and clac.data.size() / 2.0 / clac.mix_rate < 0.08,
+		"« clac » : son court sans boucle (%.0f ms)" % (clac.data.size() / 2.0 / clac.mix_rate * 1000.0))
+
+	var pitch_ok := true
+	var t := 0.0
+	for phase in [[36.0, 0.0, 40], [36.0, 200.0, 10], [18.0, 0.0, 40], [18.0, 200.0, 10]]:
+		for i in range(int(phase[2])):
+			var ev: Dictionary = sp.update_audio({"v": float(phase[0]) / 3.6, "power": phase[1], "paused": false}, t, Vector3.ZERO)
+			if bool(ev["freewheel"]["playing"]):
+				var want := float(ev["freewheel"]["clicks_per_s"]) / SoundPlayer.FREEWHEEL_LOOP_CLICKS
+				pitch_ok = pitch_ok and is_equal_approx(sp._freewheel_player.pitch_scale, want)
+			t += 0.05
+	_check(pitch_ok and absf(sp._freewheel_player.pitch_scale - 0.857) < 0.02,
+		"cliquetis : pitch_scale = coups/s du modèle / %d (%.3f à 18 km/h)" % [
+			int(SoundPlayer.FREEWHEEL_LOOP_CLICKS), sp._freewheel_player.pitch_scale])
+	_check(sp.clacs_played == 2 and sp.get_child_count() == n0,
+		"deux reprises du pédalage : %d « clac », aucun nœud créé" % sp.clacs_played)
+	sp.queue_free()
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -171,5 +209,6 @@ func _run() -> void:
 	await _test_scenarios_and_limits()
 	_test_ogg_override()
 	await _test_ambience_and_bells()
+	await _test_p10_wind_and_freewheel()
 	print("test_sound_player : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
