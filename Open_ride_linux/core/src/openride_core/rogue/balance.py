@@ -50,6 +50,52 @@ class RogueBalance:
     # Firewall (R4)
     start_gap_m: float = 150.0          # le mur part derrière le joueur à l'entrée de chaque salle
     max_gap_m: float = 400.0            # écart plafonné : pas d'avance infinie à capitaliser
+    # Combat (R5)
+    hp_factor: float = 0.9              # PV de l'ennemi = 0,9 × cible moyenne × durée nominale
+    gear_step: float = 0.04             # m_gear = 1 + 0,04 × (vitesse − 6)
+    gear_ref: int = 6
+    gear_min: int = 1
+    gear_max: int = 12
+    roc_armor_mult: float = 0.7         # pertes de bouclier en Roc
+    veloce_armor_mult: float = 1.2
+    veloce_crit_chance: float = 0.15    # par seconde
+    crit_mult: float = 2.0
+    shield_max: float = 100.0
+    contact_shield_per_s: float = 4.0
+    contact_gold_per_s: float = 1.0
+    unparried_hit: float = 10.0
+    corridor_regen_per_s: float = 2.0   # lu par R6
+    recovery_s: float = 60.0
+    recovery_shield: float = 50.0
+    defeat_run_gold_loss: float = 0.25
+    adrenaline_max: float = 100.0
+    adrenaline_per_s: float = 0.5
+    adrenaline_roc_mult: float = 0.7
+    adrenaline_veloce_mult: float = 1.5
+    perfect_shift_adrenaline: float = 10.0
+    ps_window_s: float = 1.5            # fenêtre de Perfect Shift centrée sur l'arche (R0)
+    overheat_frac: float = 0.75
+    overheat_after_s: float = 5.0
+    overheat_adrenaline_per_s: float = 2.0
+    long_press_gears: int = 3
+    strike_cost: float = 50.0
+    strike_hp_frac: float = 0.06
+    strike_window_s: float = 1.0        # fenêtre d'une cible ou d'une balise (± moitié)
+    rock_window_s: float = 1.5
+    tunnel_charge_s: float = 10.0
+    tunnel_max_charges: int = 3
+    tunnel_charge_hp_frac: float = 0.04
+    roc_charge_s: float = 5.0
+    roc_max_charges: int = 2
+    rock_hp_frac: float = 0.08
+    pad_damage_mult: float = 3.0
+    hook_grade_mult: float = 0.5        # Puncheur : bosse aspirée à moitié de sa pente
+    hook_power_ratio: float = 1.10
+    hook_s: float = 15.0
+    hack_max_s: float = 30.0
+    win_gold: float = 20.0
+    win_gold_per_ps: float = 2.0
+    flee_gold: float = 8.0
     # Profils par archétype et par objectif (valeurs de départ du cahier R3 §4.2)
     room_profiles: dict = field(default_factory=lambda: {
         "diesel": {

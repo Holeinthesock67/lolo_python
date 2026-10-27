@@ -93,3 +93,11 @@ Aucune (les noms d'événements sont ceux du contrat T1, §4.3).
 ## 8. Hors périmètre
 
 - Cartes et reliques (R6), enchaînement des salles (R6, R15), équilibrage final (R7).
+
+## 9. Livraison (27 octobre 2026)
+
+- `rogue/combat.py` (`combat_start`, `combat_step`, `apply_gear_buttons`, `CombatInputs`, `CombatState`) et les constantes du combat dans `RogueBalance`. Tests : `core/tests/test_rogue_combat.py`.
+- **Partage avec la session (R8) :** le combat ne traite pas les boutons de vitesse ; la session les applique avec `apply_gear_buttons` (±1 court, ±3 long, 1 à 12, piratage respecté), passe le braquet obtenu dans `CombatInputs.gear` et lit `hack_kind` / `forced_gear` (piratage en cours) et `grade_scale` (0,5 quand une bosse du Puncheur est aspirée) dans l'état. Les entrées reçoivent aussi la distance dans la salle et la vitesse (fenêtres de temps converties en distance).
+- **Choix de lecture :** une parade (zone `parry_zone`) vaut pour l'onde de choc du boss et pour l'aspiration du Puncheur ; le coup non paré du Puncheur coûte 10 de bouclier seulement si la bosse n'est pas aspirée et que la puissance est sous la cible. Le piratage du Saboteur commence à la distance de la salle qui correspond à (balise de purge − délai du marqueur) et dure jusqu'à la purge, au plus 30 s (`hack_max_s`) : avec 15 s il aurait fini avant la balise posée par R3 à 20 s. Surchauffe : plus de critique, de pavé ni d'attaque. Dégâts sous piratage : pas de multiplicateur de braquet.
+- **Constat pour R7 :** les dégâts sont proportionnels à la puissance multipliée par la durée ; un cycliste à 80 % de la cible roule plus longtemps (la salle a une distance fixe) et inflige à peu près le même total. Seul le Firewall le sanctionne (contact, bouclier, or). La run simulée dira si les multiplicateurs de braquet et de posture suffisent à rendre l'effort utile.
+- Les critères 2 et 3 sont vérifiés avec le cycliste simulé du générateur (R3) : victoire entre 85 et 95 % de la distance sur chaque archétype, objectif et phase du boss.

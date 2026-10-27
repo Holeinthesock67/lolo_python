@@ -141,7 +141,7 @@
 | [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
 | [R3](LOT_R3_generateur_salles.md) | Générateur de salles : profils des cinq archétypes et du boss, graine, marqueurs | Python | — | Moyenne | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
 | [R4](LOT_R4_firewall.md) | Firewall : cycliste virtuel à une fraction de la FTP, écart au joueur | Python | R3 | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
-| [R5](LOT_R5_combat.md) | Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe | Python | R0, R2, R3, R4 | Moyenne | Oui, **version 2.0** |
+| [R5](LOT_R5_combat.md) | Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe | Python | R0, R2, R3, R4 | Moyenne | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
 | [R6](LOT_R6_run_deck_boss.md) | Run : machine à états, couloirs, deck et cartes, or, reliques, boss en trois phases | Python | R5 | Grande | Oui, **version 2.0** |
 | [R7](LOT_R7_equilibrage_run_simulee.md) | Table d'équilibrage en données et run simulée avec cyclistes types | Python | R6, R15 | Moyenne | Oui, **version 2.0** |
 | [R8](LOT_R8_integration_session.md) | Intégration dans la session du core : mode ROGUE, formule centrée, boutons Z et A, pause Y, journal, pause et reprise | Python | T1, R6, R15, Q4 | Grande | Non : interne (`session.py`), **version 2.0** |

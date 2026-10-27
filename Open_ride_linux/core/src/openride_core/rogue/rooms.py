@@ -1,8 +1,8 @@
 """Générateur de salles du mode Cyber-Rogue (lot R3).
 
 Une salle est conçue en secondes (tronçons de pente et de puissance du Firewall), puis convertie en
-mètres avec la vitesse d'équilibre d'un cycliste qui tient la cible de chaque tronçon : celui-ci finit
-la salle en `nominal_s`. Module pur et déterministe : mêmes arguments, même salle.
+mètres par la physique d'un cycliste qui tient la cible de chaque tronçon : celui-ci finit la salle
+en `nominal_s`. Module pur et déterministe : mêmes arguments, même salle.
 """
 
 from __future__ import annotations
@@ -13,13 +13,14 @@ import random
 from dataclasses import astuple, dataclass
 from functools import lru_cache
 
-from ..physics import PhysicsParams, steady_speed
+from ..physics import PhysicsParams, RiderPhysics, steady_speed
 from .balance import DEFAULT_BALANCE, RogueBalance
 
 ARCHETYPES = ("diesel", "puncheur", "grimpeur", "sprinteur", "saboteur", "boss")
 OBJECTIVES = ("endurance", "seuil", "vo2max")
 DS_M = 10.0               # pas du profil
 DT_S = 0.5                # pas de la conception en temps
+SUB_DT = 0.05             # pas de la physique du cycliste de référence
 BOSS_PHASES = ("phase1", "phase2", "phase3")
 
 
@@ -269,14 +270,21 @@ def generate_room(archetype: str, variant: str, objective: str, nominal_s: float
     times, raw, starts, leg_at = _grid(legs, T)
     grades = _slew_and_clamp(times, raw, b)
 
-    # distance cumulée : vitesse d'équilibre du cycliste qui tient la cible, à mi-intervalle
+    # distance cumulée : un cycliste qui tient la cible de chaque tronçon, physique complète (inertie
+    # comprise), parti à la vitesse d'équilibre du premier tronçon
+    first = legs[0]
+    body = RiderPhysics(rider.params, 0.0, _speed(round(first.fw * rider.ftp_w, 2), round(grades[0], 3),
+                                                  astuple(rider.params)))
     dist = [0.0]
     for k in range(1, len(times)):
         tm = 0.5 * (times[k - 1] + times[k])
         leg, _ = leg_at(tm)
         g = 0.5 * (grades[k - 1] + grades[k])
-        v = _speed(round(leg.fw * rider.ftp_w, 2), round(g, 3), astuple(rider.params))
-        dist.append(dist[-1] + max(v, 0.1) * (times[k] - times[k - 1]))
+        span = times[k] - times[k - 1]
+        n_sub = max(1, round(span / SUB_DT))
+        for _ in range(n_sub):
+            body.step(leg.fw * rider.ftp_w, g, 0.0, span / n_sub)
+        dist.append(max(body.s, dist[-1] + 1e-6))
 
     def s_of_t(t):
         k = min(max(bisect.bisect_right(times, t) - 1, 0), len(times) - 2)
