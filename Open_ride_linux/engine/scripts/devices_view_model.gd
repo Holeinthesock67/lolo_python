@@ -331,3 +331,45 @@ func ready_to_ride(state: Dictionary) -> Dictionary:
 		"ok": true,
 		"reason": ""
 	}
+
+
+## Écran de connexion au démarrage (lot N13) : {all_ok, trainer_ok, missing, unilateral}.
+## `all_ok` : trainer relié, tous les boîtiers du Click listés reliés et ceinture reliée si elle est
+## configurée (statut autre que NONE). `missing` : noms des appareils pas encore reliés, pour « Passer ».
+## `unilateral` : un seul des deux boîtiers du Click relié (le bouton « Passer » le dit).
+## Sans objet `devices` (core v1) : trainer_status et input_status.
+func connection(state: Dictionary) -> Dictionary:
+	var missing: Array[String] = []
+	var devices = state.get("devices", null)
+	var trainer_ok := false
+	var clicks_up := 0
+	var clicks_total := 0
+	if devices is Dictionary and not devices.is_empty():
+		var t: Dictionary = _dict(devices.get("trainer"))
+		trainer_ok = str(t.get("status", state.get("trainer_status", ""))) in ["CONNECTED", "MOCK"]
+		for c in _arr(devices.get("click")):
+			if not c is Dictionary:
+				continue
+			clicks_total += 1
+			if str(c.get("status", "")) == "CONNECTED":
+				clicks_up += 1
+			else:
+				match str(c.get("side", "single")):
+					"plus":
+						missing.append("Click +")
+					"minus":
+						missing.append("Click −")
+					_:
+						missing.append("Click")
+		var hr_status := str(_dict(devices.get("hr")).get("status", "NONE"))
+		if not hr_status in ["NONE", "CONNECTED"]:
+			missing.append("ceinture")
+	else:
+		trainer_ok = str(state.get("trainer_status", "")) in ["CONNECTED", "MOCK"]
+		var inp := str(state.get("input_status", "KEYBOARD"))
+		if inp in ["SEARCHING", "LOST"]:
+			missing.append("Click")
+	if not trainer_ok:
+		missing.push_front("trainer")
+	return {"all_ok": missing.is_empty(), "trainer_ok": trainer_ok, "missing": missing,
+		"unilateral": clicks_total >= 2 and clicks_up == 1}
