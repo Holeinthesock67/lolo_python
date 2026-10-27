@@ -100,18 +100,19 @@ func update(now_us: int) -> float:
 
 ## Inclinaison de la caméra vers la route devant (Lot Q2).
 ## Angle de la droite qui joint l'œil au point de la route situé 20 m devant (entre 15 et 30 m selon v),
-## lissé avec une constante de temps de 0,5 s et borné à ±12°.
-func pitch_deg(route, s: float, v: float, dt_s: float = -1.0) -> float:
+## lissé avec une constante de temps de 0,5 s et borné à ±12°. `visual_grade_scale` : exagération du relief
+## affiché (lot Q2), qui multiplie l'écart d'altitude entre l'œil et le point visé.
+func pitch_deg(route, s: float, v: float, dt_s: float = -1.0, visual_grade_scale: float = 1.0) -> float:
 	if route == null or route.n < 2:
 		return 0.0
 	var lookahead := clampf(PITCH_LOOKAHEAD_NOMINAL_M + (v - 8.0) * 0.75, PITCH_LOOKAHEAD_MIN_M, PITCH_LOOKAHEAD_MAX_M)
-	var s_eye := route.wrap_s(s)
-	var s_target := route.wrap_s(s + lookahead)
+	var s_eye: float = route.wrap_s(s)
+	var s_target: float = route.wrap_s(s + lookahead)
 	var eye_pos: Vector3 = route.sample_point(s_eye)
 	var target_pos: Vector3 = route.sample_point(s_target)
 	var dx := target_pos.x - eye_pos.x
 	var dz := target_pos.z - eye_pos.z
-	var dy := target_pos.y - eye_pos.y
+	var dy := (target_pos.y - eye_pos.y) * visual_grade_scale
 	var dxz := sqrt(dx * dx + dz * dz)
 	var raw_angle_rad := atan2(dy, dxz) if dxz > 1e-6 else 0.0
 	var target_pitch_deg := clampf(rad_to_deg(raw_angle_rad), -PITCH_MAX_DEG, PITCH_MAX_DEG)

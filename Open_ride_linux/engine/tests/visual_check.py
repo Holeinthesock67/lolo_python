@@ -67,7 +67,7 @@ ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
-GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur", "menu_accueil", "bilan", "pente_0pct", "pente_4pct", "pente_8pct")
+GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur", "menu_accueil", "bilan", "pente_0pct", "pente_4pct")
 FIXED_S = 1500.0
 # Listes servies par le faux core aux menus (lot N6) : un parcours « à compiler » non choisissable.
 MENU_CATALOG = {
@@ -726,7 +726,7 @@ def _scenes(s: Session) -> None:
 
 
 def _pentes_scenes(s: Session) -> None:
-    """Lot Q2 : trois captures sur le parcours demo à des points de 0 %, ~4 % et ~8 %."""
+    """Lot Q2 : captures sur le parcours demo à des points de ~0 % (0,6 %) et ~4 % (4,5 %)."""
     core = s.core
     # 1. Pente 0 % (s = 4000 m : replat)
     core.set_scene(speed=0.0, s=4000.0, session_state="RUNNING", grade=0.0, grade_sent=0.0,
@@ -735,7 +735,7 @@ def _pentes_scenes(s: Session) -> None:
     shot0 = s.capture("pente_0pct")
     if shot0:
         img, info = shot0
-        s.check_texts("pente_0pct", info, {"grade": "+0.0 %"})
+        s.check_texts("pente_0pct", info, {"grade": "0.0 %"})
         s.check_layout("pente_0pct", info)
         s.check_world("pente_0pct", img, info)
 
@@ -749,17 +749,8 @@ def _pentes_scenes(s: Session) -> None:
         s.check_texts("pente_4pct", info, {"grade": "+4.5 %"})
         s.check_layout("pente_4pct", info)
         s.check_world("pente_4pct", img, info)
-
-    # 3. Pente ~8 % (s = 1400 m avec consigne 8.0 %)
-    core.set_scene(speed=0.0, s=1400.0, session_state="RUNNING", grade=8.0, grade_sent=8.0,
-                   power=280.0, cadence=75.0, hr=160)
-    time.sleep(SETTLE_S)
-    shot8 = s.capture("pente_8pct")
-    if shot8:
-        img, info = shot8
-        s.check_texts("pente_8pct", info, {"grade": "+8.0 %"})
-        s.check_layout("pente_8pct", info)
-        s.check_world("pente_8pct", img, info)
+    # Le parcours demo ne dépasse pas 4,5 % : l'aspect d'une pente de 8 % se juge sur la scène
+    # pente_4pct lancée avec --visual-grade=1.8 (captures suffixées _k1.8).
 
 
 def _menu_scenes(s: Session) -> None:

@@ -81,18 +81,20 @@ def test_check_rejects_invalid_ftp(
     assert captured.out == ""
 
 
-def test_install_copies_five_files_and_does_not_overwrite(
+def test_install_copies_seven_files_and_does_not_overwrite(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    """Critère 4 : install copie les 5 fichiers ; une seconde exécution n'écrase rien."""
+    """Critère 4 : install copie les 7 fichiers (5 .zwo, un .erg et un .mrc depuis le lot O9) ;
+    une seconde exécution n'écrase rien."""
     rc1 = workouts_main(["install", "--dir", str(tmp_path)])
     assert rc1 == 0
     out1 = capsys.readouterr().out
-    assert "5 copié(s)" in out1
+    assert "7 copié(s)" in out1
 
     installed = sorted(tmp_path.glob("*.zwo"))
     assert len(installed) == 5
+    assert (tmp_path / "tempo_2x15.erg").is_file() and (tmp_path / "sweet_spot_3x10_gc.mrc").is_file()
 
     # Modifie un fichier existant pour vérifier qu'il n'est pas écrasé au second appel
     sentinel = "<!-- modification utilisateur -->\n"
@@ -104,7 +106,7 @@ def test_install_copies_five_files_and_does_not_overwrite(
     assert rc2 == 0
     out2 = capsys.readouterr().out
     assert "0 copié(s)" in out2
-    assert "5 conservé(s)" in out2
+    assert "7 conservé(s)" in out2
     assert custom_file.read_text(encoding="utf-8").startswith(sentinel)
 
 

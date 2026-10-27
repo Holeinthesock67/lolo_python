@@ -20,6 +20,7 @@ const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -27,6 +28,9 @@ const ERROR_MIN_S := 5.0
 const TEST_CAM_PERIOD_US := 50_000   # journal de la caméra à 20 Hz en mode test
 ## Décor en fond des menus (lot N6) : caméra lente le long du parcours choisi (ou de la démo).
 const MENU_CAMERA_MPS := 4.0
+## Code de sortie de l'engine qui demande au lanceur `openride` de tout relancer (nouveaux appareils
+## enregistrés, lot N13) ; voir core/src/openride_core/launcher.py.
+const EXIT_RELAUNCH := 64
 
 @onready var ipc: Node = $IpcClient
 @onready var camera: Camera3D = $Camera3D
@@ -53,8 +57,11 @@ var erg_panel = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
+var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
+## Sonde de performance (lot X13), active avec --perf-probe=FICHIER.csv.
+var _probe = PerfProbe.new()
 
 const BEEPS := {
 	"PLUS_SHORT": [[880.0, 0.08]],
@@ -88,6 +95,8 @@ func _ready() -> void:
 	streamer.visual_grade_scale = _visual_grade_scale
 	if streamer.osm_streamer != null:
 		streamer.osm_streamer.visual_grade_scale = _visual_grade_scale
+	if str(cfg.get("perf_probe", "")) != "":
+		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"
@@ -161,6 +170,14 @@ func _ready() -> void:
 	ipc.list_failed.connect(func(list_name: String, _message: String) -> void:
 		menu_flow.list_failed(list_name)
 		_refresh_menu())
+	ipc.scan_results_received.connect(func(msg: Dictionary) -> void:
+		ipc.test_log("scan_results done=%s items=%d plus=%s" % [str(msg.get("done", false)),
+				(msg.get("items", []) as Array).size() if msg.get("items") is Array else 0, str(msg.get("plus_address"))])
+		menu_flow.on_scan_results(msg)
+		_refresh_menu())
+	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
+		menu_flow.on_command_acked(cmd_name)
+		_refresh_menu())
 
 
 func _apply_sky_params(theme_dict: Dictionary) -> void:
@@ -204,6 +221,15 @@ func _run_menu_action(act: Dictionary) -> void:
 		"quit":
 			print("Quitter demandé depuis le menu.")
 			get_tree().quit()
+		"relaunch":
+			print("Relance d'OpenRide demandée depuis le menu (code %d)." % EXIT_RELAUNCH)
+			get_tree().quit(EXIT_RELAUNCH)
+		"scan_devices":
+			ipc.scan_devices()
+		"identify_click_plus":
+			menu_flow.pairing.identify_cmd_id = ipc.identify_click_plus()
+		"pair_devices":
+			ipc.pair_devices(act.get("args", {}))
 		"select_route":
 			ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"select_workout":
@@ -262,6 +288,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	_poll_route_job()
 	_record_frame_perf(delta)
+	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	if _menu_camera(delta):
 		return
@@ -282,7 +309,7 @@ func _process(delta: float) -> void:
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
 		# Dans Godot : -Z est le nord. La rotation Y s'applique sur le cap horaire.
 		camera.rotation.y = -heading
-		camera.rotation.x = deg_to_rad(follow.pitch_deg(route, s_route, float(follow.last_frame["v"])))
+		camera.rotation.x = deg_to_rad(follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale))
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 
@@ -299,7 +326,7 @@ func _menu_camera(delta: float) -> bool:
 		pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
 	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
-	camera.rotation.x = deg_to_rad(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS))
+	camera.rotation.x = deg_to_rad(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS, -1.0, _visual_grade_scale))
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	return true
 
@@ -413,10 +440,16 @@ func _poll_route_job() -> void:
 # --- messages du core --------------------------------------------------------------------
 
 ## Messages de test (--test-mode) : « screenshot » enregistre l'image affichée en PNG et journalise
-## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py.
+## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py ;
+## « menu_input » joue un appui du Click dans les menus.
 func _on_test_message(msg: Dictionary) -> void:
-	if str(msg.get("action", "")) == "screenshot":
-		_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+	match str(msg.get("action", "")):
+		"screenshot":
+			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+		"menu_input":   # appui simulé dans les menus (banc des menus, tests/menu_bench.py)
+			var ev := str(msg.get("event", ""))
+			if ev in MenuModel.EVENTS:
+				_menu_event(ev)
 
 
 func _test_screenshot(path: String, tag: String) -> void:
@@ -459,7 +492,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 ## Texte des zones composées du menu (éléments, appareils, bilan), pour les tests graphiques.
 func _widget_text(key: String) -> String:
 	if key == "menu":
-		return "%s || %s || %s" % [menu_view.items_text(), menu_view.devices.text() if menu_view.devices.visible else "",
+		return "%s || %s || %s || %s" % [menu_view.status_label.text, menu_view.items_text(), menu_view.devices.text() if menu_view.devices.visible else "",
 				menu_view.summary.text() if menu_view.summary.visible else ""]
 	return ""
 
@@ -471,6 +504,8 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 
 
 func _on_core_error(code: String, message: String) -> void:
+	menu_flow.on_error(code, message)
+	_refresh_menu()
 	banner.show_message("error", "Erreur du core [%s] : %s" % [code, message], ERROR_MIN_S)
 	banner.set_sticky("error", session_state == "ERROR")
 
@@ -502,8 +537,8 @@ func _on_state_received(state: Dictionary) -> void:
 		_first_state_logged = true
 		print("Premier état reçu du core : ", state.get("session_state", "?"), " trainer=", state.get("trainer_status", "?"))
 	banner.clear_message("shutdown")
-	_last_state = state
-	for act in menu_flow.on_state(state):
+	_last_state = menu_flow.with_devices(state)
+	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
 	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
@@ -558,3 +593,4 @@ func _give_cues(state: Dictionary) -> void:
 func _exit_tree() -> void:
 	if not _route_job.is_empty():
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
+	_probe.close()

@@ -16,7 +16,7 @@ const KNOWN_LAYERS := ["terrain", "buildings", "vegetation", "poi", "water"]
 
 const BUILDING_ROOFS := ["flat", "gabled"]
 const VEGETATION_KINDS := ["wood", "scrub", "orchard"]
-const POI_KINDS := ["church_bell", "river", "livestock", "village", "viewpoint"]
+const POI_KINDS := ["church_bell", "river", "livestock", "village", "viewpoint", "wind_turbine", "flag"]   # 1.2 : P12
 const WATER_LINE_KINDS := ["river", "stream", "canal"]
 const WATER_AREA_KINDS := ["lake", "pond", "reservoir"]
 

@@ -379,6 +379,18 @@ func flush() -> void:
 		osm_streamer.flush()
 
 
+## Morceaux de décor instanciés par nature (sonde de performance, lot X13) : {road, near, far},
+## les tuiles « flat » comptant comme proches.
+func loaded_tile_counts() -> Dictionary:
+	var out := {"road": 0, "near": 0, "far": 0}
+	for key in _instances:
+		var kind: String = String(key).get_slice(":", 0)
+		if kind == "flat":
+			kind = "near"
+		out[kind] = int(out.get(kind, 0)) + 1
+	return out
+
+
 ## Attend les travaux en cours sans dépasser le budget d'objets par image (tests en temps simulé).
 func wait_jobs() -> void:
 	_poll_jobs(true)

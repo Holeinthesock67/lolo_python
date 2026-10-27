@@ -40,6 +40,9 @@ Les couches vivent par morceaux : `<k>` est l'indice du tronçon de route de 1 k
 - l'origine et la projection (§3) ;
 - pour chaque couche : `present` (vrai ou faux), `version`, et ses paramètres propres ;
 - depuis la version 1.1 : `route.alt_source`, origine de l'altitude de la route (`gpx` ou nom de la source MNT, par exemple `copernicus_glo30`).
+- champs facultatifs du lot O15 (ajout compatible, sans changer `format_version`) :
+  - `stats`, la fiche calculée par `route_stats.py` : `version` (1), `distance_m`, `gain_m` et `loss_m` (variations de plus de 1 m seulement), `alt_min_m`, `alt_max_m`, `max_grade_pct` (sur 100 m), `climbs` (nombre de montées d'au moins 500 m et 20 m), `main_climb` (`start_m`, `length_m`, `gain_m`, `avg_grade_pct`, `category` de `4` à `HC` d'après longueur × pente moyenne : 8 000, 16 000, 32 000, 64 000, 80 000 ; ou `null`), `duration_200w_s` et `durations_s` (durées estimées de 100 à 400 W par pas de 25 W, cycliste et vélo de 84 kg), `difficulty` (1 à 5). Un lecteur qui ne la trouve pas, ou la trouve d'une autre version, la recalcule depuis `route.json` ;
+  - `library`, la fiche saisie copiée du fichier `<trace>.toml` posé à côté de la trace : `name`, `description`, `region` (texte libre, jamais de coordonnées), `tags` (étiquettes en minuscules), `credits`.
 
 **Écriture atomique.** Le compilateur écrit dans un dossier temporaire voisin puis le renomme ; un `.world` incomplet n'est jamais visible. `add-layer` fait de même couche par couche.
 
@@ -205,7 +208,7 @@ Deux couches facultatives, chacune en fichiers `chunk_<k>.json`.
 }
 ```
 
-- `kind` : `church_bell`, `river`, `livestock`, `village`, `viewpoint` ; une valeur inconnue est ignorée.
+- `kind` : `church_bell`, `river`, `livestock`, `village`, `viewpoint` ; depuis la version 1.2 (lot P1), `wind_turbine` (OSM `power=generator` avec `generator:source=wind`, `height_m` facultatif d'après la balise `height`) et `flag` (OSM `man_made=flagpole`) ; une valeur inconnue est ignorée.
 - `radius_m` : distance d'audibilité ou de visibilité.
 - L'engine associe un son à chaque `kind` selon le thème ou la configuration audio ; `name` sert à l'affichage éventuel.
 
@@ -267,6 +270,18 @@ Themes/alpes-ete/
 - Le shader mélange herbe et roche selon la pente (`slope_threshold_deg`), puis ajoute la neige au-dessus de `snow_line_m`.
 - Ajouter un thème = ajouter un dossier ; aucune recompilation des parcours n'est nécessaire.
 - Les textures normales, rugosité et autres cartes PBR sont des extensions futures du même format.
+
+**Décor vivant (thème 1.2, lot P1).** Clés facultatives, ignorées par un engine qui ne les connaît pas ; le thème par défaut donne un été calme.
+
+| Clé | Contenu | Lot qui l'utilise |
+| --- | --- | --- |
+| `sky.clouds` | `{coverage, speed_factor, color, altitude_m}` : couverture de 0 à 1, facteur de vitesse par rapport au vent, couleur, altitude | P6 |
+| `sky.time_of_day` | `{mode, hour, factor}` : `mode` vaut `fixed`, `real` ou `accelerated` ; heure de 0 à 24 ; facteur d'accélération | P7 (version 2.0) |
+| `weather` | `{kind, intensity, morning_mist}` : `kind` vaut `clear`, `mist`, `rain` ou `snow` ; intensité de 0 à 1 ; brume de vallée le matin | P8 |
+| `season` | `spring`, `summer`, `autumn` ou `winter` | P18 (version 2.0) |
+| `wind` | `{speed_kmh, from_deg, gust_pct}` : vent lu quand `[wind] mode = "theme"` (SRS §11), et vent décoratif de l'engine quand `state` ne porte pas de `wind` | P2, P4 |
+| `ambience` | `{volume, birds, insects}`, de 0 à 1 | P9 |
+| `fauna` | `{birds, livestock, deer}` : densités de 0 à 1 | P11 |
 
 ## 10. Règles de lecture et compatibilité
 
@@ -346,3 +361,5 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.1 | 23 octobre 2026 | Publication du schéma JSON des thèmes `docs/contracts/world/theme.schema.json`, du thème par défaut `engine/themes/default/theme.json` et de la sous-commande `openride-compiler theme-check` (§9, lot H7) |
 | 1.1 | 23 octobre 2026 | Publication des schémas JSON `buildings.schema.json` et `vegetation.schema.json` (§6 et §7), compteurs `count`, `ignored_count` et `osm_date` dans le manifeste de ces couches, validation `verify` et sous-commande `add-layer buildings\|vegetation` (lot I3) |
 | 1.1 | 23 octobre 2026 | Publication des schémas JSON `poi.schema.json` et `water.schema.json` (§8), compteurs `count` / `lines_count` / `areas_count` / `ignored_count` et `osm_date` dans le manifeste, validation `verify` et sous-commande `add-layer poi\|water` (lot I4) |
+| 1.1 | 26 octobre 2026 | Ajout compatible (lot O15) : champs facultatifs `stats` (fiche calculée) et `library` (fiche saisie `<trace>.toml`) dans le manifeste (§2) ; un `.world` sans eux reste valide et la fiche est recalculée à la lecture |
+| 1.2 | 26 octobre 2026 | Ajouts compatibles (lot P1) : points d'intérêt `wind_turbine` (avec `height_m` facultatif) et `flag` (§8) ; thème 1.2 avec `sky.clouds`, `sky.time_of_day`, `weather`, `season`, `wind`, `ambience` et `fauna` (§9) |

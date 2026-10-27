@@ -243,17 +243,21 @@ static func load_neighbour_edges(world_dir: String, level: String, ix: int, iz: 
 ## différence d'un seul côté.
 static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dictionary = {},
 		visual_grade_scale: float = 1.0, alt_orig: float = 0.0) -> Array:
-	var h_data := scale_heights(heights, alt_orig, visual_grade_scale) if visual_grade_scale != 1.0 else heights
+	# Exagération du relief (lot Q2) : h' = alt_orig + (h − alt_orig) × k, appliquée au sommet et aux pentes
+	# sans copier les hauteurs ; à k = 1,0, kk = 1 et y_scaled_offset = 0 donnent exactement les valeurs d'avant.
+	var kk := visual_grade_scale
+	var y_scaled_offset := alt_orig * (1.0 - kk)
+	var h_data := heights
 	var cell: float = LEVELS[level]["cell"]
 	var y_offset: float = LEVELS[level]["y_offset"]
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	vertices.resize(SAMPLES * SAMPLES)
 	normals.resize(SAMPLES * SAMPLES)
-	var west: PackedFloat32Array = scale_heights(edges.get("west", PackedFloat32Array()), alt_orig, visual_grade_scale) if visual_grade_scale != 1.0 else edges.get("west", PackedFloat32Array())
-	var east: PackedFloat32Array = scale_heights(edges.get("east", PackedFloat32Array()), alt_orig, visual_grade_scale) if visual_grade_scale != 1.0 else edges.get("east", PackedFloat32Array())
-	var north: PackedFloat32Array = scale_heights(edges.get("north", PackedFloat32Array()), alt_orig, visual_grade_scale) if visual_grade_scale != 1.0 else edges.get("north", PackedFloat32Array())
-	var south: PackedFloat32Array = scale_heights(edges.get("south", PackedFloat32Array()), alt_orig, visual_grade_scale) if visual_grade_scale != 1.0 else edges.get("south", PackedFloat32Array())
+	var west: PackedFloat32Array = edges.get("west", PackedFloat32Array())
+	var east: PackedFloat32Array = edges.get("east", PackedFloat32Array())
+	var north: PackedFloat32Array = edges.get("north", PackedFloat32Array())
+	var south: PackedFloat32Array = edges.get("south", PackedFloat32Array())
 	for j in range(SAMPLES):
 		for i in range(SAMPLES):
 			var h := h_data[j * SAMPLES + i]
@@ -276,9 +280,9 @@ static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dict
 				dhdz = (h - h_n) / cell
 			else:
 				dhdz = (h_s - h_n) / (2.0 * cell)
-			var normal := Vector3(-dhdx, 1.0, -dhdz).normalized()
+			var normal := Vector3(-dhdx * kk, 1.0, -dhdz * kk).normalized()
 			var idx := j * SAMPLES + i
-			vertices[idx] = Vector3(i * cell, h + y_offset, j * cell)
+			vertices[idx] = Vector3(i * cell, h * kk + y_scaled_offset + y_offset, j * cell)
 			normals[idx] = normal
 	var indices := PackedInt32Array()
 	indices.resize(CELLS * CELLS * 6)

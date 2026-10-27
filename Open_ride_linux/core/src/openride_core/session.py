@@ -12,26 +12,31 @@ Une seule boucle asyncio :
 from __future__ import annotations
 
 import asyncio
+import json
 import logging
+import math
 import re
 import signal
 import time
 from pathlib import Path
 from typing import Any
 
-from .config import WORKOUTS_DIR, Config
+from .config import OPENRIDE_HOME, WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
+from .progression import journal_source
 from .mock_driver import MockDriver
 from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, load_resume_state
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
+from . import draft as draft_mod
+from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
 from .workout import BIAS_DEFAULT_PCT, ErgController, Workout, WorkoutError, load_workout, workout_path
 from .zwift_click import InputEvent
 
@@ -42,6 +47,8 @@ DT_STATE = 1.0 / 30.0    # 30 Hz
 STATS_PERIOD_S = 60.0
 SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer et se déconnecter
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
+WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
+DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" / "default" / "theme.json"
 
 
 class LoopStats:
@@ -153,6 +160,19 @@ def build_hr(cfg: Config, sim: Any = None) -> HeartRateProvider | None:
 ROUTE_ID_RE = re.compile(r"^[^/\\.][^/\\]*$")   # un nom de dossier simple, comme les entraînements
 
 
+def theme_wind(theme: str, themes_dir: Path | None = None) -> dict | None:
+    """Objet `wind` du thème 1.2 choisi (`[render] theme`), sinon du thème par défaut ; None s'il manque."""
+    candidates = [(themes_dir or OPENRIDE_HOME / "Themes") / theme / "theme.json", DEFAULT_THEME_JSON]
+    for path in candidates:
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            continue
+        if isinstance(data, dict) and isinstance(data.get("wind"), dict):
+            return data["wind"]
+    return None
+
+
 class AutostartError(Exception):
     """Parcours ou entraînement demandé au lancement (`--route`, `--workout`) refusé."""
 
@@ -160,8 +180,10 @@ class AutostartError(Exception):
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
-                 workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None) -> None:
+                 workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None,
+                 config_path: Path | None = None) -> None:
         self.cfg = cfg
+        self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
@@ -172,15 +194,31 @@ class CoreSession:
         self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
         self.physics = RiderPhysics(PhysicsParams.from_config(cfg))
+        self.wind = WindModel.from_config(
+            cfg.wind, theme_wind(cfg.render.theme) if cfg.wind.mode == "theme" else None)
+        self._wind_sample = self.wind.sample(0.0) if self.wind.active else CALM
+        self._head_mps = 0.0          # vent de face au point s (physique à 50 Hz)
+        self._wind_offset = 0.0       # supplément de pente dû au vent (feel = "grade")
+        self._wind_pending = False    # trame `wind` décalée parce que la trame portait `devices`
+        self._draft = 0.0             # abri lissé derrière un bot (lot P3)
+        self._draft_bot: str | None = None
+        self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
+        if self.wind.active:
+            log.info("Vent : mode %s, %.0f km/h venant de %.0f°, rafales %.0f %%, ressenti %s "
+                     "(supplément de pente borné à %.1f points)", self.wind.mode, self.wind.base_mps * 3.6,
+                     self.wind.from_deg, self.wind.gust_frac * 100, cfg.wind.feel,
+                     cfg.wind.max_grade_offset_pct)
         self.route: Route | None = None
+        self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
-                              gear=self.gearing.k)
+                              gear=self.gearing.k, difficulty_pct=round(self.difficulty_pct))
         self.server = IpcServer(
             port_state=cfg.ipc.port_state, port_commands=cfg.ipc.port_commands,
             on_command=self._on_command, on_engine_lost=self._on_engine_lost,
             on_engine_returned=lambda: log.info("Engine connecté."),
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
-                          "theme": cfg.render.theme})
+                          "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct)})
+        log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
 
@@ -200,6 +238,10 @@ class CoreSession:
         self._frame_count = 0
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
+        # Appairage depuis le menu (lot N13) : dernière recherche et identification du « + » en cours.
+        self._scan_items: list[dict[str, Any]] = []
+        self._scanning = False
+        self._identify: dict[str, Any] | None = None
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -256,10 +298,103 @@ class CoreSession:
                 log.warning("input_event inconnu : %s", args.get("event"))
         elif name == "end_session" and st in ("RUNNING", "PAUSED"):
             self._finish(bool(args.get("save", True)))
+        elif name == "set_difficulty":
+            raw_pct = args.get("pct") if isinstance(args, dict) else None
+            if raw_pct is None or isinstance(raw_pct, bool) or not isinstance(raw_pct, (int, float)):
+                self.server.send_error("bad_args", "set_difficulty attend un nombre 'pct'")
+                return
+            new_val = int(round(max(0, min(100, float(raw_pct)))))
+            old_val = round(self.difficulty_pct)
+            if new_val != old_val:
+                log.info("Difficulté : %d %% -> %d %%", old_val, new_val)
+            self.difficulty_pct = float(new_val)
+            self.state.difficulty_pct = new_val
+            if self.server.hello_config:
+                self.server.hello_config["difficulty_pct"] = new_val
         elif name == "list_routes":
             self._spawn(self._handle_list_routes(cmd_id))
         elif name == "list_workouts":
             self._spawn(self._handle_list_workouts(cmd_id))
+        elif name in ("scan_devices", "identify_click_plus", "pair_devices"):
+            self._on_pairing_command(name, args, cmd_id)
+
+    # --- appairage depuis le menu (lot N13, contrat IPC révision 1.2) -------------------------
+
+    def _on_pairing_command(self, name: str, args: dict, cmd_id: int) -> None:
+        from . import pairing
+
+        if self.state.session_state not in pairing.SCAN_STATES:
+            self.server.send_error("busy", "Recherche des appareils impossible pendant une séance.")
+            return
+        if name == "scan_devices":
+            if self._scanning:
+                return
+            try:
+                timeout = min(30.0, max(1.0, float(args.get("timeout_s", pairing.SCAN_TIMEOUT_S))))
+            except (TypeError, ValueError):
+                timeout = pairing.SCAN_TIMEOUT_S
+            self._scanning = True
+            self.server.send_raw(pairing.scan_results_message(cmd_id, self._scan_items, False))
+            self._spawn(self._scan_devices(cmd_id, timeout))
+        elif name == "identify_click_plus":
+            self._identify = {"cmd_id": cmd_id, "until": time.monotonic() + pairing.IDENTIFY_TIMEOUT_S}
+            log.info("Appairage : appui sur « + » attendu (%.0f s).", pairing.IDENTIFY_TIMEOUT_S)
+            if not any(isinstance(p, ZwiftClickProvider) and getattr(p, "_link_up", False) for p in self.inputs):
+                # Aucun boîtier relié à la séance : connexion directe aux boîtiers trouvés (comme N12).
+                addresses = [it["address"] for it in self._scan_items if it["role"] == "click"]
+                if addresses and self.sim is None:
+                    self._spawn(self._identify_direct(cmd_id, addresses))
+        elif name == "pair_devices":
+            self._pair_devices(args)
+
+    async def _scan_devices(self, cmd_id: int, timeout: float) -> None:
+        from . import pairing
+
+        try:
+            inv = await pairing.scan_inventory(self.sim, timeout)
+            self._scan_items = pairing.scan_items(inv, pairing.configured_addresses(self.cfg))
+            log.info("Appairage : %d appareil(s) trouvé(s).", len(self._scan_items))
+        except Exception as exc:   # Bluetooth éteint, BlueZ absent
+            log.warning("Appairage : recherche impossible : %s", exc)
+            self.server.send_error("scan_failed", f"Recherche des appareils impossible : {exc}")
+        finally:
+            self._scanning = False
+        self.server.send_raw(pairing.scan_results_message(cmd_id, self._scan_items, True))
+
+    async def _identify_direct(self, cmd_id: int, addresses: list[str]) -> None:
+        from . import pairing
+
+        addr = await pairing.wait_plus_press(addresses, pairing.IDENTIFY_TIMEOUT_S)
+        if self._identify and self._identify["cmd_id"] == cmd_id:
+            self._identify_done(addr)
+
+    def _identify_done(self, address: str | None) -> None:
+        from . import pairing
+
+        cmd_id = self._identify["cmd_id"] if self._identify else 0
+        self._identify = None
+        log.info("Appairage : %s", f"« + » reçu de {address}" if address else "aucun appui sur « + »")
+        self.server.send_raw(pairing.scan_results_message(cmd_id, self._scan_items, True,
+                                                          address.upper() if address else None))
+
+    def _pair_devices(self, args: dict) -> None:
+        from . import pairing
+
+        if self.sim is not None and self.config_path is None:
+            self.server.send_error("pairing_failed", "Bluetooth simulé : préciser --config pour enregistrer.")
+            return
+        try:
+            paired = pairing.paired_from_args(args, self._scan_items)
+            changed = pairing.save(paired, self.config_path)
+        except pairing.PairingError as exc:
+            log.warning("Appairage refusé : %s", exc)
+            self.server.send_error("pairing_failed", str(exc))
+            return
+        log.info("Appairage enregistré (%s) : %s ; prise en compte au prochain lancement.",
+                 self.config_path or "config.toml", "; ".join(changed) if changed else "aucun changement")
+        for it in self._scan_items:
+            it["configured"] = it["address"] in {paired.trainer_address, paired.click_plus_address,
+                                                 paired.click_minus_address, paired.hr_address}
 
     def _spawn(self, coro: Any) -> None:
         """Lance une tâche de fond en gardant sa référence jusqu'à la fin."""
@@ -282,7 +417,8 @@ class CoreSession:
         from .ipc_lists import build_workouts_messages
 
         try:
-            msgs = await asyncio.to_thread(build_workouts_messages, cmd_id, self.workouts_dir)
+            msgs = await asyncio.to_thread(build_workouts_messages, cmd_id, self.workouts_dir,
+                                           ftp_w=self.cfg.rider.ftp_w)
             for m in msgs:
                 self.server.send_raw(m)
         except Exception:
@@ -353,12 +489,20 @@ class CoreSession:
     # --- journal et FIT ----------------------------------------------------------------
 
     def _open_journal(self) -> None:
+        from .plans import active_tag
+
         self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
                                     on_failure=self._on_recording_failure,
-                                    workout_id=self._workout_id)
+                                    workout_id=self._workout_id, source=self._journal_source(),
+                                    plan=active_tag(self._workout_id))
         self._rec.event("start", time.time())
         self._device_up = self._device_states()   # état de départ : seuls les changements s'écrivent
         self._next_record = 0.0
+
+    def _journal_source(self) -> str:
+        """Origine de la séance écrite en tête du journal (progression, lot V2)."""
+        d = self.cfg.drivers
+        return journal_source(d.trainer, d.mock_replay)
 
     def _click_device(self, address: str) -> str:
         """Boîtier « + » ou « − » (lot N12) : d'après `click_address` et `click_minus_address`.
@@ -535,9 +679,16 @@ class CoreSession:
         self._shift_pending = True   # le changement de braquet doit se sentir tout de suite
 
     def _drain_inputs(self) -> None:
+        if self._identify and time.monotonic() > self._identify["until"]:
+            self._identify_done(None)
         for provider in self.inputs:
             while not provider.events.empty():
-                self._handle_input(provider.events.get_nowait())
+                ev = provider.events.get_nowait()
+                if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
+                        and getattr(provider, "_conn_address", "") not in ("", "?", None):
+                    self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
+                    continue
+                self._handle_input(ev)
         # Statut d'entrée : celui du premier fournisseur (Click s'il est configuré) ; la paire de
         # Click est « connectée » dès qu'un des deux boîtiers l'est.
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
@@ -595,6 +746,18 @@ class CoreSession:
         grade = here.grade_pct if here else 0.0
         ahead = route.grade_at(s + self.physics.v * tau) if route else 0.0
         alt = here.alt_m if here else 0.0
+        wcfg = self.cfg.wind
+        if self.wind.active:   # vent figé en pause : son temps est celui de la séance
+            self._wind_sample = self.wind.sample(self._t_session)
+            self._head_mps = head_component(self._wind_sample, here.heading_deg if here else 0.0)
+            self.physics.p.wind_mps = self._head_mps
+            if wcfg.feel == "ftms":
+                setter = getattr(self.driver, "set_wind", None)
+                if setter:
+                    setter(self._head_mps)
+        self._wind_offset = 0.0
+        if self.bots:
+            self._update_draft(dt, route, here.heading_deg if here else 0.0)
 
         if erg and erg.target_active:
             # ERG : cible de puissance, aucune pente envoyée ; la physique garde la pente du terrain.
@@ -605,7 +768,14 @@ class CoreSession:
             self.driver.set_sim_grade(0.0)
         else:
             # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
-            target = self.gearing.effective_grade(ahead, self.cfg.trainer.difficulty_pct / 100.0)
+            target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0)
+            if (self.wind.active and wcfg.feel == "grade") or self._draft > 0.0:
+                # Vent et abri ressentis : supplément de pente avant la limitation de variation et les
+                # bornes. Avec feel = "ftms", le vent part dans la commande 0x11 et seul l'abri passe ici.
+                head = self._head_mps if wcfg.feel == "grade" else 0.0
+                self._wind_offset = grade_offset_pct(self.physics.v, head, self._draft, alt,
+                                                     self.physics.p, wcfg.max_grade_offset_pct)
+                target += self._wind_offset
             max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
             shifted = self._shift_pending
             if shifted:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
@@ -615,8 +785,11 @@ class CoreSession:
                 self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
-        self.physics.step(m.power_w, grade, alt, dt)
+        self.physics.step(m.power_w, grade, alt, dt, alpha_draft=self._draft)
         for bot in self.bots:
+            params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
+            if self.wind.active and params is not None and route:
+                params.wind_mps = head_component(self._wind_sample, route.sample(bot.s).heading_deg)
             bot.step(dt, route)
 
         self._power_window.append((self._t_session, m.power_w))
@@ -631,6 +804,9 @@ class CoreSession:
         st.gear = self.gearing.k
         if here:
             st.lat, st.lon, st.alt = here.lat, here.lon, alt
+        if self.bots:
+            st.draft = round(self._draft, 3)
+            st.draft_bot = self._draft_bot if st.draft > 0.0 else None
 
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
@@ -639,13 +815,53 @@ class CoreSession:
                 alt=round(alt, 2), distance=round(st.s, 2), speed=round(st.v, 3),
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
+                difficulty_pct=round(self.difficulty_pct),
                 block=erg.index + 1 if erg else None,
                 target_w=erg.target_w if erg and erg.target_active else None,
-                erg_bias_pct=erg.bias_pct - BIAS_DEFAULT_PCT if erg and erg.target_active else None))
+                erg_bias_pct=erg.bias_pct - BIAS_DEFAULT_PCT if erg and erg.target_active else None,
+                head_mps=round(self._head_mps, 2) if self.wind.active else None,
+                wind_grade_pct=round(self._wind_offset, 2)
+                if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
+                draft=round(self._draft, 3) if self.bots else None))
 
         if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
             log.info("Arrivée atteinte.")
             self._finish(True)
+
+    def _update_draft(self, dt: float, route: Route | None, heading_deg: float) -> None:
+        """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; poussée du bot suivi."""
+        length = route.length_m if route else None
+        is_loop = bool(route and route.is_loop)
+        cross = 0.0
+        if self.wind.active:
+            ws = self._wind_sample
+            cross = ws.speed_mps * math.sin(math.radians(ws.from_deg - heading_deg))
+        target, bot_id = draft_mod.best_draft(self.physics.s, self.bots, length, is_loop,
+                                              self.physics.v, self._head_mps, cross)
+        self._draft = draft_mod.smooth(self._draft, target, dt)
+        if bot_id is not None:
+            self._draft_bot = bot_id
+        elif self._draft == 0.0:
+            self._draft_bot = None
+        for bot in self.bots:   # poussée vers l'avant : le bot suivi de près résiste un peu moins
+            base = self._bot_cda.get(id(bot))
+            if base is not None:
+                push = draft_mod.push_bonus(self.physics.s, bot.s, length, is_loop) \
+                    if draft_mod.PUSH_ENABLED else 0.0
+                bot.params.cda_m2 = base * (1.0 - push)
+
+    def _fill_wind_frame(self) -> None:
+        """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (1 400 octets)."""
+        st = self.state
+        st.wind = None
+        if not self.wind.active:
+            return
+        if self._frame_count % WIND_FRAME_EVERY == 0 or self._wind_pending:
+            if st.devices is not None:
+                self._wind_pending = True
+            else:
+                self._wind_pending = False
+                st.wind = wind_frame(self._wind_sample, self._head_mps)
 
     # --- boucle principale ---------------------------------------------------------------
 
@@ -683,7 +899,8 @@ class CoreSession:
         st.t, st.s, st.v = rs.t, rs.s, 0.0
 
         self._rec = SessionRecorder(self.journal_dir, route_id, on_failure=self._on_recording_failure,
-                                    workout_id=rs.workout_id, resume_path=path, lines=rs.lines)
+                                    workout_id=rs.workout_id, resume_path=path, lines=rs.lines,
+                                    source=self._journal_source())
         if rs.running:
             # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
             self._rec.event("pause", rs.last_ts)
@@ -803,6 +1020,7 @@ class CoreSession:
                     self.state.bots = [b.to_dict() for b in self.bots]
                 else:
                     self.state.bots = None
+                self._fill_wind_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S
