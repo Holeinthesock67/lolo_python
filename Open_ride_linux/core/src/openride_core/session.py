@@ -34,7 +34,6 @@ from .mock_driver import MockDriver
 from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, load_resume_state
-from .ble_util import ble_lock
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
@@ -547,31 +546,31 @@ class CoreSession:
     async def _scan_devices(self, cmd_id: int, timeout: float) -> None:
         from . import pairing
 
+        error: str | None = None
         try:
             inv = await self._scan_inventory(timeout)
             self._scan_items = pairing.scan_items(inv, pairing.configured_addresses(self.cfg))
             log.info("Appairage : %d appareil(s) trouvé(s).", len(self._scan_items))
-        except Exception as exc:   # Bluetooth éteint, BlueZ absent
+        except Exception as exc:   # Bluetooth éteint, BlueZ absent, BlueZ occupé ailleurs
             log.warning("Appairage : recherche impossible : %s", exc)
-            self.server.send_error("scan_failed", f"Recherche des appareils impossible : {exc}")
+            error = pairing.scan_error_message(exc)
         finally:
             self._scanning = False
         self.server.send_raw(pairing.scan_results_message(cmd_id, self._scan_items, True))
+        if error:   # après la fin de recherche, pour que l'écran garde la raison affichée
+            self.server.send_error("scan_failed", error)
 
     async def _scan_inventory(self, timeout: float) -> dict:
         """Recherche du menu Appareils, à la suite des recherches du Click, du trainer et de la
-        ceinture (BlueZ n'en accepte qu'une : « InProgress ») ; refaite deux fois après 1 s si BlueZ
-        est encore occupé par un autre programme."""
+        ceinture (verrou BLE commun, pris par `pairing.scan_inventory` : BlueZ n'en accepte qu'une,
+        « InProgress ») ; refaite deux fois après 1 s si BlueZ est encore occupé par un autre programme."""
         from . import pairing
 
-        if self.sim is not None:
-            return await pairing.scan_inventory(self.sim, timeout)
         for attempt in range(SCAN_ATTEMPTS):
             try:
-                async with ble_lock():
-                    return await pairing.scan_inventory(None, timeout)
+                return await pairing.scan_inventory(self.sim, timeout)
             except Exception as exc:
-                if "InProgress" not in str(exc) or attempt == SCAN_ATTEMPTS - 1:
+                if not pairing.is_in_progress(exc) or attempt == SCAN_ATTEMPTS - 1:
                     raise
                 log.info("Appairage : Bluetooth occupé, nouvel essai dans 1 s.")
                 await asyncio.sleep(1.0)
