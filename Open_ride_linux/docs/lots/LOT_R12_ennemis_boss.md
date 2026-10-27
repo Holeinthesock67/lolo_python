@@ -6,7 +6,7 @@ Donner un corps aux cinq archétypes et au boss : formes géométriques simples,
 
 ## 2. À lire
 
-1. `docs/lots/00_INDEX.md`, `docs/lots/LOT_R17_direction_artistique.md` (charte, jetons de couleur, matériaux, catalogue des objets et des effets : à suivre partout), `docs/2.0/GDD_CYBER_ROGUE.md` §1.3 et §2.5, `docs/lots/LOT_R10_scene_neon_ruban.md`, `LOT_R1_contrat_ipc_rogue.md` §4.4.
+1. `docs/lots/00_INDEX.md`, `docs/lots/LOT_R17_direction_artistique.md` (charte, jetons de couleur, matériaux, catalogue des objets et des effets : à suivre partout), `docs/2.0/GDD_CYBER_ROGUE.md` §1.3 et §2.5, `docs/lots/LOT_R10_scene_neon_ruban.md`, `LOT_T1_contrat_1_4.md` §4.3 (partie R du contrat 1.4).
 2. Code : `engine/scripts/rogue/` (après R10 et R11), `engine/scripts/quality_presets.gd`.
 
 ## 3. Prérequis

@@ -8,12 +8,12 @@ Montrer à la fin de chaque séance ce qu'elle a rapporté : expérience par sou
 
 ## 2. À lire
 
-1. `docs/2.0/PLAN_SERIE_V.md` §2.1, §2.1 bis, §2.2 (« un gain compté ») ; `LOT_V1_contrat_progression.md` §4.2 ; `LOT_N4_modele_fin_seance.md`.
+1. `docs/2.0/PLAN_SERIE_V.md` §2.1, §2.1 bis, §2.2 (« un gain compté ») ; `LOT_T1_contrat_1_4.md` §4.4 ; `LOT_N4_modele_fin_seance.md`.
 2. Code : `summary_view_model.gd`, `summary_view.gd`, `menu_model.gd`, `banner.gd`, `ipc_client.gd`.
 
 ## 3. Prérequis
 
-V1 validé, V11 livré, N4 et N6 livrés.
+T1 validé, V11 livré, N4 et N6 livrés.
 
 ## 4. Travail demandé
 
@@ -27,7 +27,7 @@ Nouveaux : `progress_view_model.gd`, son test. Modifiés : `summary_view.gd`, `s
 
 ## 6. Modifications de contrat autorisées
 
-Aucune au-delà de V1.
+Aucune au-delà de T1.
 
 ## 7. Critères d'acceptation
 
