@@ -48,7 +48,7 @@ func _run() -> void:
 		_check(img != null and img.get_width() == SIZE.x, "%s : image produite" % preset)
 		_check(_brightest(img) > 0.4, "%s : des arêtes lumineuses apparaissent (%.2f)" % [preset, _brightest(img)])
 		if preset == "low":
-			img.save_png(OS.get_temp_dir().path_join("rogue_style_sheet_low.png"))
+			img.save_png("user://rogue_style_sheet_low.png")
 	sheet.set_adapted(true)
 	for i in 3:
 		await process_frame
