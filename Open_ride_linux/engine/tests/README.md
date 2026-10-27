@@ -16,6 +16,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 | Fichier | Lot | Vérifie |
 | --- | --- | --- |
 | `test_terrain_render.gd` | E2 | Shader triplanaire compilé et rendu : herbe, roche, neige et trois mélanges égaux à `blend_weights` (L3) à 3/255 près, seuil de pente du thème, texture utilisée à la place de la couleur |
+| `test_road_markings_render.gd` | P14 | Marquages (`road_markings.gdshader`) sur un vrai ruban de `road_builder.gd` : ligne médiane claire au centre, motif de 13 m (3 m peints), bandes de rive aux deux bords, chiffre « 1 » peint sur la voie de droite |
 
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
@@ -88,6 +89,8 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_far_terrain_carve.gd` | – | Terrain lointain abaissé sous la route (`terrain_tiles.gd`, `carve_under_route`) : vallée en V à 30 % et route en S à 7 %, dépassement de 8 m sans correctif, au moins 2 m sous la chaussée après, aucun sommet relevé, bord commun de deux tuiles identique |
 | `test_sound_player.gd` | E4 | Lecteurs et sons procéduraux du parcours (`sound_player.gd`) : synthèse au démarrage (< 500 ms), vent, roue libre, limitation à 4 lecteurs 3D actifs, volumes à 0,5 dB de `sound_model.gd` |
 | `test_wind_model.gd` | P4 | Modèle du vent (`wind_model.gd`) : repère, lissage (90 % en 1,2 s sans dépassement), phase continue, expiration du vent du core et vent du thème, vent apparent, coût de `evaluate` |
+| `test_climb_detector.gd` | P14 | Montées (`climb_detector.gd`) : col de 8 km à 7 % et bosse de 400 m à 5 % (une montée, sommet à ± 20 m, pente 7,0 % ± 0,2), rampes séparées par 200 m fusionnées, 1 km à 9 % gardé, parcours vallonné sans montée |
+| `test_roadside_model.gd` | P14 | Bord de route (`roadside_model.gd`, `roadside_props.gd`) : nombres au format français, panneaux d'approche à 5, 3, 2 et 1 km (« Sommet à 3 km », « Pente moyenne 7 % »), panneau du sommet (nom OSM ou « Sommet », altitude au mètre), une borne par kilomètre sans doublon sur une boucle, rien dans l'eau ni sur un pont, côté droit à 1,5 m du bord, panneaux lisibles à 30 m et face au cycliste, tronçons posés et retirés |
 | `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
 
 ## Étapes du script
