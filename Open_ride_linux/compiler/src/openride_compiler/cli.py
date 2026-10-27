@@ -140,6 +140,18 @@ def build_parser() -> argparse.ArgumentParser:
     rpi.add_argument("--force", action="store_true", help="remplace un pack installé du même nom")
     rpi.add_argument("--gpx-dir", type=Path, default=default_gpx,
                      help=f"dossier des traces, le pack va dans un sous-dossier (défaut : {default_gpx})")
+    rpb = sub.add_parser("route-pack-build",
+                         help="construit un pack de parcours depuis ses recettes et OpenStreetMap (lot O16)")
+    rpb.add_argument("pack", help="pack livré (cols_celebres) ou dossier de recettes .toml")
+    rpb.add_argument("--out", type=Path, default=DEFAULT_PACK_WORK_DIR,
+                     help=f"dossier de travail où le pack est écrit (défaut : {DEFAULT_PACK_WORK_DIR})")
+    rpb.add_argument("--only", help="seulement ces cols, séparés par des virgules (identifiants des recettes)")
+    rpb.add_argument("--offline", action="store_true",
+                     help="interdit le réseau : routes OSM et tuiles d'altitude doivent être en cache")
+    rpb.add_argument("--install", action="store_true",
+                     help="installe ensuite le pack dans le dossier des traces (comme route-pack-install --force)")
+    rpb.add_argument("--gpx-dir", type=Path, default=default_gpx,
+                     help=f"avec --install : dossier des traces (défaut : {default_gpx})")
     rpl = sub.add_parser("route-pack-list", help="liste les packs de parcours installés")
     rpl.add_argument("--gpx-dir", type=Path, default=default_gpx,
                      help=f"dossier des traces (défaut : {default_gpx})")
@@ -375,6 +387,9 @@ def cmd_theme_check(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+DEFAULT_PACK_WORK_DIR = Path.home() / ".cache" / "openride" / "route_packs"
+
+
 # Parcours de démonstration du core (`openride_core.demo_world`), repris ici pour que le repli
 # fonctionne sans le core ; `test_catalog_parity.py` vérifie que les deux valeurs restent égales.
 DEMO_NAME = "demo"
@@ -584,6 +599,23 @@ def cmd_route_pack_install(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_route_pack_build(args: argparse.Namespace) -> int:
+    from .route_recipe import build_pack, pack_dir
+    source = pack_dir(args.pack)
+    client = make_osm_client(args.offline)
+    only = [o.strip() for o in args.only.split(",") if o.strip()] if args.only else None
+    target, done, refused = build_pack(source, Path(args.out).expanduser(), client.fetch_query,
+                                       make_provider(args.offline), only=only)
+    print(f"Pack écrit dans {target} : {len(done)} col(s) construit(s), {len(refused)} refusé(s).")
+    for msg in refused:
+        print(f"openride-compiler : refusé : {msg}", file=sys.stderr)
+    if args.install and done:
+        from .route_pack import install_pack
+        name, count, folder = install_pack(target, Path(args.gpx_dir).expanduser(), force=True)
+        print(f"Pack « {name} » installé : {count} trace(s) dans {folder}. Compiler : openride-compiler build-all")
+    return EXIT_INPUT if refused or not done else EXIT_OK
+
+
 def cmd_route_pack_list(args: argparse.Namespace) -> int:
     from .route_pack import list_packs
     packs = list_packs(Path(args.gpx_dir).expanduser())
@@ -651,6 +683,7 @@ COMMANDS = {
     "list": cmd_list,
     "build-all": cmd_build_all,
     "route-pack-install": cmd_route_pack_install,
+    "route-pack-build": cmd_route_pack_build,
     "route-pack-list": cmd_route_pack_list,
 }
 

@@ -27,6 +27,10 @@ openride-compiler = "openride_compiler.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+# Recettes des packs de parcours livrés (lot O16), lues par `route-pack-build`.
+openride_compiler = ["route_packs/*/*.toml"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
