@@ -96,11 +96,48 @@ class RogueBalance:
     win_gold: float = 20.0
     win_gold_per_ps: float = 2.0
     flee_gold: float = 8.0
+    # Run, cartes et reliques (R6)
+    warmup_relic_s: float = 180.0       # tirage de la relique de départ à la 3e minute
+    warmup_grade_max: float = 2.0       # échauffement : pente 0 à 2 %, cible 0,50 à 0,75 FTP
+    warmup_frac_from: float = 0.50
+    warmup_frac_to: float = 0.75
+    cooldown_frac: float = 0.50
+    reroll_cost: int = 15
+    reroll_step: int = 5
+    cards_offered: int = 3
+    sent_grade_min: float = -10.0       # pente envoyée au trainer : plage du trainer
+    sent_grade_max: float = 16.0
+    gear_grade_pts: float = 1.0         # formule centrée (Q2) : + (vitesse − 6) × 1 point
+    roller_cap_grade: float = 6.0       # Rouleau compresseur
+    roller_hold_s: float = 3.0
+    springboard_grade: float = -1.0     # Tremplin cinétique
+    springboard_min_gear: int = 9
+    springboard_adrenaline: float = 15.0
+    springboard_s: float = 5.0
+    springboard_mult: float = 1.5
+    overdrive_grade_pts: float = 4.0
+    overdrive_mult: float = 2.0
+    overdrive_s: float = 8.0
+    overdrive_cooldown_s: float = 45.0
+    overdrive_back_gear: int = 6
+    heal_cadence_rpm: float = 95.0
+    heal_per_s: float = 1.0
+    cursed_gear: int = 10
+    cursed_mult: float = 1.35
+    shifter_window_mult: float = 2.0
+    shifter_window_max_s: float = 3.0
+    shifter_shield: float = 3.0
+    siphon_adrenaline: float = 50.0
+    inversion_s: float = 8.0
+    inversion_floor: float = -3.0
+    relic_shield_bonus: float = 20.0
+    relic_gold_mult: float = 1.25
+    relic_ps_window_bonus_s: float = 0.3
     # Profils par archétype et par objectif (valeurs de départ du cahier R3 §4.2)
     room_profiles: dict = field(default_factory=lambda: {
         "diesel": {
             "endurance": {"g0": 2.0, "g1": 3.0, "fw": 0.68},
-            "seuil": {"g0": 3.0, "g1": 4.0, "fw": 0.90},
+            "threshold": {"g0": 3.0, "g1": 4.0, "fw": 0.90},
         },
         "puncheur": {
             "vo2max": {"bump_s": 15.0, "valley_s": 30.0, "bump_grade": 9.0, "valley_grade": -2.0,
@@ -109,22 +146,22 @@ class RogueBalance:
         },
         "grimpeur": {
             "endurance": {"steps": (2.0, 3.0, 4.0), "step_s": 60.0, "fw": 0.70},
-            "seuil": {"steps": (4.0, 7.0, 10.0), "step_s": 60.0, "fw": 0.88},
+            "threshold": {"steps": (4.0, 7.0, 10.0), "step_s": 60.0, "fw": 0.88},
             "vo2max": {"steps": (5.0, 8.0, 10.0), "step_s": 60.0, "fw": 0.95},
         },
         "sprinteur": {
-            "seuil": {"fw": 0.75, "burst_fw": 1.30, "burst_s": 10.0, "period_s": 45.0},
+            "threshold": {"fw": 0.75, "burst_fw": 1.30, "burst_s": 10.0, "period_s": 45.0},
             "vo2max": {"fw": 0.80, "burst_fw": 1.50, "burst_s": 8.0, "period_s": 40.0},
         },
         "saboteur": {
             "endurance": {"lo": 1.0, "hi": 3.0, "fw": 0.68},
-            "seuil": {"lo": 2.0, "hi": 5.0, "fw": 0.88},
+            "threshold": {"lo": 2.0, "hi": 5.0, "fw": 0.88},
         },
         "boss": {
             "endurance": {"p1_grade": 3.0, "p1_fw": 0.70, "p1_locks": 4,
                           "p2_grades": (4.0, 0.0, 5.0), "p2_fw": (0.80, 0.60, 0.85), "p2_block_s": 40.0,
                           "shock_period_s": 30.0, "p3_grade": 0.0, "p3_fw": 0.85},
-            "seuil": {"p1_grade": 5.0, "p1_fw": 0.90, "p1_locks": 4,
+            "threshold": {"p1_grade": 5.0, "p1_fw": 0.90, "p1_locks": 4,
                       "p2_grades": (8.0, 0.0, 10.0), "p2_fw": (1.00, 0.70, 1.05), "p2_block_s": 40.0,
                       "shock_period_s": 30.0, "p3_grade": 0.0, "p3_fw": 1.20},
         },

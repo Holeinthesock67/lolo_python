@@ -38,7 +38,7 @@ def test_deterministic():
         for a, v, o in CASES[:: 4]:
             r1, r2 = make(a, v, o, seed, 240.0), make(a, v, o, seed, 240.0)
             assert r1 == r2
-    assert make("saboteur", "", "seuil", 1) != make("saboteur", "", "seuil", 2)
+    assert make("saboteur", "", "threshold", 1) != make("saboteur", "", "threshold", 2)
 
 
 @pytest.mark.parametrize("a,v,o", CASES)
@@ -132,17 +132,17 @@ def test_markers_do_not_overlap(a, v, o):
 
 def test_marker_kinds_per_archetype():
     kinds = lambda a, v, o: {m.kind for m in make(a, v, o, nominal=400.0).markers}   # noqa: E731
-    assert {"tunnel", "strike_target"} <= kinds("diesel", "", "seuil")
+    assert {"tunnel", "strike_target"} <= kinds("diesel", "", "threshold")
     assert {"parry_zone", "arch"} <= kinds("puncheur", "", "vo2max")
-    assert {"rock", "strike_target", "arch"} <= kinds("grimpeur", "", "seuil")
+    assert {"rock", "strike_target", "arch"} <= kinds("grimpeur", "", "threshold")
     assert {"pad"} <= kinds("sprinteur", "", "vo2max")
-    assert {"purge"} <= kinds("saboteur", "", "seuil")
-    assert sum(1 for m in make("boss", "phase1", "seuil", nominal=210).markers if m.kind == "strike_target") == 4
-    assert {"shockwave", "parry_zone"} <= kinds("boss", "phase2", "seuil")
+    assert {"purge"} <= kinds("saboteur", "", "threshold")
+    assert sum(1 for m in make("boss", "phase1", "threshold", nominal=210).markers if m.kind == "strike_target") == 4
+    assert {"shockwave", "parry_zone"} <= kinds("boss", "phase2", "threshold")
 
 
 def test_boss_phases_structure():
-    r = make("boss", "phase3", "seuil", nominal=120.0)
+    r = make("boss", "phase3", "threshold", nominal=120.0)
     assert [t.frac for t in r.firewall_plan] == [0.5, 1.2]
     assert max(g for _, g in r.profile) == 0
     r1 = make("boss", "phase1", "endurance", nominal=210.0)
@@ -150,7 +150,7 @@ def test_boss_phases_structure():
 
 
 def test_room_to_route():
-    room = make("grimpeur", "", "seuil")
+    room = make("grimpeur", "", "threshold")
     route = room_to_route(room)
     assert route.length_m == pytest.approx(room.length_m, rel=0.001)
     for s, g in room.profile[:: 7]:
@@ -170,6 +170,6 @@ def test_longest_room_message_fits_one_part():
 
 def test_invalid_arguments():
     with pytest.raises(ValueError):
-        make("dragon", "", "seuil")
+        make("dragon", "", "threshold")
     with pytest.raises(ValueError):
-        make("diesel", "", "seuil", nominal=0)
+        make("diesel", "", "threshold", nominal=0)

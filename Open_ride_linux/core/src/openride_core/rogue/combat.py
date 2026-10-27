@@ -31,7 +31,7 @@ class CombatInputs:
     v_mps: float                    # vitesse (fenêtres de temps converties en distance)
     contact: bool = False           # le Firewall touche le joueur (R4)
     buttons: frozenset = frozenset()    # événements de bouton de la trame : Z_SHORT, Z_LONG, ...
-    objective: str = "seuil"
+    objective: str = "threshold"
     card_mult: float = 1.0          # m_cards (R6)
     w_bal_j: float = 0.0
     run_gold: float = 0.0           # or de la run (perte de 25 % en cas de défaite)
