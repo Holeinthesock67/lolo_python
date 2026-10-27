@@ -14,6 +14,8 @@ Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. 
 
 Détail des tests de l'engine : [engine/tests/README.md](../engine/tests/README.md).
 
+Protocole pas à pas sur le PC et le vélo, avec la branche à tester pour chaque essai : [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md).
+
 **Tout d'un coup sur le PC (lot X4) :** `scripts/recette_pc.py` enchaîne core, compilateur, engine, bout en bout, tests graphiques et scanner de confidentialité, garde un journal par étape dans `~/OpenRide/recettes/<date>_<heure>/` avec `resume.txt`, `resume.json` et `perf.csv` (budgets de temps), et compare au passage précédent (étape passée d'OK à ÉCHEC, nombre de tests changé). Options : `--rapide` (core sans les tests lents, sans tests graphiques), `--seulement core,engine`, `--sans visual`, `--perf-strict`. Utilise `core/.venv` s'il existe.
 
 **Installation sur un système propre (lot X29) :** `scripts/recette_install.py` lance `scripts/recette_install/check_install.sh` dans un compte vierge, avec le code commité (HEAD publié dans un dépôt d'origine temporaire) : par défaut un conteneur Ubuntu 24.04 neuf sans Bluetooth (docker, compte `cycliste`), ou `--mode home` (HOME temporaire sur ce PC ; `--sans-pip` pour un essai rapide avec le venv actuel). Il vérifie le clone, `install.sh` sans terminal, les commandes de `~/.local/bin`, `config.toml` et le chemin de Godot, les raccourcis de bureau et l'icône (`desktop-file-validate`), le premier démarrage (`openride --compile-only`, core sur le trainer simulé), puis la mise à jour : parcours, séance et réglage modifié à la main, nouveau commit sur l'origine, `update.sh` et `install.sh` relancé ; le code avance et les données restent identiques octet pour octet. Journal et résumé dans `~/OpenRide/recettes_install/<date>/`. Avec un mandataire, `--ca-bundle` ajoute son certificat dans le conteneur. Reste à la main : le même essai sur un second compte du PC (`sudo adduser essai`, puis `scripts/install.sh` depuis ce compte).
@@ -26,6 +28,7 @@ Détail des tests de l'engine : [engine/tests/README.md](../engine/tests/README.
 | `--trainer mock --input keyboard` | Générateur de puissance sans Bluetooth, clavier du terminal |
 | `openride-core run --replay SEANCE.jsonl\|.fit` | Rejoue une séance enregistrée avec le simulateur |
 | `--bot W`, `--ghost FICHIER` | Bots à puissance constante, fantôme d'une séance passée |
+| `python -m openride_core.tools.seance_guidee [--materiel\|--retirer]` | Séances guidées sur le vrai HomeTrainer : parcours `recette-velo` (SIM, 25 min) et `recette-erg` (ERG, 13 min, entraînement `recette_erg`) avec consignes à l'écran au temps de séance, bip, préavis d'une minute quand il faut préparer du matériel, et une ligne `[essai]` au journal du lanceur par consigne (temps, puissance, cadence, FC, braquet, pente envoyée). Format des consignes : `engine/scripts/cue_model.gd` (`at_m` ou `at_s`, `prepare`, `warn_s`, `warn_m`) |
 | `python -m openride_core.tools.log_scenario` | Convertit un journal du core (panne vue sur le vélo) en scénario simulé |
 | `engine/tests/fake_core.py` | Faux core (bibliothèque standard) pour tester l'engine seul |
 

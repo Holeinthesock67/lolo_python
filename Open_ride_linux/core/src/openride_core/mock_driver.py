@@ -24,6 +24,7 @@ class TrainerMetrics:
     speed_kmh: float = 0.0
     hr_bpm: int | None = None
     connected: bool = True
+    hr_frozen: bool = False   # FC relayée par le trainer figée, donc ignorée (lot Q5)
 
 
 class MockDriver:

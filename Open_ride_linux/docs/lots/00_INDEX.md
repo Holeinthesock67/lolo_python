@@ -104,11 +104,11 @@
 | [P10](LOT_P10_sons_velo.md) | Sons du vélo : vent selon la vitesse dans l'air, roue libre réaliste et « clac » à la reprise | GDScript | P4 | Petite | **Livré le 27 octobre** (issue #134) |
 | [P11](LOT_P11_animaux.md) | Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #135) |
 | [P12](LOT_P12_eoliennes_drapeaux_eau.md) | Éoliennes et drapeaux (compilateur et engine), eau qui scintille | Python + GDScript | P1, P4 | Moyenne | **Livré le 27 octobre** (issue #136) |
+| [P16](LOT_P16_integration_vent_ciel_sons.md) | Intégration, première vague : vent ressenti et affiché, arbres, nuages, sons ; recette sur la GTX 1060 | GDScript | P2, P4, P5, P6, P9, P10 | Moyenne | **Livré le 27 octobre**, recette sur le PC à faire (issue #140) |
 | [P13](LOT_P13_vehicules.md) | Véhicules croisés sur la route du parcours | GDScript | P4, P9 | Petite | **Livré le 27 octobre** (issue #137) |
 | [P14](LOT_P14_bord_de_route.md) | Bord de route : panneaux de col, bornes kilométriques, marquages au sol | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #138) |
 | [P15](LOT_P15_spectateurs.md) | Spectateurs et encouragements dans les dernières côtes | GDScript + shader | P9, P14 | Petite | **Livré le 27 octobre** (issue #139) |
-| [P16](LOT_P16_integration_vent_ciel_sons.md) | Intégration, première vague : vent ressenti et affiché, arbres, nuages, sons ; recette sur la GTX 1060 | GDScript | P2, P4, P5, P6, P9, P10 | Moyenne | Non : interne (`main.gd`, contrôle visuel et sur le vélo) (issue #140) |
-| [P17](LOT_P17_integration_decor_complet.md) | Intégration, deuxième vague : abri, météo, animaux, objets mobiles, bord de route | GDScript | P16, P3, P8, P11 à P15, O7 | Grande | Non : interne (`main.gd`, contrôle visuel) (issue #141) |
+| [P17](LOT_P17_integration_decor_complet.md) | Intégration, deuxième vague : abri, météo, animaux, objets mobiles, bord de route | GDScript | P16, P3, P8, P11 à P15, O7 | Grande | **Livré le 27 octobre** (sans l'affichage des bots d'O7), recette sur le PC à faire (issue #141) |
 | [P18](LOT_P18_saisons.md) | Saisons : feuillages, arbres dénudés, neige, vergers en fleurs, feuilles qui tombent | GDScript + shader | P5, P8, P9, P17 ; P7 | Moyenne | Oui, **version 2.0** (issue #142) |
 | [P19](LOT_P19_integration_jour_nuit_saisons.md) | Intégration du jour, de la nuit et des saisons | GDScript | P7, P17, P18 | Moyenne | Non : interne, **version 2.0** (issue #143) |
 | [P20](LOT_P20_packs_textures_performance.md) | Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | Python + GDScript | N10, O3, P17 | Moyenne | Oui, **version 2.0** (issue #147) |

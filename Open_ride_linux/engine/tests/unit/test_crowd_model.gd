@@ -9,6 +9,7 @@ const CrowdModel := preload("res://scripts/crowd_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const ClimbTest := preload("res://tests/unit/test_climb_detector.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -143,7 +144,8 @@ func _run() -> void:
 		total += Time.get_ticks_usec() - t0
 	var avg := total / 1000.0 / frames
 	print("200 spectateurs (modèle, clameur, affichage) : %.3f ms par image" % avg)
-	_check(r.visible_count() == 200 and avg < 0.2, "mise à jour en %.3f ms par image pour 200 spectateurs (< 0,2 ms)" % avg)
+	_check(r.visible_count() == 200, "200 spectateurs affichés")
+	_check(PerfBudget.check("crowd_frame_200", avg), "mise à jour en %.3f ms par image pour 200 spectateurs" % avg)
 	_check(r.get_child_count() == n0 and r._audio.stream == sp_player.stream("crowd_cheer"), "aucun nœud créé ; clameur jouée par le lecteur 3D")
 	r.queue_free()
 	sp_player.queue_free()

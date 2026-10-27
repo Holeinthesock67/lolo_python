@@ -248,6 +248,13 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
     cads = [float(r["cadence"]) for r in recs if r.get("cadence")]
     hrs = [float(r["hr"]) for r in recs if r.get("hr")]
 
+    hr_dict = _avg_max(hrs)
+    # Secondes où le driver a déclaré la FC relayée figée (lot Q5) : marquées dans le .jsonl
+    # (`hr_frozen`), absentes d'un FIT ; un enregistrement par seconde.
+    hr_ignored_s = float(sum(1 for r in recs if r.get("hr_frozen")))
+    if hr_ignored_s > 0 and hr_dict is not None:
+        hr_dict["ignored_s"] = hr_ignored_s
+
     out = {
         "source": source,
         "format": session.fmt,
@@ -264,9 +271,11 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
         "zones": zones,
         "best_power_w": best,
         "cadence": _avg_max(cads),
-        "hr": _avg_max(hrs),
+        "hr": hr_dict,
         "erg": _erg_blocks(recs, powers),
     }
+    if hr_ignored_s > 0:
+        out["hr_ignored_s"] = hr_ignored_s
     if session.devices:
         out["devices"] = _device_drops(session)
     drafts = [r["draft"] for r in recs if r.get("draft") is not None]
@@ -363,7 +372,13 @@ def format_text(r: dict[str, Any]) -> str:
     if r["cadence"]:
         lines.append(f"Cadence : moyenne {r['cadence']['avg']:.0f}, max {r['cadence']['max']:.0f} rpm")
     if r["hr"]:
-        lines.append(f"FC : moyenne {r['hr']['avg']:.0f}, max {r['hr']['max']:.0f} bpm")
+        hr_line = f"FC : moyenne {r['hr']['avg']:.0f}, max {r['hr']['max']:.0f} bpm"
+        ignored = r["hr"].get("ignored_s") or r.get("hr_ignored_s")
+        if ignored:
+            hr_line += f" (durée totale ignorée : {_hms(ignored)})"
+        lines.append(hr_line)
+    elif r.get("hr_ignored_s"):
+        lines.append(f"FC : aucune mesure valide (durée totale ignorée : {_hms(r['hr_ignored_s'])})")
     if r["erg"]:
         lines.append("ERG, par bloc :")
         for b in r["erg"]["blocks"]:

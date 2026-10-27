@@ -8,6 +8,7 @@ const TrafficModel := preload("res://scripts/traffic_model.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 const LENGTH_M := 32000.0
 const SNOW_FROM := 12000.0      # de 12 à 15 km : au-dessus de la limite de neige
@@ -145,7 +146,7 @@ func _test_renderer(route) -> void:
 	_check(spun and sound_ok, "roues qui tournent, son du passage ou du tracteur sur chaque véhicule")
 	_check(tr.get_child_count() == n0, "aucun nœud créé après le démarrage")
 	var avg := usec / 1000.0 / 9000.0
-	_check(avg < 0.1, "modèle et affichage mis à jour en %.4f ms par image (< 0,1 ms)" % avg)
+	_check(PerfBudget.check("traffic_frame", avg), "modèle et affichage mis à jour en %.4f ms par image" % avg)
 	tr.queue_free()
 	sp.queue_free()
 	await process_frame
@@ -181,7 +182,7 @@ func _run() -> void:
 	_check(safe, "12 autres graines, budget 5 : mêmes garanties, de 3 à 15 véhicules (%s)" % str(counts))
 	var r0: Dictionary = _ride(route, 0, 7)
 	_check(r0["count"] == 0, "budget nul : aucun véhicule")
-	_check(r["avg_ms"] < 0.1, "mise à jour en %.4f ms par image (< 0,1 ms)" % r["avg_ms"])
+	_check(PerfBudget.check("traffic_view_frame", r["avg_ms"]), "mise à jour en %.4f ms par image" % r["avg_ms"])
 
 	# Pause : véhicules figés
 	var tm = TrafficModel.new()
