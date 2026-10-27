@@ -692,9 +692,12 @@ def _scenes(s: Session) -> None:
 
     # 3 ter bis. Bots (lot O7) : un bot à 20 m devant, un fantôme à 60 m derrière ; silhouettes sur la route,
     # encart du HUD sous le panneau de droite (au plus 5 lignes), sans chevauchement.
-    core.set_scene(speed=0.0, s=FIXED_S, bots=[
-        {"id": "bot1", "name": "Bot 250 W", "s": FIXED_S + 20.0, "v": 0.0, "kind": "constant"},
-        {"id": "ghost", "name": "Fantôme du 26/10", "s": FIXED_S - 60.0, "v": 0.0, "kind": "ghost"}])
+    # La caméra ne recule jamais pendant une séance (camera_follow.gd) : les bots se placent autour de la
+    # position actuelle du cycliste, sans revenir à FIXED_S.
+    s_now = core.current_s()
+    core.set_scene(speed=0.0, bots=[
+        {"id": "bot1", "name": "Bot 250 W", "s": s_now + 20.0, "v": 0.0, "kind": "constant"},
+        {"id": "ghost", "name": "Fantôme du 26/10", "s": s_now - 60.0, "v": 0.0, "kind": "ghost"}])
     time.sleep(SETTLE_S)
     shot = s.capture("bots")
     if shot:
@@ -707,7 +710,7 @@ def _scenes(s: Session) -> None:
                 f"rectangle {w['bots_panel']['rect']}")
         b = info.get("bots", {})
         s.check("bots", "bot devant visible dans le champ de la caméra", b.get("shown") == 2 and b.get("in_view", 0) >= 1,
-                f"{b} caméra {info.get('camera')}")
+                f"{b}")
         s.check_layout("bots", info)
     core.set_scene(speed=SPEED_MPS, bots=None)
     shot = s.capture("sans_bot")
