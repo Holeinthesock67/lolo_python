@@ -48,7 +48,7 @@ class ConstantPowerBot:
             if mass_kg <= 0 or not math.isfinite(mass_kg):
                 raise BotError(f"masse invalide : {mass_kg}")
             p = replace(p, mass_kg=float(mass_kg))
-        self.params = p
+        self.params = replace(p)   # copie propre au bot : son vent de face lui est propre (lot P2)
         self.physics = RiderPhysics(self.params, s=s, v=v)
         self.t = 0.0
 

@@ -43,8 +43,22 @@
           "type": "integer",
           "minimum": 0,
           "maximum": 100
+        },
+        "modes": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 16
+          },
+          "uniqueItems": true,
+          "maxItems": 8
         }
       }
+    },
+    "rev": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
     }
   }
 }
