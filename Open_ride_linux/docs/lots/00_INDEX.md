@@ -170,6 +170,7 @@
 | [W15](LOT_W15_monde_synthetique.md) | Monde ouvert synthétique : relief analytique, base de routes, monde vivant et faux générateur | Python | W1 | Moyenne | Oui, après W1 (issue #270) |
 | [W16](LOT_W16_recette_monde_ouvert.md) | Recette sur le PC et le vélo : une heure de monde ouvert, retour sans téléchargement | — | W9 à W12 (W13) | Moyenne | Non : propriétaire (matériel) (issue #271) |
 | [T2](LOT_T2_detection_segments.md) | 2.0 série T : détection automatique des montées et des sprints (module pur) | Python | — | Petite | Oui (26 octobre, avancé avant la 1.0 : module pur sans contrat) |
+| [T4](LOT_T4_chronometrage_segments.md) | 2.0 série T : chronométrage des segments (franchissements interpolés, pauses, boucles, rejeu du journal) | Python | T2 | Moyenne | Oui (26 octobre, module pur ; branchement avec T1) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
