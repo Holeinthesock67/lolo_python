@@ -2,6 +2,9 @@
 
 import json
 import random
+from pathlib import Path
+
+import jsonschema
 
 from openride_core.ipc_budget import (MAX_DATAGRAM_SIZE, STATE_DEGRADATION, encode, fit_state,
                                       revisions, size, worst_state)
@@ -17,8 +20,12 @@ def test_encode_is_utf8_without_ascii_escapes():
 
 
 def test_every_revision_fits_after_degradation():
+    # Les pires trames n'utilisent que des valeurs permises par le schéma (énumérations, longueurs, types).
+    path = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "ipc" / "state.schema.json"
+    validator = jsonschema.Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
     for rev in revisions():
         frame = worst_state(rev)
+        assert [e.message for e in validator.iter_errors(frame)] == [], f"révision {rev}"
         out, dropped = fit_state(frame)
         assert size(out) <= MAX_DATAGRAM_SIZE, f"révision {rev} : {size(out)} octets ({dropped})"
         for key in KEPT:
@@ -79,3 +86,4 @@ def test_server_sends_degraded_state_instead_of_dropping(caplog):
     assert len(sent) == 2 and all(len(p) <= MAX_DATAGRAM_SIZE for p in sent)
     assert json.loads(sent[0])["devices"]["trainer"]["status"] == "RECONNECTING"
     assert sum("allégée" in r.message for r in caplog.records) == 1   # avertissement limité
+
