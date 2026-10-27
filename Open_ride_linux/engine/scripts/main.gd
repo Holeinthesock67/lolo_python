@@ -198,6 +198,14 @@ func _ready() -> void:
 		menu_flow.on_scan_results(msg)
 		_refresh_menu())
 	ipc.settings_received.connect(_on_settings)
+	ipc.imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
+		menu_flow.set_import_candidates(items)
+		_refresh_menu())
+	ipc.workout_saved_received.connect(func(msg: Dictionary) -> void:
+		ipc.test_log("workout_saved id=%s" % str(msg.get("workout_id", "")))
+		if menu_flow.on_workout_saved(msg):
+			ipc.list_workouts()
+		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
 		_refresh_menu())
@@ -290,6 +298,12 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.pair_devices(act.get("args", {}))
 		"set_setting":
 			ipc.set_setting(str(act["key"]), act["value"])
+		"list_imports":
+			ipc.list_imports()
+		"create_workout":
+			ipc.create_workout(act["args"])
+		"import_workout":
+			ipc.import_workout(str(act["path"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
 		"select_route":
@@ -626,7 +640,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
-	if cmd_name in ["list_routes", "list_workouts"]:
+	if cmd_name in ["list_routes", "list_workouts", "list_imports"]:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 
