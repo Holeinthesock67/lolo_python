@@ -1,0 +1,8 @@
+name = "Alpe d'Huez"
+region = "Oisans, Alpes"
+country = "France"
+side = "depuis Le Bourg-d'Oisans"
+waypoints = [[45.0563, 6.0310], [45.0917, 6.0705]]
+ref_length_m = 13800
+ref_gain_m = 1071
+tags = ["col", "classique", "hc"]

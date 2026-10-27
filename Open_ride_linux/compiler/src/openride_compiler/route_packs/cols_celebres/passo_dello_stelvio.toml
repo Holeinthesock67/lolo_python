@@ -1,0 +1,8 @@
+name = "Passo dello Stelvio"
+region = "Tyrol du Sud, Alpes"
+country = "Italie"
+side = "depuis Prato allo Stelvio"
+waypoints = [[46.6190, 10.5920], [46.5286, 10.4533]]
+ref_length_m = 24300
+ref_gain_m = 1808
+tags = ["col", "classique", "hc"]
