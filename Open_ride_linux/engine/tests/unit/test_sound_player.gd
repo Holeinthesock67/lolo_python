@@ -39,11 +39,19 @@ func _test_sound_synthesis_perf() -> void:
 
 	# Vérifier que les 6 sons procéduraux ont été créés
 	var all_streams_ok := true
-	for k in ["wind", "freewheel", "church_bell", "river", "livestock", "village"]:
+	for k in ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer"]:
 		var s: Resource = sp._streams.get(k, null)
 		if s == null or not (s is AudioStreamWAV):
 			all_streams_ok = false
-	_check(all_streams_ok, "tous les flux procéduraux générés et valides")
+	_check(all_streams_ok, "tous les flux procéduraux générés et valides (dont vehicle_pass et tractor_engine, lot P13, et crowd_cheer, lot P15)")
+	_check(sp.stream("vehicle_pass") is AudioStreamWAV and sp.stream("tractor_engine").loop_mode == AudioStreamWAV.LOOP_FORWARD
+		and sp.stream("inconnu") == null, "sons des véhicules accessibles par stream(kind), en boucle")
+	var voices_ok := true
+	for k in SoundPlayer.VOICE_KINDS:
+		var v = sp.stream(k)
+		if not (v is AudioStreamWAV) or v.loop_mode != AudioStreamWAV.LOOP_DISABLED or v.get_length() < 0.3 or v.get_length() > 1.0:
+			voices_ok = false
+	_check(voices_ok, "lot P21 : quatre sons de passants (voix, aboiement, rire) brefs et non bouclés")
 	var beds_ok := true
 	for bed in AmbienceModel.BEDS:
 		var b: Resource = sp._streams.get(bed, null)
