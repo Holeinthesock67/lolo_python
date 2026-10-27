@@ -1,7 +1,7 @@
 # Recette du lot P17 – Décor complet : météo, animaux, éoliennes, véhicules, bord de route, foule, abri
 
 Date : 27 octobre 2026  
-Branche : `lot-p17-integration-decor`  
+Code : `main` (PR #321, fusionnée le 27 octobre)  
 Machine cible : PC du propriétaire (GTX 1060, écran 1 920 × 1 080), HomeTrainer et Click  
 Cahier : [LOT_P17_integration_decor_complet.md](lots/LOT_P17_integration_decor_complet.md)  
 Recette précédente : [RECETTE_P16.md](RECETTE_P16.md) (vent, nuages, sons), à faire d'abord.
@@ -14,8 +14,7 @@ Recette précédente : [RECETTE_P16.md](RECETTE_P16.md) (vent, nuages, sons), à
 
 ```bash
 cd ~/Games/lolo_python
-git fetch origin lot-p17-integration-decor
-git checkout lot-p17-integration-decor
+git switch main && git pull --ff-only
 ```
 
 Tests sans écran, avant de monter sur le vélo :
