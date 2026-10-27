@@ -22,6 +22,13 @@ extends RefCounted
 ## seul boîtier du Click (unilatéral) ou sans trainer. « Rechercher et appairer » ouvre l'écran
 ## « Appareils » (pairing_view_model.gd), aussi accessible depuis Réglages. Actions en plus pour main.gd :
 ## scan_devices, identify_click_plus, pair_devices (+ args) et relaunch (relancer OpenRide).
+##
+## Sous-menu ERG (lot N16, contrat v1.3, décision D4 : le core écrit les fichiers) : « Créer un
+## entraînement » ouvre les paramètres d'intervalles (workout_builder.gd, modifiés sur l'écran de
+## réglage) puis renvoie create_workout {args} ; « Importer un fichier » renvoie list_imports, la
+## réponse `imports` arrive par set_import_candidates() et un choix renvoie import_workout {path}.
+## Réponse `workout_saved` : on_workout_saved(), retour à la liste, focus sur le nouvel entraînement à
+## son arrivée ; erreur du core (bad_args, busy, workout_invalid, workout_write_failed) sur la ligne d'état.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -29,11 +36,14 @@ const SummaryViewModel := preload("res://scripts/summary_view_model.gd")
 const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
+const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
 const PAIRING := PairingViewModel.SCREEN
 const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
+const WORKOUT_CREATE := WorkoutBuilder.SCREEN
+const WORKOUT_IMPORT := "workout_import"
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -58,6 +68,16 @@ var connect_done := false
 var _all_ok_since := -1.0
 ## Noms des parcours de la dernière liste, par id (monde affiché à l'accueil).
 var route_names := {}
+var builder = WorkoutBuilder.new()
+## Fichiers proposés à l'import : [{path, file, source, imported}] (message `imports` du core).
+var import_candidates: Array = []
+## Ligne d'état de la liste des entraînements (créé, importé, erreur).
+var workout_message := ""
+var _focus_workout := ""
+## Dernière demande au core (« create » ou « import ») et dernier request_cmd_id traité : le core
+## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
+var _workout_request := ""
+var _last_saved_cmd_id := -1
 
 
 func _init() -> void:
@@ -65,6 +85,11 @@ func _init() -> void:
 	menu.add_screen({"id": CONNECT, "title": "Connexion des appareils", "on_back": "", "items": []})
 	menu.add_screen({"id": PAIRING, "title": "Appareils", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": SETTING_EDIT, "title": "Réglage", "on_back": MenuModel.SETTINGS, "items": []})
+	menu.add_screen({"id": WORKOUT_CREATE, "title": "Créer un entraînement", "on_back": MenuModel.WORKOUTS,
+		"items": []})
+	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
+		"items": []})
+	_refresh_builder()
 	_refresh_pairing()
 	_refresh_settings()
 	menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
@@ -182,8 +207,13 @@ func on_scan_results(msg: Dictionary) -> void:
 		menu.focus_item("save")
 
 
-## Erreur du core (codes de l'écran Appareils : busy, scan_failed, pairing_failed).
+## Erreur du core : écrans Créer / Importer un entraînement (bad_args, busy, workout_invalid,
+## workout_write_failed), sinon écran Appareils (busy, scan_failed, pairing_failed).
 func on_error(code: String, text: String) -> void:
+	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT] \
+			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
+		workout_failed("Échec : " + text)
+		return
 	if code in ["busy", "scan_failed", "pairing_failed"]:
 		pairing.on_error(code, text)
 		_refresh_pairing()
@@ -211,10 +241,65 @@ func set_routes(raw: Array) -> void:
 
 func set_workouts(raw: Array) -> void:
 	menu.set_items(MenuModel.WORKOUTS, catalog.workout_items(raw))
+	if _focus_workout != "" and menu.current_screen() == MenuModel.WORKOUTS:
+		menu.focus_item(_focus_workout)
+		_focus_workout = ""
+
+
+func _refresh_builder() -> void:
+	menu.set_screen_items(WORKOUT_CREATE, builder.menu_items())
+
+
+## Fichiers importables (message `imports` du core, réponse à list_imports).
+func set_import_candidates(found: Array) -> void:
+	import_candidates = found
+	var items: Array = []
+	for i in range(found.size()):
+		var c: Dictionary = found[i]
+		items.append({"id": "file:%d" % i, "label": str(c["file"]),
+			"detail": str(c["source"]) + (", déjà importé" if c.get("imported", false) else "")})
+	if items.is_empty():
+		items.append({"id": "none", "label": "Aucun fichier .zwo, .erg ou .mrc", "enabled": false,
+			"detail": "dans Téléchargements, Bureau ou ~/OpenRide/Import"})
+	menu.set_screen_items(WORKOUT_IMPORT, items)
+
+
+## Réponse `workout_saved` du core {request_cmd_id, workout_id, name, created} (`created` faux : fichier
+## identique déjà présent) ; vrai si c'est une nouvelle réponse (main.gd redemande alors la liste).
+func on_workout_saved(msg: Dictionary) -> bool:
+	var rid := int(msg.get("request_cmd_id", -1))
+	if rid >= 0 and rid == _last_saved_cmd_id:
+		return false
+	_last_saved_cmd_id = rid
+	var name := str(msg.get("name", msg.get("workout_id", "")))
+	var text := ("Importé : " if _workout_request == "import" else "Créé : ") + name
+	if not msg.get("created", true):
+		text += " (déjà présent)"
+	workout_added(str(msg.get("workout_id", "")), text)
+	return true
+
+
+## Entraînement écrit dans le dossier (créé ou importé) : retour à la liste, focus dessus quand la
+## nouvelle liste arrive.
+func workout_added(workout_id: String, message: String) -> void:
+	for i in range(4):
+		if menu.current_screen() in [MenuModel.WORKOUTS, MenuModel.HOME]:
+			break
+		menu.handle("Y_SHORT")
+	workout_message = message
+	_focus_workout = workout_id
+
+
+func workout_failed(message: String) -> void:
+	workout_message = message
 
 
 ## Liste indisponible (trois demandes sans réponse) : un élément désactivé qui le dit.
 func list_failed(list_name: String) -> void:
+	if list_name == "imports":
+		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Fichiers à importer indisponibles",
+			"enabled": false, "detail": "core sans réponse"}])
+		return
 	var screen := MenuModel.ROUTES if list_name == "routes" else MenuModel.WORKOUTS
 	var label := "Liste des parcours indisponible" if list_name == "routes" else "Liste des entraînements indisponible"
 	menu.set_items(screen, [{"id": "unavailable", "label": label, "enabled": false, "detail": "core sans réponse"}])
@@ -242,6 +327,31 @@ func handle(event: String) -> Dictionary:
 			return _open_pairing()
 		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
 			_open_edit()
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.WORKOUTS:
+		workout_message = ""
+		if str(act["id"]) == MenuModel.CREATE_WORKOUT_ID:
+			_refresh_builder()
+			menu.push_screen(WORKOUT_CREATE)
+			return {}
+		import_candidates = []
+		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Recherche des fichiers…", "enabled": false}])
+		menu.push_screen(WORKOUT_IMPORT)
+		return {"action": "list_imports"}
+	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
+		var item_id := str(act["id"])
+		if item_id == "save":
+			_workout_request = "create"
+			return {"action": "create_workout", "args": builder.values.duplicate()}
+		if item_id.begins_with("param:"):
+			settings.begin_with(builder.edit_item(item_id.substr(6)))
+			_open_edit()
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_IMPORT:
+		var idx := int(str(act["id"]).substr(5))
+		if str(act["id"]).begins_with("file:") and idx < import_candidates.size():
+			_workout_request = "import"
+			return {"action": "import_workout", "path": import_candidates[idx]["path"]}
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:
 		settings.begin_pause_difficulty(difficulty_pct)
@@ -295,6 +405,10 @@ func _handle_edit(event: String) -> Dictionary:
 			if act.get("action", "") == "set_difficulty":
 				difficulty_pct = int(act["pct"])
 				menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
+			if act.get("action", "") == "builder_set":
+				builder.set_value(str(act["key"]), act["value"])
+				_refresh_builder()
+				return {}
 			return act
 		"Y_SHORT":
 			settings.cancel()
@@ -314,5 +428,9 @@ func _open_pairing() -> Dictionary:
 ## État du menu ; `status` : ligne d'état sous le titre (écran Appareils : recherche, + reconnu, enregistré).
 func state() -> Dictionary:
 	var st: Dictionary = menu.state()
-	st["status"] = pairing.message if st["screen"] == PAIRING else ""
+	st["status"] = ""
+	if st["screen"] == PAIRING:
+		st["status"] = pairing.message
+	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
+		st["status"] = workout_message
 	return st

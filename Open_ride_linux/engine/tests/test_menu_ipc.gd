@@ -19,6 +19,7 @@ var _workouts_data: Array = []
 var _got_routes := false
 var _got_workouts := false
 var _last_cmd_acked := 0
+var _last_difficulty := -1
 
 
 func _check(cond: bool, msg: String) -> void:
@@ -136,6 +137,7 @@ func _start_ipc_test() -> void:
 	)
 	_client.state_received.connect(func(st: Dictionary):
 		_last_cmd_acked = int(st.get("last_cmd_id", 0))
+		_last_difficulty = int(st.get("difficulty_pct", -1))
 	)
 
 	# Attend le hello_ack
@@ -218,6 +220,17 @@ func _start_ipc_test() -> void:
 		timeout_s += 0.05
 
 	_check(_last_cmd_acked >= cmd_start_id, "toutes les commandes acquittées par le faux core (last_cmd_id=%d >= %d)" % [_last_cmd_acked, cmd_start_id])
+
+	# 6. Difficulté (lot Q1) : send_set_difficulty(30) part en set_difficulty {"pct": 30}, acquittée,
+	# et le faux core renvoie difficulty_pct = 30 dans state.
+	var cmd_diff_id: int = _client.send_set_difficulty(30)
+	_check(cmd_diff_id > cmd_start_id, "set_difficulty envoyée (cmd_id=%d)" % cmd_diff_id)
+	timeout_s = 0.0
+	while (_last_cmd_acked < cmd_diff_id or _last_difficulty != 30) and timeout_s < 3.0:
+		await create_timer(0.05).timeout
+		timeout_s += 0.05
+	_check(_last_cmd_acked >= cmd_diff_id and _last_difficulty == 30,
+		"difficulté 30 %% reçue par le faux core (last_cmd_id=%d, difficulty_pct=%d)" % [_last_cmd_acked, _last_difficulty])
 
 	print("test_menu_ipc : %d vérifications, %d échecs" % [_checked, _failures])
 	_client.queue_free()

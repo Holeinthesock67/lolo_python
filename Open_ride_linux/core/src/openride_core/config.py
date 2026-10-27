@@ -71,6 +71,7 @@ class GearingConfig:
 class RenderConfig:
     quality: str = "low"
     theme: str = "default"
+    visual_grade_scale: float = 1.0
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
 
 
@@ -162,6 +163,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gearing", "long_press_gears"): (1, 10),
     ("ipc", "port_state"): (1024, 65535),
     ("ipc", "port_commands"): (1024, 65535),
+    ("render", "visual_grade_scale"): (1.0, 2.0),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
     ("drivers", "click_mute_after_s"): (1, 600),

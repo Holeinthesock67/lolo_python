@@ -26,6 +26,8 @@ extends RefCounted
 ## l'accueil), « Session libre » (SIM, sans entraînement), « Session ERG » (choix de l'entraînement),
 ## « Session simulée » (OpenRide relancé sans matériel ; en session simulée : « Revenir au matériel
 ## réel »), « Réglages », « Quitter ». Sans monde choisi, les sessions passent d'abord par les parcours.
+## « Session ERG » ouvre la liste des entraînements, qui finit par « Créer un entraînement » et
+## « Importer un fichier » (lot N16, traités par menu_flow.gd).
 ## Écrans ajoutés par add_screen() (bilan de fin du lot N4) : valider un élément renvoie
 ## {"action": "item", "screen": écran, "id": élément}, à traiter par l'appelant (menu_flow.gd, lot N6).
 
@@ -48,6 +50,9 @@ const NO_WORKOUT_ID := "_sim"
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG"}
 const DEFAULT_MODES := ["ride", "erg"]
+## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
+const CREATE_WORKOUT_ID := "_create"
+const IMPORT_WORKOUT_ID := "_import"
 
 var _screens: Dictionary = {}
 var _stack: Array[String] = []      # écrans précédents, pour le retour
@@ -186,8 +191,11 @@ func set_items(screen_id: String, items: Array) -> void:
 			str(it.get("detail", ""))))
 	if screen_id == ROUTES and clean.is_empty():
 		clean.append(_item("empty", "Aucun parcours", false))
-	elif screen_id == WORKOUTS and clean.size() == 1:
-		clean.append(_item("empty", "Aucun entraînement", false))
+	elif screen_id == WORKOUTS:
+		if clean.size() == 1:
+			clean.append(_item("empty", "Aucun entraînement", false))
+		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
+		clean.append(_item(IMPORT_WORKOUT_ID, "Importer un fichier (.zwo, .erg, .mrc)"))
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
 		focused_id = _screens[screen_id]["items"][_focus]["id"]
@@ -449,6 +457,8 @@ func _validate() -> Dictionary:
 				_back()
 			return {"action": "select_route", "route_id": id}
 		WORKOUTS:
+			if id in [CREATE_WORKOUT_ID, IMPORT_WORKOUT_ID]:
+				return {"action": "item", "screen": WORKOUTS, "id": id}
 			var workout = null if id == NO_WORKOUT_ID else id
 			mode = "free" if workout == null else "erg"
 			_refresh_home()

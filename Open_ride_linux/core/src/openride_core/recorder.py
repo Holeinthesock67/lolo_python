@@ -89,6 +89,8 @@ class SessionRecorder:
                 self._writer.event(line["event"], line["ts"])
             elif line["kind"] == "device":
                 self._writer.device(line["device"], line["state"], line["ts"])
+            elif line["kind"] == "ftp_test":
+                self._writer.ftp_test(line)
             else:
                 fields = {k: v for k, v in line.items() if k != "kind"}
                 self._writer.record(Record(**fields))
@@ -105,6 +107,11 @@ class SessionRecorder:
     def device(self, device: str, state: str, ts: float) -> None:
         """Coupure ou retour d'un appareil (lot M4) ; absent du FIT (`records`, `events`)."""
         line = {"kind": "device", "ts": ts, "device": device, "state": state}
+        self.lines.append(line)
+        self._write(line)
+
+    def ftp_test(self, line: dict) -> None:
+        """Résultat d'un test de FTP (lot O10), écrit avant `finish`."""
         self.lines.append(line)
         self._write(line)
 
@@ -131,6 +138,10 @@ class SessionRecorder:
     @property
     def records(self) -> list[dict]:
         return [ln for ln in self.lines if ln["kind"] == "record"]
+
+    @property
+    def devices(self) -> list[dict]:
+        return [ln for ln in self.lines if ln["kind"] == "device"]
 
     @property
     def events(self) -> list[dict]:
