@@ -202,6 +202,10 @@ def load_table(user_path: Path | None = USER_TABLE_PATH,
 
 # --- faits d'une séance -------------------------------------------------------------------
 
+POWER_STEP_W = 10   # pas de l'histogramme de puissance d'une séance
+RECORD_DURATIONS_S = (5, 60, 300, 1200)   # records de puissance moyenne (primes en pièces, V3b)
+
+
 @dataclass
 class SessionFacts:
     journal: str
@@ -215,6 +219,9 @@ class SessionFacts:
     erg_s: float = 0.0
     erg_completed: bool | None = None
     events: list[dict] = field(default_factory=list)
+    power_s: dict[int, float] = field(default_factory=dict)   # secondes par pas de 10 W (pièces, V3b)
+    ftp_w: float | None = None   # FTP de la séance si l'en-tête la donne (écrite par V11)
+    best_power: dict[int, float] = field(default_factory=dict)   # meilleure moyenne par durée (s)
 
 
 def _climb(altitudes: Iterable[float], deadband_m: float) -> float:
@@ -231,11 +238,27 @@ def _climb(altitudes: Iterable[float], deadband_m: float) -> float:
     return total
 
 
+def best_power(powers: list[float], durations: Iterable[int] = RECORD_DURATIONS_S) -> dict[int, float]:
+    """Meilleure puissance moyenne sur chaque durée (relevés à 1 Hz) ; durée absente si trop longue."""
+    best: dict[int, float] = {}
+    for d in durations:
+        if d > len(powers):
+            continue
+        window = sum(powers[:d])
+        top = window
+        for i in range(d, len(powers)):
+            window += powers[i] - powers[i - d]
+            top = max(top, window)
+        best[d] = round(top / d, 1)
+    return best
+
+
 def session_facts(path: Path, workout_duration_s: float | None = None,
                   climb_deadband_m: float = 1.0) -> SessionFacts:
     """Lit un journal ; `workout_duration_s` sert à dire si l'entraînement ERG est terminé."""
     facts = SessionFacts(journal=path.name)
     altitudes: list[float] = []
+    powers: list[float] = []
     first_record_ts = None
     for line in read_journal(path):
         if not isinstance(line, dict):
@@ -246,6 +269,9 @@ def session_facts(path: Path, workout_duration_s: float | None = None,
             facts.workout_id = line.get("workout_id")
             src = line.get("source")
             facts.source = src if src in SOURCES else "live"
+            ftp = line.get("ftp_w")
+            if isinstance(ftp, (int, float)) and not isinstance(ftp, bool) and ftp > 0:
+                facts.ftp_w = float(ftp)
         elif kind == "event":
             if line.get("event") == "start" and facts.start_ts is None:
                 facts.start_ts = float(line.get("ts", 0.0))
@@ -258,11 +284,18 @@ def session_facts(path: Path, workout_duration_s: float | None = None,
                 altitudes.append(float(line["alt"]))
             if line.get("target_w") is not None:
                 facts.erg_s += 1.0   # relevés à 1 Hz pendant la séance chronométrée
+            power = line.get("power")
+            if isinstance(power, (int, float)) and not isinstance(power, bool) and power >= 0:
+                step = int(power // POWER_STEP_W) * POWER_STEP_W
+                facts.power_s[step] = facts.power_s.get(step, 0.0) + 1.0
+            powers.append(float(power) if isinstance(power, (int, float)) and not isinstance(power, bool)
+                          and power >= 0 else 0.0)
         elif kind in ("segment", "jersey", "rogue_run"):   # lignes écrites par les séries T et R (V5)
             facts.events.append(dict(line))
     if facts.start_ts is None:
         facts.start_ts = first_record_ts
     facts.climb_m = _climb(altitudes, climb_deadband_m)
+    facts.best_power = best_power(powers)
     if facts.erg_s > 0 and workout_duration_s:
         facts.erg_completed = facts.erg_s >= workout_duration_s - ERG_END_TOLERANCE_S
     return facts
