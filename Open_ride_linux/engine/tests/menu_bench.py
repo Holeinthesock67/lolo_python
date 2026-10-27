@@ -15,7 +15,9 @@ Parcours (`--list`) :
 - `appareils` : un seul boîtier du Click (unilatéral) → « Passer », puis Réglages → Appareils :
   recherche, choix, enregistrement dans config.toml, « Relancer » (code de sortie 64 de l'engine) ;
 - `sessions` : menu principal, choix du monde, session libre démarrée puis terminée, session ERG
-  (entraînement choisi, consigne ERG reçue), puis « Session simulée » (code de sortie 65).
+  (entraînement choisi, consigne ERG reçue), puis « Session simulée » (code de sortie 65) ;
+- `reglages` : Réglages → FTP + 15 W enregistrée dans config.toml, qualité changée tout de suite,
+  puis curseur de difficulté sur l'écran de pause (`set_difficulty`).
 
 Résultat : captures et `rapport.html` dans `--out` (défaut : dossier temporaire). Code de sortie : 0
 si toutes les vérifications passent, 1 sinon, 2 si Godot ou xvfb-run manque.
@@ -285,10 +287,54 @@ def parcours_sessions(run: Run) -> None:
     r.check(rc == 65, "Session simulée : l'engine sort avec le code 65 (relance sans matériel)", f"code {rc}")
 
 
+def parcours_reglages(run: Run) -> None:
+    r = run.report
+    if not run.start(READY):
+        return
+    time.sleep(5.0)
+    run.press("MINUS_SHORT", "MINUS_SHORT", "PLUS_LONG")
+    run.expect("reglages", "Réglages", "FTP : 250 W", "Difficulté en SIM : ■■■■■□□□□□ 50 %")
+    run.focus_to("FTP")
+    run.press("PLUS_LONG")
+    run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT")
+    run.expect("ftp_modifiee", "FTP", "[265 W")
+    run.press("PLUS_LONG")
+    time.sleep(1.0)
+    text = run.config.read_text(encoding="utf-8")
+    r.check("ftp_w = 265" in text, "FTP écrite dans config.toml", text.replace("\n", " ")[:120])
+    run.expect("reglages_apres", "Réglages", "FTP : 265 W")
+    run.focus_to("Qualité")
+    t = now()
+    run.press("PLUS_LONG", "PLUS_SHORT", "PLUS_LONG")
+    assert run.engine is not None
+    r.check(run.engine.wait_for(r"Qualité graphique : medium", 5.0, after=t) is not None,
+            "qualité appliquée tout de suite au décor", "« Qualité graphique : medium » au journal de l'engine")
+    r.check("quality = \"medium\"" in run.config.read_text(encoding="utf-8"), "qualité écrite dans config.toml", "medium")
+    run.press("MINUS_LONG")   # retour à l'accueil
+    run.focus_to("Session libre")
+    run.press("PLUS_LONG")                 # Session libre (sans monde : parcours)
+    run.press("PLUS_LONG")                 # demo
+    t = now()
+    run.press("PLUS_LONG")                 # Démarrer
+    r.check(_wait_state(run, r"-> RUNNING", 10.0, after=t), "séance démarrée", "RUNNING")
+    run.command("pause")
+    time.sleep(1.5)
+    run.press("MINUS_SHORT")
+    run.expect("pause_difficulte", "Pause", "[Difficulté : ■■■■■□□□□□ 50 %]")
+    t = now()
+    run.press("PLUS_LONG", "MINUS_SHORT", "PLUS_LONG")
+    r.check(_wait_state(run, r"Difficulté : 50 % -> 40 %", 5.0, after=t), "curseur de la pause : set_difficulty",
+            "« Difficulté : 50 % -> 40 % » au journal du core")
+    run.expect("pause_apres", "Pause", "Difficulté : ■■■■□□□□□□ 40 %")
+    run.command("end_session", {"save": False})
+    time.sleep(1.0)
+
+
 PARCOURS: dict[str, Callable[[Run], None]] = {
     "connexion_auto": parcours_connexion_auto,
     "appareils": parcours_appareils,
     "sessions": parcours_sessions,
+    "reglages": parcours_reglages,
 }
 
 

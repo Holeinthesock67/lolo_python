@@ -37,7 +37,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 
 | Sens | Port par défaut | Contenu | Fréquence |
 | --- | --- | --- | --- |
-| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown`, `routes`, `workouts`, `scan_results`, `imports`, `workout_saved` | `state` à 30 Hz ; le reste sur événement |
+| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown`, `routes`, `workouts`, `settings`, `imports`, `workout_saved` | `state` à 30 Hz ; le reste sur événement |
 | engine vers core | 5006 | `hello`, `heartbeat`, `cmd`, `bye` | `heartbeat` à 2 Hz ; `cmd` sur événement |
 
 - Les ports sont modifiables dans `config.toml` (section `ipc`) ; si un port est occupé, le programme s'arrête avec un message explicite.
@@ -163,6 +163,8 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 | `scan_devices` | `{ "timeout_s": nombre }` (8 par défaut, 1 à 30) | Révision 1.2 : recherche des appareils Bluetooth ; réponses `scan_results` |
 | `identify_click_plus` | `{}` | Révision 1.2 : attend un appui « + » du Click pendant 15 s ; réponse `scan_results` avec `plus_address` |
 | `pair_devices` | `{ "trainer", "click_plus", "click_minus", "hr" }` : adresse ou `null` | Révision 1.2 : écrit les appareils choisis dans `config.toml` ; `error` `pairing_failed` en cas d'échec |
+| `list_settings` | `{}` | Révision 1.3 : demande les réglages du menu ; réponse `settings` |
+| `set_setting` | `{ "key": texte, "value": nombre ou texte }` | Révision 1.3 : écrit un réglage dans `config.toml` ; réponse `settings`, ou `error` `busy` / `setting_invalid` |
 | `list_imports` | `{}` | Révision 1.3 : fichiers d'entraînement importables ; réponse `imports` |
 | `create_workout` | `{ "warmup_min", "reps", "on_s", "on_pct", "off_s", "off_pct", "cooldown_min" }` : entiers | Révision 1.3 : le core écrit un entraînement par intervalles ; réponse `workout_saved` |
 | `import_workout` | `{ "path": chaîne }` | Révision 1.3 : le core copie un fichier proposé par `imports` ; réponse `workout_saved` |
@@ -218,7 +220,16 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 | `bye` | engine vers core | — | L'engine se ferme volontairement |
 | `shutdown` | core vers engine | — | Le core se ferme : l'engine quitte ou revient à l'écran d'attente |
 
-**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche demandée pendant une séance), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée) ; révision 1.3 : `bad_args` (arguments d'une commande absents ou mal typés, par exemple `set_difficulty` sans `pct` numérique ; rien n'est appliqué), `workout_write_failed` (entraînement impossible à écrire, lot N16).
+**Réglages depuis le menu (révision 1.3, lots O3 et O4).** Le core lit, valide et écrit ; l'engine affiche et change les valeurs au Click.
+
+| Message | Sens | Champs |
+| --- | --- | --- |
+| `settings` | core vers engine | `v`, `request_cmd_id`, `items` : liste de `{key, label, type, value, applies}` ; `type` vaut `int` (avec `min`, `max`, `step`, `unit`) ou `choice` (avec `choices`) ; `applies` vaut `next_session` (séance suivante, sans relancer) ou `now` (qualité et thème : l'engine les applique tout de suite au décor) |
+
+- Réglages proposés : `rider.ftp_w`, `rider.mass_kg`, `trainer.difficulty_pct`, `gearing.start_gear`, `render.quality`, `render.theme` (`default` et les thèmes de `~/OpenRide/Themes/`). Bornes et choix : ceux de la validation de `config.toml`.
+- `set_setting` : hors séance seulement (`IDLE`, `READY`, `FINISHED`, `ERROR`) ; pendant `RUNNING` ou `PAUSED`, `error` `busy` et rien n'est écrit (pendant la séance, la difficulté se change par `set_difficulty`). Valeur hors bornes ou choix inconnu : `error` `setting_invalid`, rien n'est écrit. Sinon le fichier est modifié comme pour `pair_devices` (copie `.bak`), la valeur sert dès la séance suivante (`hello_ack.config` aussi) et le core renvoie `settings` avec `request_cmd_id` de la commande.
+
+**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche ou appairage demandé pendant une séance ; aussi un réglage en révision 1.3), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée) ; révision 1.3 : `setting_invalid` (réglage inconnu ou valeur refusée), `bad_args` (arguments d'une commande absents ou mal typés, par exemple `set_difficulty` sans `pct` numérique ; rien n'est appliqué), `workout_write_failed` (entraînement impossible à écrire, lot N16).
 
 **Version.** Le core refuse un `hello` dont `v` diffère du sien, répond par une erreur `version_mismatch` et n'ouvre pas la séance. La règle d'évolution est au §8.
 
@@ -318,5 +329,6 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot N13, accepté par le propriétaire le 25 octobre ; même révision que Q1, numérotation confirmée par le propriétaire le 26 octobre) : commandes `scan_devices`, `identify_click_plus` et `pair_devices`, message `scan_results`, codes d'erreur `busy`, `scan_failed` et `pairing_failed` |
 | 1 (révision 1.2) | 26 octobre 2026 | Précisions sans changement de format (lot X25) : encodage UTF-8 sans échappement ; trame `state` trop grande allégée par le core au lieu d'être jetée (§3, liste `bots`) |
 | 1 (révision 1.3) | 26 octobre 2026 | Ajouts compatibles (lot P1, décisions du propriétaire du 25 octobre ; révision 1.3 parce que Q1 et N13 ont pris la 1.2) : objet facultatif `wind` dans `state` (2 fois par seconde, absent quand le vent est coupé), champs facultatifs `draft` et `draft_bot` ; limite de `state` portée à 4 096 octets (§2, décision D1 de l'audit IPC) ; champ facultatif `rev` dans `hello` et `hello_ack`, liste facultative `modes` dans `hello_ack.config` (§5, décision D3 ; décisions acceptées par le propriétaire le 26 octobre) |
+| 1 (révision 1.3) | 26 octobre 2026 | Ajouts compatibles (lots O3 et O4, acceptés par le propriétaire le 26 octobre ; révision 1.3 et non 1.2, décision du propriétaire du 27 octobre : les ajouts de la 1.0 fusionnés après la 1.3 y entrent) : commandes `list_settings` et `set_setting`, message `settings`, code d'erreur `setting_invalid` ; un réglage demandé pendant une séance reçoit `busy` (décision D6 de l'audit IPC, validée par le propriétaire le 26 octobre) |
 | 1 (révision 1.3) | 26 octobre 2026 | Documenté sans changement de code (audit IPC du 26 octobre, décision D5) : code d'erreur `bad_args`, déjà émis par le core depuis le lot Q1 ; `hello_ack.config.difficulty_pct` facultatif dans le schéma, comme le veut la règle ci-dessus (décision D9) |
 | 1 (révision 1.3) | 26 octobre 2026 | Ajouts compatibles (lot N16, décision D4 de l'audit IPC) : commandes `list_imports`, `create_workout` et `import_workout`, messages `imports` et `workout_saved`, code d'erreur `workout_write_failed` ; le core reste seul à écrire le dossier des entraînements |

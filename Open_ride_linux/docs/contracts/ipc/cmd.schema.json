@@ -38,6 +38,8 @@
         "scan_devices",
         "identify_click_plus",
         "pair_devices",
+        "list_settings",
+        "set_setting",
         "list_imports",
         "create_workout",
         "import_workout"
