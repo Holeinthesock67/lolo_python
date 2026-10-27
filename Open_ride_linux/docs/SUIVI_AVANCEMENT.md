@@ -323,7 +323,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] **Lignes, portiques, panneaux et arches** (lot T8, `segment_markers_model.gd`, `segment_markers.gd`) : codés le 27 octobre (issue #398), couche `segments` lue par `route_data.gd`, montées du décor prises dans la couche ; tests Godot sans écran, rendu et budget (`perf_probe`) à passer sur le PC, contrôle visuel à la recette T11.
 - [ ] **HUD segment et bonus** (lot T9, `segment_hud_model.gd`) : codé le 27 octobre (issue #399), blocs sous le panneau de droite, message `segment_result` lu par `ipc_client.gd`, séance de démonstration `fake_core.py --serie-t` ; tests Godot à passer sur le PC, contrôle visuel à la recette T11.
 - [ ] **Écran « Records » et option « Bonus »** (lot T10, `records_view_model.gd`) : codé le 27 octobre (issue #400), entrée « Records du parcours » de l'écran Prêt, lecture seule de `~/OpenRide/records.json`, tables « sans bonus » et « avec bonus », option « Bonus : oui / non » des réglages ; tests Godot à passer sur le PC, contrôle à la recette T11.
-- [ ] HUD des bots (T15), bots à profil (T12, T13), recette sur le vélo (T11) ; cahiers T7 à T11 et T15 rédigés le 27 octobre (PR #403).
+- [ ] HUD des bots (T15), bots à profil (T12, T13), recette sur le vélo (T11) ; cahiers T7 à T11 et T15 rédigés le 27 octobre (PR #403), cahiers T12 et T13 (issues #440 et #441) et fiche de recette [RECETTE_SERIE_T.md](RECETTE_SERIE_T.md) en étapes de 10 minutes au plus, le 27 octobre.
 
 ### Version 2.0 : progression, équipement et avatar (série V rédigée le 26 octobre)
 
