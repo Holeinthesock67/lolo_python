@@ -2,6 +2,8 @@
 
 21 octobre 2026 ; mises à jour du 23 octobre 2026 (alignement sur le code et les essais sur le vélo ; §14.1, seuils de passage à Rust)
 
+Cette SRS décrit la version 1.0. Les versions 1.x, 2.0 et 3.0, l'état de chaque exigence et les révisions du contrat IPC sont rassemblés dans la [spécification générale](SPECIFICATION_GENERALE.md).
+
 ## 1. Objectifs et périmètre
 
 OpenRide est un simulateur de cyclisme indoor 3D à usage personnel, natif Linux, plus léger que Zwift. La v1 doit être simple, stable et extensible par couches, sans jamais casser ce qui existe déjà.
@@ -84,8 +86,10 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 - **Mode SIM :** Set Indoor Bike Simulation Parameters (0x11) avec pente (résolution 0,01 %), Crr, Cw et vent nul. La pente est limitée à −10 % / +16 %, envoyée dès qu'elle varie d'au moins 0,1 point, au plus toutes les 0,2 s, et renvoyée au moins toutes les 2 s (réglages validés sur le HomeTrainer le 22 octobre 2026).
 - **Mode ERG :** Set Target Power (0x05), en watts entiers, bornée par la plage annoncée par le trainer.
 - La cardio vient du pont cardio du HomeTrainer si sa caractéristique est exposée (à vérifier au sprint 0), sinon d'une ceinture connectée séparément.
+- **Ceintures ANT+ seules** (précision du 26 octobre 2026). Une ceinture qui n'émet qu'en ANT+, comme la Garmin HRM-Tri (manuel Garmin : radio ANT+ 2,4 GHz, pas de Bluetooth), n'est jamais visible par OpenRide, qui ne lit que le Bluetooth : sa fréquence n'arrive que par le pont cardio du trainer. La dissocier du trainer ne la rend pas visible ; pour tester la ceinture directe (`hr = "ble"`), il faut une ceinture Bluetooth (service Heart Rate 0x180D).
 - Fréquence des données **mesurée** sur le HomeTrainer (22 octobre 2026) : environ 1 Hz au repos et en mode puissance, environ 8 Hz en mode pente. Le core ne suppose donc aucune cadence fixe : la dernière puissance reçue est maintenue entre deux notifications et lissée dans le temps (filtre exponentiel, constante de temps 0,7 s, clé `power_smooth_tau_s`) ; une moyenne glissante sur 3 s est calculée à part pour l'affichage. La physique ne dépend pas de la cadence de réception.
 - Plage de puissance annoncée par le HomeTrainer : 0 à 1 000 W, par pas de 1 W. Une fréquence cardiaque de 0 bpm signifie « pas de mesure » et est traitée comme `null`.
+- **Ceinture retirée : pas de retour à 0** (précision du 26 octobre 2026). Le core ne suppose pas qu'une ceinture retirée envoie 0 bpm. Une ceinture ANT+ continue d'émettre un moment sa dernière fréquence calculée : le profil ANT+ Heart Rate signale l'absence de battements par un compteur de battements qui n'avance plus, et le pont FTMS du trainer ne transmet que la fréquence. Essai du 25 octobre : 105 bpm figés pendant 42 s après le retrait. Une fréquence relayée qui ne bouge plus est donc écartée par le core (lot Q5). En Bluetooth direct (service Heart Rate 1.0, caractéristique 0x2A37), une ceinture qui gère le contact le signale dans les bits 1 et 2 des drapeaux (2 = contact géré mais absent) : la mesure est ignorée ; une ceinture qui ne le gère pas cesse en général d'envoyer des mesures, et la fréquence devient `null` au bout de 5 s sans mesure.
 - États : `CONNECTED`, `RECONNECTING`, `LOST`, avec reconnexion automatique à délai croissant.
 
 ### 4.2 Zwift Click
@@ -104,7 +108,7 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | droit | + | 12 | « + » |
 | droit | A | 4 | aucune |
 | droit | B | 5 | « − » (sans déblocage Zwift) |
-| droit | Y | 6 | aucune |
+| droit | Y | 6 | pause et reprise (lot N6) |
 | droit | Z | 7 | aucune |
 
 - **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
@@ -133,6 +137,8 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 | Appui court + / − | Braquet k + 1 / k − 1 | Biais d'intensité ± 2 % (plage 80 % à 120 %) |
 | Appui long + | Braquet + 10, borné à 24 (`long_press_gears`) | Passer au bloc suivant |
 | Appui long − | Braquet − 10, borné à 1 (`long_press_gears`) | Pause / reprise ERG (pente 0 %) |
+
+Le bouton Y du boîtier droit met en pause et reprend la séance, en SIM comme en ERG (lot N6, choix du propriétaire du 25 octobre 2026).
 
 Le demi-tour sur la route et le réglage des bots sont reportés (§14).
 
@@ -175,7 +181,7 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 **Lissage de la pente envoyée au trainer**
 
 - Variation limitée à 2 points de pourcentage par seconde.
-- Coefficient de difficulté (50 % par défaut depuis le lot Q1, réglable de 0 à 100 % en séance) : la pente envoyée est multipliée par ce coefficient, alors que la vitesse virtuelle utilise toujours la pente réelle. Mettre 50 % adoucit les cols sans fausser la vitesse affichée.
+- Coefficient de difficulté (50 % par défaut depuis le lot Q1, réglable pendant la séance) : la pente envoyée est multipliée par ce coefficient, alors que la vitesse virtuelle utilise toujours la pente réelle. Mettre 50 % adoucit les cols sans fausser la vitesse affichée.
 
 **Fin de parcours.** La séance s'arrête à la fin de la route (`s` = longueur) ; un parcours marqué en boucle dans le `.world` reboucle sans coupure.
 
@@ -236,7 +242,7 @@ Le compilateur transforme un `.gpx` déposé dans `~/OpenRide/GPX/` en dossier `
 
 ## 8. Moteur de rendu Godot
 
-L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`.
+L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`. En 2.0, la caméra devient un choix de plusieurs vues, avec un avatar (spécification générale, §7.2).
 
 **MVP visuel (sprint 3)**
 
@@ -337,7 +343,7 @@ drivetrain_efficiency = 0.97
 [trainer]
 device_name = "HomeTrainer"      # fragment du nom annoncé (« HomeTrainer 0000 »)
 latency_tau_s = 0.8
-difficulty_pct = 50             # 0 à 100 : part de la pente ressentie en SIM (lot Q1)
+difficulty_pct = 50             # réglable en jeu (lot Q1)
 grade_min_pct = -10
 grade_max_pct = 16
 power_smooth_tau_s = 0.7
