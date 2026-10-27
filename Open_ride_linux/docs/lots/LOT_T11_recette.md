@@ -30,7 +30,7 @@ Une fiche de recette `docs/RECETTE_SERIE_T.md`, remplie pendant l'essai, avec po
 
 ## 5. Fichiers concernés
 
-- **Nouveau :** `docs/RECETTE_SERIE_T.md`.
+- **Nouveau :** `docs/RECETTE_SERIE_T.md`, préparée le 27 octobre en étapes de 10 minutes au plus sur le vélo (règle du propriétaire), à remplir pendant l'essai.
 - Corrections éventuelles : issues séparées, un lot de correction chacune.
 
 ## 6. Modifications de contrat autorisées

@@ -200,7 +200,7 @@ func _test_p10_wind_and_freewheel() -> void:
 				var want := float(ev["freewheel"]["clicks_per_s"]) / SoundPlayer.FREEWHEEL_LOOP_CLICKS
 				pitch_ok = pitch_ok and is_equal_approx(sp._freewheel_player.pitch_scale, want)
 			t += 0.05
-	_check(pitch_ok and absf(sp._freewheel_player.pitch_scale - 0.857) < 0.02,
+	_check(pitch_ok and absf(sp._freewheel_player.pitch_scale - SoundModel.freewheel_clicks_per_s(18.0) / SoundPlayer.FREEWHEEL_LOOP_CLICKS) < 0.02,
 		"cliquetis : pitch_scale = coups/s du modèle / %d (%.3f à 18 km/h)" % [
 			int(SoundPlayer.FREEWHEEL_LOOP_CLICKS), sp._freewheel_player.pitch_scale])
 	_check(sp.clacs_played == 2 and sp.get_child_count() == n0,

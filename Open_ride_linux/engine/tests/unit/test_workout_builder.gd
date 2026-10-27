@@ -32,8 +32,9 @@ func _test_builder() -> void:
 	_check(b.workout_id() == "intervalles_5x240s_105", "identifiant : " + b.workout_id())
 	var items: Array = b.menu_items()
 	_check(items.size() == 8 and items[-1]["id"] == "save", "sept paramètres puis « Enregistrer et choisir »")
-	_check(items[0]["label"] == "Échauffement : 10 min", "libellé : " + items[0]["label"])
-	_check(items[3]["label"] == "Puissance de l'effort : 105 % de la FTP", "libellé : " + items[3]["label"])
+	_check(items[0]["label"] == "Échauffement" and items[0]["detail"] == "10 min", "libellé : %s — %s" % [items[0]["label"], items[0]["detail"]])
+	_check(items[3]["label"] == "Puissance de l'effort" and items[3]["detail"] == "105 % de la FTP",
+		"libellé : %s — %s" % [items[3]["label"], items[3]["detail"]])
 	_check(str(items[-1]["detail"]).ends_with("55 min"), "détail : " + str(items[-1]["detail"]))
 	_check(WorkoutBuilder.format_duration(270) == "4 min 30 s" and WorkoutBuilder.format_duration(45) == "45 s",
 		"durées lisibles")

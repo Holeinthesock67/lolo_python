@@ -52,3 +52,14 @@ Aucune.
 ## 8. Hors périmètre
 
 - Traduction en anglais, captures d'écran (à ajouter après la recette si souhaité).
+
+## 9. Livraison
+
+**27 octobre 2026** (thread « Développer les lots O restants »), lot interne, branche `lot-o6-guide`.
+
+- **Guide :** `docs/GUIDE_UTILISATION.md` (glossaire, puis neuf sections : matériel, installation et mise à jour, premier démarrage et appairage, parcours, ERG avec plans et test de FTP, commandes, réglages, séances, dépannage). Écrit d'après le code de `main` : touches de `menu_model.gd` et de `main.gd`, boutons de `zwift_click.py`, écrans de `menu_model.gd` et `menu_flow.gd`, réglages de `settings.py`.
+- **README :** état de la version en tête avec le lien vers le guide, installation courte, partie « Développement » qui regroupe documents de référence, structure et tests ; le reste des commandes de développement est inchangé.
+- **Test de cohérence :** `test_guide_shortcuts_match_code_and_negative` (`core/tests/test_docs_coherence.py`) relit les trois tableaux de la section 6 : chaque touche citée existe dans `key_to_event` ou dans `_unhandled_input` et envoie le bon événement, chaque bouton nommé existe dans `KEYPAD_BITS`.
+- **Relecture sans contexte** (un agent qui ne lit que le guide) : « Comment j'ajoute un parcours ? » : déposer la trace dans `~/OpenRide/GPX/` (GPX, FIT, TCX ou archive) et relancer ; « Que faire si le trainer ne répond pas ? » : fermer l'autre application et utiliser « Libérer le trainer ». Les deux réponses sont trouvées ; les termes non définis relevés (FTMS, FTP, SIM et ERG, braquet, core, journal, bot et fantôme, FIT) ont été ajoutés au glossaire, ainsi que la précision sur la compilation au démarrage et un repli si le trainer reste réservé.
+- **Données personnelles :** aucune (recherche des noms, lieux et adresses : rien).
+- **À faire :** le tableau ERG de la section 6 décrit les boutons actuels ; à reprendre quand le lot O17 les change (± long = intensité ± 10 %, Z = bloc suivant). Le propriétaire suit le guide du début à la fin lors de la recette O8.

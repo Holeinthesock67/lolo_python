@@ -48,6 +48,11 @@ func _test_presets() -> void:
 		"high : deux couches")
 	_check(is_equal_approx(float(low.get_shader_parameter("coverage")), 0.5)
 		and is_equal_approx(float(low.get_shader_parameter("altitude_m")), 2000.0), "couverture et altitude transmises")
+	var fog := Color(0.8, 0.7, 0.6)
+	var tinted = SkyClouds.build_material(_params(0.5), "flat", null, fog)
+	_check(tinted.get_shader_parameter("sky_horizon_color") == fog
+		and low.get_shader_parameter("sky_horizon_color") == SkyClouds.SKY_HORIZON,
+		"horizon du ciel nuageux = couleur du brouillard passée (par défaut, celle du ciel actuel)")
 	_check(not SkyClouds.terrain_shadow_params(low, "flat")["cloud_shadow_enabled"],
 		"ombre des nuages coupée en low et medium")
 	var sh := SkyClouds.terrain_shadow_params(high, "layered")

@@ -217,3 +217,66 @@ class GhostBot:
             "v": round(self.v, 3),
             "kind": self.kind,
         }
+
+
+# --- bots choisis au menu (lot O7, contrat IPC révision 1.3) --------------------------------------
+
+MAX_CONSTANT_BOTS = 4
+
+
+def last_ride(route_id: str | None, directory: Path) -> Path | None:
+    """Journal le plus récent d'une séance sur ce parcours, d'où un fantôme peut partir ; None sinon."""
+    from .journal import read_journal
+
+    if not route_id or not directory.is_dir():
+        return None
+    for path in sorted(directory.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True):
+        try:
+            header = next((line for line in read_journal(path) if isinstance(line, dict)), {})
+        except Exception:
+            continue
+        if header.get("kind") == "header" and header.get("route_id") == route_id:
+            try:
+                GhostBot(path)
+            except BotError:
+                continue   # séance sans distance : on remonte à la précédente
+            return path
+    return None
+
+
+def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: str | None,
+                   journal_dir: Path, s: float = 0.0) -> list[Any]:
+    """Bots de l'argument `bots` de `start` : `{kind: "constant", power_w}` ou `{kind: "constant",
+    ftp_pct}` (au plus 4) et `{kind: "ghost"}` (dernière séance sur ce parcours, un seul).
+
+    Lève BotError (rien ne démarre) si la liste est mal écrite ou si le fantôme n'a pas de séance.
+    """
+    if not isinstance(items, list) or len(items) > MAX_CONSTANT_BOTS + 1:
+        raise BotError(f"liste de {MAX_CONSTANT_BOTS + 1} bots au plus attendue")
+    out: list[Any] = []
+    constant = 0
+    ghost = False
+    for it in items:
+        kind = it.get("kind") if isinstance(it, dict) else None
+        if kind == "constant":
+            w, pct = it.get("power_w"), it.get("ftp_pct")
+            value = w if pct is None else pct
+            if (w is None) == (pct is None) or isinstance(value, bool) or not isinstance(value, (int, float)):
+                raise BotError("bot à puissance constante : power_w ou ftp_pct attendu")
+            constant += 1
+            if constant > MAX_CONSTANT_BOTS:
+                raise BotError(f"au plus {MAX_CONSTANT_BOTS} bots à puissance constante")
+            power = float(w) if w is not None else ftp_w * float(pct) / 100.0
+            name = f"Bot {pct:g} % FTP" if pct is not None else None
+            out.append(ConstantPowerBot(power, bot_id=f"bot{constant}", name=name, params=params, s=s))
+        elif kind == "ghost":
+            if ghost:
+                raise BotError("un seul fantôme")
+            ghost = True
+            path = last_ride(route_id, journal_dir)
+            if path is None:
+                raise BotError(f"aucune séance passée sur le parcours « {route_id} » pour le fantôme")
+            out.append(GhostBot(path))
+        else:
+            raise BotError(f"genre de bot inconnu : {kind!r} (constant ou ghost)")
+    return out

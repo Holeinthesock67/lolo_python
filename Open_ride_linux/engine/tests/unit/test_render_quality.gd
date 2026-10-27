@@ -98,6 +98,8 @@ func _test_fog() -> void:
 		"brouillard activé en mode profondeur")
 	_check(absf(env.fog_density - 1.0) < 1e-4, "fog_density = 1.0")
 	_check(env.fog_light_color == horizon, "couleur du brouillard = couleur d'horizon")
+	_check(env.fog_sky_affect == 0.0 and env.volumetric_fog_sky_affect == 0.0,
+		"le brouillard ne recouvre pas le ciel (nuages visibles en Forward+, recette P16)")
 	RenderQuality.apply_fog(env, "inconnu_xyz", true, horizon, 0.05)
 	_check(absf(env.fog_depth_end - QualityPresets.fog_end_m("low")) < 1e-3, "brouillard : préréglage inconnu -> low")
 

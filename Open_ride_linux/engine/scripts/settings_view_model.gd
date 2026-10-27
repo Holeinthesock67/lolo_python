@@ -20,7 +20,11 @@ const DIFFICULTY_KEY := "trainer.difficulty_pct"
 const PAUSE_DIFFICULTY := "pause.difficulty"
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
 ## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
-const CHOICE_TEXTS := {"powerups.mode": {"on": "oui", "off": "non"}}
+## Courbes de la séance (lot O14) : `render.chart` prend `hidden` / `reduced` / `full`.
+const CHOICE_TEXTS := {
+	"powerups.mode": {"on": "oui", "off": "non"},
+	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
+}
 
 var items: Array = []
 ## Modification en cours : {key, label, type, value, min, max, step, unit, choices} ; vide sinon.
@@ -43,6 +47,7 @@ func item(key: String) -> Dictionary:
 static func slider(pct: int) -> String:
 	var n := clampi(int(round(pct / 10.0)), 0, 10)
 	return "■".repeat(n) + "□".repeat(10 - n) + " %d %%" % pct
+
 
 
 static func format_value(it: Dictionary, value) -> String:

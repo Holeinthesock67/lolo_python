@@ -61,7 +61,7 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 		tree_renderer.set_preset(preset, enabled)
 	if environment != null and environment.sky != null:
 		var mat := SkyClouds.build_material(ThemeRenderParams.cloud_params(theme), str(living.get("clouds", "off")),
-			environment.sky.sky_material)
+			environment.sky.sky_material, environment.fog_light_color)
 		environment.sky.sky_material = mat
 		sky_material = mat
 	if sound_player != null:

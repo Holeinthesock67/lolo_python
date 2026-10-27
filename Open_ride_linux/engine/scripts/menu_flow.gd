@@ -39,6 +39,8 @@ extends RefCounted
 ## - « Test de FTP » : rampe ou 20 minutes, puis écran Prêt, `start` avec ftp_test ; au bilan,
 ##   « Accepter » (accept_ftp ; résultat douteux : confirmation puis accept_ftp avec force) ou « Garder » ;
 ## - parcours : tri et filtre par étiquette en cycle en fin de liste, fiche du parcours sur l'écran Prêt ;
+## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
+##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
@@ -73,6 +75,12 @@ const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
 const FTP_WARNINGS := {"too_short": "test trop court", "erratic_cadence": "cadence erratique",
 	"trainer_dropout": "coupure du trainer pendant l'effort", "paused": "pause pendant l'effort"}
 const SUMMARY_BASE_IDS := ["new_session", "details", "quit"]
+## Ligne d'état de l'écran de pause selon `state.pause_reason` (contrat IPC) : le HUD est caché pendant
+## un menu, la raison de la pause s'affiche donc sous le titre. Pause demandée (`user`) : rien.
+const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion en cours…",
+	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
+	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
+	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -124,12 +132,16 @@ var _workouts_raw: Array = []
 ## Résultat du test de FTP du bilan (summary.ftp_test) tant qu'il reste à accepter ou garder ({} sinon).
 var ftp_offer: Dictionary = {}
 var summary_message := ""
+## Ligne d'état de l'écran Prêt (bots refusés par le core, lot O7).
+var ready_message := ""
 var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
 var records_path := ""
 var _record_segment := ""
 var _record_bonus := false
+## Raison de la dernière pause (`state.pause_reason`), "" hors pause.
+var pause_reason := ""
 
 
 func _init() -> void:
@@ -166,6 +178,7 @@ func is_visible() -> bool:
 func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
+	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
 	var diff = state.get("difficulty_pct", null)
@@ -297,6 +310,9 @@ func on_error(code: String, text: String) -> void:
 		else:
 			summary_message = "Échec : " + text
 		return
+	if code == "bot_invalid" and menu.current_screen() == MenuModel.READY:
+		ready_message = "Échec : " + text
+		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
 		_plan_request = ""
 		plan_message = "Échec : " + text
@@ -373,12 +389,34 @@ func _cycle_routes(item_id: String) -> void:
 	menu.focus_item(item_id)
 
 
-## Fiche du parcours choisi (écran Prêt) : lignes de catalog_model.route_card(), vide sans fiche.
-func route_card() -> Array:
-	for r in routes_raw:
-		if r is Dictionary and str(r.get("id", "")) == menu.world_id:
-			return CatalogModel.route_card(r)
-	return []
+## Carte de détail de l'écran (lot « présentation des menus », étape 2), {} sans carte : fiche du
+## parcours choisi (Prêt), du parcours ou de l'entraînement sous le focus (listes), aperçu de
+## l'entraînement en création, en-tête du bilan (le bilan lui-même vient de `summary`). Fiches de
+## catalog_model.gd (route_sheet, workout_sheet).
+func card(st: Dictionary) -> Dictionary:
+	var focus := int(st.get("focus", -1))
+	var focused := str(st["items"][focus]["id"]) if focus >= 0 and focus < st["items"].size() else ""
+	var screen := str(st["screen"])
+	if screen == MenuModel.READY:
+		return _sheet(routes_raw, menu.world_id, func(r): return CatalogModel.route_sheet(r))
+	if screen == MenuModel.ROUTES:
+		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
+	if screen == MenuModel.WORKOUTS:
+		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
+	if screen == WORKOUT_CREATE:
+		var blocks: Array = builder.profile()
+		return CatalogModel.workout_sheet({"id": builder.workout_id(), "name": builder.workout_name(),
+			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
+	if screen == SUMMARY:
+		return {"title": "Bilan de la séance"}
+	return {}
+
+
+func _sheet(raw: Array, id: String, make: Callable) -> Dictionary:
+	for r in raw:
+		if r is Dictionary and id != "" and str(r.get("id", "")) == id:
+			return make.call(r)
+	return {}
 
 
 # --- plans et test de FTP (lot O12) -----------------------------------------------------------
@@ -618,6 +656,7 @@ func list_failed(list_name: String) -> void:
 func handle(event: String) -> Dictionary:
 	if not is_visible():
 		return {}
+	ready_message = ""
 	if menu.current_screen() == SETTING_EDIT:
 		return _handle_edit(event)
 	if menu.current_screen() == RECORD_TABLE and event == "A_SHORT":   # A court : bascule de table (T10)
@@ -818,5 +857,9 @@ func state() -> Dictionary:
 		st["status"] = FTP_HINT
 	elif st["screen"] == SUMMARY:
 		st["status"] = summary_message
-	st["card"] = route_card() if st["screen"] == MenuModel.READY else []
+	elif st["screen"] == MenuModel.READY:
+		st["status"] = ready_message
+	elif st["screen"] == MenuModel.PAUSE:
+		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
+	st["card"] = card(st)
 	return st

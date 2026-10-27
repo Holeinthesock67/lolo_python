@@ -91,3 +91,13 @@ Parcours : un parcours compilé avec forêt et village (couches OSM présentes).
 ## 3. Retour
 
 Noter ici les remarques (rendu, son, lisibilité, performance), puis les signaler dans le fil du projet.
+
+### Première séance (27 octobre 2026, essai-69, `low`, vent fixe de face)
+
+Séance de plus de 20 minutes au lieu des 10 prévues : les prochaines recettes sont découpées en étapes de 10 minutes au plus, chacune avec un arrêt clair.
+
+- Indicateur du vent : conforme.
+- Sons du vent et de la roue libre : présents, mais le vent était trop fort et les deux sons désagréables. Corrigé : vent baissé d'environ 12 dB, roue libre d'environ 13 dB, les deux sons refaits (voir [LOT_P16](lots/LOT_P16_integration_vent_ciel_sons.md) § 10).
+- Nuages : invisibles. Cause : en Forward+, Godot recouvre tout le ciel de la couleur du brouillard (`fog_sky_affect` vaut 1 par défaut). Corrigé dans `render_quality.gd` (§ 10).
+- Revu après le correctif (PR #432, 27 octobre au soir) : nuages visibles en `medium` ; nouveaux sons du vent et de la roue libre validés par le propriétaire.
+- Recette P16 close pour ce qui a été vu. Restent, sans le propriétaire : vent de travers et de dos, `living = false` (§ 2.4) et la mesure de performance sur une route OSM avec forêts et villages.

@@ -34,6 +34,7 @@
         "plan_invalid",
         "ftp_result_missing",
         "ftp_result_doubtful",
+        "bot_invalid",
         "run_invalid",
         "item_locked",
         "not_enough_coins",

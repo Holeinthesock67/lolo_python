@@ -84,17 +84,32 @@ func workout_name() -> String:
 		int(values["on_pct"])]
 
 
+## Blocs [durée, début, fin] en fraction de la FTP, comme le profil d'un entraînement de la liste
+## (contrat 1.1) : mêmes blocs que le `.zwo` écrit par le core (workout_menu.build_interval_zwo :
+## échauffement de 50 à 75 %, intervalles, retour au calme de 65 à 45 %). Aperçu de la carte de détail.
+func profile() -> Array:
+	var out: Array = []
+	if int(values["warmup_min"]) > 0:
+		out.append([int(values["warmup_min"]) * 60.0, 0.5, 0.75])
+	for i in range(int(values["reps"])):
+		out.append([float(values["on_s"]), values["on_pct"] / 100.0, values["on_pct"] / 100.0])
+		out.append([float(values["off_s"]), values["off_pct"] / 100.0, values["off_pct"] / 100.0])
+	if int(values["cooldown_min"]) > 0:
+		out.append([int(values["cooldown_min"]) * 60.0, 0.65, 0.45])
+	return out
+
+
 ## Identifiant (nom du fichier sans extension) : « intervalles_5x240s_105 » ; mêmes réglages, même fichier.
 func workout_id() -> String:
 	return "intervalles_%dx%ds_%d" % [int(values["reps"]), int(values["on_s"]), int(values["on_pct"])]
 
 
-## Éléments de l'écran « Créer un entraînement » : les paramètres (id « param:clé ») puis « Enregistrer ».
+## Éléments de l'écran « Créer un entraînement » : les paramètres (id « param:clé », valeur en détail,
+## alignée à droite) puis « Enregistrer ».
 func menu_items() -> Array:
 	var out: Array = []
 	for p in PARAMS:
-		out.append({"id": "param:" + str(p["key"]), "label": "%s : %s" % [p["label"],
-			format_param(p, values[p["key"]])]})
+		out.append({"id": "param:" + str(p["key"]), "label": str(p["label"]), "detail": format_param(p, values[p["key"]])})
 	out.append({"id": "save", "label": "Enregistrer et choisir",
 		"detail": "%s, %d min" % [workout_name(), int(round(duration_s() / 60.0))]})
 	return out
