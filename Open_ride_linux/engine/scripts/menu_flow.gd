@@ -744,7 +744,7 @@ func handle(event: String) -> Dictionary:
 func _handle_records(screen: String, item_id: String) -> void:
 	if screen == MenuModel.READY and item_id == "records":
 		records.load_file(records_path)
-		var title := "Records : " + (menu.world_name if menu.world_name != "" else menu.world_id)
+		var title: String = "Records : " + (menu.world_name if menu.world_name != "" else menu.world_id)
 		menu.set_screen_items(RECORDS, records.segment_items(menu.world_id), title)
 		menu.push_screen(RECORDS)
 	elif screen == RECORDS and item_id.begins_with("seg:"):
