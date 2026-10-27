@@ -4,8 +4,10 @@ Construit depuis la base locale (`osmdb.py`, W3 ou W13) dans le repère d'une s�
 z vers le sud, en mètres). Seules les voies admises (`road_class` différent de `x`) y entrent.
 
 - Nœud du graphe : nœud OSM où se croisent au moins trois bouts de voie, bout de voie, changement
-  de classe ou de sens unique entre deux voies, ou nœud hors de l'emprise au bout d'une voie qui la
-  touche (`frontier` : la suite est inconnue, complétée quand l'emprise s'agrandit). Une fois nœud, il le reste : `extend` ne renumérote jamais.
+  de classe ou de sens unique entre deux voies, dans la base entière. Une voie qui sort de l'emprise
+  est suivie jusqu'à un tel nœud ; s'il a des branches hors de l'emprise, il est `frontier` (la
+  suite est complétée quand l'emprise s'agrandit). Les arêtes ne dépendent donc pas de l'emprise :
+  `extend` ne renumérote ni ne modifie jamais une arête connue.
 - Arête : portion de voie entre deux nœuds, éventuellement faite de plusieurs voies OSM mises bout à
   bout (un pont au milieu d'une route reste dans la même arête, dans `spans`). Identifiant stable
   `"<id de la voie OSM>:<indice du segment de départ dans la voie>"`, pris au bout qui donne le plus
@@ -31,6 +33,7 @@ HEADING_M = 20.0
 NO_U_TURN_DEG = 170.0
 DEAD_END_M = 2000.0
 MAX_SEARCH_STEPS = 20_000
+MAX_CHAIN_SEGMENTS = 500_000     # garde-fou : voies suivies hors de l'emprise
 
 Point = tuple[float, float]
 
@@ -118,6 +121,8 @@ class RoadGraph:
         self.cluster: dict[int, int] = {}          # nœud OSM → nœud de choix
         self._raw_graph_nodes: set[int] = set()
         self._adj: dict[int, list[Edge]] = {}
+        self._full: dict[int, list[tuple[int, int, bool]]] = {}
+        self._db: OsmDb | None = None
 
     # --- construction ---------------------------------------------------------------------------
 
@@ -129,14 +134,18 @@ class RoadGraph:
 
     def extend(self, db: OsmDb, bbox: BBox) -> list[str]:
         """Ajoute les routes qui touchent une nouvelle emprise ; renvoie les arêtes nouvelles."""
+        self._db = db
         self.bboxes.append(tuple(bbox))  # type: ignore[arg-type]
-        new_ways = [r for r in db.roads_in(bbox) if r.osm_id not in self.ways]
-        for r in new_ways:
-            self.ways[r.osm_id] = r
-        self._project(new_ways)
+        self._add_ways(db.roads_in(bbox))
         before = set(self.edges)
         self._rebuild()
         return sorted(set(self.edges) - before)
+
+    def _add_ways(self, roads: Iterable[Road]) -> None:
+        new = [r for r in roads if r.osm_id not in self.ways]
+        for r in new:
+            self.ways[r.osm_id] = r
+        self._project(new)
 
     def _project(self, ways: Iterable[Road]) -> None:
         ids, lons, lats = [], [], []
@@ -152,7 +161,7 @@ class RoadGraph:
         for nid, xi, zi in zip(ids, np.atleast_1d(x), np.atleast_1d(z)):
             self.pos[nid] = (float(xi), float(zi))
 
-    def _kept(self, r: Road) -> list[int]:
+    def _touching(self, r: Road) -> list[int]:
         """Indices des segments de la voie qui touchent une des emprises chargées."""
         return [i for i in range(len(r.coords) - 1)
                 if any(osmdb.segment_touches(r.coords[i], r.coords[i + 1], b) for b in self.bboxes)]
@@ -160,30 +169,74 @@ class RoadGraph:
     def _inside(self, p: tuple[float, float]) -> bool:
         return any(b[0] <= p[0] <= b[2] and b[1] <= p[1] <= b[3] for b in self.bboxes)
 
-    def _rebuild(self) -> None:
-        # Bouts de segments gardés, par nœud OSM : (voie, indice du segment, sens de sortie).
-        inc: dict[int, list[tuple[int, int, bool]]] = {}
-        kept: dict[int, set[int]] = {}
-        frontier: set[int] = set()
+    def _full_incidence(self, nid: int, lonlat: tuple[float, float]) -> list[tuple[int, int, bool]]:
+        """Tous les bouts de segment admis au nœud dans la base entière (voies chargées au passage)."""
+        if nid in self._full:
+            return self._full[nid]
+        eps = 1e-6
+        lon, lat = lonlat
+        self._add_ways(self._db.roads_in((lon - eps, lat - eps, lon + eps, lat + eps)))
+        out = []
         for wid, r in self.ways.items():
-            segs = self._kept(r)
-            kept[wid] = set(segs)
-            for i in segs:
-                inc.setdefault(r.nodes[i], []).append((wid, i, True))
-                inc.setdefault(r.nodes[i + 1], []).append((wid, i, False))
-            for i in segs:
+            for k, n in enumerate(r.nodes):
+                if n == nid:
+                    if k < len(r.nodes) - 1:
+                        out.append((wid, k, True))
+                    if k > 0:
+                        out.append((wid, k - 1, False))
+        self._full[nid] = out
+        return out
+
+    def _attrs(self, wid: int) -> tuple:
+        r = self.ways[wid]
+        return r.road_class, r.oneway != 0, r.junction == "roundabout"
+
+    def _rebuild(self) -> None:
+        """Arêtes canoniques : une voie qui sort de l'emprise est suivie jusqu'à son vrai carrefour.
+
+        Ainsi une arête ne dépend jamais de l'emprise demandée : deux graphes construits sur des
+        emprises différentes donnent la même arête (mêmes nœuds, même géométrie, même identifiant),
+        ce qui permet au terrain des carrés (W7) d'être le même quelle que soit la séance.
+        """
+        kept: set[tuple[int, int]] = set()
+        todo: list[tuple[int, tuple[float, float]]] = []
+        for wid, r in list(self.ways.items()):
+            for i in self._touching(r):
+                kept.add((wid, i))
                 for k in (i, i + 1):
                     if not self._inside(r.coords[k]):
-                        frontier.add(r.nodes[k])
+                        todo.append((r.nodes[k], r.coords[k]))
+        graph = set(self._raw_graph_nodes)
+        frontier: set[int] = set()
+        done: set[int] = set()
+        while todo:                                   # suivre les voies hors de l'emprise
+            nid, ll = todo.pop()
+            if nid in done:
+                continue
+            done.add(nid)
+            full = self._full_incidence(nid, ll)
+            if len(full) == 2 and len({self._attrs(w) for w, _, _ in full}) == 1 and len(kept) < MAX_CHAIN_SEGMENTS:
+                for wid, i, fwd in full:
+                    if (wid, i) not in kept:
+                        kept.add((wid, i))
+                        r = self.ways[wid]
+                        k = i + 1 if fwd else i
+                        if not self._inside(r.coords[k]):
+                            todo.append((r.nodes[k], r.coords[k]))
+                continue
+            graph.add(nid)
+            if any((w, i) not in kept for w, i, _ in full):
+                frontier.add(nid)
 
-        def attrs(wid: int) -> tuple:
+        inc: dict[int, list[tuple[int, int, bool]]] = {}
+        for wid, i in sorted(kept):
             r = self.ways[wid]
-            return r.road_class, r.oneway != 0, r.junction == "roundabout"
-
-        graph = set(self._raw_graph_nodes) | frontier
+            inc.setdefault(r.nodes[i], []).append((wid, i, True))
+            inc.setdefault(r.nodes[i + 1], []).append((wid, i, False))
         for nid, ends in inc.items():
-            if len(ends) != 2 or len({attrs(w) for w, _, _ in ends}) > 1:
-                graph.add(nid)
+            if len(ends) != 2 or len({self._attrs(w) for w, _, _ in ends}) > 1:
+                if nid not in done or nid in graph or len(self._full.get(nid, ends)) != 2:
+                    graph.add(nid)
 
         edges: dict[str, Edge] = {}
         seen: set[tuple[int, int]] = set()
@@ -209,16 +262,26 @@ class RoadGraph:
             self._make_edge(edges, segs, pts, osm)
 
         for nid in sorted(graph):
-            for wid, i, fwd in inc.get(nid, []):
+            for wid, i, fwd in sorted(inc.get(nid, [])):
                 if (wid, i) not in seen:
                     walk(nid, wid, i, fwd)
-        # Boucles sans aucun nœud de graphe (anneau isolé) : coupées à leur premier nœud.
-        for wid in sorted(self.ways):
-            for i in sorted(kept[wid]):
-                if (wid, i) not in seen:
-                    start = self.ways[wid].nodes[i]
-                    graph.add(start)
-                    walk(start, wid, i, True)
+        # Anneau sans aucun nœud de graphe : coupé à son plus petit nœud OSM (choix canonique).
+        for wid, i in sorted(kept):
+            if (wid, i) in seen:
+                continue
+            ring, stack = set(), [self.ways[wid].nodes[i]]
+            while stack:
+                n = stack.pop()
+                if n in ring:
+                    continue
+                ring.add(n)
+                for w2, i2, f2 in inc[n]:
+                    r2 = self.ways[w2]
+                    stack.append(r2.nodes[i2 + 1] if f2 else r2.nodes[i2])
+            start = min(ring)
+            graph.add(start)
+            w0, i0, f0 = min(inc[start])
+            walk(start, w0, i0, f0)
 
         self._raw_graph_nodes = graph
         self.edges = edges
