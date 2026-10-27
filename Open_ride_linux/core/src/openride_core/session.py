@@ -12,6 +12,7 @@ Une seule boucle asyncio :
 from __future__ import annotations
 
 import asyncio
+import copy
 import json
 import logging
 import math
@@ -22,6 +23,7 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
+from .classic import ClassicRace
 from .config import OPENRIDE_HOME, WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
@@ -32,6 +34,9 @@ from .journal import JOURNAL_DIR, Record
 from .progression import journal_source
 from .mock_driver import MockDriver
 from .physics import PhysicsParams, RiderPhysics
+from . import powerups as powerups_mod, records as records_mod
+from .powerups import PowerUpError, load_table
+from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, load_resume_state
 from .demo_world import ensure_demo_world
@@ -207,7 +212,8 @@ class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
                  workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None,
-                 config_path: Path | None = None) -> None:
+                 config_path: Path | None = None, records_path: Path | None = None,
+                 powerups_path: Path | None = None) -> None:
         self.cfg = cfg
         self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
@@ -219,7 +225,8 @@ class CoreSession:
         self.routes_root = routes_root or routes_dir()
         self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
-        self.physics = RiderPhysics(PhysicsParams.from_config(cfg))
+        self._base_params = PhysicsParams.from_config(cfg)   # sans bonus (série T, lot T7)
+        self.physics = RiderPhysics(self._base_params)
         self.wind = WindModel.from_config(
             cfg.wind, theme_wind(cfg.render.theme) if cfg.wind.mode == "theme" else None)
         self._wind_sample = self.wind.sample(0.0) if self.wind.active else CALM
@@ -235,6 +242,11 @@ class CoreSession:
                      self.wind.from_deg, self.wind.gust_frac * 100, cfg.wind.feel,
                      cfg.wind.max_grade_offset_pct)
         self.route: Route | None = None
+        self._segments: tuple = ()               # couche segments du parcours (série T)
+        self.race: ClassicRace | None = None      # mode classique de la séance (lot T7)
+        self.records_path: Path = records_path or records_mod.RECORDS_FILE      # lot T5
+        self.powerups_path: Path = powerups_path or powerups_mod.POWERUPS_FILE  # lot T6
+        self._records_writable = True
         self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
                               gear=self.gearing.k, difficulty_pct=round(self.difficulty_pct))
@@ -293,6 +305,8 @@ class CoreSession:
                 self._rec.event("pause", now)
             elif new == "RUNNING" and old == "PAUSED":
                 self._rec.event("resume", now)
+        if self.race and new == "PAUSED" and old == "RUNNING":
+            self.race.pause(reason or "user")   # passages en cours annulés (T4)
         if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
             self._release_trainer()
 
@@ -326,6 +340,7 @@ class CoreSession:
                          len(self._workout.blocks), self._workout.duration_s)
                 self._watch_ramp()
                 self._sync_erg_state()
+            self._new_race()
             self._set_state("RUNNING")
         elif name == "skip_block" and self.erg and st in ("RUNNING", "PAUSED"):
             self._skip_block()
@@ -506,7 +521,8 @@ class CoreSession:
         log.info("Réglage enregistré (%s) : %s", self.config_path or "config.toml",
                  "; ".join(changed) if changed else "inchangé")
         # Prise en compte pour la séance suivante, sans relancer.
-        self.physics.p = PhysicsParams.from_config(self.cfg)
+        self._base_params = PhysicsParams.from_config(self.cfg)
+        self.physics.p = self._base_params
         self.gearing.k = min(max(self.cfg.gearing.start_gear, 1), self.gearing.n_gears)
         self.difficulty_pct = float(self.cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
@@ -653,6 +669,7 @@ class CoreSession:
             self._set_state(previous)
             return
         self.route = world.route
+        self._segments = world.segments
         self.erg = None
         self._sync_erg_state()
         self.state.route_id = route_id
@@ -804,6 +821,10 @@ class CoreSession:
 
     def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
+        race, self.race = self.race, None
+        if race and self._rec:
+            for line in race.take_journal() + race.jersey_lines():
+                self._rec.game(line)
         if self._rec:
             rec, self._rec = self._rec, None
             ftp_result = self._write_ftp_test(rec)
@@ -821,6 +842,9 @@ class CoreSession:
                 "fit_path": str(fit_path) if fit_path else None,
                 **summary_extras(records, events, self.cfg.rider.ftp_w),
             }
+            segments = race.summary() if race else None
+            if segments is not None:   # série T (lot T7, révision 1.4)
+                summary["segments"] = segments
             if ftp_result is not None:   # lot O12 : résultat du test au bilan, pour `accept_ftp`
                 summary["ftp_test"] = {"test": ftp_result.kind, "ftp_w": ftp_result.ftp_w,
                                        "previous_ftp_w": ftp_result.previous_ftp_w,
@@ -830,6 +854,78 @@ class CoreSession:
         self._ramp_watch = None
         self._sync_erg_state()
         self._set_state(final_state)
+
+    # --- mode classique de la série T (lot T7) ------------------------------------------
+
+    def _new_race(self) -> None:
+        """Segments, records, bonus, maillots et écarts de la séance qui commence."""
+        route = self.route
+        if route is None:
+            self.race = None
+            return
+        try:
+            book = RecordBook.load(self.records_path)
+            self._records_writable = True
+        except RecordsError as exc:   # fichier abîmé : gardé tel quel, rien n'est écrit par-dessus
+            log.warning("Records non chargés, ils ne seront pas enregistrés : %s", exc)
+            book, self._records_writable = RecordBook(), False
+        try:
+            table = load_table(self.powerups_path)
+        except PowerUpError as exc:
+            log.warning("Valeurs des bonus refusées, valeurs par défaut : %s", exc)
+            table = None
+        self.race = ClassicRace(
+            route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
+            loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
+            powerups_on=self.cfg.powerups.mode == "on")
+        self.race.start(self._t_session, self.physics.s, self.bots)
+        if self._segments:
+            log.info("Mode classique : %d segment(s), bonus %s.", len(self._segments), self.cfg.powerups.mode)
+
+    def _flush_race_journal(self) -> None:
+        """Lignes `powerup` et `segment` au journal ; records écrits hors de la boucle à 50 Hz."""
+        race = self.race
+        if race is None:
+            return
+        for line in race.take_journal():
+            if self._rec:
+                self._rec.game(line)
+        if race.book_dirty:
+            race.book_dirty = False
+            self._save_records(race.book)
+
+    def _save_records(self, book: RecordBook) -> None:
+        if not self._records_writable:
+            return
+        snapshot, path = copy.deepcopy(book), self.records_path
+
+        def save() -> None:
+            try:
+                snapshot.save(path)
+            except OSError as exc:
+                log.error("Records non écrits (%s) : %s", path, exc)
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # tests et outils sans boucle asyncio : écriture directe
+            save()
+            return
+        self._spawn(asyncio.to_thread(save))
+
+    def _fill_race_frame(self) -> None:
+        """Champs de la révision 1.4 de la série T dans la trame `state`."""
+        st = self.state
+        race = self.race
+        if race is None or st.session_state not in ("RUNNING", "PAUSED"):
+            st.segment = st.powerup = st.jerseys = None
+            st.bot_ahead = st.bot_behind = None
+            return
+        f = race.frame(self._t_session, self.physics.s, self.physics.v, self.bots)
+        st.segment, st.powerup, st.jerseys = f.get("segment"), f.get("powerup"), f.get("jerseys")
+        st.bot_ahead, st.bot_behind = f.get("bot_ahead"), f.get("bot_behind")
+        extra = f.get("bots_extra") or {}
+        if st.bots:
+            st.bots = [{**b, **extra.get(b["id"], {})} for b in st.bots]
 
     def _write_ftp_test(self, rec: SessionRecorder) -> FtpResult | None:
         """Séance de test de FTP : résultat au journal (ligne `ftp_test`), rien dans `config.toml`."""
@@ -907,8 +1003,13 @@ class CoreSession:
             return
         # Relayé à l'engine : menus hors séance, retour sonore (bips) et explications pendant la séance.
         self.server.send_input_event(ev.value)
+        if ev == InputEvent.Z_SHORT and self.state.session_state == "RUNNING" and self.race:
+            if self.race.activate(self._t_session):   # mode classique : bonus en réserve (T6, T7)
+                log.info("Bonus activé : %s.", self.race.powerups.active)
+                self._flush_race_journal()
+            return
         if ev not in (InputEvent.PLUS_SHORT, InputEvent.MINUS_SHORT, InputEvent.PLUS_LONG, InputEvent.MINUS_LONG):
-            return   # A, Z, flèches, appui ambigu : rien en séance pour l'instant (O17, vues de caméra)
+            return   # A, Z long, flèches, appui ambigu : rien en séance pour l'instant (O17, vues de caméra)
         if self.state.session_state != "RUNNING":
             return
         erg = self.erg
@@ -1011,6 +1112,12 @@ class CoreSession:
         ahead = route.grade_at(s + self.physics.v * tau) if route else 0.0
         alt = here.alt_m if here else 0.0
         wcfg = self.cfg.wind
+        race = self.race
+        if race:
+            race.set_erg(self.state.mode == "ERG")
+            # Bonus de masse ou de CdA : paramètres du pas, utilisés aussi par le supplément de vent et
+            # d'aspiration ci-dessous (CdA courant, ancien contenu de T7). Pente du parcours inchangée.
+            self.physics.p = race.params(self._base_params)
         if self.wind.active:   # vent figé en pause : son temps est celui de la séance
             self._wind_sample = self.wind.sample(self._t_session)
             self._head_mps = head_component(self._wind_sample, here.heading_deg if here else 0.0)
@@ -1052,12 +1159,19 @@ class CoreSession:
                 self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
-        self.physics.step(m.power_w, grade, alt, dt, alpha_draft=self._draft)
+        self.physics.step(race.power(m.power_w) if race else m.power_w, grade, alt, dt,
+                          alpha_draft=self._draft)
         for bot in self.bots:
             params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
             if self.wind.active and params is not None and route:
                 params.wind_mps = head_component(self._wind_sample, route.sample(bot.s).heading_deg)
             bot.step(dt, route)
+
+        if race:
+            race.step(self._t_session, dt, self.physics.s, m.power_w, self.bots)
+            self._flush_race_journal()
+            for msg in race.due_results(self._t_session):
+                self.server.send_raw(msg)
 
         self._power_window.append((self._t_session, m.power_w))
         while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
@@ -1176,6 +1290,7 @@ class CoreSession:
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
+        self._new_race()   # segments repris à la position du journal ; points et maillots repartent à zéro
         self.state.session_state = "PAUSED"   # la pause est déjà au journal
         self._set_state("PAUSED", "core_restarted")
         log.info("Séance reprise après un plantage du core : %s (t %.0f s, %.0f m%s).", path, rs.t, rs.s,
@@ -1289,6 +1404,7 @@ class CoreSession:
                     self.state.bots = [b.to_dict() for b in self.bots]
                 else:
                     self.state.bots = None
+                self._fill_race_frame()
                 self._fill_wind_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:
