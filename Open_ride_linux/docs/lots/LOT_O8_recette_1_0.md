@@ -20,13 +20,13 @@ Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, 
 
 **Installation (session Ubuntu vierge ou second compte)**
 1. **Installation en une commande (N14), icône présente, premier démarrage guidé.**
-2. **Mise à jour depuis l'icône : parcours, séances et `~/OpenRide/config.toml` conservés.**
+2. **Mise à jour depuis l'icône : parcours, séances et `~/OpenRide/config.toml` conservés.** Outil des lignes 1 et 2 : `scripts/recette_install.py` (lot X29), conteneur Ubuntu 24.04 neuf ou HOME temporaire ; le second compte du PC reste un essai à la main.
 
 **Matériel**
 3. **Appairage depuis le menu : trainer, deux boîtiers du Click (bouton + identifié), ceinture (N12, N13).**
 4. **Séance libre de 10 min ou plus en SIM avec braquets perceptibles, puis relecture des mesures `Perf` du journal.**
 5. **Un `.zwo` complet en ERG : cibles tenues, biais ± 2 % au Click, bip à T − 3 s (lot F, N7).**
-6. **Click : boîtier gauche ou contournement par B du boîtier droit utilisable pendant toute une séance de 30 min (journal K8 sans coupure non reprise).**
+6. **Click : boîtier gauche ou contournement par B du boîtier droit utilisable pendant toute une séance de 30 min (journal K8 sans coupure non reprise).** Outil : `python -m openride_core.tools.click_recette` (lot X8), rapport par boîtier (silences, coupures, touches reçues).
 7. Ceinture cardio réelle : contact, choix de l'appareil, batterie (M2).
 8. Erreur ATT éventuelle suivie de « renvoi 1/2 » et non d'une reconnexion (M1).
 9. Biais et coupures dans le bilan (M4) ; cible ERG et écart par bloc (L6).
@@ -42,7 +42,7 @@ Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, 
 **Rendu (GTX 1060, 1 920 × 1 080)**
 16. **Recette E3/E4 (`docs/RECETTE_E3_E4.md`) : ciel, brouillard, arbres, bâtiments, eau, sons.**
 17. **30 images/s en qualité basse sur un parcours avec village (SRS sprints 3 et 5), relevé `[perf-rendu]`.**
-18. **1 h de séance sans plantage ni saccade visible.**
+18. **1 h de séance sans plantage ni saccade visible.** Outil : `engine/tests/sim_bench.py --native --scenario endurance --size 1920x1080` (lot X16) vérifie aussi la ligne 17 et la croissance de la mémoire.
 19. Préparation des arbres sous 150 ms (`UNIT=test_tree_renderer`, O1).
 20. Menus, écran Appareils, Réglages (si O4), bilan lisibles à 2 m et pilotables au Click.
 

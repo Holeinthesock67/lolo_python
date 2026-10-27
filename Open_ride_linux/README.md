@@ -39,7 +39,7 @@ Open_ride_linux/
   - conformité au contrat IPC (lot C) ;
   - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
   - Godot conforme au contrat : renvoi des commandes, extrapolation de la caméra, core injoignable (lot D) ;
-  - 612 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop` et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 195 côté compilateur (dont traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 76 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
+  - 862 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop` et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 270 côté compilateur (dont traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 76 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
   - **Reste :** séance de 10 minutes et stabilité du Click.
 - **Sprint 2 terminé côté code :** compilateur GPX vers `.world`, couches route (lot B1) et terrain avec le MNT Copernicus (lot B2). Reste la comparaison avec Garmin Connect sur une vraie trace.
 - **Sprint 3 en cours :** ruban de route et terrain par tronçons (lot E1, fusionné le 24 octobre ; reste l'essai sur la GTX 1060) ; chargeur de thèmes et logique du bandeau ERG côté Godot prêts (lots I5 et I6), à brancher sur l'affichage (E2, F2).
@@ -73,6 +73,57 @@ pytest -q
 Les versions de référence validées en Python 3.14 sont figées dans `constraints.txt` (`pip install -c ../constraints.txt -e ".[dev]"` ; mettre ce fichier à jour après une montée de version testée).
 
 Compilateur de parcours (GPX vers `.world`, couches route, terrain, bâtiments, végétation, points d'intérêt et eau) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (ou directement l'export Garmin Connect : `build sortie.fit`, `build sortie.tcx`, lot M7 ; `verify`, `info`, `list` et `build-all` pour contrôler ou compiler tout `~/OpenRide/GPX/` ; `--layers route,terrain,buildings,vegetation,poi,water` pour inclure les couches OpenStreetMap). Le premier `build` télécharge les tuiles d'altitude Copernicus dans `~/.cache/openride/dem/` et les réponses Overpass dans `~/.cache/openride/osm/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain|buildings|vegetation|poi|water` régénère une couche seule.
+
+Raccourcis de bureau et icône utilisateur (sans `sudo`, depuis `Open_ride_linux/`, appelé par `install.sh`) : `scripts/install-desktop.sh` installe `~/.local/share/applications/openride.desktop`, `openride-release.desktop` (`openride --release-trainer`), `openride-update.desktop` et l'icône `scripts/desktop/openride.svg` (`scripts/install-desktop.sh --uninstall` pour les retirer).
+
+Godot 4.3 (version standard, pas .NET) :
+
+```bash
+mkdir -p ~/Applications/godot && cd ~/Applications/godot
+wget https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
+unzip Godot_v4.3-stable_linux.x86_64.zip && chmod +x Godot_v4.3-stable_linux.x86_64
+```
+
+Tests côté Godot, sans écran (depuis `Open_ride_linux/`) :
+
+```bash
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh
+GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
+```
+
+Le premier script lance les tests unitaires de `engine/tests/unit/` (vecteurs de route, thèmes…), le rendu par tronçons, l'ERG, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`). Le second fait un essai de bout en bout avec le vrai core (trainer simulé) et le vrai engine, dans un dossier personnel temporaire, en une dizaine de secondes. Le troisième fait les tests graphiques de la scène principale, sans rien à faire (deux minutes environ) : l'engine est rendu sous Xvfb en 1280×720, 1920×1080 et 1024×600, ses captures d'écran sont analysées (textes et mise en page du HUD, bandeau, ciel et sol, caméra qui avance puis se fige) et comparées aux images de référence, et `--open` ouvre le rapport (`~/OpenRide/visual_tests/<date>/rapport.html`) ; paquets : `xvfb`, `xauth`, `libgl1-mesa-dri` (détail : `engine/tests/README.md`).
+
+**Arguments de l'engine** (après `--`, hors contrat IPC) :
+
+| Argument | Défaut | Rôle |
+| --- | --- | --- |
+| `--ipc-state-port=N` | 5005 | Port d'écoute des trames du core ; s'il est occupé, l'engine quitte avec le code 1 |
+| `--ipc-cmd-port=N` | 5006 | Port de commandes du core |
+| `--routes-dir=CHEMIN` | `~/.local/share/openride/routes` | Dossier des parcours `<route_id>.world` (repli sur la démo embarquée pour `demo`) |
+| `--test-mode` | absent | Journal `[test]` pour les tests sans écran |
+
+Exemple : `godot --path engine -- --ipc-state-port=5005 --ipc-cmd-port=5006`. `scripts/openride-dev.sh` passe les ports de `config.toml`.
+
+Installation manuelle, pour le développement :
+
+```bash
+sudo apt install python3-venv python3-pip bluez
+cd Open_ride_linux/core
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[dev]"
+pytest -q
+```
+
+Les versions de référence validées en Python 3.14 sont figées dans `constraints.txt` (`pip install -c ../constraints.txt -e ".[dev]"` ; mettre ce fichier à jour après une montée de version testée).
+
+Compilateur de parcours (GPX vers `.world`, couches route, terrain, bâtiments, végétation, points d'intérêt et eau) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (ou directement l'export Garmin Connect : `build sortie.fit`, `build sortie.tcx`, lot M7, ou l'archive telle que Garmin la livre, `.fit.gz`, `.tcx.gz` ou `.zip`, lot O5 ; `verify`, `info`, `list` et `build-all` pour contrôler ou compiler tout `~/OpenRide/GPX/` ; `--layers route,terrain,buildings,vegetation,poi,water` pour inclure les couches OpenStreetMap). Le premier `build` télécharge les tuiles d'altitude Copernicus dans `~/.cache/openride/dem/` et les réponses Overpass dans `~/.cache/openride/osm/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain|buildings|vegetation|poi|water` régénère une couche seule.
+
+**Déposer une sortie Garmin (lot O5) :** il suffit de copier le fichier exporté de Garmin Connect, tel quel, dans `~/OpenRide/GPX/` : `.gpx`, `.fit`, `.tcx`, `.fit.gz`, `.tcx.gz` ou `.zip` (la première trace `.fit`, `.tcx` ou `.gpx` de l'archive, par ordre alphabétique, est lue). Au lancement suivant, OpenRide la compile et elle apparaît dans la liste des parcours. Deux fichiers qui donnent le même nom de parcours (`col.gpx` et `col.fit`) : seul le premier dans l'ordre `.gpx`, `.fit`, `.fit.gz`, `.tcx`, `.tcx.gz`, `.zip` est pris, l'autre est signalé par `list` et `build-all`. Une archive vide, abîmée ou de plus de 50 Mo une fois décompressée est refusée avec un message, sans empêcher la compilation des autres traces.
+
+**Bibliothèque de parcours (lot O15) :** chaque parcours a une fiche calculée à la compilation (distance, dénivelé positif et négatif, pente maximale sur 100 m, montée principale et sa catégorie de 4 à HC, durée estimée, difficulté de 1 à 5), recalculée à la lecture pour un `.world` plus ancien. Une fiche saisie facultative se pose à côté de la trace, sous le même nom : `col.toml` à côté de `col.gpx`, avec `name`, `description`, `region` (texte libre, jamais de coordonnées), `tags` (`["col", "classique"]`) et `credits`. `openride-compiler list --tag col --sort deniv --reverse --min-km 10 --max-km 40` trie et filtre (aussi `--region`, `--status`, `--max-difficulty`, `--ftp` pour la durée estimée, défaut la FTP de `config.toml`, et `--json` pour les fiches complètes). `openride-compiler route-pack-install pack.zip` installe un pack de parcours (dossier ou `.zip` de traces, de leurs fiches `.toml` et d'un `pack.toml` facultatif : `name`, `description`, `license`, `credits`) dans `~/OpenRide/GPX/<pack>/` après contrôle (chemins sûrs, pas de lien, 200 Mo au plus, fiches valides, aucun autre fichier) ; `build-all` le compile ensuite et `route-pack-list` liste les packs installés.
+
+**Pack de départ « Cols célèbres » (lot O16) :** le dépôt ne contient aucune trace, seulement 16 recettes (`compiler/src/openride_compiler/route_packs/cols_celebres/`) : Alpe d'Huez, Mont Ventoux, Galibier, Tourmalet, Teide, Stelvio, Zoncolan, Angliru, Grand Colombier, Madeleine, Grand Ballon, Planche des Belles Filles, Ballon d'Alsace, Fuji Subaru Line, Norikura Echo Line et Irohazaka. `openride-compiler route-pack-build cols_celebres --install` télécharge une fois les routes OpenStreetMap autour de chaque col (cache `~/.cache/openride/osm/`, ensuite `--offline` suffit), relie départ et sommet par la plus courte route ouverte aux vélos (sens uniques respectés, chemins non revêtus exclus), prend l'altitude Copernicus, refuse un col dont la longueur ou le dénivelé s'écarte de plus de 5 % de la référence, puis installe le pack ; `build-all` le compile. `--only alpe_d_huez,grand_ballon` limite la construction. Crédits : © contributeurs OpenStreetMap, ODbL ; altitude Copernicus GLO-30.
 
 Raccourcis de bureau et icône utilisateur (sans `sudo`, depuis `Open_ride_linux/`, appelé par `install.sh`) : `scripts/install-desktop.sh` installe `~/.local/share/applications/openride.desktop`, `openride-release.desktop` (`openride --release-trainer`), `openride-update.desktop` et l'icône `scripts/desktop/openride.svg` (`scripts/install-desktop.sh --uninstall` pour les retirer).
 
@@ -151,12 +202,17 @@ openride-core recover            # transforme le dernier journal en FIT après u
 openride-core release-trainer    # libère le HomeTrainer resté réservé (consigne annulée, contrôle FTMS rendu, déconnexion)
 openride-core summary [CHEMIN] [--ftp W] [--json]   # bilan : NP, IF, TSS, zones, meilleures puissances
 openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]   # historique et cumul par semaine ISO
+openride-core xp [--dir DOSSIER] [--json]   # progression (série V) : niveau, expérience, défis, depuis le journal
 python -m openride_core.tools.log_report [~/run_trainer.log] [--json] [--all]   # analyse le journal de séance (connexions, Click, commandes FTMS et délais)
 python -m openride_core.tools.workouts install                   # copie les 7 entraînements de référence (5 .zwo, un .erg, un .mrc)
 python -m openride_core.tools.workouts install --erg-relative    # idem, .erg convertis en .mrc (% de la FTP de leur en-tête)
 python -m openride_core.tools.workouts list                      # liste les entraînements de ~/OpenRide/Workouts/
 python -m openride_core.tools.workouts check FICHIER.zwo --ftp 250   # vérifie un fichier .zwo, .erg ou .mrc et estime NP/IF/TSS
 ```
+
+### Plans d'entraînement (lot O11)
+
+Un plan range des entraînements de la bibliothèque `~/OpenRide/Workouts/` par semaine et par jour, dans `~/OpenRide/Plans/<id>.toml` (format : [docs/contracts/plan_format_v1.md](docs/contracts/plan_format_v1.md)). `openride-core plan install` copie les deux plans de référence (« Reprise 4 semaines » et « FTP 6 semaines ») et les entraînements qu'ils utilisent, sans rien écraser ; `plan list` les montre (un plan invalide apparaît avec son erreur), `plan show ID` donne la durée et le TSS de chaque semaine, `plan start ID [--date AAAA-MM-JJ]` le démarre et `plan stop` l'arrête. `plan today` dit quelle séance faire aujourd'hui, celles en retard (rattrapables pendant 3 jours) et le pourcentage fait : une séance compte si une séance enregistrée porte le même entraînement et a duré au moins 80 % du temps prévu. `plan import DOSSIER --name NOM --days mardi,jeudi,samedi` transforme un dossier d'entraînements numérotés (`w1d1`, `w1d2`, …) en plan. Le choix d'un plan depuis le menu viendra au lot O12.
 
 ## Diagnostic matériel
 
