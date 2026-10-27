@@ -89,6 +89,7 @@ STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("devices", _drop("devices")),
     ("summary", _drop("summary")),
     ("bots", _drop("bots")),
+    ("open_world", _drop("open_world")),
     ("erg", _drop("erg")),
 ]
 
@@ -172,12 +173,23 @@ def _extras_1_4(d: dict[str, Any]) -> None:
     d["bot_ahead"], d["bot_behind"] = d["bots"][2]["id"], d["bots"][3]["id"]
 
 
+def _extras_1_5(d: dict[str, Any]) -> None:
+    # Monde ouvert (lot W9) : `open_world` n'est jamais dans une trame qui porte `devices` (contrat §4).
+    # La trame la plus lourde du monde ouvert est donc celle sans `devices`, avec carrefour à 4 branches.
+    d.pop("devices", None)
+    d["open_world"] = {"rev": 2_147_483_647,
+                       "next": {"id": "j" + "9" * 23, "d_m": 2999.9, "default": 3, "chosen": 3, "locked": True,
+                                "b": [[-179, "p", -99.9], [-90, "s", 99.9], [90, "m", -12.3], [179, "k", 12.3]]},
+                       "data": "downloading"}
+
+
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
 REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.1": _extras_1_1,
     "1.2": _extras_1_2,
     "1.3": _extras_1_3,
     "1.4": _extras_1_4,
+    "1.5": _extras_1_5,
 }
 
 

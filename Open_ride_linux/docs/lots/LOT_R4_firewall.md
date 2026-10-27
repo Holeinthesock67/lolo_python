@@ -44,3 +44,9 @@ Aucune.
 ## 8. Hors périmètre
 
 - Dégâts et perte d'or au contact (R5), affichage du mur (R10).
+
+## 9. Livraison (27 octobre 2026)
+
+- `rogue/firewall.py` (`Firewall.step(dt, player_s, paused, input_lost)`) et `start_gap_m`, `max_gap_m` dans `RogueBalance`. Tests : `core/tests/test_rogue_firewall.py`.
+- **Choix :** le mur lit la pente et la fraction de FTP du plan à la position du joueur (même terrain au même instant) ; à puissance égale l'écart reste donc constant, et les salves du Sprinteur tombent en même temps pour le joueur et le mur. Lu à sa propre position, le mur dérivait de 20 m en 4 min sur une rampe, contre le critère à ± 5 m.
+- Au contact, le mur reste collé au joueur à sa vitesse ; au plafond de 400 m, il suit le joueur à distance fixe. Le contact de 10 % sous le mur sur un Diesel seuil demande une salle d'au moins 8 min avec l'écart de départ de 150 m ; à 4 min l'écart tombe à 50 m seulement.

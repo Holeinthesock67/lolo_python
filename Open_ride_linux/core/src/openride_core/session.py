@@ -18,13 +18,14 @@ import logging
 import math
 import re
 import signal
+import threading
 import time
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
 from .classic import ClassicRace
-from .config import OPENRIDE_HOME, WORKOUTS_DIR, Config
+from .config import GPX_DIR, OPENRIDE_HOME, WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
@@ -33,6 +34,8 @@ from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
 from .progression import journal_source
 from .mock_driver import MockDriver
+from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
+from .open_world_save import save_ride
 from .physics import PhysicsParams, RiderPhysics
 from . import powerups as powerups_mod, records as records_mod
 from .powerups import PowerUpError, load_table
@@ -255,7 +258,8 @@ class CoreSession:
             on_command=self._on_command, on_engine_lost=self._on_engine_lost,
             on_engine_returned=lambda: log.info("Engine connecté."),
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
-                          "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct)})
+                          "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct),
+                          "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")})
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
                  cfg.trainer.grade_rate_up_pct_per_s, cfg.trainer.grade_rate_down_pct_per_s)
@@ -292,6 +296,12 @@ class CoreSession:
         self._import_offer: set[str] = set()
         self._scanning = False
         self._identify: dict[str, Any] | None = None
+        # Monde ouvert (lot W9) : générateur et route engagée ; `worldgen_cmd` remplace la commande (essais).
+        self.openworld: OpenWorld | None = None
+        self.worldgen_cmd: list[str] | None = None
+        self.worldgen_args: list[str] = []
+        self.gpx_dir: Path | None = None        # balades enregistrées (défaut ~/OpenRide/GPX ; essais)
+        self._ow_previous = "IDLE"
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -330,6 +340,13 @@ class CoreSession:
             else:
                 log.warning("Entraînement « %s » refusé : séance %s.", args.get("workout_id"), st)
                 self.server.send_error("busy", "Choix de l'entraînement impossible pendant une séance.")
+        elif name == "start_open_world":
+            self._start_open_world(args, st)
+        elif name == "choose_branch":
+            if self.openworld is None:
+                self.server.send_error("unknown_junction", "Pas de monde ouvert en cours.")
+            else:
+                self.openworld.choose_branch(str(args.get("junction_id") or ""), args.get("branch"), self.physics.s)
         elif name == "start" and st == "READY":
             if not self._choose_start_workout(args if isinstance(args, dict) else {}):
                 return
@@ -656,8 +673,78 @@ class CoreSession:
         except Exception:
             log.exception("Erreur lors de la préparation de workouts (cmd_id=%d)", cmd_id)
 
+    # --- monde ouvert (lot W9, contrat IPC révision 1.5) ------------------------------------------
+
+    def _start_open_world(self, args: Any, st: str) -> None:
+        if st not in ("IDLE", "READY", "FINISHED", "ERROR"):
+            self.server.send_error("busy", "Monde ouvert impossible pendant une séance.")
+            return
+        self._close_open_world()
+        ow = OpenWorld(self.cfg.open_world, self.config_path, self.worldgen_cmd, list(self.worldgen_args),
+                       send_status=self.server.send_world_status, send_error=self.server.send_error,
+                       journal=lambda line: self._rec.junction(line) if self._rec else None)
+        self._ow_previous = "IDLE" if st in ("FINISHED", "ERROR") else st
+        self._set_state("LOADING")
+        try:
+            ow.begin(args)
+        except OpenWorldError as exc:
+            log.error("Monde ouvert refusé : %s", exc)
+            self.server.send_error(exc.code, str(exc))
+            ow.close()
+            self._set_state(self._ow_previous)
+            return
+        self.openworld = ow
+        log.info("Monde ouvert : préparation de %s.", ow.folder)
+
+    def _close_open_world(self, wait: bool = False) -> None:
+        """Fin du générateur ; en séance, dans un fil pour ne pas retenir la boucle à 50 Hz."""
+        ow, self.openworld = self.openworld, None
+        if ow is None:
+            return
+        if wait:
+            ow.close()
+        else:
+            threading.Thread(target=ow.close, name="worldgen-close", daemon=True).start()
+
+    def _open_world_tick(self, now_mono: float) -> None:
+        ow = self.openworld
+        if ow is None:
+            return
+        st = self.state.session_state
+        ow.tick(self.physics.s, self.physics.v, st == "RUNNING", now_mono)
+        if st == "LOADING":
+            if ow.failed:
+                self._close_open_world()
+                self._set_state(self._ow_previous)
+            elif ow.ready and ow.route is not None and ow.route.ready:
+                self.route = ow.route
+                self.erg = None
+                self._sync_erg_state()
+                self.state.route_id = f"ow:{ow.id}"
+                self.state.route_length_m = ow.route.length_m
+                self.physics.s = self.physics.v = 0.0
+                self._t_session = 0.0
+                log.info("Monde ouvert prêt : %.0f m de route engagée.", ow.route.length_m)
+                self._set_state("READY")
+            return
+        if st not in ("READY", "RUNNING", "PAUSED"):
+            return
+        if ow.route is not None and ow.route.ready:
+            self.route = ow.route            # générateur relancé : sa route remplace l'ancienne
+            self.state.route_length_m = ow.route.length_m
+        s = self.physics.s
+        self.state.open_world = ow.state_field(s)
+        if st == "RUNNING" and ow.should_pause(s):
+            log.warning("Plus de route connue devant (%.0f m) : pause.", ow.known_ahead(s))
+            self._set_state("PAUSED", "world_data")
+        elif st == "PAUSED" and self.state.pause_reason == "world_data" and ow.can_resume(s):
+            log.info("Route de nouveau connue (%.0f m) : reprise.", ow.known_ahead(s))
+            self._set_state("RUNNING")
+
     def _select_route(self, route_id: str, previous: str) -> None:
         """LOADING, lecture de la couche route du .world, puis READY (contrat §7, étape 6)."""
+        self._close_open_world()
+        self.state.open_world = None
         self._set_state("LOADING")
         try:
             if route_id == "demo":
@@ -850,6 +937,14 @@ class CoreSession:
                                        "previous_ftp_w": ftp_result.previous_ftp_w,
                                        "warnings": list(ftp_result.warnings), "reliable": ftp_result.reliable}
         self.state.summary = summary
+        ow = self.openworld
+        if ow is not None and save and ow.route is not None and ow.route.ready:
+            try:   # lot W14 : la route parcourue devient un parcours de la bibliothèque
+                save_ride(ow.route, self.physics.s, ow.id, self.gpx_dir or GPX_DIR)
+            except (OSError, WorldError) as exc:
+                log.warning("Balade du monde ouvert non enregistrée : %s", exc)
+        self._close_open_world()
+        self.state.open_world = None
         self.erg = None
         self._ramp_watch = None
         self._sync_erg_state()
@@ -1003,6 +1098,9 @@ class CoreSession:
             return
         # Relayé à l'engine : menus hors séance, retour sonore (bips) et explications pendant la séance.
         self.server.send_input_event(ev.value)
+        if self.openworld is not None and ev.value in CHOICE_EVENTS and self.state.session_state == "RUNNING":
+            if self.openworld.on_input(ev.value, self.physics.s):   # carrefour proposé : choix de la branche
+                return
         if ev == InputEvent.Z_SHORT and self.state.session_state == "RUNNING" and self.race:
             if self.race.activate(self._t_session):   # mode classique : bonus en réserve (T6, T7)
                 log.info("Bonus activé : %s.", self.race.powerups.active)
@@ -1079,6 +1177,7 @@ class CoreSession:
                 self._set_state("ERROR")
             return
 
+        self._open_world_tick(now_mono)
         if self._autoresume and self.state.session_state == "PAUSED":
             reason = self.state.pause_reason
             if (reason == "trainer_lost" and m.connected) or \
@@ -1206,7 +1305,7 @@ class CoreSession:
                 draft=round(self._draft, 3) if self.bots else None,
                 hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None))
 
-        if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
+        if route and not route.is_loop and self.openworld is None and st.s >= route.length_m:   # ni une boucle, ni le monde ouvert
             log.info("Arrivée atteinte.")
             self._finish(True)
 
@@ -1424,6 +1523,7 @@ class CoreSession:
         try:
             if self._rec:
                 self._finish(True)   # la séance n'est jamais perdue
+            self._close_open_world(wait=True)
         except Exception:
             # Une panne du journal ou du FIT ne doit pas empêcher de relâcher le trainer.
             log.exception("Fin de séance incomplète")
