@@ -1,6 +1,6 @@
 # OpenRide 2.0 – GDD du mode « Cyber-Rogue Cycliste 3D »
 
-Retranscription du document de conception remis par le propriétaire le 25 octobre 2026 (PDF de 7 pages, « GDD & Spécifications – Cyber-Rogue Cycliste 3D (Godot) »). Le texte suit l'original ; les décisions prises ensuite, qui l'emportent sur lui là où elles diffèrent, sont dans [PLAN_SERIE_R.md](PLAN_SERIE_R.md) §2.
+Retranscription du document de conception remis par le propriétaire le 25 octobre 2026 (PDF de 7 pages, « GDD & Spécifications – Cyber-Rogue Cycliste 3D (Godot) »). Le texte suit l'original ; les décisions prises ensuite, qui l'emportent sur lui là où elles diffèrent, sont dans [PLAN_SERIE_R.md](PLAN_SERIE_R.md) §2 ; les corrections chiffrées du 26 octobre sont signalées ci-dessous par « Correction ».
 
 ## Partie 1 – Vision et philosophie
 
@@ -8,7 +8,7 @@ Retranscription du document de conception remis par le propriétaire le 25 octob
 
 Une simulation cycliste en monde ouvert classique, développée en solo ou en petite équipe, mène à une impasse de production : 90 % du temps part dans la modélisation d'environnements statiques, pour un résultat qui paraîtra toujours vide face aux serveurs massivement multijoueurs.
 
-Le projet prend le contre-pied de la contemplation : transformer l'entraînement sur home trainer en jeu d'action tactique de type rogue-lite (inspirations : Hades, Slay the Spire, Thumper, Tron), où les jambes sont le moteur, la cadence est la posture et les boutons au guidon sont la manette de combat.
+Le projet prend le contre-pied de la contemplation : transformer l'entraînement sur home trainer en jeu d'action tactique de type rogue-lite (inspirations : Hades, Slay the Spire, Thumper et les films de motos lumineuses), où les jambes sont le moteur, la cadence est la posture et les boutons au guidon sont la manette de combat.
 
 ### 1.2 Piliers du gameplay
 
@@ -47,6 +47,8 @@ Boîtier droit du Click : +, B, Y, Z, A actifs ; le bouton − n'est pas utilis�
 | Z | Parade, bouclier ou aspiration : timing quand la roue traverse une zone [Z] | Relancer le tirage (coûte de l'or) | Défense active, accrocher la roue |
 | A | Disjoncteur : purge d'urgence (−4 vitesses d'un coup) ou compétence de carte | Afficher le deck et les métriques | Joker de survie, surcharge volontaire |
 
+**Correction (26 octobre, décisions R-Q6 et R-Q8, plan de boutons commun à tous les modes) :** Y = pause, comme dans les autres modes. **Z court** = action du mode selon le marqueur : attaque sur une cible (notée [Z] dans les cahiers, au lieu de [Y]), parade dans une zone de parade, purge sur une balise du Saboteur (au lieu de [A]) ; en couloir, Z relance le tirage. **Z long** = carte ou relique active. **A court** fait défiler cartes et portes, **A long** valide. Le Disjoncteur devient l'**appui long sur B** (−3 vitesses, comme le grand pas des autres modes). Le deck se consulte dans l'écran de pause.
+
 ### 2.3 La cadence comme posture de combat
 
 À puissance égale :
@@ -55,6 +57,8 @@ Boîtier droit du Click : +, B, Y, Z, A actifs ; le bouton − n'est pas utilis�
 - **Fluide (80 à 95 rpm, neutre) :** équilibre, meilleure régénération de W'bal.
 - **Véloce (> 100 rpm, vélocité) :** plus de coups critiques, recharge de Y plus rapide, armure réduite.
 
+**Correction (26 octobre) :** Fluide couvre tout de 70 à 100 rpm, avec une hystérésis de 3 rpm et un maintien de 1,5 s avant de changer de posture ; la meilleure régénération de W'bal reste réservée à 80 à 95 rpm (lot R2).
+
 ### 2.4 Ruban tactique et « Perfect Shift »
 
 La piste affiche les événements 10 à 15 s à l'avance :
@@ -62,13 +66,15 @@ La piste affiche les événements 10 à 15 s à l'avance :
 - **Couleur du sol selon la pente :** cyan de −3 à +1 % (monter les vitesses pour ne pas pédaler dans le vide), jaune ou orange de 2 à 6 % (faux-plat), magenta au-delà de 7 % (mur, rétrograder avec B).
 - **Perfect Shift (arches dorées) :** juste avant une rupture de pente, une arche laser est posée. Changer de braquet (+ ou B) dans une fenêtre de 1,5 s au passage lisse la transition sur le trainer et donne +10 % d'adrénaline.
 
+**Correction (26 octobre) :** couleurs sans trou : bleu sous −3 %, cyan jusqu'à 1,5 %, jaune jusqu'à 4 %, orange jusqu'à 6,5 %, magenta au-delà (lot R10). La fenêtre de 1,5 s et l'avance des arches sont réglées après la mesure du frein (lot R0).
+
 ### 2.5 Bestiaire (salles de 3 à 5 min)
 
 | Archétype | Forme 3D | Profil de pente | Mécanique | Filière |
 | --- | --- | --- | --- | --- |
 | Le Diesel (Mainframe) | Train blindé crachant un souffle réacteur | Rampe constante de 3 à 4 % sans répit | Tunnels de cadence (ex. 90 rpm ± 3) : la régularité charge des éclairs, attaque avec Y | Seuil, régularité |
 | Le Puncheur (Intercepteur) | Moto lumineuse laissant un mur d'énergie | Dents de scie : 15 s à 9 %, puis cuvettes à −2 % | Perfect Draft [Z] : zone bleue 2 s avant l'attaque ; Z en haussant les watts accroche l'aspiration (la bosse coûte moitié) | PMA, micro-intervalles 15/30, 30/30 |
-| Le Grimpeur (Architecte) | Drone pyramidal qui soulève la route | Escalier : paliers chaque minute, 4 puis 7 puis 10 % | Rochers d'armure [Y] : charger la jauge en posture Roc (< 75 rpm) et frapper les balises | Force sous-maximale, tolérance lactique |
+| Le Grimpeur (Architecte) | Drone pyramidal qui soulève la route | Escalier : paliers chaque minute, 4 puis 7 puis 10 % | Rochers d'armure [Y] : charger la jauge en posture Roc (< 70 rpm ; **correction** : le GDD disait < 75) et frapper les balises | Force sous-maximale, tolérance lactique |
 | Le Sprinteur (Berserker) | Chasseur furtif ultra-rapide | Plat à 0 %, mais le Firewall accélère par salves | Pavés de boost : vitesses 10 à 12 et sprint > 140 % FTP sur les flèches | Explosivité, capacité anaérobie |
 | Le Saboteur (Glitch) | Essaim de cubes corrompus | Pente variable de 2 à 5 % | Piratage : bloque +/B ou force un pignon ; compenser à la cadence jusqu'à la balise de purge [A] | Adaptabilité neuromusculaire |
 
@@ -97,6 +103,8 @@ Pendant les 2 min de récupération entre les salles (pente 0 %, zone 1 à 2), c
   2. Furie tactique (4 min) : montagnes russes 8 / 0 / 10 % et ondes de choc [Z] ; coordination +, B, Z et jambes.
   3. Exécution (90 s) : route à 0 % mais écarlate, Firewall à 120 % FTP ; plus gros pignons et réserve vidée pour achever le boss.
 - **40:00 à 45:00, retour au calme :** pente 0 %, coffres de fin de séance, déblocage de châssis permanents.
+
+**Correction (26 octobre) :** 4 salles de 3 à 5 min et 4 couloirs de 2 min ne tiennent pas entre 08:00 et 30:00 (jusqu'à 28 min). Le calendrier de 45 min retenu : 4 salles de 3,5 min en moyenne et 4 couloirs de 2 min, puis un boss de 10 min (3 + 4 + 1,5 min de combat et 1,5 min de transitions). Les calendriers de 30, 60 et 90 min sont dans le lot R15.
 
 ## Partie 3 – Intégration Godot 3D
 
