@@ -23,6 +23,7 @@ ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.3-stable_linux.x86_64}"
 STATE_PORT="${STATE_PORT:-15005}"
 CMD_PORT="${CMD_PORT:-15006}"
+ENGINE_LOG_TEMP=$([ -z "${ENGINE_LOG:-}" ] && echo 1 || echo 0)   # journal temporaire : supprimé si tout passe
 ENGINE_LOG="${ENGINE_LOG:-$(mktemp -t openride-engine-test.XXXXXX.log)}"
 ROUTES_DIR="$(mktemp -d -t openride-routes.XXXXXX)"   # reçoit demo.world avec terrain synthétique
 UNIT_TIMEOUT="${UNIT_TIMEOUT:-120}"
@@ -270,4 +271,5 @@ perf_summary
 echo "Résumé :"
 for line in "${SUMMARY[@]}"; do echo "  $line"; done
 if [ "$status" -eq 0 ]; then echo "RÉSULTAT : tous les tests de l'engine passent"; else echo "RÉSULTAT : ÉCHEC"; fi
+if [ "$status" -eq 0 ] && [ "$ENGINE_LOG_TEMP" = 1 ]; then rm -f "$ENGINE_LOG"; else echo "Journal de l'engine gardé : $ENGINE_LOG"; fi
 exit "$status"

@@ -30,3 +30,4 @@ Première version complète avant la 1.0 : tout ce que contient `main` au 26 oct
 - Lanceur unique `openride`, raccourcis de bureau, installation en une commande, erreurs dans une fenêtre.
 - Journal de séance JSONL, export FIT, `summary`, `history`, analyse du journal (`log_report`).
 - Bluetooth simulé, rejeu de séances, banc d'essai simulé, tests graphiques et intégration continue.
+- Tests isolés du dossier personnel : HOME temporaire, aucune fenêtre, échec d'un test qui écrit hors de son dossier temporaire, une seule suite à la fois.
