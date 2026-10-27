@@ -112,11 +112,14 @@ def test_dead_ends(tmp_path) -> None:
     loop = [foot] + [b.node(r * math.sin(t), -100 - r + r * math.cos(t))
                      for t in [2 * math.pi * k / 60 for k in range(1, 60)]]
     b.way(3, [*loop, foot])
-    b.way(4, [hub, b.node(4000, 0), b.node(9000, 0)])                 # sort de l'emprise
+    far = b.node(9000, 0)
+    b.way(4, [hub, b.node(4000, 0), b.node(6000, 0), far])            # sort de l'emprise…
+    b.way(5, [b.node(9000, 300), far, b.node(9000, -300)])            # …jusqu'à un carrefour dehors
     g = RoadGraph.build(b.open(), bbox_xz(-5000, -5000, 5000, 5000), FRAME)
     dead = {e.id: g.dead_end(e, forward=fwd) for e, fwd in g.branches(g.cluster[hub])}
     assert dead == {"1:0": True, "2:0": False, "4:0": False}
-    assert g.nodes[g.cluster[g.edges["4:0"].raw_b]].frontier
+    assert g.edges["4:0"].raw_b == far and g.nodes[g.cluster[far]].frontier   # arête suivie hors de l'emprise
+    assert "5:0" not in g.edges
     assert g.dead_end("2:0", depth_m=4000)                             # la boucle ne fait que 3,1 km
 
 
@@ -152,18 +155,37 @@ def test_close_junctions_merge(tmp_path) -> None:
 
 def test_extend_keeps_ids(tmp_path) -> None:
     b = Builder(tmp_path / "e.sqlite")
-    pts = [(x, 0.0) for x in range(-1000, 3001, 100)]
-    b.line(1, pts)
-    b.line(2, [(500, 500), (500, 0), (500, -500)])
-    b.line(3, [(2500, 500), (2500, -500)])
+    main = [b.node(x, 0.0) for x in range(-1000, 3001, 100)]
+    b.way(1, main)
+    b.way(2, [b.node(500, 500), main[15], b.node(500, -500)])         # croise en x = 500
+    b.way(3, [b.node(2500, 500), main[35], b.node(2500, -500)])       # croise en x = 2500, hors emprise
     db = b.open()
     g = RoadGraph.build(db, bbox_xz(-1200, -1200, 1200, 1200), FRAME)
     first = {k: (e.raw_a, e.raw_b, round(e.length_m, 3)) for k, e in g.edges.items()}
     frontier = [n for n in g.nodes.values() if n.frontier]
-    assert len(frontier) == 1 and "3:0" not in g.edges
+    assert [n.members for n in frontier] == [[main[35]]] and "3:0" not in g.edges
+    assert first["1:15"] == (main[15], main[35], pytest.approx(2000, abs=0.01))
     added = g.extend(db, bbox_xz(1200, -1200, 3500, 1200))
     assert {k: (g.edges[k].raw_a, g.edges[k].raw_b, round(g.edges[k].length_m, 3)) for k in first} == first
-    assert "3:0" in added and not any(n.frontier for n in g.nodes.values())
+    assert set(added) == {"1:35", "3:0", "3:1"} and not any(n.frontier for n in g.nodes.values())
+
+
+def test_edges_do_not_depend_on_bbox(tmp_path) -> None:
+    """Deux emprises différentes donnent exactement les mêmes arêtes là où elles se recouvrent."""
+    b = Builder(tmp_path / "c.sqlite")
+    step, n = 400, 16
+    grid = {(i, j): b.node(i * step - 3000, j * step - 3000) for i in range(n) for j in range(n)}
+    for i in range(n):
+        b.way(100 + i, [grid[(i, j)] for j in range(n)], highway="tertiary" if i % 4 else "secondary")
+        b.way(200 + i, [grid[(j, i)] for j in range(n) if (i + j) % 5])  # voies trouées : chaînes longues
+    db = b.open()
+    g1 = RoadGraph.build(db, bbox_xz(-3100, -3100, 0, 0), FRAME)
+    g2 = RoadGraph.build(db, bbox_xz(-1700, -1700, 1500, 1500), FRAME)
+    common = set(g1.edges) & set(g2.edges)
+    assert len(common) > 20
+    for k in common:
+        e1, e2 = g1.edges[k], g2.edges[k]
+        assert (e1.raw_a, e1.raw_b, e1.osm_nodes, e1.points) == (e2.raw_a, e2.raw_b, e2.osm_nodes, e2.points)
 
 
 def test_grid_100_km2_builds_fast(tmp_path) -> None:

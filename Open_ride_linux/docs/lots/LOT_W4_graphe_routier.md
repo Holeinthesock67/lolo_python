@@ -18,7 +18,7 @@ W3 livré (schéma de la base). Les tests n'ont besoin que d'une base écrite pa
 Module `worldgen/graph.py` :
 
 - `RoadGraph.build(db, bbox, frame)` : lit `roads_in(bbox)` avec `road_class` différent de `x`, projette dans le repère `frame` (x vers l'est, z vers le sud, mètres).
-- **Nœuds :** un nœud OSM devient nœud du graphe s'il est partagé par au moins deux voies admises, s'il termine une voie, ou s'il est au bord de l'emprise (nœud `frontier`, à compléter quand l'emprise s'agrandit). Identifiant : celui du nœud OSM (négatif pour les nœuds synthétiques de W13).
+- **Nœuds :** un nœud OSM devient nœud du graphe s'il est partagé par au moins deux voies admises, ou s'il termine une voie, dans la base entière. Une voie qui sort de l'emprise est suivie au-delà jusqu'à un tel nœud, pour que chaque arête soit la même quelle que soit l'emprise demandée (condition des carrés partagés de W7) ; ce nœud est `frontier` s'il a des branches hors de l'emprise, complétées quand elle s'agrandit. Identifiant : celui du nœud OSM (négatif pour les nœuds synthétiques de W13).
 - **Arêtes :** portion de voie entre deux nœuds du graphe ; champs `id` (`"<osm_id>:<index>"`, stable), `a`, `b`, `points` (x, z), `length_m`, `road_class`, `oneway`, `spans` (liste `[s_début, s_fin, "bridge" | "tunnel"]` le long de l'arête), `name`.
 - **Sens unique :** une arête `oneway` ne se parcourt que dans son sens (`oneway=-1` inversé) ; les pistes cyclables à double sens restent ouvertes.
 - `out_edges(node, arriving_heading_deg)` : branches au départ d'un nœud, avec leur cap initial (moyenne sur les 20 premiers mètres) et l'angle relatif (positif à droite, dans ]−180, 180]) ; demi-tour exclu.
