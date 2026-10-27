@@ -5,19 +5,46 @@ extends Node
 ## Gère la lecture continue du vent, de la roue libre et de jusqu'à 4 points d'intérêt spatialisés (L5).
 ## Génère des sons procéduraux au démarrage sans aucun fichier audio externe requis.
 ## Permet le remplacement optionnel par des fichiers ~/OpenRide/Sounds/<kind>.ogg.
+##
+## Lot P9 : six fonds d'ambiance non spatialisés (`AmbienceModel.BEDS` : oiseaux, insectes, eau, village,
+## vent d'altitude, pluie), synthétisés au lancement ou lus dans ~/OpenRide/Sounds/<fond>.ogg, réglés par
+## `update_ambience(neigh, now_s)` ; les cloches des points `church_bell` sonnent l'heure pleine
+## (`update_bells(hour, now_s)`, heure du PC par défaut).
+##
+## Lot P10 : le vent est un bruit filtré passe-bande (500 Hz, boucle raccordée en fondu enchaîné), dont
+## la hauteur suit la vitesse dans l'air ; la boucle de roue libre contient `FREEWHEEL_LOOP_CLICKS`
+## coups par seconde et `pitch_scale` la cale sur `freewheel.clicks_per_s` du modèle ; un lecteur
+## dédié joue le « clac » de reprise (60 ms, `clacs_played` compte les reprises jouées).
 
 const SoundModel := preload("res://scripts/sound_model.gd")
+const AmbienceModel := preload("res://scripts/ambience_model.gd")
+const BED_SAMPLES := 44100    # fonds d'ambiance : boucles de 2 secondes
+const BELL_INTERVAL_S := 2.2
 
 const MIX_RATE := 22050
 const SAMPLE_COUNT := 22050   # 1 seconde de boucle
+const FREEWHEEL_LOOP_CLICKS := 100.0   # coups par seconde de la boucle à pitch_scale = 1
+const FREEWHEEL_MIN_PITCH := 0.05
+const WIND_BAND_HZ := 500.0
+const WIND_BAND_Q := 0.8
+const CLAC_SAMPLES := 1323     # 60 ms
 
 var model := SoundModel.new()
 
 var _wind_player: AudioStreamPlayer
 var _freewheel_player: AudioStreamPlayer
+var _clac_player: AudioStreamPlayer
+var clacs_played := 0                   # « clac » de reprise joués (tests)
 var _poi_players: Array[AudioStreamPlayer3D] = []
 
 var _streams: Dictionary = {}
+
+var ambience := AmbienceModel.new()
+var _bed_players: Dictionary = {}       # fond -> AudioStreamPlayer
+var _bell_queue := 0                    # coups de cloche restant à sonner
+var _bell_next_s := 0.0
+var _bell_hour := NAN
+var bell_strikes_rung := 0              # coups effectivement sonnés (tests)
 
 
 func _init() -> void:
@@ -38,6 +65,12 @@ func _init_players() -> void:
 	_freewheel_player.volume_db = SoundModel.SILENCE_DB
 	add_child(_freewheel_player)
 
+	_clac_player = AudioStreamPlayer.new()
+	_clac_player.name = "ClacPlayer"
+	_clac_player.stream = _streams.get("clac", null)
+	_clac_player.volume_db = -6.0
+	add_child(_clac_player)
+
 	for i in range(SoundModel.MAX_POI_SOURCES):
 		var p := AudioStreamPlayer3D.new()
 		p.name = "PoiPlayer_%d" % i
@@ -46,6 +79,14 @@ func _init_players() -> void:
 		p.volume_db = SoundModel.SILENCE_DB
 		add_child(p)
 		_poi_players.append(p)
+
+	for bed in AmbienceModel.BEDS:
+		var bp := AudioStreamPlayer.new()
+		bp.name = "Ambience_%s" % bed
+		bp.stream = _streams.get(bed, null)
+		bp.volume_db = SoundModel.SILENCE_DB
+		add_child(bp)
+		_bed_players[bed] = bp
 
 
 func set_pois(points: Array) -> void:
@@ -69,6 +110,12 @@ func update_audio(state: Dictionary, now_s: float, rider_pos: Vector3) -> Dictio
 	# Roue libre
 	var fw: Dictionary = eval["freewheel"]
 	_freewheel_player.volume_db = float(fw["volume_db"])
+	if bool(fw["playing"]):
+		_freewheel_player.pitch_scale = maxf(float(fw["clicks_per_s"]) / FREEWHEEL_LOOP_CLICKS, FREEWHEEL_MIN_PITCH)
+	if bool(fw["clac"]):
+		clacs_played += 1
+		if is_inside_tree() and _clac_player.stream != null:
+			_clac_player.play()
 	if is_inside_tree():
 		if bool(fw["playing"]) and float(fw["volume_db"]) > SoundModel.SILENCE_DB:
 			if not _freewheel_player.playing:
@@ -101,6 +148,40 @@ func update_audio(state: Dictionary, now_s: float, rider_pos: Vector3) -> Dictio
 	return eval
 
 
+## Fonds d'ambiance (Lot P9) : une fois par image, avec le voisinage décrit par AmbienceModel.describe.
+func update_ambience(neigh: Dictionary, now_s: float) -> Dictionary:
+	var vols: Dictionary = ambience.evaluate(neigh, now_s)
+	for bed in AmbienceModel.BEDS:
+		var bp: AudioStreamPlayer = _bed_players[bed]
+		var db := float(vols[bed])
+		bp.volume_db = db
+		if is_inside_tree():
+			if db > SoundModel.SILENCE_DB and not bp.playing and bp.stream != null:
+				bp.play()
+			elif db <= SoundModel.SILENCE_DB and bp.playing:
+				bp.stop()
+	return vols
+
+
+## Cloches à l'heure pleine : `hour` en heures décimales (NAN : heure du PC). Les coups sont joués par
+## les lecteurs des points `church_bell` en cours (hors de portée : rien), espacés de BELL_INTERVAL_S.
+func update_bells(hour: float, now_s: float) -> void:
+	var h := AmbienceModel.local_hour() if is_nan(hour) else hour
+	var strikes := AmbienceModel.bell_strikes(_bell_hour, h)
+	_bell_hour = h
+	if strikes > 0:
+		_bell_queue = strikes
+		_bell_next_s = now_s
+	if _bell_queue <= 0 or now_s < _bell_next_s:
+		return
+	_bell_queue -= 1
+	_bell_next_s = now_s + BELL_INTERVAL_S
+	bell_strikes_rung += 1
+	for p in _poi_players:
+		if p.stream == _streams.get("church_bell", null) and p.volume_db > SoundModel.SILENCE_DB and is_inside_tree():
+			p.play(0.0)
+
+
 # --- Génération et chargement des flux audio ---
 
 func _generate_all_streams() -> void:
@@ -111,6 +192,11 @@ func _generate_all_streams() -> void:
 			_streams[k] = custom_stream
 		else:
 			_streams[k] = _synthesize_stream(k)
+	var custom_clac = _try_load_custom("clac")
+	_streams["clac"] = custom_clac if custom_clac != null else _synthesize_clac()
+	for bed in AmbienceModel.BEDS:
+		var custom_bed = _try_load_custom(bed)
+		_streams[bed] = custom_bed if custom_bed != null else _synthesize_bed(bed)
 
 
 func _try_load_custom(kind: String) -> Resource:
@@ -146,14 +232,10 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		var sample := 0.0
 
 		match kind:
-			"wind":
-				# Bruit de souffle filtré passe-bas
-				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
-				sample = sin(TAU * 120.0 * t) * 0.3 + r * 0.25
 			"freewheel":
-				# Cliquetis de roue libre périodique (20 clics par seconde)
-				var phase := fmod(t * 20.0, 1.0)
-				sample = (sin(TAU * 1800.0 * t) * exp(-phase * 25.0)) * 0.6
+				# Cliquetis de roue libre : FREEWHEEL_LOOP_CLICKS coups secs par seconde (Lot P10)
+				var phase := fmod(t * FREEWHEEL_LOOP_CLICKS, 1.0)
+				sample = (sin(TAU * 2400.0 * t) * exp(-phase * 40.0)) * 0.6
 			"church_bell":
 				# Tintement de cloche amorti avec partiels
 				sample = (sin(TAU * 440.0 * t) + 0.5 * sin(TAU * 880.0 * t) + 0.25 * sin(TAU * 1320.0 * t)) * exp(-t * 2.5) * 0.5
@@ -175,5 +257,145 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		bytes[i * 2] = s16 & 0xFF
 		bytes[i * 2 + 1] = (s16 >> 8) & 0xFF
 
+	if kind == "wind":
+		bytes = _wind_noise_bytes()
+	wav.data = bytes
+	return wav
+
+
+## Souffle du vent (Lot P10) : bruit blanc filtré passe-bande (biquad, WIND_BAND_HZ, Q WIND_BAND_Q),
+## boucle d'une seconde dont les 50 dernières ms sont fondues dans les premières (raccord sans clic).
+static func _wind_noise_bytes() -> PackedByteArray:
+	var fade := int(0.05 * MIX_RATE)
+	var total := SAMPLE_COUNT + fade
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 0x77696e64
+	var w0 := TAU * WIND_BAND_HZ / MIX_RATE
+	var alpha := sin(w0) / (2.0 * WIND_BAND_Q)
+	var a0 := 1.0 + alpha
+	var b0 := alpha / a0
+	var a1 := -2.0 * cos(w0) / a0
+	var a2 := (1.0 - alpha) / a0
+	var buf := PackedFloat32Array()
+	buf.resize(total)
+	var x1 := 0.0
+	var x2 := 0.0
+	var y1 := 0.0
+	var y2 := 0.0
+	for i in range(total):
+		var x := rng.randf() * 2.0 - 1.0
+		var y := b0 * x - b0 * x2 - a1 * y1 - a2 * y2
+		x2 = x1
+		x1 = x
+		y2 = y1
+		y1 = y
+		buf[i] = y
+	var bytes := PackedByteArray()
+	bytes.resize(SAMPLE_COUNT * 2)
+	for i in range(SAMPLE_COUNT):
+		var v := buf[i]
+		if i < fade:
+			var g := float(i) / float(fade)
+			v = buf[i] * g + buf[SAMPLE_COUNT + i] * (1.0 - g)
+		bytes.encode_s16(i * 2, clampi(int(v * 1.2 * 32767.0), -32768, 32767))
+	return bytes
+
+
+## « Clac » d'engagement du cliquet à la reprise du pédalage (Lot P10) : 60 ms, sans boucle.
+static func _synthesize_clac() -> AudioStreamWAV:
+	var bytes := PackedByteArray()
+	bytes.resize(CLAC_SAMPLES * 2)
+	for i in range(CLAC_SAMPLES):
+		var t := float(i) / MIX_RATE
+		var v := (sin(TAU * 1300.0 * t) * 0.6 + sin(TAU * 3100.0 * t) * 0.3) * exp(-t * 90.0)
+		bytes.encode_s16(i * 2, clampi(int(v * 32767.0), -32768, 32767))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = MIX_RATE
+	wav.stereo = false
+	wav.loop_mode = AudioStreamWAV.LOOP_DISABLED
+	wav.data = bytes
+	return wav
+
+
+## Fonds d'ambiance procéduraux (Lot P9), boucles de 2 s sans raccord audible : modulations à un nombre
+## entier de cycles par boucle, motifs tirés d'un générateur déterministe (même son à chaque lancement).
+static func _synthesize_bed(bed: String) -> AudioStreamWAV:
+	var n := BED_SAMPLES
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = hash(bed)
+	var loop_s := float(n) / float(MIX_RATE)
+	match bed:
+		"forest_birds":
+			# Chants : courtes glissades de 2,5 à 5 kHz, par motifs de 2 à 4 notes
+			var t0 := 0.05
+			while t0 < loop_s - 0.4:
+				var notes := rng.randi_range(2, 4)
+				var f0 := rng.randf_range(2500.0, 4200.0)
+				for k in range(notes):
+					var dur := rng.randf_range(0.05, 0.12)
+					var f1 := f0 + rng.randf_range(-600.0, 900.0)
+					var amp := rng.randf_range(0.18, 0.35)
+					var start := int((t0 + k * (dur + 0.03)) * MIX_RATE)
+					var len := int(dur * MIX_RATE)
+					var ph := 0.0
+					for i in range(len):
+						var idx := start + i
+						if idx >= n:
+							break
+						var u := float(i) / float(len)
+						ph += TAU * lerpf(f0, f1, u) / MIX_RATE
+						buf[idx] += sin(ph) * sin(PI * u) * amp
+				t0 += rng.randf_range(0.25, 0.6)
+		"field_insects":
+			# Stridulation : porteuse de 4,6 kHz hachée à 30 Hz, par salves de 0,4 s
+			for i in range(n):
+				var t := float(i) / MIX_RATE
+				var burst := 1.0 if fmod(t, 0.5) < 0.4 else 0.0
+				var chop := maxf(sin(TAU * 30.0 * t), 0.0)
+				buf[i] = sin(TAU * 4600.0 * t) * chop * burst * 0.25
+		"water_flow", "village_murmur", "high_wind", "rain":
+			# Bruits filtrés passe-bas (un pôle), plus ou moins sourds
+			var alpha: float = {"water_flow": 0.18, "village_murmur": 0.04, "high_wind": 0.02, "rain": 0.6}[bed]
+			var lp := 0.0
+			for i in range(n):
+				var t := float(i) / MIX_RATE
+				var r := rng.randf() * 2.0 - 1.0
+				lp += alpha * (r - lp)
+				var v := lp
+				match bed:
+					"water_flow":
+						v = lp * (0.8 + 0.2 * sin(TAU * 3.0 * t / loop_s)) * 1.6
+					"village_murmur":
+						v = lp * 2.5 + sin(TAU * 110.0 * t) * 0.05 * (0.5 + 0.5 * sin(TAU * t / loop_s))
+					"high_wind":
+						v = lp * 4.0 * (0.6 + 0.4 * sin(TAU * t / loop_s))
+					"rain":
+						v = (r - lp) * 0.35
+				buf[i] = v
+			if bed == "rain":
+				for d in range(40):   # gouttes
+					var at := rng.randi_range(0, n - 400)
+					for i in range(300):
+						buf[at + i] += sin(TAU * 1800.0 * i / MIX_RATE) * exp(-float(i) / 40.0) * 0.3
+	# Fondu de 10 ms aux bords pour éviter un clic au raccord
+	var edge := int(0.01 * MIX_RATE)
+	for i in range(edge):
+		var g := float(i) / float(edge)
+		buf[i] *= g
+		buf[n - 1 - i] *= g
+	var bytes := PackedByteArray()
+	bytes.resize(n * 2)
+	for i in range(n):
+		bytes.encode_s16(i * 2, clampi(int(buf[i] * 32767.0), -32768, 32767))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = MIX_RATE
+	wav.stereo = false
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = n
 	wav.data = bytes
 	return wav
