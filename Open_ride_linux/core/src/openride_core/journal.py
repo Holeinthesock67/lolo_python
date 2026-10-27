@@ -62,6 +62,17 @@ class Record:
     wind_grade_pct: float | None = None  # supplément de pente dû au vent (SIM, feel = "grade"), lot P2
 
 
+# Champs de la série P absents de la ligne quand ils valent None (vent coupé) : une séance sans
+# vent garde exactement les lignes d'avant, et la mémoire de la séance aussi.
+OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct")
+
+
+def record_line(rec: Record) -> dict:
+    # Dictionnaire construit sans ces clés (un `del` ne réduirait pas sa table en mémoire).
+    return {"kind": "record", **{k: v for k, v in asdict(rec).items()
+                                 if v is not None or k not in OPTIONAL_RECORD_KEYS}}
+
+
 class JournalWriter:
     def __init__(self, path: Path, route_id: str | None = None, workout_id: str | None = None,
                  header: bool = True) -> None:
@@ -82,7 +93,7 @@ class JournalWriter:
             self._last_sync = now
 
     def record(self, rec: Record) -> None:
-        self._write({"kind": "record", **asdict(rec)})
+        self._write(record_line(rec))
 
     def event(self, name: str, ts: float) -> None:
         if name not in EVENTS:
