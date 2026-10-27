@@ -166,7 +166,7 @@
 | [V8](LOT_V8_menu_garage.md) | Menu « Garage » : équipement, achats, avatar, aperçu 3D | GDScript | T1, V6, V11, N6 | Moyenne | Non : interne (menu) |
 | [V9](LOT_V9_fin_de_seance_progression.md) | Fin de séance : expérience, pièces, temps gagné, niveau, déblocages | GDScript | T1, V11, N4 | Petite | Non : interne (écran) |
 | [V10](LOT_V10_recette_progression.md) | Recette de la série V sur le PC et le vélo du propriétaire | — | V2 à V9, V11 | Moyenne | Non : propriétaire |
-| [V11](LOT_V11_branchement_core.md) | Core : progression branchée dans la séance et commandes du Garage | Python | T1, V2, V3, V3b, V4 | Moyenne | Oui, après T1 |
+| [V11](LOT_V11_branchement_core.md) | Core : progression branchée dans la séance et commandes du Garage | Python | T1, V2, V3, V3b, V4 | Moyenne | **Livré le 27 octobre** (issue #406) ; essai sur le PC |
 | [V12](LOT_V12_vues_camera.md) | Engine : quatre vues de caméra (subjective, suivi proche, suivi éloigné, latérale) au Click et au clavier (décision D5 du 27 octobre) | GDScript | V6, PR #287, O17 ; S1 utile | Moyenne | Non : interne (rendu) |
 | [W0](LOT_W0_mesures_monde_ouvert.md) | Monde ouvert : mesures des volumes, des temps de génération et du débit (script exécuté sur le PC), décodeur de tuiles vectorielles | Python | — | Petite | **Livré le 27 octobre** (PR #279, issue #254) ; exécution sur le PC par le propriétaire |
 | [W1](LOT_W1_contrat_monde_vivant.md) | Contrat : monde vivant (`live`, grille UTM, route par parties, couches par carré, `junctions.json`), IPC du monde ouvert (révision 1.5), dialogue avec `openride-worldgen` | Markdown + JSON | W0 | Petite | Non : interne (décision du propriétaire) (issue #255) |

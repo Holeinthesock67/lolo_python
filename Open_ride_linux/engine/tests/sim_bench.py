@@ -4,7 +4,8 @@
 Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
-                 [--size 1280x720] [--quality low] [--native] [--probe] [--out DOSSIER] [--list]
+                 [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen]
+                 [--probe] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -23,6 +24,9 @@ séance (altitude, puissance et cible, fréquence cardiaque, pente envoyée, bra
 Avec `--probe`, l'engine écrit chaque seconde ses mesures de rendu et `perf_probe.py` relève nvidia-smi
 et le CPU des processus : rapport dans `<scénario>/sonde/` (lot X13). Le scénario `endurance` (lot X16)
 roule une heure, relance le parcours à chaque fin et vérifie images/s, saccades et croissance de la mémoire.
+`--display` (avec `--native`) choisit le mode d'affichage de l'engine (`display_mode.gd`) : fenêtre de
+`--size` par défaut, `borderless` ou `fullscreen` à la définition native de l'écran, pour comparer les modes
+avec la sonde.
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
 qui peuvent fixer `world`, `workout`, `duration_s` et `difficulty_pct` dans une section
@@ -261,7 +265,8 @@ class Bench:
                 cmd = ["xvfb-run", "-a", "-s", f"-screen 0 {width}x{height}x24"] + cmd + [
                     "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
-                    f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}"]
+                    f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
+                    f"--display={a.display}"]
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
                 cmd.append(f"--perf-probe={(self.out / 'moteur.csv').resolve()}")
                 self.sampler = perf_probe.SystemSampler()
@@ -609,7 +614,7 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
 <p>{html.escape(str(b.spec.get("description", "")))}<br>Parcours <b>{html.escape(b.world)}</b>,
 {f"ERG {html.escape(str(b.workout))}" if b.workout else "SIM"}, {b.duration:.0f} s,
 {f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {b.args.quality}
-{"(écran réel)" if b.args.native else "(Xvfb, OpenGL logiciel)"}.</p>
+{f"(écran réel, affichage {b.args.display})" if b.args.native else "(Xvfb, OpenGL logiciel)"}.</p>
 <h2>Vérifications</h2><table>{rows}</table>
 {'<p><a href="sonde/rapport.html">Sonde de performance du moteur</a> (lot X13).</p>' if b.probe_summary else ""}
 <h2>Courbes de la séance</h2><p>Lignes orange : événements du scénario.</p>{charts}
@@ -647,6 +652,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--size", default="1280x720")
     ap.add_argument("--quality", default="low", help="low, medium, high (défaut low)")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
+    ap.add_argument("--display", default="windowed", choices=("windowed", "borderless", "fullscreen"),
+                    help="mode d'affichage de l'engine (défaut windowed ; les pleins écrans demandent --native)")
     ap.add_argument("--probe", action="store_true",
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))
@@ -662,6 +669,9 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if not args.native and shutil.which("xvfb-run") is None:
         print("xvfb-run introuvable : installer xvfb, xauth et libgl1-mesa-dri (ou lancer avec --native)")
+        return 2
+    if args.display != "windowed" and not args.native:
+        print("--display borderless ou fullscreen : à mesurer sur l'écran réel, ajouter --native")
         return 2
     real_home = Path.home()
     before = snapshot_home(real_home)
