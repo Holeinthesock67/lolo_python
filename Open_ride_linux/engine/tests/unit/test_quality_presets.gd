@@ -123,6 +123,8 @@ func _test_living() -> void:
 			"passersby", "ambience_voices"]:
 		growing = growing and int(low[key]) <= int(med[key]) and int(med[key]) <= int(high[key])
 	_check(growing, "living : budgets croissants de low à high")
+	_check(low["passersby"] == 24 and med["passersby"] == 48 and high["passersby"] == 80,
+		"living : passants 24, 48 et 80 (cahier P21 §4)")
 	var off: Dictionary = QualityPresets.living("high", false)
 	var all_off: bool = off["clouds"] == "off"
 	for key in off:
