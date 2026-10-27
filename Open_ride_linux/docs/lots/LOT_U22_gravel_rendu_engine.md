@@ -16,7 +16,7 @@ U1 livré ; U19 pour les données de test ; P10 pour les sons.
 ## 4. Travail demandé
 
 - `route_data.gd` : lecture de la colonne `surface` (absente → `paved`).
-- `road_builder.gd` : quand `config.gravel` (IPC 1.6) est vrai, portions non revêtues avec la couleur, la texture et la largeur de `surfaces` du thème (largeur par défaut : 3 m pour `dirt`, 3,5 m pour `gravel`, 4 m pour `compacted`), bords irréguliers par bruit déterministe, raccord en biseau de 5 m avec le bitume ; option coupée : ruban actuel partout.
+- `road_builder.gd` : surface effective selon `config.gravel` (IPC 1.6) : `off` → bitume partout ; `auto` → colonne `surface` ; `compacted`, `gravel` ou `dirt` → toute la route dans cette surface (U-Q8). Portions non revêtues avec la couleur, la texture et la largeur de `surfaces` du thème (largeur par défaut : 3 m pour `dirt`, 3,5 m pour `gravel`, 4 m pour `compacted`), bords irréguliers par bruit déterministe, raccord en biseau de 5 m avec le bitume ; option coupée : ruban actuel partout.
 - Poussière : quelques particules derrière la roue sur `dirt` et `gravel` par temps sec (P8 : pas de pluie), bornées par `living(preset)`.
 - Son : crissement de gravier synthétisé, mêlé au son de roulement de P10, volume selon la vitesse.
 
@@ -33,7 +33,7 @@ Aucune (U1).
 ## 7. Critères d'acceptation
 
 1. `engine/tests/run_engine_tests.sh` passe en entier.
-2. Route sans colonne `surface`, ou option coupée : maillage du ruban identique à aujourd'hui.
+2. Route sans colonne `surface` en `auto`, ou option coupée : maillage du ruban identique à aujourd'hui ; même route en `gravel` : ruban de gravier de bout en bout.
 3. Portion `dirt` : largeur moyenne 3 m à 0,2 m près, raccords sans trou ni recouvrement.
 4. Rendu : teinte moyenne de la portion à moins de 10 % de la couleur `surfaces.dirt` du thème.
 5. Pluie active : aucune poussière.

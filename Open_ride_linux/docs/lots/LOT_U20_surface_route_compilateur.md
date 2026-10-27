@@ -17,7 +17,7 @@ U1 livré ; W4 et W6 livrés pour la partie monde ouvert.
 
 - **Traces compilées :** requête Overpass des voies (`highway=*`) dans un couloir de 15 m autour de la trace ; pour chaque point, la voie la plus proche dont le cap concorde (écart de moins de 30°) ; surface tirée de `surface` (`asphalt`, `concrete`, `paving_stones` → `paved` ; `compacted`, `fine_gravel` → `compacted` ; `gravel`, `pebblestone` → `gravel` ; `dirt`, `ground`, `earth`, `grass`, `mud`, `sand` → `dirt`), sinon de `tracktype` (`grade1` → `paved`, `grade2` → `compacted`, `grade3` → `gravel`, `grade4` et `grade5` → `dirt`), sinon `highway=track` → `gravel`, sinon `paved` ; lissage : portion de moins de 50 m rattachée à ses voisines.
 - Colonne `surface` dans `route.json` seulement si au moins un point n'est pas `paved` ; `route.surface_source` et parts de surface dans `stats` (`route_stats.py`, copie exacte dans le core à garder synchronisée).
-- **Monde ouvert :** classe `g` dans le graphe (voies non revêtues, hors `access` ou `bicycle` à `no` ou `private`), écartée par le navigateur sauf si `[gravel] enabled` ; colonne `surface` dans les profils d'arête et les parties de route.
+- **Monde ouvert :** classe `g` dans le graphe (voies non revêtues, hors `access` ou `bicycle` à `no` ou `private`), écartée par le navigateur quand `[gravel] mode` vaut `off` ; colonne `surface` dans les profils d'arête et les parties de route.
 - Option `--no-surface` pour garder l'ancien comportement.
 
 ## 5. Fichiers concernés

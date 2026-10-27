@@ -228,7 +228,7 @@ Détail : [PLAN_SERIE_U.md](3.0/PLAN_SERIE_U.md). Toutes les questions U-Q1 à U
 | 3.0-BIO-6 | Végétation, sons, faune et atmosphère par biome | U7, U8, U10 à U12 | Planifié |
 | 3.0-BIO-7 | Thème 2.0 en pack de biomes, thèmes 1.x toujours lisibles ; textures CC0 en packs, bibliothèque de 5 Go | U1, U15 | Planifié |
 | 3.0-BIO-8 | Budget : 1 Go de mémoire vidéo au plus pour le décor, 55 images/s en `low` ; premier jalon : prairie, forêt tempérée, vignobles et cultures, haute montagne, méditerranéen, littoral | U6, U17, U18, U19 | Planifié |
-| 3.0-GRV-1 | Option « gravel » coupée par défaut : chemins de terre ouverts au monde ouvert ; résistance au roulement 2 à 3 fois celle du bitume, en supplément de pente sous le même plafond que le vent ; en ERG, vitesse seulement ; surface de la route tirée d'OSM, ruban de terre ou de gravier | U1, U16, U20, U21, U22 | Planifié |
+| 3.0-GRV-1 | Option « gravel » coupée par défaut : chemins de terre ouverts au monde ouvert ; résistance au roulement 2 à 3 fois celle du bitume, en supplément de pente sous le même plafond que le vent ; en ERG, vitesse seulement ; surface réelle d'OSM (« Chemins réels ») ou imposée à tout le parcours (« Gravier », « Terre », « Chemin compact ») pour rouler en gravel sur une trace revêtue (U-Q8, 27 octobre) ; ruban de terre ou de gravier | U1, U16, U20, U21, U22 | Planifié |
 
 ## 6. Contrats
 

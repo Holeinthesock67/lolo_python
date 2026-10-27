@@ -19,7 +19,7 @@ U17 livré ; U19 à U22 livrés pour la partie gravel.
 1. Compiler une trace personnelle en automatique (les traces restent sur le PC) et lire le rapport des parts de biomes.
 2. Rouler 10 min sur chacun des parcours de démonstration du premier jalon (U19) en `low`, puis 5 min en `medium` et en `high`.
 3. Forcer « Méditerranéen » puis « Haute montagne » au menu sur la trace personnelle.
-4. Activer « gravel », rouler 10 min en SIM sur un parcours de démonstration à portions non revêtues, puis 10 min en ERG.
+4. Choisir « Gravier » au menu, rouler 10 min en SIM sur une trace habituelle (revêtue), puis 10 min en ERG ; puis « Chemins réels » sur un parcours de démonstration à portions non revêtues ou en monde ouvert.
 5. Récupérer les journaux (`~/OpenRide/Logs/`) et les lignes `[perf-rendu]`.
 
 ## 5. Critères

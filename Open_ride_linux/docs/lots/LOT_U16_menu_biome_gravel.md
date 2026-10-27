@@ -17,7 +17,7 @@ U1, U2 et O4 livrés ; U5 pour l'effet à l'écran.
 
 ## 4. Travail demandé
 
-- Core : deux réglages de plus dans `settings.py` : `render.biome` (liste `auto` puis les seize biomes, libellés français du lot U0, `applies` = `now`) et `gravel.enabled` (oui ou non, `applies` = `next_session`) ; `hello_ack.config` porte `biome` et `gravel` (IPC 1.6 du lot U1).
+- Core : deux réglages de plus dans `settings.py` : `render.biome` (liste `auto` puis les seize biomes, libellés français du lot U0, `applies` = `now`) et `gravel.mode` (« Coupé », « Chemins réels » pour `auto`, « Chemin compact », « Gravier », « Terre » ; `applies` = `next_session`) ; `hello_ack.config` porte `biome` et `gravel` (IPC 1.6 du lot U1).
 - Engine : les deux lignes dans l'écran des réglages ; le biome forcé s'applique tout de suite au décor de fond du menu (`biome_model.gd`).
 - Fiche du parcours (O15) : part des biomes (`shares`) et part de chemins non revêtus, quand elles existent.
 
@@ -33,8 +33,8 @@ Aucune (U1).
 ## 7. Critères d'acceptation
 
 1. Toutes les suites passent (core, compilateur, engine, bout en bout `run_e2e.sh`).
-2. Au clavier puis au Click : choisir « Savane », quitter, relancer : `config.toml` contient `biome = "savanna"` et la séance suivante est en savane.
-3. `gravel.enabled` changé pendant une séance : refusé (`setting_busy`), rien d'écrit.
+2. Au clavier puis au Click : choisir « Savane », quitter, relancer : `config.toml` contient `biome = "savanna"` et la séance suivante est en savane ; choisir « Gravier » : la séance suivante sur une trace revêtue se roule et s'affiche en gravier de bout en bout.
+3. `gravel.mode` changé pendant une séance : refusé (`setting_busy`), rien d'écrit.
 4. `hello_ack` sans les deux clés (core plus ancien) : l'engine reste en `auto` et sans gravel.
 
 **Sur le PC cible (le propriétaire) :** lisibilité à 2 m, navigation au Click réel.

@@ -39,8 +39,9 @@ Version 2.0 publiée : séries P (P1, P18, P20) et W (W1) fusionnées. **Numéro
 ### 4.4 Surface de la route (option « gravel »)
 
 - `route.json` : colonne facultative `surface`, une valeur par point parmi `paved` (défaut), `compacted`, `gravel`, `dirt`. Une route sans colonne est entièrement `paved`.
+- **Surface imposée (décision U-Q8 du 27 octobre) :** `[gravel] mode` = `compacted`, `gravel` ou `dirt` fait rouler et afficher **tout le parcours** dans cette surface, quelle que soit sa colonne `surface` ; c'est le moyen de faire du gravel sur une trace habituelle, revêtue de bout en bout. `auto` suit la colonne `surface` (portions non revêtues réelles d'OSM, monde ouvert) ; `off` roule tout en bitume.
 - Manifeste : `route.surface_source` (`osm` ou `none`) et part de chaque surface dans `stats` quand la fiche existe.
-- Monde ouvert : nouvelle classe de route `g` (voies non revêtues : `highway=track`, `path` non revêtu, `surface` non revêtue), admise par le graphe et le navigateur **seulement** quand `[gravel] enabled` est vrai ; les parties de route (`route/part_<k>.json`) portent la même colonne `surface`.
+- Monde ouvert : nouvelle classe de route `g` (voies non revêtues : `highway=track`, `path` non revêtu, `surface` non revêtue), admise par le graphe et le navigateur **seulement** quand `[gravel] mode` n'est pas `off` ; les parties de route (`route/part_<k>.json`) portent la même colonne `surface`.
 
 ### 4.5 Thème 2.0 : pack de biomes (`world_format_v1.md` §9, `theme.schema.json`)
 
@@ -53,8 +54,8 @@ Version 2.0 publiée : séries P (P1, P18, P20) et W (W1) fusionnées. **Numéro
 ### 4.6 Configuration (SRS §11) et IPC
 
 - `[render] biome` : `"auto"` (défaut) ou un identifiant ; force le biome de tout le parcours au rendu, sans recompiler.
-- `[gravel]` : `enabled` (faux par défaut), `factor_compacted` (2,0), `factor_gravel` (2,5), `factor_dirt` (3,0), bornes 1 à 3.
-- **IPC (révision libre suivante, 1.6 provisoire) :** deux clés facultatives dans `hello_ack.config` : `biome` (chaîne) et `gravel` (booléen). Aucun nouveau message : le menu passe par `list_settings` et `set_setting` (O3, O4). Aucun champ de plus dans `state` : l'engine lit la surface dans la route.
+- `[gravel]` : `mode` parmi `off` (défaut), `auto`, `compacted`, `gravel`, `dirt` (§4.4), `factor_compacted` (2,0), `factor_gravel` (2,5), `factor_dirt` (3,0), bornes 1 à 3.
+- **IPC (révision libre suivante, 1.6 provisoire) :** deux clés facultatives dans `hello_ack.config` : `biome` (chaîne) et `gravel` (chaîne, valeur de `[gravel] mode`). Aucun nouveau message : le menu passe par `list_settings` et `set_setting` (O3, O4). Aucun champ de plus dans `state` : l'engine lit la surface dans la route.
 
 ## 5. Fichiers concernés
 
