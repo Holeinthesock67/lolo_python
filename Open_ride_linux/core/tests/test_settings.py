@@ -133,6 +133,12 @@ def test_ipc_list_and_set_setting(tmp_path: Path):
     assert sent[-1]["request_cmd_id"] == 4 and sent[-1]["items"][0]["value"] == 265
     assert s.cfg.rider.ftp_w == 265.0 and s.server.hello_config["ftp_w"] == 265.0
     assert tomllib.loads(path.read_text(encoding="utf-8"))["rider"]["ftp_w"] == 265
+    assert s.server.hello_config["chart"] == "reduced"
+    s._on_command("set_setting", {"key": "render.chart", "value": "full"}, 8)
+    assert not errors and s.cfg.render.chart == "full" and s.server.hello_config["chart"] == "full"
+    s._on_command("set_setting", {"key": "render.chart", "value": "énorme"}, 9)
+    assert errors and errors[-1][0] == "setting_invalid"
+    errors.clear()
     s._on_command("set_setting", {"key": "rider.mass_kg", "value": 80}, 5)
     assert s.physics.p.mass_kg == pytest.approx(80 + s.cfg.bike.mass_kg)
     s._on_command("set_setting", {"key": "trainer.difficulty_pct", "value": 70}, 6)

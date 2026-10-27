@@ -54,6 +54,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gearing.start_gear", "Braquet de départ", 1),
     Setting("render.quality", "Qualité graphique", applies="now"),
     Setting("render.theme", "Thème", applies="now"),
+    Setting("render.chart", "Courbes de la séance", applies="now"),
     Setting("render.display", "Mode d'affichage", applies="now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
     Setting("wind.mode", "Vent"),
