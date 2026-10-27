@@ -170,11 +170,12 @@ void vertex() {
 			p.x += UV.x * sin(TIME * (3.0 + 5.0 * excite) - UV.x * 4.0 + phase) * (0.06 + 0.12 * excite);
 		}
 		// Coureur : tête relevée pour regarder la route malgré le buste penché
-		if (anim == 7 && VERTEX.y > 1.46) {
+		if (anim == 7 && VERTEX.y > 1.46 && !free_arm) {
 			p = rot_x(p, vec3(0.0, 1.47, 0.0), -0.65);
 		}
-		// Buste penché autour du bassin (tout ce qui n'est pas une jambe)
-		if (!is_leg && bend != 0.0 && VERTEX.y > joints.x - 0.06) {
+		// Buste penché autour du bassin : tout ce qui n'est pas une jambe, bras et mains compris (les mains
+		// pendent sous le bassin au repos)
+		if (!is_leg && bend != 0.0 && (VERTEX.y > joints.x - 0.06 || free_arm || holder)) {
 			vec3 pelvis = vec3(0.0, joints.x - 0.06, 0.0);
 			p = rot_x(p, pelvis, bend);
 			n = rot_x(n, vec3(0.0), bend);
