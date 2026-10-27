@@ -461,6 +461,17 @@ Ces essais s'ajoutent aux blocs A à H ; chacun dit s'il se fait sur le vélo. L
 - **Attendu :** `rapport.md` et `rapport.json` écrits ; leurs chiffres servent au lot W1.
 - [ ] Deux mesures faites, dossier donné
 
+### J10. Mode d'affichage : fenêtré, plein écran sans bordure, plein écran exclusif, sans pédaler
+
+- **Prérequis :** PC au repos, aucune autre fenêtre lourde ; l'écran passe en plein écran pendant les deux dernières mesures (Échap ne ferme pas : attendre la fin, environ 6 min chacune).
+- **Étapes :** trois fois le même banc, seul `--display` change :
+  `python3 engine/tests/sim_bench.py --native --probe --scenario erg_village --duration 300 --display windowed --out ~/OpenRide/sim_bench/affichage/fenetre`,
+  puis `--display borderless --out …/affichage/sans_bordure`, puis `--display fullscreen --out …/affichage/exclusif`.
+  Ensuite, au menu Réglages → « Mode d'affichage » : passer d'un mode à l'autre pendant une séance simulée, puis quitter.
+- **Attendu :** les pleins écrans à la définition native de l'écran, sans changement de définition du bureau ; souris masquée en séance, visible dans les menus et sur l'écran de pause ; retour en fenêtre 1280 × 720 centrée ; bureau intact après Quitter. Chiffres comparés dans `sonde.txt` : images/s, p99 du temps d'image, saccades, charge GPU. Le mode par défaut (`fullscreen`) est confirmé ou changé avec ces chiffres.
+- [ ] Trois mesures faites, dossiers donnés
+- [ ] Changement au menu, souris et sortie conformes
+
 ---
 
 ## I. Clôture
