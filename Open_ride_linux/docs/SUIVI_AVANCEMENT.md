@@ -221,7 +221,7 @@ Pas à pas dans [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) (bl
 - [ ] Pack « Cols célèbres » construit sur le PC et un col roulé (O16, protocole J4).
 - [ ] Boîtier gauche du Click : silence daté, reprise essayée (Q6, protocole J5).
 - [ ] Horizon en `medium` et `low` (Y1) et facteur de relief par défaut (Q2) sur `essai-69` (protocole J6).
-- [ ] Recettes du décor vivant (P16 puis P17, protocole J8 : [RECETTE_P16.md](RECETTE_P16.md), [RECETTE_P17.md](RECETTE_P17.md)).
+- [ ] Recettes du décor vivant (P16 puis P17, protocole J8 : [RECETTE_P16.md](RECETTE_P16.md), [RECETTE_P17.md](RECETTE_P17.md)). P16 faite le 27 octobre (vent, indicateur, nuages et sons validés après la PR #432 ; restent vent de travers et de dos, `living = false` et la mesure sur une route OSM) ; P17 à faire.
 - [ ] Mesures du monde ouvert (W0, protocole J9).
 
 ---
