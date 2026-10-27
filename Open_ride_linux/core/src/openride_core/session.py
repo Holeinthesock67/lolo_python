@@ -18,6 +18,7 @@ import math
 import re
 import signal
 import time
+from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
@@ -33,12 +34,12 @@ from .mock_driver import MockDriver
 from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, load_resume_state
-from .ble_util import ble_lock
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
-from .ftp_test import RampWatch, cooldown_index, estimate_ftp
+from .ftp_test import KINDS as FTP_TEST_KINDS
+from .ftp_test import FtpResult, RampWatch, cooldown_index, estimate_ftp
 from .ftp_test import kind_of as ftp_test_kind
 from .ftp_test import workout_for as ftp_test_workout
 from .workout import BIAS_DEFAULT_PCT, ErgController, Workout, WorkoutError, load_workout, workout_path
@@ -263,6 +264,11 @@ class CoreSession:
         self._click_seen: dict[str, str] = {}   # boîtiers du Click vus, sans adresse configurée
         self.erg: ErgController | None = None   # entraînement en cours pendant la séance
         self._ramp_watch: RampWatch | None = None   # fin de la rampe d'un test de FTP (lot O10)
+        self._ftp_result: FtpResult | None = None   # dernier test de FTP, pour `accept_ftp` (lot O12)
+        self._plan_day: str | None = None           # séance du jour du dernier message `plans` (lot O12)
+        self.plans_dir: Path | None = None          # dossiers des plans (défauts de plans.py ; tests)
+        self.plan_state_path: Path | None = None
+        self.activities_dir: Path | None = None
         self._frame_count = 0
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
@@ -311,6 +317,8 @@ class CoreSession:
                 log.warning("Entraînement « %s » refusé : séance %s.", args.get("workout_id"), st)
                 self.server.send_error("busy", "Choix de l'entraînement impossible pendant une séance.")
         elif name == "start" and st == "READY":
+            if not self._choose_start_workout(args if isinstance(args, dict) else {}):
+                return
             self._open_journal()
             if self._workout:
                 self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
@@ -361,8 +369,81 @@ class CoreSession:
             self._send_settings(cmd_id)
         elif name == "set_setting":
             self._set_setting(args, cmd_id)
+        elif name in ("list_plans", "start_plan", "stop_plan"):
+            self._on_plan_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name == "accept_ftp":
+            self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_imports", "create_workout", "import_workout"):
             self._on_workout_menu_command(name, args, cmd_id)
+
+    # --- plans et test de FTP depuis le menu (lot O12, contrat IPC révision 1.3) ----------------
+
+    def _choose_start_workout(self, args: dict) -> bool:
+        """`start` avec `ftp_test` ou `plan_day` : choisit l'entraînement avant de démarrer.
+
+        Renvoie faux (rien ne démarre) si l'entraînement demandé est refusé.
+        """
+        if args.get("ftp_test") is not None:
+            kind = args["ftp_test"]
+            if kind not in FTP_TEST_KINDS:
+                self.server.send_error("bad_args", f"start : ftp_test attendu parmi {', '.join(FTP_TEST_KINDS)}")
+                return False
+            self._select_workout(f"ftp_test:{kind}")
+        elif args.get("plan_day"):
+            if not self._plan_day:
+                self.server.send_error("plan_invalid", "Aucune séance du plan à faire aujourd'hui.")
+                return False
+            self._select_workout(self._plan_day)
+        else:
+            return True
+        return self._workout is not None   # entraînement refusé : `workout_invalid` déjà envoyé
+
+    def _on_plan_command(self, name: str, args: dict, cmd_id: int) -> None:
+        from . import plans
+
+        if name != "list_plans":
+            if self.state.session_state in ("RUNNING", "PAUSED"):
+                self.server.send_error("busy", "Plan impossible à changer pendant une séance.")
+                return
+            try:
+                if name == "start_plan":
+                    raw = args.get("start_date")
+                    start = date.fromisoformat(raw) if isinstance(raw, str) and raw else None
+                    plans.start_plan(str(args.get("id") or ""), start, self.plans_dir, self.workouts_dir,
+                                     self.plan_state_path)
+                else:
+                    plans.stop_plan(self.plan_state_path)
+            except (plans.PlanError, ValueError) as exc:
+                self.server.send_error("plan_invalid", f"Plan refusé : {exc}")
+                return
+            log.info("Plan %s.", f"« {args.get('id')} » démarré" if name == "start_plan" else "arrêté")
+        self._spawn(self._send_plans(cmd_id))
+
+    async def _send_plans(self, cmd_id: int) -> None:
+        from .ipc_lists import build_plans_message
+
+        try:
+            msg = await asyncio.to_thread(build_plans_message, cmd_id, self.cfg.rider.ftp_w, self.plans_dir,
+                                          self.workouts_dir, self.plan_state_path, self.activities_dir)
+        except Exception:
+            log.exception("Erreur lors de la préparation de plans (cmd_id=%d)", cmd_id)
+            return
+        self._plan_day = msg["active"]["plan_day"] if msg["active"] else None
+        self.server.send_raw(msg)
+
+    def _accept_ftp(self, args: dict, cmd_id: int) -> None:
+        """Enregistre la FTP du dernier test (`[rider] ftp_w`) ; réponse `settings` comme `set_setting`."""
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "FTP impossible à changer pendant une séance (terminer d'abord).")
+            return
+        result = self._ftp_result
+        if result is None or result.ftp_w is None:
+            self.server.send_error("ftp_result_missing", "Aucun résultat de test de FTP à enregistrer.")
+            return
+        if not result.reliable and not args.get("force"):
+            self.server.send_error("ftp_result_doubtful", "Résultat douteux : non enregistré sans confirmation.")
+            return
+        self._set_setting({"key": "rider.ftp_w", "value": result.ftp_w}, cmd_id)
 
     # --- entraînements créés ou importés depuis le menu (lot N16, audit IPC D4) ------------------
 
@@ -465,31 +546,31 @@ class CoreSession:
     async def _scan_devices(self, cmd_id: int, timeout: float) -> None:
         from . import pairing
 
+        error: str | None = None
         try:
             inv = await self._scan_inventory(timeout)
             self._scan_items = pairing.scan_items(inv, pairing.configured_addresses(self.cfg))
             log.info("Appairage : %d appareil(s) trouvé(s).", len(self._scan_items))
-        except Exception as exc:   # Bluetooth éteint, BlueZ absent
+        except Exception as exc:   # Bluetooth éteint, BlueZ absent, BlueZ occupé ailleurs
             log.warning("Appairage : recherche impossible : %s", exc)
-            self.server.send_error("scan_failed", f"Recherche des appareils impossible : {exc}")
+            error = pairing.scan_error_message(exc)
         finally:
             self._scanning = False
         self.server.send_raw(pairing.scan_results_message(cmd_id, self._scan_items, True))
+        if error:   # après la fin de recherche, pour que l'écran garde la raison affichée
+            self.server.send_error("scan_failed", error)
 
     async def _scan_inventory(self, timeout: float) -> dict:
         """Recherche du menu Appareils, à la suite des recherches du Click, du trainer et de la
-        ceinture (BlueZ n'en accepte qu'une : « InProgress ») ; refaite deux fois après 1 s si BlueZ
-        est encore occupé par un autre programme."""
+        ceinture (verrou BLE commun, pris par `pairing.scan_inventory` : BlueZ n'en accepte qu'une,
+        « InProgress ») ; refaite deux fois après 1 s si BlueZ est encore occupé par un autre programme."""
         from . import pairing
 
-        if self.sim is not None:
-            return await pairing.scan_inventory(self.sim, timeout)
         for attempt in range(SCAN_ATTEMPTS):
             try:
-                async with ble_lock():
-                    return await pairing.scan_inventory(None, timeout)
+                return await pairing.scan_inventory(self.sim, timeout)
             except Exception as exc:
-                if "InProgress" not in str(exc) or attempt == SCAN_ATTEMPTS - 1:
+                if not pairing.is_in_progress(exc) or attempt == SCAN_ATTEMPTS - 1:
                     raise
                 log.info("Appairage : Bluetooth occupé, nouvel essai dans 1 s.")
                 await asyncio.sleep(1.0)
@@ -541,7 +622,8 @@ class CoreSession:
         from .ipc_lists import build_routes_messages
 
         try:
-            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root, GPX_DIR)
+            msgs = await asyncio.to_thread(build_routes_messages, cmd_id, self.routes_root, GPX_DIR,
+                                           ftp_w=self.cfg.rider.ftp_w)
             for m in msgs:
                 self.server.send_raw(m)
         except Exception:
@@ -653,7 +735,8 @@ class CoreSession:
         self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
                                     on_failure=self._on_recording_failure,
                                     workout_id=self._workout_id, source=self._journal_source(),
-                                    plan=active_tag(self._workout_id))
+                                    plan=active_tag(self._workout_id, state_path=self.plan_state_path,
+                                                    plans_dir=self.plans_dir, workouts_dir=self.workouts_dir))
         self._rec.event("start", time.time())
         self._device_up = self._device_states()   # état de départ : seuls les changements s'écrivent
         self._next_record = 0.0
@@ -723,7 +806,9 @@ class CoreSession:
         summary = None
         if self._rec:
             rec, self._rec = self._rec, None
-            self._write_ftp_test(rec)
+            ftp_result = self._write_ftp_test(rec)
+            if ftp_result is not None:
+                self._ftp_result = ftp_result
             fit_path, s, fit_error = rec.finish(save, ts=ts)
             records, events = rec.records, rec.events
             if fit_error and save:
@@ -736,21 +821,26 @@ class CoreSession:
                 "fit_path": str(fit_path) if fit_path else None,
                 **summary_extras(records, events, self.cfg.rider.ftp_w),
             }
+            if ftp_result is not None:   # lot O12 : résultat du test au bilan, pour `accept_ftp`
+                summary["ftp_test"] = {"test": ftp_result.kind, "ftp_w": ftp_result.ftp_w,
+                                       "previous_ftp_w": ftp_result.previous_ftp_w,
+                                       "warnings": list(ftp_result.warnings), "reliable": ftp_result.reliable}
         self.state.summary = summary
         self.erg = None
         self._ramp_watch = None
         self._sync_erg_state()
         self._set_state(final_state)
 
-    def _write_ftp_test(self, rec: SessionRecorder) -> None:
+    def _write_ftp_test(self, rec: SessionRecorder) -> FtpResult | None:
         """Séance de test de FTP : résultat au journal (ligne `ftp_test`), rien dans `config.toml`."""
         kind = ftp_test_kind(rec.workout_id)
         if not kind or self._workout is None:
-            return
+            return None
         result = estimate_ftp(rec.records, kind, rec.events, rec.devices, self.cfg.rider.ftp_w,
                               self._workout, ts=round(time.time(), 3))
         log.info("%s.", result.describe())
         rec.ftp_test(result.to_line())
+        return result
 
     def _build_devices(self) -> dict[str, Any]:
         """Construit l'objet `devices` du contrat v1.1 à partir de l'état connu des pilotes."""

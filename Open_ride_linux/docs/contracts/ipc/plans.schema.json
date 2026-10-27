@@ -1,0 +1,291 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRidePlansMessage",
+  "description": "Réponse à cmd list_plans, start_plan ou stop_plan (révision 1.3, lot O12) : plans d'entraînement (lot O11) et suivi du plan actif ; un seul datagramme de 60 000 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "items",
+    "truncated",
+    "active"
+  ],
+  "properties": {
+    "type": {
+      "const": "plans"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "truncated": {
+      "type": "boolean"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "weeks",
+          "sessions",
+          "active",
+          "error"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "weeks": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "sessions": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "error": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "active": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "description": "Plan actif, null sans plan actif (ou plan actif illisible).",
+      "required": [
+        "id",
+        "name",
+        "start",
+        "week",
+        "weeks",
+        "finished",
+        "done",
+        "total",
+        "done_pct",
+        "today",
+        "late",
+        "next",
+        "plan_day"
+      ],
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "start": {
+          "type": "string",
+          "format": "date"
+        },
+        "week": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "description": "Semaine en cours (à partir de 1), null hors des semaines du plan."
+        },
+        "weeks": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "finished": {
+          "type": "boolean"
+        },
+        "done": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "total": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "done_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "today": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": [
+              "week",
+              "day",
+              "date",
+              "workout",
+              "name",
+              "duration_s",
+              "tss",
+              "done"
+            ],
+            "properties": {
+              "week": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "day": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "workout": {
+                "type": "string",
+                "description": "Identifiant de l'entraînement, ou ftp_test:ramp / ftp_test:20min."
+              },
+              "name": {
+                "type": "string"
+              },
+              "duration_s": {
+                "type": "number",
+                "minimum": 0
+              },
+              "tss": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "done": {
+                "type": "boolean"
+              }
+            }
+          }
+        },
+        "late": {
+          "type": "array",
+          "maxItems": 7,
+          "items": {
+            "type": "object",
+            "required": [
+              "week",
+              "day",
+              "date",
+              "workout",
+              "name",
+              "duration_s",
+              "tss",
+              "done"
+            ],
+            "properties": {
+              "week": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "day": {
+                "type": "string"
+              },
+              "date": {
+                "type": "string",
+                "format": "date"
+              },
+              "workout": {
+                "type": "string",
+                "description": "Identifiant de l'entraînement, ou ftp_test:ramp / ftp_test:20min."
+              },
+              "name": {
+                "type": "string"
+              },
+              "duration_s": {
+                "type": "number",
+                "minimum": 0
+              },
+              "tss": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "done": {
+                "type": "boolean"
+              }
+            }
+          },
+          "description": "Séances en retard encore rattrapables."
+        },
+        "next": {
+          "oneOf": [
+            {
+              "type": "object",
+              "required": [
+                "week",
+                "day",
+                "date",
+                "workout",
+                "name",
+                "duration_s",
+                "tss",
+                "done"
+              ],
+              "properties": {
+                "week": {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                "day": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "format": "date"
+                },
+                "workout": {
+                  "type": "string",
+                  "description": "Identifiant de l'entraînement, ou ftp_test:ramp / ftp_test:20min."
+                },
+                "name": {
+                  "type": "string"
+                },
+                "duration_s": {
+                  "type": "number",
+                  "minimum": 0
+                },
+                "tss": {
+                  "type": [
+                    "number",
+                    "null"
+                  ]
+                },
+                "done": {
+                  "type": "boolean"
+                }
+              }
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "plan_day": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "description": "Entraînement que lance start avec plan_day : première séance du jour non faite, sinon première en retard ; null s'il n'y en a pas."
+        }
+      }
+    }
+  }
+}
