@@ -212,13 +212,18 @@ def run(godot: Path, engine_routes_dir: Path | None, keep: bool) -> int:
                       env, tmp / "engine.log")
 
         # 1. hello puis hello_ack.
-        hello = core.wait_for(r"Reçu 'hello'", 15.0, after=engine.t_start)
-        ack = engine.wait_for(r"hello_ack reçu", 15.0)
+        hello = core.wait_for(r"Reçu 'hello' de l'engine version (\S+)", 15.0, after=engine.t_start)
+        ack = engine.wait_for(r"hello_ack reçu : core (\S+),", 15.0)
         if hello and ack:
             dt = ack[0] - hello[0]
             r.check(dt < 3.0, "hello puis hello_ack",
                     f"{dt * 1000:.0f} ms entre hello reçu par le core et hello_ack reçu par l'engine "
                     f"({ack[0] - engine.t_start:.2f} s après le lancement de l'engine)")
+            # Lot O2 : les deux côtés annoncent le numéro du fichier VERSION.
+            expected = (ENGINE_DIR.parent / "VERSION").read_text(encoding="utf-8").strip()
+            got = (hello[1].group(1), ack[1].group(1))
+            r.check(got == (expected, expected), "versions de hello et hello_ack",
+                    f"engine {got[0]}, core {got[1]}, VERSION {expected}")
         else:
             r.check(False, "hello puis hello_ack",
                     "hello absent du journal du core" if not hello else "hello_ack absent du journal de l'engine")
