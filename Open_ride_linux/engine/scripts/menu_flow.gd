@@ -296,7 +296,7 @@ func workout_added(workout_id: String, message: String) -> void:
 	for i in range(4):
 		if menu.current_screen() in [MenuModel.WORKOUTS, MenuModel.HOME]:
 			break
-		menu.handle("MINUS_LONG")
+		menu.handle("Y_SHORT")
 	workout_message = message
 	_focus_workout = workout_id
 
@@ -372,7 +372,7 @@ func handle(event: String) -> Dictionary:
 		act = pairing.handle(str(act["id"]))
 		match act.get("action", ""):
 			"back":
-				menu.handle("MINUS_LONG")
+				menu.handle("Y_SHORT")
 				act = {}
 			"confirm_pair":
 				menu.confirm(str(act["title"]), {"action": "pair_devices", "args": act["args"]})
@@ -400,15 +400,19 @@ func _open_edit() -> void:
 	menu.push_screen(SETTING_EDIT)
 
 
-## Écran de modification : + / − changent la valeur, long + enregistre, long − annule.
+## Écran de modification (plan des boutons, spécification générale §7.1) : + / − court, A court et
+## flèches gauche, droite changent la valeur d'un pas, + / − long de cinq pas ; A long enregistre,
+## Y annule.
 func _handle_edit(event: String) -> Dictionary:
 	match event:
-		"PLUS_SHORT", "MINUS_SHORT":
-			settings.step(1 if event == "PLUS_SHORT" else -1)
+		"PLUS_SHORT", "MINUS_SHORT", "A_SHORT", "LEFT_SHORT", "RIGHT_SHORT", "PLUS_LONG", "MINUS_LONG":
+			var dir := -1 if event in ["MINUS_SHORT", "LEFT_SHORT", "MINUS_LONG"] else 1
+			for i in range(MenuModel.LONG_STEP if event.ends_with("_LONG") else 1):
+				settings.step(dir)
 			menu.set_screen_items(SETTING_EDIT, settings.edit_items())
-		"PLUS_LONG":
+		"A_LONG":
 			var act: Dictionary = settings.commit()
-			menu.handle("MINUS_LONG")
+			menu.handle("Y_SHORT")
 			if act.get("action", "") == "set_difficulty":
 				difficulty_pct = int(act["pct"])
 				menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
@@ -417,9 +421,9 @@ func _handle_edit(event: String) -> Dictionary:
 				_refresh_builder()
 				return {}
 			return act
-		"MINUS_LONG":
+		"Y_SHORT":
 			settings.cancel()
-			menu.handle("MINUS_LONG")
+			menu.handle("Y_SHORT")
 	return {}
 
 

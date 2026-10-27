@@ -137,3 +137,29 @@ def test_scan_items_and_message_limits():
         pairing.paired_from_args({"trainer": 12}, items)
     p = pairing.paired_from_args({"trainer": "c1:1c:00:00:00:a0", "hr": None}, items)
     assert p.trainer_address == "C1:1C:00:00:00:A0" and p.trainer_name == items[0]["name"] and p.hr_address == ""
+
+
+def test_scan_waits_for_bluetooth_busy_with_another_search(tmp_path: Path, monkeypatch):
+    """Écran Appareils (26 octobre) : BlueZ « InProgress » pendant la recherche du Click, nouvel essai."""
+    s, sent = _session(tmp_path)
+    calls: list[float] = []
+
+    async def busy_once(sim, timeout):
+        calls.append(timeout)
+        if len(calls) == 1:
+            raise RuntimeError("[org.bluez.Error.InProgress] Operation already in progress")
+        return {"devices": [{"role": "trainer", "name": "Victory", "address": "C1:1C:00:00:00:01", "rssi": -50}],
+                "connected": []}
+
+    monkeypatch.setattr(pairing, "scan_inventory", busy_once)
+    asyncio.run(s._scan_devices(5, 1.0))
+    assert len(calls) == 2
+    assert not any(m.get("type") == "error" for m in sent)
+    assert sent[-1]["done"] and [it["role"] for it in sent[-1]["items"]] == ["trainer"]
+
+    async def always_busy(sim, timeout):
+        raise RuntimeError("[org.bluez.Error.InProgress] Operation already in progress")
+
+    monkeypatch.setattr(pairing, "scan_inventory", always_busy)
+    asyncio.run(s._scan_devices(6, 1.0))
+    assert [m["code"] for m in sent if m.get("type") == "error"] == ["scan_failed"]

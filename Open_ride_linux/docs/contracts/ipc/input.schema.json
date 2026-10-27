@@ -21,7 +21,18 @@
         "PLUS_SHORT",
         "MINUS_SHORT",
         "PLUS_LONG",
-        "MINUS_LONG"
+        "MINUS_LONG",
+        "PLUS_UNCLEAR",
+        "MINUS_UNCLEAR",
+        "A_SHORT",
+        "A_LONG",
+        "Z_SHORT",
+        "Z_LONG",
+        "Y_SHORT",
+        "LEFT_SHORT",
+        "RIGHT_SHORT",
+        "UP_SHORT",
+        "DOWN_SHORT"
       ]
     }
   }

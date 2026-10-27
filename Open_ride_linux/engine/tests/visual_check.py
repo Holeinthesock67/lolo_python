@@ -57,6 +57,7 @@ DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 GODOT_TOLERATED = re.compile(
     r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
+CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
               "wind_speed", "wind_level", "wind_verdict", "draft")
@@ -524,7 +525,10 @@ class Session:
     def check_banner(self, scene: str, img: Image, info: dict[str, Any], text: str | None) -> None:
         b = info["widgets"]["banner"]
         if text is None:
-            self.check(scene, "bandeau caché", not b["visible"], f"« {b['text']} »" if b["visible"] else "")
+            # Le rappel des commandes du départ de séance (main.gd, 10 s) n'est pas une alerte.
+            alert = b["visible"] and not b["text"].startswith(CONTROLS_HINT_PREFIX)
+            self.check(scene, "bandeau caché (hors rappel des commandes)", not alert,
+                       f"« {b['text']} »" if b["visible"] else "")
             return
         self.check(scene, "bandeau affiché", b["visible"] and text in b["text"], f"« {b['text']} »")
         if b["visible"]:
@@ -856,8 +860,8 @@ def _menu_scenes(s: Session) -> None:
                 and overlap(m["rect"], info["widgets"]["power"]["rect"]) == 0.0, f"rectangle {m['rect']}")
         focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] > 200 and p[1] > 150 and p[2] < 90, step=2)
         s.check("menu_accueil", "focus très visible (fond jaune)", focus >= 0.01, f"{focus:.1%} de pixels jaunes")
-    # Appui long « + » du Click relayé par le core : liste des parcours.
-    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "PLUS_LONG"})
+    # Appui long sur A du Click relayé par le core : liste des parcours.
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
     time.sleep(0.8)
     shot = s.capture("menu_parcours")
     if shot:

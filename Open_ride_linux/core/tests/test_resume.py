@@ -173,8 +173,8 @@ def test_cli_run_accepts_resume():
     assert args.resume == Path("/tmp/x.jsonl") and args.autostart
 
 
-def test_click_y_pauses_and_resumes_without_relay(env):
-    """Lot N6 : bouton Y du Click, pause puis reprise ; rien n'est relayé à l'engine."""
+def test_click_y_pauses_without_relay_then_goes_to_the_pause_menu(env):
+    """Bouton Y : pause en séance (pas relayé) ; sur l'écran de pause, relayé à l'engine qui reprend."""
     make, run_for, wall = env
     s = make(6414)
     sent: list[str] = []
@@ -182,8 +182,26 @@ def test_click_y_pauses_and_resumes_without_relay(env):
     s._on_command("select_route", {"route_id": "demo"}, 1)
     s._on_command("start", {}, 2)
     run_for(s, 2.0)
-    s._handle_input(InputEvent.PAUSE)
+    s._handle_input(InputEvent.Y_SHORT)
     assert (s.state.session_state, s.state.pause_reason) == ("PAUSED", "user")
-    s._handle_input(InputEvent.PAUSE)
-    assert s.state.session_state == "RUNNING"
     assert sent == []
+    s._handle_input(InputEvent.Y_SHORT)
+    assert s.state.session_state == "PAUSED" and sent == ["Y_SHORT"]
+
+
+def test_click_other_buttons_are_relayed_without_effect_during_a_ride(env):
+    """A, Z, flèches et appui ambigu : relayés à l'engine, braquet inchangé en séance."""
+    make, run_for, wall = env
+    s = make(6415)
+    sent: list[str] = []
+    s.server.send_input_event = sent.append
+    s._on_command("select_route", {"route_id": "demo"}, 1)
+    s._on_command("start", {}, 2)
+    run_for(s, 2.0)
+    gear = s.state.gear
+    others = [InputEvent.A_SHORT, InputEvent.A_LONG, InputEvent.Z_SHORT, InputEvent.Z_LONG, InputEvent.LEFT_SHORT,
+              InputEvent.RIGHT_SHORT, InputEvent.UP_SHORT, InputEvent.DOWN_SHORT, InputEvent.PLUS_UNCLEAR]
+    for ev in others:
+        s._handle_input(ev)
+    assert sent == [ev.value for ev in others]
+    assert s.state.gear == gear and s.state.session_state == "RUNNING"
