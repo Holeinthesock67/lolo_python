@@ -265,6 +265,7 @@ L'engine reçoit l'état du core, charge les couches du `.world` qui existent et
 - Le brouillard volumétrique n'existe qu'avec le moteur de rendu Forward+ ; sur GPU intégré, le préréglage bas utilise le moteur Mobile ou Compatibility.
 - La génération des maillages se fait dans des threads (`WorkerThreadPool`), par tronçon, en avance sur la caméra ; elle peut aussi être précalculée plus tard.
 - Objectif : 30 images par seconde au minimum sur le PC cible en préréglage bas.
+- Mode d'affichage (`[render] display`, réglable au menu et appliqué tout de suite) : fenêtré (1280 × 720), plein écran sans bordure ou plein écran exclusif (défaut ; sous X11, la fenêtre contourne le compositeur). Les pleins écrans restent à la définition native de l'écran : ni changement de définition, ni mise à l'échelle du rendu. La synchronisation verticale reste active. La souris est masquée en séance et visible dans les menus.
 
 **Bâtiments (module ultérieur) :** triangulation par `Geometry2D.triangulate_polygon` (pas de bibliothèque Earcut externe) ; les polygones OSM avec trous (multipolygones) sont traités à part ; toits plats d'abord, toits à deux pans ensuite ; hauteurs tirées de `height` et `building:levels`, sinon d'une valeur aléatoire stable.
 
@@ -389,6 +390,7 @@ theme = "default"
 visual_grade_scale = 1.0   # exagération visuelle du relief, de 1,0 à 2,0 (lot Q2 ; physique et HUD inchangés)
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
+display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 
 [ipc]
 port_state = 5005
@@ -416,6 +418,8 @@ gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme"
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
+[progression]
+enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0
 [powerups]
 mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
 [rogue]
@@ -427,7 +431,7 @@ grade_rate_down_pct_per_s = 12.0  # descente
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
 
-La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
+La section `[progression]` (lot V11) coupe, avec `enabled = false`, l'équipement, le message `progression` et le bilan `xp_result`. La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
 
 La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
 
