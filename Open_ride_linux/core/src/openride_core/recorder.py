@@ -12,12 +12,11 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import asdict
 from pathlib import Path
 from typing import Callable
 
 from .fit_export import Summary, default_fit_path, summarize, write_fit
-from .journal import TIMER_EVENTS, JournalWriter, Record
+from .journal import TIMER_EVENTS, JournalWriter, Record, record_line
 
 log = logging.getLogger("recorder")
 
@@ -107,7 +106,7 @@ class SessionRecorder:
         self._write(line)
 
     def record(self, rec: Record) -> None:
-        line = {"kind": "record", **asdict(rec)}
+        line = record_line(rec)
         self.lines.append(line)
         self._write(line)
 
