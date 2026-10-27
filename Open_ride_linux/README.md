@@ -139,7 +139,7 @@ scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcou
 Chaque type d'appui a son bip. Les menus suivent le plan des boutons commun (+ / − pour choisir, A long pour valider, Y pour revenir ; [spécification générale](docs/SPECIFICATION_GENERALE.md) §7.1). Le lot O17 met l'ERG à ce plan avant la 1.0 (± long = intensité ± 10 %, Z = bloc suivant) et le clavier touche pour touche sur le Click.
 
 **Difficulté du trainer :**
-Le paramètre `[trainer] difficulty_pct` (de 0 à 100 %, défaut 50 %) réduit proportionnellement la pente envoyée au trainer, à l'image du réglage de difficulté de Zwift, sans altérer la vitesse virtuelle calculée par la physique. La difficulté est modifiable pendant la séance par la commande IPC `set_difficulty` (`{"pct": nombre}`) et son pourcentage est affiché dans le HUD (masqué lorsque la valeur est à 100 %).
+Le paramètre `[trainer] difficulty_pct` (de 0 à 100 %, défaut 50 %) réduit proportionnellement la pente envoyée au trainer, à l'image du réglage de difficulté de Zwift, sans altérer la vitesse virtuelle calculée par la physique. La difficulté est modifiable pendant la séance par la commande IPC `set_difficulty` (`{"pct": nombre}`) et son pourcentage se lit dans le menu Réglages et sur l'écran de pause ; il n'est pas affiché en permanence dans le HUD (décision du 27 octobre).
 
 ### Sons du parcours et sons personnalisés (Lot E4)
 
