@@ -12,7 +12,7 @@ Fixer en **un seul lot et une seule PR**, avant tout code des séries R, T et V 
 2. `docs/contracts/ipc_v1.md` (tout, en particulier §2, §3, §5 et §8), schémas de `docs/contracts/ipc/`, `docs/contracts/world_format_v1.md` §10.
 3. Plans `docs/2.0/PLAN_SERIE_T.md` (§3 et décisions du 27 octobre au §6), `docs/2.0/PLAN_SERIE_R.md` (§2, §4, §7), `docs/2.0/GDD_CYBER_ROGUE.md`, `docs/2.0/PLAN_SERIE_V.md` (§2 et questions V-Q4 à V-Q13).
 4. Modules déjà livrés dont les noms de champs font foi : `core/src/openride_core/segments.py` (T2), `segment_timing.py` (T4), `powerups.py` (T6), `gaps.py` (T16), `progression.py` (V2 à V4) ; cahiers `LOT_R6_run_deck_boss.md`, `LOT_R13_menu_cyber_rogue.md`, `LOT_V3_catalogue_equipement.md`, `LOT_V3b_pieces.md`, `LOT_V4_profil_local.md`.
-5. Code : `core/src/openride_core/ipc_server.py`, `engine/scripts/ipc_client.gd`, `engine/scripts/menu_model.gd`, `core/src/openride_core/tools/ipc_budget.py` (pire trame par révision, lot X25).
+5. Code : `core/src/openride_core/ipc_server.py`, `engine/scripts/ipc_client.gd`, `engine/scripts/menu_model.gd`, `core/src/openride_core/ipc_budget.py` (pire trame par révision, lot X25).
 
 ## 3. Prérequis
 
@@ -154,7 +154,7 @@ Objet `avatar` : `height` (`S`, `M`, `L`, `XL`), `build` (`slim`, `medium`, `str
 
 ## 5. Fichiers concernés
 
-- **Modifiés :** `docs/contracts/ipc_v1.md`, `docs/contracts/world_format_v1.md`, `docs/contracts/ipc/state.schema.json`, `cmd.schema.json`, `hello_ack.schema.json`, `error.schema.json`, `routes.schema.json`, `docs/contracts/world/manifest.schema.json`, `core/src/openride_core/tools/ipc_budget.py` (révision 1.4), `core/tests/test_contract_ipc.py`, `docs/SPECIFICATION_GENERALE.md` (§6.1, §6.2), `docs/SRS_v1.1.md` (§11 : sections `[rogue]`, `[avatar]`), `docs/lots/00_INDEX.md`, `docs/SUIVI_AVANCEMENT.md`.
+- **Modifiés :** `docs/contracts/ipc_v1.md`, `docs/contracts/world_format_v1.md`, `docs/contracts/ipc/state.schema.json`, `cmd.schema.json`, `hello_ack.schema.json`, `error.schema.json`, `routes.schema.json`, `docs/contracts/world/manifest.schema.json`, `core/src/openride_core/ipc_budget.py` (révision 1.4), `core/tests/test_contract_ipc.py`, `docs/SPECIFICATION_GENERALE.md` (§6.1, §6.2), `docs/SRS_v1.1.md` (§11 : sections `[rogue]`, `[avatar]`), `docs/lots/00_INDEX.md`, `docs/SUIVI_AVANCEMENT.md`.
 - **Créés :** schémas `segment_result`, `room`, `loot`, `garage`, `progression`, `xp_result` dans `docs/contracts/ipc/` ; `segments.schema.json` dans `docs/contracts/world/`.
 - **Interdits :** le code du core et de l'engine hors tests de contrat et outil `ipc_budget` (les lots R8, T5 à T15, V11 et suivants branchent).
 
@@ -175,3 +175,11 @@ Les ajouts du §4, tous compatibles (`v` reste 1), sous une seule révision 1.4.
 - Monde ouvert (W1, révision 1.5) et biomes (U1, révision suivante).
 - Vues de caméra (décision D5 en attente) : l'engine change de vue lui-même sur `A_SHORT`, sans ajout au contrat.
 - Le calcul et le branchement (R2 à R9, T3 à T16, V2 à V11) et l'affichage.
+
+## 9. Livraison (27 octobre 2026, PR #392)
+
+- Contrat : `docs/contracts/ipc_v1.md` révision 1.4 (mode `ROGUE`, objets `segment`, `powerup`, `jerseys`, bots à profil, messages `segment_result`, `room`, `loot`, `garage`, `progression`, `xp_result`, commandes de run et du Garage) ; format `.world` 1.3 avec la couche `segments` (`docs/contracts/world_format_v1.md`).
+- Schémas : six nouveaux messages (`garage`, `loot`, `progression`, `room`, `segment_result`, `xp_result`), `state`, `cmd`, `error`, `hello_ack` et `routes` complétés ; `world/segments.schema.json` et manifeste.
+- `ipc_budget.py` mesure les pires trames 1.4 : 2 456 octets en classique, 1 543 en run, sous 4 096 ; messages courts sous 1 400.
+- Tests : `core/tests/test_contract_ipc.py` (trames d'exemple de chaque ajout) et `core/tests/test_ipc_budget.py`.
+- Contrat validé par le propriétaire le 27 octobre (critère 5). Le core annonce encore `rev` « 1.3 » jusqu'au branchement (R8, T7, V11).

@@ -16,7 +16,7 @@ Série N fusionnée, O1 à O6 et O9 à O15 fusionnés ; O7 selon le choix du pro
 
 ## 4. Liste de recette
 
-Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, si besoin, le numéro de la PR qui a corrigé un défaut. Les lignes **en gras** sont bloquantes pour la 1.0 ; les autres peuvent glisser en 1.0.x.
+Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, si besoin, le numéro de la PR qui a corrigé un défaut. Les lignes **en gras** sont bloquantes pour la 1.0 ; les autres peuvent glisser en 1.0.x. Le pas à pas de chaque ligne (commandes, attendus, journaux) est dans [PROTOCOLE_TEST_2026-10-26.md](../PROTOCOLE_TEST_2026-10-26.md), qui cite ces lignes « O8 ligne n » ; les autres essais encore à faire sur le PC sont au §3 de [SUIVI_AVANCEMENT.md](../SUIVI_AVANCEMENT.md).
 
 **Installation (session Ubuntu vierge ou second compte)**
 1. **Installation en une commande (N14), icône présente, premier démarrage guidé.**
@@ -25,7 +25,7 @@ Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, 
 **Matériel**
 3. **Appairage depuis le menu : trainer, deux boîtiers du Click (bouton + identifié), ceinture (N12, N13).**
 4. **Séance libre de 10 min ou plus en SIM avec braquets perceptibles, puis relecture des mesures `Perf` du journal.**
-5. **Un `.zwo` complet en ERG : cibles tenues, biais ± 2 % au Click, bip à T − 3 s (lot F, N7).**
+5. **Un `.zwo` complet en ERG : cibles tenues, biais ± 2 % au Click, bip à T − 3 s (lot F, N7) ; gestes du plan commun : ± long = biais ± 10 %, Z = bloc suivant, Y = pause, au Click et au clavier (O17).**
 6. **Click : boîtier gauche ou contournement par B du boîtier droit utilisable pendant toute une séance de 30 min (journal K8 sans coupure non reprise).** Outil : `python -m openride_core.tools.click_recette` (lot X8), rapport par boîtier (silences, coupures, touches reçues).
 7. Ceinture cardio réelle : contact, choix de l'appareil, batterie (M2).
 8. Erreur ATT éventuelle suivie de « renvoi 1/2 » et non d'une reconnexion (M1).
@@ -37,14 +37,14 @@ Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, 
 12. **Test de FTP par rampe complet sur le HomeTrainer, fin détectée, nouvelle FTP acceptée depuis le menu (O10, O12).**
 13. **Une séance du jour d'un plan, roulée puis comptée (O11, O12).**
 14. **Courbes de cible, puissance, FC et cadence justes et lisibles pendant une séance ERG (O14).**
-15. Un `.erg` exporté de GoldenCheetah roulé en entier (O9) ; un parcours choisi par la bibliothèque avec ses filtres (O15).
+15. Un `.erg` exporté de GoldenCheetah roulé en entier (O9) ; un parcours choisi par la bibliothèque avec ses filtres (O15) ; le pack « Cols célèbres » construit sur le PC et un col roulé (O16).
 
 **Rendu (GTX 1060, 1 920 × 1 080)**
 16. **Recette E3/E4 (`docs/RECETTE_E3_E4.md`) : ciel, brouillard, arbres, bâtiments, eau, sons.**
 17. **30 images/s en qualité basse sur un parcours avec village (SRS sprints 3 et 5), relevé `[perf-rendu]`.**
 18. **1 h de séance sans plantage ni saccade visible.** Outil : `engine/tests/sim_bench.py --native --scenario endurance --size 1920x1080` (lot X16) vérifie aussi la ligne 17 et la croissance de la mémoire.
-19. Préparation des arbres sous 150 ms (`UNIT=test_tree_renderer`, O1).
-20. Menus, écran Appareils, Réglages (si O4), bilan lisibles à 2 m et pilotables au Click.
+19. Préparation des arbres sous 150 ms sur le PC cible (`UNIT=test_tree_renderer`, O1 : 87 ms relevés le 27 octobre, seuil de CI 170 ms) et une séance en qualité `high` sans à-coup.
+20. Menus, écran Appareils, Réglages, bilan lisibles à 2 m et pilotables au Click selon le plan des boutons (spécification générale §7.1).
 
 **Fichiers et parcours**
 21. **Un FIT de séance OpenRide importé sans erreur dans Garmin Connect et dans GoldenCheetah.**
