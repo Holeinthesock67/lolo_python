@@ -1,0 +1,8 @@
+name = "Mont Ventoux"
+region = "Provence"
+country = "France"
+side = "depuis Bédoin"
+waypoints = [[44.1243, 5.1792], [44.1740, 5.2788]]
+ref_length_m = 21500
+ref_gain_m = 1610
+tags = ["col", "classique", "hc"]
