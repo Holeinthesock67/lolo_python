@@ -36,7 +36,7 @@ T1 et T3 (livrés le 27 octobre), T2, T4, T5, T6, T14, T16, P2, P3 et la PR #287
 
 **Fin de séance.** `summary.segments` : 10 derniers passages, `more`, porteurs des maillots.
 
-**Options.** `config.toml` : `[powerups] enabled = true` (à `false`, aucun bonus, ni arche ni réserve ; le reste fonctionne), lu par `config.py`, réglable par `set_setting` (clé ajoutée à `settings.py`, utilisée par le menu de T10). Valeurs des bonus : `~/OpenRide/powerups.toml` (T6). Révision annoncée : `CONTRACT_REV` = « 1.4 » (tous les champs de la révision sont facultatifs ; R8 et V11 ajoutent les leurs).
+**Options.** `config.toml` : `[powerups] mode = "on"` (à `"off"`, aucun bonus, ni arche ni réserve ; le reste fonctionne), lu par `config.py`, réglable par `set_setting` (clé ajoutée à `settings.py`, utilisée par le menu de T10). Valeurs des bonus : `~/OpenRide/powerups.toml` (T6). Révision annoncée : `CONTRACT_REV` = « 1.4 » (tous les champs de la révision sont facultatifs ; R8 et V11 ajoutent les leurs).
 
 ## 5. Fichiers concernés
 
@@ -56,10 +56,24 @@ Aucune au-delà de T1. Configuration : section `[powerups]` (une clé).
 4. En ERG : `powerup` absent, `Z_SHORT` sans effet sur les bonus, segments chronométrés.
 5. Pause pendant un segment : pas de `segment_result`, pas de record.
 6. Avec 4 bots de N9 : `bot_ahead`, `bot_behind` et `gap_s` présents, maillot à pois au premier arrivé au sommet.
-7. `[powerups] enabled = false` : aucun champ `powerup`, aucune arche ; trames de la 1.0 inchangées sur un parcours sans segment.
+7. `[powerups] mode = "off"` : aucun champ `powerup`, aucune arche ; trames de la 1.0 inchangées sur un parcours sans segment.
 8. Reprise après plantage du core : les lignes `powerup`, `segment` et `jersey` sont recopiées.
 
 ## 8. Hors périmètre
 
 - Bots à profil et leurs champs `profile`, `cp_w`, `mass_kg`, `wbal_pct` (T12, T13).
 - Rendu, HUD et menus (T8, T9, T10, T15), recette (T11).
+
+## 9. Livraison (27 octobre 2026)
+
+- Nouveau module `core/src/openride_core/classic.py` (`ClassicRace`) : un objet par séance réunit `SegmentTimer` (cycliste et bots, le fantôme exclu), `RecordBook`, `PowerUps` et `ArchSchedule`, `Standings` et `GapTracker` ; il donne les `PhysicsParams` et la puissance du pas, les champs de la trame `state`, les messages `segment_result`, les lignes du journal et `summary.segments`. `session.py` ne fait que l'appeler.
+- `route.py` lit la couche `segments.json` (`World.segments`) ; une couche invalide est ignorée avec un avertissement. `ipc_server.py` annonce la révision 1.4 et porte `segment`, `powerup`, `jerseys`, `bot_ahead` et `bot_behind`. `journal.py`, `recorder.py` et `resume.py` écrivent et reprennent les lignes `powerup`, `segment` et `jersey`. `config.py` et `settings.py` : section `[powerups]`, clé `mode`.
+- Choix faits :
+  - option « Bonus » : clé `[powerups] mode = "on"` ou `"off"` plutôt qu'un booléen `enabled`, car les réglages du menu (`settings`, révision 1.3) ne connaissent que les types `int` et `choice` ;
+  - le message `settings` doit tenir dans 1 400 octets : le libellé « Poids du cycliste » devient « Poids » (unité kg) pour laisser la place à « Bonus » ;
+  - un segment qui commence au départ du parcours (`s_start` = 0, cas de la montée du parcours de démonstration) est chronométré : la position de départ est donnée aux chronomètres avant le premier pas ;
+  - `records.json` n'est jamais réécrit s'il était illisible au départ (il est gardé tel quel, avertissement au journal) ; l'écriture passe par un fil quand la boucle asyncio tourne ;
+  - après une reprise sur plantage, les segments repartent de la position du journal ; points et maillots repartent à zéro ;
+  - les chemins de `records.json` et de `powerups.toml` sont des paramètres de `CoreSession` ; la suite de tests les place dans le dossier temporaire de chaque test (`core/tests/conftest.py`) ;
+  - `engine/tests/fake_core.py` reste inchangé : ses trames de démonstration avec segment et bonus viennent avec le HUD qui les lit (T9).
+- Tests : `core/tests/test_session_serie_t.py` (critères 2 à 8, 8 tests), révision 1.4 dans `test_contract_ipc.py`.

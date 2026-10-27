@@ -140,6 +140,12 @@ class ProgressionConfig:
 
 
 @dataclass
+class PowerupsConfig:
+    """Bonus du mode classique (série T, lots T6 et T7) ; valeurs dans `~/OpenRide/powerups.toml`."""
+    mode: str = "on"               # "on" ou "off" (ni arche ni réserve ; segments toujours chronométrés)
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -152,6 +158,7 @@ class Config:
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
+    powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -217,6 +224,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "hr"): ("none", "ble", "sim"),
     ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
     ("wind", "feel"): ("grade", "ftms"),
+    ("powerups", "mode"): ("on", "off"),
 }
 
 

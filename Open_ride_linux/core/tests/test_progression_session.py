@@ -186,7 +186,8 @@ def _equipped_session(tmp_path, monkeypatch, equipped, port):
         s.progress_svc.profile.purchases += [{"item_id": "frame_aero", "price": 0, "ts": 1},
                                              {"item_id": "wheels_disc", "price": 0, "ts": 1}]
         s.progress_svc.profile.equipped.update(frame="frame_aero", wheels="wheels_disc")
-        s.physics.p = s._base_params()
+        s._base_params = s._equipped_params()
+        s.physics.p = s._base_params
     s._on_command("select_route", {}, 1)
     step = s.physics.step                             # sur le plat : l'aéro l'emporte sur la masse
     s.physics.step = lambda power, grade, *a, **k: step(power, 0.0, *a, **k)
