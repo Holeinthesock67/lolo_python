@@ -1,0 +1,226 @@
+# Table d'équilibrage du mode Cyber-Rogue (lot R7).
+# Les valeurs ci-dessous sont celles du jeu. Pour les changer sans toucher au code,
+# copier ce fichier en ~/OpenRide/rogue_balance.toml et ne garder que les lignes modifiées.
+# Une clé inconnue ou une valeur hors bornes est refusée avec un message qui nomme la clé.
+
+fluid_regen_mult = 1.2   # bonus de jeu : recharge ×1,2 en Fluide à cadence 80-95 rpm
+fluid_regen_rpm_min = 80.0   # bas de la plage de cadence qui donne le bonus de recharge de W'bal (rpm)
+fluid_regen_rpm_max = 95.0   # haut de cette plage (rpm)
+roc_enter_rpm = 70.0   # Roc sous 70 rpm
+roc_exit_rpm = 73.0   # on quitte Roc à 73 rpm et plus
+veloce_enter_rpm = 100.0   # Véloce au-dessus de 100 rpm
+veloce_exit_rpm = 97.0   # on quitte Véloce à 97 rpm et moins
+stop_enter_rpm = 20.0   # arrêt sous 20 rpm ou sous 10 W
+stop_exit_rpm = 30.0   # cadence à partir de laquelle on sort de l'arrêt (rpm)
+stop_power_w = 10.0   # puissance sous laquelle on est à l'arrêt (W)
+posture_hold_s = 1.5   # durée continue dans une plage avant de changer
+cadence_smooth_s = 2.0   # constante de lissage de la cadence
+min_bump_s = 15.0   # durée minimale d'une bosse (30 si R0 l'exige)
+max_drop_pts = 5.0   # chute de pente maximale en 10 s (les chutes plus fortes sont étalées)
+arch_lead_s = 0.8   # avance des arches de Perfect Shift sur la rupture (t50 de R0)
+break_min_pts = 3.0   # rupture de pente : variation d'au moins 3 points
+room_grade_min = -3.0   # pente bornée avant le décalage du braquet
+room_grade_max = 10.0   # pente maximale d'une salle avant le décalage du braquet (%)
+marker_gap_s = 1.0   # écart minimal entre cibles, zones de parade et balises
+parry_lead_s = 2.0   # zone de parade : 2 s avant la bosse ou l'onde de choc
+tunnel_period_s = 40.0   # Diesel : période des tunnels de cadence (s)
+tunnel_len_s = 20.0   # Diesel : durée d'un tunnel (s)
+tunnel_cadence_rpm = 90.0   # Diesel : cadence visée dans un tunnel (rpm)
+tunnel_tolerance_rpm = 3.0   # Diesel : tolérance autour de la cadence visée (rpm)
+rock_armor = 2.0   # Grimpeur : points d'armure d'un rocher
+pad_threshold_frac = 1.4   # Sprinteur : puissance minimale sur un pavé, en fraction de la FTP
+pad_min_gear = 10.0   # Sprinteur : vitesse minimale pour que le pavé compte
+purge_period_s = 60.0   # Saboteur : une balise de purge par minute
+purge_first_s = 50.0   # Saboteur : instant de la première balise de purge (s)
+hack_delay_s = 20.0   # le piratage a lieu 20 s avant la balise de purge
+transition_s = 30.0   # transition à 0 % avant chaque phase du boss
+transition_frac = 0.5   # boss : fraction de la FTP conseillée pendant la transition
+boss_phase_s = [180.0, 240.0, 90.0]   # combat de chaque phase pour une run de 45 min
+start_gap_m = 150.0   # le mur part derrière le joueur à l'entrée de chaque salle
+max_gap_m = 400.0   # écart plafonné : pas d'avance infinie à capitaliser
+hp_factor = 0.9   # PV de l'ennemi = 0,9 × cible moyenne × durée nominale
+gear_step = 0.04   # m_gear = 1 + 0,04 × (vitesse − 6)
+gear_ref = 6   # vitesse neutre : multiplicateur de dégâts et pente envoyée sont centrés dessus
+gear_min = 1   # première vitesse
+gear_max = 12   # dernière vitesse
+roc_armor_mult = 0.7   # pertes de bouclier en Roc
+veloce_armor_mult = 1.2   # Véloce : multiplicateur des pertes de bouclier
+veloce_crit_chance = 0.15   # par seconde
+crit_mult = 2.0   # multiplicateur de dégâts d'un coup critique
+shield_max = 100.0   # bouclier maximal
+contact_shield_per_s = 4.0   # bouclier perdu par seconde au contact du Firewall
+contact_gold_per_s = 1.0   # or perdu par seconde au contact du Firewall
+unparried_hit = 10.0   # bouclier perdu sur un coup non paré
+corridor_regen_per_s = 2.0   # lu par R6
+recovery_s = 60.0   # durée de la récupération forcée après une défaite (s)
+recovery_shield = 50.0   # bouclier remis après une défaite
+defeat_run_gold_loss = 0.25   # part de l'or de la run perdue en cas de défaite
+adrenaline_max = 100.0   # adrénaline maximale
+adrenaline_per_s = 0.5   # adrénaline gagnée par seconde quand la puissance atteint la cible
+adrenaline_roc_mult = 0.7   # Roc : multiplicateur de cette recharge
+adrenaline_veloce_mult = 1.5   # Véloce : multiplicateur de cette recharge
+perfect_shift_adrenaline = 10.0   # adrénaline gagnée par Perfect Shift réussi
+ps_window_s = 1.5   # fenêtre de Perfect Shift centrée sur l'arche (R0)
+overheat_frac = 0.75   # surchauffe (endurance) : seuil de puissance, en fraction de la FTP
+overheat_after_s = 5.0   # surchauffe : durée au-delà du seuil avant qu'elle commence (s)
+overheat_adrenaline_per_s = 2.0   # surchauffe : adrénaline perdue par seconde
+long_press_gears = 3   # vitesses sautées par un appui long sur + ou B
+strike_cost = 50.0   # adrénaline consommée par une attaque Z
+strike_hp_frac = 0.06   # part des PV maximaux retirée par une attaque Z
+strike_window_s = 1.0   # fenêtre d'une cible ou d'une balise (± moitié)
+rock_window_s = 1.5   # largeur de la fenêtre d'un rocher (s)
+tunnel_charge_s = 10.0   # Diesel : secondes dans la bande de cadence pour une charge
+tunnel_max_charges = 3   # Diesel : charges au plus
+tunnel_charge_hp_frac = 0.04   # Diesel : part des PV maximaux retirée par charge libérée
+roc_charge_s = 5.0   # Grimpeur : secondes continues en Roc pour un coup chargé
+roc_max_charges = 2   # Grimpeur : coups chargés au plus
+rock_hp_frac = 0.08   # Grimpeur : part des PV maximaux retirée par un rocher brisé
+pad_damage_mult = 3.0   # Sprinteur : multiplicateur de dégâts sur un pavé
+hook_grade_mult = 0.5   # Puncheur : bosse aspirée à moitié de sa pente
+hook_power_ratio = 1.1   # Puncheur : rapport minimal des puissances (2 s récentes / 3 s d'avant) pour s'accrocher
+hook_s = 15.0   # Puncheur : durée de la bosse aspirée (s)
+hack_max_s = 30.0   # Saboteur : durée maximale d'un piratage sans purge (s)
+win_gold = 20.0   # or d'une salle gagnée
+win_gold_per_ps = 2.0   # or de plus par Perfect Shift
+flee_gold = 8.0   # or d'une salle où l'ennemi s'enfuit
+warmup_relic_s = 180.0   # tirage de la relique de départ à la 3e minute
+warmup_grade_max = 2.0   # échauffement : pente 0 à 2 %, cible 0,50 à 0,75 FTP
+warmup_frac_from = 0.5   # échauffement : cible au début, en fraction de la FTP
+warmup_frac_to = 0.75   # échauffement : cible à la fin
+cooldown_frac = 0.5   # retour au calme : fraction de la FTP conseillée
+reroll_cost = 15   # coût de la première relance de cartes (or)
+reroll_step = 5   # supplément par relance dans le même couloir
+cards_offered = 3   # cartes proposées dans un couloir
+sent_grade_min = -10.0   # pente envoyée au trainer : plage du trainer
+sent_grade_max = 16.0   # pente maximale envoyée au trainer (%)
+gear_grade_pts = 1.0   # formule centrée (Q2) : + (vitesse − 6) × 1 point
+roller_cap_grade = 6.0   # Rouleau compresseur
+roller_hold_s = 3.0   # Rouleau compresseur : durée de maintien à 6 % après la pente (s)
+springboard_grade = -1.0   # Tremplin cinétique
+springboard_min_gear = 9   # Tremplin cinétique : vitesse minimale
+springboard_adrenaline = 15.0   # Tremplin cinétique : adrénaline gagnée
+springboard_s = 5.0   # Tremplin cinétique : durée du bonus de dégâts (s)
+springboard_mult = 1.5   # Tremplin cinétique : multiplicateur de dégâts
+overdrive_grade_pts = 4.0   # Overdrive : points de pente ajoutés
+overdrive_mult = 2.0   # Overdrive : multiplicateur de dégâts
+overdrive_s = 8.0   # Overdrive : durée (s)
+overdrive_cooldown_s = 45.0   # Overdrive : recharge (s)
+overdrive_back_gear = 6   # Overdrive : vitesse de retour automatique
+heal_cadence_rpm = 95.0   # Soin : cadence minimale (rpm)
+heal_per_s = 1.0   # Soin : bouclier gagné par seconde
+cursed_gear = 10   # Maudit : vitesse concernée
+cursed_mult = 1.35   # Maudit : multiplicateur de dégâts
+shifter_window_mult = 2.0   # Shifter électronique : multiplicateur de la fenêtre de Perfect Shift
+shifter_window_max_s = 3.0   # Shifter électronique : fenêtre maximale (s)
+shifter_shield = 3.0   # Shifter électronique : bouclier gagné par réussite
+siphon_adrenaline = 50.0   # Siphon d'aspiration : adrénaline gagnée
+inversion_s = 8.0   # Inversion polaire : durée (s)
+inversion_floor = -3.0   # Inversion polaire : pente minimale (%)
+relic_shield_bonus = 20.0   # relique de bouclier : bouclier maximal en plus
+relic_gold_mult = 1.25   # relique d'or : multiplicateur de l'or gagné
+relic_ps_window_bonus_s = 0.3   # relique de réflexes : fenêtre de Perfect Shift en plus (s)
+room_min_s = 180.0   # salles de 3 à 5 minutes
+room_max_s = 300.0   # durée maximale d'une salle (s)
+room_spread_s = 60.0   # écart de tirage de la durée d'une salle (s)
+sprinter_extra = "sprinteur"   # seuil : Sprinteur au plus une fois (il remplace une porte)
+late_margin_s = 120.0   # retard toléré avant de raccourcir les couloirs
+corridor_min_s = 60.0   # durée minimale d'un couloir raccourci (s)
+skip_gold_penalty = 10.0   # or perdu pour une salle retirée
+gold_mult = 1.0   # multiplicateur de l'or gagné (châssis Collecteur)
+adrenaline_start = 0.0   # adrénaline au début de chaque salle (châssis Survolté)
+
+# Scénariste (R15) : durée de la run en minutes -> [échauffement min, nombre de salles, salle moyenne min,
+# couloir min, boss min, poids des trois phases, retour au calme min]
+[calendars]
+"30" = [6.0, 2, 4.0, 2.0, 7.0, [2.0, 3.0, 1.0], 5.0]
+"45" = [8.0, 4, 3.5, 2.0, 10.0, [3.0, 4.0, 1.5], 5.0]
+"60" = [10.0, 6, 3.5, 2.0, 10.0, [3.0, 4.0, 1.5], 7.0]
+"90" = [10.0, 10, 4.0, 2.0, 12.0, [4.0, 5.0, 1.5], 8.0]
+
+# Archétypes disponibles par objectif
+[reservoirs]
+endurance = ["diesel", "grimpeur", "saboteur"]
+threshold = ["diesel", "grimpeur", "saboteur"]
+vo2max = ["puncheur", "sprinteur", "grimpeur"]
+
+# Profils des salles par archétype et par objectif (valeurs de départ du cahier R3 §4.2).
+# Grandeurs : pentes en %, fw en fraction de la FTP, durées en secondes.
+[room_profiles.diesel.endurance]
+g0 = 2.0
+g1 = 3.0
+fw = 0.68
+
+[room_profiles.diesel.threshold]
+g0 = 3.0
+g1 = 4.0
+fw = 0.9
+
+[room_profiles.puncheur.vo2max]
+bump_s = 15.0
+valley_s = 30.0
+bump_grade = 9.0
+valley_grade = -2.0
+fw_bump = 1.06
+fw_valley = 0.67
+bump_s_30_30 = 30.0
+fw_bump_30_30 = 0.95
+fw_valley_30_30 = 0.65
+
+[room_profiles.grimpeur.endurance]
+steps = [2.0, 3.0, 4.0]
+step_s = 60.0
+fw = 0.7
+
+[room_profiles.grimpeur.threshold]
+steps = [4.0, 7.0, 10.0]
+step_s = 60.0
+fw = 0.88
+
+[room_profiles.grimpeur.vo2max]
+steps = [5.0, 8.0, 10.0]
+step_s = 60.0
+fw = 0.95
+
+[room_profiles.sprinteur.threshold]
+fw = 0.75
+burst_fw = 1.3
+burst_s = 10.0
+period_s = 45.0
+
+[room_profiles.sprinteur.vo2max]
+fw = 0.8
+burst_fw = 1.5
+burst_s = 8.0
+period_s = 40.0
+
+[room_profiles.saboteur.endurance]
+lo = 1.0
+hi = 3.0
+fw = 0.68
+
+[room_profiles.saboteur.threshold]
+lo = 2.0
+hi = 5.0
+fw = 0.88
+
+[room_profiles.boss.endurance]
+p1_grade = 3.0
+p1_fw = 0.7
+p1_locks = 4
+p2_grades = [4.0, 0.0, 5.0]
+p2_fw = [0.8, 0.6, 0.85]
+p2_block_s = 40.0
+shock_period_s = 30.0
+p3_grade = 0.0
+p3_fw = 0.85
+
+[room_profiles.boss.threshold]
+p1_grade = 5.0
+p1_fw = 0.9
+p1_locks = 4
+p2_grades = [8.0, 0.0, 10.0]
+p2_fw = [1.0, 0.7, 1.05]
+p2_block_s = 40.0
+shock_period_s = 30.0
+p3_grade = 0.0
+p3_fw = 1.2

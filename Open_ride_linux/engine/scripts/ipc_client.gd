@@ -28,14 +28,22 @@ signal workout_saved_received(msg: Dictionary)
 ## Plans d'entraînement et suivi du plan actif (lot O12, contrat v1.3) : réponse à list_plans,
 ## start_plan et stop_plan, en un seul datagramme.
 signal plans_received(msg: Dictionary)
+
+## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
+signal world_status_received(msg: Dictionary)
+## Menu du monde ouvert (lot W11) : réponses complètes (parties réunies) à `world_search`, `world_map`,
+## `world_regions` et `world_pin`. `kind` : "places", "world_map" ou "world_regions".
+signal world_menu_received(kind: String, msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
+## Révision 1.4 (série T, lot T9) : passage de segment terminé (message répété 3 fois par le core).
+signal segment_result_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
 const CONTRACT_VERSION := 1
 ## Révision du contrat annoncée dans hello (champ facultatif rev, révision 1.3).
-const CONTRACT_REV := "1.3"
+const CONTRACT_REV := "1.4"   # série T lue depuis les lots T8 et T9
 ## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
 var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"
@@ -50,6 +58,11 @@ var test_mode := false
 
 ## Configuration reçue dans hello_ack (ftp_w, gears_total, theme) ; vide tant que le core n'a pas répondu.
 var core_config: Dictionary = {}
+## Dernier champ `open_world` reçu dans un `state` (une trame sur 30 porte `devices` et l'omet : on garde
+## le précédent, contrat §4 « Monde ouvert »). Vide hors monde ouvert.
+var open_world: Dictionary = {}
+## Dernier `world_status` reçu.
+var world_status: Dictionary = {}
 var core_version: String = ""
 ## Révision du contrat annoncée par le core (vide : core antérieur à la révision 1.3).
 var core_rev: String = ""
@@ -222,10 +235,17 @@ func _poll_incoming() -> void:
 				workout_saved_received.emit(json_obj)
 			"plans":
 				plans_received.emit(json_obj)
+			"world_status":
+				world_status = json_obj
+				world_status_received.emit(json_obj)
+			"places", "world_map", "world_regions":
+				_on_world_part(msg_type, json_obj)
 			"scan_results":
 				scan_results_received.emit(json_obj)
 			"settings":
 				settings_received.emit(json_obj)
+			"segment_result":
+				segment_result_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -248,7 +268,48 @@ func _on_state(msg: Dictionary) -> void:
 		test_log("core_returned")
 		core_returned.emit()
 	_ack_pending(int(msg.get("last_cmd_id", 0)))
+	_track_open_world(msg)
 	state_received.emit(msg)
+
+
+var _world_parts: Dictionary = {}     # type -> {rid, parts, got, done}
+
+
+## Réunit les parties d'une réponse du menu du monde ouvert ; une réponse déjà livrée (la commande est
+## renvoyée tant qu'elle n'est pas acquittée) n'est pas livrée deux fois.
+func _on_world_part(kind: String, msg: Dictionary) -> void:
+	var rid := int(msg.get("request_cmd_id", -1))
+	var parts := maxi(1, int(msg.get("parts", 1)))
+	var part := int(msg.get("part", 1))
+	if part < 1 or part > parts:
+		return
+	var slot: Dictionary = _world_parts.get(kind, {})
+	if int(slot.get("rid", -2)) != rid:
+		slot = {"rid": rid, "parts": parts, "got": {}, "done": false}
+	if slot["done"]:
+		return
+	slot["got"][part] = msg
+	_world_parts[kind] = slot
+	if slot["got"].size() < parts:
+		return
+	slot["done"] = true
+	var key := "roads" if kind == "world_map" else "items"
+	var whole: Dictionary = (slot["got"][1] as Dictionary).duplicate()
+	var all := []
+	for i in range(1, parts + 1):
+		all.append_array(slot["got"][i].get(key, []))
+	whole[key] = all
+	world_menu_received.emit(kind, whole)
+
+
+
+## Garde le dernier `open_world` tant que la séance est un monde ouvert (route `ow:<id>`) ; le vide sinon.
+func _track_open_world(msg: Dictionary) -> void:
+	var ow = msg.get("open_world", null)
+	if typeof(ow) == TYPE_DICTIONARY:
+		open_world = ow
+	elif not str(msg.get("route_id", "")).begins_with("ow:"):
+		open_world = {}
 
 
 ## Messages de test (type « _test », seulement avec --test-mode) : permettent au faux core de

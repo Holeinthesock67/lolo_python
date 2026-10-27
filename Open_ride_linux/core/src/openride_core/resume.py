@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .journal import TIMER_EVENTS, read_journal
+from .journal import GAME_KINDS, TIMER_EVENTS, read_journal
 
 
 class ResumeError(Exception):
@@ -35,6 +35,7 @@ class ResumeState:
     last_ts: float = 0.0              # heure Unix de la dernière ligne (instant approché du plantage)
     running: bool = True              # le chronomètre tournait au moment du plantage
     lines: list[dict] = field(default_factory=list)   # lignes à reprendre en mémoire (sans en-tête)
+    rogue: dict | None = None         # dernier instantané `rogue_snapshot` d'une run Cyber-Rogue (lot R8)
 
 
 def _timer_events(lines: list[dict]) -> list[dict]:
@@ -69,7 +70,7 @@ def load_resume_state(path: Path) -> ResumeState:
     except OSError as exc:
         raise ResumeError(f"journal illisible ({path}) : {exc}") from exc
     header = next((ln for ln in all_lines if ln.get("kind") == "header"), {})
-    lines = [ln for ln in all_lines if ln.get("kind") in ("record", "event", "device")]
+    lines = [ln for ln in all_lines if ln.get("kind") in ("record", "event", "device", *GAME_KINDS)]
     events = _timer_events(lines)
     if not events:
         raise ResumeError(f"aucune séance commencée dans {path}")
@@ -81,7 +82,7 @@ def load_resume_state(path: Path) -> ResumeState:
         path=path, route_id=header.get("route_id"), workout_id=header.get("workout_id"),
         t=0.0, s=0.0, gear=None, mode="SIM", block=None,
         last_ts=float(events[-1]["ts"]), running=events[-1]["event"] in ("start", "resume"),
-        lines=lines)
+        lines=lines, rogue=next((ln for ln in reversed(lines) if ln.get("kind") == "rogue_snapshot"), None))
     if not records:
         return state
     last = records[-1]

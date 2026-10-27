@@ -415,13 +415,22 @@ gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme"
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
+[powerups]
+mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
+[rogue]
+w_prime_j = 20000.0          # réserve anaérobie W' du mode Cyber-Rogue, 5 000 à 60 000 J (lot R2)
+cp_w = 0.0                   # puissance critique, 0 à 1 000 W ; 0 : la FTP
+grade_rate_up_pct_per_s = 8.0     # rampe de pente du mode Cyber-Rogue, montée (0,1 à 100 %/s, lot R8)
+grade_rate_down_pct_per_s = 12.0  # descente
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
 
 La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
 
-**Sections prévues pour la 2.0.** Les clés des sections `[rogue]` et `[avatar]` sont fixées par la révision 1.4 du contrat IPC (lot T1) ; elles rejoindront l'exemple ci-dessus avec les lots qui les lisent (le core les transmet à l'engine dans `hello_ack.config.rogue` et `hello_ack.config.progression.avatar`) :
+La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
+
+**Sections prévues pour la 2.0.** Les clés des sections `[rogue]` et `[avatar]` sont fixées par la révision 1.4 du contrat IPC (lot T1) ; elles rejoignent l'exemple ci-dessus avec les lots qui les lisent (`[rogue] w_prime_j` et `cp_w` depuis R2) ; le core les transmet à l'engine dans `hello_ack.config.rogue` et `hello_ack.config.progression.avatar` :
 
 | Section et clé | Défaut | Bornes | Lot qui la lit |
 | --- | --- | --- | --- |

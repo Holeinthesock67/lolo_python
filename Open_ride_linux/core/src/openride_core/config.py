@@ -134,6 +134,22 @@ class WindConfig:
 
 
 @dataclass
+class RogueConfig:
+    """Mode Cyber-Rogue de la 2.0 (série R, SRS §11)."""
+
+    w_prime_j: float = 20000.0   # réserve anaérobie W' (décision Q5)
+    cp_w: float = 0.0            # puissance critique ; 0 : la FTP du cavalier
+    grade_rate_up_pct_per_s: float = 8.0     # rampe de pente du trainer propre au mode (lot R8, valeur de R0)
+    grade_rate_down_pct_per_s: float = 12.0
+
+
+@dataclass
+class PowerupsConfig:
+    """Bonus du mode classique (série T, lots T6 et T7) ; valeurs dans `~/OpenRide/powerups.toml`."""
+    mode: str = "on"               # "on" ou "off" (ni arche ni réserve ; segments toujours chronométrés)
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -145,6 +161,8 @@ class Config:
     drivers: DriversConfig = field(default_factory=DriversConfig)
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
+    rogue: RogueConfig = field(default_factory=RogueConfig)
+    powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -196,6 +214,10 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("wind", "from_deg"): (0, 360),
     ("wind", "gust_pct"): (0, 100),
     ("wind", "max_grade_offset_pct"): (0, 8),
+    ("rogue", "w_prime_j"): (5000, 60000),
+    ("rogue", "cp_w"): (0, 1000),
+    ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
+    ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -210,6 +232,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "hr"): ("none", "ble", "sim"),
     ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
     ("wind", "feel"): ("grade", "ftms"),
+    ("powerups", "mode"): ("on", "off"),
 }
 
 

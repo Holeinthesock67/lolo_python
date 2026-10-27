@@ -15,11 +15,14 @@ Règle d'interpolation (format §4.5) :
 from __future__ import annotations
 
 import json
+import logging
 import math
 from dataclasses import dataclass
 from pathlib import Path
 
 from .config import ROUTES_DIR
+
+log = logging.getLogger("route")
 
 FORMAT_NAME = "openride-world"
 SUPPORTED_MAJOR = 1
@@ -172,6 +175,7 @@ class World:
     path: Path
     manifest: dict
     route: Route
+    segments: tuple = ()        # couche `segments.json` (format 1.3, série T), vide si absente
 
     @property
     def name(self) -> str:
@@ -215,4 +219,33 @@ def load_world(path: Path) -> World:
                          f"format_version {manifest['format_version']} trop récent (majeur {SUPPORTED_MAJOR} lu)")
     route_file = (manifest.get("route") or {}).get("file", "route.json")
     route = Route(_read_json(path / route_file, route_file))
-    return World(path=path, manifest=manifest, route=route)
+    return World(path=path, manifest=manifest, route=route, segments=load_segments(path, manifest, route))
+
+
+def load_segments(path: Path, manifest: dict, route: Route) -> tuple:
+    """Couche facultative `segments.json` (format §8 bis) ; invalide : ignorée avec un avertissement.
+
+    La séance reste possible sans segment : la couche n'est jamais une raison de refuser un parcours.
+    """
+    from .segments import Segment
+
+    layer = (manifest.get("layers") or {}).get("segments")
+    if not isinstance(layer, dict) or not layer.get("present"):
+        return ()
+    name = str(layer.get("file") or "segments.json")
+    try:
+        data = _read_json(path / name, name)
+        if not str(data.get("version", "")).startswith("1."):
+            raise ValueError(f"version {data.get('version')!r} inconnue")
+        out = []
+        for item in data["segments"]:
+            seg = Segment(**{k: item[k] for k in Segment.__dataclass_fields__})
+            if seg.type not in ("sprint", "climb") or not 0.0 <= seg.s_start < seg.s_end <= route.length_m + 0.1:
+                raise ValueError(f"segment {seg.id} invalide")
+            out.append(seg)
+        if len({s.id for s in out}) != len(out):
+            raise ValueError("identifiants en double")
+    except (WorldError, KeyError, TypeError, ValueError) as exc:
+        log.warning("%s : couche segments ignorée (%s)", path.name, exc)
+        return ()
+    return tuple(sorted(out, key=lambda s: s.s_start))

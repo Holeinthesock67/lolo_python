@@ -49,7 +49,7 @@ class Setting:
 
 SETTINGS: tuple[Setting, ...] = (
     Setting("rider.ftp_w", "FTP", 5, "W"),
-    Setting("rider.mass_kg", "Poids du cycliste", 1, "kg"),
+    Setting("rider.mass_kg", "Poids", 1, "kg"),
     Setting("trainer.difficulty_pct", "Difficulté en SIM", 10, "%"),
     Setting("gearing.start_gear", "Braquet de départ", 1),
     Setting("render.quality", "Qualité graphique", applies="now"),
@@ -58,6 +58,8 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("wind.mode", "Vent"),
     Setting("wind.speed_kmh", "Force du vent", 5, "km/h"),
     Setting("wind.max_grade_offset_pct", "Plafond du vent", 1, "pts"),
+    # Bonus du mode classique (série T, lots T7 et T10)
+    Setting("powerups.mode", "Bonus"),
 )
 KEYS = tuple(s.key for s in SETTINGS)
 

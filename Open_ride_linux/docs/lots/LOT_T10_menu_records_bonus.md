@@ -12,14 +12,14 @@ Dans le menu de l'engine : un écran « Records » par parcours (pour chaque seg
 
 ## 3. Prérequis
 
-T5 et N6 (livrés) ; T7 pour la clé `[powerups] enabled` de `set_setting` et pour des records réels.
+T5 et N6 (livrés) ; T7 pour la clé `powerups.mode` de `set_setting` et pour des records réels.
 
 ## 4. Travail demandé
 
 - **Lecture des records :** l'engine lit lui-même `~/OpenRide/records.json` en lecture seule, comme il lit déjà les `.world` et `config.toml` ; version inconnue ou fichier illisible : écran « Aucun record lisible », sans erreur. Le core reste le seul à écrire ce fichier. *Choix proposé :* ce chemin évite une commande `list_records` dans le contrat ; si le propriétaire préfère passer par le core, la commande prendra la prochaine révision libre.
 - **Modèle sans affichage** `engine/scripts/records_view_model.gd`, testé par `engine/tests/unit/test_records_view_model.gd` : liste des segments du parcours choisi (noms lus dans `segments.json`), puis table du segment, basculement « sans bonus » / « avec bonus » ; temps au dixième, date, puissance moyenne et W/kg.
 - **Menu :** entrée « Records » sur l'écran « Prêt » du parcours choisi ; navigation selon le plan de boutons commun (spécification générale §7.1, sans exception) : ± déplacent, A court passe à l'élément suivant (bascule de table), A long valide, Y revient.
-- **Option « Bonus » :** ligne des réglages (O3) liée à la clé `powerups.enabled` de `set_setting` (T7), refusée pendant une séance (`busy`) comme les autres réglages.
+- **Option « Bonus » :** ligne des réglages (O3) liée à la clé `powerups.mode` (`on` ou `off`) de `set_setting` (T7), refusée pendant une séance (`busy`) comme les autres réglages.
 
 ## 5. Fichiers concernés
 
@@ -40,3 +40,16 @@ Aucune.
 ## 8. Hors périmètre
 
 - Effacement ou export des records ; menu Cyber-Rogue (R13) et Garage (V8).
+
+## 9. Livraison (27 octobre 2026, code ; validation sur le PC)
+
+- Nouveau modèle `engine/scripts/records_view_model.gd` :
+  - lecture seule de `~/OpenRide/records.json`, relu à chaque ouverture de l'écran ; fichier absent : aucun temps ; illisible ou version autre que 1 : « Aucun record lisible » ;
+  - liste des segments du parcours (noms de la couche `segments`), meilleur temps sans bonus et meilleur temps avec bonus ; segment sans temps désactivé ;
+  - table d'un segment : les temps au dixième (« 1. 4:08,1 · 27/10/2026 18:05 »), puissance moyenne et W/kg ; première ligne « A : voir les temps avec bonus » (ou « sans bonus »).
+- Menu :
+  - `menu_model.gd` : entrée « Records du parcours » en fin d'écran Prêt ;
+  - `menu_flow.gd` : écrans « Records » et table ; A long ouvre, A court bascule entre les deux tables, Y revient ; aucune commande ajoutée au contrat ;
+  - `main.gd` donne la couche `segments` au modèle au chargement du parcours.
+- Option « Bonus » : la ligne des réglages vient du core (clé `powerups.mode`, T7) ; `settings_view_model.gd` affiche `on` / `off` en « oui » / « non » (table `CHOICE_TEXTS`). `menu_view.gd` reste inchangé.
+- Tests : `engine/tests/unit/test_records_view_model.gd` (deux tables, fichier absent, version inconnue, fichier illisible, segment sans record, navigation depuis l'écran Prêt, oui / non), à lancer sur le PC (Godot n'est pas disponible dans l'environnement cloud).

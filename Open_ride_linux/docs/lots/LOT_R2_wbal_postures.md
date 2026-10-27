@@ -68,3 +68,10 @@ Section `[rogue]` de la configuration (SRS §11), deux champs.
 
 - Estimation de CP et W' depuis l'historique (lot R16).
 - Effets des postures sur le combat (lot R5).
+
+## 9. Livraison (27 octobre 2026)
+
+- Paquet `rogue` du core (`rogue/wbal.py`, `rogue/posture.py`, `rogue/balance.py`) et section `[rogue]` de `config.toml` (`w_prime_j`, `cp_w`), sans changement de `session.py` ni du contrat ; branchement par R8. Tests : `core/tests/test_rogue_wbal_posture.py`.
+- La recharge est intégrée de façon exacte sur le pas (exponentielle), donc indépendante du pas de calcul.
+- `wbal_step` prend `cp_w` et `w_prime_j` en paramètres nommés (R8 y met la FTP quand `cp_w` vaut 0) et un argument facultatif `posture` : donné, le bonus de recharge exige `FLUIDE` ; sinon seule la cadence compte.
+- À la reprise après `ARRET`, la cadence lissée repart de la cadence mesurée, sinon la posture retomberait en `ROC` par effet du lissage.
