@@ -18,7 +18,8 @@ Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de réf�
   rotation). Sans terminal (raccourci de bureau), les messages ne vont que dans le journal ;
 - l'engine (`GODOT --path engine -- --ipc-state-port=… --ipc-cmd-port=…`) reçoit les ports de la
   configuration (`--config` éventuel, sinon `~/OpenRide/config.toml`) ; variables `GODOT`,
-  `GODOT_ARGS` et `OPENRIDE_ENGINE` (dossier du projet Godot).
+  `GODOT_ARGS`, `OPENRIDE_ENGINE` (dossier du projet Godot) et `OPENRIDE_PERF_PROBE` (fichier CSV de
+  la sonde de performance du moteur, `--perf-probe`, lot X13).
 
 Supervision :
 - l'engine se ferme normalement (code 0) → arrêt propre du core (SIGINT), 10 s au plus, puis
@@ -39,7 +40,11 @@ Relance demandée depuis le menu (lot N13) :
 - l'engine se ferme avec le code 64 (`EXIT_RELAUNCH`, après l'enregistrement de nouveaux appareils)
   → arrêt propre du core (trainer relâché), puis core et engine relancés : le core relit
   `config.toml` et se connecte aux appareils choisis. Ce n'est pas un plantage : le compteur de
-  relances de l'engine n'avance pas.
+  relances de l'engine n'avance pas. En session simulée, le code 64 ramène au vrai matériel ;
+- code 65 (`EXIT_SIM`, menu « Session simulée ») → même relance, mais le core reçoit
+  `--trainer sim --input sim --hr sim --sim-scenario nominal` (HomeTrainer, Click et ceinture
+  simulés, `docs/SIMULATION_BLE.md`) et l'engine `--sim-session` ; les relances après un
+  plantage gardent le mode en cours.
 
 Lancement sans terminal (lot N14) :
 - premier démarrage : sans `~/OpenRide/config.toml`, il est créé depuis
@@ -84,6 +89,10 @@ DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click"]
 
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
 EXIT_RELAUNCH = 64
+EXIT_SIM = 65
+# Options du core en session simulée (remplacent --trainer, --input, --hr et --sim-scenario).
+SIM_CORE_ARGS = ["--trainer", "sim", "--input", "sim", "--hr", "sim", "--sim-scenario", "nominal"]
+SIM_ENGINE_ARG = "--sim-session"
 
 STOP_SIGNALS = tuple(s for s in (signal.SIGINT, signal.SIGTERM, getattr(signal, "SIGHUP", None)) if s is not None)
 
@@ -248,7 +257,8 @@ class Supervisor:
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
     core_restarts: int = field(default=0, init=False)
-    relaunches: int = field(default=0, init=False)   # relances demandées depuis le menu (code 64)
+    relaunches: int = field(default=0, init=False)   # relances demandées depuis le menu (codes 64 et 65)
+    sim_mode: bool = field(default=False, init=False)   # session simulée en cours (code 65)
     _launched_at: float = field(default=0.0, init=False)   # heure Unix du lancement (journaux de ce lancement)
     _log_scan_pos: int = field(default=0, init=False)
     _next_log_scan: float = field(default=0.0, init=False)
@@ -335,10 +345,16 @@ class Supervisor:
         self.started_pids.append(p.pid)
         return p
 
+    def _core_cmd(self) -> list[str]:
+        return sim_core_cmd(self.core_cmd) if self.sim_mode else list(self.core_cmd)
+
+    def _engine_cmd(self) -> list[str]:
+        return [*self.engine_cmd, SIM_ENGINE_ARG] if self.sim_mode else list(self.engine_cmd)
+
     def _start_core(self, extra: list[str] | None = None) -> subprocess.Popen:
         if self._log is None:
             self._open_log()
-        return self._spawn([*self.core_cmd, *(extra or [])], stdin=subprocess.DEVNULL,
+        return self._spawn([*self._core_cmd(), *(extra or [])], stdin=subprocess.DEVNULL,
                            stdout=self._log, stderr=subprocess.STDOUT)
 
     def _unfinished_journal(self) -> Path | None:
@@ -367,8 +383,8 @@ class Supervisor:
 
     def _start_engine(self) -> subprocess.Popen:
         if self._log is None:
-            return self._spawn(self.engine_cmd, stdin=subprocess.DEVNULL)
-        p = self._spawn(self.engine_cmd, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+            return self._spawn(self._engine_cmd(), stdin=subprocess.DEVNULL)
+        p = self._spawn(self._engine_cmd(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
         reader = threading.Thread(target=self._pump, args=(p.stdout,), name="engine-log", daemon=True)
         reader.start()
         self._readers.append(reader)
@@ -517,8 +533,11 @@ class Supervisor:
                     code = engine.returncode
                     if code == 0:
                         return self._finish(core, engine, 0)
-                    if code == EXIT_RELAUNCH:
-                        self._say("relance demandée depuis le menu : arrêt du core puis nouveau lancement.")
+                    if code in (EXIT_RELAUNCH, EXIT_SIM):
+                        self.sim_mode = code == EXIT_SIM
+                        self._say("relance demandée depuis le menu"
+                                  + (" en session simulée (sans matériel)" if self.sim_mode else "")
+                                  + " : arrêt du core puis nouveau lancement.")
                         self._join_readers()
                         self._stop_core(core)
                         core = self._start_core()
@@ -595,6 +614,23 @@ class Supervisor:
 
 # --- ligne de commande -------------------------------------------------------------------
 
+def sim_core_cmd(core_cmd: list[str]) -> list[str]:
+    """Commande du core en session simulée : --trainer, --input, --hr et --sim-scenario remplacés."""
+    out: list[str] = []
+    skip = False
+    for a in core_cmd:
+        if skip:
+            skip = False
+            continue
+        if a in ("--trainer", "--input", "--hr", "--sim-scenario"):
+            skip = True
+            continue
+        if a.split("=", 1)[0] in ("--trainer", "--input", "--hr", "--sim-scenario"):
+            continue
+        out.append(a)
+    return [*out, *SIM_CORE_ARGS]
+
+
 def extract_launcher_args(args: list[str]) -> tuple[list[str], bool, bool, float]:
     """Extrait les arguments propres au lanceur (--no-compile, --compile-only, --compile-timeout)."""
     core_args: list[str] = []
@@ -667,6 +703,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--ipc-cmd-port={cfg.ipc.port_commands}",
             f"--quality={cfg.render.quality}",
             f"--theme={cfg.render.theme}",
+            *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),
         ],
         release_cmd=[*core, "release-trainer", *config_args],
         recover_cmd=[*core, "recover"],

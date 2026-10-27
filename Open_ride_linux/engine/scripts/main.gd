@@ -20,6 +20,7 @@ const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -30,6 +31,8 @@ const MENU_CAMERA_MPS := 4.0
 ## Code de sortie de l'engine qui demande au lanceur `openride` de tout relancer (nouveaux appareils
 ## enregistrés, lot N13) ; voir core/src/openride_core/launcher.py.
 const EXIT_RELAUNCH := 64
+## Code de sortie « relancer en session simulée » (menu « Session simulée »).
+const EXIT_SIM := 65
 
 @onready var ipc: Node = $IpcClient
 @onready var camera: Camera3D = $Camera3D
@@ -56,8 +59,11 @@ var erg_panel = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
+var _theme_name: String = "default"
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
+## Sonde de performance (lot X13), active avec --perf-probe=FICHIER.csv.
+var _probe = PerfProbe.new()
 
 const BEEPS := {
 	"PLUS_SHORT": [[880.0, 0.08]],
@@ -84,9 +90,13 @@ var _menu_s := 0.0
 func _ready() -> void:
 	var cfg := EngineArgs.current()
 	routes_dir = cfg["routes_dir"]
+	if cfg.get("sim_session", false):
+		menu_flow.menu.set_sim_session(true)
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
+	if str(cfg.get("perf_probe", "")) != "":
+		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"
@@ -114,11 +124,7 @@ func _ready() -> void:
 		sky_mat.sky_top_color = Color(0.38, 0.65, 0.98)
 		sky_mat.sky_horizon_color = Color(0.65, 0.75, 0.85)
 		world_env.environment.sky.sky_material = sky_mat
-	var theme_res := ThemeLoader.load_named(cfg.get("theme", "default"))
-	var theme_dict: Dictionary = theme_res.get("theme", {})
-	var theme_dir: String = theme_res.get("theme_dir", "")
-	streamer.set_theme(theme_dict, theme_dir)
-	_apply_sky_params(theme_dict)
+	_apply_theme(str(cfg.get("theme", "default")))
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
@@ -165,9 +171,40 @@ func _ready() -> void:
 				(msg.get("items", []) as Array).size() if msg.get("items") is Array else 0, str(msg.get("plus_address"))])
 		menu_flow.on_scan_results(msg)
 		_refresh_menu())
+	ipc.settings_received.connect(_on_settings)
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
 		_refresh_menu())
+
+
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité et thème appliqués tout de suite au décor.
+func _on_settings(msg: Dictionary) -> void:
+	menu_flow.on_settings(msg)
+	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
+	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
+		_quality_name = q
+		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+		if streamer.tree_renderer != null:
+			streamer.tree_renderer.set_preset(_quality_name)
+		print("Qualité graphique : ", _quality_name)
+	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
+	if th != _theme_name:
+		_apply_theme(th)
+	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
+	if ftp != null:
+		ipc.core_config["ftp_w"] = ftp
+	_refresh_menu()
+
+
+func _apply_theme(name: String) -> void:
+	_theme_name = name
+	var theme_res := ThemeLoader.load_named(name)
+	var theme_dict: Dictionary = theme_res.get("theme", {})
+	streamer.set_theme(theme_dict, theme_res.get("theme_dir", ""))
+	_apply_sky_params(theme_dict)
+	if route != null and _route_job.is_empty():
+		streamer.set_world(route, _route_path(str(_route_id_requested)))   # décor reconstruit avec le thème
+	print("Thème : ", name)
 
 
 func _apply_sky_params(theme_dict: Dictionary) -> void:
@@ -208,18 +245,26 @@ func _run_menu_action(act: Dictionary) -> void:
 		"list":
 			ipc.list_routes()
 			ipc.list_workouts()
+			ipc.list_settings()
+			if act.get("route_id") != null:
+				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
 			print("Quitter demandé depuis le menu.")
 			get_tree().quit()
-		"relaunch":
-			print("Relance d'OpenRide demandée depuis le menu (code %d)." % EXIT_RELAUNCH)
-			get_tree().quit(EXIT_RELAUNCH)
+		"relaunch", "relaunch_sim":
+			var code := EXIT_SIM if name == "relaunch_sim" else EXIT_RELAUNCH
+			print("Relance d'OpenRide demandée depuis le menu (code %d)." % code)
+			get_tree().quit(code)
 		"scan_devices":
 			ipc.scan_devices()
 		"identify_click_plus":
 			menu_flow.pairing.identify_cmd_id = ipc.identify_click_plus()
 		"pair_devices":
 			ipc.pair_devices(act.get("args", {}))
+		"set_setting":
+			ipc.set_setting(str(act["key"]), act["value"])
+		"set_difficulty":
+			ipc.send_set_difficulty(int(act["pct"]))
 		"select_route":
 			ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"select_workout":
@@ -278,6 +323,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	_poll_route_job()
 	_record_frame_perf(delta)
+	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	if _menu_camera(delta):
 		return
@@ -424,7 +470,7 @@ func _poll_route_job() -> void:
 
 ## Messages de test (--test-mode) : « screenshot » enregistre l'image affichée en PNG et journalise
 ## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py ;
-## « menu_input » joue un appui du Click dans les menus.
+## « menu_input » joue un appui du Click dans les menus ; « command » fait envoyer une commande par l'engine.
 func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
@@ -433,6 +479,8 @@ func _on_test_message(msg: Dictionary) -> void:
 			var ev := str(msg.get("event", ""))
 			if ev in MenuModel.EVENTS:
 				_menu_event(ev)
+		"command":   # commande du contrat envoyée par l'engine lui-même (pause, end_session…)
+			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
 
 
 func _test_screenshot(path: String, tag: String) -> void:
@@ -482,8 +530,10 @@ func _widget_text(key: String) -> String:
 
 func _on_hello_ack(_ack: Dictionary) -> void:
 	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage. Core (re)démarré : listes
-	# redemandées au prochain état affichant le menu.
+	# redemandées au prochain état affichant le menu. Modes de l'accueil : hello_ack.config.modes
+	# (2.0 ; absent en 1.0).
 	menu_flow.lists_needed()
+	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 
 
 func _on_core_error(code: String, message: String) -> void:
@@ -576,3 +626,4 @@ func _give_cues(state: Dictionary) -> void:
 func _exit_tree() -> void:
 	if not _route_job.is_empty():
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
+	_probe.close()

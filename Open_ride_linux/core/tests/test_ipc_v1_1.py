@@ -203,8 +203,10 @@ def test_loop_lag_unblocked_during_catalog_reading(tmp_path: Path, monkeypatch):
                 last = now
                 session.server.process_incoming_datagrams()
 
-            # Le retard de pas ne doit pas dépasser 20 ms malgré le catalogue qui dort 100 ms
-            assert max_lag < 0.025
+            # Le catalogue dort 100 ms : une boucle bloquée prendrait environ 80 ms de retard.
+            # Le seuil de 60 ms détecte ce blocage en laissant la marge d'une machine chargée
+            # (31 ms relevés sur le runner GitHub, moins de 5 ms en local).
+            assert max_lag < 0.060
         finally:
             session.server.stop()
 

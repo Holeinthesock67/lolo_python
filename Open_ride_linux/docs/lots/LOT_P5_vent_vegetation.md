@@ -48,3 +48,13 @@ Aucune.
 ## 8. Hors périmètre
 
 - Herbe en brins sur tout le terrain, teintes et feuilles d'automne (P18, version 2.0), arbres qui plient sous la tempête.
+
+## 9. Livraison (26 octobre 2026)
+
+Livré sur la branche `lot-p5-vent-vegetation`, au-dessus de P4. O1 n'étant pas encore sur main, seul le choix des matériaux de `tree_renderer.gd` change (rien dans la préparation des arbres).
+
+- **`tree_sway.gdshader`** : déplacement horizontal = direction × force × (hauteur relative)² × amplitude (0,45 m à la cime par 60 km/h), autour d'une légère inclinaison, phase décalée par la position de l'instance, rafales qui augmentent amplitude et fréquence ; `foliage_tint` neutre pour P18 ; vent propre au matériau (`use_local_wind`) pour l'herbe. Les quatre paramètres globaux sont déclarés dans `project.godot` (`[shader_globals]`) : les déclarer au lancement passe par une fonction réservée à l'éditeur, qui échoue dans le jeu.
+- **`tree_renderer.gd`** : `set_preset(preset, living_enabled)` choisit le shader sur les deux LOD quand `living(preset).tree_sway` est vrai (le LOD 1 en copie `cull_disabled`, amplitude × 0,6), sinon les `StandardMaterial3D` d'origine ; `apply_wind(eval)` met à jour les quatre paramètres en un appel par image (à brancher par P16).
+- **`grass_tufts.gd`** : nœud autonome, tronçons de 40 m (1 derrière, 6 devant), bande de 2 à 15 m du bord de la route, exclusions par polygones (bâtiments, eau), densité réduite avec la pente (`height_at`), remplissage étalé sur plusieurs images (120 places par image au plus, route échantillonnée une fois par tronçon), 0 touffe en `low`.
+- **Tests** : `test_grass_tufts.gd` (16 vérifications, dont 0,07 ms par image pour 12 000 touffes avec le vent) ; `test_tree_sway_render.gd` (4, sous Xvfb). Les matériaux sont vérifiés dans `test_grass_tufts.gd`, ce qui laisse `test_tree_renderer.gd` inchangé pour O1.
+- **Reste sur le PC (le propriétaire, avec P16)** : 10 min en `low` avec vent de 25 km/h, arbres sans clignotement, plus de 55 images/s.
