@@ -124,6 +124,13 @@ func test_info(camera: Camera3D) -> Dictionary:
 		var n: Node3D = _nodes[key]
 		if n.visible:
 			shown += 1
-			if camera != null and camera.is_position_in_frustum(n.global_position + Vector3(0.0, 1.0, 0.0)):
+			if camera != null and _on_screen(camera, n.global_position + Vector3(0.0, 1.0, 0.0)):
 				in_view += 1
 	return {"shown": shown, "in_view": in_view}
+
+
+## Devant la caméra et dans l'image (comme les panneaux de col de living_decor.gd).
+static func _on_screen(camera: Camera3D, point: Vector3) -> bool:
+	if camera.is_position_behind(point):
+		return false
+	return camera.get_viewport().get_visible_rect().has_point(camera.unproject_position(point))
