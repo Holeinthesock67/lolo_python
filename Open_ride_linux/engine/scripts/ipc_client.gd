@@ -25,6 +25,8 @@ signal test_message_received(msg: Dictionary)
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
 const CONTRACT_VERSION := 1
+## Révision du contrat annoncée dans hello (champ facultatif rev, révision 1.3).
+const CONTRACT_REV := "1.3"
 ## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
 var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"
@@ -40,6 +42,8 @@ var test_mode := false
 ## Configuration reçue dans hello_ack (ftp_w, gears_total, theme) ; vide tant que le core n'a pas répondu.
 var core_config: Dictionary = {}
 var core_version: String = ""
+## Révision du contrat annoncée par le core (vide : core antérieur à la révision 1.3).
+var core_rev: String = ""
 var last_state_seq := -1
 ## Diagnostic (contrat §6) : trames sautées (trous de seq) et trames arrivées en retard, ignorées.
 var seq_gap_count := 0
@@ -175,6 +179,12 @@ func _poll_incoming() -> void:
 				var cfg = json_obj.get("config", {})
 				core_config = cfg if typeof(cfg) == TYPE_DICTIONARY else {}
 				core_version = str(json_obj.get("core_version", ""))
+				var rev = json_obj.get("rev", "")
+				core_rev = rev if typeof(rev) == TYPE_STRING else ""
+				if core_rev != CONTRACT_REV:
+					# Même version majeure : compatible, les champs inconnus sont ignorés (contrat §8).
+					print("Révisions du contrat différentes : core %s, engine %s"
+						% [core_rev if core_rev != "" else "avant 1.3", CONTRACT_REV])
 				print("hello_ack reçu : core ", core_version, ", configuration ", core_config)
 				test_log("hello_ack config=%s" % JSON.stringify(core_config))
 				hello_ack_received.emit(json_obj)
@@ -339,6 +349,7 @@ func send_hello() -> void:
 	_send_json({
 		"type": "hello",
 		"v": CONTRACT_VERSION,
+		"rev": CONTRACT_REV,
 		"engine_version": engine_version
 	})
 
