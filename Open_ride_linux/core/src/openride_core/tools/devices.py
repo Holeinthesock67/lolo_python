@@ -128,14 +128,15 @@ def sim_sources(world: Any) -> tuple[Scanner, Connected]:
     """Recherche dans le monde simulé : tous les appareils annoncés pendant `timeout`."""
     async def scan(timeout: float) -> list[Found]:
         seen: dict[str, Found] = {}
-        end = world.now() + timeout
-        while True:
-            for d in world.devices:
-                if d.advertising():
-                    seen[d.address] = Found(d.name, d.address, getattr(d, "rssi", -60), list(d.uuids))
-            if world.now() >= end:
-                return list(seen.values())
-            await asyncio.sleep(0.05)
+        with world.discovery():   # InProgress si un pilote cherche au même moment, comme BlueZ
+            end = world.now() + timeout
+            while True:
+                for d in world.devices:
+                    if d.advertising():
+                        seen[d.address] = Found(d.name, d.address, getattr(d, "rssi", -60), list(d.uuids))
+                if world.now() >= end:
+                    return list(seen.values())
+                await asyncio.sleep(0.05)
 
     async def connected() -> list[Found]:
         return [Found(d.name, d.address, None, list(d.uuids)) for d in world.devices
