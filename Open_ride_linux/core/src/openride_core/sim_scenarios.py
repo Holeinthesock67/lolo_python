@@ -20,15 +20,8 @@ from __future__ import annotations
 
 import copy
 import json
-import sys
 from pathlib import Path
 from typing import Any
-
-if sys.platform == "win32" and hasattr(sys.stdin, "isatty"):
-    try:
-        sys.stdin.isatty = lambda: False  # type: ignore[method-assign]
-    except Exception:
-        pass
 
 from .ble_sim import WATCH_ADDRESS, WATCH_NAME, SimClickBox, SimHrStrap, SimTrainer, SimWorld
 

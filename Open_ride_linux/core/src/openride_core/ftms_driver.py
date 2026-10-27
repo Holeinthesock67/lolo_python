@@ -213,6 +213,7 @@ class FtmsDriver:
         # Cw = 0,5 · ρ · CdA (kg/m), cf. ftms.cmd_set_sim_params.
         self._crr = bike.crr
         self._cw = 0.5 * RHO0 * bike.cda_m2
+        self._wind_mps = 0.0   # champ vent de la commande 0x11 ([wind] feel = "ftms", lot P2)
 
         self._want = _Want()
         self._last_sent: tuple[str, float] | None = None
@@ -288,6 +289,10 @@ class FtmsDriver:
         self._immediate = self._immediate or immediate
         return True
 
+    def set_wind(self, wind_mps: float) -> None:
+        """Vent de face transmis avec la prochaine consigne SIM (au plus tard au renvoi)."""
+        self._wind_mps = float(wind_mps)
+
     def poll(self, t_session: float = 0.0) -> TrainerMetrics:
         now = self._clock()
         dt = 0.0 if self._last_poll_at is None else max(now - self._last_poll_at, 0.0)
@@ -309,6 +314,7 @@ class FtmsDriver:
             speed_kmh=0.0,   # la vitesse virtuelle vient de la physique du core
             hr_bpm=hr,
             connected=True,
+            hr_frozen=self._hr_frozen,
         )
 
     def stop(self) -> None:
@@ -609,7 +615,7 @@ class FtmsDriver:
             sent = (want.mode, want.value)
             if want.mode == "erg":
                 return ftms.cmd_set_target_power(want.value)
-            return ftms.cmd_set_sim_params(want.value, self._crr, self._cw)
+            return ftms.cmd_set_sim_params(want.value, self._crr, self._cw, self._wind_mps)
 
         await self._call_retrying(cp, build)
         self._last_sent_at = now

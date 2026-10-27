@@ -49,6 +49,12 @@ if mode.startswith("jcrash"):             # jcrash:N:DOSSIER : séance en cours 
     if len((marks / f"{role}_start").read_text().split()) <= int(limit):
         time.sleep(0.5)                   # après le délai de démarrage (0,3 s dans ces tests)
         os.kill(os.getpid(), signal.SIGKILL)
+if mode.startswith("relaunch"):           # relaunch:N:CODE : sort N fois avec CODE (relance, lot N13), puis se ferme
+    _, limit, code = mode.split(":")
+    time.sleep(0.2)
+    if len((marks / f"{role}_start").read_text().split()) <= int(limit):
+        sys.exit(int(code))
+    sys.exit(0)
 if mode.startswith("exit0"):              # exit0:T : se ferme normalement au bout de T s
     time.sleep(float(mode.split(":")[1]))
     sys.exit(0)
@@ -128,6 +134,17 @@ def test_engine_crashing_twice_is_restarted(fake):
     assert count(fake.marks, "engine_start") == 3
     assert count(fake.marks, "engine_SIGTERM") == 1 and count(fake.marks, "core_SIGINT") == 1
     assert sum("relance" in m for m in said) == 2
+    assert_no_orphans(sup)
+
+
+def test_engine_relaunch_code_restarts_core_and_engine(fake):
+    sup, said = fake(engine=f"relaunch:2:{launcher.EXIT_RELAUNCH}")
+    assert sup.run() == 0
+    assert sup.relaunches == 2 and sup.restarts == 0   # pas compté comme un plantage
+    assert count(fake.marks, "core_start") == 3 and count(fake.marks, "engine_start") == 3
+    assert count(fake.marks, "core_SIGINT") == 3       # chaque core arrêté proprement (trainer relâché)
+    assert count(fake.marks, "release_start") == 0
+    assert sum("relance demandée depuis le menu" in m for m in said) == 2
     assert_no_orphans(sup)
 
 
@@ -283,6 +300,8 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
         "--quality=low",
         "--theme=default",
     ]
+    probe = launcher.build_supervisor([], {**env, "OPENRIDE_PERF_PROBE": str(tmp_path / "sonde.csv")})
+    assert probe.engine_cmd[-1] == f"--perf-probe={tmp_path / 'sonde.csv'}"   # lot X13
 
     with pytest.raises(FileNotFoundError, match="Godot introuvable"):
         launcher.build_supervisor(["--config", str(cfg)], {**env, "GODOT": str(tmp_path / "absent")})
@@ -308,6 +327,8 @@ def test_log_has_core_engine_and_launcher_lines(fake, rotation):
     assert sup.run() == 0
     assert sup.log_path.parent == rotation.logs_dir and sup.log_path.name.startswith("openride_")
     lines = sup.log_path.read_text(encoding="utf-8").splitlines()
+    from openride_core import __version__
+    assert lines[0].endswith(f"[openride] OpenRide {__version__}")   # lot O2 : version en tête
     assert {"core ligne 0", "core ligne 2"} <= set(lines)
     assert {"[engine] engine ligne 0", "[engine] engine ligne 1"} <= set(lines)
     ours = [ln for ln in lines if "[openride]" in ln]
@@ -425,5 +446,7 @@ def test_openride_log_file_is_written_without_link(fake, tmp_path):
     sup, _ = fake(core="say:1:run", engine="say:1:exit0:0.2")
     assert sup.run() == 0
     text = (tmp_path / "run.log").read_text(encoding="utf-8")
+    from openride_core import __version__
+    assert text.splitlines()[0].endswith(f"[openride] OpenRide {__version__}")
     assert "core ligne 0" in text and "[engine] engine ligne 0" in text
     assert not (tmp_path / "Logs").exists()

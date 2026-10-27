@@ -46,3 +46,13 @@ Format `.world` : champs **facultatifs** `stats` et `library` dans le manifeste 
 ## 8. Hors périmètre
 
 - Téléchargement de parcours depuis un service en ligne ; écran du menu (O12).
+
+## 9. Livraison
+
+Livré le 26 octobre 2026 (issue #157), thread « Développer les lots O restants ».
+
+- `core/src/openride_core/route_stats.py`, copié tel quel dans `compiler/src/openride_compiler/route_stats.py` (égalité des deux fichiers testée) : `compute_stats` (barème en tête du module et dans `docs/contracts/world_format_v1.md` §2), `duration_at` (durée à la FTP, interpolée dans `durations_s`, 100 à 400 W par pas de 25 W), `load_library` (fiche `<trace>.toml`, coordonnées refusées dans `region`), `query` (tri `nom`, `distance`, `deniv`, `pente`, `duree`, `difficulte`, croissant ou `reverse` ; filtres étiquette, région, statut, distance, dénivelé, pente, durée, difficulté). `catalog.query` est ce même `query`.
+- Catalogue (core et repli du compilateur, parité testée par la situation `library`) : `RouteEntry` et `CatalogEntry` gagnent `stats` et `library` (défaut `None`) ; les traces sont aussi lues dans les sous-dossiers directs de `~/OpenRide/GPX/` (packs) ; la fiche saisie est lue à côté de la trace, sinon dans le manifeste ; une fiche invalide est ignorée avec un avertissement.
+- Compilateur : `build` range `stats` et `library` dans le manifeste (schéma `manifest.schema.json` complété, champs facultatifs) ; `list` gagne `--sort`, `--reverse`, `--tag`, `--region`, `--status`, `--min-km`, `--max-km`, `--max-difficulty`, `--ftp`, `--json` (clés triées, sortie stable) et les colonnes D+, pente, difficulté et durée ; `route-pack-install` et `route-pack-list` (`compiler/src/openride_compiler/route_pack.py` : tout est contrôlé avant d'écrire, remplacement par `--force` sans perte de l'ancien pack en cas d'échec).
+- Tests : `core/tests/test_route_stats.py` (critère 2 : 10 km à 7 % puis plat), `compiler/tests/test_route_library.py` (critères 4 et 5 : pack `.zip` de 3 traces synthétiques, refus `../`, fiche invalide, lien, fichier inconnu, taille), situation `library` de `compiler/tests/test_catalog_parity.py` (critère 3 : `.world` sans `stats`).
+- Hors de ce lot : l'écran de la bibliothèque (O12) et le contenu d'un vrai pack (O16).

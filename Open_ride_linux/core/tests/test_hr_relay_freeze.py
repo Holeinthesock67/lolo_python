@@ -154,33 +154,48 @@ def test_recovery_on_different_value(caplog):
 
 # --- 5. Ceinture connectée directement avec valeur fixe jamais ignorée (critère 5) ------
 
-@pytest.mark.anyio
-async def test_direct_strap_fixed_hr_never_ignored():
-    from openride_core.hr_monitor import HeartRateProvider
+def test_direct_strap_fixed_hr_never_ignored(tmp_path: Path, monkeypatch):
+    """La ceinture connectée directement passe avant la FC du trainer, même figée : jamais ignorée."""
+    from types import SimpleNamespace
 
-    spec = {
-        "hr": {"appear_at": 0.0, "connect_delay_s": 0.01, "bpm": 140},
-    }
-    world = build_world(spec, trainer=False, click=False)
-    provider = HeartRateProvider(None, "", device_finder=world.find_device, client_factory=world.client_factory)
-    tasks = [asyncio.create_task(p.run()) for p in (provider, world)]
-    try:
-        # Attendre que la ceinture soit connectée et lue
-        for _ in range(50):
-            if provider.connected and provider.bpm is not None:
-                break
-            await asyncio.sleep(0.05)
+    from openride_core import fit_export
+    from openride_core.input_providers import NullProvider
+    from openride_core.journal import read_journal
+    from openride_core.mock_driver import MockDriver, TrainerMetrics
+    from openride_core.session import CoreSession
 
-        assert provider.bpm == 140
-        # Simuler plusieurs secondes : la valeur reste 140 et n'est jamais None
-        for _ in range(20):
-            await asyncio.sleep(0.05)
-            assert provider.bpm == 140
-    finally:
-        provider.stop()
-        world.stop()
-        for t in tasks:
-            t.cancel()
+    monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
+    cfg = Config()
+    cfg.ipc.port_state, cfg.ipc.port_commands = 5874, 5875
+
+    async def scenario(strap: bool, jdir: Path) -> None:
+        s = CoreSession(cfg, driver=MockDriver(), inputs=[NullProvider()],
+                        journal_dir=jdir, routes_root=tmp_path / "routes")
+        # Trainer dont la FC relayée est déclarée figée, ceinture directe fixe à 140 bpm
+        s.driver.poll = lambda t: TrainerMetrics(power_w=180.0, cadence_rpm=85.0, hr_bpm=None,
+                                                 hr_frozen=True)
+        s.hr = SimpleNamespace(bpm=140, connected=True, battery_pct=90, _ever_connected=True) if strap else None
+        s._on_command("select_route", {"route_id": "demo"}, 1)
+        s._on_command("start", {}, 2)
+        for i in range(30 * 50):   # 30 s de séance
+            s._step(0.02, 10.0 + i * 0.02)
+        s._finish(save=False)
+
+    def records_of(strap: bool) -> list[dict]:
+        jdir = tmp_path / ("ceinture" if strap else "trainer")
+        asyncio.run(scenario(strap, jdir))
+        journal_files = list(jdir.glob("*.jsonl"))
+        assert len(journal_files) == 1
+        return [r for r in read_journal(journal_files[0]) if r.get("kind") == "record"]
+
+    with_strap = records_of(True)
+    assert len(with_strap) >= 25
+    assert all(r.get("hr") == 140 for r in with_strap)
+    assert not any(r.get("hr_frozen") for r in with_strap)
+    # Sans ceinture : FC absente et secondes marquées « figée » (comptées par le résumé)
+    trainer_only = records_of(False)
+    assert len(trainer_only) >= 25
+    assert all(r.get("hr") is None and r.get("hr_frozen") is True for r in trainer_only)
 
 
 # --- 6. Résumé de séance et export FIT (critère 3 et résumé) ----------------------------
@@ -203,29 +218,34 @@ def test_session_summary_and_fit_omits_frozen_hr_and_computes_ignored_duration(t
         records.append(Record(ts=start_ts + i, t=float(i), power=150.0, cadence=85.0,
                               speed=25.0, distance=i * 7.0, hr=105))
 
-    # 25 s figées : hr absent (None)
+    # 25 s figées : hr absent (None), marquées par le driver
     for i in range(25, 50):
         records.append(Record(ts=start_ts + i, t=float(i), power=150.0, cadence=85.0,
-                              speed=25.0, distance=i * 7.0, hr=None))
+                              speed=25.0, distance=i * 7.0, hr=None, hr_frozen=True))
 
     # 10 s reprises à 130 bpm
     for i in range(50, 60):
         records.append(Record(ts=start_ts + i, t=float(i), power=150.0, cadence=85.0,
                               speed=25.0, distance=i * 7.0, hr=130))
 
-    events.append({"kind": "event", "event": "stop", "ts": start_ts + 60.0})
+    # 5 s sans FC du tout (ceinture pas encore vue, coupure) : pas comptées comme ignorées
+    for i in range(60, 65):
+        records.append(Record(ts=start_ts + i, t=float(i), power=150.0, cadence=85.0,
+                              speed=25.0, distance=i * 7.0, hr=None))
+
+    events.append({"kind": "event", "event": "stop", "ts": start_ts + 65.0})
 
     with JournalWriter(journal_path) as j:
         j.event("start", start_ts)
         for r in records:
             j.record(r)
-        j.event("stop", start_ts + 60.0)
+        j.event("stop", start_ts + 65.0)
 
     write_fit([dataclasses.asdict(r) for r in records], events, fit_path)
 
     # Vérification du résumé depuis le journal
     s_jsonl = compute_summary(load_session(journal_path), ftp_w=250.0)
-    assert s_jsonl["duration_s"] == 60.0
+    assert s_jsonl["duration_s"] == 65.0
     assert s_jsonl["hr"] is not None
     # 35 secondes avec FC : (10*120 + 15*105 + 10*130) / 35 = 4075 / 35 = 116.4 bpm
     assert s_jsonl["hr"]["avg"] == 116.4
@@ -242,8 +262,8 @@ def test_session_summary_and_fit_omits_frozen_hr_and_computes_ignored_duration(t
     assert s_fit["hr"] is not None
     assert s_fit["hr"]["avg"] == 116.4
     assert s_fit["hr"]["max"] == 130.0
-    assert s_fit["hr"]["ignored_s"] == 25.0
-    assert s_fit["hr_ignored_s"] == 25.0
+    assert "ignored_s" not in s_fit["hr"]   # un FIT ne garde pas la raison de l'absence de FC
+    assert "hr_ignored_s" not in s_fit
 
 
 # --- 7. Validation du scénario simulation fc_relayee_figee (critère 6) -------------------

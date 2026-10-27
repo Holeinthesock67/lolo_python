@@ -4,8 +4,13 @@ Un fichier JSONL par séance, une ligne par seconde, vidée sur disque à chaque
 un plantage, `openride-core recover` peut transformer le dernier journal en FIT.
 
 Sortes de lignes :
-- `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ...}` en tête
-  (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8) ;
+- `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ..., "source": ...}` en tête
+  (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8 ;
+  `source` : `live` (trainer réel), `simulated` (trainer `mock` ou `sim`) ou `replay` (rejeu),
+  absent des journaux antérieurs au lot V2, qui le lit pour la progression ; `ftp_w` facultatif :
+  FTP de la séance, lue pour les pièces gagnées à l'effort, lot V3b, écrite à partir de V11) ;
+  champ facultatif `plan` = `{"id": ..., "week": n, "day": "mardi"}` quand la séance réalise une
+  séance d'un plan d'entraînement actif (lot O11), absent sinon ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
 - `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ;
 - `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un
@@ -58,18 +63,38 @@ class Record:
     block: int | None = None     # bloc d'entraînement ERG (à partir de 1)
     target_w: float | None = None  # cible ERG envoyée au trainer (W), None en SIM / FreeRide / pause
     erg_bias_pct: float | None = None  # biais du Click appliqué à la cible (%, 0 sans appui), None hors ERG actif
+    head_mps: float | None = None      # vent de face (m/s, positif de face), None vent coupé (lot P2)
+    wind_grade_pct: float | None = None  # supplément de pente dû au vent et à l'abri (SIM), lots P2 et P3
+    draft: float | None = None         # abri derrière un bot (0 à 0,45), None sans bot (lot P3)
+    hr_frozen: bool | None = None      # True : FC relayée par le trainer figée, ignorée (lot Q5)
+
+
+# Champs de la série P absents de la ligne quand ils valent None (vent coupé, pas de bot) :
+# une séance sans vent ni bot garde exactement les lignes d'avant, et la mémoire de la séance aussi.
+OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen")
+
+
+def record_line(rec: Record) -> dict:
+    # Dictionnaire construit sans ces clés (un `del` ne réduirait pas sa table en mémoire).
+    return {"kind": "record", **{k: v for k, v in asdict(rec).items()
+                                 if v is not None or k not in OPTIONAL_RECORD_KEYS}}
 
 
 class JournalWriter:
     def __init__(self, path: Path, route_id: str | None = None, workout_id: str | None = None,
-                 header: bool = True) -> None:
+                 header: bool = True, source: str | None = None, plan: dict | None = None) -> None:
         """Ouvre le journal en ajout ; `header=False` continue un journal existant (reprise, lot N8)."""
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
         self._fh: IO[str] = path.open("a", encoding="utf-8")
         self._last_sync = 0.0
         if header:
-            self._write({"kind": "header", "version": 1, "route_id": route_id, "workout_id": workout_id})
+            head = {"kind": "header", "version": 1, "route_id": route_id, "workout_id": workout_id}
+            if source is not None:
+                head["source"] = source
+            if plan:
+                head["plan"] = plan
+            self._write(head)
 
     def _write(self, obj: dict) -> None:
         self._fh.write(json.dumps(obj, separators=(",", ":")) + "\n")
@@ -80,7 +105,7 @@ class JournalWriter:
             self._last_sync = now
 
     def record(self, rec: Record) -> None:
-        self._write({"kind": "record", **asdict(rec)})
+        self._write(record_line(rec))
 
     def event(self, name: str, ts: float) -> None:
         if name not in EVENTS:
