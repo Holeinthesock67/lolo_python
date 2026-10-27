@@ -7,8 +7,11 @@ extends RefCounted
 ## l'appelant (commande IPC ou action interne à l'engine). L'affichage et les listes réelles (contrat
 ## IPC v1.1) restent au lot G. Pas de class_name : charger par preload("res://scripts/menu_model.gd").
 ##
-## Entrées (mêmes noms que l'IPC) : PLUS_SHORT (suivant), MINUS_SHORT (précédent), PLUS_LONG (valider),
-## MINUS_LONG (retour). Le clavier s'y ramène par key_to_event(). Tout autre événement est ignoré.
+## Entrées (mêmes noms que l'IPC, plan des boutons de la spécification générale §7.1) : PLUS_SHORT et
+## RIGHT_SHORT et A_SHORT (suivant), MINUS_SHORT et LEFT_SHORT (précédent), PLUS_LONG et MINUS_LONG
+## (cinq éléments plus loin, plus haut, bornés à la liste), A_LONG (valider), Y_SHORT (écran précédent ;
+## sur l'écran de pause, reprendre). Z, flèches haut et bas : rien dans un menu. Le clavier s'y ramène
+## par key_to_event(). Tout autre événement est ignoré.
 ##
 ## Règles : le focus saute les éléments désactivés et boucle en fin de liste ; valider un élément
 ## désactivé ne fait rien ; une action destructrice (Abandonner, Quitter) passe par l'écran de
@@ -16,11 +19,22 @@ extends RefCounted
 ##
 ## Actions renvoyées ({"action": nom, …}) : noms des commandes du contrat v1 quand elles existent
 ## (select_route + route_id, select_workout + workout_id, start, resume, end_session + save), sinon
-## internes à l'engine (quit). Une action ouvre au besoin l'écran suivant dans le même appel.
+## internes à l'engine (quit ; relaunch_sim et relaunch : relancer OpenRide en session simulée ou sur le
+## vrai matériel). Une action ouvre au besoin l'écran suivant dans le même appel.
+##
+## Accueil (menu principal, demande du 26 octobre) : « Parcours : … » (choix du parcours, retour à
+## l'accueil), « Session libre » (SIM, sans entraînement), « Session ERG » (choix de l'entraînement),
+## « Session simulée » (OpenRide relancé sans matériel ; en session simulée : « Revenir au matériel
+## réel »), « Réglages », « Quitter ». Sans monde choisi, les sessions passent d'abord par les parcours.
+## « Session ERG » ouvre la liste des entraînements, qui finit par « Créer un entraînement » et
+## « Importer un fichier » (lot N16, traités par menu_flow.gd).
 ## Écrans ajoutés par add_screen() (bilan de fin du lot N4) : valider un élément renvoie
 ## {"action": "item", "screen": écran, "id": élément}, à traiter par l'appelant (menu_flow.gd, lot N6).
 
-const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG"]
+const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG", "A_SHORT", "A_LONG", "Y_SHORT",
+	"LEFT_SHORT", "RIGHT_SHORT"]
+## Éléments sautés par un appui long sur + ou −.
+const LONG_STEP := 5
 
 const HOME := "home"
 const ROUTES := "routes"
@@ -31,6 +45,14 @@ const CONFIRM := "confirm"
 const PAUSE := "pause"
 
 const NO_WORKOUT_ID := "_sim"
+## Modes de séance de l'accueil, dans l'ordre d'affichage : {mode: libellé}. Filtrés par `modes`, la
+## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
+## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
+const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG"}
+const DEFAULT_MODES := ["ride", "erg"]
+## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
+const CREATE_WORKOUT_ID := "_create"
+const IMPORT_WORKOUT_ID := "_import"
 
 var _screens: Dictionary = {}
 var _stack: Array[String] = []      # écrans précédents, pour le retour
@@ -41,46 +63,108 @@ var _pending: Dictionary = {}       # action destructrice en attente de confirma
 var _confirm_back: String = ""      # écran où revenir après « Non »
 var _confirm_focus: int = 0
 var _workouts_return: String = ROUTES
+## Parcours choisi : id et nom ; "" tant qu'aucun n'est choisi.
+var world_id := ""
+var world_name := ""
+## Mode de la séance préparée : "free" (session libre, SIM) ou "erg".
+var mode := "free"
+## Engine lancé en session simulée (--sim-session) : l'accueil propose de revenir au matériel réel.
+var sim_session := false
+var _routes_return := HOME
+## Modes annoncés par le core (set_modes) ; les modes inconnus de HOME_MODES sont ignorés.
+var modes: Array = DEFAULT_MODES.duplicate()
 
 
 func _init() -> void:
 	_screens = {
-		HOME: {"id": HOME, "title": "OpenRide", "on_back": "", "items": [
-			_item("ride", "Rouler"), _item("workouts", "Entraînements"), _item("settings", "Réglages"),
-			_item("quit", "Quitter")]},
+		HOME: {"id": HOME, "title": "OpenRide", "on_back": "", "items": []},
 		ROUTES: {"id": ROUTES, "title": "Parcours", "on_back": HOME, "items": []},
-		WORKOUTS: {"id": WORKOUTS, "title": "Entraînements", "on_back": HOME, "items": []},
-		READY: {"id": READY, "title": "Prêt", "on_back": ROUTES, "items": [
-			_item("start", "Démarrer"), _item("workout", "Choisir un entraînement"),
-			_item("change_route", "Changer de parcours")]},
+		WORKOUTS: {"id": WORKOUTS, "title": "Session ERG : entraînement", "on_back": HOME, "items": []},
+		READY: {"id": READY, "title": "Prêt", "on_back": HOME, "items": []},
 		SETTINGS: {"id": SETTINGS, "title": "Réglages", "on_back": HOME, "items": [
 			_item("devices", "Appareils : rechercher et appairer")]},
 		CONFIRM: {"id": CONFIRM, "title": "Confirmer", "on_back": "", "items": [
 			_item("no", "Non"), _item("yes", "Oui")]},
 		PAUSE: {"id": PAUSE, "title": "Pause", "on_back": "", "items": [
 			_item("resume", "Reprendre"), _item("end_save", "Terminer et enregistrer"),
-			_item("abandon", "Abandonner")]},
+			_item("abandon", "Abandonner"), _item("difficulty", "Difficulté")]},
 	}
 	set_items(ROUTES, [])
 	set_items(WORKOUTS, [])
+	_refresh_home()
 	reset()
+
+
+func _refresh_home() -> void:
+	var world := world_name if world_name != "" else "à choisir"
+	var items := [_item("world", "Parcours : " + world)]
+	for m in HOME_MODES:
+		if m in modes:
+			items.append(_item(m, HOME_MODES[m]))
+	items.append_array([_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée"),
+		_item("settings", "Réglages"), _item("quit", "Quitter")])
+	_screens[HOME]["items"] = items
+	_screens[READY]["items"] = [
+		_item("start", "Démarrer"),
+		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
+		_item("change_route", "Changer de parcours")]
+	_screens[READY]["title"] = ("Prêt : session ERG" if mode == "erg" else "Prêt : session libre") \
+		+ ("" if world_name == "" else " — " + world_name)
+
+
+## Parcours choisi (ou connu par la trame d'état) ; met à jour l'accueil et l'écran Prêt.
+func set_world(id: String, name: String) -> void:
+	world_id = id
+	world_name = name if name != "" else id
+	_refresh_home()
+
+
+## Modes annoncés par le core (hello_ack.config.modes) ; null ou absent : DEFAULT_MODES (1.0).
+func set_modes(list) -> void:
+	modes = list.duplicate() if list is Array else DEFAULT_MODES.duplicate()
+	_refresh_home()
+
+
+## Difficulté de la séance affichée sur l'écran de pause (curseur du lot O4, commande set_difficulty).
+func set_pause_difficulty(text: String) -> void:
+	for it in _screens[PAUSE]["items"]:
+		if it["id"] == "difficulty":
+			it["label"] = "Difficulté : " + text
+
+
+func set_sim_session(on: bool) -> void:
+	sim_session = on
+	_screens[HOME]["title"] = "OpenRide — session simulée" if on else "OpenRide"
+	_refresh_home()
 
 
 static func _item(id: String, label: String, enabled := true, detail := "") -> Dictionary:
 	return {"id": id, "label": label, "enabled": enabled, "detail": detail}
 
 
-## Touche du clavier vers événement du Click (mêmes touches que main.gd, plus Entrée et Échap).
+## Touche du clavier vers événement du Click (en attendant le plan du clavier, décision D6) :
+## bas, haut = suivant, précédent ; Page suivante, Page précédente = cinq plus loin, plus haut ;
+## gauche, droite = flèches du Click ; Tab = A court ; Entrée = A long (valider) ; Échap = Y (retour).
 static func key_to_event(keycode: int) -> String:
 	match keycode:
-		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_UP:
+		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_DOWN:
 			return "PLUS_SHORT"
-		KEY_MINUS, KEY_KP_SUBTRACT, KEY_DOWN:
+		KEY_MINUS, KEY_KP_SUBTRACT, KEY_UP:
 			return "MINUS_SHORT"
-		KEY_PAGEUP, KEY_ENTER, KEY_KP_ENTER:
+		KEY_PAGEDOWN:
 			return "PLUS_LONG"
-		KEY_PAGEDOWN, KEY_ESCAPE, KEY_BACKSPACE:
+		KEY_PAGEUP:
 			return "MINUS_LONG"
+		KEY_LEFT:
+			return "LEFT_SHORT"
+		KEY_RIGHT:
+			return "RIGHT_SHORT"
+		KEY_TAB:
+			return "A_SHORT"
+		KEY_ENTER, KEY_KP_ENTER:
+			return "A_LONG"
+		KEY_ESCAPE, KEY_BACKSPACE:
+			return "Y_SHORT"
 	return ""
 
 
@@ -107,8 +191,11 @@ func set_items(screen_id: String, items: Array) -> void:
 			str(it.get("detail", ""))))
 	if screen_id == ROUTES and clean.is_empty():
 		clean.append(_item("empty", "Aucun parcours", false))
-	elif screen_id == WORKOUTS and clean.size() == 1:
-		clean.append(_item("empty", "Aucun entraînement", false))
+	elif screen_id == WORKOUTS:
+		if clean.size() == 1:
+			clean.append(_item("empty", "Aucun entraînement", false))
+		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
+		clean.append(_item(IMPORT_WORKOUT_ID, "Importer un fichier (.zwo, .erg, .mrc)"))
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
 		focused_id = _screens[screen_id]["items"][_focus]["id"]
@@ -199,13 +286,17 @@ func state(action: Dictionary = {}) -> Dictionary:
 ## Traite un événement ; renvoie state() avec l'action éventuelle ({} sinon).
 func handle(event: String) -> Dictionary:
 	match event:
-		"PLUS_SHORT":
+		"PLUS_SHORT", "RIGHT_SHORT", "A_SHORT":
 			_move(1)
-		"MINUS_SHORT":
+		"MINUS_SHORT", "LEFT_SHORT":
 			_move(-1)
 		"PLUS_LONG":
-			return state(_validate())
+			_jump(LONG_STEP)
 		"MINUS_LONG":
+			_jump(-LONG_STEP)
+		"A_LONG":
+			return state(_validate())
+		"Y_SHORT":
 			return state(_back())
 	return state()
 
@@ -241,6 +332,22 @@ func _move(dir: int) -> void:
 	_focus = _first_enabled_from(_focus + dir, dir)
 
 
+## Grand pas : `steps` éléments actifs plus loin (négatif : plus haut), sans boucler ; s'arrête au
+## dernier (premier) élément actif.
+func _jump(steps: int) -> void:
+	if _focus < 0:
+		return
+	var items := _items()
+	var dir := signi(steps)
+	var left := absi(steps)
+	var i := _focus + dir
+	while left > 0 and i >= 0 and i < items.size():
+		if items[i]["enabled"]:
+			_focus = i
+			left -= 1
+		i += dir
+
+
 func _open(screen_id: String, push := true) -> void:
 	if push and _screen != screen_id:
 		_stack.append(_screen)
@@ -271,6 +378,27 @@ func _back() -> Dictionary:
 	return {}
 
 
+## Va à `screen_id` : retour en arrière s'il est juste dessous, sinon à la place de l'écran courant.
+func _go(screen_id: String) -> void:
+	if not _stack.is_empty() and _stack[-1] == screen_id:
+		_back()
+		_focus = _first_enabled_from(0, 1)   # écran Prêt : focus sur « Démarrer »
+	else:
+		_replace_top(screen_id)
+
+
+## Ouvre un écran à la place de l'écran courant : le retour mène à l'écran d'avant (accueil).
+func _replace_top(screen_id: String) -> void:
+	_screen = screen_id
+	_focus = _first_enabled_from(0, 1)
+
+
+## Nom du parcours sans la longueur ajoutée par le catalogue (« Vosges (32,0 km) » → « Vosges »).
+static func _short_name(label: String) -> String:
+	var i := label.rfind(" (")
+	return label.substr(0, i) if i > 0 and label.ends_with(")") else label
+
+
 ## Retour de l'écran de confirmation : écran et focus d'origine.
 func _go_back_to(screen_id: String) -> void:
 	_screen = screen_id
@@ -293,24 +421,54 @@ func _validate() -> Dictionary:
 	match _screen:
 		HOME:
 			match id:
-				"ride":
+				"world":
+					_routes_return = HOME
 					_open(ROUTES)
-				"workouts":
-					_workouts_return = ROUTES
+				"ride":
+					mode = "free"
+					_refresh_home()
+					if world_id == "":
+						_routes_return = READY
+						_open(ROUTES)
+					else:
+						_open(READY)
+					return {"action": "select_workout", "workout_id": null}
+				"erg":
+					_workouts_return = HOME
 					_open(WORKOUTS)
+				"sim":
+					if sim_session:
+						_confirm("Revenir au matériel réel ? OpenRide redémarre", {"action": "relaunch"})
+					else:
+						_confirm("Session simulée ? OpenRide redémarre sans matériel", {"action": "relaunch_sim"})
 				"settings":
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
 		ROUTES:
-			_open(READY)
+			var label := id
+			for it in _items():
+				if it["id"] == id:
+					label = str(it["label"])
+			set_world(id, _short_name(label))
+			if _routes_return == READY:
+				_go(READY)
+			else:
+				_back()
 			return {"action": "select_route", "route_id": id}
 		WORKOUTS:
+			if id in [CREATE_WORKOUT_ID, IMPORT_WORKOUT_ID]:
+				return {"action": "item", "screen": WORKOUTS, "id": id}
 			var workout = null if id == NO_WORKOUT_ID else id
+			mode = "free" if workout == null else "erg"
+			_refresh_home()
 			if _workouts_return == READY:
 				_back()
+			elif world_id == "":
+				_routes_return = READY
+				_replace_top(ROUTES)
 			else:
-				_open(ROUTES)
+				_go(READY)
 			return {"action": "select_workout", "workout_id": workout}
 		READY:
 			match id:
@@ -320,7 +478,8 @@ func _validate() -> Dictionary:
 					_workouts_return = READY
 					_open(WORKOUTS)
 				"change_route":
-					_back()
+					_routes_return = READY
+					_open(ROUTES)
 		CONFIRM:
 			var act := _pending
 			_pending = {}
@@ -339,6 +498,8 @@ func _validate() -> Dictionary:
 					return {"action": "end_session", "save": true}
 				"abandon":
 					_confirm("Abandonner la séance ?", {"action": "end_session", "save": false})
+				"difficulty":
+					return {"action": "item", "screen": PAUSE, "id": id}
 		_:
 			return {"action": "item", "screen": _screen, "id": id}
 	return {}

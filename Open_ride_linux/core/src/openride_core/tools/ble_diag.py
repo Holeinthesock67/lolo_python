@@ -19,6 +19,7 @@ import argparse
 import asyncio
 import json
 import logging
+import re
 import statistics
 import sys
 import time
@@ -232,22 +233,26 @@ async def cmd_click(args: argparse.Namespace) -> None:
                     "messages": [], "events": [], "sync_tx": []}
     classifier = zwift_click.PressClassifier()
     type_counts: dict[str, int] = {}
+    category_counts: dict[str, int] = {}
     t0 = time.monotonic()
 
     def on_async(_ch, data: bytearray) -> None:
         t = time.monotonic()
-        msg_type, fields = zwift_click.parse_async(bytes(data))
+        raw = bytes(data)
+        msg_type, fields = zwift_click.parse_async(raw)
         key = f"0x{msg_type:02x}"
+        cat = zwift_click.classify_message(raw)
         type_counts[key] = type_counts.get(key, 0) + 1
+        category_counts[cat] = category_counts.get(cat, 0) + 1
         if len(report["messages"]) < 3000:
-            report["messages"].append({"t": round(t - t0, 3), "type": key, "raw": data.hex(),
-                                       "fields": fields})
+            report["messages"].append({"t": round(t - t0, 3), "type": key, "category": cat,
+                                       "raw": data.hex(), "fields": fields})
         if msg_type == zwift_click.MSG_BATTERY_LEVEL:
             log.info("Batterie : %s %%", fields.get(2))
             return
-        buttons = zwift_click.parse_click_buttons(bytes(data))
+        buttons = zwift_click.parse_click_buttons(raw)
         if buttons is None:
-            log.debug("Message %s %s", key, data.hex())
+            log.debug("Message %s (%s) %s", key, cat, data.hex())
             return
         for ev in classifier.feed(buttons, t):
             report["events"].append({"t": round(t - t0, 3), "event": ev.value})
@@ -271,7 +276,46 @@ async def cmd_click(args: argparse.Namespace) -> None:
         await asyncio.sleep(args.duration)
 
     report["message_type_counts"] = type_counts
+    report["category_counts"] = category_counts
     save_report("click", report)
+
+
+# --- trace ----------------------------------------------------------------------------
+
+async def cmd_trace(args: argparse.Namespace) -> None:
+    path = Path(args.file)
+    if not path.is_file():
+        raise SystemExit(f"Fichier introuvable : {path}")
+    lines = path.read_text(encoding="utf-8").splitlines()
+    cat_counts: dict[str, int] = {}
+    type_counts: dict[str, int] = {}
+    total = 0
+    pattern = re.compile(
+        r"Click\s+(?P<side>droit|gauche|inconnu)\s+(?P<char>\w+)\s+type\s+0x(?P<type>[0-9a-fA-F]{2})"
+        r"(?:\s+\([^)]+\))?\s*:\s*(?P<hex>[0-9a-fA-F]+)(?:\s+\((?P<count>\d+)\s+messages\))?"
+    )
+    for line in lines:
+        m = pattern.search(line)
+        if m:
+            count = int(m.group("count")) if m.group("count") else 1
+            raw_hex = m.group("hex")
+            try:
+                raw = bytes.fromhex(raw_hex)
+                cat = zwift_click.classify_message(raw)
+            except ValueError:
+                cat = "inconnu"
+            cat_counts[cat] = cat_counts.get(cat, 0) + count
+            t_key = f"0x{int(m.group('type'), 16):02x}"
+            type_counts[t_key] = type_counts.get(t_key, 0) + count
+            total += count
+
+    log.info("Trace Click analysée : %d notification(s) au total", total)
+    for cat in zwift_click.MESSAGE_TYPES:
+        cnt = cat_counts.get(cat, 0)
+        pct = (cnt / total * 100) if total else 0.0
+        log.info("  - %-10s : %5d (%4.1f %%)", cat, cnt, pct)
+    report = {"file": str(path), "total": total, "category_counts": cat_counts, "type_counts": type_counts}
+    save_report("click_trace", report)
 
 
 # --- point d'entrée -------------------------------------------------------------------
@@ -298,6 +342,9 @@ def build_parser() -> argparse.ArgumentParser:
     c.add_argument("--name", help="nom annoncé (défaut : Zwift Click)")
     c.add_argument("--address", help="adresse MAC")
     c.add_argument("--duration", type=float, default=60.0, help="durée d'écoute (s)")
+
+    tr = sub.add_parser("trace", help="analyse d'une trace brute du Zwift Click")
+    tr.add_argument("file", help="fichier de journal ou de trace à analyser")
     return p
 
 
@@ -306,7 +353,7 @@ def main(argv: list[str] | None = None) -> None:
     logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO,
                         format="%(asctime)s %(levelname)-7s %(message)s", datefmt="%H:%M:%S")
     logging.getLogger("bleak").setLevel(logging.INFO if args.verbose else logging.WARNING)
-    handler = {"scan": cmd_scan, "trainer": cmd_trainer, "click": cmd_click}[args.command]
+    handler = {"scan": cmd_scan, "trainer": cmd_trainer, "click": cmd_click, "trace": cmd_trace}[args.command]
     try:
         asyncio.run(handler(args))
     except KeyboardInterrupt:

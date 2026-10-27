@@ -46,17 +46,32 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `ble_util.py` : verrou BLE, repli BlueZ ;
 - `recorder.py` : journal, mémoire, FIT ;
 - `route.py`, `catalog.py` : lecture des `.world`, interpolation et catalogue des parcours (`.world` et `.gpx`) ;
+- `route_stats.py` : fiches des parcours (dénivelé, montée principale, durée, difficulté, fiche `.toml`), tri et filtres du catalogue (lot O15) ; copie exacte dans le compilateur ;
 - `demo_world.py` : parcours de démonstration ;
-- `workout.py`, `workout_formats.py` : lecture des `.zwo`, des `.erg` et `.mrc` de GoldenCheetah (lot O9) et contrôleur ERG ;
+- `workout.py`, `workout_formats.py` : lecture des `.zwo`, des `.erg` et `.mrc` de GoldenCheetah (lot O9) et contrôleur ERG ; `workout_menu.py` : entraînements créés ou importés depuis le menu ERG, écrits par le core seul (sous-menu ERG, décision D4 de l'audit IPC) ;
 - `mock_driver.py`, `replay.py` : simulateur de trainer et rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) ;
 - `ble_sim.py`, `sim_scenarios.py` : Bluetooth simulé (HomeTrainer, paire de Click, ceinture) derrière les vrais pilotes, scénarios de pannes (`docs/SIMULATION_BLE.md`) ;
 - `hr_monitor.py` : ceinture cardio Bluetooth facultative (service 0x180D) ;
-- `journal.py`, `fit_export.py`, `ipc_server.py`, `ipc_lists.py`, `config.py`, `config_edit.py`, `pairing.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), découpage des listes IPC v1.1, configuration (types et bornes contrôlés, `ConfigError`), modification ciblée de `config.toml` qui garde les commentaires et appairage (lots N12 et N14) ;
-- `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `history.py` (historique des séances et cumul hebdomadaire), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py` ;
+- `journal.py`, `fit_export.py`, `ipc_server.py`, `ipc_lists.py`, `ipc_budget.py`, `config.py`, `config_edit.py`, `pairing.py`, `settings.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), découpage des listes IPC v1.1, budget de taille des trames et allègement d'une trame `state` trop grande (lot X25), configuration (types et bornes contrôlés, `ConfigError`), modification ciblée de `config.toml` qui garde les commentaires, appairage (lots N12 et N14) et réglages du menu (lots O3 et O4) ;
+- `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `history.py` (historique des séances et cumul hebdomadaire), `xp.py` (progression recalculée, lot V2), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py`, `seance_guidee.py` (séances guidées sur le HomeTrainer : parcours, consignes et entraînement d'essai) ;
 - `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties ;
-- `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9).
+- `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9) ;
+- `progression.py` : expérience, niveaux et défis de la série V recalculés depuis le journal, tables dans `data/progression.toml` (lot V2) ;
+- `profile.py` : profil local `~/OpenRide/profile.json` (équipement choisi, achats, vies, avatar), écriture sûre et migration (lot V4) ;
+- `equipment.py` : catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain et temps gagné par l'équipement (lot V3) ;
+- `coins.py` : pièces (gains, solde recalculé, état des pièces, achats, vies du mode Cyber-Rogue) (lot V3b) ;
+- `segments.py` : détection des montées et des sprints d'un parcours, segments manuels (série T, lot T2, module pur).
+- `segment_timing.py` : chronométrage des segments : franchissements interpolés, pauses, boucles, relecture du journal (série T, lot T4, module pur).
+- `powerups.py` : bonus légèreté, aérodynamique et puissance, arches, valeurs dans `~/OpenRide/powerups.toml` (série T, lot T6, module pur).
+- `gaps.py` : écarts en temps de passage avec les bots, voisins devant et derrière (série T, lot T16, module pur) ;
+- `records.py` : records personnels par segment dans `~/OpenRide/records.json`, avec et sans bonus, classement local, recalcul depuis les journaux (série T, lot T5, module pur) ;
+- `jerseys.py` : points des sprints et des montées, maillots vert et à pois de la séance, bots compris (série T, lot T14, module pur) ;
+- `plans.py` : plans d'entraînement sur plusieurs semaines (`~/OpenRide/Plans/`, plan actif, séance du jour, suivi d'après l'historique, import d'un dossier ; `openride-core plan`, format `docs/contracts/plan_format_v1.md`, lot O11).
+- `ftp_test.py` : tests de FTP par rampe et sur 20 minutes (entraînements `ftp_test:ramp` et `ftp_test:20min`, fin de la rampe, FTP proposée, ligne `ftp_test` du journal, `openride-core ftp-test`, lot O10).
+- `wind.py` : vent réglable (calme, fixe, en rafales ou du thème), composante de face et supplément de pente en SIM, module pur (lot P2).
+- `draft.py` : aspiration derrière les bots (courbe exponentielle, effet de file, vent de travers, poussée du bot suivi), module pur (lot P3).
 
-**Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
+**Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `segments_layer.py` (couche `segments` et fichier `<trace>.segments.toml`, série T, lot T3), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 
 ## Commandes
 
@@ -72,6 +87,7 @@ cd compiler && pip install -e ".[dev]" -e ../core   # sans ../core, les tests qu
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh   # vrai core + vrai engine, ~10 s
 GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open   # tests graphiques (Xvfb, captures analysées, références, rapport HTML), ~2 min
+scripts/bump-version.sh X.Y.Z   # change le numéro unique (VERSION, pyproject, project.godot, CHANGELOG.md), lot O2
 python3 engine/tests/sim_bench.py --scenario coupures_village [--native]   # banc simulé : vrai core sur BLE simulé + vrai engine, captures et rapport (docs/OUTILS_DE_TEST.md)
 
 # Séance (depuis Open_ride_linux/) : core en arrière-plan + fenêtre Godot ; journal dans ~/run_trainer.log
@@ -110,6 +126,8 @@ openride-core history --weeks 8        # historique des séances et cumul par se
 
 # Diagnostic matériel
 openride-core devices                  # appareils classés (trainer, Click, ceinture) et bloc [drivers] à recopier ; --json ; --save : écrit dans ~/OpenRide/config.toml (pairing.py, lot N12)
+openride-core settings [--json]        # réglages du menu (FTP, poids, difficulté, braquet, qualité, thème) ; settings set CLÉ VALEUR écrit ~/OpenRide/config.toml (settings.py, lots O3 et O4)
+openride-core ftp-test [--accept] [--history]   # résultat du dernier test de FTP, enregistrement de la FTP (lot O10)
 openride-ble-diag scan | trainer --name HomeTrainer --duration 30 | click --duration 60
 ```
 
@@ -127,6 +145,7 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
   - chaque correction ou fonction a son test ;
   - le matériel se simule avec les doublures de `core/tests/test_drivers_session.py` (`FakeClient`, `fake_finder`) et `MockDriver` ;
   - les tests de session passent `routes_root=tmp_path / "routes"` et redirigent `fit_export.ACTIVITIES_DIR`, pour ne jamais écrire dans le vrai dossier personnel.
+  - pytest tourne avec un HOME temporaire, des fenêtres de bureau muettes et un garde-fou qui fait échouer tout test écrivant hors de son dossier temporaire (`scripts/isolation_tests.py`, chargé par les `conftest.py`) ; une seule suite de tests ou banc à la fois sur la machine (verrou commun).
 - **Git :**
   - une branche par travail ;
   - messages de commit en français ;

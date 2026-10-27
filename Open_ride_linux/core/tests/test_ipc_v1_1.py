@@ -9,6 +9,7 @@ from pathlib import Path
 import jsonschema
 import pytest
 
+from openride_core import fit_export
 from openride_core.catalog import RouteEntry
 from openride_core.config import Config
 from openride_core.demo_world import build_manifest, build_route
@@ -281,8 +282,9 @@ def test_simulated_devices_frequency_and_drop_event(tmp_path: Path):
     asyncio.run(_run())
 
 
-def test_enriched_summary_matches_openride_summary(tmp_path: Path):
+def test_enriched_summary_matches_openride_summary(tmp_path: Path, monkeypatch):
     """Critère 6 : summary en fin de séance ERG contient np_w, tss, blocks, égaux à openride-core summary."""
+    monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
     cfg = Config()
     cfg.rider.ftp_w = 200.0
     session = CoreSession(cfg, driver=MockDriver(), inputs=[NullProvider()],

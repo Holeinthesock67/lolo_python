@@ -433,7 +433,26 @@ def _poi_kind_and_radius(tags: dict[str, Any]) -> tuple[str, int] | None:
         return "viewpoint", C.POI_RADIUS_VIEWPOINT_M
     if tags.get("landuse") == "farmyard" or (tags.get("landuse") == "meadow" and bool(tags.get("animal"))):
         return "livestock", C.POI_RADIUS_LIVESTOCK_M
+    # Format 1.2 (Lot P12) : éoliennes et mâts de drapeau
+    if tags.get("power") == "generator" and tags.get("generator:source") == "wind":
+        return "wind_turbine", C.POI_RADIUS_WIND_TURBINE_M
+    if tags.get("man_made") == "flagpole":
+        return "flag", C.POI_RADIUS_FLAG_M
     return None
+
+
+def wind_turbine_height(tags: dict[str, Any]) -> float:
+    """Hauteur du mât d'une éolienne (`height_m`) : étiquette `height`, sinon 100 m (Lot P12)."""
+    raw = tags.get("height")
+    if isinstance(raw, (int, float)) and raw > 0:
+        return round(float(raw), 1)
+    if isinstance(raw, str):
+        m = HEIGHT_RE.match(raw)
+        if m:
+            val = float(m.group(1).replace(",", "."))
+            if val > 0:
+                return round(val, 1)
+    return C.WIND_TURBINE_DEFAULT_HEIGHT_M
 
 
 def _water_area_kind(tags: dict[str, Any]) -> str | None:
@@ -598,7 +617,7 @@ def build_osm_layers(
             name_val = tags.get("name")
             poi_name = str(name_val) if isinstance(name_val, str) and name_val else None
 
-            # 1. Points d'intérêt hors cours d'eau (church_bell, village, viewpoint, livestock)
+            # 1. Points d'intérêt hors cours d'eau (church_bell, village, viewpoint, livestock, wind_turbine, flag)
             poi_info = _poi_kind_and_radius(tags)
             if poi_info is not None:
                 pt_xz = _element_point_xz(el, frame)
@@ -615,7 +634,7 @@ def build_osm_layers(
                             np.array([y_route_poi]),
                         )
                         p_kind, p_radius = poi_info
-                        poi_chunks.setdefault(k_poi, []).append({
+                        poi_item: dict[str, Any] = {
                             "id": obj_id,
                             "kind": p_kind,
                             "x": round(px, 2),
@@ -623,7 +642,10 @@ def build_osm_layers(
                             "z": round(pz, 2),
                             "radius_m": p_radius,
                             "name": poi_name,
-                        })
+                        }
+                        if p_kind == "wind_turbine":
+                            poi_item["height_m"] = wind_turbine_height(tags)
+                        poi_chunks.setdefault(k_poi, []).append(poi_item)
                         poi_count += 1
 
             # 2. Cours d'eau (water.lines) et point de passage river (poi)

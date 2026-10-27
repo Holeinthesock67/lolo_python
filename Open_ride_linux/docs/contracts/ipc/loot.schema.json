@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideLootMessage",
+  "description": "Révision 1.4 (série R) : récompenses du couloir, renvoyées après chaque relance ; 1 400 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "corridor_id",
+    "cards",
+    "doors",
+    "reroll_cost",
+    "gold"
+  ],
+  "properties": {
+    "type": {
+      "const": "loot"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "corridor_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "cards": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "kind",
+          "text",
+          "replaces_gear"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "kind": {
+            "type": "string",
+            "maxLength": 16
+          },
+          "text": {
+            "type": "string",
+            "maxLength": 120
+          },
+          "replaces_gear": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "minimum": 1
+          }
+        }
+      }
+    },
+    "doors": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "object",
+        "required": [
+          "side",
+          "room_id",
+          "archetype"
+        ],
+        "properties": {
+          "side": {
+            "type": "string",
+            "enum": [
+              "left",
+              "right"
+            ]
+          },
+          "room_id": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "archetype": {
+            "type": "string",
+            "enum": [
+              "diesel",
+              "puncheur",
+              "grimpeur",
+              "sprinteur",
+              "saboteur",
+              "boss"
+            ]
+          }
+        }
+      }
+    },
+    "reroll_cost": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "gold": {
+      "type": "integer",
+      "minimum": 0
+    }
+  }
+}

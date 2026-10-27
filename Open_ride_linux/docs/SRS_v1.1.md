@@ -101,19 +101,19 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | Boîtier | Bouton | Bit (0 = appuyé) | Action OpenRide |
 | --- | --- | --- | --- |
 | gauche | − | 8 | « − » |
-| gauche | flèche gauche | 0 | aucune |
-| gauche | flèche haut | 1 | aucune |
-| gauche | flèche droite | 2 | aucune |
-| gauche | flèche bas | 3 | aucune |
+| gauche | flèche gauche | 0 | réservé : raccourci de choix (spécification générale §7.1) |
+| gauche | flèche haut | 1 | réservé : vue de caméra (2.0, spécification générale §7.1) |
+| gauche | flèche droite | 2 | réservé : raccourci de choix (spécification générale §7.1) |
+| gauche | flèche bas | 3 | réservé : vue de caméra (2.0, spécification générale §7.1) |
 | droit | + | 12 | « + » |
-| droit | A | 4 | aucune |
+| droit | A | 4 | choisir (court) et valider (long) dans les menus (spécification générale §7.1) |
 | droit | B | 5 | « − » (sans déblocage Zwift) |
 | droit | Y | 6 | pause et reprise (lot N6) |
-| droit | Z | 7 | aucune |
+| droit | Z | 7 | action du mode : bloc suivant en ERG (lot O17) |
 
 - **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
-- Événements normalisés : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : ignoré. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
-- Repli : un fournisseur clavier (flèches, touches +/−) produit les mêmes événements.
+- Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Y et les flèches n'ont qu'un événement, quelle que soit la durée. Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
+- Repli : le clavier produit les mêmes événements, touche pour touche, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17).
 
 ### 4.3 Braquets virtuels
 
@@ -132,6 +132,8 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 
 ### 4.4 Actions du Click en v1
 
+**Référence unique :** le plan de boutons de la [spécification générale](SPECIFICATION_GENERALE.md) §7.1 fait foi pour tous les modes et les menus ; ce paragraphe décrit l'état du code. Le lot O17 met l'ERG à ce plan avant la 1.0 : ± long = biais ± 10 %, Z = bloc suivant, Y = pause (la pause ERG par − long disparaît).
+
 | Action | Mode SIM | Mode ERG |
 | --- | --- | --- |
 | Appui court + / − | Braquet k + 1 / k − 1 | Biais d'intensité ± 2 % (plage 80 % à 120 %) |
@@ -140,11 +142,11 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 
 Le bouton Y du boîtier droit met en pause et reprend la séance, en SIM comme en ERG (lot N6, choix du propriétaire du 25 octobre 2026).
 
-Le demi-tour sur la route et le réglage des bots sont reportés (§14).
+Le demi-tour sur la route et le réglage des bots sont reportés à la 1.x, dans les menus (§14, lots N17 et N18).
 
 ### 4.5 Navigation dans les menus
 
-Hors séance, le core transmet les événements du Click à l'engine : appui court ± pour défiler, appui long + pour valider, appui long − pour revenir. Le clavier fait de même.
+Hors séance, le core transmet les événements du Click à l'engine, qui pilote le menu selon la spécification générale §7.1 : ± courts pour passer à l'élément suivant ou précédent, ± longs pour sauter de cinq éléments, A court pour l'élément suivant, A long pour valider, Y pour revenir à l'écran précédent ; Z ne fait rien dans un menu. Ce plan remplace l'ancien (+ long pour valider, − long pour revenir), à reporter par la PR #287 avant sa fusion. Le clavier double chaque bouton, touche pour touche (tableau du clavier de la spécification générale §7.1, lot O17).
 
 ## 5. Physique
 
@@ -163,7 +165,10 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 - La pente du terrain est `grade_pct` (positif en montée) ; θ = arctan(grade_pct / 100).
 - Amorçage : l'énergie est ramenée à celle d'une vitesse plancher de 0,5 m/s quand la puissance est positive ou que la gravité entraîne le vélo (descente). En montée à puissance nulle, la vitesse retombe à 0 et le vélo ne recule pas.
 - La vitesse peut être plafonnée (80 m/s) pour éviter les valeurs aberrantes.
-- Le coefficient d'aspiration `alpha_draft` vaut 0 sans bot ; il n'intervient qu'avec les bots (de 0 à 0,45 selon la distance derrière un bot).
+- Le coefficient d'aspiration `alpha_draft` vaut 0 sans bot ; il n'intervient qu'avec les bots (de 0 à 0,45 selon la distance derrière un bot). **Courbe (lot P3, `draft.py`) :** `α = 0,40 · exp(−(écart − 0,3) / 4)` pour un écart roue à roue de 0,3 à 15 m (0,38 à 0,5 m, 0,13 à 5 m, environ 0,035 à 10 m), 0 au-delà et devant le bot ; derrière une file de bots espacés de moins de 3 m, × 1,12 au deuxième et × 1,18 au troisième, plafonné à 0,45 ; réduit jusqu'à moitié par un vent de travers apparent de 45° ; suivi par une constante de temps de 1 s. Un bot suivi à moins de 1 m perd 2,5 % de résistance aérodynamique (poussée vers l'avant). L'abri multiplie tout le terme aérodynamique, vent compris.
+- **Vent (lots P1 et P2).** `v_vent` est la composante de face du vent le long du cap de la route à `s` (positive de face) ; elle vaut 0 quand le vent est coupé (`[wind] mode = "off"`, défaut des versions 1.x). Le vent de travers ne compte pas.
+- **Ressenti du vent et de l'aspiration.** En SIM, l'écart de résistance dû au vent et à l'aspiration est transmis au trainer comme un **supplément de pente** (`[wind] feel = "grade"`, défaut), borné à ± `max_grade_offset_pct` (4 points par défaut, réglable dans les réglages du menu), ou dans le champ vent de la commande FTMS 0x11 (`feel = "ftms"`, à essayer sur le matériel). En ERG, la puissance demandée ne change jamais : seule la vitesse virtuelle tient compte du vent et de l'aspiration.
+- Seuls les bots à puissance constante abritent ; le fantôme n'abrite pas.
 
 **Paramètres par défaut** (modifiables, §11)
 
@@ -174,7 +179,7 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 | Crr | 0,004 | Pneus route sur home trainer virtuel |
 | Rendement η | 0,97 | Transmission |
 | Densité de l'air ρ | 1,225·e^(−h/8400) kg/m³ | h = altitude en mètres |
-| Vent | 0 m/s | |
+| Vent | 0 m/s | Coupé par défaut en 1.x ; réglé par `[wind]` (§11) |
 
 **Anticipation de latence.** Pour compenser la réponse du trainer (0,5 à 1,0 s), la pente envoyée est lue sur la route à `s_anticipée = s + v · tau` avec tau = 0,8 s par défaut.
 
@@ -204,7 +209,7 @@ Les fichiers `.zwo` (XML ouvert) placés dans `~/OpenRide/Workouts/` sont lus pa
 - Un fichier invalide n'arrête rien : il apparaît dans le menu avec l'erreur, sans être sélectionnable.
 - Le menu affiche la durée totale et le profil des blocs de chaque entraînement.
 
-**HUD de l'entraînement :** bandeau inférieur avec l'histogramme des blocs, le compte à rebours du bloc en cours, la puissance lissée sur 3 s, la cible et le biais ; un bip retentit 3 s avant chaque changement de bloc. Le saut de bloc et la pause se font par appui long sur le Click (§4.4).
+**HUD de l'entraînement :** bandeau inférieur avec l'histogramme des blocs, le compte à rebours du bloc en cours, la puissance lissée sur 3 s, la cible et le biais ; un bip retentit 3 s avant chaque changement de bloc. Le saut de bloc et la pause se font aujourd'hui par appui long sur le Click (§4.4) ; avec le lot O17, le saut de bloc passe sur Z et la pause sur Y.
 
 ## 7. Compilateur de parcours
 
@@ -323,7 +328,7 @@ L'engine ignore toute couche absente ; une couche se régénère seule avec `add
 - Toute texture manquante est remplacée par une couleur unie : un thème peut être démarré avec un seul fichier.
 - Un thème ne touche jamais au coureur ; le format est décrit dans « Format .world v1 », section Thèmes.
 
-**Dépôt de code.** Un seul dépôt avec `docs/contracts/` contenant cette SRS, le Contrat IPC v1, le format `.world` et leurs schémas JSON. Ces documents sont fournis à l'IA au début de chaque session de développement ; des tests de contrat vérifient que chaque programme les respecte.
+**Dépôt de code.** Un seul dépôt : cette SRS est dans `docs/`, le Contrat IPC v1, le format `.world` et leurs schémas JSON dans `docs/contracts/`. Ces documents sont fournis à l'IA au début de chaque session de développement ; des tests de contrat vérifient que chaque programme les respecte.
 
 ## 11. Configuration et arborescence
 
@@ -347,8 +352,11 @@ difficulty_pct = 50             # réglable en jeu (lot Q1)
 grade_min_pct = -10
 grade_max_pct = 16
 power_smooth_tau_s = 0.7
-grade_rate_pct_per_s = 2.0   # limite de variation due au relief (pas aux braquets)
+grade_rate_pct_per_s = 2.0   # ancien réglage symétrique, lu seulement si up/down manquent (lot Q4)
+grade_rate_up_pct_per_s = 4.0     # vitesse maximale quand la pente envoyée augmente (lot Q4)
+grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
+hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 
 [gearing]
 n_gears = 24
@@ -366,6 +374,9 @@ click_address = ""          # boîtier « + » du Click (openride-core devices -
 click_minus_address = ""    # boîtier « − » du Click
 click_short_max_s = 0.5
 click_long_min_s = 0.9
+click_trace_raw = false      # trace brute de chaque notification du Click (lot Q6)
+click_mute_after_s = 60.0    # boîtier déclaré muet sans appui depuis ce délai (lot Q6)
+click_rehandshake_s = 0.0    # reprise d'un boîtier muet, en secondes entre deux étapes ; 0 : jamais (lot Q6)
 mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
 hr = "none"                  # ceinture cardio : "none", "ble" ou "sim"
 hr_address = ""
@@ -375,6 +386,8 @@ sim_scenario = ""            # scénario du Bluetooth simulé (vide : demo), voi
 [render]
 quality = "low"      # low, medium, high
 theme = "default"
+visual_grade_scale = 1.0   # exagération visuelle du relief, de 1,0 à 2,0 (lot Q2 ; physique et HUD inchangés)
+living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 
 [ipc]
 port_state = 5005
@@ -394,9 +407,32 @@ recenter_m = 10000.0
 network = true       # false : cache seulement
 prefetch_history = true
 prefetch_radius_km = 10.0
+[wind]
+mode = "off"                 # "off" (défaut), "fixed", "gusty" ou "theme" (vent du thème 1.2)
+speed_kmh = 0                # 0 à 60
+from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360)
+gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme"
+seed = 0                     # graine des rafales, pour rejouer une séance
+feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
+max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
+
+La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
+
+**Sections prévues pour la 2.0.** Les clés des sections `[rogue]` et `[avatar]` sont fixées par la révision 1.4 du contrat IPC (lot T1) ; elles rejoindront l'exemple ci-dessus avec les lots qui les lisent (le core les transmet à l'engine dans `hello_ack.config.rogue` et `hello_ack.config.progression.avatar`) :
+
+| Section et clé | Défaut | Bornes | Lot qui la lit |
+| --- | --- | --- | --- |
+| `[rogue] w_prime_j` | 20 000 (J) | 5 000 à 60 000 | R2 |
+| `[rogue] cp_w` | 0 (0 : la FTP) | 0 à 1 000 | R2 |
+| `[rogue] grade_rate_up_pct_per_s` | 8,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
+| `[rogue] grade_rate_down_pct_per_s` | 12,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
+| `[avatar] standing_grade_pct` | 8 (pente, %) | fixées par V6 | V6 |
+| `[avatar] standing_power_pct` | 150 (% de la FTP) | fixées par V6 | V6 |
+
+Le reste de l'avatar (taille, silhouette, couleurs, numéro) est dans `~/OpenRide/profile.json` (lot V4), réglé au Click par `set_avatar`.
 
 **Arborescence**
 
@@ -465,7 +501,7 @@ Le MVP utilisable est atteint à la fin du sprint 3 : pédaler sur une trace GPX
 **Évolutions envisagées** (aucune n'est dans la v1)
 
 - Bots : puissance constante, puis fantôme d'un ancien FIT, puis modèle CP / W' pour les courses.
-- Demi-tour sur la route et réglage des bots par appui long en mode SIM.
+- Demi-tour sur la route et réglage des bots : depuis les menus (écran de pause, réglages), pas par un geste du Click ; lots N17 et N18 de la 1.x (décision du propriétaire du 27 octobre).
 - Brouillard volumétrique, SSAO, LUT colorimétrique, toits à deux pans.
 - Couverture du sol (ESA WorldCover) pour la végétation en montagne, où OSM est lacunaire.
 - Téléphone comme télécommande, ANT+.
