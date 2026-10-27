@@ -25,6 +25,16 @@ func _check(cond: bool, msg: String) -> void:
 		printerr("[ÉCHEC] ", msg)
 
 
+class FakePassersby:
+	var people := [{"role": "dog_walker", "color": 1, "phase": 0.0, "yaw": 0.0, "pos": Vector3.ZERO}]
+	var selection_serial := 1
+	var dog_count := 1
+	var bench_count := 0
+	func visible(_c, _s, _t, _b) -> Array:
+		return [{"i": 0, "pos": Vector3(0.0, 0.0, -3.0), "yaw": 0.0, "anim": "stand", "wave": false, "dirty": true,
+			"dog": 0, "dog_pos": Vector3(0.0, 0.0, 0.0), "dog_yaw": PI * 0.5, "bench": -1}]
+
+
 class FakeModel:
 	var spectators := [{"s": 0.0, "side": 1, "pos": Vector3.ZERO, "yaw": 0.0, "color": 2, "flag": false, "phase": 0.0, "delay": 0.0, "group": 0}]
 	var groups := []
@@ -61,6 +71,20 @@ func _run() -> void:
 	var head := img.get_pixel(img.get_width() / 2, int(cam.unproject_position(Vector3(0.0, 1.57, 0.0)).y))
 	_check(_close(body, CrowdRenderer.PALETTE[2]), "buste à la couleur des vêtements (%s)" % str(body))
 	_check(_close(head, Color(0.85, 0.68, 0.55)), "tête à la couleur de la peau (%s)" % str(head))
+	r.queue_free()
+	# Lot P21 : chien des passants, de profil, à la couleur de sa robe
+	var pr = CrowdRenderer.new("passersby")
+	vp.add_child(pr)
+	pr.setup_passersby(FakePassersby.new())
+	pr.set_preset("low")
+	pr.update_passersby(Vector3(0.0, 1.0, 5.0), 0.0, 0.0)
+	cam.size = 1.2
+	cam.look_at_from_position(Vector3(0.0, 0.45, 10.0), Vector3(0.0, 0.45, 0.0))
+	for i in 5:
+		await process_frame
+	img = vp.get_texture().get_image()
+	var dog := img.get_pixel(img.get_width() / 2, int(cam.unproject_position(Vector3(0.0, 0.45, 0.0)).y))
+	_check(_close(dog, CrowdRenderer.DOG_PALETTE[1]), "passants : chien à la couleur de sa robe (%s)" % str(dog))
 	vp.queue_free()
 	await process_frame
 	print("test_crowd_render : %d vérifications, %d échecs" % [_checked, _failures])
