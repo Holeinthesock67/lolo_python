@@ -5,6 +5,12 @@ est un fichier ``.gpx``, ``.fit``, ``.tcx``, ``.fit.gz``, ``.tcx.gz`` ou ``.zip`
 lot O5 ; extension sans casse). Son identifiant est son nom normalisé sans extension ; deux
 traces de même identifiant (``col.gpx`` et ``col.fit``) : la première dans l'ordre de
 ``TRACK_SUFFIXES`` (puis du nom) gagne, l'autre est écartée et signalée par ``track_conflicts``.
+Les traces sont lues dans ``gpx_dir`` et dans ses sous-dossiers directs (packs de parcours,
+lot O15).
+
+Chaque parcours porte sa fiche (lot O15, ``route_stats``) : ``stats`` (fiche calculée, lue dans le
+manifeste ou recalculée pour un ``.world`` ancien) et ``library`` (fiche saisie ``<trace>.toml``,
+lue à côté de la trace, sinon dans le manifeste). ``query`` trie et filtre la liste.
 Statuts :
 - ``ready`` : ``.world`` valide dont le GPX source est absent ou inchangé (même SHA-256) ;
 - ``outdated`` : ``.world`` valide mais le GPX source a été modifié (SHA-256 différent) ;
@@ -27,6 +33,8 @@ from pathlib import Path
 from .config import GPX_DIR, ROUTES_DIR
 from .demo_world import DEMO_LENGTH_M, DEMO_NAME
 from .route import WorldError, load_world
+from .route_stats import LibraryError, compute_stats, load_library, sidecar_path, stats_usable
+from .route_stats import query  # noqa: F401  (catalog.query, tri et filtres du lot O15)
 
 log = logging.getLogger("catalog")
 
@@ -44,14 +52,26 @@ def track_stem(name: str) -> tuple[str, int] | None:
     return None
 
 
+def _track_files(gpx_dir: Path) -> list[Path]:
+    """Fichiers de `gpx_dir` et de ses sous-dossiers directs non cachés (packs de parcours)."""
+    if not gpx_dir.is_dir():
+        return []
+    files = []
+    for p in gpx_dir.iterdir():
+        if p.is_file():
+            files.append(p)
+        elif p.is_dir() and not p.name.startswith("."):
+            files.extend(q for q in p.iterdir() if q.is_file())
+    return files
+
+
 def scan_tracks(gpx_dir: Path) -> tuple[list[Path], list[tuple[Path, Path]]]:
     """Traces retenues (une par identifiant, triées par nom) et conflits `(écartée, retenue)`."""
     candidates: list[tuple[str, int, str, Path]] = []
-    if Path(gpx_dir).is_dir():
-        for p in Path(gpx_dir).iterdir():
-            ts = track_stem(p.name) if p.is_file() else None
-            if ts is not None:
-                candidates.append((_normalize_name(ts[0]), ts[1], p.name, p))
+    for p in _track_files(Path(gpx_dir)):
+        ts = track_stem(p.name)
+        if ts is not None:
+            candidates.append((_normalize_name(ts[0]), ts[1], p.name, p))
     winners: dict[str, Path] = {}
     conflicts: list[tuple[Path, Path]] = []
     for norm, _rank, _name, p in sorted(candidates):
@@ -77,6 +97,23 @@ class RouteEntry:
     has_terrain: bool
     gpx_path: Path | None
     error: str | None = None
+    stats: dict | None = None    # fiche calculée (lot O15)
+    library: dict | None = None  # fiche saisie (lot O15)
+
+
+def _library_for(track: Path | None, manifest: dict | None) -> dict | None:
+    """Fiche saisie : `<trace>.toml` à côté de la trace, sinon celle copiée dans le manifeste."""
+    if track is not None:
+        stem = track_stem(track.name)
+        side = sidecar_path(track, stem[0] if stem else track.stem)
+        if side.is_file():
+            try:
+                return load_library(side)
+            except LibraryError as exc:
+                log.warning("fiche de parcours ignorée : %s", exc)
+                return None
+    lib = (manifest or {}).get("library")
+    return lib if isinstance(lib, dict) else None
 
 
 def _normalize_name(text: str) -> str:
@@ -183,6 +220,7 @@ def list_routes(routes_root: Path = ROUTES_DIR, gpx_dir: Path = GPX_DIR) -> list
                     has_terrain=False,
                     gpx_path=matched_path,
                     error=err_msg,
+                    library=_library_for(matched_path, None),
                 )
             else:
                 layers = world.manifest.get("layers") or {}
@@ -195,6 +233,10 @@ def list_routes(routes_root: Path = ROUTES_DIR, gpx_dir: Path = GPX_DIR) -> list
                 elif matched_path is not None and src_gpx_sha is None and route_id != DEMO_NAME:
                     status = "outdated"
 
+                stats = world.manifest.get("stats")
+                if not stats_usable(stats):   # .world compilé avant le lot O15
+                    r = world.route
+                    stats = compute_stats({"n": r.n, "ds_m": r.ds_m, "length_m": r.length_m, "alt_m": r.alt_m})
                 entry = RouteEntry(
                     id=route_id,
                     name=world.name,
@@ -204,6 +246,8 @@ def list_routes(routes_root: Path = ROUTES_DIR, gpx_dir: Path = GPX_DIR) -> list
                     has_terrain=has_terrain,
                     gpx_path=matched_path,
                     error=None,
+                    stats=stats,
+                    library=_library_for(matched_path, world.manifest),
                 )
 
             if route_id == DEMO_NAME:
@@ -239,6 +283,7 @@ def list_routes(routes_root: Path = ROUTES_DIR, gpx_dir: Path = GPX_DIR) -> list
                 has_terrain=False,
                 gpx_path=gpx_path,
                 error=None,
+                library=_library_for(gpx_path, None),
             )
         )
 

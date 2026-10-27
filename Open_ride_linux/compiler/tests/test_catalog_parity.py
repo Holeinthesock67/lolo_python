@@ -116,8 +116,26 @@ def s_garmin(make_gpx, routes, tmp):
     assert run("build", gpx_dir / "export.zip", "--out", routes, "--layers", "route") == 0
 
 
+def s_library(make_gpx, routes, tmp):
+    """Lot O15 : pack en sous-dossier, fiches .toml (valide, invalide), .world sans fiche calculée."""
+    gpx = build(make_gpx, routes, "fiche_ok.gpx", 1060.0)
+    gpx.with_name("fiche_ok.toml").write_text('name = "Fiche"\ntags = ["col"]\n', encoding="utf-8")
+    (tmp / "GPX" / "pack-essai").mkdir()
+    make_gpx("GPX/pack-essai/Col Pack.gpx", *straight_north(length=1070.0))
+    (tmp / "GPX" / "pack-essai" / "Col Pack.toml").write_text('region = "Vosges"\n', encoding="utf-8")
+    (tmp / "GPX" / "pack-essai" / "pack.toml").write_text('name = "Essai"\n', encoding="utf-8")
+    bad = make_gpx("GPX/fiche_ko.gpx", *straight_north(length=1080.0))
+    bad.with_name("fiche_ko.toml").write_text('tags = "pas une liste"\n', encoding="utf-8")
+    old = build(make_gpx, routes, "ancien_world.gpx", 1090.0)
+    manifest_path = routes / "ancien-world.world" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    del manifest["stats"]                                      # compilé avant le lot O15
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    assert old.exists()
+
+
 SITUATIONS = [s_compiled, s_modified, s_never_compiled, s_renamed, s_corrupted, s_gpx_gone,
-              s_demo, s_garmin, s_empty]
+              s_demo, s_garmin, s_library, s_empty]
 
 
 def _rows(entries) -> list[dict]:
@@ -167,6 +185,7 @@ def test_expected_statuses_of_combined_situation(make_gpx, tmp_path: Path, monke
         "ancien-nom": "ready", "casse": "invalid", "sans-route": "invalid", "vide": "invalid",
         "orphelin": "ready", "sans-sha": "outdated",
         "garmin-fit": "to_compile", "sortie-fit": "to_compile", "sortie-tcx": "to_compile", "export": "ready",
+        "fiche-ok": "ready", "col-pack": "to_compile", "fiche-ko": "to_compile", "ancien-world": "ready",
     }
     assert {k: e.status for k, e in by_id.items()} == expected
     assert by_id["ancien-nom"].gpx_path == gpx_dir / "nouveau_nom.gpx"
@@ -175,6 +194,20 @@ def test_expected_statuses_of_combined_situation(make_gpx, tmp_path: Path, monke
     assert by_id["demo"].gpx_path == gpx_dir / "demo.gpx"
     assert by_id["relief"].has_terrain and not by_id["col-ok"].has_terrain
     assert by_id["aller-retour"].route_type == "out_and_back"
+    assert by_id["fiche-ok"].library == {"name": "Fiche", "tags": ["col"]}
+    assert by_id["col-pack"].library == {"region": "Vosges"}
+    assert by_id["fiche-ko"].library is None
+    assert by_id["ancien-world"].stats["gain_m"] == pytest.approx(0.05 * 1090.0, abs=2.0)
+    assert by_id["fiche-ok"].stats["distance_m"] == pytest.approx(1060.0, abs=5.0)
+    assert by_id["nouveau-parcours-ete"].stats is None
+
+
+def test_route_stats_module_is_identical_in_core() -> None:
+    """`route_stats.py` est copié tel quel dans le compilateur (lot O15) : fiches identiques sans le core."""
+    from openride_compiler import route_stats
+
+    core_stats = require_core("openride_core.route_stats")
+    assert Path(route_stats.__file__).read_bytes() == Path(core_stats.__file__).read_bytes()
 
 
 NAMES = [
