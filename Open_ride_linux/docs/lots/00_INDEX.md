@@ -96,7 +96,7 @@
 | [P4](LOT_P4_modele_vent_engine.md) | Engine : modèle du vent, indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (sans affichage) | GDScript | P1 | Petite | **Livré le 26 octobre** (issue #128) |
 | [P3](LOT_P3_aspiration_bots.md) | Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | **Livré le 26 octobre** (issue #127) |
 | [P5](LOT_P5_vent_vegetation.md) | Vent dans les arbres et touffes d'herbe (shader de balancement) | GDScript + shader | P4, O1 | Petite | **Livré le 26 octobre** (issue #129) |
-| [P6](LOT_P6_nuages.md) | Nuages qui défilent avec le vent | GDScript + shader | P4 | Petite | Oui, après P4 (issue #130) |
+| [P6](LOT_P6_nuages.md) | Nuages qui défilent avec le vent | GDScript + shader | P4 | Petite | **Livré le 26 octobre** (issue #130) |
 | [P7](LOT_P7_heure_soleil.md) | Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | Oui, **version 2.0** (issue #131) |
 | [P8](LOT_P8_meteo_legere.md) | Météo légère : brume de vallée, pluie, neige | GDScript | P4 | Petite | Oui, après P4 (issue #132) |
 | [P9](LOT_P9_ambiance_sonore.md) | Sons d'ambiance selon le décor (forêt, champs, eau, village, altitude) | GDScript | P1, P4 | Moyenne | Oui, après P4 (issue #133) |
