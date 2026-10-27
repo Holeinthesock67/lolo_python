@@ -47,7 +47,9 @@ const CONTRACT_REV := "1.4"   # série T lue depuis les lots T8 et T9
 ## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
 var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"
-const HELLO_PERIOD_S := 1.0
+const HELLO_PERIOD_MS := 1000        # contrat §5 : hello chaque seconde jusqu'au hello_ack
+const HEARTBEAT_PERIOD_MS := 500     # contrat §6 : heartbeat à 2 Hz
+const CLOCK_TICK_MS := 10            # pas du fil d'horloge (hello et heartbeat)
 const CMD_RESEND_US := 200_000        # contrat §4 : renvoi toutes les 200 ms
 const CMD_TIMEOUT_US := 3_000_000     # contrat §4 : abandon après 3 s
 const CORE_TIMEOUT_US := 1_000_000    # contrat §6 : core injoignable après 1 s sans state
@@ -83,7 +85,10 @@ var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
 var _pending_list_imports: Dictionary = {}
 var _hello_acked := false
-var _hello_timer := 0.0
+## Hello demandés au fil d'horloge (contrat §5) ; _hello_now : envoyer dès son prochain tour.
+var _hello_lock := Mutex.new()
+var _hello_wanted := false
+var _hello_now := false
 var _last_state_us := 0
 var _core_reachable := true
 var _hb_thread: Thread
@@ -106,28 +111,57 @@ func _ready() -> void:
 	_bound = true
 	print("IpcClient attaché sur ", SERVER_HOST, ":", state_port, ", commandes vers le port ", cmd_port)
 	_last_state_us = Time.get_ticks_usec()
-	send_hello()
-	# Heartbeat dans un fil séparé : il prouve que le programme est vivant même si le rendu
-	# saccade ou se bloque (fenêtre masquée, vsync…). Socket propre à ce fil.
+	_want_hello()
+	# Heartbeat et hello dans un fil séparé : leur rythme tient même si le rendu saccade ou se
+	# bloque (construction de la scène au démarrage, chargement d'un parcours, fenêtre masquée…).
+	# Socket propre à ce fil.
 	_hb_thread = Thread.new()
-	_hb_thread.start(_heartbeat_loop)
+	_hb_thread.start(_clock_loop)
 
 
-func _heartbeat_loop() -> void:
+func _clock_loop() -> void:
 	var sock := PacketPeerUDP.new()
 	sock.set_dest_address(SERVER_HOST, cmd_port)
 	var seq := 0
+	var next_beat := Time.get_ticks_msec()
+	var next_hello := next_beat
 	while not _hb_stop:
-		seq += 1
-		var payload := JSON.stringify({
-			"type": "heartbeat",
-			"v": CONTRACT_VERSION,
-			"seq": seq,
-			"fps": Engine.get_frames_per_second()
-		}).to_utf8_buffer()
-		sock.put_packet(payload)
-		OS.delay_msec(500)
+		var now := Time.get_ticks_msec()
+		if now >= next_beat:
+			seq += 1
+			sock.put_packet(JSON.stringify({
+				"type": "heartbeat",
+				"v": CONTRACT_VERSION,
+				"seq": seq,
+				"fps": Engine.get_frames_per_second()
+			}).to_utf8_buffer())
+			next_beat = maxi(next_beat + HEARTBEAT_PERIOD_MS, now)
+		# Envoi sous le verrou : aucun hello ne part après _stop_hello() (hello_ack reçu).
+		_hello_lock.lock()
+		if _hello_now:
+			_hello_now = false
+			next_hello = now
+		if _hello_wanted and now >= next_hello:
+			sock.put_packet(_hello_payload())
+			next_hello = now + HELLO_PERIOD_MS
+		_hello_lock.unlock()
+		OS.delay_msec(CLOCK_TICK_MS)
 	sock.close()
+
+
+## Hello chaque seconde à partir de maintenant, jusqu'au hello_ack (contrat §5).
+func _want_hello() -> void:
+	_hello_lock.lock()
+	_hello_wanted = true
+	_hello_now = true
+	_hello_lock.unlock()
+
+
+func _stop_hello() -> void:
+	_hello_lock.lock()
+	_hello_wanted = false
+	_hello_now = false
+	_hello_lock.unlock()
 
 
 ## Ligne de journal pour les tests sans écran (format « [test] clé=valeur »), seulement avec --test-mode.
@@ -161,18 +195,12 @@ func _process(delta: float) -> void:
 		_core_reachable = false
 		if _hello_acked:
 			_hello_acked = false
-			_hello_timer = HELLO_PERIOD_S   # hello dès maintenant ; sinon le rythme en cours continue
+			_want_hello()   # hello dès maintenant ; sinon le rythme en cours continue
 		# Un core relancé repart de seq = 0 : on accepte de nouveau toutes les trames.
 		last_state_seq = -1
 		print("Core non joignable (aucune trame depuis %.1f s)" % ((now - _last_state_us) / 1e6))
 		test_log("core_lost age_ms=%d" % ((now - _last_state_us) / 1000))
 		core_lost.emit()
-	# Contrat §5 : hello répété chaque seconde jusqu'au hello_ack.
-	if not _hello_acked:
-		_hello_timer += delta
-		if _hello_timer >= HELLO_PERIOD_S:
-			_hello_timer = 0.0
-			send_hello()
 	# Relances des listes (lot N3, contrat v1.1 §4) : sans réponse complète une seconde après la demande
 	# ou après la dernière partie reçue, nouvelle demande avec un nouveau cmd_id, 3 fois au plus.
 	_tick_list(_pending_list_routes, "list_routes", "routes",
@@ -201,6 +229,7 @@ func _poll_incoming() -> void:
 				input_event_received.emit(str(json_obj.get("event", "")))
 			"hello_ack":
 				_hello_acked = true
+				_stop_hello()
 				var cfg = json_obj.get("config", {})
 				core_config = cfg if typeof(cfg) == TYPE_DICTIONARY else {}
 				core_version = str(json_obj.get("core_version", ""))
@@ -222,7 +251,7 @@ func _poll_incoming() -> void:
 				print("Le core s'est arrêté ; retour à l'attente.")
 				test_log("shutdown")
 				_hello_acked = false
-				_hello_timer = HELLO_PERIOD_S   # hello dès l'image suivante, puis chaque seconde
+				_want_hello()   # hello tout de suite, puis chaque seconde
 				last_state_seq = -1
 				shutdown_received.emit()
 			"routes":
@@ -477,13 +506,13 @@ func _on_list_part(req: Dictionary, list_name: String, msg: Dictionary) -> void:
 			workouts_received.emit(items, whole)
 
 
-func send_hello() -> void:
-	_send_json({
+func _hello_payload() -> PackedByteArray:
+	return JSON.stringify({
 		"type": "hello",
 		"v": CONTRACT_VERSION,
 		"rev": CONTRACT_REV,
 		"engine_version": engine_version
-	})
+	}).to_utf8_buffer()
 
 
 ## Envoie une commande avec accusé (contrat §4) : renvoi toutes les 200 ms jusqu'à ce qu'un state

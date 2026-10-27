@@ -43,7 +43,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] **Ceinture cardio** (`hr_monitor.py`) : service Heart Rate standard, facultative (`hr = "ble"`), prioritaire sur la fréquence du trainer. Lot M2 : mesure décodée en entier (`ftms.parse_hr_measurement_full` : contact, énergie, intervalles RR), mesures ignorées quand le contact est absent (une ligne au journal par changement), 30 derniers RR gardés, liste des appareils 0x180D trouvés et choix explicite (`hr_name`, sinon meilleur RSSI hors montres Garmin), adresse retenue à recopier dans `hr_address`, batterie lue à la connexion (avertissement sous 15 %). À essayer avec une vraie ceinture.
 
 ### Module engine (`openride-engine`, Godot 4.3)
-- [x] Client IPC (`ipc_client.gd`) : `hello` répété jusqu'à la réponse, heartbeat dans un fil séparé, commandes vers le core.
+- [x] Client IPC (`ipc_client.gd`) : `hello` répété chaque seconde jusqu’à la réponse et heartbeat, tous deux dans un fil séparé (rythme tenu même quand une image dure, par exemple à la construction de la scène), commandes vers le core.
 - [x] Scène de démonstration (`main.gd`) : polyligne du parcours, caméra subjective, HUD (puissance, vitesse, braquet, cadence, fréquence cardiaque, pente réelle et envoyée, distance, état de la séance ; en ERG : cible envoyée au trainer avec le biais, bloc, temps restant, et la ligne du braquet rappelle que ± règle l'intensité ; textes calculés par `hud_view_model.session_lines`, 24 octobre).
 - [x] Touches `+` / `−` / flèches (appuis courts), `Page haut` / `Page bas` (appuis longs) ; un bip distinct par type d'appui.
 - [x] Scripts chargés par `preload` : le projet se lance sans passer par l'éditeur.
