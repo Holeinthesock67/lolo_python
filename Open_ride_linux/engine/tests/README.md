@@ -16,6 +16,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 | Fichier | Lot | Vérifie |
 | --- | --- | --- |
 | `test_terrain_render.gd` | E2 | Shader triplanaire compilé et rendu : herbe, roche, neige et trois mélanges égaux à `blend_weights` (L3) à 3/255 près, seuil de pente du thème, texture utilisée à la place de la couleur |
+| `test_fauna_render.gd` | P11 | Shader des animaux (`fauna.gdshader`) compilé : une vache vue de côté à la couleur de son espèce, un oiseau vu de dessus, rien sans animal |
 
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
@@ -88,6 +89,8 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_far_terrain_carve.gd` | – | Terrain lointain abaissé sous la route (`terrain_tiles.gd`, `carve_under_route`) : vallée en V à 30 % et route en S à 7 %, dépassement de 8 m sans correctif, au moins 2 m sous la chaussée après, aucun sommet relevé, bord commun de deux tuiles identique |
 | `test_sound_player.gd` | E4 | Lecteurs et sons procéduraux du parcours (`sound_player.gd`) : synthèse au démarrage (< 500 ms), vent, roue libre, limitation à 4 lecteurs 3D actifs, volumes à 0,5 dB de `sound_model.gd` |
 | `test_wind_model.gd` | P4 | Modèle du vent (`wind_model.gd`) : repère, lissage (90 % en 1,2 s sans dépassement), phase continue, expiration du vent du core et vent du thème, vent apparent, coût de `evaluate` |
+| `test_fauna_placer.gd` | P11 | Placement des animaux (`fauna_placer.gd`) : déterminisme, troupeaux de 3 à 12 bêtes autour des points `livestock`, aucune bête à moins de 4 m de l'axe, dans l'eau ou un bâtiment, ni sur une pente au-dessus de 25 %, oiseaux jamais sous 15 m du sol, pas de bétail sans point `livestock`, pas de chevreuil avec `fauna.deer = 0`, au plus un chevreuil tous les 3 km |
+| `test_fauna_behaviour.gd` | P11 | Comportement et affichage des animaux (`fauna_behaviour.gd`, `fauna_renderer.gd`) : chevreuil en fuite à 59,5 m, loin de la route, disparu en moins de 6 s ; écart des oiseaux ; budget de `living(preset)` avec 200 candidats (les plus proches gardés), aucun nœud créé ; mise à jour de 200 animaux sous 0,3 ms par image |
 | `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
 
 ## Étapes du script

@@ -101,7 +101,7 @@
 | [P8](LOT_P8_meteo_legere.md) | Météo légère : brume de vallée, pluie, neige | GDScript | P4 | Petite | Oui, après P4 (issue #132) |
 | [P9](LOT_P9_ambiance_sonore.md) | Sons d'ambiance selon le décor (forêt, champs, eau, village, altitude) | GDScript | P1, P4 | Moyenne | Oui, après P4 (issue #133) |
 | [P10](LOT_P10_sons_velo.md) | Sons du vélo : vent selon la vitesse dans l'air, roue libre réaliste et « clac » à la reprise | GDScript | P4 | Petite | Oui, après P4 (issue #134) |
-| [P11](LOT_P11_animaux.md) | Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | Oui, après P4 (issue #135) |
+| [P11](LOT_P11_animaux.md) | Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #135) |
 | [P12](LOT_P12_eoliennes_drapeaux_eau.md) | Éoliennes et drapeaux (compilateur et engine), eau qui scintille | Python + GDScript | P1, P4 | Moyenne | Oui, après P4 (issue #136) |
 | [P13](LOT_P13_vehicules.md) | Véhicules croisés sur la route du parcours | GDScript | P4, P9 | Petite | Oui, après P9 (issue #137) |
 | [P14](LOT_P14_bord_de_route.md) | Bord de route : panneaux de col, bornes kilométriques, marquages au sol | GDScript + shader | P4 | Moyenne | Oui, après P4 (issue #138) |
