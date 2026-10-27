@@ -27,7 +27,7 @@ from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
 from .ipc_lists import summary_extras
-from .ipc_server import IpcServer, IpcState
+from .ipc_server import MAX_SETTINGS_DATAGRAM_SIZE, IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
 from .progression import journal_source
 from .mock_driver import MockDriver
@@ -244,7 +244,8 @@ class CoreSession:
             on_command=self._on_command, on_engine_lost=self._on_engine_lost,
             on_engine_returned=lambda: log.info("Engine connecté."),
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
-                          "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct)})
+                          "theme": cfg.render.theme, "chart": cfg.render.chart,
+                          "difficulty_pct": round(self.difficulty_pct)})
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
                  cfg.trainer.grade_rate_up_pct_per_s, cfg.trainer.grade_rate_down_pct_per_s)
@@ -516,7 +517,7 @@ class CoreSession:
         from . import settings
 
         self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
-                              "items": settings.current(self.cfg)})
+                              "items": settings.current(self.cfg)}, max_size=MAX_SETTINGS_DATAGRAM_SIZE)
 
     def _set_setting(self, args: dict, cmd_id: int) -> None:
         from . import settings
@@ -539,7 +540,7 @@ class CoreSession:
         self.difficulty_pct = float(self.cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
         self.server.hello_config.update(ftp_w=self.cfg.rider.ftp_w, theme=self.cfg.render.theme,
-                                        difficulty_pct=round(self.difficulty_pct))
+                                        chart=self.cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
         self._send_settings(cmd_id)
 
     # --- appairage depuis le menu (lot N13, contrat IPC révision 1.3) -------------------------

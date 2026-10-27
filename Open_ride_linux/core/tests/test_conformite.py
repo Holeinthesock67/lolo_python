@@ -151,8 +151,8 @@ def test_c5_hello_ack_reflects_config(tmp_path, monkeypatch):
     s, frames = make_session(tmp_path, monkeypatch, cfg=cfg, port=5970)
     s.server._handle_message({"type": "hello", "v": 1, "engine_version": "t"})
     ack = [f for f in frames if f["type"] == "hello_ack"][0]
-    assert ack["config"] == {"ftp_w": 280.0, "gears_total": 22, "theme": "default", "difficulty_pct": 50,
-                             "modes": ["ride", "erg"]}   # modes : révision 1.3
+    assert ack["config"] == {"ftp_w": 280.0, "gears_total": 22, "theme": "default", "chart": "reduced",
+                             "difficulty_pct": 50, "modes": ["ride", "erg"]}   # modes, chart : révision 1.3
 
 
 # C6 ---------------------------------------------------------------------------------------

@@ -30,6 +30,8 @@ def assert_valid(msg: dict) -> None:
     errors = [e.message for e in jsonschema.Draft202012Validator(schema(msg["type"])).iter_errors(msg)]
     assert not errors, f"{msg['type']} invalide : {errors}"
     limit = MAX_LIST_DATAGRAM if msg["type"] in ("routes", "workouts", "room", "garage", "plans") else MAX_DATAGRAM
+    if msg["type"] == "settings":
+        limit = MAX_STATE_DATAGRAM   # 4 096 octets depuis le lot O14 (§2)
     # La limite de state est de 4 096 octets depuis la révision 1.3, mais les trames du core restent
     # sous 1 400 octets : les tests le vérifient pour garder la place des ajouts de la 2.0.
     assert len(encode(msg)) <= limit
@@ -40,7 +42,7 @@ class Capture:
 
     def __init__(self, server: IpcServer) -> None:
         self.frames: list[dict] = []
-        server.send_raw = self.frames.append   # type: ignore[method-assign]
+        server.send_raw = lambda m, max_size=None: self.frames.append(m)   # type: ignore[method-assign]
 
     def of(self, typ: str) -> list[dict]:
         return [f for f in self.frames if f["type"] == typ]

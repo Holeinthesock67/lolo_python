@@ -48,6 +48,9 @@ var target_label: Label
 var remaining_label: Label
 var next_label: Label
 var histogram: Control
+## Courbes de la séance (lot O14), à la place de l'histogramme quand le réglage `render.chart` n'est pas
+## `hidden` ; le profil des blocs y est dessiné par workout_chart_model.gd.
+var chart: Control = null
 
 var ftp_w: float = 0.0
 ## Nom d'entraînement -> profil (liste de [durée_s, fraction début, fraction fin]).
@@ -125,6 +128,22 @@ func set_profiles(items: Array) -> void:
 		var prof = item.get("profile", [])
 		if typeof(prof) == TYPE_ARRAY and not (prof as Array).is_empty():
 			_profiles[str(item.get("name", ""))] = prof
+
+
+## Profil v1.1 d'un entraînement connu ([] sinon), pour le graphique des courbes.
+func profile_of(workout_name: String) -> Array:
+	return _profiles.get(workout_name, [])
+
+
+## Installe la vue des courbes sous le bandeau ; l'histogramme se replie quand elle est affichée.
+func set_chart(view: Control, mode: String) -> void:
+	if chart == null:
+		chart = view
+		chart.size_flags_vertical = Control.SIZE_EXPAND_FILL
+		histogram.get_parent().add_child(chart)
+	chart.set_mode(mode)
+	chart.visible = mode != "hidden"
+	histogram.visible = mode == "hidden"
 
 
 func has_profile(workout_name: String) -> bool:

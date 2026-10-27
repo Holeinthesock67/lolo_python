@@ -38,6 +38,10 @@
         "theme": {
           "type": "string"
         },
+        "chart": {
+          "type": "string",
+          "enum": ["hidden", "reduced", "full"]
+        },
         "difficulty_pct": {
           "type": "integer",
           "minimum": 0,
