@@ -78,6 +78,14 @@ TRIALS: dict[str, Trial] = {
         ("scripts/recette_pc.py",),
         ("rien : tout tourne sur le PC, on peut faire autre chose",),
         ("bip et verdict à la fin",)),
+    "boutons_click": Trial(
+        "Test guidé des boutons du Click", "environ 5 min",
+        ("python -m openride_core.tools.boutons_click",),
+        ("les deux boîtiers Click, piles chargées",
+         "le jeu fermé : l'outil tient seul le Click",
+         "le son du PC allumé : un bip à chaque étape et à chaque appui reçu"),
+        ("17 appuis demandés tour à tour, le boîtier gauche d'abord (il se tait parfois après une minute)",
+         "chaque appui reçu s'affiche avec son action dans chaque mode (spécification générale §7.1)")),
 }
 
 
@@ -103,6 +111,10 @@ BEEPS: dict[str, tuple[tuple[float, float], ...]] = {
     "alerte": ((330, 0.35), (0, 0.1), (330, 0.35)),
     "reussite": ((660, 0.12), (880, 0.12), (1320, 0.25)),
     "echec": ((440, 0.25), (330, 0.4)),
+    # Appui reçu (test des boutons) : mêmes notes que les bips d'appui du jeu (engine `main.gd`).
+    "appui": ((880, 0.08),),
+    "appui_long": ((660, 0.10), (990, 0.14)),
+    "appui_flou": ((300, 0.15),),
 }
 RATE = 22050
 
@@ -231,6 +243,8 @@ class Guide:
         self.measures: list[tuple[str, bool | None]] = []
         self.notes: list[str] = []
         self.banner = ""
+        self.panel: list[str] = []      # encadré sous la consigne (test des boutons : appui reçu)
+        self.panel_ok: bool | None = None
         self._last_draw = -1.0
 
     # journal
@@ -259,6 +273,7 @@ class Guide:
         self._end_step()
         self.step_ = _Step(text, detail, self.clock(), seconds, index, total)
         self.banner = ""
+        self.panel = []
         self.log("etape", texte=text, detail=detail, duree_s=seconds, numero=index, total=total)
         if beep:
             self.sound.play("debut")
@@ -327,6 +342,13 @@ class Guide:
         self._line(f"!!! {text}")
         self.draw(force=True)
 
+    def show_panel(self, lines: list[str], ok: bool | None = None) -> None:
+        """Encadré bien visible sous la consigne : vert si `ok`, jaune si faux, neutre sinon."""
+        self.panel, self.panel_ok = list(lines), ok
+        for line in lines:
+            self._line(f"    | {line}")
+        self.draw(force=True)
+
     def finish(self, ok: bool, text: str) -> None:
         self._end_step()
         self.step_ = _Step(text, "", self.clock(), None, None, None, ended=True)
@@ -376,6 +398,12 @@ class Guide:
             if left is not None:
                 color = "\033[1;32m" if left > 10 else "\033[1;33m" if left > 3 else "\033[1;31m"
                 lines += [""] + [f"{color}{row}\033[0m" for row in big_text(clock_text(left))]
+        if self.panel:
+            color = "" if self.panel_ok is None else ("\033[1;32m" if self.panel_ok else "\033[1;33m")
+            inner = min(width - 4, max(len(p) for p in self.panel))
+            lines += ["", f"{color}┌{'─' * (inner + 2)}┐\033[0m"]
+            lines += [f"{color}│\033[0m {p[:inner].ljust(inner)} {color}│\033[0m" for p in self.panel]
+            lines.append(f"{color}└{'─' * (inner + 2)}┘\033[0m")
         if self.banner:
             lines += ["", f"\033[1;41;97m {self.banner} \033[0m"]
         if self.live:
