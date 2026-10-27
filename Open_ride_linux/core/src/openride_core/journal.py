@@ -7,7 +7,8 @@ Sortes de lignes :
 - `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ..., "source": ...}` en tête
   (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8 ;
   `source` : `live` (trainer réel), `simulated` (trainer `mock` ou `sim`) ou `replay` (rejeu),
-  absent des journaux antérieurs au lot V2, qui le lit pour la progression) ;
+  absent des journaux antérieurs au lot V2, qui le lit pour la progression ; `ftp_w` facultatif :
+  FTP de la séance, lue pour les pièces gagnées à l'effort, lot V3b, écrite à partir de V11) ;
   champ facultatif `plan` = `{"id": ..., "week": n, "day": "mardi"}` quand la séance réalise une
   séance d'un plan d'entraînement actif (lot O11), absent sinon ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
