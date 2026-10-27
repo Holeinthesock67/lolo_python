@@ -1,0 +1,53 @@
+# Plan d'entraînement OpenRide (docs/contracts/plan_format_v1.md), plan de référence du lot O11.
+[plan]
+name = "FTP 6 semaines"
+description = "Test de rampe, deux blocs de seuil et de PMA séparés par une semaine plus légère, test final."
+days_per_week = 3
+
+[[week]]
+focus = "Test et sweet spot"
+days = [
+  { day = "mardi", workout = "rampe_test" },
+  { day = "jeudi", workout = "sweet_spot_3x10" },
+  { day = "samedi", workout = "endurance_60" },
+]
+
+[[week]]
+focus = "Sweet spot"
+days = [
+  { day = "mardi", workout = "sweet_spot_3x10" },
+  { day = "jeudi", workout = "tempo_2x15" },
+  { day = "samedi", workout = "endurance_60" },
+]
+
+[[week]]
+focus = "Seuil et PMA"
+days = [
+  { day = "mardi", workout = "seuil_2x20" },
+  { day = "jeudi", workout = "vo2_5x3" },
+  { day = "samedi", workout = "endurance_60" },
+]
+
+[[week]]
+focus = "Récupération"
+days = [
+  { day = "mardi", workout = "endurance_60" },
+  { day = "jeudi", workout = "tempo_2x15" },
+  { day = "samedi", workout = "endurance_60" },
+]
+
+[[week]]
+focus = "Seuil et PMA"
+days = [
+  { day = "mardi", workout = "seuil_2x20" },
+  { day = "jeudi", workout = "vo2_5x3" },
+  { day = "samedi", workout = "sweet_spot_3x10" },
+]
+
+[[week]]
+focus = "Allègement et test"
+days = [
+  { day = "mardi", workout = "sweet_spot_3x10" },
+  { day = "jeudi", workout = "endurance_60" },
+  { day = "samedi", workout = "rampe_test" },
+]
