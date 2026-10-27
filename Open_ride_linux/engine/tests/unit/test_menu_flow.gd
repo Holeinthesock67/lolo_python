@@ -572,12 +572,13 @@ func _test_bots_menu() -> void:
 	f.set_routes(ROUTES)
 	f.handle("PLUS_SHORT")   # Session libre
 	f.handle("A_LONG")
-	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot", "ghost"],
-		"écran Prêt : bot et fantôme après les choix (%s)" % str(_ids(f)))
+	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot", "ghost", "records"],
+		"écran Prêt : bot et fantôme avant les records (%s)" % str(_ids(f)))
 	_check(f.state()["items"][3]["label"] == "Bot : aucun" and f.state()["items"][4]["label"] == "Fantôme de la dernière séance : non",
 		"par défaut : aucun bot, pas de fantôme")
 	_check(f.handle("A_LONG") == {"action": "start"}, "sans bot : start sans argument (les bots de la ligne de commande restent)")
-	f.handle("MINUS_SHORT")   # Fantôme (boucle depuis Démarrer)
+	f.handle("MINUS_SHORT")   # Records (boucle depuis Démarrer)
+	f.handle("MINUS_SHORT")   # Fantôme
 	_check(_focus_id(f) == "ghost", "focus sur le fantôme")
 	f.handle("MINUS_SHORT")   # Bot
 	for i in range(4):
