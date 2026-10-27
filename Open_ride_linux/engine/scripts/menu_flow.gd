@@ -59,6 +59,9 @@ var _lists_requested := false
 var devices_model = DevicesViewModel.new()
 var pairing = PairingViewModel.new()
 var settings = SettingsViewModel.new()
+## Versions de l'engine et du core pour la ligne « OpenRide X.Y.Z » des réglages (lots O2 et O4).
+var engine_version := str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
+var core_version := ""
 ## Difficulté de la séance (trame d'état, lot Q1), pour le curseur de la pause.
 var difficulty_pct := 50
 ## Dernier objet `devices` reçu (une trame sur 30 le porte, contrat §3) : gardé jusqu'au suivant.
@@ -188,7 +191,15 @@ func _refresh_settings() -> void:
 	items.append_array(settings.menu_items())
 	if settings.items.is_empty():
 		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
+	items.append(SettingsViewModel.version_item(engine_version, core_version))
 	menu.set_screen_items(MenuModel.SETTINGS, items)
+
+
+## Versions affichées en bas des réglages : engine (project.godot) et core (hello_ack.core_version).
+func set_versions(engine_v: String, core_v: String) -> void:
+	engine_version = engine_v
+	core_version = core_v
+	_refresh_settings()
 
 
 ## Message `settings` du core (liste, ou réponse à set_setting).
