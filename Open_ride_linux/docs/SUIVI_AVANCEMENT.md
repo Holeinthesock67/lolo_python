@@ -159,6 +159,7 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 - [ ] Click : cause des déconnexions spontanées (environ 2 en 3 minutes le 22 octobre, reconnexion en 4 s environ).
 - [ ] Images par seconde de Godot, à relever quand le décor sera chargé (lot E1).
 - [ ] ERG (lot F) : un `.zwo` standard exécuté en entier sur le HomeTrainer, cibles tenues (critère 11 du lot F). Débloqué par le lot J1 (24 octobre) : `scripts/openride-dev.sh --trainer ftms --input click --autostart --workout sweet_spot_3x10`, après `python -m openride_core.tools.workouts install`.
+- [ ] Banc de latence du trainer (lot X5, PR #245, fusionné le 27 octobre, essai encore à faire sur le vélo) : `python -m openride_core.tools.trainer_steps --mode sim`, puis `--mode erg --cadence 85` (environ 15 min, braquet moyen gardé, 85 rpm) ; relever délai d'accusé, t63, t90 et stabilisation dans `~/OpenRide/trainer_steps/<date>/rapport.html`, pour régler le lissage de la pente et la réactivité de l'ERG.
 
 ---
 
