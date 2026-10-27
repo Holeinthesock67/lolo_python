@@ -94,6 +94,9 @@ class DriversConfig:
     click_minus_address: str = ""  # boîtier « − » du Click (vide : l'autre boîtier trouvé)
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
+    click_trace_raw: bool = False
+    click_mute_after_s: float = 60.0
+    click_rehandshake_s: float = 0.0
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
     hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
     hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
@@ -161,6 +164,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("ipc", "port_commands"): (1024, 65535),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
+    ("drivers", "click_mute_after_s"): (1, 600),
+    ("drivers", "click_rehandshake_s"): (0, 600),
     ("wind", "speed_kmh"): (0, 60),
     ("wind", "from_deg"): (0, 360),
     ("wind", "gust_pct"): (0, 100),
