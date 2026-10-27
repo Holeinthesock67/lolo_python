@@ -25,7 +25,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .classic import ClassicRace
-from .config import OPENRIDE_HOME, WORKOUTS_DIR, Config
+from .config import GPX_DIR, OPENRIDE_HOME, WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
@@ -35,6 +35,7 @@ from .journal import JOURNAL_DIR, Record
 from .progression import journal_source
 from .mock_driver import MockDriver
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
+from .open_world_save import save_ride
 from .physics import PhysicsParams, RiderPhysics
 from . import powerups as powerups_mod, records as records_mod
 from .powerups import PowerUpError, load_table
@@ -299,6 +300,7 @@ class CoreSession:
         self.openworld: OpenWorld | None = None
         self.worldgen_cmd: list[str] | None = None
         self.worldgen_args: list[str] = []
+        self.gpx_dir: Path | None = None        # balades enregistrées (défaut ~/OpenRide/GPX ; essais)
         self._ow_previous = "IDLE"
 
     # --- machine à états ---------------------------------------------------------------
@@ -935,6 +937,12 @@ class CoreSession:
                                        "previous_ftp_w": ftp_result.previous_ftp_w,
                                        "warnings": list(ftp_result.warnings), "reliable": ftp_result.reliable}
         self.state.summary = summary
+        ow = self.openworld
+        if ow is not None and save and ow.route is not None and ow.route.ready:
+            try:   # lot W14 : la route parcourue devient un parcours de la bibliothèque
+                save_ride(ow.route, self.physics.s, ow.id, self.gpx_dir or GPX_DIR)
+            except (OSError, WorldError) as exc:
+                log.warning("Balade du monde ouvert non enregistrée : %s", exc)
         self._close_open_world()
         self.state.open_world = None
         self.erg = None
