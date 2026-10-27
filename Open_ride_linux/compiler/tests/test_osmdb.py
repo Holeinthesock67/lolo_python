@@ -95,6 +95,8 @@ def test_touch_predicates_are_exact(tmp_path) -> None:
     w.add_road(1, {"highway": "primary"}, [1, 2, 3], [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0)])
     w.add_road(2, {"highway": "primary"}, [4, 5], [(0.2, 0.2), (0.8, 0.8)])
     w.add_road(3, {"highway": "motorway"}, [6, 7], [(0.0, 0.5), (1.0, 0.5)])
+    w.add_road(4, {"highway": "tertiary", "junction": "roundabout"}, [8, 9, 10, 8],
+               [(5.0, 5.0), (5.001, 5.0), (5.0, 5.001), (5.0, 5.0)])
     w.add_area("w1", "building", {"building": "yes"}, [(0.0, 0.0), (1.0, 0.0), (1.0, 1.0), (0.0, 1.0)])
     w.finish()
     with OsmDb(tmp_path / "l.sqlite") as db:
@@ -104,6 +106,8 @@ def test_touch_predicates_are_exact(tmp_path) -> None:
         assert [r.osm_id for r in db.roads_in((0.4, 0.4, 0.6, 0.6), include_excluded=True)] == [2, 3]
         assert [a.osm_id for a in db.areas_in(b)] == ["w1"]          # emprise à l'intérieur du bâtiment
         assert db.areas_in((2, 2, 3, 3)) == []
+        (ring,) = db.roads_in((4.9, 4.9, 5.1, 5.1))
+        assert ring.junction == "roundabout" and ring.oneway == 1 and ring.nodes == [8, 9, 10, 8]
 
 
 def test_search_places(tmp_path) -> None:

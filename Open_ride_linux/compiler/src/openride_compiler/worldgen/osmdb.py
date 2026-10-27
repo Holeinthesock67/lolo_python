@@ -4,7 +4,7 @@ Une base SQLite par région (`brut/osm/<region>.sqlite` du cache, W2) ne garde q
 graphe (W4) et le générateur (W7) ont besoin :
 
     meta(key, value)                     schema_version, source, region, osm_date, bbox, created
-    roads(id, osm_id, highway, road_class, surface, bridge, tunnel, layer, oneway, name, nodes, coords)
+    roads(id, osm_id, highway, road_class, surface, bridge, tunnel, layer, oneway, name, junction, nodes, coords)
     areas(id, osm_id, kind, tags, geom)  building, wood, scrub, orchard, water
     lines(id, osm_id, kind, tags, coords) river, stream, canal
     points(id, osm_id, kind, name, lon, lat)
@@ -230,7 +230,7 @@ def polygon_touches(geom: dict[str, Any], b: BBox) -> bool:
 _SCHEMA = """
 CREATE TABLE meta (key TEXT PRIMARY KEY, value TEXT);
 CREATE TABLE roads (id INTEGER PRIMARY KEY, osm_id INTEGER, highway TEXT, road_class TEXT, surface TEXT,
-                    bridge INTEGER, tunnel INTEGER, layer INTEGER, oneway INTEGER, name TEXT,
+                    bridge INTEGER, tunnel INTEGER, layer INTEGER, oneway INTEGER, name TEXT, junction TEXT,
                     nodes BLOB, coords BLOB);
 CREATE TABLE areas (id INTEGER PRIMARY KEY, osm_id TEXT, kind TEXT, tags TEXT, geom TEXT);
 CREATE TABLE lines (id INTEGER PRIMARY KEY, osm_id TEXT, kind TEXT, tags TEXT, coords BLOB);
@@ -294,7 +294,7 @@ class OsmDbWriter:
         return self._add("roads", (
             osm_id, tags.get("highway"), cls, tags.get("surface"), _flag(tags.get("bridge")),
             _flag(tags.get("tunnel")), _int(tags.get("layer")), _oneway(tags), tags.get("name"),
-            pack_ids(nodes), pack_coords(coords)), bbox_of(coords))
+            tags.get("junction"), pack_ids(nodes), pack_coords(coords)), bbox_of(coords))
 
     def add_area(self, osm_id: str, kind: str, tags: dict[str, Any], outer: Sequence[tuple[float, float]],
                  holes: Sequence[Sequence[tuple[float, float]]] = ()) -> int | None:
@@ -349,6 +349,7 @@ class Road:
     layer: int
     oneway: int
     name: str | None
+    junction: str | None
     nodes: list[int]
     coords: list[tuple[float, float]]
 
@@ -423,10 +424,10 @@ class OsmDb:
         extra = "" if include_excluded else " AND o.road_class != 'x'"
         out = []
         for r in self._query("roads", "o.*", bbox, extra):
-            coords = unpack_coords(r[11])
+            coords = unpack_coords(r[12])
             if polyline_touches(coords, bbox):
-                out.append(Road(r[0], r[1], r[2], r[3], r[4], bool(r[5]), bool(r[6]), r[7], r[8], r[9],
-                                unpack_ids(r[10]), coords))
+                out.append(Road(r[0], r[1], r[2], r[3], r[4], bool(r[5]), bool(r[6]), r[7], r[8], r[9], r[10],
+                                unpack_ids(r[11]), coords))
         return out
 
     def areas_in(self, bbox: BBox, kinds: Iterable[str] | None = None) -> list[Area]:
