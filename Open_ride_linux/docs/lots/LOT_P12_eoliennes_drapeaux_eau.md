@@ -49,3 +49,15 @@ Aucune (P1).
 ## 8. Hors périmètre
 
 - Ombre portée animée des pales, bruit des éoliennes, vagues.
+
+## 9. Livraison
+
+Livré sur la branche `lot-p12-eoliennes`, sans toucher à `main.gd`, à `osm_streamer.gd`, au core ni au contrat.
+
+- **Compilateur** : `power=generator` avec `generator:source=wind` donne `wind_turbine`, avec `height_m` lu dans `height` (« 120 m », « 85,5 ») ou 100 m ; rayon de 5 000 m (portée de vue). `man_made=flagpole` donne `flag` (rayon 150 m). Requête Overpass complétée par ces deux sortes de nœuds ; `verify` les accepte. Comme les autres points, ils ne sont gardés qu'à moins de 400 m de la route (bande OSM du compilateur). Tests : `compiler/tests/test_osm_turbines_flags.py` (3 tests, données OSM fictives générées autour du parcours de test).
+- **`osm_layers.gd`** : accepte les deux sortes.
+- **`wind_turbines.gd`** : mât (16 faces de près, 6 au-delà de 2 km), nacelle et trois pales construits par code, à l'échelle de `height_m` (pales de 0,45 × la hauteur). Rotor à `5 + 12 × strength` tr/min, arrêté sous 10 km/h. Nacelle face au vent, lissage du premier ordre de 10 s limité à 3 °/s : 38 s pour un changement de 90°. Au plus 20 éoliennes affichées, les plus proches, retriées tous les 50 m ; toutes suivent le vent, même hors de l'écran.
+- **`flags.gd`** et **`flag.gdshader`** : mât de 7 m et tissu de 1,5 × 1 m. Un drapeau par point `flag`, plus un par village sans mât OSM à 150 m, placé de 12 à 30 m du point d'après le hachage de son `id`. Le tissu se tourne vers où souffle le vent (lissage d'une seconde) ; le shader fait la vague (rafale comprise) et la retombée par vent faible. Au plus 30 drapeaux.
+- **Eau** : `WaterMesh.make_material(shimmer)` : sans l'option, le StandardMaterial3D d'E4 (même couleur, même rugosité) ; avec, `water_shimmer.gdshader` (normale perturbée par deux réseaux d'ondes, continue en position et en temps, donc sans clignotement). `update_shimmer(mat, wind, dt_s)` fait défiler les ondes dans le sens du vent. P17 choisira le matériau selon `living(preset).water_shimmer` dans `osm_streamer.gd`.
+- **Tests engine** : `test_wind_turbines.gd` (9 vérifications ; 20 éoliennes et 30 drapeaux en 0,07 ms par image ici), `test_flags.gd` (5), `test_water_mesh.gd` (+4), `render/test_water_shimmer_render.gd` (2).
+- **Reste sur le PC cible (le propriétaire)** : parcours compilé avec des éoliennes, après le branchement par P17.
