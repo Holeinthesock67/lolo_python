@@ -99,6 +99,8 @@ class GardeEcriture:
             return False
         if p == self.home or p.startswith(self.home + os.sep):
             return True
+        if p in self.permis:        # le dossier temporaire lui-même : fichier anonyme (O_TMPFILE) de tempfile et de multiprocessing
+            return False
         return not any(p.startswith(r + os.sep) for r in self.permis)
 
     def _crochet(self, evenement: str, args: tuple) -> None:

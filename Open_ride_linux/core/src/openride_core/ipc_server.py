@@ -21,10 +21,9 @@ from .ipc_budget import encode, fit_state
 log = logging.getLogger("ipc_server")
 
 CONTRACT_VERSION = 1
-MAX_DATAGRAM_SIZE = 1400
-# Révision 1.3 (lot P1, audit IPC D1) : la trame state peut atteindre 4 096 octets (127.0.0.1, sans fragmentation).
-MAX_STATE_DATAGRAM_SIZE = 4096
-MAX_SETTINGS_DATAGRAM_SIZE = 4096   # `settings` : dix réglages et leurs choix (révision 1.3, lot O14)
+# Limite de tout datagramme hors messages en parties (contrat §2, révision 1.5, décision du propriétaire
+# du 27 octobre ; 127.0.0.1, sans fragmentation). Une trame state plus grande est allégée, les autres jetées.
+MAX_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
 CONTRACT_REV = "1.5"
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
@@ -197,8 +196,6 @@ class IpcServer:
             limit = max_size
         elif msg_type in LIST_MESSAGE_TYPES:
             limit = MAX_LIST_DATAGRAM_SIZE
-        elif msg_type == "state":
-            limit = MAX_STATE_DATAGRAM_SIZE
         else:
             limit = MAX_DATAGRAM_SIZE
         payload = encode(msg_dict)

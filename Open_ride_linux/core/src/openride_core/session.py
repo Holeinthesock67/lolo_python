@@ -31,7 +31,7 @@ from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
 from .ipc_lists import summary_extras
-from .ipc_server import MAX_SETTINGS_DATAGRAM_SIZE, IpcServer, IpcState
+from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
 from .progression import journal_source
 from .mock_driver import MockDriver
@@ -647,7 +647,7 @@ class CoreSession:
         from . import settings
 
         self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
-                              "items": settings.current(self.cfg)}, max_size=MAX_SETTINGS_DATAGRAM_SIZE)
+                              "items": settings.current(self.cfg)})
 
     def _set_setting(self, args: dict, cmd_id: int) -> None:
         from . import settings
@@ -1499,7 +1499,7 @@ class CoreSession:
                 bot.params.cda_m2 = base * (1.0 - push)
 
     def _fill_wind_frame(self) -> None:
-        """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (1 400 octets)."""
+        """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (taille de la trame)."""
         st = self.state
         st.wind = None
         if not self.wind.active:

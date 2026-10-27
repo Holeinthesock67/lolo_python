@@ -18,7 +18,7 @@ from openride_core.session import CoreSession
 CONTRACTS = Path(__file__).resolve().parents[2] / "docs" / "contracts"
 IPC_DIR = CONTRACTS / "ipc"
 MAX_DATAGRAM = 1400
-MAX_STATE_DATAGRAM = 4096  # state, depuis la révision 1.3 (§2)
+MAX_STATE_DATAGRAM = 4096  # state depuis la révision 1.3, tout message hors parties depuis la 1.5 (§2)
 MAX_LIST_DATAGRAM = 60000   # routes et workouts (révision 1.1, §2)
 
 
@@ -30,8 +30,6 @@ def assert_valid(msg: dict) -> None:
     errors = [e.message for e in jsonschema.Draft202012Validator(schema(msg["type"])).iter_errors(msg)]
     assert not errors, f"{msg['type']} invalide : {errors}"
     limit = MAX_LIST_DATAGRAM if msg["type"] in ("routes", "workouts", "room", "garage", "plans") else MAX_DATAGRAM
-    if msg["type"] == "settings":
-        limit = MAX_STATE_DATAGRAM   # 4 096 octets depuis le lot O14 (§2)
     # La limite de state est de 4 096 octets depuis la révision 1.3, mais les trames du core restent
     # sous 1 400 octets : les tests le vérifient pour garder la place des ajouts de la 2.0.
     assert len(encode(msg)) <= limit
@@ -42,7 +40,7 @@ class Capture:
 
     def __init__(self, server: IpcServer) -> None:
         self.frames: list[dict] = []
-        server.send_raw = lambda m, max_size=None: self.frames.append(m)   # type: ignore[method-assign]
+        server.send_raw = self.frames.append   # type: ignore[method-assign]
 
     def of(self, typ: str) -> list[dict]:
         return [f for f in self.frames if f["type"] == typ]
@@ -297,9 +295,10 @@ def test_v1_3_wind_and_draft_are_optional_and_fit():
 
 
 def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
-    """Révision 1.3 (audit IPC, D1 et D3) : state jusqu'à 4 096 octets, `rev` et `modes` facultatifs."""
+    """Révision 1.3 (audit IPC, D1 et D3) : state jusqu'à 4 096 octets, `rev` et `modes` facultatifs ;
+    révision 1.5 : la même limite pour tout message hors messages en parties."""
     from openride_core import ipc_server
-    assert ipc_server.MAX_STATE_DATAGRAM_SIZE == MAX_STATE_DATAGRAM
+    assert ipc_server.MAX_DATAGRAM_SIZE == MAX_STATE_DATAGRAM
     assert ipc_server.CONTRACT_REV == "1.5"   # révision 1.5 annoncée depuis le monde ouvert (lots W10 à W12)
 
     class Sock:
@@ -314,8 +313,9 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
     big_state = {"type": "state", "pad": "x" * 2500}
     srv.send_raw(big_state)                                  # 2,5 ko : passe depuis la 1.3
     srv.send_raw({"type": "state", "pad": "x" * 4200})       # au-delà de 4 096 octets : jetée
-    srv.send_raw({"type": "error", "pad": "x" * 2500})       # les autres messages restent à 1 400
-    assert len(srv._tx_sock.sent) == 1 and b'"pad"' in srv._tx_sock.sent[0]
+    srv.send_raw({"type": "error", "pad": "x" * 2500})       # même limite pour tout message depuis la 1.5
+    srv.send_raw({"type": "error", "pad": "x" * 4200})       # au-delà : jeté
+    assert len(srv._tx_sock.sent) == 2 and all(b'"pad"' in p for p in srv._tx_sock.sent)
 
     async def scenario():
         s, cap = make_session(tmp_path, monkeypatch, port=5930)
