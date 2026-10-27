@@ -47,6 +47,9 @@ class RogueBalance:
     transition_s: float = 30.0          # transition à 0 % avant chaque phase du boss
     transition_frac: float = 0.50
     boss_phase_s: tuple = (180.0, 240.0, 90.0)   # combat de chaque phase pour une run de 45 min
+    # Firewall (R4)
+    start_gap_m: float = 150.0          # le mur part derrière le joueur à l'entrée de chaque salle
+    max_gap_m: float = 400.0            # écart plafonné : pas d'avance infinie à capitaliser
     # Profils par archétype et par objectif (valeurs de départ du cahier R3 §4.2)
     room_profiles: dict = field(default_factory=lambda: {
         "diesel": {
