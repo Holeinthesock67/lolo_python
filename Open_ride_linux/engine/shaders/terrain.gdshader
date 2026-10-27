@@ -43,6 +43,18 @@ uniform float cloud_shadow_altitude_m = 2000.0;
 uniform float cloud_shadow_strength = 0.35;
 uniform float cloud_shadow_scale_m = 2600.0;
 
+// Herbe (Lot Y11, techniques H1 à H3, procédurales) : faux relief de brins (3 cm) et de mottes (30 cm)
+// effacé quand il devient plus fin qu'un pixel, mouchetures de brins clairs et sombres de près,
+// plaques d'herbe plus sèche ou plus verte (40 à 120 m), vagues de vent qui défilent dans le sens du
+// vent du modèle P4 (mêmes paramètres globaux que tree_sway.gdshader). Réglé par `grass_relief` × `detail_strength`
+// (0 : herbe d'avant Y11).
+uniform float grass_relief : hint_range(0.0, 2.0) = 1.0;
+uniform vec3 grass_dry_color : source_color = vec3(0.62, 0.6, 0.32);
+global uniform vec3 wind_dir;
+global uniform float wind_strength;
+global uniform float wind_phase;
+#include "res://shaders/surface_detail.gdshaderinc"
+
 // Poids en dessous duquel une couche n'est pas échantillonnée (économie de lectures de texture).
 const float MIN_LAYER_WEIGHT = 0.001;
 
@@ -61,27 +73,10 @@ vec4 sample_triplanar(sampler2D tex, vec3 pos, float inv_scale, vec3 weights) {
 	return texture(tex, uv_x) * weights.x + texture(tex, uv_y) * weights.y + texture(tex, uv_z) * weights.z;
 }
 
-// Bruit de valeur 2D procédural pour la variation d'herbe à deux échelles (~8 m et ~60 m)
-float _hash21(vec2 p) {
-	p = fract(p * vec2(123.34, 456.21));
-	p += dot(p, p + 45.32);
-	return fract(p.x * p.y);
-}
-
-float _val_noise(vec2 p) {
-	vec2 i = floor(p);
-	vec2 f = fract(p);
-	f = f * f * (3.0 - 2.0 * f);
-	float a = _hash21(i);
-	float b = _hash21(i + vec2(1.0, 0.0));
-	float c = _hash21(i + vec2(0.0, 1.0));
-	float d = _hash21(i + vec2(1.0, 1.0));
-	return mix(mix(a, b, f.x), mix(c, d, f.x), f.y);
-}
-
+// Variation d'herbe à deux échelles (~8 m et ~60 m), bruits de surface_detail.gdshaderinc
 float _grass_noise(vec3 pos) {
-	float n8 = _val_noise(pos.xz / 8.0);
-	float n60 = _val_noise(pos.xz / 60.0);
+	float n8 = sd_noise(pos.xz / 8.0);
+	float n60 = sd_noise(pos.xz / 60.0);
 	return (n8 * 0.6 + n60 * 0.4) * 2.0 - 1.0;
 }
 
@@ -93,7 +88,7 @@ float _cloud_density(vec2 p) {
 	mat2 rot = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
 	vec2 q = p / cloud_shadow_scale_m;
 	for (int i = 0; i < 5; i++) {
-		sum += amp * _val_noise(q);
+		sum += amp * sd_noise(q);
 		norm += amp;
 		q = rot * q * 2.03 + vec2(17.1, 9.2);
 		amp *= 0.5;
@@ -128,11 +123,28 @@ void fragment() {
 
 	// Échantillonnage des seules couches visibles, ou repli sur couleur unie
 	vec3 final_color = vec3(0.0);
+	float grass_h = 0.0;
 	if (w_grass > MIN_LAYER_WEIGHT) {
 		vec4 c = has_grass_texture ? sample_triplanar(grass_texture, v_world_pos, grass_inv_scale, tri_weights) : grass_color;
+		vec2 q = v_world_pos.xz;
+		float relief = grass_relief * detail_strength;
 		float gn = _grass_noise(v_world_pos);
 		float grass_mod = 1.0 + gn * 0.08 * detail_strength;
-		final_color += c.rgb * grass_mod * w_grass;
+		// Plaques plus sèches ou plus vertes (H2)
+		float dry = smoothstep(0.45, 0.8, sd_noise(q / 120.0 + vec2(3.7, 1.9)) * 0.7 + sd_noise(q / 40.0) * 0.3) * relief;
+		vec3 g = mix(c.rgb, c.rgb * 0.55 + grass_dry_color * 0.45, dry * 0.6);
+		// Brins et mottes (H1) : relief et mouchetures, effacés au loin
+		float vis_blade = sd_visible(q, 0.03) * relief;
+		float vis_clump = sd_visible(q, 0.3) * relief;
+		float blades = sd_noise(q / vec2(0.03, 0.012));
+		float clumps = sd_noise(q / 0.3);
+		grass_h = blades * 0.006 * vis_blade + clumps * 0.02 * vis_clump;
+		g *= 1.0 + (blades - 0.5) * 0.35 * vis_blade + (clumps - 0.5) * 0.18 * vis_clump;
+		// Vagues de vent (H3) : bandes claires de 6 m qui défilent dans le sens du vent
+		vec2 wd = length(wind_dir.xz) > 1e-4 ? normalize(wind_dir.xz) : vec2(1.0, 0.0);
+		vec2 wq = vec2(dot(q, wd) - wind_phase * (2.0 + 6.0 * wind_strength), dot(q, vec2(-wd.y, wd.x)) * 0.25);
+		g *= 1.0 + (sd_noise(wq / 6.0) - 0.5) * 0.18 * wind_strength * relief;
+		final_color += g * grass_mod * w_grass;
 	}
 	if (w_rock > MIN_LAYER_WEIGHT) {
 		vec4 c = has_rock_texture ? sample_triplanar(rock_texture, v_world_pos, rock_inv_scale, tri_weights) : rock_color;
@@ -149,7 +161,11 @@ void fragment() {
 		flat_n = -flat_n;
 	}
 	vec3 rock_n = normalize(mix(n, flat_n, rock_facet_strength * detail_strength));
-	NORMAL = normalize(mix(n, rock_n, clamp(w_rock, 0.0, 1.0)));
+	// Normale du monde ramenée dans l'espace de la vue, celui de NORMAL
+	NORMAL = normalize((VIEW_MATRIX * vec4(mix(n, rock_n, clamp(w_rock, 0.0, 1.0)), 0.0)).xyz);
+	if (grass_h > 0.0) {
+		NORMAL = sd_bump(NORMAL, VERTEX, grass_h * w_grass);
+	}
 
 	if (cloud_shadow_enabled && cloud_shadow_coverage > 0.0) {
 		final_color *= 1.0 - cloud_shadow_strength * _cloud_density(v_world_pos.xz + cloud_shadow_offset);

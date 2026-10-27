@@ -23,6 +23,13 @@ uniform float roughness_value = 0.85;
 uniform bool use_local_wind = false;
 uniform vec3 local_wind_dir = vec3(0.0);
 uniform float local_wind_strength = 0.0;
+// Fondu avec la distance (touffes d'herbe, Lot Y11 H4) : au-delà de thin_start_m, une part croissante des
+// instances est repliée (tirage par la position), puis toutes le sont à fade_end_m. 0 : pas de fondu.
+uniform float thin_start_m = 0.0;
+uniform float fade_end_m = 0.0;
+// Faces arrière (copie cull_disabled) : garde la normale du sommet au lieu de la retourner, pour des brins
+// éclairés des deux côtés comme le sol (touffes d'herbe, Lot Y11 H4).
+uniform bool normals_up_both_sides = false;
 // Teinte du feuillage, neutre par défaut ; réglée par les saisons (P18, version 2.0).
 uniform vec3 foliage_tint : source_color = vec3(1.0);
 
@@ -37,9 +44,19 @@ void vertex() {
 	float amp = sway_amplitude_m * strength * (1.0 + 0.8 * wind_gust) * h * h * swing;
 	vec3 local_disp = inverse(mat3(MODEL_MATRIX)) * (dir * amp);
 	VERTEX += vec3(local_disp.x, 0.0, local_disp.z);
+	if (fade_end_m > 0.0) {
+		float d = distance(origin, INV_VIEW_MATRIX[3].xyz);
+		float keep = 1.0 - smoothstep(thin_start_m, fade_end_m, d);
+		float pick = fract(offset * 7.31);
+		// Une instance gardée rétrécit doucement quand elle approche de son seuil, au lieu de disparaître d'un coup
+		VERTEX *= clamp((keep - pick) * 8.0, 0.0, 1.0);
+	}
 }
 
 void fragment() {
+	if (normals_up_both_sides && !FRONT_FACING) {
+		NORMAL = -NORMAL;
+	}
 	ALBEDO = COLOR.rgb * foliage_tint;
 	ROUGHNESS = roughness_value;
 }

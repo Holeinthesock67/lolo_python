@@ -108,7 +108,7 @@ static func building_visibility_end_m(name: String) -> float:
 const LIVING := {
 	"low": {
 		"tree_sway": true,
-		"grass_tufts": 0,
+		"grass_tufts": 1500,
 		"clouds": "flat",
 		"weather_particles": 600,
 		"birds": 12,
@@ -121,7 +121,7 @@ const LIVING := {
 	},
 	"medium": {
 		"tree_sway": true,
-		"grass_tufts": 4000,
+		"grass_tufts": 8000,
 		"clouds": "flat",
 		"weather_particles": 1500,
 		"birds": 24,
@@ -134,7 +134,7 @@ const LIVING := {
 	},
 	"high": {
 		"tree_sway": true,
-		"grass_tufts": 12000,
+		"grass_tufts": 20000,
 		"clouds": "layered",
 		"weather_particles": 4000,
 		"birds": 40,

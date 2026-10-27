@@ -1,8 +1,9 @@
 extends Node3D
 
-## Affichage des spectateurs de crowd_model.gd (Lot P15) : silhouettes basses en polygones (corps,
-## tête, bras, drapeau pour un sur quatre) construites par code, en deux MultiMesh (avec et sans
-## drapeau), couleurs d'instance variées, bras et drapeaux animés par shaders/crowd.gdshader.
+## Affichage des spectateurs de crowd_model.gd (Lot P15) : personnages construits par code
+## (people_mesh.gd, Lot Y13 : corps articulé, tenue tirée par personne), en deux MultiMesh (avec et sans
+## drapeau), couleur du haut en couleur d'instance, tenue (peau, cheveux, pantalon) dans
+## INSTANCE_CUSTOM.w, animés par shaders/crowd.gdshader.
 ## Pas de class_name : charger par preload("res://scripts/crowd_renderer.gd").
 ##
 ## - `set_preset(name, enabled)` : budget `living(preset).spectators`.
@@ -21,6 +22,7 @@ extends Node3D
 
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
+const PeopleMesh := preload("res://scripts/people_mesh.gd")
 
 const PALETTE := [Color(0.8, 0.1, 0.1), Color(0.95, 0.8, 0.1), Color(0.1, 0.35, 0.8), Color(0.95, 0.95, 0.95),
 	Color(0.15, 0.6, 0.25), Color(0.9, 0.45, 0.1), Color(0.2, 0.2, 0.25), Color(0.6, 0.2, 0.6)]
@@ -52,6 +54,7 @@ func _init(p_mode: String = "spectators") -> void:
 	mode = p_mode
 	var mat := ShaderMaterial.new()
 	mat.shader = CrowdShader
+	PeopleMesh.apply_palettes(mat)
 	var kinds := ["plain", "flag"] if mode == "spectators" else ["people", "dogs", "benches"]
 	for kind in kinds:
 		var mm := MultiMesh.new()
@@ -61,11 +64,11 @@ func _init(p_mode: String = "spectators") -> void:
 		var mesh: ArrayMesh
 		match kind:
 			"dogs":
-				mesh = build_dog_mesh()
+				mesh = PeopleMesh.build_dog()
 			"benches":
-				mesh = build_bench_mesh()
+				mesh = PeopleMesh.build_bench()
 			_:
-				mesh = build_mesh(kind == "flag")
+				mesh = PeopleMesh.build_person(kind == "flag")
 		_meshes.append(mesh)
 		mm.mesh = mesh
 		var mmi := MultiMeshInstance3D.new()
@@ -135,7 +138,7 @@ func update_passersby(cam_pos: Vector3, cam_s: float, now_s: float, event: Dicti
 			basis = basis.scaled(Vector3.ONE * KID_SCALE)
 		people.set_instance_transform(k, Transform3D(basis, e["pos"]))
 		people.set_instance_custom_data(k, Color(float(p["phase"]), 1.0 if bool(e["wave"]) else 0.0,
-			float(PasserbyModel.ANIM[str(e["anim"])]), 0.0))
+			float(PasserbyModel.ANIM[str(e["anim"])]), PeopleMesh.outfit_of(int(e["i"]))))
 		var dog: int = e["dog"]
 		if dog >= 0:
 			dogs.set_instance_transform(dog, Transform3D(Basis(Vector3.UP, float(e["dog_yaw"])), e["dog_pos"]))
@@ -188,7 +191,7 @@ func _select(cam_pos: Vector3) -> void:
 			mm.set_instance_color(k, PALETTE[int(s["color"]) % PALETTE.size()])
 			var st = model.states.get(list[k])
 			shown[k] = 1 if st != null and bool(st["cheer"]) else 0
-			mm.set_instance_custom_data(k, Color(float(s["phase"]), float(shown[k]), 0.0, 0.0))
+			mm.set_instance_custom_data(k, Color(float(s["phase"]), float(shown[k]), 0.0, PeopleMesh.outfit_of(list[k])))
 		_shown[m] = shown
 		mm.visible_instance_count = list.size()
 	_last_select = cam_pos
@@ -213,7 +216,7 @@ func update(cam_pos: Vector3, now_s: float, cheer: float = 0.0) -> void:
 			var on := 1 if st != null and bool(st["cheer"]) else 0
 			if shown[k] != on:
 				shown[k] = on
-				mm.set_instance_custom_data(k, Color(float(sp[i]["phase"]), float(on), 0.0, 0.0))
+				mm.set_instance_custom_data(k, Color(float(sp[i]["phase"]), float(on), 0.0, PeopleMesh.outfit_of(i)))
 	# Clameur sur le groupe le plus proche
 	if cheer > 0.0 and not model.groups.is_empty():
 		var gi := _nearest_group_to(cam_pos)
@@ -235,65 +238,3 @@ func _nearest_group_to(p: Vector3) -> int:
 			best_d = d
 			best = gi
 	return best
-
-
-static func _box(st: SurfaceTool, c: Vector3, size: Vector3, uv: Vector2, col: Color, uv2: Vector2 = Vector2.ZERO) -> void:
-	var h := size * 0.5
-	var v := [
-		c + Vector3(-h.x, -h.y, -h.z), c + Vector3(h.x, -h.y, -h.z), c + Vector3(h.x, h.y, -h.z), c + Vector3(-h.x, h.y, -h.z),
-		c + Vector3(-h.x, -h.y, h.z), c + Vector3(h.x, -h.y, h.z), c + Vector3(h.x, h.y, h.z), c + Vector3(-h.x, h.y, h.z),
-	]
-	for f in [[0, 1, 2, 3], [5, 4, 7, 6], [4, 0, 3, 7], [1, 5, 6, 2], [3, 2, 6, 7], [4, 5, 1, 0]]:
-		for idx in [f[0], f[1], f[2], f[0], f[2], f[3]]:
-			st.set_uv(uv)
-			st.set_uv2(uv2)
-			st.set_color(col)
-			st.add_vertex(v[idx])
-
-
-## Silhouette d'un spectateur (1,7 m, face vers +z), avec ou sans drapeau tenu à droite.
-## Couleur des sommets : alpha 1 pour les vêtements (teints par la couleur d'instance), 0 pour la peau.
-## UV2 (Lot P21) : x = ±1 sur chaque jambe (marche), y = 1 sur le bras qui salue.
-static func build_mesh(with_flag: bool) -> ArrayMesh:
-	var cloth := Color(1, 1, 1, 1)
-	var skin := Color(1, 1, 1, 0)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	for sx in [-1.0, 1.0]:
-		_box(st, Vector3(sx * 0.085, 0.45, 0.0), Vector3(0.15, 0.9, 0.2), Vector2.ZERO, cloth, Vector2(sx, 0.0))   # jambes
-	_box(st, Vector3(0.0, 1.17, 0.0), Vector3(0.42, 0.55, 0.25), Vector2.ZERO, cloth)    # buste
-	_box(st, Vector3(0.0, 1.57, 0.0), Vector3(0.2, 0.22, 0.2), Vector2.ZERO, skin)       # tête
-	for sx in [-1.0, 1.0]:
-		_box(st, Vector3(sx * 0.27, 1.18, 0.0), Vector3(0.1, 0.5, 0.1), Vector2(0.0, 1.0), cloth, Vector2(0.0, 1.0 if sx > 0.0 else 0.0))   # bras
-	if with_flag:
-		_box(st, Vector3(0.3, 1.55, 0.0), Vector3(0.03, 0.9, 0.03), Vector2(0.0, 1.0), skin)          # hampe
-		_box(st, Vector3(0.3, 1.85, 0.32), Vector3(0.02, 0.4, 0.6), Vector2(1.0, 1.0), cloth)        # drapeau
-	st.generate_normals()
-	return st.commit()
-
-
-## Chien (Lot P21) : corps, tête, queue et quatre pattes (UV2.x = ±1 en diagonale pour le trot), face vers +z.
-static func build_dog_mesh() -> ArrayMesh:
-	var fur := Color(1, 1, 1, 1)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_box(st, Vector3(0.0, 0.45, 0.0), Vector3(0.22, 0.24, 0.6), Vector2.ZERO, fur)        # corps
-	_box(st, Vector3(0.0, 0.62, 0.36), Vector3(0.16, 0.16, 0.2), Vector2.ZERO, fur)       # tête
-	_box(st, Vector3(0.0, 0.55, -0.36), Vector3(0.04, 0.04, 0.2), Vector2.ZERO, fur)      # queue
-	for leg in [[-1.0, 1.0], [1.0, 1.0], [-1.0, -1.0], [1.0, -1.0]]:
-		var swing: float = leg[0] * leg[1]
-		_box(st, Vector3(leg[0] * 0.07, 0.17, leg[1] * 0.22), Vector3(0.06, 0.34, 0.06), Vector2.ZERO, fur, Vector2(swing, 0.0))
-	st.generate_normals()
-	return st.commit()
-
-
-## Banc des personnes assises (Lot P21) : assise à 0,42 m et deux pieds, sous la personne.
-static func build_bench_mesh() -> ArrayMesh:
-	var wood := Color(1, 1, 1, 1)
-	var st := SurfaceTool.new()
-	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	_box(st, Vector3(0.0, 0.42, -0.05), Vector3(1.3, 0.06, 0.4), Vector2.ZERO, wood)
-	for sx in [-0.55, 0.55]:
-		_box(st, Vector3(sx, 0.2, -0.05), Vector3(0.06, 0.4, 0.36), Vector2.ZERO, wood)
-	st.generate_normals()
-	return st.commit()
