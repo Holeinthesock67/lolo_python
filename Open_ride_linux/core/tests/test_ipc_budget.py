@@ -9,7 +9,7 @@ import jsonschema
 from openride_core import ipc_budget
 from openride_core.ipc_budget import (MAX_DATAGRAM_SIZE, STATE_DEGRADATION, encode, fit_state,
                                       revisions, size, worst_state)
-from openride_core.ipc_server import MAX_STATE_DATAGRAM_SIZE, IpcServer
+from openride_core.ipc_server import MAX_DATAGRAM_SIZE as SERVER_LIMIT, IpcServer
 
 LAST_1400 = "1.3"      # dernière révision dont `state` vise 1 400 octets (la 1.4 vise 4 096)
 KEPT = ("type", "v", "seq", "t", "session_state", "s", "power", "power_3s", "cadence", "grade")
@@ -98,7 +98,7 @@ def test_server_sends_degraded_state_instead_of_dropping(caplog):
 
 def test_target_and_limit_per_revision():
     assert ipc_budget.state_limit("1.2") == MAX_DATAGRAM_SIZE == 1400
-    assert ipc_budget.state_limit("1.3") == ipc_budget.STATE_LIMIT_1_3 == MAX_STATE_DATAGRAM_SIZE
+    assert ipc_budget.state_limit("1.3") == ipc_budget.STATE_LIMIT_1_3 == SERVER_LIMIT
     text = ipc_budget.report()
     assert "cible 1400" in text and "4096" in text
     worst = worst_state("1.3")

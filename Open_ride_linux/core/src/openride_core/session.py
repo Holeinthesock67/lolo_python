@@ -1470,7 +1470,7 @@ class CoreSession:
                 bot.params.cda_m2 = base * (1.0 - push)
 
     def _fill_wind_frame(self) -> None:
-        """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (1 400 octets)."""
+        """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (taille de la trame)."""
         st = self.state
         st.wind = None
         if not self.wind.active:

@@ -147,7 +147,6 @@ SCAN_MAX_ITEMS = 12
 SCAN_NAME_MAX = 24
 SCAN_ROLES = ("trainer", "click", "hr_strap", "hr_watch")
 SCAN_STATES = ("IDLE", "READY")   # recherche et enregistrement hors séance seulement
-MAX_SCAN_DATAGRAM = 1400
 
 
 async def scan_inventory(sim: Any, timeout: float) -> dict[str, Any]:
@@ -206,14 +205,16 @@ def scan_items(inventory: dict[str, Any], configured: set[str]) -> list[dict[str
 
 def scan_results_message(request_cmd_id: int, items: list[dict[str, Any]], done: bool,
                          plus_address: str | None = None, version: int = 1) -> dict[str, Any]:
-    """Message `scan_results` tenant en 1 400 octets (éléments en trop retirés par la fin)."""
+    """Message `scan_results` tenant dans un datagramme (éléments en trop retirés par la fin)."""
     import json
+
+    from .ipc_server import MAX_DATAGRAM_SIZE
 
     items = list(items)
     while True:
         msg = {"type": "scan_results", "v": version, "request_cmd_id": request_cmd_id, "done": done,
                "items": items, "plus_address": plus_address}
-        if len(json.dumps(msg, separators=(",", ":")).encode("utf-8")) <= MAX_SCAN_DATAGRAM or not items:
+        if len(json.dumps(msg, separators=(",", ":")).encode("utf-8")) <= MAX_DATAGRAM_SIZE or not items:
             return msg
         items = items[:-1]
 
