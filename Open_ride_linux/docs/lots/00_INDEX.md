@@ -88,7 +88,7 @@
 | [O9](LOT_O9_formats_erg_mrc.md) | Entraînements au format GoldenCheetah : `.erg` (watts) et `.mrc` (% de FTP) | Python | F, H8 (livrés) | Petite | **Livré le 25 octobre** (issue #153) |
 | [O10](LOT_O10_test_ftp.md) | Test de FTP (rampe et 20 min) côté core, nouvelle FTP proposée puis enregistrée | Python | O3 ; O9 utile | Moyenne | **Livré le 27 octobre** (issue #154) |
 | [O11](LOT_O11_plans_entrainement.md) | Plans d'entraînement sur plusieurs semaines, séance du jour et suivi, import d'un dossier | Python | O9 ; O10 pour les jours de test | Moyenne | **Livré le 26 octobre** (issue #155) |
-| [O12](LOT_O12_menu_entrainement.md) | Menu : plans, test de FTP et bibliothèque de parcours (ajouts au contrat IPC) | GDScript + Python | N6, O4, O10, O11, O15 | Grande | Non : interne (contrat, écrans du menu) |
+| [O12](LOT_O12_menu_entrainement.md) | Menu : plans, test de FTP et bibliothèque de parcours (ajouts au contrat IPC) | GDScript + Python | N6, O4, O10, O11, O15 | Grande | **Livré le 27 octobre** (interne, PR #395 et PR #397) |
 | [O13](LOT_O13_modele_courbes.md) | Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle sans affichage | GDScript | K1 (livré) ; N3 utile | Petite | **Livré le 26 octobre** (issue #156 ; tests Godot à lancer sur le PC) |
 | [O14](LOT_O14_affichage_courbes.md) | Courbes de la séance à l'écran | GDScript | O13, N7 | Moyenne | Non : interne (contrôle visuel) |
 | [P1](LOT_P1_contrat_vent_decor.md) | Contrat : vent et aspiration dans `state` (IPC révision 1.3), configuration `[wind]`, thème 1.2 (nuages, météo, ambiance, faune, saison, heure), points d'intérêt `wind_turbine` et `flag` | Markdown + JSON | O8 | Petite | **Livré le 26 octobre** (issue #125) |
