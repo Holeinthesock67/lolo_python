@@ -1,0 +1,8 @@
+name = "Teide"
+region = "Tenerife, Canaries"
+country = "Espagne"
+side = "depuis Vilaflor jusqu'au téléphérique"
+waypoints = [[28.1566, -16.6362], [28.2553, -16.6197]]
+ref_length_m = 28000
+ref_gain_m = 1100
+tags = ["col", "classique", "volcan"]
