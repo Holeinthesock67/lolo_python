@@ -106,8 +106,13 @@ def _event(ts: float, event_type: EventType) -> EventMessage:
     return m
 
 
-def write_fit(records: list[dict], events: list[dict], path: Path) -> Summary:
-    """Écrit le fichier FIT et renvoie le résumé de la séance."""
+def lap_starts(lines: list[dict]) -> list[float]:
+    """Instants des tours : début de chaque salle et de chaque phase du boss d'une run Cyber-Rogue (lot R8)."""
+    return sorted(ln["ts"] for ln in lines if ln.get("kind") == "rogue" and ln.get("event") == "room_start")
+
+
+def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[float] | None = None) -> Summary:
+    """Écrit le fichier FIT et renvoie le résumé de la séance. `laps` : débuts de tours (un seul tour sinon)."""
     if not records:
         raise ValueError("aucun échantillon : rien à exporter")
     s = summarize(records, events)
@@ -183,18 +188,42 @@ def write_fit(records: list[dict], events: list[dict], path: Path) -> Summary:
         m.sport = Sport.CYCLING
         m.sub_sport = SubSport.VIRTUAL_ACTIVITY
 
-    lap = LapMessage()
-    fill_totals(lap)
-    lap.message_index = 0
-    lap.lap_trigger = LapTrigger.SESSION_END
-    b.add(lap)
+    bounds = [s.start_ts] + [t for t in sorted(laps or []) if s.start_ts < t < s.end_ts] + [s.end_ts]
+    n_laps = len(bounds) - 1
+    if n_laps == 1:
+        lap = LapMessage()
+        fill_totals(lap)
+        lap.message_index = 0
+        lap.lap_trigger = LapTrigger.SESSION_END
+        b.add(lap)
+    else:
+        for i in range(n_laps):
+            lo, hi = bounds[i], bounds[i + 1]
+            part = [r for r in records if lo <= r["ts"] < hi or (i == n_laps - 1 and r["ts"] == hi)]
+            lap = LapMessage()
+            lap.timestamp = _ms(hi)
+            lap.start_time = _ms(lo)
+            lap.total_elapsed_time = lap.total_timer_time = hi - lo
+            if part:
+                lap.total_distance = max(part[-1].get("distance", 0.0) - part[0].get("distance", 0.0), 0.0)
+                lap.avg_speed = min(lap.total_distance / (hi - lo), s.max_speed) if hi > lo else 0.0
+                powers = [r["power"] for r in part if r.get("power") is not None]
+                if powers:
+                    lap.avg_power, lap.max_power = int(round(_avg(powers))), int(round(max(powers)))
+            lap.event = Event.LAP
+            lap.event_type = EventType.STOP
+            lap.sport = Sport.CYCLING
+            lap.sub_sport = SubSport.VIRTUAL_ACTIVITY
+            lap.message_index = i
+            lap.lap_trigger = LapTrigger.SESSION_END if i == n_laps - 1 else LapTrigger.MANUAL
+            b.add(lap)
 
     sess = SessionMessage()
     fill_totals(sess)
     sess.event = Event.SESSION
     sess.message_index = 0
     sess.first_lap_index = 0
-    sess.num_laps = 1
+    sess.num_laps = n_laps
     sess.trigger = SessionTrigger.ACTIVITY_END
     b.add(sess)
 
@@ -222,9 +251,11 @@ def default_fit_path(start_ts: float, route_name: str | None) -> Path:
 
 def journal_to_fit(journal_path: Path, out_path: Path | None = None) -> tuple[Path, Summary]:
     """Convertit un journal JSONL en FIT (utilisé en fin de séance et par `recover`)."""
-    records, events, route_id = [], [], None
+    records, events, route_id, rogue = [], [], None, []
     for line in read_journal(journal_path):
         kind = line.get("kind")
+        if kind == "rogue":
+            rogue.append(line)
         if kind == "record":
             records.append(line)
         elif kind == "event":
@@ -234,7 +265,7 @@ def journal_to_fit(journal_path: Path, out_path: Path | None = None) -> tuple[Pa
     if not records:
         raise ValueError(f"journal vide : {journal_path}")
     out_path = out_path or default_fit_path(records[0]["ts"], route_id)
-    return out_path, write_fit(records, events, out_path)
+    return out_path, write_fit(records, events, out_path, lap_starts(rogue))
 
 
 def iter_records(fit_path: Path) -> Iterable:

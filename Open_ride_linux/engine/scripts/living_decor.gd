@@ -11,8 +11,9 @@ extends Node3D
 ##   par les tâches de fond d'osm_streamer.gd. `enabled` faux (`[render] living = false`) : rien de tout
 ##   cela, rendu et sons de la 1.0.
 ## - `set_route(route, world_dir, road_width_m)` : une tâche de fond lit les couches OSM de tout le parcours
-##   (bâtiments, eau, points d'intérêt), détecte les montées, prépare les objets du bord de route, les
-##   chiffres peints, les spectateurs et les passants ; `step` applique le résultat dès qu'il est prêt
+##   (bâtiments, eau, points d'intérêt), prend les montées (couche `segments`, sinon détection), prépare
+##   les objets du bord de route, les chiffres peints, les spectateurs et les passants ; `step` applique
+##   le résultat dès qu'il est prêt
 ##   (éoliennes, drapeaux, circulation, panneaux des tronçons déjà chargés).
 ## - `set_fog_base(env)` après chaque `RenderQuality.apply_fog` : brouillard de référence de la brume.
 ## - `step(now_s, dt_s, cam_pos, cam_s, rider_v, alt_m, paused, wind_eval, state, beep_active)` une fois
@@ -36,6 +37,7 @@ const WaterMesh := preload("res://scripts/water_mesh.gd")
 const TrafficModel := preload("res://scripts/traffic_model.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
 const ClimbDetector := preload("res://scripts/climb_detector.gd")
+const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
 const CrowdModel := preload("res://scripts/crowd_model.gd")
@@ -208,7 +210,7 @@ static func _prepare_job(job: Dictionary) -> void:
 			if p.get("ok", false):
 				all_pois.append_array(p.get("items", []))
 	var road_w: float = job["road_width_m"]
-	var found: Array = ClimbDetector.detect(r)
+	var found: Array = climbs_of(r)
 	var cm = CrowdModel.new()
 	cm.configure(r, found, water, bool(job["crowd_all_climbs"]), 0, road_w)
 	var pm = PassersbyModel.new()
@@ -223,6 +225,14 @@ static func _prepare_job(job: Dictionary) -> void:
 		"climbs": found, "pois": all_pois, "crowd": cm, "passersby": pm, "marks": marks,
 		"items": RoadsideModel.items(r, found, all_pois, water),
 	}
+
+
+## Montées du parcours : celles de la couche `segments` quand elle existe (lot T8, une seule source avec
+## le chronométrage du core), sinon celles de climb_detector.gd (P14).
+static func climbs_of(r) -> Array:
+	if r.get("segments_present") == true:
+		return SegmentMarkersModel.climbs(r, r.segments)
+	return ClimbDetector.detect(r)
 
 
 func _wait_job() -> void:

@@ -669,6 +669,23 @@ def _config_arg(args: list[str]) -> Path | None:
     return None
 
 
+def worldgen_command(env: dict[str, str] | None = None) -> list[str]:
+    """Commande du générateur du monde ouvert (lot W9) : `OPENRIDE_WORLDGEN`, sinon le paquet du compilateur
+    lancé par le même Python que le core (installé dans le même environnement, `scripts/install.sh`)."""
+    env = os.environ if env is None else env
+    if env.get("OPENRIDE_WORLDGEN"):
+        return shlex.split(env["OPENRIDE_WORLDGEN"])
+    return [sys.executable, "-m", "openride_compiler.worldgen.process"]
+
+
+def worldmenu_command(env: dict[str, str] | None = None) -> list[str]:
+    """Requêtes du menu du monde ouvert (lot W11) : `OPENRIDE_WORLDMENU`, sinon `menu_query` du compilateur."""
+    env = os.environ if env is None else env
+    if env.get("OPENRIDE_WORLDMENU"):
+        return shlex.split(env["OPENRIDE_WORLDMENU"])
+    return [sys.executable, "-m", "openride_compiler.worldgen.menu_query"]
+
+
 def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) -> Supervisor:
     """Construit le superviseur réel ; lève `ConfigError` ou `FileNotFoundError` avec un message lisible."""
     from . import config as config_mod

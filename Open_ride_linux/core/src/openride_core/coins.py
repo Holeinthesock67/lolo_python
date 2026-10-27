@@ -29,7 +29,8 @@ from .progression import POWER_STEP_W, Progress, SessionFacts, Table
 
 _COIN_KEYS = {"effort": list, "per_segment": float, "per_segment_pr": float, "per_power_record": float,
               "per_jersey": float,
-              "rogue_boss_default": float, "life_price": int, "rogue_boss": dict}
+              "rogue_boss_default": float, "life_price": int, "rogue_boss": dict,
+              "rogue_gold_per_coin": float, "max_lives": int}
 
 
 class CoinsError(Exception):
@@ -51,6 +52,8 @@ class CoinTable:
     life_price: int
     rogue_boss: dict[str, float]
     ftp_w: float = 250.0
+    rogue_gold_per_coin: float = 10.0       # or de la run converti en pièces (lot R9)
+    max_lives: int = 3                      # vies en réserve au plus (lot R9)
 
 
 def _number(value: Any, where: str, integer: bool = False) -> float:
@@ -59,6 +62,12 @@ def _number(value: Any, where: str, integer: bool = False) -> float:
     if integer and int(value) != value:
         raise CoinsError("table_invalid", f"{where} : entier attendu")
     return int(value) if integer else float(value)
+
+
+def _positive(value: Any, where: str) -> float:
+    if _number(value, where) <= 0:
+        raise CoinsError("table_invalid", f"{where} : nombre strictement positif attendu")
+    return float(value)
 
 
 def _effort(raw: Any) -> tuple[tuple[float, float], ...]:
@@ -102,6 +111,8 @@ def coin_table(table: Table, ftp_w: float = 250.0) -> CoinTable:
         life_price=int(_number(raw["life_price"], "[coins] life_price", integer=True)),
         rogue_boss={k: _number(v, f"[coins.rogue_boss] {k}") for k, v in bosses.items()},
         ftp_w=float(ftp_w),
+        rogue_gold_per_coin=_positive(raw["rogue_gold_per_coin"], "[coins] rogue_gold_per_coin"),
+        max_lives=int(_number(raw["max_lives"], "[coins] max_lives", integer=True)),
     )
 
 
@@ -160,6 +171,7 @@ def session_coins(facts: SessionFacts, ct: CoinTable, records: int = 0) -> int:
         elif kind == "jersey":
             total += ct.per_jersey
         elif kind == "rogue_run":
+            total += float(ev.get("gold") or 0.0) / ct.rogue_gold_per_coin
             for boss in ev.get("bosses") or []:
                 total += ct.rogue_boss.get(boss, ct.rogue_boss_default)
     return int(math.floor(total + 1e-9))
@@ -230,6 +242,8 @@ def buy(item_id: str, progress: Progress, profile: Profile, catalogue: Catalogue
 
 def buy_life(progress: Progress, profile: Profile, ct: CoinTable) -> int:
     """Achète une vie du mode Cyber-Rogue (lot R9 décide quand elle sert) ; nouveau solde."""
+    if profile.lives_left >= ct.max_lives:
+        raise CoinsError("item_locked", f"{ct.max_lives} vies au plus en réserve")
     solde = raw_balance(progress, profile, ct)
     if solde < ct.life_price:
         raise CoinsError("not_enough_coins", f"une vie coûte {ct.life_price} pièces, solde {max(solde, 0)}")

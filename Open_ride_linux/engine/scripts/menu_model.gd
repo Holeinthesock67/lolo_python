@@ -41,6 +41,8 @@ extends RefCounted
 ## Bots (lot O7) : l'écran Prêt gagne « Bot : … » (A long change : aucun, 200, 250, 300 W, 90, 100,
 ## 110 % de la FTP) et « Fantôme de la dernière séance : non/oui » ; `start` les transmet dans l'argument
 ## `bots` (contrat 1.3) quand l'un des deux est choisi, sinon n'envoie rien. Un nouvel accueil les remet à zéro.
+## Records (série T, lot T10) : l'écran Prêt finit par « Records du parcours », qui renvoie une action
+## « item » de l'écran Prêt (écrans des records ouverts par menu_flow.gd).
 
 const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG", "A_SHORT", "A_LONG", "Y_SHORT",
 	"LEFT_SHORT", "RIGHT_SHORT"]
@@ -59,7 +61,7 @@ const NO_WORKOUT_ID := "_sim"
 ## Modes de séance de l'accueil, dans l'ordre d'affichage : {mode: libellé}. Filtrés par `modes`, la
 ## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
-const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG"}
+const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
@@ -138,7 +140,8 @@ func _refresh_home() -> void:
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
 		_item("change_route", "Changer de parcours"),
 		_item("bot", "Bot : " + BOT_CHOICES[bot_choice][0]),
-		_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non"))]
+		_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non")),
+		_item("records", "Records du parcours")]
 	var what := "session ERG" if mode == "erg" else "session libre"
 	if start_name != "":
 		what = start_name
@@ -514,6 +517,8 @@ func _validate() -> Dictionary:
 				"erg":
 					_workouts_return = HOME
 					_open(WORKOUTS)
+				"open_world":
+					return {"action": "open_world_menu"}
 				"sim":
 					if sim_session:
 						_confirm("Revenir au matériel réel ? OpenRide redémarre", {"action": "relaunch"})
@@ -572,6 +577,8 @@ func _validate() -> Dictionary:
 				"change_route":
 					_routes_return = READY
 					_open(ROUTES)
+				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
+					return {"action": "item", "screen": READY, "id": id}
 		CONFIRM:
 			var act := _pending
 			_pending = {}

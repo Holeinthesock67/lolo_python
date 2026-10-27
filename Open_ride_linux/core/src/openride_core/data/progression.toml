@@ -42,9 +42,63 @@ per_power_record = 15        # record de puissance moyenne battu sur 5 s, 1, 5 o
 per_jersey = 20
 rogue_boss_default = 10      # boss vaincu absent de la table ci-dessous
 life_price = 30              # une vie du mode Cyber-Rogue (lot R9)
+max_lives = 3                # vies en réserve au plus
+rogue_gold_per_coin = 10     # or de la run converti en pièces : 1 pièce pour 10 or
 
 [coins.rogue_boss]
 chimere_centrale = 50
+
+# Châssis du mode Cyber-Rogue (lot R9) : un seul choisi avant la run, bonus bornés (au plus 10 % de la
+# valeur du jeu ; l'adrénaline de départ, nulle au repos, est bornée à 20). `unlock` : statistique des runs
+# (boss_won, perfect_shifts, gold_total, vo2max_runs, endurance_runs) et `threshold` : valeur à atteindre.
+# `bonus` : ajout à une constante de RogueBalance (shield_max, ps_window_s, gold_mult, adrenaline_start,
+# overheat_frac) ; jamais la pente envoyée ni la puissance demandée.
+[[chassis]]
+id = "standard"
+name = "Standard"
+text = "Aucun bonus"
+unlock = "none"
+threshold = 0
+
+[[chassis]]
+id = "blinde"
+name = "Blindé"
+text = "Bouclier maximal +10"
+unlock = "boss_won"
+threshold = 1
+bonus = { shield_max = 10.0 }
+
+[[chassis]]
+id = "conducteur"
+name = "Conducteur"
+text = "Fenêtre de Perfect Shift +0,15 s"
+unlock = "perfect_shifts"
+threshold = 50
+bonus = { ps_window_s = 0.15 }
+
+[[chassis]]
+id = "collecteur"
+name = "Collecteur"
+text = "Or gagné +10 %"
+unlock = "gold_total"
+threshold = 500
+bonus = { gold_mult = 0.10 }
+
+[[chassis]]
+id = "survolte"
+name = "Survolté"
+text = "Adrénaline de départ 20"
+unlock = "vo2max_runs"
+threshold = 3
+bonus = { adrenaline_start = 20.0 }
+
+[[chassis]]
+id = "endurant"
+name = "Endurant"
+text = "Surchauffe à 0,78 FTP au lieu de 0,75"
+unlock = "endurance_runs"
+threshold = 3
+bonus = { overheat_frac = 0.03 }
 
 # Défis : `stat` atteint `threshold` ; `reward` = pièce d'équipement offerte (catalogue du lot V3).
 [[challenges]]

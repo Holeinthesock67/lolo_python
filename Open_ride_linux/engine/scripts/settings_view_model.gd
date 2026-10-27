@@ -18,6 +18,13 @@ const EDIT_SCREEN := "setting_edit"
 const DIFFICULTY_KEY := "trainer.difficulty_pct"
 ## Clé de l'écran de modification ouvert depuis la pause (difficulté de la séance en cours).
 const PAUSE_DIFFICULTY := "pause.difficulty"
+## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
+## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
+## Courbes de la séance (lot O14) : `render.chart` prend `hidden` / `reduced` / `full`.
+const CHOICE_TEXTS := {
+	"powerups.mode": {"on": "oui", "off": "non"},
+	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
+}
 
 var items: Array = []
 ## Modification en cours : {key, label, type, value, min, max, step, unit, choices} ; vide sinon.
@@ -42,18 +49,15 @@ static func slider(pct: int) -> String:
 	return "■".repeat(n) + "□".repeat(10 - n) + " %d %%" % pct
 
 
-## Courbes de la séance (lot O14) : valeurs du core et texte affiché.
-const CHART_KEY := "render.chart"
-const CHART_TEXT := {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"}
-
 
 static func format_value(it: Dictionary, value) -> String:
 	if str(it.get("key", "")) in [DIFFICULTY_KEY, PAUSE_DIFFICULTY]:
 		return slider(int(value))
 	if it.has("format"):
 		return WorkoutBuilder.format_param(it, value)
-	if str(it.get("key", "")) == CHART_KEY:
-		return str(CHART_TEXT.get(str(value), value))
+	var texts: Dictionary = CHOICE_TEXTS.get(str(it.get("key", "")), {})
+	if texts.has(str(value)):
+		return str(texts[str(value)])
 	var unit := str(it.get("unit", ""))
 	return str(value) + ((" " + unit) if unit != "" else "")
 

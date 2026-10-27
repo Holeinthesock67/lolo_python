@@ -71,6 +71,7 @@ SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
 GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur", "menu_accueil", "bilan", "pente_0pct", "pente_4pct")
 FIXED_S = 1500.0
+DEMO_SUMMIT_S = 1500.0             # sommet de `climb1`, seule montée de la couche segments de la démo (T3, T8)
 # Listes servies par le faux core aux menus (lot N6) : un parcours « à compiler » non choisissable.
 MENU_CATALOG = {
     "routes": [
@@ -736,11 +737,16 @@ def _scenes(s: Session) -> None:
         s.check_world("pluie", img, info)
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather", "weather": {"kind": "clear"}})
 
-    # 3 quinquies. Col (lot P17) : arrêt à 25 m du panneau du sommet de la démo (montée de 5 km) :
-    # panneau lisible (lettres prévues pour 30 m), spectateurs du dernier kilomètre.
+    # 3 quinquies. Col (lot P17) : arrêt à 25 m du panneau du sommet de la démo : panneau lisible
+    # (lettres prévues pour 30 m). Depuis T8, le décor suit la couche `segments` du parcours : la seule
+    # montée de la démo est `climb1` (0 à 1 500 m, détectée par le core), trop courte pour les
+    # spectateurs de P15 (moins de 3 km) : aucun spectateur attendu.
+    # Sommet derrière la position courante : passage par READY (en RUNNING, la caméra ne recule jamais).
     s_back = core.current_s()
-    core.set_scene(speed=0.0, s=4955.0)
-    time.sleep(3.0)
+    core.set_scene(speed=0.0, s=DEMO_SUMMIT_S - 25.0, session_state="READY")
+    time.sleep(SETTLE_S)
+    core.set_scene(speed=0.0, s=DEMO_SUMMIT_S - 25.0, session_state="RUNNING")
+    time.sleep(1.0)
     shot = s.capture("col")
     if shot:
         img, info = shot
@@ -750,7 +756,8 @@ def _scenes(s: Session) -> None:
                 f"« {str(sign.get('text', '')).replace(chr(10), ' / ')} » à {float(sign.get('dist_m', 0.0)):.0f} m")
         s.check("col", "lettres du panneau lisibles", float(sign.get("letter_px_720", 0.0)) >= 6.0,
                 f"{float(sign.get('letter_px_720', 0.0)):.1f} px pour 720 lignes")
-        s.check("col", "spectateurs affichés", dec.get("spectators", 0) > 0, f"{dec.get('spectators', 0)} spectateurs")
+        s.check("col", "aucun spectateur sur une montée de moins de 3 km", dec.get("spectators", 0) == 0,
+                f"{dec.get('spectators', 0)} spectateurs")
         s.check_layout("col", info)
         s.check_world("col", img, info)
     core.set_scene(speed=SPEED_MPS, s=s_back)

@@ -115,7 +115,7 @@ def test_revision_1_4_frames_fit_and_validate():
         sch = json.loads((ipc / f"{msg['type']}.schema.json").read_text(encoding="utf-8"))
         return [e.message for e in jsonschema.Draft202012Validator(sch).iter_errors(msg)]
 
-    assert revisions()[-1] == "1.4" and ipc_budget.state_target("1.4") == ipc_budget.STATE_LIMIT_1_3
+    assert "1.4" in revisions() and ipc_budget.state_target("1.4") == ipc_budget.STATE_LIMIT_1_3
     for frame in (worst_state("1.4"), ipc_budget.worst_rogue_state()):
         assert errors(frame) == []
         assert size(frame) <= ipc_budget.STATE_LIMIT_1_3
@@ -126,3 +126,17 @@ def test_revision_1_4_frames_fit_and_validate():
         assert errors(msg) == [], name
         assert size(msg) <= MAX_DATAGRAM_SIZE, f"{name} : {size(msg)} octets"
     assert "1.4 rogue" in ipc_budget.report()
+
+
+def test_revision_1_5_open_world_frame_fits_and_validates():
+    """Révision 1.5 (lot W9) : la pire trame du monde ouvert (carrefour à 4 branches, sans `devices`)
+    est valide, sous 4 096 octets, et `open_world` ne part qu'en dernier recours."""
+    path = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "ipc" / "state.schema.json"
+    frame = worst_state("1.5")
+    validator = jsonschema.Draft202012Validator(json.loads(path.read_text(encoding="utf-8")))
+    assert revisions()[-1] == "1.5" and "devices" not in frame
+    assert [e.message for e in validator.iter_errors(frame)] == []
+    assert size(frame) <= ipc_budget.state_limit("1.5")
+    assert fit_state(frame, ipc_budget.state_limit("1.5")) == (frame, [])
+    out, dropped = fit_state(frame)
+    assert size(out) <= MAX_DATAGRAM_SIZE and "open_world" in out and "open_world" not in dropped

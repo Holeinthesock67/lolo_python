@@ -26,9 +26,9 @@ MAX_DATAGRAM_SIZE = 1400
 MAX_STATE_DATAGRAM_SIZE = 4096
 MAX_SETTINGS_DATAGRAM_SIZE = 4096   # `settings` : dix réglages et leurs choix (révision 1.3, lot O14)
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.3"
+CONTRACT_REV = "1.5"
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
-CORE_MODES = ("ride", "erg")
+CORE_MODES = ("ride", "erg", "open_world", "rogue")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8
 MAX_LIST_DATAGRAM_SIZE = 60000
 # Messages en parties (`part`, `parts`) : 60 000 octets au plus par partie (contrat §2).
 LIST_MESSAGE_TYPES = ("routes", "workouts", "imports")
@@ -74,6 +74,14 @@ class IpcState:
     wind: dict[str, float] | None = None   # révision 1.3 (lot P2) : 2 fois par seconde, jamais avec devices
     draft: float | None = None             # révision 1.3 (lot P3) : présent dès qu'il y a un bot
     draft_bot: str | None = None
+    open_world: dict[str, Any] | None = None   # révision 1.5 (lot W9) : jamais dans une trame avec devices
+    # Révision 1.4 (série T, lot T7) : absents sans segment, hors bonus ou sans bot.
+    segment: dict[str, Any] | None = None
+    powerup: dict[str, Any] | None = None
+    jerseys: dict[str, Any] | None = None
+    bot_ahead: str | None = None           # présents (éventuellement null) dès qu'il y a un bot
+    bot_behind: str | None = None
+    rogue: dict[str, Any] | None = None    # révision 1.4 (série R, lot R8) : présent seulement en mode ROGUE
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -97,6 +105,14 @@ class IpcState:
             d.pop("draft", None)
         if self.draft_bot is None:
             d.pop("draft_bot", None)
+        if self.open_world is None or self.devices is not None:
+            d.pop("open_world", None)
+        for key in ("segment", "powerup", "jerseys", "rogue"):
+            if d[key] is None:
+                d.pop(key)
+        if self.bots is None:
+            d.pop("bot_ahead")
+            d.pop("bot_behind")
         return d
 
 
@@ -235,6 +251,10 @@ class IpcServer:
         }
         self.send_raw(msg)
 
+    def send_world_status(self, status: dict[str, Any]) -> None:
+        """`world_status` (révision 1.5) : avancement de la préparation du monde ouvert."""
+        self.send_raw({"type": "world_status", "v": CONTRACT_VERSION, **status})
+
     def send_shutdown(self) -> None:
         msg = {
             "type": "shutdown",
@@ -321,7 +341,8 @@ class IpcServer:
             self.last_heartbeat_time = time.monotonic()
             # Requêtes : réponse à chaque copie reçue, la réponse a pu se perdre (contrat §4). La création et
             # l'import d'entraînement sont idempotents (même fichier, même identifiant), lot N16.
-            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "import_workout")
+            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "import_workout",
+                                "world_search", "world_map", "world_regions")
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)

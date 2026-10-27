@@ -109,6 +109,37 @@
               },
               "uniqueItems": true,
               "maxItems": 4
+            },
+            "chassis": {
+              "type": "object",
+              "description": "Facultatif (lot R9) : châssis débloqués et châssis choisi par défaut.",
+              "required": [
+                "unlocked",
+                "selected"
+              ],
+              "properties": {
+                "unlocked": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 32
+                  },
+                  "uniqueItems": true,
+                  "maxItems": 16
+                },
+                "selected": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 32
+                }
+              }
+            },
+            "lives": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 3,
+              "description": "Facultatif (lot R9) : vies en réserve."
             }
           }
         },

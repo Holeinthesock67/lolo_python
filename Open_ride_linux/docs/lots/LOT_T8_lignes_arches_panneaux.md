@@ -18,7 +18,7 @@ T1 et T3 (livrés) ; T7 pour la position des arches dans la séance. Le rendu de
 ## 4. Travail demandé
 
 - **Lecture :** `route_data.gd` lit `segments.json` si le manifeste la déclare (version de couche `1.x`, champ inconnu ignoré, fichier invalide ignoré avec un message dans la console).
-- **Modèle sans affichage** `engine/scripts/segment_markers_model.gd`, testé par `engine/tests/unit/test_segment_markers_model.gd` : positions (`s`, côté, orientation) des lignes, portiques et panneaux ; panneaux « Sprint dans 1 km », « 500 m », « 200 m » avant un sprint ; « Montée de 2e catégorie, 4,2 km à 6,1 % » au pied d'une montée, « 1 km », « 500 m » avant le sommet ; arches de bonus tous les `arch_every_m`, lu dans `~/OpenRide/powerups.toml` (section `[obtain]`) comme le fait le core, 5 000 m sans fichier, 0 : aucune arche (même règle que `ArchSchedule` de T6, vérifiée par un vecteur de test commun), répétées à chaque tour d'une boucle ; aucune arche quand l'option « Bonus » est coupée (`[powerups] enabled`, T7) ou en ERG.
+- **Modèle sans affichage** `engine/scripts/segment_markers_model.gd`, testé par `engine/tests/unit/test_segment_markers_model.gd` : positions (`s`, côté, orientation) des lignes, portiques et panneaux ; panneaux « Sprint dans 1 km », « 500 m », « 200 m » avant un sprint ; « Montée de 2e catégorie, 4,2 km à 6,1 % » au pied d'une montée, « 1 km », « 500 m » avant le sommet ; arches de bonus tous les `arch_every_m`, lu dans `~/OpenRide/powerups.toml` (section `[obtain]`) comme le fait le core, 5 000 m sans fichier, 0 : aucune arche (même règle que `ArchSchedule` de T6, vérifiée par un vecteur de test commun), répétées à chaque tour d'une boucle ; aucune arche quand l'option « Bonus » est coupée (`[powerups] mode = "off"`, T7) ou en ERG.
 - **Rendu** `engine/scripts/segment_markers.gd` : ligne peinte au sol, portique au départ et à l'arrivée (vert pour un sprint, à pois rouges pour une montée), panneaux en bord de route, arche de bonus distincte ; objets créés par tronçon avec le streaming existant, sans nouveau coût quand aucun segment n'est proche.
 - **Décor :** les spectateurs de P15 et les bannières de sommet suivent la couche `segments` quand elle existe (une seule source pour les montées), et `climb_detector.gd` sinon.
 - **Budget :** moins de 0,3 ms par image et moins de 50 nœuds actifs sur la GTX 1060 en qualité basse ; mesure par `perf_probe.gd`.
@@ -43,3 +43,18 @@ Aucune.
 ## 8. Hors périmètre
 
 - HUD (T9 et T15), menus (T10).
+
+## 9. Livraison (27 octobre 2026, code ; validation sur le PC)
+
+- `route_data.gd` lit la couche `segments` quand le manifeste la déclare (`segments`, `segments_present`) : version de couche `1.x`, champ inconnu ignoré, fichier invalide ignoré avec un message dans la console, route chargée dans tous les cas.
+- Nouveau modèle `engine/scripts/segment_markers_model.gd` : portiques et lignes de départ et d'arrivée, panneaux (sprint dans 1 km, 500 m, 200 m ; pied de montée « Montée de 4e catégorie » et « 1,5 km à 3,6 % » ; sommet dans 1 km et 500 m), arches de bonus, lecture de `[obtain] arch_every_m` dans `~/OpenRide/powerups.toml`, montées de la couche au format de `climb_detector.gd`, fenêtre autour de la caméra par recherche dichotomique.
+- Nouveau rendu `engine/scripts/segment_markers.gd`, créé par `main.gd` : portique (banderole verte pour un sprint, blanche à pois rouges pour une montée), ligne peinte au sol (blanche au départ, en damier à l'arrivée), panneaux, arche violette lumineuse. Seules les marques à moins de 400 m devant et 30 m derrière la caméra sont en scène (aucun nœud quand rien n'est proche) ; exagération du relief (lot Q2) appliquée comme à la route.
+- `living_decor.gd` : spectateurs, panneaux de col et chiffres peints suivent les montées de la couche `segments` quand elle existe (`climbs_of`), sinon `climb_detector.gd`.
+- Choix faits :
+  - arches affichées seulement quand la trame `state` porte le champ `powerup` (SIM, option « Bonus » active, séance en cours) : l'engine suit ainsi l'ERG et l'option sans lire `config.toml` et sans nouveau champ de contrat ;
+  - panneaux de la série T à **gauche** de la route, pour ne pas se superposer aux panneaux d'approche de P14 (à droite, « Sommet à 1 km ») ;
+  - montée qui commence au départ d'un parcours ouvert : panneau de pied posé 15 m après la ligne ; sur une boucle, les panneaux d'approche passent au tour précédent ;
+  - fenêtre glissante gérée par `segment_markers.gd` plutôt que par les tronçons de `world_streamer.gd` (quelques marques par kilomètre au plus) : `world_streamer.gd` reste inchangé ;
+  - `powerups.toml` refusé par le core pour une autre clé que `arch_every_m` (par exemple un `factor` hors bornes) : le core repasse à 5 000 m, l'engine garde la valeur du fichier. Cas rare, signalé ici ; un fichier valide donne les mêmes arches (vecteurs partagés `engine/tests/data/arch_schedule_vectors.json`, vérifiés aussi par `core/tests/test_powerups.py`).
+- Tests : `engine/tests/unit/test_segment_markers_model.gd` (à lancer sur le PC : Godot n'est pas disponible dans l'environnement cloud) ; `core/tests/test_powerups.py` (vecteurs des arches).
+- Reste à faire sur le PC : `engine/tests/run_engine_tests.sh` complet, mesure `perf_probe` (moins de 0,3 ms par image, moins de 50 nœuds actifs en qualité basse sur la GTX 1060), contrôle visuel à la recette T11.
