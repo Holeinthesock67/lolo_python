@@ -47,3 +47,7 @@ Aucune : le contrat est celui du lot N1. Un écart trouvé est signalé, pas cor
 
 - Affichage (N5, N6) et client engine (N3).
 - Compilation depuis le menu.
+
+## 9. Livraison (25 octobre 2026, PR #174)
+
+- Code et tests fusionnés sur `main` par la PR #174 (issue #101 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.
