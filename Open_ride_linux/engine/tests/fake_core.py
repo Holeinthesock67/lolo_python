@@ -10,6 +10,10 @@ Bibliothèque standard seulement. Le faux core :
 
 Usage : fake_core.py --engine-log FICHIER [--state-port 5005] [--cmd-port 5006] [--scenarios 1,2,…]
 Code de sortie : 0 si tous les scénarios passent, 1 sinon.
+
+`--serie-t` : séance de démonstration du mode classique (révision 1.4, lots T8 et T9) sur le parcours
+`demo` : champs `segment`, `powerup` et `jerseys`, messages `segment_result` (3 fois) à la fin de chaque
+segment de `engine/demo/demo.world/segments.json` ; contrôle visuel des blocs du HUD et des portiques.
 """
 
 from __future__ import annotations
@@ -28,6 +32,7 @@ from typing import Any, Callable
 CONTRACT_VERSION = 1
 STATE_HZ = 30.0
 SPEED_MPS = 8.0
+DEMO_SEGMENTS = Path(__file__).resolve().parents[1] / "demo" / "demo.world" / "segments.json"
 
 
 def now() -> float:
@@ -109,6 +114,8 @@ class FakeCore:
     seq: int = 0
     last_cmd_id: int = 0
     _cmd_counts: dict[int, int] = field(default_factory=dict)
+    # Champs ajoutés aux trames de RUNNING : extra(s, t) -> dict (démonstration de la série T).
+    extra: Callable[[float, float], dict[str, Any]] | None = None
     _s0: float = 0.0
     _t0: float = field(default_factory=now)
     _stop: bool = False
@@ -144,7 +151,7 @@ class FakeCore:
 
     def state_msg(self, seq: int | None = None, s: float | None = None) -> dict[str, Any]:
         running = self.session_state == "RUNNING"
-        return {
+        msg = {
             "type": "state", "v": SPEED_MPS if running else 0.0,
             "seq": self.seq if seq is None else seq, "t": now() - self._t0,
             "session_state": self.session_state, "pause_reason": None,
@@ -155,6 +162,9 @@ class FakeCore:
             "hr": None, "gear": 12, "gears_total": 24, "lat": 0.0, "lon": 0.0, "alt": 0.0,
             "erg": None, "summary": None, "last_cmd_id": self.last_cmd_id,
         }
+        if running and self.extra is not None:
+            msg.update(self.extra(msg["s"], msg["t"]))
+        return msg
 
     def send_state(self) -> None:
         self.seq += 1
@@ -559,6 +569,67 @@ def run_erg_workout_stream(state_port: int, cmd_port: int) -> int:
 
 
 
+def serie_t_fields(s: float, t: float, segments: list[dict[str, Any]]) -> dict[str, Any]:
+    """Champs `segment`, `powerup` et `jerseys` de démonstration (révision 1.4) à la position `s`."""
+    out: dict[str, Any] = {"jerseys": {"sprint": None, "kom": "me" if s >= 1500.0 else None}}
+    for seg in segments:
+        if seg["s_start"] <= s < seg["s_end"]:
+            elapsed = (s - seg["s_start"]) / SPEED_MPS
+            out["segment"] = {"id": seg["id"], "kind": seg["type"], "category": seg["category"],
+                              "d_to_start_m": 0.0, "elapsed_s": round(elapsed, 1),
+                              "gap_to_pr_s": round(2.0 - 0.05 * elapsed, 1)}
+            break
+        if seg["s_start"] > s:
+            out["segment"] = {"id": seg["id"], "kind": seg["type"], "category": seg["category"],
+                              "d_to_start_m": round(seg["s_start"] - s, 1), "elapsed_s": None,
+                              "gap_to_pr_s": None}
+            break
+    phase = t % 40.0          # réserve 10 s, bonus aéro actif 15 s, rien 15 s
+    if phase < 10.0:
+        out["powerup"] = {"held": "aero", "active": None, "remaining_s": 0.0}
+    elif phase < 25.0:
+        out["powerup"] = {"held": None, "active": "aero", "remaining_s": round(25.0 - phase, 1)}
+    else:
+        out["powerup"] = {"held": None, "active": None, "remaining_s": 0.0}
+    return out
+
+
+def serie_t_result(seg: dict[str, Any], lap: int) -> dict[str, Any]:
+    time_s = round((seg["s_end"] - seg["s_start"]) / SPEED_MPS, 2)
+    return {"type": "segment_result", "v": CONTRACT_VERSION, "segment_id": seg["id"], "name": seg["name"],
+            "kind": seg["type"], "time_s": time_s, "with_powerup": False, "pr": lap == 0,
+            "pr_time_s": None if lap == 0 else time_s + 1.5, "rank": 1, "rank_total": 3,
+            "points": 10 if seg["type"] == "climb" else 15, "equipment_gain_s": None}
+
+
+def run_serie_t_stream(state_port: int, cmd_port: int, duration_s: float) -> int:
+    """Séance de démonstration du mode classique : le parcours `demo` parcouru à SPEED_MPS."""
+    segments = json.loads(DEMO_SEGMENTS.read_text(encoding="utf-8"))["segments"]
+    core = FakeCore(state_port, cmd_port, EngineLog(Path("/nonexistent/engine.log")))
+    core.auto_hello_ack = True
+    core.streaming = True
+    core.extra = lambda s, t: serie_t_fields(s, t, segments)
+    core.start()
+    core.set_running(True)
+    pending: list[tuple[float, dict[str, Any]]] = []
+    done: set[str] = set()
+    end = now() + duration_s
+    while now() < end:
+        s = core.current_s()
+        for seg in segments:
+            if seg["id"] not in done and s >= seg["s_end"]:
+                done.add(seg["id"])
+                msg = serie_t_result(seg, 0)
+                pending += [(now() + k, msg) for k in range(3)]   # 3 fois à une seconde d'intervalle
+        for item in [p for p in pending if p[0] <= now()]:
+            pending.remove(item)
+            core.send(item[1])
+        time.sleep(0.05)
+    core.send({"type": "shutdown", "v": CONTRACT_VERSION})
+    core.stop()
+    return 0
+
+
 def run_catalog_server(state_port: int, cmd_port: int, catalog_path: Path, drop_first: bool = False,
                        drop_all: bool = False, split: bool = False) -> int:
     try:
@@ -607,7 +678,11 @@ def main() -> int:
                     help="ignore toutes les demandes de listes pour tester l'erreur (lot N3)")
     ap.add_argument("--split-catalog", action="store_true",
                     help="envoie chaque liste en deux parties, la 2e d'abord (assemblage, lot N3)")
+    ap.add_argument("--serie-t", type=float, default=0.0, metavar="SECONDES",
+                    help="séance de démonstration du mode classique pendant SECONDES (lots T8 et T9)")
     args = ap.parse_args()
+    if args.serie_t > 0.0:
+        return run_serie_t_stream(args.state_port, args.cmd_port, args.serie_t)
     if args.erg_workout:
         return run_erg_workout_stream(args.state_port, args.cmd_port)
     if args.catalog:

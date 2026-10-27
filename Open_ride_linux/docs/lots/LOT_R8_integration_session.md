@@ -75,3 +75,13 @@ Aucune au-delà de la révision 1.4 (lot T1).
 ## 8. Hors périmètre
 
 - Affichage (R10 à R13), déblocages permanents (R9).
+
+## 9. Livraison (27 octobre 2026)
+
+- `rogue/mode.py` : `RogueMode` (une run en cours, pure, pilotée par la session), `parse_start_run` (refus `run_invalid` / `item_locked`), `hello_block`, `journal_line`. La session (`session.py`) gagne `start_run`, `rogue_resync`, le mode `ROGUE` (`ipc_server.CORE_MODES`), la trame `state.rogue`, et lâche la run à `select_route` / `select_workout`.
+- **Pente :** `grade_sent = pente de l'ennemi + (vitesse − 6)`, bornée −10..16, avec la rampe R8 (`[rogue] grade_rate_up_pct_per_s` = 8, `grade_rate_down_pct_per_s` = 12, bornes 0,1 à 100 ; SRS §11 à jour) ; immédiate à un changement de vitesse. `difficulty_pct` et la formule classique sont ignorés (R-Q1). Le trainer est relâché à la fin et en pause.
+- **Boutons :** Z et A passent à la run (`press`), les vitesses par `shift`, Y garde la pause ; aucun nouvel événement.
+- **Journal :** lignes `rogue`, `rogue_run` (celle de R9, avant `rec.finish`) et `rogue_snapshot`. **FIT :** un tour par salle (début = ligne `rogue room_start`), `num_laps` en conséquence.
+- **Reprise :** instantané (pickle zlib+base64, ~8,6 ko) écrit au début de chaque phase ou salle ; la reprise repart au début de la salle en cours. **Écart au cahier :** pas d'instantané toutes les 5 s.
+- **Écarts :** vies et châssis arrivent par `session.rogue_provider` (défaut : 0 vie, châssis standard) jusqu'à V11 ; l'estimation de W' n'est pas encore branchée (`estimate_cp.estimate_w_prime`, à lancer au démarrage dans un thread, hors de la boucle 50 Hz).
+- Tests : `core/tests/test_rogue_session.py` (20), `test_contract_ipc.py` (modes).

@@ -85,7 +85,7 @@ OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen")
 
 
 # Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).
-GAME_KINDS = ("powerup", "segment", "jersey")
+GAME_KINDS = ("powerup", "segment", "jersey", "rogue", "rogue_run", "rogue_snapshot")   # R8 : run Cyber-Rogue
 
 def record_line(rec: Record) -> dict:
     # Dictionnaire construit sans ces clés (un `del` ne réduirait pas sa table en mémoire).

@@ -23,6 +23,9 @@ const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
+const SegmentMarkers := preload("res://scripts/segment_markers.gd")
+const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
+const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
@@ -112,6 +115,10 @@ var _theme_dict: Dictionary = {}   # thème courant, pour le décor vivant
 var _living_enabled := true
 ## Décor vivant, deuxième vague (lot P17) : météo, animaux, éoliennes, véhicules, bord de route, foule.
 var living_decor = null
+## Série T (lot T8) : lignes, portiques et panneaux des segments, arches de bonus.
+var segment_markers = null
+## Série T (lot T9) : blocs segment et bonus du HUD.
+var segment_hud = SegmentHudModel.new()
 var _beep_until_s := -INF
 
 
@@ -168,6 +175,10 @@ func _ready() -> void:
 	living_decor.living_world = living_world
 	living_decor.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player, streamer)
 	living_decor.set_fog_base(world_env.environment)
+	segment_markers = SegmentMarkers.new()
+	segment_markers.name = "SegmentMarkers"
+	segment_markers.visual_grade_scale = _visual_grade_scale
+	add_child(segment_markers)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
@@ -178,6 +189,10 @@ func _ready() -> void:
 	ipc.core_returned.connect(_on_core_returned)
 	ipc.command_failed.connect(_on_command_failed)
 	ipc.test_message_received.connect(_on_test_message)
+	ipc.segment_result_received.connect(func(msg: Dictionary) -> void:
+		if segment_hud.on_result(msg, Time.get_ticks_msec() / 1000.0):
+			print("Segment terminé : %s en %s s" % [msg.get("segment_id", "?"), msg.get("time_s", "?")])
+			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?")))
 	banner.changed.connect(func(text: String) -> void:
 		ipc.test_log("banner text=" + text.replace("\n", " | ")))
 	var gen := AudioStreamGenerator.new()
@@ -523,6 +538,8 @@ func _process(delta: float) -> void:
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
+		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
+		segment_markers.update(s_route, _last_state.has("powerup"))
 
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
@@ -689,6 +706,11 @@ func _poll_route_job() -> void:
 	if living_decor != null:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
+	segment_markers.set_route(route, SegmentMarkersModel.arch_every_m_from_file(), float(streamer.get("_road_width_m")))
+	segment_hud.set_segments(route.segments)
+	menu_flow.records.set_segments(route.segments)
+	if route.segments_present:
+		print("Segments du parcours : %d" % route.segments.size())
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
 	banner.clear_message("route")
 	banner.clear_message("cue")
@@ -861,6 +883,7 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)

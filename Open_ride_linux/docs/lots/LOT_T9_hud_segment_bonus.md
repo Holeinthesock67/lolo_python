@@ -43,3 +43,19 @@ Aucune.
 ## 8. Hors périmètre
 
 - HUD des bots et encart des voisins (T15) ; rendu 3D (T8).
+
+## 9. Livraison (27 octobre 2026, code ; validation sur le PC)
+
+- Nouveau modèle `engine/scripts/segment_hud_model.gd` :
+  - approche sous 2 km (« Montée 2 · cat. 3 dans 1,2 km ») ;
+  - chrono (« 1:23 ») et écart au record (« −3,2 s » en vert, « +1,8 s » en rouge, rien sans record) ;
+  - résultat affiché 8 s (« 4:08,1 », « Record ! Ancien : 4:11,5 · 2 / 5 · +3 pts », « (bonus) » pour un passage avec bonus) ;
+  - bonus en réserve (« Z : Aéro ») et bonus actif avec secondes restantes et barre de temps.
+- `hud_view.gd` : blocs « segment » (300 × 100 px) et « bonus » (300 × 72 px) empilés sous le panneau de droite (`update_segment`) ; le bloc segment s'arrête à 448 px, au-dessus du bandeau ERG en 720p, et le bloc bonus n'apparaît jamais en ERG (champ `powerup` absent).
+- `ipc_client.gd` : message `segment_result` (signal `segment_result_received`) ; révision annoncée « 1.4 ». `main.gd` donne au modèle les noms de la couche `segments` au chargement du parcours.
+- `engine/tests/fake_core.py --serie-t SECONDES` : séance de démonstration sur le parcours `demo` (champs `segment`, `powerup`, `jerseys`, trois `segment_result` à la fin de chaque segment), conforme aux schémas de la révision 1.4.
+- Choix faits :
+  - doublons de `segment_result` reconnus par segment et temps : un nouveau passage sur une boucle (autre temps) s'affiche ;
+  - durée du bonus actif prise au premier `remaining_s` reçu (le contrat ne la donne pas) ;
+  - `hud_view_model.gd` reste inchangé : tout le texte de la série T est dans le nouveau modèle.
+- Tests : `engine/tests/unit/test_segment_hud_model.gd`, à lancer sur le PC (Godot n'est pas disponible dans l'environnement cloud).
