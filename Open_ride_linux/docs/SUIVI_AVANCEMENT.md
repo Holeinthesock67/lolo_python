@@ -240,6 +240,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Animaux : bandes d'oiseaux au-dessus des forêts, troupeaux près des points `livestock`, chevreuil en lisière qui s'enfuit, dans le budget de `living(preset)` (lot P11 ; branchement par P17).
 - [x] Éoliennes et mâts de drapeau tirés d'OpenStreetMap (`wind_turbine`, `flag`), rotors et drapeaux qui suivent le vent, drapeau par village, eau qui scintille (lot P12 ; branchement par P17).
 - [x] Bord de route : montées détectées sur le profil, panneaux de col et d'approche (« Sommet à 3 km »), bornes kilométriques, marquages au sol et chiffres des derniers kilomètres peints en montée (lot P14 ; branchement par P17).
+- [x] Véhicules décoratifs sur la route du parcours : voitures et tracteurs en face ou qui doublent à 1,5 m au moins, plus fréquents près des villages, jamais en haute montagne ni sur les fortes pentes, avec leur son (lot P13 ; branchement par P17).
 - [ ] Indicateur du vent et de l'abri, arbres et herbe au vent, nuages, sons d'ambiance, sons du vent et de la roue libre (lots P4, P5, P6, P9, P10 ; intégration P16).
 - [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs, passants (lots P8, P11 à P15, P21 ; intégration P17).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
