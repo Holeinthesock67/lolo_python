@@ -212,8 +212,10 @@ func _build_wind_panel() -> void:
 	panel_wind.add_child(wind_arrow)
 	wind_speed_label = Label.new()
 	wind_speed_label.name = "WindSpeed"
-	wind_speed_label.position = Vector2(92.0, 6.0)
-	wind_speed_label.size = Vector2(200.0, 40.0)
+	# Haut à 4 px : le libellé de 30 px grandit à 43 px de haut, il s'arrête ainsi à 47 px, au-dessus
+	# du niveau (50 px), à toutes les échelles de l'interface (chevauchement vu en 1024x600)
+	wind_speed_label.position = Vector2(92.0, 4.0)
+	wind_speed_label.size = Vector2(200.0, 43.0)
 	wind_speed_label.add_theme_font_size_override("font_size", 30)
 	wind_speed_label.clip_text = true
 	panel_wind.add_child(wind_speed_label)
@@ -225,7 +227,7 @@ func _build_wind_panel() -> void:
 	panel_wind.add_child(wind_bars)
 	wind_level_label = Label.new()
 	wind_level_label.name = "WindLevel"
-	wind_level_label.position = Vector2(172.0, 48.0)
+	wind_level_label.position = Vector2(172.0, 50.0)
 	wind_level_label.size = Vector2(120.0, 32.0)
 	wind_level_label.add_theme_font_size_override("font_size", 22)
 	wind_level_label.modulate = Color(0.75, 0.80, 0.85)
