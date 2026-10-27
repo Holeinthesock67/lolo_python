@@ -40,3 +40,16 @@ Aucune.
 ## 8. Hors périmètre
 
 - Effacement ou export des records ; menu Cyber-Rogue (R13) et Garage (V8).
+
+## 9. Livraison (27 octobre 2026, code ; validation sur le PC)
+
+- Nouveau modèle `engine/scripts/records_view_model.gd` :
+  - lecture seule de `~/OpenRide/records.json`, relu à chaque ouverture de l'écran ; fichier absent : aucun temps ; illisible ou version autre que 1 : « Aucun record lisible » ;
+  - liste des segments du parcours (noms de la couche `segments`), meilleur temps sans bonus et meilleur temps avec bonus ; segment sans temps désactivé ;
+  - table d'un segment : les temps au dixième (« 1. 4:08,1 · 27/10/2026 18:05 »), puissance moyenne et W/kg ; première ligne « A : voir les temps avec bonus » (ou « sans bonus »).
+- Menu :
+  - `menu_model.gd` : entrée « Records du parcours » en fin d'écran Prêt ;
+  - `menu_flow.gd` : écrans « Records » et table ; A long ouvre, A court bascule entre les deux tables, Y revient ; aucune commande ajoutée au contrat ;
+  - `main.gd` donne la couche `segments` au modèle au chargement du parcours.
+- Option « Bonus » : la ligne des réglages vient du core (clé `powerups.mode`, T7) ; `settings_view_model.gd` affiche `on` / `off` en « oui » / « non » (table `CHOICE_TEXTS`). `menu_view.gd` reste inchangé.
+- Tests : `engine/tests/unit/test_records_view_model.gd` (deux tables, fichier absent, version inconnue, fichier illisible, segment sans record, navigation depuis l'écran Prêt, oui / non), à lancer sur le PC (Godot n'est pas disponible dans l'environnement cloud).

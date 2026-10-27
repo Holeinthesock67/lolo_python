@@ -708,6 +708,7 @@ func _poll_route_job() -> void:
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	segment_markers.set_route(route, SegmentMarkersModel.arch_every_m_from_file(), float(streamer.get("_road_width_m")))
 	segment_hud.set_segments(route.segments)
+	menu_flow.records.set_segments(route.segments)
 	if route.segments_present:
 		print("Segments du parcours : %d" % route.segments.size())
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
