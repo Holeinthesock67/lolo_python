@@ -17,7 +17,7 @@ from ..physics import PhysicsParams, RiderPhysics, steady_speed
 from .balance import DEFAULT_BALANCE, RogueBalance
 
 ARCHETYPES = ("diesel", "puncheur", "grimpeur", "sprinteur", "saboteur", "boss")
-OBJECTIVES = ("endurance", "seuil", "vo2max")
+OBJECTIVES = ("endurance", "threshold", "vo2max")
 DS_M = 10.0               # pas du profil
 DT_S = 0.5                # pas de la conception en temps
 SUB_DT = 0.05             # pas de la physique du cycliste de référence
@@ -90,7 +90,7 @@ def _speed(power_w: float, grade_pct: float, params: tuple) -> float:
 # --- conception en temps -------------------------------------------------------------------
 
 def _resolve_objective(archetype: str, objective: str, table: dict) -> str:
-    """Colonne du tableau la plus proche de l'objectif demandé (ordre endurance < seuil < VO2max)."""
+    """Colonne du tableau la plus proche de l'objectif demandé (ordre endurance < threshold < vo2max)."""
     avail = [o for o in OBJECTIVES if o in table[archetype]]
     want = OBJECTIVES.index(objective) if objective in OBJECTIVES else 1
     return min(avail, key=lambda o: (abs(OBJECTIVES.index(o) - want), OBJECTIVES.index(o)))

@@ -70,3 +70,11 @@ Aucune.
 ## 8. Hors périmètre
 
 - Composition du scénario (R15), déblocages permanents (R9), affichage (R13).
+
+## 9. Livraison (27 octobre 2026)
+
+- `rogue/run.py` (`RunEngine`, `Scenario`, `Step`, `RunInputs`, `RunOutputs`, `grade_sent`), `rogue/cards.py` (catalogue des 8 cartes et 3 reliques, tirage, règles de deck) et les constantes de la run et des cartes dans `RogueBalance`. Tests : `core/tests/test_rogue_run.py`.
+- **Scénario :** liste d'étapes `warmup`, `room`, `corridor`, `boss` (trois étapes, `variant` = `phase1` à `phase3`), `cooldown`. Un couloir porte ses deux portes (`Step.doors`) ; la salle jouée après lui est celle de la porte choisie et ne figure pas dans la liste. Un couloir sans portes (dernier avant le boss) ne propose qu'une carte. R15 produira ce `Scenario`.
+- **Partage avec la session (R8) :** la session fournit la position dans la salle, la vitesse et le braquet (`RunInputs`), applique `RunOutputs.grade_sent` (formule centrée de la décision Q2, bornée de −10 à +16 %), le retour automatique d'Overdrive (`force_gear`) et le piratage (`rogue.hack`), et émet les messages `room` et `loot` de `RunOutputs.messages`. `snapshot()` rend des octets (`pickle`) à écrire en base 64 dans le fichier de reprise ; `restore()` les relit ; la suite de la run est identique (tirages à graine par événement, aucun état aléatoire caché).
+- **Noms d'objectif :** `endurance`, `threshold`, `vo2max`, comme dans le contrat 1.4 ; le code de R3 à R5, écrit d'abord avec `seuil`, est réaligné ici (R3 à R5 n'étaient pas branchés).
+- **Choix de lecture :** le dernier couloir et l'échauffement n'ont pas de vraie porte ; le message `loot` (qui exige deux portes) en annonce alors deux qui mènent à l'étape suivante. Les flèches du clavier passent par les mêmes événements `A_SHORT` et `A_LONG` (lot O17), le cahier n'en nomme pas d'autres. `rooms_skipped` reste à 0 jusqu'au lot R15. Boss : `won` si la phase 3 est gagnée, `fled` après une défaite ou une phase 3 non gagnée. Rouleau compresseur : à partir de 6 %, la pente est tenue à 6 % pendant 3 s après la fin de la pente raide. Tremplin cinétique : se déclenche à la sortie d'une descente de −1 % ou moins en vitesse 9 ou plus. Overdrive : la recharge de 45 s compte à partir de la fin des 8 s.

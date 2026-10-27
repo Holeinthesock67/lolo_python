@@ -27,7 +27,7 @@ def run(room, player_frac_of_wall, seconds=None, paused_between=None):
     return out
 
 
-def diesel(objective="seuil", nominal=240.0):
+def diesel(objective="threshold", nominal=240.0):
     return generate_room("diesel", "", objective, nominal, RIDER, 1)
 
 
@@ -51,7 +51,7 @@ def test_above_wall_gap_capped():
 
 
 def test_sprinter_bursts_close_the_gap():
-    room = generate_room("sprinteur", "", "seuil", 200.0, RIDER, 1)
+    room = generate_room("sprinteur", "", "threshold", 200.0, RIDER, 1)
     states = run(room, 0.95)
     times = [t for t, _ in states]
     gap_at = lambda t: states[min(round(t / DT), len(states) - 1)][1].gap_m   # noqa: E731
