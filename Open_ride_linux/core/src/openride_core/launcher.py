@@ -16,10 +16,12 @@ Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de réf�
   horodatés comme le core). `~/run_trainer.log` est un lien vers le dernier journal ; on garde
   les 20 derniers et 200 Mo au plus. `OPENRIDE_LOG` remplace ce journal tournant (sans lien ni
   rotation). Sans terminal (raccourci de bureau), les messages ne vont que dans le journal ;
-- l'engine (`GODOT --path engine -- --ipc-state-port=… --ipc-cmd-port=…`) reçoit les ports de la
-  configuration (`--config` éventuel, sinon `~/OpenRide/config.toml`) ; variables `GODOT`,
-  `GODOT_ARGS`, `OPENRIDE_ENGINE` (dossier du projet Godot) et `OPENRIDE_PERF_PROBE` (fichier CSV de
-  la sonde de performance du moteur, `--perf-probe`, lot X13).
+- l'engine (`GODOT --path engine -- --ipc-state-port=… --ipc-cmd-port=…`) reçoit les ports et la
+  section `[render]` de la configuration (`--config` éventuel, sinon `~/OpenRide/config.toml`) ;
+  variables `GODOT`, `GODOT_ARGS`, `OPENRIDE_ENGINE` (dossier du projet Godot), `OPENRIDE_PERF_PROBE`
+  (fichier CSV de la sonde de performance du moteur, `--perf-probe`, lot X13) et `OPENRIDE_DISPLAY`
+  (`windowed`, `borderless` ou `fullscreen` : remplace `[render] display` le temps d'un lancement,
+  par exemple `OPENRIDE_DISPLAY=windowed` pour garder une fenêtre pendant un essai).
 
 Supervision :
 - l'engine se ferme normalement (code 0) → arrêt propre du core (SIGINT), 10 s au plus, puis
@@ -748,6 +750,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--theme={cfg.render.theme}",
             f"--visual-grade={cfg.render.visual_grade_scale}",
             f"--living={'on' if cfg.render.living else 'off'}",
+            f"--display={env.get('OPENRIDE_DISPLAY') or cfg.render.display}",
             *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),
         ],
         release_cmd=[*core, "release-trainer", *config_args],

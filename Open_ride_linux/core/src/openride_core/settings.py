@@ -11,8 +11,8 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
      "step": 5, "unit": "W", "applies": "next_session"}
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer) ou `now` (qualité et thème : l'engine les applique tout de suite
-au décor ; le lanceur les passe aussi à l'engine aux lancements suivants).
+la séance suivante, sans relancer) ou `now` (qualité, thème et mode d'affichage : l'engine les applique
+tout de suite ; le lanceur les passe aussi à l'engine aux lancements suivants).
 `apply(cfg, changes, path)` valide, écrit dans `config.toml` (commentaires et reste du fichier
 gardés, copie `.bak`) puis met à jour `cfg` en mémoire.
 """
@@ -55,6 +55,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.quality", "Qualité graphique", applies="now"),
     Setting("render.theme", "Thème", applies="now"),
     Setting("render.chart", "Courbes de la séance", applies="now"),
+    Setting("render.display", "Mode d'affichage", applies="now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
     Setting("wind.mode", "Vent"),
     Setting("wind.speed_kmh", "Force du vent", 5, "km/h"),

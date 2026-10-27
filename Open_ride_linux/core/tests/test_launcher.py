@@ -305,13 +305,14 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     sup = launcher.build_supervisor(["--trainer", "mock", "--config", str(cfg)], env)
     assert sup.core_cmd[-5:] == ["run", "--trainer", "mock", "--config", str(cfg)]
     assert sup.engine_cmd[0] == str(godot) and "--verbose" in sup.engine_cmd
-    assert sup.engine_cmd[-6:] == [
+    assert sup.engine_cmd[-7:] == [
         "--ipc-state-port=6005",
         "--ipc-cmd-port=6006",
         "--quality=high",
         "--theme=alpes",
         "--visual-grade=1.0",
         "--living=on",
+        "--display=fullscreen",
     ]
     assert sup.release_cmd[-3:] == ["release-trainer", "--config", str(cfg)]
     assert sup.log_path == tmp_path / "x.log"
@@ -321,13 +322,14 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     no_cfg = launcher.build_supervisor([], {**env})
     assert no_cfg.core_cmd[-(len(launcher.DEFAULT_CORE_ARGS) + 1):] == ["run", *launcher.DEFAULT_CORE_ARGS]
     assert "--autostart" not in launcher.DEFAULT_CORE_ARGS   # menus de l'engine (lot N6)
-    assert no_cfg.engine_cmd[-6:] == [
+    assert no_cfg.engine_cmd[-7:] == [
         "--ipc-state-port=5005",
         "--ipc-cmd-port=5006",
         "--quality=low",
         "--theme=default",
         "--visual-grade=1.0",
         "--living=on",
+        "--display=fullscreen",
     ]
     probe = launcher.build_supervisor([], {**env, "OPENRIDE_PERF_PROBE": str(tmp_path / "sonde.csv")})
     assert probe.engine_cmd[-1] == f"--perf-probe={tmp_path / 'sonde.csv'}"   # lot X13
@@ -491,4 +493,16 @@ def test_engine_gets_living_off(tmp_path: Path):
     godot.write_text("#!/bin/sh\n")
     godot.chmod(0o755)
     sup = launcher.build_supervisor(["--config", str(cfg)], {"GODOT": str(godot), "OPENRIDE_LOG": str(tmp_path / "x.log")})
-    assert sup.engine_cmd[-1] == "--living=off"
+    assert sup.engine_cmd[-2:] == ["--living=off", "--display=fullscreen"]
+
+
+def test_engine_display_from_config_or_environment(tmp_path: Path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("[render]\ndisplay = \"borderless\"\n")
+    godot = tmp_path / "godot"
+    godot.write_text("#!/bin/sh\n")
+    godot.chmod(0o755)
+    env = {"GODOT": str(godot), "OPENRIDE_LOG": str(tmp_path / "x.log")}
+    assert launcher.build_supervisor(["--config", str(cfg)], env).engine_cmd[-1] == "--display=borderless"
+    forced = launcher.build_supervisor(["--config", str(cfg)], {**env, "OPENRIDE_DISPLAY": "windowed"})
+    assert forced.engine_cmd[-1] == "--display=windowed"   # essais et tests visuels en fenêtre
