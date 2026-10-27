@@ -9,12 +9,13 @@ niveau, l'expérience, les défis réussis et une ligne par séance (points, ou 
 figer (plan V, risque 2). Rien n'est écrit.
 
 Clés de la sortie `--json` (stables) :
-    directory, total_xp, level, xp_level_start, xp_next_level,
+    directory, total_xp, level, xp_level_start, xp_next_level, coins_earned, coins_balance
+        (pièces du lot V3b ; solde d'après ~/OpenRide/profile.json),
     stats (total_km, total_climb_m, sessions, best_session_km, best_session_climb_m,
         erg_completed, segments, segment_prs, jerseys_kom, jerseys_sprint, hc_climbs, rogue_bosses),
     challenges (liste de {id, name, reward, journal, date}),
     sessions (liste de {journal, date, route, workout, source, duration_s, distance_m, climb_m,
-        erg_s, erg_completed, counted, reason, xp, gains}),
+        erg_s, erg_completed, counted, reason, xp, coins, gains}),
     errors (liste de {journal, error}).
 """
 
@@ -27,6 +28,8 @@ from pathlib import Path
 
 from .. import config as config_mod
 from ..journal import JOURNAL_DIR
+from ..coins import CoinsError, balance, coin_table, coins_by_session, earned_coins
+from ..profile import PROFILE_PATH, peek_profile
 from ..progression import ProgressionError, load_table, recompute
 from ..workout import WorkoutError, load_workout, workout_path
 
@@ -56,21 +59,26 @@ def workout_duration_finder(directory: Path):
 
 
 def run(directory: Path | None, as_json: bool, config_path: Path | None,
-        workouts_dir: Path | None = None) -> int:
+        workouts_dir: Path | None = None, profile_path: Path = PROFILE_PATH) -> int:
     try:
-        config_mod.load(config_path)
+        cfg = config_mod.load(config_path)
         table = load_table()
-    except (config_mod.ConfigError, ProgressionError) as exc:
+        ct = coin_table(table, cfg.rider.ftp_w)
+    except (config_mod.ConfigError, ProgressionError, CoinsError) as exc:
         print(f"Erreur : {exc}", file=sys.stderr)
         return 2
     directory = directory or JOURNAL_DIR
     progress = recompute(directory, table,
                          workout_duration_finder(workouts_dir or config_mod.WORKOUTS_DIR))
     lv = progress.level
+    earned = earned_coins(progress, ct)
+    per_session = coins_by_session(progress, ct)
+    solde = balance(progress, peek_profile(profile_path), ct)
     if as_json:
         out = {
             "directory": str(directory), "total_xp": progress.total_xp, "level": lv.level,
             "xp_level_start": lv.xp_level_start, "xp_next_level": lv.xp_next_level,
+            "coins_earned": earned, "coins_balance": solde,
             "stats": {k: round(v, 1) for k, v in progress.stats.items()},
             "challenges": [{"id": c.id, "name": c.name, "reward": c.reward, "journal": c.journal,
                             "date": _date(c.start_ts)} for c in progress.challenges],
@@ -81,6 +89,7 @@ def run(directory: Path | None, as_json: bool, config_path: Path | None,
                 "climb_m": round(r.facts.climb_m, 1), "erg_s": r.facts.erg_s,
                 "erg_completed": r.facts.erg_completed, "counted": r.gains is not None,
                 "reason": r.reason, "xp": r.gains.total if r.gains else 0,
+                "coins": per_session.get(r.facts.journal, 0),
                 "gains": r.gains.as_list() if r.gains else [],
             } for r in progress.sessions],
             "errors": [{"journal": n, "error": e} for n, e in progress.errors],
@@ -91,6 +100,7 @@ def run(directory: Path | None, as_json: bool, config_path: Path | None,
     nxt = f" / {_fr(lv.xp_next_level, 0)} pour le niveau {lv.level + 1}" if lv.xp_next_level else " (niveau maximal)"
     print(f"Niveau {lv.level} — {_fr(progress.total_xp, 0)} XP{nxt}")
     st = progress.stats
+    print(f"Pièces : {_fr(earned, 0)} gagnées, solde {_fr(solde, 0)}")
     print(f"{int(st['sessions'])} séances comptées, {_fr(st['total_km'])} km, "
           f"{_fr(st['total_climb_m'], 0)} m de dénivelé")
     if progress.challenges:
