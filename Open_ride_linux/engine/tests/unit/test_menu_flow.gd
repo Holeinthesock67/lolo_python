@@ -269,18 +269,23 @@ func _test_settings_screen() -> void:
 	f.connect_done = true
 	f.on_state({"session_state": "IDLE", "difficulty_pct": 50})
 	f.on_settings({"type": "settings", "request_cmd_id": 2, "items": [
-		{"key": "rider.ftp_w", "label": "FTP", "type": "int", "value": 250, "min": 50, "max": 600, "step": 5,
-			"unit": "W", "applies": "next_session"},
-		{"key": "trainer.difficulty_pct", "label": "Difficulté en SIM", "type": "int", "value": 50, "min": 0,
-			"max": 100, "step": 10, "unit": "%", "applies": "next_session"},
-		{"key": "render.quality", "label": "Qualité graphique", "type": "choice", "value": "high",
-			"choices": ["low", "medium", "high"], "applies": "now"}]})
+		{"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50, "max": 600,
+			"step": 5, "unit": "W", "applies": "next_session"},
+		{"key": "trainer.difficulty_pct", "label": "Difficulté en SIM", "group": "ride", "type": "int", "value": 50,
+			"min": 0, "max": 100, "step": 10, "unit": "%", "applies": "next_session"},
+		{"key": "render.quality", "label": "Qualité graphique", "group": "display", "type": "choice", "value": "high",
+			"choices": ["low", "medium", "high"], "applies": "now"},
+		{"key": "wind.from_deg", "label": "Direction du vent", "group": "wind", "type": "int", "value": 270, "min": 0,
+			"max": 360, "step": 45, "unit": "°", "applies": "next_session"},
+		{"key": "futur.reglage", "label": "Réglage futur", "type": "int", "value": 1, "min": 0, "max": 2, "step": 1,
+			"unit": "", "applies": "next_session"}]})
 	f.handle("MINUS_SHORT")
 	f.handle("MINUS_SHORT")
 	f.handle("A_LONG")   # Réglages
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
-	_check(labels == ["Appareils : rechercher et appairer", "FTP : 250 W", "Difficulté en SIM : ■■■■■□□□□□ 50 %",
-			"Qualité graphique : high", "OpenRide " + f.engine_version], "réglages affichés : %s" % str(labels))
+	_check(labels == ["Appareils : rechercher et appairer", "Cycliste", "Séance", "Affichage", "Vent",
+			"Autres réglages", "OpenRide " + f.engine_version], "réglages rangés en sous-écrans : %s" % str(labels))
+	_check(f.state()["items"][1]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
 	_check(f.state()["items"][-1]["enabled"] == false, "ligne de version non sélectionnable")
 	# Version du core différente : alerte discrète dans le détail de la ligne (lots O2 et O4).
 	f.set_versions("0.9.0", "0.9.0")
@@ -292,20 +297,32 @@ func _test_settings_screen() -> void:
 	f.set_versions("0.9.0", "")
 	_check(f.state()["items"][-1]["detail"] == "", "core pas encore connu : pas d'alerte")
 	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")   # Cycliste
+	_check(f.state()["screen"] == "settings_group" and f.state()["title"] == "Cycliste"
+			and f.state()["items"].map(func(it): return it["label"]) == ["FTP : 250 W"], "sous-écran Cycliste")
 	f.handle("A_LONG")   # FTP
 	_check(f.state()["screen"] == "setting_edit" and f.state()["title"] == "FTP", "modification de la FTP")
 	for i in range(3):
 		f.handle("PLUS_SHORT")
 	_check(f.state()["items"][0]["label"] == "265 W", "+ trois fois : 265 W (%s)" % f.state()["items"][0]["label"])
 	var act: Dictionary = f.handle("A_LONG")
-	_check(act == {"action": "set_setting", "key": "rider.ftp_w", "value": 265} and f.state()["screen"] == "settings",
-			"appui long + : set_setting et retour aux réglages (%s)" % str(act))
+	_check(act == {"action": "set_setting", "key": "rider.ftp_w", "value": 265} and f.state()["screen"] == "settings_group",
+			"appui long + : set_setting et retour au sous-écran (%s)" % str(act))
+	f.handle("Y_SHORT")   # retour aux Réglages, focus sur Cycliste
+	_check(f.state()["screen"] == "settings" and _focus_id(f) == "group:rider", "retour aux Réglages sur Cycliste")
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")   # Affichage
 	f.handle("A_LONG")   # Qualité
 	f.handle("PLUS_SHORT")
 	_check(f.state()["items"][0]["label"] == "low", "choix en boucle : high → low")
-	_check(f.handle("Y_SHORT").is_empty() and f.state()["screen"] == "settings", "appui long − : annulé")
+	_check(f.handle("Y_SHORT").is_empty() and f.state()["screen"] == "settings_group", "Y : annulé")
+	f.handle("Y_SHORT")
+	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")   # Vent
+	_check(f.state()["items"][0]["label"] == "Direction du vent : 270° (ouest)", "direction avec le point cardinal (%s)"
+			% f.state()["items"][0]["label"])
+	f.handle("Y_SHORT")
 	# Curseur de difficulté sur l'écran de pause : set_difficulty, sans config.toml.
 	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
 	f.on_state({"session_state": "PAUSED", "difficulty_pct": 50})

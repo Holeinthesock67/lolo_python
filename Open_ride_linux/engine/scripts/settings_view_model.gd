@@ -28,6 +28,15 @@ const CHOICE_TEXTS := {
 	"render.fps": {"off": "non", "on": "oui"},
 }
 
+## Sous-écrans de « Réglages » (champ `group` du message `settings`), dans l'ordre d'affichage :
+## [groupe, titre]. Un élément sans groupe connu va dans « Autres réglages », montré seulement s'il
+## n'est pas vide.
+const GROUPS := [["rider", "Cycliste"], ["ride", "Séance"], ["display", "Affichage"], ["sound", "Son"],
+	["wind", "Vent"]]
+const OTHER_GROUP := ["other", "Autres réglages"]
+## Points cardinaux d'une direction en degrés (unité « ° »), de 45 en 45 depuis le nord.
+const COMPASS := ["nord", "nord-est", "est", "sud-est", "sud", "sud-ouest", "ouest", "nord-ouest"]
+
 var items: Array = []
 ## Modification en cours : {key, label, type, value, min, max, step, unit, choices} ; vide sinon.
 var editing: Dictionary = {}
@@ -67,14 +76,47 @@ static func format_value(it: Dictionary, value) -> String:
 	if texts.has(str(value)):
 		return str(texts[str(value)])
 	var unit := str(it.get("unit", ""))
+	if unit == "°":
+		return "%d° (%s)" % [int(value), COMPASS[posmod(int(round(int(value) / 45.0)), 8)]]
 	return str(value) + ((" " + unit) if unit != "" else "")
 
 
-## Éléments des réglages pour l'écran « Réglages » (id « set:clé »).
-func menu_items() -> Array:
+## Groupe d'un élément : son `group` s'il est connu, sinon « other ».
+static func group_of(it: Dictionary) -> String:
+	var g := str(it.get("group", ""))
+	for known in GROUPS:
+		if known[0] == g:
+			return g
+	return str(OTHER_GROUP[0])
+
+
+## Titre d'un sous-écran.
+static func group_title(group: String) -> String:
+	for g in GROUPS + [OTHER_GROUP]:
+		if g[0] == group:
+			return str(g[1])
+	return str(OTHER_GROUP[1])
+
+
+## Entrées des sous-écrans pour l'écran « Réglages » (id « group:groupe ») : titre, et en détail les
+## réglages qu'il contient. Groupes vides omis.
+func group_items() -> Array:
+	var out: Array = []
+	for g in GROUPS + [OTHER_GROUP]:
+		var labels := PackedStringArray()
+		for it in items:
+			if it is Dictionary and group_of(it) == g[0]:
+				labels.append(str(it.get("label", it.get("key", ""))))
+		if not labels.is_empty():
+			out.append({"id": "group:" + str(g[0]), "label": g[1], "detail": ", ".join(labels)})
+	return out
+
+
+## Éléments des réglages d'un sous-écran (id « set:clé »).
+func menu_items(group: String) -> Array:
 	var out: Array = []
 	for it in items:
-		if not it is Dictionary:
+		if not it is Dictionary or group_of(it) != group:
 			continue
 		var detail := "tout de suite" if str(it.get("applies", "")) == "now" else ""
 		out.append({"id": "set:" + str(it["key"]), "label": "%s : %s" % [it.get("label", it["key"]),

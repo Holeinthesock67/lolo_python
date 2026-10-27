@@ -36,8 +36,8 @@ def test_current_lists_the_settings_with_bounds_from_config():
     items = settings.current(Config())
     assert [it["key"] for it in items] == list(settings.KEYS)
     ftp = items[0]
-    assert ftp == {"key": "rider.ftp_w", "label": "FTP", "value": 250, "applies": "next_session",
-                   "type": "int", "min": 50, "max": 600, "step": 5, "unit": "W"}
+    assert ftp == {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "value": 250,
+                   "applies": "next_session", "type": "int", "min": 50, "max": 600, "step": 5, "unit": "W"}
     quality = next(it for it in items if it["key"] == "render.quality")
     assert quality["type"] == "choice" and quality["choices"] == ["low", "medium", "high"]
     assert quality["applies"] == "now"
@@ -167,7 +167,7 @@ def test_wind_settings_lot_p16():
     assert items["wind.mode"]["choices"] == ["off", "fixed", "gusty", "theme"]
     cap = items["wind.max_grade_offset_pct"]
     assert (cap["value"], cap["min"], cap["max"], cap["step"]) == (4, 0, 8, 1)
-    assert items["wind.speed_kmh"]["max"] == 60 and "wind.from_deg" not in items   # direction : config.toml
+    assert items["wind.speed_kmh"]["max"] == 60
     assert settings.step(cfg, "wind.mode", "theme", +1) == "off"
     assert settings.step(cfg, "wind.max_grade_offset_pct", 8, +1) == 8
     assert settings.step(cfg, "wind.speed_kmh", 20, +1) == 25
@@ -226,3 +226,21 @@ def test_fps_counter_setting(tmp_path: Path):
     assert config_mod.load(path).render.fps == "on"
     with pytest.raises(settings.SettingError):
         settings.check(cfg, "render.fps", "oui")
+
+
+def test_settings_groups_and_new_entries():
+    """Sous-écrans de « Réglages » : chaque réglage a un groupe connu, groupes contigus dans l'ordre de
+    `GROUPS` ; poids du vélo, direction et rafales du vent ajoutés (bornes de config.py)."""
+    cfg = Config()
+    items = settings.current(cfg)
+    groups = [it["group"] for it in items]
+    assert set(groups) == set(settings.GROUPS)
+    assert sorted(groups, key=settings.GROUPS.index) == groups
+    by_key = {it["key"]: it for it in items}
+    bike = by_key["bike.mass_kg"]
+    assert (bike["group"], bike["value"], bike["min"], bike["max"], bike["unit"]) == ("rider", 9, 3, 30, "kg")
+    direction = by_key["wind.from_deg"]
+    assert (direction["value"], direction["min"], direction["max"], direction["step"], direction["unit"]) == (270, 0, 360, 45, "°")
+    gust = by_key["wind.gust_pct"]
+    assert (gust["value"], gust["min"], gust["max"], gust["step"]) == (0, 0, 100, 10)
+    assert settings.step(cfg, "wind.from_deg", 360, +1) == 360

@@ -64,11 +64,11 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 **Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 % ; un appui long sur « + » saute au bloc suivant et un appui long sur « − » met l'ERG en pause (pente nulle). Le détail est dans la section 6.
 
-**Courbes de la séance.** Un graphique façon GoldenCheetah montre la cible, votre puissance, votre fréquence cardiaque et votre cadence. Sa taille se règle dans **Réglages**, **Courbes de la séance** : masquées, réduites (cible et puissance) ou complètes.
+**Courbes de la séance.** Un graphique façon GoldenCheetah montre la cible, votre puissance, votre fréquence cardiaque et votre cadence. Sa taille se règle dans **Réglages**, **Affichage**, **Courbes de la séance** : masquées, réduites (cible et puissance) ou complètes.
 
-**Volume sonore.** Quatre curseurs dans **Réglages**, de 0 (coupé) à 100 % par pas de 10, pris en compte tout de suite : **Volume général**, **Volume vent et roue libre**, **Volume de l'ambiance** (oiseaux, cloches, véhicules, foule) et **Volume bips et événements** (bips du Click, changement de bloc ERG). Détail des catégories : [AUDIO.md](AUDIO.md).
+**Volume sonore.** Quatre curseurs dans **Réglages**, **Son**, de 0 (coupé) à 100 % par pas de 10, pris en compte tout de suite : **Volume général**, **Volume vent et roue libre**, **Volume de l'ambiance** (oiseaux, cloches, véhicules, foule) et **Volume bips et événements** (bips du Click, changement de bloc ERG). Détail des catégories : [AUDIO.md](AUDIO.md).
 
-**Images par seconde.** **Réglages**, **Afficher les images/s** : oui affiche en haut à droite, pendant la séance, « 60 images/s · p99 17 ms » (images de la dernière seconde, et temps d'image que 99 % d'entre elles ne dépassent pas : une valeur haute signale des saccades).
+**Images par seconde.** **Réglages**, **Affichage**, **Afficher les images/s** : oui affiche en haut à droite, pendant la séance, « 60 images/s · p99 17 ms » (images de la dernière seconde, et temps d'image que 99 % d'entre elles ne dépassent pas : une valeur haute signale des saccades).
 
 **Plans d'entraînement.** L'accueil affiche **Séance du jour** quand un plan est en cours, sinon **Choisir un plan**. Un plan range des entraînements par semaine et par jour ; il garde en mémoire ce qui est fait et ce qui est en retard. `openride-core plan install` copie deux plans de départ (« Reprise 4 semaines » et « FTP 6 semaines »).
 
@@ -111,7 +111,7 @@ Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîti
 
 ## 7. Réglages, thèmes et sons
 
-**Réglages** (menu principal) : FTP, poids, difficulté en SIM (part de la pente ressentie, de 0 à 100 %, aussi sur l'écran de pause), braquet de départ, qualité graphique, thème, courbes de la séance, vent, force du vent, plafond du vent et bonus. Les réglages sont écrits dans `~/OpenRide/config.toml` ; ceux qui touchent la séance en cours s'appliquent tout de suite, les autres à la séance suivante.
+**Réglages** (menu principal) : **Appareils**, puis un sous-écran par thème. **Cycliste** : FTP, poids, poids du vélo. **Séance** : difficulté en SIM (part de la pente ressentie, de 0 à 100 %, aussi sur l'écran de pause), braquet de départ, bonus. **Affichage** : qualité graphique, thème, courbes de la séance, images/s. **Son** : les quatre volumes. **Vent** : vent, force, direction (par 45°, avec le point cardinal), rafales et plafond. Les réglages sont écrits dans `~/OpenRide/config.toml` ; ceux qui touchent la séance en cours s'appliquent tout de suite, les autres à la séance suivante.
 
 **Qualité graphique.** Trois préréglages : `low`, `medium`, `high`. Si l'image saccade, passez en `low`.
 

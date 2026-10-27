@@ -7,8 +7,11 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
 `current(cfg)` donne la liste pour le message IPC `settings` (contrat révision 1.3) et pour
 `openride-core settings --json` ; chaque élément :
 
-    {"key": "rider.ftp_w", "label": "FTP", "type": "int", "value": 250, "min": 50, "max": 600,
-     "step": 5, "unit": "W", "applies": "next_session"}
+    {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50,
+     "max": 600, "step": 5, "unit": "W", "applies": "next_session"}
+
+`group` range le réglage dans un sous-écran de « Réglages » (`GROUPS` : cycliste, séance, affichage,
+son, vent) ; l'engine donne les titres.
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
 la séance suivante, sans relancer) ou `now` (qualité, thème, courbes, images/s et volumes : l'engine les applique
@@ -34,6 +37,7 @@ THEMES_DIR = Path.home() / "OpenRide" / "Themes"
 class Setting:
     key: str
     label: str
+    group: str
     step: float = 1
     unit: str = ""
     applies: str = "next_session"
@@ -48,26 +52,33 @@ class Setting:
 
 
 SETTINGS: tuple[Setting, ...] = (
-    Setting("rider.ftp_w", "FTP", 5, "W"),
-    Setting("rider.mass_kg", "Poids", 1, "kg"),
-    Setting("trainer.difficulty_pct", "Difficulté en SIM", 10, "%"),
-    Setting("gearing.start_gear", "Braquet de départ", 1),
-    Setting("render.quality", "Qualité graphique", applies="now"),
-    Setting("render.theme", "Thème", applies="now"),
-    Setting("render.chart", "Courbes de la séance", applies="now"),
-    Setting("render.fps", "Afficher les images/s", applies="now"),
+    # Cycliste
+    Setting("rider.ftp_w", "FTP", "rider", 5, "W"),
+    Setting("rider.mass_kg", "Poids", "rider", 1, "kg"),
+    Setting("bike.mass_kg", "Poids du vélo", "rider", 1, "kg"),
+    # Séance ; bonus du mode classique (série T, lots T7 et T10)
+    Setting("trainer.difficulty_pct", "Difficulté en SIM", "ride", 10, "%"),
+    Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
+    Setting("powerups.mode", "Bonus", "ride"),
+    # Affichage
+    Setting("render.quality", "Qualité graphique", "display", applies="now"),
+    Setting("render.theme", "Thème", "display", applies="now"),
+    Setting("render.chart", "Courbes de la séance", "display", applies="now"),
+    Setting("render.fps", "Afficher les images/s", "display", applies="now"),
+    # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
+    Setting("audio.master_pct", "Volume général", "sound", 10, "%", "now"),
+    Setting("audio.ride_pct", "Volume vent et roue libre", "sound", 10, "%", "now"),
+    Setting("audio.ambience_pct", "Volume de l'ambiance", "sound", 10, "%", "now"),
+    Setting("audio.events_pct", "Volume bips et événements", "sound", 10, "%", "now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
-    Setting("wind.mode", "Vent"),
-    Setting("wind.speed_kmh", "Force du vent", 5, "km/h"),
-    Setting("wind.max_grade_offset_pct", "Plafond du vent", 1, "pts"),
-    # Bonus du mode classique (série T, lots T7 et T10)
-    Setting("powerups.mode", "Bonus"),
-    # Volumes par catégorie (docs/AUDIO.md, bus audio de l'engine) : appliqués tout de suite, curseur 0 à 100 %
-    Setting("audio.master_pct", "Volume général", 10, "%", "now"),
-    Setting("audio.ride_pct", "Volume vent et roue libre", 10, "%", "now"),
-    Setting("audio.ambience_pct", "Volume de l'ambiance", 10, "%", "now"),
-    Setting("audio.events_pct", "Volume bips et événements", 10, "%", "now"),
+    Setting("wind.mode", "Vent", "wind"),
+    Setting("wind.speed_kmh", "Force du vent", "wind", 5, "km/h"),
+    Setting("wind.from_deg", "Direction du vent", "wind", 45, "°"),
+    Setting("wind.gust_pct", "Rafales", "wind", 10, "%"),
+    Setting("wind.max_grade_offset_pct", "Plafond du vent", "wind", 1, "pts"),
 )
+# Sous-écrans de « Réglages », dans l'ordre d'affichage (champ `group` de chaque élément).
+GROUPS = ("rider", "ride", "display", "sound", "wind")
 KEYS = tuple(s.key for s in SETTINGS)
 
 
@@ -112,7 +123,8 @@ def _value(cfg: config_mod.Config, s: Setting) -> Any:
 def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict[str, Any]]:
     out: list[dict[str, Any]] = []
     for s in SETTINGS:
-        item: dict[str, Any] = {"key": s.key, "label": s.label, "value": _value(cfg, s), "applies": s.applies}
+        item: dict[str, Any] = {"key": s.key, "label": s.label, "group": s.group, "value": _value(cfg, s),
+                                "applies": s.applies}
         ch = choices(s, themes_dir)
         if ch is not None:
             item.update(type="choice", choices=ch)
