@@ -94,6 +94,8 @@ class SessionRecorder:
                 self._writer.device(line["device"], line["state"], line["ts"])
             elif line["kind"] == "ftp_test":
                 self._writer.ftp_test(line)
+            elif line["kind"] == "junction":
+                self._writer.junction(line)
             elif line["kind"] in GAME_KINDS:
                 self._writer.game(line)
             else:
@@ -117,6 +119,12 @@ class SessionRecorder:
 
     def ftp_test(self, line: dict) -> None:
         """Résultat d'un test de FTP (lot O10), écrit avant `finish`."""
+        self.lines.append(line)
+        self._write(line)
+
+    def junction(self, line: dict) -> None:
+        """Branche prise à un carrefour du monde ouvert (lot W9) ; absente du FIT."""
+        line = {**line, "kind": "junction"}
         self.lines.append(line)
         self._write(line)
 

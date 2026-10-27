@@ -140,6 +140,14 @@ class ProgressionConfig:
 
 
 @dataclass
+class RogueConfig:
+    """Mode Cyber-Rogue de la 2.0 (série R, SRS §11)."""
+
+    w_prime_j: float = 20000.0   # réserve anaérobie W' (décision Q5)
+    cp_w: float = 0.0            # puissance critique ; 0 : la FTP du cavalier
+
+
+@dataclass
 class PowerupsConfig:
     """Bonus du mode classique (série T, lots T6 et T7) ; valeurs dans `~/OpenRide/powerups.toml`."""
     mode: str = "on"               # "on" ou "off" (ni arche ni réserve ; segments toujours chronométrés)
@@ -158,6 +166,7 @@ class Config:
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
+    rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
 
     @property
@@ -210,6 +219,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("wind", "from_deg"): (0, 360),
     ("wind", "gust_pct"): (0, 100),
     ("wind", "max_grade_offset_pct"): (0, 8),
+    ("rogue", "w_prime_j"): (5000, 60000),
+    ("rogue", "cp_w"): (0, 1000),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),

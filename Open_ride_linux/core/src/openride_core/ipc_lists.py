@@ -179,6 +179,24 @@ def chunk_list_message(
     return out
 
 
+WORLD_HEADER_MARGIN = 600     # place réservée aux champs propres à chaque message du menu du monde ouvert
+
+
+def build_world_messages(msg_type: str, request_cmd_id: int, key: str, items: list[dict[str, Any]],
+                         truncated: bool = False, extra: dict[str, Any] | None = None,
+                         max_bytes: int = MAX_DATAGRAM_BYTES) -> list[dict[str, Any]]:
+    """Messages `places` (`items`), `world_map` (`roads`) et `world_regions` (`items`) : parties de
+    60 000 octets au plus, champs `extra` répétés dans chaque partie (révision 1.5, lot W11)."""
+    parts = chunk_list_message(msg_type, request_cmd_id, items, truncated, max_bytes=max_bytes - WORLD_HEADER_MARGIN)
+    out = []
+    for p in parts:
+        msg = {k: v for k, v in p.items() if k != "items"}
+        msg.update(extra or {})
+        msg[key] = p["items"]
+        out.append(msg)
+    return out
+
+
 def build_routes_messages(
     request_cmd_id: int,
     routes_root: Path,

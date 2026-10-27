@@ -419,6 +419,9 @@ max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable
 enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0
 [powerups]
 mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
+[rogue]
+w_prime_j = 20000.0          # réserve anaérobie W' du mode Cyber-Rogue, 5 000 à 60 000 J (lot R2)
+cp_w = 0.0                   # puissance critique, 0 à 1 000 W ; 0 : la FTP
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
@@ -427,7 +430,7 @@ La section `[progression]` (lot V11) coupe, avec `enabled = false`, l'équipemen
 
 La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
 
-**Sections prévues pour la 2.0.** Les clés des sections `[rogue]` et `[avatar]` sont fixées par la révision 1.4 du contrat IPC (lot T1) ; elles rejoindront l'exemple ci-dessus avec les lots qui les lisent (le core les transmet à l'engine dans `hello_ack.config.rogue` et `hello_ack.config.progression.avatar`) :
+**Sections prévues pour la 2.0.** Les clés des sections `[rogue]` et `[avatar]` sont fixées par la révision 1.4 du contrat IPC (lot T1) ; elles rejoignent l'exemple ci-dessus avec les lots qui les lisent (`[rogue] w_prime_j` et `cp_w` depuis R2) ; le core les transmet à l'engine dans `hello_ack.config.rogue` et `hello_ack.config.progression.avatar` :
 
 | Section et clé | Défaut | Bornes | Lot qui la lit |
 | --- | --- | --- | --- |

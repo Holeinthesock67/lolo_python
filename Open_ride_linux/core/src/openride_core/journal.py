@@ -26,6 +26,11 @@ Sortes de lignes :
   à la fin d'une séance de test de FTP, juste avant l'événement `stop` (lot O10, voir
   `ftp_test.py`) ; `ftp_w`, `ref_power_w` et `step_w` peuvent valoir `null`. Ligne facultative :
   les journaux sans test restent lus comme avant, et les lectures qui ne la connaissent pas l'ignorent.
+- `{"kind": "junction", "ts": ..., "id": ..., "s_m": ..., "branch": ..., "of": n, "how": "default" |
+  "click" | "key" | "validated", "road_class": "p" | "s" | "t" | "m" | "c" | "k"}` : en monde ouvert
+  (lot W9), la branche prise à un carrefour, écrite au verrouillage ; `how` dit si c'est la branche par
+  défaut du navigateur, un choix au Click, au clavier ou validé tout de suite. Les lectures qui ne
+  connaissent pas cette sorte l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """
 
@@ -136,6 +141,10 @@ class JournalWriter:
     def ftp_test(self, line: dict) -> None:
         """Résultat d'un test de FTP (lot O10) : `FtpResult.to_line()`."""
         self._write({**line, "kind": "ftp_test"})
+
+    def junction(self, line: dict) -> None:
+        """Branche prise à un carrefour du monde ouvert (lot W9)."""
+        self._write({**line, "kind": "junction"})
 
     def powerup(self, kind: str, t_start: float, duration_s: float, ts: float) -> None:
         """Bonus activé (série T, lot T5) : type, début en temps chronométré, durée."""

@@ -61,3 +61,14 @@ Ajout compatible à la révision 1.4 (lot T1) : `hello_ack.config.rogue` gagne `
 ## 8. Hors périmètre
 
 - Garage et achats d'équipement (série V), affichage des châssis (R13).
+
+## 9. Livraison (27 octobre 2026)
+
+- `rogue/progress.py` : catalogue `[[chassis]]` lu dans `data/progression.toml` (surcharge `~/OpenRide/progression.toml`), vérifié (`ChassisError`), `apply_chassis` (ajoute les bonus à une copie de `RogueBalance`), `run_event` (ligne `rogue_run` du journal : celle que lisent déjà l'expérience et les pièces), `RogueStats` (par objectif et durée : runs, terminées, abandonnées, salles gagnées, boss battus, meilleur or, Perfect Shifts ; carte la plus prise), `rogue_stats(progress)`, `unlocked`, `choose_chassis`, `config_block`.
+- **Bornes :** seules cinq constantes sont permises (bouclier maximal, fenêtre de Perfect Shift, or gagné, adrénaline de départ, seuil de surchauffe) : la pente envoyée et la puissance demandée ne peuvent donc pas bouger (testé). Chaque bonus est vérifié à au plus 10 % de la valeur du jeu (Blindé 10 %, Conducteur 10 %, Collecteur 10 %, Endurant 4 %). **Écart au cahier :** l'adrénaline de départ du Survolté (20) a une base nulle, donc un plafond absolu de 20 au lieu des 10 %.
+- `RogueBalance` gagne `gold_mult` et `adrenaline_start` (neutres) ; `RunEngine(..., lives=n)` : une défaite avec une vie en réserve ne coûte pas les 25 % d'or de la run (la récupération de 60 s reste, et le boss n'en consomme pas) ; `lives_used` et la ligne de journal `rogue life_used` le disent à la session (R8), qui retire la vie du profil (`coins.use_life`).
+- Pièces (`coins.py`, `progression.toml`) : `rogue_gold_per_coin` = 10 (l'or de la run, ligne `rogue_run.gold`), `max_lives` = 3 ; `buy_life` refuse au-delà (code `item_locked`).
+- Contrat 1.4 (ajout compatible) : `hello_ack.config.rogue.chassis` (`unlocked`, `selected`) et `lives`, argument facultatif `chassis` de `start_run` (`run_invalid` si inconnu, `item_locked` si non débloqué) ; schéma, `ipc_v1.md` et test de contrat mis à jour.
+- Statistiques non stockées : elles se recalculent depuis les journaux (même ligne que l'expérience), donc effacer le profil ne les perd pas ; seules les pièces dépensées restent dans le profil de V4.
+- Tests : `core/tests/test_rogue_progress.py`.
+

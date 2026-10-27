@@ -138,21 +138,21 @@
 | [Y11](LOT_Y11_chaussee_herbe_relief.md) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée) et faux relief de l'herbe | Shader + GDScript | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie ; issue #385 |
 | [Y12](LOT_Y12_lumieres_particules.md) | Effets de lumière (glow, rayons, ombre des nuages, SSR) et particules (décor, pluie, foules, kit Cyber-Rogue) | Shader + GDScript | Y2, Y1, P17, R17, Y11 | Moyenne | Oui ; issue #386 |
 | [R0](LOT_R0_delai_frein.md) | Mesure du délai du frein du trainer (marches de pente et de braquet) : script et essai sur le vélo | Python | Q3, Q4 | Petite | Script oui (même outil que X5) ; essai par le propriétaire ; **version 2.0** |
-| [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | Oui, **version 2.0** |
-| [R3](LOT_R3_generateur_salles.md) | Générateur de salles : profils des cinq archétypes et du boss, graine, marqueurs | Python | — | Moyenne | Oui, **version 2.0** |
-| [R4](LOT_R4_firewall.md) | Firewall : cycliste virtuel à une fraction de la FTP, écart au joueur | Python | R3 | Petite | Oui, **version 2.0** |
-| [R5](LOT_R5_combat.md) | Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe | Python | R0, R2, R3, R4 | Moyenne | Oui, **version 2.0** |
-| [R6](LOT_R6_run_deck_boss.md) | Run : machine à états, couloirs, deck et cartes, or, reliques, boss en trois phases | Python | R5 | Grande | Oui, **version 2.0** |
-| [R7](LOT_R7_equilibrage_run_simulee.md) | Table d'équilibrage en données et run simulée avec cyclistes types | Python | R6, R15 | Moyenne | Oui, **version 2.0** |
+| [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+| [R3](LOT_R3_generateur_salles.md) | Générateur de salles : profils des cinq archétypes et du boss, graine, marqueurs | Python | — | Moyenne | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+| [R4](LOT_R4_firewall.md) | Firewall : cycliste virtuel à une fraction de la FTP, écart au joueur | Python | R3 | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+| [R5](LOT_R5_combat.md) | Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe | Python | R0, R2, R3, R4 | Moyenne | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+| [R6](LOT_R6_run_deck_boss.md) | Run : machine à états, couloirs, deck et cartes, or, reliques, boss en trois phases | Python | R5 | Grande | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+| [R7](LOT_R7_equilibrage_run_simulee.md) | Table d'équilibrage en données et run simulée avec cyclistes types | Python | R6, R15 | Moyenne | **Livré le 27 octobre** (rapport : `docs/2.0/RAPPORT_EQUILIBRAGE_R7.md`), **version 2.0** |
 | [R8](LOT_R8_integration_session.md) | Intégration dans la session du core : mode ROGUE, formule centrée, boutons Z et A, pause Y, journal, pause et reprise | Python | T1, R6, R15, Q4 | Grande | Non : interne (`session.py`), **version 2.0** |
-| [R9](LOT_R9_progression_permanente.md) | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies | Python | R6, V2, V3b, V4 | Petite | Oui, **version 2.0** |
+| [R9](LOT_R9_progression_permanente.md) | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies | Python | R6, V2, V3b, V4 | Petite | **Livré le 27 octobre**, **version 2.0** |
 | [R10](LOT_R10_scene_neon_ruban.md) | Engine : scène néon, ruban 3D, shader de pente, arches et zones | GDScript + shader | T1 | Grande | Non : interne (rendu, contrôle visuel), **version 2.0** |
 | [R11](LOT_R11_hud_diegetique.md) | Engine : HUD diégétique, arcs au sol, champ de vision et tremblement | GDScript | T1, R10 | Moyenne | Modèle oui, rendu interne ; **version 2.0** |
 | [R12](LOT_R12_ennemis_boss.md) | Engine : ennemis et boss géométriques, effets d'impact | GDScript + shader | R10 | Moyenne | Non : interne (rendu, contrôle visuel), **version 2.0** |
 | [R13](LOT_R13_menu_cyber_rogue.md) | Engine : lancement depuis l'accueil, écran de départ, couloirs et cartes, pause, fin de run | GDScript | T1, R8, R10, R11, N6, O4 | Moyenne | Non : interne (`main.gd`, menu), **version 2.0** |
 | [R14](LOT_R14_recette.md) | Recette du mode Cyber-Rogue sur le PC et le vélo | — | R8, R9, R10 à R13, R15, R16 | Moyenne | Non : propriétaire, **version 2.0** |
-| [R15](LOT_R15_scenariste_run.md) | Scénariste de run : calendrier et salles composés à partir de l'objectif et de la durée | Python | R3, R6 | Petite | Oui, **version 2.0** |
-| [R16](LOT_R16_estimation_cp_wprime.md) | Estimation de CP et W' à partir des séances passées | Python | — | Petite | Oui, **version 2.0** |
+| [R15](LOT_R15_scenariste_run.md) | Scénariste de run : calendrier et salles composés à partir de l'objectif et de la durée | Python | R3, R6 | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+| [R16](LOT_R16_estimation_cp_wprime.md) | Estimation de CP et W' à partir des séances passées | Python | — | Petite | **Livré le 27 octobre** (outil pur ; le core l'appellera au lancement, R8), **version 2.0** |
 | [R17](LOT_R17_direction_artistique.md) | Direction artistique du mode : charte néon, matériaux et shaders partagés, catalogue des objets graphiques et des effets, planche de démonstration | GDScript + shader | T1 | Moyenne | Modèles et shaders oui ; charte validée par le propriétaire ; **version 2.0** |
 | [V2](LOT_V2_moteur_experience.md) | Moteur d'expérience : gains, niveaux, défis, recalcul depuis le journal, commande `openride-core xp` | Python | — | Moyenne | **Livré le 27 octobre** (PR #273, issue #239) ; branchement par V11 |
 | [V3](LOT_V3_catalogue_equipement.md) | Catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain, temps gagné par l'équipement | Python | V2 | Moyenne | **Livré le 27 octobre** (PR #278, issue #241) ; branchement par V11 |
