@@ -21,6 +21,7 @@ const MenuFlow := preload("res://scripts/menu_flow.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
+const LivingDecor := preload("res://scripts/living_decor.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -83,6 +84,9 @@ var _menu_s := 0.0
 ## Décor vivant, première vague (lot P16) : vent, arbres et herbe, nuages, fonds sonores.
 var living_world = null
 var _living_enabled := true
+## Décor vivant, deuxième vague (lot P17) : météo, animaux, éoliennes, véhicules, bord de route, foule.
+var living_decor = null
+var _beep_until_s := -INF
 
 
 func _ready() -> void:
@@ -128,6 +132,12 @@ func _ready() -> void:
 	living_world.configure(_quality_name, _living_enabled, theme_dict, world_env.environment, sound_player,
 		streamer.osm_streamer, streamer.tree_renderer)
 	living_world.terrain_material = streamer.get("_terrain_material")
+	living_decor = LivingDecor.new()
+	living_decor.name = "LivingDecor"
+	add_child(living_decor)
+	living_decor.living_world = living_world
+	living_decor.configure(_quality_name, _living_enabled, theme_dict, world_env.environment, sound_player, streamer)
+	living_decor.set_fog_base(world_env.environment)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
@@ -254,6 +264,10 @@ func _play_tones(notes: Array, level: float) -> void:
 	if pb == null:
 		return
 	var rate := 44100.0
+	var total_s := 0.0
+	for note in notes:
+		total_s += float(note[1])
+	_beep_until_s = Time.get_ticks_msec() / 1000.0 + total_s
 	for note in notes:
 		var n := int(rate * float(note[1]))
 		for i in range(n):
@@ -317,8 +331,13 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 	if living_world == null or route == null or banner.has_message("core_lost"):
 		return
 	var smp: Dictionary = route.sample(s_route)
-	living_world.step(Time.get_ticks_msec() / 1000.0, delta, camera.global_position, s_route, v,
-		float(smp["heading_deg"]), float(smp["alt_m"]), session_state == "PAUSED")
+	var now_s := Time.get_ticks_msec() / 1000.0
+	var paused := session_state == "PAUSED"
+	living_world.step(now_s, delta, camera.global_position, s_route, v, float(smp["heading_deg"]),
+		float(smp["alt_m"]), paused)
+	if living_decor != null:
+		living_decor.step(now_s, delta, camera.global_position, s_route, v, float(smp["alt_m"]), paused,
+			living_world.last_wind, _last_state, now_s < _beep_until_s)
 
 
 ## Décor en fond des menus hors séance (accueil, choix, bilan) : la caméra avance lentement sur le
@@ -433,6 +452,9 @@ func _poll_route_job() -> void:
 	var horizon: Color = sky_params.get("horizon_color", RenderQuality.FOG_COLOR)
 	var fog_dens: float = float(sky_params.get("fog_density", 0.01))
 	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
+	if living_decor != null:
+		living_decor.set_fog_base(world_env.environment)
+		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
 	banner.clear_message("route")
 	banner.clear_message("cue")
@@ -454,6 +476,9 @@ func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+		"weather":   # météo imposée (tests graphiques du lot P17)
+			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
+				living_decor.set_weather(msg["weather"])
 		"menu_input":   # appui simulé dans les menus (banc des menus, tests/menu_bench.py)
 			var ev := str(msg.get("event", ""))
 			if ev in MenuModel.EVENTS:
@@ -472,7 +497,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
-		"wind_verdict": hud.wind_verdict_label,
+		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -495,6 +520,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
 		"widgets": widgets,
+		"decor": living_decor.test_info(camera) if living_decor != null else {},
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -582,6 +608,8 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+	if living_decor != null:
+		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
 		# Vent du core (lot P16) : modèle du décor et indicateur du HUD, par rapport au cap de la route
 		var wind_now_s := Time.get_ticks_msec() / 1000.0

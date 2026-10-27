@@ -47,7 +47,15 @@ var _instances: Dictionary = {}      # clé -> MeshInstance3D
 var _jobs: Dictionary = {}           # clé -> {task, arrays, origin, gen}
 var _ready: Array = []               # travaux terminés, à instancier : {key, arrays, origin}
 var _generation := 0
-var _road_material: StandardMaterial3D
+var _road_material: Material
+## Lot P17 : marquages de P14 (`set_road_markings`), un matériau par tronçon qui porte des chiffres
+## peints (`set_road_marks`), chaussée mouillée (`set_road_wetness`).
+var road_markings := false
+var _road_color: Color = RoadBuilder.ROAD_COLOR
+var _road_texture: Texture2D = null
+var _marks_by_chunk: Dictionary = {}    # k -> [{s, digit}]
+var _chunk_road_materials: Dictionary = {}   # k -> ShaderMaterial (tronçons à chiffres)
+var _road_wetness := 0.0
 var _terrain_material: Material
 var _road_width_m: float = RoadBuilder.ROAD_WIDTH_M
 var _ground_color: Color = FLAT_GROUND_COLOR
@@ -346,7 +354,7 @@ func integrate(max_new: int) -> int:
 			continue
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["arrays"])
-		mesh.surface_set_material(0, _road_material if r["kind"] == "road" else _terrain_material)
+		mesh.surface_set_material(0, road_material_for(int((r["key"] as String).get_slice(":", 1))) if r["kind"] == "road" else _terrain_material)
 		var mi := MeshInstance3D.new()
 		mi.name = (r["key"] as String).replace(":", "_")
 		mi.mesh = mesh
@@ -393,7 +401,9 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	var r_params := ThemeRenderParams.road_params(theme_dict)
 	_road_width_m = float(r_params["width_m"])
 	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture") if theme_dir != "" else null
-	_road_material = RoadBuilder.make_material(r_params["color"], road_tex)
+	_road_color = r_params["color"]
+	_road_texture = road_tex
+	_rebuild_road_material()
 
 	if _terrain_material is ShaderMaterial:
 		TerrainMaterial.apply_to_material(_terrain_material, theme_dict, theme_dir)
@@ -402,6 +412,61 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	_ground_color = tu["grass_color"]
 	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
 		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
+
+
+func _rebuild_road_material() -> void:
+	_chunk_road_materials.clear()
+	if road_markings:
+		var mm := RoadBuilder.make_markings_material(_road_color, _road_width_m)
+		mm.set_shader_parameter("wetness", _road_wetness)
+		_road_material = mm
+	else:
+		_road_material = RoadBuilder.make_material(_road_color, _road_texture)
+	for key in _instances:
+		if (key as String).begins_with("road:"):
+			var mi: MeshInstance3D = _instances[key]
+			mi.mesh.surface_set_material(0, road_material_for(int((key as String).get_slice(":", 1))))
+
+
+## Marquages de la route (Lot P17) : à appeler avant le chargement des tronçons (sinon ceux déjà
+## affichés changent de matériau).
+func set_road_markings(on: bool) -> void:
+	if on == road_markings:
+		return
+	road_markings = on
+	_rebuild_road_material()
+
+
+## Chiffres peints par tronçon (roadside_model.paint_marks réparti par tronçon de 1 000 m).
+func set_road_marks(marks_by_chunk: Dictionary) -> void:
+	_marks_by_chunk = marks_by_chunk
+	_rebuild_road_material()
+
+
+func road_material_for(k: int) -> Material:
+	if not road_markings or not _marks_by_chunk.has(k):
+		return _road_material
+	if not _chunk_road_materials.has(k):
+		var m := _road_material.duplicate() as ShaderMaterial
+		RoadBuilder.set_marks(m, _marks_by_chunk[k])
+		_chunk_road_materials[k] = m
+	return _chunk_road_materials[k]
+
+
+## Chaussée mouillée sous la pluie (P8 `wetness`, 0 à 1), avec les marquages seulement.
+func set_road_wetness(w: float) -> void:
+	w = clampf(w, 0.0, 1.0)
+	if absf(w - _road_wetness) < 0.005:
+		return
+	_road_wetness = w
+	if _road_material is ShaderMaterial:
+		(_road_material as ShaderMaterial).set_shader_parameter("wetness", w)
+	for k in _chunk_road_materials:
+		(_chunk_road_materials[k] as ShaderMaterial).set_shader_parameter("wetness", w)
+
+
+func road_wetness() -> float:
+	return _road_wetness
 
 
 func _make_ground() -> void:

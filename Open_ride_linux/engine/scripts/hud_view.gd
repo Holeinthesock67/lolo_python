@@ -12,6 +12,8 @@ extends CanvasLayer
 ##   wind_view_model.gd) : flèche d'où vient le vent par rapport à la route, « 18 km/h face »,
 ##   barres d'intensité et leur niveau, pastille verte, rouge ou grise du verdict ; caché sans vent.
 ##   Le coin supérieur droit sous le panneau de droite reste libre (blocs segment et bonus, série T).
+## - Lot P17 : « Abri 30 % » derrière un bot (`draft_text` de la même sortie), pastille bleue sous
+##   l'indicateur du vent (à sa place quand il n'y a pas de vent) ; cachée sans abri.
 
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 
@@ -27,6 +29,8 @@ const WIND_TONES := {
 	"neutral": Color(0.45, 0.48, 0.52, 0.95),
 }
 const WIND_BAR_COLOR := Color(0.85, 0.90, 0.95)
+const DRAFT_COLOR := Color(0.15, 0.42, 0.75, 0.95)
+const DRAFT_GAP := 10.0
 const WIND_BAR_OFF := Color(0.85, 0.90, 0.95, 0.18)
 
 const GRADE_COLORS := {
@@ -69,6 +73,8 @@ var wind_bars: Control
 var wind_level_label: Label
 var wind_verdict_label: Label
 var _wind_view: Dictionary = {}
+# Abri derrière un bot (Lot P17)
+var draft_label: Label
 
 # Données du profil d'altitude en cache
 var _last_profile_s := -99999.0
@@ -146,6 +152,7 @@ func _build_ui() -> void:
 	center_vbox.add_child(difficulty_label)
 
 	_build_wind_panel()
+	_build_draft_label()
 
 	# Panneau inférieur : Profil d'altitude
 	profile_panel = Control.new()
@@ -220,11 +227,34 @@ func _build_wind_panel() -> void:
 	panel_wind.add_child(wind_verdict_label)
 
 
-## Indicateur du vent (Lot P16) : `view` est la sortie de wind_view_model.view().
+## Pastille « Abri 30 % » (Lot P17), même largeur que l'indicateur du vent.
+func _build_draft_label() -> void:
+	draft_label = Label.new()
+	draft_label.name = "Draft"
+	draft_label.position = panel_wind.position + Vector2(0.0, panel_wind.size.y + DRAFT_GAP)
+	draft_label.size = Vector2(panel_wind.size.x, 44.0)
+	draft_label.add_theme_font_size_override("font_size", 28)
+	draft_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	draft_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var pill := StyleBoxFlat.new()
+	pill.bg_color = DRAFT_COLOR
+	pill.set_corner_radius_all(22)
+	draft_label.add_theme_stylebox_override("normal", pill)
+	draft_label.visible = false
+	add_child(draft_label)
+
+
+## Indicateur du vent (Lot P16) et de l'abri (Lot P17) : `view` est la sortie de wind_view_model.view().
 func update_wind(view: Dictionary) -> void:
 	_build_ui()
 	var shown := bool(view.get("visible", false)) and str(view.get("speed_text", "")) != ""
 	panel_wind.visible = shown
+	var draft := str(view.get("draft_text", ""))
+	draft_label.visible = draft != ""
+	if draft != "":
+		draft_label.text = draft
+		var top := panel_wind.position.y + (panel_wind.size.y + DRAFT_GAP if shown else 0.0)
+		draft_label.position = Vector2(panel_wind.position.x, top)
 	if not shown:
 		_wind_view = {}
 		return
