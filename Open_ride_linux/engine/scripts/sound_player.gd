@@ -15,6 +15,14 @@ extends Node
 ## la hauteur suit la vitesse dans l'air ; la boucle de roue libre contient `FREEWHEEL_LOOP_CLICKS`
 ## coups par seconde et `pitch_scale` la cale sur `freewheel.clicks_per_s` du modèle ; un lecteur
 ## dédié joue le « clac » de reprise (60 ms, `clacs_played` compte les reprises jouées).
+##
+## Lot P13 : deux sons de plus pour les véhicules, `vehicle_pass` (pneus et souffle) et `tractor_engine`
+## (moteur grave), joués par les lecteurs 3D de traffic_renderer.gd (`stream(kind)`) ; remplaçables par
+## ~/OpenRide/Sounds/<kind>.ogg. Lot P15 : `crowd_cheer` (clameur et applaudissements) pour crowd_renderer.gd.
+##
+## Lot P21 : quatre sons brefs, non bouclés, des passants (`VOICE_KINDS` : « Allez ! », « Bonjour ! »,
+## aboiement, rire d'enfant), synthétisés par une source glottale filtrée par deux formants, ou lus dans
+## ~/OpenRide/Sounds/<kind>.ogg (CC0) ; joués par crowd_renderer.gd en mode « passants ».
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
@@ -28,6 +36,15 @@ const FREEWHEEL_MIN_PITCH := 0.05
 const WIND_BAND_HZ := 500.0
 const WIND_BAND_Q := 0.8
 const CLAC_SAMPLES := 1323     # 60 ms
+const VOICE_KINDS := ["voice_allez", "voice_bonjour", "dog_bark", "kid_laugh"]
+## Syllabes des sons de passants : [début s, fin s, f0 début Hz, f0 fin Hz, formant 1 Hz, formant 2 Hz, souffle 0 à 1].
+const VOICE_SYLLABLES := {
+	"voice_allez": [[0.0, 0.16, 190.0, 210.0, 800.0, 1250.0, 0.05], [0.2, 0.52, 230.0, 290.0, 420.0, 2000.0, 0.08]],
+	"voice_bonjour": [[0.0, 0.2, 200.0, 220.0, 500.0, 900.0, 0.05], [0.26, 0.6, 230.0, 170.0, 320.0, 800.0, 0.15]],
+	"dog_bark": [[0.0, 0.12, 420.0, 260.0, 1000.0, 2200.0, 0.4], [0.3, 0.42, 440.0, 270.0, 1000.0, 2200.0, 0.4]],
+	"kid_laugh": [[0.0, 0.09, 380.0, 360.0, 900.0, 1500.0, 0.5], [0.14, 0.23, 390.0, 370.0, 900.0, 1500.0, 0.5],
+		[0.28, 0.37, 380.0, 350.0, 900.0, 1500.0, 0.5], [0.42, 0.53, 360.0, 300.0, 900.0, 1500.0, 0.5]],
+}
 
 var model := SoundModel.new()
 
@@ -38,6 +55,7 @@ var clacs_played := 0                   # « clac » de reprise joués (tests)
 var _poi_players: Array[AudioStreamPlayer3D] = []
 
 var _streams: Dictionary = {}
+var _lp := 0.0                          # état du filtre passe-bas de la synthèse
 
 var ambience := AmbienceModel.new()
 var _bed_players: Dictionary = {}       # fond -> AudioStreamPlayer
@@ -87,6 +105,11 @@ func _init_players() -> void:
 		bp.volume_db = SoundModel.SILENCE_DB
 		add_child(bp)
 		_bed_players[bed] = bp
+
+
+## Flux d'une sorte de son (synthétisé ou .ogg de remplacement), null si inconnue.
+func stream(kind: String) -> Resource:
+	return _streams.get(kind, null)
 
 
 func set_pois(points: Array) -> void:
@@ -185,13 +208,16 @@ func update_bells(hour: float, now_s: float) -> void:
 # --- Génération et chargement des flux audio ---
 
 func _generate_all_streams() -> void:
-	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village"]
+	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer"]
 	for k in kinds:
 		var custom_stream = _try_load_custom(k)
 		if custom_stream != null:
 			_streams[k] = custom_stream
 		else:
 			_streams[k] = _synthesize_stream(k)
+	for k in VOICE_KINDS:
+		var custom_voice = _try_load_custom(k)
+		_streams[k] = custom_voice if custom_voice != null else _synthesize_voice(k)
 	var custom_clac = _try_load_custom("clac")
 	_streams["clac"] = custom_clac if custom_clac != null else _synthesize_clac()
 	for bed in AmbienceModel.BEDS:
@@ -218,6 +244,9 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	wav.loop_begin = 0
 	wav.loop_end = SAMPLE_COUNT
+	if kind == "wind":
+		wav.data = _wind_noise_bytes()   # Lot P10 : bruit passe-bande, sans la boucle d'échantillons ci-dessous
+		return wav
 
 	var bytes := PackedByteArray()
 	bytes.resize(SAMPLE_COUNT * 2)
@@ -227,6 +256,7 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		seed_val = (seed_val * 1103515245 + 12345) & 0x7FFFFFFF
 		return seed_val
 
+	_lp = 0.0
 	for i in range(SAMPLE_COUNT):
 		var t := float(i) / float(MIX_RATE)
 		var sample := 0.0
@@ -250,6 +280,25 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 			"village":
 				# Rumeur de village
 				sample = sin(TAU * 85.0 * t) * 0.3 + sin(TAU * 140.0 * t) * 0.2
+			"vehicle_pass":
+				# Lot P13 : roulement de pneus et souffle d'une voiture (bruit filtré, ronflement à 60 Hz) ;
+				# l'effet Doppler vient de l'AudioStreamPlayer3D qui suit le véhicule.
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.08 * (r - _lp)
+				sample = _lp * 2.2 + sin(TAU * 60.0 * t) * 0.12
+			"crowd_cheer":
+				# Lot P15 : clameur (bruit filtré qui ondule) et applaudissements (claquements brefs à 9 Hz,
+				# décalés par une phase tirée au hasard), joués par crowd_renderer.gd sur le groupe le plus proche
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.15 * (r - _lp)
+				var swell := 0.7 + 0.3 * sin(TAU * 2.0 * t) * sin(TAU * 3.0 * t)
+				var clap_phase := fmod(t * 9.0 + 0.37 * sin(TAU * t), 1.0)
+				var clap := exp(-clap_phase * 60.0) * (float(h.call() & 0xFFFF) / 32768.0 - 1.0)
+				sample = _lp * 1.8 * swell + clap * 0.5
+			"tractor_engine":
+				# Lot P13 : moteur grave du tracteur (28 Hz et harmoniques, battement des cylindres à 7 Hz)
+				var beat := 0.75 + 0.25 * sin(TAU * 7.0 * t)
+				sample = (sin(TAU * 28.0 * t) * 0.45 + sin(TAU * 56.0 * t) * 0.25 + sin(TAU * 84.0 * t) * 0.12) * beat
 
 		var s16 := clampi(int(sample * 32767.0), -32768, 32767)
 		if s16 < 0:
@@ -257,8 +306,6 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		bytes[i * 2] = s16 & 0xFF
 		bytes[i * 2 + 1] = (s16 >> 8) & 0xFF
 
-	if kind == "wind":
-		bytes = _wind_noise_bytes()
 	wav.data = bytes
 	return wav
 
@@ -302,6 +349,64 @@ static func _wind_noise_bytes() -> PackedByteArray:
 
 
 ## « Clac » d'engagement du cliquet à la reprise du pédalage (Lot P10) : 60 ms, sans boucle.
+## Son bref d'un passant (Lot P21) : source en dents de scie à la hauteur f0 (glissante sur la syllabe)
+## et souffle, filtrée par deux passe-bandes (formants), fondus de 15 ms aux bords de chaque syllabe.
+static func _synthesize_voice(kind: String) -> AudioStreamWAV:
+	var sylls: Array = VOICE_SYLLABLES[kind]
+	var n := int(ceil(float(sylls[-1][1]) * MIX_RATE)) + 220
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var seed_val := 0x2468ACE
+	var peak := 0.0
+	for syl in sylls:
+		var i0 := int(float(syl[0]) * MIX_RATE)
+		var i1 := int(float(syl[1]) * MIX_RATE)
+		var bp := []
+		for f: float in [float(syl[4]), float(syl[5])]:
+			var w0 := TAU * f / MIX_RATE
+			var alpha := sin(w0) / (2.0 * 4.0)
+			var a0 := 1.0 + alpha
+			bp.append([alpha / a0, -alpha / a0, -2.0 * cos(w0) / a0, (1.0 - alpha) / a0])
+		var z := [[0.0, 0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 0.0]]   # x1, x2, y1, y2 de chaque filtre
+		var ph := 0.0
+		var fade := int(0.015 * MIX_RATE)
+		for i in range(i0, i1):
+			var u := float(i - i0) / float(maxi(i1 - i0, 1))
+			ph = fmod(ph + lerpf(float(syl[2]), float(syl[3]), u) / MIX_RATE, 1.0)
+			seed_val = (seed_val * 1103515245 + 12345) & 0x7FFFFFFF
+			var noise := float(seed_val & 0xFFFF) / 32768.0 - 1.0
+			var x := (2.0 * ph - 1.0) * (1.0 - float(syl[6])) + noise * float(syl[6])
+			var y := 0.0
+			for b in range(2):
+				var c: Array = bp[b]
+				var zz: Array = z[b]
+				var yb: float = c[0] * x + c[1] * zz[1] - c[2] * zz[2] - c[3] * zz[3]
+				zz[1] = zz[0]
+				zz[0] = x
+				zz[3] = zz[2]
+				zz[2] = yb
+				y += yb * (1.0 if b == 0 else 0.6)
+			var env := minf(1.0, minf(float(i - i0) / fade, float(i1 - i) / fade))
+			out[i] += y * env
+			peak = maxf(peak, absf(out[i]))
+	var bytes := PackedByteArray()
+	bytes.resize(n * 2)
+	var gain := 0.8 / maxf(peak, 1e-6)
+	for i in range(n):
+		var s16 := clampi(int(out[i] * gain * 32767.0), -32768, 32767)
+		if s16 < 0:
+			s16 += 65536
+		bytes[i * 2] = s16 & 0xFF
+		bytes[i * 2 + 1] = (s16 >> 8) & 0xFF
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = MIX_RATE
+	wav.stereo = false
+	wav.loop_mode = AudioStreamWAV.LOOP_DISABLED
+	wav.data = bytes
+	return wav
+
+
 static func _synthesize_clac() -> AudioStreamWAV:
 	var bytes := PackedByteArray()
 	bytes.resize(CLAC_SAMPLES * 2)

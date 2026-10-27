@@ -50,7 +50,9 @@ class TrainerConfig:
     grade_min_pct: float = -10.0
     grade_max_pct: float = 16.0
     power_smooth_tau_s: float = 0.7   # lissage temporel de la puissance (indépendant de la cadence BLE)
-    grade_rate_pct_per_s: float = 2.0  # vitesse maximale de variation de la pente envoyée
+    grade_rate_pct_per_s: float = 2.0  # ancien réglage symétrique, lu seulement si up et down manquent (lot Q4)
+    grade_rate_up_pct_per_s: float = 4.0   # vitesse maximale quand la pente envoyée augmente (lot Q4)
+    grade_rate_down_pct_per_s: float = 8.0 # vitesse maximale quand elle diminue (lot Q4)
     trace_ftms: bool = False          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 
 
@@ -68,6 +70,7 @@ class GearingConfig:
 class RenderConfig:
     quality: str = "low"
     theme: str = "default"
+    living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
 
 
 @dataclass
@@ -144,6 +147,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("trainer", "grade_max_pct"): (0, 30),
     ("trainer", "power_smooth_tau_s"): (0, 5),
     ("trainer", "grade_rate_pct_per_s"): (0.1, 100),
+    ("trainer", "grade_rate_up_pct_per_s"): (0.1, 100),
+    ("trainer", "grade_rate_down_pct_per_s"): (0.1, 100),
     ("gearing", "n_gears"): (2, 40),
     ("gearing", "start_gear"): (1, 40),
     ("gearing", "ratio_min"): (0.1, 5),
@@ -218,6 +223,15 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
             _merge(current, value, source, f.name)
         else:
             setattr(dc, f.name, _convert(current, value, f"{source}, [{section}] {f.name}"))
+    if section == "trainer" and "grade_rate_pct_per_s" in data:
+        if "grade_rate_up_pct_per_s" not in data and "grade_rate_down_pct_per_s" not in data:
+            log.warning(
+                "%s, [trainer] grade_rate_pct_per_s : réglage remplacé par grade_rate_up_pct_per_s "
+                "et grade_rate_down_pct_per_s",
+                source,
+            )
+            dc.grade_rate_up_pct_per_s = dc.grade_rate_pct_per_s
+            dc.grade_rate_down_pct_per_s = dc.grade_rate_pct_per_s
     return dc
 
 
