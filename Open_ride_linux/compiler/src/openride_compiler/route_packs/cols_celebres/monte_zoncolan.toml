@@ -1,0 +1,8 @@
+name = "Monte Zoncolan"
+region = "Frioul, Alpes carniques"
+country = "Italie"
+side = "depuis Ovaro"
+waypoints = [[46.4840, 12.8650], [46.5007, 12.9266]]
+ref_length_m = 10100
+ref_gain_m = 1210
+tags = ["col", "classique", "hc", "raide"]
