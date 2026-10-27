@@ -50,3 +50,7 @@ Aucune.
 
 - Choix du thème depuis le menu de l'engine.
 - Téléchargement de packs en ligne.
+
+## 9. Livraison (25 octobre 2026, PR #164)
+
+- Code et tests fusionnés sur `main` par la PR #164 (issue #107 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.
