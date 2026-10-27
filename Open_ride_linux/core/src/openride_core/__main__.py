@@ -17,6 +17,9 @@ Sous-commandes disponibles à ce stade :
                                       bilan d'une séance (.jsonl ou .fit ; défaut : dernier journal)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
+    openride-core xp [--dir DOSSIER] [--json] [--config FICHIER]
+                                      progression (niveau, expérience, défis) recalculée depuis
+                                      le journal des séances (série V, lot V2)
     openride-core devices [--timeout S] [--json] [--all] [--config FICHIER]
                           [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
@@ -144,6 +147,12 @@ def cmd_history(args: argparse.Namespace) -> int:
     return run(args.directory, args.weeks, args.ftp, args.json, args.config)
 
 
+def cmd_xp(args: argparse.Namespace) -> int:
+    from .tools.xp import run
+
+    return run(args.directory, args.json, args.config)
+
+
 def cmd_devices(args: argparse.Namespace) -> int:
     from .tools.devices import run
 
@@ -203,6 +212,11 @@ def build_parser() -> argparse.ArgumentParser:
     hist.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
     hist.add_argument("--json", action="store_true", help="sortie JSON")
     hist.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    xp = sub.add_parser("xp", help="progression (niveau, expérience, défis) recalculée depuis le journal")
+    xp.add_argument("--dir", type=Path, dest="directory",
+                    help="dossier des journaux (défaut : ~/OpenRide/Activities/.journal)")
+    xp.add_argument("--json", action="store_true", help="sortie JSON")
+    xp.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     dev = sub.add_parser("devices", help="inventaire des appareils Bluetooth et bloc [drivers] proposé")
     dev.add_argument("--timeout", type=float, default=8.0, help="durée de la recherche en s (défaut : 8)")
     dev.add_argument("--json", action="store_true", help="sortie JSON")
@@ -228,7 +242,7 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
-            "release-trainer": cmd_release_trainer, "summary": cmd_summary,
+            "release-trainer": cmd_release_trainer, "summary": cmd_summary, "xp": cmd_xp,
             "history": cmd_history, "devices": cmd_devices}[args.command](args)
 
 

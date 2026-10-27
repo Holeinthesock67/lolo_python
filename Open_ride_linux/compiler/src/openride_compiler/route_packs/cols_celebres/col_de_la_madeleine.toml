@@ -1,0 +1,8 @@
+name = "Col de la Madeleine"
+region = "Savoie, Alpes"
+country = "France"
+side = "depuis La Chambre"
+waypoints = [[45.3590, 6.3005], [45.4347, 6.3711]]
+ref_length_m = 19200
+ref_gain_m = 1520
+tags = ["col", "classique", "hc"]
