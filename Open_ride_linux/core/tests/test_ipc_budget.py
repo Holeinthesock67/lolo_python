@@ -6,9 +6,10 @@ from pathlib import Path
 
 import jsonschema
 
+from openride_core import ipc_budget
 from openride_core.ipc_budget import (MAX_DATAGRAM_SIZE, STATE_DEGRADATION, encode, fit_state,
                                       revisions, size, worst_state)
-from openride_core.ipc_server import IpcServer
+from openride_core.ipc_server import MAX_STATE_DATAGRAM_SIZE, IpcServer
 
 KEPT = ("type", "v", "seq", "t", "session_state", "s", "power", "power_3s", "cadence", "grade")
 
@@ -91,4 +92,13 @@ def test_server_sends_degraded_state_instead_of_dropping(caplog):
     assert len(sent) == 2 and all(len(p) <= MAX_DATAGRAM_SIZE for p in sent)
     assert json.loads(sent[0])["devices"]["trainer"]["status"] == "RECONNECTING"
     assert sum("allégée" in r.message for r in caplog.records) == 1   # avertissement limité
+
+
+def test_target_and_limit_per_revision():
+    assert ipc_budget.state_limit("1.2") == MAX_DATAGRAM_SIZE == 1400
+    assert ipc_budget.state_limit("1.3") == ipc_budget.STATE_LIMIT_1_3 == MAX_STATE_DATAGRAM_SIZE
+    text = ipc_budget.report()
+    assert "cible 1400" in text and "4096" in text
+    worst = worst_state("1.3")
+    assert worst["draft_bot"] == worst["bots"][0]["id"] and size(worst) <= ipc_budget.STATE_LIMIT_1_3
 
