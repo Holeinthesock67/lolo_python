@@ -64,6 +64,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `powerups.py` : bonus légèreté, aérodynamique et puissance, arches, valeurs dans `~/OpenRide/powerups.toml` (série T, lot T6, module pur).
 - `gaps.py` : écarts en temps de passage avec les bots, voisins devant et derrière (série T, lot T16, module pur) ;
 - `records.py` : records personnels par segment dans `~/OpenRide/records.json`, avec et sans bonus, classement local, recalcul depuis les journaux (série T, lot T5, module pur) ;
+- `jerseys.py` : points des sprints et des montées, maillots vert et à pois de la séance, bots compris (série T, lot T14, module pur) ;
 - `plans.py` : plans d'entraînement sur plusieurs semaines (`~/OpenRide/Plans/`, plan actif, séance du jour, suivi d'après l'historique, import d'un dossier ; `openride-core plan`, format `docs/contracts/plan_format_v1.md`, lot O11).
 
 **Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
