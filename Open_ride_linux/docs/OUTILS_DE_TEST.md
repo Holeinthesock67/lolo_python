@@ -94,6 +94,7 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 | `openride-core recover` | Convertit un journal de séance en FIT après un plantage |
 | `python -m openride_core.tools.workouts check FICHIER.zwo` | Lecture et charge d'un entraînement ERG |
 | `python -m openride_core.tools.route_vectors` | Vecteurs de test de la route, partagés core et engine |
+| `openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]` | Monde ouvert (lot W0) : volumes du relief, des tuiles vectorielles et de l'extrait régional, temps de génération par carré de 1 km ; rapport dans `~/OpenRide/Cache/monde/mesures/<date>/` |
 
 ## 6. Ce qui demande encore le matériel
 

@@ -11,6 +11,7 @@
     openride-compiler region-add <région Geofabrik> [--keep-pbf] | region-update <région> | region-list [--json]
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
+    openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]
 
 Codes de retour : 0 succès, 1 erreur d'entrée, 2 erreur interne.
 """
@@ -48,7 +49,7 @@ from .pipeline import compile_route
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
 from .theme import check_theme
 from .verify import verify_world, world_info
-from .worldgen import region, store
+from .worldgen import measure, region, store
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
 LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water")
@@ -152,6 +153,9 @@ def build_parser() -> argparse.ArgumentParser:
                        ("region-update", "monde ouvert : retélécharge la région si Geofabrik en publie une plus récente"),
                        ("region-list", "monde ouvert : régions du cache")):
         region.add_arguments(sub.add_parser(name, help=text), name)
+    wm = sub.add_parser("world-measure",
+                        help="monde ouvert : mesure volumes, temps de génération et débit (lot W0)")
+    measure.add_arguments(wm)
 
     return parser
 
@@ -517,6 +521,10 @@ def cmd_build_all(args: argparse.Namespace) -> int:
     return EXIT_INPUT if error_count > 0 else EXIT_OK
 
 
+def cmd_world_measure(args: argparse.Namespace) -> int:
+    return measure.run_from_args(args)
+
+
 COMMANDS = {
     "build": cmd_build,
     "add-layer": cmd_add_layer,
@@ -532,6 +540,7 @@ COMMANDS = {
     "region-add": region.cmd_region_add,
     "region-update": region.cmd_region_update,
     "region-list": region.cmd_region_list,
+    "world-measure": cmd_world_measure,
 }
 
 
