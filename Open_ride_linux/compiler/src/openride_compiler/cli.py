@@ -1,12 +1,15 @@
 """Ligne de commande `openride-compiler` (lot B1 §3.3).
 
     openride-compiler build <trace .gpx|.fit|.tcx|.fit.gz|.tcx.gz|.zip> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
-                            [--layers route,terrain,buildings,vegetation,poi,water] [--offline]
-    openride-compiler add-layer <dossier.world> terrain|buildings|vegetation|poi|water [--offline]
+                            [--layers route,terrain,buildings,vegetation,poi,water,segments] [--offline]
+    openride-compiler add-layer <dossier.world> terrain|buildings|vegetation|poi|water|segments [--offline]
+                                [--manual FICHIER.segments.toml]
     openride-compiler list | build-all [--layers ...] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
     openride-compiler theme-list [--themes-dir D] [--json]
     openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]
+    openride-compiler cache-info [--json] | cache-clean [--generated | --all] [--yes]
+    openride-compiler region-add <région Geofabrik> [--keep-pbf] | region-update <région> | region-list [--json]
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
     openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]
@@ -45,16 +48,19 @@ from .osm_layers import (
     write_water_dir,
 )
 from .pipeline import compile_route
+from . import segments_layer as SEG
 from .route_stats import (SORT_KEYS, LibraryError, compute_stats, duration_at, load_library, query,
                           sidecar_path, stats_usable)
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
 from .theme import check_theme
 from .verify import verify_world, world_info
-from .worldgen import measure
+from .worldgen import measure, region, store, vector_tiles
+from .worldgen import measure, region, store
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
-LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water")
-DEFAULT_LAYERS = ("route", "terrain")
+LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water", "segments")
+# Segments (lot T3) : produits par défaut quand le core est installé, omis avec un avertissement sinon.
+DEFAULT_LAYERS = ("route", "terrain", "segments")
 OSM_LAYERS = ("buildings", "vegetation", "poi", "water")
 
 
@@ -98,13 +104,16 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--out-and-back", action="store_true", help="aller-retour : la trace puis son inverse")
     b.add_argument("--force", action="store_true", help="remplace un .world existant")
     b.add_argument("--layers", type=parse_layers, default=DEFAULT_LAYERS,
-                   help="couches à produire, séparées par des virgules (défaut : route,terrain)")
+                   help="couches à produire, séparées par des virgules (défaut : route,terrain,segments)")
     b.add_argument("--offline", action="store_true",
                    help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
 
     a = sub.add_parser("add-layer", help="régénère une couche d'un .world existant")
     a.add_argument("world", type=Path)
-    a.add_argument("layer", choices=["terrain", "buildings", "vegetation", "poi", "water"])
+    a.add_argument("layer", choices=["terrain", "buildings", "vegetation", "poi", "water", "segments"])
+    a.add_argument("--manual", type=Path, default=None,
+                   help="segments : fichier <parcours>.segments.toml (défaut : celui de la trace source, "
+                        "cherché à côté du .world puis dans ~/OpenRide/GPX)")
     a.add_argument("--offline", action="store_true",
                    help="interdit le réseau : les données doivent être en cache")
 
@@ -167,7 +176,7 @@ def build_parser() -> argparse.ArgumentParser:
     ba.add_argument("--routes-dir", type=Path, default=C.ROUTES_DIR,
                     help=f"dossier de sortie des .world (défaut : {C.ROUTES_DIR})")
     ba.add_argument("--layers", type=parse_layers, default=DEFAULT_LAYERS,
-                    help="couches à produire pour chaque trace (défaut : route,terrain)")
+                    help="couches à produire pour chaque trace (défaut : route,terrain,segments)")
     ba.add_argument("--offline", action="store_true",
                     help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
     ba.add_argument("--dry-run", action="store_true",
@@ -185,9 +194,20 @@ def build_parser() -> argparse.ArgumentParser:
     ti.add_argument("--themes-dir", type=Path, default=None,
                     help="dossier d'installation des thèmes (défaut : ~/OpenRide/Themes)")
 
+    ci = sub.add_parser("cache-info", help="monde ouvert : taille du cache local, par sorte et par région (lot W2)")
+    store.add_info_arguments(ci)
+    cc = sub.add_parser("cache-clean", help="monde ouvert : vide le cache local (carrés générés par défaut)")
+    store.add_clean_arguments(cc)
+    for name, text in (("region-add", "monde ouvert : télécharge un extrait régional Geofabrik et le convertit (lot W3)"),
+                       ("region-update", "monde ouvert : retélécharge la région si Geofabrik en publie une plus récente"),
+                       ("region-list", "monde ouvert : régions du cache")):
+        region.add_arguments(sub.add_parser(name, help=text), name)
     wm = sub.add_parser("world-measure",
                         help="monde ouvert : mesure volumes, temps de génération et débit (lot W0)")
     measure.add_arguments(wm)
+    wp = sub.add_parser("world-prefetch",
+                        help="monde ouvert : précharge tuiles et relief autour des départs habituels (lot W13)")
+    vector_tiles.add_prefetch_arguments(wp)
 
     return parser
 
@@ -223,6 +243,11 @@ def cmd_build(args: argparse.Namespace) -> int:
             manifest["library"] = load_library(side)
         except LibraryError as exc:
             print(f"openride-compiler : fiche ignorée : {exc}", file=sys.stderr)
+    segments = None
+    if "segments" in args.layers:
+        segments = _build_segments_layer(compiled.route, args.gpx, stem[0] if stem else args.gpx.stem)
+        if segments is not None:
+            manifest["layers"]["segments"] = SEG.segments_manifest(segments)
     frame = LocalFrame.from_manifest(manifest)
     tiles = None
     if "terrain" in args.layers:
@@ -245,6 +270,8 @@ def cmd_build(args: argparse.Namespace) -> int:
             manifest["layers"]["water"] = water_manifest(osm_res)
 
     def extra(folder: Path) -> None:
+        if segments is not None:
+            SEG.write_segments(folder, segments)
         if tiles is not None:
             write_terrain(folder / "terrain", tiles)
         if osm_res is not None:
@@ -265,6 +292,55 @@ def cmd_build(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _build_segments_layer(route: dict, track: Path, stem: str) -> list[dict] | None:
+    """Segments d'un parcours en cours de compilation ; None (avec avertissement) sans core."""
+    core = SEG.core_segments()
+    if core is None:
+        print("openride-compiler : avertissement : core OpenRide non installé, couche segments omise "
+              "(le parcours reste valide)", file=sys.stderr)
+        return None
+    side = SEG.manual_path(track, stem)
+    manual = SEG.load_manual(side, route["length_m"]) if side.is_file() else None
+    segments = SEG.build_segments(route, manual, core)
+    print(f"segments : {SEG.summarize(segments)}"
+          + (f", fichier {side.name} ({manual.mode})" if manual else ""), file=sys.stderr)
+    return segments
+
+
+def _default_manual(world: Path, manifest: dict) -> Path | None:
+    """Fichier manuel de la trace source, à côté du .world puis dans le dossier des traces."""
+    gpx = (manifest.get("source") or {}).get("gpx")
+    if not gpx:
+        return None
+    stem = track_stem(gpx)
+    name = f"{stem[0] if stem else Path(gpx).stem}{SEG.MANUAL_SUFFIX}"
+    for folder in (world.parent, Path.home() / "OpenRide" / "GPX"):
+        if (folder / name).is_file():
+            return folder / name
+    return None
+
+
+def _add_segments_layer(world: Path, manifest: dict, route: dict, manual_file: Path | None,
+                        t0: float) -> int:
+    """`add-layer … segments` : depuis la couche route seule, sans réseau ni projection UTM."""
+    if SEG.core_segments() is None:
+        raise CompileError("couche segments : le core OpenRide (openride_core) n'est pas installé ; "
+                           "installer le core dans le même environnement que le compilateur")
+    if manual_file is not None and not Path(manual_file).is_file():
+        raise CompileError(f"{manual_file} : fichier manuel introuvable")
+    side = manual_file if manual_file is not None else _default_manual(world, manifest)
+    manual = SEG.load_manual(side, route["length_m"]) if side is not None else None
+    segments = SEG.build_segments(route, manual)
+    SEG.replace_segments(world, segments)
+    manifest.setdefault("layers", {})["segments"] = SEG.segments_manifest(segments)
+    manifest["format_version"] = C.FORMAT_VERSION
+    replace_manifest(world, manifest)
+    print(f"{world} : couche segments régénérée, {SEG.summarize(segments)}"
+          + (f", fichier {side.name}" if side is not None else "")
+          + f" ({time.monotonic() - t0:.1f} s)")
+    return EXIT_OK
+
+
 def cmd_add_layer(args: argparse.Namespace) -> int:
     t0 = time.monotonic()
     world = Path(args.world)
@@ -274,6 +350,8 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         route = json.loads((world / route_file).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError, AttributeError) as exc:
         raise CompileError(f"{world} : parcours illisible ({exc})") from exc
+    if args.layer == "segments":
+        return _add_segments_layer(world, manifest, route, getattr(args, "manual", None), t0)
     if manifest.get("projection") != "utm":
         raise CompileError(f"{world} : projection {manifest.get('projection')!r} ; cette couche demande "
                            "un parcours compilé en UTM (les parcours synthétiques ne sont pas géoréférencés)")
@@ -350,6 +428,8 @@ def cmd_info(args: argparse.Namespace) -> int:
               f"{len(tiles.get('far', []))} lointaine(s) ({', '.join(terrain.get('sources', []))})")
     else:
         print("Terrain           : absent")
+    segments = info.get("segments")
+    print(f"Segments          : {SEG.summarize(segments) if segments is not None else 'absents'}")
     return EXIT_OK
 
 
@@ -694,7 +774,13 @@ COMMANDS = {
     "theme-install": cmd_theme_install,
     "list": cmd_list,
     "build-all": cmd_build_all,
+    "cache-info": store.cmd_cache_info,
+    "cache-clean": store.cmd_cache_clean,
+    "region-add": region.cmd_region_add,
+    "region-update": region.cmd_region_update,
+    "region-list": region.cmd_region_list,
     "world-measure": cmd_world_measure,
+    "world-prefetch": vector_tiles.cmd_world_prefetch,
     "route-pack-install": cmd_route_pack_install,
     "route-pack-build": cmd_route_pack_build,
     "route-pack-list": cmd_route_pack_list,

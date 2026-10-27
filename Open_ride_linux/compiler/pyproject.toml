@@ -20,9 +20,13 @@ dependencies = [
 # openride-core sert aux tests seulement (vérification croisée avec load_world) :
 # l'installer à part avec `pip install -e ../core`.
 dev = ["pytest>=8"]
+# Monde ouvert (série W) : lecture des extraits régionaux .osm.pbf (lot W3).
+worldgen = ["osmium>=4.0"]
 
 [project.scripts]
 openride-compiler = "openride_compiler.cli:main"
+openride-worldgen = "openride_compiler.worldgen.process:main"
+openride-worldgen-fake = "openride_compiler.worldgen.synthetic:fake_main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

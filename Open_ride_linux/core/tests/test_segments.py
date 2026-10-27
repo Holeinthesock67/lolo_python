@@ -4,9 +4,12 @@ from __future__ import annotations
 
 import json
 import random
+from pathlib import Path
 
+import jsonschema
 import pytest
 
+from openride_core import demo_world
 from openride_core import segments as sg
 from openride_core.demo_world import build_route
 from openride_core.route import Route
@@ -187,3 +190,18 @@ def test_from_route_on_demo_world():
     climbs = [x for x in segs if x.type == "climb"]
     assert len(climbs) == 1
     assert climbs[0].gain_m >= sg.CLIMB_MIN_GAIN_M
+
+
+def test_demo_world_segments_layer_is_reproducible(tmp_path):
+    """Lot T3 : le parcours de démonstration porte ses segments détectés, octet pour octet."""
+    a = demo_world.write_demo_world(tmp_path / "a")
+    b = demo_world.write_demo_world(tmp_path / "b")
+    repo_demo = Path(__file__).resolve().parents[2] / "engine" / "demo" / "demo.world"
+    for name in ("manifest.json", "route.json", "segments.json"):
+        assert (a / name).read_bytes() == (b / name).read_bytes() == (repo_demo / name).read_bytes()
+    layer = json.loads((a / "segments.json").read_text(encoding="utf-8"))
+    schema_dir = Path(__file__).resolve().parents[2] / "docs" / "contracts" / "world"
+    jsonschema.validate(layer, json.loads((schema_dir / "segments.schema.json").read_text(encoding="utf-8")))
+    jsonschema.validate(json.loads((a / "manifest.json").read_text(encoding="utf-8")),
+                        json.loads((schema_dir / "manifest.schema.json").read_text(encoding="utf-8")))
+    assert all(s["source"] == "auto" for s in layer["segments"]) and layer["segments"]

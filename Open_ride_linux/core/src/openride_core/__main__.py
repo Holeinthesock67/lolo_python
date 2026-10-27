@@ -193,6 +193,28 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return run(args)
 
 
+def cmd_open_world_save(args: argparse.Namespace) -> int:
+    from . import config as config_mod
+    from .config import GPX_DIR
+    from .journal import JOURNAL_DIR
+    from .open_world_save import MIN_SAVE_M, save_from_folder
+    from .route import WorldError
+
+    cfg = config_mod.load(args.config)
+    try:
+        path, s_end = save_from_folder(args.ride_id, cfg.open_world, args.gpx_dir or GPX_DIR,
+                                       args.journal_dir or JOURNAL_DIR,
+                                       args.km * 1000.0 if args.km else None)
+    except WorldError as exc:
+        print(f"openride-core open-world-save : {exc}", file=sys.stderr)
+        return 1
+    if path is None:
+        print(f"Balade de {s_end:.0f} m : au plus {MIN_SAVE_M:.0f} m, rien n'est enregistré.")
+        return 0
+    print(f"Balade enregistrée : {path} ({s_end / 1000.0:.1f} km). Elle sera compilée au prochain lancement.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Analyseur de la ligne de commande ; aussi lu par `test_docs_coherence.py` (commandes citées)."""
     p = argparse.ArgumentParser(prog="openride-core")
@@ -288,6 +310,12 @@ def build_parser() -> argparse.ArgumentParser:
     ftp.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ftp.add_argument("--dir", type=Path, dest="directory",
                      help="dossier des journaux (défaut : ~/OpenRide/Activities/.journal)")
+    ows = sub.add_parser("open-world-save", help="enregistre une balade du monde ouvert comme parcours (GPX)")
+    ows.add_argument("ride_id", metavar="ID", help="identifiant de la séance (ow-AAAAMMJJ-HHMMSS)")
+    ows.add_argument("--km", type=float, help="distance parcourue en km (défaut : celle du journal, sinon toute la route)")
+    ows.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    ows.add_argument("--gpx-dir", type=Path, help="dossier des traces (défaut : ~/OpenRide/GPX)")
+    ows.add_argument("--journal-dir", type=Path, help="journaux (défaut : ~/OpenRide/Activities/.journal)")
     return p
 
 
@@ -311,7 +339,8 @@ def main(argv: list[str] | None = None) -> int:
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary, "xp": cmd_xp,
             "history": cmd_history, "devices": cmd_devices,
-            "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test}[args.command](args)
+            "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
+            "open-world-save": cmd_open_world_save}[args.command](args)
 
 
 if __name__ == "__main__":

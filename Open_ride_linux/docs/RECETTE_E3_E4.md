@@ -11,7 +11,7 @@ Machine cible : PC du propriétaire (GPU NVIDIA GeForce GTX 1060 6 Go, écran 1 
 
 ### Lot E3 : Ciel physique, brouillard, arbres par bruit et HUD final
 - **Shader de terrain** : modulation procédurale de l'herbe par bruit ($\pm 8\%$) et normales à facettes configurables sur la roche.
-- **Atmosphère & Horizon** : ciel physique `PhysicalSkyMaterial`, brouillard de profondeur calé sur la teinte d'horizon (densité 1.0, fin à 12 km), brouillard volumétrique activé uniquement en mode `high` avec la densité du thème.
+- **Atmosphère & Horizon** : ciel physique `PhysicalSkyMaterial`, brouillard de profondeur calé sur la teinte d'horizon (densité 1.0, fin à 4 / 6 / 9 km en `low` / `medium` / `high` depuis le lot Y1), brouillard volumétrique activé uniquement en mode `high` avec la densité du thème.
 - **Arbres par bruit** : double niveau de détail LOD0 (0–300 m avec ombres $\le 120$ tris) et LOD1 (300–1 500 m sans ombre 4 tris), partitionnement en cases de 250 m, hauteur exacte du relief, respect strict du budget d'instances (20 000 en `low`, 50 000 en `medium`, 100 000 en `high`).
 - **Préréglages unifiés** : pilotage centralisé (`quality_presets.gd` / `render_quality.gd`) des ombres, du budget d'arbres et de la visibilité des bâtiments.
 - **HUD final** : typographie agrandie ($\ge 48$ px pour les valeurs, $\ge 24$ px pour les libellés), profil altimétrique 120 colonnes coloré par `grade_class`, prochaine montée et temps écoulé.
@@ -28,10 +28,12 @@ Machine cible : PC du propriétaire (GPU NVIDIA GeForce GTX 1060 6 Go, écran 1 
 
 ## 2. Consignes de test local (PC du propriétaire)
 
-### Étape 1 : Récupérer la branche et vérifier l'environnement
+### Étape 1 : Mettre `main` à jour et vérifier l'environnement
+
+E3 et E4 sont sur `main` depuis le 24 octobre (PR #91).
+
 ```bash
-git checkout lot-e3-e4
-git pull origin lot-e3-e4
+git switch main && git pull --ff-only
 ```
 
 Vérifier la validité des suites de tests unitaires et headless :
@@ -56,7 +58,7 @@ Points de contrôle à valider :
    - Vérifier dans la console l'absence d'erreurs ou d'avertissements de compilation GLSL/Godot Shading Language (moteur Forward+).
 2. **Ciel et horizon (Lot E3)** :
    - Le ciel affiche un dégradé physique naturel (`PhysicalSkyMaterial`).
-   - La coupure du terrain lointain à 12 km est parfaitement invisible, fondue dans la couleur d'horizon par le brouillard de profondeur.
+   - La coupure du terrain lointain (fin du brouillard du préréglage plus une tuile, lot Y1) est parfaitement invisible, fondue dans la couleur d'horizon par le brouillard de profondeur.
 3. **Arbres et niveau de détail (Lot E3)** :
    - Aucun arbre flottant au-dessus du sol ou planté dans le ruban d'asphalte (couloir de sécurité de $\ge 7$ m de l'axe respecté).
    - Observer la transition à 300 m : pas de pop brusque ni de saut visuel géométrique gênant entre LOD0 (modèle ombré) et LOD1 (croix 4 triangles).
@@ -109,7 +111,7 @@ Tester successivement les options `--quality=medium` et `--quality=high` :
 
 | Lot | Critère | Statut automatique (CI) | Statut recette locale (GTX 1060) |
 | --- | --- | --- | --- |
-| **E3** | Ciel physique & brouillard horizon 12 km | Conforme (`test_render_quality`) | À observer à l'écran |
+| **E3** | Ciel physique & brouillard horizon (4 / 6 / 9 km, Y1) | Conforme (`test_render_quality`) | À observer à l'écran |
 | **E3** | Modulation herbe $\pm 8\%$ et facettes roche | Conforme (`test_terrain_render`) | À observer à l'écran |
 | **E3** | Arbres LOD0/LOD1 & budget d'instances | Conforme (`test_tree_renderer`) | À observer à l'écran |
 | **E3** | HUD grand format & profil d'altitude | Conforme (`test_hud_view`) | À observer à l'écran |

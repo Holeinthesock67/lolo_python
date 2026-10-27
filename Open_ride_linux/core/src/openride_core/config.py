@@ -106,6 +106,22 @@ class DriversConfig:
 
 
 @dataclass
+class OpenWorldConfig:
+    """Monde ouvert de la 2.0 (série W, `docs/contracts/worldgen_v1.md` §6) ; lu par le générateur."""
+
+    cache_dir: str = "~/OpenRide/Cache/monde"   # cache des cartes et du monde généré (plan W §4)
+    cache_max_gb: float = 5.0                   # plafond du cache (décision W-Q3)
+    horizon_m: float = 3000.0                   # route engagée devant le cycliste
+    offer_m: float = 300.0                      # distance à laquelle un carrefour est proposé
+    lock_m: float = 30.0                        # verrouillage du choix avant le carrefour
+    preview_m: float = 500.0                    # amorce calculée pour chaque branche
+    recenter_m: float = 10000.0                 # recentrage de l'origine de rendu dans l'engine
+    network: bool = True                        # faux : cache seulement, aucun téléchargement
+    prefetch_history: bool = True               # préchargement autour des départs habituels (W-Q4)
+    prefetch_radius_km: float = 10.0
+
+
+@dataclass
 class WindConfig:
     """Vent du core (lot P2, SRS §5 et §11) ; coupé par défaut dans les versions 1.x."""
     mode: str = "off"              # "off", "fixed", "gusty" ou "theme" (vent du thème 1.2)
@@ -118,6 +134,20 @@ class WindConfig:
 
 
 @dataclass
+class RogueConfig:
+    """Mode Cyber-Rogue de la 2.0 (série R, SRS §11)."""
+
+    w_prime_j: float = 20000.0   # réserve anaérobie W' (décision Q5)
+    cp_w: float = 0.0            # puissance critique ; 0 : la FTP du cavalier
+
+
+@dataclass
+class PowerupsConfig:
+    """Bonus du mode classique (série T, lots T6 et T7) ; valeurs dans `~/OpenRide/powerups.toml`."""
+    mode: str = "on"               # "on" ou "off" (ni arche ni réserve ; segments toujours chronométrés)
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -127,7 +157,10 @@ class Config:
     ipc: IpcConfig = field(default_factory=IpcConfig)
     engine: EngineConfig = field(default_factory=EngineConfig)
     drivers: DriversConfig = field(default_factory=DriversConfig)
+    open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
+    rogue: RogueConfig = field(default_factory=RogueConfig)
+    powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -166,12 +199,21 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("render", "visual_grade_scale"): (1.0, 2.0),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
+    ("open_world", "cache_max_gb"): (0.5, 500),
+    ("open_world", "horizon_m"): (1000, 10000),
+    ("open_world", "offer_m"): (50, 2000),
+    ("open_world", "lock_m"): (5, 200),
+    ("open_world", "preview_m"): (100, 2000),
+    ("open_world", "recenter_m"): (1000, 100000),
+    ("open_world", "prefetch_radius_km"): (0, 100),
     ("drivers", "click_mute_after_s"): (1, 600),
     ("drivers", "click_rehandshake_s"): (0, 600),
     ("wind", "speed_kmh"): (0, 60),
     ("wind", "from_deg"): (0, 360),
     ("wind", "gust_pct"): (0, 100),
     ("wind", "max_grade_offset_pct"): (0, 8),
+    ("rogue", "w_prime_j"): (5000, 60000),
+    ("rogue", "cp_w"): (0, 1000),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -186,6 +228,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "hr"): ("none", "ble", "sim"),
     ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
     ("wind", "feel"): ("grade", "ftms"),
+    ("powerups", "mode"): ("on", "off"),
 }
 
 
@@ -266,6 +309,13 @@ def validate(cfg: Config, source: str = "config.toml") -> Config:
         raise ConfigError(f"{source}, [gearing] ratio_min : doit être inférieur à ratio_max")
     if t.grade_min_pct >= t.grade_max_pct:
         raise ConfigError(f"{source}, [trainer] grade_min_pct : doit être inférieur à grade_max_pct")
+    ow = cfg.open_world
+    if not ow.cache_dir.strip():
+        raise ConfigError(f"{source}, [open_world] cache_dir : dossier vide")
+    if ow.lock_m >= ow.offer_m:
+        raise ConfigError(f"{source}, [open_world] lock_m : doit être inférieur à offer_m")
+    if ow.preview_m > ow.horizon_m:
+        raise ConfigError(f"{source}, [open_world] preview_m : ne doit pas dépasser horizon_m")
     if ipc.port_state == ipc.port_commands:
         raise ConfigError(f"{source}, [ipc] port_commands : doit différer de port_state")
     return cfg

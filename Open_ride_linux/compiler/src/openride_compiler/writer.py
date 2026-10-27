@@ -52,6 +52,7 @@ def build_manifest(name: str, compiled: CompiledRoute, gpx_name: str, gpx_sha256
             "vegetation": {"present": False, "source": "none"},
             "poi": {"present": False},
             "water": {"present": False},
+            "segments": {"present": False},
         },
         "stats": compute_stats(route),
     }

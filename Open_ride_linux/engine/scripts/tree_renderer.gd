@@ -43,6 +43,9 @@ var _tree_sway := false
 var _tiles: Dictionary = {}
 var _active_tree_count := 0
 var _budget := 20000
+## Temps des étapes du dernier `prepare_tile`, en ms (lot O1) : placement (détail de
+## `placer.last_profile`), semis hors zones OSM, bâtiments, répartition en cases.
+var last_profile := {}
 
 
 func _init() -> void:
@@ -113,10 +116,11 @@ func get_active_tree_count() -> int:
 ## Renvoie un dictionnaire avec la clé de tuile et les listes d'arbres par case [0..15].
 func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary,
 		density_factor: float, areas: Array = [], buildings: Array = []) -> Dictionary:
-	var tile_theme := theme.duplicate(true)
+	var t_start := Time.get_ticks_usec()
+	# Seule la section `vegetation` change : copie superficielle du thème, copie de cette section.
+	var tile_theme := theme.duplicate()
 	var veg = tile_theme.get("vegetation", {})
-	if typeof(veg) != TYPE_DICTIONARY:
-		veg = {}
+	veg = veg.duplicate(true) if typeof(veg) == TYPE_DICTIONARY else {}
 	var base_dens = veg.get("max_density_per_ha", VegetationPlacer.DEFAULT_MAX_DENSITY)
 	veg["max_density_per_ha"] = float(base_dens) * clampf(density_factor, 0.0, 1.0)
 	tile_theme["vegetation"] = veg
@@ -151,25 +155,43 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 				return d + (1.0 - u) * (c - d) + (1.0 - v) * (b - d)
 
 	# 1. Placement selon zones OSM ou bruit de base (Lots E3 & E4)
+	var t_place := Time.get_ticks_usec()
 	var trees: PackedVector4Array = placer.place_tile(tile_x, tile_z, 1000.0, height_fn, route, tile_theme, areas)
+	var place_profile: Dictionary = placer.last_profile
 
 	# 2. Si des zones OSM existent, semer également au hasard hors des zones (Lot E4 §4.3)
+	var t_region := Time.get_ticks_usec()
 	if not areas.is_empty():
 		var noise_trees: PackedVector4Array = placer.place_tile(tile_x, tile_z, 1000.0, height_fn, route, tile_theme, [])
 		var treeline: float = float(veg.get("treeline_m", VegetationPlacer.DEFAULT_TREELINE_M))
+		# Anneaux extérieurs des zones convertis une fois par tuile, avec leur boîte englobante
+		# (un point hors de la boîte est hors de l'anneau).
+		var rings: Array[PackedVector2Array] = []
+		var boxes := PackedFloat64Array()   # (x min, z min, x max, z max) par anneau
+		for area in areas:
+			if typeof(area) == TYPE_DICTIONARY:
+				var outer = area.get("outer", [])
+				if typeof(outer) == TYPE_ARRAY and outer.size() >= 3:
+					var ring := VegetationPlacer._packed_ring(outer)
+					var lo := Vector2(INF, INF)
+					var hi := Vector2(-INF, -INF)
+					for q in ring:
+						lo = lo.min(q)
+						hi = hi.max(q)
+					rings.append(ring)
+					boxes.append_array([lo.x, lo.y, hi.x, hi.y])
 		for tree in noise_trees:
 			var px := tree.x
 			var pz := tree.z
 			var y := tree.y
 			# Vérifier que l'arbre n'est pas dans une zone OSM
 			var inside_osm := false
-			for area in areas:
-				if typeof(area) == TYPE_DICTIONARY:
-					var outer = area.get("outer", [])
-					if typeof(outer) == TYPE_ARRAY and outer.size() >= 3:
-						if VegetationPlacer._in_ring(px, pz, VegetationPlacer._packed_ring(outer)):
-							inside_osm = true
-							break
+			for r in range(rings.size()):
+				if px < boxes[4 * r] or pz < boxes[4 * r + 1] or px > boxes[4 * r + 2] or pz > boxes[4 * r + 3]:
+					continue
+				if VegetationPlacer._in_ring(px, pz, rings[r]):
+					inside_osm = true
+					break
 			if inside_osm:
 				continue
 			# Facteur d'altitude : s'éclaircit sous la limite des arbres
@@ -181,8 +203,10 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 
 	# 3. Aucun arbre dans un bâtiment OSM ni à moins de BUILDING_CLEARANCE_M de ses murs
 	#    (défaut vu au banc simulé le 25 octobre : sapins plantés dans les maisons des villages).
+	var t_buildings := Time.get_ticks_usec()
 	if not buildings.is_empty():
 		trees = exclude_buildings(trees, buildings)
+	var t_cells := Time.get_ticks_usec()
 
 	# Répartition des arbres dans les 16 cases de 250 m x 250 m
 	var tile_origin_x := float(tile_x * 1000)
@@ -197,6 +221,16 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		var cell_idx := cz * CELLS_PER_TILE + cx
 		cells[cell_idx].append(tree)
 
+	var t_end := Time.get_ticks_usec()
+	last_profile = {
+		"total_ms": (t_end - t_start) / 1000.0,
+		"placement_ms": (t_region - t_place) / 1000.0,
+		"placement": place_profile,
+		"hors_zones_ms": (t_buildings - t_region) / 1000.0,
+		"batiments_ms": (t_cells - t_buildings) / 1000.0,
+		"cases_ms": (t_end - t_cells) / 1000.0,
+		"arbres": trees.size(),
+	}
 	return {
 		"tile_x": tile_x,
 		"tile_z": tile_z,

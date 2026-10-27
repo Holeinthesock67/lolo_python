@@ -1,14 +1,23 @@
-"""Configuration commune des tests du core.
+"""Isolation de la suite : HOME temporaire, pas de fenêtre, garde-fou d'écriture, une suite à la fois.
 
-Aucune fenêtre ni notification sur le bureau de la personne qui lance les tests : sans cela, les
-faux échecs simulés (par exemple « Mise à jour refusée » de `scripts/update.sh`) s'affichaient
-comme de vrais messages d'OpenRide.
+Doit rester le premier code exécuté : les chemins `~/OpenRide/...` d'openride_core sont calculés
+à l'import (`scripts/isolation_tests.py`).
 """
 
-from __future__ import annotations
+import sys
+from pathlib import Path
 
-import os
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from isolation_tests import brancher_pytest  # noqa: E402
 
-os.environ["OPENRIDE_NO_GUI"] = "1"
-for _var in ("DISPLAY", "WAYLAND_DISPLAY", "DBUS_SESSION_BUS_ADDRESS"):
-    os.environ.pop(_var, None)
+globals().update(brancher_pytest())
+
+import pytest  # noqa: E402
+
+
+@pytest.fixture(autouse=True)
+def records_and_powerups_in_tmp(tmp_path, monkeypatch):
+    """Série T : `records.json` et `powerups.toml` de la séance dans le dossier temporaire du test."""
+    from openride_core import powerups, records
+    monkeypatch.setattr(records, "RECORDS_FILE", tmp_path / "OpenRide" / "records.json")
+    monkeypatch.setattr(powerups, "POWERUPS_FILE", tmp_path / "OpenRide" / "powerups.toml")

@@ -30,6 +30,13 @@ extends RefCounted
 ## « Importer un fichier » (lot N16, traités par menu_flow.gd).
 ## Écrans ajoutés par add_screen() (bilan de fin du lot N4) : valider un élément renvoie
 ## {"action": "item", "screen": écran, "id": élément}, à traiter par l'appelant (menu_flow.gd, lot N6).
+##
+## Plans et test de FTP (lot O12) : l'accueil gagne « Séance du jour » ou « Choisir un plan » (libellé
+## donné par set_plan_home()) et « Test de FTP » ; les deux renvoient une action « item » de l'accueil.
+## prepare_start() prépare une séance démarrée avec des arguments de `start` (plan_day, ftp_test) :
+## écran Prêt, en passant par les parcours sans monde choisi ; choisir un entraînement ou la session
+## libre l'annule. La liste des parcours finit par le tri et le filtre par étiquette (SORT_ROUTES_ID,
+## FILTER_ROUTES_ID), traités par menu_flow.gd.
 
 const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG", "A_SHORT", "A_LONG", "Y_SHORT",
 	"LEFT_SHORT", "RIGHT_SHORT"]
@@ -48,11 +55,14 @@ const NO_WORKOUT_ID := "_sim"
 ## Modes de séance de l'accueil, dans l'ordre d'affichage : {mode: libellé}. Filtrés par `modes`, la
 ## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
-const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG"}
+const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 const IMPORT_WORKOUT_ID := "_import"
+## Fin de la liste des parcours (bibliothèque, lot O12) : tri et filtre par étiquette, en cycle.
+const SORT_ROUTES_ID := "_sort"
+const FILTER_ROUTES_ID := "_filter"
 
 var _screens: Dictionary = {}
 var _stack: Array[String] = []      # écrans précédents, pour le retour
@@ -73,6 +83,12 @@ var sim_session := false
 var _routes_return := HOME
 ## Modes annoncés par le core (set_modes) ; les modes inconnus de HOME_MODES sont ignorés.
 var modes: Array = DEFAULT_MODES.duplicate()
+## Entrée des plans de l'accueil (lot O12) : « Séance du jour » avec un plan actif, sinon « Choisir un plan ».
+var plan_label := "Choisir un plan"
+var plan_detail := ""
+## Séance préparée par prepare_start() : nom affiché sur l'écran Prêt et arguments de `start` ({} sinon).
+var start_name := ""
+var start_args: Dictionary = {}
 
 
 func _init() -> void:
@@ -101,15 +117,18 @@ func _refresh_home() -> void:
 	for m in HOME_MODES:
 		if m in modes:
 			items.append(_item(m, HOME_MODES[m]))
-	items.append_array([_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée"),
+	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
+		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée"),
 		_item("settings", "Réglages"), _item("quit", "Quitter")])
 	_screens[HOME]["items"] = items
 	_screens[READY]["items"] = [
 		_item("start", "Démarrer"),
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
 		_item("change_route", "Changer de parcours")]
-	_screens[READY]["title"] = ("Prêt : session ERG" if mode == "erg" else "Prêt : session libre") \
-		+ ("" if world_name == "" else " — " + world_name)
+	var what := "session ERG" if mode == "erg" else "session libre"
+	if start_name != "":
+		what = start_name
+	_screens[READY]["title"] = "Prêt : " + what + ("" if world_name == "" else " — " + world_name)
 
 
 ## Parcours choisi (ou connu par la trame d'état) ; met à jour l'accueil et l'écran Prêt.
@@ -123,6 +142,33 @@ func set_world(id: String, name: String) -> void:
 func set_modes(list) -> void:
 	modes = list.duplicate() if list is Array else DEFAULT_MODES.duplicate()
 	_refresh_home()
+
+
+## Entrée des plans de l'accueil (lot O12) : libellé et détail (nom, durée, TSS de la séance du jour).
+func set_plan_home(label: String, detail := "") -> void:
+	plan_label = label
+	plan_detail = detail
+	_refresh_home()
+
+
+## Prépare une séance démarrée avec `args` (`start` : plan_day ou ftp_test, lot O12) et ouvre l'écran
+## Prêt, ou les parcours d'abord sans monde choisi ; `name` s'affiche dans le titre de l'écran Prêt.
+func prepare_start(name: String, args: Dictionary) -> Dictionary:
+	start_name = name
+	start_args = args.duplicate()
+	mode = "erg"
+	_refresh_home()
+	if world_id == "":
+		_routes_return = READY
+		_open(ROUTES)
+	else:
+		_open(READY)
+	return state()
+
+
+func _clear_start() -> void:
+	start_name = ""
+	start_args = {}
 
 
 ## Difficulté de la séance affichée sur l'écran de pause (curseur du lot O4, commande set_difficulty).
@@ -172,6 +218,8 @@ func reset() -> void:
 	_stack.clear()
 	_focus_stack.clear()
 	_pending = {}
+	_clear_start()
+	_refresh_home()
 	_open(HOME, false)
 
 
@@ -426,6 +474,7 @@ func _validate() -> Dictionary:
 					_open(ROUTES)
 				"ride":
 					mode = "free"
+					_clear_start()
 					_refresh_home()
 					if world_id == "":
 						_routes_return = READY
@@ -436,6 +485,8 @@ func _validate() -> Dictionary:
 				"erg":
 					_workouts_return = HOME
 					_open(WORKOUTS)
+				"open_world":
+					return {"action": "open_world_menu"}
 				"sim":
 					if sim_session:
 						_confirm("Revenir au matériel réel ? OpenRide redémarre", {"action": "relaunch"})
@@ -445,7 +496,11 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
+				"plan", "ftp":
+					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
+			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID]:
+				return {"action": "item", "screen": ROUTES, "id": id}
 			var label := id
 			for it in _items():
 				if it["id"] == id:
@@ -461,6 +516,7 @@ func _validate() -> Dictionary:
 				return {"action": "item", "screen": WORKOUTS, "id": id}
 			var workout = null if id == NO_WORKOUT_ID else id
 			mode = "free" if workout == null else "erg"
+			_clear_start()
 			_refresh_home()
 			if _workouts_return == READY:
 				_back()
@@ -473,7 +529,9 @@ func _validate() -> Dictionary:
 		READY:
 			match id:
 				"start":
-					return {"action": "start"}
+					if start_args.is_empty():
+						return {"action": "start"}
+					return {"action": "start", "args": start_args.duplicate()}
 				"workout":
 					_workouts_return = READY
 					_open(WORKOUTS)

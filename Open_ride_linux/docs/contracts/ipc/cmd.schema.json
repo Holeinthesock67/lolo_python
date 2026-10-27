@@ -42,7 +42,23 @@
         "set_setting",
         "list_imports",
         "create_workout",
-        "import_workout"
+        "import_workout",
+        "start_run",
+        "rogue_resync",
+        "list_garage",
+        "equip",
+        "buy",
+        "set_avatar",
+        "list_plans",
+        "start_plan",
+        "stop_plan",
+        "accept_ftp",
+        "start_open_world",
+        "choose_branch",
+        "world_search",
+        "world_map",
+        "world_regions",
+        "world_pin"
       ]
     },
     "args": {

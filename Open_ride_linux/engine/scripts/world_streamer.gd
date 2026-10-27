@@ -6,13 +6,15 @@ extends Node3D
 ## - ruban : tronçons k dont l'intervalle [k × 1 000, (k + 1) × 1 000] touche (au sens strict)
 ##   [s − chunks_behind × 1 000 ; s + chunks_ahead × 1 000 + v × 10 s] ;
 ## - tuiles proches dont le carré passe à moins de 1 500 m de la caméra ou du point visé v × 10 s
-##   plus loin ; tuiles lointaines présentes à moins de 12 km ;
+##   plus loin ; tuiles lointaines présentes à moins de far_radius_m (fin du brouillard du préréglage
+##   plus une tuile lointaine, au plus FAR_RADIUS_M = 12 km, lot Y1) ;
 ## - tuile proche manquante : rien si une tuile lointaine couvre l'endroit (elle est dessinée dessous),
 ##   sinon tuile plate à l'altitude de la route la plus proche (format §10).
 ## Les tableaux de sommets se calculent dans WorkerThreadPool ; les ArrayMesh et MeshInstance3D se
 ## créent sur le fil principal, au plus MAX_NEW_PER_FRAME par image. Ce qui sort de la fenêtre est
 ## libéré tout de suite (free) ; un changement de parcours vide tout (set_world).
-## Sans couche terrain : sol plat 5 m sous l'altitude minimale de la route, qui suit la caméra.
+## Sans couche terrain : sol plat de 2 × far_radius_m de côté, 5 m sous l'altitude minimale de la route,
+## qui suit la caméra.
 ## Pas de class_name (charger par preload).
 
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -38,6 +40,12 @@ var chunks_ahead: int = 3
 var chunks_behind: int = 1
 var vegetation_density_factor: float = 0.3
 var visual_grade_scale: float = 1.0
+## Rayon des tuiles lointaines et demi-côté du sol plat, réglé par render_quality.gd (far_radius_for).
+var far_radius_m: float = FAR_RADIUS_M:
+	set(value):
+		far_radius_m = value
+		if _ground != null and _ground.mesh is PlaneMesh:
+			(_ground.mesh as PlaneMesh).size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 var tree_renderer: Node3D = null
 var osm_streamer: Node3D = null
 
@@ -63,6 +71,10 @@ var _ground_color: Color = FLAT_GROUND_COLOR
 var _ground: MeshInstance3D = null
 var _theme_dict: Dictionary = {}
 var _manifest: Variant = null
+## Monde vivant (lot W10) : amorces des branches non suivies des carrefours, clé "<carrefour>:<branche>" -> MeshInstance3D.
+const PREVIEW_FADE_M := 100.0
+var _previews: Dictionary = {}
+var _preview_material: Material = null
 
 ## Mesures pour le rapport de performance : clé de type -> [nombre, µs cumulées].
 var build_stats: Dictionary = {}
@@ -141,10 +153,91 @@ func _get_osm_items(t: Vector2i, layer: String) -> Array:
 		var p1: Vector3 = route.sample_point(s1)
 		var r_bounds := Rect2(Vector2(p0.x, p0.z), Vector2.ZERO).expand(Vector2(p1.x, p1.z)).grow(100.0)
 		if r_bounds.intersects(tile_rect):
-			var res := OsmLayers.load_chunk(world_dir, layer, k)
+			var res := OsmLayers.load_chunk(world_dir, layer, k, route)
 			if res.get("ok", false):
 				areas.append_array(res.get("items", []))
 	return areas
+
+
+## Monde vivant (lot W10) : nouvelle route (prolongée ou réécrite depuis la partie `from_part`) et tuiles
+## de terrain nouvellement écrites. Les tronçons de ruban touchés sont reconstruits, les autres gardés ;
+## les travaux en cours gardent l'ancienne route, qui n'est plus modifiée.
+func swap_route(new_route, from_part: int) -> void:
+	for key in _jobs.keys():
+		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
+			WorkerThreadPool.wait_for_task_completion(_jobs[key]["task"])
+			_jobs.erase(key)
+	_ready = _ready.filter(func(r): return not ((r["key"] as String).begins_with("road:")
+			and int((r["key"] as String).get_slice(":", 1)) >= from_part))
+	for key in _instances.keys():
+		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
+			_free_instance(key)
+	route = new_route
+	if has_terrain or _has_layer("terrain"):
+		var near_new := TerrainTiles.scan_index(world_dir, "near")
+		var far_new := TerrainTiles.scan_index(world_dir, "far")
+		for t in near_new:
+			if not _near_index.has(t):
+				_near_index[t] = true
+				_free_flat_tile(t)
+		for t in far_new:
+			_far_index[t] = true
+		has_terrain = not (_near_index.is_empty() and _far_index.is_empty())
+	if osm_streamer != null:
+		osm_streamer.swap_route(new_route, from_part)
+
+
+## Amorces voulues, telles que `live_world.previews(s)` les décrit : crée celles qui manquent, libère
+## les autres. Chaque amorce est un ruban de la largeur de la route dont les 100 derniers mètres se fondent.
+func set_previews(items: Array) -> void:
+	var wanted := {}
+	for it in items:
+		wanted[it["key"]] = it
+	for key in _previews.keys():
+		if not wanted.has(key):
+			_free_preview(key)
+	if route == null:
+		return
+	var alt_orig: float = route.alt_m[0] if route.n > 0 else 0.0
+	for key in wanted:
+		if _previews.has(key):
+			continue
+		var it: Dictionary = wanted[key]
+		var ys: Array = it["ys"]
+		if visual_grade_scale != 1.0:
+			ys = ys.map(func(y): return alt_orig + (float(y) - alt_orig) * visual_grade_scale)
+		var arrays := RoadBuilder.build_polyline_arrays(it["xs"], ys, it["zs"], _road_width_m, PREVIEW_FADE_M)
+		if arrays.is_empty():
+			continue
+		if _preview_material == null:
+			_preview_material = RoadBuilder.make_preview_material(_road_color)
+		var mesh := ArrayMesh.new()
+		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arrays)
+		mesh.surface_set_material(0, _preview_material)
+		var mi := MeshInstance3D.new()
+		mi.name = "preview_" + (key as String).replace(":", "_")
+		mi.mesh = mesh
+		add_child(mi)
+		_previews[key] = mi
+
+
+func preview_count() -> int:
+	return _previews.size()
+
+
+func _free_preview(key: String) -> void:
+	var mi: MeshInstance3D = _previews[key]
+	_previews.erase(key)
+	remove_child(mi)
+	mi.mesh = null
+	mi.free()
+
+
+## Une tuile « flat » provisoire est remplacée par la vraie tuile dès qu'elle existe.
+func _free_flat_tile(t: Vector2i) -> void:
+	var key := "flat:%d:%d" % [t.x, t.y]
+	if _instances.has(key):
+		_free_instance(key)
 
 
 ## Retire tout : objets de scène, travaux en cours (attendus puis ignorés), sol plat.
@@ -156,6 +249,8 @@ func clear() -> void:
 	_wanted.clear()
 	for key in _instances.keys():
 		_free_instance(key)
+	for key in _previews.keys():
+		_free_preview(key)
 	if tree_renderer != null:
 		tree_renderer.clear()
 	if osm_streamer != null:
@@ -232,11 +327,17 @@ func _far_covers(near_tile: Vector2i) -> bool:
 	return _far_index.has(TerrainTiles.tile_of("far", c.x, c.z))
 
 
-## Tuiles lointaines présentes à moins de 12 km de la caméra.
+## Rayon des tuiles lointaines pour une fin de brouillard donnée : une tuile lointaine de marge, pour
+## qu'aucune tuile n'apparaisse au bord du brouillard pendant sa construction ; plafond FAR_RADIUS_M.
+static func far_radius_for(fog_end_m: float) -> float:
+	return minf(fog_end_m + float(TerrainTiles.LEVELS["far"]["size"]), FAR_RADIUS_M)
+
+
+## Tuiles lointaines présentes à moins de far_radius_m de la caméra.
 func far_window(cam_x: float, cam_z: float) -> Array:
 	var out := []
 	for t in _far_index:
-		if _rect_distance("far", t, cam_x, cam_z) <= FAR_RADIUS_M:
+		if _rect_distance("far", t, cam_x, cam_z) <= far_radius_m:
 			out.append(t)
 	return out
 
@@ -422,6 +523,7 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	_road_width_m = float(r_params["width_m"])
 	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture") if theme_dir != "" else null
 	_road_color = r_params["color"]
+	_preview_material = null
 	_road_texture = road_tex
 	_rebuild_road_material()
 
@@ -502,7 +604,7 @@ func _make_ground() -> void:
 	if visual_grade_scale != 1.0:
 		min_alt = alt_orig + (min_alt - alt_orig) * visual_grade_scale
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(2.0 * FAR_RADIUS_M, 2.0 * FAR_RADIUS_M)
+	plane.size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = _ground_color
 	mat.roughness = 1.0

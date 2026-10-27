@@ -148,7 +148,7 @@ func _run() -> void:
 	var theme := {"weather": {"kind": "rain", "intensity": 0.6, "morning_mist": true},
 		"fauna": {"birds": 1.0, "livestock": 1.0, "deer": 1.0}, "terrain": {"snow_line_m": 2200}}
 	var env := Environment.new()
-	RenderQuality.apply_fog(env, true)
+	RenderQuality.apply_fog(env, "low", true)
 	var parts := _decor("high", true, theme, env)
 	var dec = parts[0]
 	var osm = parts[1]
@@ -209,7 +209,7 @@ func _run() -> void:
 	var dv := LivingDecor.new()
 	root.add_child(dv)
 	var fog_env := Environment.new()
-	RenderQuality.apply_fog(fog_env, true)
+	RenderQuality.apply_fog(fog_env, "low", true)
 	dv.configure("low", true, theme, fog_env)
 	dv.set_route(route)
 	dv.set_fog_base(fog_env)

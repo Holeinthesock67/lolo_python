@@ -13,7 +13,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from .journal import TIMER_EVENTS, read_journal
+from .journal import GAME_KINDS, TIMER_EVENTS, read_journal
 
 
 class ResumeError(Exception):
@@ -69,7 +69,7 @@ def load_resume_state(path: Path) -> ResumeState:
     except OSError as exc:
         raise ResumeError(f"journal illisible ({path}) : {exc}") from exc
     header = next((ln for ln in all_lines if ln.get("kind") == "header"), {})
-    lines = [ln for ln in all_lines if ln.get("kind") in ("record", "event", "device")]
+    lines = [ln for ln in all_lines if ln.get("kind") in ("record", "event", "device", *GAME_KINDS)]
     events = _timer_events(lines)
     if not events:
         raise ResumeError(f"aucune séance commencée dans {path}")

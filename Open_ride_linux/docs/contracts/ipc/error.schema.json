@@ -30,7 +30,17 @@
         "pairing_failed",
         "setting_invalid",
         "bad_args",
-        "workout_write_failed"
+        "workout_write_failed",
+        "plan_invalid",
+        "ftp_result_missing",
+        "ftp_result_doubtful",
+        "run_invalid",
+        "item_locked",
+        "not_enough_coins",
+        "avatar_invalid",
+        "branch_locked",
+        "unknown_junction",
+        "world_unavailable"
       ]
     },
     "message": {

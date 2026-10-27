@@ -25,6 +25,15 @@ signal settings_received(msg: Dictionary)
 ## comme routes) et entraînement écrit par le core (create_workout, import_workout).
 signal imports_received(items: Array, msg: Dictionary)
 signal workout_saved_received(msg: Dictionary)
+## Plans d'entraînement et suivi du plan actif (lot O12, contrat v1.3) : réponse à list_plans,
+## start_plan et stop_plan, en un seul datagramme.
+signal plans_received(msg: Dictionary)
+
+## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
+signal world_status_received(msg: Dictionary)
+## Menu du monde ouvert (lot W11) : réponses complètes (parties réunies) à `world_search`, `world_map`,
+## `world_regions` et `world_pin`. `kind` : "places", "world_map" ou "world_regions".
+signal world_menu_received(kind: String, msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
 
@@ -47,6 +56,11 @@ var test_mode := false
 
 ## Configuration reçue dans hello_ack (ftp_w, gears_total, theme) ; vide tant que le core n'a pas répondu.
 var core_config: Dictionary = {}
+## Dernier champ `open_world` reçu dans un `state` (une trame sur 30 porte `devices` et l'omet : on garde
+## le précédent, contrat §4 « Monde ouvert »). Vide hors monde ouvert.
+var open_world: Dictionary = {}
+## Dernier `world_status` reçu.
+var world_status: Dictionary = {}
 var core_version: String = ""
 ## Révision du contrat annoncée par le core (vide : core antérieur à la révision 1.3).
 var core_rev: String = ""
@@ -217,6 +231,13 @@ func _poll_incoming() -> void:
 				_on_list_part(_pending_list_imports, "imports", json_obj)
 			"workout_saved":
 				workout_saved_received.emit(json_obj)
+			"plans":
+				plans_received.emit(json_obj)
+			"world_status":
+				world_status = json_obj
+				world_status_received.emit(json_obj)
+			"places", "world_map", "world_regions":
+				_on_world_part(msg_type, json_obj)
 			"scan_results":
 				scan_results_received.emit(json_obj)
 			"settings":
@@ -243,7 +264,48 @@ func _on_state(msg: Dictionary) -> void:
 		test_log("core_returned")
 		core_returned.emit()
 	_ack_pending(int(msg.get("last_cmd_id", 0)))
+	_track_open_world(msg)
 	state_received.emit(msg)
+
+
+var _world_parts: Dictionary = {}     # type -> {rid, parts, got, done}
+
+
+## Réunit les parties d'une réponse du menu du monde ouvert ; une réponse déjà livrée (la commande est
+## renvoyée tant qu'elle n'est pas acquittée) n'est pas livrée deux fois.
+func _on_world_part(kind: String, msg: Dictionary) -> void:
+	var rid := int(msg.get("request_cmd_id", -1))
+	var parts := maxi(1, int(msg.get("parts", 1)))
+	var part := int(msg.get("part", 1))
+	if part < 1 or part > parts:
+		return
+	var slot: Dictionary = _world_parts.get(kind, {})
+	if int(slot.get("rid", -2)) != rid:
+		slot = {"rid": rid, "parts": parts, "got": {}, "done": false}
+	if slot["done"]:
+		return
+	slot["got"][part] = msg
+	_world_parts[kind] = slot
+	if slot["got"].size() < parts:
+		return
+	slot["done"] = true
+	var key := "roads" if kind == "world_map" else "items"
+	var whole: Dictionary = (slot["got"][1] as Dictionary).duplicate()
+	var all := []
+	for i in range(1, parts + 1):
+		all.append_array(slot["got"][i].get(key, []))
+	whole[key] = all
+	world_menu_received.emit(kind, whole)
+
+
+
+## Garde le dernier `open_world` tant que la séance est un monde ouvert (route `ow:<id>`) ; le vide sinon.
+func _track_open_world(msg: Dictionary) -> void:
+	var ow = msg.get("open_world", null)
+	if typeof(ow) == TYPE_DICTIONARY:
+		open_world = ow
+	elif not str(msg.get("route_id", "")).begins_with("ow:"):
+		open_world = {}
 
 
 ## Messages de test (type « _test », seulement avec --test-mode) : permettent au faux core de
@@ -323,6 +385,26 @@ func list_settings() -> int:
 
 func set_setting(key: String, value) -> int:
 	return send_command("set_setting", {"key": key, "value": value})
+
+
+## Plans d'entraînement (lot O12, contrat v1.3). Réponse : signal plans_received.
+func list_plans() -> int:
+	return send_command("list_plans", {})
+
+
+## Rend un plan actif ; `start_date` "AAAA-MM-JJ" ou null (aujourd'hui). Réponse : plans, ou error plan_invalid.
+func start_plan(plan_id: String, start_date = null) -> int:
+	return send_command("start_plan", {"id": plan_id, "start_date": start_date})
+
+
+func stop_plan() -> int:
+	return send_command("stop_plan", {})
+
+
+## Écrit la FTP du dernier test (summary.ftp_test) ; `force` pour un résultat douteux. Réponse : settings,
+## ou error (ftp_result_missing, ftp_result_doubtful, setting_invalid, busy).
+func accept_ftp(force := false) -> int:
+	return send_command("accept_ftp", {"force": force})
 
 
 ## Demande en cours : {cmd_id (dernier envoyé), cmd_ids, retries, timer, answers}. `answers` range les parties

@@ -212,7 +212,8 @@ def test_update_script_fast_forward_only(tmp_path: Path):
 
     home = tmp_path / "home"
     home.mkdir()
-    env = {**os.environ, "OPENRIDE_NO_PIP": "1", "PATH": "/usr/bin:/bin", "HOME": str(home)}
+    env = {**os.environ, "OPENRIDE_NO_PIP": "1", "PATH": "/usr/bin:/bin", "HOME": str(home),
+           "OPENRIDE_NO_GUI": "1"}
 
     def update() -> subprocess.CompletedProcess:
         return subprocess.run([BASH, str(proj / "scripts" / "update.sh")], env=env,
@@ -267,7 +268,8 @@ def _update_repo(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
     git(other, "push", "-q")
     home = tmp_path / "home"
     home.mkdir()
-    env = {**os.environ, "OPENRIDE_NO_PIP": "1", "PATH": "/usr/bin:/bin", "HOME": str(home)}
+    env = {**os.environ, "OPENRIDE_NO_PIP": "1", "PATH": "/usr/bin:/bin", "HOME": str(home),
+           "OPENRIDE_NO_GUI": "1"}
     return work, proj, env
 
 

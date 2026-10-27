@@ -228,7 +228,7 @@ def parcours_sessions(run: Run) -> None:
     if not run.start(READY, workout=True):
         return
     time.sleep(5.0)
-    run.expect("accueil", "OpenRide", "[Parcours : ", "Session libre", "Session ERG", "Session simulée")
+    run.expect("accueil", "OpenRide", "[Parcours : ", "Session libre", "Session ERG", "Choisir un plan")
     run.press("A_LONG")
     run.expect("mondes", "Parcours", "[demo")
     run.press("A_LONG")
@@ -457,4 +457,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.path.insert(0, str(REPO / "scripts"))
+    from isolation_tests import verrou_suite   # une seule suite de tests ou banc à la fois
+
+    with verrou_suite("menu_bench"):
+        code = main()
+    sys.exit(code)

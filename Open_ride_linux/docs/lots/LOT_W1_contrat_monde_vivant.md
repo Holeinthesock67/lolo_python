@@ -32,7 +32,7 @@ W0 livré et exécuté sur le PC (ses chiffres ne changent pas la forme du contr
 - **`junctions.json`** (atomique) : `revision`, liste des carrefours à moins de 3 km devant : `id` (chaîne), `s_m`, `x`, `z`, `lock_s_m` (= `s_m − 30`), `default`, `chosen`, `locked`, `branches` : `index`, `heading_deg`, `angle_deg` (relatif au cap d'arrivée, positif à droite), `road_class` (`p`, `s`, `t`, `m`, `c`, `k`, voir §4.5), `grade_pct_500m`, `dead_end`, `preview` (`x`, `y`, `z` au pas de 10 m sur 500 m, 51 points). Au plus 4 branches par carrefour (les autres sont ignorées).
 - Schémas : `live.schema.json`, `route_part.schema.json`, `junctions.schema.json` dans `docs/contracts/world/` ; ajout de `live`, `origin_kind` et `grid` à `manifest.schema.json`.
 
-### 4.3 IPC (révision 1.5 provisoire, ajouts compatibles)
+### 4.3 IPC (révision 1.5, ajouts compatibles)
 
 | Ajout | Forme |
 | --- | --- |
@@ -41,13 +41,15 @@ W0 livré et exécuté sur le PC (ses chiffres ne changent pas la forme du contr
 | Commandes du menu | `world_search {query}` → message `places` ; `world_map {lat, lon, radius_m}` → message `world_map` ; `world_regions {}` → message `world_regions` ; `world_pin {region_id, pinned}` |
 | Messages du menu | `places`, `world_map`, `world_regions` : mêmes règles que `routes` (`request_cmd_id`, parties de 60 000 octets au plus) |
 | Message `world_status` | `{phase: "dem" \| "osm" \| "tiles" \| "generate" \| "ready" \| "error", done_bytes, total_bytes ou null, squares_ready, squares_needed, message}`, sur changement et au plus 4 fois par seconde |
-| Champ `open_world` de `state` | Facultatif, présent seulement en monde ouvert : `rev`, `next` (prochain carrefour ou `null` : `id`, `d_m`, `default`, `chosen`, `locked`, `b` = au plus 4 triplets `[angle_deg entier, road_class, grade_pct à 0,1 près]`), `data` (`cached`, `downloading`, `offline`, `missing`) ; trame la plus chargée sous la limite de 4 096 octets de `state` (révision 1.3) |
+| Champ `open_world` de `state` | Facultatif, présent seulement en monde ouvert et absent des trames qui portent `devices` (une sur 30, l'engine garde le dernier reçu) : `rev`, `next` (prochain carrefour ou `null` : `id`, `d_m`, `default`, `chosen`, `locked`, `b` = au plus 4 triplets `[angle_deg entier, road_class, grade_pct à 0,1 près]`), `data` (`cached`, `downloading`, `offline`, `missing`) ; trame la plus chargée sous la limite de 4 096 octets de `state` (révision 1.3), `devices` compris |
 | `hello_ack.config` | `open_world_dir` (dossier des séances, pour que l'engine trouve `ow:<id>`) |
 | Événements `input` | Aucun nouveau : `LEFT_SHORT`, `RIGHT_SHORT` (flèches du boîtier gauche, W-Q1), `A_SHORT` et `A_LONG` existent depuis la révision 1.3 |
 | `pause_reason` | `world_data` : plus de route connue devant (plan §3.6) |
 | Code d'erreur | `world_unavailable` : départ hors cache sans réseau |
 
-Choix au carrefour (W-Q1) : flèche gauche ou droite → branche voisine dans le sens de l'angle ; `A_SHORT` → branche suivante, en boucle ; `A_LONG` → valider la branche affichée tout de suite (plan de boutons, spécification générale §7.1) ; clavier ← et → dans l'engine → `choose_branch` directement ; sans appui, la branche par défaut.
+Choix au carrefour (W-Q1) : flèche gauche ou droite → branche voisine dans le sens de l'angle ; `A_SHORT` → branche suivante, en boucle ; `A_LONG` → valider la branche affichée tout de suite (plan de boutons, spécification générale §7.1) ; clavier ← et → dans l'engine → `choose_branch` directement ; sans appui, la branche par défaut. Tant que le lot Q6 (boîtier gauche muet après 35 à 60 s) n'est pas réglé, `A_SHORT` et le clavier sont les moyens principaux, les flèches un complément (décision D8 de l'audit IPC du 26 octobre).
+
+Décisions de l'audit IPC du 26 octobre (rapport de la PR #288), appliquées au rebase sur les révisions 1.3 et 1.4 : `"open_world"` s'ajoute à la liste `hello_ack.config.modes` quand le core sait lancer le monde ouvert (D3) ; la limite de la trame `state` est de 4 096 octets depuis la révision 1.3 (D1), et le test de taille de W1 vérifie la trame la plus chargée, `devices` compris, sous cette limite.
 
 ### 4.4 Dialogue core ↔ générateur (`docs/contracts/worldgen_v1.md`, nouveau)
 
@@ -60,7 +62,7 @@ Choix au carrefour (W-Q1) : flèche gauche ou droite → branche voisine dans le
 ### 4.5 Classes de route et configuration
 
 - `road_class` : `p` (primary), `s` (secondary), `t` (tertiary), `m` (unclassified, residential, living_street, road, service hors parkings et allées privées), `c` (cycleway, path cyclable revêtu), `k` (track revêtue). Exclus : motorway, trunk et leurs bretelles, toute voie non revêtue (W-Q2), `access` ou `bicycle` à `no` ou `private`.
-- Section `[open_world]` de `config.toml` : `cache_dir` (`~/OpenRide/Cache/monde`), `cache_max_gb` (5), `horizon_m` (3000), `offer_m` (300), `lock_m` (30), `preview_m` (500), `network` (vrai), `prefetch_history` (vrai), `prefetch_radius_km` (10), `recenter_m` (10000). Validation dans `config.py` (types et bornes) par le premier lot qui la lit (W2).
+- Section `[open_world]` de `config.toml` (décrite dans `worldgen_v1.md` §6) : `cache_dir` (`~/OpenRide/Cache/monde`), `cache_max_gb` (5), `horizon_m` (3000), `offer_m` (300), `lock_m` (30), `preview_m` (500), `network` (vrai), `prefetch_history` (vrai), `prefetch_radius_km` (10), `recenter_m` (10000). Validation dans `config.py` (types et bornes) par le premier lot qui la lit (W2).
 
 ### 4.6 Plan
 
@@ -68,7 +70,7 @@ Reporter dans `PLAN_SERIE_W.md` §3 les chiffres mesurés par W0 et, au §5, un 
 
 ## 5. Fichiers concernés
 
-- **Modifiés :** `docs/contracts/world_format_v1.md`, `docs/contracts/ipc_v1.md`, `docs/contracts/ipc/state.schema.json`, `cmd.schema.json`, `input.schema.json`, `hello_ack.schema.json`, `error.schema.json`, `docs/contracts/world/manifest.schema.json`, `docs/2.0/PLAN_SERIE_W.md`, `docs/SRS_v1.1.md` §11 (section `[open_world]`).
+- **Modifiés :** `docs/contracts/world_format_v1.md`, `docs/contracts/ipc_v1.md`, `docs/contracts/ipc/state.schema.json`, `cmd.schema.json`, `input.schema.json`, `hello_ack.schema.json`, `error.schema.json`, `docs/contracts/world/manifest.schema.json`, `docs/2.0/PLAN_SERIE_W.md`. La section `[open_world]` est décrite dans `worldgen_v1.md` §6 ; elle entre dans la SRS §11 avec son code (W2), car le test de cohérence compare l'exemple de la SRS à `Config`.
 - **Nouveaux :** `docs/contracts/worldgen_v1.md`, `docs/contracts/ipc/world_status.schema.json`, `places.schema.json`, `world_map.schema.json`, `world_regions.schema.json`, `docs/contracts/world/live.schema.json`, `route_part.schema.json`, `junctions.schema.json`, trames d'exemple, `core/tests/test_contract_open_world.py` (validation des exemples et taille de la trame la plus chargée).
 - **Interdits :** tout code de production.
 
@@ -79,7 +81,7 @@ Celles du §4, et elles seules : ajouts compatibles (`v` reste 1, le majeur du f
 ## 7. Critères d'acceptation
 
 1. Chaque exemple du contrat est valide pour son schéma ; un `state` sans `open_world` reste valide (lecteur v1 inchangé).
-2. Trame `state` la plus chargée (ERG, `devices`, 5 bots, `open_world` à 4 branches, champs des séries P, R, T publiés à ce jour) sous 1 400 octets, vérifiée par test.
+2. Trames `state` les plus chargées (ERG, 5 bots et `open_world` à 4 branches ; ERG, 5 bots et `devices`) sous 1 400 octets, vérifiées par test.
 3. Exemple de `junctions.json` à 4 branches de 51 points : moins de 20 Ko.
 4. Journal des changements à jour dans les trois contrats ; `pytest` passe dans `core/` et `compiler/`.
 5. Le propriétaire a validé la numérotation et la répartition des rôles (§4.1).

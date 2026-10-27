@@ -146,7 +146,7 @@ Le demi-tour sur la route et le réglage des bots sont reportés à la 1.x, dans
 
 ### 4.5 Navigation dans les menus
 
-Hors séance, le core transmet les événements du Click à l'engine, qui pilote le menu selon la spécification générale §7.1 : ± courts pour passer à l'élément suivant ou précédent, ± longs pour sauter de cinq éléments, A court pour l'élément suivant, A long pour valider, Y pour revenir à l'écran précédent ; Z ne fait rien dans un menu. Ce plan remplace l'ancien (+ long pour valider, − long pour revenir), à reporter par la PR #287 avant sa fusion. Le clavier double chaque bouton, touche pour touche (tableau du clavier de la spécification générale §7.1, lot O17).
+Hors séance, le core transmet les événements du Click à l'engine, qui pilote le menu selon la spécification générale §7.1 : ± courts pour passer à l'élément suivant ou précédent, ± longs pour sauter de cinq éléments, A court pour l'élément suivant, A long pour valider, Y pour revenir à l'écran précédent ; Z ne fait rien dans un menu. Ce plan remplace l'ancien (+ long pour valider, − long pour revenir) depuis la PR #287 (27 octobre). Le clavier double chaque bouton, touche pour touche (tableau du clavier de la spécification générale §7.1, lot O17).
 
 ## 5. Physique
 
@@ -396,6 +396,17 @@ port_commands = 5006
 [engine]
 godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide : ~/Applications/godot)
 
+[open_world]         # monde ouvert de la 2.0 (série W, docs/contracts/worldgen_v1.md §6)
+cache_dir = "~/OpenRide/Cache/monde"
+cache_max_gb = 5.0
+horizon_m = 3000.0   # route engagée devant le cycliste
+offer_m = 300.0      # carrefour proposé à cette distance
+lock_m = 30.0        # choix verrouillé à cette distance du carrefour
+preview_m = 500.0    # amorce calculée pour chaque branche
+recenter_m = 10000.0
+network = true       # false : cache seulement
+prefetch_history = true
+prefetch_radius_km = 10.0
 [wind]
 mode = "off"                 # "off" (défaut), "fixed", "gusty" ou "theme" (vent du thème 1.2)
 speed_kmh = 0                # 0 à 60
@@ -404,11 +415,31 @@ gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme"
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
+[powerups]
+mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
+[rogue]
+w_prime_j = 20000.0          # réserve anaérobie W' du mode Cyber-Rogue, 5 000 à 60 000 J (lot R2)
+cp_w = 0.0                   # puissance critique, 0 à 1 000 W ; 0 : la FTP
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
 
 La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
+
+La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
+
+**Sections prévues pour la 2.0.** Les clés des sections `[rogue]` et `[avatar]` sont fixées par la révision 1.4 du contrat IPC (lot T1) ; elles rejoignent l'exemple ci-dessus avec les lots qui les lisent (`[rogue] w_prime_j` et `cp_w` depuis R2) ; le core les transmet à l'engine dans `hello_ack.config.rogue` et `hello_ack.config.progression.avatar` :
+
+| Section et clé | Défaut | Bornes | Lot qui la lit |
+| --- | --- | --- | --- |
+| `[rogue] w_prime_j` | 20 000 (J) | 5 000 à 60 000 | R2 |
+| `[rogue] cp_w` | 0 (0 : la FTP) | 0 à 1 000 | R2 |
+| `[rogue] grade_rate_up_pct_per_s` | 8,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
+| `[rogue] grade_rate_down_pct_per_s` | 12,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
+| `[avatar] standing_grade_pct` | 8 (pente, %) | fixées par V6 | V6 |
+| `[avatar] standing_power_pct` | 150 (% de la FTP) | fixées par V6 | V6 |
+
+Le reste de l'avatar (taille, silhouette, couleurs, numéro) est dans `~/OpenRide/profile.json` (lot V4), réglé au Click par `set_avatar`.
 
 **Arborescence**
 
@@ -425,6 +456,7 @@ La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.
 ~/.local/share/openride/routes/<nom>.world/   parcours compilés (dossier)
 ~/.cache/openride/dem/                        tuiles d'altitude brutes
 ~/.cache/openride/osm/                        réponses OpenStreetMap brutes
+~/OpenRide/Cache/monde/                       monde ouvert (2.0) : cartes brutes, carrés générés, séances (plafond 5 Go)
 ```
 
 Le `.world` est désormais un dossier, et non un fichier unique comme dans la v1.0.

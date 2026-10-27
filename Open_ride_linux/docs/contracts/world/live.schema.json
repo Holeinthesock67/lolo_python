@@ -1,0 +1,96 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldLive",
+  "description": "État courant d'un monde vivant (§13), réécrit de façon atomique à chaque révision.",
+  "type": "object",
+  "required": [
+    "version",
+    "revision",
+    "route",
+    "tiles",
+    "layer_tiles",
+    "status"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\."
+    },
+    "revision": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "route": {
+      "type": "object",
+      "required": [
+        "parts",
+        "length_m",
+        "changed_from_part"
+      ],
+      "properties": {
+        "parts": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "length_m": {
+          "type": "number",
+          "exclusiveMinimum": 0
+        },
+        "changed_from_part": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "tiles": {
+      "type": "object",
+      "required": [
+        "near",
+        "far"
+      ],
+      "properties": {
+        "near": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "integer"
+            }
+          }
+        },
+        "far": {
+          "type": "array",
+          "items": {
+            "type": "array",
+            "minItems": 2,
+            "maxItems": 2,
+            "items": {
+              "type": "integer"
+            }
+          }
+        }
+      }
+    },
+    "layer_tiles": {
+      "type": "array",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "items": {
+          "type": "integer"
+        }
+      }
+    },
+    "status": {
+      "enum": [
+        "ok",
+        "downloading",
+        "offline",
+        "missing"
+      ]
+    }
+  }
+}

@@ -1,0 +1,116 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldRoutePart",
+  "description": "Partie de 1 km de la route d'un monde vivant (§13) : colonnes de route.json et s0_m.",
+  "type": "object",
+  "required": [
+    "version",
+    "ds_m",
+    "n",
+    "length_m",
+    "type",
+    "lat",
+    "lon",
+    "alt_m",
+    "x",
+    "z",
+    "grade_pct",
+    "heading_deg",
+    "s0_m"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\."
+    },
+    "ds_m": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "n": {
+      "type": "integer",
+      "minimum": 2
+    },
+    "length_m": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "type": {
+      "type": "string",
+      "enum": [
+        "open",
+        "loop",
+        "out_and_back"
+      ]
+    },
+    "lat": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number",
+        "minimum": -90,
+        "maximum": 90
+      }
+    },
+    "lon": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number",
+        "minimum": -180,
+        "maximum": 180
+      }
+    },
+    "alt_m": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "alt_raw_m": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "x": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "z": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "grade_pct": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number",
+        "minimum": -25,
+        "maximum": 25
+      }
+    },
+    "heading_deg": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "type": "number",
+        "minimum": 0,
+        "exclusiveMaximum": 360
+      }
+    },
+    "s0_m": {
+      "type": "number",
+      "minimum": 0,
+      "multipleOf": 1000
+    }
+  }
+}

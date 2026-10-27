@@ -213,6 +213,34 @@
               }
             }
           }
+        },
+        "segments": {
+          "type": "object",
+          "description": "Facultative, format 1.3 (lot T1) : segments.json, sprints et montées.",
+          "required": [
+            "present"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": "string"
+            },
+            "file": {
+              "type": "string",
+              "const": "segments.json"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "manual_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Segments déclarés dans <parcours>.segments.toml."
+            }
+          }
         }
       }
     },
@@ -336,6 +364,42 @@
             "type": "string",
             "pattern": "^[a-z0-9][a-z0-9-]{0,29}$"
           }
+        }
+      }
+    },
+    "live": {
+      "type": "boolean",
+      "description": "Monde vivant (monde ouvert, §13) : la route et les couches s'allongent pendant la séance."
+    },
+    "origin_kind": {
+      "enum": [
+        "route_start",
+        "utm_grid"
+      ],
+      "description": "« utm_grid » : origine au coin de la grille de 5 km de la zone UTM (§13). Absent : premier point de la route."
+    },
+    "grid": {
+      "type": "object",
+      "required": [
+        "near_m",
+        "far_m",
+        "e0",
+        "n0"
+      ],
+      "properties": {
+        "near_m": {
+          "const": 1000
+        },
+        "far_m": {
+          "const": 5000
+        },
+        "e0": {
+          "type": "number",
+          "multipleOf": 5000
+        },
+        "n0": {
+          "type": "number",
+          "multipleOf": 5000
         }
       }
     }

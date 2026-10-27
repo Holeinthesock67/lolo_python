@@ -107,6 +107,20 @@ func set_world(new_route, new_world_dir: String, manifest: Dictionary = {}, them
 	layers_present = OsmLayers.layers_present(manifest)
 
 
+## Monde vivant (lot W10) : nouvelle route après une révision ; les tronçons d'indice >= from_k sont
+## reconstruits, les autres gardés (leurs travaux en cours gardent l'ancienne route, qui ne change plus).
+func swap_route(new_route, from_k: int) -> void:
+	for k in _jobs.keys():
+		if k >= from_k:
+			WorkerThreadPool.wait_for_task_completion(_jobs[k]["task"])
+			_jobs.erase(k)
+	route = new_route
+	_ready_chunks = _ready_chunks.filter(func(item): return item["k"] < from_k)
+	for k in _chunk_instances.keys():
+		if k >= from_k:
+			_free_chunk(k)
+
+
 func clear() -> void:
 	_generation += 1
 	_wait_all_jobs()
@@ -202,7 +216,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 	var w_items := {"lines": [], "areas": []}
 	# 1. Bâtiments
 	if layers.has("buildings"):
-		var b_res := OsmLayers.load_chunk(w_dir, "buildings", k)
+		var b_res := OsmLayers.load_chunk(w_dir, "buildings", k, job.get("route"))
 		if b_res.get("ok", false):
 			var items: Array = b_res.get("items", [])
 			b_items = items
@@ -225,7 +239,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 
 	# 2. Eau (lines et areas)
 	if layers.has("water"):
-		var w_res := OsmLayers.load_chunk(w_dir, "water", k)
+		var w_res := OsmLayers.load_chunk(w_dir, "water", k, job.get("route"))
 		if w_res.get("ok", false):
 			var lines: Array = w_res.get("lines", [])
 			w_items = {"lines": lines, "areas": w_res.get("areas", [])}
@@ -281,7 +295,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 	# Forêts (voisinage sonore et animaux : les arbres sont dessinés par tree_renderer.gd)
 	var veg_items := []
 	if layers.has("vegetation"):
-		var v_res := OsmLayers.load_chunk(w_dir, "vegetation", k)
+		var v_res := OsmLayers.load_chunk(w_dir, "vegetation", k, job.get("route"))
 		if v_res.get("ok", false):
 			veg_items = v_res.get("items", [])
 			for a in veg_items:
@@ -290,7 +304,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 
 	# 3. POI (pour sound_player)
 	if layers.has("poi"):
-		var poi_res := OsmLayers.load_chunk(w_dir, "poi", k)
+		var poi_res := OsmLayers.load_chunk(w_dir, "poi", k, job.get("route"))
 		if poi_res.get("ok", false):
 			pois = poi_res.get("items", [])
 

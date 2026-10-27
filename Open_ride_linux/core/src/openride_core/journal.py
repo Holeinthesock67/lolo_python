@@ -24,6 +24,11 @@ Sortes de lignes :
   à la fin d'une séance de test de FTP, juste avant l'événement `stop` (lot O10, voir
   `ftp_test.py`) ; `ftp_w`, `ref_power_w` et `step_w` peuvent valoir `null`. Ligne facultative :
   les journaux sans test restent lus comme avant, et les lectures qui ne la connaissent pas l'ignorent.
+- `{"kind": "junction", "ts": ..., "id": ..., "s_m": ..., "branch": ..., "of": n, "how": "default" |
+  "click" | "key" | "validated", "road_class": "p" | "s" | "t" | "m" | "c" | "k"}` : en monde ouvert
+  (lot W9), la branche prise à un carrefour, écrite au verrouillage ; `how` dit si c'est la branche par
+  défaut du navigateur, un choix au Click, au clavier ou validé tout de suite. Les lectures qui ne
+  connaissent pas cette sorte l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """
 
@@ -79,6 +84,9 @@ class Record:
 OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen")
 
 
+# Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).
+GAME_KINDS = ("powerup", "segment", "jersey")
+
 def record_line(rec: Record) -> dict:
     # Dictionnaire construit sans ces clés (un `del` ne réduirait pas sa table en mémoire).
     return {"kind": "record", **{k: v for k, v in asdict(rec).items()
@@ -129,10 +137,20 @@ class JournalWriter:
         """Résultat d'un test de FTP (lot O10) : `FtpResult.to_line()`."""
         self._write({**line, "kind": "ftp_test"})
 
+    def junction(self, line: dict) -> None:
+        """Branche prise à un carrefour du monde ouvert (lot W9)."""
+        self._write({**line, "kind": "junction"})
+
     def powerup(self, kind: str, t_start: float, duration_s: float, ts: float) -> None:
         """Bonus activé (série T, lot T5) : type, début en temps chronométré, durée."""
         self._write({"kind": "powerup", "ts": ts, "powerup": kind, "t": round(t_start, 2),
                      "duration_s": round(duration_s, 2)})
+
+    def game(self, line: dict) -> None:
+        """Ligne de jeu de la série T (lot T7) : `powerup`, `segment` ou `jersey`, déjà formée."""
+        if line.get("kind") not in GAME_KINDS:
+            raise ValueError(f"ligne de jeu inconnue : {line.get('kind')}")
+        self._write(line)
 
     def close(self) -> None:
         if not self._fh.closed:
