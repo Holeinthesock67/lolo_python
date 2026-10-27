@@ -305,7 +305,7 @@ func _test_difficulty() -> void:
 	vm.on_state({"difficulty_pct": 50}, 2.0)
 	eval = vm.evaluate(2.5)
 	_check(eval["difficulty_visible"], "difficulté à 50 % : visible")
-	_check(eval["difficulty_text"] == "Difficulté 50 %", "texte à 50 % = Difficulté 50 % (%s)" % eval["difficulty_text"])
+	_check(eval["difficulty_text"] == "Difficulté 50 %", "texte à 50 %% = Difficulté 50 %% (%s)" % eval["difficulty_text"])
 
 	# Trame à 100 % : visible faux
 	vm.on_state({"difficulty_pct": 100}, 3.0)
@@ -316,7 +316,7 @@ func _test_difficulty() -> void:
 	vm.on_state({"difficulty_pct": 30}, 4.0)
 	eval = vm.evaluate(4.5)
 	_check(eval["difficulty_visible"], "difficulté à 30 % : visible")
-	_check(eval["difficulty_text"] == "Difficulté 30 %", "texte à 30 % = Difficulté 30 % (%s)" % eval["difficulty_text"])
+	_check(eval["difficulty_text"] == "Difficulté 30 %", "texte à 30 %% = Difficulté 30 %% (%s)" % eval["difficulty_text"])
 
 	# session_lines
 	var l50 := HudViewModel.session_lines({"difficulty_pct": 50}, {})
