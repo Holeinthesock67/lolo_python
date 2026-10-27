@@ -12,7 +12,7 @@ import pytest
 
 from openride_core.coins import (
     CoinsError, balance, buy, buy_life, coin_table, earned_coins, item_state, owned_items,
-    session_coins, use_life,
+    coins_by_session, power_records, session_coins, use_life,
 )
 from openride_core.equipment import load_catalogue
 from openride_core.profile import Profile, equip, load_profile, save_profile
@@ -67,7 +67,7 @@ def test_session_coins(tmp_path, ct, table):
     events = SessionFacts(journal="x", duration_s=3600, events=[
         {"kind": "segment"}, {"kind": "segment", "pr": True}, {"kind": "jersey", "jersey": "kom"},
         {"kind": "rogue_run", "minutes": 45, "bosses": ["chimere_centrale", "puncheur"]}])
-    assert session_coins(events, ct) == 5 + 5 + 20 + 50 + 10
+    assert session_coins(events, ct) == 5 + (5 + 10) + 20 + 50 + 10   # record du segment : +10
     assert session_coins(SessionFacts(journal="y", power_s={160: 1499}), ct) == 12   # arrondi inférieur
 
 
@@ -84,6 +84,30 @@ def test_effort_zones(table, ct):
     assert session_coins(mixed, ct) == 10 + 60
     assert coins(200, 60, ftp=200) == 90                            # FTP de l'en-tête prioritaire
     assert coins(200, 60, table_ct=coin_table(table, 300.0)) == 30  # FTP de config.toml sinon
+
+
+def test_best_power():
+    from openride_core.progression import best_power
+    powers = [100.0] * 600 + [400.0] * 5 + [300.0] * 55 + [100.0] * 600
+    best = best_power(powers)
+    assert best[5] == 400.0
+    assert best[60] == round((5 * 400 + 55 * 300) / 60, 1)
+    assert 1200 in best and 300 in best
+    assert best_power([200.0] * 30) == {5: 200.0}   # séance trop courte pour 1, 5 et 20 min
+
+
+def test_power_record_bonus(table, ct):
+    """Prime de 15 pièces par record de puissance battu ; la première séance ne bat rien."""
+    def sess(name, ts, best):
+        f = SessionFacts(journal=name, start_ts=ts, duration_s=3600, power_s={160: 3600}, best_power=best)
+        return SessionResult(f, session_gains(f, table), None)
+    sessions = [sess("a", 1, {5: 500, 60: 300, 300: 250, 1200: 220}),
+                sess("b", 2, {5: 520, 60: 290, 300: 260, 1200: 220}),   # 5 s et 5 min battus
+                sess("c", 3, {5: 510, 60: 310, 300: 255, 1200: 230})]   # 1 et 20 min battus
+    prog = Progress(sessions=sessions, errors=[], total_xp=0, level=level_for(0, table), stats={}, challenges=[])
+    assert power_records(prog) == {"a": [], "b": [5, 300], "c": [60, 1200]}
+    assert coins_by_session(prog, ct) == {"a": 30, "b": 60, "c": 60}
+    assert earned_coins(prog, ct) == 150
 
 
 def test_header_ftp_read(tmp_path):

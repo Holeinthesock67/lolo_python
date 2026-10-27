@@ -28,7 +28,7 @@ from pathlib import Path
 
 from .. import config as config_mod
 from ..journal import JOURNAL_DIR
-from ..coins import CoinsError, balance, coin_table, earned_coins, session_coins
+from ..coins import CoinsError, balance, coin_table, coins_by_session, earned_coins
 from ..profile import PROFILE_PATH, peek_profile
 from ..progression import ProgressionError, load_table, recompute
 from ..workout import WorkoutError, load_workout, workout_path
@@ -72,6 +72,7 @@ def run(directory: Path | None, as_json: bool, config_path: Path | None,
                          workout_duration_finder(workouts_dir or config_mod.WORKOUTS_DIR))
     lv = progress.level
     earned = earned_coins(progress, ct)
+    per_session = coins_by_session(progress, ct)
     solde = balance(progress, peek_profile(profile_path), ct)
     if as_json:
         out = {
@@ -88,7 +89,7 @@ def run(directory: Path | None, as_json: bool, config_path: Path | None,
                 "climb_m": round(r.facts.climb_m, 1), "erg_s": r.facts.erg_s,
                 "erg_completed": r.facts.erg_completed, "counted": r.gains is not None,
                 "reason": r.reason, "xp": r.gains.total if r.gains else 0,
-                "coins": session_coins(r.facts, ct) if r.gains else 0,
+                "coins": per_session.get(r.facts.journal, 0),
                 "gains": r.gains.as_list() if r.gains else [],
             } for r in progress.sessions],
             "errors": [{"journal": n, "error": e} for n, e in progress.errors],
