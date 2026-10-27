@@ -35,6 +35,7 @@ const CARD_SIZE := 22
 const HELP_SIZE := 21
 const CHIP_SIZE := 18
 const SMALL_SIZE := 16
+const VALUE_SIZE := 28         # chiffre clé d'une tuile de la carte de détail
 
 # --- Espacements --------------------------------------------------------------------------------
 const MARGIN := 64            # marge gauche et droite de l'écran
@@ -49,6 +50,7 @@ const CHIPS_H := 38           # rangée des pastilles d'appareils
 const CARD_W := 520           # carte de détail à droite
 const ICON := 28              # pictogramme d'une entrée
 const LINE_W := 2.2           # trait des pictogrammes
+const CHART_H := 72           # profil d'altitude ou blocs d'entraînement dans la carte
 
 
 ## Style d'une entrée de liste ; `focused` : fond et bord de la sélection, lueur autour.
@@ -77,6 +79,20 @@ static func card_style() -> StyleBoxFlat:
 	s.set_border_width_all(1)
 	s.set_corner_radius_all(14)
 	s.set_content_margin_all(22)
+	return s
+
+
+## Tuile d'un chiffre clé dans la carte de détail (distance, dénivelé, durée…).
+static func tile_style() -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.bg_color = Color(VOID, 0.55)
+	s.border_color = LINE
+	s.set_border_width_all(1)
+	s.set_corner_radius_all(RADIUS)
+	s.content_margin_left = 14
+	s.content_margin_right = 14
+	s.content_margin_top = 8
+	s.content_margin_bottom = 8
 	return s
 
 

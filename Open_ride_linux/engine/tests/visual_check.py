@@ -75,7 +75,11 @@ DEMO_SUMMIT_S = 1500.0             # sommet de `climb1`, seule montée de la cou
 # Listes servies par le faux core aux menus (lot N6) : un parcours « à compiler » non choisissable.
 MENU_CATALOG = {
     "routes": [
-        {"id": "demo", "name": "Démo", "length_m": 4000.0, "is_loop": True, "status": "ready"},
+        # Fiche calculée (lot O15) : chiffres de la carte de détail (présentation des menus, étape 2).
+        {"id": "demo", "name": "Démo", "length_m": 4000.0, "is_loop": True, "status": "ready",
+         "stats": {"distance_m": 4000.0, "gain_m": 62.0, "max_grade_pct": 4.5, "duration_s": 540.0, "difficulty": 1,
+                   "main_climb": {"length_m": 1500.0, "gain_m": 55.0, "avg_grade_pct": 3.7, "category": None}},
+         "library": {"description": "Boucle de démonstration.", "region": "", "tags": ["boucle"]}},
         {"id": "vallee", "name": "Vallée de test", "length_m": 32500.0, "is_loop": False, "status": "ready"},
         {"id": "nouveau", "name": "Nouveau GPX", "length_m": 12000.0, "is_loop": False, "status": "to_compile"},
     ],
@@ -854,7 +858,8 @@ def _pentes_scenes(s: Session) -> None:
 
 def _menu_scenes(s: Session) -> None:
     """Lot N6 : accueil avec l'état des appareils, liste des parcours au Click, bilan de fin ; menus en plein
-    écran du lot « présentation des menus » : accueil entier, sélection en cyan, HUD caché."""
+    écran du lot « présentation des menus » : accueil entier, sélection en cyan, HUD caché ; étape 2 : carte
+    de détail (fiche du parcours sous le focus, écran Prêt avec le profil d'altitude du parcours chargé)."""
     core = s.core
     core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", devices=MENU_DEVICES, summary=None)
     time.sleep(SETTLE_S + 3.0)   # le bandeau d'erreur de la scène précédente reste 5 s au moins
@@ -879,6 +884,23 @@ def _menu_scenes(s: Session) -> None:
         img, info = shot
         s.check_texts("menu_parcours", info, {"menu_title": "Parcours", "menu": "[Démo"}, contains=True)
         s.check_texts("menu_parcours", info, {"menu": "Nouveau GPX (12,0 km) — à compiler"}, contains=True)
+        s.check_texts("menu_parcours", info, {"menu": "Parcours | Démo | Distance 4,0 km | Dénivelé ↑ 62 m"}, contains=True)
+        s.check_layout("menu_parcours", info)
+    # Démo choisie (retour à l'accueil), puis Session libre : écran Prêt.
+    for event in ("A_LONG", "PLUS_SHORT", "A_LONG"):
+        core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+        time.sleep(0.5)
+    time.sleep(1.0)
+    shot = s.capture("pret")
+    if shot:
+        img, info = shot
+        s.check_texts("pret", info, {"menu_title": "Prêt", "menu": "Parcours | Démo | Distance 4,0 km"}, contains=True)
+        s.check_texts("pret", info, {"menu": "Montée principale : 1,5 km à 3,7 %, ↑ 55 m"}, contains=True)
+        s.check_layout("pret", info)
+        card = info["widgets"]["menu_card"]
+        line = fraction(img, rect_box(card["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
+        s.check("pret", "profil d'altitude tracé dans la carte (trait cyan)", card["visible"] and line >= 0.002,
+                f"{line:.2%} de pixels cyan")
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
         "elevation_gain_m": 180.0, "fit_path": "/tmp/openride/seance.fit"})
