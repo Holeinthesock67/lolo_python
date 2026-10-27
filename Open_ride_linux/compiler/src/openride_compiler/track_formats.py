@@ -51,16 +51,28 @@ def track_stem(name: str) -> tuple[str, int] | None:
     return None
 
 
+def _track_files(gpx_dir: Path) -> list[Path]:
+    """Fichiers de `gpx_dir` et de ses sous-dossiers directs non cachés (packs de parcours, lot O15)."""
+    if not gpx_dir.is_dir():
+        return []
+    files = []
+    for p in gpx_dir.iterdir():
+        if p.is_file():
+            files.append(p)
+        elif p.is_dir() and not p.name.startswith("."):
+            files.extend(q for q in p.iterdir() if q.is_file())
+    return files
+
+
 def scan_tracks(gpx_dir: Path) -> tuple[list[Path], list[tuple[Path, Path]]]:
     """Traces retenues (une par identifiant, triées par nom) et conflits `(écartée, retenue)`."""
     from .writer import normalize_name
 
     candidates: list[tuple[str, int, str, Path]] = []
-    if Path(gpx_dir).is_dir():
-        for p in Path(gpx_dir).iterdir():
-            ts = track_stem(p.name) if p.is_file() else None
-            if ts is not None:
-                candidates.append((normalize_name(ts[0]), ts[1], p.name, p))
+    for p in _track_files(Path(gpx_dir)):
+        ts = track_stem(p.name)
+        if ts is not None:
+            candidates.append((normalize_name(ts[0]), ts[1], p.name, p))
     winners: dict[str, Path] = {}
     conflicts: list[tuple[Path, Path]] = []
     for norm, _rank, _name, p in sorted(candidates):
