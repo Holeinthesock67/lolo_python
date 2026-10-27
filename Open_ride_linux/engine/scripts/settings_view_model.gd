@@ -20,7 +20,11 @@ const DIFFICULTY_KEY := "trainer.difficulty_pct"
 const PAUSE_DIFFICULTY := "pause.difficulty"
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
 ## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
-const CHOICE_TEXTS := {"powerups.mode": {"on": "oui", "off": "non"}}
+## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
+const CHOICE_TEXTS := {
+	"powerups.mode": {"on": "oui", "off": "non"},
+	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
+}
 
 var items: Array = []
 ## Modification en cours : {key, label, type, value, min, max, step, unit, choices} ; vide sinon.

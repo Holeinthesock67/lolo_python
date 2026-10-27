@@ -43,6 +43,9 @@ def test_current_lists_the_six_settings_with_bounds_from_config():
     assert quality["applies"] == "now"
     gear = next(it for it in items if it["key"] == "gearing.start_gear")
     assert (gear["min"], gear["max"]) == (1, 24)
+    display = next(it for it in items if it["key"] == "render.display")
+    assert display == {"key": "render.display", "label": "Mode d'affichage", "value": "fullscreen",
+                       "applies": "now", "type": "choice", "choices": ["windowed", "borderless", "fullscreen"]}
 
 
 def test_bounds_and_choices_come_from_config(monkeypatch):
@@ -59,6 +62,8 @@ def test_step_is_bounded_and_choices_loop(tmp_path: Path):
     assert settings.step(cfg, "rider.ftp_w", 250, -1) == 245
     assert settings.step(cfg, "trainer.difficulty_pct", 0, -1) == 0
     assert settings.step(cfg, "render.quality", "high", +1) == "low"
+    assert settings.step(cfg, "render.display", "fullscreen", +1) == "windowed"
+    assert settings.step(cfg, "render.display", "windowed", -1) == "fullscreen"
     themes = tmp_path / "Themes"
     for name in ("automne", "brouillard"):
         (themes / name).mkdir(parents=True)
@@ -90,6 +95,7 @@ def test_cli_set_changes_only_that_line_and_keeps_the_rest(tmp_path: Path, capsy
 @pytest.mark.parametrize("key,value,needle", [
     ("rider.ftp_w", "20", "50 à 600"),
     ("render.quality", "ultra", "low, medium, high"),
+    ("render.display", "maximized", "windowed, borderless, fullscreen"),
     ("rider.inconnu", "1", "réglage inconnu"),
     ("rider.mass_kg", "beaucoup", "nombre attendu"),
 ])

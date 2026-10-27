@@ -222,6 +222,7 @@ Pas à pas dans [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) (bl
 - [ ] Horizon en `medium` et `low` (Y1) et facteur de relief par défaut (Q2) sur `essai-69` (protocole J6).
 - [ ] Recettes du décor vivant (P16 puis P17, protocole J8 : [RECETTE_P16.md](RECETTE_P16.md), [RECETTE_P17.md](RECETTE_P17.md)).
 - [ ] Mesures du monde ouvert (W0, protocole J9).
+- [ ] Mode d'affichage : trois mesures du banc (fenêtré, sans bordure, exclusif) et changement au menu (protocole J10) ; le défaut `fullscreen` se confirme avec ces chiffres.
 
 ---
 
@@ -267,6 +268,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Arbres : préparation d'une tuile sous 150 ms (lot O1, 27 octobre) : 230 ms avant, 87 ms après sur le PC cible, arbres identiques au bit près (empreintes de trois tuiles dans `test_tree_renderer.gd`) ; seuil de CI ramené à 170 ms ; reste une séance en `high` pour vérifier l'absence d'à-coups.
 - [x] Numéro de version unique et notes de version (lot O2, 26 octobre) : fichier `VERSION` (0.9.0) repris par les deux paquets, `project.godot`, `hello_ack`, `hello`, `--version` des trois commandes et la première ligne du journal du lanceur ; `CHANGELOG.md` ; `scripts/bump-version.sh X.Y.Z` ; contrôlé par `core/tests/test_version.py`.
 - [x] Réglages depuis le menu : FTP, poids, difficulté (curseur, aussi sur l'écran de pause), braquet de départ, qualité et thème, écrits dans `~/OpenRide/config.toml` (lots O3 et O4, 26 octobre ; `openride-core settings` ; banc des menus, parcours `reglages`). Ligne « OpenRide X.Y.Z » en bas des réglages depuis le 27 octobre. Reste l'essai au Click réel.
+- [x] Mode d'affichage dans les réglages (27 octobre) : fenêtré, plein écran sans bordure, plein écran exclusif (défaut), toujours à la définition native de l'écran, appliqué tout de suite (`[render] display`, `engine/scripts/display_mode.gd`) ; souris masquée en séance ; `OPENRIDE_DISPLAY=windowed` garde une fenêtre pour un essai, et l'engine lancé sans `--display` (outils de test) reste en fenêtre. Reste les mesures sur le PC (protocole J10).
 - [x] Traces FIT, TCX et archives Garmin déposées dans `~/OpenRide/GPX/` (lot O5, 26 octobre) ; reste l'essai avec un vrai export sur le PC.
 - [ ] Guide d'utilisation sans terminal et README de la 1.0 (lot O6).
 - [ ] Bots à l'écran, facultatif pour la 1.0 (lot O7).
