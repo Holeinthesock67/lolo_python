@@ -42,13 +42,13 @@ Principe donné par le propriétaire : **on évite les exceptions ; on préfère
 | 4 | OK | Cahier [T1](lots/LOT_T1_contrat_1_4.md) : un seul contrat 1.4 pour les séries R, T et V ; cahiers R1 et V1 retirés, leurs renvois (plans R, T et V, cahiers R3 à R17, V2 à V11, index, suivi) pointent vers T1 | Issue #378 mise à jour ; #370 (V1) fermée en double de #378 |
 | 5 | Lot dédié avec les vues | Cahier [V12](lots/LOT_V12_vues_camera.md) (quatre vues, A et flèches haut et bas, A long = vue par défaut, `[render] camera`) ; V6 réécrit sans caméra ; S1 trie selon la caméra active ; V-Q11 réglée ; exigences 2.0-CAM-1 à 2.0-CAM-5 rattachées à V12 et S1 | Issue #387 |
 | 6 | OK | Tableau du clavier dans la spécification générale §7.1 (touche pour touche, mêmes seuils, synonymes Page haut et bas, Maj+A, Entrée, Maj+Z, Échap ; plus de P ni d'Espace) ; SRS §4.2 et §4.5 ; lot O17 étendu au clavier (module `key_map.gd`) | Issue #367 mise à jour ; la PR #287 n'ajoute pas de touches propres aux menus |
-| 7 | En attente | — | Demander à la session de la série Q de reprendre Q2, Q4 et Q5 |
+| 7 | Sans objet | — | Q2, Q4, Q5 et Q6 corrigées et fusionnées le 27 octobre, Q1 terminée (PR #388) : la série Q est entièrement sur `main` |
 | 8 | Sans objet | Ligne X25 du journal du contrat en révision 1.3 | — |
 | 9 | OK | — | Issues de V1, V5 à V11, T1, O17, N17 et N18 |
 | 10 | OK | Exigence 1.0-UI-2 (« Parcours », modes annoncés) | La PR #230 (N15) renomme l'entrée et filtre l'accueil par `modes` |
 | 11 | « Prévois ça dans les menus » | Lots [N17](lots/LOT_N17_demi_tour_menu.md) (demi-tour depuis l'écran de pause) et [N18](lots/LOT_N18_bots_menu.md) (bots réglés au menu), version 1.x ; exigences 1.x-UI-1 et 1.x-UI-2 ; SRS §4.4 et §14 | Issues de N17 et N18 |
 
-Il ne reste que la décision 7.
+Toutes les décisions sont réglées.
 
 ## 3. Constats par thème
 
@@ -97,7 +97,7 @@ Cohérent sur `main` : contrat §2 (4 096 octets depuis la 1.3), §3 (`wind` jam
 ### 3.6 Dépendances entre lots
 
 - P1 fusionné débloque R1, T1 et V1 (décision 4), puis R8, R10, V11, V6, V8 et V9 ; l'index et les plans les donnent encore « après P1 ».
-- R0 et R8 dépendent de Q4 (#194, en conflit, décision 7).
+- R0 et R8 dépendent de Q4 (#194), fusionnée depuis le 27 octobre.
 - P17 dépend d'O7 (bots à l'écran, facultatif, non commencé) : la PR #321 le dit et branche l'abri sans silhouette. Cohérent, à garder en tête pour O7.
 - O10 (test de FTP) attend #248 ; N16 (#249) suit la décision D4 de #288 : fusionner #288, puis #248, puis #249.
 - La chaîne W2 à W13 reste empilée sur W1, qui fusionne après la 1.4 (choix du propriétaire du 27 octobre) : la 1.4 est donc sur le chemin critique de la série W.
