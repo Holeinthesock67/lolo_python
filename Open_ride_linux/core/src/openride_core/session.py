@@ -27,6 +27,7 @@ from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClick
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
+from .progression import journal_source
 from .mock_driver import MockDriver
 from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
@@ -485,10 +486,15 @@ class CoreSession:
     def _open_journal(self) -> None:
         self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
                                     on_failure=self._on_recording_failure,
-                                    workout_id=self._workout_id)
+                                    workout_id=self._workout_id, source=self._journal_source())
         self._rec.event("start", time.time())
         self._device_up = self._device_states()   # état de départ : seuls les changements s'écrivent
         self._next_record = 0.0
+
+    def _journal_source(self) -> str:
+        """Origine de la séance écrite en tête du journal (progression, lot V2)."""
+        d = self.cfg.drivers
+        return journal_source(d.trainer, d.mock_replay)
 
     def _click_device(self, address: str) -> str:
         """Boîtier « + » ou « − » (lot N12) : d'après `click_address` et `click_minus_address`.
@@ -855,7 +861,8 @@ class CoreSession:
         st.t, st.s, st.v = rs.t, rs.s, 0.0
 
         self._rec = SessionRecorder(self.journal_dir, route_id, on_failure=self._on_recording_failure,
-                                    workout_id=rs.workout_id, resume_path=path, lines=rs.lines)
+                                    workout_id=rs.workout_id, resume_path=path, lines=rs.lines,
+                                    source=self._journal_source())
         if rs.running:
             # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
             self._rec.event("pause", rs.last_ts)

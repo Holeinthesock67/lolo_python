@@ -1,0 +1,8 @@
+name = "Grand Colombier"
+region = "Bugey, Jura"
+country = "France"
+side = "depuis Culoz"
+waypoints = [[45.8475, 5.7840], [45.9021, 5.7612]]
+ref_length_m = 18300
+ref_gain_m = 1255
+tags = ["col", "classique", "hc"]
