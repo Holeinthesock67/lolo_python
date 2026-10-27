@@ -37,6 +37,8 @@ const WorldMenuView := preload("res://scripts/world_menu_view.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const OW_PREFIX := "ow:"
+## Colonnes du profil d'altitude de la carte de détail des menus (parcours entier).
+const ROUTE_PROFILE_COLUMNS := 120
 const DEMO_WORLD := "res://demo/demo.world"
 const ERROR_MIN_S := 5.0
 const TEST_CAM_PERIOD_US := 50_000   # journal de la caméra à 20 Hz en mode test
@@ -62,6 +64,8 @@ var follow = CameraFollowScript.new()
 var session_state: String = ""
 var _first_state_logged := false
 var _route_id_requested = null
+## Profil d'altitude du dernier parcours chargé, pour la carte de détail des menus : {id, profile}.
+var _route_profile := {}
 ## Monde ouvert (lot W10) : suit les révisions du monde que le générateur prolonge ; inactif hors monde ouvert.
 var live_world = LiveWorld.new()
 ## Panneau du carrefour et attributions (lot W12) ; null avant _ready.
@@ -503,7 +507,10 @@ func _refresh_menu() -> void:
 	menu_view.visible = shown
 	hud.visible = not shown   # menu plein écran : rien du HUD de séance derrière lui
 	if shown:
-		menu_view.update_display(menu_flow.state(), _last_state, menu_flow.summary, menu_flow.show_details)
+		var st: Dictionary = menu_flow.state()
+		if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
+			st["card"]["profile"] = _route_profile["profile"]
+		menu_view.update_display(st, _last_state, menu_flow.summary, menu_flow.show_details)
 
 
 func _play_tones(notes: Array, level: float) -> void:
@@ -765,6 +772,8 @@ func _poll_route_job() -> void:
 	segment_markers.set_route(route, SegmentMarkersModel.arch_every_m_from_file(), float(streamer.get("_road_width_m")))
 	segment_hud.set_segments(route.segments)
 	menu_flow.records.set_segments(route.segments)
+	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
+	_refresh_menu()
 	if route.segments_present:
 		print("Segments du parcours : %d" % route.segments.size())
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
@@ -808,6 +817,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
+		"menu_card": menu_view.card,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
@@ -844,8 +854,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 ## Texte des zones composées du menu (éléments, appareils, bilan), pour les tests graphiques.
 func _widget_text(key: String) -> String:
 	if key == "menu":
-		return "%s || %s || %s || %s" % [menu_view.status_label.text, menu_view.items_text(), menu_view.devices.text() if menu_view.devices.visible else "",
-				menu_view.summary.text() if menu_view.summary.visible else ""]
+		return "%s || %s || %s || %s || %s" % [menu_view.status_label.text, menu_view.items_text(), menu_view.devices.text() if menu_view.devices.visible else "",
+				menu_view.summary.text() if menu_view.summary.visible else "", menu_view.card.text() if menu_view.card.visible else ""]
 	return ""
 
 

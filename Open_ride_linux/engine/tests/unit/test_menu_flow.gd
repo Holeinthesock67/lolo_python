@@ -339,7 +339,7 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create", "A long : retour à l'écran Créer")
-	_check(f.state()["items"][1]["label"] == "Répétitions : 7", "7 répétitions (%s)" % f.state()["items"][1]["label"])
+	_check(f.state()["items"][1]["detail"] == "7", "7 répétitions (%s)" % f.state()["items"][1]["detail"])
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Effort
 	f.handle("PLUS_SHORT")
@@ -549,10 +549,12 @@ func _test_library() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session libre
 	var st: Dictionary = f.state()
-	_check(st["screen"] == "ready" and st["card"].size() == 3, "fiche sur l'écran Prêt (%s)" % str(st["card"]))
-	_check(st["card"][0] == "10,0 km · ↑ 300 m · pente max 8,0 % · difficulté 2 / 5 · ≈ 30 min"
-		and st["card"][1] == "Montée principale : 4,0 km à 7,0 %, ↑ 280 m (cat. 3)" and st["card"][2] == "Vosges, col",
-		"fiche : %s" % str(st["card"]))
+	var tiles: Array = st["card"].get("tiles", []).map(func(t): return "%s %s %s" % [t["label"], t["value"], t["unit"]])
+	_check(st["screen"] == "ready" and st["card"].get("id") == "petit_col" and st["card"]["title"] == "Parcours",
+		"fiche sur l'écran Prêt (%s)" % str(st["card"]))
+	_check(tiles == ["Distance 10,0 km", "Dénivelé ↑ 300 m", "Pente max 8,0 %"], "fiche : chiffres clés %s" % str(tiles))
+	_check(st["card"]["lines"] == ["Montée principale : 4,0 km à 7,0 %, ↑ 280 m (cat. 3)", "Difficulté 2 / 5 · durée ≈ 30 min",
+		"Vosges, col"], "fiche : lignes %s" % str(st["card"]["lines"]))
 	f.set_workouts([{"id": "w", "name": "Watts", "duration_s": 600, "unit": "watts", "profile": [[600.0, 0.8, 1.2]]},
 		{"id": "r", "name": "Relatif", "duration_s": 900, "profile": [[900.0, 0.8, 0.8]]}])
 	f.on_settings({"items": [{"key": "rider.ftp_w", "value": 250}]})
@@ -561,7 +563,7 @@ func _test_library() -> void:
 		"entraînement en watts : aperçu en watts (%s)" % w[0]["detail"])
 	var v = MenuView.new()
 	v.update_display(st, {"session_state": "IDLE"}, {}, false)
-	_check(v.card_label.visible and v.card_label.text.begins_with("10,0 km"), "vue : fiche affichée")
+	_check(v.card.visible and v.card.text().contains("Distance 10,0 km"), "vue : fiche affichée (%s)" % v.card.text())
 	v.free()
 
 ## Bots choisis sur l'écran Prêt (lot O7) : `start` avec l'argument `bots`.

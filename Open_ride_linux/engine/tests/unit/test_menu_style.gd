@@ -3,7 +3,9 @@ extends SceneTree
 ## Tests sans écran du thème commun des menus (lot « présentation des menus », étape 1) : jetons et
 ## contrastes de `ui_theme.gd`, aide des boutons (`button_help.gd`) fidèle au plan des boutons §7.1,
 ## pictogrammes (`ui_icons.gd`), menu plein écran (`menu_view.gd`) avec l'accueil entier, la sélection,
-## les éléments désactivés et la carte de détail, aucune couleur écrite en dur dans les vues des menus.
+## les éléments désactivés et la carte de détail, aucune couleur écrite en dur dans les vues des menus ;
+## étape 2 : fiches de la carte (catalog_model.route_sheet, workout_sheet), carte selon l'écran
+## (menu_flow.card), carte affichée (detail_card.gd : tuiles, graphique, lignes).
 ## Les hauteurs ne se vérifient pas ici (métriques de police fausses sans écran) : tests graphiques.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_menu_style.gd
 
@@ -13,6 +15,15 @@ const ButtonHelp := preload("res://scripts/button_help.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
+const CatalogModel := preload("res://scripts/catalog_model.gd")
+const DetailCard := preload("res://scripts/detail_card.gd")
+
+const ROUTE := {"id": "col", "name": "Col", "length_m": 10000.0, "status": "ready", "stats": {"distance_m": 10000.0,
+	"gain_m": 300.0, "max_grade_pct": 8.0, "duration_s": 1800.0, "difficulty": 2, "main_climb": {"length_m": 4000.0,
+	"gain_m": 280.0, "avg_grade_pct": 7.0, "category": "3"}}, "library": {"description": "Court et raide.", "region": "Vosges", "tags": ["col"]}}
+const BARE_ROUTE := {"id": "brut", "name": "Brut", "length_m": 5000.0, "status": "to_compile"}
+const WORKOUT := {"id": "ss", "name": "Sweet spot", "duration_s": 3600, "block_count": 3, "selectable": true,
+	"profile": [[600, 0.5, 0.75], [2400, 0.92, 0.92], [600, null, null]], "profile_truncated": false}
 
 var _failures := 0
 var _checked := 0
@@ -45,7 +56,7 @@ func _test_theme() -> void:
 		_check(c >= 4.5, "%s sur carte : contraste %.1f ≥ 4,5" % [pair[0], c])
 	_check(_contrast(UiTheme.DISABLED, UiTheme.VOID) >= 3.0, "désactivé encore lisible : contraste %.1f ≥ 3" % _contrast(UiTheme.DISABLED, UiTheme.VOID))
 	var sizes := [UiTheme.TITLE_SIZE, UiTheme.ITEM_SIZE, UiTheme.DETAIL_SIZE, UiTheme.CARD_SIZE, UiTheme.HELP_SIZE,
-		UiTheme.CHIP_SIZE, UiTheme.SMALL_SIZE]
+		UiTheme.CHIP_SIZE, UiTheme.SMALL_SIZE, UiTheme.VALUE_SIZE]
 	_check(sizes.all(func(s): return s >= 16), "aucune police sous 16 px : %s" % str(sizes))
 	_check(UiTheme.TITLE_SIZE > UiTheme.ITEM_SIZE and UiTheme.ITEM_SIZE > UiTheme.DETAIL_SIZE, "hiérarchie titre > entrée > détail")
 	var focus := UiTheme.row_style(true)
@@ -120,9 +131,13 @@ func _test_view() -> void:
 		"désactivé en couleur atténuée, détail à droite")
 	_check(v.items_text() == "[Actif — 12,0 km] | Désactivé — à compiler", "texte des entrées : %s" % v.items_text())
 	_check(not v.devices.visible and not v.card.visible, "liste des parcours : ni pastilles ni carte")
-	v.update_display({"screen": "ready", "title": "Prêt", "focus": 0, "items": items, "card": ["10,0 km · ↑ 120 m"]}, state, {}, false)
-	_check(v.card.visible and v.card_label.text == "10,0 km · ↑ 120 m" and v.card_title.text == "Fiche du parcours",
-		"écran Prêt : fiche du parcours dans la carte")
+	v.update_display({"screen": "ready", "title": "Prêt", "focus": 0, "items": items, "card": CatalogModel.route_sheet(ROUTE)}, state, {}, false)
+	_check(v.card.visible and v.card.text().begins_with("Parcours | Col | Distance 10,0 km") and not v.summary.visible,
+		"écran Prêt : fiche du parcours dans la carte (%s)" % v.card.text())
+	v.update_display({"screen": "summary", "title": "Fin de séance", "focus": 0, "items": items, "card": {"title": "Bilan de la séance"}},
+		state, {"distance_m": 1000.0}, false)
+	_check(v.card.visible and v.summary.visible and v.card.text() == "Bilan de la séance" and v.summary.get_parent() == v.card.body,
+		"bilan dans la carte, sous son en-tête")
 	v.free()
 	# Pause : raison de la pause sous le titre (le HUD est caché pendant un menu).
 	f.on_state({"session_state": "RUNNING"})
@@ -133,11 +148,66 @@ func _test_view() -> void:
 	_check(f.state()["status"] == "", "pause demandée : pas de ligne d'état")
 
 
+## Étape 2 : chiffres clés et lignes des fiches, carte selon l'écran et le focus, graphique choisi.
+func _test_cards() -> void:
+	var tile_texts := func(sheet: Dictionary) -> Array:
+		return sheet["tiles"].map(func(t): return ("%s %s %s" % [t["label"], t["value"], t["unit"]]).strip_edges())
+	var r := CatalogModel.route_sheet(ROUTE)
+	_check(tile_texts.call(r) == ["Distance 10,0 km", "Dénivelé ↑ 300 m", "Pente max 8,0 %"], "parcours : chiffres clés %s" % str(tile_texts.call(r)))
+	_check(r["lines"] == ["Montée principale : 4,0 km à 7,0 %, ↑ 280 m (cat. 3)", "Difficulté 2 / 5 · durée ≈ 30 min",
+		"Vosges, col — Court et raide."], "parcours : lignes %s" % str(r["lines"]))
+	var bare := CatalogModel.route_sheet(BARE_ROUTE)
+	_check(tile_texts.call(bare) == ["Distance 5,0 km"] and bare["lines"].is_empty() and bare["name"] == "Brut",
+		"parcours sans fiche calculée : la longueur seule")
+	var w := CatalogModel.workout_sheet(WORKOUT)
+	_check(tile_texts.call(w) == ["Durée 1 h 00", "Blocs 3", "Intensité max 92 % FTP"] and w["blocks"].size() == 3,
+		"entraînement : chiffres clés %s, blocs" % str(tile_texts.call(w)))
+	var watts := CatalogModel.workout_sheet({"id": "e", "name": "Erg", "duration_s": 600, "block_count": 1, "unit": "watts",
+		"profile": [[600, 0.8, 1.2]]}, 250.0)
+	_check(tile_texts.call(watts)[2] == "Puissance max 300 W" and watts["lines"][0].begins_with("Fichier en watts fixes"),
+		"entraînement en watts : puissance maximale en watts (%s)" % str(tile_texts.call(watts)))
+	var bad := CatalogModel.workout_sheet({"id": "x", "name": "X", "error": "fichier illisible", "selectable": false, "profile": []})
+	_check(bad["tiles"].is_empty() and bad["lines"] == ["fichier illisible"], "entraînement illisible : l'erreur seule")
+	var f = MenuFlow.new()
+	f.set_routes([ROUTE, BARE_ROUTE])
+	f.set_workouts([WORKOUT])
+	var on := func(screen: String, id: String) -> Dictionary:
+		return f.card({"screen": screen, "focus": 0, "items": [{"id": id}]})
+	_check(on.call(MenuModel.ROUTES, "brut").get("id") == "brut" and on.call(MenuModel.ROUTES, "col").get("id") == "col",
+		"liste des parcours : fiche du parcours sous le focus")
+	_check(on.call(MenuModel.ROUTES, MenuModel.SORT_ROUTES_ID).is_empty(), "liste des parcours : pas de carte sur « Trier par »")
+	_check(on.call(MenuModel.WORKOUTS, "ss").get("blocks", []).size() == 3 and on.call(MenuModel.WORKOUTS, MenuModel.NO_WORKOUT_ID).is_empty(),
+		"liste des entraînements : fiche avec blocs, rien sur « sans entraînement »")
+	f.menu.set_world("col", "Col")
+	_check(on.call(MenuModel.READY, "start").get("id") == "col", "écran Prêt : fiche du parcours choisi, pas du focus")
+	_check(on.call(MenuFlow.SUMMARY, "new_session") == {"title": "Bilan de la séance"} and on.call(MenuModel.HOME, "ride").is_empty(),
+		"bilan : en-tête seul ; accueil : pas de carte")
+	f.builder.set_value("reps", 2)
+	var create: Dictionary = on.call(MenuFlow.WORKOUT_CREATE, "save")
+	_check(create["title"] == "Aperçu" and create["blocks"].size() == 6 and create["blocks"][1] == [240.0, 1.05, 1.05]
+		and create["blocks"][5] == [600.0, 0.65, 0.45] and tile_texts.call(create) == ["Durée 34 min", "Blocs 6", "Intensité max 105 % FTP"],
+		"création : aperçu des blocs du .zwo écrit par le core (%s)" % str(tile_texts.call(create)))
+	var c = DetailCard.new()
+	var profile := {"points": PackedVector2Array([Vector2(0, 100), Vector2(5000, 140), Vector2(10000, 120)]),
+		"alt_min": 95.0, "alt_max": 145.0}
+	c.update_display(r.merged({"profile": profile}))
+	_check(c.chart_kind() == "profile" and c.tiles_box.visible and c.lines_label.visible, "carte : profil d'altitude du parcours chargé")
+	c.update_display(r)
+	_check(c.chart_kind() == "", "carte : pas de graphique sans parcours chargé")
+	c.update_display(w)
+	_check(c.chart_kind() == "blocks" and c.text() == "Entraînement | Sweet spot | Durée 1 h 00 | Blocs 3 | Intensité max 92 % FTP",
+		"carte : blocs de l'entraînement (%s)" % c.text())
+	c.update_display(bad)
+	_check(c.chart_kind() == "" and not c.tiles_box.visible and c.text() == "Entraînement | X | fichier illisible",
+		"carte : entraînement illisible, ni tuiles ni graphique")
+	c.free()
+
+
 func _test_no_literal_colors() -> void:
 	var re := RegEx.create_from_string("Color\\(\\s*[0-9.]")
 	var found: Array = []
 	for path in ["res://scripts/menu_view.gd", "res://scripts/devices_view.gd", "res://scripts/summary_view.gd",
-			"res://scripts/button_bar.gd"]:
+			"res://scripts/button_bar.gd", "res://scripts/detail_card.gd"]:
 		var src := FileAccess.get_file_as_string(path)
 		if re.search(src) != null:
 			found.append(path.get_file())
@@ -149,6 +219,7 @@ func _initialize() -> void:
 	_test_button_help()
 	_test_icons()
 	_test_view()
+	_test_cards()
 	_test_no_literal_colors()
 	print("test_menu_style : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

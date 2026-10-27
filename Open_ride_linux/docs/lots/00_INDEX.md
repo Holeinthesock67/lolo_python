@@ -82,7 +82,7 @@
 | [O3](LOT_O3_reglages_core.md) | Réglages côté core : FTP, masse, braquet de départ, thème et qualité écrits dans `~/OpenRide/config.toml` | Python | N12 ; N10 pour les thèmes | Petite | **Livré le 26 octobre** (avec O4, issue #121) |
 | [O4](LOT_O4_menu_reglages.md) | Section « Réglages » du menu et version affichée | GDScript + Python | N6, N13, O3 ; O2 | Moyenne | **Livré le 26 octobre** (contrat accepté le 26 octobre ; version affichée le 27 octobre, après O2) |
 | [O5](LOT_O5_traces_garmin_dossier.md) | Traces FIT, TCX et archives Garmin (`.zip`, `.gz`) déposées dans le dossier des traces | Python | N11 | Petite | **Livré le 26 octobre** (issue #122) |
-| [O6](LOT_O6_guide_utilisation.md) | Guide d'utilisation sans terminal et README de la 1.0 | Markdown + Python | N6, N13, N14 | Petite | Oui, après N14 |
+| [O6](LOT_O6_guide_utilisation.md) | Guide d'utilisation sans terminal et README de la 1.0 | Markdown + Python | N6, N13, N14 | Petite | **Livré le 27 octobre** (PR du lot O6) |
 | [O7](LOT_O7_affichage_bots.md) | Bots à l'écran : silhouettes, écarts, choix au menu (facultatif pour la 1.0) | GDScript | N6, N9 | Moyenne | **Livré le 27 octobre** (interne, PR #407 ; essais Godot sur le PC à faire) |
 | [O8](LOT_O8_recette_1_0.md) | Recette de la version 1.0 sur le matériel et publication (`v1.0.0`) | — | série N, O1, O2, O6 | Moyenne | Non : interne (propriétaire, matériel) |
 | [O9](LOT_O9_formats_erg_mrc.md) | Entraînements au format GoldenCheetah : `.erg` (watts) et `.mrc` (% de FTP) | Python | F, H8 (livrés) | Petite | **Livré le 25 octobre** (issue #153) |

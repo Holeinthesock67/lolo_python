@@ -128,7 +128,8 @@ def apply_gear_buttons(gear: int, buttons, hack_kind: str | None, forced_gear: i
 def combat_start(room: Room, seed: int, balance: RogueBalance = DEFAULT_BALANCE,
                  shield: float | None = None, gear: int | None = None) -> CombatState:
     b = balance
-    hp = b.hp_factor * target_mean(room) * room.nominal_s
+    factor = b.boss_hp_factor if room.archetype == "boss" else getattr(b, f"hp_factor_{room.objective}")
+    hp = factor * target_mean(room) * room.nominal_s
     g = b.gear_ref if gear is None else gear
     return CombatState(seed=seed, enemy_hp=hp, enemy_hp_max=hp,
                        shield=b.shield_max if shield is None else shield, gear=g, prev_gear=g)
