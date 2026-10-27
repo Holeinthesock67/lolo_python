@@ -6,12 +6,12 @@ La scène Godot du mode Cyber-Rogue : une piste suspendue dans le vide (le « ru
 
 ## 2. À lire
 
-1. `docs/lots/00_INDEX.md`, `docs/2.0/GDD_CYBER_ROGUE.md` §1.3, §2.4 et §3 (avec leurs corrections), `docs/lots/LOT_R1_contrat_ipc_rogue.md` §4.4 et §4.5.
+1. `docs/lots/00_INDEX.md`, `docs/lots/LOT_R17_direction_artistique.md` (charte, jetons de couleur, matériaux, catalogue des objets et des effets : à suivre partout), `docs/2.0/GDD_CYBER_ROGUE.md` §1.3, §2.4 et §3 (avec leurs corrections), `docs/lots/LOT_R1_contrat_ipc_rogue.md` §4.4 et §4.5.
 2. Code : `engine/scenes/main.tscn`, `engine/scripts/main.gd`, `engine/scripts/ipc_client.gd`, `engine/scripts/road_builder.gd` (construction d'un ruban), `engine/scripts/quality_presets.gd` et `render_quality.gd` (lot L4).
 
 ## 3. Prérequis
 
-R1 livré. Un faux core (`engine/tests/fake_core.py`) qui joue une salle d'exemple, ajouté par ce lot.
+R1 et R17 livrés (aucune couleur ni aucun matériau défini hors de `neon_palette.gd` et `neon_materials.gd`). Un faux core (`engine/tests/fake_core.py`) qui joue une salle d'exemple, ajouté par ce lot.
 
 ## 4. Travail demandé
 
