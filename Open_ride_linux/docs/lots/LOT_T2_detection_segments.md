@@ -53,3 +53,9 @@ Aucune. La forme de `segments.json` sera fixée par T1 ; ce lot ne fait que la p
 - Écriture de la couche `segments` dans le `.world`, lecture du fichier de segments manuels à côté du GPX, segments du parcours de démonstration (T3).
 - Montée qui passe la ligne d'une boucle : elle est vue comme deux morceaux (début et fin du profil) ; T3 pourra les recoller si besoin.
 - Sens des allers-retours : traité au chronométrage (T4).
+
+## 9. Livraison (27 octobre 2026, PR #247)
+
+- Nouveau module pur `core/src/openride_core/segments.py` : montées sur la pente lissée (500 m, 3 %, 30 m de gain, fusion sous 200 m de replat, catégories 4 à HC), sprints proposés de 200 à 500 m au plus tous les 10 km, segments manuels ajoutés ou à la place.
+- Tests : `core/tests/test_segments.py` (critères 2 à 8).
+- Branché sur le `.world` par T3 (PR #394) ; le chronométrage (T4) et l'affichage viennent avec le branchement de la série T.

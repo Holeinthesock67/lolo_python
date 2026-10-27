@@ -31,6 +31,8 @@ signal mouse_event(event_name: String)
 
 var title_label: Label
 var status_label: Label
+## Fiche du parcours sur l'écran Prêt (lot O12) : distance, dénivelé, montée principale, durée estimée.
+var card_label: Label
 var items_box: VBoxContainer
 var more_label: Label
 var hint_label: Label
@@ -76,6 +78,11 @@ func _init() -> void:
 	status_label.modulate = FOCUS_BG
 	status_label.clip_text = true
 	box.add_child(status_label)
+	card_label = Label.new()
+	card_label.add_theme_font_size_override("font_size", DETAIL_SIZE)
+	card_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	card_label.visible = false
+	box.add_child(card_label)
 	summary = SummaryView.new()
 	box.add_child(summary)
 	items_box = VBoxContainer.new()
@@ -114,6 +121,9 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	title_label.text = str(menu.get("title", ""))
 	status_label.text = str(menu.get("status", ""))
 	status_label.visible = status_label.text != ""
+	var card: Array = menu.get("card", [])
+	card_label.text = "\n".join(PackedStringArray(card.map(func(l): return str(l))))
+	card_label.visible = not card.is_empty()
 	var items: Array = menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
 	var screen := str(menu.get("screen", ""))
