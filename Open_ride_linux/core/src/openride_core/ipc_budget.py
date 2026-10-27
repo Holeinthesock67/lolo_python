@@ -14,6 +14,8 @@
   `state` utilise cette place : sa cible devient sa limite, et seuls les messages courts
   (`segment_result`, `xp_result`, `progression`, `loot`) visent encore 1 400 octets
   (`worst_rogue_state`, `worst_short_messages`). Le core n'allège qu'au-delà de la limite.
+- Depuis la révision 1.5, la limite de 4 096 octets vaut pour tout message hors messages en parties
+  (`ipc_server.MAX_DATAGRAM_SIZE`) ; les cibles de 1 400 octets restent une réserve de place.
 """
 
 from __future__ import annotations

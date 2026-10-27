@@ -14,6 +14,7 @@ from openride_core import settings
 from openride_core.__main__ import main as core_main
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
+from openride_core.ipc_server import MAX_DATAGRAM_SIZE, IpcServer
 from openride_core.mock_driver import MockDriver
 from openride_core.session import CoreSession
 
@@ -119,7 +120,7 @@ def test_ipc_list_and_set_setting(tmp_path: Path):
     s._on_command("list_settings", {}, 3)
     assert sent[-1]["type"] == "settings" and sent[-1]["request_cmd_id"] == 3
     validator.validate(sent[-1])
-    assert len(json.dumps(sent[-1], separators=(",", ":")).encode()) <= 1400
+    assert len(json.dumps(sent[-1], separators=(",", ":")).encode()) <= MAX_DATAGRAM_SIZE
     s._on_command("set_setting", {"key": "rider.ftp_w", "value": 265}, 4)
     assert not errors
     validator.validate(sent[-1])
@@ -164,3 +165,24 @@ def test_wind_settings_lot_p16():
     assert settings.step(cfg, "wind.mode", "theme", +1) == "off"
     assert settings.step(cfg, "wind.max_grade_offset_pct", 8, +1) == 8
     assert settings.step(cfg, "wind.speed_kmh", 20, +1) == 25
+
+
+def test_settings_with_installed_themes_is_sent(tmp_path: Path):
+    """Les thèmes installés allongent la liste des choix : `settings` passe la barre de 1 400 octets
+    et part quand même (limite de 4 096 octets pour tout message, contrat §2, révision 1.5)."""
+    for i in range(12):
+        (tmp_path / f"asphalte_et_herbe_{i:02d}").mkdir()
+        (tmp_path / f"asphalte_et_herbe_{i:02d}" / "theme.json").write_text("{}", encoding="utf-8")
+    msg = {"type": "settings", "v": 1, "request_cmd_id": 2_147_483_647,
+           "items": settings.current(Config(), tmp_path)}
+    sent: list[bytes] = []
+
+    class Sock:
+        def sendto(self, payload, addr):
+            sent.append(payload)
+
+    srv = IpcServer()
+    srv._tx_sock = Sock()
+    srv.send_raw(msg)
+    assert len(sent) == 1 and 1400 < len(sent[0]) <= MAX_DATAGRAM_SIZE
+    assert json.loads(sent[0]) == msg
