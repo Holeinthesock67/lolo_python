@@ -385,22 +385,20 @@ port_commands = 5006
 
 [engine]
 godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide : ~/Applications/godot)
-```
 
-Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
-
-**Section `[wind]` (contrat du lot P1, lue par le core à partir du lot P2).** Elle rejoindra l'exemple ci-dessus quand le core la lira ; d'ici là, elle n'est pas encore acceptée dans `config.toml`.
-
-```text
 [wind]
 mode = "off"                 # "off" (défaut), "fixed", "gusty" ou "theme" (vent du thème 1.2)
 speed_kmh = 0                # 0 à 60
 from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360)
-gust_pct = 0                 # 0 à 100, rafales en mode "gusty"
+gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme"
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
 ```
+
+Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
+
+La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
 
 **Arborescence**
 
