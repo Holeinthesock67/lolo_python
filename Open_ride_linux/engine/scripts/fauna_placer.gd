@@ -13,6 +13,17 @@ extends RefCounted
 ## - `{"type": "deer", "id", "pos": Vector3, "yaw", "flee_dir": Vector3}` : un site de chevreuil en
 ##   lisière, au plus un tronçon sur DEER_EVERY_CHUNKS (un tous les 3 km), fuite vers la forêt et
 ##   loin de la route.
+## Lot P23, oiseaux de la campagne ouverte, au plus un groupe de chaque sorte par tronçon, posés près de la
+## route du tronçon (abscisses `chunk_index * CHUNK_M` à `(chunk_index + 1) * CHUNK_M`) :
+## - `{"type": "raptor", "id", "center": Vector3, "radius_m", "angle", "omega"}` : un rapace qui plane en
+##   cercle de RAPTOR_RADIUS_M au-dessus d'un terrain ouvert (hors forêt), à RAPTOR_AGL_M du sol ;
+## - `{"type": "vee", "id", "origin": Vector3, "dir": Vector3, "speed_mps", "span_m", "phase_m",
+##   "members": [{"back", "side"}]}` : une volée en V qui traverse le ciel en ligne droite, à VEE_AGL_M du
+##   sol, en passant au-dessus de `origin` (près de la route) ; sa trajectoire fait `span_m` de long ;
+## - `{"type": "crows", "id", "pos": Vector3, "away": Vector3, "members": [{"pos", "land", "yaw"}]}` :
+##   des corneilles posées au sol de CROW_ROAD_M de la route, hors forêt, qui s'envolent au passage du
+##   cycliste vers `land`, à CROW_LAND_M plus loin de la route (fauna_behaviour.gd).
+## Tirages des groupes P23 : hachage de la longueur du parcours et de l'indice du tronçon.
 ## `density` : `{birds, livestock, deer}` de 0 à 1 (thème 1.2 `fauna`), DEFAULT_DENSITY pour une clé
 ## absente. `ctx` facultatif : `height_at` (Callable x, z -> y ; sinon l'altitude du point ou 0),
 ## `buildings` (éléments à `outer`), `water` (`{lines, areas}` de la couche eau), `road_width_m`.
@@ -40,6 +51,28 @@ const WATER_MARGIN_M := 2.0
 const MAX_SLOPE := 0.25
 const DEFAULT_ROAD_WIDTH_M := 6.0
 const TRIES_PER_BEAST := 6
+# Lot P23 : oiseaux de la campagne ouverte
+const CHUNK_M := 1000.0                # même découpage que les tronçons d'osm_streamer.gd
+const RAPTOR_SHARE := 0.6              # part des tronçons qui ont un rapace, à fauna.birds = 1
+const RAPTOR_ROAD_M := Vector2(60.0, 180.0)
+const RAPTOR_AGL_M := Vector2(55.0, 90.0)
+const RAPTOR_RADIUS_M := Vector2(35.0, 60.0)
+const RAPTOR_OMEGA := Vector2(0.07, 0.11)
+const VEE_SHARE := 0.5
+const VEE_MIN := 5
+const VEE_MAX := 11
+const VEE_ROAD_M := 120.0              # le point de passage est à moins de VEE_ROAD_M de la route
+const VEE_AGL_M := Vector2(90.0, 160.0)
+const VEE_SPEED_MPS := Vector2(11.0, 14.0)
+const VEE_SPAN_M := 1800.0
+const VEE_SPACING_M := Vector2(4.0, 3.5)   # (en arrière, de côté) entre deux oiseaux de la volée
+const CROW_SHARE := 0.7
+const CROW_MIN := 4
+const CROW_MAX := 9
+const CROW_ROAD_M := Vector2(18.0, 50.0)
+const CROW_SPREAD_M := 8.0
+const CROW_LAND_M := Vector2(50.0, 80.0)
+const OPEN_TRIES := 6
 
 const MASK32 := 0xFFFFFFFF
 
@@ -256,6 +289,117 @@ static func place_chunk(chunk_index: int, vegetation_areas: Array, pois: Array, 
 					"yaw": atan2(outward.x, outward.y), "flee_dir": Vector3(flee.x, 0.0, flee.y)})
 				deer_done = true
 				break
+
+	if d_birds > 0.0 and route != null and route.n >= 2:
+		var wood_rings := []
+		for a in woods:
+			wood_rings.append(VegetationPlacer._packed_ring(a["outer"]))
+		out.append_array(_open_country_birds(chunk_index, route, d_birds, ex, wood_rings))
+	return out
+
+
+## Point de la route à l'abscisse `s`, sa direction et son vecteur unitaire à droite, `{p, fwd, right}` (Vector2).
+static func _route_frame(route, s: float) -> Dictionary:
+	var i := clampi(int(s / maxf(route.ds_m, 1e-3)), 0, route.n - 2)
+	var a := Vector2(route.x[i], route.z[i])
+	var b := Vector2(route.x[i + 1], route.z[i + 1])
+	var fwd := (b - a).normalized() if b.distance_squared_to(a) > 1e-6 else Vector2(1.0, 0.0)
+	var u := clampf((s - i * route.ds_m) / maxf(route.ds_m, 1e-3), 0.0, 1.0)
+	return {"p": a.lerp(b, u), "fwd": fwd, "right": Vector2(-fwd.y, fwd.x)}
+
+
+static func _in_any(rings: Array, x: float, z: float) -> bool:
+	for ring in rings:
+		if VegetationPlacer._in_ring(x, z, ring):
+			return true
+	return false
+
+
+## Groupes P23 du tronçon : rapace, volée en V, corneilles (voir l'en-tête).
+static func _open_country_birds(chunk_index: int, route, d_birds: float, ex: Dictionary, wood_rings: Array) -> Array:
+	var out := []
+	var seed := _h(int(route.length_m * 10.0) & MASK32, chunk_index & MASK32, 23)
+	var s0 := chunk_index * CHUNK_M
+	var s_len := clampf(route.length_m - s0, 0.0, CHUNK_M)
+	if s_len <= 0.0:
+		return out
+	var tag := "c%d" % chunk_index
+
+	# Rapace en cercle au-dessus d'un terrain ouvert
+	if _u(_h(seed, 1)) < d_birds * RAPTOR_SHARE:
+		for t in range(OPEN_TRIES):
+			var hh := _h(seed, 10 + t)
+			var fr := _route_frame(route, s0 + s_len * _u(hh))
+			var side := 1.0 if (hh >> 9) & 1 == 0 else -1.0
+			var c2: Vector2 = fr["p"] + fr["right"] * side * lerpf(RAPTOR_ROAD_M.x, RAPTOR_ROAD_M.y, _u(VegetationPlacer._mix(hh + 1)))
+			if _in_any(wood_rings, c2.x, c2.y):
+				continue
+			var radius := lerpf(RAPTOR_RADIUS_M.x, RAPTOR_RADIUS_M.y, _u(VegetationPlacer._mix(hh + 2)))
+			var top := _ground(ex, c2.x, c2.y, 0.0)
+			for j in range(8):
+				var ang := TAU * j / 8.0
+				top = maxf(top, _ground(ex, c2.x + cos(ang) * radius, c2.y + sin(ang) * radius, top))
+			var cy := top + lerpf(RAPTOR_AGL_M.x, RAPTOR_AGL_M.y, _u(VegetationPlacer._mix(hh + 3)))
+			out.append({"type": "raptor", "id": "%s_raptor" % tag, "center": Vector3(c2.x, cy, c2.y),
+				"radius_m": radius, "angle": TAU * _u(VegetationPlacer._mix(hh + 4)),
+				"omega": side * lerpf(RAPTOR_OMEGA.x, RAPTOR_OMEGA.y, _u(VegetationPlacer._mix(hh + 5)))})
+			break
+
+	# Volée en V qui traverse le ciel au-dessus de la route
+	if _u(_h(seed, 2)) < d_birds * VEE_SHARE:
+		var hv := _h(seed, 30)
+		var fr := _route_frame(route, s0 + s_len * _u(hv))
+		var o2: Vector2 = fr["p"] + fr["right"] * VEE_ROAD_M * (2.0 * _u(VegetationPlacer._mix(hv + 1)) - 1.0)
+		# Cap de 30 à 150 degrés par rapport à la route : la volée la traverse, elle ne la suit pas
+		var cross := deg_to_rad(lerpf(30.0, 150.0, _u(VegetationPlacer._mix(hv + 2))))
+		var dir2: Vector2 = (fr["fwd"] as Vector2).rotated(cross if (hv >> 11) & 1 == 0 else -cross)
+		var n := VEE_MIN + int(round((VEE_MAX - VEE_MIN) * _u(VegetationPlacer._mix(hv + 3))))
+		var members := []
+		for i in range(n):
+			var rank := int((i + 1) / 2.0)
+			members.append({"back": rank * VEE_SPACING_M.x, "side": (0.0 if i == 0 else (1.0 if i % 2 == 1 else -1.0)) * rank * VEE_SPACING_M.y})
+		var gy := _ground(ex, o2.x, o2.y, 0.0)
+		out.append({"type": "vee", "id": "%s_vee" % tag,
+			"origin": Vector3(o2.x, gy + lerpf(VEE_AGL_M.x, VEE_AGL_M.y, _u(VegetationPlacer._mix(hv + 4))), o2.y),
+			"dir": Vector3(dir2.x, 0.0, dir2.y),
+			"speed_mps": lerpf(VEE_SPEED_MPS.x, VEE_SPEED_MPS.y, _u(VegetationPlacer._mix(hv + 5))),
+			"span_m": VEE_SPAN_M, "phase_m": VEE_SPAN_M * _u(VegetationPlacer._mix(hv + 6)), "members": members})
+
+	# Corneilles posées au sol, hors forêt, qui s'envolent au passage
+	if _u(_h(seed, 3)) < d_birds * CROW_SHARE:
+		for t in range(OPEN_TRIES):
+			var hc := _h(seed, 50 + t)
+			var fr := _route_frame(route, s0 + s_len * _u(hc))
+			var side := 1.0 if (hc >> 9) & 1 == 0 else -1.0
+			var away: Vector2 = fr["right"] * side
+			var c2: Vector2 = fr["p"] + away * lerpf(CROW_ROAD_M.x, CROW_ROAD_M.y, _u(VegetationPlacer._mix(hc + 1)))
+			if _in_any(wood_rings, c2.x, c2.y) or not ground_ok(ex, c2.x, c2.y):
+				continue
+			var n := CROW_MIN + int(round((CROW_MAX - CROW_MIN) * _u(VegetationPlacer._mix(hc + 2))))
+			var land_d := lerpf(CROW_LAND_M.x, CROW_LAND_M.y, _u(VegetationPlacer._mix(hc + 3)))
+			var members := []
+			for i in range(n * TRIES_PER_BEAST):
+				if members.size() >= n:
+					break
+				var hm := _h(seed, 100 + t * 64 + i)
+				var ang := TAU * _u(hm)
+				var off := Vector2(cos(ang), sin(ang)) * CROW_SPREAD_M * sqrt(_u(VegetationPlacer._mix(hm + 1)))
+				var p2 := c2 + off
+				if _in_any(wood_rings, p2.x, p2.y) or not ground_ok(ex, p2.x, p2.y):
+					continue
+				var l2 := p2 + away * land_d
+				if _in_any(wood_rings, l2.x, l2.y) or not ground_ok(ex, l2.x, l2.y):
+					l2 = p2 + away * land_d * 0.5
+					if _in_any(wood_rings, l2.x, l2.y) or not ground_ok(ex, l2.x, l2.y):
+						l2 = p2
+				members.append({"pos": Vector3(p2.x, _ground(ex, p2.x, p2.y, 0.0), p2.y),
+					"land": Vector3(l2.x, _ground(ex, l2.x, l2.y, 0.0), l2.y),
+					"yaw": TAU * _u(VegetationPlacer._mix(hm + 2))})
+			if members.is_empty():
+				continue
+			out.append({"type": "crows", "id": "%s_crows" % tag, "pos": Vector3(c2.x, _ground(ex, c2.x, c2.y, 0.0), c2.y),
+				"away": Vector3(away.x, 0.0, away.y), "members": members})
+			break
 	return out
 
 
@@ -285,8 +429,10 @@ static func count(groups: Array) -> Dictionary:
 	var out := {"birds": 0, "animals": 0}
 	for g in groups:
 		match str(g.get("type", "")):
-			"birds":
+			"birds", "vee", "crows":
 				out["birds"] += (g["members"] as Array).size()
+			"raptor":
+				out["birds"] += 1
 			"herd":
 				out["animals"] += (g["members"] as Array).size()
 			"deer":
