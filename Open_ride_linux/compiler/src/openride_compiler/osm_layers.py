@@ -917,3 +917,10 @@ def load_existing_near_tiles(world: Path) -> dict[tuple[int, int], np.ndarray]:
             except Exception:
                 continue
     return out
+
+
+# Noms publics pour le monde ouvert (lot W7), sans changement de comportement.
+vegetation_kind_and_density = _vegetation_kind_and_density
+water_area_kind = _water_area_kind
+densify_polyline_xz = _densify_polyline_xz
+sample_near_tiles_at = _sample_near_tiles_at
