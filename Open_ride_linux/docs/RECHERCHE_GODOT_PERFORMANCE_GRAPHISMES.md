@@ -4,6 +4,23 @@ Date : 27 octobre 2026. Document de recherche, **sans code** : l'amélioration d
 
 Sources : documentation officielle de Godot (dépôt `godot-docs`, branche principale, lue le 27 octobre 2026), référence des classes (dépôt `godot`, `doc/classes`), pages de version 4.4 à 4.7 (dépôt `godot-website`), plus quelques extensions et articles cités au §9. Chaque affirmation renvoie à sa source ; ce qui n'a pas pu être vérifié est marqué **à vérifier**.
 
+## 0. Décisions du propriétaire (27 octobre)
+
+Réponses aux questions posées après la PR #355 :
+
+| Question | Décision |
+| --- | --- |
+| 1. Série Y | Validée : lots Y1 à Y10 inscrits dans `docs/lots/00_INDEX.md`, issues #357 à #366 (suivi #48). |
+| 2. Ordre | Y1, Y2, puis Y4, Y6 et Y3, puis Y5 et Y7, puis Y8, Y9 et Y10. |
+| 3. Y1 avancé | Oui : à faire tout de suite, avant S1 (cahier `docs/lots/LOT_Y1_brouillard_distance_prereglage.md`). |
+| 4. Brouillard | Opaque à 4 km en `low`, 6 km en `medium` et 9 km en `high`. |
+| 5. Godot | Migration directe vers 4.7.x (Y2) au début de la phase finale, avant les autres optimisations. |
+| 6. Préréglage | `medium` au quotidien : c'est le préréglage de référence des mesures de la série Y. `low` garde le budget de la spécification (55 images/s, p99 sous 25 ms). |
+| 10. Habillage | Priorités validées : toits à pans et façades texturées, puis étalonnage, puis marquages de route. |
+| 8. Moteur Mobile | Essai mesuré maintenu (Y7) ; décision après la mesure. |
+| 9. Imposteurs | **Notre propre version** (shader et petit outil de capture), sans l'extension externe (Y5). |
+| 7, 11, 12, 13 | En attente. |
+
 ## 1. En bref
 
 1. **La piste la plus rentable est déjà sous nos yeux :** quel que soit le préréglage, la caméra voit jusqu'à 12 km et le brouillard ne se ferme qu'à 12 km (`render_quality.gd` : `camera.far` et `FOG_TERRAIN.end` valent `WorldStreamer.FAR_RADIUS_M`), alors que le préréglage `low` annonce 3 km de vue. Fermer le brouillard et la caméra selon le préréglage réduit tout le reste (tuiles lointaines, sommets, ombres) et répond à la remarque du propriétaire du 25 octobre (« brouillard trop loin »). Coût faible, risque faible.
@@ -110,18 +127,18 @@ Le core calcule les bots à 50 Hz et envoie l'état à 30 Hz ; l'engine affiche 
 
 ## 8. Propositions de lots (série Y, « rendu et IA, fin de projet »)
 
-À valider par le propriétaire. La lettre Y est libre dans `docs/lots/00_INDEX.md`. Toute la série vient **après** les autres lots, sauf Y1 qui peut être avancé si le propriétaire le souhaite (il répond à son retour du 25 octobre). Chaque lot mesure avant et après au banc simulé avec la sonde X13, garde les seuils d'X2, et ne retient une piste que si elle respecte la règle de S1 (au moins 3 % d'images/s ou 1 ms de p99 gagnés, sans changement visible non voulu). Endurance X16 à la fin de la série.
+Validée par le propriétaire le 27 octobre (§0). Toute la série vient **après** les autres lots, sauf Y1, avancé à la demande du propriétaire (il répond à son retour du 25 octobre). Les mesures se font en `medium`, le préréglage du propriétaire, puis en `low`. Chaque lot mesure avant et après au banc simulé avec la sonde X13, garde les seuils d'X2, et ne retient une piste que si elle respecte la règle de S1 (au moins 3 % d'images/s ou 1 ms de p99 gagnés, sans changement visible non voulu). Endurance X16 à la fin de la série.
 
 | Lot | Contenu | Dépend de | Taille | Délégable |
 | --- | --- | --- | --- | --- |
-| Y1 | Brouillard, `camera.far` et rayon des tuiles lointaines par préréglage (T1) ; retrait ou branchement de la clé `renderer_hint` inutilisée | S1 (étape 1, mesure), X13 | Petite | Oui (essai sur le PC par le propriétaire) |
+| Y1 | Brouillard opaque à 4 / 6 / 9 km, `camera.far` et rayon des tuiles lointaines par préréglage (T1) ; retrait de la clé `renderer_hint` inutilisée | X13 (livré) ; avant S1 | Petite | Oui (essai sur le PC par le propriétaire) |
 | Y2 | Migration vers Godot 4.7.x : moteur, scripts, tests, banc, lanceur ; recette visuelle (glow 4.6) | Y1, X2, X13 | Moyenne | Non : interne (PC cible) |
 | Y3 | HLOD des villages et LOD des bâtiments (T3, T9), fondus sans transparence | Y2, S1 | Moyenne | Oui |
 | Y4 | Ombres par préréglage : cascades, distances, objets sans ombres (T4) | Y2 | Petite | Oui |
-| Y5 | Arbres lointains en imposteurs, feuillage en `alpha scissor`, densité par `visible_instance_count` (T5, T10) | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) |
+| Y5 | Arbres lointains en imposteurs écrits par nous (décision du 27 octobre, sans extension externe), feuillage en `alpha scissor`, densité par `visible_instance_count` (T5, T10) | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) |
 | Y6 | Résolution 3D par préréglage et résolution adaptative (FSR 1.0, temps GPU), anticrénelage FXAA/SMAA en `low` (T6, T12) | Y2, X13 | Petite | Oui |
 | Y7 | Essai du moteur Mobile pour `low` (T13) : mesure seule, décision du propriétaire | Y2 | Petite | Oui (mesure) |
-| Y8 | Habillage : toits à pans, textures de façade en atlas, étalonnage AgX, décalques de route (§6) | Y3, P20 | Grande | En partie |
+| Y8 | Habillage, dans l'ordre validé : toits à pans et textures de façade en atlas, puis étalonnage AgX, puis décalques de route (§6) | Y3, P20 | Grande | En partie |
 | Y9 | Lissage des bots : mémoire de trames, Hermite, déplacements latéraux, LOD des bots (§7) | O7 | Moyenne | Oui |
 | Y10 | Comportement des bots (profils, attaques, abri) côté core | Y9, séries T et R | Moyenne | Oui |
 
