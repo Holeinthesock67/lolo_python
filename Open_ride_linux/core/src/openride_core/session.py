@@ -266,6 +266,10 @@ class CoreSession:
         self._bg_tasks: set[asyncio.Task[Any]] = set()
         # Appairage depuis le menu (lot N13) : dernière recherche et identification du « + » en cours.
         self._scan_items: list[dict[str, Any]] = []
+        # Menu ERG (lot N16, décision D4 de l'audit IPC) : dossier personnel fouillé par list_imports
+        # et chemins proposés à l'engine, seuls acceptés par import_workout.
+        self.import_home = Path.home()
+        self._import_offer: set[str] = set()
         self._scanning = False
         self._identify: dict[str, Any] | None = None
 
@@ -349,6 +353,45 @@ class CoreSession:
             self._send_settings(cmd_id)
         elif name == "set_setting":
             self._set_setting(args, cmd_id)
+        elif name in ("list_imports", "create_workout", "import_workout"):
+            self._on_workout_menu_command(name, args, cmd_id)
+
+    # --- entraînements créés ou importés depuis le menu (lot N16, audit IPC D4) ------------------
+
+    def _on_workout_menu_command(self, name: str, args: dict, cmd_id: int) -> None:
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Entraînements modifiables seulement hors séance.")
+            return
+        self._spawn(self._workout_menu(name, args, cmd_id))
+
+    async def _workout_menu(self, name: str, args: dict, cmd_id: int) -> None:
+        from . import workout_menu
+        from .ipc_lists import chunk_list_message, MAX_DATAGRAM_BYTES
+
+        try:
+            if name == "list_imports":
+                items = await asyncio.to_thread(workout_menu.import_candidates, self.import_home,
+                                                self.workouts_dir)
+                self._import_offer = {it["path"] for it in items}
+                for m in chunk_list_message("imports", cmd_id, items, False, MAX_DATAGRAM_BYTES):
+                    self.server.send_raw(m)
+                return
+            if name == "create_workout":
+                res = await asyncio.to_thread(workout_menu.create_interval_workout, self.workouts_dir, args)
+            else:
+                path = args.get("path") if isinstance(args, dict) else None
+                if not isinstance(path, str) or path not in self._import_offer:
+                    raise workout_menu.WorkoutMenuError(
+                        "workout_invalid", "Fichier non proposé par list_imports : redemander la liste.")
+                res = await asyncio.to_thread(workout_menu.import_file, Path(path), self.workouts_dir)
+            log.info("Entraînement %s : %s (%s)", "créé" if name == "create_workout" else "importé",
+                     res["workout_id"], "nouveau" if res["created"] else "déjà présent")
+            self.server.send_raw({"type": "workout_saved", "v": 1, "request_cmd_id": cmd_id, **res})
+        except workout_menu.WorkoutMenuError as exc:
+            log.warning("Menu ERG : %s refusé : %s", name, exc)
+            self.server.send_error(exc.code, str(exc))
+        except Exception:
+            log.exception("Erreur pendant %s (cmd_id=%d)", name, cmd_id)
 
     # --- réglages depuis le menu (lots O3 et O4, contrat IPC révision 1.3) -----------------------
 
