@@ -20,7 +20,7 @@ V1 validé, V11 livré (le core répond aux commandes), V6 livré (V7 souhaité 
 - **Modèle sans affichage** `engine/scripts/garage_view_model.gd` et son test : écrans « Garage » (Vélo, Tenue, Avatar, Caméra), listes par emplacement depuis le message `garage` (état verrouillé, achetable, possédé, choisi ; tri par niveau), fiche d'une pièce (« Grimpeur — −1,5 kg, CdA = — Conseillé : col — Niveau 5 — 150 pièces »), achat avec confirmation (« Acheter Grimpeur pour 150 pièces ? Solde après : 40 »), refus lisibles pour `item_locked` et `not_enough_coins`.
 - **Avatar :** une ligne par réglage, valeur changée par + / − (listes et palettes du contrat), « Enregistrer » envoie `set_avatar` ; « Annuler » rend les valeurs précédentes.
 - **Caméra :** choix subjective / suivi (V6), enregistré dans les réglages de l'engine.
-- **En-tête :** niveau, barre d'expérience vers le niveau suivant et solde de pièces (depuis `hello_ack`).
+- **En-tête :** niveau, barre d'expérience vers le niveau suivant et solde de pièces (depuis `hello_ack`, puis les messages `progression`).
 - **Aperçu 3D :** l'avatar équipé tourne lentement à droite du menu ; l'aperçu suit la pièce sélectionnée avant achat.
 - **Conseil du parcours :** sur l'écran « Prêt », une ligne « Parcours vallonné : conseillé Polyvalent léger, Profilées » quand l'équipement choisi n'est pas celui conseillé (champ `terrain` de l'élément de `routes`, contrat V1 §4.3, rempli par V11).
 
@@ -35,7 +35,7 @@ Aucune au-delà de V1.
 ## 7. Critères d'acceptation
 
 1. Toutes les suites passent ; le modèle est testé sans écran (états, fiches, confirmation, refus, annulation de l'avatar).
-2. Avec le faux core : acheter puis choisir une pièce au clavier ou au Click ; solde et aperçu mis à jour par le `hello_ack` suivant.
+2. Avec le faux core : acheter puis choisir une pièce au clavier ou au Click ; solde et aperçu mis à jour par le message `progression`.
 3. Pendant une séance, le Garage n'est pas accessible (le core répondrait `busy`).
 
 **Sur le PC cible (le propriétaire) :** tout se règle au Click sans clavier.

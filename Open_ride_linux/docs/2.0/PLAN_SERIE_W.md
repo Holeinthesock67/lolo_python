@@ -1,6 +1,6 @@
 # OpenRide 2.0 – Monde ouvert généré en direct (série W)
 
-25 octobre 2026. Proposition du propriétaire : choisir dans le menu un point de départ sur un globe, comme dans un simulateur de vol, puis rouler sur les vraies routes autour de ce point ; le monde se construit au fur et à mesure à partir de cartes téléchargées sur internet, et ce qui a déjà été téléchargé reste sur le PC pour ne pas être retéléchargé quand on repasse au même endroit. Ce plan étudie la faisabilité, fixe l'architecture et découpe le travail en lots. **La série W commence après la 1.0** (séries N et O) ; elle est indépendante des modes de jeu R, T et V. Les cahiers des lots seront rédigés au démarrage de la série et ajoutés à `docs/lots/00_INDEX.md`.
+25 octobre 2026. Proposition du propriétaire : choisir dans le menu un point de départ sur un globe, comme dans un simulateur de vol, puis rouler sur les vraies routes autour de ce point ; le monde se construit au fur et à mesure à partir de cartes téléchargées sur internet, et ce qui a déjà été téléchargé reste sur le PC pour ne pas être retéléchargé quand on repasse au même endroit. Ce plan étudie la faisabilité, fixe l'architecture et découpe le travail en lots. **La série W commence après la 1.0** (séries N et O) ; elle est indépendante des modes de jeu R, T et V. Les cahiers des lots sont rédigés (26 octobre 2026, `docs/lots/LOT_W*.md`) et listés dans `docs/lots/00_INDEX.md`.
 
 ## 1. En résumé
 
