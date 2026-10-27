@@ -73,6 +73,12 @@ const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
 const FTP_WARNINGS := {"too_short": "test trop court", "erratic_cadence": "cadence erratique",
 	"trainer_dropout": "coupure du trainer pendant l'effort", "paused": "pause pendant l'effort"}
 const SUMMARY_BASE_IDS := ["new_session", "details", "quit"]
+## Ligne d'état de l'écran de pause selon `state.pause_reason` (contrat IPC) : le HUD est caché pendant
+## un menu, la raison de la pause s'affiche donc sous le titre. Pause demandée (`user`) : rien.
+const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion en cours…",
+	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
+	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
+	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -130,6 +136,8 @@ var records = RecordsViewModel.new()
 var records_path := ""
 var _record_segment := ""
 var _record_bonus := false
+## Raison de la dernière pause (`state.pause_reason`), "" hors pause.
+var pause_reason := ""
 
 
 func _init() -> void:
@@ -166,6 +174,7 @@ func is_visible() -> bool:
 func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var out: Array = []
 	var st := str(state.get("session_state", ""))
+	pause_reason = "" if state.get("pause_reason") == null else str(state["pause_reason"])
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
 	var diff = state.get("difficulty_pct", null)
@@ -818,5 +827,7 @@ func state() -> Dictionary:
 		st["status"] = FTP_HINT
 	elif st["screen"] == SUMMARY:
 		st["status"] = summary_message
+	elif st["screen"] == MenuModel.PAUSE:
+		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
 	st["card"] = route_card() if st["screen"] == MenuModel.READY else []
 	return st

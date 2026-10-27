@@ -1,29 +1,28 @@
-extends Panel
+extends Control
 
-## Menus au-dessus de la vue 3D (Lot N6) : titre, éléments avec un focus très visible, raison d'un
-## élément désactivé (« à compiler »…), puis l'état des appareils (devices_view.gd) ou le bilan
-## (summary_view.gd). Placé entre les panneaux latéraux du HUD d'E3, au-dessus du profil d'altitude ;
-## mêmes tailles de police que le HUD (lisible à 2 m). Ne décide rien : affiche menu_flow.gd.
+## Menus au-dessus de la vue 3D (Lot N6, réécrit par le lot « présentation des menus », étape 1) : plein
+## écran sur un voile sombre (le HUD de séance est caché pendant un menu, main.gd), titre et ligne d'état,
+## liste des éléments avec pictogramme, sélection encadrée et marquée d'un repère, détail aligné à droite,
+## carte de détail à droite (fiche du parcours sur l'écran Prêt, bilan de fin de séance), pastilles des
+## appareils (devices_view.gd) et bandeau des boutons (button_bar.gd) en bas. Couleurs, tailles et
+## espacements du thème commun (ui_theme.gd). Ne décide rien : affiche menu_flow.gd.
 ## Souris : clic gauche sur un élément = le valider (A long), clic droit = retour (Y), molette = choisir ;
 ## main.gd reçoit ces gestes par les signaux ci-dessous.
 ## Pas de class_name : charger par preload("res://scripts/menu_view.gd").
 
 const DevicesView := preload("res://scripts/devices_view.gd")
 const SummaryView := preload("res://scripts/summary_view.gd")
+const ButtonBar := preload("res://scripts/button_bar.gd")
+const UiTheme := preload("res://scripts/ui_theme.gd")
+const UiIcons := preload("res://scripts/ui_icons.gd")
 
-const TITLE_SIZE := 36
-const ITEM_SIZE := 30
-const DETAIL_SIZE := 20
-## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus. Un de moins quand l'état des
-## appareils est affiché sous la liste (accueil, Prêt, connexion), pour qu'il reste dans le panneau.
-const MAX_VISIBLE_ITEMS := 5
-const MAX_VISIBLE_WITH_DEVICES := 4
-const FOCUS_BG := Color(0.95, 0.75, 0.20, 0.95)
-const FOCUS_TEXT := Color(0.05, 0.05, 0.05)
-const DISABLED_TEXT := Color(0.60, 0.62, 0.65)
+## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus. Un de moins quand les pastilles des
+## appareils sont affichées (accueil, Prêt, connexion) : l'accueil tient en entier.
+const MAX_VISIBLE_ITEMS := 9
+const MAX_VISIBLE_WITH_DEVICES := 8
 const DEVICES_SCREENS := ["home", "ready", "connect"]
-const HINT := "Click : + / − ou A choisir (long : 5) · A long valider · Y retour   ·   Clavier : ↑ ↓ Entrée Échap   ·   Souris"
-const HINT_PAUSE := "Click : + / − ou A choisir · A long valider · Y reprendre   ·   Clavier : ↑ ↓ Entrée, Échap reprendre   ·   Souris"
+## En-tête de la carte de détail selon l'écran ; la carte n'existe que sur ces écrans.
+const CARD_TITLES := {"ready": "Fiche du parcours", "summary": "Bilan de la séance"}
 
 signal item_clicked(item_id: String)
 ## Événement du Click joué à la souris : Y_SHORT (clic droit), MINUS_SHORT / PLUS_SHORT (molette).
@@ -31,79 +30,112 @@ signal mouse_event(event_name: String)
 
 var title_label: Label
 var status_label: Label
-## Fiche du parcours sur l'écran Prêt (lot O12) : distance, dénivelé, montée principale, durée estimée.
+## Carte de détail : en-tête, fiche du parcours sur l'écran Prêt (lot O12), bilan (lot N4).
+var card: PanelContainer
+var card_title: Label
 var card_label: Label
 var items_box: VBoxContainer
 var more_label: Label
-var hint_label: Label
-var devices: VBoxContainer
+var devices: HBoxContainer
 var summary: VBoxContainer
+var button_bar: PanelContainer
 var _item_panels: Array[PanelContainer] = []
-var _focus_style := StyleBoxFlat.new()
-var _plain_style := StyleBoxEmpty.new()
+var _focus_style := UiTheme.row_style(true)
+var _plain_style := UiTheme.row_style(false)
 
 
 func _init() -> void:
 	name = "MenuView"
 	visible = false
-	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.07, 0.10, 0.82)
-	style.set_corner_radius_all(10)
-	add_theme_stylebox_override("panel", style)
-	_focus_style.bg_color = FOCUS_BG
-	_focus_style.set_corner_radius_all(6)
-	_focus_style.content_margin_left = 12
-	_focus_style.content_margin_right = 12
-	_plain_style.content_margin_left = 12
-	_plain_style.content_margin_right = 12
+	set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
 	gui_input.connect(_on_gui_input)
-	# Entre les panneaux latéraux (20–320 px de chaque bord) et sous le panneau central (bas à 130 px).
-	anchor_right = 1.0
-	anchor_bottom = 1.0
-	offset_left = 340.0
-	offset_right = -340.0
-	offset_top = 150.0
-	offset_bottom = -135.0
+	var root := VBoxContainer.new()
+	root.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	root.add_theme_constant_override("separation", 0)
+	root.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(root)
+	var margins := MarginContainer.new()
+	margins.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	margins.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	for side in ["left", "right"]:
+		margins.add_theme_constant_override("margin_" + side, UiTheme.MARGIN)
+	margins.add_theme_constant_override("margin_top", UiTheme.TOP)
+	margins.add_theme_constant_override("margin_bottom", UiTheme.GAP)
+	root.add_child(margins)
 	var box := VBoxContainer.new()
-	box.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_MINSIZE, 16)
-	box.add_theme_constant_override("separation", 6)
-	add_child(box)
-	title_label = Label.new()
-	title_label.add_theme_font_size_override("font_size", TITLE_SIZE)
-	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(title_label)
-	status_label = Label.new()
-	status_label.add_theme_font_size_override("font_size", DETAIL_SIZE)
-	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	status_label.modulate = FOCUS_BG
+	box.add_theme_constant_override("separation", UiTheme.GAP)
+	box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	margins.add_child(box)
+	# En-tête : titre, ligne d'état, filet.
+	var header := VBoxContainer.new()
+	header.add_theme_constant_override("separation", 6)
+	box.add_child(header)
+	title_label = UiTheme.label(UiTheme.TITLE_SIZE)
+	title_label.clip_text = true
+	title_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	header.add_child(title_label)
+	status_label = UiTheme.label(UiTheme.DETAIL_SIZE, UiTheme.DIM)
 	status_label.clip_text = true
-	box.add_child(status_label)
-	card_label = Label.new()
-	card_label.add_theme_font_size_override("font_size", DETAIL_SIZE)
+	status_label.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	header.add_child(status_label)
+	var rule := ColorRect.new()
+	rule.color = UiTheme.LINE
+	rule.custom_minimum_size.y = 1
+	header.add_child(rule)
+	# Corps : liste à gauche, carte de détail à droite.
+	var body := HBoxContainer.new()
+	body.size_flags_vertical = Control.SIZE_EXPAND_FILL
+	body.add_theme_constant_override("separation", UiTheme.GAP + 16)
+	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	box.add_child(body)
+	var left := VBoxContainer.new()
+	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	left.add_theme_constant_override("separation", 6)
+	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	body.add_child(left)
+	items_box = VBoxContainer.new()
+	items_box.add_theme_constant_override("separation", UiTheme.ROW_GAP)
+	left.add_child(items_box)
+	more_label = UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM)
+	more_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	left.add_child(more_label)
+	card = PanelContainer.new()
+	card.add_theme_stylebox_override("panel", UiTheme.card_style())
+	card.custom_minimum_size.x = UiTheme.CARD_W
+	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
+	card.clip_contents = true
+	card.mouse_filter = Control.MOUSE_FILTER_PASS
+	body.add_child(card)
+	var card_box := VBoxContainer.new()
+	card_box.add_theme_constant_override("separation", 10)
+	card.add_child(card_box)
+	card_title = UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM)
+	card_box.add_child(card_title)
+	card_label = UiTheme.label(UiTheme.CARD_SIZE)
 	card_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	card_label.visible = false
-	box.add_child(card_label)
+	card_box.add_child(card_label)
 	summary = SummaryView.new()
-	box.add_child(summary)
-	items_box = VBoxContainer.new()
-	items_box.add_theme_constant_override("separation", 4)
-	box.add_child(items_box)
-	more_label = Label.new()
-	more_label.add_theme_font_size_override("font_size", DETAIL_SIZE)
-	more_label.modulate = DISABLED_TEXT
-	box.add_child(more_label)
-	var spacer := Control.new()
-	spacer.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	box.add_child(spacer)
+	card_box.add_child(summary)
 	devices = DevicesView.new()
 	box.add_child(devices)
-	hint_label = Label.new()
-	hint_label.add_theme_font_size_override("font_size", 16)
-	hint_label.modulate = DISABLED_TEXT
-	hint_label.text = HINT
-	hint_label.clip_text = true
-	hint_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
-	box.add_child(hint_label)
+	# Bandeau des boutons sur toute la largeur, collé en bas.
+	button_bar = ButtonBar.new()
+	button_bar.mouse_filter = Control.MOUSE_FILTER_PASS
+	root.add_child(button_bar)
+
+
+## Voile sur la scène 3D : dégradé horizontal, plus dense sous la liste.
+func _draw() -> void:
+	var w := size.x
+	var h := size.y
+	draw_polygon(PackedVector2Array([Vector2.ZERO, Vector2(w, 0), Vector2(w, h), Vector2(0, h)]),
+		PackedColorArray([UiTheme.VEIL_LEFT, UiTheme.VEIL_RIGHT, UiTheme.VEIL_RIGHT, UiTheme.VEIL_LEFT]))
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_RESIZED:
+		queue_redraw()
 
 
 ## Textes des éléments affichés, séparés par « | », focus entre crochets (tests graphiques).
@@ -111,9 +143,14 @@ func items_text() -> String:
 	var parts: Array[String] = []
 	for p in _item_panels:
 		if p.visible:
-			var l: Label = p.get_child(0)
-			parts.append(("[%s]" % l.text) if p.get_theme_stylebox("panel") == _focus_style else l.text)
+			var t := _row_text(p)
+			parts.append(("[%s]" % t) if p.get_meta("focused", false) else t)
 	return " | ".join(parts)
+
+
+## Aide des boutons affichée, en une ligne (tests).
+func hint_text() -> String:
+	return button_bar.text()
 
 
 ## menu : état de menu_model.gd ; state : dernière trame ; summary_data : bilan (écran « summary »).
@@ -121,52 +158,110 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	title_label.text = str(menu.get("title", ""))
 	status_label.text = str(menu.get("status", ""))
 	status_label.visible = status_label.text != ""
-	var card: Array = menu.get("card", [])
-	card_label.text = "\n".join(PackedStringArray(card.map(func(l): return str(l))))
-	card_label.visible = not card.is_empty()
+	var screen := str(menu.get("screen", ""))
+	var card_lines: Array = menu.get("card", [])
+	card_label.text = "\n".join(PackedStringArray(card_lines.map(func(l): return str(l))))
+	card_label.visible = not card_lines.is_empty()
+	summary.visible = screen == "summary"
+	card.visible = card_label.visible or summary.visible
+	card_title.text = str(CARD_TITLES.get(screen, ""))
+	card_title.visible = card_title.text != ""
 	var items: Array = menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
-	var screen := str(menu.get("screen", ""))
 	var max_items := MAX_VISIBLE_WITH_DEVICES if screen in DEVICES_SCREENS else MAX_VISIBLE_ITEMS
 	var first := 0
 	if items.size() > max_items and focus >= 0:
 		first = clampi(focus - max_items / 2, 0, items.size() - max_items)
 	var shown := mini(items.size() - first, max_items)
 	while _item_panels.size() < shown:
-		var p := PanelContainer.new()
-		var l := Label.new()
-		l.add_theme_font_size_override("font_size", ITEM_SIZE)
-		l.clip_text = true
-		p.add_child(l)
-		p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
-		p.mouse_filter = Control.MOUSE_FILTER_PASS   # clic droit et molette remontent au panneau
-		p.gui_input.connect(_on_item_input.bind(p))
+		var p := _new_row()
 		items_box.add_child(p)
 		_item_panels.append(p)
 	for i in range(_item_panels.size()):
 		var p := _item_panels[i]
 		p.visible = i < shown
-		if not p.visible:
-			continue
-		var idx := first + i
-		var it: Dictionary = items[idx]
-		var l: Label = p.get_child(0)
-		var detail := str(it.get("detail", ""))
-		l.text = str(it.get("label", "")) + ((" — " + detail) if detail != "" else "")
-		p.set_meta("item_id", str(it.get("id", "")))
-		var focused := idx == focus
-		p.add_theme_stylebox_override("panel", _focus_style if focused else _plain_style)
-		l.modulate = FOCUS_TEXT if focused else (Color.WHITE if it.get("enabled", true) else DISABLED_TEXT)
+		if p.visible:
+			_set_row(p, items[first + i], first + i == focus)
 	more_label.text = "%d / %d" % [focus + 1, items.size()] if items.size() > max_items else ""
-	summary.visible = screen == "summary"
 	devices.visible = screen in DEVICES_SCREENS
-	# Aide toujours visible (sans elle, rien ne dit qu'il faut un appui long pour valider) ; une ligne
-	# coupée à la largeur du panneau, sous les appareils.
-	hint_label.text = HINT_PAUSE if screen == "pause" else HINT
+	# Aide toujours visible (sans elle, rien ne dit qu'il faut un appui long pour valider).
+	button_bar.update_display(screen)
 	if summary.visible:
 		summary.update_display(summary_data, show_details, str(state.get("mode", "")))
 	if devices.visible:
 		devices.update_display(state)
+
+
+## Entrée de liste : pictogramme, libellé, détail aligné à droite ; repère dessiné à gauche de la sélection.
+func _new_row() -> PanelContainer:
+	var p := PanelContainer.new()
+	p.custom_minimum_size.y = UiTheme.ROW_H
+	p.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+	p.mouse_filter = Control.MOUSE_FILTER_PASS   # clic droit et molette remontent au panneau
+	p.gui_input.connect(_on_item_input.bind(p))
+	var row := HBoxContainer.new()
+	row.add_theme_constant_override("separation", 16)
+	row.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	p.add_child(row)
+	var icon := Control.new()
+	icon.custom_minimum_size = Vector2(UiTheme.ICON, UiTheme.ICON)
+	icon.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	icon.draw.connect(func() -> void:
+		UiIcons.draw(icon, str(icon.get_meta("shape", "")), Rect2(Vector2.ZERO, icon.size),
+			icon.get_meta("color", UiTheme.DIM), UiTheme.LINE_W))
+	row.add_child(icon)
+	var l := UiTheme.label(UiTheme.ITEM_SIZE)
+	l.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	l.size_flags_stretch_ratio = 1.6
+	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	l.clip_text = true
+	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(l)
+	var d := UiTheme.label(UiTheme.DETAIL_SIZE, UiTheme.DIM)
+	d.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
+	d.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	d.clip_text = true
+	d.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
+	d.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	row.add_child(d)
+	p.draw.connect(func() -> void:
+		if p.get_meta("focused", false):
+			var y := p.size.y / 2.0
+			p.draw_colored_polygon(PackedVector2Array([Vector2(-16, y - 12), Vector2(-6, y), Vector2(-16, y + 12)]), UiTheme.FOCUS))
+	return p
+
+
+func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
+	var row: HBoxContainer = p.get_child(0)
+	var icon: Control = row.get_child(0)
+	var l: Label = row.get_child(1)
+	var d: Label = row.get_child(2)
+	var enabled: bool = it.get("enabled", true)
+	var id := str(it.get("id", ""))
+	l.text = str(it.get("label", ""))
+	d.text = str(it.get("detail", ""))
+	d.visible = d.text != ""
+	p.set_meta("item_id", id)
+	p.set_meta("focused", focused)
+	p.add_theme_stylebox_override("panel", _focus_style if focused else _plain_style)
+	var color: Color = UiTheme.FOCUS if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED)
+	l.add_theme_color_override("font_color", UiTheme.TEXT if (focused or enabled) else UiTheme.DISABLED)
+	d.add_theme_color_override("font_color", UiTheme.TEXT if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED))
+	icon.set_meta("shape", UiIcons.for_item(id))
+	icon.set_meta("color", color)
+	icon.queue_redraw()
+	p.queue_redraw()
+
+
+## Libellé et détail d'une entrée, comme avant le lot : « libellé — détail ».
+func _row_text(p: PanelContainer) -> String:
+	var row: HBoxContainer = p.get_child(0)
+	var l: Label = row.get_child(1)
+	var d: Label = row.get_child(2)
+	return l.text + ((" — " + d.text) if d.text != "" else "")
 
 
 func _on_item_input(event: InputEvent, panel: PanelContainer) -> void:
@@ -175,7 +270,7 @@ func _on_item_input(event: InputEvent, panel: PanelContainer) -> void:
 		item_clicked.emit(str(panel.get_meta("item_id", "")))
 
 
-## Hors des éléments (ou non traité par eux) : clic droit et molette sur tout le panneau.
+## Hors des éléments (ou non traité par eux) : clic droit et molette sur tout le menu.
 func _on_gui_input(event: InputEvent) -> void:
 	if not (event is InputEventMouseButton and event.pressed):
 		return
