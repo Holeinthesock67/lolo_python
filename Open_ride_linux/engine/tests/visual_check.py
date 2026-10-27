@@ -713,6 +713,7 @@ def _scenes(s: Session) -> None:
                 f"{b}")
         s.check_layout("bots", info)
     core.set_scene(speed=SPEED_MPS, bots=None)
+    time.sleep(SETTLE_S)
     shot = s.capture("sans_bot")
     if shot:
         img, info = shot
