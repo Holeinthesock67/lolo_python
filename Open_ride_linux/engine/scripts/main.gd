@@ -85,7 +85,8 @@ var sound_player = null
 var _quality_name: String = "low"
 var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
 var _theme_name: String = "default"
-var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage (--display, réglage render.display)
+var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage en place (--display, puis le menu)
+var _display_setting := ""   # dernière valeur de render.display reçue du core (vide avant la première liste)
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
 ## Sonde de performance (lot X13), active avec --perf-probe=FICHIER.csv.
@@ -153,6 +154,7 @@ func _ready() -> void:
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
+	print("Mode d'affichage : ", _display_name)
 	_visual_grade_scale = float(cfg.get("visual_grade", 1.0))
 	streamer.visual_grade_scale = _visual_grade_scale
 	if streamer.osm_streamer != null:
@@ -324,11 +326,15 @@ func _on_settings(msg: Dictionary) -> void:
 	if ch != chart_mode and ch in WorkoutChartView.MODES:
 		chart_mode = ch
 		_apply_chart_mode()
-	var disp := str(menu_flow.settings.item("render.display").get("value", _display_name))
-	if disp != _display_name and DisplayMode.is_valid(disp):
-		_display_name = disp
-		DisplayMode.apply(_display_name)
-		print("Mode d'affichage : ", _display_name)
+	# Au lancement, --display décide (le lanceur y met [render] display, ou OPENRIDE_DISPLAY) ; seule une
+	# valeur changée ensuite au menu change la fenêtre, pour que les bancs gardent leur fenêtre forcée.
+	var disp := str(menu_flow.settings.item("render.display").get("value", ""))
+	if DisplayMode.is_valid(disp):
+		if _display_setting != "" and disp != _display_setting and disp != _display_name:
+			_display_name = disp
+			DisplayMode.apply(_display_name)
+			print("Mode d'affichage : ", _display_name)
+		_display_setting = disp
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp

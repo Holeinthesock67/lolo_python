@@ -13,6 +13,8 @@ extends RefCounted
 ## la sortie : seule la fenêtre de l'engine change.
 ## Sans argument, l'engine reste en fenêtre : les outils de test qui lancent Godot directement
 ## (visual_check, sim_bench, menu_bench, run_engine_tests) gardent leur taille forcée par `--resolution`.
+## Au lancement, `--display` fait foi ; la liste `settings` du core ne change la fenêtre que si la valeur
+## de `render.display` y change ensuite (choix au menu), jamais à sa première réception (main.gd).
 ## Le curseur de la souris est masqué en séance et visible dès qu'un menu est affiché (clic des menus).
 ## Pas de class_name : charger par preload("res://scripts/display_mode.gd").
 
