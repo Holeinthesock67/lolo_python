@@ -76,7 +76,7 @@
 | [N13](LOT_N13_menu_appareils.md) | Section « Appareils » du menu : rechercher et appairer le matériel | GDScript + Python | N6, N12 | Moyenne | **Livré le 26 octobre** (interne, PR #197) |
 | [N14](LOT_N14_lancement_sans_terminal.md) | Lancement sans terminal : premier démarrage, erreurs dans une fenêtre, « Libérer le trainer » et « Mettre à jour » depuis le bureau, installation en une commande | Python + shell | L8 (livré), N11 | Moyenne | **Livré le 25 octobre** (issue #114, PR #178) |
 | [O1](LOT_O1_preparation_arbres.md) | Arbres : préparer une tuile en moins de 150 ms (210 ms mesurés sur le PC cible) | GDScript | E3, E4 (livrés) | Petite | Oui |
-| [O2](LOT_O2_version_1_0.md) | Numéro de version unique (`VERSION`) et notes de version (`CHANGELOG.md`) | Python + GDScript | N3 ; de préférence fin de J4 | Petite | Oui, après N3 |
+| [O2](LOT_O2_version_1_0.md) | Numéro de version unique (`VERSION`) et notes de version (`CHANGELOG.md`) | Python + GDScript | N3 ; de préférence fin de J4 | Petite | **Livré le 26 octobre** (issue #120) |
 | [O3](LOT_O3_reglages_core.md) | Réglages côté core : FTP, masse, braquet de départ, thème et qualité écrits dans `~/OpenRide/config.toml` | Python | N12 ; N10 pour les thèmes | Petite | Oui, après N12 |
 | [O4](LOT_O4_menu_reglages.md) | Section « Réglages » du menu et version affichée | GDScript + Python | N6, N13, O3 ; O2 | Moyenne | Non : interne (ajout au contrat IPC, écran du menu) |
 | [O5](LOT_O5_traces_garmin_dossier.md) | Traces FIT, TCX et archives Garmin (`.zip`, `.gz`) déposées dans le dossier des traces | Python | N11 | Petite | Oui, après N11 |
