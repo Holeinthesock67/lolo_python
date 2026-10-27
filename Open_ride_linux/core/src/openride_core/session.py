@@ -317,16 +317,19 @@ class CoreSession:
     async def _scan_devices(self, cmd_id: int, timeout: float) -> None:
         from . import pairing
 
+        error: str | None = None
         try:
             inv = await pairing.scan_inventory(self.sim, timeout)
             self._scan_items = pairing.scan_items(inv, pairing.configured_addresses(self.cfg))
             log.info("Appairage : %d appareil(s) trouvé(s).", len(self._scan_items))
-        except Exception as exc:   # Bluetooth éteint, BlueZ absent
+        except Exception as exc:   # Bluetooth éteint, BlueZ absent, BlueZ occupé ailleurs
             log.warning("Appairage : recherche impossible : %s", exc)
-            self.server.send_error("scan_failed", f"Recherche des appareils impossible : {exc}")
+            error = pairing.scan_error_message(exc)
         finally:
             self._scanning = False
         self.server.send_raw(pairing.scan_results_message(cmd_id, self._scan_items, True))
+        if error:   # après la fin de recherche, pour que l'écran garde la raison affichée
+            self.server.send_error("scan_failed", error)
 
     async def _identify_direct(self, cmd_id: int, addresses: list[str]) -> None:
         from . import pairing

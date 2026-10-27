@@ -13,6 +13,7 @@ faite avant, et le résultat doit passer `config.validate`, sinon rien n'est éc
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -20,6 +21,8 @@ from typing import Any, Awaitable, Callable
 
 from . import config as config_mod
 from . import config_edit
+
+log = logging.getLogger("pairing")
 
 IDENTIFY_TIMEOUT_S = 15.0
 
@@ -140,6 +143,7 @@ async def wait_plus_press(addresses: list[str], timeout: float) -> str | None:
 # --- recherche et appairage depuis le menu (lot N13, contrat IPC révision 1.2) -----------------
 
 SCAN_TIMEOUT_S = 8.0
+SCAN_BUSY_RETRY_S = (2.0, 4.0)   # nouveaux essais quand BlueZ répond InProgress
 SCAN_MAX_ITEMS = 12
 SCAN_NAME_MAX = 24
 SCAN_ROLES = ("trainer", "click", "hr_strap", "hr_watch")
@@ -148,14 +152,46 @@ MAX_SCAN_DATAGRAM = 1400
 
 
 async def scan_inventory(sim: Any, timeout: float) -> dict[str, Any]:
-    """Inventaire de `tools.devices` : Bluetooth simulé si `sim` est donné, sinon BlueZ."""
+    """Inventaire de `tools.devices` : Bluetooth simulé si `sim` est donné, sinon BlueZ.
+
+    La recherche prend le verrou BLE commun : pendant que le trainer, le Click ou la ceinture
+    cherchent à se (re)connecter, BlueZ refuserait une seconde recherche (InProgress) ; on attend
+    donc la fin de leur tentative. Si BlueZ répond encore InProgress (recherche lancée par une
+    autre application), on réessaie quelques fois avant d'abandonner.
+    """
+    from .ble_util import ble_lock
     from .tools import devices as devices_tool
 
     if sim is not None:
         scanner, connected = devices_tool.sim_sources(sim)
     else:
         scanner, connected = devices_tool.ble_scan, devices_tool.bluez_connected
-    return await devices_tool.inventory(scanner, connected, timeout, {})
+    for delay in (*SCAN_BUSY_RETRY_S, None):
+        try:
+            async with ble_lock():
+                return await devices_tool.inventory(scanner, connected, timeout, {})
+        except Exception as exc:
+            if delay is None or not is_in_progress(exc):
+                raise
+            log.info("Appairage : Bluetooth occupé (%s), nouvel essai dans %.0f s", exc, delay)
+        await asyncio.sleep(delay)
+    raise AssertionError("inaccessible")
+
+
+def is_in_progress(exc: BaseException) -> bool:
+    """BlueZ refuse : une recherche ou une connexion est déjà en cours."""
+    return "org.bluez.Error.InProgress" in str(exc)
+
+
+def scan_error_message(exc: BaseException) -> str:
+    """Raison lisible d'un échec de recherche, pour l'écran Appareils."""
+    text = str(exc)
+    if is_in_progress(exc):
+        return ("Bluetooth occupé par une autre recherche (une autre application ?). "
+                "Fermez-la puis relancez la recherche.")
+    if any(k in text for k in ("NotReady", "NotPowered", "No Bluetooth adapters", "not turned on")):
+        return "Bluetooth éteint ou absent : allumez-le puis relancez la recherche."
+    return f"Recherche des appareils impossible : {text}"
 
 
 def configured_addresses(cfg: config_mod.Config) -> set[str]:

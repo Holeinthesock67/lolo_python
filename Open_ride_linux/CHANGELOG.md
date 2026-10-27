@@ -17,6 +17,7 @@ Première version complète avant la 1.0 : tout ce que contient `main` au 26 oct
 ### Zwift Click et appareils
 - Zwift Click V2 (paire de boîtiers) et Zwift Cog, appuis courts et longs, clavier en secours.
 - Inventaire des appareils (`openride-core devices`), appairage depuis la ligne de commande et depuis le menu.
+- Recherche de l'écran Appareils : plus d'échec « org.bluez.Error.InProgress » quand le trainer ou le Click se reconnectent ; message lisible si le Bluetooth est occupé ou éteint.
 
 ### Parcours
 - Compilateur `openride-compiler` : traces GPX, FIT et TCX vers `.world`, relief Copernicus GLO-30, couches OpenStreetMap (bâtiments, végétation, points d'intérêt, eau).

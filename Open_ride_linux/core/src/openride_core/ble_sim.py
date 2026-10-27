@@ -29,6 +29,7 @@ d'événements datés depuis le démarrage du monde simulé.
 from __future__ import annotations
 
 import asyncio
+import contextlib
 import logging
 import math
 import random
@@ -48,6 +49,9 @@ WATCH_ADDRESS = "C0:FF:EE:00:57:A7"
 
 class SimBleError(Exception):
     """Erreur d'un appareil simulé ; même texte que les erreurs BlueZ relayées par bleak."""
+
+
+IN_PROGRESS = "[org.bluez.Error.InProgress] Operation already in progress"
 
 
 def att_error(code: int) -> SimBleError:
@@ -587,6 +591,7 @@ class SimWorld:
         self.name = "sim"
         self._t0: float | None = None
         self._stop = asyncio.Event()
+        self._discovering = False
 
     @property
     def devices(self) -> list[SimDevice]:
@@ -612,10 +617,26 @@ class SimWorld:
                 return box
         raise KeyError(f"appareil simulé inconnu : {key!r}")
 
+    @contextlib.contextmanager
+    def discovery(self):
+        """Comme BlueZ : une seule recherche à la fois ; une seconde lève InProgress."""
+        if self._discovering:
+            raise SimBleError(IN_PROGRESS)
+        self._discovering = True
+        try:
+            yield
+        finally:
+            self._discovering = False
+
     # --- points d'injection des pilotes ---------------------------------------------------
 
     async def find_device(self, name: str, address: str | None, timeout: float,
                           exclude: Collection[str] = (), service: str | None = None) -> Any | None:
+        with self.discovery():
+            return await self._find_device(name, address, timeout, exclude, service)
+
+    async def _find_device(self, name: str, address: str | None, timeout: float,
+                           exclude: Collection[str], service: str | None) -> Any | None:
         skip = {a.upper() for a in exclude}
         needle = (name or "").lower()
         end = self.now() + timeout
@@ -639,6 +660,10 @@ class SimWorld:
         Rend la main 0,3 s après le premier appareil trouvé (pas les 5 s d'une vraie recherche),
         pour que les séances simulées restent rapides.
         """
+        with self.discovery():
+            return await self._scan(timeout, service)
+
+    async def _scan(self, timeout: float, service: str | None) -> list[SimAdvertisement]:
         end = self.now() + timeout
         found_at: float | None = None
         while True:
