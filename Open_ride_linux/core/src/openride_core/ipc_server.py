@@ -25,7 +25,7 @@ MAX_DATAGRAM_SIZE = 1400
 # Révision 1.3 (lot P1, audit IPC D1) : la trame state peut atteindre 4 096 octets (127.0.0.1, sans fragmentation).
 MAX_STATE_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.4"
+CONTRACT_REV = "1.5"
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
 CORE_MODES = ("ride", "erg", "open_world")   # monde ouvert : révision 1.5, lot W9
 MAX_LIST_DATAGRAM_SIZE = 60000
