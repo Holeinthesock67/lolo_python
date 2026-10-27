@@ -12,7 +12,7 @@ import pickle
 from dataclasses import dataclass, field, replace
 
 from . import cards as cardlib
-from .balance import DEFAULT_BALANCE, RogueBalance
+from .balance import DEFAULT_BALANCE, RogueBalance, balance_hash
 from .combat import DONE, RECOVERY, CombatInputs, combat_start, combat_step
 from .firewall import Firewall
 from .posture import ARRET, PostureState, posture_step
@@ -133,6 +133,8 @@ class RunEngine:
         self._spring_adr = 0.0
         self.cur_spec: Step | None = None
         self._journal: list = []
+        self._hash_logged = False
+        self._previews: dict = {}
         self._enter(0)
 
     # --- étapes -----------------------------------------------------------------------------
@@ -180,8 +182,9 @@ class RunEngine:
         return self.b.relic_gold_mult if "relic_gold" in self.relics else 1.0
 
     def _start_room(self, spec: Step, room_id: int, boss_phase: int | None, gear: int, s_m: float) -> list:
-        self.room = generate_room(spec.archetype, spec.variant, spec.objective, spec.nominal_s,
-                                  self.rider, self.sc.seed * 1000 + room_id, self.b)
+        self.room = self._previews.pop(room_id, None) or generate_room(
+            spec.archetype, spec.variant, spec.objective, spec.nominal_s, self.rider,
+            self.sc.seed * 1000 + room_id, self.b)
         self.room_id, self.boss_phase, self.cur_spec = room_id, boss_phase, spec
         bx = self._eff_balance()
         self.combat = combat_start(self.room, self.sc.seed * 1000 + room_id, bx, shield=self.shield, gear=gear)
@@ -199,6 +202,9 @@ class RunEngine:
 
     def step(self, dt: float, inp: RunInputs) -> RunOutputs:
         self._journal: list = []
+        if not self._hash_logged:
+            self._hash_logged = True
+            self._journal.append(f"rogue balance hash={balance_hash(self.b)}")
         messages: list = []
         events: list = []
         self.t_total += dt
@@ -260,6 +266,7 @@ class RunEngine:
         for spec, rid in zip(step.doors, self.door_ids):    # une salle par porte, pour les aperçus
             room = generate_room(spec.archetype, spec.variant, spec.objective, spec.nominal_s,
                                  self.rider, self.sc.seed * 1000 + rid, self.b)
+            self._previews[rid] = room          # la salle choisie est reprise telle quelle au lieu d'être recalculée
             messages.append(room.to_message(rid))
 
     def _open_offer(self, offer: tuple, stage: str, messages: list) -> None:
@@ -329,6 +336,7 @@ class RunEngine:
                 self.phase, self.t_phase = ROOM, 0.0
                 self.door_steps, self.door_ids = (), ()
                 messages += self._start_room(spec, rid, None, inp.gear, inp.s_m)
+                self._previews.clear()
             else:
                 self._enter(self.idx + 1)
                 self._begin(inp, messages)
