@@ -6,7 +6,7 @@
 
 L'outil demande les 17 appuis du plan des boutons (spécification générale §7.1) un par un : bip de
 départ à chaque étape, consigne en grand avec compte à rebours, puis étape suivante dès que l'appui
-demandé est reçu (ou au bout de `--delai` secondes). Chaque appui reçu, demandé ou non, s'affiche dans
+demandé est reçu et lu (`--lecture`, 4 s), ou au bout de `--delai` secondes (30). Chaque appui reçu, demandé ou non, s'affiche dans
 un encadré : événement décodé par le core, bouton et boîtier, et l'action qu'il commande dans chaque
 mode (menus, SIM, ERG, Cyber-Rogue, monde ouvert) ; il bipe avec les notes du jeu (court, long, ou
 appui ni court ni long). Le boîtier gauche passe d'abord : sans déblocage par l'appli Zwift, il se
@@ -37,8 +37,9 @@ from .click_recette import Recorder, TracedClickProvider, make_providers
 from .guide import Guide
 
 DEFAULT_OUT = Path.home() / "OpenRide" / "boutons_click"
-STEP_TIMEOUT_S = 20.0
-NEXT_STEP_S = 1.5        # temps de lecture de l'encadré avant l'étape suivante
+STEP_TIMEOUT_S = 30.0
+NEXT_STEP_S = 4.0        # temps de lecture de l'encadré avant l'étape suivante
+SIM_THINK_S = 3.0        # --sim : le cycliste simulé lit la consigne avant d'appuyer
 
 # --- plan des boutons (spécification générale §7.1, seule référence) -------------------------
 
@@ -317,7 +318,7 @@ def write_outputs(report: dict[str, Any], out: Path) -> None:
     (out / "rapport.txt").write_text(report_text(report), encoding="utf-8")
 
 
-async def sim_user(world: Any, prompts: asyncio.Queue[ButtonStep | None]) -> None:
+async def sim_user(world: Any, prompts: asyncio.Queue[ButtonStep | None], think_s: float = 0.3) -> None:
     """Cycliste simulé : réveille les boîtiers puis fait l'appui demandé, avec sa durée."""
     right, left = world._box("+"), world._box("-")
     loop = asyncio.get_running_loop()
@@ -329,7 +330,7 @@ async def sim_user(world: Any, prompts: asyncio.Queue[ButtonStep | None]) -> Non
 
     while True:
         step = await prompts.get()
-        await asyncio.sleep(0.3)
+        await asyncio.sleep(think_s)
         if step is None:
             tap(right, "+", SHORT)
             tap(left, "-", SHORT)
@@ -356,11 +357,11 @@ async def main_async(args: argparse.Namespace) -> int:
         sim = sim_scenarios.build_world(spec, trainer=False, hr=False)
         prompts: asyncio.Queue[ButtonStep | None] = asyncio.Queue()
         prompt = prompts.put_nowait
-        extra = [asyncio.create_task(sim.run()), asyncio.create_task(sim_user(sim, prompts))]
+        extra = [asyncio.create_task(sim.run()), asyncio.create_task(sim_user(sim, prompts, SIM_THINK_S))]
     providers = make_providers(rec, cfg, sim)
     try:
         report = await run_steps(providers, rec, guide, prompt, step_timeout=args.delai,
-                                 connect_timeout=20.0 if args.sim else 120.0)
+                                 connect_timeout=20.0 if args.sim else 120.0, next_step_s=args.lecture)
     finally:
         if sim is not None:
             sim.stop()
@@ -382,6 +383,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ap.add_argument("--delai", type=float, default=STEP_TIMEOUT_S,
                     help=f"secondes laissées pour chaque appui (défaut {STEP_TIMEOUT_S:g})")
+    ap.add_argument("--lecture", type=float, default=NEXT_STEP_S,
+                    help=f"secondes pour lire l'encadré avant l'étape suivante (défaut {NEXT_STEP_S:g})")
     ap.add_argument("--sim", action="store_true", help="Click simulé (ble_sim), cycliste simulé")
     ap.add_argument("--scenario", help="avec --sim : scénario (nom ou fichier JSON) pour le Click simulé")
     ap.add_argument("--out", type=Path, help=f"dossier de sortie (défaut : {DEFAULT_OUT}/<date>)")
