@@ -66,7 +66,6 @@ var distance_val: Label
 var time_val: Label
 var gear_val: Label
 var erg_label: Label
-var difficulty_label: Label
 var climb_label: Label
 var status_label: Label
 var profile_panel: Control
@@ -161,13 +160,6 @@ func _build_ui() -> void:
 	status_label.clip_text = true
 	center_vbox.add_child(status_label)
 
-	difficulty_label = Label.new()
-	difficulty_label.add_theme_font_size_override("font_size", 20)
-	difficulty_label.text = ""
-	difficulty_label.clip_text = true
-	difficulty_label.visible = false
-	center_vbox.add_child(difficulty_label)
-
 	_build_wind_panel()
 	_build_draft_label()
 	_build_segment_blocks()
@@ -212,8 +204,10 @@ func _build_wind_panel() -> void:
 	panel_wind.add_child(wind_arrow)
 	wind_speed_label = Label.new()
 	wind_speed_label.name = "WindSpeed"
-	wind_speed_label.position = Vector2(92.0, 6.0)
-	wind_speed_label.size = Vector2(200.0, 40.0)
+	# Haut à 4 px : le libellé de 30 px grandit à 43 px de haut, il s'arrête ainsi à 47 px, au-dessus
+	# du niveau (50 px), à toutes les échelles de l'interface (chevauchement vu en 1024x600)
+	wind_speed_label.position = Vector2(92.0, 4.0)
+	wind_speed_label.size = Vector2(200.0, 43.0)
 	wind_speed_label.add_theme_font_size_override("font_size", 30)
 	wind_speed_label.clip_text = true
 	panel_wind.add_child(wind_speed_label)
@@ -225,7 +219,7 @@ func _build_wind_panel() -> void:
 	panel_wind.add_child(wind_bars)
 	wind_level_label = Label.new()
 	wind_level_label.name = "WindLevel"
-	wind_level_label.position = Vector2(172.0, 48.0)
+	wind_level_label.position = Vector2(172.0, 50.0)
 	wind_level_label.size = Vector2(120.0, 32.0)
 	wind_level_label.add_theme_font_size_override("font_size", 22)
 	wind_level_label.modulate = Color(0.75, 0.80, 0.85)
@@ -485,12 +479,6 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 			(" (" + str(pause) + ")") if pause != null else "",
 			state.get("trainer_status", "?"),
 			state.get("input_status", "?")]
-
-	if difficulty_label != null:
-		var diff_vis: bool = bool(lines.get("difficulty_visible", false))
-		difficulty_label.visible = diff_vis
-		if diff_vis:
-			difficulty_label.text = str(lines.get("difficulty_text", ""))
 
 	# Prochaine montée (rafraîchie avec le profil)
 	if route != null and climb_label != null:

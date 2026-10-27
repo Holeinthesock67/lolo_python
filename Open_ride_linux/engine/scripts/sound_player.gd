@@ -11,10 +11,12 @@ extends Node
 ## `update_ambience(neigh, now_s)` ; les cloches des points `church_bell` sonnent l'heure pleine
 ## (`update_bells(hour, now_s)`, heure du PC par défaut).
 ##
-## Lot P10 : le vent est un bruit filtré passe-bande (500 Hz, boucle raccordée en fondu enchaîné), dont
-## la hauteur suit la vitesse dans l'air ; la boucle de roue libre contient `FREEWHEEL_LOOP_CLICKS`
-## coups par seconde et `pitch_scale` la cale sur `freewheel.clicks_per_s` du modèle ; un lecteur
-## dédié joue le « clac » de reprise (60 ms, `clacs_played` compte les reprises jouées).
+## Lot P10 : le vent est un bruit filtré (boucle raccordée en fondu enchaîné), dont la hauteur suit la
+## vitesse dans l'air ; la boucle de roue libre contient `FREEWHEEL_LOOP_CLICKS` coups par seconde et
+## `pitch_scale` la cale sur `freewheel.clicks_per_s` du modèle ; un lecteur dédié joue le « clac » de
+## reprise (60 ms, `clacs_played` compte les reprises jouées). Sons refaits après la recette P16 (jugés
+## désagréables) : vent = grondement grave (bruit brun) et souffle doux qui respire, en boucle de 4 s ;
+## roue libre = petits « tic » secs et irréguliers au lieu d'un bip pur à 2,4 kHz.
 ##
 ## Lot P13 : deux sons de plus pour les véhicules, `vehicle_pass` (pneus et souffle) et `tractor_engine`
 ## (moteur grave), joués par les lecteurs 3D de traffic_renderer.gd (`stream(kind)`) ; remplaçables par
@@ -31,10 +33,14 @@ const BELL_INTERVAL_S := 2.2
 
 const MIX_RATE := 22050
 const SAMPLE_COUNT := 22050   # 1 seconde de boucle
-const FREEWHEEL_LOOP_CLICKS := 100.0   # coups par seconde de la boucle à pitch_scale = 1
+const FREEWHEEL_LOOP_CLICKS := 140.0   # coups par seconde de la boucle à pitch_scale = 1 (≈ 30 km/h)
 const FREEWHEEL_MIN_PITCH := 0.05
-const WIND_BAND_HZ := 500.0
-const WIND_BAND_Q := 0.8
+const FREEWHEEL_JITTER := 0.08         # décalage aléatoire de chaque coup, en fraction de période
+const WIND_LOOP_SAMPLES := 88200       # boucle du vent : 4 s, sans motif qui se répète à l'oreille
+const WIND_RUMBLE_HZ := 160.0          # grondement : bruit blanc passé deux fois dans un passe-bas
+const WIND_BAND_HZ := 600.0            # souffle : passe-bande doux, plus discret que le grondement
+const WIND_BAND_Q := 0.6
+const WIND_RMS := 0.22
 const CLAC_SAMPLES := 1323     # 60 ms
 const VOICE_KINDS := ["voice_allez", "voice_bonjour", "dog_bark", "kid_laugh"]
 ## Syllabes des sons de passants : [début s, fin s, f0 début Hz, f0 fin Hz, formant 1 Hz, formant 2 Hz, souffle 0 à 1].
@@ -86,7 +92,7 @@ func _init_players() -> void:
 	_clac_player = AudioStreamPlayer.new()
 	_clac_player.name = "ClacPlayer"
 	_clac_player.stream = _streams.get("clac", null)
-	_clac_player.volume_db = -6.0
+	_clac_player.volume_db = -12.0
 	add_child(_clac_player)
 
 	for i in range(SoundModel.MAX_POI_SOURCES):
@@ -245,7 +251,11 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 	wav.loop_begin = 0
 	wav.loop_end = SAMPLE_COUNT
 	if kind == "wind":
-		wav.data = _wind_noise_bytes()   # Lot P10 : bruit passe-bande, sans la boucle d'échantillons ci-dessous
+		wav.loop_end = WIND_LOOP_SAMPLES
+		wav.data = _wind_noise_bytes()   # Lot P10 : bruit filtré, sans la boucle d'échantillons ci-dessous
+		return wav
+	if kind == "freewheel":
+		wav.data = _freewheel_bytes()
 		return wav
 
 	var bytes := PackedByteArray()
@@ -262,10 +272,6 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		var sample := 0.0
 
 		match kind:
-			"freewheel":
-				# Cliquetis de roue libre : FREEWHEEL_LOOP_CLICKS coups secs par seconde (Lot P10)
-				var phase := fmod(t * FREEWHEEL_LOOP_CLICKS, 1.0)
-				sample = (sin(TAU * 2400.0 * t) * exp(-phase * 40.0)) * 0.6
 			"church_bell":
 				# Tintement de cloche amorti avec partiels
 				sample = (sin(TAU * 440.0 * t) + 0.5 * sin(TAU * 880.0 * t) + 0.25 * sin(TAU * 1320.0 * t)) * exp(-t * 2.5) * 0.5
@@ -310,41 +316,100 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 	return wav
 
 
-## Souffle du vent (Lot P10) : bruit blanc filtré passe-bande (biquad, WIND_BAND_HZ, Q WIND_BAND_Q),
-## boucle d'une seconde dont les 50 dernières ms sont fondues dans les premières (raccord sans clic).
+## Vent (Lot P10, refait après la recette P16) : grondement grave (bruit blanc passé deux fois dans un
+## passe-bas à WIND_RUMBLE_HZ) et souffle doux (passe-bande WIND_BAND_HZ, Q WIND_BAND_Q) qui respire
+## lentement (0,5 et 0,75 Hz : nombre entier de cycles sur la boucle), ramenés à WIND_RMS ; boucle de
+## WIND_LOOP_SAMPLES dont les 250 dernières ms sont fondues dans les premières (raccord sans clic).
 static func _wind_noise_bytes() -> PackedByteArray:
-	var fade := int(0.05 * MIX_RATE)
-	var total := SAMPLE_COUNT + fade
+	var n := WIND_LOOP_SAMPLES
+	var fade := int(0.25 * MIX_RATE)
+	var total := n + fade
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 0x77696e64
+	var k_lp := 1.0 - exp(-TAU * WIND_RUMBLE_HZ / MIX_RATE)
 	var w0 := TAU * WIND_BAND_HZ / MIX_RATE
 	var alpha := sin(w0) / (2.0 * WIND_BAND_Q)
 	var a0 := 1.0 + alpha
 	var b0 := alpha / a0
 	var a1 := -2.0 * cos(w0) / a0
 	var a2 := (1.0 - alpha) / a0
-	var buf := PackedFloat32Array()
-	buf.resize(total)
+	var rumble := PackedFloat32Array()
+	var band := PackedFloat32Array()
+	rumble.resize(total)
+	band.resize(total)
+	var lp1 := 0.0
+	var lp2 := 0.0
 	var x1 := 0.0
 	var x2 := 0.0
 	var y1 := 0.0
 	var y2 := 0.0
 	for i in range(total):
 		var x := rng.randf() * 2.0 - 1.0
+		lp1 += k_lp * (x - lp1)
+		lp2 += k_lp * (lp1 - lp2)
+		rumble[i] = lp2
 		var y := b0 * x - b0 * x2 - a1 * y1 - a2 * y2
 		x2 = x1
 		x1 = x
 		y2 = y1
 		y1 = y
-		buf[i] = y
+		band[i] = y
+	var rms_r := 0.0
+	var rms_b := 0.0
+	for i in range(n):
+		rms_r += rumble[i] * rumble[i]
+		rms_b += band[i] * band[i]
+	rms_r = sqrt(rms_r / n)
+	rms_b = sqrt(rms_b / n)
+	var buf := PackedFloat32Array()
+	buf.resize(total)
+	for i in range(total):
+		var t := float(i % n) / MIX_RATE
+		var breath := 0.75 + 0.15 * sin(TAU * 0.5 * t) + 0.1 * sin(TAU * 0.75 * t + 1.0)
+		buf[i] = rumble[i] / rms_r * (0.9 + 0.1 * breath) + band[i] / rms_b * 0.55 * breath
+	var rms := 0.0
+	for i in range(n):
+		rms += buf[i] * buf[i]
+	var gain := WIND_RMS / sqrt(rms / n)
 	var bytes := PackedByteArray()
-	bytes.resize(SAMPLE_COUNT * 2)
-	for i in range(SAMPLE_COUNT):
+	bytes.resize(n * 2)
+	for i in range(n):
 		var v := buf[i]
 		if i < fade:
 			var g := float(i) / float(fade)
-			v = buf[i] * g + buf[SAMPLE_COUNT + i] * (1.0 - g)
-		bytes.encode_s16(i * 2, clampi(int(v * 1.2 * 32767.0), -32768, 32767))
+			v = buf[i] * g + buf[n + i] * (1.0 - g)
+		bytes.encode_s16(i * 2, clampi(int(v * gain * 32767.0), -32768, 32767))
+	return bytes
+
+
+## Roue libre (Lot P10, refaite après la recette P16) : FREEWHEEL_LOOP_CLICKS « tic » par seconde, chacun
+## un bref bruit sec (deux résonances amorties en moins de 2 ms et un grain de bruit), d'intensité et de
+## place légèrement irrégulières (± FREEWHEEL_JITTER de période), comme les cliquets d'un vrai moyeu.
+## Boucle d'une seconde : les coups qui dépassent la fin reprennent au début (raccord sans clic).
+static func _freewheel_bytes() -> PackedByteArray:
+	var n := SAMPLE_COUNT
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 0x636c6963
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	var period := float(n) / FREEWHEEL_LOOP_CLICKS
+	var click_len := int(0.004 * MIX_RATE)
+	for k in range(int(FREEWHEEL_LOOP_CLICKS)):
+		var at := int((float(k) + rng.randf_range(-FREEWHEEL_JITTER, FREEWHEEL_JITTER)) * period + n) % n
+		var amp := rng.randf_range(0.55, 1.0)
+		var ph := rng.randf() * TAU
+		for j in range(click_len):
+			var t := float(j) / MIX_RATE
+			var v := sin(TAU * 3200.0 * t + ph) * exp(-t / 0.0007) + 0.5 * sin(TAU * 5400.0 * t) * exp(-t / 0.0004)
+			v += (rng.randf() * 2.0 - 1.0) * 0.4 * exp(-t / 0.0003)
+			buf[(at + j) % n] += v * amp
+	var peak := 0.0
+	for i in range(n):
+		peak = maxf(peak, absf(buf[i]))
+	var bytes := PackedByteArray()
+	bytes.resize(n * 2)
+	for i in range(n):
+		bytes.encode_s16(i * 2, clampi(int(buf[i] / maxf(peak, 1e-6) * 0.5 * 32767.0), -32768, 32767))
 	return bytes
 
 
