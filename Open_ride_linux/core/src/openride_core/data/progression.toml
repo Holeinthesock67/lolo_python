@@ -29,6 +29,23 @@ count = 50
 xp_level_2 = 1000            # points pour passer au niveau 2
 xp_level_max = 100000        # points cumulés pour le dernier niveau
 
+# Pièces (lot V3b) : gagnées avec l'expérience (mêmes séances), dépensées au Garage et pour des
+# vies du mode Cyber-Rogue. En ERG, avec `erg_replaces_distance`, les minutes remplacent la distance.
+[coins]
+# Pièces à l'effort (V-Q10, 27 octobre) : chaque minute rapporte selon la puissance en % de
+# la FTP, en SIM comme en ERG. Zones [seuil en % de la FTP, pièces par minute], seuils croissants.
+# Une heure d'endurance (65 %) : 30 pièces ; une heure avec 2 × 20 min au seuil : 70 pièces.
+effort = [[0, 0.25], [55, 0.5], [75, 1.0], [90, 1.5], [105, 2.0]]
+per_segment = 5
+per_segment_pr = 10          # record personnel sur un segment (série T)
+per_power_record = 15        # record de puissance moyenne battu sur 5 s, 1, 5 ou 20 min
+per_jersey = 20
+rogue_boss_default = 10      # boss vaincu absent de la table ci-dessous
+life_price = 30              # une vie du mode Cyber-Rogue (lot R9)
+
+[coins.rogue_boss]
+chimere_centrale = 50
+
 # Défis : `stat` atteint `threshold` ; `reward` = pièce d'équipement offerte (catalogue du lot V3).
 [[challenges]]
 id = "km_1000"
