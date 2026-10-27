@@ -25,7 +25,7 @@ MAX_DATAGRAM_SIZE = 1400
 # Révision 1.3 (lot P1, audit IPC D1) : la trame state peut atteindre 4 096 octets (127.0.0.1, sans fragmentation).
 MAX_STATE_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.4"
+CONTRACT_REV = "1.5"
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
 CORE_MODES = ("ride", "erg", "open_world", "rogue")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8
 MAX_LIST_DATAGRAM_SIZE = 60000
@@ -340,7 +340,8 @@ class IpcServer:
             self.last_heartbeat_time = time.monotonic()
             # Requêtes : réponse à chaque copie reçue, la réponse a pu se perdre (contrat §4). La création et
             # l'import d'entraînement sont idempotents (même fichier, même identifiant), lot N16.
-            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "import_workout")
+            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "import_workout",
+                                "world_search", "world_map", "world_regions")
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)
