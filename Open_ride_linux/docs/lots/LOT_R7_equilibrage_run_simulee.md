@@ -69,3 +69,12 @@ Aucune.
 
 - Changer les règles (R5, R6) ; un écart de règle trouvé ici est signalé.
 - Équilibrage des déblocages permanents (R9).
+
+## 9. Livraison (27 octobre 2026)
+
+- `rogue/balance.toml` (embarqué, déclaré dans les données du paquet) : les 126 champs de `RogueBalance` avec un commentaire en français, plus les tables `calendars`, `reservoirs` et `room_profiles`. `load_balance()` lit ce fichier puis la surcharge facultative `~/OpenRide/rogue_balance.toml` ; clé inconnue, type faux, liste de mauvaise longueur ou valeur hors bornes lèvent `BalanceError` avec la clé en cause. `DEFAULT_BALANCE` reste la référence : un test vérifie que le fichier embarqué lui est identique.
+- Empreinte de la table (`balance_hash`, 8 caractères) notée dans la première ligne de journal de chaque run (`rogue balance hash=...`).
+- `tools/rogue_sim.py` : quatre profils (Débutant, Moyen, Confirmé, Fatigué), rapport texte et JSON (`--json`), cibles du cahier, `--sensitivity` (±20 % sur chaque constante pour les cibles manquées), `--jobs`, `--balance`. Même graine, même rapport quel que soit `--jobs`. 200 runs de 45 min : 48 s sur un cœur.
+- Pour tenir ce budget, `RunEngine` garde les salles générées pour les aperçus des portes au lieu de les recalculer au départ de la salle choisie (même graine, même salle).
+- Résultats et valeurs proposées : `docs/2.0/RAPPORT_EQUILIBRAGE_R7.md`. Écart de règle signalé : les PV du boss ne dépendent d'aucune constante propre (R5/R6). Aucune valeur par défaut n'est changée ici.
+- Tests : `core/tests/test_rogue_balance.py`.
