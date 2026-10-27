@@ -213,6 +213,34 @@
               }
             }
           }
+        },
+        "segments": {
+          "type": "object",
+          "description": "Facultative, format 1.3 (lot T1) : segments.json, sprints et montées.",
+          "required": [
+            "present"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": "string"
+            },
+            "file": {
+              "type": "string",
+              "const": "segments.json"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "manual_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Segments déclarés dans <parcours>.segments.toml."
+            }
+          }
         }
       }
     },
