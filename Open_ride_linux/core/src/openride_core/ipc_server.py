@@ -29,7 +29,16 @@ CONTRACT_REV = "1.3"
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
 CORE_MODES = ("ride", "erg")
 MAX_LIST_DATAGRAM_SIZE = 60000
+# Messages en parties (`part`, `parts`) : 60 000 octets au plus par partie (contrat §2).
+LIST_MESSAGE_TYPES = ("routes", "workouts", "imports")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
+
+
+# Décimales gardées dans la trame state : 1 cm, 1 mm/s, 0,01 %, 0,1 W, 0,1 tr/min, 6 décimales de degré (11 cm).
+STATE_ROUNDING = {
+    "t": 2, "s": 2, "v": 3, "grade": 2, "grade_sent": 2, "power": 1, "power_3s": 1, "cadence": 1,
+    "lat": 6, "lon": 6, "alt": 2, "route_length_m": 1,
+}
 
 
 @dataclass
@@ -72,6 +81,11 @@ class IpcState:
             "v": CONTRACT_VERSION,
             **asdict(self),
         }
+        # Flottants arrondis pour tenir dans 1 400 octets (audit IPC du 26 octobre, décision D1) :
+        # un float Python s'écrit sur 15 à 18 caractères, soit environ 90 octets de trop par trame.
+        for key, ndigits in STATE_ROUNDING.items():
+            if isinstance(d.get(key), float):
+                d[key] = round(d[key], ndigits)
         if self.devices is None:
             d.pop("devices", None)
         if self.bots is None:
@@ -164,7 +178,7 @@ class IpcServer:
         msg_type = msg_dict.get("type")
         if max_size is not None:
             limit = max_size
-        elif msg_type in ("routes", "workouts"):
+        elif msg_type in LIST_MESSAGE_TYPES:
             limit = MAX_LIST_DATAGRAM_SIZE
         elif msg_type == "state":
             limit = MAX_STATE_DATAGRAM_SIZE
@@ -304,7 +318,9 @@ class IpcServer:
             name = msg["name"]
             args = msg.get("args") or {}
             self.last_heartbeat_time = time.monotonic()
-            is_query = name in ("list_routes", "list_workouts")
+            # Requêtes : réponse à chaque copie reçue, la réponse a pu se perdre (contrat §4). La création et
+            # l'import d'entraînement sont idempotents (même fichier, même identifiant), lot N16.
+            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "import_workout")
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)

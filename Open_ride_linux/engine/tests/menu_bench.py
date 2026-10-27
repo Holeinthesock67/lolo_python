@@ -16,7 +16,7 @@ Parcours (`--list`) :
   recherche, choix, enregistrement dans config.toml, « Relancer » (code de sortie 64 de l'engine) ;
 - `sessions` : menu principal, choix du monde, session libre démarrée puis terminée, session ERG
   (entraînement choisi, consigne ERG reçue), puis « Session simulée » (code de sortie 65) ;
-- `reglages` : Réglages → FTP + 15 W enregistrée dans config.toml, qualité changée tout de suite,
+- `reglages` : Réglages → FTP + 15 W enregistrée dans config.toml, qualité changée tout de suite, ligne « OpenRide X.Y.Z » en bas,
   puis curseur de difficulté sur l'écran de pause (`set_difficulty`).
 
 Résultat : captures et `rapport.html` dans `--out` (défaut : dossier temporaire). Code de sortie : 0
@@ -310,6 +310,9 @@ def parcours_reglages(run: Run) -> None:
     r.check(run.engine.wait_for(r"Qualité graphique : medium", 5.0, after=t) is not None,
             "qualité appliquée tout de suite au décor", "« Qualité graphique : medium » au journal de l'engine")
     r.check("quality = \"medium\"" in run.config.read_text(encoding="utf-8"), "qualité écrite dans config.toml", "medium")
+    version = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
+    run.focus_to("Plafond du vent", limit=12)
+    run.expect("reglages_version", "Réglages", f"OpenRide {version}")
     run.press("MINUS_LONG")   # retour à l'accueil
     run.focus_to("Session libre")
     run.press("PLUS_LONG")                 # Session libre (sans monde : parcours)
@@ -330,11 +333,70 @@ def parcours_reglages(run: Run) -> None:
     time.sleep(1.0)
 
 
+def parcours_erg(run: Run) -> None:
+    """Lot N16 : sous-menu ERG, créer un entraînement par intervalles puis importer un fichier."""
+    r = run.report
+    if not run.start(READY, workout=True):
+        return
+    assert run.home is not None and run.core is not None
+    wdir = run.home / "OpenRide" / "Workouts"
+    downloads = run.home / "Téléchargements"
+    downloads.mkdir(parents=True)
+    (downloads / "seuil_import.zwo").write_text(ERG_SHORT_ZWO.replace("ERG court", "Seuil importé"), encoding="utf-8")
+    time.sleep(5.0)
+    run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_LONG")   # Session ERG
+    run.expect("erg_sous_menu", "Session ERG : entraînement", "ERG court", "Créer un entraînement",
+               "Importer un fichier")
+    run.focus_to("Créer")
+    run.press("PLUS_LONG")
+    run.expect("creer", "Créer un entraînement", "Répétitions : 5", "Puissance de l'effort : 105 % de la FTP")
+    run.focus_to("Répétitions")
+    run.press("PLUS_LONG", "PLUS_SHORT", "PLUS_LONG")
+    run.expect("creer_6", "Créer un entraînement", "Répétitions : 6")
+    run.focus_to("Enregistrer")
+    run.press("PLUS_LONG")
+    time.sleep(1.5)
+    created = wdir / "intervalles_6x240s_105.zwo"
+    r.check(created.is_file(), "entraînement créé dans ~/OpenRide/Workouts", created.name)
+    run.expect("cree", "Session ERG : entraînement", "Créé : Intervalles 6 × 4 min à 105 %",
+               "[Intervalles 6 × 4 min à 105 % (")
+    run.press("PLUS_LONG")
+    info = run.shot("_apres_choix")
+    run.shots.pop()
+    if info["title"] == "Parcours":
+        run.press("PLUS_LONG")
+    run.expect("pret_cree", "Prêt : session ERG — demo", "[Démarrer]")
+    t = now()
+    run.press("PLUS_LONG")
+    r.check(_wait_state(run, r"RUNNING", 10.0, after=t), "séance avec l'entraînement créé", "core en RUNNING")
+    r.check(_wait_state(run, r"intervalles_6x240s_105|Intervalles 6", 2.0), "entraînement créé lu par le core",
+            "« intervalles_6x240s_105 » au journal du core")
+    run.command("end_session", {"save": False})
+    time.sleep(2.0)
+    info = run.shot("_apres_seance")
+    run.shots.pop()
+    if info["title"] == "Fin de séance":
+        run.focus_to("Nouvelle séance")
+        run.press("PLUS_LONG")
+        time.sleep(1.0)
+    run.focus_to("Session ERG")
+    run.press("PLUS_LONG")
+    run.focus_to("Importer", limit=10)
+    run.press("PLUS_LONG")
+    time.sleep(0.5)
+    run.expect("importer", "Importer un entraînement", "[seuil_import.zwo", "Téléchargements")
+    run.press("PLUS_LONG")
+    time.sleep(1.5)
+    r.check((wdir / "seuil_import.zwo").is_file(), "fichier importé dans ~/OpenRide/Workouts", "seuil_import.zwo")
+    run.expect("importe", "Session ERG : entraînement", "Importé : Seuil importé", "[Seuil importé")
+
+
 PARCOURS: dict[str, Callable[[Run], None]] = {
     "connexion_auto": parcours_connexion_auto,
     "appareils": parcours_appareils,
     "sessions": parcours_sessions,
     "reglages": parcours_reglages,
+    "erg": parcours_erg,
 }
 
 
