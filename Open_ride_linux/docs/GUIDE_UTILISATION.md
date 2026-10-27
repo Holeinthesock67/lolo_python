@@ -68,6 +68,8 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 **Volume sonore.** Quatre curseurs dans **Réglages**, de 0 (coupé) à 100 % par pas de 10, pris en compte tout de suite : **Volume général**, **Volume vent et roue libre**, **Volume de l'ambiance** (oiseaux, cloches, véhicules, foule) et **Volume bips et événements** (bips du Click, changement de bloc ERG). Détail des catégories : [AUDIO.md](AUDIO.md).
 
+**Images par seconde.** **Réglages**, **Afficher les images/s** : oui affiche en haut à droite, pendant la séance, « 60 images/s · p99 17 ms » (images de la dernière seconde, et temps d'image que 99 % d'entre elles ne dépassent pas : une valeur haute signale des saccades).
+
 **Plans d'entraînement.** L'accueil affiche **Séance du jour** quand un plan est en cours, sinon **Choisir un plan**. Un plan range des entraînements par semaine et par jour ; il garde en mémoire ce qui est fait et ce qui est en retard. `openride-core plan install` copie deux plans de départ (« Reprise 4 semaines » et « FTP 6 semaines »).
 
 **Test de FTP.** **Test de FTP** à l'accueil propose deux tests : la rampe (paliers d'une minute, +20 W, jusqu'à l'épuisement) et les 20 minutes. Roulez-les de préférence sur une boucle, car un parcours avec arrivée termine la séance. Au bilan, **Accepter** écrit la nouvelle FTP dans la configuration ; **Garder** conserve l'ancienne.

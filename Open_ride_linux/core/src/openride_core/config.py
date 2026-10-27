@@ -74,6 +74,7 @@ class RenderConfig:
     visual_grade_scale: float = 1.0
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
+    fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off ou on
 
 
 @dataclass
@@ -244,6 +245,7 @@ ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
+    ("render", "fps"): ("off", "on"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),

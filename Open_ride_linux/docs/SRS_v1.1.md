@@ -389,6 +389,7 @@ theme = "default"
 visual_grade_scale = 1.0   # exagération visuelle du relief, de 1,0 à 2,0 (lot Q2 ; physique et HUD inchangés)
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
+fps = "off"          # compteur d'images/s du HUD : off, on (« Afficher les images/s » dans Réglages)
 
 [ipc]
 port_state = 5005
