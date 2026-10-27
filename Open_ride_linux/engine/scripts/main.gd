@@ -137,7 +137,7 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
-	RenderQuality.apply_fog(world_env.environment, false)
+	RenderQuality.apply_fog(world_env.environment, _quality_name, false)
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
 	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
 	if RenderingServer.get_rendering_device() == null:   # Compatibility : pas de RenderingDevice
@@ -268,7 +268,7 @@ func _apply_sky_params(theme_dict: Dictionary) -> void:
 		sun.basis = Basis.looking_at(-sun_dir, Vector3.UP)
 	var horizon: Color = sky.get("horizon_color", RenderQuality.FOG_COLOR)
 	var fog_dens: float = float(sky.get("fog_density", 0.01))
-	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
+	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
 
 
 func _on_input_event(event_name: String) -> void:
@@ -547,7 +547,7 @@ func _poll_route_job() -> void:
 	var sky_params := ThemeRenderParams.sky_params(streamer._theme_dict)
 	var horizon: Color = sky_params.get("horizon_color", RenderQuality.FOG_COLOR)
 	var fog_dens: float = float(sky_params.get("fog_density", 0.01))
-	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
+	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
 	if living_decor != null:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
