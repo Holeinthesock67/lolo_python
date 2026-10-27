@@ -18,7 +18,7 @@ B = DEFAULT_BALANCE
 DT = 0.02
 
 
-def ride(room, power_mult=1.0, gear=6, posture="FLUIDE", cadence=85.0, objective="seuil", seed=1,
+def ride(room, power_mult=1.0, gear=6, posture="FLUIDE", cadence=85.0, objective="threshold", seed=1,
          buttons_at=None, balance=B, with_wall=False):
     """Joueur qui suit la cible ; renvoie (état final, événements [(t, nom)], premier état à 0 PV)."""
     player = RiderPhysics(RIDER.params)
@@ -40,7 +40,7 @@ def ride(room, power_mult=1.0, gear=6, posture="FLUIDE", cadence=85.0, objective
 
 
 CASES = [(a, v, o) for a in ("diesel", "puncheur", "grimpeur", "sprinteur", "saboteur") for v in ("",)
-         for o in OBJECTIVES] + [("boss", ph, o) for ph in BOSS_PHASES for o in ("endurance", "seuil")]
+         for o in OBJECTIVES] + [("boss", ph, o) for ph in BOSS_PHASES for o in ("endurance", "threshold")]
 
 
 @pytest.mark.parametrize("a,v,o", CASES)
@@ -58,7 +58,7 @@ def test_puncheur_30_30_wins_too():
 
 
 def test_rider_under_target_is_caught_by_the_wall():
-    room = generate_room("diesel", "", "seuil", 480.0, RIDER, 1)
+    room = generate_room("diesel", "", "threshold", 480.0, RIDER, 1)
     state, events = ride(room, power_mult=0.8, with_wall=True)
     names = [e for _, e in events]
     assert "firewall_contact" in names and state.gold_lost > 0
@@ -66,7 +66,7 @@ def test_rider_under_target_is_caught_by_the_wall():
 
 
 def test_deterministic_with_crits():
-    room = generate_room("diesel", "", "seuil", 120.0, RIDER, 1)
+    room = generate_room("diesel", "", "threshold", 120.0, RIDER, 1)
     r1 = ride(room, posture="VELOCE", cadence=105.0, seed=7, buttons_at={100: ("Z_SHORT",)})
     r2 = ride(room, posture="VELOCE", cadence=105.0, seed=7, buttons_at={100: ("Z_SHORT",)})
     r3 = ride(room, posture="VELOCE", cadence=105.0, seed=8)
@@ -76,7 +76,7 @@ def test_deterministic_with_crits():
 
 
 def test_crit_doubles_damage_and_roc_armor():
-    room = generate_room("diesel", "", "seuil", 120.0, RIDER, 1)
+    room = generate_room("diesel", "", "threshold", 120.0, RIDER, 1)
     fluid, _ = ride(room, posture="FLUIDE")
     veloce, _ = ride(room, posture="VELOCE", cadence=105.0)
     assert veloce.down_s_m < fluid.down_s_m                      # critiques : l'ennemi tombe plus tôt
@@ -85,7 +85,7 @@ def test_crit_doubles_damage_and_roc_armor():
 
 
 def test_defeat_recovery_and_gold_loss():
-    room = generate_room("diesel", "", "seuil", 240.0, RIDER, 1)
+    room = generate_room("diesel", "", "threshold", 240.0, RIDER, 1)
     state = combat_start(room, 1)
     base = dict(power_w=200, cadence_rpm=85, posture="FLUIDE", gear=6, ftp_w=250, s_m=100, v_mps=8,
                 contact=True, run_gold=100.0)
@@ -104,7 +104,7 @@ def test_defeat_recovery_and_gold_loss():
 
 
 def test_boss_defeat_flees_without_recovery():
-    room = generate_room("boss", "phase1", "seuil", 210.0, RIDER, 1)
+    room = generate_room("boss", "phase1", "threshold", 210.0, RIDER, 1)
     state = replace(combat_start(room, 1), shield=0.5)
     state, ev = combat_step(state, CombatInputs(power_w=200, cadence_rpm=85, posture="FLUIDE", gear=6,
                             ftp_w=250, s_m=100, v_mps=8, contact=True), room, B, 0.5)
@@ -112,7 +112,7 @@ def test_boss_defeat_flees_without_recovery():
 
 
 def test_armor_by_posture():
-    room = generate_room("diesel", "", "seuil", 240.0, RIDER, 1)
+    room = generate_room("diesel", "", "threshold", 240.0, RIDER, 1)
     losses = {}
     for posture in ("ROC", "FLUIDE", "VELOCE"):
         st = combat_start(room, 1)
@@ -155,7 +155,7 @@ def test_gear_buttons():
 
 
 def test_strike_needs_adrenaline_and_consumes_it():
-    room = generate_room("boss", "phase1", "seuil", 210.0, RIDER, 1)
+    room = generate_room("boss", "phase1", "threshold", 210.0, RIDER, 1)
     lock = next(m for m in room.markers if m.kind == "strike_target")
     base = dict(power_w=0, cadence_rpm=85, posture="FLUIDE", gear=6, ftp_w=250, s_m=lock.s_m, v_mps=8,
                 buttons=frozenset({"Z_SHORT"}))
@@ -168,7 +168,7 @@ def test_strike_needs_adrenaline_and_consumes_it():
 
 
 def test_diesel_tunnel_charges_released_by_z():
-    room = generate_room("diesel", "", "seuil", 240.0, RIDER, 1)
+    room = generate_room("diesel", "", "threshold", 240.0, RIDER, 1)
     tun = next(m for m in room.markers if m.kind == "tunnel")
     strike = next(m for m in room.markers if m.kind == "strike_target")
     st = combat_start(room, 1)
@@ -183,7 +183,7 @@ def test_diesel_tunnel_charges_released_by_z():
 
 
 def test_grimpeur_rock_needs_charges():
-    room = generate_room("grimpeur", "", "seuil", 300.0, RIDER, 1)
+    room = generate_room("grimpeur", "", "threshold", 300.0, RIDER, 1)
     rock = next(m for m in room.markers if m.kind == "rock")
     st = combat_start(room, 1)
     for _ in range(round(11 / DT)):
@@ -213,7 +213,7 @@ def test_sprinter_pad_triples_damage():
 
 
 def test_saboteur_hack_blocks_and_purge_cancels_without_attack():
-    room = generate_room("saboteur", "", "seuil", 300.0, RIDER, 1)
+    room = generate_room("saboteur", "", "threshold", 300.0, RIDER, 1)
     purge = next(m for m in room.markers if m.kind == "purge")
     st = combat_start(room, 1)
     base = dict(power_w=200, cadence_rpm=85, posture="FLUIDE", gear=6, ftp_w=250, v_mps=8)
@@ -231,7 +231,7 @@ def test_saboteur_hack_blocks_and_purge_cancels_without_attack():
 
 
 def test_parry_boss_wave_and_puncheur_hook():
-    room = generate_room("boss", "phase2", "seuil", 300.0, RIDER, 1)
+    room = generate_room("boss", "phase2", "threshold", 300.0, RIDER, 1)
     zones = [m for m in room.markers if m.kind == "parry_zone"]
     base = dict(power_w=0, cadence_rpm=85, posture="FLUIDE", gear=6, ftp_w=250, v_mps=8)
     st = combat_start(room, 1)
@@ -258,7 +258,7 @@ def test_parry_boss_wave_and_puncheur_hook():
 
 
 def test_z_outside_markers_and_other_buttons_do_nothing():
-    room = generate_room("diesel", "", "seuil", 240.0, RIDER, 1)
+    room = generate_room("diesel", "", "threshold", 240.0, RIDER, 1)
     st = replace(combat_start(room, 1), adrenaline=90.0)
     base = dict(power_w=0, cadence_rpm=85, posture="ARRET", gear=6, ftp_w=250, s_m=5.0, v_mps=8)
     for button in ("Z_SHORT", "Z_LONG", "Y", "A_SHORT", "A_LONG"):
@@ -268,7 +268,7 @@ def test_z_outside_markers_and_other_buttons_do_nothing():
 
 def test_overheat_only_in_endurance():
     room = generate_room("diesel", "", "endurance", 240.0, RIDER, 1)
-    for objective, expected in (("endurance", True), ("seuil", False)):
+    for objective, expected in (("endurance", True), ("threshold", False)):
         st = replace(combat_start(room, 1), adrenaline=50.0)
         for _ in range(round(12 / DT)):
             st, _ = combat_step(st, CombatInputs(power_w=200, cadence_rpm=85, posture="FLUIDE", gear=6,
@@ -283,7 +283,7 @@ def test_overheat_only_in_endurance():
 
 
 def test_constants_come_from_balance():
-    room = generate_room("diesel", "", "seuil", 240.0, RIDER, 1)
+    room = generate_room("diesel", "", "threshold", 240.0, RIDER, 1)
     inp = CombatInputs(power_w=250, cadence_rpm=85, posture="FLUIDE", gear=6, ftp_w=250, s_m=10.0, v_mps=8)
     a, _ = combat_step(combat_start(room, 1), inp, room, B, 1.0)
     weaker = replace(B, hp_factor=0.45)
