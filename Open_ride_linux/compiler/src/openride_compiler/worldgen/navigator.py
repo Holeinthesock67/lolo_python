@@ -17,7 +17,7 @@ import heapq
 import math
 import zlib
 from dataclasses import dataclass, field
-from typing import Iterable, Sequence
+from typing import Callable, Iterable, Sequence
 
 from .graph import Branch, Edge, RoadGraph, heading_of, relative_angle
 
@@ -75,7 +75,8 @@ def _bearing(a: XZ, b: XZ) -> float:
 
 class Navigator:
     def __init__(self, graph: RoadGraph, mode: str, start_xz: XZ, start_heading_deg: float, seed: int,
-                 target_xz: XZ | None = None, loop_m: float | None = None) -> None:
+                 target_xz: XZ | None = None, loop_m: float | None = None,
+                 allowed: Callable[[Edge], bool] | None = None) -> None:
         if mode not in MODES:
             raise ValueError(f"mode de navigation inconnu : {mode}")
         if mode == "destination" and target_xz is None:
@@ -89,6 +90,7 @@ class Navigator:
         self.seed = int(seed)
         self.target_xz = target_xz
         self.loop_m = float(loop_m) if loop_m else None
+        self.allowed = allowed             # hors ligne (W8) : arêtes dont les données sont sur le PC
         r = [_hash01(seed, "derive", k) for k in range(4)]
         self._drift = [(0.6, 20_000.0 + 20_000.0 * r[0], 2 * math.pi * r[1]),
                        (0.4, 10_000.0 + 10_000.0 * r[2], 2 * math.pi * r[3])]
@@ -175,6 +177,8 @@ class Navigator:
         ids, seen, recent, ridden = self._history(history)
         arr = self.arriving_heading(node, arriving_edge)
         branches = self.graph.out_edges(node, arr, arriving_edge)
+        if self.allowed is not None:
+            branches = [b for b in branches if self.allowed(b.edge)]
         if not branches:
             if arriving_edge is None:
                 raise ValueError(f"nœud {node} sans aucune branche")
