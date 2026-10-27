@@ -38,7 +38,7 @@ check() {   # check <0 si réussi> <libellé> [mesure]
 step() { echo; echo "== $*"; }
 
 fingerprint() {   # empreinte des données de l'utilisateur (hors journaux et caches)
-    (cd "${HOME}/OpenRide" && find . -type f ! -path './Logs/*' ! -name '*.log' -print0 | sort -z \
+    (cd "${HOME}/OpenRide" && find . -type f ! -path './Logs/*' ! -name '*.log' ! -name '.update.lock' -print0 | sort -z \
         | xargs -0 sha256sum)
 }
 
