@@ -7,7 +7,7 @@ En mode entraînement, GoldenCheetah montre le profil des watts cibles de toute 
 ## 2. À lire
 
 1. `docs/lots/00_INDEX.md`, `docs/contracts/ipc_v1.md` (trame `state`, objet `erg`, élément de `workouts` avec `profile`, `hello_ack.config.ftp_w`), `docs/lots/LOT_I6_logique_erg_godot.md`, `docs/lots/LOT_K2_modele_hud_profil.md` (forme des modèles de vue).
-2. Code : `engine/scripts/erg_view_model.gd` (`profile_bars`), `engine/scripts/hud_view_model.gd`, `engine/tests/unit/test_erg_view_model.gd` ou `engine/tests/test_erg_view_model.gd`, `engine/tests/fake_core.py` (`--erg-workout`).
+2. Code : `engine/scripts/erg_view_model.gd` (`profile_bars`), `engine/scripts/hud_view_model.gd`, `engine/tests/test_erg_view_model.gd`, `engine/tests/fake_core.py` (`--erg-workout`).
 
 ## 3. Prérequis
 
@@ -47,3 +47,15 @@ Aucune.
 ## 8. Hors périmètre
 
 - Dessin dans la scène (O14) ; graphique du bilan après la séance (peut réutiliser ce modèle plus tard).
+
+## 9. Livraison
+
+Livré le 26 octobre 2026 (issue #156), thread « Développer les lots O restants ». Écrit sans Godot dans le conteneur cloud : `UNIT=test_workout_chart_model engine/tests/run_engine_tests.sh` reste à lancer sur le PC.
+
+- `engine/scripts/workout_chart_model.gd` (RefCounted, sans nœud) : `set_workout(profile, ftp_w, duration_s)`, `set_workout_w(profile_w, duration_s)` (watts absolus, zones avec `set_ftp`), `clear_workout`, `push(t_s, power_w, hr_bpm, cadence_rpm, target_w)`, `reset`, `set_smoothing(0|3|10)`, `values`, `smoothed`, `current_values`, `scales`, `nice_ticks`, `time_window`, `group_factor`, `geometry(w, h)`.
+- Pause : le modèle ne reçoit pas d'indicateur ; une trame dont `t_s` n'avance pas est ignorée (temps de séance figé), ce qui couvre la pause sans toucher au contrat.
+- Zones : seuils et couleurs repris de `erg_view.gd` (`ZONE_HIGH_PCT`, `ZONE_COLORS`, `FREERIDE_COLOR`), eux-mêmes alignés sur `session_summary.ZONES`. Les rampes sont coupées aux seuils de zone : chaque morceau a la couleur de sa zone (échauffement de `sweet_spot_3x10` : Z1 jusqu'à 137,5 W, puis Z2).
+- Géométrie : `profile` (polygones, `t0`, `t1`, `zone`, `color`), `curves.power|hr|cadence` (polylignes coupées aux trous), `cursor_x`, `current`, `scales`, `window`, `group` ; recalculée seulement quand le nombre de secondes, la taille, le lissage ou le profil changent.
+- Moyennes par groupes de 2 à 64 s tenues à jour à chaque seconde (`LEVELS`) : sans lissage, la géométrie d'une longue séance lit ces groupes (1 800 points par courbe) au lieu de reparcourir les 7 200 secondes ; premier essai sur le PC sans ces groupes : 16,6 ms (PC chargé par une séance réelle et le banc simulé).
+- Les séries brutes sont gardées dans des `Array` (un `PackedFloat32Array` rangé dans un `Dictionary` serait copié à chaque ajout).
+- Tests : `engine/tests/unit/test_workout_chart_model.gd` (critères 2 à 6, fenêtre du parcours libre, graduations).
