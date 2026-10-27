@@ -35,6 +35,14 @@ def test_propre(tmp_path):
 '''
 
 
+def test_fichier_anonyme_du_dossier_temporaire_est_permis():
+    """`tempfile` et `multiprocessing` ouvrent le dossier temporaire lui-même (O_TMPFILE) : rien n'y est écrit."""
+    import isolation_tests
+    garde = isolation_tests.GardeEcriture(Path(tempfile.mkdtemp(prefix="openride-tests-home-")))
+    assert not garde._interdit(os.path.abspath(tempfile.gettempdir()))
+    assert garde._interdit("/openride-hors-tmp")
+
+
 def test_home_et_chemins_openride_sont_temporaires():
     home = Path(os.environ["HOME"])
     assert home.name.startswith("openride-tests-home-")
