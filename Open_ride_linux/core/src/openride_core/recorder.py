@@ -28,7 +28,8 @@ class SessionRecorder:
     def __init__(self, journal_dir: Path, route_id: str | None,
                  on_failure: Callable[[Exception], None] | None = None,
                  fit_dir: Path | None = None, workout_id: str | None = None,
-                 resume_path: Path | None = None, lines: list[dict] | None = None) -> None:
+                 resume_path: Path | None = None, lines: list[dict] | None = None,
+                 source: str | None = None) -> None:
         """Nouvelle séance, ou suite d'une séance (`resume_path` et ses `lines`, lot N8).
 
         En reprise, le journal existant est continué sans nouvel en-tête et les lignes déjà
@@ -37,6 +38,7 @@ class SessionRecorder:
         self.journal_dir = journal_dir
         self.route_id = route_id
         self.workout_id = workout_id
+        self.source = source             # origine de la séance pour la progression (lot V2)
         self.on_failure = on_failure
         self.fit_dir = fit_dir
         self.lines: list[dict] = list(lines or [])   # séance complète, dans l'ordre : événements et relevés
@@ -59,7 +61,7 @@ class SessionRecorder:
     def _open(self, path: Path, header: bool = True) -> bool:
         try:
             self._writer = JournalWriter(path, route_id=self.route_id, workout_id=self.workout_id,
-                                         header=header)
+                                         header=header, source=self.source)
             self.path = path
             return True
         except WRITE_ERRORS as exc:
