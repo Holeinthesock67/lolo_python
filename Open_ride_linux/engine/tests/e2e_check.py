@@ -38,7 +38,9 @@ START_GEAR = 12
 INPUT_CMD_ID = 10_000          # au-dessus des cmd_id de l'engine : le core l'accepte
 TOTAL_BUDGET_S = 60.0
 # Mêmes tolérances que run_engine_tests.sh (avertissements connus du mode sans écran).
-GODOT_TOLERATED = re.compile(r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)")
+# Même tolérance que run_engine_tests.sh : le rendu factice des tests sans écran signale `Parameter "m" is null`
+# pour les maillages générés par le code (avatar du lot V6), sans conséquence.
+GODOT_TOLERATED = re.compile(r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|Parameter \"m\" is null")
 
 
 def now() -> float:
