@@ -18,7 +18,8 @@ Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de réf�
   rotation). Sans terminal (raccourci de bureau), les messages ne vont que dans le journal ;
 - l'engine (`GODOT --path engine -- --ipc-state-port=… --ipc-cmd-port=…`) reçoit les ports de la
   configuration (`--config` éventuel, sinon `~/OpenRide/config.toml`) ; variables `GODOT`,
-  `GODOT_ARGS` et `OPENRIDE_ENGINE` (dossier du projet Godot).
+  `GODOT_ARGS`, `OPENRIDE_ENGINE` (dossier du projet Godot) et `OPENRIDE_PERF_PROBE` (fichier CSV de
+  la sonde de performance du moteur, `--perf-probe`, lot X13).
 
 Supervision :
 - l'engine se ferme normalement (code 0) → arrêt propre du core (SIGINT), 10 s au plus, puis
@@ -73,6 +74,8 @@ import time
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Callable
+
+from . import __version__
 
 DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.3-stable_linux.x86_64"
 DEFAULT_LOG = Path.home() / "run_trainer.log"   # lien vers le dernier journal du lanceur
@@ -312,12 +315,14 @@ class Supervisor:
         if self.rotation is not None:
             self.log_path = self.rotation.prepare()
             self._log = self.log_path.open("ab", buffering=0)
+            self._say(f"OpenRide {__version__}")
             for note in self.rotation.notes:
                 self._say(note)
             self.rotation.notes.clear()
         else:
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
             self._log = self.log_path.open("wb", buffering=0)
+            self._say(f"OpenRide {__version__}")
         self._say(f"journal : {self.log_path}")
 
     def _pump(self, stream: IO[bytes]) -> None:
@@ -698,6 +703,9 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--ipc-cmd-port={cfg.ipc.port_commands}",
             f"--quality={cfg.render.quality}",
             f"--theme={cfg.render.theme}",
+            f"--visual-grade={cfg.render.visual_grade_scale}",
+            f"--living={'on' if cfg.render.living else 'off'}",
+            *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),
         ],
         release_cmd=[*core, "release-trainer", *config_args],
         recover_cmd=[*core, "recover"],
@@ -734,6 +742,9 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] in ("-h", "--help"):
         print(__doc__)
+        return 0
+    if args and args[0] == "--version":
+        print(f"openride {__version__}")
         return 0
     if message is None:
         message = (lambda text, error: None) if _default_echo() else desktop_message

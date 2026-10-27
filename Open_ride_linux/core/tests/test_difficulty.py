@@ -41,7 +41,7 @@ def test_simulated_session_difficulty_change(tmp_path, monkeypatch, caplog):
     """Critère 3 : pente 8 % braquet 12 -> grade_sent à 50 % puis 30 %, rampe lissée, vitesse inchangée."""
     async def scenario():
         cfg = Config()
-        cfg.trainer.grade_rate_pct_per_s = 2.0
+        cfg.trainer.grade_rate_up_pct_per_s = cfg.trainer.grade_rate_down_pct_per_s = 2.0
         cfg.trainer.latency_tau_s = 0.0
 
         s = make_session(tmp_path / "main", monkeypatch, cfg=cfg, port=5854)
@@ -146,6 +146,13 @@ def test_set_difficulty_bounds_and_errors(tmp_path, monkeypatch):
         s._on_command("set_difficulty", {}, 11)
         assert len(errors) == 1
         assert errors[0][0] == "bad_args"
+
+        # NaN et infini (acceptés par json.loads) : refusés, valeur inchangée
+        for k, bad in enumerate((float("nan"), float("inf"), float("-inf"))):
+            errors.clear()
+            s._on_command("set_difficulty", {"pct": bad}, 12 + k)
+            assert len(errors) == 1 and errors[0][0] == "bad_args"
+            assert s.difficulty_pct == 75.0
 
     asyncio.run(scenario())
 

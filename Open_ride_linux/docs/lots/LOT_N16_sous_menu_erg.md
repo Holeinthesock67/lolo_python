@@ -4,7 +4,7 @@
 
 Demande du propriétaire du 26 octobre : « Si on choisit le mode ERG il faudra un sous-menu pour configurer ou importer un exercice. » Ce lot complète « Session ERG » du menu principal (lot N15), au Click et au clavier, sans clavier complet ni souris.
 
-**Lot interne, contrat IPC révision 1.2** (décision D4 de l'audit IPC, option 2, choisie par le propriétaire le 26 octobre) : l'engine n'écrit et ne lit aucun fichier. Il envoie `create_workout` (les sept paramètres), `list_imports` (réponse `imports`, en parties comme `routes`) et `import_workout` (`path` pris dans la dernière réponse `imports`) ; le core écrit dans `~/OpenRide/Workouts/` et répond `workout_saved` (`workout_id` final, `name`, `created`) ou `error` (`bad_args`, `busy`, `workout_invalid`, `workout_write_failed`). L'engine redemande ensuite la liste (`list_workouts`). Côté core : PR #288 (audit IPC).
+**Lot interne, contrat IPC révision 1.3** (décision D4 de l'audit IPC, option 2, choisie par le propriétaire le 26 octobre) : l'engine n'écrit et ne lit aucun fichier. Il envoie `create_workout` (les sept paramètres), `list_imports` (réponse `imports`, en parties comme `routes`) et `import_workout` (`path` pris dans la dernière réponse `imports`) ; le core écrit dans `~/OpenRide/Workouts/` et répond `workout_saved` (`workout_id` final, `name`, `created`) ou `error` (`bad_args`, `busy`, `workout_invalid`, `workout_write_failed`). L'engine redemande ensuite la liste (`list_workouts`). Côté core : PR #288 (audit IPC).
 
 ## 2. Écrans
 

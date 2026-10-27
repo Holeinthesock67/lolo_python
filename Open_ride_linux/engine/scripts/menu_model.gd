@@ -19,7 +19,7 @@ extends RefCounted
 ## internes à l'engine (quit ; relaunch_sim et relaunch : relancer OpenRide en session simulée ou sur le
 ## vrai matériel). Une action ouvre au besoin l'écran suivant dans le même appel.
 ##
-## Accueil (menu principal, demande du 26 octobre) : « Monde : … » (choix du parcours, retour à
+## Accueil (menu principal, demande du 26 octobre) : « Parcours : … » (choix du parcours, retour à
 ## l'accueil), « Session libre » (SIM, sans entraînement), « Session ERG » (choix de l'entraînement),
 ## « Session simulée » (OpenRide relancé sans matériel ; en session simulée : « Revenir au matériel
 ## réel »), « Réglages », « Quitter ». Sans monde choisi, les sessions passent d'abord par les parcours.
@@ -57,7 +57,7 @@ var _pending: Dictionary = {}       # action destructrice en attente de confirma
 var _confirm_back: String = ""      # écran où revenir après « Non »
 var _confirm_focus: int = 0
 var _workouts_return: String = ROUTES
-## Monde (parcours) choisi : id et nom ; "" tant qu'aucun n'est choisi.
+## Parcours choisi : id et nom ; "" tant qu'aucun n'est choisi.
 var world_id := ""
 var world_name := ""
 ## Mode de la séance préparée : "free" (session libre, SIM) ou "erg".
@@ -72,7 +72,7 @@ var modes: Array = DEFAULT_MODES.duplicate()
 func _init() -> void:
 	_screens = {
 		HOME: {"id": HOME, "title": "OpenRide", "on_back": "", "items": []},
-		ROUTES: {"id": ROUTES, "title": "Monde / parcours", "on_back": HOME, "items": []},
+		ROUTES: {"id": ROUTES, "title": "Parcours", "on_back": HOME, "items": []},
 		WORKOUTS: {"id": WORKOUTS, "title": "Session ERG : entraînement", "on_back": HOME, "items": []},
 		READY: {"id": READY, "title": "Prêt", "on_back": HOME, "items": []},
 		SETTINGS: {"id": SETTINGS, "title": "Réglages", "on_back": HOME, "items": [
@@ -91,7 +91,7 @@ func _init() -> void:
 
 func _refresh_home() -> void:
 	var world := world_name if world_name != "" else "à choisir"
-	var items := [_item("world", "Monde : " + world)]
+	var items := [_item("world", "Parcours : " + world)]
 	for m in HOME_MODES:
 		if m in modes:
 			items.append(_item(m, HOME_MODES[m]))
@@ -101,12 +101,12 @@ func _refresh_home() -> void:
 	_screens[READY]["items"] = [
 		_item("start", "Démarrer"),
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
-		_item("change_route", "Changer de monde")]
+		_item("change_route", "Changer de parcours")]
 	_screens[READY]["title"] = ("Prêt : session ERG" if mode == "erg" else "Prêt : session libre") \
 		+ ("" if world_name == "" else " — " + world_name)
 
 
-## Monde choisi (ou connu par la trame d'état) ; met à jour l'accueil et l'écran Prêt.
+## Parcours choisi (ou connu par la trame d'état) ; met à jour l'accueil et l'écran Prêt.
 func set_world(id: String, name: String) -> void:
 	world_id = id
 	world_name = name if name != "" else id

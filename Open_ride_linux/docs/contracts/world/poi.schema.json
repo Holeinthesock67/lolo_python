@@ -38,7 +38,9 @@
               "river",
               "livestock",
               "village",
-              "viewpoint"
+              "viewpoint",
+              "wind_turbine",
+              "flag"
             ]
           },
           "x": {
@@ -59,6 +61,11 @@
               "string",
               "null"
             ]
+          },
+          "height_m": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Facultatif (format 1.2) : hauteur du mât d'une éolienne (wind_turbine), d'après OSM height."
           }
         }
       }

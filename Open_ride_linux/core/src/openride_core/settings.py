@@ -4,7 +4,7 @@ Chaque réglage est une clé `section.clé` de `config.toml`. Les bornes et les 
 `config.py` (`BOUNDS`, `CHOICES`), jamais recopiés ici ; les thèmes proposés sont `default` et les
 dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
 
-`current(cfg)` donne la liste pour le message IPC `settings` (contrat révision 1.2) et pour
+`current(cfg)` donne la liste pour le message IPC `settings` (contrat révision 1.3) et pour
 `openride-core settings --json` ; chaque élément :
 
     {"key": "rider.ftp_w", "label": "FTP", "type": "int", "value": 250, "min": 50, "max": 600,
@@ -54,6 +54,10 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gearing.start_gear", "Braquet de départ", 1),
     Setting("render.quality", "Qualité graphique", applies="now"),
     Setting("render.theme", "Thème", applies="now"),
+    # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
+    Setting("wind.mode", "Vent"),
+    Setting("wind.speed_kmh", "Force du vent", 5, "km/h"),
+    Setting("wind.max_grade_offset_pct", "Plafond du vent", 1, "pts"),
 )
 KEYS = tuple(s.key for s in SETTINGS)
 

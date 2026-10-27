@@ -2,7 +2,7 @@
 
 ## 1. Objectif
 
-Rouler dans la roue d'un bot doit soulager, comme dehors. La SRS §5 prévoit un coefficient d'aspiration `alpha_draft` de 0 à 0,45 selon la distance derrière un bot, et `physics.py` l'accepte déjà, mais personne ne le calcule. Ce lot le calcule à partir des bots de N9, l'applique à la vitesse virtuelle et à la résistance ressentie en SIM (même voie que le vent de P2), et le publie dans `draft` (contrat v1.2 du lot P1).
+Rouler dans la roue d'un bot doit soulager, comme dehors. La SRS §5 prévoit un coefficient d'aspiration `alpha_draft` de 0 à 0,45 selon la distance derrière un bot, et `physics.py` l'accepte déjà, mais personne ne le calcule. Ce lot le calcule à partir des bots de N9, l'applique à la vitesse virtuelle et à la résistance ressentie en SIM (même voie que le vent de P2), et le publie dans `draft` (contrat v1.3 du lot P1).
 
 ## 2. À lire
 
@@ -59,3 +59,15 @@ Aucune (P1).
 
 - Indicateur « Abri » à l'écran (modèle dans P4, affichage dans P17).
 - Aspiration entre bots, placement latéral (éventail), bots qui réagissent au cycliste ou prennent des relais.
+
+## 9. Livraison (26 octobre 2026)
+
+Livré sur la branche `lot-p3-aspiration-bots`, au-dessus de P2.
+
+- **`draft.py`** (module pur) : `draft_coefficient` (courbe exponentielle du §4, écart roue à roue : différence de `s` moins `BIKE_LENGTH_M` = 1,7 m), `best_draft(rider_s, bots, length_m, is_loop, rider_v, head_mps, cross_mps)` (bots `constant` seulement ; file de bots espacés de moins de 3 m ; vent de travers par l'angle du vent apparent), `push_bonus` (2,5 %, coupée par `PUSH_ENABLED = False`), `smooth` (constante de temps de 1 s, avec une fin d'approche à 0,1 par seconde au moins pour atteindre vraiment 0 : de 0,40 à 0 en 2,4 s).
+- **Session** : à chaque pas, abri sur la physique du cycliste (`alpha_draft`) ; en SIM, le supplément de pente de P2 compte vent et abri ensemble (avec `feel = "ftms"`, le vent part dans la commande 0x11 et seul l'abri passe par la pente) ; ERG inchangé. Le bot suivi à moins de 1 m voit son CdA baisser de 2,5 %. `draft` (et `draft_bot` quand l'abri n'est pas nul) dans `state` dès qu'il y a un bot ; `draft` dans le journal à 1 Hz ; `draft_time_s` dans `openride-core summary` (relevés à au moins 5 % de l'abri maximal), pas dans le bilan IPC, dont le contrat ne change pas.
+- **Journal sans bot inchangé** : comme `head_mps` et `wind_grade_pct` (P2), `draft` n'est écrit que s'il a une valeur (`journal.record_line`) ; une séance sans vent ni bot garde les lignes d'avant la série P et la mémoire du test d'endurance de 3 h.
+- **Critère 8** : le cahier place le bot à s = 50 m et le cycliste à 2 m de la fin, soit 52 m d'écart, au-delà de la portée de l'abri. Le test place le bot à s = 3 m : 5 m d'écart par-dessus la ligne d'arrivée de la boucle, abri trouvé ; sur un parcours ouvert, rien.
+- **Critère 5** : sur une boucle plate de test, le cycliste à 200 W reste à moins de 3 m d'un bot à 250 W pendant 10 min (`demo` monte, ce qui fausserait le « sur le plat »).
+- **Tests** : `core/tests/test_draft.py` (10 tests, dont `best_draft` avec 5 bots sous 0,02 ms par appel).
+- **Reste sur le vélo (le propriétaire)** : derrière un bot à 220 W, soulagement perceptible et progressif en SIM.

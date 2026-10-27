@@ -305,11 +305,13 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     sup = launcher.build_supervisor(["--trainer", "mock", "--config", str(cfg)], env)
     assert sup.core_cmd[-5:] == ["run", "--trainer", "mock", "--config", str(cfg)]
     assert sup.engine_cmd[0] == str(godot) and "--verbose" in sup.engine_cmd
-    assert sup.engine_cmd[-4:] == [
+    assert sup.engine_cmd[-6:] == [
         "--ipc-state-port=6005",
         "--ipc-cmd-port=6006",
         "--quality=high",
         "--theme=alpes",
+        "--visual-grade=1.0",
+        "--living=on",
     ]
     assert sup.release_cmd[-3:] == ["release-trainer", "--config", str(cfg)]
     assert sup.log_path == tmp_path / "x.log"
@@ -319,12 +321,16 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     no_cfg = launcher.build_supervisor([], {**env})
     assert no_cfg.core_cmd[-(len(launcher.DEFAULT_CORE_ARGS) + 1):] == ["run", *launcher.DEFAULT_CORE_ARGS]
     assert "--autostart" not in launcher.DEFAULT_CORE_ARGS   # menus de l'engine (lot N6)
-    assert no_cfg.engine_cmd[-4:] == [
+    assert no_cfg.engine_cmd[-6:] == [
         "--ipc-state-port=5005",
         "--ipc-cmd-port=5006",
         "--quality=low",
         "--theme=default",
+        "--visual-grade=1.0",
+        "--living=on",
     ]
+    probe = launcher.build_supervisor([], {**env, "OPENRIDE_PERF_PROBE": str(tmp_path / "sonde.csv")})
+    assert probe.engine_cmd[-1] == f"--perf-probe={tmp_path / 'sonde.csv'}"   # lot X13
 
     with pytest.raises(FileNotFoundError, match="Godot introuvable"):
         launcher.build_supervisor(["--config", str(cfg)], {**env, "GODOT": str(tmp_path / "absent")})
@@ -350,6 +356,8 @@ def test_log_has_core_engine_and_launcher_lines(fake, rotation):
     assert sup.run() == 0
     assert sup.log_path.parent == rotation.logs_dir and sup.log_path.name.startswith("openride_")
     lines = sup.log_path.read_text(encoding="utf-8").splitlines()
+    from openride_core import __version__
+    assert lines[0].endswith(f"[openride] OpenRide {__version__}")   # lot O2 : version en tête
     assert {"core ligne 0", "core ligne 2"} <= set(lines)
     assert {"[engine] engine ligne 0", "[engine] engine ligne 1"} <= set(lines)
     ours = [ln for ln in lines if "[openride]" in ln]
@@ -467,5 +475,17 @@ def test_openride_log_file_is_written_without_link(fake, tmp_path):
     sup, _ = fake(core="say:1:run", engine="say:1:exit0:0.2")
     assert sup.run() == 0
     text = (tmp_path / "run.log").read_text(encoding="utf-8")
+    from openride_core import __version__
+    assert text.splitlines()[0].endswith(f"[openride] OpenRide {__version__}")
     assert "core ligne 0" in text and "[engine] engine ligne 0" in text
     assert not (tmp_path / "Logs").exists()
+
+
+def test_engine_gets_living_off(tmp_path: Path):
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("[render]\nliving = false\n")
+    godot = tmp_path / "godot"
+    godot.write_text("#!/bin/sh\n")
+    godot.chmod(0o755)
+    sup = launcher.build_supervisor(["--config", str(cfg)], {"GODOT": str(godot), "OPENRIDE_LOG": str(tmp_path / "x.log")})
+    assert sup.engine_cmd[-1] == "--living=off"

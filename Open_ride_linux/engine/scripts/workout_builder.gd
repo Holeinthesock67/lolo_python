@@ -3,7 +3,7 @@ extends RefCounted
 ## Création d'un entraînement par intervalles depuis le menu ERG (lot N16), sans nœud.
 ##
 ## Sept paramètres réglés au Click (échauffement, répétitions, effort et récupération en durée et en
-## % de la FTP, retour au calme), envoyés au core par la commande `create_workout` (contrat v1.2,
+## % de la FTP, retour au calme), envoyés au core par la commande `create_workout` (contrat v1.3,
 ## décision D4) : le core écrit le `.zwo` dans ~/OpenRide/Workouts/. `workout_id()` et `workout_name()`
 ## reprennent les règles du core pour l'affichage. Puissances en % de la FTP (réglages du lot O4).
 ## Pas de class_name : charger par preload("res://scripts/workout_builder.gd").

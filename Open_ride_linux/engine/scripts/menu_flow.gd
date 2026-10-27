@@ -23,7 +23,7 @@ extends RefCounted
 ## « Appareils » (pairing_view_model.gd), aussi accessible depuis Réglages. Actions en plus pour main.gd :
 ## scan_devices, identify_click_plus, pair_devices (+ args) et relaunch (relancer OpenRide).
 ##
-## Sous-menu ERG (lot N16, contrat v1.2, décision D4 : le core écrit les fichiers) : « Créer un
+## Sous-menu ERG (lot N16, contrat v1.3, décision D4 : le core écrit les fichiers) : « Créer un
 ## entraînement » ouvre les paramètres d'intervalles (workout_builder.gd, modifiés sur l'écran de
 ## réglage) puis renvoie create_workout {args} ; « Importer un fichier » renvoie list_imports, la
 ## réponse `imports` arrive par set_import_candidates() et un choix renvoie import_workout {path}.
