@@ -145,7 +145,7 @@
 | [R6](LOT_R6_run_deck_boss.md) | Run : machine à états, couloirs, deck et cartes, or, reliques, boss en trois phases | Python | R5 | Grande | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
 | [R7](LOT_R7_equilibrage_run_simulee.md) | Table d'équilibrage en données et run simulée avec cyclistes types | Python | R6, R15 | Moyenne | **Livré le 27 octobre** (rapport : `docs/2.0/RAPPORT_EQUILIBRAGE_R7.md`), **version 2.0** |
 | [R8](LOT_R8_integration_session.md) | Intégration dans la session du core : mode ROGUE, formule centrée, boutons Z et A, pause Y, journal, pause et reprise | Python | T1, R6, R15, Q4 | Grande | Non : interne (`session.py`), **version 2.0** |
-| [R9](LOT_R9_progression_permanente.md) | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies | Python | R6, V2, V3b, V4 | Petite | Oui, **version 2.0** |
+| [R9](LOT_R9_progression_permanente.md) | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies | Python | R6, V2, V3b, V4 | Petite | **Livré le 27 octobre**, **version 2.0** |
 | [R10](LOT_R10_scene_neon_ruban.md) | Engine : scène néon, ruban 3D, shader de pente, arches et zones | GDScript + shader | T1 | Grande | Non : interne (rendu, contrôle visuel), **version 2.0** |
 | [R11](LOT_R11_hud_diegetique.md) | Engine : HUD diégétique, arcs au sol, champ de vision et tremblement | GDScript | T1, R10 | Moyenne | Modèle oui, rendu interne ; **version 2.0** |
 | [R12](LOT_R12_ennemis_boss.md) | Engine : ennemis et boss géométriques, effets d'impact | GDScript + shader | R10 | Moyenne | Non : interne (rendu, contrôle visuel), **version 2.0** |
