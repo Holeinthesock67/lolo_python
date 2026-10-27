@@ -322,7 +322,8 @@ class CoreSession:
             self._finish(bool(args.get("save", True)))
         elif name == "set_difficulty":
             raw_pct = args.get("pct") if isinstance(args, dict) else None
-            if raw_pct is None or isinstance(raw_pct, bool) or not isinstance(raw_pct, (int, float)):
+            if raw_pct is None or isinstance(raw_pct, bool) or not isinstance(raw_pct, (int, float)) \
+                    or not math.isfinite(raw_pct):
                 self.server.send_error("bad_args", "set_difficulty attend un nombre 'pct'")
                 return
             new_val = int(round(max(0, min(100, float(raw_pct)))))

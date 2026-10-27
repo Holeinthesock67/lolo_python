@@ -147,6 +147,13 @@ def test_set_difficulty_bounds_and_errors(tmp_path, monkeypatch):
         assert len(errors) == 1
         assert errors[0][0] == "bad_args"
 
+        # NaN et infini (acceptés par json.loads) : refusés, valeur inchangée
+        for k, bad in enumerate((float("nan"), float("inf"), float("-inf"))):
+            errors.clear()
+            s._on_command("set_difficulty", {"pct": bad}, 12 + k)
+            assert len(errors) == 1 and errors[0][0] == "bad_args"
+            assert s.difficulty_pct == 75.0
+
     asyncio.run(scenario())
 
 
