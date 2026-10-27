@@ -81,12 +81,7 @@ def s_gpx_gone(make_gpx, routes, tmp):
 
 
 def s_demo(make_gpx, routes, tmp):
-    route = core_demo.build_route(core_demo.DEMO_LENGTH_M)
-    wdir = routes / f"{core_demo.DEMO_NAME}.world"
-    wdir.mkdir(parents=True)
-    (wdir / "route.json").write_text(json.dumps(route), encoding="utf-8")
-    (wdir / "manifest.json").write_text(
-        json.dumps(core_demo.build_manifest(core_demo.DEMO_NAME, route)), encoding="utf-8")
+    core_demo.write_world(routes, core_demo.DEMO_NAME, core_demo.DEMO_LENGTH_M)   # route et segments
     make_gpx("GPX/demo.gpx", *straight_north(length=520.0))  # même id : rattaché à demo
     (routes / ".cache.world").mkdir()                          # dossier caché : ignoré
 
