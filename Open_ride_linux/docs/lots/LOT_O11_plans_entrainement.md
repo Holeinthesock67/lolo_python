@@ -67,3 +67,16 @@ Aucune (nouveau format de fichier `plan_format_v1.md`, propre à ce lot).
 
 - Plans adaptatifs (séances recalculées selon la forme) et calendrier synchronisé avec un service en ligne.
 - Écran du menu (lot O12).
+
+## 9. Livraison
+
+Livré le 26 octobre 2026 (issue #155), thread « Développer les lots O restants ».
+
+- `core/src/openride_core/plans.py` : `load_plan`, `list_plans`, `schedule`, `today`, `plan_summary`, `start_plan`, `stop_plan`, `load_state`, `plan_tag`, `active_tag`, `history_sessions`, `import_folder`, `install_builtin` ; `config.PLANS_DIR`.
+- Format : `docs/contracts/plan_format_v1.md`. Semaine 1 = semaine du lundi au dimanche qui contient la date de début (séances antérieures au début omises) ; `jourN` compté depuis la date de début. Jours au calendrier et `jourN` ne se mélangent pas.
+- Suivi : une séance de l'historique ne valide qu'une seule séance prévue ; « en retard » distingue `catch_up` (encore rattrapable, 3 jours) des séances manquées.
+- Journal : champ facultatif `plan` = `{id, week, day}` dans l'en-tête quand l'entraînement choisi est celui du jour ou une séance rattrapable du plan actif (`session.py`, une ligne, via `active_tag` qui ne lève jamais). `recorder.py` et `journal.py` le transmettent. `history` : clés `workout` et `plan` (de l'en-tête du journal, et pour un `.fit`, du journal de la même séance) et mention du plan dans le texte ; entrées en cache sans ces clés recalculées.
+- Tests de FTP (`ftp_test:ramp`, `ftp_test:20min`) : acceptés dès que le module `ftp_test` du lot O10 existe (`planned_duration_s`, `workout_for`), refusés avant avec « test de FTP pas encore disponible (lot O10) ». Les plans de référence utilisent donc `rampe_test.zwo` pour leurs tests.
+- `plan import` : identifiant du plan normalisé depuis `--name`, entraînements copiés sous `<id>_<nom>` ; un fichier de même nom au contenu différent fait refuser l'import avant toute copie.
+- Plans de référence : `core/plans/reprise_4_semaines.toml`, `core/plans/ftp_6_semaines.toml` (entraînements de `core/workouts/`, aucun ajouté).
+- Tests : `core/tests/test_plans.py` (critères 2 à 6, journal, historique, ligne de commande) ; `test_history.py` attend les deux nouvelles clés.
