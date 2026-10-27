@@ -14,6 +14,14 @@ const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 
+## Empreintes exactes (SHA-256 des octets de tous les arbres, case après case) relevées avant
+## l'optimisation du lot O1 : le résultat doit rester identique au bit près.
+const FINGERPRINTS := {
+	"sans_zone": "A_RELEVER",
+	"zones_osm": "A_RELEVER",
+	"relief": "A_RELEVER",
+}
+
 var _failures := 0
 var _checked := 0
 
@@ -62,6 +70,7 @@ func _test_tree_generation_and_determinism() -> void:
 	var prep_time_ms := PerfBudget.measure_ms(func(): renderer.prepare_tile(0, 0, heights, route, theme, 1.0), 3, 0)
 	_check(PerfBudget.check("tree_tile_high", prep_time_ms),
 		"temps CPU préparation tuile dans le budget (%.2f ms)" % prep_time_ms)
+	print("Ventilation de la préparation (lot O1) : ", JSON.stringify(renderer.last_profile))
 
 	var prep2: Dictionary = renderer.prepare_tile(0, 0, heights, route, theme, 1.0)
 
@@ -158,7 +167,65 @@ func _test_budget_enforcement() -> void:
 	renderer.queue_free()
 
 
+## Empreinte exacte d'une tuile préparée : nombre d'arbres et SHA-256 des octets, case après case.
+func _fingerprint(prep: Dictionary) -> String:
+	var ctx := HashingContext.new()
+	ctx.start(HashingContext.HASH_SHA256)
+	var count := 0
+	for cell in prep["cells"]:
+		var trees: PackedVector4Array = cell
+		count += trees.size()
+		ctx.update(var_to_bytes(trees.size()))
+		if not trees.is_empty():
+			ctx.update(trees.to_byte_array())
+	return "%d:%s" % [count, ctx.finish().hex_encode().substr(0, 16)]
+
+
+func _relief_heights() -> PackedFloat32Array:
+	var h := PackedFloat32Array()
+	h.resize(101 * 101)
+	for j in range(101):
+		for i in range(101):
+			h[j * 101 + i] = 900.0 + 40.0 * sin(i / 9.0) + 25.0 * cos(j / 7.0) + 0.8 * i
+	return h
+
+
+func _test_fingerprints() -> void:
+	var renderer = TreeRenderer.new()
+	var route = _make_simple_route(2000.0)
+	var theme := {
+		"vegetation": {"max_density_per_ha": 300.0, "treeline_m": 2000.0},
+		"road": {"width_m": 6.0},
+		"terrain": {"slope_threshold_deg": 25.0}
+	}
+	var flat := TerrainTiles.flat_heights(1000.0)
+	var areas := [
+		{"id": "w98765", "kind": "wood", "density": 0.8,
+			"outer": [[100.0, 100.0], [380.0, 120.0], [420.0, 400.0], [150.0, 450.0]],
+			"holes": [[[200.0, 200.0], [260.0, 200.0], [260.0, 260.0], [200.0, 260.0]]]},
+		{"id": "w12", "kind": "scrub", "density": 1.0,
+			"outer": [[600.0, 600.0], [900.0, 600.0], [900.0, 900.0], [600.0, 900.0]]},
+	]
+	var buildings := [{"outer": [[700.0, 100.0], [740.0, 100.0], [740.0, 130.0], [700.0, 130.0]]}]
+	var cases := {
+		"sans_zone": renderer.prepare_tile(0, 0, flat, route, theme, 1.0),
+		"zones_osm": renderer.prepare_tile(0, 0, flat, route, theme, 1.0, areas, buildings),
+		"relief": renderer.prepare_tile(1, 0, _relief_heights(), null, theme, 1.0),
+	}
+	for name in cases:
+		var fp := _fingerprint(cases[name])
+		print("Empreinte %s : %s" % [name, fp])
+		_check(fp == FINGERPRINTS[name], "empreinte des arbres « %s » inchangée (%s)" % [name, fp])
+	# Le thème passé n'est pas modifié par la préparation (copie de la section `vegetation`).
+	_check(theme["vegetation"]["max_density_per_ha"] == 300.0, "thème d'entrée inchangé")
+	var half: Dictionary = renderer.prepare_tile(0, 0, flat, route, theme, 0.5)
+	_check(theme["vegetation"]["max_density_per_ha"] == 300.0 and _fingerprint(half) != _fingerprint(cases["sans_zone"]),
+		"facteur de densité appliqué à la copie seulement")
+	renderer.free()
+
+
 func _init() -> void:
+	_test_fingerprints()
 	_test_tree_generation_and_determinism()
 	_test_budget_enforcement()
 	print("test_tree_renderer : %d vérifications, %d échecs" % [_checked, _failures])
