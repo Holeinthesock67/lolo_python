@@ -348,4 +348,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    sys.path.insert(0, str(ENGINE_DIR.parent / "scripts"))
+    from isolation_tests import verrou_suite   # une seule suite de tests ou banc à la fois
+
+    with verrou_suite("e2e_check"):
+        code = main()
+    sys.exit(code)
