@@ -41,7 +41,7 @@ def test_simulated_session_difficulty_change(tmp_path, monkeypatch, caplog):
     """Critère 3 : pente 8 % braquet 12 -> grade_sent à 50 % puis 30 %, rampe lissée, vitesse inchangée."""
     async def scenario():
         cfg = Config()
-        cfg.trainer.grade_rate_pct_per_s = 2.0
+        cfg.trainer.grade_rate_up_pct_per_s = cfg.trainer.grade_rate_down_pct_per_s = 2.0
         cfg.trainer.latency_tau_s = 0.0
 
         s = make_session(tmp_path / "main", monkeypatch, cfg=cfg, port=5854)
