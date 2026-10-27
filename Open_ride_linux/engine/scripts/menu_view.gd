@@ -16,11 +16,12 @@ const ButtonBar := preload("res://scripts/button_bar.gd")
 const UiTheme := preload("res://scripts/ui_theme.gd")
 const UiIcons := preload("res://scripts/ui_icons.gd")
 const DetailCard := preload("res://scripts/detail_card.gd")
+const GaragePreview := preload("res://scripts/garage_preview.gd")
 
 ## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus. Un de moins quand les pastilles des
 ## appareils sont affichées (accueil, Prêt, connexion) : l'accueil tient en entier.
-const MAX_VISIBLE_ITEMS := 9
-const MAX_VISIBLE_WITH_DEVICES := 8
+const MAX_VISIBLE_ITEMS := 10
+const MAX_VISIBLE_WITH_DEVICES := 9
 const DEVICES_SCREENS := ["home", "ready", "connect"]
 
 signal item_clicked(item_id: String)
@@ -35,6 +36,8 @@ var items_box: VBoxContainer
 var more_label: Label
 var devices: HBoxContainer
 var summary: VBoxContainer
+## Aperçu 3D du Garage (lot V8), dans la carte de détail.
+var preview   # garage_preview.gd
 var button_bar: PanelContainer
 var _item_panels: Array[PanelContainer] = []
 var _focus_style := UiTheme.row_style(true)
@@ -100,6 +103,8 @@ func _init() -> void:
 	body.add_child(card)
 	summary = SummaryView.new()
 	card.body.add_child(summary)
+	preview = GaragePreview.new()
+	card.body.add_child(preview)
 	devices = DevicesView.new()
 	box.add_child(devices)
 	# Bandeau des boutons sur toute la largeur, collé en bas.
@@ -146,6 +151,10 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	card.visible = not sheet.is_empty()
 	card.update_display(sheet)
 	summary.visible = screen == "summary"
+	var garage_preview: Dictionary = menu.get("preview", {})
+	preview.visible = not garage_preview.is_empty()
+	if preview.visible:
+		preview.show_preview(garage_preview)
 	var items: Array = menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
 	var max_items := MAX_VISIBLE_WITH_DEVICES if screen in DEVICES_SCREENS else MAX_VISIBLE_ITEMS

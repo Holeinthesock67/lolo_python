@@ -458,6 +458,14 @@ func _run_menu_action(act: Dictionary) -> void:
 		"open_world_menu":
 			world_menu_view.open()
 			ipc.send_command("world_regions")
+		"list_garage":
+			ipc.request_garage()
+		"equip":
+			ipc.send_command("equip", {"slot": str(act["slot"]), "item_id": str(act["item_id"])})
+		"buy":
+			ipc.send_command("buy", {"item_id": str(act["item_id"])})
+		"set_avatar":
+			ipc.send_command("set_avatar", {"avatar": act["avatar"]})
 
 
 # --- menu « Monde ouvert » (lot W11) -----------------------------------------------------
@@ -825,6 +833,9 @@ func _on_test_message(msg: Dictionary) -> void:
 			var ev := str(msg.get("event", ""))
 			if ev in MenuModel.EVENTS:
 				_menu_event(ev)
+		"menu_focus":   # focus sur un élément de l'écran courant du menu (tests graphiques du Garage, lot V8)
+			menu_flow.menu.focus_item(str(msg.get("id", "")))
+			_refresh_menu()
 		"avatar_camera":   # caméra de contrôle derrière (« follow ») ou à côté (« side ») de l'avatar (lot V6)
 			_avatar_cam = str(msg.get("view", "")) if str(msg.get("view", "")) in ["follow", "side"] else ""
 			avatar_view.set_visible_for_view(_avatar_view_name())
@@ -852,7 +863,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
-		"menu_card": menu_view.card,
+		"menu_card": menu_view.card, "garage_preview": menu_view.preview,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
@@ -883,8 +894,22 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
 		"avatar": _avatar_info(),
+		"garage": _garage_info(),
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
+
+
+## Garage (lot V8) pour les tests : solde, choix, avatar enregistré et brouillon, états des pièces, aperçu 3D.
+func _garage_info() -> Dictionary:
+	var g = menu_flow.garage
+	var states := {}
+	for it in g.items:
+		states[str(it["id"])] = str(it.get("state", ""))
+	var out := {"enabled": g.enabled, "level": g.level, "coins": g.coins, "equipped": g.equipped, "avatar": g.saved_avatar,
+		"draft": g.draft_avatar, "dirty": g.is_dirty(), "message": g.message, "states": states, "preview": {}}
+	if menu_view.preview.visible:
+		out["preview"] = menu_view.preview.test_info()
+	return out
 
 
 ## Texte des zones composées du menu (éléments, appareils, bilan), pour les tests graphiques.
@@ -946,12 +971,25 @@ func _on_garage(items: Array) -> void:
 		if it is Dictionary:
 			_look_of_id[it.get("id")] = it.get("look")
 	_apply_equipment()
+	menu_flow.on_garage(items)
+	_refresh_menu()
 
 
+## `progression` après equip, buy ou set_avatar : l'avatar et l'équipement affichés suivent, le catalogue
+## est redemandé (états des pièces) et le Garage se met à jour.
 func _on_progression(msg: Dictionary) -> void:
 	var eq = msg.get("equipped")
 	_equipped_ids = eq if eq is Dictionary else {}
+	var prog := {}
+	for key in ["level", "xp", "xp_next_level", "coins", "equipped", "avatar", "lives"]:
+		if msg.has(key):
+			prog[key] = msg[key]
+	ipc.core_config["progression"] = prog
+	_configure_avatar()
 	_apply_equipment()
+	menu_flow.on_progression(msg)
+	ipc.request_garage()
+	_refresh_menu()
 
 
 func _apply_equipment() -> void:
@@ -965,6 +1003,7 @@ func _apply_equipment() -> void:
 func _on_hello_ack(_ack: Dictionary) -> void:
 	_configure_avatar()
 	var prog = ipc.core_config.get("progression", {})
+	menu_flow.on_hello_progression(prog)
 	var eq = prog.get("equipped") if prog is Dictionary else null
 	_equipped_ids = eq if eq is Dictionary else {}
 	_apply_equipment()

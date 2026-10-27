@@ -340,7 +340,8 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Liens avec les séries T et R (lot V5).
 - [x] Avatar du cycliste généré par le code, pédalier à la cadence réelle et danseuse (lot V6, `avatar_model.gd`, `avatar_mesh.gd`, `avatar_view.gd`, `[avatar]` de `config.toml`, 27 octobre) ; caché en vue subjective (vues de caméra : V12) ; reste la recette de rendu sur le PC.
 - [x] Équipement à l'écran : cadres, roues, casques, tenues, chaussettes et lunettes selon le `look` du Garage, sons des roues, traînées d'air au-dessus de 45 km/h (lot V7, `equipment_meshes.gd`, 27 octobre) ; reste la recette de rendu sur le PC.
-- [ ] Garage et fin de séance (lots V8 et V9), recette (lot V10).
+- [x] Menu « Garage » au Click : vélo, tenue, avatar, fiches, achats avec confirmation, aperçu 3D, conseil du parcours (lot V8, `garage_view_model.gd`, 27 octobre) ; reste la recette au Click sur le PC.
+- [ ] Fin de séance (lot V9), recette (lot V10).
 - [ ] Quatre vues de caméra au Click et au clavier (lot V12, décision D5 du 27 octobre).
 
 ### Sprint 4 et suivants

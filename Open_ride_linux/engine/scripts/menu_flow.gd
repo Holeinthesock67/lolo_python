@@ -51,6 +51,7 @@ const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
+const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -137,6 +138,8 @@ var ready_message := ""
 var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
+## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
+var garage = GarageViewModel.new()
 var records_path := ""
 var _record_segment := ""
 var _record_bonus := false
@@ -162,6 +165,9 @@ func _init() -> void:
 	menu.set_screen_items(FTP_TEST, tests)
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
+	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
+	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
+		menu.add_screen({"id": screen, "title": "Garage", "on_back": GarageViewModel.SCREEN, "items": []})
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -310,6 +316,9 @@ func on_error(code: String, text: String) -> void:
 		else:
 			summary_message = "Échec : " + text
 		return
+	if menu.current_screen() in GarageViewModel.SCREENS and garage.on_error(code, text):
+		_refresh_garage()
+		return
 	if code == "bot_invalid" and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
 		return
@@ -389,6 +398,14 @@ func _cycle_routes(item_id: String) -> void:
 	menu.focus_item(item_id)
 
 
+## Terrain (`terrain` de `routes`, contrat 1.4) du parcours choisi, null sans parcours ou sans terrain.
+func _route_terrain():
+	for r in routes_raw:
+		if r is Dictionary and menu.world_id != "" and str(r.get("id", "")) == menu.world_id:
+			return r.get("terrain")
+	return null
+
+
 ## Carte de détail de l'écran (lot « présentation des menus », étape 2), {} sans carte : fiche du
 ## parcours choisi (Prêt), du parcours ou de l'entraînement sous le focus (listes), aperçu de
 ## l'entraînement en création, en-tête du bilan (le bilan lui-même vient de `summary`). Fiches de
@@ -409,6 +426,10 @@ func card(st: Dictionary) -> Dictionary:
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
 	if screen == SUMMARY:
 		return {"title": "Bilan de la séance"}
+	if screen == SETTING_EDIT and str(settings.editing.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
+		return garage.sheet(GarageViewModel.AVATAR, "")
+	if screen in GarageViewModel.SCREENS:
+		return garage.sheet(screen, focused)
 	return {}
 
 
@@ -680,6 +701,11 @@ func handle(event: String) -> Dictionary:
 			summary_message = "Enregistrement de la FTP…"
 			return act
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME:
+		if str(act["id"]) == "garage":
+			garage.message = ""
+			_refresh_garage()
+			menu.push_screen(GarageViewModel.SCREEN)
+			return {"action": "list_garage"}
 		if str(act["id"]) == "ftp":
 			menu.push_screen(FTP_TEST)
 			return {}
@@ -688,6 +714,8 @@ func handle(event: String) -> Dictionary:
 		plan_message = ""
 		menu.push_screen(PLANS)
 		return {"action": "list_plans"}
+	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
+		return _handle_garage(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
 		_cycle_routes(str(act["id"]))
 		return {}
@@ -778,6 +806,75 @@ func handle(event: String) -> Dictionary:
 	return act
 
 
+## Garage (lot V8) : écrans reconstruits d'après le brouillon et le catalogue.
+func _refresh_garage() -> void:
+	for screen in GarageViewModel.SCREENS:
+		menu.set_screen_items(screen, garage.screen_items(screen), garage.title(screen))
+
+
+func _handle_garage(screen: String, item_id: String) -> Dictionary:
+	var act := {}
+	if screen == GarageViewModel.SCREEN:
+		garage.message = ""
+		match item_id:
+			"bike":
+				menu.push_screen(GarageViewModel.BIKE)
+			"outfit":
+				menu.push_screen(GarageViewModel.OUTFIT)
+			"avatar":
+				menu.push_screen(GarageViewModel.AVATAR)
+	elif screen == GarageViewModel.AVATAR:
+		if item_id.begins_with("field:"):
+			settings.begin_with(garage.edit_item(item_id.substr(6)))
+			_open_edit()
+		elif item_id == "save":
+			act = garage.save()
+			if not act.is_empty():
+				garage.message = "Enregistrement…"
+		elif item_id == "cancel":
+			garage.cancel()
+	else:
+		var todo: Dictionary = garage.activate(item_id)
+		match todo.get("action", ""):
+			"equip":
+				act = todo
+			"confirm_buy":
+				menu.confirm(str(todo["title"]), {"action": "buy", "item_id": todo["item_id"]})
+	_refresh_garage()
+	return act
+
+
+## Garage : `garage` du core (liste complète), `progression` (après chaque réussite) et hello_ack.
+func on_garage(list: Array) -> void:
+	garage.on_garage(list)
+	_refresh_garage()
+
+
+func on_progression(msg: Dictionary) -> void:
+	garage.on_progression(msg)
+	if garage.message == "Enregistrement…":
+		garage.message = "Enregistré"
+	_refresh_garage()
+
+
+func on_hello_progression(progression) -> void:
+	garage.on_hello(progression)
+	menu.set_garage(garage.enabled)
+	_refresh_garage()
+
+
+## Aperçu 3D du Garage pour l'état de menu `st` ({} hors Garage) : réglages de l'avatar et `look` choisis.
+func garage_preview(st: Dictionary) -> Dictionary:
+	var screen := str(st["screen"])
+	var focus := int(st.get("focus", -1))
+	var focused := str(st["items"][focus]["id"]) if focus >= 0 and focus < st["items"].size() else ""
+	if screen == SETTING_EDIT and str(settings.editing.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
+		return garage.preview(GarageViewModel.AVATAR, "", settings.editing)
+	if screen in GarageViewModel.SCREENS:
+		return garage.preview(screen, focused)
+	return {}
+
+
 ## Écrans des records (lot T10) : « Records du parcours » (écran Prêt) relit le fichier et liste les
 ## segments ; un segment ouvre sa table « sans bonus » ; « A : voir les temps avec bonus » bascule.
 func _handle_records(screen: String, item_id: String) -> void:
@@ -823,6 +920,10 @@ func _handle_edit(event: String) -> Dictionary:
 			if act.get("action", "") == "set_difficulty":
 				difficulty_pct = int(act["pct"])
 				menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
+			if act.get("action", "") == "garage_set":
+				garage.set_field(str(act["key"]), int(act["value"]))
+				_refresh_garage()
+				return {}
 			if act.get("action", "") == "builder_set":
 				builder.set_value(str(act["key"]), act["value"])
 				_refresh_builder()
@@ -858,8 +959,11 @@ func state() -> Dictionary:
 	elif st["screen"] == SUMMARY:
 		st["status"] = summary_message
 	elif st["screen"] == MenuModel.READY:
-		st["status"] = ready_message
+		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
+	elif st["screen"] in GarageViewModel.SCREENS:
+		st["status"] = garage.message
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
 	st["card"] = card(st)
+	st["preview"] = garage_preview(st)
 	return st

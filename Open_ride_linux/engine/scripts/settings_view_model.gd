@@ -13,6 +13,7 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/settings_view_model.gd").
 
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
+const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 
 const EDIT_SCREEN := "setting_edit"
 const DIFFICULTY_KEY := "trainer.difficulty_pct"
@@ -55,6 +56,8 @@ static func slider(pct: int) -> String:
 static func format_value(it: Dictionary, value) -> String:
 	if str(it.get("key", "")) in [DIFFICULTY_KEY, PAUSE_DIFFICULTY]:
 		return slider(int(value))
+	if str(it.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
+		return GarageViewModel.format_edit(str(it["key"]), int(value))
 	if it.has("format"):
 		return WorkoutBuilder.format_param(it, value)
 	var texts: Dictionary = CHOICE_TEXTS.get(str(it.get("key", "")), {})
@@ -134,6 +137,9 @@ func commit() -> Dictionary:
 		return {}
 	if e["key"] == PAUSE_DIFFICULTY:
 		return {"action": "set_difficulty", "pct": int(e["value"])}
+	if str(e["key"]).begins_with(GarageViewModel.KEY_PREFIX):
+		return {"action": "garage_set", "key": str(e["key"]).substr(GarageViewModel.KEY_PREFIX.length()),
+			"value": int(e["value"])}
 	if str(e["key"]).begins_with(WorkoutBuilder.KEY_PREFIX):
 		return {"action": "builder_set", "key": str(e["key"]).substr(WorkoutBuilder.KEY_PREFIX.length()),
 			"value": int(e["value"])}
