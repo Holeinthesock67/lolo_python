@@ -1,0 +1,8 @@
+name = "Irohazaka (route montante)"
+region = "Tochigi, Nikkō"
+country = "Japon"
+side = "depuis Umagaeshi jusqu'à Akechidaira"
+waypoints = [[36.7404, 139.5532], [36.7337, 139.5115]]
+ref_length_m = 9500
+ref_gain_m = 440
+tags = ["col", "classique", "japon", "lacets"]
