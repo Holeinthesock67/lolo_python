@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideXpResultMessage",
-  "description": "Révision 1.4 (série V) : bilan de progression en fin de séance, après summary, répété une fois par seconde tant que la séance reste FINISHED (au plus 10 fois) ; 1 400 octets au plus.",
+  "description": "Révision 1.4 (série V) : bilan de progression en fin de séance, après summary, répété une fois par seconde tant que la séance reste FINISHED (au plus 10 fois) ; 4 096 octets au plus (contrat §2, révision 1.5).",
   "type": "object",
   "required": [
     "type",

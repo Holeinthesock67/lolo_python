@@ -15,6 +15,7 @@ import pytest
 from openride_core import pairing
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
+from openride_core.ipc_server import MAX_DATAGRAM_SIZE
 from openride_core.mock_driver import MockDriver
 from openride_core.session import CoreSession
 from openride_core.sim_scenarios import MINUS_ADDRESS, PLUS_ADDRESS
@@ -79,7 +80,7 @@ def test_scan_identify_then_pair_in_simulated_bluetooth(tmp_path: Path, monkeypa
         await asyncio.wait_for(task, 10)
         for m in sent:
             if m.get("type") == "scan_results":
-                assert len(json.dumps(m, separators=(",", ":")).encode()) <= 1400
+                assert len(json.dumps(m, separators=(",", ":")).encode()) <= MAX_DATAGRAM_SIZE
     asyncio.run(scenario())
     text = cfg_path.read_text(encoding="utf-8")
     assert text.startswith("# ma configuration")
@@ -132,7 +133,7 @@ def test_scan_items_and_message_limits():
     assert all(it["role"] != "other" for it in items)
     big = [{**it, "name": "x" * 200} for it in items]
     msg = pairing.scan_results_message(7, big, True)
-    assert len(json.dumps(msg, separators=(",", ":")).encode()) <= 1400 and msg["items"]
+    assert len(json.dumps(msg, separators=(",", ":")).encode()) <= MAX_DATAGRAM_SIZE and msg["items"]
     with pytest.raises(pairing.PairingError):
         pairing.paired_from_args({"trainer": 12}, items)
     p = pairing.paired_from_args({"trainer": "c1:1c:00:00:00:a0", "hr": None}, items)
