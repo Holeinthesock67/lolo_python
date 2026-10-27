@@ -25,6 +25,8 @@ var n: int = 0
 var length_m: float = 0.0
 var type: String = "open"
 var load_error: String = ""
+## Vrai : un refus de chargement n'écrit pas dans le journal d'erreurs de Godot (essais de refus).
+var quiet_errors := false
 
 var s: PackedFloat64Array = PackedFloat64Array()
 var lat: PackedFloat64Array = PackedFloat64Array()
@@ -44,7 +46,8 @@ var segments_error: String = ""
 
 func _fail(message: String) -> bool:
 	load_error = message
-	push_error("Parcours invalide : " + message)
+	if not quiet_errors:
+		push_error("Parcours invalide : " + message)
 	return false
 
 
@@ -193,6 +196,122 @@ func load_route_dict(data: Dictionary) -> bool:
 		return _fail("boucle non fermée")
 	load_error = ""
 	return true
+
+
+# --- monde vivant (lot W10, format §13) -------------------------------------------------
+
+## Monde vivant : route assemblée à partir de `route/part_<k>.json` (parties de 1 km, bord partagé).
+var live := false
+var live_dir := ""
+## Parties lues, dans l'ordre ; les parties non relues d'une révision à l'autre restent le même objet.
+var parts: Array = []
+
+
+## Lit les parties `from_part`, `from_part + 1`… jusqu'à la première absente. Sans accès à l'objet :
+## utilisable dans une tâche de fond. Renvoie {ok, parts, error}.
+static func read_parts(world_dir: String, from_part: int) -> Dictionary:
+	var out := []
+	var k := from_part
+	while true:
+		var path := world_dir.path_join("route").path_join("part_%d.json" % k)
+		if not FileAccess.file_exists(path):
+			break
+		var data = JSON.parse_string(FileAccess.get_file_as_string(path))
+		if typeof(data) != TYPE_DICTIONARY or not (data.get("n", 0) is int or data.get("n", 0) is float) \
+				or int(data.get("n", 0)) < 2:
+			return {"ok": false, "parts": [], "error": "partie %d illisible dans %s" % [k, world_dir]}
+		out.append(data)
+		k += 1
+	return {"ok": true, "parts": out, "error": ""}
+
+
+## Charge un dossier `live` (manifeste `live: true`, puis toutes les parties).
+func load_live_dir(world_dir: String) -> bool:
+	var manifest = _read_json(world_dir.path_join("manifest.json"))
+	if typeof(manifest) != TYPE_DICTIONARY or manifest.get("format", "") != FORMAT_NAME:
+		return _fail("manifest.json absent ou inattendu dans " + world_dir)
+	if manifest.get("live", false) != true:
+		return _fail("monde non vivant : " + world_dir)
+	live_dir = world_dir
+	live = true
+	parts = []
+	return reload_from_part(0)
+
+
+## Remplace les parties à partir de `k` par celles du disque (lecture synchrone ; `live_world.gd` fait la
+## lecture en tâche de fond avec `read_parts`, puis appelle `replace_parts`).
+func reload_from_part(k: int) -> bool:
+	var res := read_parts(live_dir, k)
+	if not res["ok"]:
+		return _fail(res["error"])
+	return replace_parts(k, res["parts"])
+
+
+## Nouvelle route (objet neuf, lisible depuis un autre fil) : parties 0 à k − 1 de celle-ci, mêmes objets, puis
+## `new_parts`. Renvoie null si l'assemblage est invalide (`load_error` de celle-ci le dit) ; celle-ci ne change pas.
+func revised_from(k: int, new_parts: Array):
+	var fresh = get_script().new()
+	fresh.live = true
+	fresh.live_dir = live_dir
+	fresh.quiet_errors = quiet_errors
+	fresh.parts = parts.duplicate()
+	if not fresh.replace_parts(k, new_parts):
+		load_error = fresh.load_error
+		return null
+	return fresh
+
+
+## Garde les parties 0 à k − 1 (mêmes objets) et prend `new_parts` pour la suite, puis réassemble les colonnes.
+## Si la nouvelle route est invalide, l'ancienne reste en place.
+func replace_parts(k: int, new_parts: Array) -> bool:
+	if k < 0 or k > parts.size():
+		return _fail("partie %d demandée, %d connues" % [k, parts.size()])
+	var merged: Array = parts.slice(0, k) + new_parts
+	var res := _assemble(merged)
+	if not res["ok"]:
+		return _fail(res["error"])
+	var old_parts := parts
+	var saved := [version, ds_m, n, length_m, type, s, lat, lon, alt_m, x, z, grade_pct, heading_deg]
+	if not load_route_dict(res["route"]):
+		parts = old_parts
+		version = saved[0]; ds_m = saved[1]; n = saved[2]; length_m = saved[3]; type = saved[4]
+		s = saved[5]; lat = saved[6]; lon = saved[7]; alt_m = saved[8]; x = saved[9]; z = saved[10]
+		grade_pct = saved[11]; heading_deg = saved[12]
+		return false
+	parts = merged
+	return true
+
+
+const COLUMN_KEYS := ["lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg"]
+
+
+## Colonnes d'une route unique à partir des parties : le premier point de chaque partie suivante
+## (bord partagé) est omis ; `s0_m` de chaque partie doit tomber sur la fin de la précédente.
+static func _assemble(all_parts: Array) -> Dictionary:
+	if all_parts.is_empty():
+		return {"ok": false, "error": "aucune partie de route"}
+	var route := {"version": "1.0", "type": "open", "ds_m": float(all_parts[0].get("ds_m", 0.0))}
+	var cols := {}
+	for key in COLUMN_KEYS:
+		cols[key] = []
+	var end_s := 0.0
+	for i in range(all_parts.size()):
+		var part: Dictionary = all_parts[i]
+		var count := int(part.get("n", 0))
+		if i > 0 and absf(float(part.get("s0_m", -1.0)) - end_s) > 1e-6:
+			return {"ok": false, "error": "partie %d : s0_m ne prolonge pas la partie précédente" % i}
+		for key in COLUMN_KEYS:
+			var col = part.get(key, [])
+			if typeof(col) != TYPE_ARRAY or (col as Array).size() != count:
+				return {"ok": false, "error": "partie %d : colonne %s invalide" % [i, key]}
+			var from := 0 if i == 0 else 1
+			(cols[key] as Array).append_array((col as Array).slice(from))
+		end_s = float(part.get("s0_m", 0.0)) + float(part.get("length_m", 0.0))
+	for key in COLUMN_KEYS:
+		route[key] = cols[key]
+	route["n"] = (cols["x"] as Array).size()
+	route["length_m"] = end_s
+	return {"ok": true, "route": route, "error": ""}
 
 
 # --- interpolation -----------------------------------------------------------------------

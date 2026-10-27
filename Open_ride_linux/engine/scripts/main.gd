@@ -26,8 +26,11 @@ const LivingDecor := preload("res://scripts/living_decor.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
+const LiveWorld := preload("res://scripts/live_world.gd")
+const JunctionView := preload("res://scripts/junction_view.gd")
 
 const DEMO_ROUTE_ID := "demo"
+const OW_PREFIX := "ow:"
 const DEMO_WORLD := "res://demo/demo.world"
 const ERROR_MIN_S := 5.0
 const TEST_CAM_PERIOD_US := 50_000   # journal de la caméra à 20 Hz en mode test
@@ -53,6 +56,10 @@ var follow = CameraFollowScript.new()
 var session_state: String = ""
 var _first_state_logged := false
 var _route_id_requested = null
+## Monde ouvert (lot W10) : suit les révisions du monde que le générateur prolonge ; inactif hors monde ouvert.
+var live_world = LiveWorld.new()
+## Panneau du carrefour et attributions (lot W12) ; null avant _ready.
+var junction_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
 var _route_job: Dictionary = {}
 var _test_cam_last_us := 0
@@ -200,6 +207,8 @@ func _ready() -> void:
 	place_banner.call()
 	erg_panel = ErgView.new()
 	hud.add_child(erg_panel)
+	junction_view = JunctionView.new()
+	hud.add_child(junction_view)
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
 	menu_view = MenuView.new()
 	hud.add_child(menu_view)
@@ -409,6 +418,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				ipc.send_command("input_event", {"event": "PLUS_SHORT"})
 			KEY_MINUS, KEY_KP_SUBTRACT, KEY_DOWN:
 				ipc.send_command("input_event", {"event": "MINUS_SHORT"})
+			KEY_LEFT, KEY_RIGHT:
+				# Monde ouvert : branche voisine du carrefour proposé (←, →) ; rien hors carrefour ou verrouillé.
+				var pick: Dictionary = junction_view.vm.press(-1 if event.keycode == KEY_LEFT else 1)
+				if not pick.is_empty():
+					ipc.send_command("choose_branch", pick)
 			KEY_PAGEUP:
 				ipc.send_command("input_event", {"event": "PLUS_LONG"})
 			KEY_PAGEDOWN:
@@ -417,6 +431,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _process(delta: float) -> void:
 	_poll_route_job()
+	_poll_live_world()
 	_record_frame_perf(delta)
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
@@ -519,8 +534,31 @@ func _test_log_camera(now: int, s_disp: float) -> void:
 
 # --- parcours ----------------------------------------------------------------------------
 
+## Monde ouvert : applique la dernière révision lue (route prolongée, carrefours) et tient les amorces
+## des branches à jour. Les tronçons de ruban touchés sont reconstruits, les autres gardés.
+func _poll_live_world() -> void:
+	if live_world.route == null:
+		return
+	var upd: Dictionary = live_world.poll()
+	if upd.has("route"):
+		route = upd["route"]
+		streamer.swap_route(route, int(upd["from_part"]))
+		if living_world != null:
+			living_world.set_route(route, float(streamer.get("_road_width_m")))
+		ipc.test_log("world_revision rev=%d length_m=%.1f from_part=%d" % [upd["revision"], route.length_m, upd["from_part"]])
+	elif upd.has("error"):
+		print("Monde ouvert : révision %d illisible : %s" % [upd["revision"], upd["error"]])
+		ipc.test_log("world_revision_error rev=%d" % upd["revision"])
+	if follow.has_frame():
+		streamer.set_previews(live_world.previews(float(follow.last_frame["s"])))
+
 ## Dossier du parcours : <routes>/<route_id>.world, repli sur la démo embarquée pour « demo ».
 func _route_path(route_id: String) -> String:
+	if route_id.begins_with(OW_PREFIX):
+		# Monde ouvert : « ow:<id> » désigne <open_world_dir>/<id>.world (contrat IPC 1.5, hello_ack.config).
+		var ow_dir := str(ipc.core_config.get("open_world_dir", ""))
+		var ow_path := ow_dir.path_join(route_id.trim_prefix(OW_PREFIX) + ".world")
+		return ow_path if ow_dir != "" and DirAccess.dir_exists_absolute(ow_path) else ""
 	var path := routes_dir.path_join(route_id + ".world")
 	if DirAccess.dir_exists_absolute(path):
 		return path
@@ -550,7 +588,10 @@ func _request_route(route_id) -> void:
 
 ## Exécuté dans un fil de WorkerThreadPool : lecture des fichiers et contrôles, sans toucher à la scène.
 func _load_route_job(job: Dictionary) -> void:
-	job["ok"] = job["route"].load_world_dir(job["path"])
+	if str(job["id"]).begins_with(OW_PREFIX):
+		job["ok"] = job["route"].load_live_dir(job["path"])
+	else:
+		job["ok"] = job["route"].load_world_dir(job["path"])
 
 
 func _poll_route_job() -> void:
@@ -565,6 +606,11 @@ func _poll_route_job() -> void:
 		banner.show_message("route", "Parcours « %s » invalide : %s" % [job["id"], job["route"].load_error])
 		return
 	route = job["route"]
+	if route.live:
+		live_world.adopt(job["path"], route)
+	else:
+		live_world.close()
+		streamer.set_previews([])
 	follow.loop_length_m = route.length_m if route.is_loop() else 0.0
 	follow.reset()
 	_menu_s = 0.0
@@ -723,6 +769,8 @@ func _on_state_received(state: Dictionary) -> void:
 		if banner.has_message("error"):
 			banner.set_sticky("error", session_state == "ERROR")
 	var route_id = state.get("route_id", null)
+	if live_world.route != null:
+		live_world.on_open_world(ipc.open_world)
 	if (route_id == null or str(route_id) == "") and menu_flow.is_visible():
 		route_id = DEMO_ROUTE_ID   # aucun parcours choisi : la démo tourne en fond des menus (lot N6)
 	if route_id != _route_id_requested:
@@ -748,6 +796,9 @@ func _on_state_received(state: Dictionary) -> void:
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
+	if junction_view != null:
+		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
+			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
 	if living_decor != null:
 		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:

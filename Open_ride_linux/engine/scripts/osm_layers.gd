@@ -126,12 +126,138 @@ static func chunk_path(world_dir: String, layer: String, k: int) -> String:
 
 ## Lit `<layer>/chunk_<k>.json`. Renvoie {ok, items, ignored, error, version} ; pour `water`, aussi
 ## `lines` et `areas` (items = lines puis areas).
-static func load_chunk(world_dir: String, layer: String, k: int) -> Dictionary:
+## Monde vivant (lot W10, format §13) : avec `route` vivante, lit à la place les fichiers de carré
+## `tile_<ix>_<iz>.json` que touche le tronçon k, coordonnées rendues absolues (voir `load_chunk_live`).
+static func load_chunk(world_dir: String, layer: String, k: int, route = null) -> Dictionary:
+	if route != null and route.live:
+		return load_chunk_live(world_dir, layer, k, route)
+	return _load_file(chunk_path(world_dir, layer, k), layer, Vector2.ZERO)
+
+
+static func tile_path(world_dir: String, layer: String, ix: int, iz: int) -> String:
+	return world_dir.path_join(layer).path_join("tile_%d_%d.json" % [ix, iz])
+
+
+## Marge autour du tronçon de route dans laquelle on lit les carrés d'un monde vivant.
+const LIVE_MARGIN_M := 300.0
+const TILE_M := 1000.0
+
+
+## Boîte [xmin, zmin, xmax, zmax] des points de route du tronçon k, élargie de `margin`.
+static func chunk_bounds(route, k: int, margin: float) -> Rect2:
+	var ds: float = route.ds_m
+	var i0 := clampi(floori(k * CHUNK_LENGTH_M / ds), 0, route.n - 1)
+	var i1 := clampi(ceili((k + 1) * CHUNK_LENGTH_M / ds), 0, route.n - 1)
+	var r := Rect2(route.x[i0], route.z[i0], 0.0, 0.0)
+	for i in range(i0, i1 + 1):
+		r = r.expand(Vector2(route.x[i], route.z[i]))
+	return r.grow(margin)
+
+
+static func _tiles_of_rect(r: Rect2) -> Array:
+	var out := []
+	for ix in range(floori(r.position.x / TILE_M), floori(r.end.x / TILE_M) + 1):
+		for iz in range(floori(r.position.y / TILE_M), floori(r.end.y / TILE_M) + 1):
+			out.append(Vector2i(ix, iz))
+	return out
+
+
+## Carrés à lire pour le tronçon k : ceux que touche sa boîte, sauf ceux déjà confiés à un tronçon
+## plus bas (un carré n'est affiché qu'une fois, par le premier tronçon qui le touche).
+static func chunk_tiles(route, k: int) -> Array:
+	var out := []
+	var earlier := []
+	for kk in range(k):
+		earlier.append(_tiles_of_rect(chunk_bounds(route, kk, LIVE_MARGIN_M)))
+	var taken := {}
+	for e in earlier:
+		for t in e:
+			taken[t] = true
+	for t in _tiles_of_rect(chunk_bounds(route, k, LIVE_MARGIN_M)):
+		if not taken.has(t):
+			out.append(t)
+	return out
+
+
+## Monde vivant : fusionne les carrés du tronçon k. Un carré absent est ignoré (il n'est pas encore
+## prêt) ; `ok` est vrai si au moins un carré a été lu ou si aucun n'était attendu.
+static func load_chunk_live(world_dir: String, layer: String, k: int, route) -> Dictionary:
+	var res := {"ok": true, "items": [], "ignored": 0, "error": "", "version": "1.0"}
+	if layer == "water":
+		res["lines"] = []
+		res["areas"] = []
+	for t in chunk_tiles(route, k):
+		var path := tile_path(world_dir, layer, t.x, t.y)
+		if not FileAccess.file_exists(path):
+			continue
+		var one := _load_file(path, layer, Vector2(t.x * TILE_M, t.y * TILE_M))
+		if not one["ok"]:
+			res["error"] = one["error"]
+			continue
+		(res["items"] as Array).append_array(one["items"])
+		res["ignored"] = int(res["ignored"]) + int(one["ignored"])
+		if layer == "water":
+			(res["lines"] as Array).append_array(one["lines"])
+			(res["areas"] as Array).append_array(one["areas"])
+	return res
+
+
+static func _shift_ring(ring: Variant, off: Vector2) -> void:
+	if typeof(ring) != TYPE_ARRAY:
+		return
+	for p in ring:
+		if typeof(p) == TYPE_ARRAY and (p as Array).size() >= 2 and _is_number(p[0]) and _is_number(p[1]):
+			p[0] = float(p[0]) + off.x
+			p[1] = float(p[1]) + off.y
+
+
+## Coordonnées horizontales relatives au coin de tuile -> repère de la séance (format §13) ;
+## les altitudes restent telles quelles.
+static func _make_absolute(doc: Dictionary, layer: String, off: Vector2) -> void:
+	match layer:
+		"buildings", "vegetation":
+			var raw = doc.get("buildings" if layer == "buildings" else "areas", [])
+			if typeof(raw) != TYPE_ARRAY:
+				return
+			for item in raw:
+				if typeof(item) != TYPE_DICTIONARY:
+					continue
+				_shift_ring(item.get("outer", null), off)
+				var holes = item.get("holes", null)
+				if typeof(holes) == TYPE_ARRAY:
+					for h in holes:
+						_shift_ring(h, off)
+		"poi":
+			var pts = doc.get("points", [])
+			if typeof(pts) != TYPE_ARRAY:
+				return
+			for p in pts:
+				if typeof(p) == TYPE_DICTIONARY and _is_number(p.get("x", null)) and _is_number(p.get("z", null)):
+					p["x"] = float(p["x"]) + off.x
+					p["z"] = float(p["z"]) + off.y
+		"water":
+			var lines = doc.get("lines", [])
+			if typeof(lines) == TYPE_ARRAY:
+				for l in lines:
+					if typeof(l) == TYPE_DICTIONARY:
+						_shift_ring(l.get("points", null), off)
+			var areas = doc.get("areas", [])
+			if typeof(areas) == TYPE_ARRAY:
+				for a in areas:
+					if typeof(a) != TYPE_DICTIONARY:
+						continue
+					_shift_ring(a.get("outer", null), off)
+					var holes = a.get("holes", null)
+					if typeof(holes) == TYPE_ARRAY:
+						for h in holes:
+							_shift_ring(h, off)
+
+
+static func _load_file(path: String, layer: String, offset: Vector2) -> Dictionary:
 	var res := {"ok": false, "items": [], "ignored": 0, "error": "", "version": ""}
 	if not layer in OSM_LAYERS:
 		res["error"] = "couche inconnue : " + layer
 		return res
-	var path := chunk_path(world_dir, layer, k)
 	if not FileAccess.file_exists(path):
 		res["error"] = "fichier absent : " + path
 		return res
@@ -155,6 +281,8 @@ static func load_chunk(world_dir: String, layer: String, k: int) -> Dictionary:
 	if major > SUPPORTED_MAJOR:
 		res["error"] = "version %s non prise en charge dans %s (majeur %d au plus)" % [res["version"], path, SUPPORTED_MAJOR]
 		return res
+	if offset != Vector2.ZERO:
+		_make_absolute(doc, layer, offset)
 	match layer:
 		"buildings", "vegetation", "poi":
 			var key: String = {"buildings": "buildings", "vegetation": "areas", "poi": "points"}[layer]
