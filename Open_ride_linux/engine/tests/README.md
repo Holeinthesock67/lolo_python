@@ -18,6 +18,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 | `test_terrain_render.gd` | E2 | Shader triplanaire compilé et rendu : herbe, roche, neige et trois mélanges égaux à `blend_weights` (L3) à 3/255 près, seuil de pente du thème, texture utilisée à la place de la couleur |
 | `test_sky_clouds_render.gd` | P6 | Ciel nuageux (`sky_clouds.gdshader`) : couverture 0, ciel identique au ciel procédural actuel à 3/255 près ; couverture 0,6, au moins 30 % de pixels clairs au-dessus de l'horizon ; avec vent, motif décalé dans le sens du vent (corrélation) ; deux couches |
 | `test_tree_sway_render.gd` | P5 | Arbre seul au vent (`tree_sway.gdshader`) : vent nul, deux images identiques ; vent fort, pied immobile à 2/255 près, cime qui bouge |
+| `test_road_markings_render.gd` | P14 | Marquages (`road_markings.gdshader`) sur un vrai ruban de `road_builder.gd` : ligne médiane claire au centre, motif de 13 m (3 m peints), bandes de rive aux deux bords, chiffre « 1 » peint sur la voie de droite |
 
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
@@ -96,6 +97,8 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_weather_particles.gd` | P8 | Pluie et neige (`weather_particles.gd`) : budget de `living(preset)`, nœud vide à budget nul, boîte de 40 m centrée sur la caméra après 500 m, repère du monde, vent du nord qui pousse vers le sud, aucun effet sans `weather`, coût de `update` |
 | `test_wind_model.gd` | P4 | Modèle du vent (`wind_model.gd`) : repère, lissage (90 % en 1,2 s sans dépassement), phase continue, expiration du vent du core et vent du thème, vent apparent, coût de `evaluate` |
 | `test_traffic_model.gd` | P13 | Circulation (`traffic_model.gd`, `traffic_renderer.gd`) : séance de 30 km à 30 km/h (3 à 15 véhicules, au moins un dépassement, rien au-dessus de la limite de neige ni sur la pente de 10 %), jamais deux véhicules au même endroit ni à moins de 1,5 m du cycliste, jamais de dépassement face à un véhicule, 12 graines de plus, déterminisme, budget (0 : aucun), pause, affichage à la place du modèle sans nœud créé, mise à jour sous 0,1 ms |
+| `test_climb_detector.gd` | P14 | Montées (`climb_detector.gd`) : col de 8 km à 7 % et bosse de 400 m à 5 % (une montée, sommet à ± 20 m, pente 7,0 % ± 0,2), rampes séparées par 200 m fusionnées, 1 km à 9 % gardé, parcours vallonné sans montée |
+| `test_roadside_model.gd` | P14 | Bord de route (`roadside_model.gd`, `roadside_props.gd`) : nombres au format français, panneaux d'approche à 5, 3, 2 et 1 km (« Sommet à 3 km », « Pente moyenne 7 % »), panneau du sommet (nom OSM ou « Sommet », altitude au mètre), une borne par kilomètre sans doublon sur une boucle, rien dans l'eau ni sur un pont, côté droit à 1,5 m du bord, panneaux lisibles à 30 m et face au cycliste, tronçons posés et retirés |
 | `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
 
 ## Étapes du script
