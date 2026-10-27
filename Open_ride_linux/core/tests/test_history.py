@@ -195,7 +195,7 @@ def test_json_keys_and_rounding_match_summary(tmp_path: Path, monkeypatch: pytes
     assert set(sess) == {
         "source", "filename", "format", "status", "date", "start_ts", "route",
         "duration_s", "distance_m", "elevation_gain_m", "avg_power_w", "np_w",
-        "if", "tss", "note", "error",
+        "if", "tss", "note", "error", "workout", "plan",
     }
     for key in ("duration_s", "distance_m", "elevation_gain_m", "avg_power_w", "np_w", "if", "tss"):
         assert sess[key] == ref[key], key
