@@ -72,6 +72,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import IO, Callable
 
+from . import __version__
+
 DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.3-stable_linux.x86_64"
 DEFAULT_LOG = Path.home() / "run_trainer.log"   # lien vers le dernier journal du lanceur
 LOGS_DIR = Path.home() / "OpenRide" / "Logs"
@@ -329,12 +331,14 @@ class Supervisor:
         if self.rotation is not None:
             self.log_path = self.rotation.prepare()
             self._log = self.log_path.open("ab", buffering=0)
+            self._say(f"OpenRide {__version__}")
             for note in self.rotation.notes:
                 self._say(note)
             self.rotation.notes.clear()
         else:
             self.log_path.parent.mkdir(parents=True, exist_ok=True)
             self._log = self.log_path.open("wb", buffering=0)
+            self._say(f"OpenRide {__version__}")
         self._say(f"journal : {self.log_path}")
 
     def _pump(self, stream: IO[bytes]) -> None:
@@ -725,6 +729,9 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
     args = list(sys.argv[1:] if argv is None else argv)
     if args and args[0] in ("-h", "--help"):
         print(__doc__)
+        return 0
+    if args and args[0] == "--version":
+        print(f"openride {__version__}")
         return 0
     if message is None:
         message = (lambda text, error: None) if _default_echo() else desktop_message
