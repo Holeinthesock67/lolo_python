@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Rendu hors écran de la planche de démonstration du Cyber-Rogue (lot R17) : les cinq shaders compilent,
 ## la planche se construit dans les trois préréglages, l'image n'est pas vide et les arêtes lumineuses
-## apparaissent. L'image du préréglage low est écrite dans le dossier temporaire pour contrôle visuel.
+## apparaissent. L'image du préréglage low est écrite dans user:// pour contrôle visuel.
 
 const SIZE := Vector2i(640, 360)
 
