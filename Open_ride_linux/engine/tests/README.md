@@ -132,6 +132,7 @@ OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_
 | `test_route_parts.gd` | W10 | Route d'un monde vivant lue par parties (vecteurs de référence découpés en parties de 30 m, route de 5 400 m en parties de 1 km) : mêmes valeurs à 1e-6 près, remplacement depuis la partie 3 (parties 0 à 2 : mêmes objets), trou entre parties et dossier non vivant refusés |
 | `test_live_world.gd` | W10 | `live_world.gd` : révision lue en tâche de fond et route échangée, révisions manquées (relecture complète), révision en avance sur le disque, partie illisible (route gardée), amorces des branches non suivies à moins de 1 500 m, recentrage (multiple de 1 000 m, erreur sous 1 mm à 60 km), carrés de couches à coordonnées relatives au coin de tuile, ruban fondu des amorces |
 | `test_live_streamer.gd` | W10 | `world_streamer.gd` sur un monde vivant : tronçons gardés et refaits après `swap_route`, amorces créées et libérées |
+| `test_junction_view_model.gd` | W12 | Panneau du carrefour : invisible à 301 m, visible à 300 m, disparu après le carrefour, branches de gauche à droite, flèches à 15°, libellés, pentes à 1 %, verrouillage, flèches ← et → (deux `choose_branch` vers les bonnes branches, rien si verrouillé), placement sans recouvrement en 1 920 × 1 080 et 1 280 × 720, attribution |
 
 ## Étapes du script
 

@@ -24,6 +24,7 @@ const PerfProbe := preload("res://scripts/perf_probe.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
+const JunctionView := preload("res://scripts/junction_view.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const OW_PREFIX := "ow:"
@@ -54,6 +55,8 @@ var _first_state_logged := false
 var _route_id_requested = null
 ## Monde ouvert (lot W10) : suit les révisions du monde que le générateur prolonge ; inactif hors monde ouvert.
 var live_world = LiveWorld.new()
+## Panneau du carrefour et attributions (lot W12) ; null avant _ready.
+var junction_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
 var _route_job: Dictionary = {}
 var _test_cam_last_us := 0
@@ -189,6 +192,8 @@ func _ready() -> void:
 	place_banner.call()
 	erg_panel = ErgView.new()
 	hud.add_child(erg_panel)
+	junction_view = JunctionView.new()
+	hud.add_child(junction_view)
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
 	menu_view = MenuView.new()
 	hud.add_child(menu_view)
@@ -398,6 +403,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				ipc.send_command("input_event", {"event": "PLUS_SHORT"})
 			KEY_MINUS, KEY_KP_SUBTRACT, KEY_DOWN:
 				ipc.send_command("input_event", {"event": "MINUS_SHORT"})
+			KEY_LEFT, KEY_RIGHT:
+				# Monde ouvert : branche voisine du carrefour proposé (←, →) ; rien hors carrefour ou verrouillé.
+				var pick: Dictionary = junction_view.vm.press(-1 if event.keycode == KEY_LEFT else 1)
+				if not pick.is_empty():
+					ipc.send_command("choose_branch", pick)
 			KEY_PAGEUP:
 				ipc.send_command("input_event", {"event": "PLUS_LONG"})
 			KEY_PAGEDOWN:
@@ -764,6 +774,9 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+	if junction_view != null:
+		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
+			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
 	if living_decor != null:
 		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
