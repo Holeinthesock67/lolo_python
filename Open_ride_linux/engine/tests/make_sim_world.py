@@ -16,6 +16,8 @@ Overpass fabriquée ici (aucune donnée réelle) :
 
     python3 engine/tests/make_sim_world.py --out DOSSIER [--seed N]
     → DOSSIER/village-simule.world/ et DOSSIER/village-simule.json (nombres et profil attendus)
+    python3 engine/tests/make_sim_world.py --out DOSSIER --live
+    → DOSSIER/monde-ouvert-simule.world/ : monde vivant synthétique de 20 km (lot W15)
 
 Sert au banc d'essai simulé (`sim_bench.py --world village`) et à l'essai visuel des bâtiments.
 Origine : même point fictif que les tests du compilateur. Prérequis : compilateur installé
@@ -249,11 +251,29 @@ def summarize(world: Path) -> dict:
             for k, v in layers.items() if isinstance(v, dict) and k in LAYERS}
 
 
+def write_live(out: Path, seed: int) -> int:
+    """Monde vivant synthétique de 20 km (format §13), pour mesurer le rendu du monde ouvert (W10)."""
+    try:
+        from openride_compiler.worldgen.synthetic import default_script, write_live_world
+    except ImportError as exc:
+        print(f"make_sim_world : compilateur non installé ({exc}) ; pip install -e compiler", file=sys.stderr)
+        return 2
+    world = out / "monde-ouvert-simule.world"
+    info = write_live_world(world, default_script(20_000.0, seed))
+    (out / "monde-ouvert-simule.json").write_text(json.dumps(info, indent=2, ensure_ascii=False), encoding="utf-8")
+    print(f"make_sim_world : {world} ({', '.join(f'{k} {v}' for k, v in sorted(info.items()))})")
+    return 0
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--out", required=True, type=Path, help="dossier de sortie (créé si besoin)")
     parser.add_argument("--seed", type=int, default=0, help="graine du placement des bâtiments (défaut 0)")
+    parser.add_argument("--live", action="store_true",
+                        help="monde ouvert : monde vivant synthétique de 20 km (lot W15) au lieu du village")
     args = parser.parse_args(argv)
+    if args.live:
+        return write_live(args.out, args.seed)
     try:
         import urllib.request
 
