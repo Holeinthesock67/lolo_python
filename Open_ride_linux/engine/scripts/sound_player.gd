@@ -18,7 +18,7 @@ extends Node
 ##
 ## Lot P13 : deux sons de plus pour les véhicules, `vehicle_pass` (pneus et souffle) et `tractor_engine`
 ## (moteur grave), joués par les lecteurs 3D de traffic_renderer.gd (`stream(kind)`) ; remplaçables par
-## ~/OpenRide/Sounds/<kind>.ogg.
+## ~/OpenRide/Sounds/<kind>.ogg. Lot P15 : `crowd_cheer` (clameur et applaudissements) pour crowd_renderer.gd.
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
@@ -195,7 +195,7 @@ func update_bells(hour: float, now_s: float) -> void:
 # --- Génération et chargement des flux audio ---
 
 func _generate_all_streams() -> void:
-	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine"]
+	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer"]
 	for k in kinds:
 		var custom_stream = _try_load_custom(k)
 		if custom_stream != null:
@@ -228,6 +228,9 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
 	wav.loop_begin = 0
 	wav.loop_end = SAMPLE_COUNT
+	if kind == "wind":
+		wav.data = _wind_noise_bytes()   # Lot P10 : bruit passe-bande, sans la boucle d'échantillons ci-dessous
+		return wav
 
 	var bytes := PackedByteArray()
 	bytes.resize(SAMPLE_COUNT * 2)
@@ -267,6 +270,15 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
 				_lp = _lp + 0.08 * (r - _lp)
 				sample = _lp * 2.2 + sin(TAU * 60.0 * t) * 0.12
+			"crowd_cheer":
+				# Lot P15 : clameur (bruit filtré qui ondule) et applaudissements (claquements brefs à 9 Hz,
+				# décalés par une phase tirée au hasard), joués par crowd_renderer.gd sur le groupe le plus proche
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.15 * (r - _lp)
+				var swell := 0.7 + 0.3 * sin(TAU * 2.0 * t) * sin(TAU * 3.0 * t)
+				var clap_phase := fmod(t * 9.0 + 0.37 * sin(TAU * t), 1.0)
+				var clap := exp(-clap_phase * 60.0) * (float(h.call() & 0xFFFF) / 32768.0 - 1.0)
+				sample = _lp * 1.8 * swell + clap * 0.5
 			"tractor_engine":
 				# Lot P13 : moteur grave du tracteur (28 Hz et harmoniques, battement des cylindres à 7 Hz)
 				var beat := 0.75 + 0.25 * sin(TAU * 7.0 * t)
@@ -278,8 +290,6 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		bytes[i * 2] = s16 & 0xFF
 		bytes[i * 2 + 1] = (s16 >> 8) & 0xFF
 
-	if kind == "wind":
-		bytes = _wind_noise_bytes()
 	wav.data = bytes
 	return wav
 
