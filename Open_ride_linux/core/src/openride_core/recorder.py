@@ -12,12 +12,11 @@ from __future__ import annotations
 
 import logging
 import time
-from dataclasses import asdict
 from pathlib import Path
 from typing import Callable
 
 from .fit_export import Summary, default_fit_path, summarize, write_fit
-from .journal import TIMER_EVENTS, JournalWriter, Record
+from .journal import TIMER_EVENTS, JournalWriter, Record, record_line
 
 log = logging.getLogger("recorder")
 
@@ -29,7 +28,7 @@ class SessionRecorder:
                  on_failure: Callable[[Exception], None] | None = None,
                  fit_dir: Path | None = None, workout_id: str | None = None,
                  resume_path: Path | None = None, lines: list[dict] | None = None,
-                 source: str | None = None) -> None:
+                 source: str | None = None, plan: dict | None = None) -> None:
         """Nouvelle séance, ou suite d'une séance (`resume_path` et ses `lines`, lot N8).
 
         En reprise, le journal existant est continué sans nouvel en-tête et les lignes déjà
@@ -39,6 +38,7 @@ class SessionRecorder:
         self.route_id = route_id
         self.workout_id = workout_id
         self.source = source             # origine de la séance pour la progression (lot V2)
+        self.plan = plan   # séance d'un plan d'entraînement actif (lot O11), en-tête du journal
         self.on_failure = on_failure
         self.fit_dir = fit_dir
         self.lines: list[dict] = list(lines or [])   # séance complète, dans l'ordre : événements et relevés
@@ -61,7 +61,7 @@ class SessionRecorder:
     def _open(self, path: Path, header: bool = True) -> bool:
         try:
             self._writer = JournalWriter(path, route_id=self.route_id, workout_id=self.workout_id,
-                                         header=header, source=self.source)
+                                         header=header, source=self.source, plan=self.plan)
             self.path = path
             return True
         except WRITE_ERRORS as exc:
@@ -109,7 +109,7 @@ class SessionRecorder:
         self._write(line)
 
     def record(self, rec: Record) -> None:
-        line = {"kind": "record", **asdict(rec)}
+        line = record_line(rec)
         self.lines.append(line)
         self._write(line)
 

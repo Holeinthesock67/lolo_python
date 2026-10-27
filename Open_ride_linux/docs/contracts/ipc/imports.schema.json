@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideImportsMessage",
-  "description": "Réponse à cmd list_imports (révision 1.2, lot N16, décision D4 de l'audit IPC) : fichiers d'entraînement importables, en parties de 60 000 octets au plus comme routes.",
+  "description": "Réponse à cmd list_imports (révision 1.3, lot N16, décision D4 de l'audit IPC) : fichiers d'entraînement importables, en parties de 60 000 octets au plus comme routes.",
   "type": "object",
   "required": [
     "type",

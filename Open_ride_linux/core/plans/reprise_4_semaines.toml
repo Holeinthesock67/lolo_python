@@ -1,0 +1,37 @@
+# Plan d'entraînement OpenRide (docs/contracts/plan_format_v1.md), plan de référence du lot O11.
+[plan]
+name = "Reprise 4 semaines"
+description = "Retour progressif après une coupure : endurance, puis tempo et sweet spot, test de rampe à la fin."
+days_per_week = 3
+
+[[week]]
+focus = "Endurance"
+days = [
+  { day = "mardi", workout = "endurance_60" },
+  { day = "jeudi", workout = "tempo_2x15" },
+  { day = "samedi", workout = "endurance_60" },
+]
+
+[[week]]
+focus = "Endurance et sweet spot"
+days = [
+  { day = "mardi", workout = "endurance_60" },
+  { day = "jeudi", workout = "sweet_spot_3x10" },
+  { day = "samedi", workout = "endurance_60" },
+]
+
+[[week]]
+focus = "Tempo"
+days = [
+  { day = "mardi", workout = "tempo_2x15" },
+  { day = "jeudi", workout = "sweet_spot_3x10" },
+  { day = "samedi", workout = "endurance_60" },
+]
+
+[[week]]
+focus = "Allègement et test"
+days = [
+  { day = "mardi", workout = "endurance_60" },
+  { day = "jeudi", workout = "sweet_spot_3x10" },
+  { day = "samedi", workout = "rampe_test" },
+]
