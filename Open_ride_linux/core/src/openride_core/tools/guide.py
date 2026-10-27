@@ -84,7 +84,7 @@ TRIALS: dict[str, Trial] = {
         ("les deux boîtiers Click, piles chargées",
          "le jeu fermé : l'outil tient seul le Click",
          "le son du PC allumé : un bip à chaque étape et à chaque appui reçu"),
-        ("17 appuis demandés tour à tour, le boîtier gauche d'abord (il se tait parfois après une minute)",
+        ("17 appuis demandés tour à tour, le boîtier gauche d'abord, flèches en tête (il se tait environ une minute après la connexion)",
          "chaque appui reçu s'affiche avec son action dans chaque mode (spécification générale §7.1)")),
 }
 

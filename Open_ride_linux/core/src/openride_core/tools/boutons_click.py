@@ -39,6 +39,8 @@ from .guide import Guide
 DEFAULT_OUT = Path.home() / "OpenRide" / "boutons_click"
 STEP_TIMEOUT_S = 30.0
 NEXT_STEP_S = 4.0        # temps de lecture de l'encadré avant l'étape suivante
+MUTED_WINDOW_S = 5        # boîtier bridé : moins de MUTED_MAX notifications sur cette fenêtre
+MUTED_MAX = 5            # (normal : 10 par seconde ; bridé : une toutes les 2 ou 3 s)
 SIM_THINK_S = 3.0        # --sim : le cycliste simulé lit la consigne avant d'appuyer
 
 # --- plan des boutons (spécification générale §7.1, seule référence) -------------------------
@@ -134,15 +136,15 @@ class ButtonStep:
 
 SHORT, LONG, MEDIUM = 0.12, 1.1, 0.7
 STEPS = (
-    # Boîtier gauche d'abord : il peut se taire une minute après la connexion.
-    ButtonStep("moins", "Appuie brièvement sur − (boîtier gauche)", InputEvent.MINUS_SHORT, "MINUS", SHORT),
-    ButtonStep("moins_long", "Appui long sur − (une seconde)", InputEvent.MINUS_LONG, "MINUS", LONG),
-    ButtonStep("moins_moyen", "Appui moyen sur − (environ 0,7 s : ni court ni long)",
-               InputEvent.MINUS_UNCLEAR, "MINUS", MEDIUM),
+    # Boîtier gauche d'abord, flèches en tête : il se tait environ une minute après la connexion.
     ButtonStep("gauche", "Appuie sur la flèche gauche (boîtier gauche)", InputEvent.LEFT_SHORT, "LEFT", SHORT),
     ButtonStep("droite", "Appuie sur la flèche droite (boîtier gauche)", InputEvent.RIGHT_SHORT, "RIGHT", SHORT),
     ButtonStep("haut", "Appuie sur la flèche haut (boîtier gauche)", InputEvent.UP_SHORT, "UP", SHORT),
     ButtonStep("bas", "Appuie sur la flèche bas (boîtier gauche)", InputEvent.DOWN_SHORT, "DOWN", SHORT),
+    ButtonStep("moins", "Appuie brièvement sur − (boîtier gauche)", InputEvent.MINUS_SHORT, "MINUS", SHORT),
+    ButtonStep("moins_long", "Appui long sur − (une seconde)", InputEvent.MINUS_LONG, "MINUS", LONG),
+    ButtonStep("moins_moyen", "Appui moyen sur − (environ 0,7 s : ni court ni long)",
+               InputEvent.MINUS_UNCLEAR, "MINUS", MEDIUM),
     ButtonStep("plus", "Appuie brièvement sur + (boîtier droit)", InputEvent.PLUS_SHORT, "PLUS", SHORT),
     ButtonStep("plus_long", "Appui long sur + (une seconde)", InputEvent.PLUS_LONG, "PLUS", LONG),
     ButtonStep("plus_moyen", "Appui moyen sur + (environ 0,7 s : ni court ni long)",
@@ -202,6 +204,20 @@ def _new_key(rec: Recorder, before: dict[str, dict[str, int]], wanted: str | Non
     return found[0] if found else (None, "?")
 
 
+def muted_units(rec: Recorder, connected: list[str]) -> list[str]:
+    """Boîtiers reliés depuis un moment qui n'envoient presque plus rien (bridage du boîtier gauche)."""
+    now = int(rec.t())
+    out = []
+    for address in connected:
+        u = rec.unit(address)
+        if u.first_at is None or rec.t() - u.first_at < MUTED_WINDOW_S + 3:
+            continue
+        recent = sum(u.per_second.get(sec, 0) for sec in range(now - MUTED_WINDOW_S, now))
+        if recent < MUTED_MAX:
+            out.append(address)
+    return out
+
+
 Prompter = Callable[[ButtonStep | None], None]
 
 
@@ -232,6 +248,26 @@ async def run_steps(providers: list[TracedClickProvider], rec: Recorder, guide: 
             g.tick()
             await asyncio.sleep(poll_s)
 
+    muted_since: dict[str, float] = {}
+
+    def watch_muted() -> bool:
+        """Vrai si un boîtier est bridé ; le signale une fois à l'écran avec l'heure."""
+        up = [p.unit_address for i, p in enumerate(providers) if link.get(i)]
+        muted = muted_units(rec, up)
+        for address in muted:
+            if address not in muted_since:
+                muted_since[address] = rec.t()
+                u = rec.unit(address)
+                since = rec.t() - (u.connects[-1] if u.connects else 0.0)
+                g.alert(f"Boîtier {u.side} bridé : plus de touches depuis environ {rec.t():.0f} s "
+                        f"({since:.0f} s après sa connexion)")
+        for address in list(muted_since):
+            if address not in muted:
+                del muted_since[address]
+                g.banner = ""
+                g.note(f"boîtier {rec.unit(address).side} reparle à {rec.t():.0f} s")
+        return bool(muted)
+
     results: list[StepResult] = []
     try:
         g.step("Appuie sur un bouton de chaque boîtier pour les réveiller", connect_timeout,
@@ -257,6 +293,11 @@ async def run_steps(providers: list[TracedClickProvider], rec: Recorder, guide: 
             received: list[str] = []
             while rec.t() < after + step_timeout and res is None:
                 watch_links()
+                if step.left and watch_muted() and not rec.events[seen:]:
+                    res = StepResult(step.key, step.prompt, step.event.value, False, None, received, "gauche",
+                                     "boîtier gauche bridé, étape sautée (B fait « − »)")
+                    g.sound.play("echec")
+                    break
                 g.tick()
                 for t, _address, ev in rec.events[seen:]:
                     seen += 1
