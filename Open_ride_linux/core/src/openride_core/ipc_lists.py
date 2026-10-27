@@ -42,6 +42,15 @@ def route_stats_to_dict(stats: Any, ftp_w: float) -> dict[str, Any] | None:
     }
 
 
+def _route_terrain(stats: dict[str, Any] | None) -> str | None:
+    """Terrain d'un parcours pour le conseil d'équipement (révision 1.4, lot V11) ; `None` sans fiche."""
+    from .equipment import route_terrain
+
+    if not stats or not stats.get("distance_m"):
+        return None
+    return route_terrain(float(stats["distance_m"]), float(stats.get("gain_m") or 0.0))
+
+
 def route_entry_to_dict(entry: Any, ftp_w: float = 250.0) -> dict[str, Any]:
     """Convertit un RouteEntry du catalogue vers la structure du contrat routes.schema.json."""
     out = {
@@ -56,6 +65,7 @@ def route_entry_to_dict(entry: Any, ftp_w: float = 250.0) -> dict[str, Any]:
     stats = route_stats_to_dict(getattr(entry, "stats", None), ftp_w)
     if stats is not None:
         out["stats"] = stats
+    out["terrain"] = _route_terrain(stats)
     library = getattr(entry, "library", None)
     if library:
         out["library"] = {"description": library.get("description"), "region": library.get("region"),

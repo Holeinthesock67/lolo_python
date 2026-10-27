@@ -111,5 +111,5 @@ func _run() -> void:
 	_check(sp.events_played == ["jingle_arch"], "play_event : nom inconnu ignoré")
 	sp.free()
 
-	print("%d vérifications, %d échec(s)" % [_checked, _failures])
+	print("test_event_sounds_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

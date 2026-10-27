@@ -108,6 +108,7 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 		_build_nodes()
 	particles.configure(int(living.get("weather_particles", 0)))
 	fauna.set_preset(preset, enabled)
+	fauna.setup_sound(sound_player)
 	crowd_view.set_preset(preset, enabled)
 	passersby_view.set_preset(preset, enabled)
 	traffic.set_budget(int(living.get("vehicles", 0)))

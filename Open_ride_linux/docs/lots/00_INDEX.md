@@ -115,6 +115,7 @@
 | [P19](LOT_P19_integration_jour_nuit_saisons.md) | Intégration du jour, de la nuit et des saisons | GDScript | P7, P17, P18 | Moyenne | Non : interne, **version 2.0** (issue #143) |
 | [P20](LOT_P20_packs_textures_performance.md) | Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | Python + GDScript | N10, O3, P17 | Moyenne | Oui, **version 2.0** (issue #147) |
 | [P21](LOT_P21_passants_villages.md) | Passants dans les villages et le long de la route : gestes au passage, voix et aboiements | GDScript + shader | P15 | Petite | **Livré le 27 octobre** (issue #183) |
+| [P23](LOT_P23_oiseaux_campagne.md) | Oiseaux de la campagne : rapace en cercle, volées en V, corneilles qui s'envolent au passage, cris | GDScript + shader | P11, P17, P21 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire (deuxième vague du décor vivant, P22 à P27 proposés le 27 octobre) |
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (PR #91, recette visuelle sur la GTX 1060 à faire) |
 | [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés) | Grande | **Livré le 24 octobre** (PR #91, recette visuelle et sonore sur la GTX 1060 à faire) |
@@ -164,7 +165,7 @@
 | [V8](LOT_V8_menu_garage.md) | Menu « Garage » : équipement, achats, avatar, aperçu 3D | GDScript | T1, V6, V11, N6 | Moyenne | Non : interne (menu) |
 | [V9](LOT_V9_fin_de_seance_progression.md) | Fin de séance : expérience, pièces, temps gagné, niveau, déblocages | GDScript | T1, V11, N4 | Petite | Non : interne (écran) |
 | [V10](LOT_V10_recette_progression.md) | Recette de la série V sur le PC et le vélo du propriétaire | — | V2 à V9, V11 | Moyenne | Non : propriétaire |
-| [V11](LOT_V11_branchement_core.md) | Core : progression branchée dans la séance et commandes du Garage | Python | T1, V2, V3, V3b, V4 | Moyenne | Oui, après T1 |
+| [V11](LOT_V11_branchement_core.md) | Core : progression branchée dans la séance et commandes du Garage | Python | T1, V2, V3, V3b, V4 | Moyenne | **Livré le 27 octobre** (issue #406) ; essai sur le PC |
 | [V12](LOT_V12_vues_camera.md) | Engine : quatre vues de caméra (subjective, suivi proche, suivi éloigné, latérale) au Click et au clavier (décision D5 du 27 octobre) | GDScript | V6, PR #287, O17 ; S1 utile | Moyenne | Non : interne (rendu) |
 | [W0](LOT_W0_mesures_monde_ouvert.md) | Monde ouvert : mesures des volumes, des temps de génération et du débit (script exécuté sur le PC), décodeur de tuiles vectorielles | Python | — | Petite | **Livré le 27 octobre** (PR #279, issue #254) ; exécution sur le PC par le propriétaire |
 | [W1](LOT_W1_contrat_monde_vivant.md) | Contrat : monde vivant (`live`, grille UTM, route par parties, couches par carré, `junctions.json`), IPC du monde ouvert (révision 1.5), dialogue avec `openride-worldgen` | Markdown + JSON | W0 | Petite | Non : interne (décision du propriétaire) (issue #255) |
@@ -332,7 +333,7 @@ E3 ──► O1 ;  N3 ──► O2 ;  N12 ──► O3 ──► O4 ;  Q1 ──
 O9 ──► O11 ;  O3 ──► O10 ──► O11 ;  O5 ──► O15 ──► O16 ;  N6, O4, O10, O11, O15 ──► O12 ;  O13, N7 ──► O14
 N, O1, O2, O6 ──► O8 (recette 1.0)
 O8 ──► P1 ──► P2 ──► P3 (avec N9) ;  P1 ──► P4 ──► P5, P6, P8, P9, P10, P11, P12, P14
-P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7)
+P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7) ;  P11, P17, P21 ──► P23
 Q1 ──► Q4 ;  Q3 ──► Q5 ;  Q2, Q6 : indépendants
 O1, Q2 ──► S1
 Version 2.0 : Q3, Q4 ──► R0 ;  P1, PR #287 ──► T1 ;  R3 ──► R4 ;  R0, R2, R3, R4 ──► R5 ──► R6 ──► R15 ──► R7 ;  T1, R6, R15 ──► R8

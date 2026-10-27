@@ -8,6 +8,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
+const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
@@ -85,6 +86,8 @@ var sound_player = null
 var _quality_name: String = "low"
 var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
 var _theme_name: String = "default"
+var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage en place (--display, puis le menu)
+var _display_setting := ""   # dernière valeur de render.display reçue du core (vide avant la première liste)
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
 ## Sonde de performance (lot X13), active avec --perf-probe=FICHIER.csv.
@@ -152,6 +155,9 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
+	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
+	DisplayMode.apply(_display_name)
+	print("Mode d'affichage : ", _display_name)
 	_visual_grade_scale = float(cfg.get("visual_grade", 1.0))
 	streamer.visual_grade_scale = _visual_grade_scale
 	if streamer.osm_streamer != null:
@@ -307,7 +313,7 @@ func _ready() -> void:
 		_refresh_menu())
 
 
-## Réglages reçus du core (lot O4) : menu mis à jour ; qualité et thème appliqués tout de suite au décor.
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de suite.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
@@ -324,6 +330,15 @@ func _on_settings(msg: Dictionary) -> void:
 	if ch != chart_mode and ch in WorkoutChartView.MODES:
 		chart_mode = ch
 		_apply_chart_mode()
+	# Au lancement, --display décide (le lanceur y met [render] display, ou OPENRIDE_DISPLAY) ; seule une
+	# valeur changée ensuite au menu change la fenêtre, pour que les bancs gardent leur fenêtre forcée.
+	var disp := str(menu_flow.settings.item("render.display").get("value", ""))
+	if DisplayMode.is_valid(disp):
+		if _display_setting != "" and disp != _display_setting and disp != _display_name:
+			_display_name = disp
+			DisplayMode.apply(_display_name)
+			print("Mode d'affichage : ", _display_name)
+		_display_setting = disp
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -571,6 +586,10 @@ func _unhandled_input(event: InputEvent) -> void:
 
 
 func _process(delta: float) -> void:
+	var menu_shown: bool = menu_flow.is_visible() or (world_menu_view != null and world_menu_view.visible)
+	var mouse := DisplayMode.mouse_mode(menu_shown)
+	if Input.mouse_mode != mouse:
+		Input.mouse_mode = mouse
 	_poll_route_job()
 	_poll_live_world()
 	_record_frame_perf(delta)
