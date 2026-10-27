@@ -7,6 +7,7 @@ extends RefCounted
 ##   --routes-dir=CHEMIN      dossier des parcours (défaut : ~/.local/share/openride/routes)
 ##   --quality=low|medium|high préréglage de qualité graphique (défaut : low, lot L4)
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
+##   --perf-probe=FICHIER.csv sonde de performance : une ligne de mesures par seconde (lot X13)
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
@@ -27,7 +28,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -37,6 +38,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"quality": DEFAULT_QUALITY,
 		"theme": DEFAULT_THEME,
 		"test_mode": false,
+		"perf_probe": "",
 	}
 	for arg in args:
 		if arg.begins_with("--ipc-state-port="):
@@ -52,6 +54,11 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["quality"] = _quality(arg, DEFAULT_QUALITY)
 		elif arg.begins_with("--theme="):
 			out["theme"] = _theme(arg, DEFAULT_THEME)
+		elif arg.begins_with("--perf-probe="):
+			var csv := arg.get_slice("=", 1).strip_edges()
+			if csv.begins_with("~"):
+				csv = _home() + csv.substr(1)
+			out["perf_probe"] = csv
 		elif arg == "--test-mode":
 			out["test_mode"] = true
 	return out
