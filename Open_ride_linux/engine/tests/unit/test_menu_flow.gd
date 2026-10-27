@@ -153,7 +153,7 @@ func _test_view() -> void:
 	var shown := v.items_text().split(" | ")
 	_check(shown.size() == MenuView.MAX_VISIBLE_ITEMS and v.items_text().contains("[Parcours 7"),
 			"longue liste : fenêtre autour du focus (%s)" % v.items_text())
-	_check(v.more_label.text == "8 / 9", "position dans la liste : %s" % v.more_label.text)
+	_check(v.more_label.text == "8 / 10", "position dans la liste (tri en dernier) : %s" % v.more_label.text)
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1800.0, "distance_m": 15000.0,
 			"avg_power_w": 210.0, "fit_path": "/x/y/seance.fit", "blocks": [[1, 200.0, 200.0], [2, 260.0, 230.0]]}})
@@ -388,8 +388,187 @@ func _test_erg_submenu() -> void:
 	f.set_workouts([{"id": "vo2", "name": "VO2", "duration_s": 0, "selectable": false, "error": "aucun bloc reconnu"}])
 	_check(f.state()["screen"] == "workouts" and _focus_id(f) != "vo2", "import invalide : désactivé, pas de focus")
 
+const DAY := {"week": 1, "day": "jour1", "date": "2026-10-27", "workout": "ss", "name": "Sweet spot",
+	"duration_s": 2700.0, "tss": 60.8, "done": false}
+const NEXT := {"week": 1, "day": "jour3", "date": "2026-10-29", "workout": "ftp_test:ramp",
+	"name": "Test de FTP : rampe", "duration_s": 1500.0, "tss": 30.0, "done": false}
+const PLAN_ITEMS := [{"id": "casse", "name": "casse", "weeks": 0, "sessions": 0, "active": false, "error": "TOML illisible"},
+	{"id": "essai", "name": "Essai", "weeks": 4, "sessions": 8, "active": false, "error": null}]
+
+
+func _plans_msg(active) -> Dictionary:
+	var items: Array = PLAN_ITEMS.duplicate(true)
+	items[1]["active"] = active != null
+	return {"type": "plans", "v": 1, "request_cmd_id": 1, "items": items, "truncated": false, "active": active}
+
+
+## Plans d'entraînement depuis le menu (lot O12, critère 2) : choisir, démarrer, séance du jour, arrêter.
+func _test_plans() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "route_id": "vosges"})
+	f.set_routes(ROUTES)
+	_check(f.state()["items"][3]["label"] == "Choisir un plan", "accueil sans plan : Choisir un plan")
+	for i in range(3):
+		f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "list_plans"} and f.state()["screen"] == "plans", "écran Plans, list_plans")
+	_check(f.state()["items"][0]["label"] == "Recherche des plans…", "en attendant la réponse")
+	f.on_plans(_plans_msg(null))
+	_check(_ids(f) == ["plan:casse", "plan:essai"] and _focus_id(f) == "plan:essai",
+		"liste des plans, plan invalide désactivé (%s)" % str(_ids(f)))
+	_check(f.state()["items"][1]["detail"] == "4 semaines, 8 séances", "plan : semaines et séances")
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "plan" and f.state()["title"] == "Essai" and _focus_id(f) == "start", "écran du plan")
+	var act: Dictionary = f.handle("A_LONG")
+	_check(act == {"action": "start_plan", "id": "essai", "start_date": null} and f.state()["screen"] == "plans",
+		"start_plan, retour à la liste (%s)" % str(act))
+	_check(f.state()["status"] == "Démarrage du plan…", "ligne d'état pendant la demande")
+	var active := {"id": "essai", "name": "Essai", "start": "2026-10-27", "week": 1, "weeks": 4, "finished": false,
+		"done": 0, "total": 8, "done_pct": 0.0, "today": [DAY], "late": [], "next": NEXT, "plan_day": "ss"}
+	f.on_plans(_plans_msg(active))
+	_check(f.state()["status"] == "Plan démarré : Essai", "plan démarré (%s)" % f.state()["status"])
+	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai"], "suivi du plan actif (%s)" % str(_ids(f)))
+	_check(f.state()["items"][1]["detail"] == "semaine 1 / 4, 0 % fait (0 / 8)", "progression : %s" % f.state()["items"][1]["detail"])
+	f.handle("Y_SHORT")
+	var home: Dictionary = f.state()["items"][3]
+	_check(home["label"] == "Séance du jour : Sweet spot" and home["detail"] == "45 min, TSS 61",
+		"accueil : séance du jour, durée et TSS (%s, %s)" % [home["label"], home["detail"]])
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "ready"
+		and f.state()["title"] == "Prêt : séance du jour (Sweet spot) — Vosges", "séance du jour : écran Prêt (%s)" % f.state()["title"])
+	_check(f.handle("A_LONG") == {"action": "start", "args": {"plan_day": true}}, "start avec plan_day")
+	f.on_state({"session_state": "RUNNING", "route_id": "vosges"})
+	f.on_state({"session_state": "FINISHED", "route_id": "vosges", "summary": {"duration_s": 2700.0}})
+	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"}, "nouvelle séance : listes (plans compris) redemandées")
+	var done: Dictionary = active.duplicate(true)
+	done["today"][0]["done"] = true
+	done["done"] = 1
+	done["done_pct"] = 12.5
+	done["plan_day"] = null
+	f.on_plans(_plans_msg(done))
+	_check(f.state()["items"][3]["label"] == "Plan : Essai" and f.state()["items"][3]["detail"] == "semaine 1 / 4, 13 % fait (1 / 8)",
+		"séance comptée : %s" % f.state()["items"][3]["detail"])
+	for i in range(3):
+		f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "list_plans"} and _focus_id(f) == "stop", "sans séance du jour : écran Plans")
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "confirm" and f.state()["title"] == "Arrêter le plan Essai ?", "arrêt confirmé")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "stop_plan"} and f.state()["screen"] == "plans", "stop_plan")
+	f.on_error("busy", "séance en cours")
+	_check(f.state()["status"] == "Échec : séance en cours", "erreur du core sur la ligne d'état")
+	f.handle("A_LONG")
+	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")
+	f.on_plans(_plans_msg(null))
+	_check(f.state()["status"] == "Plan arrêté" and _ids(f)[0] == "plan:casse", "plan arrêté")
+
+
+## Test de FTP depuis le menu et acceptation au bilan (lot O12, critère 2).
+func _test_ftp_flow() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "route_id": "demo"})
+	f.set_routes(ROUTES)
+	f.on_settings({"items": [{"key": "rider.ftp_w", "value": 250}]})
+	for i in range(4):
+		f.handle("PLUS_SHORT")
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "ftp_test" and _ids(f) == ["ramp", "20min"] and f.state()["status"] != "",
+		"écran Test de FTP : rampe, 20 minutes, conseil (%s)" % f.state()["status"])
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "ready" and f.state()["title"].begins_with("Prêt : test de FTP (rampe)"), "rampe : écran Prêt")
+	_check(f.handle("A_LONG") == {"action": "start", "args": {"ftp_test": "ramp"}}, "start avec ftp_test")
+	f.on_state({"session_state": "RUNNING"})
+	var ftp := {"test": "ramp", "ftp_w": 262, "previous_ftp_w": 250, "warnings": ["trainer_dropout"], "reliable": false}
+	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1500.0, "ftp_test": ftp}})
+	_check(f.state()["status"] == "Nouvelle FTP : 262 W (avant 250 W) ; coupure du trainer pendant l'effort",
+		"bilan : nouvelle FTP et avertissement (%s)" % f.state()["status"])
+	_check(_ids(f) == ["accept_ftp", "keep_ftp", "new_session", "details", "quit"] and _focus_id(f) == "accept_ftp",
+		"Accepter / Garder en tête du bilan")
+	_check(f.handle("A_LONG") == {"action": "accept_ftp", "force": false}, "accept_ftp")
+	f.on_error("ftp_result_doubtful", "résultat douteux")
+	_check(f.state()["screen"] == "confirm" and f.state()["title"] == "Résultat douteux : enregistrer 262 W quand même ?",
+		"résultat douteux : confirmation")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "accept_ftp", "force": true} and f.state()["screen"] == "summary",
+		"Oui : accept_ftp avec force")
+	f.on_settings({"items": [{"key": "rider.ftp_w", "value": 262}]})
+	_check(f.state()["status"] == "FTP enregistrée : 262 W" and _ids(f) == ["new_session", "details", "quit"],
+		"FTP enregistrée, choix retirés (%s)" % f.state()["status"])
+	_check(f.settings.item("rider.ftp_w")["value"] == 262, "nouvelle FTP dans les réglages (O4)")
+	# Garder l'ancienne FTP ; test sans FTP calculable.
+	f.on_state({"session_state": "RUNNING"})
+	f.on_state({"session_state": "FINISHED", "summary": {"ftp_test": ftp}})
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG").is_empty() and f.state()["status"] == "FTP gardée : 250 W" and _ids(f)[0] == "new_session",
+		"Garder : FTP inchangée")
+	f.on_state({"session_state": "RUNNING"})
+	f.on_state({"session_state": "FINISHED", "summary": {"ftp_test": {"test": "20min", "ftp_w": null,
+		"previous_ftp_w": 250, "warnings": ["too_short"], "reliable": false}}})
+	_check(f.state()["status"] == "Test de FTP : aucune FTP calculable ; test trop court" and _ids(f)[0] == "new_session",
+		"sans FTP calculable : rien à accepter")
+
+
+## Bibliothèque de parcours (lot O12, critère 3) : filtrer « col », trier par dénivelé, lancer le premier.
+func _test_library() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE"})
+	var lib := [
+		{"id": "plat", "name": "Plat", "length_m": 20000.0, "status": "ready", "stats": {"distance_m": 20000.0,
+			"gain_m": 40.0, "max_grade_pct": 2.0, "duration_s": 2400.0, "difficulty": 1, "main_climb": null},
+			"library": {"description": "", "region": "Alsace", "tags": ["plat"]}},
+		{"id": "grand_col", "name": "Grand col", "length_m": 30000.0, "status": "ready", "stats": {"distance_m": 30000.0,
+			"gain_m": 900.0, "max_grade_pct": 9.5, "duration_s": 5400.0, "difficulty": 4, "main_climb": {"length_m": 12000.0,
+			"gain_m": 850.0, "avg_grade_pct": 7.1, "category": "1"}},
+			"library": {"description": "Long col régulier.", "region": "Vosges", "tags": ["col", "montagne"]}},
+		{"id": "petit_col", "name": "Petit col", "length_m": 10000.0, "status": "ready", "stats": {"distance_m": 10000.0,
+			"gain_m": 300.0, "max_grade_pct": 8.0, "duration_s": 1800.0, "difficulty": 2, "main_climb": {"length_m": 4000.0,
+			"gain_m": 280.0, "avg_grade_pct": 7.0, "category": "3"}},
+			"library": {"description": "", "region": "Vosges", "tags": ["col"]}},
+		{"id": "brut", "name": "Brut", "length_m": 5000.0, "status": "ready"},
+	]
+	f.set_routes(lib)
+	f.handle("A_LONG")   # Parcours
+	_check(_ids(f) == ["brut", "grand_col", "petit_col", "plat", "_sort", "_filter"], "par nom, puis tri et filtre (%s)" % str(_ids(f)))
+	_check(f.state()["items"][1]["label"] == "Grand col (30,0 km, ↑ 900 m)" and f.state()["items"][1]["detail"] == "col, montagne",
+		"libellé avec dénivelé, étiquettes (%s — %s)" % [f.state()["items"][1]["label"], f.state()["items"][1]["detail"]])
+	f.handle("MINUS_SHORT")   # Étiquette
+	f.handle("A_LONG")
+	_check(_ids(f) == ["grand_col", "petit_col", "_sort", "_filter"] and f.state()["items"][3]["label"] == "Étiquette : col"
+		and _focus_id(f) == "_filter", "filtre « col », focus gardé (%s)" % str(_ids(f)))
+	f.handle("MINUS_SHORT")   # Tri
+	f.handle("A_LONG")        # distance
+	f.handle("A_LONG")        # dénivelé
+	_check(f.state()["items"][2]["label"] == "Trier par : dénivelé" and _ids(f).slice(0, 2) == ["petit_col", "grand_col"],
+		"triés par dénivelé (%s)" % str(_ids(f)))
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")    # boucle : premier parcours
+	_check(_focus_id(f) == "petit_col", "focus sur le premier")
+	_check(f.handle("A_LONG") == {"action": "select_route", "route_id": "petit_col"}, "premier parcours lancé")
+	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")   # Session libre
+	var st: Dictionary = f.state()
+	_check(st["screen"] == "ready" and st["card"].size() == 3, "fiche sur l'écran Prêt (%s)" % str(st["card"]))
+	_check(st["card"][0] == "10,0 km · ↑ 300 m · pente max 8,0 % · difficulté 2 / 5 · ≈ 30 min"
+		and st["card"][1] == "Montée principale : 4,0 km à 7,0 %, ↑ 280 m (cat. 3)" and st["card"][2] == "Vosges, col",
+		"fiche : %s" % str(st["card"]))
+	f.set_workouts([{"id": "w", "name": "Watts", "duration_s": 600, "unit": "watts", "profile": [[600.0, 0.8, 1.2]]},
+		{"id": "r", "name": "Relatif", "duration_s": 900, "profile": [[900.0, 0.8, 0.8]]}])
+	f.on_settings({"items": [{"key": "rider.ftp_w", "value": 250}]})
+	var w: Array = f.menu._screens["workouts"]["items"].filter(func(it): return it["id"] in ["w", "r"])
+	_check(w[0]["detail"] == "watts fixes, jusqu'à 300 W" and w[1]["detail"] == "",
+		"entraînement en watts : aperçu en watts (%s)" % w[0]["detail"])
+	var v = MenuView.new()
+	v.update_display(st, {"session_state": "IDLE"}, {}, false)
+	_check(v.card_label.visible and v.card_label.text.begins_with("10,0 km"), "vue : fiche affichée")
+	v.free()
+
 
 func _init() -> void:
+	_test_plans()
+	_test_ftp_flow()
+	_test_library()
 	_test_erg_submenu()
 	_test_settings_screen()
 	_test_connect_screen()
