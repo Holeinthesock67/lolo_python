@@ -51,13 +51,13 @@ func _test_wind() -> void:
 	for i in range(vols.size() - 1):
 		if not (vols[i] < vols[i + 1] and pitches[i] < pitches[i + 1]):
 			strictly_inc = false
-	_check(strictly_inc and pitches[0] >= 0.8 and is_equal_approx(pitches[pitches.size() - 1], 1.3),
+	_check(strictly_inc and pitches[0] >= SoundModel.WIND_PITCH_MIN and is_equal_approx(pitches[pitches.size() - 1], SoundModel.WIND_PITCH_MAX),
 		"vent de 5 à 60 km/h : volume et pitch strictement croissants (%s)" % str(vols))
 
 	sm.on_state(_state(80.0), Vector3.ZERO, 100.0)
 	var e80: Dictionary = sm.evaluate(100.0)
 	_check(is_equal_approx(e80["wind"]["volume_db"], vols[vols.size() - 1])
-		and is_equal_approx(e80["wind"]["pitch"], 1.3),
+		and is_equal_approx(e80["wind"]["pitch"], SoundModel.WIND_PITCH_MAX),
 		"vent à 60 et 80 km/h : volume (%.1f dB) et pitch (%.2f) identiques" % [
 			e80["wind"]["volume_db"], e80["wind"]["pitch"]])
 
@@ -217,7 +217,7 @@ func _test_air_speed_wind() -> void:
 	d.evaluate(1.0)
 	d.on_state(_state(50.0), Vector3.ZERO, 10.0)
 	var v50: float = d.evaluate(10.0)["wind"]["volume_db"]
-	_check(v10 < -35.0 and v50 > -6.0, "10 km/h dans l'air : %.1f dB (à peine audible), 50 km/h : %.1f dB" % [v10, v50])
+	_check(v10 < -40.0 and v50 > -18.0 and v50 < -12.0, "10 km/h dans l'air : %.1f dB (à peine audible), 50 km/h : %.1f dB (retour de recette P16 : -15 dB environ)" % [v10, v50])
 
 	# Rafale : ± 3 dB et ± 5 % de hauteur au plus ; sans objet wind depuis 2 s, retour au vent nul
 	var e = SoundModel.new()
