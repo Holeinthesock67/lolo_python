@@ -52,25 +52,33 @@ static func _sort_value(item: Dictionary, key: String):
 	return null
 
 
-## Fiche d'un parcours pour l'écran Prêt (lot O12) : lignes de texte depuis `stats` et `library` ;
-## vide sans fiche. Durée estimée à la FTP du core (contrat 1.3).
-static func route_card(item: Dictionary) -> Array:
-	var out: Array = []
+## Fiche d'un parcours pour la carte de détail des menus (lot O12, mise en forme du lot « présentation
+## des menus », étape 2) : nom, chiffres clés (`tiles`, valeur et unité séparées pour les mettre en
+## valeur), lignes de texte (montée principale, difficulté et durée, bibliothèque). Depuis `stats` et
+## `library` ; sans fiche calculée, seule la longueur. Durée estimée à la FTP du core (contrat 1.3).
+## Le profil d'altitude n'est pas dans la liste : main.gd l'ajoute (`profile`) quand le parcours est chargé.
+static func route_sheet(item: Dictionary) -> Dictionary:
+	var tiles: Array = []
+	var lines: Array = []
 	var st = item.get("stats", null)
+	var length = st.get("distance_m", item.get("length_m", null)) if st is Dictionary else item.get("length_m", null)
+	if length != null:
+		tiles.append(_tile("Distance", _format_fr_1(float(length) / 1000.0), "km"))
 	if st is Dictionary:
-		var parts: Array[String] = [_format_fr_km(float(st.get("distance_m", item.get("length_m", 0.0)))),
-			"↑ %d m" % int(round(float(st.get("gain_m", 0.0)))),
-			"pente max %s %%" % _format_fr_1(float(st.get("max_grade_pct", 0.0)))]
-		if st.get("difficulty", null) != null:
-			parts.append("difficulté %d / 5" % int(st["difficulty"]))
-		if st.get("duration_s", null) != null:
-			parts.append("≈ " + _format_fr_duration(float(st["duration_s"])))
-		out.append(" · ".join(parts))
+		tiles.append(_tile("Dénivelé", "↑ %d" % int(round(float(st.get("gain_m", 0.0)))), "m"))
+		tiles.append(_tile("Pente max", _format_fr_1(float(st.get("max_grade_pct", 0.0))), "%"))
 		var climb = st.get("main_climb", null)
 		if climb is Dictionary:
 			var cat := " (cat. %s)" % str(climb["category"]) if climb.get("category", null) != null else ""
-			out.append("Montée principale : %s à %s %%, ↑ %d m%s" % [_format_fr_km(float(climb.get("length_m", 0.0))),
+			lines.append("Montée principale : %s à %s %%, ↑ %d m%s" % [_format_fr_km(float(climb.get("length_m", 0.0))),
 				_format_fr_1(float(climb.get("avg_grade_pct", 0.0))), int(round(float(climb.get("gain_m", 0.0)))), cat])
+		var parts: Array[String] = []
+		if st.get("difficulty", null) != null:
+			parts.append("Difficulté %d / 5" % int(st["difficulty"]))
+		if st.get("duration_s", null) != null:
+			parts.append("durée ≈ " + _format_fr_duration(float(st["duration_s"])))
+		if not parts.is_empty():
+			lines.append(" · ".join(parts))
 	var lib = item.get("library", null)
 	if lib is Dictionary:
 		var words: Array[String] = []
@@ -83,8 +91,43 @@ static func route_card(item: Dictionary) -> Array:
 		var desc := str(lib.get("description", ""))
 		var line := head + (" — " if head != "" and desc != "" else "") + desc
 		if line != "":
-			out.append(line)
-	return out
+			lines.append(line)
+	return {"title": "Parcours", "id": str(item.get("id", "")), "name": str(item.get("name", item.get("id", ""))),
+		"tiles": tiles, "lines": lines}
+
+
+## Fiche d'un entraînement pour la carte de détail (lot « présentation des menus », étape 2) : nom,
+## durée, nombre de blocs, intensité maximale (en % de FTP, en watts pour un fichier en watts quand la
+## FTP est connue), blocs du profil ([durée, début, fin] en fraction de FTP, contrat 1.1) à dessiner.
+static func workout_sheet(item: Dictionary, ftp_w := 0.0) -> Dictionary:
+	var tiles: Array = []
+	var lines: Array = []
+	var blocks: Array = item.get("profile", []) if item.get("profile") is Array else []
+	var err = item.get("error", null)
+	if err != null and str(err) != "":
+		lines.append(str(err))
+	else:
+		tiles.append(_tile("Durée", _format_fr_duration(float(item.get("duration_s", 0.0))), ""))
+		tiles.append(_tile("Blocs", str(int(item.get("block_count", blocks.size()))), ""))
+		var top := 0.0
+		for b in blocks:
+			if b is Array and b.size() >= 3:
+				top = maxf(top, maxf(float(b[1]) if b[1] != null else 0.0, float(b[2]) if b[2] != null else 0.0))
+		var watts := str(item.get("unit", "ftp")) == "watts"
+		if top > 0.0 and watts and ftp_w > 0.0:
+			tiles.append(_tile("Puissance max", str(int(round(top * ftp_w))), "W"))
+		elif top > 0.0:
+			tiles.append(_tile("Intensité max", str(int(round(top * 100.0))), "% FTP"))
+		if watts:
+			lines.append("Fichier en watts fixes : cibles gardées quelle que soit la FTP")
+		if item.get("profile_truncated", false):
+			lines.append("Profil coupé : %d premiers blocs dessinés" % blocks.size())
+	return {"title": "Entraînement", "id": str(item.get("id", "")), "name": str(item.get("name", item.get("id", ""))),
+		"tiles": tiles, "lines": lines, "blocks": blocks}
+
+
+static func _tile(label: String, value: String, unit: String) -> Dictionary:
+	return {"label": label, "value": value, "unit": unit}
 
 
 static func _format_fr_1(val: float) -> String:

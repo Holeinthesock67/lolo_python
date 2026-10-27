@@ -339,7 +339,7 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create", "A long : retour à l'écran Créer")
-	_check(f.state()["items"][1]["label"] == "Répétitions : 7", "7 répétitions (%s)" % f.state()["items"][1]["label"])
+	_check(f.state()["items"][1]["detail"] == "7", "7 répétitions (%s)" % f.state()["items"][1]["detail"])
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Effort
 	f.handle("PLUS_SHORT")
@@ -549,10 +549,12 @@ func _test_library() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session libre
 	var st: Dictionary = f.state()
-	_check(st["screen"] == "ready" and st["card"].size() == 3, "fiche sur l'écran Prêt (%s)" % str(st["card"]))
-	_check(st["card"][0] == "10,0 km · ↑ 300 m · pente max 8,0 % · difficulté 2 / 5 · ≈ 30 min"
-		and st["card"][1] == "Montée principale : 4,0 km à 7,0 %, ↑ 280 m (cat. 3)" and st["card"][2] == "Vosges, col",
-		"fiche : %s" % str(st["card"]))
+	var tiles: Array = st["card"].get("tiles", []).map(func(t): return "%s %s %s" % [t["label"], t["value"], t["unit"]])
+	_check(st["screen"] == "ready" and st["card"].get("id") == "petit_col" and st["card"]["title"] == "Parcours",
+		"fiche sur l'écran Prêt (%s)" % str(st["card"]))
+	_check(tiles == ["Distance 10,0 km", "Dénivelé ↑ 300 m", "Pente max 8,0 %"], "fiche : chiffres clés %s" % str(tiles))
+	_check(st["card"]["lines"] == ["Montée principale : 4,0 km à 7,0 %, ↑ 280 m (cat. 3)", "Difficulté 2 / 5 · durée ≈ 30 min",
+		"Vosges, col"], "fiche : lignes %s" % str(st["card"]["lines"]))
 	f.set_workouts([{"id": "w", "name": "Watts", "duration_s": 600, "unit": "watts", "profile": [[600.0, 0.8, 1.2]]},
 		{"id": "r", "name": "Relatif", "duration_s": 900, "profile": [[900.0, 0.8, 0.8]]}])
 	f.on_settings({"items": [{"key": "rider.ftp_w", "value": 250}]})
@@ -561,11 +563,60 @@ func _test_library() -> void:
 		"entraînement en watts : aperçu en watts (%s)" % w[0]["detail"])
 	var v = MenuView.new()
 	v.update_display(st, {"session_state": "IDLE"}, {}, false)
-	_check(v.card_label.visible and v.card_label.text.begins_with("10,0 km"), "vue : fiche affichée")
+	_check(v.card.visible and v.card.text().contains("Distance 10,0 km"), "vue : fiche affichée (%s)" % v.card.text())
 	v.free()
+
+## Bots choisis sur l'écran Prêt (lot O7) : `start` avec l'argument `bots`.
+func _test_bots_menu() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "route_id": "vosges"})
+	f.set_routes(ROUTES)
+	f.handle("PLUS_SHORT")   # Session libre
+	f.handle("A_LONG")
+	_check(f.state()["screen"] == "ready" and _ids(f) == ["start", "workout", "change_route", "bot", "ghost", "records"],
+		"écran Prêt : bot et fantôme avant les records (%s)" % str(_ids(f)))
+	_check(f.state()["items"][3]["label"] == "Bot : aucun" and f.state()["items"][4]["label"] == "Fantôme de la dernière séance : non",
+		"par défaut : aucun bot, pas de fantôme")
+	_check(f.handle("A_LONG") == {"action": "start"}, "sans bot : start sans argument (les bots de la ligne de commande restent)")
+	f.handle("MINUS_SHORT")   # Records (boucle depuis Démarrer)
+	f.handle("MINUS_SHORT")   # Fantôme
+	_check(_focus_id(f) == "ghost", "focus sur le fantôme")
+	f.handle("MINUS_SHORT")   # Bot
+	for i in range(4):
+		f.handle("A_LONG")
+	_check(f.state()["items"][3]["label"] == "Bot : 90 % de la FTP" and f.state()["screen"] == "ready", "A long : bot suivant (%s)" % f.state()["items"][3]["label"])
+	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")
+	_check(f.state()["items"][4]["label"] == "Fantôme de la dernière séance : oui", "fantôme demandé")
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "start", "retour sur Démarrer")
+	var act: Dictionary = f.handle("A_LONG")
+	_check(act == {"action": "start", "args": {"bots": [{"kind": "constant", "ftp_pct": 90}, {"kind": "ghost"}]}},
+		"start avec bot à 90 %% de la FTP et fantôme (%s)" % str(act))
+	f.on_error("bot_invalid", "aucune séance passée sur le parcours « vosges » pour le fantôme")
+	_check(f.state()["status"].begins_with("Échec : aucune séance passée"), "refus du core sur la ligne d'état")
+	f.handle("PLUS_SHORT")
+	_check(f.state()["status"] == "", "ligne d'état effacée à l'appui suivant")
+	# Un bot de 250 W seul, avec un test de FTP préparé : les deux arguments partent ensemble.
+	var g = MenuFlow.new()
+	g.connect_done = true
+	g.on_state({"session_state": "IDLE", "route_id": "vosges"})
+	g.set_routes(ROUTES)
+	g.menu.prepare_start("test de FTP (rampe)", {"ftp_test": "ramp"})
+	g.menu.bot_choice = 2
+	g.menu._refresh_home()
+	_check(g.handle("A_LONG") == {"action": "start", "args": {"ftp_test": "ramp", "bots": [{"kind": "constant", "power_w": 250}]}},
+		"test de FTP et bot : arguments réunis")
+	g.menu.reset()
+	_check(g.menu.bot_choice == 0 and not g.menu.ghost, "nouvelle séance : bots remis à zéro")
 
 
 func _init() -> void:
+	_test_bots_menu()
 	_test_plans()
 	_test_ftp_flow()
 	_test_library()
