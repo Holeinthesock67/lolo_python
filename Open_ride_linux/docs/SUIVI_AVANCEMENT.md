@@ -237,6 +237,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Météo légère du thème 1.2 : brume de vallée, pluie fine et neige légère poussées par le vent, autour de la caméra, au budget de `living(preset)` (lot P8 ; brume appliquée et branchement dans `main.gd` par P17).
 - [x] Fonds sonores d'ambiance selon le décor (oiseaux en forêt, insectes au champ, eau, rumeur du village, vent d'altitude, pluie), au plus `ambience_voices` à la fois, et cloches de l'heure pleine (lot P9 ; voisinage et heure fournis par P16).
 - [x] Son du vent selon la vitesse dans l'air (vent de face ou de dos, rafales) et roue libre réaliste : déclenchée à cadence nulle, cliquetis qui suit la vitesse de la roue, « clac » à la reprise (lot P10 ; branchement par P16).
+- [x] Animaux : bandes d'oiseaux au-dessus des forêts, troupeaux près des points `livestock`, chevreuil en lisière qui s'enfuit, dans le budget de `living(preset)` (lot P11 ; branchement par P17).
 - [ ] Indicateur du vent et de l'abri, arbres et herbe au vent, nuages, sons d'ambiance, sons du vent et de la roue libre (lots P4, P5, P6, P9, P10 ; intégration P16).
 - [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs, passants (lots P8, P11 à P15, P21 ; intégration P17).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
