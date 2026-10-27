@@ -65,5 +65,5 @@ static func budget_ms(name: String) -> float:
 static func check(name: String, value_ms: float) -> bool:
 	var limit := budget_ms(name)
 	var over := value_ms > limit
-	print("[PERF] %s : %.2f ms, budget %.0f ms%s" % [name, value_ms, limit, " (DÉPASSÉ)" if over else ""])
+	print("[PERF] %s : %.2f ms, budget %.2f ms%s" % [name, value_ms, limit, " (DÉPASSÉ)" if over else ""])
 	return not (over and mode() == "strict")

@@ -9,6 +9,7 @@ const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const WindModel := preload("res://scripts/wind_model.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -152,7 +153,7 @@ func _test_cost() -> void:
 		g.set_apparent_wind(wind.apparent(10.0, 180.0))
 		g.update(100.0 + now * 10.0)
 	var per_frame_ms := (Time.get_ticks_usec() - t0) / 1000.0 / frames
-	_check(per_frame_ms < 0.2, "coût par image du lot : %.3f ms (< 0,2 ms)" % per_frame_ms)
+	_check(PerfBudget.check("grass_tufts_frame", per_frame_ms), "coût par image du lot : %.3f ms" % per_frame_ms)
 	g.queue_free()
 
 

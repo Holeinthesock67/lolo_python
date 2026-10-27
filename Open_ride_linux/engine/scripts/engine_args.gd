@@ -9,6 +9,8 @@ extends RefCounted
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
 ##   --visual-grade=K         exagération visuelle du relief de 1.0 à 2.0 (défaut : 1.0, lot Q2)
 ##   --perf-probe=FICHIER.csv sonde de performance : une ligne de mesures par seconde (lot X13)
+##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
+##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
@@ -32,7 +34,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, visual_grade, living, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -42,7 +44,9 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"quality": DEFAULT_QUALITY,
 		"theme": DEFAULT_THEME,
 		"visual_grade": DEFAULT_VISUAL_GRADE,
+		"living": true,
 		"test_mode": false,
+		"sim_session": false,
 		"perf_probe": "",
 	}
 	for arg in args:
@@ -66,8 +70,12 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			if csv.begins_with("~"):
 				csv = _home() + csv.substr(1)
 			out["perf_probe"] = csv
+		elif arg.begins_with("--living="):
+			out["living"] = _living(arg, true)
 		elif arg == "--test-mode":
 			out["test_mode"] = true
+		elif arg == "--sim-session":
+			out["sim_session"] = true
 	return out
 
 
@@ -110,6 +118,15 @@ static func _visual_grade(arg: String, fallback: float) -> float:
 		printerr("Argument ignoré (visual_grade hors bornes [1.0, 2.0]) : ", arg)
 		return fallback
 	return val
+static func _living(arg: String, fallback: bool) -> bool:
+	var val := arg.get_slice("=", 1).strip_edges().to_lower()
+	if val in ["on", "true", "1", "oui"]:
+		return true
+	if val in ["off", "false", "0", "non"]:
+		return false
+	last_error = "Argument ignoré (décor vivant : on ou off) : " + arg
+	printerr("Argument ignoré (décor vivant : on ou off) : ", arg)
+	return fallback
 
 
 static func current() -> Dictionary:

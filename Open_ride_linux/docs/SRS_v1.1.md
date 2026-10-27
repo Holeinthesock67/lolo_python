@@ -350,8 +350,11 @@ difficulty_pct = 50             # réglable en jeu (lot Q1)
 grade_min_pct = -10
 grade_max_pct = 16
 power_smooth_tau_s = 0.7
-grade_rate_pct_per_s = 2.0   # limite de variation due au relief (pas aux braquets)
+grade_rate_pct_per_s = 2.0   # ancien réglage symétrique, lu seulement si up/down manquent (lot Q4)
+grade_rate_up_pct_per_s = 4.0     # vitesse maximale quand la pente envoyée augmente (lot Q4)
+grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
+hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 
 [gearing]
 n_gears = 24
@@ -369,6 +372,9 @@ click_address = ""          # boîtier « + » du Click (openride-core devices -
 click_minus_address = ""    # boîtier « − » du Click
 click_short_max_s = 0.5
 click_long_min_s = 0.9
+click_trace_raw = false      # trace brute de chaque notification du Click (lot Q6)
+click_mute_after_s = 60.0    # boîtier déclaré muet sans appui depuis ce délai (lot Q6)
+click_rehandshake_s = 0.0    # reprise d'un boîtier muet, en secondes entre deux étapes ; 0 : jamais (lot Q6)
 mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
 hr = "none"                  # ceinture cardio : "none", "ble" ou "sim"
 hr_address = ""
@@ -379,6 +385,7 @@ sim_scenario = ""            # scénario du Bluetooth simulé (vide : demo), voi
 quality = "low"      # low, medium, high
 theme = "default"
 visual_grade_scale = 1.0   # exagération visuelle du relief, de 1,0 à 2,0 (lot Q2 ; physique et HUD inchangés)
+living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 
 [ipc]
 port_state = 5005
