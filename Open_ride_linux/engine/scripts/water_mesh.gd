@@ -14,6 +14,47 @@ const MIN_RING_AREA := 1e-3
 const DUP_EPS := 1e-4
 const BRIDGE_EPS := 1e-5
 
+# Matériau de l'eau (Lot P12) : mêmes valeurs que celui d'osm_streamer.gd (E4) ; `shimmer` ajoute les
+# reflets animés de shaders/water_shimmer.gdshader, seulement si `living(preset).water_shimmer`.
+const WATER_COLOR := Color(0.12, 0.32, 0.38, 1.0)
+const WATER_ROUGHNESS := 0.10
+const SHIMMER_FLOW_BASE_MPS := 0.05     # défilement des ondes par vent nul
+const SHIMMER_FLOW_PER_STRENGTH := 0.6  # en plus, par unité de force du vent (1 = 60 km/h)
+
+
+## Matériau de l'eau : sans `shimmer`, le StandardMaterial3D d'E4 inchangé ; avec, le shader de reflets.
+static func make_material(shimmer: bool) -> Material:
+	if not shimmer:
+		var m := StandardMaterial3D.new()
+		m.albedo_color = WATER_COLOR
+		m.roughness = WATER_ROUGHNESS
+		return m
+	var sm := ShaderMaterial.new()
+	sm.shader = load("res://shaders/water_shimmer.gdshader")
+	sm.set_shader_parameter("albedo", Color(WATER_COLOR.r, WATER_COLOR.g, WATER_COLOR.b))
+	sm.set_shader_parameter("roughness_base", WATER_ROUGHNESS)
+	sm.set_shader_parameter("flow", Vector2.ZERO)
+	return sm
+
+
+## Une image : fait défiler les ondes du matériau `shimmer` dans le sens du vent (`{dir, strength}` de
+## wind_model.gd). Sans effet sur le matériau sans reflets.
+static func update_shimmer(mat: Material, wind: Dictionary, dt_s: float) -> void:
+	if not (mat is ShaderMaterial):
+		return
+	var dir: Vector3 = wind.get("dir", Vector3.ZERO)
+	var strength := clampf(float(wind.get("strength", 0.0)), 0.0, 1.0)
+	var d2 := Vector2(dir.x, dir.z)
+	d2 = d2.normalized() if d2.length() > 1e-3 else Vector2(0.7071, 0.7071)
+	var raw = mat.get_shader_parameter("flow")
+	var flow: Vector2 = raw if typeof(raw) == TYPE_VECTOR2 else Vector2.ZERO
+	flow += d2 * (SHIMMER_FLOW_BASE_MPS + SHIMMER_FLOW_PER_STRENGTH * strength) * dt_s
+	# Replié modulo 200π : tous les termes des ondes du shader avancent alors d'un multiple entier de 2π
+	# (coefficients 0,6 ; 0,4 ; 1,3 ; 1,1 ; 0,7 sur 200π et 120π), donc sans saut, et la précision reste.
+	flow = Vector2(fposmod(flow.x, TAU * 100.0), fposmod(flow.y, TAU * 100.0))
+	mat.set_shader_parameter("flow", flow)
+	mat.set_shader_parameter("strength", strength)
+
 
 static func _is_number(v: Variant) -> bool:
 	return (typeof(v) == TYPE_INT or typeof(v) == TYPE_FLOAT) and is_finite(float(v))

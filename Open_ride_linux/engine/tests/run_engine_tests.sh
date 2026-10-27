@@ -13,7 +13,10 @@
 # UNIT_TIMEOUT (durée maximale d'un test unitaire en secondes, défaut 120 : une erreur de script dans
 # _init laisse Godot tourner sans quitter),
 # VISUAL_CONFIGS (configurations des tests graphiques de la scène principale, défaut « 1280x720:low » ;
-# « none » pour les sauter ; matrice complète et rapport : run_visual_tests.sh).
+# « none » pour les sauter ; matrice complète et rapport : run_visual_tests.sh),
+# OPENRIDE_PERF (budgets de temps, lot X2 : « report » par défaut, un dépassement est signalé sans
+# échec ; « strict » le compte comme un échec ; budgets dans tests/perf_budgets.json),
+# PERF_CSV (fichier où ajouter les mesures « date;nom;ms;budget;dépassé », facultatif).
 # Code de sortie : 0 si tout passe.
 set -u
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -30,6 +33,7 @@ if [ ! -x "$GODOT" ]; then
 fi
 
 status=0
+PERF_FILE="$(mktemp -t openride-perf.XXXXXX)"   # lignes [PERF] de tous les tests (lot X2)
 
 # Résumé final : une ligne par test (fichier ou étape) et son résultat.
 SUMMARY=()
@@ -57,6 +61,7 @@ while IFS= read -r unit_file; do
   if [ "$unit_rc" -eq 124 ] || [ "$unit_rc" -eq 137 ]; then UNIT_OUT="$UNIT_OUT
 Test arrêté au bout de $UNIT_TIMEOUT s"; fi
   echo "$UNIT_OUT" | grep -v "^Godot Engine" || true
+  echo "$UNIT_OUT" | grep "^\[PERF\]" >>"$PERF_FILE" || true
   unit_issues="$(echo "$UNIT_OUT" | godot_issues)"
   unit_count="$(echo "$UNIT_OUT" | grep -E "^$unit_name : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
   if [ "$unit_rc" -ne 0 ] || [ -n "$unit_issues" ] || [ -z "$unit_count" ]; then
@@ -72,9 +77,24 @@ if [ -n "${UNIT:-}" ] && [ "$unit_found" -eq 0 ]; then
   record "unit/${UNIT%.gd}" 1 "introuvable dans tests/unit/"
 fi
 
+# Budgets de temps (lot X2) : mesures relevées par tests/perf_budget.gd, hors résultat des tests en mode report.
+perf_summary() {
+  [ -s "$PERF_FILE" ] || { rm -f "$PERF_FILE"; return; }
+  local over
+  over="$(grep -c "DÉPASSÉ" "$PERF_FILE")"
+  echo "Budgets de temps (OPENRIDE_PERF=${OPENRIDE_PERF:-report}) : $(wc -l <"$PERF_FILE") mesures, $over dépassement(s)"
+  sed 's/^\[PERF\] /  /' "$PERF_FILE"
+  if [ -n "${PERF_CSV:-}" ]; then
+    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) ms, budget ([0-9.inf]+) ms( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\3;\4/" "$PERF_FILE" \
+      | sed 's/; (DÉPASSÉ)$/;oui/; s/;$/;non/' >>"$PERF_CSV"
+  fi
+  rm -f "$PERF_FILE"
+}
+
 if [ -n "${UNIT:-}" ]; then
   echo "UNIT=${UNIT} : rendu, ERG et scénarios IPC sautés"
   rm -rf "$ROUTES_DIR"
+  perf_summary
   echo "Résumé :"
   for line in "${SUMMARY[@]}"; do echo "  $line"; done
   if [ "$status" -eq 0 ]; then echo "RÉSULTAT : tous les tests de l'engine passent"; else echo "RÉSULTAT : ÉCHEC"; fi
@@ -89,6 +109,7 @@ if python3 "$ENGINE_DIR/tests/make_osm_world.py" --out "$OSM_DIR"; then
     -- "$OSM_DIR/osm-test.world" "$OSM_DIR/expected.json" 2>&1)"
   osm_rc=$?
   echo "$OSM_OUT" | grep -v "^Godot Engine" || true
+  echo "$OSM_OUT" | grep "^\[PERF\]" >>"$PERF_FILE" || true
   osm_issues="$(echo "$OSM_OUT" | godot_issues)"
   if [ -n "$osm_issues" ]; then echo "$osm_issues"; osm_rc=1; fi
   record "test_osm_layers (couches OSM K4)" "$osm_rc" "$(echo "$OSM_OUT" | grep -E "^test_osm_layers : " | tail -1 | sed 's/^test_osm_layers : //')"
@@ -245,6 +266,7 @@ else
   echo "aucun"; record "journal de l'engine sans erreur Godot" 0
 fi
 
+perf_summary
 echo "Résumé :"
 for line in "${SUMMARY[@]}"; do echo "  $line"; done
 if [ "$status" -eq 0 ]; then echo "RÉSULTAT : tous les tests de l'engine passent"; else echo "RÉSULTAT : ÉCHEC"; fi
