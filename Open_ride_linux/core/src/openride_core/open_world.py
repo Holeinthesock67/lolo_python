@@ -104,6 +104,7 @@ class OpenWorld:
         self._ready_seen = False
         self._pending_status: dict[str, Any] | None = None
         self._last_status = -1e9
+        self._last_phase: str | None = None
         self._last_progress = -1e9
         self._chosen: dict[str, int] = {}     # choix du cycliste (avant confirmation par la révision suivante)
         self._how: dict[str, str] = {}
@@ -174,8 +175,9 @@ class OpenWorld:
             out = {k: msg[k] for k in STATUS_FIELDS if k in msg}
             out.setdefault("message", "")
             out["message"] = str(out["message"])[:200]
-            if msg.get("phase") in ("ready", "error"):
+            if msg.get("phase") != self._last_phase or msg.get("phase") in ("ready", "error"):
                 self.send_status(out)      # les changements d'étape ne sont jamais retardés
+                self._last_phase = msg.get("phase")
                 self._pending_status = None
                 self._last_status = time.monotonic()
             else:

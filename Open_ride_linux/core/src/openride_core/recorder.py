@@ -122,6 +122,9 @@ class SessionRecorder:
     def junction(self, line: dict) -> None:
         """Branche prise à un carrefour du monde ouvert (lot W9) ; absente du FIT."""
         line = {**line, "kind": "junction"}
+        self.lines.append(line)
+        self._write(line)
+
     def game(self, line: dict) -> None:
         """Ligne de jeu de la série T (`powerup`, `segment`, `jersey`, lot T7) ; absente du FIT."""
         self.lines.append(line)
