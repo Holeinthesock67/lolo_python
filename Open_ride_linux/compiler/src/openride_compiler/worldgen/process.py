@@ -76,6 +76,8 @@ def _zone_of(lat: float, lon: float) -> str:
 def find_region_db(cache: WorldCache, lat: float, lon: float) -> OsmDb | None:
     """Base régionale du cache (W3) dont l'emprise contient le point."""
     for path in sorted((cache.root / "brut" / "osm").glob("*.sqlite")):
+        if path.stem == "tuiles":                       # base des tuiles vectorielles (W13) : à part
+            continue
         try:
             db = OsmDb(path)
         except CompileError:
@@ -181,6 +183,8 @@ class WorldSession:
         self.session_dir = Path(session_dir) if session_dir else None
         self._db = db
         self.db: OsmDb | None = None
+        self.tiles = None                 # TileSource (W13) quand il n'y a pas d'extrait régional
+        self.tile_net = None              # accès HTTP des tuiles (doublure dans les tests)
         self.opened = False
         self.closed = False
         self.legs: list[Leg] = []
@@ -252,8 +256,10 @@ class WorldSession:
         self.status("osm", "recherche de la région")
         self.db = self._db or find_region_db(self.cache, lat, lon)
         if self.db is None:
+            self.db = self._open_tiles(lat, lon)
+        if self.db is None:
             self._unavailable("aucune région OpenStreetMap du cache ne contient le départ "
-                              "(openride-compiler region-add)")
+                              "(openride-compiler region-add) et aucune tuile vectorielle n'est disponible")
             return
         self.status("dem", "relief du départ", "cached" if self.network else "offline")
         self.node_alt = NodeAltitudes(self.provider, self.frame)
@@ -284,6 +290,16 @@ class WorldSession:
         self.opened = True
         self.status("ready")
         self._publish(0)
+
+    def _open_tiles(self, lat: float, lon: float) -> OsmDb | None:
+        """Sans extrait régional : tuiles vectorielles OpenFreeMap (W13) versées dans `tuiles.sqlite`."""
+        from .vector_tiles import TileSource
+        self.status("tiles", "tuiles vectorielles du départ", "downloading" if self.network else "offline")
+        self.tiles = TileSource(self.cache, self.tile_net, self.network, self.clock, self.log)
+        d = 0.02
+        if self.tiles.ensure((lon - d * 1.5, lat - d, lon + d * 1.5, lat + d)) == 0:
+            return None
+        return OsmDb(self.tiles.db_path)
 
     def _unavailable(self, message: str) -> None:
         self.log(message)
@@ -357,6 +373,8 @@ class WorldSession:
                     continue
                 self.cells.add((cx, cz))
                 bbox = lonlat_bbox(self.frame, cx * GRID_M, cz * GRID_M, (cx + 1) * GRID_M, (cz + 1) * GRID_M)
+                if self.tiles is not None:
+                    self.tiles.ensure(bbox)
                 self.graph.extend(self.db, bbox)
 
     def _ensure_around_node(self, node: int) -> None:
@@ -720,9 +738,10 @@ class WorldSession:
             th.join(timeout=max(0.0, deadline - time.monotonic()))
         for key in self.in_use():
             self.cache.touch(key)
+        downloads = self.stats["downloads"] + (self.tiles.downloads if self.tiles is not None else 0)
         self.log(f"bilan : carrés générés {self.stats['squares_generated']}, repris du cache "
                  f"{self.stats['squares_cached']}, tuiles lointaines générées {self.stats['far_generated']}, "
-                 f"téléchargements {self.stats['downloads']}, lignes illisibles {self.stats['bad_lines']}, "
+                 f"téléchargements {downloads}, lignes illisibles {self.stats['bad_lines']}, "
                  f"mémoire max {resource.getrusage(resource.RUSAGE_SELF).ru_maxrss / 1024:.0f} Mo")
         self.closed = True
         self.send({"type": "closed"})

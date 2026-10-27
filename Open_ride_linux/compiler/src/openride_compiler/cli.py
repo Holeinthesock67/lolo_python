@@ -49,7 +49,7 @@ from .pipeline import compile_route
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
 from .theme import check_theme
 from .verify import verify_world, world_info
-from .worldgen import measure, region, store
+from .worldgen import measure, region, store, vector_tiles
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
 LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water")
@@ -156,6 +156,9 @@ def build_parser() -> argparse.ArgumentParser:
     wm = sub.add_parser("world-measure",
                         help="monde ouvert : mesure volumes, temps de génération et débit (lot W0)")
     measure.add_arguments(wm)
+    wp = sub.add_parser("world-prefetch",
+                        help="monde ouvert : précharge tuiles et relief autour des départs habituels (lot W13)")
+    vector_tiles.add_prefetch_arguments(wp)
 
     return parser
 
@@ -541,6 +544,7 @@ COMMANDS = {
     "region-update": region.cmd_region_update,
     "region-list": region.cmd_region_list,
     "world-measure": cmd_world_measure,
+    "world-prefetch": vector_tiles.cmd_world_prefetch,
 }
 
 
