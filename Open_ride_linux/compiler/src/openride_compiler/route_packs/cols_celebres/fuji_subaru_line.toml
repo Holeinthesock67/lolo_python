@@ -1,0 +1,8 @@
+name = "Fuji Subaru Line (5e station du mont Fuji)"
+region = "Yamanashi, mont Fuji"
+country = "Japon"
+side = "depuis Fujiyoshida (péage)"
+waypoints = [[35.4636, 138.7740], [35.3955, 138.7320]]
+ref_length_m = 24000
+ref_gain_m = 1270
+tags = ["col", "classique", "japon", "volcan"]
