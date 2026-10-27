@@ -92,6 +92,7 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 | `openride-core recover` | Convertit un journal de séance en FIT après un plantage |
 | `python -m openride_core.tools.workouts check FICHIER.zwo` | Lecture et charge d'un entraînement ERG |
 | `python -m openride_core.tools.route_vectors` | Vecteurs de test de la route, partagés core et engine |
+| `python -m openride_core.ipc_budget` | Taille de la trame `state` la plus lourde de chaque révision du contrat face à la limite de 1 400 octets (lot X25) ; une trame trop grande est allégée par le core au lieu d'être jetée |
 
 ## 6. Ce qui demande encore le matériel
 
