@@ -896,11 +896,11 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
-	_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
+	_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
 	if living_decor != null:
 		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
