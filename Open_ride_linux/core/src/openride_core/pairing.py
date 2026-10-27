@@ -5,7 +5,7 @@ boîtier « + » du Click par un appui, puis écrit le nom et l'adresse du train
 boîtiers et la ceinture dans la configuration locale, hors du dépôt. Rien n'est écrit ailleurs
 (ni journal, ni dépôt, ni `/tmp`).
 
-L'écriture (`config_edit.py`) garde le fichier tel quel (commentaires, autres sections, clés
+L'écriture (`config_writer.py`, commune avec les réglages du lot O3) garde le fichier tel quel (commentaires, autres sections, clés
 inconnues) et ne remplace que les lignes des clés d'appareils ; une copie `config.toml.bak` est
 faite avant, et le résultat doit passer `config.validate`, sinon rien n'est écrit.
 """
@@ -19,7 +19,7 @@ from pathlib import Path
 from typing import Any, Awaitable, Callable
 
 from . import config as config_mod
-from . import config_edit
+from . import config_edit, config_writer
 
 IDENTIFY_TIMEOUT_S = 15.0
 
@@ -105,8 +105,8 @@ def save(paired: PairedDevices, path: Path | None = None) -> list[str]:
     Lève `PairingError` si le fichier final ne passe pas `config.validate` : rien n'est écrit.
     """
     try:
-        return config_edit.update_config(path or config_mod.DEFAULT_CONFIG_PATH, _values(paired))
-    except config_edit.ConfigEditError as exc:
+        return config_writer.update_config({(sec, key): value for sec, key, value in _values(paired)}, path)
+    except config_writer.ConfigWriteError as exc:
         raise PairingError(str(exc)) from None
 
 
