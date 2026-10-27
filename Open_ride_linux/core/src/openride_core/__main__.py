@@ -163,7 +163,7 @@ def cmd_devices(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     """Analyseur de la ligne de commande ; aussi lu par `test_docs_coherence.py` (commandes citées)."""
     p = argparse.ArgumentParser(prog="openride-core")
-    p.add_argument("--version", action="version", version=__version__)
+    p.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
     r = sub.add_parser("recover", help="convertir un journal de séance en FIT")
     r.add_argument("journal", nargs="?", type=Path)
