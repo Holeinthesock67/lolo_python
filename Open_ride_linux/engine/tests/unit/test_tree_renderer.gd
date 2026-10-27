@@ -14,12 +14,12 @@ const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 
-## Empreintes exactes (SHA-256 des octets de tous les arbres, case après case) relevées avant
-## l'optimisation du lot O1 : le résultat doit rester identique au bit près.
+## Empreintes exactes (SHA-256 des octets de tous les arbres, case après case) relevées le 27 octobre
+## avant l'optimisation du lot O1 (main a2a4994) : le résultat doit rester identique au bit près.
 const FINGERPRINTS := {
-	"sans_zone": "A_RELEVER",
-	"zones_osm": "A_RELEVER",
-	"relief": "A_RELEVER",
+	"sans_zone": "7456:85937905153ad6a1",
+	"zones_osm": "9125:207c2635c488252c",
+	"relief": "5679:65911faa5e9481de",
 }
 
 var _failures := 0

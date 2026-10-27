@@ -1,6 +1,6 @@
 {
   "_doc": "Budgets de temps des tests de l'engine (lot X2, perf_budget.gd). budget_ms : seuil du cahier pour le PC cible ; ci_ms : machines partagées de GitHub (variable CI). Remplacement par machine : ~/OpenRide/perf_budgets.json, {\"nom\": ms}.",
-  "tree_tile_high": {"budget_ms": 150, "ci_ms": 200, "lot": "E3 / O1"},
+  "tree_tile_high": {"budget_ms": 150, "ci_ms": 170, "lot": "E3 / O1"},
   "vegetation_tile_max": {"budget_ms": 50, "ci_ms": 150, "lot": "K3"},
   "building_mesh_500": {"budget_ms": 100, "ci_ms": 200, "lot": "L1"},
   "osm_buildings_200": {"budget_ms": 20, "ci_ms": 60, "lot": "K4"},
