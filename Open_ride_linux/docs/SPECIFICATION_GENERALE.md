@@ -245,7 +245,7 @@ Le champ `v` reste 1 : tous les ajouts sont compatibles. Chaque révision est no
 | 1.1 | Listes des parcours et entraînements, `devices`, bilan enrichi, reprise après plantage | N1 | 1.0 | Livré |
 | 1.2 | `set_difficulty`, `difficulty_pct` ; appairage depuis le menu (`scan_devices`, `pair_devices`…). Fermée : plus aucun ajout | Q1, N13 | 1.0 | Livré |
 | 1.3 | Révision de la sortie de la 1.0 : champs `wind` et `draft` de `state`, `state` à 4 096 octets, `rev` et `modes` (P1, livrés) ; réglages (`list_settings`, `set_setting`, message `settings`), précisions de X25, `bad_args`, imports d'entraînements (`list_imports`, `create_workout`, `import_workout`), `PLUS_UNCLEAR` et `MINUS_UNCLEAR` ; événements de tous les boutons du Click (`A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`, plan de boutons du §7.1) ; demi-tour et bots réglés au menu s'ils fusionnent avant l'étiquette `v1.0.0`. Se ferme à l'étiquette `v1.0.0` | P1, O3, O4, X25, #288, N16, #287 | 1.0 (P1 sert la 1.x) | P1, X25, O3, O4, l'audit IPC (#288) et N16 (#249) livrés ; événements des boutons en revue (PR #287) |
-| 1.4 | (Les événements des boutons sont déjà en 1.3.) Liste `modes` étendue ; champs `rogue`, `segment`, `powerup` ; champs des bots à profil ; messages `room`, `loot`, `segment_result`, `xp` ; commandes de run, `equip`, `set_avatar` | T1 | 2.0 | Spécifié (un seul lot de contrat, décision D4 du 27 octobre) |
+| 1.4 | (Les événements des boutons sont déjà en 1.3.) Mode `ROGUE` et valeur `"rogue"` de `modes` ; champs `segment`, `powerup`, `jerseys`, `bot_ahead`, `bot_behind` et objet `rogue` de `state` ; champs des bots à profil ; `summary.segments` et `summary.rogue` ; messages `segment_result`, `room`, `loot`, `garage`, `progression`, `xp_result` ; commandes `start_run`, `rogue_resync`, `list_garage`, `equip`, `buy`, `set_avatar` ; `hello_ack.config.rogue` et `progression` | T1 | 2.0 | Contrat écrit (lot T1, un seul lot de contrat, décision D4 du 27 octobre), en attente de la validation du propriétaire ; le core annonce encore `rev` « 1.3 » jusqu'au branchement (R8, T7, V11) |
 | 1.5 | Monde ouvert : `start_open_world`, `choose_branch`, champ `open_world`, `world_status` et messages de la carte | W1 | 2.0 | En revue (PR #282) |
 | 1.6 | Série U : clés facultatives `biome` et `gravel` de `hello_ack.config`, aucun nouveau message (le menu passe par `set_setting`) | U1, U16 | 3.0 | Spécifié (cahier U1) ; numéro provisoire : la série U prend la première révision libre à sa fusion (§6.1) |
 
@@ -258,13 +258,13 @@ Règles de numérotation (décision du propriétaire du 27 octobre, « au plus p
 | Couches route, terrain, bâtiments, végétation, points d'intérêt, eau | B1, B2, I3, I4 | 1.0 | Livré |
 | Points d'intérêt `wind_turbine` et `flag` ; thème 1.2 (nuages, météo, ambiance, faune, saison, heure) | P1 | 1.x | Spécifié |
 | Niveaux de textures dans le thème | P20 | 2.0 | Spécifié |
-| Couche `segments` | T1 | 2.0 | Planifié |
+| Couche `segments` (format 1.3, `segments.json`) | T1, T3 | 2.0 | Format écrit (T1) ; écriture par le compilateur : T3 |
 | Monde vivant : `live`, origine sur grille UTM, route par parties, couches par carré, `junctions.json` | W1 | 2.0 | En revue (PR #282) |
 | Couche `biome`, variante régionale, eau `sea`, couche `coast` ; colonne `surface` de la route et classe `g` du monde ouvert ; thème 2.0 en pack de biomes | U1 | 3.0 | Spécifié (cahier U1 ; mineur libre suivant celui de W1) |
 
 ### 6.3 Configuration
 
-Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts prévus : `[wind]` (P1), `[render] living` et `texture_level` (P4, P20), `[open_world]` avec `cache_dir` et `cache_max_gb` (W2), `[render] camera` (V12) ; `[render] biome` et `theme_library_gb`, section `[gravel]` (U1, U15) ; la série R ajoute le W' du joueur, dont la clé est fixée par le contrat 1.4 (T1).
+Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts prévus : `[wind]` (P1), `[render] living` et `texture_level` (P4, P20), `[open_world]` avec `cache_dir` et `cache_max_gb` (W2), `[render] camera` (V12) ; `[render] biome` et `theme_library_gb`, section `[gravel]` (U1, U15) ; sections `[rogue]` (`w_prime_j`, `cp_w`, rampe de pente en run) et `[avatar]` (seuils de la danseuse), fixées par le contrat 1.4 (T1, SRS §11).
 
 ## 7. Boutons du Click et vues de caméra
 
