@@ -22,7 +22,7 @@ Réponses aux questions posées après la PR #355 :
 | 11. Bots à l'écran | Retard d'affichage d'environ 0,1 s accepté (mémoire de trames et Hermite, Y9). |
 | 12. Comportement des bots | Bots réalistes : attaques dans les montées, fatigue, abri, calculés dans le core (Y10). |
 | 13. PR #355 | Compléter puis fusionner. |
-| 7. Résolution adaptative | Acceptée : l'image peut descendre à 75–85 % de la résolution, avec FSR 1.0, quand la carte graphique sature (Y6). |
+| 7. Résolution adaptative | ~~Acceptée (75–85 % avec FSR 1.0, Y6)~~ **Remplacée le 27 octobre (19 h 35)** : « utilise seulement la résolution max de mes écrans ». Rendu toujours à la résolution native, sans mise à l'échelle ; Y6 écarté, la marge du GPU sert à la qualité d'image (Y13). |
 
 ## 1. En bref
 
@@ -147,6 +147,7 @@ Validée par le propriétaire le 27 octobre (§0). Toute la série vient **aprè
 | Y10 | Comportement des bots (profils, attaques, abri) côté core | Y9, séries T et R | Moyenne | Oui |
 | Y11 (#385) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée, parallaxe en `high`) et faux relief de l'herbe (normale, teinte, vagues de vent, touffes, coquilles en essai) ; enveloppe +1,0 ms GPU en `medium` | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie |
 | Y12 (#386) | Lumière (glow, rayons, ombre des nuages, SSR, halo) et particules (poussière, pollen, feuilles, éclaboussures, foules, kit Cyber-Rogue) ; enveloppe +1,5 ms GPU en `medium` | Y2, Y1, P17, R17, Y11 | Moyenne | Oui |
+| Y13 | Qualité d'image par préréglage à résolution native (rendu des tons, étalonnage, anticrénelage, SSAO/SSIL, glow, ombres, filtrage, puis densités et brume) : cahier `docs/lots/LOT_Y13_qualite_image_prereglages.md` | Y1 | Moyenne | Interne |
 
 **Y1 réalisé (27 octobre, code) :** clé `fog_end_m` dans `quality_presets.gd` (4 000 / 6 000 / 9 000 m), début du brouillard à 40 % de la fin (1,6 / 2,4 / 3,6 km), `camera.far` = fin + 3 %, tuiles lointaines chargées jusqu'à la fin + une tuile lointaine (9 / 11 / 12 km, plafond 12 km), sol plat de même rayon ; sans relief, brouillard inchangé (300 m à 3 km) ; clé `renderer_hint` retirée. Mesures du 27 octobre sur le PC cible (GTX 1060, banc simulé `montee_descente` avec la sonde X13, fenêtre 1857 × 1011, PC au calme, avant = base commune sans Y1, après = branche Y1) :
 

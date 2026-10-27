@@ -291,6 +291,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 ### Performances du rendu (série S rédigée le 25 octobre)
 - [ ] Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible (lot S1).
 - [x] Brouillard opaque à 4 / 6 / 9 km selon le préréglage, `camera.far` et tuiles lointaines qui suivent (lot Y1, 27 octobre, PR #381) : mesuré au banc sur la GTX 1060, sans gain ni perte (60 images/s, mondes de test trop petits pour voir le rayon réduit) ; reste l'essai `essai-69` en `medium` puis `low` pour valider l'horizon.
+- [ ] Qualité d'image par préréglage à résolution native (lot Y13, 27 octobre) : étape 1 en prototype (rendu des tons Filmic et étalonnage, FXAA en `low`, MSAA 4× en `medium`, SSAO/SSIL, glow, ombres 4096 à filtre doux, filtrage 16×), captures avant/après en Forward+ ; reste la mesure sur la GTX 1060 et l'accord du propriétaire avant les étapes 2 à 4.
 
 ### Après la 1.0 : décor vivant, vent et aspiration (série P rédigée le 25 octobre)
 - [x] Contrat : vent et aspiration dans `state` (IPC révision 1.3), configuration `[wind]`, thème 1.2, points d'intérêt `wind_turbine` et `flag` (lot P1, décisions du propriétaire du 25 octobre).

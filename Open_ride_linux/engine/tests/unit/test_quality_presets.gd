@@ -12,8 +12,6 @@ const EXPECTED_KEYS := [
 	"chunks_behind",
 	"fog_end_m",
 	"fog_volumetric",
-	"msaa",
-	"ssao",
 	"vegetation_density_factor",
 	"view_distance_m",
 ]
@@ -83,7 +81,7 @@ func _test_presets_table() -> void:
 	var keys_high := high.keys()
 	keys_high.sort()
 	_check(keys_low == EXPECTED_KEYS and keys_med == EXPECTED_KEYS and keys_high == EXPECTED_KEYS,
-		"preset : les 3 préréglages exposent exactement les 8 clés attendues")
+		"preset : les 3 préréglages exposent exactement les 6 clés attendues")
 
 	_check(float(low["view_distance_m"]) < float(med["view_distance_m"])
 		and float(med["view_distance_m"]) < float(high["view_distance_m"]),
@@ -148,9 +146,38 @@ func _test_living() -> void:
 	_check(QualityPresets.living("low")["birds"] == 12, "living : copie, la table n'est pas modifiable")
 
 
+# Lot Y13 : qualité d'image par préréglage, croissante de low à high, toujours un anticrénelage.
+func _test_image() -> void:
+	const KEYS := ["ao_half_size", "fxaa", "glow", "mesh_lod_threshold", "msaa", "shadow_atlas",
+		"shadow_filter", "shadow_splits", "ssao", "ssil"]
+	var levels := ["off", "low", "medium", "high"]
+	var filters := ["hard", "very_low", "low", "medium", "high"]
+	var prev := {}
+	for name in ["low", "medium", "high"]:
+		var img: Dictionary = QualityPresets.image(name)
+		var keys := img.keys()
+		keys.sort()
+		_check(keys == KEYS, "image %s : les %d clés attendues" % [name, KEYS.size()])
+		_check(int(img["msaa"]) in [0, 2, 4, 8] and str(img["ssao"]) in levels and str(img["ssil"]) in levels
+			and str(img["shadow_filter"]) in filters and int(img["shadow_splits"]) in [2, 4],
+			"image %s : valeurs connues" % name)
+		_check(int(img["msaa"]) > 0 or bool(img["fxaa"]), "image %s : toujours un anticrénelage" % name)
+		if not prev.is_empty():
+			_check(int(img["msaa"]) >= int(prev["msaa"])
+				and levels.find(str(img["ssao"])) >= levels.find(str(prev["ssao"]))
+				and levels.find(str(img["ssil"])) >= levels.find(str(prev["ssil"]))
+				and filters.find(str(img["shadow_filter"])) >= filters.find(str(prev["shadow_filter"]))
+				and int(img["shadow_atlas"]) >= int(prev["shadow_atlas"])
+				and float(img["mesh_lod_threshold"]) <= float(prev["mesh_lod_threshold"]),
+				"image %s : au moins la qualité du préréglage précédent" % name)
+		prev = img
+	_check(QualityPresets.image("inexistant") == QualityPresets.image("low"), "image : un nom inconnu renvoie low")
+
+
 func _init() -> void:
 	_test_engine_args()
 	_test_presets_table()
+	_test_image()
 	_test_living()
 	print("test_quality_presets : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
