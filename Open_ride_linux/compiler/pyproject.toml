@@ -25,6 +25,7 @@ worldgen = ["osmium>=4.0"]
 
 [project.scripts]
 openride-compiler = "openride_compiler.cli:main"
+openride-worldgen = "openride_compiler.worldgen.process:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
