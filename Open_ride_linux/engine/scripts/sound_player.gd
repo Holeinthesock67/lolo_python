@@ -61,6 +61,7 @@ var model := SoundModel.new()
 var _wind_player: AudioStreamPlayer
 var _freewheel_player: AudioStreamPlayer
 var _clac_player: AudioStreamPlayer
+var _wheel_player: AudioStreamPlayer     # ronronnement / sifflement des roues (lot V7)
 var clacs_played := 0                   # « clac » de reprise joués (tests)
 var _poi_players: Array[AudioStreamPlayer3D] = []
 
@@ -92,6 +93,11 @@ func _init_players() -> void:
 	_freewheel_player.stream = _streams.get("freewheel", null)
 	_freewheel_player.volume_db = SoundModel.SILENCE_DB
 	add_child(_freewheel_player)
+
+	_wheel_player = AudioStreamPlayer.new()
+	_wheel_player.name = "WheelPlayer"
+	_wheel_player.volume_db = SoundModel.SILENCE_DB
+	add_child(_wheel_player)
 
 	_clac_player = AudioStreamPlayer.new()
 	_clac_player.name = "ClacPlayer"
@@ -156,6 +162,21 @@ func update_audio(state: Dictionary, now_s: float, rider_pos: Vector3) -> Dictio
 		else:
 			if _freewheel_player.playing:
 				_freewheel_player.stop()
+
+	# Roues (lot V7)
+	var wh: Dictionary = eval["wheel"]
+	_wheel_player.volume_db = float(wh["volume_db"])
+	_wheel_player.pitch_scale = float(wh["pitch"])
+	if str(wh["kind"]) != "none":
+		var stream = _streams.get("wheel_" + str(wh["kind"]), null)
+		if _wheel_player.stream != stream:
+			_wheel_player.stream = stream
+	if is_inside_tree():
+		if str(wh["kind"]) != "none" and float(wh["volume_db"]) > SoundModel.SILENCE_DB:
+			if not _wheel_player.playing and _wheel_player.stream != null:
+				_wheel_player.play()
+		elif _wheel_player.playing:
+			_wheel_player.stop()
 
 	# POIs spatialisés (au plus 4)
 	var pois: Array = eval["pois"]
@@ -228,6 +249,8 @@ func _generate_all_streams() -> void:
 	for k in VOICE_KINDS:
 		var custom_voice = _try_load_custom(k)
 		_streams[k] = custom_voice if custom_voice != null else _synthesize_voice(k)
+	_streams["wheel_hum"] = _synthesize_wheel("hum")
+	_streams["wheel_whistle"] = _synthesize_wheel("whistle")
 	var custom_clac = _try_load_custom("clac")
 	_streams["clac"] = custom_clac if custom_clac != null else _synthesize_clac()
 	for bed in AmbienceModel.BEDS:
@@ -384,6 +407,30 @@ static func _wind_noise_bytes() -> PackedByteArray:
 			v = buf[i] * g + buf[n + i] * (1.0 - g)
 		bytes.encode_s16(i * 2, clampi(int(v * gain * 32767.0), -32768, 32767))
 	return bytes
+
+
+## Son des roues (lot V7), boucle d'une seconde à nombre entier de périodes (raccord sans clic) : ronronnement
+## grave de roue lenticulaire (110 Hz et harmoniques) ou sifflement léger de jante haute (1760 Hz).
+static func _synthesize_wheel(kind: String) -> AudioStreamWAV:
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = MIX_RATE
+	wav.stereo = false
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = SAMPLE_COUNT
+	var bytes := PackedByteArray()
+	bytes.resize(SAMPLE_COUNT * 2)
+	for i in range(SAMPLE_COUNT):
+		var t := float(i) / float(MIX_RATE)
+		var v := 0.0
+		if kind == "hum":
+			v = 0.5 * sin(TAU * 110.0 * t) + 0.25 * sin(TAU * 220.0 * t) + 0.12 * sin(TAU * 330.0 * t)
+		else:
+			v = 0.4 * sin(TAU * 1760.0 * t) * (0.8 + 0.2 * sin(TAU * 6.0 * t))
+		bytes.encode_s16(i * 2, clampi(int(v * 0.6 * 32767.0), -32768, 32767))
+	wav.data = bytes
+	return wav
 
 
 ## Roue libre (Lot P10, refaite après la recette P16) : FREEWHEEL_LOOP_CLICKS « tic » par seconde, chacun

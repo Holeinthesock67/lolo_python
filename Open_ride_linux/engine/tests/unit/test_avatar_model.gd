@@ -7,6 +7,7 @@ extends SceneTree
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarMesh := preload("res://scripts/avatar_mesh.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
+const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
@@ -163,7 +164,60 @@ func _test_view() -> void:
 	v.free()
 
 
+func _test_equipment() -> void:
+	var d := AvatarMesh.dims({})
+	_check(EquipmentMeshes.resolve("frame", "frame_tt") == "frame_tt" and EquipmentMeshes.resolve("frame", "n_importe_quoi") == "frame_round"
+		and EquipmentMeshes.resolve("kit", null) == "kit_plain", "look inconnu ou absent : pièce par défaut")
+	var looks := EquipmentMeshes.equip_looks({"frame": "f_aero", "wheels": "w_deep", "helmet": "inconnu"},
+		{"f_aero": "frame_aero", "w_deep": "wheels_deep"})
+	_check(looks["frame"] == "frame_aero" and looks["wheels"] == "wheels_deep" and looks["helmet"] == "helmet_road" and looks["kit"] == "kit_plain",
+		"equip_looks : identifiants → look, défauts ailleurs")
+	for slot in EquipmentMeshes.LOOKS:
+		_check(EquipmentMeshes.LOOKS[slot].has(EquipmentMeshes.DEFAULT_LOOK[slot]), "défaut de %s dans le catalogue" % slot)
+	# Posture : cadres aéro et contre-la-montre → mains plus rapprochées et buste plus bas
+	var base := AvatarMesh.pose(0.0, false, d, EquipmentMeshes.frame_spec("frame_round"))
+	var aero := AvatarMesh.pose(0.0, false, d, EquipmentMeshes.frame_spec("frame_aero"))
+	var tt := AvatarMesh.pose(0.0, false, d, EquipmentMeshes.frame_spec("frame_tt"))
+	_check(aero["shoulder"].y < base["shoulder"].y and tt["shoulder"].y < aero["shoulder"].y, "buste plus bas : route > aéro > contre-la-montre")
+	_check(absf(aero["hand_r"].x) < absf(base["hand_r"].x) and absf(tt["hand_r"].x) < absf(aero["hand_r"].x), "mains plus rapprochées sur cadre aéro et contre-la-montre")
+	_check(tt["hand_r"].z < base["hand_r"].z, "contre-la-montre : mains avancées sur les prolongateurs")
+	var standing := AvatarMesh.pose(0.0, true, d, EquipmentMeshes.frame_spec("frame_tt"))
+	_check(standing["shoulder"].is_equal_approx(AvatarMesh.pose(0.0, true, d)["shoulder"]), "en danseuse, la posture du cadre ne change rien")
+	# Roues : quatre formes distinctes ; sons
+	var kinds := {}
+	for w in EquipmentMeshes.LOOKS["wheels"]:
+		var parts := EquipmentMeshes.build(0, {"wheels": w}, d)
+		var sig := "%d|%d|%d" % [AvatarMesh.triangles_of(parts["rim"]["mesh"]), parts["rim"]["count"], parts["spoke"]["count"] if parts.has("spoke") else 0]
+		kinds[sig] = true
+	_check(kinds.size() == 3, "roues : rayons, jante haute et disque se distinguent par leur maillage (%d signatures)" % kinds.size())
+	_check(EquipmentMeshes.wheel_sound("wheels_disc") == "hum" and EquipmentMeshes.wheel_sound("wheels_deep") == "whistle"
+		and EquipmentMeshes.wheel_sound("wheels_spoked") == "none", "sons des roues")
+	# Motifs de tenue : chaque tenue a sa texture, et change avec les couleurs
+	var seen := {}
+	for k in EquipmentMeshes.LOOKS["kit"]:
+		var img := EquipmentMeshes.kit_texture(k, Color.RED, Color.WHITE).get_image()
+		seen[hash(img.get_data())] = true
+	_check(seen.size() >= 5, "tenues : %d motifs distincts (les motifs unis et néon partagent la texture)" % seen.size())
+	_check(EquipmentMeshes.is_emissive_kit("kit_neon") and not EquipmentMeshes.is_emissive_kit("kit_club"), "seule la tenue néon est lumineuse")
+	# Vue : équipement, traînées d'air et budget de triangles
+	var v := AvatarView.new()
+	root.add_child(v)
+	v.configure(AvatarModel.DEFAULTS, 0)
+	v.set_equipment({"frame": "frame_tt", "wheels": "wheels_disc", "helmet": "helmet_aero", "kit": "kit_polka"})
+	var info: Dictionary = v.test_info()
+	_check(info["looks"]["frame"] == "frame_tt" and info["triangles"] <= AvatarMesh.LOD_MAX_TRIANGLES[0], "équipement complet au niveau 0 : %d triangles" % info["triangles"])
+	v.set_speed(40.0, 1.0)
+	_check(not v.test_info()["streaks"], "traînées d'air absentes à 40 km/h")
+	v.set_speed(50.0, 1.0)
+	_check(v.test_info()["streaks"], "traînées d'air visibles à 50 km/h")
+	v.set_lod(2)
+	v.set_speed(50.0, 1.0)
+	_check(not v.test_info()["streaks"], "pas de traînées pour les bots")
+	v.free()
+
+
 func _init() -> void:
+	_test_equipment()
 	_test_settings()
 	_test_crank()
 	_test_standing()

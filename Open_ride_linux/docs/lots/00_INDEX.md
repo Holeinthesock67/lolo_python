@@ -161,7 +161,7 @@
 | [V4](LOT_V4_profil_local.md) | Profil local (`~/OpenRide/profile.json`) : choix, achats, avatar, écriture sûre, migration | Python | V2 | Petite | **Livré le 27 octobre** (PR #276, issue #240) ; branchement par V11 |
 | [V5](LOT_V5_liens_series_T_R.md) | Liens avec les séries T et R : segments, maillots, runs, records et calibrage des bots | Python | V3b, V11, T4, T5, T13, T14, R9 | Moyenne | Oui, après les séries T et R |
 | [V6](LOT_V6_avatar_engine.md) | Engine : avatar généré par le code, pédalage synchronisé, danseuse (sans caméra : V12) | GDScript | T1 ; O7 utile | Grande | **Livré le 27 octobre** (issue #372) ; recette de rendu sur le PC |
-| [V7](LOT_V7_rendu_equipement.md) | Engine : cadres, roues et tenues sur l'avatar, sons des roues, traînées d'air | GDScript | V6 ; P10 pour les sons | Moyenne | Non : interne (rendu) |
+| [V7](LOT_V7_rendu_equipement.md) | Engine : cadres, roues et tenues sur l'avatar, sons des roues, traînées d'air | GDScript | V6 ; P10 pour les sons | Moyenne | **Livré le 27 octobre** (issue #373) ; recette de rendu sur le PC |
 | [V8](LOT_V8_menu_garage.md) | Menu « Garage » : équipement, achats, avatar, aperçu 3D | GDScript | T1, V6, V11, N6 | Moyenne | Non : interne (menu) |
 | [V9](LOT_V9_fin_de_seance_progression.md) | Fin de séance : expérience, pièces, temps gagné, niveau, déblocages | GDScript | T1, V11, N4 | Petite | Non : interne (écran) |
 | [V10](LOT_V10_recette_progression.md) | Recette de la série V sur le PC et le vélo du propriétaire | — | V2 à V9, V11 | Moyenne | Non : propriétaire |

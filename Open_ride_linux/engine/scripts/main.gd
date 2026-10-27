@@ -23,6 +23,7 @@ const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
+const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
 const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
@@ -221,6 +222,8 @@ func _ready() -> void:
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
+	ipc.garage_received.connect(_on_garage)
+	ipc.progression_received.connect(_on_progression)
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
 	ipc.core_lost.connect(_on_core_lost)
@@ -917,6 +920,8 @@ func _step_avatar(pos: Vector3, heading: float, now_us: int, pitch_deg: float) -
 	if not avatar_view.visible:
 		return
 	avatar_view.apply(avatar_model)
+	var v = _last_state.get("v", 0.0)
+	avatar_view.set_speed(float(v) * 3.6 if (v is float or v is int) else 0.0, now_us / 1000000.0)
 	avatar_view.position = pos
 	avatar_view.rotation = Vector3(deg_to_rad(pitch_deg), -heading, 0.0)
 	if _avatar_cam != "":
@@ -929,8 +934,41 @@ func _step_avatar(pos: Vector3, heading: float, now_us: int, pitch_deg: float) -
 		camera.look_at(pos + Vector3(0.0, 0.95, 0.0), Vector3.UP)
 
 
+## Équipement affiché (lot V7) : `look` de chaque identifiant (message `garage`), identifiants équipés
+## (hello_ack puis `progression`).
+var _look_of_id := {}
+var _equipped_ids := {}
+
+
+func _on_garage(items: Array) -> void:
+	_look_of_id.clear()
+	for it in items:
+		if it is Dictionary:
+			_look_of_id[it.get("id")] = it.get("look")
+	_apply_equipment()
+
+
+func _on_progression(msg: Dictionary) -> void:
+	var eq = msg.get("equipped")
+	_equipped_ids = eq if eq is Dictionary else {}
+	_apply_equipment()
+
+
+func _apply_equipment() -> void:
+	var looks := EquipmentMeshes.equip_looks(_equipped_ids, _look_of_id)
+	if avatar_view != null:
+		avatar_view.set_equipment(looks)
+	if sound_player != null:
+		sound_player.model.set_wheel_kind(EquipmentMeshes.wheel_sound(str(looks["wheels"])))
+
+
 func _on_hello_ack(_ack: Dictionary) -> void:
 	_configure_avatar()
+	var prog = ipc.core_config.get("progression", {})
+	var eq = prog.get("equipped") if prog is Dictionary else null
+	_equipped_ids = eq if eq is Dictionary else {}
+	_apply_equipment()
+	ipc.request_garage()
 	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage. Core (re)démarré : listes
 	# redemandées au prochain état affichant le menu. Modes de l'accueil : hello_ack.config.modes
 	# (2.0 ; absent en 1.0).

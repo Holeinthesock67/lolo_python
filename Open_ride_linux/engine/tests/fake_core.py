@@ -109,6 +109,7 @@ class FakeCore:
     auto_hello_ack: bool = False
     chart: str | None = None      # hello_ack.config.chart (lot O14) ; None : champ absent
     progression: dict[str, Any] | None = None   # hello_ack.config.progression (série V, lot V6) ; None : absent
+    garage: list[dict[str, Any]] | None = None  # éléments du message `garage` (lot V7) ; None : pas de réponse
     session_state: str = "IDLE"
     route_id: str | None = "demo"
     accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
@@ -215,6 +216,9 @@ class FakeCore:
             if cmd_id > self.last_cmd_id and self.accept_cmd(msg, count):
                 self.last_cmd_id = cmd_id
 
+            if name == "list_garage" and self.garage is not None:
+                self.send({"type": "garage", "v": CONTRACT_VERSION, "request_cmd_id": cmd_id, "part": 1, "parts": 1,
+                           "items": self.garage})
             if getattr(self, "catalog_data", None):
                 if name == "list_routes":
                     if not getattr(self, "drop_all_catalog", False):

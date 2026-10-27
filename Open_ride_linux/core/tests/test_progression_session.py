@@ -359,3 +359,18 @@ def test_recompute_500_sessions_under_two_seconds_with_cache(tmp_path):
     t0 = time.perf_counter()
     assert len(recompute(tmp_path, table, cache=FactsCache(cache_path)).sessions) == 500
     assert time.perf_counter() - t0 < 2.0
+
+
+def test_catalogue_looks_known_to_engine(tmp_path, monkeypatch):
+    """Lot V7 : chaque `look` du catalogue livré figure dans equipment_meshes.gd (sinon pièce par défaut)."""
+    import re
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "equipment_meshes.gd").read_text(encoding="utf-8")
+    block = src[src.index("const LOOKS := {"):src.index("const DEFAULT_LOOK")]
+    known = {m[0]: set(re.findall(r'"([a-z_]+)"', m[1]))
+             for m in re.findall(r'"(\w+)": \[([^\]]*)\]', block)}
+    s, _frames = make(tmp_path, monkeypatch)
+    items = s.progress_svc.garage_items()
+    assert items
+    for it in items:
+        assert it["look"] in known[it["slot"]], f"look {it['look']!r} ({it['id']}) absent d'equipment_meshes.gd"

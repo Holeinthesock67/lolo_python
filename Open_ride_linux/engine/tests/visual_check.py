@@ -283,6 +283,14 @@ def overlap(a: list[float], b: list[float]) -> float:
 
 
 # Profil de démonstration du hello_ack (lot V6) : avatar réglé, seuils de danseuse par défaut.
+# Catalogue de démonstration du message `garage` (lot V7) : un identifiant par `look`, un par emplacement.
+AVATAR_GARAGE = [{"id": look, "slot": slot, "name": look, "state": "owned", "level_required": 1, "price": 0,
+                  "challenge": None, "mass_delta_kg": 0.0, "cda_delta_pct": 0.0, "terrain": "any", "look": look}
+                 for slot, looks in {
+                     "frame": ["frame_round", "frame_light", "frame_aero", "frame_tt"],
+                     "wheels": ["wheels_spoked", "wheels_spoked_light", "wheels_deep", "wheels_disc"],
+                     "kit": ["kit_plain", "kit_stripes", "kit_polka", "kit_neon"]}.items() for look in looks]
+
 AVATAR_PROGRESSION = {
     "level": 8, "xp": 4310, "xp_level_start": 3800, "xp_next_level": 5000, "coins": 210,
     "equipped": {"frame": "frame-alu", "wheels": "wheels-carbon-40", "helmet": "helmet-basic",
@@ -570,6 +578,7 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     engine_log.write_text("")
     core = VisualCore(state_port, cmd_port, EngineLog(engine_log))
     core.progression = AVATAR_PROGRESSION
+    core.garage = AVATAR_GARAGE
     core.start()
     cmd = [args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}", "--audio-driver", "Dummy"]
     if not args.native:
@@ -772,6 +781,45 @@ def _scenes(s: Session) -> None:
     if shot:
         av = shot[1].get("avatar", {})
         s.check("avatar_danseuse", "en danseuse sur 10 % de pente", av.get("standing") is True and av.get("on_screen"), f"{av}")
+    # Équipement (lot V7) : quatre cadres et quatre roues se distinguent à l'image (caméra de côté) ;
+    # traînées d'air à 50 km/h, absentes à 40 km/h.
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "side"})
+    core.set_scene(grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
+
+    def equip(**ids: str) -> None:
+        core.send({"type": "progression", "v": CONTRACT_VERSION, "request_cmd_id": 0, "level": 9, "xp": 0, "xp_next_level": 1,
+                   "coins": 0, "equipped": ids, "avatar": AVATAR_PROGRESSION["avatar"], "lives": 3})
+        time.sleep(0.8)
+
+    shots: dict[str, Any] = {}
+    box = (s.width * 0.20, s.height * 0.20, s.width * 0.80, s.height * 0.95)
+    for group, slot, looks in (("cadre", "frame", ["frame_round", "frame_light", "frame_aero", "frame_tt"]),
+                               ("roues", "wheels", ["wheels_spoked", "wheels_spoked_light", "wheels_deep", "wheels_disc"])):
+        for look in looks:
+            equip(**{slot: look})
+            shot = s.capture(f"avatar_{look}")
+            if shot:
+                shots[look] = shot
+                s.check(f"avatar_{look}", f"{look} : équipement appliqué", shot[1].get("avatar", {}).get("looks", {}).get(slot) == look,
+                        f"{shot[1].get('avatar', {}).get('looks')}")
+        names = [n for n in looks if n in shots]
+        for i, a_name in enumerate(names):
+            for b_name in names[i + 1:]:
+                d = mean_abs_diff(shots[a_name][0], shots[b_name][0], box)
+                s.check(f"avatar_{b_name}", f"{group} : {a_name} et {b_name} se distinguent", d >= 0.15, f"écart moyen {d:.2f} niveaux")
+    equip(kit="kit_stripes")
+    core.set_scene(speed=40.0 / 3.6)
+    time.sleep(0.8)
+    shot = s.capture("avatar_40kmh")
+    if shot:
+        s.check("avatar_40kmh", "pas de traînées d'air à 40 km/h", shot[1].get("avatar", {}).get("streaks") is False, f"{shot[1].get('avatar')}")
+    core.set_scene(speed=50.0 / 3.6)
+    time.sleep(0.8)
+    shot = s.capture("avatar_50kmh")
+    if shot:
+        s.check("avatar_50kmh", "traînées d'air visibles à 50 km/h", shot[1].get("avatar", {}).get("streaks") is True, f"{shot[1].get('avatar')}")
+    equip()
+    core.set_scene(speed=0.0)
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
     core.set_scene(grade=0.0, grade_sent=0.0, power=250.0, power_3s=248.0, cadence=90.0)
     time.sleep(1.0)

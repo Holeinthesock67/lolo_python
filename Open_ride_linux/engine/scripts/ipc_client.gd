@@ -38,6 +38,10 @@ signal world_menu_received(kind: String, msg: Dictionary)
 signal test_message_received(msg: Dictionary)
 ## Révision 1.4 (série T, lot T9) : passage de segment terminé (message répété 3 fois par le core).
 signal segment_result_received(msg: Dictionary)
+## Garage (lots V3/V7, contrat 1.4) : `garage_received` une fois toutes les parties arrivées (éléments
+## réunis) ; `progression_received` après chaque succès du Garage.
+signal garage_received(items: Array)
+signal progression_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -275,6 +279,10 @@ func _poll_incoming() -> void:
 				settings_received.emit(json_obj)
 			"segment_result":
 				segment_result_received.emit(json_obj)
+			"garage":
+				_on_garage_part(json_obj)
+			"progression":
+				progression_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -358,6 +366,27 @@ func _send_json(dict: Dictionary) -> void:
 	var err := _peer.put_packet(payload)
 	if err != OK:
 		print("[diag] envoi UDP en échec (code ", err, ") : ", dict.get("type", "?"))
+
+
+var _garage_parts := {}
+
+
+## Demande le catalogue du Garage (lot V3). Réponse : signal garage_received.
+func request_garage() -> int:
+	_garage_parts.clear()
+	return send_command("list_garage", {})
+
+
+func _on_garage_part(msg: Dictionary) -> void:
+	var parts := int(msg.get("parts", 1))
+	_garage_parts[int(msg.get("part", 1))] = msg.get("items", [])
+	if _garage_parts.size() < parts:
+		return
+	var items := []
+	for n in range(1, parts + 1):
+		items.append_array(_garage_parts.get(n, []))
+	_garage_parts.clear()
+	garage_received.emit(items)
 
 
 ## Demande la liste des parcours au core (lot N3, contrat v1.1). Réponse : signal routes_received.

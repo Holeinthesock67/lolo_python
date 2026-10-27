@@ -13,6 +13,7 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/avatar_mesh.gd").
 
 const AvatarModel := preload("res://scripts/avatar_model.gd")
+const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 
 const LOD_MAX_TRIANGLES := [6000, 1500, 300]
 const CRANK_R := 0.1725
@@ -66,10 +67,14 @@ static func two_bone(a: Vector3, c: Vector3, l1: float, l2: float, pole: Vector3
 	return a + along * x + perp * h
 
 
-## Articulations pour l'angle de pédalier `angle` (pédale droite) : tout ce que la vue place.
-static func pose(angle: float, standing: bool, d: Dictionary) -> Dictionary:
+## Articulations pour l'angle de pédalier `angle` (pédale droite) : tout ce que la vue place. `frame` : la
+## spécification du cadre (equipment_meshes.gd frame_spec) : assis, buste plus bas et mains plus proches sur
+## les cadres aéro et contre-la-montre.
+static func pose(angle: float, standing: bool, d: Dictionary, frame := {}) -> Dictionary:
 	var hip := hip_pos(standing, d)
-	var lean := STANDING_LEAN if standing else SEATED_LEAN
+	var lean := STANDING_LEAN if standing else SEATED_LEAN + float(frame.get("lean_add", 0.0))
+	var bar_half := BAR_HALF_X if standing else float(frame.get("bar_half_x", BAR_HALF_X))
+	var bar_z := BAR.z if standing else float(frame.get("bar_z", BAR.z))
 	var shoulder := hip + Vector3(0.0, cos(lean), -sin(lean)) * float(d["torso"])
 	var out := {"hip": hip, "shoulder": shoulder,
 		"head": shoulder + Vector3(0.0, 0.10, -0.07) * float(d["hs"]) + Vector3(0.0, float(d["r_head"]), -float(d["r_head"]) * 0.3)}
@@ -81,7 +86,7 @@ static func pose(angle: float, standing: bool, d: Dictionary) -> Dictionary:
 		out["ankle_" + key] = ankle
 		out["knee_" + key] = two_bone(hip_s, ankle, float(d["thigh"]), float(d["shin"]), Vector3(0.05 * side, 0.0, -1.0))
 		var sh := shoulder + Vector3(side * 0.17 * float(d["bs"]), -0.02, 0.0)
-		var hand := BAR + Vector3(side * BAR_HALF_X, 0.0, 0.0)
+		var hand := Vector3(side * bar_half, BAR.y, bar_z)
 		out["shoulder_" + key] = sh
 		out["hand_" + key] = hand
 		out["elbow_" + key] = two_bone(sh, hand, float(d["upper_arm"]), float(d["forearm"]), Vector3(side * 0.6, -0.3, 0.8))
@@ -136,7 +141,7 @@ static func _cylinder(radius: float, height: float, radial: int) -> CylinderMesh
 
 ## Maillages d'un niveau de détail : {nom : {"mesh": Mesh, "count": instances}}. Le vélo de base
 ## (cadre, fourche, cintre, selle, pédales, deux roues) est inclus ; V7 remplace ses pièces.
-static func build(lod: int, d: Dictionary) -> Dictionary:
+static func build(lod: int, d: Dictionary, looks := {}) -> Dictionary:
 	lod = clampi(lod, 0, 2)
 	var radial: int = [12, 7, 4][lod]
 	var rings: int = [4, 1, 1][lod]
@@ -159,8 +164,11 @@ static func build(lod: int, d: Dictionary) -> Dictionary:
 		parts["hair"] = {"mesh": _sphere(float(d["r_head"]) * 1.06, [14, 8][lod], [6, 3][lod]), "count": 1}
 		parts["pelvis"] = {"mesh": _box(Vector3(0.28 * float(d["bs"]), 0.16, 0.2)), "count": 1}
 	if lod == 0:
-		parts["rim"] = {"mesh": _torus(WHEEL_R - 0.02, 0.012, 32, 5), "count": 2}
 		parts["crank"] = {"mesh": _box(Vector3(0.025, CRANK_R, 0.025)), "count": 2}
+	if lod <= 1:   # niveaux détaillés : cadre, roues, casque, chaussettes et lunettes de l'équipement (lot V7)
+		for k in ["frame", "tyre", "helmet"]:
+			parts.erase(k)
+		parts.merge(EquipmentMeshes.build(lod, looks, d), true)
 	return parts
 
 
@@ -169,15 +177,6 @@ static func _limb(radius: float, length: float, radial: int, rings: int, lod: in
 	if lod >= 2:
 		return _box(Vector3(radius * 2.0, length + radius, radius * 2.0))
 	return _capsule(radius, length, radial, rings)
-
-
-static func _torus(radius: float, tube: float, rings: int, ring_segments: int) -> TorusMesh:
-	var m := TorusMesh.new()
-	m.inner_radius = radius - tube
-	m.outer_radius = radius + tube
-	m.rings = rings
-	m.ring_segments = ring_segments
-	return m
 
 
 static func triangles_of(mesh: Mesh) -> int:
