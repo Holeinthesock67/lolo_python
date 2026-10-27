@@ -15,6 +15,8 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, Callable
 
+from . import __version__
+
 log = logging.getLogger("ipc_server")
 
 CONTRACT_VERSION = 1
@@ -177,7 +179,7 @@ class IpcServer:
             "type": "hello_ack",
             "v": CONTRACT_VERSION,
             "rev": CONTRACT_REV,
-            "core_version": "0.1.0",
+            "core_version": __version__,
             "config": {**config_summary, "modes": list(CORE_MODES)},
         }
         self.send_raw(msg)
