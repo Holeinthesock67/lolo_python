@@ -16,6 +16,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 | Fichier | Lot | Vérifie |
 | --- | --- | --- |
 | `test_terrain_render.gd` | E2 | Shader triplanaire compilé et rendu : herbe, roche, neige et trois mélanges égaux à `blend_weights` (L3) à 3/255 près, seuil de pente du thème, texture utilisée à la place de la couleur |
+| `test_water_shimmer_render.gd` | P12 | Shader de l'eau qui scintille (`water_shimmer.gdshader`) compilé : couleur de base de l'eau d'E4, deux images identiques sans défilement (aucun clignotement) |
 
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
@@ -69,7 +70,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_vegetation_placer.gd` | K3 | Placement des arbres (`vegetation_placer.gd`) : déterminisme et empreinte figée, densité par `kind`, bruit sans zone, exclusions (route, limite des arbres, pente, trous), temps d'une tuile |
 | `test_hud_view_model.gd` | K2 | Modèle de vue du HUD (`hud_view_model.gd`) : textes et valeurs limites, profil d'altitude (ouvert et boucle), prochaine montée, temps de `profile` |
 | `test_building_mesh.gd` | L1 | Maillage 3D des bâtiments extrudés (`building_mesh.gd`) : murs à arêtes vives, toit plat avec cour intérieure, sens des anneaux, couleurs déterministes par `id`, cas invalides et temps de 500 bâtiments |
-| `test_water_mesh.gd` | L2 | Maillage de l'eau (`water_mesh.gd`) : cours d'eau en ruban (droits et en coude), plans d'eau avec îles, largeur par défaut, cas invalides et déterminisme |
+| `test_water_mesh.gd` | L2 | Maillage de l'eau (`water_mesh.gd`) : cours d'eau en ruban (droits et en coude), plans d'eau avec îles, largeur par défaut, cas invalides et déterminisme ; lot P12 : matériau sans `shimmer` identique à celui d'E4, ondes du matériau `shimmer` poussées dans le sens du vent |
 | `test_theme_render_params.gd` | L3 | Paramètres de rendu tirés du thème (`theme_render_params.gd`) : uniforms terrain, fonction de référence du mélange herbe/roche/neige, poids triplanaires, route et direction du soleil |
 | `test_terrain_material.gd` | E2 | Instanciation et configuration du shader triplanaire (`terrain_material.gd` et `terrain.gdshader`) : uniforms du thème et constantes de L3, textures (avec mipmaps), ligne médiane de la route sur une texture de thème, tuiles sans couleur de sommet (le rendu réel est vérifié dans `tests/render/`) |
 | `test_render_quality.gd` | E1 | Brouillard de limite (`render_quality.gd`, `main.tscn`) : mode profondeur à pleine opacité (`fog_density` = 1), début et fin avec et sans terrain |
@@ -88,6 +89,8 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_far_terrain_carve.gd` | – | Terrain lointain abaissé sous la route (`terrain_tiles.gd`, `carve_under_route`) : vallée en V à 30 % et route en S à 7 %, dépassement de 8 m sans correctif, au moins 2 m sous la chaussée après, aucun sommet relevé, bord commun de deux tuiles identique |
 | `test_sound_player.gd` | E4 | Lecteurs et sons procéduraux du parcours (`sound_player.gd`) : synthèse au démarrage (< 500 ms), vent, roue libre, limitation à 4 lecteurs 3D actifs, volumes à 0,5 dB de `sound_model.gd` |
 | `test_wind_model.gd` | P4 | Modèle du vent (`wind_model.gd`) : repère, lissage (90 % en 1,2 s sans dépassement), phase continue, expiration du vent du core et vent du thème, vent apparent, coût de `evaluate` |
+| `test_wind_turbines.gd` | P12 | Éoliennes (`wind_turbines.gd`) : rotor arrêté sous 10 km/h puis de 5 à 17 tr/min, nacelle face au vent en 38 s après un changement de 90°, au plus 3 °/s, 20 éoliennes au plus (les plus proches), aucun nœud créé ; 20 éoliennes et 30 drapeaux mis à jour sous 0,2 ms par image |
+| `test_flags.gd` | P12 | Drapeaux (`flags.gd`) : tissu orienté vers où souffle le vent à 15° près, un drapeau par village sans mât OSM à 150 m, au même endroit à chaque chargement, 30 drapeaux au plus |
 | `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
 
 ## Étapes du script
