@@ -71,6 +71,7 @@ Les bots de N9 roulent à puissance constante. En 2.0, chaque bot a un profil ph
 | Puncheur | Moyenne | Moyenne | Moyenne, fort sur 1 à 3 min | Relance dans les bosses courtes | — |
 | Diesel | Moyenne | Un peu plus haute | Presque nulle | Régulier, ne répond pas aux attaques | — |
 
+- **Profils retenus le 27 octobre (§6) :** Grimpeur, Rouleur, Sprinteur et Diesel ; le Rouleur (fort sur le plat) remplace le Puncheur du tableau ci-dessus (cahier T12).
 - **Modèle :** même réserve W'bal que la série R (lot R2), un seul module pour le joueur et les bots.
 - **Équilibrage :** niveau choisi au départ (90, 100 ou 110 % de la FTP du joueur, ou valeur libre dans les options). Avant le départ, le core simule le parcours et ajuste la CP de chaque bot pour qu'il finisse dans le même temps qu'un cycliste qui roule à ce niveau. Le profil change l'endroit où le bot est fort, pas son niveau global.
 - **Stratégie :** règles simples tirées des segments (montée, sprint) et de la réserve restante ; pas d'intelligence artificielle.
