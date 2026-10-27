@@ -1,6 +1,6 @@
-# Lot Y12 – Effets de lumière et particules (proposé, chiffré)
+# Lot Y12 – Effets de lumière et particules
 
-**Statut : proposition du 27 octobre, à valider par le propriétaire** (questions dans `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §10). Fin de projet, après Y2 (Godot 4.7.x), soumis aux budgets X2, X13 et X16.
+**Statut : validé par le propriétaire le 27 octobre** (« OK pour tout » aux neuf questions de `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §10) ; issue #386. Fin de projet, après Y2 (Godot 4.7.x), soumis aux budgets X2, X13 et X16.
 
 ## 1. Objectif
 
@@ -15,7 +15,7 @@ Demande du propriétaire du 27 octobre : « quelques effets lumières et particu
 - **Une seule fabrique de particules** : `engine/scripts/effects_particles.gd` (`GPUParticles3D`, maillages et matériaux dessinés par le code, aucune image), sur le modèle de `weather_particles.gd`, qui y est rangée. R10 et R12 (étincelles, éclats, arche de Perfect Shift) l'utilisent avec les couleurs de `neon_palette.gd`.
 - **Vent unique** : toutes les particules qui flottent suivent le vent du modèle P4 (`wind_model.gd`), comme la pluie.
 - **Lien avec le brouillard Y1** : aucune particule ni effet au-delà de 60 m de la caméra (boîte autour de la caméra, `visibility_range_end`) ; les rayons de soleil prennent la couleur et la densité du brouillard du thème ; un effet ne doit jamais éclairer ce que le brouillard cache.
-- **Jour et nuit, saisons** : version 2.0 (P18, P19). En 1.x, un effet qui dépend de l'heure (lucioles) ne s'active que si le soleil du thème est bas (`sky.sun_elevation_deg` < 8°).
+- **Jour et nuit, saisons** : version 2.0 (P18, P19). Décision du 27 octobre : les lucioles (P3), qui dépendent de l'heure, attendent la 2.0 ; elles ne font pas partie d'Y12 en 1.x.
 
 ## 3. Lumière : effets chiffrés
 
@@ -38,7 +38,7 @@ Coût CPU quasi nul (`GPUParticles3D`) ; coût GPU surtout en taux de remplissag
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | P1 | **Poussière dans la lumière** : grains qui brillent à contre-jour près de la caméra | Soleil devant, temps sec | Moyen, se marie avec L2 | < 0,05 ms | 80 | 180 | 300 |
 | P2 | **Pollen et graines** dans les prés, **feuilles qui tombent** en forêt (tuiles de forêt d'OSM), **insectes** au-dessus de l'eau | Selon le décor proche ; biome automatique de la 3.0 ensuite (série U) | Moyen : le décor vit | 0,05–0,15 ms | 150 | 360 | 600 |
-| P3 | **Lucioles** près des haies et de l'eau | Soleil bas (< 8°) ; vraiment utile avec le jour et la nuit de la 2.0 | Fort le soir, nul le jour | < 0,05 ms | 30 | 70 | 120 |
+| P3 | **Lucioles** près des haies et de l'eau (**version 2.0**, avec le jour et la nuit) | Le soir | Fort le soir, nul le jour | < 0,05 ms | 30 | 70 | 120 |
 | P4 | **Éclaboussures** derrière les roues (joueur, bots proches, voitures P13) et **ronds de gouttes** (dans le shader d'Y11 A7, pas en particules) | `wetness` > 0,3 (P8) | Fort sous la pluie | 0,1–0,3 ms | Joueur seul, 20 | Joueur + 4 plus proches, 40 chacun | Joueur + 8, 60 chacun |
 | P5 | **Poussière soulevée** sur le gravier et les chemins (gravel de la série U), bas-côtés | Revêtement non goudronné | Moyen | < 0,1 ms | 40 | 90 | 150 |
 | P6 | **Ambiance des foules** dans les cols (P15) : fumigènes colorés, confettis au sommet | Montée répertoriée, spectateurs présents | Moyen, festif | 0,1–0,3 ms (fumée = transparence) | 0 | Confettis | Confettis + fumigènes |
@@ -48,7 +48,7 @@ Les nombres ci-dessus sont ceux du préréglage `high` multipliés par `particle
 
 ## 5. Enveloppe et budgets
 
-- **Enveloppe proposée pour Y12** : au plus **+1,5 ms de GPU en `medium`** dans le pire cas mesuré (contre-jour avec L2, pluie avec P4 et L5), +0,5 ms en `low` ; p99 au plus +1 ms. `low` garde la règle de la spécification (55 images/s, p99 sous 25 ms) et R14 (60 images/s dans le Cyber-Rogue). Ensemble Y11 + Y12 : **au plus +2,5 ms en `medium`**, soit environ 15 % d'une image à 60 images/s.
+- **Enveloppe pour Y12** (validée) : au plus **+1,5 ms de GPU en `medium`** dans le pire cas mesuré (contre-jour avec L2, pluie avec P4 et L5), +0,5 ms en `low` ; p99 au plus +1 ms. `low` garde la règle de la spécification (55 images/s, p99 sous 25 ms) et R14 (60 images/s dans le Cyber-Rogue). Ensemble Y11 + Y12 : **au plus +2,5 ms en `medium`**, soit environ 15 % d'une image à 60 images/s.
 - **Compilation des shaders** : chaque effet est créé au chargement (derrière l'écran de chargement), jamais à sa première apparition ; avec les ubershaders de 4.4, le p99 ne doit pas bouger quand un effet démarre (§5 de la recherche).
 - **X2** : budget `effects_particles_build` (création des émetteurs, ≤ 5 ms). **X13** : nombre de particules actives ajouté à la sonde (`get_active_count`, comme P8). **X16** : endurance d'une heure en `medium` avec météo changeante, sans dérive de mémoire.
 

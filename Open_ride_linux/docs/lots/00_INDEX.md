@@ -130,11 +130,11 @@
 | Y5 | Arbres lointains en imposteurs (notre propre version, sans extension), feuillage en alpha scissor | GDScript + shader | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) ; issue #361 |
 | Y6 | Résolution 3D par préréglage et résolution adaptative (FSR 1.0), FXAA ou SMAA en `low` | GDScript | Y2, X13 | Petite | Oui ; issue #362 |
 | Y7 | Essai du moteur Mobile pour `low` (mesure seule, décision du propriétaire) | GDScript | Y2 | Petite | Oui (mesure) ; issue #363 |
-| Y8 | Habillage : toits à pans et façades texturées, puis étalonnage (décalques de route proposés dans Y11) | GDScript + shader | Y3, P20 | Grande | En partie ; issue #364 |
+| Y8 | Habillage : toits à pans et façades texturées, puis étalonnage (décalques de route dans Y11) | GDScript + shader | Y3, P20 | Grande | En partie ; issue #364 |
 | Y9 | Lissage des bots à l'écran (mémoire de trames, Hermite, déplacements latéraux, LOD) | GDScript | O7 | Moyenne | Oui ; issue #365 |
 | Y10 | Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | Oui ; issue #366 |
-| [Y11](LOT_Y11_chaussee_herbe_relief.md) | **Proposé** : chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée) et faux relief de l'herbe | Shader + GDScript | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie ; à valider |
-| [Y12](LOT_Y12_lumieres_particules.md) | **Proposé** : effets de lumière (glow, rayons, ombre des nuages, SSR) et particules (décor, pluie, foules, kit Cyber-Rogue) | Shader + GDScript | Y2, Y1, P17, R17, Y11 | Moyenne | Oui ; à valider |
+| [Y11](LOT_Y11_chaussee_herbe_relief.md) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée) et faux relief de l'herbe | Shader + GDScript | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie ; issue #385 |
+| [Y12](LOT_Y12_lumieres_particules.md) | Effets de lumière (glow, rayons, ombre des nuages, SSR) et particules (décor, pluie, foules, kit Cyber-Rogue) | Shader + GDScript | Y2, Y1, P17, R17, Y11 | Moyenne | Oui ; issue #386 |
 | [R0](LOT_R0_delai_frein.md) | Mesure du délai du frein du trainer (marches de pente et de braquet) : script et essai sur le vélo | Python | Q3, Q4 | Petite | Script oui (même outil que X5) ; essai par le propriétaire ; **version 2.0** |
 | [R1](LOT_R1_contrat_ipc_rogue.md) | Contrat IPC v1.4 : boutons Z et A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run | Markdown + JSON | P1 | Petite | Non : interne (décision du propriétaire), **version 2.0** |
 | [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | Oui, **version 2.0** |
@@ -299,7 +299,7 @@ Version 2.0, série V : V2 ──► V3, V4 ──► V3b ;  P1 ──► V1 ;  
 Version 2.0, série W : W0 ──► W1 ──► W2 ──► W3 ──► W4 ──► W5, W6 ;  W2, W3, W5 ──► W7 ;  W6, W7 ──► W8 ──► W9 ──► W14
 W1 ──► W10, W12, W15 ;  W1, W3 ──► W11 ;  W2, W7 ──► W13 ;  W9, W10, W11, W12 ──► W16
 Version 2.0, série T : T2, T6, T16 : indépendants (avancés) ;  T2 ──► T4 ;  P1 ──► T1 ──► T3, T8, T9 ;  T4, N9 ──► T5
-Fin de projet, série Y : Y1 (avancé) ──► S1 ;  Y1, X2, X13 ──► Y2 ──► Y4, Y6, Y7 ;  Y2, S1 ──► Y3 ──► Y8 (avec P20) ;  O1, Y2 ──► Y5 ;  O7 ──► Y9 ──► Y10 (avec les séries T et R) ;  Y8, P20, Y2 ──► Y11 ──► Y12 (avec R17) [proposé]
+Fin de projet, série Y : Y1 (avancé) ──► S1 ;  Y1, X2, X13 ──► Y2 ──► Y4, Y6, Y7 ;  Y2, S1 ──► Y3 ──► Y8 (avec P20) ;  O1, Y2 ──► Y5 ;  O7 ──► Y9 ──► Y10 (avec les séries T et R) ;  Y8, P20, Y2 ──► Y11 ──► Y12 (avec R17)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)

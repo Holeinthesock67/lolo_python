@@ -1,6 +1,6 @@
 # Essai de rendu mesuré : chaussée, herbe, lumières et particules (Y11, Y12)
 
-**Statut : proposition du 27 octobre.** But : remplacer les coûts **estimés** des cahiers `docs/lots/LOT_Y11_chaussee_herbe_relief.md` et `LOT_Y12_lumieres_particules.md` par des coûts **mesurés** sur le PC cible (GTX 1060), en `medium` d'abord (préréglage quotidien du propriétaire), puis en `low` (budget de la spécification). Consigne du propriétaire du 27 octobre : **utiliser les outils de test de la série X** développés pour les autotests ; les résultats sont consignés dans ce fichier (§6), les données brutes restent dans `~/OpenRide/`.
+**Statut : validé le 27 octobre** : étape 0 après Y1, étape 1 après Y2 (Godot 4.7). But : remplacer les coûts **estimés** des cahiers `docs/lots/LOT_Y11_chaussee_herbe_relief.md` et `LOT_Y12_lumieres_particules.md` par des coûts **mesurés** sur le PC cible (GTX 1060), en `medium` d'abord (préréglage quotidien du propriétaire), puis en `low` (budget de la spécification). Consigne du propriétaire du 27 octobre : **utiliser les outils de test de la série X** développés pour les autotests ; les résultats sont consignés dans ce fichier (§6), les données brutes restent dans `~/OpenRide/`.
 
 ## 1. Outils utilisés (déjà sur `main`)
 

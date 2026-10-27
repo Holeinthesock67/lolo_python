@@ -1,6 +1,6 @@
-# Lot Y11 – Chaussée réaliste et faux relief de l'herbe (proposé, chiffré)
+# Lot Y11 – Chaussée réaliste et faux relief de l'herbe
 
-**Statut : proposition du 27 octobre, à valider par le propriétaire** (questions dans `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §10). Fin de projet, comme toute la série Y : rien n'est codé avant Y2 (Godot 4.7.x), et chaque étape est soumise aux budgets X2, X13 et X16.
+**Statut : validé par le propriétaire le 27 octobre** (« OK pour tout » aux neuf questions de `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §10) ; issue #385. Fin de projet, comme toute la série Y : rien n'est codé avant Y2 (Godot 4.7.x), et chaque étape est soumise aux budgets X2, X13 et X16.
 
 ## 1. Objectif
 
@@ -52,7 +52,7 @@ Coûts : **estimations** pour la GTX 1060 en 1080p, préréglage `medium`, camé
 | H2 | **Variation de teinte à deux échelles** : grandes plaques (prés fauchés, herbe sèche, zones plus vertes près de l'eau, 30–100 m) + fine variation existante | Fort à distance moyenne | < 0,05 ms | Oui | Oui | Oui |
 | H3 | **Vagues de vent sur l'herbe** : bandes claires et sombres qui défilent dans le sens du vent du modèle P4 (même vent que `tree_sway.gdshader` et les touffes), intensité selon la force du vent | Fort : le paysage « vit » | < 0,05 ms | Oui | Oui | Oui |
 | H4 | **Touffes raccordées au sol** : la base des touffes prend la teinte du terrain sous elles (même bruit qu'H2), fondu de hauteur à la limite de distance pour qu'elles ne surgissent pas | Moyen : fin de l'effet « collé » | ≈ 0 | — (0 touffe) | Oui | Oui |
-| H5 | **Plus de touffes près de la caméra** : budget par préréglage revu (proposition : `low` 1 500 simples, `medium` 8 000, `high` 20 000), bande élargie hors de la route jusqu'à 25 m, alpha scissor (T10) | Moyen à fort | 0,2–0,6 ms en `medium` (taux de remplissage) | 1 500 si l'essai le permet | 8 000 | 20 000 |
+| H5 | **Plus de touffes près de la caméra** : budget par préréglage revu (validé sous réserve de la mesure : `low` 1 500 simples, `medium` 8 000, `high` 20 000), bande élargie hors de la route jusqu'à 25 m, alpha scissor (T10) | Moyen à fort | 0,2–0,6 ms en `medium` (taux de remplissage) | 1 500 si l'essai le permet | 8 000 | 20 000 |
 | H6 | **Coquilles d'herbe** (« shell texturing ») : le terrain proche (≤ 20 m) redessiné en 6 à 12 couches décalées, découpées en alpha scissor, pour un tapis d'herbe en vrai volume | Fort de près | 1–2,5 ms | Non | Non | Essai seulement ; décision après mesure |
 | H7 | **Parallaxe de l'herbe** | Faible : l'herbe n'a pas de relief net, la parallaxe donne un aspect de moquette | 0,3–0,8 ms | Non | Non | **Non retenue** (H6 ou H5 font mieux) |
 
@@ -60,7 +60,7 @@ Le vent des touffes et des vagues d'herbe vient du même calcul (P4 `wind_model`
 
 ## 5. Enveloppe et budgets
 
-- **Enveloppe proposée pour Y11** : au plus **+1,0 ms de GPU en `medium`** (médiane de la sonde X13), **+0,5 ms en `low`**, et le p99 ne doit pas monter de plus de 1 ms. En `low`, le budget de la spécification reste la règle : 55 images/s, p99 sous 25 ms, tout le décor vivant actif.
+- **Enveloppe pour Y11** (validée) : au plus **+1,0 ms de GPU en `medium`** (médiane de la sonde X13), **+0,5 ms en `low`**, et le p99 ne doit pas monter de plus de 1 ms. En `low`, le budget de la spécification reste la règle : 55 images/s, p99 sous 25 ms, tout le décor vivant actif.
 - **Lien avec Y1** : le brouillard opaque à 4 / 6 / 9 km efface les détails au loin ; les détails A1, A3, H1 et H3 s'effacent vers une couleur moyenne avant 300 m (mipmaps et fondu) pour ne pas scintiller ni coûter là où ils ne se voient pas. La teinte moyenne de la route et de l'herbe est inchangée au loin : le brouillard garde son aspect.
 - **Mémoire vidéo** (P20) : jeu complet route + herbe en 1 024 px compressé ≈ 6 Mo (couleur, normale, rugosité) ; en 2 048 px avec hauteur ≈ 30 Mo : négligeable face au budget de 1 Go de `medium`.
 - **X2** : nouveau budget de test `road_material_build` (création du matériau, ≤ 5 ms) dans `perf_budgets.json`. **X16** : endurance d'une heure en `medium` à la fin du lot, sans dérive de mémoire vidéo.
