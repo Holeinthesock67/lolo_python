@@ -763,14 +763,14 @@ def _scenes(s: Session) -> None:
             frac = fraction(img, later, yellow, step=2)
             s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
 
-    # 5. Pause : trainer perdu, raison visible dans la ligne d'état.
+    # 5. Pause : trainer perdu, raison visible sous le titre du menu de pause.
     core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",
                    trainer_status="RECONNECTING", power=0.0, power_3s=0.0, cadence=0.0)
     time.sleep(SETTLE_S)
     shot = s.capture("pause")
     if shot:
         img, info = shot
-        s.check_texts("pause", info, {"status": "ÉTAT: PAUSED (trainer_lost) | TRAINER: RECONNECTING"}, contains=True)
+        # HUD caché pendant un menu (présentation des menus) : la raison de la pause est sous le titre du menu.
         s.check_texts("pause", info, {"menu_title": "Pause", "menu": "[Reprendre] | Terminer et enregistrer"}, contains=True)
         s.check_texts("pause", info, {"menu": "Trainer perdu : reconnexion en cours…"}, contains=True)
         s.check("pause", "HUD de séance caché derrière le menu", not info["widgets"]["power"]["visible"])
