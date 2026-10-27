@@ -12,6 +12,10 @@ extends CanvasLayer
 ##   wind_view_model.gd) : flèche d'où vient le vent par rapport à la route, « 18 km/h face »,
 ##   barres d'intensité et leur niveau, pastille verte, rouge ou grise du verdict ; caché sans vent.
 ##   Le coin supérieur droit sous le panneau de droite reste libre (blocs segment et bonus, série T).
+## - Lot T9 : blocs « segment » (approche, chrono et écart au record, résultat) et « bonus » (réserve,
+##   bonus actif et barre de temps) empilés sous le panneau de droite (`update_segment`, sortie de
+##   segment_hud_model.gd) ; cachés sans champ `segment` ni `powerup`. Le bloc segment s'arrête au-dessus
+##   du bandeau ERG en 720p ; le bloc bonus n'existe pas en ERG.
 ## - Lot P17 : « Abri 30 % » derrière un bot (`draft_text` de la même sortie), pastille bleue sous
 ##   l'indicateur du vent (à sa place quand il n'y a pas de vent) ; cachée sans abri.
 
@@ -32,6 +36,9 @@ const WIND_BAR_COLOR := Color(0.85, 0.90, 0.95)
 const DRAFT_COLOR := Color(0.15, 0.42, 0.75, 0.95)
 const DRAFT_GAP := 10.0
 const WIND_BAR_OFF := Color(0.85, 0.90, 0.95, 0.18)
+const SEGMENT_TONES := {"good": Color(0.35, 0.90, 0.45), "bad": Color(0.95, 0.40, 0.35), "": Color(0.92, 0.94, 0.96)}
+const BONUS_COLOR := Color(0.62, 0.32, 0.92, 0.95)   # violet des arches de bonus (lot T8)
+const BLOCK_GAP := 8.0
 
 const GRADE_COLORS := {
 	"descent": COLOR_DESCENT,
@@ -75,6 +82,16 @@ var wind_verdict_label: Label
 var _wind_view: Dictionary = {}
 # Abri derrière un bot (Lot P17)
 var draft_label: Label
+# Blocs segment et bonus (Lot T9)
+var panel_segment: Panel
+var segment_title: Label
+var segment_main: Label
+var segment_detail: Label
+var panel_bonus: Panel
+var bonus_held: Label
+var bonus_active: Label
+var bonus_bar: Control
+var _bonus_fraction := 0.0
 
 # Données du profil d'altitude en cache
 var _last_profile_s := -99999.0
@@ -153,6 +170,7 @@ func _build_ui() -> void:
 
 	_build_wind_panel()
 	_build_draft_label()
+	_build_segment_blocks()
 
 	# Panneau inférieur : Profil d'altitude
 	profile_panel = Control.new()
@@ -242,6 +260,72 @@ func _build_draft_label() -> void:
 	draft_label.add_theme_stylebox_override("normal", pill)
 	draft_label.visible = false
 	add_child(draft_label)
+
+
+## Blocs segment et bonus (Lot T9), sous le panneau de droite, même largeur, cachés au départ.
+func _build_segment_blocks() -> void:
+	var top := 20.0 + 320.0 + BLOCK_GAP
+	panel_segment = _create_panel(Vector2(-320.0, top), Vector2(300.0, 100.0), true, false)
+	panel_segment.name = "SegmentPanel"
+	panel_segment.visible = false
+	segment_title = _block_label(panel_segment, "SegmentTitle", Vector2(10.0, 4.0), 22)
+	segment_main = _block_label(panel_segment, "SegmentMain", Vector2(10.0, 30.0), 36)
+	segment_detail = _block_label(panel_segment, "SegmentDetail", Vector2(10.0, 70.0), 20)
+	panel_bonus = _create_panel(Vector2(-320.0, top + 100.0 + BLOCK_GAP), Vector2(300.0, 72.0), true, false)
+	panel_bonus.name = "BonusPanel"
+	panel_bonus.visible = false
+	bonus_held = _block_label(panel_bonus, "BonusHeld", Vector2(10.0, 4.0), 26)
+	bonus_active = _block_label(panel_bonus, "BonusActive", Vector2(10.0, 36.0), 20)
+	bonus_bar = Control.new()
+	bonus_bar.name = "BonusBar"
+	bonus_bar.position = Vector2(10.0, 62.0)
+	bonus_bar.size = Vector2(280.0, 6.0)
+	bonus_bar.draw.connect(_on_bonus_bar_draw)
+	panel_bonus.add_child(bonus_bar)
+
+
+func _block_label(parent: Control, node_name: String, pos: Vector2, font_size: int) -> Label:
+	var l := Label.new()
+	l.name = node_name
+	l.position = pos
+	l.size = Vector2(280.0, font_size * 1.3)
+	l.add_theme_font_size_override("font_size", font_size)
+	l.clip_text = true
+	parent.add_child(l)
+	return l
+
+
+## Blocs segment et bonus (Lot T9) : `view` est la sortie de segment_hud_model.view().
+func update_segment(view: Dictionary) -> void:
+	_build_ui()
+	var seg: Dictionary = view.get("segment", {})
+	var mode := str(seg.get("mode", ""))
+	panel_segment.visible = mode != ""
+	if mode != "":
+		segment_title.text = str(seg.get("title", ""))
+		segment_main.text = str(seg.get("main", ""))
+		segment_main.visible = segment_main.text != ""
+		segment_detail.text = str(seg.get("detail", ""))
+		segment_detail.modulate = SEGMENT_TONES.get(str(seg.get("tone", "")), SEGMENT_TONES[""])
+		segment_main.modulate = SEGMENT_TONES["good"] if mode == "result" and str(seg.get("tone", "")) == "good" else SEGMENT_TONES[""]
+	var pu: Dictionary = view.get("powerup", {})
+	panel_bonus.visible = bool(pu.get("visible", false))
+	if panel_bonus.visible:
+		var held := str(pu.get("held_text", ""))
+		var active := str(pu.get("active_text", ""))
+		bonus_held.text = held if held != "" else active
+		bonus_active.text = active if held != "" else ""
+		bonus_active.visible = bonus_active.text != ""
+		var fraction := float(pu.get("fraction", 0.0)) if active != "" else 0.0
+		bonus_bar.visible = active != ""
+		if absf(fraction - _bonus_fraction) > 0.005:
+			_bonus_fraction = fraction
+			bonus_bar.queue_redraw()
+
+
+func _on_bonus_bar_draw() -> void:
+	bonus_bar.draw_rect(Rect2(Vector2.ZERO, bonus_bar.size), Color(1, 1, 1, 0.15))
+	bonus_bar.draw_rect(Rect2(Vector2.ZERO, Vector2(bonus_bar.size.x * _bonus_fraction, bonus_bar.size.y)), BONUS_COLOR)
 
 
 ## Indicateur du vent (Lot P16) et de l'abri (Lot P17) : `view` est la sortie de wind_view_model.view().

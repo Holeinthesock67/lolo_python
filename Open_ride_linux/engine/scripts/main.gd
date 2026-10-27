@@ -25,6 +25,7 @@ const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
+const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
@@ -116,6 +117,8 @@ var _living_enabled := true
 var living_decor = null
 ## Série T (lot T8) : lignes, portiques et panneaux des segments, arches de bonus.
 var segment_markers = null
+## Série T (lot T9) : blocs segment et bonus du HUD.
+var segment_hud = SegmentHudModel.new()
 var _beep_until_s := -INF
 
 
@@ -186,6 +189,10 @@ func _ready() -> void:
 	ipc.core_returned.connect(_on_core_returned)
 	ipc.command_failed.connect(_on_command_failed)
 	ipc.test_message_received.connect(_on_test_message)
+	ipc.segment_result_received.connect(func(msg: Dictionary) -> void:
+		if segment_hud.on_result(msg, Time.get_ticks_msec() / 1000.0):
+			print("Segment terminé : %s en %s s" % [msg.get("segment_id", "?"), msg.get("time_s", "?")])
+			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?")))
 	banner.changed.connect(func(text: String) -> void:
 		ipc.test_log("banner text=" + text.replace("\n", " | ")))
 	var gen := AudioStreamGenerator.new()
@@ -700,6 +707,7 @@ func _poll_route_job() -> void:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	segment_markers.set_route(route, SegmentMarkersModel.arch_every_m_from_file(), float(streamer.get("_road_width_m")))
+	segment_hud.set_segments(route.segments)
 	if route.segments_present:
 		print("Segments du parcours : %d" % route.segments.size())
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
@@ -874,6 +882,7 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 	if junction_view != null:
 		junction_view.update_display(ipc.open_world if not ipc.open_world.is_empty() else null,
 			get_viewport().get_visible_rect().size, hud.panel_center.get_global_rect().end.y)
