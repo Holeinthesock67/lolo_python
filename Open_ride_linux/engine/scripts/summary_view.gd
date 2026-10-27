@@ -2,17 +2,19 @@ extends VBoxContainer
 
 ## Bilan de fin de séance dans les menus (Lot N6) : lignes du bilan, fichier FIT et, sur demande
 ## (« Voir le bilan détaillé »), les blocs ERG avec leur couleur. Ne calcule rien : lit
-## summary_view_model.gd (lot N4). Pas de class_name : charger par preload("res://scripts/summary_view.gd").
+## summary_view_model.gd (lot N4). Une colonne dans la carte de détail du menu, couleurs du thème commun
+## (ui_theme.gd). Pas de class_name : charger par preload("res://scripts/summary_view.gd").
 
 const SummaryViewModel := preload("res://scripts/summary_view_model.gd")
+const UiTheme := preload("res://scripts/ui_theme.gd")
 
-const FONT_SIZE := 24
+const FONT_SIZE := UiTheme.CARD_SIZE
 const BLOCK_FONT_SIZE := 20
 const BLOCK_COLORS := {
-	SummaryViewModel.COLOR_GREEN: Color(0.55, 0.90, 0.55),
-	SummaryViewModel.COLOR_ORANGE: Color(1.0, 0.75, 0.30),
-	SummaryViewModel.COLOR_RED: Color(1.0, 0.45, 0.40),
-	SummaryViewModel.COLOR_NEUTRAL: Color(0.75, 0.77, 0.80),
+	SummaryViewModel.COLOR_GREEN: UiTheme.OK,
+	SummaryViewModel.COLOR_ORANGE: UiTheme.WARN,
+	SummaryViewModel.COLOR_RED: UiTheme.DANGER,
+	SummaryViewModel.COLOR_NEUTRAL: UiTheme.DIM,
 }
 const MAX_BLOCK_LINES := 4
 
@@ -24,12 +26,9 @@ var blocks_box: VBoxContainer
 
 func _init() -> void:
 	add_theme_constant_override("separation", 4)
-	lines_label = Label.new()
-	lines_label.add_theme_font_size_override("font_size", FONT_SIZE)
+	lines_label = UiTheme.label(FONT_SIZE)
 	add_child(lines_label)
-	fit_label = Label.new()
-	fit_label.add_theme_font_size_override("font_size", BLOCK_FONT_SIZE)
-	fit_label.modulate = Color(0.75, 0.80, 0.85)
+	fit_label = UiTheme.label(BLOCK_FONT_SIZE, UiTheme.DIM)
 	fit_label.clip_text = true
 	add_child(fit_label)
 	blocks_box = VBoxContainer.new()
@@ -45,13 +44,7 @@ func update_display(summary: Dictionary, details: bool, mode := "", ftp_w := 0) 
 	for ln in model.lines(summary, mode, ftp_w):
 		var unit := str(ln.get("unit", ""))
 		rows.append("%s : %s%s" % [ln["label"], ln["value"], (" " + unit) if unit != "" else ""])
-	# Deux colonnes : le bilan complet tient dans le panneau à 1280 × 720.
-	var half := int(ceil(rows.size() / 2.0))
-	var text_rows: Array[String] = []
-	for i in range(half):
-		var right := ("        " + rows[i + half]) if i + half < rows.size() else ""
-		text_rows.append(rows[i] + right)
-	lines_label.text = "\n".join(text_rows) if not rows.is_empty() else "Bilan en cours de calcul…"
+	lines_label.text = "\n".join(rows) if not rows.is_empty() else "Bilan en cours de calcul…"
 	fit_label.text = model.fit_line(summary)
 	for c in blocks_box.get_children():
 		c.queue_free()
@@ -75,9 +68,6 @@ func update_display(summary: Dictionary, details: bool, mode := "", ftp_w := 0) 
 
 
 func _block_line(text: String, color: String) -> void:
-	var l := Label.new()
-	l.add_theme_font_size_override("font_size", BLOCK_FONT_SIZE)
-	l.text = text
+	var l := UiTheme.label(BLOCK_FONT_SIZE, BLOCK_COLORS.get(color, UiTheme.TEXT), text)
 	l.clip_text = true
-	l.modulate = BLOCK_COLORS.get(color, Color.WHITE)
 	blocks_box.add_child(l)
