@@ -48,3 +48,7 @@ Aucune.
 
 - Compilation depuis le menu de l'engine (commande IPC, reportée).
 - Surveillance du dossier pendant que l'application tourne.
+
+## 9. Livraison (25 octobre 2026, PR #165)
+
+- Code et tests fusionnés sur `main` par la PR #165 (issue #108 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.

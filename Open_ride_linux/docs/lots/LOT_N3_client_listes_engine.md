@@ -46,3 +46,7 @@ Aucune.
 
 - Affichage des menus (N6).
 - Côté core (N2).
+
+## 9. Livraison (25 octobre 2026, PR #163)
+
+- Code et tests fusionnés sur `main` par la PR #163 (issue #102 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.
