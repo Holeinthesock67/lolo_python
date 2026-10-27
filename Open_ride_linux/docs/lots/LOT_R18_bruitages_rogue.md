@@ -10,7 +10,7 @@ Principe de confort, tiré de la recette P16 (sons jugés désagréables puis re
 
 1. `docs/lots/00_INDEX.md`, `docs/lots/LOT_R11_hud_diegetique.md` §4.2 (sons déjà prévus), `LOT_R12_ennemis_boss.md`, `LOT_R17_direction_artistique.md` §4.5 (catalogue des effets : un son par effet visuel), `docs/lots/LOT_P10_sons_velo.md` (vent et roue libre, à rester audibles).
 2. Code : `engine/scripts/sound_model.gd` (modèle sonore, lissage 12 dB/s, 4 sources spatialisées), `engine/scripts/sound_player.gd` (synthèse au lancement, remplacement par `~/OpenRide/Sounds/<nom>.ogg`), `engine/scripts/ambience_model.gd`.
-3. Le réglage de volume général de l'écran Réglages (fil séparé, 27 octobre) : ses catégories sont reprises telles quelles, voir §4.5.
+3. Le réglage de volume général de l'écran Réglages (fil séparé, 27 octobre) : `engine/scripts/audio_mix.gd`, `docs/AUDIO.md` (bus `RogueSfx` et `RogueMusic`), voir §4.5.
 
 ## 3. Prérequis
 
@@ -75,7 +75,7 @@ Les sons de vent et de roue libre de P10 restent inchangés et continuent dans l
 
 ### 4.5 Volumes réglables
 
-Trois niveaux, cohérents avec le volume général de l'écran Réglages (fil séparé) dont les catégories sont reprises telles quelles : **volume général** (existant) × **bruitages** (sons de jeu, §4.1) × **musique** (§4.3). Le vent et la roue libre de P10 restent dans la catégorie « ambiance » du volume général. Réglage `[audio] rogue_sfx_pct` et `rogue_music_pct` (0 à 100, défaut 70 et 40) dans `config.toml`, aussi réglables à la manette depuis l'écran Réglages et l'écran de pause du mode. Muet total : volume général à 0.
+Alignés sur le réglage de volume général de l'écran Réglages (fil séparé, `engine/scripts/audio_mix.gd` et `docs/AUDIO.md`) : deux **bus** réservés, `RogueSfx` (les sons de jeu du §4.1) et `RogueMusic` (la musique du §4.3), dont le volume final est `rogue_sfx_pct` ou `rogue_music_pct` (0 à 100) multiplié par `master_pct`, comme les autres catégories. Réglages `[audio] rogue_sfx_pct` et `rogue_music_pct` dans `config.toml` (défauts 70 et 40), aussi réglables à la manette depuis l'écran Réglages et l'écran de pause du mode. Le vent et la roue libre de P10 restent sur le bus d'ambiance existant. Ce lot n'ajoute aucun bus ni réglage de son côté : il joue ses sons sur ces deux bus. Muet total : `master_pct` à 0.
 
 ### 4.6 Remplacement
 
@@ -84,17 +84,17 @@ Comme pour les autres sons : `~/OpenRide/Sounds/<nom>.ogg` remplace le son synth
 ## 5. Fichiers concernés
 
 - **Créés :** `engine/scripts/rogue/rogue_sound_model.gd`, `engine/scripts/rogue/rogue_sound_synth.gd` (formes d'onde), `engine/tests/unit/test_rogue_sound_model.gd`, `engine/tests/render/test_rogue_sound_synth.gd` (durées, niveaux, absence de saturation).
-- **Modifiés :** `engine/scripts/sound_player.gd` (lecteurs du mode, volumes), `docs/SUIVI_AVANCEMENT.md` (une ligne), `docs/lots/00_INDEX.md`.
+- **Modifiés :** `engine/scripts/sound_player.gd` (lecteurs du mode sur les bus du volume général), `docs/SUIVI_AVANCEMENT.md` (une ligne), `docs/lots/00_INDEX.md`.
 
 ## 6. Modifications de contrat autorisées
 
-Aucune (les événements existent déjà dans l'IPC 1.4). Réglages `[audio] rogue_sfx_pct` et `rogue_music_pct` : ajout à `config.toml` (SRS §11) et à `config.py`.
+Aucune (les événements existent déjà dans l'IPC 1.4). Réglages `[audio] rogue_sfx_pct` et `rogue_music_pct` : ajoutés par le lot du volume général (SRS §11, `config.py`) ; ce lot ne fait que les lire.
 
 ## 7. Critères d'acceptation
 
 1. Chaque événement de la liste §4.1 a un son, une durée dans la plage annoncée et un niveau crête sous −3 dBFS (test sur les formes d'onde).
 2. Plafond de 8 voix et délai de 60 ms respectés ; priorités testées.
-3. Volumes : `bruitages`, `musique` et général multiplient bien ; 0 coupe la catégorie.
+3. Volumes : les sons de jeu passent par le bus `RogueSfx`, la musique par `RogueMusic` ; `rogue_*_pct` × `master_pct` multiplient bien, 0 coupe la catégorie.
 4. Synthèse au lancement sous 300 ms et mémoire sous 8 Mo (mesure du test de rendu).
 5. Écoute par le propriétaire (douceur, pas de son strident) lors de la recette R14.
 
