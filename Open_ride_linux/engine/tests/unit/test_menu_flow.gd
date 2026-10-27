@@ -37,6 +37,7 @@ func _focus_id(f) -> String:
 
 func _test_full_session() -> void:
 	var f = MenuFlow.new()
+	f.connect_done = true   # écran de connexion : _test_connect_screen
 	_check(not f.is_visible(), "menu caché avant le premier état")
 	_check(f.handle("PLUS_LONG").is_empty(), "aucune action sans état")
 	var acts: Array = f.on_state({"session_state": "IDLE"})
@@ -97,6 +98,7 @@ func _ids_route(items: Array, index: int) -> String:
 
 func _test_abandon_and_summary_quit() -> void:
 	var f = MenuFlow.new()
+	f.connect_done = true   # écran de connexion : _test_connect_screen
 	_check(f.on_state({"session_state": "RUNNING"}) == [{"action": "list"}],
 			"listes demandées même en RUNNING (profils des blocs ERG avec --autostart)")
 	f.on_state({"session_state": "PAUSED"})
@@ -115,6 +117,7 @@ func _test_abandon_and_summary_quit() -> void:
 	_check(f.handle("PLUS_LONG") == {"action": "quit"}, "Quitter depuis le bilan")
 	f.list_failed("routes")
 	var g = MenuFlow.new()
+	g.connect_done = true
 	g.on_state({"session_state": "IDLE"})
 	g.list_failed("routes")
 	g.handle("PLUS_LONG")
@@ -126,6 +129,7 @@ func _test_abandon_and_summary_quit() -> void:
 
 func _test_view() -> void:
 	var f = MenuFlow.new()
+	f.connect_done = true   # écran de connexion : _test_connect_screen
 	f.on_state({"session_state": "IDLE"})
 	var many: Array = []
 	for i in range(9):
@@ -157,7 +161,106 @@ func _test_view() -> void:
 	v.free()
 
 
+const DEV_ALL := {"trainer": {"status": "CONNECTED", "name": "HomeTrainer 0001", "address": null},
+	"click": [{"side": "plus", "status": "CONNECTED", "battery_pct": 80},
+		{"side": "minus", "status": "CONNECTED", "battery_pct": 70}],
+	"hr": {"status": "NONE", "source": null, "battery_pct": null}}
+
+
+func _dev(minus_status: String, trainer_status := "CONNECTED") -> Dictionary:
+	var d: Dictionary = DEV_ALL.duplicate(true)
+	d["click"][1]["status"] = minus_status
+	d["trainer"]["status"] = trainer_status
+	return d
+
+
+func _test_connect_screen() -> void:
+	var f = MenuFlow.new()
+	f.on_state({"session_state": "IDLE", "trainer_status": "SEARCHING", "devices": _dev("SEARCHING", "SEARCHING")}, 10.0)
+	_check(f.state()["screen"] == "connect", "écran de connexion des appareils au premier état")
+	_check(_focus_id(f) == "continue" and f.state()["items"][0]["label"] == "Passer"
+			and "trainer" in f.state()["items"][0]["detail"], "« Passer » nomme ce qui manque : %s" % str(f.state()["items"][0]))
+	# Trainer relié, un seul boîtier : passage unilatéral proposé, pas d'attente.
+	f.on_state({"session_state": "IDLE", "trainer_status": "CONNECTED", "devices": _dev("SEARCHING")}, 11.0)
+	_check(f.state()["items"][0]["detail"] == "un seul boîtier du Click", "Passer : un seul boîtier du Click")
+	f.on_state({"session_state": "IDLE", "trainer_status": "CONNECTED"}, 30.0)   # trame sans `devices`
+	_check(f.state()["screen"] == "connect", "trame sans devices : dernier objet gardé, on attend toujours")
+	_check(f.with_devices({"session_state": "IDLE"}).has("devices"), "with_devices complète la trame")
+	f.handle("PLUS_LONG")   # Passer
+	_check(f.state()["screen"] == "home" and f.connect_done, "Passer : accueil")
+	# Tout relié : accueil seul après CONNECT_HOLD_S.
+	var g = MenuFlow.new()
+	g.on_state({"session_state": "IDLE", "trainer_status": "CONNECTED", "devices": DEV_ALL}, 5.0)
+	_check(g.state()["screen"] == "connect" and g.state()["items"][0]["label"] == "Continuer", "tout relié : « Continuer », écran encore visible")
+	g.on_state({"session_state": "IDLE", "trainer_status": "CONNECTED"}, 5.0 + MenuFlow.CONNECT_HOLD_S + 0.1)
+	_check(g.state()["screen"] == "home", "tout relié depuis %.0f s : accueil" % MenuFlow.CONNECT_HOLD_S)
+	_check(g.on_state({"session_state": "IDLE"}, 100.0).is_empty() and g.state()["screen"] == "home", "plus d'écran de connexion ensuite")
+	# Séance déjà en cours au premier état (--autostart, reprise) : pas d'écran de connexion.
+	var h = MenuFlow.new()
+	h.on_state({"session_state": "RUNNING"}, 1.0)
+	h.on_state({"session_state": "PAUSED"}, 2.0)
+	_check(h.connect_done and h.state()["screen"] == "pause", "autostart : pas d'écran de connexion")
+	# Rechercher et appairer depuis la connexion, puis retour.
+	var k = MenuFlow.new()
+	k.on_state({"session_state": "IDLE", "trainer_status": "SEARCHING", "devices": _dev("SEARCHING", "SEARCHING")}, 1.0)
+	k.handle("PLUS_SHORT")
+	var act: Dictionary = k.handle("PLUS_LONG")
+	_check(act.get("action") == "scan_devices" and k.state()["screen"] == "pairing", "Rechercher et appairer : écran Appareils et recherche")
+	k.handle("MINUS_LONG")
+	_check(k.state()["screen"] == "connect", "retour à la connexion")
+	k.handle("PLUS_SHORT")   # Quitter
+	k.handle("PLUS_LONG")
+	_check(k.state()["screen"] == "confirm", "Quitter passe par la confirmation")
+
+
+func _test_pairing_screen() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE"})
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")   # Réglages
+	f.handle("PLUS_LONG")
+	_check(f.state()["screen"] == "settings" and _focus_id(f) == "devices", "Réglages : Appareils")
+	var act: Dictionary = f.handle("PLUS_LONG")
+	_check(act.get("action") == "scan_devices" and f.state()["screen"] == "pairing", "Réglages → Appareils : recherche lancée")
+	_check(_focus_id(f) == "back", "recherche en cours : seul Retour est actif (%s)" % _focus_id(f))
+	f.on_scan_results({"type": "scan_results", "request_cmd_id": 3, "done": true, "plus_address": null, "items": [
+		{"role": "trainer", "name": "HomeTrainer 0001", "address": "AA:00:00:00:00:01", "rssi": -50, "configured": false},
+		{"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:01", "rssi": -40, "configured": false},
+		{"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:02", "rssi": -45, "configured": false}]})
+	var labels: Array = f.state()["items"].map(func(it): return it["label"])
+	_check("Trainer : HomeTrainer 0001" in labels, "trainer trouvé choisi : %s" % str(labels))
+	f.menu.handle("PLUS_SHORT")
+	while _focus_id(f) != "identify":
+		f.handle("PLUS_SHORT")
+	act = f.handle("PLUS_LONG")
+	_check(act.get("action") == "identify_click_plus", "identification du +")
+	f.pairing.identify_cmd_id = 7
+	f.on_scan_results({"type": "scan_results", "request_cmd_id": 7, "done": true, "plus_address": "C1:1C:00:00:00:02",
+		"items": f.pairing.items})
+	_check(f.pairing.choice["click_plus"] == "C1:1C:00:00:00:02" and f.pairing.choice["click_minus"] == "C1:1C:00:00:00:01",
+			"+ reconnu, l'autre boîtier devient −")
+	while _focus_id(f) != "save":
+		f.handle("PLUS_SHORT")
+	f.handle("PLUS_LONG")
+	_check(f.state()["screen"] == "confirm" and "trainer HomeTrainer 0001" in f.state()["title"], "confirmation avec les changements : %s" % f.state()["title"])
+	f.handle("PLUS_SHORT")   # Oui
+	act = f.handle("PLUS_LONG")
+	_check(act.get("action") == "pair_devices" and act["args"]["trainer"] == "AA:00:00:00:00:01"
+			and act["args"]["click_plus"] == "C1:1C:00:00:00:02" and act["args"]["hr"] == null, "pair_devices : %s" % str(act))
+	_check(f.state()["screen"] == "pairing", "retour à l'écran Appareils après Oui")
+	f.on_command_acked("pair_devices")
+	_check(f.state()["items"].any(func(it): return it["id"] == "relaunch"), "enregistré : Relancer OpenRide proposé")
+	while _focus_id(f) != "relaunch":
+		f.handle("PLUS_SHORT")
+	_check(f.handle("PLUS_LONG").get("action") == "relaunch", "Relancer : action relaunch")
+	f.on_error("pairing_failed", "adresse mal formée")
+	_check(not f.pairing.saved and "refusé" in f.pairing.message, "pairing_failed affiché")
+
+
 func _init() -> void:
+	_test_connect_screen()
+	_test_pairing_screen()
 	_test_full_session()
 	_test_abandon_and_summary_quit()
 	_test_view()
