@@ -4,7 +4,7 @@
 
 Écrire dans le `.world` la couche facultative `segments` (plan de la série T §3.1 et §3.5) : montées et sprints détectés par T2, plus les segments déclarés à la main dans un fichier posé à côté du GPX (décision du 27 octobre). L'engine lit cette couche lui-même pour dessiner les lignes et les panneaux (T8) ; le core la lit pour chronométrer (T4).
 
-**État : cahier prêt, développement après T1.** Le format exact de la couche (`segments.json`, version de couche, manifeste) est fixé par le contrat T1 (IPC et `.world` v1.4), qui attend lui-même P1.
+**État : livré le 27 octobre.** Le format de la couche (`segments.json`, version de couche 1.0, entrée `layers.segments` du manifeste) est celui du contrat T1 (format `.world` 1.3, §8 bis, PR #392).
 
 ## 2. À lire
 
@@ -65,3 +65,14 @@ Aucune au-delà de T1 : la couche suit exactement le format fixé par T1.
 
 - Rendu des lignes, arches et panneaux (T8) ; chronométrage dans la séance (T4 puis branchement).
 - Édition des segments dans le menu.
+
+## 9. Livraison (27 octobre 2026)
+
+- Nouveau module `compiler/src/openride_compiler/segments_layer.py` : lecture et validation du fichier manuel, détection par `openride_core.segments`, écriture de `segments.json` (identique octet pour octet pour les mêmes segments), bloc du manifeste et résumé pour `info`.
+- `build` : couche `segments` dans les couches par défaut (`route,terrain,segments`) ; sans core, avertissement et couche omise. Fichier manuel invalide : la compilation est refusée, rien n'est écrit.
+- `add-layer … segments [--manual FICHIER]` : fichier manuel par défaut, `<trace>.segments.toml` à côté du `.world` puis dans `~/OpenRide/GPX`.
+- Choix faits :
+  - le manifeste du compilateur porte toujours `layers.segments` (`present` faux quand la couche est absente), comme les autres couches ;
+  - le compilateur écrit `format_version` 1.3 ;
+  - tout parcours synthétique de `demo_world.py` porte aussi sa couche `segments` (format 1.3), pas seulement celui de démonstration.
+- Tests : `compiler/tests/test_segments_layer.py` (19 tests) et `core/tests/test_segments.py` (parcours de démonstration reproductible et conforme aux schémas).
