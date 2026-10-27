@@ -8,6 +8,9 @@
 - `worst_state()` : trame la plus lourde attendue pour une révision du contrat, avec les
   longueurs maximales de `MAX_TEXT`. Chaque révision qui ajoute des champs à `state` ajoute
   sa fonction dans `REVISION_EXTRAS` ; `tests/test_ipc_budget.py` vérifie que toutes tiennent.
+- Cible et limite : la cible reste 1 400 octets pour toutes les révisions (place gardée pour les
+  ajouts de la 2.0) ; la limite de `state` est de 1 400 octets jusqu'à la révision 1.2 et de
+  4 096 octets depuis la 1.3 (contrat §2, décision D1). Le core n'allège qu'au-delà de la limite.
 """
 
 from __future__ import annotations
@@ -16,7 +19,8 @@ import copy
 import json
 from typing import Any, Callable
 
-MAX_DATAGRAM_SIZE = 1400
+MAX_DATAGRAM_SIZE = 1400          # cible de toutes les révisions, et limite jusqu'à la 1.2
+STATE_LIMIT_1_3 = 4096            # limite de `state` depuis la révision 1.3 (MAX_STATE_DATAGRAM_SIZE)
 
 # Longueurs maximales attendues des textes libres (caractères). Au-delà, `fit_state` raccourcit.
 MAX_TEXT = {
@@ -141,10 +145,18 @@ def _extras_1_2(d: dict[str, Any]) -> None:
     d["difficulty_pct"] = 100
 
 
+def _extras_1_3(d: dict[str, Any]) -> None:
+    # `wind` n'est jamais dans la même trame que `devices` (contrat §3) : la trame qui porte
+    # `devices`, plus lourde, reste la pire. Seuls `draft` et `draft_bot` s'y ajoutent.
+    d["draft"] = 0.45
+    d["draft_bot"] = d["bots"][0]["id"]
+
+
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
 REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.1": _extras_1_1,
     "1.2": _extras_1_2,
+    "1.3": _extras_1_3,
 }
 
 
@@ -162,12 +174,19 @@ def worst_state(revision: str) -> dict[str, Any]:
     return d
 
 
+def state_limit(revision: str) -> int:
+    """Limite de taille d'une trame `state` pour `revision` (contrat §2)."""
+    major, minor = (int(x) for x in revision.split("."))
+    return STATE_LIMIT_1_3 if (major, minor) >= (1, 3) else MAX_DATAGRAM_SIZE
+
+
 def report() -> str:
     """Tableau texte : taille de la pire trame par révision (python -m openride_core.ipc_budget)."""
-    lines = [f"{'révision':<9} {'octets':>6}  marge (limite {MAX_DATAGRAM_SIZE})"]
+    lines = [f"{'révision':<9} {'octets':>6}  {'cible 1400':>10}  {'limite':>6}  marge"]
     for rev in revisions():
         n = size(worst_state(rev))
-        lines.append(f"{rev:<9} {n:>6}  {MAX_DATAGRAM_SIZE - n:+d}")
+        limit = state_limit(rev)
+        lines.append(f"{rev:<9} {n:>6}  {MAX_DATAGRAM_SIZE - n:>+10d}  {limit:>6}  {limit - n:+d}")
     return "\n".join(lines)
 
 
