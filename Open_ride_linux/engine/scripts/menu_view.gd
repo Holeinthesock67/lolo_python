@@ -20,6 +20,7 @@ const DISABLED_TEXT := Color(0.60, 0.62, 0.65)
 const HINT := "+ / − : choisir   ·   long + : valider   ·   long − : retour   ·   Y : pause"
 
 var title_label: Label
+var status_label: Label
 var items_box: VBoxContainer
 var more_label: Label
 var hint_label: Label
@@ -58,6 +59,12 @@ func _init() -> void:
 	title_label.add_theme_font_size_override("font_size", TITLE_SIZE)
 	title_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	box.add_child(title_label)
+	status_label = Label.new()
+	status_label.add_theme_font_size_override("font_size", DETAIL_SIZE)
+	status_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	status_label.modulate = FOCUS_BG
+	status_label.clip_text = true
+	box.add_child(status_label)
 	summary = SummaryView.new()
 	box.add_child(summary)
 	items_box = VBoxContainer.new()
@@ -93,6 +100,8 @@ func items_text() -> String:
 ## menu : état de menu_model.gd ; state : dernière trame ; summary_data : bilan (écran « summary »).
 func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionary, show_details: bool) -> void:
 	title_label.text = str(menu.get("title", ""))
+	status_label.text = str(menu.get("status", ""))
+	status_label.visible = status_label.text != ""
 	var items: Array = menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
 	var first := 0
@@ -123,7 +132,7 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	more_label.text = "%d / %d" % [focus + 1, items.size()] if items.size() > MAX_VISIBLE_ITEMS else ""
 	var screen := str(menu.get("screen", ""))
 	summary.visible = screen == "summary"
-	devices.visible = screen in ["home", "ready"]
+	devices.visible = screen in ["home", "ready", "connect"]
 	hint_label.visible = not devices.visible   # à 1024 × 600, l'aide et les appareils ne tiennent pas ensemble
 	if summary.visible:
 		summary.update_display(summary_data, show_details, str(state.get("mode", "")))
