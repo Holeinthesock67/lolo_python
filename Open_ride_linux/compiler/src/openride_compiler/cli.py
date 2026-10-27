@@ -23,6 +23,7 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import __version__
 from . import constants as C
 from .cache import Log, stderr_log
 from .elevation import CopernicusGlo30Provider, ElevationProvider
@@ -84,6 +85,7 @@ class _Parser(argparse.ArgumentParser):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = _Parser(prog="openride-compiler", description="Compile une trace GPX, FIT ou TCX en parcours .world.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True, parser_class=_Parser)
 
     b = sub.add_parser("build", help="compile une trace GPX, FIT ou TCX en dossier .world")
