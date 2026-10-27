@@ -815,8 +815,10 @@ def _scenes(s: Session) -> None:
                 and chart["rect"][1] + chart["rect"][3] <= s.height - 120 * info["ui_scale"], f"rectangle {chart['rect']}")
         s.check_layout("erg_courbes", info)
         box = rect_box(chart["rect"])
+        # Seuil bas : à 1024x600 (échelle 0,8) le panneau ne fait que 55 px de haut et le trait blanc
+        # couvre ~0,17 % de sa surface (mesuré sur le PC).
         s.check("erg_courbes", "courbe de puissance blanche tracée",
-                fraction(img, box, lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=2) >= 0.002)
+                fraction(img, box, lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=2) >= 0.001)
         s.check("erg_courbes", "courbe de fréquence cardiaque rouge tracée",
                 fraction(img, box, lambda p: p[0] > 200 and p[1] < 90 and p[2] < 90, step=2) >= 0.001)
         s.check("erg_courbes", "profil cible coloré en zone",
