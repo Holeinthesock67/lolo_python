@@ -1,0 +1,8 @@
+name = "Ballon d'Alsace"
+region = "Vosges"
+country = "France"
+side = "depuis Saint-Maurice-sur-Moselle"
+waypoints = [[47.8575, 6.8230], [47.8216, 6.8411]]
+ref_length_m = 9000
+ref_gain_m = 620
+tags = ["col", "classique", "vosges"]

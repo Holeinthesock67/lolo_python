@@ -1,0 +1,8 @@
+name = "Col du Galibier"
+region = "Savoie, Alpes"
+country = "France"
+side = "depuis Valloire"
+waypoints = [[45.1653, 6.4291], [45.0640, 6.4078]]
+ref_length_m = 18100
+ref_gain_m = 1245
+tags = ["col", "classique", "hc"]

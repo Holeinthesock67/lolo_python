@@ -4,8 +4,10 @@ Un fichier JSONL par séance, une ligne par seconde, vidée sur disque à chaque
 un plantage, `openride-core recover` peut transformer le dernier journal en FIT.
 
 Sortes de lignes :
-- `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ...}` en tête
-  (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8) ;
+- `{"kind": "header", "version": 1, "route_id": ..., "workout_id": ..., "source": ...}` en tête
+  (`workout_id` : entraînement ERG choisi ou `null`, absent des journaux antérieurs au lot N8 ;
+  `source` : `live` (trainer réel), `simulated` (trainer `mock` ou `sim`) ou `replay` (rejeu),
+  absent des journaux antérieurs au lot V2, qui le lit pour la progression) ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
 - `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ;
 - `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un
@@ -75,14 +77,17 @@ def record_line(rec: Record) -> dict:
 
 class JournalWriter:
     def __init__(self, path: Path, route_id: str | None = None, workout_id: str | None = None,
-                 header: bool = True) -> None:
+                 header: bool = True, source: str | None = None) -> None:
         """Ouvre le journal en ajout ; `header=False` continue un journal existant (reprise, lot N8)."""
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
         self._fh: IO[str] = path.open("a", encoding="utf-8")
         self._last_sync = 0.0
         if header:
-            self._write({"kind": "header", "version": 1, "route_id": route_id, "workout_id": workout_id})
+            head = {"kind": "header", "version": 1, "route_id": route_id, "workout_id": workout_id}
+            if source is not None:
+                head["source"] = source
+            self._write(head)
 
     def _write(self, obj: dict) -> None:
         self._fh.write(json.dumps(obj, separators=(",", ":")) + "\n")
