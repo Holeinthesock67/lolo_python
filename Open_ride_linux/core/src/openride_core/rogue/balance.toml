@@ -38,7 +38,10 @@ transition_frac = 0.5   # boss : fraction de la FTP conseillée pendant la trans
 boss_phase_s = [180.0, 240.0, 90.0]   # combat de chaque phase pour une run de 45 min
 start_gap_m = 150.0   # le mur part derrière le joueur à l'entrée de chaque salle
 max_gap_m = 400.0   # écart plafonné : pas d'avance infinie à capitaliser
-hp_factor = 0.9   # PV de l'ennemi = 0,9 × cible moyenne × durée nominale
+hp_factor_endurance = 1.038   # PV de l'ennemi = facteur × cible moyenne × durée nominale (endurance)
+hp_factor_threshold = 1.03   # idem pour le seuil
+hp_factor_vo2max = 1.02   # idem pour la VO2max
+boss_hp_factor = 1.118   # PV de chaque phase du boss = facteur × cible moyenne × durée de la phase
 gear_step = 0.04   # m_gear = 1 + 0,04 × (vitesse − 6)
 gear_ref = 6   # vitesse neutre : multiplicateur de dégâts et pente envoyée sont centrés dessus
 gear_min = 1   # première vitesse
@@ -160,7 +163,7 @@ bump_s = 15.0
 valley_s = 30.0
 bump_grade = 9.0
 valley_grade = -2.0
-fw_bump = 1.06
+fw_bump = 1.15
 fw_valley = 0.67
 bump_s_30_30 = 30.0
 fw_bump_30_30 = 0.95

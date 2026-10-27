@@ -17,6 +17,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 ## Documents qui font loi (à lire avant de coder)
 
 - `docs/SRS_v1.1.md` : spécification.
+- `docs/GUIDE_UTILISATION.md` : guide d'utilisation sans terminal (installation, appairage, parcours, ERG, commandes du Click et du clavier, dépannage) ; ses raccourcis sont vérifiés par `core/tests/test_docs_coherence.py`, à mettre à jour avec toute commande modifiée.
 - `docs/contracts/ipc_v1.md` et schémas `docs/contracts/ipc/*.schema.json` : messages core ↔ engine.
 - `docs/contracts/world_format_v1.md` et `docs/contracts/world/` : format des parcours `.world`, schémas et vecteurs de test de la route.
 - `docs/SUIVI_AVANCEMENT.md` : état, tests faits, reste à faire.

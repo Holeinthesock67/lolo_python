@@ -3,7 +3,7 @@ extends Control
 ## Menus au-dessus de la vue 3D (Lot N6, réécrit par le lot « présentation des menus », étape 1) : plein
 ## écran sur un voile sombre (le HUD de séance est caché pendant un menu, main.gd), titre et ligne d'état,
 ## liste des éléments avec pictogramme, sélection encadrée et marquée d'un repère, détail aligné à droite,
-## carte de détail à droite (fiche du parcours sur l'écran Prêt, bilan de fin de séance), pastilles des
+## carte de détail à droite (detail_card.gd : fiche du parcours ou de l'entraînement, bilan), pastilles des
 ## appareils (devices_view.gd) et bandeau des boutons (button_bar.gd) en bas. Couleurs, tailles et
 ## espacements du thème commun (ui_theme.gd). Ne décide rien : affiche menu_flow.gd.
 ## Souris : clic gauche sur un élément = le valider (A long), clic droit = retour (Y), molette = choisir ;
@@ -15,14 +15,13 @@ const SummaryView := preload("res://scripts/summary_view.gd")
 const ButtonBar := preload("res://scripts/button_bar.gd")
 const UiTheme := preload("res://scripts/ui_theme.gd")
 const UiIcons := preload("res://scripts/ui_icons.gd")
+const DetailCard := preload("res://scripts/detail_card.gd")
 
 ## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus. Un de moins quand les pastilles des
 ## appareils sont affichées (accueil, Prêt, connexion) : l'accueil tient en entier.
 const MAX_VISIBLE_ITEMS := 9
 const MAX_VISIBLE_WITH_DEVICES := 8
 const DEVICES_SCREENS := ["home", "ready", "connect"]
-## En-tête de la carte de détail selon l'écran ; la carte n'existe que sur ces écrans.
-const CARD_TITLES := {"ready": "Fiche du parcours", "summary": "Bilan de la séance"}
 
 signal item_clicked(item_id: String)
 ## Événement du Click joué à la souris : Y_SHORT (clic droit), MINUS_SHORT / PLUS_SHORT (molette).
@@ -30,10 +29,8 @@ signal mouse_event(event_name: String)
 
 var title_label: Label
 var status_label: Label
-## Carte de détail : en-tête, fiche du parcours sur l'écran Prêt (lot O12), bilan (lot N4).
-var card: PanelContainer
-var card_title: Label
-var card_label: Label
+## Carte de détail (detail_card.gd) : fiche de menu_flow.card() ; le bilan (lot N4) y est ajouté.
+var card   # detail_card.gd
 var items_box: VBoxContainer
 var more_label: Label
 var devices: HBoxContainer
@@ -99,24 +96,10 @@ func _init() -> void:
 	more_label = UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM)
 	more_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	left.add_child(more_label)
-	card = PanelContainer.new()
-	card.add_theme_stylebox_override("panel", UiTheme.card_style())
-	card.custom_minimum_size.x = UiTheme.CARD_W
-	card.size_flags_vertical = Control.SIZE_SHRINK_BEGIN
-	card.clip_contents = true
-	card.mouse_filter = Control.MOUSE_FILTER_PASS
+	card = DetailCard.new()
 	body.add_child(card)
-	var card_box := VBoxContainer.new()
-	card_box.add_theme_constant_override("separation", 10)
-	card.add_child(card_box)
-	card_title = UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM)
-	card_box.add_child(card_title)
-	card_label = UiTheme.label(UiTheme.CARD_SIZE)
-	card_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
-	card_label.visible = false
-	card_box.add_child(card_label)
 	summary = SummaryView.new()
-	card_box.add_child(summary)
+	card.body.add_child(summary)
 	devices = DevicesView.new()
 	box.add_child(devices)
 	# Bandeau des boutons sur toute la largeur, collé en bas.
@@ -159,13 +142,10 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	status_label.text = str(menu.get("status", ""))
 	status_label.visible = status_label.text != ""
 	var screen := str(menu.get("screen", ""))
-	var card_lines: Array = menu.get("card", [])
-	card_label.text = "\n".join(PackedStringArray(card_lines.map(func(l): return str(l))))
-	card_label.visible = not card_lines.is_empty()
+	var sheet: Dictionary = menu.get("card", {})
+	card.visible = not sheet.is_empty()
+	card.update_display(sheet)
 	summary.visible = screen == "summary"
-	card.visible = card_label.visible or summary.visible
-	card_title.text = str(CARD_TITLES.get(screen, ""))
-	card_title.visible = card_title.text != ""
 	var items: Array = menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
 	var max_items := MAX_VISIBLE_WITH_DEVICES if screen in DEVICES_SCREENS else MAX_VISIBLE_ITEMS

@@ -45,24 +45,24 @@ def write(tmp_path, body: str) -> Path:
 
 
 def test_override_changes_only_named_keys(tmp_path):
-    p = write(tmp_path, "hp_factor = 1.1\nwin_gold = 40\n\n[calendars]\n\"45\" = [8.0, 5, 3.0, 2.0, 10.0, [3.0, 4.0, 1.5], 5.0]\n"
+    p = write(tmp_path, "hp_factor_threshold = 1.1\nwin_gold = 40\n\n[calendars]\n\"45\" = [8.0, 5, 3.0, 2.0, 10.0, [3.0, 4.0, 1.5], 5.0]\n"
                         "[reservoirs]\nthreshold = [\"diesel\", \"grimpeur\"]\n"
                         "[room_profiles.diesel.threshold]\nfw = 0.95\n")
     b = load_balance(p)
-    assert b.hp_factor == 1.1 and b.win_gold == 40.0
+    assert b.hp_factor_threshold == 1.1 and b.win_gold == 40.0
     assert b.calendars[45][1] == 5 and b.calendars[30] == DEFAULT_BALANCE.calendars[30]
     assert b.reservoirs["threshold"] == ("diesel", "grimpeur")
     assert b.reservoirs["endurance"] == DEFAULT_BALANCE.reservoirs["endurance"]
     assert b.room_profiles["diesel"]["threshold"]["fw"] == 0.95
     assert b.room_profiles["diesel"]["threshold"]["g0"] == DEFAULT_BALANCE.room_profiles["diesel"]["threshold"]["g0"]
     assert b.room_profiles["diesel"]["endurance"] == DEFAULT_BALANCE.room_profiles["diesel"]["endurance"]
-    assert DEFAULT_BALANCE.hp_factor == 0.9 and DEFAULT_BALANCE.room_profiles["diesel"]["threshold"]["fw"] == 0.90
+    assert DEFAULT_BALANCE.hp_factor_threshold == 1.03 and DEFAULT_BALANCE.room_profiles["diesel"]["threshold"]["fw"] == 0.90
 
 
 @pytest.mark.parametrize("body, needle", [
     ("hp_facteur = 1.0\n", "hp_facteur : clé inconnue"),
-    ("hp_factor = 50\n", "hp_factor : 50.0 hors bornes"),
-    ("hp_factor = \"beaucoup\"\n", "hp_factor : un nombre est attendu"),
+    ("boss_hp_factor = 50\n", "boss_hp_factor : 50.0 hors bornes"),
+    ("hp_factor_vo2max = \"beaucoup\"\n", "hp_factor_vo2max : un nombre est attendu"),
     ("gear_max = 12.5\n", "gear_max : un entier est attendu"),
     ("gear_max = 99\n", "gear_max : 99 hors bornes"),
     ("boss_phase_s = [1.0, 2.0]\n", "boss_phase_s : une liste de 3 éléments"),
@@ -90,7 +90,7 @@ def test_bounds_allow_negative_grades_only_where_expected():
 def test_hash_is_stable_short_and_follows_the_values():
     h = balance_hash(DEFAULT_BALANCE)
     assert re.fullmatch(r"[0-9a-f]{8}", h) and h == balance_hash(load_balance(NOWHERE))
-    assert balance_hash(apply_overrides(DEFAULT_BALANCE, {"hp_factor": 1.0})) != h
+    assert balance_hash(apply_overrides(DEFAULT_BALANCE, {"hp_factor_threshold": 1.0})) != h
     assert balance_hash(apply_overrides(DEFAULT_BALANCE, {"room_profiles": {"diesel": {"threshold": {"fw": 0.91}}}})) != h
 
 
@@ -151,10 +151,10 @@ def test_targets_listed_with_measure_and_range():
 def test_sensitivity_names_constants_for_missed_targets():
     targets = [{"label": "Salles gagnées, Moyen (%)", "key": "rooms_won_pct", "profile": "moyen", "ok": False},
                {"label": "déjà tenue", "key": "defeats", "profile": "moyen", "ok": True}]
-    out = sim.sensitivity("threshold", 30, 4, 1, DEFAULT_BALANCE, targets, 1, constants=["hp_factor", "win_gold"])
+    out = sim.sensitivity("threshold", 30, 4, 1, DEFAULT_BALANCE, targets, 1, constants=["hp_factor_threshold", "win_gold"])
     assert list(out) == ["Salles gagnées, Moyen (%)"]
     rows = out["Salles gagnées, Moyen (%)"]
-    assert rows[0]["constant"] == "hp_factor" and rows[0]["value"] == 0.9   # win_gold ne change pas le taux de victoire
+    assert rows[0]["constant"] == "hp_factor_threshold" and rows[0]["value"] == 1.03   # win_gold ne change pas le taux de victoire
     assert all(set(r) == {"constant", "value", "minus20", "plus20"} for r in rows)
 
 
@@ -172,6 +172,6 @@ def test_cli_refuses_unknown_profile_and_bad_table(tmp_path, capsys):
     assert sim.main(["--profiles", "dieu", "--runs", "1"]) == 2
     assert sim.main(["--runs", "1", "--balance", str(tmp_path / "absent.toml")]) == 2
     bad = tmp_path / "bad.toml"
-    bad.write_text("hp_factor = 99\n", encoding="utf-8")
+    bad.write_text("boss_hp_factor = 99\n", encoding="utf-8")
     assert sim.main(["--runs", "1", "--balance", str(bad)]) == 2
-    assert "hp_factor" in capsys.readouterr().err
+    assert "boss_hp_factor" in capsys.readouterr().err
