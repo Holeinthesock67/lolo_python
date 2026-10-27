@@ -64,7 +64,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | Fichier | Lot | Vérifie |
 | --- | --- | --- |
 | `test_route_vectors.gd` | A | `route_data.gd` contre `docs/contracts/world/route_test_vectors.json` (42 vecteurs) |
-| `test_theme_loader.gd` | I5 | Validation, fusion avec le thème `default` et chargement de textures dans `theme_loader.gd` (40 vérifications) |
+| `test_theme_loader.gd` | I5 | Validation, fusion avec le thème `default` et chargement de textures dans `theme_loader.gd` (42 vérifications, dont la lecture d'un thème 1.0 après le passage du défaut en 1.2) |
 | `test_menu_model.gd` | K5 | Navigation des menus (`menu_model.gd`) : 12 scénarios d'événements du Click (focus, éléments désactivés, boucle, retour, confirmation, liste vide), événements inconnus, clavier, aucun nœud créé |
 | `test_vegetation_placer.gd` | K3 | Placement des arbres (`vegetation_placer.gd`) : déterminisme et empreinte figée, densité par `kind`, bruit sans zone, exclusions (route, limite des arbres, pente, trous), temps d'une tuile |
 | `test_hud_view_model.gd` | K2 | Modèle de vue du HUD (`hud_view_model.gd`) : textes et valeurs limites, profil d'altitude (ouvert et boucle), prochaine montée, temps de `profile` |
