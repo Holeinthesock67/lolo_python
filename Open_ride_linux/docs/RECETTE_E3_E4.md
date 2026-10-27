@@ -28,10 +28,12 @@ Machine cible : PC du propriétaire (GPU NVIDIA GeForce GTX 1060 6 Go, écran 1 
 
 ## 2. Consignes de test local (PC du propriétaire)
 
-### Étape 1 : Récupérer la branche et vérifier l'environnement
+### Étape 1 : Mettre `main` à jour et vérifier l'environnement
+
+E3 et E4 sont sur `main` depuis le 24 octobre (PR #91).
+
 ```bash
-git checkout lot-e3-e4
-git pull origin lot-e3-e4
+git switch main && git pull --ff-only
 ```
 
 Vérifier la validité des suites de tests unitaires et headless :

@@ -1,7 +1,7 @@
 # Recette du lot P16 – Vent ressenti et affiché, arbres, nuages, sons
 
 Date : 27 octobre 2026  
-Branche : `lot-p16-integration-vent`  
+Code : `main` (PR #320, fusionnée le 27 octobre)  
 Machine cible : PC du propriétaire (GTX 1060, écran 1 920 × 1 080), HomeTrainer et Click  
 Cahier : [LOT_P16_integration_vent_ciel_sons.md](lots/LOT_P16_integration_vent_ciel_sons.md)
 
@@ -13,8 +13,7 @@ Cahier : [LOT_P16_integration_vent_ciel_sons.md](lots/LOT_P16_integration_vent_c
 
 ```bash
 cd ~/Games/lolo_python
-git fetch origin lot-p16-integration-vent
-git checkout lot-p16-integration-vent
+git switch main && git pull --ff-only
 ```
 
 Tests sans écran, avant de monter sur le vélo :

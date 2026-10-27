@@ -52,3 +52,10 @@ Aucune.
 - Les autres pistes de S1 (derrière la caméra, occlusion par le relief, ombres, construction des tuiles).
 - Changer de version de Godot (Y2) ou de moteur de rendu (Y7).
 - Modifier la densité du décor ou les préréglages autres que la distance.
+
+## 9. Livraison (27 octobre 2026, PR #381, issue #357)
+
+- `quality_presets.gd` : `fog_end_m` à 4 000, 6 000 et 9 000 m (`low`, `medium`, `high`) ; `render_quality.gd` : brouillard opaque et `camera.far` dans `[fog_end_m, fog_end_m × 1,05]` ; `world_streamer.gd` : pas de tuile lointaine au-delà du brouillard plus une tuile ; `main.gd`.
+- Tests : `engine/tests/unit/test_quality_presets.gd`, `test_render_quality.gd`, `test_living_decor.gd` (critère 2).
+- Banc simulé sur la GTX 1060 : ni gain ni perte (60 images/s), les mondes de test sont trop petits pour montrer l'effet du rayon réduit (critère 3).
+- Reste (propriétaire) : `essai-69` en `medium` puis en `low`, horizon et apparitions au loin (critère 4 et essai du §7).
