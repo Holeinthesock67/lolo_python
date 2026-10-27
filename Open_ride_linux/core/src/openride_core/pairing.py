@@ -143,7 +143,6 @@ async def wait_plus_press(addresses: list[str], timeout: float) -> str | None:
 # --- recherche et appairage depuis le menu (lot N13, contrat IPC révision 1.2) -----------------
 
 SCAN_TIMEOUT_S = 8.0
-SCAN_BUSY_RETRY_S = (2.0, 4.0)   # nouveaux essais quand BlueZ répond InProgress
 SCAN_MAX_ITEMS = 12
 SCAN_NAME_MAX = 24
 SCAN_ROLES = ("trainer", "click", "hr_strap", "hr_watch")
@@ -156,8 +155,7 @@ async def scan_inventory(sim: Any, timeout: float) -> dict[str, Any]:
 
     La recherche prend le verrou BLE commun : pendant que le trainer, le Click ou la ceinture
     cherchent à se (re)connecter, BlueZ refuserait une seconde recherche (InProgress) ; on attend
-    donc la fin de leur tentative. Si BlueZ répond encore InProgress (recherche lancée par une
-    autre application), on réessaie quelques fois avant d'abandonner.
+    donc la fin de leur tentative. Les nouveaux essais (autre application) sont dans `session`.
     """
     from .ble_util import ble_lock
     from .tools import devices as devices_tool
@@ -166,16 +164,8 @@ async def scan_inventory(sim: Any, timeout: float) -> dict[str, Any]:
         scanner, connected = devices_tool.sim_sources(sim)
     else:
         scanner, connected = devices_tool.ble_scan, devices_tool.bluez_connected
-    for delay in (*SCAN_BUSY_RETRY_S, None):
-        try:
-            async with ble_lock():
-                return await devices_tool.inventory(scanner, connected, timeout, {})
-        except Exception as exc:
-            if delay is None or not is_in_progress(exc):
-                raise
-            log.info("Appairage : Bluetooth occupé (%s), nouvel essai dans %.0f s", exc, delay)
-        await asyncio.sleep(delay)
-    raise AssertionError("inaccessible")
+    async with ble_lock():
+        return await devices_tool.inventory(scanner, connected, timeout, {})
 
 
 def is_in_progress(exc: BaseException) -> bool:

@@ -61,7 +61,7 @@ func _scenario(name: String, setup: Callable, steps: Array) -> void:
 		var on_disabled: bool = before["focus"] < 0 or not before["items"][before["focus"]]["enabled"]
 		var st: Dictionary = m.handle(step[0])
 		var good: bool = st["screen"] == step[1] and _focus_id(st) == step[2] and _same_action(st["action"], step[3])
-		if step[0] == "PLUS_LONG" and on_disabled and not st["action"].is_empty():
+		if step[0] == "A_LONG" and on_disabled and not st["action"].is_empty():
 			good = false
 		if not good and ok:
 			detail = " ; étape %d (%s) : écran %s, focus « %s », action %s" % [
@@ -77,20 +77,20 @@ func _routes(items: Array) -> Callable:
 func _test_scenarios() -> void:
 	_scenario("session libre sans monde : parcours puis Prêt, démarrer", _routes(ROUTES_4), [
 		["PLUS_SHORT", "home", "ride", null],
-		["PLUS_LONG", "routes", "galibier", {"action": "select_workout", "workout_id": null}],
+		["A_LONG", "routes", "galibier", {"action": "select_workout", "workout_id": null}],
 		["PLUS_SHORT", "routes", "alpe", null],
 		["PLUS_SHORT", "routes", "vercors", null],
-		["PLUS_LONG", "ready", "start", {"action": "select_route", "route_id": "vercors"}],
-		["PLUS_LONG", "ready", "start", {"action": "start"}],
-		["MINUS_LONG", "home", "ride", null],
+		["A_LONG", "ready", "start", {"action": "select_route", "route_id": "vercors"}],
+		["A_LONG", "ready", "start", {"action": "start"}],
+		["Y_SHORT", "home", "ride", null],
 	])
 	_scenario("passer un parcours désactivé (à compiler)", _routes(ROUTES_WITH_DISABLED), [
-		["PLUS_LONG", "routes", "galibier", null],
+		["A_LONG", "routes", "galibier", null],
 		["PLUS_SHORT", "routes", "vercors", null],
 		["MINUS_SHORT", "routes", "galibier", null],
 	])
 	_scenario("boucler en fin et en début de liste", _routes(ROUTES_4), [
-		["PLUS_LONG", "routes", "galibier", null],
+		["A_LONG", "routes", "galibier", null],
 		["MINUS_SHORT", "routes", "demo", null],
 		["PLUS_SHORT", "routes", "galibier", null],
 		["PLUS_SHORT", "routes", "alpe", null],
@@ -105,109 +105,109 @@ func _test_scenarios() -> void:
 		["PLUS_SHORT", "home", "erg", null],
 		["PLUS_SHORT", "home", "sim", null],
 		["PLUS_SHORT", "home", "settings", null],
-		["MINUS_LONG", "home", "settings", null],
+		["Y_SHORT", "home", "settings", null],
 	])
 	_scenario("choisir le monde depuis l'accueil : retour à l'accueil", _routes(ROUTES_4), [
-		["PLUS_LONG", "routes", "galibier", null],
+		["A_LONG", "routes", "galibier", null],
 		["PLUS_SHORT", "routes", "alpe", null],
-		["PLUS_LONG", "home", "world", {"action": "select_route", "route_id": "alpe"}],
+		["A_LONG", "home", "world", {"action": "select_route", "route_id": "alpe"}],
 		["PLUS_SHORT", "home", "ride", null],
-		["PLUS_LONG", "ready", "start", {"action": "select_workout", "workout_id": null}],
+		["A_LONG", "ready", "start", {"action": "select_workout", "workout_id": null}],
 		["PLUS_SHORT", "ready", "workout", null],
 		["PLUS_SHORT", "ready", "change_route", null],
-		["PLUS_LONG", "routes", "galibier", null],
-		["PLUS_LONG", "ready", "start", {"action": "select_route", "route_id": "galibier"}],
-		["MINUS_LONG", "home", "ride", null],
+		["A_LONG", "routes", "galibier", null],
+		["A_LONG", "ready", "start", {"action": "select_route", "route_id": "galibier"}],
+		["Y_SHORT", "home", "ride", null],
 	])
 	_scenario("retour depuis les parcours et les réglages", _routes(ROUTES_4), [
-		["PLUS_LONG", "routes", "galibier", null],
-		["MINUS_LONG", "home", "world", null],
+		["A_LONG", "routes", "galibier", null],
+		["Y_SHORT", "home", "world", null],
 		["MINUS_SHORT", "home", "quit", null],
 		["MINUS_SHORT", "home", "settings", null],
-		["PLUS_LONG", "settings", "devices", null],
-		["PLUS_LONG", "settings", "devices", {"action": "item", "screen": "settings", "id": "devices"}],
-		["MINUS_LONG", "home", "settings", null],
+		["A_LONG", "settings", "devices", null],
+		["A_LONG", "settings", "devices", {"action": "item", "screen": "settings", "id": "devices"}],
+		["Y_SHORT", "home", "settings", null],
 	])
 	_scenario("session ERG sans monde : entraînement (invalide sauté), parcours, Prêt", _routes(ROUTES_4), [
 		["PLUS_SHORT", "home", "ride", null],
 		["PLUS_SHORT", "home", "erg", null],
-		["PLUS_LONG", "workouts", "_sim", null],
+		["A_LONG", "workouts", "_sim", null],
 		["PLUS_SHORT", "workouts", "sweet_spot", null],
 		["PLUS_SHORT", "workouts", "vo2", null],
-		["PLUS_LONG", "routes", "galibier", {"action": "select_workout", "workout_id": "vo2"}],
-		["PLUS_LONG", "ready", "start", {"action": "select_route", "route_id": "galibier"}],
+		["A_LONG", "routes", "galibier", {"action": "select_workout", "workout_id": "vo2"}],
+		["A_LONG", "ready", "start", {"action": "select_route", "route_id": "galibier"}],
 		["PLUS_SHORT", "ready", "workout", null],
-		["PLUS_LONG", "workouts", "_sim", null],
-		["MINUS_LONG", "ready", "workout", null],
-		["PLUS_LONG", "workouts", "_sim", null],
-		["PLUS_LONG", "ready", "workout", {"action": "select_workout", "workout_id": null}],
-		["MINUS_LONG", "home", "erg", null],
+		["A_LONG", "workouts", "_sim", null],
+		["Y_SHORT", "ready", "workout", null],
+		["A_LONG", "workouts", "_sim", null],
+		["A_LONG", "ready", "workout", {"action": "select_workout", "workout_id": null}],
+		["Y_SHORT", "home", "erg", null],
 	])
 	_scenario("session simulée : confirmation puis relance", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
 		["MINUS_SHORT", "home", "settings", null],
 		["MINUS_SHORT", "home", "sim", null],
-		["PLUS_LONG", "confirm", "no", null],
+		["A_LONG", "confirm", "no", null],
 		["PLUS_SHORT", "confirm", "yes", null],
-		["PLUS_LONG", "home", "sim", {"action": "relaunch_sim"}],
+		["A_LONG", "home", "sim", {"action": "relaunch_sim"}],
 	])
 	var in_sim := func(m): _routes(ROUTES_4).call(m); m.set_sim_session(true)
 	_scenario("en session simulée : revenir au matériel réel", in_sim, [
 		["MINUS_SHORT", "home", "quit", null],
 		["MINUS_SHORT", "home", "settings", null],
 		["MINUS_SHORT", "home", "sim", null],
-		["PLUS_LONG", "confirm", "no", null],
+		["A_LONG", "confirm", "no", null],
 		["PLUS_SHORT", "confirm", "yes", null],
-		["PLUS_LONG", "home", "sim", {"action": "relaunch"}],
+		["A_LONG", "home", "sim", {"action": "relaunch"}],
 	])
 	_scenario("quitter : annulé puis confirmé", _routes(ROUTES_4), [
 		["MINUS_SHORT", "home", "quit", null],
-		["PLUS_LONG", "confirm", "no", null],
-		["PLUS_LONG", "home", "quit", null],
-		["PLUS_LONG", "confirm", "no", null],
-		["MINUS_LONG", "home", "quit", null],
-		["PLUS_LONG", "confirm", "no", null],
+		["A_LONG", "confirm", "no", null],
+		["A_LONG", "home", "quit", null],
+		["A_LONG", "confirm", "no", null],
+		["Y_SHORT", "home", "quit", null],
+		["A_LONG", "confirm", "no", null],
 		["PLUS_SHORT", "confirm", "yes", null],
-		["PLUS_LONG", "home", "quit", {"action": "quit"}],
+		["A_LONG", "home", "quit", {"action": "quit"}],
 	])
 	var paused := func(m): _routes(ROUTES_4).call(m); m.open_pause()
 	_scenario("pause : abandon annulé puis confirmé", paused, [
 		["PLUS_SHORT", "pause", "end_save", null],
 		["PLUS_SHORT", "pause", "abandon", null],
-		["PLUS_LONG", "confirm", "no", null],
-		["PLUS_LONG", "pause", "abandon", null],
-		["PLUS_LONG", "confirm", "no", null],
-		["MINUS_LONG", "pause", "abandon", null],
-		["PLUS_LONG", "confirm", "no", null],
+		["A_LONG", "confirm", "no", null],
+		["A_LONG", "pause", "abandon", null],
+		["A_LONG", "confirm", "no", null],
+		["Y_SHORT", "pause", "abandon", null],
+		["A_LONG", "confirm", "no", null],
 		["MINUS_SHORT", "confirm", "yes", null],
-		["PLUS_LONG", "home", "world", {"action": "end_session", "save": false}],
+		["A_LONG", "home", "world", {"action": "end_session", "save": false}],
 	])
 	_scenario("pause : reprendre, retour et terminer en enregistrant", paused, [
-		["PLUS_LONG", "pause", "resume", {"action": "resume"}],
-		["MINUS_LONG", "pause", "resume", {"action": "resume"}],
+		["A_LONG", "pause", "resume", {"action": "resume"}],
+		["Y_SHORT", "pause", "resume", {"action": "resume"}],
 		["PLUS_SHORT", "pause", "end_save", null],
-		["PLUS_LONG", "home", "world", {"action": "end_session", "save": true}],
+		["A_LONG", "home", "world", {"action": "end_session", "save": true}],
 	])
 	_scenario("liste de parcours vide", _routes([]), [
-		["PLUS_LONG", "routes", "", null],
+		["A_LONG", "routes", "", null],
 		["PLUS_SHORT", "routes", "", null],
 		["MINUS_SHORT", "routes", "", null],
-		["PLUS_LONG", "routes", "", null],
-		["MINUS_LONG", "home", "world", null],
+		["A_LONG", "routes", "", null],
+		["Y_SHORT", "home", "world", null],
 	])
 	var all_off := [{"id": "a", "label": "A", "enabled": false, "detail": "à compiler"},
 		{"id": "b", "label": "B", "enabled": false, "detail": "à compiler"}]
 	_scenario("tous les parcours désactivés", _routes(all_off), [
-		["PLUS_LONG", "routes", "", null],
-		["PLUS_LONG", "routes", "", null],
-		["MINUS_LONG", "home", "world", null],
+		["A_LONG", "routes", "", null],
+		["A_LONG", "routes", "", null],
+		["Y_SHORT", "home", "world", null],
 	])
 
 
 func _test_lists_and_events() -> void:
 	var m = MenuModel.new()
 	m.set_items("routes", [])
-	m.handle("PLUS_LONG")
+	m.handle("A_LONG")
 	var st: Dictionary = m.state()
 	_check(st["items"].size() == 1 and st["items"][0]["label"] == "Aucun parcours" and not st["items"][0]["enabled"],
 		"liste vide : un élément désactivé « Aucun parcours »")
@@ -229,24 +229,30 @@ func _test_lists_and_events() -> void:
 		unknown_ok = unknown_ok and after["action"].is_empty() and after["screen"] == before["screen"] \
 			and after["focus"] == before["focus"] and after["items"] == before["items"]
 	_check(unknown_ok, "événements inconnus : ignorés, état inchangé")
-	var keys_ok: bool = MenuModel.key_to_event(KEY_UP) == "PLUS_SHORT" and MenuModel.key_to_event(KEY_DOWN) == "MINUS_SHORT" \
-		and MenuModel.key_to_event(KEY_ENTER) == "PLUS_LONG" and MenuModel.key_to_event(KEY_ESCAPE) == "MINUS_LONG" \
+	var keys_ok: bool = MenuModel.key_to_event(KEY_DOWN) == "PLUS_SHORT" and MenuModel.key_to_event(KEY_UP) == "MINUS_SHORT" \
+		and MenuModel.key_to_event(KEY_ENTER) == "A_LONG" and MenuModel.key_to_event(KEY_ESCAPE) == "Y_SHORT" \
 		and MenuModel.key_to_event(KEY_A) == ""
-	_check(keys_ok, "clavier ramené aux quatre événements")
+	_check(keys_ok, "clavier ramené aux quatre événements, flèche bas = suivant")
 	var w = MenuModel.new()
 	w.set_items("workouts", [])
 	w.handle("PLUS_SHORT")
 	w.handle("PLUS_SHORT")
-	var ws: Dictionary = w.handle("PLUS_LONG")
-	_check(ws["items"].size() == 2 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
+	var ws: Dictionary = w.handle("A_LONG")
+	_check(ws["items"].size() == 4 and ws["items"][1]["label"] == "Aucun entraînement" and _focus_id(ws) == "_sim",
 		"aucun entraînement : « Sans entraînement (SIM) » reste choisissable")
+	_check(ws["items"][2]["id"] == "_create" and ws["items"][3]["id"] == "_import",
+		"sous-menu ERG (N16) : Créer et Importer en fin de liste")
+	w.handle("PLUS_SHORT")
+	var wc: Dictionary = w.handle("A_LONG")
+	_check(wc["action"] == {"action": "item", "screen": "workouts", "id": "_create"} and wc["screen"] == "workouts",
+		"Créer : action item laissée à menu_flow.gd")
 
 
 func _test_no_nodes() -> void:
 	var before := int(Performance.get_monitor(Performance.OBJECT_NODE_COUNT))
 	var m = MenuModel.new()
 	m.set_items("routes", ROUTES_4)
-	for ev in ["PLUS_LONG", "PLUS_SHORT", "PLUS_LONG", "PLUS_SHORT", "PLUS_LONG", "MINUS_LONG", "MINUS_LONG"]:
+	for ev in ["A_LONG", "PLUS_SHORT", "A_LONG", "PLUS_SHORT", "A_LONG", "Y_SHORT", "Y_SHORT"]:
 		m.handle(ev)
 	m.open_pause()
 	m.handle("PLUS_SHORT")
@@ -265,7 +271,38 @@ func _test_modes() -> void:
 	_check(m.state()["items"].size() == 6, "modes absents : retour aux modes par défaut")
 
 
+## Plan des boutons sans exception (spécification générale §7.1, 27 octobre).
+func _test_button_plan() -> void:
+	var m = MenuModel.new()
+	var routes := []
+	for i in range(12):
+		routes.append({"id": "r%d" % i, "label": "Parcours %d" % i, "enabled": i != 3})
+	m.set_items("routes", routes)
+	m.handle("A_LONG")   # Parcours
+	_check(m.state()["screen"] == "routes" and _focus_id(m.state()) == "r0", "A long valide (accueil → Parcours)")
+	_check(_focus_id(m.handle("PLUS_LONG")) == "r6", "+ long : cinq éléments actifs plus loin (r3 désactivé sauté)")
+	_check(_focus_id(m.handle("PLUS_LONG")) == "r11", "+ long : borné au dernier élément, sans boucler")
+	_check(_focus_id(m.handle("MINUS_LONG")) == "r6", "− long : cinq éléments plus haut")
+	_check(_focus_id(m.handle("MINUS_LONG")) == "r0", "− long : borné au premier élément")
+	_check(_focus_id(m.handle("A_SHORT")) == "r1" and _focus_id(m.handle("RIGHT_SHORT")) == "r2",
+		"A court et flèche droite : élément suivant")
+	_check(_focus_id(m.handle("LEFT_SHORT")) == "r1", "flèche gauche : élément précédent")
+	var before: Dictionary = m.state()
+	var idle := true
+	for ev in ["Z_SHORT", "Z_LONG", "UP_SHORT", "DOWN_SHORT", "PLUS_UNCLEAR"]:
+		var st: Dictionary = m.handle(ev)
+		idle = idle and st["action"].is_empty() and st["focus"] == before["focus"] and st["screen"] == "routes"
+	_check(idle, "Z, flèches haut et bas, appui ambigu : rien dans un menu")
+	_check(m.handle("Y_SHORT")["screen"] == "home", "Y : écran précédent")
+	m.open_pause()
+	_check(m.handle("Y_SHORT")["action"].get("action", "") == "resume", "Y sur l'écran de pause : reprendre")
+	_check(MenuModel.key_to_event(KEY_PAGEDOWN) == "PLUS_LONG" and MenuModel.key_to_event(KEY_TAB) == "A_SHORT"
+		and MenuModel.key_to_event(KEY_LEFT) == "LEFT_SHORT" and MenuModel.key_to_event(KEY_RIGHT) == "RIGHT_SHORT",
+		"clavier : Page suivante = 5 plus loin, Tab = A court, gauche et droite = flèches du Click")
+
+
 func _init() -> void:
+	_test_button_plan()
 	_test_modes()
 	_test_scenarios()
 	_test_lists_and_events()

@@ -57,6 +57,7 @@ DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 GODOT_TOLERATED = re.compile(
     r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
+CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
               "wind_speed", "wind_level", "wind_verdict", "draft")
@@ -68,7 +69,7 @@ ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
-GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur", "menu_accueil", "bilan")
+GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur", "menu_accueil", "bilan", "pente_0pct", "pente_4pct")
 FIXED_S = 1500.0
 # Listes servies par le faux core aux menus (lot N6) : un parcours « à compiler » non choisissable.
 MENU_CATALOG = {
@@ -524,7 +525,10 @@ class Session:
     def check_banner(self, scene: str, img: Image, info: dict[str, Any], text: str | None) -> None:
         b = info["widgets"]["banner"]
         if text is None:
-            self.check(scene, "bandeau caché", not b["visible"], f"« {b['text']} »" if b["visible"] else "")
+            # Le rappel des commandes du départ de séance (main.gd, 10 s) n'est pas une alerte.
+            alert = b["visible"] and not b["text"].startswith(CONTROLS_HINT_PREFIX)
+            self.check(scene, "bandeau caché (hors rappel des commandes)", not alert,
+                       f"« {b['text']} »" if b["visible"] else "")
             return
         self.check(scene, "bandeau affiché", b["visible"] and text in b["text"], f"« {b['text']} »")
         if b["visible"]:
@@ -543,7 +547,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     size, _, quality = config.partition(":")
     quality = quality or "low"
     width, height = (int(v) for v in size.lower().split("x"))
-    name = f"{width}x{height}_{quality}"
+    v_grade = getattr(args, "visual_grade", 1.0)
+    name = f"{width}x{height}_{quality}" if v_grade == 1.0 else f"{width}x{height}_{quality}_k{v_grade}"
     state_port, cmd_port = free_udp_ports(2)
     engine_log = out_dir / f"{name}_engine.log"
     engine_log.write_text("")
@@ -553,8 +558,9 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     if not args.native:
         cmd = ["xvfb-run", "-a", "-s", f"-screen 0 {width}x{height}x24"] + cmd + [
             "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
+    v_grade = getattr(args, "visual_grade", 1.0)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
-            "--test-mode", f"--quality={quality}"]
+            "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}"]
     gold = Path(args.golden) / name if args.golden else None
     s = Session(name, width, height, core, out_dir, report, gold, args.update_golden)
     print(f"== {name} ==", flush=True)
@@ -804,8 +810,37 @@ def _scenes(s: Session) -> None:
         s.check_banner("erreur", img, info, "route_invalid")
         s.check_layout("erreur", info)
     _menu_scenes(s)
+    _pentes_scenes(s)
     fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
+
+
+def _pentes_scenes(s: Session) -> None:
+    """Lot Q2 : captures sur le parcours demo à des points de ~0 % (0,6 %) et ~4 % (4,5 %)."""
+    core = s.core
+    # 1. Pente 0 % (s = 4000 m : replat)
+    core.set_scene(speed=0.0, s=4000.0, session_state="RUNNING", grade=0.0, grade_sent=0.0,
+                   power=150.0, cadence=85.0, hr=130)
+    time.sleep(SETTLE_S)
+    shot0 = s.capture("pente_0pct")
+    if shot0:
+        img, info = shot0
+        s.check_texts("pente_0pct", info, {"grade": "0.0 %"})
+        s.check_layout("pente_0pct", info)
+        s.check_world("pente_0pct", img, info)
+
+    # 2. Pente ~4 % (s = 1400 m : montée douce à 4.5 %)
+    core.set_scene(speed=0.0, s=1400.0, session_state="RUNNING", grade=4.5, grade_sent=4.5,
+                   power=220.0, cadence=80.0, hr=145)
+    time.sleep(SETTLE_S)
+    shot4 = s.capture("pente_4pct")
+    if shot4:
+        img, info = shot4
+        s.check_texts("pente_4pct", info, {"grade": "+4.5 %"})
+        s.check_layout("pente_4pct", info)
+        s.check_world("pente_4pct", img, info)
+    # Le parcours demo ne dépasse pas 4,5 % : l'aspect d'une pente de 8 % se juge sur la scène
+    # pente_4pct lancée avec --visual-grade=1.8 (captures suffixées _k1.8).
 
 
 def _menu_scenes(s: Session) -> None:
@@ -825,8 +860,8 @@ def _menu_scenes(s: Session) -> None:
                 and overlap(m["rect"], info["widgets"]["power"]["rect"]) == 0.0, f"rectangle {m['rect']}")
         focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] > 200 and p[1] > 150 and p[2] < 90, step=2)
         s.check("menu_accueil", "focus très visible (fond jaune)", focus >= 0.01, f"{focus:.1%} de pixels jaunes")
-    # Appui long « + » du Click relayé par le core : liste des parcours.
-    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "PLUS_LONG"})
+    # Appui long sur A du Click relayé par le core : liste des parcours.
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
     time.sleep(0.8)
     shot = s.capture("menu_parcours")
     if shot:
@@ -849,6 +884,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--godot", default=os.environ.get(
         "GODOT", str(Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+    ap.add_argument("--visual-grade", type=float, default=1.0, help="facteur d'exagération visuelle du relief (lot Q2, défaut : 1.0)")
     ap.add_argument("--configs", default=DEFAULT_CONFIGS,
                     help=f"résolution:qualité, séparées par des virgules (défaut {DEFAULT_CONFIGS})")
     ap.add_argument("--out", type=Path, default=None, help="dossier des captures et du rapport (défaut : dossier temporaire)")

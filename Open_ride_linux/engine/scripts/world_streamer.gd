@@ -6,13 +6,15 @@ extends Node3D
 ## - ruban : tronçons k dont l'intervalle [k × 1 000, (k + 1) × 1 000] touche (au sens strict)
 ##   [s − chunks_behind × 1 000 ; s + chunks_ahead × 1 000 + v × 10 s] ;
 ## - tuiles proches dont le carré passe à moins de 1 500 m de la caméra ou du point visé v × 10 s
-##   plus loin ; tuiles lointaines présentes à moins de 12 km ;
+##   plus loin ; tuiles lointaines présentes à moins de far_radius_m (fin du brouillard du préréglage
+##   plus une tuile lointaine, au plus FAR_RADIUS_M = 12 km, lot Y1) ;
 ## - tuile proche manquante : rien si une tuile lointaine couvre l'endroit (elle est dessinée dessous),
 ##   sinon tuile plate à l'altitude de la route la plus proche (format §10).
 ## Les tableaux de sommets se calculent dans WorkerThreadPool ; les ArrayMesh et MeshInstance3D se
 ## créent sur le fil principal, au plus MAX_NEW_PER_FRAME par image. Ce qui sort de la fenêtre est
 ## libéré tout de suite (free) ; un changement de parcours vide tout (set_world).
-## Sans couche terrain : sol plat 5 m sous l'altitude minimale de la route, qui suit la caméra.
+## Sans couche terrain : sol plat de 2 × far_radius_m de côté, 5 m sous l'altitude minimale de la route,
+## qui suit la caméra.
 ## Pas de class_name (charger par preload).
 
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -37,6 +39,13 @@ var has_terrain := false
 var chunks_ahead: int = 3
 var chunks_behind: int = 1
 var vegetation_density_factor: float = 0.3
+var visual_grade_scale: float = 1.0
+## Rayon des tuiles lointaines et demi-côté du sol plat, réglé par render_quality.gd (far_radius_for).
+var far_radius_m: float = FAR_RADIUS_M:
+	set(value):
+		far_radius_m = value
+		if _ground != null and _ground.mesh is PlaneMesh:
+			(_ground.mesh as PlaneMesh).size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 var tree_renderer: Node3D = null
 var osm_streamer: Node3D = null
 
@@ -106,6 +115,7 @@ func set_world(new_route, new_world_dir: String) -> void:
 	if not has_terrain:
 		_make_ground()
 	if osm_streamer != null:
+		osm_streamer.visual_grade_scale = visual_grade_scale
 		osm_streamer.set_world(route, world_dir)
 
 
@@ -230,11 +240,17 @@ func _far_covers(near_tile: Vector2i) -> bool:
 	return _far_index.has(TerrainTiles.tile_of("far", c.x, c.z))
 
 
-## Tuiles lointaines présentes à moins de 12 km de la caméra.
+## Rayon des tuiles lointaines pour une fin de brouillard donnée : une tuile lointaine de marge, pour
+## qu'aucune tuile n'apparaisse au bord du brouillard pendant sa construction ; plafond FAR_RADIUS_M.
+static func far_radius_for(fog_end_m: float) -> float:
+	return minf(fog_end_m + float(TerrainTiles.LEVELS["far"]["size"]), FAR_RADIUS_M)
+
+
+## Tuiles lointaines présentes à moins de far_radius_m de la caméra.
 func far_window(cam_x: float, cam_z: float) -> Array:
 	var out := []
 	for t in _far_index:
-		if _rect_distance("far", t, cam_x, cam_z) <= FAR_RADIUS_M:
+		if _rect_distance("far", t, cam_x, cam_z) <= far_radius_m:
 			out.append(t)
 	return out
 
@@ -281,8 +297,10 @@ func _start_jobs() -> void:
 	for key in todo:
 		if _jobs.size() >= MAX_RUNNING_TASKS:
 			break
+		var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
-			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m}
+			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
+			"visual_grade_scale": visual_grade_scale, "alt_orig": alt_orig}
 		job["task"] = WorkerThreadPool.add_task(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
 
@@ -292,31 +310,35 @@ func _build_job(job: Dictionary) -> void:
 	var t0 := Time.get_ticks_usec()
 	var spec: Dictionary = job["spec"]
 	var r = job["route"]
+	var v_scale: float = float(job.get("visual_grade_scale", 1.0))
+	var alt_orig: float = float(job.get("alt_orig", 0.0))
 	match spec["kind"]:
 		"road":
-			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)))
+			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)), v_scale)
 		"near", "far":
 			var t: Vector2i = spec["tile"]
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
 			if heights.is_empty():
 				return
 			if spec["kind"] == "far":
-				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r)
+				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r, TerrainTiles.FAR_CARVE_MARGIN_M, v_scale, alt_orig)
 			var edges := TerrainTiles.load_neighbour_edges(job["world_dir"], spec["kind"], t.x, t.y)
-			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges)
+			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
 			if spec["kind"] == "near" and tree_renderer != null:
-				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
+				var h_scaled := TerrainTiles.scale_heights(heights, alt_orig, v_scale) if v_scale != 1.0 else heights
+				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, h_scaled, r, _theme_dict,
 					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t))
 		"flat":
 			var t: Vector2i = spec["tile"]
 			var c := TerrainTiles.tile_origin("near", t.x, t.y) + Vector3(500.0, 0.0, 500.0)
 			var alt := TerrainTiles.nearest_route_alt(r, c.x, c.z)
 			var flat_h := TerrainTiles.flat_heights(alt)
-			job["arrays"] = TerrainTiles.build_arrays(flat_h, "near")
+			job["arrays"] = TerrainTiles.build_arrays(flat_h, "near", {}, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin("near", t.x, t.y)
 			if tree_renderer != null:
-				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, flat_h, r, _theme_dict,
+				var flat_scaled := TerrainTiles.scale_heights(flat_h, alt_orig, v_scale) if v_scale != 1.0 else flat_h
+				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, flat_scaled, r, _theme_dict,
 					vegetation_density_factor, [])
 	var dt := Time.get_ticks_usec() - t0
 	_stats_mutex.lock()
@@ -490,8 +512,11 @@ func _make_ground() -> void:
 			min_alt = minf(min_alt, a)
 	if is_inf(min_alt):
 		min_alt = 0.0
+	var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
+	if visual_grade_scale != 1.0:
+		min_alt = alt_orig + (min_alt - alt_orig) * visual_grade_scale
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(2.0 * FAR_RADIUS_M, 2.0 * FAR_RADIUS_M)
+	plane.size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = _ground_color
 	mat.roughness = 1.0

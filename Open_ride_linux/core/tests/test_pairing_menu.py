@@ -195,28 +195,6 @@ def test_scan_waits_for_driver_search_instead_of_failing(tmp_path: Path, monkeyp
     assert "click" in {it["role"] for it in done["items"]}
 
 
-def test_scan_retries_when_bluez_busy_elsewhere(monkeypatch):
-    """Recherche lancée par une autre application : nouvel essai, puis réussite."""
-    from openride_core.tools import devices as devices_tool
-
-    calls = []
-
-    async def scanner(timeout):
-        calls.append(timeout)
-        if len(calls) == 1:
-            raise RuntimeError("[org.bluez.Error.InProgress] Operation already in progress")
-        return []
-
-    async def connected():
-        return []
-
-    monkeypatch.setattr(devices_tool, "ble_scan", scanner)
-    monkeypatch.setattr(devices_tool, "bluez_connected", connected)
-    monkeypatch.setattr(pairing, "SCAN_BUSY_RETRY_S", (0.01, 0.01))
-    inv = asyncio.run(pairing.scan_inventory(None, 0.1))
-    assert len(calls) == 2 and inv["devices"] == []
-
-
 def test_scan_failed_message_is_readable_and_kept_on_screen(tmp_path: Path, monkeypatch):
     """Toujours occupé : message lisible, envoyé après la fin de recherche (sinon l'écran l'efface)."""
     async def busy(sim, timeout):
@@ -234,3 +212,29 @@ def test_scan_failed_message_is_readable_and_kept_on_screen(tmp_path: Path, monk
     assert sent[-1]["code"] == "scan_failed"
     assert "occupé" in sent[-1]["message"] and "org.bluez" not in sent[-1]["message"]
     assert not s._scanning
+
+
+def test_scan_waits_for_bluetooth_busy_with_another_search(tmp_path: Path, monkeypatch):
+    """Écran Appareils (26 octobre) : BlueZ « InProgress » pendant la recherche du Click, nouvel essai."""
+    s, sent = _session(tmp_path)
+    calls: list[float] = []
+
+    async def busy_once(sim, timeout):
+        calls.append(timeout)
+        if len(calls) == 1:
+            raise RuntimeError("[org.bluez.Error.InProgress] Operation already in progress")
+        return {"devices": [{"role": "trainer", "name": "Trainer (sim)", "address": "C1:1C:00:00:00:01", "rssi": -50}],
+                "connected": []}
+
+    monkeypatch.setattr(pairing, "scan_inventory", busy_once)
+    asyncio.run(s._scan_devices(5, 1.0))
+    assert len(calls) == 2
+    assert not any(m.get("type") == "error" for m in sent)
+    assert sent[-1]["done"] and [it["role"] for it in sent[-1]["items"]] == ["trainer"]
+
+    async def always_busy(sim, timeout):
+        raise RuntimeError("[org.bluez.Error.InProgress] Operation already in progress")
+
+    monkeypatch.setattr(pairing, "scan_inventory", always_busy)
+    asyncio.run(s._scan_devices(6, 1.0))
+    assert [m["code"] for m in sent if m.get("type") == "error"] == ["scan_failed"]

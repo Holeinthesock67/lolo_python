@@ -61,6 +61,7 @@ var erg_panel = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
+var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
 var _theme_name: String = "default"
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
@@ -72,8 +73,16 @@ const BEEPS := {
 	"MINUS_SHORT": [[440.0, 0.08]],
 	"PLUS_LONG": [[660.0, 0.10], [990.0, 0.14]],
 	"MINUS_LONG": [[550.0, 0.10], [330.0, 0.14]],
+	"A_SHORT": [[880.0, 0.08]],
+	"A_LONG": [[660.0, 0.10], [990.0, 0.14]],
+	"Y_SHORT": [[550.0, 0.10], [330.0, 0.14]],
+	"LEFT_SHORT": [[440.0, 0.08]],
+	"RIGHT_SHORT": [[880.0, 0.08]],
 }
 const BEEP_LEVEL := 0.3
+## Durées d'affichage du rappel des commandes en séance et de l'explication d'un appui ambigu.
+const CONTROLS_HINT_S := 10.0
+const PRESS_HINT_S := 4.0
 ## Bip de changement de bloc ERG à T − 3 s (lot N7) : une seule note, plus aiguë, plus longue et plus
 ## forte que les bips d'appui, pour passer au-dessus du vent et de la roue libre (SoundPlayer).
 const ERG_BEEP := [[1320.0, 0.30]]
@@ -104,6 +113,10 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
+	_visual_grade_scale = float(cfg.get("visual_grade", 1.0))
+	streamer.visual_grade_scale = _visual_grade_scale
+	if streamer.osm_streamer != null:
+		streamer.osm_streamer.visual_grade_scale = _visual_grade_scale
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
@@ -124,7 +137,7 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
-	RenderQuality.apply_fog(world_env.environment, false)
+	RenderQuality.apply_fog(world_env.environment, _quality_name, false)
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
 	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
 	if RenderingServer.get_rendering_device() == null:   # Compatibility : pas de RenderingDevice
@@ -176,6 +189,17 @@ func _ready() -> void:
 	menu_view = MenuView.new()
 	hud.add_child(menu_view)
 	hud.move_child(banner, -1)   # le bandeau reste lisible au-dessus du menu
+	menu_view.item_clicked.connect(func(item_id: String) -> void:
+		# Clic sur un élément : focus dessus puis validation, comme un appui long sur A.
+		print("Souris : clic sur ", item_id)
+		if menu_flow.is_visible() and menu_flow.menu.focus_item(item_id):
+			_play_tones(BEEPS["A_LONG"], BEEP_LEVEL)
+			_menu_event("A_LONG"))
+	menu_view.mouse_event.connect(func(ev: String) -> void:
+		print("Souris : ", ev)
+		if menu_flow.is_visible():
+			_play_tones(BEEPS[ev], BEEP_LEVEL)
+			_menu_event(ev))
 	ipc.routes_received.connect(func(items: Array, _msg: Dictionary) -> void:
 		menu_flow.set_routes(items)
 		_refresh_menu())
@@ -193,6 +217,14 @@ func _ready() -> void:
 		menu_flow.on_scan_results(msg)
 		_refresh_menu())
 	ipc.settings_received.connect(_on_settings)
+	ipc.imports_received.connect(func(items: Array, _msg: Dictionary) -> void:
+		menu_flow.set_import_candidates(items)
+		_refresh_menu())
+	ipc.workout_saved_received.connect(func(msg: Dictionary) -> void:
+		ipc.test_log("workout_saved id=%s" % str(msg.get("workout_id", "")))
+		if menu_flow.on_workout_saved(msg):
+			ipc.list_workouts()
+		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
 		_refresh_menu())
@@ -236,10 +268,14 @@ func _apply_sky_params(theme_dict: Dictionary) -> void:
 		sun.basis = Basis.looking_at(-sun_dir, Vector3.UP)
 	var horizon: Color = sky.get("horizon_color", RenderQuality.FOG_COLOR)
 	var fog_dens: float = float(sky.get("fog_density", 0.01))
-	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
+	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
 
 
 func _on_input_event(event_name: String) -> void:
+	if event_name in ["PLUS_UNCLEAR", "MINUS_UNCLEAR"]:
+		print("Appui ambigu : ", event_name)
+		banner.show_message("press", HudViewModel.unclear_press_text(event_name, menu_flow.is_visible()), PRESS_HINT_S)
+		return
 	# Bips distincts : court + aigu, court − grave, long + montant, long − descendant.
 	if not BEEPS.has(event_name):
 		return
@@ -285,6 +321,12 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.pair_devices(act.get("args", {}))
 		"set_setting":
 			ipc.set_setting(str(act["key"]), act["value"])
+		"list_imports":
+			ipc.list_imports()
+		"create_workout":
+			ipc.create_workout(act["args"])
+		"import_workout":
+			ipc.import_workout(str(act["path"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
 		"select_route":
@@ -361,13 +403,16 @@ func _process(delta: float) -> void:
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		var pos: Vector3 = route.sample_point(s_route)
+		if _visual_grade_scale != 1.0 and route != null and route.n > 0:
+			pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 		# Caméra subjective placée à 1.4 m de hauteur (hauteur des yeux du cycliste)
 		camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
 
-		# Orienter la caméra selon le cap de la route
+		# Orienter la caméra selon le cap et la pente de la route (Lot Q2)
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
 		# Dans Godot : -Z est le nord. La rotation Y s'applique sur le cap horaire.
 		camera.rotation.y = -heading
+		camera.rotation.x = deg_to_rad(follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale))
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
@@ -396,8 +441,11 @@ func _menu_camera(delta: float) -> bool:
 		return false
 	_menu_s = route.wrap_s(_menu_s + MENU_CAMERA_MPS * delta)
 	var pos: Vector3 = route.sample_point(_menu_s)
+	if _visual_grade_scale != 1.0 and route != null and route.n > 0:
+		pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
 	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
+	camera.rotation.x = deg_to_rad(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS, -1.0, _visual_grade_scale))
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
@@ -499,7 +547,7 @@ func _poll_route_job() -> void:
 	var sky_params := ThemeRenderParams.sky_params(streamer._theme_dict)
 	var horizon: Color = sky_params.get("horizon_color", RenderQuality.FOG_COLOR)
 	var fog_dens: float = float(sky_params.get("fog_density", 0.01))
-	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
+	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
 	if living_decor != null:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
@@ -589,6 +637,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 	# (2.0 ; absent en 1.0).
 	menu_flow.lists_needed()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
 
 
 func _on_core_error(code: String, message: String) -> void:
@@ -615,7 +664,7 @@ func _on_core_returned() -> void:
 
 
 func _on_command_failed(cmd_name: String) -> void:
-	if cmd_name in ["list_routes", "list_workouts"]:
+	if cmd_name in ["list_routes", "list_workouts", "list_imports"]:
 		return   # liste sans réponse : le menu l'indique (signal list_failed), pas de bandeau
 	banner.show_message("command", "Commande « %s » sans réponse du core" % cmd_name, ERROR_MIN_S)
 
@@ -632,6 +681,11 @@ func _on_state_received(state: Dictionary) -> void:
 	var new_session_state := str(state.get("session_state", ""))
 	if new_session_state != session_state:
 		session_state = new_session_state
+		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
+		if session_state == "RUNNING":
+			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null), CONTROLS_HINT_S)
+		else:
+			banner.clear_message("controls")
 		# Une erreur reste au moins 5 s ; au-delà, elle reste tant que la séance est en ERROR.
 		if banner.has_message("error"):
 			banner.set_sticky("error", session_state == "ERROR")

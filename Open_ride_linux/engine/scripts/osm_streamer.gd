@@ -37,6 +37,7 @@ var route = null
 var world_dir := ""
 var layers_present: Array = []
 var preset_name := "low"
+var visual_grade_scale: float = 1.0
 
 var _building_material: StandardMaterial3D
 var _water_material: Material
@@ -177,6 +178,7 @@ func _start_jobs() -> void:
 				"layers": layers_present.duplicate(),
 				"theme": _theme,
 				"route": route,
+				"visual_grade_scale": visual_grade_scale,
 				"fauna": fauna_enabled,
 			}
 			job["task"] = WorkerThreadPool.add_task(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
@@ -193,6 +195,9 @@ func _build_chunk_job(job: Dictionary) -> void:
 	var pois := []
 	var shapes := {"forests": [], "buildings": [], "waters": []}
 
+	var v_scale: float = float(job.get("visual_grade_scale", 1.0))
+	var alt_orig: float = job["route"].alt_m[0] if job.get("route") != null and job["route"].n > 0 else 0.0
+
 	var b_items := []
 	var w_items := {"lines": [], "areas": []}
 	# 1. Bâtiments
@@ -204,6 +209,14 @@ func _build_chunk_job(job: Dictionary) -> void:
 			for b in items:
 				shapes["buildings"].append(_shape(b.get("outer", [])))
 			if not items.is_empty():
+				if v_scale != 1.0:
+					var scaled_items: Array = []
+					for b in items:
+						var bc: Dictionary = b.duplicate()
+						if bc.has("base_y"):
+							bc["base_y"] = alt_orig + (float(bc["base_y"]) - alt_orig) * v_scale
+						scaled_items.append(bc)
+					items = scaled_items
 				var m := BuildingMesh.build(items, th, SKIRT_M)
 				if int(m.get("built", 0)) > 0:
 					var arr := _arrays_from_mesh_dict(m)
@@ -229,6 +242,20 @@ func _build_chunk_job(job: Dictionary) -> void:
 			if job.get("route") != null:
 				lines = cut_lines_at_road(lines, road_polyline(job["route"], k))
 			if not lines.is_empty():
+				if v_scale != 1.0:
+					var scaled_lines: Array = []
+					for line in lines:
+						var lc: Dictionary = line.duplicate()
+						var pts: Array = lc.get("points", [])
+						var new_pts: Array = []
+						for pt in pts:
+							if pt.size() >= 3:
+								new_pts.append([pt[0], pt[1], alt_orig + (float(pt[2]) - alt_orig) * v_scale])
+							else:
+								new_pts.append(pt)
+						lc["points"] = new_pts
+						scaled_lines.append(lc)
+					lines = scaled_lines
 				var l_mesh := WaterMesh.build_lines(lines)
 				if int(l_mesh.get("built", 0)) > 0:
 					var arr := _arrays_from_mesh_dict(l_mesh)
@@ -237,6 +264,14 @@ func _build_chunk_job(job: Dictionary) -> void:
 
 			var areas: Array = w_res.get("areas", [])
 			if not areas.is_empty():
+				if v_scale != 1.0:
+					var scaled_areas: Array = []
+					for area in areas:
+						var ac: Dictionary = area.duplicate()
+						if ac.has("level_y"):
+							ac["level_y"] = alt_orig + (float(ac["level_y"]) - alt_orig) * v_scale
+						scaled_areas.append(ac)
+					areas = scaled_areas
 				var a_mesh := WaterMesh.build_areas(areas)
 				if int(a_mesh.get("built", 0)) > 0:
 					var arr := _arrays_from_mesh_dict(a_mesh)
@@ -263,8 +298,14 @@ func _build_chunk_job(job: Dictionary) -> void:
 	var fauna := []
 	if bool(job.get("fauna", false)) and job.get("route") != null:
 		var fz = th.get("fauna", {})
+		var height_at := terrain_height_fn(w_dir, job["route"])
+		if v_scale != 1.0:
+			# Animaux posés sur le relief exagéré, comme le terrain affiché (lot Q2)
+			var raw_height := height_at
+			height_at = func(x: float, z: float) -> float:
+				return alt_orig + (float(raw_height.call(x, z)) - alt_orig) * v_scale
 		fauna = FaunaPlacer.place_chunk(k, veg_items, pois, job["route"], fz if typeof(fz) == TYPE_DICTIONARY else {}, {
-			"height_at": terrain_height_fn(w_dir, job["route"]),
+			"height_at": height_at,
 			"buildings": b_items,
 			"water": w_items,
 		})

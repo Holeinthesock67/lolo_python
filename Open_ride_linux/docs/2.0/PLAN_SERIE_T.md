@@ -54,7 +54,7 @@ Ce plan réutilise ce que la série R a déjà prévu : règles du jeu dans le c
 
 - **Obtention :** un bonus au hasard à la fin de chaque segment, et sous une arche tous les 5 km. Un seul bonus en réserve ; un nouveau remplace l'ancien.
 - **Activation :** bouton Z du Click, appui court (touche du clavier en secours). Pas d'activation automatique.
-- **Boutons du mode classique :** + et B changent de braquet (appui long : 10 braquets), Y met en pause (lot N6, accord du propriétaire du 25 octobre), Z active le bonus ; A reste libre.
+- **Boutons du mode classique :** ceux du plan commun, seule référence ([spécification générale](../SPECIFICATION_GENERALE.md) §7.1) : + et B changent de braquet (appui long : 10 braquets), Y met en pause, Z active le bonus, A change de vue de caméra (A long : vue par défaut).
 - **Valeurs :** dans un fichier de données modifiable, comme la table d'équilibrage de la série R.
 - **Résistance au trainer :** inchangée par les bonus, comme dans Zwift. Seule exception, voulue : le supplément de pente dû au vent et à l'aspiration (série P, `feel = "grade"`) se calcule avec le CdA courant, donc le bonus aéro l'allège aussi, sans deuxième calcul : P2 et P3 calculent ce supplément à chaque pas avec les `PhysicsParams` courants (CdA et masse).
 - **Fichiers :** la puissance du FIT et du journal reste la puissance mesurée. La vitesse et la distance restent les valeurs virtuelles, comme aujourd'hui. Les bonus utilisés vont au journal.
@@ -89,9 +89,9 @@ Les bots de N9 roulent à puissance constante. En 2.0, chaque bot a un profil ph
 Les ajouts suivent ceux de la série P, qui prend la version 1.3 du contrat IPC (lot P1 ; la 1.2 est prise par Q1, N13 et O4). La série T, comme la série R, passe donc en **v1.4**, par ajouts compatibles :
 
 - **Format `.world` 1.x :** couche facultative `segments` (`segments.json` : identifiant, nom, type `sprint` ou `climb`, `s_start`, `s_end`, longueur, pente moyenne, gain, catégorie, source `auto` ou `manual`). L'engine la lit lui-même, comme les autres couches.
-- **Trame `state` :** champ facultatif `segment` (segment en cours ou prochain, distance, chrono, écart au record) et champ `powerup` (bonus en réserve, bonus actif, temps restant). Chaque élément de `bots` gagne `profile`, `cp_w`, `mass_kg`, `wbal_pct`, `jersey` et `gap_s` (écart en temps de passage, positif si le bot est devant). La trame gagne `bot_ahead` et `bot_behind` (identifiants des deux voisins immédiats, ou `null`). Les 5 bots au plus de N9 tiennent toujours dans 1 400 octets avec ces champs, à vérifier par les tests de taille de `core/tests/test_contract_ipc.py`.
+- **Trame `state` :** champ facultatif `segment` (segment en cours ou prochain, distance, chrono, écart au record) et champ `powerup` (bonus en réserve, bonus actif, temps restant). Chaque élément de `bots` gagne `profile`, `cp_w`, `mass_kg`, `wbal_pct`, `jersey` et `gap_s` (écart en temps de passage, positif si le bot est devant). La trame gagne `bot_ahead` et `bot_behind` (identifiants des deux voisins immédiats, ou `null`). Les 5 bots au plus de N9 tiennent toujours dans la limite de 4 096 octets de `state` (révision 1.3) avec ces champs, à vérifier par les tests de taille de `core/tests/test_contract_ipc.py`.
 - **Message `segment_result` :** temps, record battu ou non, classement du passage.
-- **Événements `input` Z et A :** communs aux séries R et T ; le premier des lots de contrat (R1 ou T1) les ajoute. Y arrive avant, avec la pause du lot N6.
+- **Événements `input` Z et A :** ajoutés à la révision 1.3 avec tous les boutons du Click (spécification générale §6.1 et §7.1) ; T1 les utilise sans les redéfinir.
 
 ## 4. Risques
 
@@ -108,7 +108,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.3 du contrat IPC 
 
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
-| T1 | Contrat : couche `segments` du `.world`, champs `segment` et `powerup`, message `segment_result`, événements Z et A (IPC v1.4) | P1 | Interne (décision) |
+| T1 | Contrat IPC 1.4 commun aux séries R, T et V ([cahier](../lots/LOT_T1_contrat_1_4.md)) ; partie T : couche `segments` du `.world`, champs `segment`, `powerup` et `jerseys`, message `segment_result` | P1, PR #287 | Interne (décision) |
 | T2 | Détection automatique des montées et des sprints (module pur, vecteurs de test) | — | Délégable |
 | T3 | Compilateur : couche `segments` par `add-layer`, sprints déclarés à la main, segments du parcours de démonstration | T1, T2 | Délégable |
 | T4 | Chronométrage dans le core : franchissements interpolés, pauses, boucles et aller-retour, journal | T1, T2 | Délégable |
@@ -140,7 +140,7 @@ Ordre conseillé : T1 après P1, puis T2, T4 et T6 en parallèle ; T3, T5, T7 et
 
 Le propriétaire a validé le 27 octobre les propositions suivantes ; elles servent de base aux cahiers à venir.
 
-- **T1, contrat 1.4 :** rédigé après P1 (1.3). `segments.json` est la liste rendue par `Segment.to_dict()` (`segments.py`, lot T2) ; `state` gagne les champs `segment`, `powerup` et `segment_result` ; événements de boutons `Z_SHORT`, `Z_LONG`, `A_SHORT` et `A_LONG`, communs avec la série R.
+- **T1, contrat 1.4 :** rédigé après P1 (1.3). `segments.json` est la liste rendue par `Segment.to_dict()` (`segments.py`, lot T2) ; `state` gagne les champs `segment`, `powerup` et `segment_result` ; les événements de boutons `Z_SHORT`, `Z_LONG`, `A_SHORT` et `A_LONG` existent déjà depuis la révision 1.3.
 - **T3, segments manuels :** fichier `<parcours>.segments.toml` posé à côté du GPX (type, km de début, km de fin, nom). Le parcours de démonstration garde les segments détectés automatiquement, sans segment manuel.
 - **T5, records :** fichier `~/OpenRide/records.json`, par parcours et par segment, avec les 10 meilleurs temps et leur date. Le fantôme compte au classement comme ton meilleur temps, pas comme un coureur de plus. Le journal gagne un événement `powerup` (type, début, durée), sans changement des champs existants.
 - **T8, T9, T10 et T15 :** pas de maquette préalable ; le rendu, le HUD et le menu sont codés puis validés ensemble à la recette.
