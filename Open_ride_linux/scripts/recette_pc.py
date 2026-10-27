@@ -19,6 +19,7 @@ Bibliothèque standard seulement.
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import os
 import re
@@ -32,6 +33,9 @@ from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[1]          # Open_ride_linux/
 REPO = PROJECT.parent
+sys.path.insert(0, str(PROJECT / "core" / "src"))
+from openride_core.tools.guide import Guide  # noqa: E402  (bibliothèque standard seulement)
+
 DEFAULT_OUT = Path.home() / "OpenRide" / "recettes"
 STEPS = ("core", "compiler", "engine", "e2e", "visual", "privacy")
 
@@ -139,6 +143,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--seulement", type=parse_steps, help=f"étapes à lancer parmi {','.join(STEPS)}")
     ap.add_argument("--sans", type=parse_steps, default=[], help="étapes à sauter")
     ap.add_argument("--perf-strict", action="store_true", help="un budget de temps dépassé fait échouer l'engine")
+    ap.add_argument("--muet", action="store_true", help="sans bip de fin")
     args = ap.parse_args(argv)
 
     started = datetime.now()
@@ -159,6 +164,8 @@ def main(argv: list[str] | None = None) -> int:
     env.setdefault("VISUAL_OUT", str(out / "visual"))
 
     commands = step_commands(args.rapide, out)
+    guide = Guide("Recette du PC", out / "guide.jsonl", sound=sys.stdout.isatty() and not args.muet,
+                  screen=False, out=io.StringIO())   # lignes déjà affichées par le script : son et journal
     results: list[StepResult] = []
     for name in STEPS:
         if name not in wanted:
@@ -166,8 +173,10 @@ def main(argv: list[str] | None = None) -> int:
             continue
         cmd, cwd = commands[name]
         print(f"== {name} …", flush=True)
+        guide.step(name, beep=False, index=wanted.index(name) + 1, total=len(wanted))
         res = run_step(name, cmd, cwd, out, env)
         print(f"   {res.status} en {res.seconds:.0f} s{' : ' + res.detail if res.detail else ''}", flush=True)
+        guide.measure(name, f"{res.status} en {res.seconds:.0f} s", ok=res.status == "OK")
         results.append(res)
 
     ran = [r for r in results if r.status != "SAUTÉ"]
@@ -192,6 +201,8 @@ def main(argv: list[str] | None = None) -> int:
     (out / "resume.json").write_text(json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8")
     print()
     print(text, end="")
+    guide.finish(ok, "tout passe" if ok else "ÉCHEC")   # bip de fin (son seulement : déjà affiché)
+    guide.close()
     if shutil.which("notify-send") and sys.stdout.isatty():
         subprocess.run(["notify-send", "OpenRide : recette du PC", "tout passe" if ok else "ÉCHEC"], check=False)
     return 0 if ok else 1
