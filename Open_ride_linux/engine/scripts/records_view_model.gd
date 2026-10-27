@@ -49,7 +49,11 @@ func load_file(path: String = "") -> bool:
 func load_text(text: String) -> bool:
 	routes = {}
 	load_error = ""
-	var doc = JSON.parse_string(text)
+	var json := JSON.new()   # parse() plutôt que parse_string() : un fichier illisible n'écrit pas d'erreur
+	if json.parse(text) != OK:
+		load_error = UNREADABLE
+		return false
+	var doc = json.data
 	if typeof(doc) != TYPE_DICTIONARY or typeof(doc.get("routes")) != TYPE_DICTIONARY:
 		load_error = UNREADABLE
 		return false
