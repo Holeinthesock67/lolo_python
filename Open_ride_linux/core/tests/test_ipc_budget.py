@@ -81,8 +81,13 @@ def test_server_sends_degraded_state_instead_of_dropping(caplog):
 
     srv = IpcServer()
     srv._tx_sock = Sock()
+    # Depuis la révision 1.3, la limite de state est de 4 096 octets : la pire trame passe entière.
     srv.send_raw(worst_state(revisions()[-1]))
-    srv.send_raw(worst_state(revisions()[-1]))
+    assert len(sent) == 1 and len(sent[0]) > MAX_DATAGRAM_SIZE
+    sent.clear()
+    # Allègement à une limite plus basse (même chemin qu'au-delà de 4 096 octets).
+    srv.send_raw(worst_state(revisions()[-1]), max_size=MAX_DATAGRAM_SIZE)
+    srv.send_raw(worst_state(revisions()[-1]), max_size=MAX_DATAGRAM_SIZE)
     assert len(sent) == 2 and all(len(p) <= MAX_DATAGRAM_SIZE for p in sent)
     assert json.loads(sent[0])["devices"]["trainer"]["status"] == "RECONNECTING"
     assert sum("allégée" in r.message for r in caplog.records) == 1   # avertissement limité
