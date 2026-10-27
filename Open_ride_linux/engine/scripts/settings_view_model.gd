@@ -63,6 +63,15 @@ func menu_items() -> Array:
 	return out
 
 
+## Ligne de version en bas de l'écran « Réglages » (lot O4, numéro unique du lot O2) : version de
+## l'engine, et celle du core (`hello_ack.core_version`) quand elle diffère ; non sélectionnable.
+static func version_item(engine_version: String, core_version: String) -> Dictionary:
+	var detail := ""
+	if core_version != "" and core_version != engine_version:
+		detail = "core %s : versions différentes, mettre à jour OpenRide" % core_version
+	return {"id": "version", "label": "OpenRide " + engine_version, "enabled": false, "detail": detail}
+
+
 ## Ouvre la modification d'un réglage (id « set:clé ») ; faux si la clé est inconnue.
 func begin(key: String) -> bool:
 	var it := item(key)
