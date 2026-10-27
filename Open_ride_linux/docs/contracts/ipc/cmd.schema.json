@@ -48,7 +48,11 @@
         "list_garage",
         "equip",
         "buy",
-        "set_avatar"
+        "set_avatar",
+        "list_plans",
+        "start_plan",
+        "stop_plan",
+        "accept_ftp"
       ]
     },
     "args": {

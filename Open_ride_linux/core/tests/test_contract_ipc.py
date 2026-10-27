@@ -29,7 +29,7 @@ def schema(name: str) -> dict:
 def assert_valid(msg: dict) -> None:
     errors = [e.message for e in jsonschema.Draft202012Validator(schema(msg["type"])).iter_errors(msg)]
     assert not errors, f"{msg['type']} invalide : {errors}"
-    limit = MAX_LIST_DATAGRAM if msg["type"] in ("routes", "workouts", "room", "garage") else MAX_DATAGRAM
+    limit = MAX_LIST_DATAGRAM if msg["type"] in ("routes", "workouts", "room", "garage", "plans") else MAX_DATAGRAM
     # La limite de state est de 4 096 octets depuis la révision 1.3, mais les trames du core restent
     # sous 1 400 octets : les tests le vérifient pour garder la place des ajouts de la 2.0.
     assert len(encode(msg)) <= limit
@@ -64,7 +64,7 @@ def run_steps(s, n, t0=100.0):
 def test_all_message_schemas_exist():
     for name in ("state", "cmd", "hello", "hello_ack", "heartbeat", "input", "error", "shutdown", "bye",
                  "routes", "workouts", "scan_results", "settings", "imports", "workout_saved",
-                 "segment_result", "room", "loot", "garage", "progression", "xp_result"):
+                 "segment_result", "room", "loot", "garage", "progression", "xp_result", "plans"):
         jsonschema.Draft202012Validator.check_schema(schema(name))
 
 

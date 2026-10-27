@@ -334,7 +334,8 @@ def stop_plan(state_path: Path | None = None) -> bool:
     return False
 
 
-def active_tag(workout_id: str | None, on: date | None = None) -> dict[str, Any] | None:
+def active_tag(workout_id: str | None, on: date | None = None, state_path: Path | None = None,
+               plans_dir: Path | None = None, workouts_dir: Path | None = None) -> dict[str, Any] | None:
     """Champ `plan` du journal pour la séance qui commence (None sans plan actif ou hors plan).
 
     Ne lève jamais : un plan abîmé ne doit pas empêcher de rouler.
@@ -342,10 +343,10 @@ def active_tag(workout_id: str | None, on: date | None = None) -> dict[str, Any]
     if not workout_id:
         return None
     try:
-        st = load_state()
+        st = load_state(state_path)
         if st is None:
             return None
-        return plan_tag(load_plan(st.plan_id), st.start, workout_id, on)
+        return plan_tag(load_plan(st.plan_id, plans_dir, workouts_dir), st.start, workout_id, on)
     except Exception:
         return None
 
