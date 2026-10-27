@@ -2,7 +2,7 @@
 
 ## 1. Objectif
 
-La formule de la SRS §5 contient déjà le vent (`wind_mps` de `physics.py`), mais il vaut toujours 0. Ce lot calcule dans le core un vent réglable (calme, fixe ou en rafales), le projette sur le cap de la route, l'applique à la vitesse virtuelle et, en SIM, à la résistance ressentie. Il publie le champ `wind` de la trame `state` (contrat v1.2 du lot P1), que l'engine utilise pour l'indicateur du HUD et l'animation du décor.
+La formule de la SRS §5 contient déjà le vent (`wind_mps` de `physics.py`), mais il vaut toujours 0. Ce lot calcule dans le core un vent réglable (calme, fixe ou en rafales), le projette sur le cap de la route, l'applique à la vitesse virtuelle et, en SIM, à la résistance ressentie. Il publie le champ `wind` de la trame `state` (contrat v1.3 du lot P1), que l'engine utilise pour l'indicateur du HUD et l'animation du décor.
 
 ## 2. À lire
 
@@ -12,7 +12,7 @@ La formule de la SRS §5 contient déjà le vent (`wind_mps` de `physics.py`), m
 
 ## 3. Prérequis
 
-P1 livré (contrat v1.2 et `[wind]` validés). Version 1.0 publiée.
+P1 livré (contrat v1.3 et `[wind]` validés). Version 1.0 publiée.
 
 ## 4. Travail demandé
 
@@ -26,7 +26,7 @@ P1 livré (contrat v1.2 et `[wind]` validés). Version 1.0 publiée.
   - `"ftms"` : `head_mps` passé dans le champ vent de la commande 0x11, pente inchangée.
 - ERG : vitesse virtuelle seulement, aucune incidence sur la commande au trainer.
 - Pause : vent figé (comme le chronomètre).
-- Trame `state` : champ `wind` du contrat v1.2, 2 fois par seconde, quand `mode` n'est pas `"off"` ; la physique utilise le vent exact à chaque pas de 50 Hz.
+- Trame `state` : champ `wind` du contrat v1.3, 2 fois par seconde, quand `mode` n'est pas `"off"` ; la physique utilise le vent exact à chaque pas de 50 Hz.
 - `max_grade_offset_pct` réglable dans la section « Réglages » du menu : clé ajoutée aux réglages écrits par le core (même mécanisme qu'O3) ; l'écran lui-même vient avec P16.
 - Journal : `head_mps` et le supplément de pente ajoutés en champs facultatifs de l'enregistrement à 1 Hz (le format reste lisible par `openride-core summary` et `history`).
 - `config.py` : section `[wind]` validée (types et bornes, `ConfigError` lisible) ; SRS §11 mise à jour.
@@ -48,7 +48,7 @@ Aucune (P1 les a faites).
 3. Vent du nord, route plein nord puis plein sud puis plein est : `head_mps` positif, négatif, nul (à 0,01 près).
 4. Même `seed`, même suite de vents (déterminisme) ; `gust_pct = 0` : vent constant.
 5. `feel = "grade"` : supplément de pente borné par `max_grade_offset_pct`, nul en ERG et à `mode = "off"`, cohérent avec `ΔF / (m g)` à 0,05 point près ; `feel = "ftms"` : champ vent de la commande 0x11 égal à `head_mps` (doublure `MockDriver`).
-6. Trame `state` valide pour le schéma v1.2, avec et sans `wind` ; taille de la trame la plus chargée sous 1 400 octets.
+6. Trame `state` valide pour le schéma v1.3, avec et sans `wind` ; taille de la trame la plus chargée sous 1 400 octets.
 7. Configuration invalide (`speed_kmh = -3`, `mode = "tempête"`) : `ConfigError` avec la clé fautive.
 
 **Sur le vélo (le propriétaire) :** vent de face de 25 km/h en SIM avec `feel = "grade"`, puis `"ftms"` : la résistance doit monter de façon perceptible et progressive, sans à-coup.
