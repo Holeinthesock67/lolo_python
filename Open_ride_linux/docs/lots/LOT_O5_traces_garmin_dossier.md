@@ -46,3 +46,13 @@ Aucune.
 
 - Téléchargement depuis Garmin Connect (service en ligne, hors périmètre du SRS).
 - Lecture des fichiers `.fit` de séances OpenRide comme parcours (ils n'ont pas de GPS).
+
+## 9. Livraison
+
+Livré le 26 octobre 2026 (issue #122), thread « Développer les lots O restants ».
+
+- Règles communes (`openride_core/catalog.py` et `openride_compiler/track_formats.py`, parité testée) : `TRACK_SUFFIXES` = `.gpx`, `.fit`, `.fit.gz`, `.tcx`, `.tcx.gz`, `.zip` dans l'ordre de priorité ; `track_stem` (nom sans extension) ; `scan_tracks` (une trace par identifiant, conflits `(écartée, retenue)`). L'ordre de priorité place chaque `.gz` juste après son format, puis `.zip` en dernier. Deux traces de même extension et de même identifiant (`Col.gpx` et `col.gpx`) sont aussi un conflit ; avant ce lot, elles donnaient deux entrées de même identifiant.
+- Conflits : avertissement `catalog` au journal du core ; `list` et `build-all` les écrivent sur la sortie d'erreur (`conflit : col.fit ignoré, même parcours que col.gpx`). `RouteEntry` ne change pas.
+- `read_track(path, notes)` : `.gz` (ou contenu gzip) décompressé en mémoire, `.zip` : première entrée `.fit`/`.tcx`/`.gpx` par ordre alphabétique, les autres citées dans `notes` ; vide, corrompue ou plus de 50 Mo décompressés : `CompileError`. `build` nomme le parcours sans les extensions (`Ma Sortie.tcx.gz` → `ma-sortie`).
+- Manifeste : `source.gpx` = nom du fichier déposé, `source.gpx_sha256` = SHA-256 du fichier déposé (archive comprise) ; format `.world` inchangé.
+- Tests : `compiler/tests/test_garmin_exports.py` (critères 2 à 6, traces fabriquées et compressées à la volée), situation `garmin` et règles de traces dans `test_catalog_parity.py`, `core/tests/test_catalog.py`. `launcher.py` n'a pas changé : la compilation au lancement passe par le catalogue.
