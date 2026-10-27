@@ -5,6 +5,7 @@ extends SceneTree
 
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 # Couleurs figées attendues pour `w123456` avec le thème par défaut (critère 5)
 const EXPECTED_WALL_HEX_W123456 := "cdb48a"
@@ -200,13 +201,13 @@ func _test_performance_500() -> void:
 		var x0 := float((i % 25) * 20)
 		var z0 := float((i / 25) * 20)
 		list_500.append(_building("b_%d" % i, [[x0, z0], [x0 + 10.0, z0], [x0 + 10.0, z0 + 8.0], [x0, z0 + 8.0]], 100.0, 6.0))
-	var t0 := Time.get_ticks_usec()
-	var res: Dictionary = BuildingMesh.build(list_500, _theme)
-	var elapsed_ms := (Time.get_ticks_usec() - t0) / 1000.0
+	var box := [{}]   # les lambdas capturent par valeur : résultat rangé dans un tableau
+	var elapsed_ms := PerfBudget.measure_ms(func(): box[0] = BuildingMesh.build(list_500, _theme), 3, 1)
+	var res: Dictionary = box[0]
 	print("Maillage de 500 bâtiments rectangulaires : %.2f ms (%d sommets, %d indices)" % [
 		elapsed_ms, res["vertices"].size(), res["indices"].size()])
-	_check(res["built"] == 500 and elapsed_ms < 100.0,
-		"500 bâtiments rectangulaires maillés en %.2f ms (< 100 ms)" % elapsed_ms)
+	_check(res["built"] == 500 and PerfBudget.check("building_mesh_500", elapsed_ms),
+		"500 bâtiments rectangulaires maillés, temps dans le budget (%.2f ms)" % elapsed_ms)
 
 
 func _test_skirt() -> void:

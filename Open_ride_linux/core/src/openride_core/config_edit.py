@@ -1,4 +1,4 @@
-"""Modification ciblée de `~/OpenRide/config.toml` (lots N12 et N14).
+"""Modification ciblée de `~/OpenRide/config.toml` (lots N12, N14 et O3).
 
 Change quelques clés sans réécrire le fichier : commentaires, ordre, autres sections et clés
 inconnues restent tels quels. Une copie `config.toml.bak` est faite avant l'écriture, le
@@ -31,10 +31,18 @@ def _toml_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _set_key(lines: list[str], section: str, key: str, literal: str) -> str | None:
-    """Remplace ou ajoute `key = literal` (valeur TOML déjà écrite) dans `[section]` ;
-    renvoie la ligne écrite si elle change."""
-    new_line = f"{key} = {literal}"
+def _toml_value(value: object) -> str:
+    """Valeur TOML : texte entre guillemets, booléen, entier ou nombre (réglages du lot O3)."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    return _toml_string(str(value))
+
+
+def _set_key(lines: list[str], section: str, key: str, value: object) -> str | None:
+    """Remplace ou ajoute `key = valeur` dans `[section]` ; renvoie la ligne écrite si elle change."""
+    new_line = f"{key} = {_toml_value(value)}"
     key_re = re.compile(rf"^\s*{re.escape(key)}\s*=")
     start = end = None
     for i, line in enumerate(lines):
@@ -65,37 +73,27 @@ def _set_key(lines: list[str], section: str, key: str, literal: str) -> str | No
     return new_line
 
 
-def plan_literals(text: str, literals: list[tuple[str, str, str]]) -> tuple[str, list[str]]:
-    """Texte final et lignes changées pour les `(section, clé, valeur TOML écrite)` donnés."""
+def plan_text(text: str, values: list[tuple[str, str, object]]) -> tuple[str, list[str]]:
+    """Texte final et lignes changées pour les `(section, clé, valeur)` donnés."""
     lines = text.splitlines()
     changed: list[str] = []
-    for section, key, literal in literals:
-        line = _set_key(lines, section, key, literal)
+    for section, key, value in values:
+        line = _set_key(lines, section, key, value)
         if line is not None:
             changed.append(f"[{section}] {line}")
     return "\n".join(lines) + "\n", changed
 
 
-def plan_text(text: str, values: list[tuple[str, str, str]]) -> tuple[str, list[str]]:
-    """Texte final et lignes changées pour les `(section, clé, valeur)` donnés (valeurs textuelles)."""
-    return plan_literals(text, [(s, k, _toml_string(v)) for s, k, v in values])
-
-
-def update_config(path: Path, values: list[tuple[str, str, str]]) -> list[str]:
-    """Écrit les valeurs textuelles dans `path` ; renvoie les lignes changées (vide : rien à faire).
+def update_config(path: Path, values: list[tuple[str, str, object]]) -> list[str]:
+    """Écrit les valeurs dans `path` ; renvoie les lignes changées (vide : rien à faire).
 
     Lève `ConfigEditError` si le fichier final ne passe pas `config.validate` : rien n'est écrit.
     """
-    return write_literals(path, [(s, k, _toml_string(v)) for s, k, v in values])
-
-
-def write_literals(path: Path, literals: list[tuple[str, str, str]]) -> list[str]:
-    """Comme `update_config`, avec des valeurs déjà écrites en TOML (nombres, booléens : lot O3)."""
     try:
         old = path.read_text(encoding="utf-8") if path.exists() else ""
     except OSError as exc:
         raise ConfigEditError(f"{path} : lecture impossible : {exc}") from None
-    new, changed = plan_literals(old, literals)
+    new, changed = plan_text(old, values)
     if not changed:
         return []
     try:

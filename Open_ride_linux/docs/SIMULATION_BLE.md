@@ -76,7 +76,7 @@ Une section absente retire l'appareil. Les temps sont en secondes depuis le lanc
 | `connect_delay` | `seconds` | Durée des prochaines connexions. |
 | `att_error` | `code` (128 = 0x80), `count` | Les prochaines écritures du Control Point échouent. |
 | `cp_silent` | `count` | Les prochaines commandes restent sans réponse 0x80. |
-| `silence` | `seconds` | Plus d'Indoor Bike Data pendant ce temps. |
+| `silence` | `seconds` | Trainer : plus d'Indoor Bike Data pendant ce temps. Boîtier du Click (`click_plus`, `click_minus`) : plus aucune notification, lien gardé (défaut du boîtier gauche à l'essai 69, recette guidée du Click, lot X8). |
 | `control_lost` | | Fitness Machine Status 0xFF : contrôle retiré. |
 | `refuse_control` | `value` (vrai par défaut) | Les demandes de contrôle sont refusées (0x05). |
 | `rider` | `watts`, `cadence_rpm` | Effort du cycliste en SIM (0 : arrêt de pédalage). |

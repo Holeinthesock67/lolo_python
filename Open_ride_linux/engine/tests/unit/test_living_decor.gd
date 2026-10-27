@@ -16,6 +16,7 @@ const RenderQuality := preload("res://scripts/render_quality.gd")
 const HudView := preload("res://scripts/hud_view.gd")
 const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 const WORLD := "user://test_living_decor.world"
 const LENGTH_M := 5000.0
@@ -203,7 +204,7 @@ func _run() -> void:
 	_check(cheer_max > 0.2, "clameur au sommet : %.2f" % cheer_max)
 	_check(dec.passersby_view.visible_count() >= 0, "passants affichés")
 	print("Décor vivant (deuxième vague) : %.3f ms par image (high)" % per_frame_ms)
-	_check(per_frame_ms < 2.0, "coût du branchement en %.3f ms par image (< 2 ms)" % per_frame_ms)
+	_check(PerfBudget.check("living_decor_frame", per_frame_ms), "coût du branchement en %.3f ms par image" % per_frame_ms)
 	# Brume du matin en fond de vallée : brouillard rapproché
 	var dv := LivingDecor.new()
 	root.add_child(dv)

@@ -1,221 +1,189 @@
-"""Réglages proposés au menu (lot O3) : liste fermée, lecture, pas au Click, écriture.
+"""Réglages proposés au menu (lots O3 et O4) : liste fermée, valeurs, pas au Click, écriture.
 
-Le menu « Réglages » (lot O4) et `openride-core settings` ne changent que les clés de
-`SETTINGS`. Les bornes et les choix viennent de `config.py` (`BOUNDS`, `CHOICES`) au moment de
-la lecture, jamais recopiés ici ; les thèmes proposés sont `default` puis les dossiers de
-`~/OpenRide/Themes/` qui contiennent un `theme.json`, dans l'ordre de `openride-compiler
-theme-list` (lot N10). L'écriture passe par `config_writer.py` (fichier gardé tel quel,
-`config.toml.bak`, validation avant d'écrire).
+Chaque réglage est une clé `section.clé` de `config.toml`. Les bornes et les choix viennent de
+`config.py` (`BOUNDS`, `CHOICES`), jamais recopiés ici ; les thèmes proposés sont `default` et les
+dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
 
-Forme d'un réglage (`current`, `settings --json`), stable :
+`current(cfg)` donne la liste pour le message IPC `settings` (contrat révision 1.3) et pour
+`openride-core settings --json` ; chaque élément :
 
-    {"key": "rider.ftp_w", "label": "FTP", "type": "number", "unit": "W",
-     "value": 250, "min": 50, "max": 600, "step": 5, "applies": "next_session"}
+    {"key": "rider.ftp_w", "label": "FTP", "type": "int", "value": 250, "min": 50, "max": 600,
+     "step": 5, "unit": "W", "applies": "next_session"}
 
-- `type` : `number` (valeur entre `min` et `max`, pas `step`), `slider` (comme `number`, affiché
-  en curseur ; difficulté du trainer, 0 à 100 % par pas de 10) ou `choice` (`choices` : liste
-  des valeurs permises, parcourue en boucle ; pas de `min`, `max` ni `step`) ;
-- `value` : entier quand la valeur est entière, sinon nombre décimal ; texte pour `choice` ;
-- `applies` : `now` (pris en compte tout de suite : thème et qualité du décor du menu) ou
-  `next_session` (à la prochaine séance).
-
-`settings --json` écrit `{"config": CHEMIN, "settings": [réglage, …]}` dans l'ordre de `SETTINGS`.
+`type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
+la séance suivante, sans relancer) ou `now` (qualité et thème : l'engine les applique tout de suite
+au décor ; le lanceur les passe aussi à l'engine aux lancements suivants).
+`apply(cfg, changes, path)` valide, écrit dans `config.toml` (commentaires et reste du fichier
+gardés, copie `.bak`) puis met à jour `cfg` en mémoire.
 """
 
 from __future__ import annotations
 
 import json
-import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
 from . import config as config_mod
-from . import config_writer
+from . import config_edit
 
-THEMES_DIR = config_mod.OPENRIDE_HOME / "Themes"
-APPLIES = ("now", "next_session")
-
-
-class SettingError(Exception):
-    """Réglage inconnu ou valeur refusée ; message lisible qui cite la clé."""
+THEMES_DIR = Path.home() / "OpenRide" / "Themes"
 
 
 @dataclass(frozen=True)
 class Setting:
-    key: str          # « section.clé » de config.toml
-    label: str        # libellé français du menu
-    type: str         # "number", "slider" ou "choice"
-    applies: str      # "now" ou "next_session"
-    step: float = 0   # pas d'un appui au Click (number, slider)
+    key: str
+    label: str
+    step: float = 1
     unit: str = ""
+    applies: str = "next_session"
 
     @property
-    def section_key(self) -> tuple[str, str]:
-        section, key = self.key.split(".", 1)
-        return section, key
+    def section(self) -> str:
+        return self.key.split(".", 1)[0]
 
     @property
-    def is_int(self) -> bool:
-        """Valeur entière dans config.py (braquet) : jamais écrite avec décimale."""
-        section, key = self.section_key
-        default = getattr(getattr(config_mod.Config(), section), key)
-        return isinstance(default, int) and not isinstance(default, bool)
+    def name(self) -> str:
+        return self.key.split(".", 1)[1]
 
 
 SETTINGS: tuple[Setting, ...] = (
-    Setting("rider.ftp_w", "FTP", "number", "next_session", step=5, unit="W"),
-    Setting("rider.mass_kg", "Masse du cycliste", "number", "next_session", step=1, unit="kg"),
-    Setting("trainer.difficulty_pct", "Difficulté du trainer", "slider", "next_session", step=10, unit="%"),
-    Setting("gearing.start_gear", "Braquet de départ", "number", "next_session", step=1),
-    Setting("render.quality", "Qualité graphique", "choice", "now"),
-    Setting("render.theme", "Thème", "choice", "now"),
+    Setting("rider.ftp_w", "FTP", 5, "W"),
+    Setting("rider.mass_kg", "Poids du cycliste", 1, "kg"),
+    Setting("trainer.difficulty_pct", "Difficulté en SIM", 10, "%"),
+    Setting("gearing.start_gear", "Braquet de départ", 1),
+    Setting("render.quality", "Qualité graphique", applies="now"),
+    Setting("render.theme", "Thème", applies="now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
-    Setting("wind.mode", "Vent", "choice", "next_session"),
-    Setting("wind.speed_kmh", "Force du vent", "number", "next_session", step=5, unit="km/h"),
-    Setting("wind.from_deg", "Vent venant de", "number", "next_session", step=45, unit="°"),
-    Setting("wind.max_grade_offset_pct", "Plafond du vent sur la pente", "number", "next_session",
-            step=0.5, unit="pts"),
+    Setting("wind.mode", "Vent"),
+    Setting("wind.speed_kmh", "Force du vent", 5, "km/h"),
+    Setting("wind.max_grade_offset_pct", "Plafond du vent", 1, "pts"),
 )
-BY_KEY = {s.key: s for s in SETTINGS}
+KEYS = tuple(s.key for s in SETTINGS)
+
+
+class SettingError(Exception):
+    """Réglage inconnu ou valeur refusée ; message lisible qui cite la clé et les bornes."""
 
 
 def get(key: str) -> Setting:
-    try:
-        return BY_KEY[key]
-    except KeyError:
-        raise SettingError(f"réglage inconnu {key!r} (réglages possibles : {', '.join(BY_KEY)})") from None
+    for s in SETTINGS:
+        if s.key == key:
+            return s
+    raise SettingError(f"réglage inconnu : {key} (réglages : {', '.join(KEYS)})")
 
 
-def available_themes(themes_dir: Path | None = None) -> list[str]:
-    """`default`, puis les thèmes installés (dossiers avec `theme.json`), triés comme `theme-list`."""
-    d = THEMES_DIR if themes_dir is None else themes_dir
+def installed_themes(themes_dir: Path | None = None) -> list[str]:
+    base = THEMES_DIR if themes_dir is None else themes_dir
     names = ["default"]
-    if d.is_dir():
-        names += sorted(p.name for p in d.iterdir()
-                        if p.is_dir() and not p.name.startswith(".") and p.name != "default"
-                        and (p / "theme.json").is_file())
+    if base.is_dir():
+        names += sorted(d.name for d in base.iterdir()
+                        if d.is_dir() and d.name != "default" and (d / "theme.json").is_file())
     return names
 
 
-def bounds(setting: Setting, cfg: config_mod.Config | None = None) -> tuple[float, float]:
-    """Bornes lues dans `config.BOUNDS` ; le braquet de départ est aussi borné par `n_gears`."""
-    lo, hi = config_mod.BOUNDS[setting.section_key]
-    if setting.key == "gearing.start_gear" and cfg is not None:
-        hi = min(hi, cfg.gearing.n_gears)
-    return lo, hi
+def choices(s: Setting, themes_dir: Path | None = None) -> list[str] | None:
+    if s.key == "render.theme":
+        return installed_themes(themes_dir)
+    found = config_mod.CHOICES.get((s.section, s.name))
+    return list(found) if found else None
 
 
-def choices(setting: Setting, themes_dir: Path | None = None) -> list[str]:
-    if setting.key == "render.theme":
-        return available_themes(themes_dir)
-    return list(config_mod.CHOICES[setting.section_key])
+def bounds(s: Setting, cfg: config_mod.Config) -> tuple[float, float] | None:
+    if s.key == "gearing.start_gear":
+        return (1, cfg.gearing.n_gears)
+    return config_mod.BOUNDS.get((s.section, s.name))
 
 
-def _number(value: float) -> int | float:
-    return int(value) if float(value).is_integer() else float(value)
+def _value(cfg: config_mod.Config, s: Setting) -> Any:
+    v = getattr(getattr(cfg, s.section), s.name)
+    return int(round(v)) if isinstance(v, float) else v
 
 
 def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict[str, Any]]:
-    """Valeur actuelle de chaque réglage, dans l'ordre de `SETTINGS`, prête pour l'IPC (lot O4)."""
     out: list[dict[str, Any]] = []
     for s in SETTINGS:
-        section, key = s.section_key
-        value = getattr(getattr(cfg, section), key)
-        item: dict[str, Any] = {"key": s.key, "label": s.label, "type": s.type, "unit": s.unit}
-        if s.type == "choice":
-            item.update(value=value, choices=choices(s, themes_dir))
+        item: dict[str, Any] = {"key": s.key, "label": s.label, "value": _value(cfg, s), "applies": s.applies}
+        ch = choices(s, themes_dir)
+        if ch is not None:
+            item.update(type="choice", choices=ch)
         else:
-            lo, hi = bounds(s, cfg)
-            item.update(value=_number(value), min=_number(lo), max=_number(hi), step=_number(s.step))
-        item["applies"] = s.applies
+            lo, hi = bounds(s, cfg) or (0, 0)
+            item.update(type="int", min=int(lo), max=int(hi), step=int(s.step), unit=s.unit)
         out.append(item)
     return out
 
 
-def step(key: str, value: Any, direction: int, cfg: config_mod.Config | None = None,
-         themes_dir: Path | None = None) -> Any:
-    """Valeur suivante (`direction` > 0) ou précédente : bornée pour un nombre, en boucle pour un choix."""
+def step(cfg: config_mod.Config, key: str, value: Any, direction: int, themes_dir: Path | None = None) -> Any:
+    """Valeur suivante (direction +1) ou précédente (−1) : bornée pour un nombre, en boucle pour un choix."""
     s = get(key)
-    d = (direction > 0) - (direction < 0)
-    if s.type == "choice":
-        options = choices(s, themes_dir)
-        i = options.index(value) if value in options else -d   # valeur inconnue : premier ou dernier
-        return options[(i + d) % len(options)]
-    lo, hi = bounds(s, cfg)
-    return _number(min(hi, max(lo, float(value) + d * s.step)))
+    ch = choices(s, themes_dir)
+    if ch is not None:
+        i = ch.index(value) if value in ch else 0
+        return ch[(i + (1 if direction > 0 else -1)) % len(ch)]
+    lo, hi = bounds(s, cfg) or (float("-inf"), float("inf"))
+    return int(max(lo, min(hi, value + (s.step if direction > 0 else -s.step))))
 
 
-def parse_value(key: str, text: str) -> Any:
-    """Valeur donnée en ligne de commande, convertie dans le type du réglage."""
+def check(cfg: config_mod.Config, key: str, value: Any, themes_dir: Path | None = None) -> Any:
+    """Valeur validée (entier pour un nombre) ; `SettingError` sinon."""
     s = get(key)
-    if s.type == "choice":
-        return text
-    try:
-        number = float(text.replace(",", "."))
-    except ValueError:
-        raise SettingError(f"{key} : nombre attendu, reçu {text!r}") from None
-    if s.is_int:
-        if not number.is_integer():
-            raise SettingError(f"{key} : entier attendu, reçu {text!r}")
-        return int(number)
-    return number
-
-
-def apply(changes: dict[str, Any], path: Path | None = None, themes_dir: Path | None = None) -> list[str]:
-    """Valide puis écrit les réglages (`{"rider.ftp_w": 265}`) ; renvoie les lignes changées.
-
-    Lève `SettingError` (clé hors de `SETTINGS`, thème absent, valeur hors bornes) : rien n'est écrit.
-    """
-    writes: dict[tuple[str, str], object] = {}
-    for key, value in changes.items():
-        s = get(key)
-        if s.key == "render.theme" and value not in (options := available_themes(themes_dir)):
-            raise SettingError(f"{key} : thème {value!r} non installé (thèmes : {', '.join(options)})")
-        if s.type != "choice" and (isinstance(value, bool) or not isinstance(value, (int, float))):
-            raise SettingError(f"{key} : nombre attendu, reçu {value!r}")
-        writes[s.section_key] = value
-    try:
-        return config_writer.update_config(writes, path)
-    except config_writer.ConfigWriteError as exc:
-        raise SettingError(str(exc)) from None
-
-
-# --- ligne de commande : openride-core settings [--json] | settings set CLÉ VALEUR -------------------
-
-def _format(item: dict[str, Any]) -> str:
-    value = f"{item['value']} {item['unit']}".strip()
-    if item["type"] == "choice":
-        extra = "choix : " + ", ".join(item["choices"])
-    else:
-        extra = f"{item['min']} à {item['max']}, pas {item['step']}"
-    when = "immédiatement" if item["applies"] == "now" else "à la prochaine séance"
-    return f"{item['label']:<24} {value:<10} {item['key']:<24} ({extra} ; {when})"
-
-
-def run(action: str | None, key: str | None, value: str | None, as_json: bool,
-        config_path: Path | None) -> int:
-    path = config_path or config_mod.DEFAULT_CONFIG_PATH
-    if action == "set":
+    ch = choices(s, themes_dir)
+    if ch is not None:
+        if not isinstance(value, str) or value not in ch:
+            raise SettingError(f"{key} : « {value} » refusé (choix : {', '.join(ch)})")
+        return value
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
         try:
-            if key is None or value is None:
-                raise SettingError("usage : openride-core settings set CLÉ VALEUR")
-            changed = apply({key: parse_value(key, value)}, path)
-        except SettingError as exc:
-            print(f"openride-core settings : {exc}", file=sys.stderr)
-            return 1
-        print(f"{path} : " + ("; ".join(changed) if changed else "inchangé"))
-        return 0
+            value = float(str(value).replace(",", "."))
+        except ValueError:
+            raise SettingError(f"{key} : nombre attendu, reçu « {value} »") from None
+    lo, hi = bounds(s, cfg) or (float("-inf"), float("inf"))
+    if not lo <= value <= hi:
+        raise SettingError(f"{key} : {value:g} hors bornes ({lo:g} à {hi:g})")
+    return int(round(value))
+
+
+def apply(cfg: config_mod.Config, changes: dict[str, Any], path: Path | None = None,
+          themes_dir: Path | None = None) -> list[str]:
+    """Valide et écrit les réglages ; met `cfg` à jour ; renvoie les lignes changées."""
+    clean = {k: check(cfg, k, v, themes_dir) for k, v in changes.items()}
+    values = [(get(k).section, get(k).name, v) for k, v in clean.items()]
     try:
-        cfg = config_mod.load(path)
+        changed = config_edit.update_config(path or config_mod.DEFAULT_CONFIG_PATH, values)
+    except config_edit.ConfigEditError as exc:
+        raise SettingError(str(exc)) from None
+    for k, v in clean.items():
+        s = get(k)
+        section = getattr(cfg, s.section)
+        old = getattr(section, s.name)
+        setattr(section, s.name, float(v) if isinstance(old, float) else v)
+    return changed
+
+
+def run(as_json: bool, config_path: Path | None, set_args: list[str] | None = None) -> int:
+    """`openride-core settings [--json]` et `openride-core settings set CLÉ VALEUR`."""
+    try:
+        cfg = config_mod.load(config_path)
     except config_mod.ConfigError as exc:
-        print(f"openride-core settings : {exc}", file=sys.stderr)
+        print(f"openride-core settings : configuration invalide : {exc}")
         return 1
+    if set_args:
+        key, raw = set_args
+        try:
+            changed = apply(cfg, {key: raw}, config_path)   # texte converti en nombre par check()
+        except SettingError as exc:
+            print(f"openride-core settings : {exc}")
+            return 1
+        print("; ".join(changed) if changed else "inchangé")
+        return 0
     items = current(cfg)
     if as_json:
-        print(json.dumps({"config": str(path), "settings": items}, ensure_ascii=False, indent=2))
-    else:
-        print(f"Réglages ({path}) :")
-        for item in items:
-            print("  " + _format(item))
+        print(json.dumps(items, ensure_ascii=False, indent=2))
+        return 0
+    for it in items:
+        unit = f" {it['unit']}" if it.get("unit") else ""
+        when = "séance suivante" if it["applies"] == "next_session" else "tout de suite"
+        print(f"{it['key']:<24} {it['label']:<20} {it['value']}{unit}  ({when})")
     return 0
+

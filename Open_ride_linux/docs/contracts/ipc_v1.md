@@ -37,11 +37,12 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 
 | Sens | Port par défaut | Contenu | Fréquence |
 | --- | --- | --- | --- |
-| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown`, `routes`, `workouts` | `state` à 30 Hz ; le reste sur événement |
+| core vers engine | 5005 | `state`, `input`, `hello_ack`, `error`, `shutdown`, `routes`, `workouts`, `settings` | `state` à 30 Hz ; le reste sur événement |
 | engine vers core | 5006 | `hello`, `heartbeat`, `cmd`, `bye` | `heartbeat` à 2 Hz ; `cmd` sur événement |
 
 - Les ports sont modifiables dans `config.toml` (section `ipc`) ; si un port est occupé, le programme s'arrête avec un message explicite.
-- Taille maximale d'un datagramme : 1 400 octets, sauf `routes` et `workouts` (§4) : 60 000 octets, et, depuis la révision 1.3, `state` : 4 096 octets. Ces messages restent sur `127.0.0.1`, où un datagramme de cette taille passe sans fragmentation ; l'engine lit sa socket avec un tampon d'au moins 65 536 octets. Un engine antérieur à la 1.3 lit donc déjà ces trames : le changement est compatible (décision D1 de l'audit IPC du 26 octobre, acceptée par le propriétaire). Le core continue de jeter, avec un avertissement, une trame qui dépasse sa limite.
+- Encodage : JSON compact en UTF-8, caractères accentués écrits tels quels (sans échappement `\u`) ; un lecteur JSON standard lit les deux formes.
+- Taille maximale d'un datagramme : 1 400 octets, sauf `routes` et `workouts` (§4) : 60 000 octets, et, depuis la révision 1.3, `state` : 4 096 octets. Ces messages restent sur `127.0.0.1`, où un datagramme de cette taille passe sans fragmentation ; l'engine lit sa socket avec un tampon d'au moins 65 536 octets. Un engine antérieur à la 1.3 lit donc déjà ces trames : le changement est compatible (décision D1 de l'audit IPC du 26 octobre, acceptée par le propriétaire). Le core allège une trame `state` qui dépasse sa limite (§3, liste `bots`, lot X25) ; il jette, avec un avertissement, tout autre message trop grand.
 - Un datagramme illisible (JSON invalide) est ignoré et compté dans les journaux.
 - Le trainer notifie à environ 1 Hz (mode puissance) à 8 Hz (mode pente), mesuré ; la fréquence de 30 Hz du message `state` est indépendante et vient de la physique du core (50 Hz).
 
@@ -122,7 +123,7 @@ Mêmes définitions que `openride-core summary` (lot K7). Chaque champ vaut `nul
 
 **Liste `bots`**
 
-Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et un fantôme), pour que la trame la plus chargée (ERG, `devices` et bots) reste petite (1 400 octets jusqu'à la révision 1.2, 4 096 octets depuis la 1.3, §2) : `id` (au plus 8 caractères) et `name` (au plus 16 caractères) sont des chaînes, `s` et `v` des nombres (mêmes unités que la trame), `kind` vaut `constant` (puissance fixe) ou `ghost` (rejeu d'une séance passée, lot N9). Champ absent quand il n'y a pas de bot.
+Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et un fantôme), pour que la trame la plus chargée (ERG, `devices` et bots) reste petite (1 400 octets jusqu'à la révision 1.2, 4 096 octets depuis la 1.3, §2) : `id` (au plus 8 caractères) et `name` (au plus 16 caractères) sont des chaînes, `s` et `v` des nombres (mêmes unités que la trame), `kind` vaut `constant` (puissance fixe) ou `ghost` (rejeu d'une séance passée, lot N9). Champ absent quand il n'y a pas de bot. Si une trame `state` dépasse malgré tout sa limite (mesure du 26 octobre, lot X25, `python -m openride_core.ipc_budget` : avec les longueurs maximales, la trame qui porte `devices` peut dépasser 1 400 octets), le core l'allège au lieu de la jeter, dans cet ordre : textes raccourcis, noms des bots raccourcis, `bots` retiré de cette trame-là seulement (ils reviennent dans la trame suivante, 33 ms plus tard), puis `devices`, `summary`, `bots`, `erg`. Position, vitesse, puissance et état de séance restent toujours. Un avertissement au plus toutes les 10 s au journal du core.
 
 **Objet `wind` (révision 1.3, lot P1)**
 
@@ -162,6 +163,8 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 | `scan_devices` | `{ "timeout_s": nombre }` (8 par défaut, 1 à 30) | Révision 1.2 : recherche des appareils Bluetooth ; réponses `scan_results` |
 | `identify_click_plus` | `{}` | Révision 1.2 : attend un appui « + » du Click pendant 15 s ; réponse `scan_results` avec `plus_address` |
 | `pair_devices` | `{ "trainer", "click_plus", "click_minus", "hr" }` : adresse ou `null` | Révision 1.2 : écrit les appareils choisis dans `config.toml` ; `error` `pairing_failed` en cas d'échec |
+| `list_settings` | `{}` | Révision 1.3 : demande les réglages du menu ; réponse `settings` |
+| `set_setting` | `{ "key": texte, "value": nombre ou texte }` | Révision 1.3 : écrit un réglage dans `config.toml` ; réponse `settings`, ou `error` `busy` / `setting_invalid` |
 
 **Listes des parcours et des entraînements.** Le core est la seule source de vérité : l'engine ne lit ni le dossier des parcours ni les fichiers `.zwo`. Le core lit le disque à la demande, hors de la boucle physique à 50 Hz, et répond dans les 500 ms pour 200 parcours.
 
@@ -201,7 +204,16 @@ Au plus 5 éléments `{id, name, s, v, kind}` (4 bots à puissance constante et 
 | `bye` | engine vers core | — | L'engine se ferme volontairement |
 | `shutdown` | core vers engine | — | Le core se ferme : l'engine quitte ou revient à l'écran d'attente |
 
-**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche demandée pendant une séance), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée).
+**Réglages depuis le menu (révision 1.3, lots O3 et O4).** Le core lit, valide et écrit ; l'engine affiche et change les valeurs au Click.
+
+| Message | Sens | Champs |
+| --- | --- | --- |
+| `settings` | core vers engine | `v`, `request_cmd_id`, `items` : liste de `{key, label, type, value, applies}` ; `type` vaut `int` (avec `min`, `max`, `step`, `unit`) ou `choice` (avec `choices`) ; `applies` vaut `next_session` (séance suivante, sans relancer) ou `now` (qualité et thème : l'engine les applique tout de suite au décor) |
+
+- Réglages proposés : `rider.ftp_w`, `rider.mass_kg`, `trainer.difficulty_pct`, `gearing.start_gear`, `render.quality`, `render.theme` (`default` et les thèmes de `~/OpenRide/Themes/`). Bornes et choix : ceux de la validation de `config.toml`.
+- `set_setting` : hors séance seulement (`IDLE`, `READY`, `FINISHED`, `ERROR`) ; pendant `RUNNING` ou `PAUSED`, `error` `busy` et rien n'est écrit (pendant la séance, la difficulté se change par `set_difficulty`). Valeur hors bornes ou choix inconnu : `error` `setting_invalid`, rien n'est écrit. Sinon le fichier est modifié comme pour `pair_devices` (copie `.bak`), la valeur sert dès la séance suivante (`hello_ack.config` aussi) et le core renvoie `settings` avec `request_cmd_id` de la commande.
+
+**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche ou appairage demandé pendant une séance ; aussi un réglage en révision 1.3), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée) ; révision 1.3 : `setting_invalid` (réglage inconnu ou valeur refusée).
 
 **Version.** Le core refuse un `hello` dont `v` diffère du sien, répond par une erreur `version_mismatch` et n'ouvre pas la séance. La règle d'évolution est au §8.
 
@@ -299,4 +311,6 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.1) | 24 octobre 2026 | Ajouts compatibles (lot N1) : commandes `list_routes` et `list_workouts`, messages `routes` et `workouts` (jusqu'à 60 000 octets, en parties) ; objet `devices` dans `state` une fois par seconde ; bilan enrichi dans `summary` ; forme de `bots` ; `pause_reason` = `core_restarted` et reprise après un plantage du core |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot Q1) : commande `set_difficulty`, champ `difficulty_pct` (entier) dans `state` et `hello_ack.config` |
 | 1 (révision 1.2) | 25 octobre 2026 | Ajouts compatibles (lot N13, accepté par le propriétaire le 25 octobre ; même révision que Q1, numérotation confirmée par le propriétaire le 26 octobre) : commandes `scan_devices`, `identify_click_plus` et `pair_devices`, message `scan_results`, codes d'erreur `busy`, `scan_failed` et `pairing_failed` |
+| 1 (révision 1.2) | 26 octobre 2026 | Précisions sans changement de format (lot X25) : encodage UTF-8 sans échappement ; trame `state` trop grande allégée par le core au lieu d'être jetée (§3, liste `bots`) |
 | 1 (révision 1.3) | 26 octobre 2026 | Ajouts compatibles (lot P1, décisions du propriétaire du 25 octobre ; révision 1.3 parce que Q1 et N13 ont pris la 1.2) : objet facultatif `wind` dans `state` (2 fois par seconde, absent quand le vent est coupé), champs facultatifs `draft` et `draft_bot` ; limite de `state` portée à 4 096 octets (§2, décision D1 de l'audit IPC) ; champ facultatif `rev` dans `hello` et `hello_ack`, liste facultative `modes` dans `hello_ack.config` (§5, décision D3 ; décisions acceptées par le propriétaire le 26 octobre) |
+| 1 (révision 1.3) | 26 octobre 2026 | Ajouts compatibles (lots O3 et O4, acceptés par le propriétaire le 26 octobre ; révision 1.3 et non 1.2, décision du propriétaire du 27 octobre : les ajouts de la 1.0 fusionnés après la 1.3 y entrent) : commandes `list_settings` et `set_setting`, message `settings`, code d'erreur `setting_invalid` ; un réglage demandé pendant une séance reçoit `busy` (décision D6 de l'audit IPC, validée par le propriétaire le 26 octobre) |
