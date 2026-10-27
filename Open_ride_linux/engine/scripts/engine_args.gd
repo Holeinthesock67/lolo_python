@@ -8,6 +8,7 @@ extends RefCounted
 ##   --quality=low|medium|high préréglage de qualité graphique (défaut : low, lot L4)
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
 ##   --perf-probe=FICHIER.csv sonde de performance : une ligne de mesures par seconde (lot X13)
+##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
@@ -28,7 +29,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -38,6 +39,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"quality": DEFAULT_QUALITY,
 		"theme": DEFAULT_THEME,
 		"test_mode": false,
+		"sim_session": false,
 		"perf_probe": "",
 	}
 	for arg in args:
@@ -61,6 +63,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["perf_probe"] = csv
 		elif arg == "--test-mode":
 			out["test_mode"] = true
+		elif arg == "--sim-session":
+			out["sim_session"] = true
 	return out
 
 

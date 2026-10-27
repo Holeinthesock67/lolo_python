@@ -55,3 +55,21 @@ Aucune.
 
 - Personnes qui traversent la route, voitures garées, terrasses de café, cyclistes croisés (bots dans N9 et O7).
 - Dialogues, voix nommées ou personnalisées, personnes réelles.
+
+## 9. Livraison
+
+Livré sur la branche `lot-p21-passants`, après P15 (même `crowd_renderer.gd`, même `crowd.gdshader`, même `sound_player.gd`). Sans toucher à `main.gd`, au core ni au contrat.
+
+- **`passersby_model.gd`** :
+  - Placement par cases de 100 m : au village (un bâtiment à moins de 60 m de la route), 2 à 6 personnes par case ; en campagne, une personne tous les 300 à 800 m (écart tiré à chaque fois). Écart au bord de 1 à 6 m (3,5 m au moins pour les jardiniers et les agriculteurs). Une personne dont le chemin touche l'eau passe de l'autre côté, sinon elle est abandonnée. Les zones de spectateurs de P15 sont exclues (`crowd_zones(climbs)`, passées à `configure`). Tirage déterministe par graine.
+  - Rôles du cahier, pondérés selon le lieu. Les marcheurs et les promeneurs font des allers-retours sur 20 à 60 m, les joggeurs sur 60 à 120 m, à 80 % d'abord en sens inverse du cycliste.
+  - Salut : 60 % des personnes, à moins de 15 m, après un délai propre, pendant 2,5 s, une seule fois par passage (le passage se termine au-delà de 30 m). Elles se tournent vers le cycliste, sauf les personnes assises.
+  - Sons : un salut peut lancer un son (une fois sur deux), au plus un toutes les 20 s, jamais pendant un bip du Click (`beep_active`, passé par P17). Le son dépend du rôle : rire pour un enfant, aboiement pour un promeneur, « Bonjour ! » pour une personne assise ou un jardinier, « Allez ! » sinon.
+  - `visible` : les plus proches dans la limite du budget. Le tri est refait tous les 20 m ou toutes les secondes. Entre deux, seules les entrées qui changent sont mises à jour. Au-delà de 40 m, un marcheur n'avance qu'une image sur trois.
+- **`crowd_renderer.gd`** : deuxième instance `CrowdRenderer.new("passersby")`, avec trois `MultiMesh` (personnes, chiens, bancs des personnes assises) et le budget `living(preset).passersby`. Après une nouvelle sélection, tout est réécrit ; sinon, seules les entrées qui ont changé. Un lecteur 3D joue le son sur la personne, au volume `ambience.volume` du thème. La silhouette a maintenant deux jambes (UV2) ; les spectateurs n'en sont pas changés.
+- **`crowd.gdshader`** : variantes d'animation selon `INSTANCE_CUSTOM.z` : marche, course, assis, jardinage, sautillement, trot du chien, et salut d'une main.
+- **`sound_player.gd`** : `voice_allez`, `voice_bonjour`, `dog_bark`, `kid_laugh`, brefs et non bouclés. Ils sont synthétisés (source glottale et deux formants) ou lus dans `~/OpenRide/Sounds/<sorte>.ogg`. Synthèse de tous les sons en 316 ms ici (seuil 500 ms).
+- **`quality_presets.gd`** : `passersby` à 24, 48 et 80, comme le demande ce cahier (P4 avait posé 40 et 64 pour `medium` et `high`).
+- **Tests** : `test_passersby_model.gd` (21 vérifications), `render/test_crowd_render.gd` (chien), `test_sound_player.gd` et `test_quality_presets.gd` (une vérification de plus chacun).
+- **Coût mesuré ici** pour 80 passants : 0,036 ms par image pour le modèle (`update`, critère 6), 0,14 ms avec la sélection et l'animation (`visible`). La part du renderer est à mesurer sur le PC cible avec P17.
+- **Reste sur le PC cible (le propriétaire)** : traversée de village en `low`, après le branchement par P17.

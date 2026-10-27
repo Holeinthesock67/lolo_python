@@ -167,13 +167,13 @@ func _start_ipc_test() -> void:
 	_menu.set_items("routes", r_items)
 	_menu.set_items("workouts", w_items)
 
-	# Scénario complet au Click :
-	# 1. Accueil -> valide "Rouler"
+	# Scénario complet au Click (menu principal du lot N15) :
+	# 1. Accueil -> valide « Parcours : à choisir »
 	_check(_menu.state()["screen"] == "home", "menu initial sur home")
-	var st1: Dictionary = _menu.handle("PLUS_LONG") # valide 'Rouler' (focus 0)
+	_menu.handle("PLUS_LONG") # valide « Parcours » (focus 0)
 	_check(_menu.state()["screen"] == "routes", "passage sur l'écran routes")
 
-	# 2. Choix du 2e parcours (focus 1 : galibier)
+	# 2. Choix du 2e parcours (focus 1 : galibier), retour à l'accueil
 	_menu.handle("PLUS_SHORT")
 	_check(_menu.state()["focus"] == 1, "focus sur le 2e parcours")
 	var st2: Dictionary = _menu.handle("PLUS_LONG")
@@ -182,11 +182,12 @@ func _start_ipc_test() -> void:
 	var route_id: String = str(act_sel_route.get("route_id", ""))
 	_check(route_id != "", "route_id fourni dans select_route")
 	var cmd_route_id: int = _client.send_command("select_route", {"route_id": route_id})
-	_check(_menu.state()["screen"] == "ready", "passage sur l'écran ready")
+	_check(_menu.state()["screen"] == "home", "retour à l'accueil, monde choisi")
 
-	# 3. Choix d'un entraînement depuis l'écran ready
-	_menu.handle("PLUS_SHORT") # focus sur 1 ("Choisir un entraînement")
-	_check(_menu.state()["focus"] == 1, "focus sur 'Choisir un entraînement'")
+	# 3. « Session ERG » (focus 2) : liste des entraînements
+	_menu.handle("PLUS_SHORT")
+	_menu.handle("PLUS_SHORT")
+	_check(_menu.state()["focus"] == 2, "focus sur 'Session ERG'")
 	_menu.handle("PLUS_LONG")
 	_check(_menu.state()["screen"] == "workouts", "passage sur l'écran workouts")
 
@@ -198,10 +199,9 @@ func _start_ipc_test() -> void:
 	var wo_id = act_sel_wo.get("workout_id")
 	_check(wo_id != null, "workout_id choisi non nul")
 	var cmd_wo_id: int = _client.send_command("select_workout", {"workout_id": wo_id})
-	_check(_menu.state()["screen"] == "ready", "retour sur l'écran ready après sélection entraînement")
+	_check(_menu.state()["screen"] == "ready", "écran ready après sélection entraînement")
 
-	# 4. Démarrage : retour sur 'Démarrer'
-	_menu.handle("MINUS_SHORT")
+	# 4. Démarrage : focus sur 'Démarrer'
 	_check(_menu.state()["focus"] == 0, "focus sur 'Démarrer'")
 	var st4: Dictionary = _menu.handle("PLUS_LONG")
 	var act_start: Dictionary = st4.get("action", {})

@@ -58,3 +58,15 @@ Aucune.
 ## 8. Hors périmètre
 
 - Bruit de chaîne et de dérailleur au changement de braquet, bruit du trainer, souffle du cycliste.
+
+## 9. Livraison
+
+Livré sur la branche `lot-p10-sons-vent`, sans toucher à `main.gd`, au core ni au contrat.
+
+- **`sound_model.gd`** :
+  - Vent : vitesse dans l'air `va = v + wind.head_mps` (bornée à 0 ; vent coupé 2 s après le dernier objet `wind`, qui arrive 2 fois par seconde). Volume `20 × 2,5 × log10(va / 60 km/h)`, entre −60 et 0 dB : −39 dB à 10 km/h, −15 dB à 30 km/h, −4 dB à 50 km/h, plafond à 60 km/h. Le plancher passe de −36 à −60 dB pour que la courbe reste strictement croissante dès 5 km/h ; c'est la seule valeur des tests L5 qui change, leurs vérifications de forme restent. Hauteur de 0,8 à 1,3, linéaire en `va`. La rafale (`gust`) module le volume de ± 3 dB et la hauteur de ± 5 % sur une période de 3 s.
+  - Roue libre : avec un champ `cadence`, c'est la cadence qui décide (0 tr/min pendant 0,5 s : roue libre ; au-dessus de 20 tr/min : reprise), puisqu'un capteur de puissance traîne ; sans cadence, la puissance comme en L5 (0 W, reprise au-dessus de 10 W). `clicks_per_s` = tours de roue par seconde × 36 (roue de 2,1 m) : 171,4 à 36 km/h. Volume de −10 dB à 5 km/h à −4 dB à 40 km/h. `clac` vrai pour une seule évaluation à chaque reprise du pédalage pendant la roue libre (pas en pause ni sous 5 km/h).
+  - Pause : vent et roue libre au silence immédiatement, sans lissage.
+- **`sound_player.gd`** : le vent devient un bruit blanc filtré passe-bande (500 Hz, Q 0,8), boucle d'une seconde raccordée par un fondu enchaîné de 50 ms ; sa fréquence monte avec `pitch_scale`. La boucle de roue libre contient 100 coups par seconde et `pitch_scale` vaut `clicks_per_s / 100`. Un lecteur créé au démarrage joue le « clac » (60 ms, remplaçable par `~/OpenRide/Sounds/clac.ogg`). Synthèse de tous les sons : 186 ms ici.
+- **Tests** : `test_sound_model.gd` (27 vérifications, dont 9 nouvelles), `test_sound_player.gd` (14 vérifications, dont 4 nouvelles).
+- **Reste sur le vélo (le propriétaire)** : arrêter de pédaler à 35 km/h en descente puis reprendre, après le branchement par P16 ; le vent de face de P2 se ressent quand `[wind] mode` est activé.
