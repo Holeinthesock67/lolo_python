@@ -141,7 +141,7 @@ Aucune.
 
 ## 8. Hors périmètre
 
-- Placement des objets dans la scène de jeu (R10 à R13), sons (R11).
+- Placement des objets dans la scène de jeu (R10 à R13), sons (lot R18).
 - Avatar et équipement de la série V hors du mode Cyber-Rogue.
 
 ## 9. Livraison (27 octobre 2026)
