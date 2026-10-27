@@ -25,6 +25,9 @@ signal settings_received(msg: Dictionary)
 ## comme routes) et entraînement écrit par le core (create_workout, import_workout).
 signal imports_received(items: Array, msg: Dictionary)
 signal workout_saved_received(msg: Dictionary)
+## Plans d'entraînement et suivi du plan actif (lot O12, contrat v1.3) : réponse à list_plans,
+## start_plan et stop_plan, en un seul datagramme.
+signal plans_received(msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
 
@@ -217,6 +220,8 @@ func _poll_incoming() -> void:
 				_on_list_part(_pending_list_imports, "imports", json_obj)
 			"workout_saved":
 				workout_saved_received.emit(json_obj)
+			"plans":
+				plans_received.emit(json_obj)
 			"scan_results":
 				scan_results_received.emit(json_obj)
 			"settings":
@@ -323,6 +328,26 @@ func list_settings() -> int:
 
 func set_setting(key: String, value) -> int:
 	return send_command("set_setting", {"key": key, "value": value})
+
+
+## Plans d'entraînement (lot O12, contrat v1.3). Réponse : signal plans_received.
+func list_plans() -> int:
+	return send_command("list_plans", {})
+
+
+## Rend un plan actif ; `start_date` "AAAA-MM-JJ" ou null (aujourd'hui). Réponse : plans, ou error plan_invalid.
+func start_plan(plan_id: String, start_date = null) -> int:
+	return send_command("start_plan", {"id": plan_id, "start_date": start_date})
+
+
+func stop_plan() -> int:
+	return send_command("stop_plan", {})
+
+
+## Écrit la FTP du dernier test (summary.ftp_test) ; `force` pour un résultat douteux. Réponse : settings,
+## ou error (ftp_result_missing, ftp_result_doubtful, setting_invalid, busy).
+func accept_ftp(force := false) -> int:
+	return send_command("accept_ftp", {"force": force})
 
 
 ## Demande en cours : {cmd_id (dernier envoyé), cmd_ids, retries, timer, answers}. `answers` range les parties
