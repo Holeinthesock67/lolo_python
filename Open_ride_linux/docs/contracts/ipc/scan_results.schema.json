@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideScanResultsMessage",
-  "description": "Réponse à cmd scan_devices ou identify_click_plus (révision 1.2, lot N13) ; datagramme de 1 400 octets au plus.",
+  "description": "Réponse à cmd scan_devices ou identify_click_plus (révision 1.2, lot N13) ; datagramme de 4 096 octets au plus (contrat §2, révision 1.5).",
   "type": "object",
   "required": [
     "type",
