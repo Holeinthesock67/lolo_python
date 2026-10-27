@@ -63,7 +63,6 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `segment_timing.py` : chronométrage des segments : franchissements interpolés, pauses, boucles, relecture du journal (série T, lot T4, module pur).
 - `powerups.py` : bonus légèreté, aérodynamique et puissance, arches, valeurs dans `~/OpenRide/powerups.toml` (série T, lot T6, module pur).
 - `gaps.py` : écarts en temps de passage avec les bots, voisins devant et derrière (série T, lot T16, module pur).
-- `wind.py` : vent réglable (calme, fixe, en rafales ou du thème), composante de face et supplément de pente en SIM, module pur (lot P2).
 - `wind.py` : vent réglable (calme, fixe, en rafales ou du thème), composante de face et supplément de pente en SIM, module pur (lot P2) ;
 - `draft.py` : aspiration derrière les bots (courbe exponentielle, effet de file, vent de travers, poussée du bot suivi), module pur (lot P3).
 
