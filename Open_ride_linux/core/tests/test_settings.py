@@ -150,3 +150,17 @@ def test_ipc_set_setting_refused_during_a_session_or_out_of_bounds(tmp_path: Pat
     assert errors[-1][0] == "setting_invalid"
     assert path.read_text(encoding="utf-8") == START
     assert not [m for m in sent if m.get("type") == "settings"]
+
+
+def test_wind_settings_lot_p16():
+    """Lot P16 : réglages du vent dans le menu, bornes et choix tirés de config.py."""
+    cfg = Config()
+    items = {i["key"]: i for i in settings.current(cfg)}
+    assert items["wind.mode"]["value"] == "off"
+    assert items["wind.mode"]["choices"] == ["off", "fixed", "gusty", "theme"]
+    cap = items["wind.max_grade_offset_pct"]
+    assert (cap["value"], cap["min"], cap["max"], cap["step"]) == (4, 0, 8, 1)
+    assert items["wind.speed_kmh"]["max"] == 60 and "wind.from_deg" not in items   # direction : config.toml
+    assert settings.step(cfg, "wind.mode", "theme", +1) == "off"
+    assert settings.step(cfg, "wind.max_grade_offset_pct", 8, +1) == 8
+    assert settings.step(cfg, "wind.speed_kmh", 20, +1) == 25

@@ -310,7 +310,7 @@ def test_session_grade_is_rate_limited(tmp_path, monkeypatch):
         s.gearing.k = s.gearing.n_gears              # plus grand braquet : consigne forte
         for i in range(25):
             s._step(0.02, 50.0 + i * 0.02)
-        assert abs(s._grade_sent) <= 2.0 * 0.5 + 1e-6    # ≤ 2 points/s sur 0,5 s
+        assert abs(s._grade_sent) <= 4.0 * 0.5 + 1e-6    # ≤ 4 points/s sur 0,5 s (lot Q4)
     asyncio.run(scenario())
 
 

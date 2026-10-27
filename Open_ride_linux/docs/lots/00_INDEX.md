@@ -85,7 +85,7 @@
 | [O7](LOT_O7_affichage_bots.md) | Bots à l'écran : silhouettes, écarts, choix au menu (facultatif pour la 1.0) | GDScript | N6, N9 | Moyenne | Non : interne (rendu, contrôle visuel) |
 | [O8](LOT_O8_recette_1_0.md) | Recette de la version 1.0 sur le matériel et publication (`v1.0.0`) | — | série N, O1, O2, O6 | Moyenne | Non : interne (propriétaire, matériel) |
 | [O9](LOT_O9_formats_erg_mrc.md) | Entraînements au format GoldenCheetah : `.erg` (watts) et `.mrc` (% de FTP) | Python | F, H8 (livrés) | Petite | **Livré le 25 octobre** (issue #153) |
-| [O10](LOT_O10_test_ftp.md) | Test de FTP (rampe et 20 min) côté core, nouvelle FTP proposée puis enregistrée | Python | O3 ; O9 utile | Moyenne | Oui, après O3 |
+| [O10](LOT_O10_test_ftp.md) | Test de FTP (rampe et 20 min) côté core, nouvelle FTP proposée puis enregistrée | Python | O3 ; O9 utile | Moyenne | **Livré le 27 octobre** (issue #154) |
 | [O11](LOT_O11_plans_entrainement.md) | Plans d'entraînement sur plusieurs semaines, séance du jour et suivi, import d'un dossier | Python | O9 ; O10 pour les jours de test | Moyenne | **Livré le 26 octobre** (issue #155) |
 | [O12](LOT_O12_menu_entrainement.md) | Menu : plans, test de FTP et bibliothèque de parcours (ajouts au contrat IPC) | GDScript + Python | N6, O4, O10, O11, O15 | Grande | Non : interne (contrat, écrans du menu) |
 | [O13](LOT_O13_modele_courbes.md) | Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle sans affichage | GDScript | K1 (livré) ; N3 utile | Petite | **Livré le 26 octobre** (issue #156 ; tests Godot à lancer sur le PC) |
@@ -104,11 +104,11 @@
 | [P10](LOT_P10_sons_velo.md) | Sons du vélo : vent selon la vitesse dans l'air, roue libre réaliste et « clac » à la reprise | GDScript | P4 | Petite | **Livré le 27 octobre** (issue #134) |
 | [P11](LOT_P11_animaux.md) | Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #135) |
 | [P12](LOT_P12_eoliennes_drapeaux_eau.md) | Éoliennes et drapeaux (compilateur et engine), eau qui scintille | Python + GDScript | P1, P4 | Moyenne | **Livré le 27 octobre** (issue #136) |
+| [P16](LOT_P16_integration_vent_ciel_sons.md) | Intégration, première vague : vent ressenti et affiché, arbres, nuages, sons ; recette sur la GTX 1060 | GDScript | P2, P4, P5, P6, P9, P10 | Moyenne | **Livré le 27 octobre**, recette sur le PC à faire (issue #140) |
 | [P13](LOT_P13_vehicules.md) | Véhicules croisés sur la route du parcours | GDScript | P4, P9 | Petite | **Livré le 27 octobre** (issue #137) |
 | [P14](LOT_P14_bord_de_route.md) | Bord de route : panneaux de col, bornes kilométriques, marquages au sol | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #138) |
 | [P15](LOT_P15_spectateurs.md) | Spectateurs et encouragements dans les dernières côtes | GDScript + shader | P9, P14 | Petite | **Livré le 27 octobre** (issue #139) |
-| [P16](LOT_P16_integration_vent_ciel_sons.md) | Intégration, première vague : vent ressenti et affiché, arbres, nuages, sons ; recette sur la GTX 1060 | GDScript | P2, P4, P5, P6, P9, P10 | Moyenne | Non : interne (`main.gd`, contrôle visuel et sur le vélo) (issue #140) |
-| [P17](LOT_P17_integration_decor_complet.md) | Intégration, deuxième vague : abri, météo, animaux, objets mobiles, bord de route | GDScript | P16, P3, P8, P11 à P15, O7 | Grande | Non : interne (`main.gd`, contrôle visuel) (issue #141) |
+| [P17](LOT_P17_integration_decor_complet.md) | Intégration, deuxième vague : abri, météo, animaux, objets mobiles, bord de route | GDScript | P16, P3, P8, P11 à P15, O7 | Grande | **Livré le 27 octobre** (sans l'affichage des bots d'O7), recette sur le PC à faire (issue #141) |
 | [P18](LOT_P18_saisons.md) | Saisons : feuillages, arbres dénudés, neige, vergers en fleurs, feuilles qui tombent | GDScript + shader | P5, P8, P9, P17 ; P7 | Moyenne | Oui, **version 2.0** (issue #142) |
 | [P19](LOT_P19_integration_jour_nuit_saisons.md) | Intégration du jour, de la nuit et des saisons | GDScript | P7, P17, P18 | Moyenne | Non : interne, **version 2.0** (issue #143) |
 | [P20](LOT_P20_packs_textures_performance.md) | Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | Python + GDScript | N10, O3, P17 | Moyenne | Oui, **version 2.0** (issue #147) |
@@ -130,9 +130,11 @@
 | Y5 | Arbres lointains en imposteurs (notre propre version, sans extension), feuillage en alpha scissor | GDScript + shader | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) ; issue #361 |
 | Y6 | Résolution 3D par préréglage et résolution adaptative (FSR 1.0), FXAA ou SMAA en `low` | GDScript | Y2, X13 | Petite | Oui ; issue #362 |
 | Y7 | Essai du moteur Mobile pour `low` (mesure seule, décision du propriétaire) | GDScript | Y2 | Petite | Oui (mesure) ; issue #363 |
-| Y8 | Habillage : toits à pans et façades texturées, puis étalonnage, puis marquages de route | GDScript + shader | Y3, P20 | Grande | En partie ; issue #364 |
+| Y8 | Habillage : toits à pans et façades texturées, puis étalonnage (décalques de route dans Y11) | GDScript + shader | Y3, P20 | Grande | En partie ; issue #364 |
 | Y9 | Lissage des bots à l'écran (mémoire de trames, Hermite, déplacements latéraux, LOD) | GDScript | O7 | Moyenne | Oui ; issue #365 |
 | Y10 | Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | Oui ; issue #366 |
+| [Y11](LOT_Y11_chaussee_herbe_relief.md) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée) et faux relief de l'herbe | Shader + GDScript | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie ; issue #385 |
+| [Y12](LOT_Y12_lumieres_particules.md) | Effets de lumière (glow, rayons, ombre des nuages, SSR) et particules (décor, pluie, foules, kit Cyber-Rogue) | Shader + GDScript | Y2, Y1, P17, R17, Y11 | Moyenne | Oui ; issue #386 |
 | [R0](LOT_R0_delai_frein.md) | Mesure du délai du frein du trainer (marches de pente et de braquet) : script et essai sur le vélo | Python | Q3, Q4 | Petite | Script oui (même outil que X5) ; essai par le propriétaire ; **version 2.0** |
 | [R1](LOT_R1_contrat_ipc_rogue.md) | Contrat IPC v1.4 : boutons Z et A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run | Markdown + JSON | P1 | Petite | Non : interne (décision du propriétaire), **version 2.0** |
 | [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | Oui, **version 2.0** |
@@ -181,8 +183,11 @@
 | [W15](LOT_W15_monde_synthetique.md) | Monde ouvert synthétique : relief analytique, base de routes, monde vivant et faux générateur | Python | W1 | Moyenne | Oui, après W1 (issue #270) |
 | [W16](LOT_W16_recette_monde_ouvert.md) | Recette sur le PC et le vélo : une heure de monde ouvert, retour sans téléchargement | — | W9 à W12 (W13) | Moyenne | Non : propriétaire (matériel) (issue #271) |
 | [T2](LOT_T2_detection_segments.md) | 2.0 série T : détection automatique des montées et des sprints (module pur) | Python | — | Petite | Oui (26 octobre, avancé avant la 1.0 : module pur sans contrat) |
+| [T3](LOT_T3_couche_segments.md) | 2.0 série T : compilateur, couche `segments` du `.world`, fichier `<parcours>.segments.toml` | Python | T1, T2 | Moyenne | Non : cahier prêt le 27 octobre, développement après T1 |
 | [T4](LOT_T4_chronometrage_segments.md) | 2.0 série T : chronométrage des segments (franchissements interpolés, pauses, boucles, rejeu du journal) | Python | T2 | Moyenne | Oui (26 octobre, module pur ; branchement avec T1) |
+| [T5](LOT_T5_records_classement.md) | 2.0 série T : records personnels par segment (`~/OpenRide/records.json`), classement local, ligne `powerup` du journal | Python | T4, N9 (livrés) | Petite | Oui (27 octobre, module pur ; branchement avec T1) |
 | [T6](LOT_T6_bonus.md) | 2.0 série T : bonus légèreté, aéro et puissance (obtention, activation, effets, fichier de valeurs, ERG) | Python | — | Moyenne | Oui (26 octobre, module pur ; bouton Z branché avec T1) |
+| [T14](LOT_T14_points_maillots.md) | 2.0 série T : points et maillots de la séance (vert, à pois), bots compris | Python | T2, T4 (livrés) | Petite | Oui (27 octobre, module pur ; arrivées des bots avec T12, branchement avec T1) |
 | [T16](LOT_T16_ecarts_temps_passage.md) | 2.0 série T : écarts en temps de passage avec le bot devant et derrière | Python | N9 (livré) | Petite | Oui (26 octobre, module pur ; champs `gap_s`, `bot_ahead`, `bot_behind` avec T1) |
 
 **Restent en interne** (matériel nécessaire) :
@@ -209,7 +214,7 @@ Leur forme dépendra des choix faits dans E1 et D.
 
 **Série Q (25 octobre, retours de l'essai sur le HomeTrainer) :** six lots tirés de l'essai de 1 h 27 sur le circuit synthétique `essai-69` (séance trop dure, pente qui paraît faible à l'écran, environ 22 s avant que la résistance se relâche, FC relayée figée, boîtier gauche du Click muet). Aucun ne demande de matériel pour sa recette automatique ; chacun se termine par un essai court du propriétaire sur le PC cible. Q1 ajoute la commande `set_difficulty` au contrat (v1.2, accepté par le propriétaire le 25 octobre, avec un défaut à 50 % et un réglage par curseur dans le menu, sans bouton du Click) ; le curseur lui-même est ajouté à O3 et O4. Q2 ne touche que l'engine et n'exagère que l'affichage, jamais la physique. Fichiers partagés : `session.py` (Q1 puis Q4) ; `ftms_driver.py` (Q3 puis Q5) ; `config.py` (Q2 à Q6, sections différentes) ; `main.gd` (Q2 seul). Q3 avant Q4 permet de mesurer le gain sur le trainer.
 
-**Série T (2.0, mode classique : sprints, montées chronométrées, bonus, bots à profil) :** plan dans `docs/2.0/PLAN_SERIE_T.md` (questions T-Q1 à T-Q6 tranchées le 25 octobre). La série commence en principe après la 1.0, mais quatre lots sont des modules purs du core, testables sans contrat ni engine ni matériel, et ont été avancés le 26 octobre à la demande du propriétaire : T2 (détection), T4 (chronométrage), T6 (bonus) et T16 (écarts en temps de passage). Aucun ne modifie `session.py`, l'IPC ou le format `.world` : leur branchement dans la séance vient avec le contrat T1. **Numérotation du contrat :** la révision 1.2 a été prise par Q1 et N13 ; la série P passe donc en 1.3 (P1) et les séries R, T et V en **1.4** (premier de R1 ou T1 ; renumérotation des plans par la PR #244). Lots restant à rédiger : T1 (contrat, décision du propriétaire, après P1), T3, T5, T7 à T15 ; T12 et T13 attendent aussi le modèle W'bal de la série R (R2).
+**Série T (2.0, mode classique : sprints, montées chronométrées, bonus, bots à profil) :** plan dans `docs/2.0/PLAN_SERIE_T.md` (questions T-Q1 à T-Q6 tranchées le 25 octobre). La série commence en principe après la 1.0, mais quatre lots sont des modules purs du core, testables sans contrat ni engine ni matériel, et ont été avancés le 26 octobre à la demande du propriétaire : T2 (détection), T4 (chronométrage), T6 (bonus) et T16 (écarts en temps de passage). Aucun ne modifie `session.py`, l'IPC ou le format `.world` : leur branchement dans la séance vient avec le contrat T1. **Numérotation du contrat :** la révision 1.2 a été prise par Q1 et N13 ; la série P passe donc en 1.3 (P1) et les séries R, T et V en **1.4** (premier de R1 ou T1 ; renumérotation des plans par la PR #244). T5 (records et classement local) et T14 (points et maillots) ont suivi le 27 octobre, avec les décisions du propriétaire du même jour. Le cahier de T3 (couche `segments` du compilateur) est prêt et attend T1. Lots restant à rédiger : T1 (contrat, décision du propriétaire, après P1), T7 à T13, T15 ; T12 et T13 attendent aussi le modèle W'bal de la série R (R2).
 
 **Série S (25 octobre, performances du rendu) :** demande du propriétaire d'explorer l'optimisation du moteur graphique en ne modélisant pas ce qui est invisible pour le cycliste (au-delà du brouillard, derrière la caméra, masqué par le relief, ombres hors champ). S1 commence par une mesure au banc simulé (`engine/tests/sim_bench.py`) et ne garde que les pistes qui font gagner des images par seconde sans changement visible. Fichiers partagés : `tree_renderer.gd` (O1 d'abord), `terrain_tiles.gd` (Q2 d'abord).
 
@@ -297,7 +302,7 @@ Version 2.0, série V : V2 ──► V3, V4 ──► V3b ;  P1 ──► V1 ;  
 Version 2.0, série W : W0 ──► W1 ──► W2 ──► W3 ──► W4 ──► W5, W6 ;  W2, W3, W5 ──► W7 ;  W6, W7 ──► W8 ──► W9 ──► W14
 W1 ──► W10, W12, W15 ;  W1, W3 ──► W11 ;  W2, W7 ──► W13 ;  W9, W10, W11, W12 ──► W16
 Version 2.0, série T : T2, T6, T16 : indépendants (avancés) ;  T2 ──► T4 ;  P1 ──► T1 ──► T3, T8, T9 ;  T4, N9 ──► T5
-Fin de projet, série Y : Y1 (avancé) ──► S1 ;  Y1, X2, X13 ──► Y2 ──► Y4, Y6, Y7 ;  Y2, S1 ──► Y3 ──► Y8 (avec P20) ;  O1, Y2 ──► Y5 ;  O7 ──► Y9 ──► Y10 (avec les séries T et R)
+Fin de projet, série Y : Y1 (avancé) ──► S1 ;  Y1, X2, X13 ──► Y2 ──► Y4, Y6, Y7 ;  Y2, S1 ──► Y3 ──► Y8 (avec P20) ;  O1, Y2 ──► Y5 ;  O7 ──► Y9 ──► Y10 (avec les séries T et R) ;  Y8, P20, Y2 ──► Y11 ──► Y12 (avec R17)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)
