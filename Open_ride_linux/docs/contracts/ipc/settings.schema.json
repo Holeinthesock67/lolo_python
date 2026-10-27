@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideSettingsMessage",
-  "description": "Réponse à cmd list_settings ou set_setting (révision 1.2, lots O3 et O4) : réglages proposés au menu ; datagramme de 1 400 octets au plus.",
+  "description": "Réponse à cmd list_settings ou set_setting (révision 1.3, lots O3 et O4) : réglages proposés au menu ; datagramme de 1 400 octets au plus.",
   "type": "object",
   "required": [
     "type",

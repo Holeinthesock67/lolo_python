@@ -20,6 +20,7 @@ const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -61,6 +62,8 @@ var _quality_name: String = "low"
 var _theme_name: String = "default"
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
+## Sonde de performance (lot X13), active avec --perf-probe=FICHIER.csv.
+var _probe = PerfProbe.new()
 
 const BEEPS := {
 	"PLUS_SHORT": [[880.0, 0.08]],
@@ -92,6 +95,8 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
+	if str(cfg.get("perf_probe", "")) != "":
+		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"
@@ -318,6 +323,7 @@ func _unhandled_input(event: InputEvent) -> void:
 func _process(delta: float) -> void:
 	_poll_route_job()
 	_record_frame_perf(delta)
+	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	if _menu_camera(delta):
 		return
@@ -620,3 +626,4 @@ func _give_cues(state: Dictionary) -> void:
 func _exit_tree() -> void:
 	if not _route_job.is_empty():
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
+	_probe.close()

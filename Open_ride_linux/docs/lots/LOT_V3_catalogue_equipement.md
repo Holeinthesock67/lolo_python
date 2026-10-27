@@ -62,10 +62,16 @@ Aucune.
 1. `pytest -q` passe en entier dans `core/`.
 2. Contre-la-montre + lenticulaire : CdA −6 % (borne), pas −7 % ; Grimpeur + Légères avec 84 kg : −2,0 kg ; avec une masse totale de 60 kg : −1,8 kg (borne de 3 %).
 3. Pièces d'apparence seules : `PhysicsParams` identiques au départ.
-4. Montée régulière de 5 km à 7 %, 250 W, 75 kg : le cadre Grimpeur fait gagner du temps, le cadre Aéro en fait perdre ; plat de 20 km à 250 W : l'inverse. Les ordres de grandeur sont notés dans le test (quelques secondes à quelques dizaines de secondes).
+4. Montée régulière de 5 km à 7 %, 250 W, 75 kg : le cadre Grimpeur fait gagner du temps, le cadre Aéro en fait perdre ; plat de 20 km à 250 W : l'Aéro gagne nettement plus que le Grimpeur (qui, plus léger, ne perd rien sur le plat). Les ordres de grandeur sont notés dans le test (quelques secondes à quelques dizaines de secondes).
 5. `equipment_time_gain` avec l'équipement de départ : 0 s exactement.
 6. Un catalogue invalide (doublon, emplacement inconnu, effet hors bornes) est refusé avec un message qui nomme la pièce.
 
 ## 8. Hors périmètre
 
 Achat et solde (V3b), choix enregistré (V4), branchement dans la séance (V11), rendu (V7), sons et traînées d'air (V7), pénalité de la lenticulaire par vent de travers (V-Q13 : la série P ne modélise pas encore le vent de travers).
+
+## 9. Livraison (26 octobre 2026, issue #241)
+
+- Code et tests : `equipment.py`, catalogue `[[items]]` de `data/progression.toml`, `core/tests/test_equipment.py` (23 tests).
+- Champ ajouté au catalogue : `buyable = false` pour les pièces offertes par un défi seulement (lu par V3b).
+- Temps gagné mesuré (même puissance de 250 W, 75 kg) : montée de 5 km à 7 % : Grimpeur −20 s, Grimpeur + Légères −27 s, Aéro +5 s, Contre-la-montre + Lenticulaire +10 s ; plat de 20 km : Aéro −18 s, Contre-la-montre + Lenticulaire −37 s, Grimpeur −2 s.

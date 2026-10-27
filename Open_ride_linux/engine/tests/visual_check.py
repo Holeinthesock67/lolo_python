@@ -745,7 +745,7 @@ def _menu_scenes(s: Session) -> None:
     shot = s.capture("menu_parcours")
     if shot:
         img, info = shot
-        s.check_texts("menu_parcours", info, {"menu_title": "Monde / parcours", "menu": "[Démo"}, contains=True)
+        s.check_texts("menu_parcours", info, {"menu_title": "Parcours", "menu": "[Démo"}, contains=True)
         s.check_texts("menu_parcours", info, {"menu": "Nouveau GPX (12,0 km) — à compiler"}, contains=True)
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
