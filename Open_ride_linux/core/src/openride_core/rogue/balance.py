@@ -57,7 +57,10 @@ class RogueBalance:
     start_gap_m: float = 150.0          # le mur part derrière le joueur à l'entrée de chaque salle
     max_gap_m: float = 400.0            # écart plafonné : pas d'avance infinie à capitaliser
     # Combat (R5)
-    hp_factor: float = 0.9              # PV de l'ennemi = 0,9 × cible moyenne × durée nominale
+    hp_factor_endurance: float = 1.038  # PV de l'ennemi = facteur × cible moyenne × durée nominale (endurance)
+    hp_factor_threshold: float = 1.03   # idem pour le seuil
+    hp_factor_vo2max: float = 1.02      # idem pour la VO2max
+    boss_hp_factor: float = 1.118       # PV de chaque phase du boss = facteur × cible moyenne × durée de la phase
     gear_step: float = 0.04             # m_gear = 1 + 0,04 × (vitesse − 6)
     gear_ref: int = 6   # vitesse neutre : multiplicateur de dégâts et pente envoyée sont centrés dessus
     gear_min: int = 1   # première vitesse
@@ -170,7 +173,7 @@ class RogueBalance:
         },
         "puncheur": {
             "vo2max": {"bump_s": 15.0, "valley_s": 30.0, "bump_grade": 9.0, "valley_grade": -2.0,
-                       "fw_bump": 1.06, "fw_valley": 0.67,
+                       "fw_bump": 1.15, "fw_valley": 0.67,
                        "bump_s_30_30": 30.0, "fw_bump_30_30": 0.95, "fw_valley_30_30": 0.65},
         },
         "grimpeur": {
@@ -217,7 +220,7 @@ def _bounds(name: str) -> tuple[float, float]:
         return _NEGATIVE_OK[name]
     if name.endswith("hp_frac"):
         return 0.0, 1.0
-    if name.endswith("_frac") or name == "hp_factor":
+    if name.endswith("_frac") or name.startswith("hp_factor_") or name == "boss_hp_factor":
         return 0.0, 5.0
     if name.endswith("_mult"):
         return 0.0, 10.0

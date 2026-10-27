@@ -32,3 +32,13 @@ Le Fatigué perd le boss à chaque run (0 % de boss battu) : après 30 min à �
 ## Limites
 
 Les cyclistes ne se défendent pas au mieux (pas de cartes d'attaque choisies selon la salle, pas de relance préventive pour creuser l'écart) ; les taux de Perfect Shift et d'appuis sont ceux du cahier. La sensibilité à ±20 % est mesurée sur 12 runs par essai : elle classe les constantes, elle ne donne pas de valeurs exactes.
+
+## Réglage appliqué (27 octobre 2026, accord du propriétaire sur `hp_factor`)
+
+Mesuré avec la même commande (200 runs, 45 min, graine 1, table `a24b6c58` pour l'endurance, `9b0339eb` pour le seuil et la VO2max avant le dernier ajustement de l'endurance à 1,038).
+
+- `hp_factor` devient trois constantes (`hp_factor_endurance` 1,038, `hp_factor_threshold` 1,03, `hp_factor_vo2max` 1,02) et le boss gagne la sienne (`boss_hp_factor` 1,118) : le trou des règles R5/R6 est comblé (cahier R5 mis à jour). `fw_bump` du Puncheur passe de 1,06 à 1,15.
+- Salles gagnées, Moyen : **endurance 68,5 %, seuil 72,2 %, VO2max 62,9 %** (cible 60 à 80 %), toujours sans défaite ; relances 1,09 / 0,82 / 1,11.
+- Boss battu, Moyen : **seuil 57,5 %, VO2max 52 %** (cible 50 à 70 %), mais **endurance toujours 100 %** : ses grades sont trop bas pour qu'un seul facteur la mette dans la cible (une autre constante serait une exception ; à décider).
+- Limites : le taux du boss est un **front net** (de 100 % à 0 % entre 1,11 et 1,13 de facteur), car les cyclistes simulés sont presque déterministes ; le profil Confirmé, plus régulier, perd le boss à 0 % alors que le Débutant le gagne à 90 à 98 % : ordre à revoir avec un tirage de dégâts du boss. La valeur 1,118 est donc la plus proche de la cible pour le Moyen, pas un réglage fin.
+- VO2max : minutes au-delà de 1,10 FTP 4,0 au lieu de 2,8 (cible 8) ; non atteinte avec `fw_bump` 1,15 seul. Relances du seuil 0,82 (cible 1 à 2), dues au nombre de couloirs.
