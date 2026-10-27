@@ -49,7 +49,7 @@ N6, O4 (même révision de contrat, l'un après l'autre), O10, O11 et O15 fusion
 
 ## 9. Livraison
 
-**Partie core, 27 octobre 2026** (thread « Développer les lots O restants », PR #395) ; **écrans de l'engine, 27 octobre 2026** (PR #397 ; lot interne, sans issue).
+**Partie core, 27 octobre 2026** (thread « Développer les lots O restants », PR #395) ; **écrans de l'engine, 27 octobre 2026** (PR #396 ; lot interne, sans issue).
 
 - Contrat : révision 1.3, décision du propriétaire du 27 octobre (tous les ajouts jusqu'à la v1.0.0 y entrent). Ajouts compatibles : commandes `list_plans`, `start_plan`, `stop_plan`, `accept_ftp` ; arguments `ftp_test` et `plan_day` de `start` ; message `plans` (`plans.schema.json`) ; `summary.ftp_test` ; champs `stats` et `library` des parcours ; `unit` des entraînements ; codes `plan_invalid`, `ftp_result_missing`, `ftp_result_doubtful`.
 - Écarts avec la proposition du §4, pour la cohérence :
