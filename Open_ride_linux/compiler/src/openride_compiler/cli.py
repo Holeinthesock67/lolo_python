@@ -8,6 +8,7 @@
     openride-compiler theme-check <dossier du thème>
     openride-compiler theme-list [--themes-dir D] [--json]
     openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]
+    openride-compiler cache-info [--json] | cache-clean [--generated | --all] [--yes]
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
     openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]
@@ -52,6 +53,7 @@ from .route_stats import (SORT_KEYS, LibraryError, compute_stats, duration_at, l
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
 from .theme import check_theme
 from .verify import verify_world, world_info
+from .worldgen import store
 from .worldgen import measure
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
@@ -191,6 +193,10 @@ def build_parser() -> argparse.ArgumentParser:
     ti.add_argument("--themes-dir", type=Path, default=None,
                     help="dossier d'installation des thèmes (défaut : ~/OpenRide/Themes)")
 
+    ci = sub.add_parser("cache-info", help="monde ouvert : taille du cache local, par sorte et par région (lot W2)")
+    store.add_info_arguments(ci)
+    cc = sub.add_parser("cache-clean", help="monde ouvert : vide le cache local (carrés générés par défaut)")
+    store.add_clean_arguments(cc)
     wm = sub.add_parser("world-measure",
                         help="monde ouvert : mesure volumes, temps de génération et débit (lot W0)")
     measure.add_arguments(wm)
@@ -760,6 +766,8 @@ COMMANDS = {
     "theme-install": cmd_theme_install,
     "list": cmd_list,
     "build-all": cmd_build_all,
+    "cache-info": store.cmd_cache_info,
+    "cache-clean": store.cmd_cache_clean,
     "world-measure": cmd_world_measure,
     "route-pack-install": cmd_route_pack_install,
     "route-pack-build": cmd_route_pack_build,

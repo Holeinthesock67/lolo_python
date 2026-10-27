@@ -114,3 +114,16 @@ def test_release_trainer_with_invalid_config_returns_1(tmp_path: Path,
     f.write_text("[ipc]\nport_state = 80\n", encoding="utf-8")
     assert cli.main(["release-trainer", "--config", str(f)]) == 1
     assert "[ipc] port_state" in capsys.readouterr().err
+
+
+def test_open_world_section_lot_w2() -> None:
+    """Section [open_world] (lot W2) : valeurs par défaut, cohérences croisées, types."""
+    ow = Config().open_world
+    assert (ow.cache_max_gb, ow.horizon_m, ow.offer_m, ow.lock_m, ow.preview_m) == (5.0, 3000.0, 300.0, 30.0, 500.0)
+    assert from_dict({"open_world": {"cache_max_gb": 20, "network": False}}).open_world.network is False
+    for bad, key in (({"lock_m": 300.0}, "lock_m"), ({"preview_m": 2000.0, "horizon_m": 1500.0}, "preview_m"),
+                     ({"cache_dir": "  "}, "cache_dir"), ({"cache_max_gb": -1}, "cache_max_gb")):
+        with pytest.raises(ConfigError, match=rf"\[open_world\] {key}"):
+            from_dict({"open_world": bad})
+    with pytest.raises(ConfigError, match="booléen"):
+        from_dict({"open_world": {"network": "oui"}})

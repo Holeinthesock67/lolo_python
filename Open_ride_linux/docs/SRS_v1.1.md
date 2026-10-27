@@ -396,6 +396,17 @@ port_commands = 5006
 [engine]
 godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide : ~/Applications/godot)
 
+[open_world]         # monde ouvert de la 2.0 (série W, docs/contracts/worldgen_v1.md §6)
+cache_dir = "~/OpenRide/Cache/monde"
+cache_max_gb = 5.0
+horizon_m = 3000.0   # route engagée devant le cycliste
+offer_m = 300.0      # carrefour proposé à cette distance
+lock_m = 30.0        # choix verrouillé à cette distance du carrefour
+preview_m = 500.0    # amorce calculée pour chaque branche
+recenter_m = 10000.0
+network = true       # false : cache seulement
+prefetch_history = true
+prefetch_radius_km = 10.0
 [wind]
 mode = "off"                 # "off" (défaut), "fixed", "gusty" ou "theme" (vent du thème 1.2)
 speed_kmh = 0                # 0 à 60
@@ -438,6 +449,7 @@ Le reste de l'avatar (taille, silhouette, couleurs, numéro) est dans `~/OpenRid
 ~/.local/share/openride/routes/<nom>.world/   parcours compilés (dossier)
 ~/.cache/openride/dem/                        tuiles d'altitude brutes
 ~/.cache/openride/osm/                        réponses OpenStreetMap brutes
+~/OpenRide/Cache/monde/                       monde ouvert (2.0) : cartes brutes, carrés générés, séances (plafond 5 Go)
 ```
 
 Le `.world` est désormais un dossier, et non un fichier unique comme dans la v1.0.
