@@ -1,0 +1,8 @@
+name = "Norikura Echo Line"
+region = "Nagano, Alpes japonaises"
+country = "Japon"
+side = "depuis Norikura Kōgen jusqu'à Tatamidaira"
+waypoints = [[36.1155, 137.6292], [36.1060, 137.5530]]
+ref_length_m = 20500
+ref_gain_m = 1260
+tags = ["col", "classique", "japon", "hc"]

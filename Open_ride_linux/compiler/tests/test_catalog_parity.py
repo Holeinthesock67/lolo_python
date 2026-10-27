@@ -95,8 +95,47 @@ def s_empty(make_gpx, routes, tmp):
     shutil.rmtree(routes, ignore_errors=True)                  # aucun dossier : demo seul
 
 
+def s_garmin(make_gpx, routes, tmp):
+    """Lot O5 : FIT, TCX compressé, archive .zip, conflit d'identifiant, fichier non trace."""
+    import gzip
+    import io
+    import zipfile
+
+    from test_track_formats import fit_bytes, tcx_activity
+
+    gpx_dir = tmp / "GPX"
+    gpx = make_gpx("GPX/garmin_fit.gpx", *straight_north(length=530.0))
+    gpx.with_name("garmin_fit.FIT").write_bytes(b"conflit : la trace .gpx gagne")
+    (gpx_dir / "sortie_fit.fit").write_bytes(fit_bytes([45.0, 45.006], [6.0, 6.0], [1000.0, 1001.0]))
+    (gpx_dir / "Sortie TCX.tcx.gz").write_bytes(gzip.compress(tcx_activity([45.0, 45.007], [6.0, 6.0], [1000.0, 1002.0]).encode()))
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w") as zf:
+        zf.writestr("a.fit", fit_bytes([45.0, 45.008], [6.0, 6.0], [1000.0, 1003.0]))
+    (gpx_dir / "export.zip").write_bytes(buf.getvalue())
+    (gpx_dir / "seul.gz").write_bytes(b"pas une trace")
+    assert run("build", gpx_dir / "export.zip", "--out", routes, "--layers", "route") == 0
+
+
+def s_library(make_gpx, routes, tmp):
+    """Lot O15 : pack en sous-dossier, fiches .toml (valide, invalide), .world sans fiche calculée."""
+    gpx = build(make_gpx, routes, "fiche_ok.gpx", 1060.0)
+    gpx.with_name("fiche_ok.toml").write_text('name = "Fiche"\ntags = ["col"]\n', encoding="utf-8")
+    (tmp / "GPX" / "pack-essai").mkdir()
+    make_gpx("GPX/pack-essai/Col Pack.gpx", *straight_north(length=1070.0))
+    (tmp / "GPX" / "pack-essai" / "Col Pack.toml").write_text('region = "Vosges"\n', encoding="utf-8")
+    (tmp / "GPX" / "pack-essai" / "pack.toml").write_text('name = "Essai"\n', encoding="utf-8")
+    bad = make_gpx("GPX/fiche_ko.gpx", *straight_north(length=1080.0))
+    bad.with_name("fiche_ko.toml").write_text('tags = "pas une liste"\n', encoding="utf-8")
+    old = build(make_gpx, routes, "ancien_world.gpx", 1090.0)
+    manifest_path = routes / "ancien-world.world" / "manifest.json"
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    del manifest["stats"]                                      # compilé avant le lot O15
+    manifest_path.write_text(json.dumps(manifest), encoding="utf-8")
+    assert old.exists()
+
+
 SITUATIONS = [s_compiled, s_modified, s_never_compiled, s_renamed, s_corrupted, s_gpx_gone,
-              s_demo, s_empty]
+              s_demo, s_garmin, s_library, s_empty]
 
 
 def _rows(entries) -> list[dict]:
@@ -145,6 +184,8 @@ def test_expected_statuses_of_combined_situation(make_gpx, tmp_path: Path, monke
         "modifie": "outdated", "nouveau-parcours-ete": "to_compile", "autre": "to_compile",
         "ancien-nom": "ready", "casse": "invalid", "sans-route": "invalid", "vide": "invalid",
         "orphelin": "ready", "sans-sha": "outdated",
+        "garmin-fit": "to_compile", "sortie-fit": "to_compile", "sortie-tcx": "to_compile", "export": "ready",
+        "fiche-ok": "ready", "col-pack": "to_compile", "fiche-ko": "to_compile", "ancien-world": "ready",
     }
     assert {k: e.status for k, e in by_id.items()} == expected
     assert by_id["ancien-nom"].gpx_path == gpx_dir / "nouveau_nom.gpx"
@@ -153,6 +194,20 @@ def test_expected_statuses_of_combined_situation(make_gpx, tmp_path: Path, monke
     assert by_id["demo"].gpx_path == gpx_dir / "demo.gpx"
     assert by_id["relief"].has_terrain and not by_id["col-ok"].has_terrain
     assert by_id["aller-retour"].route_type == "out_and_back"
+    assert by_id["fiche-ok"].library == {"name": "Fiche", "tags": ["col"]}
+    assert by_id["col-pack"].library == {"region": "Vosges"}
+    assert by_id["fiche-ko"].library is None
+    assert by_id["ancien-world"].stats["gain_m"] == pytest.approx(0.05 * 1090.0, abs=2.0)
+    assert by_id["fiche-ok"].stats["distance_m"] == pytest.approx(1060.0, abs=5.0)
+    assert by_id["nouveau-parcours-ete"].stats is None
+
+
+def test_route_stats_module_is_identical_in_core() -> None:
+    """`route_stats.py` est copié tel quel dans le compilateur (lot O15) : fiches identiques sans le core."""
+    from openride_compiler import route_stats
+
+    core_stats = require_core("openride_core.route_stats")
+    assert Path(route_stats.__file__).read_bytes() == Path(core_stats.__file__).read_bytes()
 
 
 NAMES = [
@@ -165,6 +220,28 @@ NAMES = [
 @pytest.mark.parametrize("name", NAMES)
 def test_normalize_name_matches_core(name: str) -> None:
     assert normalize_name(name) == core_catalog._normalize_name(name)
+
+
+@pytest.mark.parametrize("name", ["col.gpx", "COL.Fit", "a.fit.gz", "b.TCX.gz", "c.tcx", "d.zip",
+                                  "e.gpx.gz", "f.gz", ".zip", "notes.txt", "x.fit.zip"])
+def test_track_rules_match_core(name: str) -> None:
+    from openride_compiler import track_formats
+
+    assert track_formats.TRACK_SUFFIXES == core_catalog.TRACK_SUFFIXES
+    assert track_formats.track_stem(name) == core_catalog.track_stem(name)
+
+
+def test_conflicts_match_core(make_gpx, tmp_path: Path) -> None:
+    gpx_dir = tmp_path / "GPX"
+    for name in ("col.zip", "col.fit", "Col.gpx", "col.tcx.gz", "autre.fit"):
+        gpx_dir.mkdir(exist_ok=True)
+        (gpx_dir / name).write_bytes(b"x")
+    from openride_compiler import track_formats
+
+    assert track_formats.scan_tracks(gpx_dir) == core_catalog.scan_tracks(gpx_dir)
+    kept, conflicts = core_catalog.scan_tracks(gpx_dir)
+    assert kept == [gpx_dir / "Col.gpx", gpx_dir / "autre.fit"]
+    assert [lost.name for lost, _ in conflicts] == ["col.fit", "col.tcx.gz", "col.zip"]
 
 
 def test_demo_constants_and_fields_match_core() -> None:
