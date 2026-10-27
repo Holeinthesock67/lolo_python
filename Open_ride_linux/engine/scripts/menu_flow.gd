@@ -51,6 +51,8 @@ var devices: Dictionary = {}
 ## Écran de connexion déjà quitté (ou séance déjà en cours au premier état : --autostart, reprise).
 var connect_done := false
 var _all_ok_since := -1.0
+## Noms des parcours de la dernière liste, par id (monde affiché à l'accueil).
+var route_names := {}
 
 
 func _init() -> void:
@@ -78,6 +80,9 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 			connect_done = true
 	if not connect_done and menu.current_screen() == CONNECT:
 		_update_connect(with_devices(state), now_s)
+	var rid = state.get("route_id", null)
+	if rid != null and str(rid) != "" and str(rid) != menu.world_id:
+		menu.set_world(str(rid), str(route_names.get(str(rid), rid)))
 	if st == "FINISHED" and state.get("summary") is Dictionary:
 		summary = state["summary"]
 	if st != session_state:
@@ -170,6 +175,11 @@ func lists_needed() -> void:
 
 func set_routes(raw: Array) -> void:
 	menu.set_items(MenuModel.ROUTES, catalog.route_items(raw))
+	for r in raw:
+		if r is Dictionary and str(r.get("id", "")) != "":
+			route_names[str(r["id"])] = str(r.get("name", r["id"]))
+	if menu.world_id != "" and route_names.has(menu.world_id):
+		menu.set_world(menu.world_id, route_names[menu.world_id])
 
 
 func set_workouts(raw: Array) -> void:
@@ -216,6 +226,9 @@ func handle(event: String) -> Dictionary:
 			"new_session":
 				show_details = false
 				summary = {}
+				# Le core reste en FINISHED jusqu'au prochain select_route : le monde choisi est rechargé.
+				if menu.world_id != "":
+					return {"action": "list", "route_id": menu.world_id}
 				return {"action": "list"}
 			"details":
 				show_details = not show_details

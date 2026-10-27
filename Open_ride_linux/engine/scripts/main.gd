@@ -31,6 +31,8 @@ const MENU_CAMERA_MPS := 4.0
 ## Code de sortie de l'engine qui demande au lanceur `openride` de tout relancer (nouveaux appareils
 ## enregistrés, lot N13) ; voir core/src/openride_core/launcher.py.
 const EXIT_RELAUNCH := 64
+## Code de sortie « relancer en session simulée » (menu « Session simulée »).
+const EXIT_SIM := 65
 
 @onready var ipc: Node = $IpcClient
 @onready var camera: Camera3D = $Camera3D
@@ -87,6 +89,8 @@ var _menu_s := 0.0
 func _ready() -> void:
 	var cfg := EngineArgs.current()
 	routes_dir = cfg["routes_dir"]
+	if cfg.get("sim_session", false):
+		menu_flow.menu.set_sim_session(true)
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
@@ -213,12 +217,15 @@ func _run_menu_action(act: Dictionary) -> void:
 		"list":
 			ipc.list_routes()
 			ipc.list_workouts()
+			if act.get("route_id") != null:
+				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
 			print("Quitter demandé depuis le menu.")
 			get_tree().quit()
-		"relaunch":
-			print("Relance d'OpenRide demandée depuis le menu (code %d)." % EXIT_RELAUNCH)
-			get_tree().quit(EXIT_RELAUNCH)
+		"relaunch", "relaunch_sim":
+			var code := EXIT_SIM if name == "relaunch_sim" else EXIT_RELAUNCH
+			print("Relance d'OpenRide demandée depuis le menu (code %d)." % code)
+			get_tree().quit(code)
 		"scan_devices":
 			ipc.scan_devices()
 		"identify_click_plus":
@@ -430,7 +437,7 @@ func _poll_route_job() -> void:
 
 ## Messages de test (--test-mode) : « screenshot » enregistre l'image affichée en PNG et journalise
 ## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py ;
-## « menu_input » joue un appui du Click dans les menus.
+## « menu_input » joue un appui du Click dans les menus ; « command » fait envoyer une commande par l'engine.
 func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
@@ -439,6 +446,8 @@ func _on_test_message(msg: Dictionary) -> void:
 			var ev := str(msg.get("event", ""))
 			if ev in MenuModel.EVENTS:
 				_menu_event(ev)
+		"command":   # commande du contrat envoyée par l'engine lui-même (pause, end_session…)
+			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
 
 
 func _test_screenshot(path: String, tag: String) -> void:
@@ -488,8 +497,10 @@ func _widget_text(key: String) -> String:
 
 func _on_hello_ack(_ack: Dictionary) -> void:
 	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage. Core (re)démarré : listes
-	# redemandées au prochain état affichant le menu.
+	# redemandées au prochain état affichant le menu. Modes de l'accueil : hello_ack.config.modes
+	# (2.0 ; absent en 1.0).
 	menu_flow.lists_needed()
+	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 
 
 func _on_core_error(code: String, message: String) -> void:
