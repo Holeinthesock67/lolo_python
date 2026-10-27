@@ -14,8 +14,8 @@ Décrire dans le contrat IPC tout ce que l'engine doit savoir ou demander pour l
 
 ## 3. Prérequis
 
-- **Numéro de révision (question V-Q4 du plan) :** la révision 1.2 est prise par Q1 et N13. P1 doit être renuméroté en 1.3, et R1, T1 et V1 partagent la révision suivante (1.4, proposition). Ce lot ne démarre qu'une fois ce numéro confirmé.
-- P1 livré (il fixe la révision précédente) ; R1 et T1 de préférence dans la même révision, l'un après l'autre (même fichier `ipc_v1.md`).
+- **Révision 1.4 (V-Q4, décision D2 de l'audit IPC du 26 octobre, validée par le propriétaire) :** la 1.2 est prise par Q1 et N13, P1 passe en 1.3 ; R1, T1 et V1 forment ensemble la révision 1.4, en un seul lot de contrat (même fichier `ipc_v1.md`).
+- P1 livré (il fixe la révision précédente).
 
 ## 4. Travail demandé
 
@@ -33,9 +33,9 @@ Objet présent dès que le core connaît la progression (absent sinon : l'engine
 | `avatar` | objet | Réglages de l'avatar (§4.4) |
 | `lives` | entier ≥ 0 | Vies du mode Cyber-Rogue en réserve (série R) |
 
-### 4.2 Message `xp` (core vers engine, une fois en fin de séance)
+### 4.2 Message `xp_result` (core vers engine, en fin de séance)
 
-Envoyé après le `summary` de la trame `FINISHED`, répété dans chaque trame suivante tant que la séance n'est pas fermée (même règle que `summary`) ou une fois puis à la demande (au choix du lot, à justifier ; proposition : champ `xp` de `state` en `FINISHED`, comme `summary`, pour hériter de la répétition à 30 Hz).
+Message dédié (décision D7 de l'audit IPC, validée par le propriétaire ; nommé `xp_result` pour ne pas le confondre avec l'entier `progression.xp`). Envoyé quand `session_state` passe à `FINISHED`, après le `summary`, puis répété une fois par seconde tant que la séance reste `FINISHED` (au plus 10 fois), comme `hello` se répète : une perte UDP ne fait pas disparaître le bilan.
 
 Champs : `eligible` (booléen), `reason` (`too_short`, `replay`, `simulated`, `imported` ou `null`), `gains` (liste de `{source, points}` dans l'ordre du plan §2.1 : `distance`, `climb`, `erg`, `erg_bonus`, `segment`, `segment_pr`, `jersey`, `rogue`, `rogue_boss`), `total`, `level_before`, `level_after`, `xp_total`, `xp_next_level`, `coins_gained`, `coins_total`, `unlocked` (identifiants d'équipement devenus achetables), `challenges` (défis réussis dans la séance : `{id, name, reward_item}`), `equipment_gain_s` (temps gagné ou perdu par l'équipement sur la séance, négatif si gagné, ou `null`).
 
@@ -51,7 +51,7 @@ Taille : 1 400 octets au plus (au plus 8 déblocages et 4 défis listés, `more`
 | `set_avatar` | `{ "avatar": objet }` | Remplace les réglages de l'avatar (§4.4) ; valeurs hors bornes : `error` `avatar_invalid` |
 
 - Hors séance seulement (`IDLE`, `READY`) : sinon `error` `busy` (code existant de la révision 1.2).
-- Après `equip`, `buy` ou `set_avatar` réussi, le core renvoie un `hello_ack` complet (nouvelle `progression`) : l'engine n'a pas à recalculer.
+- Après `equip`, `buy` ou `set_avatar` réussi, le core envoie un message dédié `progression` (`v`, `request_cmd_id` et les champs de l'objet du §4.1) : l'engine n'a pas à recalculer. Pas de nouveau `hello_ack`, que l'engine traite comme la fin de la poignée de main (décision D7 de l'audit IPC).
 - Message `garage` : `v`, `request_cmd_id`, `part`, `parts`, `items`. Élément : `id`, `slot`, `name`, `state` (`locked`, `buyable`, `owned`, `equipped`), `level_required`, `price`, `challenge` (texte du défi qui l'offre, ou `null`), `mass_delta_kg`, `cda_delta_pct`, `terrain` (`flat`, `rolling`, `climb`, `all`), `look` (identifiant de rendu pour V7).
 - Nouveaux codes d'erreur : `item_locked`, `not_enough_coins`, `avatar_invalid`.
 - Élément de `routes` : champ facultatif `terrain` (`flat`, `rolling`, `climb` ou `null`, calculé par le core, lot V3 §4.3) pour le conseil d'équipement de l'écran « Prêt » (V8).
@@ -66,12 +66,12 @@ Objet `avatar` : `height` (`S`, `M`, `L`, `XL`), `build` (`slim`, `medium`, `str
 
 ### 4.6 Livrables
 
-`ipc_v1.md` (§4, §5, journal des changements), schémas `hello_ack`, `cmd`, `state` (ou `xp`), nouveau `garage.schema.json`, trames d'exemple, tests de contrat (`core/tests/test_contract_ipc.py`) : taille maximale de `xp`, d'un `hello_ack` complet et d'une partie de `garage`.
+`ipc_v1.md` (§4, §5, journal des changements), schémas `hello_ack` et `cmd`, nouveaux `garage.schema.json`, `progression.schema.json` et `xp_result.schema.json`, trames d'exemple, tests de contrat (`core/tests/test_contract_ipc.py`) : taille maximale de `xp`, d'un `hello_ack` complet et d'une partie de `garage`.
 
 ## 5. Fichiers concernés
 
 - **Modifiés :** `docs/contracts/ipc_v1.md`, `docs/contracts/ipc/*.schema.json` cités, `core/tests/test_contract_ipc.py`, `docs/SUIVI_AVANCEMENT.md`.
-- **Nouveaux :** `docs/contracts/ipc/garage.schema.json` (et `xp.schema.json` si message séparé).
+- **Nouveaux :** `docs/contracts/ipc/garage.schema.json`, `progression.schema.json`, `xp_result.schema.json`.
 - **Interdits :** le code du core et de l'engine (V11 et V6 à V9 les branchent).
 
 ## 6. Modifications de contrat autorisées
@@ -81,8 +81,8 @@ Celles du §4, toutes compatibles (`v` reste 1).
 ## 7. Critères d'acceptation
 
 1. Les schémas valident les trames d'exemple ; un `hello_ack` sans `progression` reste valide (rétrocompatibilité).
-2. `xp` le plus long possible (8 déblocages, 4 défis, 9 sources) tient dans 1 400 octets ; une partie de `garage` dans 60 000.
-3. Le propriétaire valide le contrat (V-Q4 et le §4.2).
+2. `xp_result` le plus long possible (8 déblocages, 4 défis, 9 sources) tient dans 1 400 octets ; une partie de `garage` dans 60 000.
+3. Le propriétaire valide le contrat (V-Q4 et D7 sont déjà tranchés).
 
 ## 8. Hors périmètre
 
