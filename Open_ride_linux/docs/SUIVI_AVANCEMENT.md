@@ -232,6 +232,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Aspiration derrière les bots à puissance constante (courbe mesurée, effet de file, vent de travers, poussée du bot suivi), lissée à 1 s, sur la vitesse et la pente envoyée en SIM, champs `draft` et `draft_bot`, temps à l'abri dans le bilan (lot P3, `core/tests/test_draft.py`).
 - [ ] Vent physique et aspiration derrière les bots, côté core (lots P2 et P3).
 - [x] Engine : modèle du vent lissé pour tout le décor, modèle de l'indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (lot P4, sans affichage).
+- [x] Arbres qui se balancent au vent (shader `tree_sway.gdshader`, paramètres globaux du vent) et touffes d'herbe en bord de route au vent apparent en qualité moyenne et haute (lot P5, branchement dans `main.gd` par P16).
 - [ ] Indicateur du vent et de l'abri, arbres et herbe au vent, nuages, sons d'ambiance, sons du vent et de la roue libre (lots P4, P5, P6, P9, P10 ; intégration P16).
 - [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs, passants (lots P8, P11 à P15, P21 ; intégration P17).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).

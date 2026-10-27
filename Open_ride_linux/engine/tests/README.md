@@ -16,6 +16,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 | Fichier | Lot | Vérifie |
 | --- | --- | --- |
 | `test_terrain_render.gd` | E2 | Shader triplanaire compilé et rendu : herbe, roche, neige et trois mélanges égaux à `blend_weights` (L3) à 3/255 près, seuil de pente du thème, texture utilisée à la place de la couleur |
+| `test_tree_sway_render.gd` | P5 | Arbre seul au vent (`tree_sway.gdshader`) : vent nul, deux images identiques ; vent fort, pied immobile à 2/255 près, cime qui bouge |
 
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
@@ -97,6 +98,7 @@ OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_
 | `test_osm_decor_route.gd` | – | Décor OSM et route : aucun arbre dans un bâtiment ni à moins de 3 m de ses murs (`tree_renderer.gd`, `exclude_buildings`), cours d'eau coupés au passage de la chaussée et ruisseau sur le bas-côté retiré (`osm_streamer.gd`, `cut_lines_at_road`) |
 | `test_far_terrain_carve.gd` | – | Terrain lointain abaissé sous la route (`terrain_tiles.gd`, `carve_under_route`) : vallée en V à 30 % et route en S à 7 %, dépassement de 8 m sans correctif, au moins 2 m sous la chaussée après, aucun sommet relevé, bord commun de deux tuiles identique |
 | `test_sound_player.gd` | E4 | Lecteurs et sons procéduraux du parcours (`sound_player.gd`) : synthèse au démarrage (< 500 ms), vent, roue libre, limitation à 4 lecteurs 3D actifs, volumes à 0,5 dB de `sound_model.gd` |
+| `test_grass_tufts.gd` | P5 | Touffes d'herbe (`grass_tufts.gd`) : 0 en `low`, budget, déterminisme, bande de 2 à 15 m hors route, bâtiments, eau et pentes, coût par image ; matériaux de balancement de `tree_renderer.gd` (d'origine quand le décor vivant est coupé) |
 | `test_wind_model.gd` | P4 | Modèle du vent (`wind_model.gd`) : repère, lissage (90 % en 1,2 s sans dépassement), phase continue, expiration du vent du core et vent du thème, vent apparent, coût de `evaluate` |
 | `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
 
