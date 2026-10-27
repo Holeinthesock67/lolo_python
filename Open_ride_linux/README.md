@@ -5,7 +5,33 @@
 Simulateur de cyclisme indoor 3D à usage personnel, natif Linux, plus léger que Zwift.
 Matériel de référence : home trainer HomeTrainer (FTMS), Zwift Cog, Zwift Click, PC Ubuntu.
 
-## Documents de référence (à fournir à l'IA au début de chaque session)
+**Pour rouler :** le [guide d'utilisation](docs/GUIDE_UTILISATION.md) explique l'installation, l'appairage, les parcours, l'ERG et le dépannage, sans terminal. Le reste de ce fichier s'adresse au développement.
+
+## État (27 octobre 2026)
+
+Version `0.9.0` (fichier `VERSION`) ; la 1.0 réunit les séries N et O. OpenRide s'installe en une commande et s'utilise ensuite depuis son icône, au Click ou au clavier, sans terminal : [docs/GUIDE_UTILISATION.md](docs/GUIDE_UTILISATION.md). Le détail des lots est dans [docs/SUIVI_AVANCEMENT.md](docs/SUIVI_AVANCEMENT.md), les essais restants dans son §3 et dans [docs/PROTOCOLE_TEST_2026-10-26.md](docs/PROTOCOLE_TEST_2026-10-26.md).
+
+- **Sur `main` :** HomeTrainer en SIM et ERG validé sur le matériel, Zwift Click V2 à deux boîtiers, fréquence cardiaque relayée par le trainer ; séance, journal, FIT et bilan ; lancement sans terminal, écran des appareils et menus pilotés au Click selon le plan des boutons commun ; réglages ; entraînements `.zwo`, `.erg` et `.mrc` (choix, création, import) ; test de FTP, plans d'entraînement, bibliothèque de parcours et pack « Cols célèbres » ; rendu 3D (route, terrain, ciel, arbres, bâtiments, eau, sons), décor vivant et vent (série P, mises à jour 1.x), brouillard par préréglage ; outils de test de la série X.
+- **Reste pour la 1.0 :** boutons de l'ERG au plan commun (lot O17), puis la recette sur le matériel et la publication (O8). Écrans des plans, du test de FTP et de la bibliothèque (O12), courbes de la séance (O14), bots à l'écran (O7) et guide d'utilisation (O6) sont sur `main`.
+- **Déjà prêt pour la 2.0, sans branchement :** contrat IPC 1.4 (lot T1), modules purs des segments, bonus, records, maillots et écarts (série T), de la progression et de l'équipement (série V), mesures du monde ouvert (W0).
+
+## Installation (PC Ubuntu)
+
+En une commande (lot N14), depuis `Open_ride_linux/` après `sudo apt install python3-venv bluez` et le téléchargement de Godot 4.3 :
+
+```bash
+scripts/install.sh
+```
+
+Le script crée l'environnement Python `core/.venv`, y installe le core et le compilateur, relie `openride` et `openride-core` dans `~/.local/bin`, crée `~/OpenRide/config.toml` depuis `scripts/config.example.toml`, demande une fois le chemin de Godot 4.3 (gardé dans `[engine] godot`) et installe trois entrées de menu : **OpenRide**, **OpenRide – Libérer le trainer** et **OpenRide – Mettre à jour** (`scripts/update.sh` : `git pull --ff-only` puis réinstallation, refusée s'il y a des modifications locales). Il peut être relancé sans dommage. Ensuite, tout se fait depuis l'icône : au premier lancement, OpenRide crée `~/OpenRide/GPX/` et `~/OpenRide/Workouts/` et rappelle de configurer les appareils ; une erreur au lancement (Godot introuvable, configuration invalide, port occupé, trainer réservé par une autre application, plantages répétés) s'affiche dans une fenêtre avec le chemin du journal.
+
+Tout le reste (appairage, parcours, entraînements, commandes, dépannage) est dans le [guide d'utilisation](docs/GUIDE_UTILISATION.md).
+
+## Développement
+
+Cette partie s'adresse à qui modifie le code ; les sections « Version », « Lancer une séance » et « Diagnostic matériel » plus bas en font aussi partie.
+
+### Documents de référence (à fournir à l'IA au début de chaque session)
 
 Avec Claude Code, lancer `claude` depuis `Open_ride_linux/` : le fichier `CLAUDE.md` est lu automatiquement, et les commandes `/tests`, `/seance` et `/lot` sont disponibles.
 
@@ -18,7 +44,7 @@ Avec Claude Code, lancer `claude` depuis `Open_ride_linux/` : le fichier `CLAUDE
 - `docs/lots/` : cahiers des charges des lots confiables à une autre IA (commencer par `00_INDEX.md`)
 - `docs/spikes.md` : faits mesurés sur le matériel (sprint 0)
 
-## Structure
+### Structure
 
 ```text
 Open_ride_linux/
@@ -29,24 +55,9 @@ Open_ride_linux/
   compiler/    openride-compiler (Python) : GPX vers .world, couches route et terrain (lots B1 et B2)
 ```
 
-## État (27 octobre 2026)
+### Tests
 
-Version `0.9.0` (fichier `VERSION`). La 1.0 réunit les séries N et O ; le détail est dans [docs/SUIVI_AVANCEMENT.md](docs/SUIVI_AVANCEMENT.md), les essais restants dans son §3 et dans [docs/PROTOCOLE_TEST_2026-10-26.md](docs/PROTOCOLE_TEST_2026-10-26.md).
-
-- **Sur `main` :** HomeTrainer en SIM et ERG validé sur le matériel, Zwift Click V2 à deux boîtiers, fréquence cardiaque relayée par le trainer ; séance, journal, FIT et bilan ; lancement sans terminal, écran des appareils et menus pilotés au Click selon le plan des boutons commun ; réglages ; entraînements `.zwo`, `.erg` et `.mrc` (choix, création, import) ; test de FTP, plans d'entraînement, bibliothèque de parcours et pack « Cols célèbres » ; rendu 3D (route, terrain, ciel, arbres, bâtiments, eau, sons), décor vivant et vent (série P, mises à jour 1.x), brouillard par préréglage ; outils de test de la série X.
-- **Reste pour la 1.0 :** écrans des plans, du test de FTP et de la bibliothèque (lot O12, en revue), courbes de la séance à l'écran (O14), boutons de l'ERG au plan commun (O17), guide d'utilisation et README de la 1.0 (O6), bots à l'écran (O7, facultatif), puis la recette sur le matériel et la publication (O8).
-- **Déjà prêt pour la 2.0, sans branchement :** contrat IPC 1.4 (lot T1), modules purs des segments, bonus, records, maillots et écarts (série T), de la progression et de l'équipement (série V), mesures du monde ouvert (W0).
-- **Tests :** 1467 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop`, rampe de pente du trainer et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 395 côté compilateur (dont traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, 59 fichiers de tests unitaires lancés par découverte, 7 tests de rendu, les couches OSM, l'ERG, le rendu par tronçons et 8 scénarios IPC, plus le bout en bout, les tests graphiques et le banc simulé ([docs/OUTILS_DE_TEST.md](docs/OUTILS_DE_TEST.md)). Ils se lancent sur le PC cible (`python3 scripts/recette_pc.py`) ; la configuration GitHub Actions (Python 3.11 / 3.14 et Godot 4.3) reste dans le dépôt.
-
-## Installation (PC Ubuntu)
-
-En une commande (lot N14), depuis `Open_ride_linux/` après `sudo apt install python3-venv bluez` et le téléchargement de Godot 4.3 :
-
-```bash
-scripts/install.sh
-```
-
-Le script crée l'environnement Python `core/.venv`, y installe le core et le compilateur, relie `openride` et `openride-core` dans `~/.local/bin`, crée `~/OpenRide/config.toml` depuis `scripts/config.example.toml`, demande une fois le chemin de Godot 4.3 (gardé dans `[engine] godot`) et installe trois entrées de menu : **OpenRide**, **OpenRide – Libérer le trainer** et **OpenRide – Mettre à jour** (`scripts/update.sh` : `git pull --ff-only` puis réinstallation, refusée s'il y a des modifications locales). Il peut être relancé sans dommage. Ensuite, tout se fait depuis l'icône : au premier lancement, OpenRide crée `~/OpenRide/GPX/` et `~/OpenRide/Workouts/` et rappelle de configurer les appareils ; une erreur au lancement (Godot introuvable, configuration invalide, port occupé, trainer réservé par une autre application, plantages répétés) s'affiche dans une fenêtre avec le chemin du journal.
+- **Tests :** 1468 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop`, rampe de pente du trainer et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 395 côté compilateur (dont traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, 59 fichiers de tests unitaires lancés par découverte, 7 tests de rendu, les couches OSM, l'ERG, le rendu par tronçons et 8 scénarios IPC, plus le bout en bout, les tests graphiques et le banc simulé ([docs/OUTILS_DE_TEST.md](docs/OUTILS_DE_TEST.md)). Ils se lancent sur le PC cible (`python3 scripts/recette_pc.py`) ; la configuration GitHub Actions (Python 3.11 / 3.14 et Godot 4.3) reste dans le dépôt.
 
 ## Version
 
