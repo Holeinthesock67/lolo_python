@@ -34,6 +34,15 @@ uniform float max_slope_half_band_deg = 3.0;
 uniform float rock_facet_strength : hint_range(0.0, 1.0) = 0.6;
 uniform float detail_strength : hint_range(0.0, 1.0) = 1.0;
 
+// Ombre des nuages (Lot P6, préréglage high seulement) : même bruit et même défilement que
+// sky_clouds.gdshader (couche basse), projeté verticalement. Faux par défaut : rendu inchangé.
+uniform bool cloud_shadow_enabled = false;
+uniform float cloud_shadow_coverage = 0.0;
+uniform vec2 cloud_shadow_offset = vec2(0.0);
+uniform float cloud_shadow_altitude_m = 2000.0;
+uniform float cloud_shadow_strength = 0.35;
+uniform float cloud_shadow_scale_m = 2600.0;
+
 // Poids en dessous duquel une couche n'est pas échantillonnée (économie de lectures de texture).
 const float MIN_LAYER_WEIGHT = 0.001;
 
@@ -74,6 +83,23 @@ float _grass_noise(vec3 pos) {
 	float n8 = _val_noise(pos.xz / 8.0);
 	float n60 = _val_noise(pos.xz / 60.0);
 	return (n8 * 0.6 + n60 * 0.4) * 2.0 - 1.0;
+}
+
+// Densité des nuages au-dessus du point (copie de _fbm et _layer de sky_clouds.gdshader, 5 octaves)
+float _cloud_density(vec2 p) {
+	float sum = 0.0;
+	float amp = 0.5;
+	float norm = 0.0;
+	mat2 rot = mat2(vec2(0.8, 0.6), vec2(-0.6, 0.8));
+	vec2 q = p / cloud_shadow_scale_m;
+	for (int i = 0; i < 5; i++) {
+		sum += amp * _val_noise(q);
+		norm += amp;
+		q = rot * q * 2.03 + vec2(17.1, 9.2);
+		amp *= 0.5;
+	}
+	float threshold = mix(0.72, 0.22, cloud_shadow_coverage);
+	return smoothstep(threshold, threshold + 0.16, sum / norm);
 }
 
 void fragment() {
@@ -124,6 +150,10 @@ void fragment() {
 	}
 	vec3 rock_n = normalize(mix(n, flat_n, rock_facet_strength * detail_strength));
 	NORMAL = normalize(mix(n, rock_n, clamp(w_rock, 0.0, 1.0)));
+
+	if (cloud_shadow_enabled && cloud_shadow_coverage > 0.0) {
+		final_color *= 1.0 - cloud_shadow_strength * _cloud_density(v_world_pos.xz + cloud_shadow_offset);
+	}
 
 	ALBEDO = final_color;
 	ROUGHNESS = roughness;

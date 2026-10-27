@@ -92,19 +92,19 @@
 | [P1](LOT_P1_contrat_vent_decor.md) | Contrat : vent et aspiration dans `state` (IPC révision 1.3), configuration `[wind]`, thème 1.2 (nuages, météo, ambiance, faune, saison, heure), points d'intérêt `wind_turbine` et `flag` | Markdown + JSON | O8 | Petite | **Livré le 26 octobre** (issue #125) |
 | [O15](LOT_O15_bibliotheque_parcours.md) | Bibliothèque de parcours : fiches (dénivelé, montée, difficulté), tri, filtres, packs de parcours | Python | O5 | Moyenne | **Livré le 26 octobre** (issue #157) |
 | [O16](LOT_O16_pack_cols_celebres.md) | Pack de départ : cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | **Livré le 27 octobre** (issue #158) |
-| [P2](LOT_P2_vent_physique_core.md) | Vent physique côté core : rafales, composante de face, vitesse virtuelle et résistance ressentie en SIM | Python | P1 | Moyenne | Oui, après P1 (issue #126) |
-| [P3](LOT_P3_aspiration_bots.md) | Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | Oui, après P2 et N9 (issue #127) |
-| [P4](LOT_P4_modele_vent_engine.md) | Engine : modèle du vent, indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (sans affichage) | GDScript | P1 | Petite | Oui, après P1 (issue #128) |
-| [P5](LOT_P5_vent_vegetation.md) | Vent dans les arbres et touffes d'herbe (shader de balancement) | GDScript + shader | P4, O1 | Petite | Oui, après P4 (issue #129) |
-| [P6](LOT_P6_nuages.md) | Nuages qui défilent avec le vent | GDScript + shader | P4 | Petite | Oui, après P4 (issue #130) |
+| [P2](LOT_P2_vent_physique_core.md) | Vent physique côté core : rafales, composante de face, vitesse virtuelle et résistance ressentie en SIM | Python | P1 | Moyenne | **Livré le 26 octobre** (issue #126) |
+| [P4](LOT_P4_modele_vent_engine.md) | Engine : modèle du vent, indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (sans affichage) | GDScript | P1 | Petite | **Livré le 26 octobre** (issue #128) |
+| [P3](LOT_P3_aspiration_bots.md) | Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | **Livré le 26 octobre** (issue #127) |
+| [P5](LOT_P5_vent_vegetation.md) | Vent dans les arbres et touffes d'herbe (shader de balancement) | GDScript + shader | P4, O1 | Petite | **Livré le 26 octobre** (issue #129) |
+| [P6](LOT_P6_nuages.md) | Nuages qui défilent avec le vent | GDScript + shader | P4 | Petite | **Livré le 26 octobre** (issue #130) |
 | [P7](LOT_P7_heure_soleil.md) | Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | Oui, **version 2.0** (issue #131) |
-| [P8](LOT_P8_meteo_legere.md) | Météo légère : brume de vallée, pluie, neige | GDScript | P4 | Petite | Oui, après P4 (issue #132) |
-| [P9](LOT_P9_ambiance_sonore.md) | Sons d'ambiance selon le décor (forêt, champs, eau, village, altitude) | GDScript | P1, P4 | Moyenne | Oui, après P4 (issue #133) |
-| [P10](LOT_P10_sons_velo.md) | Sons du vélo : vent selon la vitesse dans l'air, roue libre réaliste et « clac » à la reprise | GDScript | P4 | Petite | Oui, après P4 (issue #134) |
-| [P11](LOT_P11_animaux.md) | Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | Oui, après P4 (issue #135) |
-| [P12](LOT_P12_eoliennes_drapeaux_eau.md) | Éoliennes et drapeaux (compilateur et engine), eau qui scintille | Python + GDScript | P1, P4 | Moyenne | Oui, après P4 (issue #136) |
-| [P13](LOT_P13_vehicules.md) | Véhicules croisés sur la route du parcours | GDScript | P4, P9 | Petite | Oui, après P9 (issue #137) |
-| [P14](LOT_P14_bord_de_route.md) | Bord de route : panneaux de col, bornes kilométriques, marquages au sol | GDScript + shader | P4 | Moyenne | Oui, après P4 (issue #138) |
+| [P8](LOT_P8_meteo_legere.md) | Météo légère : brume de vallée, pluie, neige | GDScript | P4 | Petite | **Livré le 26 octobre** (issue #132) |
+| [P9](LOT_P9_ambiance_sonore.md) | Sons d'ambiance selon le décor (forêt, champs, eau, village, altitude) | GDScript | P1, P4 | Moyenne | **Livré le 27 octobre** (issue #133) |
+| [P10](LOT_P10_sons_velo.md) | Sons du vélo : vent selon la vitesse dans l'air, roue libre réaliste et « clac » à la reprise | GDScript | P4 | Petite | **Livré le 27 octobre** (issue #134) |
+| [P11](LOT_P11_animaux.md) | Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #135) |
+| [P12](LOT_P12_eoliennes_drapeaux_eau.md) | Éoliennes et drapeaux (compilateur et engine), eau qui scintille | Python + GDScript | P1, P4 | Moyenne | **Livré le 27 octobre** (issue #136) |
+| [P14](LOT_P14_bord_de_route.md) | Bord de route : panneaux de col, bornes kilométriques, marquages au sol | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #138) |
+| [P13](LOT_P13_vehicules.md) | Véhicules croisés sur la route du parcours | GDScript | P4, P9 | Petite | **Livré le 27 octobre** (issue #137) |
 | [P15](LOT_P15_spectateurs.md) | Spectateurs et encouragements dans les dernières côtes | GDScript + shader | P9, P14 | Petite | Oui, après P14 (issue #139) |
 | [P16](LOT_P16_integration_vent_ciel_sons.md) | Intégration, première vague : vent ressenti et affiché, arbres, nuages, sons ; recette sur la GTX 1060 | GDScript | P2, P4, P5, P6, P9, P10 | Moyenne | Non : interne (`main.gd`, contrôle visuel et sur le vélo) (issue #140) |
 | [P17](LOT_P17_integration_decor_complet.md) | Intégration, deuxième vague : abri, météo, animaux, objets mobiles, bord de route | GDScript | P16, P3, P8, P11 à P15, O7 | Grande | Non : interne (`main.gd`, contrôle visuel) (issue #141) |
