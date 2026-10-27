@@ -16,7 +16,7 @@ from pathlib import Path
 from typing import Callable
 
 from .fit_export import Summary, default_fit_path, summarize, write_fit
-from .journal import TIMER_EVENTS, JournalWriter, Record, record_line
+from .journal import GAME_KINDS, TIMER_EVENTS, JournalWriter, Record, record_line
 
 log = logging.getLogger("recorder")
 
@@ -93,6 +93,8 @@ class SessionRecorder:
                 self._writer.ftp_test(line)
             elif line["kind"] == "junction":
                 self._writer.junction(line)
+            elif line["kind"] in GAME_KINDS:
+                self._writer.game(line)
             else:
                 fields = {k: v for k, v in line.items() if k != "kind"}
                 self._writer.record(Record(**fields))
@@ -120,6 +122,8 @@ class SessionRecorder:
     def junction(self, line: dict) -> None:
         """Branche prise à un carrefour du monde ouvert (lot W9) ; absente du FIT."""
         line = {**line, "kind": "junction"}
+    def game(self, line: dict) -> None:
+        """Ligne de jeu de la série T (`powerup`, `segment`, `jersey`, lot T7) ; absente du FIT."""
         self.lines.append(line)
         self._write(line)
 

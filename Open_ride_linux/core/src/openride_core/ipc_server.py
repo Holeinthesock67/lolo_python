@@ -25,7 +25,7 @@ MAX_DATAGRAM_SIZE = 1400
 # Révision 1.3 (lot P1, audit IPC D1) : la trame state peut atteindre 4 096 octets (127.0.0.1, sans fragmentation).
 MAX_STATE_DATAGRAM_SIZE = 4096
 # Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
-CONTRACT_REV = "1.3"
+CONTRACT_REV = "1.4"
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
 CORE_MODES = ("ride", "erg", "open_world")   # monde ouvert : révision 1.5, lot W9
 MAX_LIST_DATAGRAM_SIZE = 60000
@@ -74,6 +74,12 @@ class IpcState:
     draft: float | None = None             # révision 1.3 (lot P3) : présent dès qu'il y a un bot
     draft_bot: str | None = None
     open_world: dict[str, Any] | None = None   # révision 1.5 (lot W9) : jamais dans une trame avec devices
+    # Révision 1.4 (série T, lot T7) : absents sans segment, hors bonus ou sans bot.
+    segment: dict[str, Any] | None = None
+    powerup: dict[str, Any] | None = None
+    jerseys: dict[str, Any] | None = None
+    bot_ahead: str | None = None           # présents (éventuellement null) dès qu'il y a un bot
+    bot_behind: str | None = None
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -99,6 +105,12 @@ class IpcState:
             d.pop("draft_bot", None)
         if self.open_world is None or self.devices is not None:
             d.pop("open_world", None)
+        for key in ("segment", "powerup", "jerseys"):
+            if d[key] is None:
+                d.pop(key)
+        if self.bots is None:
+            d.pop("bot_ahead")
+            d.pop("bot_behind")
         return d
 
 

@@ -84,6 +84,9 @@ class Record:
 OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen")
 
 
+# Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).
+GAME_KINDS = ("powerup", "segment", "jersey")
+
 def record_line(rec: Record) -> dict:
     # Dictionnaire construit sans ces clés (un `del` ne réduirait pas sa table en mémoire).
     return {"kind": "record", **{k: v for k, v in asdict(rec).items()
@@ -142,6 +145,12 @@ class JournalWriter:
         """Bonus activé (série T, lot T5) : type, début en temps chronométré, durée."""
         self._write({"kind": "powerup", "ts": ts, "powerup": kind, "t": round(t_start, 2),
                      "duration_s": round(duration_s, 2)})
+
+    def game(self, line: dict) -> None:
+        """Ligne de jeu de la série T (lot T7) : `powerup`, `segment` ou `jersey`, déjà formée."""
+        if line.get("kind") not in GAME_KINDS:
+            raise ValueError(f"ligne de jeu inconnue : {line.get('kind')}")
+        self._write(line)
 
     def close(self) -> None:
         if not self._fh.closed:
