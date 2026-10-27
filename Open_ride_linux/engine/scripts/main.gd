@@ -18,6 +18,8 @@ const SoundPlayer := preload("res://scripts/sound_player.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
+const BotsViewModel := preload("res://scripts/bots_view_model.gd")
+const BotsView := preload("res://scripts/bots_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
@@ -93,6 +95,9 @@ const CUE_BEEP := [[880.0, 0.15], [1320.0, 0.25]]
 var _cues = CueModel.new()
 ## Menus (lot N6) : déroulé (menu_flow.gd) et affichage (menu_view.gd).
 var menu_flow = MenuFlow.new()
+## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
+var bots_model = BotsViewModel.new()
+var bots_view: Node3D
 var menu_view = null
 var _last_state: Dictionary = {}
 var _menu_s := 0.0
@@ -158,6 +163,8 @@ func _ready() -> void:
 	living_decor.living_world = living_world
 	living_decor.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player, streamer)
 	living_decor.set_fog_base(world_env.environment)
+	bots_view = BotsView.new()
+	add_child(bots_view)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
@@ -428,6 +435,8 @@ func _process(delta: float) -> void:
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
+		if bots_model.count() > 0:
+			_show_bots(s_route, float(follow.last_frame["v"]))
 
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
@@ -549,6 +558,7 @@ func _poll_route_job() -> void:
 		return
 	route = job["route"]
 	follow.loop_length_m = route.length_m if route.is_loop() else 0.0
+	bots_model.loop_length_m = follow.loop_length_m
 	follow.reset()
 	_menu_s = 0.0
 	# Changement de parcours : tronçons et tuiles vidés puis reconstruits autour de s = 0.
@@ -606,6 +616,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram,
+		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
 		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}
@@ -631,6 +642,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
 		"widgets": widgets,
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
+		"bots": bots_view.test_info(camera) if bots_view != null else {},
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -712,6 +724,7 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if running and route != null:
 		_give_cues(state)
+	bots_model.push(state.get("bots", null) if running or session_state == "PAUSED" else null, Time.get_ticks_usec())
 
 	if not state.has("gears_total"):
 		state["gears_total"] = ipc.core_config.get("gears_total", 24)
@@ -726,6 +739,7 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+	_show_bots(float(state.get("s", 0.0)), float(state.get("v", 0.0)))
 	if living_decor != null:
 		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
@@ -739,6 +753,15 @@ func _on_state_received(state: Dictionary) -> void:
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
 		sound_player.update_audio(state, now_s, camera.position)
+
+
+## Bots (lot O7) : encart du HUD et silhouettes sur la route, aux positions affichées à l'instant.
+func _show_bots(rider_s: float, rider_v: float) -> void:
+	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
+	if hud != null and hud.has_method("update_bots"):
+		hud.update_bots(view)
+	if bots_view != null:
+		bots_view.update_view(view, route, _visual_grade_scale, route.alt_m[0] if route != null and route.n > 0 else 0.0)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les

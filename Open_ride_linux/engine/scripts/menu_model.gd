@@ -37,6 +37,10 @@ extends RefCounted
 ## écran Prêt, en passant par les parcours sans monde choisi ; choisir un entraînement ou la session
 ## libre l'annule. La liste des parcours finit par le tri et le filtre par étiquette (SORT_ROUTES_ID,
 ## FILTER_ROUTES_ID), traités par menu_flow.gd.
+##
+## Bots (lot O7) : l'écran Prêt gagne « Bot : … » (A long change : aucun, 200, 250, 300 W, 90, 100,
+## 110 % de la FTP) et « Fantôme de la dernière séance : non/oui » ; `start` les transmet dans l'argument
+## `bots` (contrat 1.3) quand l'un des deux est choisi, sinon n'envoie rien. Un nouvel accueil les remet à zéro.
 
 const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG", "A_SHORT", "A_LONG", "Y_SHORT",
 	"LEFT_SHORT", "RIGHT_SHORT"]
@@ -60,6 +64,11 @@ const DEFAULT_MODES := ["ride", "erg"]
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 const IMPORT_WORKOUT_ID := "_import"
+## Bot de l'écran Prêt (lot O7), dans l'ordre du cycle : libellé et élément de l'argument `bots` de `start`.
+const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 200}],
+	["250 W", {"kind": "constant", "power_w": 250}], ["300 W", {"kind": "constant", "power_w": 300}],
+	["90 % de la FTP", {"kind": "constant", "ftp_pct": 90}], ["100 % de la FTP", {"kind": "constant", "ftp_pct": 100}],
+	["110 % de la FTP", {"kind": "constant", "ftp_pct": 110}]]
 ## Fin de la liste des parcours (bibliothèque, lot O12) : tri et filtre par étiquette, en cycle.
 const SORT_ROUTES_ID := "_sort"
 const FILTER_ROUTES_ID := "_filter"
@@ -89,6 +98,9 @@ var plan_detail := ""
 ## Séance préparée par prepare_start() : nom affiché sur l'écran Prêt et arguments de `start` ({} sinon).
 var start_name := ""
 var start_args: Dictionary = {}
+## Bot choisi (index de BOT_CHOICES) et fantôme demandé, pour la séance préparée (lot O7).
+var bot_choice := 0
+var ghost := false
 
 
 func _init() -> void:
@@ -124,7 +136,9 @@ func _refresh_home() -> void:
 	_screens[READY]["items"] = [
 		_item("start", "Démarrer"),
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
-		_item("change_route", "Changer de parcours")]
+		_item("change_route", "Changer de parcours"),
+		_item("bot", "Bot : " + BOT_CHOICES[bot_choice][0]),
+		_item("ghost", "Fantôme de la dernière séance : " + ("oui" if ghost else "non"))]
 	var what := "session ERG" if mode == "erg" else "session libre"
 	if start_name != "":
 		what = start_name
@@ -169,6 +183,19 @@ func prepare_start(name: String, args: Dictionary) -> Dictionary:
 func _clear_start() -> void:
 	start_name = ""
 	start_args = {}
+
+
+## Arguments de `start` : séance préparée (plan_day, ftp_test) et bots choisis ({} si rien).
+func _start_args() -> Dictionary:
+	var out := start_args.duplicate()
+	var bots: Array = []
+	if bot_choice > 0:
+		bots.append(BOT_CHOICES[bot_choice][1].duplicate())
+	if ghost:
+		bots.append({"kind": "ghost"})
+	if not bots.is_empty():
+		out["bots"] = bots
+	return out
 
 
 ## Difficulté de la séance affichée sur l'écran de pause (curseur du lot O4, commande set_difficulty).
@@ -219,6 +246,8 @@ func reset() -> void:
 	_focus_stack.clear()
 	_pending = {}
 	_clear_start()
+	bot_choice = 0
+	ghost = false
 	_refresh_home()
 	_open(HOME, false)
 
@@ -527,9 +556,16 @@ func _validate() -> Dictionary:
 		READY:
 			match id:
 				"start":
-					if start_args.is_empty():
+					var args := _start_args()
+					if args.is_empty():
 						return {"action": "start"}
-					return {"action": "start", "args": start_args.duplicate()}
+					return {"action": "start", "args": args}
+				"bot":
+					bot_choice = (bot_choice + 1) % BOT_CHOICES.size()
+					_refresh_home()
+				"ghost":
+					ghost = not ghost
+					_refresh_home()
 				"workout":
 					_workouts_return = READY
 					_open(WORKOUTS)

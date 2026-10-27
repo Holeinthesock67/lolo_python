@@ -39,6 +39,8 @@ extends RefCounted
 ## - « Test de FTP » : rampe ou 20 minutes, puis écran Prêt, `start` avec ftp_test ; au bilan,
 ##   « Accepter » (accept_ftp ; résultat douteux : confirmation puis accept_ftp avec force) ou « Garder » ;
 ## - parcours : tri et filtre par étiquette en cycle en fin de liste, fiche du parcours sur l'écran Prêt ;
+## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
+##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
@@ -120,6 +122,8 @@ var _workouts_raw: Array = []
 ## Résultat du test de FTP du bilan (summary.ftp_test) tant qu'il reste à accepter ou garder ({} sinon).
 var ftp_offer: Dictionary = {}
 var summary_message := ""
+## Ligne d'état de l'écran Prêt (bots refusés par le core, lot O7).
+var ready_message := ""
 var _ftp_pending := false
 
 
@@ -285,6 +289,9 @@ func on_error(code: String, text: String) -> void:
 				{"action": "accept_ftp", "force": true})
 		else:
 			summary_message = "Échec : " + text
+		return
+	if code == "bot_invalid" and menu.current_screen() == MenuModel.READY:
+		ready_message = "Échec : " + text
 		return
 	if _plan_request != "" and code in ["plan_invalid", "busy"]:
 		_plan_request = ""
@@ -607,6 +614,7 @@ func list_failed(list_name: String) -> void:
 func handle(event: String) -> Dictionary:
 	if not is_visible():
 		return {}
+	ready_message = ""
 	if menu.current_screen() == SETTING_EDIT:
 		return _handle_edit(event)
 	var act: Dictionary = menu.handle(event)["action"]
@@ -777,5 +785,7 @@ func state() -> Dictionary:
 		st["status"] = FTP_HINT
 	elif st["screen"] == SUMMARY:
 		st["status"] = summary_message
+	elif st["screen"] == MenuModel.READY:
+		st["status"] = ready_message
 	st["card"] = route_card() if st["screen"] == MenuModel.READY else []
 	return st

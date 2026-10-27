@@ -211,6 +211,7 @@ class CoreSession:
         self.cfg = cfg
         self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
+        self._cli_bots = self.bots   # ceux de la ligne de commande, remis quand `start` n'a pas de `bots`
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
@@ -319,6 +320,8 @@ class CoreSession:
         elif name == "start" and st == "READY":
             if not self._choose_start_workout(args if isinstance(args, dict) else {}):
                 return
+            if not self._choose_start_bots(args if isinstance(args, dict) else {}):
+                return
             self._open_journal()
             if self._workout:
                 self.erg = ErgController(self._workout, self.cfg.rider.ftp_w)
@@ -397,6 +400,31 @@ class CoreSession:
         else:
             return True
         return self._workout is not None   # entraînement refusé : `workout_invalid` déjà envoyé
+
+    def _choose_start_bots(self, args: dict) -> bool:
+        """`start` avec `bots` (lot O7) : remplace les bots de la séance (ceux de --bot et --ghost
+        sinon) ; renvoie faux (rien ne démarre, `error` `bot_invalid`) si la liste est refusée."""
+        if args.get("bots") is None:
+            self._set_bots(self._cli_bots)   # sans `bots` : ceux de la ligne de commande (--bot, --ghost)
+            return True
+        from .bots import BotError, bots_from_menu
+
+        try:
+            bots = bots_from_menu(args["bots"], PhysicsParams.from_config(self.cfg), self.cfg.rider.ftp_w,
+                                  self.state.route_id, self.journal_dir, s=self.physics.s)
+        except BotError as exc:
+            self.server.send_error("bot_invalid", f"Bots refusés : {exc}")
+            return False
+        self._set_bots(bots)
+        return True
+
+    def _set_bots(self, bots: list[Any]) -> None:
+        if bots is self.bots:
+            return
+        self.bots = bots
+        self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
+        self._draft = 0.0
+        log.info("Bots de la séance : %s.", ", ".join(b.name for b in self.bots) or "aucun")
 
     def _on_plan_command(self, name: str, args: dict, cmd_id: int) -> None:
         from . import plans
