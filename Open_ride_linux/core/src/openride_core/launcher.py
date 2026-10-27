@@ -18,7 +18,8 @@ Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de réf�
   rotation). Sans terminal (raccourci de bureau), les messages ne vont que dans le journal ;
 - l'engine (`GODOT --path engine -- --ipc-state-port=… --ipc-cmd-port=…`) reçoit les ports de la
   configuration (`--config` éventuel, sinon `~/OpenRide/config.toml`) ; variables `GODOT`,
-  `GODOT_ARGS` et `OPENRIDE_ENGINE` (dossier du projet Godot).
+  `GODOT_ARGS`, `OPENRIDE_ENGINE` (dossier du projet Godot) et `OPENRIDE_PERF_PROBE` (fichier CSV de
+  la sonde de performance du moteur, `--perf-probe`, lot X13).
 
 Supervision :
 - l'engine se ferme normalement (code 0) → arrêt propre du core (SIGINT), 10 s au plus, puis
@@ -667,6 +668,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--ipc-cmd-port={cfg.ipc.port_commands}",
             f"--quality={cfg.render.quality}",
             f"--theme={cfg.render.theme}",
+            *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),
         ],
         release_cmd=[*core, "release-trainer", *config_args],
         recover_cmd=[*core, "recover"],
