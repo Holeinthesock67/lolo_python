@@ -6,6 +6,7 @@ extends SceneTree
 
 const WindTurbines := preload("res://scripts/wind_turbines.gd")
 const Flags := preload("res://scripts/flags.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -118,7 +119,8 @@ func _test_limit_and_cost() -> void:
 		total += t.last_update_usec + f.last_update_usec
 	var avg := total / 1000.0 / frames
 	print("20 éoliennes et 30 drapeaux : %.3f ms par image" % avg)
-	_check(f.visible_count() == 30 and avg < 0.2, "mise à jour de 20 éoliennes et 30 drapeaux en %.3f ms par image (< 0,2 ms)" % avg)
+	_check(f.visible_count() == 30, "30 drapeaux affichés")
+	_check(PerfBudget.check("turbines_flags_frame", avg), "mise à jour de 20 éoliennes et 30 drapeaux en %.3f ms par image" % avg)
 	t.queue_free()
 	f.queue_free()
 

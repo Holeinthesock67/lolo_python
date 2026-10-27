@@ -21,6 +21,7 @@ const MenuFlow := preload("res://scripts/menu_flow.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const LivingWorld := preload("res://scripts/living_world.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -85,6 +86,10 @@ var menu_flow = MenuFlow.new()
 var menu_view = null
 var _last_state: Dictionary = {}
 var _menu_s := 0.0
+## Décor vivant, première vague (lot P16) : vent, arbres et herbe, nuages, fonds sonores.
+var living_world = null
+var _theme_dict: Dictionary = {}   # thème courant, pour le décor vivant
+var _living_enabled := true
 
 
 func _ready() -> void:
@@ -97,6 +102,7 @@ func _ready() -> void:
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
+	_living_enabled = bool(cfg.get("living", true))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"
@@ -114,8 +120,6 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
-	if streamer.tree_renderer != null:
-		streamer.tree_renderer.set_preset(_quality_name)
 	RenderQuality.apply_fog(world_env.environment, false)
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
 	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
@@ -125,6 +129,13 @@ func _ready() -> void:
 		sky_mat.sky_horizon_color = Color(0.65, 0.75, 0.85)
 		world_env.environment.sky.sky_material = sky_mat
 	_apply_theme(str(cfg.get("theme", "default")))
+	living_world = LivingWorld.new()
+	living_world.name = "LivingWorld"
+	add_child(living_world)
+	living_world.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player,
+		streamer.osm_streamer, streamer.tree_renderer)
+	living_world.terrain_material = streamer.get("_terrain_material")
+	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
@@ -200,6 +211,7 @@ func _apply_theme(name: String) -> void:
 	_theme_name = name
 	var theme_res := ThemeLoader.load_named(name)
 	var theme_dict: Dictionary = theme_res.get("theme", {})
+	_theme_dict = theme_dict
 	streamer.set_theme(theme_dict, theme_res.get("theme_dir", ""))
 	_apply_sky_params(theme_dict)
 	if route != null and _route_job.is_empty():
@@ -344,6 +356,17 @@ func _process(delta: float) -> void:
 		camera.rotation.y = -heading
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
+		_step_living(delta, s_route, float(follow.last_frame["v"]))
+
+
+## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
+## Core non joignable : le décor se fige avec la caméra (pas de nuages ni d'herbe qui bougent).
+func _step_living(delta: float, s_route: float, v: float) -> void:
+	if living_world == null or route == null or banner.has_message("core_lost"):
+		return
+	var smp: Dictionary = route.sample(s_route)
+	living_world.step(Time.get_ticks_msec() / 1000.0, delta, camera.global_position, s_route, v,
+		float(smp["heading_deg"]), float(smp["alt_m"]), session_state == "PAUSED")
 
 
 ## Décor en fond des menus hors séance (accueil, choix, bilan) : la caméra avance lentement sur le
@@ -357,6 +380,7 @@ func _menu_camera(delta: float) -> bool:
 	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
 	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
+	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
 
 
@@ -450,6 +474,9 @@ func _poll_route_job() -> void:
 	_menu_s = 0.0
 	# Changement de parcours : tronçons et tuiles vidés puis reconstruits autour de s = 0.
 	streamer.set_world(route, job["path"])
+	if living_world != null:
+		living_world.set_route(route, float(streamer.get("_road_width_m")))
+		living_world.terrain_material = streamer.get("_terrain_material")
 	var sky_params := ThemeRenderParams.sky_params(streamer._theme_dict)
 	var horizon: Color = sky_params.get("horizon_color", RenderQuality.FOG_COLOR)
 	var fog_dens: float = float(sky_params.get("fog_density", 0.01))
@@ -494,6 +521,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram,
+		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
+		"wind_verdict": hud.wind_verdict_label,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -605,22 +634,36 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+	if living_world != null:
+		# Vent du core (lot P16) : modèle du décor et indicateur du HUD, par rapport au cap de la route
+		var wind_now_s := Time.get_ticks_msec() / 1000.0
+		living_world.on_state(state, wind_now_s)
+		var heading_deg: float = route.sample_heading_deg(route.wrap_s(float(state.get("s", 0.0)))) if route != null else 0.0
+		if hud != null and hud.has_method("update_wind"):
+			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s))
 
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
 		sound_player.update_audio(state, now_s, camera.position)
 
 
-## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur.
+## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les
+## relevés du moment (temps, puissance, cadence, FC, braquet, pente envoyée) : rien à chronométrer à la main.
+## Un préavis (« Dans 1 min, prépare … ») laisse le temps de préparer le matériel.
 func _give_cues(state: Dictionary) -> void:
 	var s := float(state.get("s", 0.0))
-	for c in _cues.update(s):
-		banner.show_message("cue", "Consigne %d/%d : %s" % [c["index"], c["count"], c["text"]], c["duration_s"])
+	for c in _cues.update(s, float(state.get("t", -1.0))):
+		var label := "Préavis %d/%d : %s" % [c["index"], c["count"], c["warn_text"]] if c["warn"] \
+				else "Consigne %d/%d : %s" % [c["index"], c["count"], c["text"]]
+		banner.show_message("cue", label, c["duration_s"])
 		if c["beep"]:
 			_play_tones(CUE_BEEP, ERG_BEEP_LEVEL)
-		print("[essai] consigne %d/%d à %.0f m, t = %.0f s, braquet %s : %s" % [c["index"], c["count"], s,
-				float(state.get("t", 0.0)), str(state.get("gear", "?")), c["text"]])
-		ipc.test_log("cue index=%d s=%.1f" % [c["index"], s])
+		print("[essai] %s %d/%d à %.0f m, t = %.0f s, braquet %s, puissance %s W, cadence %s, FC %s, pente envoyée %s %% : %s" % [
+				"préavis" if c["warn"] else "consigne", c["index"], c["count"], s, float(state.get("t", 0.0)),
+				str(state.get("gear", "?")), str(state.get("power", "?")), str(state.get("cadence", "?")),
+				str(state.get("hr", "?")), str(state.get("grade_sent", "?")),
+				c["warn_text"] if c["warn"] else c["text"]])
+		ipc.test_log("cue index=%d warn=%s s=%.1f" % [c["index"], str(c["warn"]), s])
 
 
 func _exit_tree() -> void:

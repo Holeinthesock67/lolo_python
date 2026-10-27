@@ -380,6 +380,7 @@ sim_scenario = ""            # scénario du Bluetooth simulé (vide : demo), voi
 [render]
 quality = "low"      # low, medium, high
 theme = "default"
+living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 
 [ipc]
 port_state = 5005

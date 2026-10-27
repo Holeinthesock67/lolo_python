@@ -70,6 +70,7 @@ class GearingConfig:
 class RenderConfig:
     quality: str = "low"
     theme: str = "default"
+    living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
 
 
 @dataclass
