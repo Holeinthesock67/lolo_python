@@ -106,15 +106,18 @@ def fit_state(msg: dict[str, Any], limit: int = MAX_DATAGRAM_SIZE) -> tuple[dict
 
 # --- Trames les plus lourdes, par révision du contrat ---
 
+# Valeurs les plus longues permises par le schéma `state`, flottants à la précision envoyée par le core
+# (arrondi de `IpcState.to_dict`, décision D1 de l'audit IPC du 26 octobre) : t et s à 2 décimales,
+# v à 3, pentes à 2, puissances et cadence à 1, lat et lon à 6, alt à 2, longueur de la route à 1.
 def _worst_1_0() -> dict[str, Any]:
     return {
-        "type": "state", "v": 1, "seq": 2_147_483_647, "t": 86_399.987,
+        "type": "state", "v": 1, "seq": 2_147_483_647, "t": 86_399.99,
         "session_state": "PAUSED", "pause_reason": "trainer_lost",
-        "trainer_status": "RECONNECTING", "input_status": "RECONNECTING", "mode": "ERG",
-        "route_id": ("col-" * 16)[:MAX_TEXT["route_id"]], "route_length_m": 199_999.875,
-        "s": 123_456.789, "v": 16.666, "grade": -12.345, "grade_sent": -10.0,
+        "trainer_status": "RECONNECTING", "input_status": "CONNECTED", "mode": "ERG",
+        "route_id": ("col-" * 16)[:MAX_TEXT["route_id"]], "route_length_m": 199_999.9,
+        "s": 123_456.79, "v": 16.667, "grade": -12.35, "grade_sent": -10.25,
         "power": 1234.5, "power_3s": 1234.5, "cadence": 123.4, "hr": 199, "gear": 24, "gears_total": 24,
-        "lat": -45.1234567, "lon": -123.1234567, "alt": 2802.345,
+        "lat": -45.123457, "lon": -123.123457, "alt": 2802.35,
         "erg": {"workout_name": _text(MAX_TEXT["workout_name"]), "block_index": 120, "block_count": 120,
                 "block_type": "interval_on", "block_remaining_s": 3599.75, "block_total_s": 3600.0,
                 "target_w": 1234.0, "next_target_w": 1234.0, "bias_pct": 110.0, "paused": True},
@@ -126,12 +129,12 @@ def _extras_1_1(d: dict[str, Any]) -> None:
     d["devices"] = {
         "trainer": {"status": "RECONNECTING", "name": _text(MAX_TEXT["trainer_name"]),
                     "address": "C1:1C:00:00:00:03"},
-        "click": [{"side": "minus", "status": "RECONNECTING", "battery_pct": 100},
-                  {"side": "minus", "status": "RECONNECTING", "battery_pct": 100}],
-        "hr": {"status": "RECONNECTING", "source": "trainer", "battery_pct": 100},
+        "click": [{"side": "minus", "status": "SEARCHING", "battery_pct": 100},
+                  {"side": "minus", "status": "SEARCHING", "battery_pct": 100}],
+        "hr": {"status": "SEARCHING", "source": "trainer", "battery_pct": 100},
     }
     d["bots"] = [{"id": f"bot-{i}-ab"[:MAX_TEXT["bot_id"]], "name": _text(MAX_TEXT["bot_name"]),
-                  "s": 123_456.789 + i, "v": 16.666, "kind": "constant"} for i in range(5)]
+                  "s": 123_456.79 + i, "v": 16.667, "kind": "constant"} for i in range(5)]
 
 
 def _extras_1_2(d: dict[str, Any]) -> None:

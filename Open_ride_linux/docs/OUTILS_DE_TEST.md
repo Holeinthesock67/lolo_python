@@ -60,6 +60,18 @@ Scénarios du banc (`engine/tests/sim_bench_scenarios/`, format de `SIMULATION_B
 
 Défaut trouvé à la mise en place : en séance, les bâtiments et l'eau OSM n'étaient jamais affichés (`WorldStreamer` ne faisait pas entrer les tronçons préparés par `OsmStreamer`), corrigé le 25 octobre.
 
+### Banc des menus (`engine/tests/menu_bench.py`, lot N13)
+
+Même principe que le banc simulé, mais sans `--autostart` : le core démarre en attente, comme depuis l'icône. Le banc joue des appuis du Click dans l'engine (message de test `menu_input`), capture chaque écran et vérifie titres et éléments. Rien n'est écrit dans le vrai dossier personnel.
+
+```bash
+python3 engine/tests/menu_bench.py --list                      # parcours disponibles
+python3 engine/tests/menu_bench.py                             # tous les parcours, rapport.html
+python3 engine/tests/menu_bench.py --parcours appareils --native   # fenêtre visible
+```
+
+Parcours : `connexion_auto` (tout se connecte, l'écran de connexion passe seul à l'accueil) ; `appareils` (un seul boîtier du Click, « Passer », Réglages → Appareils, recherche, enregistrement dans `config.toml`, « Relancer » : code de sortie 64). Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
+
 ## 4. Parcours d'essai sans réseau
 
 | Outil | Parcours produit |

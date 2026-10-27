@@ -54,3 +54,7 @@ Aucune.
 
 - Écran « Appareils » du menu et commandes IPC de recherche (lot N13).
 - Connexion permanente ou appairage BlueZ (`bluetoothctl pair`) : OpenRide se connecte sans appairage système.
+
+## 9. Livraison (25 octobre 2026, PR #177)
+
+- Code et tests fusionnés sur `main` par la PR #177 (issue #112 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.
