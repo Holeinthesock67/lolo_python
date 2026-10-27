@@ -27,7 +27,8 @@ const EngineArgs := preload("res://scripts/engine_args.gd")
 const CONTRACT_VERSION := 1
 ## Révision du contrat annoncée dans hello (champ facultatif rev, révision 1.3).
 const CONTRACT_REV := "1.3"
-const ENGINE_VERSION := "0.1.0"
+## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
+var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"
 const HELLO_PERIOD_S := 1.0
 const CMD_RESEND_US := 200_000        # contrat §4 : renvoi toutes les 200 ms
@@ -349,7 +350,7 @@ func send_hello() -> void:
 		"type": "hello",
 		"v": CONTRACT_VERSION,
 		"rev": CONTRACT_REV,
-		"engine_version": ENGINE_VERSION
+		"engine_version": engine_version
 	})
 
 
