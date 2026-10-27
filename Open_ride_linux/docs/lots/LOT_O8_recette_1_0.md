@@ -20,7 +20,7 @@ Chaque ligne se coche dans ce cahier (section « Livraison ») avec la date et, 
 
 **Installation (session Ubuntu vierge ou second compte)**
 1. **Installation en une commande (N14), icône présente, premier démarrage guidé.**
-2. **Mise à jour depuis l'icône : parcours, séances et `~/OpenRide/config.toml` conservés.**
+2. **Mise à jour depuis l'icône : parcours, séances et `~/OpenRide/config.toml` conservés.** Outil des lignes 1 et 2 : `scripts/recette_install.py` (lot X29), conteneur Ubuntu 24.04 neuf ou HOME temporaire ; le second compte du PC reste un essai à la main.
 
 **Matériel**
 3. **Appairage depuis le menu : trainer, deux boîtiers du Click (bouton + identifié), ceinture (N12, N13).**
