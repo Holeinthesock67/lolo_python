@@ -22,7 +22,10 @@ Les événements des séries T et R (segments, maillots, runs) arrivent par `Ses
 from __future__ import annotations
 
 import copy
+import dataclasses
+import json
 import math
+import os
 import tomllib
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -449,9 +452,70 @@ def _duration_lookup(workout_durations: WorkoutDurations) -> Callable[[str], flo
     return workout_durations
 
 
+class FactsCache:
+    """Faits des séances déjà lues, gardés dans un fichier JSON (lot V11).
+
+    Clé : nom du journal ; valeur gardée seulement si la taille, la date de modification, la
+    durée de l'entraînement et la marge de montée sont celles de la lecture précédente. Un
+    fichier absent, abîmé ou d'une autre version est ignoré : tout se relit, rien ne se perd.
+    """
+
+    VERSION = 1
+
+    def __init__(self, path: Path) -> None:
+        self.path = path
+        self._old: dict[str, Any] = {}
+        self._new: dict[str, Any] = {}
+        try:
+            data = json.loads(path.read_text(encoding="utf-8"))
+            if isinstance(data, dict) and data.get("version") == self.VERSION \
+                    and isinstance(data.get("sessions"), dict):
+                self._old = data["sessions"]
+        except (OSError, ValueError):
+            pass
+
+    @staticmethod
+    def signature(path: Path, duration: float | None, deadband: float) -> list:
+        st = path.stat()
+        return [st.st_size, int(st.st_mtime * 1000), duration, deadband]
+
+    def get(self, path: Path, signature: list) -> SessionFacts | None:
+        entry = self._old.get(path.name)
+        if not isinstance(entry, dict) or entry.get("sig") != signature:
+            return None
+        try:
+            raw = dict(entry["facts"])
+            raw["power_s"] = {int(k): float(v) for k, v in raw.get("power_s", {}).items()}
+            raw["best_power"] = {int(k): float(v) for k, v in raw.get("best_power", {}).items()}
+            facts = SessionFacts(**raw)
+        except (KeyError, TypeError, ValueError):
+            return None
+        self._new[path.name] = entry
+        return facts
+
+    def put(self, path: Path, signature: list, facts: SessionFacts) -> None:
+        self._new[path.name] = {"sig": signature, "facts": dataclasses.asdict(facts)}
+
+    def save(self) -> None:
+        """Écrit le cache (fichier temporaire puis remplacement) ; une panne d'écriture est ignorée."""
+        if self._new == self._old:
+            return
+        tmp = self.path.with_name(self.path.name + ".tmp")
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(json.dumps({"version": self.VERSION, "sessions": self._new}), encoding="utf-8")
+            os.replace(tmp, self.path)
+        except OSError:
+            pass
+
+
 def recompute(journal_dir: Path, table: Table,
-              workout_durations: WorkoutDurations = None) -> Progress:
-    """Expérience, niveau, statistiques et défis depuis tous les journaux de `journal_dir`."""
+              workout_durations: WorkoutDurations = None,
+              cache: FactsCache | None = None) -> Progress:
+    """Expérience, niveau, statistiques et défis depuis tous les journaux de `journal_dir`.
+
+    `cache` (lot V11) évite de relire les journaux qui n'ont pas changé.
+    """
     lookup = _duration_lookup(workout_durations)
     facts_list: list[SessionFacts] = []
     errors: list[tuple[str, str]] = []
@@ -465,9 +529,19 @@ def recompute(journal_dir: Path, table: Table,
                     header_wid = line.get("workout_id")
                 break
             duration = lookup(header_wid) if isinstance(header_wid, str) else None
-            facts_list.append(session_facts(path, duration, deadband))
+            facts = None
+            sig = cache.signature(path, duration, deadband) if cache is not None else None
+            if cache is not None:
+                facts = cache.get(path, sig)
+            if facts is None:
+                facts = session_facts(path, duration, deadband)
+                if cache is not None:
+                    cache.put(path, sig, facts)
+            facts_list.append(facts)
         except (OSError, ValueError, TypeError) as exc:
             errors.append((path.name, str(exc)))
+    if cache is not None:
+        cache.save()
     facts_list = _dedupe(facts_list)
     facts_list.sort(key=lambda f: (f.start_ts if f.start_ts is not None else math.inf, f.journal))
 

@@ -15,7 +15,7 @@ T1 validé par le propriétaire ; V2, V3, V3b et V4 fusionnés ; de préférence
 
 ## 4. Travail demandé
 
-- **Démarrage :** profil chargé, progression recalculée hors de la boucle à 50 Hz (fil séparé ou au lancement, moins de 2 s pour 500 séances ; un cache `~/.cache/openride/progression.json` indexé par nom, taille et date des journaux est permis) ; `hello_ack.config.progression` rempli.
+- **Démarrage :** profil chargé, progression recalculée hors de la boucle à 50 Hz (fil séparé ou au lancement, moins de 2 s pour 500 séances ; un cache indexé par nom, taille et date des journaux est permis ; livré : `.progression.json` dans le dossier des journaux, pour que les essais n'écrivent que dans leur dossier temporaire) ; `hello_ack.config.progression` rempli.
 - **Physique :** `PhysicsParams` de la séance = `apply_equipment(PhysicsParams.from_config(cfg), equipped, catalogue)` en SIM et en ERG ; résistance au trainer inchangée (la pente envoyée ne dépend pas de l'équipement, sauf le supplément de vent et d'aspiration de la série P, qui suit le CdA courant comme prévu par le plan).
 - **Journal :** l'en-tête gagne `loadout` (identifiants du cadre et des roues, et leurs deltas de masse et de CdA) et `ftp_w` (FTP de la séance, pour que les pièces gagnées à l'effort ne changent pas quand la FTP change, V-Q10) ; ajouts compatibles.
 - **Fin de séance :** à `FINISHED`, calcul des gains de la séance (V2, V3b), du temps gagné par l'équipement (V3), des déblocages et des défis, puis envoi de `xp_result` selon le contrat. La séance enregistrée est ajoutée au cache.
@@ -42,3 +42,12 @@ Aucune au-delà de T1. Journal : champs facultatifs `loadout` et `ftp_w` de l'en
 ## 8. Hors périmètre
 
 Événements des séries T et R (V5), affichage (V6 à V9).
+
+## 9. Livraison (27 octobre 2026, issue #406)
+
+- **Code :** `garage.py` (`ProgressionService` : tables, catalogue, profil, progression, commandes, bilan), branché dans `session.py` ; `[progression] enabled` dans `config.py` (vrai par défaut ; faux : ni `progression` dans `hello_ack`, ni équipement, ni bilan, et les commandes du Garage répondent `bad_args`) ; `FactsCache` dans `progression.py` (500 séances relues en moins de 2 s) ; champ `terrain` dans `routes` (`ipc_lists.py`) ; `loadout` et `ftp_w` dans l'en-tête du journal (`journal.py`, `recorder.py`).
+- **Séance :** les paramètres physiques viennent de `config.toml` plus le cadre et les roues choisis, aussi après un `set_setting` ; l'équipement est lu au démarrage de l'application et à chaque `equip` ou `buy` (hors séance). La pente envoyée au trainer ne change pas avec l'équipement.
+- **Bilan :** `xp_result` est calculé hors de la boucle à 50 Hz (relecture de la progression, puis temps gagné par l'équipement sur les relevés), envoyé à `FINISHED`, puis chaque seconde tant que la séance reste `FINISHED` (10 fois au plus). Les séances simulées (trainer `mock` ou `sim`) donnent `eligible` faux, `reason` `simulated`.
+- **Refus :** `item_locked` (pièce inconnue, non possédée, déjà achetée ou de niveau trop haut), `not_enough_coins`, `avatar_invalid`, `busy` (séance en cours ou en chargement), `bad_args` (arguments absents ou progression coupée), `recording_failed` (profil non écrit : l'énumération des codes du contrat est fermée, aucun code ajouté).
+- **Hors de ce lot :** `equipment_gain_s` de `segment_result` et le calibrage des bots (V5), l'avatar et ses seuils de danseuse dans `[avatar]` (V6 : en attendant, 8 % et 150 % sont écrits en dur), `mode` `ROGUE` et vies (R9).
+- **Essais :** `core/tests/test_progression_session.py` (21 tests, trames validées par les schémas du contrat) ; sur le PC, lancer une séance, vérifier le bilan dans le journal du core puis `openride-core xp`.

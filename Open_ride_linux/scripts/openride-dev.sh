@@ -75,16 +75,18 @@ if ! kill -0 "$CORE_PID" 2>/dev/null; then
   echo "Le core s'est arrêté au démarrage :"; tail -20 "$LOG"; exit 1
 fi
 # Ports IPC et réglages de rendu lus dans config.toml (sections ipc et render), le même fichier que le core.
-# QUALITY et THEME, s'ils sont définis, l'emportent sur config.toml (essais graphiques).
-read -r STATE_PORT CMD_PORT CFG_QUALITY CFG_THEME < <(python3 - "$CONFIG_ARG" <<'PY' 2>/dev/null || echo "5005 5006 low default"
+# QUALITY, THEME et OPENRIDE_DISPLAY, s'ils sont définis, l'emportent sur config.toml (essais graphiques ;
+# OPENRIDE_DISPLAY=windowed garde une fenêtre, comme avec le lanceur).
+read -r STATE_PORT CMD_PORT CFG_QUALITY CFG_THEME CFG_DISPLAY < <(python3 - "$CONFIG_ARG" <<'PY' 2>/dev/null || echo "5005 5006 low default fullscreen"
 import sys
 from pathlib import Path
 from openride_core.config import load
 cfg = load(Path(sys.argv[1]) if sys.argv[1] else None)
-print(cfg.ipc.port_state, cfg.ipc.port_commands, cfg.render.quality, cfg.render.theme)
+print(cfg.ipc.port_state, cfg.ipc.port_commands, cfg.render.quality, cfg.render.theme, cfg.render.display)
 PY
 )
 QUALITY="${QUALITY:-$CFG_QUALITY}"
 THEME="${THEME:-$CFG_THEME}"
+DISPLAY_MODE="${OPENRIDE_DISPLAY:-$CFG_DISPLAY}"
 # shellcheck disable=SC2086
-"$GODOT" --path "$ROOT/engine" ${GODOT_ARGS:-} -- --ipc-state-port="${STATE_PORT:-5005}" --ipc-cmd-port="${CMD_PORT:-5006}" --quality="${QUALITY:-low}" --theme="${THEME:-default}" ${OPENRIDE_PERF_PROBE:+--perf-probe="$OPENRIDE_PERF_PROBE"}
+"$GODOT" --path "$ROOT/engine" ${GODOT_ARGS:-} -- --ipc-state-port="${STATE_PORT:-5005}" --ipc-cmd-port="${CMD_PORT:-5006}" --quality="${QUALITY:-low}" --theme="${THEME:-default}" --display="${DISPLAY_MODE:-fullscreen}" ${OPENRIDE_PERF_PROBE:+--perf-probe="$OPENRIDE_PERF_PROBE"}

@@ -75,6 +75,7 @@ class RenderConfig:
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off ou on
+    display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
 
 
 @dataclass
@@ -136,6 +137,12 @@ class WindConfig:
 
 
 @dataclass
+class ProgressionConfig:
+    """Progression de la série V (lot V11) ; faux : ni équipement ni `progression`, comme avant la 2.0."""
+    enabled: bool = True
+
+
+@dataclass
 class RogueConfig:
     """Mode Cyber-Rogue de la 2.0 (série R, SRS §11)."""
 
@@ -173,6 +180,7 @@ class Config:
     drivers: DriversConfig = field(default_factory=DriversConfig)
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
+    progression: ProgressionConfig = field(default_factory=ProgressionConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
@@ -246,6 +254,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on"),
+    ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
