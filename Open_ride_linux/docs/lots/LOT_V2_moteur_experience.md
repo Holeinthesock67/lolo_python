@@ -2,7 +2,7 @@
 
 ## 1. Objectif
 
-Calculer l'expérience (XP), le niveau et les défis réussis **uniquement à partir des journaux de séance** écrits par OpenRide (`~/OpenRide/Activities/.journal/*.jsonl`). Le module est pur et testé en pytest ; rien n'est branché sur la séance ni sur l'IPC (lots V11 et V1). Une commande `openride-core xp` montre le résultat sur l'historique réel, pour régler la courbe avant de la figer (risque 2 du plan).
+Calculer l'expérience (XP), le niveau et les défis réussis **uniquement à partir des journaux de séance** écrits par OpenRide (`~/OpenRide/Activities/.journal/*.jsonl`). Le module est pur et testé en pytest ; rien n'est branché sur la séance ni sur l'IPC (lots V11 et T1). Une commande `openride-core xp` montre le résultat sur l'historique réel, pour régler la courbe avant de la figer (risque 2 du plan).
 
 ## 2. À lire
 

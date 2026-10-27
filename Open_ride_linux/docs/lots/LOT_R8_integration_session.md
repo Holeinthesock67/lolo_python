@@ -6,19 +6,19 @@ Brancher le moteur de run (R6) et le scénariste (R15) dans la session du core :
 
 ## 2. À lire
 
-1. `docs/lots/00_INDEX.md`, `docs/contracts/ipc_v1.md` (révision 1.4 de R1), `docs/SRS_v1.1.md` §4 et §5.
-2. `docs/2.0/PLAN_SERIE_R.md` §2 et §7, `docs/lots/LOT_R1_contrat_ipc_rogue.md`, `LOT_R6_run_deck_boss.md`, `LOT_R15_scenariste_run.md`, `LOT_N8_reprise_plantage_core.md`.
+1. `docs/lots/00_INDEX.md`, `docs/contracts/ipc_v1.md` (révision 1.4, lot T1), `docs/SRS_v1.1.md` §4 et §5.
+2. `docs/2.0/PLAN_SERIE_R.md` §2 et §7, `docs/lots/LOT_T1_contrat_1_4.md` (§4.1 et §4.3), `LOT_R6_run_deck_boss.md`, `LOT_R15_scenariste_run.md`, `LOT_N8_reprise_plantage_core.md`.
 3. Code : `core/src/openride_core/session.py`, `gearing.py`, `zwift_click.py`, `input_providers.py`, `ipc_server.py`, `ipc_lists.py` (découpage en parties), `recorder.py`, `resume.py`, `fit_export.py`.
 
 ## 3. Prérequis
 
-R1 (contrat 1.4), R6 et R15 livrés ; R0 (valeurs de la rampe) ou ses défauts ; Q4 livré.
+T1 (contrat 1.4), R6 et R15 livrés ; R0 (valeurs de la rampe) ou ses défauts ; Q4 livré.
 
 ## 4. Travail demandé
 
 ### 4.1 Lancement et états
 
-- `start_run` (R1 §4.3) depuis `IDLE`, `READY` ou `FINISHED` : vérifie les arguments (`run_invalid` sinon), compose le scénario (R15), `LOADING` puis `READY`, `mode` = `"ROGUE"`. `start` passe en `RUNNING` ; `end_session` termine (résultat `abandoned` si la run n'est pas en `RESULTS`).
+- `start_run` (T1 §4.3) depuis `IDLE`, `READY` ou `FINISHED` : vérifie les arguments (`run_invalid` sinon), compose le scénario (R15), `LOADING` puis `READY`, `mode` = `"ROGUE"`. `start` passe en `RUNNING` ; `end_session` termine (résultat `abandoned` si la run n'est pas en `RESULTS`).
 - `hello_ack.config` : `modes` contient `"rogue"` ; objet `rogue` (W' de la configuration, estimation de R16 si elle existe, CP, objectifs, durées).
 - `select_route` ou `select_workout` pendant `READY` en mode `ROGUE` : la run préparée est abandonnée, retour au mode classique.
 
@@ -31,7 +31,7 @@ R1 (contrat 1.4), R6 et R15 livrés ; R0 (valeurs de la rampe) ou ses défauts ;
 
 ### 4.3 Boutons
 
-- `zwift_click.py` : décoder aussi A et Z (bits 4 et 7 de `KEYPAD_BITS`) ; événements `Z_SHORT`, `Z_LONG`, `A_SHORT`, `A_LONG`.
+- `zwift_click.py` : A et Z sont décodés depuis la révision 1.3 (événements `Z_SHORT`, `Z_LONG`, `A_SHORT`, `A_LONG`) ; R8 les branche sur le mode `ROGUE`.
 - Mode classique : inchangé (Y = pause interne, N6 ; A et Z sans effet jusqu'à la série T).
 - Mode `ROGUE` (plan de boutons commun, spécification générale, §7.1) : + et B courts et longs vers le braquet (±1, ±3) ; `Z_SHORT` et `Z_LONG` vers `RunEngine` ; `A_SHORT` et `A_LONG` vers la sélection en couloir, sinon seulement relayés à l'engine (vue de caméra) ; Y = pause ou reprise, comme en mode classique.
 - `input_event` de l'engine (clavier) accepte les mêmes noms.
@@ -46,7 +46,7 @@ R1 (contrat 1.4), R6 et R15 livrés ; R0 (valeurs de la rampe) ou ses défauts ;
 
 - Journal JSONL : une ligne `rogue` par événement de jeu (`room_start`, `room_won`, `room_fled`, `room_skipped`, `defeat`, `card_taken`, `perfect_shift`, `boss_phase`, `run_end`), avec l'empreinte de la table d'équilibrage (R7).
 - FIT : séance sans position GPS, distance virtuelle ; sport « cyclisme », sous-sport « virtuel » ; tours au début de chaque salle et de chaque phase du boss.
-- `summary` : objet `rogue` (R1 §4.6).
+- `summary` : objet `rogue` (T1 §4.3).
 
 ### 4.6 Messages
 
@@ -59,7 +59,7 @@ R1 (contrat 1.4), R6 et R15 livrés ; R0 (valeurs de la rampe) ou ses défauts ;
 
 ## 6. Modifications de contrat autorisées
 
-Aucune au-delà de la révision 1.4 de R1.
+Aucune au-delà de la révision 1.4 (lot T1).
 
 ## 7. Critères d'acceptation
 

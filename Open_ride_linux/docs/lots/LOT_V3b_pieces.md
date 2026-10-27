@@ -48,12 +48,12 @@ Aucune.
 
 ## 8. Hors périmètre
 
-Usage des vies dans le mode Cyber-Rogue (R9), commandes du menu (V1, V11), affichage (V8, V9).
+Usage des vies dans le mode Cyber-Rogue (R9), commandes du menu (T1, V11), affichage (V8, V9).
 
 ## 9. Livraison (26 octobre 2026, issue #242)
 
 - Code et tests : `coins.py`, section `[coins]` de `data/progression.toml`, solde affiché par `openride-core xp`, `core/tests/test_coins.py` (24 tests).
 - Pièces à l'effort (V-Q10, 27 octobre) : `coins.effort_rate` et `effort_coins` ; le journal lu par `progression.session_facts` donne l'histogramme de puissance (`power_s`, pas de 10 W) et la FTP de l'en-tête (`ftp_w`) ; `coin_table(table, ftp_w)` reçoit la FTP de `config.toml`.
 - `openride-core xp` lit le profil sans le réparer (`profile.peek_profile`) : la commande n'écrit toujours rien.
-- Codes de refus de `buy` : `item_unknown`, `already_owned`, `item_locked`, `not_enough_coins` (les deux derniers sont ceux du contrat V1) ; `use_life` sans vie : `no_life`.
+- Codes de refus de `buy` : `item_unknown`, `already_owned`, `item_locked`, `not_enough_coins` (les deux derniers sont ceux du contrat T1) ; `use_life` sans vie : `no_life`.
 

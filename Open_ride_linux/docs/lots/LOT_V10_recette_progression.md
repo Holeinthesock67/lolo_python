@@ -8,11 +8,11 @@ Vérifier sur le matériel réel que la progression est juste, que l'équipement
 
 ## 2. À lire
 
-`docs/2.0/PLAN_SERIE_V.md`, les sections « Livraison » des lots V1 à V9 et V11, `docs/OUTILS_DE_TEST.md`.
+`docs/2.0/PLAN_SERIE_V.md`, les sections « Livraison » des lots T1 (contrat 1.4), V2 à V9 et V11, `docs/OUTILS_DE_TEST.md`.
 
 ## 3. Prérequis
 
-V1 à V9 et V11 livrés (V5 pour la partie segments, maillots et Cyber-Rogue, sinon cette partie est recettée avec les séries T et R).
+T1 (contrat 1.4), V2 à V9 et V11 livrés (V5 pour la partie segments, maillots et Cyber-Rogue, sinon cette partie est recettée avec les séries T et R).
 
 ## 4. Déroulé
 

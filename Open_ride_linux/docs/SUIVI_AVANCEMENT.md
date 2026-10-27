@@ -225,6 +225,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Bibliothèque de parcours : fiches, tri, filtres, packs (lot O15, 26 octobre) ; reste l'essai d'un pack de ses propres traces sur le PC.
 - [x] Pack de départ de cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construit depuis OpenStreetMap (lot O16, 27 octobre) : 16 recettes, `route-pack-build cols_celebres` ; reste la première construction sur le PC (réseau), qui contrôle chaque col à ± 5 %.
 - [ ] Menu des plans, du test de FTP et de la bibliothèque (lot O12).
+- [ ] Boutons de l'ERG selon le plan commun : ± long = biais ± 10 %, Z = bloc suivant, Y = pause ; clavier touche pour touche comme le Click (lot O17, décisions D3 et D6 du 27 octobre).
 - [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
 
 ### Retours de l'essai du 25 octobre sur le HomeTrainer (série Q rédigée le 25 octobre)
@@ -263,14 +264,19 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs, passants (lots P8, P11 à P15, P21 ; intégration P17).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
 
+### Après la 1.0 : réglages de séance au menu (lots N17 et N18, rédigés le 27 octobre)
+- [ ] Demi-tour sur la route depuis l'écran de pause (lot N17).
+- [ ] Bots réglés depuis les menus : réglages et écran de pause (lot N18).
+
 ### Version 2.0 : progression, équipement et avatar (série V rédigée le 26 octobre)
 
 - [x] Moteur d'expérience recalculé depuis le journal et commande `openride-core xp` (lot V2, `progression.py`, `data/progression.toml`) ; champ `source` dans l'en-tête du journal ; module pur, pas encore branché sur la séance (V11).
 - [x] Profil local `~/OpenRide/profile.json` : choix, achats, avatar (lot V4, `profile.py`) ; écriture sûre, reprise du `.bak`, migration ; pas encore branché (V11).
 - [x] Catalogue d'équipement, effets bornés et temps gagné par l'équipement (lot V3, `equipment.py`) ; pas encore branché sur la vitesse virtuelle (V11).
 - [x] Pièces : gains, achats, solde, vies du mode Cyber-Rogue (lot V3b, `coins.py`) ; solde dans `openride-core xp` ; usage des vies dans le mode Cyber-Rogue avec R9.
-- [ ] Contrat (lot V1), branchement dans la séance (lot V11), liens avec les séries T et R (lot V5).
+- [ ] Contrat 1.4 commun aux séries R, T et V (lot T1), branchement dans la séance (lot V11), liens avec les séries T et R (lot V5).
 - [ ] Avatar, équipement à l'écran, Garage et fin de séance (lots V6 à V9), recette (lot V10).
+- [ ] Quatre vues de caméra au Click et au clavier (lot V12, décision D5 du 27 octobre).
 
 ### Sprint 4 et suivants
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le HomeTrainer à faire).

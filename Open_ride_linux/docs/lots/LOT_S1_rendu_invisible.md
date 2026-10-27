@@ -2,7 +2,7 @@
 
 ## 1. Objectif
 
-Demande du propriétaire (25 octobre) : explorer l'optimisation du moteur graphique en ne modélisant pas ce qui est invisible pour l'utilisateur. La caméra regarde toujours devant, le long de la route, à 1,4 m du sol, avec un brouillard et une distance de vue fixés par le préréglage de qualité. Une bonne partie de ce qui est construit, chargé ou dessiné ne se voit donc jamais : tuiles lointaines au-delà du brouillard, décor derrière le cycliste, arbres et bâtiments cachés par une colline, ombres hors du champ. Ce lot est d'abord une **étude mesurée**. Il recense ce qui est invisible, mesure ce que cela coûte, puis applique seulement les réductions qui font gagner des images par seconde sans aucun changement visible.
+Demande du propriétaire (25 octobre) : explorer l'optimisation du moteur graphique en ne modélisant pas ce qui est invisible pour l'utilisateur. En 1.0, la caméra regarde devant, le long de la route, à 1,4 m du sol ; en 2.0, le lot V12 ajoute trois autres vues (suivi proche, suivi éloigné en hauteur, latérale). Le brouillard et la distance de vue restent fixés par le préréglage de qualité. Une bonne partie de ce qui est construit, chargé ou dessiné ne se voit donc jamais : tuiles lointaines au-delà du brouillard, décor derrière le cycliste, arbres et bâtiments cachés par une colline, ombres hors du champ. Ce lot est d'abord une **étude mesurée**. Il recense ce qui est invisible, mesure ce que cela coûte, puis applique seulement les réductions qui font gagner des images par seconde sans aucun changement visible.
 
 ## 2. À lire
 
@@ -23,7 +23,7 @@ Aucun lot. Ne pas faire en même temps que O1 (`tree_renderer.gd`) ni que Q2 (`t
 
 **Étape 2 – Pistes à essayer, chacune mesurée seule (avant / après sur le banc) :**
 1. **Au-delà du brouillard :** ne plus charger ni dessiner les tuiles lointaines au-delà de la distance où le brouillard est opaque (aujourd'hui 12 km chargés pour 3 km de vue en `low`), avec une marge pour l'horizon.
-2. **Derrière le cycliste :** cône de vue de la caméra, plus une marge pour un éventuel mouvement de tête (Q2). Tuiles et décor entièrement derrière : ni construits ni dessinés, sauf ce qui sert aux ombres visibles.
+2. **Hors du champ de la caméra active :** le tri se fait sur le cône de vue de la caméra active (position, cap, champ de vision), jamais sur la position du cycliste seule, pour rester juste dans toutes les vues (spécification générale, 2.0-CAM-5) ; marge pour le tangage de Q2 et pour la transition entre deux vues (moins d'une demi-seconde). Tuiles et décor entièrement derrière : ni construits ni dessinés, sauf ce qui sert aux ombres visibles.
 3. **Distances de visibilité :** `visibility_range_end` (avec fondu) sur les bâtiments, l'eau et les petits objets, réglées par préréglage dans `quality_presets.gd`.
 4. **Masqué par le relief :** occlusion par le terrain. Godot 4.3 propose l'occlusion en `forward_plus` comme en `mobile` (`OccluderInstance3D`, réglage `rendering/occlusion_culling/use_occlusion_culling`). Essayer des occulteurs simples tirés des tuiles de terrain (crêtes), et mesurer le coût du calcul contre le gain. Alternative sans occulteur : test de ligne d'horizon par tuile depuis le profil de la route.
 5. **Ombres :** distance des ombres limitée au champ réellement visible (150 m en `low`, 300 m en `medium`), cascades revues.
@@ -44,7 +44,7 @@ Aucune.
 ## 7. Critères d'acceptation
 
 1. `run_engine_tests.sh` passe (hors échec connu `test_tree_renderer`, #119) ; `pytest` du core inchangé.
-2. `test_culling.gd` : une tuile entièrement derrière la caméra, ou au-delà de la distance de brouillard opaque plus la marge, n'est ni construite ni dessinée ; une tuile qui entre dans le champ (virage serré, épingle d'`essai-69`) l'est assez tôt pour être prête avant d'être visible (vérifié sur la trajectoire de la route, pas seulement sur la position).
+2. `test_culling.gd` : la fonction de tri reçoit la caméra active en paramètre ; avec la vue subjective puis avec une caméra placée 6 m derrière et 3 m au-dessus, une tuile entièrement hors du cône de la caméra donnée, ou au-delà de la distance de brouillard opaque plus la marge, n'est ni construite ni dessinée ; une tuile qui entre dans le champ (virage serré, épingle d'`essai-69`) l'est assez tôt pour être prête avant d'être visible (vérifié sur la trajectoire de la route, pas seulement sur la position).
 3. Banc simulé, préréglages `low` et `medium`, avant et après : tableau des images par seconde (moyenne, p99), des objets et sommets dessinés et de la mémoire vidéo dans `docs/ETUDE_RENDU_INVISIBLE.md`, pour chaque piste essayée, retenue ou non.
 4. Captures du banc avant et après à la même position : aucune différence visible (comparaison automatique avec un seuil, plus la planche dans le rapport).
 5. Aucune apparition soudaine d'objet (« pop ») : le banc vérifie qu'aucun objet ne devient visible à moins de la distance de fondu.
