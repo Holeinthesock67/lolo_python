@@ -28,10 +28,12 @@ const CatalogModel := preload("res://scripts/catalog_model.gd")
 const SummaryViewModel := preload("res://scripts/summary_view_model.gd")
 const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
+const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
 const PAIRING := PairingViewModel.SCREEN
+const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -46,18 +48,26 @@ var show_details := false
 var _lists_requested := false
 var devices_model = DevicesViewModel.new()
 var pairing = PairingViewModel.new()
+var settings = SettingsViewModel.new()
+## Difficulté de la séance (trame d'état, lot Q1), pour le curseur de la pause.
+var difficulty_pct := 50
 ## Dernier objet `devices` reçu (une trame sur 30 le porte, contrat §3) : gardé jusqu'au suivant.
 var devices: Dictionary = {}
 ## Écran de connexion déjà quitté (ou séance déjà en cours au premier état : --autostart, reprise).
 var connect_done := false
 var _all_ok_since := -1.0
+## Noms des parcours de la dernière liste, par id (monde affiché à l'accueil).
+var route_names := {}
 
 
 func _init() -> void:
 	summary_model.attach_to_menu(menu)
 	menu.add_screen({"id": CONNECT, "title": "Connexion des appareils", "on_back": "", "items": []})
 	menu.add_screen({"id": PAIRING, "title": "Appareils", "on_back": MenuModel.SETTINGS, "items": []})
+	menu.add_screen({"id": SETTING_EDIT, "title": "Réglage", "on_back": MenuModel.SETTINGS, "items": []})
 	_refresh_pairing()
+	_refresh_settings()
+	menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
 
 
 func is_visible() -> bool:
@@ -71,6 +81,10 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var st := str(state.get("session_state", ""))
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
+	var diff = state.get("difficulty_pct", null)
+	if (diff is int or diff is float) and int(diff) != difficulty_pct:
+		difficulty_pct = int(diff)
+		menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
 	if session_state == "" and st != "" and not connect_done:
 		if st in ["IDLE", "READY"]:
 			menu.open_screen(CONNECT)
@@ -78,6 +92,9 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 			connect_done = true
 	if not connect_done and menu.current_screen() == CONNECT:
 		_update_connect(with_devices(state), now_s)
+	var rid = state.get("route_id", null)
+	if rid != null and str(rid) != "" and str(rid) != menu.world_id:
+		menu.set_world(str(rid), str(route_names.get(str(rid), rid)))
 	if st == "FINISHED" and state.get("summary") is Dictionary:
 		summary = state["summary"]
 	if st != session_state:
@@ -140,6 +157,21 @@ func _refresh_pairing() -> void:
 	menu.set_screen_items(PAIRING, pairing.menu_items())
 
 
+## Écran « Réglages » : Appareils (lot N13) puis les réglages reçus du core (lot O4).
+func _refresh_settings() -> void:
+	var items: Array = [{"id": "devices", "label": "Appareils : rechercher et appairer"}]
+	items.append_array(settings.menu_items())
+	if settings.items.is_empty():
+		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
+	menu.set_screen_items(MenuModel.SETTINGS, items)
+
+
+## Message `settings` du core (liste, ou réponse à set_setting).
+func on_settings(msg: Dictionary) -> void:
+	settings.on_settings(msg)
+	_refresh_settings()
+
+
 ## Message `scan_results` du core.
 func on_scan_results(msg: Dictionary) -> void:
 	var was_busy: bool = pairing.scanning or pairing.identifying
@@ -170,6 +202,11 @@ func lists_needed() -> void:
 
 func set_routes(raw: Array) -> void:
 	menu.set_items(MenuModel.ROUTES, catalog.route_items(raw))
+	for r in raw:
+		if r is Dictionary and str(r.get("id", "")) != "":
+			route_names[str(r["id"])] = str(r.get("name", r["id"]))
+	if menu.world_id != "" and route_names.has(menu.world_id):
+		menu.set_world(menu.world_id, route_names[menu.world_id])
 
 
 func set_workouts(raw: Array) -> void:
@@ -187,6 +224,8 @@ func list_failed(list_name: String) -> void:
 func handle(event: String) -> Dictionary:
 	if not is_visible():
 		return {}
+	if menu.current_screen() == SETTING_EDIT:
+		return _handle_edit(event)
 	var act: Dictionary = menu.handle(event)["action"]
 	if act.get("action", "") == "item" and act.get("screen", "") == CONNECT:
 		match str(act["id"]):
@@ -197,8 +236,17 @@ func handle(event: String) -> Dictionary:
 			"quit":
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
-	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.SETTINGS and str(act["id"]) == "devices":
-		return _open_pairing()
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.SETTINGS:
+		var item_id := str(act["id"])
+		if item_id == "devices":
+			return _open_pairing()
+		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
+			_open_edit()
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:
+		settings.begin_pause_difficulty(difficulty_pct)
+		_open_edit()
+		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == PAIRING:
 		act = pairing.handle(str(act["id"]))
 		match act.get("action", ""):
@@ -216,11 +264,38 @@ func handle(event: String) -> Dictionary:
 			"new_session":
 				show_details = false
 				summary = {}
+				# Le core reste en FINISHED jusqu'au prochain select_route : le monde choisi est rechargé.
+				if menu.world_id != "":
+					return {"action": "list", "route_id": menu.world_id}
 				return {"action": "list"}
 			"details":
 				show_details = not show_details
 				return {}
 	return act
+
+
+func _open_edit() -> void:
+	menu.set_screen_items(SETTING_EDIT, settings.edit_items(), str(settings.editing.get("label", "Réglage")))
+	menu.push_screen(SETTING_EDIT)
+
+
+## Écran de modification : + / − changent la valeur, long + enregistre, long − annule.
+func _handle_edit(event: String) -> Dictionary:
+	match event:
+		"PLUS_SHORT", "MINUS_SHORT":
+			settings.step(1 if event == "PLUS_SHORT" else -1)
+			menu.set_screen_items(SETTING_EDIT, settings.edit_items())
+		"PLUS_LONG":
+			var act: Dictionary = settings.commit()
+			menu.handle("MINUS_LONG")
+			if act.get("action", "") == "set_difficulty":
+				difficulty_pct = int(act["pct"])
+				menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
+			return act
+		"MINUS_LONG":
+			settings.cancel()
+			menu.handle("MINUS_LONG")
+	return {}
 
 
 ## Écran « Appareils » par-dessus l'écran courant, recherche lancée tout de suite.
