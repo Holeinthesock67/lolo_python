@@ -109,9 +109,9 @@ func _test_scenarios() -> void:
 		["MINUS_LONG", "home", "ride", null],
 		["PLUS_SHORT", "home", "workouts", null],
 		["PLUS_SHORT", "home", "settings", null],
-		["PLUS_LONG", "settings", "", null],
-		["PLUS_SHORT", "settings", "", null],
-		["PLUS_LONG", "settings", "", null],
+		["PLUS_LONG", "settings", "devices", null],
+		["PLUS_SHORT", "settings", "devices", null],
+		["PLUS_LONG", "settings", "devices", {"action": "item", "screen": "settings", "id": "devices"}],
 		["MINUS_LONG", "home", "settings", null],
 	])
 	_scenario("entraînement depuis l'accueil (invalide sauté), puis parcours", _routes(ROUTES_4), [

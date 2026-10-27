@@ -34,7 +34,10 @@
         "input_event",
         "list_routes",
         "list_workouts",
-        "set_difficulty"
+        "set_difficulty",
+        "scan_devices",
+        "identify_click_plus",
+        "pair_devices"
       ]
     },
     "args": {

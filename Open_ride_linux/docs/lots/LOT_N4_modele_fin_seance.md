@@ -48,3 +48,7 @@ Aucune.
 
 - Affichage de l'écran (N6).
 - Calcul des valeurs (core, N2).
+
+## 9. Livraison (25 octobre 2026, PR #161)
+
+- Code et tests fusionnés sur `main` par la PR #161 (issue #103 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.
