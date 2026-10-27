@@ -96,7 +96,7 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**763 tests pytest passent dans le core et 258 dans le compilateur** (traces FIT et TCX (lot M7), physique, braquets, FTMS et conformité à la spécification FTMS v1.0 (audit du 24 octobre, `docs/AUDIT_FTMS_2026-10-24.md`), Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lots I1 et J7 : caractères, liens, nombres de tests, chemins cités), catalogue des parcours `list` et `build-all` (lot I2) et parité de son repli sans core (lot J6), robustesse IPC aux messages malformés (lot J2), validation de `config.toml` (lot J3), choix du parcours et de l'entraînement au lancement (lot J1), libération du trainer à l'arrêt (PR #28), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot, sans écran (`engine/tests/run_engine_tests.sh`) : tests unitaires lancés par découverte (lot K1) : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 76 du modèle de HUD (K2), 19 du placement de la végétation (K3), 19 de la navigation des menus (K5) ; 27 vérifications des couches OSM (K4), 54 vérifications ERG (lot I6), rendu par tronçons (E1) et 8 scénarios IPC. Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
+**810 tests pytest passent dans le core et 258 dans le compilateur** (traces FIT et TCX (lot M7), physique, braquets, FTMS et conformité à la spécification FTMS v1.0 (audit du 24 octobre, `docs/AUDIT_FTMS_2026-10-24.md`), Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lots I1 et J7 : caractères, liens, nombres de tests, chemins cités), catalogue des parcours `list` et `build-all` (lot I2) et parité de son repli sans core (lot J6), robustesse IPC aux messages malformés (lot J2), validation de `config.toml` (lot J3), choix du parcours et de l'entraînement au lancement (lot J1), libération du trainer à l'arrêt (PR #28), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot, sans écran (`engine/tests/run_engine_tests.sh`) : tests unitaires lancés par découverte (lot K1) : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 76 du modèle de HUD (K2), 19 du placement de la végétation (K3), 19 de la navigation des menus (K5) ; 27 vérifications des couches OSM (K4), 54 vérifications ERG (lot I6), rendu par tronçons (E1) et 8 scénarios IPC. Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
@@ -200,17 +200,17 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Version 1.0 (série O rédigée le 25 octobre)
 - [ ] Arbres : préparation d'une tuile sous 150 ms, 210 ms mesurés sur le PC cible (lot O1).
-- [ ] Numéro de version unique et notes de version (lot O2).
+- [x] Numéro de version unique et notes de version (lot O2, 26 octobre) : fichier `VERSION` (0.9.0) repris par les deux paquets, `project.godot`, `hello_ack`, `hello`, `--version` des trois commandes et la première ligne du journal du lanceur ; `CHANGELOG.md` ; `scripts/bump-version.sh X.Y.Z` ; contrôlé par `core/tests/test_version.py`.
 - [ ] Réglages FTP, thème et qualité depuis le menu : core (lot O3), écran (lot O4).
-- [ ] Traces FIT, TCX et archives Garmin déposées dans `~/OpenRide/GPX/` (lot O5).
+- [x] Traces FIT, TCX et archives Garmin déposées dans `~/OpenRide/GPX/` (lot O5, 26 octobre) ; reste l'essai avec un vrai export sur le PC.
 - [ ] Guide d'utilisation sans terminal et README de la 1.0 (lot O6).
 - [ ] Bots à l'écran, facultatif pour la 1.0 (lot O7).
 - [x] Entraînements GoldenCheetah `.erg` et `.mrc` (lot O9, 25 octobre) : lecture dans `workout_formats.py`, cibles en watts absolues pour les `.erg` (`--erg-relative` pour les ramener à la FTP), `list`, `check` et `install` ; reste l'essai d'un `.erg` exporté de GoldenCheetah sur le PC cible.
 - [ ] Test de FTP par rampe ou sur 20 minutes, nouvelle FTP enregistrée après accord (lot O10).
-- [ ] Plans d'entraînement sur plusieurs semaines et séance du jour (lot O11).
+- [x] Plans d'entraînement sur plusieurs semaines et séance du jour (lot O11, 26 octobre) : `plans.py`, `openride-core plan`, format `docs/contracts/plan_format_v1.md`, deux plans de référence dans `core/plans/`, champ `plan` de l'en-tête du journal, colonnes `workout` et `plan` de `history` ; reste l'essai d'un plan sur le PC.
 - [ ] Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle fait (lot O13, 26 octobre, `workout_chart_model.gd`, `test_workout_chart_model.gd` à lancer sur le PC), écran (lot O14).
-- [ ] Bibliothèque de parcours : fiches, tri, filtres, packs (lot O15).
-- [ ] Pack de départ de cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construit depuis OpenStreetMap (lot O16).
+- [x] Bibliothèque de parcours : fiches, tri, filtres, packs (lot O15, 26 octobre) ; reste l'essai d'un pack de ses propres traces sur le PC.
+- [x] Pack de départ de cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construit depuis OpenStreetMap (lot O16, 27 octobre) : 16 recettes, `route-pack-build cols_celebres` ; reste la première construction sur le PC (réseau), qui contrôle chaque col à ± 5 %.
 - [ ] Menu des plans, du test de FTP et de la bibliothèque (lot O12).
 - [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
 
@@ -246,7 +246,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Moteur d'expérience recalculé depuis le journal et commande `openride-core xp` (lot V2, `progression.py`, `data/progression.toml`) ; champ `source` dans l'en-tête du journal ; module pur, pas encore branché sur la séance (V11).
 - [x] Profil local `~/OpenRide/profile.json` : choix, achats, avatar (lot V4, `profile.py`) ; écriture sûre, reprise du `.bak`, migration ; pas encore branché (V11).
 - [x] Catalogue d'équipement, effets bornés et temps gagné par l'équipement (lot V3, `equipment.py`) ; pas encore branché sur la vitesse virtuelle (V11).
-- [ ] Pièces : gains, achats, solde, vies du mode Cyber-Rogue (lot V3b).
+- [x] Pièces : gains, achats, solde, vies du mode Cyber-Rogue (lot V3b, `coins.py`) ; solde dans `openride-core xp` ; usage des vies dans le mode Cyber-Rogue avec R9.
 - [ ] Contrat (lot V1), branchement dans la séance (lot V11), liens avec les séries T et R (lot V5).
 - [ ] Avatar, équipement à l'écran, Garage et fin de séance (lots V6 à V9), recette (lot V10).
 
