@@ -138,7 +138,7 @@
 | [Y11](LOT_Y11_chaussee_herbe_relief.md) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée) et faux relief de l'herbe | Shader + GDScript | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie ; issue #385 |
 | [Y12](LOT_Y12_lumieres_particules.md) | Effets de lumière (glow, rayons, ombre des nuages, SSR) et particules (décor, pluie, foules, kit Cyber-Rogue) | Shader + GDScript | Y2, Y1, P17, R17, Y11 | Moyenne | Oui ; issue #386 |
 | [R0](LOT_R0_delai_frein.md) | Mesure du délai du frein du trainer (marches de pente et de braquet) : script et essai sur le vélo | Python | Q3, Q4 | Petite | Script oui (même outil que X5) ; essai par le propriétaire ; **version 2.0** |
-| [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | Oui, **version 2.0** |
+| [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
 | [R3](LOT_R3_generateur_salles.md) | Générateur de salles : profils des cinq archétypes et du boss, graine, marqueurs | Python | — | Moyenne | Oui, **version 2.0** |
 | [R4](LOT_R4_firewall.md) | Firewall : cycliste virtuel à une fraction de la FTP, écart au joueur | Python | R3 | Petite | Oui, **version 2.0** |
 | [R5](LOT_R5_combat.md) | Combat : bouclier, adrénaline, dégâts, fenêtres de timing, Perfect Shift, surchauffe | Python | R0, R2, R3, R4 | Moyenne | Oui, **version 2.0** |
