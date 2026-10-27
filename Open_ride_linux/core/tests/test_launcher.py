@@ -327,6 +327,8 @@ def test_log_has_core_engine_and_launcher_lines(fake, rotation):
     assert sup.run() == 0
     assert sup.log_path.parent == rotation.logs_dir and sup.log_path.name.startswith("openride_")
     lines = sup.log_path.read_text(encoding="utf-8").splitlines()
+    from openride_core import __version__
+    assert lines[0].endswith(f"[openride] OpenRide {__version__}")   # lot O2 : version en tête
     assert {"core ligne 0", "core ligne 2"} <= set(lines)
     assert {"[engine] engine ligne 0", "[engine] engine ligne 1"} <= set(lines)
     ours = [ln for ln in lines if "[openride]" in ln]
@@ -444,6 +446,8 @@ def test_openride_log_file_is_written_without_link(fake, tmp_path):
     sup, _ = fake(core="say:1:run", engine="say:1:exit0:0.2")
     assert sup.run() == 0
     text = (tmp_path / "run.log").read_text(encoding="utf-8")
+    from openride_core import __version__
+    assert text.splitlines()[0].endswith(f"[openride] OpenRide {__version__}")
     assert "core ligne 0" in text and "[engine] engine ligne 0" in text
     assert not (tmp_path / "Logs").exists()
 
