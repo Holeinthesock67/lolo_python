@@ -79,6 +79,11 @@ class ZwiftClickProvider:
         clock: Callable[[], float] = time.monotonic,
         pair: ClickPair | None = None,
         optional: bool = False,
+        trace_raw: bool | None = None,
+        mute_after_s: float | None = None,
+        rehandshake_s: float | None = None,
+        side: str | None = None,
+        side_of: Callable[[str], str | None] | None = None,
     ) -> None:
         self.address = address or None
         self._pair, self._optional = pair, optional
@@ -103,6 +108,66 @@ class ZwiftClickProvider:
         self._attempts = 0
         self._drop_reason = ""
         self._conn_address = "?"   # boîtier de la dernière connexion, repris dans la ligne de coupure
+        # Lot Q6 : trace brute, détection du boîtier muet et reprise (réglages [drivers] passés par la séance)
+        self.trace_raw: bool = False if trace_raw is None else trace_raw
+        self.mute_after_s: float = 60.0 if mute_after_s is None else float(mute_after_s)
+        self.rehandshake_s: float = 0.0 if rehandshake_s is None else float(rehandshake_s)
+        self._explicit_side = side
+        self._side_of = side_of
+        self.msg_counts: dict[str, int] = {"boutons": 0, "batterie": 0, "maintien": 0, "inconnu": 0}
+        self._mute_reported = False
+        self._rehandshake_step = 0
+        self._last_rehandshake_at: float = 0.0
+        self._last_raw_trace_at: float = 0.0
+        self._pending_raw_key: tuple[str, str, int, bytes] | None = None
+        self._pending_raw_count = 0
+
+    @property
+    def side(self) -> str:
+        """« droit » (boîtier « + »), « gauche » (boîtier « − ») ou « inconnu » pour le journal."""
+        if self._explicit_side in ("droit", "gauche", "inconnu"):
+            return self._explicit_side
+        addr = self._mine or self.address or self._conn_address or ""
+        if addr and addr != "?" and self._side_of is not None:
+            return self._side_of(addr) or "inconnu"
+        return "inconnu"
+
+    def _trace_raw_notification(self, now: float, char: str, msg_type: int,
+                                category: str, raw: bytes, has_button: bool) -> None:
+        if has_button:
+            self._flush_raw_trace()
+            log.info("Click %s %s type 0x%02x (%s) : %s",
+                     self.side, char, msg_type, category, raw.hex())
+            self._last_raw_trace_at = now
+            return
+
+        key = (self.side, char, msg_type, raw)
+        if self._pending_raw_key == key:
+            self._pending_raw_count += 1
+        else:
+            self._flush_raw_trace()
+            self._pending_raw_key = key
+            self._pending_raw_count = 1
+            if self._last_raw_trace_at == 0.0:
+                self._last_raw_trace_at = now
+
+        if now - self._last_raw_trace_at >= 2.0:
+            self._flush_raw_trace()
+            self._last_raw_trace_at = now
+
+    def _flush_raw_trace(self) -> None:
+        if not self._pending_raw_key or self._pending_raw_count == 0:
+            return
+        side, char, msg_type, raw = self._pending_raw_key
+        category = zwift_click.classify_message(raw)
+        if self._pending_raw_count > 1:
+            log.info("Click %s %s type 0x%02x (%s) : %s (%d messages)",
+                     side, char, msg_type, category, raw.hex(), self._pending_raw_count)
+        else:
+            log.info("Click %s %s type 0x%02x (%s) : %s",
+                     side, char, msg_type, category, raw.hex())
+        self._pending_raw_key = None
+        self._pending_raw_count = 0
 
     @property
     def status(self) -> str:
@@ -119,20 +184,37 @@ class ZwiftClickProvider:
         self._notify_count += 1
         self._rate_count += 1
         raw = bytes(data)
+        category = zwift_click.classify_message(raw)
+        self.msg_counts[category] = self.msg_counts.get(category, 0) + 1
+
         msg_type, fields = zwift_click.parse_async(raw)
+        char_name = "ASYNC" if _ch is None else getattr(_ch, "uuid", str(_ch))
+        if char_name == zwift_click.ZWIFT_ASYNC or "00000002" in char_name:
+            char_name = "ASYNC"
+
+        buttons = None
         if msg_type == zwift_click.MSG_BATTERY_LEVEL:
             self.battery_pct = fields.get(2)
-            return
-        buttons = zwift_click.parse_click_buttons(raw)
-        if buttons is None:
-            return
-        for ev in self._classifier.feed(buttons, now):
-            if self._pair is not None and not self._pair.first_report(ev, now):
-                log.debug("Click : %s relayé par l'autre boîtier, ignoré", ev.value)
-                continue
-            self._last_press_at = now
-            log.info("Click : %s", ev.value)
-            self.events.put_nowait(ev)
+        else:
+            buttons = zwift_click.parse_click_buttons(raw)
+
+        has_button = False
+        if buttons is not None:
+            if buttons.plus_pressed or buttons.minus_pressed or buttons.y_pressed:
+                has_button = True
+                self._mute_reported = False
+                self._rehandshake_step = 0
+
+            for ev in self._classifier.feed(buttons, now):
+                if self._pair is not None and not self._pair.first_report(ev, now):
+                    log.debug("Click : %s relayé par l'autre boîtier, ignoré", ev.value)
+                    continue
+                self._last_press_at = now
+                log.info("Click : %s", ev.value)
+                self.events.put_nowait(ev)
+
+        if self.trace_raw:
+            self._trace_raw_notification(now, char_name, msg_type, category, raw, has_button)
 
     async def run(self) -> None:
         # Le Click ne s'annonce que réveillé par un appui : on le cherche en continu, par
@@ -166,11 +248,17 @@ class ZwiftClickProvider:
 
     def _log_drop(self, reason: str) -> None:
         now = self._clock()
+        if self.trace_raw:
+            self._flush_raw_trace()
         connected = now - self._connected_at if self._connected_at is not None else 0.0
         write_at = last_trainer_write_at()
         since_write = "jamais" if write_at is None else f"{max(time.monotonic() - write_at, 0.0):.1f} s"
         log.warning(CLICK_DISCONNECTED_FMT, self._conn_address, connected, _ago(now, self._last_notify_at),
                     _ago(now, self._last_press_at), self._notify_count, since_write, reason or "fin de session")
+        if self.trace_raw:
+            log.info("Click %s résumé : %d boutons, %d maintien, %d batterie, %d inconnu",
+                     self.side, self.msg_counts.get("boutons", 0), self.msg_counts.get("maintien", 0),
+                     self.msg_counts.get("batterie", 0), self.msg_counts.get("inconnu", 0))
         self._connected_at = None
         self._search_since, self._attempts = now, 0
 
@@ -223,7 +311,52 @@ class ZwiftClickProvider:
                 if now - self._rate_since >= RATE_PERIOD_S:
                     span = now - self._rate_since
                     log.info(CLICK_RATE_FMT, self._rate_count, span, self._rate_count / span)
+                    if self.trace_raw:
+                        log.info("Click %s résumé : %d boutons, %d maintien, %d batterie, %d inconnu",
+                                 self.side, self.msg_counts.get("boutons", 0), self.msg_counts.get("maintien", 0),
+                                 self.msg_counts.get("batterie", 0), self.msg_counts.get("inconnu", 0))
                     self._rate_since, self._rate_count = now, 0
+
+                if self.trace_raw and self._pending_raw_count > 0 and (now - self._last_raw_trace_at >= 2.0):
+                    self._flush_raw_trace()
+                    self._last_raw_trace_at = now
+
+                # Détection du boîtier muet
+                if self._notify_count > 0:
+                    ref_press = self._last_press_at if self._last_press_at is not None else self._connected_at
+                    if ref_press is not None and (now - ref_press >= self.mute_after_s):
+                        if not self._mute_reported:
+                            self._mute_reported = True
+                            log.warning("Click %s : connecté mais muet depuis %.0f s", self.side, self.mute_after_s)
+                            self._last_rehandshake_at = now
+                            if self.rehandshake_s > 0:
+                                self._rehandshake_step = 1
+                                log.info("Click %s : tentative de reprise 1/3 (renvoi de RideOn)", self.side)
+                                try:
+                                    await client.write_gatt_char(zwift_click.ZWIFT_SYNC_RX, zwift_click.RIDE_ON, response=True)
+                                except Exception as exc:
+                                    log.warning("Click %s : échec renvoi RideOn : %s", self.side, exc)
+
+                        elif self.rehandshake_s > 0 and 1 <= self._rehandshake_step < 3:
+                            if now - self._last_rehandshake_at >= self.rehandshake_s:
+                                self._rehandshake_step += 1
+                                self._last_rehandshake_at = now
+                                if self._rehandshake_step == 2:
+                                    log.info("Click %s : tentative de reprise 2/3 (réabonnement notifications)", self.side)
+                                    try:
+                                        await client.stop_notify(zwift_click.ZWIFT_ASYNC)
+                                        await client.start_notify(zwift_click.ZWIFT_ASYNC, self._on_async)
+                                    except Exception as exc:
+                                        log.warning("Click %s : échec réabonnement : %s", self.side, exc)
+                                elif self._rehandshake_step == 3:
+                                    log.info("Click %s : tentative de reprise 3/3 (déconnexion et reconnexion)", self.side)
+                                    try:
+                                        await client.disconnect()
+                                    except Exception as exc:
+                                        log.warning("Click %s : échec déconnexion : %s", self.side, exc)
+                                    dropped.set()
+                                    break
+
             self._drop_reason = ("lien perdu (rappel bleak)" if dropped.is_set()
                                  else "arrêt du core" if self._stop.is_set() else "fin de session")
 

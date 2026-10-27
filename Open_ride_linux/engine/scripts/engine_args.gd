@@ -7,8 +7,10 @@ extends RefCounted
 ##   --routes-dir=CHEMIN      dossier des parcours (défaut : ~/.local/share/openride/routes)
 ##   --quality=low|medium|high préréglage de qualité graphique (défaut : low, lot L4)
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
+##   --visual-grade=K         exagération visuelle du relief de 1.0 à 2.0 (défaut : 1.0, lot Q2)
 ##   --perf-probe=FICHIER.csv sonde de performance : une ligne de mesures par seconde (lot X13)
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
+##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
@@ -16,6 +18,9 @@ const DEFAULT_STATE_PORT := 5005
 const DEFAULT_CMD_PORT := 5006
 const DEFAULT_QUALITY := "low"
 const DEFAULT_THEME := "default"
+const DEFAULT_VISUAL_GRADE := 1.0
+const MIN_VISUAL_GRADE := 1.0
+const MAX_VISUAL_GRADE := 2.0
 const VALID_QUALITIES := ["low", "medium", "high"]
 
 static var last_error := ""
@@ -29,7 +34,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, visual_grade, living, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -38,6 +43,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"routes_dir": default_routes_dir(),
 		"quality": DEFAULT_QUALITY,
 		"theme": DEFAULT_THEME,
+		"visual_grade": DEFAULT_VISUAL_GRADE,
+		"living": true,
 		"test_mode": false,
 		"sim_session": false,
 		"perf_probe": "",
@@ -56,11 +63,15 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["quality"] = _quality(arg, DEFAULT_QUALITY)
 		elif arg.begins_with("--theme="):
 			out["theme"] = _theme(arg, DEFAULT_THEME)
+		elif arg.begins_with("--visual-grade="):
+			out["visual_grade"] = _visual_grade(arg, DEFAULT_VISUAL_GRADE)
 		elif arg.begins_with("--perf-probe="):
 			var csv := arg.get_slice("=", 1).strip_edges()
 			if csv.begins_with("~"):
 				csv = _home() + csv.substr(1)
 			out["perf_probe"] = csv
+		elif arg.begins_with("--living="):
+			out["living"] = _living(arg, true)
 		elif arg == "--test-mode":
 			out["test_mode"] = true
 		elif arg == "--sim-session":
@@ -93,6 +104,29 @@ static func _theme(arg: String, fallback: String) -> String:
 		printerr("Argument ignoré (thème vide) : ", arg)
 		return fallback
 	return val
+
+
+static func _visual_grade(arg: String, fallback: float) -> float:
+	var text := arg.get_slice("=", 1).strip_edges()
+	if not text.is_valid_float():
+		last_error = "Argument ignoré (visual_grade non numérique) : " + arg
+		printerr("Argument ignoré (visual_grade non numérique) : ", arg)
+		return fallback
+	var val := float(text)
+	if val < MIN_VISUAL_GRADE or val > MAX_VISUAL_GRADE:
+		last_error = "Argument ignoré (visual_grade hors bornes [1.0, 2.0]) : " + arg
+		printerr("Argument ignoré (visual_grade hors bornes [1.0, 2.0]) : ", arg)
+		return fallback
+	return val
+static func _living(arg: String, fallback: bool) -> bool:
+	var val := arg.get_slice("=", 1).strip_edges().to_lower()
+	if val in ["on", "true", "1", "oui"]:
+		return true
+	if val in ["off", "false", "0", "non"]:
+		return false
+	last_error = "Argument ignoré (décor vivant : on ou off) : " + arg
+	printerr("Argument ignoré (décor vivant : on ou off) : ", arg)
+	return fallback
 
 
 static func current() -> Dictionary:

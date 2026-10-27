@@ -39,7 +39,7 @@ Open_ride_linux/
   - conformité au contrat IPC (lot C) ;
   - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
   - Godot conforme au contrat : renvoi des commandes, extrapolation de la caméra, core injoignable (lot D) ;
-  - 913 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop` et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 261 côté compilateur (dont traces FIT et TCX, bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 76 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
+  - 960 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop`, rampe de pente du trainer et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 261 côté compilateur (dont traces FIT et TCX, bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 76 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
   - **Reste :** séance de 10 minutes et stabilité du Click.
 - **Sprint 2 terminé côté code :** compilateur GPX vers `.world`, couches route (lot B1) et terrain avec le MNT Copernicus (lot B2). Reste la comparaison avec Garmin Connect sur une vraie trace.
 - **Sprint 3 en cours :** ruban de route et terrain par tronçons (lot E1, fusionné le 24 octobre ; reste l'essai sur la GTX 1060) ; chargeur de thèmes et logique du bandeau ERG côté Godot prêts (lots I5 et I6), à brancher sur l'affichage (E2, F2).
@@ -101,6 +101,7 @@ Le premier script lance les tests unitaires de `engine/tests/unit/` (vecteurs de
 | `--ipc-state-port=N` | 5005 | Port d'écoute des trames du core ; s'il est occupé, l'engine quitte avec le code 1 |
 | `--ipc-cmd-port=N` | 5006 | Port de commandes du core |
 | `--routes-dir=CHEMIN` | `~/.local/share/openride/routes` | Dossier des parcours `<route_id>.world` (repli sur la démo embarquée pour `demo`) |
+| `--visual-grade=K` | 1.0 | Facteur d'exagération visuelle du relief (borné entre 1.0 et 2.0, lot Q2) |
 | `--test-mode` | absent | Journal `[test]` pour les tests sans écran |
 
 Exemple : `godot --path engine -- --ipc-state-port=5005 --ipc-cmd-port=5006`. `scripts/openride-dev.sh` passe les ports de `config.toml`.
@@ -228,7 +229,10 @@ openride-ble-diag scan
 openride-ble-diag trainer --name "HomeTrainer" --duration 30
 openride-ble-diag trainer --name "HomeTrainer" --control --sim-grade 4 --erg 150
 openride-ble-diag click --duration 60
+openride-ble-diag trace ~/run_trainer.log   # analyse d'une trace brute du Click
 ```
+
+Diagnostic du Zwift Click V2 : `[drivers] click_trace_raw = true` (trace brute par notification), `click_mute_after_s = 60` (détection de boîtier muet) et `click_rehandshake_s = 30` (tentatives de reprise échelonnées : renvoi de RideOn, réabonnement, reconnexion). Voir `docs/DIAG_CLICK_GAUCHE.md`.
 
 Les rapports sont écrits dans `spike_reports/`.
 

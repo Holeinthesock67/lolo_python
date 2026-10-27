@@ -19,7 +19,7 @@ import re
 import signal
 import time
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 from .config import OPENRIDE_HOME, WORKOUTS_DIR, Config
 from .gearing import Gearing
@@ -122,25 +122,45 @@ def build_driver(cfg: Config, sim: Any = None) -> Any:
     return MockDriver(replay=replay)
 
 
+def click_side_of(d: Any) -> Callable[[str], str | None]:
+    """Côté d'un boîtier du Click d'après son adresse, pour le journal du lot Q6 : « + » à droite, « − » à
+    gauche. None sans adresse configurée (premier boîtier vu inconnu d'avance)."""
+    def side_of(address: str) -> str | None:
+        addr = address.upper()
+        if d.click_address:
+            return "droit" if addr == d.click_address.upper() else "gauche"
+        if d.click_minus_address:
+            return "gauche" if addr == d.click_minus_address.upper() else "droit"
+        if d.input == "sim":
+            from .sim_scenarios import PLUS_ADDRESS
+            return "droit" if addr == PLUS_ADDRESS else "gauche"
+        return None
+    return side_of
+
+
 def build_inputs(cfg: Config, sim: Any = None) -> list[Any]:
     kind = cfg.drivers.input
+    d = cfg.drivers
+    # Réglages du lot Q6 (trace brute, boîtier muet, reprise), communs aux deux boîtiers.
+    q6 = {"trace_raw": d.click_trace_raw, "mute_after_s": d.click_mute_after_s,
+          "rehandshake_s": d.click_rehandshake_s, "side_of": click_side_of(d)}
     if kind == "sim":
         # Vrais fournisseurs du Click contre la paire simulée ; le clavier appuie sur le Click simulé.
-        d, pair = cfg.drivers, ClickPair()
+        pair = ClickPair()
         return [ZwiftClickProvider(None, d.click_short_max_s, d.click_long_min_s, pair=pair,
-                                   device_finder=sim.find_device, client_factory=sim.client_factory),
+                                   device_finder=sim.find_device, client_factory=sim.client_factory, **q6),
                 ZwiftClickProvider(None, d.click_short_max_s, d.click_long_min_s, pair=pair,
                                    optional=True, device_finder=sim.find_device,
-                                   client_factory=sim.client_factory),
+                                   client_factory=sim.client_factory, **q6),
                 SimClickKeyboard(sim)]
     if kind == "click":
         # Deux fournisseurs pour la paire du Click récent (boîtiers « + » et « − », même nom) ;
         # le clavier reste actif en parallèle (contrat IPC §6).
-        d, pair = cfg.drivers, ClickPair()
+        pair = ClickPair()
         return [ZwiftClickProvider(d.click_address or None, d.click_short_max_s, d.click_long_min_s,
-                                   pair=pair),
+                                   pair=pair, **q6),
                 ZwiftClickProvider(d.click_minus_address or None, d.click_short_max_s,
-                                   d.click_long_min_s, pair=pair, optional=True),
+                                   d.click_long_min_s, pair=pair, optional=True, **q6),
                 KeyboardProvider()]
     if kind == "keyboard":
         return [KeyboardProvider()]
@@ -219,6 +239,8 @@ class CoreSession:
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
                           "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct)})
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
+        log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
+                 cfg.trainer.grade_rate_up_pct_per_s, cfg.trainer.grade_rate_down_pct_per_s)
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
 
@@ -813,7 +835,10 @@ class CoreSession:
                 self._wind_offset = grade_offset_pct(self.physics.v, head, self._draft, alt,
                                                      self.physics.p, wcfg.max_grade_offset_pct)
                 target += self._wind_offset
-            max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
+            rate = (self.cfg.trainer.grade_rate_up_pct_per_s
+                    if target >= self._grade_sent
+                    else self.cfg.trainer.grade_rate_down_pct_per_s)
+            max_delta = rate * dt
             shifted = self._shift_pending
             if shifted:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
                 self._shift_pending = False
@@ -859,7 +884,8 @@ class CoreSession:
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
-                draft=round(self._draft, 3) if self.bots else None))
+                draft=round(self._draft, 3) if self.bots else None,
+                hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None))
 
         if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
             log.info("Arrivée atteinte.")
