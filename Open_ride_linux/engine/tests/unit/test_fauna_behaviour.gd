@@ -6,6 +6,7 @@ extends SceneTree
 
 const FaunaBehaviour := preload("res://scripts/fauna_behaviour.gd")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -120,7 +121,7 @@ func _test_cost() -> void:
 		total += r.last_update_usec
 	var avg_ms := total / 1000.0 / frames
 	print("Mise à jour de 200 animaux (high : 40 oiseaux et 80 bêtes affichés) : %.3f ms par image" % avg_ms)
-	_check(avg_ms < 0.3, "mise à jour de tous les animaux en %.3f ms par image (< 0,3 ms)" % avg_ms)
+	_check(PerfBudget.check("fauna_frame_200", avg_ms), "mise à jour de tous les animaux en %.3f ms par image" % avg_ms)
 	r.queue_free()
 
 

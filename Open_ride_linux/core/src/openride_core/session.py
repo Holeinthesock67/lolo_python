@@ -219,6 +219,8 @@ class CoreSession:
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
                           "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct)})
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
+        log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
+                 cfg.trainer.grade_rate_up_pct_per_s, cfg.trainer.grade_rate_down_pct_per_s)
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
 
@@ -317,8 +319,44 @@ class CoreSession:
             self._spawn(self._handle_list_workouts(cmd_id))
         elif name in ("scan_devices", "identify_click_plus", "pair_devices"):
             self._on_pairing_command(name, args, cmd_id)
+        elif name == "list_settings":
+            self._send_settings(cmd_id)
+        elif name == "set_setting":
+            self._set_setting(args, cmd_id)
 
-    # --- appairage depuis le menu (lot N13, contrat IPC révision 1.2) -------------------------
+    # --- réglages depuis le menu (lots O3 et O4, contrat IPC révision 1.3) -----------------------
+
+    def _send_settings(self, cmd_id: int) -> None:
+        from . import settings
+
+        self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
+                              "items": settings.current(self.cfg)})
+
+    def _set_setting(self, args: dict, cmd_id: int) -> None:
+        from . import settings
+
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Réglage impossible pendant une séance (terminer d'abord).")
+            return
+        key = args.get("key") if isinstance(args, dict) else None
+        try:
+            changed = settings.apply(self.cfg, {str(key): args.get("value")}, self.config_path)
+        except settings.SettingError as exc:
+            log.warning("Réglage refusé : %s", exc)
+            self.server.send_error("setting_invalid", str(exc))
+            return
+        log.info("Réglage enregistré (%s) : %s", self.config_path or "config.toml",
+                 "; ".join(changed) if changed else "inchangé")
+        # Prise en compte pour la séance suivante, sans relancer.
+        self.physics.p = PhysicsParams.from_config(self.cfg)
+        self.gearing.k = min(max(self.cfg.gearing.start_gear, 1), self.gearing.n_gears)
+        self.difficulty_pct = float(self.cfg.trainer.difficulty_pct)
+        self.state.difficulty_pct = round(self.difficulty_pct)
+        self.server.hello_config.update(ftp_w=self.cfg.rider.ftp_w, theme=self.cfg.render.theme,
+                                        difficulty_pct=round(self.difficulty_pct))
+        self._send_settings(cmd_id)
+
+    # --- appairage depuis le menu (lot N13, contrat IPC révision 1.3) -------------------------
 
     def _on_pairing_command(self, name: str, args: dict, cmd_id: int) -> None:
         from . import pairing
@@ -776,7 +814,10 @@ class CoreSession:
                 self._wind_offset = grade_offset_pct(self.physics.v, head, self._draft, alt,
                                                      self.physics.p, wcfg.max_grade_offset_pct)
                 target += self._wind_offset
-            max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
+            rate = (self.cfg.trainer.grade_rate_up_pct_per_s
+                    if target >= self._grade_sent
+                    else self.cfg.trainer.grade_rate_down_pct_per_s)
+            max_delta = rate * dt
             shifted = self._shift_pending
             if shifted:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
                 self._shift_pending = False
@@ -822,7 +863,8 @@ class CoreSession:
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
-                draft=round(self._draft, 3) if self.bots else None))
+                draft=round(self._draft, 3) if self.bots else None,
+                hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None))
 
         if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
             log.info("Arrivée atteinte.")

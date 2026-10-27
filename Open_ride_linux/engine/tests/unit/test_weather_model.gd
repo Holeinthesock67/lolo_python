@@ -5,6 +5,7 @@ extends SceneTree
 
 const WeatherModel := preload("res://scripts/weather_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 const CALM := {"dir": Vector3.ZERO, "strength": 0.0}
 
@@ -88,7 +89,7 @@ func _test_cost() -> void:
 	for i in range(10000):
 		WeatherModel.evaluate(w, 400.0 + i * 0.01, 500.0, CALM)
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0 / 10000.0
-	_check(ms < 0.05, "coût de evaluate : %.4f ms par image" % ms)
+	_check(PerfBudget.check("weather_evaluate", ms), "coût de evaluate : %.4f ms par image" % ms)
 
 
 func _init() -> void:

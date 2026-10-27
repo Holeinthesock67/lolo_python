@@ -230,6 +230,9 @@ class FtmsDriver:
         self._cadence = 0.0
         self._hr_ibd: int | None = None
         self._hr_service: int | None = None
+        self._hr_relay_val: int | None = None
+        self._hr_relay_last_change_at: float | None = None
+        self._hr_frozen = False
         self._last_poll_at: float | None = None
         self.control_refused = False
         self._refusals = 0
@@ -302,19 +305,56 @@ class FtmsDriver:
         tau = self.cfg.power_smooth_tau_s
         alpha = 1.0 if tau <= 0 else 1.0 - math.exp(-dt / tau)
         self._power += alpha * (self._raw_power - self._power)
-        hr = self._hr_service if self._hr_service else self._hr_ibd
+        self._check_hr_freeze(now)
+        effective = self._hr_service if self._hr_service is not None else self._hr_ibd
+        hr = None if self._hr_frozen else effective
         return TrainerMetrics(
             power_w=round(self._power, 1),
             cadence_rpm=self._cadence,
             speed_kmh=0.0,   # la vitesse virtuelle vient de la physique du core
             hr_bpm=hr,
             connected=True,
+            hr_frozen=self._hr_frozen,
         )
 
     def stop(self) -> None:
         self._stop.set()
 
     # --- notifications ----------------------------------------------------------------
+
+    def _check_hr_freeze(self, now: float) -> None:
+        if self._hr_relay_val is not None and not self._hr_frozen:
+            if self._hr_relay_last_change_at is not None:
+                if now - self._hr_relay_last_change_at >= self.cfg.hr_relay_freeze_s:
+                    self._hr_frozen = True
+                    log.warning(
+                        "Cardio relayée par le trainer figée à %d bpm depuis %.0f s : ignorée",
+                        self._hr_relay_val,
+                        self.cfg.hr_relay_freeze_s,
+                    )
+
+    def _update_relayed_hr(self, candidate: int | None) -> None:
+        now = self._clock()
+        if candidate is None:
+            self._hr_relay_val = None
+            self._hr_relay_last_change_at = None
+            self._hr_frozen = False
+            return
+
+        if self._hr_relay_val is None:
+            self._hr_relay_val = candidate
+            self._hr_relay_last_change_at = now
+            self._hr_frozen = False
+            return
+
+        if candidate != self._hr_relay_val:
+            if self._hr_frozen:
+                self._hr_frozen = False
+                log.info("Cardio relayée de nouveau valide")
+            self._hr_relay_val = candidate
+            self._hr_relay_last_change_at = now
+        else:
+            self._check_hr_freeze(now)
 
     def _on_ibd(self, _ch: Any, data: bytearray) -> None:
         try:
@@ -329,6 +369,7 @@ class FtmsDriver:
             self._cadence = d.cadence_rpm
         if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
+            self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
 
     def _on_hr(self, _ch: Any, data: bytearray) -> None:
         try:
@@ -336,6 +377,7 @@ class FtmsDriver:
         except Exception:
             return
         self._hr_service = bpm or None
+        self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
 
     def _is_status_echo(self, status_code: int, now: float) -> bool:
         if self._cp is None:
@@ -498,6 +540,11 @@ class FtmsDriver:
                     await asyncio.sleep(0.05)
             finally:
                 self._link_up = False
+                self._hr_ibd = None
+                self._hr_service = None
+                self._hr_relay_val = None
+                self._hr_relay_last_change_at = None
+                self._hr_frozen = False
                 if cp is not None and client.is_connected:
                     await self._release(cp)
 

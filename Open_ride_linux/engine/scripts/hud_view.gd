@@ -8,6 +8,12 @@ extends CanvasLayer
 ## - Prochaine montée ou montée en cours.
 ## - Fond semi-transparent, centre de l'écran dégagé (route visible à 50 m).
 ## - Ne calcule rien : s'appuie sur hud_view_model.gd.
+## - Lot P16 : indicateur du vent sous le panneau de gauche (`update_wind`, sortie de
+##   wind_view_model.gd) : flèche d'où vient le vent par rapport à la route, « 18 km/h face »,
+##   barres d'intensité et leur niveau, pastille verte, rouge ou grise du verdict ; caché sans vent.
+##   Le coin supérieur droit sous le panneau de droite reste libre (blocs segment et bonus, série T).
+## - Lot P17 : « Abri 30 % » derrière un bot (`draft_text` de la même sortie), pastille bleue sous
+##   l'indicateur du vent (à sa place quand il n'y a pas de vent) ; cachée sans abri.
 
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 
@@ -16,6 +22,16 @@ const COLOR_FLAT := Color(0.25, 0.75, 0.30, 0.85)
 const COLOR_CLIMB := Color(0.95, 0.75, 0.20, 0.85)
 const COLOR_STEEP := Color(0.95, 0.45, 0.10, 0.85)
 const COLOR_WALL := Color(0.85, 0.15, 0.15, 0.85)
+
+const WIND_TONES := {
+	"good": Color(0.15, 0.62, 0.25, 0.95),
+	"bad": Color(0.80, 0.18, 0.12, 0.95),
+	"neutral": Color(0.45, 0.48, 0.52, 0.95),
+}
+const WIND_BAR_COLOR := Color(0.85, 0.90, 0.95)
+const DRAFT_COLOR := Color(0.15, 0.42, 0.75, 0.95)
+const DRAFT_GAP := 10.0
+const WIND_BAR_OFF := Color(0.85, 0.90, 0.95, 0.18)
 
 const GRADE_COLORS := {
 	"descent": COLOR_DESCENT,
@@ -49,6 +65,16 @@ var status_label: Label
 var profile_panel: Control
 var alt_min_label: Label
 var alt_max_label: Label
+# Indicateur du vent (Lot P16)
+var panel_wind: Panel
+var wind_arrow: Control
+var wind_speed_label: Label
+var wind_bars: Control
+var wind_level_label: Label
+var wind_verdict_label: Label
+var _wind_view: Dictionary = {}
+# Abri derrière un bot (Lot P17)
+var draft_label: Label
 
 # Données du profil d'altitude en cache
 var _last_profile_s := -99999.0
@@ -125,6 +151,9 @@ func _build_ui() -> void:
 	difficulty_label.visible = false
 	center_vbox.add_child(difficulty_label)
 
+	_build_wind_panel()
+	_build_draft_label()
+
 	# Panneau inférieur : Profil d'altitude
 	profile_panel = Control.new()
 	profile_panel.name = "ProfilePanel"
@@ -149,6 +178,129 @@ func _build_ui() -> void:
 	alt_max_label.add_theme_font_size_override("font_size", 20)
 	alt_max_label.position = Vector2(8.0, 4.0)
 	profile_panel.add_child(alt_max_label)
+
+
+## Indicateur du vent (Lot P16), sous le panneau de gauche (même largeur), caché tant qu'il n'y a
+## pas de vent dans les trames du core.
+func _build_wind_panel() -> void:
+	panel_wind = _create_panel(Vector2(20.0, 350.0), Vector2(300.0, 132.0), false, false)
+	panel_wind.name = "WindPanel"
+	panel_wind.visible = false
+	wind_arrow = Control.new()
+	wind_arrow.name = "WindArrow"
+	wind_arrow.position = Vector2(10.0, 10.0)
+	wind_arrow.size = Vector2(72.0, 72.0)
+	wind_arrow.draw.connect(_on_wind_arrow_draw)
+	panel_wind.add_child(wind_arrow)
+	wind_speed_label = Label.new()
+	wind_speed_label.name = "WindSpeed"
+	wind_speed_label.position = Vector2(92.0, 6.0)
+	wind_speed_label.size = Vector2(200.0, 40.0)
+	wind_speed_label.add_theme_font_size_override("font_size", 30)
+	wind_speed_label.clip_text = true
+	panel_wind.add_child(wind_speed_label)
+	wind_bars = Control.new()
+	wind_bars.name = "WindBars"
+	wind_bars.position = Vector2(94.0, 50.0)
+	wind_bars.size = Vector2(70.0, 28.0)
+	wind_bars.draw.connect(_on_wind_bars_draw)
+	panel_wind.add_child(wind_bars)
+	wind_level_label = Label.new()
+	wind_level_label.name = "WindLevel"
+	wind_level_label.position = Vector2(172.0, 48.0)
+	wind_level_label.size = Vector2(120.0, 32.0)
+	wind_level_label.add_theme_font_size_override("font_size", 22)
+	wind_level_label.modulate = Color(0.75, 0.80, 0.85)
+	wind_level_label.clip_text = true
+	panel_wind.add_child(wind_level_label)
+	wind_verdict_label = Label.new()
+	wind_verdict_label.name = "WindVerdict"
+	wind_verdict_label.position = Vector2(10.0, 88.0)
+	wind_verdict_label.size = Vector2(280.0, 36.0)
+	wind_verdict_label.add_theme_font_size_override("font_size", 24)
+	wind_verdict_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	wind_verdict_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var pill := StyleBoxFlat.new()
+	pill.bg_color = WIND_TONES["neutral"]
+	pill.set_corner_radius_all(18)
+	wind_verdict_label.add_theme_stylebox_override("normal", pill)
+	panel_wind.add_child(wind_verdict_label)
+
+
+## Pastille « Abri 30 % » (Lot P17), même largeur que l'indicateur du vent.
+func _build_draft_label() -> void:
+	draft_label = Label.new()
+	draft_label.name = "Draft"
+	draft_label.position = panel_wind.position + Vector2(0.0, panel_wind.size.y + DRAFT_GAP)
+	draft_label.size = Vector2(panel_wind.size.x, 44.0)
+	draft_label.add_theme_font_size_override("font_size", 28)
+	draft_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	draft_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+	var pill := StyleBoxFlat.new()
+	pill.bg_color = DRAFT_COLOR
+	pill.set_corner_radius_all(22)
+	draft_label.add_theme_stylebox_override("normal", pill)
+	draft_label.visible = false
+	add_child(draft_label)
+
+
+## Indicateur du vent (Lot P16) et de l'abri (Lot P17) : `view` est la sortie de wind_view_model.view().
+func update_wind(view: Dictionary) -> void:
+	_build_ui()
+	var shown := bool(view.get("visible", false)) and str(view.get("speed_text", "")) != ""
+	panel_wind.visible = shown
+	var draft := str(view.get("draft_text", ""))
+	draft_label.visible = draft != ""
+	if draft != "":
+		draft_label.text = draft
+		var top := panel_wind.position.y + (panel_wind.size.y + DRAFT_GAP if shown else 0.0)
+		draft_label.position = Vector2(panel_wind.position.x, top)
+	if not shown:
+		_wind_view = {}
+		return
+	var changed: bool = view.get("arrow_deg") != _wind_view.get("arrow_deg") or view.get("level") != _wind_view.get("level")
+	_wind_view = view.duplicate()
+	var label := str(view.get("label", ""))
+	wind_speed_label.text = (str(view["speed_text"]) + " " + label).strip_edges()
+	wind_level_label.text = str(view.get("level_text", ""))
+	wind_verdict_label.text = str(view.get("verdict_text", ""))
+	var pill := wind_verdict_label.get_theme_stylebox("normal") as StyleBoxFlat
+	if pill != null:
+		pill.bg_color = WIND_TONES.get(str(view.get("tone", "neutral")), WIND_TONES["neutral"])
+	if changed:
+		wind_arrow.queue_redraw()
+		wind_bars.queue_redraw()
+
+
+## Flèche dans le sens où souffle le vent, vue du cycliste (route vers le haut) : vent de face, flèche
+## vers le bas ; vent de droite, flèche vers la gauche.
+func _on_wind_arrow_draw() -> void:
+	var c := wind_arrow.size * 0.5
+	wind_arrow.draw_circle(c, 34.0, Color(1, 1, 1, 0.10))
+	if _wind_view.is_empty():
+		return
+	# arrow_deg : d'où vient le vent (0 = de face) ; la flèche pointe là où il va.
+	var a := deg_to_rad(float(_wind_view.get("arrow_deg", 0.0)))
+	var from_dir := Vector2(sin(a), -cos(a))       # direction d'où il vient, à l'écran (haut = devant)
+	var to_dir := -from_dir
+	var tip := c + to_dir * 28.0
+	var tail := c - to_dir * 24.0
+	var col: Color = WIND_TONES.get(str(_wind_view.get("tone", "neutral")), WIND_TONES["neutral"]).lightened(0.35)
+	wind_arrow.draw_line(tail, tip - to_dir * 10.0, col, 7.0, true)
+	var side := Vector2(-to_dir.y, to_dir.x)
+	wind_arrow.draw_colored_polygon(PackedVector2Array([tip, tip - to_dir * 18.0 + side * 13.0,
+		tip - to_dir * 18.0 - side * 13.0]), col)
+
+
+## Barres d'intensité : une par niveau au-delà du calme (quatre en tout).
+func _on_wind_bars_draw() -> void:
+	var level := int(_wind_view.get("level", 0))
+	var n := 4
+	var w := wind_bars.size.x / float(n)
+	for i in range(n):
+		var h := wind_bars.size.y * float(i + 1) / float(n)
+		var r := Rect2(i * w + 2.0, wind_bars.size.y - h, w - 4.0, h)
+		wind_bars.draw_rect(r, WIND_BAR_COLOR if i < level else WIND_BAR_OFF)
 
 
 func _create_panel(pos: Vector2, size: Vector2, anchor_right := false, anchor_bottom := false, span_h := false) -> Panel:

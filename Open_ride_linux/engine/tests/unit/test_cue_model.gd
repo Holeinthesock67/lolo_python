@@ -55,6 +55,40 @@ func _init() -> void:
 	_check(m.update(100.0).is_empty(), "sans consigne : rien à afficher")
 	_check(CueModel.path_for("essai-69").ends_with("OpenRide/Essais/essai-69.consignes.json"), "chemin du fichier de consignes")
 
+	# Consignes au temps de séance et préavis (essais guidés sur le HomeTrainer).
+	var timed := JSON.stringify({"cues": [
+		{"at_s": 660, "text": "Retire la ceinture 30 s", "prepare": "la ceinture", "warn_s": 60},
+		{"at_s": 0, "text": "Échauffement 5 min"},
+		{"at_s": 300, "text": "10 appuis sur +", "prepare": "rien", "warn_s": 0},
+		{"at_m": 2000, "text": "Bosse", "prepare": "un petit braquet"},
+		{"at_s": 30, "at_m": 9999, "text": "les deux : la distance gagne"},
+	]})
+	_check(m.from_text(timed), "consignes au temps lues")
+	_check(m.cues.size() == 5 and m.cues[0]["at_m"] == 2000.0 and m.cues[2]["at_s"] == 0.0,
+			"consignes à la distance d'abord, puis au temps, chacune triée")
+	_check(m.cues[1]["at_m"] == 9999.0 and not m.cues[1].has("at_s"), "distance et temps : la distance gagne")
+	var t0: Array = m.update(0.0, 0.0)
+	_check(t0.size() == 1 and t0[0]["text"].begins_with("Échauffement") and not t0[0]["warn"],
+			"t = 0 : consigne au temps donnée")
+	_check(m.update(10.0, 299.0).is_empty(), "t = 299 s : rien (préavis désactivé par warn_s = 0)")
+	_check(m.update(20.0, 300.0).size() == 1, "t = 300 s : consigne au temps")
+	var warn: Array = m.update(30.0, 600.0)
+	_check(warn.size() == 1 and warn[0]["warn"] and warn[0]["warn_text"] == "Dans 1 min, prépare la ceinture"
+			and warn[0]["duration_s"] == CueModel.WARN_DURATION_S, "t = 600 s : préavis d'une minute")
+	_check(m.update(40.0, 650.0).is_empty(), "préavis pas répété")
+	var main_cue: Array = m.update(50.0, 660.0)
+	_check(main_cue.size() == 1 and not main_cue[0]["warn"] and main_cue[0]["index"] == 5,
+			"t = 660 s : la consigne elle-même")
+	_check(m.update(60.0, 700.0).is_empty(), "après : rien")
+	var warn_m: Array = m.update(1500.0, 710.0)
+	_check(warn_m.size() == 1 and warn_m[0]["warn"] and warn_m[0]["warn_text"] == "Dans 500 m, prépare un petit braquet",
+			"préavis à 500 m d'une consigne à la distance")
+	_check(absf(m.distance_to_next(1500.0) - 500.0) < 0.01, "distance jusqu'à la consigne, préavis exclus")
+	_check(m.update(1600.0).size() == 0, "sans temps (t négatif) : axe du temps ignoré")
+	var restart: Array = m.update(0.0, 0.0)
+	_check(restart.size() == 1 and restart[0]["text"].begins_with("Échauffement"),
+			"t revenu à 0 (nouvelle séance) : consignes au temps réarmées")
+
 	var nodes_after := Performance.get_monitor(Performance.OBJECT_NODE_COUNT)
 	_check(nodes_after == nodes_before, "aucun nœud créé")
 
