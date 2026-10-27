@@ -225,17 +225,26 @@ def passes_from_journal(path: Path, segments: Iterable[SegmentLike], length_m: f
                         loop: bool = False, rider_mass_kg: float | None = None) -> list[SegmentPass]:
     """Rejoue un journal `.jsonl` (relevés à 1 Hz, événements de pause) et rend ses passages.
 
-    Le journal ne note pas les bonus : `bonuses` est vide à la relecture (T6 les ajoutera).
+    Les bonus viennent des lignes `powerup` du journal (lot T5) ; un journal plus ancien n'en a
+    pas et rend des passages sans bonus.
     """
     timer = SegmentTimer(segments, length_m, loop, rider_mass_kg)
+    uses: list[tuple[float, float, str]] = []     # (début, fin, type) en temps chronométré
     for line in read_journal(path):
         kind = line.get("kind")
         if kind == "event" and line.get("event") == "pause":
             timer.pause("journal")
+        elif kind == "powerup":
+            try:
+                t0 = float(line["t"])
+                uses.append((t0, t0 + float(line["duration_s"]), str(line["powerup"])))
+            except (KeyError, TypeError, ValueError):
+                continue
         elif kind == "record":
             try:
                 t, s = float(line["t"]), float(line["distance"])
             except (KeyError, TypeError, ValueError):
                 continue
-            timer.step(t, s, line.get("power"))
+            bonus = next((k for a, b, k in reversed(uses) if a <= t <= b), None)
+            timer.step(t, s, line.get("power"), bonus)
     return timer.passes

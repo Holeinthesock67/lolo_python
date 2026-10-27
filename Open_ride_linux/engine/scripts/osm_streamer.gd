@@ -11,12 +11,21 @@ extends Node3D
 ## rectangle englobant) pour le voisinage sonore (ambience_model.gd) et les exclusions des touffes
 ## d'herbe ; `layer_shapes()` les rassemble pour les tronçons chargés (`shapes_version` change à chaque
 ## ajout ou retrait).
+## Lot P17 : la tâche de fond d'un tronçon place aussi ses animaux (fauna_placer.gd, avec la hauteur
+## des tuiles proches du terrain) quand `fauna_enabled` ; le tronçon intégré émet `chunk_loaded(k,
+## extras)` (`extras.fauna` : groupes d'animaux), le tronçon retiré `chunk_freed(k)`. Eau qui scintille
+## (water_mesh.gd, P12) avec `set_water_shimmer(true)`, avant le chargement des tronçons.
 ## Pas de class_name (charger par preload).
 
 const OsmLayers := preload("res://scripts/osm_layers.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
+const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
+
+signal chunk_loaded(k: int, extras: Dictionary)
+signal chunk_freed(k: int)
 
 const SKIRT_M := 3.0
 const CHUNK_M := 1000.0
@@ -28,9 +37,10 @@ var route = null
 var world_dir := ""
 var layers_present: Array = []
 var preset_name := "low"
+var visual_grade_scale: float = 1.0
 
 var _building_material: StandardMaterial3D
-var _water_material: StandardMaterial3D
+var _water_material: Material
 
 ## Clé de tronçon "chunk:k" -> Array[MeshInstance3D] (au plus 3 nœuds)
 var _chunk_instances: Dictionary = {}
@@ -44,6 +54,9 @@ var _shapes_by_chunk: Dictionary = {}   # k -> {forests, buildings, waters} (Lot
 var shapes_version := 0
 
 var sound_player: Node = null
+## Lot P17 : animaux placés dans la tâche de fond de chaque tronçon.
+var fauna_enabled := false
+var water_shimmer := false
 
 
 func _init() -> void:
@@ -55,9 +68,7 @@ func _init_materials() -> void:
 	_building_material.vertex_color_use_as_albedo = true
 	_building_material.roughness = 0.85
 
-	_water_material = StandardMaterial3D.new()
-	_water_material.albedo_color = WATER_COLOR
-	_water_material.roughness = 0.10
+	_water_material = WaterMesh.make_material(water_shimmer)
 
 
 func set_preset(preset: String) -> void:
@@ -65,6 +76,23 @@ func set_preset(preset: String) -> void:
 	var vis_end := QualityPresets.building_visibility_end_m(preset)
 	if _building_material != null:
 		_building_material.distance_fade_max_distance = vis_end
+
+
+## Eau qui scintille (Lot P12, `living(preset).water_shimmer`) : nouveau matériau pour les tronçons à venir
+## et ceux déjà affichés.
+func set_water_shimmer(on: bool) -> void:
+	if on == water_shimmer and _water_material != null:
+		return
+	water_shimmer = on
+	_water_material = WaterMesh.make_material(on)
+	for k in _chunk_instances:
+		for mi in _chunk_instances[k]:
+			if mi is MeshInstance3D and not (mi as MeshInstance3D).name.begins_with("osm_buildings"):
+				(mi as MeshInstance3D).material_override = _water_material
+
+
+func water_material() -> Material:
+	return _water_material
 
 
 func set_world(new_route, new_world_dir: String, manifest: Dictionary = {}, theme: Dictionary = {}) -> void:
@@ -106,11 +134,14 @@ func _free_chunk(k: int) -> void:
 		if mi is Node:
 			if mi.get_parent() == self:
 				remove_child(mi)
+			if mi is MeshInstance3D:
+				(mi as MeshInstance3D).mesh = null   # maillage libéré avant le nœud (rendu factice sans écran)
 			mi.free()
 	_chunk_instances.erase(k)
 	_pois_by_chunk.erase(k)
 	if _shapes_by_chunk.erase(k):
 		shapes_version += 1
+	chunk_freed.emit(k)
 
 
 func update_window(s_from: float, s_to: float) -> void:
@@ -147,6 +178,8 @@ func _start_jobs() -> void:
 				"layers": layers_present.duplicate(),
 				"theme": _theme,
 				"route": route,
+				"visual_grade_scale": visual_grade_scale,
+				"fauna": fauna_enabled,
 			}
 			job["task"] = WorkerThreadPool.add_task(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
 			_jobs[k] = job
@@ -162,14 +195,28 @@ func _build_chunk_job(job: Dictionary) -> void:
 	var pois := []
 	var shapes := {"forests": [], "buildings": [], "waters": []}
 
+	var v_scale: float = float(job.get("visual_grade_scale", 1.0))
+	var alt_orig: float = job["route"].alt_m[0] if job.get("route") != null and job["route"].n > 0 else 0.0
+
+	var b_items := []
+	var w_items := {"lines": [], "areas": []}
 	# 1. Bâtiments
 	if layers.has("buildings"):
 		var b_res := OsmLayers.load_chunk(w_dir, "buildings", k)
 		if b_res.get("ok", false):
 			var items: Array = b_res.get("items", [])
+			b_items = items
 			for b in items:
 				shapes["buildings"].append(_shape(b.get("outer", [])))
 			if not items.is_empty():
+				if v_scale != 1.0:
+					var scaled_items: Array = []
+					for b in items:
+						var bc: Dictionary = b.duplicate()
+						if bc.has("base_y"):
+							bc["base_y"] = alt_orig + (float(bc["base_y"]) - alt_orig) * v_scale
+						scaled_items.append(bc)
+					items = scaled_items
 				var m := BuildingMesh.build(items, th, SKIRT_M)
 				if int(m.get("built", 0)) > 0:
 					var arr := _arrays_from_mesh_dict(m)
@@ -181,6 +228,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 		var w_res := OsmLayers.load_chunk(w_dir, "water", k)
 		if w_res.get("ok", false):
 			var lines: Array = w_res.get("lines", [])
+			w_items = {"lines": lines, "areas": w_res.get("areas", [])}
 			for l in lines:
 				var wl := _shape(l.get("points", []))
 				wl["kind"] = str(l.get("kind", "river"))
@@ -194,6 +242,20 @@ func _build_chunk_job(job: Dictionary) -> void:
 			if job.get("route") != null:
 				lines = cut_lines_at_road(lines, road_polyline(job["route"], k))
 			if not lines.is_empty():
+				if v_scale != 1.0:
+					var scaled_lines: Array = []
+					for line in lines:
+						var lc: Dictionary = line.duplicate()
+						var pts: Array = lc.get("points", [])
+						var new_pts: Array = []
+						for pt in pts:
+							if pt.size() >= 3:
+								new_pts.append([pt[0], pt[1], alt_orig + (float(pt[2]) - alt_orig) * v_scale])
+							else:
+								new_pts.append(pt)
+						lc["points"] = new_pts
+						scaled_lines.append(lc)
+					lines = scaled_lines
 				var l_mesh := WaterMesh.build_lines(lines)
 				if int(l_mesh.get("built", 0)) > 0:
 					var arr := _arrays_from_mesh_dict(l_mesh)
@@ -202,17 +264,27 @@ func _build_chunk_job(job: Dictionary) -> void:
 
 			var areas: Array = w_res.get("areas", [])
 			if not areas.is_empty():
+				if v_scale != 1.0:
+					var scaled_areas: Array = []
+					for area in areas:
+						var ac: Dictionary = area.duplicate()
+						if ac.has("level_y"):
+							ac["level_y"] = alt_orig + (float(ac["level_y"]) - alt_orig) * v_scale
+						scaled_areas.append(ac)
+					areas = scaled_areas
 				var a_mesh := WaterMesh.build_areas(areas)
 				if int(a_mesh.get("built", 0)) > 0:
 					var arr := _arrays_from_mesh_dict(a_mesh)
 					if not arr.is_empty():
 						meshes_data.append({"kind": "water_areas", "arrays": arr})
 
-	# Forêts (voisinage sonore seulement : les arbres sont dessinés par tree_renderer.gd)
+	# Forêts (voisinage sonore et animaux : les arbres sont dessinés par tree_renderer.gd)
+	var veg_items := []
 	if layers.has("vegetation"):
 		var v_res := OsmLayers.load_chunk(w_dir, "vegetation", k)
 		if v_res.get("ok", false):
-			for a in v_res.get("items", []):
+			veg_items = v_res.get("items", [])
+			for a in veg_items:
 				if str(a.get("kind", "")) == "wood":
 					shapes["forests"].append(_shape(a.get("outer", [])))
 
@@ -222,12 +294,43 @@ func _build_chunk_job(job: Dictionary) -> void:
 		if poi_res.get("ok", false):
 			pois = poi_res.get("items", [])
 
+	# 4. Animaux (Lot P17, placement de P11) : posés sur les tuiles proches du terrain
+	var fauna := []
+	if bool(job.get("fauna", false)) and job.get("route") != null:
+		var fz = th.get("fauna", {})
+		var height_at := terrain_height_fn(w_dir, job["route"])
+		if v_scale != 1.0:
+			# Animaux posés sur le relief exagéré, comme le terrain affiché (lot Q2)
+			var raw_height := height_at
+			height_at = func(x: float, z: float) -> float:
+				return alt_orig + (float(raw_height.call(x, z)) - alt_orig) * v_scale
+		fauna = FaunaPlacer.place_chunk(k, veg_items, pois, job["route"], fz if typeof(fz) == TYPE_DICTIONARY else {}, {
+			"height_at": height_at,
+			"buildings": b_items,
+			"water": w_items,
+		})
+
 	job["result"] = {
 		"k": k,
 		"meshes_data": meshes_data,
 		"pois": pois,
 		"shapes": shapes,
+		"fauna": fauna,
 	}
+
+
+## Hauteur du terrain proche en (x, z), lue dans les tuiles `near` du parcours (cache par tuile) ; repli
+## sur l'altitude de la route la plus proche sans tuile. Sans nœud : utilisable dans une tâche de fond.
+static func terrain_height_fn(w_dir: String, r) -> Callable:
+	var cache := {}
+	return func(x: float, z: float) -> float:
+		var t := TerrainTiles.tile_of("near", x, z)
+		if not cache.has(t):
+			cache[t] = TerrainTiles.load_filled(w_dir, "near", t.x, t.y, r)
+		var h: PackedFloat32Array = cache[t]
+		if h.is_empty():
+			return TerrainTiles.nearest_route_alt(r, x, z)
+		return TerrainTiles.mesh_height_at(h, "near", t.x, t.y, x, z)
 
 
 ## Axe de la route (x, z) sur le tronçon k, élargi de 200 m de part et d'autre.
@@ -360,6 +463,7 @@ func integrate(max_new: int) -> int:
 		if not (item["pois"] as Array).is_empty():
 			_pois_by_chunk[k] = item["pois"]
 			_update_sound_pois()
+		chunk_loaded.emit(k, {"fauna": item.get("fauna", [])})
 
 	_start_jobs()
 	return created

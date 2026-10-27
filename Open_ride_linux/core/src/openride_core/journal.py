@@ -71,11 +71,12 @@ class Record:
     head_mps: float | None = None      # vent de face (m/s, positif de face), None vent coupé (lot P2)
     wind_grade_pct: float | None = None  # supplément de pente dû au vent et à l'abri (SIM), lots P2 et P3
     draft: float | None = None         # abri derrière un bot (0 à 0,45), None sans bot (lot P3)
+    hr_frozen: bool | None = None      # True : FC relayée par le trainer figée, ignorée (lot Q5)
 
 
 # Champs de la série P absents de la ligne quand ils valent None (vent coupé, pas de bot) :
 # une séance sans vent ni bot garde exactement les lignes d'avant, et la mémoire de la séance aussi.
-OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft")
+OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen")
 
 
 def record_line(rec: Record) -> dict:
@@ -127,6 +128,11 @@ class JournalWriter:
     def ftp_test(self, line: dict) -> None:
         """Résultat d'un test de FTP (lot O10) : `FtpResult.to_line()`."""
         self._write({**line, "kind": "ftp_test"})
+
+    def powerup(self, kind: str, t_start: float, duration_s: float, ts: float) -> None:
+        """Bonus activé (série T, lot T5) : type, début en temps chronométré, durée."""
+        self._write({"kind": "powerup", "ts": ts, "powerup": kind, "t": round(t_start, 2),
+                     "duration_s": round(duration_s, 2)})
 
     def close(self) -> None:
         if not self._fh.closed:

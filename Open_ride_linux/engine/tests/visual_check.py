@@ -59,7 +59,7 @@ GODOT_TOLERATED = re.compile(
     r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
-              "wind_speed", "wind_level", "wind_verdict")
+              "wind_speed", "wind_level", "wind_verdict", "draft")
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -68,7 +68,7 @@ ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
-GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur", "menu_accueil", "bilan")
+GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur", "menu_accueil", "bilan", "pente_0pct", "pente_4pct")
 FIXED_S = 1500.0
 # Listes servies par le faux core aux menus (lot N6) : un parcours « à compiler » non choisissable.
 MENU_CATALOG = {
@@ -543,7 +543,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     size, _, quality = config.partition(":")
     quality = quality or "low"
     width, height = (int(v) for v in size.lower().split("x"))
-    name = f"{width}x{height}_{quality}"
+    v_grade = getattr(args, "visual_grade", 1.0)
+    name = f"{width}x{height}_{quality}" if v_grade == 1.0 else f"{width}x{height}_{quality}_k{v_grade}"
     state_port, cmd_port = free_udp_ports(2)
     engine_log = out_dir / f"{name}_engine.log"
     engine_log.write_text("")
@@ -553,8 +554,9 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     if not args.native:
         cmd = ["xvfb-run", "-a", "-s", f"-screen 0 {width}x{height}x24"] + cmd + [
             "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
+    v_grade = getattr(args, "visual_grade", 1.0)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
-            "--test-mode", f"--quality={quality}"]
+            "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}"]
     gold = Path(args.golden) / name if args.golden else None
     s = Session(name, width, height, core, out_dir, report, gold, args.update_golden)
     print(f"== {name} ==", flush=True)
@@ -669,8 +671,54 @@ def _scenes(s: Session) -> None:
         left = w["power"]["rect"]
         s.check("vent", "indicateur sous la colonne de gauche", w["wind"]["rect"][0] < s.width * 0.35
                 and w["wind"]["rect"][1] > left[1] + left[3], f"rectangle {w['wind']['rect']}")
-    core.set_scene(wind=None)
+    # 3 ter. Abri (lot P17) : aspiration de 13,5 % derrière un bot, « Abri 30 % » sous l'indicateur du vent.
+    core.set_scene(draft=0.135)
+    time.sleep(1.0)
+    shot = s.capture("abri")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        s.check("abri", "pastille de l'abri affichée", w["draft"]["visible"])
+        s.check_texts("abri", info, {"draft": "Abri 30 %"})
+        s.check_layout("abri", info)
+        s.check("abri", "abri sous l'indicateur du vent", w["draft"]["rect"][1] >= w["wind"]["rect"][1] + w["wind"]["rect"][3],
+                f"rectangle {w['draft']['rect']}")
+    core.set_scene(wind=None, draft=None)
     time.sleep(2.5)
+
+    # 3 quater. Pluie (lot P17) : météo imposée, particules autour de la caméra et chaussée mouillée.
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather",
+                   "weather": {"kind": "rain", "intensity": 0.8, "morning_mist": False}})
+    time.sleep(1.5)
+    shot = s.capture("pluie")
+    if shot:
+        img, info = shot
+        dec = info.get("decor", {})
+        s.check("pluie", "particules de pluie actives", dec.get("particles", 0) > 0, f"{dec.get('particles', 0)} particules")
+        s.check("pluie", "chaussée mouillée", dec.get("wetness", 0.0) > 0.5, f"wetness {dec.get('wetness', 0.0):.2f}")
+        s.check_layout("pluie", info)
+        s.check_world("pluie", img, info)
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather", "weather": {"kind": "clear"}})
+
+    # 3 quinquies. Col (lot P17) : arrêt à 25 m du panneau du sommet de la démo (montée de 5 km) :
+    # panneau lisible (lettres prévues pour 30 m), spectateurs du dernier kilomètre.
+    s_back = core.current_s()
+    core.set_scene(speed=0.0, s=4955.0)
+    time.sleep(3.0)
+    shot = s.capture("col")
+    if shot:
+        img, info = shot
+        dec = info.get("decor", {})
+        sign = dec.get("sign", {})
+        s.check("col", "panneau du sommet devant la caméra", "Sommet" in str(sign.get("text", "")),
+                f"« {str(sign.get('text', '')).replace(chr(10), ' / ')} » à {float(sign.get('dist_m', 0.0)):.0f} m")
+        s.check("col", "lettres du panneau lisibles", float(sign.get("letter_px_720", 0.0)) >= 6.0,
+                f"{float(sign.get('letter_px_720', 0.0)):.1f} px pour 720 lignes")
+        s.check("col", "spectateurs affichés", dec.get("spectators", 0) > 0, f"{dec.get('spectators', 0)} spectateurs")
+        s.check_layout("col", info)
+        s.check_world("col", img, info)
+    core.set_scene(speed=SPEED_MPS, s=s_back)
+    time.sleep(2.0)
 
     # 4. ERG : cible dans la ligne de puissance, bandeau et histogramme des blocs (lot N7).
     core.set_scene(speed=7.0, mode="ERG", erg={
@@ -758,8 +806,37 @@ def _scenes(s: Session) -> None:
         s.check_banner("erreur", img, info, "route_invalid")
         s.check_layout("erreur", info)
     _menu_scenes(s)
+    _pentes_scenes(s)
     fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
+
+
+def _pentes_scenes(s: Session) -> None:
+    """Lot Q2 : captures sur le parcours demo à des points de ~0 % (0,6 %) et ~4 % (4,5 %)."""
+    core = s.core
+    # 1. Pente 0 % (s = 4000 m : replat)
+    core.set_scene(speed=0.0, s=4000.0, session_state="RUNNING", grade=0.0, grade_sent=0.0,
+                   power=150.0, cadence=85.0, hr=130)
+    time.sleep(SETTLE_S)
+    shot0 = s.capture("pente_0pct")
+    if shot0:
+        img, info = shot0
+        s.check_texts("pente_0pct", info, {"grade": "0.0 %"})
+        s.check_layout("pente_0pct", info)
+        s.check_world("pente_0pct", img, info)
+
+    # 2. Pente ~4 % (s = 1400 m : montée douce à 4.5 %)
+    core.set_scene(speed=0.0, s=1400.0, session_state="RUNNING", grade=4.5, grade_sent=4.5,
+                   power=220.0, cadence=80.0, hr=145)
+    time.sleep(SETTLE_S)
+    shot4 = s.capture("pente_4pct")
+    if shot4:
+        img, info = shot4
+        s.check_texts("pente_4pct", info, {"grade": "+4.5 %"})
+        s.check_layout("pente_4pct", info)
+        s.check_world("pente_4pct", img, info)
+    # Le parcours demo ne dépasse pas 4,5 % : l'aspect d'une pente de 8 % se juge sur la scène
+    # pente_4pct lancée avec --visual-grade=1.8 (captures suffixées _k1.8).
 
 
 def _menu_scenes(s: Session) -> None:
@@ -803,6 +880,7 @@ def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--godot", default=os.environ.get(
         "GODOT", str(Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+    ap.add_argument("--visual-grade", type=float, default=1.0, help="facteur d'exagération visuelle du relief (lot Q2, défaut : 1.0)")
     ap.add_argument("--configs", default=DEFAULT_CONFIGS,
                     help=f"résolution:qualité, séparées par des virgules (défaut {DEFAULT_CONFIGS})")
     ap.add_argument("--out", type=Path, default=None, help="dossier des captures et du rapport (défaut : dossier temporaire)")

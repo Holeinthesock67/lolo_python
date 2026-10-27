@@ -22,6 +22,7 @@ const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
+const LivingDecor := preload("res://scripts/living_decor.gd")
 
 const DEMO_ROUTE_ID := "demo"
 const DEMO_WORLD := "res://demo/demo.world"
@@ -60,6 +61,7 @@ var erg_panel = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
+var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
 var _theme_name: String = "default"
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
@@ -90,6 +92,9 @@ var _menu_s := 0.0
 var living_world = null
 var _theme_dict: Dictionary = {}   # thème courant, pour le décor vivant
 var _living_enabled := true
+## Décor vivant, deuxième vague (lot P17) : météo, animaux, éoliennes, véhicules, bord de route, foule.
+var living_decor = null
+var _beep_until_s := -INF
 
 
 func _ready() -> void:
@@ -100,6 +105,10 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
+	_visual_grade_scale = float(cfg.get("visual_grade", 1.0))
+	streamer.visual_grade_scale = _visual_grade_scale
+	if streamer.osm_streamer != null:
+		streamer.osm_streamer.visual_grade_scale = _visual_grade_scale
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
@@ -135,6 +144,12 @@ func _ready() -> void:
 	living_world.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player,
 		streamer.osm_streamer, streamer.tree_renderer)
 	living_world.terrain_material = streamer.get("_terrain_material")
+	living_decor = LivingDecor.new()
+	living_decor.name = "LivingDecor"
+	add_child(living_decor)
+	living_decor.living_world = living_world
+	living_decor.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player, streamer)
+	living_decor.set_fog_base(world_env.environment)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
 	ipc.input_event_received.connect(_on_input_event)
@@ -301,6 +316,10 @@ func _play_tones(notes: Array, level: float) -> void:
 	if pb == null:
 		return
 	var rate := 44100.0
+	var total_s := 0.0
+	for note in notes:
+		total_s += float(note[1])
+	_beep_until_s = Time.get_ticks_msec() / 1000.0 + total_s
 	for note in notes:
 		var n := int(rate * float(note[1]))
 		for i in range(n):
@@ -347,13 +366,16 @@ func _process(delta: float) -> void:
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		var pos: Vector3 = route.sample_point(s_route)
+		if _visual_grade_scale != 1.0 and route != null and route.n > 0:
+			pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 		# Caméra subjective placée à 1.4 m de hauteur (hauteur des yeux du cycliste)
 		camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
 
-		# Orienter la caméra selon le cap de la route
+		# Orienter la caméra selon le cap et la pente de la route (Lot Q2)
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
 		# Dans Godot : -Z est le nord. La rotation Y s'applique sur le cap horaire.
 		camera.rotation.y = -heading
+		camera.rotation.x = deg_to_rad(follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale))
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
@@ -365,8 +387,13 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 	if living_world == null or route == null or banner.has_message("core_lost"):
 		return
 	var smp: Dictionary = route.sample(s_route)
-	living_world.step(Time.get_ticks_msec() / 1000.0, delta, camera.global_position, s_route, v,
-		float(smp["heading_deg"]), float(smp["alt_m"]), session_state == "PAUSED")
+	var now_s := Time.get_ticks_msec() / 1000.0
+	var paused := session_state == "PAUSED"
+	living_world.step(now_s, delta, camera.global_position, s_route, v, float(smp["heading_deg"]),
+		float(smp["alt_m"]), paused)
+	if living_decor != null:
+		living_decor.step(now_s, delta, camera.global_position, s_route, v, float(smp["alt_m"]), paused,
+			living_world.last_wind, _last_state, now_s < _beep_until_s)
 
 
 ## Décor en fond des menus hors séance (accueil, choix, bilan) : la caméra avance lentement sur le
@@ -377,8 +404,11 @@ func _menu_camera(delta: float) -> bool:
 		return false
 	_menu_s = route.wrap_s(_menu_s + MENU_CAMERA_MPS * delta)
 	var pos: Vector3 = route.sample_point(_menu_s)
+	if _visual_grade_scale != 1.0 and route != null and route.n > 0:
+		pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
 	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
+	camera.rotation.x = deg_to_rad(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS, -1.0, _visual_grade_scale))
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
@@ -481,6 +511,9 @@ func _poll_route_job() -> void:
 	var horizon: Color = sky_params.get("horizon_color", RenderQuality.FOG_COLOR)
 	var fog_dens: float = float(sky_params.get("fog_density", 0.01))
 	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
+	if living_decor != null:
+		living_decor.set_fog_base(world_env.environment)
+		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	streamer.update_window(0.0, 0.0, route.sample_point(0.0) + Vector3(0.0, 1.4, 0.0))
 	banner.clear_message("route")
 	banner.clear_message("cue")
@@ -502,6 +535,9 @@ func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+		"weather":   # météo imposée (tests graphiques du lot P17)
+			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
+				living_decor.set_weather(msg["weather"])
 		"menu_input":   # appui simulé dans les menus (banc des menus, tests/menu_bench.py)
 			var ev := str(msg.get("event", ""))
 			if ev in MenuModel.EVENTS:
@@ -522,7 +558,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
-		"wind_verdict": hud.wind_verdict_label,
+		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -545,6 +581,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
 		"widgets": widgets,
+		"decor": living_decor.test_info(camera) if living_decor != null else {},
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -634,6 +671,8 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if hud != null and hud.has_method("update_display"):
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
+	if living_decor != null:
+		living_decor.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if living_world != null:
 		# Vent du core (lot P16) : modèle du décor et indicateur du HUD, par rapport au cap de la route
 		var wind_now_s := Time.get_ticks_msec() / 1000.0
