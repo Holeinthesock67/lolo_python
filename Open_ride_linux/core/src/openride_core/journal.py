@@ -104,6 +104,11 @@ class JournalWriter:
             raise ValueError(f"état d'appareil inconnu : {state}")
         self._write({"kind": "device", "ts": ts, "device": device, "state": state})
 
+    def powerup(self, kind: str, t_start: float, duration_s: float, ts: float) -> None:
+        """Bonus activé (série T, lot T5) : type, début en temps chronométré, durée."""
+        self._write({"kind": "powerup", "ts": ts, "powerup": kind, "t": round(t_start, 2),
+                     "duration_s": round(duration_s, 2)})
+
     def close(self) -> None:
         if not self._fh.closed:
             self._fh.flush()
