@@ -19,6 +19,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 | `test_sky_clouds_render.gd` | P6 | Ciel nuageux (`sky_clouds.gdshader`) : couverture 0, ciel identique au ciel procédural actuel à 3/255 près ; couverture 0,6, au moins 30 % de pixels clairs au-dessus de l'horizon ; avec vent, motif décalé dans le sens du vent (corrélation) ; deux couches |
 | `test_tree_sway_render.gd` | P5 | Arbre seul au vent (`tree_sway.gdshader`) : vent nul, deux images identiques ; vent fort, pied immobile à 2/255 près, cime qui bouge |
 | `test_fauna_render.gd` | P11 | Shader des animaux (`fauna.gdshader`) compilé : une vache vue de côté à la couleur de son espèce, un oiseau vu de dessus, rien sans animal |
+| `test_water_shimmer_render.gd` | P12 | Shader de l'eau qui scintille (`water_shimmer.gdshader`) compilé : couleur de base de l'eau d'E4, deux images identiques sans défilement (aucun clignotement) |
 
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
@@ -82,7 +83,7 @@ OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_
 | `test_vegetation_placer.gd` | K3 | Placement des arbres (`vegetation_placer.gd`) : déterminisme et empreinte figée, densité par `kind`, bruit sans zone, exclusions (route, limite des arbres, pente, trous), temps d'une tuile |
 | `test_hud_view_model.gd` | K2 | Modèle de vue du HUD (`hud_view_model.gd`) : textes et valeurs limites, profil d'altitude (ouvert et boucle), prochaine montée, temps de `profile` |
 | `test_building_mesh.gd` | L1 | Maillage 3D des bâtiments extrudés (`building_mesh.gd`) : murs à arêtes vives, toit plat avec cour intérieure, sens des anneaux, couleurs déterministes par `id`, cas invalides et temps de 500 bâtiments |
-| `test_water_mesh.gd` | L2 | Maillage de l'eau (`water_mesh.gd`) : cours d'eau en ruban (droits et en coude), plans d'eau avec îles, largeur par défaut, cas invalides et déterminisme |
+| `test_water_mesh.gd` | L2 | Maillage de l'eau (`water_mesh.gd`) : cours d'eau en ruban (droits et en coude), plans d'eau avec îles, largeur par défaut, cas invalides et déterminisme ; lot P12 : matériau sans `shimmer` identique à celui d'E4, ondes du matériau `shimmer` poussées dans le sens du vent |
 | `test_theme_render_params.gd` | L3 | Paramètres de rendu tirés du thème (`theme_render_params.gd`) : uniforms terrain, fonction de référence du mélange herbe/roche/neige, poids triplanaires, route et direction du soleil ; nuages du thème 1.2 (`cloud_params`, lot P6 : valeurs par défaut et bornes) |
 | `test_terrain_material.gd` | E2 | Instanciation et configuration du shader triplanaire (`terrain_material.gd` et `terrain.gdshader`) : uniforms du thème et constantes de L3, textures (avec mipmaps), ligne médiane de la route sur une texture de thème, tuiles sans couleur de sommet (le rendu réel est vérifié dans `tests/render/`) |
 | `test_render_quality.gd` | E1 | Brouillard de limite (`render_quality.gd`, `main.tscn`) : mode profondeur à pleine opacité (`fog_density` = 1), début et fin avec et sans terrain |
@@ -108,6 +109,8 @@ OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_
 | `test_wind_model.gd` | P4 | Modèle du vent (`wind_model.gd`) : repère, lissage (90 % en 1,2 s sans dépassement), phase continue, expiration du vent du core et vent du thème, vent apparent, coût de `evaluate` |
 | `test_fauna_placer.gd` | P11 | Placement des animaux (`fauna_placer.gd`) : déterminisme, troupeaux de 3 à 12 bêtes autour des points `livestock`, aucune bête à moins de 4 m de l'axe, dans l'eau ou un bâtiment, ni sur une pente au-dessus de 25 %, oiseaux jamais sous 15 m du sol, pas de bétail sans point `livestock`, pas de chevreuil avec `fauna.deer = 0`, au plus un chevreuil tous les 3 km |
 | `test_fauna_behaviour.gd` | P11 | Comportement et affichage des animaux (`fauna_behaviour.gd`, `fauna_renderer.gd`) : chevreuil en fuite à 59,5 m, loin de la route, disparu en moins de 6 s ; écart des oiseaux ; budget de `living(preset)` avec 200 candidats (les plus proches gardés), aucun nœud créé ; mise à jour de 200 animaux sous 0,3 ms par image |
+| `test_wind_turbines.gd` | P12 | Éoliennes (`wind_turbines.gd`) : rotor arrêté sous 10 km/h puis de 5 à 17 tr/min, nacelle face au vent en 38 s après un changement de 90°, au plus 3 °/s, 20 éoliennes au plus (les plus proches), aucun nœud créé ; 20 éoliennes et 30 drapeaux mis à jour sous 0,2 ms par image |
+| `test_flags.gd` | P12 | Drapeaux (`flags.gd`) : tissu orienté vers où souffle le vent à 15° près, un drapeau par village sans mât OSM à 150 m, au même endroit à chaque chargement, 30 drapeaux au plus |
 | `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
 
 ## Étapes du script
