@@ -124,7 +124,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-RND-5 | Thèmes et packs de thèmes | §10 | H7, I5, N10 | Livré |
 | 1.0-UI-1 | Menus au Click : parcours, entraînements, appareils, bilan | §4.5 | N1 à N6, N13 | Livré |
 | 1.0-UI-2 | Menu principal et sous-menu ERG ; l'entrée qui choisit le parcours s'appelle « Parcours » (« Monde ouvert » est réservé à la série W) et l'accueil n'affiche que les modes annoncés par le core (`hello_ack.config.modes`, révision 1.3) | — | N15, N16 | Livré (N15, « Parcours », décision D10 ; N16, PR #249 et #288) |
-| 1.0-UI-3 | Réglages depuis le menu (FTP, masse, difficulté, braquet, qualité, thème) | §11 | O3, O4 | Livré |
+| 1.0-UI-3 | Réglages depuis le menu (FTP, masse, difficulté, braquet, qualité, thème, mode d'affichage) | §11 | O3, O4 | Livré ; mode d'affichage livré le 27 octobre, mesures sur le PC à faire (protocole J10) |
 | 1.0-UI-4 | Courbes de la séance façon GoldenCheetah | — | O13, O14 | O13 livré ; O14 spécifié |
 | 1.0-UI-5 | Bots à l'écran (facultatif pour la 1.0) | — | O7 | Spécifié |
 | 1.0-REC-1 | Journal JSONL continu, FIT minimal, reprise après plantage | §9 | N8 | Livré |
