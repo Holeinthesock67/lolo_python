@@ -49,6 +49,8 @@ Premier défaut trouvé : le bandeau d'alerte (placé à 360 px du bord) recouvr
 
 Vrai core sur Bluetooth simulé et vraie scène, captures et rapport HTML, sur le parcours `demo` ou le « village simulé » de `make_sim_world.py` (178 bâtiments, montée et descente) : voir [docs/OUTILS_DE_TEST.md](../../docs/OUTILS_DE_TEST.md) §3. Hors de `run_engine_tests.sh` (plusieurs minutes par scénario).
 
+**Sonde de performance du moteur (lot X13).** `sim_bench.py --probe` (ou, avec le vrai jeu, `OPENRIDE_PERF_PROBE=~/OpenRide/sonde/moteur.csv openride` puis `engine/tests/perf_probe.py watch` dans un second terminal) mesure où part le temps, une ligne par seconde. L'engine, lancé avec `--perf-probe=FICHIER.csv` (`engine/scripts/perf_probe.gd`), écrit le temps d'image p50, p99 et max, les temps CPU et GPU de la vue relevés par le RenderingServer, les appels de dessin, objets et primitives dessinés, la mémoire vidéo et statique, les nœuds, les tuiles proches et lointaines, les tronçons OSM et les arbres. `perf_probe.py` y ajoute nvidia-smi (charge, mémoire vidéo, température et fréquence du GPU) et le CPU et la mémoire de chaque processus (core, Godot, lus dans `/proc`), recale les deux séries sur l'heure et écrit `sonde.csv`, `sonde.txt` (médiane, p99 et max de chaque mesure, dérive entre la première et la dernière minute) et `rapport.html` (courbes). `perf_probe.py report DOSSIER` refait le rapport. La mesure de référence se fait sur le PC cible, en fenêtre réelle (`--native`) : sous Xvfb, le rendu logiciel est environ dix fois plus lent.
+
 ## Tests unitaires (`engine/tests/unit/`, lot K1)
 
 Pour ajouter un test, il suffit de déposer un fichier dans `engine/tests/unit/` : le script le découvre, sans modification. Contrat d'un test unitaire :
