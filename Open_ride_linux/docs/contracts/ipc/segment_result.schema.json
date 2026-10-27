@@ -1,0 +1,81 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideSegmentResultMessage",
+  "description": "Révision 1.4 (série T) : fin d'un passage sur un segment ; répété 3 fois à une seconde d'intervalle, l'engine ignore les doublons de segment_id ; 1 400 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "segment_id",
+    "name",
+    "kind",
+    "time_s",
+    "with_powerup",
+    "pr",
+    "pr_time_s",
+    "rank",
+    "rank_total",
+    "points",
+    "equipment_gain_s"
+  ],
+  "properties": {
+    "type": {
+      "const": "segment_result"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "segment_id": {
+      "type": "string",
+      "maxLength": 24
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 48
+    },
+    "kind": {
+      "type": "string",
+      "enum": [
+        "sprint",
+        "climb"
+      ]
+    },
+    "time_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "with_powerup": {
+      "type": "boolean",
+      "description": "Table des records « avec bonus » (T-Q1)."
+    },
+    "pr": {
+      "type": "boolean"
+    },
+    "pr_time_s": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "rank": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "rank_total": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "points": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "equipment_gain_s": {
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "Temps gagné (négatif) ou perdu par l'équipement sur le passage (série V)."
+    }
+  }
+}

@@ -6,10 +6,16 @@ import importlib
 import math
 import os
 import socket
+import sys
 from pathlib import Path
 
-import numpy as np
-import pytest
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "scripts"))
+from isolation_tests import brancher_pytest  # noqa: E402  (HOME temporaire avant les imports ci-dessous)
+
+globals().update(brancher_pytest())
+
+import numpy as np  # noqa: E402
+import pytest  # noqa: E402
 
 from openride_compiler import cli
 from openride_compiler.elevation import SyntheticProvider

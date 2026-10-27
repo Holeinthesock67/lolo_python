@@ -32,9 +32,9 @@ class SimScenarioError(Exception):
 
 TRAINER_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
                 "ibd_hz", "rider_power_w", "cadence_rpm", "erg_tau_s", "cp_latency_s",
-                "power_range", "refuse_control"}
+                "power_range", "refuse_control", "relayed_hr"}
 CLICK_BOX_KEYS = {"address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
-                  "status_hz", "battery_pct", "sleep_on_drop"}
+                  "status_hz", "battery_pct", "sleep_on_drop", "mute_after_s", "unlock_on_ride_on"}
 CLICK_KEYS = CLICK_BOX_KEYS - {"address"} | {"plus", "minus", "relay_delay_s"}
 HR_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
            "rest_bpm", "max_bpm", "ftp_w", "tau_s", "bpm", "contact", "battery_pct", "rssi"}
@@ -123,6 +123,27 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             {"t": 10.0, "device": "trainer", "action": "refuse_control"},
             {"t": 10.1, "device": "trainer", "action": "control_lost"},
         ]),
+    "click_gauche_muet": _with(_READY, description=(
+        "Boîtier gauche du Click muet 5 s après la connexion : n'envoie plus que des messages "
+        "sans bouton ; le boîtier droit continue à fonctionner normalement."),
+        click={
+            "minus": {"mute_after_s": 5.0},
+        },
+        events=[
+            {"t": 1.0, "action": "press", "button": "-"},
+            {"t": 3.0, "action": "press", "button": "-"},
+            {"t": 10.0, "action": "press", "button": "+"},
+            {"t": 15.0, "action": "press", "button": "-"},
+            {"t": 20.0, "action": "press", "button": "+"},
+        ]),
+    "fc_relayee_figee": _with(_READY, description=(
+        "Ceinture appairée au trainer : FC relayée qui varie, puis reste figée 40 s avant de reprendre."),
+        trainer={"appear_at": 0.3, "connect_delay_s": 0.3, "relayed_hr": True},
+        hr={"asleep": True},
+        events=[
+            {"t": 10.0, "device": "trainer", "action": "bpm", "bpm": 105},
+            {"t": 50.0, "device": "trainer", "action": "bpm", "bpm": None},
+        ]),
 }
 DEFAULT_SCENARIO = "demo"
 
@@ -159,6 +180,13 @@ def validate(spec: Any) -> dict[str, Any]:
     for role in ("plus", "minus"):
         if click.get(role) is not None:
             _check_keys(f"click.{role}", click[role], CLICK_BOX_KEYS)
+            box = click[role]
+            if "mute_after_s" in box and box["mute_after_s"] is not None:
+                if _num(f"click.{role}.mute_after_s", box["mute_after_s"]) < 0:
+                    raise SimScenarioError(f"click.{role}.mute_after_s : doit être positif")
+            if "unlock_on_ride_on" in box and box["unlock_on_ride_on"] is not None:
+                if not isinstance(box["unlock_on_ride_on"], bool):
+                    raise SimScenarioError(f"click.{role}.unlock_on_ride_on : booléen attendu")
     events = spec.get("events") or []
     if not isinstance(events, list):
         raise SimScenarioError("events : liste attendue")

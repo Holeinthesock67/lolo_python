@@ -16,7 +16,10 @@ Clés de la sortie `--json` (stables) :
     directory, ftp_w, weeks_limit,
     sessions (liste de {source, filename, format ("fit" | "jsonl"),
         status ("ok" | "recover" | "error"), date, start_ts, route, duration_s, distance_m,
-        elevation_gain_m, avg_power_w, np_w, if, tss, note, error}),
+        elevation_gain_m, avg_power_w, np_w, if, tss, note, error, workout, plan}),
+    `workout` (identifiant de l'entraînement ERG, sinon null) et `plan` ({id, week, day} d'un
+    plan d'entraînement, lot O11, sinon null) viennent de l'en-tête du journal `.jsonl` ; pour un
+    `.fit`, de celui du journal de la même séance s'il existe encore.
     weeks (liste de {week ("AAAA-Wss"), start_date, end_date, count, duration_s,
         distance_m, elevation_gain_m, tss}).
 Les arrondis numériques sont identiques à ceux de `openride-core summary` (puissances, durées,
@@ -77,6 +80,18 @@ def _save_cache(cache_path: Path, entries: dict[str, dict[str, Any]]) -> None:
         pass
 
 
+def _header_of(path: Path) -> dict[str, Any]:
+    """En-tête d'un journal `.jsonl` ({} si absent ou illisible)."""
+    try:
+        for line in read_journal(path):
+            if isinstance(line, dict) and line.get("kind") == "header":
+                return line
+            break
+    except Exception:
+        pass
+    return {}
+
+
 def _summarize_file(
     path: Path,
     ftp: float,
@@ -98,6 +113,7 @@ def _summarize_file(
         and cached.get("mtime_ns") == st.st_mtime_ns
         and cached.get("ftp_w") == ftp_key
         and isinstance(cached.get("summary"), dict)
+        and "workout" in cached["summary"]
     ):
         return cached["summary"], None, False
 
@@ -115,7 +131,14 @@ def _summarize_file(
             "np_w": round(float(s["np_w"]), 1),
             "if": round(float(s["if"]), 2),
             "tss": round(float(s["tss"]), 1),
+            "workout": None,
+            "plan": None,
         }
+        if fmt == "jsonl":
+            head = _header_of(path)
+            wid, plan = head.get("workout_id"), head.get("plan")
+            summary["workout"] = wid if isinstance(wid, str) and wid else None
+            summary["plan"] = plan if isinstance(plan, dict) else None
     except (SummaryError, Exception) as exc:
         return None, str(exc), False
 
@@ -188,6 +211,8 @@ def compute_history(
                 "tss": None,
                 "note": None,
                 "error": err,
+                "workout": None,
+                "plan": None,
             })
 
     jsonl_valid: list[tuple[Path, dict[str, Any]]] = []
@@ -214,6 +239,8 @@ def compute_history(
                 "tss": None,
                 "note": None,
                 "error": err,
+                "workout": None,
+                "plan": None,
             })
 
     if cache_dirty:
@@ -224,6 +251,7 @@ def compute_history(
 
     for p, s in fit_valid:
         dt = datetime.fromtimestamp(s["start_ts"])
+        twin = next((js for _, js in jsonl_valid if abs(js["start_ts"] - s["start_ts"]) <= MATCH_TOLERANCE_S), {})
         valid_sessions.append({
             "source": str(p),
             "filename": p.name,
@@ -241,6 +269,8 @@ def compute_history(
             "tss": s["tss"],
             "note": None,
             "error": None,
+            "workout": twin.get("workout"),
+            "plan": twin.get("plan"),
         })
 
     for p, s in jsonl_valid:
@@ -264,6 +294,8 @@ def compute_history(
             "tss": s["tss"],
             "note": RECOVER_NOTE,
             "error": None,
+            "workout": s.get("workout"),
+            "plan": s.get("plan"),
         })
 
     valid_sessions.sort(key=lambda item: item["start_ts"], reverse=True)
@@ -309,6 +341,9 @@ def format_text(result: dict[str, Any]) -> str:
             lines.append(f"{s['filename']} : erreur : {s['error']}")
             continue
         suffix = f"  [{s['note']}]" if s["note"] else ""
+        plan = s.get("plan")
+        if isinstance(plan, dict):
+            suffix += f"  [plan {plan.get('id')}, semaine {plan.get('week')}, {plan.get('day')}]"
         lines.append(
             f"{s['date']}  {s['route']:<16}  {_hms(s['duration_s']):>8}  "
             f"{s['distance_m'] / 1000:6.2f} km  +{s['elevation_gain_m']:4.0f} m  "

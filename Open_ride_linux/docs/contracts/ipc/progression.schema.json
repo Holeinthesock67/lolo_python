@@ -1,0 +1,173 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideProgressionMessage",
+  "description": "Révision 1.4 (série V) : progression à jour après equip, buy ou set_avatar réussi ; mêmes champs que hello_ack.config.progression ; 1 400 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "level",
+    "xp",
+    "xp_level_start",
+    "xp_next_level",
+    "coins",
+    "equipped",
+    "avatar",
+    "lives"
+  ],
+  "properties": {
+    "type": {
+      "const": "progression"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "level": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "xp": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "xp_level_start": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "xp_next_level": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "coins": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "equipped": {
+      "type": "object",
+      "required": [
+        "frame",
+        "wheels",
+        "helmet",
+        "kit",
+        "socks",
+        "glasses"
+      ],
+      "properties": {
+        "frame": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "wheels": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "helmet": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "kit": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "socks": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "glasses": {
+          "type": "string",
+          "maxLength": 24
+        }
+      },
+      "additionalProperties": false
+    },
+    "avatar": {
+      "$ref": "#/$defs/avatar"
+    },
+    "lives": {
+      "type": "integer",
+      "minimum": 0
+    }
+  },
+  "$defs": {
+    "avatar": {
+      "type": "object",
+      "required": [
+        "height",
+        "build",
+        "skin",
+        "hair",
+        "hair_color",
+        "kit_primary",
+        "kit_secondary",
+        "number"
+      ],
+      "properties": {
+        "height": {
+          "type": "string",
+          "enum": [
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        },
+        "build": {
+          "type": "string",
+          "enum": [
+            "slim",
+            "medium",
+            "strong"
+          ]
+        },
+        "skin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "hair": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "hair_color": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "kit_primary": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "kit_secondary": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999
+        },
+        "standing_grade_pct": {
+          "type": "number",
+          "description": "Lu dans [avatar] de config.toml (V6) ; transmis par hello_ack, non modifiable par set_avatar."
+        },
+        "standing_power_pct": {
+          "type": "number",
+          "description": "Lu dans [avatar] de config.toml (V6) ; transmis par hello_ack, non modifiable par set_avatar."
+        }
+      }
+    }
+  }
+}

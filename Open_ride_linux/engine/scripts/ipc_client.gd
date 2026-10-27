@@ -19,13 +19,22 @@ signal workouts_received(items: Array, msg: Dictionary)
 signal list_failed(list_name: String, error_message: String)
 ## Résultat d'une recherche d'appareils ou de l'identification du « + » (lot N13, contrat v1.2).
 signal scan_results_received(msg: Dictionary)
+## Réglages du menu (lots O3 et O4, contrat v1.3), réponse à list_settings ou set_setting.
+signal settings_received(msg: Dictionary)
+## Sous-menu ERG (lot N16, contrat v1.3, décision D4) : fichiers importables (list_imports, en parties
+## comme routes) et entraînement écrit par le core (create_workout, import_workout).
+signal imports_received(items: Array, msg: Dictionary)
+signal workout_saved_received(msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
 const CONTRACT_VERSION := 1
-const ENGINE_VERSION := "0.1.0"
+## Révision du contrat annoncée dans hello (champ facultatif rev, révision 1.3).
+const CONTRACT_REV := "1.3"
+## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
+var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"
 const HELLO_PERIOD_S := 1.0
 const CMD_RESEND_US := 200_000        # contrat §4 : renvoi toutes les 200 ms
@@ -39,6 +48,8 @@ var test_mode := false
 ## Configuration reçue dans hello_ack (ftp_w, gears_total, theme) ; vide tant que le core n'a pas répondu.
 var core_config: Dictionary = {}
 var core_version: String = ""
+## Révision du contrat annoncée par le core (vide : core antérieur à la révision 1.3).
+var core_rev: String = ""
 var last_state_seq := -1
 ## Diagnostic (contrat §6) : trames sautées (trous de seq) et trames arrivées en retard, ignorées.
 var seq_gap_count := 0
@@ -54,6 +65,7 @@ const LIST_RETRY_S := 1.0
 const LIST_MAX_RETRIES := 3
 var _pending_list_routes: Dictionary = {}
 var _pending_list_workouts: Dictionary = {}
+var _pending_list_imports: Dictionary = {}
 var _hello_acked := false
 var _hello_timer := 0.0
 var _last_state_us := 0
@@ -151,6 +163,8 @@ func _process(delta: float) -> void:
 		"Aucune réponse pour la liste des parcours après 3 tentatives", delta)
 	_tick_list(_pending_list_workouts, "list_workouts", "workouts",
 		"Aucune réponse pour la liste des entraînements après 3 tentatives", delta)
+	_tick_list(_pending_list_imports, "list_imports", "imports",
+		"Aucune réponse pour les fichiers à importer après 3 tentatives", delta)
 
 	_resend_pending(now)
 
@@ -174,6 +188,12 @@ func _poll_incoming() -> void:
 				var cfg = json_obj.get("config", {})
 				core_config = cfg if typeof(cfg) == TYPE_DICTIONARY else {}
 				core_version = str(json_obj.get("core_version", ""))
+				var rev = json_obj.get("rev", "")
+				core_rev = rev if typeof(rev) == TYPE_STRING else ""
+				if core_rev != CONTRACT_REV:
+					# Même version majeure : compatible, les champs inconnus sont ignorés (contrat §8).
+					print("Révisions du contrat différentes : core %s, engine %s"
+						% [core_rev if core_rev != "" else "avant 1.3", CONTRACT_REV])
 				print("hello_ack reçu : core ", core_version, ", configuration ", core_config)
 				test_log("hello_ack config=%s" % JSON.stringify(core_config))
 				hello_ack_received.emit(json_obj)
@@ -193,8 +213,14 @@ func _poll_incoming() -> void:
 				_on_list_part(_pending_list_routes, "routes", json_obj)
 			"workouts":
 				_on_list_part(_pending_list_workouts, "workouts", json_obj)
+			"imports":
+				_on_list_part(_pending_list_imports, "imports", json_obj)
+			"workout_saved":
+				workout_saved_received.emit(json_obj)
 			"scan_results":
 				scan_results_received.emit(json_obj)
+			"settings":
+				settings_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -271,6 +297,34 @@ func pair_devices(args: Dictionary) -> int:
 	return send_command("pair_devices", args)
 
 
+## Fichiers importables (lot N16, contrat v1.3). Réponse : signal imports_received.
+func list_imports() -> int:
+	var cmd_id := send_command("list_imports", {})
+	_reset_list_request(_pending_list_imports, cmd_id)
+	return cmd_id
+
+
+## Entraînement par intervalles écrit par le core (lot N16) ; args : les sept paramètres entiers.
+## Réponse : workout_saved, ou error (bad_args, busy, workout_write_failed).
+func create_workout(args: Dictionary) -> int:
+	return send_command("create_workout", args)
+
+
+## Copie par le core d'un fichier de la dernière réponse `imports` (lot N16). Réponse : workout_saved,
+## ou error (workout_invalid, busy, workout_write_failed).
+func import_workout(path: String) -> int:
+	return send_command("import_workout", {"path": path})
+
+
+## Réglages du menu (lots O3 et O4, contrat v1.3).
+func list_settings() -> int:
+	return send_command("list_settings", {})
+
+
+func set_setting(key: String, value) -> int:
+	return send_command("set_setting", {"key": key, "value": value})
+
+
 ## Demande en cours : {cmd_id (dernier envoyé), cmd_ids, retries, timer, answers}. `answers` range les parties
 ## reçues par request_cmd_id : {request_cmd_id: {parts, got: {part: items}, truncated}}. Le dictionnaire est
 ## modifié sur place (pas réaffecté) pour que les références gardées par _process restent valables.
@@ -328,17 +382,21 @@ func _on_list_part(req: Dictionary, list_name: String, msg: Dictionary) -> void:
 	var whole := {"type": list_name, "request_cmd_id": rid, "parts": parts, "items": items,
 		"truncated": answer["truncated"]}
 	req.clear()
-	if list_name == "routes":
-		routes_received.emit(items, whole)
-	else:
-		workouts_received.emit(items, whole)
+	match list_name:
+		"routes":
+			routes_received.emit(items, whole)
+		"imports":
+			imports_received.emit(items, whole)
+		_:
+			workouts_received.emit(items, whole)
 
 
 func send_hello() -> void:
 	_send_json({
 		"type": "hello",
 		"v": CONTRACT_VERSION,
-		"engine_version": ENGINE_VERSION
+		"rev": CONTRACT_REV,
+		"engine_version": engine_version
 	})
 
 

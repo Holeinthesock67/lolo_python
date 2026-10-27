@@ -48,3 +48,16 @@ Aucune.
 
 - Feuilles d'automne et effets de saison (P18, version 2.0), flaques, éclaboussures, gouttes sur l'écran, orage, accumulation de neige.
 - Météo réelle (aucun réseau).
+
+## 9. Livraison
+
+Livré sur la branche `lot-p8-meteo`, sans toucher à `main.gd`, à `render_quality.gd`, au core ni au contrat.
+
+- **`weather_model.gd`** : `from_theme(theme)` lit `weather` (`kind`, `intensity`, `morning_mist`) et `terrain.snow_line_m` (2 200 m par défaut) ; thème sans `weather` ou type inconnu : temps clair. `evaluate(weather, rider_alt_m, valley_alt_m, wind_eval, solar_hour = NAN)` rend `{fog_boost, fog_height_m, rain, snow, wetness, wind_dir, wind_strength}`.
+  - Brume de vallée (`morning_mist`) : 0,6 au plus, pleine 200 m sous `valley_alt_m`, nulle 200 m au-dessus, linéaire entre les deux ; constante sans `solar_hour` ; avec l'heure solaire (P7, version 2.0), pleine jusqu'à 6 h, nulle à partir de 10 h. `kind = "mist"` ajoute une brume générale (la moitié de l'intensité même au-dessus de la vallée). `fog_height_m` = vallée + 80 m.
+  - Pluie, ou neige au-dessus de `snow_line_m`, jamais les deux ; `wetness` = 1,5 × pluie, borné à 1.
+- **`weather_particles.gd`** (`Node3D`) : `configure(budget)` crée un `GPUParticles3D` pour la pluie et un pour la neige, avec `amount` = budget (`living(preset).weather_particles`, 600 en `low`) ; un seul émet à la fois, et l'intensité règle `amount_ratio` sans relancer l'effet. Budget nul : aucun enfant. `update(camera_position, weather_eval)` à chaque image : le nœud suit la caméra (boîte de 40 m), les particules vivent dans le repère du monde (`local_coords` faux) et ne restent donc pas collées à l'écran ; vitesse = chute (7 m/s pour la pluie, 1,2 m/s pour la neige) + 60 % ou 90 % du vent. Gouttes et flocons sont des `QuadMesh` à matériau non éclairé, sans image.
+- **Pour P17** : appeler `update` à chaque image, appliquer `fog_boost` et `fog_height_m` au brouillard (`render_quality.gd`) et `wetness` à la route ; `valley_alt_m` = altitude moyenne du terrain proche.
+- **Tests** : `test_weather_model.gd` (14 vérifications), `test_weather_particles.gd` (13 vérifications, coût de `update` 0,01 ms par image).
+- **Reste sur le PC cible (le propriétaire)** : séance en `low` avec pluie à 0,5 puis brume de vallée, perte de moins de 2 images/s par `[perf-rendu]`, à faire avec P17.
+
