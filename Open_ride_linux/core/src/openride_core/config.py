@@ -23,6 +23,7 @@ OPENRIDE_HOME = Path.home() / "OpenRide"
 DEFAULT_CONFIG_PATH = OPENRIDE_HOME / "config.toml"
 GPX_DIR = OPENRIDE_HOME / "GPX"             # traces GPX à compiler (SRS §7, §11)
 WORKOUTS_DIR = OPENRIDE_HOME / "Workouts"   # entraînements .zwo (SRS §6, §11)
+PLANS_DIR = OPENRIDE_HOME / "Plans"         # plans d'entraînement .toml (lot O11)
 ROUTES_DIR = Path.home() / ".local" / "share" / "openride" / "routes"
 CACHE_DIR = Path.home() / ".cache" / "openride"
 

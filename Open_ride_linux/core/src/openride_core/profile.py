@@ -193,6 +193,17 @@ def load_profile(path: Path = PROFILE_PATH, known_items: set[str] | None = None)
     return Profile()
 
 
+def peek_profile(path: Path = PROFILE_PATH, known_items: set[str] | None = None) -> Profile:
+    """Lecture seule, sans réparation (outils comme `openride-core xp`) : défauts si illisible."""
+    for candidate in (path, path.with_name(path.name + ".bak")):
+        if candidate.exists():
+            try:
+                return _read(candidate, known_items)
+            except (OSError, ValueError, UnicodeDecodeError):
+                continue
+    return Profile()
+
+
 def save_profile(profile: Profile, path: Path = PROFILE_PATH) -> None:
     """Écrit le profil sans risque de fichier à moitié écrit ; lève `ProfileTooNew` ou `OSError`."""
     if profile.read_only:
