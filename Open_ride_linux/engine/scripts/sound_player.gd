@@ -15,6 +15,10 @@ extends Node
 ## la hauteur suit la vitesse dans l'air ; la boucle de roue libre contient `FREEWHEEL_LOOP_CLICKS`
 ## coups par seconde et `pitch_scale` la cale sur `freewheel.clicks_per_s` du modèle ; un lecteur
 ## dédié joue le « clac » de reprise (60 ms, `clacs_played` compte les reprises jouées).
+##
+## Lot P13 : deux sons de plus pour les véhicules, `vehicle_pass` (pneus et souffle) et `tractor_engine`
+## (moteur grave), joués par les lecteurs 3D de traffic_renderer.gd (`stream(kind)`) ; remplaçables par
+## ~/OpenRide/Sounds/<kind>.ogg.
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
@@ -38,6 +42,7 @@ var clacs_played := 0                   # « clac » de reprise joués (tests)
 var _poi_players: Array[AudioStreamPlayer3D] = []
 
 var _streams: Dictionary = {}
+var _lp := 0.0                          # état du filtre passe-bas de la synthèse
 
 var ambience := AmbienceModel.new()
 var _bed_players: Dictionary = {}       # fond -> AudioStreamPlayer
@@ -87,6 +92,11 @@ func _init_players() -> void:
 		bp.volume_db = SoundModel.SILENCE_DB
 		add_child(bp)
 		_bed_players[bed] = bp
+
+
+## Flux d'une sorte de son (synthétisé ou .ogg de remplacement), null si inconnue.
+func stream(kind: String) -> Resource:
+	return _streams.get(kind, null)
 
 
 func set_pois(points: Array) -> void:
@@ -185,7 +195,7 @@ func update_bells(hour: float, now_s: float) -> void:
 # --- Génération et chargement des flux audio ---
 
 func _generate_all_streams() -> void:
-	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village"]
+	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine"]
 	for k in kinds:
 		var custom_stream = _try_load_custom(k)
 		if custom_stream != null:
@@ -227,6 +237,7 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		seed_val = (seed_val * 1103515245 + 12345) & 0x7FFFFFFF
 		return seed_val
 
+	_lp = 0.0
 	for i in range(SAMPLE_COUNT):
 		var t := float(i) / float(MIX_RATE)
 		var sample := 0.0
@@ -250,6 +261,16 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 			"village":
 				# Rumeur de village
 				sample = sin(TAU * 85.0 * t) * 0.3 + sin(TAU * 140.0 * t) * 0.2
+			"vehicle_pass":
+				# Lot P13 : roulement de pneus et souffle d'une voiture (bruit filtré, ronflement à 60 Hz) ;
+				# l'effet Doppler vient de l'AudioStreamPlayer3D qui suit le véhicule.
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.08 * (r - _lp)
+				sample = _lp * 2.2 + sin(TAU * 60.0 * t) * 0.12
+			"tractor_engine":
+				# Lot P13 : moteur grave du tracteur (28 Hz et harmoniques, battement des cylindres à 7 Hz)
+				var beat := 0.75 + 0.25 * sin(TAU * 7.0 * t)
+				sample = (sin(TAU * 28.0 * t) * 0.45 + sin(TAU * 56.0 * t) * 0.25 + sin(TAU * 84.0 * t) * 0.12) * beat
 
 		var s16 := clampi(int(sample * 32767.0), -32768, 32767)
 		if s16 < 0:
