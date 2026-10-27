@@ -53,3 +53,44 @@ Aucune.
 
 - Jour et nuit, saisons (P7, P18, P19 : version 2.0).
 - Multijoueur, peloton de bots, routes voisines.
+
+## 9. Livraison
+
+Livré sur la branche `lot-p17-integration-decor`, qui part de P16 (PR #320) et réunit P3 (#305), P11 (#311), P12 (#312) et P21 (#319, qui contient P13 à P15). Sans modification du contrat. L'affichage des bots (O7) n'existe pas encore : l'abri s'affiche d'après le champ `draft` des trames, sans silhouette.
+
+- **`living_decor.gd`** (nouveau, créé par `main.gd` à côté de `living_world.gd`) rassemble le branchement, testable sans la scène :
+  - À chaque parcours, une tâche de fond lit les couches OSM de tout le parcours (bâtiments, eau, points d'intérêt) et prépare :
+    - les montées (`climb_detector.gd`), les panneaux et bornes, et les chiffres peints ;
+    - les spectateurs du dernier kilomètre des cols et les passants.
+    Le fil principal pose ensuite les éoliennes, les drapeaux et la circulation.
+  - Une fois par image :
+    - météo du thème : particules autour de la caméra, chaussée mouillée, pluie dans l'ambiance de P9, brume qui rapproche le brouillard (au plus 2 fois par seconde) ;
+    - animaux, éoliennes, drapeaux, reflets de l'eau ;
+    - véhicules, figés en pause ;
+    - spectateurs (clameur selon la puissance rapportée à la FTP et les bots doublés) et passants (aucun son pendant un bip).
+  - Core non joignable : tout le décor se fige avec la caméra (comme P16).
+- **`osm_streamer.gd`** :
+  - La tâche de fond de chaque tronçon place aussi ses animaux (P11), posés sur les tuiles proches du terrain.
+  - `chunk_loaded` et `chunk_freed` font arriver et partir animaux et panneaux avec les tronçons, sans travail lourd sur le fil principal.
+  - Eau qui scintille (P12) selon `living(preset).water_shimmer`.
+- **`world_streamer.gd`, `road_builder.gd`** : matériau des marquages de P14 à la place du matériau de la route quand le décor vivant est actif. Les tronçons qui portent des chiffres peints ont leur propre copie du matériau (8 chiffres au plus par tronçon). `road_markings.gdshader` gagne `wetness` (chaussée assombrie et plus brillante sous la pluie).
+- **`render_quality.gd`** : `weather_fog_range` et `apply_weather_fog`, pour la brume de P8 (`fog_boost`).
+- **`hud_view.gd`** : pastille bleue « Abri 30 % » sous l'indicateur du vent, à sa place quand il n'y a pas de vent, cachée sans abri.
+- **`main.gd`** :
+  - création de `living_decor` et appel une fois par image ;
+  - fin des bips suivie, pour les passants ;
+  - message de test `weather` (météo imposée) ;
+  - état du décor dans les captures de test (nombres affichés, météo, panneau le plus proche devant la caméra et hauteur de ses lettres à l'écran).
+- **`visual_check.py`** : trois nouvelles scènes.
+  - `abri` : pastille, texte, place sous l'indicateur du vent.
+  - `pluie` : particules et chaussée mouillée.
+  - `col` : panneau du sommet lisible, spectateurs.
+  - Les images de référence sont à refaire (`--update-golden`), car la route porte maintenant des marquages et des panneaux.
+- **Tests** :
+  - `test_living_decor.gd` : 28 vérifications sur un parcours OSM de synthèse avec col, village, troupeau, forêt, éolienne, drapeau et lac. Coût de 0,23 ms par image ici en `high`.
+  - `test_render_quality.gd` : brume.
+- **Reste sur le PC cible (le propriétaire)** : [`docs/RECETTE_P17.md`](../RECETTE_P17.md).
+  - Performance sur 30 min en `low` avec tout le décor, et budgets `low` à réduire si besoin.
+  - Abri derrière un bot.
+  - Décor sur le vélo.
+  - Une heure sans plantage, mémoire stable.

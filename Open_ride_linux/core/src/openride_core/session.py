@@ -219,6 +219,8 @@ class CoreSession:
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
                           "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct)})
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
+        log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
+                 cfg.trainer.grade_rate_up_pct_per_s, cfg.trainer.grade_rate_down_pct_per_s)
         self.stats = LoopStats()
         self.stop_event = asyncio.Event()
 
@@ -815,7 +817,10 @@ class CoreSession:
                 self._wind_offset = grade_offset_pct(self.physics.v, head, self._draft, alt,
                                                      self.physics.p, wcfg.max_grade_offset_pct)
                 target += self._wind_offset
-            max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
+            rate = (self.cfg.trainer.grade_rate_up_pct_per_s
+                    if target >= self._grade_sent
+                    else self.cfg.trainer.grade_rate_down_pct_per_s)
+            max_delta = rate * dt
             shifted = self._shift_pending
             if shifted:   # braquet : pas de limitation de vitesse (seul le relief est lissé)
                 self._shift_pending = False
@@ -861,7 +866,8 @@ class CoreSession:
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
-                draft=round(self._draft, 3) if self.bots else None))
+                draft=round(self._draft, 3) if self.bots else None,
+                hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None))
 
         if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
             log.info("Arrivée atteinte.")

@@ -32,7 +32,7 @@ class SimScenarioError(Exception):
 
 TRAINER_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
                 "ibd_hz", "rider_power_w", "cadence_rpm", "erg_tau_s", "cp_latency_s",
-                "power_range", "refuse_control"}
+                "power_range", "refuse_control", "relayed_hr"}
 CLICK_BOX_KEYS = {"address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
                   "status_hz", "battery_pct", "sleep_on_drop"}
 CLICK_KEYS = CLICK_BOX_KEYS - {"address"} | {"plus", "minus", "relay_delay_s"}
@@ -122,6 +122,14 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         events=[
             {"t": 10.0, "device": "trainer", "action": "refuse_control"},
             {"t": 10.1, "device": "trainer", "action": "control_lost"},
+        ]),
+    "fc_relayee_figee": _with(_READY, description=(
+        "Ceinture appairée au trainer : FC relayée qui varie, puis reste figée 40 s avant de reprendre."),
+        trainer={"appear_at": 0.3, "connect_delay_s": 0.3, "relayed_hr": True},
+        hr={"asleep": True},
+        events=[
+            {"t": 10.0, "device": "trainer", "action": "bpm", "bpm": 105},
+            {"t": 50.0, "device": "trainer", "action": "bpm", "bpm": None},
         ]),
 }
 DEFAULT_SCENARIO = "demo"

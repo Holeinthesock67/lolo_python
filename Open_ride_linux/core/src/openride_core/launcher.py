@@ -703,6 +703,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--ipc-cmd-port={cfg.ipc.port_commands}",
             f"--quality={cfg.render.quality}",
             f"--theme={cfg.render.theme}",
+            f"--living={'on' if cfg.render.living else 'off'}",
             *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),
         ],
         release_cmd=[*core, "release-trainer", *config_args],
