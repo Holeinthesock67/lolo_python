@@ -14,7 +14,7 @@ DS_M = 10.0
 ROUTE_FIELDS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
 ROUTES_DIR = Path.home() / ".local" / "share" / "openride" / "routes"
 
-FORMAT_VERSION = "1.1"
+FORMAT_VERSION = "1.3"
 SUPPORTED_MAJOR = 1
 ROUTE_VERSION = "1.0"
 COMPILER_NAME = "openride-compiler"
