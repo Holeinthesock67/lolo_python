@@ -95,6 +95,8 @@ def build_overpass_query(bboxes: list[tuple[float, float, float, float]]) -> str
             f'  relation["landuse"="farmyard"]{b};',
             f'  way["landuse"="meadow"]["animal"]{b};',
             f'  relation["landuse"="meadow"]["animal"]{b};',
+            f'  node["power"="generator"]["generator:source"="wind"]{b};',
+            f'  node["man_made"="flagpole"]{b};',
             f'  way["waterway"~"^(river|stream|canal)$"]{b};',
             f'  way["natural"="water"]{b};',
             f'  relation["natural"="water"]{b};',
