@@ -231,6 +231,15 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs, passants (lots P8, P11 à P15, P21 ; intégration P17).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
 
+### Version 2.0 : progression, équipement et avatar (série V rédigée le 26 octobre)
+
+- [x] Moteur d'expérience recalculé depuis le journal et commande `openride-core xp` (lot V2, `progression.py`, `data/progression.toml`) ; champ `source` dans l'en-tête du journal ; module pur, pas encore branché sur la séance (V11).
+- [x] Profil local `~/OpenRide/profile.json` : choix, achats, avatar (lot V4, `profile.py`) ; écriture sûre, reprise du `.bak`, migration ; pas encore branché (V11).
+- [ ] Catalogue d'équipement, effets bornés et temps gagné par l'équipement (lot V3).
+- [ ] Pièces : gains, achats, solde, vies du mode Cyber-Rogue (lot V3b).
+- [ ] Contrat (lot V1), branchement dans la séance (lot V11), liens avec les séries T et R (lot V5).
+- [ ] Avatar, équipement à l'écran, Garage et fin de séance (lots V6 à V9), recette (lot V10).
+
 ### Sprint 4 et suivants
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le HomeTrainer à faire).
 - [x] Couches OpenStreetMap côté compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau) ; reste le rendu dans l'engine (à rédiger).
