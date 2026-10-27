@@ -709,9 +709,12 @@ def _scenes(s: Session) -> None:
     # (lettres prévues pour 30 m). Depuis T8, le décor suit la couche `segments` du parcours : la seule
     # montée de la démo est `climb1` (0 à 1 500 m, détectée par le core), trop courte pour les
     # spectateurs de P15 (moins de 3 km) : aucun spectateur attendu.
+    # Sommet derrière la position courante : passage par READY (en RUNNING, la caméra ne recule jamais).
     s_back = core.current_s()
-    core.set_scene(speed=0.0, s=DEMO_SUMMIT_S - 25.0)
-    time.sleep(3.0)
+    core.set_scene(speed=0.0, s=DEMO_SUMMIT_S - 25.0, session_state="READY")
+    time.sleep(SETTLE_S)
+    core.set_scene(speed=0.0, s=DEMO_SUMMIT_S - 25.0, session_state="RUNNING")
+    time.sleep(1.0)
     shot = s.capture("col")
     if shot:
         img, info = shot
