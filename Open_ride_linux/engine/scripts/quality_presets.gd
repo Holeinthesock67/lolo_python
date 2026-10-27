@@ -92,3 +92,66 @@ static func tree_budget(name: String) -> int:
 static func building_visibility_end_m(name: String) -> float:
 	var key := name.strip_edges()
 	return BUILDING_VISIBILITY_END.get(key, BUILDING_VISIBILITY_END[DEFAULT_PRESET])
+
+
+## Budgets du décor vivant de la série P selon le préréglage (Lot P4), lus par les lots P5 à P15 et P21.
+## `low` vise ≥ 55 images/s et un temps d'image p99 sous 25 ms sur la GTX 1060 du PC cible, toute la
+## série activée. `passersby` est le budget des passants des villages (P21).
+const LIVING := {
+	"low": {
+		"tree_sway": true,
+		"grass_tufts": 0,
+		"clouds": "flat",
+		"weather_particles": 600,
+		"birds": 12,
+		"animals": 20,
+		"vehicles": 3,
+		"spectators": 40,
+		"passersby": 24,
+		"ambience_voices": 4,
+		"water_shimmer": true,
+	},
+	"medium": {
+		"tree_sway": true,
+		"grass_tufts": 4000,
+		"clouds": "flat",
+		"weather_particles": 1500,
+		"birds": 24,
+		"animals": 40,
+		"vehicles": 5,
+		"spectators": 80,
+		"passersby": 40,
+		"ambience_voices": 6,
+		"water_shimmer": true,
+	},
+	"high": {
+		"tree_sway": true,
+		"grass_tufts": 12000,
+		"clouds": "layered",
+		"weather_particles": 4000,
+		"birds": 40,
+		"animals": 80,
+		"vehicles": 8,
+		"spectators": 160,
+		"passersby": 64,
+		"ambience_voices": 8,
+		"water_shimmer": true,
+	},
+}
+
+
+## Budgets du décor vivant du préréglage (`low` si le nom est inconnu) ; `enabled = false`
+## (`[render] living = false`) coupe tout : booléens faux, nombres à zéro, nuages `off`.
+static func living(name: String, enabled: bool = true) -> Dictionary:
+	var key := name.strip_edges()
+	var out: Dictionary = (LIVING[key] if LIVING.has(key) else LIVING[DEFAULT_PRESET]).duplicate(true)
+	if not enabled:
+		for k in out.keys():
+			match typeof(out[k]):
+				TYPE_BOOL:
+					out[k] = false
+				TYPE_INT, TYPE_FLOAT:
+					out[k] = 0
+				TYPE_STRING:
+					out[k] = "off"
+	return out
