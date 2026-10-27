@@ -1,6 +1,11 @@
 """Catalogue des parcours `.world` et des traces GPX (Lot I2, SRS §7 et §11).
 
-Recense en lecture seule les parcours de ``routes_root`` et les traces de ``gpx_dir`` :
+Recense en lecture seule les parcours de ``routes_root`` et les traces de ``gpx_dir``. Une trace
+est un fichier ``.gpx``, ``.fit``, ``.tcx``, ``.fit.gz``, ``.tcx.gz`` ou ``.zip`` (export Garmin,
+lot O5 ; extension sans casse). Son identifiant est son nom normalisé sans extension ; deux
+traces de même identifiant (``col.gpx`` et ``col.fit``) : la première dans l'ordre de
+``TRACK_SUFFIXES`` (puis du nom) gagne, l'autre est écartée et signalée par ``track_conflicts``.
+Statuts :
 - ``ready`` : ``.world`` valide dont le GPX source est absent ou inchangé (même SHA-256) ;
 - ``outdated`` : ``.world`` valide mais le GPX source a été modifié (SHA-256 différent) ;
 - ``to_compile`` : fichier ``.gpx`` sans ``.world`` correspondant ;
@@ -13,6 +18,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import unicodedata
 from dataclasses import dataclass
@@ -21,6 +27,44 @@ from pathlib import Path
 from .config import GPX_DIR, ROUTES_DIR
 from .demo_world import DEMO_LENGTH_M, DEMO_NAME
 from .route import WorldError, load_world
+
+log = logging.getLogger("catalog")
+
+
+# Extensions des traces, dans l'ordre de priorité en cas de conflit (lot O5).
+TRACK_SUFFIXES = (".gpx", ".fit", ".fit.gz", ".tcx", ".tcx.gz", ".zip")
+
+
+def track_stem(name: str) -> tuple[str, int] | None:
+    """Nom sans extension de trace et rang de l'extension dans `TRACK_SUFFIXES` ; None si ce n'est pas une trace."""
+    low = name.lower()
+    for rank, suffix in sorted(enumerate(TRACK_SUFFIXES), key=lambda rs: -len(rs[1])):
+        if low.endswith(suffix) and len(name) > len(suffix):
+            return name[: -len(suffix)], rank
+    return None
+
+
+def scan_tracks(gpx_dir: Path) -> tuple[list[Path], list[tuple[Path, Path]]]:
+    """Traces retenues (une par identifiant, triées par nom) et conflits `(écartée, retenue)`."""
+    candidates: list[tuple[str, int, str, Path]] = []
+    if Path(gpx_dir).is_dir():
+        for p in Path(gpx_dir).iterdir():
+            ts = track_stem(p.name) if p.is_file() else None
+            if ts is not None:
+                candidates.append((_normalize_name(ts[0]), ts[1], p.name, p))
+    winners: dict[str, Path] = {}
+    conflicts: list[tuple[Path, Path]] = []
+    for norm, _rank, _name, p in sorted(candidates):
+        if norm in winners:
+            conflicts.append((p, winners[norm]))
+        else:
+            winners[norm] = p
+    return sorted(winners.values(), key=lambda p: p.name), conflicts
+
+
+def track_conflicts(gpx_dir: Path = GPX_DIR) -> list[tuple[Path, Path]]:
+    """Traces écartées parce qu'une autre a le même identifiant : `(écartée, retenue)`."""
+    return scan_tracks(gpx_dir)[1]
 
 
 @dataclass(frozen=True)
@@ -64,7 +108,7 @@ def _peek_manifest_source(world_dir: Path) -> tuple[str | None, str | None]:
 
 
 def list_routes(routes_root: Path = ROUTES_DIR, gpx_dir: Path = GPX_DIR) -> list[RouteEntry]:
-    """Liste tous les parcours (.world et .gpx) avec leur statut, 'demo' toujours en premier."""
+    """Liste tous les parcours (.world et traces) avec leur statut, 'demo' toujours en premier."""
     routes_root = Path(routes_root)
     gpx_dir = Path(gpx_dir)
 
@@ -73,16 +117,18 @@ def list_routes(routes_root: Path = ROUTES_DIR, gpx_dir: Path = GPX_DIR) -> list
     gpx_by_sha: dict[str, list[Path]] = {}
     gpx_by_norm_id: dict[str, Path] = {}
 
-    if gpx_dir.is_dir():
-        for gpx_file in sorted(p for p in gpx_dir.iterdir() if p.is_file() and p.suffix.lower() == ".gpx"):
-            try:
-                sha = _sha256_of(gpx_file)
-            except OSError:
-                continue
-            norm_id = _normalize_name(gpx_file.stem)
-            gpx_by_name[gpx_file.name] = (gpx_file, sha, norm_id)
-            gpx_by_sha.setdefault(sha, []).append(gpx_file)
-            gpx_by_norm_id.setdefault(norm_id, gpx_file)
+    tracks, conflicts = scan_tracks(gpx_dir)
+    for lost, kept in conflicts:
+        log.warning("traces : %s écartée, même parcours que %s", lost.name, kept.name)
+    for gpx_file in tracks:
+        try:
+            sha = _sha256_of(gpx_file)
+        except OSError:
+            continue
+        norm_id = _normalize_name(track_stem(gpx_file.name)[0])
+        gpx_by_name[gpx_file.name] = (gpx_file, sha, norm_id)
+        gpx_by_sha.setdefault(sha, []).append(gpx_file)
+        gpx_by_norm_id.setdefault(norm_id, gpx_file)
 
     matched_gpx: set[Path] = set()
     world_entries: list[RouteEntry] = []
@@ -186,7 +232,7 @@ def list_routes(routes_root: Path = ROUTES_DIR, gpx_dir: Path = GPX_DIR) -> list
         uncompiled_entries.append(
             RouteEntry(
                 id=norm_id,
-                name=gpx_path.stem,
+                name=track_stem(gpx_path.name)[0],
                 status="to_compile",
                 length_m=None,
                 route_type=None,
