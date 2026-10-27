@@ -32,6 +32,15 @@ const DEFAULT_SUN_ELEVATION_DEG := 40.0
 const DEFAULT_FOG_DENSITY := 0.0008
 const SUN_AZIMUTH_DEG := 150.0
 
+# Nuages (Lot P6, thème 1.2 `sky.clouds`)
+const DEFAULT_CLOUD_COVERAGE := 0.3
+const DEFAULT_CLOUD_SPEED_FACTOR := 1.0
+const MAX_CLOUD_SPEED_FACTOR := 5.0
+const DEFAULT_CLOUD_HEX := "#f4f7fb"   # blanc légèrement bleuté
+const DEFAULT_CLOUD_ALTITUDE_M := 2000.0
+const MIN_CLOUD_ALTITUDE_M := 300.0
+const MAX_CLOUD_ALTITUDE_M := 10000.0
+
 const SNOW_MELT_BAND_M := 50.0
 const STEEP_SNOW_START_DEG := 44.0
 const STEEP_SNOW_MAX_DEG := 50.0
@@ -209,4 +218,29 @@ static func sky_params(theme: Dictionary) -> Dictionary:
 		"sun_elevation_deg": elev_deg,
 		"sun_azimuth_deg": SUN_AZIMUTH_DEG,
 		"fog_density": fog,
+	}
+
+
+## Nuages du thème 1.2 (`sky.clouds`, Lot P6) : clé absente ou invalide -> valeur par défaut,
+## valeurs hors bornes ramenées dans les bornes (couverture 1,7 -> 1).
+static func cloud_params(theme: Dictionary) -> Dictionary:
+	var c_dict: Dictionary = {}
+	if typeof(theme) == TYPE_DICTIONARY and typeof(theme.get("sky", null)) == TYPE_DICTIONARY:
+		var sky: Dictionary = theme["sky"]
+		if typeof(sky.get("clouds", null)) == TYPE_DICTIONARY:
+			c_dict = sky["clouds"]
+	var coverage := DEFAULT_CLOUD_COVERAGE
+	if _is_number(c_dict.get("coverage", null)):
+		coverage = clampf(float(c_dict["coverage"]), 0.0, 1.0)
+	var speed := DEFAULT_CLOUD_SPEED_FACTOR
+	if _is_number(c_dict.get("speed_factor", null)):
+		speed = clampf(float(c_dict["speed_factor"]), 0.0, MAX_CLOUD_SPEED_FACTOR)
+	var altitude := DEFAULT_CLOUD_ALTITUDE_M
+	if _is_number(c_dict.get("altitude_m", null)):
+		altitude = clampf(float(c_dict["altitude_m"]), MIN_CLOUD_ALTITUDE_M, MAX_CLOUD_ALTITUDE_M)
+	return {
+		"coverage": coverage,
+		"speed_factor": speed,
+		"color": _color_or_default(c_dict.get("color", null), DEFAULT_CLOUD_HEX),
+		"altitude_m": altitude,
 	}

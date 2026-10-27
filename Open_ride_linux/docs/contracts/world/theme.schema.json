@@ -130,6 +130,150 @@
         "fog_density": {
           "type": "number",
           "minimum": 0
+        },
+        "clouds": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Thème 1.2 (lot P1, utilisé par P6).",
+          "properties": {
+            "coverage": {
+              "type": "number",
+              "minimum": 0,
+              "maximum": 1
+            },
+            "speed_factor": {
+              "type": "number",
+              "minimum": 0
+            },
+            "color": {
+              "$ref": "#/$defs/hexColor"
+            },
+            "altitude_m": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        },
+        "time_of_day": {
+          "type": "object",
+          "additionalProperties": true,
+          "description": "Thème 1.2 (lot P1, utilisé en 2.0 par P7).",
+          "properties": {
+            "mode": {
+              "enum": [
+                "fixed",
+                "real",
+                "accelerated"
+              ]
+            },
+            "hour": {
+              "type": "number",
+              "minimum": 0,
+              "exclusiveMaximum": 24
+            },
+            "factor": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          }
+        }
+      }
+    },
+    "weather": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Thème 1.2 (lot P1, utilisé par P8).",
+      "properties": {
+        "kind": {
+          "enum": [
+            "clear",
+            "mist",
+            "rain",
+            "snow"
+          ]
+        },
+        "intensity": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "morning_mist": {
+          "type": "boolean"
+        }
+      }
+    },
+    "season": {
+      "enum": [
+        "spring",
+        "summer",
+        "autumn",
+        "winter"
+      ],
+      "description": "Thème 1.2 (lot P1, utilisé en 2.0 par P18)."
+    },
+    "wind": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Thème 1.2 (lot P1) : vent lu quand [wind] mode = \"theme\", et vent décoratif de l'engine sans champ wind dans state.",
+      "properties": {
+        "speed_kmh": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 60
+        },
+        "from_deg": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 360
+        },
+        "gust_pct": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "ambience": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Thème 1.2 (lot P1, utilisé par P9).",
+      "properties": {
+        "volume": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "birds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "insects": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        }
+      }
+    },
+    "fauna": {
+      "type": "object",
+      "additionalProperties": true,
+      "description": "Thème 1.2 (lot P1, utilisé par P11) : densités de 0 à 1.",
+      "properties": {
+        "birds": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "livestock": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
+        },
+        "deer": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 1
         }
       }
     }

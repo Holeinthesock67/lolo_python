@@ -220,7 +220,7 @@ func _test_lists_and_events() -> void:
 	_check(_focus_id(m.state()) == "vercors", "liste remplacée : le focus reste sur le même parcours")
 	var h = MenuModel.new()
 	h.set_world("vosges", "Vosges")
-	_check(h.state()["items"][0]["label"] == "Monde : Vosges", "monde affiché à l'accueil")
+	_check(h.state()["items"][0]["label"] == "Parcours : Vosges", "parcours affiché à l'accueil")
 	_check(MenuModel._short_name("Vosges (32,0 km, boucle)") == "Vosges", "nom du monde sans la longueur")
 	var before: Dictionary = m.state()
 	var unknown_ok := true
