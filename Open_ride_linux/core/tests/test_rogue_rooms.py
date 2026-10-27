@@ -8,7 +8,7 @@ import pytest
 
 from functools import lru_cache
 
-from openride_core.physics import PhysicsParams
+from openride_core.physics import PhysicsParams, RiderPhysics
 from openride_core.physics import steady_speed as _steady
 from openride_core.rogue.balance import DEFAULT_BALANCE
 from openride_core.rogue.rooms import (ARCHETYPES, BOSS_PHASES, DS_M, OBJECTIVES, RoomRider,
@@ -43,13 +43,21 @@ def test_deterministic():
 
 @pytest.mark.parametrize("a,v,o", CASES)
 def test_nominal_time_of_rider_on_target(a, v, o):
+    """Cycliste simulé (physique complète) qui tient la cible : temps d'arrivée = `nominal_s` à 2 %."""
     room = make(a, v, o)
-    total = 0.0
-    for (s0, g0), (s1, g1) in zip(room.profile, room.profile[1:]):
-        mid = (s0 + s1) / 2
-        frac = next(t.frac for t in room.target_frac if t.s0_m <= mid < t.s1_m)
-        total += (s1 - s0) / steady_speed(frac * RIDER.ftp_w, (g0 + g1) / 2, RIDER.params)
-    assert total == pytest.approx(room.nominal_s, rel=0.02)
+    grade = {s: g for s, g in room.profile}
+    body = RiderPhysics(RIDER.params, 0.0, steady_speed(room.target_frac[0].frac * RIDER.ftp_w,
+                                                         room.profile[0][1], RIDER.params))
+    t = 0.0
+    while body.s < room.length_m and t < 3 * room.nominal_s:
+        s = body.s
+        frac = next((x.frac for x in room.target_frac if x.s0_m <= s < x.s1_m), room.target_frac[-1].frac)
+        i = min(int(s // DS_M), len(room.profile) - 2)
+        u = (s - room.profile[i][0]) / DS_M
+        g = room.profile[i][1] + u * (room.profile[i + 1][1] - room.profile[i][1])
+        body.step(frac * RIDER.ftp_w, g, 0.0, 0.05)
+        t += 0.05
+    assert t == pytest.approx(room.nominal_s, rel=0.02)
     assert room.length_m == room.profile[-1][0]
 
 
