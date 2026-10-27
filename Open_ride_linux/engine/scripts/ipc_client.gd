@@ -19,6 +19,8 @@ signal workouts_received(items: Array, msg: Dictionary)
 signal list_failed(list_name: String, error_message: String)
 ## Résultat d'une recherche d'appareils ou de l'identification du « + » (lot N13, contrat v1.2).
 signal scan_results_received(msg: Dictionary)
+## Réglages du menu (lots O3 et O4, contrat v1.3), réponse à list_settings ou set_setting.
+signal settings_received(msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
 
@@ -206,6 +208,8 @@ func _poll_incoming() -> void:
 				_on_list_part(_pending_list_workouts, "workouts", json_obj)
 			"scan_results":
 				scan_results_received.emit(json_obj)
+			"settings":
+				settings_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -280,6 +284,15 @@ func identify_click_plus() -> int:
 
 func pair_devices(args: Dictionary) -> int:
 	return send_command("pair_devices", args)
+
+
+## Réglages du menu (lots O3 et O4, contrat v1.3).
+func list_settings() -> int:
+	return send_command("list_settings", {})
+
+
+func set_setting(key: String, value) -> int:
+	return send_command("set_setting", {"key": key, "value": value})
 
 
 ## Demande en cours : {cmd_id (dernier envoyé), cmd_ids, retries, timer, answers}. `answers` range les parties

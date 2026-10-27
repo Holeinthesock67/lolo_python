@@ -75,10 +75,11 @@
 | [N12](LOT_N12_appairage_core.md) | Appairage côté core : enregistrer le nom et l'adresse du matériel trouvé dans `~/OpenRide/config.toml` | Python | M3 (livré) | Petite | **Livré le 25 octobre** (issue #112, PR #177) |
 | [N13](LOT_N13_menu_appareils.md) | Section « Appareils » du menu : rechercher et appairer le matériel | GDScript + Python | N6, N12 | Moyenne | **Livré le 26 octobre** (interne, PR #197) |
 | [N14](LOT_N14_lancement_sans_terminal.md) | Lancement sans terminal : premier démarrage, erreurs dans une fenêtre, « Libérer le trainer » et « Mettre à jour » depuis le bureau, installation en une commande | Python + shell | L8 (livré), N11 | Moyenne | **Livré le 25 octobre** (issue #114, PR #178) |
+| [N15](LOT_N15_menu_principal.md) | Menu principal : monde, session libre, session ERG, session simulée (relance sans matériel) | GDScript + Python | N6, N13 | Moyenne | **Livré le 26 octobre** (interne, demande du propriétaire) |
 | [O1](LOT_O1_preparation_arbres.md) | Arbres : préparer une tuile en moins de 150 ms (210 ms mesurés sur le PC cible) | GDScript | E3, E4 (livrés) | Petite | Oui |
 | [O2](LOT_O2_version_1_0.md) | Numéro de version unique (`VERSION`) et notes de version (`CHANGELOG.md`) | Python + GDScript | N3 ; de préférence fin de J4 | Petite | **Livré le 26 octobre** (issue #120) |
-| [O3](LOT_O3_reglages_core.md) | Réglages côté core : FTP, masse, braquet de départ, thème et qualité écrits dans `~/OpenRide/config.toml` | Python | N12 ; N10 pour les thèmes | Petite | **Livré le 26 octobre** (issue #121) |
-| [O4](LOT_O4_menu_reglages.md) | Section « Réglages » du menu et version affichée | GDScript + Python | N6, N13, O3 ; O2 | Moyenne | Non : interne (ajout au contrat IPC, écran du menu) |
+| [O3](LOT_O3_reglages_core.md) | Réglages côté core : FTP, masse, braquet de départ, thème et qualité écrits dans `~/OpenRide/config.toml` | Python | N12 ; N10 pour les thèmes | Petite | **Livré le 26 octobre** (avec O4, issue #121) |
+| [O4](LOT_O4_menu_reglages.md) | Section « Réglages » du menu et version affichée | GDScript + Python | N6, N13, O3 ; O2 | Moyenne | **Livré le 26 octobre** (contrat accepté le 26 octobre ; version affichée : après O2) |
 | [O5](LOT_O5_traces_garmin_dossier.md) | Traces FIT, TCX et archives Garmin (`.zip`, `.gz`) déposées dans le dossier des traces | Python | N11 | Petite | **Livré le 26 octobre** (issue #122) |
 | [O6](LOT_O6_guide_utilisation.md) | Guide d'utilisation sans terminal et README de la 1.0 | Markdown + Python | N6, N13, N14 | Petite | Oui, après N14 |
 | [O7](LOT_O7_affichage_bots.md) | Bots à l'écran : silhouettes, écarts, choix au menu (facultatif pour la 1.0) | GDScript | N6, N9 | Moyenne | Non : interne (rendu, contrôle visuel) |
@@ -93,25 +94,25 @@
 | [O15](LOT_O15_bibliotheque_parcours.md) | Bibliothèque de parcours : fiches (dénivelé, montée, difficulté), tri, filtres, packs de parcours | Python | O5 | Moyenne | **Livré le 26 octobre** (issue #157) |
 | [O16](LOT_O16_pack_cols_celebres.md) | Pack de départ : cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | **Livré le 27 octobre** (issue #158) |
 | [P2](LOT_P2_vent_physique_core.md) | Vent physique côté core : rafales, composante de face, vitesse virtuelle et résistance ressentie en SIM | Python | P1 | Moyenne | **Livré le 26 octobre** (issue #126) |
-| [P3](LOT_P3_aspiration_bots.md) | Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | Oui, après P2 et N9 (issue #127) |
 | [P4](LOT_P4_modele_vent_engine.md) | Engine : modèle du vent, indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (sans affichage) | GDScript | P1 | Petite | **Livré le 26 octobre** (issue #128) |
+| [P3](LOT_P3_aspiration_bots.md) | Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | **Livré le 26 octobre** (issue #127) |
 | [P5](LOT_P5_vent_vegetation.md) | Vent dans les arbres et touffes d'herbe (shader de balancement) | GDScript + shader | P4, O1 | Petite | **Livré le 26 octobre** (issue #129) |
 | [P6](LOT_P6_nuages.md) | Nuages qui défilent avec le vent | GDScript + shader | P4 | Petite | **Livré le 26 octobre** (issue #130) |
 | [P7](LOT_P7_heure_soleil.md) | Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | Oui, **version 2.0** (issue #131) |
 | [P8](LOT_P8_meteo_legere.md) | Météo légère : brume de vallée, pluie, neige | GDScript | P4 | Petite | **Livré le 26 octobre** (issue #132) |
 | [P9](LOT_P9_ambiance_sonore.md) | Sons d'ambiance selon le décor (forêt, champs, eau, village, altitude) | GDScript | P1, P4 | Moyenne | **Livré le 27 octobre** (issue #133) |
 | [P10](LOT_P10_sons_velo.md) | Sons du vélo : vent selon la vitesse dans l'air, roue libre réaliste et « clac » à la reprise | GDScript | P4 | Petite | **Livré le 27 octobre** (issue #134) |
-| [P11](LOT_P11_animaux.md) | Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | Oui, après P4 (issue #135) |
-| [P12](LOT_P12_eoliennes_drapeaux_eau.md) | Éoliennes et drapeaux (compilateur et engine), eau qui scintille | Python + GDScript | P1, P4 | Moyenne | Oui, après P4 (issue #136) |
-| [P13](LOT_P13_vehicules.md) | Véhicules croisés sur la route du parcours | GDScript | P4, P9 | Petite | Oui, après P9 (issue #137) |
-| [P14](LOT_P14_bord_de_route.md) | Bord de route : panneaux de col, bornes kilométriques, marquages au sol | GDScript + shader | P4 | Moyenne | Oui, après P4 (issue #138) |
-| [P15](LOT_P15_spectateurs.md) | Spectateurs et encouragements dans les dernières côtes | GDScript + shader | P9, P14 | Petite | Oui, après P14 (issue #139) |
+| [P11](LOT_P11_animaux.md) | Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #135) |
+| [P12](LOT_P12_eoliennes_drapeaux_eau.md) | Éoliennes et drapeaux (compilateur et engine), eau qui scintille | Python + GDScript | P1, P4 | Moyenne | **Livré le 27 octobre** (issue #136) |
+| [P13](LOT_P13_vehicules.md) | Véhicules croisés sur la route du parcours | GDScript | P4, P9 | Petite | **Livré le 27 octobre** (issue #137) |
+| [P14](LOT_P14_bord_de_route.md) | Bord de route : panneaux de col, bornes kilométriques, marquages au sol | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #138) |
+| [P15](LOT_P15_spectateurs.md) | Spectateurs et encouragements dans les dernières côtes | GDScript + shader | P9, P14 | Petite | **Livré le 27 octobre** (issue #139) |
 | [P16](LOT_P16_integration_vent_ciel_sons.md) | Intégration, première vague : vent ressenti et affiché, arbres, nuages, sons ; recette sur la GTX 1060 | GDScript | P2, P4, P5, P6, P9, P10 | Moyenne | **Livré le 27 octobre**, recette sur le PC à faire (issue #140) |
 | [P17](LOT_P17_integration_decor_complet.md) | Intégration, deuxième vague : abri, météo, animaux, objets mobiles, bord de route | GDScript | P16, P3, P8, P11 à P15, O7 | Grande | Non : interne (`main.gd`, contrôle visuel) (issue #141) |
 | [P18](LOT_P18_saisons.md) | Saisons : feuillages, arbres dénudés, neige, vergers en fleurs, feuilles qui tombent | GDScript + shader | P5, P8, P9, P17 ; P7 | Moyenne | Oui, **version 2.0** (issue #142) |
 | [P19](LOT_P19_integration_jour_nuit_saisons.md) | Intégration du jour, de la nuit et des saisons | GDScript | P7, P17, P18 | Moyenne | Non : interne, **version 2.0** (issue #143) |
 | [P20](LOT_P20_packs_textures_performance.md) | Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | Python + GDScript | N10, O3, P17 | Moyenne | Oui, **version 2.0** (issue #147) |
-| [P21](LOT_P21_passants_villages.md) | Passants dans les villages et le long de la route : gestes au passage, voix et aboiements | GDScript + shader | P15 | Petite | Oui, après P15 (issue #183) |
+| [P21](LOT_P21_passants_villages.md) | Passants dans les villages et le long de la route : gestes au passage, voix et aboiements | GDScript + shader | P15 | Petite | **Livré le 27 octobre** (issue #183) |
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle sur GTX 1060 à faire) |
 | [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés) | Grande | **Livré le 24 octobre** (branche `lot-e3-e4`, recette visuelle et sonore sur GTX 1060 à faire) |
@@ -122,6 +123,16 @@
 | [Q5](LOT_Q5_fc_relayee_figee.md) | Fréquence cardiaque relayée par le trainer figée : écrite comme absente | Python | Q3 (`ftms_driver.py`) | Petite | Oui ; issue #172 |
 | [Q6](LOT_Q6_boitier_gauche_click.md) | Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
 | [S1](LOT_S1_rendu_invisible.md) | Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible | GDScript | O1, Q2 (mêmes fichiers) | Moyenne | Oui (essai sur la GTX 1060 par le propriétaire) ; issue #190 |
+| [Y1](LOT_Y1_brouillard_distance_prereglage.md) | Brouillard opaque à 4 / 6 / 9 km selon le préréglage, `camera.far` et tuiles lointaines qui suivent (avancé le 27 octobre) | GDScript | — (X13 livré) ; avant S1 | Petite | Oui (essai sur le PC par le propriétaire) ; issue #357 |
+| Y2 | Migration de Godot 4.3 vers 4.7.x (moteur, tests, banc, lanceur, recette visuelle) | GDScript | Y1, X2, X13 ; fin de projet | Moyenne | Non : interne (PC cible) ; issue #358 |
+| Y3 | HLOD des villages et niveaux de détail des bâtiments | GDScript | Y2, S1 | Moyenne | Oui ; issue #359 |
+| Y4 | Ombres par préréglage (cascades, distances, objets sans ombres) | GDScript | Y2 | Petite | Oui ; issue #360 |
+| Y5 | Arbres lointains en imposteurs (notre propre version, sans extension), feuillage en alpha scissor | GDScript + shader | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) ; issue #361 |
+| Y6 | Résolution 3D par préréglage et résolution adaptative (FSR 1.0), FXAA ou SMAA en `low` | GDScript | Y2, X13 | Petite | Oui ; issue #362 |
+| Y7 | Essai du moteur Mobile pour `low` (mesure seule, décision du propriétaire) | GDScript | Y2 | Petite | Oui (mesure) ; issue #363 |
+| Y8 | Habillage : toits à pans et façades texturées, puis étalonnage, puis marquages de route | GDScript + shader | Y3, P20 | Grande | En partie ; issue #364 |
+| Y9 | Lissage des bots à l'écran (mémoire de trames, Hermite, déplacements latéraux, LOD) | GDScript | O7 | Moyenne | Oui ; issue #365 |
+| Y10 | Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | Oui ; issue #366 |
 | [R0](LOT_R0_delai_frein.md) | Mesure du délai du frein du trainer (marches de pente et de braquet) : script et essai sur le vélo | Python | Q3, Q4 | Petite | Script oui (même outil que X5) ; essai par le propriétaire ; **version 2.0** |
 | [R1](LOT_R1_contrat_ipc_rogue.md) | Contrat IPC v1.4 : boutons Z et A, liste des modes, champ `rogue`, messages `room` et `loot`, commandes de run | Markdown + JSON | P1 | Petite | Non : interne (décision du propriétaire), **version 2.0** |
 | [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | Oui, **version 2.0** |
@@ -202,6 +213,8 @@ Leur forme dépendra des choix faits dans E1 et D.
 
 **Série S (25 octobre, performances du rendu) :** demande du propriétaire d'explorer l'optimisation du moteur graphique en ne modélisant pas ce qui est invisible pour le cycliste (au-delà du brouillard, derrière la caméra, masqué par le relief, ombres hors champ). S1 commence par une mesure au banc simulé (`engine/tests/sim_bench.py`) et ne garde que les pistes qui font gagner des images par seconde sans changement visible. Fichiers partagés : `tree_renderer.gd` (O1 d'abord), `terrain_tiles.gd` (Q2 d'abord).
 
+**Série Y (27 octobre, fin de projet) : rendu et IA des bots.** Recherche et propositions : `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` (PR #355). Décisions du propriétaire du 27 octobre : série validée ; ordre Y1, Y2, puis Y4, Y6 et Y3, puis Y5 et Y7, puis Y8, Y9 et Y10 ; **Y1 avancé** (tout de suite, avant S1, mêmes fichiers) avec un brouillard opaque à 4 km en `low`, 6 km en `medium` et 9 km en `high` ; migration directe vers Godot 4.7.x (Y2) au début de la phase finale, avant les autres optimisations ; préréglage de référence `medium` (utilisé au quotidien par le propriétaire) ; priorités de l'habillage (Y8) : toits et façades, étalonnage, marquages ; imposteurs des arbres écrits par nous, sans extension externe (Y5) ; essai du moteur Mobile maintenu (Y7) ; résolution adaptative acceptée (75–85 % avec FSR 1.0 quand le GPU sature, Y6) ; bots affichés avec environ 0,1 s de retard pour le lissage (Y9) ; bots réalistes, avec attaques, fatigue et abri calculés dans le core (Y10). Le reste de la série vient après tous les autres lots et chaque lot mesure avant et après au banc simulé avec la sonde X13, sous les seuils d'X2, avec l'endurance X16 à la fin. Une piste n'est retenue que si elle gagne au moins 3 % d'images/s ou 1 ms de p99. Les cahiers de Y2 à Y10 sont écrits au démarrage de chaque lot. Les issues #357 (Y1) à #366 (Y10) renvoient au suivi #48, qui a atteint la limite de 100 sous-issues de GitHub. Fichiers partagés : `quality_presets.gd`, `render_quality.gd` et `world_streamer.gd` (Y1, puis S1, puis Y4 et Y6) ; `tree_renderer.gd` (O1, S1, puis Y5) ; `osm_streamer.gd` et `building_mesh.gd` (S1, Y3, puis Y8).
+
 **Série R (version 2.0, cahiers rédigés le 26 octobre) : mode Cyber-Rogue.** Plan, décisions du propriétaire, corrections du GDD et questions ouvertes R-Q1 à R-Q10 : `docs/2.0/PLAN_SERIE_R.md`. La série démarre après la 1.0 ; les issues des lots seront ouvertes à ce moment-là, sous l'issue de suivi #117. Seul le script de R0 (même outil que X5) peut être fait avant. R1 (contrat 1.4) est une décision du propriétaire et bloque R8 et l'engine. Délégables : R2, R3, R4, R5, R6, R7, R9, R15, R16, le script de R0 le modèle de R11 et les shaders de R17 ; internes : R1, R8, R10, R12, R13 ; propriétaire : R0 (essai) et R14. Les modules du jeu sont dans un nouveau paquet `rogue` du core (un fichier par lot), avec une seule table de valeurs `RogueBalance` (`rogue/balance.py`, complétée par R2 à R6 et R15, l'un après l'autre, puis chargée depuis `balance.toml` par R7). Fichiers partagés : `session.py`, `zwift_click.py` et `config.py` (R8 ; R2 ajoute seulement la section `[rogue]`) ; `main.gd` (R10 puis R13) ; `rogue.tscn` (R10, puis R11 et R12) ; `menu_model.gd` (R13).
 
 **Série V (26 octobre, version 2.0) : progression, équipement et avatar.** Plan `docs/2.0/PLAN_SERIE_V.md` ; V-Q4 réglée le 26 octobre (révision 1.4 avec R1 et T1) ; questions V-Q5 à V-Q13 ouvertes (chaque cahier applique la proposition recommandée). Délégables : V2 tout de suite, puis V3 et V4, puis V3b : modules purs du core, sans effet sur la séance tant que V11 n'est pas livré (V-Q5). V1 (contrat) est une décision du propriétaire et bloque V11, V6, V8 et V9 ; V11, ajouté au découpage du plan, branche les modules dans la séance. V5 attend les séries T et R. Fichiers partagés : `progression.toml` (V2, puis V3 pour le catalogue, puis V3b pour les pièces) ; `progression.py` (V2, puis V5) ; `session.py` et `ipc_server.py` (V11 seul) ; `main.gd` (V6) ; `menu_model.gd` (V8) ; `summary_view.gd` (V9) ; `sound_player.gd` (V7, après P10).
@@ -209,6 +222,40 @@ Leur forme dépendra des choix faits dans E1 et D.
 **Série W (26 octobre, version 2.0) : monde ouvert généré en direct.** Plan : `docs/2.0/PLAN_SERIE_W.md` (questions W-Q1 à W-Q5 tranchées par le propriétaire le 25 octobre, PR #159). Cahiers rédigés le 26 octobre. W0 (outil de mesure, sans effet sur le jeu) peut se faire tout de suite ; W1 (contrat) est une décision du propriétaire et bloque le reste. Le générateur vit dans le compilateur (nouveau sous-paquet `worldgen` du paquet `openride_compiler`), dans un processus séparé `openride-worldgen` ; le core reste sans numpy. Numérotation : la révision de l'IPC est la première libre à la fusion de W1 (1.5 si P1 prend 1.3 et les séries R, T et V 1.4) ; le format `.world` prend de même le mineur libre suivant. Délégables : W2 à W8 et W13 à W15 (W0 pour le script) ; internes : W1, W9 à W12 ; propriétaire : W16. Fichiers partagés : `compiler/src/openride_compiler/cli.py` (W0, W2, W3, l'un après l'autre) ; `compiler/pyproject.toml` (W3 extra `worldgen`, W8 et W15 points d'entrée) ; `worldgen/process.py` (W8 puis W13) ; `osm_layers.py` (W7 seul, fonctions rendues publiques) ; `core/src/openride_core/config.py` (W2 section `[open_world]`, puis W9) ; `session.py` et `ipc_server.py` (W9, puis W11 et W14) ; `main.gd` et `ipc_client.gd` (W10, puis W11 et W12). Réseau : seuls W0, W3, W8, W11 (Nominatim) et W13 accèdent à internet, jamais dans les tests ; rien de téléchargé n'entre dans le dépôt.
 
 **Série X (26 octobre, outils de test) :** les 31 outils et programmes de test qui manquent pour mener le projet jusqu'à la 1.0, puis aux versions 2.0 et 3.0 (plan du 26 octobre : besoin, mesure, lieu d'exécution, priorité, taille). Une issue par lot, #199 (X1) à #229 (X31), sous le suivi #48 ; le cahier de chaque lot est écrit à son démarrage. Ordre : X1 (tests de `main` au vert), X25 (pire trame IPC), X23 (scanner de confidentialité), puis les autres lots P0 : X2, X4, X5 (banc de latence du trainer, outil de l'essai R0), X8, X13, X16 et X29. Les essais matériels se font sur le PC cible.
+
+Lots de la série X (cahier écrit au démarrage de chacun ; P0 = avant la 1.0, P1 = pour la 1.0, P2 = 2.0) :
+
+- X1 : remettre la CI de main au vert (Cloud, P0, issue #199) ;
+- X2 : séparer les tests de budget de temps des tests de fonction (Cloud + PC, P0, issue #200) ;
+- X3 : rapport d'instabilité et de durée des tests (Cloud + PC, P1, issue #201) ;
+- X4 : recette du PC en une commande (PC, P0, issue #202) ;
+- X5 : banc de latence du trainer par paliers (Vélo, P0, issue #203) ;
+- X6 : trainer simulé réaliste (Cloud, P1, issue #204) ;
+- X7 : latence appui Click → commande et → écran (Vélo, P1, issue #205) ;
+- X8 : recette guidée du Click (30 min) (Vélo, P0, issue #206) ;
+- X9 : recette de la fréquence cardiaque (Vélo, P1, issue #207) ;
+- X10 : coupures volontaires, attendu contre obtenu (Vélo, P1, issue #208) ;
+- X11 : contrôle d'un FIT de séance réelle (PC, P1, issue #209) ;
+- X12 : analyse automatique d'une séance réelle (PC, P1, issue #210) ;
+- X13 : sonde de performance du moteur (PC, P0, issue #211) ;
+- X14 : parcours de référence et alerte de régression (PC, P1, issue #212) ;
+- X15 : saccades et temps de démarrage (Cloud + PC, P1, issue #213) ;
+- X16 : endurance 1 h et fuites (PC, P0, issue #214) ;
+- X17 : gigue de la boucle physique et de l'IPC (Cloud + PC, P1, issue #215) ;
+- X18 : contrôle d'apparition et comparaison avant/après (Cloud + PC, P1, issue #216) ;
+- X19 : micro-banc par image pour le décor vivant (Cloud, P2, issue #217) ;
+- X20 : non-régression visuelle, version 2 (Cloud + PC, P1, issue #218) ;
+- X21 : tour visuel guidé (PC, P1, issue #219) ;
+- X22 : lisibilité du HUD à 2 m (Cloud, P2, issue #220) ;
+- X23 : scanner de confidentialité (Cloud + PC, P0, issue #221) ;
+- X24 : audit des dépendances (Cloud, P2, issue #222) ;
+- X25 : pire trame IPC et matrice des révisions (Cloud, P0, issue #223) ;
+- X26 : fuzz des fichiers d'entrée (Cloud, P2, issue #224) ;
+- X27 : cycliste virtuel pour les essais simulés (Cloud, P1, issue #225) ;
+- X28 : réseau dégradé pour le monde ouvert (Cloud, P2, issue #226) ;
+- X29 : installation sur un système vierge (Cloud + PC, P0, issue #227) ;
+- X30 : tableau de recette 1.0 (Cloud, P1, issue #228) ;
+- X31 : pente maximale face à Garmin Connect (PC, P2, issue #229).
 
 **Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
 
@@ -250,6 +297,7 @@ Version 2.0, série V : V2 ──► V3, V4 ──► V3b ;  P1 ──► V1 ;  
 Version 2.0, série W : W0 ──► W1 ──► W2 ──► W3 ──► W4 ──► W5, W6 ;  W2, W3, W5 ──► W7 ;  W6, W7 ──► W8 ──► W9 ──► W14
 W1 ──► W10, W12, W15 ;  W1, W3 ──► W11 ;  W2, W7 ──► W13 ;  W9, W10, W11, W12 ──► W16
 Version 2.0, série T : T2, T6, T16 : indépendants (avancés) ;  T2 ──► T4 ;  P1 ──► T1 ──► T3, T8, T9 ;  T4, N9 ──► T5
+Fin de projet, série Y : Y1 (avancé) ──► S1 ;  Y1, X2, X13 ──► Y2 ──► Y4, Y6, Y7 ;  Y2, S1 ──► Y3 ──► Y8 (avec P20) ;  O1, Y2 ──► Y5 ;  O7 ──► Y9 ──► Y10 (avec les séries T et R)
 ```
 
 ## 2. Prérequis côté propriétaire du projet (avant de confier un lot)

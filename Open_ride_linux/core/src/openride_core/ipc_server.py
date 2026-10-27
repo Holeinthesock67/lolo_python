@@ -16,6 +16,7 @@ from dataclasses import asdict, dataclass
 from typing import Any, Callable
 
 from . import __version__
+from .ipc_budget import encode, fit_state
 
 log = logging.getLogger("ipc_server")
 
@@ -61,6 +62,8 @@ class IpcState:
     devices: dict[str, Any] | None = None
     bots: list[dict[str, Any]] | None = None
     wind: dict[str, float] | None = None   # révision 1.3 (lot P2) : 2 fois par seconde, jamais avec devices
+    draft: float | None = None             # révision 1.3 (lot P3) : présent dès qu'il y a un bot
+    draft_bot: str | None = None
     last_cmd_id: int = 0
 
     def to_dict(self) -> dict[str, Any]:
@@ -75,6 +78,10 @@ class IpcState:
             d.pop("bots", None)
         if self.wind is None:
             d.pop("wind", None)
+        if self.draft is None:
+            d.pop("draft", None)
+        if self.draft_bot is None:
+            d.pop("draft_bot", None)
         return d
 
 
@@ -107,6 +114,7 @@ class IpcServer:
         # Datagrammes illisibles ou non conformes, ignorés (contrat §6).
         self.invalid_datagrams: int = 0
         self._invalid_logged_at: float | None = None
+        self._trimmed_logged_at: float | None = None   # dernier avertissement « trame allégée »
         self._invalid_since_log: int = 0
 
         self._running: bool = False
@@ -162,7 +170,15 @@ class IpcServer:
             limit = MAX_STATE_DATAGRAM_SIZE
         else:
             limit = MAX_DATAGRAM_SIZE
-        payload = json.dumps(msg_dict, separators=(",", ":")).encode("utf-8")
+        payload = encode(msg_dict)
+        if len(payload) > limit and msg_type == "state":
+            # Trame allégée plutôt que jetée (lot X25) : l'écran garde position et puissance.
+            msg_dict, dropped = fit_state(msg_dict, limit)
+            payload = encode(msg_dict)
+            now = time.monotonic()
+            if self._trimmed_logged_at is None or now - self._trimmed_logged_at >= INVALID_LOG_PERIOD_S:
+                self._trimmed_logged_at = now
+                log.warning("Trame state trop grande, allégée (%s) : %d octets", ", ".join(dropped), len(payload))
         if len(payload) > limit:
             log.warning("Datagramme IPC trop grand (%d octets > %d), ignoré", len(payload), limit)
             return

@@ -6,6 +6,7 @@ extends SceneTree
 const WeatherParticles := preload("res://scripts/weather_particles.gd")
 const WeatherModel := preload("res://scripts/weather_model.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -95,7 +96,7 @@ func _test_no_weather() -> void:
 	for i in range(5000):
 		p.update(Vector3(i, 0, 0), _eval("rain", 0.5))
 	var ms := (Time.get_ticks_usec() - t0) / 1000.0 / 5000.0
-	_check(ms < 0.1, "coût de update : %.4f ms par image" % ms)
+	_check(PerfBudget.check("weather_particles_frame", ms), "coût de update : %.4f ms par image" % ms)
 	p.queue_free()
 
 

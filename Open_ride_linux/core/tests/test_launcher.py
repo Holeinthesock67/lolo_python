@@ -55,6 +55,11 @@ if mode.startswith("relaunch"):           # relaunch:N:CODE : sort N fois avec C
     if len((marks / f"{role}_start").read_text().split()) <= int(limit):
         sys.exit(int(code))
     sys.exit(0)
+if mode.startswith("seq:"):                # seq:A,B : code de sortie du n-ième lancement, puis 0
+    codes = [int(c) for c in mode[4:].split(",")]
+    time.sleep(0.2)
+    n = len((marks / f"{role}_start").read_text().split())
+    sys.exit(codes[n - 1] if n <= len(codes) else 0)
 if mode.startswith("exit0"):              # exit0:T : se ferme normalement au bout de T s
     time.sleep(float(mode.split(":")[1]))
     sys.exit(0)
@@ -146,6 +151,26 @@ def test_engine_relaunch_code_restarts_core_and_engine(fake):
     assert count(fake.marks, "release_start") == 0
     assert sum("relance demandée depuis le menu" in m for m in said) == 2
     assert_no_orphans(sup)
+
+
+def test_sim_session_code_relaunches_core_in_simulation_then_back(fake):
+    # 1er engine : « Session simulée » (65) ; 2e : « Revenir au matériel réel » (64) ; 3e : se ferme.
+    script_marks = fake.marks
+    sup, said = fake(engine="seq:65,64")
+    assert sup.run() == 0
+    argv = lines(script_marks, "core_argv")
+    assert argv[0] == "" and argv[2] == ""
+    assert argv[1].split() == launcher.SIM_CORE_ARGS
+    assert lines(script_marks, "engine_argv") == ["", launcher.SIM_ENGINE_ARG, ""]
+    assert sup.relaunches == 2 and not sup.sim_mode
+    assert any("session simulée" in m for m in said)
+    assert_no_orphans(sup)
+
+
+def test_sim_core_cmd_replaces_hardware_options():
+    cmd = ["py", "-m", "openride_core", "run", "--trainer", "ftms", "--input=click", "--config", "c.toml", "--hr", "ble"]
+    assert launcher.sim_core_cmd(cmd) == ["py", "-m", "openride_core", "run", "--config", "c.toml",
+                                          *launcher.SIM_CORE_ARGS]
 
 
 def test_engine_crashing_four_times_gives_up(fake):
@@ -302,6 +327,8 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
         "--theme=default",
         "--living=on",
     ]
+    probe = launcher.build_supervisor([], {**env, "OPENRIDE_PERF_PROBE": str(tmp_path / "sonde.csv")})
+    assert probe.engine_cmd[-1] == f"--perf-probe={tmp_path / 'sonde.csv'}"   # lot X13
 
     with pytest.raises(FileNotFoundError, match="Godot introuvable"):
         launcher.build_supervisor(["--config", str(cfg)], {**env, "GODOT": str(tmp_path / "absent")})

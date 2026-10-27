@@ -1,0 +1,19 @@
+{
+  "_doc": "Budgets de temps des tests de l'engine (lot X2, perf_budget.gd). budget_ms : seuil du cahier pour le PC cible ; ci_ms : machines partagées de GitHub (variable CI). Remplacement par machine : ~/OpenRide/perf_budgets.json, {\"nom\": ms}.",
+  "tree_tile_high": {"budget_ms": 150, "ci_ms": 200, "lot": "E3 / O1"},
+  "vegetation_tile_max": {"budget_ms": 50, "ci_ms": 150, "lot": "K3"},
+  "building_mesh_500": {"budget_ms": 100, "ci_ms": 200, "lot": "L1"},
+  "osm_buildings_200": {"budget_ms": 20, "ci_ms": 60, "lot": "K4"},
+  "sound_generation": {"budget_ms": 500, "ci_ms": 1000, "lot": "E4"},
+  "hud_profile_120": {"budget_ms": 2, "ci_ms": 6, "lot": "K2"},
+  "weather_evaluate": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "P8"},
+  "traffic_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P13"},
+  "traffic_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P13"},
+  "living_world_frame": {"budget_ms": 1.0, "ci_ms": 3.0, "lot": "P16"},
+  "weather_particles_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P8"},
+  "fauna_frame_200": {"budget_ms": 0.3, "ci_ms": 0.9, "lot": "P11"},
+  "turbines_flags_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P12"},
+  "crowd_frame_200": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P15"},
+  "ambience_evaluate": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P9"},
+  "grass_tufts_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P5"}
+}

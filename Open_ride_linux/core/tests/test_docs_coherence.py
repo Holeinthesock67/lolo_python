@@ -465,9 +465,9 @@ def test_cited_lots_are_indexed_and_negative() -> None:
     assert check_cited_lots(docs, index_text) == []
 
     # Test négatif : un lot cité sans cahier dans l'index (cas de K6 et K7, vérification du 24 octobre)
-    errs = check_cited_lots({"README.md": "lanceur (lot Z9), couches (lots Y1 et I3)"}, index_text)
+    errs = check_cited_lots({"README.md": "lanceur (lot Z9), couches (lots Z8 et I3)"}, index_text)
     assert errs == [
-        "README.md : lot Y1 cité mais absent de docs/lots/00_INDEX.md",
+        "README.md : lot Z8 cité mais absent de docs/lots/00_INDEX.md",
         "README.md : lot Z9 cité mais absent de docs/lots/00_INDEX.md",
     ]
 

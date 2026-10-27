@@ -10,6 +10,7 @@ const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const HudView := preload("res://scripts/hud_view.gd")
 const RouteData := preload("res://scripts/route_data.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -117,7 +118,7 @@ func _run() -> void:
 		"voisinage complété par la force du vent et l'altitude")
 	_check(lw.grass.exclusions.size() == 1, "maison chargée exclue des touffes d'herbe")
 	print("Décor vivant : %.3f ms par image (low, voisinage compris)" % per_frame_ms)
-	_check(per_frame_ms < 1.0, "coût du branchement en %.3f ms par image (< 1 ms)" % per_frame_ms)
+	_check(PerfBudget.check("living_world_frame", per_frame_ms), "coût du branchement en %.3f ms par image" % per_frame_ms)
 	# Demi-tour : vent de dos
 	var back := {"wind": {"speed_mps": 25.0 / 3.6, "from_deg": 90.0, "gust": 0.0, "head_mps": -25.0 / 3.6}}
 	for i in range(80):
