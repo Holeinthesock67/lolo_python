@@ -14,6 +14,7 @@ from __future__ import annotations
 import asyncio
 import json
 import logging
+import math
 import re
 import signal
 import time
@@ -34,6 +35,7 @@ from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, load_resume_state
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
+from . import draft as draft_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
 from .workout import BIAS_DEFAULT_PCT, ErgController, Workout, WorkoutError, load_workout, workout_path
 from .zwift_click import InputEvent
@@ -198,6 +200,9 @@ class CoreSession:
         self._head_mps = 0.0          # vent de face au point s (physique à 50 Hz)
         self._wind_offset = 0.0       # supplément de pente dû au vent (feel = "grade")
         self._wind_pending = False    # trame `wind` décalée parce que la trame portait `devices`
+        self._draft = 0.0             # abri lissé derrière un bot (lot P3)
+        self._draft_bot: str | None = None
+        self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
         if self.wind.active:
             log.info("Vent : mode %s, %.0f km/h venant de %.0f°, rafales %.0f %%, ressenti %s "
                      "(supplément de pente borné à %.1f points)", self.wind.mode, self.wind.base_mps * 3.6,
@@ -751,6 +756,8 @@ class CoreSession:
                 if setter:
                     setter(self._head_mps)
         self._wind_offset = 0.0
+        if self.bots:
+            self._update_draft(dt, route, here.heading_deg if here else 0.0)
 
         if erg and erg.target_active:
             # ERG : cible de puissance, aucune pente envoyée ; la physique garde la pente du terrain.
@@ -762,9 +769,11 @@ class CoreSession:
         else:
             # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
             target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0)
-            if self.wind.active and wcfg.feel == "grade":
-                # Vent ressenti : supplément de pente avant la limitation de variation et les bornes.
-                self._wind_offset = grade_offset_pct(self.physics.v, self._head_mps, 0.0, alt,
+            if (self.wind.active and wcfg.feel == "grade") or self._draft > 0.0:
+                # Vent et abri ressentis : supplément de pente avant la limitation de variation et les
+                # bornes. Avec feel = "ftms", le vent part dans la commande 0x11 et seul l'abri passe ici.
+                head = self._head_mps if wcfg.feel == "grade" else 0.0
+                self._wind_offset = grade_offset_pct(self.physics.v, head, self._draft, alt,
                                                      self.physics.p, wcfg.max_grade_offset_pct)
                 target += self._wind_offset
             max_delta = self.cfg.trainer.grade_rate_pct_per_s * dt
@@ -776,7 +785,7 @@ class CoreSession:
                 self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
-        self.physics.step(m.power_w, grade, alt, dt)
+        self.physics.step(m.power_w, grade, alt, dt, alpha_draft=self._draft)
         for bot in self.bots:
             params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
             if self.wind.active and params is not None and route:
@@ -795,6 +804,9 @@ class CoreSession:
         st.gear = self.gearing.k
         if here:
             st.lat, st.lon, st.alt = here.lat, here.lon, alt
+        if self.bots:
+            st.draft = round(self._draft, 3)
+            st.draft_bot = self._draft_bot if st.draft > 0.0 else None
 
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
@@ -809,11 +821,34 @@ class CoreSession:
                 erg_bias_pct=erg.bias_pct - BIAS_DEFAULT_PCT if erg and erg.target_active else None,
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
-                if self.wind.active and wcfg.feel == "grade" else None))
+                if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
+                draft=round(self._draft, 3) if self.bots else None))
 
         if route and not route.is_loop and st.s >= route.length_m:   # une boucle ne finit pas
             log.info("Arrivée atteinte.")
             self._finish(True)
+
+    def _update_draft(self, dt: float, route: Route | None, heading_deg: float) -> None:
+        """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; poussée du bot suivi."""
+        length = route.length_m if route else None
+        is_loop = bool(route and route.is_loop)
+        cross = 0.0
+        if self.wind.active:
+            ws = self._wind_sample
+            cross = ws.speed_mps * math.sin(math.radians(ws.from_deg - heading_deg))
+        target, bot_id = draft_mod.best_draft(self.physics.s, self.bots, length, is_loop,
+                                              self.physics.v, self._head_mps, cross)
+        self._draft = draft_mod.smooth(self._draft, target, dt)
+        if bot_id is not None:
+            self._draft_bot = bot_id
+        elif self._draft == 0.0:
+            self._draft_bot = None
+        for bot in self.bots:   # poussée vers l'avant : le bot suivi de près résiste un peu moins
+            base = self._bot_cda.get(id(bot))
+            if base is not None:
+                push = draft_mod.push_bonus(self.physics.s, bot.s, length, is_loop) \
+                    if draft_mod.PUSH_ENABLED else 0.0
+                bot.params.cda_m2 = base * (1.0 - push)
 
     def _fill_wind_frame(self) -> None:
         """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (1 400 octets)."""
