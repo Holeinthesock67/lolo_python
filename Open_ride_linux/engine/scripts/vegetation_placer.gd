@@ -19,6 +19,9 @@ extends RefCounted
 ## vegetation.treeline_m, pente du terrain au-dessus de terrain.slope_threshold_deg, trous des polygones.
 ## La pente est celle de la maille de SLOPE_GRID_M qui contient l'arbre (hauteurs aux quatre coins) :
 ## un appel de `height_at` par arbre au lieu de trois.
+## Vitesse (lot O1) : les valeurs du bruit aux nœuds entiers sont calculées une fois par tuile
+## (`_lattice`) puis interpolées (`_lattice_noise`) avec les mêmes opérations que `_value_noise` :
+## résultat identique au bit près. `last_profile` donne le temps de chaque étape du dernier appel.
 
 const KIND_FACTOR := {"wood": 1.0, "scrub": 0.4, "orchard": 0.6}   # autres kind : ignorés (§7)
 const NOISE_MAX_FRACTION := 0.5
@@ -38,6 +41,10 @@ const DEFAULT_ROAD_WIDTH_M := 6.0
 const DEFAULT_SLOPE_DEG := 22.0
 
 const MASK32 := 0xFFFFFFFF
+const NOISE_SCALE2_M := NOISE_SCALE_M * 0.37   # seconde octave
+
+## Temps des étapes du dernier `place_tile`, en ms : candidats (bruit ou zones), route, filtre.
+var last_profile := {}
 
 
 # --- hachage et tirages -------------------------------------------------------------------
@@ -77,6 +84,32 @@ static func density_noise(x: float, z: float) -> float:
 	var v := 0.65 * _value_noise(x / NOISE_SCALE_M, z / NOISE_SCALE_M, NOISE_SEED)
 	v += 0.35 * _value_noise(x / (NOISE_SCALE_M * 0.37), z / (NOISE_SCALE_M * 0.37), NOISE_SEED + 1)
 	return clampf(v, 0.0, 1.0)
+
+
+## Valeurs `_unit(hash3(seed, ix, iz))` des nœuds [ix0, ix0 + nx[ × [iz0, iz0 + nz[, rangées par lignes.
+static func _lattice(seed: int, ix0: int, iz0: int, nx: int, nz: int) -> PackedFloat64Array:
+	var out := PackedFloat64Array()
+	out.resize(nx * nz)
+	for j in range(nz):
+		for i in range(nx):
+			out[j * nx + i] = _unit(hash3(seed, ix0 + i, iz0 + j))
+	return out
+
+
+## `_value_noise` lu dans une grille de `_lattice` qui couvre (fx, fz) : mêmes opérations, même résultat.
+static func _lattice_noise(fx: float, fz: float, lat: PackedFloat64Array, ix0: int, iz0: int, nx: int) -> float:
+	var ix := int(floor(fx))
+	var iz := int(floor(fz))
+	var tx := fx - ix
+	var tz := fz - iz
+	tx = tx * tx * (3.0 - 2.0 * tx)
+	tz = tz * tz * (3.0 - 2.0 * tz)
+	var k := (iz - iz0) * nx + (ix - ix0)
+	var a := lat[k]
+	var b := lat[k + 1]
+	var c := lat[k + nx]
+	var d := lat[k + nx + 1]
+	return lerpf(lerpf(a, b, tx), lerpf(c, d, tx), tz)
 
 
 static func _value_noise(fx: float, fz: float, seed: int) -> float:
@@ -214,14 +247,20 @@ func place_tile(tile_x: int, tile_z: int, tile_size_m: float, height_at: Callabl
 		"corridor": _theme_value(theme, "road", "width_m", DEFAULT_ROAD_WIDTH_M) * 0.5 + ROAD_MARGIN_M,
 		"height_at": height_at,
 	}
+	var t0 := Time.get_ticks_usec()
 	ctx["roads"] = _road_buckets(route, tile, ctx["corridor"])
+	var t1 := Time.get_ticks_usec()
 	var cand := PackedFloat64Array()   # triplets (x, z, tirage de l'échelle)
 	if areas.is_empty():
 		_place_noise(cand, tile_x, tile_z, tile, ctx)
 	else:
 		for area in areas:
 			_place_area(cand, area, tile, ctx)
+	var t2 := Time.get_ticks_usec()
 	_filter(out, cand, tile, height_at, ctx)
+	var t3 := Time.get_ticks_usec()
+	last_profile = {"route_ms": (t1 - t0) / 1000.0, "candidats_ms": (t2 - t1) / 1000.0,
+		"filtre_ms": (t3 - t2) / 1000.0, "candidats": cand.size() / 3, "arbres": out.size()}
 	return out
 
 
@@ -281,17 +320,35 @@ func _place_noise(cand: PackedFloat64Array, tile_x: int, tile_z: int, tile: Rect
 	var cells := maxi(1, int(round(tile.size.x / sqrt(10000.0 / density))))
 	var cell := tile.size.x / cells
 	var seed := hash3(0x7EE5, tile_x, tile_z)
+	# Nœuds du bruit des deux octaves qui couvrent la tuile (une maille de marge de chaque côté).
+	var ax0 := int(floor(tile.position.x / NOISE_SCALE_M)) - 1
+	var az0 := int(floor(tile.position.y / NOISE_SCALE_M)) - 1
+	var an := int(floor(tile.end.x / NOISE_SCALE_M)) - ax0 + 3
+	var anz := int(floor(tile.end.y / NOISE_SCALE_M)) - az0 + 3
+	var lat1 := _lattice(NOISE_SEED, ax0, az0, an, anz)
+	var bx0 := int(floor(tile.position.x / NOISE_SCALE2_M)) - 1
+	var bz0 := int(floor(tile.position.y / NOISE_SCALE2_M)) - 1
+	var bn := int(floor(tile.end.x / NOISE_SCALE2_M)) - bx0 + 3
+	var bnz := int(floor(tile.end.y / NOISE_SCALE2_M)) - bz0 + 3
+	var lat2 := _lattice(NOISE_SEED + 1, bx0, bz0, bn, bnz)
+	var n := cand.size()
+	cand.resize(n + cells * cells * 3)
 	for j in range(cells):
 		var hj := _mix(seed ^ _mix(j ^ 0x9E3779B9))
 		for i in range(cells):
 			var h := _mix(hj ^ i)
 			var px := tile.position.x + (i + _unit(h)) * cell
 			var pz := tile.position.y + (j + _unit(_mix(h + 1))) * cell
-			if _unit(_mix(h + 3)) >= density_noise(px, pz):
+			# = density_noise(px, pz), lu dans les grilles des nœuds
+			var v := 0.65 * _lattice_noise(px / NOISE_SCALE_M, pz / NOISE_SCALE_M, lat1, ax0, az0, an)
+			v += 0.35 * _lattice_noise(px / NOISE_SCALE2_M, pz / NOISE_SCALE2_M, lat2, bx0, bz0, bn)
+			if _unit(_mix(h + 3)) >= clampf(v, 0.0, 1.0):
 				continue
-			cand.append(px)
-			cand.append(pz)
-			cand.append(_unit(_mix(h + 2)))
+			cand[n] = px
+			cand[n + 1] = pz
+			cand[n + 2] = _unit(_mix(h + 2))
+			n += 3
+	cand.resize(n)
 
 
 ## Applique les exclusions aux candidats et écrit les arbres gardés.
@@ -323,6 +380,8 @@ func _filter(out: PackedVector4Array, cand: PackedFloat64Array, tile: Rect2, hei
 			var gz := ((h01 + h11) - (h00 + h10)) / (2.0 * step)
 			var g := sqrt(gx * gx + gz * gz)
 			slope_ok[j * cells + i] = 1 if is_finite(g) and g <= max_slope else 0
+	var n := out.size()
+	out.resize(n + cand.size() / 3)
 	var k := 0
 	while k < cand.size():
 		var px := cand[k]
@@ -338,4 +397,6 @@ func _filter(out: PackedVector4Array, cand: PackedFloat64Array, tile: Rect2, hei
 		var y := float(height_at.call(px, pz))
 		if not is_finite(y) or y > treeline:
 			continue
-		out.append(Vector4(px, y, pz, SCALE_MIN + (SCALE_MAX - SCALE_MIN) * u))
+		out[n] = Vector4(px, y, pz, SCALE_MIN + (SCALE_MAX - SCALE_MIN) * u)
+		n += 1
+	out.resize(n)

@@ -1,0 +1,29 @@
+{
+ "version": "1.0",
+ "segments": [
+  {
+   "id": "climb1",
+   "name": "Montée 1",
+   "type": "climb",
+   "s_start": 0.0,
+   "s_end": 1500.0,
+   "length_m": 1500.0,
+   "avg_grade_pct": 3.6,
+   "gain_m": 53.9,
+   "category": "4",
+   "source": "auto"
+  },
+  {
+   "id": "sprint1",
+   "name": "Sprint 1",
+   "type": "sprint",
+   "s_start": 2860.0,
+   "s_end": 3290.0,
+   "length_m": 430.0,
+   "avg_grade_pct": 1.83,
+   "gain_m": 7.9,
+   "category": null,
+   "source": "auto"
+  }
+ ]
+}

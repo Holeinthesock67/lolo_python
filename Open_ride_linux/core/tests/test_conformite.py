@@ -151,7 +151,8 @@ def test_c5_hello_ack_reflects_config(tmp_path, monkeypatch):
     s, frames = make_session(tmp_path, monkeypatch, cfg=cfg, port=5970)
     s.server._handle_message({"type": "hello", "v": 1, "engine_version": "t"})
     ack = [f for f in frames if f["type"] == "hello_ack"][0]
-    assert ack["config"] == {"ftp_w": 280.0, "gears_total": 22, "theme": "default", "difficulty_pct": 50}
+    assert ack["config"] == {"ftp_w": 280.0, "gears_total": 22, "theme": "default", "difficulty_pct": 50,
+                             "modes": ["ride", "erg"]}   # modes : révision 1.3
 
 
 # C6 ---------------------------------------------------------------------------------------
@@ -160,7 +161,7 @@ def test_c6_difficulty_halves_sent_grade_not_speed(tmp_path, monkeypatch):
     async def ride(pct, port):
         cfg = Config()
         cfg.trainer.difficulty_pct = pct
-        cfg.trainer.grade_rate_pct_per_s = 1000.0           # neutralise le lissage pour le test
+        cfg.trainer.grade_rate_up_pct_per_s = cfg.trainer.grade_rate_down_pct_per_s = 1000.0  # sans lissage
         s, _ = make_session(tmp_path / str(pct), monkeypatch, cfg=cfg, port=port)
         s._on_command("select_route", {}, 1)
         s._on_command("start", {}, 2)

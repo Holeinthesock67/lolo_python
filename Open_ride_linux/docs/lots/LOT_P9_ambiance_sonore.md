@@ -49,3 +49,20 @@ Aucune.
 
 - Vent et roue libre (P10), foule et encouragements (P15), passage des véhicules (P13).
 - Sons enregistrés fournis avec le dépôt (droits) : seuls la synthèse et les fichiers du propriétaire.
+
+## 9. Livraison
+
+Livré sur la branche `lot-p9-ambiance`, sans toucher à `main.gd`, à `sound_model.gd`, au core ni au contrat.
+
+- **`ambience_model.gd`** : six fonds (`forest_birds`, `field_insects`, `water_flow`, `village_murmur`, `high_wind`, `rain`), chacun avec un niveau maximal entre −20 et −14 dB pour rester sous les bips du Click, multiplié par `ambience.volume` du thème (0,6 par défaut ; `birds` et `insects` règlent leurs fonds).
+  - Oiseaux : part de forêt, 24 dB plus bas la nuit (22 h à 4 h 30, rampes d'1 h 30), réduits de 80 % sous la pluie. Insectes : hors forêt et hors bâti, de 9 h à 19 h (rampes de 2 h), coupés par la pluie, réduits par le vent et au-dessus de 1 800 m. Eau : à moins de 100 m, plus fort pour une rivière que pour un lac. Village : part de bâti, plus bas la nuit. Vent d'altitude : au-dessus de 1 200 m, avec la force du vent (P4). Pluie : intensité de P8.
+  - Heure : `solar_hour` (P7, version 2.0), à défaut l'heure locale du PC (`local_hour`).
+  - Voix : au plus `voices` fonds audibles (`living(preset).ambience_voices`) ; un fond déjà joué garde 3 dB d'avance, et un nouveau fond ne monte qu'une fois une voix libérée, donc la limite tient aussi pendant les fondus.
+  - Fondus en dB à 5,5 dB/s (4 s de −36 dB au niveau d'un fond, 2,75 dB au plus en 0,5 s) ; un fond qui démarre part de −36 dB, sous les autres sons. En pause : 40 dB/s jusqu'au silence.
+  - `describe(rider_xz, forests, buildings, waters, radius_m)` : parts de forêt et de bâti sur une grille de 9 × 9 points dans le disque de 150 m, distance et sorte de l'eau la plus proche (lignes et surfaces), à partir des couches chargées (P16 les lui passe).
+  - `bell_strikes(prev_hour, hour)` : coups à l'heure pleine franchie (1 à 12), rien quand l'horloge recule ou saute de plus d'une demi-heure.
+- **`sound_player.gd`** : six lecteurs non spatialisés de plus, créés au démarrage ; fonds synthétisés en boucles de 2 s (glissades d'oiseaux par motifs déterministes, stridulation hachée, bruits filtrés pour l'eau, le village, le vent et la pluie avec gouttes), remplaçables par `~/OpenRide/Sounds/<fond>.ogg`. Synthèse de tous les sons : 190 ms ici. `update_ambience(neigh, now_s)` à chaque image ; `update_bells(hour, now_s)` fait sonner les lecteurs des points `church_bell` en cours (hors de portée : rien), un coup toutes les 2,2 s.
+- **Fichier de test** : `engine/tests/data/sounds/rain.ogg` (bip de 0,3 s généré par ffmpeg, avec un `.gdignore`) sert au test du remplacement.
+- **Tests** : `test_ambience_model.gd` (24 vérifications, `evaluate` en 0,02 ms), `test_sound_player.gd` (10 vérifications, dont 5 nouvelles).
+- **Reste sur le PC cible (le propriétaire)** : séance de 20 min avec forêt, village et rivière, après le branchement par P16.
+
