@@ -4,7 +4,7 @@ Chaque réglage est une clé `section.clé` de `config.toml`. Les bornes et les 
 `config.py` (`BOUNDS`, `CHOICES`), jamais recopiés ici ; les thèmes proposés sont `default` et les
 dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
 
-`current(cfg)` donne la liste pour le message IPC `settings` (contrat révision 1.2) et pour
+`current(cfg)` donne la liste pour le message IPC `settings` (contrat révision 1.3) et pour
 `openride-core settings --json` ; chaque élément :
 
     {"key": "rider.ftp_w", "label": "FTP", "type": "int", "value": 250, "min": 50, "max": 600,

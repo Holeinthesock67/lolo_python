@@ -176,7 +176,7 @@ def parcours_connexion_auto(run: Run) -> None:
     if not run.start(READY):
         return
     time.sleep(6.0)   # appareils simulés reliés en une seconde, puis CONNECT_HOLD_S
-    run.expect("accueil_seul", "OpenRide", "[Monde : ", "Session libre", "Trainer")
+    run.expect("accueil_seul", "OpenRide", "[Parcours : ", "Session libre", "Trainer")
 
 
 def parcours_appareils(run: Run) -> None:
@@ -186,7 +186,7 @@ def parcours_appareils(run: Run) -> None:
     time.sleep(3.0)
     run.expect("connexion", "Connexion des appareils", "[Passer — ", "Click − : recherche")
     run.press("PLUS_LONG")
-    run.expect("accueil", "OpenRide", "[Monde : ", "Session ERG")
+    run.expect("accueil", "OpenRide", "[Parcours : ", "Session ERG")
     run.press("MINUS_SHORT", "MINUS_SHORT", "PLUS_LONG")
     run.expect("reglages", "Réglages", "[Appareils : rechercher et appairer]")
     t = now()
@@ -228,11 +228,11 @@ def parcours_sessions(run: Run) -> None:
     if not run.start(READY, workout=True):
         return
     time.sleep(5.0)
-    run.expect("accueil", "OpenRide", "[Monde : ", "Session libre", "Session ERG", "Session simulée")
+    run.expect("accueil", "OpenRide", "[Parcours : ", "Session libre", "Session ERG", "Session simulée")
     run.press("PLUS_LONG")
-    run.expect("mondes", "Monde / parcours", "[demo")
+    run.expect("mondes", "Parcours", "[demo")
     run.press("PLUS_LONG")
-    run.expect("monde_choisi", "OpenRide", "[Monde : demo")
+    run.expect("monde_choisi", "OpenRide", "[Parcours : demo")
     # Session libre : Prêt puis Démarrer.
     run.press("PLUS_SHORT", "PLUS_LONG")
     run.expect("pret_libre", "Prêt : session libre — demo", "[Démarrer]")
@@ -252,7 +252,7 @@ def parcours_sessions(run: Run) -> None:
     run.expect("bilan", "Fin de séance", "[Nouvelle séance]")
     run.press("PLUS_LONG")
     time.sleep(1.0)
-    run.expect("accueil_apres", "OpenRide", "Monde : demo")
+    run.expect("accueil_apres", "OpenRide", "Parcours : demo")
     # Session ERG.
     run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_LONG")
     run.expect("erg_liste", "Session ERG : entraînement", "ERG court")

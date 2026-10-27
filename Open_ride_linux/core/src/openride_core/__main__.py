@@ -17,6 +17,9 @@ Sous-commandes disponibles à ce stade :
                                       bilan d'une séance (.jsonl ou .fit ; défaut : dernier journal)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
+    openride-core xp [--dir DOSSIER] [--json] [--config FICHIER]
+                                      progression (niveau, expérience, défis) recalculée depuis
+                                      le journal des séances (série V, lot V2)
     openride-core devices [--timeout S] [--json] [--all] [--config FICHIER]
                           [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
@@ -25,6 +28,9 @@ Sous-commandes disponibles à ce stade :
     openride-core settings set CLÉ VALEUR [--config FICHIER]
                                       réglages du menu (FTP, poids, difficulté, braquet de
                                       départ, qualité, thème) : lecture, ou écriture dans config.toml
+    openride-core plan list|show ID|start ID [--date AAAA-MM-JJ]|stop|today|install
+    openride-core plan import DOSSIER --name NOM --days mardi,jeudi,samedi
+                                      plans d'entraînement sur plusieurs semaines (lot O11)
 """
 
 from __future__ import annotations
@@ -148,6 +154,12 @@ def cmd_history(args: argparse.Namespace) -> int:
     return run(args.directory, args.weeks, args.ftp, args.json, args.config)
 
 
+def cmd_xp(args: argparse.Namespace) -> int:
+    from .tools.xp import run
+
+    return run(args.directory, args.json, args.config)
+
+
 def cmd_devices(args: argparse.Namespace) -> int:
     from .tools.devices import run
 
@@ -162,6 +174,12 @@ def cmd_settings(args: argparse.Namespace) -> int:
         print("openride-core settings : usage : settings set CLÉ VALEUR", file=sys.stderr)
         return 2
     return run(args.json, args.config, args.action[1:] if args.action else None)
+
+
+def cmd_plan(args: argparse.Namespace) -> int:
+    from .plans import run
+
+    return run(args)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -216,6 +234,11 @@ def build_parser() -> argparse.ArgumentParser:
     hist.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
     hist.add_argument("--json", action="store_true", help="sortie JSON")
     hist.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    xp = sub.add_parser("xp", help="progression (niveau, expérience, défis) recalculée depuis le journal")
+    xp.add_argument("--dir", type=Path, dest="directory",
+                    help="dossier des journaux (défaut : ~/OpenRide/Activities/.journal)")
+    xp.add_argument("--json", action="store_true", help="sortie JSON")
+    xp.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     dev = sub.add_parser("devices", help="inventaire des appareils Bluetooth et bloc [drivers] proposé")
     dev.add_argument("--timeout", type=float, default=8.0, help="durée de la recherche en s (défaut : 8)")
     dev.add_argument("--json", action="store_true", help="sortie JSON")
@@ -230,6 +253,19 @@ def build_parser() -> argparse.ArgumentParser:
     st.add_argument("action", nargs="*", metavar="set CLÉ VALEUR")
     st.add_argument("--json", action="store_true", help="sortie JSON")
     st.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    pl = sub.add_parser("plan", help="plans d'entraînement : list, show, start, stop, today, import, install")
+    pl.add_argument("action", choices=["list", "show", "start", "stop", "today", "import", "install"])
+    pl.add_argument("plan_id", nargs="?", metavar="ID|DOSSIER",
+                    help="identifiant du plan (show, start) ou dossier d'entraînements (import)")
+    pl.add_argument("--date", help="start : date de début AAAA-MM-JJ (défaut : aujourd'hui)")
+    pl.add_argument("--name", help="import : nom du plan")
+    pl.add_argument("--days", help="import : jours, par exemple mardi,jeudi,samedi ou jour1,jour3")
+    pl.add_argument("--json", action="store_true", help="sortie JSON (list, show, today)")
+    pl.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    pl.add_argument("--plans-dir", type=Path, help="dossier des plans (défaut : ~/OpenRide/Plans)")
+    pl.add_argument("--workouts-dir", type=Path, help="bibliothèque (défaut : ~/OpenRide/Workouts)")
+    pl.add_argument("--activities-dir", type=Path, help="séances (défaut : ~/OpenRide/Activities)")
+    pl.add_argument("--state", type=Path, help="plan actif (défaut : ~/OpenRide/plan_state.toml)")
     return p
 
 
@@ -245,8 +281,9 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
-            "release-trainer": cmd_release_trainer, "summary": cmd_summary,
-            "history": cmd_history, "devices": cmd_devices, "settings": cmd_settings}[args.command](args)
+            "release-trainer": cmd_release_trainer, "summary": cmd_summary, "xp": cmd_xp,
+            "history": cmd_history, "devices": cmd_devices,
+            "plan": cmd_plan, "settings": cmd_settings}[args.command](args)
 
 
 if __name__ == "__main__":

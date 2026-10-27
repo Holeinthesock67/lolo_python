@@ -8,16 +8,18 @@ Demande du propriétaire du 26 octobre : après l'écran de connexion des appare
 
 ## 2. Accueil
 
+Décision D10 du 27 octobre (audit de cohérence) : l'entrée s'appelle « Parcours » (« Monde ouvert » est réservé à la série W) et l'accueil n'affiche que les modes annoncés par `hello_ack.config.modes`.
+
 | Élément | Effet |
 | --- | --- |
-| « Monde : … » | Liste des parcours ; le choix (`select_route`) revient à l'accueil, qui affiche le nom du monde choisi |
-| « Session libre » | Mode SIM sans entraînement (`select_workout` à `null`), puis écran « Prêt » ; sans monde choisi, passe d'abord par la liste des parcours |
-| « Session ERG » | Liste des entraînements (sous-menu ERG du lot N16), puis écran « Prêt » ; sans monde choisi, passe d'abord par la liste des parcours |
+| « Parcours : … » | Liste des parcours ; le choix (`select_route`) revient à l'accueil, qui affiche le nom du parcours choisi |
+| « Session libre » | Mode SIM sans entraînement (`select_workout` à `null`), puis écran « Prêt » ; sans parcours choisi, passe d'abord par la liste des parcours |
+| « Session ERG » | Liste des entraînements (sous-menu ERG du lot N16), puis écran « Prêt » ; sans parcours choisi, passe d'abord par la liste des parcours |
 | « Session simulée » | Confirmation, puis l'engine sort avec le code 65 : le lanceur relance le core avec le HomeTrainer, le Click et la ceinture simulés (`--trainer sim --input sim --hr sim --sim-scenario nominal`) et l'engine avec `--sim-session` ; l'accueil s'appelle alors « OpenRide — session simulée » et propose « Revenir au matériel réel » (code 64) |
 | « Réglages » | Appareils (lot N13) ; réglages (lot O4) |
 | « Quitter » | Avec confirmation |
 
-Écran « Prêt » : titre « Prêt : session libre — monde » ou « Prêt : session ERG — monde », « Démarrer », « Changer d'entraînement » (ou « Passer en session ERG »), « Changer de monde ». Après le bilan, « Nouvelle séance » recharge le monde choisi (le core reste en FINISHED jusqu'au prochain `select_route`).
+Écran « Prêt » : titre « Prêt : session libre — parcours » ou « Prêt : session ERG — parcours », « Démarrer », « Changer d'entraînement » (ou « Passer en session ERG »), « Changer de parcours ». Après le bilan, « Nouvelle séance » recharge le monde choisi (le core reste en FINISHED jusqu'au prochain `select_route`).
 
 ## 3. Livraison (26 octobre 2026)
 

@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Réglages du menu (Lot O4, contrat IPC révision 1.2), sans nœud : éléments de l'écran « Réglages »
+## Réglages du menu (Lot O4, contrat IPC révision 1.3), sans nœud : éléments de l'écran « Réglages »
 ## et écran de modification d'une valeur au Click.
 ##
 ## Le core envoie la liste (`settings` : {key, label, type, value, min, max, step, unit, choices,
