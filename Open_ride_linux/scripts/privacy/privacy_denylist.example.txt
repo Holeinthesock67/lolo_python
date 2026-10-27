@@ -1,0 +1,14 @@
+# Modèle de liste locale pour privacy_scan.py (lot X23).
+# Copier vers ~/OpenRide/privacy_denylist.txt et remplacer les exemples par les vraies valeurs.
+# CE FICHIER-CI NE CONTIENT QUE DES EXEMPLES FICTIFS ; la vraie liste ne va jamais dans le dépôt.
+# Dans la CI, le même contenu est lu dans le secret GitHub PRIVACY_DENYLIST.
+#
+# Un mot ou une expression par ligne (insensible à la casse et aux accents, mot entier) :
+jean-exemple
+dupont-exemple
+pc-exemple-hostname
+# Expression régulière :
+regex: ftp_w\s*=\s*999\b
+# Zone privée : latitude, longitude, rayon en km. Toute coordonnée à 2 décimales ou plus
+# dans ce rayon est signalée (une valeur arrondie comme 48.9 / 7.1 passe).
+zone: 45.0000, 5.0000, 5

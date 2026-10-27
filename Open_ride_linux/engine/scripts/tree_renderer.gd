@@ -9,10 +9,15 @@ extends Node3D
 ## - LOD 1 (300 à 1 500 m) : quadrilatères croisés (4 triangles), sans ombre.
 ## Le budget global d'instances (QualityPresets.tree_budget) est respecté en éliminant les cases
 ## les plus éloignées en cas de dépassement.
+## Vent (Lot P5) : quand `QualityPresets.living(preset).tree_sway` est vrai, les deux LOD utilisent le
+## shader `tree_sway.gdshader` ; sinon les StandardMaterial3D d'origine (rendu inchangé).
+## `apply_wind(eval)` met à jour une fois par image les paramètres globaux du vent du shader.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
+const LOD1_SWAY_FACTOR := 0.6   # amplitude réduite des panneaux croisés du LOD 1
 
 const CELL_SIZE_M := 250.0
 const CELLS_PER_TILE := 4   # 4 x 4 = 16 cases par tuile de 1000 m
@@ -30,8 +35,9 @@ const REGION_TREELINE_MARGIN_M := 300.0
 var placer := VegetationPlacer.new()
 var _lod0_mesh: ArrayMesh
 var _lod1_mesh: ArrayMesh
-var _lod0_material: StandardMaterial3D
-var _lod1_material: StandardMaterial3D
+var _lod0_material: Material
+var _lod1_material: Material
+var _tree_sway := false
 
 ## { tile_key: { cell_idx: { lod0: MultiMeshInstance3D, lod1: MultiMeshInstance3D, count: int, center: Vector3 } } }
 var _tiles: Dictionary = {}
@@ -46,6 +52,10 @@ func _init() -> void:
 
 
 func _init_materials() -> void:
+	if _tree_sway:
+		_lod0_material = sway_material(false)
+		_lod1_material = sway_material(true)
+		return
 	_lod0_material = StandardMaterial3D.new()
 	_lod0_material.vertex_color_use_as_albedo = true
 	_lod0_material.roughness = 0.85
@@ -56,8 +66,43 @@ func _init_materials() -> void:
 	_lod1_material.roughness = 0.85
 
 
-func set_preset(preset_name: String) -> void:
+func set_preset(preset_name: String, living_enabled: bool = true) -> void:
 	_budget = QualityPresets.tree_budget(preset_name)
+	var sway: bool = QualityPresets.living(preset_name, living_enabled)["tree_sway"]
+	if sway != _tree_sway:
+		_tree_sway = sway
+		_init_materials()
+		for tile_cells in _tiles.values():
+			for cell_info in tile_cells.values():
+				(cell_info["lod0"] as MultiMeshInstance3D).material_override = _lod0_material
+				(cell_info["lod1"] as MultiMeshInstance3D).material_override = _lod1_material
+
+
+func is_tree_sway() -> bool:
+	return _tree_sway
+
+
+## Matériau de balancement (Lot P5) ; `lod1` : panneaux croisés vus des deux côtés, amplitude réduite.
+static func sway_material(lod1: bool) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	if lod1:
+		var sh := Shader.new()
+		sh.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode cull_disabled;")
+		mat.shader = sh
+		mat.set_shader_parameter("sway_amplitude_m", 0.45 * LOD1_SWAY_FACTOR)
+	else:
+		mat.shader = TreeSwayShader
+	return mat
+
+
+## Met à jour en un appel par image le vent de tous les arbres et touffes (sortie de wind_model.evaluate).
+## Les quatre paramètres globaux (`wind_dir`, `wind_strength`, `wind_gust`, `wind_phase`) sont déclarés
+## dans `project.godot` ([shader_globals]).
+static func apply_wind(wind_eval: Dictionary) -> void:
+	RenderingServer.global_shader_parameter_set("wind_dir", wind_eval.get("dir", Vector3.ZERO))
+	RenderingServer.global_shader_parameter_set("wind_strength", float(wind_eval.get("strength", 0.0)))
+	RenderingServer.global_shader_parameter_set("wind_gust", float(wind_eval.get("gust", 0.0)))
+	RenderingServer.global_shader_parameter_set("wind_phase", float(wind_eval.get("phase", 0.0)))
 
 
 func get_active_tree_count() -> int:
