@@ -1,4 +1,4 @@
-# Lot P1 – Contrat : vent, aspiration et décor vivant (IPC v1.2, thème 1.2, configuration `[wind]`)
+# Lot P1 – Contrat : vent, aspiration et décor vivant (IPC révision 1.3, thème 1.2, configuration `[wind]`)
 
 ## 1. Objectif
 
@@ -16,18 +16,33 @@ Version 1.0 publiée (lot O8). N9 n'est pas requis pour écrire le contrat, seul
 
 ## 4. Travail demandé
 
+### Décisions du propriétaire (25 octobre 2026)
+
+| # | Question | Décision |
+| --- | --- | --- |
+| 1 | Vent par défaut | Coupé (`mode = "off"`) dans les versions 1.x. En 2.0, activé par défaut d'après la météo locale (lecture au lancement, repli sans vent si le réseau manque) : demande d'assouplir la règle « hors ligne », à trancher en 2.0 |
+| 2 | Ressenti en SIM | Supplément de pente (`feel = "grade"`) ; le champ vent du FTMS reste une option à essayer |
+| 3 | Plafond du supplément | 4 points de pente, réglable dans la section « Réglages » du menu |
+| 4 | ERG | Le vent et l'abri ne changent que la vitesse virtuelle, jamais la puissance demandée |
+| 5 | Fréquence d'envoi du vent | 2 fois par seconde |
+| 6 | Abri derrière le fantôme | Non : seuls les bots à puissance constante abritent |
+| 7 | Éoliennes et drapeaux dans le format | Oui |
+
+Les propositions ci-dessous sont ajustées à ces décisions.
+
 Rédiger les ajouts, chacun avec sa ligne au journal des changements du document. Propositions de départ, à trancher par le propriétaire :
 
-### 4.1 IPC v1.2 : champ `wind` de `state`
+### 4.1 IPC révision 1.3 : champ `wind` de `state`
 
 - Objet facultatif `wind`, absent quand le vent est désactivé (trames inchangées) : `{speed_mps, from_deg, head_mps, gust}`.
   - `speed_mps` : vitesse du vent au sol, rafale comprise (≥ 0) ;
   - `from_deg` : direction d'où vient le vent, en degrés dans le sens horaire depuis le nord (convention du cap de `world_format_v1.md` §3) ;
   - `head_mps` : composante de face le long du cap de la route à `s` (positive de face, négative de dos), celle qu'utilise la physique ;
   - `gust` : facteur de rafale de 0 à 1, pour l'animation (arbres, drapeaux, son).
-- Envoyé dans chaque trame à 30 Hz (environ 70 octets) ; vérifier que la trame la plus chargée (ERG, `devices`, 5 bots, `wind`, `draft`) tient toujours dans 1 400 octets, sinon passer `wind` à 2 Hz.
+- Ces quatre champs suffisent à l'indicateur du HUD demandé par le propriétaire le 25 octobre (vent favorable ou non, et son intensité) : le verdict vient du signe de `head_mps`, l'intensité de `speed_mps` (calcul dans `wind_view_model.gd`, lot P4). Aucun champ de plus.
+- Envoyé **2 fois par seconde** (décision du propriétaire), dans une trame sur quinze environ (environ 70 octets) ; la physique du core utilise le vent exact à 50 Hz et l'engine lisse les valeurs reçues. Vérifier que la trame la plus chargée (ERG, `devices`, 5 bots, `wind`, `draft`) tient toujours dans 1 400 octets (à la livraison : `wind` jamais dans la trame qui porte `devices`, §9).
 
-### 4.2 IPC v1.2 : champ `draft` de `state`
+### 4.2 IPC révision 1.3 : champ `draft` de `state`
 
 - Nombre facultatif `draft` de 0 à 0,45 : coefficient d'aspiration appliqué au cycliste (SRS §5), absent sans bot. Champ facultatif `draft_bot` : `id` du bot qui abrite, ou absent.
 
@@ -35,7 +50,7 @@ Rédiger les ajouts, chacun avec sa ligne au journal des changements du document
 
 - `mode` = `"off"` (défaut : comportement actuel), `"fixed"`, `"gusty"`, `"theme"` ; `speed_kmh` (0 à 60), `from_deg` (0 à 360), `gust_pct` (0 à 100), `seed` (entier).
 - `feel` = `"grade"` (défaut) ou `"ftms"` : en SIM, la résistance due au vent et à l'aspiration est transmise au trainer soit sous forme de **supplément de pente**, soit dans le champ vent de la commande FTMS 0x11. `"grade"` est le choix sûr (pente validée sur le trainer le 22 octobre) ; `"ftms"` reste à essayer sur le matériel.
-- `max_grade_offset_pct` (défaut 4,0) : borne du supplément de pente.
+- `max_grade_offset_pct` (défaut 4,0, bornes 0 à 8) : borne du supplément de pente, réglable dans la section « Réglages » du menu (écrite par les réglages du core, comme O3).
 - En ERG, ni le vent ni l'aspiration ne changent la résistance (puissance imposée) ; seule la vitesse virtuelle change.
 
 ### 4.4 Thème 1.2 (`theme.schema.json`, `world_format_v1.md` §9)
@@ -75,3 +90,15 @@ Ajouts compatibles décrits au §4, et seulement eux.
 - Vent de travers sur la physique (seule la composante de face compte), vent qui varie selon le relief.
 - Aspiration entre bots, peloton.
 - Météo réelle téléchargée (aucun réseau à l'exécution).
+
+## 9. Livraison (26 octobre 2026)
+
+Livré sur la branche `lot-p1-contrat-vent-decor`. Les décisions du propriétaire du 25 octobre sont notées en tête du §4 ; la série a été lancée le 26 octobre sans attendre la 1.0 (« Lance les lots O et P »).
+
+- **Numéro de révision :** Q1 et N13 ayant pris la révision 1.2 de l'IPC, le vent et l'aspiration forment la **révision 1.3** (numérotation confirmée par le propriétaire le 26 octobre). Les plans de la 2.0 (séries R, T et V) passent en révision 1.4.
+- **IPC :** objet `wind` (`speed_mps`, `from_deg`, `head_mps`, `gust`) et champs `draft` et `draft_bot` dans `state` (`ipc_v1.md` §3, `state.schema.json`), avec les arrondis d'envoi. Pour tenir dans 1 400 octets, `wind` n'est jamais dans la trame qui porte `devices` (le core le décale d'une trame) : avec ERG, 5 bots et l'aspiration, la trame qui porte `devices` fait environ 1 370 octets et celle qui porte `wind` environ 1 160 octets.
+- **Audit IPC du 26 octobre (rapport de la PR #288), décisions D1 et D3 acceptées par le propriétaire le 26 octobre :** la limite de la trame `state` passe à 4 096 octets (§2 ; `MAX_STATE_DATAGRAM_SIZE` dans `ipc_server.py`, les autres messages restent à 1 400 octets) ; champ facultatif `rev` (« 1.3 ») dans `hello` et `hello_ack`, écrit au journal des deux programmes en cas d'écart, sans refus ; liste facultative `modes` (`["ride", "erg"]`) dans `hello_ack.config` (§5 ; `rogue` et `open_world` viendront avec les séries R et W). Test `test_v1_3_state_limit_rev_and_modes`.
+- **Configuration :** section `[wind]` décrite dans la SRS §11, hors de l'exemple `config.toml` tant que le core ne la lit pas (lot P2 l'y ajoute) ; SRS §5 complétée (composante de face, supplément de pente borné, ERG, fantôme sans abri).
+- **Thème 1.2 :** `sky.clouds`, `sky.time_of_day`, `weather`, `season`, `wind`, `ambience` et `fauna` dans `theme.schema.json` et `world_format_v1.md` §9 ; `engine/themes/default/theme.json` passe en 1.2 avec un été calme (vent de 8 km/h d'ouest, 30 % de nuages).
+- **Points d'intérêt :** `wind_turbine` (avec `height_m`) et `flag` dans `poi.schema.json` et `world_format_v1.md` §8 (format 1.2).
+- **Tests :** `test_v1_3_wind_and_draft_are_optional_and_fit` (trames avec et sans les nouveaux champs, valeurs hors bornes refusées, deux trames les plus chargées) ; `openride-compiler theme-check engine/themes/default` accepte le thème.

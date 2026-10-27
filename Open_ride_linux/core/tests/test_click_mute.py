@@ -257,13 +257,15 @@ def test_rehandshake_without_unblock_stops_after_3_attempts(caplog, monkeypatch)
         )
         task = asyncio.create_task(prov.run())
         await wait_for(lambda: prov.status == "CONNECTED")
-        cb = client.cbs[zwift_click.ZWIFT_ASYNC]
 
-        # Envoyer des messages sans bouton pour parcourir les étapes
-        for _ in range(30):
+        # Messages sans bouton pendant 10 s d'horloge du test. La boucle de surveillance du provider
+        # tourne toutes les 0,2 s réelles : on lui laisse un tour par pas d'horloge.
+        for _ in range(20):
             now[0] += 0.5
-            cb(None, bytes([zwift_click.MSG_EMPTY, 0x00]))
-            await asyncio.sleep(0.01)
+            cb = client.cbs.get(zwift_click.ZWIFT_ASYNC)
+            if cb is not None:
+                cb(None, bytes([zwift_click.MSG_EMPTY, 0x00]))
+            await asyncio.sleep(0.25)
 
         prov.stop()
         await asyncio.wait_for(task, 2.0)
@@ -288,3 +290,24 @@ def test_ble_diag_trace_subcommand(tmp_path):
     )
     args = argparse.Namespace(file=str(trace_file))
     asyncio.run(ble_diag.cmd_trace(args))
+
+
+def test_session_passes_q6_settings_and_side(tmp_path):
+    """Les réglages [drivers] du fichier donné à la séance arrivent aux deux boîtiers (pas de relecture
+    de ~/OpenRide/config.toml) ; le côté vient des adresses configurées, pas de la fin de l'adresse."""
+    from openride_core.config import from_dict
+    from openride_core.session import build_inputs
+
+    cfg = from_dict({"drivers": {"input": "click", "click_trace_raw": True, "click_mute_after_s": 45.0,
+                                 "click_rehandshake_s": 30.0, "click_address": "AA:BB:CC:00:00:7F",
+                                 "click_minus_address": "AA:BB:CC:00:00:3C"}})
+    plus, minus = [p for p in build_inputs(cfg) if isinstance(p, ZwiftClickProvider)]
+    for p in (plus, minus):
+        assert (p.trace_raw, p.mute_after_s, p.rehandshake_s) == (True, 45.0, 30.0)
+    assert plus.side == "droit"
+    assert minus.side == "gauche"
+    # Sans adresse configurée ni connexion, le côté n'est pas deviné
+    bare = [p for p in build_inputs(from_dict({"drivers": {"input": "click"}}))
+            if isinstance(p, ZwiftClickProvider)]
+    assert [p.side for p in bare] == ["inconnu", "inconnu"]
+    assert all(p.trace_raw is False and p.rehandshake_s == 0.0 for p in bare)

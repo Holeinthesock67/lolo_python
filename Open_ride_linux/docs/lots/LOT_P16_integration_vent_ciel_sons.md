@@ -17,12 +17,13 @@ Puis faire la recette sur le matériel. Lot interne : il modifie `main.gd` et `h
 
 ## 3. Prérequis
 
-P2, P4, P5, P6, P9 et P10 livrés. Version 1.0 publiée.
+P2, P4, P5, P6, P9 et P10 livrés ; O4 (section « Réglages » du menu). Version 1.0 publiée.
 
 ## 4. Travail demandé
 
 - `main.gd` : un `WindModel` alimenté par chaque trame ; paramètres globaux du vent (P5, P6) mis à jour une fois par image ; matériaux d'arbres et nœud des touffes selon `living(preset)` ; ciel de P6 à la place du ciel actuel ; voisinage sonore (part de forêt et de bâti, eau la plus proche, altitude) calculé au plus 2 fois par seconde à partir des couches déjà chargées et passé à P9.
-- `hud_view.gd` : indicateur du vent (flèche, « 18 km/h face ») d'après `wind_view_model.gd`, placé sans recouvrir les autres éléments (règle de `banner.gd`), sous les lignes actuelles du HUD ; laisser libre une zone pour les blocs « segment » (chrono, écart au record) et « bonus » (icône, compte à rebours) de la série T de la 2.0 (`docs/2.0/`) ; caché sans vent.
+- `hud_view.gd` : indicateur du vent d'après `wind_view_model.gd` : flèche, « 18 km/h face », barres d'intensité (« modéré ») et pastille « Vent favorable » en vert, « Vent défavorable » en rouge ou « Vent neutre » en gris (demande du propriétaire du 25 octobre) ; lisible d'un coup d'œil sur le vélo, à 2 m de l'écran ; placé sans recouvrir les autres éléments (règle de `banner.gd`), sous les lignes actuelles du HUD ; laisser libre une zone pour les blocs « segment » (chrono, écart au record) et « bonus » (icône, compte à rebours) de la série T de la 2.0 (`docs/2.0/`) ; caché sans vent.
+- Section « Réglages » du menu (O4) : mode du vent (coupé, fixe, rafales, thème), force, direction et plafond du supplément de pente (4 points par défaut, de 0 à 8), décisions du propriétaire du 25 octobre (P1).
 - Réglage `[render] living` (oui par défaut) relayé par le lanceur comme le préréglage de qualité (L4), pour tout couper en cas de souci de performance.
 - `visual_check.py` : une scène `vent` (trame avec `wind`, indicateur visible et dans l'écran) et une scène `nuages` (pixels clairs au-dessus de l'horizon) ; références mises à jour.
 - Nouveau `docs/RECETTE_P16.md` : liste d'essais du §7, à cocher par le propriétaire.
@@ -40,7 +41,7 @@ Aucune (P1).
 
 1. Tous les tests passent (`core`, `compiler`, `run_engine_tests.sh`, `run_e2e.sh`, `run_visual_tests.sh`).
 2. **Performance sur le PC cible, qualité `low`, tout activé, vent de 25 km/h, couverture nuageuse 0,5, parcours avec forêt et village :** `[perf-rendu]` à 55 images/s ou plus en moyenne sur 20 min, temps d'image p99 sous 25 ms ; écart avec `living = false` relevé dans la recette (objectif : moins de 3 images/s).
-3. Vent de face de 25 km/h en SIM : résistance qui monte, vitesse qui baisse, flèche « face » ; demi-tour sur le parcours : « dos », vitesse qui remonte.
+3. Vent de face de 25 km/h en SIM : résistance qui monte, vitesse qui baisse, flèche « face », « Vent défavorable » en rouge, niveau « fort » ; demi-tour sur le parcours : « dos », « Vent favorable » en vert, vitesse qui remonte ; route en travers du vent : « Vent neutre ».
 4. Arbres et nuages qui bougent dans le sens de la flèche ; son du vent qui forcit avec le vent de face ; roue libre qui ralentit avec la vitesse.
 5. Ambiance qui change entre forêt, champ et village, sans clic ni coupure.
 6. `living = false` : rendu et sons identiques à la 1.0.

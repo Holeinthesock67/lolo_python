@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import logging
 import math
+import struct
 import re
 import time
 from contextlib import AsyncExitStack
@@ -53,6 +54,56 @@ def att_error_code(exc: BaseException) -> int | None:
     return int(m.group(1), 16) if m else None
 
 
+
+OP_NAMES: dict[int, str] = {
+    ftms.OP_REQUEST_CONTROL: "REQUEST_CONTROL",
+    ftms.OP_RESET: "RESET",
+    ftms.OP_SET_TARGET_POWER: "ERG",
+    ftms.OP_START_RESUME: "START_RESUME",
+    ftms.OP_STOP_PAUSE: "STOP_PAUSE",
+    ftms.OP_SET_SIM_PARAMS: "SIM",
+}
+
+
+def format_cp_write(payload: bytes) -> tuple[str, str, str]:
+    """Décode une trame Control Point pour la trace (lot Q3).
+
+    Renvoie (opération, valeurs_lisibles, représentation_hex).
+    """
+    if not payload:
+        return "?", "", ""
+    op = payload[0]
+    if op == ftms.OP_REQUEST_CONTROL:
+        return "REQUEST_CONTROL", "", "00"
+    if op == ftms.OP_RESET:
+        return "RESET", "", "01"
+    if op == ftms.OP_START_RESUME:
+        return "START_RESUME", "", "07"
+    if op == ftms.OP_STOP_PAUSE:
+        if len(payload) >= 2 and payload[1] == 0x01:
+            return "STOP", "", "08 01"
+        if len(payload) >= 2 and payload[1] == 0x02:
+            return "PAUSE", "", "08 02"
+        return "STOP_PAUSE", "", payload.hex(" ")
+    if op == ftms.OP_SET_TARGET_POWER:
+        if len(payload) >= 3:
+            w = struct.unpack_from("<h", payload, 1)[0]
+            return "ERG", f"cible {w} W", f"{payload[0:1].hex()} {payload[1:3].hex()}"
+        return "ERG", "", payload.hex(" ")
+    if op == ftms.OP_SET_SIM_PARAMS:
+        if len(payload) >= 7:
+            wind, grade, crr, cw = struct.unpack_from("<hhBB", payload, 1)
+            grade_pct = grade / 100.0
+            crr_val = crr / 10000.0
+            cw_val = cw / 1000.0 if cw > 50 else cw / 100.0
+            vals = [f"pente {grade_pct:.2f} %", f"crr {crr_val:.4f}", f"cw {cw_val:.3f}"]
+            if wind != 0:
+                vals.insert(0, f"vent {wind / 1000.0:.1f} m/s")
+            hex_parts = f"{payload[0:1].hex()} {payload[1:3].hex()} {payload[3:5].hex()} {payload[5:6].hex()} {payload[6:7].hex()}"
+            return "SIM", " ".join(vals), hex_parts
+        return "SIM", "", payload.hex(" ")
+    return f"0x{op:02x}", "", payload.hex(" ")
+
 class ControlPoint:
     """Fitness Machine Control Point (0x2AD9) : une procédure à la fois (FTMS §4.16.3).
 
@@ -62,12 +113,19 @@ class ControlPoint:
     """
 
     def __init__(self, client: Any,
-                 on_response: Callable[[ftms.ControlResponse], None] | None = None) -> None:
+                 on_response: Callable[[ftms.ControlResponse], None] | None = None,
+                 *,
+                 trace: bool = False,
+                 clock: Callable[[], float] = time.monotonic) -> None:
         self.client = client
         self._on_response = on_response
+        self.trace = trace
+        self._clock = clock
         self._waiting: tuple[int, asyncio.Future] | None = None
         self._idle = asyncio.Event()   # aucune procédure en attente de sa réponse 0x80
         self._idle.set()
+        self.last_calls: dict[int, float] = {}
+        self.last_call_at: float = 0.0
 
     async def enable(self) -> None:
         """Abonnement aux indications : obligatoire avant toute écriture (FTMS §4.16.3)."""
@@ -89,18 +147,34 @@ class ControlPoint:
         """Écrit une commande et attend sa réponse ; None si le trainer n'a pas répondu à temps."""
         fut = asyncio.get_running_loop().create_future()
         self._waiting = (payload[0], fut)
+        t_start = self._clock()
+        self.last_calls[payload[0]] = t_start
+        self.last_call_at = t_start
         try:
             note_trainer_write()
             self._idle.clear()
+            if self.trace:
+                op_name, vals, hex_str = format_cp_write(payload)
+                args = f" {vals}" if vals else ""
+                log.info("FTMS > %s%s (%s)", op_name, args, hex_str)
             write = self.client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True)
             if write_timeout is None:
                 await write
             else:
                 await asyncio.wait_for(write, timeout=write_timeout)
             try:
-                return await asyncio.wait_for(fut, timeout=CP_RESPONSE_TIMEOUT_S)
+                resp = await asyncio.wait_for(fut, timeout=CP_RESPONSE_TIMEOUT_S)
+                if self.trace and resp is not None:
+                    dt_ms = int(round((self._clock() - t_start) * 1000))
+                    op_name = OP_NAMES.get(payload[0], f"0x{payload[0]:02x}")
+                    log.info("FTMS < réponse %s %s en %d ms", op_name, resp.result_name, dt_ms)
+                return resp
             except asyncio.TimeoutError:
-                log.info("Pas de réponse du Control Point à 0x%02x", payload[0])
+                dt_ms = int(round((self._clock() - t_start) * 1000))
+                if self.trace:
+                    log.info("FTMS < sans réponse après %d ms", dt_ms)
+                else:
+                    log.info("Pas de réponse du Control Point à 0x%02x", payload[0])
                 return None
         finally:
             self._waiting = None
@@ -139,6 +213,7 @@ class FtmsDriver:
         # Cw = 0,5 · ρ · CdA (kg/m), cf. ftms.cmd_set_sim_params.
         self._crr = bike.crr
         self._cw = 0.5 * RHO0 * bike.cda_m2
+        self._wind_mps = 0.0   # champ vent de la commande 0x11 ([wind] feel = "ftms", lot P2)
 
         self._want = _Want()
         self._last_sent: tuple[str, float] | None = None
@@ -161,6 +236,7 @@ class FtmsDriver:
         self.power_range = DEFAULT_POWER_RANGE   # remplacée par la plage annoncée (0x2AD8)
         self.power_increment = 1.0
         self.supports_sim = True
+        self._cp: ControlPoint | None = None
         self.supports_erg = True
         self.reconnect_count = 0
         self.att_retries = 0   # renvois après une erreur ATT ponctuelle (lot M1)
@@ -210,6 +286,10 @@ class FtmsDriver:
         self._immediate = self._immediate or immediate
         return True
 
+    def set_wind(self, wind_mps: float) -> None:
+        """Vent de face transmis avec la prochaine consigne SIM (au plus tard au renvoi)."""
+        self._wind_mps = float(wind_mps)
+
     def poll(self, t_session: float = 0.0) -> TrainerMetrics:
         now = self._clock()
         dt = 0.0 if self._last_poll_at is None else max(now - self._last_poll_at, 0.0)
@@ -257,19 +337,54 @@ class FtmsDriver:
             return
         self._hr_service = bpm or None
 
+    def _is_status_echo(self, status_code: int, now: float) -> bool:
+        if self._cp is None:
+            return False
+        if status_code == ftms.STATUS_CONTROL_LOST:
+            return False
+        status_to_op = {
+            0x01: ftms.OP_RESET,
+            0x02: ftms.OP_STOP_PAUSE,
+            0x04: ftms.OP_START_RESUME,
+            0x08: ftms.OP_SET_TARGET_POWER,
+            0x12: ftms.OP_SET_SIM_PARAMS,
+        }
+        expected_op = status_to_op.get(status_code)
+        if expected_op is not None:
+            last_t = self._cp.last_calls.get(expected_op, 0.0)
+            return (now - last_t) < 2.0
+        return (now - self._cp.last_call_at) < 2.0
+
     def _on_status(self, _ch: Any, data: bytearray) -> None:
         status = ftms.parse_machine_status(bytes(data))
         if status is None:
             return
         code, name = status
+        now = self._clock()
+        is_echo = self._is_status_echo(code, now)
+        if self.cfg.trace_ftms:
+            valeurs = ""
+            if code == 0x08 and len(data) >= 3:
+                w = struct.unpack_from("<h", data, 1)[0]
+                valeurs = f"cible {w} W"
+            elif code == 0x12 and len(data) >= 7:
+                _, grade, _, _ = struct.unpack_from("<hhBB", data, 1)
+                valeurs = f"pente {grade / 100.0:.2f} %"
+            qualification = "écho probable de notre commande" if is_echo else "par un tiers"
+            vals_str = f" {valeurs}" if valeurs else ""
+            log.info("FTMS < statut %s%s (%s)", name, vals_str, qualification)
+
         if code == ftms.STATUS_CONTROL_LOST:
             # Contrôle retiré (autre application, interface du trainer) : on le redemande à la
             # prochaine consigne ; un refus passe ensuite par le compteur de `_on_response`.
             log.warning("Trainer : contrôle FTMS perdu (Fitness Machine Status 0xFF)")
             self._forget_sent()
         elif code == 0x01:
-            log.info("Trainer : consignes remises à zéro par un tiers (Reset), renvoi")
-            self._forget_sent()
+            if is_echo:
+                log.info("Trainer : consignes remises à zéro (Reset, écho de notre commande)")
+            else:
+                log.info("Trainer : consignes remises à zéro par un tiers (Reset), renvoi")
+                self._forget_sent()
         elif code in (0x02, 0x03):
             # Arrêt voulu sur le trainer (ou clé de sécurité) : pas de redémarrage forcé.
             log.info("Trainer : état machine %s", name)
@@ -357,7 +472,8 @@ class FtmsDriver:
                              pr.min_w, pr.max_w, pr.increment_w)
             cp: ControlPoint | None = None
             if services.get_characteristic(ftms.CONTROL_POINT) is not None:
-                cp = ControlPoint(client, self._on_response)
+                cp = ControlPoint(client, self._on_response, trace=self.cfg.trace_ftms, clock=self._clock)
+                self._cp = cp
                 await cp.enable()
             else:
                 log.warning("Trainer sans Control Point FTMS : mesures seules, aucune consigne")
@@ -452,7 +568,7 @@ class FtmsDriver:
             sent = (want.mode, want.value)
             if want.mode == "erg":
                 return ftms.cmd_set_target_power(want.value)
-            return ftms.cmd_set_sim_params(want.value, self._crr, self._cw)
+            return ftms.cmd_set_sim_params(want.value, self._crr, self._cw, self._wind_mps)
 
         await self._call_retrying(cp, build)
         self._last_sent_at = now
@@ -517,7 +633,7 @@ async def release_trainer(
             if client.services.get_characteristic(ftms.CONTROL_POINT) is None:
                 log.warning("Pas de Control Point FTMS sur cet appareil.")
                 return False
-            cp = ControlPoint(client)
+            cp = ControlPoint(client, trace=trainer.trace_ftms)
             try:
                 # Sans abonnement aux indications, le trainer doit refuser toute écriture
                 # (erreur ATT 0xFD, FTMS §4.16.3).

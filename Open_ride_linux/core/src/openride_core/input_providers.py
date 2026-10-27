@@ -83,6 +83,7 @@ class ZwiftClickProvider:
         mute_after_s: float | None = None,
         rehandshake_s: float | None = None,
         side: str | None = None,
+        side_of: Callable[[str], str | None] | None = None,
     ) -> None:
         self.address = address or None
         self._pair, self._optional = pair, optional
@@ -107,23 +108,12 @@ class ZwiftClickProvider:
         self._attempts = 0
         self._drop_reason = ""
         self._conn_address = "?"   # boîtier de la dernière connexion, repris dans la ligne de coupure
-        # Lot Q6 : trace brute, détection muet et reprise automatique
-        if trace_raw is None or mute_after_s is None or rehandshake_s is None:
-            try:
-                from . import config
-                cfg = config.load()
-                if trace_raw is None:
-                    trace_raw = cfg.drivers.click_trace_raw
-                if mute_after_s is None:
-                    mute_after_s = cfg.drivers.click_mute_after_s
-                if rehandshake_s is None:
-                    rehandshake_s = cfg.drivers.click_rehandshake_s
-            except Exception:
-                pass
+        # Lot Q6 : trace brute, détection du boîtier muet et reprise (réglages [drivers] passés par la séance)
         self.trace_raw: bool = False if trace_raw is None else trace_raw
         self.mute_after_s: float = 60.0 if mute_after_s is None else float(mute_after_s)
         self.rehandshake_s: float = 0.0 if rehandshake_s is None else float(rehandshake_s)
         self._explicit_side = side
+        self._side_of = side_of
         self.msg_counts: dict[str, int] = {"boutons": 0, "batterie": 0, "maintien": 0, "inconnu": 0}
         self._mute_reported = False
         self._rehandshake_step = 0
@@ -134,18 +124,12 @@ class ZwiftClickProvider:
 
     @property
     def side(self) -> str:
+        """« droit » (boîtier « + »), « gauche » (boîtier « − ») ou « inconnu » pour le journal."""
         if self._explicit_side in ("droit", "gauche", "inconnu"):
             return self._explicit_side
-        addr = (self._mine or self.address or self._conn_address or "").upper()
-        if addr and addr != "?":
-            if addr.endswith("02") or (addr.endswith("01") and self._optional):
-                return "gauche"
-            if addr.endswith("01") or addr.endswith("03"):
-                return "droit"
-        if self._optional:
-            return "gauche"
-        if self._pair is not None and not self._optional:
-            return "droit"
+        addr = self._mine or self.address or self._conn_address or ""
+        if addr and addr != "?" and self._side_of is not None:
+            return self._side_of(addr) or "inconnu"
         return "inconnu"
 
     def _trace_raw_notification(self, now: float, char: str, msg_type: int,

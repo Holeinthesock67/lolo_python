@@ -17,13 +17,18 @@ signal command_failed(cmd_name: String)
 signal routes_received(items: Array, msg: Dictionary)
 signal workouts_received(items: Array, msg: Dictionary)
 signal list_failed(list_name: String, error_message: String)
+## Résultat d'une recherche d'appareils ou de l'identification du « + » (lot N13, contrat v1.2).
+signal scan_results_received(msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
 const CONTRACT_VERSION := 1
-const ENGINE_VERSION := "0.1.0"
+## Révision du contrat annoncée dans hello (champ facultatif rev, révision 1.3).
+const CONTRACT_REV := "1.3"
+## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
+var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"
 const HELLO_PERIOD_S := 1.0
 const CMD_RESEND_US := 200_000        # contrat §4 : renvoi toutes les 200 ms
@@ -37,6 +42,8 @@ var test_mode := false
 ## Configuration reçue dans hello_ack (ftp_w, gears_total, theme) ; vide tant que le core n'a pas répondu.
 var core_config: Dictionary = {}
 var core_version: String = ""
+## Révision du contrat annoncée par le core (vide : core antérieur à la révision 1.3).
+var core_rev: String = ""
 var last_state_seq := -1
 ## Diagnostic (contrat §6) : trames sautées (trous de seq) et trames arrivées en retard, ignorées.
 var seq_gap_count := 0
@@ -172,6 +179,12 @@ func _poll_incoming() -> void:
 				var cfg = json_obj.get("config", {})
 				core_config = cfg if typeof(cfg) == TYPE_DICTIONARY else {}
 				core_version = str(json_obj.get("core_version", ""))
+				var rev = json_obj.get("rev", "")
+				core_rev = rev if typeof(rev) == TYPE_STRING else ""
+				if core_rev != CONTRACT_REV:
+					# Même version majeure : compatible, les champs inconnus sont ignorés (contrat §8).
+					print("Révisions du contrat différentes : core %s, engine %s"
+						% [core_rev if core_rev != "" else "avant 1.3", CONTRACT_REV])
 				print("hello_ack reçu : core ", core_version, ", configuration ", core_config)
 				test_log("hello_ack config=%s" % JSON.stringify(core_config))
 				hello_ack_received.emit(json_obj)
@@ -191,6 +204,8 @@ func _poll_incoming() -> void:
 				_on_list_part(_pending_list_routes, "routes", json_obj)
 			"workouts":
 				_on_list_part(_pending_list_workouts, "workouts", json_obj)
+			"scan_results":
+				scan_results_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -247,6 +262,24 @@ func list_workouts() -> int:
 	var cmd_id := send_command("list_workouts", {})
 	_reset_list_request(_pending_list_workouts, cmd_id)
 	return cmd_id
+
+
+## Modifie la difficulté du trainer pendant la séance (lot Q1, contrat v1.2).
+func send_set_difficulty(pct: int) -> int:
+	return send_command("set_difficulty", {"pct": pct})
+
+
+## Appairage depuis le menu (lot N13, contrat v1.2) : recherche, identification du « + », enregistrement.
+func scan_devices(timeout_s: float = 8.0) -> int:
+	return send_command("scan_devices", {"timeout_s": timeout_s})
+
+
+func identify_click_plus() -> int:
+	return send_command("identify_click_plus", {})
+
+
+func pair_devices(args: Dictionary) -> int:
+	return send_command("pair_devices", args)
 
 
 ## Demande en cours : {cmd_id (dernier envoyé), cmd_ids, retries, timer, answers}. `answers` range les parties
@@ -316,7 +349,8 @@ func send_hello() -> void:
 	_send_json({
 		"type": "hello",
 		"v": CONTRACT_VERSION,
-		"engine_version": ENGINE_VERSION
+		"rev": CONTRACT_REV,
+		"engine_version": engine_version
 	})
 
 
