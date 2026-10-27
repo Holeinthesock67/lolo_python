@@ -46,3 +46,16 @@ N6, O4 (même révision de contrat, l'un après l'autre), O10, O11 et O15 fusion
 ## 7. Hors périmètre
 
 - Saisie de texte (recherche par nom) : pas de clavier complet au Click.
+
+## 9. Livraison
+
+**Partie core, 27 octobre 2026** (thread « Développer les lots O restants ») ; les écrans de l'engine suivent dans une seconde PR, qui fermera l'issue.
+
+- Contrat : révision 1.3, décision du propriétaire du 27 octobre (tous les ajouts jusqu'à la v1.0.0 y entrent). Ajouts compatibles : commandes `list_plans`, `start_plan`, `stop_plan`, `accept_ftp` ; arguments `ftp_test` et `plan_day` de `start` ; message `plans` (`plans.schema.json`) ; `summary.ftp_test` ; champs `stats` et `library` des parcours ; `unit` des entraînements ; codes `plan_invalid`, `ftp_result_missing`, `ftp_result_doubtful`.
+- Écarts avec la proposition du §4, pour la cohérence :
+  - `accept_ftp` répond par `settings`, comme `set_setting`, au lieu d'un `ack` qui n'existe pas dans le contrat ;
+  - `summary.ftp_test` donne `test` (le test dit la méthode) et `reliable` ; un résultat douteux demande `force` vrai, comme `--force` en ligne de commande ;
+  - `workouts` : `profile` reste en fraction de la FTP (un engine plus ancien l'affiche juste) et `unit` = `watts` dit seulement d'afficher des watts ;
+  - le profil d'altitude de l'écran « Prêt » vient du parcours chargé par `select_route`, pas d'une liste du contrat.
+- Core : `ipc_lists.build_plans_message`, `plan_day_entry`, `route_stats_to_dict` ; `session.py` : `_choose_start_workout`, `_on_plan_command`, `_accept_ftp`, dossiers des plans réglables (`plans_dir`, `plan_state_path`, `activities_dir`) ; `plans.active_tag` prend les mêmes dossiers.
+- Tests : `core/tests/test_menu_o12.py` (plans listés, démarrés, séance du jour lancée et marquée dans le journal ; test de FTP lancé depuis le menu, résultat au bilan, acceptation avec et sans `force` ; fiche des parcours ; unité des entraînements ; schémas).
