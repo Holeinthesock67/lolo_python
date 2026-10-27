@@ -2,6 +2,8 @@
 
 21 octobre 2026 ; mises à jour du 23 octobre 2026 (alignement sur le code et les essais sur le vélo ; §14.1, seuils de passage à Rust)
 
+Cette SRS décrit la version 1.0. Les versions 1.x, 2.0 et 3.0, l'état de chaque exigence et les révisions du contrat IPC sont rassemblés dans la [spécification générale](SPECIFICATION_GENERALE.md).
+
 ## 1. Objectifs et périmètre
 
 OpenRide est un simulateur de cyclisme indoor 3D à usage personnel, natif Linux, plus léger que Zwift. La v1 doit être simple, stable et extensible par couches, sans jamais casser ce qui existe déjà.
@@ -106,7 +108,7 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | droit | + | 12 | « + » |
 | droit | A | 4 | aucune |
 | droit | B | 5 | « − » (sans déblocage Zwift) |
-| droit | Y | 6 | aucune |
+| droit | Y | 6 | pause et reprise (lot N6) |
 | droit | Z | 7 | aucune |
 
 - **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
@@ -135,6 +137,8 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 | Appui court + / − | Braquet k + 1 / k − 1 | Biais d'intensité ± 2 % (plage 80 % à 120 %) |
 | Appui long + | Braquet + 10, borné à 24 (`long_press_gears`) | Passer au bloc suivant |
 | Appui long − | Braquet − 10, borné à 1 (`long_press_gears`) | Pause / reprise ERG (pente 0 %) |
+
+Le bouton Y du boîtier droit met en pause et reprend la séance, en SIM comme en ERG (lot N6, choix du propriétaire du 25 octobre 2026).
 
 Le demi-tour sur la route et le réglage des bots sont reportés (§14).
 
@@ -177,7 +181,7 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 **Lissage de la pente envoyée au trainer**
 
 - Variation limitée à 2 points de pourcentage par seconde.
-- Coefficient de difficulté (100 % par défaut) : la pente envoyée est multipliée par ce coefficient, alors que la vitesse virtuelle utilise toujours la pente réelle. Mettre 50 % adoucit les cols sans fausser la vitesse affichée.
+- Coefficient de difficulté (50 % par défaut depuis le lot Q1, réglable pendant la séance) : la pente envoyée est multipliée par ce coefficient, alors que la vitesse virtuelle utilise toujours la pente réelle. Mettre 50 % adoucit les cols sans fausser la vitesse affichée.
 
 **Fin de parcours.** La séance s'arrête à la fin de la route (`s` = longueur) ; un parcours marqué en boucle dans le `.world` reboucle sans coupure.
 
@@ -238,7 +242,7 @@ Le compilateur transforme un `.gpx` déposé dans `~/OpenRide/GPX/` en dossier `
 
 ## 8. Moteur de rendu Godot
 
-L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`.
+L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`. En 2.0, la caméra devient un choix de plusieurs vues, avec un avatar (spécification générale, §7.2).
 
 **MVP visuel (sprint 3)**
 
