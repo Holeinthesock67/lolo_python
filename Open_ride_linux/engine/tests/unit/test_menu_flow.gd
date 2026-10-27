@@ -107,7 +107,8 @@ func _test_abandon_and_summary_quit() -> void:
 	_check(f.on_state({"session_state": "RUNNING"}) == [{"action": "list"}],
 			"listes demandées même en RUNNING (profils des blocs ERG avec --autostart)")
 	f.on_state({"session_state": "PAUSED"})
-	f.handle("MINUS_SHORT")   # Abandonner (boucle depuis Reprendre)
+	f.handle("MINUS_SHORT")   # Difficulté (boucle depuis Reprendre)
+	f.handle("MINUS_SHORT")   # Abandonner
 	f.handle("PLUS_LONG")
 	f.handle("PLUS_SHORT")
 	_check(f.handle("PLUS_LONG") == {"action": "end_session", "save": false}, "Abandonner après confirmation")
@@ -263,7 +264,54 @@ func _test_pairing_screen() -> void:
 	_check(not f.pairing.saved and "refusé" in f.pairing.message, "pairing_failed affiché")
 
 
+func _test_settings_screen() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "difficulty_pct": 50})
+	f.on_settings({"type": "settings", "request_cmd_id": 2, "items": [
+		{"key": "rider.ftp_w", "label": "FTP", "type": "int", "value": 250, "min": 50, "max": 600, "step": 5,
+			"unit": "W", "applies": "next_session"},
+		{"key": "trainer.difficulty_pct", "label": "Difficulté en SIM", "type": "int", "value": 50, "min": 0,
+			"max": 100, "step": 10, "unit": "%", "applies": "next_session"},
+		{"key": "render.quality", "label": "Qualité graphique", "type": "choice", "value": "high",
+			"choices": ["low", "medium", "high"], "applies": "now"}]})
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	f.handle("PLUS_LONG")   # Réglages
+	var labels: Array = f.state()["items"].map(func(it): return it["label"])
+	_check(labels == ["Appareils : rechercher et appairer", "FTP : 250 W", "Difficulté en SIM : ■■■■■□□□□□ 50 %",
+			"Qualité graphique : high"], "réglages affichés : %s" % str(labels))
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_LONG")   # FTP
+	_check(f.state()["screen"] == "setting_edit" and f.state()["title"] == "FTP", "modification de la FTP")
+	for i in range(3):
+		f.handle("PLUS_SHORT")
+	_check(f.state()["items"][0]["label"] == "265 W", "+ trois fois : 265 W (%s)" % f.state()["items"][0]["label"])
+	var act: Dictionary = f.handle("PLUS_LONG")
+	_check(act == {"action": "set_setting", "key": "rider.ftp_w", "value": 265} and f.state()["screen"] == "settings",
+			"appui long + : set_setting et retour aux réglages (%s)" % str(act))
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_LONG")   # Qualité
+	f.handle("PLUS_SHORT")
+	_check(f.state()["items"][0]["label"] == "low", "choix en boucle : high → low")
+	_check(f.handle("MINUS_LONG").is_empty() and f.state()["screen"] == "settings", "appui long − : annulé")
+	# Curseur de difficulté sur l'écran de pause : set_difficulty, sans config.toml.
+	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
+	f.on_state({"session_state": "PAUSED", "difficulty_pct": 50})
+	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["label"] == "Difficulté : ■■■■■□□□□□ 50 %",
+			"pause : curseur de difficulté")
+	f.handle("PLUS_LONG")
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	act = f.handle("PLUS_LONG")
+	_check(act == {"action": "set_difficulty", "pct": 30} and f.state()["screen"] == "pause"
+			and f.state()["items"][3]["label"] == "Difficulté : ■■■□□□□□□□ 30 %", "pause : set_difficulty à 30 (%s)" % str(act))
+
+
 func _init() -> void:
+	_test_settings_screen()
 	_test_connect_screen()
 	_test_pairing_screen()
 	_test_full_session()

@@ -76,7 +76,7 @@ func _init() -> void:
 			_item("no", "Non"), _item("yes", "Oui")]},
 		PAUSE: {"id": PAUSE, "title": "Pause", "on_back": "", "items": [
 			_item("resume", "Reprendre"), _item("end_save", "Terminer et enregistrer"),
-			_item("abandon", "Abandonner")]},
+			_item("abandon", "Abandonner"), _item("difficulty", "Difficulté")]},
 	}
 	set_items(ROUTES, [])
 	set_items(WORKOUTS, [])
@@ -112,6 +112,13 @@ func set_world(id: String, name: String) -> void:
 func set_modes(list) -> void:
 	modes = list.duplicate() if list is Array else DEFAULT_MODES.duplicate()
 	_refresh_home()
+
+
+## Difficulté de la séance affichée sur l'écran de pause (curseur du lot O4, commande set_difficulty).
+func set_pause_difficulty(text: String) -> void:
+	for it in _screens[PAUSE]["items"]:
+		if it["id"] == "difficulty":
+			it["label"] = "Difficulté : " + text
 
 
 func set_sim_session(on: bool) -> void:
@@ -443,6 +450,8 @@ func _validate() -> Dictionary:
 					return {"action": "end_session", "save": true}
 				"abandon":
 					_confirm("Abandonner la séance ?", {"action": "end_session", "save": false})
+				"difficulty":
+					return {"action": "item", "screen": PAUSE, "id": id}
 		_:
 			return {"action": "item", "screen": _screen, "id": id}
 	return {}
