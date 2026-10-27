@@ -156,6 +156,7 @@ openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]   # histori
 openride-core xp [--dir DOSSIER] [--json]   # progression (série V) : niveau, expérience, défis, depuis le journal
 python -m openride_core.tools.log_report [~/run_trainer.log] [--json] [--all]   # analyse le journal de séance (connexions, Click, commandes FTMS et délais)
 python -m openride_core.tools.estimate_cp [--dir DOSSIER] [--days N] [--ftp W] [--json]   # estime CP et W' depuis les séances passées (série R, lot R16) ; n'écrit rien dans la configuration
+python -m openride_core.tools.rogue_sim [--objective threshold] [--duration 45] [--runs 200] [--all-objectives] [--sensitivity] [--json FICHIER]   # runs Cyber-Rogue simulées avec des cyclistes types : rapport d'équilibrage (série R, lot R7)
 python -m openride_core.tools.workouts install                   # copie les 7 entraînements de référence (5 .zwo, un .erg, un .mrc)
 python -m openride_core.tools.workouts install --erg-relative    # idem, .erg convertis en .mrc (% de la FTP de leur en-tête)
 python -m openride_core.tools.workouts list                      # liste les entraînements de ~/OpenRide/Workouts/
