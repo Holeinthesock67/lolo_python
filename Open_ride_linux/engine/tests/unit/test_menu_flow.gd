@@ -46,8 +46,8 @@ func _test_full_session() -> void:
 	f.set_routes(ROUTES)
 	f.set_workouts(WORKOUTS)
 	_check(f.is_visible() and f.state()["screen"] == "home", "accueil affiché en IDLE")
-	_check(f.state()["items"][0]["label"] == "Monde : à choisir", "accueil : monde à choisir")
-	f.handle("PLUS_LONG")   # Monde
+	_check(f.state()["items"][0]["label"] == "Parcours : à choisir", "accueil : parcours à choisir")
+	f.handle("PLUS_LONG")   # Parcours
 	_check(f.state()["screen"] == "routes", "liste des parcours")
 	var routes: Array = f.state()["items"]
 	var to_compile: Array = routes.filter(func(it): return it["id"] == "nouveau")
@@ -57,7 +57,7 @@ func _test_full_session() -> void:
 	var sel: Dictionary = f.handle("PLUS_LONG")
 	_check(sel.get("action") == "select_route" and sel.get("route_id") == _ids_route(routes, 1),
 			"2ᵉ parcours choisi : select_route %s" % str(sel))
-	_check(f.state()["screen"] == "home" and f.state()["items"][0]["label"] == "Monde : Vosges",
+	_check(f.state()["screen"] == "home" and f.state()["items"][0]["label"] == "Parcours : Vosges",
 			"retour à l'accueil, monde affiché : %s" % f.state()["items"][0]["label"])
 	f.on_state({"session_state": "READY", "route_id": "vosges"})
 	f.handle("PLUS_SHORT")
@@ -88,7 +88,7 @@ func _test_full_session() -> void:
 	f.handle("MINUS_SHORT")
 	_check(f.handle("PLUS_LONG") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home",
 			"Nouvelle séance : accueil, listes redemandées et monde rechargé")
-	_check(f.state()["items"][0]["label"] == "Monde : Vosges", "le monde reste choisi après la séance")
+	_check(f.state()["items"][0]["label"] == "Parcours : Vosges", "le parcours reste choisi après la séance")
 	f.on_state({"session_state": "FINISHED"})
 	f.handle("MINUS_SHORT")   # Quitter (dernier élément de l'accueil)
 	f.handle("PLUS_LONG")
@@ -143,7 +143,7 @@ func _test_view() -> void:
 	var v = MenuView.new()
 	var state := {"session_state": "IDLE", "trainer_status": "MOCK", "input_status": "KEYBOARD"}
 	v.update_display(f.state(), state, {}, false)
-	_check(v.title_label.text == "OpenRide" and v.items_text().begins_with("[Monde : "), "accueil : %s" % v.items_text())
+	_check(v.title_label.text == "OpenRide" and v.items_text().begins_with("[Parcours : "), "accueil : %s" % v.items_text())
 	_check(v.devices.visible and v.devices.text().contains("Trainer"), "état des appareils : %s" % v.devices.text())
 	f.handle("PLUS_LONG")
 	for i in range(7):

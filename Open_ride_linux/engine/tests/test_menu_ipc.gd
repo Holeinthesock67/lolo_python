@@ -168,9 +168,9 @@ func _start_ipc_test() -> void:
 	_menu.set_items("workouts", w_items)
 
 	# Scénario complet au Click (menu principal du lot N15) :
-	# 1. Accueil -> valide « Monde : à choisir »
+	# 1. Accueil -> valide « Parcours : à choisir »
 	_check(_menu.state()["screen"] == "home", "menu initial sur home")
-	_menu.handle("PLUS_LONG") # valide « Monde » (focus 0)
+	_menu.handle("PLUS_LONG") # valide « Parcours » (focus 0)
 	_check(_menu.state()["screen"] == "routes", "passage sur l'écran routes")
 
 	# 2. Choix du 2e parcours (focus 1 : galibier), retour à l'accueil
