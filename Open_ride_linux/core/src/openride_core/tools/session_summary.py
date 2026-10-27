@@ -34,6 +34,9 @@ Clés de la sortie `--json` (stables) :
     target_w, delta_w}]}).
 Les puissances sont arrondies à 0,1 W, IF à 0,01, TSS à 0,1.
 
+Clé ajoutée par le lot P3, présente seulement si le journal porte `draft` (séance avec bots) :
+`draft_time_s`, secondes passées à l'abri (abri d'au moins 5 % de l'abri maximal).
+
 Clés ajoutées par le lot M4, présentes seulement pour un journal qui porte ces informations
 (un journal antérieur donne exactement le même bilan qu'avant) :
 - dans chaque bloc ERG, si le journal porte `erg_bias_pct` : `bias_pct` (biais moyen du Click,
@@ -213,6 +216,9 @@ def _avg_max(values: list[float]) -> dict[str, float] | None:
     return {"avg": round(sum(values) / len(values), 1), "max": round(max(values), 1)}
 
 
+DRAFT_MIN = 0.0225   # 5 % de l'abri maximal (0,45) : seuil de l'indicateur « Abri » du HUD
+
+
 def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[str, Any]:
     if ftp_w <= 0:
         raise SummaryError(f"FTP invalide : {ftp_w}")
@@ -263,6 +269,9 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
     }
     if session.devices:
         out["devices"] = _device_drops(session)
+    drafts = [r["draft"] for r in recs if r.get("draft") is not None]
+    if drafts:   # lot P3 : relevés à 1 Hz, abri compté à partir de 5 % (comme l'indicateur du HUD)
+        out["draft_time_s"] = sum(1 for d in drafts if d >= DRAFT_MIN)
     return out
 
 
@@ -366,6 +375,8 @@ def format_text(r: dict[str, Any]) -> str:
             lines.append(f"  bloc {b['block']:>2} : {_hms(b['seconds'])}, {b['avg_power_w']:.0f} W{target}")
         if r["erg"]["note"]:
             lines.append(f"  ({r['erg']['note']})")
+    if r.get("draft_time_s") is not None:
+        lines.append(f"Temps à l'abri derrière un bot : {_hms(r['draft_time_s'])}")
     if r.get("devices"):
         lines.append("Coupures des appareils :")
         for dev, d in r["devices"].items():
