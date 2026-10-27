@@ -7,11 +7,17 @@ extends RefCounted
 ## Règle (format §4.5) : scalaires linéaires, cap par l'écart le plus court, position par
 ## Catmull-Rom centripète (α = 0,5) ; points fantômes aux extrémités, indices circulaires en boucle.
 ## Les calculs se font en float 64 bits ; seule la sortie Vector3 est en 32 bits.
+## Couche facultative `segments.json` (format 1.3, §8 bis, lot T8) : lue si le manifeste la déclare,
+## dans `segments` (dictionnaires `{id, name, type, s_start, s_end, length_m, avg_grade_pct, gain_m,
+## category}`, triés par `s_start`) ; absente ou invalide : aucun segment, la route reste chargée.
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
 const FORMAT_NAME := "openride-world"
 const SUPPORTED_MAJOR := 1
 const KNOT_EPS_M := 1e-6
+const SEGMENTS_MAJOR := 1
+const MAX_SEGMENTS := 200
+const SEGMENT_TYPES := ["sprint", "climb"]
 
 var version: String = "1.0"
 var ds_m: float = 10.0
@@ -30,6 +36,10 @@ var x: PackedFloat64Array = PackedFloat64Array()
 var z: PackedFloat64Array = PackedFloat64Array()
 var grade_pct: PackedFloat64Array = PackedFloat64Array()
 var heading_deg: PackedFloat64Array = PackedFloat64Array()
+
+var segments: Array = []            # couche segments (série T) ; vide sans couche
+var segments_present := false       # couche déclarée et valide : seule source des montées du décor
+var segments_error: String = ""
 
 
 # --- chargement --------------------------------------------------------------------------
@@ -65,7 +75,83 @@ func load_world_dir(world_dir: String) -> bool:
 	var data = _read_json(world_dir.path_join(route_file))
 	if typeof(data) != TYPE_DICTIONARY:
 		return _fail(route_file + " absent ou illisible dans " + world_dir)
-	return load_route_dict(data)
+	if not load_route_dict(data):
+		return false
+	_load_segments_layer(world_dir, manifest)
+	return true
+
+
+## Couche `segments` déclarée par le manifeste (`layers.segments.present`) ; un fichier invalide est
+## ignoré avec un message dans la console.
+func _load_segments_layer(world_dir: String, manifest: Dictionary) -> void:
+	segments = []
+	segments_present = false
+	segments_error = ""
+	var layers = manifest.get("layers", {})
+	var info = layers.get("segments", {}) if typeof(layers) == TYPE_DICTIONARY else {}
+	if typeof(info) != TYPE_DICTIONARY or not bool(info.get("present", false)):
+		return
+	var file := str(info.get("file", "segments.json"))
+	if not load_segments_dict(_read_json(world_dir.path_join(file))):
+		print("Couche segments ignorée (%s) : %s" % [world_dir.path_join(file), segments_error])
+
+
+## Contenu d'un `segments.json` déjà lu (route chargée avant). Renvoie vrai s'il est valide.
+func load_segments_dict(data: Variant) -> bool:
+	segments = []
+	segments_present = false
+	segments_error = ""
+	if typeof(data) != TYPE_DICTIONARY or typeof(data.get("segments")) != TYPE_ARRAY:
+		segments_error = "fichier absent ou illisible"
+		return false
+	var major := int(str(data.get("version", "0")).split(".")[0])
+	if major != SEGMENTS_MAJOR:
+		segments_error = "version de couche inconnue : " + str(data.get("version"))
+		return false
+	var raw: Array = data["segments"]
+	if raw.size() > MAX_SEGMENTS:
+		segments_error = "plus de %d segments" % MAX_SEGMENTS
+		return false
+	var out: Array = []
+	var ids := {}
+	for i in range(raw.size()):
+		var seg = raw[i]
+		var why := _segment_problem(seg, ids)
+		if why != "":
+			segments_error = "segment %d : %s" % [i + 1, why]
+			return false
+		ids[str(seg["id"])] = true
+		var cat = seg.get("category")
+		out.append({
+			"id": str(seg["id"]), "name": str(seg.get("name", seg["id"])).left(48), "type": str(seg["type"]),
+			"s_start": float(seg["s_start"]), "s_end": float(seg["s_end"]),
+			"length_m": float(seg.get("length_m", float(seg["s_end"]) - float(seg["s_start"]))),
+			"avg_grade_pct": float(seg.get("avg_grade_pct", 0.0)), "gain_m": float(seg.get("gain_m", 0.0)),
+			"category": null if cat == null else str(cat),
+		})
+	out.sort_custom(func(a, b): return float(a["s_start"]) < float(b["s_start"]))
+	segments = out
+	segments_present = true
+	return true
+
+
+func _segment_problem(seg: Variant, ids: Dictionary) -> String:
+	if typeof(seg) != TYPE_DICTIONARY:
+		return "pas un objet"
+	if typeof(seg.get("id")) != TYPE_STRING or str(seg["id"]).is_empty():
+		return "identifiant manquant"
+	if ids.has(str(seg["id"])):
+		return "identifiant en double " + str(seg["id"])
+	if not (str(seg.get("type", "")) in SEGMENT_TYPES):
+		return "type inconnu " + str(seg.get("type", ""))
+	for key in ["s_start", "s_end"]:
+		if not (typeof(seg.get(key)) in [TYPE_INT, TYPE_FLOAT]):
+			return key + " manquant"
+	var s0 := float(seg["s_start"])
+	var s1 := float(seg["s_end"])
+	if not (0.0 <= s0 and s0 < s1 and s1 <= length_m + 0.01):
+		return "%.0f–%.0f m hors du parcours" % [s0, s1]
+	return ""
 
 
 func _column(data: Dictionary, key: String) -> PackedFloat64Array:

@@ -37,6 +37,9 @@ extends RefCounted
 ## écran Prêt, en passant par les parcours sans monde choisi ; choisir un entraînement ou la session
 ## libre l'annule. La liste des parcours finit par le tri et le filtre par étiquette (SORT_ROUTES_ID,
 ## FILTER_ROUTES_ID), traités par menu_flow.gd.
+##
+## Records (série T, lot T10) : l'écran Prêt finit par « Records du parcours », qui renvoie une action
+## « item » de l'écran Prêt (écrans des records ouverts par menu_flow.gd).
 
 const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG", "A_SHORT", "A_LONG", "Y_SHORT",
 	"LEFT_SHORT", "RIGHT_SHORT"]
@@ -124,7 +127,8 @@ func _refresh_home() -> void:
 	_screens[READY]["items"] = [
 		_item("start", "Démarrer"),
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
-		_item("change_route", "Changer de parcours")]
+		_item("change_route", "Changer de parcours"),
+		_item("records", "Records du parcours")]
 	var what := "session ERG" if mode == "erg" else "session libre"
 	if start_name != "":
 		what = start_name
@@ -538,6 +542,8 @@ func _validate() -> Dictionary:
 				"change_route":
 					_routes_return = READY
 					_open(ROUTES)
+				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
+					return {"action": "item", "screen": READY, "id": id}
 		CONFIRM:
 			var act := _pending
 			_pending = {}

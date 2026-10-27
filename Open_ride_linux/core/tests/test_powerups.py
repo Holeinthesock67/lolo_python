@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from collections import Counter
 from pathlib import Path
 
@@ -165,3 +166,21 @@ def test_load_table_rejects(tmp_path: Path, text: str):
     f.write_text(text, encoding="utf-8")
     with pytest.raises(PowerUpError):
         load_table(f)
+
+
+ARCH_VECTORS = Path(__file__).resolve().parents[2] / "engine" / "tests" / "data" / "arch_schedule_vectors.json"
+
+
+def test_arch_vectors_shared_with_the_engine(tmp_path: Path):
+    """Mêmes arches que l'engine (lot T8, segment_markers_model.gd) : positions et lecture du fichier."""
+    doc = json.loads(ARCH_VECTORS.read_text(encoding="utf-8"))
+    for case in doc["positions"]:
+        assert ArchSchedule(case["every_m"], case["length_m"]).positions == case["positions"], case
+    path = tmp_path / "powerups.toml"
+    for case in doc["files"]:
+        path.write_text(case["text"], encoding="utf-8")
+        try:
+            every = load_table(path).arch_every_m
+        except PowerUpError:
+            every = DEFAULT_TABLE.arch_every_m       # fichier refusé : valeurs par défaut
+        assert every == case["arch_every_m"], case
