@@ -50,3 +50,18 @@ Aucune.
 ## 8. Hors périmètre
 
 - Sons des animaux autres que la sonnaille existante et les oiseaux de P9, animaux qui traversent la route, collisions.
+
+## 9. Livraison
+
+Livré sur la branche `lot-p11-animaux`, sans toucher à `main.gd`, à `osm_streamer.gd`, au compilateur, au core ni au contrat.
+
+- **`fauna_placer.gd`** : `place_chunk(chunk_index, vegetation_areas, pois, route, density, ctx)` rend des groupes (troupeau, bande d'oiseaux, site de chevreuil), tirés du hachage de `vegetation_placer.gd`.
+  - Troupeaux : 3 à 12 bêtes (selon `fauna.livestock`) dans un disque de 30 m autour de chaque point `livestock`, vaches ou moutons selon le point.
+  - Exclusions au sol : couloir de la route (moitié de la largeur plus 2 m, jamais moins de 4 m de l'axe), surfaces et cours d'eau, bâtiments, pente au-dessus de 25 %. `ctx` (facultatif) porte `height_at`, les bâtiments et l'eau du tronçon : P17 les lui passe.
+  - Oiseaux : une bande de 5 à 15 au-dessus de chaque forêt (`wood`) d'au moins 2 ha, avec la probabilité `fauna.birds`, de 25 à 45 m au-dessus du sol et assez haut pour rester à plus de 15 m du point le plus haut sous l'orbite.
+  - Chevreuil : un tronçon sur trois au plus (un tous les 3 km), à 6 m hors d'un sommet d'une forêt, avec la probabilité `fauna.deer` ; sa fuite part vers la forêt et loin de la route.
+  - Densités par défaut si le thème n'en donne pas : oiseaux 0,5, bétail 0,6, chevreuil 0,3.
+- **`fauna_behaviour.gd`** : travail par groupe, pas par bête. Oiseaux en cercles lents ondulés ; à moins de 40 m du centre de la bande, elle s'écarte (jusqu'à 25 m de côté et 8 m plus haut) puis revient. Bétail : rotation lente sur place. Chevreuil : immobile, fuite à 9 m/s dès 60 m, effacé pendant la dernière seconde, disparu à 5 s.
+- **`fauna_renderer.gd`** et **`fauna.gdshader`** : un `MultiMeshInstance3D` par espèce, créé au démarrage ; maillages en boîtes et triangles construits par code. Le shader bat des ailes et fait brouter à partir de `TIME`, avec une phase par bête (donnée par instance). Budget `living(preset).birds` et `.animals`, les plus proches de la caméra d'abord, tri refait tous les 20 m. Oiseaux et chevreuils sont mis à jour à chaque image, le bétail par quart.
+- **Tests** : `test_fauna_placer.gd` (11 vérifications), `test_fauna_behaviour.gd` (12, mise à jour de 200 animaux en 0,20 ms ici, préréglage `high`), `render/test_fauna_render.gd` (3, shader compilé).
+- **Reste sur le PC cible (le propriétaire)** : séance en `low` avec prés et forêts, après le branchement par P17.
