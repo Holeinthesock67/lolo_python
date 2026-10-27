@@ -336,11 +336,14 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
         launcher.build_supervisor(["--config", str(cfg)], {**env, "GODOT": str(tmp_path / "absent")})
 
 
-def test_main_reports_invalid_config(tmp_path: Path, capsys):
+def test_main_reports_invalid_config(tmp_path: Path, capsys, monkeypatch):
+    shown: list[str] = []
+    monkeypatch.setattr(launcher, "desktop_message", lambda message, error=True: shown.append(message))
     bad = tmp_path / "bad.toml"
     bad.write_text("[ipc]\nport_state = 5005\nport_commands = 5005\n")
     assert launcher.main(["--config", str(bad)]) == 1
     assert "configuration invalide" in capsys.readouterr().err
+    assert len(shown) == 1 and "configuration invalide" in shown[0]   # fenêtre demandée, jamais ouverte
 
 
 # --- lot M8 : journal du lanceur ------------------------------------------------------------

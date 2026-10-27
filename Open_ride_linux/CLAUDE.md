@@ -143,6 +143,7 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
   - chaque correction ou fonction a son test ;
   - le matériel se simule avec les doublures de `core/tests/test_drivers_session.py` (`FakeClient`, `fake_finder`) et `MockDriver` ;
   - les tests de session passent `routes_root=tmp_path / "routes"` et redirigent `fit_export.ACTIVITIES_DIR`, pour ne jamais écrire dans le vrai dossier personnel.
+  - pytest tourne avec un HOME temporaire, des fenêtres de bureau muettes et un garde-fou qui fait échouer tout test écrivant hors de son dossier temporaire (`scripts/isolation_tests.py`, chargé par les `conftest.py`) ; une seule suite de tests ou banc à la fois sur la machine (verrou commun).
 - **Git :**
   - une branche par travail ;
   - messages de commit en français ;
