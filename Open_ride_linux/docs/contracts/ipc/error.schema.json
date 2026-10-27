@@ -28,6 +28,13 @@
         "busy",
         "scan_failed",
         "pairing_failed",
+        "setting_invalid",
+        "bad_args",
+        "workout_write_failed",
+        "run_invalid",
+        "item_locked",
+        "not_enough_coins",
+        "avatar_invalid",
         "branch_locked",
         "unknown_junction",
         "world_unavailable"

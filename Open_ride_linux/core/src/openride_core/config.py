@@ -23,6 +23,7 @@ OPENRIDE_HOME = Path.home() / "OpenRide"
 DEFAULT_CONFIG_PATH = OPENRIDE_HOME / "config.toml"
 GPX_DIR = OPENRIDE_HOME / "GPX"             # traces GPX à compiler (SRS §7, §11)
 WORKOUTS_DIR = OPENRIDE_HOME / "Workouts"   # entraînements .zwo (SRS §6, §11)
+PLANS_DIR = OPENRIDE_HOME / "Plans"         # plans d'entraînement .toml (lot O11)
 ROUTES_DIR = Path.home() / ".local" / "share" / "openride" / "routes"
 CACHE_DIR = Path.home() / ".cache" / "openride"
 
@@ -49,8 +50,11 @@ class TrainerConfig:
     grade_min_pct: float = -10.0
     grade_max_pct: float = 16.0
     power_smooth_tau_s: float = 0.7   # lissage temporel de la puissance (indépendant de la cadence BLE)
-    grade_rate_pct_per_s: float = 2.0  # vitesse maximale de variation de la pente envoyée
+    grade_rate_pct_per_s: float = 2.0  # ancien réglage symétrique, lu seulement si up et down manquent (lot Q4)
+    grade_rate_up_pct_per_s: float = 4.0   # vitesse maximale quand la pente envoyée augmente (lot Q4)
+    grade_rate_down_pct_per_s: float = 8.0 # vitesse maximale quand elle diminue (lot Q4)
     trace_ftms: bool = False          # trace horodatée de chaque échange Control Point FTMS (lot Q3)
+    hr_relay_freeze_s: float = 15.0   # détection cardio relayée figée (lot Q5)
 
 
 @dataclass
@@ -67,6 +71,8 @@ class GearingConfig:
 class RenderConfig:
     quality: str = "low"
     theme: str = "default"
+    visual_grade_scale: float = 1.0
+    living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
 
 
 @dataclass
@@ -89,11 +95,26 @@ class DriversConfig:
     click_minus_address: str = ""  # boîtier « − » du Click (vide : l'autre boîtier trouvé)
     click_short_max_s: float = 0.5
     click_long_min_s: float = 0.9
+    click_trace_raw: bool = False
+    click_mute_after_s: float = 60.0
+    click_rehandshake_s: float = 0.0
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
     hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
     hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
     hr_name: str = ""              # fragment du nom BLE (vide : tout appareil annonçant le service 0x180D)
     sim_scenario: str = ""         # Bluetooth simulé : scénario intégré ou fichier JSON (vide : demo)
+
+
+@dataclass
+class WindConfig:
+    """Vent du core (lot P2, SRS §5 et §11) ; coupé par défaut dans les versions 1.x."""
+    mode: str = "off"              # "off", "fixed", "gusty" ou "theme" (vent du thème 1.2)
+    speed_kmh: float = 0.0
+    from_deg: float = 270.0        # d'où vient le vent, degrés depuis le nord
+    gust_pct: float = 0.0          # amplitude des rafales (modes "gusty" et "theme")
+    seed: int = 0                  # graine des rafales
+    feel: str = "grade"            # "grade" (supplément de pente) ou "ftms" (champ vent de 0x11)
+    max_grade_offset_pct: float = 4.0   # borne du supplément de pente, réglable dans le menu
 
 
 @dataclass
@@ -106,6 +127,7 @@ class Config:
     ipc: IpcConfig = field(default_factory=IpcConfig)
     engine: EngineConfig = field(default_factory=EngineConfig)
     drivers: DriversConfig = field(default_factory=DriversConfig)
+    wind: WindConfig = field(default_factory=WindConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -130,6 +152,9 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("trainer", "grade_max_pct"): (0, 30),
     ("trainer", "power_smooth_tau_s"): (0, 5),
     ("trainer", "grade_rate_pct_per_s"): (0.1, 100),
+    ("trainer", "grade_rate_up_pct_per_s"): (0.1, 100),
+    ("trainer", "grade_rate_down_pct_per_s"): (0.1, 100),
+    ("trainer", "hr_relay_freeze_s"): (5, 120),
     ("gearing", "n_gears"): (2, 40),
     ("gearing", "start_gear"): (1, 40),
     ("gearing", "ratio_min"): (0.1, 5),
@@ -138,8 +163,15 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gearing", "long_press_gears"): (1, 10),
     ("ipc", "port_state"): (1024, 65535),
     ("ipc", "port_commands"): (1024, 65535),
+    ("render", "visual_grade_scale"): (1.0, 2.0),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
+    ("drivers", "click_mute_after_s"): (1, 600),
+    ("drivers", "click_rehandshake_s"): (0, 600),
+    ("wind", "speed_kmh"): (0, 60),
+    ("wind", "from_deg"): (0, 360),
+    ("wind", "gust_pct"): (0, 100),
+    ("wind", "max_grade_offset_pct"): (0, 8),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -152,6 +184,8 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
+    ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
+    ("wind", "feel"): ("grade", "ftms"),
 }
 
 
@@ -198,6 +232,15 @@ def _merge(dc: Any, data: dict[str, Any], source: str = "config.toml", section: 
             _merge(current, value, source, f.name)
         else:
             setattr(dc, f.name, _convert(current, value, f"{source}, [{section}] {f.name}"))
+    if section == "trainer" and "grade_rate_pct_per_s" in data:
+        if "grade_rate_up_pct_per_s" not in data and "grade_rate_down_pct_per_s" not in data:
+            log.warning(
+                "%s, [trainer] grade_rate_pct_per_s : réglage remplacé par grade_rate_up_pct_per_s "
+                "et grade_rate_down_pct_per_s",
+                source,
+            )
+            dc.grade_rate_up_pct_per_s = dc.grade_rate_pct_per_s
+            dc.grade_rate_down_pct_per_s = dc.grade_rate_pct_per_s
     return dc
 
 

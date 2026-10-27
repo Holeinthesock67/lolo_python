@@ -1,4 +1,4 @@
-"""Modification ciblée de `~/OpenRide/config.toml` (lots N12 et N14).
+"""Modification ciblée de `~/OpenRide/config.toml` (lots N12, N14 et O3).
 
 Change quelques clés sans réécrire le fichier : commentaires, ordre, autres sections et clés
 inconnues restent tels quels. Une copie `config.toml.bak` est faite avant l'écriture, le
@@ -31,9 +31,18 @@ def _toml_string(value: str) -> str:
     return '"' + value.replace("\\", "\\\\").replace('"', '\\"') + '"'
 
 
-def _set_key(lines: list[str], section: str, key: str, value: str) -> str | None:
-    """Remplace ou ajoute `key = "value"` dans `[section]` ; renvoie la ligne écrite si elle change."""
-    new_line = f"{key} = {_toml_string(value)}"
+def _toml_value(value: object) -> str:
+    """Valeur TOML : texte entre guillemets, booléen, entier ou nombre (réglages du lot O3)."""
+    if isinstance(value, bool):
+        return "true" if value else "false"
+    if isinstance(value, (int, float)):
+        return repr(value)
+    return _toml_string(str(value))
+
+
+def _set_key(lines: list[str], section: str, key: str, value: object) -> str | None:
+    """Remplace ou ajoute `key = valeur` dans `[section]` ; renvoie la ligne écrite si elle change."""
+    new_line = f"{key} = {_toml_value(value)}"
     key_re = re.compile(rf"^\s*{re.escape(key)}\s*=")
     start = end = None
     for i, line in enumerate(lines):
@@ -64,7 +73,7 @@ def _set_key(lines: list[str], section: str, key: str, value: str) -> str | None
     return new_line
 
 
-def plan_text(text: str, values: list[tuple[str, str, str]]) -> tuple[str, list[str]]:
+def plan_text(text: str, values: list[tuple[str, str, object]]) -> tuple[str, list[str]]:
     """Texte final et lignes changées pour les `(section, clé, valeur)` donnés."""
     lines = text.splitlines()
     changed: list[str] = []
@@ -75,7 +84,7 @@ def plan_text(text: str, values: list[tuple[str, str, str]]) -> tuple[str, list[
     return "\n".join(lines) + "\n", changed
 
 
-def update_config(path: Path, values: list[tuple[str, str, str]]) -> list[str]:
+def update_config(path: Path, values: list[tuple[str, str, object]]) -> list[str]:
     """Écrit les valeurs dans `path` ; renvoie les lignes changées (vide : rien à faire).
 
     Lève `ConfigEditError` si le fichier final ne passe pas `config.validate` : rien n'est écrit.

@@ -1,0 +1,37 @@
+name: Confidentialité
+
+# Lot X23 : le dépôt est public. Chaque PR et chaque envoi sur main passent le scanner
+# Open_ride_linux/scripts/privacy/privacy_scan.py : fichiers suivis, puis commits de la PR
+# (auteur, committer, message, lignes ajoutées). La liste des mots interdits et des zones
+# privées vient du secret PRIVACY_DENYLIST ; sans ce secret, seuls les contrôles génériques
+# tournent (adresses Bluetooth, clés, fichiers d'activité, adresses e-mail des commits).
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  scan:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du dépôt (historique complet)
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Fichiers suivis
+        env:
+          PRIVACY_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
+        run: python3 Open_ride_linux/scripts/privacy/privacy_scan.py --all
+
+      - name: Commits de la PR
+        if: github.event_name == 'pull_request'
+        env:
+          PRIVACY_DENYLIST: ${{ secrets.PRIVACY_DENYLIST }}
+        run: >-
+          python3 Open_ride_linux/scripts/privacy/privacy_scan.py
+          --commits ${{ github.event.pull_request.base.sha }}..${{ github.event.pull_request.head.sha }}

@@ -15,6 +15,7 @@ CONTRACTS = Path(__file__).resolve().parents[2] / "docs" / "contracts"
 IPC_DIR = CONTRACTS / "ipc"
 WORLD_DIR = CONTRACTS / "world"
 MAX_DATAGRAM = 1400
+MAX_STATE_DATAGRAM = 4096              # limite de `state` depuis la révision 1.3 (§2)
 MAX_LIST_DATAGRAM = 60000
 LIST_MESSAGES = ("places", "world_map", "world_regions")
 
@@ -82,6 +83,10 @@ def test_fullest_state_frame_fits_in_datagram() -> None:
         frame = {**st.to_dict(), "seq": 123456789, "bots": bots, **extra}
         assert errors(IPC_DIR, "state", frame) == []
         assert size(frame) <= MAX_DATAGRAM, f"trame de {size(frame)} octets ({list(extra)[0]})"
+    # Si les deux tombaient ensemble, la trame resterait sous la limite de la révision 1.3.
+    both = {**st.to_dict(), "seq": 123456789, "bots": bots, "open_world": open_world(), "devices": devices}
+    assert errors(IPC_DIR, "state", both) == []
+    assert size(both) <= MAX_STATE_DATAGRAM, f"trame de {size(both)} octets (open_world et devices)"
 
 
 @pytest.mark.parametrize("name,args", [
