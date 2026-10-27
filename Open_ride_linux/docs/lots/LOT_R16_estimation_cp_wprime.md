@@ -52,3 +52,10 @@ Aucune (le champ `w_prime_estimate_j` est ajouté par T1).
 ## 8. Hors périmètre
 
 - Modèles à trois paramètres, estimation de la FTP (lot O10).
+
+## 9. Livraison (27 octobre 2026)
+
+- `tools/estimate_cp.py` (`estimate`, `estimate_w_prime`, `main`) et son cache `~/.cache/openride/mmp.json`. Tests : `core/tests/test_estimate_cp.py` (séances fabriquées, aucune donnée personnelle).
+- **Écart au cahier :** le cache des meilleures puissances est un fichier à part (`mmp.json`, même clé que celui de `history.py` : chemin, taille, `mtime_ns`) au lieu d'un champ de `history.py`, pour ne pas toucher au format de l'historique ; `history.py` n'est pas modifié.
+- Séance rejouée exclue (en-tête `source: replay`, et le `.fit` qui lui correspond à ± 60 s) ; séances plus anciennes que `--days` exclues. Raisons lisibles : pas d'effort de 3 min, moins de trois durées, efforts peu cohérents (R² < 0,98), CP hors de 0,8 à 1,2 × FTP, W' hors de 5 à 40 kJ.
+- `estimate_w_prime()` rend la valeur de `hello_ack.config.rogue.w_prime_estimate_j` ; R8 l'appelle au lancement, hors de la boucle à 50 Hz.
