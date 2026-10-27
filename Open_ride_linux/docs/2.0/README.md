@@ -1,6 +1,6 @@
 # OpenRide 2.0 – plans
 
-Documents de préparation de la version 2.0. Rien de ceci n'est commencé : les séries démarrent après la 1.0. Les cahiers de la série R (R0 à R16) sont déjà rédigés et listés dans `docs/lots/00_INDEX.md` ; ceux des autres séries le seront à leur démarrage.
+Documents de préparation de la version 2.0. Les séries démarrent vraiment après la 1.0, mais une partie est déjà sur `main` (27 octobre) : le contrat IPC 1.4 commun aux séries R, T et V (lot T1), les modules purs de la série T (segments, chronométrage, records, bonus, maillots, écarts : T2 à T6, T14, T16) et la couche `segments` du compilateur (T3), les modules purs de la progression (V2, V3, V3b, V4) et les mesures du monde ouvert (W0). Rien n'est encore branché sur la séance ni affiché. Les cahiers des lots sont listés dans `docs/lots/00_INDEX.md` ; les autres le seront au démarrage de chaque lot.
 
 | Document | Contenu |
 | --- | --- |
