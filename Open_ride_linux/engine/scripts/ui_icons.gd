@@ -11,11 +11,11 @@ const ITEM_ICONS := {
 	"open_world": "globe", "plan": "calendar", "ftp": "bolt", "sim": "chip", "settings": "gear",
 	"devices": "list", "pairing": "list", "quit": "power", "start": "play", "resume": "play",
 	"continue": "play", "records": "trophy", "end_save": "flag", "abandon": "cross", "no": "cross",
-	"yes": "check", "difficulty": "slope",
+	"yes": "check", "difficulty": "slope", "bot": "rider", "ghost": "ghost",
 }
 ## Formes connues de draw() ; un nom inconnu ne dessine rien.
 const SHAPES := ["route", "bike", "bars", "globe", "calendar", "bolt", "chip", "gear", "list", "power",
-	"play", "trophy", "flag", "cross", "check", "slope", "hold"]
+	"play", "trophy", "flag", "cross", "check", "slope", "hold", "rider", "ghost"]
 
 
 ## Pictogramme de l'entrée `item_id`, "" sans pictogramme.
@@ -111,3 +111,14 @@ static func draw(ci: CanvasItem, shape: String, rect: Rect2, color: Color, width
 			# Appui long : anneau aux trois quarts rempli.
 			ci.draw_arc(p.call(16, 16), 11 * k, 0.0, TAU, 32, Color(color, 0.25), w, true)
 			ci.draw_arc(p.call(16, 16), 11 * k, -PI / 2, PI, 32, color, w, true)
+		"rider":
+			# Bot (lot O7) : coureur, tête et buste penché sur le guidon.
+			ring.call(21, 7, 3, 0.0, TAU)
+			line.call([[19, 11], [10, 16], [12, 26]])
+			line.call([[19, 11], [24, 18]])
+			line.call([[10, 16], [18, 20], [20, 27]])
+		"ghost":
+			# Fantôme de la dernière séance (lot O7) : dôme et bas ondulé.
+			line.call([[7, 27], [7, 14]])
+			ring.call(16, 14, 9, PI, TAU)
+			line.call([[25, 14], [25, 27], [22, 24], [19, 27], [16, 24], [13, 27], [10, 24], [7, 27]])
