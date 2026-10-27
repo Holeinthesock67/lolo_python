@@ -30,7 +30,11 @@
         "pairing_failed",
         "setting_invalid",
         "bad_args",
-        "workout_write_failed"
+        "workout_write_failed",
+        "run_invalid",
+        "item_locked",
+        "not_enough_coins",
+        "avatar_invalid"
       ]
     },
     "message": {

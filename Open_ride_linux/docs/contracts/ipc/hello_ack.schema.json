@@ -52,12 +52,227 @@
           },
           "uniqueItems": true,
           "maxItems": 8
+        },
+        "rogue": {
+          "type": "object",
+          "description": "Facultatif, révision 1.4 (série R) : présent si \"rogue\" est dans modes.",
+          "required": [
+            "w_prime_j",
+            "w_prime_estimate_j",
+            "cp_w",
+            "objectives",
+            "durations_min"
+          ],
+          "properties": {
+            "w_prime_j": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "w_prime_estimate_j": {
+              "type": [
+                "number",
+                "null"
+              ],
+              "exclusiveMinimum": 0
+            },
+            "cp_w": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            },
+            "objectives": {
+              "type": "array",
+              "items": {
+                "type": "string",
+                "enum": [
+                  "endurance",
+                  "threshold",
+                  "vo2max"
+                ]
+              },
+              "uniqueItems": true,
+              "maxItems": 3
+            },
+            "durations_min": {
+              "type": "array",
+              "items": {
+                "type": "integer",
+                "enum": [
+                  30,
+                  45,
+                  60,
+                  90
+                ]
+              },
+              "uniqueItems": true,
+              "maxItems": 4
+            }
+          }
+        },
+        "progression": {
+          "$ref": "#/$defs/progression",
+          "description": "Facultatif, révision 1.4 (série V) : absent si le core ne connaît pas la progression."
         }
       }
     },
     "rev": {
       "type": "string",
       "pattern": "^1\\.[0-9]+$"
+    }
+  },
+  "$defs": {
+    "progression": {
+      "type": "object",
+      "required": [
+        "level",
+        "xp",
+        "xp_level_start",
+        "xp_next_level",
+        "coins",
+        "equipped",
+        "avatar",
+        "lives"
+      ],
+      "properties": {
+        "level": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 50
+        },
+        "xp": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "xp_level_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "xp_next_level": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0
+        },
+        "coins": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "equipped": {
+          "type": "object",
+          "required": [
+            "frame",
+            "wheels",
+            "helmet",
+            "kit",
+            "socks",
+            "glasses"
+          ],
+          "properties": {
+            "frame": {
+              "type": "string",
+              "maxLength": 24
+            },
+            "wheels": {
+              "type": "string",
+              "maxLength": 24
+            },
+            "helmet": {
+              "type": "string",
+              "maxLength": 24
+            },
+            "kit": {
+              "type": "string",
+              "maxLength": 24
+            },
+            "socks": {
+              "type": "string",
+              "maxLength": 24
+            },
+            "glasses": {
+              "type": "string",
+              "maxLength": 24
+            }
+          },
+          "additionalProperties": false
+        },
+        "avatar": {
+          "$ref": "#/$defs/avatar"
+        },
+        "lives": {
+          "type": "integer",
+          "minimum": 0
+        }
+      }
+    },
+    "avatar": {
+      "type": "object",
+      "required": [
+        "height",
+        "build",
+        "skin",
+        "hair",
+        "hair_color",
+        "kit_primary",
+        "kit_secondary",
+        "number"
+      ],
+      "properties": {
+        "height": {
+          "type": "string",
+          "enum": [
+            "S",
+            "M",
+            "L",
+            "XL"
+          ]
+        },
+        "build": {
+          "type": "string",
+          "enum": [
+            "slim",
+            "medium",
+            "strong"
+          ]
+        },
+        "skin": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "hair": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 5
+        },
+        "hair_color": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 7
+        },
+        "kit_primary": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "kit_secondary": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 15
+        },
+        "number": {
+          "type": "integer",
+          "minimum": 0,
+          "maximum": 999
+        },
+        "standing_grade_pct": {
+          "type": "number",
+          "description": "Lu dans [avatar] de config.toml (V6) ; transmis par hello_ack, non modifiable par set_avatar."
+        },
+        "standing_power_pct": {
+          "type": "number",
+          "description": "Lu dans [avatar] de config.toml (V6) ; transmis par hello_ack, non modifiable par set_avatar."
+        }
+      }
     }
   }
 }

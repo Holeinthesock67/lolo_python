@@ -112,7 +112,7 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | droit | Z | 7 | action du mode : bloc suivant en ERG (lot O17) |
 
 - **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
-- Événements normalisés : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : ignoré. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
+- Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Y et les flèches n'ont qu'un événement, quelle que soit la durée. Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
 - Repli : le clavier produit les mêmes événements, touche pour touche, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17).
 
 ### 4.3 Braquets virtuels
@@ -409,6 +409,19 @@ max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
 
 La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
+
+**Sections prévues pour la 2.0.** Les clés des sections `[rogue]` et `[avatar]` sont fixées par la révision 1.4 du contrat IPC (lot T1) ; elles rejoindront l'exemple ci-dessus avec les lots qui les lisent (le core les transmet à l'engine dans `hello_ack.config.rogue` et `hello_ack.config.progression.avatar`) :
+
+| Section et clé | Défaut | Bornes | Lot qui la lit |
+| --- | --- | --- | --- |
+| `[rogue] w_prime_j` | 20 000 (J) | 5 000 à 60 000 | R2 |
+| `[rogue] cp_w` | 0 (0 : la FTP) | 0 à 1 000 | R2 |
+| `[rogue] grade_rate_up_pct_per_s` | 8,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
+| `[rogue] grade_rate_down_pct_per_s` | 12,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
+| `[avatar] standing_grade_pct` | 8 (pente, %) | fixées par V6 | V6 |
+| `[avatar] standing_power_pct` | 150 (% de la FTP) | fixées par V6 | V6 |
+
+Le reste de l'avatar (taille, silhouette, couleurs, numéro) est dans `~/OpenRide/profile.json` (lot V4), réglé au Click par `set_avatar`.
 
 **Arborescence**
 

@@ -332,9 +332,9 @@ def test_click_pair_relay_short_and_long_presses():
         await wait_for(lambda: all(p.status == "CONNECTED" for p in clicks))
         await rig.world.press("+")              # relayé par le boîtier « − » : un seul événement
         await rig.world.press("-", 1.0)
-        await rig.world.press("+", 0.7)         # entre court et long : ignoré
+        await rig.world.press("+", 0.7)         # entre court et long : sans effet, signalé
         await asyncio.sleep(0.2)
-        assert rig.events() == [InputEvent.PLUS_SHORT, InputEvent.MINUS_LONG]
+        assert rig.events() == [InputEvent.PLUS_SHORT, InputEvent.PLUS_UNCLEAR, InputEvent.MINUS_LONG]   # boîtier « + » puis « − »
         assert {p.battery_pct for p in clicks} == {80}
         await rig.stop()
     asyncio.run(scenario())

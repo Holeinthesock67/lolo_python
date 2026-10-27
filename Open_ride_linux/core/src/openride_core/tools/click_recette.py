@@ -62,7 +62,7 @@ STEPS = (
     GuidedStep("plus", "Appuie brièvement sur + (boîtier droit)", InputEvent.PLUS_SHORT, "PLUS"),
     GuidedStep("minus", "Appuie brièvement sur − (boîtier gauche)", InputEvent.MINUS_SHORT, "MINUS"),
     GuidedStep("b", "Appuie brièvement sur B (boîtier droit, « − » de secours)", InputEvent.MINUS_SHORT, "B"),
-    GuidedStep("y", "Appuie sur Y (boîtier droit, pause)", InputEvent.PAUSE, "Y"),
+    GuidedStep("y", "Appuie sur Y (boîtier droit, pause)", InputEvent.Y_SHORT, "Y"),
     GuidedStep("plus_long", "Appui long sur + (une seconde)", InputEvent.PLUS_LONG, "PLUS"),
     GuidedStep("minus_long", "Appui long sur − (une seconde)", InputEvent.MINUS_LONG, "MINUS"),
 )

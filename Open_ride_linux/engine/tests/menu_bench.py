@@ -185,12 +185,12 @@ def parcours_appareils(run: Run) -> None:
         return
     time.sleep(3.0)
     run.expect("connexion", "Connexion des appareils", "[Passer — ", "Click − : recherche")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     run.expect("accueil", "OpenRide", "[Parcours : ", "Session ERG")
-    run.press("MINUS_SHORT", "MINUS_SHORT", "PLUS_LONG")
+    run.press("MINUS_SHORT", "MINUS_SHORT", "A_LONG")
     run.expect("reglages", "Réglages", "[Appareils : rechercher et appairer]")
     t = now()
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     assert run.engine is not None
     done = run.engine.wait_for(r"scan_results done=true items=(\d+)", 20.0, after=t)
     r.check(done is not None and int(done[1].group(1)) >= 3, "recherche des appareils simulés",
@@ -199,17 +199,17 @@ def parcours_appareils(run: Run) -> None:
     if not run.focus_to("Enregistrer"):
         r.check(False, "Enregistrer actif", "focus jamais sur « Enregistrer »")
         return
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     info = run.shot("confirmation")
     r.check(info["title"].startswith("Enregistrer") and "[Non]" in info["menu"], "confirmation avant l'écriture",
             f"« {info['title']} » {info['menu'][:60]}")
-    run.press("PLUS_SHORT", "PLUS_LONG")   # Oui
+    run.press("PLUS_SHORT", "A_LONG")   # Oui
     time.sleep(2.0)
     text = run.config.read_text(encoding="utf-8")
     r.check("[trainer]" in text and "address" in text, "config.toml écrit par pair_devices", text.replace("\n", " ")[:160])
     run.expect("enregistre", "Appareils", "Relancer OpenRide maintenant", "Enregistré")
     run.focus_to("Relancer")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     rc = None
     deadline = now() + 10.0
     while now() < deadline and rc is None:
@@ -229,15 +229,15 @@ def parcours_sessions(run: Run) -> None:
         return
     time.sleep(5.0)
     run.expect("accueil", "OpenRide", "[Parcours : ", "Session libre", "Session ERG", "Session simulée")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     run.expect("mondes", "Parcours", "[demo")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     run.expect("monde_choisi", "OpenRide", "[Parcours : demo")
     # Session libre : Prêt puis Démarrer.
-    run.press("PLUS_SHORT", "PLUS_LONG")
+    run.press("PLUS_SHORT", "A_LONG")
     run.expect("pret_libre", "Prêt : session libre — demo", "[Démarrer]")
     t = now()
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     r.check(_wait_state(run, r"RUNNING", 10.0, after=t), "session libre démarrée", "core en RUNNING")
     time.sleep(3.0)
     info = run.shot("en_seance")
@@ -246,21 +246,21 @@ def parcours_sessions(run: Run) -> None:
     time.sleep(1.5)
     run.expect("pause", "Pause", "[Reprendre]")
     t = now()
-    run.press("PLUS_SHORT", "PLUS_LONG")   # Terminer et enregistrer
+    run.press("PLUS_SHORT", "A_LONG")   # Terminer et enregistrer
     r.check(_wait_state(run, r"-> FINISHED", 15.0, after=t), "séance terminée et enregistrée", "core en FINISHED")
     time.sleep(1.0)
     run.expect("bilan", "Fin de séance", "[Nouvelle séance]")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     time.sleep(1.0)
     run.expect("accueil_apres", "OpenRide", "Parcours : demo")
     # Session ERG.
-    run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_LONG")
+    run.press("PLUS_SHORT", "PLUS_SHORT", "A_LONG")
     run.expect("erg_liste", "Session ERG : entraînement", "ERG court")
     if run.focus_to("ERG court"):
-        run.press("PLUS_LONG")
+        run.press("A_LONG")
     run.expect("pret_erg", "Prêt : session ERG — demo", "[Démarrer]")
     t = now()
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     r.check(_wait_state(run, r"RUNNING", 10.0, after=t), "session ERG démarrée", "core en RUNNING")
     time.sleep(4.0)
     info = run.shot("en_seance_erg")
@@ -273,12 +273,12 @@ def parcours_sessions(run: Run) -> None:
     run.shots.pop()
     if info["title"] == "Fin de séance":
         run.focus_to("Nouvelle séance")
-        run.press("PLUS_LONG")
+        run.press("A_LONG")
     # Session simulée.
     run.focus_to("Session simulée")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     run.expect("simulee_confirmation", "Session simulée ? OpenRide redémarre sans matériel", "[Non]")
-    run.press("PLUS_SHORT", "PLUS_LONG")
+    run.press("PLUS_SHORT", "A_LONG")
     rc = None
     deadline = now() + 10.0
     while now() < deadline and rc is None:
@@ -292,20 +292,20 @@ def parcours_reglages(run: Run) -> None:
     if not run.start(READY):
         return
     time.sleep(5.0)
-    run.press("MINUS_SHORT", "MINUS_SHORT", "PLUS_LONG")
+    run.press("MINUS_SHORT", "MINUS_SHORT", "A_LONG")
     run.expect("reglages", "Réglages", "FTP : 250 W", "Difficulté en SIM : ■■■■■□□□□□ 50 %")
     run.focus_to("FTP")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT")
     run.expect("ftp_modifiee", "FTP", "[265 W")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     time.sleep(1.0)
     text = run.config.read_text(encoding="utf-8")
     r.check("ftp_w = 265" in text, "FTP écrite dans config.toml", text.replace("\n", " ")[:120])
     run.expect("reglages_apres", "Réglages", "FTP : 265 W")
     run.focus_to("Qualité")
     t = now()
-    run.press("PLUS_LONG", "PLUS_SHORT", "PLUS_LONG")
+    run.press("A_LONG", "PLUS_SHORT", "A_LONG")
     assert run.engine is not None
     r.check(run.engine.wait_for(r"Qualité graphique : medium", 5.0, after=t) is not None,
             "qualité appliquée tout de suite au décor", "« Qualité graphique : medium » au journal de l'engine")
@@ -313,19 +313,19 @@ def parcours_reglages(run: Run) -> None:
     version = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
     run.focus_to("Plafond du vent", limit=12)
     run.expect("reglages_version", "Réglages", f"OpenRide {version}")
-    run.press("MINUS_LONG")   # retour à l'accueil
+    run.press("Y_SHORT")   # retour à l'accueil
     run.focus_to("Session libre")
-    run.press("PLUS_LONG")                 # Session libre (sans monde : parcours)
-    run.press("PLUS_LONG")                 # demo
+    run.press("A_LONG")                 # Session libre (sans monde : parcours)
+    run.press("A_LONG")                 # demo
     t = now()
-    run.press("PLUS_LONG")                 # Démarrer
+    run.press("A_LONG")                 # Démarrer
     r.check(_wait_state(run, r"-> RUNNING", 10.0, after=t), "séance démarrée", "RUNNING")
     run.command("pause")
     time.sleep(1.5)
     run.press("MINUS_SHORT")
     run.expect("pause_difficulte", "Pause", "[Difficulté : ■■■■■□□□□□ 50 %]")
     t = now()
-    run.press("PLUS_LONG", "MINUS_SHORT", "PLUS_LONG")
+    run.press("A_LONG", "MINUS_SHORT", "A_LONG")
     r.check(_wait_state(run, r"Difficulté : 50 % -> 40 %", 5.0, after=t), "curseur de la pause : set_difficulty",
             "« Difficulté : 50 % -> 40 % » au journal du core")
     run.expect("pause_apres", "Pause", "Difficulté : ■■■■□□□□□□ 40 %")
@@ -344,30 +344,30 @@ def parcours_erg(run: Run) -> None:
     downloads.mkdir(parents=True)
     (downloads / "seuil_import.zwo").write_text(ERG_SHORT_ZWO.replace("ERG court", "Seuil importé"), encoding="utf-8")
     time.sleep(5.0)
-    run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_LONG")   # Session ERG
+    run.press("PLUS_SHORT", "PLUS_SHORT", "A_LONG")   # Session ERG
     run.expect("erg_sous_menu", "Session ERG : entraînement", "ERG court", "Créer un entraînement",
                "Importer un fichier")
     run.focus_to("Créer")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     run.expect("creer", "Créer un entraînement", "Répétitions : 5", "Puissance de l'effort : 105 % de la FTP")
     run.focus_to("Répétitions")
-    run.press("PLUS_LONG", "PLUS_SHORT", "PLUS_LONG")
+    run.press("A_LONG", "PLUS_SHORT", "A_LONG")
     run.expect("creer_6", "Créer un entraînement", "Répétitions : 6")
     run.focus_to("Enregistrer")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     time.sleep(1.5)
     created = wdir / "intervalles_6x240s_105.zwo"
     r.check(created.is_file(), "entraînement créé dans ~/OpenRide/Workouts", created.name)
     run.expect("cree", "Session ERG : entraînement", "Créé : Intervalles 6 × 4 min à 105 %",
                "[Intervalles 6 × 4 min à 105 % (")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     info = run.shot("_apres_choix")
     run.shots.pop()
     if info["title"] == "Parcours":
-        run.press("PLUS_LONG")
+        run.press("A_LONG")
     run.expect("pret_cree", "Prêt : session ERG — demo", "[Démarrer]")
     t = now()
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     r.check(_wait_state(run, r"RUNNING", 10.0, after=t), "séance avec l'entraînement créé", "core en RUNNING")
     r.check(_wait_state(run, r"intervalles_6x240s_105|Intervalles 6", 2.0), "entraînement créé lu par le core",
             "« intervalles_6x240s_105 » au journal du core")
@@ -377,15 +377,15 @@ def parcours_erg(run: Run) -> None:
     run.shots.pop()
     if info["title"] == "Fin de séance":
         run.focus_to("Nouvelle séance")
-        run.press("PLUS_LONG")
+        run.press("A_LONG")
         time.sleep(1.0)
     run.focus_to("Session ERG")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     run.focus_to("Importer", limit=10)
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     time.sleep(0.5)
     run.expect("importer", "Importer un entraînement", "[seuil_import.zwo", "Téléchargements")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     time.sleep(1.5)
     r.check((wdir / "seuil_import.zwo").is_file(), "fichier importé dans ~/OpenRide/Workouts", "seuil_import.zwo")
     run.expect("importe", "Session ERG : entraînement", "Importé : Seuil importé", "[Seuil importé")
@@ -457,4 +457,9 @@ def main(argv: list[str] | None = None) -> int:
 
 
 if __name__ == "__main__":
-    raise SystemExit(main())
+    sys.path.insert(0, str(REPO / "scripts"))
+    from isolation_tests import verrou_suite   # une seule suite de tests ou banc à la fois
+
+    with verrou_suite("menu_bench"):
+        code = main()
+    sys.exit(code)

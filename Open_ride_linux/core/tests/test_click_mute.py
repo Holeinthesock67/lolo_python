@@ -279,8 +279,9 @@ def test_rehandshake_without_unblock_stops_after_3_attempts(caplog, monkeypatch)
     assert "3/3" in steps[2]
 
 
-def test_ble_diag_trace_subcommand(tmp_path):
+def test_ble_diag_trace_subcommand(tmp_path, monkeypatch):
     """Lecture et analyse d'une trace brute par openride-ble-diag trace."""
+    monkeypatch.setattr(ble_diag, "REPORT_DIR", tmp_path / "spike_reports")   # pas ./spike_reports du dépôt
     trace_file = tmp_path / "click_test.log"
     trace_file.write_text(
         "12:00:00 INFO input Click gauche ASYNC type 0x15 (maintien) : 1500 (15 messages)\n"
@@ -290,6 +291,7 @@ def test_ble_diag_trace_subcommand(tmp_path):
     )
     args = argparse.Namespace(file=str(trace_file))
     asyncio.run(ble_diag.cmd_trace(args))
+    assert len(list((tmp_path / "spike_reports").glob("*_click_trace.json"))) == 1
 
 
 def test_session_passes_q6_settings_and_side(tmp_path):
