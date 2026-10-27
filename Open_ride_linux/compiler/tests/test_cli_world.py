@@ -47,10 +47,12 @@ def test_outputs_match_schemas_and_load_in_core(shape, make_gpx, tmp_path):
     route = json.loads((world / "route.json").read_text(encoding="utf-8"))
     validator("manifest").validate(manifest)
     validator("route").validate(route)
+    if manifest["layers"]["segments"]["present"]:                # couche par défaut avec le core
+        validator("segments").validate(json.loads((world / "segments.json").read_text(encoding="utf-8")))
 
     assert manifest["projection"] == "utm"
     assert manifest["origin"]["utm_zone"] == "32T"
-    assert manifest["format_version"] == "1.1"
+    assert manifest["format_version"] == "1.3"
     assert manifest["layers"]["terrain"]["present"] is True
     assert manifest["layers"]["terrain"]["sources"] == ["synthetic"]
     assert manifest["route"]["alt_source"] in ("gpx", "synthetic")

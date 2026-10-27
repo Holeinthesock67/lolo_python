@@ -29,6 +29,7 @@ col-du-galibier.world/
   vegetation/chunk_<k>.json    facultative
   poi/chunk_<k>.json           facultative
   water/chunk_<k>.json         facultative
+  segments.json                facultative, depuis 1.3 : sprints et montées (§8 bis)
 ```
 
 Les couches vivent par morceaux : `<k>` est l'indice du tronçon de route de 1 km (`k` = partie entière de `s` / 1000, `s` étant la position du point de route le plus proche de l'objet). Le terrain, lui, est découpé en tuiles fixes dans le repère du monde (§5).
@@ -40,6 +41,10 @@ Les couches vivent par morceaux : `<k>` est l'indice du tronçon de route de 1 k
 - l'origine et la projection (§3) ;
 - pour chaque couche : `present` (vrai ou faux), `version`, et ses paramètres propres ;
 - depuis la version 1.1 : `route.alt_source`, origine de l'altitude de la route (`gpx` ou nom de la source MNT, par exemple `copernicus_glo30`).
+- champs facultatifs du lot O15 (ajout compatible, sans changer `format_version`) :
+  - `stats`, la fiche calculée par `route_stats.py` : `version` (1), `distance_m`, `gain_m` et `loss_m` (variations de plus de 1 m seulement), `alt_min_m`, `alt_max_m`, `max_grade_pct` (sur 100 m), `climbs` (nombre de montées d'au moins 500 m et 20 m), `main_climb` (`start_m`, `length_m`, `gain_m`, `avg_grade_pct`, `category` de `4` à `HC` d'après longueur × pente moyenne : 8 000, 16 000, 32 000, 64 000, 80 000 ; ou `null`), `duration_200w_s` et `durations_s` (durées estimées de 100 à 400 W par pas de 25 W, cycliste et vélo de 84 kg), `difficulty` (1 à 5). Un lecteur qui ne la trouve pas, ou la trouve d'une autre version, la recalcule depuis `route.json` ;
+  - depuis la version 1.3 (lot T1) : `layers.segments`, couche facultative en un seul fichier : `present`, `version`, `file` (`segments.json`), `count` (nombre de segments) et `manual_count` (segments venus du fichier manuel) ;
+  - `library`, la fiche saisie copiée du fichier `<trace>.toml` posé à côté de la trace : `name`, `description`, `region` (texte libre, jamais de coordonnées), `tags` (étiquettes en minuscules), `credits`.
 
 **Écriture atomique.** Le compilateur écrit dans un dossier temporaire voisin puis le renomme ; un `.world` incomplet n'est jamais visible. `add-layer` fait de même couche par couche.
 
@@ -205,7 +210,7 @@ Deux couches facultatives, chacune en fichiers `chunk_<k>.json`.
 }
 ```
 
-- `kind` : `church_bell`, `river`, `livestock`, `village`, `viewpoint` ; une valeur inconnue est ignorée.
+- `kind` : `church_bell`, `river`, `livestock`, `village`, `viewpoint` ; depuis la version 1.2 (lot P1), `wind_turbine` (OSM `power=generator` avec `generator:source=wind`, `height_m` facultatif d'après la balise `height`) et `flag` (OSM `man_made=flagpole`) ; une valeur inconnue est ignorée.
 - `radius_m` : distance d'audibilité ou de visibilité.
 - L'engine associe un son à chaque `kind` selon le thème ou la configuration audio ; `name` sert à l'affichage éventuel.
 
@@ -222,6 +227,24 @@ Deux couches facultatives, chacune en fichiers `chunk_<k>.json`.
 - `lines` : cours d'eau, points (x, z, y) dans le repère du monde ; `width_m` est la largeur, 2 m par défaut.
 - `areas` : plans d'eau, avec `level_y` pour l'altitude de la surface.
 - Ces deux couches arrivent au sprint 6 ; le format est figé dès maintenant pour qu'un parcours compilé plus tôt puisse recevoir ces couches plus tard.
+
+## 8 bis. Couche segments (depuis 1.3)
+
+Couche facultative en un seul fichier `segments.json` (lot T1, série T) : les sprints et les montées du parcours, dont l'engine affiche le départ, l'arrivée et le nom, et dont le core chronomètre les passages. Le compilateur l'écrit (lot T3) d'après la détection automatique de `segments.py` (T2) et le fichier manuel facultatif `<parcours>.segments.toml` ; `add-layer <nom>.world segments` la refait seule.
+
+```json
+{
+  "version": "1.0",
+  "segments": [
+    {"id": "sprint-1", "name": "Sprint 1", "type": "sprint", "s_start": 2400.0, "s_end": 2700.0, "length_m": 300.0, "avg_grade_pct": 0.4, "gain_m": 1.2, "category": null, "source": "auto"},
+    {"id": "climb-1", "name": "Côte du village", "type": "climb", "s_start": 5200.0, "s_end": 7600.0, "length_m": 2400.0, "avg_grade_pct": 5.1, "gain_m": 122.4, "category": "3", "source": "manual"}
+  ]
+}
+```
+
+- Chaque élément est `Segment.to_dict()` de `segments.py` : `id` unique dans le parcours, `name` (au plus 48 caractères), `type` (`sprint` ou `climb`), `s_start` et `s_end` en mètres le long de la route (`s_start` < `s_end` ; sur une boucle, pas de segment à cheval sur la ligne), `length_m`, `avg_grade_pct`, `gain_m`, `category` (`4`, `3`, `2`, `1`, `HC` pour une montée, `null` pour un sprint) et `source` (`auto` ou `manual`).
+- Au plus 200 segments, triés par `s_start`. Schéma : `docs/contracts/world/segments.schema.json`.
+- Un `.world` sans cette couche reste lisible : le core n'y chronomètre rien et l'engine n'affiche aucun segment. Elle ne dépend que de la route : refaire la route oblige à la refaire.
 
 ## 9. Thèmes : palettes, textures, shader triplanaire
 
@@ -268,6 +291,18 @@ Themes/alpes-ete/
 - Ajouter un thème = ajouter un dossier ; aucune recompilation des parcours n'est nécessaire.
 - Les textures normales, rugosité et autres cartes PBR sont des extensions futures du même format.
 
+**Décor vivant (thème 1.2, lot P1).** Clés facultatives, ignorées par un engine qui ne les connaît pas ; le thème par défaut donne un été calme.
+
+| Clé | Contenu | Lot qui l'utilise |
+| --- | --- | --- |
+| `sky.clouds` | `{coverage, speed_factor, color, altitude_m}` : couverture de 0 à 1, facteur de vitesse par rapport au vent, couleur, altitude | P6 |
+| `sky.time_of_day` | `{mode, hour, factor}` : `mode` vaut `fixed`, `real` ou `accelerated` ; heure de 0 à 24 ; facteur d'accélération | P7 (version 2.0) |
+| `weather` | `{kind, intensity, morning_mist}` : `kind` vaut `clear`, `mist`, `rain` ou `snow` ; intensité de 0 à 1 ; brume de vallée le matin | P8 |
+| `season` | `spring`, `summer`, `autumn` ou `winter` | P18 (version 2.0) |
+| `wind` | `{speed_kmh, from_deg, gust_pct}` : vent lu quand `[wind] mode = "theme"` (SRS §11), et vent décoratif de l'engine quand `state` ne porte pas de `wind` | P2, P4 |
+| `ambience` | `{volume, birds, insects}`, de 0 à 1 | P9 |
+| `fauna` | `{birds, livestock, deer}` : densités de 0 à 1 | P11 |
+
 ## 10. Règles de lecture et compatibilité
 
 **Ordre de lecture.** Un lecteur ouvre d'abord `manifest.json`, vérifie `format` et `format_version`, puis charge les couches dont `present` est vrai.
@@ -278,7 +313,7 @@ Themes/alpes-ete/
 | --- | --- |
 | `route.json` absent ou invalide | Erreur `route_invalid` ; le parcours n'est pas proposé |
 | Couche terrain absente | L'engine dessine le ruban de route sur un sol plat bas, dans le brouillard |
-| Couche bâtiments, végétation, poi ou eau absente | Ignorée sans message |
+| Couche bâtiments, végétation, poi, eau ou segments absente | Ignorée sans message |
 | Couche inconnue dans le manifeste | Ignorée |
 | Tuile de terrain manquante | Remplacée par le niveau lointain ou, à défaut, par un sol plat à l'altitude de la route |
 | Champ inconnu dans un fichier | Ignoré |
@@ -291,7 +326,7 @@ Themes/alpes-ete/
 
 **Validation.** `openride-compiler verify <nom>.world` contrôle : la structure et le manifeste, le nombre de valeurs de chaque tableau de la route, la cohérence entre `length_m` et les points, les tailles des tuiles de terrain (et, depuis 1.1, la présence des tuiles listées, l'égalité des bords partagés et l'absence de `NaN` à moins de 25 m de la route), et les sommes de contrôle SHA-256 optionnelles du manifeste. Des schémas JSON de chaque fichier sont publiés dans `docs/contracts/world/`.
 
-**Régénération.** Le compilateur peut refaire une couche (`add-layer`) depuis ses caches bruts sans télécharger de nouveau ; refaire la route oblige à refaire les couches qui en dépendent (terrain, bâtiments, végétation, poi, eau).
+**Régénération.** Le compilateur peut refaire une couche (`add-layer`) depuis ses caches bruts sans télécharger de nouveau ; refaire la route oblige à refaire les couches qui en dépendent (terrain, bâtiments, végétation, poi, eau, segments).
 
 ## 11. Exemple de manifeste et tailles attendues
 
@@ -346,11 +381,14 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.1 | 23 octobre 2026 | Publication du schéma JSON des thèmes `docs/contracts/world/theme.schema.json`, du thème par défaut `engine/themes/default/theme.json` et de la sous-commande `openride-compiler theme-check` (§9, lot H7) |
 | 1.1 | 23 octobre 2026 | Publication des schémas JSON `buildings.schema.json` et `vegetation.schema.json` (§6 et §7), compteurs `count`, `ignored_count` et `osm_date` dans le manifeste de ces couches, validation `verify` et sous-commande `add-layer buildings\|vegetation` (lot I3) |
 | 1.1 | 23 octobre 2026 | Publication des schémas JSON `poi.schema.json` et `water.schema.json` (§8), compteurs `count` / `lines_count` / `areas_count` / `ignored_count` et `osm_date` dans le manifeste, validation `verify` et sous-commande `add-layer poi\|water` (lot I4) |
-| 1.x | 26 octobre 2026 | Ajout compatible (lot W1, à valider ; mineur définitif à la fusion) : monde vivant du monde ouvert (§13) : `live`, `origin_kind`, `grid` dans le manifeste, `live.json`, route par parties, couches par tuile en coordonnées relatives au coin, `junctions.json` ; schémas `live`, `route_part`, `junctions` |
+| 1.1 | 26 octobre 2026 | Ajout compatible (lot O15) : champs facultatifs `stats` (fiche calculée) et `library` (fiche saisie `<trace>.toml`) dans le manifeste (§2) ; un `.world` sans eux reste valide et la fiche est recalculée à la lecture |
+| 1.2 | 26 octobre 2026 | Ajouts compatibles (lot P1) : points d'intérêt `wind_turbine` (avec `height_m` facultatif) et `flag` (§8) ; thème 1.2 avec `sky.clouds`, `sky.time_of_day`, `weather`, `season`, `wind`, `ambience` et `fauna` (§9) |
+| 1.3 | 27 octobre 2026 | Ajout compatible (lot T1, avec la révision 1.4 du contrat IPC) : couche facultative `segments.json` (§8 bis), entrée `layers.segments` du manifeste (`present`, `version`, `file`, `count`, `manual_count`) et schéma `docs/contracts/world/segments.schema.json` ; un `.world` 1.2 reste valide |
+| 1.4 | 27 octobre 2026 | Ajout compatible (lot W1, premier mineur libre après T1) : monde vivant du monde ouvert (§13) : `live`, `origin_kind`, `grid` dans le manifeste, `live.json`, route par parties, couches par tuile en coordonnées relatives au coin, `junctions.json` ; schémas `live`, `route_part`, `junctions` |
 
 ## 13. Monde vivant (monde ouvert, série W)
 
-Ajout compatible du 26 octobre 2026 (lot W1, à valider par le propriétaire ; le mineur de `format_version` est le premier libre à la fusion). Un monde vivant est un `.world` que le générateur `openride-worldgen` prolonge pendant la séance (`docs/2.0/PLAN_SERIE_W.md`, `docs/contracts/worldgen_v1.md`). Il se lit comme un parcours compilé, avec les différences ci-dessous ; un lecteur qui ne connaît pas `live` ne doit pas l'ouvrir (il n'est jamais rangé dans `~/.local/share/openride/routes/`).
+Ajout compatible (lot W1, mineur 1.4 de `format_version`, le premier libre après la 1.3 de T1). Un monde vivant est un `.world` que le générateur `openride-worldgen` prolonge pendant la séance (`docs/2.0/PLAN_SERIE_W.md`, `docs/contracts/worldgen_v1.md`). Il se lit comme un parcours compilé, avec les différences ci-dessous ; un lecteur qui ne connaît pas `live` ne doit pas l'ouvrir (il n'est jamais rangé dans `~/.local/share/openride/routes/`).
 
 **Dossier.** `<cache_dir>/seances/<id>.world/`, avec `<id>` = `ow-<AAAAMMJJ-HHMMSS>` et `cache_dir` = `~/OpenRide/Cache/monde` par défaut.
 

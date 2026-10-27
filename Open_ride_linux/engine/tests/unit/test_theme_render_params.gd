@@ -132,6 +132,28 @@ func _test_sky_params() -> void:
 			"sky_params (sun_elevation_deg = %.1f°) : |dir| = %.5f, élévation = %.4f°" % [elev, dir.length(), got_elev])
 
 
+# Lot P6, critère 3 : cloud_params (valeurs par défaut sans clé, bornes appliquées)
+func _test_cloud_params() -> void:
+	var none := ThemeRenderParams.cloud_params({"version": "1.0"})
+	_check(is_equal_approx(none["coverage"], 0.3) and is_equal_approx(none["speed_factor"], 1.0)
+		and is_equal_approx(none["altitude_m"], 2000.0) and none["color"] is Color,
+		"cloud_params sans sky.clouds : couverture 0,3, facteur 1,0, 2 000 m")
+	var col: Color = none["color"]
+	_check(col.b > col.r and col.r > 0.9, "couleur par défaut : blanc légèrement bleuté")
+	var out := ThemeRenderParams.cloud_params({"sky": {"clouds": {"coverage": 1.7, "speed_factor": -2,
+		"altitude_m": 50000, "color": "pas une couleur"}}})
+	_check(is_equal_approx(out["coverage"], 1.0) and is_equal_approx(out["speed_factor"], 0.0)
+		and is_equal_approx(out["altitude_m"], ThemeRenderParams.MAX_CLOUD_ALTITUDE_M)
+		and out["color"] == ThemeRenderParams.cloud_params({})["color"],
+		"bornes : couverture 1,7 ramenée à 1, facteur négatif à 0, altitude bornée, couleur invalide remplacée")
+	var low := ThemeRenderParams.cloud_params({"sky": {"clouds": {"coverage": -0.5, "altitude_m": 10}}})
+	_check(is_equal_approx(low["coverage"], 0.0) and is_equal_approx(low["altitude_m"], ThemeRenderParams.MIN_CLOUD_ALTITUDE_M),
+		"bornes basses : couverture 0, altitude minimale")
+	var dflt := ThemeRenderParams.cloud_params(_default_theme)
+	_check(is_equal_approx(dflt["coverage"], 0.3) and is_equal_approx(dflt["altitude_m"], 1500.0)
+		and dflt["color"] == Color.html("#ffffff"), "thème par défaut 1.2 : valeurs de sky.clouds lues")
+
+
 func _init() -> void:
 	var tl = ThemeLoader.new()
 	_default_theme = tl.load_named("default")["theme"]
@@ -140,5 +162,6 @@ func _init() -> void:
 	_test_1000_random_samples()
 	_test_minimal_theme_and_custom_slope()
 	_test_sky_params()
+	_test_cloud_params()
 	print("test_theme_render_params : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

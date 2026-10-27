@@ -8,7 +8,7 @@ config_version=5
 
 config/name="OpenRide Engine"
 config/description="Simulateur cycliste 3D - Moteur de rendu et HUD"
-config/version="0.1.0"
+config/version="0.9.0"
 run/main_scene="res://scenes/main.tscn"
 config/features=PackedStringArray("4.3", "Forward Plus")
 
@@ -26,3 +26,22 @@ anti_aliasing/quality/msaa_3d=0
 environment/ssao/quality=0
 lights_and_shadows/directional_shadow/size=2048
 textures/vram_compression/import_etc2_astc=true
+
+[shader_globals]
+
+wind_dir={
+"type": "vec3",
+"value": Vector3(0, 0, 0)
+}
+wind_strength={
+"type": "float",
+"value": 0.0
+}
+wind_gust={
+"type": "float",
+"value": 0.0
+}
+wind_phase={
+"type": "float",
+"value": 0.0
+}

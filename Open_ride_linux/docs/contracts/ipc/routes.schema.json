@@ -91,6 +91,122 @@
               "string",
               "null"
             ]
+          },
+          "terrain": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "flat",
+              "rolling",
+              "climb",
+              null
+            ],
+            "description": "Facultatif, révision 1.4 (V3 §4.3) : type de terrain calculé par le core, pour le conseil d'équipement (V8)."
+          },
+          "stats": {
+            "type": "object",
+            "description": "Facultatif, révision 1.3 (lot O12) : fiche calculée du parcours (lot O15) ; absente si le parcours n'a pas de fiche à jour.",
+            "required": [
+              "distance_m",
+              "gain_m",
+              "max_grade_pct",
+              "duration_s",
+              "difficulty",
+              "main_climb"
+            ],
+            "properties": {
+              "distance_m": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "gain_m": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "max_grade_pct": {
+                "type": [
+                  "number",
+                  "null"
+                ]
+              },
+              "duration_s": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "description": "Durée estimée à la FTP de config.toml, comme route-list --ftp."
+              },
+              "difficulty": {
+                "type": [
+                  "integer",
+                  "null"
+                ],
+                "minimum": 1,
+                "maximum": 5
+              },
+              "main_climb": {
+                "type": [
+                  "object",
+                  "null"
+                ],
+                "properties": {
+                  "length_m": {
+                    "type": "number"
+                  },
+                  "gain_m": {
+                    "type": "number"
+                  },
+                  "avg_grade_pct": {
+                    "type": "number"
+                  },
+                  "category": {
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  }
+                }
+              }
+            }
+          },
+          "library": {
+            "type": "object",
+            "description": "Facultatif, révision 1.3 (lot O12) : fiche saisie (`<trace>.toml`, lot O15).",
+            "required": [
+              "description",
+              "region",
+              "tags"
+            ],
+            "properties": {
+              "description": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 500
+              },
+              "region": {
+                "type": [
+                  "string",
+                  "null"
+                ],
+                "maxLength": 80
+              },
+              "tags": {
+                "type": "array",
+                "maxItems": 12,
+                "items": {
+                  "type": "string",
+                  "pattern": "^[a-z0-9][a-z0-9-]{0,29}$"
+                }
+              }
+            }
           }
         }
       }

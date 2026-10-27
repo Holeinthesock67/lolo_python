@@ -49,3 +49,21 @@ Aucune (P1).
 ## 8. Hors périmètre
 
 - Lots P3, P8, P11 à P15 (P17) ; jour, nuit et saisons (P7, P18, P19 : version 2.0).
+
+## 9. Livraison
+
+Livré sur la branche `lot-p16-integration-vent`, qui réunit P10 (et donc P1, P4 à P6, P8, P9), P2 et la branche `lot-o3-reglages` (O3, PR #248). Sans modification du contrat.
+
+- **`living_world.gd`** (nouveau, créé par `main.gd`) rassemble le branchement, testable sans la scène :
+  - `WindModel` alimenté par chaque trame. Sans vent du core, le vent décoratif du thème anime le décor.
+  - Une fois par image : paramètres globaux du vent des arbres, vent apparent des touffes d'herbe, défilement des nuages (et leur ombre sur le terrain en `high`).
+  - Ciel de P6 à la place du ciel actuel, selon `living(preset).clouds`.
+  - Voisinage sonore recalculé au plus toutes les 0,5 s. Il part des contours des tronçons OSM déjà chargés : forêts, bâtiments, eaux, limités à ceux qui touchent le cercle d'écoute. L'altitude, la force du vent et la pause sont ajoutées à chaque image pour les fondus de P9. Les cloches sonnent à l'heure du PC.
+- **`osm_streamer.gd`** : chaque tronçon garde ses contours en x, z avec leur rectangle englobant (`layer_shapes()`, `shapes_version`). Les forêts sont lues dans la couche `vegetation`. Les bâtiments et les plans d'eau deviennent les exclusions des touffes d'herbe.
+- **`hud_view.gd`** : indicateur du vent sous le panneau de gauche, de même largeur. Il montre une flèche vers où souffle le vent (route vers le haut), « 26 km/h face » en 30 px, quatre barres et le niveau, et la pastille du verdict en 24 px (vert, rouge ou gris). Il est caché sans vent du core. Le coin supérieur droit reste libre pour la série T.
+- **`main.gd`** : création de `living_world`, `--living`, vent dans `_on_state_received`, pas par image dans `_process` et sur la caméra des menus. L'indicateur est ajouté aux éléments relevés par les captures de test.
+- **Réglages** : `wind.mode`, `wind.speed_kmh` (pas de 5 km/h) et `wind.max_grade_offset_pct` (pas d'un point, de 0 à 8) sont ajoutés à la liste fermée de `settings.py` (O3), appliqués à la séance suivante, et affichés par la section « Réglages » du menu (O4). Les réglages d'O3 sont entiers, d'où le pas d'un point. La direction `wind.from_deg` reste dans `config.toml` : avec elle, le message `settings` dépassait 1 400 octets.
+- **`[render] living`** (vrai par défaut) dans `config.py`, relayé par le lanceur en `--living=on|off` et lu par `engine_args.gd`. Faux : arbres immobiles, ni herbe, ni nuages, ni fonds d'ambiance, comme en 1.0. Le vent du core reste ressenti et affiché.
+- **`visual_check.py`** : scènes `nuages` (pixels de nuage au-dessus de l'horizon) et `vent` (indicateur, textes, pastille rouge, place sous la colonne de gauche). Un pixel de nuage compte comme du ciel dans les vérifications existantes. Les images de référence sont à refaire (`--update-golden`) : le ciel a maintenant des nuages.
+- **Tests** : `test_living_world.gd` (18 vérifications ; 0,09 ms par image ici en `low`, voisinage compris), `test_quality_presets.gd` (`--living`), `core/tests/test_settings.py` et `test_launcher.py`.
+- **Reste sur le PC cible (le propriétaire)** : [`docs/RECETTE_P16.md`](../RECETTE_P16.md) (performance sur 20 min, vent sur le vélo, ambiance, `living = false`).

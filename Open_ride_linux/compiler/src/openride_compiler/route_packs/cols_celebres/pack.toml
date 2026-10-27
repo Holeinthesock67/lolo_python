@@ -1,0 +1,4 @@
+name = "Cols célèbres"
+description = "Montées célèbres et publiques construites depuis OpenStreetMap (lot O16)"
+license = "ODbL 1.0 (données OpenStreetMap)"
+credits = "© contributeurs OpenStreetMap, ODbL ; altitude Copernicus GLO-30"

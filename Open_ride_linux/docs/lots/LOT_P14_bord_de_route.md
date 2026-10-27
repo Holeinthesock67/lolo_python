@@ -48,3 +48,22 @@ Aucune.
 ## 8. Hors périmètre
 
 - Panneaux de direction, noms de village à l'entrée, glissières, écritures des supporters sur la route.
+
+## 9. Livraison
+
+Livré sur la branche `lot-p14-bord-de-route`, sans toucher à `main.gd`, à `road_builder.gd`, à `world_streamer.gd`, au core ni au contrat.
+
+- **`climb_detector.gd`** (`detect(route)`, partagé avec P15) : profil tous les 20 m, lissé sur 100 m.
+  - Creux et sommets à hystérésis de 8 m ; une montée s'arrête aussi après 300 m sans regagner 1,5 m (replat au sommet). Les montées séparées par moins de 300 m sont fusionnées.
+  - Gardées : 1,5 km à 4 % de moyenne au moins, ou 80 m de dénivelé. Début et sommet recalés sur le profil brut.
+  - Rend début, sommet, longueur, dénivelé, pente moyenne, pente maximale sur un kilomètre glissant et altitude du sommet.
+- **`roadside_model.gd`** : liste `{kind, s, side, lines}`.
+  - Panneau de sommet : nom du point d'intérêt nommé à moins de 400 m, sinon « Sommet », et l'altitude au format français (« 1 234 m »).
+  - Panneaux d'approche à 5, 3, 2 et 1 km du sommet (« Sommet à 3 km », « Pente moyenne 7 % » sur le reste de la montée).
+  - Bornes « km N », sans doublon au départ d'une boucle.
+  - Un objet qui tomberait dans l'eau ou sur un pont (surface ou cours d'eau, 2 m de marge) est avancé par pas de 10 m, au plus 100 m.
+  - `paint_marks` : chiffres de 5 à 1 km du sommet pour le shader. `for_chunk` : objets d'un tronçon.
+- **`roadside_props.gd`** : panneaux et bornes construits par code, texte en `Label3D`, côté droit à 1,5 m du bord, face au cycliste qui arrive. Lettres de 12 cm au moins (lisibles à 30 m). `add_chunk` et `remove_chunk` suivent les tronçons.
+- **`road_markings.gdshader`** : marquages à partir des UV d'E1 : ligne médiane 3 m sur 13 m, bandes de rive, chiffres à sept segments sur la voie de droite (`marks`, 8 par tronçon), usure réglable. La couverture des traits est calculée par pixel (`fwidth`) : au loin, les traits s'estompent au lieu de scintiller. P17 l'applique à la place de `road_builder.make_material`.
+- **Tests** : `test_climb_detector.gd` (7 vérifications), `test_roadside_model.gd` (13), `render/test_road_markings_render.gd` (6).
+- **Reste sur le PC cible (le propriétaire)** : parcours de col, après le branchement par P17.

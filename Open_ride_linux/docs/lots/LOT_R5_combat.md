@@ -77,7 +77,7 @@ Victoire : 20 + 2 par Perfect Shift ; ennemi enfui : 8 ; défaite : 0.
 
 ## 6. Modifications de contrat autorisées
 
-Aucune (les noms d'événements sont ceux du contrat R1, §4.4).
+Aucune (les noms d'événements sont ceux du contrat T1, §4.3).
 
 ## 7. Critères d'acceptation
 
