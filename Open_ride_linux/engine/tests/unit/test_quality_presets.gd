@@ -46,6 +46,12 @@ func _test_engine_args() -> void:
 	_check(p_bad["quality"] == "low" and "qualité invalide" in EngineArgs.last_error,
 		"engine_args : --quality=ultra renvoie low avec message (%s)" % EngineArgs.last_error)
 
+	_check(p_def["living"] == true, "engine_args : décor vivant actif par défaut (lot P16)")
+	var p_off: Dictionary = EngineArgs.parse(PackedStringArray(["--living=off"]))
+	var p_bad_living: Dictionary = EngineArgs.parse(PackedStringArray(["--living=peut-être"]))
+	_check(p_off["living"] == false and p_bad_living["living"] == true and "décor vivant" in EngineArgs.last_error,
+		"engine_args : --living=off coupe le décor vivant, une valeur invalide le laisse actif avec message")
+
 	var p_empty_theme: Dictionary = EngineArgs.parse(PackedStringArray(["--theme="]))
 	_check(p_empty_theme["theme"] == "default" and "thème vide" in EngineArgs.last_error,
 		"engine_args : --theme= vide renvoie default avec message")

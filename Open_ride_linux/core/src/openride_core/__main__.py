@@ -4,13 +4,15 @@ Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
     openride-core run [--trainer mock|ftms|sim] [--input click|keyboard|none|sim]
                       [--hr none|ble|sim] [--sim-scenario NOM|FICHIER] [--gear N]
-                      [--autostart [--route ID] [--workout ID]] [--resume JOURNAL]
+                      [--autostart [--route ID] [--workout ID | --ftp-test ramp|20min]]
+                      [--resume JOURNAL]
                                       boucle de séance (BLE, physique, IPC, journal) ; avec
                                       --autostart, parcours <routes>/<ID>.world (défaut demo) et
                                       entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM) ;
                                       « sim » : HomeTrainer, Click ou ceinture simulés (Bluetooth simulé) ;
                                       --resume : reprend en pause la séance d'un journal non terminé
-                                      (relance par le lanceur après un plantage du core, lot N8)
+                                      (relance par le lanceur après un plantage du core, lot N8) ;
+                                      --ftp-test : séance de test de FTP (lot O10)
     openride-core release-trainer     dépannage : annule la consigne du trainer, lui rend sa
                                       liberté et le déconnecte (après un arrêt brutal)
     openride-core summary [FICHIER] [--ftp W] [--json]
@@ -24,9 +26,16 @@ Sous-commandes disponibles à ce stade :
                           [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
                                       ceinture) et bloc [drivers] proposé pour config.toml
+    openride-core settings [--json] [--config FICHIER]
+    openride-core settings set CLÉ VALEUR [--config FICHIER]
+                                      réglages du menu (FTP, poids, difficulté, braquet de
+                                      départ, qualité, thème) : lecture, ou écriture dans config.toml
     openride-core plan list|show ID|start ID [--date AAAA-MM-JJ]|stop|today|install
     openride-core plan import DOSSIER --name NOM --days mardi,jeudi,samedi
                                       plans d'entraînement sur plusieurs semaines (lot O11)
+    openride-core ftp-test [FICHIER] [--accept [--force]] [--history] [--json] [--config FICHIER]
+                                      résultat du dernier test de FTP (ou du journal donné),
+                                      enregistrement de la nouvelle FTP, historique des tests (lot O10)
 """
 
 from __future__ import annotations
@@ -163,6 +172,21 @@ def cmd_devices(args: argparse.Namespace) -> int:
                save=args.save, assume_yes=args.yes)
 
 
+def cmd_settings(args: argparse.Namespace) -> int:
+    from .settings import run
+
+    if args.action and (args.action[0] != "set" or len(args.action) != 3):
+        print("openride-core settings : usage : settings set CLÉ VALEUR", file=sys.stderr)
+        return 2
+    return run(args.json, args.config, args.action[1:] if args.action else None)
+
+
+def cmd_ftp_test(args: argparse.Namespace) -> int:
+    from .ftp_test import run
+
+    return run(args.file, args.accept, args.force, args.history, args.json, args.config, args.directory)
+
+
 def cmd_plan(args: argparse.Namespace) -> int:
     from .plans import run
 
@@ -204,6 +228,8 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : parcours <routes>/<ID>.world (défaut : demo)")
     run.add_argument("--workout", metavar="ID",
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
+    run.add_argument("--ftp-test", choices=["ramp", "20min"],
+                     help="avec --autostart : séance de test de FTP (rampe par paliers ou 20 minutes)")
     run.add_argument("--trace-ftms", action="store_true",
                      help="trace horodatée de chaque échange Control Point FTMS (lot Q3)")
     rel = sub.add_parser("release-trainer",
@@ -236,6 +262,10 @@ def build_parser() -> argparse.ArgumentParser:
     dev.add_argument("--save", action="store_true",
                      help="enregistre le matériel trouvé dans config.toml (appui « + » demandé, lot N12)")
     dev.add_argument("--yes", action="store_true", help="avec --save : sans demander de confirmation")
+    st = sub.add_parser("settings", help="réglages du menu : lecture ou écriture dans config.toml")
+    st.add_argument("action", nargs="*", metavar="set CLÉ VALEUR")
+    st.add_argument("--json", action="store_true", help="sortie JSON")
+    st.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     pl = sub.add_parser("plan", help="plans d'entraînement : list, show, start, stop, today, import, install")
     pl.add_argument("action", choices=["list", "show", "start", "stop", "today", "import", "install"])
     pl.add_argument("plan_id", nargs="?", metavar="ID|DOSSIER",
@@ -249,14 +279,29 @@ def build_parser() -> argparse.ArgumentParser:
     pl.add_argument("--workouts-dir", type=Path, help="bibliothèque (défaut : ~/OpenRide/Workouts)")
     pl.add_argument("--activities-dir", type=Path, help="séances (défaut : ~/OpenRide/Activities)")
     pl.add_argument("--state", type=Path, help="plan actif (défaut : ~/OpenRide/plan_state.toml)")
+    ftp = sub.add_parser("ftp-test", help="résultat d'un test de FTP, enregistrement de la FTP, historique")
+    ftp.add_argument("file", nargs="?", type=Path, help="journal .jsonl (défaut : dernier test trouvé)")
+    ftp.add_argument("--accept", action="store_true", help="écrit la FTP proposée dans config.toml")
+    ftp.add_argument("--force", action="store_true", help="avec --accept : accepte un résultat douteux")
+    ftp.add_argument("--history", action="store_true", help="liste les tests trouvés dans les journaux")
+    ftp.add_argument("--json", action="store_true", help="sortie JSON")
+    ftp.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    ftp.add_argument("--dir", type=Path, dest="directory",
+                     help="dossier des journaux (défaut : ~/OpenRide/Activities/.journal)")
     return p
 
 
 def main(argv: list[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
+    if args.command == "run" and args.ftp_test:
+        if args.workout:
+            print("openride-core run : erreur : --workout et --ftp-test s'excluent", file=sys.stderr)
+            raise SystemExit(2)
+        args.workout = f"ftp_test:{args.ftp_test}"   # un test de FTP se roule comme un entraînement
     if args.command == "run" and not args.autostart:
-        given = [opt for opt, val in (("--route", args.route), ("--workout", args.workout)) if val]
+        given = [opt for opt, val in (("--route", args.route), ("--workout", args.workout and not args.ftp_test),
+                                      ("--ftp-test", args.ftp_test)) if val]
         if given:
             print(f"openride-core run : erreur : {' et '.join(given)} demande --autostart (sans lui,"
                   " l'engine choisit le parcours et l'entraînement)", file=sys.stderr)
@@ -266,7 +311,7 @@ def main(argv: list[str] | None = None) -> int:
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary, "xp": cmd_xp,
             "history": cmd_history, "devices": cmd_devices,
-            "plan": cmd_plan}[args.command](args)
+            "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test}[args.command](args)
 
 
 if __name__ == "__main__":

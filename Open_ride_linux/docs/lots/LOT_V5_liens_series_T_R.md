@@ -27,7 +27,7 @@ V2, V3, V3b et V11 fusionnés ; T4, T5, T13 et T14 fusionnés ; R9 pour la parti
 
 ## 6. Modifications de contrat autorisées
 
-Champ `equipment_gain_s` de `segment_result`, s'il n'a pas été ajouté par V1 ou T1.
+Champ `equipment_gain_s` de `segment_result`, s'il n'a pas été ajouté par T1.
 
 ## 7. Critères d'acceptation
 

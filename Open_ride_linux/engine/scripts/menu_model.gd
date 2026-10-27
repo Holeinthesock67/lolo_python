@@ -7,8 +7,11 @@ extends RefCounted
 ## l'appelant (commande IPC ou action interne à l'engine). L'affichage et les listes réelles (contrat
 ## IPC v1.1) restent au lot G. Pas de class_name : charger par preload("res://scripts/menu_model.gd").
 ##
-## Entrées (mêmes noms que l'IPC) : PLUS_SHORT (suivant), MINUS_SHORT (précédent), PLUS_LONG (valider),
-## MINUS_LONG (retour). Le clavier s'y ramène par key_to_event(). Tout autre événement est ignoré.
+## Entrées (mêmes noms que l'IPC, plan des boutons de la spécification générale §7.1) : PLUS_SHORT et
+## RIGHT_SHORT et A_SHORT (suivant), MINUS_SHORT et LEFT_SHORT (précédent), PLUS_LONG et MINUS_LONG
+## (cinq éléments plus loin, plus haut, bornés à la liste), A_LONG (valider), Y_SHORT (écran précédent ;
+## sur l'écran de pause, reprendre). Z, flèches haut et bas : rien dans un menu. Le clavier s'y ramène
+## par key_to_event(). Tout autre événement est ignoré.
 ##
 ## Règles : le focus saute les éléments désactivés et boucle en fin de liste ; valider un élément
 ## désactivé ne fait rien ; une action destructrice (Abandonner, Quitter) passe par l'écran de
@@ -23,10 +26,15 @@ extends RefCounted
 ## l'accueil), « Session libre » (SIM, sans entraînement), « Session ERG » (choix de l'entraînement),
 ## « Session simulée » (OpenRide relancé sans matériel ; en session simulée : « Revenir au matériel
 ## réel »), « Réglages », « Quitter ». Sans monde choisi, les sessions passent d'abord par les parcours.
+## « Session ERG » ouvre la liste des entraînements, qui finit par « Créer un entraînement » et
+## « Importer un fichier » (lot N16, traités par menu_flow.gd).
 ## Écrans ajoutés par add_screen() (bilan de fin du lot N4) : valider un élément renvoie
 ## {"action": "item", "screen": écran, "id": élément}, à traiter par l'appelant (menu_flow.gd, lot N6).
 
-const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG"]
+const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG", "A_SHORT", "A_LONG", "Y_SHORT",
+	"LEFT_SHORT", "RIGHT_SHORT"]
+## Éléments sautés par un appui long sur + ou −.
+const LONG_STEP := 5
 
 const HOME := "home"
 const ROUTES := "routes"
@@ -42,6 +50,9 @@ const NO_WORKOUT_ID := "_sim"
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
 const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG"}
 const DEFAULT_MODES := ["ride", "erg"]
+## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
+const CREATE_WORKOUT_ID := "_create"
+const IMPORT_WORKOUT_ID := "_import"
 
 var _screens: Dictionary = {}
 var _stack: Array[String] = []      # écrans précédents, pour le retour
@@ -76,7 +87,7 @@ func _init() -> void:
 			_item("no", "Non"), _item("yes", "Oui")]},
 		PAUSE: {"id": PAUSE, "title": "Pause", "on_back": "", "items": [
 			_item("resume", "Reprendre"), _item("end_save", "Terminer et enregistrer"),
-			_item("abandon", "Abandonner")]},
+			_item("abandon", "Abandonner"), _item("difficulty", "Difficulté")]},
 	}
 	set_items(ROUTES, [])
 	set_items(WORKOUTS, [])
@@ -114,6 +125,13 @@ func set_modes(list) -> void:
 	_refresh_home()
 
 
+## Difficulté de la séance affichée sur l'écran de pause (curseur du lot O4, commande set_difficulty).
+func set_pause_difficulty(text: String) -> void:
+	for it in _screens[PAUSE]["items"]:
+		if it["id"] == "difficulty":
+			it["label"] = "Difficulté : " + text
+
+
 func set_sim_session(on: bool) -> void:
 	sim_session = on
 	_screens[HOME]["title"] = "OpenRide — session simulée" if on else "OpenRide"
@@ -124,17 +142,29 @@ static func _item(id: String, label: String, enabled := true, detail := "") -> D
 	return {"id": id, "label": label, "enabled": enabled, "detail": detail}
 
 
-## Touche du clavier vers événement du Click (mêmes touches que main.gd, plus Entrée et Échap).
+## Touche du clavier vers événement du Click (en attendant le plan du clavier, décision D6) :
+## bas, haut = suivant, précédent ; Page suivante, Page précédente = cinq plus loin, plus haut ;
+## gauche, droite = flèches du Click ; Tab = A court ; Entrée = A long (valider) ; Échap = Y (retour).
 static func key_to_event(keycode: int) -> String:
 	match keycode:
-		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_UP:
+		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_DOWN:
 			return "PLUS_SHORT"
-		KEY_MINUS, KEY_KP_SUBTRACT, KEY_DOWN:
+		KEY_MINUS, KEY_KP_SUBTRACT, KEY_UP:
 			return "MINUS_SHORT"
-		KEY_PAGEUP, KEY_ENTER, KEY_KP_ENTER:
+		KEY_PAGEDOWN:
 			return "PLUS_LONG"
-		KEY_PAGEDOWN, KEY_ESCAPE, KEY_BACKSPACE:
+		KEY_PAGEUP:
 			return "MINUS_LONG"
+		KEY_LEFT:
+			return "LEFT_SHORT"
+		KEY_RIGHT:
+			return "RIGHT_SHORT"
+		KEY_TAB:
+			return "A_SHORT"
+		KEY_ENTER, KEY_KP_ENTER:
+			return "A_LONG"
+		KEY_ESCAPE, KEY_BACKSPACE:
+			return "Y_SHORT"
 	return ""
 
 
@@ -161,8 +191,11 @@ func set_items(screen_id: String, items: Array) -> void:
 			str(it.get("detail", ""))))
 	if screen_id == ROUTES and clean.is_empty():
 		clean.append(_item("empty", "Aucun parcours", false))
-	elif screen_id == WORKOUTS and clean.size() == 1:
-		clean.append(_item("empty", "Aucun entraînement", false))
+	elif screen_id == WORKOUTS:
+		if clean.size() == 1:
+			clean.append(_item("empty", "Aucun entraînement", false))
+		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
+		clean.append(_item(IMPORT_WORKOUT_ID, "Importer un fichier (.zwo, .erg, .mrc)"))
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
 		focused_id = _screens[screen_id]["items"][_focus]["id"]
@@ -253,13 +286,17 @@ func state(action: Dictionary = {}) -> Dictionary:
 ## Traite un événement ; renvoie state() avec l'action éventuelle ({} sinon).
 func handle(event: String) -> Dictionary:
 	match event:
-		"PLUS_SHORT":
+		"PLUS_SHORT", "RIGHT_SHORT", "A_SHORT":
 			_move(1)
-		"MINUS_SHORT":
+		"MINUS_SHORT", "LEFT_SHORT":
 			_move(-1)
 		"PLUS_LONG":
-			return state(_validate())
+			_jump(LONG_STEP)
 		"MINUS_LONG":
+			_jump(-LONG_STEP)
+		"A_LONG":
+			return state(_validate())
+		"Y_SHORT":
 			return state(_back())
 	return state()
 
@@ -293,6 +330,22 @@ func _move(dir: int) -> void:
 	if _focus < 0:
 		return
 	_focus = _first_enabled_from(_focus + dir, dir)
+
+
+## Grand pas : `steps` éléments actifs plus loin (négatif : plus haut), sans boucler ; s'arrête au
+## dernier (premier) élément actif.
+func _jump(steps: int) -> void:
+	if _focus < 0:
+		return
+	var items := _items()
+	var dir := signi(steps)
+	var left := absi(steps)
+	var i := _focus + dir
+	while left > 0 and i >= 0 and i < items.size():
+		if items[i]["enabled"]:
+			_focus = i
+			left -= 1
+		i += dir
 
 
 func _open(screen_id: String, push := true) -> void:
@@ -404,6 +457,8 @@ func _validate() -> Dictionary:
 				_back()
 			return {"action": "select_route", "route_id": id}
 		WORKOUTS:
+			if id in [CREATE_WORKOUT_ID, IMPORT_WORKOUT_ID]:
+				return {"action": "item", "screen": WORKOUTS, "id": id}
 			var workout = null if id == NO_WORKOUT_ID else id
 			mode = "free" if workout == null else "erg"
 			_refresh_home()
@@ -443,6 +498,8 @@ func _validate() -> Dictionary:
 					return {"action": "end_session", "save": true}
 				"abandon":
 					_confirm("Abandonner la séance ?", {"action": "end_session", "save": false})
+				"difficulty":
+					return {"action": "item", "screen": PAUSE, "id": id}
 		_:
 			return {"action": "item", "screen": _screen, "id": id}
 	return {}

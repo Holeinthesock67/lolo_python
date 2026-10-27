@@ -116,13 +116,13 @@ func _init() -> void:
 	_check(menu.state()["focus"] == 0, "écran de confirmation : focus sur 'Non'")
 
 	# Refus de confirmation : retour à summary
-	menu.handle("PLUS_LONG") # valider 'Non'
+	menu.handle("A_LONG") # valider 'Non'
 	_check(menu.state()["screen"] == "summary", "refus confirmation : retour sur l'écran summary")
 
 	# Acceptation de confirmation : produit l'action quit
 	vm.handle_action("quit", menu) # ouvre à nouveau confirm
 	menu.handle("PLUS_SHORT") # déplacement sur 'Oui'
-	var confirmed_act := menu.handle("PLUS_LONG") # valider 'Oui'
+	var confirmed_act := menu.handle("A_LONG") # valider 'Oui'
 	_check(confirmed_act.get("action") == {"action": "quit"}, "acceptation confirmation : action 'quit' émise")
 
 	# 6. Performance : aucun nœud créé

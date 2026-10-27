@@ -6,13 +6,13 @@ Rendre le mode Cyber-Rogue jouable de bout en bout depuis le menu, au Click seul
 
 ## 2. À lire
 
-1. `docs/lots/00_INDEX.md`, `docs/lots/LOT_R17_direction_artistique.md` (charte, jetons de couleur, matériaux, catalogue des objets et des effets : à suivre partout), `docs/contracts/ipc_v1.md` (révision 1.4 de R1), `docs/lots/LOT_R1_contrat_ipc_rogue.md` (§4.1 à §4.3, §4.6).
+1. `docs/lots/00_INDEX.md`, `docs/lots/LOT_R17_direction_artistique.md` (charte, jetons de couleur, matériaux, catalogue des objets et des effets : à suivre partout), `docs/contracts/ipc_v1.md` (révision 1.4, lot T1), `docs/lots/LOT_T1_contrat_1_4.md` (§4.1 et §4.3, §4.6).
 2. `docs/2.0/PLAN_SERIE_R.md` §6 (parcours de lancement), `docs/lots/LOT_N6_affichage_menus.md`, `LOT_N4_modele_fin_seance.md`, `LOT_O4_menu_reglages.md`.
 3. Code : `engine/scripts/menu_model.gd`, `menu_flow.gd`, `menu_view.gd`, `summary_view_model.gd`, `main.gd`, `ipc_client.gd`.
 
 ## 3. Prérequis
 
-R1, R8, R10, R11 et R17 livrés (portes, cartes, coffres et écrans du mode suivent le catalogue de R17) ; N6 et O4 (réglages, pour W') livrés ; l'accueil construit à partir de `hello_ack.config.modes` (préparé dans la 1.0, voir le plan §6 ; sinon ce lot le fait).
+T1, R8, R10, R11 et R17 livrés (portes, cartes, coffres et écrans du mode suivent le catalogue de R17) ; N6 et O4 (réglages, pour W') livrés ; l'accueil construit à partir de `hello_ack.config.modes` (préparé dans la 1.0, voir le plan §6 ; sinon ce lot le fait).
 
 ## 4. Travail demandé
 
@@ -51,7 +51,7 @@ Accueil ── « Cyber-Rogue » (affiché seulement si le core annonce "rogue")
 
 ## 6. Modifications de contrat autorisées
 
-Aucune au-delà de la révision 1.4 de R1.
+Aucune au-delà de la révision 1.4 (lot T1).
 
 ## 7. Critères d'acceptation
 

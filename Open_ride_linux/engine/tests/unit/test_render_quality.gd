@@ -149,9 +149,25 @@ func _test_far_tiles() -> void:
 	vp.queue_free()
 
 
+## Brume de la météo (Lot P17) : brouillard rapproché selon `fog_boost`, base rendue à 0.
+func _test_weather_fog() -> void:
+	var base := Vector2(3000.0, 12000.0)
+	var none := RenderQuality.weather_fog_range(base, 0.0)
+	var half := RenderQuality.weather_fog_range(base, 0.5)
+	var full := RenderQuality.weather_fog_range(base, 1.0)
+	_check(none == base, "brume nulle : brouillard d'origine (%.0f à %.0f m)" % [none.x, none.y])
+	_check(half.y < base.y and half.y > full.y and half.x <= half.y * 0.5, "brume 0,5 : %.0f à %.0f m" % [half.x, half.y])
+	_check(absf(full.y - RenderQuality.MIST_END_M) < 1e-3 and absf(full.x - RenderQuality.MIST_BEGIN_M) < 1e-3,
+		"brume pleine : %.0f à %.0f m" % [full.x, full.y])
+	var env := Environment.new()
+	RenderQuality.apply_weather_fog(env, base, 1.0)
+	_check(absf(env.fog_depth_end - RenderQuality.MIST_END_M) < 1e-3, "apply_weather_fog : fin du brouillard appliquée")
+
+
 func _init() -> void:
 	_test_presets_application()
 	_test_fog()
 	_test_far_tiles()
+	_test_weather_fog()
 	print("test_render_quality : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

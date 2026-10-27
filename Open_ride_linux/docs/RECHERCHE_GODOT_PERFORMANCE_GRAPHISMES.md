@@ -112,7 +112,8 @@ Retours du propriétaire (25 octobre) : bâtiments sans texture et tous à toit 
 
 1. **Tonalité et étalonnage** : AgX (4.4) et ses réglages (4.6), ajustements de luminosité, contraste et saturation de l'`Environment`. Coût nul ou presque. [Environment and post-processing](https://docs.godotengine.org/en/stable/tutorials/3d/environment_and_post_processing.html).
 2. **Bâtiments** : toits à deux ou quatre pans générés, textures de façade par thème en atlas (une seule texture par village, peu de changements de matériau), fenêtres par shader plutôt que par géométrie. C'est le « lot habillage » déjà évoqué.
-3. **Marquages et détails de route** : décalques (`Decal`) pour les marques, taches et bords ; coût par pixel couvert, à limiter en distance. [Using decals](https://docs.godotengine.org/en/stable/tutorials/3d/using_decals.html).
+3. **Chaussée et herbe** (demande du 27 octobre, lot Y11) : cartes de normales et rugosité variable, détail à deux échelles, décalques (`Decal`, coût par pixel couvert, limités en distance), route mouillée, parallaxe en `high` ; pour l'herbe, normale par le dessus, vagues de vent, touffes raccordées au sol, coquilles en essai. [Using decals](https://docs.godotengine.org/en/stable/tutorials/3d/using_decals.html), [Standard Material 3D](https://docs.godotengine.org/en/stable/tutorials/3d/standard_material_3d.html). Cahier : `docs/lots/LOT_Y11_chaussee_herbe_relief.md`.
+8. **Lumière et particules** (demande du 27 octobre, lot Y12) : glow léger, rayons de soleil, ombre des nuages en `medium`, reflets SSR, poussière, pollen, feuilles, éclaboussures, kit d'étincelles du Cyber-Rogue ; budgets par préréglage et échelle commune avec R17. [Particle systems (3D)](https://docs.godotengine.org/en/stable/tutorials/3d/particles/index.html), [Volumetric fog](https://docs.godotengine.org/en/stable/tutorials/3d/volumetric_fog.html). Cahier : `docs/lots/LOT_Y12_lumieres_particules.md`.
 4. **Eau** : SSR refait en 4.6 (demi-résolution) et sondes de réflexion octaédriques ; seulement en `medium` et `high`.
 5. **Occlusion ambiante** : SSAO en demi-résolution en `medium` ; occlusion spéculaire automatique (4.5).
 6. **Foule et passants** (P15, P21) : animation dans le shader de sommets à partir d'une texture, comme l'exemple « des milliers de poissons » de la documentation, avec `MultiMesh` et données par instance. [Animating thousands of fish](https://docs.godotengine.org/en/stable/tutorials/performance/vertex_animation/animating_thousands_of_fish.html).
@@ -141,9 +142,11 @@ Validée par le propriétaire le 27 octobre (§0). Toute la série vient **aprè
 | Y5 | Arbres lointains en imposteurs écrits par nous (décision du 27 octobre, sans extension externe), feuillage en `alpha scissor`, densité par `visible_instance_count` (T5, T10) | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) |
 | Y6 | Résolution 3D par préréglage et résolution adaptative (FSR 1.0, temps GPU), anticrénelage FXAA/SMAA en `low` (T6, T12) | Y2, X13 | Petite | Oui |
 | Y7 | Essai du moteur Mobile pour `low` (T13) : mesure seule, décision du propriétaire | Y2 | Petite | Oui (mesure) |
-| Y8 | Habillage, dans l'ordre validé : toits à pans et textures de façade en atlas, puis étalonnage AgX, puis décalques de route (§6) | Y3, P20 | Grande | En partie |
+| Y8 | Habillage, dans l'ordre validé : toits à pans et textures de façade en atlas, puis étalonnage AgX (§6) ; les décalques de route passent dans Y11 (décision du 27 octobre) | Y3, P20 | Grande | En partie |
 | Y9 | Lissage des bots : mémoire de trames, Hermite, déplacements latéraux, LOD des bots (§7) | O7 | Moyenne | Oui |
 | Y10 | Comportement des bots (profils, attaques, abri) côté core | Y9, séries T et R | Moyenne | Oui |
+| Y11 (#385) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée, parallaxe en `high`) et faux relief de l'herbe (normale, teinte, vagues de vent, touffes, coquilles en essai) ; enveloppe +1,0 ms GPU en `medium` | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie |
+| Y12 (#386) | Lumière (glow, rayons, ombre des nuages, SSR, halo) et particules (poussière, pollen, feuilles, éclaboussures, foules, kit Cyber-Rogue) ; enveloppe +1,5 ms GPU en `medium` | Y2, Y1, P17, R17, Y11 | Moyenne | Oui |
 
 **Y1 réalisé (27 octobre, code) :** clé `fog_end_m` dans `quality_presets.gd` (4 000 / 6 000 / 9 000 m), début du brouillard à 40 % de la fin (1,6 / 2,4 / 3,6 km), `camera.far` = fin + 3 %, tuiles lointaines chargées jusqu'à la fin + une tuile lointaine (9 / 11 / 12 km, plafond 12 km), sol plat de même rayon ; sans relief, brouillard inchangé (300 m à 3 km) ; clé `renderer_hint` retirée. Mesures du 27 octobre sur le PC cible (GTX 1060, banc simulé `montee_descente` avec la sonde X13, fenêtre 1857 × 1011, PC au calme, avant = base commune sans Y1, après = branche Y1) :
 
@@ -154,7 +157,23 @@ Validée par le propriétaire le 27 octobre (§0). Toute la série vient **aprè
 
 Aucun gain ni perte mesurable : la synchronisation verticale plafonne à 60 images/s et les mondes de test (village, demo) n'ont que 12 tuiles lointaines de 5 km, toutes dans le nouveau rayon ; le gain du rayon réduit n'apparaîtra que sur un grand parcours réel. Captures avant et après au même instant quasi identiques (écart RGB ≤ 0,4), aucune tuile ne surgit au bord du brouillard. `recette_pc` sur la branche : core et compilateur OK (seul échec, `test_require_denylist`, connu et présent aussi sur `main`), engine OK avec un budget de temps X2 dépassé, bout en bout en échec à cause d'un ancien script de suivi qui écrivait dans `~/OpenRide` (sans lien avec Y1). Reste à faire par le propriétaire : `essai-69` en `medium` puis en `low` pour valider l'horizon plus proche.
 
-Ordre conseillé : Y1, Y2, puis Y4, Y6 et Y3 (les plus rentables), Y5, Y7, et enfin Y8, Y9, Y10. Ce qui relève de « ne pas dessiner l'invisible » (tuiles derrière, construction inutile, occlusion par le relief) reste dans S1, pour ne pas faire deux fois le même travail.
+Ordre conseillé : Y1, Y2, puis Y4, Y6 et Y3 (les plus rentables), Y5, Y7, et enfin Y8, Y11, Y12, Y9, Y10 (Y11 et Y12 validés le 27 octobre : les gains de performance d'abord, ils paient l'habillage). Essai de rendu mesuré avec les outils de la série X : `docs/ESSAI_RENDU_Y11_Y12.md`. Ce qui relève de « ne pas dessiner l'invisible » (tuiles derrière, construction inutile, occlusion par le relief) reste dans S1, pour ne pas faire deux fois le même travail.
+
+## 10. Chaussée, herbe, lumière et particules : décisions du propriétaire (27 octobre)
+
+Cahiers `LOT_Y11_chaussee_herbe_relief.md` (issue #385), `LOT_Y12_lumieres_particules.md` (issue #386), essai `docs/ESSAI_RENDU_Y11_Y12.md`. Réponse du propriétaire : « OK pour tout » (recommandations retenues).
+
+| Question | Décision |
+| --- | --- |
+| 1. Lots | Y11 et Y12 validés, après Y8 : ordre Y8, Y11, Y12, puis Y9, Y10. |
+| 2. Enveloppe | Au plus +2,5 ms de GPU en `medium` pour Y11 et Y12 ensemble (+1,0 et +1,5), p99 au plus +1 ms ; `low` garde 55 images/s et p99 sous 25 ms. |
+| 3. Essai, étape 0 | Référence sans code (environ 35 min sur le PC), après Y1. |
+| 4. Essai, étape 1 | Maquette de mesure après Y2 (Godot 4.7), le glow et le SSR changeant en 4.6. |
+| 5. Textures de sol | Packs CC0 seulement ; Gemini réservé aux décalques fictifs (inscriptions dans les cols). |
+| 6. Décalques de route | Déplacés d'Y8 vers Y11. |
+| 7. Herbe | Touffes 1 500 / 8 000 / 20 000 sous réserve de la mesure ; coquilles en essai `high` ; parallaxe de l'herbe écartée. |
+| 8. Halo du soleil | `high` seulement. |
+| 9. Lucioles | Version 2.0, avec le jour et la nuit. |
 
 ## 9. Sources
 
