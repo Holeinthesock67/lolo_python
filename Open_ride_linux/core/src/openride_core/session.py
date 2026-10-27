@@ -299,6 +299,7 @@ class CoreSession:
         # Monde ouvert (lot W9) : générateur et route engagée ; `worldgen_cmd` remplace la commande (essais).
         self.openworld: OpenWorld | None = None
         self.worldgen_cmd: list[str] | None = None
+        self.worldmenu: Any = None                 # WorldMenu du lot W11, créé à la première demande ; remplaçable (essais)
         self.worldgen_args: list[str] = []
         self.gpx_dir: Path | None = None        # balades enregistrées (défaut ~/OpenRide/GPX ; essais)
         self._ow_previous = "IDLE"
@@ -395,6 +396,8 @@ class CoreSession:
             self._spawn(self._handle_list_routes(cmd_id))
         elif name == "list_workouts":
             self._spawn(self._handle_list_workouts(cmd_id))
+        elif name in ("world_search", "world_map", "world_regions", "world_pin"):
+            self._spawn(self._handle_world_menu(name, args if isinstance(args, dict) else {}, cmd_id))
         elif name in ("scan_devices", "identify_click_plus", "pair_devices"):
             self._on_pairing_command(name, args, cmd_id)
         elif name == "list_settings":
@@ -672,6 +675,25 @@ class CoreSession:
                 self.server.send_raw(m)
         except Exception:
             log.exception("Erreur lors de la préparation de workouts (cmd_id=%d)", cmd_id)
+
+    async def _handle_world_menu(self, name: str, args: dict, cmd_id: int) -> None:
+        """Menu du monde ouvert (lot W11) : recherche, carte, régions ; le travail se fait dans un fil."""
+        from .world_menu import WorldMenu
+
+        if self.worldmenu is None:
+            self.worldmenu = WorldMenu(self.cfg.open_world.network, self.config_path)
+        wm = self.worldmenu
+        try:
+            if name == "world_search":
+                msgs = await asyncio.to_thread(wm.search, cmd_id, args.get("query"))
+            elif name == "world_map":
+                msgs = await asyncio.to_thread(wm.world_map, cmd_id, args)
+            else:
+                msgs = await asyncio.to_thread(wm.regions, cmd_id, args if name == "world_pin" else None)
+            for m in msgs:
+                self.server.send_raw(m)
+        except Exception:
+            log.exception("Erreur du menu du monde ouvert (%s, cmd_id=%d)", name, cmd_id)
 
     # --- monde ouvert (lot W9, contrat IPC révision 1.5) ------------------------------------------
 

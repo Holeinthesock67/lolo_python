@@ -24,7 +24,7 @@ openride-ble-diag = "openride_core.tools.ble_diag:main"
 where = ["src"]
 
 [tool.setuptools.package-data]
-openride_core = ["data/*.toml"]
+openride_core = ["data/*.toml", "data/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
