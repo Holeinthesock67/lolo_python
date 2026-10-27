@@ -18,16 +18,16 @@ O15 fusionné.
 ## 4. Travail demandé
 
 - **Régions :** les recettes portent un pays ; pour le Japon, les noms sont donnés en lettres latines (et en japonais dans `description` si souhaité, l'affichage devant alors gérer les caractères japonais, à vérifier par O12).
-- **Recettes plutôt que traces :** le dépôt contient, pour chaque col, une petite **recette** `compiler/route_packs/cols_celebres/<id>.toml` : nom, description, région (pays et massif), points de passage publics et célèbres (départ, éventuels points intermédiaires, sommet) donnés par des coordonnées arrondies à 4 décimales, versant choisi, longueur et dénivelé de référence (pour le contrôle), étiquettes (`col`, `classique`, `hc`…), crédits « © contributeurs OpenStreetMap, ODbL ».
+- **Recettes plutôt que traces :** le dépôt contient, pour chaque col, une petite **recette** `compiler/src/openride_compiler/route_packs/cols_celebres/` (un `<id>.toml` par col) : nom, description, région (pays et massif), points de passage publics et célèbres (départ, éventuels points intermédiaires, sommet) donnés par des coordonnées arrondies à 4 décimales, versant choisi, longueur et dénivelé de référence (pour le contrôle), étiquettes (`col`, `classique`, `hc`…), crédits « © contributeurs OpenStreetMap, ODbL ».
 - **Construction de la trace** (`openride-compiler route-pack-build cols_celebres`) : récupère par Overpass les routes ouvertes aux vélos autour des points (`highway` hors `motorway`, `trunk` avec `bicycle=no`, chemins non revêtus exclus sauf mention), calcule le plus court chemin entre points successifs sur ce graphe, ré-échantillonne et écrit un GPX dans un dossier de travail, puis un pack installable (O15) avec les fiches. Réseau seulement à la première construction ; ensuite le cache suffit.
 - **Contrôle :** la longueur et le dénivelé obtenus doivent être à ± 5 % de la référence de la recette ; sinon la trace est refusée avec un message (point de passage à corriger).
 - **Contenu proposé** (le propriétaire peut retirer ou ajouter des cols avant la livraison) : Alpe d'Huez (depuis Le Bourg-d'Oisans), Mont Ventoux (depuis Bédoin), Col du Galibier (depuis Valloire), Col du Tourmalet (depuis Luz-Saint-Sauveur), Teide (depuis Vilaflor, Tenerife), Passo dello Stelvio (depuis Prato allo Stelvio), Monte Zoncolan (depuis Ovaro), Alto de l'Angliru (depuis La Vega), Grand Colombier (depuis Culoz), Col de la Madeleine (depuis La Chambre) ; dans les Vosges (demande du propriétaire) : Grand Ballon (depuis Willer-sur-Thur), La Planche des Belles Filles (depuis Plancher-les-Mines), Ballon d'Alsace (depuis Saint-Maurice-sur-Moselle) ; au Japon (demande du propriétaire) : Fuji Subaru Line jusqu'à la 5e station du mont Fuji (depuis Fujiyoshida), Norikura Echo Line, la route goudronnée la plus haute du Japon (depuis Norikura Kōgen), Irohazaka et ses 48 virages (route montante, depuis Nikkō). Aucun lieu proche du domicile du propriétaire, et aucun col n'est choisi d'après ses sorties.
 - **Installation :** au premier démarrage (N14) ou par le menu, proposition d'installer le pack (construction en arrière-plan, notification à la fin) ; jamais d'installation silencieuse qui télécharge.
-- Documentation : `README.md` (pack de départ, crédits OSM), `docs/GUIDE_UTILISATION.md` si présent.
+- Documentation : `README.md` (pack de départ, crédits OSM), et le guide d'utilisation s'il existe (lot O6).
 
 ## 5. Fichiers concernés
 
-- **Nouveaux :** `compiler/route_packs/cols_celebres/pack.toml` et une recette `.toml` par col, `compiler/src/openride_compiler/route_recipe.py`, `compiler/tests/test_route_recipe.py` (graphe routier synthétique, sans réseau).
+- **Nouveaux :** `compiler/src/openride_compiler/route_packs/cols_celebres/pack.toml` et une recette `.toml` par col, `compiler/src/openride_compiler/route_recipe.py`, `compiler/tests/test_route_recipe.py` (graphe routier synthétique, sans réseau).
 - **Modifiés :** `compiler/src/openride_compiler/cli.py`, `compiler/pyproject.toml` (inclure les recettes dans le paquet), `README.md`, `docs/SUIVI_AVANCEMENT.md` (une ligne).
 - **Interdits :** tout GPX, FIT ou TCX dans le dépôt ; toute coordonnée liée au domicile ou aux sorties du propriétaire ; l'engine, le contrat IPC.
 
@@ -49,3 +49,14 @@ Aucune.
 
 - Parcours de plaine ou classiques sur pavés (pack ultérieur possible avec le même outil).
 - Itinéraires calculés librement entre deux villes (pas de calculateur d'itinéraire général).
+
+## 9. Livraison
+
+Livré le 27 octobre 2026 (issue #158), thread « Développer les lots O restants ».
+
+- Recettes : 16 fichiers `.toml` et `pack.toml` dans `compiler/src/openride_compiler/route_packs/cols_celebres/`, dans le paquet (et non dans un dossier `route_packs` à la racine du compilateur) pour être installés avec lui (`package-data` de `compiler/pyproject.toml`). Clés : `name`, `region`, `country`, `side`, `waypoints` (4 décimales au plus), `ref_length_m`, `ref_gain_m`, `tags`, `unpaved`, `description`, `credits`.
+- `compiler/src/openride_compiler/route_recipe.py` : requête Overpass des `highway` permis dans la boîte des points élargie de 1,5 km, graphe orienté (sens uniques, `oneway:bicycle=no`), exclusions `bicycle=no`, accès privé, `motorroad`, surfaces non revêtues, `track` et `path` non revêtus ; accroche à 250 m au plus ; Dijkstra ; ré-échantillonnage à 10 m ; altitude du MNT ; contrôle à ± 5 % ; GPX (licence ODbL dans les métadonnées) et fiche `.toml` avec les crédits OpenStreetMap.
+- `openride-compiler route-pack-build PACK [--out] [--only] [--offline] [--install] [--gpx-dir]` : un col refusé n'empêche pas les autres ; code de sortie 1 s'il y a un refus.
+- Tests : `compiler/tests/test_route_recipe.py` (critères 1 à 5 : graphe synthétique, exclusions, sens uniques, point hors route, référence fausse, pack installé et compilé avec crédits, recettes livrées sans trace ni coordonnée dans les fiches).
+- Proposition d'installation au premier démarrage ou par le menu : à faire avec l'écran de la bibliothèque (O12), le launcher étant hors de ce lot.
+- **Coordonnées et références saisies sans accès au réseau** : la première construction sur le PC dira, col par col, si un point de passage ou une référence est à corriger (message du contrôle à ± 5 %).

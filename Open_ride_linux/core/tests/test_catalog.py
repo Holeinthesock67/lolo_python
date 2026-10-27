@@ -111,3 +111,22 @@ def test_list_routes_50_worlds_performance(tmp_path: Path) -> None:
     assert len(entries) == 51  # demo + 50 parcours
     # Seuil cible 200 ms (marge CI jusqu'à 500 ms sur machine virtuelle partagée)
     assert elapsed_ms < 500.0
+
+
+# --- lot O5 : exports Garmin déposés dans le dossier des traces -----------------------------------
+
+def test_garmin_exports_are_tracks(tmp_path, caplog):
+    from openride_core.catalog import list_routes, track_conflicts
+
+    gpx_dir = tmp_path / "GPX"
+    gpx_dir.mkdir()
+    for name in ("Sortie.FIT", "b.tcx", "c.fit.gz", "d.TCX.GZ", "e.zip", "notes.txt", "f.gz", "col.gpx", "col.fit"):
+        (gpx_dir / name).write_bytes(name.encode())
+    caplog.set_level("WARNING", logger="catalog")
+    entries = {e.id: e for e in list_routes(tmp_path / "routes", gpx_dir)}
+    assert sorted(entries) == ["b", "c", "col", "d", "demo", "e", "sortie"]
+    assert entries["sortie"].name == "Sortie" and entries["d"].gpx_path == gpx_dir / "d.TCX.GZ"
+    assert entries["col"].gpx_path == gpx_dir / "col.gpx"
+    assert all(e.status == "to_compile" for k, e in entries.items() if k != "demo")
+    assert track_conflicts(gpx_dir) == [(gpx_dir / "col.fit", gpx_dir / "col.gpx")]
+    assert "col.fit écartée, même parcours que col.gpx" in caplog.text
