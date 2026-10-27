@@ -70,6 +70,12 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("gearing.start_gear", "Braquet de départ", "number", "next_session", step=1),
     Setting("render.quality", "Qualité graphique", "choice", "now"),
     Setting("render.theme", "Thème", "choice", "now"),
+    # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
+    Setting("wind.mode", "Vent", "choice", "next_session"),
+    Setting("wind.speed_kmh", "Force du vent", "number", "next_session", step=5, unit="km/h"),
+    Setting("wind.from_deg", "Vent venant de", "number", "next_session", step=45, unit="°"),
+    Setting("wind.max_grade_offset_pct", "Plafond du vent sur la pente", "number", "next_session",
+            step=0.5, unit="pts"),
 )
 BY_KEY = {s.key: s for s in SETTINGS}
 

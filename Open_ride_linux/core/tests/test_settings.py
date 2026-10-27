@@ -45,9 +45,11 @@ def themes(tmp_path):
 
 def test_list_is_closed_and_ordered():
     assert [s.key for s in SETTINGS] == ["rider.ftp_w", "rider.mass_kg", "trainer.difficulty_pct",
-                                         "gearing.start_gear", "render.quality", "render.theme"]
+                                         "gearing.start_gear", "render.quality", "render.theme",
+                                         "wind.mode", "wind.speed_kmh", "wind.from_deg", "wind.max_grade_offset_pct"]
     steps = {s.key: s.step for s in SETTINGS if s.type != "choice"}
-    assert steps == {"rider.ftp_w": 5, "rider.mass_kg": 1, "trainer.difficulty_pct": 10, "gearing.start_gear": 1}
+    assert steps == {"rider.ftp_w": 5, "rider.mass_kg": 1, "trainer.difficulty_pct": 10, "gearing.start_gear": 1,
+                     "wind.speed_kmh": 5, "wind.from_deg": 45, "wind.max_grade_offset_pct": 0.5}
     assert settings.get("trainer.difficulty_pct").type == "slider"
     assert all(s.applies in settings.APPLIES for s in SETTINGS)
     assert {s.key for s in SETTINGS if s.applies == "now"} == {"render.quality", "render.theme"}
@@ -61,7 +63,7 @@ def test_current_shape(themes):
                    "min": 50, "max": 600, "step": 5, "applies": "next_session"}
     gear = next(i for i in items if i["key"] == "gearing.start_gear")
     assert gear["max"] == cfg.gearing.n_gears and isinstance(gear["value"], int)
-    theme = items[-1]
+    theme = next(i for i in items if i["key"] == "render.theme")
     assert theme["choices"] == ["default", "alpes", "vosges"] and "min" not in theme
     json.dumps(items)   # prêt pour l'IPC
 
@@ -172,3 +174,16 @@ def test_cli_text(cfg_file, capsys):
     assert main(["settings", "--config", str(cfg_file)]) == 0
     out = capsys.readouterr().out
     assert "FTP" in out and "250 W" in out and "à la prochaine séance" in out and "immédiatement" in out
+
+
+def test_wind_settings_lot_p16():
+    cfg = config_mod.Config()
+    items = {i["key"]: i for i in settings.current(cfg)}
+    assert items["wind.mode"]["value"] == "off"
+    assert items["wind.mode"]["choices"] == ["off", "fixed", "gusty", "theme"]
+    cap = items["wind.max_grade_offset_pct"]
+    assert (cap["value"], cap["min"], cap["max"], cap["step"]) == (4, 0, 8, 0.5)
+    assert items["wind.from_deg"]["unit"] == "°" and items["wind.speed_kmh"]["max"] == 60
+    assert settings.step("wind.mode", "theme", 1) == "off"
+    assert settings.step("wind.max_grade_offset_pct", 8, 1) == 8
+    assert settings.step("wind.from_deg", 270, 1) == 315

@@ -31,7 +31,9 @@ Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sou
 | --- | --- |
 | `attente` | Aucun core : ligne d'état « en attente du core… », valeurs `--`, éléments dans l'écran |
 | `vue_fixe` | Séance à l'arrêt à s = 1 500 m : les sept lignes du HUD exactes, ligne ERG cachée, bandeau caché, éléments dans l'écran sans chevauchement, texte dessiné (pixels clairs), image ni noire ni uniforme, ciel en haut, sol en bas, maillages affichés |
+| `nuages` | Lot P16 : ciel de P6 du thème par défaut, pixels de nuage au-dessus de l'horizon, entre les panneaux du HUD |
 | `mouvement_1`, `mouvement_2` | 8 m/s : vitesse 28.8 km/h, distance qui avance, caméra à 8 m/s ± 25 % (temps de l'engine), sol qui défile |
+| `vent` | Lot P16 : vent de face de 26 km/h dans la trame : indicateur visible sous la colonne de gauche, « km/h face », « fort », pastille rouge « Vent défavorable », mise en page sans chevauchement |
 | `erg` | Ligne ERG visible, cible dans la ligne de puissance, pente « trainer en ERG », mise en page |
 | `pause` | « PAUSED (trainer_lost) » et « RECONNECTING » dans la ligne d'état |
 | `core_muet_1`, `core_muet_2` | Core muet : `core_lost`, bandeau « Core non joignable » rouge et sans recouvrir le HUD, caméra et image figées |
@@ -75,7 +77,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_theme_render_params.gd` | L3 | Paramètres de rendu tirés du thème (`theme_render_params.gd`) : uniforms terrain, fonction de référence du mélange herbe/roche/neige, poids triplanaires, route et direction du soleil ; nuages du thème 1.2 (`cloud_params`, lot P6 : valeurs par défaut et bornes) |
 | `test_terrain_material.gd` | E2 | Instanciation et configuration du shader triplanaire (`terrain_material.gd` et `terrain.gdshader`) : uniforms du thème et constantes de L3, textures (avec mipmaps), ligne médiane de la route sur une texture de thème, tuiles sans couleur de sommet (le rendu réel est vérifié dans `tests/render/`) |
 | `test_render_quality.gd` | E1 | Brouillard de limite (`render_quality.gd`, `main.tscn`) : mode profondeur à pleine opacité (`fog_density` = 1), début et fin avec et sans terrain |
-| `test_quality_presets.gd` | L4, P4 | Préréglages de qualité (`quality_presets.gd`), budgets du décor vivant `living()` (coupure comprise) et arguments `--quality` / `--theme` de `engine_args.gd` |
+| `test_quality_presets.gd` | L4, P4, P16 | Préréglages de qualité (`quality_presets.gd`), budgets du décor vivant `living()` (coupure comprise) et arguments `--quality` / `--theme` de `engine_args.gd` ; argument `--living=on|off` (lot P16) |
 | `test_banner_layout.gd` | – | Placement du bandeau d'alerte (`banner.gd`, `layout_for`) : à droite du HUD s'il reste 360 px, sinon dessous, jamais par-dessus, de 800 à 3 840 px de large |
 | `test_sound_model.gd` | L5, P10 | Modèle sonore sans affichage (`sound_model.gd`) : vent, roue libre (délai 0,5 s et arrêt à > 10 W), hystérésis des points d'intérêt, lissage 12 dB/s et déterminisme ; lot P10 : vent selon la vitesse dans l'air (vent de face et de dos, rafales), roue libre à la cadence, 171 coups/s à 36 km/h, un « clac » par reprise, silence immédiat en pause |
 | `test_render_quality.gd` | E3 | Application des préréglages de qualité (`render_quality.gd` et `quality_presets.gd`) : caméra, ombres, SSAO, MSAA, brouillard en profondeur et volumétrique |
@@ -96,6 +98,7 @@ Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code d
 | `test_weather_particles.gd` | P8 | Pluie et neige (`weather_particles.gd`) : budget de `living(preset)`, nœud vide à budget nul, boîte de 40 m centrée sur la caméra après 500 m, repère du monde, vent du nord qui pousse vers le sud, aucun effet sans `weather`, coût de `update` |
 | `test_wind_model.gd` | P4 | Modèle du vent (`wind_model.gd`) : repère, lissage (90 % en 1,2 s sans dépassement), phase continue, expiration du vent du core et vent du thème, vent apparent, coût de `evaluate` |
 | `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
+| `test_living_world.gd` | P16 | Branchement du décor vivant (`living_world.gd`, `hud_view.gd`) : ciel de P6 à la place du ciel actuel, vent du core vers le décor, nuages dans le sens du vent, indicateur « face » / « dos » / neutre, voisinage sonore au plus 2 fois par seconde à partir des contours chargés, exclusions de l'herbe, panneau du vent sous la colonne de gauche et caché sans vent, `living = false` : ciel, herbe et ambiance de la 1.0 ; coût par image |
 
 ## Étapes du script
 

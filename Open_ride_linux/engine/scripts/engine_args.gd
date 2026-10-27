@@ -7,6 +7,7 @@ extends RefCounted
 ##   --routes-dir=CHEMIN      dossier des parcours (défaut : ~/.local/share/openride/routes)
 ##   --quality=low|medium|high préréglage de qualité graphique (défaut : low, lot L4)
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
+##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
@@ -27,7 +28,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, test_mode}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, living, test_mode}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -36,6 +37,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"routes_dir": default_routes_dir(),
 		"quality": DEFAULT_QUALITY,
 		"theme": DEFAULT_THEME,
+		"living": true,
 		"test_mode": false,
 	}
 	for arg in args:
@@ -52,6 +54,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["quality"] = _quality(arg, DEFAULT_QUALITY)
 		elif arg.begins_with("--theme="):
 			out["theme"] = _theme(arg, DEFAULT_THEME)
+		elif arg.begins_with("--living="):
+			out["living"] = _living(arg, true)
 		elif arg == "--test-mode":
 			out["test_mode"] = true
 	return out
@@ -82,6 +86,17 @@ static func _theme(arg: String, fallback: String) -> String:
 		printerr("Argument ignoré (thème vide) : ", arg)
 		return fallback
 	return val
+
+
+static func _living(arg: String, fallback: bool) -> bool:
+	var val := arg.get_slice("=", 1).strip_edges().to_lower()
+	if val in ["on", "true", "1", "oui"]:
+		return true
+	if val in ["off", "false", "0", "non"]:
+		return false
+	last_error = "Argument ignoré (décor vivant : on ou off) : " + arg
+	printerr("Argument ignoré (décor vivant : on ou off) : ", arg)
+	return fallback
 
 
 static func current() -> Dictionary:
