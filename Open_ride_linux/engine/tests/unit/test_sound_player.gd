@@ -7,9 +7,12 @@ extends SceneTree
 ## - Aucun nœud créé après le démarrage.
 ## - Remplacement par .ogg si disponible.
 ## - Temps CPU de génération des sons au démarrage < 500 ms.
+## - Lot P9 : fonds d'ambiance générés (ou .ogg de remplacement), lecteurs réglés par le modèle,
+##   cloches de l'heure pleine sur les points church_bell.
 
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const SoundModel := preload("res://scripts/sound_model.gd")
+const AmbienceModel := preload("res://scripts/ambience_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -39,6 +42,13 @@ func _test_sound_synthesis_perf() -> void:
 		if s == null or not (s is AudioStreamWAV):
 			all_streams_ok = false
 	_check(all_streams_ok, "tous les flux procéduraux générés et valides")
+	var beds_ok := true
+	for bed in AmbienceModel.BEDS:
+		var b: Resource = sp._streams.get(bed, null)
+		beds_ok = beds_ok and b is AudioStreamWAV and (b as AudioStreamWAV).loop_mode == AudioStreamWAV.LOOP_FORWARD \
+			and (b as AudioStreamWAV).data.size() == SoundPlayer.BED_SAMPLES * 2
+		beds_ok = beds_ok and sp._bed_players.has(bed) and not (sp._bed_players[bed] is AudioStreamPlayer3D)
+	_check(beds_ok, "fonds d'ambiance : 6 boucles générées, lecteurs non spatialisés")
 
 	sp.queue_free()
 
@@ -104,6 +114,52 @@ func _test_scenarios_and_limits() -> void:
 	sp.queue_free()
 
 
+# Lot P9, critère 5 : fichier ~/OpenRide/Sounds/<fond>.ogg utilisé s'il existe
+func _test_ogg_override() -> void:
+	var home := OS.get_environment("HOME")
+	var tmp := OS.get_user_data_dir().path_join("test_home_p9")
+	DirAccess.make_dir_recursive_absolute(tmp.path_join("OpenRide/Sounds"))
+	DirAccess.copy_absolute(ProjectSettings.globalize_path("res://tests/data/sounds/rain.ogg"),
+		tmp.path_join("OpenRide/Sounds/rain.ogg"))
+	OS.set_environment("HOME", tmp)
+	var sp = SoundPlayer.new()
+	OS.set_environment("HOME", home)
+	_check(sp._streams["rain"] is AudioStreamOggVorbis and sp._streams["forest_birds"] is AudioStreamWAV,
+		"rain.ogg de remplacement utilisé, les autres fonds restent synthétisés")
+	sp.free()
+	DirAccess.remove_absolute(tmp.path_join("OpenRide/Sounds/rain.ogg"))
+
+
+func _test_ambience_and_bells() -> void:
+	var sp = SoundPlayer.new()
+	root.add_child(sp)
+	await process_frame
+	var n0: int = sp.get_child_count()
+	var neigh := {"forest_share": 0.9, "built_share": 0.0, "solar_hour": 12.0, "alt_m": 300.0}
+	var vols := {}
+	for i in range(600):
+		vols = sp.update_ambience(neigh, i / 60.0)
+	var match_ok := true
+	for bed in AmbienceModel.BEDS:
+		match_ok = match_ok and absf(sp._bed_players[bed].volume_db - float(vols[bed])) < 0.01
+	_check(match_ok and float(vols["forest_birds"]) > SoundModel.SILENCE_DB and sp.get_child_count() == n0,
+		"fonds : volumes des lecteurs égaux à ceux du modèle, aucun nœud créé")
+	sp.set_pois([{"id": "b", "kind": "church_bell", "x": 5.0, "y": 0.0, "z": 0.0, "radius_m": 80.0}])
+	var t := 0.0
+	var hour := 14.995
+	for i in range(900):   # 15 s : passage de 15 h
+		sp.update_audio({"v": 0.0, "power": 0.0, "paused": false}, t, Vector3.ZERO)
+		sp.update_bells(hour, t)
+		t += 1.0 / 60.0
+		hour += 1.0 / 60.0 / 3600.0 * 60.0   # horloge accélérée : une minute par seconde
+	_check(sp.bell_strikes_rung == 3, "15 h : 3 coups de cloche (%d)" % sp.bell_strikes_rung)
+	var before: int = sp.bell_strikes_rung
+	for i in range(600):
+		sp.update_bells(15.3 + i * 0.0005, t + i / 60.0)
+	_check(sp.bell_strikes_rung == before, "aucun coup hors de l'heure pleine")
+	sp.queue_free()
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -111,5 +167,7 @@ func _init() -> void:
 func _run() -> void:
 	_test_sound_synthesis_perf()
 	await _test_scenarios_and_limits()
+	_test_ogg_override()
+	await _test_ambience_and_bells()
 	print("test_sound_player : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

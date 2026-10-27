@@ -99,7 +99,7 @@
 | [P6](LOT_P6_nuages.md) | Nuages qui défilent avec le vent | GDScript + shader | P4 | Petite | **Livré le 26 octobre** (issue #130) |
 | [P7](LOT_P7_heure_soleil.md) | Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | Oui, **version 2.0** (issue #131) |
 | [P8](LOT_P8_meteo_legere.md) | Météo légère : brume de vallée, pluie, neige | GDScript | P4 | Petite | **Livré le 26 octobre** (issue #132) |
-| [P9](LOT_P9_ambiance_sonore.md) | Sons d'ambiance selon le décor (forêt, champs, eau, village, altitude) | GDScript | P1, P4 | Moyenne | Oui, après P4 (issue #133) |
+| [P9](LOT_P9_ambiance_sonore.md) | Sons d'ambiance selon le décor (forêt, champs, eau, village, altitude) | GDScript | P1, P4 | Moyenne | **Livré le 27 octobre** (issue #133) |
 | [P10](LOT_P10_sons_velo.md) | Sons du vélo : vent selon la vitesse dans l'air, roue libre réaliste et « clac » à la reprise | GDScript | P4 | Petite | Oui, après P4 (issue #134) |
 | [P11](LOT_P11_animaux.md) | Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | Oui, après P4 (issue #135) |
 | [P12](LOT_P12_eoliennes_drapeaux_eau.md) | Éoliennes et drapeaux (compilateur et engine), eau qui scintille | Python + GDScript | P1, P4 | Moyenne | Oui, après P4 (issue #136) |
