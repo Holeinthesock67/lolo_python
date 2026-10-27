@@ -83,6 +83,8 @@ Parcours : `erg` (lot N16 : entraînement créé puis lu par le core, fichier de
 | --- | --- |
 | `python -m openride_core.tools.fake_world --demo --terrain --out DOSSIER` | `demo` : parcours synthétique avec terrain |
 | `python3 engine/tests/make_sim_world.py --out DOSSIER [--seed N]` | `village-simule` (bâtiments sans texture pour l'instant : une couleur unie par bâtiment, `building:colour` ou couleur déterministe) : 5 km, plat, montée à 7 %, descente à −6 %, deux villages (178 bâtiments de hauteurs et couleurs variées, église), fermes, forêts, verger, rivière, ruisseau, lac, points d'intérêt ; compilé par le vrai compilateur (relief et réponse Overpass fabriqués, origine fictive des tests) |
+| `python3 engine/tests/make_sim_world.py --out DOSSIER --live` | `monde-ouvert-simule` : monde vivant de 20 km (format §13, lot W15) autour d'un point fictif en mer, carrefours scriptés avec amorces, relief analytique, pour mesurer le rendu du monde ouvert (W10) |
+| `openride-worldgen-fake [--offline] [--missing-after-m M] [--crash-after-m M]` | Faux générateur du monde ouvert (lot W15) : le vrai générateur sur une base et un relief synthétiques, départ forcé sur la base fictive, pannes simulées ; se branche à la place d'`openride-worldgen` pour essayer le core (W9) et l'engine sans réseau |
 | `python3 engine/tests/make_osm_world.py --out DOSSIER` | `osm-test` : 3 km à 5 % avec les réponses Overpass enregistrées des tests du compilateur |
 | `python3 engine/tests/make_texture_theme.py` | Thème à trois textures 2 048² pour mesurer le shader (essai E2) |
 
