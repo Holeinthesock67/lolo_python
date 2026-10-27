@@ -1,0 +1,23 @@
+{
+ "description": "Arches de bonus (lot T6, ArchSchedule du core ; lot T8, segment_markers_model.gd de l'engine) : positions sur un tour et valeur arch_every_m lue dans powerups.toml. Vérifiés par core/tests/test_powerups.py et engine/tests/unit/test_segment_markers_model.gd.",
+ "positions": [
+  {"every_m": 5000, "length_m": 5000, "positions": []},
+  {"every_m": 5000, "length_m": 12000, "positions": [5000, 10000]},
+  {"every_m": 5000, "length_m": 15000, "positions": [5000, 10000]},
+  {"every_m": 0, "length_m": 20000, "positions": []},
+  {"every_m": 2500, "length_m": 10000, "positions": [2500, 5000, 7500]},
+  {"every_m": 4000, "length_m": 9000.5, "positions": [4000, 8000]}
+ ],
+ "files": [
+  {"text": "", "arch_every_m": 5000},
+  {"text": "[obtain]\narch_every_m = 2000\n", "arch_every_m": 2000},
+  {"text": "[obtain]\narch_every_m = 0\n", "arch_every_m": 0},
+  {"text": "[aero]\nfactor = 0.8\n[obtain]\narch_every_m = 7_500   # une arche tous les 7,5 km\n", "arch_every_m": 7500},
+  {"text": "[obtain]\nper_segment = false\narch_every_m = 2500.0\n", "arch_every_m": 2500},
+  {"text": "[obtain]\narch_every_m = 300\n", "arch_every_m": 5000},
+  {"text": "[obtain]\narch_every_m = 2000000\n", "arch_every_m": 5000},
+  {"text": "[obtain]\narch_every_m = \"loin\"\n", "arch_every_m": 5000},
+  {"text": "arch_every_m = 2000\n", "arch_every_m": 5000},
+  {"text": "[power]\nfactor = 1.2\n", "arch_every_m": 5000}
+ ]
+}
