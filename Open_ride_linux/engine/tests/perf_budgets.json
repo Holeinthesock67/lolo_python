@@ -15,5 +15,6 @@
   "turbines_flags_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P12"},
   "crowd_frame_200": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P15"},
   "ambience_evaluate": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P9"},
-  "grass_tufts_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P5"}
+  "grass_tufts_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P5"},
+  "living_decor_frame": {"budget_ms": 2.0, "ci_ms": 6.0, "lot": "P17"}
 }
