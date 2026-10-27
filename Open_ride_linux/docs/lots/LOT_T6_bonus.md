@@ -11,7 +11,7 @@ Les bonus du mode classique (plan de la série T §3.3, décisions T-Q2 à T-Q4)
 
 ## 3. Prérequis
 
-Aucun pour le module. Le bouton Z est déjà décodé par `zwift_click.py` mais pas encore transmis comme événement : il arrive avec T1 (ou R1), sous le nom `Z_SHORT` proposé par le lot R1 §4.1.
+Aucun pour le module. Le bouton Z est déjà décodé par `zwift_click.py` mais pas encore transmis comme événement : il arrive avec la révision 1.3 du contrat, sous le nom `Z_SHORT` (spécification générale §6.1 et §7.1) ; son branchement sur le bonus vient avec T1.
 
 ## 4. Travail demandé
 

@@ -250,13 +250,18 @@ class SimTrainer(SimDevice):
                  rider_power_w: float = 180.0, cadence_rpm: float = 88.0,
                  erg_tau_s: float = 1.5, cp_latency_s: float = 0.05,
                  power_range: tuple[int, int, int] = (0, 2000, 1),
-                 refuse_control: bool = False, **kw: Any) -> None:
+                 refuse_control: bool = False,
+                 relayed_hr: bool | int | None = None, **kw: Any) -> None:
         super().__init__(world, name, address, **kw)
         self.ibd_hz = ibd_hz
         self.rider_power_w, self.cadence_rpm = rider_power_w, cadence_rpm
         self.erg_tau_s, self.cp_latency_s = erg_tau_s, cp_latency_s
         self.power_range = power_range
         self.refuse_control = refuse_control
+        self.relayed_hr_enabled = bool(relayed_hr)
+        self.fixed_relayed_hr: int | None = (
+            int(relayed_hr) if isinstance(relayed_hr, (int, float)) and not isinstance(relayed_hr, bool) else None
+        )
         # État de la machine (survit aux connexions, comme un vrai trainer)
         self.mode: str | None = None          # "sim", "erg" ou None (aucune consigne)
         self.target_w: float | None = None
@@ -401,9 +406,19 @@ class SimTrainer(SimDevice):
             cadence = self.cadence_rpm + (1.5 * math.sin(t * 0.7) if self.cadence_rpm > 0 else 0.0)
             speed_kmh = 3.6 * (max(self.power_w, 0.0) / 0.9) ** (1 / 3) if self.power_w > 0 else 0.0
             flags = 0x0004 | 0x0040   # vitesse (bit 0 à 0), cadence, puissance
-            self.notify(ftms.INDOOR_BIKE_DATA, struct.pack(
-                "<HHHh", flags, int(round(speed_kmh * 100)), int(round(max(cadence, 0.0) * 2)),
-                int(round(self.power_w))))
+            if self.relayed_hr_enabled:
+                flags |= 0x0200
+                if self.fixed_relayed_hr is not None:
+                    hr_val = self.fixed_relayed_hr
+                else:
+                    hr_val = int(round(130 + 3.0 * math.sin(t * 0.5)))
+                self.notify(ftms.INDOOR_BIKE_DATA, struct.pack(
+                    "<HHHhB", flags, int(round(speed_kmh * 100)), int(round(max(cadence, 0.0) * 2)),
+                    int(round(self.power_w)), max(30, min(240, hr_val))))
+            else:
+                self.notify(ftms.INDOOR_BIKE_DATA, struct.pack(
+                    "<HHHh", flags, int(round(speed_kmh * 100)), int(round(max(cadence, 0.0) * 2)),
+                    int(round(self.power_w))))
 
 
 # --- Zwift Click --------------------------------------------------------------------------
@@ -444,17 +459,28 @@ class SimClickBox(SimDevice):
              zwift_click.ZWIFT_SYNC_TX)
 
     def __init__(self, world: "SimWorld", role: str, address: str, *, status_hz: float = 10.0,
-                 battery_pct: int = 80, sleep_on_drop: bool = True, **kw: Any) -> None:
+                 battery_pct: int = 80, sleep_on_drop: bool = True,
+                 mute_after_s: float | None = None, unlock_on_ride_on: bool = False, **kw: Any) -> None:
         kw.setdefault("asleep", True)   # un Click ne s'annonce qu'après un appui
         super().__init__(world, zwift_click.CLICK_NAME, address, **kw)
         self.role = role
         self.status_hz, self.battery_pct = status_hz, battery_pct
         self.sleep_on_drop = sleep_on_drop
+        self.mute_after_s = mute_after_s
+        self.unlock_on_ride_on = unlock_on_ride_on
+        self.ride_on_count = 0
         self.pressed: set[str] = set()
         self.ride_on = False
         self.presses_lost = 0
+        self._connected_at: float | None = None
         self.silent_until = 0.0   # boîtier muet, lien gardé (action « silence », lot X8)
         self._timed_wake = self.asleep and self.appear_at > 0
+
+    @property
+    def is_muted(self) -> bool:
+        if self.mute_after_s is None or self._connected_at is None:
+            return False
+        return (self.world.now() - self._connected_at) >= self.mute_after_s
 
     def advertising(self) -> bool:
         if self._timed_wake and self.world.now() >= self.appear_at:
@@ -462,12 +488,14 @@ class SimClickBox(SimDevice):
         return super().advertising()
 
     def on_connect(self) -> None:
+        self._connected_at = self.world.now()
         self.ride_on = False
         self.pressed.clear()
         self.spawn(self._status_loop())
 
     def on_disconnect(self) -> None:
         self.ride_on = False
+        self._connected_at = None
 
     def drop(self) -> None:
         had_client = self.client is not None
@@ -479,7 +507,10 @@ class SimClickBox(SimDevice):
         if uuid != zwift_click.ZWIFT_SYNC_RX:
             super().write(uuid, data)
         if data == zwift_click.RIDE_ON:
+            self.ride_on_count += 1
             self.ride_on = True
+            if self.unlock_on_ride_on and self.ride_on_count >= 2:
+                self.mute_after_s = None
             self.notify(zwift_click.ZWIFT_SYNC_TX, b"RideOn\x01\x03")
             self.notify(zwift_click.ZWIFT_ASYNC, battery_message(self.battery_pct))
 
@@ -495,12 +526,17 @@ class SimClickBox(SimDevice):
                 self.presses_lost += 1
                 log.info("Simulation : Click %s réveillé par l'appui (appui perdu)", self.role)
             return
+        if self.is_muted:
+            return
         self._send_status()
 
     def _send_status(self) -> None:
         if self.ride_on and self.world.now() >= self.silent_until:
-            other = [zwift_click.KEYPAD_BITS[b] for b in self.pressed if b not in ("+", "-")]
-            self.notify(zwift_click.ZWIFT_ASYNC, keypad_message("+" in self.pressed, "-" in self.pressed, other))
+            if self.is_muted:   # lot Q6 : notifications sans bouton, lien gardé
+                self.notify(zwift_click.ZWIFT_ASYNC, bytes([zwift_click.MSG_EMPTY, 0x00]))
+            else:
+                other = [zwift_click.KEYPAD_BITS[b] for b in self.pressed if b not in ("+", "-")]
+                self.notify(zwift_click.ZWIFT_ASYNC, keypad_message("+" in self.pressed, "-" in self.pressed, other))
 
     async def _status_loop(self) -> None:
         while True:
@@ -733,6 +769,9 @@ class SimWorld:
                 dev.rider_power_w = float(ev["watts"])
             if "cadence_rpm" in ev:
                 dev.cadence_rpm = float(ev["cadence_rpm"])
+        elif isinstance(dev, SimTrainer) and action == "bpm":
+            dev.relayed_hr_enabled = True
+            dev.fixed_relayed_hr = None if ev.get("bpm") is None else int(ev["bpm"])
         elif isinstance(dev, SimHrStrap) and action == "bpm":
             dev.fixed_bpm = None if ev.get("bpm") is None else int(ev["bpm"])
         elif isinstance(dev, SimHrStrap) and action == "contact":

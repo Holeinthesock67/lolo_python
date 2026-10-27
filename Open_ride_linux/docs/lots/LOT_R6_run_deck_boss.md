@@ -7,7 +7,7 @@ Enchaîner une run complète du mode Cyber-Rogue, en module pur : échauffement,
 ## 2. À lire
 
 1. `docs/lots/00_INDEX.md`, `docs/2.0/GDD_CYBER_ROGUE.md` §2.2, §2.6 et §2.7 (avec leurs corrections), `docs/2.0/PLAN_SERIE_R.md` §2 et §7.
-2. `docs/lots/LOT_R5_combat.md`, `LOT_R3_generateur_salles.md` §4.4 (boss), `LOT_R1_contrat_ipc_rogue.md` §4.4 à §4.6 (phases, `loot`, bilan).
+2. `docs/lots/LOT_R5_combat.md`, `LOT_R3_generateur_salles.md` §4.4 (boss), `LOT_T1_contrat_1_4.md` §4.3 (phases, `loot`, bilan).
 
 ## 3. Prérequis
 
@@ -47,7 +47,7 @@ Reliques de départ (décision R-Q7) : trois cartes passives tirées dans une li
 
 ### 4.4 Bilan
 
-À `RESULTS`, objet `summary.rogue` du contrat (R1 §4.6). Une run finie par `end_session` avant `RESULTS` donne `result` = `abandoned`, sans perte d'or acquis ni déblocage.
+À `RESULTS`, objet `summary.rogue` du contrat (T1 §4.3). Une run finie par `end_session` avant `RESULTS` donne `result` = `abandoned`, sans perte d'or acquis ni déblocage.
 
 ## 5. Fichiers concernés
 
@@ -61,7 +61,7 @@ Aucune.
 ## 7. Critères d'acceptation
 
 1. `(cd core && pytest -q)` passe.
-2. Un scénario de test (échauffement, 2 salles, boss, retour au calme) joué par un cycliste simulé passe par toutes les phases dans l'ordre et produit un `summary.rogue` valide pour le schéma de R1.
+2. Un scénario de test (échauffement, 2 salles, boss, retour au calme) joué par un cycliste simulé passe par toutes les phases dans l'ordre et produit un `summary.rogue` valide pour le schéma de T1.
 3. Couloir sans appui : aucune carte, porte de gauche. Relance : coût 15 puis 20 or, refusée sans or suffisant.
 4. Chaque carte du §4.3 a un test de son effet chiffré ; la pente envoyée ne sort jamais de −10 à +16 %.
 5. `snapshot()` puis `restore()` au milieu d'une salle : la suite de la run est identique à celle d'une run non interrompue (même graine).

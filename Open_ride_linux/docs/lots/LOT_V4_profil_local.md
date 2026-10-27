@@ -8,7 +8,7 @@ Garder dans `~/OpenRide/profile.json` ce qui ne se recalcule pas depuis le journ
 
 1. `docs/2.0/PLAN_SERIE_V.md` §2.3, §2.4 et §3 (risque 4).
 2. Code : `core/src/openride_core/config.py` (`OPENRIDE_HOME`), `config_edit.py` (écriture sûre avec copie `.bak`, à imiter), `progression.py` (lot V2).
-3. `LOT_V1_contrat_progression.md` §4.4 (réglages de l'avatar et leurs bornes).
+3. `LOT_T1_contrat_1_4.md` §4.4 (réglages de l'avatar et leurs bornes).
 
 ## 3. Prérequis
 
@@ -36,7 +36,7 @@ Aucune donnée personnelle (pas de nom, de masse, de taille réelle) : le profil
 - `load_profile(path=PROFILE_PATH) -> Profile` : fichier absent → profil par défaut (rien n'est écrit tant qu'aucun choix n'est fait). Fichier illisible ou invalide → essai de `profile.json.bak`, sinon profil par défaut ; le fichier abîmé est gardé sous `profile.json.corrompu-AAAAMMJJ-HHMMSS` et un avertissement est journalisé.
 - `save_profile(profile, path)` : fichier temporaire dans le même dossier, `fsync`, copie de l'ancien en `.bak`, puis `os.replace` (jamais de fichier à moitié écrit).
 - **Migration :** sans `version` → version 1 (champs manquants complétés par défaut) ; version plus récente que celle du code → lecture seule (`ProfileTooNew` à l'écriture) pour ne pas effacer des données d'une version future.
-- Choix : `equip(profile, slot, item_id, owned)` refuse une pièce non possédée (`owned` est fourni par l'appelant, V3/V3b) ou un emplacement inconnu ; `set_avatar(profile, avatar)` valide chaque champ contre les bornes du contrat (V1 §4.4) et refuse le tout au premier champ invalide.
+- Choix : `equip(profile, slot, item_id, owned)` refuse une pièce non possédée (`owned` est fourni par l'appelant, V3/V3b) ou un emplacement inconnu ; `set_avatar(profile, avatar)` valide chaque champ contre les bornes du contrat (T1 §4.4) et refuse le tout au premier champ invalide.
 - Achats : `record_purchase(profile, item_id, price, ts)` (refuse un achat en double) ; vies : `record_life_purchase(profile, price)` et `use_life(profile)` (refuse si aucune vie). Le contrôle du solde est fait par V3b.
 - Équipement manquant au catalogue (pièce retirée d'une version à l'autre) : l'emplacement revient à la pièce par défaut au chargement, sans erreur.
 
@@ -61,7 +61,7 @@ Aucune.
 
 ## 8. Hors périmètre
 
-Calcul du solde (V3b), catalogue (V3), commandes du menu (V1, V11), affichage (V8).
+Calcul du solde (V3b), catalogue (V3), commandes du menu (T1, V11), affichage (V8).
 
 ## 9. Livraison (26 octobre 2026, issue #240)
 

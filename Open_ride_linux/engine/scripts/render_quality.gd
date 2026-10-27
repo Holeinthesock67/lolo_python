@@ -61,3 +61,23 @@ static func apply_fog(env: Environment, has_terrain: bool, horizon_color: Color 
 	env.fog_depth_curve = 1.0
 	if env.volumetric_fog_enabled:
 		env.volumetric_fog_density = theme_fog_density if theme_fog_density > 0.0 else 0.01
+
+
+## Brume de la météo (Lot P17, `fog_boost` de weather_model.gd, 0 à 1) : rapproche le brouillard en
+## profondeur posé par `apply_fog` (début et fin `base` en m). À `fog_boost` = 1, le brouillard
+## commence à MIST_BEGIN_M et est plein à MIST_END_M ; 0 redonne `base`.
+const MIST_BEGIN_M := 20.0
+const MIST_END_M := 450.0
+
+
+static func weather_fog_range(base: Vector2, fog_boost: float) -> Vector2:
+	var b := clampf(fog_boost, 0.0, 1.0)
+	var end := lerpf(base.y, minf(base.y, MIST_END_M), b)
+	var begin := minf(lerpf(base.x, MIST_BEGIN_M, b), end * 0.5) if b > 0.0 else base.x
+	return Vector2(begin, end)
+
+
+static func apply_weather_fog(env: Environment, base: Vector2, fog_boost: float) -> void:
+	var r := weather_fog_range(base, fog_boost)
+	env.fog_depth_begin = r.x
+	env.fog_depth_end = r.y

@@ -45,6 +45,10 @@ Clés ajoutées par le lot M4, présentes seulement pour un journal qui porte ce
 - `devices` : {appareil : {drops, down_s}} (nombre de coupures et durée totale hors liaison,
   arrondie à 0,1 s ; une coupure non refermée court jusqu'à la fin de la séance), pour un
   journal qui contient des lignes `device`.
+
+Clé ajoutée par le lot O10, présente seulement pour une séance de test de FTP (ligne `ftp_test`
+du journal) : `ftp_test` = {test, ftp_w, method, ref_power_w, held_s, step_w, warnings,
+previous_ftp_w} (voir `ftp_test.py`).
 """
 
 from __future__ import annotations
@@ -80,6 +84,7 @@ class Session:
     events: list[dict]
     fmt: str
     devices: list[dict] = field(default_factory=list)   # lignes `device` (lot M4)
+    ftp_tests: list[dict] = field(default_factory=list)   # lignes `ftp_test` (lot O10)
 
 
 # --- lecture ----------------------------------------------------------------------------
@@ -103,7 +108,7 @@ def load_session(path: Path) -> Session:
 
 
 def _load_jsonl(path: Path) -> Session:
-    records, events, devices = [], [], []
+    records, events, devices, ftp_tests = [], [], [], []
     for line in read_journal(path):
         if not isinstance(line, dict):
             continue
@@ -113,7 +118,9 @@ def _load_jsonl(path: Path) -> Session:
             events.append(line)
         elif line.get("kind") == "device" and line.get("device") and line.get("ts") is not None:
             devices.append(line)
-    return Session(records, events, "jsonl", devices)
+        elif line.get("kind") == "ftp_test":
+            ftp_tests.append(line)
+    return Session(records, events, "jsonl", devices, ftp_tests)
 
 
 def _load_fit(path: Path) -> Session:
@@ -248,6 +255,13 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
     cads = [float(r["cadence"]) for r in recs if r.get("cadence")]
     hrs = [float(r["hr"]) for r in recs if r.get("hr")]
 
+    hr_dict = _avg_max(hrs)
+    # Secondes où le driver a déclaré la FC relayée figée (lot Q5) : marquées dans le .jsonl
+    # (`hr_frozen`), absentes d'un FIT ; un enregistrement par seconde.
+    hr_ignored_s = float(sum(1 for r in recs if r.get("hr_frozen")))
+    if hr_ignored_s > 0 and hr_dict is not None:
+        hr_dict["ignored_s"] = hr_ignored_s
+
     out = {
         "source": source,
         "format": session.fmt,
@@ -264,14 +278,18 @@ def compute_summary(session: Session, ftp_w: float, source: str = "") -> dict[st
         "zones": zones,
         "best_power_w": best,
         "cadence": _avg_max(cads),
-        "hr": _avg_max(hrs),
+        "hr": hr_dict,
         "erg": _erg_blocks(recs, powers),
     }
+    if hr_ignored_s > 0:
+        out["hr_ignored_s"] = hr_ignored_s
     if session.devices:
         out["devices"] = _device_drops(session)
     drafts = [r["draft"] for r in recs if r.get("draft") is not None]
     if drafts:   # lot P3 : relevés à 1 Hz, abri compté à partir de 5 % (comme l'indicateur du HUD)
         out["draft_time_s"] = sum(1 for d in drafts if d >= DRAFT_MIN)
+    if session.ftp_tests:   # lot O10 : dernier résultat écrit
+        out["ftp_test"] = {k: v for k, v in session.ftp_tests[-1].items() if k not in ("kind", "ts")}
     return out
 
 
@@ -363,7 +381,13 @@ def format_text(r: dict[str, Any]) -> str:
     if r["cadence"]:
         lines.append(f"Cadence : moyenne {r['cadence']['avg']:.0f}, max {r['cadence']['max']:.0f} rpm")
     if r["hr"]:
-        lines.append(f"FC : moyenne {r['hr']['avg']:.0f}, max {r['hr']['max']:.0f} bpm")
+        hr_line = f"FC : moyenne {r['hr']['avg']:.0f}, max {r['hr']['max']:.0f} bpm"
+        ignored = r["hr"].get("ignored_s") or r.get("hr_ignored_s")
+        if ignored:
+            hr_line += f" (durée totale ignorée : {_hms(ignored)})"
+        lines.append(hr_line)
+    elif r.get("hr_ignored_s"):
+        lines.append(f"FC : aucune mesure valide (durée totale ignorée : {_hms(r['hr_ignored_s'])})")
     if r["erg"]:
         lines.append("ERG, par bloc :")
         for b in r["erg"]["blocks"]:
@@ -381,6 +405,13 @@ def format_text(r: dict[str, Any]) -> str:
         lines.append("Coupures des appareils :")
         for dev, d in r["devices"].items():
             lines.append(f"  {dev} : {d['drops']} coupure(s), {_hms(d['down_s'])} hors liaison")
+    if r.get("ftp_test"):
+        from ..ftp_test import FtpResult, FtpTestError
+
+        try:
+            lines.append(FtpResult.from_line(r["ftp_test"]).describe())
+        except (FtpTestError, TypeError, ValueError):
+            lines.append("Test de FTP : résultat illisible")
     return "\n".join(lines)
 
 

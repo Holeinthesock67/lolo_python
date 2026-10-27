@@ -16,7 +16,7 @@ Principe : **tout est généré par le code** (maillages procéduraux, primitive
 
 ## 3. Prérequis
 
-R1 livré (noms des marqueurs et des événements). Aucun autre : ce lot se fait avant R10.
+T1 livré (noms des marqueurs et des événements). Aucun autre : ce lot se fait avant R10.
 
 ## 4. Travail demandé
 

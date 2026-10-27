@@ -2,16 +2,16 @@
 
 ## 1. Objectif
 
-Le plan V ne prévoyait aucun lot pour brancher les modules purs (V2, V3, V3b, V4) dans la séance et répondre aux messages du contrat V1. Ce lot le fait : équipement appliqué à la vitesse virtuelle, équipement noté au journal, `progression` dans `hello_ack`, bilan `xp_result` en fin de séance, commandes `list_garage`, `equip`, `buy` et `set_avatar`.
+Le plan V ne prévoyait aucun lot pour brancher les modules purs (V2, V3, V3b, V4) dans la séance et répondre aux messages du contrat T1. Ce lot le fait : équipement appliqué à la vitesse virtuelle, équipement noté au journal, `progression` dans `hello_ack`, bilan `xp_result` en fin de séance, commandes `list_garage`, `equip`, `buy` et `set_avatar`.
 
 ## 2. À lire
 
-1. `LOT_V1_contrat_progression.md` et le contrat livré (`docs/contracts/ipc_v1.md`, révision de V1).
+1. `LOT_T1_contrat_1_4.md` et le contrat livré (`docs/contracts/ipc_v1.md`, révision 1.4 (lot T1)).
 2. Code : `session.py`, `ipc_server.py`, `ipc_lists.py` (réponses en parties), `journal.py`, `recorder.py`, `progression.py`, `equipment.py`, `coins.py`, `profile.py`.
 
 ## 3. Prérequis
 
-V1 validé par le propriétaire ; V2, V3, V3b et V4 fusionnés ; de préférence après P2 (le vent utilise le CdA courant).
+T1 validé par le propriétaire ; V2, V3, V3b et V4 fusionnés ; de préférence après P2 (le vent utilise le CdA courant).
 
 ## 4. Travail demandé
 
@@ -29,11 +29,11 @@ V1 validé par le propriétaire ; V2, V3, V3b et V4 fusionnés ; de préférence
 
 ## 6. Modifications de contrat autorisées
 
-Aucune au-delà de V1. Journal : champs facultatifs `loadout` et `ftp_w` de l'en-tête.
+Aucune au-delà de T1. Journal : champs facultatifs `loadout` et `ftp_w` de l'en-tête.
 
 ## 7. Critères d'acceptation
 
-1. `pytest -q` passe en entier dans `core/` ; trames validées par les schémas de V1.
+1. `pytest -q` passe en entier dans `core/` ; trames validées par les schémas du lot T1.
 2. Séance simulée de 10 min sur le plat à 250 W avec Contre-la-montre + Lenticulaire : vitesse virtuelle plus haute qu'avec l'équipement de départ, pente envoyée au trainer identique à chaque pas.
 3. `buy` puis `equip` hors séance : profil écrit, message `progression` reçu avec le nouveau solde ; pendant `RUNNING` : `busy`.
 4. Séance de 6 min : `xp_result` reçu avec `eligible` vrai ; de 4 min : `eligible` faux, `reason` `too_short`.
