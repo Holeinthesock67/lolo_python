@@ -157,8 +157,20 @@ static func load_filled(world_dir: String, level: String, ix: int, iz: int, rout
 ## dans une vallée encaissée). Chaque tuile traite aussi les points de route proches de ses bords :
 ## les sommets partagés de deux tuiles voisines reçoivent la même valeur.
 ## Exécutable dans une tâche de fond.
+## Applique l'exagération visuelle du relief (Lot Q2) : alt_orig + (h − alt_orig) × k.
+static func scale_heights(heights: PackedFloat32Array, alt_orig: float, visual_grade_scale: float) -> PackedFloat32Array:
+	if visual_grade_scale == 1.0 or heights.is_empty():
+		return heights
+	var out := PackedFloat32Array()
+	out.resize(heights.size())
+	for idx in range(heights.size()):
+		var h := heights[idx]
+		out[idx] = alt_orig + (h - alt_orig) * visual_grade_scale if not is_nan(h) else h
+	return out
+
+
 static func carve_under_route(heights: PackedFloat32Array, level: String, ix: int, iz: int, route,
-		margin: float = FAR_CARVE_MARGIN_M) -> PackedFloat32Array:
+		margin: float = FAR_CARVE_MARGIN_M, visual_grade_scale: float = 1.0, alt_orig: float = 0.0) -> PackedFloat32Array:
 	if route == null or route.n < 2:
 		return heights
 	var out := heights.duplicate()
@@ -177,7 +189,10 @@ static func carve_under_route(heights: PackedFloat32Array, level: String, ix: in
 			var pz: float = lerpf(route.z[k], route.z[k1], f)
 			if px < x0 - pad or px > x0 + size + pad or pz < z0 - pad or pz > z0 + size + pad:
 				continue
-			var alt: float = minf(route.alt_m[k], route.alt_m[k1]) - margin
+			var r_alt: float = minf(route.alt_m[k], route.alt_m[k1])
+			if visual_grade_scale != 1.0:
+				r_alt = alt_orig + (r_alt - alt_orig) * visual_grade_scale
+			var alt: float = r_alt - margin
 			var i0 := clampi(floori((px - x0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)
 			var i1 := clampi(floori((px - x0 + ROAD_CLEAR_HALF_M) / cell) + 1, 0, CELLS)
 			var j0 := clampi(floori((pz - z0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)
@@ -226,7 +241,13 @@ static func load_neighbour_edges(world_dir: String, level: String, ix: int, iz: 
 ## Tableaux de maillage (Mesh.ARRAY_MAX) d'une tuile, en coordonnées locales à son coin (ix·T, iz·T).
 ## `edges` : valeurs voisines (load_neighbour_edges) ; une valeur NaN ou absente donne une
 ## différence d'un seul côté.
-static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dictionary = {}) -> Array:
+static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dictionary = {},
+		visual_grade_scale: float = 1.0, alt_orig: float = 0.0) -> Array:
+	# Exagération du relief (lot Q2) : h' = alt_orig + (h − alt_orig) × k, appliquée au sommet et aux pentes
+	# sans copier les hauteurs ; à k = 1,0, kk = 1 et y_scaled_offset = 0 donnent exactement les valeurs d'avant.
+	var kk := visual_grade_scale
+	var y_scaled_offset := alt_orig * (1.0 - kk)
+	var h_data := heights
 	var cell: float = LEVELS[level]["cell"]
 	var y_offset: float = LEVELS[level]["y_offset"]
 	var vertices := PackedVector3Array()
@@ -239,12 +260,12 @@ static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dict
 	var south: PackedFloat32Array = edges.get("south", PackedFloat32Array())
 	for j in range(SAMPLES):
 		for i in range(SAMPLES):
-			var h := heights[j * SAMPLES + i]
+			var h := h_data[j * SAMPLES + i]
 			# Pente en x : différence centrée, voisine au bord si elle existe, sinon d'un seul côté.
-			var h_w := heights[j * SAMPLES + i - 1] if i > 0 else (west[j] if west.size() == SAMPLES else NAN)
-			var h_e := heights[j * SAMPLES + i + 1] if i < CELLS else (east[j] if east.size() == SAMPLES else NAN)
-			var h_n := heights[(j - 1) * SAMPLES + i] if j > 0 else (north[i] if north.size() == SAMPLES else NAN)
-			var h_s := heights[(j + 1) * SAMPLES + i] if j < CELLS else (south[i] if south.size() == SAMPLES else NAN)
+			var h_w := h_data[j * SAMPLES + i - 1] if i > 0 else (west[j] if west.size() == SAMPLES else NAN)
+			var h_e := h_data[j * SAMPLES + i + 1] if i < CELLS else (east[j] if east.size() == SAMPLES else NAN)
+			var h_n := h_data[(j - 1) * SAMPLES + i] if j > 0 else (north[i] if north.size() == SAMPLES else NAN)
+			var h_s := h_data[(j + 1) * SAMPLES + i] if j < CELLS else (south[i] if south.size() == SAMPLES else NAN)
 			var dhdx: float
 			if is_nan(h_w):
 				dhdx = (h_e - h) / cell
@@ -259,9 +280,9 @@ static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dict
 				dhdz = (h - h_n) / cell
 			else:
 				dhdz = (h_s - h_n) / (2.0 * cell)
-			var normal := Vector3(-dhdx, 1.0, -dhdz).normalized()
+			var normal := Vector3(-dhdx * kk, 1.0, -dhdz * kk).normalized()
 			var idx := j * SAMPLES + i
-			vertices[idx] = Vector3(i * cell, h + y_offset, j * cell)
+			vertices[idx] = Vector3(i * cell, h * kk + y_scaled_offset + y_offset, j * cell)
 			normals[idx] = normal
 	var indices := PackedInt32Array()
 	indices.resize(CELLS * CELLS * 6)

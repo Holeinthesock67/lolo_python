@@ -213,6 +213,157 @@
               }
             }
           }
+        },
+        "segments": {
+          "type": "object",
+          "description": "Facultative, format 1.3 (lot T1) : segments.json, sprints et montées.",
+          "required": [
+            "present"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": "string"
+            },
+            "file": {
+              "type": "string",
+              "const": "segments.json"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "manual_count": {
+              "type": "integer",
+              "minimum": 0,
+              "description": "Segments déclarés dans <parcours>.segments.toml."
+            }
+          }
+        }
+      }
+    },
+    "stats": {
+      "type": "object",
+      "description": "Fiche calculée du parcours (lot O15, champ facultatif, format_world_v1 §2.1). Recalculée à la lecture si absente ou d'une autre version.",
+      "required": [
+        "version"
+      ],
+      "properties": {
+        "version": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "distance_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "gain_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "loss_m": {
+          "type": "number",
+          "minimum": 0
+        },
+        "alt_min_m": {
+          "type": "number"
+        },
+        "alt_max_m": {
+          "type": "number"
+        },
+        "max_grade_pct": {
+          "type": "number"
+        },
+        "climbs": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "main_climb": {
+          "oneOf": [
+            {
+              "type": "null"
+            },
+            {
+              "type": "object",
+              "properties": {
+                "start_m": {
+                  "type": "number"
+                },
+                "length_m": {
+                  "type": "number"
+                },
+                "gain_m": {
+                  "type": "number"
+                },
+                "avg_grade_pct": {
+                  "type": "number"
+                },
+                "category": {
+                  "enum": [
+                    null,
+                    "4",
+                    "3",
+                    "2",
+                    "1",
+                    "HC"
+                  ]
+                }
+              }
+            }
+          ]
+        },
+        "duration_200w_s": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "durations_s": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "integer",
+            "minimum": 0
+          }
+        },
+        "difficulty": {
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 5
+        }
+      }
+    },
+    "library": {
+      "type": "object",
+      "description": "Fiche saisie (lot O15, champ facultatif) copiée du fichier <trace>.toml à la compilation.",
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "description": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "region": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 80
+        },
+        "credits": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 200
+        },
+        "tags": {
+          "type": "array",
+          "maxItems": 12,
+          "items": {
+            "type": "string",
+            "pattern": "^[a-z0-9][a-z0-9-]{0,29}$"
+          }
         }
       }
     },

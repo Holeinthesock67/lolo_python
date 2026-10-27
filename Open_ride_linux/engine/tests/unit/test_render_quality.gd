@@ -6,6 +6,7 @@ extends SceneTree
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
+const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 
 var _failures := 0
 var _checked := 0
@@ -24,6 +25,7 @@ class DummyStreamer:
 	var chunks_ahead: int = 0
 	var chunks_behind: int = 0
 	var vegetation_density_factor: float = 0.0
+	var far_radius_m: float = 0.0
 
 
 func _test_presets_application() -> void:
@@ -41,8 +43,12 @@ func _test_presets_application() -> void:
 	for name in ["low", "medium", "high"]:
 		RenderQuality.apply_preset(name, cam, light, env, vp, streamer)
 		var p: Dictionary = QualityPresets.preset(name)
-		_check(absf(cam.near - RenderQuality.CAMERA_NEAR_M) < 1e-3 and absf(cam.far - RenderQuality.CAMERA_FAR_M) < 1.0,
-			"%s : cam.near/far conformes (near=%.3f, far=%.1f)" % [name, cam.near, cam.far])
+		var fog_end := QualityPresets.fog_end_m(name)
+		_check(absf(cam.near - RenderQuality.CAMERA_NEAR_M) < 1e-3
+			and cam.far >= fog_end and cam.far <= fog_end * 1.05,
+			"%s : cam.near/far conformes (near=%.3f, far=%.1f, brouillard opaque à %.0f m)" % [name, cam.near, cam.far, fog_end])
+		_check(absf(streamer.far_radius_m - WorldStreamer.far_radius_for(fog_end)) < 1e-3,
+			"%s : rayon des tuiles lointaines = %.0f m" % [name, streamer.far_radius_m])
 		_check(light.shadow_enabled and absf(light.directional_shadow_max_distance - QualityPresets.shadow_distance_m(name)) < 1e-4,
 			"%s : distance d'ombre = %.0f m" % [name, QualityPresets.shadow_distance_m(name)])
 		_check(env.ssao_enabled == (bool(p["ssao"]) and fp),
@@ -63,7 +69,8 @@ func _test_presets_application() -> void:
 	# Préréglage inconnu donne low
 	RenderQuality.apply_preset("inconnu_xyz", cam, light, env, vp, streamer)
 	var p_low: Dictionary = QualityPresets.preset("low")
-	_check(env.ssao_enabled == (bool(p_low["ssao"]) and fp) and light.directional_shadow_max_distance == QualityPresets.shadow_distance_m("low"),
+	_check(env.ssao_enabled == (bool(p_low["ssao"]) and fp) and light.directional_shadow_max_distance == QualityPresets.shadow_distance_m("low")
+		and absf(cam.far - RenderQuality.camera_far_m("low")) < 1e-3,
 		"préréglage inconnu replie sur low")
 
 	vp.queue_free()
@@ -73,24 +80,30 @@ func _test_fog() -> void:
 	var env := Environment.new()
 	var horizon := Color(0.65, 0.75, 0.85)
 
-	# Avec terrain, preset low (volumetric fog désactivé)
+	# Avec terrain (volumetric fog désactivé) : opaque à fog_end_m, début à 40 %.
 	env.volumetric_fog_enabled = false
-	RenderQuality.apply_fog(env, true, horizon, 0.05)
+	for name in ["low", "medium", "high"]:
+		var end_m := QualityPresets.fog_end_m(name)
+		RenderQuality.apply_fog(env, name, true, horizon, 0.05)
+		_check(absf(env.fog_depth_begin - end_m * RenderQuality.FOG_BEGIN_FRACTION) < 1e-3
+			and absf(env.fog_depth_end - end_m) < 1e-3,
+			"%s : brouillard terrain [%.0f, %.0f] m" % [name, env.fog_depth_begin, env.fog_depth_end])
 	_check(env.fog_enabled and env.fog_mode == Environment.FOG_MODE_DEPTH,
 		"brouillard activé en mode profondeur")
 	_check(absf(env.fog_density - 1.0) < 1e-4, "fog_density = 1.0")
-	_check(absf(env.fog_depth_begin - 3000.0) < 1e-4 and absf(env.fog_depth_end - WorldStreamer.FAR_RADIUS_M) < 1e-4,
-		"brouillard terrain [3000, 12000] m")
 	_check(env.fog_light_color == horizon, "couleur du brouillard = couleur d'horizon")
+	RenderQuality.apply_fog(env, "inconnu_xyz", true, horizon, 0.05)
+	_check(absf(env.fog_depth_end - QualityPresets.fog_end_m("low")) < 1e-3, "brouillard : préréglage inconnu -> low")
 
-	# Sans terrain (sol plat)
-	RenderQuality.apply_fog(env, false, horizon, 0.05)
-	_check(absf(env.fog_depth_begin - 300.0) < 1e-4 and absf(env.fog_depth_end - 3000.0) < 1e-4,
-		"brouillard sol plat [300, 3000] m")
+	# Sans terrain (sol plat) : inchangé, la fin des préréglages étant plus lointaine.
+	for name in ["low", "medium", "high"]:
+		RenderQuality.apply_fog(env, name, false, horizon, 0.05)
+		_check(absf(env.fog_depth_begin - 300.0) < 1e-4 and absf(env.fog_depth_end - 3000.0) < 1e-4,
+			"%s : brouillard sol plat [300, 3000] m" % name)
 
 	# Preset high (volumetric fog activé)
 	env.volumetric_fog_enabled = true
-	RenderQuality.apply_fog(env, true, horizon, 0.035)
+	RenderQuality.apply_fog(env, "high", true, horizon, 0.035)
 	_check(env.volumetric_fog_enabled and absf(env.volumetric_fog_density - 0.035) < 1e-4,
 		"brouillard volumétrique actif avec densité du thème")
 
@@ -102,8 +115,59 @@ func _test_fog() -> void:
 	main_node.free()
 
 
+# Lot Y1 : les tuiles lointaines suivent la fin du brouillard plus une tuile, plafond 12 km.
+func _test_far_tiles() -> void:
+	var size: float = TerrainTiles.LEVELS["far"]["size"]
+	_check(WorldStreamer.far_radius_for(4000.0) == 4000.0 + size and WorldStreamer.far_radius_for(9000.0) == WorldStreamer.FAR_RADIUS_M,
+		"far_radius_for : fin du brouillard + %.0f m, plafond %.0f m" % [size, WorldStreamer.FAR_RADIUS_M])
+	var streamer = WorldStreamer.new()
+	var cam := Camera3D.new()
+	var light := DirectionalLight3D.new()
+	var env := Environment.new()
+	var vp := SubViewport.new()
+	root.add_child(vp)
+	# Caméra à l'origine : la tuile (i, 0) commence à i × 5 000 m.
+	for i in range(0, 4):
+		streamer._far_index[Vector2i(i, 0)] = true
+	for name in ["low", "medium", "high"]:
+		RenderQuality.apply_preset(name, cam, light, env, vp, streamer)
+		var limit := QualityPresets.fog_end_m(name) + size
+		var window: Array = streamer.far_window(0.0, 0.0)
+		var ok := true
+		for i in range(0, 4):
+			var dist := i * size
+			var want := dist <= minf(limit, WorldStreamer.FAR_RADIUS_M)
+			ok = ok and (window.has(Vector2i(i, 0)) == want)
+		_check(ok, "%s : tuiles lointaines chargées jusqu'à %.0f m seulement (%d tuiles)" % [name, minf(limit, WorldStreamer.FAR_RADIUS_M), window.size()])
+	_check(streamer.far_window(0.0, 0.0).size() == 3 and not streamer.far_window(0.0, 0.0).has(Vector2i(3, 0)),
+		"high : la tuile à 15 km reste au-delà du plafond")
+	streamer.far_radius_m = WorldStreamer.far_radius_for(QualityPresets.fog_end_m("low"))
+	_check(streamer.far_window(0.0, 0.0).size() == 2, "low : tuiles à 0 et 5 km chargées, 10 km non")
+	streamer.free()
+	cam.free()
+	light.free()
+	vp.queue_free()
+
+
+## Brume de la météo (Lot P17) : brouillard rapproché selon `fog_boost`, base rendue à 0.
+func _test_weather_fog() -> void:
+	var base := Vector2(3000.0, 12000.0)
+	var none := RenderQuality.weather_fog_range(base, 0.0)
+	var half := RenderQuality.weather_fog_range(base, 0.5)
+	var full := RenderQuality.weather_fog_range(base, 1.0)
+	_check(none == base, "brume nulle : brouillard d'origine (%.0f à %.0f m)" % [none.x, none.y])
+	_check(half.y < base.y and half.y > full.y and half.x <= half.y * 0.5, "brume 0,5 : %.0f à %.0f m" % [half.x, half.y])
+	_check(absf(full.y - RenderQuality.MIST_END_M) < 1e-3 and absf(full.x - RenderQuality.MIST_BEGIN_M) < 1e-3,
+		"brume pleine : %.0f à %.0f m" % [full.x, full.y])
+	var env := Environment.new()
+	RenderQuality.apply_weather_fog(env, base, 1.0)
+	_check(absf(env.fog_depth_end - RenderQuality.MIST_END_M) < 1e-3, "apply_weather_fog : fin du brouillard appliquée")
+
+
 func _init() -> void:
 	_test_presets_application()
 	_test_fog()
+	_test_far_tiles()
+	_test_weather_fog()
 	print("test_render_quality : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

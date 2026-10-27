@@ -13,6 +13,7 @@ faite avant, et le résultat doit passer `config.validate`, sinon rien n'est éc
 from __future__ import annotations
 
 import asyncio
+import logging
 import time
 from dataclasses import dataclass, fields
 from pathlib import Path
@@ -20,6 +21,8 @@ from typing import Any, Awaitable, Callable
 
 from . import config as config_mod
 from . import config_edit
+
+log = logging.getLogger("pairing")
 
 IDENTIFY_TIMEOUT_S = 15.0
 
@@ -148,14 +151,37 @@ MAX_SCAN_DATAGRAM = 1400
 
 
 async def scan_inventory(sim: Any, timeout: float) -> dict[str, Any]:
-    """Inventaire de `tools.devices` : Bluetooth simulé si `sim` est donné, sinon BlueZ."""
+    """Inventaire de `tools.devices` : Bluetooth simulé si `sim` est donné, sinon BlueZ.
+
+    La recherche prend le verrou BLE commun : pendant que le trainer, le Click ou la ceinture
+    cherchent à se (re)connecter, BlueZ refuserait une seconde recherche (InProgress) ; on attend
+    donc la fin de leur tentative. Les nouveaux essais (autre application) sont dans `session`.
+    """
+    from .ble_util import ble_lock
     from .tools import devices as devices_tool
 
     if sim is not None:
         scanner, connected = devices_tool.sim_sources(sim)
     else:
         scanner, connected = devices_tool.ble_scan, devices_tool.bluez_connected
-    return await devices_tool.inventory(scanner, connected, timeout, {})
+    async with ble_lock():
+        return await devices_tool.inventory(scanner, connected, timeout, {})
+
+
+def is_in_progress(exc: BaseException) -> bool:
+    """BlueZ refuse : une recherche ou une connexion est déjà en cours."""
+    return "org.bluez.Error.InProgress" in str(exc)
+
+
+def scan_error_message(exc: BaseException) -> str:
+    """Raison lisible d'un échec de recherche, pour l'écran Appareils."""
+    text = str(exc)
+    if is_in_progress(exc):
+        return ("Bluetooth occupé par une autre recherche (une autre application ?). "
+                "Fermez-la puis relancez la recherche.")
+    if any(k in text for k in ("NotReady", "NotPowered", "No Bluetooth adapters", "not turned on")):
+        return "Bluetooth éteint ou absent : allumez-le puis relancez la recherche."
+    return f"Recherche des appareils impossible : {text}"
 
 
 def configured_addresses(cfg: config_mod.Config) -> set[str]:
