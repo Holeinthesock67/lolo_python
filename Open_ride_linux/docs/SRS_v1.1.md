@@ -2,6 +2,8 @@
 
 21 octobre 2026 ; mises à jour du 23 octobre 2026 (alignement sur le code et les essais sur le vélo ; §14.1, seuils de passage à Rust)
 
+Cette SRS décrit la version 1.0. Les versions 1.x, 2.0 et 3.0, l'état de chaque exigence et les révisions du contrat IPC sont rassemblés dans la [spécification générale](SPECIFICATION_GENERALE.md).
+
 ## 1. Objectifs et périmètre
 
 OpenRide est un simulateur de cyclisme indoor 3D à usage personnel, natif Linux, plus léger que Zwift. La v1 doit être simple, stable et extensible par couches, sans jamais casser ce qui existe déjà.
@@ -84,8 +86,10 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 - **Mode SIM :** Set Indoor Bike Simulation Parameters (0x11) avec pente (résolution 0,01 %), Crr, Cw et vent nul. La pente est limitée à −10 % / +16 %, envoyée dès qu'elle varie d'au moins 0,1 point, au plus toutes les 0,2 s, et renvoyée au moins toutes les 2 s (réglages validés sur le HomeTrainer le 22 octobre 2026).
 - **Mode ERG :** Set Target Power (0x05), en watts entiers, bornée par la plage annoncée par le trainer.
 - La cardio vient du pont cardio du HomeTrainer si sa caractéristique est exposée (à vérifier au sprint 0), sinon d'une ceinture connectée séparément.
+- **Ceintures ANT+ seules** (précision du 26 octobre 2026). Une ceinture qui n'émet qu'en ANT+, comme la Garmin HRM-Tri (manuel Garmin : radio ANT+ 2,4 GHz, pas de Bluetooth), n'est jamais visible par OpenRide, qui ne lit que le Bluetooth : sa fréquence n'arrive que par le pont cardio du trainer. La dissocier du trainer ne la rend pas visible ; pour tester la ceinture directe (`hr = "ble"`), il faut une ceinture Bluetooth (service Heart Rate 0x180D).
 - Fréquence des données **mesurée** sur le HomeTrainer (22 octobre 2026) : environ 1 Hz au repos et en mode puissance, environ 8 Hz en mode pente. Le core ne suppose donc aucune cadence fixe : la dernière puissance reçue est maintenue entre deux notifications et lissée dans le temps (filtre exponentiel, constante de temps 0,7 s, clé `power_smooth_tau_s`) ; une moyenne glissante sur 3 s est calculée à part pour l'affichage. La physique ne dépend pas de la cadence de réception.
 - Plage de puissance annoncée par le HomeTrainer : 0 à 1 000 W, par pas de 1 W. Une fréquence cardiaque de 0 bpm signifie « pas de mesure » et est traitée comme `null`.
+- **Ceinture retirée : pas de retour à 0** (précision du 26 octobre 2026). Le core ne suppose pas qu'une ceinture retirée envoie 0 bpm. Une ceinture ANT+ continue d'émettre un moment sa dernière fréquence calculée : le profil ANT+ Heart Rate signale l'absence de battements par un compteur de battements qui n'avance plus, et le pont FTMS du trainer ne transmet que la fréquence. Essai du 25 octobre : 105 bpm figés pendant 42 s après le retrait. Une fréquence relayée qui ne bouge plus est donc écartée par le core (lot Q5). En Bluetooth direct (service Heart Rate 1.0, caractéristique 0x2A37), une ceinture qui gère le contact le signale dans les bits 1 et 2 des drapeaux (2 = contact géré mais absent) : la mesure est ignorée ; une ceinture qui ne le gère pas cesse en général d'envoyer des mesures, et la fréquence devient `null` au bout de 5 s sans mesure.
 - États : `CONNECTED`, `RECONNECTING`, `LOST`, avec reconnexion automatique à délai croissant.
 
 ### 4.2 Zwift Click
@@ -104,7 +108,7 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | droit | + | 12 | « + » |
 | droit | A | 4 | aucune |
 | droit | B | 5 | « − » (sans déblocage Zwift) |
-| droit | Y | 6 | aucune |
+| droit | Y | 6 | pause et reprise (lot N6) |
 | droit | Z | 7 | aucune |
 
 - **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
@@ -134,6 +138,8 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 | Appui long + | Braquet + 10, borné à 24 (`long_press_gears`) | Passer au bloc suivant |
 | Appui long − | Braquet − 10, borné à 1 (`long_press_gears`) | Pause / reprise ERG (pente 0 %) |
 
+Le bouton Y du boîtier droit met en pause et reprend la séance, en SIM comme en ERG (lot N6, choix du propriétaire du 25 octobre 2026).
+
 Le demi-tour sur la route et le réglage des bots sont reportés (§14).
 
 ### 4.5 Navigation dans les menus
@@ -157,7 +163,10 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 - La pente du terrain est `grade_pct` (positif en montée) ; θ = arctan(grade_pct / 100).
 - Amorçage : l'énergie est ramenée à celle d'une vitesse plancher de 0,5 m/s quand la puissance est positive ou que la gravité entraîne le vélo (descente). En montée à puissance nulle, la vitesse retombe à 0 et le vélo ne recule pas.
 - La vitesse peut être plafonnée (80 m/s) pour éviter les valeurs aberrantes.
-- Le coefficient d'aspiration `alpha_draft` vaut 0 sans bot ; il n'intervient qu'avec les bots (de 0 à 0,45 selon la distance derrière un bot).
+- Le coefficient d'aspiration `alpha_draft` vaut 0 sans bot ; il n'intervient qu'avec les bots (de 0 à 0,45 selon la distance derrière un bot). **Courbe (lot P3, `draft.py`) :** `α = 0,40 · exp(−(écart − 0,3) / 4)` pour un écart roue à roue de 0,3 à 15 m (0,38 à 0,5 m, 0,13 à 5 m, environ 0,035 à 10 m), 0 au-delà et devant le bot ; derrière une file de bots espacés de moins de 3 m, × 1,12 au deuxième et × 1,18 au troisième, plafonné à 0,45 ; réduit jusqu'à moitié par un vent de travers apparent de 45° ; suivi par une constante de temps de 1 s. Un bot suivi à moins de 1 m perd 2,5 % de résistance aérodynamique (poussée vers l'avant). L'abri multiplie tout le terme aérodynamique, vent compris.
+- **Vent (lots P1 et P2).** `v_vent` est la composante de face du vent le long du cap de la route à `s` (positive de face) ; elle vaut 0 quand le vent est coupé (`[wind] mode = "off"`, défaut des versions 1.x). Le vent de travers ne compte pas.
+- **Ressenti du vent et de l'aspiration.** En SIM, l'écart de résistance dû au vent et à l'aspiration est transmis au trainer comme un **supplément de pente** (`[wind] feel = "grade"`, défaut), borné à ± `max_grade_offset_pct` (4 points par défaut, réglable dans les réglages du menu), ou dans le champ vent de la commande FTMS 0x11 (`feel = "ftms"`, à essayer sur le matériel). En ERG, la puissance demandée ne change jamais : seule la vitesse virtuelle tient compte du vent et de l'aspiration.
+- Seuls les bots à puissance constante abritent ; le fantôme n'abrite pas.
 
 **Paramètres par défaut** (modifiables, §11)
 
@@ -168,14 +177,14 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 | Crr | 0,004 | Pneus route sur home trainer virtuel |
 | Rendement η | 0,97 | Transmission |
 | Densité de l'air ρ | 1,225·e^(−h/8400) kg/m³ | h = altitude en mètres |
-| Vent | 0 m/s | |
+| Vent | 0 m/s | Coupé par défaut en 1.x ; réglé par `[wind]` (§11) |
 
 **Anticipation de latence.** Pour compenser la réponse du trainer (0,5 à 1,0 s), la pente envoyée est lue sur la route à `s_anticipée = s + v · tau` avec tau = 0,8 s par défaut.
 
 **Lissage de la pente envoyée au trainer**
 
 - Variation limitée à 2 points de pourcentage par seconde.
-- Coefficient de difficulté (100 % par défaut) : la pente envoyée est multipliée par ce coefficient, alors que la vitesse virtuelle utilise toujours la pente réelle. Mettre 50 % adoucit les cols sans fausser la vitesse affichée.
+- Coefficient de difficulté (50 % par défaut depuis le lot Q1, réglable pendant la séance) : la pente envoyée est multipliée par ce coefficient, alors que la vitesse virtuelle utilise toujours la pente réelle. Mettre 50 % adoucit les cols sans fausser la vitesse affichée.
 
 **Fin de parcours.** La séance s'arrête à la fin de la route (`s` = longueur) ; un parcours marqué en boucle dans le `.world` reboucle sans coupure.
 
@@ -236,7 +245,7 @@ Le compilateur transforme un `.gpx` déposé dans `~/OpenRide/GPX/` en dossier `
 
 ## 8. Moteur de rendu Godot
 
-L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`.
+L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`. En 2.0, la caméra devient un choix de plusieurs vues, avec un avatar (spécification générale, §7.2).
 
 **MVP visuel (sprint 3)**
 
@@ -337,14 +346,14 @@ drivetrain_efficiency = 0.97
 [trainer]
 device_name = "HomeTrainer"      # fragment du nom annoncé (« HomeTrainer 0000 »)
 latency_tau_s = 0.8
-difficulty_pct = 50
+difficulty_pct = 50             # réglable en jeu (lot Q1)
 grade_min_pct = -10
 grade_max_pct = 16
 power_smooth_tau_s = 0.7
-grade_rate_pct_per_s = 2.0   # vitesse symétrique dépréciée (remplacée par up/down)
-grade_rate_up_pct_per_s = 4.0
-grade_rate_down_pct_per_s = 8.0
-trace_ftms = false
+grade_rate_pct_per_s = 2.0   # ancien réglage symétrique, lu seulement si up/down manquent (lot Q4)
+grade_rate_up_pct_per_s = 4.0     # vitesse maximale quand la pente envoyée augmente (lot Q4)
+grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
+trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 
 [gearing]
 n_gears = 24
@@ -378,9 +387,20 @@ port_commands = 5006
 
 [engine]
 godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide : ~/Applications/godot)
+
+[wind]
+mode = "off"                 # "off" (défaut), "fixed", "gusty" ou "theme" (vent du thème 1.2)
+speed_kmh = 0                # 0 à 60
+from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360)
+gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme"
+seed = 0                     # graine des rafales, pour rejouer une séance
+feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
+max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
+
+La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
 
 **Arborescence**
 

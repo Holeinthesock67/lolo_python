@@ -27,16 +27,18 @@ P1 livré. P2 n'est pas requis : le modèle se teste avec des trames écrites à
 
 ### 4.2 `wind_view_model.gd`
 
-- `view(state, heading_deg) -> Dictionary` : `{visible, arrow_deg, speed_text, label, draft_text}` :
+- `view(state, heading_deg) -> Dictionary` : `{visible, arrow_deg, speed_text, label, verdict, verdict_text, tone, level, level_text, draft_text}` :
   - `arrow_deg` : angle de la flèche à l'écran, 0 = vent de face (flèche vers le bas), relatif au cap de la route ;
   - `speed_text` : « 18 km/h » (entier) ; `label` : « face », « dos », « travers gauche », « travers droit » (secteurs de 45° autour de l'axe, hystérésis de 5°) ;
+  - **favorable ou non** (demande du propriétaire du 25 octobre) : `verdict` d'après `head_mps` lissé, `"favorable"` sous − 1 m/s (vent de dos), `"defavorable"` au-dessus de + 1 m/s (vent de face), `"neutre"` entre les deux (travers ou vent faible), hystérésis de 0,3 m/s ; `verdict_text` : « Vent favorable », « Vent défavorable », « Vent neutre » ; `tone` : `"good"` (vert), `"bad"` (rouge) ou `"neutral"` (gris), couleurs prises dans la palette du HUD ;
+  - **intensité :** `level` de 0 à 4 d'après `speed_mps` (rafale comprise, lissée sur 2 s) : 0 calme sous 5 km/h, 1 faible de 5 à 15, 2 modéré de 15 à 25, 3 fort de 25 à 40, 4 très fort au-delà, hystérésis de 2 km/h ; `level_text` : « calme », « faible », « modéré », « fort », « très fort » ; affiché en barres (une à quatre) à côté de la vitesse ;
   - `draft_text` : « Abri 30 % » (`draft / 0,45`, arrondi à 5 %), vide sans `draft` ou sous 5 % ;
   - `visible = false` sans `wind` ni `draft` (pas d'indicateur inutile).
 
 ### 4.3 Budgets dans `quality_presets.gd`
 
 - Nouvelle table `LIVING` et fonction `living(preset) -> Dictionary`, par préréglage `low`, `medium`, `high` :
-  `tree_sway` (bool), `grass_tufts` (nombre max), `clouds` (`"off"`, `"flat"`, `"layered"`), `weather_particles` (max), `birds` (max), `animals` (max), `vehicles` (max), `spectators` (max), `ambience_voices` (max de sources simultanées), `water_shimmer` (bool).
+  `tree_sway` (bool), `grass_tufts` (nombre max), `clouds` (`"off"`, `"flat"`, `"layered"`), `weather_particles` (max), `birds` (max), `animals` (max), `vehicles` (max), `spectators` (max), `passersby` (max, clé ajoutée par P21), `ambience_voices` (max de sources simultanées), `water_shimmer` (bool).
 - Valeurs de départ pour `low` (GTX 1060 du PC cible) : balancement des arbres oui, 0 touffe d'herbe, nuages `flat`, 600 particules, 12 oiseaux, 20 animaux, 3 véhicules, 40 spectateurs, 4 voix, scintillement oui. `medium` et `high` plus généreux.
 - Un réglage `[render] living = false` (ou un préréglage) doit pouvoir tout couper : `living("low", false)` renvoie tous les budgets à zéro.
 
@@ -58,10 +60,21 @@ Aucune.
 4. Changement brusque de 0 à 40 km/h : `strength` atteint 90 % de sa cible en 1,2 s au plus et ne la dépasse pas ; `phase` reste continue.
 5. Sans `wind` dans la trame et sans clé `wind` au thème : vent calme, indicateur caché.
 6. `draft = 0.135` : « Abri 30 % ».
-7. `evaluate` coûte moins de 0,05 ms par appel (mesure sur 10 000 appels dans le test) et n'alloue rien d'autre que le dictionnaire rendu.
-8. `living` : trois préréglages complets, valeurs `low` du §4.3, tout à zéro quand le décor vivant est coupé.
+7. Verdict : `head_mps = 3` : « Vent défavorable », ton `bad` ; `head_mps = -3` : « Vent favorable », ton `good` ; vent de 20 km/h plein travers : « Vent neutre » ; `head_mps` qui oscille entre 0,9 et 1,1 m/s : verdict inchangé.
+8. Intensité : 3, 10, 20, 30 et 45 km/h donnent les niveaux 0 à 4 ; une rafale isolée de moins d'une seconde ne change pas le niveau.
+9. `evaluate` coûte moins de 0,05 ms par appel (mesure sur 10 000 appels dans le test) et n'alloue rien d'autre que le dictionnaire rendu.
+10. `living` : trois préréglages complets, valeurs `low` du §4.3, tout à zéro quand le décor vivant est coupé.
 
 ## 8. Hors périmètre
 
 - Dessin de l'indicateur dans le HUD (P16 pour le vent, P17 pour l'abri).
 - Vent dans les arbres et le décor (P5 et suivants).
+
+## 9. Livraison (26 octobre 2026)
+
+Livré sur la branche `lot-p4-modele-vent-engine`, au-dessus de P1 (P2 n'est pas requis).
+
+- **`wind_model.gd`** : `on_state`, `evaluate` (`{dir, strength, gust, phase}`, lissage du premier ordre à 2 s pour la direction par le plus court chemin et 0,5 s pour la force, phase qui avance de 0,4 à 2 s par seconde selon la force, sans saut), `apparent`, `has_wire` et `head_mps`. Le vent du core est gardé 2 s après la dernière trame (il n'arrive que 2 fois par seconde) ; ensuite le vent du thème (`set_theme_wind`, une rafale lente de ± la moitié de `gust_pct`) sert de vent décoratif, sinon calme.
+- **`wind_view_model.gd`** : `view(state, heading_deg, now_s)`. Le temps `now_s` s'ajoute à la signature du cahier, car le lissage et l'expiration en dépendent. Verdict avec entrée à ± 1,15 m/s et sortie à ± 0,85 m/s (hystérésis de 0,3 m/s) ; niveau avec une bande de 2 km/h et une confirmation de 1 s, si bien qu'une rafale isolée de moins d'une seconde ne change rien ; `speed_text` lissé sur 2 s ; couleurs laissées au HUD (P16) par le `tone`.
+- **`quality_presets.gd`** : table `LIVING` et `living(preset, enabled)`. La clé `passersby` (24 en `low`) est posée dès maintenant pour P21. `medium` et `high` : 4 000 et 12 000 touffes d'herbe, nuages `flat` puis `layered`, budgets croissants.
+- **Tests** : `test_wind_model.gd` (16 vérifications, dont `evaluate` sous 0,05 ms), `test_wind_view_model.gd` (27), `test_quality_presets.gd` (19, dont 6 pour `living`).

@@ -1,6 +1,6 @@
 # OpenRide 2.0 – Progression : niveaux, équipement et avatar (série V)
 
-25 octobre 2026. Demande du propriétaire, acceptée pour la 2.0 : une progression façon Zwift, avec niveaux et points d'expérience, vélos, roues et tenues à débloquer, et un avatar personnalisable. **La série V commence après la 1.0.** Les cahiers des lots seront rédigés au démarrage de la série et ajoutés à `docs/lots/00_INDEX.md`.
+25 octobre 2026. Demande du propriétaire, acceptée pour la 2.0 : une progression façon Zwift, avec niveaux et points d'expérience, vélos, roues et tenues à débloquer, et un avatar personnalisable. **La série V commence après la 1.0.** Cahiers des lots rédigés le 26 octobre 2026 (`docs/lots/LOT_V*.md`, index `docs/lots/00_INDEX.md`) ; les choix encore ouverts sont les questions V-Q5 à V-Q13 du §5 (V-Q4 réglée le 26 octobre).
 
 ## 1. En résumé
 
@@ -29,7 +29,7 @@
 
 ### 2.1 bis Pièces
 
-- Gagnées en roulant, en même temps que l'expérience : environ 1 pièce par km, 5 par segment, 20 par maillot, 10 à 50 par run Cyber-Rogue selon le boss.
+- Gagnées en roulant, en même temps que l'expérience, selon l'effort fourni (V-Q10, 27 octobre) : chaque minute rapporte de 0,25 à 2 pièces selon la puissance en % de la FTP, en SIM comme en ERG ; en plus, 5 par segment (+ 10 pour un record personnel), 15 par record de puissance battu, 20 par maillot, 10 à 50 par run Cyber-Rogue selon le boss.
 - Dépensées dans le Garage pour l'équipement, et dans le mode Cyber-Rogue pour des vies (série R).
 - Prix et gains dans le même fichier de données que l'expérience.
 
@@ -64,7 +64,7 @@
 
 - Profil local dans `~/OpenRide/` : niveau, équipement débloqué et choisi, réglages de l'avatar. Aucune donnée personnelle dans le dépôt.
 - Expérience et déblocages calculés par le core, module pur testé en pytest (comme les règles des séries R et T).
-- Contrat IPC v1.3, ajouts compatibles : `hello_ack.config` gagne l'équipement et l'avatar choisis et le solde de pièces ; message `xp` en fin de séance (gains détaillés, niveau, déblocages) ; commandes `equip` et `set_avatar` depuis le menu.
+- Contrat IPC v1.4 avec R1 et T1, ajouts compatibles (V-Q4 réglée le 26 octobre) : `hello_ack.config` gagne l'équipement et l'avatar choisis et le solde de pièces ; message `xp_result` en fin de séance (gains détaillés, niveau, déblocages) ; commandes `equip` et `set_avatar` depuis le menu ; le cahier V1 ajoute `buy`, `list_garage`, le message `garage` et le message `progression` envoyé après un choix (décision D7 de l'audit IPC).
 
 ## 3. Risques
 
@@ -79,22 +79,40 @@
 
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
-| V1 | Contrat : équipement et avatar dans `hello_ack`, message `xp`, commandes `equip` et `set_avatar` (IPC v1.3) | P1 | Interne (décision) |
+| V1 | Contrat : progression dans `hello_ack`, messages `progression` et `xp_result`, catalogue `garage`, commandes `list_garage`, `buy`, `equip` et `set_avatar` (révision 1.4, avec R1 et T1) | P1 | Interne (décision) |
 | V2 | Moteur d'expérience : gains, niveaux, défis, recalcul depuis le journal | — | Délégable |
 | V3 | Catalogue d'équipement en données, effets bornés appliqués à `PhysicsParams`, compromis par terrain, calcul du temps gagné par l'équipement | V2 | Délégable |
-| V3b | Pièces : gains, prix, achats, solde dans le profil, vies du mode Cyber-Rogue | V2, V4 | Délégable |
+| V3b | Pièces : gains, prix, achats, solde dans le profil, vies du mode Cyber-Rogue | V2, V3, V4 | Délégable |
 | V4 | Profil local (niveau, déblocages, choix), lecture et écriture sûres, migration | V2 | Délégable |
-| V5 | Liens avec les séries T et R : équipement noté dans les passages, calibrage des bots, expérience des segments, maillots et runs | V3, T5, T13, R9 | Délégable |
+| V5 | Liens avec les séries T et R : équipement noté dans les passages, calibrage des bots, expérience des segments, maillots et runs | V3, V3b, V11, T4, T5, T13, T14, R9 | Délégable |
 | V6 | Engine : avatar généré par le code, réglages, pédalage synchronisé, position en danseuse | V1 | Interne (rendu) |
 | V7 | Engine : rendu des cadres, roues et tenues sur l'avatar | V6 | Interne (rendu) |
-| V8 | Menu « Garage » : choix de l'équipement et de l'avatar, aperçu en 3D | V1, V6, N6 | Interne |
-| V9 | Fin de séance : expérience et pièces gagnées, temps gagné par l'équipement, passage de niveau, déblocages | V1, N4 | Interne |
-| V10 | Recette sur ton PC et ton vélo : progression sur ton historique réel, effet de l'équipement, rendu de l'avatar | V2 à V9 | Propriétaire |
+| V8 | Menu « Garage » : choix de l'équipement et de l'avatar, aperçu en 3D | V1, V6, V11, N6 | Interne |
+| V9 | Fin de séance : expérience et pièces gagnées, temps gagné par l'équipement, passage de niveau, déblocages | V1, V11, N4 | Interne |
+| V10 | Recette sur ton PC et ton vélo : progression sur ton historique réel, effet de l'équipement, rendu de l'avatar | V2 à V9, V11 | Propriétaire |
+| V11 | Core : progression branchée dans la séance (équipement appliqué, `loadout` au journal, `hello_ack`, `progression`, `xp_result`, commandes du Garage) ; lot ajouté le 26 octobre, absent du premier découpage | V1, V2, V3, V3b, V4 | Délégable |
 
-Ordre conseillé : V1 avec les autres ajouts de la v1.3 ; V2, V3 et V4 en parallèle ; V5 quand les séries T et R sont avancées ; puis l'engine (V6 à V9) et la recette V10.
+Ordre conseillé : V2 tout de suite, puis V3 et V4, puis V3b (modules purs, sans effet sur la séance, développables avant la 1.0) ; V1 avec les autres ajouts de sa révision, puis V11 ; V5 quand les séries T et R sont avancées ; puis l'engine (V6 à V9) et la recette V10.
 
 ## 5. Questions pour le propriétaire
 
 - [x] **V-Q1 Équipement (25 octobre) :** petits effets sur la physique, mais un impact notable sur le plaisir de jeu (§2.2).
 - [x] **V-Q2 Monnaie (25 octobre) :** oui, des pièces, qui achètent aussi des vies dans le mode Cyber-Rogue (§2.1 bis).
 - [x] **V-Q3 Séances passées (25 octobre) :** oui, mais seulement celles enregistrées par le jeu.
+
+### Questions du 26 octobre (rédaction des cahiers)
+
+Réponses du propriétaire le 27 octobre : propositions de V-Q5 à V-Q13 validées ; V-Q10 remplacée par des pièces à l'effort avec primes de records.
+
+Chaque cahier applique la proposition recommandée en attendant la réponse ; une autre réponse ne change que le fichier de données ou le cahier concerné.
+
+- [x] **V-Q4 Révision du contrat (26 octobre, décision D2 de l'audit IPC) :** P1 en 1.3 ; V1 dans la révision 1.4 avec R1 et T1, en un seul lot de contrat. Décision D7 : message `progression` dédié après un choix au Garage, bilan nommé `xp_result`.
+- [x] **V-Q5 Calendrier :** proposition : modules purs du core (V2, V3, V3b, V4) développés dès maintenant, sans branchement ; V1, V11 et l'engine (V6 à V9) après la 1.0, comme prévu.
+- [x] **V-Q6 Journaux anciens :** avant V2, le journal ne dit pas si la séance était réelle, simulée (banc simulé, `--trainer mock`) ou rejouée. Proposition : tout journal ancien compte ; `openride-core xp` les liste pour que tu repères les séances simulées.
+- [x] **V-Q7 ERG et distance :** proposition : une séance ERG rapporte 10 points par minute (+ 20 % si terminée) **à la place** de la distance et du dénivelé, pour ne pas compter deux fois (10 points par minute valent 20 points par km à 30 km/h).
+- [x] **V-Q8 Courbe des niveaux :** proposition : écart croissant de façon régulière d'un niveau au suivant (1 000 points pour le niveau 2, environ 3 100 pour le dernier, 100 000 au total) ; une séance d'une heure (30 km, 300 m) rapporte environ 1 200 points, soit environ 80 h de selle pour le niveau 50.
+- [x] **V-Q9 Catalogue :** cinq cadres, quatre paires de roues et les prix ou niveaux du cahier V3 §4.1 (à valider ou corriger).
+- [x] **V-Q10 Pièces (27 octobre, validée) :** pièces à l'effort (temps et % de la FTP) : par minute, 0,25 pièce sous 55 % de la FTP, 0,5 de 55 à 75 %, 1 de 75 à 90 %, 1,5 de 90 à 105 %, 2 au-delà, en SIM comme en ERG (une heure d'endurance : 30 pièces ; une heure avec 2 × 20 min au seuil : 70) ; la distance ne compte plus. Primes de records demandées par le propriétaire : 10 pièces par record personnel sur un segment, 15 par record de puissance moyenne battu (5 s, 1, 5 ou 20 min). Vie Cyber-Rogue à 30 pièces, équipement de 100 à 500 pièces.
+- [x] **V-Q11 Caméra :** la caméra actuelle est subjective (yeux du cycliste) : l'avatar ne se voit pas. Proposition : caméra de suivi derrière le cycliste par défaut, subjective au choix dans le Garage ou au clavier.
+- [x] **V-Q12 Équipement en mode Cyber-Rogue :** proposition : sans effet dans ce mode, les châssis de R9 en tiennent lieu.
+- [x] **V-Q13 Lenticulaire et vent de travers :** la série P ne modélise pas encore le vent de travers (P2). Proposition : la lenticulaire est pénalisée par sa masse en montée seulement ; la pénalité au vent de travers attend un lot de la série P.

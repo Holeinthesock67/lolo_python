@@ -78,6 +78,11 @@ def test_legacy_grade_rate_fallback_and_warning(caplog: pytest.LogCaptureFixture
     assert cfg_new.trainer.grade_rate_down_pct_per_s == 10.0
     assert not any("réglage remplacé par" in r.message for r in caplog.records)
 
+    # Ancien réglage avec un seul des nouveaux : l'autre garde son défaut
+    cfg_mixed = from_dict({"trainer": {"grade_rate_pct_per_s": 2.0, "grade_rate_up_pct_per_s": 5.0}})
+    assert cfg_mixed.trainer.grade_rate_up_pct_per_s == 5.0
+    assert cfg_mixed.trainer.grade_rate_down_pct_per_s == 8.0
+
 
 def test_startup_log_records_ramp_rates(tmp_path: Path, monkeypatch, caplog: pytest.LogCaptureFixture) -> None:
     """Une ligne du journal au démarrage donne les deux vitesses."""

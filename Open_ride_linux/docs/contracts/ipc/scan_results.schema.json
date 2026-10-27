@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideScanResultsMessage",
+  "description": "Réponse à cmd scan_devices ou identify_click_plus (révision 1.2, lot N13) ; datagramme de 1 400 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "done",
+    "items",
+    "plus_address"
+  ],
+  "properties": {
+    "type": {
+      "const": "scan_results"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "done": {
+      "type": "boolean"
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 12,
+      "items": {
+        "type": "object",
+        "required": [
+          "role",
+          "name",
+          "address",
+          "rssi",
+          "configured"
+        ],
+        "properties": {
+          "role": {
+            "enum": [
+              "trainer",
+              "click",
+              "hr_strap",
+              "hr_watch"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "address": {
+            "type": "string",
+            "pattern": "^[0-9A-F]{2}(:[0-9A-F]{2}){5}$"
+          },
+          "rssi": {
+            "type": [
+              "integer",
+              "null"
+            ]
+          },
+          "configured": {
+            "type": "boolean"
+          }
+        }
+      }
+    },
+    "plus_address": {
+      "anyOf": [
+        {
+          "type": "string",
+          "pattern": "^[0-9A-F]{2}(:[0-9A-F]{2}){5}$"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    }
+  }
+}

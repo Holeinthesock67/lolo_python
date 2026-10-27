@@ -64,3 +64,7 @@ Aucune.
 
 - Paquet `.deb` ou Flatpak, et démarrage automatique à l'ouverture de session.
 - Réglages (FTP, thème, qualité) depuis le menu : lot à rédiger si le propriétaire le souhaite.
+
+## 9. Livraison (25 octobre 2026, PR #178)
+
+- Code et tests fusionnés sur `main` par la PR #178 (issue #114 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.

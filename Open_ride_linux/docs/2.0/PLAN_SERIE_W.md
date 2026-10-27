@@ -1,6 +1,6 @@
 # OpenRide 2.0 – Monde ouvert généré en direct (série W)
 
-25 octobre 2026. Proposition du propriétaire : choisir dans le menu un point de départ sur un globe, comme dans un simulateur de vol, puis rouler sur les vraies routes autour de ce point ; le monde se construit au fur et à mesure à partir de cartes téléchargées sur internet, et ce qui a déjà été téléchargé reste sur le PC pour ne pas être retéléchargé quand on repasse au même endroit. Ce plan étudie la faisabilité, fixe l'architecture et découpe le travail en lots. **La série W commence après la 1.0** (séries N et O) ; elle est indépendante des modes de jeu R, T et V. Les cahiers des lots seront rédigés au démarrage de la série et ajoutés à `docs/lots/00_INDEX.md`.
+25 octobre 2026. Proposition du propriétaire : choisir dans le menu un point de départ sur un globe, comme dans un simulateur de vol, puis rouler sur les vraies routes autour de ce point ; le monde se construit au fur et à mesure à partir de cartes téléchargées sur internet, et ce qui a déjà été téléchargé reste sur le PC pour ne pas être retéléchargé quand on repasse au même endroit. Ce plan étudie la faisabilité, fixe l'architecture et découpe le travail en lots. **La série W commence après la 1.0** (séries N et O) ; elle est indépendante des modes de jeu R, T et V. Les cahiers des lots sont rédigés (26 octobre 2026, `docs/lots/LOT_W*.md`) et listés dans `docs/lots/00_INDEX.md`.
 
 ## 1. En résumé
 
@@ -27,8 +27,8 @@ Le rendu ne coûte pas plus cher qu'un parcours compilé : l'engine charge déj�
 | Besoin | Source recommandée | Conditions d'usage | Volume | Rôle |
 | --- | --- | --- | --- | --- |
 | Relief | Copernicus GLO-30 (déjà utilisé par le compilateur), tuiles de 1° × 1° sur AWS | Données libres, attribution Copernicus obligatoire | 42 à 44 Mo par tuile (mesuré sur deux tuiles de France) ; une tuile couvre environ 78 × 111 km à 45° de latitude | Principal |
-| Routes, bâtiments, forêts, eau | Extrait régional Geofabrik (`.osm.pbf`), converti en base locale | ODbL : attribution « © contributeurs OpenStreetMap » ; mises à jour quotidiennes, téléchargement raisonnable demandé | Ordre de grandeur : 100 à 500 Mo pour une région française, 4 à 5 Go pour la France entière (à mesurer en W0) | Principal, hors ligne ensuite |
-| Les mêmes, n'importe où | Tuiles vectorielles OpenFreeMap (schéma OpenMapTiles, zoom 14) | Gratuit, sans clé ni quota déclaré ; financé par des dons ; attribution OSM et OpenMapTiles | Quelques dizaines à quelques centaines de Ko par tuile (à mesurer en W0) | Secours quand aucun extrait n'est installé, ou en bord de région |
+| Routes, bâtiments, forêts, eau | Extrait régional Geofabrik (`.osm.pbf`), converti en base locale | ODbL : attribution « © contributeurs OpenStreetMap » ; mises à jour quotidiennes, téléchargement raisonnable demandé | Ordre de grandeur : 100 à 500 Mo pour une région française, 4 à 5 Go pour la France entière (à mesurer en W0) | Facultatif : une région entière, hors ligne ensuite |
+| Les mêmes, n'importe où | Tuiles vectorielles OpenFreeMap (schéma OpenMapTiles, zoom 14) | Gratuit, sans clé ni quota déclaré ; financé par des dons ; attribution OSM et OpenMapTiles | Quelques dizaines à quelques centaines de Ko par tuile (à mesurer en W0) | Téléchargées au fur et à mesure, partout dans le monde, et préchargées autour des lieux de départ habituels (W-Q4) |
 | Compléments ponctuels | Overpass (code existant de `compiler/src/openride_compiler/osm.py`) | Usage régulier : environ 100 requêtes et 10 Mo par jour au total, pause de 30 s après une erreur 429 | Petites requêtes | Exceptionnel, jamais pendant la séance |
 | Recherche de lieux | Liste embarquée (cols et villes, GeoNames, CC BY) ; Nominatim en ligne | Nominatim : une requête par seconde au plus, à la demande du cycliste seulement | — | Menu |
 | Globe | Texture Blue Marble de la NASA en basse définition, côtes et frontières Natural Earth | Domaine public | Quelques Mo dans le dépôt | Menu |
@@ -98,6 +98,7 @@ Tout ce qui est téléchargé ou généré reste sur le PC, jamais dans le dép�
 **Taille et éviction :**
 - plafond `[open_world] cache_max_gb`, 5 Go par défaut ; pour fixer les idées, une région de 300 Mo et ses carrés générés tiennent dans moins de 1 Go ;
 - au-delà du plafond, on supprime d'abord les carrés générés les moins récemment utilisés (ils se recalculent sans réseau), puis les données brutes les moins récemment utilisées ;
+- les tuiles préchargées autour des lieux de départ habituels (W-Q4) passent en dernier ;
 - une région peut être **épinglée** dans le menu : elle n'est jamais supprimée ;
 - `openride-compiler cache-info` donne la taille par région, `cache-clean` vide le cache.
 
@@ -135,7 +136,7 @@ Les carrés du cache sont liés dans ce dossier, pas copiés.
 - **Choix :** les branches sont proposées dès 300 m du carrefour ; le choix reste possible jusqu'à 30 m avant, puis il est verrouillé.
 - **Profils prêts :** le profil des 500 premiers mètres de chaque branche est calculé à l'avance ; changer de branche remplace la fin de la route engagée sans attente. La pente envoyée au trainer suit la limite de variation existante (`grade_rate_pct_per_s`).
 - **Impasses :** le navigateur les évite ; si le cycliste en prend une, demi-tour automatique à son extrémité.
-- **Routes admises :** routes, chemins revêtus et pistes cyclables ; ni autoroutes ni voies rapides ; chemins de terre et pistes forestières en option.
+- **Routes admises :** routes, chemins revêtus et pistes cyclables ; ni autoroutes ni voies rapides ; chemins de terre et pistes forestières réservés à l'option « gravel » de la 3.0 (W-Q2).
 
 ## 6. Ce qui se réutilise
 
@@ -170,13 +171,15 @@ Les séries de la 2.0 s'y branchent sans travail particulier : vent, décor viva
 | 10 | Attributions oubliées | Écran de chargement et crédits : OpenStreetMap, OpenMapTiles, Copernicus, NASA, Natural Earth, GeoNames |
 | 11 | Vie privée (le cache trace les sorties) | Cache local hors dépôt, aucune coordonnée réelle dans les exemples |
 
-## 8. Questions ouvertes
+## 8. Décisions du propriétaire
 
-- [ ] **W-Q1 Choix au carrefour :** quel bouton ? (Recommandé : flèches gauche et droite du boîtier gauche quand il répond, sinon A court qui fait défiler les branches ; flèches du clavier en secours ; sans appui, le navigateur choisit.)
-- [ ] **W-Q2 Chemins de terre :** les proposer ? (Recommandé : non par défaut, option « gravel » dans le menu.)
-- [ ] **W-Q3 Plafond du cache :** 5 Go par défaut ? (Recommandé : oui, modifiable.)
-- [ ] **W-Q4 Première source :** commencer par l'extrait régional seul, et ajouter les tuiles vectorielles ensuite ? (Recommandé : oui, c'est plus simple et tout fonctionne hors ligne.)
-- [ ] **W-Q5 Mode ERG :** autoriser le monde ouvert pendant un entraînement ERG ? (Recommandé : oui, la pente n'y joue pas sur la résistance.)
+| # | Question | Décision (25 octobre 2026) |
+| --- | --- | --- |
+| W-Q1 | Bouton de choix au carrefour | Flèches gauche et droite du boîtier gauche quand il répond, sinon A court qui fait défiler les branches ; flèches du clavier en secours ; sans appui, le navigateur choisit |
+| W-Q2 | Chemins de terre | Pas en 2.0 ; une option « gravel » dans les menus est prévue pour la 3.0 |
+| W-Q3 | Plafond du cache | 5 Go par défaut, modifiable |
+| W-Q4 | Sources de cartes | Les tuiles mondiales s'ajoutent au fur et à mesure : téléchargées pendant la balade, et préchargées à l'avance autour des lieux de départ de l'historique du joueur (les plus fréquents et les plus récents d'abord), toujours dans la limite du cache de 5 Go. L'extrait régional reste possible pour une région qu'on veut avoir en entier hors ligne |
+| W-Q5 | Monde ouvert en ERG | Autorisé : en ERG, la pente ne joue pas sur la résistance |
 
 ## 9. Lots de la série W
 
@@ -195,7 +198,7 @@ Les séries de la 2.0 s'y branchent sans travail particulier : vent, décor viva
 | W10 | Engine : lecture du monde vivant (parties de route, couches par carré), amorces de branches, recentrage tous les 10 km | W1 | Interne (rendu) |
 | W11 | Engine : menu globe, recherche de lieu, carte régionale depuis la base locale, régions en cache et épinglées, écran de préchargement | W1, W3 | Interne |
 | W12 | Engine : HUD du carrefour (branches, pente, choix, verrouillage) et attributions | W1 | Interne (rendu) |
-| W13 | Tuiles vectorielles OpenFreeMap en secours (même base locale, mêmes couches) | W3, W7 | Délégable |
+| W13 | Tuiles vectorielles OpenFreeMap (même base locale, mêmes couches) : téléchargement au fil de la balade et préchargement autour des lieux de départ de l'historique, par ordre de fréquence et de récence, dans la limite du cache (W-Q4) | W2, W7 | Délégable |
 | W14 | Enregistrer la balade comme parcours de la bibliothèque (GPX puis `.world`) | W9 | Délégable |
 | W15 | Monde synthétique pour les essais sans réseau : relief analytique, faux graphe, séance simulée de bout en bout | W1 | Délégable |
 | W16 | Recette sur le PC et le vélo : une heure de monde ouvert, au moins 55 images/s, aucune pause d'attente, gigue de la physique sous 5 ms, retour au même endroit sans téléchargement | W9 à W12 | Propriétaire |
