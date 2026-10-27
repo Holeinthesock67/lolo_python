@@ -16,6 +16,9 @@ Deuxième passe (lot J7) :
 
 Vérification du 24 octobre :
 10. Lots numérotés cités dans `README.md`, `CLAUDE.md` et `SUIVI_AVANCEMENT.md` présents dans `00_INDEX.md`.
+
+Lot O6 :
+11. Raccourcis du tableau de `docs/GUIDE_UTILISATION.md` (§6) vs touches du code Godot et boutons du Click.
 """
 
 from __future__ import annotations
@@ -705,3 +708,127 @@ def test_cited_paths_exist_and_negative() -> None:
 
     text = "`core/src/openride_core/session.py:12` `docs/lots/` `core/tests/test_*.py` `core/absent.py`\n"
     assert check_cited_paths(text, "faux.md") == ["faux.md:1 : chemin cité absent : core/absent.py"]
+
+
+# === Tests du lot O6 : raccourcis du guide d'utilisation =============================
+
+GUIDE_PATH = REPO_ROOT / "docs" / "GUIDE_UTILISATION.md"
+MENU_MODEL_PATH = REPO_ROOT / "engine" / "scripts" / "menu_model.gd"
+MAIN_GD_PATH = REPO_ROOT / "engine" / "scripts" / "main.gd"
+CLICK_PY_PATH = CORE_SRC_DIR / "zwift_click.py"
+
+KEY_NAMES = {   # nom de la touche écrit dans le guide : constante Godot
+    "Bas": "KEY_DOWN", "Haut": "KEY_UP", "+": "KEY_PLUS", "-": "KEY_MINUS", "Tab": "KEY_TAB",
+    "Entrée": "KEY_ENTER", "Échap": "KEY_ESCAPE", "Retour arrière": "KEY_BACKSPACE",
+    "Page bas": "KEY_PAGEDOWN", "Page haut": "KEY_PAGEUP", "P": "KEY_P", "Espace": "KEY_SPACE",
+}
+CLICK_NAMES = {"A": "A", "B": "B", "Y": "Y", "Z": "Z"}   # boutons nommés du boîtier droit
+# Action d'un menu : événements du Click que menu_model.gd traite comme cette action (handle()).
+MENU_ACTIONS = {
+    "Élément suivant": {"PLUS_SHORT", "A_SHORT", "RIGHT_SHORT"},
+    "Élément précédent": {"MINUS_SHORT", "LEFT_SHORT"},
+    "Sauter de cinq vers le bas": {"PLUS_LONG"},
+    "Sauter de cinq vers le haut": {"MINUS_LONG"},
+    "Valider": {"A_LONG"},
+    "Revenir": {"Y_SHORT"},
+}
+
+
+def guide_tables(text: str) -> dict[str, list[tuple[str, str, str]]]:
+    """Tableaux de la section « Commandes » du guide : titre en gras -> lignes (action, Click, clavier)."""
+    section = text.split("## 6.", 1)[1].split("\n## ", 1)[0]
+    tables: dict[str, list[tuple[str, str, str]]] = {}
+    current = ""
+    for line in section.splitlines():
+        title = re.match(r"\*\*(.+?)\*\*$", line)
+        if title:
+            current = title.group(1)
+            tables[current] = []
+        elif current and line.startswith("|") and not line.startswith("| ---") and not line.startswith("| Action"):
+            cells = [c.strip() for c in line.strip("|").split("|")]
+            if len(cells) == 3:
+                tables[current].append((cells[0], cells[1], cells[2]))
+    return tables
+
+
+def cited_keys(cell: str) -> list[str]:
+    return re.findall(r"`([^`]+)`", cell)
+
+
+def godot_key_events(menu_model: str) -> dict[str, str]:
+    """Constante de touche -> événement, d'après key_to_event() de menu_model.gd."""
+    body = menu_model.split("static func key_to_event", 1)[1].split("\n\n\n", 1)[0]
+    out: dict[str, str] = {}
+    for m in re.finditer(r"((?:KEY_\w+(?:, )?)+):\n\t+return \"(\w+)\"", body):
+        for key in m.group(1).split(", "):
+            out[key] = m.group(2)
+    return out
+
+
+def godot_session_keys(main_gd: str) -> dict[str, str]:
+    """Constante de touche -> commande ou événement envoyé pendant la séance, d'après _unhandled_input."""
+    body = main_gd.split("match event.keycode:", 1)[1].split("func _process", 1)[0]
+    out: dict[str, str] = {}
+    for m in re.finditer(r"((?:KEY_\w+(?:, )?)+):\n(?:\t+#[^\n]*\n)*\t+(?:var [^\n]*\n\t+)?(?:if [^\n]*\n\t+)?"
+                         r"ipc\.send_command\(\"(\w+)\"(?:, \{\"event\": \"(\w+)\"\})?", body):
+        for key in m.group(1).split(", "):
+            out[key] = m.group(3) or m.group(2)
+    return out
+
+
+def check_guide_shortcuts(guide: str, menu_model: str, main_gd: str, click_py: str) -> list[str]:
+    errors: list[str] = []
+    tables = guide_tables(guide)
+    menu_keys = godot_key_events(menu_model)
+    session_keys = godot_session_keys(main_gd)
+    click_buttons = set(re.findall(r'"([A-Z]+)": \d+', click_py.split("KEYPAD_BITS", 1)[1].split("}", 1)[0]))
+    menu_rows = tables.get("Dans les menus", [])
+    if len(menu_rows) != len(MENU_ACTIONS):
+        errors.append(f"tableau « Dans les menus » : {len(menu_rows)} lignes, {len(MENU_ACTIONS)} attendues")
+    for action, click, keyboard in menu_rows:
+        expected = MENU_ACTIONS.get(action)
+        if expected is None:
+            errors.append(f"menus : action inconnue « {action} »")
+            continue
+        for name in cited_keys(keyboard):
+            const = KEY_NAMES.get(name)
+            if const is None or menu_keys.get(const) not in expected:
+                errors.append(f"menus : la touche `{name}` ne fait pas « {action} » dans menu_model.gd")
+    for title, rows in tables.items():
+        if title == "Dans les menus":
+            continue
+        for action, click, keyboard in rows:
+            for name in cited_keys(keyboard):
+                const = KEY_NAMES.get(name)
+                if const is None or const not in session_keys:
+                    errors.append(f"{title} : la touche `{name}` n'est pas traitée en séance par main.gd")
+            for button in re.findall(r"\b([ABYZ])\b", re.sub(r"« [^»]+ »", "", click)):
+                if button not in click_buttons:
+                    errors.append(f"{title} : le bouton {button} n'existe pas dans KEYPAD_BITS")
+    # Touches de séance du guide : les mêmes événements que dans le code.
+    for title, rows in tables.items():
+        for action, click, keyboard in rows:
+            keys = [KEY_NAMES.get(n) for n in cited_keys(keyboard)]
+            wanted = {"Pause et reprise": "pause", "Pause de la séance": "pause",
+                      "Bloc suivant": "PLUS_LONG", "Pause de l'ERG (puissance visée à 0 %)": "MINUS_LONG"}.get(action)
+            if title != "Dans les menus" and wanted:
+                for key in keys:
+                    if session_keys.get(key) != wanted:
+                        errors.append(f"{title} : `{action}` attend {wanted} sur {key}, le code envoie {session_keys.get(key)}")
+    return errors
+
+
+def test_guide_shortcuts_match_code_and_negative() -> None:
+    guide = GUIDE_PATH.read_text(encoding="utf-8")
+    menu_model = MENU_MODEL_PATH.read_text(encoding="utf-8")
+    main_gd = MAIN_GD_PATH.read_text(encoding="utf-8")
+    click_py = CLICK_PY_PATH.read_text(encoding="utf-8")
+    assert len(guide_tables(guide)) == 3
+    assert check_guide_shortcuts(guide, menu_model, main_gd, click_py) == []
+
+    wrong = guide.replace("`Page bas`", "`Tab`", 1)   # Tab ne saute pas de cinq
+    assert any("Tab" in e for e in check_guide_shortcuts(wrong, menu_model, main_gd, click_py))
+    wrong = guide.replace("`P`, `Espace` ou `Échap`", "`Q`", 1)
+    assert check_guide_shortcuts(wrong, menu_model, main_gd, click_py) != []
+    assert any("bouton Z" in e for e in check_guide_shortcuts(
+        guide, menu_model, main_gd, click_py.replace('"Z": 7,', "")))
