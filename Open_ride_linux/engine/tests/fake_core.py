@@ -108,6 +108,7 @@ class FakeCore:
     silent: bool = False          # core muet : n'émet plus rien du tout
     auto_hello_ack: bool = False
     chart: str | None = None      # hello_ack.config.chart (lot O14) ; None : champ absent
+    progression: dict[str, Any] | None = None   # hello_ack.config.progression (série V, lot V6) ; None : absent
     session_state: str = "IDLE"
     route_id: str | None = "demo"
     accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
@@ -259,6 +260,8 @@ class FakeCore:
         config = {"ftp_w": 250, "gears_total": 24, "theme": "default", "difficulty_pct": self.difficulty_pct}
         if self.chart is not None:
             config["chart"] = self.chart
+        if self.progression is not None:
+            config["progression"] = self.progression
         self.send({"type": "hello_ack", "v": CONTRACT_VERSION, "core_version": "fake", "config": config})
 
     def messages(self, kind: str, since: float = 0.0, name: str | None = None) -> list[Received]:

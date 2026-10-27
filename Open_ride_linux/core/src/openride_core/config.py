@@ -141,6 +141,13 @@ class ProgressionConfig:
 
 
 @dataclass
+class AvatarConfig:
+    """Position en danseuse de l'avatar (lot V6) : l'engine passe debout au-dessus de l'un des deux seuils."""
+    standing_grade_pct: float = 8.0      # pente (%)
+    standing_power_pct: float = 150.0    # puissance (% de la FTP)
+
+
+@dataclass
 class RogueConfig:
     """Mode Cyber-Rogue de la 2.0 (série R, SRS §11)."""
 
@@ -169,6 +176,7 @@ class Config:
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
+    avatar: AvatarConfig = field(default_factory=AvatarConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
 
@@ -222,6 +230,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("wind", "from_deg"): (0, 360),
     ("wind", "gust_pct"): (0, 100),
     ("wind", "max_grade_offset_pct"): (0, 8),
+    ("avatar", "standing_grade_pct"): (3, 15),
+    ("avatar", "standing_power_pct"): (100, 300),
     ("rogue", "w_prime_j"): (5000, 60000),
     ("rogue", "cp_w"): (0, 1000),
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),

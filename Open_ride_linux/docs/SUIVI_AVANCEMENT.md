@@ -336,7 +336,8 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Contrat 1.4 commun aux séries R, T et V (lot T1, 27 octobre, PR #392).
 - [x] Branchement de la progression dans la séance (lot V11, `garage.py`, 27 octobre) : équipement appliqué à la vitesse virtuelle, `progression` dans `hello_ack`, commandes du Garage, bilan `xp_result`, `[progression] enabled` ; reste l'essai sur le PC.
 - [ ] Liens avec les séries T et R (lot V5).
-- [ ] Avatar, équipement à l'écran, Garage et fin de séance (lots V6 à V9), recette (lot V10).
+- [x] Avatar du cycliste généré par le code, pédalier à la cadence réelle et danseuse (lot V6, `avatar_model.gd`, `avatar_mesh.gd`, `avatar_view.gd`, `[avatar]` de `config.toml`, 27 octobre) ; caché en vue subjective (vues de caméra : V12) ; reste la recette de rendu sur le PC.
+- [ ] Équipement à l'écran, Garage et fin de séance (lots V7 à V9), recette (lot V10).
 - [ ] Quatre vues de caméra au Click et au clavier (lot V12, décision D5 du 27 octobre).
 
 ### Sprint 4 et suivants

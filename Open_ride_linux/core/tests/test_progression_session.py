@@ -74,6 +74,17 @@ def test_hello_ack_carries_progression(tmp_path, monkeypatch):
     assert len(json.dumps(of(frames, "hello_ack")[0])) < 1400
 
 
+def test_standing_thresholds_come_from_avatar_section(tmp_path, monkeypatch):
+    from openride_core.config import from_dict
+    cfg = from_dict({"avatar": {"standing_grade_pct": 6, "standing_power_pct": 120}})
+    assert (cfg.avatar.standing_grade_pct, cfg.avatar.standing_power_pct) == (6, 120)
+    svc = garage.ProgressionService(cfg, tmp_path, None, tmp_path / "profile.json")
+    svc.load()
+    avatar = svc.progression_dict()["avatar"]
+    assert avatar["standing_grade_pct"] == 6 and avatar["standing_power_pct"] == 120
+    assert Config().avatar.standing_grade_pct == 8 and Config().avatar.standing_power_pct == 150
+
+
 def test_progression_off_changes_nothing(tmp_path, monkeypatch):
     s, frames = make(tmp_path, monkeypatch, enabled=False)
     assert "progression" not in s.server.hello_config

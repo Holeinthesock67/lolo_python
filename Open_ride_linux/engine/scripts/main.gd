@@ -20,6 +20,8 @@ const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
+const AvatarModel := preload("res://scripts/avatar_model.gd")
+const AvatarView := preload("res://scripts/avatar_view.gd")
 const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
 const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
@@ -118,6 +120,12 @@ var menu_flow = MenuFlow.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
 var bots_model = BotsViewModel.new()
 var bots_view: Node3D
+## Avatar du cycliste (lot V6) : modèle sans nœud (pédalier, danseuse) et vue ; caché en vue subjective, la
+## seule caméra du jeu avant le lot V12. `_avatar_cam` : caméra de contrôle du banc visuel (« follow »,
+## « side » ou « » sans), qui montre l'avatar sans changer la caméra du jeu.
+var avatar_model = AvatarModel.new()
+var avatar_view: Node3D
+var _avatar_cam := ""
 ## Courbes de la séance (lot O14) : un modèle, deux vues (bandeau ERG, panneau SIM), taille par réglage.
 var chart_model = WorkoutChartModel.new()
 var chart_sim = null
@@ -196,6 +204,9 @@ func _ready() -> void:
 	living_decor.set_fog_base(world_env.environment)
 	bots_view = BotsView.new()
 	add_child(bots_view)
+	avatar_view = AvatarView.new()
+	add_child(avatar_view)
+	_configure_avatar()
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
 	segment_markers.visual_grade_scale = _visual_grade_scale
@@ -583,6 +594,7 @@ func _process(delta: float) -> void:
 		camera.rotation.y = -heading
 		camera.rotation.x = deg_to_rad(follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale))
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
+		_step_avatar(pos, heading, now, follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale))
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
@@ -791,8 +803,22 @@ func _on_test_message(msg: Dictionary) -> void:
 			var ev := str(msg.get("event", ""))
 			if ev in MenuModel.EVENTS:
 				_menu_event(ev)
+		"avatar_camera":   # caméra de contrôle derrière (« follow ») ou à côté (« side ») de l'avatar (lot V6)
+			_avatar_cam = str(msg.get("view", "")) if str(msg.get("view", "")) in ["follow", "side"] else ""
+			avatar_view.set_visible_for_view(_avatar_view_name())
 		"command":   # commande du contrat envoyée par l'engine lui-même (pause, end_session…)
 			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
+
+
+func _avatar_info() -> Dictionary:
+	if avatar_view == null:
+		return {}
+	var info: Dictionary = avatar_view.test_info()
+	info["standing"] = avatar_model.standing
+	info["crank"] = avatar_model.crank_angle
+	info["on_screen"] = avatar_view.visible and not camera.is_position_behind(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)) \
+		and get_viewport().get_visible_rect().has_point(camera.unproject_position(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)))
+	return info
 
 
 func _test_screenshot(path: String, tag: String) -> void:
@@ -834,6 +860,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"widgets": widgets,
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
+		"avatar": _avatar_info(),
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -846,7 +873,45 @@ func _widget_text(key: String) -> String:
 	return ""
 
 
+## Avatar (lot V6) : réglages du profil et FTP du hello_ack (core sans `progression` : avatar par défaut).
+func _configure_avatar() -> void:
+	var prog = ipc.core_config.get("progression", {})
+	var raw = prog.get("avatar") if prog is Dictionary else null
+	avatar_model.configure(raw, float(ipc.core_config.get("ftp_w", 0.0)))
+	avatar_view.configure(avatar_model.settings, 0)
+	avatar_view.set_visible_for_view(_avatar_view_name())
+
+
+## Vue de caméra courante : « subjective » sauf pendant une caméra de contrôle de test.
+func _avatar_view_name() -> String:
+	return _avatar_cam if _avatar_cam != "" else "subjective"
+
+
+## Une fois par image : pédalier et position du modèle d'après la dernière trame, avatar posé sur la route.
+## `pos` : point de la route sous le cycliste (déjà à l'échelle du relief), `heading` en radians.
+func _step_avatar(pos: Vector3, heading: float, now_us: int, pitch_deg: float) -> void:
+	if avatar_view == null:
+		return
+	var paused := session_state == "PAUSED"
+	avatar_model.update(now_us / 1000000.0, _last_state.get("cadence", null), _last_state.get("power", null),
+		_last_state.get("grade", null), paused)
+	if not avatar_view.visible:
+		return
+	avatar_view.apply(avatar_model)
+	avatar_view.position = pos
+	avatar_view.rotation = Vector3(deg_to_rad(pitch_deg), -heading, 0.0)
+	if _avatar_cam != "":
+		var fwd := Vector3(sin(heading), 0.0, -cos(heading))
+		var right := Vector3(cos(heading), 0.0, sin(heading))
+		if _avatar_cam == "side":
+			camera.global_position = pos + right * 3.2 + Vector3(0.0, 1.0, 0.0)
+		else:
+			camera.global_position = pos - fwd * 3.0 + Vector3(0.0, 1.7, 0.0)
+		camera.look_at(pos + Vector3(0.0, 0.95, 0.0), Vector3.UP)
+
+
 func _on_hello_ack(_ack: Dictionary) -> void:
+	_configure_avatar()
 	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage. Core (re)démarré : listes
 	# redemandées au prochain état affichant le menu. Modes de l'accueil : hello_ack.config.modes
 	# (2.0 ; absent en 1.0).

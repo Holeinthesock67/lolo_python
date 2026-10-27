@@ -282,6 +282,17 @@ def overlap(a: list[float], b: list[float]) -> float:
     return max(0.0, w) * max(0.0, h)
 
 
+# Profil de démonstration du hello_ack (lot V6) : avatar réglé, seuils de danseuse par défaut.
+AVATAR_PROGRESSION = {
+    "level": 8, "xp": 4310, "xp_level_start": 3800, "xp_next_level": 5000, "coins": 210,
+    "equipped": {"frame": "frame-alu", "wheels": "wheels-carbon-40", "helmet": "helmet-basic",
+                 "kit": "kit-blue", "socks": "socks-white", "glasses": "glasses-none"},
+    "avatar": {"height": "M", "build": "medium", "skin": 3, "hair": 2, "hair_color": 1, "kit_primary": 4,
+               "kit_secondary": 11, "number": 27, "standing_grade_pct": 8, "standing_power_pct": 150},
+    "lives": 0,
+}
+
+
 # --- faux core piloté pas à pas -------------------------------------------------------------------
 
 @dataclass
@@ -558,6 +569,7 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     engine_log = out_dir / f"{name}_engine.log"
     engine_log.write_text("")
     core = VisualCore(state_port, cmd_port, EngineLog(engine_log))
+    core.progression = AVATAR_PROGRESSION
     core.start()
     cmd = [args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}", "--audio-driver", "Dummy"]
     if not args.native:
@@ -725,6 +737,43 @@ def _scenes(s: Session) -> None:
         s.check("sans_bot", "sans bot : encart caché, aucune silhouette",
                 not info["widgets"]["bots_panel"]["visible"] and info.get("bots", {}).get("shown") == 0,
                 f"{info.get('bots')}")
+    time.sleep(1.0)
+
+    # 3 ter ter. Avatar (lot V6), vu par la caméra de contrôle derrière lui (la caméra du jeu reste
+    # subjective, où l'avatar est caché) : visible, jambes à des angles différents sur deux captures
+    # espacées (cadence de 37 tr/min : moins d'un tour entre les deux), assis à plat, en danseuse sur une pente de 10 %.
+    shot = s.capture("avatar_subjectif")
+    if shot:
+        s.check("avatar_subjectif", "avatar caché en vue subjective", not shot[1].get("avatar", {}).get("visible", True),
+                f"{shot[1].get('avatar')}")
+    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    time.sleep(1.0)
+    a = s.capture("avatar_assis")
+    time.sleep(0.37)
+    b = s.capture("avatar_assis_2")
+    if a and b:
+        (img_a, info_a), (img_b, info_b) = a, b
+        av_a, av_b = info_a.get("avatar", {}), info_b.get("avatar", {})
+        s.check("avatar_assis", "avatar visible dans le champ de la caméra de contrôle",
+                av_a.get("visible") and av_a.get("on_screen"), f"{av_a}")
+        s.check("avatar_assis", "avatar assis à plat", av_a.get("standing") is False)
+        s.check("avatar_assis", "avatar entier (niveau de détail 0)", av_a.get("lod") == 0 and av_a.get("triangles", 0) > 1000,
+                f"{av_a.get('triangles')} triangles")
+        turn = abs((av_b.get("crank", 0.0) - av_a.get("crank", 0.0) + 3.14159) % 6.28318 - 3.14159)
+        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.5, f"{turn:.2f} rad d'écart")
+        box = (s.width * 0.30, s.height * 0.25, s.width * 0.70, s.height * 0.95)
+        d = mean_abs_diff(img_a, img_b, box)
+        s.check("avatar_assis_2", "les jambes changent l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
+        s.check_world("avatar_assis", img_a, info_a)
+    core.set_scene(grade=10.0, grade_sent=10.0)
+    time.sleep(1.5)
+    shot = s.capture("avatar_danseuse")
+    if shot:
+        av = shot[1].get("avatar", {})
+        s.check("avatar_danseuse", "en danseuse sur 10 % de pente", av.get("standing") is True and av.get("on_screen"), f"{av}")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
+    core.set_scene(grade=0.0, grade_sent=0.0, power=250.0, power_3s=248.0, cadence=90.0)
     time.sleep(1.0)
 
     # 3 quater. Pluie (lot P17) : météo imposée, particules autour de la caméra et chaussée mouillée.

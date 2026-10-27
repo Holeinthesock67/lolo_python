@@ -418,6 +418,9 @@ feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms"
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
 [progression]
 enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0
+[avatar]
+standing_grade_pct = 8.0     # l'avatar se met en danseuse au-dessus de cette pente (3 à 15 %, lot V6)
+standing_power_pct = 150.0   # ou de cette puissance, en % de la FTP (100 à 300)
 [powerups]
 mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
 [rogue]
@@ -441,8 +444,8 @@ La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off
 | `[rogue] cp_w` | 0 (0 : la FTP) | 0 à 1 000 | R2 |
 | `[rogue] grade_rate_up_pct_per_s` | 8,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
 | `[rogue] grade_rate_down_pct_per_s` | 12,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
-| `[avatar] standing_grade_pct` | 8 (pente, %) | fixées par V6 | V6 |
-| `[avatar] standing_power_pct` | 150 (% de la FTP) | fixées par V6 | V6 |
+| `[avatar] standing_grade_pct` | 8 (pente, %) | 3 à 15 | V6 |
+| `[avatar] standing_power_pct` | 150 (% de la FTP) | 100 à 300 | V6 |
 
 Le reste de l'avatar (taille, silhouette, couleurs, numéro) est dans `~/OpenRide/profile.json` (lot V4), réglé au Click par `set_avatar`.
 
