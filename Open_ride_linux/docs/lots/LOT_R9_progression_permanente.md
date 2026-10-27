@@ -48,7 +48,7 @@ R6, V2, V3b et V4 livrés.
 
 ## 6. Modifications de contrat autorisées
 
-Ajout compatible à la révision 1.4 (avec R1 et V1) : `hello_ack.config.rogue` gagne `chassis` (débloqués, choisi) et `lives` ; `start_run` gagne l'argument facultatif `chassis`.
+Ajout compatible à la révision 1.4 (lot T1) : `hello_ack.config.rogue` gagne `chassis` (débloqués, choisi) et `lives` ; `start_run` gagne l'argument facultatif `chassis`.
 
 ## 7. Critères d'acceptation
 

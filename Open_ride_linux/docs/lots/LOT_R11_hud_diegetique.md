@@ -6,12 +6,12 @@ Afficher l'état du joueur dans la scène plutôt qu'en surimpression : hologram
 
 ## 2. À lire
 
-1. `docs/lots/00_INDEX.md`, `docs/2.0/GDD_CYBER_ROGUE.md` §3.1, `docs/lots/LOT_R1_contrat_ipc_rogue.md` §4.4.
+1. `docs/lots/00_INDEX.md`, `docs/lots/LOT_R17_direction_artistique.md` (charte, jetons de couleur, matériaux, catalogue des objets et des effets : à suivre partout), `docs/2.0/GDD_CYBER_ROGUE.md` §3.1, `docs/lots/LOT_T1_contrat_1_4.md` §4.3.
 2. Code : `engine/scripts/hud_view_model.gd` et `hud_view.gd` (modèle et vue du HUD classique), `engine/scripts/camera_follow.gd`, `engine/scripts/sound_model.gd`.
 
 ## 3. Prérequis
 
-R1 livré ; R10 pour l'intégration dans la scène.
+T1 et R17 livrés ; R10 pour l'intégration dans la scène.
 
 ## 4. Travail demandé
 

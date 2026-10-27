@@ -1,0 +1,152 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideRoomMessage",
+  "description": "Révision 1.4 (série R) : salle du mode Cyber-Rogue, envoyée au début de chaque salle et, en couloir, pour chacune des deux portes ; parties de 60 000 octets au plus, comme routes.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "room_id",
+    "part",
+    "parts",
+    "archetype",
+    "variant",
+    "length_m",
+    "nominal_s",
+    "profile",
+    "markers",
+    "next"
+  ],
+  "properties": {
+    "type": {
+      "const": "room"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "room_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "part": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "archetype": {
+      "type": "string",
+      "enum": [
+        "diesel",
+        "puncheur",
+        "grimpeur",
+        "sprinteur",
+        "saboteur",
+        "boss"
+      ]
+    },
+    "variant": {
+      "type": "string",
+      "maxLength": 24
+    },
+    "length_m": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "nominal_s": {
+      "type": "number",
+      "exclusiveMinimum": 0
+    },
+    "profile": {
+      "type": "array",
+      "maxItems": 1500,
+      "description": "Pente tous les 10 m : [s_m, grade_pct].",
+      "items": {
+        "type": "array",
+        "minItems": 2,
+        "maxItems": 2,
+        "prefixItems": [
+          {
+            "type": "number",
+            "minimum": 0
+          },
+          {
+            "type": "number"
+          }
+        ]
+      }
+    },
+    "markers": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "kind",
+          "s_m",
+          "len_m",
+          "param"
+        ],
+        "properties": {
+          "kind": {
+            "type": "string",
+            "enum": [
+              "arch",
+              "strike_target",
+              "parry_zone",
+              "pad",
+              "purge",
+              "tunnel",
+              "rock",
+              "shockwave"
+            ]
+          },
+          "s_m": {
+            "type": "number",
+            "minimum": 0
+          },
+          "len_m": {
+            "type": "number",
+            "minimum": 0
+          },
+          "param": {
+            "type": [
+              "number",
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    },
+    "next": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "required": [
+        "room_id",
+        "archetype"
+      ],
+      "properties": {
+        "room_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "archetype": {
+          "type": "string",
+          "enum": [
+            "diesel",
+            "puncheur",
+            "grimpeur",
+            "sprinteur",
+            "saboteur",
+            "boss"
+          ]
+        }
+      }
+    }
+  }
+}

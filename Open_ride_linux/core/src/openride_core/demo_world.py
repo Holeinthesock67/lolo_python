@@ -1,4 +1,4 @@
-"""Parcours `.world` synthétiques (manifeste + couche route) conformes au Format .world v1.
+"""Parcours `.world` synthétiques (manifeste, couche route et couche segments) conformes au Format .world v1.
 
 Sert au parcours de démonstration commun au core et à l'engine, et aux tests.
 La ligne de commande est dans `tools/fake_world.py`.
@@ -12,6 +12,9 @@ des données factices, le compilateur utilisera UTM via pyproj).
 Le parcours de démonstration commun au core et à l'engine (`demo`, 5 000 m) est écrit par
 `write_demo_world` avec une date de création fixe, pour être identique octet pour octet :
     python -m openride_core.tools.fake_world --demo --out ../engine/demo
+
+La couche `segments.json` (format 1.3, lot T3) porte les montées et sprints détectés
+automatiquement par `segments.py`, sans segment manuel (décision du 27 octobre).
 """
 
 from __future__ import annotations
@@ -20,6 +23,8 @@ import json
 import math
 from datetime import datetime
 from pathlib import Path
+
+from .segments import Profile, detect_segments
 
 EARTH_R = 6_371_000.0
 DS_M = 10.0
@@ -97,10 +102,18 @@ def build_route(length_m: float = 8000.0, origin_lat: float = 45.09, origin_lon:
     }
 
 
-def build_manifest(name: str, route: dict, created: str | None = None) -> dict:
+def build_segments(route: dict) -> list[dict]:
+    """Segments détectés sur la route (abscisses s_i = i·ds_m, la dernière = length_m)."""
+    s = [i * route["ds_m"] for i in range(route["n"] - 1)] + [route["length_m"]]
+    return [seg.to_dict() for seg in detect_segments(Profile(s, route["alt_m"], route["grade_pct"]))]
+
+
+def build_manifest(name: str, route: dict, created: str | None = None,
+                   segments: list[dict] | None = None) -> dict:
+    segments = build_segments(route) if segments is None else segments
     return {
         "format": "openride-world",
-        "format_version": "1.0",
+        "format_version": "1.3",
         "name": name,
         "created": created or datetime.now().astimezone().isoformat(timespec="seconds"),
         "compiler": {"name": "openride-fake-world", "version": "0.1.0"},
@@ -117,6 +130,8 @@ def build_manifest(name: str, route: dict, created: str | None = None) -> dict:
             "vegetation": {"present": False, "source": "none"},
             "poi": {"present": False},
             "water": {"present": False},
+            "segments": {"present": True, "version": "1.0", "file": "segments.json",
+                         "count": len(segments), "manual_count": 0},
         },
     }
 
@@ -125,9 +140,13 @@ def write_world(out_dir: Path, name: str, length_m: float, created: str | None =
     route = build_route(length_m)
     world = out_dir / f"{name}.world"
     world.mkdir(parents=True, exist_ok=True)
+    segments = build_segments(route)
     (world / "route.json").write_text(json.dumps(route, separators=(",", ":")), encoding="utf-8")
-    (world / "manifest.json").write_text(json.dumps(build_manifest(name, route, created), indent=2),
-                                         encoding="utf-8")
+    (world / "segments.json").write_text(
+        json.dumps({"version": "1.0", "segments": segments}, indent=1, ensure_ascii=False) + "\n",
+        encoding="utf-8")
+    (world / "manifest.json").write_text(
+        json.dumps(build_manifest(name, route, created, segments), indent=2), encoding="utf-8")
     return world
 
 

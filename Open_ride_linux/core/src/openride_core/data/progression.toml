@@ -1,0 +1,331 @@
+# Tables de la progression (série V) : expérience, niveaux et défis.
+#
+# Fichier livré avec le core. Pour changer une valeur, copier seulement les clés voulues dans
+# ~/OpenRide/progression.toml : elles remplacent celles d'ici (une liste [[challenges]] remplace
+# toute la liste). Tout se recalcule depuis le journal des séances : changer une valeur change
+# aussi l'expérience des séances passées.
+
+[xp]
+per_km = 20                  # points par km roulé
+per_climb_m = 2              # points par mètre de dénivelé positif
+erg_per_min = 10             # points par minute d'entraînement ERG
+erg_completed_bonus = 0.20   # + 20 % si l'entraînement est terminé
+per_segment = 50             # série T (lot V5)
+per_segment_pr = 100         # record personnel sur un segment, en plus
+per_jersey = 200             # maillot gagné dans la séance
+rogue_per_min = 10           # run Cyber-Rogue (série R)
+rogue_boss_default = 100     # boss vaincu absent de la table ci-dessous (valeur provisoire)
+
+[xp.rogue_boss]
+chimere_centrale = 300       # boss final (valeur provisoire, à régler avec la série R)
+
+[rules]
+min_session_s = 300          # séance de moins de 5 min chronométrées : rien
+climb_deadband_m = 1.0       # variation d'altitude ignorée sous ce seuil (bruit)
+erg_replaces_distance = true # en ERG, les minutes remplacent la distance et le dénivelé (V-Q7)
+
+[levels]
+count = 50
+xp_level_2 = 1000            # points pour passer au niveau 2
+xp_level_max = 100000        # points cumulés pour le dernier niveau
+
+# Pièces (lot V3b) : gagnées avec l'expérience (mêmes séances), dépensées au Garage et pour des
+# vies du mode Cyber-Rogue. En ERG, avec `erg_replaces_distance`, les minutes remplacent la distance.
+[coins]
+# Pièces à l'effort (V-Q10, 27 octobre) : chaque minute rapporte selon la puissance en % de
+# la FTP, en SIM comme en ERG. Zones [seuil en % de la FTP, pièces par minute], seuils croissants.
+# Une heure d'endurance (65 %) : 30 pièces ; une heure avec 2 × 20 min au seuil : 70 pièces.
+effort = [[0, 0.25], [55, 0.5], [75, 1.0], [90, 1.5], [105, 2.0]]
+per_segment = 5
+per_segment_pr = 10          # record personnel sur un segment (série T)
+per_power_record = 15        # record de puissance moyenne battu sur 5 s, 1, 5 ou 20 min
+per_jersey = 20
+rogue_boss_default = 10      # boss vaincu absent de la table ci-dessous
+life_price = 30              # une vie du mode Cyber-Rogue (lot R9)
+
+[coins.rogue_boss]
+chimere_centrale = 50
+
+# Défis : `stat` atteint `threshold` ; `reward` = pièce d'équipement offerte (catalogue du lot V3).
+[[challenges]]
+id = "km_1000"
+name = "1 000 km cumulés"
+stat = "total_km"
+threshold = 1000
+reward = "kit_mille_bornes"
+
+[[challenges]]
+id = "climb_10000"
+name = "10 000 m de dénivelé cumulé"
+stat = "total_climb_m"
+threshold = 10000
+reward = "helmet_sommet"
+
+[[challenges]]
+id = "session_50km"
+name = "Première séance de 50 km"
+stat = "best_session_km"
+threshold = 50
+reward = "socks_longue_distance"
+
+[[challenges]]
+id = "erg_10"
+name = "10 entraînements ERG terminés"
+stat = "erg_completed"
+threshold = 10
+reward = "glasses_metronome"
+
+[[challenges]]
+id = "hc_first"
+name = "Premier col hors catégorie"
+stat = "hc_climbs"
+threshold = 1
+reward = "frame_climber"
+
+[[challenges]]
+id = "kom_first"
+name = "Premier maillot à pois"
+stat = "jerseys_kom"
+threshold = 1
+reward = "kit_pois"
+
+[[challenges]]
+id = "rogue_boss_first"
+name = "Premier boss Cyber-Rogue vaincu"
+stat = "rogue_bosses"
+threshold = 1
+reward = "kit_neon"
+
+# Catalogue d'équipement (lot V3). Effets en masse (kg) et CdA (%) sur la vitesse virtuelle
+# seulement, bornés ensemble à −3 % de la masse totale et −6 % du CdA (plan V §2.2).
+# `level` : niveau où la pièce devient achetable ; `price` : en pièces (lot V3b) ;
+# `buyable = false` : pièce offerte par un défi seulement ; `default` : possédée au départ.
+# `terrain` : flat, rolling, climb ou all ; `look` : forme dessinée par l'engine (lot V7).
+
+[[items]]
+id = "frame_allround"
+slot = "frame"
+name = "Polyvalent"
+level = 1
+price = 0
+mass_delta_kg = 0.0
+cda_delta_pct = 0.0
+terrain = "all"
+look = "frame_round"
+default = true
+
+[[items]]
+id = "frame_climber"
+slot = "frame"
+name = "Grimpeur"
+level = 5
+price = 150
+mass_delta_kg = -1.5
+cda_delta_pct = 0.0
+terrain = "climb"
+look = "frame_light"
+
+[[items]]
+id = "frame_aero"
+slot = "frame"
+name = "Aéro"
+level = 10
+price = 250
+mass_delta_kg = 0.5
+cda_delta_pct = -3.0
+terrain = "flat"
+look = "frame_aero"
+
+[[items]]
+id = "frame_allround_light"
+slot = "frame"
+name = "Polyvalent léger"
+level = 25
+price = 450
+mass_delta_kg = -0.8
+cda_delta_pct = -1.5
+terrain = "rolling"
+look = "frame_round_light"
+
+[[items]]
+id = "frame_tt"
+slot = "frame"
+name = "Contre-la-montre"
+level = 30
+price = 500
+mass_delta_kg = 0.5
+cda_delta_pct = -4.0
+terrain = "flat"
+look = "frame_tt"
+
+[[items]]
+id = "wheels_standard"
+slot = "wheels"
+name = "Standard"
+level = 1
+price = 0
+mass_delta_kg = 0.0
+cda_delta_pct = 0.0
+terrain = "all"
+look = "wheels_spoked"
+default = true
+
+[[items]]
+id = "wheels_light"
+slot = "wheels"
+name = "Légères"
+level = 3
+price = 100
+mass_delta_kg = -0.5
+cda_delta_pct = 0.0
+terrain = "climb"
+look = "wheels_spoked_light"
+
+[[items]]
+id = "wheels_deep"
+slot = "wheels"
+name = "Profilées"
+level = 8
+price = 200
+mass_delta_kg = 0.2
+cda_delta_pct = -2.0
+terrain = "rolling"
+look = "wheels_deep"
+
+[[items]]
+id = "wheels_disc"
+slot = "wheels"
+name = "Lenticulaire"
+level = 15
+price = 350
+mass_delta_kg = 0.5
+cda_delta_pct = -3.0
+terrain = "flat"
+look = "wheels_disc"
+
+# Apparence seulement (aucun effet).
+[[items]]
+id = "helmet_route"
+slot = "helmet"
+name = "Casque route"
+level = 1
+price = 0
+look = "helmet_road"
+default = true
+
+[[items]]
+id = "helmet_aero"
+slot = "helmet"
+name = "Casque aéro"
+level = 6
+price = 80
+look = "helmet_aero"
+
+[[items]]
+id = "helmet_sommet"
+slot = "helmet"
+name = "Casque « Sommet »"
+buyable = false
+look = "helmet_summit"
+
+[[items]]
+id = "kit_uni"
+slot = "kit"
+name = "Tenue unie"
+level = 1
+price = 0
+look = "kit_plain"
+default = true
+
+[[items]]
+id = "kit_bandes"
+slot = "kit"
+name = "Tenue à bandes"
+level = 2
+price = 50
+look = "kit_stripes"
+
+[[items]]
+id = "kit_club"
+slot = "kit"
+name = "Maillot de club"
+level = 12
+price = 120
+look = "kit_club"
+
+[[items]]
+id = "kit_mille_bornes"
+slot = "kit"
+name = "Tenue « Mille bornes »"
+buyable = false
+look = "kit_milestones"
+
+[[items]]
+id = "kit_pois"
+slot = "kit"
+name = "Maillot à pois"
+buyable = false
+look = "kit_polka"
+
+[[items]]
+id = "kit_neon"
+slot = "kit"
+name = "Tenue « Néon »"
+buyable = false
+look = "kit_neon"
+
+[[items]]
+id = "socks_blanches"
+slot = "socks"
+name = "Chaussettes blanches"
+level = 1
+price = 0
+look = "socks_white"
+default = true
+
+[[items]]
+id = "socks_rayees"
+slot = "socks"
+name = "Chaussettes rayées"
+level = 4
+price = 30
+look = "socks_striped"
+
+[[items]]
+id = "socks_hautes"
+slot = "socks"
+name = "Chaussettes hautes"
+level = 9
+price = 60
+look = "socks_tall"
+
+[[items]]
+id = "socks_longue_distance"
+slot = "socks"
+name = "Chaussettes « Longue distance »"
+buyable = false
+look = "socks_long_distance"
+
+[[items]]
+id = "glasses_claires"
+slot = "glasses"
+name = "Lunettes claires"
+level = 1
+price = 0
+look = "glasses_clear"
+default = true
+
+[[items]]
+id = "glasses_miroir"
+slot = "glasses"
+name = "Lunettes miroir"
+level = 7
+price = 70
+look = "glasses_mirror"
+
+[[items]]
+id = "glasses_metronome"
+slot = "glasses"
+name = "Lunettes « Métronome »"
+buyable = false
+look = "glasses_metronome"
