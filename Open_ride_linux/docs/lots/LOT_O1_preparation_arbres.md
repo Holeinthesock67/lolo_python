@@ -46,3 +46,17 @@ Aucune.
 
 - Changer la densité, les modèles d'arbres ou le budget d'instances.
 - Déplacer la préparation dans un autre fil (déjà asynchrone via `world_streamer.gd`).
+
+## 9. Livraison
+
+Livré le 27 octobre 2026 (issue #119), thread « Développer les lots O restants ». Mesures sur le PC cible, machine au repos.
+
+- Temps de préparation (`UNIT=test_tree_renderer`, 3 lancements) : 227, 233 et 232 ms avant ; 87, 89 et 86 ms après.
+- Ventilation après optimisation (`last_profile`, imprimée par le test) : candidats du bruit 52 ms, filtre (pente, route, altitude) 20 ms, couloir de la route 10 ms, répartition en cases 2 ms.
+- `vegetation_placer.gd` : les valeurs du bruit aux nœuds entiers des deux octaves sont calculées une fois par tuile (`_lattice`) puis interpolées par `_lattice_noise`, avec les mêmes opérations que `_value_noise` ; tableaux des candidats et des arbres préalloués ; `last_profile`.
+- `tree_renderer.gd` : copie superficielle du thème et copie de la seule section `vegetation` (le thème d'entrée n'est jamais modifié) ; anneaux extérieurs des zones OSM convertis une fois par tuile, avec leur boîte englobante ; `last_profile`.
+- Non-régression : empreintes exactes (SHA-256 des octets des arbres, case après case) de trois tuiles relevées sur main a2a4994 avant l'optimisation et identiques après : sans zone (7 456 arbres), deux zones OSM dont une avec trou et un bâtiment (9 125), relief (5 679). `test_vegetation_placer.gd` garde son empreinte de référence.
+- Seuil de CI (`engine/tests/perf_budgets.json`) ramené de 200 à 170 ms ; budget local inchangé, 150 ms.
+- Tests visuels (`run_visual_tests.sh --native`) : aucun écart nouveau, au plus 0,60 sur 255 de différence moyenne avec les images d'avant ; les échecs déjà présents sur main (fenêtre 1920 × 1080 capturée plus petite, nuages) restent les mêmes.
+- La piste « grille 101 × 101 en accès direct » n'a pas été nécessaire.
+- Sur le PC : reste une séance en `high` pour vérifier l'absence d'à-coups à l'arrivée des tuiles.

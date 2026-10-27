@@ -1,5 +1,5 @@
 {
-  "version": "1.0",
+  "version": "1.2",
   "name": "Alpes été",
   "terrain": {
     "grass": {
@@ -43,6 +43,38 @@
   },
   "sky": {
     "sun_elevation_deg": 40,
-    "fog_density": 0.0008
+    "fog_density": 0.0008,
+    "clouds": {
+      "coverage": 0.3,
+      "speed_factor": 1.0,
+      "color": "#ffffff",
+      "altitude_m": 1500
+    },
+    "time_of_day": {
+      "mode": "fixed",
+      "hour": 14,
+      "factor": 1
+    }
+  },
+  "weather": {
+    "kind": "clear",
+    "intensity": 0.0,
+    "morning_mist": false
+  },
+  "season": "summer",
+  "wind": {
+    "speed_kmh": 8,
+    "from_deg": 270,
+    "gust_pct": 20
+  },
+  "ambience": {
+    "volume": 0.6,
+    "birds": 0.6,
+    "insects": 0.4
+  },
+  "fauna": {
+    "birds": 0.5,
+    "livestock": 0.4,
+    "deer": 0.1
   }
 }

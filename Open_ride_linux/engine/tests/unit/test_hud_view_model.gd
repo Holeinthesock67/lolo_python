@@ -6,6 +6,7 @@ extends SceneTree
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -178,12 +179,11 @@ func _test_profile_open() -> void:
 		_check(absf(p["alt_min"] - (lo - margin)) < 1e-6 and absf(p["alt_max"] - (hi + margin)) < 1e-6,
 			"profil ouvert à s = %.0f : alt_min et alt_max avec marge de 5 %%" % s)
 	# Mesure : 100 appels sur 120 colonnes.
-	var t0 := Time.get_ticks_usec()
-	for i in range(100):
-		vm.profile(route, 25.0 * i)
-	var avg_ms := (Time.get_ticks_usec() - t0) / 100.0 / 1000.0
-	print("Mesure : profile (120 colonnes) en %.3f ms en moyenne sur 100 appels" % avg_ms)
-	_check(avg_ms < 2.0, "profile en moins de 2 ms (%.3f ms)" % avg_ms)
+	var avg_ms := PerfBudget.measure_ms(func():
+		for i in range(100):
+			vm.profile(route, 25.0 * i), 3, 1) / 100.0
+	print("Mesure : profile (120 colonnes) en %.3f ms par appel" % avg_ms)
+	_check(PerfBudget.check("hud_profile_120", avg_ms), "profile dans le budget (%.3f ms)" % avg_ms)
 
 
 func _test_profile_loop() -> void:
@@ -327,7 +327,21 @@ func _test_difficulty() -> void:
 	_check(l30["difficulty_visible"] and l30["difficulty_text"] == "Difficulté 30 %", "session_lines à 30 % : visible")
 
 
+func _test_controls_help() -> void:
+	var sim: String = HudViewModel.controls_text(false)
+	var erg: String = HudViewModel.controls_text(true)
+	_check(sim.contains("Y = pause") and sim.contains("braquet") and not sim.contains("intensité"),
+		"rappel en séance libre : Y = pause, + / − = braquet")
+	_check(erg.contains("Y = pause") and erg.contains("intensité") and erg.contains("bloc suivant"),
+		"rappel en ERG : Y = pause, intensité, bloc suivant")
+	_check(HudViewModel.unclear_press_text("PLUS_UNCLEAR", true).contains("A long pour valider")
+		and HudViewModel.unclear_press_text("MINUS_UNCLEAR", true).contains("précédent")
+		and HudViewModel.unclear_press_text("PLUS_UNCLEAR", false).contains("braquet"),
+		"appui ambigu expliqué : pas et A long dans les menus, braquet en séance")
+
+
 func _init() -> void:
+	_test_controls_help()
 	_test_texts()
 	_test_session_lines()
 	_test_distance_on_loop()

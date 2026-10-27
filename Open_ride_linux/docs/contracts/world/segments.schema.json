@@ -1,0 +1,93 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldSegments",
+  "description": "Couche facultative segments.json (format .world 1.3, contrat IPC révision 1.4, lot T1) : sprints et montées ; chaque élément est Segment.to_dict() de core/src/openride_core/segments.py.",
+  "type": "object",
+  "required": [
+    "version",
+    "segments"
+  ],
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "segments": {
+      "type": "array",
+      "maxItems": 200,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "type",
+          "s_start",
+          "s_end",
+          "length_m",
+          "avg_grade_pct",
+          "gain_m",
+          "category",
+          "source"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 24
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 48
+          },
+          "type": {
+            "type": "string",
+            "enum": [
+              "sprint",
+              "climb"
+            ]
+          },
+          "s_start": {
+            "type": "number",
+            "minimum": 0
+          },
+          "s_end": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "length_m": {
+            "type": "number",
+            "exclusiveMinimum": 0
+          },
+          "avg_grade_pct": {
+            "type": "number"
+          },
+          "gain_m": {
+            "type": "number"
+          },
+          "category": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "4",
+              "3",
+              "2",
+              "1",
+              "HC",
+              null
+            ],
+            "description": "null pour un sprint."
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "auto",
+              "manual"
+            ]
+          }
+        }
+      }
+    }
+  }
+}

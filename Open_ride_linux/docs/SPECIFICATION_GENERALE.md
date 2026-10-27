@@ -20,7 +20,7 @@ En cas de désaccord entre ce document et un document détaillé, le document d�
 **Versions**
 
 - **1.0 :** séries de lots A à O et Q (dernière série avant la publication : O, recette O8 et étiquette `v1.0.0`).
-- **1.x :** mises à jour après la 1.0, sans changement de version majeure. La série P (décor vivant, vent, aspiration) y est rangée, sauf le jour, la nuit, les saisons et les packs de textures (P7, P18, P19, P20), reportés à la 2.0 par décision du propriétaire du 25 octobre.
+- **1.x :** mises à jour après la 1.0, sans changement de version majeure : lots N17 et N18 (demi-tour et bots réglés au menu, décision D11 du 27 octobre) et série P (décor vivant, vent, aspiration) y est rangée, sauf le jour, la nuit, les saisons et les packs de textures (P7, P18, P19, P20), reportés à la 2.0 par décision du propriétaire du 25 octobre.
 - **2.0 :** séries R (Cyber-Rogue), T (segments, bonus, bots à profil), V (progression) et W (monde ouvert), plus P7, P18, P19 et P20.
 - **3.0 :** série U (biomes, textures régionales, saisons par biome) et option « gravel ».
 
@@ -113,6 +113,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-ERG-2 | Formats `.erg` et `.mrc` de GoldenCheetah | — | O9 | Livré |
 | 1.0-ERG-3 | Test de FTP, plans sur plusieurs semaines, menu Entraînement | — | O10 à O12 | Spécifié |
 | 1.0-ERG-4 | Bandeau ERG à l'écran, histogramme, bip à T − 3 s | §6 | N7 | Livré |
+| 1.0-ERG-5 | Boutons de l'ERG selon le plan commun (§7.1) : ± court biais ± 2 %, ± long biais ± 10 %, Z bloc suivant, Y pause | §4.4 | O17 | Spécifié (décision D3 du 27 octobre) |
 | 1.0-CMP-1 | Compilateur GPX vers `.world` : route, terrain, OSM, caches | §7 | B1, B2, I3, I4 | Livré |
 | 1.0-CMP-2 | Traces FIT et TCX, archives Garmin, compilation au lancement | §7 | M7, N11, O5 | Livré (M7, N11) ; O5 en revue |
 | 1.0-CMP-3 | Bibliothèque de parcours et pack de cols célèbres | — | O15, O16 | Spécifié |
@@ -122,8 +123,8 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-RND-4 | Pentes lisibles à l'écran (caméra et relief exagéré) | — | Q2 | En revue |
 | 1.0-RND-5 | Thèmes et packs de thèmes | §10 | H7, I5, N10 | Livré |
 | 1.0-UI-1 | Menus au Click : parcours, entraînements, appareils, bilan | §4.5 | N1 à N6, N13 | Livré |
-| 1.0-UI-2 | Menu principal et sous-menu ERG | — | N15, N16 | En revue |
-| 1.0-UI-3 | Réglages depuis le menu (FTP, masse, difficulté, braquet, qualité, thème) | §11 | O3, O4 | En revue |
+| 1.0-UI-2 | Menu principal et sous-menu ERG ; l'entrée qui choisit le parcours s'appelle « Parcours » (« Monde ouvert » est réservé à la série W) et l'accueil n'affiche que les modes annoncés par le core (`hello_ack.config.modes`, révision 1.3) | — | N15, N16 | N15 livré (« Parcours », décision D10) ; N16 en revue (PR #249) |
+| 1.0-UI-3 | Réglages depuis le menu (FTP, masse, difficulté, braquet, qualité, thème) | §11 | O3, O4 | Livré |
 | 1.0-UI-4 | Courbes de la séance façon GoldenCheetah | — | O13, O14 | O13 en revue ; O14 spécifié |
 | 1.0-UI-5 | Bots à l'écran (facultatif pour la 1.0) | — | O7 | Spécifié |
 | 1.0-REC-1 | Journal JSONL continu, FIT minimal, reprise après plantage | §9 | N8 | Livré |
@@ -137,7 +138,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 
 ## 5. Exigences des versions suivantes
 
-### 5.1 Mises à jour 1.x : décor vivant, vent et aspiration (série P)
+### 5.1 Mises à jour 1.x : décor vivant, vent et aspiration (série P), réglages de séance au menu (lots N17 et N18)
 
 Détail : paragraphe « Série P » de [lots/00_INDEX.md](lots/00_INDEX.md) et cahiers [P1](lots/LOT_P1_contrat_vent_decor.md) à [P21](lots/LOT_P21_passants_villages.md). Tous les lots attendent la publication de la 1.0.
 
@@ -149,6 +150,8 @@ Détail : paragraphe « Série P » de [lots/00_INDEX.md](lots/00_INDEX.md) et c
 | 1.x-DEC-1 | Arbres et herbe au vent, nuages, météo légère | P5, P6, P8 | Spécifié |
 | 1.x-DEC-2 | Sons d'ambiance et du vélo (vent selon la vitesse dans l'air, roue libre, « clac » à la reprise) | P9, P10 | Spécifié |
 | 1.x-DEC-3 | Animaux, éoliennes, drapeaux, véhicules, bord de route, spectateurs, passants | P11 à P15, P21 | Spécifié |
+| 1.x-UI-1 | Demi-tour sur la route depuis l'écran de pause (« Faire demi-tour »), sans geste du Click | N17 | Spécifié (décision D11 du 27 octobre) |
+| 1.x-UI-2 | Bots réglés depuis les menus : nombre, puissance de chacun, fantôme, dans les réglages et l'écran de pause | N18 | Spécifié (décision D11 du 27 octobre) |
 | 1.x-DEC-4 | Intégration et recette : au moins 55 images/s en `low` sur la GTX 1060, p99 sous 25 ms, tout se coupe par préréglage | P16, P17 | Spécifié |
 
 ### 5.2 Version 2.0
@@ -172,10 +175,10 @@ Détail : paragraphe « Série P » de [lots/00_INDEX.md](lots/00_INDEX.md) et c
 | 2.0-ROG-4 | Salles générées à graine, Firewall à X % de FTP, combat, run en couloirs avec deck, reliques et boss | R3 à R7 | Planifié |
 | 2.0-ROG-5 | Run composée à partir d'un objectif (VO2max, seuil, endurance) et d'une durée choisis au menu | R15 | Planifié |
 | 2.0-ROG-6 | Châssis permanents à bonus de jeu, vies achetées avec les pièces de la série V | R9 | Planifié |
-| 2.0-ROG-7 | Scène néon séparée de la scène classique, HUD diégétique, ennemis géométriques, menu | R10 à R13 | Planifié |
+| 2.0-ROG-7 | Scène néon séparée de la scène classique, HUD diégétique, ennemis géométriques, menu ; direction artistique et catalogue graphique générés par le code | R10 à R13, R17 | Planifié |
 | 2.0-ROG-8 | Recette : run complète, 60 images/s, ressenti des boutons | R14 | Planifié |
 
-Les cahiers R0 à R16 sont en revue (PR #244).
+Les cahiers R0 à R17 sont sur `main` ; le contrat de la série est dans le lot T1 (contrat 1.4 commun aux séries R, T et V).
 
 **Mode classique enrichi (série T)** — détail : [PLAN_SERIE_T.md](2.0/PLAN_SERIE_T.md)
 
@@ -201,7 +204,7 @@ Les cahiers R0 à R16 sont en revue (PR #244).
 | 2.0-PRG-4 | Avatar généré par le code, pédalage synchronisé sur la cadence, menu Garage | V6 à V8 | Planifié |
 | 2.0-PRG-5 | Fin de séance : expérience, pièces, niveau, déblocages | V9 | Planifié |
 
-Les cahiers V1 à V11 et les questions V-Q4 à V-Q13 sont en revue (PR #238).
+Les cahiers V2 à V11 sont sur `main` et les questions V-Q1 à V-Q13 sont tranchées ; le contrat de la série est dans le lot T1.
 
 **Monde ouvert (série W)** — détail : [PLAN_SERIE_W.md](2.0/PLAN_SERIE_W.md)
 
@@ -216,19 +219,19 @@ Les cahiers V1 à V11 et les questions V-Q4 à V-Q13 sont en revue (PR #238).
 
 ### 5.3 Version 3.0
 
-Détail : [PLAN_SERIE_U.md](3.0/PLAN_SERIE_U.md). Toutes les questions U-Q1 à U-Q5, U-G1 et U-G2 sont tranchées (25 octobre).
+Détail : [PLAN_SERIE_U.md](3.0/PLAN_SERIE_U.md). Toutes les questions U-Q1 à U-Q5, U-G1 et U-G2 sont tranchées (25 octobre). Cahiers des lots U0 à U22 rédigés le 27 octobre ([index des lots](lots/00_INDEX.md)) ; les questions U-Q6 à U-Q13 nées de cette rédaction (§11 du plan) sont toutes validées le 27 octobre.
 
 | Id | Exigence | Lots | Statut |
 | --- | --- | --- | --- |
-| 3.0-BIO-1 | Seize biomes ; au plus quatre par tuile de terrain (trois en `low`) ; biome automatique d'après les données réelles et forçage au compilateur et au menu | U1, U2, U16 | Planifié |
+| 3.0-BIO-1 | Seize biomes ; au plus quatre par tuile de terrain (trois en `low`) ; biome automatique d'après les données réelles et forçage au compilateur et au menu | U1, U2, U16, U19 | Planifié |
 | 3.0-BIO-2 | Occupation du sol ESA WorldCover téléchargée par le compilateur et mise en cache | U2 | Planifié |
 | 3.0-BIO-3 | Variantes régionales de roches, terres et bâtiments à grosse maille | U4, U14 | Planifié |
 | 3.0-BIO-4 | Mer, côtes et plages | U3, U9 | Planifié |
 | 3.0-BIO-5 | Saisons propres à chaque biome (saison sèche et saison des pluies, désert, polaire) | U13 | Planifié |
 | 3.0-BIO-6 | Végétation, sons, faune et atmosphère par biome | U7, U8, U10 à U12 | Planifié |
 | 3.0-BIO-7 | Thème 2.0 en pack de biomes, thèmes 1.x toujours lisibles ; textures CC0 en packs, bibliothèque de 5 Go | U1, U15 | Planifié |
-| 3.0-BIO-8 | Budget : 1 Go de mémoire vidéo au plus pour le décor, 55 images/s en `low` ; premier jalon : prairie, forêt tempérée, vignobles et cultures, haute montagne, méditerranéen, littoral | U6, U17, U18 | Planifié |
-| 3.0-GRV-1 | Option « gravel » coupée par défaut : chemins de terre ouverts au monde ouvert ; résistance au roulement 2 à 3 fois celle du bitume, en supplément de pente sous le même plafond que le vent ; en ERG, vitesse seulement | Pas encore de lot | Planifié |
+| 3.0-BIO-8 | Budget : 1 Go de mémoire vidéo au plus pour le décor, 55 images/s en `low` ; premier jalon : prairie, forêt tempérée, vignobles et cultures, haute montagne, méditerranéen, littoral | U6, U17, U18, U19 | Planifié |
+| 3.0-GRV-1 | Option « gravel » coupée par défaut : chemins de terre ouverts au monde ouvert ; résistance au roulement 2 à 3 fois celle du bitume, en supplément de pente sous le même plafond que le vent ; en ERG, vitesse seulement ; surface réelle d'OSM (« Chemins réels ») ou imposée à tout le parcours (« Gravier », « Terre », « Chemin compact ») pour rouler en gravel sur une trace revêtue (décision U-Q8 du 27 octobre) ; ruban de terre ou de gravier | U1, U16, U20, U21, U22 | Planifié |
 
 ## 6. Contrats
 
@@ -240,13 +243,13 @@ Le champ `v` reste 1 : tous les ajouts sont compatibles. Chaque révision est no
 | --- | --- | --- | --- | --- |
 | 1.0 | État à 30 Hz, commandes, heartbeat, pannes | C, D | 1.0 | Livré |
 | 1.1 | Listes des parcours et entraînements, `devices`, bilan enrichi, reprise après plantage | N1 | 1.0 | Livré |
-| 1.2 | `set_difficulty`, `difficulty_pct` ; appairage depuis le menu (`scan_devices`, `pair_devices`…) ; réglages (`list_settings`, `set_setting`, message `settings`) ; précisions de X25. La 1.2 se ferme à la sortie de la 1.0 | Q1, N13, O3, O4, X25 | 1.0 | Livré (Q1, N13) ; O3/O4 et X25 en revue (PR #248, #233) |
-| 1.3 | Champs `wind` et `draft` de `state` | P1 | 1.x | Spécifié (le cahier P1 dit encore « v1.2 », C1) |
-| 1.4 | Événements `input` Y, Z et A ; champs `rogue`, `segment`, `powerup` ; champs des bots à profil ; messages `room`, `loot`, `segment_result`, `xp` ; commandes de run, `equip`, `set_avatar` | R1, T1, V1 | 2.0 | Planifié (cahier R1 en revue, PR #244) |
-| 1.5 | Monde ouvert : `start_open_world`, `choose_branch`, champ `open_world`, `world_status` et messages de la carte | W1 | 2.0 | En revue (PR #282, numéro provisoire) |
-| — | Série U : aucun ajout à l'IPC prévu ; le forçage du biome au menu (U16) passera par la révision suivante si besoin | U16 | 3.0 | Planifié |
+| 1.2 | `set_difficulty`, `difficulty_pct` ; appairage depuis le menu (`scan_devices`, `pair_devices`…). Fermée : plus aucun ajout | Q1, N13 | 1.0 | Livré |
+| 1.3 | Révision de la sortie de la 1.0 : champs `wind` et `draft` de `state`, `state` à 4 096 octets, `rev` et `modes` (P1, livrés) ; réglages (`list_settings`, `set_setting`, message `settings`), précisions de X25, `bad_args`, imports d'entraînements (`list_imports`, `create_workout`, `import_workout`), `PLUS_UNCLEAR` et `MINUS_UNCLEAR` ; événements de tous les boutons du Click (`A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`, plan de boutons du §7.1) ; demi-tour et bots réglés au menu s'ils fusionnent avant l'étiquette `v1.0.0`. Se ferme à l'étiquette `v1.0.0` | P1, O3, O4, X25, #288, N16, #287 | 1.0 (P1 sert la 1.x) | P1, X25, O3, O4, l'audit IPC (#288) et N16 (#249) livrés ; événements des boutons en revue (PR #287) |
+| 1.4 | (Les événements des boutons sont déjà en 1.3.) Mode `ROGUE` et valeur `"rogue"` de `modes` ; champs `segment`, `powerup`, `jerseys`, `bot_ahead`, `bot_behind` et objet `rogue` de `state` ; champs des bots à profil ; `summary.segments` et `summary.rogue` ; messages `segment_result`, `room`, `loot`, `garage`, `progression`, `xp_result` ; commandes `start_run`, `rogue_resync`, `list_garage`, `equip`, `buy`, `set_avatar` ; `hello_ack.config.rogue` et `progression` | T1 | 2.0 | Contrat validé par le propriétaire et fusionné le 27 octobre (lot T1, PR #392, un seul lot de contrat, décision D4) ; le core annonce encore `rev` « 1.3 » jusqu'au branchement (R8, T7, V11) |
+| 1.5 | Monde ouvert : `start_open_world`, `choose_branch`, champ `open_world`, `world_status` et messages de la carte | W1 | 2.0 | En revue (PR #282) |
+| 1.6 | Série U : clés facultatives `biome` et `gravel` de `hello_ack.config`, aucun nouveau message (le menu passe par `set_setting`) | U1, U16 | 3.0 | Spécifié (cahier U1) ; numéro provisoire : la série U prend la première révision libre à sa fusion (§6.1) |
 
-Règles de numérotation : une révision est réservée par série, dans l'ordre ci-dessus ; R1, T1 et V1 se partagent la 1.4, le premier fusionné ajoute les événements de boutons communs ; un lot de contrat prend le premier numéro libre à sa fusion. La numérotation 1.2 est confirmée par le propriétaire (26 octobre) ; 1.3 à 1.5 suivent l'ordre adopté dans la PR #244 et la PR #282, et l'audit de l'IPC du 26 octobre (PR #288) arrive à la même numérotation ; elle reste à confirmer par le propriétaire. L'ancienne proposition N13 = 1.3, P1 = 1.4, R/T = 1.5 est périmée.
+Règles de numérotation (décision du propriétaire du 27 octobre, « au plus propre », audit de cohérence) : les révisions se suivent dans l'ordre des fusions, si bien qu'un programme qui annonce `rev` « 1.3 » connaît tout ce qui est noté 1.2 et 1.3. Une révision fermée ne reçoit plus d'ajout : la 1.2 est fermée depuis la fusion de la 1.3 ; la 1.3 reste ouverte jusqu'à l'étiquette `v1.0.0` et reçoit tous les ajouts de la 1.0 qui fusionnent avant elle ; la 1.4 est celle des séries R, T et V, en un seul lot de contrat, T1 (décisions D2 de l'audit IPC et D4 de l'audit de cohérence) ; les événements de tous les boutons sont déjà dans la 1.3, une seule fois ; W1 prend la 1.5. Un ajout fait après la 1.0 hors de ces séries prend la première révision libre à sa fusion. Numérotation 1.4 et 1.5 confirmée par le propriétaire le 26 octobre (décision D2 de l'audit IPC). L'ancienne proposition N13 = 1.3, P1 = 1.4, R/T = 1.5 est périmée.
 
 ### 6.2 Format `.world` et thèmes
 
@@ -255,49 +258,65 @@ Règles de numérotation : une révision est réservée par série, dans l'ordre
 | Couches route, terrain, bâtiments, végétation, points d'intérêt, eau | B1, B2, I3, I4 | 1.0 | Livré |
 | Points d'intérêt `wind_turbine` et `flag` ; thème 1.2 (nuages, météo, ambiance, faune, saison, heure) | P1 | 1.x | Spécifié |
 | Niveaux de textures dans le thème | P20 | 2.0 | Spécifié |
-| Couche `segments` | T1 | 2.0 | Planifié |
+| Couche `segments` (format 1.3, `segments.json`) | T1, T3 | 2.0 | Format écrit (T1) ; écrite par le compilateur et le parcours de démonstration (T3) |
 | Monde vivant : `live`, origine sur grille UTM, route par parties, couches par carré, `junctions.json` | W1 | 2.0 | En revue (PR #282) |
-| Couche `biome`, variante régionale, eau `sea`, couche côte ; thème 2.0 en pack de biomes | U1 | 3.0 | Planifié |
+| Couche `biome`, variante régionale, eau `sea`, couche `coast` ; colonne `surface` de la route et classe `g` du monde ouvert ; thème 2.0 en pack de biomes | U1 | 3.0 | Spécifié (cahier U1 ; mineur libre suivant celui de W1) |
 
 ### 6.3 Configuration
 
-Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts prévus : `[wind]` (P1), `[render] living` et `texture_level` (P4, P20), `[open_world]` avec `cache_dir` et `cache_max_gb` (W2) ; la série R ajoute le W' du joueur, dont la clé est fixée par R1.
+Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts prévus : `[wind]` (P1), `[render] living` et `texture_level` (P4, P20), `[open_world]` avec `cache_dir` et `cache_max_gb` (W2), `[render] camera` (V12) ; `[render] biome` et `theme_library_gb`, section `[gravel]` (U1, U15) ; sections `[rogue]` (`w_prime_j`, `cp_w`, rampe de pente en run) et `[avatar]` (seuils de la danseuse), fixées par le contrat 1.4 (T1, SRS §11).
 
 ## 7. Boutons du Click et vues de caméra
 
-### 7.1 Une même famille d'action par bouton, dans tous les modes
+### 7.1 Une même famille d'action par bouton, partout
 
-Demande du propriétaire du 26 octobre (point C7) : chaque bouton garde le même **type** d'action d'un mode à l'autre, pour qu'on n'ait jamais à se demander « dans ce mode, Y fait quoi ? ». **Plan validé par le propriétaire le 26 octobre.**
+Demande du propriétaire du 26 octobre (point C7) : chaque bouton garde le même **type** d'action d'un mode à l'autre, pour qu'on n'ait jamais à se demander « ici, Y fait quoi ? ». Plan validé le 26 octobre, puis réécrit le 27 octobre sans aucune exception, menus compris (principe du propriétaire : « on évite les exceptions »). **Ce tableau est la seule référence** : la SRS, les plans et les cahiers y renvoient au lieu de le recopier.
 
-Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches (bridé sans déblocage Zwift, SRS §4.2). B double toujours « − », et rien d'indispensable n'est mis sur le seul boîtier gauche.
+Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches (bridé sans déblocage Zwift, SRS §4.2). B double toujours « − », et rien d'indispensable n'est mis sur le seul boîtier gauche. Appui court : moins de 0,5 s ; appui long : 0,9 s ou plus ; entre les deux, rien ne se passe et l'écran le dit (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`).
 
-| Bouton | Famille | Classique SIM | ERG | Cyber-Rogue | Monde ouvert |
-| --- | --- | --- | --- | --- | --- |
-| + / B (ou −), court | Intensité, petit pas | Braquet ± 1 | Biais ± 2 % | Vitesse du frein ± 1 | Comme le mode roulé (SIM ou ERG) |
-| + / B (ou −), long | Intensité, grand pas | Braquet ± 10 | Biais ± 10 % | Vitesse du frein ± 3 | Comme le mode roulé |
-| Y court | Pause et reprise | Pause | Pause | Pause | Pause |
-| Z court | Action du mode | Bonus (T) | Bloc suivant | Attaque | Bonus (T) |
-| Z long | Action spéciale du mode | — | — | Carte ou relique active (défini par R1) | — |
-| A court | Choisir | Changer de vue de caméra | Changer de vue de caméra | Faire défiler couloirs et cartes | Faire défiler les branches au carrefour ; sinon changer de vue |
-| A long | Valider ou revenir | Revenir à la vue par défaut | Revenir à la vue par défaut | Valider le couloir ou la carte | Valider la branche tout de suite |
-| Flèches gauche, droite (boîtier gauche) | Choisir, raccourci | — | — | Couloir ou carte précédent, suivant | Branche à gauche, à droite |
-| Flèches haut, bas (boîtier gauche) | Vue, raccourci | Vue suivante, précédente | idem | idem | idem |
+| Bouton | Famille | Menus | Classique SIM | ERG | Cyber-Rogue | Monde ouvert |
+| --- | --- | --- | --- | --- | --- | --- |
+| + / B (ou −), court | Déplacer ou doser, petit pas | Élément suivant, précédent | Braquet ± 1 | Biais ± 2 % | Vitesse du frein ± 1 | Comme le mode roulé (SIM ou ERG) |
+| + / B (ou −), long | Déplacer ou doser, grand pas | Cinq éléments plus loin, plus haut (bornés à la liste) | Braquet ± 10 | Biais ± 10 % | Vitesse du frein ± 3 | Comme le mode roulé |
+| Y court | Interrompre et revenir | Écran précédent ; sur l'écran de pause, reprendre | Pause et reprise | Pause et reprise | Pause et reprise | Pause et reprise |
+| Z court | Action du mode | Aucune (un menu n'est pas un mode) | Bonus (T) | Bloc suivant | Attaque | Bonus (T) |
+| Z long | Action spéciale du mode | Aucune | Aucune | Aucune | Carte ou relique active (T1) | Aucune |
+| A court | Choisir : option suivante du choix affiché | Élément suivant | Vue de caméra suivante | Vue de caméra suivante | Couloir ou carte suivant | Branche suivante au carrefour, sinon vue suivante |
+| A long | Valider le choix affiché | Valider l'élément | Revenir à la vue par défaut | Revenir à la vue par défaut | Valider le couloir ou la carte | Valider la branche, sinon revenir à la vue par défaut |
+| Flèches gauche, droite (boîtier gauche) | Choisir, raccourci | Élément précédent, suivant | Aucune | Aucune | Couloir ou carte précédent, suivant | Branche à gauche, à droite |
+| Flèches haut, bas (boîtier gauche) | Vue, raccourci | Aucune (pas de vue dans un menu) | Vue suivante, précédente | idem | idem | idem |
 
-Règles communes :
+Règles communes, valables partout :
 
-- **A sert d'abord au choix en attente.** Quand un choix est affiché (carrefour, couloir, carte), A agit sur lui et le HUD le montre ; sinon A change de vue de caméra.
-- **Menus** (inchangé, SRS §4.5) : + et B courts pour défiler, + long pour valider, B long pour revenir ; A long valide aussi, pour garder la famille « valider ».
-- **Clavier :** il double chaque bouton. Pas de bouton pour la difficulté (décision Q1).
+- **A agit sur le choix affiché.** Un menu, un carrefour, une liste de couloirs ou de cartes sont des choix : A court passe à l'option suivante, A long valide. Sans choix affiché (en roulant), le choix est celui de la vue de caméra.
+- **Y revient en arrière** : pause en séance, écran précédent dans un menu, reprise depuis l'écran de pause.
+- **Z n'a que l'action du mode** ; il ne fait rien dans un menu.
+- **Le grand pas vaut dix petits pas en séance** et cinq éléments dans un menu.
+- **Clavier (décision D6 du 27 octobre) :** il double le Click touche pour touche, avec les mêmes seuils d'appui (court sous 0,5 s, long à 0,9 s ou plus, zone floue entre les deux), en menu comme en séance ; une touche n'a jamais d'autre rôle que celui de son bouton. Pas de bouton pour la difficulté (décision Q1).
 
-Changements par rapport à ce qui existe ou était prévu, à reporter dans les lots concernés :
+| Bouton du Click | Touche | L'appui long aussi par | Remarque |
+| --- | --- | --- | --- |
+| + | + (ou =, + du pavé numérique) | Page haut | — |
+| − ou B | − (− du pavé numérique) | Page bas | B n'a pas de touche propre : il double « − » |
+| A | A | Maj+A, Entrée | Entrée vaut donc « valider » partout |
+| Y | Y | — | Échap vaut Y court |
+| Z | Z | Maj+Z | — |
+| Flèches du boîtier gauche | Flèches du clavier | — | Haut et bas changent de vue en séance ; ils ne font plus le braquet |
+
+Les lettres sont lues comme imprimées sur la touche (AZERTY comme QWERTY). Les synonymes (Page haut, Page bas, Maj+lettre, Entrée, Échap) servent aux claviers où l'appui long est malcommode et au fournisseur clavier du terminal (mode mock), qui ne sait pas mesurer la durée d'un appui. Les anciennes touches P et Espace (pause) et la navigation de menu propre au clavier disparaissent.
+
+Changements à reporter, tous dans des lots identifiés :
 
 | Où | Avant | Après | Lot |
 | --- | --- | --- | --- |
-| ERG (1.0, SRS §4.4) | + long : bloc suivant ; − long : pause | ± long : biais ± 10 % ; Z : bloc suivant ; Y : pause (déjà là) | Mise à jour 1.x, petit lot core |
-| Cyber-Rogue (plan R) | Y : attaque ; A long : pause | Z : attaque ; Y : pause | R1 |
-| Monde ouvert (W-Q1) | A court : faire défiler les branches | Inchangé, plus A long : valider | W1 |
+| Menus (SRS §4.5, PR #287) | + long : valider ; − long : revenir ; puis A = valider et Z = retour (PR #287) | Tableau ci-dessus : ± déplacent, A court élément suivant, A long valide, Y revient, Z ne fait rien | PR #287, à réécrire avant fusion ; elle ajoute aussi les événements de tous les boutons à la 1.3 |
+| ERG (1.0, SRS §4.4) | + long : bloc suivant ; − long : pause ERG à 0 % | ± long : biais ± 10 % ; Z : bloc suivant ; Y : pause de la séance (déjà là) | O17, avant la 1.0 |
+| Cyber-Rogue (plan R) | Y : attaque ; A long : pause | Z : attaque ; Y : pause | T1 (fait dans le cahier) |
+| Monde ouvert (W-Q1) | A court : faire défiler les branches | Inchangé, plus A long : valider la branche | W1 |
+| Classique (plan T) | A libre | A : vues de caméra | V12 (§7.2) |
+| Clavier (engine `main.gd` et `menu_model.gd`, fournisseur du terminal) | Flèches haut et bas = braquet, Page haut et bas = appuis longs, P, Espace et Échap = pause, Entrée et Échap = valider et revenir dans les menus | Tableau du clavier ci-dessus | O17, avant la 1.0 |
 
-Conséquence : avec ce plan de boutons, le Cyber-Rogue n'a plus à être exclu du monde ouvert (point C7 levé).
+Conséquence : avec ce plan, le Cyber-Rogue n'a plus à être exclu du monde ouvert (point C7 levé).
 
 ### 7.2 Vues de caméra
 
@@ -305,11 +324,11 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 
 | Id | Exigence | Lots | Statut |
 | --- | --- | --- | --- |
-| 2.0-CAM-1 | Quatre vues : subjective (celle de la 1.0, avatar masqué), suivi proche derrière l'avatar, suivi éloigné en hauteur (bots, carrefours, peloton), latérale façon retransmission | À créer avec V6 | Planifié |
-| 2.0-CAM-2 | Changement de vue au Click (A court, flèches haut et bas) et au clavier, transition douce de moins d'une demi-seconde ; la dernière vue est retenue dans `[render] camera` | À créer | Planifié |
+| 2.0-CAM-1 | Quatre vues : subjective (celle de la 1.0, avatar masqué), suivi proche derrière l'avatar, suivi éloigné en hauteur (bots, carrefours, peloton), latérale façon retransmission | V12 (après V6) | Planifié |
+| 2.0-CAM-2 | Changement de vue au Click (A court et flèches haut et bas ; A long revient à la vue par défaut, §7.1) et au clavier, transition douce de moins d'une demi-seconde ; la dernière vue est retenue dans `[render] camera` | V12 ; clavier O17 | Planifié |
 | 2.0-CAM-3 | Vue par défaut : subjective tant que l'avatar n'existe pas, suivi proche ensuite ; le Cyber-Rogue garde ses effets de champ de vision et de tremblement dans chaque vue | V6, R11 | Planifié |
 | 2.0-CAM-4 | Lisibilité des pentes (lot Q2 : caméra inclinée, relief exagéré) appliquée à toutes les vues | Q2 | Planifié |
-| 2.0-CAM-5 | Budget : aucune vue ne fait passer sous 55 images/s en `low` ; les vues éloignées utilisent les mêmes préréglages de distance que la vue subjective | P16, S1 | Planifié |
+| 2.0-CAM-5 | Budget : aucune vue ne fait passer sous 55 images/s en `low` ; les vues éloignées utilisent les mêmes préréglages de distance que la vue subjective ; le tri de ce qui est dessiné suit la caméra active | V12, S1, P16 | Planifié |
 
 ## 8. Exigences non fonctionnelles par version
 
@@ -336,7 +355,9 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | C7 | Bouton A : libre en classique (T), branches du carrefour en monde ouvert (W-Q1), pause en Cyber-Rogue (proposé, R1). Sans conflit tant que ces modes ne se combinent pas ; à vérifier pour le Cyber-Rogue en monde ouvert, que rien n'exclut | Plans R, T, W | **Décidé le 26 octobre :** plan de boutons commun à tous les modes (§7.1) |
 | C8 | Programmes : la SRS §3 annonce trois programmes ; le lot W1 en ajoute un quatrième (`openride-worldgen`) | SRS §3, PR #282 | Accepter, noté au §3 |
 | C9 | L'état « Livré » de Q1 et Q3 n'est pas reporté dans l'index des lots, alors que leur code est sur `main` (révision 1.2 de l'IPC, clé `trace_ftms`) | `docs/lots/00_INDEX.md` | À corriger par la série Q (tenue par une autre IA) |
-| C10 | Taille de la trame `state` : le contrat promet 1 400 octets, mais une trame réaliste en fait déjà environ 1 520 sur `main`, et les séries P, R, T et W ajoutent toutes des champs à `state`. Aucune exigence de ce document ne promet donc de tenir dans 1 400 octets | `docs/contracts/ipc_v1.md`, plans T et W, audit IPC (PR #288) | Trancher la décision D1 de l'audit avant la 1.3 : arrondir les flottants, puis relever la limite de `state` à 4 096 octets en 1.3, ou créer un message `state_ext` |
+| C10 | Taille de la trame `state` : le contrat promettait 1 400 octets, alors qu'une trame réaliste en faisait déjà environ 1 520 | `docs/contracts/ipc_v1.md`, audit IPC (PR #288) | **Réglé :** limite de `state` portée à 4 096 octets dans la révision 1.3 (P1, décision D1 de l'audit IPC) ; arrondi des flottants dans la PR #288 |
+| C11 | Premier jalon de la série U : la décision U-Q5 y met le littoral, mais l'ordre conseillé du plan §8 renvoyait la côte et la mer (U3, U9) après le jalon | `docs/3.0/PLAN_SERIE_U.md` §8 | La décision du propriétaire l'emporte : U3 et U9 entrent dans le premier jalon (corrigé dans le plan et validé par le propriétaire (U-Q13) le 27 octobre) |
+| C12 | Audit de cohérence du 27 octobre ([AUDIT_COHERENCE_2026-10-27.md](AUDIT_COHERENCE_2026-10-27.md)) : ajouts « 1.2 » faits après la 1.3, exception de Z dans les menus, boutons ERG sans lot, demi-tour et bots sans série | Rapport §2 | **Décidé le 27 octobre :** révisions dans l'ordre des fusions (§6.1) ; plan de boutons sans exception, menus compris (§7.1) ; lot O17 ; lots N17 et N18 ; « Parcours » dans N15 ; issues V1, V5 à V11 et T1. un seul contrat 1.4 (lot T1, qui remplace R1 et V1) ; lot V12 des quatre vues de caméra, V6 sans caméra, tri de S1 selon la caméra active ; clavier touche pour touche (§7.1, lot O17). D7 et D8 sans objet (séries Q et X fusionnées) |
 
 ## 10. Tenue de ce document
 
@@ -348,3 +369,5 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | --- | --- |
 | 26 octobre 2026 | Première version : SRS v1.1, série P, plans R, T, V, W et U rassemblés ; révisions IPC 1.0 à 1.5 ; contradictions C1 à C10 ; numérotation alignée sur l'audit IPC (PR #288) |
 | 26 octobre 2026 | Décisions C4, C5 et C6 ; vues de caméra (§7.2) ; plan de boutons commun (§7.1), validé le même jour |
+| 27 octobre 2026 | Série U : cahiers U0 à U22, lots de l'option « gravel » (U20 à U22), révision 1.6 provisoire de l'IPC, écart C11 |
+| 27 octobre 2026 | Audit de cohérence (C12) : révisions 1.2 et 1.3 (§6.1), plan de boutons réécrit sans exception (§7.1), exigences 1.0-ERG-5, 1.x-UI-1 et 1.x-UI-2, C10 réglé |

@@ -1,0 +1,160 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideXpResultMessage",
+  "description": "Révision 1.4 (série V) : bilan de progression en fin de séance, après summary, répété une fois par seconde tant que la séance reste FINISHED (au plus 10 fois) ; 1 400 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "eligible",
+    "reason",
+    "gains",
+    "total",
+    "level_before",
+    "level_after",
+    "xp_total",
+    "xp_next_level",
+    "coins_gained",
+    "coins_total",
+    "unlocked",
+    "challenges",
+    "equipment_gain_s",
+    "more"
+  ],
+  "properties": {
+    "type": {
+      "const": "xp_result"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "eligible": {
+      "type": "boolean"
+    },
+    "reason": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "enum": [
+        "too_short",
+        "replay",
+        "simulated",
+        "imported",
+        null
+      ]
+    },
+    "gains": {
+      "type": "array",
+      "maxItems": 9,
+      "items": {
+        "type": "object",
+        "required": [
+          "source",
+          "points"
+        ],
+        "properties": {
+          "source": {
+            "type": "string",
+            "enum": [
+              "distance",
+              "climb",
+              "erg",
+              "erg_bonus",
+              "segment",
+              "segment_pr",
+              "jersey",
+              "rogue",
+              "rogue_boss"
+            ]
+          },
+          "points": {
+            "type": "integer",
+            "minimum": 0
+          }
+        }
+      }
+    },
+    "total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "level_before": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "level_after": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 50
+    },
+    "xp_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "xp_next_level": {
+      "type": [
+        "integer",
+        "null"
+      ],
+      "minimum": 0
+    },
+    "coins_gained": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "coins_total": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "unlocked": {
+      "type": "array",
+      "maxItems": 8,
+      "items": {
+        "type": "string",
+        "maxLength": 24
+      }
+    },
+    "challenges": {
+      "type": "array",
+      "maxItems": 4,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "reward_item"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 32
+          },
+          "reward_item": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "maxLength": 24
+          }
+        }
+      }
+    },
+    "equipment_gain_s": {
+      "type": [
+        "number",
+        "null"
+      ]
+    },
+    "more": {
+      "type": "boolean",
+      "description": "Vrai si plus de 8 déblocages ou 4 défis : les suivants ne sont pas listés."
+    }
+  }
+}
