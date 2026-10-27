@@ -10,9 +10,9 @@ const EngineArgs := preload("res://scripts/engine_args.gd")
 const EXPECTED_KEYS := [
 	"chunks_ahead",
 	"chunks_behind",
+	"fog_end_m",
 	"fog_volumetric",
 	"msaa",
-	"renderer_hint",
 	"ssao",
 	"vegetation_density_factor",
 	"view_distance_m",
@@ -94,8 +94,12 @@ func _test_presets_table() -> void:
 		"preset : vegetation_density_factor strictement croissant (%.1f < %.1f < %.1f)" % [
 			low["vegetation_density_factor"], med["vegetation_density_factor"], high["vegetation_density_factor"]])
 
-	_check(low["renderer_hint"] == "mobile" and med["renderer_hint"] == "forward_plus" and high["renderer_hint"] == "forward_plus",
-		"preset : renderer_hint mobile en low, forward_plus en medium et high")
+	# Lot Y1 : brouillard opaque à 4, 6 et 9 km (décision du propriétaire du 27 octobre).
+	_check(QualityPresets.fog_end_m("low") == 4000.0 and QualityPresets.fog_end_m("medium") == 6000.0
+		and QualityPresets.fog_end_m("high") == 9000.0,
+		"fog_end_m : 4 000, 6 000 et 9 000 m")
+	_check(QualityPresets.fog_end_m("inexistant") == QualityPresets.fog_end_m("low"),
+		"fog_end_m : un nom inconnu renvoie la valeur de low")
 
 	var unk: Dictionary = QualityPresets.preset("inexistant")
 	_check(unk == low, "preset : un nom inconnu renvoie le préréglage low")

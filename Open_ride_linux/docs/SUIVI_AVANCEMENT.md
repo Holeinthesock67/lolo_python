@@ -186,7 +186,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Cahiers E3 (ciel, arbres par bruit, HUD final) et E4 (bâtiments, forêts OSM, eau, sons) rédigés le 24 octobre, avec la revue du lot E2 (`docs/REVUE_E2_2026-10-24.md`) : à faire après la fusion d'E2 corrigé.
 - [ ] Ruban de route et terrain par tronçons (lot E1 fusionné le 24 octobre, PR #7, tests sans écran verts) : reste l'essai sur la GTX 1060 (images par seconde, à-coups, trous).
 - [x] Shader triplanaire et application du thème (lot E2, PR #75 et #97, 24 octobre) : projection en mètres, mélange herbe/roche/neige selon pente et altitude (constantes du lot L3 transmises au shader), route et soleil pilotés par le thème ; vrai rendu vérifié sous Xvfb (`engine/tests/render/test_terrain_render.gd`). Essai sur la GTX 1060 le 24 octobre (`docs/ESSAI_GRAPHIQUE_E2.md`, démo avec terrain synthétique, préréglage `low`) : 633 images/s en couleurs unies, 609 avec trois textures 2 048² (perte 3,7 %), aucune erreur Godot, aspect validé à l'écran par le propriétaire. Reste la neige sur un vrai parcours au-dessus de 2 200 m.
-- [ ] **Ciel, arbres par bruit et HUD final** (lot E3, 24 octobre) : ciel physique PhysicalSkyMaterial, brouillard de limite à 12 km, arbres instanciés en LOD0/LOD1 avec respect du budget d'instances, HUD avec profil d'altitude et prochaine montée, mesure périodique `[perf-rendu]`. Reste la recette sur la GTX 1060 (`docs/RECETTE_E3_E4.md`).
+- [ ] **Ciel, arbres par bruit et HUD final** (lot E3, 24 octobre) : ciel physique PhysicalSkyMaterial, brouillard de limite à 12 km (4 / 6 / 9 km selon le préréglage depuis Y1), arbres instanciés en LOD0/LOD1 avec respect du budget d'instances, HUD avec profil d'altitude et prochaine montée, mesure périodique `[perf-rendu]`. Reste la recette sur la GTX 1060 (`docs/RECETTE_E3_E4.md`).
 - [ ] **Bâtiments, forêts OSM, eau et sons du parcours** (lot E4, 24 octobre) : streaming des tronçons OSM (`osm_streamer.gd`), bâtiments avec jupe de 3 m sous `base_y`, rivières et plans d'eau (`water_mesh.gd`), modèle sonore spatialisé (`sound_player.gd`). Reste la recette sur la GTX 1060 (`docs/RECETTE_E3_E4.md`).
 
 ### Lanceur et menus (ancien lot G, série N rédigée le 24 octobre)
@@ -225,6 +225,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Performances du rendu (série S rédigée le 25 octobre)
 - [ ] Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible (lot S1).
+- [ ] Brouillard opaque à 4 / 6 / 9 km selon le préréglage, `camera.far` et tuiles lointaines qui suivent (lot Y1, code et tests du 27 octobre) ; restent les mesures au banc en `medium` et `low` et l'essai sur le PC cible.
 
 ### Après la 1.0 : décor vivant, vent et aspiration (série P rédigée le 25 octobre)
 - [x] Contrat : vent et aspiration dans `state` (IPC révision 1.3), configuration `[wind]`, thème 1.2, points d'intérêt `wind_turbine` et `flag` (lot P1, décisions du propriétaire du 25 octobre).

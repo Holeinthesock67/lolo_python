@@ -6,13 +6,15 @@ extends Node3D
 ## - ruban : tronçons k dont l'intervalle [k × 1 000, (k + 1) × 1 000] touche (au sens strict)
 ##   [s − chunks_behind × 1 000 ; s + chunks_ahead × 1 000 + v × 10 s] ;
 ## - tuiles proches dont le carré passe à moins de 1 500 m de la caméra ou du point visé v × 10 s
-##   plus loin ; tuiles lointaines présentes à moins de 12 km ;
+##   plus loin ; tuiles lointaines présentes à moins de far_radius_m (fin du brouillard du préréglage
+##   plus une tuile lointaine, au plus FAR_RADIUS_M = 12 km, lot Y1) ;
 ## - tuile proche manquante : rien si une tuile lointaine couvre l'endroit (elle est dessinée dessous),
 ##   sinon tuile plate à l'altitude de la route la plus proche (format §10).
 ## Les tableaux de sommets se calculent dans WorkerThreadPool ; les ArrayMesh et MeshInstance3D se
 ## créent sur le fil principal, au plus MAX_NEW_PER_FRAME par image. Ce qui sort de la fenêtre est
 ## libéré tout de suite (free) ; un changement de parcours vide tout (set_world).
-## Sans couche terrain : sol plat 5 m sous l'altitude minimale de la route, qui suit la caméra.
+## Sans couche terrain : sol plat de 2 × far_radius_m de côté, 5 m sous l'altitude minimale de la route,
+## qui suit la caméra.
 ## Pas de class_name (charger par preload).
 
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -37,6 +39,12 @@ var has_terrain := false
 var chunks_ahead: int = 3
 var chunks_behind: int = 1
 var vegetation_density_factor: float = 0.3
+## Rayon des tuiles lointaines et demi-côté du sol plat, réglé par render_quality.gd (far_radius_for).
+var far_radius_m: float = FAR_RADIUS_M:
+	set(value):
+		far_radius_m = value
+		if _ground != null and _ground.mesh is PlaneMesh:
+			(_ground.mesh as PlaneMesh).size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 var tree_renderer: Node3D = null
 var osm_streamer: Node3D = null
 
@@ -222,11 +230,17 @@ func _far_covers(near_tile: Vector2i) -> bool:
 	return _far_index.has(TerrainTiles.tile_of("far", c.x, c.z))
 
 
-## Tuiles lointaines présentes à moins de 12 km de la caméra.
+## Rayon des tuiles lointaines pour une fin de brouillard donnée : une tuile lointaine de marge, pour
+## qu'aucune tuile n'apparaisse au bord du brouillard pendant sa construction ; plafond FAR_RADIUS_M.
+static func far_radius_for(fog_end_m: float) -> float:
+	return minf(fog_end_m + float(TerrainTiles.LEVELS["far"]["size"]), FAR_RADIUS_M)
+
+
+## Tuiles lointaines présentes à moins de far_radius_m de la caméra.
 func far_window(cam_x: float, cam_z: float) -> Array:
 	var out := []
 	for t in _far_index:
-		if _rect_distance("far", t, cam_x, cam_z) <= FAR_RADIUS_M:
+		if _rect_distance("far", t, cam_x, cam_z) <= far_radius_m:
 			out.append(t)
 	return out
 
@@ -426,7 +440,7 @@ func _make_ground() -> void:
 	if is_inf(min_alt):
 		min_alt = 0.0
 	var plane := PlaneMesh.new()
-	plane.size = Vector2(2.0 * FAR_RADIUS_M, 2.0 * FAR_RADIUS_M)
+	plane.size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 	var mat := StandardMaterial3D.new()
 	mat.albedo_color = _ground_color
 	mat.roughness = 1.0

@@ -145,6 +145,8 @@ Validée par le propriétaire le 27 octobre (§0). Toute la série vient **aprè
 | Y9 | Lissage des bots : mémoire de trames, Hermite, déplacements latéraux, LOD des bots (§7) | O7 | Moyenne | Oui |
 | Y10 | Comportement des bots (profils, attaques, abri) côté core | Y9, séries T et R | Moyenne | Oui |
 
+**Y1 réalisé (27 octobre, code) :** clé `fog_end_m` dans `quality_presets.gd` (4 000 / 6 000 / 9 000 m), début du brouillard à 40 % de la fin (1,6 / 2,4 / 3,6 km), `camera.far` = fin + 3 %, tuiles lointaines chargées jusqu'à la fin + une tuile lointaine (9 / 11 / 12 km, plafond 12 km), sol plat de même rayon ; sans relief, brouillard inchangé (300 m à 3 km) ; clé `renderer_hint` retirée. Mesures au banc (X13, `medium` puis `low`, avant et après) et essai `essai-69` sur le PC cible : à faire, résultats à reporter ici.
+
 Ordre conseillé : Y1, Y2, puis Y4, Y6 et Y3 (les plus rentables), Y5, Y7, et enfin Y8, Y9, Y10. Ce qui relève de « ne pas dessiner l'invisible » (tuiles derrière, construction inutile, occlusion par le relief) reste dans S1, pour ne pas faire deux fois le même travail.
 
 ## 9. Sources
