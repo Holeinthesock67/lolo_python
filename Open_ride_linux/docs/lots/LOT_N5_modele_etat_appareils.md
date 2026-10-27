@@ -46,3 +46,7 @@ Aucune.
 ## 8. Hors périmètre
 
 - Affichage (N6) et production de `devices` par le core (N2).
+
+## 9. Livraison (25 octobre 2026, PR #162)
+
+- Code et tests fusionnés sur `main` par la PR #162 (issue #104 fermée) ; détail dans la description de la PR et dans `docs/SUIVI_AVANCEMENT.md`.
