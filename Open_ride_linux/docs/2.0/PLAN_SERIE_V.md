@@ -29,7 +29,7 @@
 
 ### 2.1 bis Pièces
 
-- Gagnées en roulant, en même temps que l'expérience, selon l'effort fourni (V-Q10, 27 octobre) : chaque minute rapporte de 0,25 à 2 pièces selon la puissance en % de la FTP, en SIM comme en ERG ; en plus, 5 par segment, 20 par maillot, 10 à 50 par run Cyber-Rogue selon le boss.
+- Gagnées en roulant, en même temps que l'expérience, selon l'effort fourni (V-Q10, 27 octobre) : chaque minute rapporte de 0,25 à 2 pièces selon la puissance en % de la FTP, en SIM comme en ERG ; en plus, 5 par segment (+ 10 pour un record personnel), 15 par record de puissance battu, 20 par maillot, 10 à 50 par run Cyber-Rogue selon le boss.
 - Dépensées dans le Garage pour l'équipement, et dans le mode Cyber-Rogue pour des vies (série R).
 - Prix et gains dans le même fichier de données que l'expérience.
 
@@ -102,7 +102,7 @@ Ordre conseillé : V2 tout de suite, puis V3 et V4, puis V3b (modules purs, sans
 
 ### Questions du 26 octobre (rédaction des cahiers)
 
-Réponses du propriétaire le 27 octobre : propositions de V-Q5 à V-Q13 validées, sauf V-Q10 (pièces à l'effort).
+Réponses du propriétaire le 27 octobre : propositions de V-Q5 à V-Q13 validées ; V-Q10 remplacée par des pièces à l'effort avec primes de records.
 
 Chaque cahier applique la proposition recommandée en attendant la réponse ; une autre réponse ne change que le fichier de données ou le cahier concerné.
 
@@ -112,7 +112,7 @@ Chaque cahier applique la proposition recommandée en attendant la réponse ; un
 - [x] **V-Q7 ERG et distance :** proposition : une séance ERG rapporte 10 points par minute (+ 20 % si terminée) **à la place** de la distance et du dénivelé, pour ne pas compter deux fois (10 points par minute valent 20 points par km à 30 km/h).
 - [x] **V-Q8 Courbe des niveaux :** proposition : écart croissant de façon régulière d'un niveau au suivant (1 000 points pour le niveau 2, environ 3 100 pour le dernier, 100 000 au total) ; une séance d'une heure (30 km, 300 m) rapporte environ 1 200 points, soit environ 80 h de selle pour le niveau 50.
 - [x] **V-Q9 Catalogue :** cinq cadres, quatre paires de roues et les prix ou niveaux du cahier V3 §4.1 (à valider ou corriger).
-- [ ] **V-Q10 Pièces (27 octobre) :** le propriétaire veut des pièces qui récompensent l'effort (temps et % de la FTP). Proposition appliquée, à confirmer : par minute, 0,25 pièce sous 55 % de la FTP, 0,5 de 55 à 75 %, 1 de 75 à 90 %, 1,5 de 90 à 105 %, 2 au-delà, en SIM comme en ERG (une heure d'endurance : 30 pièces ; une heure avec 2 × 20 min au seuil : 70) ; la distance ne compte plus ; vie Cyber-Rogue à 30 pièces, équipement de 100 à 500 pièces inchangés.
+- [x] **V-Q10 Pièces (27 octobre, validée) :** pièces à l'effort (temps et % de la FTP) : par minute, 0,25 pièce sous 55 % de la FTP, 0,5 de 55 à 75 %, 1 de 75 à 90 %, 1,5 de 90 à 105 %, 2 au-delà, en SIM comme en ERG (une heure d'endurance : 30 pièces ; une heure avec 2 × 20 min au seuil : 70) ; la distance ne compte plus. Primes de records demandées par le propriétaire : 10 pièces par record personnel sur un segment, 15 par record de puissance moyenne battu (5 s, 1, 5 ou 20 min). Vie Cyber-Rogue à 30 pièces, équipement de 100 à 500 pièces.
 - [x] **V-Q11 Caméra :** la caméra actuelle est subjective (yeux du cycliste) : l'avatar ne se voit pas. Proposition : caméra de suivi derrière le cycliste par défaut, subjective au choix dans le Garage ou au clavier.
 - [x] **V-Q12 Équipement en mode Cyber-Rogue :** proposition : sans effet dans ce mode, les châssis de R9 en tiennent lieu.
 - [x] **V-Q13 Lenticulaire et vent de travers :** la série P ne modélise pas encore le vent de travers (P2). Proposition : la lenticulaire est pénalisée par sa masse en montée seulement ; la pénalité au vent de travers attend un lot de la série P.

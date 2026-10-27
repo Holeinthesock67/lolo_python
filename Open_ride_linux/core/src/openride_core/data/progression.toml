@@ -37,6 +37,8 @@ xp_level_max = 100000        # points cumulés pour le dernier niveau
 # Une heure d'endurance (65 %) : 30 pièces ; une heure avec 2 × 20 min au seuil : 70 pièces.
 effort = [[0, 0.25], [55, 0.5], [75, 1.0], [90, 1.5], [105, 2.0]]
 per_segment = 5
+per_segment_pr = 10          # record personnel sur un segment (série T)
+per_power_record = 15        # record de puissance moyenne battu sur 5 s, 1, 5 ou 20 min
 per_jersey = 20
 rogue_boss_default = 10      # boss vaincu absent de la table ci-dessous
 life_price = 30              # une vie du mode Cyber-Rogue (lot R9)

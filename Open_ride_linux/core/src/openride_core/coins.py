@@ -11,6 +11,9 @@ séance si l'en-tête du journal la donne, sinon celle de `config.toml`.
 États d'une pièce : `equipped` (choisie), `owned` (par défaut, achetée ou offerte par un défi
 réussi), `buyable` (niveau atteint, achetable), `locked` (niveau non atteint, ou pièce offerte
 par un défi seulement et défi non réussi).
+
+Primes de records (27 octobre) : record personnel sur un segment (`pr` des passages de la
+série T) et record de puissance moyenne sur 5 s, 1, 5 ou 20 min battu (séances précédentes).
 """
 
 from __future__ import annotations
@@ -24,7 +27,8 @@ from .profile import Profile, ProfileError, record_life_purchase, record_purchas
 from .profile import use_life as _profile_use_life
 from .progression import POWER_STEP_W, Progress, SessionFacts, Table
 
-_COIN_KEYS = {"effort": list, "per_segment": float, "per_jersey": float,
+_COIN_KEYS = {"effort": list, "per_segment": float, "per_segment_pr": float, "per_power_record": float,
+              "per_jersey": float,
               "rogue_boss_default": float, "life_price": int, "rogue_boss": dict}
 
 
@@ -40,6 +44,8 @@ class CoinsError(Exception):
 class CoinTable:
     effort: tuple[tuple[float, float], ...]   # (seuil en % de la FTP, pièces par minute), croissant
     per_segment: float
+    per_segment_pr: float
+    per_power_record: float
     per_jersey: float
     rogue_boss_default: float
     life_price: int
@@ -89,6 +95,8 @@ def coin_table(table: Table, ftp_w: float = 250.0) -> CoinTable:
     return CoinTable(
         effort=_effort(raw["effort"]),
         per_segment=_number(raw["per_segment"], "[coins] per_segment"),
+        per_segment_pr=_number(raw["per_segment_pr"], "[coins] per_segment_pr"),
+        per_power_record=_number(raw["per_power_record"], "[coins] per_power_record"),
         per_jersey=_number(raw["per_jersey"], "[coins] per_jersey"),
         rogue_boss_default=_number(raw["rogue_boss_default"], "[coins] rogue_boss_default"),
         life_price=int(_number(raw["life_price"], "[coins] life_price", integer=True)),
@@ -118,13 +126,37 @@ def effort_coins(facts: SessionFacts, ct: CoinTable) -> float:
     return total
 
 
-def session_coins(facts: SessionFacts, ct: CoinTable) -> int:
-    """Pièces d'une séance (sans contrôle d'éligibilité), arrondies à l'entier inférieur."""
-    total = effort_coins(facts, ct)
+def power_records(progress: Progress) -> dict[str, list[int]]:
+    """Records de puissance battus, par journal : durées (s) dont la séance bat le meilleur
+    des séances comptées précédentes. La première valeur connue d'une durée n'est pas un
+    record (rien à battre)."""
+    best: dict[int, float] = {}
+    out: dict[str, list[int]] = {}
+    for r in progress.counted:          # ordre chronologique de `recompute`
+        beaten = []
+        for d, watts in sorted(r.facts.best_power.items()):
+            if d in best and watts > best[d]:
+                beaten.append(d)
+            best[d] = max(best.get(d, 0.0), watts)
+        out[r.facts.journal] = beaten
+    return out
+
+
+def coins_by_session(progress: Progress, ct: CoinTable) -> dict[str, int]:
+    """Pièces de chaque séance comptée, primes de records de puissance comprises."""
+    records = power_records(progress)
+    return {r.facts.journal: session_coins(r.facts, ct, len(records.get(r.facts.journal, ())))
+            for r in progress.counted}
+
+
+def session_coins(facts: SessionFacts, ct: CoinTable, records: int = 0) -> int:
+    """Pièces d'une séance (sans contrôle d'éligibilité), arrondies à l'entier inférieur ;
+    `records` : nombre de records de puissance battus (voir `power_records`)."""
+    total = effort_coins(facts, ct) + ct.per_power_record * records
     for ev in facts.events:
         kind = ev.get("kind")
         if kind == "segment":
-            total += ct.per_segment
+            total += ct.per_segment + (ct.per_segment_pr if ev.get("pr") else 0.0)
         elif kind == "jersey":
             total += ct.per_jersey
         elif kind == "rogue_run":
@@ -135,7 +167,7 @@ def session_coins(facts: SessionFacts, ct: CoinTable) -> int:
 
 def earned_coins(progress: Progress, ct: CoinTable) -> int:
     """Pièces gagnées sur toutes les séances comptées par `progression.recompute`."""
-    return sum(session_coins(r.facts, ct) for r in progress.counted)
+    return sum(coins_by_session(progress, ct).values())
 
 
 def raw_balance(progress: Progress, profile: Profile, ct: CoinTable) -> int:
