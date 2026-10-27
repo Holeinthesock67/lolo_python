@@ -408,13 +408,16 @@ class SimTrainer(SimDevice):
 
 # --- Zwift Click --------------------------------------------------------------------------
 
-def keypad_message(plus: bool, minus: bool) -> bytes:
-    """Trame 0x23 du Click récent : tableau de bits, 0 = appuyé (bit 12 « + », bit 8 « − »)."""
+def keypad_message(plus: bool, minus: bool, other_bits: Collection[int] = ()) -> bytes:
+    """Trame 0x23 du Click récent : tableau de bits, 0 = appuyé (bit 12 « + », bit 8 « − » ;
+    `other_bits` : autres touches appuyées, par exemple B et Y du boîtier droit)."""
     mask = zwift_click.KEYPAD_ALL_RELEASED
     if plus:
         mask &= ~(1 << zwift_click.KEYPAD_PLUS_BIT)
     if minus:
         mask &= ~(1 << zwift_click.KEYPAD_MINUS_BIT)
+    for bit in other_bits:
+        mask &= ~(1 << bit)
     return bytes([zwift_click.MSG_KEYPAD_STATUS, 0x08]) + _varint(mask & 0xFFFFFFFF)
 
 
@@ -450,6 +453,7 @@ class SimClickBox(SimDevice):
         self.pressed: set[str] = set()
         self.ride_on = False
         self.presses_lost = 0
+        self.silent_until = 0.0   # boîtier muet, lien gardé (action « silence », lot X8)
         self._timed_wake = self.asleep and self.appear_at > 0
 
     def advertising(self) -> bool:
@@ -494,8 +498,9 @@ class SimClickBox(SimDevice):
         self._send_status()
 
     def _send_status(self) -> None:
-        if self.ride_on:
-            self.notify(zwift_click.ZWIFT_ASYNC, keypad_message("+" in self.pressed, "-" in self.pressed))
+        if self.ride_on and self.world.now() >= self.silent_until:
+            other = [zwift_click.KEYPAD_BITS[b] for b in self.pressed if b not in ("+", "-")]
+            self.notify(zwift_click.ZWIFT_ASYNC, keypad_message("+" in self.pressed, "-" in self.pressed, other))
 
     async def _status_loop(self) -> None:
         while True:
@@ -717,7 +722,7 @@ class SimWorld:
             dev.pending_att_errors.extend([int(ev.get("code", 0x80))] * int(ev.get("count", 1)))
         elif isinstance(dev, SimTrainer) and action == "cp_silent":
             dev.pending_silent_responses += int(ev.get("count", 1))
-        elif isinstance(dev, SimTrainer) and action == "silence":
+        elif isinstance(dev, (SimTrainer, SimClickBox)) and action == "silence":
             dev.silent_until = self.now() + float(ev["seconds"])
         elif isinstance(dev, SimTrainer) and action == "control_lost":
             dev.lose_control()

@@ -92,9 +92,9 @@
 | [P1](LOT_P1_contrat_vent_decor.md) | Contrat : vent et aspiration dans `state` (IPC révision 1.3), configuration `[wind]`, thème 1.2 (nuages, météo, ambiance, faune, saison, heure), points d'intérêt `wind_turbine` et `flag` | Markdown + JSON | O8 | Petite | **Livré le 26 octobre** (issue #125) |
 | [O15](LOT_O15_bibliotheque_parcours.md) | Bibliothèque de parcours : fiches (dénivelé, montée, difficulté), tri, filtres, packs de parcours | Python | O5 | Moyenne | **Livré le 26 octobre** (issue #157) |
 | [O16](LOT_O16_pack_cols_celebres.md) | Pack de départ : cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | **Livré le 27 octobre** (issue #158) |
-| [P2](LOT_P2_vent_physique_core.md) | Vent physique côté core : rafales, composante de face, vitesse virtuelle et résistance ressentie en SIM | Python | P1 | Moyenne | Oui, après P1 (issue #126) |
-| [P3](LOT_P3_aspiration_bots.md) | Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | Oui, après P2 et N9 (issue #127) |
+| [P2](LOT_P2_vent_physique_core.md) | Vent physique côté core : rafales, composante de face, vitesse virtuelle et résistance ressentie en SIM | Python | P1 | Moyenne | **Livré le 26 octobre** (issue #126) |
 | [P4](LOT_P4_modele_vent_engine.md) | Engine : modèle du vent, indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (sans affichage) | GDScript | P1 | Petite | **Livré le 26 octobre** (issue #128) |
+| [P3](LOT_P3_aspiration_bots.md) | Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | **Livré le 26 octobre** (issue #127) |
 | [P5](LOT_P5_vent_vegetation.md) | Vent dans les arbres et touffes d'herbe (shader de balancement) | GDScript + shader | P4, O1 | Petite | **Livré le 26 octobre** (issue #129) |
 | [P6](LOT_P6_nuages.md) | Nuages qui défilent avec le vent | GDScript + shader | P4 | Petite | **Livré le 26 octobre** (issue #130) |
 | [P7](LOT_P7_heure_soleil.md) | Jour et nuit : heure, coucher de soleil, nuit étoilée (sans affichage) | GDScript | P1, P17 | Petite | Oui, **version 2.0** (issue #131) |
@@ -209,6 +209,40 @@ Leur forme dépendra des choix faits dans E1 et D.
 **Série W (26 octobre, version 2.0) : monde ouvert généré en direct.** Plan : `docs/2.0/PLAN_SERIE_W.md` (questions W-Q1 à W-Q5 tranchées par le propriétaire le 25 octobre, PR #159). Cahiers rédigés le 26 octobre. W0 (outil de mesure, sans effet sur le jeu) peut se faire tout de suite ; W1 (contrat) est une décision du propriétaire et bloque le reste. Le générateur vit dans le compilateur (nouveau sous-paquet `worldgen` du paquet `openride_compiler`), dans un processus séparé `openride-worldgen` ; le core reste sans numpy. Numérotation : la révision de l'IPC est la première libre à la fusion de W1 (1.5 si P1 prend 1.3 et les séries R, T et V 1.4) ; le format `.world` prend de même le mineur libre suivant. Délégables : W2 à W8 et W13 à W15 (W0 pour le script) ; internes : W1, W9 à W12 ; propriétaire : W16. Fichiers partagés : `compiler/src/openride_compiler/cli.py` (W0, W2, W3, l'un après l'autre) ; `compiler/pyproject.toml` (W3 extra `worldgen`, W8 et W15 points d'entrée) ; `worldgen/process.py` (W8 puis W13) ; `osm_layers.py` (W7 seul, fonctions rendues publiques) ; `core/src/openride_core/config.py` (W2 section `[open_world]`, puis W9) ; `session.py` et `ipc_server.py` (W9, puis W11 et W14) ; `main.gd` et `ipc_client.gd` (W10, puis W11 et W12). Réseau : seuls W0, W3, W8, W11 (Nominatim) et W13 accèdent à internet, jamais dans les tests ; rien de téléchargé n'entre dans le dépôt.
 
 **Série X (26 octobre, outils de test) :** les 31 outils et programmes de test qui manquent pour mener le projet jusqu'à la 1.0, puis aux versions 2.0 et 3.0 (plan du 26 octobre : besoin, mesure, lieu d'exécution, priorité, taille). Une issue par lot, #199 (X1) à #229 (X31), sous le suivi #48 ; le cahier de chaque lot est écrit à son démarrage. Ordre : X1 (tests de `main` au vert), X25 (pire trame IPC), X23 (scanner de confidentialité), puis les autres lots P0 : X2, X4, X5 (banc de latence du trainer, outil de l'essai R0), X8, X13, X16 et X29. Les essais matériels se font sur le PC cible.
+
+Lots de la série X (cahier écrit au démarrage de chacun ; P0 = avant la 1.0, P1 = pour la 1.0, P2 = 2.0) :
+
+- X1 : remettre la CI de main au vert (Cloud, P0, issue #199) ;
+- X2 : séparer les tests de budget de temps des tests de fonction (Cloud + PC, P0, issue #200) ;
+- X3 : rapport d'instabilité et de durée des tests (Cloud + PC, P1, issue #201) ;
+- X4 : recette du PC en une commande (PC, P0, issue #202) ;
+- X5 : banc de latence du trainer par paliers (Vélo, P0, issue #203) ;
+- X6 : trainer simulé réaliste (Cloud, P1, issue #204) ;
+- X7 : latence appui Click → commande et → écran (Vélo, P1, issue #205) ;
+- X8 : recette guidée du Click (30 min) (Vélo, P0, issue #206) ;
+- X9 : recette de la fréquence cardiaque (Vélo, P1, issue #207) ;
+- X10 : coupures volontaires, attendu contre obtenu (Vélo, P1, issue #208) ;
+- X11 : contrôle d'un FIT de séance réelle (PC, P1, issue #209) ;
+- X12 : analyse automatique d'une séance réelle (PC, P1, issue #210) ;
+- X13 : sonde de performance du moteur (PC, P0, issue #211) ;
+- X14 : parcours de référence et alerte de régression (PC, P1, issue #212) ;
+- X15 : saccades et temps de démarrage (Cloud + PC, P1, issue #213) ;
+- X16 : endurance 1 h et fuites (PC, P0, issue #214) ;
+- X17 : gigue de la boucle physique et de l'IPC (Cloud + PC, P1, issue #215) ;
+- X18 : contrôle d'apparition et comparaison avant/après (Cloud + PC, P1, issue #216) ;
+- X19 : micro-banc par image pour le décor vivant (Cloud, P2, issue #217) ;
+- X20 : non-régression visuelle, version 2 (Cloud + PC, P1, issue #218) ;
+- X21 : tour visuel guidé (PC, P1, issue #219) ;
+- X22 : lisibilité du HUD à 2 m (Cloud, P2, issue #220) ;
+- X23 : scanner de confidentialité (Cloud + PC, P0, issue #221) ;
+- X24 : audit des dépendances (Cloud, P2, issue #222) ;
+- X25 : pire trame IPC et matrice des révisions (Cloud, P0, issue #223) ;
+- X26 : fuzz des fichiers d'entrée (Cloud, P2, issue #224) ;
+- X27 : cycliste virtuel pour les essais simulés (Cloud, P1, issue #225) ;
+- X28 : réseau dégradé pour le monde ouvert (Cloud, P2, issue #226) ;
+- X29 : installation sur un système vierge (Cloud + PC, P0, issue #227) ;
+- X30 : tableau de recette 1.0 (Cloud, P1, issue #228) ;
+- X31 : pente maximale face à Garmin Connect (PC, P2, issue #229).
 
 **Série M (24 octobre, après le Bluetooth simulé de la PR #74) :** neuf lots Python, tous délégables et testés sans matériel grâce au simulateur (`docs/SIMULATION_BLE.md`). Aucun ne touche l'engine, réservé à E2, E3 et E4. Fichiers partagés : `__main__.py` (M3 seul) ; `ble_sim.py` et `sim_scenarios.py` (M2 seul ; M1, M5 et M6 les lisent) ; `test_ble_sim.py` (M1 seul ; M4 et M6 ont leur propre fichier de tests) ; `compiler/pyproject.toml` (M7 `dependencies`, M9 extra `dev`) ; `docs/SIMULATION_BLE.md` (M1, M2, M5, M6, sections différentes). M6 ne vérifie que des invariants vrais avant et après M1. Les noms « M1 » à « M9 » du tableau des constats de l'audit du 23 octobre (`docs/AUDIT_2026-10-23.md` §3) n'ont aucun rapport avec ces lots.
 

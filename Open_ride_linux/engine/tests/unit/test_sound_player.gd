@@ -12,6 +12,7 @@ extends SceneTree
 
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const SoundModel := preload("res://scripts/sound_model.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
 
 var _failures := 0
@@ -32,8 +33,9 @@ func _test_sound_synthesis_perf() -> void:
 	var sp = SoundPlayer.new()
 	root.add_child(sp)
 	var elapsed_ms := (Time.get_ticks_usec() - t0) / 1000.0
-	print("Génération de tous les sons : %.2f ms (seuil 500 ms)" % elapsed_ms)
-	_check(elapsed_ms < 500.0, "génération des sons au démarrage en %.2f ms (< 500 ms)" % elapsed_ms)
+	print("Génération de tous les sons : %.2f ms" % elapsed_ms)
+	_check(PerfBudget.check("sound_generation", elapsed_ms),
+		"génération des sons au démarrage dans le budget (%.2f ms)" % elapsed_ms)
 
 	# Vérifier que les 6 sons procéduraux ont été créés
 	var all_streams_ok := true

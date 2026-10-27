@@ -5,6 +5,7 @@ extends SceneTree
 
 const Placer := preload("res://scripts/vegetation_placer.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 ## Empreinte figée de la tuile de référence (_reference_tile) : à mettre à jour seulement si la
 ## méthode de placement change volontairement (le paysage changera aussi pour l'utilisateur).
@@ -181,17 +182,13 @@ func _test_performance() -> void:
 	var p = Placer.new()
 	var wood := [_area("w6", "wood", _square(0.0, 0.0, 500.0), 1.0)]
 	p.place_tile(0, 0, 500.0, _rolling, null, _theme, wood)   # premier appel hors mesure
-	# Meilleur de 3 essais : la machine (conteneur, intégration continue) peut être occupée ailleurs.
-	var ms := INF
-	var n := 0
-	for i in range(3):
-		var t0 := Time.get_ticks_usec()
-		n = p.place_tile(0, 0, 500.0, _rolling, null, _theme, wood).size()
-		ms = minf(ms, (Time.get_ticks_usec() - t0) / 1000.0)
-	print("Mesure : tuile de 500 m × 500 m à densité maximale (%d arbres) en %.1f ms (meilleur de 3)" % [n, ms])
-	# Seuil du cahier : 50 ms ; seuil large en intégration continue (machines partagées).
-	var limit := 150.0 if OS.get_environment("CI") != "" else 50.0
-	_check(ms < limit, "tuile à densité maximale en moins de %.0f ms (%.1f ms)" % [limit, ms])
+	# Temps mesuré à part (lot X2) : budget de 50 ms du cahier dans tests/perf_budgets.json.
+	var box := [0]   # les lambdas capturent par valeur : résultat rangé dans un tableau
+	var ms := PerfBudget.measure_ms(func(): box[0] = p.place_tile(0, 0, 500.0, _rolling, null, _theme, wood).size(), 3, 0)
+	var n: int = box[0]
+	print("Mesure : tuile de 500 m × 500 m à densité maximale (%d arbres) en %.1f ms" % [n, ms])
+	_check(n > 0 and PerfBudget.check("vegetation_tile_max", ms),
+		"tuile à densité maximale : %d arbres, temps dans le budget (%.1f ms)" % [n, ms])
 
 
 func _init() -> void:
