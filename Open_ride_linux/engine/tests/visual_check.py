@@ -57,6 +57,7 @@ DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 GODOT_TOLERATED = re.compile(
     r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
+CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist")
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
@@ -517,7 +518,10 @@ class Session:
     def check_banner(self, scene: str, img: Image, info: dict[str, Any], text: str | None) -> None:
         b = info["widgets"]["banner"]
         if text is None:
-            self.check(scene, "bandeau caché", not b["visible"], f"« {b['text']} »" if b["visible"] else "")
+            # Le rappel des commandes du départ de séance (main.gd, 10 s) n'est pas une alerte.
+            alert = b["visible"] and not b["text"].startswith(CONTROLS_HINT_PREFIX)
+            self.check(scene, "bandeau caché (hors rappel des commandes)", not alert,
+                       f"« {b['text']} »" if b["visible"] else "")
             return
         self.check(scene, "bandeau affiché", b["visible"] and text in b["text"], f"« {b['text']} »")
         if b["visible"]:

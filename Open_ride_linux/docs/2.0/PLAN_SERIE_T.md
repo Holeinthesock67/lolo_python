@@ -86,7 +86,7 @@ Les bots de N9 roulent à puissance constante. En 2.0, chaque bot a un profil ph
 
 ### 3.5 Contrat
 
-Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC (lot P1). La série T, comme la série R, passe donc en **v1.3**, par ajouts compatibles :
+Les ajouts suivent ceux de la série P, qui prend la version 1.3 du contrat IPC (lot P1 ; la 1.2 est prise par Q1, N13 et O4). La série T, comme la série R, passe donc en **v1.4**, par ajouts compatibles :
 
 - **Format `.world` 1.x :** couche facultative `segments` (`segments.json` : identifiant, nom, type `sprint` ou `climb`, `s_start`, `s_end`, longueur, pente moyenne, gain, catégorie, source `auto` ou `manual`). L'engine la lit lui-même, comme les autres couches.
 - **Trame `state` :** champ facultatif `segment` (segment en cours ou prochain, distance, chrono, écart au record) et champ `powerup` (bonus en réserve, bonus actif, temps restant). Chaque élément de `bots` gagne `profile`, `cp_w`, `mass_kg`, `wbal_pct`, `jersey` et `gap_s` (écart en temps de passage, positif si le bot est devant). La trame gagne `bot_ahead` et `bot_behind` (identifiants des deux voisins immédiats, ou `null`). Les 5 bots au plus de N9 tiennent toujours dans 1 400 octets avec ces champs, à vérifier par les tests de taille de `core/tests/test_contract_ipc.py`.
@@ -100,7 +100,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 | 1 | Profil bruité : faux départs de montée sur une trace GPS | Détection sur la pente lissée déjà utilisée par la route, seuils en constantes, vecteurs de test |
 | 2 | Records faussés par les bonus | Records « avec bonus » et « sans bonus » séparés (décision T-Q1) |
 | 3 | Bonus puissance perçu comme une triche dans l'historique (NP, TSS) | Bilan calculé sur la puissance mesurée, jamais sur la puissance bonifiée |
-| 4 | Conflit de version du contrat avec les séries P et R | Ordre fixé : P1 en v1.2, puis R et T en v1.3 |
+| 4 | Conflit de version du contrat avec les séries P et R | Ordre fixé : P1 en v1.3, puis R et T en v1.4 (la v1.2 est prise par Q1, N13 et O4) |
 | 6 | Bots à profil trop forts ou trop faibles selon le parcours | Calibrage par simulation du parcours avant le départ, vérifié par une matrice de parcours types (plat, vallonné, col) |
 | 5 | HUD chargé (vent, abri, ERG, segment, bonus) | Blocs segment et bonus dans le coin supérieur droit, hors de la colonne HUD de gauche ; le lot P16 laisse cette zone libre |
 
@@ -108,7 +108,7 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.2 du contrat IPC 
 
 | Lot | Contenu | Dépend de | Type |
 | --- | --- | --- | --- |
-| T1 | Contrat : couche `segments` du `.world`, champs `segment` et `powerup`, message `segment_result`, événements Z et A (IPC v1.3) | P1 | Interne (décision) |
+| T1 | Contrat : couche `segments` du `.world`, champs `segment` et `powerup`, message `segment_result`, événements Z et A (IPC v1.4) | P1 | Interne (décision) |
 | T2 | Détection automatique des montées et des sprints (module pur, vecteurs de test) | — | Délégable |
 | T3 | Compilateur : couche `segments` par `add-layer`, sprints déclarés à la main, segments du parcours de démonstration | T1, T2 | Délégable |
 | T4 | Chronométrage dans le core : franchissements interpolés, pauses, boucles et aller-retour, journal | T1, T2 | Délégable |
@@ -135,3 +135,14 @@ Ordre conseillé : T1 après P1, puis T2, T4 et T6 en parallèle ; T3, T5, T7 et
 - [x] **T-Q4 Valeurs (25 octobre : un bonus tous les 5 km et à chaque segment, valeurs proposées gardées) :** légèreté −10 % de masse, aéro −25 % de CdA, puissance +10 %, 15 s chacun, un bonus par segment et tous les 5 km ? (Recommandé : oui, modifiable dans le fichier de données.)
 - [x] **T-Q5 Maillots (oui, 25 octobre) :** maillots vert et à pois attribués pendant la séance aux points, bots compris, plutôt qu'au détenteur d'un record ? (Recommandé : oui.)
 - [x] **T-Q6 Niveaux des bots (oui, avec réglage libre en option, 25 octobre) :** 90, 100 et 110 % de ta FTP suffisent-ils, ou faut-il un réglage libre ? (Recommandé : les trois niveaux, plus un réglage libre dans les options.)
+
+### Décisions du 27 octobre (lots non encore rédigés)
+
+Le propriétaire a validé le 27 octobre les propositions suivantes ; elles servent de base aux cahiers à venir.
+
+- **T1, contrat 1.4 :** rédigé après P1 (1.3). `segments.json` est la liste rendue par `Segment.to_dict()` (`segments.py`, lot T2) ; `state` gagne les champs `segment`, `powerup` et `segment_result` ; événements de boutons `Z_SHORT`, `Z_LONG`, `A_SHORT` et `A_LONG`, communs avec la série R.
+- **T3, segments manuels :** fichier `<parcours>.segments.toml` posé à côté du GPX (type, km de début, km de fin, nom). Le parcours de démonstration garde les segments détectés automatiquement, sans segment manuel.
+- **T5, records :** fichier `~/OpenRide/records.json`, par parcours et par segment, avec les 10 meilleurs temps et leur date. Le fantôme compte au classement comme ton meilleur temps, pas comme un coureur de plus. Le journal gagne un événement `powerup` (type, début, durée), sans changement des champs existants.
+- **T8, T9, T10 et T15 :** pas de maquette préalable ; le rendu, le HUD et le menu sont codés puis validés ensemble à la recette.
+- **T12 et T13, profils de bots** (CP en W/kg, W′), ajustés par la difficulté : Grimpeur 4,0 et 15 kJ, Rouleur 3,6 et 20 kJ, Sprinteur 3,3 et 25 kJ avec un pic de 12 W/kg sur 10 s, Diesel 3,8 et 10 kJ. Ces lots attendent le modèle W′bal de R2.
+- **T14, barème de points :** montées HC 20, 15, 10, 6, 4 ; 1re catégorie 10, 8, 6, 4, 2 ; 2e 5, 3, 2, 1 ; 3e 2, 1 ; 4e 1. Sprints 15, 10, 6, 4, 2. Maillot à pois pour les montées, maillot vert pour les sprints.
