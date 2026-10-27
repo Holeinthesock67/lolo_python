@@ -1,6 +1,6 @@
 """Ligne de commande `openride-compiler` (lot B1 §3.3).
 
-    openride-compiler build <fichier.gpx> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
+    openride-compiler build <trace .gpx|.fit|.tcx|.fit.gz|.tcx.gz|.zip> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
                             [--layers route,terrain,buildings,vegetation,poi,water] [--offline]
     openride-compiler add-layer <dossier.world> terrain|buildings|vegetation|poi|water [--offline]
     openride-compiler list | build-all [--layers ...] [--dry-run] [--offline]
@@ -22,12 +22,13 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import __version__
 from . import constants as C
 from .cache import Log, stderr_log
 from .elevation import CopernicusGlo30Provider, ElevationProvider
 from .errors import EXIT_INPUT, EXIT_INTERNAL, EXIT_OK, CompileError
 from .frame import LocalFrame
-from .track_formats import read_track
+from .track_formats import read_track, scan_tracks, track_stem
 from .osm import OverpassClient
 from .osm_layers import (
     build_osm_layers,
@@ -82,10 +83,12 @@ class _Parser(argparse.ArgumentParser):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = _Parser(prog="openride-compiler", description="Compile une trace GPX, FIT ou TCX en parcours .world.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True, parser_class=_Parser)
 
     b = sub.add_parser("build", help="compile une trace GPX, FIT ou TCX en dossier .world")
-    b.add_argument("gpx", type=Path, help="trace GPX, FIT ou TCX (format reconnu par l'extension ou le contenu)")
+    b.add_argument("gpx", type=Path, help="trace GPX, FIT ou TCX, ou export Garmin .fit.gz, .tcx.gz, .zip "
+                   "(format reconnu par l'extension ou le contenu)")
     b.add_argument("--name", help="nom du parcours (défaut : nom du fichier normalisé)")
     b.add_argument("--out", type=Path, default=C.ROUTES_DIR, help=f"dossier de sortie (défaut : {C.ROUTES_DIR})")
     b.add_argument("--out-and-back", action="store_true", help="aller-retour : la trace puis son inverse")
@@ -111,13 +114,13 @@ def build_parser() -> argparse.ArgumentParser:
     tc.add_argument("theme_dir", type=Path)
 
     default_gpx = Path.home() / "OpenRide" / "GPX"
-    ls = sub.add_parser("list", help="liste les parcours (.world et .gpx) et leur statut")
+    ls = sub.add_parser("list", help="liste les parcours (.world et traces .gpx, .fit, .tcx, .fit.gz, .tcx.gz, .zip) et leur statut")
     ls.add_argument("--gpx-dir", type=Path, default=default_gpx,
                     help=f"dossier des traces GPX (défaut : {default_gpx})")
     ls.add_argument("--routes-dir", type=Path, default=C.ROUTES_DIR,
                     help=f"dossier des parcours .world (défaut : {C.ROUTES_DIR})")
 
-    ba = sub.add_parser("build-all", help="compile toutes les traces GPX nouvelles ou modifiées")
+    ba = sub.add_parser("build-all", help="compile toutes les traces nouvelles ou modifiées (GPX, FIT, TCX, archives Garmin)")
     ba.add_argument("--gpx-dir", type=Path, default=default_gpx,
                     help=f"dossier des traces GPX (défaut : {default_gpx})")
     ba.add_argument("--routes-dir", type=Path, default=C.ROUTES_DIR,
@@ -156,8 +159,12 @@ def _report_alt(compiled) -> None:
 
 def cmd_build(args: argparse.Namespace) -> int:
     t0 = time.monotonic()
-    name = normalize_name(args.name if args.name else args.gpx.stem)
-    points = read_track(args.gpx)
+    stem = track_stem(args.gpx.name)
+    name = normalize_name(args.name if args.name else (stem[0] if stem else args.gpx.stem))
+    notes: list[str] = []
+    points = read_track(args.gpx, notes)
+    for note in notes:
+        print(f"openride-compiler : {note}", file=sys.stderr)
     final = Path(args.out) / f"{name}.world"
     if final.exists() and not args.force:   # avant tout téléchargement
         raise CompileError(f"{final} existe déjà (utiliser --force pour le remplacer)")
@@ -385,12 +392,12 @@ def fallback_catalog(routes_dir: Path, gpx_dir: Path) -> list[CatalogEntry]:
     gpx_by_sha: dict[str, list[Path]] = {}
     gpx_by_norm: dict[str, Path] = {}
     if gpx_dir.is_dir():
-        for gf in sorted(p for p in gpx_dir.iterdir() if p.is_file() and p.suffix.lower() == ".gpx"):
+        for gf in scan_tracks(gpx_dir)[0]:
             try:
                 sha = sha256_of(gf)
             except OSError:
                 continue
-            norm = normalize_name(gf.stem)
+            norm = normalize_name(track_stem(gf.name)[0])
             gpx_by_name[gf.name] = (gf, sha, norm)
             gpx_by_sha.setdefault(sha, []).append(gf)
             gpx_by_norm.setdefault(norm, gf)
@@ -447,12 +454,19 @@ def fallback_catalog(routes_dir: Path, gpx_dir: Path) -> list[CatalogEntry]:
         demo = CatalogEntry(DEMO_NAME, DEMO_NAME, "ready", DEMO_LENGTH_M, "open", False, None, None)
     for gpath, _sha, norm in gpx_by_name.values():
         if gpath not in matched:
-            entries.append(CatalogEntry(norm, gpath.stem, "to_compile", None, None, False, gpath, None))
+            entries.append(CatalogEntry(norm, track_stem(gpath.name)[0], "to_compile", None, None, False, gpath, None))
     return [demo, *sorted(entries, key=lambda e: (e.id, e.name))]
+
+
+def _print_conflicts(gpx_dir: Path) -> None:
+    for lost, kept in scan_tracks(gpx_dir)[1]:
+        print(f"openride-compiler : conflit : {lost.name} ignoré, même parcours que {kept.name}",
+              file=sys.stderr)
 
 
 def cmd_list(args: argparse.Namespace) -> int:
     entries = _catalog_entries(Path(args.routes_dir).expanduser(), Path(args.gpx_dir).expanduser())
+    _print_conflicts(Path(args.gpx_dir).expanduser())
     print(f"{'ID':<22} {'Statut':<12} {'Longueur':>10} {'Type':<13} {'Terrain':<8} Détail")
     print("-" * 80)
     for e in entries:
@@ -468,6 +482,7 @@ def cmd_build_all(args: argparse.Namespace) -> int:
     routes_dir = Path(args.routes_dir).expanduser()
     gpx_dir = Path(args.gpx_dir).expanduser()
     entries = _catalog_entries(routes_dir, gpx_dir)
+    _print_conflicts(gpx_dir)
 
     compiled_count = 0
     skipped_count = 0
