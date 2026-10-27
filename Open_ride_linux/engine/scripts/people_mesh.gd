@@ -2,7 +2,7 @@ extends RefCounted
 
 ## Maillages des personnages du décor (spectateurs P15, passants P21) et des cyclistes (bots O7 : coureur
 ## casqué et vélo), construits par code, sans
-## texture (Lot Y13) : corps en prismes effilés à normales lissées (jambes en cuisse et tibia, bassin,
+## texture (Lot Y14) : corps en prismes effilés à normales lissées (jambes en cuisse et tibia, bassin,
 ## buste, épaules, cou, tête, cheveux, bras en manche et avant-bras, mains, chaussures), chien et banc.
 ## Pas de class_name : charger par preload("res://scripts/people_mesh.gd").
 ##

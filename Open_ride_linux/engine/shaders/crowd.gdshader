@@ -1,7 +1,7 @@
 shader_type spatial;
 render_mode cull_disabled;
 
-// Spectateurs du Lot P15 et passants du Lot P21, personnages refaits par le Lot Y13 (people_mesh.gd) :
+// Spectateurs du Lot P15 et passants du Lot P21, personnages refaits par le Lot Y14 (people_mesh.gd) :
 // animation par articulations (hanche, genou, épaule) à partir du temps global TIME.
 // - INSTANCE_CUSTOM.x : phase (0 à 1) ; INSTANCE_CUSTOM.y : 0 calme, 1 encourage ou salue
 //   (crowd_renderer.gd) ; INSTANCE_CUSTOM.z : animation (passersby_model.gd ANIM) : 0 debout

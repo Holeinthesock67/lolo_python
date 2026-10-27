@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Tests unitaires sans écran des personnages construits par code `people_mesh.gd` (Lot Y13) : tenues,
+## Tests unitaires sans écran des personnages construits par code `people_mesh.gd` (Lot Y14) : tenues,
 ## zones de couleur, articulations, taille des maillages.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_people_mesh.gd
 

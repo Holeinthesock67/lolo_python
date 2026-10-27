@@ -1,7 +1,7 @@
 extends Node3D
 
 ## Affichage des spectateurs de crowd_model.gd (Lot P15) : personnages construits par code
-## (people_mesh.gd, Lot Y13 : corps articulé, tenue tirée par personne), en deux MultiMesh (avec et sans
+## (people_mesh.gd, Lot Y14 : corps articulé, tenue tirée par personne), en deux MultiMesh (avec et sans
 ## drapeau), couleur du haut en couleur d'instance, tenue (peau, cheveux, pantalon) dans
 ## INSTANCE_CUSTOM.w, animés par shaders/crowd.gdshader.
 ## Pas de class_name : charger par preload("res://scripts/crowd_renderer.gd").

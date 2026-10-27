@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Rendu hors écran des spectateurs du lot P15 (shaders/crowd.gdshader) : le shader compile, un
 ## spectateur apparaît avec la couleur de son haut (couleur d'instance), la peau et le pantalon de sa
-## tenue (people_mesh.gd, Lot Y13).
+## tenue (people_mesh.gd, Lot Y14).
 
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
