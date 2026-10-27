@@ -111,6 +111,33 @@ static func make_material(road_color: Color = ROAD_COLOR, road_texture: Texture2
 	return mat
 
 
+## Matériau de la route avec les marquages de P14 (Lot P17, shaders/road_markings.gdshader) : ligne
+## médiane, bandes de rive, chiffres des kilomètres restants (`marks`, au plus 8 : `[{s, digit}]`).
+## Couleur de la chaussée du thème ; la texture du thème n'est pas reprise. À créer sur le fil principal.
+static func make_markings_material(road_color: Color = ROAD_COLOR, road_width_m: float = ROAD_WIDTH_M,
+		marks: Array = []) -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/road_markings.gdshader")
+	mat.set_shader_parameter("road_color", Color(road_color.r, road_color.g, road_color.b))
+	mat.set_shader_parameter("road_width_m", road_width_m)
+	mat.set_shader_parameter("shoulder_m", SHOULDER_WIDTH_M)
+	mat.set_shader_parameter("v_repeat_m", V_REPEAT_M)
+	set_marks(mat, marks)
+	return mat
+
+
+static func set_marks(mat: ShaderMaterial, marks: Array) -> void:
+	var arr := PackedVector2Array()
+	for m in marks:
+		if arr.size() >= 8:
+			break
+		arr.append(Vector2(float(m["s"]), float(m["digit"])))
+	while arr.size() < 8:
+		arr.append(Vector2(-1.0e6, 0.0))
+	mat.set_shader_parameter("marks", arr)
+	mat.set_shader_parameter("mark_count", mini((marks as Array).size(), 8))
+
+
 ## Image de la chaussée : image du thème si elle est lisible (non vide, non compressée), sinon couleur
 ## unie ; ligne médiane d'une largeur de 1/32 de l'image (au moins 2 pixels) sur la moitié haute.
 static func road_image(road_color: Color, src: Image = null) -> Image:

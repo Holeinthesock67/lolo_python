@@ -60,7 +60,7 @@ GODOT_TOLERATED = re.compile(
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
-              "wind_speed", "wind_level", "wind_verdict")
+              "wind_speed", "wind_level", "wind_verdict", "draft")
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -673,8 +673,54 @@ def _scenes(s: Session) -> None:
         left = w["power"]["rect"]
         s.check("vent", "indicateur sous la colonne de gauche", w["wind"]["rect"][0] < s.width * 0.35
                 and w["wind"]["rect"][1] > left[1] + left[3], f"rectangle {w['wind']['rect']}")
-    core.set_scene(wind=None)
+    # 3 ter. Abri (lot P17) : aspiration de 13,5 % derrière un bot, « Abri 30 % » sous l'indicateur du vent.
+    core.set_scene(draft=0.135)
+    time.sleep(1.0)
+    shot = s.capture("abri")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        s.check("abri", "pastille de l'abri affichée", w["draft"]["visible"])
+        s.check_texts("abri", info, {"draft": "Abri 30 %"})
+        s.check_layout("abri", info)
+        s.check("abri", "abri sous l'indicateur du vent", w["draft"]["rect"][1] >= w["wind"]["rect"][1] + w["wind"]["rect"][3],
+                f"rectangle {w['draft']['rect']}")
+    core.set_scene(wind=None, draft=None)
     time.sleep(2.5)
+
+    # 3 quater. Pluie (lot P17) : météo imposée, particules autour de la caméra et chaussée mouillée.
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather",
+                   "weather": {"kind": "rain", "intensity": 0.8, "morning_mist": False}})
+    time.sleep(1.5)
+    shot = s.capture("pluie")
+    if shot:
+        img, info = shot
+        dec = info.get("decor", {})
+        s.check("pluie", "particules de pluie actives", dec.get("particles", 0) > 0, f"{dec.get('particles', 0)} particules")
+        s.check("pluie", "chaussée mouillée", dec.get("wetness", 0.0) > 0.5, f"wetness {dec.get('wetness', 0.0):.2f}")
+        s.check_layout("pluie", info)
+        s.check_world("pluie", img, info)
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather", "weather": {"kind": "clear"}})
+
+    # 3 quinquies. Col (lot P17) : arrêt à 25 m du panneau du sommet de la démo (montée de 5 km) :
+    # panneau lisible (lettres prévues pour 30 m), spectateurs du dernier kilomètre.
+    s_back = core.current_s()
+    core.set_scene(speed=0.0, s=4955.0)
+    time.sleep(3.0)
+    shot = s.capture("col")
+    if shot:
+        img, info = shot
+        dec = info.get("decor", {})
+        sign = dec.get("sign", {})
+        s.check("col", "panneau du sommet devant la caméra", "Sommet" in str(sign.get("text", "")),
+                f"« {str(sign.get('text', '')).replace(chr(10), ' / ')} » à {float(sign.get('dist_m', 0.0)):.0f} m")
+        s.check("col", "lettres du panneau lisibles", float(sign.get("letter_px_720", 0.0)) >= 6.0,
+                f"{float(sign.get('letter_px_720', 0.0)):.1f} px pour 720 lignes")
+        s.check("col", "spectateurs affichés", dec.get("spectators", 0) > 0, f"{dec.get('spectators', 0)} spectateurs")
+        s.check_layout("col", info)
+        s.check_world("col", img, info)
+    core.set_scene(speed=SPEED_MPS, s=s_back)
+    time.sleep(2.0)
 
     # 4. ERG : cible dans la ligne de puissance, bandeau et histogramme des blocs (lot N7).
     core.set_scene(speed=7.0, mode="ERG", erg={

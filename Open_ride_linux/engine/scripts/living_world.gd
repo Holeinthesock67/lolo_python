@@ -40,6 +40,7 @@ var osm_streamer = null
 var neigh: Dictionary = {}
 var neigh_updates := 0               # voisinages recalculés (tests)
 var last_wind: Dictionary = {}
+var rain := 0.0                      # pluie de la météo (P8), posée par living_decor.gd (P17)
 var _neigh_at := -INF
 var _shapes_version := -1
 var _shapes: Dictionary = {"forests": [], "buildings": [], "waters": []}
@@ -111,6 +112,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		neigh["alt_m"] = alt_m
 		neigh["wind_strength"] = float(last_wind.get("strength", 0.0))
 		neigh["paused"] = paused
+		neigh["rain"] = rain
 		sound_player.update_ambience(neigh, now_s)
 		sound_player.update_bells(NAN, now_s)
 	return last_wind

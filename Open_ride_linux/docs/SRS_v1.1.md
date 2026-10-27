@@ -350,7 +350,9 @@ difficulty_pct = 50             # réglable en jeu (lot Q1)
 grade_min_pct = -10
 grade_max_pct = 16
 power_smooth_tau_s = 0.7
-grade_rate_pct_per_s = 2.0   # limite de variation due au relief (pas aux braquets)
+grade_rate_pct_per_s = 2.0   # ancien réglage symétrique, lu seulement si up/down manquent (lot Q4)
+grade_rate_up_pct_per_s = 4.0     # vitesse maximale quand la pente envoyée augmente (lot Q4)
+grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 
 [gearing]
