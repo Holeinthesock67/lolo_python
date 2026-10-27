@@ -28,10 +28,10 @@ const JERSEY_NAMES := {"sprint": "Vert", "kom": "Pois"}
 const RIDER := "me"
 const RIDER_NAME := "toi"
 ## Hauteurs (px) d'une ligne de voisin, d'une ligne de bot, de la ligne des maillots, et marge du panneau.
-const NEIGHBOR_ROW := 26.0
+const NEIGHBOR_ROW := 28.0
 const BOT_ROW := 30.0
 const JERSEY_ROW := 24.0
-const PADDING := 12.0
+const PADDING := 8.0
 
 
 static func profile_name(profile) -> String:

@@ -288,8 +288,8 @@ func _build_bots_panel() -> void:
 		arrow.draw.connect(func() -> void: _draw_neighbor_arrow(arrow))
 		panel_bots.add_child(arrow)
 		neighbor_arrows.append(arrow)
-		neighbor_labels.append(_bots_label(Vector2(178.0, BotHudModel.NEIGHBOR_ROW), 20))
-		var gap := _bots_label(Vector2(80.0, BotHudModel.NEIGHBOR_ROW), 20)
+		neighbor_labels.append(_bots_label(Vector2(178.0, BotHudModel.NEIGHBOR_ROW), 18))
+		var gap := _bots_label(Vector2(80.0, BotHudModel.NEIGHBOR_ROW), 18)
 		gap.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		neighbor_gaps.append(gap)
 	for i in range(BotsViewModel.MAX_LINES):
@@ -317,7 +317,7 @@ func _build_bots_panel() -> void:
 		fill.color = WBAL_COLOR
 		bg.add_child(fill)
 		bots_wbal.append(fill)
-	jerseys_label = _bots_label(Vector2(280.0, BotHudModel.JERSEY_ROW), 18)
+	jerseys_label = _bots_label(Vector2(280.0, BotHudModel.JERSEY_ROW), 16)
 
 
 func _bots_label(box_size: Vector2, font_size: int) -> Label:
@@ -398,7 +398,7 @@ func _layout_bots_panel(top: float, avail: float) -> void:
 		neighbor_labels[i].position = Vector2(32.0, y)
 		neighbor_gaps[i].text = str(nb["gap_text"])
 		neighbor_gaps[i].position = Vector2(210.0, y)
-		neighbor_arrows[i].position = Vector2(10.0, y + 5.0)
+		neighbor_arrows[i].position = Vector2(10.0, y + 6.0)
 		neighbor_arrows[i].modulate = nb["color"]
 		neighbor_arrows[i].set_meta("dir", nb["dir"])
 		neighbor_arrows[i].queue_redraw()

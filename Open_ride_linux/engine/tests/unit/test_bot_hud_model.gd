@@ -52,7 +52,7 @@ func _run() -> void:
 	_test_race_fields()
 	_test_fit()
 	_test_hud()
-	print("Vérifications : %d, échecs : %d" % [_checked, _failures])
+	print("test_bot_hud_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
 
