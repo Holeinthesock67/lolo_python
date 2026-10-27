@@ -16,7 +16,7 @@ U1 et P2 livrés ; U20 pour des parcours réels (U19 suffit pour les tests).
 ## 4. Travail demandé
 
 - `route.py` : lecture de la colonne `surface` (absente → `paved`), `surface_at(s)` (valeur du point le plus proche en arrière, sans interpolation).
-- Module pur `core/src/openride_core/surface_physics.py` : `crr_factor(surface, cfg) -> float` (1 pour `paved`, facteurs de `[gravel]` sinon) ; `effective_surface(route_surface, mode)` : `paved` si `mode` vaut `off`, la surface de la route si `auto`, sinon la surface imposée par `mode` sur tout le parcours (proposition U-Q8) ; `grade_offset_pct(crr_base, factor, grade_pct) -> float` : supplément de pente équivalent `(factor − 1) × crr_base × cos θ × 100`.
+- Module pur `core/src/openride_core/surface_physics.py` : `crr_factor(surface, cfg) -> float` (1 pour `paved`, facteurs de `[gravel]` sinon) ; `effective_surface(route_surface, mode)` : `paved` si `mode` vaut `off`, la surface de la route si `auto`, sinon la surface imposée par `mode` sur tout le parcours (décision U-Q8) ; `grade_offset_pct(crr_base, factor, grade_pct) -> float` : supplément de pente équivalent `(factor − 1) × crr_base × cos θ × 100`.
 - Séance : en SIM, supplément de pente du gravel **ajouté** à celui du vent et de l'aspiration (P2), le total borné par `[wind] max_grade_offset_pct` ; transition douce sur 20 m entre deux surfaces ; en ERG, `crr` effectif utilisé pour la vitesse virtuelle seulement.
 - Journal : surface et supplément de pente par seconde (clés facultatives), lues par `log_report.py`.
 - Configuration `[gravel]` validée dans `config.py` (types et bornes du lot U1).

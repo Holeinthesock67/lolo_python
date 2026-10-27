@@ -39,7 +39,7 @@ Version 2.0 publiée : séries P (P1, P18, P20) et W (W1) fusionnées. **Numéro
 ### 4.4 Surface de la route (option « gravel »)
 
 - `route.json` : colonne facultative `surface`, une valeur par point parmi `paved` (défaut), `compacted`, `gravel`, `dirt`. Une route sans colonne est entièrement `paved`.
-- **Surface imposée (proposition U-Q8 du 27 octobre) :** `[gravel] mode` = `compacted`, `gravel` ou `dirt` fait rouler et afficher **tout le parcours** dans cette surface, quelle que soit sa colonne `surface` ; c'est le moyen de faire du gravel sur une trace habituelle, revêtue de bout en bout. `auto` suit la colonne `surface` (portions non revêtues réelles d'OSM, monde ouvert) ; `off` roule tout en bitume.
+- **Surface imposée (décision U-Q8 du 27 octobre) :** `[gravel] mode` = `compacted`, `gravel` ou `dirt` fait rouler et afficher **tout le parcours** dans cette surface, quelle que soit sa colonne `surface` ; c'est le moyen de faire du gravel sur une trace habituelle, revêtue de bout en bout. `auto` suit la colonne `surface` (portions non revêtues réelles d'OSM, monde ouvert) ; `off` roule tout en bitume.
 - Manifeste : `route.surface_source` (`osm` ou `none`) et part de chaque surface dans `stats` quand la fiche existe.
 - Monde ouvert : nouvelle classe de route `g` (voies non revêtues : `highway=track`, `path` non revêtu, `surface` non revêtue), admise par le graphe et le navigateur **seulement** quand `[gravel] mode` n'est pas `off` ; les parties de route (`route/part_<k>.json`) portent la même colonne `surface`.
 
