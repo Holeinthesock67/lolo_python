@@ -72,13 +72,19 @@ func _init() -> void:
 	_check(def_res["warnings"].size() == 0, "default: 0 avertissement")
 	var default_theme: Dictionary = def_res["theme"]
 
-	# 2. Thème minimal {"version": "1.0"} -> égal clé par clé au thème default
+	# 2. Thème minimal {"version": "1.2"} -> égal clé par clé au thème default (thème 1.2, lot P1)
 	var min_dir := base_tmp.path_join("minimal")
-	_write_theme(min_dir, '{"version": "1.0"}\n')
+	_write_theme(min_dir, '{"version": "1.2"}\n')
 	var min_res := ThemeLoader.load_theme(min_dir)
 	_check(min_res["errors"].size() == 0, "minimal: 0 erreur")
 	_check(min_res["warnings"].size() == 0, "minimal: 0 avertissement")
 	_check(_dicts_equal(min_res["theme"], default_theme), "minimal: égal clé par clé à default")
+	# Un thème 1.0 reste lu sans erreur ni avertissement : les clés 1.2 viennent du défaut
+	var old_dir := base_tmp.path_join("ancien")
+	_write_theme(old_dir, '{"version": "1.0"}\n')
+	var old_res := ThemeLoader.load_theme(old_dir)
+	_check(old_res["errors"].size() == 0 and old_res["warnings"].size() == 0, "thème 1.0: 0 erreur, 0 avertissement")
+	_check(old_res["theme"].get("season", "") == "summer", "thème 1.0: saison du défaut")
 
 	# 3. Thème complet avec texture PNG 4x4 valide
 	var full_dir := base_tmp.path_join("complet")

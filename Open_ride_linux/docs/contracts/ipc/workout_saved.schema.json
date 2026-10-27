@@ -1,0 +1,39 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorkoutSavedMessage",
+  "description": "Réponse à cmd create_workout ou import_workout (révision 1.3, lot N16, décision D4 de l'audit IPC) ; datagramme de 1 400 octets au plus.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "workout_id",
+    "name",
+    "created"
+  ],
+  "properties": {
+    "type": {
+      "const": "workout_saved"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "workout_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "Identifiant final (suffixe _2, _3… éventuel), à passer à select_workout."
+    },
+    "name": {
+      "type": "string"
+    },
+    "created": {
+      "type": "boolean",
+      "description": "Faux si un fichier identique était déjà là (rien n'a été écrit)."
+    }
+  }
+}

@@ -1,0 +1,8 @@
+name = "Col du Tourmalet"
+region = "Hautes-Pyrénées, Pyrénées"
+country = "France"
+side = "depuis Luz-Saint-Sauveur"
+waypoints = [[42.8730, -0.0018], [42.9082, 0.1453]]
+ref_length_m = 19000
+ref_gain_m = 1404
+tags = ["col", "classique", "hc"]

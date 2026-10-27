@@ -16,6 +16,7 @@ from . import __version__
 from . import constants as C
 from .errors import CompileError
 from .pipeline import CompiledRoute
+from .route_stats import compute_stats
 
 
 def normalize_name(text: str) -> str:
@@ -27,7 +28,9 @@ def normalize_name(text: str) -> str:
 
 def build_manifest(name: str, compiled: CompiledRoute, gpx_name: str, gpx_sha256: str,
                    created: str | None = None, terrain: dict | None = None) -> dict:
-    """Manifeste (format §2 et §11). `terrain` : bloc `layers.terrain` si la couche est produite."""
+    """Manifeste (format §2 et §11). `terrain` : bloc `layers.terrain` si la couche est produite.
+
+    Il porte la fiche calculée du parcours (`stats`, lot O15, champ facultatif du format)."""
     route = compiled.route
     return {
         "format": C.FORMAT_NAME,
@@ -49,7 +52,9 @@ def build_manifest(name: str, compiled: CompiledRoute, gpx_name: str, gpx_sha256
             "vegetation": {"present": False, "source": "none"},
             "poi": {"present": False},
             "water": {"present": False},
+            "segments": {"present": False},
         },
+        "stats": compute_stats(route),
     }
 
 

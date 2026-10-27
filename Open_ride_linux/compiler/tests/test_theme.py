@@ -71,14 +71,15 @@ def test_default_theme_passes_without_error_or_warning() -> None:
 
 
 def test_minimal_theme_resolves_to_default(tmp_path: Path) -> None:
-    """Cas 3 : un thème minimal {"version": "1.0"} est valide et resolve_theme produit le défaut."""
-    (tmp_path / "theme.json").write_text('{"version": "1.0"}\n', encoding="utf-8")
-    issues = check_theme(tmp_path)
-    assert issues == []
+    """Cas 3 : un thème minimal est valide et resolve_theme produit le défaut (thème 1.2 depuis P1).
 
-    resolved = resolve_theme(tmp_path)
+    Un thème 1.0 reste valide : seule sa version diffère du défaut, les clés 1.2 viennent du défaut.
+    """
     default_data = json.loads(DEFAULT_THEME_PATH.read_text(encoding="utf-8"))
-    assert resolved == default_data
+    for version in ("1.0", default_data["version"]):
+        (tmp_path / "theme.json").write_text(f'{{"version": "{version}"}}\n', encoding="utf-8")
+        assert check_theme(tmp_path) == []
+        assert resolve_theme(tmp_path) == {**default_data, "version": version}
 
 
 @pytest.mark.parametrize("bad_color", ["vert", "#12345", "#1234567", "#GGGGGG"])

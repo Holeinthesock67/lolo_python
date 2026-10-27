@@ -1,33 +1,53 @@
 extends RefCounted
 
 ## Modèle sonore sans affichage : vent, roue libre et points d'intérêt spatialisés
-## (Lot L5, SRS §8 « Audio », Contrat IPC v1 §3, Format .world v1 §8), sans aucun nœud Godot.
+## (Lot L5, revu par le Lot P10 ; SRS §8 « Audio », Contrat IPC v1 §3, Format .world v1 §8), sans aucun nœud Godot.
 ## Pas de class_name : charger par preload("res://scripts/sound_model.gd").
 ##
 ## Constantes de comportement :
-## - `SILENCE_DB = -80.0` : volume de silence (à l'arrêt ou en pause).
-## - `WIND_MAX_KMH = 60.0` : vitesse de plafonnement du volume et de la hauteur (`pitch`) du vent.
-## - `WIND_MIN_MOVING_DB = -36.0`, `WIND_MAX_DB = 0.0` : plage de volume du vent en mouvement.
-## - `WIND_PITCH_MIN = 0.8`, `WIND_PITCH_MAX = 1.3` : plage de hauteur (`pitch`) du vent.
+## - `SILENCE_DB = -80.0` : volume de silence (à l'arrêt ou en pause, sans lissage en pause).
+## - Vent (Lot P10) : il suit la vitesse dans l'air `va = v + wind.head_mps` (bornée à 0), selon
+##   `20 × WIND_LOG_K × log10(va / WIND_MAX_KMH)` dB, entre `WIND_MIN_MOVING_DB = -60.0` et
+##   `WIND_MAX_DB = 0.0` (plafond à `WIND_MAX_KMH = 60.0` km/h dans l'air) : à 10 km/h, -39 dB, à
+##   peine audible ; à 50 km/h, -4 dB. Hauteur (`pitch`) de `WIND_PITCH_MIN = 0.8` à
+##   `WIND_PITCH_MAX = 1.3`, linéaire en `va`. La rafale `wind.gust` (0 à 1) module le volume de
+##   ± `GUST_DB = 3.0` dB et la hauteur de ± `GUST_PITCH = 0.05`, sur une période de `GUST_PERIOD_S`.
+##   Sans objet `wind` depuis `WIND_TIMEOUT_S = 2.0` s (2 envois par seconde), vent coupé.
 ## - `FREEWHEEL_MIN_KMH = 5.0` : vitesse minimale d'activation de la roue libre.
-## - `FREEWHEEL_DELAY_S = 0.5` : durée minimale à 0 W (ou puissance absente) avant roue libre.
-## - `FREEWHEEL_STOP_POWER_W = 10.0` : puissance au-dessus de laquelle la roue libre s'arrête.
-## - `FREEWHEEL_ACTIVE_DB = -6.0` : volume cible de la roue libre active.
+## - `FREEWHEEL_DELAY_S = 0.5` : durée minimale sans pédaler avant roue libre. Avec un champ `cadence`
+##   numérique, c'est la cadence qui décide (0 tr/min : roue libre possible, au-dessus de
+##   `FREEWHEEL_STOP_CADENCE_RPM = 20.0` : reprise), car un capteur de puissance traîne ; sans
+##   cadence, la puissance (0 W ou absente : roue libre possible, au-dessus de
+##   `FREEWHEEL_STOP_POWER_W = 10.0` : reprise), comme en L5.
+## - Cliquetis : `clicks_per_s = v / WHEEL_CIRCUMFERENCE_M × ENGAGEMENT_POINTS` (roue de 2,1 m,
+##   36 points : 171 coups par seconde à 36 km/h) ; volume de `FREEWHEEL_MIN_DB = -10.0` à 5 km/h à
+##   `FREEWHEEL_MAX_DB = -4.0` à `FREEWHEEL_LOUD_KMH = 40.0` km/h.
+## - Reprise du pédalage pendant la roue libre : `freewheel.clac` vrai pour une seule évaluation.
 ## - `HYSTERESIS_EXIT_FACTOR = 1.1` : un POI entre à `radius_m` et sort à `1,1 × radius_m`.
 ## - `SLEW_RATE_DB_PER_S = 12.0` : variation maximale de tout volume (12 dB/s, soit 1,2 dB pour 0,1 s).
 ## - `MAX_POI_SOURCES = 4` : nombre maximal de points d'intérêt audibles simultanément (les plus proches).
 
 const SILENCE_DB := -80.0
 const WIND_MAX_KMH := 60.0
-const WIND_MIN_MOVING_DB := -36.0
+const WIND_LOG_K := 2.5
+const WIND_MIN_MOVING_DB := -60.0
 const WIND_MAX_DB := 0.0
 const WIND_PITCH_MIN := 0.8
 const WIND_PITCH_MAX := 1.3
+const GUST_DB := 3.0
+const GUST_PITCH := 0.05
+const GUST_PERIOD_S := 3.0
+const WIND_TIMEOUT_S := 2.0
 
 const FREEWHEEL_MIN_KMH := 5.0
 const FREEWHEEL_DELAY_S := 0.5
 const FREEWHEEL_STOP_POWER_W := 10.0
-const FREEWHEEL_ACTIVE_DB := -6.0
+const FREEWHEEL_STOP_CADENCE_RPM := 20.0
+const FREEWHEEL_MIN_DB := -10.0
+const FREEWHEEL_MAX_DB := -4.0
+const FREEWHEEL_LOUD_KMH := 40.0
+const WHEEL_CIRCUMFERENCE_M := 2.1
+const ENGAGEMENT_POINTS := 36
 
 const HYSTERESIS_EXIT_FACTOR := 1.1
 const SLEW_RATE_DB_PER_S := 12.0
@@ -43,6 +63,10 @@ var _paused: bool = false
 var _rider_pos: Vector3 = Vector3.ZERO
 var _zero_power_since_s: float = NAN
 var _freewheel_latch: bool = false
+var _clac_pending: bool = false
+var _head_mps: float = 0.0
+var _gust: float = 0.0
+var _wind_at_s: float = NAN
 
 var _pois: Array[Dictionary] = []
 var _active_poi_ids: Dictionary = {}
@@ -65,6 +89,10 @@ func reset() -> void:
 	_rider_pos = Vector3.ZERO
 	_zero_power_since_s = NAN
 	_freewheel_latch = false
+	_clac_pending = false
+	_head_mps = 0.0
+	_gust = 0.0
+	_wind_at_s = NAN
 	_active_poi_ids.clear()
 	_pending_events.clear()
 	_last_eval_s = NAN
@@ -140,20 +168,40 @@ func on_state(state: Dictionary, rider_pos: Vector3, now_s: float) -> void:
 		v_kmh = maxf(0.0, float(state["v"]) * 3.6)
 	_speed_kmh = v_kmh
 
-	var p_raw = state.get("power", null)
-	var has_power := _is_number(p_raw)
-	var power_w := maxf(0.0, float(p_raw)) if has_power else 0.0
+	var w_raw = state.get("wind", null)
+	if typeof(w_raw) == TYPE_DICTIONARY:
+		var wd: Dictionary = w_raw
+		_head_mps = float(wd["head_mps"]) if _is_number(wd.get("head_mps", null)) else 0.0
+		_gust = clampf(float(wd["gust"]), 0.0, 1.0) if _is_number(wd.get("gust", null)) else 0.0
+		_wind_at_s = now_s
 
-	if not has_power or power_w <= 0.0:
+	# Pédalage : la cadence décide si elle est présente, sinon la puissance (L5).
+	var c_raw = state.get("cadence", null)
+	var idle := false
+	var pedalling := false
+	if _is_number(c_raw):
+		var cad := maxf(0.0, float(c_raw))
+		idle = cad <= 0.0
+		pedalling = cad > FREEWHEEL_STOP_CADENCE_RPM
+	else:
+		var p_raw = state.get("power", null)
+		var has_power := _is_number(p_raw)
+		var power_w := maxf(0.0, float(p_raw)) if has_power else 0.0
+		idle = not has_power or power_w <= 0.0
+		pedalling = power_w > FREEWHEEL_STOP_POWER_W
+
+	if idle:
 		if is_nan(_zero_power_since_s):
 			_zero_power_since_s = now_s
 		if (now_s - _zero_power_since_s) >= FREEWHEEL_DELAY_S - 1e-6 and _speed_kmh > FREEWHEEL_MIN_KMH and not _paused:
 			_freewheel_latch = true
-	elif power_w > FREEWHEEL_STOP_POWER_W:
+	elif pedalling:
 		_zero_power_since_s = NAN
+		if _freewheel_latch and not _paused:
+			_clac_pending = true
 		_freewheel_latch = false
 	else:
-		# Entre 0 et 10 W : si la roue libre n'était pas déjà active, n'accumule pas le délai à 0 W
+		# Entre les deux seuils : si la roue libre n'était pas déjà active, n'accumule pas le délai
 		if not _freewheel_latch:
 			_zero_power_since_s = NAN
 
@@ -163,18 +211,38 @@ func on_state(state: Dictionary, rider_pos: Vector3, now_s: float) -> void:
 	_update_poi_hysteresis()
 
 
-static func _target_wind_db(speed_kmh: float, paused: bool) -> float:
+## Vitesse dans l'air (km/h) : vitesse du cycliste plus composante de face du vent reçu, bornée à 0.
+func air_speed_kmh(now_s: float) -> float:
+	var head := _head_mps if not is_nan(_wind_at_s) and now_s - _wind_at_s <= WIND_TIMEOUT_S else 0.0
+	return maxf(0.0, _speed_kmh + head * 3.6)
+
+
+func _gust_now(now_s: float) -> float:
+	if is_nan(_wind_at_s) or now_s - _wind_at_s > WIND_TIMEOUT_S:
+		return 0.0
+	return _gust * sin(TAU * now_s / GUST_PERIOD_S)
+
+
+## Volume du vent (dB) à la vitesse du cycliste `speed_kmh` et à la vitesse dans l'air `air_kmh`.
+static func _target_wind_db(speed_kmh: float, air_kmh: float, paused: bool) -> float:
 	if paused or speed_kmh <= 0.0:
 		return SILENCE_DB
-	var ratio := clampf(speed_kmh / WIND_MAX_KMH, 0.0, 1.0)
-	return lerpf(WIND_MIN_MOVING_DB, WIND_MAX_DB, ratio)
+	if air_kmh <= 0.0:
+		return WIND_MIN_MOVING_DB
+	var db := 20.0 * WIND_LOG_K * log(minf(air_kmh, WIND_MAX_KMH) / WIND_MAX_KMH) / log(10.0)
+	return clampf(db, WIND_MIN_MOVING_DB, WIND_MAX_DB)
 
 
-static func _target_wind_pitch(speed_kmh: float, paused: bool) -> float:
+static func _target_wind_pitch(speed_kmh: float, air_kmh: float, paused: bool) -> float:
 	if paused or speed_kmh <= 0.0:
 		return WIND_PITCH_MIN
-	var ratio := clampf(speed_kmh / WIND_MAX_KMH, 0.0, 1.0)
+	var ratio := clampf(air_kmh / WIND_MAX_KMH, 0.0, 1.0)
 	return lerpf(WIND_PITCH_MIN, WIND_PITCH_MAX, ratio)
+
+
+## Coups de cliquet par seconde de la roue libre à `speed_kmh`.
+static func freewheel_clicks_per_s(speed_kmh: float) -> float:
+	return maxf(0.0, speed_kmh) / 3.6 / WHEEL_CIRCUMFERENCE_M * float(ENGAGEMENT_POINTS)
 
 
 static func _target_poi_db(dist: float, radius_m: float, paused: bool) -> float:
@@ -206,13 +274,23 @@ func evaluate(now_s: float) -> Dictionary:
 		max_step = SLEW_RATE_DB_PER_S * dt
 	_last_eval_s = now_s
 
-	var target_w_db := _target_wind_db(_speed_kmh, _paused)
-	_wind_db = _slew(_wind_db, target_w_db, max_step)
-	var wind_pitch := _target_wind_pitch(_speed_kmh, _paused)
+	var air_kmh := air_speed_kmh(now_s)
+	var g := _gust_now(now_s)
+	var target_w_db := _target_wind_db(_speed_kmh, air_kmh, _paused)
+	if target_w_db > SILENCE_DB:
+		target_w_db = minf(target_w_db + GUST_DB * g, WIND_MAX_DB)
+	# En pause : silence immédiat, sans lissage
+	_wind_db = SILENCE_DB if _paused else _slew(_wind_db, target_w_db, max_step)
+	var wind_pitch := _target_wind_pitch(_speed_kmh, air_kmh, _paused) * (1.0 + GUST_PITCH * g)
 
 	var fw_playing := _freewheel_latch and not _paused and _speed_kmh > FREEWHEEL_MIN_KMH
-	var target_fw_db := FREEWHEEL_ACTIVE_DB if fw_playing else SILENCE_DB
-	_freewheel_db = _slew(_freewheel_db, target_fw_db, max_step)
+	var target_fw_db := SILENCE_DB
+	if fw_playing:
+		var loud := clampf((_speed_kmh - FREEWHEEL_MIN_KMH) / (FREEWHEEL_LOUD_KMH - FREEWHEEL_MIN_KMH), 0.0, 1.0)
+		target_fw_db = lerpf(FREEWHEEL_MIN_DB, FREEWHEEL_MAX_DB, loud)
+	_freewheel_db = SILENCE_DB if _paused else _slew(_freewheel_db, target_fw_db, max_step)
+	var clac := _clac_pending and not _paused
+	_clac_pending = false
 
 	var active_candidates: Array[Dictionary] = []
 	for p in _pois:
@@ -259,10 +337,13 @@ func evaluate(now_s: float) -> Dictionary:
 		"wind": {
 			"volume_db": _wind_db,
 			"pitch": wind_pitch,
+			"air_kmh": air_kmh,
 		},
 		"freewheel": {
 			"playing": fw_playing,
 			"volume_db": _freewheel_db,
+			"clicks_per_s": freewheel_clicks_per_s(_speed_kmh) if fw_playing else 0.0,
+			"clac": clac,
 		},
 		"pois": out_pois,
 		"events": events_out,
