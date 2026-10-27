@@ -40,7 +40,7 @@ Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sou
 | `vent` | Lot P16 : vent de face de 26 km/h dans la trame : indicateur visible sous la colonne de gauche, « km/h face », « fort », pastille rouge « Vent défavorable », mise en page sans chevauchement |
 | `abri` | Lot P17 : aspiration de 13,5 % dans la trame : pastille « Abri 30 % » sous l'indicateur du vent, mise en page sans chevauchement |
 | `pluie` | Lot P17 : pluie imposée par le message de test `weather` : particules actives, chaussée mouillée, ciel en haut et sol en bas |
-| `col` | Lot P17 : arrêt à 25 m du panneau du sommet de la démo : panneau « Sommet » devant la caméra, lettres d'au moins 6 px en 720p, spectateurs affichés |
+| `col` | Lots P17 et T8 : arrêt à 25 m du panneau du sommet de la démo (sommet de `climb1` de la couche `segments`, à 1 500 m) : panneau « Sommet » devant la caméra, lettres d'au moins 6 px en 720p, aucun spectateur (montée de moins de 3 km) |
 | `erg` | Ligne ERG visible, cible dans la ligne de puissance, pente « trainer en ERG », mise en page |
 | `pause` | « PAUSED (trainer_lost) » et « RECONNECTING » dans la ligne d'état |
 | `core_muet_1`, `core_muet_2` | Core muet : `core_lost`, bandeau « Core non joignable » rouge et sans recouvrir le HUD, caméra et image figées |
