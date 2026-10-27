@@ -6,6 +6,7 @@ extends SceneTree
 
 const OsmLayers := preload("res://scripts/osm_layers.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 const TMP := "user://test_osm_layers_k4"
 
@@ -158,14 +159,12 @@ func _test_performance() -> void:
 			"holes": [], "base_y": 1200.0 + i * 0.1, "height_m": 8.0, "roof": "flat", "hint": {"building": "house", "colour": null}})
 	_write("buildings", 7, JSON.stringify({"version": "1.0", "buildings": items}))
 	OsmLayers.load_chunk(TMP, "buildings", 7)
-	var best := INF
-	var n := 0
-	for i in range(3):
-		var t0 := Time.get_ticks_usec()
-		n = (OsmLayers.load_chunk(TMP, "buildings", 7)["items"] as Array).size()
-		best = minf(best, (Time.get_ticks_usec() - t0) / 1000.0)
-	print("Mesure : tronçon de %d bâtiments lu en %.2f ms (meilleur de 3)" % [n, best])
-	_check(n == 200 and best < 20.0, "200 bâtiments lus en moins de 20 ms (%.2f ms)" % best)
+	var box := [0]   # les lambdas capturent par valeur : résultat rangé dans un tableau
+	var best := PerfBudget.measure_ms(func(): box[0] = (OsmLayers.load_chunk(TMP, "buildings", 7)["items"] as Array).size(), 3, 0)
+	var n: int = box[0]
+	print("Mesure : tronçon de %d bâtiments lu en %.2f ms" % [n, best])
+	_check(n == 200 and PerfBudget.check("osm_buildings_200", best),
+		"200 bâtiments lus, temps dans le budget (%.2f ms)" % best)
 
 
 func _init() -> void:
