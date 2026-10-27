@@ -23,6 +23,7 @@ OPENRIDE_HOME = Path.home() / "OpenRide"
 DEFAULT_CONFIG_PATH = OPENRIDE_HOME / "config.toml"
 GPX_DIR = OPENRIDE_HOME / "GPX"             # traces GPX à compiler (SRS §7, §11)
 WORKOUTS_DIR = OPENRIDE_HOME / "Workouts"   # entraînements .zwo (SRS §6, §11)
+PLANS_DIR = OPENRIDE_HOME / "Plans"         # plans d'entraînement .toml (lot O11)
 ROUTES_DIR = Path.home() / ".local" / "share" / "openride" / "routes"
 CACHE_DIR = Path.home() / ".cache" / "openride"
 
@@ -67,6 +68,7 @@ class GearingConfig:
 class RenderConfig:
     quality: str = "low"
     theme: str = "default"
+    living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
 
 
 @dataclass
@@ -97,6 +99,18 @@ class DriversConfig:
 
 
 @dataclass
+class WindConfig:
+    """Vent du core (lot P2, SRS §5 et §11) ; coupé par défaut dans les versions 1.x."""
+    mode: str = "off"              # "off", "fixed", "gusty" ou "theme" (vent du thème 1.2)
+    speed_kmh: float = 0.0
+    from_deg: float = 270.0        # d'où vient le vent, degrés depuis le nord
+    gust_pct: float = 0.0          # amplitude des rafales (modes "gusty" et "theme")
+    seed: int = 0                  # graine des rafales
+    feel: str = "grade"            # "grade" (supplément de pente) ou "ftms" (champ vent de 0x11)
+    max_grade_offset_pct: float = 4.0   # borne du supplément de pente, réglable dans le menu
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -106,6 +120,7 @@ class Config:
     ipc: IpcConfig = field(default_factory=IpcConfig)
     engine: EngineConfig = field(default_factory=EngineConfig)
     drivers: DriversConfig = field(default_factory=DriversConfig)
+    wind: WindConfig = field(default_factory=WindConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -140,6 +155,10 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("ipc", "port_commands"): (1024, 65535),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
+    ("wind", "speed_kmh"): (0, 60),
+    ("wind", "from_deg"): (0, 360),
+    ("wind", "gust_pct"): (0, 100),
+    ("wind", "max_grade_offset_pct"): (0, 8),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -152,6 +171,8 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),
+    ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
+    ("wind", "feel"): ("grade", "ftms"),
 }
 
 

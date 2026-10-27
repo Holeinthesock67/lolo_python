@@ -46,7 +46,8 @@ func _test_full_session() -> void:
 	f.set_routes(ROUTES)
 	f.set_workouts(WORKOUTS)
 	_check(f.is_visible() and f.state()["screen"] == "home", "accueil affiché en IDLE")
-	f.handle("A_LONG")   # Rouler
+	_check(f.state()["items"][0]["label"] == "Parcours : à choisir", "accueil : parcours à choisir")
+	f.handle("A_LONG")   # Parcours
 	_check(f.state()["screen"] == "routes", "liste des parcours")
 	var routes: Array = f.state()["items"]
 	var to_compile: Array = routes.filter(func(it): return it["id"] == "nouveau")
@@ -56,15 +57,18 @@ func _test_full_session() -> void:
 	var sel: Dictionary = f.handle("A_LONG")
 	_check(sel.get("action") == "select_route" and sel.get("route_id") == _ids_route(routes, 1),
 			"2ᵉ parcours choisi : select_route %s" % str(sel))
-	_check(f.state()["screen"] == "ready", "écran Prêt")
-	f.on_state({"session_state": "READY"})
-	f.handle("PLUS_SHORT")   # Choisir un entraînement
+	_check(f.state()["screen"] == "home" and f.state()["items"][0]["label"] == "Parcours : Vosges",
+			"retour à l'accueil, monde affiché : %s" % f.state()["items"][0]["label"])
+	f.on_state({"session_state": "READY", "route_id": "vosges"})
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")   # Session ERG
 	f.handle("A_LONG")
+	_check(f.state()["screen"] == "workouts", "Session ERG : liste des entraînements")
 	f.handle("PLUS_SHORT")
 	var wk: Dictionary = f.handle("A_LONG")
 	_check(wk == {"action": "select_workout", "workout_id": "sweet"}, "entraînement choisi : %s" % str(wk))
-	_check(f.state()["screen"] == "ready", "retour à l'écran Prêt")
-	f.handle("MINUS_SHORT")   # le focus revient sur « Choisir un entraînement » : Démarrer est au-dessus
+	_check(f.state()["screen"] == "ready" and "ERG" in f.state()["title"] and "Vosges" in f.state()["title"],
+			"écran Prêt : %s" % f.state()["title"])
 	_check(f.handle("A_LONG") == {"action": "start"}, "Démarrer")
 	f.on_state({"session_state": "RUNNING"})
 	_check(not f.is_visible(), "menu caché en RUNNING")
@@ -82,8 +86,9 @@ func _test_full_session() -> void:
 	f.handle("PLUS_SHORT")
 	_check(f.handle("A_LONG").is_empty() and f.show_details, "Voir le bilan détaillé")
 	f.handle("MINUS_SHORT")
-	_check(f.handle("A_LONG") == {"action": "list"} and f.state()["screen"] == "home",
-			"Nouvelle séance : accueil et listes redemandées")
+	_check(f.handle("A_LONG") == {"action": "list", "route_id": "vosges"} and f.state()["screen"] == "home",
+			"Nouvelle séance : accueil, listes redemandées et monde rechargé")
+	_check(f.state()["items"][0]["label"] == "Parcours : Vosges", "le parcours reste choisi après la séance")
 	f.on_state({"session_state": "FINISHED"})
 	f.handle("MINUS_SHORT")   # Quitter (dernier élément de l'accueil)
 	f.handle("A_LONG")
@@ -102,7 +107,8 @@ func _test_abandon_and_summary_quit() -> void:
 	_check(f.on_state({"session_state": "RUNNING"}) == [{"action": "list"}],
 			"listes demandées même en RUNNING (profils des blocs ERG avec --autostart)")
 	f.on_state({"session_state": "PAUSED"})
-	f.handle("MINUS_SHORT")   # Abandonner (boucle depuis Reprendre)
+	f.handle("MINUS_SHORT")   # Difficulté (boucle depuis Reprendre)
+	f.handle("MINUS_SHORT")   # Abandonner
 	f.handle("A_LONG")
 	f.handle("PLUS_SHORT")
 	_check(f.handle("A_LONG") == {"action": "end_session", "save": false}, "Abandonner après confirmation")
@@ -138,7 +144,7 @@ func _test_view() -> void:
 	var v = MenuView.new()
 	var state := {"session_state": "IDLE", "trainer_status": "MOCK", "input_status": "KEYBOARD"}
 	v.update_display(f.state(), state, {}, false)
-	_check(v.title_label.text == "OpenRide" and v.items_text().begins_with("[Rouler]"), "accueil : %s" % v.items_text())
+	_check(v.title_label.text == "OpenRide" and v.items_text().begins_with("[Parcours : "), "accueil : %s" % v.items_text())
 	_check(v.devices.visible and v.devices.text().contains("Trainer"), "état des appareils : %s" % v.devices.text())
 	f.handle("A_LONG")
 	for i in range(7):
@@ -217,8 +223,8 @@ func _test_pairing_screen() -> void:
 	var f = MenuFlow.new()
 	f.connect_done = true
 	f.on_state({"session_state": "IDLE"})
-	f.handle("PLUS_SHORT")
-	f.handle("PLUS_SHORT")   # Réglages
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")   # Réglages (avant Quitter)
 	f.handle("A_LONG")
 	_check(f.state()["screen"] == "settings" and _focus_id(f) == "devices", "Réglages : Appareils")
 	var act: Dictionary = f.handle("A_LONG")
@@ -258,7 +264,54 @@ func _test_pairing_screen() -> void:
 	_check(not f.pairing.saved and "refusé" in f.pairing.message, "pairing_failed affiché")
 
 
+func _test_settings_screen() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "difficulty_pct": 50})
+	f.on_settings({"type": "settings", "request_cmd_id": 2, "items": [
+		{"key": "rider.ftp_w", "label": "FTP", "type": "int", "value": 250, "min": 50, "max": 600, "step": 5,
+			"unit": "W", "applies": "next_session"},
+		{"key": "trainer.difficulty_pct", "label": "Difficulté en SIM", "type": "int", "value": 50, "min": 0,
+			"max": 100, "step": 10, "unit": "%", "applies": "next_session"},
+		{"key": "render.quality", "label": "Qualité graphique", "type": "choice", "value": "high",
+			"choices": ["low", "medium", "high"], "applies": "now"}]})
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	f.handle("A_LONG")   # Réglages
+	var labels: Array = f.state()["items"].map(func(it): return it["label"])
+	_check(labels == ["Appareils : rechercher et appairer", "FTP : 250 W", "Difficulté en SIM : ■■■■■□□□□□ 50 %",
+			"Qualité graphique : high"], "réglages affichés : %s" % str(labels))
+	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")   # FTP
+	_check(f.state()["screen"] == "setting_edit" and f.state()["title"] == "FTP", "modification de la FTP")
+	for i in range(3):
+		f.handle("PLUS_SHORT")
+	_check(f.state()["items"][0]["label"] == "265 W", "+ trois fois : 265 W (%s)" % f.state()["items"][0]["label"])
+	var act: Dictionary = f.handle("A_LONG")
+	_check(act == {"action": "set_setting", "key": "rider.ftp_w", "value": 265} and f.state()["screen"] == "settings",
+			"appui long + : set_setting et retour aux réglages (%s)" % str(act))
+	f.handle("PLUS_SHORT")
+	f.handle("PLUS_SHORT")
+	f.handle("A_LONG")   # Qualité
+	f.handle("PLUS_SHORT")
+	_check(f.state()["items"][0]["label"] == "low", "choix en boucle : high → low")
+	_check(f.handle("Y_SHORT").is_empty() and f.state()["screen"] == "settings", "appui long − : annulé")
+	# Curseur de difficulté sur l'écran de pause : set_difficulty, sans config.toml.
+	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
+	f.on_state({"session_state": "PAUSED", "difficulty_pct": 50})
+	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["label"] == "Difficulté : ■■■■■□□□□□ 50 %",
+			"pause : curseur de difficulté")
+	f.handle("A_LONG")
+	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
+	act = f.handle("A_LONG")
+	_check(act == {"action": "set_difficulty", "pct": 30} and f.state()["screen"] == "pause"
+			and f.state()["items"][3]["label"] == "Difficulté : ■■■□□□□□□□ 30 %", "pause : set_difficulty à 30 (%s)" % str(act))
+
+
 func _init() -> void:
+	_test_settings_screen()
 	_test_connect_screen()
 	_test_pairing_screen()
 	_test_full_session()

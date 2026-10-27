@@ -24,6 +24,13 @@ Sous-commandes disponibles à ce stade :
                           [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
                                       ceinture) et bloc [drivers] proposé pour config.toml
+    openride-core settings [--json] [--config FICHIER]
+    openride-core settings set CLÉ VALEUR [--config FICHIER]
+                                      réglages du menu (FTP, poids, difficulté, braquet de
+                                      départ, qualité, thème) : lecture, ou écriture dans config.toml
+    openride-core plan list|show ID|start ID [--date AAAA-MM-JJ]|stop|today|install
+    openride-core plan import DOSSIER --name NOM --days mardi,jeudi,samedi
+                                      plans d'entraînement sur plusieurs semaines (lot O11)
 """
 
 from __future__ import annotations
@@ -160,6 +167,21 @@ def cmd_devices(args: argparse.Namespace) -> int:
                save=args.save, assume_yes=args.yes)
 
 
+def cmd_settings(args: argparse.Namespace) -> int:
+    from .settings import run
+
+    if args.action and (args.action[0] != "set" or len(args.action) != 3):
+        print("openride-core settings : usage : settings set CLÉ VALEUR", file=sys.stderr)
+        return 2
+    return run(args.json, args.config, args.action[1:] if args.action else None)
+
+
+def cmd_plan(args: argparse.Namespace) -> int:
+    from .plans import run
+
+    return run(args)
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Analyseur de la ligne de commande ; aussi lu par `test_docs_coherence.py` (commandes citées)."""
     p = argparse.ArgumentParser(prog="openride-core")
@@ -227,6 +249,23 @@ def build_parser() -> argparse.ArgumentParser:
     dev.add_argument("--save", action="store_true",
                      help="enregistre le matériel trouvé dans config.toml (appui « + » demandé, lot N12)")
     dev.add_argument("--yes", action="store_true", help="avec --save : sans demander de confirmation")
+    st = sub.add_parser("settings", help="réglages du menu : lecture ou écriture dans config.toml")
+    st.add_argument("action", nargs="*", metavar="set CLÉ VALEUR")
+    st.add_argument("--json", action="store_true", help="sortie JSON")
+    st.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    pl = sub.add_parser("plan", help="plans d'entraînement : list, show, start, stop, today, import, install")
+    pl.add_argument("action", choices=["list", "show", "start", "stop", "today", "import", "install"])
+    pl.add_argument("plan_id", nargs="?", metavar="ID|DOSSIER",
+                    help="identifiant du plan (show, start) ou dossier d'entraînements (import)")
+    pl.add_argument("--date", help="start : date de début AAAA-MM-JJ (défaut : aujourd'hui)")
+    pl.add_argument("--name", help="import : nom du plan")
+    pl.add_argument("--days", help="import : jours, par exemple mardi,jeudi,samedi ou jour1,jour3")
+    pl.add_argument("--json", action="store_true", help="sortie JSON (list, show, today)")
+    pl.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    pl.add_argument("--plans-dir", type=Path, help="dossier des plans (défaut : ~/OpenRide/Plans)")
+    pl.add_argument("--workouts-dir", type=Path, help="bibliothèque (défaut : ~/OpenRide/Workouts)")
+    pl.add_argument("--activities-dir", type=Path, help="séances (défaut : ~/OpenRide/Activities)")
+    pl.add_argument("--state", type=Path, help="plan actif (défaut : ~/OpenRide/plan_state.toml)")
     return p
 
 
@@ -243,7 +282,8 @@ def main(argv: list[str] | None = None) -> int:
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary, "xp": cmd_xp,
-            "history": cmd_history, "devices": cmd_devices}[args.command](args)
+            "history": cmd_history, "devices": cmd_devices,
+            "plan": cmd_plan, "settings": cmd_settings}[args.command](args)
 
 
 if __name__ == "__main__":

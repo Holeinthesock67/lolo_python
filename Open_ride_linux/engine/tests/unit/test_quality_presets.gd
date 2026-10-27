@@ -46,6 +46,12 @@ func _test_engine_args() -> void:
 	_check(p_bad["quality"] == "low" and "qualité invalide" in EngineArgs.last_error,
 		"engine_args : --quality=ultra renvoie low avec message (%s)" % EngineArgs.last_error)
 
+	_check(p_def["living"] == true, "engine_args : décor vivant actif par défaut (lot P16)")
+	var p_off: Dictionary = EngineArgs.parse(PackedStringArray(["--living=off"]))
+	var p_bad_living: Dictionary = EngineArgs.parse(PackedStringArray(["--living=peut-être"]))
+	_check(p_off["living"] == false and p_bad_living["living"] == true and "décor vivant" in EngineArgs.last_error,
+		"engine_args : --living=off coupe le décor vivant, une valeur invalide le laisse actif avec message")
+
 	var p_empty_theme: Dictionary = EngineArgs.parse(PackedStringArray(["--theme="]))
 	_check(p_empty_theme["theme"] == "default" and "thème vide" in EngineArgs.last_error,
 		"engine_args : --theme= vide renvoie default avec message")
@@ -101,8 +107,46 @@ func _test_presets_table() -> void:
 	_check(unk == low, "preset : un nom inconnu renvoie le préréglage low")
 
 
+# Lot P4 : budgets du décor vivant (critère 10)
+func _test_living() -> void:
+	var keys := ["ambience_voices", "animals", "birds", "clouds", "grass_tufts", "passersby",
+		"spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
+	for name in ["low", "medium", "high"]:
+		var l: Dictionary = QualityPresets.living(name)
+		var k := l.keys()
+		k.sort()
+		_check(k == keys, "living(%s) : les 11 budgets attendus" % name)
+	var low: Dictionary = QualityPresets.living("low")
+	_check(low["tree_sway"] == true and low["grass_tufts"] == 0 and low["clouds"] == "flat"
+		and low["weather_particles"] == 600 and low["birds"] == 12 and low["animals"] == 20
+		and low["vehicles"] == 3 and low["spectators"] == 40 and low["ambience_voices"] == 4
+		and low["water_shimmer"] == true,
+		"living(low) : valeurs du cahier P4 §4.3")
+	var med: Dictionary = QualityPresets.living("medium")
+	var high: Dictionary = QualityPresets.living("high")
+	var growing := true
+	for key in ["grass_tufts", "weather_particles", "birds", "animals", "vehicles", "spectators",
+			"passersby", "ambience_voices"]:
+		growing = growing and int(low[key]) <= int(med[key]) and int(med[key]) <= int(high[key])
+	_check(growing, "living : budgets croissants de low à high")
+	_check(low["passersby"] == 24 and med["passersby"] == 48 and high["passersby"] == 80,
+		"living : passants 24, 48 et 80 (cahier P21 §4)")
+	var off: Dictionary = QualityPresets.living("high", false)
+	var all_off: bool = off["clouds"] == "off"
+	for key in off:
+		if typeof(off[key]) == TYPE_BOOL:
+			all_off = all_off and off[key] == false
+		elif typeof(off[key]) == TYPE_INT:
+			all_off = all_off and off[key] == 0
+	_check(all_off, "living(high, false) : décor vivant coupé, tout à zéro")
+	_check(QualityPresets.living("inexistant") == low, "living : nom inconnu -> low")
+	low["birds"] = 999
+	_check(QualityPresets.living("low")["birds"] == 12, "living : copie, la table n'est pas modifiable")
+
+
 func _init() -> void:
 	_test_engine_args()
 	_test_presets_table()
+	_test_living()
 	print("test_quality_presets : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

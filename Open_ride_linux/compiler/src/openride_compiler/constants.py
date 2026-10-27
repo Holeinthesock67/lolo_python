@@ -59,12 +59,15 @@ DENSITY_ORCHARD = 0.5
 # Couches OpenStreetMap : points d'intérêt et eau (format §8, lot I4).
 POI_VERSION = "1.0"
 WATER_VERSION = "1.0"
-POI_KINDS = ("church_bell", "river", "livestock", "village", "viewpoint")
+POI_KINDS = ("church_bell", "river", "livestock", "village", "viewpoint", "wind_turbine", "flag")   # 1.2 : P12
 POI_RADIUS_CHURCH_BELL_M = 300
 POI_RADIUS_VILLAGE_M = 300
 POI_RADIUS_VIEWPOINT_M = 200
 POI_RADIUS_LIVESTOCK_M = 150
 POI_RADIUS_RIVER_M = 150
+POI_RADIUS_WIND_TURBINE_M = 5000   # portée de vue d'une éolienne (Lot P12)
+POI_RADIUS_FLAG_M = 150
+WIND_TURBINE_DEFAULT_HEIGHT_M = 100.0
 POI_RIVER_PASSAGE_DIST_M = 50.0
 WATER_LINE_KINDS = ("river", "stream", "canal")
 WATER_AREA_KINDS = ("lake", "pond", "reservoir")

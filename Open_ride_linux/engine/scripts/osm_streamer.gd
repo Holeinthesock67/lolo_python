@@ -7,6 +7,10 @@ extends Node3D
 ## - Eau : cours d'eau en ruban et plans d'eau avec îles (water_mesh.gd).
 ## - Points d'intérêt (poi) pour le modèle sonore.
 ## Au plus trois nœuds de maillage par tronçon (bâtiments, cours d'eau, plans d'eau).
+## Lot P16 : chaque tronçon garde aussi ses contours en x, z (forêts, bâtiments, eaux, avec leur
+## rectangle englobant) pour le voisinage sonore (ambience_model.gd) et les exclusions des touffes
+## d'herbe ; `layer_shapes()` les rassemble pour les tronçons chargés (`shapes_version` change à chaque
+## ajout ou retrait).
 ## Pas de class_name (charger par preload).
 
 const OsmLayers := preload("res://scripts/osm_layers.gd")
@@ -36,6 +40,8 @@ var _ready_chunks: Array = []       # [ {k, meshes_data: [ {arrays, kind} ] } ]
 var _generation := 0
 var _theme: Dictionary = {}
 var _pois_by_chunk: Dictionary = {}
+var _shapes_by_chunk: Dictionary = {}   # k -> {forests, buildings, waters} (Lot P16)
+var shapes_version := 0
 
 var sound_player: Node = null
 
@@ -82,6 +88,8 @@ func clear() -> void:
 	for k in _chunk_instances.keys():
 		_free_chunk(k)
 	_pois_by_chunk.clear()
+	_shapes_by_chunk.clear()
+	shapes_version += 1
 	_update_sound_pois()
 
 
@@ -101,6 +109,8 @@ func _free_chunk(k: int) -> void:
 			mi.free()
 	_chunk_instances.erase(k)
 	_pois_by_chunk.erase(k)
+	if _shapes_by_chunk.erase(k):
+		shapes_version += 1
 
 
 func update_window(s_from: float, s_to: float) -> void:
@@ -150,12 +160,15 @@ func _build_chunk_job(job: Dictionary) -> void:
 
 	var meshes_data := []
 	var pois := []
+	var shapes := {"forests": [], "buildings": [], "waters": []}
 
 	# 1. Bâtiments
 	if layers.has("buildings"):
 		var b_res := OsmLayers.load_chunk(w_dir, "buildings", k)
 		if b_res.get("ok", false):
 			var items: Array = b_res.get("items", [])
+			for b in items:
+				shapes["buildings"].append(_shape(b.get("outer", [])))
 			if not items.is_empty():
 				var m := BuildingMesh.build(items, th, SKIRT_M)
 				if int(m.get("built", 0)) > 0:
@@ -168,6 +181,16 @@ func _build_chunk_job(job: Dictionary) -> void:
 		var w_res := OsmLayers.load_chunk(w_dir, "water", k)
 		if w_res.get("ok", false):
 			var lines: Array = w_res.get("lines", [])
+			for l in lines:
+				var wl := _shape(l.get("points", []))
+				wl["kind"] = str(l.get("kind", "river"))
+				wl["area"] = false
+				shapes["waters"].append(wl)
+			for a in w_res.get("areas", []):
+				var wa := _shape(a.get("outer", []))
+				wa["kind"] = str(a.get("kind", "lake"))
+				wa["area"] = true
+				shapes["waters"].append(wa)
 			if job.get("route") != null:
 				lines = cut_lines_at_road(lines, road_polyline(job["route"], k))
 			if not lines.is_empty():
@@ -185,6 +208,14 @@ func _build_chunk_job(job: Dictionary) -> void:
 					if not arr.is_empty():
 						meshes_data.append({"kind": "water_areas", "arrays": arr})
 
+	# Forêts (voisinage sonore seulement : les arbres sont dessinés par tree_renderer.gd)
+	if layers.has("vegetation"):
+		var v_res := OsmLayers.load_chunk(w_dir, "vegetation", k)
+		if v_res.get("ok", false):
+			for a in v_res.get("items", []):
+				if str(a.get("kind", "")) == "wood":
+					shapes["forests"].append(_shape(a.get("outer", [])))
+
 	# 3. POI (pour sound_player)
 	if layers.has("poi"):
 		var poi_res := OsmLayers.load_chunk(w_dir, "poi", k)
@@ -195,6 +226,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 		"k": k,
 		"meshes_data": meshes_data,
 		"pois": pois,
+		"shapes": shapes,
 	}
 
 
@@ -323,12 +355,36 @@ func integrate(max_new: int) -> int:
 			created += 1
 
 		_chunk_instances[k] = nodes
+		_shapes_by_chunk[k] = item.get("shapes", {"forests": [], "buildings": [], "waters": []})
+		shapes_version += 1
 		if not (item["pois"] as Array).is_empty():
 			_pois_by_chunk[k] = item["pois"]
 			_update_sound_pois()
 
 	_start_jobs()
 	return created
+
+
+## Contour `[[x, z], …]` -> `{points: PackedVector2Array, rect: Rect2}`.
+static func _shape(pts: Array) -> Dictionary:
+	var out := PackedVector2Array()
+	var rect := Rect2()
+	for i in range(pts.size()):
+		var q := Vector2(float(pts[i][0]), float(pts[i][1]))
+		out.append(q)
+		rect = Rect2(q, Vector2.ZERO) if i == 0 else rect.expand(q)
+	return {"points": out, "rect": rect}
+
+
+## Contours des tronçons chargés (Lot P16) : `{forests, buildings, waters}`, chacun une liste de
+## `{points, rect}` (eaux : plus `kind` et `area`).
+func layer_shapes() -> Dictionary:
+	var out := {"forests": [], "buildings": [], "waters": []}
+	for k in _shapes_by_chunk:
+		var sh: Dictionary = _shapes_by_chunk[k]
+		for key in out:
+			out[key].append_array(sh.get(key, []))
+	return out
 
 
 func _update_sound_pois() -> void:

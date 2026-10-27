@@ -14,11 +14,14 @@ const SummaryView := preload("res://scripts/summary_view.gd")
 const TITLE_SIZE := 36
 const ITEM_SIZE := 30
 const DETAIL_SIZE := 20
-## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus.
+## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus. Un de moins quand l'état des
+## appareils est affiché sous la liste (accueil, Prêt, connexion), pour qu'il reste dans le panneau.
 const MAX_VISIBLE_ITEMS := 5
+const MAX_VISIBLE_WITH_DEVICES := 4
 const FOCUS_BG := Color(0.95, 0.75, 0.20, 0.95)
 const FOCUS_TEXT := Color(0.05, 0.05, 0.05)
 const DISABLED_TEXT := Color(0.60, 0.62, 0.65)
+const DEVICES_SCREENS := ["home", "ready", "connect"]
 const HINT := "Click : + / − ou A choisir (long : 5) · A long valider · Y retour   ·   Clavier : ↑ ↓ Entrée Échap   ·   Souris"
 const HINT_PAUSE := "Click : + / − ou A choisir · A long valider · Y reprendre   ·   Clavier : ↑ ↓ Entrée, Échap reprendre   ·   Souris"
 
@@ -113,10 +116,12 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	status_label.visible = status_label.text != ""
 	var items: Array = menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
+	var screen := str(menu.get("screen", ""))
+	var max_items := MAX_VISIBLE_WITH_DEVICES if screen in DEVICES_SCREENS else MAX_VISIBLE_ITEMS
 	var first := 0
-	if items.size() > MAX_VISIBLE_ITEMS and focus >= 0:
-		first = clampi(focus - MAX_VISIBLE_ITEMS / 2, 0, items.size() - MAX_VISIBLE_ITEMS)
-	var shown := mini(items.size() - first, MAX_VISIBLE_ITEMS)
+	if items.size() > max_items and focus >= 0:
+		first = clampi(focus - max_items / 2, 0, items.size() - max_items)
+	var shown := mini(items.size() - first, max_items)
 	while _item_panels.size() < shown:
 		var p := PanelContainer.new()
 		var l := Label.new()
@@ -142,10 +147,9 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 		var focused := idx == focus
 		p.add_theme_stylebox_override("panel", _focus_style if focused else _plain_style)
 		l.modulate = FOCUS_TEXT if focused else (Color.WHITE if it.get("enabled", true) else DISABLED_TEXT)
-	more_label.text = "%d / %d" % [focus + 1, items.size()] if items.size() > MAX_VISIBLE_ITEMS else ""
-	var screen := str(menu.get("screen", ""))
+	more_label.text = "%d / %d" % [focus + 1, items.size()] if items.size() > max_items else ""
 	summary.visible = screen == "summary"
-	devices.visible = screen in ["home", "ready", "connect"]
+	devices.visible = screen in DEVICES_SCREENS
 	# Aide toujours visible (sans elle, rien ne dit qu'il faut un appui long pour valider) ; une ligne
 	# coupée à la largeur du panneau, sous les appareils.
 	hint_label.text = HINT_PAUSE if screen == "pause" else HINT

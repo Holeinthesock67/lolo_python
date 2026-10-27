@@ -59,7 +59,8 @@ GODOT_TOLERATED = re.compile(
     r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
-              "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist")
+              "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
+              "wind_speed", "wind_level", "wind_verdict")
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -192,9 +193,15 @@ def luminance(p: tuple[int, int, int]) -> float:
 
 
 def is_sky(p: tuple[int, int, int]) -> bool:
-    """Bleu du ciel procédural (zénith à l'horizon) ou brume de l'horizon."""
+    """Bleu du ciel procédural (zénith à l'horizon), brume de l'horizon ou nuage (lot P16)."""
     r, g, b = p
-    return b >= 190 and b >= r + 25 and b >= g + 5
+    return (b >= 190 and b >= r + 25 and b >= g + 5) or is_cloud(p)
+
+
+def is_cloud(p: tuple[int, int, int]) -> bool:
+    """Nuage du ciel de P6 : blanc ou gris très clair, légèrement bleuté."""
+    r, g, b = p
+    return min(r, g, b) >= 205 and b >= r - 4 and max(r, g, b) - min(r, g, b) <= 40
 
 
 def stats(img: Image, box=None) -> dict[str, float]:
@@ -615,6 +622,17 @@ def _scenes(s: Session) -> None:
         s.check_hud_pixels("vue_fixe", img, info)
         s.check_world("vue_fixe", img, info)
 
+    # 2 bis. Nuages (lot P16) : ciel de P6 du thème par défaut (couverture 0,3), pixels clairs au-dessus
+    # de l'horizon, entre les panneaux du HUD.
+    shot = s.capture("nuages")
+    if shot:
+        img, info = shot
+        below = info["widgets"]["panel"]["rect"]
+        y0 = below[1] + below[3] + 4
+        sky_box = (s.width * 0.30, y0, s.width * 0.70, s.height * 0.42)
+        frac = fraction(img, sky_box, is_cloud, step=2)
+        s.check("nuages", "nuages dessinés au-dessus de l'horizon", frac >= 0.005, f"{frac:.1%} de pixels de nuage")
+
     # 3. Mouvement : à 8 m/s, la route défile et la distance avance.
     core.set_scene(speed=SPEED_MPS)
     time.sleep(1.0)
@@ -635,6 +653,28 @@ def _scenes(s: Session) -> None:
         d = mean_abs_diff(img_a, img_b, ground_box(s, info_b))
         s.check("mouvement_2", "le sol défile à l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
         s.check_world("mouvement_2", img_b, info_b)
+
+    # 3 bis. Vent (lot P16) : vent de face de 25 km/h dans la trame, indicateur sous le panneau de gauche.
+    # La route va vers l'est-sud-est (cap de 100° vers 1,5 km de la démo) : vent venant de 100°, de face.
+    core.set_scene(wind={"speed_mps": 26.0 / 3.6, "from_deg": 100.0, "gust": 0.0, "head_mps": 26.0 / 3.6, "grade_pct": 1.2})
+    time.sleep(2.0)
+    shot = s.capture("vent")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        s.check("vent", "indicateur du vent affiché", w["wind"]["visible"] and w["wind_speed"]["visible"])
+        s.check_texts("vent", info, {"wind_verdict": "Vent défavorable", "wind_level": "fort"})
+        s.check_texts("vent", info, {"wind_speed": "km/h"}, contains=True)
+        s.check_layout("vent", info)
+        def red(p):
+            return p[0] > 150 and p[1] < 90 and p[2] < 80
+        frac = fraction(img, rect_box(w["wind_verdict"]["rect"]), red, step=1)
+        s.check("vent", "pastille « Vent défavorable » en rouge", frac >= 0.3, f"{frac:.0%} de pixels rouges")
+        left = w["power"]["rect"]
+        s.check("vent", "indicateur sous la colonne de gauche", w["wind"]["rect"][0] < s.width * 0.35
+                and w["wind"]["rect"][1] > left[1] + left[3], f"rectangle {w['wind']['rect']}")
+    core.set_scene(wind=None)
+    time.sleep(2.5)
 
     # 4. ERG : cible dans la ligne de puissance, bandeau et histogramme des blocs (lot N7).
     core.set_scene(speed=7.0, mode="ERG", erg={
@@ -734,7 +774,7 @@ def _menu_scenes(s: Session) -> None:
     shot = s.capture("menu_accueil")
     if shot:
         img, info = shot
-        s.check_texts("menu_accueil", info, {"menu_title": "OpenRide", "menu": "[Rouler] | Entraînements"}, contains=True)
+        s.check_texts("menu_accueil", info, {"menu_title": "OpenRide", "menu": "Session libre | Session ERG | Session simulée"}, contains=True)
         s.check_texts("menu_accueil", info, {"menu": "Trainer HomeTrainer 0001 : connecté"}, contains=True)
         s.check_layout("menu_accueil", info)
         s.check_banner("menu_accueil", img, info, None)

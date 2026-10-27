@@ -1,6 +1,8 @@
 extends SceneTree
 
-## Tests unitaires sans écran du modèle sonore `sound_model.gd` (Lot L5).
+## Tests unitaires sans écran du modèle sonore `sound_model.gd` (Lot L5, Lot P10 : vent dans l'air,
+## roue libre à la cadence, rythme du cliquet, « clac » de reprise). Courbe de volume du vent revue par
+## P10 (logarithmique en vitesse dans l'air) : les tests L5 vérifient sa forme, pas ses valeurs.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_sound_model.gd
 
 const SoundModel := preload("res://scripts/sound_model.gd")
@@ -183,11 +185,122 @@ func _test_determinism() -> void:
 	_check(str(a) == str(b), "déterminisme : la même suite de trames donne exactement la même suite de sorties")
 
 
+func _wstate(speed_kmh: float, head_kmh: float, extra: Dictionary = {}) -> Dictionary:
+	var st := _state(speed_kmh, 150.0)
+	st["wind"] = {"speed_mps": absf(head_kmh) / 3.6, "from_deg": 0.0, "head_mps": head_kmh / 3.6, "gust": 0.0}
+	st.merge(extra, true)
+	return st
+
+
+# Lot P10, critère 2 : vent selon la vitesse dans l'air
+func _test_air_speed_wind() -> void:
+	var a = SoundModel.new()
+	a.on_state(_wstate(30.0, 15.0), Vector3.ZERO, 0.0)
+	var with_head: float = a.evaluate(0.0)["wind"]["volume_db"]
+	var b = SoundModel.new()
+	b.on_state(_state(45.0), Vector3.ZERO, 0.0)
+	var still_45: float = b.evaluate(0.0)["wind"]["volume_db"]
+	_check(absf(with_head - still_45) <= 0.5,
+		"30 km/h + 15 km/h de face (%.2f dB) = 45 km/h sans vent (%.2f dB) à 0,5 dB près" % [with_head, still_45])
+
+	var c = SoundModel.new()
+	c.on_state(_wstate(30.0, -30.0), Vector3.ZERO, 0.0)
+	var tail: Dictionary = c.evaluate(0.0)
+	_check(float(tail["wind"]["volume_db"]) <= SoundModel.WIND_MIN_MOVING_DB + 0.01
+		and is_equal_approx(float(tail["wind"]["air_kmh"]), 0.0),
+		"30 km/h avec 30 km/h de dos : vent quasi muet (%.1f dB)" % tail["wind"]["volume_db"])
+
+	var d = SoundModel.new()
+	d.on_state(_state(10.0), Vector3.ZERO, 0.0)
+	var v10: float = d.evaluate(0.0)["wind"]["volume_db"]
+	d.on_state(_state(50.0), Vector3.ZERO, 1.0)
+	d.evaluate(1.0)
+	d.on_state(_state(50.0), Vector3.ZERO, 10.0)
+	var v50: float = d.evaluate(10.0)["wind"]["volume_db"]
+	_check(v10 < -35.0 and v50 > -6.0, "10 km/h dans l'air : %.1f dB (à peine audible), 50 km/h : %.1f dB" % [v10, v50])
+
+	# Rafale : ± 3 dB et ± 5 % de hauteur au plus ; sans objet wind depuis 2 s, retour au vent nul
+	var e = SoundModel.new()
+	var lo := INF
+	var hi := -INF
+	var p_lo := INF
+	var p_hi := -INF
+	for i in range(61):
+		var t := 10.0 + i * 0.05
+		var st := _wstate(30.0, 0.0)
+		st["wind"]["gust"] = 1.0
+		e.on_state(st, Vector3.ZERO, t)
+		var ev: Dictionary = e.evaluate(t)
+		lo = minf(lo, ev["wind"]["volume_db"])
+		hi = maxf(hi, ev["wind"]["volume_db"])
+		p_lo = minf(p_lo, ev["wind"]["pitch"])
+		p_hi = maxf(p_hi, ev["wind"]["pitch"])
+	var base := SoundModel._target_wind_db(30.0, 30.0, false)
+	var base_p := SoundModel._target_wind_pitch(30.0, 30.0, false)
+	_check(hi - base <= 3.01 and base - lo <= 3.01 and hi - lo > 2.0
+		and p_hi <= base_p * 1.0501 and p_lo >= base_p * 0.9499,
+		"rafale pleine : volume de %.1f à %.1f dB autour de %.1f dB, hauteur de %.3f à %.3f" % [lo, hi, base, p_lo, p_hi])
+	e.on_state(_state(30.0), Vector3.ZERO, 12.5)
+	e.on_state(_state(30.0), Vector3.ZERO, 15.5)
+	_check(is_equal_approx(e.air_speed_kmh(15.5), 30.0), "plus d'objet wind depuis plus de 2 s : vitesse dans l'air = vitesse")
+
+
+# Lot P10, critères 3 à 5 : roue libre à la cadence, rythme, « clac » de reprise
+func _test_cadence_freewheel_and_clac() -> void:
+	var sm = SoundModel.new()
+	var st := _state(30.0, 150.0)
+	st["cadence"] = 0.0
+	sm.on_state(st, Vector3.ZERO, 0.0)
+	sm.on_state(st, Vector3.ZERO, 0.6)
+	var ev: Dictionary = sm.evaluate(0.6)
+	_check(bool(ev["freewheel"]["playing"]), "cadence 0 et 150 W (capteur qui traîne) pendant 0,6 s : roue libre active")
+
+	var st80 := _state(30.0, 150.0)
+	st80["cadence"] = 80.0
+	sm.on_state(st80, Vector3.ZERO, 0.7)
+	var ev80: Dictionary = sm.evaluate(0.7)
+	_check(not ev80["freewheel"]["playing"] and bool(ev80["freewheel"]["clac"]),
+		"cadence 80 tr/min : roue libre inactive, un « clac » de reprise")
+	var clacs := 0
+	for i in range(50):
+		sm.on_state(st80, Vector3.ZERO, 0.8 + i * 0.1)
+		if bool(sm.evaluate(0.8 + i * 0.1)["freewheel"]["clac"]):
+			clacs += 1
+	_check(clacs == 0, "pédalage continu pendant 5 s : aucun « clac » (%d)" % clacs)
+
+	var c36 := SoundModel.freewheel_clicks_per_s(36.0)
+	var c18 := SoundModel.freewheel_clicks_per_s(18.0)
+	_check(absf(c36 - 171.0) <= 171.0 * 0.02 and is_equal_approx(c18, c36 / 2.0),
+		"rythme : %.1f coups/s à 36 km/h (171 ± 2 %%), %.1f à 18 km/h" % [c36, c18])
+
+	# Roue libre puis pause : silence immédiat, pas de « clac » ; volume plus fort à haute vitesse
+	var m = SoundModel.new()
+	m.on_state(_state(40.0, 0.0), Vector3.ZERO, 0.0)
+	m.on_state(_state(40.0, 0.0), Vector3.ZERO, 0.6)
+	var fast: Dictionary = m.evaluate(10.0)
+	m.on_state(_state(10.0, 0.0), Vector3.ZERO, 10.5)
+	var slow: Dictionary = m.evaluate(20.0)
+	_check(float(fast["freewheel"]["volume_db"]) > float(slow["freewheel"]["volume_db"])
+		and float(fast["freewheel"]["clicks_per_s"]) > float(slow["freewheel"]["clicks_per_s"]),
+		"roue libre : plus forte et plus rapide à 40 km/h (%.1f dB) qu'à 10 km/h (%.1f dB)" % [
+			fast["freewheel"]["volume_db"], slow["freewheel"]["volume_db"]])
+	m.on_state(_state(10.0, 0.0, true), Vector3.ZERO, 20.05)
+	var ep: Dictionary = m.evaluate(20.05)
+	m.on_state(_state(10.0, 200.0, true), Vector3.ZERO, 20.1)
+	var ep2: Dictionary = m.evaluate(20.1)
+	_check(is_equal_approx(float(ep["freewheel"]["volume_db"]), SoundModel.SILENCE_DB)
+		and is_equal_approx(float(ep["wind"]["volume_db"]), SoundModel.SILENCE_DB)
+		and not ep2["freewheel"]["clac"],
+		"pause pendant la roue libre : silence immédiat (0,05 s), aucun « clac »")
+
+
 func _init() -> void:
 	_test_wind()
 	_test_freewheel()
 	_test_pois_hysteresis_and_cap()
 	_test_slew_rate()
 	_test_determinism()
+	_test_air_speed_wind()
+	_test_cadence_freewheel_and_clac()
 	print("test_sound_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -69,3 +69,12 @@ Aucune.
 
 - Dessin de l'indicateur dans le HUD (P16 pour le vent, P17 pour l'abri).
 - Vent dans les arbres et le décor (P5 et suivants).
+
+## 9. Livraison (26 octobre 2026)
+
+Livré sur la branche `lot-p4-modele-vent-engine`, au-dessus de P1 (P2 n'est pas requis).
+
+- **`wind_model.gd`** : `on_state`, `evaluate` (`{dir, strength, gust, phase}`, lissage du premier ordre à 2 s pour la direction par le plus court chemin et 0,5 s pour la force, phase qui avance de 0,4 à 2 s par seconde selon la force, sans saut), `apparent`, `has_wire` et `head_mps`. Le vent du core est gardé 2 s après la dernière trame (il n'arrive que 2 fois par seconde) ; ensuite le vent du thème (`set_theme_wind`, une rafale lente de ± la moitié de `gust_pct`) sert de vent décoratif, sinon calme.
+- **`wind_view_model.gd`** : `view(state, heading_deg, now_s)`. Le temps `now_s` s'ajoute à la signature du cahier, car le lissage et l'expiration en dépendent. Verdict avec entrée à ± 1,15 m/s et sortie à ± 0,85 m/s (hystérésis de 0,3 m/s) ; niveau avec une bande de 2 km/h et une confirmation de 1 s, si bien qu'une rafale isolée de moins d'une seconde ne change rien ; `speed_text` lissé sur 2 s ; couleurs laissées au HUD (P16) par le `tone`.
+- **`quality_presets.gd`** : table `LIVING` et `living(preset, enabled)`. La clé `passersby` (24 en `low`) est posée dès maintenant pour P21. `medium` et `high` : 4 000 et 12 000 touffes d'herbe, nuages `flat` puis `layered`, budgets croissants.
+- **Tests** : `test_wind_model.gd` (16 vérifications, dont `evaluate` sous 0,05 ms), `test_wind_view_model.gd` (27), `test_quality_presets.gd` (19, dont 6 pour `living`).
