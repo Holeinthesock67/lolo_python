@@ -30,12 +30,14 @@ signal workout_saved_received(msg: Dictionary)
 signal plans_received(msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
+## Révision 1.4 (série T, lot T9) : passage de segment terminé (message répété 3 fois par le core).
+signal segment_result_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
 const CONTRACT_VERSION := 1
 ## Révision du contrat annoncée dans hello (champ facultatif rev, révision 1.3).
-const CONTRACT_REV := "1.3"
+const CONTRACT_REV := "1.4"   # série T lue depuis les lots T8 et T9
 ## Version de l'engine, lue dans project.godot (source unique : fichier VERSION, lot O2).
 var engine_version: String = str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 const SERVER_HOST := "127.0.0.1"
@@ -226,6 +228,8 @@ func _poll_incoming() -> void:
 				scan_results_received.emit(json_obj)
 			"settings":
 				settings_received.emit(json_obj)
+			"segment_result":
+				segment_result_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
