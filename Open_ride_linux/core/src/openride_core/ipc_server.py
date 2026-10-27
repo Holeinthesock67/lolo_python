@@ -22,6 +22,12 @@ log = logging.getLogger("ipc_server")
 
 CONTRACT_VERSION = 1
 MAX_DATAGRAM_SIZE = 1400
+# Révision 1.3 (lot P1, audit IPC D1) : la trame state peut atteindre 4 096 octets (127.0.0.1, sans fragmentation).
+MAX_STATE_DATAGRAM_SIZE = 4096
+# Révision du contrat annoncée dans hello_ack (champ facultatif rev, révision 1.3).
+CONTRACT_REV = "1.3"
+# Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
+CORE_MODES = ("ride", "erg")
 MAX_LIST_DATAGRAM_SIZE = 60000
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
@@ -93,6 +99,7 @@ class IpcServer:
         self.last_heartbeat_time: float | None = None
         self.engine_connected: bool = False
         self.engine_version: str | None = None
+        self.engine_rev: str | None = None
         self.last_cmd_id: int = 0
         self.seq: int = 0
         # Datagrammes illisibles ou non conformes, ignorés (contrat §6).
@@ -145,11 +152,17 @@ class IpcServer:
     def send_raw(self, msg_dict: dict[str, Any], max_size: int | None = None) -> None:
         if not self._tx_sock:
             return
-        limit = max_size if max_size is not None else (
-            MAX_LIST_DATAGRAM_SIZE if msg_dict.get("type") in ("routes", "workouts") else MAX_DATAGRAM_SIZE
-        )
+        msg_type = msg_dict.get("type")
+        if max_size is not None:
+            limit = max_size
+        elif msg_type in ("routes", "workouts"):
+            limit = MAX_LIST_DATAGRAM_SIZE
+        elif msg_type == "state":
+            limit = MAX_STATE_DATAGRAM_SIZE
+        else:
+            limit = MAX_DATAGRAM_SIZE
         payload = encode(msg_dict)
-        if len(payload) > limit and msg_dict.get("type") == "state":
+        if len(payload) > limit and msg_type == "state":
             # Trame allégée plutôt que jetée (lot X25) : l'écran garde position et puissance.
             msg_dict, dropped = fit_state(msg_dict, limit)
             payload = encode(msg_dict)
@@ -175,8 +188,9 @@ class IpcServer:
         msg = {
             "type": "hello_ack",
             "v": CONTRACT_VERSION,
+            "rev": CONTRACT_REV,
             "core_version": __version__,
-            "config": config_summary,
+            "config": {**config_summary, "modes": list(CORE_MODES)},
         }
         self.send_raw(msg)
 
@@ -257,7 +271,14 @@ class IpcServer:
             self.last_cmd_id = 0
             was_connected = self.engine_connected
             self.engine_connected = True
-            log.info("Reçu 'hello' de l'engine version %s", self.engine_version)
+            rev = msg.get("rev")
+            self.engine_rev = rev if isinstance(rev, str) else None
+            log.info("Reçu 'hello' de l'engine version %s (contrat %s)", self.engine_version,
+                     self.engine_rev or "avant 1.3")
+            if self.engine_rev != CONTRACT_REV:
+                # Même version majeure : compatible, les champs inconnus sont ignorés (§8).
+                log.warning("Révisions du contrat différentes : engine %s, core %s",
+                            self.engine_rev or "avant 1.3", CONTRACT_REV)
             self.send_hello_ack(self.hello_config)
             if not was_connected and self.on_engine_returned:
                 self.on_engine_returned()
