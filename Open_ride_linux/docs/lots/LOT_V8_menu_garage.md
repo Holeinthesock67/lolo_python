@@ -8,12 +8,12 @@ Ajouter au menu une section « Garage » pilotée au Click : choisir et acheter 
 
 ## 2. À lire
 
-1. `docs/2.0/PLAN_SERIE_V.md` §2.2 et §2.3 ; `LOT_V1_contrat_progression.md` (§4.3, §4.4) ; `LOT_N6_affichage_menus.md`, `LOT_K5_navigation_menus.md` (règles du Click : + / − pour se déplacer, appui long pour valider ou revenir, confirmation des actions irréversibles).
+1. `docs/2.0/PLAN_SERIE_V.md` §2.2 et §2.3 ; `LOT_T1_contrat_1_4.md` (§4.4) ; `LOT_N6_affichage_menus.md`, `LOT_K5_navigation_menus.md` (règles du Click : + / − pour se déplacer, appui long pour valider ou revenir, confirmation des actions irréversibles).
 2. Code : `menu_model.gd`, `menu_flow.gd`, `menu_view.gd`, `ipc_client.gd`, `devices_view_model.gd` (exemple d'écran ajouté par N13), `avatar_model.gd`, `avatar_view.gd` (V6, V7).
 
 ## 3. Prérequis
 
-V1 validé, V11 livré (le core répond aux commandes), V6 livré (V7 souhaité pour l'aperçu des pièces), N6 livré.
+T1 validé, V11 livré (le core répond aux commandes), V6 livré (V7 souhaité pour l'aperçu des pièces), N6 livré.
 
 ## 4. Travail demandé
 
@@ -22,7 +22,7 @@ V1 validé, V11 livré (le core répond aux commandes), V6 livré (V7 souhaité 
 - **Caméra :** choix subjective / suivi (V6), enregistré dans les réglages de l'engine.
 - **En-tête :** niveau, barre d'expérience vers le niveau suivant et solde de pièces (depuis `hello_ack`, puis les messages `progression`).
 - **Aperçu 3D :** l'avatar équipé tourne lentement à droite du menu ; l'aperçu suit la pièce sélectionnée avant achat.
-- **Conseil du parcours :** sur l'écran « Prêt », une ligne « Parcours vallonné : conseillé Polyvalent léger, Profilées » quand l'équipement choisi n'est pas celui conseillé (champ `terrain` de l'élément de `routes`, contrat V1 §4.3, rempli par V11).
+- **Conseil du parcours :** sur l'écran « Prêt », une ligne « Parcours vallonné : conseillé Polyvalent léger, Profilées » quand l'équipement choisi n'est pas celui conseillé (champ `terrain` de l'élément de `routes`, contrat T1 §4.4, rempli par V11).
 
 ## 5. Fichiers concernés
 
@@ -30,7 +30,7 @@ Nouveaux : `garage_view_model.gd`, `garage_view.gd`, leurs tests. Modifiés : `m
 
 ## 6. Modifications de contrat autorisées
 
-Aucune au-delà de V1.
+Aucune au-delà de T1.
 
 ## 7. Critères d'acceptation
 

@@ -1,0 +1,121 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideGarageMessage",
+  "description": "Révision 1.4 (série V) : réponse à cmd list_garage, en parties de 60 000 octets au plus, comme routes.",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "request_cmd_id",
+    "part",
+    "parts",
+    "items"
+  ],
+  "properties": {
+    "type": {
+      "const": "garage"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "request_cmd_id": {
+      "type": "integer",
+      "minimum": 0
+    },
+    "part": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "parts": {
+      "type": "integer",
+      "minimum": 1
+    },
+    "items": {
+      "type": "array",
+      "maxItems": 300,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "slot",
+          "name",
+          "state",
+          "level_required",
+          "price",
+          "challenge",
+          "mass_delta_kg",
+          "cda_delta_pct",
+          "terrain",
+          "look"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "maxLength": 24
+          },
+          "slot": {
+            "type": "string",
+            "enum": [
+              "frame",
+              "wheels",
+              "helmet",
+              "kit",
+              "socks",
+              "glasses"
+            ]
+          },
+          "name": {
+            "type": "string",
+            "maxLength": 48
+          },
+          "state": {
+            "type": "string",
+            "enum": [
+              "locked",
+              "buyable",
+              "owned",
+              "equipped"
+            ]
+          },
+          "level_required": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 50
+          },
+          "price": {
+            "type": "integer",
+            "minimum": 0
+          },
+          "challenge": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Texte du défi qui offre la pièce."
+          },
+          "mass_delta_kg": {
+            "type": "number"
+          },
+          "cda_delta_pct": {
+            "type": "number"
+          },
+          "terrain": {
+            "type": "string",
+            "enum": [
+              "flat",
+              "rolling",
+              "climb",
+              "all"
+            ]
+          },
+          "look": {
+            "type": "string",
+            "maxLength": 32,
+            "description": "Identifiant de rendu (V7)."
+          }
+        }
+      }
+    }
+  }
+}

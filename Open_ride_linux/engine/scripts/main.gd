@@ -73,8 +73,16 @@ const BEEPS := {
 	"MINUS_SHORT": [[440.0, 0.08]],
 	"PLUS_LONG": [[660.0, 0.10], [990.0, 0.14]],
 	"MINUS_LONG": [[550.0, 0.10], [330.0, 0.14]],
+	"A_SHORT": [[880.0, 0.08]],
+	"A_LONG": [[660.0, 0.10], [990.0, 0.14]],
+	"Y_SHORT": [[550.0, 0.10], [330.0, 0.14]],
+	"LEFT_SHORT": [[440.0, 0.08]],
+	"RIGHT_SHORT": [[880.0, 0.08]],
 }
 const BEEP_LEVEL := 0.3
+## Durées d'affichage du rappel des commandes en séance et de l'explication d'un appui ambigu.
+const CONTROLS_HINT_S := 10.0
+const PRESS_HINT_S := 4.0
 ## Bip de changement de bloc ERG à T − 3 s (lot N7) : une seule note, plus aiguë, plus longue et plus
 ## forte que les bips d'appui, pour passer au-dessus du vent et de la roue libre (SoundPlayer).
 const ERG_BEEP := [[1320.0, 0.30]]
@@ -129,7 +137,7 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
-	RenderQuality.apply_fog(world_env.environment, false)
+	RenderQuality.apply_fog(world_env.environment, _quality_name, false)
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
 	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
 	if RenderingServer.get_rendering_device() == null:   # Compatibility : pas de RenderingDevice
@@ -181,6 +189,17 @@ func _ready() -> void:
 	menu_view = MenuView.new()
 	hud.add_child(menu_view)
 	hud.move_child(banner, -1)   # le bandeau reste lisible au-dessus du menu
+	menu_view.item_clicked.connect(func(item_id: String) -> void:
+		# Clic sur un élément : focus dessus puis validation, comme un appui long sur A.
+		print("Souris : clic sur ", item_id)
+		if menu_flow.is_visible() and menu_flow.menu.focus_item(item_id):
+			_play_tones(BEEPS["A_LONG"], BEEP_LEVEL)
+			_menu_event("A_LONG"))
+	menu_view.mouse_event.connect(func(ev: String) -> void:
+		print("Souris : ", ev)
+		if menu_flow.is_visible():
+			_play_tones(BEEPS[ev], BEEP_LEVEL)
+			_menu_event(ev))
 	ipc.routes_received.connect(func(items: Array, _msg: Dictionary) -> void:
 		menu_flow.set_routes(items)
 		_refresh_menu())
@@ -249,10 +268,14 @@ func _apply_sky_params(theme_dict: Dictionary) -> void:
 		sun.basis = Basis.looking_at(-sun_dir, Vector3.UP)
 	var horizon: Color = sky.get("horizon_color", RenderQuality.FOG_COLOR)
 	var fog_dens: float = float(sky.get("fog_density", 0.01))
-	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
+	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
 
 
 func _on_input_event(event_name: String) -> void:
+	if event_name in ["PLUS_UNCLEAR", "MINUS_UNCLEAR"]:
+		print("Appui ambigu : ", event_name)
+		banner.show_message("press", HudViewModel.unclear_press_text(event_name, menu_flow.is_visible()), PRESS_HINT_S)
+		return
 	# Bips distincts : court + aigu, court − grave, long + montant, long − descendant.
 	if not BEEPS.has(event_name):
 		return
@@ -524,7 +547,7 @@ func _poll_route_job() -> void:
 	var sky_params := ThemeRenderParams.sky_params(streamer._theme_dict)
 	var horizon: Color = sky_params.get("horizon_color", RenderQuality.FOG_COLOR)
 	var fog_dens: float = float(sky_params.get("fog_density", 0.01))
-	RenderQuality.apply_fog(world_env.environment, streamer.has_terrain, horizon, fog_dens)
+	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
 	if living_decor != null:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
@@ -658,6 +681,11 @@ func _on_state_received(state: Dictionary) -> void:
 	var new_session_state := str(state.get("session_state", ""))
 	if new_session_state != session_state:
 		session_state = new_session_state
+		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
+		if session_state == "RUNNING":
+			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null), CONTROLS_HINT_S)
+		else:
+			banner.clear_message("controls")
 		# Une erreur reste au moins 5 s ; au-delà, elle reste tant que la séance est en ERROR.
 		if banner.has_message("error"):
 			banner.set_sticky("error", session_state == "ERROR")

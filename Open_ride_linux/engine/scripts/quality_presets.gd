@@ -5,14 +5,17 @@ extends RefCounted
 ##
 ## Valeurs retenues :
 ## - `low` (GPU intégré ou objectif ≥ 30 FPS garanti) : portée 3 km (3 tronçons devant, 1 derrière),
-##   densité de végétation 0,3, sans SSAO ni brouillard volumétrique, MSAA désactivé (0), moteur `mobile`,
-##   ombres 150 m, budget arbres 20 000.
+##   densité de végétation 0,3, sans SSAO ni brouillard volumétrique, MSAA désactivé (0),
+##   brouillard opaque à 4 km, ombres 150 m, budget arbres 20 000.
 ## - `medium` (GPU dédié milieu de gamme type GTX 1060) : portée 5 km (5 tronçons devant, 1 derrière),
-##   densité de végétation 0,6, SSAO activé, sans brouillard volumétrique, MSAA 2×, moteur `forward_plus`,
-##   ombres 300 m, budget arbres 50 000.
+##   densité de végétation 0,6, SSAO activé, sans brouillard volumétrique, MSAA 2×,
+##   brouillard opaque à 6 km, ombres 300 m, budget arbres 50 000.
 ## - `high` (GPU dédié récent) : portée 8 km (8 tronçons devant, 2 derrière), densité de végétation 1,0,
-##   SSAO et brouillard volumétrique activés, MSAA 4×, moteur `forward_plus`,
-##   ombres 600 m, budget arbres 100 000.
+##   SSAO et brouillard volumétrique activés, MSAA 4×,
+##   brouillard opaque à 9 km, ombres 600 m, budget arbres 100 000.
+## `fog_end_m` (lot Y1) : distance où le brouillard devient opaque ; la caméra (`camera.far`) et le
+## rayon des tuiles lointaines du terrain la suivent (render_quality.gd, world_streamer.gd).
+## Le moteur de rendu ne fait pas partie des préréglages : Forward+ partout (essai Mobile : lot Y7).
 
 const DEFAULT_PRESET := "low"
 
@@ -25,7 +28,7 @@ const PRESETS := {
 		"ssao": false,
 		"fog_volumetric": false,
 		"msaa": 0,
-		"renderer_hint": "mobile",
+		"fog_end_m": 4000.0,
 	},
 	"medium": {
 		"view_distance_m": 5000.0,
@@ -35,7 +38,7 @@ const PRESETS := {
 		"ssao": true,
 		"fog_volumetric": false,
 		"msaa": 2,
-		"renderer_hint": "forward_plus",
+		"fog_end_m": 6000.0,
 	},
 	"high": {
 		"view_distance_m": 8000.0,
@@ -45,7 +48,7 @@ const PRESETS := {
 		"ssao": true,
 		"fog_volumetric": true,
 		"msaa": 4,
-		"renderer_hint": "forward_plus",
+		"fog_end_m": 9000.0,
 	},
 }
 
@@ -77,6 +80,11 @@ static func preset(name: String) -> Dictionary:
 	if PRESETS.has(key):
 		return (PRESETS[key] as Dictionary).duplicate(true)
 	return (PRESETS[DEFAULT_PRESET] as Dictionary).duplicate(true)
+
+
+## Distance où le brouillard de profondeur devient opaque (lot Y1), `low` si le nom est inconnu.
+static func fog_end_m(name: String) -> float:
+	return float(preset(name)["fog_end_m"])
 
 
 static func shadow_distance_m(name: String) -> float:

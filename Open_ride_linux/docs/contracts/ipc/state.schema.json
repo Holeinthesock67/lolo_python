@@ -94,7 +94,8 @@
       "type": "string",
       "enum": [
         "SIM",
-        "ERG"
+        "ERG",
+        "ROGUE"
       ]
     },
     "route_id": {
@@ -147,13 +148,25 @@
       "minimum": 1
     },
     "lat": {
-      "type": "number"
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "null en mode ROGUE (révision 1.4)."
     },
     "lon": {
-      "type": "number"
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "null en mode ROGUE (révision 1.4)."
     },
     "alt": {
-      "type": "number"
+      "type": [
+        "number",
+        "null"
+      ],
+      "description": "null en mode ROGUE (révision 1.4)."
     },
     "erg": {
       "type": [
@@ -311,6 +324,177 @@
         },
         "blocks_truncated": {
           "type": "boolean"
+        },
+        "segments": {
+          "type": "object",
+          "description": "Facultatif, révision 1.4 (série T) : passages de la séance et maillots finaux.",
+          "required": [
+            "passes",
+            "more",
+            "jerseys"
+          ],
+          "properties": {
+            "passes": {
+              "type": "array",
+              "maxItems": 10,
+              "items": {
+                "type": "object",
+                "required": [
+                  "segment_id",
+                  "kind",
+                  "time_s",
+                  "with_powerup",
+                  "pr",
+                  "rank",
+                  "rank_total",
+                  "points"
+                ],
+                "properties": {
+                  "segment_id": {
+                    "type": "string",
+                    "maxLength": 24
+                  },
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "sprint",
+                      "climb"
+                    ]
+                  },
+                  "time_s": {
+                    "type": "number"
+                  },
+                  "with_powerup": {
+                    "type": "boolean"
+                  },
+                  "pr": {
+                    "type": "boolean"
+                  },
+                  "rank": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "rank_total": {
+                    "type": "integer",
+                    "minimum": 1
+                  },
+                  "points": {
+                    "type": "integer",
+                    "minimum": 0
+                  }
+                }
+              }
+            },
+            "more": {
+              "type": "boolean",
+              "description": "Vrai si la séance a eu plus de 10 passages (les 10 derniers sont listés)."
+            },
+            "jerseys": {
+              "$ref": "#/$defs/jerseys"
+            }
+          }
+        },
+        "rogue": {
+          "type": "object",
+          "description": "Facultatif, révision 1.4 (série R) : bilan de la run.",
+          "required": [
+            "result",
+            "objective",
+            "duration_min",
+            "seed",
+            "rooms_won",
+            "rooms_fled",
+            "rooms_skipped",
+            "rooms_total",
+            "defeats",
+            "boss",
+            "gold",
+            "cards",
+            "perfect_shifts",
+            "unlocks"
+          ],
+          "properties": {
+            "result": {
+              "type": "string",
+              "enum": [
+                "victory",
+                "defeat",
+                "abandoned"
+              ]
+            },
+            "objective": {
+              "type": "string",
+              "enum": [
+                "endurance",
+                "threshold",
+                "vo2max"
+              ]
+            },
+            "duration_min": {
+              "type": "integer",
+              "enum": [
+                30,
+                45,
+                60,
+                90
+              ]
+            },
+            "seed": {
+              "type": "integer"
+            },
+            "rooms_won": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rooms_fled": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rooms_skipped": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "rooms_total": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "defeats": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "boss": {
+              "type": "string",
+              "enum": [
+                "won",
+                "fled",
+                "not_reached"
+              ]
+            },
+            "gold": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "cards": {
+              "type": "array",
+              "maxItems": 40,
+              "items": {
+                "type": "string",
+                "maxLength": 24
+              }
+            },
+            "perfect_shifts": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "unlocks": {
+              "type": "array",
+              "maxItems": 16,
+              "items": {
+                "type": "string",
+                "maxLength": 24
+              }
+            }
+          }
         }
       },
       "required": [
@@ -475,6 +659,52 @@
               "constant",
               "ghost"
             ]
+          },
+          "profile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "climber",
+              "rouleur",
+              "sprinter",
+              "diesel",
+              null
+            ],
+            "description": "Révision 1.4 : profil du bot (T12), null pour un bot à puissance constante."
+          },
+          "cp_w": {
+            "type": "number",
+            "minimum": 0,
+            "description": "Révision 1.4 : puissance critique du bot (W)."
+          },
+          "mass_kg": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "description": "Révision 1.4."
+          },
+          "wbal_pct": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Révision 1.4 : réserve W' restante (%)."
+          },
+          "jersey": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "sprint",
+              "kom",
+              null
+            ],
+            "description": "Révision 1.4 : maillot porté (T14)."
+          },
+          "gap_s": {
+            "type": "number",
+            "description": "Révision 1.4 : écart en temps de passage (T16), positif si le bot est devant."
           }
         }
       }
@@ -518,6 +748,364 @@
       "type": "string",
       "maxLength": 8,
       "description": "Facultatif, révision 1.3 (lot P1) : id du bot (kind constant) qui abrite le cycliste."
+    },
+    "segment": {
+      "type": "object",
+      "description": "Facultatif, révision 1.4 (T4, T5) : segment en cours ou prochain.",
+      "required": [
+        "id",
+        "kind",
+        "category",
+        "d_to_start_m",
+        "elapsed_s",
+        "gap_to_pr_s"
+      ],
+      "properties": {
+        "id": {
+          "type": "string",
+          "maxLength": 24
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "sprint",
+            "climb"
+          ]
+        },
+        "category": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "4",
+            "3",
+            "2",
+            "1",
+            "HC",
+            null
+          ]
+        },
+        "d_to_start_m": {
+          "type": "number",
+          "minimum": 0,
+          "description": "0 dans le segment."
+        },
+        "elapsed_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "minimum": 0,
+          "description": "null avant le départ."
+        },
+        "gap_to_pr_s": {
+          "type": [
+            "number",
+            "null"
+          ],
+          "description": "Écart au record, négatif si en avance ; null sans record ou avant le départ."
+        }
+      }
+    },
+    "powerup": {
+      "type": "object",
+      "description": "Facultatif, révision 1.4 (T6) : absent en ERG (T-Q2).",
+      "required": [
+        "held",
+        "active",
+        "remaining_s"
+      ],
+      "properties": {
+        "held": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "light",
+            "aero",
+            "power",
+            null
+          ]
+        },
+        "active": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "light",
+            "aero",
+            "power",
+            null
+          ]
+        },
+        "remaining_s": {
+          "type": "number",
+          "minimum": 0
+        }
+      }
+    },
+    "jerseys": {
+      "$ref": "#/$defs/jerseys",
+      "description": "Facultatif, révision 1.4 (T14) : détenteurs des maillots pendant la séance."
+    },
+    "bot_ahead": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 8,
+      "description": "Facultatif, révision 1.4 (T16) : id du voisin immédiat, ou null."
+    },
+    "bot_behind": {
+      "type": [
+        "string",
+        "null"
+      ],
+      "maxLength": 8,
+      "description": "Facultatif, révision 1.4 (T16) : id du voisin immédiat, ou null."
+    },
+    "rogue": {
+      "type": "object",
+      "description": "Facultatif, révision 1.4 (série R) : présent seulement en mode ROGUE.",
+      "required": [
+        "phase",
+        "room_id",
+        "room_index",
+        "rooms_total",
+        "archetype",
+        "boss_phase",
+        "s_room",
+        "enemy_hp",
+        "enemy_hp_max",
+        "shield",
+        "shield_max",
+        "adrenaline",
+        "w_bal_j",
+        "w_prime_j",
+        "posture",
+        "firewall_gap_m",
+        "gold",
+        "windows",
+        "hack",
+        "overheat",
+        "loot_focus",
+        "events"
+      ],
+      "properties": {
+        "phase": {
+          "type": "string",
+          "enum": [
+            "WARMUP",
+            "ROOM",
+            "CORRIDOR",
+            "BOSS",
+            "RECOVERY",
+            "COOLDOWN",
+            "RESULTS"
+          ]
+        },
+        "room_id": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "room_index": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "rooms_total": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "archetype": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "enum": [
+            "diesel",
+            "puncheur",
+            "grimpeur",
+            "sprinteur",
+            "saboteur",
+            "boss",
+            null
+          ]
+        },
+        "boss_phase": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 1,
+          "maximum": 3
+        },
+        "s_room": {
+          "type": "number",
+          "minimum": 0
+        },
+        "enemy_hp": {
+          "type": "number",
+          "minimum": 0
+        },
+        "enemy_hp_max": {
+          "type": "number",
+          "minimum": 0
+        },
+        "shield": {
+          "type": "number",
+          "minimum": 0
+        },
+        "shield_max": {
+          "type": "number",
+          "minimum": 0
+        },
+        "adrenaline": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 100
+        },
+        "w_bal_j": {
+          "type": "number"
+        },
+        "w_prime_j": {
+          "type": "number",
+          "minimum": 0
+        },
+        "posture": {
+          "type": "string",
+          "enum": [
+            "ROC",
+            "FLUIDE",
+            "VELOCE",
+            "ARRET"
+          ]
+        },
+        "firewall_gap_m": {
+          "type": "number"
+        },
+        "gold": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "windows": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "object",
+            "required": [
+              "kind",
+              "s_start",
+              "s_end"
+            ],
+            "properties": {
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "arch",
+                  "strike_target",
+                  "parry_zone",
+                  "pad",
+                  "purge",
+                  "tunnel"
+                ]
+              },
+              "s_start": {
+                "type": "number"
+              },
+              "s_end": {
+                "type": "number"
+              }
+            }
+          }
+        },
+        "hack": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "locked",
+            "forced_gear",
+            "until_s"
+          ],
+          "properties": {
+            "locked": {
+              "type": "boolean"
+            },
+            "forced_gear": {
+              "type": [
+                "integer",
+                "null"
+              ],
+              "minimum": 1
+            },
+            "until_s": {
+              "type": "number"
+            }
+          }
+        },
+        "overheat": {
+          "type": "boolean"
+        },
+        "loot_focus": {
+          "type": [
+            "integer",
+            "null"
+          ],
+          "minimum": 0,
+          "maximum": 4
+        },
+        "events": {
+          "type": "array",
+          "maxItems": 4,
+          "items": {
+            "type": "string",
+            "enum": [
+              "perfect_shift",
+              "hit",
+              "crit",
+              "parry",
+              "parry_miss",
+              "firewall_contact",
+              "room_won",
+              "room_fled",
+              "room_skipped",
+              "defeat",
+              "card_taken"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "$defs": {
+    "jerseys": {
+      "type": "object",
+      "required": [
+        "sprint",
+        "kom"
+      ],
+      "properties": {
+        "sprint": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 8,
+          "description": "\"me\", id d'un bot ou null."
+        },
+        "kom": {
+          "type": [
+            "string",
+            "null"
+          ],
+          "maxLength": 8,
+          "description": "\"me\", id d'un bot ou null."
+        }
+      }
     }
   }
 }

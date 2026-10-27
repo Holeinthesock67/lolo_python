@@ -8,9 +8,12 @@
 - `worst_state()` : trame la plus lourde attendue pour une révision du contrat, avec les
   longueurs maximales de `MAX_TEXT`. Chaque révision qui ajoute des champs à `state` ajoute
   sa fonction dans `REVISION_EXTRAS` ; `tests/test_ipc_budget.py` vérifie que toutes tiennent.
-- Cible et limite : la cible reste 1 400 octets pour toutes les révisions (place gardée pour les
+- Cible et limite : la cible est de 1 400 octets jusqu'à la révision 1.3 (place gardée pour les
   ajouts de la 2.0) ; la limite de `state` est de 1 400 octets jusqu'à la révision 1.2 et de
-  4 096 octets depuis la 1.3 (contrat §2, décision D1). Le core n'allège qu'au-delà de la limite.
+  4 096 octets depuis la 1.3 (contrat §2, décision D1). Depuis la 1.4 (séries R, T et V, lot T1),
+  `state` utilise cette place : sa cible devient sa limite, et seuls les messages courts
+  (`segment_result`, `xp_result`, `progression`, `loot`) visent encore 1 400 octets
+  (`worst_rogue_state`, `worst_short_messages`). Le core n'allège qu'au-delà de la limite.
 """
 
 from __future__ import annotations
@@ -152,11 +155,29 @@ def _extras_1_3(d: dict[str, Any]) -> None:
     d["draft_bot"] = d["bots"][0]["id"]
 
 
+_ID = "x" * 24                     # identifiants de segment et de carte : maxLength 24
+# Compteurs de la série V (expérience, pièces) : 8 chiffres suffisent pour des années de séances.
+
+
+def _extras_1_4(d: dict[str, Any]) -> None:
+    # Série T (lot T1) : majorant des modes classique et ERG. En ERG, `powerup` est absent
+    # (T-Q2) ; la pire trame garde quand même `erg` et `powerup` ensemble.
+    for bot in d["bots"]:
+        bot.update({"profile": "sprinter", "cp_w": 1234.5, "mass_kg": 123.4, "wbal_pct": 100.0,
+                    "jersey": "sprint", "gap_s": -3599.99})
+    d["segment"] = {"id": _ID, "kind": "climb", "category": "HC", "d_to_start_m": 199_999.9,
+                    "elapsed_s": 3599.99, "gap_to_pr_s": -3599.99}
+    d["powerup"] = {"held": "power", "active": "light", "remaining_s": 120.0}
+    d["jerseys"] = {"sprint": d["bots"][0]["id"], "kom": d["bots"][1]["id"]}
+    d["bot_ahead"], d["bot_behind"] = d["bots"][2]["id"], d["bots"][3]["id"]
+
+
 # Une entrée par révision : chaque révision hérite des ajouts des précédentes.
 REVISION_EXTRAS: dict[str, Callable[[dict[str, Any]], None]] = {
     "1.1": _extras_1_1,
     "1.2": _extras_1_2,
     "1.3": _extras_1_3,
+    "1.4": _extras_1_4,
 }
 
 
@@ -174,19 +195,82 @@ def worst_state(revision: str) -> dict[str, Any]:
     return d
 
 
+def worst_rogue_state() -> dict[str, Any]:
+    """Trame `state` la plus lourde du mode `ROGUE` (révision 1.4, série R) : 4 fenêtres, 4 événements."""
+    d = worst_state("1.3")
+    for key in ("erg", "bots", "draft", "draft_bot"):
+        d.pop(key, None)
+    d.update({"mode": "ROGUE", "erg": None, "route_id": None, "lat": None, "lon": None, "alt": None,
+              "gear": 12, "gears_total": 12})
+    d["rogue"] = {
+        "phase": "CORRIDOR", "room_id": 2_147_483_647, "room_index": 99, "rooms_total": 99,
+        "archetype": "sprinteur", "boss_phase": 3, "s_room": 99_999.99,
+        "enemy_hp": 99_999.9, "enemy_hp_max": 99_999.9, "shield": 999.9, "shield_max": 999.9,
+        "adrenaline": 100.0, "w_bal_j": -99_999.9, "w_prime_j": 99_999.9, "posture": "VELOCE",
+        "firewall_gap_m": -9_999.99, "gold": 2_147_483_647,
+        "windows": [{"kind": "strike_target", "s_start": 99_999.99, "s_end": 99_999.99}] * 4,
+        "hack": {"locked": True, "forced_gear": 12, "until_s": 99_999.99},
+        "overheat": True, "loot_focus": 4,
+        "events": ["firewall_contact", "room_skipped", "perfect_shift", "parry_miss"],
+    }
+    return d
+
+
+def worst_short_messages() -> dict[str, dict[str, Any]]:
+    """Messages courts de la révision 1.4 au plus lourd (cible 1 400 octets, contrat §9)."""
+    text = _text
+    progression = {
+        "level": 50, "xp": 2_147_483_647, "xp_level_start": 2_147_483_647, "xp_next_level": None,
+        "coins": 2_147_483_647, "equipped": {k: _ID for k in ("frame", "wheels", "helmet", "kit", "socks", "glasses")},
+        "avatar": {"height": "XL", "build": "strong", "skin": 7, "hair": 5, "hair_color": 7,
+                   "kit_primary": 15, "kit_secondary": 15, "number": 999,
+                   "standing_grade_pct": 99.9, "standing_power_pct": 999.9},
+        "lives": 2_147_483_647,
+    }
+    return {
+        "segment_result": {
+            "type": "segment_result", "v": 1, "segment_id": _ID, "name": text(48), "kind": "climb",
+            "time_s": 99_999.99, "with_powerup": True, "pr": False, "pr_time_s": 99_999.99,
+            "rank": 99, "rank_total": 99, "points": 20, "equipment_gain_s": -999.99},
+        "xp_result": {
+            "type": "xp_result", "v": 1, "eligible": True, "reason": None,
+            "gains": [{"source": s, "points": 99_999_999} for s in
+                      ("distance", "climb", "erg", "erg_bonus", "segment", "segment_pr", "jersey", "rogue", "rogue_boss")],
+            "total": 99_999_999, "level_before": 49, "level_after": 50, "xp_total": 99_999_999,
+            "xp_next_level": None, "coins_gained": 99_999_999, "coins_total": 99_999_999,
+            "unlocked": [_ID] * 8,
+            "challenges": [{"id": _ID, "name": text(32), "reward_item": _ID}] * 4,
+            "equipment_gain_s": -9_999.99, "more": True},
+        "progression": {"type": "progression", "v": 1, "request_cmd_id": 2_147_483_647, **progression},
+        "loot": {
+            "type": "loot", "v": 1, "corridor_id": 2_147_483_647,
+            "cards": [{"id": _ID, "name": text(32), "kind": text(16), "text": text(120), "replaces_gear": 12}] * 3,
+            "doors": [{"side": side, "room_id": 2_147_483_647, "archetype": "sprinteur"} for side in ("left", "right")],
+            "reroll_cost": 2_147_483_647, "gold": 2_147_483_647},
+    }
+
+
 def state_limit(revision: str) -> int:
     """Limite de taille d'une trame `state` pour `revision` (contrat §2)."""
     major, minor = (int(x) for x in revision.split("."))
     return STATE_LIMIT_1_3 if (major, minor) >= (1, 3) else MAX_DATAGRAM_SIZE
 
 
+def state_target(revision: str) -> int:
+    """Taille visée pour `state` : 1 400 octets jusqu'à la 1.3, la limite depuis la 1.4."""
+    major, minor = (int(x) for x in revision.split("."))
+    return state_limit(revision) if (major, minor) >= (1, 4) else MAX_DATAGRAM_SIZE
+
+
 def report() -> str:
     """Tableau texte : taille de la pire trame par révision (python -m openride_core.ipc_budget)."""
-    lines = [f"{'révision':<9} {'octets':>6}  {'cible 1400':>10}  {'limite':>6}  marge"]
-    for rev in revisions():
-        n = size(worst_state(rev))
-        limit = state_limit(rev)
-        lines.append(f"{rev:<9} {n:>6}  {MAX_DATAGRAM_SIZE - n:>+10d}  {limit:>6}  {limit - n:+d}")
+    lines = [f"{'révision':<22} {'octets':>6}  {'cible 1400':>10}  {'limite':>6}  marge"]
+    rows = [(rev, worst_state(rev), state_limit(rev)) for rev in revisions()]
+    rows.append(("1.4 rogue", worst_rogue_state(), state_limit("1.4")))
+    rows += [(f"1.4 {name}", msg, MAX_DATAGRAM_SIZE) for name, msg in worst_short_messages().items()]
+    for label, msg, limit in rows:
+        n = size(msg)
+        lines.append(f"{label:<22} {n:>6}  {MAX_DATAGRAM_SIZE - n:>+10d}  {limit:>6}  {limit - n:+d}")
     return "\n".join(lines)
 
 

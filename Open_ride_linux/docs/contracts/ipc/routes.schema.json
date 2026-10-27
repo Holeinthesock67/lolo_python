@@ -91,6 +91,19 @@
               "string",
               "null"
             ]
+          },
+          "terrain": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "enum": [
+              "flat",
+              "rolling",
+              "climb",
+              null
+            ],
+            "description": "Facultatif, révision 1.4 (V3 §4.3) : type de terrain calculé par le core, pour le conseil d'équipement (V8)."
           }
         }
       }

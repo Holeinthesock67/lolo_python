@@ -42,7 +42,13 @@
         "set_setting",
         "list_imports",
         "create_workout",
-        "import_workout"
+        "import_workout",
+        "start_run",
+        "rogue_resync",
+        "list_garage",
+        "equip",
+        "buy",
+        "set_avatar"
       ]
     },
     "args": {

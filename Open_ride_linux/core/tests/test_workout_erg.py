@@ -230,3 +230,31 @@ def test_session_runs_erg_and_refuses_invalid(tmp_path, monkeypatch, erg_dir):
         assert s.state.mode == "ERG" and s.state.erg["target_w"] == 200
         assert driver.target_power_w == 200
     asyncio.run(scenario())
+
+
+def test_session_erg_chosen_after_a_finished_session(tmp_path, monkeypatch, erg_dir):
+    """Le menu envoie select_workout avant select_route : après une séance, le core est en FINISHED."""
+    async def scenario():
+        s, driver, errors = make_session(tmp_path, monkeypatch, erg_dir, port=5992)
+        s._on_command("select_route", {"route_id": "demo"}, 1)
+        s._on_command("start", {}, 2)
+        run(s, 0.5)
+        s._on_command("select_workout", {"workout_id": "palier"}, 3)
+        assert errors[-1][0] == "busy" and s._workout is None   # refusé pendant la séance, et signalé
+        s._on_command("end_session", {"save": False}, 4)
+        run(s, 0.5)
+        assert s.state.session_state == "FINISHED"
+        s._on_command("select_workout", {"workout_id": "palier"}, 5)
+        s._on_command("select_route", {"route_id": "demo"}, 6)
+        s._on_command("start", {}, 7)
+        run(s, 1.0)
+        assert s.state.mode == "ERG" and s.state.erg["target_w"] == 200
+        assert driver.target_power_w == 200
+        s._on_command("end_session", {"save": False}, 8)
+        run(s, 0.5)
+        s._on_command("select_workout", {"workout_id": None}, 9)   # retour au SIM après une séance ERG
+        s._on_command("select_route", {"route_id": "demo"}, 10)
+        s._on_command("start", {}, 11)
+        run(s, 0.5)
+        assert s.state.mode == "SIM" and s.state.erg is None
+    asyncio.run(scenario())
