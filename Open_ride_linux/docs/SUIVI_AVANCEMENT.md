@@ -218,7 +218,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Écran d'état des appareils (trainer, Click, batterie du Click) : modèle (lot N5), affichage dans l'accueil et l'écran « Prêt » (N6, livré le 25 octobre) ; reste l'essai d'un boîtier débranché pendant le menu sur le PC.
 
 ### Version 1.0 (série O rédigée le 25 octobre)
-- [ ] Arbres : préparation d'une tuile sous 150 ms, 210 ms mesurés sur le PC cible (lot O1).
+- [x] Arbres : préparation d'une tuile sous 150 ms (lot O1, 27 octobre) : 230 ms avant, 87 ms après sur le PC cible, arbres identiques au bit près (empreintes de trois tuiles dans `test_tree_renderer.gd`) ; seuil de CI ramené à 170 ms ; reste une séance en `high` pour vérifier l'absence d'à-coups.
 - [x] Numéro de version unique et notes de version (lot O2, 26 octobre) : fichier `VERSION` (0.9.0) repris par les deux paquets, `project.godot`, `hello_ack`, `hello`, `--version` des trois commandes et la première ligne du journal du lanceur ; `CHANGELOG.md` ; `scripts/bump-version.sh X.Y.Z` ; contrôlé par `core/tests/test_version.py`.
 - [x] Réglages depuis le menu : FTP, poids, difficulté (curseur, aussi sur l'écran de pause), braquet de départ, qualité et thème, écrits dans `~/OpenRide/config.toml` (lots O3 et O4, 26 octobre ; `openride-core settings` ; banc des menus, parcours `reglages`). Ligne « OpenRide X.Y.Z » en bas des réglages depuis le 27 octobre. Reste l'essai au Click réel.
 - [x] Traces FIT, TCX et archives Garmin déposées dans `~/OpenRide/GPX/` (lot O5, 26 octobre) ; reste l'essai avec un vrai export sur le PC.
