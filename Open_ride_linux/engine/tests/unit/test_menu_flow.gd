@@ -345,8 +345,9 @@ func _test_erg_submenu() -> void:
 	f.on_error("bad_args", "reps hors bornes")
 	_check(f.state()["screen"] == "workout_create" and f.state()["status"] == "Échec : reps hors bornes",
 		"erreur du core sur l'écran Créer")
-	f.on_workout_saved({"type": "workout_saved", "request_cmd_id": 9, "workout_id": "intervalles_7x240s_105",
-		"name": "Intervalles 7 × 4 min à 105 %", "created": true})
+	var saved := {"type": "workout_saved", "request_cmd_id": 9, "workout_id": "intervalles_7x240s_105",
+		"name": "Intervalles 7 × 4 min à 105 %", "created": true}
+	_check(f.on_workout_saved(saved) and not f.on_workout_saved(saved), "réponse en double (copie renvoyée) ignorée")
 	_check(f.state()["screen"] == "workouts" and f.state()["status"] == "Créé : Intervalles 7 × 4 min à 105 %",
 		"retour à la liste, ligne d'état (%s)" % f.state()["status"])
 	f.set_workouts([{"id": "intervalles_7x240s_105", "name": "Intervalles", "duration_s": 3540},
@@ -372,8 +373,8 @@ func _test_erg_submenu() -> void:
 		"échec affiché")
 	f.list_failed("imports")
 	_check(f.state()["items"][0]["label"] == "Fichiers à importer indisponibles", "imports sans réponse")
-	f.on_workout_saved({"workout_id": "vo2", "name": "VO2", "created": false})
-	_check(f.state()["status"] == "Importé : VO2", "import : ligne d'état")
+	f.on_workout_saved({"request_cmd_id": 12, "workout_id": "vo2", "name": "VO2", "created": false})
+	_check(f.state()["status"] == "Importé : VO2 (déjà présent)", "import : ligne d'état (%s)" % f.state()["status"])
 	f.set_workouts([{"id": "vo2", "name": "VO2", "duration_s": 0, "selectable": false, "error": "aucun bloc reconnu"}])
 	_check(f.state()["screen"] == "workouts" and _focus_id(f) != "vo2", "import invalide : désactivé, pas de focus")
 

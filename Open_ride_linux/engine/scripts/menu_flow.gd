@@ -74,6 +74,10 @@ var import_candidates: Array = []
 ## Ligne d'état de la liste des entraînements (créé, importé, erreur).
 var workout_message := ""
 var _focus_workout := ""
+## Dernière demande au core (« create » ou « import ») et dernier request_cmd_id traité : le core
+## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
+var _workout_request := ""
+var _last_saved_cmd_id := -1
 
 
 func _init() -> void:
@@ -260,10 +264,19 @@ func set_import_candidates(found: Array) -> void:
 	menu.set_screen_items(WORKOUT_IMPORT, items)
 
 
-## Réponse `workout_saved` du core {workout_id, name, created} : main.gd redemande la liste.
-func on_workout_saved(msg: Dictionary) -> void:
+## Réponse `workout_saved` du core {request_cmd_id, workout_id, name, created} (`created` faux : fichier
+## identique déjà présent) ; vrai si c'est une nouvelle réponse (main.gd redemande alors la liste).
+func on_workout_saved(msg: Dictionary) -> bool:
+	var rid := int(msg.get("request_cmd_id", -1))
+	if rid >= 0 and rid == _last_saved_cmd_id:
+		return false
+	_last_saved_cmd_id = rid
 	var name := str(msg.get("name", msg.get("workout_id", "")))
-	workout_added(str(msg.get("workout_id", "")), ("Créé : " if msg.get("created", false) else "Importé : ") + name)
+	var text := ("Importé : " if _workout_request == "import" else "Créé : ") + name
+	if not msg.get("created", true):
+		text += " (déjà présent)"
+	workout_added(str(msg.get("workout_id", "")), text)
+	return true
 
 
 ## Entraînement écrit dans le dossier (créé ou importé) : retour à la liste, focus dessus quand la
@@ -328,6 +341,7 @@ func handle(event: String) -> Dictionary:
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
 		var item_id := str(act["id"])
 		if item_id == "save":
+			_workout_request = "create"
 			return {"action": "create_workout", "args": builder.values.duplicate()}
 		if item_id.begins_with("param:"):
 			settings.begin_with(builder.edit_item(item_id.substr(6)))
@@ -336,6 +350,7 @@ func handle(event: String) -> Dictionary:
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_IMPORT:
 		var idx := int(str(act["id"]).substr(5))
 		if str(act["id"]).begins_with("file:") and idx < import_candidates.size():
+			_workout_request = "import"
 			return {"action": "import_workout", "path": import_candidates[idx]["path"]}
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:

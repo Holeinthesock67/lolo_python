@@ -172,8 +172,8 @@ func _ready() -> void:
 		_refresh_menu())
 	ipc.workout_saved_received.connect(func(msg: Dictionary) -> void:
 		ipc.test_log("workout_saved id=%s" % str(msg.get("workout_id", "")))
-		menu_flow.on_workout_saved(msg)
-		ipc.list_workouts()
+		if menu_flow.on_workout_saved(msg):
+			ipc.list_workouts()
 		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)

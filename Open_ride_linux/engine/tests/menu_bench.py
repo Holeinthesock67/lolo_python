@@ -385,7 +385,7 @@ def parcours_erg(run: Run) -> None:
     run.press("PLUS_LONG")
     time.sleep(1.5)
     r.check((wdir / "seuil_import.zwo").is_file(), "fichier importé dans ~/OpenRide/Workouts", "seuil_import.zwo")
-    run.expect("importe", "Session ERG : entraînement", "Importé : seuil_import.zwo", "[Seuil importé")
+    run.expect("importe", "Session ERG : entraînement", "Importé : Seuil importé", "[Seuil importé")
 
 
 PARCOURS: dict[str, Callable[[Run], None]] = {
