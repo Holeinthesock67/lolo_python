@@ -1,0 +1,8 @@
+name = "Alto de l'Angliru"
+region = "Asturies"
+country = "Espagne"
+side = "depuis La Vega"
+waypoints = [[43.2410, -5.8947], [43.2225, -5.9343]]
+ref_length_m = 12500
+ref_gain_m = 1266
+tags = ["col", "classique", "hc", "raide"]
