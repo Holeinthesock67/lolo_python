@@ -108,7 +108,9 @@ def test_ftp_test_from_menu_and_accept(tmp_path, monkeypatch):
         summary = s.state.summary
         assert summary["ftp_test"] == {"test": "ramp", "ftp_w": None, "previous_ftp_w": 250,
                                        "warnings": ["too_short"], "reliable": False}
-        assert not list(jsonschema.Draft202012Validator(schema("state")["properties"]["summary"]).iter_errors(summary))
+        state = schema("state")   # sous-schéma avec les `$defs` de la trame (révision 1.4)
+        assert not list(jsonschema.Draft202012Validator({**state["properties"]["summary"], "$defs": state["$defs"]})
+                        .iter_errors(summary))
         s._on_command("accept_ftp", {"force": True}, 7)
         assert cap.of("error")[-1]["code"] == "ftp_result_missing"   # rien à écrire sans FTP calculée
         # Résultat douteux (coupure du trainer) : confirmation demandée, puis écrit avec force.

@@ -12,14 +12,14 @@ Dans le menu de l'engine : un écran « Records » par parcours (pour chaque seg
 
 ## 3. Prérequis
 
-T5 et N6 (livrés) ; T7 pour la clé `[powerups] enabled` de `set_setting` et pour des records réels.
+T5 et N6 (livrés) ; T7 pour la clé `powerups.mode` de `set_setting` et pour des records réels.
 
 ## 4. Travail demandé
 
 - **Lecture des records :** l'engine lit lui-même `~/OpenRide/records.json` en lecture seule, comme il lit déjà les `.world` et `config.toml` ; version inconnue ou fichier illisible : écran « Aucun record lisible », sans erreur. Le core reste le seul à écrire ce fichier. *Choix proposé :* ce chemin évite une commande `list_records` dans le contrat ; si le propriétaire préfère passer par le core, la commande prendra la prochaine révision libre.
 - **Modèle sans affichage** `engine/scripts/records_view_model.gd`, testé par `engine/tests/unit/test_records_view_model.gd` : liste des segments du parcours choisi (noms lus dans `segments.json`), puis table du segment, basculement « sans bonus » / « avec bonus » ; temps au dixième, date, puissance moyenne et W/kg.
 - **Menu :** entrée « Records » sur l'écran « Prêt » du parcours choisi ; navigation selon le plan de boutons commun (spécification générale §7.1, sans exception) : ± déplacent, A court passe à l'élément suivant (bascule de table), A long valide, Y revient.
-- **Option « Bonus » :** ligne des réglages (O3) liée à la clé `powerups.enabled` de `set_setting` (T7), refusée pendant une séance (`busy`) comme les autres réglages.
+- **Option « Bonus » :** ligne des réglages (O3) liée à la clé `powerups.mode` (`on` ou `off`) de `set_setting` (T7), refusée pendant une séance (`busy`) comme les autres réglages.
 
 ## 5. Fichiers concernés
 
