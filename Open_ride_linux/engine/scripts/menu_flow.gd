@@ -48,6 +48,7 @@ const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
+const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -58,6 +59,9 @@ const WORKOUT_IMPORT := "workout_import"
 const PLANS := "plans"
 const PLAN := "plan"
 const FTP_TEST := "ftp_test"
+## Records du parcours (série T, lot T10) : liste des segments, puis table d'un segment.
+const RECORDS := "records"
+const RECORD_TABLE := "record_table"
 ## Tests de FTP proposés (lot O10) : id, libellé, explication courte, nom de la séance (écran Prêt).
 const FTP_TESTS := [
 	["ramp", "Rampe", "≈ 25 min : +20 W par minute jusqu'à ne plus tenir ; FTP = 75 % de la meilleure minute",
@@ -121,6 +125,11 @@ var _workouts_raw: Array = []
 var ftp_offer: Dictionary = {}
 var summary_message := ""
 var _ftp_pending := false
+## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
+var records = RecordsViewModel.new()
+var records_path := ""
+var _record_segment := ""
+var _record_bonus := false
 
 
 func _init() -> void:
@@ -139,6 +148,8 @@ func _init() -> void:
 		tests.append({"id": t[0], "label": t[1], "detail": t[2]})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
 	menu.set_screen_items(FTP_TEST, tests)
+	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
+	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -609,6 +620,9 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if menu.current_screen() == SETTING_EDIT:
 		return _handle_edit(event)
+	if menu.current_screen() == RECORD_TABLE and event == "A_SHORT":   # A court : bascule de table (T10)
+		_handle_records(RECORD_TABLE, "toggle")
+		return {}
 	var act: Dictionary = menu.handle(event)["action"]
 	if act.get("action", "") == "item" and act.get("screen", "") == CONNECT:
 		match str(act["id"]):
@@ -677,6 +691,9 @@ func handle(event: String) -> Dictionary:
 			_workout_request = "import"
 			return {"action": "import_workout", "path": import_candidates[idx]["path"]}
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") in [MenuModel.READY, RECORDS, RECORD_TABLE]:
+		_handle_records(str(act["screen"]), str(act["id"]))
+		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:
 		settings.begin_pause_difficulty(difficulty_pct)
 		_open_edit()
@@ -720,6 +737,30 @@ func handle(event: String) -> Dictionary:
 				show_details = not show_details
 				return {}
 	return act
+
+
+## Écrans des records (lot T10) : « Records du parcours » (écran Prêt) relit le fichier et liste les
+## segments ; un segment ouvre sa table « sans bonus » ; « A : voir les temps avec bonus » bascule.
+func _handle_records(screen: String, item_id: String) -> void:
+	if screen == MenuModel.READY and item_id == "records":
+		records.load_file(records_path)
+		var title: String = "Records : " + (menu.world_name if menu.world_name != "" else menu.world_id)
+		menu.set_screen_items(RECORDS, records.segment_items(menu.world_id), title)
+		menu.push_screen(RECORDS)
+	elif screen == RECORDS and item_id.begins_with("seg:"):
+		_record_segment = item_id.substr(4)
+		_record_bonus = false
+		_refresh_record_table()
+		menu.push_screen(RECORD_TABLE)
+	elif screen == RECORD_TABLE and item_id == "toggle":
+		_record_bonus = not _record_bonus
+		_refresh_record_table()
+		menu.focus_item("toggle")
+
+
+func _refresh_record_table() -> void:
+	menu.set_screen_items(RECORD_TABLE, records.table_items(menu.world_id, _record_segment, _record_bonus),
+		records.table_title(_record_segment, _record_bonus))
 
 
 func _open_edit() -> void:

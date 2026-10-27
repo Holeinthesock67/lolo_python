@@ -145,6 +145,8 @@ class RogueConfig:
 
     w_prime_j: float = 20000.0   # réserve anaérobie W' (décision Q5)
     cp_w: float = 0.0            # puissance critique ; 0 : la FTP du cavalier
+    grade_rate_up_pct_per_s: float = 8.0     # rampe de pente du trainer propre au mode (lot R8, valeur de R0)
+    grade_rate_down_pct_per_s: float = 12.0
 
 
 @dataclass
@@ -221,6 +223,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("wind", "max_grade_offset_pct"): (0, 8),
     ("rogue", "w_prime_j"): (5000, 60000),
     ("rogue", "cp_w"): (0, 1000),
+    ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
+    ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),

@@ -119,3 +119,14 @@ Pour poser le diagnostic définitif sur le matériel réel, les mécanismes suiv
 2. Vérifier que les boutons répondent dans l'application officielle.
 3. Fermer l'application officielle et couper le Bluetooth du smartphone.
 4. Lancer immédiatement une séance OpenRide et vérifier si le boîtier gauche reste actif pendant plus de 5 secondes.
+
+## 6. Relevés du test guidé des boutons (27 octobre 2026)
+
+Outil `python -m openride_core.tools.boutons_click` (protocole G3), mêmes boîtiers, matériel B.0 :
+
+| Firmware | Boîtier droit | Boîtier gauche |
+| --- | --- | --- |
+| 1.0.2 (avant mise à jour) | 10 appuis sur 10 | touches reçues jusqu'à environ 70 s après la connexion, puis plus rien ; flèches demandées trop tard, jamais reçues |
+| 1.2.0 (après mise à jour par l'appli Zwift) | 10 appuis sur 10 | relié, mais aucune touche reçue, même juste après la connexion |
+
+La mise à jour ne débloque pas le boîtier gauche. Reste à savoir s'il répond dans l'appli Zwift (essai 3) et s'il envoie encore des messages sans touche (recette `click_recette`, qui compte les notifications de chaque boîtier). Le contournement reste B du boîtier droit pour « − » ; le plan des boutons (spécification générale §7.1) ne met rien d'indispensable sur le seul boîtier gauche.

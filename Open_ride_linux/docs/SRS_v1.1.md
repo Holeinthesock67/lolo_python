@@ -422,6 +422,8 @@ mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode
 [rogue]
 w_prime_j = 20000.0          # réserve anaérobie W' du mode Cyber-Rogue, 5 000 à 60 000 J (lot R2)
 cp_w = 0.0                   # puissance critique, 0 à 1 000 W ; 0 : la FTP
+grade_rate_up_pct_per_s = 8.0     # rampe de pente du mode Cyber-Rogue, montée (0,1 à 100 %/s, lot R8)
+grade_rate_down_pct_per_s = 12.0  # descente
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
