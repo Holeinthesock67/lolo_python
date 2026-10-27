@@ -228,6 +228,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Contrat : vent et aspiration dans `state` (IPC révision 1.3), configuration `[wind]`, thème 1.2, points d'intérêt `wind_turbine` et `flag` (lot P1, décisions du propriétaire du 25 octobre).
 - [ ] Vent physique et aspiration derrière les bots, côté core (lots P2 et P3).
 - [x] Engine : modèle du vent lissé pour tout le décor, modèle de l'indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (lot P4, sans affichage).
+- [x] Bord de route : montées détectées sur le profil, panneaux de col et d'approche (« Sommet à 3 km »), bornes kilométriques, marquages au sol et chiffres des derniers kilomètres peints en montée (lot P14 ; branchement par P17).
 - [ ] Indicateur du vent et de l'abri, arbres et herbe au vent, nuages, sons d'ambiance, sons du vent et de la roue libre (lots P4, P5, P6, P9, P10 ; intégration P16).
 - [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs, passants (lots P8, P11 à P15, P21 ; intégration P17).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
