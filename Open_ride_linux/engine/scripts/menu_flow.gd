@@ -29,6 +29,17 @@ extends RefCounted
 ## réponse `imports` arrive par set_import_candidates() et un choix renvoie import_workout {path}.
 ## Réponse `workout_saved` : on_workout_saved(), retour à la liste, focus sur le nouvel entraînement à
 ## son arrivée ; erreur du core (bad_args, busy, workout_invalid, workout_write_failed) sur la ligne d'état.
+##
+## Plans, test de FTP et bibliothèque (lot O12, contrat 1.3) :
+## - accueil : « Séance du jour » (nom, durée, TSS) quand le plan actif en a une, sinon « Plan : … » ou
+##   « Choisir un plan » ; la séance du jour démarre par `start` avec plan_day ; l'écran « Plans »
+##   (action list_plans à l'ouverture) montre le suivi du plan actif et la liste, l'écran d'un plan
+##   le démarre (start_plan, remplacement confirmé) ou l'arrête (stop_plan, confirmé) ; réponse `plans`
+##   par on_plans(), erreur plan_invalid sur la ligne d'état ;
+## - « Test de FTP » : rampe ou 20 minutes, puis écran Prêt, `start` avec ftp_test ; au bilan,
+##   « Accepter » (accept_ftp ; résultat douteux : confirmation puis accept_ftp avec force) ou « Garder » ;
+## - parcours : tri et filtre par étiquette en cycle en fin de liste, fiche du parcours sur l'écran Prêt ;
+## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -44,6 +55,20 @@ const PAIRING := PairingViewModel.SCREEN
 const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
+const PLANS := "plans"
+const PLAN := "plan"
+const FTP_TEST := "ftp_test"
+## Tests de FTP proposés (lot O10) : id, libellé, explication courte, nom de la séance (écran Prêt).
+const FTP_TESTS := [
+	["ramp", "Rampe", "≈ 25 min : +20 W par minute jusqu'à ne plus tenir ; FTP = 75 % de la meilleure minute",
+		"test de FTP (rampe)"],
+	["20min", "20 minutes", "≈ 1 h avec l'échauffement : 20 min à fond, régulier ; FTP = 95 % de la moyenne",
+		"test de FTP (20 min)"]]
+const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
+## Avertissements du test de FTP (summary.ftp_test.warnings), comme `openride-core ftp-test`.
+const FTP_WARNINGS := {"too_short": "test trop court", "erratic_cadence": "cadence erratique",
+	"trainer_dropout": "coupure du trainer pendant l'effort", "paused": "pause pendant l'effort"}
+const SUMMARY_BASE_IDS := ["new_session", "details", "quit"]
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -81,6 +106,21 @@ var _focus_workout := ""
 ## répond à chaque copie renvoyée d'une commande, une seule réponse compte.
 var _workout_request := ""
 var _last_saved_cmd_id := -1
+## Dernière réponse `plans` du core ({} avant la première) ; plan affiché sur l'écran d'un plan.
+var plans: Dictionary = {}
+var _plan_shown := ""
+## Ligne d'état des écrans des plans, et demande en cours (« start », « stop » ou "").
+var plan_message := ""
+var _plan_request := ""
+## Liste brute des parcours (fiche de l'écran Prêt) ; tri et étiquette choisis dans la liste.
+var routes_raw: Array = []
+var route_sort := 0
+var route_tag := ""
+var _workouts_raw: Array = []
+## Résultat du test de FTP du bilan (summary.ftp_test) tant qu'il reste à accepter ou garder ({} sinon).
+var ftp_offer: Dictionary = {}
+var summary_message := ""
+var _ftp_pending := false
 
 
 func _init() -> void:
@@ -92,6 +132,14 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
+	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": PLAN, "title": "Plan", "on_back": PLANS, "items": []})
+	var tests: Array = []
+	for t in FTP_TESTS:
+		tests.append({"id": t[0], "label": t[1], "detail": t[2]})
+	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
+	menu.set_screen_items(FTP_TEST, tests)
+	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
 	_refresh_settings()
@@ -133,6 +181,9 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 				menu.open_pause()
 			"FINISHED":
 				show_details = false
+				ftp_offer = summary["ftp_test"] if summary.get("ftp_test") is Dictionary else {}
+				summary_message = _ftp_text(ftp_offer)
+				_refresh_summary()
 				menu.open_screen(SUMMARY)
 			"IDLE", "READY":
 				if prev in ["RUNNING", "PAUSED"]:
@@ -202,10 +253,16 @@ func set_versions(engine_v: String, core_v: String) -> void:
 	_refresh_settings()
 
 
-## Message `settings` du core (liste, ou réponse à set_setting).
+## Message `settings` du core (liste, ou réponse à set_setting et à accept_ftp).
 func on_settings(msg: Dictionary) -> void:
 	settings.on_settings(msg)
 	_refresh_settings()
+	if _ftp_pending:
+		_ftp_pending = false
+		summary_message = "FTP enregistrée : %s W" % str(settings.item("rider.ftp_w").get("value", ftp_offer.get("ftp_w")))
+		ftp_offer = {}
+		_refresh_summary()
+	_refresh_workouts()
 
 
 ## Message `scan_results` du core.
@@ -221,6 +278,18 @@ func on_scan_results(msg: Dictionary) -> void:
 ## Erreur du core : écrans Créer / Importer un entraînement (bad_args, busy, workout_invalid,
 ## workout_write_failed), sinon écran Appareils (busy, scan_failed, pairing_failed).
 func on_error(code: String, text: String) -> void:
+	if _ftp_pending and code in ["ftp_result_missing", "ftp_result_doubtful", "setting_invalid", "busy"]:
+		_ftp_pending = false
+		if code == "ftp_result_doubtful":
+			menu.confirm("Résultat douteux : enregistrer %s W quand même ?" % str(ftp_offer.get("ftp_w")),
+				{"action": "accept_ftp", "force": true})
+		else:
+			summary_message = "Échec : " + text
+		return
+	if _plan_request != "" and code in ["plan_invalid", "busy"]:
+		_plan_request = ""
+		plan_message = "Échec : " + text
+		return
 	if menu.current_screen() in [WORKOUT_CREATE, WORKOUT_IMPORT] \
 			and code in ["bad_args", "busy", "workout_invalid", "workout_write_failed"]:
 		workout_failed("Échec : " + text)
@@ -242,7 +311,19 @@ func lists_needed() -> void:
 
 
 func set_routes(raw: Array) -> void:
-	menu.set_items(MenuModel.ROUTES, catalog.route_items(raw))
+	routes_raw = raw
+	var tags: Array = CatalogModel.route_tags(raw)
+	if route_tag != "" and not route_tag in tags:
+		route_tag = ""
+	var items: Array = catalog.route_items(raw, CatalogModel.ROUTE_SORTS[route_sort][0], route_tag)
+	if items.is_empty() and route_tag != "":
+		items.append({"id": "empty", "label": "Aucun parcours « %s »" % route_tag, "enabled": false})
+	if not raw.is_empty():
+		items.append({"id": MenuModel.SORT_ROUTES_ID, "label": "Trier par : " + CatalogModel.ROUTE_SORTS[route_sort][1]})
+		if not tags.is_empty():
+			items.append({"id": MenuModel.FILTER_ROUTES_ID,
+				"label": "Étiquette : " + (route_tag if route_tag != "" else "toutes")})
+	menu.set_items(MenuModel.ROUTES, items)
 	for r in raw:
 		if r is Dictionary and str(r.get("id", "")) != "":
 			route_names[str(r["id"])] = str(r.get("name", r["id"]))
@@ -251,10 +332,216 @@ func set_routes(raw: Array) -> void:
 
 
 func set_workouts(raw: Array) -> void:
-	menu.set_items(MenuModel.WORKOUTS, catalog.workout_items(raw))
+	_workouts_raw = raw
+	menu.set_items(MenuModel.WORKOUTS, catalog.workout_items(raw, _ftp_w()))
 	if _focus_workout != "" and menu.current_screen() == MenuModel.WORKOUTS:
 		menu.focus_item(_focus_workout)
 		_focus_workout = ""
+
+
+## Liste des entraînements reconstruite (FTP du core changée : watts maximaux des fichiers en watts).
+func _refresh_workouts() -> void:
+	if not _workouts_raw.is_empty():
+		menu.set_items(MenuModel.WORKOUTS, catalog.workout_items(_workouts_raw, _ftp_w()))
+
+
+## FTP du core d'après les réglages (lot O4) ; 0 tant qu'ils ne sont pas reçus.
+func _ftp_w() -> float:
+	var ftp = settings.item("rider.ftp_w").get("value", null)
+	return float(ftp) if ftp is int or ftp is float else 0.0
+
+
+## Tri ou étiquette suivants de la liste des parcours (cycle au Click) ; le focus reste sur l'élément.
+func _cycle_routes(item_id: String) -> void:
+	if item_id == MenuModel.SORT_ROUTES_ID:
+		route_sort = (route_sort + 1) % CatalogModel.ROUTE_SORTS.size()
+	else:
+		var tags: Array = [""] + CatalogModel.route_tags(routes_raw)
+		route_tag = tags[(tags.find(route_tag) + 1) % tags.size()]
+	set_routes(routes_raw)
+	menu.focus_item(item_id)
+
+
+## Fiche du parcours choisi (écran Prêt) : lignes de catalog_model.route_card(), vide sans fiche.
+func route_card() -> Array:
+	for r in routes_raw:
+		if r is Dictionary and str(r.get("id", "")) == menu.world_id:
+			return CatalogModel.route_card(r)
+	return []
+
+
+# --- plans et test de FTP (lot O12) -----------------------------------------------------------
+
+## Réponse `plans` du core (list_plans, start_plan, stop_plan).
+func on_plans(msg: Dictionary) -> void:
+	plans = msg
+	var active = msg.get("active", null)
+	match _plan_request:
+		"start":
+			if active is Dictionary:
+				plan_message = "Plan démarré : " + str(active.get("name", ""))
+		"stop":
+			if active == null:
+				plan_message = "Plan arrêté"
+	_plan_request = ""
+	_refresh_plans()
+
+
+## Séance que lance `start` avec plan_day ({} sans plan actif ou sans séance à faire).
+func plan_day_session() -> Dictionary:
+	var active = plans.get("active", null)
+	if not (active is Dictionary) or active.get("plan_day", null) == null:
+		return {}
+	for key in ["today", "late"]:
+		for d in active.get(key, []):
+			if d is Dictionary and not d.get("done", false) and str(d.get("workout", "")) == str(active["plan_day"]):
+				var out: Dictionary = d.duplicate()
+				out["late"] = key == "late"
+				return out
+	return {}
+
+
+static func _session_detail(d: Dictionary) -> String:
+	var parts: Array[String] = ["%d min" % int(round(float(d.get("duration_s", 0.0)) / 60.0))]
+	if d.get("tss", null) != null:
+		parts.append("TSS %d" % int(round(float(d["tss"]))))
+	if d.get("late", false):
+		parts.append("en retard")
+	return ", ".join(parts)
+
+
+func _refresh_plans() -> void:
+	var active = plans.get("active", null)
+	var day := plan_day_session()
+	if not day.is_empty():
+		menu.set_plan_home("Séance du jour : " + str(day.get("name", "")), _session_detail(day))
+	elif active is Dictionary:
+		menu.set_plan_home("Plan : " + str(active.get("name", "")), _plan_progress(active))
+	else:
+		menu.set_plan_home("Choisir un plan")
+	var items: Array = []
+	if active is Dictionary:
+		if not day.is_empty():
+			items.append({"id": "today", "label": "Séance du jour : " + str(day.get("name", "")),
+				"detail": _session_detail(day)})
+		items.append({"id": "progress", "label": str(active.get("name", "")), "enabled": false,
+			"detail": _plan_progress(active)})
+		var nxt = active.get("next", null)
+		if nxt is Dictionary:
+			items.append({"id": "next", "label": "Prochaine : " + str(nxt.get("name", "")), "enabled": false,
+				"detail": str(nxt.get("date", "")) + ", " + _session_detail(nxt)})
+		items.append({"id": "stop", "label": "Arrêter le plan"})
+	for p in plans.get("items", []):
+		if not (p is Dictionary):
+			continue
+		var err = p.get("error", null)
+		var detail := "%d semaines, %d séances" % [int(p.get("weeks", 0)), int(p.get("sessions", 0))]
+		if p.get("active", false):
+			detail += ", en cours"
+		items.append({"id": "plan:" + str(p.get("id", "")), "label": str(p.get("name", p.get("id", ""))),
+			"enabled": err == null, "detail": str(err) if err != null else detail})
+	if plans.is_empty():
+		items.append({"id": "none", "label": "Recherche des plans…", "enabled": false})
+	elif plans.get("items", []).is_empty():
+		items.append({"id": "none", "label": "Aucun plan", "enabled": false,
+			"detail": "fichiers .toml dans ~/OpenRide/Plans"})
+	menu.set_screen_items(PLANS, items)
+	if _plan_shown != "":
+		_refresh_plan_screen()
+
+
+static func _plan_progress(active: Dictionary) -> String:
+	if active.get("finished", false):
+		return "terminé, %d %% fait" % int(round(float(active.get("done_pct", 0.0))))
+	var week := "semaine %s / %d" % [str(active["week"]) if active.get("week", null) != null else "–",
+		int(active.get("weeks", 0))]
+	return "%s, %d %% fait (%d / %d)" % [week, int(round(float(active.get("done_pct", 0.0)))),
+		int(active.get("done", 0)), int(active.get("total", 0))]
+
+
+func _plan_entry(plan_id: String) -> Dictionary:
+	for p in plans.get("items", []):
+		if p is Dictionary and str(p.get("id", "")) == plan_id:
+			return p
+	return {}
+
+
+func _refresh_plan_screen() -> void:
+	var p := _plan_entry(_plan_shown)
+	var active = plans.get("active", null)
+	var is_active: bool = active is Dictionary and str(active.get("id", "")) == _plan_shown
+	var items: Array = [{"id": "info", "label": "%d semaines, %d séances" % [int(p.get("weeks", 0)),
+		int(p.get("sessions", 0))], "enabled": false}]
+	if is_active:
+		items.append({"id": "info_active", "label": "En cours", "enabled": false, "detail": _plan_progress(active)})
+		items.append({"id": "stop", "label": "Arrêter ce plan"})
+	else:
+		items.append({"id": "start", "label": "Démarrer ce plan aujourd'hui"})
+	menu.set_screen_items(PLAN, items, str(p.get("name", _plan_shown)))
+
+
+## Texte du bilan d'un test de FTP : nouvelle FTP, ancienne, avertissements ; "" sans test.
+static func _ftp_text(ftp: Dictionary) -> String:
+	if ftp.is_empty():
+		return ""
+	var text := "Test de FTP : aucune FTP calculable"
+	if ftp.get("ftp_w", null) != null:
+		text = "Nouvelle FTP : %d W" % int(ftp["ftp_w"])
+		if ftp.get("previous_ftp_w", null) != null:
+			text += " (avant %d W)" % int(ftp["previous_ftp_w"])
+	var warnings: Array[String] = []
+	for w in ftp.get("warnings", []):
+		warnings.append(str(FTP_WARNINGS.get(str(w), w)))
+	if not warnings.is_empty():
+		text += " ; " + ", ".join(warnings)
+	return text
+
+
+## Bilan : « Accepter » et « Garder » en tête tant qu'une FTP calculée reste à décider.
+func _refresh_summary() -> void:
+	var items: Array = []
+	if ftp_offer.get("ftp_w", null) != null:
+		items.append({"id": "accept_ftp", "label": "Accepter %d W" % int(ftp_offer["ftp_w"])})
+		var prev = ftp_offer.get("previous_ftp_w", null)
+		items.append({"id": "keep_ftp", "label": ("Garder %d W" % int(prev)) if prev != null else "Garder l'ancienne FTP"})
+	for it in summary_model.menu_screen()["items"]:
+		items.append(it)
+	menu.set_screen_items(SUMMARY, items)
+
+
+## Choix sur l'écran d'un plan, des plans ou du test de FTP ; renvoie l'action pour main.gd.
+func _handle_plan_item(screen: String, item_id: String) -> Dictionary:
+	if item_id == "today":
+		var day := plan_day_session()
+		menu.prepare_start("séance du jour (%s)" % str(day.get("name", "")), {"plan_day": true})
+		return {}
+	if item_id == "stop":
+		var active = plans.get("active", null)
+		var name := str(active.get("name", "")) if active is Dictionary else ""
+		menu.confirm("Arrêter le plan %s ?" % name, {"action": "stop_plan"})
+		return {}
+	if screen == PLANS and item_id.begins_with("plan:"):
+		_plan_shown = item_id.substr(5)
+		_refresh_plan_screen()
+		menu.push_screen(PLAN)
+		return {}
+	if screen == PLAN and item_id == "start":
+		var active = plans.get("active", null)
+		var act := {"action": "start_plan", "id": _plan_shown, "start_date": null}
+		if active is Dictionary:
+			menu.confirm("Remplacer le plan %s ?" % str(active.get("name", "")), act)
+			return {}
+		return _send_plan_request(act)
+	return {}
+
+
+## Commande start_plan ou stop_plan (après confirmation éventuelle) : retour à la liste des plans.
+func _send_plan_request(act: Dictionary) -> Dictionary:
+	_plan_request = "start" if act["action"] == "start_plan" else "stop"
+	plan_message = "Démarrage du plan…" if _plan_request == "start" else "Arrêt du plan…"
+	if menu.current_screen() == PLAN:
+		menu.handle("Y_SHORT")
+	return act
 
 
 func _refresh_builder() -> void:
@@ -332,6 +619,32 @@ func handle(event: String) -> Dictionary:
 			"quit":
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
+	match act.get("action", ""):
+		"start_plan", "stop_plan":
+			return _send_plan_request(act)
+		"accept_ftp":
+			_ftp_pending = true
+			summary_message = "Enregistrement de la FTP…"
+			return act
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME:
+		if str(act["id"]) == "ftp":
+			menu.push_screen(FTP_TEST)
+			return {}
+		if not plan_day_session().is_empty():
+			return _handle_plan_item(PLANS, "today")
+		plan_message = ""
+		menu.push_screen(PLANS)
+		return {"action": "list_plans"}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
+		_cycle_routes(str(act["id"]))
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") in [PLANS, PLAN]:
+		return _handle_plan_item(str(act["screen"]), str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") == FTP_TEST:
+		for t in FTP_TESTS:
+			if t[0] == str(act["id"]):
+				menu.prepare_start(t[3], {"ftp_test": t[0]})
+		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.SETTINGS:
 		var item_id := str(act["id"])
 		if item_id == "devices":
@@ -380,11 +693,25 @@ func handle(event: String) -> Dictionary:
 		_refresh_pairing()
 		return act
 	if act.get("action", "") == "item" and act.get("screen", "") == SUMMARY:
+		match str(act["id"]):
+			"accept_ftp":
+				_ftp_pending = true
+				summary_message = "Enregistrement de la FTP…"
+				return {"action": "accept_ftp", "force": false}
+			"keep_ftp":
+				var prev = ftp_offer.get("previous_ftp_w", null)
+				summary_message = ("FTP gardée : %d W" % int(prev)) if prev != null else "FTP gardée"
+				ftp_offer = {}
+				_refresh_summary()
+				return {}
 		act = summary_model.handle_action(str(act["id"]), menu)
 		match act.get("action", ""):
 			"new_session":
 				show_details = false
 				summary = {}
+				ftp_offer = {}
+				summary_message = ""
+				_refresh_summary()
 				# Le core reste en FINISHED jusqu'au prochain select_route : le monde choisi est rechargé.
 				if menu.world_id != "":
 					return {"action": "list", "route_id": menu.world_id}
@@ -444,4 +771,11 @@ func state() -> Dictionary:
 		st["status"] = pairing.message
 	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
 		st["status"] = workout_message
+	elif st["screen"] in [PLANS, PLAN]:
+		st["status"] = plan_message
+	elif st["screen"] == FTP_TEST:
+		st["status"] = FTP_HINT
+	elif st["screen"] == SUMMARY:
+		st["status"] = summary_message
+	st["card"] = route_card() if st["screen"] == MenuModel.READY else []
 	return st

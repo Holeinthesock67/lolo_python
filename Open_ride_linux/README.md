@@ -29,22 +29,14 @@ Open_ride_linux/
   compiler/    openride-compiler (Python) : GPX vers .world, couches route et terrain (lots B1 et B2)
 ```
 
-## État (23 octobre 2026 au soir, après les lots A, A2, B1, B2, C, D, F, H1 à H8, I1 à I6, J2 et J3)
+## État (27 octobre 2026)
 
-- **Sprint 0 terminé :** HomeTrainer, Click et FIT validés sur le matériel.
-- **Sprint 1 presque terminé :**
-  - pilotes réels du HomeTrainer et du Click ;
-  - boucle de séance (`openride-core run`) ;
-  - Godot relié au core ;
-  - conformité au contrat IPC (lot C) ;
-  - lecture des parcours `.world`, commune au core et à Godot (lot A) ;
-  - Godot conforme au contrat : renvoi des commandes, extrapolation de la caméra, core injoignable (lot D) ;
-  - 1058 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop`, rampe de pente du trainer et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 385 côté compilateur (dont traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, des tests unitaires lancés par découverte (42 vecteurs de route, 40 vérifications de thèmes, 76 du modèle de HUD, 19 de la végétation, 19 des menus), 27 vérifications des couches OSM, 54 vérifications ERG, le rendu par tronçons et 8 scénarios IPC, exécutés en intégration continue GitHub Actions (Python 3.11 / 3.14 et Godot 4.3).
-  - **Reste :** séance de 10 minutes et stabilité du Click.
-- **Sprint 2 terminé côté code :** compilateur GPX vers `.world`, couches route (lot B1) et terrain avec le MNT Copernicus (lot B2). Reste la comparaison avec Garmin Connect sur une vraie trace.
-- **Sprint 3 en cours :** ruban de route et terrain par tronçons (lot E1, fusionné le 24 octobre ; reste l'essai sur la GTX 1060) ; chargeur de thèmes et logique du bandeau ERG côté Godot prêts (lots I5 et I6), à brancher sur l'affichage (E2, F2).
-- **Entraînements ERG** (lot F) livrés côté core ; essai sur le HomeTrainer à faire.
-  - Le parcours utilisé est le parcours de démonstration `demo`, créé automatiquement dans `~/.local/share/openride/routes/` (le choix d'un autre parcours ou d'un entraînement au lancement est prévu par le lot J1).
+Version `0.9.0` (fichier `VERSION`). La 1.0 réunit les séries N et O ; le détail est dans [docs/SUIVI_AVANCEMENT.md](docs/SUIVI_AVANCEMENT.md), les essais restants dans son §3 et dans [docs/PROTOCOLE_TEST_2026-10-26.md](docs/PROTOCOLE_TEST_2026-10-26.md).
+
+- **Sur `main` :** HomeTrainer en SIM et ERG validé sur le matériel, Zwift Click V2 à deux boîtiers, fréquence cardiaque relayée par le trainer ; séance, journal, FIT et bilan ; lancement sans terminal, écran des appareils et menus pilotés au Click selon le plan des boutons commun ; réglages ; entraînements `.zwo`, `.erg` et `.mrc` (choix, création, import) ; test de FTP, plans d'entraînement, bibliothèque de parcours et pack « Cols célèbres » ; rendu 3D (route, terrain, ciel, arbres, bâtiments, eau, sons), décor vivant et vent (série P, mises à jour 1.x), brouillard par préréglage ; outils de test de la série X.
+- **Reste pour la 1.0 :** écrans des plans, du test de FTP et de la bibliothèque (lot O12, en revue), courbes de la séance à l'écran (O14), boutons de l'ERG au plan commun (O17), guide d'utilisation et README de la 1.0 (O6), bots à l'écran (O7, facultatif), puis la recette sur le matériel et la publication (O8).
+- **Déjà prêt pour la 2.0, sans branchement :** contrat IPC 1.4 (lot T1), modules purs des segments, bonus, records, maillots et écarts (série T), de la progression et de l'équipement (série V), mesures du monde ouvert (W0).
+- **Tests :** 1058 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop`, rampe de pente du trainer et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 385 côté compilateur (dont traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, 49 fichiers de tests unitaires lancés par découverte, 7 tests de rendu, les couches OSM, l'ERG, le rendu par tronçons et 8 scénarios IPC, plus le bout en bout, les tests graphiques et le banc simulé ([docs/OUTILS_DE_TEST.md](docs/OUTILS_DE_TEST.md)). Ils se lancent sur le PC cible (`python3 scripts/recette_pc.py`) ; la configuration GitHub Actions (Python 3.11 / 3.14 et Godot 4.3) reste dans le dépôt.
 
 ## Installation (PC Ubuntu)
 
@@ -59,52 +51,6 @@ Le script crée l'environnement Python `core/.venv`, y installe le core et le co
 ## Version
 
 Le numéro de version unique est dans le fichier `VERSION` (lot O2) ; les notes de chaque version sont dans `CHANGELOG.md`. Pour le lire : `openride --version`, `openride-core --version` ou `openride-compiler --version`, ou la première ligne du journal du lanceur (`[openride] OpenRide 0.9.0`). Pour le changer : `scripts/bump-version.sh X.Y.Z` (met à jour `VERSION`, les deux `pyproject.toml`, `engine/project.godot` et le titre de la première section du `CHANGELOG.md`, sans commit ni étiquette), puis réinstaller les paquets ; `core/tests/test_version.py` vérifie que tout concorde.
-
-Installation manuelle, pour le développement :
-
-```bash
-sudo apt install python3-venv python3-pip bluez
-cd Open_ride_linux/core
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e ".[dev]"
-pytest -q
-```
-
-Les versions de référence validées en Python 3.14 sont figées dans `constraints.txt` (`pip install -c ../constraints.txt -e ".[dev]"` ; mettre ce fichier à jour après une montée de version testée).
-
-Compilateur de parcours (GPX vers `.world`, couches route, terrain, bâtiments, végétation, points d'intérêt et eau) : `cd Open_ride_linux/compiler && pip install -e ".[dev]" -e ../core && pytest -q`, puis `openride-compiler build trace.gpx` (ou directement l'export Garmin Connect : `build sortie.fit`, `build sortie.tcx`, lot M7 ; `verify`, `info`, `list` et `build-all` pour contrôler ou compiler tout `~/OpenRide/GPX/` ; `--layers route,terrain,buildings,vegetation,poi,water,segments` pour inclure les couches OpenStreetMap ; la couche `segments`, montées et sprints de la série T, est produite par défaut quand le core est installé, avec le fichier facultatif `<trace>.segments.toml` posé à côté de la trace, lot T3). Le premier `build` télécharge les tuiles d'altitude Copernicus dans `~/.cache/openride/dem/` et les réponses Overpass dans `~/.cache/openride/osm/` ; ensuite `--offline` suffit, et `add-layer <dossier.world> terrain|buildings|vegetation|poi|water|segments` régénère une couche seule.
-
-Raccourcis de bureau et icône utilisateur (sans `sudo`, depuis `Open_ride_linux/`, appelé par `install.sh`) : `scripts/install-desktop.sh` installe `~/.local/share/applications/openride.desktop`, `openride-release.desktop` (`openride --release-trainer`), `openride-update.desktop` et l'icône `scripts/desktop/openride.svg` (`scripts/install-desktop.sh --uninstall` pour les retirer).
-
-Godot 4.3 (version standard, pas .NET) :
-
-```bash
-mkdir -p ~/Applications/godot && cd ~/Applications/godot
-wget https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
-unzip Godot_v4.3-stable_linux.x86_64.zip && chmod +x Godot_v4.3-stable_linux.x86_64
-```
-
-Tests côté Godot, sans écran (depuis `Open_ride_linux/`) :
-
-```bash
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
-```
-
-Le premier script lance les tests unitaires de `engine/tests/unit/` (vecteurs de route, thèmes…), le rendu par tronçons, l'ERG, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`). Le second fait un essai de bout en bout avec le vrai core (trainer simulé) et le vrai engine, dans un dossier personnel temporaire, en une dizaine de secondes. Le troisième fait les tests graphiques de la scène principale, sans rien à faire (deux minutes environ) : l'engine est rendu sous Xvfb en 1280×720, 1920×1080 et 1024×600, ses captures d'écran sont analysées (textes et mise en page du HUD, bandeau, ciel et sol, caméra qui avance puis se fige) et comparées aux images de référence, et `--open` ouvre le rapport (`~/OpenRide/visual_tests/<date>/rapport.html`) ; paquets : `xvfb`, `xauth`, `libgl1-mesa-dri` (détail : `engine/tests/README.md`).
-
-**Arguments de l'engine** (après `--`, hors contrat IPC) :
-
-| Argument | Défaut | Rôle |
-| --- | --- | --- |
-| `--ipc-state-port=N` | 5005 | Port d'écoute des trames du core ; s'il est occupé, l'engine quitte avec le code 1 |
-| `--ipc-cmd-port=N` | 5006 | Port de commandes du core |
-| `--routes-dir=CHEMIN` | `~/.local/share/openride/routes` | Dossier des parcours `<route_id>.world` (repli sur la démo embarquée pour `demo`) |
-| `--visual-grade=K` | 1.0 | Facteur d'exagération visuelle du relief (borné entre 1.0 et 2.0, lot Q2) |
-| `--test-mode` | absent | Journal `[test]` pour les tests sans écran |
-
-Exemple : `godot --path engine -- --ipc-state-port=5005 --ipc-cmd-port=5006`. `scripts/openride-dev.sh` passe les ports de `config.toml`.
 
 Installation manuelle, pour le développement :
 
@@ -153,6 +99,7 @@ Le premier script lance les tests unitaires de `engine/tests/unit/` (vecteurs de
 | `--ipc-state-port=N` | 5005 | Port d'écoute des trames du core ; s'il est occupé, l'engine quitte avec le code 1 |
 | `--ipc-cmd-port=N` | 5006 | Port de commandes du core |
 | `--routes-dir=CHEMIN` | `~/.local/share/openride/routes` | Dossier des parcours `<route_id>.world` (repli sur la démo embarquée pour `demo`) |
+| `--visual-grade=K` | 1.0 | Facteur d'exagération visuelle du relief (borné entre 1.0 et 2.0, lot Q2) |
 | `--test-mode` | absent | Journal `[test]` pour les tests sans écran |
 
 Exemple : `godot --path engine -- --ipc-state-port=5005 --ipc-cmd-port=5006`. `scripts/openride-dev.sh` passe les ports de `config.toml`.
@@ -185,8 +132,11 @@ scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcou
 | --- | --- | --- |
 | Braquet + 1 / − 1 | Appui court + / − (ou B) | `+` / `−` ou flèches haut / bas |
 | Braquet + 10 / − 10 (bornés de 1 à 24) | Appui long (≥ 0,9 s) + / − (ou B) | `Page haut` / `Page bas` |
+| Pause et reprise de la séance | Y (boîtier droit) | `P`, `Espace` ou `Échap` |
+| ERG : intensité ± 2 % | Appui court + / − (ou B) | `+` / `−` ou flèches haut / bas |
+| ERG : bloc suivant ; pause ERG à 0 % | Appui long + ; appui long − | `Page haut` ; `Page bas` |
 
-Chaque type d'appui a son bip.
+Chaque type d'appui a son bip. Les menus suivent le plan des boutons commun (+ / − pour choisir, A long pour valider, Y pour revenir ; [spécification générale](docs/SPECIFICATION_GENERALE.md) §7.1). Le lot O17 met l'ERG à ce plan avant la 1.0 (± long = intensité ± 10 %, Z = bloc suivant) et le clavier touche pour touche sur le Click.
 
 **Difficulté du trainer :**
 Le paramètre `[trainer] difficulty_pct` (de 0 à 100 %, défaut 50 %) réduit proportionnellement la pente envoyée au trainer, à l'image du réglage de difficulté de Zwift, sans altérer la vitesse virtuelle calculée par la physique. La difficulté est modifiable pendant la séance par la commande IPC `set_difficulty` (`{"pct": nombre}`) et son pourcentage est affiché dans le HUD (masqué lorsque la valeur est à 100 %).

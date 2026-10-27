@@ -1,6 +1,6 @@
 # OpenRide Linux – Bilan et suivi d'avancement
 
-Mise à jour : 24 octobre 2026 (cahiers de la série N ; fusions E1, K1 à K5, K8, braquets réactifs et deux boîtiers du Click ; libération du trainer validée sur le HomeTrainer) ; précédente : 24 octobre au matin (vérification et correctifs R1, R2, S1, PR #44)
+Mise à jour : 27 octobre 2026 (fusions du jour : séries O, P, Q, X, modules purs des séries T et V, contrat 1.4, W0, Y1 ; statuts remis à l'état de `main` et essais restants rassemblés au §3) ; précédente : 24 octobre (cahiers de la série N ; fusions E1, K1 à K5, K8, braquets réactifs et deux boîtiers du Click)
 Références : SRS v1.1, Contrat IPC v1, Format `.world` v1, audit du 23 octobre (`docs/AUDIT_2026-10-23.md`)
 Vérification du 24 octobre (`docs/VERIFICATION_2026-10-24.md`) : constats R1, R2 et S1 corrigés.
 Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Click à deux boîtiers, message du lanceur, pente NaN et lint corrigés.
@@ -101,13 +101,14 @@ Revue de code du 24 octobre (`docs/REVUE_CODE_2026-10-24.md`) : diagnostic du Cl
 - [x] **Série T (2.0), détection des segments** (lot T2, `segments.py`) : montées trouvées sur la pente lissée de la route (500 m, 3 %, 30 m, fusion sous 200 m de replat, catégories 4 à HC sur longueur × pente), sprints proposés de 200 à 500 m au plus tous les 10 km, segments manuels ajoutés ou à la place ; module pur, branché au `.world` par T3.
 - [x] **Contrat IPC 1.4 des séries R, T et V** (lot T1, `docs/contracts/ipc_v1.md` révision 1.4, couche `segments` du format `.world` 1.3) : mode `ROGUE`, segments, bonus, maillots, bots à profil, messages `segment_result`, `room`, `loot`, `garage`, `progression`, `xp_result`, commandes de run et du Garage ; six nouveaux schémas, pires trames mesurées par `ipc_budget` (2 456 octets en classique, 1 543 en run) ; validé par le propriétaire et fusionné le 27 octobre (PR #392) ; branchement par R8, T7 et V11.
 - [x] **Couche `segments` du compilateur** (lot T3, `segments_layer.py`) : `build` écrit `segments.json` par défaut quand le core est installé (avertissement et couche omise sinon), avec le fichier facultatif `<trace>.segments.toml` (`mode` `add` ou `replace`, `auto_sprints`, `[[segment]]`, refus qui nomme le fichier et le segment) ; `add-layer … segments [--manual]` sans réseau, parcours synthétiques compris ; `verify` (bornes, doublons, types, catégories, compteur) et `info` ; `build-all` lit le fichier de chaque trace ; parcours de démonstration avec ses segments détectés, reproductible ; format `.world` écrit en 1.3.
+- [x] **Série T (2.0), modules purs** (27 octobre) : chronométrage des segments (lot T4, `segment_timing.py`, PR #251), records personnels et classement local (T5, `records.py`, PR #326), bonus (T6, `powerups.py`, PR #262), points et maillots (T14, `jerseys.py`, PR #328), écarts en temps de passage (T16, `gaps.py`, PR #275) ; rien n'est encore branché sur la séance ni affiché.
 
 ---
 
 ## 2. Ce qui a été testé
 
 ### Tests automatiques
-**1058 tests pytest passent dans le core et 385 dans le compilateur** (traces FIT et TCX (lot M7), physique, braquets, FTMS et conformité à la spécification FTMS v1.0 (audit du 24 octobre, `docs/AUDIT_FTMS_2026-10-24.md`), Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lots I1 et J7 : caractères, liens, nombres de tests, chemins cités), catalogue des parcours `list` et `build-all` (lot I2) et parité de son repli sans core (lot J6), robustesse IPC aux messages malformés (lot J2), validation de `config.toml` (lot J3), choix du parcours et de l'entraînement au lancement (lot J1), libération du trainer à l'arrêt (PR #28), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot, sans écran (`engine/tests/run_engine_tests.sh`) : tests unitaires lancés par découverte (lot K1) : 42 vecteurs de route, 40 vérifications de thèmes (lot I5), 76 du modèle de HUD (K2), 19 du placement de la végétation (K3), 19 de la navigation des menus (K5) ; 27 vérifications des couches OSM (K4), 54 vérifications ERG (lot I6), rendu par tronçons (E1) et 8 scénarios IPC. Revérifié le 23 octobre au soir (audit J, `docs/AUDIT_2026-10-23.md` §9) ; `build-all` corrigé à cette occasion.
+**1058 tests pytest passent dans le core et 385 dans le compilateur** (traces FIT et TCX (lot M7), physique, braquets, FTMS et conformité à la spécification FTMS v1.0 (audit du 24 octobre, `docs/AUDIT_FTMS_2026-10-24.md`), Click, recherche Bluetooth et repli BlueZ sans matériel (lot H2), rejeu JSONL/FIT dans le simulateur (lot H3), endurance simulée de 3 h (lot H4), validation FIT indépendante par `garmin-fit-sdk` (lot H5), analyseur de journal `log_report` (lot H6), schéma et validateur de thèmes `theme-check` (lot H7), outils et bibliothèque d'entraînements `.zwo` (lot H8), cohérence documentation/code (lots I1 et J7 : caractères, liens, nombres de tests, chemins cités), catalogue des parcours `list` et `build-all` (lot I2) et parité de son repli sans core (lot J6), robustesse IPC aux messages malformés (lot J2), validation de `config.toml` (lot J3), choix du parcours et de l'entraînement au lancement (lot J1), libération du trainer à l'arrêt (PR #28), couches OpenStreetMap (lots I3 et I4), journal, FIT, IPC, pilotes avec faux client Bluetooth, boucle de séance, tests de contrat, lecture des parcours). Couverture globale du core : 76 % (`ble_util.py` à 100 %). Côté Godot, sans écran (`engine/tests/run_engine_tests.sh`, liste par fichier dans `engine/tests/README.md`) : 49 fichiers de tests unitaires lancés par découverte (lot K1 : vecteurs de route, thèmes, HUD, végétation, menus, ERG, réglages, décor vivant, préréglages de qualité…), 7 tests de rendu (`engine/tests/render/`), couches OSM (K4), ERG (I6), rendu par tronçons (E1) et 8 scénarios IPC face au faux core ; le nombre de vérifications de chaque fichier est donné par le résumé du script.
 
 ### Essais sur le PC cible, 22 octobre 2026
 PC de bureau MSI sous Ubuntu, GTX 1060, Python 3.14.4, bleak 3.0.2, Godot 4.3.
@@ -178,13 +179,28 @@ Reste ouvert : la stabilité du Click (interne). Détail dans l'[audit](AUDIT_20
 
 ### Essais des outils de test (série X) à faire sur le PC
 
-Pas à pas, cases à cocher et journaux : [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) (blocs A, G et H). Code : branche de la PR #296, qui contient toute la pile X, tant qu'elle n'est pas fusionnée.
+Pas à pas, cases à cocher et journaux : [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) (blocs A, G et H). Toute la série X est sur `main` depuis le 27 octobre (PR #232 à #296).
 
 - [ ] Recette du PC en une commande (outil X4, [PR #237](https://github.com/Holeinthesock67/lolo_python/pull/237)) : `python3 scripts/recette_pc.py`, toutes les étapes OK (protocole A1).
 - [ ] Banc de latence du trainer par paliers (outil X5, [PR #245](https://github.com/Holeinthesock67/lolo_python/pull/245)) : `python -m openride_core.tools.trainer_steps --mode sim` sur le vélo, puis `--mode erg` (protocole G1).
 - [ ] Recette guidée du Click sur 30 min (outil X8, [PR #295](https://github.com/Holeinthesock67/lolo_python/pull/295)) : `python -m openride_core.tools.click_recette --minutes 30 --rappel 5` (protocole G2, recette 1.0 ligne 6).
 - [ ] Sonde de performance du moteur (outil X13, [PR #280](https://github.com/Holeinthesock67/lolo_python/pull/280)) : `engine/tests/sim_bench.py --native --probe`, puis une vraie séance avec `OPENRIDE_PERF_PROBE` et `perf_probe.py watch` (protocole H1).
 - [ ] Endurance d'une heure en fenêtre (outil X16, [PR #294](https://github.com/Holeinthesock67/lolo_python/pull/294)) : `engine/tests/sim_bench.py --native --scenario endurance` (protocole H2, recette 1.0 lignes 17 et 18).
+
+
+### Essais des lots fusionnés les 26 et 27 octobre, à faire sur le PC
+
+Pas à pas dans [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) (blocs C, E, F et J) ; les lignes de la recette 1.0 sont celles du cahier [O8](lots/LOT_O8_recette_1_0.md) §4.
+- [ ] Menus au plan des boutons (PR #287), menu principal (N15), réglages (O3, O4) et sous-menu ERG (N16) au Click réel (protocole C1 à C5, E1, E2).
+- [ ] Entraînement choisi après une séance terminée (PR #291, protocole E4).
+- [ ] Traces Garmin déposées (O5), plans (O11), modèle des courbes (O13) (protocole F2 à F4).
+- [ ] Arbres en `high` sans à-coup (O1, protocole J1, recette 1.0 ligne 19).
+- [ ] Test de FTP par rampe sur le HomeTrainer (O10, protocole J2, recette 1.0 ligne 12) ; puis au menu avec O12 (J3, PR #396 en revue).
+- [ ] Pack « Cols célèbres » construit sur le PC et un col roulé (O16, protocole J4).
+- [ ] Boîtier gauche du Click : silence daté, reprise essayée (Q6, protocole J5).
+- [ ] Horizon en `medium` et `low` (Y1) et facteur de relief par défaut (Q2) sur `essai-69` (protocole J6).
+- [ ] Recettes du décor vivant (P16 puis P17, protocole J8 : [RECETTE_P16.md](RECETTE_P16.md), [RECETTE_P17.md](RECETTE_P17.md)).
+- [ ] Mesures du monde ouvert (W0, protocole J9).
 
 ---
 
@@ -206,9 +222,9 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Couche terrain (MNT Copernicus GLO-30, tuiles proches et lointaines, cache sans réseau à la relance), lot B2. Essai réel : trace de 30 km dans l'Oisans, 4 tuiles (165 Mo) téléchargées en 17 s, recompilation hors ligne en 6 s.
 - [ ] Comparer la pente maximale d'une vraie trace de col avec Garmin Connect (à ± 1 point) et relever les écarts GPX / MNT affichés par `build`, pour ajuster le seuil d'altitude aberrante.
 
-### Sprint 3 : rendu 3D (lots D, E1, E2, puis E3 à rédiger)
+### Sprint 3 : rendu 3D (lots D, E1 à E4)
 - [x] Godot conforme au contrat (renvoi des commandes, extrapolation, core injoignable), lot D.
-- [ ] Cahiers E3 (ciel, arbres par bruit, HUD final) et E4 (bâtiments, forêts OSM, eau, sons) rédigés le 24 octobre, avec la revue du lot E2 (`docs/REVUE_E2_2026-10-24.md`) : à faire après la fusion d'E2 corrigé.
+- [x] Cahiers E3 (ciel, arbres par bruit, HUD final) et E4 (bâtiments, forêts OSM, eau, sons) rédigés le 24 octobre avec la revue du lot E2 (`docs/REVUE_E2_2026-10-24.md`), livrés le même jour (PR #91).
 - [ ] Ruban de route et terrain par tronçons (lot E1 fusionné le 24 octobre, PR #7, tests sans écran verts) : reste l'essai sur la GTX 1060 (images par seconde, à-coups, trous).
 - [x] Shader triplanaire et application du thème (lot E2, PR #75 et #97, 24 octobre) : projection en mètres, mélange herbe/roche/neige selon pente et altitude (constantes du lot L3 transmises au shader), route et soleil pilotés par le thème ; vrai rendu vérifié sous Xvfb (`engine/tests/render/test_terrain_render.gd`). Essai sur la GTX 1060 le 24 octobre (`docs/ESSAI_GRAPHIQUE_E2.md`, démo avec terrain synthétique, préréglage `low`) : 633 images/s en couleurs unies, 609 avec trois textures 2 048² (perte 3,7 %), aucune erreur Godot, aspect validé à l'écran par le propriétaire. Reste la neige sur un vrai parcours au-dessus de 2 200 m.
 - [ ] **Ciel, arbres par bruit et HUD final** (lot E3, 24 octobre) : ciel physique PhysicalSkyMaterial, brouillard de limite à 12 km (4 / 6 / 9 km selon le préréglage depuis Y1), arbres instanciés en LOD0/LOD1 avec respect du budget d'instances, HUD avec profil d'altitude et prochaine montée, mesure périodique `[perf-rendu]`. Reste la recette sur la GTX 1060 (`docs/RECETTE_E3_E4.md`).
@@ -221,7 +237,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Menu piloté au Click et au clavier (parcours, démarrage, pause, fin), à la place de `--autostart` : contrat IPC v1.1 (lot N1), core (N2), client des listes (N3), écran de fin (N4), affichage (N6, livré le 25 octobre : `menu_flow.gd`, `menu_view.gd`, `devices_view.gd`, `summary_view.gd`, lanceur sans `--autostart`, bouton Y du Click = pause, écrans de menu dans les tests graphiques) ; reste la recette sur le PC (critères 2, 4 et 5 du cahier N6, lisibilité à 2 m) et `run_visual_tests.sh --update-golden` une fois les nouvelles images vérifiées.
 - [x] Section « Appareils » du menu : rechercher le trainer, les boîtiers du Click et la ceinture, puis garder leur nom et leur adresse dans `~/OpenRide/config.toml`, jamais dans le dépôt (demande du 25 octobre) : enregistrement côté core (lot N12), écran du menu et écran « Connexion des appareils » au lancement avec « Passer » (N13, 26 octobre ; testé au banc des menus `engine/tests/menu_bench.py`). Reste l'essai avec le vrai Click sur le PC.
 - [x] Menu principal (demande du 26 octobre) : monde, session libre, session ERG, session simulée sans matériel et retour au matériel réel, réglages (lot N15, testé au banc des menus, parcours `sessions`). Reste l'essai depuis l'icône.
-- [ ] Sous-menu ERG (demande du 26 octobre) : choisir un entraînement, en créer un par intervalles (le core l'enregistre en `.zwo` dans `~/OpenRide/Workouts`, décision D4) ou importer un fichier `.zwo`, `.erg` ou `.mrc` des Téléchargements, du Bureau ou de `~/OpenRide/Import` (lot N16 : engine prêt, PR #249 ; attend le core de la D4, PR #288). Banc des menus vert avec ce core (fusion locale) ; reste l'essai au Click réel.
+- [x] Sous-menu ERG (demande du 26 octobre) : choisir un entraînement, en créer un par intervalles (le core l'enregistre en `.zwo` dans `~/OpenRide/Workouts`, décision D4) ou importer un fichier `.zwo`, `.erg` ou `.mrc` des Téléchargements, du Bureau ou de `~/OpenRide/Import` (lot N16, 27 octobre : engine PR #249, core PR #288 ; banc des menus, parcours `erg`). Reste l'essai au Click réel.
 - [ ] Lancer et utiliser OpenRide sans ligne de commande après une installation en une commande (demande du 25 octobre) : icône (L8, livré), menus (N6), compilation au lancement (N11), appareils (N12, N13), premier démarrage, erreurs dans une fenêtre et mise à jour depuis le bureau (N14, livré le 25 octobre : `scripts/install.sh`, `scripts/update.sh`, `scripts/config.example.toml`, entrées « Libérer le trainer » et « Mettre à jour », testés par `core/tests/test_launch_no_terminal.py` ; reste l'essai depuis l'icône sur le PC).
 - [x] Compiler les nouvelles traces GPX au lancement (lot N11).
 - [ ] Écran d'état des appareils (trainer, Click, batterie du Click) : modèle (lot N5), affichage dans l'accueil et l'écran « Prêt » (N6, livré le 25 octobre) ; reste l'essai d'un boîtier débranché pendant le menu sur le PC.
@@ -239,7 +255,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] Courbes de la séance façon GoldenCheetah (cible, puissance, FC, cadence) : modèle fait (lot O13, 26 octobre, `workout_chart_model.gd`, `test_workout_chart_model.gd` à lancer sur le PC), écran (lot O14).
 - [x] Bibliothèque de parcours : fiches, tri, filtres, packs (lot O15, 26 octobre) ; reste l'essai d'un pack de ses propres traces sur le PC.
 - [x] Pack de départ de cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construit depuis OpenStreetMap (lot O16, 27 octobre) : 16 recettes, `route-pack-build cols_celebres` ; reste la première construction sur le PC (réseau), qui contrôle chaque col à ± 5 %.
-- [ ] Menu des plans, du test de FTP et de la bibliothèque (lot O12) : partie core faite le 27 octobre (contrat 1.3 : `list_plans`, `start_plan`, `stop_plan`, `accept_ftp`, `start` avec `ftp_test` ou `plan_day`, message `plans`, `summary.ftp_test`, fiche des parcours, `unit` des entraînements) ; restent les écrans de l'engine.
+- [x] Menu des plans, du test de FTP et de la bibliothèque (lot O12, 27 octobre) : contrat 1.3 (`list_plans`, `start_plan`, `stop_plan`, `accept_ftp`, `start` avec `ftp_test` ou `plan_day`, message `plans`, `summary.ftp_test`, fiche des parcours, `unit` des entraînements) ; accueil « Séance du jour » ou « Choisir un plan » et « Test de FTP », écrans Plans et Test de FTP, Accepter / Garder au bilan, tri et étiquette des parcours au Click, fiche du parcours sur « Prêt », entraînements en watts ; reste la recette au Click sur le PC (lisibilité à 2 m, rampe réelle jusqu'à l'acceptation).
 - [ ] Boutons de l'ERG selon le plan commun : ± long = biais ± 10 %, Z = bloc suivant, Y = pause ; clavier touche pour touche comme le Click (lot O17, décisions D3 et D6 du 27 octobre).
 - [ ] Recette sur le matériel et publication de `v1.0.0` (lot O8, liste unique des essais du §3).
 
@@ -253,21 +269,18 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Performances du rendu (série S rédigée le 25 octobre)
 - [ ] Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible (lot S1).
-- [ ] Brouillard opaque à 4 / 6 / 9 km selon le préréglage, `camera.far` et tuiles lointaines qui suivent (lot Y1, 27 octobre) : mesuré au banc sur la GTX 1060, sans gain ni perte (60 images/s, mondes de test trop petits pour voir le rayon réduit) ; reste l'essai `essai-69` en `medium` puis `low` pour valider l'horizon.
+- [x] Brouillard opaque à 4 / 6 / 9 km selon le préréglage, `camera.far` et tuiles lointaines qui suivent (lot Y1, 27 octobre, PR #381) : mesuré au banc sur la GTX 1060, sans gain ni perte (60 images/s, mondes de test trop petits pour voir le rayon réduit) ; reste l'essai `essai-69` en `medium` puis `low` pour valider l'horizon.
 
 ### Après la 1.0 : décor vivant, vent et aspiration (série P rédigée le 25 octobre)
 - [x] Contrat : vent et aspiration dans `state` (IPC révision 1.3), configuration `[wind]`, thème 1.2, points d'intérêt `wind_turbine` et `flag` (lot P1, décisions du propriétaire du 25 octobre).
 - [x] Vent physique côté core : vent calme, fixe, en rafales ou du thème, composante de face sur la physique (cycliste et bots), supplément de pente en SIM borné à 4 points ou champ vent FTMS, ERG vitesse seulement, champ `wind` 2 fois par seconde, journal (lot P2, `core/tests/test_wind.py`).
 - [x] Aspiration derrière les bots à puissance constante (courbe mesurée, effet de file, vent de travers, poussée du bot suivi), lissée à 1 s, sur la vitesse et la pente envoyée en SIM, champs `draft` et `draft_bot`, temps à l'abri dans le bilan (lot P3, `core/tests/test_draft.py`).
-- [ ] Vent physique et aspiration derrière les bots, côté core (lots P2 et P3).
 - [x] Engine : modèle du vent lissé pour tout le décor, modèle de l'indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (lot P4, sans affichage).
 - [x] Arbres qui se balancent au vent (shader `tree_sway.gdshader`, paramètres globaux du vent) et touffes d'herbe en bord de route au vent apparent en qualité moyenne et haute (lot P5, branchement dans `main.gd` par P16).
 - [x] Nuages qui défilent au vent (shader de ciel `sky_clouds.gdshader`, une couche en `low` et `medium`, deux en `high`) et ombre des nuages sur le terrain en `high` (lot P6, branchement dans `main.gd` par P16).
 - [x] Météo légère du thème 1.2 : brume de vallée, pluie fine et neige légère poussées par le vent, autour de la caméra, au budget de `living(preset)` (lot P8 ; brume appliquée et branchement dans `main.gd` par P17).
 - [x] Fonds sonores d'ambiance selon le décor (oiseaux en forêt, insectes au champ, eau, rumeur du village, vent d'altitude, pluie), au plus `ambience_voices` à la fois, et cloches de l'heure pleine (lot P9 ; voisinage et heure fournis par P16).
 - [x] Son du vent selon la vitesse dans l'air (vent de face ou de dos, rafales) et roue libre réaliste : déclenchée à cadence nulle, cliquetis qui suit la vitesse de la roue, « clac » à la reprise (lot P10 ; branchement par P16).
-- [x] Bord de route : montées détectées sur le profil, panneaux de col et d'approche (« Sommet à 3 km »), bornes kilométriques, marquages au sol et chiffres des derniers kilomètres peints en montée (lot P14 ; branchement par P17).
-- [x] Vent branché dans la scène : indicateur du HUD sous la colonne de gauche (flèche, « 18 km/h face », niveau, pastille verte, rouge ou grise), arbres et herbe au vent, nuages qui défilent, fonds sonores selon le décor ; réglages du vent ajoutés à la liste du menu, `[render] living` pour tout couper (lot P16 ; recette sur le PC : `docs/RECETTE_P16.md`).
 - [x] Animaux : bandes d'oiseaux au-dessus des forêts, troupeaux près des points `livestock`, chevreuil en lisière qui s'enfuit, dans le budget de `living(preset)` (lot P11 ; branchement par P17).
 - [x] Éoliennes et mâts de drapeau tirés d'OpenStreetMap (`wind_turbine`, `flag`), rotors et drapeaux qui suivent le vent, drapeau par village, eau qui scintille (lot P12 ; branchement par P17).
 - [x] Véhicules décoratifs sur la route du parcours : voitures et tracteurs en face ou qui doublent à 1,5 m au moins, plus fréquents près des villages, jamais en haute montagne ni sur les fortes pentes, avec leur son (lot P13 ; branchement par P17).
@@ -276,13 +289,15 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Passants dans les villages et le long de la route (marcheurs, promeneurs et leur chien, joggeurs, personnes assises, jardiniers, agriculteurs, enfants) qui saluent au passage, avec de temps en temps un « Allez ! », un « Bonjour ! », un aboiement ou un rire (lot P21 ; branchement par P17).
 - [x] Vent branché dans la scène : indicateur du HUD sous la colonne de gauche (flèche, « 18 km/h face », niveau, pastille verte, rouge ou grise), arbres et herbe au vent, nuages qui défilent, fonds sonores selon le décor ; réglages du vent ajoutés à la liste du menu, `[render] living` pour tout couper (lot P16 ; recette sur le PC : `docs/RECETTE_P16.md`).
 - [x] Décor complet branché dans la scène : pluie et brume de la météo du thème (chaussée mouillée, brouillard rapproché), animaux chargés avec les tronçons, éoliennes, drapeaux et eau qui scintille, véhicules figés en pause, panneaux, bornes et chiffres peints, spectateurs au sommet des cols et passants, « Abri 30 % » sous l'indicateur du vent (lot P17 ; recette sur le PC : `docs/RECETTE_P17.md`).
-- [ ] Indicateur du vent et de l'abri, arbres et herbe au vent, nuages, sons d'ambiance, sons du vent et de la roue libre (lots P4, P5, P6, P9, P10 ; intégration P16).
-- [ ] Météo légère, animaux, éoliennes et drapeaux, véhicules, bord de route, spectateurs, passants (lots P8, P11 à P15, P21 ; intégration P17).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
 
 ### Après la 1.0 : réglages de séance au menu (lots N17 et N18, rédigés le 27 octobre)
 - [ ] Demi-tour sur la route depuis l'écran de pause (lot N17).
 - [ ] Bots réglés depuis les menus : réglages et écran de pause (lot N18).
+
+### Version 2.0 : segments, bonus et maillots (série T)
+- [x] Contrat (T1), détection (T2), couche du compilateur (T3) et modules purs (T4, T5, T6, T14, T16), 27 octobre.
+- [ ] Branchement dans la séance (T7), lignes, arches et panneaux (T8), HUD (T9, T15), écran « Records » (T10), bots à profil (T12, T13), recette sur le vélo (T11) ; cahiers T7 à T11 et T15 rédigés le 27 octobre (PR #403).
 
 ### Version 2.0 : progression, équipement et avatar (série V rédigée le 26 octobre)
 
@@ -290,7 +305,8 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Profil local `~/OpenRide/profile.json` : choix, achats, avatar (lot V4, `profile.py`) ; écriture sûre, reprise du `.bak`, migration ; pas encore branché (V11).
 - [x] Catalogue d'équipement, effets bornés et temps gagné par l'équipement (lot V3, `equipment.py`) ; pas encore branché sur la vitesse virtuelle (V11).
 - [x] Pièces : gains, achats, solde, vies du mode Cyber-Rogue (lot V3b, `coins.py`) ; solde dans `openride-core xp` ; usage des vies dans le mode Cyber-Rogue avec R9.
-- [ ] Contrat 1.4 commun aux séries R, T et V (lot T1), branchement dans la séance (lot V11), liens avec les séries T et R (lot V5).
+- [x] Contrat 1.4 commun aux séries R, T et V (lot T1, 27 octobre, PR #392).
+- [ ] Branchement de la progression dans la séance (lot V11), liens avec les séries T et R (lot V5).
 - [ ] Avatar, équipement à l'écran, Garage et fin de séance (lots V6 à V9), recette (lot V10).
 - [ ] Quatre vues de caméra au Click et au clavier (lot V12, décision D5 du 27 octobre).
 
