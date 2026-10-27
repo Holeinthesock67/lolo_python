@@ -73,3 +73,10 @@ Aucune pour l'IPC. Format du journal : champ facultatif `source` dans l'en-tête
 ## 8. Hors périmètre
 
 Profil et choix (V4), équipement (V3), pièces (V3b), segments, maillots et runs (V5), affichage (V9).
+
+## 9. Livraison (26 octobre 2026, issue #239)
+
+- Code et tests : `progression.py`, `data/progression.toml`, `tools/xp.py`, `core/tests/test_progression.py` (25 tests).
+- Écart assumé : un journal recréé après une panne d'écriture (`_reprise-N`, `recorder.py`) recopie toute la séance ; deux journaux de même heure de départ (à 1 s près) comptent donc une seule fois, le plus long.
+- Le fichier personnel `~/OpenRide/progression.toml` ne contient que les clés changées : elles remplacent celles du fichier livré (une liste `[[challenges]]` remplace toute la liste).
+
