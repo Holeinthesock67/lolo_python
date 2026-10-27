@@ -60,7 +60,7 @@ GODOT_TOLERATED = re.compile(
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
-              "wind_speed", "wind_level", "wind_verdict", "draft")
+              "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2")
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -691,6 +691,38 @@ def _scenes(s: Session) -> None:
     core.set_scene(wind=None, draft=None)
     time.sleep(2.5)
 
+    # 3 ter bis. Bots (lot O7) : un bot à 20 m devant, un fantôme à 60 m derrière ; silhouettes sur la route,
+    # encart du HUD sous le panneau de droite (au plus 5 lignes), sans chevauchement.
+    # La caméra ne recule jamais pendant une séance (camera_follow.gd) : les bots se placent autour de la
+    # position actuelle du cycliste, sans revenir à FIXED_S.
+    s_now = core.current_s()
+    core.set_scene(speed=0.0, bots=[
+        {"id": "bot1", "name": "Bot 250 W", "s": s_now + 20.0, "v": 0.0, "kind": "constant"},
+        {"id": "ghost", "name": "Fantôme du 26/10", "s": s_now - 60.0, "v": 0.0, "kind": "ghost"}])
+    time.sleep(SETTLE_S)
+    shot = s.capture("bots")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        s.check("bots", "encart des bots affiché", w["bots_panel"]["visible"] and w["bots_line1"]["visible"]
+                and w["bots_line2"]["visible"])
+        s.check_texts("bots", info, {"bots_line1": "Bot 250 W", "bots_line2": "Fantôme du 26/10"}, contains=True)
+        s.check("bots", "encart sous le panneau de droite", w["bots_panel"]["rect"][1] >= w["panel"]["rect"][1],
+                f"rectangle {w['bots_panel']['rect']}")
+        b = info.get("bots", {})
+        s.check("bots", "bot devant visible dans le champ de la caméra", b.get("shown") == 2 and b.get("in_view", 0) >= 1,
+                f"{b}")
+        s.check_layout("bots", info)
+    core.set_scene(speed=SPEED_MPS, bots=None)
+    time.sleep(SETTLE_S)
+    shot = s.capture("sans_bot")
+    if shot:
+        img, info = shot
+        s.check("sans_bot", "sans bot : encart caché, aucune silhouette",
+                not info["widgets"]["bots_panel"]["visible"] and info.get("bots", {}).get("shown") == 0,
+                f"{info.get('bots')}")
+    time.sleep(1.0)
+
     # 3 quater. Pluie (lot P17) : météo imposée, particules autour de la caméra et chaussée mouillée.
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather",
                    "weather": {"kind": "rain", "intensity": 0.8, "morning_mist": False}})
@@ -762,6 +794,54 @@ def _scenes(s: Session) -> None:
             later = (x0 + (x1 - x0) * 0.55, y0, x1, y1)
             frac = fraction(img, later, yellow, step=2)
             s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
+
+    # 4 bis. Courbes de la séance (lot O14), taille complète : en ERG à la place de l'histogramme (profil
+    # cible, puissance blanche, FC rouge, légende) ; en SIM dans un panneau centré, sans toucher aux
+    # panneaux latéraux. Le core annonce la taille dans hello_ack.config.chart.
+    core.chart = "full"
+    core.send_hello_ack()
+    core.set_scene(speed=7.0, mode="ERG", hr=140, erg={
+        "workout_name": "Sweet spot 3x10", "block_index": 2, "block_count": 7, "block_type": "interval_on",
+        "block_remaining_s": 95.0, "block_total_s": 600.0, "target_w": 230.0, "next_target_w": 150.0,
+        "bias_pct": 100, "paused": False})
+    time.sleep(7.0)
+    shot = s.capture("erg_courbes")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        chart = w["chart_erg"]
+        s.check("erg_courbes", "courbes affichées à la place de l'histogramme",
+                chart["visible"] and not w["erg_hist"]["visible"] and chart["rect"][2] >= 0.8 * s.width
+                and chart["rect"][1] + chart["rect"][3] <= s.height - 120 * info["ui_scale"], f"rectangle {chart['rect']}")
+        s.check_layout("erg_courbes", info)
+        box = rect_box(chart["rect"])
+        # Seuil bas : à 1024x600 (échelle 0,8) le panneau ne fait que 55 px de haut et le trait blanc
+        # couvre ~0,17 % de sa surface (mesuré sur le PC).
+        s.check("erg_courbes", "courbe de puissance blanche tracée",
+                fraction(img, box, lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=2) >= 0.001)
+        s.check("erg_courbes", "courbe de fréquence cardiaque rouge tracée",
+                fraction(img, box, lambda p: p[0] > 200 and p[1] < 90 and p[2] < 90, step=2) >= 0.001)
+        s.check("erg_courbes", "profil cible coloré en zone",
+                fraction(img, box, lambda p: p[0] > 110 and p[1] > 90 and p[2] < 70, step=2) >= 0.02)
+    core.set_scene(speed=SPEED_MPS, mode="SIM", erg=None, hr=140)
+    time.sleep(7.0)
+    shot = s.capture("sim_courbes")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        chart = w["chart_sim"]
+        screen = [0, 0, s.width, s.height]
+        s.check("sim_courbes", "panneau des courbes affiché dans l'écran",
+                chart["visible"] and overlap(chart["rect"], screen) >= 0.999 * chart["rect"][2] * chart["rect"][3],
+                f"rectangle {chart['rect']}")
+        clash = [k for k in ("panel", "bots_panel") if k in w and w[k]["visible"]
+                 and overlap(chart["rect"], w[k]["rect"]) > 0]
+        s.check("sim_courbes", "pas de chevauchement avec les panneaux du HUD", not clash, ", ".join(clash))
+        s.check("sim_courbes", "courbe de puissance blanche tracée",
+                fraction(img, rect_box(chart["rect"]), lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=2) >= 0.002)
+    core.chart = None
+    core.send_hello_ack()
+    time.sleep(0.5)
 
     # 5. Pause : trainer perdu, raison visible sous le titre du menu de pause.
     core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",
