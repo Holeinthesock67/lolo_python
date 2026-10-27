@@ -17,7 +17,7 @@ from openride_core.session import CoreSession
 
 CONTRACTS = Path(__file__).resolve().parents[2] / "docs" / "contracts"
 IPC_DIR = CONTRACTS / "ipc"
-MAX_DATAGRAM = 1400
+MAX_DATAGRAM = 1400         # marge interne des trames `state` du core (place des ajouts de la 2.0)
 MAX_STATE_DATAGRAM = 4096  # state depuis la révision 1.3, tout message hors parties depuis la 1.5 (§2)
 MAX_LIST_DATAGRAM = 60000   # routes et workouts (révision 1.1, §2)
 
@@ -29,9 +29,14 @@ def schema(name: str) -> dict:
 def assert_valid(msg: dict) -> None:
     errors = [e.message for e in jsonschema.Draft202012Validator(schema(msg["type"])).iter_errors(msg)]
     assert not errors, f"{msg['type']} invalide : {errors}"
-    limit = MAX_LIST_DATAGRAM if msg["type"] in ("routes", "workouts", "room", "garage", "plans") else MAX_DATAGRAM
-    # La limite de state est de 4 096 octets depuis la révision 1.3, mais les trames du core restent
-    # sous 1 400 octets : les tests le vérifient pour garder la place des ajouts de la 2.0.
+    # Limite unique du contrat (révision 1.5, §2) : 4 096 octets hors listes. Les trames `state`, envoyées
+    # à 30 Hz, restent sous 1 400 octets : les tests le vérifient pour garder la place des ajouts de la 2.0.
+    if msg["type"] in ("routes", "workouts", "room", "garage", "plans"):
+        limit = MAX_LIST_DATAGRAM
+    elif msg["type"] == "state":
+        limit = MAX_DATAGRAM
+    else:
+        limit = MAX_STATE_DATAGRAM
     assert len(encode(msg)) <= limit
 
 

@@ -6,6 +6,8 @@ render_mode cull_disabled, diffuse_lambert, specular_disabled;
 // - UV.y : poids de la tête (bêtes au sol, mode 1) ; la tête descend brouter puis remonte.
 // - INSTANCE_CUSTOM.x : phase de l'individu (0 à 1), pour que les animaux ne bougent pas ensemble.
 // - INSTANCE_CUSTOM.y : 1 = tête levée (chevreuil aux aguets ou en fuite), 0 = broutage normal.
+// - INSTANCE_CUSTOM.z : amplitude du battement d'ailes (oiseaux, Lot P23) : 1 en vol battu, presque 0 pour
+//   un rapace qui plane, 0 pour une corneille posée.
 uniform int mode = 0;
 uniform vec3 albedo : source_color = vec3(0.3, 0.3, 0.3);
 uniform float flap_hz = 6.0;
@@ -15,7 +17,7 @@ void vertex() {
 	float phase = INSTANCE_CUSTOM.x * 6.2831853;
 	if (mode == 0) {
 		float flap = sin(TIME * 6.2831853 * flap_hz + phase);
-		VERTEX.y += UV.x * flap * 0.35 * abs(VERTEX.x) * 2.0;
+		VERTEX.y += UV.x * flap * INSTANCE_CUSTOM.z * 0.35 * abs(VERTEX.x) * 2.0;
 	} else {
 		float down = 0.5 + 0.5 * sin(TIME * 6.2831853 * graze_hz + phase);
 		down = smoothstep(0.35, 0.9, down) * (1.0 - INSTANCE_CUSTOM.y);

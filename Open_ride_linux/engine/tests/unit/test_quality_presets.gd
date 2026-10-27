@@ -120,10 +120,10 @@ func _test_living() -> void:
 		_check(k == keys, "living(%s) : les 11 budgets attendus" % name)
 	var low: Dictionary = QualityPresets.living("low")
 	_check(low["tree_sway"] == true and low["grass_tufts"] == 0 and low["clouds"] == "flat"
-		and low["weather_particles"] == 600 and low["birds"] == 12 and low["animals"] == 20
+		and low["weather_particles"] == 600 and low["birds"] == 24 and low["animals"] == 20
 		and low["vehicles"] == 3 and low["spectators"] == 40 and low["ambience_voices"] == 4
 		and low["water_shimmer"] == true,
-		"living(low) : valeurs du cahier P4 §4.3")
+		"living(low) : valeurs du cahier P4 §4.3 (oiseaux doublés par P23)")
 	var med: Dictionary = QualityPresets.living("medium")
 	var high: Dictionary = QualityPresets.living("high")
 	var growing := true
@@ -143,7 +143,7 @@ func _test_living() -> void:
 	_check(all_off, "living(high, false) : décor vivant coupé, tout à zéro")
 	_check(QualityPresets.living("inexistant") == low, "living : nom inconnu -> low")
 	low["birds"] = 999
-	_check(QualityPresets.living("low")["birds"] == 12, "living : copie, la table n'est pas modifiable")
+	_check(QualityPresets.living("low")["birds"] == 24, "living : copie, la table n'est pas modifiable")
 
 
 # Lot Y13 : qualité d'image par préréglage, croissante de low à high, toujours un anticrénelage.

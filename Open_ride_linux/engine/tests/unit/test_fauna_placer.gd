@@ -1,6 +1,7 @@
 extends SceneTree
 
-## Tests sans écran du placement des animaux `fauna_placer.gd` (Lot P11).
+## Tests sans écran du placement des animaux `fauna_placer.gd` (Lot P11 ; rapaces, volées en V et
+## corneilles du Lot P23).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_fauna_placer.gd
 
 const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
@@ -159,9 +160,105 @@ func _test_absences_and_deer_spacing() -> void:
 	_check(steep.is_empty(), "pente de 50 % (> 25 %) : aucune bête")
 
 
+## Route droite le long de l'axe x, de 0 à `length_m` (z = 0), un point tous les 10 m.
+func _long_route(length_m: float):
+	var n := int(length_m / 10.0) + 1
+	var cols := {"lat": [], "lon": [], "alt_m": [], "x": [], "z": [], "grade_pct": [], "heading_deg": []}
+	for i in range(n):
+		cols["lat"].append(48.9)
+		cols["lon"].append(7.1)
+		cols["alt_m"].append(250.0)
+		cols["x"].append(i * 10.0)
+		cols["z"].append(0.0)
+		cols["grade_pct"].append(0.0)
+		cols["heading_deg"].append(90.0)
+	var d := {"version": "1.0", "ds_m": 10.0, "n": n, "length_m": (n - 1) * 10.0, "type": "open"}
+	d.merge(cols)
+	var r = RouteDataScript.new()
+	r.load_route_dict(d)
+	return r
+
+
+func _test_open_country_birds() -> void:
+	var route = _long_route(30000.0)
+	var ctx := {"height_at": Callable(self, "_flat")}
+	var dens := {"birds": 1.0, "livestock": 0.0, "deer": 0.0}
+	var per_kind := {"raptor": 0, "vee": 0, "crows": 0}
+	var raptor_ok := true
+	var vee_ok := true
+	var crows_ok := true
+	var in_wood := 0
+	var count_ok := true
+	for k in range(30):
+		# Une forêt de 3 ha collée à la route, à droite, au début de chaque tronçon
+		var woods := [_wood("k%d" % k, k * 1000.0, 8.0, 180.0)]
+		var gs: Array = FaunaPlacer.place_chunk(k, woods, [], route, dens, ctx)
+		var n_birds := 0
+		for g in gs:
+			var t: String = g["type"]
+			match t:
+				"birds":
+					n_birds += (g["members"] as Array).size()
+				"raptor":
+					n_birds += 1
+					per_kind["raptor"] += 1
+					var c: Vector3 = g["center"]
+					raptor_ok = raptor_ok and c.y - 250.0 >= 55.0 and c.y - 250.0 <= 90.0 \
+						and absf(c.z) >= 59.0 and absf(c.z) <= 181.0 and c.x >= k * 1000.0 - 1.0 and c.x <= (k + 1) * 1000.0 + 1.0
+					if c.x >= k * 1000.0 and c.x <= k * 1000.0 + 180.0 and c.z >= 8.0 and c.z <= 188.0:
+						in_wood += 1
+				"vee":
+					per_kind["vee"] += 1
+					var members: Array = g["members"]
+					n_birds += members.size()
+					var o: Vector3 = g["origin"]
+					var d: Vector3 = g["dir"]
+					vee_ok = vee_ok and members.size() >= 5 and members.size() <= 11 and float(members[0]["back"]) == 0.0 \
+						and absf(o.z) <= 120.0 and o.y - 250.0 >= 90.0 and absf(d.z) >= 0.49 and absf(d.length() - 1.0) < 1e-4
+				"crows":
+					per_kind["crows"] += 1
+					var members: Array = g["members"]
+					n_birds += members.size()
+					crows_ok = crows_ok and members.size() >= 1 and members.size() <= 9
+					for m in members:
+						var p: Vector3 = m["pos"]
+						var l: Vector3 = m["land"]
+						crows_ok = crows_ok and absf(p.z) >= 5.0 and absf(l.z) >= absf(p.z) - 1e-3
+						for q in [p, l]:
+							if q.x >= k * 1000.0 and q.x <= k * 1000.0 + 180.0 and q.z >= 8.0 and q.z <= 188.0:
+								in_wood += 1
+		count_ok = count_ok and int(FaunaPlacer.count(gs)["birds"]) == n_birds
+	_check(per_kind["raptor"] >= 10 and per_kind["raptor"] <= 26, "rapaces : environ 6 tronçons sur 10 (%d sur 30)" % per_kind["raptor"])
+	_check(per_kind["vee"] >= 7 and per_kind["vee"] <= 23, "volées en V : environ un tronçon sur 2 (%d sur 30)" % per_kind["vee"])
+	_check(per_kind["crows"] >= 13 and per_kind["crows"] <= 28, "corneilles : environ 7 tronçons sur 10 (%d sur 30)" % per_kind["crows"])
+	_check(raptor_ok, "rapace : de 55 à 90 m du sol, de 60 à 180 m de la route, au-dessus de son tronçon")
+	_check(vee_ok, "volée : 5 à 11 oiseaux, tête devant, à 90 m du sol ou plus, passe à moins de 120 m de la route en la croisant")
+	_check(crows_ok, "corneilles : hors du couloir de la route, elles se reposent plus loin de la route")
+	_check(in_wood == 0, "ni rapace ni corneille au-dessus de la forêt (%d)" % in_wood)
+	_check(count_ok, "count : rapaces, volées et corneilles comptés dans le budget des oiseaux")
+	var a: Array = FaunaPlacer.place_chunk(4, [], [], route, dens, ctx)
+	var b: Array = FaunaPlacer.place_chunk(4, [], [], route, dens, ctx)
+	_check(str(a) == str(b) and not a.is_empty(), "oiseaux de la campagne : même parcours, même tronçon, même résultat")
+	var other: Array = FaunaPlacer.place_chunk(4, [], [], _long_route(29000.0), dens, ctx)
+	_check(str(other) != str(a), "un autre parcours tire d'autres oiseaux")
+	var none := 0
+	for k in range(30):
+		for g in FaunaPlacer.place_chunk(k, [], [], route, {"birds": 0.0}, ctx):
+			none += 1
+	_check(none == 0, "fauna.birds = 0 : aucun oiseau")
+	_check(FaunaPlacer.place_chunk(31, [], [], route, dens, ctx).is_empty(), "tronçon après la fin du parcours : rien")
+	var crows_steep := 0
+	for k in range(30):
+		for g in FaunaPlacer.place_chunk(k, [], [], route, dens, {"height_at": Callable(self, "_steep")}):
+			if g["type"] == "crows":
+				crows_steep += 1
+	_check(crows_steep == 0, "pente de 50 % : aucune corneille au sol")
+
+
 func _init() -> void:
 	_test_determinism_and_exclusions()
 	_test_birds_altitude()
 	_test_absences_and_deer_spacing()
+	_test_open_country_birds()
 	print("test_fauna_placer : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
