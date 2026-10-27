@@ -15,6 +15,7 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, Callable
 
+from . import __version__
 from .ipc_budget import encode, fit_state
 
 log = logging.getLogger("ipc_server")
@@ -174,7 +175,7 @@ class IpcServer:
         msg = {
             "type": "hello_ack",
             "v": CONTRACT_VERSION,
-            "core_version": "0.1.0",
+            "core_version": __version__,
             "config": config_summary,
         }
         self.send_raw(msg)
