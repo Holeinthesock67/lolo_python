@@ -16,7 +16,7 @@ Parcours (`--list`) :
   recherche, choix, enregistrement dans config.toml, « Relancer » (code de sortie 64 de l'engine) ;
 - `sessions` : menu principal, choix du monde, session libre démarrée puis terminée, session ERG
   (entraînement choisi, consigne ERG reçue), puis « Session simulée » (code de sortie 65) ;
-- `reglages` : Réglages → FTP + 15 W enregistrée dans config.toml, qualité changée tout de suite,
+- `reglages` : Réglages → FTP + 15 W enregistrée dans config.toml, qualité changée tout de suite, ligne « OpenRide X.Y.Z » en bas,
   puis curseur de difficulté sur l'écran de pause (`set_difficulty`).
 
 Résultat : captures et `rapport.html` dans `--out` (défaut : dossier temporaire). Code de sortie : 0
@@ -310,6 +310,9 @@ def parcours_reglages(run: Run) -> None:
     r.check(run.engine.wait_for(r"Qualité graphique : medium", 5.0, after=t) is not None,
             "qualité appliquée tout de suite au décor", "« Qualité graphique : medium » au journal de l'engine")
     r.check("quality = \"medium\"" in run.config.read_text(encoding="utf-8"), "qualité écrite dans config.toml", "medium")
+    version = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
+    run.focus_to("Plafond du vent", limit=12)
+    run.expect("reglages_version", "Réglages", f"OpenRide {version}")
     run.press("Y_SHORT")   # retour à l'accueil
     run.focus_to("Session libre")
     run.press("A_LONG")                 # Session libre (sans monde : parcours)

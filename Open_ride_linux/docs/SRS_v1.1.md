@@ -101,19 +101,19 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | Boîtier | Bouton | Bit (0 = appuyé) | Action OpenRide |
 | --- | --- | --- | --- |
 | gauche | − | 8 | « − » |
-| gauche | flèche gauche | 0 | aucune |
-| gauche | flèche haut | 1 | aucune |
-| gauche | flèche droite | 2 | aucune |
-| gauche | flèche bas | 3 | aucune |
+| gauche | flèche gauche | 0 | réservé : raccourci de choix (spécification générale §7.1) |
+| gauche | flèche haut | 1 | réservé : vue de caméra (2.0, spécification générale §7.1) |
+| gauche | flèche droite | 2 | réservé : raccourci de choix (spécification générale §7.1) |
+| gauche | flèche bas | 3 | réservé : vue de caméra (2.0, spécification générale §7.1) |
 | droit | + | 12 | « + » |
-| droit | A | 4 | aucune |
+| droit | A | 4 | choisir (court) et valider (long) dans les menus (spécification générale §7.1) |
 | droit | B | 5 | « − » (sans déblocage Zwift) |
 | droit | Y | 6 | pause et reprise (lot N6) |
-| droit | Z | 7 | aucune |
+| droit | Z | 7 | action du mode : bloc suivant en ERG (lot O17) |
 
 - **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
 - Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Y et les flèches n'ont qu'un événement, quelle que soit la durée. Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
-- Repli : un fournisseur clavier (flèches, touches +/−) produit les mêmes événements.
+- Repli : le clavier produit les mêmes événements, touche pour touche, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17).
 
 ### 4.3 Braquets virtuels
 
@@ -132,6 +132,8 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 
 ### 4.4 Actions du Click en v1
 
+**Référence unique :** le plan de boutons de la [spécification générale](SPECIFICATION_GENERALE.md) §7.1 fait foi pour tous les modes et les menus ; ce paragraphe décrit l'état du code. Le lot O17 met l'ERG à ce plan avant la 1.0 : ± long = biais ± 10 %, Z = bloc suivant, Y = pause (la pause ERG par − long disparaît).
+
 | Action | Mode SIM | Mode ERG |
 | --- | --- | --- |
 | Appui court + / − | Braquet k + 1 / k − 1 | Biais d'intensité ± 2 % (plage 80 % à 120 %) |
@@ -140,11 +142,11 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 
 Le bouton Y du boîtier droit met en pause et reprend la séance, en SIM comme en ERG (lot N6, choix du propriétaire du 25 octobre 2026).
 
-Le demi-tour sur la route et le réglage des bots sont reportés (§14).
+Le demi-tour sur la route et le réglage des bots sont reportés à la 1.x, dans les menus (§14, lots N17 et N18).
 
 ### 4.5 Navigation dans les menus
 
-Hors séance, le core transmet les événements du Click à l'engine, qui applique le plan des boutons de la spécification générale §7.1 : ± court et A court pour défiler (flèches gauche et droite aussi), ± long pour sauter de cinq éléments, A long pour valider, Y pour revenir à l'écran précédent (sur l'écran de pause : reprendre) ; Z ne fait rien dans un menu. Le clavier et la souris font de même : flèches haut et bas, Page suivante et précédente, Tab, Entrée, Échap ; clic gauche pour valider, clic droit pour revenir, molette pour défiler.
+Hors séance, le core transmet les événements du Click à l'engine, qui pilote le menu selon la spécification générale §7.1 : ± courts pour passer à l'élément suivant ou précédent, ± longs pour sauter de cinq éléments, A court pour l'élément suivant, A long pour valider, Y pour revenir à l'écran précédent ; Z ne fait rien dans un menu. Ce plan remplace l'ancien (+ long pour valider, − long pour revenir), à reporter par la PR #287 avant sa fusion. Le clavier double chaque bouton, touche pour touche (tableau du clavier de la spécification générale §7.1, lot O17).
 
 ## 5. Physique
 
@@ -207,7 +209,7 @@ Les fichiers `.zwo` (XML ouvert) placés dans `~/OpenRide/Workouts/` sont lus pa
 - Un fichier invalide n'arrête rien : il apparaît dans le menu avec l'erreur, sans être sélectionnable.
 - Le menu affiche la durée totale et le profil des blocs de chaque entraînement.
 
-**HUD de l'entraînement :** bandeau inférieur avec l'histogramme des blocs, le compte à rebours du bloc en cours, la puissance lissée sur 3 s, la cible et le biais ; un bip retentit 3 s avant chaque changement de bloc. Le saut de bloc et la pause se font par appui long sur le Click (§4.4).
+**HUD de l'entraînement :** bandeau inférieur avec l'histogramme des blocs, le compte à rebours du bloc en cours, la puissance lissée sur 3 s, la cible et le biais ; un bip retentit 3 s avant chaque changement de bloc. Le saut de bloc et la pause se font aujourd'hui par appui long sur le Click (§4.4) ; avec le lot O17, le saut de bloc passe sur Z et la pause sur Y.
 
 ## 7. Compilateur de parcours
 
@@ -474,7 +476,7 @@ Le MVP utilisable est atteint à la fin du sprint 3 : pédaler sur une trace GPX
 **Évolutions envisagées** (aucune n'est dans la v1)
 
 - Bots : puissance constante, puis fantôme d'un ancien FIT, puis modèle CP / W' pour les courses.
-- Demi-tour sur la route et réglage des bots par appui long en mode SIM.
+- Demi-tour sur la route et réglage des bots : depuis les menus (écran de pause, réglages), pas par un geste du Click ; lots N17 et N18 de la 1.x (décision du propriétaire du 27 octobre).
 - Brouillard volumétrique, SSAO, LUT colorimétrique, toits à deux pans.
 - Couverture du sol (ESA WorldCover) pour la végétation en montagne, où OSM est lacunaire.
 - Téléphone comme télécommande, ANT+.

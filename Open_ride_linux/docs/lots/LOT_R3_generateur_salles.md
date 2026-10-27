@@ -2,12 +2,12 @@
 
 ## 1. Objectif
 
-Produire, à partir d'une graine, le profil de pente et les marqueurs de chaque salle du mode Cyber-Rogue. Une salle devient une route en mémoire (distance, pente), lue par la physique et l'interpolation existantes ; le moteur de jeu (R5, R6) et l'engine (message `room`, R1) lisent les marqueurs.
+Produire, à partir d'une graine, le profil de pente et les marqueurs de chaque salle du mode Cyber-Rogue. Une salle devient une route en mémoire (distance, pente), lue par la physique et l'interpolation existantes ; le moteur de jeu (R5, R6) et l'engine (message `room`, T1) lisent les marqueurs.
 
 ## 2. À lire
 
 1. `docs/lots/00_INDEX.md`, `docs/2.0/GDD_CYBER_ROGUE.md` §2.4, §2.5 et §2.7, `docs/2.0/PLAN_SERIE_R.md` §2 et §7.
-2. `docs/lots/LOT_R0_delai_frein.md` §4.3 (règles tirées de la mesure du frein), `docs/lots/LOT_R1_contrat_ipc_rogue.md` §4.5 (forme de `room`).
+2. `docs/lots/LOT_R0_delai_frein.md` §4.3 (règles tirées de la mesure du frein), `docs/lots/LOT_T1_contrat_1_4.md` §4.3 (forme de `room`).
 3. Code : `core/src/openride_core/route.py` (route en mémoire, interpolation), `core/src/openride_core/physics.py` (vitesse d'équilibre à une puissance donnée).
 
 ## 3. Prérequis

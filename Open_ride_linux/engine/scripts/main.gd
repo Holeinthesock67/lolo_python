@@ -637,6 +637,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 	# (2.0 ; absent en 1.0).
 	menu_flow.lists_needed()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
 
 
 func _on_core_error(code: String, message: String) -> void:

@@ -280,7 +280,17 @@ func _test_settings_screen() -> void:
 	f.handle("A_LONG")   # Réglages
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
 	_check(labels == ["Appareils : rechercher et appairer", "FTP : 250 W", "Difficulté en SIM : ■■■■■□□□□□ 50 %",
-			"Qualité graphique : high"], "réglages affichés : %s" % str(labels))
+			"Qualité graphique : high", "OpenRide " + f.engine_version], "réglages affichés : %s" % str(labels))
+	_check(f.state()["items"][-1]["enabled"] == false, "ligne de version non sélectionnable")
+	# Version du core différente : alerte discrète dans le détail de la ligne (lots O2 et O4).
+	f.set_versions("0.9.0", "0.9.0")
+	_check(f.state()["items"][-1]["label"] == "OpenRide 0.9.0" and f.state()["items"][-1]["detail"] == "",
+			"même version : « OpenRide 0.9.0 », sans alerte")
+	f.set_versions("0.9.0", "0.8.0")
+	_check(str(f.state()["items"][-1]["detail"]).begins_with("core 0.8.0 : versions différentes"),
+			"versions différentes : %s" % str(f.state()["items"][-1]["detail"]))
+	f.set_versions("0.9.0", "")
+	_check(f.state()["items"][-1]["detail"] == "", "core pas encore connu : pas d'alerte")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # FTP
 	_check(f.state()["screen"] == "setting_edit" and f.state()["title"] == "FTP", "modification de la FTP")
