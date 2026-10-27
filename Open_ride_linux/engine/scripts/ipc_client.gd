@@ -31,6 +31,9 @@ signal plans_received(msg: Dictionary)
 
 ## Monde ouvert (lot W10, contrat 1.5) : avancement de la préparation du monde (`world_status`).
 signal world_status_received(msg: Dictionary)
+## Menu du monde ouvert (lot W11) : réponses complètes (parties réunies) à `world_search`, `world_map`,
+## `world_regions` et `world_pin`. `kind` : "places", "world_map" ou "world_regions".
+signal world_menu_received(kind: String, msg: Dictionary)
 ## Message de test autre que send_command (seulement avec --test-mode), traité par main.gd (captures d'écran).
 signal test_message_received(msg: Dictionary)
 
@@ -233,6 +236,8 @@ func _poll_incoming() -> void:
 			"world_status":
 				world_status = json_obj
 				world_status_received.emit(json_obj)
+			"places", "world_map", "world_regions":
+				_on_world_part(msg_type, json_obj)
 			"scan_results":
 				scan_results_received.emit(json_obj)
 			"settings":
@@ -261,6 +266,37 @@ func _on_state(msg: Dictionary) -> void:
 	_ack_pending(int(msg.get("last_cmd_id", 0)))
 	_track_open_world(msg)
 	state_received.emit(msg)
+
+
+var _world_parts: Dictionary = {}     # type -> {rid, parts, got, done}
+
+
+## Réunit les parties d'une réponse du menu du monde ouvert ; une réponse déjà livrée (la commande est
+## renvoyée tant qu'elle n'est pas acquittée) n'est pas livrée deux fois.
+func _on_world_part(kind: String, msg: Dictionary) -> void:
+	var rid := int(msg.get("request_cmd_id", -1))
+	var parts := maxi(1, int(msg.get("parts", 1)))
+	var part := int(msg.get("part", 1))
+	if part < 1 or part > parts:
+		return
+	var slot: Dictionary = _world_parts.get(kind, {})
+	if int(slot.get("rid", -2)) != rid:
+		slot = {"rid": rid, "parts": parts, "got": {}, "done": false}
+	if slot["done"]:
+		return
+	slot["got"][part] = msg
+	_world_parts[kind] = slot
+	if slot["got"].size() < parts:
+		return
+	slot["done"] = true
+	var key := "roads" if kind == "world_map" else "items"
+	var whole: Dictionary = (slot["got"][1] as Dictionary).duplicate()
+	var all := []
+	for i in range(1, parts + 1):
+		all.append_array(slot["got"][i].get(key, []))
+	whole[key] = all
+	world_menu_received.emit(kind, whole)
+
 
 
 ## Garde le dernier `open_world` tant que la séance est un monde ouvert (route `ow:<id>`) ; le vide sinon.

@@ -139,6 +139,9 @@ class RogueBalance:
     relic_shield_bonus: float = 20.0   # relique de bouclier : bouclier maximal en plus
     relic_gold_mult: float = 1.25   # relique d'or : multiplicateur de l'or gagné
     relic_ps_window_bonus_s: float = 0.3   # relique de réflexes : fenêtre de Perfect Shift en plus (s)
+    # Châssis (R9) : valeurs neutres, modifiées seulement par `progress.apply_chassis`
+    gold_mult: float = 1.0   # multiplicateur de l'or gagné (châssis Collecteur)
+    adrenaline_start: float = 0.0   # adrénaline au début de chaque salle (châssis Survolté)
     # Scénariste (R15) : durée de la run -> (échauffement min, nombre de salles, salle moyenne min,
     # couloir min, boss min, poids des trois phases, retour au calme min)
     calendars: dict = field(default_factory=lambda: {   # durée de la run (min) -> échauffement min, salles, salle moyenne min, couloir min, boss min, poids des phases, retour au calme min

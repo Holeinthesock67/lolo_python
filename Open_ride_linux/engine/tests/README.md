@@ -134,6 +134,8 @@ OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_
 | `test_live_world.gd` | W10 | `live_world.gd` : révision lue en tâche de fond et route échangée, révisions manquées (relecture complète), révision en avance sur le disque, partie illisible (route gardée), amorces des branches non suivies à moins de 1 500 m, recentrage (multiple de 1 000 m, erreur sous 1 mm à 60 km), carrés de couches à coordonnées relatives au coin de tuile, ruban fondu des amorces |
 | `test_live_streamer.gd` | W10 | `world_streamer.gd` sur un monde vivant : tronçons gardés et refaits après `swap_route`, amorces créées et libérées |
 | `test_junction_view_model.gd` | W12 | Panneau du carrefour : invisible à 301 m, visible à 300 m, disparu après le carrefour, branches de gauche à droite, flèches à 15°, libellés, pentes à 1 %, verrouillage, flèches ← et → (deux `choose_branch` vers les bonnes branches, rien si verrouillé), placement sans recouvrement en 1 920 × 1 080 et 1 280 × 720, attribution |
+| `test_world_menu_model.gd` | W11 | Menu du monde ouvert sans affichage : rotation et inclinaison du globe, recherche « Ventoux » → carte → cap 90° → `start_open_world` avec les bons arguments, curseur accroché à la route la plus proche, boucle et destination, retours, épinglage des régions, texte et barre de préchargement |
+| `test_world_menu_view.gd` | W11 | Entrée « Monde ouvert » de l'accueil, affichage du globe, de la recherche, de la carte et du préchargement avec attributions, parties de `world_map` et `places` réunies (copie renvoyée ignorée), `open_world` gardé entre deux trames |
 
 ## Étapes du script
 

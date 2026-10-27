@@ -55,7 +55,7 @@ const NO_WORKOUT_ID := "_sim"
 ## Modes de séance de l'accueil, dans l'ordre d'affichage : {mode: libellé}. Filtrés par `modes`, la
 ## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
-const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG"}
+const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
@@ -485,6 +485,8 @@ func _validate() -> Dictionary:
 				"erg":
 					_workouts_return = HOME
 					_open(WORKOUTS)
+				"open_world":
+					return {"action": "open_world_menu"}
 				"sim":
 					if sim_session:
 						_confirm("Revenir au matériel réel ? OpenRide redémarre", {"action": "relaunch"})
