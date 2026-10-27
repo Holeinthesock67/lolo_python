@@ -83,8 +83,10 @@ static func _checker_image() -> Image:
 
 func _textured(img: Image, uv_scale: Vector3) -> StandardMaterial3D:
 	var m := StandardMaterial3D.new()
+	img.generate_mipmaps()
 	m.albedo_texture = ImageTexture.create_from_image(img)
-	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_NEAREST_WITH_MIPMAPS
+	# filtre linéaire anisotrope : damier et pois sans scintillement vus en rasant
+	m.texture_filter = BaseMaterial3D.TEXTURE_FILTER_LINEAR_WITH_MIPMAPS_ANISOTROPIC
 	m.uv1_scale = uv_scale
 	return m
 
