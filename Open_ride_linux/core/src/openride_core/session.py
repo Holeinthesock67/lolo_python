@@ -20,6 +20,7 @@ import re
 import signal
 import threading
 import time
+import zlib
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable
@@ -42,6 +43,7 @@ from .powerups import PowerUpError, load_table
 from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, load_resume_state
+from .rogue import mode as rogue_mode
 from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
@@ -303,6 +305,12 @@ class CoreSession:
         self.worldgen_args: list[str] = []
         self.gpx_dir: Path | None = None        # balades enregistrées (défaut ~/OpenRide/GPX ; essais)
         self._ow_previous = "IDLE"
+        # Mode Cyber-Rogue (lot R8) : run en cours ; `rogue_provider()` rendra (table des châssis, statistiques,
+        # vies) quand la progression sera branchée dans la séance (lot V11) ; sans lui, seul le châssis standard.
+        self.rogue: rogue_mode.RogueMode | None = None
+        self.rogue_provider: Callable[[], tuple] | None = None
+        self._rogue_dist = 0.0
+        self.server.hello_config["rogue"] = rogue_mode.hello_block(cfg, None)
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -323,12 +331,21 @@ class CoreSession:
 
     def _release_trainer(self) -> None:
         self._grade_sent = 0.0
+        if self.rogue is not None:
+            self.rogue.grade_sent = 0.0
         self.driver.set_sim_grade(0.0)
 
     def _on_command(self, name: str, args: dict, cmd_id: int) -> None:
         log.info("Commande %s %s (id=%d)", name, args, cmd_id)
         st = self.state.session_state
-        if name == "select_route" and st in ("IDLE", "READY", "FINISHED", "ERROR"):
+        if name == "start_run":
+            self._start_run(args if isinstance(args, dict) else {}, st)
+        elif name == "rogue_resync":
+            if self.rogue is not None:
+                for msg in self.rogue.resync():
+                    self.server.send_raw(msg)
+        elif name == "select_route" and st in ("IDLE", "READY", "FINISHED", "ERROR"):
+            self._drop_rogue()
             reset = getattr(self.driver, "reset_control", None)
             if reset:
                 reset()   # sortie de ERROR : nouvelle prise de contrôle du trainer
@@ -337,6 +354,7 @@ class CoreSession:
             # Accepté aussi après une séance (FINISHED, ERROR) : le menu choisit l'entraînement avant
             # le parcours, et le core reste en FINISHED jusqu'au select_route suivant.
             if st in ("IDLE", "READY", "FINISHED", "ERROR"):
+                self._drop_rogue()
                 self._select_workout(args.get("workout_id"))
             else:
                 log.warning("Entraînement « %s » refusé : séance %s.", args.get("workout_id"), st)
@@ -412,6 +430,83 @@ class CoreSession:
             self._on_workout_menu_command(name, args, cmd_id)
 
     # --- plans et test de FTP depuis le menu (lot O12, contrat IPC révision 1.3) ----------------
+
+    # --- mode Cyber-Rogue (lot R8) -------------------------------------------------------------
+
+    def _start_run(self, args: dict, st: str) -> None:
+        """`start_run` : compose la run, passe par `LOADING` puis `READY` en mode `ROGUE`."""
+        if st not in ("IDLE", "READY", "FINISHED"):
+            self.server.send_error("busy", "Une run ne se prépare pas pendant une séance.")
+            return
+        chassis_table, stats, lives = self.rogue_provider() if self.rogue_provider else (None, None, 0)
+        try:
+            request = rogue_mode.parse_start_run(args, self.cfg)
+            chassis = rogue_mode.choose(chassis_table, stats, request.chassis)
+        except rogue_mode.RunInvalid as exc:
+            log.warning("start_run refusé : %s", exc)
+            self.server.send_error(exc.code, str(exc))
+            return
+        self._close_open_world()
+        self.state.open_world = None
+        self._set_state("LOADING")
+        self.rogue = rogue_mode.RogueMode(self.cfg, request, chassis=chassis, lives=lives, params=self._base_params)
+        self.route, self._segments, self.race = None, (), None
+        self.erg, self._workout, self._workout_id, self._ramp_watch = None, None, None, None
+        self.physics = RiderPhysics(self._base_params)
+        self._t_session, self._grade_sent, self._rogue_dist = 0.0, 0.0, 0.0
+        self._sync_erg_state()
+        self.state.route_id, self.state.route_length_m = "rogue", None
+        self.state.gear, self.state.gears_total = self.rogue.gear, self.rogue.balance.gear_max
+        self.state.lat = self.state.lon = self.state.alt = None
+        self.state.summary = None
+        log.info("Run Cyber-Rogue préparée : %s, %d min, graine %d, W' %.0f J, châssis %s, table %s.",
+                 request.objective, request.duration_min, request.seed, request.w_prime_j, self.rogue.chassis_id,
+                 self.rogue.hash)
+        self._set_state("READY")
+
+    def _drop_rogue(self) -> None:
+        """Retour au mode classique : la run préparée est abandonnée."""
+        if self.rogue is None:
+            return
+        log.info("Run Cyber-Rogue abandonnée avant le départ.")
+        self.rogue = None
+        self.state.rogue = None
+        self.state.gears_total = self.gearing.n_gears
+        self.state.gear = self.gearing.k
+        self._sync_erg_state()
+
+    def _step_rogue(self, dt: float, m: Any) -> None:
+        """Pas du mode ROGUE : moteur de run, pente de l'ennemi décalée par le braquet, journal."""
+        rg = self.rogue
+        assert rg is not None
+        clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
+        input_lost = bool(clicks) and self.state.input_status != "CONNECTED"
+        ts = time.time()
+        out, lines = rg.step(dt, m.power_w, m.cadence_rpm, self.physics, input_lost, ts)
+        for msg in out.messages:
+            self.server.send_raw(msg)
+        if self._rec:
+            for line in lines:
+                self._rec.game(line)
+        cfg = self.cfg.rogue
+        self._grade_sent, shifted = rg.target_grade(cfg.grade_rate_up_pct_per_s, cfg.grade_rate_down_pct_per_s, dt)
+        self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
+        self._rogue_dist += self.physics.v * dt
+        self._power_window.append((self._t_session, m.power_w))
+        while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
+            self._power_window.pop(0)
+        p3 = sum(p for _, p in self._power_window) / len(self._power_window)
+        st = self.state
+        st.t, st.s, st.v = self._t_session, self._rogue_dist, self.physics.v
+        st.grade, st.grade_sent = round(out.grade_enemy, 2), round(self._grade_sent, 2)
+        st.power, st.power_3s, st.cadence, st.hr = m.power_w, round(p3, 1), m.cadence_rpm, m.hr_bpm
+        st.gear, st.rogue = rg.gear, out.rogue
+        if self._rec and self._t_session >= self._next_record:
+            self._next_record += 1.0
+            self._rec.record(Record(
+                ts=round(time.time(), 3), t=round(self._t_session, 2), distance=round(st.s, 2),
+                speed=round(st.v, 3), power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
+                grade=round(out.grade_enemy, 2), mode="ROGUE", gear=rg.gear, grade_sent=st.grade_sent))
 
     def _choose_start_workout(self, args: dict) -> bool:
         """`start` avec `ftp_test` ou `plan_day` : choisit l'entraînement avant de démarrer.
@@ -845,7 +940,7 @@ class CoreSession:
             log.info("Entraînement « %s » terminé : retour au mode SIM, parcours libre.", erg.workout.name)
             self.erg = erg = None
             self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
-        self.state.mode = "ERG" if erg and not erg.is_freeride else "SIM"
+        self.state.mode = "ROGUE" if self.rogue is not None else ("ERG" if erg and not erg.is_freeride else "SIM")
         self.state.erg = erg.to_dict() if erg else None
 
     def _on_engine_lost(self) -> None:
@@ -939,6 +1034,10 @@ class CoreSession:
             ftp_result = self._write_ftp_test(rec)
             if ftp_result is not None:
                 self._ftp_result = ftp_result
+            rogue_summary = None
+            if self.rogue is not None:   # ligne `rogue_run` : l'expérience, les pièces et les statistiques la lisent
+                rogue_summary = self.rogue.summary()
+                rec.game(self.rogue.run_line(time.time()))
             fit_path, s, fit_error = rec.finish(save, ts=ts)
             records, events = rec.records, rec.events
             if fit_error and save:
@@ -951,6 +1050,8 @@ class CoreSession:
                 "fit_path": str(fit_path) if fit_path else None,
                 **summary_extras(records, events, self.cfg.rider.ftp_w),
             }
+            if rogue_summary is not None:   # lot R8 : bilan de la run
+                summary["rogue"] = rogue_summary
             segments = race.summary() if race else None
             if segments is not None:   # série T (lot T7, révision 1.4)
                 summary["segments"] = segments
@@ -969,6 +1070,10 @@ class CoreSession:
         self.state.open_world = None
         self.erg = None
         self._ramp_watch = None
+        if self.rogue is not None:
+            self.rogue = None
+            self.state.rogue = None
+            self.state.gears_total, self.state.gear = self.gearing.n_gears, self.gearing.k
         self._sync_erg_state()
         self._set_state(final_state)
 
@@ -1123,6 +1228,14 @@ class CoreSession:
         if self.openworld is not None and ev.value in CHOICE_EVENTS and self.state.session_state == "RUNNING":
             if self.openworld.on_input(ev.value, self.physics.s):   # carrefour proposé : choix de la branche
                 return
+        if self.rogue is not None:
+            # Mode Cyber-Rogue (R8, plan de boutons §7.1) : Z et A vers le moteur de run (sélection en couloir
+            # ou relais à l'engine pour la vue de caméra), + et B vers le braquet ; Y est la pause, plus haut.
+            if self.state.session_state == "RUNNING":
+                self.rogue.press(ev.value)
+                if self.rogue.shift(ev.value):
+                    self.state.gear = self.rogue.gear
+            return
         if ev == InputEvent.Z_SHORT and self.state.session_state == "RUNNING" and self.race:
             if self.race.activate(self._t_session):   # mode classique : bonus en réserve (T6, T7)
                 log.info("Bonus activé : %s.", self.race.powerups.active)
@@ -1218,6 +1331,9 @@ class CoreSession:
             self._trainer_lost_since = None
 
         self._t_session += dt
+        if self.rogue is not None:
+            self._step_rogue(dt, m)
+            return
         if self.erg:
             self.erg.step(dt)        # le temps du bloc ne court que pendant RUNNING
             reason = self._ramp_watch.update(dt, m.power_w, m.cadence_rpm, self.erg) if self._ramp_watch else None
@@ -1376,6 +1492,8 @@ class CoreSession:
         Lève `ResumeError` si le journal ne peut pas être repris.
         """
         rs = load_resume_state(path)
+        if rs.route_id == "rogue":
+            return self._resume_rogue(path, rs)
         route_id = rs.route_id or "demo"
         self._select_route(route_id, previous="IDLE")
         if self.state.session_state != "READY":
@@ -1416,6 +1534,41 @@ class CoreSession:
         self._set_state("PAUSED", "core_restarted")
         log.info("Séance reprise après un plantage du core : %s (t %.0f s, %.0f m%s).", path, rs.t, rs.s,
                  f", bloc {rs.block}" if rs.block else "")
+        return rs
+
+    def _resume_rogue(self, path: Path, rs: ResumeState) -> ResumeState:
+        """Reprise d'une run Cyber-Rogue : au début de la phase du dernier instantané (lot R8)."""
+        snap = rs.rogue
+        if snap is None:
+            raise ResumeError("aucun instantané de la run dans le journal")
+        try:
+            req = snap["req"]
+            request = rogue_mode.RunRequest(req["objective"], int(req["duration_min"]), int(req["seed"]),
+                                            float(req["w_prime_j"]), str(snap.get("chassis", "standard")))
+            self.rogue = rogue_mode.RogueMode(self.cfg, request, params=self._base_params)
+            self.rogue.restore(snap)
+        except (KeyError, TypeError, ValueError, EOFError, zlib.error) as exc:
+            self.rogue = None
+            raise ResumeError(f"instantané de la run illisible : {exc}") from exc
+        self.route, self._segments, self.race, self.erg, self._workout = None, (), None, None, None
+        self.physics = RiderPhysics(self._base_params)
+        self._t_session, self._grade_sent, self._rogue_dist = rs.t, 0.0, rs.s
+        self._sync_erg_state()
+        st = self.state
+        st.route_id, st.route_length_m, st.t, st.s, st.v = "rogue", None, rs.t, rs.s, 0.0
+        st.gear, st.gears_total = self.rogue.gear, self.rogue.balance.gear_max
+        st.lat = st.lon = st.alt = None
+        self._rec = SessionRecorder(self.journal_dir, "rogue", on_failure=self._on_recording_failure,
+                                    resume_path=path, lines=rs.lines, source=self._journal_source())
+        if rs.running:
+            self._rec.event("pause", rs.last_ts)
+        self._rec.event("resume_after_crash", time.time())
+        self._device_up = self._device_states()
+        self._next_record = float(int(rs.t)) + 1.0
+        self.state.session_state = "PAUSED"
+        self._set_state("PAUSED", "core_restarted")
+        log.info("Run Cyber-Rogue reprise après un plantage du core : %s (t %.0f s, phase %s).", path, rs.t,
+                 self.rogue.phase)
         return rs
 
     def check_autostart(self, route_id: str, workout_id: str | None) -> None:
