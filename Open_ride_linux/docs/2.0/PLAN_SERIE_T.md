@@ -135,3 +135,14 @@ Ordre conseillé : T1 après P1, puis T2, T4 et T6 en parallèle ; T3, T5, T7 et
 - [x] **T-Q4 Valeurs (25 octobre : un bonus tous les 5 km et à chaque segment, valeurs proposées gardées) :** légèreté −10 % de masse, aéro −25 % de CdA, puissance +10 %, 15 s chacun, un bonus par segment et tous les 5 km ? (Recommandé : oui, modifiable dans le fichier de données.)
 - [x] **T-Q5 Maillots (oui, 25 octobre) :** maillots vert et à pois attribués pendant la séance aux points, bots compris, plutôt qu'au détenteur d'un record ? (Recommandé : oui.)
 - [x] **T-Q6 Niveaux des bots (oui, avec réglage libre en option, 25 octobre) :** 90, 100 et 110 % de ta FTP suffisent-ils, ou faut-il un réglage libre ? (Recommandé : les trois niveaux, plus un réglage libre dans les options.)
+
+### Décisions du 27 octobre (lots non encore rédigés)
+
+Le propriétaire a validé le 27 octobre les propositions suivantes ; elles servent de base aux cahiers à venir.
+
+- **T1, contrat 1.4 :** rédigé après P1 (1.3). `segments.json` est la liste rendue par `Segment.to_dict()` (`segments.py`, lot T2) ; `state` gagne les champs `segment`, `powerup` et `segment_result` ; événements de boutons `Z_SHORT`, `Z_LONG`, `A_SHORT` et `A_LONG`, communs avec la série R.
+- **T3, segments manuels :** fichier `<parcours>.segments.toml` posé à côté du GPX (type, km de début, km de fin, nom). Le parcours de démonstration garde les segments détectés automatiquement, sans segment manuel.
+- **T5, records :** fichier `~/OpenRide/records.json`, par parcours et par segment, avec les 10 meilleurs temps et leur date. Le fantôme compte au classement comme ton meilleur temps, pas comme un coureur de plus. Le journal gagne un événement `powerup` (type, début, durée), sans changement des champs existants.
+- **T8, T9, T10 et T15 :** pas de maquette préalable ; le rendu, le HUD et le menu sont codés puis validés ensemble à la recette.
+- **T12 et T13, profils de bots** (CP en W/kg, W′), ajustés par la difficulté : Grimpeur 4,0 et 15 kJ, Rouleur 3,6 et 20 kJ, Sprinteur 3,3 et 25 kJ avec un pic de 12 W/kg sur 10 s, Diesel 3,8 et 10 kJ. Ces lots attendent le modèle W′bal de R2.
+- **T14, barème de points :** montées HC 20, 15, 10, 6, 4 ; 1re catégorie 10, 8, 6, 4, 2 ; 2e 5, 3, 2, 1 ; 3e 2, 1 ; 4e 1. Sprints 15, 10, 6, 4, 2. Maillot à pois pour les montées, maillot vert pour les sprints.
