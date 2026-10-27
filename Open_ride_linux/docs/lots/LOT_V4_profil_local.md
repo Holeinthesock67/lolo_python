@@ -62,3 +62,9 @@ Aucune.
 ## 8. Hors périmètre
 
 Calcul du solde (V3b), catalogue (V3), commandes du menu (V1, V11), affichage (V8).
+
+## 9. Livraison (26 octobre 2026, issue #240)
+
+- Code et tests : `profile.py`, `core/tests/test_profile.py` (20 tests).
+- Identifiants par défaut de l'apparence (`helmet_route`, `kit_uni`, `socks_blanches`, `glasses_claires`) fixés ici ; le catalogue du lot V3 les reprend.
+- `load_profile(path, known_items)` : le catalogue est passé par l'appelant (V3, V11) pour remettre à la pièce par défaut un emplacement dont la pièce a été retirée.
