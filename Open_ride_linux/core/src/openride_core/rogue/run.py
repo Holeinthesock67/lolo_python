@@ -82,8 +82,10 @@ def grade_sent(grade_enemy: float, gear: int, b: RogueBalance = DEFAULT_BALANCE)
 
 class RunEngine:
     def __init__(self, scenario: Scenario, rider: RoomRider, w_prime_j: float, cp_w: float,
-                 balance: RogueBalance = DEFAULT_BALANCE) -> None:
+                 balance: RogueBalance = DEFAULT_BALANCE, lives: int = 0) -> None:
         self.sc, self.rider, self.b = scenario, rider, balance
+        self.lives = lives                  # vies en réserve (R9) : la défaite en consomme une, sans perte d'or
+        self.lives_used = 0
         self.w_prime_j, self.cp_w = w_prime_j, cp_w
         self.idx = -1
         self.phase = WARMUP
@@ -179,7 +181,7 @@ class RunEngine:
         return replace(b, ps_window_s=window, shield_max=shield_max)
 
     def _gold_mult(self) -> float:
-        return self.b.relic_gold_mult if "relic_gold" in self.relics else 1.0
+        return self.b.gold_mult * (self.b.relic_gold_mult if "relic_gold" in self.relics else 1.0)
 
     def _start_room(self, spec: Step, room_id: int, boss_phase: int | None, gear: int, s_m: float) -> list:
         self.room = self._previews.pop(room_id, None) or generate_room(
@@ -187,7 +189,8 @@ class RunEngine:
             self.sc.seed * 1000 + room_id, self.b)
         self.room_id, self.boss_phase, self.cur_spec = room_id, boss_phase, spec
         bx = self._eff_balance()
-        self.combat = combat_start(self.room, self.sc.seed * 1000 + room_id, bx, shield=self.shield, gear=gear)
+        self.combat = replace(combat_start(self.room, self.sc.seed * 1000 + room_id, bx, shield=self.shield, gear=gear),
+                              adrenaline=bx.adrenaline_start)
         self.firewall = Firewall(self.room, self.rider, bx, player_s=s_m)
         self.gold_lost_seen = 0.0
         self.inversion_used = False
@@ -391,7 +394,7 @@ class RunEngine:
         ci = CombatInputs(power_w=inp.power_w, cadence_rpm=inp.cadence_rpm, posture=self.posture.posture,
                           gear=inp.gear, ftp_w=inp.ftp_w, s_m=inp.s_m, v_mps=inp.v_mps, contact=contact,
                           buttons=frozenset(buttons), objective=self.cur_spec.objective, card_mult=mult,
-                          w_bal_j=self.wbal.w_bal_j, run_gold=self.gold)
+                          w_bal_j=self.wbal.w_bal_j, run_gold=0.0 if self.lives > self.lives_used else self.gold)
         cs, ev = combat_step(cs, ci, room, bx, dt)
         events += ev
         # effets de cartes après le pas
@@ -413,6 +416,9 @@ class RunEngine:
         self.gold = max(self.gold - lost, 0.0)
         if "defeat" in ev:
             self.defeats += 1
+            if self.lives > self.lives_used and not self.boss_phase:
+                self.lives_used += 1
+                self._journal.append(f"rogue life_used total={self.lives_used}")
             self._journal.append(f"rogue defeat room={self.room_id}")
         if cs.phase == RECOVERY and self.phase != "RECOVERY":
             self.phase = "RECOVERY"

@@ -126,6 +126,8 @@ sprinter_extra = "sprinteur"   # seuil : Sprinteur au plus une fois (il remplace
 late_margin_s = 120.0   # retard toléré avant de raccourcir les couloirs
 corridor_min_s = 60.0   # durée minimale d'un couloir raccourci (s)
 skip_gold_penalty = 10.0   # or perdu pour une salle retirée
+gold_mult = 1.0   # multiplicateur de l'or gagné (châssis Collecteur)
+adrenaline_start = 0.0   # adrénaline au début de chaque salle (châssis Survolté)
 
 # Scénariste (R15) : durée de la run en minutes -> [échauffement min, nombre de salles, salle moyenne min,
 # couloir min, boss min, poids des trois phases, retour au calme min]
