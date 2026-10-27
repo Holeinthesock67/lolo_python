@@ -37,8 +37,6 @@ func _test_gaps() -> void:
 	_check(is_equal_approx(BotsViewModel.gap_m(3950.0, 50.0, 4000.0), 100.0), "boucle : le plus court sens, devant")
 	_check(is_equal_approx(BotsViewModel.gap_seconds(60.0, 8.0, 4.0), 10.0), "écart en secondes : 60 m à 6 m/s de moyenne")
 	_check(is_equal_approx(BotsViewModel.gap_seconds(10.0, 0.0, 0.0), 10.0), "arrêtés : vitesse plancher de 1 m/s")
-	_check(BotsViewModel.gap_text(12.4) == "+12 s" and BotsViewModel.gap_text(-4.6) == "-5 s" and BotsViewModel.gap_text(0.3) == "0 s",
-		"texte de l'écart")
 
 
 func _test_view() -> void:
@@ -80,17 +78,13 @@ func _test_hud() -> void:
 	var m = BotsViewModel.new()
 	m.push(_bots(), 0)
 	var v: Array = m.view(1000.0, 7.0, 0)
-	var lines: Array = BotsViewModel.hud_lines(v)
-	var texts: Array = lines.map(func(l): return l["text"])
-	_check(texts == ["Bot 300 W  +67 s", "Bot 200 W  0 s", "Fantôme du 26/10  -18 s"], "encart du HUD : %s" % str(texts))
-	_check(BotsViewModel.hud_lines(v, 2).size() == 2, "encart borné")
 	var marks: Array = BotsViewModel.profile_marks(v, -500.0, 4500.0)
 	_check(marks.size() == 3 and BotsViewModel.profile_marks(v, -50.0, 200.0).size() == 1, "repères du profil dans la fenêtre")
 	_check(BotsViewModel.color_of("ghost") != BotsViewModel.color_of("constant"), "couleur par kind")
 	var hud = HudView.new()
 	hud.update_bots(v)
-	_check(hud.panel_bots.visible and hud.bots_lines[0].text == "Bot 300 W  +67 s" and hud.bots_lines[2].visible and not hud.bots_lines[3].visible,
-		"HUD : encart affiché, trois lignes")
+	_check(hud.panel_bots.visible and hud.bots_lines[0].text == "Bot 300 W" and hud.bots_gaps[0].text == "+66,7 s"
+		and hud.bots_lines[2].visible and not hud.bots_lines[3].visible, "HUD : encart affiché, trois lignes (lignes du lot T15)")
 	hud.update_bots([])
 	_check(not hud.panel_bots.visible, "HUD : encart caché sans bot")
 	hud.free()

@@ -41,3 +41,12 @@ Aucune.
 ## 8. Hors périmètre
 
 - Silhouettes et rendu des bots (O7) ; calcul des écarts (T16, dans le core).
+
+## 9. Livraison (27 octobre 2026, code ; validation à la recette T11)
+
+- **Modèle** `engine/scripts/bot_hud_model.gd` : `view(bots_view, race)` rend les voisins (`neighbors`), une ligne par bot (`rows` : nom, suivi du profil traduit quand il diffère du nom, FTP « 248 W · 4,1 W/kg », réserve `wbal` de 0 à 1 ou −1 sans champ, maillot) et les porteurs des maillots (« Vert : toi · Pois : Grimpeur ») ; `rows_that_fit` et `height` pour la place disponible. Écarts au format des blocs segment (« +8,4 s », « −3,1 s », une décimale), au lieu des secondes entières d'O7.
+- **Modèle des bots d'O7** (`bots_view_model.gd`) : les champs `profile`, `cp_w`, `mass_kg`, `wbal_pct` et `jersey` passent dans `view()` ; `set_race()` et `race()` gardent `bot_ahead`, `bot_behind` et `jerseys` de la trame ; couleur jaune pour `kind = "profile"` (T12). Les lignes de l'encart (`hud_lines`, `gap_text`) passent dans `bot_hud_model.gd`.
+- **HUD** (`hud_view.gd`) : triangle vers le haut (devant) ou vers le bas (derrière) tracé par le code, pastille du maillot (vert, ou blanc à point rouge pour les pois), jauge W′ sous chaque ligne. **Colonne de droite** empilée par `_layout_right_column()` : bloc segment, bloc bonus (qui remonte quand le bloc segment est caché), puis l'encart des bots jusqu'au-dessus du profil d'altitude, ou du bandeau ERG en ERG. Les lignes de bots qui ne tiennent pas sont cachées (priorité : voisins, maillots, bots) ; en 720p avec les deux blocs affichés, seuls les voisins restent.
+- **Tests :** `test_bot_hud_model.gd` (nouveau), `test_bots_view_model.gd` (lignes du HUD), scène « bots » de `visual_check.py` (voisins et maillots).
+- Aucun nouveau bouton, aucune modification du core ni du contrat.
+
