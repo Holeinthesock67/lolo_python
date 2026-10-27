@@ -29,7 +29,7 @@ Aucun (R2 pour utiliser le résultat).
 ### 4.3 Usage
 
 - Outil `python -m openride_core.tools.estimate_cp` (texte ou `--json`) : CP, W', R², durées utilisées, date de l'effort de chaque durée.
-- Le core calcule l'estimation au lancement, hors de la boucle à 50 Hz, et la met dans `hello_ack.config.rogue.w_prime_estimate_j` (R1) ; le menu de départ (R13) la propose. La configuration n'est écrite que si le joueur la choisit (réglages du core, O3).
+- Le core calcule l'estimation au lancement, hors de la boucle à 50 Hz, et la met dans `hello_ack.config.rogue.w_prime_estimate_j` (T1) ; le menu de départ (R13) la propose. La configuration n'est écrite que si le joueur la choisit (réglages du core, O3).
 - Aucune donnée personnelle dans les tests : séances fabriquées.
 
 ## 5. Fichiers concernés
@@ -39,7 +39,7 @@ Aucun (R2 pour utiliser le résultat).
 
 ## 6. Modifications de contrat autorisées
 
-Aucune (le champ `w_prime_estimate_j` est ajouté par R1).
+Aucune (le champ `w_prime_estimate_j` est ajouté par T1).
 
 ## 7. Critères d'acceptation
 

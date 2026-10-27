@@ -1,8 +1,9 @@
 """Ligne de commande `openride-compiler` (lot B1 §3.3).
 
-    openride-compiler build <fichier.gpx> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
-                            [--layers route,terrain,buildings,vegetation,poi,water] [--offline]
-    openride-compiler add-layer <dossier.world> terrain|buildings|vegetation|poi|water [--offline]
+    openride-compiler build <trace .gpx|.fit|.tcx|.fit.gz|.tcx.gz|.zip> [--name NOM] [--out DOSSIER] [--out-and-back] [--force]
+                            [--layers route,terrain,buildings,vegetation,poi,water,segments] [--offline]
+    openride-compiler add-layer <dossier.world> terrain|buildings|vegetation|poi|water|segments [--offline]
+                                [--manual FICHIER.segments.toml]
     openride-compiler list | build-all [--layers ...] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
     openride-compiler theme-list [--themes-dir D] [--json]
@@ -10,6 +11,7 @@
     openride-compiler cache-info [--json] | cache-clean [--generated | --all] [--yes]
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
+    openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]
 
 Codes de retour : 0 succès, 1 erreur d'entrée, 2 erreur interne.
 """
@@ -23,12 +25,13 @@ import time
 from dataclasses import dataclass
 from pathlib import Path
 
+from . import __version__
 from . import constants as C
 from .cache import Log, stderr_log
 from .elevation import CopernicusGlo30Provider, ElevationProvider
 from .errors import EXIT_INPUT, EXIT_INTERNAL, EXIT_OK, CompileError
 from .frame import LocalFrame
-from .track_formats import read_track
+from .track_formats import read_track, scan_tracks, track_stem
 from .osm import OverpassClient
 from .osm_layers import (
     build_osm_layers,
@@ -44,14 +47,19 @@ from .osm_layers import (
     write_water_dir,
 )
 from .pipeline import compile_route
+from . import segments_layer as SEG
+from .route_stats import (SORT_KEYS, LibraryError, compute_stats, duration_at, load_library, query,
+                          sidecar_path, stats_usable)
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
 from .theme import check_theme
 from .verify import verify_world, world_info
 from .worldgen import store
+from .worldgen import measure
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
-LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water")
-DEFAULT_LAYERS = ("route", "terrain")
+LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water", "segments")
+# Segments (lot T3) : produits par défaut quand le core est installé, omis avec un avertissement sinon.
+DEFAULT_LAYERS = ("route", "terrain", "segments")
 OSM_LAYERS = ("buildings", "vegetation", "poi", "water")
 
 
@@ -84,22 +92,27 @@ class _Parser(argparse.ArgumentParser):
 
 def build_parser() -> argparse.ArgumentParser:
     parser = _Parser(prog="openride-compiler", description="Compile une trace GPX, FIT ou TCX en parcours .world.")
+    parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
     sub = parser.add_subparsers(dest="command", required=True, parser_class=_Parser)
 
     b = sub.add_parser("build", help="compile une trace GPX, FIT ou TCX en dossier .world")
-    b.add_argument("gpx", type=Path, help="trace GPX, FIT ou TCX (format reconnu par l'extension ou le contenu)")
+    b.add_argument("gpx", type=Path, help="trace GPX, FIT ou TCX, ou export Garmin .fit.gz, .tcx.gz, .zip "
+                   "(format reconnu par l'extension ou le contenu)")
     b.add_argument("--name", help="nom du parcours (défaut : nom du fichier normalisé)")
     b.add_argument("--out", type=Path, default=C.ROUTES_DIR, help=f"dossier de sortie (défaut : {C.ROUTES_DIR})")
     b.add_argument("--out-and-back", action="store_true", help="aller-retour : la trace puis son inverse")
     b.add_argument("--force", action="store_true", help="remplace un .world existant")
     b.add_argument("--layers", type=parse_layers, default=DEFAULT_LAYERS,
-                   help="couches à produire, séparées par des virgules (défaut : route,terrain)")
+                   help="couches à produire, séparées par des virgules (défaut : route,terrain,segments)")
     b.add_argument("--offline", action="store_true",
                    help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
 
     a = sub.add_parser("add-layer", help="régénère une couche d'un .world existant")
     a.add_argument("world", type=Path)
-    a.add_argument("layer", choices=["terrain", "buildings", "vegetation", "poi", "water"])
+    a.add_argument("layer", choices=["terrain", "buildings", "vegetation", "poi", "water", "segments"])
+    a.add_argument("--manual", type=Path, default=None,
+                   help="segments : fichier <parcours>.segments.toml (défaut : celui de la trace source, "
+                        "cherché à côté du .world puis dans ~/OpenRide/GPX)")
     a.add_argument("--offline", action="store_true",
                    help="interdit le réseau : les données doivent être en cache")
 
@@ -113,19 +126,56 @@ def build_parser() -> argparse.ArgumentParser:
     tc.add_argument("theme_dir", type=Path)
 
     default_gpx = Path.home() / "OpenRide" / "GPX"
-    ls = sub.add_parser("list", help="liste les parcours (.world et .gpx) et leur statut")
+    ls = sub.add_parser("list", help="liste les parcours (.world et traces .gpx, .fit, .tcx, .fit.gz, .tcx.gz, .zip) et leur statut")
     ls.add_argument("--gpx-dir", type=Path, default=default_gpx,
                     help=f"dossier des traces GPX (défaut : {default_gpx})")
     ls.add_argument("--routes-dir", type=Path, default=C.ROUTES_DIR,
                     help=f"dossier des parcours .world (défaut : {C.ROUTES_DIR})")
+    ls.add_argument("--sort", choices=SORT_KEYS, help="trie par nom, distance, dénivelé positif, pente "
+                    "maximale, durée estimée ou difficulté (croissant)")
+    ls.add_argument("--reverse", action="store_true", help="tri décroissant")
+    ls.add_argument("--tag", help="seulement les parcours portant cette étiquette (fiche .toml)")
+    ls.add_argument("--region", help="seulement les parcours dont la région contient ce texte")
+    ls.add_argument("--status", choices=["ready", "to_compile", "outdated", "invalid"])
+    ls.add_argument("--min-km", type=float, help="distance minimale en km")
+    ls.add_argument("--max-km", type=float, help="distance maximale en km")
+    ls.add_argument("--max-difficulty", type=int, choices=range(1, 6), metavar="1-5",
+                    help="difficulté maximale (1 à 5)")
+    ls.add_argument("--ftp", type=float, help="puissance de la durée estimée (défaut : FTP de config.toml, "
+                    "sinon 200 W)")
+    ls.add_argument("--json", action="store_true", help="sortie JSON (fiches complètes)")
 
-    ba = sub.add_parser("build-all", help="compile toutes les traces GPX nouvelles ou modifiées")
+    rpi = sub.add_parser("route-pack-install",
+                         help="installe un pack de parcours (dossier ou .zip de traces et de fiches .toml)")
+    rpi.add_argument("source", type=Path, help="dossier du pack ou archive .zip")
+    rpi.add_argument("--name", help="nom du pack (défaut : pack.toml, sinon nom de la source)")
+    rpi.add_argument("--force", action="store_true", help="remplace un pack installé du même nom")
+    rpi.add_argument("--gpx-dir", type=Path, default=default_gpx,
+                     help=f"dossier des traces, le pack va dans un sous-dossier (défaut : {default_gpx})")
+    rpb = sub.add_parser("route-pack-build",
+                         help="construit un pack de parcours depuis ses recettes et OpenStreetMap (lot O16)")
+    rpb.add_argument("pack", help="pack livré (cols_celebres) ou dossier de recettes .toml")
+    rpb.add_argument("--out", type=Path, default=DEFAULT_PACK_WORK_DIR,
+                     help=f"dossier de travail où le pack est écrit (défaut : {DEFAULT_PACK_WORK_DIR})")
+    rpb.add_argument("--only", help="seulement ces cols, séparés par des virgules (identifiants des recettes)")
+    rpb.add_argument("--offline", action="store_true",
+                     help="interdit le réseau : routes OSM et tuiles d'altitude doivent être en cache")
+    rpb.add_argument("--install", action="store_true",
+                     help="installe ensuite le pack dans le dossier des traces (comme route-pack-install --force)")
+    rpb.add_argument("--gpx-dir", type=Path, default=default_gpx,
+                     help=f"avec --install : dossier des traces (défaut : {default_gpx})")
+    rpl = sub.add_parser("route-pack-list", help="liste les packs de parcours installés")
+    rpl.add_argument("--gpx-dir", type=Path, default=default_gpx,
+                     help=f"dossier des traces (défaut : {default_gpx})")
+    rpl.add_argument("--json", action="store_true", help="sortie JSON")
+
+    ba = sub.add_parser("build-all", help="compile toutes les traces nouvelles ou modifiées (GPX, FIT, TCX, archives Garmin)")
     ba.add_argument("--gpx-dir", type=Path, default=default_gpx,
                     help=f"dossier des traces GPX (défaut : {default_gpx})")
     ba.add_argument("--routes-dir", type=Path, default=C.ROUTES_DIR,
                     help=f"dossier de sortie des .world (défaut : {C.ROUTES_DIR})")
     ba.add_argument("--layers", type=parse_layers, default=DEFAULT_LAYERS,
-                    help="couches à produire pour chaque trace (défaut : route,terrain)")
+                    help="couches à produire pour chaque trace (défaut : route,terrain,segments)")
     ba.add_argument("--offline", action="store_true",
                     help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
     ba.add_argument("--dry-run", action="store_true",
@@ -147,6 +197,9 @@ def build_parser() -> argparse.ArgumentParser:
     store.add_info_arguments(ci)
     cc = sub.add_parser("cache-clean", help="monde ouvert : vide le cache local (carrés générés par défaut)")
     store.add_clean_arguments(cc)
+    wm = sub.add_parser("world-measure",
+                        help="monde ouvert : mesure volumes, temps de génération et débit (lot W0)")
+    measure.add_arguments(wm)
 
     return parser
 
@@ -163,8 +216,12 @@ def _report_alt(compiled) -> None:
 
 def cmd_build(args: argparse.Namespace) -> int:
     t0 = time.monotonic()
-    name = normalize_name(args.name if args.name else args.gpx.stem)
-    points = read_track(args.gpx)
+    stem = track_stem(args.gpx.name)
+    name = normalize_name(args.name if args.name else (stem[0] if stem else args.gpx.stem))
+    notes: list[str] = []
+    points = read_track(args.gpx, notes)
+    for note in notes:
+        print(f"openride-compiler : {note}", file=sys.stderr)
     final = Path(args.out) / f"{name}.world"
     if final.exists() and not args.force:   # avant tout téléchargement
         raise CompileError(f"{final} existe déjà (utiliser --force pour le remplacer)")
@@ -172,6 +229,17 @@ def cmd_build(args: argparse.Namespace) -> int:
     compiled = compile_route(points, out_and_back=args.out_and_back, provider=provider)
     _report_alt(compiled)
     manifest = build_manifest(name, compiled, args.gpx.name, sha256_of(args.gpx))
+    side = sidecar_path(args.gpx, stem[0] if stem else args.gpx.stem)
+    if side.is_file():
+        try:
+            manifest["library"] = load_library(side)
+        except LibraryError as exc:
+            print(f"openride-compiler : fiche ignorée : {exc}", file=sys.stderr)
+    segments = None
+    if "segments" in args.layers:
+        segments = _build_segments_layer(compiled.route, args.gpx, stem[0] if stem else args.gpx.stem)
+        if segments is not None:
+            manifest["layers"]["segments"] = SEG.segments_manifest(segments)
     frame = LocalFrame.from_manifest(manifest)
     tiles = None
     if "terrain" in args.layers:
@@ -194,6 +262,8 @@ def cmd_build(args: argparse.Namespace) -> int:
             manifest["layers"]["water"] = water_manifest(osm_res)
 
     def extra(folder: Path) -> None:
+        if segments is not None:
+            SEG.write_segments(folder, segments)
         if tiles is not None:
             write_terrain(folder / "terrain", tiles)
         if osm_res is not None:
@@ -214,6 +284,55 @@ def cmd_build(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def _build_segments_layer(route: dict, track: Path, stem: str) -> list[dict] | None:
+    """Segments d'un parcours en cours de compilation ; None (avec avertissement) sans core."""
+    core = SEG.core_segments()
+    if core is None:
+        print("openride-compiler : avertissement : core OpenRide non installé, couche segments omise "
+              "(le parcours reste valide)", file=sys.stderr)
+        return None
+    side = SEG.manual_path(track, stem)
+    manual = SEG.load_manual(side, route["length_m"]) if side.is_file() else None
+    segments = SEG.build_segments(route, manual, core)
+    print(f"segments : {SEG.summarize(segments)}"
+          + (f", fichier {side.name} ({manual.mode})" if manual else ""), file=sys.stderr)
+    return segments
+
+
+def _default_manual(world: Path, manifest: dict) -> Path | None:
+    """Fichier manuel de la trace source, à côté du .world puis dans le dossier des traces."""
+    gpx = (manifest.get("source") or {}).get("gpx")
+    if not gpx:
+        return None
+    stem = track_stem(gpx)
+    name = f"{stem[0] if stem else Path(gpx).stem}{SEG.MANUAL_SUFFIX}"
+    for folder in (world.parent, Path.home() / "OpenRide" / "GPX"):
+        if (folder / name).is_file():
+            return folder / name
+    return None
+
+
+def _add_segments_layer(world: Path, manifest: dict, route: dict, manual_file: Path | None,
+                        t0: float) -> int:
+    """`add-layer … segments` : depuis la couche route seule, sans réseau ni projection UTM."""
+    if SEG.core_segments() is None:
+        raise CompileError("couche segments : le core OpenRide (openride_core) n'est pas installé ; "
+                           "installer le core dans le même environnement que le compilateur")
+    if manual_file is not None and not Path(manual_file).is_file():
+        raise CompileError(f"{manual_file} : fichier manuel introuvable")
+    side = manual_file if manual_file is not None else _default_manual(world, manifest)
+    manual = SEG.load_manual(side, route["length_m"]) if side is not None else None
+    segments = SEG.build_segments(route, manual)
+    SEG.replace_segments(world, segments)
+    manifest.setdefault("layers", {})["segments"] = SEG.segments_manifest(segments)
+    manifest["format_version"] = C.FORMAT_VERSION
+    replace_manifest(world, manifest)
+    print(f"{world} : couche segments régénérée, {SEG.summarize(segments)}"
+          + (f", fichier {side.name}" if side is not None else "")
+          + f" ({time.monotonic() - t0:.1f} s)")
+    return EXIT_OK
+
+
 def cmd_add_layer(args: argparse.Namespace) -> int:
     t0 = time.monotonic()
     world = Path(args.world)
@@ -223,6 +342,8 @@ def cmd_add_layer(args: argparse.Namespace) -> int:
         route = json.loads((world / route_file).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError, AttributeError) as exc:
         raise CompileError(f"{world} : parcours illisible ({exc})") from exc
+    if args.layer == "segments":
+        return _add_segments_layer(world, manifest, route, getattr(args, "manual", None), t0)
     if manifest.get("projection") != "utm":
         raise CompileError(f"{world} : projection {manifest.get('projection')!r} ; cette couche demande "
                            "un parcours compilé en UTM (les parcours synthétiques ne sont pas géoréférencés)")
@@ -299,6 +420,8 @@ def cmd_info(args: argparse.Namespace) -> int:
               f"{len(tiles.get('far', []))} lointaine(s) ({', '.join(terrain.get('sources', []))})")
     else:
         print("Terrain           : absent")
+    segments = info.get("segments")
+    print(f"Segments          : {SEG.summarize(segments) if segments is not None else 'absents'}")
     return EXIT_OK
 
 
@@ -344,6 +467,9 @@ def cmd_theme_check(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+DEFAULT_PACK_WORK_DIR = Path.home() / ".cache" / "openride" / "route_packs"
+
+
 # Parcours de démonstration du core (`openride_core.demo_world`), repris ici pour que le repli
 # fonctionne sans le core ; `test_catalog_parity.py` vérifie que les deux valeurs restent égales.
 DEMO_NAME = "demo"
@@ -361,6 +487,23 @@ class CatalogEntry:
     has_terrain: bool
     gpx_path: Path | None
     error: str | None = None
+    stats: dict | None = None    # fiche calculée (lot O15)
+    library: dict | None = None  # fiche saisie (lot O15)
+
+
+def _library_for(track: Path | None, manifest: dict | None) -> dict | None:
+    """Fiche saisie : `<trace>.toml` à côté de la trace, sinon celle copiée dans le manifeste."""
+    if track is not None:
+        stem = track_stem(track.name)
+        side = sidecar_path(track, stem[0] if stem else track.stem)
+        if side.is_file():
+            try:
+                return load_library(side)
+            except LibraryError as exc:
+                print(f"openride-compiler : fiche ignorée : {exc}", file=sys.stderr)
+                return None
+    lib = (manifest or {}).get("library")
+    return lib if isinstance(lib, dict) else None
 
 
 def _catalog_entries(routes_dir: Path, gpx_dir: Path) -> list:
@@ -392,12 +535,12 @@ def fallback_catalog(routes_dir: Path, gpx_dir: Path) -> list[CatalogEntry]:
     gpx_by_sha: dict[str, list[Path]] = {}
     gpx_by_norm: dict[str, Path] = {}
     if gpx_dir.is_dir():
-        for gf in sorted(p for p in gpx_dir.iterdir() if p.is_file() and p.suffix.lower() == ".gpx"):
+        for gf in scan_tracks(gpx_dir)[0]:
             try:
                 sha = sha256_of(gf)
             except OSError:
                 continue
-            norm = normalize_name(gf.stem)
+            norm = normalize_name(track_stem(gf.name)[0])
             gpx_by_name[gf.name] = (gf, sha, norm)
             gpx_by_sha.setdefault(sha, []).append(gf)
             gpx_by_norm.setdefault(norm, gf)
@@ -430,7 +573,8 @@ def fallback_catalog(routes_dir: Path, gpx_dir: Path) -> list[CatalogEntry]:
                 matched.add(gpath)
 
             if problems:
-                entry = CatalogEntry(rid, rid, "invalid", None, None, False, gpath, problems[0])
+                entry = CatalogEntry(rid, rid, "invalid", None, None, False, gpath, problems[0],
+                                     library=_library_for(gpath, None))
             else:
                 assert isinstance(manifest, dict)   # verify_world a lu le manifeste
                 mroute = manifest.get("route") if isinstance(manifest.get("route"), dict) else {}
@@ -441,10 +585,13 @@ def fallback_catalog(routes_dir: Path, gpx_dir: Path) -> list[CatalogEntry]:
                 elif gpath is not None and src_sha is None and rid != DEMO_NAME:
                     status = "outdated"
                 tlayer = (manifest.get("layers") or {}).get("terrain")
+                stats = manifest.get("stats")
                 entry = CatalogEntry(
                     rid, str(manifest.get("name") or rid), status,
                     float(route["length_m"]), str(route.get("type", "open")),
-                    bool(isinstance(tlayer, dict) and tlayer.get("present")), gpath, None)
+                    bool(isinstance(tlayer, dict) and tlayer.get("present")), gpath, None,
+                    stats=stats if stats_usable(stats) else compute_stats(route),
+                    library=_library_for(gpath, manifest))
             if rid == DEMO_NAME:
                 demo = entry
             else:
@@ -454,20 +601,112 @@ def fallback_catalog(routes_dir: Path, gpx_dir: Path) -> list[CatalogEntry]:
         demo = CatalogEntry(DEMO_NAME, DEMO_NAME, "ready", DEMO_LENGTH_M, "open", False, None, None)
     for gpath, _sha, norm in gpx_by_name.values():
         if gpath not in matched:
-            entries.append(CatalogEntry(norm, gpath.stem, "to_compile", None, None, False, gpath, None))
+            entries.append(CatalogEntry(norm, track_stem(gpath.name)[0], "to_compile", None, None, False, gpath,
+                                        None, library=_library_for(gpath, None)))
     return [demo, *sorted(entries, key=lambda e: (e.id, e.name))]
 
 
+def _print_conflicts(gpx_dir: Path) -> None:
+    for lost, kept in scan_tracks(gpx_dir)[1]:
+        print(f"openride-compiler : conflit : {lost.name} ignoré, même parcours que {kept.name}",
+              file=sys.stderr)
+
+
+def _default_ftp() -> float:
+    """FTP de config.toml si le core est installé et la configuration lisible, sinon 200 W."""
+    try:
+        from openride_core import config as core_config
+        return float(core_config.load().rider.ftp_w)
+    except Exception:   # core absent ou configuration invalide : la durée reste estimée à 200 W
+        return 200.0
+
+
+def _entry_json(e, gpx_dir: Path, power_w: float) -> dict:
+    gpx = None
+    if e.gpx_path is not None:
+        try:
+            gpx = e.gpx_path.relative_to(gpx_dir).as_posix()
+        except ValueError:
+            gpx = e.gpx_path.name
+    return {"id": e.id, "name": e.name, "status": e.status, "length_m": e.length_m,
+            "route_type": e.route_type, "has_terrain": e.has_terrain, "gpx": gpx, "error": e.error,
+            "stats": e.stats, "library": e.library, "power_w": power_w,
+            "duration_s": duration_at(e.stats, power_w)}
+
+
+def _fmt_duration(seconds: int | None) -> str:
+    return "-" if seconds is None else f"{seconds // 3600}h{seconds % 3600 // 60:02d}"
+
+
 def cmd_list(args: argparse.Namespace) -> int:
-    entries = _catalog_entries(Path(args.routes_dir).expanduser(), Path(args.gpx_dir).expanduser())
-    print(f"{'ID':<22} {'Statut':<12} {'Longueur':>10} {'Type':<13} {'Terrain':<8} Détail")
-    print("-" * 80)
+    gpx_dir = Path(args.gpx_dir).expanduser()
+    entries = _catalog_entries(Path(args.routes_dir).expanduser(), gpx_dir)
+    _print_conflicts(gpx_dir)
+    power = args.ftp if args.ftp else _default_ftp()
+    filters = {"tag": args.tag, "region": args.region, "status": args.status, "min_km": args.min_km,
+               "max_km": args.max_km, "max_difficulty": args.max_difficulty}
+    entries = query(entries, sort=args.sort, filters=filters, reverse=args.reverse, power_w=power)
+    if args.json:
+        print(json.dumps([_entry_json(e, gpx_dir, power) for e in entries], indent=2, ensure_ascii=False,
+                         sort_keys=True))
+        return EXIT_OK
+    print(f"{'ID':<22} {'Statut':<12} {'Longueur':>10} {'D+':>7} {'Pente':>6} {'Diff':>4} "
+          f"{f'à {power:.0f} W':>8} {'Type':<13} {'Terrain':<8} Détail")
+    print("-" * 110)
     for e in entries:
+        st = e.stats or {}
         length_str = f"{e.length_m / 1000:.2f} km" if e.length_m is not None else "-"
+        gain_str = f"{st['gain_m']:.0f} m" if "gain_m" in st else "-"
+        grade_str = f"{st['max_grade_pct']:.0f} %" if "max_grade_pct" in st else "-"
+        diff_str = str(st.get("difficulty", "-"))
         type_str = e.route_type or "-"
         terr_str = "oui" if e.has_terrain else "non"
+        tags = ",".join((e.library or {}).get("tags", []))
         detail = e.error or (e.gpx_path.name if e.gpx_path else "")
-        print(f"{e.id:<22} {e.status:<12} {length_str:>10} {type_str:<13} {terr_str:<8} {detail}")
+        if tags:
+            detail = f"{detail} [{tags}]".strip()
+        print(f"{e.id:<22} {e.status:<12} {length_str:>10} {gain_str:>7} {grade_str:>6} {diff_str:>4} "
+              f"{_fmt_duration(duration_at(e.stats, power)):>8} {type_str:<13} {terr_str:<8} {detail}")
+    return EXIT_OK
+
+
+def cmd_route_pack_install(args: argparse.Namespace) -> int:
+    from .route_pack import install_pack
+    name, count, target = install_pack(args.source, Path(args.gpx_dir).expanduser(), name=args.name,
+                                       force=args.force)
+    print(f"Pack « {name} » installé : {count} trace(s) dans {target}.")
+    print("Compiler les parcours : openride-compiler build-all")
+    return EXIT_OK
+
+
+def cmd_route_pack_build(args: argparse.Namespace) -> int:
+    from .route_recipe import build_pack, pack_dir
+    source = pack_dir(args.pack)
+    client = make_osm_client(args.offline)
+    only = [o.strip() for o in args.only.split(",") if o.strip()] if args.only else None
+    target, done, refused = build_pack(source, Path(args.out).expanduser(), client.fetch_query,
+                                       make_provider(args.offline), only=only)
+    print(f"Pack écrit dans {target} : {len(done)} col(s) construit(s), {len(refused)} refusé(s).")
+    for msg in refused:
+        print(f"openride-compiler : refusé : {msg}", file=sys.stderr)
+    if args.install and done:
+        from .route_pack import install_pack
+        name, count, folder = install_pack(target, Path(args.gpx_dir).expanduser(), force=True)
+        print(f"Pack « {name} » installé : {count} trace(s) dans {folder}. Compiler : openride-compiler build-all")
+    return EXIT_INPUT if refused or not done else EXIT_OK
+
+
+def cmd_route_pack_list(args: argparse.Namespace) -> int:
+    from .route_pack import list_packs
+    packs = list_packs(Path(args.gpx_dir).expanduser())
+    if args.json:
+        print(json.dumps(packs, indent=2, ensure_ascii=False, sort_keys=True))
+        return EXIT_OK
+    if not packs:
+        print("Aucun pack de parcours installé.")
+    for p in packs:
+        extra = f" — {p['description']}" if p.get("description") else ""
+        print(f"{p['id']:<22} {p['tracks']:>3} trace(s)  {p.get('name', p['id'])}{extra}")
     return EXIT_OK
 
 
@@ -475,6 +714,7 @@ def cmd_build_all(args: argparse.Namespace) -> int:
     routes_dir = Path(args.routes_dir).expanduser()
     gpx_dir = Path(args.gpx_dir).expanduser()
     entries = _catalog_entries(routes_dir, gpx_dir)
+    _print_conflicts(gpx_dir)
 
     compiled_count = 0
     skipped_count = 0
@@ -512,6 +752,10 @@ def cmd_build_all(args: argparse.Namespace) -> int:
     return EXIT_INPUT if error_count > 0 else EXIT_OK
 
 
+def cmd_world_measure(args: argparse.Namespace) -> int:
+    return measure.run_from_args(args)
+
+
 COMMANDS = {
     "build": cmd_build,
     "add-layer": cmd_add_layer,
@@ -524,6 +768,10 @@ COMMANDS = {
     "build-all": cmd_build_all,
     "cache-info": store.cmd_cache_info,
     "cache-clean": store.cmd_cache_clean,
+    "world-measure": cmd_world_measure,
+    "route-pack-install": cmd_route_pack_install,
+    "route-pack-build": cmd_route_pack_build,
+    "route-pack-list": cmd_route_pack_list,
 }
 
 

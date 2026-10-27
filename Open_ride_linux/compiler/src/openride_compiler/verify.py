@@ -3,7 +3,8 @@
 Contrôles : structure et manifeste, nombre de valeurs de chaque tableau de la route,
 cohérence entre `length_m`, `n` et `ds_m`, accord manifeste / route, boucle fermée,
 plages de valeurs ; terrain : taille des tuiles, présence des tuiles listées, égalité des
-bords partagés, absence de NaN à moins de 25 m de la route.
+bords partagés, absence de NaN à moins de 25 m de la route ; segments (format 1.3) : bornes
+dans le parcours, identifiants uniques, types et catégories connus.
 """
 
 from __future__ import annotations
@@ -16,6 +17,7 @@ from pathlib import Path
 import numpy as np
 
 from . import constants as C
+from . import segments_layer as SEG
 from .osm_layers import nearest_chunk_and_y, ring_centroid, signed_area
 from .terrain import LEVELS, NEAR, TILE_BYTES, RouteAxis, read_tile, tile_coords, tile_filename
 
@@ -427,6 +429,58 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
 
 
+def _check_segments(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
+    """Couche segments (format 1.3, §8 bis) : bornes dans le parcours, identifiants uniques, types."""
+    s_layer = layers.get("segments") if isinstance(layers, dict) else None
+    if not isinstance(s_layer, dict) or not s_layer.get("present"):
+        return
+    data = _load(world / str(s_layer.get("file", SEG.LAYER_FILE)), problems)
+    if data is None:
+        return
+    if not str(data.get("version", "")).startswith("1."):
+        problems.append(f"segments : version inattendue {data.get('version')!r}")
+    items = data.get("segments")
+    if not isinstance(items, list):
+        problems.append("segments : « segments » n'est pas une liste")
+        return
+    if len(items) > SEG.MAX_SEGMENTS:
+        problems.append(f"segments : {len(items)} segments, au plus {SEG.MAX_SEGMENTS}")
+    if s_layer.get("count") is not None and s_layer.get("count") != len(items):
+        problems.append(f"segments : manifeste count = {s_layer.get('count')}, fichier : {len(items)}")
+    length = float(route["length_m"]) if route is not None else None
+    seen: set[str] = set()
+    for k, item in enumerate(items, 1):
+        if not isinstance(item, dict):
+            problems.append(f"segments : élément {k} non objet")
+            continue
+        sid = item.get("id")
+        label = f"segments ({sid if isinstance(sid, str) else k})"
+        if not isinstance(sid, str) or not sid:
+            problems.append(f"{label} : id invalide")
+        elif sid in seen:
+            problems.append(f"{label} : identifiant en double")
+        else:
+            seen.add(sid)
+        kind = item.get("type")
+        if kind not in SEG.TYPES:
+            problems.append(f"{label} : type inconnu {kind!r}")
+        cat = item.get("category")
+        if kind == "climb" and cat not in SEG.CATEGORIES:
+            problems.append(f"{label} : catégorie inconnue {cat!r}")
+        if kind == "sprint" and cat is not None:
+            problems.append(f"{label} : un sprint n'a pas de catégorie")
+        if item.get("source") not in ("auto", "manual"):
+            problems.append(f"{label} : source inconnue {item.get('source')!r}")
+        s0, s1 = item.get("s_start"), item.get("s_end")
+        if not (_is_number(s0) and _is_number(s1)):
+            problems.append(f"{label} : s_start ou s_end invalide")
+            continue
+        if not float(s0) < float(s1):
+            problems.append(f"{label} : s_start ({s0}) doit être inférieur à s_end ({s1})")
+        if float(s0) < 0 or (length is not None and float(s1) > length + 0.1):
+            problems.append(f"{label} : {s0}–{s1} m hors du parcours")
+
+
 def verify_world(world: Path) -> list[str]:
     """Liste des problèmes d'un `.world` ; liste vide si le parcours est valide."""
     world = Path(world)
@@ -450,6 +504,7 @@ def verify_world(world: Path) -> list[str]:
     _check_vegetation(world, layers, route, problems)
     _check_poi(world, layers, route, problems)
     _check_water(world, layers, route, problems)
+    _check_segments(world, layers, route, problems)
     return problems
 
 
@@ -471,4 +526,14 @@ def world_info(world: Path) -> dict:
         "grade_clamped_points": mroute.get("grade_clamped_points", 0),
         "alt_source": mroute.get("alt_source", "gpx"),
         "terrain": manifest.get("layers", {}).get("terrain", {"present": False}),
+        "segments": _segments_for_info(world, manifest),
     }
+
+
+def _segments_for_info(world: Path, manifest: dict) -> list[dict] | None:
+    """Segments de la couche, ou None si elle est absente."""
+    s_layer = manifest.get("layers", {}).get("segments") or {}
+    if not s_layer.get("present"):
+        return None
+    data = json.loads((world / s_layer.get("file", SEG.LAYER_FILE)).read_text(encoding="utf-8"))
+    return data["segments"]

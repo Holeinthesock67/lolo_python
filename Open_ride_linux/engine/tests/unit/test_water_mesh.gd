@@ -1,9 +1,11 @@
 extends SceneTree
 
-## Tests unitaires sans écran du maillage de l'eau `water_mesh.gd` (Lot L2).
+## Tests unitaires sans écran du maillage de l'eau `water_mesh.gd` (Lot L2) et de son matériau, avec ou
+## sans reflets animés (Lot P12).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_water_mesh.gd
 
 const WaterMesh := preload("res://scripts/water_mesh.gd")
+const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 
 var _failures := 0
 var _checked := 0
@@ -184,6 +186,26 @@ func _test_determinism() -> void:
 		"déterminisme : deux appels identiques produisent des tableaux strictement égaux")
 
 
+# Lot P12 : sans shimmer, le matériau d'E4 inchangé ; avec, des ondes qui défilent dans le sens du vent
+func _test_shimmer_material() -> void:
+	var plain = WaterMesh.make_material(false)
+	_check(plain is StandardMaterial3D and plain.albedo_color == OsmStreamer.WATER_COLOR
+		and is_equal_approx(plain.roughness, 0.10),
+		"sans shimmer : StandardMaterial3D de la couleur et de la rugosité d'E4")
+	WaterMesh.update_shimmer(plain, {"dir": Vector3(1, 0, 0), "strength": 1.0}, 1.0)
+	_check(plain.albedo_color == OsmStreamer.WATER_COLOR, "sans shimmer : update_shimmer sans effet")
+	var sh = WaterMesh.make_material(true)
+	_check(sh is ShaderMaterial and (sh as ShaderMaterial).shader != null, "avec shimmer : matériau du shader water_shimmer")
+	var f0: Vector2 = sh.get_shader_parameter("flow")
+	for i in range(60):
+		WaterMesh.update_shimmer(sh, {"dir": Vector3(0, 0, -1), "strength": 0.5}, 1.0 / 60.0)
+	var f1: Vector2 = sh.get_shader_parameter("flow")
+	var half := TAU * 50.0   # décalage replié modulo 200π
+	var step := Vector2(wrapf(f1.x - f0.x, -half, half), wrapf(f1.y - f0.y, -half, half))
+	_check(step.y < 0.0 and absf(step.x) < 1e-6 and absf(step.length() - (0.05 + 0.6 * 0.5)) < 0.01,
+		"ondes poussées vers le nord par un vent de 30 km/h (%.3f m en 1 s)" % step.length())
+
+
 func _init() -> void:
 	_test_straight_river()
 	_test_right_angle_river()
@@ -191,5 +213,6 @@ func _init() -> void:
 	_test_default_width_and_unknown_kind()
 	_test_invalid_cases()
 	_test_determinism()
+	_test_shimmer_material()
 	print("test_water_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
