@@ -227,6 +227,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 ### Après la 1.0 : décor vivant, vent et aspiration (série P rédigée le 25 octobre)
 - [x] Contrat : vent et aspiration dans `state` (IPC révision 1.3), configuration `[wind]`, thème 1.2, points d'intérêt `wind_turbine` et `flag` (lot P1, décisions du propriétaire du 25 octobre).
 - [x] Vent physique côté core : vent calme, fixe, en rafales ou du thème, composante de face sur la physique (cycliste et bots), supplément de pente en SIM borné à 4 points ou champ vent FTMS, ERG vitesse seulement, champ `wind` 2 fois par seconde, journal (lot P2, `core/tests/test_wind.py`).
+- [x] Aspiration derrière les bots à puissance constante (courbe mesurée, effet de file, vent de travers, poussée du bot suivi), lissée à 1 s, sur la vitesse et la pente envoyée en SIM, champs `draft` et `draft_bot`, temps à l'abri dans le bilan (lot P3, `core/tests/test_draft.py`).
 - [ ] Vent physique et aspiration derrière les bots, côté core (lots P2 et P3).
 - [x] Engine : modèle du vent lissé pour tout le décor, modèle de l'indicateur du vent (favorable ou non, intensité) et de l'abri, budgets du décor vivant par préréglage (lot P4, sans affichage).
 - [x] Arbres qui se balancent au vent (shader `tree_sway.gdshader`, paramètres globaux du vent) et touffes d'herbe en bord de route au vent apparent en qualité moyenne et haute (lot P5, branchement dans `main.gd` par P16).
