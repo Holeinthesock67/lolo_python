@@ -11,6 +11,8 @@ Sortes de lignes :
   FTP de la séance, lue pour les pièces gagnées à l'effort, lot V3b, écrite à partir de V11) ;
   champ facultatif `plan` = `{"id": ..., "week": n, "day": "mardi"}` quand la séance réalise une
   séance d'un plan d'entraînement actif (lot O11), absent sinon ;
+  champ facultatif `loadout` = `{"frame": ..., "wheels": ..., "mass_delta_kg": ..., "cda_delta_pct": ...}`
+  (équipement du cadre et des roues, lot V11) ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
 - `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ;
 - `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un
@@ -87,7 +89,8 @@ def record_line(rec: Record) -> dict:
 
 class JournalWriter:
     def __init__(self, path: Path, route_id: str | None = None, workout_id: str | None = None,
-                 header: bool = True, source: str | None = None, plan: dict | None = None) -> None:
+                 header: bool = True, source: str | None = None, plan: dict | None = None,
+                 progression: dict | None = None) -> None:
         """Ouvre le journal en ajout ; `header=False` continue un journal existant (reprise, lot N8)."""
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -99,6 +102,8 @@ class JournalWriter:
                 head["source"] = source
             if plan:
                 head["plan"] = plan
+            if progression:   # `loadout` et `ftp_w` de la série V (lot V11), absents sans progression
+                head.update(progression)
             self._write(head)
 
     def _write(self, obj: dict) -> None:

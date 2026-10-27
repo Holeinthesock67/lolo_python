@@ -415,11 +415,13 @@ gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme"
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
+[progression]
+enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0
 ```
 
 Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
 
-La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
+La section `[progression]` (lot V11) coupe, avec `enabled = false`, l'équipement, le message `progression` et le bilan `xp_result`. La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
 
 **Sections prévues pour la 2.0.** Les clés des sections `[rogue]` et `[avatar]` sont fixées par la révision 1.4 du contrat IPC (lot T1) ; elles rejoindront l'exemple ci-dessus avec les lots qui les lisent (le core les transmet à l'engine dans `hello_ack.config.rogue` et `hello_ack.config.progression.avatar`) :
 

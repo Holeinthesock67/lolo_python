@@ -31,6 +31,7 @@ from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
 from .progression import journal_source
 from .mock_driver import MockDriver
+from .garage import GarageError, ProgressionService, workout_duration_finder
 from .physics import PhysicsParams, RiderPhysics
 from .recorder import SessionRecorder
 from .resume import ResumeError, ResumeState, load_resume_state
@@ -55,6 +56,10 @@ SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer 
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
 DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" / "default" / "theme.json"
+
+
+XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
+XP_RESULT_PERIOD_S = 1.0
 
 
 class LoopStats:
@@ -207,7 +212,7 @@ class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
                  journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
                  workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None,
-                 config_path: Path | None = None) -> None:
+                 config_path: Path | None = None, profile_path: Path | None = None) -> None:
         self.cfg = cfg
         self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
@@ -219,7 +224,8 @@ class CoreSession:
         self.routes_root = routes_root or routes_dir()
         self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
-        self.physics = RiderPhysics(PhysicsParams.from_config(cfg))
+        self.progress_svc = self._build_progression(profile_path)   # série V (lot V11)
+        self.physics = RiderPhysics(self._base_params())
         self.wind = WindModel.from_config(
             cfg.wind, theme_wind(cfg.render.theme) if cfg.wind.mode == "theme" else None)
         self._wind_sample = self.wind.sample(0.0) if self.wind.active else CALM
@@ -244,6 +250,7 @@ class CoreSession:
             on_engine_returned=lambda: log.info("Engine connecté."),
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
                           "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct)})
+        self._publish_progression()
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
                  cfg.trainer.grade_rate_up_pct_per_s, cfg.trainer.grade_rate_down_pct_per_s)
@@ -375,6 +382,89 @@ class CoreSession:
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
         elif name in ("list_imports", "create_workout", "import_workout"):
             self._on_workout_menu_command(name, args, cmd_id)
+        elif name in ("list_garage", "equip", "buy", "set_avatar"):
+            self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
+
+    # --- progression, Garage et bilan d'expérience (série V, lot V11, contrat IPC révision 1.4) ----
+
+    def _build_progression(self, profile_path: Path | None) -> ProgressionService:
+        from .garage import PROFILE_PATH
+
+        return ProgressionService(self.cfg, self.journal_dir, workout_duration_finder(self.workouts_dir),
+                                  profile_path or PROFILE_PATH)
+
+    def _base_params(self) -> PhysicsParams:
+        """Paramètres physiques de la séance : `config.toml` et équipement choisi (cadre, roues)."""
+        return self.progress_svc.physics_params(PhysicsParams.from_config(self.cfg))
+
+    def _publish_progression(self) -> None:
+        """`hello_ack.config.progression` d'après l'état courant (retiré si la progression est coupée)."""
+        config = self.server.hello_config
+        progression = self.progress_svc.progression_dict()
+        if progression is None:
+            config.pop("progression", None)
+        else:
+            config["progression"] = progression
+
+    def _on_garage_command(self, name: str, args: dict, cmd_id: int) -> None:
+        svc = self.progress_svc
+        if self.state.session_state not in ("IDLE", "READY"):
+            self.server.send_error("busy", "Garage impossible pendant une séance (terminer d'abord).")
+            return
+        if not svc.enabled:
+            self.server.send_error("bad_args", "Progression coupée ([progression] enabled = false).")
+            return
+        if name == "list_garage":
+            for m in svc.garage_messages(cmd_id):
+                self.server.send_raw(m)
+            return
+        try:
+            if name == "equip":
+                svc.equip(args.get("slot"), args.get("item_id"))
+            elif name == "buy":
+                svc.buy(args.get("item_id"))
+            else:
+                svc.set_avatar(args.get("avatar"))
+        except GarageError as exc:
+            log.warning("Garage : %s refusé (%s) : %s", name, exc.code, exc)
+            self.server.send_error(exc.code, str(exc))
+            return
+        log.info("Garage : %s %s", name, {k: v for k, v in args.items() if k != "avatar"})
+        self.physics.p = self._base_params()   # le cadre et les roues valent pour la séance suivante
+        self._publish_progression()
+        self.server.send_raw(svc.progression_message(cmd_id))
+
+    def _after_session(self, journal: str, records: list[dict]) -> None:
+        """Bilan d'expérience de la séance qui vient de finir : calcul hors de la boucle, puis envoi."""
+        if not self.progress_svc.enabled:
+            return
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : bilan envoyé une fois
+            msg = self._build_xp_result(journal, records)
+            self.server.send_raw(msg)
+            return
+        self._spawn(self._send_xp_result(journal, records))
+
+    def _build_xp_result(self, journal: str, records: list[dict]) -> dict[str, Any]:
+        svc = self.progress_svc
+        old = svc.refresh()
+        msg = svc.xp_result(journal, old, records, PhysicsParams.from_config(self.cfg))
+        self._publish_progression()
+        return msg
+
+    async def _send_xp_result(self, journal: str, records: list[dict]) -> None:
+        """`xp_result` à la fin de la séance, répété chaque seconde tant qu'elle reste `FINISHED`."""
+        try:
+            msg = await asyncio.to_thread(self._build_xp_result, journal, records)
+            for i in range(XP_RESULT_REPEATS):
+                if self.state.session_state != "FINISHED":
+                    break
+                self.server.send_raw(msg)
+                if i < XP_RESULT_REPEATS - 1:
+                    await asyncio.sleep(XP_RESULT_PERIOD_S)
+        except Exception:
+            log.exception("Bilan d'expérience impossible (%s)", journal)
 
     # --- plans et test de FTP depuis le menu (lot O12, contrat IPC révision 1.3) ----------------
 
@@ -506,7 +596,7 @@ class CoreSession:
         log.info("Réglage enregistré (%s) : %s", self.config_path or "config.toml",
                  "; ".join(changed) if changed else "inchangé")
         # Prise en compte pour la séance suivante, sans relancer.
-        self.physics.p = PhysicsParams.from_config(self.cfg)
+        self.physics.p = self._base_params()
         self.gearing.k = min(max(self.cfg.gearing.start_gear, 1), self.gearing.n_gears)
         self.difficulty_pct = float(self.cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
@@ -735,6 +825,7 @@ class CoreSession:
         self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
                                     on_failure=self._on_recording_failure,
                                     workout_id=self._workout_id, source=self._journal_source(),
+                                    progression=self.progress_svc.journal_header(),
                                     plan=active_tag(self._workout_id, state_path=self.plan_state_path,
                                                     plans_dir=self.plans_dir, workouts_dir=self.workouts_dir))
         self._rec.event("start", time.time())
@@ -804,13 +895,17 @@ class CoreSession:
 
     def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
+        journal: str | None = None
+        records_done: list[dict] = []
         if self._rec:
             rec, self._rec = self._rec, None
+            journal = rec.path.name if rec.path is not None else None
             ftp_result = self._write_ftp_test(rec)
             if ftp_result is not None:
                 self._ftp_result = ftp_result
             fit_path, s, fit_error = rec.finish(save, ts=ts)
             records, events = rec.records, rec.events
+            records_done = records
             if fit_error and save:
                 self.server.send_error("recording_failed", f"FIT non produit : {fit_error}")
 
@@ -830,6 +925,8 @@ class CoreSession:
         self._ramp_watch = None
         self._sync_erg_state()
         self._set_state(final_state)
+        if journal is not None and final_state == "FINISHED":
+            self._after_session(journal, records_done)
 
     def _write_ftp_test(self, rec: SessionRecorder) -> FtpResult | None:
         """Séance de test de FTP : résultat au journal (ligne `ftp_test`), rien dans `config.toml`."""

@@ -134,6 +134,12 @@ class WindConfig:
 
 
 @dataclass
+class ProgressionConfig:
+    """Progression de la série V (lot V11) ; faux : ni équipement ni `progression`, comme avant la 2.0."""
+    enabled: bool = True
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -145,6 +151,7 @@ class Config:
     drivers: DriversConfig = field(default_factory=DriversConfig)
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
+    progression: ProgressionConfig = field(default_factory=ProgressionConfig)
 
     @property
     def total_mass_kg(self) -> float:

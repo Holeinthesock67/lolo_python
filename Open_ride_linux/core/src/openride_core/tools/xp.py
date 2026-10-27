@@ -31,7 +31,7 @@ from ..journal import JOURNAL_DIR
 from ..coins import CoinsError, balance, coin_table, coins_by_session, earned_coins
 from ..profile import PROFILE_PATH, peek_profile
 from ..progression import ProgressionError, load_table, recompute
-from ..workout import WorkoutError, load_workout, workout_path
+from ..garage import workout_duration_finder
 
 REASONS = {"replay": "rejeu", "simulated": "séance simulée", "too_short": "moins de 5 min"}
 
@@ -42,20 +42,6 @@ def _date(ts: float | None) -> str:
 
 def _fr(x: float, digits: int = 1) -> str:
     return f"{x:,.{digits}f}".replace(",", " ").replace(".", ",")
-
-
-def workout_duration_finder(directory: Path):
-    """Durée d'un entraînement d'après son identifiant (None s'il est introuvable)."""
-    cache: dict[str, float | None] = {}
-
-    def find(workout_id: str) -> float | None:
-        if workout_id not in cache:
-            try:
-                cache[workout_id] = load_workout(workout_path(directory, workout_id)).duration_s
-            except (WorkoutError, OSError):
-                cache[workout_id] = None
-        return cache[workout_id]
-    return find
 
 
 def run(directory: Path | None, as_json: bool, config_path: Path | None,
