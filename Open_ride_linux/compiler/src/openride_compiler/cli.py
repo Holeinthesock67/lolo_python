@@ -9,6 +9,7 @@
     openride-compiler theme-list [--themes-dir D] [--json]
     openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]
     openride-compiler cache-info [--json] | cache-clean [--generated | --all] [--yes]
+    openride-compiler region-add <région Geofabrik> [--keep-pbf] | region-update <région> | region-list [--json]
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
     openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]
@@ -53,8 +54,7 @@ from .route_stats import (SORT_KEYS, LibraryError, compute_stats, duration_at, l
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
 from .theme import check_theme
 from .verify import verify_world, world_info
-from .worldgen import store
-from .worldgen import measure
+from .worldgen import measure, region, store
 from .writer import build_manifest, normalize_name, replace_manifest, sha256_of, write_world
 
 LAYERS = ("route", "terrain", "buildings", "vegetation", "poi", "water", "segments")
@@ -197,6 +197,10 @@ def build_parser() -> argparse.ArgumentParser:
     store.add_info_arguments(ci)
     cc = sub.add_parser("cache-clean", help="monde ouvert : vide le cache local (carrés générés par défaut)")
     store.add_clean_arguments(cc)
+    for name, text in (("region-add", "monde ouvert : télécharge un extrait régional Geofabrik et le convertit (lot W3)"),
+                       ("region-update", "monde ouvert : retélécharge la région si Geofabrik en publie une plus récente"),
+                       ("region-list", "monde ouvert : régions du cache")):
+        region.add_arguments(sub.add_parser(name, help=text), name)
     wm = sub.add_parser("world-measure",
                         help="monde ouvert : mesure volumes, temps de génération et débit (lot W0)")
     measure.add_arguments(wm)
@@ -768,6 +772,9 @@ COMMANDS = {
     "build-all": cmd_build_all,
     "cache-info": store.cmd_cache_info,
     "cache-clean": store.cmd_cache_clean,
+    "region-add": region.cmd_region_add,
+    "region-update": region.cmd_region_update,
+    "region-list": region.cmd_region_list,
     "world-measure": cmd_world_measure,
     "route-pack-install": cmd_route_pack_install,
     "route-pack-build": cmd_route_pack_build,
