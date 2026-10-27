@@ -68,3 +68,9 @@ Aucune.
 
 - Conversion de l'extrait en base SQLite (W3), graphe routier (W4), profils d'arêtes (W5).
 - Toute mesure de rendu (W16).
+
+## 9. Livraison (27 octobre 2026, PR #279, issue #254)
+
+- `openride-compiler world-measure` (`compiler/src/openride_compiler/worldgen/measure.py`) et décodeur de tuiles vectorielles `worldgen/mvt.py`, bibliothèque standard seulement.
+- Tests : `compiler/tests/test_mvt.py` et `compiler/tests/test_world_measure.py` (critères 1 à 5, sans réseau).
+- Reste (propriétaire) : les deux mesures du §7 sur le PC ; le lot W1 reporte leurs chiffres dans le plan.

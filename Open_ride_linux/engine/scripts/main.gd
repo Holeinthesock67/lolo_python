@@ -225,6 +225,9 @@ func _ready() -> void:
 		if menu_flow.on_workout_saved(msg):
 			ipc.list_workouts()
 		_refresh_menu())
+	ipc.plans_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_plans(msg)
+		_refresh_menu())
 	ipc.command_acked.connect(func(cmd_name: String, _cmd_id: int) -> void:
 		menu_flow.on_command_acked(cmd_name)
 		_refresh_menu())
@@ -304,6 +307,7 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.list_routes()
 			ipc.list_workouts()
 			ipc.list_settings()
+			ipc.list_plans()
 			if act.get("route_id") != null:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
@@ -323,6 +327,14 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.set_setting(str(act["key"]), act["value"])
 		"list_imports":
 			ipc.list_imports()
+		"list_plans":
+			ipc.list_plans()
+		"start_plan":
+			ipc.start_plan(str(act["id"]), act.get("start_date", null))
+		"stop_plan":
+			ipc.stop_plan()
+		"accept_ftp":
+			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":
 			ipc.create_workout(act["args"])
 		"import_workout":
@@ -336,7 +348,7 @@ func _run_menu_action(act: Dictionary) -> void:
 		"end_session":
 			ipc.send_command("end_session", {"save": bool(act.get("save", true))})
 		"start", "resume":
-			ipc.send_command(name)
+			ipc.send_command(name, act.get("args", {}))
 
 
 func _refresh_menu() -> void:
