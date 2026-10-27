@@ -133,6 +133,26 @@ class RogueBalance:
     relic_shield_bonus: float = 20.0
     relic_gold_mult: float = 1.25
     relic_ps_window_bonus_s: float = 0.3
+    # Scénariste (R15) : durée de la run -> (échauffement min, nombre de salles, salle moyenne min,
+    # couloir min, boss min, poids des trois phases, retour au calme min)
+    calendars: dict = field(default_factory=lambda: {
+        30: (6.0, 2, 4.0, 2.0, 7.0, (2.0, 3.0, 1.0), 5.0),
+        45: (8.0, 4, 3.5, 2.0, 10.0, (3.0, 4.0, 1.5), 5.0),
+        60: (10.0, 6, 3.5, 2.0, 10.0, (3.0, 4.0, 1.5), 7.0),
+        90: (10.0, 10, 4.0, 2.0, 12.0, (4.0, 5.0, 1.5), 8.0),
+    })
+    room_min_s: float = 180.0           # salles de 3 à 5 minutes
+    room_max_s: float = 300.0
+    room_spread_s: float = 60.0
+    reservoirs: dict = field(default_factory=lambda: {
+        "endurance": ("diesel", "grimpeur", "saboteur"),
+        "threshold": ("diesel", "grimpeur", "saboteur"),
+        "vo2max": ("puncheur", "sprinteur", "grimpeur"),
+    })
+    sprinter_extra: str = "sprinteur"   # seuil : Sprinteur au plus une fois (il remplace une porte)
+    late_margin_s: float = 120.0        # retard toléré avant de raccourcir les couloirs
+    corridor_min_s: float = 60.0
+    skip_gold_penalty: float = 10.0
     # Profils par archétype et par objectif (valeurs de départ du cahier R3 §4.2)
     room_profiles: dict = field(default_factory=lambda: {
         "diesel": {

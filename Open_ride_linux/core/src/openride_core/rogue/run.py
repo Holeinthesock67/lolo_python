@@ -129,6 +129,7 @@ class RunEngine:
         self.perfect_shifts = 0
         self.boss = "not_reached"
         self.result: str | None = None
+        self.rooms_total0 = scenario.rooms_total
         self._spring_adr = 0.0
         self.cur_spec: Step | None = None
         self._journal: list = []
@@ -440,6 +441,14 @@ class RunEngine:
             self._enter(nxt)
             return
         self.boss_phase = None
+        if not boss:                                    # joueur en retard : couloirs raccourcis, salle retirée
+            from .scenario import adapt_after_room
+            self.sc, skipped = adapt_after_room(self.sc, self.idx, self.t_total, self.b)
+            for _ in range(skipped):
+                self.rooms_skipped += 1
+                self.gold = max(self.gold - self.b.skip_gold_penalty, 0.0)
+                events.append("room_skipped")
+                self._journal.append(f"rogue room_skipped total={self.rooms_skipped}")
         self._enter(min(self.idx + 1, len(self.sc.steps) - 1))
         self._begin(inp, messages)
 
@@ -464,7 +473,7 @@ class RunEngine:
         return {"result": self.result or "abandoned", "objective": self.sc.objective,
                 "duration_min": self.sc.duration_min, "seed": self.sc.seed,
                 "rooms_won": self.rooms_won, "rooms_fled": self.rooms_fled,
-                "rooms_skipped": self.rooms_skipped, "rooms_total": self.sc.rooms_total,
+                "rooms_skipped": self.rooms_skipped, "rooms_total": self.rooms_total0,
                 "defeats": self.defeats, "boss": boss, "gold": int(self.gold),
                 "cards": list(self.relics + self.deck), "perfect_shifts": self.perfect_shifts,
                 "unlocks": []}
@@ -493,7 +502,7 @@ class RunEngine:
         gap = self.firewall.state.gap_m if self.firewall is not None else 0.0
         return {
             "phase": self.phase, "room_id": self.room_id,
-            "room_index": max(self.rooms_started, 1), "rooms_total": max(self.sc.rooms_total, 1),
+            "room_index": max(self.rooms_started, 1), "rooms_total": max(self.rooms_total0, 1),
             "archetype": room.archetype if room else None, "boss_phase": self.boss_phase,
             "s_room": round(inp.s_m, 1) if room else 0.0,
             "enemy_hp": round(cs.enemy_hp, 2) if cs else 0.0,

@@ -69,3 +69,10 @@ Aucune.
 ## 8. Hors périmètre
 
 - Plans d'entraînement sur plusieurs semaines (lot O11), choix libre des salles.
+
+## 9. Livraison (27 octobre 2026)
+
+- `rogue/scenario.py` (`compose_run`, `adapt_after_room`) ; calendriers, réservoirs et marges dans `RogueBalance` ; le moteur de run (R6) appelle `adapt_after_room` à la fin de chaque salle (`room_skipped`, malus de 10 or, `rooms_skipped`). Tests : `core/tests/test_rogue_scenario.py`.
+- **Forme du scénario :** celle de R6 (`Scenario` de `Step`) : l'échauffement, la première salle, un couloir à deux portes par salle suivante (les deux salles proposées ont la même durée), un dernier couloir sans porte, les trois phases du boss (durées réparties selon le poids 3 / 4 / 1,5 min, transitions de 30 s comprises) et le retour au calme. Les salles ne sont pas tirées au fil de la run mais composées d'avance : un tirage à l'avance permet de vérifier la règle des trois archétypes sur tous les chemins.
+- **Règle des trois archétypes :** les trois archétypes du réservoir tournent d'un couloir à l'autre (deux couples consécutifs partagent un seul archétype, trois n'en partagent aucun), donc aucun chemin ne joue trois fois le même archétype de suite, quelles que soient les portes (vérifié sur tous les chemins). En seuil, le Sprinteur remplace une porte d'un seul couloir, donc au plus une fois sur tout chemin. En VO2max, chaque salle est suivie d'un couloir complet de 2 min tant que le joueur n'est pas en retard ; le raccourcissement des couloirs (60 s au plus bas) vient après, comme le demande le §4.4.
+- **Joueur en retard :** après chaque salle, la fin prévue est recalculée avec le ralentissement observé (temps écoulé divisé par le temps nominal joué) appliqué aux salles et au boss restants ; au-delà de 2 min de retard, les couloirs suivants passent à 60 s, puis le dernier couloir à portes et sa salle sont retirés tant que le retard dépasse la marge. Le boss et le retour au calme restent. Un joueur à 90 % de la cible finit une run de 45 min avant 47 min (dans l'essai, il gagne les salles puis le boss s'enfuit sur défaite à la 40e minute).
