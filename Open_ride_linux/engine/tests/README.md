@@ -18,6 +18,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 | `test_terrain_render.gd` | E2 | Shader triplanaire compilé et rendu : herbe, roche, neige et trois mélanges égaux à `blend_weights` (L3) à 3/255 près, seuil de pente du thème, texture utilisée à la place de la couleur |
 | `test_sky_clouds_render.gd` | P6 | Ciel nuageux (`sky_clouds.gdshader`) : couverture 0, ciel identique au ciel procédural actuel à 3/255 près ; couverture 0,6, au moins 30 % de pixels clairs au-dessus de l'horizon ; avec vent, motif décalé dans le sens du vent (corrélation) ; deux couches |
 | `test_tree_sway_render.gd` | P5 | Arbre seul au vent (`tree_sway.gdshader`) : vent nul, deux images identiques ; vent fort, pied immobile à 2/255 près, cime qui bouge |
+| `test_fauna_render.gd` | P11 | Shader des animaux (`fauna.gdshader`) compilé : une vache vue de côté à la couleur de son espèce, un oiseau vu de dessus, rien sans animal |
 
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
@@ -105,6 +106,8 @@ OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_
 | `test_weather_model.gd` | P8 | Météo légère (`weather_model.gd`) : brume de vallée plus forte sous `valley_alt_m`, constante sans heure solaire, maximale à 6 h et nulle à 11 h avec, pluie et neige jamais ensemble, neige au-dessus de `snow_line_m`, thème sans `weather` sans effet, coût de `evaluate` |
 | `test_weather_particles.gd` | P8 | Pluie et neige (`weather_particles.gd`) : budget de `living(preset)`, nœud vide à budget nul, boîte de 40 m centrée sur la caméra après 500 m, repère du monde, vent du nord qui pousse vers le sud, aucun effet sans `weather`, coût de `update` |
 | `test_wind_model.gd` | P4 | Modèle du vent (`wind_model.gd`) : repère, lissage (90 % en 1,2 s sans dépassement), phase continue, expiration du vent du core et vent du thème, vent apparent, coût de `evaluate` |
+| `test_fauna_placer.gd` | P11 | Placement des animaux (`fauna_placer.gd`) : déterminisme, troupeaux de 3 à 12 bêtes autour des points `livestock`, aucune bête à moins de 4 m de l'axe, dans l'eau ou un bâtiment, ni sur une pente au-dessus de 25 %, oiseaux jamais sous 15 m du sol, pas de bétail sans point `livestock`, pas de chevreuil avec `fauna.deer = 0`, au plus un chevreuil tous les 3 km |
+| `test_fauna_behaviour.gd` | P11 | Comportement et affichage des animaux (`fauna_behaviour.gd`, `fauna_renderer.gd`) : chevreuil en fuite à 59,5 m, loin de la route, disparu en moins de 6 s ; écart des oiseaux ; budget de `living(preset)` avec 200 candidats (les plus proches gardés), aucun nœud créé ; mise à jour de 200 animaux sous 0,3 ms par image |
 | `test_wind_view_model.gd` | P4 | Indicateur du vent et de l'abri (`wind_view_model.gd`) : secteurs et hystérésis, verdict favorable ou non, niveaux d'intensité et rafale isolée, abri, indicateur caché sans vent |
 
 ## Étapes du script
