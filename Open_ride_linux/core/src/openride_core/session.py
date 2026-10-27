@@ -261,7 +261,8 @@ class CoreSession:
             on_command=self._on_command, on_engine_lost=self._on_engine_lost,
             on_engine_returned=lambda: log.info("Engine connecté."),
             hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
-                          "theme": cfg.render.theme, "difficulty_pct": round(self.difficulty_pct),
+                          "theme": cfg.render.theme, "chart": cfg.render.chart,
+                          "difficulty_pct": round(self.difficulty_pct),
                           "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")})
         log.info("Difficulté du trainer : %d %%", round(self.difficulty_pct))
         log.info("Rampe de pente du trainer : +%.1f %%/s (montée), -%.1f %%/s (descente)",
@@ -670,7 +671,7 @@ class CoreSession:
         self.difficulty_pct = float(self.cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
         self.server.hello_config.update(ftp_w=self.cfg.rider.ftp_w, theme=self.cfg.render.theme,
-                                        difficulty_pct=round(self.difficulty_pct))
+                                        chart=self.cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
         self._send_settings(cmd_id)
 
     # --- appairage depuis le menu (lot N13, contrat IPC révision 1.3) -------------------------

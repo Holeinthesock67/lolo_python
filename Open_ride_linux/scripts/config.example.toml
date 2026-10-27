@@ -32,6 +32,7 @@ hr_name = ""
 quality = "low"               # low, medium, high
 theme = "default"
 living = true                 # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
+chart = "reduced"             # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 
 [engine]
 godot = ""                    # chemin de Godot 4.3 (rempli par scripts/install.sh)

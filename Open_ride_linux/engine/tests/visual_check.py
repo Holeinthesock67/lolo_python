@@ -795,6 +795,54 @@ def _scenes(s: Session) -> None:
             frac = fraction(img, later, yellow, step=2)
             s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
 
+    # 4 bis. Courbes de la séance (lot O14), taille complète : en ERG à la place de l'histogramme (profil
+    # cible, puissance blanche, FC rouge, légende) ; en SIM dans un panneau centré, sans toucher aux
+    # panneaux latéraux. Le core annonce la taille dans hello_ack.config.chart.
+    core.chart = "full"
+    core.send_hello_ack()
+    core.set_scene(speed=7.0, mode="ERG", hr=140, erg={
+        "workout_name": "Sweet spot 3x10", "block_index": 2, "block_count": 7, "block_type": "interval_on",
+        "block_remaining_s": 95.0, "block_total_s": 600.0, "target_w": 230.0, "next_target_w": 150.0,
+        "bias_pct": 100, "paused": False})
+    time.sleep(7.0)
+    shot = s.capture("erg_courbes")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        chart = w["chart_erg"]
+        s.check("erg_courbes", "courbes affichées à la place de l'histogramme",
+                chart["visible"] and not w["erg_hist"]["visible"] and chart["rect"][2] >= 0.8 * s.width
+                and chart["rect"][1] + chart["rect"][3] <= s.height - 120 * info["ui_scale"], f"rectangle {chart['rect']}")
+        s.check_layout("erg_courbes", info)
+        box = rect_box(chart["rect"])
+        # Seuil bas : à 1024x600 (échelle 0,8) le panneau ne fait que 55 px de haut et le trait blanc
+        # couvre ~0,17 % de sa surface (mesuré sur le PC).
+        s.check("erg_courbes", "courbe de puissance blanche tracée",
+                fraction(img, box, lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=2) >= 0.001)
+        s.check("erg_courbes", "courbe de fréquence cardiaque rouge tracée",
+                fraction(img, box, lambda p: p[0] > 200 and p[1] < 90 and p[2] < 90, step=2) >= 0.001)
+        s.check("erg_courbes", "profil cible coloré en zone",
+                fraction(img, box, lambda p: p[0] > 110 and p[1] > 90 and p[2] < 70, step=2) >= 0.02)
+    core.set_scene(speed=SPEED_MPS, mode="SIM", erg=None, hr=140)
+    time.sleep(7.0)
+    shot = s.capture("sim_courbes")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        chart = w["chart_sim"]
+        screen = [0, 0, s.width, s.height]
+        s.check("sim_courbes", "panneau des courbes affiché dans l'écran",
+                chart["visible"] and overlap(chart["rect"], screen) >= 0.999 * chart["rect"][2] * chart["rect"][3],
+                f"rectangle {chart['rect']}")
+        clash = [k for k in ("panel", "bots_panel") if k in w and w[k]["visible"]
+                 and overlap(chart["rect"], w[k]["rect"]) > 0]
+        s.check("sim_courbes", "pas de chevauchement avec les panneaux du HUD", not clash, ", ".join(clash))
+        s.check("sim_courbes", "courbe de puissance blanche tracée",
+                fraction(img, rect_box(chart["rect"]), lambda p: p[0] > 235 and p[1] > 235 and p[2] > 235, step=2) >= 0.002)
+    core.chart = None
+    core.send_hello_ack()
+    time.sleep(0.5)
+
     # 5. Pause : trainer perdu, raison visible sous le titre du menu de pause.
     core.set_scene(speed=0.0, s=FIXED_S, mode="SIM", erg=None, session_state="PAUSED", pause_reason="trainer_lost",
                    trainer_status="RECONNECTING", power=0.0, power_3s=0.0, cadence=0.0)

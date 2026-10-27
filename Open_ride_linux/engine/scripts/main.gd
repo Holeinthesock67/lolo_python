@@ -20,6 +20,8 @@ const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
+const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
+const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
@@ -112,6 +114,12 @@ var menu_flow = MenuFlow.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
 var bots_model = BotsViewModel.new()
 var bots_view: Node3D
+## Courbes de la séance (lot O14) : un modèle, deux vues (bandeau ERG, panneau SIM), taille par réglage.
+var chart_model = WorkoutChartModel.new()
+var chart_sim = null
+var chart_mode := "hidden"   # jusqu'au hello_ack (core sans le champ : histogramme ERG de N7)
+var _chart_workout := ""
+var _chart_points := 0
 var menu_view = null
 var menu_layer: CanvasLayer = null
 var _last_state: Dictionary = {}
@@ -219,6 +227,20 @@ func _ready() -> void:
 	place_banner.call()
 	erg_panel = ErgView.new()
 	hud.add_child(erg_panel)
+	var chart_erg = WorkoutChartView.new()
+	chart_erg.model = chart_model
+	erg_panel.set_chart(chart_erg, chart_mode)
+	chart_sim = WorkoutChartView.new()
+	chart_sim.model = chart_model
+	chart_sim.anchor_top = 1.0
+	chart_sim.anchor_bottom = 1.0
+	chart_sim.anchor_right = 1.0
+	chart_sim.offset_left = 340.0
+	chart_sim.offset_right = -340.0
+	chart_sim.offset_bottom = -130.0
+	chart_sim.offset_top = -250.0
+	chart_sim.visible = false
+	hud.add_child(chart_sim)
 	junction_view = JunctionView.new()
 	hud.add_child(junction_view)
 	world_menu_view = WorldMenuView.new()
@@ -290,6 +312,10 @@ func _on_settings(msg: Dictionary) -> void:
 	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
 	if th != _theme_name:
 		_apply_theme(th)
+	var ch := str(menu_flow.settings.item("render.chart").get("value", chart_mode))
+	if ch != chart_mode and ch in WorkoutChartView.MODES:
+		chart_mode = ch
+		_apply_chart_mode()
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -770,7 +796,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
-		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram,
+		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
 		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
@@ -815,6 +841,10 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 	# redemandées au prochain état affichant le menu. Modes de l'accueil : hello_ack.config.modes
 	# (2.0 ; absent en 1.0).
 	menu_flow.lists_needed()
+	var ch := str(ipc.core_config.get("chart", "hidden"))
+	if ch != chart_mode and ch in WorkoutChartView.MODES:
+		chart_mode = ch
+		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
 
@@ -861,6 +891,7 @@ func _on_state_received(state: Dictionary) -> void:
 		_run_menu_action(act)
 	_refresh_menu()
 	var new_session_state := str(state.get("session_state", ""))
+	var previous_session_state := session_state
 	if new_session_state != session_state:
 		session_state = new_session_state
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
@@ -889,6 +920,8 @@ func _on_state_received(state: Dictionary) -> void:
 	if running and route != null:
 		_give_cues(state)
 	bots_model.push(state.get("bots", null) if running or session_state == "PAUSED" else null, Time.get_ticks_usec())
+
+	_feed_chart(state, running, previous_session_state)
 
 	if not state.has("gears_total"):
 		state["gears_total"] = ipc.core_config.get("gears_total", 24)
@@ -921,6 +954,48 @@ func _on_state_received(state: Dictionary) -> void:
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
 		sound_player.update_audio(state, now_s, camera.position)
+
+
+## Taille des courbes (lot O14) : ERG à la place de l'histogramme, SIM dans son panneau.
+func _apply_chart_mode() -> void:
+	if erg_panel != null:
+		erg_panel.set_chart(null, chart_mode)
+	if chart_sim != null:
+		chart_sim.set_mode(chart_mode)
+
+
+## Courbes (lot O14) : une seconde de plus à chaque trame RUNNING ; remise à zéro au départ d'une
+## séance (pas à la reprise après pause), profil de l'entraînement ERG en cours.
+func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> void:
+	var erg = state.get("erg", null)
+	var in_erg: bool = typeof(erg) == TYPE_DICTIONARY and not (erg as Dictionary).is_empty()
+	if running and previous_state != "RUNNING" and previous_state != "PAUSED":
+		chart_model.reset()
+		_chart_workout = ""
+		_chart_points = 0
+	var name_now := str(erg.get("workout_name", "")) if in_erg else ""
+	if running and name_now != _chart_workout:
+		_chart_workout = name_now
+		var prof: Array = erg_panel.profile_of(name_now) if (erg_panel != null and in_erg) else []
+		if prof.is_empty():
+			chart_model.clear_workout()
+		else:
+			chart_model.set_workout(prof, float(ipc.core_config.get("ftp_w", 0.0)), 0.0)
+	if running:
+		var target = null
+		if in_erg and str(erg.get("block_type", "steady")) != "freeride":
+			target = erg.get("target_w", null)
+		chart_model.push(float(state.get("t", -1.0)), state.get("power", null), state.get("hr", null), state.get("cadence", null), target)
+	var n: int = chart_model.point_count()
+	var shown: bool = chart_mode != "hidden" and not in_erg and not menu_flow.is_visible() and (running or session_state == "PAUSED")
+	if chart_sim != null:
+		chart_sim.visible = shown
+	if n != _chart_points:
+		_chart_points = n
+		if chart_sim != null:
+			chart_sim.refresh()
+		if erg_panel != null and erg_panel.chart != null:
+			erg_panel.chart.refresh()
 
 
 ## Bots (lot O7) : encart du HUD et silhouettes sur la route, aux positions affichées à l'instant.
