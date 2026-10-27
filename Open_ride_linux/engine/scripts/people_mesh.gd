@@ -11,11 +11,11 @@ extends RefCounted
 ##   pantalon, chaussures, hampe, métal ;
 ## - CUSTOM0.y : 1 sous le genou (pliage du genou) ; sur le vélo, pièce qui tourne : PART_CRANK (pédalier),
 ##   PART_FRONT_WHEEL, PART_REAR_WHEEL ; CUSTOM0.z : 1 sur le bras, la hampe et le drapeau du
-##   porte-drapeau ;
+##   porte-drapeau ; CUSTOM0.w : EXTRA_* ;
 ## - UV.y : 1 sur les bras libres ; UV.x : poids du drapeau (0 à la hampe, 1 au bout) ;
 ## - UV2.x : ±1 sur chaque jambe (patte du chien, en diagonale) ; UV2.y : 1 sur le bras qui salue.
-## Tenue : `outfit(skin, hair, trousers)` donne INSTANCE_CUSTOM.w (indices dans les palettes ci-dessous,
-## passées au shader par `apply_palettes`).
+## Tenue : `outfit(skin, hair, trousers, style)` donne INSTANCE_CUSTOM.w (indices dans les palettes
+## ci-dessous, passées au shader par `apply_palettes`, et bits STYLE_*).
 ## Personnage debout de 1,75 m, pieds à y = 0, face vers +z ; hanche à HIP_Y, genou à KNEE_Y, épaule à
 ## SHOULDER_Y (pivots des articulations du shader, passés par `apply_palettes`).
 
@@ -26,6 +26,14 @@ const REGION_TROUSERS := 3
 const REGION_SHOES := 4
 const REGION_POLE := 5
 const REGION_METAL := 6
+
+## CUSTOM0.w : pièce montrée selon la tenue (cheveux longs) ou motif propre (casque à aérations).
+const EXTRA_LONG_HAIR := 1
+const EXTRA_HELMET := 2
+## Bits de style de la tenue : cheveux longs, haut à bande ; un coureur a toujours son maillot à bande.
+const STYLE_LONG_HAIR := 1
+const STYLE_STRIPE := 2
+const STYLES := 4
 
 const PART_CRANK := 1
 const PART_FRONT_WHEEL := 2
@@ -58,16 +66,16 @@ const POLE_COLOR := Color(0.6, 0.5, 0.36)
 const METAL_COLOR := Color(0.7, 0.71, 0.73)
 
 
-## INSTANCE_CUSTOM.w : indices de peau, de cheveux et de pantalon dans un seul nombre entier exact.
-static func outfit(skin: int, hair: int, trousers: int) -> float:
+## INSTANCE_CUSTOM.w : indices de peau, de cheveux, de pantalon et bits de style dans un seul nombre entier exact.
+static func outfit(skin: int, hair: int, trousers: int, style: int = 0) -> float:
 	return float(posmod(skin, SKIN_TONES.size()) + SKIN_TONES.size() * (posmod(hair, HAIR_COLORS.size())
-		+ HAIR_COLORS.size() * posmod(trousers, TROUSER_COLORS.size())))
+		+ HAIR_COLORS.size() * (posmod(trousers, TROUSER_COLORS.size()) + TROUSER_COLORS.size() * posmod(style, STYLES))))
 
 
 ## Tenue tirée d'un nombre entier quelconque (numéro de personne, graine) : mêmes tenues d'une séance à l'autre.
 static func outfit_of(seed_value: int) -> float:
 	var h := (seed_value * 2654435761) & 0x7FFFFFFF
-	return outfit(h % 7, (h >> 3) % 11, (h >> 7) % 13)
+	return outfit(h % 7, (h >> 3) % 11, (h >> 7) % 13, (h >> 11) % 5)
 
 
 ## Palettes et pivots des articulations, à poser une fois sur le matériau de crowd.gdshader.
@@ -96,6 +104,7 @@ class Builder:
 	var region := 0
 	var shin := 0.0
 	var holder := 0.0
+	var extra := 0.0                    # CUSTOM0.w : EXTRA_LONG_HAIR, EXTRA_HELMET
 	var uv := Vector2.ZERO
 	var uv2 := Vector2.ZERO
 	var xform := Transform3D.IDENTITY   # appliquée aux points et aux normales de la pièce
@@ -109,7 +118,7 @@ class Builder:
 		st.set_uv(Vector2(uv.x if flag_w < 0.0 else flag_w, uv.y))
 		st.set_uv2(uv2)
 		st.set_color(Color.WHITE)
-		st.set_custom(0, Color(float(region), shin, holder, 0.0))
+		st.set_custom(0, Color(float(region), shin, holder, extra))
 		st.add_vertex(xform * p)
 
 	## Prisme effilé de `a` à `b` (axe quelconque), section elliptique (rayons x et z du repère de la pièce)
@@ -184,7 +193,11 @@ static func build_person(with_flag: bool, helmet: bool = false) -> ArrayMesh:
 		m.uv2 = Vector2(sx, 0.0)
 		m.region = REGION_SHOES
 		m.shin = 1.0
-		m.box(Vector3(sx * LEG_X, 0.035, 0.03), Vector3(0.085, 0.07, 0.24))
+		m.box(Vector3(sx * LEG_X, 0.04, 0.03), Vector3(0.085, 0.06, 0.24))
+		m.region = REGION_METAL
+		m.box(Vector3(sx * LEG_X, 0.008, 0.03), Vector3(0.092, 0.016, 0.25))   # semelle claire
+		if helmet:
+			m.prism(Vector3(sx * LEG_X, 0.07, 0.0), Vector3(sx * LEG_X, 0.16, 0.0), Vector2(0.048, 0.053), Vector2(0.05, 0.055))   # chaussette
 		m.region = REGION_SKIN if helmet else REGION_TROUSERS   # coureur : cuissard court, mollets nus
 		m.prism(Vector3(sx * LEG_X, 0.08, 0.0), Vector3(sx * LEG_X, KNEE_Y, 0.0), Vector2(0.05, 0.055), Vector2(0.06, 0.065))
 		m.shin = 0.0
@@ -195,15 +208,32 @@ static func build_person(with_flag: bool, helmet: bool = false) -> ArrayMesh:
 	m.region = REGION_TOP
 	m.prism(Vector3(0.0, 0.98, 0.0), Vector3(0.0, SHOULDER_Y, 0.0), Vector2(0.16, 0.1), Vector2(0.2, 0.115))   # buste
 	m.prism(Vector3(0.0, SHOULDER_Y, 0.0), Vector3(0.0, 1.48, 0.0), Vector2(0.2, 0.115), Vector2(0.1, 0.08))   # épaules
+	m.prism(Vector3(0.0, 1.46, 0.0), Vector3(0.0, 1.505, 0.0), Vector2(0.068, 0.062), Vector2(0.062, 0.058))   # col
+	if not helmet:
+		m.region = REGION_SHOES
+		m.prism(Vector3(0.0, 0.965, 0.0), Vector3(0.0, 1.005, 0.0), Vector2(0.168, 0.108), Vector2(0.167, 0.107))   # ceinture
 	m.region = REGION_SKIN
 	m.prism(Vector3(0.0, 1.46, 0.0), Vector3(0.0, 1.54, 0.0), Vector2(0.045, 0.045), Vector2(0.045, 0.045), 6)   # cou
 	m.ellipsoid(Vector3(0.0, 1.63, 0.01), Vector3(0.088, 0.112, 0.1))   # tête
 	m.box(Vector3(0.0, 1.615, 0.105), Vector3(0.025, 0.04, 0.03))      # nez
+	for sx in [-1.0, 1.0]:
+		m.ellipsoid(Vector3(sx * 0.09, 1.62, 0.0), Vector3(0.016, 0.032, 0.022), -90.0, 3)   # oreilles
+	m.region = REGION_SHOES
+	if helmet:
+		m.box(Vector3(0.0, 1.645, 0.1), Vector3(0.17, 0.035, 0.02))     # lunettes
+	else:
+		for sx in [-1.0, 1.0]:
+			m.box(Vector3(sx * 0.035, 1.645, 0.097), Vector3(0.022, 0.012, 0.01))   # yeux
 	m.region = REGION_HAIR
 	m.ellipsoid(Vector3(0.0, 1.648, -0.012), Vector3(0.096, 0.112, 0.106), -5.0, 4)   # cheveux
 	if helmet:
 		m.region = REGION_TOP
+		m.extra = EXTRA_HELMET
 		m.ellipsoid(Vector3(0.0, 1.665, -0.02), Vector3(0.108, 0.115, 0.135), 5.0, 4)
+	else:
+		m.extra = EXTRA_LONG_HAIR
+		m.ellipsoid(Vector3(0.0, 1.55, -0.07), Vector3(0.09, 0.14, 0.05), -90.0, 5)   # cheveux longs, selon la tenue
+	m.extra = 0.0
 	for sx in [-1.0, 1.0]:
 		var holds: bool = with_flag and sx > 0.0
 		m.uv = Vector2(0.0, 0.0 if holds else 1.0)
@@ -216,7 +246,9 @@ static func build_person(with_flag: bool, helmet: bool = false) -> ArrayMesh:
 		m.prism(Vector3(sx * SHOULDER_X, SHOULDER_Y, 0.0), Vector3(sx * 0.25, 1.15, 0.0), Vector2(0.05, 0.05), Vector2(0.045, 0.045))
 		m.region = REGION_SKIN
 		m.prism(Vector3(sx * 0.25, 1.15, 0.0), Vector3(sx * 0.255, 0.92, 0.0), Vector2(0.038, 0.038), Vector2(0.032, 0.032), 6)
+		m.region = REGION_SHOES if helmet else REGION_SKIN   # coureur : gants
 		m.box(Vector3(sx * 0.255, 0.87, 0.0), Vector3(0.045, 0.09, 0.07))   # main
+		m.box(Vector3(sx * 0.245, 0.89, 0.04), Vector3(0.022, 0.05, 0.025))   # pouce
 		m.xform = Transform3D.IDENTITY
 		if holds:
 			var hand: Vector3 = Transform3D(Basis(Vector3.RIGHT, -1.9), Vector3.ZERO).translated_local(-pivot).translated(pivot) * Vector3(0.255, 0.87, 0.0)
@@ -311,6 +343,19 @@ static func build_bike() -> ArrayMesh:
 	m.prism(BAR + Vector3(-0.21, 0.0, 0.0), BAR + Vector3(0.21, 0.0, 0.0), Vector2(0.014, 0.014), Vector2(0.014, 0.014), 6)   # cintre
 	for sx in [-1.0, 1.0]:
 		m.prism(BAR + Vector3(sx * 0.2, 0.0, 0.0), BAR + Vector3(sx * 0.2, -0.12, 0.06), Vector2(0.013, 0.013), Vector2(0.013, 0.013), 4)   # cocottes
+	# Bidon sur le tube oblique, dérailleur, chaîne (haut et bas), cassette
+	var down := (head_low - BB).normalized()
+	var bottle_at := BB + down * 0.22 + Vector3(0.0, 0.04, -0.035)
+	m.region = REGION_METAL
+	m.prism(bottle_at, bottle_at + down * 0.2, Vector2(0.034, 0.034), Vector2(0.03, 0.03), 8)
+	m.region = REGION_SHOES
+	m.box(REAR_AXLE + Vector3(0.06, -0.08, 0.0), Vector3(0.02, 0.07, 0.05))
+	for dy in [0.1, -0.1]:
+		m.prism(BB + Vector3(0.06, dy, 0.0), REAR_AXLE + Vector3(0.06, dy * 0.5, 0.0), Vector2(0.006, 0.006), Vector2(0.006, 0.006), 3)
+	m.shin = float(PART_REAR_WHEEL)
+	m.region = REGION_METAL
+	m.ellipsoid(REAR_AXLE + Vector3(0.055, 0.0, 0.0), Vector3(0.015, 0.05, 0.05), -90.0, 3)
+	m.shin = 0.0
 	for wheel in [[FRONT_AXLE, PART_FRONT_WHEEL], [REAR_AXLE, PART_REAR_WHEEL]]:
 		m.shin = float(wheel[1])
 		_wheel(m, wheel[0])

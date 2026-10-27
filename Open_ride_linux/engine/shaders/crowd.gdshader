@@ -7,7 +7,9 @@ render_mode cull_disabled;
 //   (crowd_renderer.gd) ; INSTANCE_CUSTOM.z : animation (passersby_model.gd ANIM) : 0 debout
 //   (spectateur), 1 marche, 2 course, 3 assis, 4 jardinage, 5 sautille, 6 chien, 7 coureur qui pédale,
 //   8 vélo (pédalier et roues qui tournent) ; pour 7 et 8, INSTANCE_CUSTOM.y = cadence / 100 tr/min ;
-//   INSTANCE_CUSTOM.w : tenue (people_mesh.gd outfit : peau + 4 × (cheveux + 6 × pantalon)).
+//   INSTANCE_CUSTOM.w : tenue (people_mesh.gd outfit : peau + 4 × (cheveux + 6 × (pantalon + 6 × style))) ;
+//   style : bit 1 cheveux longs, bit 2 haut à bande.
+// - CUSTOM0.w : 1 cheveux longs (repliés sans le bit de style), 2 casque (aérations sombres).
 // - Données de sommet (people_mesh.gd) : CUSTOM0.x zone, CUSTOM0.y tibia, CUSTOM0.z porte-drapeau ;
 //   UV.y bras libre, UV.x poids du drapeau ; UV2.x ±1 par jambe (patte), UV2.y bras qui salue.
 // - COLOR : couleur d'instance du MultiMesh, couleur du haut (ou de la robe du chien, du bois du banc).
@@ -30,6 +32,9 @@ float crank_angle(float cadence, float phase) {
 
 varying flat float v_region;
 varying flat float v_outfit;
+varying flat float v_extra;
+varying flat float v_rider;
+varying vec3 v_local;          // position du sommet avant animation (motifs du haut et du casque)
 
 // Rotation de p autour de l'axe x passant par le pivot (angle positif : le bas part vers l'arrière, -z,
 // le haut vers l'avant)
@@ -47,9 +52,17 @@ vec3 rot_z(vec3 p, vec3 pivot, float a) {
 void vertex() {
 	v_region = CUSTOM0.x;
 	v_outfit = INSTANCE_CUSTOM.w;
+	v_extra = CUSTOM0.w;
+	v_local = VERTEX;
 	float phase = INSTANCE_CUSTOM.x * 6.2831853;
 	float excite = INSTANCE_CUSTOM.y;
 	int anim = int(INSTANCE_CUSTOM.z + 0.5);
+	v_rider = anim == 7 ? 1.0 : 0.0;
+	// Cheveux longs repliés quand la tenue ne les a pas
+	int style = (int(INSTANCE_CUSTOM.w + 0.5) / 144) % 4;
+	if (int(CUSTOM0.w + 0.5) == 1 && (style & 1) == 0) {
+		VERTEX = vec3(0.0, 1.6, 0.0);
+	}
 	float leg = UV2.x;                       // ±1 sur une jambe, 0 ailleurs
 	float side = sign(VERTEX.x);
 	bool is_leg = abs(leg) > 0.5;
@@ -176,7 +189,20 @@ void fragment() {
 	int region = int(v_region + 0.5);
 	int o = int(v_outfit + 0.5);
 	vec3 c = COLOR.rgb;
-	if (region == 1) {
+	int style = (o / 144) % 4;
+	if (region == 0) {
+		// Bande claire sur la poitrine (haut à bande, maillot du coureur), flancs sombres du maillot,
+		// aérations du casque
+		bool stripe = (style & 2) != 0 || v_rider > 0.5;
+		float band = step(1.22, v_local.y) * step(v_local.y, 1.3) * (stripe ? 1.0 : 0.0) * (v_extra > 0.5 ? 0.0 : 1.0);
+		c = mix(c, vec3(0.95), band * 0.85);
+		if (v_rider > 0.5 && v_extra < 0.5 && abs(v_local.x) > 0.15 && v_local.y > 0.98) {
+			c *= 0.35;
+		}
+		if (int(v_extra + 0.5) == 2 && v_local.y > 1.66 && fract(v_local.x * 22.0) < 0.35) {
+			c *= 0.25;
+		}
+	} else if (region == 1) {
 		c = skin_tones[o % 4];
 	} else if (region == 2) {
 		c = hair_colors[(o / 4) % 6];

@@ -7,8 +7,8 @@ extends SceneTree
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 
-## Triangles au plus par personnage : 160 spectateurs et 80 passants en `high` restent sous 200 000.
-const MAX_PERSON_TRIS := 800
+## Triangles au plus par personnage : 160 spectateurs et 80 passants en `high` restent sous 250 000.
+const MAX_PERSON_TRIS := 1000
 
 var _failures := 0
 var _checked := 0
@@ -27,20 +27,22 @@ func _test_outfits() -> void:
 	var ns := PeopleMesh.SKIN_TONES.size()
 	var nh := PeopleMesh.HAIR_COLORS.size()
 	var nt := PeopleMesh.TROUSER_COLORS.size()
+	var nst := PeopleMesh.STYLES
 	var ok := true
 	for s in range(ns):
 		for h in range(nh):
 			for t in range(nt):
-				var o := int(PeopleMesh.outfit(s, h, t))
-				ok = ok and o % ns == s and (o / ns) % nh == h and (o / (ns * nh)) % nt == t
-	_check(ok, "tenue : peau, cheveux et pantalon relus tels quels (%d tenues)" % (ns * nh * nt))
+				for st in range(nst):
+					var o := int(PeopleMesh.outfit(s, h, t, st))
+					ok = ok and o % ns == s and (o / ns) % nh == h and (o / (ns * nh)) % nt == t and (o / (ns * nh * nt)) % nst == st
+	_check(ok, "tenue : peau, cheveux, pantalon et style relus tels quels (%d tenues)" % (ns * nh * nt * nst))
 	var seen := {}
 	var in_range := true
 	for i in range(200):
 		var o := PeopleMesh.outfit_of(i)
-		in_range = in_range and o >= 0.0 and o < float(ns * nh * nt) and o == floorf(o)
+		in_range = in_range and o >= 0.0 and o < float(ns * nh * nt * nst) and o == floorf(o)
 		seen[o] = true
-	_check(in_range, "outfit_of : entier dans les %d tenues" % (ns * nh * nt))
+	_check(in_range, "outfit_of : entier dans les %d tenues" % (ns * nh * nt * nst))
 	_check(seen.size() >= 60, "200 personnes : %d tenues différentes" % seen.size())
 	_check(PeopleMesh.outfit_of(42) == PeopleMesh.outfit_of(42), "même numéro : même tenue")
 
@@ -71,7 +73,7 @@ func _test_person(with_flag: bool) -> void:
 			shin_ok = shin_ok and absf(uv2[i].x) > 0.5 and verts[i].y <= PeopleMesh.KNEE_Y + 1e-3
 		holder += 1 if custom[i * 4 + 2] > 0.5 else 0
 	var expected := [PeopleMesh.REGION_TOP, PeopleMesh.REGION_SKIN, PeopleMesh.REGION_HAIR,
-		PeopleMesh.REGION_TROUSERS, PeopleMesh.REGION_SHOES]
+		PeopleMesh.REGION_TROUSERS, PeopleMesh.REGION_SHOES, PeopleMesh.REGION_METAL]
 	if with_flag:
 		expected.append(PeopleMesh.REGION_POLE)
 	var all := true
