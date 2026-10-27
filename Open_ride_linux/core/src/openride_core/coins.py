@@ -4,6 +4,10 @@ Le solde n'est jamais stocké : pièces gagnées d'après les journaux (mêmes s
 l'expérience, `progression.recompute`) moins pièces dépensées d'après le profil (`profile.py`).
 Effacer le profil rend donc les pièces dépensées (aucune perte pour le cycliste).
 
+Gains à l'effort (V-Q10, 27 octobre) : chaque minute rapporte selon la puissance en % de la
+FTP (zones de `[coins] effort`), en SIM comme en ERG ; la distance ne compte pas. FTP de la
+séance si l'en-tête du journal la donne, sinon celle de `config.toml`.
+
 États d'une pièce : `equipped` (choisie), `owned` (par défaut, achetée ou offerte par un défi
 réussi), `buyable` (niveau atteint, achetable), `locked` (niveau non atteint, ou pièce offerte
 par un défi seulement et défi non réussi).
@@ -18,9 +22,9 @@ from typing import Any
 from .equipment import Catalogue, Item
 from .profile import Profile, ProfileError, record_life_purchase, record_purchase
 from .profile import use_life as _profile_use_life
-from .progression import Progress, SessionFacts, Table
+from .progression import POWER_STEP_W, Progress, SessionFacts, Table
 
-_COIN_KEYS = {"per_km": float, "per_erg_min": float, "per_segment": float, "per_jersey": float,
+_COIN_KEYS = {"effort": list, "per_segment": float, "per_jersey": float,
               "rogue_boss_default": float, "life_price": int, "rogue_boss": dict}
 
 
@@ -34,14 +38,13 @@ class CoinsError(Exception):
 
 @dataclass(frozen=True)
 class CoinTable:
-    per_km: float
-    per_erg_min: float
+    effort: tuple[tuple[float, float], ...]   # (seuil en % de la FTP, pièces par minute), croissant
     per_segment: float
     per_jersey: float
     rogue_boss_default: float
     life_price: int
     rogue_boss: dict[str, float]
-    erg_replaces_distance: bool
+    ftp_w: float = 250.0
 
 
 def _number(value: Any, where: str, integer: bool = False) -> float:
@@ -52,8 +55,25 @@ def _number(value: Any, where: str, integer: bool = False) -> float:
     return int(value) if integer else float(value)
 
 
-def coin_table(table: Table) -> CoinTable:
-    """Section `[coins]` des tables, vérifiée ; lève `CoinsError` (code `table_invalid`)."""
+def _effort(raw: Any) -> tuple[tuple[float, float], ...]:
+    where = "[coins] effort"
+    if not isinstance(raw, list) or not raw:
+        raise CoinsError("table_invalid", f"{where} : liste de [seuil %FTP, pièces/min] attendue")
+    zones = []
+    for i, zone in enumerate(raw):
+        if not isinstance(zone, list) or len(zone) != 2:
+            raise CoinsError("table_invalid", f"{where} : zone {i + 1}, [seuil %FTP, pièces/min] attendu")
+        zones.append((_number(zone[0], f"{where} zone {i + 1}"), _number(zone[1], f"{where} zone {i + 1}")))
+    if zones[0][0] != 0 or any(b[0] <= a[0] for a, b in zip(zones, zones[1:])):
+        raise CoinsError("table_invalid", f"{where} : seuils croissants, le premier à 0")
+    return tuple(zones)
+
+
+def coin_table(table: Table, ftp_w: float = 250.0) -> CoinTable:
+    """Section `[coins]` des tables, vérifiée ; lève `CoinsError` (code `table_invalid`).
+
+    `ftp_w` : FTP de `config.toml`, pour les séances dont l'en-tête ne donne pas la sienne.
+    """
     raw = table.data.get("coins")
     if not isinstance(raw, dict):
         raise CoinsError("table_invalid", "section [coins] absente ou mal formée")
@@ -67,27 +87,40 @@ def coin_table(table: Table) -> CoinTable:
     if not isinstance(bosses, dict):
         raise CoinsError("table_invalid", "[coins.rogue_boss] : table attendue")
     return CoinTable(
-        per_km=_number(raw["per_km"], "[coins] per_km"),
-        per_erg_min=_number(raw["per_erg_min"], "[coins] per_erg_min"),
+        effort=_effort(raw["effort"]),
         per_segment=_number(raw["per_segment"], "[coins] per_segment"),
         per_jersey=_number(raw["per_jersey"], "[coins] per_jersey"),
         rogue_boss_default=_number(raw["rogue_boss_default"], "[coins] rogue_boss_default"),
         life_price=int(_number(raw["life_price"], "[coins] life_price", integer=True)),
         rogue_boss={k: _number(v, f"[coins.rogue_boss] {k}") for k, v in bosses.items()},
-        erg_replaces_distance=bool(table.rule("erg_replaces_distance")),
+        ftp_w=float(ftp_w),
     )
 
 
 # --- gains et solde ------------------------------------------------------------------------
 
+def effort_rate(pct_ftp: float, ct: CoinTable) -> float:
+    """Pièces par minute à `pct_ftp` % de la FTP (zone dont le seuil est atteint)."""
+    rate = ct.effort[0][1]
+    for threshold, per_min in ct.effort:
+        if pct_ftp >= threshold:
+            rate = per_min
+    return rate
+
+
+def effort_coins(facts: SessionFacts, ct: CoinTable) -> float:
+    """Pièces de l'effort : minutes passées dans chaque zone de puissance, sans arrondi."""
+    ftp = facts.ftp_w or ct.ftp_w
+    total = 0.0
+    for step, seconds in facts.power_s.items():
+        pct = (step + POWER_STEP_W / 2) / ftp * 100.0   # milieu du pas de 10 W
+        total += effort_rate(pct, ct) * seconds / 60.0
+    return total
+
+
 def session_coins(facts: SessionFacts, ct: CoinTable) -> int:
     """Pièces d'une séance (sans contrôle d'éligibilité), arrondies à l'entier inférieur."""
-    total = 0.0
-    erg = facts.erg_s > 0
-    if not (erg and ct.erg_replaces_distance):
-        total += ct.per_km * facts.distance_m / 1000.0
-    if erg:
-        total += ct.per_erg_min * facts.erg_s / 60.0
+    total = effort_coins(facts, ct)
     for ev in facts.events:
         kind = ev.get("kind")
         if kind == "segment":

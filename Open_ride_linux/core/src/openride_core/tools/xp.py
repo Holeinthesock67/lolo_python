@@ -61,9 +61,9 @@ def workout_duration_finder(directory: Path):
 def run(directory: Path | None, as_json: bool, config_path: Path | None,
         workouts_dir: Path | None = None, profile_path: Path = PROFILE_PATH) -> int:
     try:
-        config_mod.load(config_path)
+        cfg = config_mod.load(config_path)
         table = load_table()
-        ct = coin_table(table)
+        ct = coin_table(table, cfg.rider.ftp_w)
     except (config_mod.ConfigError, ProgressionError, CoinsError) as exc:
         print(f"Erreur : {exc}", file=sys.stderr)
         return 2
