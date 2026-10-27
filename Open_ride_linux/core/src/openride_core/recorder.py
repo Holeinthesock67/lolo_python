@@ -15,7 +15,7 @@ import time
 from pathlib import Path
 from typing import Callable
 
-from .fit_export import Summary, default_fit_path, summarize, write_fit
+from .fit_export import Summary, default_fit_path, lap_starts, summarize, write_fit
 from .journal import GAME_KINDS, TIMER_EVENTS, JournalWriter, Record, record_line
 
 log = logging.getLogger("recorder")
@@ -181,7 +181,7 @@ class SessionRecorder:
             out = default_fit_path(records[0]["ts"], self.route_id)
             if self.fit_dir is not None:
                 out = self.fit_dir / out.name
-            write_fit(records, events, out)
+            write_fit(records, events, out, lap_starts(self.lines))
             return out, summary, None
         except Exception as exc:   # le FIT ne doit jamais faire tomber le core
             log.error("Export FIT impossible : %s", exc)
