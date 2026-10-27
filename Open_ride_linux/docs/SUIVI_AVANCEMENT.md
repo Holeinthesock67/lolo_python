@@ -220,7 +220,7 @@ Pas à pas dans [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) (bl
 - [ ] Pack « Cols célèbres » construit sur le PC et un col roulé (O16, protocole J4).
 - [ ] Boîtier gauche du Click : silence daté, reprise essayée (Q6, protocole J5).
 - [ ] Horizon en `medium` et `low` (Y1) et facteur de relief par défaut (Q2) sur `essai-69` (protocole J6).
-- [ ] Recettes du décor vivant (P16 puis P17, protocole J8 : [RECETTE_P16.md](RECETTE_P16.md), [RECETTE_P17.md](RECETTE_P17.md)).
+- [ ] Recettes du décor vivant (P16 puis P17, protocole J8 : [RECETTE_P16.md](RECETTE_P16.md), [RECETTE_P17.md](RECETTE_P17.md)). P16 faite le 27 octobre (vent, indicateur, nuages et sons validés après la PR #432 ; restent vent de travers et de dos, `living = false` et la mesure sur une route OSM) ; P17 à faire.
 - [ ] Mesures du monde ouvert (W0, protocole J9).
 
 ---
@@ -310,6 +310,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [x] Bord de route : montées détectées sur le profil, panneaux de col et d'approche (« Sommet à 3 km »), bornes kilométriques, marquages au sol et chiffres des derniers kilomètres peints en montée (lot P14 ; branchement par P17).
 - [x] Spectateurs dans le dernier kilomètre des cols, plus nombreux au sommet, qui encouragent au passage, avec une clameur qui monte (plus forte après un dépassement de bot) (lot P15 ; branchement par P17).
 - [x] Passants dans les villages et le long de la route (marcheurs, promeneurs et leur chien, joggeurs, personnes assises, jardiniers, agriculteurs, enfants) qui saluent au passage, avec de temps en temps un « Allez ! », un « Bonjour ! », un aboiement ou un rire (lot P21 ; branchement par P17).
+- [x] Oiseaux de la campagne, près de la route de chaque kilomètre : rapace qui plane en cercle et crie, volée en V qui traverse le ciel, corneilles posées qui s'envolent en croassant au passage et se reposent plus loin ; budget des oiseaux doublé (24, 48, 80) (lot P23 ; séance sur le PC à faire).
 - [x] Vent branché dans la scène : indicateur du HUD sous la colonne de gauche (flèche, « 18 km/h face », niveau, pastille verte, rouge ou grise), arbres et herbe au vent, nuages qui défilent, fonds sonores selon le décor ; réglages du vent ajoutés à la liste du menu, `[render] living` pour tout couper (lot P16 ; recette sur le PC : `docs/RECETTE_P16.md`).
 - [x] Décor complet branché dans la scène : pluie et brume de la météo du thème (chaussée mouillée, brouillard rapproché), animaux chargés avec les tronçons, éoliennes, drapeaux et eau qui scintille, véhicules figés en pause, panneaux, bornes et chiffres peints, spectateurs au sommet des cols et passants, « Abri 30 % » sous l'indicateur du vent (lot P17 ; recette sur le PC : `docs/RECETTE_P17.md`).
 - [ ] Version 2.0 : jour et nuit, saisons (lots P7, P18 ; intégration P19) ; packs de textures selon les performances (lot P20).
