@@ -1,4 +1,4 @@
-# Lot P1 – Contrat : vent, aspiration et décor vivant (IPC v1.2, thème 1.2, configuration `[wind]`)
+# Lot P1 – Contrat : vent, aspiration et décor vivant (IPC v1.3, thème 1.2, configuration `[wind]`)
 
 ## 1. Objectif
 
@@ -32,7 +32,7 @@ Les propositions ci-dessous sont ajustées à ces décisions.
 
 Rédiger les ajouts, chacun avec sa ligne au journal des changements du document. Propositions de départ, à trancher par le propriétaire :
 
-### 4.1 IPC v1.2 : champ `wind` de `state`
+### 4.1 IPC v1.3 : champ `wind` de `state`
 
 - Objet facultatif `wind`, absent quand le vent est désactivé (trames inchangées) : `{speed_mps, from_deg, head_mps, gust}`.
   - `speed_mps` : vitesse du vent au sol, rafale comprise (≥ 0) ;
@@ -42,7 +42,7 @@ Rédiger les ajouts, chacun avec sa ligne au journal des changements du document
 - Ces quatre champs suffisent à l'indicateur du HUD demandé par le propriétaire le 25 octobre (vent favorable ou non, et son intensité) : le verdict vient du signe de `head_mps`, l'intensité de `speed_mps` (calcul dans `wind_view_model.gd`, lot P4). Aucun champ de plus.
 - Envoyé **2 fois par seconde** (décision du propriétaire), dans une trame sur quinze environ (environ 70 octets) ; la physique du core utilise le vent exact à 50 Hz et l'engine lisse les valeurs reçues. Vérifier que la trame la plus chargée (ERG, `devices`, 5 bots, `wind`, `draft`) tient toujours dans 1 400 octets.
 
-### 4.2 IPC v1.2 : champ `draft` de `state`
+### 4.2 IPC v1.3 : champ `draft` de `state`
 
 - Nombre facultatif `draft` de 0 à 0,45 : coefficient d'aspiration appliqué au cycliste (SRS §5), absent sans bot. Champ facultatif `draft_bot` : `id` du bot qui abrite, ou absent.
 
