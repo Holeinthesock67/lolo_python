@@ -172,7 +172,7 @@ Détail : paragraphe « Série P » de [lots/00_INDEX.md](lots/00_INDEX.md) et c
 | 2.0-ROG-4 | Salles générées à graine, Firewall à X % de FTP, combat, run en couloirs avec deck, reliques et boss | R3 à R7 | Planifié |
 | 2.0-ROG-5 | Run composée à partir d'un objectif (VO2max, seuil, endurance) et d'une durée choisis au menu | R15 | Planifié |
 | 2.0-ROG-6 | Châssis permanents à bonus de jeu, vies achetées avec les pièces de la série V | R9 | Planifié |
-| 2.0-ROG-7 | Scène néon séparée de la scène classique, HUD diégétique, ennemis géométriques, menu | R10 à R13 | Planifié |
+| 2.0-ROG-7 | Scène néon séparée de la scène classique, HUD diégétique, ennemis géométriques, menu ; direction artistique et catalogue graphique générés par le code | R10 à R13, R17 | Planifié |
 | 2.0-ROG-8 | Recette : run complète, 60 images/s, ressenti des boutons | R14 | Planifié |
 
 Les cahiers R0 à R16 sont en revue (PR #244).
