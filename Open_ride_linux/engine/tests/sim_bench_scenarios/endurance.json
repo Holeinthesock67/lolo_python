@@ -1,0 +1,169 @@
+{
+  "description": "Endurance d'une heure (lot X16) : boucles du village simulé en SIM, effort qui change toutes les 5 min, un appui Click à chaque changement ; sonde de performance pendant tout l'essai (mémoire de chaque processus, mémoire vidéo, images/s, saccades). À lancer en fenêtre réelle sur le PC cible : sim_bench.py --native --scenario endurance.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3,
+    "rider_power_w": 220,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [
+    {
+      "t": 240,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 200,
+      "cadence_rpm": 90
+    },
+    {
+      "t": 260,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 540,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 260,
+      "cadence_rpm": 85
+    },
+    {
+      "t": 560,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 840,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 180,
+      "cadence_rpm": 80
+    },
+    {
+      "t": 860,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 1140,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 300,
+      "cadence_rpm": 90
+    },
+    {
+      "t": 1160,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 1440,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 220,
+      "cadence_rpm": 85
+    },
+    {
+      "t": 1460,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 1740,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 240,
+      "cadence_rpm": 80
+    },
+    {
+      "t": 1760,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 2040,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 200,
+      "cadence_rpm": 90
+    },
+    {
+      "t": 2060,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 2340,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 260,
+      "cadence_rpm": 85
+    },
+    {
+      "t": 2360,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 2640,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 180,
+      "cadence_rpm": 80
+    },
+    {
+      "t": 2660,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 2940,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 300,
+      "cadence_rpm": 90
+    },
+    {
+      "t": 2960,
+      "action": "press",
+      "button": "-"
+    },
+    {
+      "t": 3240,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 220,
+      "cadence_rpm": 85
+    },
+    {
+      "t": 3260,
+      "action": "press",
+      "button": "+"
+    },
+    {
+      "t": 3540,
+      "device": "trainer",
+      "action": "rider",
+      "watts": 240,
+      "cadence_rpm": 80
+    },
+    {
+      "t": 3560,
+      "action": "press",
+      "button": "-"
+    }
+  ],
+  "bench": {
+    "world": "village",
+    "duration_s": 3600,
+    "every_s": 300,
+    "endurance": true
+  }
+}

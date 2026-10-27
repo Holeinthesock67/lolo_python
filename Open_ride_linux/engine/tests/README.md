@@ -50,6 +50,10 @@ Premier défaut trouvé : le bandeau d'alerte (placé à 360 px du bord) recouvr
 
 Vrai core sur Bluetooth simulé et vraie scène, captures et rapport HTML, sur le parcours `demo` ou le « village simulé » de `make_sim_world.py` (178 bâtiments, montée et descente) : voir [docs/OUTILS_DE_TEST.md](../../docs/OUTILS_DE_TEST.md) §3. Hors de `run_engine_tests.sh` (plusieurs minutes par scénario).
 
+**Sonde de performance du moteur (lot X13).** `sim_bench.py --probe` (ou, avec le vrai jeu, `OPENRIDE_PERF_PROBE=~/OpenRide/sonde/moteur.csv openride` puis `engine/tests/perf_probe.py watch` dans un second terminal) mesure où part le temps, une ligne par seconde. L'engine, lancé avec `--perf-probe=FICHIER.csv` (`engine/scripts/perf_probe.gd`), écrit le temps d'image p50, p99 et max, les temps CPU et GPU de la vue relevés par le RenderingServer, les appels de dessin, objets et primitives dessinés, la mémoire vidéo et statique, les nœuds, les tuiles proches et lointaines, les tronçons OSM et les arbres. `perf_probe.py` y ajoute nvidia-smi (charge, mémoire vidéo, température et fréquence du GPU) et le CPU et la mémoire de chaque processus (core, Godot, lus dans `/proc`), recale les deux séries sur l'heure et écrit `sonde.csv`, `sonde.txt` (médiane, p99 et max de chaque mesure, dérive entre la première et la dernière minute) et `rapport.html` (courbes). `perf_probe.py report DOSSIER` refait le rapport. La mesure de référence se fait sur le PC cible, en fenêtre réelle (`--native`) : sous Xvfb, le rendu logiciel est environ dix fois plus lent.
+
+**Endurance d'une heure (lot X16).** `sim_bench.py --native --scenario endurance` (recette 1.0, lignes 17 et 18) roule une heure sur le village simulé (`--duration 5400` pour 90 min) : effort changé toutes les 5 min, un appui Click à chaque changement, parcours rechargé et relancé à chaque fin (« tours du parcours »), sonde de performance active. En plus des vérifications du banc (engine vivant jusqu'à la fin, aucune erreur Godot, aucune exception du core), après 5 min de mise en route : médiane des images/s d'au moins 30, baisse de moins de 10 % entre les 10 premières et les 10 dernières minutes, au plus 6 saccades par heure (seconde dont la pire image dépasse 100 ms), et croissance de la mémoire (pente des moindres carrés) sous 100 Mo/h pour Godot, 20 Mo/h pour le core, 50 Mo/h pour la mémoire vidéo de Godot et 100 Mo/h pour nvidia-smi. Seuils dans `perf_probe.ENDURANCE_LIMITS`. Sous Xvfb (sans `--native`), les images/s et les saccades sont données à titre indicatif (INFO).
+
 ## Tests unitaires (`engine/tests/unit/`, lot K1)
 
 Pour ajouter un test, il suffit de déposer un fichier dans `engine/tests/unit/` : le script le découvre, sans modification. Contrat d'un test unitaire :
@@ -59,6 +63,12 @@ Pour ajouter un test, il suffit de déposer un fichier dans `engine/tests/unit/`
 - il quitte avec le code 0 si tout passe, 1 sinon ; il ne dépend d'aucun port réseau ni d'aucun fichier hors de `res://` et `user://`.
 
 Les fichiers sont lancés par ordre alphabétique. Un test échoue si son code de sortie n'est pas 0, si sa ligne finale manque, s'il écrit une erreur ou un avertissement Godot (`SCRIPT ERROR`, `ERROR:`, `WARNING:`, hors avertissements connus du mode sans écran) ou s'il dépasse `UNIT_TIMEOUT` secondes (120 par défaut : une erreur de script dans `_init` laisse Godot tourner sans quitter).
+
+**Budgets de temps (lot X2).** Un test unitaire vérifie un résultat, pas une durée : la durée dépend de la machine (le PC cible est plus lent que les machines de GitHub pour la préparation des arbres). Une mesure de temps passe par `tests/perf_budget.gd` : `PerfBudget.measure_ms(fn, runs, warmup)` (médiane après chauffe) puis `PerfBudget.check(nom, ms)`, qui écrit une ligne `[PERF] nom : x ms, budget y ms` et ajoute `(DÉPASSÉ)` au-delà du budget. Budgets dans `tests/perf_budgets.json` (`budget_ms` du cahier pour le PC cible, `ci_ms` quand la variable `CI` existe), remplaçables par machine dans `~/OpenRide/perf_budgets.json` (`{"tree_tile_high": 230}`) ou le fichier nommé par `OPENRIDE_PERF_BUDGETS`. Mode `OPENRIDE_PERF` : `report` (défaut) n'échoue jamais sur un temps, `strict` compte un dépassement comme un échec, `off` ne mesure qu'une fois. `run_engine_tests.sh` résume toutes les mesures avant son résumé final et les ajoute au fichier `PERF_CSV` s'il est donné.
+
+```bash
+OPENRIDE_PERF=strict PERF_CSV=~/OpenRide/perf/tests.csv engine/tests/run_engine_tests.sh   # passage dédié aux temps
+```
 
 `UNIT=test_route_vectors engine/tests/run_engine_tests.sh` ne lance que ce test et saute les autres étapes (rendu, ERG, scénarios à faux core).
 
