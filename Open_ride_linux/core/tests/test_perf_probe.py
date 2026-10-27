@@ -101,3 +101,43 @@ def test_watch_stops_when_engine_stops_writing(tmp_path, monkeypatch):
     data = (tmp_path / "out" / "sonde.csv").read_text(encoding="utf-8")
     assert "gpu_util_pct" in data
     assert pp.watch(tmp_path / "absent.csv", tmp_path / "o2", None, wait_s=0.5) == 1
+
+
+# --- endurance (lot X16) ---------------------------------------------------------------------
+
+def endurance_rows(minutes: int, fps_end: float = 60.0, leak_mb_per_h: float = 0.0, stutters: int = 0):
+    rows = []
+    n = minutes * 60
+    for i in range(n):
+        t = float(i)
+        rows.append({"t_s": t, "fps": 60.0 + (fps_end - 60.0) * i / n,
+                     "frame_max_ms": 120.0 if 0 < stutters and i % (n // stutters) == n // stutters - 1 else 20.0,
+                     "godot_rss_mb": 450.0 + leak_mb_per_h * t / 3600.0 + (i % 7) * 0.3,
+                     "vram_mb": 300.0, "core_rss_mb": 33.0})
+    return rows
+
+
+def test_slope_per_hour():
+    rows = endurance_rows(20, leak_mb_per_h=60.0)
+    assert abs(pp.slope_per_hour(rows, "godot_rss_mb") - 60.0) < 1.0
+    assert abs(pp.slope_per_hour(rows, "vram_mb")) < 1e-9
+    assert pp.slope_per_hour(rows[:5], "vram_mb") is None and pp.slope_per_hour(rows, "absent") is None
+
+
+def test_endurance_checks_pass_and_fail():
+    good = {label: (ok, measure) for ok, label, measure in pp.endurance_checks(endurance_rows(60), real_window=True)}
+    assert all(ok for ok, _ in good.values()), good
+    assert "endurance : images/s dans la durée" in good and "endurance : saccades" in good
+
+    bad = {label: ok for ok, label, _ in
+           pp.endurance_checks(endurance_rows(60, fps_end=45.0, leak_mb_per_h=300.0, stutters=20), real_window=True)}
+    assert bad["endurance : images/s dans la durée"] is False         # 60 → 45 images/s
+    assert bad["endurance : saccades"] is False                        # 20 en une heure
+    assert bad["endurance : croissance de la mémoire de Godot"] is False
+    assert bad["endurance : croissance de la mémoire vidéo (Godot)"] is True
+
+    xvfb = pp.endurance_checks(endurance_rows(60, fps_end=10.0, leak_mb_per_h=300.0), real_window=False)
+    by_label = {label: ok for ok, label, _ in xvfb}
+    assert by_label["endurance : images/s"] is None                    # rendu logiciel : indicatif
+    assert by_label["endurance : croissance de la mémoire de Godot"] is False   # la mémoire compte partout
+    assert pp.endurance_checks([], real_window=True)[0][0] is False
