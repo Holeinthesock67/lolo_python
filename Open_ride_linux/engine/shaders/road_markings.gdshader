@@ -9,6 +9,7 @@ shader_type spatial;
 //   cycliste qui arrive ; au plus 8 par tronçon.
 // Anticrénelage par fwidth : pas de scintillement des traits au loin. `wear` éclaircit et casse la
 // peinture (0 : neuve).
+// Lot P17 : `wetness` (météo de P8, 0 à 1) assombrit la chaussée mouillée et la rend plus brillante.
 uniform vec3 road_color : source_color = vec3(0.29, 0.29, 0.30);
 uniform vec3 line_color : source_color = vec3(0.95, 0.95, 0.95);
 uniform float road_width_m = 6.0;
@@ -20,6 +21,7 @@ uniform float line_w_m = 0.12;
 uniform float edge_w_m = 0.15;
 uniform float edge_inset_m = 0.2;
 uniform float wear : hint_range(0.0, 1.0) = 0.15;
+uniform float wetness : hint_range(0.0, 1.0) = 0.0;
 uniform vec2 marks[8];
 uniform int mark_count = 0;
 uniform float digit_len_m = 2.4;
@@ -85,6 +87,6 @@ void fragment() {
 	// Usure : peinture éclaircie et cassée par plaques de 20 cm
 	float worn = step(hash12(floor(vec2(lat, s) * 5.0)), wear * 0.6);
 	paint *= (1.0 - worn) * (1.0 - 0.35 * wear);
-	ALBEDO = mix(road_color, line_color, paint);
-	ROUGHNESS = mix(0.9, 0.7, paint);
+	ALBEDO = mix(road_color, line_color, paint) * (1.0 - 0.45 * wetness);
+	ROUGHNESS = mix(mix(0.9, 0.7, paint), 0.3, wetness);
 }
