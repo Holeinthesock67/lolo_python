@@ -41,7 +41,7 @@ Nouveaux `bots_view_model.gd`, `bots_view.gd` et leur test ; modifiés `main.gd`
 
 ## 9. Livraison
 
-**27 octobre 2026** (thread « Développer les lots O restants »), lot interne sans issue ; les essais Godot sur le PC sont reportés à la demande du propriétaire.
+**27 octobre 2026** (thread « Développer les lots O restants »), lot interne sans issue, PR #407 ; les essais Godot sur le PC sont reportés à la demande du propriétaire.
 
 - **Contrat (révision 1.3, décision du 27 octobre) :** `start` accepte `bots`, liste qui remplace les bots de la séance : au plus 4 `{"kind": "constant", "power_w"}` ou `{"kind": "constant", "ftp_pct"}` (en % de la FTP du core) et un `{"kind": "ghost"}` (dernière séance enregistrée sur le parcours choisi). Sans `bots`, la séance garde les bots de la ligne de commande (`--bot`, `--ghost`) ; une liste vide les retire. Liste refusée, ou aucune séance passée pour le fantôme : `error` `bot_invalid`, rien ne démarre. Les trames `state` ne changent pas (sans bot, identiques à avant).
 - **Core :** `bots.bots_from_menu`, `bots.last_ride`, `CoreSession._choose_start_bots` ; `core/tests/test_menu_o7.py` (listes refusées, bots créés à la position du cycliste, fantôme de la séance enregistrée, retour aux bots de la ligne de commande).
