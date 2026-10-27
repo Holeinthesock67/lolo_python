@@ -203,7 +203,7 @@ func handle(event: String) -> Dictionary:
 		act = pairing.handle(str(act["id"]))
 		match act.get("action", ""):
 			"back":
-				menu.handle("MINUS_LONG")
+				menu.handle("Y_SHORT")
 				act = {}
 			"confirm_pair":
 				menu.confirm(str(act["title"]), {"action": "pair_devices", "args": act["args"]})

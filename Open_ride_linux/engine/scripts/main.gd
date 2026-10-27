@@ -64,6 +64,11 @@ const BEEPS := {
 	"MINUS_SHORT": [[440.0, 0.08]],
 	"PLUS_LONG": [[660.0, 0.10], [990.0, 0.14]],
 	"MINUS_LONG": [[550.0, 0.10], [330.0, 0.14]],
+	"A_SHORT": [[880.0, 0.08]],
+	"A_LONG": [[660.0, 0.10], [990.0, 0.14]],
+	"Y_SHORT": [[550.0, 0.10], [330.0, 0.14]],
+	"LEFT_SHORT": [[440.0, 0.08]],
+	"RIGHT_SHORT": [[880.0, 0.08]],
 }
 const BEEP_LEVEL := 0.3
 ## Durées d'affichage du rappel des commandes en séance et de l'explication d'un appui ambigu.
@@ -153,11 +158,11 @@ func _ready() -> void:
 	hud.add_child(menu_view)
 	hud.move_child(banner, -1)   # le bandeau reste lisible au-dessus du menu
 	menu_view.item_clicked.connect(func(item_id: String) -> void:
-		# Clic sur un élément : focus dessus puis validation, comme un appui long sur +.
+		# Clic sur un élément : focus dessus puis validation, comme un appui long sur A.
 		print("Souris : clic sur ", item_id)
 		if menu_flow.is_visible() and menu_flow.menu.focus_item(item_id):
-			_play_tones(BEEPS["PLUS_LONG"], BEEP_LEVEL)
-			_menu_event("PLUS_LONG"))
+			_play_tones(BEEPS["A_LONG"], BEEP_LEVEL)
+			_menu_event("A_LONG"))
 	menu_view.mouse_event.connect(func(ev: String) -> void:
 		print("Souris : ", ev)
 		if menu_flow.is_visible():

@@ -334,10 +334,10 @@ func _test_controls_help() -> void:
 		"rappel en séance libre : Y = pause, + / − = braquet")
 	_check(erg.contains("Y = pause") and erg.contains("intensité") and erg.contains("bloc suivant"),
 		"rappel en ERG : Y = pause, intensité, bloc suivant")
-	_check(HudViewModel.unclear_press_text("PLUS_UNCLEAR", true).contains("A")
-		and HudViewModel.unclear_press_text("MINUS_UNCLEAR", true).contains("Z")
+	_check(HudViewModel.unclear_press_text("PLUS_UNCLEAR", true).contains("A long pour valider")
+		and HudViewModel.unclear_press_text("MINUS_UNCLEAR", true).contains("précédent")
 		and HudViewModel.unclear_press_text("PLUS_UNCLEAR", false).contains("braquet"),
-		"appui ambigu expliqué : A / Z dans les menus, braquet en séance")
+		"appui ambigu expliqué : pas et A long dans les menus, braquet en séance")
 
 
 func _init() -> void:

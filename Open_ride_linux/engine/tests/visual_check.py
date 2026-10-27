@@ -743,8 +743,8 @@ def _menu_scenes(s: Session) -> None:
                 and overlap(m["rect"], info["widgets"]["power"]["rect"]) == 0.0, f"rectangle {m['rect']}")
         focus = fraction(img, rect_box(m["rect"]), lambda p: p[0] > 200 and p[1] > 150 and p[2] < 90, step=2)
         s.check("menu_accueil", "focus très visible (fond jaune)", focus >= 0.01, f"{focus:.1%} de pixels jaunes")
-    # Appui long « + » du Click relayé par le core : liste des parcours.
-    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "PLUS_LONG"})
+    # Appui long sur A du Click relayé par le core : liste des parcours.
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
     time.sleep(0.8)
     shot = s.capture("menu_parcours")
     if shot:

@@ -50,10 +50,10 @@ func _initialize() -> void:
 	v.gui_input.emit(_click(MOUSE_BUTTON_WHEEL_UP))
 	v.gui_input.emit(_click(MOUSE_BUTTON_WHEEL_DOWN))
 	v.gui_input.emit(_click(MOUSE_BUTTON_LEFT))
-	_check(events == ["MINUS_LONG", "MINUS_SHORT", "PLUS_SHORT"],
+	_check(events == ["Y_SHORT", "MINUS_SHORT", "PLUS_SHORT"],
 		"clic droit = retour, molette haut = précédent, molette bas = suivant, clic gauche hors élément : rien")
-	_check(v.hint_label.visible and v.hint_label.text == v.HINT and v.HINT.contains("A ou + long valider"),
-		"aide visible sur la liste : bouton A ou appui long pour valider")
+	_check(v.hint_label.visible and v.hint_label.text == v.HINT and v.HINT.contains("A long valider") and v.HINT.contains("Y retour"),
+		"aide visible sur la liste : A long pour valider, Y pour revenir")
 	v.update_display({"screen": "home", "title": "OpenRide", "focus": 0, "items": items}, {}, {}, false)
 	_check(v.hint_label.visible and v.devices.visible, "accueil : aide visible avec les appareils")
 	v.update_display({"screen": "pause", "title": "Pause", "focus": 0, "items": items}, {}, {}, false)

@@ -116,7 +116,7 @@ func _test_retry_and_failure_logic() -> void:
 	_check(fallback_menu.state()["items"][0]["label"] == "Aucun parcours", "liste vide : affiche « Aucun parcours »")
 	_check(fallback_menu.state()["items"][0]["enabled"] == false, "« Aucun parcours » est désactivé")
 	# Le retour reste possible
-	fallback_menu.handle("MINUS_LONG")
+	fallback_menu.handle("Y_SHORT")
 	_check(fallback_menu.state()["screen"] == "home", "retour vers home possible depuis la liste vide")
 
 	
@@ -170,13 +170,13 @@ func _start_ipc_test() -> void:
 	# Scénario complet au Click :
 	# 1. Accueil -> valide "Rouler"
 	_check(_menu.state()["screen"] == "home", "menu initial sur home")
-	var st1: Dictionary = _menu.handle("PLUS_LONG") # valide 'Rouler' (focus 0)
+	var st1: Dictionary = _menu.handle("A_LONG") # valide 'Rouler' (focus 0)
 	_check(_menu.state()["screen"] == "routes", "passage sur l'écran routes")
 
 	# 2. Choix du 2e parcours (focus 1 : galibier)
 	_menu.handle("PLUS_SHORT")
 	_check(_menu.state()["focus"] == 1, "focus sur le 2e parcours")
-	var st2: Dictionary = _menu.handle("PLUS_LONG")
+	var st2: Dictionary = _menu.handle("A_LONG")
 	var act_sel_route: Dictionary = st2.get("action", {})
 	_check(act_sel_route.get("action") == "select_route", "action select_route générée")
 	var route_id: String = str(act_sel_route.get("route_id", ""))
@@ -187,12 +187,12 @@ func _start_ipc_test() -> void:
 	# 3. Choix d'un entraînement depuis l'écran ready
 	_menu.handle("PLUS_SHORT") # focus sur 1 ("Choisir un entraînement")
 	_check(_menu.state()["focus"] == 1, "focus sur 'Choisir un entraînement'")
-	_menu.handle("PLUS_LONG")
+	_menu.handle("A_LONG")
 	_check(_menu.state()["screen"] == "workouts", "passage sur l'écran workouts")
 
 	# En workouts, focus 0 = Sans entraînement, focus 1 = cassé (désactivé, sauté), focus 2 = Récupération
 	_menu.handle("PLUS_SHORT")
-	var st3: Dictionary = _menu.handle("PLUS_LONG")
+	var st3: Dictionary = _menu.handle("A_LONG")
 	var act_sel_wo: Dictionary = st3.get("action", {})
 	_check(act_sel_wo.get("action") == "select_workout", "action select_workout générée")
 	var wo_id = act_sel_wo.get("workout_id")
@@ -203,7 +203,7 @@ func _start_ipc_test() -> void:
 	# 4. Démarrage : retour sur 'Démarrer'
 	_menu.handle("MINUS_SHORT")
 	_check(_menu.state()["focus"] == 0, "focus sur 'Démarrer'")
-	var st4: Dictionary = _menu.handle("PLUS_LONG")
+	var st4: Dictionary = _menu.handle("A_LONG")
 	var act_start: Dictionary = st4.get("action", {})
 	_check(act_start.get("action") == "start", "action start générée")
 	var cmd_start_id: int = _client.send_command("start", {})

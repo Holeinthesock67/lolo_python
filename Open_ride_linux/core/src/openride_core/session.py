@@ -624,23 +624,15 @@ class CoreSession:
     # --- entrées utilisateur -------------------------------------------------------------
 
     def _handle_input(self, ev: InputEvent) -> None:
-        if ev == InputEvent.PAUSE:   # bouton Y du Click (lot N6) : pause ou reprise, pas relayé
-            st = self.state.session_state
-            if st == "RUNNING":
-                self._on_command("pause", {}, 0)
-            elif st == "PAUSED":
-                self._on_command("resume", {}, 0)
+        # Rôle des boutons : spécification générale §7.1. Y en séance : pause, sans relais ; ailleurs
+        # (menus, écran de pause), l'engine en fait « écran précédent » ou « reprendre ».
+        if ev == InputEvent.Y_SHORT and self.state.session_state == "RUNNING":
+            self._on_command("pause", {}, 0)
             return
-        if ev in (InputEvent.SELECT, InputEvent.BACK):
-            # Boutons A et Z : valider et retour des menus (appui long + et − sans attendre 0,9 s).
-            # Sans effet en séance, pour ne pas sauter dix braquets par erreur.
-            if self.state.session_state != "RUNNING":
-                self.server.send_input_event("PLUS_LONG" if ev == InputEvent.SELECT else "MINUS_LONG")
-            return
-        # Toujours relayé à l'engine : menu hors séance, retour sonore (bips) pendant la séance.
+        # Relayé à l'engine : menus hors séance, retour sonore (bips) et explications pendant la séance.
         self.server.send_input_event(ev.value)
-        if ev in (InputEvent.PLUS_UNCLEAR, InputEvent.MINUS_UNCLEAR):
-            return   # appui ambigu : l'engine l'explique, rien d'autre
+        if ev not in (InputEvent.PLUS_SHORT, InputEvent.MINUS_SHORT, InputEvent.PLUS_LONG, InputEvent.MINUS_LONG):
+            return   # A, Z, flèches, appui ambigu : rien en séance pour l'instant (O17, vues de caméra)
         if self.state.session_state != "RUNNING":
             return
         erg = self.erg

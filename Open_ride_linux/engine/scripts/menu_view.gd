@@ -4,7 +4,7 @@ extends Panel
 ## élément désactivé (« à compiler »…), puis l'état des appareils (devices_view.gd) ou le bilan
 ## (summary_view.gd). Placé entre les panneaux latéraux du HUD d'E3, au-dessus du profil d'altitude ;
 ## mêmes tailles de police que le HUD (lisible à 2 m). Ne décide rien : affiche menu_flow.gd.
-## Souris : clic gauche sur un élément = le valider, clic droit = retour, molette = choisir ;
+## Souris : clic gauche sur un élément = le valider (A long), clic droit = retour (Y), molette = choisir ;
 ## main.gd reçoit ces gestes par les signaux ci-dessous.
 ## Pas de class_name : charger par preload("res://scripts/menu_view.gd").
 
@@ -19,11 +19,11 @@ const MAX_VISIBLE_ITEMS := 5
 const FOCUS_BG := Color(0.95, 0.75, 0.20, 0.95)
 const FOCUS_TEXT := Color(0.05, 0.05, 0.05)
 const DISABLED_TEXT := Color(0.60, 0.62, 0.65)
-const HINT := "Click : + / − choisir · A ou + long valider · Z ou − long retour   ·   Clavier : ↑ ↓ Entrée Échap   ·   Souris"
-const HINT_PAUSE := "Click : + / − choisir · A ou + long valider · Y reprendre   ·   Clavier : ↑ ↓ Entrée, Échap reprendre   ·   Souris"
+const HINT := "Click : + / − ou A choisir (long : 5) · A long valider · Y retour   ·   Clavier : ↑ ↓ Entrée Échap   ·   Souris"
+const HINT_PAUSE := "Click : + / − ou A choisir · A long valider · Y reprendre   ·   Clavier : ↑ ↓ Entrée, Échap reprendre   ·   Souris"
 
 signal item_clicked(item_id: String)
-## Événement du Click joué à la souris : MINUS_LONG (clic droit), MINUS_SHORT / PLUS_SHORT (molette).
+## Événement du Click joué à la souris : Y_SHORT (clic droit), MINUS_SHORT / PLUS_SHORT (molette).
 signal mouse_event(event_name: String)
 
 var title_label: Label
@@ -167,7 +167,7 @@ func _on_gui_input(event: InputEvent) -> void:
 		return
 	match event.button_index:
 		MOUSE_BUTTON_RIGHT:
-			mouse_event.emit("MINUS_LONG")
+			mouse_event.emit("Y_SHORT")
 		MOUSE_BUTTON_WHEEL_UP:
 			mouse_event.emit("MINUS_SHORT")
 		MOUSE_BUTTON_WHEEL_DOWN:

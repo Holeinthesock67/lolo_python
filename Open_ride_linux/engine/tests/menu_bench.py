@@ -173,12 +173,12 @@ def parcours_appareils(run: Run) -> None:
         return
     time.sleep(3.0)
     run.expect("connexion", "Connexion des appareils", "[Passer — ", "Click − : recherche")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     run.expect("accueil", "OpenRide", "[Rouler]")
-    run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_LONG")
+    run.press("PLUS_SHORT", "PLUS_SHORT", "A_LONG")
     run.expect("reglages", "Réglages", "[Appareils : rechercher et appairer]")
     t = now()
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     assert run.engine is not None
     done = run.engine.wait_for(r"scan_results done=true items=(\d+)", 20.0, after=t)
     r.check(done is not None and int(done[1].group(1)) >= 3, "recherche des appareils simulés",
@@ -187,17 +187,17 @@ def parcours_appareils(run: Run) -> None:
     if not run.focus_to("Enregistrer"):
         r.check(False, "Enregistrer actif", "focus jamais sur « Enregistrer »")
         return
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     info = run.shot("confirmation")
     r.check(info["title"].startswith("Enregistrer") and "[Non]" in info["menu"], "confirmation avant l'écriture",
             f"« {info['title']} » {info['menu'][:60]}")
-    run.press("PLUS_SHORT", "PLUS_LONG")   # Oui
+    run.press("PLUS_SHORT", "A_LONG")   # Oui
     time.sleep(2.0)
     text = run.config.read_text(encoding="utf-8")
     r.check("[trainer]" in text and "address" in text, "config.toml écrit par pair_devices", text.replace("\n", " ")[:160])
     run.expect("enregistre", "Appareils", "Relancer OpenRide maintenant", "Enregistré")
     run.focus_to("Relancer")
-    run.press("PLUS_LONG")
+    run.press("A_LONG")
     rc = None
     deadline = now() + 10.0
     while now() < deadline and rc is None:

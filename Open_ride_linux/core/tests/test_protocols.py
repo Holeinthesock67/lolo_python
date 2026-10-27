@@ -95,8 +95,8 @@ def test_click_keypad_status_new_model():
     assert minus.minus_pressed and not minus.plus_pressed
     both = parse_click_buttons(frame(0xFFFFEEFF))
     assert both.plus_pressed and both.minus_pressed
-    # Click V2 : B du boîtier droit (bit 5, trame mesurée ffffffdf) = « − » ; Y (bit 6) = pause ;
-    # A et Z ignorés
+    # Click V2 : B du boîtier droit (bit 5, trame mesurée ffffffdf) = « − » ; Y (bit 6), A et Z lus
+    # à part
     b = parse_click_buttons(frame(0xFFFFFFDF))
     assert b.minus_pressed and not b.plus_pressed and not b.y_pressed
     y = parse_click_buttons(frame(0xFFFFFFBF))
@@ -129,17 +129,20 @@ def test_press_classifier_thresholds():
     assert c.update("PLUS", False, 6.0) is None       # relâché sans appui
 
 
-def test_y_button_is_pause_whatever_the_duration():
-    """Lot N6 : bouton Y du boîtier droit = pause ou reprise, appui court ou long."""
+def test_y_and_arrows_have_one_event_whatever_the_duration():
+    """Spécification générale §7.1 : Y et les flèches n'ont qu'un événement, appui court ou long."""
     c = PressClassifier()
     assert c.feed(ClickButtons(False, False, y_pressed=True), 0.0) == []
-    assert c.feed(ClickButtons(False, False), 0.2) == [InputEvent.PAUSE]
+    assert c.feed(ClickButtons(False, False), 0.2) == [InputEvent.Y_SHORT]
     c.feed(ClickButtons(False, False, y_pressed=True), 1.0)
-    assert c.feed(ClickButtons(False, False), 2.0) == [InputEvent.PAUSE]   # zone morte sans effet
+    assert c.feed(ClickButtons(False, False), 2.0) == [InputEvent.Y_SHORT]
+    for name in ("left", "right", "up", "down"):
+        c.feed(ClickButtons(False, False, **{f"{name}_pressed": True}), 3.0)
+        assert c.feed(ClickButtons(False, False), 3.7) == [InputEvent[f"{name.upper()}_SHORT"]]
 
 
-def test_a_and_z_buttons_select_and_back_whatever_the_duration():
-    """Boutons A et Z du boîtier droit : valider et retour dans les menus, appui court ou long."""
+def test_a_and_z_buttons_short_and_long():
+    """Boutons A et Z du boîtier droit : court et long ; entre les deux, rien (pas d'UNCLEAR)."""
     def frame(mask):
         out = bytearray([0x23, 0x08])
         v = mask
@@ -153,10 +156,17 @@ def test_a_and_z_buttons_select_and_back_whatever_the_duration():
     assert a.a_pressed and not a.z_pressed and not a.plus_pressed
     z = parse_click_buttons(frame(0xFFFFFF7F))
     assert z.z_pressed and not z.a_pressed and not z.minus_pressed
+    for arrow in ("LEFT", "UP", "RIGHT", "DOWN"):
+        b = parse_click_buttons(frame(0xFFFFFFFF & ~(1 << zwift_click.KEYPAD_BITS[arrow])))
+        assert getattr(b, f"{arrow.lower()}_pressed")
     c = PressClassifier()
     assert c.feed(ClickButtons(False, False, a_pressed=True), 0.0) == []
-    assert c.feed(ClickButtons(False, False), 0.1) == [InputEvent.SELECT]
+    assert c.feed(ClickButtons(False, False), 0.1) == [InputEvent.A_SHORT]
     c.feed(ClickButtons(False, False, a_pressed=True), 1.0)
-    assert c.feed(ClickButtons(False, False), 1.7) == [InputEvent.SELECT]   # zone morte ignorée
-    c.feed(ClickButtons(False, False, z_pressed=True), 3.0)
-    assert c.feed(ClickButtons(False, False), 3.2) == [InputEvent.BACK]
+    assert c.feed(ClickButtons(False, False), 2.0) == [InputEvent.A_LONG]
+    c.feed(ClickButtons(False, False, a_pressed=True), 3.0)
+    assert c.feed(ClickButtons(False, False), 3.7) == []   # zone morte : rien
+    c.feed(ClickButtons(False, False, z_pressed=True), 4.0)
+    assert c.feed(ClickButtons(False, False), 4.2) == [InputEvent.Z_SHORT]
+    c.feed(ClickButtons(False, False, z_pressed=True), 5.0)
+    assert c.feed(ClickButtons(False, False), 6.0) == [InputEvent.Z_LONG]

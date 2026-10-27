@@ -73,8 +73,8 @@ static func controls_text(erg: bool) -> String:
 static func unclear_press_text(event_name: String, in_menu: bool) -> String:
 	var plus := event_name == "PLUS_UNCLEAR"
 	if in_menu:
-		return ("Appui trop court pour valider : maintenez + une seconde, ou appuyez sur A" if plus
-			else "Appui trop court pour revenir : maintenez − une seconde, ou appuyez sur Z")
+		return ("Appui ni court ni long, ignoré : bref sur %s pour l'élément %s, une seconde pour cinq ; A long pour valider"
+			% ["+" if plus else "−", "suivant" if plus else "précédent"])
 	return "Appui ignoré (ni court ni long) : appui bref pour un braquet, une seconde pour un appui long"
 
 
