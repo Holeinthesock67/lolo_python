@@ -28,7 +28,8 @@
         "busy",
         "scan_failed",
         "pairing_failed",
-        "bad_args"
+        "bad_args",
+        "workout_write_failed"
       ]
     },
     "message": {

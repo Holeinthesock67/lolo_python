@@ -24,8 +24,7 @@
       "required": [
         "ftp_w",
         "gears_total",
-        "theme",
-        "difficulty_pct"
+        "theme"
       ],
       "properties": {
         "ftp_w": {

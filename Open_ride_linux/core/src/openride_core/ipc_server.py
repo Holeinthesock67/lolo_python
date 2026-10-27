@@ -20,6 +20,8 @@ log = logging.getLogger("ipc_server")
 CONTRACT_VERSION = 1
 MAX_DATAGRAM_SIZE = 1400
 MAX_LIST_DATAGRAM_SIZE = 60000
+# Messages en parties (`part`, `parts`) : 60 000 octets au plus par partie (contrat §2).
+LIST_MESSAGE_TYPES = ("routes", "workouts", "imports")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
 
@@ -154,7 +156,7 @@ class IpcServer:
         if not self._tx_sock:
             return
         limit = max_size if max_size is not None else (
-            MAX_LIST_DATAGRAM_SIZE if msg_dict.get("type") in ("routes", "workouts") else MAX_DATAGRAM_SIZE
+            MAX_LIST_DATAGRAM_SIZE if msg_dict.get("type") in LIST_MESSAGE_TYPES else MAX_DATAGRAM_SIZE
         )
         payload = json.dumps(msg_dict, separators=(",", ":")).encode("utf-8")
         if len(payload) > limit:
@@ -274,7 +276,9 @@ class IpcServer:
             name = msg["name"]
             args = msg.get("args") or {}
             self.last_heartbeat_time = time.monotonic()
-            is_query = name in ("list_routes", "list_workouts")
+            # Requêtes : réponse à chaque copie reçue, la réponse a pu se perdre (contrat §4). La création et
+            # l'import d'entraînement sont idempotents (même fichier, même identifiant), lot N16.
+            is_query = name in ("list_routes", "list_workouts", "list_imports", "create_workout", "import_workout")
             if cmd_id > self.last_cmd_id or is_query:
                 self.last_cmd_id = max(self.last_cmd_id, cmd_id)
                 log.info("Commande traitée : id=%d name=%s", cmd_id, name)

@@ -59,7 +59,7 @@ def run_steps(s, n, t0=100.0):
 
 def test_all_message_schemas_exist():
     for name in ("state", "cmd", "hello", "hello_ack", "heartbeat", "input", "error", "shutdown", "bye",
-                 "routes", "workouts", "scan_results"):
+                 "routes", "workouts", "scan_results", "imports", "workout_saved"):
         jsonschema.Draft202012Validator.check_schema(schema(name))
 
 
