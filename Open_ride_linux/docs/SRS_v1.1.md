@@ -354,6 +354,7 @@ grade_rate_pct_per_s = 2.0   # ancien réglage symétrique, lu seulement si up/d
 grade_rate_up_pct_per_s = 4.0     # vitesse maximale quand la pente envoyée augmente (lot Q4)
 grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
+hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
 
 [gearing]
 n_gears = 24
@@ -371,6 +372,9 @@ click_address = ""          # boîtier « + » du Click (openride-core devices -
 click_minus_address = ""    # boîtier « − » du Click
 click_short_max_s = 0.5
 click_long_min_s = 0.9
+click_trace_raw = false      # trace brute de chaque notification du Click (lot Q6)
+click_mute_after_s = 60.0    # boîtier déclaré muet sans appui depuis ce délai (lot Q6)
+click_rehandshake_s = 0.0    # reprise d'un boîtier muet, en secondes entre deux étapes ; 0 : jamais (lot Q6)
 mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
 hr = "none"                  # ceinture cardio : "none", "ble" ou "sim"
 hr_address = ""

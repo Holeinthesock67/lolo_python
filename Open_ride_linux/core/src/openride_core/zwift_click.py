@@ -134,6 +134,23 @@ class ClickButtons:
     down_pressed: bool = False
 
 
+MESSAGE_TYPES = ("boutons", "batterie", "maintien", "inconnu")
+
+
+def classify_message(data: bytes) -> str:
+    """Classe un message de notification du Click : 'boutons', 'batterie', 'maintien' ou 'inconnu'."""
+    if not data:
+        return "inconnu"
+    msg_type = data[0]
+    if msg_type in (MSG_KEYPAD_STATUS, MSG_CLICK_NOTIFICATION, MSG_CONTROLLER_NOTIFICATION):
+        return "boutons"
+    if msg_type == MSG_BATTERY_LEVEL:
+        return "batterie"
+    if msg_type == MSG_EMPTY:
+        return "maintien"
+    return "inconnu"
+
+
 def parse_async(data: bytes) -> tuple[int, dict[int, int]]:
     """Renvoie (type de message, champs protobuf décodés)."""
     if not data:
