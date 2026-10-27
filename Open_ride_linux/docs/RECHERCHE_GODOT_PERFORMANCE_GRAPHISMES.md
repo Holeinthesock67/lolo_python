@@ -19,7 +19,10 @@ Réponses aux questions posées après la PR #355 :
 | 10. Habillage | Priorités validées : toits à pans et façades texturées, puis étalonnage, puis marquages de route. |
 | 8. Moteur Mobile | Essai mesuré maintenu (Y7) ; décision après la mesure. |
 | 9. Imposteurs | **Notre propre version** (shader et petit outil de capture), sans l'extension externe (Y5). |
-| 7, 11, 12, 13 | En attente. |
+| 11. Bots à l'écran | Retard d'affichage d'environ 0,1 s accepté (mémoire de trames et Hermite, Y9). |
+| 12. Comportement des bots | Bots réalistes : attaques dans les montées, fatigue, abri, calculés dans le core (Y10). |
+| 13. PR #355 | Compléter puis fusionner. |
+| 7. Résolution adaptative | Sans réponse explicite pour l'instant : Y6 garde la proposition (75–85 % avec FSR 1.0 quand le GPU sature) jusqu'à la décision. |
 
 ## 1. En bref
 
