@@ -216,19 +216,19 @@ Les cahiers V1 à V11 et les questions V-Q4 à V-Q13 sont en revue (PR #238).
 
 ### 5.3 Version 3.0
 
-Détail : [PLAN_SERIE_U.md](3.0/PLAN_SERIE_U.md). Toutes les questions U-Q1 à U-Q5, U-G1 et U-G2 sont tranchées (25 octobre).
+Détail : [PLAN_SERIE_U.md](3.0/PLAN_SERIE_U.md). Toutes les questions U-Q1 à U-Q5, U-G1 et U-G2 sont tranchées (25 octobre). Cahiers des lots U0 à U22 rédigés le 27 octobre ([index des lots](lots/00_INDEX.md)) ; les questions U-Q6 à U-Q13 nées de cette rédaction (§11 du plan) sont toutes validées le 27 octobre.
 
 | Id | Exigence | Lots | Statut |
 | --- | --- | --- | --- |
-| 3.0-BIO-1 | Seize biomes ; au plus quatre par tuile de terrain (trois en `low`) ; biome automatique d'après les données réelles et forçage au compilateur et au menu | U1, U2, U16 | Planifié |
+| 3.0-BIO-1 | Seize biomes ; au plus quatre par tuile de terrain (trois en `low`) ; biome automatique d'après les données réelles et forçage au compilateur et au menu | U1, U2, U16, U19 | Planifié |
 | 3.0-BIO-2 | Occupation du sol ESA WorldCover téléchargée par le compilateur et mise en cache | U2 | Planifié |
 | 3.0-BIO-3 | Variantes régionales de roches, terres et bâtiments à grosse maille | U4, U14 | Planifié |
 | 3.0-BIO-4 | Mer, côtes et plages | U3, U9 | Planifié |
 | 3.0-BIO-5 | Saisons propres à chaque biome (saison sèche et saison des pluies, désert, polaire) | U13 | Planifié |
 | 3.0-BIO-6 | Végétation, sons, faune et atmosphère par biome | U7, U8, U10 à U12 | Planifié |
 | 3.0-BIO-7 | Thème 2.0 en pack de biomes, thèmes 1.x toujours lisibles ; textures CC0 en packs, bibliothèque de 5 Go | U1, U15 | Planifié |
-| 3.0-BIO-8 | Budget : 1 Go de mémoire vidéo au plus pour le décor, 55 images/s en `low` ; premier jalon : prairie, forêt tempérée, vignobles et cultures, haute montagne, méditerranéen, littoral | U6, U17, U18 | Planifié |
-| 3.0-GRV-1 | Option « gravel » coupée par défaut : chemins de terre ouverts au monde ouvert ; résistance au roulement 2 à 3 fois celle du bitume, en supplément de pente sous le même plafond que le vent ; en ERG, vitesse seulement | Pas encore de lot | Planifié |
+| 3.0-BIO-8 | Budget : 1 Go de mémoire vidéo au plus pour le décor, 55 images/s en `low` ; premier jalon : prairie, forêt tempérée, vignobles et cultures, haute montagne, méditerranéen, littoral | U6, U17, U18, U19 | Planifié |
+| 3.0-GRV-1 | Option « gravel » coupée par défaut : chemins de terre ouverts au monde ouvert ; résistance au roulement 2 à 3 fois celle du bitume, en supplément de pente sous le même plafond que le vent ; en ERG, vitesse seulement ; surface réelle d'OSM (« Chemins réels ») ou imposée à tout le parcours (« Gravier », « Terre », « Chemin compact ») pour rouler en gravel sur une trace revêtue (décision U-Q8 du 27 octobre) ; ruban de terre ou de gravier | U1, U16, U20, U21, U22 | Planifié |
 
 ## 6. Contrats
 
@@ -244,7 +244,7 @@ Le champ `v` reste 1 : tous les ajouts sont compatibles. Chaque révision est no
 | 1.3 | Champs `wind` et `draft` de `state` | P1 | 1.x | Spécifié (le cahier P1 dit encore « v1.2 », C1) |
 | 1.4 | Événements `input` Y, Z et A ; champs `rogue`, `segment`, `powerup` ; champs des bots à profil ; messages `room`, `loot`, `segment_result`, `xp` ; commandes de run, `equip`, `set_avatar` | R1, T1, V1 | 2.0 | Planifié (cahier R1 en revue, PR #244) |
 | 1.5 | Monde ouvert : `start_open_world`, `choose_branch`, champ `open_world`, `world_status` et messages de la carte | W1 | 2.0 | En revue (PR #282, numéro provisoire) |
-| — | Série U : aucun ajout à l'IPC prévu ; le forçage du biome au menu (U16) passera par la révision suivante si besoin | U16 | 3.0 | Planifié |
+| 1.6 | Série U : clés facultatives `biome` et `gravel` de `hello_ack.config`, aucun nouveau message (le menu passe par `set_setting`) | U1, U16 | 3.0 | Spécifié (cahier U1, numéro provisoire) |
 
 Règles de numérotation : une révision est réservée par série, dans l'ordre ci-dessus ; R1, T1 et V1 se partagent la 1.4, le premier fusionné ajoute les événements de boutons communs ; un lot de contrat prend le premier numéro libre à sa fusion. La numérotation 1.2 est confirmée par le propriétaire (26 octobre) ; 1.3 à 1.5 suivent l'ordre adopté dans la PR #244 et la PR #282, et l'audit de l'IPC du 26 octobre (PR #288) arrive à la même numérotation ; elle reste à confirmer par le propriétaire. L'ancienne proposition N13 = 1.3, P1 = 1.4, R/T = 1.5 est périmée.
 
@@ -257,11 +257,11 @@ Règles de numérotation : une révision est réservée par série, dans l'ordre
 | Niveaux de textures dans le thème | P20 | 2.0 | Spécifié |
 | Couche `segments` | T1 | 2.0 | Planifié |
 | Monde vivant : `live`, origine sur grille UTM, route par parties, couches par carré, `junctions.json` | W1 | 2.0 | En revue (PR #282) |
-| Couche `biome`, variante régionale, eau `sea`, couche côte ; thème 2.0 en pack de biomes | U1 | 3.0 | Planifié |
+| Couche `biome`, variante régionale, eau `sea`, couche `coast` ; colonne `surface` de la route et classe `g` du monde ouvert ; thème 2.0 en pack de biomes | U1 | 3.0 | Spécifié (cahier U1 ; mineur libre suivant celui de W1) |
 
 ### 6.3 Configuration
 
-Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts prévus : `[wind]` (P1), `[render] living` et `texture_level` (P4, P20), `[open_world]` avec `cache_dir` et `cache_max_gb` (W2) ; la série R ajoute le W' du joueur, dont la clé est fixée par R1.
+Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts prévus : `[wind]` (P1), `[render] living` et `texture_level` (P4, P20), `[open_world]` avec `cache_dir` et `cache_max_gb` (W2) ; `[render] biome` et `theme_library_gb`, section `[gravel]` (U1, U15) ; la série R ajoute le W' du joueur, dont la clé est fixée par R1.
 
 ## 7. Boutons du Click et vues de caméra
 
@@ -337,6 +337,7 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | C8 | Programmes : la SRS §3 annonce trois programmes ; le lot W1 en ajoute un quatrième (`openride-worldgen`) | SRS §3, PR #282 | Accepter, noté au §3 |
 | C9 | L'état « Livré » de Q1 et Q3 n'est pas reporté dans l'index des lots, alors que leur code est sur `main` (révision 1.2 de l'IPC, clé `trace_ftms`) | `docs/lots/00_INDEX.md` | À corriger par la série Q (tenue par une autre IA) |
 | C10 | Taille de la trame `state` : le contrat promet 1 400 octets, mais une trame réaliste en fait déjà environ 1 520 sur `main`, et les séries P, R, T et W ajoutent toutes des champs à `state`. Aucune exigence de ce document ne promet donc de tenir dans 1 400 octets | `docs/contracts/ipc_v1.md`, plans T et W, audit IPC (PR #288) | Trancher la décision D1 de l'audit avant la 1.3 : arrondir les flottants, puis relever la limite de `state` à 4 096 octets en 1.3, ou créer un message `state_ext` |
+| C11 | Premier jalon de la série U : la décision U-Q5 y met le littoral, mais l'ordre conseillé du plan §8 renvoyait la côte et la mer (U3, U9) après le jalon | `docs/3.0/PLAN_SERIE_U.md` §8 | La décision du propriétaire l'emporte : U3 et U9 entrent dans le premier jalon (corrigé dans le plan et validé par le propriétaire (U-Q13) le 27 octobre) |
 
 ## 10. Tenue de ce document
 
@@ -348,3 +349,4 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | --- | --- |
 | 26 octobre 2026 | Première version : SRS v1.1, série P, plans R, T, V, W et U rassemblés ; révisions IPC 1.0 à 1.5 ; contradictions C1 à C10 ; numérotation alignée sur l'audit IPC (PR #288) |
 | 26 octobre 2026 | Décisions C4, C5 et C6 ; vues de caméra (§7.2) ; plan de boutons commun (§7.1), validé le même jour |
+| 27 octobre 2026 | Série U : cahiers U0 à U22, lots de l'option « gravel » (U20 à U22), révision 1.6 provisoire de l'IPC, écart C11 |
