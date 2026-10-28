@@ -10,6 +10,8 @@ const vec3 METAL = vec3(0.6, 0.61, 0.63);
 const vec3 HEAD = vec3(0.85, 0.85, 0.8);
 const vec3 TAIL = vec3(0.45, 0.03, 0.03);
 const vec3 PALE = vec3(0.82, 0.82, 0.78);
+const vec3 SKIN = vec3(0.78, 0.57, 0.44);
+const vec3 WOOD = vec3(0.46, 0.3, 0.17);
 const vec3 HEAD_GLOW = vec3(1.0, 0.95, 0.8);
 const vec3 TAIL_GLOW = vec3(0.9, 0.05, 0.03);
 
@@ -55,6 +57,14 @@ void fragment() {
 	} else if (region == 7) {
 		c = second;
 		rough = 0.5;
+	} else if (region == 8) {
+		c = SKIN;
+		rough = 0.7;
+		spec = 0.3;
+	} else if (region == 9) {
+		c = WOOD;
+		rough = 0.75;
+		spec = 0.3;
 	}
 	ALBEDO = c;
 	ROUGHNESS = rough;
