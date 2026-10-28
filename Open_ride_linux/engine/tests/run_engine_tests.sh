@@ -16,7 +16,9 @@
 # « none » pour les sauter ; matrice complète et rapport : run_visual_tests.sh),
 # OPENRIDE_PERF (budgets de temps, lot X2 : « report » par défaut, un dépassement est signalé sans
 # échec ; « strict » le compte comme un échec ; budgets dans tests/perf_budgets.json),
-# PERF_CSV (fichier où ajouter les mesures « date;nom;ms;budget;dépassé », facultatif).
+# PERF_CSV (fichier où ajouter les mesures « date;nom;ms;budget;dépassé », facultatif),
+# ENGINE_JUNIT (fichier JUnit XML à écrire, lot X3 : une entrée par test du résumé, avec son statut et
+# sa durée, temps écoulé depuis l'entrée précédente ; facultatif, rien n'est écrit sans).
 # Code de sortie : 0 si tout passe.
 set -u
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -36,10 +38,43 @@ fi
 status=0
 PERF_FILE="$(mktemp -t openride-perf.XXXXXX)"   # lignes [PERF] de tous les tests (lot X2)
 
-# Résumé final : une ligne par test (fichier ou étape) et son résultat.
+# Résumé final : une ligne par test (fichier ou étape) et son résultat ; JUnit (lot X3) : nom, statut,
+# durée depuis l'entrée précédente, détail.
 SUMMARY=()
+JUNIT_CASES=()
+JUNIT_LAST="$(date +%s.%N)"
+JUNIT_START="$JUNIT_LAST"
 record() {  # record <nom> <0 si réussi> [détail]
   if [ "$2" -eq 0 ]; then SUMMARY+=("OK     $1${3:+ : $3}"); else SUMMARY+=("ÉCHEC  $1${3:+ : $3}"); status=1; fi
+  local now
+  now="$(date +%s.%N)"
+  JUNIT_CASES+=("$1"$'\t'"$2"$'\t'"$(awk -v a="$JUNIT_LAST" -v b="$now" 'BEGIN { printf "%.3f", b - a }')"$'\t'"${3:-}")
+  JUNIT_LAST="$now"
+}
+
+xml_escape() {
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
+}
+
+# Rapport JUnit XML (lot X3) si ENGINE_JUNIT est donné : une entrée <testcase> par appel de record.
+write_junit() {
+  [ -n "${ENGINE_JUNIT:-}" ] || return 0
+  local failures=0 total name rc secs detail
+  for c in "${JUNIT_CASES[@]}"; do [ "$(cut -f2 <<<"$c")" = 0 ] || failures=$((failures + 1)); done
+  total="$(awk -v a="$JUNIT_START" -v b="$(date +%s.%N)" 'BEGIN { printf "%.3f", b - a }')"
+  mkdir -p "$(dirname "$ENGINE_JUNIT")"
+  {
+    echo '<?xml version="1.0" encoding="utf-8"?>'
+    echo "<testsuites><testsuite name=\"engine\" tests=\"${#JUNIT_CASES[@]}\" failures=\"$failures\" errors=\"0\" skipped=\"0\" time=\"$total\">"
+    for c in "${JUNIT_CASES[@]}"; do
+      IFS=$'\t' read -r name rc secs detail <<<"$c"
+      printf '  <testcase classname="engine" name="%s" time="%s"' "$(xml_escape "$name")" "$secs"
+      if [ "$rc" = 0 ]; then echo '/>'; else
+        printf '><failure message="%s"/></testcase>\n' "$(xml_escape "${detail:-échec}")"
+      fi
+    done
+    echo "</testsuite></testsuites>"
+  } >"$ENGINE_JUNIT"
 }
 
 # Filtre commun : avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
@@ -99,6 +134,7 @@ if [ -n "${UNIT:-}" ]; then
   echo "Résumé :"
   for line in "${SUMMARY[@]}"; do echo "  $line"; done
   if [ "$status" -eq 0 ]; then echo "RÉSULTAT : tous les tests de l'engine passent"; else echo "RÉSULTAT : ÉCHEC"; fi
+  write_junit
   exit "$status"
 fi
 
@@ -272,4 +308,5 @@ echo "Résumé :"
 for line in "${SUMMARY[@]}"; do echo "  $line"; done
 if [ "$status" -eq 0 ]; then echo "RÉSULTAT : tous les tests de l'engine passent"; else echo "RÉSULTAT : ÉCHEC"; fi
 if [ "$status" -eq 0 ] && [ "$ENGINE_LOG_TEMP" = 1 ]; then rm -f "$ENGINE_LOG"; else echo "Journal de l'engine gardé : $ENGINE_LOG"; fi
+write_junit
 exit "$status"
