@@ -17,6 +17,7 @@ const HudView := preload("res://scripts/hud_view.gd")
 const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 
 const WORLD := "user://test_living_decor.world"
 const LENGTH_M := 5000.0
@@ -114,6 +115,13 @@ class FakeWorld extends Node3D:
 		wetness = w
 
 
+func _count_nodes(n: Node) -> int:
+	var c := 1
+	for ch in n.get_children():
+		c += _count_nodes(ch)
+	return c
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -178,6 +186,7 @@ func _run() -> void:
 	var cheer_max := 0.0
 	var state := {"power": 320.0, "bots": [{"id": "b1", "name": "Bot", "s": 3700.0, "v": 4.0, "kind": "constant"}]}
 	dec.ftp_w = 250.0
+	var nodes_before := _count_nodes(dec)
 	while s < 3995.0:
 		var pos: Vector3 = route.sample_point(s) + Vector3(0.0, 1.4, 0.0)
 		dec.step(now, 0.05, pos, s, 8.0, float(route.sample(s)["alt_m"]), false, wind, state)
@@ -202,6 +211,29 @@ func _run() -> void:
 	_check(dec.traffic.spawned_total > 0 and rider_hits == 0, "véhicules croisés : %d, jamais sur le cycliste" % dec.traffic.spawned_total)
 	_check(spectators_on_road == 0 and max_people_below < 1.0, "spectateurs hors de la chaussée, à %.2f m au plus de la route en altitude" % max_people_below)
 	_check(cheer_max > 0.2, "clameur au sommet : %.2f" % cheer_max)
+	_check(_count_nodes(dec) == nodes_before, "aucun nœud créé après configure (%d nœuds)" % nodes_before)
+	_check(dec.cyclists.spawned_total > 0 and dec.test_info(null).has("cyclists"), "cyclistes du décor croisés : %d (lot P25)" % dec.cyclists.spawned_total)
+	_check(dec.test_info(null).has("distant_vehicles"), "véhicules lointains branchés (lot P25)")
+	# Phares (lot P25) : pluie à 0,6 → allumés ; hystérésis entre LIGHTS_OFF et LIGHTS_ON ; nuit de P19
+	_check(dec.lights_on and VehicleMesh.lights_level == 1.0, "pluie : phares allumés")
+	dec.weather_eval = {"fog_boost": 0.25, "rain": 0.0}
+	dec._update_lights()
+	var held: bool = dec.lights_on
+	dec.weather_eval = {"fog_boost": 0.1, "rain": 0.0}
+	dec._update_lights()
+	var off_clear: bool = not dec.lights_on and VehicleMesh.lights_level == 0.0
+	dec.weather_eval = {"fog_boost": 0.25, "rain": 0.0}
+	dec._update_lights()
+	var still_off: bool = not dec.lights_on
+	dec.weather_eval = {"fog_boost": 0.4, "rain": 0.0}
+	dec._update_lights()
+	_check(held and off_clear and still_off and dec.lights_on, "phares : brume 0,4 allumés, 0,1 éteints, 0,25 garde l'état (hystérésis)")
+	dec.weather_eval = {}
+	dec._update_lights()
+	dec.set_lights(true)
+	var night_on := VehicleMesh.lights_level == 1.0
+	dec.set_lights(false)
+	_check(night_on and VehicleMesh.lights_level == 0.0, "phares : set_lights(true) pour la nuit de P19")
 	_check(dec.passersby_view.visible_count() >= 0, "passants affichés")
 	print("Décor vivant (deuxième vague) : %.3f ms par image (high)" % per_frame_ms)
 	_check(PerfBudget.check("living_decor_frame", per_frame_ms), "coût du branchement en %.3f ms par image" % per_frame_ms)
