@@ -259,7 +259,7 @@
 | [X27](LOT_X27_cycliste_virtuel.md) | Série X (outils de test) : Cycliste virtuel (cadence, pente, rampe, sprint, W′bal) et course contre les bots accélérée | Python | T12 pour `bots_race` | Moyenne | Oui ; issue #225 |
 | [X28](LOT_X28_reseau_degrade.md) | Série X (outils de test) : Réseau dégradé pour le monde ouvert : faux serveur de tuiles | Python | W15 | Moyenne | Oui ; issue #226 |
 | [X30](LOT_X30_tableau_recette.md) | Série X (outils de test) : Tableau de recette 1.0 relié aux rapports des outils | Python | O8 | Petite | Oui ; issue #228 |
-| [X31](LOT_X31_pente_max_garmin.md) | Série X (outils de test) : Pente maximale et D+ face à Garmin Connect, en local | Python | — | Petite | Oui ; issue #229 |
+| [X31](LOT_X31_pente_max_garmin.md) | Série X (outils de test) : Pente maximale et D+ face à Garmin Connect, en local | Python | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x31`) ; issue #229 |
 | [X32](LOT_X32_garde_fou_qualite.md) | Série X (outils de test) : Garde-fou de la qualité réellement appliquée dans les bancs et les vitrines | Python + GDScript | #481 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x32`) |
 | [X33](LOT_X33_seance_simulee_serie_t_boutons_erg.md) | Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | Oui |
 | [X34](LOT_X34_hygiene_des_suites.md) | Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | Oui |
