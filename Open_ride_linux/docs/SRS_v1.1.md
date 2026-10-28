@@ -391,6 +391,7 @@ visual_grade_scale = 1.0   # exagération visuelle du relief, de 1,0 à 2,0 (lot
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
+fps = "off"          # compteur d'images/s du HUD : off, on (« Afficher les images/s » dans Réglages)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 
 [ipc]
@@ -414,8 +415,8 @@ prefetch_radius_km = 10.0
 [wind]
 mode = "off"                 # "off" (défaut), "fixed", "gusty" ou "theme" (vent du thème 1.2)
 speed_kmh = 0                # 0 à 60
-from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360)
-gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme"
+from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360) ; réglable dans le menu par pas de 45
+gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme" ; réglable dans le menu
 seed = 0                     # graine des rafales, pour rejouer une séance
 feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
@@ -426,6 +427,11 @@ standing_grade_pct = 8.0     # l'avatar se met en danseuse au-dessus de cette pe
 standing_power_pct = 150.0   # ou de cette puissance, en % de la FTP (100 à 300)
 [powerups]
 mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
+[audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
+master_pct = 100             # volume général
+ride_pct = 100               # vent et roue libre
+ambience_pct = 100           # ambiance : fonds, cloches, véhicules, foule, passants
+events_pct = 100             # bips et événements : appuis du Click, bloc ERG, consignes, jingles
 [rogue]
 w_prime_j = 20000.0          # réserve anaérobie W' du mode Cyber-Rogue, 5 000 à 60 000 J (lot R2)
 cp_w = 0.0                   # puissance critique, 0 à 1 000 W ; 0 : la FTP
@@ -438,6 +444,8 @@ Les valeurs ci-dessus sont des exemples de départ (FTP et masses à adapter).
 La section `[progression]` (lot V11) coupe, avec `enabled = false`, l'équipement, le message `progression` et le bilan `xp_result`. La section `[wind]` (lots P1 et P2) est coupée par défaut dans les versions 1.x ; `max_grade_offset_pct` est la borne du supplément de pente, réglable dans la section « Réglages » du menu. En mode `"theme"`, le vent vient de la clé `wind` du thème choisi (thème 1.2), sinon du thème par défaut.
 
 La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
+
+La section `[audio]` donne un volume par catégorie de sons (docs/AUDIO.md), de 0 (coupé) à 100 % par pas de 10, réglables dans « Réglages » et appliqués tout de suite par l'engine sur ses bus audio (`Master`, `Ride`, `Ambience`, `Events`).
 
 **Sections prévues pour la 2.0.** Les clés des sections `[rogue]` et `[avatar]` sont fixées par la révision 1.4 du contrat IPC (lot T1) ; elles rejoignent l'exemple ci-dessus avec les lots qui les lisent (`[rogue] w_prime_j` et `cp_w` depuis R2) ; le core les transmet à l'engine dans `hello_ack.config.rogue` et `hello_ack.config.progression.avatar` :
 

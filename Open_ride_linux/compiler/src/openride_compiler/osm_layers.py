@@ -1,4 +1,5 @@
-"""Construction et écriture atomique des couches OSM `buildings` et `vegetation` (Lot I3, Format .world v1 §6 et §7)."""
+"""Construction et écriture atomique des couches OSM (Format .world v1 §6 à §8 ter) : `buildings` et `vegetation`
+(Lot I3), `poi` et `water` (Lot I4), terrains ouverts de `vegetation` et couche `roads` (Lot P22)."""
 
 from __future__ import annotations
 
@@ -516,7 +517,62 @@ def _vegetation_kind_and_density(tags: dict[str, Any]) -> tuple[str, float] | No
         return "scrub", C.DENSITY_SCRUB
     if tags.get("landuse") == "orchard":
         return "orchard", C.DENSITY_ORCHARD
+    # Format 1.5 (lot P22) : terrains ouverts, sans arbres
+    if tags.get("landuse") == "meadow":
+        return "meadow", C.DENSITY_OPEN
+    if tags.get("landuse") == "farmland":
+        return "farmland", C.DENSITY_OPEN
+    if tags.get("landuse") == "grass" or tags.get("natural") in ("grassland", "heath"):
+        return "grassland", C.DENSITY_OPEN
     return None
+
+
+def vegetation_chunk_and_y(
+    outer: list[list[float]],
+    kind: str,
+    route: dict[str, Any],
+    axis: RouteAxis,
+) -> tuple[int | None, float]:
+    """Tronçon et altitude de la route pour une zone de végétation (lots I4 et P22).
+
+    Le centre de la zone décide. Un pré, un champ ou une prairie dont le centre est hors du couloir
+    de 400 m reste gardé s'il y entre par un bord : le sommet de l'anneau le plus proche du parcours décide.
+    """
+    cx, cz = ring_centroid(outer)
+    k, y_route = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
+    if k is not None or kind not in C.VEGETATION_OPEN_KINDS:
+        return k, y_route
+    xs = np.array([p[0] for p in outer], dtype=float)
+    zs = np.array([p[1] for p in outer], dtype=float)
+    dists, _ = axis.nearest(xs, zs, C.OSM_BAND_M)
+    if not np.isfinite(dists).any():
+        return None, float("nan")
+    i = int(np.nanargmin(np.where(np.isfinite(dists), dists, np.inf)))
+    return nearest_chunk_and_y(float(xs[i]), float(zs[i]), route, axis, C.OSM_BAND_M)
+
+
+def road_lanes(kind: str, tags: dict[str, Any]) -> int:
+    """Nombre de voies d'une route voisine : étiquette `lanes`, sinon valeur par défaut de sa sorte (lot P22)."""
+    raw = tags.get("lanes")
+    if isinstance(raw, str):
+        try:
+            n = int(raw.split(";")[0].strip())
+            if 1 <= n <= 8:
+                return n
+        except ValueError:
+            pass
+    return 1 if tags.get("oneway") == "yes" and kind not in ("motorway", "trunk") else \
+        C.ROAD_DEFAULT_LANES.get(kind, C.ROAD_DEFAULT_LANES_OTHER)
+
+
+def road_speed_kmh(kind: str, tags: dict[str, Any]) -> int:
+    """Vitesse d'une route voisine : étiquette `maxspeed` en km/h, sinon valeur par défaut de sa sorte (lot P22)."""
+    raw = tags.get("maxspeed")
+    if isinstance(raw, str):
+        m = re.match(r"^\s*([0-9]{1,3})\s*(km/h)?\s*$", raw)
+        if m and 5 <= int(m.group(1)) <= 150:
+            return int(m.group(1))
+    return int(C.ROAD_DEFAULT_SPEED_KMH.get(kind, 50))
 
 
 @dataclass
@@ -525,6 +581,7 @@ class OsmLayersResult:
     vegetation_chunks: dict[int, list[dict[str, Any]]]
     poi_chunks: dict[int, list[dict[str, Any]]]
     water_chunks: dict[int, dict[str, list[dict[str, Any]]]]
+    roads_chunks: dict[int, list[dict[str, Any]]]
     buildings_count: int
     buildings_ignored: int
     vegetation_count: int
@@ -533,6 +590,7 @@ class OsmLayersResult:
     water_lines_count: int
     water_areas_count: int
     water_ignored: int
+    roads_count: int
     osm_date: str | None
 
 
@@ -586,6 +644,7 @@ def build_osm_layers(
     vegetation_chunks: dict[int, list[dict[str, Any]]] = {}
     poi_chunks: dict[int, list[dict[str, Any]]] = {}
     water_chunks: dict[int, dict[str, list[dict[str, Any]]]] = {}
+    roads_chunks: dict[int, list[dict[str, Any]]] = {}
 
     buildings_count = 0
     buildings_ignored = 0
@@ -595,6 +654,7 @@ def build_osm_layers(
     water_lines_count = 0
     water_areas_count = 0
     water_ignored = 0
+    roads_count = 0
 
     seen_ids: set[str] = set()
     prefix_map = {"node": "n", "way": "w", "relation": "r"}
@@ -721,6 +781,50 @@ def build_osm_layers(
                                 })
                                 poi_count += 1
 
+            # 2 bis. Routes voisines (roads, lot P22) : la route du parcours et ses doublons sont retirés
+            highway = tags.get("highway")
+            if el_type == "way" and highway in C.ROAD_KINDS:
+                geom = el.get("geometry") or []
+                latlons = [(float(p["lat"]), float(p["lon"])) for p in geom if "lat" in p and "lon" in p]
+                if len(latlons) >= 2:
+                    lats = np.array([p[0] for p in latlons], dtype=float)
+                    lons = np.array([p[1] for p in latlons], dtype=float)
+                    xs_r, zs_r = frame.to_xz(lats, lons)
+                    dense_r = _densify_polyline_xz([(float(x), float(z)) for x, z in zip(xs_r, zs_r)], max_step_m=25.0)
+                    rx = np.array([p[0] for p in dense_r], dtype=float)
+                    rz = np.array([p[1] for p in dense_r], dtype=float)
+                    gap, _ = axis.nearest(rx, rz, C.OSM_BAND_M)
+                    pieces: list[tuple[int, list[tuple[float, float, float, float]]]] = []
+                    for i, (vx, vz) in enumerate(dense_r):
+                        d_axis = float(gap[i])
+                        vk, vy_route = (None, float("nan")) if (np.isfinite(d_axis) and d_axis < C.ROAD_ROUTE_GAP_M) \
+                            else nearest_chunk_and_y(vx, vz, route, axis, C.OSM_BAND_M)
+                        if vk is None:
+                            pieces.append((-1, []))   # coupure : sur la route du parcours ou hors du couloir
+                            continue
+                        if not pieces or pieces[-1][0] != vk:
+                            pieces.append((vk, [(vx, vz, vy_route, d_axis)]))
+                        else:
+                            pieces[-1][1].append((vx, vz, vy_route, d_axis))
+                    kept = [(ck, pts) for ck, pts in pieces
+                            if ck >= 0 and len(pts) >= 2 and max(p[3] for p in pts) >= C.ROAD_PARALLEL_M]
+                    for piece_idx, (ck, pts) in enumerate(kept):
+                        px_arr = np.array([p[0] for p in pts], dtype=float)
+                        pz_arr = np.array([p[1] for p in pts], dtype=float)
+                        py_arr = sample_terrain_y(px_arr, pz_arr, frame, near_tiles, provider,
+                                                  np.array([p[2] for p in pts], dtype=float))
+                        kind = str(highway)
+                        roads_chunks.setdefault(ck, []).append({
+                            "id": obj_id if len(kept) == 1 else f"{obj_id}_{piece_idx}",
+                            "kind": kind,
+                            "lanes": road_lanes(kind, tags),
+                            "oneway": tags.get("oneway") == "yes" or kind == "motorway",
+                            "speed_kmh": road_speed_kmh(kind, tags),
+                            "points": [[round(float(px_arr[i]), 2), round(float(pz_arr[i]), 2), round(float(py_arr[i]), 2)]
+                                       for i in range(len(pts))],
+                        })
+                        roads_count += 1
+
             # 3. Couches surfaciques (buildings, vegetation, water.areas)
             if el_type not in ("way", "relation"):
                 continue
@@ -741,8 +845,11 @@ def build_osm_layers(
 
             for poly_idx, (outer, holes) in enumerate(polys):
                 item_id = obj_id if len(polys) == 1 else f"{obj_id}_{poly_idx}"
-                cx, cz = ring_centroid(outer)
-                k, y_route = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
+                if veg_info is not None and not is_building and water_area_kind is None:
+                    k, y_route = vegetation_chunk_and_y(outer, veg_info[0], route, axis)
+                else:
+                    cx, cz = ring_centroid(outer)
+                    k, y_route = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
                 if k is None:
                     continue
 
@@ -803,6 +910,8 @@ def build_osm_layers(
         water_lines_count=water_lines_count,
         water_areas_count=water_areas_count,
         water_ignored=water_ignored,
+        roads_chunks=roads_chunks,
+        roads_count=roads_count,
         osm_date=extract_osm_date(responses),
     )
 
@@ -844,6 +953,15 @@ def water_manifest(res: OsmLayersResult) -> dict[str, Any]:
         "lines_count": res.water_lines_count,
         "areas_count": res.water_areas_count,
         "ignored_count": res.water_ignored,
+        "osm_date": res.osm_date,
+    }
+
+
+def roads_manifest(res: OsmLayersResult) -> dict[str, Any]:
+    return {
+        "present": True,
+        "version": C.ROADS_VERSION,
+        "count": res.roads_count,
         "osm_date": res.osm_date,
     }
 
@@ -890,6 +1008,17 @@ def write_water_dir(folder: Path, chunks: dict[int, dict[str, list[dict[str, Any
             "lines": chunks[k].get("lines", []),
             "areas": chunks[k].get("areas", []),
         }
+        (folder / f"chunk_{k}.json").write_text(
+            json.dumps(payload, ensure_ascii=False, indent=2),
+            encoding="utf-8",
+        )
+
+
+def write_roads_dir(folder: Path, chunks: dict[int, list[dict[str, Any]]]) -> None:
+    folder = Path(folder)
+    folder.mkdir(parents=True, exist_ok=True)
+    for k in sorted(chunks):
+        payload = {"version": C.ROADS_VERSION, "lines": chunks[k]}
         (folder / f"chunk_{k}.json").write_text(
             json.dumps(payload, ensure_ascii=False, indent=2),
             encoding="utf-8",

@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldRoadsChunk",
+  "description": "Tronçon de 1 km de la couche routes voisines (Format .world v1, §8 ter, depuis 1.5, lot P22).",
+  "type": "object",
+  "required": [
+    "version",
+    "lines"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "point3d_xzy": {
+      "type": "array",
+      "minItems": 3,
+      "maxItems": 3,
+      "items": {
+        "type": "number"
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "lanes",
+          "oneway",
+          "speed_kmh",
+          "points"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "motorway",
+              "trunk",
+              "primary",
+              "secondary",
+              "tertiary",
+              "unclassified",
+              "residential",
+              "track"
+            ]
+          },
+          "lanes": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 8
+          },
+          "oneway": {
+            "type": "boolean",
+            "description": "Sens unique : dans le sens des points."
+          },
+          "speed_kmh": {
+            "type": "number",
+            "exclusiveMinimum": 0,
+            "maximum": 150
+          },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "$ref": "#/$defs/point3d_xzy"
+            },
+            "description": "[x, z, y] en mètres du repère local ; y = sol sous la route."
+          }
+        }
+      }
+    }
+  }
+}
