@@ -1,16 +1,16 @@
 extends Node3D
 
-## Décor vivant, deuxième vague (Lot P17) : branche dans la scène principale la météo légère (P8), les
+## Décor vivant (Lot P17, première vague) : branche dans la scène principale la météo légère (P8), les
 ## animaux (P11), les éoliennes, les drapeaux et l'eau qui scintille (P12), les véhicules croisés (P13),
-## les panneaux, bornes et marquages (P14), les spectateurs (P15) et les passants (P21) ; lot P25 : la
-## circulation des routes voisines et les tracteurs des champs (road_traffic_model.gd), et les phares de tous
-## les véhicules par brume, pluie ou soleil bas (traffic_model.gd `headlights`) ; lot P28 : les cyclistes du
-## décor sur la route (road_cyclists_model.gd, budget `cyclists`), qui laissent la place aux bots. Pas de
-## les véhicules par brume, pluie ou soleil bas (traffic_model.gd `headlights`) ; lot P26 : avions de ligne,
-## hélicoptère, parapentes au-dessus des montées et montgolfières (sky_traffic_model.gd), figés en pause ;
-## lot P29 : bateaux des lacs et des cours d'eau (boat_model.gd), feux allumés avec les phares. Pas de
-## class_name : charger par preload("res://scripts/living_decor.gd"). Créé par main.gd, à côté de
-## living_world.gd (P16), dont il reprend le vent évalué.
+## les panneaux, bornes et marquages (P14), les spectateurs (P15) et les passants (P21). Deuxième vague
+## (P22 à P29, intégrée par P27) : oiseaux de campagne (P23) et animaux selon le terrain (P24) dans
+## fauna_renderer.gd ; circulation des routes voisines et tracteurs des champs (P25, road_traffic_model.gd)
+## et phares de tous les véhicules par brume, pluie ou soleil bas (traffic_model.gd `headlights`) ; avions
+## de ligne, hélicoptère, parapentes au-dessus des montées et montgolfières (P26, sky_traffic_model.gd) ;
+## cyclistes du décor sur la route, qui laissent la place aux bots (P28, road_cyclists_model.gd) ; bateaux
+## des lacs et des cours d'eau, feux allumés avec les phares (P29, boat_model.gd). Pas de class_name :
+## charger par preload("res://scripts/living_decor.gd"). Créé par main.gd, à côté de living_world.gd
+## (P16), dont il reprend le vent évalué.
 ##
 ## - `configure(preset, enabled, theme, environment, sound_player, world_streamer)` : budgets
 ##   `living(preset, enabled)`, météo du thème, marquages de la route et eau qui scintille, animaux placés
@@ -24,9 +24,12 @@ extends Node3D
 ## - `set_fog_base(env)` après chaque `RenderQuality.apply_fog` : brouillard de référence de la brume.
 ## - `step(now_s, dt_s, cam_pos, cam_s, rider_v, alt_m, paused, wind_eval, state, beep_active)` une fois
 ##   par image (sauf core non joignable : décor figé) : météo (particules, brume au plus toutes les
-##   FOG_PERIOD_S, chaussée mouillée, pluie dans l'ambiance), animaux, éoliennes et drapeaux, reflets de
-##   l'eau, véhicules (figés en pause), spectateurs (clameur selon la puissance et les bots doublés) et
-##   passants.
+##   FOG_PERIOD_S, chaussée mouillée, pluie dans l'ambiance), oiseaux et animaux, éoliennes et drapeaux,
+##   reflets de l'eau ; puis, une fois le parcours préparé, dans cet ordre (lot P27) : cyclistes du décor,
+##   véhicules de la route, véhicules lointains, ciel et bateaux (figés en pause), spectateurs (clameur
+##   selon la puissance et les bots doublés) et passants. La météo évaluée (`weather_eval`), le vent
+##   (`wind_eval`) et les bots de `state` sont lus une seule fois par image et passés à chacun ;
+##   `wave2_us` / `wave2_frames` : temps moyen des lots P23 à P26, P28 et P29 (enveloppe de P27).
 ## Panneaux et animaux suivent les tronçons d'osm_streamer.gd (`chunk_loaded` / `chunk_freed`) : au plus
 ## un nœud par panneau ou borne, quelques-uns par tronçon ; aucun autre nœud n'est créé après `configure`.
 
@@ -104,6 +107,8 @@ var fog_updates := 0                # brouillard recalculé (tests)
 var last_cheer := 0.0
 var ftp_w := 0.0                    # FTP du core (hello_ack), pour la clameur des spectateurs
 var last_event: Dictionary = {}
+var wave2_us := 0                   # temps cumulé des lots P23 à P26, P28 et P29 dans `step` (P27, enveloppe)
+var wave2_frames := 0
 
 var _route = null
 var _road_width_m := RoadBuilder.ROAD_WIDTH_M
@@ -391,15 +396,31 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 			_fog_boost = boost
 			RenderQuality.apply_weather_fog(environment, _fog_base, boost)
 			fog_updates += 1
-	# Animaux (P11), éoliennes, drapeaux et eau (P12)
+	# Oiseaux et animaux (P11, P22 à P24), éoliennes, drapeaux et eau (P12)
+	var t_fauna := Time.get_ticks_usec()
 	fauna.update(cam_pos, rider_pos, now_s)
+	wave2_us += Time.get_ticks_usec() - t_fauna
+	wave2_frames += 1
 	turbines.update(wind_eval, cam_pos, dt_s)
 	flags.update(wind_eval, dt_s)
 	if osm_streamer != null:
 		WaterMesh.update_shimmer(osm_streamer.water_material(), wind_eval, dt_s)
 	if not prepared:
 		return
-	# Véhicules (P13), routes voisines et champs (P25), figés en pause ; phares (P25)
+	# Bots de l'état du core, lus une fois : cyclistes du décor (P28) et spectateurs (P15)
+	var bots: Array = []
+	var bots_s := []
+	var bots_raw = state.get("bots", [])
+	if typeof(bots_raw) == TYPE_ARRAY:
+		bots = bots_raw
+		for b in bots:
+			if typeof(b) == TYPE_DICTIONARY and typeof(b.get("s")) in [TYPE_INT, TYPE_FLOAT]:
+				bots_s.append(float(b["s"]))
+	var t_wave2 := Time.get_ticks_usec()
+	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots
+	cyclists.update(cam_s, rider_v, dt_s, paused, bots_s)
+	cyclists_view.update(dt_s, paused)
+	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
 	traffic.update(cam_s, rider_v, dt_s, paused)
 	traffic_view.set_lights(headlights)
@@ -407,15 +428,6 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	road_traffic.update(cam_pos, dt_s, paused)
 	road_traffic_view.set_lights(headlights)
 	road_traffic_view.update()
-	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots
-	var bots_s := []
-	var bots_raw = state.get("bots", [])
-	if typeof(bots_raw) == TYPE_ARRAY:
-		for b in bots_raw:
-			if typeof(b) == TYPE_DICTIONARY and typeof(b.get("s")) in [TYPE_INT, TYPE_FLOAT]:
-				bots_s.append(float(b["s"]))
-	cyclists.update(cam_s, rider_v, dt_s, paused, bots_s)
-	cyclists_view.update(dt_s, paused)
 	# Ciel (P26), figé en pause
 	sky.update(cam_pos, dt_s, wind_eval, weather_eval, paused)
 	sky_view.update()
@@ -423,10 +435,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	boats.update(cam_pos, dt_s, wind_eval, weather_eval, paused)
 	boats_view.set_lights(headlights)
 	boats_view.update()
+	wave2_us += Time.get_ticks_usec() - t_wave2
 	# Spectateurs (P15) et passants (P21)
 	crowd.update(rider_pos, cam_s, now_s)
-	var bots = state.get("bots", [])
-	if typeof(bots) == TYPE_ARRAY and not (bots as Array).is_empty():
+	if not bots.is_empty():
 		crowd.observe_bots(cam_s, bots, now_s)
 	var power := float(state["power"]) if typeof(state.get("power")) in [TYPE_INT, TYPE_FLOAT] else NAN
 	last_cheer = crowd.cheer(cam_s, now_s, power, ftp_w if ftp_w > 0.0 else NAN)
@@ -440,6 +452,15 @@ func set_weather(w: Dictionary) -> void:
 	weather = WeatherModel.from_theme({"weather": w, "terrain": theme.get("terrain", {})}) if enabled else WeatherModel.clear()
 
 
+## Animaux au sol affichés (P11, P24), pour test_info.
+func _animal_count() -> int:
+	var n := 0
+	if fauna != null:
+		for sp in FaunaRenderer.GROUND_SPECIES:
+			n += fauna.visible_count(sp)
+	return n
+
+
 ## État du décor pour les captures des tests graphiques : nombres affichés, météo, et le panneau le plus
 ## proche devant la caméra (texte, distance, hauteur des lettres à l'écran en pixels de l'image).
 func test_info(cam: Camera3D) -> Dictionary:
@@ -451,6 +472,8 @@ func test_info(cam: Camera3D) -> Dictionary:
 		"distant_vehicles": road_traffic_view.visible_count() if road_traffic_view != null else 0,
 		"cyclists": cyclists_view.visible_count() if cyclists_view != null else 0,
 		"headlights": headlights,
+		"birds": fauna.visible_count("bird") if fauna != null else 0,
+		"animals": _animal_count(),
 		"aircraft": sky_view.visible_count() if sky_view != null else 0,
 		"boats": boats_view.visible_count() if boats_view != null else 0,
 		"particles": particles.get_active_count() if particles != null else 0,
