@@ -11,6 +11,8 @@ extends RefCounted
 ## Code de sortie de la vitrine : 0 si tout passe, 1 si une capture dépasse un seuil ou s'écarte de la référence.
 
 ## Pixel saturé : sa composante la plus claire atteint ce niveau (sol « brûlé », détail perdu).
+const QualityPresets := preload("res://scripts/quality_presets.gd")
+
 const SATURATED := 0.985
 const DEFAULT_MAX_SATURATED_PCT := 5.0   # marquages blancs de la route : environ 3 % de la vue `route`
 const DEFAULT_MAX_DIFF := 3.0
@@ -20,6 +22,15 @@ var compare_dir := ""
 var max_diff := DEFAULT_MAX_DIFF
 var max_saturated_pct := DEFAULT_MAX_SATURATED_PCT
 var failures := PackedStringArray()
+
+
+## Préréglage réellement appliqué pour le nom demandé (même règle que QualityPresets.preset : nom inconnu → low ;
+## QualityPresets.applied_name du lot X32 une fois fusionné). Écrit aussi la ligne de contrôle du garde-fou X32.
+static func applied_quality(requested: String, tool_name: String) -> String:
+	var key := requested.strip_edges()
+	var applied: String = key if QualityPresets.PRESETS.has(key) else QualityPresets.DEFAULT_PRESET
+	print("[%s] Qualité appliquée : %s (demandée %s, source vitrine)" % [tool_name, applied, requested])
+	return applied
 
 
 ## Lit les options communes dans les arguments de la vitrine.

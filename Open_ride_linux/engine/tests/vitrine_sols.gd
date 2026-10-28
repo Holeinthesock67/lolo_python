@@ -9,7 +9,7 @@ extends SceneTree
 ##     --audio-driver Dummy --script res://tests/vitrine_sols.gd -- --out DOSSIER \
 ##     [--quality low,medium,high] [--size 1680x1050] [--compare REF] [--max-diff 3] [--max-saturated 5]
 ##
-## Écrit DOSSIER/<biome1>__<biome2>_<préréglage>.png et DOSSIER/vitrine_sols.csv (paire ; préréglage ;
+## Écrit DOSSIER/<biome1>__<biome2>_<préréglage>.png et DOSSIER/vitrine_sols.csv (paire ; préréglage ; préréglage appliqué ;
 ## triangles ; appels de dessin ; préparation du matériau en ms ; part de pixels saturés du sol en % ;
 ## luminance moyenne du sol). Contrôles automatiques (vitrine_checks.gd) : exposition du sol, et comparaison
 ## à des captures de référence avec --compare ; code de sortie 1 si l'un échoue.
@@ -97,13 +97,14 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(_out_dir))
 	var theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	var csv := FileAccess.open(_out_dir.path_join("vitrine_sols.csv"), FileAccess.WRITE)
-	csv.store_line("paire;preset;triangles;appels_dessin;materiau_ms;sol_sature_pct;sol_luminance")
+	csv.store_line("paire;preset;qualite_appliquee;triangles;appels_dessin;materiau_ms;sol_sature_pct;sol_luminance")
 	var meshes := []
 	for ix in [0, 1]:
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, TerrainTiles.build_arrays(_tile_heights(ix), "near", _edges(ix)))
 		meshes.append(mesh)
 	for preset in _presets:
+		var applied := VitrineChecks.applied_quality(preset, "vitrine_sols")
 		for pair in PAIRS:
 			var layer := BiomeLayer.new()
 			layer.put_tile("near", 0, 0, _tile(pair[0], pair[1], func(i): return 1.0 if i <= 12 else 1.0 - float(i - 12) / 8.0))
@@ -162,7 +163,7 @@ func _run() -> void:
 			var vis := RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE
 			var tris := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME)
 			var draws := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
-			csv.store_line("%s|%s;%s;%d;%d;%.1f;%.2f;%.3f" % [pair[0], pair[1], preset, tris, draws, mat_ms, expo["saturated_pct"], expo["luma"]])
+			csv.store_line("%s|%s;%s;%s;%d;%d;%.1f;%.2f;%.3f" % [pair[0], pair[1], preset, applied, tris, draws, mat_ms, expo["saturated_pct"], expo["luma"]])
 			print("[vitrine_sols] %s : %d triangles, %d appels de dessin, matériau %.1f ms, sol saturé %.1f %%, luminance %.2f" % [name,
 				tris, draws, mat_ms, expo["saturated_pct"], expo["luma"]])
 			vp.queue_free()
