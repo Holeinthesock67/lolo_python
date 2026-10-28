@@ -117,6 +117,7 @@
 | [P21](LOT_P21_passants_villages.md) | Passants dans les villages et le long de la route : gestes au passage, voix et aboiements | GDScript + shader | P15 | Petite | **Livré le 27 octobre** (issue #183) |
 | [P22](LOT_P22_pres_champs_routes_voisines.md) | Format `.world` 1.5 : prés, champs et prairies dans la végétation, couche facultative des routes voisines | Python + GDScript | I3, I4, K4, T1 | Moyenne | **Livré le 27 octobre** (deuxième vague du décor vivant ; affichage par P24 et P25) |
 | [P23](LOT_P23_oiseaux_campagne.md) | Oiseaux de la campagne : rapace en cercle, volées en V, corneilles qui s'envolent au passage, cris | GDScript + shader | P11, P17, P21 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire (deuxième vague du décor vivant, P22 à P27 proposés le 27 octobre) |
+| [P24](LOT_P24_animaux_par_terrain.md) | Animaux par terrain : vaches et chevaux dans les prés, moutons sur les prairies en pente, lièvres des champs qui détalent, meuglements, bêlements et hennissements | GDScript | P11, P17, P22, P23, Y14 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire |
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (PR #91, recette visuelle sur la GTX 1060 à faire) |
 | [E4](LOT_E4_osm_eau_sons.md) | Bâtiments, forêts OSM, eau et sons du parcours | GDScript | E3, K3, K4, L1, L2, L5 (livrés) | Grande | **Livré le 24 octobre** (PR #91, recette visuelle et sonore sur la GTX 1060 à faire) |
@@ -205,7 +206,7 @@
 | [T16](LOT_T16_ecarts_temps_passage.md) | 2.0 série T : écarts en temps de passage avec le bot devant et derrière | Python | N9 (livré) | Petite | **Livré le 27 octobre** (PR #275, module pur ; champs `gap_s`, `bot_ahead`, `bot_behind` branchés par T7) |
 | [T17](LOT_T17_jingles_evenements.md) | 2.0 série T : engine, jingles des événements du parcours (sommet, fin de sprint, arche, fin de séance) | GDScript | T8, T9 (codés) ; T7 | Petite | Non : interne (son) ; **codé le 27 octobre** ; tests Godot à passer sur le PC, validation à la recette T11 |
 | [U0](LOT_U0_decisions_biomes.md) | Décisions de la série U (U-Q1 à U-Q5, U-G1, U-G2) et liste définitive des seize biomes avec leurs identifiants | — | — | Petite | **Livré le 25 octobre** (décisions du propriétaire ; cahier rédigé le 27 octobre), **version 3.0** |
-| [U1](LOT_U1_contrat_biomes.md) | Contrat : couche `biome`, variante régionale, mer et couche `coast`, colonne `surface` (gravel), thème 2.0 en pack de biomes, `[render] biome`, `[gravel]`, IPC 1.6 provisoire | Markdown + JSON | U0, P1, P20, W1 | Petite | Non : interne (décision du propriétaire), **version 3.0** (issue #331) |
+| [U1](LOT_U1_contrat_biomes.md) | Contrat : couche `biome`, variante régionale, mer et couche `coast`, colonne `surface` (gravel), thème 2.0 en pack de biomes, `[render] biome`, `[gravel]`, IPC 1.6 provisoire | Markdown + JSON | U0, P1, P20, W1 | Petite | Non : interne (décision du propriétaire), **version 3.0** (issue #331) ; partie format livrée le 28 octobre (`.world` 1.6, thème 2.0), partie IPC et configuration reportée à U16 |
 | [U2](LOT_U2_classification_biomes.md) | Compilateur : classification des biomes (WorldCover en cache, OSM, altitude, latitude), option `--biome` | Python | U1 | Grande | Oui, après U1, **version 3.0** (issue #332) |
 | [U3](LOT_U3_cote_mer_plages.md) | Compilateur : côte, mer et plages | Python | U1 | Moyenne | Oui, après U1, **version 3.0** (issue #333) |
 | [U4](LOT_U4_variantes_regionales_compilateur.md) | Compilateur : variante régionale par tuile (table de géologie et d'architecture à grosse maille) | Python | U1 (U2 utile) | Petite | Oui, après U1, **version 3.0** (issue #334) |
@@ -336,7 +337,7 @@ E3 ──► O1 ;  N3 ──► O2 ;  N12 ──► O3 ──► O4 ;  Q1 ──
 O9 ──► O11 ;  O3 ──► O10 ──► O11 ;  O5 ──► O15 ──► O16 ;  N6, O4, O10, O11, O15 ──► O12 ;  O13, N7 ──► O14
 N, O1, O2, O6 ──► O8 (recette 1.0)
 O8 ──► P1 ──► P2 ──► P3 (avec N9) ;  P1 ──► P4 ──► P5, P6, P8, P9, P10, P11, P12, P14
-P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7) ;  P11, P17, P21 ──► P23 ;  I3, I4, K4, T1 ──► P22
+P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7) ;  P11, P17, P21 ──► P23 ;  I3, I4, K4, T1 ──► P22 ;  P22, P23, Y14 ──► P24
 Q1 ──► Q4 ;  Q3 ──► Q5 ;  Q2, Q6 : indépendants
 O1, Q2 ──► S1
 Version 2.0 : Q3, Q4 ──► R0 ;  P1, PR #287 ──► T1 ;  R3 ──► R4 ;  R0, R2, R3, R4 ──► R5 ──► R6 ──► R15 ──► R7 ;  T1, R6, R15 ──► R8
