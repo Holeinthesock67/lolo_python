@@ -50,7 +50,7 @@ Contraintes tenues : plan des boutons et contrat IPC inchangés, aucune texture 
 | 1 | Thème, pictogrammes, bandeau des boutons, pastilles, menus en plein écran, accueil entier | Fusionnée (PR #433) |
 | 2 | Prêt et fiche du parcours en carte (chiffres, profil d'altitude), parcours, entraînements ERG, création et import | En revue |
 | 3a | Réglages : libellé à gauche et valeur à droite, curseur des réglages en %, modification en place dans la liste, carte du réglage ; paramètres de « Créer un entraînement » en place | En revue |
-| 3b | Appareils et connexion, plans et test de FTP (cahier LOT_N19) | À faire |
-| 4 | Records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | À faire |
+| 3b | Appareils et connexion, plans et test de FTP | À faire, cahier [N19](lots/LOT_N19_menus_reglages_appareils_plans.md) |
+| 4 | Records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | À faire, cahier [N20](lots/LOT_N20_menus_records_bilan_pause_hud.md) |
 
 Chaque étape : une branche et une PR, `engine/tests/unit/test_menu_style.gd` à jour, captures de référence des tests graphiques (`menu_accueil`, `pause`, `bilan` ; `menu_parcours` et `pret` vérifiées par textes et pixels, sans image de référence) refaites sur le PC avec `run_visual_tests.sh --golden … --update-golden`.
