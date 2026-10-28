@@ -32,3 +32,13 @@ Trois défauts des suites signalés par les fils le 28 octobre :
 ## 6. Hors périmètre
 
 Changer la façon dont la doc annonce les nombres.
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x34`).
+
+- `scripts/recompte_tests.py` : motifs, comptes et correction ; `test_docs_coherence.py` les importe (plus de double définition) et vérifie aussi les fichiers de tests unitaires et de rendu de l'engine. Premier passage : la doc annonçait 7 tests de rendu pour 11 fichiers.
+- `run_engine_tests.sh` : le filtre des erreurs Godot ne tolère plus toute ligne « mesh … null » ; il n'écarte qu'une erreur dont la ligne `at:` suivante vient de `servers/rendering/dummy/` (210 lignes « Parameter "m" is null » par passage, toutes du serveur factice de `--headless`, dans `test_avatar_model`, `test_fauna_biomes`, `test_ribbon_builder`, `test_roadside_model`, `test_rogue_host` et `test_world_menu_view`). Aucune autre erreur n'apparaît sur `main`.
+- Seuils en dur remplacés par `PerfBudget.check` (onze entrées ajoutées à `perf_budgets.json`) dans `test_biome_model`, `test_passersby_model` (deux, dont celui qui échouait au cloud), `test_sky_clouds`, `test_vegetation_biomes`, `test_vehicle_mesh`, `test_visual_grade_scale` (surcoût relatif en %, nouvel argument `unit` de `PerfBudget.check`), `test_wind_model`, `test_workout_chart_model` (trois). Les lignes `[PERF]` passent à quatre décimales (les budgets de quelques µs s'affichaient 0,00).
+- `test_no_hardcoded_timing.gd` : repère un `_check(` qui compare une durée à un nombre (il a trouvé le troisième seuil de `test_workout_chart_model`).
+- Écart : le surcoût de `visual_grade_overhead` dépasse son budget au cloud (9,5 % pour 5 %), signalé en mode `report` comme avant ; c'est la raison du passage par le budget.
