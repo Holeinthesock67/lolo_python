@@ -175,10 +175,13 @@ func set_preset(preset_name: String, enabled: bool = true) -> void:
 	var living := QualityPresets.living(preset_name, enabled)
 	budget_birds = int(living.get("birds", 0))
 	budget_animals = int(living.get("animals", 0))
+	# Aucune instance affichée avant la première mise à jour (sinon toutes, à l'origine du monde)
 	for sp in BIRD_SPECIES:
 		_mmi[sp].multimesh.instance_count = budget_birds
+		_mmi[sp].multimesh.visible_instance_count = 0
 	for sp in GROUND_SPECIES:
 		_mmi[sp].multimesh.instance_count = budget_animals
+		_mmi[sp].multimesh.visible_instance_count = 0
 	_dirty = true
 
 

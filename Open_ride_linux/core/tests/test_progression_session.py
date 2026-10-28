@@ -121,6 +121,24 @@ def test_list_garage_states(tmp_path, monkeypatch):
                                            "challenge", "mass_delta_kg", "cda_delta_pct", "terrain", "look"}
 
 
+def test_garage_reaches_the_engine_through_the_real_server(tmp_path, monkeypatch):
+    """Le catalogue dépasse 4 096 octets : `send_raw` lui accorde la limite des listes (contrat §2)."""
+    from openride_core.ipc_server import MAX_DATAGRAM_SIZE, IpcServer
+    s, frames = make(tmp_path, monkeypatch)
+    s._on_command("list_garage", {}, 7)
+    sent = []
+
+    class Sock:
+        def sendto(self, payload, addr):
+            sent.append(payload)
+
+    srv = IpcServer()
+    srv._tx_sock = Sock()
+    for m in of(frames, "garage"):
+        srv.send_raw(m)
+    assert len(sent) == len(of(frames, "garage")) and max(map(len, sent)) > MAX_DATAGRAM_SIZE
+
+
 def test_buy_then_equip_writes_profile_and_replies(tmp_path, monkeypatch):
     s, frames = make(tmp_path, monkeypatch)
     before = s.progress_svc.balance()
