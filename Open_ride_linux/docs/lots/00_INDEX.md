@@ -115,6 +115,7 @@
 | [P19](LOT_P19_integration_jour_nuit_saisons.md) | Intégration du jour, de la nuit et des saisons | GDScript | P7, P17, P18 | Moyenne | Non : interne, **version 2.0** (issue #143) |
 | [P20](LOT_P20_packs_textures_performance.md) | Packs de textures à plusieurs niveaux, choisis selon le préréglage et la mémoire vidéo | Python + GDScript | N10, O3, P17 | Moyenne | Oui, **version 2.0** (issue #147) |
 | [P21](LOT_P21_passants_villages.md) | Passants dans les villages et le long de la route : gestes au passage, voix et aboiements | GDScript + shader | P15 | Petite | **Livré le 27 octobre** (issue #183) |
+| [P22](LOT_P22_pres_champs_routes_voisines.md) | Format `.world` 1.5 : prés, champs et prairies dans la végétation, couche facultative des routes voisines | Python + GDScript | I3, I4, K4, T1 | Moyenne | **Livré le 27 octobre** (deuxième vague du décor vivant ; affichage par P24 et P25) |
 | [P23](LOT_P23_oiseaux_campagne.md) | Oiseaux de la campagne : rapace en cercle, volées en V, corneilles qui s'envolent au passage, cris | GDScript + shader | P11, P17, P21 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire (deuxième vague du décor vivant, P22 à P27 proposés le 27 octobre) |
 | [E2](LOT_E2_shader_triplanaire_theme.md) | Shader triplanaire et application du thème (terrain, route, soleil) | GDScript + shader Godot | E1, I5, L3 (livrés) | Moyenne | **Livré le 24 octobre** (PR #75, corrigée après revue ; essai sur la GTX 1060 à faire) |
 | [E3](LOT_E3_ciel_arbres_hud.md) | Ciel physique, brouillard, arbres par bruit, HUD final avec profil d'altitude | GDScript + shader Godot | E2 (PR #75), K2, K3, L3, L4 (livrés) | Grande | **Livré le 24 octobre** (PR #91, recette visuelle sur la GTX 1060 à faire) |
@@ -136,8 +137,9 @@
 | Y8 | Habillage : toits à pans et façades texturées, puis étalonnage (décalques de route dans Y11) | GDScript + shader | Y3, P20 | Grande | En partie ; issue #364 |
 | Y9 | Lissage des bots à l'écran (mémoire de trames, Hermite, déplacements latéraux, LOD) | GDScript | O7 | Moyenne | Oui ; issue #365 |
 | Y10 | Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | Oui ; issue #366 |
-| [Y11](LOT_Y11_chaussee_herbe_relief.md) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée) et faux relief de l'herbe | Shader + GDScript | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie ; issue #385 |
+| [Y11](LOT_Y11_chaussee_herbe_relief.md) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée) et faux relief de l'herbe | Shader + GDScript | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie ; issue #385. Prototype procédural (grain de la chaussée, rapiéçages, bandes de roulement, bas-côtés, relief et plaques de l'herbe, vagues de vent, touffes en brins) en essai le 27 octobre, en attente de l'accord du propriétaire et de la mesure sur la GTX 1060 |
 | [Y12](LOT_Y12_lumieres_particules.md) | Effets de lumière (glow, rayons, ombre des nuages, SSR) et particules (décor, pluie, foules, kit Cyber-Rogue) | Shader + GDScript | Y2, Y1, P17, R17, Y11 | Moyenne | Oui ; issue #386 |
+| [Y14](LOT_Y14_personnages_animaux.md) | Personnages plus fins : corps articulé construit par code (`people_mesh.gd`), tenues variées par teintes, animations par articulations ; coureur casqué qui pédale sur un vrai vélo pour les bots d'O7 ; animaux refaits avec le même constructeur (vache pie, mouton à tête noire, chevreuil, oiseaux à rémiges) | GDScript + shader | P11, P15, P21, P23, O7 | Moyenne | Prototype le 27 octobre (spectateurs et passants), en attente de l'accord du propriétaire et de la mesure sur la GTX 1060 ; bots après O7 (#407) |
 | [R0](LOT_R0_delai_frein.md) | Mesure du délai du frein du trainer (marches de pente et de braquet) : script et essai sur le vélo | Python | Q3, Q4 | Petite | Script oui (même outil que X5) ; essai par le propriétaire ; **version 2.0** |
 | [R2](LOT_R2_wbal_postures.md) | Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
 | [R3](LOT_R3_generateur_salles.md) | Générateur de salles : profils des cinq archétypes et du boss, graine, marqueurs | Python | — | Moyenne | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
@@ -154,7 +156,8 @@
 | [R14](LOT_R14_recette.md) | Recette du mode Cyber-Rogue sur le PC et le vélo | — | R8, R9, R10 à R13, R15, R16 | Moyenne | Non : propriétaire, **version 2.0** |
 | [R15](LOT_R15_scenariste_run.md) | Scénariste de run : calendrier et salles composés à partir de l'objectif et de la durée | Python | R3, R6 | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
 | [R16](LOT_R16_estimation_cp_wprime.md) | Estimation de CP et W' à partir des séances passées | Python | — | Petite | **Livré le 27 octobre** (outil pur ; le core l'appellera au lancement, R8), **version 2.0** |
-| [R17](LOT_R17_direction_artistique.md) | Direction artistique du mode : charte néon, matériaux et shaders partagés, catalogue des objets graphiques et des effets, planche de démonstration | GDScript + shader | T1 | Moyenne | Modèles et shaders oui ; charte validée par le propriétaire ; **version 2.0** |
+| [R17](LOT_R17_direction_artistique.md) | Direction artistique du mode : charte néon, matériaux et shaders partagés, catalogue des objets graphiques et des effets, planche de démonstration | GDScript + shader | T1 | Moyenne | Modèles et shaders oui ; charte validée par le propriétaire ; **Livré le 27 octobre** (données, matériaux, shaders et planche ; captures et accord du propriétaire à venir), **version 2.0** |
+| [R18](LOT_R18_bruitages_rogue.md) | Bruitages et musique du mode : 24 sons synthétisés, musique par couches, volumes réglables | GDScript | R8, R17 | Moyenne | Non : interne (sons du moteur), **version 2.0** |
 | [V2](LOT_V2_moteur_experience.md) | Moteur d'expérience : gains, niveaux, défis, recalcul depuis le journal, commande `openride-core xp` | Python | — | Moyenne | **Livré le 27 octobre** (PR #273, issue #239) ; branchement par V11 |
 | [V3](LOT_V3_catalogue_equipement.md) | Catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain, temps gagné par l'équipement | Python | V2 | Moyenne | **Livré le 27 octobre** (PR #278, issue #241) ; branchement par V11 |
 | [V3b](LOT_V3b_pieces.md) | Pièces : gains, prix, achats, solde, vies du mode Cyber-Rogue | Python | V2, V3, V4 | Petite | **Livré le 27 octobre** (PR #281, issue #242) ; branchement par V11 |
@@ -332,7 +335,7 @@ E3 ──► O1 ;  N3 ──► O2 ;  N12 ──► O3 ──► O4 ;  Q1 ──
 O9 ──► O11 ;  O3 ──► O10 ──► O11 ;  O5 ──► O15 ──► O16 ;  N6, O4, O10, O11, O15 ──► O12 ;  O13, N7 ──► O14
 N, O1, O2, O6 ──► O8 (recette 1.0)
 O8 ──► P1 ──► P2 ──► P3 (avec N9) ;  P1 ──► P4 ──► P5, P6, P8, P9, P10, P11, P12, P14
-P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7) ;  P11, P17, P21 ──► P23
+P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7) ;  P11, P17, P21 ──► P23 ;  I3, I4, K4, T1 ──► P22
 Q1 ──► Q4 ;  Q3 ──► Q5 ;  Q2, Q6 : indépendants
 O1, Q2 ──► S1
 Version 2.0 : Q3, Q4 ──► R0 ;  P1, PR #287 ──► T1 ;  R3 ──► R4 ;  R0, R2, R3, R4 ──► R5 ──► R6 ──► R15 ──► R7 ;  T1, R6, R15 ──► R8

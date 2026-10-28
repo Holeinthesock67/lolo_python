@@ -578,6 +578,13 @@ class Session:
             self.check(scene, "bandeau rouge dessiné", frac >= 0.4, f"{frac:.0%} de pixels rouges")
 
 
+## Écart moyen (niveaux sur 255) du sol entre deux captures au-delà duquel le sol défile. En dessous, l'image
+## est figée : seuls bougent le décor vivant (touffes et vagues de vent sur l'herbe) et le bruit de rendu d'une
+## image à l'autre sur le grain fin de la route et du terrain (Y11), environ 0,1 niveau ; un défilement à
+## 8 m/s donne environ 3 niveaux.
+GROUND_SCROLL_LEVEL = 0.2
+
+
 def ground_box(s: Session, info: dict[str, Any]) -> tuple[int, int, int, int]:
     """Bas de l'image hors HUD : là où la route et le terrain défilent."""
     return 0, int(s.height * 0.6), s.width, s.height
@@ -695,7 +702,7 @@ def _scenes(s: Session) -> None:
         s.check("mouvement_2", "caméra à la vitesse du core (8 m/s ± 25 %)", abs(speed - SPEED_MPS) <= 0.25 * SPEED_MPS,
                 f"{moved:.1f} m en {dt:.2f} s, soit {speed:.1f} m/s")
         d = mean_abs_diff(img_a, img_b, ground_box(s, info_b))
-        s.check("mouvement_2", "le sol défile à l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
+        s.check("mouvement_2", "le sol défile à l'image", d >= GROUND_SCROLL_LEVEL, f"écart moyen {d:.2f} niveaux")
         s.check_world("mouvement_2", img_b, info_b)
 
     # 3 bis. Vent (lot P16) : vent de face de 25 km/h dans la trame, indicateur sous le panneau de gauche.
@@ -992,7 +999,7 @@ def _scenes(s: Session) -> None:
         dt = (info_b["ticks_ms"] - info_a["ticks_ms"]) / 1000.0
         s.check("core_muet_2", "caméra figée", moved < 0.05, f"{moved:.3f} m en {dt:.2f} s")
         d = mean_abs_diff(img_a, img_b, ground_box(s, info_b))
-        s.check("core_muet_2", "image figée", d < 0.1, f"écart moyen {d:.2f} niveaux")
+        s.check("core_muet_2", "image figée", d < GROUND_SCROLL_LEVEL, f"écart moyen {d:.2f} niveaux")
 
     # 7. Reprise : le bandeau disparaît.
     core.silent = False

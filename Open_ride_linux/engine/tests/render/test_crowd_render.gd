@@ -1,9 +1,11 @@
 extends SceneTree
 
 ## Rendu hors écran des spectateurs du lot P15 (shaders/crowd.gdshader) : le shader compile, un
-## spectateur apparaît avec la couleur de ses vêtements (couleur d'instance) et la peau sur la tête.
+## spectateur apparaît avec la couleur de son haut (couleur d'instance), la peau et le pantalon de sa
+## tenue (people_mesh.gd, Lot Y14).
 
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
+const PeopleMesh := preload("res://scripts/people_mesh.gd")
 
 const SIZE := 64
 const TOL := 8.0 / 255.0
@@ -68,9 +70,15 @@ func _run() -> void:
 		await process_frame
 	var img := vp.get_texture().get_image()
 	var body := img.get_pixel(img.get_width() / 2, int(cam.unproject_position(Vector3(0.0, 1.17, 0.0)).y))
-	var head := img.get_pixel(img.get_width() / 2, int(cam.unproject_position(Vector3(0.0, 1.57, 0.0)).y))
-	_check(_close(body, CrowdRenderer.PALETTE[2]), "buste à la couleur des vêtements (%s)" % str(body))
-	_check(_close(head, Color(0.85, 0.68, 0.55)), "tête à la couleur de la peau (%s)" % str(head))
+	var head := img.get_pixel(img.get_width() / 2, int(cam.unproject_position(Vector3(0.0, 1.58, 0.0)).y))
+	var legs := img.get_pixel(int(cam.unproject_position(Vector3(PeopleMesh.LEG_X, 0.7, 0.0)).x),
+		int(cam.unproject_position(Vector3(PeopleMesh.LEG_X, 0.7, 0.0)).y))
+	var outfit := int(PeopleMesh.outfit_of(0))
+	var skin: Color = PeopleMesh.SKIN_TONES[outfit % PeopleMesh.SKIN_TONES.size()]
+	var trousers: Color = PeopleMesh.TROUSER_COLORS[(outfit / (PeopleMesh.SKIN_TONES.size() * PeopleMesh.HAIR_COLORS.size())) % PeopleMesh.TROUSER_COLORS.size()]
+	_check(_close(body, CrowdRenderer.PALETTE[2]), "buste à la couleur du haut (%s)" % str(body))
+	_check(_close(head, skin), "visage à la couleur de peau de sa tenue (%s, attendu %s)" % [str(head), str(skin)])
+	_check(_close(legs, trousers), "jambes à la couleur du pantalon de sa tenue (%s, attendu %s)" % [str(legs), str(trousers)])
 	r.queue_free()
 	# Lot P21 : chien des passants, de profil, à la couleur de sa robe
 	var pr = CrowdRenderer.new("passersby")

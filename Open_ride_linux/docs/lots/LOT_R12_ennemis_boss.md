@@ -46,4 +46,4 @@ Aucune.
 
 ## 8. Hors périmètre
 
-- Sons des ennemis au-delà des impacts (après la recette R14).
+- Sons des ennemis (lot R18 ; bruits d'ennemis détaillés au-delà de sa liste après la recette R14).

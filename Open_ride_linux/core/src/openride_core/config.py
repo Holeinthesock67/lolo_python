@@ -74,6 +74,7 @@ class RenderConfig:
     visual_grade_scale: float = 1.0
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
+    fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off ou on
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
 
 
@@ -165,6 +166,16 @@ class PowerupsConfig:
 
 
 @dataclass
+class AudioConfig:
+    """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
+    suite par l'engine sur ses bus audio (audio_mix.gd)."""
+    master_pct: int = 100          # volume général (bus Master)
+    ride_pct: int = 100            # vélo : vent dans les oreilles, roue libre, « clac » de reprise
+    ambience_pct: int = 100        # ambiance : fonds, cloches, points sonores, véhicules, foule, passants
+    events_pct: int = 100          # bips et événements : appuis du Click, bloc ERG, consignes, jingles
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -180,6 +191,7 @@ class Config:
     avatar: AvatarConfig = field(default_factory=AvatarConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
+    audio: AudioConfig = field(default_factory=AudioConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -237,6 +249,10 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rogue", "cp_w"): (0, 1000),
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
+    ("audio", "master_pct"): (0, 100),
+    ("audio", "ride_pct"): (0, 100),
+    ("audio", "ambience_pct"): (0, 100),
+    ("audio", "events_pct"): (0, 100),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -247,6 +263,7 @@ ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
+    ("render", "fps"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
