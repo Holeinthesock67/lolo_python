@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Horloge des animations (anim_clock.gd) : personnages et animaux animés par l'uniforme global anim_time et non
 ## par TIME (sinon ils bougent encore quand main.gd fige le décor, core non joignable), horloge qui avance
-## l'uniforme global, et main.gd qui ne l'avance plus quand le bandeau « core_lost » est affiché.
+## l'uniforme global, et main.gd qui ne l'avance plus, ni la caméra ni le décor, quand le bandeau « core_lost » est affiché.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_anim_clock.gd
 
 const AnimClock := preload("res://scripts/anim_clock.gd")
@@ -43,3 +43,5 @@ func _run() -> void:
 	var main_code := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_check(main_code.contains("if not banner.has_message(\"core_lost\"):\n\t\tAnimClock.advance(delta)"),
 		"main.gd : horloge figée tant que le core ne répond pas")
+	_check(main_code.contains("if banner.has_message(\"core_lost\"):\n\t\treturn\n\t# Interpolation"),
+		"main.gd : caméra, avatar et décor figés tant que le core ne répond pas")

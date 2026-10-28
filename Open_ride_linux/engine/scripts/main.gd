@@ -700,6 +700,10 @@ func _process(delta: float) -> void:
 		return
 	if not follow.has_frame():
 		return
+	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
+	# l'horloge des personnages et des animaux ci-dessus.
+	if banner.has_message("core_lost"):
+		return
 	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd).
 	var s_disp: float = follow.update(now)
 	_test_log_camera(now, s_disp)
@@ -725,9 +729,9 @@ func _process(delta: float) -> void:
 
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
-## Core non joignable : le décor se fige avec la caméra (pas de nuages ni d'herbe qui bougent).
+## Core non joignable : pas appelé (_process fige toute la scène), donc ni nuages ni herbe qui bougent.
 func _step_living(delta: float, s_route: float, v: float) -> void:
-	if living_world == null or route == null or banner.has_message("core_lost"):
+	if living_world == null or route == null:
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0
