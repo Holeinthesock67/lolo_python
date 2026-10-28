@@ -48,7 +48,7 @@ void fragment() {
 		snow_c = (has_snow_texture ? sample_triplanar(snow_texture, v_world_pos, snow_inv_scale, tri_weights) : snow_color).rgb;
 	}
 	vec3 normal_out;
-	ALBEDO = shade_layers(grass_c, rock_c, snow_c, w, n, tri_weights, VERTEX, VIEW_MATRIX, normal_out);
+	ALBEDO = shade_layers(grass_c, rock_c, snow_c, w, n, tri_weights, 0.0, VERTEX, VIEW_MATRIX, normal_out);
 	NORMAL = normal_out;
 	ROUGHNESS = roughness;
 }

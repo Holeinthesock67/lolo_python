@@ -9,6 +9,7 @@ const PasserbyModel := preload("res://scripts/passersby_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const ClimbDetector := preload("res://scripts/climb_detector.gd")
 const ClimbTest := preload("res://tests/unit/test_climb_detector.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 const HALF_ROAD := 3.0
 
@@ -244,8 +245,9 @@ func _run() -> void:
 	var per_frame_ms := (Time.get_ticks_usec() - t0) / 1000.0 / frames
 	var update_ms := t_upd / 1000.0 / frames
 	print("Passants : %d affichés ; modèle %.3f ms par image, avec la sélection et l'animation %.3f ms" % [seen, update_ms, per_frame_ms])
-	_check(seen == 80 and update_ms < 0.1, "80 passants : mise à jour du modèle en %.3f ms par image (< 0,1 ms)" % update_ms)
-	_check(per_frame_ms < 0.2, "80 passants : modèle, sélection et animation en %.3f ms par image (< 0,2 ms)" % per_frame_ms)
+	_check(seen == 80, "80 passants affichés (%d)" % seen)
+	_check(PerfBudget.check("passersby_update_80", update_ms), "80 passants : mise à jour du modèle en %.3f ms par image" % update_ms)
+	_check(PerfBudget.check("passersby_frame_80", per_frame_ms), "80 passants : modèle, sélection et animation en %.3f ms par image" % per_frame_ms)
 
 	r.queue_free()
 	await process_frame
