@@ -235,7 +235,8 @@ func _test_pairing_screen() -> void:
 		{"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:01", "rssi": -40, "configured": false},
 		{"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:02", "rssi": -45, "configured": false}]})
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
-	_check("Trainer : HomeTrainer 0001" in labels, "trainer trouvé choisi : %s" % str(labels))
+	_check("Trainer" in labels and f.state()["items"][labels.find("Trainer")]["detail"] == "HomeTrainer 0001",
+		"trainer trouvé choisi : %s" % str(labels))
 	f.menu.handle("PLUS_SHORT")
 	while _focus_id(f) != "identify":
 		f.handle("PLUS_SHORT")
@@ -457,6 +458,14 @@ func _test_plans() -> void:
 	_check(f.state()["status"] == "Plan démarré : Essai", "plan démarré (%s)" % f.state()["status"])
 	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai"], "suivi du plan actif (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "semaine 1 / 4, 0 % fait (0 / 8)", "progression : %s" % f.state()["items"][1]["detail"])
+	f.menu.focus_item("today")
+	_check(f.state()["card"]["title"] == "Séance du jour" and f.state()["card"]["name"] == "Sweet spot"
+		and f.state()["card"]["tiles"][0]["value"] == "45 min", "plans : carte de la séance du jour (%s)" % str(f.state()["card"].get("tiles")))
+	f.menu.focus_item("stop")
+	_check(f.state()["card"]["title"] == "Plan en cours" and f.state()["card"]["tiles"][0]["value"] == "1 / 4",
+		"plans : carte du plan en cours")
+	f.menu.focus_item("plan:essai")
+	_check(f.state()["card"]["name"] == "Essai" and f.state()["card"]["tiles"][2]["label"] == "Fait", "plans : carte d'un plan")
 	f.handle("Y_SHORT")
 	var home: Dictionary = f.state()["items"][3]
 	_check(home["label"] == "Séance du jour : Sweet spot" and home["detail"] == "45 min, TSS 61",
@@ -503,6 +512,9 @@ func _test_ftp_flow() -> void:
 	f.handle("A_LONG")
 	_check(f.state()["screen"] == "ftp_test" and _ids(f) == ["ramp", "20min"] and f.state()["status"] != "",
 		"écran Test de FTP : rampe, 20 minutes, conseil (%s)" % f.state()["status"])
+	_check(f.state()["items"][0]["detail"] == "≈ 22 min" and f.state()["items"][1]["detail"] == "≈ 55 min"
+		and f.state()["card"]["name"] == "Rampe" and f.state()["card"]["tiles"][1]["value"] == "250",
+		"test de FTP : durées calculées et carte (%s)" % str(f.state()["items"].map(func(it): return it["detail"])))
 	f.handle("A_LONG")
 	_check(f.state()["screen"] == "ready" and f.state()["title"].begins_with("Prêt : test de FTP (rampe)"), "rampe : écran Prêt")
 	_check(f.handle("A_LONG") == {"action": "start", "args": {"ftp_test": "ramp"}}, "start avec ftp_test")
