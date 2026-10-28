@@ -189,6 +189,7 @@ def test_click_y_pauses_without_relay_then_goes_to_the_pause_menu(env):
     assert s.state.session_state == "PAUSED" and sent == ["Y_SHORT"]
 
 
+@pytest.mark.recette_sans_velo
 def test_click_other_buttons_are_relayed_without_effect_during_a_ride(env):
     """A, Z, flèches et appui ambigu : relayés à l'engine, braquet inchangé en séance."""
     make, run_for, wall = env
