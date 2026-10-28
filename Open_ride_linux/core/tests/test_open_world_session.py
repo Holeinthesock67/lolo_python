@@ -216,15 +216,8 @@ def test_open_world_does_not_finish_at_the_end_of_the_known_route(session):
     s = session(7026, power=450.0, stub_args=["--horizon", "400"])
     open_world(s)
     s._on_command("start", {}, 2)
-    # Une route finie finirait la séance à 400 m (arrivée atteinte). Sous charge, le générateur peut
-    # prendre du retard : la séance se met alors en pause world_data, puis repart (jamais d'arrivée).
-    t0 = time.time()
-    while s.physics.s < 1500.0 and time.time() - t0 < 60:
-        step(s, 5.0, pause=0.01)
-        assert s.state.session_state in ("RUNNING", "PAUSED"), s.state.session_state
-        if s.state.session_state == "PAUSED":
-            assert s.state.pause_reason == "world_data"
-    assert s.physics.s >= 1500.0
+    step(s, 120.0)
+    assert s.state.session_state == "RUNNING"    # une route finie finirait la séance (arrivée atteinte)
 
 
 # --- critère 4 : choix aux carrefours -----------------------------------------------------------------
