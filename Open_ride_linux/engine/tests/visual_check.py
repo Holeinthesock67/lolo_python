@@ -50,6 +50,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
+import quality_guard  # noqa: E402
 
 ENGINE_DIR = Path(__file__).resolve().parents[1]
 CORE_SRC = ENGINE_DIR.parent / "core" / "src"
@@ -631,6 +632,9 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     issues = [ln for ln in engine_log.read_text(errors="replace").splitlines()
               if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
     s.check("journal", "aucune erreur ni avertissement Godot", not issues, " | ".join(issues[:5]))
+    # Qualité réellement appliquée (lot X32) : le faux core ne doit pas la ramener à une autre valeur.
+    q_ok, q_msg = quality_guard.check(engine_log.read_text(errors="replace"), quality)
+    s.check("journal", "qualité réellement appliquée", bool(q_ok), q_msg)
 
 
 def _scenes(s: Session) -> None:
