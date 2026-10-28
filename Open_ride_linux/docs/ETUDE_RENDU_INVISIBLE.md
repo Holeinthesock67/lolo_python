@@ -58,11 +58,17 @@ python3 engine/tests/compare_captures.py ~/OpenRide/sim_bench/S1_low_off ~/OpenR
 
 Avant d'interpréter un banc `medium`, vérifier dans `engine.log` que le préréglage appliqué est bien `medium` (`sim_bench.py` écrit `[render] quality` dans la configuration du core depuis le correctif de #446).
 
-| Préréglage | Tri | Images/s moy. | p99 (ms) | Objets | Primitives | Mémoire vidéo (Mo) | Tuiles proches | Arbres |
-|---|---|---|---|---|---|---|---|---|
-| low | off | à mesurer | | | | | | |
-| low | on | à mesurer | | | | | | |
-| medium | off | à mesurer | | | | | | |
-| medium | on | à mesurer | | | | | | |
+Mesures du 28 octobre (GTX 1060, 1280x720, `--native`, village simulé, médianes après 20 s ; préréglage vérifié dans la sonde) :
+
+| Préréglage | Tri | Images/s | p99 (ms) | CPU (ms) | GPU (ms) | Appels de dessin | Primitives | Mémoire vidéo (Mo) | Tuiles proches | Arbres |
+|---|---|---|---|---|---|---|---|---|---|---|
+| low | off | 60,0 | 16,7 | 0,79 | 4,73 | 447 | 1 072 163 | 124,9 | 8 | 19 703 |
+| low | on | 60,0 | 16,7 | 0,85 | 4,75 | 465 | 1 090 873 | 124,4 | 6 | 19 877 |
+| medium | off | 60,0 | 16,7 | 0,91 | 5,14 | 476 | 1 745 685 | 171,7 | 8 | 49 684 |
+| medium | on | 60,0 | 16,7 | 0,87 | 5,15 | 476 | 1 735 197 | 170,5 | 6 | 40 640 |
+
+Captures (`compare_captures.py`, low) : 10 paires comparables, écart moyen au plus 1,03 / 255 (herbe et passants animés) ; aucune différence due au tri. Les 6 dernières captures de l'essai « on » ont une autre taille de fenêtre (1857x1011) et ne sont pas comparables. Planche (sans tri, avec tri, écarts en rouge) montrée au propriétaire le 28 octobre.
+
+Lecture : l'image est bornée par la synchronisation verticale (60 images/s) et le GPU n'est occupé que 4,7 à 5,2 ms sur 16,7 ; le tri retire 2 tuiles proches sur 8 et, en medium, 18 % des arbres, sans effet mesurable sur ce monde. Godot écartait déjà du dessin ce qui sort du cadre. Le monde du village est petit : la mesure à refaire est celle d'un vrai parcours (`essai-69`, p99 de 22 ms en low le 25 octobre), où la construction des tuiles peut provoquer des saccades.
 
 Règle de décision (cahier, §4 étape 3) : piste gardée si elle gagne au moins 3 % d'images/s en moyenne ou 1 ms de p99, sans changement visible ni apparition d'objet. Sinon, `culling` repasse à faux par défaut et le résultat est consigné ici.
