@@ -66,7 +66,7 @@ Coûts estimés pour la GTX 1060 en 1080p, à confirmer au banc à chaque étape
 | 1 | Seuil des LOD automatiques 2 / 1 / 0,5 px | Faible | ≈ 0 | 4.3 |
 | 2 | Densités et distances en `medium` : végétation 0,6 → 0,8, arbres 50 000 → 70 000, ombres 300 → 400 m, bâtiments 2,5 → 3,5 km | Moyen : paysage plus plein | +1 à 2 ms ; risque sur le p99 (construction des tuiles, à mesurer) | 4.3 |
 | 3 | Brume volumétrique légère en `medium` (profondeur de l'air dans les vallées) | Moyen | +1 à 2 ms | 4.3 |
-| 4 | Après la migration Y2 (4.7) : tonalité AgX, SMAA en `low`, SSR de l'eau (Y12), glow recalé (changé en 4.6) | Moyen | à mesurer | 4.7 |
+| 4 | Après la migration Y2 (4.7) : tonalité AgX, glow recalé (changé en 4.6) ; SMAA en `low` par Y6, SSR de l'eau par Y12 | Moyen | à mesurer | 4.7 |
 
 Les plus gros gains visuels restants ne sont pas des réglages mais du contenu, déjà prévus ailleurs et non dupliqués ici : toits à pans et façades (Y8), forêts jusqu'à l'horizon en imposteurs (Y5), chaussée et herbe (Y11, et le fil « Améliorer l'herbe et les personnages »), lumières et particules (Y12), animaux et véhicules (P22 à P27).
 
@@ -137,7 +137,7 @@ Réalisée pendant la recette visuelle d'Y2, qui renvoie ici. Rien de cette éta
 | --- | --- | --- | --- |
 | Rendu des tons (`LOOK`) | Filmic, exposition 1,25, blanc 6 | AgX (4.4) avec ses réglages de blanc et de contraste (4.6), exposition recalée | AgX garde mieux la couleur dans les très hautes lumières (ciel, soleil) ; choix final sur captures Filmic contre AgX, comme à l'étape 1 |
 | Glow (`GLOW`) | Soft Light, intensité 0,6 | recalé : 4.6 mélange le glow avant la tonalité et passe en « Screen » par défaut | l'ancien rendu ne se retrouve pas par un simple réglage (recherche §3) |
-| Anticrénelage de `low` | FXAA | SMAA 1× (4.5) | plus net que le FXAA pour un coût proche (+0,3 ms environ) |
+| Anticrénelage de `low` | FXAA | SMAA 1× (4.5), **fait par Y6** | plus net que le FXAA pour un coût proche (+0,3 ms environ) |
 | Filtrage anisotrope | 16× global (`project.godot`) | par préréglage 4× / 8× / 16× si 4.7 l'expose sur le viewport (**à vérifier** le jour du lot) | `low` léger sans exception |
 | Occlusion spéculaire | — | automatique à partir du SSAO (4.5) | reflets plus justes dans les creux, sans réglage |
 | Seuils LOD | 2 / 1 / 0,5 px | inchangés, revérifiés (LOD générés de 4.6) | — |
@@ -154,9 +154,9 @@ Réalisée pendant la recette visuelle d'Y2, qui renvoie ici. Rien de cette éta
 ## 9. Liens avec les autres lots de la série Y
 
 - **Y4 (ombres)** garde le côté coût : objets sans ombres, distances. La qualité des ombres (atlas, filtre, cascades) est ici.
-- **Y6** : la résolution adaptative et la mise à l'échelle 3D sont écartées par la consigne du 27 octobre (résolution native seulement). L'anticrénelage de `low` (FXAA) est fait ici ; le SMAA attend Y2.
+- **Y6** (réécrit le 28 octobre : SMAA en `low` et garde-fou de charge, sans baisse de résolution) : Y13 pose le FXAA de `low` en 4.3 ; Y6 le remplace par le SMAA après Y2. La mise à l'échelle 3D et la résolution adaptative restent exclues (consigne du 27 octobre).
 - **Y8** : l'étalonnage passe ici (étape 1) ; Y8 garde les toits et les façades.
-- **Y2** : la migration renvoie à l'étape 4 (§7.3) pour la tonalité AgX, le glow (changé en 4.6) et le SMAA ; elle se fait pendant la recette visuelle d'Y2, avec les mêmes mesures.
+- **Y2** : la migration renvoie à l'étape 4 (§7.3) pour la tonalité AgX et le glow (changé en 4.6), le SMAA étant dans Y6 ; elle se fait pendant la recette visuelle d'Y2, avec les mêmes mesures.
 
 ## 10. Modifications de contrat autorisées
 

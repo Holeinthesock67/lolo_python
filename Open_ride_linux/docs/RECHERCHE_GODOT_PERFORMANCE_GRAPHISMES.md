@@ -22,7 +22,7 @@ Réponses aux questions posées après la PR #355 :
 | 11. Bots à l'écran | Retard d'affichage d'environ 0,1 s accepté (mémoire de trames et Hermite, Y9). |
 | 12. Comportement des bots | Bots réalistes : attaques dans les montées, fatigue, abri, calculés dans le core (Y10). |
 | 13. PR #355 | Compléter puis fusionner. |
-| 7. Résolution adaptative | ~~Acceptée (75–85 % avec FSR 1.0, Y6)~~ **Remplacée le 27 octobre (19 h 35)** : « utilise seulement la résolution max de mes écrans ». Rendu toujours à la résolution native, sans mise à l'échelle ; Y6 écarté, la marge du GPU sert à la qualité d'image (Y13). |
+| 7. Résolution adaptative | ~~Acceptée (75–85 % avec FSR 1.0, Y6)~~ **Remplacée le 27 octobre (19 h 35)** : « utilise seulement la résolution max de mes écrans ». Rendu toujours à la résolution native, sans mise à l'échelle ; Y6 est réécrit sans baisse de résolution (SMAA en `low` et garde-fou de charge, cahiers de la série Y) et la marge du GPU sert à la qualité d'image (Y13). |
 
 ## 1. En bref
 
