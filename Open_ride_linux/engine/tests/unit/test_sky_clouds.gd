@@ -7,6 +7,7 @@ const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const TerrainShader := preload("res://shaders/terrain.gdshader")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -87,7 +88,7 @@ func _test_update() -> void:
 	for i in range(10000):
 		SkyClouds.update(m, wind)
 	var per_call_ms := (Time.get_ticks_usec() - t0) / 1000.0 / 10000.0
-	_check(per_call_ms < 0.05, "coût de update : %.4f ms par image" % per_call_ms)
+	_check(PerfBudget.check("sky_clouds_update", per_call_ms), "coût de update : %.4f ms par image" % per_call_ms)
 
 
 func _init() -> void:

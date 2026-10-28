@@ -20,6 +20,8 @@ const WindModel := preload("res://scripts/wind_model.gd")
 const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
+const GroundDetails := preload("res://scripts/ground_details.gd")
+const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
@@ -33,6 +35,7 @@ var enabled := true
 var preset := "low"
 var living: Dictionary = {}
 var grass: Node3D = null
+var ground_details: Node3D = null     # rochers, herbes hautes, termitières des biomes (lot U8)
 var sky_material: Material = null
 var terrain_material: Material = null
 var sound_player = null
@@ -70,6 +73,10 @@ func configure(preset_name: String, living_enabled: bool, theme: Dictionary, env
 		grass = GrassTufts.new()
 		grass.name = "GrassTufts"
 		add_child(grass)
+	if ground_details == null:
+		ground_details = GroundDetails.new()
+		ground_details.name = "GroundDetails"
+		add_child(ground_details)
 	if _route != null:
 		set_route(_route)
 
@@ -79,6 +86,13 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 	if grass != null:
 		grass.configure(int(living.get("grass_tufts", 0)) if enabled else 0, route, road_width_m)
 		grass.exclusions = _exclusions()
+	if ground_details != null:
+		# Biomes du parcours : modèle actif passé par world_streamer à osm_streamer (nul : pas de détails)
+		var model = osm_streamer.biome_model if osm_streamer != null and "biome_model" in osm_streamer else null
+		ground_details.configure({"rock": int(living.get("ground_rocks", 0)), "grass": int(living.get("ground_grass", 0)),
+			"termite": int(living.get("ground_termites", 0))}, route, model, road_width_m)
+		ground_details.exclusions = _exclusions()
+		ground_details.height_at = _terrain_height(route)
 	_neigh_at = -INF
 
 
@@ -113,6 +127,9 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	if grass != null:
 		grass.set_apparent_wind(wind.apparent(rider_v, heading_deg))
 		grass.update(cam_s)
+	if ground_details != null:
+		ground_details.set_apparent_wind(wind.apparent(rider_v, heading_deg))
+		ground_details.update(cam_s)
 	SkyClouds.update(sky_material, last_wind, dt_s)
 	if terrain_material is ShaderMaterial:
 		var shadow := SkyClouds.terrain_shadow_params(sky_material, str(living.get("clouds", "off")))
@@ -163,9 +180,25 @@ func _refresh_shapes() -> void:
 	_shapes = osm_streamer.layer_shapes()
 	if grass != null:
 		grass.exclusions = _exclusions()
+	if ground_details != null:
+		ground_details.exclusions = _exclusions()
 
 
-## Bâtiments et plans d'eau : pas de touffe d'herbe dedans.
+## Hauteur du terrain affiché (relief exagéré du lot Q2 compris), comme les animaux d'osm_streamer.gd ;
+## vide sans dossier de parcours (hauteur de la route).
+func _terrain_height(route) -> Callable:
+	if osm_streamer == null or route == null or not "world_dir" in osm_streamer or str(osm_streamer.world_dir) == "":
+		return Callable()
+	var raw := OsmStreamer.terrain_height_fn(osm_streamer.world_dir, route)
+	var k := float(osm_streamer.visual_grade_scale) if "visual_grade_scale" in osm_streamer else 1.0
+	if k == 1.0:
+		return raw
+	var alt_orig: float = route.alt_m[0] if route.n > 0 else 0.0
+	return func(x: float, z: float) -> float:
+		return alt_orig + (float(raw.call(x, z)) - alt_orig) * k
+
+
+## Bâtiments et plans d'eau : pas de touffe d'herbe ni de détail de sol dedans.
 func _exclusions() -> Array:
 	var out := []
 	for b in _shapes["buildings"]:
