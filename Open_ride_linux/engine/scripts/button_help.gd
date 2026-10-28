@@ -8,9 +8,12 @@ extends RefCounted
 
 ## Rôle de Y selon l'écran (menu_model._back) : rien sur l'accueil, reprendre en pause, « Non » sur
 ## l'écran de confirmation ; ailleurs, écran précédent.
-const Y_LABELS := {"home": "", "pause": "Reprendre", "confirm": "Annuler"}
+const Y_LABELS := {"home": "", "pause": "Reprendre", "confirm": "Annuler", "edit": "Annuler"}
+## Écran de réglage d'une valeur (en place dans la liste, ou écran de la difficulté de la pause) : « edit »,
+## clé d'aide donnée par menu_view.gd ; A maintenu enregistre, + et B règlent (menu_flow._handle_edit).
+const EDIT := "edit"
 const Y_DEFAULT := "Retour"
-## Rappel du clavier (key_to_event de menu_model.gd), coupé en dernier si la place manque.
+## Rappel du clavier (key_map.gd : chaque touche double un bouton du Click), coupé en dernier si la place manque.
 const KEYBOARD := "Clavier : Entrée valide, Échap revient"
 
 
@@ -22,6 +25,12 @@ static func entries(screen: String) -> Array:
 		{"keys": ["+", "A"], "hold": false, "text": "Suivant", "main": false},
 		{"keys": ["B"], "hold": false, "text": "Précédent", "main": false},
 	]
+	if screen == EDIT:
+		out = [
+			{"keys": ["A"], "hold": true, "text": "Enregistrer", "main": true},
+			{"keys": ["+", "A"], "hold": false, "text": "Augmenter", "main": false},
+			{"keys": ["B"], "hold": false, "text": "Diminuer", "main": false},
+		]
 	var y := str(Y_LABELS.get(screen, Y_DEFAULT))
 	if y != "":
 		out.append({"keys": ["Y"], "hold": false, "text": y, "main": false})

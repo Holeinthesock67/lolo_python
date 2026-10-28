@@ -90,7 +90,7 @@ def test_ramp_watch_ignores_warmup_and_pause():
     for _ in range(100):
         assert watch.update(0.1, 0.0, 0.0, erg) is None   # échauffement : pas de détection
     _, erg = watch_at(200)
-    erg.toggle_pause()
+    erg.paused = True   # pause de la séance (Y)
     for _ in range(200):
         assert watch.update(0.1, 0.0, 0.0, erg) is None
 
