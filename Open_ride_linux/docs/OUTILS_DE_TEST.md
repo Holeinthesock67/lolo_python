@@ -108,6 +108,7 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 | --- | --- |
 | `python -m openride_core.tools.log_report [JOURNAL] [--all] [--json]` | Analyse de `~/run_trainer.log` : connexions, coupures, Click, ERG, performances |
 | `openride-core summary [FICHIER]` | Bilan d'une séance : NP, IF, TSS, zones, meilleures puissances |
+| `openride-core session-report [FICHIER] [--log …] [--engine-log …]` | Analyse automatique d'une séance réelle (lot X12), en local : sections de pente (pente envoyée, braquet, puissance, cadence, vitesse, FC), retard pente → effort à chaque marche de plus de 3 points, écart ERG par bloc, coupures, appuis du Click, images/s, segments et bonus ; `rapport.html`, `sections.csv`, `resume.json` dans `~/OpenRide/rapports/<séance>/` |
 | `openride-core history` | Historique des séances et cumul hebdomadaire |
 | `openride-core devices` | Inventaire des appareils Bluetooth et bloc `[drivers]` proposé |
 | `python -m openride_core.tools.trainer_steps --mode sim\|erg` | Banc de latence du trainer (lot X5, outil de l'essai R0) : paliers de pente ou de puissance à cadence tenue ; par palier, délai consigne → écriture → accusé 0x80, t10, t63, t90, stabilisation et dépassement de la puissance ; `samples.csv`, `steps.csv` et `rapport.html` dans `~/OpenRide/trainer_steps/<date>/`. `--trainer sim --fast` pour l'essayer sans matériel, `--analyse DOSSIER` pour refaire l'analyse |
