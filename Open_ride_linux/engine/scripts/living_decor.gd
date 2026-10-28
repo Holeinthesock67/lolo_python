@@ -6,7 +6,8 @@ extends Node3D
 ## (P22 à P29, intégrée par P27) : oiseaux de campagne (P23) et animaux selon le terrain (P24) dans
 ## fauna_renderer.gd ; circulation des routes voisines et tracteurs des champs (P25, road_traffic_model.gd)
 ## et phares de tous les véhicules par brume, pluie ou soleil bas (traffic_model.gd `headlights`) ; avions
-## de ligne, hélicoptère, parapentes au-dessus des montées et montgolfières (P26, sky_traffic_model.gd) ;
+## de ligne, hélicoptère, parapentes au-dessus des montées et montgolfières (P26, sky_traffic_model.gd),
+## variés selon le biome, et paramoteurs des pays plats (P31) ;
 ## cyclistes du décor sur la route, qui laissent la place aux bots (P28, road_cyclists_model.gd) ; bateaux
 ## des lacs et des cours d'eau, feux allumés avec les phares (P29, boat_model.gd). Pas de class_name :
 ## charger par preload("res://scripts/living_decor.gd"). Créé par main.gd, à côté de living_world.gd
@@ -346,6 +347,7 @@ func _poll_job(wait: bool = false) -> void:
 	passersby_view.setup_passersby(passersby, sound_player)
 	traffic.configure(_route, theme, pois, int(living.get("vehicles", 0)))
 	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic)
+	sky.biome_model = _active_biome_model()
 	sky.configure(_route, theme, climbs, int(living.get("aircraft", 0)))
 	turbines.set_points(pois)
 	flags.set_points(pois)
@@ -354,6 +356,12 @@ func _poll_job(wait: bool = false) -> void:
 	for k in _loaded_chunks:
 		props.add_chunk(_route, k, RoadsideModel.for_chunk(roadside_items, k))
 	prepared = true
+
+
+## Modèle de biome du parcours quand il suit des biomes (couche ou forçage, lot U5), sinon null (lot P31).
+func _active_biome_model():
+	var model = world_streamer.get("biome_model") if world_streamer != null else null
+	return model if model != null and model.active() else null
 
 
 func _on_chunk_loaded(k: int, extras: Dictionary) -> void:

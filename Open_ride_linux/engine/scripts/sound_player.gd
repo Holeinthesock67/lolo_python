@@ -22,7 +22,7 @@ extends Node
 ## (moteur grave), joués par les lecteurs 3D de traffic_renderer.gd (`stream(kind)`) ; remplaçables par
 ## ~/OpenRide/Sounds/<kind>.ogg. Lot P15 : `crowd_cheer` (clameur et applaudissements) pour crowd_renderer.gd.
 ## Lot P26 : `helicopter_rotor` (battement des pales) et `airliner_rumble` (grondement lointain), joués par
-## sky_traffic_renderer.gd. Lot P29 : `barge_engine` (diesel lent d'une péniche) et `ship_horn` (corne de
+## sky_traffic_renderer.gd ; lot P31 : `paramotor_buzz` (bourdonnement d'un paramoteur). Lot P29 : `barge_engine` (diesel lent d'une péniche) et `ship_horn` (corne de
 ## brume, jouée une fois), joués par boat_renderer.gd.
 ##
 ## Lot P21 : quatre sons brefs, non bouclés, des passants (`VOICE_KINDS` : « Allez ! », « Bonjour ! »,
@@ -298,7 +298,7 @@ func update_bells(hour: float, now_s: float) -> void:
 
 func _generate_all_streams() -> void:
 	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer",
-		"helicopter_rotor", "airliner_rumble", "barge_engine", "ship_horn"]
+		"helicopter_rotor", "airliner_rumble", "paramotor_buzz", "barge_engine", "ship_horn"]
 	for k in kinds:
 		var custom_stream = _try_load_custom(k)
 		if custom_stream != null:
@@ -404,6 +404,13 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
 				_lp = _lp + 0.02 * (r - _lp)
 				sample = _lp * 5.0 * (0.8 + 0.2 * sin(TAU * t))
+			"paramotor_buzz":
+				# Lot P31 : bourdonnement d'un paramoteur (deux-temps à 120 Hz et harmoniques, explosions à 60 Hz
+				# dans un souffle d'hélice), nombres entiers de périodes sur la boucle
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.3 * (r - _lp)
+				var fire := pow(0.5 + 0.5 * cos(TAU * 60.0 * t), 4.0)
+				sample = sin(TAU * 120.0 * t) * 0.22 + sin(TAU * 240.0 * t) * 0.16 + sin(TAU * 360.0 * t) * 0.08 + _lp * (0.2 + 0.6 * fire)
 			"barge_engine":
 				# Lot P29 : diesel lent d'une péniche (22 Hz et harmoniques, battement des cylindres à 5 Hz)
 				var beat := 0.7 + 0.3 * pow(0.5 + 0.5 * sin(TAU * 5.0 * t), 2.0)
