@@ -2,7 +2,8 @@ extends SceneTree
 
 ## Horloge des animations (anim_clock.gd) : personnages et animaux animés par l'uniforme global anim_time et non
 ## par TIME (sinon ils bougent encore quand main.gd fige le décor, core non joignable), horloge qui avance
-## l'uniforme global, et main.gd qui ne l'avance plus, ni la caméra ni le décor, quand le bandeau « core_lost » est affiché.
+## l'uniforme global, et main.gd qui ne l'avance plus, ni la caméra ni le décor, quand le bandeau « core_lost » est affiché
+## (le journal caméra du mode test reste écrit, pour le scénario 4 de fake_core.py).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_anim_clock.gd
 
 const AnimClock := preload("res://scripts/anim_clock.gd")
@@ -43,5 +44,8 @@ func _run() -> void:
 	var main_code := FileAccess.get_file_as_string("res://scripts/main.gd")
 	_check(main_code.contains("if not banner.has_message(\"core_lost\"):\n\t\tAnimClock.advance(delta)"),
 		"main.gd : horloge figée tant que le core ne répond pas")
-	_check(main_code.contains("if banner.has_message(\"core_lost\"):\n\t\treturn\n\t# Interpolation"),
+	_check(main_code.contains("if banner.has_message(\"core_lost\"):\n\t\treturn\n\tif route:"),
 		"main.gd : caméra, avatar et décor figés tant que le core ne répond pas")
+	# Le journal caméra du mode test passe avant ce return (scénario 4 de fake_core.py : caméra figée journalisée).
+	_check(main_code.find("_test_log_camera(now, s_disp)") < main_code.find("if banner.has_message(\"core_lost\"):\n\t\treturn"),
+		"main.gd : caméra journalisée en mode test même core muet")
