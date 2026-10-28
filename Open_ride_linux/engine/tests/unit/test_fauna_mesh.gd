@@ -59,7 +59,7 @@ func _init() -> void:
 			for i in range(verts.size()):
 				if uvs[i].y > 0.99:
 					head_z = maxf(head_z, verts[i].z)
-				if verts[i].y < 0.3:
+				if verts[i].y < 0.3 * hi.y:   # bas des pattes, à l'échelle de la bête (lièvre de 0,5 m, P24)
 					still_ok = still_ok and uvs[i].y == 0.0
 			_check(absf(lo.y) < 1e-3, "%s : pieds à y = 0" % sp)
 			_check(head_z >= hi.z - 1e-3, "%s : la tête (UV.y = 1) est à l'avant, vers +z" % sp)
