@@ -106,7 +106,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-MAT-3 | Zwift Click V2 (deux boîtiers), B lu comme « − », boîtier gauche bridé | §4.2 | K8, Q6 | Livré (K8 ; Q6, PR #193 ; essai du boîtier gauche sur le PC à faire) |
 | 1.0-MAT-4 | Bluetooth simulé et mode mock : tout se développe sans le vélo | §12 | H3, M5, M6 | Livré |
 | 1.0-PHY-1 | Physique à 50 Hz par bilan d'énergie, 250 W à plat ≈ 10,2 m/s | §5 | — | Livré |
-| 1.0-PHY-2 | 24 braquets virtuels de 0,40 à 3,00, pente effective bornée | §4.3 | — | Livré |
+| 1.0-PHY-2 | 24 braquets virtuels de 0,65 à 2,00, pente effective bornée | §4.3 | — | Livré |
 | 1.0-PHY-3 | Coefficient de difficulté, 50 % par défaut, réglable en séance | §5, §11 | Q1 | Livré |
 | 1.0-PHY-4 | Rampe de pente distincte à la montée et à la descente | §5 | Q4 | Livré (PR #194) |
 | 1.0-ERG-1 | Lecteur `.zwo`, cibles lissées, biais au Click, saut de bloc, pause | §6 | F, L6 | Livré |
