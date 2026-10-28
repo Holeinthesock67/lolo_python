@@ -236,7 +236,7 @@ func _test_settings() -> void:
 		"step": 5, "unit": "W", "applies": "next_session"}
 	var vol := {"key": "sound.master_pct", "label": "Volume général", "group": "sound", "type": "int", "value": 80, "min": 0,
 		"max": 100, "step": 10, "unit": "%", "applies": "now"}
-	var quality := {"key": "render.quality", "label": "Qualité", "group": "display", "type": "choice", "value": "high",
+	var quality := {"key": "render.quality", "label": "Qualité", "group": "graphics", "type": "choice", "value": "high",
 		"choices": ["low", "medium", "high"], "applies": "now"}
 	var s = SettingsViewModel.new()
 	s.on_settings({"items": [ftp, vol, quality]})
