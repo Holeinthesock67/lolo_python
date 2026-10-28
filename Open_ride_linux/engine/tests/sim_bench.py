@@ -475,12 +475,15 @@ class Bench:
         a = self.args
         if self.sampler is not None:
             rows = perf_probe.merge(perf_probe.read_engine_csv(self.out / "moteur.csv"), self.sampler.rows)
-            self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}")
+            self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}",
+                                                         real_window=a.native)
             r.check(self.probe_summary["rows"] > 0, "sonde de performance",
                     f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
             if self.endurance:
                 for ok, label, measure in perf_probe.endurance_checks(rows, real_window=a.native):
                     r.check(ok, label, measure)
+            for ok, label, measure in self.probe_summary.get("budgets", []):   # budgets du préréglage (lot X14)
+                r.check(ok, label, measure)
         # Captures.
         ok = [s for s in self.shots if s.get("ok")]
         r.check(*capture_check(self.shots), "captures de l'engine")
