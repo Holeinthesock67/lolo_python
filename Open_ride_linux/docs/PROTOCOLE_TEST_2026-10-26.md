@@ -44,7 +44,7 @@ Le core et le compilateur sont installés en mode éditable, et Godot lit `engin
 - Noter chaque écart sans s'arrêter : `echo "$(date +%T) C2 flèche haut descend" >> ~/OpenRide/Logs/recette_notes.txt`.
 - Journal du lanceur (core, Godot préfixé `[engine]`) : `~/OpenRide/Logs/openride_<date>.log`, lien `~/run_trainer.log`.
 - Séances : `~/OpenRide/Activities/` (FIT et `.jsonl`). Mise à jour : `~/OpenRide/Logs/update.log`.
-- Rapports des outils : `~/OpenRide/recettes/`, `recettes_install/`, `trainer_steps/`, `click_recette/`, `boutons_click/`, `sim_bench/`.
+- Rapports des outils : `~/OpenRide/recettes/`, `recettes_install/`, `trainer_steps/`, `click_recette/`, `fc_recette/`, `boutons_click/`, `sim_bench/`.
 - Après un test raté : garder le dossier, ne pas relancer tout de suite, noter l'heure, puis le dire dans le fil. Je lis les journaux sur le PC ; les adresses Bluetooth et les traces réelles restent sur le PC.
 
 ### 0.4 Ordre conseillé et durées
@@ -52,7 +52,7 @@ Le core et le compilateur sont installés en mode éditable, et Godot lit `engin
 | Bloc | Où | Durée |
 | --- | --- | --- |
 | A. PC, installation et mise à jour | bureau, sans pédaler | 45 min (dont 25 sans surveiller) |
-| B. Appareils et ceinture | bureau, matériel allumé | 15 min |
+| B. Appareils et ceinture | bureau, matériel allumé (B3 sur le vélo, avec le bloc G) | 20 min |
 | C. Menus et réglages | bureau, Click en main | 30 min |
 | D. Séances SIM et session simulée | vélo | 40 min (dont 25 guidées) |
 | E. ERG | vélo | 45 min (dont 13 guidées ; + 60 min pour le `sweet_spot_3x10` complet) |
@@ -69,7 +69,7 @@ Les blocs A, F et H se font sans pédaler ; D, E et G le même jour, échauffé.
 Sur le vélo, tu n'as pas à lire ce document ni à chronométrer :
 
 - **Dans le jeu** (D1, E0) : `python -m openride_core.tools.seance_guidee` écrit deux parcours d'essai, `recette-velo` (séance libre en SIM, 25 min) et `recette-erg` (ERG, 13 min, entraînement « Recette ERG guidée »), avec leurs consignes. Chaque consigne s'affiche dans le bandeau avec un bip, au bon moment de la séance. Quand il faut du matériel (retirer la ceinture, sprint, fin de séance), un préavis « Dans 1 min, prépare … » arrive une minute avant. À chaque consigne, le journal du lanceur note le temps, la puissance, la cadence, la FC, le braquet et la pente envoyée (lignes `[essai]`).
-- **Dans les outils de test** (X4, X5, X8, X16, test des boutons G3) : un écran de guidage en grand (consigne, compte à rebours, bip au début et à la fin de chaque étape, relevés horodatés dans `guide.jsonl`) et une option `--materiel` qui donne la liste du matériel et la durée avant de commencer. Il est sur `main` depuis la [PR #300](https://github.com/Holeinthesock67/lolo_python/pull/300) : `python -m openride_core.tools.guide materiel` donne le matériel de tous les essais, à lire la veille ; `python -m openride_core.tools.guide bips` sert à régler le volume avant de monter sur le vélo ; `--muet` coupe les bips et `--sans-attente` enchaîne sans pause. Agrandir la police du terminal (Ctrl + +) pour le lire depuis le vélo.
+- **Dans les outils de test** (X4, X5, X8, X9, X16, test des boutons G3) : un écran de guidage en grand (consigne, compte à rebours, bip au début et à la fin de chaque étape, relevés horodatés dans `guide.jsonl`) et une option `--materiel` qui donne la liste du matériel et la durée avant de commencer. Il est sur `main` depuis la [PR #300](https://github.com/Holeinthesock67/lolo_python/pull/300) : `python -m openride_core.tools.guide materiel` donne le matériel de tous les essais, à lire la veille ; `python -m openride_core.tools.guide bips` sert à régler le volume avant de monter sur le vélo ; `--muet` coupe les bips et `--sans-attente` enchaîne sans pause. Agrandir la police du terminal (Ctrl + +) pour le lire depuis le vélo.
 
 `python -m openride_core.tools.seance_guidee --materiel` affiche ce qu'il faut préparer, sans rien écrire ; `--retirer` efface les parcours d'essai.
 
@@ -80,6 +80,7 @@ Sur le vélo, tu n'as pas à lire ce document ni à chronométrer :
 | Vélo (D, E, G) | Vélo sur le HomeTrainer, Bluetooth du PC allumé, aucune autre application reliée au trainer ; les deux boîtiers du Click réveillés, pile CR2032 de secours ; ceinture humidifiée ; bidon, serviette ; écran visible depuis le vélo, son audible ; FTP et poids à jour dans les réglages | 1 min avant de retirer la ceinture, avant le sprint, avant la pause ERG et avant chaque fin de séance |
 | X5 (G1) | Le même vélo, un braquet moyen gardé tout l'essai, 5 min d'échauffement avant | Paliers annoncés par l'outil |
 | X8 (G2) | Les deux boîtiers, piles chargées, jeu fermé ; vélo conseillé | Rappel d'appui toutes les 5 min |
+| X9 (B3) | Ceinture portée et humidifiée, un peu d'eau pour la remise ; vélo sur le HomeTrainer | Bip à chaque phase (retrait, remise) |
 | Boutons (G3) | Les deux boîtiers, piles chargées, jeu fermé, son du PC allumé | Bip au début de chaque appui demandé |
 | X16, X13 (H) | Rien (trainer simulé) ; PC sans mise en veille, sur la GTX 1060 | Bip au départ et à la fin |
 
@@ -169,6 +170,17 @@ Sur le vélo, tu n'as pas à lire ce document ni à chronométrer :
 - [ ] FC relayée par le trainer visible au HUD
 - [ ] FC figée ceinture retirée, puis absente au bout de 15 s
 - **Si échec :** si la ceinture apparaît dans le scan, noter son nom (pas son adresse) : ce serait un autre modèle.
+
+### B3. Recette guidée de la fréquence cardiaque (X9), 5 min sur le vélo
+
+- **Prérequis :** vélo sur le HomeTrainer, ceinture portée et humidifiée, aucune autre application reliée au trainer (`python -m openride_core.tools.guide materiel fc_recette`).
+- **Étapes :** `python -m openride_core.tools.fc_recette`, puis suivre les consignes en roulant : ceinture portée 1 min, retirée 1 min, remise 1 min, portée 1 min.
+- **Attendu :** verdict « tout passe ». Avec la HRM-Tri (FC relayée par le trainer), l'absence est admise jusqu'à `hr_relay_freeze_s` + 2 s, soit 17 s par défaut, et le rapport le note ; la valeur figée ne dépasse pas 15 s.
+- [ ] Absence après le retrait
+- [ ] Pas de valeur figée plus de 15 s
+- [ ] Retour dans les 20 s après la remise
+- **Journaux :** `~/OpenRide/fc_recette/<date>/` (rapport.txt, fc.csv, guide.jsonl).
+- **Si échec :** joindre `rapport.txt` ; `--analyse` sur le dossier refait les contrôles sans rouler.
 
 ---
 

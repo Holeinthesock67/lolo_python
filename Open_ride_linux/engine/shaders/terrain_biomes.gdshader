@@ -19,8 +19,8 @@ uniform vec4 tile_rect = vec4(0.0, 0.0, 1000.0, 1000.0);
 // Modulation des poids par un bruit de 20 à 80 m : casse les fondus réguliers entre biomes
 uniform float blend_noise : hint_range(0.0, 1.0) = 0.6;
 
-// Par biome : (seuil de pente en degrés, limite de la couche haute en m, netteté du mélange, -) et
-// indices des couches (herbe, roche, neige, -)
+// Par biome : (seuil de pente en degrés, limite de la couche haute en m, netteté du mélange, force des
+// rides et dunes du sable) et indices des couches (herbe, roche, neige, -)
 uniform vec4 biome_rule[MAX_BIOMES];
 uniform vec4 biome_layers[MAX_BIOMES];
 // Par couche : (couleur unie, 1 / échelle en m) et (indice dans ground_a, indice dans ground_b, -, -) ; -1 : pas de texture
@@ -28,6 +28,13 @@ uniform vec4 layer_color[MAX_LAYERS];
 uniform vec4 layer_maps[MAX_LAYERS];
 uniform sampler2DArray ground_a : source_color, filter_linear_mipmap_anisotropic, repeat_enable;
 uniform sampler2DArray ground_b : filter_linear_mipmap_anisotropic, repeat_enable;
+// Rides (0,3 m) et dunes (40 m) du sable (lot U8) : faux relief seulement, crêtes perpendiculaires au vent
+// du thème (direction vers laquelle il souffle, x et z du monde)
+uniform vec2 sand_wind_dir = vec2(1.0, 0.0);
+const float RIPPLE_M = 0.3;
+const float DUNE_M = 40.0;
+const float DUNE_H_M = 1.2;
+const float RIPPLE_H_M = 0.012;
 
 #include "res://shaders/terrain_shade.gdshaderinc"
 
@@ -55,6 +62,20 @@ vec4 sample_layer_b(float layer, vec3 pos, float inv_scale, vec3 tw, vec3 n) {
 	vec3 nz = vec3(tz + n.xy, abs(sqrt(max(1.0 - dot(tz, tz), 0.0))) * n.z);
 	vec3 wn = normalize(nx.zyx * tw.x + ny.xzy * tw.y + nz.xyz * tw.z);
 	return vec4(wn, bx.z * tw.x + by.z * tw.y + bz.z * tw.z);
+}
+
+// Faux relief du sable au point : dunes dissymétriques (pente douce au vent, raide sous le vent, crêtes
+// ondulées) et rides effacées quand elles deviennent plus fines qu'un pixel
+float sand_relief(vec2 q) {
+	vec2 wd = sand_wind_dir;
+	vec2 pd = vec2(-wd.y, wd.x);
+	float a = dot(q, wd);
+	float c = dot(q, pd);
+	float f = fract(a / DUNE_M + 0.25 * sin(c / 55.0) + 0.6 * sd_noise(q / 90.0));
+	float dune = f < 0.75 ? f / 0.75 : (1.0 - f) / 0.25;
+	float rp = a / RIPPLE_M + 0.8 * sin(c / 1.7) + 1.5 * sd_noise(q / 2.0);
+	float ripple = (0.5 + 0.5 * sin(rp * TAU)) * sd_visible(vec2(a, c), RIPPLE_M);
+	return dune * DUNE_H_M + ripple * RIPPLE_H_M;
 }
 
 void fragment() {
@@ -88,6 +109,7 @@ void fragment() {
 	vec3 tri_weights = triplanar_weights(n, sharp);
 
 	vec3 col[3] = vec3[3](vec3(0.0), vec3(0.0), vec3(0.0));
+	float sand = 0.0;
 	vec3 w = vec3(0.0);
 	vec3 n_maps = vec3(0.0);
 	float w_maps = 0.0;
@@ -99,6 +121,7 @@ void fragment() {
 		}
 		int b = int(biome_index[k]);
 		vec4 rule = biome_rule[b];
+		sand += rule.w * wb[k];
 		vec3 lw = layer_weights(n, v_world_pos.y, rule.x, rule.y, rule.z) * wb[k];
 		w += lw;
 		for (int r = 0; r < 3; r++) {
@@ -125,7 +148,8 @@ void fragment() {
 	vec3 n_shade = w_maps > 0.0 ? normalize(n + n_maps) : n;
 
 	vec3 normal_out;
-	ALBEDO = shade_layers(grass_c, rock_c, snow_c, w, n_shade, tri_weights, VERTEX, VIEW_MATRIX, normal_out);
+	ALBEDO = shade_layers(grass_c, rock_c, snow_c, w, n_shade, tri_weights,
+		sand > MIN_LAYER_WEIGHT ? sand * sand_relief(q) : 0.0, VERTEX, VIEW_MATRIX, normal_out);
 	NORMAL = normal_out;
 	ROUGHNESS = rough;
 	if (w_maps > 0.0) {
