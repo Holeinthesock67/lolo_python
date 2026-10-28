@@ -96,23 +96,68 @@ Le rendu des tons a été choisi sur captures parmi Linear, Reinhard, Filmic et 
 
 Deux blocs de moins de 10 minutes, PC au calme, sans séance vélo, fenêtre annoncée avant ouverture :
 
-1. `main` puis la branche, `medium`, monde `village` : `python3 engine/tests/sim_bench.py --native --probe --quality medium --size 1920x1080 --world village` (environ 3 min chacun).
+1. `main` puis la branche, `medium`, monde `village` : `python3 engine/tests/sim_bench.py --native --probe --quality medium --size LxH --world village --scenario montee_descente`, `LxH` étant la résolution native de l'écran (1680 × 1050 sur le PC du propriétaire), environ 3 min chacun.
 2. La branche en `low` puis en `high`, même commande.
 
 Critères : budgets du §3 ; écart d'images/s et de p99 entre `main` et la branche ; GPU médian et pointe dans `sonde.csv`. Si `medium` dépasse son enveloppe, retirer d'abord le SSIL, puis passer le MSAA à 2×.
 
-## 7. Fichiers concernés
+## 7. Étapes suivantes (après l'accord du propriétaire sur l'étape 1)
 
-- **Modifiés :** `engine/scripts/quality_presets.gd`, `render_quality.gd`, `engine/project.godot`, `engine/tests/unit/test_quality_presets.gd`, `test_render_quality.gd`, ce cahier, `docs/lots/00_INDEX.md`, `docs/SUIVI_AVANCEMENT.md`, `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md`.
+Chaque étape : une branche et une PR, mesure avant et après avec le protocole du §6 (même monde, même scénario, résolution native), budgets du §3, captures avant et après jointes. Une étape qui dépasse son enveloppe est réduite (repli indiqué) ou abandonnée, jamais gardée « en option ».
+
+### 7.1 Étape 2 : densités et distances en `medium`
+
+| Réglage (`quality_presets.gd`) | `medium` avant | `medium` après | `low` / `high` |
+| --- | --- | --- | --- |
+| `vegetation_density_factor` | 0,6 | 0,8 | inchangés (0,3 / 1,0) |
+| `TREE_BUDGETS` | 50 000 | 70 000 | inchangés (20 000 / 100 000) |
+| `SHADOW_DISTANCES` | 300 m | 400 m | inchangés (150 / 600 m) |
+| `BUILDING_VISIBILITY_END` | 2 500 m | 3 500 m | inchangés (1 500 / 4 000 m) |
+
+- Gain attendu : paysage plus plein, ombres des arbres plus loin, villages visibles de plus loin. Coût estimé +1 à 2 ms de GPU.
+- Risque principal : le **p99**, pas la moyenne. Construire une tuile d'arbres coûte déjà 40 à 80 ms de processeur sur le PC (budgets `tree_tile_high`, `vegetation_tile_max`) ; 30 % d'arbres en plus allongent ces pics. Mesure sur `village` **et** sur un parcours OSM boisé (le monde `osm` du banc), p99 relevé tuile par tuile dans `sonde.csv`.
+- Repli si le p99 dépasse 25 ms : garder les ombres à 400 m et les bâtiments à 3,5 km (coût GPU seul), laisser la végétation à 0,6 et les arbres à 50 000 jusqu'à ce que la construction étalée des tuiles (O1, S1) soit livrée.
+- Ordre croissant de `low` à `high` conservé (test `test_quality_presets.gd` existant) ; seules les valeurs `medium` et les tests changent. Les clés `LIVING` (herbe, faune, véhicules) restent aux autres fils.
+
+### 7.2 Étape 3 : brume volumétrique légère en `medium`
+
+- La clé `fog_volumetric` quitte `PRESETS` pour `IMAGE` (même règle que `ssao` et `msaa` à l'étape 1 : toute la qualité d'image au même endroit) et devient un niveau : `off` (`low`), `light` (`medium`), `full` (`high`).
+- `light` : brouillard volumétrique de Godot avec une grille réduite (`RenderingServer.environment_set_volumetric_fog_volume_size(48, 48)`, filtre actif), portée `volumetric_fog_length` 600 m, densité basse (0,004, ou celle du thème si elle est plus faible), anisotropie 0,6 pour que le soleil éclaire la brume vers l'avant (rayons dans les trouées des arbres), `volumetric_fog_sky_affect` 0 (règle de P16 : le ciel et les nuages restent visibles).
+- `full` (`high`) : grille 64 × 64, portée 1 200 m, densité du thème (0,01 par défaut).
+- Le brouillard de profondeur d'Y1 (opaque à 4 / 6 / 9 km) ne change pas : la brume volumétrique ajoute la profondeur de l'air de près, sans rapprocher l'horizon. La brume de la météo (P17, `fog_boost`) agit sur les deux : la densité volumétrique est multipliée par `1 + 3 × fog_boost` dans `apply_weather_fog`.
+- Compatibility n'a pas de brouillard volumétrique : `off` sans RenderingDevice, comme SSAO et SSIL.
+- Coût estimé +1 à 1,5 ms en `medium`. Vérifications : pas de scintillement image figée en Forward+ (le volumétrique réutilise les images précédentes, `visual_check.py --native`), pas de traînée derrière les objets à 40 km/h (captures du banc en mouvement).
+- Repli : grille 32 × 32 et portée 400 m ; si l'enveloppe reste dépassée, `medium` reste `off`.
+
+### 7.3 Étape 4 : après la migration Y2 (Godot 4.7)
+
+Réalisée pendant la recette visuelle d'Y2, qui renvoie ici. Rien de cette étape ne se fait en 4.3.
+
+| Réglage | 4.3 (étapes 1 à 3) | 4.7 (étape 4) | Pourquoi |
+| --- | --- | --- | --- |
+| Rendu des tons (`LOOK`) | Filmic, exposition 1,25, blanc 6 | AgX (4.4) avec ses réglages de blanc et de contraste (4.6), exposition recalée | AgX garde mieux la couleur dans les très hautes lumières (ciel, soleil) ; choix final sur captures Filmic contre AgX, comme à l'étape 1 |
+| Glow (`GLOW`) | Soft Light, intensité 0,6 | recalé : 4.6 mélange le glow avant la tonalité et passe en « Screen » par défaut | l'ancien rendu ne se retrouve pas par un simple réglage (recherche §3) |
+| Anticrénelage de `low` | FXAA | SMAA 1× (4.5) | plus net que le FXAA pour un coût proche (+0,3 ms environ) |
+| Filtrage anisotrope | 16× global (`project.godot`) | par préréglage 4× / 8× / 16× si 4.7 l'expose sur le viewport (**à vérifier** le jour du lot) | `low` léger sans exception |
+| Occlusion spéculaire | — | automatique à partir du SSAO (4.5) | reflets plus justes dans les creux, sans réglage |
+| Seuils LOD | 2 / 1 / 0,5 px | inchangés, revérifiés (LOD générés de 4.6) | — |
+
+- Les reflets SSR de l'eau restent dans Y12 (refaits en 4.6, demi-résolution).
+- Mesure : protocole du §6 sur 4.3 puis sur 4.7 avec les mêmes réglages, puis avec ceux de l'étape 4 ; budgets du §3.
+
+## 8. Fichiers concernés
+
+- **Modifiés (étape 1) :** `engine/scripts/quality_presets.gd`, `render_quality.gd`, `engine/project.godot`, `engine/tests/unit/test_quality_presets.gd`, `test_render_quality.gd`, ce cahier, `docs/lots/00_INDEX.md`, `docs/SUIVI_AVANCEMENT.md`, `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md`.
+- **Étapes 2 à 4 :** les mêmes fichiers (`quality_presets.gd`, `render_quality.gd`, leurs tests) ; la brume de la météo de l'étape 3 passe par `RenderQuality.apply_weather_fog`, déjà appelée par `living_decor.gd`, sans toucher ce dernier.
 - **Hors lot :** les clés `LIVING` (décor vivant, fils P22 à P27 et herbe), `crowd_renderer.gd`, `grass_tufts.gd`, `fauna_*.gd`, `traffic_*.gd`, les shaders de la route et du terrain (Y11), les menus.
 
-## 8. Liens avec les autres lots de la série Y
+## 9. Liens avec les autres lots de la série Y
 
 - **Y4 (ombres)** garde le côté coût : objets sans ombres, distances. La qualité des ombres (atlas, filtre, cascades) est ici.
 - **Y6** : la résolution adaptative et la mise à l'échelle 3D sont écartées par la consigne du 27 octobre (résolution native seulement). L'anticrénelage de `low` (FXAA) est fait ici ; le SMAA attend Y2.
 - **Y8** : l'étalonnage passe ici (étape 1) ; Y8 garde les toits et les façades.
-- **Y2** : la migration recale la tonalité (AgX) et le glow (changé en 4.6) sur ces réglages.
+- **Y2** : la migration renvoie à l'étape 4 (§7.3) pour la tonalité AgX, le glow (changé en 4.6) et le SMAA ; elle se fait pendant la recette visuelle d'Y2, avec les mêmes mesures.
 
-## 9. Modifications de contrat autorisées
+## 10. Modifications de contrat autorisées
 
 Aucune : ni IPC, ni format `.world`, ni thème, ni configuration (`[render] quality` reste le seul choix du joueur).
