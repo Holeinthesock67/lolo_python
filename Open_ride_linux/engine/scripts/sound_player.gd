@@ -31,7 +31,8 @@ extends Node
 ## Lot P23 : même synthèse pour deux cris d'oiseaux, `crow_caw` (deux croassements rauques) et `raptor_cry`
 ## (miaulement de buse qui descend), joués par fauna_renderer.gd.
 ## Lot P25 : `truck_pass` (diesel grave et souffle long, camions et bus) et `moto_pass` (moteur aigu qui monte
-## puis redescend), en boucle comme `vehicle_pass`, joués par traffic_renderer.gd.
+## puis redescend), en boucle comme `vehicle_pass`, joués par traffic_renderer.gd ; `voice_salut` (« Salut ! »,
+## même synthèse que les passants) pour les cyclistes du décor qui doublent (road_cyclists_renderer.gd).
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
@@ -50,7 +51,7 @@ const WIND_BAND_HZ := 600.0            # souffle : passe-bande doux, plus discre
 const WIND_BAND_Q := 0.6
 const WIND_RMS := 0.22
 const CLAC_SAMPLES := 1323     # 60 ms
-const VOICE_KINDS := ["voice_allez", "voice_bonjour", "dog_bark", "kid_laugh", "crow_caw", "raptor_cry"]
+const VOICE_KINDS := ["voice_allez", "voice_bonjour", "dog_bark", "kid_laugh", "crow_caw", "raptor_cry", "voice_salut"]
 ## Syllabes des sons de passants : [début s, fin s, f0 début Hz, f0 fin Hz, formant 1 Hz, formant 2 Hz, souffle 0 à 1].
 const VOICE_SYLLABLES := {
 	"voice_allez": [[0.0, 0.16, 190.0, 210.0, 800.0, 1250.0, 0.05], [0.2, 0.52, 230.0, 290.0, 420.0, 2000.0, 0.08]],
@@ -60,6 +61,7 @@ const VOICE_SYLLABLES := {
 		[0.28, 0.37, 380.0, 350.0, 900.0, 1500.0, 0.5], [0.42, 0.53, 360.0, 300.0, 900.0, 1500.0, 0.5]],
 	"crow_caw": [[0.0, 0.22, 520.0, 430.0, 1100.0, 1900.0, 0.55], [0.36, 0.58, 500.0, 410.0, 1100.0, 1900.0, 0.55]],
 	"raptor_cry": [[0.0, 0.85, 1800.0, 1150.0, 2200.0, 3300.0, 0.12]],
+	"voice_salut": [[0.0, 0.17, 210.0, 235.0, 760.0, 1300.0, 0.3], [0.22, 0.5, 245.0, 190.0, 300.0, 1800.0, 0.1]],
 }
 
 var model := SoundModel.new()
