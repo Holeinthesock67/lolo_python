@@ -118,7 +118,9 @@ def verdict(run: Path, outil: Outil, numero: int) -> tuple[bool | None, str]:
         if isinstance(data, dict):
             step = next((s for s in data.get("steps", []) if s.get("name") == outil.etape), None)
             if step is not None:
-                return bool(step.get("ok")), f"étape {outil.etape} : {step.get('detail') or ''}".strip(" :")
+                if step.get("status") == "SAUTÉ":
+                    return None, f"étape {outil.etape} sautée"
+                return step.get("status") == "OK", f"étape {outil.etape} : {step.get('detail') or ''}".strip(" :")
     guide = run / "guide.jsonl"
     if guide.is_file():
         rows = [r for r in (_parse(line) for line in guide.read_text(encoding="utf-8", errors="replace").splitlines())

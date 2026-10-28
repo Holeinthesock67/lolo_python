@@ -47,8 +47,8 @@ def test_reports_are_found(tmp_path):
                 {"guide.jsonl": _verdict(True, "Recette finie : tout passe"), "rapport.txt": "x"})
     _run(tmp_path, "boutons_click", "2026-10-28_080000", {"rapport.json": {"ok": False}})
     _run(tmp_path, "recettes", "2026-10-28_070000",
-         {"resume.json": {"ok": False, "steps": [{"name": "engine", "ok": True, "detail": "96 fichiers"},
-                                                 {"name": "core", "ok": False}]}, "resume.txt": "x"})
+         {"resume.json": {"ok": False, "steps": [{"name": "engine", "status": "OK", "detail": "96 fichiers"},
+                                                 {"name": "core", "status": "ÉCHEC"}]}, "resume.txt": "x"})
     _run(tmp_path, "sim_bench", "2026-10-28_060000", {"guide.jsonl": _verdict(True), "index.html": "x", "demo/x": "1"})
     _run(tmp_path, "sim_bench", "2026-10-28_120000", {"guide.jsonl": _verdict(False), "index.html": "x"})
     _run(tmp_path, "sim_bench", "2026-10-27_120000", {"guide.jsonl": _verdict(True), "index.html": "x", "endurance/x": "1"})
