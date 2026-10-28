@@ -50,7 +50,7 @@ Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sou
 | `core_muet_1`, `core_muet_2` | Core muet : `core_lost`, bandeau « Core non joignable » rouge et sans recouvrir le HUD, caméra et image figées |
 | `reprise` | Bandeau disparu, image normale |
 | `erreur` | Trame `error` : code `route_invalid` dans le bandeau rouge, sans recouvrir le HUD |
-| `decor_vivant` | Lot P27 : monde de test OSM (`make_osm_world.py`, copié à côté de la démo), 8 m/s à partir de 1 480 m (un utilitaire double à 1 500 m avec la graine 0) ; captures toutes les 2 s, 30 s au plus, jusqu'à avoir vu un troupeau, des oiseaux, un véhicule croisé, un véhicule lointain et un objet du ciel (`decor` de la ligne `screenshot` : `animals`, `birds`, `vehicles`, `distant_vehicles`, `aircraft`) ; vérifié par la présence des objets, sans image de référence (le décor bouge) |
+| `decor_vivant` | Lot P27 : monde de test OSM (`make_osm_world.py`, copié à côté de la démo), 8 m/s à partir de 1 480 m (un utilitaire double à 1 500 m avec la graine 0) ; captures toutes les 2 s, 30 s au plus, jusqu'à avoir vu un troupeau, des oiseaux, un véhicule croisé, un véhicule lointain et un objet du ciel (`decor` de la ligne `screenshot` : `animals`, `birds`, `vehicles`, `distant_vehicles`, `aircraft`) ; vérifié par la présence des objets, sans image de référence (le décor bouge) ; lot P30 : captures `decor_pause_1` et `decor_pause_2` à 2 s d'écart en pause, `frozen_sig` du décor identique |
 | `pente_0pct`, `pente_4pct` | Pentes de 0,6 % et 4,5 % du parcours demo (lot Q2) : inclinaison de la caméra ; avec `--visual-grade=1.5` ou `1.8`, exagération du relief (captures suffixées `_k1.5`, `_k1.8`) |
 | `journal` | Aucune erreur ni avertissement Godot (mêmes tolérances que ci-dessous), rendu actif |
 
@@ -61,6 +61,10 @@ Sortie : une ligne `[OK]` ou `[ÉCHEC]` par vérification, `rapport.html` (captu
 `run_engine_tests.sh` lance la même vérification sur `VISUAL_CONFIGS` (défaut `1280x720:low`, environ 60 s ; `none` pour la sauter), donc aussi en intégration continue, avec `--fige` et, en `1280x720:low`, les vignettes du dépôt (`tests/golden/xvfb/low/`, lot X20).
 
 Premier défaut trouvé : le bandeau d'alerte (placé à 360 px du bord) recouvrait le HUD dès que celui-ci s'élargissait (ligne d'état, ligne ERG). Il se place désormais à droite du HUD s'il reste 360 px, sinon dessous (`banner.gd`, `layout_for`, test `unit/test_banner_layout.gd`).
+
+## Banc des menus (`menu_bench.py`)
+
+Tous les menus joués de bout en bout au Click V2 simulé, au clavier et à la souris, face au vrai core sur Bluetooth simulé : scénarios déclaratifs de `menu_scenarios/*.json` (un écran ou un parcours de menus chacun), vérifiés par identifiants d'écran et d'élément, `config.toml`, journaux et code de sortie ; voir [docs/OUTILS_DE_TEST.md](../../docs/OUTILS_DE_TEST.md) §3. Messages de test de l'engine qu'il utilise, réutilisables par d'autres bancs (aussi en séance) : `key` (`key`, `shift`, `hold_ms` : touche appuyée puis relâchée par `Input.parse_input_event`), `mouse` (`kind` click, right, wheel_up, wheel_down ou move ; `item` ou `at`) et `menu_state` (`req` : état des menus en une ligne `[test] menu_state {…}`). Ajouter un écran au banc : un fichier JSON, sans toucher au script.
 
 ## Banc d'essai simulé (`sim_bench.py`)
 

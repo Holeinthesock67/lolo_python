@@ -63,6 +63,7 @@ const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const PassersbyModel := preload("res://scripts/passersby_model.gd")
 
 const FOG_PERIOD_S := 0.5
+const SOUND_POLL_S := 0.25          # relevé des sons du décor qui démarrent (P30)
 const VALLEY_WINDOW_M := 2000.0     # altitude de vallée : moyenne de la route à ± 2 km
 const CHUNK_M := 1000.0
 
@@ -109,6 +110,10 @@ var ftp_w := 0.0                    # FTP du core (hello_ack), pour la clameur d
 var last_event: Dictionary = {}
 var wave2_us := 0                   # temps cumulé des lots P23 à P26, P28 et P29 dans `step` (P27, enveloppe)
 var wave2_frames := 0
+var sounds_heard: Dictionary = {}   # nom du son (sound_player.gd) -> départs relevés depuis `configure` (P30)
+var _audio: Array = []              # lecteurs 3D du décor, tous créés par _build_nodes
+var _audio_was_playing: Array = []
+var _sound_at := -INF
 
 var _route = null
 var _road_width_m := RoadBuilder.ROAD_WIDTH_M
@@ -133,6 +138,7 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	world_streamer = p_world_streamer
 	weather = WeatherModel.from_theme(theme) if enabled else WeatherModel.clear()
 	weather_eval = {}
+	sounds_heard = {}
 	set_fog_base(p_environment)
 	if particles == null:
 		_build_nodes()
@@ -209,6 +215,25 @@ func _build_nodes() -> void:
 	passersby_view.name = "Passersby"
 	add_child(passersby_view)
 	passersby_view.setup_passersby(passersby, sound_player)
+	_audio = find_children("*", "AudioStreamPlayer3D", true, false)
+	_audio_was_playing.resize(_audio.size())
+	_audio_was_playing.fill(false)
+
+
+## Départs des sons du décor, relevés toutes les SOUND_POLL_S (lecteur qui passe à `playing`) : tests
+## automatiques des sons (lot P30), sans toucher aux lots qui les jouent.
+func _poll_sounds(now_s: float) -> void:
+	if now_s - _sound_at < SOUND_POLL_S or sound_player == null:
+		return
+	_sound_at = now_s
+	for i in range(_audio.size()):
+		var a: AudioStreamPlayer3D = _audio[i]
+		var on := a.playing
+		if on and not _audio_was_playing[i]:
+			var kind: String = sound_player.kind_of(a.stream)
+			if kind != "":
+				sounds_heard[kind] = int(sounds_heard.get(kind, 0)) + 1
+		_audio_was_playing[i] = on
 
 
 ## Nouveau parcours : préparation en tâche de fond (voir l'en-tête). `world_dir` vide : pas de couche OSM.
@@ -445,11 +470,27 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	crowd_view.update(cam_pos, now_s, last_cheer)
 	last_event = passersby.update(rider_pos, cam_s, now_s, beep_active)
 	passersby_view.update_passersby(cam_pos, cam_s, now_s, last_event)
+	_poll_sounds(now_s)
 
 
 ## Météo imposée (mode test des tests graphiques) : même forme que `weather` du thème 1.2.
 func set_weather(w: Dictionary) -> void:
 	weather = WeatherModel.from_theme({"weather": w, "terrain": theme.get("terrain", {})}) if enabled else WeatherModel.clear()
+
+
+## Somme des positions de ce qui se fige en pause (véhicules de la route et lointains, cyclistes du décor,
+## ciel, bateaux), arrondie au centimètre : deux valeurs égales en pause = rien n'a bougé (lot P30).
+func frozen_signature() -> float:
+	var sig := 0.0
+	for v in traffic.vehicles:
+		sig += float(v["s"])
+	for g in cyclists.groups:
+		sig += float(g["s"])
+	for list in [road_traffic.vehicles, sky.craft, boats.boats]:
+		for o in list:
+			var p: Vector3 = (o["xform"] as Transform3D).origin
+			sig += p.x + p.y + p.z
+	return snappedf(sig, 0.01)
 
 
 ## Animaux au sol affichés (P11, P24), pour test_info.
@@ -479,6 +520,8 @@ func test_info(cam: Camera3D) -> Dictionary:
 		"particles": particles.get_active_count() if particles != null else 0,
 		"rain": float(weather_eval.get("rain", 0.0)), "wetness": float(weather_eval.get("wetness", 0.0)),
 		"fog_boost": float(weather_eval.get("fog_boost", 0.0)),
+		"sounds": sounds_heard.duplicate(),
+		"frozen_sig": frozen_signature(),
 		"sign": {},
 	}
 	if cam == null or props == null:
