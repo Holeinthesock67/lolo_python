@@ -241,7 +241,7 @@
 | [X3](LOT_X3_instabilite_durees_tests.md) | Série X (outils de test) : Rapport d'instabilité et de durée des tests (JUnit, tests lents ou instables) | Python + Bash | X2 | Petite | Oui ; issue #201 |
 | [X6](LOT_X6_trainer_simule_realiste.md) | Série X (outils de test) : Trainer simulé réaliste : frein du 1er ordre à retard, volant d'inertie, gigue des notifications | Python | X5 | Moyenne | Oui ; issue #204 |
 | [X7](LOT_X7_latence_click.md) | Série X (outils de test) : Latence appui Click → commande → écran, par étage | Python + GDScript | — | Petite | Script oui, essai sur le vélo ; issue #205 |
-| [X9](LOT_X9_recette_frequence_cardiaque.md) | Série X (outils de test) : Recette guidée de la fréquence cardiaque (gel, retrait, retour) | Python | Q5 | Petite | Script oui, essai sur le vélo ; issue #207 |
+| [X9](LOT_X9_recette_frequence_cardiaque.md) | Série X (outils de test) : Recette guidée de la fréquence cardiaque (gel, retrait, retour) | Python | Q5 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x9`), essai sur le vélo ; issue #207 |
 | [X10](LOT_X10_coupures_verifiees.md) | Série X (outils de test) : Coupures volontaires, attendu contre obtenu au journal | Python | — | Moyenne | Script oui, essai sur le vélo ; issue #208 |
 | [X11](LOT_X11_controle_fit_reel.md) | Série X (outils de test) : Contrôle d'un FIT de séance réelle, en local | Python | H5 | Petite | Oui ; issue #209 |
 | [X12](LOT_X12_analyse_seance_reelle.md) | Série X (outils de test) : Analyse automatique d'une séance réelle (`openride-core session-report`) | Python | — | Moyenne | Oui ; issue #210 |
