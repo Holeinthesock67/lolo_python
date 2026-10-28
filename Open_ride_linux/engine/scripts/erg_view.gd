@@ -175,7 +175,7 @@ func update_display(erg: Variant, erg_eval: Dictionary) -> void:
 ## Textes du bandeau (fonction pure, testée sans scène).
 static func banner_lines(erg: Dictionary, erg_eval: Dictionary) -> Dictionary:
 	if is_free(erg):
-		var state := str(erg_eval.get("next_text", ""))
+		var state: String = str(erg_eval.get("next_text", ""))
 		if str(erg_eval.get("paused_text", "")) != "":
 			state = "En pause" if state == "" else state + " (pause)"
 		return {"title": str(erg_eval.get("title", "")), "target": str(erg_eval.get("target_text", "")),

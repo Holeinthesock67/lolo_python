@@ -141,7 +141,7 @@ func _free_eval(kind: String, target_w: int, bias_pct: int, paused: bool) -> Dic
 		title = "ERG cadence %d tr/min (%d–%d)" % [int(_last_erg.get("cadence_target_rpm", 0)),
 			int(round(float(_last_erg.get("cadence_low_rpm", 0.0)))),
 			int(round(float(_last_erg.get("cadence_high_rpm", 0.0))))]
-		next_text = CADENCE_ZONE_TEXTS.get(str(_last_erg.get("cadence_zone", "in")), "")
+		next_text = str(CADENCE_ZONE_TEXTS.get(str(_last_erg.get("cadence_zone", "in")), ""))
 	elif bias_pct != 100:
 		target_text += " (%d %%)" % bias_pct
 	return {
@@ -164,7 +164,7 @@ func update(erg: Variant, now_s: float) -> Dictionary:
 		reset()
 		return evaluate(now_s)
 	var d: Dictionary = erg
-	var is_new_frame := (
+	var is_new_frame: bool = (
 		not _has_state
 		or int(d.get("block_index", 1)) != _last_block_index
 		or absf(float(d.get("block_remaining_s", 0.0)) - _raw_remaining_s) > 1e-6

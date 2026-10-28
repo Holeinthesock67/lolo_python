@@ -212,9 +212,9 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 		difficulty_pct = int(diff)
 		pause_changed = true
 	var erg = state.get("erg", null)
-	var rm := ride_mode_of(state)
-	var tw := int(round(float(erg.get("target_w", 0)))) if erg is Dictionary else 0
-	var cad := int(erg.get("cadence_target_rpm", 0)) if erg is Dictionary else 0
+	var rm: String = ride_mode_of(state)
+	var tw: int = int(round(float(erg.get("target_w", 0)))) if erg is Dictionary else 0
+	var cad: int = int(erg.get("cadence_target_rpm", 0)) if erg is Dictionary else 0
 	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm:
 		ride_mode = rm
 		erg_target_w = tw
@@ -900,7 +900,7 @@ func handle(event: String) -> Dictionary:
 		_handle_records(str(act["screen"]), str(act["id"]))
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:
-		var key := SettingsViewModel.PAUSE_PREFIX + str(act["id"])
+		var key: String = SettingsViewModel.PAUSE_PREFIX + str(act["id"])
 		settings.begin_pause(key, _pause_value(key))
 		_refresh_pause_rows()
 		return {}
@@ -1112,7 +1112,7 @@ func _refresh_pause_rows() -> void:
 		keys.append(SettingsViewModel.PAUSE_CADENCE)
 	var rows: Array = []
 	for key in keys:
-		var it := SettingsViewModel.pause_item(key, _pause_value(key))
+		var it: Dictionary = SettingsViewModel.pause_item(key, _pause_value(key))
 		var ed: Dictionary = settings.editing if str(settings.editing.get("key", "")) == key else {}
 		rows.append(SettingsViewModel.row(key.substr(SettingsViewModel.PAUSE_PREFIX.length()), it, ed))
 	menu.set_pause_rows(rows)

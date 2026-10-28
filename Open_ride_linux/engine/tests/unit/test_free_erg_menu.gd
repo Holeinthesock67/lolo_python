@@ -53,7 +53,7 @@ func _focus(f, id: String) -> void:
 		f.handle("PLUS_SHORT")
 
 
-func _paused(erg: Variant, mode := "SIM") -> MenuFlow:
+func _paused(erg: Variant, mode := "SIM"):
 	var f = MenuFlow.new()
 	f.connect_done = true
 	f.on_state({"session_state": "RUNNING", "mode": mode, "erg": erg, "difficulty_pct": 50})
@@ -70,7 +70,7 @@ func _test_ride_mode_of() -> void:
 
 
 func _test_pause_rows_and_commands() -> void:
-	var f := _paused(null)
+	var f = _paused(null)
 	_check(_ids(f) == ["resume", "end_save", "abandon", "difficulty", "ride_mode"],
 		"pause d'une session libre : ligne du mode (%s)" % str(_ids(f)))
 	_check(_row(f, "ride_mode")["label"] == "Mode" and _row(f, "ride_mode")["detail"] == "SIM", "mode affiché : SIM")
@@ -111,7 +111,7 @@ func _test_pause_rows_and_commands() -> void:
 	_check(f.handle("Y_SHORT").is_empty() and _row(f, "ride_mode")["detail"] == "ERG cadence"
 		and not _row(f, "ride_mode")["editing"], "Y annule le changement de mode")
 	# Entraînement : pas de ligne de mode.
-	var g := _paused(WORKOUT, "ERG")
+	var g = _paused(WORKOUT, "ERG")
 	_check(_ids(g) == ["resume", "end_save", "abandon", "difficulty"], "entraînement : pas de bascule (%s)" % str(_ids(g)))
 	_check(SettingsViewModel.pause_item("pause.inconnu", 1).is_empty(), "clé de pause inconnue : rien")
 
@@ -127,7 +127,7 @@ func _test_banner() -> void:
 	ev = vm.update(CADENCE, 1.0)
 	_check(ev["title"] == "ERG cadence 90 tr/min (77–104)" and ev["target_text"] == "215 W"
 		and ev["next_text"] == "Trop vite : la puissance monte", "bandeau ERG cadence (%s)" % str(ev))
-	var low := CADENCE.duplicate()
+	var low: Dictionary = CADENCE.duplicate()
 	low["cadence_zone"] = "low"
 	ev = vm.update(low, 2.0)
 	_check(ev["next_text"] == "Trop lent : la puissance baisse", "zone mise à jour d'une trame à l'autre")
