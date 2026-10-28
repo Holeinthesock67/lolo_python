@@ -172,7 +172,7 @@ Sur le vélo, tu n'as pas à lire ce document ni à chronométrer :
 
 ## C. Menus et réglages
 
-Commandes de référence (plan des boutons, spécification générale §7.1, PR #287) : + / − courts pour l'élément suivant ou précédent, + / − longs pour sauter de cinq ; A court pour l'élément suivant, A long pour valider ; Y pour revenir (sur l'écran de pause : reprendre) ; flèches gauche et droite du Click comme − et + ; Z ne fait rien dans un menu. Clavier en attendant O17 : flèches bas et haut, Page suivante et Page précédente, Tab (A court), Entrée (A long, valider), Échap (Y).
+Commandes de référence (plan des boutons, spécification générale §7.1, PR #287) : + / − courts pour l'élément suivant ou précédent, + / − longs pour sauter de cinq ; A court pour l'élément suivant, A long pour valider ; Y pour revenir (sur l'écran de pause : reprendre) ; flèches gauche et droite du Click comme − et + ; Z ne fait rien dans un menu. Clavier (lot O17) : les touches du Click, touche pour touche (`+`, `-`, `A`, `Y`, `Z`, flèches ; `Page haut`, `Page bas`, `Maj+A`, `Entrée`, `Maj+Z` pour l'appui long ; `Échap` = Y ; guide §6) ; les flèches haut et bas ne font rien dans un menu.
 
 ### C1. Menus au Click et au clavier
 
@@ -205,8 +205,8 @@ Commandes de référence (plan des boutons, spécification générale §7.1, PR 
 
 ### C5. Flèches, souris, A et Z du Click (plan des boutons, PR #287)
 
-- **Étapes :** dans les menus : flèche bas, flèche haut ; clic gauche sur un élément, clic droit, molette ; bouton A puis Z du Click (appui court et long) ; un appui sur + d'environ 0,7 s (ni court ni long) ; en séance, flèche haut.
-- **Attendu :** bas = élément suivant, haut = précédent ; clic gauche valide, clic droit revient, molette choisit ; A court passe à l'élément suivant, A long valide ; Z ne fait rien dans un menu ; A et Z sans effet en séance libre (Z servira en ERG avec O17) ; l'appui ambigu est expliqué dans le bandeau ; aide des commandes visible dans tous les menus, « Y reprendre » sur la pause, rappel des commandes au départ ; en séance, haut reste « braquet plus dur ».
+- **Étapes :** dans les menus : touches `+` et `-`, flèches gauche et droite ; clic gauche sur un élément, clic droit, molette ; bouton A puis Z du Click (appui court et long) ; un appui sur + d'environ 0,7 s (ni court ni long) ; en séance, flèche haut.
+- **Attendu :** `+` et droite = élément suivant, `-` et gauche = précédent ; clic gauche valide, clic droit revient, molette choisit ; A court passe à l'élément suivant, A long valide ; Z ne fait rien dans un menu ; A sans effet en séance libre (vues de caméra avec V12), Z active le bonus en réserve (mode classique) ; l'appui ambigu est expliqué dans le bandeau ; aide des commandes visible dans tous les menus, « Y reprendre » sur la pause, rappel des commandes au départ ; en séance, flèche haut ne change plus le braquet (lot O17).
 - [ ] Flèches dans le bon sens
 - [ ] Souris
 - [ ] A et Z du Click
@@ -253,7 +253,7 @@ Commandes de référence (plan des boutons, spécification générale §7.1, PR 
 
 ## E. ERG
 
-Rappel des commandes en ERG (état de `main`) : appui court + / − = intensité ± 2 % ; appui long + = bloc suivant ; appui long − = pause ERG ; Y = pause de la séance. Le lot O17 passera aux gestes définitifs (± long = biais ± 10 %, Z = bloc suivant) : son essai est en J7.
+Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = intensité ± 2 % ; appui long + / − = intensité ± 10 % ; Z = bloc suivant ; Y = pause de la séance (seule pause). Leur essai dédié est en J7.
 
 ### E0. Séance ERG guidée de 13 min
 
@@ -358,7 +358,7 @@ Rappel des commandes en ERG (état de `main`) : appui court + / − = intensité
 
 - **Prérequis :** les deux boîtiers, piles chargées, jeu fermé, son du PC allumé (`python -m openride_core.tools.guide bips` pour régler le volume). Pas besoin de pédaler.
 - **Étapes :** essai à blanc `python -m openride_core.tools.boutons_click --sim` (3 min, sans matériel : un cycliste simulé fait les appuis, on regarde seulement) ; puis `python -m openride_core.tools.boutons_click`. Réveiller les deux boîtiers, puis faire les 17 appuis demandés un par un : boîtier gauche d'abord (flèches gauche, droite, haut, bas ; puis − court, long, moyen d'environ 0,7 s), sans traîner : il se tait environ 70 s après sa connexion (essai du 27 octobre, firmware 1.0.2 avant mise à jour ; l'outil l'annonce « bridé » et saute ses étapes), puis le droit (+ court, long, moyen ; B court et long ; A court et long ; Y ; Z court et long). Chaque étape commence par un bip et passe seule à la suivante 4 s après l'appui reconnu, le temps de lire l'encadré (`--lecture` pour changer) ; 30 s au plus pour appuyer (`--delai`).
-- **Attendu :** chaque appui reçu s'affiche dans un encadré, vert si c'est celui demandé, jaune sinon : événement décodé (`A_LONG`…), touche et boîtier, puis l'action de l'appui dans chaque mode (menus, SIM, ERG, Cyber-Rogue, monde ouvert) telle que l'écrit le tableau §7.1 ; un bip d'appui (court : une note, long : deux notes montantes, ni court ni long : une note grave) ; un verdict à la fin, « 17/17 appuis reconnus ». L'encadré montre le plan cible : en ERG, ± long et Z ne font le biais ± 10 % et le bloc suivant qu'avec O17 (J7).
+- **Attendu :** chaque appui reçu s'affiche dans un encadré, vert si c'est celui demandé, jaune sinon : événement décodé (`A_LONG`…), touche et boîtier, puis l'action de l'appui dans chaque mode (menus, SIM, ERG, Cyber-Rogue, monde ouvert) telle que l'écrit le tableau §7.1 ; un bip d'appui (court : une note, long : deux notes montantes, ni court ni long : une note grave) ; un verdict à la fin, « 17/17 appuis reconnus ». L'encadré montre le plan des boutons, celui du code depuis O17 (ERG : ± long = biais ± 10 %, Z = bloc suivant ; essai J7).
 - [ ] Essai à blanc OK
 - [ ] Boîtier gauche : 7 appuis reconnus (sinon minute du silence notée, voir J5)
 - [ ] Boîtier droit : 10 appuis reconnus
@@ -442,10 +442,11 @@ Ces essais s'ajoutent aux blocs A à H ; chacun dit s'il se fait sur le vélo. L
 - [ ] Horizon accepté en `medium` et `low`
 - [ ] Facteur de relief choisi : …
 
-### J7. Boutons de l'ERG définitifs (O17, après sa livraison), sur le vélo
+### J7. Boutons de l'ERG définitifs (O17), sur le vélo
 
-- **Étapes :** séance ERG courte, au Click puis au clavier : ± longs, Z, Y.
-- **Attendu :** ± long = biais ± 10 % (borné à 80 % et 120 %), Z = bloc suivant, Y = pause ; ± court = biais ± 2 % comme avant.
+- **Prérequis :** `engine/tests/run_engine_tests.sh` avec `UNIT=test_key_map` puis en entier (hors séance).
+- **Étapes :** `--trainer mock` puis le vélo : séance ERG courte, au Click puis au clavier de la fenêtre : ± courts, ± longs (touche tenue une seconde, puis `Page haut` et `Page bas`), Z, Y, `Échap` ; en séance libre, flèches haut et bas.
+- **Attendu :** ± court = biais ± 2 %, ± long = biais ± 10 % (borné à 80 % et 120 %), aucun bloc sauté ; Z = bloc suivant ; Y et `Échap` = pause de la séance, reprise depuis l'écran de pause ; même bip au clavier qu'au Click ; en séance libre, flèches haut et bas sans effet sur le braquet.
 - [ ] Gestes du plan commun au Click
 - [ ] Mêmes gestes au clavier
 

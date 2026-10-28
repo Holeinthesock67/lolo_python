@@ -361,14 +361,43 @@ class ZwiftClickProvider:
                                  else "arrêt du core" if self._stop.is_set() else "fin de session")
 
 
+# Clavier du terminal = Click, touche pour touche (lot O17, tableau du clavier de la spécification générale
+# §7.1). Le terminal ne dit pas quand une touche est relâchée : la durée d'un appui n'est pas mesurable, les
+# appuis longs passent par les synonymes (Page haut et bas, Maj+A, Entrée, Maj+Z) ; Échap vaut Y.
+TERMINAL_KEYS: dict[str, InputEvent] = {
+    "+": InputEvent.PLUS_SHORT, "=": InputEvent.PLUS_SHORT, "-": InputEvent.MINUS_SHORT,
+    "\x1b[5~": InputEvent.PLUS_LONG, "\x1b[6~": InputEvent.MINUS_LONG,
+    "a": InputEvent.A_SHORT, "A": InputEvent.A_LONG, "\r": InputEvent.A_LONG, "\n": InputEvent.A_LONG,
+    "y": InputEvent.Y_SHORT, "Y": InputEvent.Y_SHORT, "\x1b": InputEvent.Y_SHORT,
+    "z": InputEvent.Z_SHORT, "Z": InputEvent.Z_LONG,
+    "\x1b[D": InputEvent.LEFT_SHORT, "\x1b[C": InputEvent.RIGHT_SHORT,
+    "\x1b[A": InputEvent.UP_SHORT, "\x1b[B": InputEvent.DOWN_SHORT,
+}
+
+
+def split_terminal_keys(data: str) -> list[str]:
+    """Découpe ce que le terminal a envoyé en touches : un caractère, ou une séquence d'échappement
+    (`ESC [ … lettre ou ~`, `ESC O lettre` : flèches, Page haut et bas). Échap seul reste une touche."""
+    keys: list[str] = []
+    i = 0
+    while i < len(data):
+        if data[i] == "\x1b" and i + 1 < len(data) and data[i + 1] in "[O":
+            j = i + 2
+            while j < len(data) and not (data[j].isalpha() or data[j] == "~"):
+                j += 1
+            seq = data[i:j + 1]
+            keys.append("\x1b[" + seq[2:] if seq[1] == "O" else seq)   # ESC O A (mode application) = ESC [ A
+            i = j + 1
+        else:
+            keys.append(data[i])
+            i += 1
+    return keys
+
+
 class KeyboardProvider:
-    """Entrées au clavier du terminal du core (développement et repli).
+    """Entrées au clavier du terminal du core (développement et repli) : TERMINAL_KEYS, sans Entrée."""
 
-    `+`/`=` : + court   `-` : − court   `u` : + long   `d` : − long   (sans Entrée).
-    """
-
-    KEYS = {"+": InputEvent.PLUS_SHORT, "=": InputEvent.PLUS_SHORT,
-            "-": InputEvent.MINUS_SHORT, "u": InputEvent.PLUS_LONG, "d": InputEvent.MINUS_LONG}
+    KEYS = TERMINAL_KEYS
     status = "KEYBOARD"
 
     def __init__(self) -> None:
@@ -378,16 +407,21 @@ class KeyboardProvider:
     def stop(self) -> None:
         self._stop.set()
 
-    def on_char(self, ch: str) -> None:
-        ev = self.KEYS.get(ch)
+    def on_key(self, key: str) -> None:
+        ev = self.KEYS.get(key)
         if ev is not None:
             self.events.put_nowait(ev)
+
+    def on_data(self, data: str) -> None:
+        for key in split_terminal_keys(data):
+            self.on_key(key)
 
     async def run(self) -> None:
         if not sys.stdin.isatty():
             log.info("Pas de terminal interactif : entrées clavier désactivées")
             await self._stop.wait()
             return
+        import os
         import termios
         import tty
 
@@ -395,14 +429,15 @@ class KeyboardProvider:
         old = termios.tcgetattr(fd)
         loop = asyncio.get_running_loop()
 
-        def on_key() -> None:
-            for ch in sys.stdin.read(1):
-                self.on_char(ch)
+        def on_readable() -> None:
+            # Une séquence d'échappement arrive d'un bloc : tout lire d'un coup la garde entière.
+            self.on_data(os.read(fd, 64).decode("utf-8", "replace"))
 
         try:
             tty.setcbreak(fd)
-            loop.add_reader(fd, on_key)
-            log.info("Clavier : + - (braquet), u / d (appui long + / −)")
+            loop.add_reader(fd, on_readable)
+            log.info("Clavier = Click : + - (Page haut et bas : appui long), a A (ou Entrée), y (ou Échap), "
+                     "z Z, flèches")
             await self._stop.wait()
         finally:
             loop.remove_reader(fd)
@@ -412,20 +447,24 @@ class KeyboardProvider:
 class SimClickKeyboard(KeyboardProvider):
     """Clavier du terminal qui appuie sur le Zwift Click simulé (`--input sim`).
 
-    Mêmes touches que `KeyboardProvider`, mais l'appui passe par le Bluetooth simulé : un boîtier
-    endormi ou déconnecté perd l'appui, comme le vrai. Aucun événement direct (`events` vide).
+    Mêmes touches que `KeyboardProvider`. Les appuis de + et − passent par le Bluetooth simulé : un
+    boîtier endormi ou déconnecté perd l'appui, comme le vrai. Le Click simulé n'a que ces deux boutons :
+    les autres touches (A, Y, Z, flèches) donnent leur événement directement.
     """
 
-    PRESSES = {"+": ("+", 0.12), "=": ("+", 0.12), "-": ("-", 0.12), "u": ("+", 1.0), "d": ("-", 1.0)}
+    PRESSES = {InputEvent.PLUS_SHORT: ("+", 0.12), InputEvent.MINUS_SHORT: ("-", 0.12),
+               InputEvent.PLUS_LONG: ("+", 1.0), InputEvent.MINUS_LONG: ("-", 1.0)}
 
     def __init__(self, world: Any) -> None:
         super().__init__()
         self._world = world
 
-    def on_char(self, ch: str) -> None:
-        press = self.PRESSES.get(ch)
-        if press is not None:
-            asyncio.get_running_loop().create_task(self._world.press(*press))
+    def on_key(self, key: str) -> None:
+        press = self.PRESSES.get(self.KEYS.get(key))   # type: ignore[arg-type]
+        if press is None:
+            super().on_key(key)
+            return
+        asyncio.get_running_loop().create_task(self._world.press(*press))
 
 
 class NullProvider:

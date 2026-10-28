@@ -38,7 +38,7 @@ La v1.1 garde le découplage matériel/rendu et le modèle 1D sur rail, et corri
 | IPC | Trame JSON sans version | Versionné, numéro de séquence, heartbeat | Détecter les pertes et les incompatibilités |
 | Intégration de la vitesse | P/v avec seuil v_min | Bilan d'énergie cinétique | Stable à l'arrêt, plus de contournement |
 | Braquets | R1 = 0,55, R24 = 1,85 | R1 = 0,40, R24 = 3,00, étagement calculé | Rapport 7,5 : un braquet doit se sentir sur le plat (essai HomeTrainer du 24 octobre) |
-| Zwift Click | Appuis longs actifs en SIM | Appuis longs : ± 10 vitesses en SIM (essai du 24 octobre), saut de bloc et pause en ERG | Changer vite de braquet en côte ; actions dédiées en ERG |
+| Zwift Click | Appuis longs actifs en SIM | Appuis longs : ± 10 vitesses en SIM (essai du 24 octobre), biais ± 10 % en ERG ; Z : bloc suivant en ERG (lot O17) | Changer vite de braquet en côte ; même famille d'action dans chaque mode (spécification générale §7.1) |
 | Route | B-spline | Polyligne à 10 m lissée | Une B-spline ne passe pas par les points du tracé |
 | Altitude | API à points | Tuiles raster avec cache | Pas de limite de débit, parcours longs possibles |
 | Fichier de parcours | Un fichier `.world` | Un dossier `.world` en couches | Ajouter une couche sans réécrire le reste |
@@ -109,11 +109,11 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | droit | A | 4 | choisir (court) et valider (long) dans les menus (spécification générale §7.1) |
 | droit | B | 5 | « − » (sans déblocage Zwift) |
 | droit | Y | 6 | pause et reprise (lot N6) |
-| droit | Z | 7 | action du mode : bloc suivant en ERG (lot O17) |
+| droit | Z | 7 | action du mode : bloc suivant en ERG (§4.4) |
 
 - **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
 - Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Y et les flèches n'ont qu'un événement, quelle que soit la durée. Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
-- Repli : le clavier produit les mêmes événements, touche pour touche, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17).
+- Repli : le clavier produit les mêmes événements, touche pour touche et avec les mêmes seuils, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17) : `engine/scripts/key_map.gd` dans la fenêtre de l'engine, `TERMINAL_KEYS` (`input_providers.py`) dans le terminal du core, qui ne mesure pas la durée et prend les synonymes pour les appuis longs.
 
 ### 4.3 Braquets virtuels
 
@@ -132,15 +132,16 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 
 ### 4.4 Actions du Click en v1
 
-**Référence unique :** le plan de boutons de la [spécification générale](SPECIFICATION_GENERALE.md) §7.1 fait foi pour tous les modes et les menus ; ce paragraphe décrit l'état du code. Le lot O17 met l'ERG à ce plan avant la 1.0 : ± long = biais ± 10 %, Z = bloc suivant, Y = pause (la pause ERG par − long disparaît).
+**Référence unique :** le plan de boutons de la [spécification générale](SPECIFICATION_GENERALE.md) §7.1 fait foi pour tous les modes et les menus ; ce paragraphe décrit l'état du code, conforme à ce plan depuis le lot O17.
 
 | Action | Mode SIM | Mode ERG |
 | --- | --- | --- |
 | Appui court + / − | Braquet k + 1 / k − 1 | Biais d'intensité ± 2 % (plage 80 % à 120 %) |
-| Appui long + | Braquet + 10, borné à 24 (`long_press_gears`) | Passer au bloc suivant |
-| Appui long − | Braquet − 10, borné à 1 (`long_press_gears`) | Pause / reprise ERG (pente 0 %) |
+| Appui long + / − | Braquet ± 10, borné à 1 et 24 (`long_press_gears`) | Biais d'intensité ± 10 % (cinq pas), même plage |
+| Z court | Bonus en réserve (mode classique, série T) | Bloc suivant (lissage de 2 s ; au dernier bloc, fin de l'entraînement) |
+| Y | Pause et reprise de la séance | Pause et reprise de la séance (temps du bloc arrêté) |
 
-Le bouton Y du boîtier droit met en pause et reprend la séance, en SIM comme en ERG (lot N6, choix du propriétaire du 25 octobre 2026).
+Dans un bloc de roue libre, + et − restent des braquets ; Z passe quand même au bloc suivant. Il n'y a qu'une pause : celle de la séance par Y (lot N6, choix du propriétaire du 25 octobre 2026) ; l'ancienne pause propre à l'ERG (− long, pente 0 %) a disparu avec le lot O17, et le champ `erg.paused` du contrat suit la pause de la séance.
 
 Le demi-tour sur la route et le réglage des bots sont reportés à la 1.x, dans les menus (§14, lots N17 et N18).
 
@@ -209,7 +210,7 @@ Les fichiers `.zwo` (XML ouvert) placés dans `~/OpenRide/Workouts/` sont lus pa
 - Un fichier invalide n'arrête rien : il apparaît dans le menu avec l'erreur, sans être sélectionnable.
 - Le menu affiche la durée totale et le profil des blocs de chaque entraînement.
 
-**HUD de l'entraînement :** bandeau inférieur avec l'histogramme des blocs, le compte à rebours du bloc en cours, la puissance lissée sur 3 s, la cible et le biais ; un bip retentit 3 s avant chaque changement de bloc. Le saut de bloc et la pause se font aujourd'hui par appui long sur le Click (§4.4) ; avec le lot O17, le saut de bloc passe sur Z et la pause sur Y.
+**HUD de l'entraînement :** bandeau inférieur avec l'histogramme des blocs, le compte à rebours du bloc en cours, la puissance lissée sur 3 s, la cible et le biais ; un bip retentit 3 s avant chaque changement de bloc. Le saut de bloc se fait par Z et la pause par Y (§4.4).
 
 ## 7. Compilateur de parcours
 
