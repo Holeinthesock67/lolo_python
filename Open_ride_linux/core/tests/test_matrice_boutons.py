@@ -13,8 +13,10 @@ from openride_core.zwift_click import InputEvent
 
 
 def failed(rep: tool.Report) -> list[str]:
-    return [f"{c.mode} · {c.phase} · {c.event} : {c.detail}" for c in rep.cells if c.ok is not True] + \
-        [f"{c.key} · {c.phase} : {c.detail}" for c in rep.settings if not c.ok]
+    return [f"{c.mode} · {c.phase} · {c.event} par {c.source} : {c.detail}" for c in rep.cells if c.ok is not True] + \
+        [f"{c.key} · {c.phase} : {c.detail}" for c in rep.settings if not c.ok] + \
+        [f"clavier {c.key} {c.hold} : {c.plan} / {c.key_map}" for c in rep.keys if not c.ok] + \
+        [f"boîtier gauche {c.mode} · {c.phase} · {c.event} : {c.detail}" for c in rep.backup if not c.ok]
 
 
 def test_plan_is_read_from_the_specification():
@@ -80,10 +82,50 @@ def test_wind_not_rebuilt_and_view_refused_in_session_are_caught(monkeypatch):
     assert ("pause", "audio.master_pct") in bad and ("en route", "rider.ftp_w") not in bad
 
 
+def test_keyboard_plan_is_read_and_matches_key_map(tmp_path):
+    keys = tool.read_keys()
+    assert keys["Page haut"]["court"] == "PLUS_LONG" and keys["Échap"]["long"] == "Y_SHORT"
+    assert keys["Z"] == {"court": "Z_SHORT", "entre les deux": "", "long": "Z_LONG"}
+    assert keys["+ du pavé numérique"]["entre les deux"] == "PLUS_UNCLEAR" and keys["Flèche haut"]["long"] == "UP_SHORT"
+    cells = tool.check_keys()
+    assert cells and all(c.ok for c in cells), [c for c in cells if not c.ok]
+    # Écart de key_map.gd : synonyme faux, touche hors plan, seuil différent.
+    km = tmp_path / "key_map.gd"
+    km.write_text(tool.KEY_MAP.read_text("utf-8").replace('KEY_PAGEUP: "PLUS_LONG"', 'KEY_PAGEUP: "PLUS_SHORT"')
+                  .replace('KEY_Y: "Y_SHORT",', 'KEY_Y: "Y_SHORT", KEY_TAB: "A_SHORT",')
+                  .replace("LONG_MIN_S := 0.9", "LONG_MIN_S := 1.5"), "utf-8")
+    bad = {(c.key, c.hold) for c in tool.check_keys(key_map=km) if not c.ok}
+    assert {("Page haut", "court"), ("KEY_TAB", "court"), ("seuils", "court / long"), ("A", "long")} <= bad
+
+
+def test_keys_in_session_and_left_unit_backup():
+    rep = tool.run("boutons", ("sim", "rogue", "monde"))
+    keyed = [c for c in rep.cells if c.source != "Click"]
+    assert keyed and not failed(rep), failed(rep)
+    assert {c.phase for c in keyed} >= {"en route", "salle", "couloir, carte choisie", "carrefour"}
+    assert not {c.phase for c in keyed} & {"prêt", "pause", "bilan"}       # menu affiché : banc des menus
+    assert any(c.event == "Z_LONG" and "Maj+Z" in c.source for c in keyed)
+    assert rep.backup[0].event == "B" and rep.backup[0].ok                    # B lu comme « − »
+    corridor = [b for b in rep.backup if b.phase == "couloir, carte choisie" and b.event == "LEFT_SHORT"]
+    assert corridor and "A_SHORT" in corridor[0].detail
+
+
+def test_choice_only_on_the_left_unit_is_caught(tmp_path):
+    """Un choix que seules les flèches du boîtier gauche feraient serait signalé (§7.1 : rien d'indispensable)."""
+    spec = tmp_path / "spec.md"
+    text = tool.SPEC.read_text("utf-8")
+    spec.write_text(text.replace("| Vue de caméra suivante | Couloir ou carte suivant |",
+                                 "| Vue de caméra suivante | Aucune |"), "utf-8")
+    rep = tool.run("boutons", ("rogue",), spec)
+    bad = {(b.phase, b.event) for b in rep.backup if not b.ok}
+    assert ("couloir, carte choisie", "LEFT_SHORT") in bad and ("couloir, carte choisie", "RIGHT_SHORT") in bad
+
+
 def test_bad_call_and_exit_codes(capsys):
     with pytest.raises(tool.MatrixError, match="mode"):
         tool.run("boutons", ("course",))
     assert tool.main(["--partie", "rien"]) == 2
     assert tool.main(["--partie", "boutons", "--mode", "sim", "--json"]) == 0
     out = json.loads(capsys.readouterr().out)
-    assert out["ok"] and len(out["boutons"]) == len(InputEvent) * len(out["phases"])
+    assert out["ok"] and out["clavier"] and out["boitier_gauche"]
+    assert len([c for c in out["boutons"] if c["source"] == "Click"]) == len(InputEvent) * len(out["phases"])

@@ -14,6 +14,17 @@ dans le document lui-même et non recopié ici. En séance, la colonne est celle
 l'engine : le core doit seulement relayer l'appui, sans rien changer (les menus eux-mêmes : `menu_bench`).
 Une case du plan que l'outil ne sait pas lire est signalée comme « case non décrite ».
 
+**Clavier.** Le tableau du clavier du §7.1 est lu à son tour : chaque touche, appui court, entre les deux et
+long, doit donner l'événement du Click que donnerait le même appui sur son bouton (décodeur du core, mêmes
+seuils). Les tables de `engine/scripts/key_map.gd` sont comparées à ce plan, touche par touche, seuils
+compris. Puis, à chaque phase où la séance roule (aucun menu affiché), chaque événement que donne une touche
+est envoyé par le chemin du clavier (`input_event`, comme l'engine) et doit avoir l'effet de la case du plan.
+Menu affiché (prêt, pause, bilan) : l'engine traite la touche sans le core ; c'est le banc des menus.
+
+**Boîtier gauche.** Il peut se taire (verrou Zwift, SRS §4.2) et « rien d'indispensable n'est mis sur le seul
+boîtier gauche » (§7.1). À chaque phase où la séance roule, l'effet de chaque flèche doit aussi être obtenu par
+un bouton du boîtier droit, sauf la vue de caméra (confort) ; le décodeur doit lire B comme « − ».
+
 **Réglages.** Chaque réglage du menu (`settings.SETTINGS`) est changé d'un pas à chaque phase : accueil, prêt
 en SIM et en ERG, en route, pause, bilan. Règle vérifiée : hors séance, tout réglage est accepté ; en séance,
 ceux que l'engine applique tout de suite (`applies = now`) sont acceptés et les autres refusés (`busy`). Un
@@ -45,7 +56,8 @@ from ..config import Config
 from ..input_providers import NullProvider
 from ..mock_driver import MockDriver
 from ..session import CoreSession
-from ..zwift_click import InputEvent
+from ..zwift_click import (KEYPAD_ALL_RELEASED, KEYPAD_B_BIT, MSG_KEYPAD_STATUS, SHORT_MAX_S, LONG_MIN_S,
+                           InputEvent, PressClassifier, parse_click_buttons)
 
 ROOT = Path(__file__).resolve().parents[4]
 SPEC = ROOT / "docs" / "SPECIFICATION_GENERALE.md"
@@ -73,6 +85,19 @@ WORKOUT = """<workout_file><name>Matrice X42</name><sportType>bike</sportType><w
 <SteadyState Duration="120" Power="0.6"/><FreeRide Duration="60"/><SteadyState Duration="60" Power="0.7"/>
 </workout></workout_file>"""
 WORLD_START = {"lat": 45.0, "lon": 6.0, "heading_deg": 90, "nav": "ride", "seed": 7}
+KEY_MAP = ROOT / "engine" / "scripts" / "key_map.gd"
+# Tableau du clavier §7.1 : libellé de la colonne « Bouton du Click » → bouton du décodeur du core.
+KEY_BUTTONS = {"+": "PLUS", "− ou B": "MINUS", "A": "A", "Y": "Y", "Z": "Z", "Flèches du boîtier gauche": "ARROWS"}
+ARROW_KEYS = {"Flèche gauche": "LEFT", "Flèche droite": "RIGHT", "Flèche haut": "UP", "Flèche bas": "DOWN"}
+# Touches de Godot (key_map.gd) → libellé du plan ; l'Entrée du pavé numérique est une Entrée.
+GODOT_KEYS = {"KEY_PLUS": "+", "KEY_EQUAL": "=", "KEY_KP_ADD": "+ du pavé numérique", "KEY_MINUS": "−",
+              "KEY_KP_SUBTRACT": "− du pavé numérique", "KEY_A": "A", "KEY_Y": "Y", "KEY_Z": "Z",
+              "KEY_ESCAPE": "Échap", "KEY_PAGEUP": "Page haut", "KEY_PAGEDOWN": "Page bas", "KEY_ENTER": "Entrée",
+              "KEY_KP_ENTER": "Entrée", "KEY_LEFT": "Flèche gauche", "KEY_RIGHT": "Flèche droite",
+              "KEY_UP": "Flèche haut", "KEY_DOWN": "Flèche bas"}
+HOLDS = {"court": 0.2, "entre les deux": 0.7, "long": 1.2}
+LEFT_ONLY = (InputEvent.LEFT_SHORT, InputEvent.RIGHT_SHORT, InputEvent.UP_SHORT, InputEvent.DOWN_SHORT)
+RIGHT_UNIT = tuple(ev for ev in InputEvent if ev not in LEFT_ONLY)   # +, A, Y, Z, et − par B
 
 
 class MatrixError(Exception):
@@ -112,6 +137,98 @@ def read_plan(path: Path = SPEC) -> dict[tuple[InputEvent, str], tuple[str, int]
         for key in COLUMNS:
             plan[(ev, key)] = (UNCLEAR_CELL, 0)
     return plan
+
+
+# --- clavier (§7.1, tableau du clavier) ---------------------------------------------------------------------
+
+def click_event(button: str, held_s: float) -> str:
+    """Événement que le décodeur du core donne pour un appui de `held_s` secondes sur `button` ("" : aucun)."""
+    pc = PressClassifier()
+    pc.update(button, True, 0.0)
+    ev = pc.update(button, False, held_s)
+    return ev.value if ev else ""
+
+
+def read_keys(path: Path = SPEC) -> dict[str, dict[str, str]]:
+    """Touches du tableau du clavier §7.1 : libellé → {durée d'appui : événement attendu}. Une touche double son
+    bouton avec les mêmes seuils ; les synonymes de l'appui long et « … vaut Y court » donnent un seul événement."""
+    text = path.read_text("utf-8")
+    m = re.search(r"^### 7\.1 .*?$(.*?)^### ", text, re.M | re.S)
+    rows = [ln for ln in (m.group(1) if m else "").splitlines() if ln.startswith("| ")]
+    start = next((i for i, ln in enumerate(rows) if ln.startswith("| Bouton du Click |")), None)
+    if start is None:
+        raise MatrixError(f"tableau du clavier introuvable au §7.1 de {path}")
+    keys: dict[str, dict[str, str]] = {}
+    for ln in rows[start + 2:]:
+        cells = [c.strip() for c in ln.strip("|").split("|")]
+        if cells[0] not in KEY_BUTTONS:
+            break
+        button = KEY_BUTTONS[cells[0]]
+        if button == "ARROWS":
+            for label, b in ARROW_KEYS.items():
+                keys[label] = {d: click_event(b, t) for d, t in HOLDS.items()}
+        else:
+            for label in (k for k in re.split(r"\s*(?:\(ou |\(|\)|,)\s*", cells[1]) if k):
+                keys[label] = {d: click_event(button, t) for d, t in HOLDS.items()}
+            for label in (k.strip() for k in cells[2].split(",") if k.strip() not in ("—", "")):
+                keys[label] = {d: f"{button}_LONG" for d in HOLDS}
+        for syn, letter in re.findall(r"(\S+) vaut (\w) court", cells[3]):
+            keys[syn] = {d: f"{letter}_SHORT" for d in HOLDS}
+    if not keys:
+        raise MatrixError(f"tableau du clavier vide au §7.1 de {path}")
+    return keys
+
+
+def read_key_map(path: Path = KEY_MAP) -> tuple[dict[str, dict[str, str]], tuple[float, float]]:
+    """Tables de key_map.gd (MEASURED, FIXED, SHIFT_LONG) et seuils, rejoués comme `event_for`."""
+    text = path.read_text("utf-8")
+
+    def table(name: str) -> list[tuple[str, str]]:
+        tm = re.search(rf"^const {name} := \{{(.*?)\}}", text, re.M | re.S)
+        if tm is None:
+            raise MatrixError(f"table {name} introuvable dans {path}")
+        return re.findall(r'(KEY_\w+): "(\w+)"', tm.group(1))
+
+    def const(name: str) -> float:
+        cm = re.search(rf"^const {name} := ([\d.]+)", text, re.M)
+        if cm is None:
+            raise MatrixError(f"seuil {name} introuvable dans {path}")
+        return float(cm.group(1))
+    short_max, long_min = const("SHORT_MAX_S"), const("LONG_MIN_S")
+    keys: dict[str, dict[str, str]] = {}
+    for k, button in table("MEASURED"):
+        keys[GODOT_KEYS.get(k, k)] = {
+            d: f"{button}_SHORT" if t < short_max else f"{button}_LONG" if t >= long_min else
+            (f"{button}_UNCLEAR" if button in ("PLUS", "MINUS") else "") for d, t in HOLDS.items()}
+    for k, ev in table("FIXED"):
+        keys[GODOT_KEYS.get(k, k)] = {d: ev for d in HOLDS}
+    for k, ev in table("SHIFT_LONG"):
+        keys["Maj+" + GODOT_KEYS.get(k, k)] = {d: ev for d in HOLDS}
+    return keys, (short_max, long_min)
+
+
+@dataclass
+class KeyCell:
+    key: str
+    hold: str
+    plan: str                    # événement que donne le plan (§7.1), "" : aucun, None : touche absente du plan
+    key_map: str | None          # événement que donne key_map.gd, None : touche absente de key_map.gd
+    ok: bool
+    detail: str = ""
+
+
+def check_keys(spec: Path = SPEC, key_map: Path = KEY_MAP) -> list[KeyCell]:
+    plan = read_keys(spec)
+    engine, (short_max, long_min) = read_key_map(key_map)
+    cells = [KeyCell("seuils", "court / long", f"{SHORT_MAX_S} / {LONG_MIN_S} s", f"{short_max} / {long_min} s",
+                     (short_max, long_min) == (SHORT_MAX_S, LONG_MIN_S), "mêmes seuils que le décodeur du Click")]
+    for key in list(plan) + [k for k in engine if k not in plan]:
+        for hold in HOLDS:
+            want, got = plan.get(key, {}).get(hold), engine.get(key, {}).get(hold)
+            detail = ("touche absente du plan" if key not in plan else
+                      "touche absente de key_map.gd" if key not in engine else "")
+            cells.append(KeyCell(key, hold, want, got, want == got and want is not None, detail))
+    return cells
 
 
 # Effet attendu d'une case, lu dans son texte. `kind` : gear, bias, brake (pas de braquet ou de biais),
@@ -413,6 +530,8 @@ class Cell:
     plan: str
     ok: bool | None              # None : case non décrite par le plan
     detail: str
+    source: str = "Click"        # Click, ou clavier (événement envoyé par `input_event`, comme l'engine)
+    effect: str = ""             # effet attendu (Expect.kind ; choix sans choix affiché : celui de repli)
 
 
 def _changed(a: dict, b: dict, allowed: set[str]) -> list[str]:
@@ -420,7 +539,8 @@ def _changed(a: dict, b: dict, allowed: set[str]) -> list[str]:
             if k not in allowed and a.get(k) != b.get(k)]
 
 
-def press(h: Harness, ph: Phase, ev: InputEvent) -> tuple[dict, dict, dict, list[dict], list[str]]:
+def press(h: Harness, ph: Phase, ev: InputEvent, keyboard: bool = False
+          ) -> tuple[dict, dict, dict, list[dict], list[str]]:
     """Copie de la séance, appui, une seconde ; rend avant, juste après, une seconde après, les messages et
     les boutons reçus par le moteur de run."""
     f = h.fork(ph.session)
@@ -434,7 +554,10 @@ def press(h: Harness, ph: Phase, ev: InputEvent) -> tuple[dict, dict, dict, list
         f.rogue.engine.step = spy_step
     before = observe(f)
     n0 = len(h.sent)
-    f._handle_input(ev)
+    if keyboard:
+        h.cmd(f, "input_event", {"event": ev.value})    # touche lue par l'engine, envoyée au core
+    else:
+        f._handle_input(ev)
     now = observe(f)
     if f.state.session_state == "RUNNING" and f.rogue is not None:
         f.clock += AFTER_S
@@ -443,7 +566,7 @@ def press(h: Harness, ph: Phase, ev: InputEvent) -> tuple[dict, dict, dict, list
     return before, now, later, h.sent[n0:], received
 
 
-def check(h: Harness, ph: Phase, ev: InputEvent, plan: dict) -> Cell:
+def check(h: Harness, ph: Phase, ev: InputEvent, plan: dict, keys: list[str] | None = None) -> Cell:
     running = ph.session.state.session_state == "RUNNING"
     s = ph.session
     # Colonne du mode roulé : monde ouvert, ERG tant qu'un entraînement est en cours (roue libre comprise,
@@ -455,15 +578,19 @@ def check(h: Harness, ph: Phase, ev: InputEvent, plan: dict) -> Cell:
     if exp is None and text.lower().startswith("comme le mode roulé"):
         text, sign = plan[(ev, ph.session.state.mode if ph.session.state.mode in ("SIM", "ERG") else "SIM")]
         exp = expect_of(text, sign, column)
-    before, now, later, sent, received = press(h, ph, ev)
+    before, now, later, sent, received = press(h, ph, ev, keys is not None)
     relayed = any(m.get("type") == "input" and m.get("event") == ev.value for m in sent)
     errors = [m for m in sent if m.get("type") == "error"]
-    cell = Cell(ph.mode, ph.name, ev.value, COLUMNS[column], text, False, "")
+    source = "Click" if keys is None else "clavier (" + ", ".join(keys) + ")"
+    cell = Cell(ph.mode, ph.name, ev.value, COLUMNS[column], text, False, "", source)
     if not running:
         exp = Expect("engine")       # menu de l'engine (prêt, pause, bilan) : relais seul
     if exp is None:
         cell.ok, cell.detail = None, "case non décrite : l'outil ne sait pas quel effet attendre"
         return cell
+    shown = before.get("étape du couloir") is not None or before.get("carrefour proposé") is not None
+    cell.effect = exp.kind if shown or exp.kind not in ("choice", "validate") else (
+        exp.fallback if exp.kind == "choice" else "engine")
     ok, detail = _verify(exp, ev, ph, before, now, later, relayed, received)
     if errors:
         ok, detail = False, f"erreur envoyée à l'engine : {errors[0].get('code')} ; " + detail
@@ -537,6 +664,51 @@ def _x(extra: list[str]) -> str:
 
 def _r(relayed: bool) -> str:
     return "" if relayed else " ; appui non relayé à l'engine"
+
+
+# --- boîtier gauche : secours par le boîtier droit ----------------------------------------------------------
+
+@dataclass
+class BackupCell:
+    mode: str
+    phase: str
+    event: str
+    effect: str
+    ok: bool
+    detail: str
+
+
+def check_backup(mode: str, phase: str, cells: list[Cell]) -> list[BackupCell]:
+    """Effet de chaque flèche, en séance, aussi obtenu par un bouton du boîtier droit de la même phase."""
+    click = {c.event: c for c in cells if c.source == "Click" and c.column != COLUMNS["MENU"]}
+    out = []
+    for ev in LEFT_ONLY:
+        c = click.get(ev.value)
+        if c is None or c.effect in ("", "none"):
+            continue                 # menu (banc des menus), case non décrite ou flèche sans effet
+        backups = [r.value for r in RIGHT_UNIT if r.value in click and click[r.value].effect == c.effect
+                   and click[r.value].ok]
+        comfort = c.effect == "engine"   # vue de caméra : confort, jamais indispensable
+        out.append(BackupCell(mode, phase, ev.value, c.effect, bool(backups) or comfort,
+                              "aussi par " + ", ".join(backups) if backups else
+                              "vue de caméra pendant un choix : boîtier gauche et flèches du clavier seulement "
+                              "(confort, non indispensable)" if comfort else
+                              "effet obtenu seulement par le boîtier gauche"))
+    return out
+
+
+def check_b_is_minus() -> BackupCell:
+    """Le décodeur lit B (boîtier droit) comme « − » : trame 0x23, seul le bit de B à 0."""
+    mask, varint = KEYPAD_ALL_RELEASED & ~(1 << KEYPAD_B_BIT), b""
+    while True:
+        byte, mask = mask & 0x7F, mask >> 7
+        varint += bytes([byte | (0x80 if mask else 0)])
+        if not mask:
+            break
+    b = parse_click_buttons(bytes([MSG_KEYPAD_STATUS, 0x08]) + varint)
+    ok = b is not None and b.minus_pressed and not (b.plus_pressed or b.a_pressed or b.y_pressed or b.z_pressed)
+    return BackupCell("décodeur", "trame du Click", "B", "MINUS", ok,
+                      "B appuyé lu comme « − »" if ok else f"B appuyé lu comme {b}")
 
 
 # --- réglages -------------------------------------------------------------------------------------------
@@ -660,12 +832,15 @@ def check_setting(h: Harness, phase: str, s: CoreSession, st: settings_mod.Setti
 class Report:
     cells: list[Cell] = field(default_factory=list)
     settings: list[SettingCell] = field(default_factory=list)
+    keys: list[KeyCell] = field(default_factory=list)
+    backup: list[BackupCell] = field(default_factory=list)
     phases: list[str] = field(default_factory=list)
     wall_s: float = 0.0
 
     @property
-    def failures(self) -> list[Cell | SettingCell]:
-        return [c for c in self.cells if c.ok is False] + [c for c in self.settings if not c.ok]
+    def failures(self) -> list[Cell | SettingCell | KeyCell | BackupCell]:
+        return [c for c in self.cells if c.ok is False] + [c for c in (*self.settings, *self.keys, *self.backup)
+                                                             if not c.ok]
 
     @property
     def unknown(self) -> list[Cell]:
@@ -685,6 +860,14 @@ def run(part: str = "tout", modes: tuple[str, ...] = tuple(PHASES), spec: Path =
     rep = Report()
     t0 = time.perf_counter()
     plan = read_plan(spec) if part != "reglages" else {}
+    key_events: dict[InputEvent, list[str]] = {}
+    if part != "reglages":
+        rep.keys = check_keys(spec)
+        rep.backup.append(check_b_is_minus())
+        for key, by_hold in read_keys(spec).items():
+            for ev in by_hold.values():
+                if ev and key not in key_events.setdefault(InputEvent(ev), []):
+                    key_events[InputEvent(ev)].append(key)
     with tempfile.TemporaryDirectory(prefix="openride-matrice-") as tmp_s, \
             mock.patch.object(fit_export, "ACTIVITIES_DIR", Path(tmp_s) / "Activities"):
         h = Harness(Path(tmp_s))
@@ -692,8 +875,11 @@ def run(part: str = "tout", modes: tuple[str, ...] = tuple(PHASES), spec: Path =
             for m in modes:
                 for ph in PHASES[m](h):
                     rep.phases.append(f"{ph.mode} · {ph.name}")
-                    for ev in InputEvent:
-                        rep.cells.append(check(h, ph, ev, plan))
+                    cells = [check(h, ph, ev, plan) for ev in InputEvent]
+                    if ph.session.state.session_state == "RUNNING":   # aucun menu : la touche passe par le core
+                        cells += [check(h, ph, ev, plan, keys) for ev, keys in key_events.items()]
+                        rep.backup += check_backup(ph.mode, ph.name, cells)
+                    rep.cells += cells
         if part in ("reglages", "tout"):
             for name, s in setting_phases(h):
                 for st in settings_mod.SETTINGS:
@@ -707,25 +893,43 @@ def format_text(rep: Report) -> str:
     for c in rep.cells:
         tag = "OK" if c.ok else ("NON DÉCRIT" if c.ok is None else "ÉCHEC")
         if c.ok is not True:
-            out.append(f"[{tag}] {c.mode} · {c.phase} · {c.event} (colonne {c.column} : « {c.plan} ») : {c.detail}")
+            out.append(f"[{tag}] {c.mode} · {c.phase} · {c.event} par {c.source} (colonne {c.column} : « {c.plan} ») : "
+                       f"{c.detail}")
+    for k in rep.keys:
+        if not k.ok:
+            out.append(f"[ÉCHEC] clavier {k.key} ({k.hold}) : plan {k.plan!r}, key_map.gd {k.key_map!r} {k.detail}")
+    for b in rep.backup:
+        if not b.ok:
+            out.append(f"[ÉCHEC] boîtier gauche {b.mode} · {b.phase} · {b.event} ({b.effect}) : {b.detail}")
     for c in rep.settings:
         if not c.ok:
             out.append(f"[ÉCHEC] réglage {c.key} → {c.value!r} · {c.phase} : {c.detail}")
-    n_ok = sum(1 for c in rep.cells if c.ok) + sum(1 for c in rep.settings if c.ok)
-    n = len(rep.cells) + len(rep.settings)
-    out.append(f"Matrice des boutons et des réglages : {n_ok}/{n} cases conformes ({len(rep.cells)} appuis sur "
-               f"{len(rep.phases)} phases, {len(rep.settings)} réglages) en {rep.wall_s:.0f} s")
+    every = [*rep.cells, *rep.settings, *rep.keys, *rep.backup]
+    n_ok = sum(1 for c in every if c.ok)
+    n_key = sum(1 for c in rep.cells if c.source != "Click")
+    out.append(f"Matrice des boutons et des réglages : {n_ok}/{len(every)} cases conformes ({len(rep.cells) - n_key} "
+               f"appuis du Click et {n_key} du clavier sur {len(rep.phases)} phases, {len(rep.keys)} touches du "
+               f"plan, {len(rep.backup)} secours du boîtier gauche, {len(rep.settings)} réglages) en {rep.wall_s:.0f} s")
     return "\n".join(out)
 
 
 def format_md(rep: Report) -> str:
     lines = ["# Matrice des boutons et des réglages (lot X42)", "",
              f"{len(rep.cells)} appuis sur {len(rep.phases)} phases, {len(rep.settings)} réglages.", "",
-             "## Boutons", "", "| Mode | Phase | Bouton | Colonne du plan | Case du plan | Résultat | Relevé |",
-             "| --- | --- | --- | --- | --- | --- | --- |"]
+             "## Boutons", "", "| Mode | Phase | Bouton | Par | Colonne du plan | Case du plan | Résultat | Relevé |",
+             "| --- | --- | --- | --- | --- | --- | --- | --- |"]
     for c in rep.cells:
         res = "OK" if c.ok else ("non décrit" if c.ok is None else "**ÉCHEC**")
-        lines.append(f"| {c.mode} | {c.phase} | {c.event} | {c.column} | {c.plan} | {res} | {c.detail} |")
+        lines.append(f"| {c.mode} | {c.phase} | {c.event} | {c.source} | {c.column} | {c.plan} | {res} | {c.detail} |")
+    lines += ["", "## Clavier = plan (§7.1) et key_map.gd", "", "| Touche | Appui | Plan | key_map.gd | Résultat |",
+              "| --- | --- | --- | --- | --- |"]
+    for k in rep.keys:
+        lines.append(f"| {k.key} | {k.hold} | {k.plan or '—'} | {k.key_map or '—'} | "
+                     f"{'OK' if k.ok else '**ÉCHEC**'} {k.detail} |")
+    lines += ["", "## Boîtier gauche : secours par le boîtier droit", "", "| Mode | Phase | Flèche | Effet | Résultat | Relevé |",
+              "| --- | --- | --- | --- | --- | --- |"]
+    for b in rep.backup:
+        lines.append(f"| {b.mode} | {b.phase} | {b.event} | {b.effect} | {'OK' if b.ok else '**ÉCHEC**'} | {b.detail} |")
     lines += ["", "## Réglages", "", "| Phase | Réglage | Appliqué | Valeur | Résultat | Relevé |",
               "| --- | --- | --- | --- | --- | --- |"]
     for c in rep.settings:
@@ -735,7 +939,8 @@ def format_md(rep: Report) -> str:
 
 def to_json(rep: Report) -> dict:
     return {"ok": rep.ok, "phases": rep.phases, "wall_s": round(rep.wall_s, 1),
-            "boutons": [c.__dict__ for c in rep.cells], "reglages": [c.__dict__ for c in rep.settings]}
+            "boutons": [c.__dict__ for c in rep.cells], "reglages": [c.__dict__ for c in rep.settings],
+            "clavier": [c.__dict__ for c in rep.keys], "boitier_gauche": [c.__dict__ for c in rep.backup]}
 
 
 def main(argv: list[str] | None = None) -> int:

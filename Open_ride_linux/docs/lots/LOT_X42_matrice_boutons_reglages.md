@@ -4,13 +4,15 @@
 
 Le propriétaire a fait cette demande le 28 octobre : « Dans les cas de test il faut essayer les divers boutons dans tous les modes et phase de jeu. Il faut également tester l'effet de chaque option dans chaque phase. Par exemple en fin de mode ERG. »
 
+Le même jour, il a ajouté : « N'oublie pas que le Click gauche ne fonctionne pas bien. Sinon, faut aussi ajouter le test des touches clavier. »
+
 Les outils existants vérifient chaque bouton en un seul endroit :
 - `boutons_click` sur le vélo ;
 - les tests O17 du clavier ;
 - le banc des menus ;
 - la run du lot X40.
 
-Ils vérifient aussi la persistance des réglages (X37). Aucun ne croisait chaque bouton avec chaque mode et chaque phase, ni chaque réglage avec chaque phase.
+Ils vérifient aussi la persistance des réglages (X37). Aucun ne croisait chaque bouton avec chaque mode et chaque phase, ni chaque réglage avec chaque phase. Aucun ne vérifiait non plus qu'une action reste possible quand le boîtier gauche se tait.
 
 ## 2. À lire
 
@@ -63,6 +65,31 @@ Le monde ouvert utilise la doublure du générateur des tests du lot W9.
 
 Une case que l'outil ne sait pas lire est signalée « non décrite ».
 
+### Clavier
+
+Le tableau du clavier du §7.1 est lu lui aussi.
+
+**Plan du clavier :**
+- Chaque touche est essayée en appui court, entre les deux et long.
+- Elle doit donner l'événement que donnerait le même appui sur son bouton, d'après le décodeur du core (mêmes seuils).
+- Les synonymes de l'appui long (Page haut, Page bas, Maj+A, Entrée, Maj+Z) et « Échap vaut Y court » donnent un seul événement.
+
+**Comparaison avec l'engine :**
+- Les tables de `engine/scripts/key_map.gd` et ses seuils sont comparés à ce plan, touche par touche.
+- Sont signalées : une touche absente d'un côté, un événement différent, un seuil différent.
+
+**En séance :** à chaque phase où la séance roule (aucun menu affiché), chaque événement que donne une touche est envoyé au core par `input_event`, comme le fait l'engine. Il doit avoir l'effet de la case du plan.
+
+**Menu affiché** (prêt, pause, bilan) : l'engine traite la touche sans le core. C'est le banc des menus qui le vérifie.
+
+### Boîtier gauche
+
+Le boîtier gauche peut se taire (verrou Zwift, SRS §4.2). Le §7.1 dit : « rien d'indispensable n'est mis sur le seul boîtier gauche ».
+
+- À chaque phase où la séance roule, l'effet de chaque flèche doit aussi être obtenu par un bouton du boîtier droit (+, A, B, Y, Z).
+- La vue de caméra n'est jamais indispensable. Si elle n'est qu'à gauche, elle est notée « confort », sans échec.
+- Le décodeur doit lire B comme « − » : une trame 0x23 où seul le bit de B est à 0.
+
 ### Réglages
 
 Chaque réglage de `settings.SETTINGS` est changé d'un pas aux phases suivantes : accueil, prêt en SIM, prêt en ERG, en route, pause, bilan.
@@ -100,13 +127,14 @@ Chaque réglage de `settings.SETTINGS` est changé d'un pas aux phases suivantes
 
 1. Toutes les cases sont conformes, en moins de 30 s au cloud.
 2. Chaque défaut corrigé est rejoué par un test, et l'outil le signale.
-3. Un changement du §7.1 change la matrice sans toucher à l'outil, tant que la case garde une forme connue. Sinon, la case est signalée « non décrite ».
+3. Une touche ou un seuil de `key_map.gd` qui s'écarte du tableau du clavier fait échouer l'outil. Une action que seul le boîtier gauche ferait aussi.
+4. Un changement du §7.1 change la matrice sans toucher à l'outil, tant que la case garde une forme connue. Sinon, la case est signalée « non décrite ».
 
 ## 6. Hors périmètre
 
 - Les menus de l'engine (banc des menus).
 - L'affichage de l'effet à l'écran (bancs visuels).
-- Le boîtier gauche réel, bridé sans Zwift (décision du 28 octobre : report en 4.0).
+- Le boîtier gauche réel, bridé sans Zwift (décision du 28 octobre : report en 4.0). L'outil vérifie seulement que rien d'indispensable n'en dépend.
 
 ## 7. Livraison
 
@@ -134,17 +162,28 @@ Le §7.1 ne disait rien d'un bloc de roue libre dans un entraînement ERG. Le co
 
 Il annonce pourtant le mode SIM. La règle est ajoutée au §7.1, en attente de la confirmation du propriétaire.
 
-### Constat laissé tel quel
+### Constats laissés tels quels
 
-En Cyber-Rogue, Z court au couloir relance l'offre de cartes. L'action du mode y est la relance, pas l'attaque. Cela est cohérent avec la famille « action du mode », mais le §7.1 ne l'écrit pas.
+**Boîtier gauche.** Pendant un choix (couloir du Cyber-Rogue, carrefour du monde ouvert), A sert au choix. La vue de caméra ne change alors que par les flèches du boîtier gauche ou du clavier. C'est du confort, pas un manque. Tous les choix et toutes les autres actions restent possibles au boîtier droit.
+
+**Clavier.** `key_map.gd` suit le plan à la lettre, seuils compris. L'Entrée du pavé numérique est comptée comme une Entrée.
+
+**Cyber-Rogue.** Z court au couloir relance l'offre de cartes. L'action du mode y est la relance, pas l'attaque. Cela est cohérent avec la famille « action du mode », mais le §7.1 ne l'écrit pas.
 
 ### Mesuré au cloud
 
-- 390 appuis sur 26 phases et 132 réglages : tout est conforme, en 4 s.
-- Tests : `core/tests/test_matrice_boutons.py`, 9 tests :
+- 849 cases, toutes conformes, en 5 s :
+  - 390 appuis du Click et 225 du clavier sur 26 phases ;
+  - 55 cas du plan du clavier comparés à `key_map.gd` ;
+  - 47 secours du boîtier gauche ;
+  - 132 réglages.
+- Tests : `core/tests/test_matrice_boutons.py`, 12 tests :
   - lecture du plan ;
   - plan illisible ;
   - boutons des quatre modes ;
   - réglages ;
   - les trois défauts rejoués ;
+  - plan du clavier et écarts de `key_map.gd` ;
+  - touches en séance et secours du boîtier gauche ;
+  - choix laissé au seul boîtier gauche ;
   - appels invalides.
