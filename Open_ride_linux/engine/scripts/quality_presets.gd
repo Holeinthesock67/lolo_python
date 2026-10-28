@@ -108,6 +108,7 @@ static func building_visibility_end_m(name: String) -> float:
 ## rapaces, volées en V et corneilles de P23 (doublé par P23 : 24, 48, 80). `distant_vehicles` (P25) : véhicules
 ## des routes voisines et tracteurs des champs, en MultiMesh. `aircraft` (P26) : avions de ligne, hélicoptère,
 ## parapentes et montgolfières. `boats` (P29) : bateaux des lacs, des canaux, des rivières et de la mer.
+## `cyclists` (P28) : cyclistes du décor sur la route du parcours.
 const LIVING := {
 	"low": {
 		"tree_sway": true,
@@ -118,6 +119,7 @@ const LIVING := {
 		"animals": 20,
 		"vehicles": 3,
 		"distant_vehicles": 6,
+		"cyclists": 4,
 		"aircraft": 4,
 		"boats": 4,
 		"spectators": 40,
@@ -134,6 +136,7 @@ const LIVING := {
 		"animals": 40,
 		"vehicles": 5,
 		"distant_vehicles": 12,
+		"cyclists": 8,
 		"aircraft": 8,
 		"boats": 8,
 		"spectators": 80,
@@ -150,6 +153,7 @@ const LIVING := {
 		"animals": 80,
 		"vehicles": 8,
 		"distant_vehicles": 24,
+		"cyclists": 16,
 		"aircraft": 12,
 		"boats": 16,
 		"spectators": 160,
