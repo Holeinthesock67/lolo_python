@@ -17,6 +17,9 @@ Sous-commandes disponibles à ce stade :
                                       liberté et le déconnecte (après un arrêt brutal)
     openride-core summary [FICHIER] [--ftp W] [--json]
                                       bilan d'une séance (.jsonl ou .fit ; défaut : dernier journal)
+    openride-core session-report [FICHIER] [--log F] [--engine-log F] [--out DOSSIER] [--json]
+                                      analyse d'une séance réelle : sections de pente, retard
+                                      pente → effort, ERG, coupures, segments (lot X12)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
     openride-core xp [--dir DOSSIER] [--json] [--config FICHIER] [--save F | --compare F]
@@ -159,6 +162,12 @@ def cmd_summary(args: argparse.Namespace) -> int:
     return run(args.file, args.ftp, args.json, args.config)
 
 
+def cmd_session_report(args: argparse.Namespace) -> int:
+    from .tools.session_report import run
+
+    return run(args.file, args.log, args.engine_log, args.out, args.json)
+
+
 def cmd_history(args: argparse.Namespace) -> int:
     from .tools.history import run
 
@@ -272,6 +281,13 @@ def build_parser() -> argparse.ArgumentParser:
     summ.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
     summ.add_argument("--json", action="store_true", help="sortie JSON")
     summ.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    srep = sub.add_parser("session-report", help="analyse d'une séance : sections de pente, retard pente → effort, "
+                                                 "ERG, coupures, segments (rapport HTML local)")
+    srep.add_argument("file", nargs="?", type=Path, help="journal .jsonl ou .fit (défaut : dernier journal)")
+    srep.add_argument("--log", type=Path, help="journal du core (run_trainer.log)")
+    srep.add_argument("--engine-log", type=Path, help="journal de l'engine (lignes [perf-rendu])")
+    srep.add_argument("--out", type=Path, help="dossier du rapport (défaut : ~/OpenRide/rapports/<séance>)")
+    srep.add_argument("--json", action="store_true", help="sortie JSON")
     hist = sub.add_parser("history", help="historique des séances et cumul par semaine ISO")
     hist.add_argument("--dir", type=Path, dest="directory",
                       help="dossier des séances (défaut : ~/OpenRide/Activities)")
@@ -351,7 +367,7 @@ def main(argv: list[str] | None = None) -> int:
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
-            "release-trainer": cmd_release_trainer, "summary": cmd_summary, "xp": cmd_xp,
+            "release-trainer": cmd_release_trainer, "summary": cmd_summary, "session-report": cmd_session_report, "xp": cmd_xp,
             "history": cmd_history, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
             "open-world-save": cmd_open_world_save}[args.command](args)

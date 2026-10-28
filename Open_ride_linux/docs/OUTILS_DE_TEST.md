@@ -140,6 +140,7 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 | --- | --- |
 | `python -m openride_core.tools.log_report [JOURNAL] [--all] [--json]` | Analyse de `~/run_trainer.log` : connexions, coupures, Click, ERG, performances |
 | `openride-core summary [FICHIER]` | Bilan d'une séance : NP, IF, TSS, zones, meilleures puissances |
+| `openride-core session-report [FICHIER] [--log …] [--engine-log …]` | Analyse automatique d'une séance réelle (lot X12), en local : sections de pente (pente envoyée, braquet, puissance, cadence, vitesse, FC), retard pente → effort à chaque marche de plus de 3 points, écart ERG par bloc, coupures, appuis du Click, images/s, segments et bonus ; `rapport.html`, `sections.csv`, `resume.json` dans `~/OpenRide/rapports/<séance>/` |
 | `openride-core history` | Historique des séances et cumul hebdomadaire |
 | `openride-core xp --save F` ; `openride-core xp --compare F` | Écart de progression avant/après une PR (lot X39) : instantané de l'expérience, des pièces et des défis recalculés depuis les journaux sur `main`, puis écart des totaux, des défis et de chaque séance sur la branche (code 1 si écart). Avec les vrais journaux du PC, l'instantané reste local |
 | `openride-core devices` | Inventaire des appareils Bluetooth et bloc `[drivers]` proposé |
