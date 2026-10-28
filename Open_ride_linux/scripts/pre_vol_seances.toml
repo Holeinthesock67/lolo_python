@@ -1,0 +1,52 @@
+# Séances vélo connues du pré-vol (lot X36, scripts/pre_vol.py).
+#
+# Clés de chaque séance :
+#   titre           : affiché en tête du pré-vol
+#   pytest_marque   : marque pytest des tests à faire passer avant la séance (core)
+#   engine_unit     : tests unitaires Godot de la séance (UNIT de run_engine_tests.sh)
+#   sim_scenarios   : scénarios du banc simulé joués en séance simulée (lot X33 quand ils existent)
+#   parcours        : identifiants des parcours qui doivent être compilés
+#   appareils       : rôles qui doivent s'annoncer en Bluetooth (trainer, click, hr_strap, hr_watch)
+#   poser           : fichiers à créer pour la séance, { chemin, contenu }
+#   retirer         : fichiers qui ne doivent pas être là (mis de côté en <chemin>.pre_vol-<date>)
+# Les chemins commencent par « ~/ » (dossier personnel).
+
+[t11_j7]
+titre = "Séance A : T11 (série T) et J7 (boutons ERG = Click et clavier)"
+pytest_marque = "recette_sans_velo"
+engine_unit = ["test_key_map"]
+sim_scenarios = []
+parcours = ["demo"]
+appareils = ["trainer", "click"]
+poser = [{ chemin = "~/OpenRide/powerups.toml", contenu = "[obtain]\narch_every_m = 1000\nper_segment = true\n" }]
+retirer = []
+
+[p27]
+titre = "Séance B : P27 (décor vivant 2)"
+pytest_marque = "recette_sans_velo"
+engine_unit = ["test_living_decor"]
+sim_scenarios = []
+parcours = ["grand-ballon"]
+appareils = ["trainer", "click"]
+poser = []
+retirer = ["~/OpenRide/powerups.toml"]
+
+[erg]
+titre = "Séance ERG courte"
+pytest_marque = "recette_sans_velo"
+engine_unit = ["test_key_map"]
+sim_scenarios = []
+parcours = ["demo"]
+appareils = ["trainer", "click"]
+poser = []
+retirer = ["~/OpenRide/powerups.toml"]
+
+[recette_1_0]
+titre = "Recette 1.0 (séries N et O)"
+pytest_marque = "recette_sans_velo"
+engine_unit = []
+sim_scenarios = ["nominal"]
+parcours = ["demo"]
+appareils = ["trainer", "click"]
+poser = []
+retirer = ["~/OpenRide/powerups.toml"]

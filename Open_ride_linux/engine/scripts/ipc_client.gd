@@ -431,6 +431,11 @@ func send_set_difficulty(pct: int) -> int:
 	return send_command("set_difficulty", {"pct": pct})
 
 
+## Compose une run du Cyber-Rogue (lot R13, contrat 1.4) : objective, duration_min, seed, w_prime_j, chassis.
+func start_run(args: Dictionary) -> int:
+	return send_command("start_run", args)
+
+
 ## Appairage depuis le menu (lot N13, contrat v1.2) : recherche, identification du « + », enregistrement.
 func scan_devices(timeout_s: float = 8.0) -> int:
 	return send_command("scan_devices", {"timeout_s": timeout_s})

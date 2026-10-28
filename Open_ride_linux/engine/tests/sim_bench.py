@@ -60,6 +60,7 @@ sys.path.insert(0, str(REPO / "core" / "src"))
 
 from e2e_check import Proc, free_udp_ports, now, send_cmd, snapshot_home  # noqa: E402
 import perf_probe  # noqa: E402
+import quality_guard  # noqa: E402
 from openride_core import sim_scenarios  # noqa: E402
 from openride_core.tools.guide import Guide  # noqa: E402
 
@@ -204,6 +205,7 @@ class Bench:
         self.t0_wall = 0.0
         self.sampler: perf_probe.SystemSampler | None = None
         self.probe_summary: dict[str, Any] | None = None
+        self.applied_quality = ""   # qualité lue au journal de l'engine (lot X32), affichée au rapport
 
     # Temps relatif au « Core démarré » (même origine que les événements du scénario).
     def rel(self, t: float) -> float:
@@ -333,6 +335,7 @@ class Bench:
             try:
                 data = json.loads(got[1].group(1))
                 info.update(ok=bool(data.get("ok")), fps=data.get("fps"), meshes=data.get("meshes"),
+                            quality=data.get("quality"),
                             draw_calls=data.get("draw_calls"),
                             widgets={k: v.get("text", "") for k, v in data.get("widgets", {}).items()
                                      if v.get("visible")})
@@ -423,11 +426,20 @@ class Bench:
             fps_line = (f"images par seconde de l'engine : min {min(fps):.0f}, médiane "
                         f"{sorted(fps)[len(fps) // 2]:.0f}, max {max(fps):.0f} ({len(fps)} relevés)")
             print("   " + fps_line)
-            (self.out / "fps.csv").write_text("t_s,fps,maillages,appels_de_dessin,capture\n" + "".join(
-                f"{s['t']:.1f},{s.get('fps')},{s.get('meshes')},{s.get('draw_calls')},{s['file']}\n"
-                for s in ok), encoding="utf-8")
+            (self.out / "fps.csv").write_text("t_s,fps,maillages,appels_de_dessin,qualite,capture\n" + "".join(
+                f"{s['t']:.1f},{s.get('fps')},{s.get('meshes')},{s.get('draw_calls')},{s.get('quality') or ''},"
+                f"{s['file']}\n" for s in ok), encoding="utf-8")
+        engine_text = (self.out / "engine.log").read_text(encoding="utf-8", errors="replace")
+        # Qualité réellement appliquée (lot X32) : un banc « medium » qui rend du low est un échec.
+        q_ok, q_msg = quality_guard.check(engine_text, a.quality)
+        r.check(q_ok if q_ok is not None else False, "qualité réellement appliquée", q_msg)
+        seq = quality_guard.applied_sequence(engine_text)
+        self.applied_quality = seq[-1][0] if seq else "?"
+        if self.probe_summary is not None:
+            p_ok, p_msg = perf_probe.quality_check(self.probe_summary, a.quality)
+            r.check(p_ok, "qualité notée par la sonde", p_msg)
         # Erreurs Godot.
-        log = (self.out / "engine.log").read_text(encoding="utf-8", errors="replace").splitlines()
+        log = engine_text.splitlines()
         issues = [ln for ln in log if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
         r.check(not issues, "erreurs et avertissements de Godot", "aucun" if not issues else " | ".join(issues[:3]))
         # Exceptions du core.
@@ -616,7 +628,7 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
 <h1>Banc simulé : {html.escape(b.name)}</h1>
 <p>{html.escape(str(b.spec.get("description", "")))}<br>Parcours <b>{html.escape(b.world)}</b>,
 {f"ERG {html.escape(str(b.workout))}" if b.workout else "SIM"}, {b.duration:.0f} s,
-{f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {b.args.quality}
+{f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {html.escape(b.applied_quality or "?")} (qualité appliquée ; demandée {b.args.quality})
 {f"(écran réel, affichage {b.args.display})" if b.args.native else "(Xvfb, OpenGL logiciel)"}.</p>
 <h2>Vérifications</h2><table>{rows}</table>
 {'<p><a href="sonde/rapport.html">Sonde de performance du moteur</a> (lot X13).</p>' if b.probe_summary else ""}
