@@ -8,6 +8,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
@@ -689,6 +690,9 @@ func _process(delta: float) -> void:
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
+	# Personnages et animaux (anim_clock.gd) : figés avec le décor quand le core ne répond plus.
+	if not banner.has_message("core_lost"):
+		AnimClock.advance(delta)
 	if rogue_host.is_active():
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
