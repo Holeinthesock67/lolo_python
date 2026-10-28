@@ -83,7 +83,7 @@ func update_display(open_world: Variant, viewport: Vector2, center_bottom: float
 		return
 	_signature = sig
 	title_label.text = str(v["title"])
-	title_label.add_theme_color_override("font_color", CHOSEN_COLOR if v["locked"] else Color.WHITE)
+	title_label.add_theme_color_override("font_color", CHOSEN_COLOR if v["locked"] else UiTheme.INK)
 	for child in cells_row.get_children():
 		cells_row.remove_child(child)
 		child.free()

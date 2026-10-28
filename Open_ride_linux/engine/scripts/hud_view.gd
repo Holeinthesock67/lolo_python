@@ -339,7 +339,7 @@ func _draw_neighbor_arrow(arrow: Control) -> void:
 	var pts := PackedVector2Array([Vector2(w / 2.0, 1.0), Vector2(w - 1.0, h - 2.0), Vector2(1.0, h - 2.0)])
 	if str(arrow.get_meta("dir", "ahead")) == "behind":
 		pts = PackedVector2Array([Vector2(1.0, 2.0), Vector2(w - 1.0, 2.0), Vector2(w / 2.0, h - 1.0)])
-	arrow.draw_colored_polygon(pts, Color.WHITE)   # teinte : modulate du nœud
+	arrow.draw_colored_polygon(pts, UiTheme.INK)   # teinte : modulate du nœud
 
 
 ## Encart et repères du profil : `view` est la sortie de bots_view_model.view(), `race` celle de
@@ -423,7 +423,7 @@ func _layout_bots_panel(top: float, avail: float) -> void:
 		bots_gaps[i].text = str(r["gap_text"])
 		bots_gaps[i].position = Vector2(210.0, y)
 		bots_jerseys[i].position = Vector2(10.0, y + 4.0)
-		bots_jerseys[i].color = JERSEY_COLORS.get(jersey, Color.WHITE)
+		bots_jerseys[i].color = JERSEY_COLORS.get(jersey, UiTheme.INK)
 		bots_wbal_bg[i].position = Vector2(26.0, y + 26.0)
 		bots_wbal[i].size.x = bots_wbal_bg[i].size.x * maxf(wbal, 0.0)
 		y += BotHudModel.BOT_ROW
@@ -739,12 +739,12 @@ func _on_profile_draw() -> void:
 			var idx := clampi(int(round((float(mark["rel_m"]) - from_m) / (to_m - from_m) * float(cols - 1))), 0, cols - 1)
 			var bx := (idx + 0.5) * col_w
 			var by := h - clampf((float(alts[idx]) - alt_min) / alt_range, 0.05, 0.95) * h
-			profile_panel.draw_circle(Vector2(bx, by), 5.0, Color.BLACK)
+			profile_panel.draw_circle(Vector2(bx, by), 5.0, UiTheme.INK_EDGE)
 			profile_panel.draw_circle(Vector2(bx, by), 3.5, mark["color"])
 
 	# Repère de position
 	if marker_idx >= 0 and marker_idx < cols:
 		var mx := (marker_idx + 0.5) * col_w
 		var my := h - clampf((float(alts[marker_idx]) - alt_min) / alt_range, 0.05, 0.95) * h
-		profile_panel.draw_circle(Vector2(mx, my), 6.0, Color.WHITE)
-		profile_panel.draw_circle(Vector2(mx, my), 3.0, Color.BLACK)
+		profile_panel.draw_circle(Vector2(mx, my), 6.0, UiTheme.INK)
+		profile_panel.draw_circle(Vector2(mx, my), 3.0, UiTheme.INK_EDGE)
