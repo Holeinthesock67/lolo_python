@@ -11,6 +11,7 @@
   "traffic_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P13"},
   "road_traffic_frame": {"budget_ms": 0.15, "ci_ms": 0.45, "lot": "P25"},
   "road_traffic_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P25"},
+  "road_cyclists_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P28"},
   "sky_traffic_frame": {"budget_ms": 0.3, "ci_ms": 0.9, "lot": "P26"},
   "boats_frame": {"budget_ms": 0.15, "ci_ms": 0.45, "lot": "P29"},
   "boats_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P29"},
