@@ -29,6 +29,8 @@ from .classic import ClassicRace
 from .config import GPX_DIR, OPENRIDE_HOME, WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
+from .jitter import JitterMeter
+from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
@@ -1795,8 +1797,10 @@ class CoreSession:
         next_tick = last = mono()
         next_state = next_check = last
         next_stats = last + STATS_PERIOD_S
+        physics, state, physics_all, state_all = (JitterMeter() for _ in range(4))   # gigue (lot X17)
         while not self.stop_event.is_set():
             now = mono()
+            physics.interval(now, DT_PHYSICS)
             lag = max(now - next_tick, 0.0)
             t0 = mono()
             self.server.process_incoming_datagrams()
@@ -1811,6 +1815,7 @@ class CoreSession:
                 next_check = now + 0.5
                 self.server.check_liveness()
             if now >= next_state:
+                state.add((now - next_state) * 1000.0)
                 # Échéances fixes : « now + DT_STATE » ne tomberait qu'un pas de 20 ms sur deux (25 Hz).
                 next_state += DT_STATE
                 if next_state <= now:   # retard de plus d'une trame : on se recale
@@ -1835,11 +1840,20 @@ class CoreSession:
                 log.info("Perf : pas p50 %.2f / p99 %.2f / max %.2f ms ; retard p99 %.1f / max %.1f ms ;"
                          " CPU %.1f %%", r["step_p50_ms"], r["step_p99_ms"], r["step_max_ms"],
                          r["lag_p99_ms"], r["lag_max_ms"], r["cpu_pct"])
+                log.info(jitter_line(physics, state))
+                physics_all.merge(physics)
+                state_all.merge(state)
+                physics.clear()
+                state.clear()
 
             next_tick += DT_PHYSICS
             if next_tick < mono() - 0.5:   # très en retard : on se recale au lieu de rattraper
                 next_tick = mono()
             await asyncio.sleep(max(next_tick - mono(), 0.0))
+        physics_all.merge(physics)
+        state_all.merge(state)
+        if physics_all.n:
+            log.info(jitter_line(physics_all, state_all, whole=True))
 
     async def _shutdown(self, tasks: list[asyncio.Task]) -> None:
         log.info("Arrêt du core…")

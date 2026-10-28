@@ -106,7 +106,8 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 
 | Outil | Usage |
 | --- | --- |
-| `python -m openride_core.tools.log_report [JOURNAL] [--all] [--json]` | Analyse de `~/run_trainer.log` : connexions, coupures, Click, ERG, performances |
+| `python -m openride_core.tools.log_report [JOURNAL] [--all] [--json] [--gigue]` | Analyse de `~/run_trainer.log` : connexions, coupures, Click, ERG, performances ; `--gigue` (lot X17) : gigue de la boucle par minute (lignes `Gigue` du core, `[gigue]` de l'engine) et verdict « p99 de la physique < 5 ms », code 1 au-delà |
+| `python -m openride_core.tools.gigue_charge [--duree 120] [--charge compilation\|cpu\|aucune] [--strict]` | Gigue de la boucle sous charge (lot X17, critère de la série W) : séance simulée sans engine pendant une compilation en boucle (trace fabriquée de 40 km, sans réseau) ou un calcul sur chaque cœur ; tableau par minute, verdict informatif au cloud, strict (`--strict`) sur le PC. `core.log`, `gigue.txt`, `gigue.json` dans `~/OpenRide/gigue/<date>/` |
 | `openride-core summary [FICHIER]` | Bilan d'une séance : NP, IF, TSS, zones, meilleures puissances |
 | `openride-core history` | Historique des séances et cumul hebdomadaire |
 | `openride-core devices` | Inventaire des appareils Bluetooth et bloc `[drivers]` proposé |

@@ -183,6 +183,7 @@ def test_patterns_match_exact_core_source_format_strings() -> None:
         "core_stopped": (),
         "session_transition": ("RUNNING", "PAUSED", " (trainer_lost)"),
         "perf": (0.21, 0.48, 1.12, 1.8, 4.2, 3.4),
+        "jitter": (" (séance entière)", 0.12, 0.85, 3.4, 9.1, 19.6, 3000),
         "trainer_lost_pause": (),
         "engine_lost_pause": (),
         "trainer_control_refused_fatal": (),
