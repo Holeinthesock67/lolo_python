@@ -24,6 +24,15 @@ extends RefCounted
 ##   des corneilles posées au sol de CROW_ROAD_M de la route, hors forêt, qui s'envolent au passage du
 ##   cycliste vers `land`, à CROW_LAND_M plus loin de la route (fauna_behaviour.gd).
 ## Tirages des groupes P23 : hachage de la longueur du parcours et de l'indice du tronçon.
+## Lot P24, bêtes des terrains ouverts du format 1.5 (P22) :
+## - troupeaux (`herd`, comme ceux des points `livestock`) dans PASTURE_SHARE des prés (`meadow`, vaches ou,
+##   une fois sur HORSE_SHARE, 2 à 6 chevaux) et des prairies (`grassland`, moutons, qui tiennent sur une pente
+##   jusqu'à SHEEP_MAX_SLOPE) d'au moins PASTURE_MIN_M2, dans un disque de PASTURE_SPREAD_M autour d'un point
+##   de la zone tiré de son identifiant ; aucun dans un pré qui a déjà un point `livestock` ;
+## - `{"type": "hare", "id", "species": "hare", "pos", "yaw", "flee_dir"}` : au plus HARE_MAX lièvres par
+##   tronçon, dans un champ (`farmland`) ou un pré, de HARE_ROAD_M de la route ; ils filent en zigzag loin de la
+##   route au passage (fauna_behaviour.gd). Ils suivent la densité `deer` du thème (gibier).
+## Un chevreuil porte aussi `"species": "deer"`.
 ## `density` : `{birds, livestock, deer}` de 0 à 1 (thème 1.2 `fauna`), DEFAULT_DENSITY pour une clé
 ## absente. `ctx` facultatif : `height_at` (Callable x, z -> y ; sinon l'altitude du point ou 0),
 ## `buildings` (éléments à `outer`), `water` (`{lines, areas}` de la couche eau), `road_width_m`.
@@ -73,6 +82,17 @@ const CROW_ROAD_M := Vector2(18.0, 50.0)
 const CROW_SPREAD_M := 8.0
 const CROW_LAND_M := Vector2(50.0, 80.0)
 const OPEN_TRIES := 6
+## Lot P24
+const PASTURE_MIN_M2 := 5000.0
+const PASTURE_SHARE := 0.7             # part des prés et prairies qui ont un troupeau, à fauna.livestock = 1
+const PASTURE_SPREAD_M := 40.0
+const HORSE_SHARE := 0.35              # part des troupeaux de pré qui sont des chevaux
+const HORSE_MIN := 2
+const HORSE_MAX := 6
+const SHEEP_MAX_SLOPE := 0.45
+const HARE_MAX := 2
+const HARE_SHARE := 0.8                # chance de chaque lièvre du tronçon, à fauna.deer = 1
+const HARE_ROAD_M := Vector2(15.0, 60.0)
 
 const MASK32 := 0xFFFFFFFF
 
@@ -138,8 +158,8 @@ static func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 	return (a + ab * t).distance_to(p)
 
 
-## Vrai si une bête peut se tenir au sol en (x, z).
-static func ground_ok(ex: Dictionary, x: float, z: float) -> bool:
+## Vrai si une bête peut se tenir au sol en (x, z), sur une pente d'au plus `max_slope`.
+static func ground_ok(ex: Dictionary, x: float, z: float, max_slope: float = MAX_SLOPE) -> bool:
 	var roads: Dictionary = ex["roads"]
 	if not roads.is_empty() and VegetationPlacer._near_road(roads, x, z, ex["corridor"]):
 		return false
@@ -160,7 +180,7 @@ static func ground_ok(ex: Dictionary, x: float, z: float) -> bool:
 		var d := 2.0
 		var gx := (float(f.call(x + d, z)) - float(f.call(x - d, z))) / (2.0 * d)
 		var gz := (float(f.call(x, z + d)) - float(f.call(x, z - d))) / (2.0 * d)
-		if not is_finite(gx) or not is_finite(gz) or sqrt(gx * gx + gz * gz) > MAX_SLOPE:
+		if not is_finite(gx) or not is_finite(gz) or sqrt(gx * gx + gz * gz) > max_slope:
 			return false
 	return true
 
@@ -284,11 +304,16 @@ static func place_chunk(chunk_index: int, vegetation_areas: Array, pois: Array, 
 				var away := _away_from_road(route, pos2)
 				if away != Vector2.ZERO and flee.dot(away) < 0.3:
 					flee = (flee + away * 2.0).normalized()
-				out.append({"type": "deer", "id": "%s_deer" % str(a.get("id", "")),
+				out.append({"type": "deer", "id": "%s_deer" % str(a.get("id", "")), "species": "deer",
 					"pos": Vector3(pos2.x, _ground(ex, pos2.x, pos2.y, 0.0), pos2.y),
 					"yaw": atan2(outward.x, outward.y), "flee_dir": Vector3(flee.x, 0.0, flee.y)})
 				deer_done = true
 				break
+
+	if d_live > 0.0:
+		out.append_array(_pastures(vegetation_areas, pois, d_live, ex))
+	if d_deer > 0.0 and route != null and route.n >= 2:
+		out.append_array(_hares(chunk_index, vegetation_areas, route, d_deer, ex))
 
 	if d_birds > 0.0 and route != null and route.n >= 2:
 		var wood_rings := []
@@ -403,6 +428,98 @@ static func _open_country_birds(chunk_index: int, route, d_birds: float, ex: Dic
 	return out
 
 
+## Zones ouvertes de sorte `kinds`, triées par identifiant : [{id, kind, ring}].
+static func _open_areas(areas: Array, kinds: Array) -> Array:
+	var out := []
+	for a in areas:
+		if typeof(a) == TYPE_DICTIONARY and str(a.get("kind", "")) in kinds \
+				and typeof(a.get("outer")) == TYPE_ARRAY and a["outer"].size() >= 3:
+			out.append({"id": str(a.get("id", "")), "kind": str(a["kind"]), "ring": VegetationPlacer._packed_ring(a["outer"])})
+	out.sort_custom(func(a, b): return a["id"] < b["id"])
+	return out
+
+
+## Troupeaux des prés et des prairies (lot P24, voir l'en-tête).
+static func _pastures(areas: Array, pois: Array, d_live: float, ex: Dictionary) -> Array:
+	var out := []
+	for a in _open_areas(areas, ["meadow", "grassland"]):
+		var ring: PackedVector2Array = a["ring"]
+		var seed := VegetationPlacer.hash_string(a["id"])
+		if _ring_area(ring) < PASTURE_MIN_M2 or _u(_h(seed, 31)) >= d_live * PASTURE_SHARE:
+			continue
+		var has_poi := false
+		for p in pois:
+			if typeof(p) == TYPE_DICTIONARY and str(p.get("kind", "")) == "livestock" \
+					and VegetationPlacer._in_ring(float(p.get("x", 0.0)), float(p.get("z", 0.0)), ring):
+				has_poi = true
+				break
+		if has_poi:
+			continue
+		var species := "sheep"
+		if a["kind"] == "meadow":
+			species = "horse" if _u(_h(seed, 32)) < HORSE_SHARE else "cow"
+		var lo := HORSE_MIN if species == "horse" else HERD_MIN
+		var hi := HORSE_MAX if species == "horse" else HERD_MAX
+		var n := clampi(lo + int(round((hi - lo) * d_live * _u(_h(seed, 33)))), lo, hi)
+		var slope := SHEEP_MAX_SLOPE if species == "sheep" else MAX_SLOPE
+		# Centre du troupeau : un point de la zone (boîte de l'anneau, tirages rejetés hors de l'anneau)
+		var box := Rect2(ring[0], Vector2.ZERO)
+		for v in ring:
+			box = box.expand(v)
+		var centre := Vector2(INF, INF)
+		for t in range(OPEN_TRIES * 2):
+			var hc := _h(seed, 40 + t)
+			var c := box.position + box.size * Vector2(_u(hc), _u(VegetationPlacer._mix(hc + 1)))
+			if VegetationPlacer._in_ring(c.x, c.y, ring) and ground_ok(ex, c.x, c.y, slope):
+				centre = c
+				break
+		if not is_finite(centre.x):
+			continue
+		var members := []
+		var tries := 0
+		while members.size() < n and tries < n * TRIES_PER_BEAST:
+			var hh := _h(seed, 300 + tries)
+			tries += 1
+			var ang := TAU * _u(hh)
+			var p2 := centre + Vector2(cos(ang), sin(ang)) * PASTURE_SPREAD_M * sqrt(_u(VegetationPlacer._mix(hh + 1)))
+			if not VegetationPlacer._in_ring(p2.x, p2.y, ring) or not ground_ok(ex, p2.x, p2.y, slope):
+				continue
+			members.append({"pos": Vector3(p2.x, _ground(ex, p2.x, p2.y, 0.0), p2.y), "yaw": TAU * _u(VegetationPlacer._mix(hh + 2))})
+		if not members.is_empty():
+			out.append({"type": "herd", "id": "%s_herd" % a["id"], "species": species, "members": members})
+	return out
+
+
+## Lièvres des champs et des prés près de la route du tronçon (lot P24, voir l'en-tête).
+static func _hares(chunk_index: int, areas: Array, route, d_deer: float, ex: Dictionary) -> Array:
+	var out := []
+	var fields := _open_areas(areas, ["farmland", "meadow"])
+	var s0 := chunk_index * CHUNK_M
+	var s_len := clampf(route.length_m - s0, 0.0, CHUNK_M)
+	if fields.is_empty() or s_len <= 0.0:
+		return out
+	var rings := []
+	for f in fields:
+		rings.append(f["ring"])
+	var seed := _h(int(route.length_m * 10.0) & MASK32, chunk_index & MASK32, 24)
+	for i in range(HARE_MAX):
+		if _u(_h(seed, 1 + i)) >= d_deer * HARE_SHARE:
+			continue
+		for t in range(OPEN_TRIES):
+			var hh := _h(seed, 10 + i * 16 + t)
+			var fr := _route_frame(route, s0 + s_len * _u(hh))
+			var side := 1.0 if (hh >> 9) & 1 == 0 else -1.0
+			var away: Vector2 = fr["right"] * side
+			var p2: Vector2 = fr["p"] + away * lerpf(HARE_ROAD_M.x, HARE_ROAD_M.y, _u(VegetationPlacer._mix(hh + 1)))
+			if not _in_any(rings, p2.x, p2.y) or not ground_ok(ex, p2.x, p2.y):
+				continue
+			out.append({"type": "hare", "id": "c%d_hare%d" % [chunk_index, i], "species": "hare",
+				"pos": Vector3(p2.x, _ground(ex, p2.x, p2.y, 0.0), p2.y),
+				"yaw": TAU * _u(VegetationPlacer._mix(hh + 2)), "flee_dir": Vector3(away.x, 0.0, away.y)})
+			break
+	return out
+
+
 ## Direction horizontale unitaire qui s'éloigne du point de la route le plus proche (zéro sans route).
 static func _away_from_road(route, p: Vector2) -> Vector2:
 	if route == null or route.n < 2:
@@ -435,6 +552,6 @@ static func count(groups: Array) -> Dictionary:
 				out["birds"] += 1
 			"herd":
 				out["animals"] += (g["members"] as Array).size()
-			"deer":
+			"deer", "hare":
 				out["animals"] += 1
 	return out

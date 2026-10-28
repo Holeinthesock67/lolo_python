@@ -31,6 +31,10 @@ col-du-galibier.world/
   water/chunk_<k>.json         facultative
   roads/chunk_<k>.json         facultative, depuis 1.5 : routes voisines (§8 ter)
   segments.json                facultative, depuis 1.3 : sprints et montées (§8 bis)
+  biome/
+    near/tile_<ix>_<iz>.json   facultative, depuis 1.6 : poids de biome des tuiles proches (§8 quater)
+    far/tile_<ix>_<iz>.json    facultative, depuis 1.6 : poids de biome des tuiles lointaines
+  coast/chunk_<k>.json         facultative, depuis 1.6 : lignes de côte et plages (§8 quinquies)
 ```
 
 Les couches vivent par morceaux : `<k>` est l'indice du tronçon de route de 1 km (`k` = partie entière de `s` / 1000, `s` étant la position du point de route le plus proche de l'objet). Le terrain, lui, est découpé en tuiles fixes dans le repère du monde (§5).
@@ -99,6 +103,9 @@ Chaque tableau compte exactement `n` valeurs.
 | `grade_pct` | Pente calculée sur `alt_m` par différences centrées sur 20 m, limitée à ± 25 % |
 | `heading_deg` | Cap lissé sur environ 30 m |
 | `x`, `z` | Position dans le repère du monde (§3) |
+| `surface` | Facultative, depuis 1.6 (lot U1) : surface de chaque point, parmi `paved`, `compacted`, `gravel` et `dirt` (portions non revêtues réelles, d'après OSM) ; une route sans cette colonne est entièrement `paved` |
+
+**Surface de la route (depuis 1.6).** La colonne `surface` ne sert qu'à l'option « gravel » (série U, lots U20 à U22). Le réglage `[gravel] mode` de la configuration (SRS §11, ajouté avec l'IPC du lot U16) décide de ce qu'on en fait : `off` roule et affiche tout en bitume, `auto` suit la colonne, `compacted`, `gravel` ou `dirt` imposent cette surface à tout le parcours, colonne ignorée, trace revêtue comprise (décision U-Q8 du 27 octobre 2026). Le manifeste donne `route.surface_source` (`osm` ou `none`, absent = `none`) et, quand la fiche `stats` existe, `stats.surface_pct`, la part de chaque surface en %.
 
 **Règle d'interpolation, identique en Python et en GDScript (précisée le 23 octobre 2026) :**
 
@@ -227,7 +234,7 @@ Deux couches facultatives, chacune en fichiers `chunk_<k>.json`.
 ```
 
 - `lines` : cours d'eau, points (x, z, y) dans le repère du monde ; `width_m` est la largeur, 2 m par défaut.
-- `areas` : plans d'eau, avec `level_y` pour l'altitude de la surface.
+- `areas` : plans d'eau, avec `level_y` pour l'altitude de la surface. `kind` : `lake`, `pond`, `reservoir` ; depuis 1.6 (lot U1), `sea` : polygone de mer refermé sur le bord de l'étendue du terrain (`level_y` = 0), dont le rivage est décrit par la couche côte (§8 quinquies).
 - Ces deux couches arrivent au sprint 6 ; le format est figé dès maintenant pour qu'un parcours compilé plus tôt puisse recevoir ces couches plus tard.
 
 ## 8 bis. Couche segments (depuis 1.3)
@@ -268,6 +275,46 @@ Couche facultative en fichiers `roads/chunk_<k>.json` (lot P22) : les routes Ope
 - `speed_kmh` : d'après `maxspeed` en km/h (de 5 à 150), sinon 130 (`motorway`), 110 (`trunk`), 80 (`primary`, `secondary`, `tertiary`), 50 (`unclassified`), 30 (`residential`), 20 (`track`).
 - `points` : (x, z, y) tous les 25 m au plus, `y` étant le sol sous la route. Une ligne est coupée là où elle passe à moins de 20 m de la route du parcours (croisement ou tronc commun) et là où elle sort du couloir ; chaque morceau reste dans un seul tronçon `k` (identifiant `<id>_<n>` quand une voie OSM en donne plusieurs) et n'est gardé que s'il a au moins deux points et s'éloigne d'au moins 35 m de la route du parcours.
 - Schéma : `docs/contracts/world/roads.schema.json`. Un `.world` sans cette couche reste lisible : l'engine garde le trafic de P13 sur la route du parcours.
+
+## 8 quater. Couche biome (depuis 1.6)
+
+Couche facultative (lot U1, série U, version 3.0) : la part de chaque biome en tout point du terrain, que l'engine utilise pour mélanger les sols, la végétation, l'eau, le ciel, les sons et la faune des biomes du thème (§9, thème 2.0). Elle suit les tuiles de la couche terrain (§5) : `biome/near/tile_<ix>_<iz>.json` pour chaque tuile proche, `biome/far/tile_<ix>_<iz>.json` pour chaque tuile lointaine, mêmes indices. Une tuile de terrain sans fichier de biome prend le biome par défaut du manifeste ; un parcours sans couche `biome` garde le rendu d'avant la 3.0 (thème 1.x, ou biome par défaut du thème 2.0).
+
+```json
+{
+  "version": "1.0",
+  "biomes": ["temperate_grassland", "mediterranean", "coast"],
+  "grid": 17,
+  "weights": [[255, 239, "… 289 valeurs"], [0, 16, "…"], [0, 0, "…"]],
+  "variant": {"ground": "calcaire_blanc", "roofs": "tuile_ronde"}
+}
+```
+
+- `biomes` : de 1 à 4 identifiants distincts, parmi les seize du lot U0 : `temperate_grassland` (prairie et bocage tempérés, biome par défaut), `temperate_forest`, `farmland` (vignobles et grandes cultures), `boreal_forest`, `alpine`, `tundra`, `polar`, `mediterranean`, `steppe`, `savanna`, `sand_desert`, `rock_desert`, `jungle`, `wetland`, `coast` (littoral), `volcanic`.
+- `grid` : 17. La tuile est une grille de 17 × 17 points (16 × 16 cases : 62,5 m en proche, 312,5 m en lointain) ; le point `(i, j)` est à `x` = `ix` × T + `i` × T / 16 et `z` = `iz` × T + `j` × T / 16, et les bords sont partagés avec les tuiles voisines, comme le terrain.
+- `weights` : une grille par biome, dans l'ordre de `biomes`, de 289 entiers de 0 à 255 rangés par ligne (le point `(i, j)` à l'indice `j` × 17 + `i`). **En chaque point, la somme des poids vaut 255.** Entre les points, l'engine interpole linéairement.
+- `variant` : variante régionale de la tuile (§9, `variants`), `null` ou un couple `{"ground": …, "roofs": …}` dont chaque membre peut être `null`. Énumération fermée, étendue seulement par ajout : roches et terres `gres_rose`, `calcaire_blanc`, `granite_gris`, `schiste_sombre`, `basalte`, `laterite_rouge`, `craie` ; architecture `tuile_ronde`, `ardoise`, `tuile_plate`, `pierre_seche`, `toit_plat_blanc`, `bois`. La table qui la choisit (lot U4) travaille à grosse maille, 1° au plus fin : aucune coordonnée précise n'est écrite dans le dépôt.
+- Taille : moins de 8 Ko par tuile proche (exemple à 3 biomes : 2,8 Ko).
+
+**Manifeste, `layers.biome` :** `present`, `version`, `default_biome` (`temperate_grassland` si rien n'est forcé), `forced` (identifiant imposé par l'option `--biome` du compilateur, ou `null`), `sources` (par exemple `["esa_worldcover_2021", "osm", "dem", "latitude"]`), `shares` (part de chaque biome sur le parcours, en %), `tiles` (`{"near": [[ix, iz], …], "far": […]}`, comme le terrain).
+
+**Validation.** Schéma `docs/contracts/world/biome.schema.json` ; la somme de 255 en chaque point et le nombre de grilles égal au nombre de biomes, que le schéma ne peut pas exprimer, sont contrôlés par `verify` (contrôle ajouté par le lot U2, qui écrit la couche ; `compiler/tests/test_contract_biome.py` le fait déjà sur l'exemple). Exemple : `docs/contracts/world/examples/biome_tile_near_3_biomes.json`.
+
+## 8 quinquies. Couche côte (depuis 1.6)
+
+Couche facultative en fichiers `coast/chunk_<k>.json` (lot U1) : le rivage de la mer (OSM `natural=coastline`) et les plages (`natural=beach`, `natural=sand` au bord de la mer), que l'engine utilise pour la mer animée et les plages (lot U9). La mer elle-même est une aire `sea` de la couche eau (§8).
+
+```json
+{
+  "version": "1.0",
+  "lines": [{"id": "c12", "shore": "cliff", "points": [[0.0, 0.0], [120.0, 40.0]]}],
+  "beaches": [{"id": "b3", "kind": "sand", "outer": [[0.0, 0.0], [30.0, 0.0], [30.0, 10.0]], "holes": []}]
+}
+```
+
+- `lines` : lignes de côte, points (x, z) ; la mer est à droite dans le sens des points, comme pour `natural=coastline`. `shore` : `sand`, `shingle` (galets), `rock` ou `cliff` (falaise).
+- `beaches` : polygones de plage, `kind` `sand` ou `shingle`, avec trous.
+- Manifeste, `layers.coast` : `present`, `version`, `lines_count`, `beaches_count`, `osm_date`. Schéma : `docs/contracts/world/coast.schema.json`.
 
 ## 9. Thèmes : palettes, textures, shader triplanaire
 
@@ -326,6 +373,25 @@ Themes/alpes-ete/
 | `ambience` | `{volume, birds, insects}`, de 0 à 1 | P9 |
 | `fauna` | `{birds, livestock, deer}` : densités de 0 à 1 | P11 |
 
+**Thème 2.0 : pack de biomes (lot U1, version 3.0).** Un thème 2.0 (`"version": "2.0"`) décrit plusieurs biomes au lieu d'un seul paysage ; l'engine les mélange selon la couche `biome` du parcours (§8 quater). Les clés 1.x (`terrain`, `road`, `buildings`, `vegetation`, `sky`, `weather`, `season`, `wind`, `ambience`, `fauna`) restent valables et gardent leur sens. Exemple complet : `docs/contracts/world/examples/theme_2_0_two_biomes.json`.
+
+| Clé | Contenu |
+| --- | --- |
+| `default_biome` | Biome des tuiles sans couche `biome` ; `temperate_grassland` si absent |
+| `biomes` | Un objet par identifiant du §8 quater, toutes clés facultatives : `ground`, `vegetation`, `water`, `sky`, `ambience`, `fauna`, `seasons` |
+| `biomes.<id>.ground` | `layers` : de 1 à 3 couches `{name, role, color, texture, normal, scale_m}`, `role` valant `flat` (sol des pentes douces), `steep` (au-delà de `slope_threshold_deg`, projection triplanaire) ou `high` (au-dessus de `high_line_m`), chacun au plus une fois ; `slope_threshold_deg`, `high_line_m` (nombre ou `null`), `blend_sharpness`. Même règle de mélange qu'en 1.x : `flat`, `steep` et `high` y sont l'herbe, la roche et la neige |
+| `biomes.<id>.vegetation` | `species` : liste `{kind, weight}`, `kind` parmi `oak`, `beech`, `spruce`, `pine`, `birch`, `larch`, `olive`, `holm_oak`, `cypress`, `stone_pine`, `palm`, `acacia`, `baobab`, `cactus`, `tree_fern`, `reed`, `dwarf_shrub`, `vine_row` (lot U7) ; `max_density_per_ha` ; `treeline_m` (nombre ou `null`) |
+| `biomes.<id>.water` | `color`, `turbidity` (0 à 1) : teinte des lacs, rivières et de la mer dans ce biome |
+| `biomes.<id>.sky` | `fog_density`, `haze` (0 à 1, brume de chaleur ou d'humidité), `light_tint` (teinte de la lumière du soleil) |
+| `biomes.<id>.ambience`, `.fauna` | Mêmes clés que le thème 1.2 |
+| `biomes.<id>.seasons` | `calendar` parmi `four` (quatre saisons de P18), `wet_dry` (saison sèche, saison des pluies), `polar` (jour et nuit polaires), `none` ; `offset_months` (−6 à 6, décalage par rapport au calendrier de l'hémisphère) ; `durations_months` : durée de chaque saison dans l'ordre du calendrier, somme 12 |
+| `variants` | Un objet par variante régionale (§8 quater) : `rock_color` et `soil_color` pour les roches et terres, `walls` et `roofs` (listes de couleurs, même forme que `buildings` en 1.x) pour l'architecture, `textures` facultatives ; l'identifiant d'architecture choisit aussi le style des bâtiments de l'engine (matière et pente des toits, murs) |
+| `surfaces` | `compacted`, `gravel`, `dirt` : `{color, texture, width_m}`, ruban des routes non revêtues (lot U22) |
+
+- Une clé absente d'un biome prend la valeur 1.x du thème ; un biome absent de `biomes` prend toutes les valeurs 1.x. **Un thème 1.x décrit donc le biome `temperate_grassland`**, et tous les autres biomes d'un parcours prennent ses valeurs tant que le thème ne les décrit pas.
+- Un lecteur 2.0 lit tous les thèmes 1.x ; un engine d'avant la 3.0 refuse un thème 2.0 (majeur inconnu) et garde le thème par défaut.
+- Schéma : `docs/contracts/world/theme.schema.json` (versions 1.x et 2.x).
+
 ## 10. Règles de lecture et compatibilité
 
 **Ordre de lecture.** Un lecteur ouvre d'abord `manifest.json`, vérifie `format` et `format_version`, puis charge les couches dont `present` est vrai.
@@ -336,7 +402,7 @@ Themes/alpes-ete/
 | --- | --- |
 | `route.json` absent ou invalide | Erreur `route_invalid` ; le parcours n'est pas proposé |
 | Couche terrain absente | L'engine dessine le ruban de route sur un sol plat bas, dans le brouillard |
-| Couche bâtiments, végétation, poi, eau, routes voisines ou segments absente | Ignorée sans message |
+| Couche bâtiments, végétation, poi, eau, routes voisines, segments, biome ou côte absente | Ignorée sans message ; sans couche biome, tout le parcours prend le biome par défaut du thème |
 | Couche inconnue dans le manifeste | Ignorée |
 | Tuile de terrain manquante | Remplacée par le niveau lointain ou, à défaut, par un sol plat à l'altitude de la route |
 | Champ inconnu dans un fichier | Ignoré |
@@ -347,7 +413,7 @@ Themes/alpes-ete/
 - Un lecteur refuse un `.world` dont le majeur est supérieur au sien, et accepte tout mineur du même majeur.
 - Chaque couche a sa propre version dans le manifeste, ce qui permet de régénérer une couche avec un nouvel algorithme sans toucher aux autres.
 
-**Validation.** `openride-compiler verify <nom>.world` contrôle : la structure et le manifeste, le nombre de valeurs de chaque tableau de la route, la cohérence entre `length_m` et les points, les tailles des tuiles de terrain (et, depuis 1.1, la présence des tuiles listées, l'égalité des bords partagés et l'absence de `NaN` à moins de 25 m de la route), et les sommes de contrôle SHA-256 optionnelles du manifeste. Des schémas JSON de chaque fichier sont publiés dans `docs/contracts/world/`.
+**Validation.** `openride-compiler verify <nom>.world` contrôle : la structure et le manifeste, le nombre de valeurs de chaque tableau de la route, la cohérence entre `length_m` et les points, les tailles des tuiles de terrain (et, depuis 1.1, la présence des tuiles listées, l'égalité des bords partagés et l'absence de `NaN` à moins de 25 m de la route), les sommes de contrôle SHA-256 optionnelles du manifeste et, depuis 1.6 (avec le lot U2), les tuiles de biome (schéma, somme des poids égale à 255 en chaque point, une grille par biome). Des schémas JSON de chaque fichier sont publiés dans `docs/contracts/world/`.
 
 **Régénération.** Le compilateur peut refaire une couche (`add-layer`) depuis ses caches bruts sans télécharger de nouveau ; refaire la route oblige à refaire les couches qui en dépendent (terrain, bâtiments, végétation, poi, eau, routes voisines, segments). Depuis 1.5, la requête OpenStreetMap demande aussi les prés, les champs et les routes : la première régénération d'une couche OSM d'un parcours compilé avant le lot P22 télécharge donc de nouveau ses données (une fois).
 
@@ -409,6 +475,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.3 | 27 octobre 2026 | Ajout compatible (lot T1, avec la révision 1.4 du contrat IPC) : couche facultative `segments.json` (§8 bis), entrée `layers.segments` du manifeste (`present`, `version`, `file`, `count`, `manual_count`) et schéma `docs/contracts/world/segments.schema.json` ; un `.world` 1.2 reste valide |
 | 1.4 | 27 octobre 2026 | Ajout compatible (lot W1, premier mineur libre après T1) : monde vivant du monde ouvert (§13) : `live`, `origin_kind`, `grid` dans le manifeste, `live.json`, route par parties, couches par tuile en coordonnées relatives au coin, `junctions.json` ; schémas `live`, `route_part`, `junctions` |
 | 1.5 | 27 octobre 2026 | Ajout compatible (lot P22) : terrains ouverts `meadow`, `farmland` et `grassland` de la couche végétation, de densité 0 (§7) ; couche facultative `roads/` des routes voisines (§8 ter), entrée `layers.roads` du manifeste (`present`, `version`, `count`, `osm_date`) et schéma `docs/contracts/world/roads.schema.json` ; `verify` les contrôle ; un `.world` 1.3 reste valide |
+| 1.6 | 28 octobre 2026 | Ajout compatible (lot U1, partie format, série U avancée avant la 3.0 sur décision du propriétaire) : couche facultative `biome/near` et `biome/far` (§8 quater) et entrée `layers.biome` ; couche facultative `coast/` (§8 quinquies) et entrée `layers.coast` ; aire d'eau `sea` (§8) ; colonne facultative `surface` de la route, `route.surface_source` et `stats.surface_pct` (§4) ; thème 2.0 en pack de biomes (§9). Schémas `biome.schema.json` et `coast.schema.json`, exemples dans `docs/contracts/world/examples/`. La partie IPC et configuration du lot U1 (`hello_ack.config.biome` et `.gravel`, `[render] biome`, `[gravel]`) attend le lot U16. Un `.world` 1.5 reste valide |
 
 ## 13. Monde vivant (monde ouvert, série W)
 
