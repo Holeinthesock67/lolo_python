@@ -788,7 +788,8 @@ func handle(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
-		"start_run":   # confirmation du premier lancement acceptée (lot R13)
+		"start_run":   # confirmation du premier lancement acceptée (lot R13) : l'avertissement n'est plus redemandé
+			rogue.mark_warned()
 			return _launch_rogue(act)
 		"start_plan", "stop_plan":
 			return _send_plan_request(act)
@@ -940,7 +941,6 @@ func _handle_rogue(item_id: String) -> Dictionary:
 		return {}
 	var act := {"action": "start_run", "args": rogue.start_args()}
 	if rogue.needs_warning():
-		rogue.mark_warned()
 		menu.confirm(RogueMenuModel.WARNING, act)
 		return {}
 	return _launch_rogue(act)
