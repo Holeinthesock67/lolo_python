@@ -194,6 +194,8 @@ func _ready() -> void:
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
+	streamer.culling = bool(cfg.get("culling", false))
+	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
