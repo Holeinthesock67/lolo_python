@@ -99,16 +99,19 @@ python3 engine/tests/menu_bench.py --captures ecrans --out ~/OpenRide/menu_bench
 | `sessions` | trois | Parcours choisi, session libre, Y en séance (pause), fin enregistrée, bilan, session ERG, « Session simulée » confirmée (code 65) |
 | `reglages` | trois | Sous-écrans, FTP + 15 W écrite, Y annule une modification, qualité appliquée tout de suite et écrite, ligne de version |
 | `erg` | trois | Créer un entraînement par intervalles (fichier écrit), importer un fichier des Téléchargements |
-| `pause` | trois | Y reprend, curseur de difficulté (`set_difficulty`), « Abandonner » confirmé (Non, puis Oui sans enregistrer) |
+| `pause` | trois | Y reprend, curseur de difficulté (`set_difficulty`), « Abandonner » confirmé (Non, puis Oui : bilan, aucun FIT) |
 | `quitter` | trois | « Quitter » : focus sur Non, Non et Y reviennent, Oui ferme l'engine (code 0) |
 | `plans_ftp` | trois | Plans de référence : liste, fiche, démarrage, arrêt confirmé ; test de FTP par rampe jusqu'à « Prêt » |
-| `records` | trois | Records depuis « Prêt » : segments, table, A court bascule la table, retours |
+| `records` | trois | Records depuis « Prêt » (temps fictifs posés dans `records.json`) : segment sans temps désactivé, table, A court bascule « sans bonus » / « avec bonus », retours |
 | `garage` | trois | Garage : vélo et tenue (catalogue du core), avatar modifié, annulé, puis enregistré dans `profile.json` |
-| `monde_ouvert` | click, clavier | Menu du monde ouvert : globe, recherche ouverte par une lettre, Y revient puis ferme |
+| `monde_ouvert` | click, clavier | Menu du monde ouvert : globe, recherche ouverte par une lettre (les lettres y sont du texte), Échap ou Y revient puis ferme |
+| `cyber_rogue` | trois | Départ du Cyber-Rogue : objectif et durée, avertissement du premier lancement, run composée jusqu'à « Prêt », « Changer les choix » et run recomposée, départ, pause, abandon |
 | `clavier_synonymes` | clavier | Entrée, Maj+A, Page haut et bas, Échap, `=` et pavé +, flèches gauche et droite ; appui ambigu de 0,7 s ignoré ; flèches haut et bas sans effet en menu |
 | `souris_gestes` | souris | Clic sur un élément sans focus, molette, clic droit, clic hors des éléments et survol sans effet |
 
-Le Cyber-Rogue n'a pas encore d'entrée de menu sur `main` (lot R13) : son scénario s'ajoutera avec elle, comme pour tout nouvel écran (un fichier JSON, sans toucher au banc).
+Un nouvel écran s'ajoute au banc par un fichier JSON, sans toucher au script. Clé d'en-tête `fichiers` : fichiers posés dans le HOME avant le lancement (records, profil…).
+
+Défauts trouvés par le banc à sa mise en service (28 octobre), corrigés dans la même PR : catalogue du Garage jamais reçu par l'engine (plus de 4 096 octets, jeté par `send_raw` : la liste des messages à 60 000 octets reprend désormais celle du contrat §2, `plans` compris) ; Cyber-Rogue bloqué sur « Composition de la run… » quand la run est recomposée depuis « Prêt » (le core repasse en READY dans la même commande : l'engine attend maintenant l'accusé de `start_run`).
 
 Rapport dans `--out` (défaut : dossier temporaire) : `rapport.html` (tableau scénario × voie, chaque vérification, captures prises à chaque échec avec l'écran, le titre et les rangées affichées), `resultats.json`, `resume.txt`, et les journaux `core.log` et `engine.log` de chaque passage. Durée : environ 40 s par scénario et par voie sous Xvfb. Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
 

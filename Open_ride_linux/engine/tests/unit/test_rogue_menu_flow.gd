@@ -65,6 +65,7 @@ func _run() -> void:
 	_check(f.state()["screen"] == "rogue_loading", "écran « Composition de la run… »")
 	f.on_state({"session_state": "LOADING"})
 	_check(f.state()["screen"] == "rogue_loading", "LOADING : on attend")
+	f.on_command_acked("start_run")
 	f.on_state({"session_state": "READY", "mode": "ROGUE"})
 	_check(f.state()["screen"] == "ready" and f.state()["title"] == "Prêt : Cyber-Rogue", "READY : écran Prêt du Cyber-Rogue")
 	_check(_ids(f) == ["start", "rogue_change"], "Démarrer ou changer les choix")
@@ -74,6 +75,21 @@ func _run() -> void:
 	f.menu.focus_item("rogue_change")
 	f.handle("A_LONG")
 	_check(f.state()["screen"] == "rogue_start", "Changer les choix : retour au départ")
+
+	# Run recomposée depuis Prêt : le core reste en READY (READY, LOADING, READY dans la même commande)
+	f.menu.focus_item("duration")
+	f.handle("A_LONG")
+	f.menu.focus_item("launch")
+	act = f.handle("A_LONG")
+	_check(act.get("action") == "start_run" and act["args"]["duration_min"] == 60, "run recomposée : start_run sans avertissement")
+	f.on_state({"session_state": "READY", "mode": "ROGUE"})
+	_check(f.state()["screen"] == "rogue_loading", "trame READY d'avant l'accusé : on attend encore")
+	f.on_command_acked("start_run")
+	f.on_state({"session_state": "READY", "mode": "ROGUE"})
+	_check(f.state()["screen"] == "ready" and f.state()["items"][0]["detail"].begins_with("Seuil · 60 min"),
+		"accusé de start_run : écran Prêt de la nouvelle run")
+	f.menu.focus_item("rogue_change")
+	f.handle("A_LONG")
 
 	# Deuxième lancement : plus d'avertissement ; erreur de composition
 	f.menu.focus_item("launch")
