@@ -28,3 +28,15 @@ La ceinture du propriétaire est ANT+ seule : sa fréquence arrive par le traine
 ## 6. Hors périmètre
 
 Changer le traitement du gel (Q5).
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x9`).
+
+- **`python -m openride_core.tools.fc_recette`** : essai guidé (guide X5/X8, essai `fc_recette` de `guide materiel`), 4 phases de `--phase-s` s (60) ; vrai pilote du trainer (gel Q5 compris) et ceinture Bluetooth si `[drivers] hr = "ble"` ; la FC relevée est celle que retient la séance (ceinture d'abord, sinon relais). `fc.csv` : t, phase, source, fc, contact, puissance.
+- **Contrôles** : absence au plus 10 s après le retrait, aucune valeur identique plus de 15 s pendant que la puissance varie d'au moins 5 W, retour au plus 20 s après la remise, source notée. Seuils réglables (`--absence`, `--fige`, `--retour`).
+- **Écart avec le §3 :** une FC relayée par le trainer ne disparaît que par le gel du lot Q5, au bout de `hr_relay_freeze_s` (15 s par défaut, 5 au moins). Pour cette source, le délai admis est `hr_relay_freeze_s` + 2 s et le rapport le dit, avec le réglage qui tiendrait 10 s (8 s). Le traitement du gel n'est pas changé (hors périmètre).
+- **`--analyse`** : dossier de l'outil (`fc.csv`), journal `.jsonl` (source : ceinture si une ligne `device` « hr » existe, sinon relais) ou FIT (source inconnue) ; phases placées par `--retrait` et `--remise`.
+- **`--sim`** : trainer simulé qui relaie la FC (au retrait, la dernière valeur reste figée, comme le 25 octobre) ou ceinture simulée (`--source ceinture`, contact perdu puis retrouvé) ; le cycliste simulé change d'allure à chaque phase. `--gel 120` laisse passer la valeur figée : absence et valeur figée échouent.
+- Tests : `core/tests/test_fc_recette.py` (12 tests : essai bon, valeur figée avec et sans puissance qui varie, absence tardive admise seulement pour le relais, retour tardif, analyse d'un journal, d'un FIT et d'un dossier, trois essais simulés en parallèle, essai du guide, phases).
+
