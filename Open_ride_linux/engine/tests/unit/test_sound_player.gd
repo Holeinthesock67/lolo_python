@@ -41,11 +41,12 @@ func _test_sound_synthesis_perf() -> void:
 
 	# Vérifier que les 6 sons procéduraux ont été créés
 	var all_streams_ok := true
-	for k in ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer"]:
+	for k in ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer",
+			"helicopter_rotor", "airliner_rumble"]:
 		var s: Resource = sp._streams.get(k, null)
 		if s == null or not (s is AudioStreamWAV):
 			all_streams_ok = false
-	_check(all_streams_ok, "tous les flux procéduraux générés et valides (dont vehicle_pass et tractor_engine, lot P13, et crowd_cheer, lot P15)")
+	_check(all_streams_ok, "tous les flux procéduraux générés et valides (dont vehicle_pass et tractor_engine, lot P13, crowd_cheer, lot P15, helicopter_rotor et airliner_rumble, lot P26)")
 	_check(sp.stream("vehicle_pass") is AudioStreamWAV and sp.stream("tractor_engine").loop_mode == AudioStreamWAV.LOOP_FORWARD
 		and sp.stream("inconnu") == null, "sons des véhicules accessibles par stream(kind), en boucle")
 	var voices_ok := true
