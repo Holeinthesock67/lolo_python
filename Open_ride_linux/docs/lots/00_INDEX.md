@@ -242,7 +242,7 @@
 | [X3](LOT_X3_instabilite_durees_tests.md) | Série X (outils de test) : Rapport d'instabilité et de durée des tests (JUnit, tests lents ou instables) | Python + Bash | X2 | Petite | Oui ; issue #201 |
 | [X6](LOT_X6_trainer_simule_realiste.md) | Série X (outils de test) : Trainer simulé réaliste : frein du 1er ordre à retard, volant d'inertie, gigue des notifications | Python | X5 | Moyenne | Oui ; issue #204 |
 | [X7](LOT_X7_latence_click.md) | Série X (outils de test) : Latence appui Click → commande → écran, par étage | Python + GDScript | — | Petite | Script oui, essai sur le vélo ; issue #205 |
-| [X9](LOT_X9_recette_frequence_cardiaque.md) | Série X (outils de test) : Recette guidée de la fréquence cardiaque (gel, retrait, retour) | Python | Q5 | Petite | Script oui, essai sur le vélo ; issue #207 |
+| [X9](LOT_X9_recette_frequence_cardiaque.md) | Série X (outils de test) : Recette guidée de la fréquence cardiaque (gel, retrait, retour) | Python | Q5 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x9`), essai sur le vélo ; issue #207 |
 | [X10](LOT_X10_coupures_verifiees.md) | Série X (outils de test) : Coupures volontaires, attendu contre obtenu au journal | Python | — | Moyenne | Script oui, essai sur le vélo ; issue #208 |
 | [X11](LOT_X11_controle_fit_reel.md) | Série X (outils de test) : Contrôle d'un FIT de séance réelle, en local | Python | H5 | Petite | Oui ; issue #209 |
 | [X12](LOT_X12_analyse_seance_reelle.md) | Série X (outils de test) : Analyse automatique d'une séance réelle (`openride-core session-report`) | Python | — | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x12`), essai sur le journal de la prochaine séance vélo ; issue #210 |
@@ -253,7 +253,7 @@
 | [X19](LOT_X19_micro_banc_decor.md) | Série X (outils de test) : Micro-banc par image et budgets par machine (décor, synthèse des sons) | GDScript + Python | X2 | Petite | Oui ; issue #217 |
 | [X20](LOT_X20_regression_visuelle_v2.md) | Série X (outils de test) : Non-régression visuelle v2 : SSIM, scènes figées, références par moteur et préréglage | Python + GDScript | S1 (`compare_captures.py`) | Moyenne | Oui ; issue #218 |
 | [X21](LOT_X21_tour_visuel_guide.md) | Série X (outils de test) : Tour visuel guidé sur un vrai parcours, planche à cocher | GDScript + Python | — | Moyenne | Oui ; issue #219 |
-| [X22](LOT_X22_lisibilite_hud.md) | Série X (outils de test) : Lisibilité du HUD à 2 m (hauteur, contraste) et débordements (4 bots à 720 px) | Python | — | Petite | Oui ; issue #220 |
+| [X22](LOT_X22_lisibilite_hud.md) | Série X (outils de test) : Lisibilité du HUD à 2 m (hauteur, contraste) et débordements (4 bots à 720 px) | Python | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x22`) ; issue #220 |
 | [X24](LOT_X24_audit_dependances.md) | Série X (outils de test) : Audit des dépendances (pip-audit, versions des actions) | Python + YAML | — | Petite | Oui ; issue #222 |
 | [X26](LOT_X26_fuzz_fichiers.md) | Série X (outils de test) : Fuzz des fichiers d'entrée (.zwo, .erg, .mrc, GPX, FIT, TCX) | Python | — | Petite | Oui ; issue #224 |
 | [X27](LOT_X27_cycliste_virtuel.md) | Série X (outils de test) : Cycliste virtuel (cadence, pente, rampe, sprint, W′bal) et course contre les bots accélérée | Python | T12 pour `bots_race` | Moyenne | Oui ; issue #225 |
@@ -262,7 +262,7 @@
 | [X31](LOT_X31_pente_max_garmin.md) | Série X (outils de test) : Pente maximale et D+ face à Garmin Connect, en local | Python | — | Petite | Oui ; issue #229 |
 | [X32](LOT_X32_garde_fou_qualite.md) | Série X (outils de test) : Garde-fou de la qualité réellement appliquée dans les bancs et les vitrines | Python + GDScript | #481 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x32`) |
 | [X33](LOT_X33_seance_simulee_serie_t_boutons_erg.md) | Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | Oui |
-| [X34](LOT_X34_hygiene_des_suites.md) | Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | Oui |
+| [X34](LOT_X34_hygiene_des_suites.md) | Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x34`) |
 | [X35](LOT_X35_fiabilite_banc_simule.md) | Série X (outils de test) : Fiabilité du banc simulé : captures, pics de capture, couches, vitesse imposée | Python + GDScript | X13 | Petite | Oui |
 | [X36](LOT_X36_pre_vol_seance_velo.md) | Série X (outils de test) : Pré-vol avant une séance vélo, verdict « prêt à rouler » | Python | X4, X33 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x36`), essai sur le PC avant la prochaine séance |
 | [X37](LOT_X37_persistance_reglages.md) | Série X (outils de test) : Persistance de tous les réglages après un redémarrage | Python | banc des menus | Petite | Oui |

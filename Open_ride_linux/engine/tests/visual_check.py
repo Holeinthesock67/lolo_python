@@ -51,6 +51,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
+import hud_lisibilite  # noqa: E402
 import quality_guard  # noqa: E402
 
 ENGINE_DIR = Path(__file__).resolve().parents[1]
@@ -67,7 +68,7 @@ CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
               "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2",
-              "bots_gap1", "bots_ahead", "bots_behind", "bots_jerseys")
+              "bots_gap1", "bots_jerseys")   # bots_ahead, bots_behind : lignes de bots (lot X22)
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -477,6 +478,7 @@ class Session:
     report: Report
     golden_dir: Path | None
     update_golden: bool
+    lisibilite: bool = False      # --lisibilite : hauteur et contraste des textes du HUD (lot X22)
 
     def check(self, scene: str, name: str, ok: bool, detail: str = "") -> bool:
         return self.report.check(self.name, scene, name, ok, detail)
@@ -497,6 +499,9 @@ class Session:
         self.check(scene, "taille de l'image", (img.width, img.height) == (self.width, self.height),
                    f"{img.width}x{img.height}, attendu {self.width}x{self.height}")
         self._golden(cap, img)
+        if self.lisibilite:
+            for name, ok, detail in hud_lisibilite.readability_checks(img, info):
+                self.check(scene, name, ok, detail)
         return img, info
 
     def _golden(self, cap: Capture, img: Image) -> None:
@@ -541,6 +546,9 @@ class Session:
         pairs = [f"{a}/{b}" for i, a in enumerate(labels) for b in labels[i + 1:]
                  if overlap(vis[a]["rect"], vis[b]["rect"]) > 1.0]
         self.check(scene, "lignes du HUD sans chevauchement", not pairs, ", ".join(pairs))
+        # Panneaux (colonnes, vent, abri, blocs segment et bonus, encart des bots, profil) : lot X22.
+        for name, ok, detail in hud_lisibilite.panel_checks(info, self.width, self.height):
+            self.check(scene, name, ok, detail)
         if "banner" in vis:
             hit = [k for k in labels + ["panel"] if k in vis and overlap(vis[k]["rect"], vis["banner"]["rect"]) > 1.0]
             self.check(scene, "bandeau sans chevauchement du HUD", not hit, "recouvre : " + ", ".join(hit) if hit else "")
@@ -623,7 +631,7 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
             "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}",
             "--camera=subjective"]   # les scènes d'avant le lot V12 supposent la caméra subjective
     gold = Path(args.golden) / name if args.golden else None
-    s = Session(name, width, height, core, out_dir, report, gold, args.update_golden)
+    s = Session(name, width, height, core, out_dir, report, gold, args.update_golden, args.lisibilite)
     print(f"== {name} ==", flush=True)
     with engine_log.open("w") as log_fh:
         proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True)
@@ -789,6 +797,7 @@ def _scenes(s: Session) -> None:
                 not info["widgets"]["bots_panel"]["visible"] and info.get("bots", {}).get("shown") == 0,
                 f"{info.get('bots')}")
     time.sleep(1.0)
+    _bots_segment_bonus_scene(s)
 
     # 3 ter ter. Avatar (lot V6), vu par la caméra de contrôle derrière lui (la caméra du jeu reste
     # subjective, où l'avatar est caché) : visible, jambes à des angles différents sur deux captures
@@ -1061,6 +1070,50 @@ def _scenes(s: Session) -> None:
     _decor_vivant_scene(s)
     fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
+
+
+# Colonne de droite la plus chargée (lot X22) : 4 bots à profil (maillots, jauges W′), deux voisins, un
+# segment en cours et un bonus en réserve, empilés sous le panneau de droite jusqu'au-dessus du profil.
+PROFILE_BOTS = [
+    {"id": "b1", "name": "Grimpeur", "profile": "climber", "cp_w": 262.0, "mass_kg": 62.0, "wbal_pct": 74.0, "jersey": "kom", "ds": 35.0},
+    {"id": "b2", "name": "Rouleur", "profile": "rouleur", "cp_w": 281.0, "mass_kg": 75.0, "wbal_pct": 92.0, "jersey": None, "ds": 12.0},
+    {"id": "b3", "name": "Sprinteur", "profile": "sprinter", "cp_w": 255.0, "mass_kg": 72.0, "wbal_pct": 38.0, "jersey": "sprint", "ds": -15.0},
+    {"id": "b4", "name": "Diesel", "profile": "diesel", "cp_w": 248.0, "mass_kg": 70.0, "wbal_pct": 100.0, "jersey": None, "ds": -40.0},
+]
+
+
+def _bots_segment_bonus_scene(s: Session) -> None:
+    core = s.core
+    s_now = core.current_s()
+    bots = [{k: v for k, v in b.items() if k != "ds"} | {"s": s_now + b["ds"], "v": 0.0, "kind": "constant"}
+            for b in PROFILE_BOTS]
+    core.set_scene(speed=0.0, bots=bots, bot_ahead="b2", bot_behind="b3", jerseys={"sprint": "b3", "kom": "b1"},
+                   segment={"id": "climb1", "kind": "climb", "category": "4", "d_to_start_m": 0.0,
+                            "elapsed_s": 42.0, "gap_to_pr_s": -1.6},
+                   powerup={"held": "aero", "active": None, "remaining_s": 0.0})
+    time.sleep(SETTLE_S)
+    shot = s.capture("bots_segment_bonus")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        # Lot X22 : blocs segment et bonus à la hauteur de leur contenu ; l'encart garde au moins les deux
+        # lignes autour du cycliste (ses voisins, avec FTP, maillot et W′) et la ligne des maillots.
+        need = ("segment_panel", "bonus_panel", "bots_panel", "bots_ahead", "bots_behind", "bots_line1", "bots_line2",
+                "bots_jerseys")
+        missing = [k for k in need if not w[k]["visible"]]
+        s.check("bots_segment_bonus", "blocs segment et bonus, voisins avec leur ligne complète et maillots affichés",
+                not missing, "manquent : " + ", ".join(missing) if missing else "")
+        s.check_texts("bots_segment_bonus", info, {"bots_ahead": "Rouleur  281 W", "bots_behind": "Sprinteur  255 W",
+                                                   "bots_jerseys": "Vert : Sprinteur · Pois : Grimpeur"}, contains=True)
+        seg, bonus, panel = w["segment_panel"]["rect"], w["bonus_panel"]["rect"], w["bots_panel"]["rect"]
+        s.check("bots_segment_bonus", "segment, bonus puis bots empilés", seg[1] < bonus[1] < panel[1],
+                f"hauts {seg[1]:.0f}, {bonus[1]:.0f}, {panel[1]:.0f} px")
+        prof = w["profile"]["rect"]
+        s.check("bots_segment_bonus", "encart des bots au-dessus du profil d'altitude",
+                panel[1] + panel[3] <= prof[1] + 0.5, f"bas de l'encart {panel[1] + panel[3]:.0f} px, profil à {prof[1]:.0f} px")
+        s.check_layout("bots_segment_bonus", info)
+    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, segment=None, powerup=None)
+    time.sleep(SETTLE_S)
 
 
 def _pentes_scenes(s: Session) -> None:
@@ -1428,6 +1481,8 @@ def main() -> int:
     ap.add_argument("--native", action="store_true", help="écran réel et rendu habituel, sans Xvfb")
     ap.add_argument("--golden", default=None, help="dossier des images de référence (un sous-dossier par configuration)")
     ap.add_argument("--update-golden", action="store_true", help="enregistre les captures comme nouvelles références")
+    ap.add_argument("--lisibilite", action="store_true",
+                    help="hauteur des chiffres et contraste des textes du HUD sur chaque capture (lot X22)")
     args = ap.parse_args()
 
     if not (Path(args.godot).is_file() and os.access(args.godot, os.X_OK)):

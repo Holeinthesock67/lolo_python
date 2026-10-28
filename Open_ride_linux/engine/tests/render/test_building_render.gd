@@ -13,11 +13,13 @@ const BuildingStyles := preload("res://scripts/building_styles.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const Speckle := preload("res://tests/render/speckle.gd")
 
-const SIZE := 256
+const SIZE := 384
 const SPACING_M := 20.0
 const STYLES := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
-## Part maximale de pixels isolés (le défaut corrigé pendant Y8 en donnait plusieurs pour cent)
-const MAX_ISOLATED := 0.003
+## Part maximale de pixels isolés : 0,0006 au plus sur les façades saines, 0,0015 à 0,003 avec le défaut des tirages par
+## pixel corrigé pendant Y8 (graine et longueur de mur hachées sans arrondi)
+const MAX_ISOLATED := 0.001
+const TURN_RAD := 0.15
 
 var _failures := 0
 var _checked := 0
@@ -36,12 +38,18 @@ func _check(cond: bool, msg: String) -> void:
 		printerr("[ÉCHEC] ", msg)
 
 
-## Maison de 11 × 8 m et 6 m de murs par style, façade principale en z = 0 tournée vers +z.
+## Maison de 10,7 × 7,9 m et 6 m de murs par style, façade principale vers +z, tournée de 0,15 rad :
+## des longueurs et des positions quelconques, comme dans un vrai village (le défaut des tirages par pixel
+## n'apparaissait pas avec des longueurs rondes alignées sur les axes).
 func _village() -> MeshInstance3D:
 	var items := []
 	for i in range(STYLES.size()):
-		var x0 := i * SPACING_M
-		items.append({"id": "rendu_%d" % i, "outer": [[x0, 0.0], [x0, -8.0], [x0 + 11.0, -8.0], [x0 + 11.0, 0.0]],
+		var c := Vector2(i * SPACING_M + 5.35, -3.95)
+		var ring := []
+		for q in [Vector2(-5.35, 3.95), Vector2(-5.35, -3.95), Vector2(5.35, -3.95), Vector2(5.35, 3.95)]:
+			var r: Vector2 = c + q.rotated(-TURN_RAD)
+			ring.append([r.x, r.y])
+		items.append({"id": "rendu_%d" % i, "outer": ring,
 			"holes": [], "base_y": 0.0, "height_m": 6.0, "roof": "flat", "style": STYLES[i],
 			"hint": {"building": "house", "colour": null}})
 	var m := BuildingMesh.build(items, ThemeLoader.new().load_named("default")["theme"], 1.0)
@@ -111,8 +119,8 @@ func _run() -> void:
 	for i in range(STYLES.size()):
 		var xc := i * SPACING_M + 5.5
 		var st: String = STYLES[i]
-		# Façade éclairée vue de face à 12 m, puis toit vu de trois quarts
-		var facade: Image = await _shot(lit, Vector3(xc, 3.0, 12.0), Vector3(xc, 3.0, 0.0))
+		# Façade éclairée vue de biais à hauteur d'homme, puis toit vu de trois quarts
+		var facade: Image = await _shot(lit, Vector3(xc - 7.0, 1.6, 7.0), Vector3(xc + 1.0, 3.0, -2.0))
 		var roof: Image = await _shot(lit, Vector3(xc + 6.0, 16.0, 8.0), Vector3(xc, 6.0, -4.0))
 		var r_f := Speckle.isolated_ratio(facade)
 		var r_r := Speckle.isolated_ratio(roof)
@@ -131,8 +139,8 @@ func _run() -> void:
 		# Teinte du toit vue d'en haut, dans le pan arrière (z = -6 m)
 		var top: Image = await _shot(flat, Vector3(xc, 40.0, -6.0), Vector3(xc, 0.0, -6.0), 6.0)
 		var sum := Color(0, 0, 0)
-		for y in range(96, 160):
-			for x in range(96, 160):
+		for y in range(SIZE / 2 - 32, SIZE / 2 + 32):
+			for x in range(SIZE / 2 - 32, SIZE / 2 + 32):
 				sum += top.get_pixel(x, y)
 		var c := sum / (64.0 * 64.0)
 		match st:
