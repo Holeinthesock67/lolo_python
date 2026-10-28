@@ -32,7 +32,7 @@ class SimScenarioError(Exception):
 
 TRAINER_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
                 "ibd_hz", "rider_power_w", "cadence_rpm", "erg_tau_s", "cp_latency_s",
-                "power_range", "refuse_control", "relayed_hr"}
+                "power_range", "refuse_control", "relayed_hr", "target_speed_kmh"}
 CLICK_BOX_KEYS = {"address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
                   "status_hz", "battery_pct", "sleep_on_drop", "mute_after_s", "unlock_on_ride_on"}
 CLICK_KEYS = CLICK_BOX_KEYS - {"address"} | {"plus", "minus", "relay_delay_s"}
@@ -169,6 +169,9 @@ def validate(spec: Any) -> dict[str, Any]:
                           ("hr_watch", HR_KEYS)):
         if spec.get(section) is not None:
             _check_keys(section, spec[section], keys)
+    speed = (spec.get("trainer") or {}).get("target_speed_kmh")
+    if speed is not None and not 0 < _num("trainer.target_speed_kmh", speed) <= 80:
+        raise SimScenarioError("trainer.target_speed_kmh : entre 0 et 80 km/h")
     for section in ("hr", "hr_watch"):
         hr = spec.get(section) or {}
         if hr.get("contact") is not None and not isinstance(hr["contact"], bool):

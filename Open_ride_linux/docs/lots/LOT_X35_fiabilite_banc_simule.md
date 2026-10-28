@@ -34,3 +34,13 @@ Défauts du banc signalés le 28 octobre par le fil des mesures et le fil du dé
 ## 6. Hors périmètre
 
 Les comptes du décor par sorte dans le rapport (fil du décor vivant).
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x35`, sur X32).
+
+- **Captures** : `sim_bench.py` attend `route_loaded` puis 5 s (`SETTLE_S`) avant la première capture périodique ; une capture sans réponse en 5 s est redemandée une fois (réponse reconnue à son `tag`) ; la vérification « captures de l'engine » ne compte que les captures demandées après le chargement et donne les redemandes et le délai de réponse (médiane, pire) ; délai sous chaque image du rapport. Écart : la « première image jouable » de X15 n'existe pas encore, d'où l'attente fixe de 5 s.
+- **Pics des captures** : `perf_probe.gd` (`mark_capture`, appelé par `main.gd` après l'écriture du PNG) met à part la capture et les deux images suivantes ; elles restent dans les images/s, sortent de p50, p99 et pire image, et sont comptées dans les colonnes `capture` et `capture_max_ms`. Le tri se fait dans l'engine, car `moteur.csv` ne garde qu'une ligne par seconde ; `perf_probe.py` les compte à part dans `sonde.txt` et dans la vérification des saccades de l'endurance.
+- **Couches** : `prepare_world` compare les couches des scripts `make_sim_world.py` et `make_osm_world.py` à `openride_compiler.cli.LAYERS` du compilateur installé ; couche inconnue ou compilateur absent : arrêt, code 2.
+- **Vitesse imposée** : clé `target_speed_kmh` du trainer simulé (`ble_sim.py`, validée par `sim_scenarios.py`) : puissance = `resistive_force(v, pente reçue) × v / rendement` ; `--speed-kmh` ou `bench.speed_kmh` ; le banc passe en difficulté 100 % (pente reçue = pente du parcours, au braquet de départ près) et refuse une autre difficulté ; vérification « vitesse imposée » sur la médiane du journal après 20 s.
+- Tests : `core/tests/test_sim_bench_fiabilite.py` ; `engine/tests/unit/test_perf_probe.gd` (images de capture hors p99).

@@ -961,6 +961,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
+	_probe.mark_capture()   # pic de la lecture et de l'écriture : hors p99 de la sonde (lot X35)
 	var widgets := {}
 	var nodes := {
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,

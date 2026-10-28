@@ -66,6 +66,29 @@ func _init() -> void:
 	_check(lines.size() == 2 and lines[0] == ";".join(PerfProbe.COLUMNS), "en-tête et une ligne écrits")
 	_check(lines.size() == 2 and lines[1].ends_with(";medium") and lines[1].split(";")[PerfProbe.COLUMNS.find("fps")] == "55.56",
 		"ligne : 2 images en 36 ms, 55.56 images/s")
+	# Capture d'écran (lot X35) : l'image de la capture et les deux suivantes sortent de p99 et pire image.
+	var cs: Dictionary = PerfProbe.capture_stats([16.0, 16.0], [])
+	_check(cs["capture"] == 0 and not cs.has("fps"), "sans capture : rien à corriger")
+	probe = PerfProbe.new()
+	_check(probe.open(csv, null, "low"), "fichier rouvert")
+	for i in 10:
+		probe.frame(0.016)
+	probe.mark_capture()
+	probe.frame(0.150)
+	probe.frame(0.030)
+	probe.frame(0.016)
+	probe.frame(0.016)
+	probe._last_us -= PerfProbe.PERIOD_US
+	probe.frame(0.016)
+	probe.close()
+	lines = FileAccess.get_file_as_string(csv).strip_edges().split("\n")
+	var cells2 := lines[1].split(";") if lines.size() == 2 else PackedStringArray()
+	var col := func(name: String) -> String: return cells2[PerfProbe.COLUMNS.find(name)] if cells2.size() == PerfProbe.COLUMNS.size() else "?"
+	_check(col.call("capture") == "3" and col.call("capture_max_ms") == "150.00",
+		"3 images de capture mises à part, pire 150 ms (%s, %s)" % [col.call("capture"), col.call("capture_max_ms")])
+	_check(col.call("frame_max_ms") == "16.00" and col.call("frame_p99_ms") == "16.00",
+		"p99 et pire image sans la capture (%s, %s)" % [col.call("frame_p99_ms"), col.call("frame_max_ms")])
+	_check(col.call("fps") == "38.66", "images/s avec les images de la capture : 15 images en 388 ms (%s)" % col.call("fps"))
 	DirAccess.remove_absolute(csv)
 	DirAccess.remove_absolute(dir)
 
