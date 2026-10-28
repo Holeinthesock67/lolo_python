@@ -47,7 +47,7 @@ def test_current_lists_the_settings_with_bounds_from_config():
     assert display == {"key": "render.display", "label": "Mode d'affichage", "group": "graphics",
                        "value": "fullscreen", "applies": "now", "type": "choice", "choices": ["windowed", "borderless", "fullscreen"]}
     camera = next(it for it in items if it["key"] == "render.camera")
-    assert camera["value"] == "follow_near" and camera["group"] == "display"   # lot V12
+    assert camera["value"] == "follow_near" and camera["group"] == "graphics"   # lot V12
     assert camera["choices"] == ["subjective", "follow_near", "follow_far", "side"]
 
 
