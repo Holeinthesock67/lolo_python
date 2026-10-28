@@ -216,6 +216,7 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+	streamer.osm_streamer.set_preset(_quality_name)
 	RenderQuality.apply_fog(world_env.environment, _quality_name, false)
 	_report_quality(_quality_name, "cli" if _quality_from_cli() else "defaut")
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
@@ -387,6 +388,8 @@ func _on_settings(msg: Dictionary) -> void:
 		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
+		if streamer.osm_streamer != null:
+			streamer.osm_streamer.set_preset(_quality_name)
 		_report_quality(q, "reglage")
 	elif q != _quality_name:
 		_report_quality(q, "reglage")   # valeur inconnue : la qualité appliquée ne change pas, et le journal le dit
