@@ -82,18 +82,18 @@ Session ERG avec un entraînement court, sur `demo`. Arrête-toi après la mont�
 
 Remarque : …
 
-## 5. Option « Bonus » à « non » (5 minutes au plus)
+## 5. Option « Bonus » à « non » (fait sans vélo)
 
-Réglages, « Bonus : non ». Séance sur `demo` jusqu'au km 1,5.
+Automatisé le 28 octobre : `cd core && pytest -m recette_sans_velo` (test `test_powerups_off_and_route_without_segments`, séance simulée sans bonus : ni arche, ni bonus, segments gardés). À refaire sur le vélo seulement si ce test échoue : Réglages, « Bonus : non », séance sur `demo` jusqu'au km 1,5.
 
 - [ ] Ni arche, ni bonus, ni bloc bonus ; les segments restent chronométrés.
 - [ ] Remets « Bonus : oui » à la fin.
 
 Remarque : …
 
-## 6. Reprise après une coupure du core (5 minutes au plus)
+## 6. Reprise après une coupure du core (fait sans vélo)
 
-Pendant la montée de `demo`, coupe le core depuis un autre terminal, puis relance-le comme d'habitude.
+Automatisé le 28 octobre : `cd core && pytest -m recette_sans_velo` (test `test_game_lines_are_kept_after_crash_resume` : le journal garde ses lignes `powerup`, `segment` et `jersey` après la reprise) ; le bandeau « Core non joignable » puis sa disparition sont vérifiés par le scénario 4 « core injoignable » du faux core (`engine/tests/fake_core.py`, lancé par `run_engine_tests.sh`). À refaire sur le vélo seulement si l'un d'eux échoue : pendant la montée de `demo`, coupe le core depuis un autre terminal, puis relance-le comme d'habitude.
 
 ```bash
 pkill -f "openride-core"

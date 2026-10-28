@@ -536,21 +536,21 @@
           {
             "name": "neige",
             "role": "flat",
-            "color": "#cdd6e0",
+            "color": "#b7c3cf",
             "texture": null,
             "scale_m": 6.0
           },
           {
             "name": "glace bleue",
             "role": "steep",
-            "color": "#b8c9d8",
+            "color": "#9fb4c7",
             "texture": null,
             "scale_m": 12.0
           },
           {
             "name": "neige fraîche",
             "role": "high",
-            "color": "#e4eaf1",
+            "color": "#cad5e0",
             "texture": null,
             "scale_m": 8.0
           }
@@ -1128,14 +1128,14 @@
           {
             "name": "basalte noir et lave",
             "role": "flat",
-            "color": "#3a3634",
+            "color": "#4e3b33",
             "texture": null,
             "scale_m": 6.0
           },
           {
             "name": "scories rouges",
             "role": "steep",
-            "color": "#5a2e24",
+            "color": "#6e3324",
             "texture": null,
             "scale_m": 12.0
           }
