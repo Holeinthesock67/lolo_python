@@ -495,6 +495,12 @@ class Run:
             self.engine.wait_for(r"\[test\] key ", int(step.get("duree_ms", 150)) / 1000.0 + 10.0, after=t)
             time.sleep(0.2)
         elif "souris" in step:
+            item = step.get("element", "")
+            if item and not any(r["id"] == item for r in self.state().get("rows", [])):
+                # Rangée hors de la partie affichée de la liste : la molette l'amène, comme le ferait le cycliste.
+                if not self.move_focus(item):
+                    self.check(False, f"souris : molette jusqu'à « {item} »", "élément introuvable")
+                    return True
             t = now()
             self._send({"type": "_test", "action": "mouse", "kind": step["souris"], "item": step.get("element", ""),
                         "at": step.get("point", [])})
