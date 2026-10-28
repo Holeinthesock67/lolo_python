@@ -108,8 +108,8 @@ func _test_abandon_and_summary_quit() -> void:
 	_check(f.on_state({"session_state": "RUNNING"}) == [{"action": "list"}],
 			"listes demandées même en RUNNING (profils des blocs ERG avec --autostart)")
 	f.on_state({"session_state": "PAUSED"})
-	f.handle("MINUS_SHORT")   # Difficulté (boucle depuis Reprendre)
-	f.handle("MINUS_SHORT")   # Abandonner
+	f.handle("PLUS_SHORT")   # Terminer et enregistrer
+	f.handle("PLUS_SHORT")   # Abandonner (avant les lignes modifiables de la pause, lot O18)
 	f.handle("A_LONG")
 	f.handle("PLUS_SHORT")
 	_check(f.handle("A_LONG") == {"action": "end_session", "save": false}, "Abandonner après confirmation")
