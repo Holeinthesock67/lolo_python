@@ -11,7 +11,7 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from openride_core import fit_export
+from openride_core import fit_export, garage
 from openride_core.bots import ConstantPowerBot
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
@@ -63,6 +63,7 @@ class ConstRoute:
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     """`make(port, ...)` crée une séance sur le parcours de démonstration ; `run(s, secondes)` la fait avancer."""
     monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
+    monkeypatch.setattr(garage, "PROFILE_PATH", tmp_path / "profile.json")   # équipement de départ (V5)
     wall = [T0_WALL]
     monkeypatch.setattr(time, "time", lambda: wall[0])
     workouts = tmp_path / "Workouts"
@@ -132,7 +133,7 @@ def test_demo_route_frames_results_records_and_journal(env):
         result_v.validate(m)
     assert msgs[0] == msgs[1] == msgs[2] and msgs[3] == msgs[4] == msgs[5]
     assert msgs[0]["pr"] and msgs[0]["pr_time_s"] is None and not msgs[0]["with_powerup"]
-    assert msgs[0]["equipment_gain_s"] is None
+    assert msgs[0]["equipment_gain_s"] == 0.0   # équipement de départ (lot V5)
 
     book = json.loads((tmp / "records.json").read_text(encoding="utf-8"))["routes"]["demo"]
     assert book["climb1"]["no_bonus"][0]["time_s"] == msgs[0]["time_s"]
