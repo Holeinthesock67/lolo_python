@@ -5,14 +5,14 @@ extends RefCounted
 ##
 ## Valeurs retenues :
 ## - `low` (GPU intégré ou objectif ≥ 30 FPS garanti) : portée 3 km (3 tronçons devant, 1 derrière),
-##   densité de végétation 0,3, sans SSAO ni brouillard volumétrique, MSAA désactivé (0),
-##   brouillard opaque à 4 km, ombres 150 m, budget arbres 20 000.
+##   densité de végétation 0,3, sans brouillard volumétrique, brouillard opaque à 4 km, ombres 150 m,
+##   budget arbres 20 000.
 ## - `medium` (GPU dédié milieu de gamme type GTX 1060) : portée 5 km (5 tronçons devant, 1 derrière),
-##   densité de végétation 0,6, SSAO activé, sans brouillard volumétrique, MSAA 2×,
-##   brouillard opaque à 6 km, ombres 300 m, budget arbres 50 000.
+##   densité de végétation 0,6, sans brouillard volumétrique, brouillard opaque à 6 km, ombres 300 m,
+##   budget arbres 50 000.
 ## - `high` (GPU dédié récent) : portée 8 km (8 tronçons devant, 2 derrière), densité de végétation 1,0,
-##   SSAO et brouillard volumétrique activés, MSAA 4×,
-##   brouillard opaque à 9 km, ombres 600 m, budget arbres 100 000.
+##   brouillard volumétrique activé, brouillard opaque à 9 km, ombres 600 m, budget arbres 100 000.
+## La qualité d'image (anticrénelage, filtrage, occlusion ambiante, glow, ombres) est dans IMAGE (lot Y13).
 ## `fog_end_m` (lot Y1) : distance où le brouillard devient opaque ; la caméra (`camera.far`) et le
 ## rayon des tuiles lointaines du terrain la suivent (render_quality.gd, world_streamer.gd).
 ## Le moteur de rendu ne fait pas partie des préréglages : Forward+ partout (essai Mobile : lot Y7).
@@ -25,9 +25,7 @@ const PRESETS := {
 		"chunks_ahead": 3,
 		"chunks_behind": 1,
 		"vegetation_density_factor": 0.3,
-		"ssao": false,
 		"fog_volumetric": false,
-		"msaa": 0,
 		"fog_end_m": 4000.0,
 	},
 	"medium": {
@@ -35,9 +33,7 @@ const PRESETS := {
 		"chunks_ahead": 5,
 		"chunks_behind": 1,
 		"vegetation_density_factor": 0.6,
-		"ssao": true,
 		"fog_volumetric": false,
-		"msaa": 2,
 		"fog_end_m": 6000.0,
 	},
 	"high": {
@@ -45,10 +41,57 @@ const PRESETS := {
 		"chunks_ahead": 8,
 		"chunks_behind": 2,
 		"vegetation_density_factor": 1.0,
-		"ssao": true,
 		"fog_volumetric": true,
-		"msaa": 4,
 		"fog_end_m": 9000.0,
+	},
+}
+
+## Qualité d'image par préréglage (lot Y13), toujours à la résolution native de l'écran (décision du
+## propriétaire du 27 octobre : ni mise à l'échelle ni suréchantillonnage) :
+## - `msaa` : MSAA 3D (0, 2, 4 ou 8) ; `fxaa` : anticrénelage d'écran, pour `low` qui n'a pas de MSAA.
+## - `ssao`, `ssil` : occlusion ambiante et lumière indirecte d'écran, `off`, `low`, `medium` ou `high`
+##   (Forward+ seulement) ; `ao_half_size` : calcul en demi-résolution.
+## - `glow` : halo des zones claires (ciel, soleil, routes mouillées).
+## - `shadow_atlas` : taille de l'atlas des ombres du soleil ; `shadow_splits` : 2 ou 4 cascades ;
+##   `shadow_filter` : filtre doux `hard`, `very_low`, `low`, `medium`, `high`.
+## - `mesh_lod_threshold` : erreur tolérée des LOD automatiques en pixels (plus petit = plus fin).
+## Le filtrage anisotrope (16×, réglage global en Godot 4.3) est dans `project.godot`.
+const IMAGE := {
+	"low": {
+		"msaa": 0,
+		"fxaa": true,
+		"ssao": "off",
+		"ssil": "off",
+		"ao_half_size": true,
+		"glow": false,
+		"shadow_atlas": 2048,
+		"shadow_splits": 2,
+		"shadow_filter": "low",
+		"mesh_lod_threshold": 2.0,
+	},
+	"medium": {
+		"msaa": 4,
+		"fxaa": false,
+		"ssao": "medium",
+		"ssil": "low",
+		"ao_half_size": true,
+		"glow": true,
+		"shadow_atlas": 4096,
+		"shadow_splits": 4,
+		"shadow_filter": "medium",
+		"mesh_lod_threshold": 1.0,
+	},
+	"high": {
+		"msaa": 4,
+		"fxaa": false,
+		"ssao": "high",
+		"ssil": "medium",
+		"ao_half_size": true,
+		"glow": true,
+		"shadow_atlas": 4096,
+		"shadow_splits": 4,
+		"shadow_filter": "high",
+		"mesh_lod_threshold": 0.5,
 	},
 }
 
@@ -80,6 +123,12 @@ static func preset(name: String) -> Dictionary:
 	if PRESETS.has(key):
 		return (PRESETS[key] as Dictionary).duplicate(true)
 	return (PRESETS[DEFAULT_PRESET] as Dictionary).duplicate(true)
+
+
+## Qualité d'image du préréglage (lot Y13), `low` si le nom est inconnu.
+static func image(name: String) -> Dictionary:
+	var key := name.strip_edges()
+	return (IMAGE[key] if IMAGE.has(key) else IMAGE[DEFAULT_PRESET]).duplicate(true)
 
 
 ## Distance où le brouillard de profondeur devient opaque (lot Y1), `low` si le nom est inconnu.

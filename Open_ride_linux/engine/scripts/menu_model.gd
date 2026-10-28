@@ -114,6 +114,8 @@ var bot_choice := 0
 var ghost := false
 ## Cyber-Rogue (lot R13) : rappel des choix affiché sur l'écran Prêt quand `mode` vaut « rogue ».
 var rogue_ready := ""
+## Garage (lot V8) : l'accueil gagne « Garage » quand le core annonce une progression (set_garage).
+var garage := false
 
 
 func _init() -> void:
@@ -143,8 +145,10 @@ func _refresh_home() -> void:
 		if m in modes:
 			items.append(_item(m, HOME_MODES[m]))
 	items.append_array([_item("plan", plan_label, true, plan_detail), _item("ftp", "Test de FTP"),
-		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée"),
-		_item("settings", "Réglages"), _item("quit", "Quitter")])
+		_item("sim", "Revenir au matériel réel" if sim_session else "Session simulée")])
+	if garage:
+		items.append(_item("garage", "Garage"))
+	items.append_array([_item("settings", "Réglages"), _item("quit", "Quitter")])
 	_screens[HOME]["items"] = items
 	if mode == "rogue":
 		_screens[READY]["items"] = [_item("start", "Démarrer", true, rogue_ready),
@@ -168,6 +172,12 @@ func _refresh_home() -> void:
 func set_world(id: String, name: String) -> void:
 	world_id = id
 	world_name = name if name != "" else id
+	_refresh_home()
+
+
+## « Garage » à l'accueil (lot V8) : vrai quand hello_ack.config porte une `progression`.
+func set_garage(on: bool) -> void:
+	garage = on
 	_refresh_home()
 
 
@@ -524,7 +534,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "rogue":
+				"plan", "ftp", "rogue", "garage":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID]:

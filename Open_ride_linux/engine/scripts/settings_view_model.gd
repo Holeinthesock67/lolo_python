@@ -15,6 +15,7 @@ extends RefCounted
 ## Pas de class_name : charger par preload("res://scripts/settings_view_model.gd").
 
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
+const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 
 const EDIT_SCREEN := "setting_edit"
 ## Clé de l'écran de modification ouvert depuis la pause (difficulté de la séance en cours).
@@ -27,6 +28,7 @@ const PAUSE_DIFFICULTY := "pause.difficulty"
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
+	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},
 	"render.fps": {"off": "non", "on": "oui"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 }
@@ -73,6 +75,8 @@ static func is_slider(it: Dictionary) -> bool:
 static func format_value(it: Dictionary, value) -> String:
 	if is_slider(it):
 		return slider(int(value))
+	if str(it.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
+		return GarageViewModel.format_edit(str(it["key"]), int(value))
 	if it.has("format"):
 		return WorkoutBuilder.format_param(it, value)
 	var texts: Dictionary = CHOICE_TEXTS.get(str(it.get("key", "")), {})
@@ -229,6 +233,9 @@ func commit() -> Dictionary:
 		return {}
 	if e["key"] == PAUSE_DIFFICULTY:
 		return {"action": "set_difficulty", "pct": int(e["value"])}
+	if str(e["key"]).begins_with(GarageViewModel.KEY_PREFIX):
+		return {"action": "garage_set", "key": str(e["key"]).substr(GarageViewModel.KEY_PREFIX.length()),
+			"value": int(e["value"])}
 	if str(e["key"]).begins_with(WorkoutBuilder.KEY_PREFIX):
 		return {"action": "builder_set", "key": str(e["key"]).substr(WorkoutBuilder.KEY_PREFIX.length()),
 			"value": int(e["value"])}
