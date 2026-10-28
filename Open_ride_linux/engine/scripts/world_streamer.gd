@@ -9,7 +9,12 @@ extends Node3D
 ##   plus loin ; tuiles lointaines présentes à moins de far_radius_m (fin du brouillard du préréglage
 ##   plus une tuile lointaine, au plus FAR_RADIUS_M = 12 km, lot Y1) ;
 ## - tuile proche manquante : rien si une tuile lointaine couvre l'endroit (elle est dessinée dessous),
-##   sinon tuile plate à l'altitude de la route la plus proche (format §10).
+##   sinon tuile plate à l'altitude de la route la plus proche (format §10) ;
+## - lot S1 (`culling`, vrai par défaut, `--culling=off` pour comparer) : une tuile proche n'est voulue
+##   que si elle est à moins de `culling_keep_m` de la caméra (distance des ombres plus une case d'arbres)
+##   ou dans le champ de la caméra active, maintenant ou le long des prochains mètres de route
+##   (view_culling.gd) ; les tuiles proches derrière la caméra ne sont ni construites, ni garnies d'arbres,
+##   ni dessinées. Les tuiles lointaines restent toutes chargées : elles servent de fond si la vue change.
 ## Les tableaux de sommets se calculent dans WorkerThreadPool ; les ArrayMesh et MeshInstance3D se
 ## créent sur le fil principal, au plus MAX_NEW_PER_FRAME par image. Ce qui sort de la fenêtre est
 ## libéré tout de suite (free) ; un changement de parcours vide tout (set_world).
@@ -24,6 +29,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
+const ViewCulling := preload("res://scripts/view_culling.gd")
 
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
@@ -47,6 +53,12 @@ var far_radius_m: float = FAR_RADIUS_M:
 		if _ground != null and _ground.mesh is PlaneMesh:
 			(_ground.mesh as PlaneMesh).size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 var tree_renderer: Node3D = null
+## Lot S1 : tri des tuiles proches selon le champ de la caméra active ; rayon gardé tout autour réglé par
+## render_quality.gd (ViewCulling.keep_radius_for, distance des ombres du préréglage).
+var culling := true
+var culling_keep_m: float = ViewCulling.keep_radius_for(150.0)
+## Tuiles proches écartées par le dernier update_window (tests, journal).
+var culled_near := 0
 var osm_streamer: Node3D = null
 
 var _near_index: Dictionary = {}     # Vector2i -> true
@@ -321,6 +333,27 @@ func near_window(points: Array) -> Dictionary:
 	return out
 
 
+## Vues de la caméra active (lot S1) : maintenant puis le long de la route ; vide sans tri (culling
+## coupé, hors de l'arbre de scène, sans caméra, ou caméra pas encore placée à `cam_pos`, comme au
+## chargement d'un parcours), et tout est alors voulu.
+func _views(s_pos: float, v: float, cam_pos: Vector3) -> Array:
+	if not culling or not is_inside_tree() or route == null:
+		return []
+	var cam := get_viewport().get_camera_3d()
+	if cam == null or cam.global_position.distance_to(cam_pos) > ViewCulling.CAMERA_MATCH_M:
+		return []
+	return ViewCulling.route_views(ViewCulling.view_of(cam), route, s_pos, v)
+
+
+## Tuile proche voulue pour ces vues (lot S1) ; `loaded` : déjà chargée ou en construction, gardée avec
+## la marge d'hystérésis.
+func near_tile_wanted(t: Vector2i, views: Array, loaded: bool = false) -> bool:
+	var size: float = TerrainTiles.LEVELS["near"]["size"]
+	var extra := deg_to_rad(ViewCulling.KEEP_MARGIN_DEG) if loaded else 0.0
+	return ViewCulling.rect_wanted(Rect2(t.x * size, t.y * size, size, size), views, NEAR_RADIUS_M,
+		culling_keep_m, extra)
+
+
 ## Une tuile proche (1 000 m) est toujours entièrement dans une seule tuile lointaine (5 000 m).
 func _far_covers(near_tile: Vector2i) -> bool:
 	var c := TerrainTiles.tile_origin("near", near_tile.x, near_tile.y) + Vector3(1.0, 0.0, 1.0)
@@ -347,14 +380,19 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 	if route == null:
 		return
 	var wanted := {}
+	var views := _views(s_pos, v, cam_pos)
 	for k in road_window(s_pos, v):
 		wanted["road:%d" % k] = {"kind": "road", "k": k, "dist": 0.0}
 	if has_terrain:
 		var ahead: Vector3 = route.sample_point(route.wrap_s(s_pos + maxf(v, 0.0) * LOOKAHEAD_S))
 		var near := near_window([Vector2(cam_pos.x, cam_pos.z), Vector2(ahead.x, ahead.z)])
+		culled_near = 0
 		for t in near:
-			wanted["%s:%d:%d" % [near[t], t.x, t.y]] = {"kind": near[t], "tile": t,
-				"dist": _rect_distance("near", t, cam_pos.x, cam_pos.z)}
+			var key := "%s:%d:%d" % [near[t], t.x, t.y]
+			if not near_tile_wanted(t, views, _instances.has(key) or _jobs.has(key)):
+				culled_near += 1
+				continue
+			wanted[key] = {"kind": near[t], "tile": t, "dist": _rect_distance("near", t, cam_pos.x, cam_pos.z)}
 		for t in far_window(cam_pos.x, cam_pos.z):
 			wanted["far:%d:%d" % [t.x, t.y]] = {"kind": "far", "tile": t,
 				"dist": 10000.0 + _rect_distance("far", t, cam_pos.x, cam_pos.z)}
@@ -367,7 +405,7 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 	if _ground != null:
 		_ground.position = Vector3(cam_pos.x, _ground.position.y, cam_pos.z)
 	if tree_renderer != null:
-		tree_renderer.enforce_budget(cam_pos)
+		tree_renderer.enforce_budget(cam_pos, views[0] if not views.is_empty() else {})
 	if osm_streamer != null and route != null:
 		osm_streamer.update_window(s_pos - float(chunks_behind) * 1000.0, s_pos + float(chunks_ahead) * 1000.0 + v * LOOKAHEAD_S)
 

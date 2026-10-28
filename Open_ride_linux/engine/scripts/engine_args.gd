@@ -11,6 +11,7 @@ extends RefCounted
 ##   --perf-probe=FICHIER.csv sonde de performance : une ligne de mesures par seconde (lot X13)
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
+##   --culling=on|off         tri de ce que la caméra ne voit pas (défaut : on) ; off : mesure « avant » (lot S1)
 ##   --display=windowed|borderless|fullscreen  mode d'affichage (défaut : windowed ; display_mode.gd)
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
@@ -36,7 +37,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, visual_grade, living, display, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, visual_grade, living, culling, display, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -47,6 +48,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"theme": DEFAULT_THEME,
 		"visual_grade": DEFAULT_VISUAL_GRADE,
 		"living": true,
+		"culling": true,
 		"display": DisplayMode.DEFAULT,
 		"test_mode": false,
 		"sim_session": false,
@@ -74,7 +76,9 @@ static func parse(args: PackedStringArray) -> Dictionary:
 				csv = _home() + csv.substr(1)
 			out["perf_probe"] = csv
 		elif arg.begins_with("--living="):
-			out["living"] = _living(arg, true)
+			out["living"] = _on_off(arg, true, "décor vivant")
+		elif arg.begins_with("--culling="):
+			out["culling"] = _on_off(arg, true, "tri du visible")
 		elif arg.begins_with("--display="):
 			out["display"] = _display(arg, DisplayMode.DEFAULT)
 		elif arg == "--test-mode":
@@ -132,14 +136,16 @@ static func _visual_grade(arg: String, fallback: float) -> float:
 		printerr("Argument ignoré (visual_grade hors bornes [1.0, 2.0]) : ", arg)
 		return fallback
 	return val
-static func _living(arg: String, fallback: bool) -> bool:
+
+
+static func _on_off(arg: String, fallback: bool, what: String) -> bool:
 	var val := arg.get_slice("=", 1).strip_edges().to_lower()
 	if val in ["on", "true", "1", "oui"]:
 		return true
 	if val in ["off", "false", "0", "non"]:
 		return false
-	last_error = "Argument ignoré (décor vivant : on ou off) : " + arg
-	printerr("Argument ignoré (décor vivant : on ou off) : ", arg)
+	last_error = "Argument ignoré (%s : on ou off) : %s" % [what, arg]
+	printerr(last_error)
 	return fallback
 
 

@@ -7,6 +7,7 @@ const RenderQuality := preload("res://scripts/render_quality.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
+const ViewCulling := preload("res://scripts/view_culling.gd")
 
 var _failures := 0
 var _checked := 0
@@ -26,6 +27,7 @@ class DummyStreamer:
 	var chunks_behind: int = 0
 	var vegetation_density_factor: float = 0.0
 	var far_radius_m: float = 0.0
+	var culling_keep_m: float = 0.0
 
 
 func _test_presets_application() -> void:
@@ -49,6 +51,8 @@ func _test_presets_application() -> void:
 			"%s : cam.near/far conformes (near=%.3f, far=%.1f, brouillard opaque à %.0f m)" % [name, cam.near, cam.far, fog_end])
 		_check(absf(streamer.far_radius_m - WorldStreamer.far_radius_for(fog_end)) < 1e-3,
 			"%s : rayon des tuiles lointaines = %.0f m" % [name, streamer.far_radius_m])
+		_check(absf(streamer.culling_keep_m - QualityPresets.shadow_distance_m(name) - ViewCulling.KEEP_EXTRA_M) < 1e-3,
+			"%s : rayon gardé autour de la caméra = %.0f m (ombres plus une case d'arbres, lot S1)" % [name, streamer.culling_keep_m])
 		_check(light.shadow_enabled and absf(light.directional_shadow_max_distance - QualityPresets.shadow_distance_m(name)) < 1e-4,
 			"%s : distance d'ombre = %.0f m" % [name, QualityPresets.shadow_distance_m(name)])
 		_check(env.ssao_enabled == (bool(p["ssao"]) and fp),

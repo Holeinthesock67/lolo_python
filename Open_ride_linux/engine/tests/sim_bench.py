@@ -5,7 +5,7 @@ Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen]
-                 [--probe] [--out DOSSIER] [--list]
+                 [--culling on|off] [--probe] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -26,7 +26,8 @@ et le CPU des processus : rapport dans `<scénario>/sonde/` (lot X13). Le scéna
 roule une heure, relance le parcours à chaque fin et vérifie images/s, saccades et croissance de la mémoire.
 `--display` (avec `--native`) choisit le mode d'affichage de l'engine (`display_mode.gd`) : fenêtre de
 `--size` par défaut, `borderless` ou `fullscreen` à la définition native de l'écran, pour comparer les modes
-avec la sonde.
+avec la sonde. `--culling off` coupe le tri de ce que la caméra ne voit pas (lot S1) : mesure « avant »
+du scénario `rendu_invisible`, à comparer avec `--culling on` (défaut).
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
 qui peuvent fixer `world`, `workout`, `duration_s` et `difficulty_pct` dans une section
@@ -266,7 +267,7 @@ class Bench:
                     "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
-                    f"--display={a.display}"]
+                    f"--display={a.display}", f"--culling={a.culling}"]
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
                 cmd.append(f"--perf-probe={(self.out / 'moteur.csv').resolve()}")
                 self.sampler = perf_probe.SystemSampler()
@@ -654,6 +655,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
     ap.add_argument("--display", default="windowed", choices=("windowed", "borderless", "fullscreen"),
                     help="mode d'affichage de l'engine (défaut windowed ; les pleins écrans demandent --native)")
+    ap.add_argument("--culling", default="on", choices=("on", "off"),
+                    help="tri de ce que la caméra ne voit pas (lot S1, défaut on ; off : mesure « avant »)")
     ap.add_argument("--probe", action="store_true",
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))

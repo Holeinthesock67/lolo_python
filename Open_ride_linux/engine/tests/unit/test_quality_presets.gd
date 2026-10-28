@@ -51,6 +51,12 @@ func _test_engine_args() -> void:
 	var p_bad_living: Dictionary = EngineArgs.parse(PackedStringArray(["--living=peut-être"]))
 	_check(p_off["living"] == false and p_bad_living["living"] == true and "décor vivant" in EngineArgs.last_error,
 		"engine_args : --living=off coupe le décor vivant, une valeur invalide le laisse actif avec message")
+	var p_cull_off: Dictionary = EngineArgs.parse(PackedStringArray(["--culling=off"]))
+	_check(p_def["culling"] == true and p_cull_off["culling"] == false and EngineArgs.last_error == "",
+		"engine_args : tri du visible actif par défaut, --culling=off le coupe (lot S1)")
+	var p_bad_cull: Dictionary = EngineArgs.parse(PackedStringArray(["--culling=bof"]))
+	_check(p_bad_cull["culling"] == true and "tri du visible" in EngineArgs.last_error,
+		"engine_args : --culling invalide laisse le tri actif avec message (%s)" % EngineArgs.last_error)
 
 	var p_empty_theme: Dictionary = EngineArgs.parse(PackedStringArray(["--theme="]))
 	_check(p_empty_theme["theme"] == "default" and "thème vide" in EngineArgs.last_error,
