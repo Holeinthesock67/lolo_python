@@ -639,7 +639,8 @@ class CoreSession:
 
         try:
             bots = bots_from_menu(args["bots"], PhysicsParams.from_config(self.cfg), self.cfg.rider.ftp_w,
-                                  self.state.route_id, self.journal_dir, s=self.physics.s)
+                                  self.state.route_id, self.journal_dir, s=self.physics.s,
+                                  bike_mass_kg=self.cfg.bike.mass_kg)
         except BotError as exc:
             self.server.send_error("bot_invalid", f"Bots refusés : {exc}")
             return False
@@ -1233,6 +1234,9 @@ class CoreSession:
             route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
             loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
             powerups_on=self.cfg.powerups.mode == "on")
+        from .bots import attach_segments
+
+        attach_segments(self.bots, self._segments)   # montées et sprints des bots à profil (lot T12)
         self.race.start(self._t_session, self.physics.s, self.bots)
         if self._segments:
             log.info("Mode classique : %d segment(s), bonus %s.", len(self._segments), self.cfg.powerups.mode)
