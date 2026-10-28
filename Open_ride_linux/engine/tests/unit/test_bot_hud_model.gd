@@ -30,13 +30,13 @@ func _init() -> void:
 ## Quatre bots à profil (révision 1.4) autour du cycliste à s = 1000 m.
 func _profile_bots() -> Array:
 	return [
-		{"id": "b1", "name": "Grimpeur", "s": 1060.0, "v": 7.0, "kind": "profile", "profile": "climber",
+		{"id": "b1", "name": "Grimpeur", "s": 1060.0, "v": 7.0, "kind": "constant", "profile": "climber",
 			"cp_w": 248.0, "mass_kg": 60.0, "wbal_pct": 71.5, "jersey": "kom", "gap_s": 8.4},
-		{"id": "b2", "name": "Rouleur", "s": 1010.0, "v": 7.0, "kind": "profile", "profile": "rouleur",
+		{"id": "b2", "name": "Rouleur", "s": 1010.0, "v": 7.0, "kind": "constant", "profile": "rouleur",
 			"cp_w": 259.0, "mass_kg": 72.0, "wbal_pct": 100.0, "jersey": null, "gap_s": 1.2},
-		{"id": "b3", "name": "Diesel", "s": 980.0, "v": 7.0, "kind": "profile", "profile": "diesel",
+		{"id": "b3", "name": "Diesel", "s": 980.0, "v": 7.0, "kind": "constant", "profile": "diesel",
 			"cp_w": 285.0, "mass_kg": 75.0, "wbal_pct": 0.0, "jersey": "sprint", "gap_s": -3.14},
-		{"id": "b4", "name": "Bot 2", "s": 900.0, "v": 7.0, "kind": "profile", "profile": "sprinter",
+		{"id": "b4", "name": "Bot 2", "s": 900.0, "v": 7.0, "kind": "constant", "profile": "sprinter",
 			"cp_w": 264.0, "mass_kg": 80.0, "wbal_pct": 40.0, "jersey": null, "gap_s": -14.0},
 	]
 
@@ -103,6 +103,8 @@ func _test_race_fields() -> void:
 	var b: Dictionary = m.view(1000.0, 7.0, 0)[0]
 	_check(b["profile"] == "climber" and b["cp_w"] == 248.0 and b["wbal_pct"] == 71.5 and b["jersey"] == "kom",
 		"champs de profil transmis par bots_view_model")
+	_check(b["color"] == BotsViewModel.PROFILE_COLOR and BotsViewModel.color_of("constant") != BotsViewModel.PROFILE_COLOR,
+		"bot à profil (kind constant, contrat 1.4) : couleur du profil")
 	m.push([{"id": "c", "name": "C", "s": 1.0, "v": 1.0, "kind": "constant"}], 0)
 	b = m.view(0.0, 1.0, 0)[0]
 	_check(b["profile"] == null and b["cp_w"] == null and b["jersey"] == null, "bot sans profil : champs à null")

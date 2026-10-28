@@ -14,7 +14,8 @@ extends RefCounted
 ## - Ordre : du plus loin devant au plus loin derrière (comme un classement).
 ## - Lot T15 : les champs de profil de la révision 1.4 (`profile`, `cp_w`, `mass_kg`, `wbal_pct`,
 ##   `jersey`) passent tels quels dans view() (null s'ils manquent) ; set_race() garde `bot_ahead`,
-##   `bot_behind` et `jerseys` de la même trame (race()). Lignes de l'encart : bot_hud_model.gd.
+##   `bot_behind` et `jerseys` de la même trame (race()) ; un bot à profil garde `kind` = `constant`
+##   (contrat 1.4) et se reconnaît à `profile`. Lignes de l'encart : bot_hud_model.gd.
 ## Pas de class_name : charger par preload("res://scripts/bots_view_model.gd").
 
 const VISIBLE_M := 300.0
@@ -22,9 +23,10 @@ const NAME_M := 50.0
 const MAX_LINES := 5
 const MAX_EXTRAPOLATION_S := 1.0
 const MIN_SPEED_MPS := 1.0
-## Couleur par `kind` : bot à puissance constante orange, fantôme bleu pâle, bot à profil (T12) jaune ;
-## inconnu gris.
-const COLORS := {"constant": Color(0.95, 0.55, 0.15), "ghost": Color(0.60, 0.75, 1.00), "profile": Color(0.95, 0.85, 0.30)}
+## Couleur par `kind` : bot à puissance constante orange, fantôme bleu pâle ; inconnu gris. Un bot à
+## profil (T12, `kind` = `constant` avec `profile`, contrat 1.4) est jaune.
+const COLORS := {"constant": Color(0.95, 0.55, 0.15), "ghost": Color(0.60, 0.75, 1.00)}
+const PROFILE_COLOR := Color(0.95, 0.85, 0.30)
 ## Champs de profil (révision 1.4) recopiés tels quels dans view().
 const PROFILE_FIELDS := ["profile", "cp_w", "mass_kg", "wbal_pct", "jersey"]
 const OTHER_COLOR := Color(0.75, 0.75, 0.75)
@@ -89,7 +91,9 @@ static func gap_seconds(gap: float, rider_v: float, bot_v: float) -> float:
 	return gap / maxf((maxf(rider_v, 0.0) + maxf(bot_v, 0.0)) / 2.0, MIN_SPEED_MPS)
 
 
-static func color_of(kind: String) -> Color:
+static func color_of(kind: String, profile = null) -> Color:
+	if profile != null and str(profile) != "":
+		return PROFILE_COLOR
 	return COLORS.get(kind, OTHER_COLOR)
 
 
@@ -106,7 +110,7 @@ func view(rider_s: float, rider_v: float, now_us: int) -> Array:
 		var gm := gap_m(rider_s, s, loop_length_m)
 		var gs: float = b["gap_s"] if b["gap_s"] != null else gap_seconds(gm, rider_v, b["v"])
 		var item := {"id": b["id"], "name": b["name"], "kind": b["kind"], "s": s, "gap_m": gm, "gap_s": gs,
-			"visible": absf(gm) < VISIBLE_M, "show_name": absf(gm) < NAME_M, "color": color_of(b["kind"])}
+			"visible": absf(gm) < VISIBLE_M, "show_name": absf(gm) < NAME_M, "color": color_of(b["kind"], b["profile"])}
 		for key in PROFILE_FIELDS:
 			item[key] = b[key]
 		out.append(item)
