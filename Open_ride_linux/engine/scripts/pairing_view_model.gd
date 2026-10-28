@@ -26,6 +26,8 @@ var choice := {"trainer": null, "click_plus": null, "click_minus": null, "hr": n
 ## Adresses déjà dans config.toml, d'après `configured` des éléments trouvés.
 var configured := {"trainer": null, "click_plus": null, "click_minus": null, "hr": null}
 var message := ""
+## Le message est une erreur (affiché en couleur d'erreur).
+var message_error := false
 var saved := false
 var _pair_failed := false
 
@@ -34,6 +36,7 @@ func reset() -> void:
 	scanning = false
 	identifying = false
 	message = ""
+	message_error = false
 	saved = false
 
 
@@ -53,6 +56,7 @@ func _name_of(address) -> String:
 
 ## Message `scan_results` reçu (recherche en cours, terminée, ou fin de l'identification du « + »).
 func on_scan_results(msg: Dictionary) -> void:
+	message_error = false
 	var raw = msg.get("items", [])
 	items = raw if raw is Array else []
 	var done := bool(msg.get("done", false))
@@ -86,6 +90,7 @@ func on_scan_results(msg: Dictionary) -> void:
 
 ## Erreur du core pendant l'écran (codes busy, scan_failed, pairing_failed).
 func on_error(code: String, text: String) -> void:
+	message_error = true
 	match code:
 		"scan_failed", "busy":
 			scanning = false
@@ -101,6 +106,7 @@ func on_error(code: String, text: String) -> void:
 func on_pair_acked() -> void:
 	if not _pair_failed:
 		saved = true
+		message_error = false
 		for role in ROLES:
 			if choice[role] != null:
 				configured[role] = choice[role]
@@ -123,8 +129,8 @@ func menu_items() -> Array:
 	out.append({"id": "scan", "label": "Recherche en cours…" if scanning else "Rechercher les appareils",
 		"enabled": not scanning and not identifying})
 	var trainers := _of_role("trainer")
-	out.append({"id": "trainer", "label": "Trainer : %s" % (_name_of(choice["trainer"]) if choice["trainer"] != null else "aucun"),
-		"enabled": trainers.size() > 1, "detail": "valider : suivant" if trainers.size() > 1 else ""})
+	out.append({"id": "trainer", "label": "Trainer", "detail": _name_of(choice["trainer"]) if choice["trainer"] != null else "aucun",
+		"enabled": trainers.size() > 1})
 	var clicks := _of_role("click")
 	var click_label := "Click : identifier le bouton +"
 	if identifying:
@@ -133,13 +139,53 @@ func menu_items() -> Array:
 		click_label = "Click : + reconnu" + ("" if choice["click_minus"] == null else ", − trouvé")
 	out.append({"id": "identify", "label": click_label, "enabled": not clicks.is_empty() and not identifying and not scanning})
 	var straps := _of_role("hr_strap")
-	out.append({"id": "hr", "label": "Ceinture : %s" % (_name_of(choice["hr"]) if choice["hr"] != null else "aucune"),
-		"enabled": straps.size() > 1, "detail": "valider : suivante" if straps.size() > 1 else ""})
+	out.append({"id": "hr", "label": "Ceinture", "detail": _name_of(choice["hr"]) if choice["hr"] != null else "aucune",
+		"enabled": straps.size() > 1})
 	out.append({"id": "save", "label": "Enregistrer", "enabled": has_changes() and not scanning and not identifying})
 	if saved:
 		out.append({"id": "relaunch", "label": "Relancer OpenRide maintenant"})
 	out.append({"id": "back", "label": "Retour"})
 	return out
+
+
+## Barres de force du signal (dBm) : 4 au-dessus de −55, 3 jusqu'à −65, 2 jusqu'à −75, 1 en dessous.
+static func signal_bars(rssi) -> int:
+	if rssi == null:
+		return 0
+	var r := float(rssi)
+	return 4 if r >= -55.0 else (3 if r >= -65.0 else (2 if r >= -75.0 else 1))
+
+
+## Fiche de l'élément sous le focus pour la carte de détail ({} : pas de carte) : appareil choisi (nom,
+## signal, déjà enregistré ou non) pour Trainer et Ceinture, consigne pour le Click, ce qui sera écrit
+## pour Enregistrer.
+func sheet(item_id: String) -> Dictionary:
+	if item_id in ["trainer", "hr"]:
+		var scan_role := "trainer" if item_id == "trainer" else "hr_strap"
+		var found := _of_role(scan_role)
+		var address = choice[item_id]
+		var dev := {}
+		for it in found:
+			if str(it.get("address", "")) == str(address):
+				dev = it
+		var lines: Array = []
+		if found.size() > 1:
+			lines.append("%d appareils trouvés : valider pour passer au suivant" % found.size())
+		elif found.is_empty():
+			lines.append("Aucun appareil trouvé : lancer la recherche")
+		var tiles: Array = []
+		if not dev.is_empty():
+			tiles.append({"label": "Signal", "value": "%d / 4" % signal_bars(dev.get("rssi", null)), "unit": ""})
+			tiles.append({"label": "Enregistré", "value": "oui" if str(address) == str(configured[item_id]) else "non", "unit": ""})
+		return {"title": "Trainer" if item_id == "trainer" else "Ceinture cardio",
+			"name": _name_of(address) if address != null else "", "tiles": tiles, "lines": lines}
+	if item_id == "identify":
+		return {"title": "Click", "name": "Reconnaître le boîtier +",
+			"lines": ["Appuyez sur « + » du Click dans les 15 s : l'autre boîtier est déduit de la recherche"]}
+	if item_id == "save":
+		return {"title": "Enregistrement", "name": "Changements à écrire",
+			"lines": ["Écrits dans ~/OpenRide/config.toml ; relancer OpenRide ensuite"] if has_changes() else ["Rien à enregistrer"]}
+	return {}
 
 
 func _cycle(role: String, scan_role: String) -> void:
@@ -158,6 +204,7 @@ func handle(item_id: String) -> Dictionary:
 		"scan":
 			scanning = true
 			message = ""
+			message_error = false
 			return {"action": "scan_devices"}
 		"trainer":
 			_cycle("trainer", "trainer")

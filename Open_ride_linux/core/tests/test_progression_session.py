@@ -74,6 +74,17 @@ def test_hello_ack_carries_progression(tmp_path, monkeypatch):
     assert len(json.dumps(of(frames, "hello_ack")[0])) < 1400
 
 
+def test_standing_thresholds_come_from_avatar_section(tmp_path, monkeypatch):
+    from openride_core.config import from_dict
+    cfg = from_dict({"avatar": {"standing_grade_pct": 6, "standing_power_pct": 120}})
+    assert (cfg.avatar.standing_grade_pct, cfg.avatar.standing_power_pct) == (6, 120)
+    svc = garage.ProgressionService(cfg, tmp_path, None, tmp_path / "profile.json")
+    svc.load()
+    avatar = svc.progression_dict()["avatar"]
+    assert avatar["standing_grade_pct"] == 6 and avatar["standing_power_pct"] == 120
+    assert Config().avatar.standing_grade_pct == 8 and Config().avatar.standing_power_pct == 150
+
+
 def test_progression_off_changes_nothing(tmp_path, monkeypatch):
     s, frames = make(tmp_path, monkeypatch, enabled=False)
     assert "progression" not in s.server.hello_config
@@ -348,3 +359,18 @@ def test_recompute_500_sessions_under_two_seconds_with_cache(tmp_path):
     t0 = time.perf_counter()
     assert len(recompute(tmp_path, table, cache=FactsCache(cache_path)).sessions) == 500
     assert time.perf_counter() - t0 < 2.0
+
+
+def test_catalogue_looks_known_to_engine(tmp_path, monkeypatch):
+    """Lot V7 : chaque `look` du catalogue livré figure dans equipment_meshes.gd (sinon pièce par défaut)."""
+    import re
+    from pathlib import Path
+    src = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "equipment_meshes.gd").read_text(encoding="utf-8")
+    block = src[src.index("const LOOKS := {"):src.index("const DEFAULT_LOOK")]
+    known = {m[0]: set(re.findall(r'"([a-z_]+)"', m[1]))
+             for m in re.findall(r'"(\w+)": \[([^\]]*)\]', block)}
+    s, _frames = make(tmp_path, monkeypatch)
+    items = s.progress_svc.garage_items()
+    assert items
+    for it in items:
+        assert it["look"] in known[it["slot"]], f"look {it['look']!r} ({it['id']}) absent d'equipment_meshes.gd"
