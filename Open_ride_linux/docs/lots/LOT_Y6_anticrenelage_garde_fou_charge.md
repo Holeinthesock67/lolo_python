@@ -9,7 +9,7 @@ Ce cahier réécrit donc Y6 sur ce qui reste utile, sans toucher à la résoluti
 1. **SMAA 1×** (Godot 4.5) à la place du FXAA en `low`, s'il coûte moins de 0,3 ms et donne des bords plus nets ;
 2. un **garde-fou de charge** : quand la carte graphique sature plusieurs secondes (scène chargée, pluie, village, foule), couper un à un les effets les plus chers du préréglage, puis les rendre quand la charge redescend, au lieu de baisser la résolution.
 
-**Décision demandée au propriétaire** avant de commencer : garder Y6 sous cette forme, ou le retirer (issue #362 fermée) si le garde-fou n'est pas voulu.
+**Décision du propriétaire du 28 octobre :** Y6 est gardé sous cette forme.
 
 ## 2. À lire
 
