@@ -60,6 +60,8 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 			streamer.vegetation_density_factor = float(p["vegetation_density_factor"])
 		if "far_radius_m" in streamer:
 			streamer.far_radius_m = WorldStreamer.far_radius_for(QualityPresets.fog_end_m(key))
+		if "quality_preset" in streamer:
+			streamer.quality_preset = key   # biomes par tuile et textures de sol (lot U6)
 
 
 ## Distance de vue de la caméra : fin du brouillard du préréglage plus CAMERA_FAR_MARGIN.
