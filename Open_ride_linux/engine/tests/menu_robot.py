@@ -359,7 +359,8 @@ class Partie:
         nom = touche.removeprefix("Maj+")
         t = now()
         self._test("key", key=nom, shift=maj, hold_s=duree)
-        if self.engine is not None and self.engine.wait_for(r"\[test\] key_done " + re.escape(nom) + "$", duree + 5.0, after=t) is None:
+        # Marge large : sous Xvfb, une image peut durer plusieurs secondes (changement de qualité graphique).
+        if self.engine is not None and self.engine.wait_for(r"\[test\] key_done " + re.escape(nom) + "$", duree + 20.0, after=t) is None:
             self.check(False, f"touche « {touche} » jouée", "pas d'accusé key_done de l'engine")
 
     def _click(self, bouton: str, duree: float) -> None:

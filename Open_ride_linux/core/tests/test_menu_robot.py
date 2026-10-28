@@ -81,10 +81,11 @@ def test_delivered_scenarios_are_valid_and_cover_the_menus(robot):
     for doc in scenarios.values():
         for st in doc["etapes"]:
             seen.update(v for k in ("ecran", "attendre_ecran") if isinstance(v := st.get(k), str))
-    # Accueil, réglages, appareils, parcours, entraînements, plans, FTP, pause, bilan, Garage, confirmations.
+    # Accueil, réglages, appareils, parcours, entraînements, plans, FTP, pause, bilan, Garage, confirmations,
+    # Cyber-Rogue.
     assert {"connect", "home", "settings", "settings_group", "pairing", "routes", "ready", "workouts",
             "workout_create", "workout_import", "plans", "plan", "ftp_test", "pause", "summary", "garage",
-            "confirm", "records"} <= seen
+            "confirm", "records", "rogue_start"} <= seen
     used = {c for doc in scenarios.values() for c in doc.get("canaux", robot.CANAUX)}
     assert used == set(robot.CANAUX)
 

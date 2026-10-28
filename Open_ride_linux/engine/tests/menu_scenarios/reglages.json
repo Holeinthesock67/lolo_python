@@ -32,7 +32,7 @@
     {"ouvrir": "group:display", "note": "Affichage : qualité appliquée tout de suite"},
     {"ecran": "settings_group", "titre": "Réglages › Affichage", "elements": ["set:render.quality", "set:render.theme", "set:render.camera"]},
     {"ouvrir": "set:render.quality"}, {"bouton": "+ court"}, {"bouton": "A long"},
-    {"config": {"render.quality": "medium"}, "journal_engine": "Qualité graphique : medium"},
+    {"config": {"render.quality": "medium"}, "journal_engine": "Qualité appliquée : medium"},
     {"bouton": "Y court"}, {"ecran": "settings"},
 
     {"ouvrir": "group:sound", "note": "Son : volume général"},

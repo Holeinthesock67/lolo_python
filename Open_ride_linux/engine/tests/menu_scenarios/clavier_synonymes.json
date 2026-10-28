@@ -7,7 +7,7 @@
     {"touche": "="}, {"focus": "ride"},
     {"touche": "Pavé+"}, {"focus": "erg"},
     {"touche": "Pavé-"}, {"focus": "ride"},
-    {"touche": "PageHaut"}, {"focus": "sim"},
+    {"touche": "PageHaut"}, {"focus": "ftp"},
     {"touche": "PageBas"}, {"focus": "ride"},
     {"touche": "Maj+Z"}, {"focus": "ride", "ecran": "home"},
     {"touche": "P"}, {"focus": "ride", "ecran": "home"},
