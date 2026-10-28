@@ -62,6 +62,10 @@ Sortie : une ligne `[OK]` ou `[ÉCHEC]` par vérification, `rapport.html` (captu
 
 Premier défaut trouvé : le bandeau d'alerte (placé à 360 px du bord) recouvrait le HUD dès que celui-ci s'élargissait (ligne d'état, ligne ERG). Il se place désormais à droite du HUD s'il reste 360 px, sinon dessous (`banner.gd`, `layout_for`, test `unit/test_banner_layout.gd`).
 
+## Banc des menus (`menu_bench.py`)
+
+Tous les menus joués de bout en bout au Click V2 simulé, au clavier et à la souris, face au vrai core sur Bluetooth simulé : scénarios déclaratifs de `menu_scenarios/*.json` (un écran ou un parcours de menus chacun), vérifiés par identifiants d'écran et d'élément, `config.toml`, journaux et code de sortie ; voir [docs/OUTILS_DE_TEST.md](../../docs/OUTILS_DE_TEST.md) §3. Messages de test de l'engine qu'il utilise, réutilisables par d'autres bancs (aussi en séance) : `key` (`key`, `shift`, `hold_ms` : touche appuyée puis relâchée par `Input.parse_input_event`), `mouse` (`kind` click, right, wheel_up, wheel_down ou move ; `item` ou `at`) et `menu_state` (`req` : état des menus en une ligne `[test] menu_state {…}`). Ajouter un écran au banc : un fichier JSON, sans toucher au script.
+
 ## Banc d'essai simulé (`sim_bench.py`)
 
 Vrai core sur Bluetooth simulé et vraie scène, captures et rapport HTML, sur le parcours `demo` ou le « village simulé » de `make_sim_world.py` (178 bâtiments, montée et descente) : voir [docs/OUTILS_DE_TEST.md](../../docs/OUTILS_DE_TEST.md) §3. Hors de `run_engine_tests.sh` (plusieurs minutes par scénario).

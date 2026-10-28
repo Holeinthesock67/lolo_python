@@ -447,13 +447,14 @@ class KeyboardProvider:
 class SimClickKeyboard(KeyboardProvider):
     """Clavier du terminal qui appuie sur le Zwift Click simulé (`--input sim`).
 
-    Mêmes touches que `KeyboardProvider`. Les appuis de + et − passent par le Bluetooth simulé : un
-    boîtier endormi ou déconnecté perd l'appui, comme le vrai. Le Click simulé n'a que ces deux boutons :
-    les autres touches (A, Y, Z, flèches) donnent leur événement directement.
+    Mêmes touches que `KeyboardProvider`. Chaque appui passe par le Bluetooth simulé, sur le bouton du
+    Click V2 qui donne l'événement (+, −, A, Y, Z, flèches ; appui court 0,12 s, long 1 s) : un boîtier
+    endormi ou déconnecté perd l'appui, comme le vrai.
     """
 
-    PRESSES = {InputEvent.PLUS_SHORT: ("+", 0.12), InputEvent.MINUS_SHORT: ("-", 0.12),
-               InputEvent.PLUS_LONG: ("+", 1.0), InputEvent.MINUS_LONG: ("-", 1.0)}
+    PRESSES = {ev: ("+" if ev.value.startswith("PLUS") else "-" if ev.value.startswith("MINUS")
+                    else ev.value.rsplit("_", 1)[0], 1.0 if ev.value.endswith("_LONG") else 0.12)
+               for ev in set(TERMINAL_KEYS.values())}
 
     def __init__(self, world: Any) -> None:
         super().__init__()

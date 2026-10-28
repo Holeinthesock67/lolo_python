@@ -1,0 +1,27 @@
+{
+  "description": "Souris seule : clic gauche sur un élément sans focus (focus puis validation), élément hors de la partie affichée amené par la molette, molette bas et haut, clic droit = retour, clic gauche hors des éléments sans effet.",
+  "voies": ["souris"],
+  "etapes": [
+    {"ecran": "home", "focus": "world", "delai": 15},
+    {"souris": "wheel_down"},
+    {"ecran": "home", "focus": "ride"},
+    {"souris": "wheel_up"},
+    {"ecran": "home", "focus": "world"},
+    {"souris": "click", "point": [1270, 10]},
+    {"ecran": "home", "focus": "world"},
+    {"note": "rangée affichée sans le focus : un clic la choisit et la valide", "souris": "click", "element": "erg"},
+    {"ecran": "workouts"},
+    {"souris": "right"},
+    {"ecran": "home", "focus": "erg"},
+    {"note": "rangée hors de la partie affichée : la molette l'amène, puis clic", "souris": "click", "element": "settings"},
+    {"ecran": "settings", "focus": "devices"},
+    {"souris": "click", "element": "group:sound"},
+    {"ecran": "settings_group", "groupe": "sound"},
+    {"souris": "right"},
+    {"ecran": "settings", "focus": "group:sound"},
+    {"souris": "right"},
+    {"ecran": "home", "focus": "settings"},
+    {"souris": "move", "element": "quit"},
+    {"ecran": "home", "focus": "settings"}
+  ]
+}
