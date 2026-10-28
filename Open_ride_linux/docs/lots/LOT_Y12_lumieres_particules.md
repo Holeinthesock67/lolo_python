@@ -9,7 +9,7 @@ Demande du propriétaire du 27 octobre : « quelques effets lumières et particu
 ## 2. Règles communes (pas d'exception)
 
 - **Un seul endroit par sorte de réglage :**
-  - effets d'image (glow, rayons, reflets, reflet du soleil) : clés du dictionnaire `PRESETS` de `quality_presets.gd`, à côté de `ssao` et `fog_volumetric`, appliquées par `render_quality.gd` ;
+  - effets d'image (glow, rayons, reflets, reflet du soleil) : clés du dictionnaire `IMAGE` de `quality_presets.gd`, à côté de `ssao` et `fog_volumetric`, appliquées par `render_quality.gd` ;
   - particules : budgets dans `LIVING` (comme `weather_particles`), donc coupées avec tout le décor vivant par `[render] living = false` ;
   - **échelle des particules** `particles_scale` = 0,25 / 0,60 / 1,00 en `low` / `medium` / `high`, **les valeurs de R17 §4.3** : la même clé sert au mode route et au Cyber-Rogue, R17 la lit au lieu d'avoir sa propre table.
 - **Une seule fabrique de particules** : `engine/scripts/effects_particles.gd` (`GPUParticles3D`, maillages et matériaux dessinés par le code, aucune image), sur le modèle de `weather_particles.gd`, qui y est rangée. R10 et R12 (étincelles, éclats, arche de Perfect Shift) l'utilisent avec les couleurs de `neon_palette.gd`.

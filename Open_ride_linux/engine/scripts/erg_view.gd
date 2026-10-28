@@ -297,7 +297,7 @@ func _on_histogram_draw() -> void:
 		var poly: PackedVector2Array = cur["polygon"]
 		var outline := PackedVector2Array(poly)
 		outline.append(poly[0])
-		histogram.draw_polyline(outline, Color.WHITE, 2.0)
+		histogram.draw_polyline(outline, UiTheme.INK, 2.0)
 	var cx: float = lay["cursor_x"]
-	histogram.draw_line(Vector2(cx, 0.0), Vector2(cx, h), Color.WHITE, 3.0)
-	histogram.draw_circle(Vector2(cx, 4.0), 5.0, Color.WHITE)
+	histogram.draw_line(Vector2(cx, 0.0), Vector2(cx, h), UiTheme.INK, 3.0)
+	histogram.draw_circle(Vector2(cx, 4.0), 5.0, UiTheme.INK)

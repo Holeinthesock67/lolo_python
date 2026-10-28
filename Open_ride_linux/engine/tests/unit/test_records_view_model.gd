@@ -77,6 +77,19 @@ func _model() -> void:
 	rows = m.table_items("demo", "climb1", true)
 	_check(rows.size() == 2 and rows[1]["label"] == "1. 3:59,9 · 27/10/2026 18:05" and rows[1]["detail"] == "251 W",
 		"table avec bonus séparée, W/kg absent (%s)" % str(rows))
+	var sh: Dictionary = m.sheet_segment("demo", "climb1")
+	_check(sh["title"] == "Montée · cat. 4" and sh["name"] == "Montée 1", "fiche : montée avec sa catégorie (%s)" % str(sh["title"]))
+	_check(sh["tiles"][0]["value"] == "4:08,1" and sh["tiles"][0].get("gold", false), "fiche : record en or")
+	_check(sh["tiles"][1]["value"] == "+3,4" and sh["tiles"][1]["unit"] == "s" and sh["tiles"][2]["value"] == "2",
+		"fiche : écart au deuxième temps et nombre de temps (%s)" % str(sh["tiles"]))
+	_check(sh["lines"] == ["27/10/2026 18:05", "251 W, 3,4 W/kg", "avec bonus : 3:59,9"], "fiche : date, puissance, bonus (%s)" % str(sh["lines"]))
+	sh = m.sheet_segment("demo", "sprint1")
+	_check(not sh.has("tiles") and sh["lines"] == ["pas encore de temps"] and sh["title"] == "Sprint", "fiche : segment sans temps, sans zéro")
+	sh = m.sheet_row("demo", "climb1", false, 1)
+	_check(sh["tiles"][0]["value"] == "2" and not sh["tiles"][1].get("gold", false) and sh["tiles"][2]["value"] == "+3,4",
+		"fiche d'une ligne : place, temps ordinaire, écart au record (%s)" % str(sh["tiles"]))
+	_check(m.sheet_row("demo", "climb1", false, 0)["tiles"][1].get("gold", false) and m.sheet_row("demo", "climb1", false, 0)["tiles"][2]["value"] == "—"
+		and m.sheet_row("demo", "climb1", false, 9).is_empty(), "fiche d'une ligne : le record en or, hors table vide")
 	rows = m.table_items("demo", "sprint1", true)
 	_check(rows.size() == 2 and rows[1]["label"] == "Aucun temps avec bonus" and not rows[1]["enabled"],
 		"segment sans record : table vide")
@@ -104,6 +117,8 @@ func _flow() -> void:
 	_check(flow.menu.focus_item("records"), "écran Prêt : entrée « Records du parcours »")
 	_check(flow.handle("A_LONG").is_empty() and flow.state()["screen"] == MenuFlow.RECORDS
 		and flow.state()["items"][0]["id"] == "seg:climb1", "A long : liste des segments du parcours")
+	var rc: Dictionary = flow.card(flow.state())
+	_check(rc.get("name", "") == "Montée 1" and rc["tiles"][0]["gold"], "liste des segments : carte du record du segment sous le focus")
 	flow.handle("A_LONG")
 	_check(flow.state()["screen"] == MenuFlow.RECORD_TABLE and flow.state()["title"] == "Montée 1 : sans bonus",
 		"A long sur la montée : table sans bonus (%s)" % flow.state()["title"])
