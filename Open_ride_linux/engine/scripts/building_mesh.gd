@@ -1,7 +1,7 @@
 extends RefCounted
 
 ## Maillage 3D des bâtiments extrudés (Lot L1, SRS §8 « Bâtiments », Format .world v1 §3, §6 et §9),
-## sans aucun nœud ni affichage. Le rendu (MeshInstance3D, matériaux, niveaux de détail) reste au lot E4.
+## sans aucun nœud ni affichage, et habillage (Lot Y8 : toits à pans, matières et ouvertures pour le shader).
 ## Pas de class_name : charger par preload("res://scripts/building_mesh.gd").
 ##
 ## Méthode :
@@ -9,15 +9,23 @@ extends RefCounted
 ##   (convention antihoraire du compilateur §6 : 0,5 × ∑(x_i z_{i+1} − x_{i+1} z_i) > 0) ; un anneau reçu dans
 ##   le sens opposé (horaire) est retourné et comptabilisé dans `reversed_rings`. Les trous (`holes`) sont
 ##   orientés dans le sens opposé (aire algébrique négative).
-## - Murs : un quadrilatère indépendant (4 sommets, 2 triangles, arêtes vives) par segment de `outer` et de
-##   chaque trou, de `base_y` à `base_y + height_m`. La normale horizontale (dz, 0, −dx) / |(dx, dz)| pointe
-##   vers l'extérieur du bâtiment pour `outer` et vers l'intérieur de la cour pour chaque trou.
-## - Toit plat : sans trou, triangulation directe par `Geometry2D.triangulate_polygon`. Avec trou(s), chaque
-##   trou (trié par abscisse maximale décroissante) est relié à l'anneau courant par un pont sans intersection
-##   entre son sommet le plus à droite et un sommet visible du contour, puis triangulé par
-##   `Geometry2D.triangulate_polygon`.
-## - Couleurs : choisies de façon déterministe dans `buildings.walls` et `buildings.roofs` du thème à partir
-##   d'un hachage FNV-1a 32 bits de `id` (aucun appel à randi()).
+## - Murs : un quadrilatère (4 sommets, 2 triangles, arêtes vives) par segment de `outer` et de chaque trou,
+##   de `base_y - skirt` jusqu'au toit ; un segment est coupé là où le pan du toit qui le surmonte change
+##   (pignons, croupes). La normale horizontale (dz, 0, −dx) / |(dx, dz)| pointe vers l'extérieur du bâtiment
+##   pour `outer` et vers l'intérieur de la cour pour chaque trou.
+## - Toit (Lot Y8) : le contour est triangulé comme un toit plat (`Geometry2D.triangulate_polygon` ; avec
+##   trou(s), chaque trou, trié par abscisse maximale décroissante, est relié à l'anneau courant par un pont
+##   sans intersection). Les triangles sont ensuite découpés par les pans (plans) du toit et relevés : la
+##   hauteur du toit est le minimum des plans, nulle au bord du rectangle orienté du contour. Forme (plat, deux
+##   pans, croupes) et pente viennent de building_styles.gd (style de la variante, famille du type OSM, forme
+##   du contour). La couche ne donne que `flat` (non renseigné) ou `gabled` (deux pans imposés).
+## - Couleurs : choisies de façon déterministe dans `buildings.walls` et `buildings.roofs` du thème (enduit,
+##   tuiles) ou dans les palettes des matières de building_styles.gd, à partir d'un hachage FNV-1a 32 bits de
+##   `id` (aucun appel à randi()) ; `hint.colour` d'OSM remplace la couleur du mur. L'alpha porte la graine du
+##   bâtiment. UV : mètres sur chaque face ; UV2 : longueur du segment de mur et code d'habillage, lus par
+##   `shaders/building.gdshader` (fenêtres, volets, briques, colombages, tuiles…).
+
+const BuildingStyles := preload("res://scripts/building_styles.gd")
 
 const DEFAULT_WALL_COLORS := ["#d9c9a3", "#e6d8b8", "#cdb48a"]
 const DEFAULT_ROOF_COLORS := ["#a65a3a", "#4d535c"]
@@ -308,16 +316,110 @@ static func _triangulate_with_holes(outer: PackedVector2Array, holes: Array[Pack
 	return out_tris
 
 
-static func _append_wall_ring(
-	ring: PackedVector2Array,
-	base_y: float,
-	top_y: float,
-	wall_color: Color,
-	vertices: PackedVector3Array,
-	normals: PackedVector3Array,
-	colors: PackedColorArray,
-	indices: PackedInt32Array
-) -> void:
+## Rectangle orienté d'aire minimale de l'anneau (calipers tournants sur l'enveloppe convexe) :
+## {center, axis (grand côté, unitaire), half_len, half_width}.
+static func oriented_box(ring: PackedVector2Array) -> Dictionary:
+	var hull := Geometry2D.convex_hull(ring)
+	var best := {}
+	var best_area := INF
+	var n := hull.size()
+	for i in range(n):
+		var e := hull[(i + 1) % n] - hull[i]
+		if e.length_squared() <= DUP_EPS * DUP_EPS:
+			continue
+		var d := e.normalized()
+		var p := Vector2(-d.y, d.x)
+		var min_d := INF
+		var max_d := -INF
+		var min_p := INF
+		var max_p := -INF
+		for q in hull:
+			var a := q.dot(d)
+			var b := q.dot(p)
+			min_d = minf(min_d, a)
+			max_d = maxf(max_d, a)
+			min_p = minf(min_p, b)
+			max_p = maxf(max_p, b)
+		var area := (max_d - min_d) * (max_p - min_p)
+		if area < best_area - 1e-6:
+			best_area = area
+			var center := d * (min_d + max_d) * 0.5 + p * (min_p + max_p) * 0.5
+			if max_d - min_d >= max_p - min_p:
+				best = {"center": center, "axis": d, "half_len": (max_d - min_d) * 0.5, "half_width": (max_p - min_p) * 0.5}
+			else:
+				best = {"center": center, "axis": p, "half_len": (max_p - min_p) * 0.5, "half_width": (max_d - min_d) * 0.5}
+	return best
+
+
+## Plans du toit : chaque plan est Vector3(a, b, c), hauteur au-dessus des murs a·x + b·z + c ; la surface
+## du toit est le minimum des plans (fonction concave affine par morceaux, nulle au bord du rectangle orienté).
+## Toit plat : un plan nul ; à deux pans : deux plans de part et d'autre du faîtage ; à croupes : quatre.
+static func roof_planes(shape: String, pitch_deg: float, box: Dictionary) -> Array[Vector3]:
+	var planes: Array[Vector3] = []
+	if shape == BuildingStyles.SHAPE_FLAT or box.is_empty() or pitch_deg <= 0.0:
+		planes.append(Vector3.ZERO)
+		return planes
+	var s := tan(deg_to_rad(pitch_deg))
+	var c: Vector2 = box["center"]
+	var d: Vector2 = box["axis"]
+	var p := Vector2(-d.y, d.x)
+	var hw: float = box["half_width"]
+	var hl: float = box["half_len"]
+	# s × (hw − p·(x − c)) et s × (hw + p·(x − c))
+	planes.append(Vector3(-s * p.x, -s * p.y, s * (hw + p.dot(c))))
+	planes.append(Vector3(s * p.x, s * p.y, s * (hw - p.dot(c))))
+	if shape == BuildingStyles.SHAPE_HIPPED:
+		planes.append(Vector3(-s * d.x, -s * d.y, s * (hl + d.dot(c))))
+		planes.append(Vector3(s * d.x, s * d.y, s * (hl - d.dot(c))))
+	return planes
+
+
+static func _plane_at(pl: Vector3, q: Vector2) -> float:
+	return pl.x * q.x + pl.y * q.y + pl.z
+
+
+static func roof_height(planes: Array[Vector3], q: Vector2) -> float:
+	var h := INF
+	for pl in planes:
+		h = minf(h, _plane_at(pl, q))
+	return maxf(h, 0.0)
+
+
+## Garde la partie du polygone convexe `poly` où g(q) = gx·x + gz·z + gc ≤ 0 (Sutherland-Hodgman).
+static func _clip_half(poly: PackedVector2Array, g: Vector3) -> PackedVector2Array:
+	var out := PackedVector2Array()
+	var n := poly.size()
+	for i in range(n):
+		var a := poly[i]
+		var b := poly[(i + 1) % n]
+		var ga := _plane_at(g, a)
+		var gb := _plane_at(g, b)
+		if ga <= 1e-9:
+			out.append(a)
+		if (ga < -1e-9 and gb > 1e-9) or (ga > 1e-9 and gb < -1e-9):
+			out.append(a.lerp(b, ga / (ga - gb)))
+	return out
+
+
+## Code d'habillage lu par building.gdshader dans UV2.y : matière du mur, ouvertures, matière du toit,
+## partie (0 mur, 1 toit) et hauteur des murs au quart de mètre (fenêtres sous l'égout seulement).
+static func dress_code(dress: Dictionary, is_roof: bool, height_m: float) -> float:
+	var eave_q := clampi(roundi(height_m * 4.0), 0, 4000)
+	return float(int(dress["wall"]) + 8 * int(dress["windows"]) + 64 * int(dress["roof"]) + 512 * int(is_roof) + 1024 * eave_q)
+
+
+## Murs d'un anneau : un quadrilatère par morceau de segment, de `base_y - skirt` jusqu'au toit (le haut suit
+## les pignons et les croupes : chaque segment est coupé là où le plan du toit le plus bas change).
+## UV : u le long du segment depuis son début, v hauteur au-dessus de `base_y` (mètres) ; UV2 : longueur du
+## segment et code d'habillage.
+static func _append_wall_ring(ring: PackedVector2Array, base_y: float, wall_base_y: float, top_y: float,
+		planes: Array[Vector3], wall_color: Color, code: float, out: Dictionary) -> void:
+	var vertices: PackedVector3Array = out["vertices"]
+	var normals: PackedVector3Array = out["normals"]
+	var colors: PackedColorArray = out["colors"]
+	var uvs: PackedVector2Array = out["uvs"]
+	var uvs2: PackedVector2Array = out["uvs2"]
+	var indices: PackedInt32Array = out["indices"]
 	var n := ring.size()
 	for i in range(n):
 		var p0 := ring[i]
@@ -329,40 +431,157 @@ static func _append_wall_ring(
 			continue
 		# Avec `outer` d'aire > 0 (et `hole` d'aire < 0), (dz, 0, -dx) pointe vers l'extérieur (ou dans la cour).
 		var normal := Vector3(dz / seg_len, 0.0, -dx / seg_len)
-		var v_base := vertices.size()
-		vertices.append(Vector3(p0.x, base_y, p0.y))
-		vertices.append(Vector3(p1.x, base_y, p1.y))
-		vertices.append(Vector3(p1.x, top_y, p1.y))
-		vertices.append(Vector3(p0.x, top_y, p0.y))
-		for _k in range(4):
-			normals.append(normal)
-			colors.append(wall_color)
-		# Sens horaire vu de l'extérieur (convention de face avant de Godot)
-		indices.append(v_base)
-		indices.append(v_base + 1)
-		indices.append(v_base + 2)
-		indices.append(v_base)
-		indices.append(v_base + 2)
-		indices.append(v_base + 3)
+		# Coupures : changements du plan le plus bas le long du segment
+		var cuts: Array[float] = [0.0, 1.0]
+		for a in range(planes.size()):
+			for b in range(a + 1, planes.size()):
+				var g0 := _plane_at(planes[a], p0) - _plane_at(planes[b], p0)
+				var g1 := _plane_at(planes[a], p1) - _plane_at(planes[b], p1)
+				if (g0 < 0.0 and g1 > 0.0) or (g0 > 0.0 and g1 < 0.0):
+					cuts.append(g0 / (g0 - g1))
+		if cuts.size() > 2:
+			cuts.sort()
+		for c in range(cuts.size() - 1):
+			var t0: float = cuts[c]
+			var t1: float = cuts[c + 1]
+			if (t1 - t0) * seg_len <= 1e-3:
+				continue
+			var q0 := p0.lerp(p1, t0)
+			var q1 := p0.lerp(p1, t1)
+			var y0 := top_y + roof_height(planes, q0)
+			var y1 := top_y + roof_height(planes, q1)
+			var v_base := vertices.size()
+			vertices.append(Vector3(q0.x, wall_base_y, q0.y))
+			vertices.append(Vector3(q1.x, wall_base_y, q1.y))
+			vertices.append(Vector3(q1.x, y1, q1.y))
+			vertices.append(Vector3(q0.x, y0, q0.y))
+			uvs.append(Vector2(t0 * seg_len, wall_base_y - base_y))
+			uvs.append(Vector2(t1 * seg_len, wall_base_y - base_y))
+			uvs.append(Vector2(t1 * seg_len, y1 - base_y))
+			uvs.append(Vector2(t0 * seg_len, y0 - base_y))
+			for _k in range(4):
+				normals.append(normal)
+				colors.append(wall_color)
+				uvs2.append(Vector2(seg_len, code))
+			# Sens horaire vu de l'extérieur (convention de face avant de Godot)
+			indices.append(v_base)
+			indices.append(v_base + 1)
+			indices.append(v_base + 2)
+			indices.append(v_base)
+			indices.append(v_base + 2)
+			indices.append(v_base + 3)
 
 
-## Construit les tableaux de maillage pour la liste de bâtiments d'un tronçon.
-static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0) -> Dictionary:
-	var vertices := PackedVector3Array()
-	var normals := PackedVector3Array()
-	var colors := PackedColorArray()
-	var indices := PackedInt32Array()
+## Toit : chaque triangle de la triangulation du contour est découpé selon les plans (zone où chaque plan est le
+## plus bas), puis relevé. UV : mètres le long de l'égout et en remontant la pente (rangs de tuiles), ou (x, z)
+## pour un toit plat ; UV2.y : code d'habillage.
+static func _append_roof(roof_tris: Array, top_y: float, planes: Array[Vector3], roof_color: Color, code: float,
+		out: Dictionary) -> void:
+	var n_planes := planes.size()
+	for tri in roof_tris:
+		var a2: Vector2 = tri[0]
+		var b2: Vector2 = tri[1]
+		var c2: Vector2 = tri[2]
+		var ia := _lowest_plane(planes, a2)
+		# Triangle entier sous un même pan : pas de découpe
+		if ia == _lowest_plane(planes, b2) and ia == _lowest_plane(planes, c2):
+			_emit_roof_poly(PackedVector2Array([a2, b2, c2]), planes[ia], n_planes > 1, top_y, roof_color, code, out)
+			continue
+		for i in range(n_planes):
+			var poly := PackedVector2Array([a2, b2, c2])
+			for j in range(n_planes):
+				if j != i and poly.size() >= 3:
+					poly = _clip_half(poly, planes[i] - planes[j])
+			if poly.size() >= 3:
+				_emit_roof_poly(poly, planes[i], n_planes > 1, top_y, roof_color, code, out)
+
+
+static func _lowest_plane(planes: Array[Vector3], q: Vector2) -> int:
+	var best := 0
+	var best_h := _plane_at(planes[0], q)
+	for i in range(1, planes.size()):
+		var h := _plane_at(planes[i], q)
+		if h < best_h - 1e-9:
+			best_h = h
+			best = i
+	return best
+
+
+## Polygone convexe du pan `pl`, en éventail, face vers le haut ; `underside` : le même retourné (dessous du
+## débord, vu d'en bas sous l'égout).
+static func _emit_roof_poly(poly: PackedVector2Array, pl: Vector3, underside: bool, top_y: float, roof_color: Color,
+		code: float, out: Dictionary) -> void:
+	var n := poly.size()
+	var area2 := 0.0
+	for k in range(n):
+		var p0 := poly[k]
+		var p1 := poly[(k + 1) % n]
+		area2 += p0.x * p1.y - p1.x * p0.y
+	if absf(area2) <= 1e-7:
+		return
+	var vertices: PackedVector3Array = out["vertices"]
+	var normals: PackedVector3Array = out["normals"]
+	var colors: PackedColorArray = out["colors"]
+	var uvs: PackedVector2Array = out["uvs"]
+	var uvs2: PackedVector2Array = out["uvs2"]
+	var indices: PackedInt32Array = out["indices"]
+	var normal := Vector3(-pl.x, 1.0, -pl.y).normalized()
+	var grad := Vector2(pl.x, pl.y)
+	var flat := grad.length_squared() <= 1e-12
+	var up := Vector2.ZERO if flat else grad.normalized()
+	var along := Vector2(-up.y, up.x)
+	var stretch := sqrt(1.0 + grad.length_squared())
+	var passes := 2 if underside else 1
+	for pass_i in range(passes):
+		var base := vertices.size()
+		for q in poly:
+			vertices.append(Vector3(q.x, top_y + _plane_at(pl, q), q.y))
+			normals.append(normal if pass_i == 0 else -normal)
+			colors.append(roof_color)
+			uvs.append(q if flat else Vector2(q.dot(along), q.dot(up) * stretch))
+			uvs2.append(Vector2(0.0, code))
+		# Dans Godot, Plane(A, B, C).normal pointe vers +y quand (b - a) × (c - a) > 0 en (x, z)
+		var up_facing := (area2 > 0.0) == (pass_i == 0)
+		for k in range(1, n - 1):
+			indices.append(base)
+			indices.append(base + (k if up_facing else k + 1))
+			indices.append(base + (k + 1 if up_facing else k))
+
+
+static func _unit(h: int, salt: int) -> float:
+	return float(_mix(h ^ salt)) / 4294967296.0
+
+
+static func _pick(palette: Array[Color], u: float) -> Color:
+	return palette[mini(int(u * palette.size()), palette.size() - 1)]
+
+
+## Construit les tableaux de maillage pour la liste de bâtiments d'un tronçon. `style_name` : variante
+## d'architecture du contrat U1 §4.3 (building_styles.gd), la même pour tout le tronçon avant le lot U14.
+static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0,
+		style_name: String = BuildingStyles.STYLE_DEFAULT) -> Dictionary:
+	var out := {
+		"vertices": PackedVector3Array(),
+		"normals": PackedVector3Array(),
+		"colors": PackedColorArray(),
+		"uvs": PackedVector2Array(),
+		"uvs2": PackedVector2Array(),
+		"indices": PackedInt32Array(),
+	}
 	var errors := PackedStringArray()
 	var built := 0
 	var skipped := 0
 	var reversed_rings := 0
-	var gabled_as_flat := 0
+	var pitched := 0
 
 	var b_theme: Dictionary = {}
 	if typeof(theme) == TYPE_DICTIONARY and typeof(theme.get("buildings", null)) == TYPE_DICTIONARY:
 		b_theme = theme["buildings"]
 	var wall_palette := _parse_palette(b_theme.get("walls", null), DEFAULT_WALL_COLORS)
 	var roof_palette := _parse_palette(b_theme.get("roofs", null), DEFAULT_ROOF_COLORS)
+	var material_palettes := {}
+	for key in BuildingStyles.MATERIAL_COLORS:
+		material_palettes[key] = _parse_palette(BuildingStyles.MATERIAL_COLORS[key], BuildingStyles.MATERIAL_COLORS[key])
 
 	for idx_b in range(buildings.size()):
 		var item = buildings[idx_b]
@@ -423,6 +642,7 @@ static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0) -> 
 
 		var holes: Array[PackedVector2Array] = []
 		var hole_invalid := false
+		var holes_area := 0.0
 		for h_raw in holes_raw:
 			var h_var = _extract_ring(h_raw)
 			if h_var == null:
@@ -453,6 +673,7 @@ static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0) -> 
 				break
 			if area_h > 0.0:
 				h_ring = _reverse_ring(h_ring)
+			holes_area += absf(area_h)
 			holes.append(h_ring)
 
 		if hole_invalid:
@@ -467,48 +688,76 @@ static func build(buildings: Array, theme: Dictionary, skirt_m: float = 0.0) -> 
 
 		if was_reversed:
 			reversed_rings += 1
-		if roof_kind == "gabled":
-			gabled_as_flat += 1
+
+		# Habillage (Y8) : famille du type OSM, style de la variante, tirages déterministes de l'identifiant
+		var h := hash_string(b_id)
+		var hint = b.get("hint", {})
+		var osm_type := str(hint.get("building", "yes")) if typeof(hint) == TYPE_DICTIONARY else "yes"
+		var box := oriented_box(outer)
+		var box_area := 4.0 * float(box.get("half_len", 0.0)) * float(box.get("half_width", 0.0))
+		var fill := (absf(area_outer) - holes_area) / box_area if box_area > 0.0 else 0.0
+		# Style du bâtiment : clé `style` posée par l'engine (U14 : variante de la tuile ou biome dominant,
+		# BuildingStyles.resolve), sinon celui du tronçon
+		var b_style := str(b.get("style", style_name))
+		var dress := BuildingStyles.dress(b_style, BuildingStyles.classify(osm_type), fill,
+			2.0 * float(box.get("half_width", 0.0)), height_m, _unit(h, 0x5BD1E995), _unit(h, 0x1B873593), _unit(h, 0x68E31DA4))
+		# `roof: gabled` donné par la couche : deux pans quelle que soit la forme du contour
+		if roof_kind == "gabled" and not box.is_empty():
+			dress = BuildingStyles.force_gabled(dress, b_style)
+		var planes := roof_planes(dress["shape"], float(dress["pitch_deg"]), box)
+		if planes.size() > 1:
+			pitched += 1
+			# Débord du toit : contour élargi, pans prolongés sous la hauteur des murs
+			var wide := Geometry2D.offset_polygon(outer, BuildingStyles.EAVE_OVERHANG_M, Geometry2D.JOIN_MITER)
+			if wide.size() == 1 and signed_area(wide[0]) > 0.0:
+				var wide_tris := _triangulate_with_holes(wide[0], holes)
+				if not wide_tris.is_empty():
+					roof_tris = wide_tris
 
 		var pair := colors_for_id(b_id, wall_palette, roof_palette)
 		var wall_color := pair[0]
 		var roof_color := pair[1]
+		var wall_key := BuildingStyles.wall_palette_key(int(dress["wall"]), b_style)
+		if not wall_key.is_empty():
+			wall_color = _pick(material_palettes[wall_key], _unit(h, 0x27D4EB2D))
+		var roof_key := BuildingStyles.roof_palette_key(int(dress["roof"]), b_style)
+		if not roof_key.is_empty():
+			roof_color = _pick(material_palettes[roof_key], _unit(h, 0x165667B1))
+		var colour_tag = hint.get("colour", null) if typeof(hint) == TYPE_DICTIONARY else null
+		if typeof(colour_tag) == TYPE_STRING and Color.html_is_valid(colour_tag):
+			wall_color = Color.html(colour_tag)
+		# Alpha : graine du bâtiment (volets, porte, salissures) lue par le shader
+		wall_color.a = _unit(h, 0x2545F491)
+		roof_color.a = wall_color.a
 
+		var wall_code := dress_code(dress, false, height_m)
 		var wall_base_y := base_y - skirt_m
-		_append_wall_ring(outer, wall_base_y, top_y, wall_color, vertices, normals, colors, indices)
+		_append_wall_ring(outer, base_y, wall_base_y, top_y, planes, wall_color, wall_code, out)
 		for h_ring in holes:
-			_append_wall_ring(h_ring, wall_base_y, top_y, wall_color, vertices, normals, colors, indices)
-
-		for tri in roof_tris:
-			var a2: Vector2 = tri[0]
-			var b2: Vector2 = tri[1]
-			var c2: Vector2 = tri[2]
-			# Dans Godot, Plane(A, B, C).normal pointe vers +y quand (b - a) × (c - a) > 0 en (x, z)
-			if _ccw(a2, b2, c2) < 0.0:
-				var tmp := b2
-				b2 = c2
-				c2 = tmp
-			var r_base := vertices.size()
-			vertices.append(Vector3(a2.x, top_y, a2.y))
-			vertices.append(Vector3(b2.x, top_y, b2.y))
-			vertices.append(Vector3(c2.x, top_y, c2.y))
-			for _k in range(3):
-				normals.append(Vector3.UP)
-				colors.append(roof_color)
-			indices.append(r_base)
-			indices.append(r_base + 1)
-			indices.append(r_base + 2)
+			_append_wall_ring(h_ring, base_y, wall_base_y, top_y, planes, wall_color, wall_code, out)
+		_append_roof(roof_tris, top_y, planes, roof_color, dress_code(dress, true, height_m), out)
 
 		built += 1
 
-	return {
-		"vertices": vertices,
-		"normals": normals,
-		"colors": colors,
-		"indices": indices,
-		"built": built,
-		"skipped": skipped,
-		"errors": errors,
-		"reversed_rings": reversed_rings,
-		"gabled_as_flat": gabled_as_flat,
-	}
+	out["built"] = built
+	out["skipped"] = skipped
+	out["errors"] = errors
+	out["reversed_rings"] = reversed_rings
+	out["pitched"] = pitched
+	return out
+
+
+## Faux relief des façades et des toits par préréglage (perturbation de la normale) : coupé en `low`, où
+## restent les fenêtres, les joints et les rangs de tuiles dessinés en couleur.
+const RELIEF := {"low": 0.0, "medium": 1.0, "high": 1.0}
+
+
+static func apply_preset(mat: ShaderMaterial, preset: String) -> void:
+	mat.set_shader_parameter("relief", float(RELIEF.get(preset.strip_edges(), 1.0)))
+
+
+## Matériau des bâtiments (building.gdshader), partagé par tous les tronçons.
+static func make_material() -> ShaderMaterial:
+	var mat := ShaderMaterial.new()
+	mat.shader = load("res://shaders/building.gdshader")
+	return mat

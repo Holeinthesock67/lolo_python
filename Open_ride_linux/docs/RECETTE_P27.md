@@ -57,7 +57,7 @@ living = true
 - [ ] Véhicules lointains sur les routes voisines, un tracteur qui herse un champ (P25). Aucun sur le parcours.
 - [ ] Cyclistes du décor : seuls ou en petits groupes, en face, doublés ou qui doublent ; jamais sur le cycliste ni sur le bot (P28).
 - [ ] Bateaux : barque, voilier ou pédalo sur le lac, péniche sur le canal, avec leur sillage (P29).
-- [ ] Pause (bouton Y) : tout se fige, y compris le ciel et les bateaux ; reprise sans saut.
+- [ ] Pause (bouton Y) : véhicules, cyclistes du décor, ciel et bateaux se figent (les animaux et les oiseaux continuent, comme depuis P11) ; reprise sans saut. Vérifié aussi automatiquement par la scène `decor_vivant` de `visual_check.py` (lot P30).
 
 À entendre :
 
