@@ -202,10 +202,14 @@ func _start_args() -> Dictionary:
 
 
 ## Difficulté de la séance affichée sur l'écran de pause (curseur du lot O4, commande set_difficulty).
-func set_pause_difficulty(text: String) -> void:
+## `row` : rangée de SettingsViewModel.row() (curseur, valeur, mode édition en place).
+func set_pause_difficulty(row: Dictionary) -> void:
 	for it in _screens[PAUSE]["items"]:
 		if it["id"] == "difficulty":
-			it["label"] = "Difficulté : " + text
+			it["label"] = str(row["label"])
+			it["detail"] = str(row["detail"])
+			it["bar"] = int(row["bar"])
+			it["editing"] = bool(row.get("editing", false))
 
 
 func set_sim_session(on: bool) -> void:

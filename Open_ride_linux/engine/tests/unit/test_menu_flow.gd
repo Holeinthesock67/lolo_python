@@ -337,14 +337,14 @@ func _test_settings_screen() -> void:
 	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
 	f.on_state({"session_state": "PAUSED", "difficulty_pct": 50})
 	f.handle("MINUS_SHORT")
-	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["label"] == "Difficulté : ■■■■■□□□□□ 50 %",
+	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["detail"] == "50 %" and f.state()["items"][3]["bar"] == 50,
 			"pause : curseur de difficulté")
 	f.handle("A_LONG")
 	f.handle("MINUS_SHORT")
 	f.handle("MINUS_SHORT")
 	act = f.handle("A_LONG")
 	_check(act == {"action": "set_difficulty", "pct": 30} and f.state()["screen"] == "pause"
-			and f.state()["items"][3]["label"] == "Difficulté : ■■■□□□□□□□ 30 %", "pause : set_difficulty à 30 (%s)" % str(act))
+			and f.state()["items"][3]["detail"] == "30 %" and not f.state()["items"][3]["editing"], "pause : set_difficulty à 30 (%s)" % str(act))
 
 
 func _test_erg_submenu() -> void:

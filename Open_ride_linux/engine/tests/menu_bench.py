@@ -334,12 +334,12 @@ def parcours_reglages(run: Run) -> None:
     run.command("pause")
     time.sleep(1.5)
     run.press("MINUS_SHORT")
-    run.expect("pause_difficulte", "Pause", "[Difficulté : ■■■■■□□□□□ 50 %]")
+    run.expect("pause_difficulte", "Pause", "[Difficulté — 50 %]")
     t = now()
     run.press("A_LONG", "MINUS_SHORT", "A_LONG")
     r.check(_wait_state(run, r"Difficulté : 50 % -> 40 %", 5.0, after=t), "curseur de la pause : set_difficulty",
             "« Difficulté : 50 % -> 40 % » au journal du core")
-    run.expect("pause_apres", "Pause", "Difficulté : ■■■■□□□□□□ 40 %")
+    run.expect("pause_apres", "Pause", "Difficulté — 40 %")
     run.command("end_session", {"save": False})
     time.sleep(1.0)
 

@@ -16,7 +16,6 @@ extends RefCounted
 
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 
-const EDIT_SCREEN := "setting_edit"
 ## Clé de l'écran de modification ouvert depuis la pause (difficulté de la séance en cours).
 const PAUSE_DIFFICULTY := "pause.difficulty"
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
@@ -212,13 +211,6 @@ func step(direction: int) -> void:
 	var stp := int(editing.get("step", 1))
 	var v := int(editing.get("value", 0)) + (stp if direction > 0 else -stp)
 	editing["value"] = clampi(v, int(editing.get("min", v)), int(editing.get("max", v)))
-
-
-## Écran de modification de la difficulté de la pause (étape 4) : titre et un élément, la valeur.
-## Les autres réglages se modifient en place dans leur liste (row()).
-func edit_items() -> Array:
-	return [{"id": "value", "label": format_value(editing, editing.get("value")),
-		"detail": "+ / − : changer, A long : enregistrer, Y : annuler"}]
 
 
 ## Fin de la modification (A long) : action pour main.gd.

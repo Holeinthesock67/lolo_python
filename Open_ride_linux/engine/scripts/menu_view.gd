@@ -167,7 +167,7 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	more_label.text = "%d / %d" % [focus + 1, items.size()] if items.size() > max_items else ""
 	devices.visible = screen in DEVICES_SCREENS
 	# Aide toujours visible (sans elle, rien ne dit qu'il faut un appui long pour valider).
-	button_bar.update_display(ButtonHelp.EDIT if menu.get("editing", false) or screen == "setting_edit" else screen)
+	button_bar.update_display(ButtonHelp.EDIT if menu.get("editing", false) else screen)
 	if summary.visible:
 		summary.update_display(summary_data, show_details, str(state.get("mode", "")))
 	if devices.visible:
