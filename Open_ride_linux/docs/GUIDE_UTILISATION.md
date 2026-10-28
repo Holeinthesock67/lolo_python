@@ -128,7 +128,7 @@ Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîti
 
 ## 7. Réglages, thèmes et sons
 
-**Réglages** (menu principal) : **Appareils**, puis un sous-écran par thème. **Cycliste** : FTP, poids, poids du vélo. **Séance** : difficulté en SIM (part de la pente ressentie, de 0 à 100 %, aussi sur l'écran de pause), braquet de départ, bonus. **Affichage** : qualité graphique, thème, courbes de la séance, mode d'affichage, images/s. **Son** : les quatre volumes. **Vent** : vent, force, direction (par 45°, avec le point cardinal), rafales et plafond. Les réglages sont écrits dans `~/OpenRide/config.toml` ; ceux qui touchent la séance en cours s'appliquent tout de suite, les autres à la séance suivante.
+**Réglages** (menu principal) : **Appareils**, puis un sous-écran par thème. **Cycliste** : FTP, poids, poids du vélo. **Séance** : difficulté en SIM (part de la pente ressentie, de 0 à 100 %, aussi sur l'écran de pause), braquet de départ, bonus. **Affichage** : qualité graphique, thème, courbes de la séance, mode d'affichage, images/s. **Son** : les quatre volumes. **Vent** : vent, force, direction (par 45°, avec le point cardinal), rafales et plafond. Pour changer une valeur, choisissez le réglage et maintenez A : la valeur s'écrit entre deux flèches (`◀ 75 % ▶`) ; + et B la règlent (appui long : cinq pas), A maintenu l'enregistre et Y annule. Les réglages sont écrits dans `~/OpenRide/config.toml` ; ceux qui touchent la séance en cours s'appliquent tout de suite, les autres à la séance suivante.
 
 **Qualité graphique.** Trois préréglages : `low`, `medium`, `high`. Si l'image saccade, passez en `low`.
 
