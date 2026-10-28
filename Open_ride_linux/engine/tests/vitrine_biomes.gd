@@ -1,15 +1,18 @@
 extends SceneTree
 
 ## Vitrine des biomes (série U) : pour chaque biome forcé, une route droite dans un paysage plat avec le sol,
-## la végétation (lot U7), le brouillard et la teinte de la lumière du biome, tirés du thème par défaut 2.0
-## (lot U15) par biome_model.gd. Sans core ni parcours ; captures comparables d'un biome à l'autre.
+## la végétation (lot U7), les animaux (lot U12), le brouillard et la teinte de la lumière du biome, tirés du
+## thème par défaut 2.0 (lot U15) par biome_model.gd. Un étang à droite de la route (oasis des déserts, flamants),
+## un bois, un pré, un champ et une prairie (zones OSM de la faune d'avant la série U). Sans core ni parcours ;
+## captures comparables d'un biome à l'autre. La vue `faune` cadre le groupe d'animaux propre au biome.
 ##
 ##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
 ##     --audio-driver Dummy --script res://tests/vitrine_biomes.gd -- --out DOSSIER \
 ##     [--biomes alpine,savanna] [--quality low,medium,high] [--size 1680x1050]
 ##
 ## Écrit DOSSIER/<biome>_<vue>_<préréglage>.png et DOSSIER/vitrine_biomes.csv (biome ; vue ; préréglage ;
-## arbres ; triangles ; appels de dessin ; objets ; préparation des arbres en ms). Les temps du processeur
+## arbres ; triangles ; appels de dessin ; objets ; préparation des arbres en ms ; bêtes et oiseaux affichés ;
+## espèces animales placées ; placement des animaux en ms). Les temps du processeur
 ## graphique se mesurent sur le PC cible, pas ici : le rendu logiciel de Xvfb ne dit rien de la GTX 1060.
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -21,6 +24,8 @@ const RoadBuilder := preload("res://scripts/road_builder.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
+const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 
 const ROAD_WIDTH_M := 6.0
 const GROUND_Y := 100.0
@@ -31,7 +36,19 @@ const VIEWS := {
 	"route": [Vector3(1.2, GROUND_Y + 1.6, 0.0), Vector3(0.0, GROUND_Y + 0.8, -120.0), 70.0],
 	"bord": [Vector3(4.0, GROUND_Y + 1.7, -20.0), Vector3(40.0, GROUND_Y + 3.0, -70.0), 60.0],
 	"haut": [Vector3(-60.0, GROUND_Y + 45.0, 60.0), Vector3(0.0, GROUND_Y, -250.0), 60.0],
+	"faune": [],   # calculée par _fauna_view
 }
+## Étang (x, z, largeur, profondeur) et zones OSM de la faune, à droite (+x) et à gauche de la route.
+const POND := Rect2(45.0, -230.0, 90.0, 70.0)
+const AREAS := [
+	{"id": "bois", "kind": "wood", "outer": [[-340.0, -420.0], [-60.0, -420.0], [-60.0, -120.0], [-340.0, -120.0]], "holes": [], "density": 0.8},
+	{"id": "pre", "kind": "meadow", "outer": [[15.0, -120.0], [140.0, -120.0], [140.0, -30.0], [15.0, -30.0]], "holes": []},
+	{"id": "champ", "kind": "farmland", "outer": [[-160.0, -100.0], [-15.0, -100.0], [-15.0, -20.0], [-160.0, -20.0]], "holes": []},
+	{"id": "prairie", "kind": "grassland", "outer": [[150.0, -700.0], [420.0, -700.0], [420.0, -350.0], [150.0, -350.0]], "holes": []},
+]
+## Recul de la caméra de la vue `faune` selon la taille des bêtes (m).
+const FAUNA_VIEW_M := {"marmot": 6.0, "hare": 6.0, "heron": 9.0, "ibex": 14.0, "giraffe": 34.0, "zebra": 26.0, "flamingo": 9.0, "gull": 7.0}
+const FAUNA_VIEW_DEFAULT_M := 20.0
 
 var _out_dir := "user://vitrine_biomes"
 var _presets: Array = ["low"]
@@ -58,7 +75,7 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(_out_dir)
 	var theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	var csv := FileAccess.open(_out_dir.path_join("vitrine_biomes.csv"), FileAccess.WRITE)
-	csv.store_line("biome;vue;préréglage;arbres;triangles;appels_dessin;objets;preparation_arbres_ms")
+	csv.store_line("biome;vue;préréglage;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms")
 	for preset in _presets:
 		for biome in _biomes:
 			var model = BiomeModel.new(theme, null)
@@ -68,12 +85,21 @@ func _run() -> void:
 			var built := _build_world(theme, model, biome, preset)
 			var vp: SubViewport = built["vp"]
 			for view in VIEWS:
-				var v: Array = VIEWS[view]
+				var v: Array = VIEWS[view] if view != "faune" else built["fauna_view"]
 				var cam: Camera3D = vp.get_node("Camera")
 				cam.fov = v[2]
 				cam.look_at_from_position(v[0], v[1])
+				var fauna: Node = vp.get_node("Fauna")
 				for f in range(SETTLE_FRAMES):
+					# Cycliste loin de tout : aucune bête ne fuit
+					fauna.update(cam.position, Vector3(0.0, GROUND_Y, 5000.0), 3.0 + f * 0.05)
 					await process_frame
+				var n_animals := 0
+				for sp in FaunaRenderer.GROUND_SPECIES:
+					n_animals += fauna.visible_count(sp)
+				var n_birds := 0
+				for sp in FaunaRenderer.BIRD_SPECIES:
+					n_birds += fauna.visible_count(sp)
 				var path := _out_dir.path_join("%s_%s_%s.png" % [biome, view, preset])
 				vp.get_texture().get_image().save_png(path)
 				var rid := vp.get_viewport_rid()
@@ -81,8 +107,9 @@ func _run() -> void:
 				var tris := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME)
 				var draws := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 				var objs := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
-				csv.store_line("%s;%s;%s;%d;%d;%d;%d;%.1f" % [biome, view, preset, built["trees"], tris, draws, objs, built["prep_ms"]])
-				print("[vitrine_biomes] %s : %d arbres, %d triangles, %d appels de dessin" % [path, built["trees"], tris, draws])
+				csv.store_line("%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f" % [biome, view, preset, built["trees"], tris, draws, objs, built["prep_ms"],
+					n_animals, n_birds, built["species"], built["fauna_ms"]])
+				print("[vitrine_biomes] %s : %d arbres, %d bêtes, %d oiseaux, %d triangles, %d appels de dessin" % [path, built["trees"], n_animals, n_birds, tris, draws])
 			vp.queue_free()
 			await process_frame
 	csv.close()
@@ -138,10 +165,26 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	road.material_override = RoadBuilder.make_markings_material(RoadBuilder.ROAD_COLOR, ROAD_WIDTH_M)
 	vp.add_child(road)
 
+	var pond := MeshInstance3D.new()
+	var pond_mesh := PlaneMesh.new()
+	pond_mesh.size = POND.size
+	pond.mesh = pond_mesh
+	pond.position = Vector3(POND.get_center().x, GROUND_Y + 0.03, POND.get_center().y)
+	var water_mat := StandardMaterial3D.new()
+	water_mat.albedo_color = p["water"]["color"]
+	water_mat.roughness = 0.08
+	water_mat.metallic_specular = 0.8
+	pond.material_override = water_mat
+	vp.add_child(pond)
+
 	var trees := TreeRenderer.new()
 	vp.add_child(trees)
 	trees.set_preset(preset)
 	trees.biome_model = model
+	trees.near_water = func(x: float, z: float) -> bool:
+		var dx := maxf(maxf(POND.position.x - x, 0.0), x - POND.end.x)
+		var dz := maxf(maxf(POND.position.y - z, 0.0), z - POND.end.y)
+		return sqrt(dx * dx + dz * dz) <= 80.0
 	TreeRenderer.apply_wind({"dir": Vector3(1.0, 0.0, 0.0), "strength": 0.3, "gust": 0.0, "phase": 0.0})
 	var heights := PackedFloat32Array()
 	heights.resize(101 * 101)
@@ -155,12 +198,66 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	var prep_ms := (Time.get_ticks_usec() - t0) / 1000.0 / 6.0
 	trees.enforce_budget(Vector3(0.0, GROUND_Y, 0.0))
 
+	# Animaux : zones OSM et étang ci-dessus, deux tronçons de 1 km le long de la route
+	var water := {"areas": [{"id": "etang", "kind": "pond", "level_y": GROUND_Y, "outer": [[POND.position.x, POND.position.y],
+		[POND.end.x, POND.position.y], [POND.end.x, POND.end.y], [POND.position.x, POND.end.y]]}], "lines": []}
+	var groups := []
+	var f0 := Time.get_ticks_usec()
+	for k in range(2):
+		groups.append_array(FaunaPlacer.place_chunk(k, AREAS, [], route, theme.get("fauna", {}), {
+			"height_at": func(_x: float, _z: float) -> float: return GROUND_Y,
+			"water": water, "biome_model": model}))
+	var fauna_ms := (Time.get_ticks_usec() - f0) / 1000.0 / 2.0
+	var fauna := FaunaRenderer.new()
+	fauna.name = "Fauna"
+	vp.add_child(fauna)
+	fauna.set_preset(preset)
+	fauna.set_chunk(0, groups)
+	var species := {}
+	for g in groups:
+		species[str(g.get("species", ""))] = true
+
 	var cam := Camera3D.new()
 	cam.name = "Camera"
 	cam.far = RenderQuality.camera_far_m(preset)
 	cam.current = true
 	vp.add_child(cam)
-	return {"vp": vp, "trees": trees.get_active_tree_count(), "prep_ms": prep_ms}
+	return {"vp": vp, "trees": trees.get_active_tree_count(), "prep_ms": prep_ms, "fauna_ms": fauna_ms,
+		"species": ",".join(PackedStringArray(species.keys())), "fauna_view": _fauna_view(groups)}
+
+
+## Vue `faune` : le premier groupe propre au biome (BIOME_GROUPS, troupeau de préférence), sinon le premier
+## troupeau, vu depuis la route à FAUNA_VIEW_M de lui ; une bande d'oiseaux est vue d'en dessous.
+func _fauna_view(groups: Array) -> Array:
+	var best := {}
+	var rank := 9
+	for g in groups:
+		var own := str(g["id"]).begins_with("c") and str(g.get("species", "bird")) != "bird"
+		var t := str(g["type"])
+		var r := 0 if own and t == "herd" else (1 if own else (2 if t == "herd" else (3 if t in ["deer", "hare"] else 9)))
+		if r < rank:
+			rank = r
+			best = g
+	if best.is_empty():
+		return VIEWS["bord"]
+	var t := str(best["type"])
+	if t == "birds":
+		var c: Vector3 = best["center"]
+		return [Vector3(c.x * 0.5, GROUND_Y + 2.0, c.z + 30.0), c, 60.0]
+	var target := Vector3.ZERO
+	var pts := []
+	if best.has("members") and t != "birds":
+		for m in best["members"]:
+			pts.append(m["pos"])
+	else:
+		pts.append(best["pos"])
+	for q in pts:
+		target += q
+	target /= float(pts.size())
+	var d := float(FAUNA_VIEW_M.get(str(best.get("species", "")), FAUNA_VIEW_DEFAULT_M))
+	var toward_road := Vector3(-signf(target.x), 0.0, 0.35).normalized()
+	var aim := target + Vector3(0.0, 0.8 if d < 10.0 else 1.5, 0.0)
+	return [target + toward_road * d + Vector3(0.0, 1.6 if d < 10.0 else 3.0, 0.0), aim, 45.0 if d < 10.0 else 55.0]
 
 
 ## Ruban de route droit de 1 200 m (UV d'E1), le long de −z.

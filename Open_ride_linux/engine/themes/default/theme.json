@@ -448,7 +448,7 @@
       "fauna": {
         "birds": 0.4,
         "livestock": 0.5,
-        "deer": 0.15
+        "deer": 0.4
       },
       "seasons": {
         "calendar": "four",
@@ -517,7 +517,7 @@
       "fauna": {
         "birds": 0.4,
         "livestock": 0.0,
-        "deer": 0.1
+        "deer": 0.5
       },
       "seasons": {
         "calendar": "four",
@@ -652,7 +652,7 @@
       },
       "fauna": {
         "birds": 0.4,
-        "livestock": 0.2,
+        "livestock": 0.4,
         "deer": 0.0
       },
       "seasons": {
@@ -785,7 +785,7 @@
       "fauna": {
         "birds": 0.6,
         "livestock": 0.3,
-        "deer": 0.2
+        "deer": 0.7
       },
       "seasons": {
         "calendar": "wet_dry",
@@ -844,7 +844,7 @@
       },
       "fauna": {
         "birds": 0.1,
-        "livestock": 0.1,
+        "livestock": 0.3,
         "deer": 0.0
       },
       "seasons": {
@@ -907,7 +907,7 @@
       },
       "fauna": {
         "birds": 0.1,
-        "livestock": 0.0,
+        "livestock": 0.2,
         "deer": 0.0
       },
       "seasons": {

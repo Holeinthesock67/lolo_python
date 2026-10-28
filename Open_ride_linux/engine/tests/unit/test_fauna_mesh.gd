@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Tests unitaires sans écran des maillages d'animaux de `fauna_renderer.gd` (Lot Y14, construits avec le
 ## Builder de people_mesh.gd) : taille, pieds au sol et avant vers +z, poids de l'aile (UV.x) et de la tête
-## (UV.y) lus par shaders/fauna.gdshader, zones de couleur.
+## (UV.y) lus par shaders/fauna.gdshader, zones de couleur ; espèces des biomes du lot U12 comprises.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_fauna_mesh.gd
 
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
@@ -40,7 +40,7 @@ func _init() -> void:
 			regions[int(custom[i * 4] + 0.5)] = true
 		_check(regions.has(FaunaRenderer.FAUNA_COAT) and regions.has(FaunaRenderer.FAUNA_DARK),
 			"%s : robe et parties sombres (zones %s)" % [sp, str(regions.keys())])
-		if sp == "bird":
+		if sp in FaunaRenderer.BIRD_SPECIES:
 			# Ailes le long de x (0,9 m d'envergure), poids 0 à l'attache et 1 au bout ; bec vers +z
 			var root_ok := true
 			var tip_ok := true
