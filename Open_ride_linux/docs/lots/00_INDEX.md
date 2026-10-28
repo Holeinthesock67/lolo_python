@@ -263,7 +263,7 @@
 | [X33](LOT_X33_seance_simulee_serie_t_boutons_erg.md) | Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | Oui |
 | [X34](LOT_X34_hygiene_des_suites.md) | Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | Oui |
 | [X35](LOT_X35_fiabilite_banc_simule.md) | Série X (outils de test) : Fiabilité du banc simulé : captures, pics de capture, couches, vitesse imposée | Python + GDScript | X13 | Petite | Oui |
-| [X36](LOT_X36_pre_vol_seance_velo.md) | Série X (outils de test) : Pré-vol avant une séance vélo, verdict « prêt à rouler » | Python | X4, X33 | Petite | Oui |
+| [X36](LOT_X36_pre_vol_seance_velo.md) | Série X (outils de test) : Pré-vol avant une séance vélo, verdict « prêt à rouler » | Python | X4, X33 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x36`), essai sur le PC avant la prochaine séance |
 | [X37](LOT_X37_persistance_reglages.md) | Série X (outils de test) : Persistance de tous les réglages après un redémarrage | Python | banc des menus | Petite | Oui |
 | [X38](LOT_X38_couleurs_du_theme.md) | Série X (outils de test) : Couleurs du thème : aucune couleur en dur dans le HUD et le globe | GDScript | N20 | Petite | Oui |
 

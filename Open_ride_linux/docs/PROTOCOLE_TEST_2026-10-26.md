@@ -37,6 +37,8 @@ git switch main                                  # retour à main à la fin
 
 Le core et le compilateur sont installés en mode éditable, et Godot lit `engine/` du dépôt : l'icône **OpenRide** lance donc le code de la branche en cours, sans réinstaller.
 
+**Avant une séance vélo (lot X36)** : `python3 scripts/pre_vol.py --seance t11_j7` (ou `p27`, `erg`, `recette_1_0` ; `--liste`), depuis `Open_ride_linux/`, vérifie tout ce qui se contrôle sans pédaler (git à jour, tests `recette_sans_velo`, tests Godot de la séance, sauvegarde de `config.toml`, parcours compilés, fichiers de la séance, trainer et Click visibles) et répond « PRÊT À ROULER » ou dit ce qui bloque. Moins de 10 minutes ; le PC doit être libre (pas de banc en cours).
+
 ### 0.3 Notes et journaux
 
 - Noter chaque écart sans s'arrêter : `echo "$(date +%T) C2 flèche haut descend" >> ~/OpenRide/Logs/recette_notes.txt`.
