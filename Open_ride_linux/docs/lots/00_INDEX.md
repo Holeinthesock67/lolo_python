@@ -265,8 +265,8 @@
 | [X34](LOT_X34_hygiene_des_suites.md) | Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x34`) |
 | [X35](LOT_X35_fiabilite_banc_simule.md) | Série X (outils de test) : Fiabilité du banc simulé : captures, pics de capture, couches, vitesse imposée | Python + GDScript | X13 | Petite | Oui |
 | [X36](LOT_X36_pre_vol_seance_velo.md) | Série X (outils de test) : Pré-vol avant une séance vélo, verdict « prêt à rouler » | Python | X4, X33 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x36`), essai sur le PC avant la prochaine séance |
-| [X37](LOT_X37_persistance_reglages.md) | Série X (outils de test) : Persistance de tous les réglages après un redémarrage | Python | banc des menus | Petite | Oui |
-| [X38](LOT_X38_couleurs_du_theme.md) | Série X (outils de test) : Couleurs du thème : aucune couleur en dur dans le HUD et le globe | GDScript | N20 | Petite | Oui |
+| [X37](LOT_X37_persistance_reglages.md) | Série X (outils de test) : Persistance de tous les réglages après un redémarrage | Python | banc des menus | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x37`) |
+| [X38](LOT_X38_couleurs_du_theme.md) | Série X (outils de test) : Couleurs du thème : aucune couleur en dur dans le HUD et le globe | GDScript | N20 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x38`) |
 | [X39](LOT_X39_ecart_progression.md) | Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
 
 **Restent en interne** (matériel nécessaire) :
