@@ -42,3 +42,12 @@ Aucune.
 ## 8. Hors périmètre
 
 Choix au menu (V8), effet physique (V3, V11).
+
+## 9. Livraison (27 octobre 2026, issue #373)
+
+- **Engine :** `equipment_meshes.gd` (un `look` par pièce du catalogue : 5 cadres, 4 roues, 3 casques, 6 tenues à motif, 4 chaussettes, 3 lunettes ; pièce par défaut pour un `look` inconnu), `avatar_mesh.gd` (posture selon le cadre : buste plus bas et mains rapprochées sur les cadres aéro et contre-la-montre, prolongateurs), `avatar_view.gd` (`set_equipment`, motifs de tenue en textures générées, traînées d'air au-dessus de 45 km/h). `ipc_client.gd` demande `list_garage` à chaque `hello_ack` (parties réunies, signal `garage_received`) et relaie `progression` ; `main.gd` fait le lien identifiants équipés → `look`.
+- **Sons des roues :** couche « roues » de `sound_model.gd` et `sound_player.gd` : ronronnement grave (roue lenticulaire) ou sifflement léger (jantes hautes) de 20 à 50 km/h, silence en pause.
+- **Triangles :** niveau 0 sous 6 000 avec l'équipement le plus lourd ; niveau 1 sous 1 500 (jante seule, sans rayons). Les bots (niveau 2) restent sans équipement détaillé.
+- **Tests :** `test_avatar_model.gd` (looks, postures, roues, motifs, traînées), `test_sound_model.gd` (roues), test du core qui vérifie que chaque `look` du catalogue figure dans `equipment_meshes.gd`, scènes du banc visuel (4 cadres et 4 roues se distinguent, traînées à 50 km/h et pas à 40).
+- **Reste, sur le PC :** recette de rendu (lisibilité des cadres et des roues à l'écran, volume des sons des roues à l'oreille).
+

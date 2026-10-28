@@ -108,6 +108,8 @@ class FakeCore:
     silent: bool = False          # core muet : n'émet plus rien du tout
     auto_hello_ack: bool = False
     chart: str | None = None      # hello_ack.config.chart (lot O14) ; None : champ absent
+    progression: dict[str, Any] | None = None   # hello_ack.config.progression (série V, lot V6) ; None : absent
+    garage: list[dict[str, Any]] | None = None  # éléments du message `garage` (lot V7) ; None : pas de réponse
     session_state: str = "IDLE"
     route_id: str | None = "demo"
     accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
@@ -214,6 +216,8 @@ class FakeCore:
             if cmd_id > self.last_cmd_id and self.accept_cmd(msg, count):
                 self.last_cmd_id = cmd_id
 
+            if name in ("list_garage", "equip", "buy", "set_avatar") and self.garage is not None:
+                self._garage_command(name, msg.get("args") or {}, cmd_id)
             if getattr(self, "catalog_data", None):
                 if name == "list_routes":
                     if not getattr(self, "drop_all_catalog", False):
@@ -241,6 +245,43 @@ class FakeCore:
                     if isinstance(pct, (int, float)):
                         self.difficulty_pct = int(round(max(0, min(100, pct))))
 
+    def _garage_command(self, name: str, args: dict[str, Any], cmd_id: int) -> None:
+        """Garage simulé (lot V8) : `garage` pour list_garage ; equip, buy et set_avatar modifient le catalogue
+        et le profil puis renvoient `progression`, comme le vrai core ; refus par `error` (contrat 1.4)."""
+        def refuse(code: str, text: str) -> None:
+            self.send({"type": "error", "v": CONTRACT_VERSION, "code": code, "message": text})
+
+        items = self.garage or []
+        prog = self.progression if self.progression is not None else {}
+        by_id = {it["id"]: it for it in items}
+        if name == "list_garage":
+            self.send({"type": "garage", "v": CONTRACT_VERSION, "request_cmd_id": cmd_id, "part": 1, "parts": 1,
+                       "items": items})
+            return
+        if name == "equip":
+            it = by_id.get(args.get("item_id"))
+            if it is None or it["slot"] != args.get("slot") or it["state"] not in ("owned", "equipped"):
+                return refuse("item_locked", "pièce non possédée")
+            for other in items:
+                if other["slot"] == it["slot"] and other["state"] == "equipped":
+                    other["state"] = "owned"
+            it["state"] = "equipped"
+            prog.setdefault("equipped", {})[it["slot"]] = it["id"]
+        elif name == "buy":
+            it = by_id.get(args.get("item_id"))
+            if it is None or it["state"] != "buyable":
+                return refuse("item_locked", "pièce non achetable")
+            if int(prog.get("coins", 0)) < int(it["price"]):
+                return refuse("not_enough_coins", "solde insuffisant")
+            prog["coins"] = int(prog.get("coins", 0)) - int(it["price"])
+            it["state"] = "owned"
+        else:
+            avatar = args.get("avatar")
+            if not isinstance(avatar, dict):
+                return refuse("avatar_invalid", "avatar attendu")
+            prog.setdefault("avatar", {}).update(avatar)
+        self.send({"type": "progression", "v": CONTRACT_VERSION, "request_cmd_id": cmd_id, **prog})
+
     def send_list(self, kind: str, cmd_id: int, items: list) -> None:
         """Réponse `routes` ou `workouts` (contrat v1.1 §4), en deux parties avec --split-catalog.
 
@@ -259,6 +300,8 @@ class FakeCore:
         config = {"ftp_w": 250, "gears_total": 24, "theme": "default", "difficulty_pct": self.difficulty_pct}
         if self.chart is not None:
             config["chart"] = self.chart
+        if self.progression is not None:
+            config["progression"] = self.progression
         self.send({"type": "hello_ack", "v": CONTRACT_VERSION, "core_version": "fake", "config": config})
 
     def messages(self, kind: str, since: float = 0.0, name: str | None = None) -> list[Received]:
