@@ -95,6 +95,23 @@ func _init() -> void:
 	_check(total < VegetationPlacer.new().place_tile(0, 0, 1000.0, func(_x, _z): return 300.0, null, theme).size(), "méditerranéen : moins dense que la prairie (150 contre 400 arbres/ha)")
 	print("[PERF] préparation d'une tuile méditerranéenne : %.1f ms" % ms)
 	_check(ms < 150.0, "préparation d'une tuile avec biomes : %.1f ms (< 150 ms, seuil d'O1)" % ms)
+	# Coût de préparation proportionnel à la densité : aucun biome du thème par défaut plus dense que la forêt
+	# tempérée (600 arbres/ha), jungle comprise
+	var densest := ""
+	var dmax := 0.0
+	for b in theme["biomes"]:
+		var d := float(theme["biomes"][b]["vegetation"]["max_density_per_ha"])
+		if d > dmax:
+			dmax = d
+			densest = b
+	_check(dmax <= 600.0, "densité la plus forte des biomes : %s, %.0f arbres/ha (au plus 600)" % [densest, dmax])
+	var jun := TreeRenderer.new()
+	jun.biome_model = BiomeModel.new(theme, null)
+	jun.biome_model.set_forced("jungle")
+	var tj := Time.get_ticks_usec()
+	jun.prepare_tile(0, 0, heights, null, theme, 1.0)
+	print("[PERF] préparation d'une tuile de jungle : %.1f ms (%s)" % [(Time.get_ticks_usec() - tj) / 1000.0, str(jun.last_profile)])
+	jun.free()
 	var again: Dictionary = med.prepare_tile(0, 0, heights, null, theme, 1.0)
 	_check(var_to_str(again["species"]) == var_to_str(pm["species"]) and var_to_str(again["cells"]) == var_to_str(pm["cells"]), "même graine, même forêt")
 

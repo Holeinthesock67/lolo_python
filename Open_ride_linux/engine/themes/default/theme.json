@@ -955,7 +955,7 @@
             "weight": 2
           }
         ],
-        "max_density_per_ha": 900,
+        "max_density_per_ha": 600,
         "treeline_m": null
       },
       "water": {
