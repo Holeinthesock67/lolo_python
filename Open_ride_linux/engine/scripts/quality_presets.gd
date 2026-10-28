@@ -102,12 +102,26 @@ static func building_visibility_end_m(name: String) -> float:
 	return BUILDING_VISIBILITY_END.get(key, BUILDING_VISIBILITY_END[DEFAULT_PRESET])
 
 
+## Nombre de biomes au plus par tuile de terrain (série U, décision U-Q4 : 3 en `low`, 4 sinon).
+const MAX_BIOMES := {
+	"low": 3,
+	"medium": 4,
+	"high": 4,
+}
+
+
+static func max_biomes(name: String) -> int:
+	var key := name.strip_edges()
+	return MAX_BIOMES.get(key, MAX_BIOMES[DEFAULT_PRESET])
+
+
 ## Budgets du décor vivant de la série P selon le préréglage (Lot P4), lus par les lots P5 à P15 et P21.
 ## `low` vise ≥ 55 images/s et un temps d'image p99 sous 25 ms sur la GTX 1060 du PC cible, toute la
 ## série activée. `passersby` est le budget des passants des villages (P21). `birds` compte aussi les
 ## rapaces, volées en V et corneilles de P23 (doublé par P23 : 24, 48, 80). `distant_vehicles` (P25) : véhicules
 ## des routes voisines et tracteurs des champs, en MultiMesh. `aircraft` (P26) : avions de ligne, hélicoptère,
 ## parapentes et montgolfières. `boats` (P29) : bateaux des lacs, des canaux, des rivières et de la mer.
+## `cyclists` (P28) : cyclistes du décor sur la route du parcours.
 const LIVING := {
 	"low": {
 		"tree_sway": true,
@@ -118,6 +132,7 @@ const LIVING := {
 		"animals": 20,
 		"vehicles": 3,
 		"distant_vehicles": 6,
+		"cyclists": 4,
 		"aircraft": 4,
 		"boats": 4,
 		"spectators": 40,
@@ -134,6 +149,7 @@ const LIVING := {
 		"animals": 40,
 		"vehicles": 5,
 		"distant_vehicles": 12,
+		"cyclists": 8,
 		"aircraft": 8,
 		"boats": 8,
 		"spectators": 80,
@@ -150,6 +166,7 @@ const LIVING := {
 		"animals": 80,
 		"vehicles": 8,
 		"distant_vehicles": 24,
+		"cyclists": 16,
 		"aircraft": 12,
 		"boats": 16,
 		"spectators": 160,
