@@ -1234,9 +1234,16 @@ class CoreSession:
             route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
             loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
             powerups_on=self.cfg.powerups.mode == "on")
-        from .bots import attach_segments
+        from .bots import RefRider, attach_segments, calibrate_bots
 
         attach_segments(self.bots, self._segments)   # montées et sprints des bots à profil (lot T12)
+        t0 = time.perf_counter()
+        rider = RefRider(self.cfg.rider.ftp_w, PhysicsParams.from_config(self.cfg))   # niveau des bots, lot T13
+        scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
+                                self.cfg.bike.mass_kg)
+        if scales:
+            log.info("Bots calibrés en %.0f ms : %s.", 1000.0 * (time.perf_counter() - t0),
+                     ", ".join(f"{p} à {lv:g} % : CP × {k:.2f}" for (p, lv), k in scales.items()))
         self.race.start(self._t_session, self.physics.s, self.bots)
         if self._segments:
             log.info("Mode classique : %d segment(s), bonus %s.", len(self._segments), self.cfg.powerups.mode)
