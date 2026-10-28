@@ -719,13 +719,14 @@ func _process(delta: float) -> void:
 		return
 	if not follow.has_frame():
 		return
+	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd), figée 1,1 s après la
+	# dernière trame ; journalisée en mode test même core muet (scénario 4 de fake_core.py).
+	var s_disp: float = follow.update(now)
+	_test_log_camera(now, s_disp)
 	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
 	# l'horloge des personnages et des animaux ci-dessus.
 	if banner.has_message("core_lost"):
 		return
-	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd).
-	var s_disp: float = follow.update(now)
-	_test_log_camera(now, s_disp)
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		var pos: Vector3 = route.sample_point(s_route)
