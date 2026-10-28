@@ -317,16 +317,26 @@ def test_untouched_junction_takes_the_default_branch(session):
 
 # --- critère 5 : route qui ne s'allonge plus -----------------------------------------------------------
 
+def held_and_paused(s, tmp_path):
+    """Générateur figé (`held.flag` de la doublure), sa dernière révision chargée, séance en pause.
+
+    Sans cette synchronisation, l'essai dépend de la cadence : une révision encore en route peut relancer
+    la séance, et une pause de retard peut précéder l'arrêt de la prolongation.
+    """
+    flag = tmp_path / "cache" / "seances" / "held.flag"
+    return (flag.exists() and s.openworld.route.revision >= int(flag.read_text())
+            and s.state.session_state == "PAUSED")
+
+
 def test_pause_world_data_then_automatic_resume(session, tmp_path):
     s = session(7040, power=450.0, stub_args=["--stall-m", "800", "--horizon", "1000"])
     open_world(s)
     s._on_command("start", {}, 2)
-    # les pauses d'un générateur seulement en retard sur la simulation accélérée reprennent seules
-    assert wait_until(s, lambda: s.state.session_state == "PAUSED" and s.openworld.data == "missing", timeout=60.0)
+    assert wait_until(s, lambda: held_and_paused(s, tmp_path) and s.openworld.data == "missing", timeout=60.0)
     assert s.state.pause_reason == "world_data"
     s_pause = s.physics.s
-    # au bout de la route, ou plus tôt si une pause de retard a précédé le manque de données (reprise à 500 m)
-    assert s.openworld.route.length_m - s_pause < 500.0 and s_pause > 700.0
+    # pause sous le seuil de reprise (500 m), à 200 m du bout ou plus tôt si le générateur était en retard
+    assert s.openworld.known_ahead(s_pause) < 500.0 and s_pause > 700.0
     assert s.state.open_world["data"] == "missing"
     step(s, 3.0)
     assert s.state.session_state == "PAUSED" and s.physics.s == s_pause    # la séance reste figée
@@ -341,11 +351,10 @@ def test_late_generator_pauses_instead_of_riding_past_the_known_route(session, t
     s = session(7052, power=450.0, stub_args=["--late-m", "800", "--horizon", "1000"])
     open_world(s)
     s._on_command("start", {}, 2)
-    # route figée vers 1 800 m (800 m + horizon) : pause à moins de 200 m de son bout
-    assert wait_until(s, lambda: s.state.session_state == "PAUSED" and s.physics.s > 1500.0, timeout=60.0)
+    assert wait_until(s, lambda: held_and_paused(s, tmp_path), timeout=60.0)
     assert s.state.pause_reason == "world_data" and s.openworld.data == "cached"
     s_pause = s.physics.s
-    assert 0.0 < s.openworld.known_ahead(s_pause) < 200.0
+    assert 0.0 < s.openworld.known_ahead(s_pause) < 500.0    # sous le seuil de reprise : la pause tient
     step(s, 30.0)
     assert s.state.session_state == "PAUSED" and s.physics.s == s_pause    # jamais au-delà de la route connue
     (tmp_path / "cache" / "seances" / "resume.flag").write_text("x")

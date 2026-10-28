@@ -12,6 +12,9 @@ vivant minimal (route droite vers l'est, pente sinusoïdale, deux carrefours). P
                          `data` reste `cached` : générateur en retard sur le cycliste (machine lente)
     --no-ready           ne répond jamais à `open` (préparation interminable)
     --unavailable        répond `world_unavailable` à `open`
+
+Avec `--stall-m` ou `--late-m`, `held.flag` (à côté du dossier de séance) donne, dès l'arrêt de la
+prolongation, la dernière révision publiée : un essai sait quand le core a chargé la route figée.
 """
 
 import argparse
@@ -118,6 +121,13 @@ def extend(s: float) -> None:
         publish(max(0, int(old // 1000.0) - 1) if old else 0)
 
 
+def hold() -> None:
+    """Prolongation arrêtée : `held.flag` porte la dernière révision publiée (écriture atomique)."""
+    if not (SIDE / "held.flag").exists():
+        (SIDE / "held.flag.tmp").write_text(str(state["rev"]))
+        os.replace(SIDE / "held.flag.tmp", SIDE / "held.flag")
+
+
 def handle(msg: dict) -> bool:
     kind = msg.get("type")
     if kind == "open":
@@ -145,6 +155,7 @@ def handle(msg: dict) -> bool:
                 os._exit(3)
         stalled = args.stall_m is not None and s >= args.stall_m and not (SIDE / "resume.flag").exists()
         if stalled:
+            hold()
             if state["data"] != "missing":
                 state["data"] = "missing"
                 status("ready", "plus de route connue (doublure)")
@@ -153,6 +164,7 @@ def handle(msg: dict) -> bool:
             state["data"] = "cached"
             status("ready")
         if args.late_m is not None and s >= args.late_m and not (SIDE / "resume.flag").exists():
+            hold()
             return True
         extend(s)
     elif kind == "choose" and state["opened"]:
