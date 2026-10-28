@@ -33,7 +33,7 @@ const CHOICE_TEXTS := {
 ## Sous-écrans de « Réglages » (champ `group` du message `settings`), dans l'ordre d'affichage :
 ## [groupe, titre]. Un élément sans groupe connu va dans « Autres réglages », montré seulement s'il
 ## n'est pas vide.
-const GROUPS := [["rider", "Cycliste"], ["ride", "Séance"], ["display", "Affichage"], ["sound", "Son"],
+const GROUPS := [["rider", "Cycliste"], ["ride", "Séance"], ["graphics", "Graphisme"], ["sound", "Son"],
 	["wind", "Vent"]]
 const OTHER_GROUP := ["other", "Autres réglages"]
 ## Points cardinaux d'une direction en degrés (unité « ° »), de 45 en 45 depuis le nord.

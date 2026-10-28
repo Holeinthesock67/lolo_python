@@ -44,7 +44,7 @@ def test_current_lists_the_settings_with_bounds_from_config():
     gear = next(it for it in items if it["key"] == "gearing.start_gear")
     assert (gear["min"], gear["max"]) == (1, 24)
     display = next(it for it in items if it["key"] == "render.display")
-    assert display == {"key": "render.display", "label": "Mode d'affichage", "group": "display",
+    assert display == {"key": "render.display", "label": "Mode d'affichage", "group": "graphics",
                        "value": "fullscreen", "applies": "now", "type": "choice", "choices": ["windowed", "borderless", "fullscreen"]}
 
 

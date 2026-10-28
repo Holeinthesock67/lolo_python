@@ -55,7 +55,7 @@ const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const SUMMARY := "summary"
 const CONNECT := "connect"
 const PAIRING := PairingViewModel.SCREEN
-## Sous-écran de « Réglages » (Cycliste, Séance, Affichage, Son, Vent) ; titre et éléments du groupe ouvert.
+## Sous-écran de « Réglages » (Cycliste, Séance, Graphisme, Son, Vent) ; titre et éléments du groupe ouvert.
 const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"

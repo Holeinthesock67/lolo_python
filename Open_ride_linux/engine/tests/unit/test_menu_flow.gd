@@ -274,7 +274,7 @@ func _test_settings_screen() -> void:
 			"step": 5, "unit": "W", "applies": "next_session"},
 		{"key": "trainer.difficulty_pct", "label": "Difficulté en SIM", "group": "ride", "type": "int", "value": 50,
 			"min": 0, "max": 100, "step": 10, "unit": "%", "applies": "next_session"},
-		{"key": "render.quality", "label": "Qualité graphique", "group": "display", "type": "choice", "value": "high",
+		{"key": "render.quality", "label": "Qualité graphique", "group": "graphics", "type": "choice", "value": "high",
 			"choices": ["low", "medium", "high"], "applies": "now"},
 		{"key": "wind.from_deg", "label": "Direction du vent", "group": "wind", "type": "int", "value": 270, "min": 0,
 			"max": 360, "step": 45, "unit": "°", "applies": "next_session"},
@@ -284,7 +284,7 @@ func _test_settings_screen() -> void:
 	f.handle("MINUS_SHORT")
 	f.handle("A_LONG")   # Réglages
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
-	_check(labels == ["Appareils : rechercher et appairer", "Cycliste", "Séance", "Affichage", "Vent",
+	_check(labels == ["Appareils : rechercher et appairer", "Cycliste", "Séance", "Graphisme", "Vent",
 			"Autres réglages", "OpenRide " + f.engine_version], "réglages rangés en sous-écrans : %s" % str(labels))
 	_check(f.state()["items"][1]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
 	_check(f.state()["items"][-1]["enabled"] == false, "ligne de version non sélectionnable")
@@ -322,7 +322,7 @@ func _test_settings_screen() -> void:
 	_check(f.state()["screen"] == "settings" and _focus_id(f) == "group:rider", "retour aux Réglages sur Cycliste")
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
-	f.handle("A_LONG")   # Affichage
+	f.handle("A_LONG")   # Graphisme
 	f.handle("A_LONG")   # Qualité
 	f.handle("PLUS_SHORT")
 	_check(f.state()["items"][0]["detail"] == "◀ low ▶", "choix en boucle : high → low")

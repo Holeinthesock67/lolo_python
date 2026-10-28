@@ -16,7 +16,7 @@ Parcours (`--list`) :
   recherche, choix, enregistrement dans config.toml, « Relancer » (code de sortie 64 de l'engine) ;
 - `sessions` : menu principal, choix du monde, session libre démarrée puis terminée, session ERG
   (entraînement choisi, consigne ERG reçue), puis « Session simulée » (code de sortie 65) ;
-- `reglages` : Réglages en sous-écrans (Cycliste, Séance, Affichage, Son, Vent) → FTP + 15 W enregistrée dans config.toml, qualité changée tout de suite, ligne « OpenRide X.Y.Z » en bas,
+- `reglages` : Réglages en sous-écrans (Cycliste, Séance, Graphisme, Son, Vent) → FTP + 15 W enregistrée dans config.toml, qualité changée tout de suite, ligne « OpenRide X.Y.Z » en bas,
   puis curseur de difficulté sur l'écran de pause (`set_difficulty`).
 
 Résultat : captures et `rapport.html` dans `--out` (défaut : dossier temporaire). Code de sortie : 0
@@ -293,7 +293,7 @@ def parcours_reglages(run: Run) -> None:
         return
     time.sleep(5.0)
     run.press("MINUS_SHORT", "MINUS_SHORT", "A_LONG")
-    run.expect("reglages", "Réglages", "Cycliste", "Séance", "Affichage", "Son", "Vent")
+    run.expect("reglages", "Réglages", "Cycliste", "Séance", "Graphisme", "Son", "Vent")
     run.focus_to("Séance")
     run.press("A_LONG")
     run.expect("reglages_seance", "Réglages › Séance", "Difficulté en SIM — 50 %")
@@ -311,7 +311,7 @@ def parcours_reglages(run: Run) -> None:
     r.check("ftp_w = 265" in text, "FTP écrite dans config.toml", text.replace("\n", " ")[:120])
     run.expect("reglages_apres", "Réglages › Cycliste", "FTP — 265 W")
     run.press("Y_SHORT")
-    run.focus_to("Affichage")
+    run.focus_to("Graphisme")
     run.press("A_LONG")
     run.focus_to("Qualité")
     t = now()
