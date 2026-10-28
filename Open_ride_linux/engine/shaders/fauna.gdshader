@@ -1,7 +1,10 @@
 shader_type spatial;
 render_mode cull_disabled, diffuse_lambert, specular_disabled;
 
-// Animaux du Lot P11 : animation par sommet à partir du temps global TIME.
+global uniform float anim_time;
+
+// Animaux du Lot P11 : animation par sommet à partir du temps global anim_time
+// (anim_clock.gd : figé avec le décor quand le core ne répond plus).
 // - UV.x : poids de l'aile (oiseaux, mode 0) ; battement autour de l'axe du corps.
 // - UV.y : poids de la tête (bêtes au sol, mode 1) ; la tête descend brouter puis remonte.
 // - INSTANCE_CUSTOM.x : phase de l'individu (0 à 1), pour que les animaux ne bougent pas ensemble.
@@ -37,10 +40,10 @@ void vertex() {
 	v_local = VERTEX;
 	float phase = INSTANCE_CUSTOM.x * 6.2831853;
 	if (mode == 0) {
-		float flap = sin(TIME * 6.2831853 * flap_hz + phase);
+		float flap = sin(anim_time * 6.2831853 * flap_hz + phase);
 		VERTEX.y += UV.x * flap * INSTANCE_CUSTOM.z * 0.35 * abs(VERTEX.x) * 2.0;
 	} else {
-		float down = 0.5 + 0.5 * sin(TIME * 6.2831853 * graze_hz + phase);
+		float down = 0.5 + 0.5 * sin(anim_time * 6.2831853 * graze_hz + phase);
 		down = smoothstep(0.35, 0.9, down) * (1.0 - INSTANCE_CUSTOM.y);
 		VERTEX.y -= UV.y * down * graze_m;
 		VERTEX.z += UV.y * down * graze_m * 0.27;

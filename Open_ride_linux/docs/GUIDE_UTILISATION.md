@@ -132,6 +132,13 @@ Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîti
 
 **Qualité graphique.** Trois préréglages : `low`, `medium`, `high`. Si l'image saccade, passez en `low`.
 
+**Décor vivant.** Le paysage s'anime autour du parcours : pluie, neige légère ou brume selon le thème, rapaces, volées d'oiseaux et corneilles, troupeaux dans les prés, moutons sur les pentes, lièvres dans les champs, éoliennes et drapeaux qui suivent le vent, voitures, camions et motos sur la route, circulation sur les routes voisines et tracteurs aux champs, cyclistes seuls ou en groupe (certains doublent en disant « Salut ! »), avions de ligne, parapentes au-dessus des montées et montgolfières par vent faible, bateaux sur les lacs, les canaux et les rivières, spectateurs au sommet des cols et passants dans les villages. Les phares s'allument dans la brume, sous la pluie ou au soleil bas. Tout se fige en pause. La quantité dépend de la qualité graphique (moins d'objets en `low`). Les routes voisines, les prés et les champs viennent des couches OpenStreetMap du parcours (format `.world` 1.5 : recompilez un parcours plus ancien pour les avoir). Pour tout couper et retrouver le rendu de la version 1.0, écrivez dans `~/OpenRide/config.toml` :
+
+```toml
+[render]
+living = false
+```
+
 **Thèmes.** Un thème change l'apparence de la route, du terrain et du ciel. Les thèmes ajoutés se placent dans `~/OpenRide/Themes/` avec `openride-compiler theme-install DOSSIER` (et `theme-list` pour voir ceux qui sont installés), puis se choisissent dans **Réglages**.
 
 **Sons.** OpenRide génère lui-même les sons du parcours (vent, roue libre, cloches, rivières). Un fichier OGG déposé dans `~/OpenRide/Sounds/` sous le nom du son (`wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) le remplace. En mode classique, un court jingle marque le sommet d'une montée, la fin d'un sprint, le passage sous une arche de bonus et la fin de la séance ; il se remplace de la même façon (`jingle_summit.ogg`, `jingle_summit_pr.ogg` pour un record, `jingle_sprint.ogg`, `jingle_sprint_pr.ogg`, `jingle_arch.ogg`, `jingle_finish.ogg`).
