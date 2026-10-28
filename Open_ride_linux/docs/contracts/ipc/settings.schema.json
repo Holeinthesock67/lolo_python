@@ -47,7 +47,7 @@
             "enum": [
               "rider",
               "ride",
-              "display",
+              "graphics",
               "sound",
               "wind"
             ],

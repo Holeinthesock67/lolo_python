@@ -4,7 +4,8 @@ extends RefCounted
 ##
 ## Activée par `--perf-probe=FICHIER.csv` (engine_args.gd). Chaque seconde, une ligne est ajoutée au
 ## fichier : temps d'image (p50, p99, max), temps CPU et GPU de la vue mesurés par le RenderingServer,
-## appels de dessin, objets et primitives dessinés, mémoire vidéo, tuiles chargées et instances d'arbres.
+## appels de dessin, objets et primitives dessinés, mémoire vidéo, tuiles chargées, instances d'arbres et
+## tuiles proches écartées par le tri du visible (lot S1).
 ## Le fichier est vidé à chaque ligne : il se lit pendant l'essai (`engine/tests/perf_probe.py`, qui
 ## ajoute nvidia-smi et le CPU des processus, puis trace les courbes).
 ## Les images d'une capture d'écran de test (`mark_capture`, lot X35) et les deux suivantes sont mises à
@@ -15,7 +16,7 @@ extends RefCounted
 
 const COLUMNS := ["t_s", "unix_s", "fps", "frame_p50_ms", "frame_p99_ms", "frame_max_ms", "cpu_ms", "gpu_ms",
 	"draw_calls", "objects", "primitives", "vram_mb", "texture_mb", "buffer_mb", "static_mb", "nodes",
-	"near_tiles", "far_tiles", "osm_chunks", "trees", "capture", "capture_max_ms", "preset"]
+	"near_tiles", "far_tiles", "osm_chunks", "trees", "culled_near", "capture", "capture_max_ms", "preset"]
 const PERIOD_US := 1_000_000
 const CAPTURE_FRAMES := 3   # image de la capture et les deux suivantes
 
@@ -156,7 +157,7 @@ static func render_counters() -> Dictionary:
 
 ## Tuiles et objets du décor chargés par world_streamer.gd.
 static func world_counters(streamer) -> Dictionary:
-	var out := {"near_tiles": 0, "far_tiles": 0, "osm_chunks": 0, "trees": 0}
+	var out := {"near_tiles": 0, "far_tiles": 0, "osm_chunks": 0, "trees": 0, "culled_near": 0}
 	if streamer == null:
 		return out
 	var tiles: Dictionary = streamer.loaded_tile_counts()
@@ -166,6 +167,8 @@ static func world_counters(streamer) -> Dictionary:
 		out["osm_chunks"] = streamer.osm_streamer.loaded_chunk_count()
 	if streamer.tree_renderer != null:
 		out["trees"] = streamer.tree_renderer.get_active_tree_count()
+	if "culled_near" in streamer:
+		out["culled_near"] = int(streamer.culled_near)
 	return out
 
 

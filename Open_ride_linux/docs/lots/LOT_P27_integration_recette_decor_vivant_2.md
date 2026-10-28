@@ -50,3 +50,25 @@ Aucune.
 
 - Nouvelles sortes d'animaux, de véhicules ou d'objets du ciel ; texture des prés et des cultures (plus tard, série Y).
 - Nuit (P19) et saisons (P18), version 2.0 : leurs effets sur les phares, les troupeaux et les oiseaux se règlent dans P19.
+
+## 9. Livraison
+
+- **Branchement** (`living_decor.gd`) : un seul ordre de mise à jour par image, météo (particules, brume, chaussée mouillée), oiseaux et animaux (P11, P23, P24), éoliennes, drapeaux et eau, puis cyclistes du décor (P28), véhicules de la route (P13, P25), véhicules lointains (P25), ciel (P26) et bateaux (P29), enfin spectateurs et passants. La météo évaluée, le vent et les bots de l'état du core sont lus une seule fois par image. Les cyclistes lisent les véhicules de la route de l'image précédente (une image d'écart, sans effet visible). En-tête du fichier remis d'aplomb (une ligne de P25 était en double). Aucun comportement de lot changé.
+- **Aucun nœud créé en route** : `test_living_decor.gd` compte les nœuds des vues de la deuxième vague (faune, véhicules, véhicules lointains, cyclistes, ciel, bateaux) après `configure` et après 7 488 images en `high` : 158 et 158.
+- **Enveloppe** : `living_decor.gd` cumule le temps de P23 à P26, P28 et P29 dans `step` (`wave2_us`, `wave2_frames`) ; nouvelle ligne `decor_vivant_2_frame` de `perf_budgets.json` (0,8 ms, 2,4 ms sur les machines partagées). Mesure sur la machine des tests (Godot 4.3 sans écran), parcours de synthèse de `test_living_decor.gd` en `medium` : **0,37 à 0,39 ms par image**, enveloppe tenue ; aucun budget `LIVING` changé. Les lignes de chaque lot (`fauna_frame_200`, `road_traffic_frame`…) restent des plafonds de cas chargés (200 animaux, 16 bateaux) : leur somme (1,35 ms) n'est pas le coût réel de la série ensemble, que mesure la nouvelle ligne.
+- **Banc simulé** : scénario `decor_vivant_2` (monde de test OSM de `make_osm_world.py`, 5 min en SIM à 300 W, difficulté 20 %, soit 21 km/h avec le trainer simulé et non 30 km/h : le trainer simulé roule moins vite que prévu ; le parcours de 3 km n'aurait de toute façon pas tenu 5 min à 30 km/h), sonde X13. Avant : `main` à la fusion de P23 (2a26e0d) ; après : cette branche. Machine des tests sous Xvfb (OpenGL logiciel de Mesa) : les images par seconde y sont plafonnées par le rendu logiciel (7,5 dans tous les cas) et ne disent rien de la GTX 1060 ; seules comptent les différences d'appels de dessin, d'objets et de temps CPU. Médianes :
+
+| Préréglage | Version | images/s | p99 (ms) | CPU de la vue (ms) | GPU de la vue (ms) | appels de dessin | objets dessinés | nœuds |
+|---|---|---|---|---|---|---|---|---|
+| low | avant (P23) | 7,5 | 140,6 | 232 | 284 | 150 | 463 | 1 018 |
+| low | après (série) | 7,5 | 140,9 | 251 | 294 | 158 | 471 | 996 |
+| medium | avant (P23) | 7,5 | 140,4 | 215 | 277 | 151 | 464 | 1 019 |
+| medium | après (série) | 7,5 | 140,5 | 365 | 393 | 158 | 472 | 996 |
+| high | avant (P23) | 7,5 | 140,2 | 270 | 313 | 149 | 462 | 1 019 |
+| high | après (série) | 7,5 | 140,4 | 295 | 318 | 157 | 471 | 996 |
+
+  La série ajoute 7 à 8 appels de dessin et 8 à 9 objets (MultiMesh des véhicules, des cyclistes et des bateaux, engins du ciel) ; la scène compte une vingtaine de nœuds de moins, ce qui vient aussi des autres lots fusionnés sur `main` depuis P23 (l'« avant » est tout `main` à cette date, pas seulement le décor vivant). Le temps CPU de la vue mesuré sous rendu logiciel varie beaucoup d'un lancement à l'autre (p99 de 300 à 830 ms) : la mesure qui décide est celle du PC.
+- **Captures** : scène `decor_vivant` de `visual_check.py` sur le monde de test OSM (généré avec le vrai compilateur, à côté de la démo), vérifiée par présence d'objets, sans image de référence : troupeau (5), oiseaux (19), véhicule croisé (1, un utilitaire qui double à 1 500 m avec la graine 0), véhicules lointains (6), objets du ciel (4) en `1280x720:low` ; `test_info` du décor donne aussi `birds` et `animals`.
+- **Fiche de recette** : [RECETTE_P27.md](../RECETTE_P27.md) (trois blocs de moins de 10 min, avis sur les densités, dont les taux `RATE_FLAT`, `RATE_CLIMB` et `RATE_VILLAGE` des cyclistes de P28, mesure en `low` au banc) ; bloc J8 du protocole de test.
+- **Documentation** : index, suivi, guide d'utilisation (paragraphe « Décor vivant » et `[render] living = false`), `OUTILS_DE_TEST.md`, `engine/tests/README.md`, compteurs du README (89 fichiers de tests unitaires après la fusion de V6 à V12 et Y13, 11 tests de rendu).
+- Reste à faire sur le PC cible : la fiche [RECETTE_P27.md](../RECETTE_P27.md) en `medium` puis en `low`, la mesure `sim_bench.py --scenario decor_vivant_2 --quality low --native --probe` (55 images/s ou plus, p99 sous 25 ms) et l'avis sur les densités, à reporter dans les budgets.
