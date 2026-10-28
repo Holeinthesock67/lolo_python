@@ -44,6 +44,9 @@ signal garage_received(items: Array)
 ## Bilan de progression de fin de séance (lot V9) : répété par le core jusqu'à 10 fois, une fois par seconde.
 signal xp_result_received(msg: Dictionary)
 signal progression_received(msg: Dictionary)
+## Série R (lot R10, contrat 1.4) : salle du mode Cyber-Rogue (une partie) et butin proposé en couloir.
+signal room_received(msg: Dictionary)
+signal loot_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -287,6 +290,10 @@ func _poll_incoming() -> void:
 				progression_received.emit(json_obj)
 			"xp_result":
 				xp_result_received.emit(json_obj)
+			"room":
+				room_received.emit(json_obj)
+			"loot":
+				loot_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -391,6 +398,18 @@ func _on_garage_part(msg: Dictionary) -> void:
 		items.append_array(_garage_parts.get(n, []))
 	_garage_parts.clear()
 	garage_received.emit(items)
+## Salle inconnue du mode Cyber-Rogue (lot R10) : demande au core de renvoyer la salle courante et ses portes.
+## Au plus une demande par seconde ; renvoie le cmd_id, ou -1 si la demande est trop proche de la précédente.
+const ROGUE_RESYNC_MIN_MS := 1000
+var _last_rogue_resync_ms := -ROGUE_RESYNC_MIN_MS
+
+
+func request_rogue_resync() -> int:
+	var now := Time.get_ticks_msec()
+	if now - _last_rogue_resync_ms < ROGUE_RESYNC_MIN_MS:
+		return -1
+	_last_rogue_resync_ms = now
+	return send_command("rogue_resync", {})
 
 
 ## Demande la liste des parcours au core (lot N3, contrat v1.1). Réponse : signal routes_received.

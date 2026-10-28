@@ -52,7 +52,7 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 3. L'écran **Prêt** montre la fiche du parcours (distance, dénivelé, montée principale, durée estimée). Il propose aussi **Bot : …** (un cycliste virtuel à puissance constante), **Fantôme de la dernière séance** et **Records du parcours**.
 4. **Démarrer** lance la séance : le vélo avance dès que vous pédalez.
 
-**Pendant la séance.** Le HUD montre puissance, cadence, fréquence cardiaque, vitesse, distance, pente et profil d'altitude. La touche **Y** du Click (ou `P`, `Espace`, `Échap` au clavier) met en pause : l'écran de pause propose **Reprendre**, **Terminer et enregistrer**, **Abandonner** et le curseur de **Difficulté**.
+**Pendant la séance.** Le HUD montre puissance, cadence, fréquence cardiaque, vitesse, distance, pente et profil d'altitude. La touche **Y** du Click (ou `Y`, `Échap` au clavier) met en pause : l'écran de pause propose **Reprendre**, **Terminer et enregistrer**, **Abandonner** et le curseur de **Difficulté**.
 
 **Fin de séance.** À l'arrivée d'un parcours ou avec **Terminer et enregistrer**, le bilan affiche la durée, la distance, les puissances (NP, IF, TSS) et les zones. La séance est enregistrée dans `~/OpenRide/Activities/` (section 8).
 
@@ -62,7 +62,7 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 **Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, ou **Importer un fichier** `.zwo`, `.erg` ou `.mrc` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`. Une première série d'entraînements s'installe avec `python -m openride_core.tools.workouts install` (depuis `core/`, environnement activé).
 
-**Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 % ; un appui long sur « + » saute au bloc suivant et un appui long sur « − » met l'ERG en pause (pente nulle). Le détail est dans la section 6.
+**Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 %, les appuis longs de ± 10 % ; **Z** passe au bloc suivant et **Y** met la séance en pause. Le détail est dans la section 6.
 
 **Courbes de la séance.** Un graphique façon GoldenCheetah montre la cible, votre puissance, votre fréquence cardiaque et votre cadence. Sa taille se règle dans **Réglages**, **Affichage**, **Courbes de la séance** : masquées, réduites (cible et puissance) ou complètes.
 
@@ -76,38 +76,55 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 ## 6. Commandes du Click et du clavier
 
-Les menus suivent le même plan de boutons partout : « + » et « − » pour choisir, un appui long pour sauter de cinq éléments, **A** long pour valider, **Y** pour revenir. Un appui est court en dessous d'une demi-seconde et long à partir de 0,9 s.
+Chaque bouton garde le même type d'action partout : « + » et « − » déplacent ou dosent (un appui long fait un grand pas), **A** choisit, **Y** revient en arrière ou met en pause, **Z** fait l'action du mode. Un appui est court en dessous d'une demi-seconde et long à partir de 0,9 s ; entre les deux, il ne fait rien et l'écran le signale.
 
 **Dans les menus**
 
-| Action | Click | Clavier |
-| --- | --- | --- |
-| Élément suivant | « + » court, A court, flèche droite | `Bas`, `+`, `Tab` |
-| Élément précédent | « − » court, flèche gauche | `Haut`, `-` |
-| Sauter de cinq vers le bas | « + » long | `Page bas` |
-| Sauter de cinq vers le haut | « − » long | `Page haut` |
-| Valider | A long | `Entrée` |
-| Revenir | Y | `Échap` ou `Retour arrière` |
+| Action | Click |
+| --- | --- |
+| Élément suivant | « + » court, A court, flèche droite |
+| Élément précédent | « − » court, flèche gauche |
+| Sauter de cinq vers le bas | « + » long |
+| Sauter de cinq vers le haut | « − » long |
+| Valider | A long |
+| Revenir (sur l'écran de pause : reprendre) | Y |
 
 **Pendant la séance, en Session libre**
 
-| Action | Click | Clavier |
-| --- | --- | --- |
-| Braquet plus un, moins un | « + » court, « − » court | `+` ou `Haut`, `-` ou `Bas` |
-| Braquet plus dix, moins dix (de 1 à 24) | « + » long, « − » long | `Page haut`, `Page bas` |
-| Pause et reprise | Y | `P`, `Espace` ou `Échap` |
-| Activer le bonus en réserve (mode classique) | Z | rien |
+| Action | Click |
+| --- | --- |
+| Braquet plus un, moins un | « + » court, « − » court |
+| Braquet plus dix, moins dix (de 1 à 24) | « + » long, « − » long |
+| Pause et reprise | Y |
+| Activer le bonus en réserve (mode classique) | Z |
 
 **Pendant la séance, en ERG**
 
-| Action | Click | Clavier |
-| --- | --- | --- |
-| Intensité plus ou moins 2 % | « + » court, « − » court | `+` ou `Haut`, `-` ou `Bas` |
-| Bloc suivant | « + » long | `Page haut` |
-| Pause de l'ERG (puissance visée à 0 %) | « − » long | `Page bas` |
-| Pause de la séance | Y | `P`, `Espace` ou `Échap` |
+| Action | Click |
+| --- | --- |
+| Intensité plus ou moins 2 % | « + » court, « − » court |
+| Intensité plus ou moins 10 % (de 80 à 120 %) | « + » long, « − » long |
+| Bloc suivant | Z |
+| Pause et reprise | Y |
 
-Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîtier gauche ne répond plus (section 9). Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran. Un appui entre court et long ne fait rien et est signalé à l'écran.
+Pendant un bloc de roue libre, « + » et « − » changent le braquet, comme en Session libre.
+
+**Au clavier**
+
+Le clavier double le Click touche pour touche, en menu comme en séance, avec les mêmes durées d'appui. Les touches de la colonne de droite font l'appui long d'un coup, sans tenir la touche.
+
+| Bouton du Click | Touche | Appui long aussi par |
+| --- | --- | --- |
+| « + » | `+` (ou `=`, `+` du pavé numérique) | `Page haut` |
+| « − » ou B | `-` (ou `-` du pavé numérique) | `Page bas` |
+| A | `A` | `Maj+A`, `Entrée` |
+| Y | `Y` ou `Échap` | — |
+| Z | `Z` | `Maj+Z` |
+| Flèches | `Gauche`, `Droite`, `Haut`, `Bas` | — |
+
+Les lettres se lisent comme imprimées sur la touche (AZERTY comme QWERTY). Les flèches haut et bas ne changent pas le braquet : elles serviront aux vues de caméra.
+
+Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîtier gauche ne répond plus (section 9). Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran.
 
 ## 7. Réglages, thèmes et sons
 

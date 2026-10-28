@@ -675,6 +675,54 @@ def run_serie_t_stream(state_port: int, cmd_port: int, duration_s: float) -> int
     return 0
 
 
+ROGUE_ROOM_LENGTH_M = 600.0
+
+
+def rogue_room_msg(room_id: int = 1) -> dict[str, Any]:
+    """Salle d'exemple du mode Cyber-Rogue (lot R10) : 600 m, pentes variées, un repère de chaque sorte."""
+    grades = [2.0] * 12 + [5.0] * 12 + [-4.0] * 12 + [7.0] * 12 + [0.0] * 12
+    profile = [[i * 10.0, grades[i]] for i in range(60)]
+    kinds = ["arch", "strike_target", "parry_zone", "pad", "purge", "tunnel", "rock"]
+    markers = [{"kind": k, "s_m": 60.0 + 70.0 * i, "len_m": 40.0 if k in ("tunnel", "parry_zone") else 10.0, "param": None}
+               for i, k in enumerate(kinds)]
+    return {"type": "room", "v": CONTRACT_VERSION, "room_id": room_id, "part": 1, "parts": 1,
+            "archetype": "diesel", "variant": "", "length_m": ROGUE_ROOM_LENGTH_M, "nominal_s": 120.0,
+            "profile": profile, "markers": markers, "next": None}
+
+
+def rogue_fields(s: float, t: float) -> dict[str, Any]:
+    """Champs `mode` et `rogue` d'une trame du mode Cyber-Rogue qui parcourt la salle d'exemple en boucle."""
+    s_room = s % ROGUE_ROOM_LENGTH_M
+    windows = [{"kind": "arch", "s_start": 55.0, "s_end": 75.0}] if 55.0 <= s_room <= 75.0 else []
+    return {"mode": "ROGUE", "rogue": {
+        "phase": "ROOM", "room_id": 1, "room_index": 1, "rooms_total": 4, "archetype": "diesel", "boss_phase": None,
+        "s_room": s_room, "enemy_hp": 600.0, "enemy_hp_max": 1000.0, "shield": 50.0, "shield_max": 50.0,
+        "adrenaline": 20.0, "w_bal_j": 15000.0, "w_prime_j": 20000.0, "posture": "FLUIDE",
+        "firewall_gap_m": 120.0, "gold": 10, "windows": windows, "hack": None, "overheat": False,
+        "loot_focus": None, "events": []}}
+
+
+def run_rogue_stream(state_port: int, cmd_port: int, duration_s: float) -> int:
+    """Run de démonstration du mode Cyber-Rogue : la salle d'exemple est envoyée au départ puis toutes les 2 s."""
+    core = FakeCore(state_port, cmd_port, EngineLog(Path("/nonexistent/engine.log")))
+    core.auto_hello_ack = True
+    core.streaming = True
+    core.route_id = None
+    core.extra = rogue_fields
+    core.start()
+    core.set_running(True)
+    end = now() + duration_s
+    next_room = 0.0
+    while now() < end:
+        if now() >= next_room:
+            core.send(rogue_room_msg())
+            next_room = now() + 2.0
+        time.sleep(0.05)
+    core.send({"type": "shutdown", "v": CONTRACT_VERSION})
+    core.stop()
+    return 0
+
+
 def run_catalog_server(state_port: int, cmd_port: int, catalog_path: Path, drop_first: bool = False,
                        drop_all: bool = False, split: bool = False) -> int:
     try:
@@ -725,7 +773,11 @@ def main() -> int:
                     help="envoie chaque liste en deux parties, la 2e d'abord (assemblage, lot N3)")
     ap.add_argument("--serie-t", type=float, default=0.0, metavar="SECONDES",
                     help="séance de démonstration du mode classique pendant SECONDES (lots T8 et T9)")
+    ap.add_argument("--rogue", type=float, default=0.0, metavar="SECONDES",
+                    help="run de démonstration du mode Cyber-Rogue pendant SECONDES (lot R10)")
     args = ap.parse_args()
+    if args.rogue > 0.0:
+        return run_rogue_stream(args.state_port, args.cmd_port, args.rogue)
     if args.serie_t > 0.0:
         return run_serie_t_stream(args.state_port, args.cmd_port, args.serie_t)
     if args.erg_workout:

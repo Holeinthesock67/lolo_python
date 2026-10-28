@@ -10,8 +10,8 @@ extends RefCounted
 ## Entrées (mêmes noms que l'IPC, plan des boutons de la spécification générale §7.1) : PLUS_SHORT et
 ## RIGHT_SHORT et A_SHORT (suivant), MINUS_SHORT et LEFT_SHORT (précédent), PLUS_LONG et MINUS_LONG
 ## (cinq éléments plus loin, plus haut, bornés à la liste), A_LONG (valider), Y_SHORT (écran précédent ;
-## sur l'écran de pause, reprendre). Z, flèches haut et bas : rien dans un menu. Le clavier s'y ramène
-## par key_to_event(). Tout autre événement est ignoré.
+## sur l'écran de pause, reprendre). Z, flèches haut et bas : rien dans un menu. Le clavier produit les
+## mêmes événements, touche pour touche (key_map.gd, lot O17). Tout autre événement est ignoré.
 ##
 ## Règles : le focus saute les éléments désactivés et boucle en fin de liste ; valider un élément
 ## désactivé ne fait rien ; une action destructrice (Abandonner, Quitter) passe par l'écran de
@@ -226,32 +226,6 @@ func set_sim_session(on: bool) -> void:
 
 static func _item(id: String, label: String, enabled := true, detail := "") -> Dictionary:
 	return {"id": id, "label": label, "enabled": enabled, "detail": detail}
-
-
-## Touche du clavier vers événement du Click (en attendant le plan du clavier, décision D6) :
-## bas, haut = suivant, précédent ; Page suivante, Page précédente = cinq plus loin, plus haut ;
-## gauche, droite = flèches du Click ; Tab = A court ; Entrée = A long (valider) ; Échap = Y (retour).
-static func key_to_event(keycode: int) -> String:
-	match keycode:
-		KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_DOWN:
-			return "PLUS_SHORT"
-		KEY_MINUS, KEY_KP_SUBTRACT, KEY_UP:
-			return "MINUS_SHORT"
-		KEY_PAGEDOWN:
-			return "PLUS_LONG"
-		KEY_PAGEUP:
-			return "MINUS_LONG"
-		KEY_LEFT:
-			return "LEFT_SHORT"
-		KEY_RIGHT:
-			return "RIGHT_SHORT"
-		KEY_TAB:
-			return "A_SHORT"
-		KEY_ENTER, KEY_KP_ENTER:
-			return "A_LONG"
-		KEY_ESCAPE, KEY_BACKSPACE:
-			return "Y_SHORT"
-	return ""
 
 
 func reset() -> void:

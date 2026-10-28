@@ -5,8 +5,8 @@ extends RefCounted
 ##
 ## Le core envoie la liste (`settings` : {key, label, type, value, min, max, step, unit, choices,
 ## applies}) ; ce modèle la met en forme et garde la valeur en cours de modification. Écran de
-## modification : + / − (appui court) changent la valeur, appui long + enregistre, appui long −
-## annule. Tout réglage en % de 0 à 100 (difficulté, volumes) s'affiche en curseur ; le curseur de la
+## modification (menu_flow._handle_edit, spécification générale §7.1) : + / − changent la valeur (long :
+## cinq pas), A long enregistre, Y annule. Tout réglage en % de 0 à 100 (difficulté, volumes) s'affiche en curseur ; le curseur de la
 ## difficulté sert aussi sur l'écran de pause, où il envoie `set_difficulty` (lot Q1) sans toucher à
 ## config.toml.
 ## Le même écran sert aux paramètres de « Créer un entraînement » (lot N16, clés « workout.… ») :
@@ -177,10 +177,10 @@ func step(direction: int) -> void:
 ## Écran de modification : titre et un élément (la valeur), aide en détail.
 func edit_items() -> Array:
 	return [{"id": "value", "label": format_value(editing, editing.get("value")),
-		"detail": "+ / − : changer, long + : enregistrer, long − : annuler"}]
+		"detail": "+ / − : changer, A long : enregistrer, Y : annuler"}]
 
 
-## Fin de la modification (appui long +) : action pour main.gd.
+## Fin de la modification (A long) : action pour main.gd.
 func commit() -> Dictionary:
 	var e := editing
 	editing = {}
