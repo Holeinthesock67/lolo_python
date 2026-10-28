@@ -22,9 +22,10 @@ Sous-commandes disponibles à ce stade :
                                       pente → effort, ERG, coupures, segments (lot X12)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
-    openride-core xp [--dir DOSSIER] [--json] [--config FICHIER]
+    openride-core xp [--dir DOSSIER] [--json] [--config FICHIER] [--save F | --compare F]
                                       progression (niveau, expérience, défis) recalculée depuis
-                                      le journal des séances (série V, lot V2)
+                                      le journal des séances (série V, lot V2) ; écart avant/après
+                                      une PR face à un instantané (lot X39)
     openride-core devices [--timeout S] [--json] [--all] [--config FICHIER]
                           [--sim-scenario NOM|FICHIER] [--save [--yes]]
                                       inventaire des appareils Bluetooth (trainer, Click,
@@ -176,7 +177,7 @@ def cmd_history(args: argparse.Namespace) -> int:
 def cmd_xp(args: argparse.Namespace) -> int:
     from .tools.xp import run
 
-    return run(args.directory, args.json, args.config)
+    return run(args.directory, args.json, args.config, save=args.save, compare=args.compare)
 
 
 def cmd_devices(args: argparse.Namespace) -> int:
@@ -299,6 +300,10 @@ def build_parser() -> argparse.ArgumentParser:
                     help="dossier des journaux (défaut : ~/OpenRide/Activities/.journal)")
     xp.add_argument("--json", action="store_true", help="sortie JSON")
     xp.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    snap = xp.add_mutually_exclusive_group()
+    snap.add_argument("--save", type=Path, metavar="FICHIER", help="écrit l'instantané (sortie --json) avant une PR")
+    snap.add_argument("--compare", type=Path, metavar="FICHIER",
+                      help="écart d'expérience, de pièces et de défis face à un instantané (code 1 si écart)")
     dev = sub.add_parser("devices", help="inventaire des appareils Bluetooth et bloc [drivers] proposé")
     dev.add_argument("--timeout", type=float, default=8.0, help="durée de la recherche en s (défaut : 8)")
     dev.add_argument("--json", action="store_true", help="sortie JSON")

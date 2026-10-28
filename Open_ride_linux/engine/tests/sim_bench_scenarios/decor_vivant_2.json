@@ -19,6 +19,22 @@
     "world": "osm",
     "duration_s": 300,
     "difficulty_pct": 20,
-    "every_s": 30
+    "every_s": 30,
+    "decor_expect": [
+      "birds",
+      "animals",
+      "distant_vehicles",
+      "cyclists",
+      "aircraft"
+    ],
+    "sounds_expect": [
+      [
+        "raptor_cry",
+        "crow_caw"
+      ],
+      [
+        "vehicle_pass"
+      ]
+    ]
   }
 }
