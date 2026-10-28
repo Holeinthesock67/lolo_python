@@ -45,6 +45,7 @@ Mode classique (SIM), parcours `demo`, option « Bonus » à « oui ». Arrête-
 - [ ] HUD sous le panneau de droite : chrono de la montée pendant l'effort, puis résultat pendant 8 s (temps au dixième, « Record ! » au premier passage).
 - [ ] Après la montée : approche « Sprint 1 dans 1,2 km », panneaux « Sprint dans 1 km, 500 m, 200 m » et portique vert.
 - [ ] Résultat du sprint, puis bonus en réserve « Z : … » dans le bloc du bonus.
+- [ ] Jingles (lot T17) : trois notes montantes et une cloche au sommet de la montée, deux notes vives à la fin du sprint, avec une note de plus quand c'est un record ; chacun une seule fois, audible par-dessus le vent sans gêner.
 - [ ] Lisibilité du HUD et des panneaux à ta distance de pédalage.
 
 Remarque : …
@@ -55,6 +56,7 @@ Relance une séance sur `demo` et refais la montée seulement : arrête-toi au s
 
 - [ ] Pendant la montée : écart au record en direct, vert quand tu es en avance, rouge en retard.
 - [ ] À l'arrivée : temps, ancien record si tu le bats, place.
+- [ ] En terminant la séance : courte fanfare de fin, une seule fois, avant le bilan (lot T17).
 - [ ] Menu, écran « Prêt », « Records du parcours » : la montée et le sprint ont leurs temps, avec date, W et W/kg ; A court bascule entre « sans bonus » et « avec bonus ».
 
 Remarque : …
@@ -63,7 +65,7 @@ Remarque : …
 
 Séance sur `demo`, avec l'arche tous les 1 000 m de la préparation. À chaque bonus reçu (arche ou fin de segment), appuie sur Z. Arrête-toi quand tu as vu les trois bonus, ou au bout de 10 minutes. Le type du bonus est tiré au hasard : s'il en manque un, refais l'étape un autre jour.
 
-- [ ] Arches violettes visibles sur la route.
+- [ ] Arches violettes visibles sur la route, avec un arpège de cloches à chaque passage dessous (lot T17).
 - [ ] Légèreté : la vitesse monte un peu, la résistance du trainer ne change pas.
 - [ ] Aérodynamique : la vitesse monte sur le plat ; seul le supplément dû au vent peut s'alléger.
 - [ ] Puissance : la vitesse monte, la résistance ne change pas.
