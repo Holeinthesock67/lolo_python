@@ -141,6 +141,8 @@ func _test_view() -> void:
 	var many: Array = []
 	for i in range(9):
 		many.append({"id": "r%d" % i, "name": "Parcours %d" % i, "length_m": 1000.0 * (i + 1), "status": "ready"})
+	for extra in ["9b", "9c"]:   # la liste dépasse la fenêtre de MAX_VISIBLE_ITEMS éléments
+		many.append({"id": "r" + extra, "name": "Parcours " + extra, "length_m": 20000.0, "status": "ready"})
 	f.set_routes(many)
 	var v = MenuView.new()
 	var state := {"session_state": "IDLE", "trainer_status": "MOCK", "input_status": "KEYBOARD"}
@@ -154,7 +156,7 @@ func _test_view() -> void:
 	var shown := v.items_text().split(" | ")
 	_check(shown.size() == MenuView.MAX_VISIBLE_ITEMS and v.items_text().contains("[Parcours 7"),
 			"longue liste : fenêtre autour du focus (%s)" % v.items_text())
-	_check(v.more_label.text == "8 / 10", "position dans la liste (tri en dernier) : %s" % v.more_label.text)
+	_check(v.more_label.text == "8 / 12", "position dans la liste (tri en dernier) : %s" % v.more_label.text)
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1800.0, "distance_m": 15000.0,
 			"avg_power_w": 210.0, "fit_path": "/x/y/seance.fit", "blocks": [[1, 200.0, 200.0], [2, 260.0, 230.0]]}})

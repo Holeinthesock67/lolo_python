@@ -74,6 +74,7 @@ class RenderConfig:
     visual_grade_scale: float = 1.0
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
+    camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off ou on
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
 
@@ -143,6 +144,13 @@ class ProgressionConfig:
 
 
 @dataclass
+class AvatarConfig:
+    """Position en danseuse de l'avatar (lot V6) : l'engine passe debout au-dessus de l'un des deux seuils."""
+    standing_grade_pct: float = 8.0      # pente (%)
+    standing_power_pct: float = 150.0    # puissance (% de la FTP)
+
+
+@dataclass
 class RogueConfig:
     """Mode Cyber-Rogue de la 2.0 (série R, SRS §11)."""
 
@@ -187,6 +195,7 @@ class Config:
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
+    avatar: AvatarConfig = field(default_factory=AvatarConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
     bots: BotsConfig = field(default_factory=BotsConfig)
@@ -242,6 +251,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("wind", "from_deg"): (0, 360),
     ("wind", "gust_pct"): (0, 100),
     ("wind", "max_grade_offset_pct"): (0, 8),
+    ("avatar", "standing_grade_pct"): (3, 15),
+    ("avatar", "standing_power_pct"): (100, 300),
     ("rogue", "w_prime_j"): (5000, 60000),
     ("rogue", "cp_w"): (0, 1000),
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
@@ -263,6 +274,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
+    ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),
     ("drivers", "input"): ("click", "keyboard", "none", "sim"),
     ("drivers", "hr"): ("none", "ble", "sim"),

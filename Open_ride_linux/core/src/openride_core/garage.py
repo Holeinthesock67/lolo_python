@@ -32,8 +32,6 @@ log = logging.getLogger(__name__)
 CACHE_NAME = ".progression.json"   # cache des séances lues, dans le dossier des journaux
 MAX_UNLOCKED = 8
 MAX_CHALLENGES = 4
-STANDING_GRADE_PCT = 8
-STANDING_POWER_PCT = 150
 ITEMS_PER_PART = 150   # éléments du catalogue par partie du message `garage`
 
 
@@ -136,8 +134,8 @@ class ProgressionService:
             return None
         lv = self.progress.level
         avatar = dict(self.profile.avatar)
-        avatar["standing_grade_pct"] = STANDING_GRADE_PCT   # lus dans `[avatar]` avec le lot V6
-        avatar["standing_power_pct"] = STANDING_POWER_PCT
+        avatar["standing_grade_pct"] = self.cfg.avatar.standing_grade_pct   # `[avatar]` de config.toml (lot V6)
+        avatar["standing_power_pct"] = self.cfg.avatar.standing_power_pct
         return {"level": lv.level, "xp": self.progress.total_xp, "xp_level_start": lv.xp_level_start,
                 "xp_next_level": lv.xp_next_level, "coins": self.balance(),
                 "equipped": dict(self.profile.equipped), "avatar": avatar,
