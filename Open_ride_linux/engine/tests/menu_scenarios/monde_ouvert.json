@@ -1,0 +1,19 @@
+{
+  "description": "Monde ouvert : le menu s'ouvre sur le globe, une lettre tapée ouvre la recherche (les lettres y sont du texte, Échap revient), retour au globe puis menu fermé.",
+  "voies": ["click", "clavier"],
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "open_world"},
+    {"monde": "globe", "delai": 10},
+    {"capture": "globe"},
+    {"voies": ["clavier"], "touche": "P"},
+    {"voies": ["clavier"], "monde": "search"},
+    {"voies": ["clavier"], "note": "Y tapé dans la recherche : une lettre, pas « retour »", "touche": "Y"},
+    {"voies": ["clavier"], "monde": "search"},
+    {"voies": ["clavier"], "touche": "Escape"},
+    {"voies": ["clavier"], "monde": "globe"},
+    {"voies": ["clavier"], "touche": "Escape"},
+    {"voies": ["click"], "appui": "Y_SHORT"},
+    {"ecran": "home", "monde": false, "focus": "open_world", "delai": 8}
+  ]
+}

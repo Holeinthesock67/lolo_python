@@ -29,8 +29,10 @@ CONTRACT_REV = "1.5"
 # Modes de jeu que ce core sait lancer (hello_ack.config.modes, révision 1.3).
 CORE_MODES = ("ride", "erg", "open_world", "rogue")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8
 MAX_LIST_DATAGRAM_SIZE = 60000
-# Messages en parties (`part`, `parts`) : 60 000 octets au plus par partie (contrat §2).
-LIST_MESSAGE_TYPES = ("routes", "workouts", "imports")
+# Messages en parties (`part`, `parts`) et `plans` : 60 000 octets au plus par datagramme (contrat §2,
+# même liste que le contrat ; `garage` et `room` depuis la révision 1.4, le monde ouvert depuis la 1.5).
+LIST_MESSAGE_TYPES = ("routes", "workouts", "imports", "plans", "garage", "room",
+                      "places", "world_map", "world_regions")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
 

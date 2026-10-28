@@ -1,0 +1,18 @@
+{
+  "description": "« Quitter » de l'accueil : confirmation, focus sur Non ; Non revient à l'accueil, Y aussi ; Oui ferme l'engine (code 0).",
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "quit"},
+    {"ecran": "confirm", "titre": "Quitter OpenRide ?", "focus": "no", "elements": ["no", "yes"]},
+    {"choisir": "no"},
+    {"ecran": "home"},
+    {"choisir": "quit"},
+    {"ecran": "confirm"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "home"},
+    {"choisir": "quit"},
+    {"choisir": "yes"},
+    {"journal": "engine", "motif": "Quitter demandé depuis le menu"},
+    {"sortie": 0}
+  ]
+}

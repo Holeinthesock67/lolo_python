@@ -1,7 +1,8 @@
 extends RefCounted
 
-## Réglages d'image (SRS §8, lots E1, L4, E3, Y1 et Y13) : caméra, ombres, anticrénelage, filtrage,
-## occlusion ambiante, glow, rendu des tons, brouillard, tronçons, rayon des tuiles lointaines.
+## Réglages d'image (SRS §8, lots E1, L4, E3, Y1, Y13 et S1) : caméra, ombres, anticrénelage, filtrage,
+## occlusion ambiante, glow, rendu des tons, brouillard, tronçons, rayon des tuiles lointaines, rayon gardé
+## autour de la caméra par le tri des tuiles proches.
 ##
 ## Applique les réglages de quality_presets.gd sur la caméra, la lumière, l'environnement, le viewport
 ## et le streamer. La table interne d'E1 est supprimée au profit de quality_presets.gd.
@@ -9,6 +10,7 @@ extends RefCounted
 
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
+const ViewCulling := preload("res://scripts/view_culling.gd")
 
 const DEFAULT_PRESET := QualityPresets.DEFAULT_PRESET
 
@@ -86,6 +88,8 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 			streamer.vegetation_density_factor = float(p["vegetation_density_factor"])
 		if "far_radius_m" in streamer:
 			streamer.far_radius_m = WorldStreamer.far_radius_for(QualityPresets.fog_end_m(key))
+		if "culling_keep_m" in streamer:
+			streamer.culling_keep_m = ViewCulling.keep_radius_for(QualityPresets.shadow_distance_m(key))
 		if "quality_preset" in streamer:
 			streamer.quality_preset = key   # biomes par tuile et textures de sol (lot U6)
 
