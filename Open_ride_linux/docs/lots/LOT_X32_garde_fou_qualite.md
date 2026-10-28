@@ -37,3 +37,14 @@ Ce lot rend la qualité **effective** visible et vérifiée par chaque outil qui
 ## 7. Hors périmètre
 
 Le contenu des préréglages (Y13), le réglage au menu (O4).
+
+## 8. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x32`).
+
+- Engine : `_report_quality` dans `main.gd` (ligne toujours écrite, ligne de test, préréglage de la sonde mis à jour quand un réglage change la qualité : avant, la sonde gardait le préréglage du démarrage) ; champ `quality` des captures ; `QualityPresets.applied_name`.
+- `engine/tests/quality_guard.py` ; vérifications dans `sim_bench.py`, `visual_check.py` (donc dans `run_engine_tests.sh`, en `low`) et `perf_probe.py --quality`.
+- Vitrines : `vitrine_rendu.gd` applique le préréglage (image, ombres, brouillard) et écrit la colonne `qualite_appliquee` ; pour `vitrine_biomes.gd`, la colonne est laissée au fil des biomes, qui retouche le même CSV dans la PR #493 (écart assumé, pour éviter un conflit).
+- `menu_bench.py` : l'attente « Qualité graphique : medium » devient « Qualité appliquée : medium » (même événement, nouveau libellé) ; le contrôle complet du banc des menus viendra avec sa réécriture (fil du banc des menus).
+- Essai au cloud : `sim_bench.py --quality medium --scenario nominal --probe` passe ; en retirant la ligne `[render]` écrite par #481, il échoue sur « qualité réellement appliquée : qualité demandée medium, appliquée low (3/3 capture(s)) » et « qualité notée par la sonde : mesurée en medium, puis low ».
+- Écart : pas de scène dédiée « faux core qui renvoie une autre qualité » dans `run_engine_tests.sh` ; le contrôle de `visual_check.py` et les tests de `core/tests/test_quality_guard.py` (9 tests, cas négatifs compris) couvrent le même défaut.

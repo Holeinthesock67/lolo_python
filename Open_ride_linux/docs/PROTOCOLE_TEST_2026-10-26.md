@@ -3,7 +3,7 @@
 Un seul protocole, pas à pas, pour valider sur le PC cible et sur le vélo l'état d'OpenRide après les fusions des 26 et 27 octobre. Il ne remplace pas les listes existantes, il les ordonne et renvoie vers elles :
 
 - [RECETTE_E3_E4.md](RECETTE_E3_E4.md) : ciel, brouillard, arbres, bâtiments, eau, sons (rendu) ;
-- [RECETTE_P16.md](RECETTE_P16.md) et [RECETTE_P17.md](RECETTE_P17.md) : vent, nuages, sons d'ambiance, puis décor complet (mises à jour 1.x, bloc J) ;
+- [RECETTE_P16.md](RECETTE_P16.md), [RECETTE_P17.md](RECETTE_P17.md) et [RECETTE_P27.md](RECETTE_P27.md) : vent, nuages, sons d'ambiance, décor complet, puis deuxième vague du décor vivant (mises à jour 1.x, bloc J) ;
 - [lots/LOT_O8_recette_1_0.md](lots/LOT_O8_recette_1_0.md) §4 : les 25 lignes de la recette 1.0 (cité « O8 ligne n ») ;
 - l'essai de 1 h 09 du 25 octobre (circuit `essai-69`, coupures provoquées) : à refaire tel quel s'il faut revalider les coupures ;
 - [OUTILS_DE_TEST.md](OUTILS_DE_TEST.md) : la liste de tous les outils et de leurs options.
@@ -36,6 +36,8 @@ git switch main                                  # retour à main à la fin
 ```
 
 Le core et le compilateur sont installés en mode éditable, et Godot lit `engine/` du dépôt : l'icône **OpenRide** lance donc le code de la branche en cours, sans réinstaller.
+
+**Avant une séance vélo (lot X36)** : `python3 scripts/pre_vol.py --seance t11_j7` (ou `p27`, `erg`, `recette_1_0` ; `--liste`), depuis `Open_ride_linux/`, vérifie tout ce qui se contrôle sans pédaler (git à jour, tests `recette_sans_velo`, tests Godot de la séance, sauvegarde de `config.toml`, parcours compilés, fichiers de la séance, trainer et Click visibles) et répond « PRÊT À ROULER » ou dit ce qui bloque. Moins de 10 minutes ; le PC doit être libre (pas de banc en cours).
 
 ### 0.3 Notes et journaux
 
@@ -450,11 +452,12 @@ Ces essais s'ajoutent aux blocs A à H ; chacun dit s'il se fait sur le vélo. L
 - [ ] Gestes du plan commun au Click
 - [ ] Mêmes gestes au clavier
 
-### J8. Décor vivant (P16 puis P17, mises à jour 1.x)
+### J8. Décor vivant (P16, P17 puis P27, mises à jour 1.x)
 
-- **Étapes :** [RECETTE_P16.md](RECETTE_P16.md) (vent, nuages, sons), puis [RECETTE_P17.md](RECETTE_P17.md) (météo, animaux, véhicules, bord de route, foule, abri).
+- **Étapes :** [RECETTE_P16.md](RECETTE_P16.md) (vent, nuages, sons), puis [RECETTE_P17.md](RECETTE_P17.md) (météo, animaux, véhicules, bord de route, foule, abri), puis [RECETTE_P27.md](RECETTE_P27.md) (deuxième vague : oiseaux, animaux par terrain, véhicules, cyclistes, ciel, bateaux ; trois blocs de moins de 10 min et la mesure en `low` au banc).
 - [ ] Recette P16
 - [ ] Recette P17
+- [ ] Recette P27
 
 ### J9. Mesures du monde ouvert (W0), avec réseau, sans pédaler
 
