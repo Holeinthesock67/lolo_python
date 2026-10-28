@@ -10,14 +10,14 @@ Les recettes visuelles (E3/E4, P16, P17, U18, Y11/Y12) demandent de rouler jusqu
 
 ## 3. Travail demandé
 
-- **`engine/tests/tour_visuel.gd`** (script sans core, comme les vitrines) : charge un `.world`, applique un préréglage, et pour chaque point (distance en mètres, vue de caméra, heure, météo) place le cycliste et la caméra, attend que les tronçons soient chargés, capture.
+- **Scène du tour** (prévue comme un script `tour_visuel.gd` sans core, comme les vitrines ; faite avec la vraie scène, voir §7) : charge un `.world`, applique un préréglage, et pour chaque point (distance en mètres, vue de caméra, heure, météo) place le cycliste et la caméra, attend que les tronçons soient chargés, capture.
 - **Liste des points** en JSON (`engine/tests/tours/*.json`) ; points automatiques (`--auto`) : village le plus dense, forêt, eau, montées à 0, 5 et 10 %, départ et arrivée, frontières de biome.
 - **`engine/tests/tour_visuel.py`** : lance Godot (Xvfb ou `--native`), puis écrit `planche.html` : une carte par point, la capture, les mesures (triangles, appels de dessin), et trois cases « OK / à revoir / défaut » avec une note, mémorisées dans la page (localStorage) et exportables en JSON.
 
 ## 4. Fichiers
 
-- **Nouveaux :** `engine/tests/tour_visuel.gd`, `tour_visuel.py`, `engine/tests/tours/demo.json`, `core/tests/test_tour_visuel.py` (points automatiques sur une route fabriquée, planche).
-- **Modifiés :** `docs/OUTILS_DE_TEST.md`, `engine/tests/README.md`, ce cahier, `00_INDEX.md`, `SUIVI_AVANCEMENT.md`.
+- **Nouveaux :** `engine/tests/tour_visuel.py`, `engine/tests/tours/demo.json`, `core/tests/test_tour_visuel.py` (points automatiques sur une route fabriquée, planche).
+- **Modifiés :** `engine/scripts/main.gd` et `world_streamer.gd` (message de test `camera_view`, tuiles en attente dans la capture), `docs/OUTILS_DE_TEST.md`, `engine/tests/README.md`, ce cahier, `00_INDEX.md`, `SUIVI_AVANCEMENT.md`.
 
 ## 5. Critères d'acceptation
 
