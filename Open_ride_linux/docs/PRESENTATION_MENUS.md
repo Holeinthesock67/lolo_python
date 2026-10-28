@@ -39,6 +39,8 @@ La carte de détail (étape 2) suit l'écran et le focus (`menu_flow.card()`, fi
 | Créer un entraînement | Aperçu des blocs du `.zwo` que le core écrira (`workout_builder.profile()`), mis à jour à chaque réglage ; valeurs des paramètres alignées à droite |
 | Fin de séance | En-tête « Bilan de la séance », puis le bilan (`summary_view.gd`) |
 
+Réglages (étape 3a, cahier LOT_N19) : une rangée par réglage, le libellé à gauche et la valeur à droite (`settings_view_model.row()`), un curseur de 180 de large pour les réglages en % de 0 à 100 (difficulté, volumes). Valider un réglage ne change plus d'écran : la rangée passe en édition (`◀ 75 % ▶`, valeur en couleur de sélection), + et B règlent (appui long : cinq pas), A maintenu enregistre (une seule commande `set_setting`, la valeur s'affiche tout de suite), Y annule et rend la valeur d'avant ; le bandeau passe à « maintenir : Enregistrer · Augmenter · Diminuer · Y Annuler » (`button_help.EDIT`). La carte à droite donne la valeur, la plage, le pas ou les choix, et le moment où le réglage s'applique (`settings_view_model.sheet()`). Le titre porte le fil d'Ariane (« Réglages › Son »). La difficulté de l'écran de pause garde son écran de réglage jusqu'à l'étape 4. Plan des boutons, messages `settings` et `set_setting` inchangés.
+
 Contraintes tenues : plan des boutons et contrat IPC inchangés, aucune texture ni police ajoutée, menus sans animation continue.
 
 ## Étapes
@@ -47,7 +49,8 @@ Contraintes tenues : plan des boutons et contrat IPC inchangés, aucune texture 
 | --- | --- | --- |
 | 1 | Thème, pictogrammes, bandeau des boutons, pastilles, menus en plein écran, accueil entier | Fusionnée (PR #433) |
 | 2 | Prêt et fiche du parcours en carte (chiffres, profil d'altitude), parcours, entraînements ERG, création et import | En revue |
-| 3 | Réglages (valeur alignée à droite, édition en place, curseur de la difficulté), Appareils et connexion, plans et test de FTP | À faire, cahier [N19](lots/LOT_N19_menus_reglages_appareils_plans.md) |
+| 3a | Réglages : libellé à gauche et valeur à droite, curseur des réglages en %, modification en place dans la liste, carte du réglage ; paramètres de « Créer un entraînement » en place | En revue |
+| 3b | Appareils et connexion, plans et test de FTP | À faire, cahier [N19](lots/LOT_N19_menus_reglages_appareils_plans.md) |
 | 4 | Records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | À faire, cahier [N20](lots/LOT_N20_menus_records_bilan_pause_hud.md) |
 
 Chaque étape : une branche et une PR, `engine/tests/unit/test_menu_style.gd` à jour, captures de référence des tests graphiques (`menu_accueil`, `pause`, `bilan` ; `menu_parcours` et `pret` vérifiées par textes et pixels, sans image de référence) refaites sur le PC avec `run_visual_tests.sh --golden … --update-golden`.

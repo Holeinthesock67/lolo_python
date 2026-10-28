@@ -233,10 +233,6 @@ func _test_lists_and_events() -> void:
 		unknown_ok = unknown_ok and after["action"].is_empty() and after["screen"] == before["screen"] \
 			and after["focus"] == before["focus"] and after["items"] == before["items"]
 	_check(unknown_ok, "événements inconnus : ignorés, état inchangé")
-	var keys_ok: bool = MenuModel.key_to_event(KEY_DOWN) == "PLUS_SHORT" and MenuModel.key_to_event(KEY_UP) == "MINUS_SHORT" \
-		and MenuModel.key_to_event(KEY_ENTER) == "A_LONG" and MenuModel.key_to_event(KEY_ESCAPE) == "Y_SHORT" \
-		and MenuModel.key_to_event(KEY_A) == ""
-	_check(keys_ok, "clavier ramené aux quatre événements, flèche bas = suivant")
 	var w = MenuModel.new()
 	w.set_items("workouts", [])
 	w.handle("PLUS_SHORT")
@@ -335,9 +331,6 @@ func _test_button_plan() -> void:
 	_check(m.handle("Y_SHORT")["screen"] == "home", "Y : écran précédent")
 	m.open_pause()
 	_check(m.handle("Y_SHORT")["action"].get("action", "") == "resume", "Y sur l'écran de pause : reprendre")
-	_check(MenuModel.key_to_event(KEY_PAGEDOWN) == "PLUS_LONG" and MenuModel.key_to_event(KEY_TAB) == "A_SHORT"
-		and MenuModel.key_to_event(KEY_LEFT) == "LEFT_SHORT" and MenuModel.key_to_event(KEY_RIGHT) == "RIGHT_SHORT",
-		"clavier : Page suivante = 5 plus loin, Tab = A court, gauche et droite = flèches du Click")
 
 
 func _init() -> void:

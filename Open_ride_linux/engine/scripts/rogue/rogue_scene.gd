@@ -11,6 +11,9 @@ const RibbonBuilder := preload("res://scripts/rogue/ribbon_builder.gd")
 const RibbonColors := preload("res://scripts/rogue/ribbon_colors.gd")
 const MarkerViews := preload("res://scripts/rogue/marker_views.gd")
 const FirewallView := preload("res://scripts/rogue/firewall_view.gd")
+const HudModel := preload("res://scripts/rogue/rogue_hud_model.gd")
+const HudView := preload("res://scripts/rogue/rogue_hud_view.gd")
+const CameraFx := preload("res://scripts/rogue/rogue_camera_fx.gd")
 const SheetScript := preload("res://scripts/rogue/rogue_style_sheet.gd")
 const RIBBON_SHADER := preload("res://scripts/rogue/ribbon.gdshader")
 
@@ -44,6 +47,10 @@ var _s_target := 0.0
 var _s_disp := 0.0
 var _gap_m := 150.0
 var _ribbon_mat: ShaderMaterial
+var hud_model = HudModel.new()
+var hud_view: Node3D              # rogue_hud_view.gd
+var camera_fx = CameraFx.new()
+var _hud_events: Array = []
 
 
 func _ready() -> void:
@@ -78,6 +85,11 @@ func _ready() -> void:
 	_ribbon_mat = ShaderMaterial.new()
 	_ribbon_mat.shader = RIBBON_SHADER
 	ribbon.material_override = _ribbon_mat
+	hud_view = HudView.new()
+	hud_view.name = "Hud"
+	hud_view.preset = preset
+	hud_view.adapted = adapted
+	add_child(hud_view)
 	set_style(preset, adapted)
 	_place_camera()
 	camera.make_current()
@@ -91,6 +103,8 @@ func set_style(new_preset: String, new_adapted: bool) -> void:
 	grid.material_override = Materials.grid(preset, adapted)
 	bike.material_override = Materials.edge("player", 2.0, preset, adapted)
 	firewall.set_style(preset, adapted)
+	if hud_view != null:
+		hud_view.set_style(preset, adapted)
 	_ribbon_mat.set_shader_parameter("body_color", Palette.body_color())
 	_ribbon_mat.set_shader_parameter("intensity", Palette.INTENSITY.get(preset, 1.6))
 	_ribbon_mat.set_shader_parameter("ahead_m", RibbonColors.AHEAD_M)
@@ -154,11 +168,20 @@ func on_state(rogue: Dictionary, now_s: float) -> void:
 	_update_pose()
 
 
+## Trame `state` entière (vitesse, watts, cadence) pour le HUD diégétique et les effets de caméra (lot R11).
+func on_hud(state: Dictionary, now_s: float) -> void:
+	hud_model.update(state, now_s)
+	var events: Array = hud_model.take_events()
+	_hud_events.append_array(events)
+	hud_view.show_events(events)
+
+
 func _process(delta: float) -> void:
 	_s_disp = lerpf(_s_disp, _s_target, clampf(delta * SMOOTH_PER_S, 0.0, 1.0))
 	if absf(_s_disp - _s_target) > 50.0:
 		_s_disp = _s_target       # saut de salle : pas de glissement
 	_update_pose()
+	_tick_hud(delta)
 
 
 func _update_pose() -> void:
@@ -171,10 +194,18 @@ func _update_pose() -> void:
 	_place_camera()
 
 
+func _tick_hud(delta: float) -> void:
+	var v: Dictionary = hud_model.values()
+	camera_fx.update(delta, float(v.get("power_pct", 0.0)), _hud_events)
+	_hud_events = []
+	hud_view.apply(v, bike.position, delta)
+
+
 func _place_camera() -> void:
 	if camera == null:
 		return
 	var y := ribbon_y(_s_disp)
 	var eye := Vector3(0.0, y + CAMERA_UP_M, -(_s_disp - CAMERA_BACK_M))
 	var target := Vector3(0.0, ribbon_y(_s_disp + CAMERA_LOOK_AHEAD_M) + 0.5, -(_s_disp + CAMERA_LOOK_AHEAD_M))
-	camera.look_at_from_position(eye, target)
+	camera.fov = camera_fx.fov_deg()
+	camera.look_at_from_position(eye + camera_fx.shake_offset(), target)

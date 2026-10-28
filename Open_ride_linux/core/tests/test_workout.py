@@ -202,10 +202,10 @@ def test_skip_and_pause(workouts_dir):
     assert advance(c, 1.0).target_w == 269         # (0,95 + 1,2) / 2 × 250 = 268,75
     assert advance(c, 1.0).target_w == 300
     remaining = c.to_dict()["block_remaining_s"]
-    c.toggle_pause()
+    c.paused = True                                # pause de la séance (Y), posée par la session
     advance(c, 30.0)
     assert c.paused and c.to_dict()["block_remaining_s"] == remaining
-    c.toggle_pause()
+    c.paused = False
     assert not c.paused and c.to_dict()["block_remaining_s"] == remaining
     assert advance(c, 1.0).to_dict()["block_remaining_s"] == pytest.approx(remaining - 1.0, abs=0.01)
 
@@ -282,22 +282,32 @@ def test_session_erg_flow(tmp_path, monkeypatch, workouts_dir):
         assert s.state.erg["bias_pct"] == 110 and s.gearing.k == 12
         for _ in range(5):
             s._handle_input(InputEvent.MINUS_SHORT)
-        # Pause ERG : temps du bloc arrêté, pente 0 %.
-        s.erg.t_block = 300.0
+        # Biais au grand pas (§7.1) : ± long = ± 10 %, borné à 80 % et 120 % ; aucun bloc sauté.
+        index = s.state.erg["block_index"]
+        s._handle_input(InputEvent.PLUS_LONG)
+        s._handle_input(InputEvent.PLUS_LONG)
+        assert s.state.erg["bias_pct"] == 120 and s.state.erg["block_index"] == index
         s._handle_input(InputEvent.MINUS_LONG)
+        assert s.state.erg["bias_pct"] == 110 and s.state.erg["block_index"] == index
+        s._handle_input(InputEvent.MINUS_LONG)
+        # Pause de la séance par Y, seule pause : temps du bloc arrêté, trainer relâché.
+        s.erg.t_block = 300.0
+        s._handle_input(InputEvent.Y_SHORT)
         remaining = s.state.erg["block_remaining_s"]
         run(s, 5.0)
-        assert s.state.erg["paused"] and driver.target_power_w is None and driver.sim_grade_pct == 0.0
+        assert s.state.session_state == "PAUSED" and s.state.erg["paused"]
         assert s.state.erg["block_remaining_s"] == pytest.approx(remaining, abs=0.1)
-        s._handle_input(InputEvent.MINUS_LONG)
+        s._on_command("resume", {}, 4)
         run(s, 0.02)
-        assert driver.target_power_w is not None
+        assert not s.state.erg["paused"] and driver.target_power_w is not None
         assert s.state.erg["block_remaining_s"] == pytest.approx(remaining, abs=0.1)
-        # Saut de bloc : appui long + puis commande skip_block.
-        s._handle_input(InputEvent.PLUS_LONG)
+        # Saut de bloc : Z court (Click ou input_event de l'engine), puis commande skip_block.
+        s._handle_input(InputEvent.Z_SHORT)
         assert s.state.erg["block_type"] == "steady"
-        s._on_command("skip_block", {}, 4)
+        s._on_command("input_event", {"event": "Z_SHORT"}, 5)
         assert s.state.erg["block_type"] == "interval_on" and s.state.erg["block_index"] == 3
+        s._on_command("skip_block", {}, 6)
+        assert s.state.erg["block_type"] == "interval_off" and s.state.erg["block_index"] == 4
     asyncio.run(scenario())
 
 
