@@ -270,6 +270,9 @@ func swap_route(new_route, from_part: int) -> void:
 	if has_terrain or _has_layer("terrain"):
 		var near_new := TerrainTiles.scan_index(world_dir, "near")
 		var far_new := TerrainTiles.scan_index(world_dir, "far")
+		# Copies : les tâches de fond en cours lisent les index (raccords des tuiles, sink_under_near)
+		_near_index = _near_index.duplicate()
+		_far_index = _far_index.duplicate()
 		for t in near_new:
 			if not _near_index.has(t):
 				_near_index[t] = true
@@ -511,7 +514,8 @@ func _start_jobs() -> void:
 		var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
 			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
-			"visual_grade_scale": visual_grade_scale, "alt_orig": alt_orig}
+			"visual_grade_scale": visual_grade_scale, "alt_orig": alt_orig,
+			"near_index": _near_index, "far_index": _far_index}
 		job["task"] = WorkerThreadPool.add_task(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
 
@@ -531,8 +535,18 @@ func _build_job(job: Dictionary) -> void:
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
 			if heights.is_empty():
 				return
+			var near_index: Dictionary = job["near_index"]
 			if spec["kind"] == "far":
 				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r, TerrainTiles.FAR_CARVE_MARGIN_M, v_scale, alt_orig)
+				heights = TerrainTiles.sink_under_near(heights, t.x, t.y, near_index,
+					func(nx: int, nz: int) -> PackedFloat32Array: return TerrainTiles.load_tile(job["world_dir"], "near", nx, nz), v_scale)
+			else:
+				var o := TerrainTiles.tile_origin("near", t.x, t.y) + Vector3(1.0, 0.0, 1.0)
+				var ft := TerrainTiles.tile_of("far", o.x, o.z)
+				if job["far_index"].has(ft):
+					var far := TerrainTiles.load_filled(job["world_dir"], "far", ft.x, ft.y, r)
+					far = TerrainTiles.carve_under_route(far, "far", ft.x, ft.y, r, TerrainTiles.FAR_CARVE_MARGIN_M, v_scale, alt_orig)
+					heights = TerrainTiles.blend_to_far(heights, t.x, t.y, near_index, far, ft, v_scale)
 			var edges := TerrainTiles.load_neighbour_edges(job["world_dir"], spec["kind"], t.x, t.y)
 			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
