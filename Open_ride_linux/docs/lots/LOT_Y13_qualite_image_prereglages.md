@@ -126,7 +126,9 @@ Chaque étape : une branche et une PR, mesure avant et après avec le protocole 
 
 ### 7.1 Étape 2 : densités et distances en `medium`
 
-Accord du propriétaire le 28 octobre (« généraliser et continuer »). Valeurs appliquées dans `quality_presets.gd` ; mesure avant (étape 1) et après sur `village` et `osm` à faire sur le PC.
+Accord du propriétaire le 28 octobre (« généraliser et continuer »). Valeurs appliquées dans `quality_presets.gd`.
+
+**Mesure du 28 octobre** (GTX 1060, 1680 × 1050, `village` / `montee_descente`, médianes entre 20 et 640 s) : `main` medium 10,38 ms de GPU (max 12,07), 1 479 k primitives ; étape 2 medium 10,58 ms (max 11,87), 1 759 k primitives (+19 %), charge 68,5 / 84 %, 60 img/s, p99 16,7 ms. Le coût est de +0,2 ms : pas besoin du repli. Le monde `osm` reste à mesurer quand un parcours boisé sera fourni au banc.
 
 | Réglage (`quality_presets.gd`) | `medium` avant | `medium` après | `low` / `high` |
 | --- | --- | --- | --- |
