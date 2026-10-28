@@ -195,7 +195,7 @@ def parcours_appareils(run: Run) -> None:
     done = run.engine.wait_for(r"scan_results done=true items=(\d+)", 20.0, after=t)
     r.check(done is not None and int(done[1].group(1)) >= 3, "recherche des appareils simulés",
             f"{done[1].group(1)} appareil(s)" if done else "pas de scan_results en 20 s")
-    run.expect("appareils", "Appareils", "Trainer : HomeTrainer", "Ceinture :", "appareil(s) trouvé(s)", "[Enregistrer]")
+    run.expect("appareils", "Appareils", "Trainer — HomeTrainer", "Ceinture —", "appareil(s) trouvé(s)", "[Enregistrer]")
     if not run.focus_to("Enregistrer"):
         r.check(False, "Enregistrer actif", "focus jamais sur « Enregistrer »")
         return

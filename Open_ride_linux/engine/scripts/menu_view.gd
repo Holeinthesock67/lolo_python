@@ -147,6 +147,7 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	title_label.text = str(menu.get("title", ""))
 	status_label.text = str(menu.get("status", ""))
 	status_label.visible = status_label.text != ""
+	status_label.add_theme_color_override("font_color", UiTheme.DANGER if menu.get("status_error", false) else UiTheme.DIM)
 	var screen := str(menu.get("screen", ""))
 	var sheet: Dictionary = menu.get("card", {})
 	card.visible = not sheet.is_empty()

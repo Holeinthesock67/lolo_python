@@ -168,11 +168,8 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": PLAN, "title": "Plan", "on_back": PLANS, "items": []})
-	var tests: Array = []
-	for t in FTP_TESTS:
-		tests.append({"id": t[0], "label": t[1], "detail": t[2]})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
-	menu.set_screen_items(FTP_TEST, tests)
+	_refresh_ftp_test()
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
 	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
@@ -288,6 +285,7 @@ func _refresh_settings() -> void:
 		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
 	items.append(SettingsViewModel.version_item(engine_version, core_version))
 	menu.set_screen_items(MenuModel.SETTINGS, items)
+	_refresh_ftp_test()   # la rampe suit la FTP
 	if settings_group != "":
 		menu.set_screen_items(SETTINGS_GROUP, settings.menu_items(settings_group),
 			SettingsViewModel.crumb(settings_group))
@@ -437,6 +435,17 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
 	if screen == MenuModel.WORKOUTS:
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
+	if screen == PLANS:
+		return _plan_card(focused)
+	if screen == PLAN:
+		return _plan_card("plan:" + _plan_shown)
+	if screen == FTP_TEST:
+		for t in FTP_TESTS:
+			if t[0] == focused:
+				return CatalogModel.ftp_test_sheet(t[0], t[1], t[2], _ftp_w())
+		return {}
+	if screen == PAIRING:
+		return pairing.sheet(focused)
 	if screen == SETTINGS_GROUP:
 		return settings.sheet(focused.substr(4)) if focused.begins_with("set:") else {}
 	if screen == WORKOUT_CREATE:
@@ -499,6 +508,39 @@ static func _session_detail(d: Dictionary) -> String:
 	return ", ".join(parts)
 
 
+## Écran « Test de FTP » : une entrée par test, durée à droite (elle suit la FTP pour la rampe),
+## explication dans la carte de détail.
+func _refresh_ftp_test() -> void:
+	var tests: Array = []
+	for t in FTP_TESTS:
+		tests.append({"id": t[0], "label": t[1],
+			"detail": "≈ " + CatalogModel._format_fr_duration(CatalogModel.blocks_duration(CatalogModel.ftp_test_blocks(t[0], _ftp_w())))})
+	menu.set_screen_items(FTP_TEST, tests)
+
+
+## Profil [durée, début, fin] d'une séance de plan : test de FTP (blocs du core) ou entraînement de la liste.
+func _session_blocks(workout_id: String) -> Array:
+	if workout_id.begins_with("ftp_test:"):
+		return CatalogModel.ftp_test_blocks(workout_id.substr(9), _ftp_w())
+	for w in _workouts_raw:
+		if w is Dictionary and str(w.get("id", "")) == workout_id and w.get("profile") is Array:
+			return w["profile"]
+	return []
+
+
+func _plan_card(id: String) -> Dictionary:
+	var active = plans.get("active", null)
+	if id == "today" and not plan_day_session().is_empty():
+		var day := plan_day_session()
+		return CatalogModel.plan_day_sheet(day, _session_blocks(str(day.get("workout", ""))))
+	if id == "stop" and active is Dictionary:
+		return CatalogModel.active_plan_sheet(active)
+	if id.begins_with("plan:"):
+		var p := _plan_entry(id.substr(5))
+		return CatalogModel.plan_sheet(p, active) if not p.is_empty() else {}
+	return {}
+
+
 func _refresh_plans() -> void:
 	var active = plans.get("active", null)
 	var day := plan_day_session()
@@ -540,12 +582,7 @@ func _refresh_plans() -> void:
 
 
 static func _plan_progress(active: Dictionary) -> String:
-	if active.get("finished", false):
-		return "terminé, %d %% fait" % int(round(float(active.get("done_pct", 0.0))))
-	var week := "semaine %s / %d" % [str(active["week"]) if active.get("week", null) != null else "–",
-		int(active.get("weeks", 0))]
-	return "%s, %d %% fait (%d / %d)" % [week, int(round(float(active.get("done_pct", 0.0)))),
-		int(active.get("done", 0)), int(active.get("total", 0))]
+	return CatalogModel.active_progress(active)
 
 
 func _plan_entry(plan_id: String) -> Dictionary:
@@ -1022,8 +1059,10 @@ func _open_pairing() -> Dictionary:
 func state() -> Dictionary:
 	var st: Dictionary = menu.state()
 	st["status"] = ""
+	st["status_error"] = false
 	if st["screen"] == PAIRING:
 		st["status"] = pairing.message
+		st["status_error"] = pairing.message_error
 	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN]:

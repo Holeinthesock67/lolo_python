@@ -179,6 +179,32 @@ func _test_cards() -> void:
 	_check(on.call(MenuModel.ROUTES, MenuModel.SORT_ROUTES_ID).is_empty(), "liste des parcours : pas de carte sur « Trier par »")
 	_check(on.call(MenuModel.WORKOUTS, "ss").get("blocks", []).size() == 3 and on.call(MenuModel.WORKOUTS, MenuModel.NO_WORKOUT_ID).is_empty(),
 		"liste des entraînements : fiche avec blocs, rien sur « sans entraînement »")
+	var ramp := CatalogModel.ftp_test_sheet("ramp", "Rampe", "explication", 250.0)
+	_check(tile_texts.call(ramp) == ["Durée 22 min", "FTP actuelle 250 W", "Retenu 75 %"],
+		"test de FTP en rampe : durée de 300 s + 12 paliers + 300 s = 22 min (%s)" % str(tile_texts.call(ramp)))
+	_check(ramp["blocks"].size() == 14 and absf(ramp["blocks"][12][1] - 320.0 / 250.0) < 0.001 and ramp["blocks"][13][0] == 300.0,
+		"rampe : paliers de 100 à 320 W en fraction de la FTP")
+	var twenty := CatalogModel.ftp_test_sheet("20min", "20 minutes", "x", 0.0)
+	_check(tile_texts.call(twenty)[0] == "Durée 55 min" and twenty["blocks"][7][1] == null and tile_texts.call(twenty)[1] == "FTP actuelle —",
+		"test de 20 minutes : roue libre de 20 min, FTP inconnue")
+	var plan := CatalogModel.plan_sheet({"id": "p", "name": "Plan", "weeks": 4, "sessions": 8, "error": null},
+		{"id": "p", "week": 2, "weeks": 4, "done_pct": 25.0, "done": 2, "total": 8, "finished": false})
+	_check(tile_texts.call(plan) == ["Semaines 4", "Séances 8", "Fait 25 %"] and plan["lines"] == ["En cours : semaine 2 / 4, 25 % fait (2 / 8)"],
+		"carte d'un plan en cours (%s)" % str(plan["lines"]))
+	var day := CatalogModel.plan_day_sheet({"name": "Seuil", "duration_s": 2700.0, "tss": 60.8, "date": "2026-10-27", "late": true}, [[600.0, 0.5, 0.5]])
+	_check(tile_texts.call(day) == ["Durée 45 min", "TSS 61"] and day["lines"] == ["2026-10-27", "En retard : à rattraper"] and day["blocks"].size() == 1,
+		"carte de la séance du jour")
+	var PairingViewModel = load("res://scripts/pairing_view_model.gd")
+	var pm = PairingViewModel.new()
+	pm.on_scan_results({"done": true, "items": [{"role": "trainer", "name": "T1", "address": "A1", "rssi": -50, "configured": true},
+		{"role": "trainer", "name": "T2", "address": "A2", "rssi": -80, "configured": false}], "plus_address": null})
+	var ts: Dictionary = pm.sheet("trainer")
+	_check(ts["name"] == "T1" and tile_texts.call(ts) == ["Signal 4 / 4", "Enregistré oui"] and ts["lines"][0].begins_with("2 appareils"),
+		"appairage : fiche du trainer (%s)" % str(tile_texts.call(ts)))
+	_check(PairingViewModel.signal_bars(-80) == 1 and PairingViewModel.signal_bars(-70) == 2 and PairingViewModel.signal_bars(null) == 0
+		and pm.sheet("scan").is_empty() and pm.menu_items()[1]["detail"] == "T1", "barres de signal, rangée Trainer : nom à droite")
+	pm.on_error("scan_failed", "Bluetooth éteint")
+	_check(pm.message_error, "erreur de recherche : message d'erreur")
 	f.menu.set_world("col", "Col")
 	_check(on.call(MenuModel.READY, "start").get("id") == "col", "écran Prêt : fiche du parcours choisi, pas du focus")
 	_check(on.call(MenuFlow.SUMMARY, "new_session") == {"title": "Bilan de la séance"} and on.call(MenuModel.HOME, "ride").is_empty(),
