@@ -47,7 +47,8 @@ def test_current_lists_the_settings_with_bounds_from_config():
     assert display == {"key": "render.display", "label": "Mode d'affichage", "group": "display",
                        "value": "fullscreen", "applies": "now", "type": "choice", "choices": ["windowed", "borderless", "fullscreen"]}
     camera = next(it for it in items if it["key"] == "render.camera")
-    assert camera["value"] == "follow_near" and camera["choices"] == ["subjective", "follow_near", "follow_far", "side"]   # lot V12
+    assert camera["value"] == "follow_near" and camera["group"] == "display"   # lot V12
+    assert camera["choices"] == ["subjective", "follow_near", "follow_far", "side"]
 
 
 def test_bounds_and_choices_come_from_config(monkeypatch):
