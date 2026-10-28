@@ -221,6 +221,9 @@ class Bench:
         route_id = prepare_world(self.world, routes, tmp)
         state_port, cmd_port = free_udp_ports(2)
         cfg_lines = [f"[ipc]\nport_state = {state_port}\nport_commands = {cmd_port}\n"]
+        # Le core renvoie [render] quality à l'engine au démarrage (réglages O4) : sans cette ligne, sa valeur
+        # par défaut (low) remplaçait --quality et un banc « medium » mesurait du low.
+        cfg_lines.append(f'[render]\nquality = "{a.quality}"\n')
         if self.difficulty is not None:
             cfg_lines.append(f"[trainer]\ndifficulty_pct = {float(self.difficulty)}\n")
         cfg = tmp / "config.toml"
