@@ -420,45 +420,63 @@ static func assign_species(trees: PackedVector4Array, model, tile_density: float
 		near_water: Callable = Callable()) -> Dictionary:
 	var out := PackedVector4Array()
 	var species := PackedByteArray()
-	var species_ids: Array = BiomeIds.SPECIES
+	var looks := {}   # biome -> réglages résolus une fois par appel (_species_look)
+	var forced: String = model.forced
+	var weights: Dictionary = {forced: 1.0} if forced != "" else {}
 	for t in trees:
-		var qx := int(round(t.x * 10.0))
-		var qz := int(round(t.z * 10.0))
-		var h := hash3(0xB10E, qx, qz)
-		var weights: Dictionary = model.weights_at(t.x, t.z)
+		# Un seul mélange par arbre (position au décimètre) : ce tirage est refait pour chaque arbre de la tuile
+		var h := _mix((int(round(t.x * 10.0)) * 73856093) ^ (int(round(t.z * 10.0)) * 19349663) ^ 0xB10E)
+		if forced == "":
+			weights = model.weights_at(t.x, t.z)
 		var biome := ""
 		var draw := _unit(h)
 		var acc := 0.0
-		for b in weights.keys():
+		for b in weights:
 			acc += float(weights[b])
 			biome = b
 			if draw < acc:
 				break
-		var p: Dictionary = model.params(biome)
-		var veg: Dictionary = p["vegetation"]
-		if tile_density > 0.0 and _unit(_mix(h + 11)) >= float(veg["max_density_per_ha"]) / tile_density:
+		var look: Dictionary = looks.get(biome, {})
+		if look.is_empty():
+			look = _species_look(model, biome)
+			looks[biome] = look
+		var keep: float = look["density"] / tile_density if tile_density > 0.0 else 1.0
+		if keep < 1.0 and _unit(_mix(h + 11)) >= keep:
 			continue
-		if veg["treeline_m"] != null and t.y > float(veg["treeline_m"]):
+		if t.y > float(look["treeline"]):
 			continue
-		if not bool(veg.get("has_species", false)):
+		if look["generic"]:
 			out.append(t)
 			species.append(GENERIC_SPECIES)
 			continue
-		var list: Array = veg["species"]
-		var total := 0.0
-		for sp in list:
-			total += float(sp["weight"])
-		if total <= 0.0:
+		var cum: PackedFloat32Array = look["cum"]
+		if cum.is_empty():
 			continue
-		var pick := _unit(_mix(h + 23)) * total
-		var kind := ""
-		for sp in list:
-			pick -= float(sp["weight"])
-			kind = sp["kind"]
-			if pick < 0.0:
-				break
-		if kind == "palm" and biome in DESERTS and not (near_water.is_valid() and bool(near_water.call(t.x, t.z))):
+		var pick := _unit(_mix(h + 23)) * cum[-1]
+		var k := 0
+		while k < cum.size() - 1 and pick >= cum[k]:
+			k += 1
+		var id: int = look["ids"][k]
+		if id == look["palm"] and look["desert"] and not (near_water.is_valid() and bool(near_water.call(t.x, t.z))):
 			continue
 		out.append(t)
-		species.append(species_ids.find(kind))
+		species.append(id)
 	return {"trees": out, "species": species}
+
+
+## Réglages de végétation d'un biome prêts au tirage : densité, limite des arbres (INF sans limite), arbre
+## d'avant la série U, poids cumulés et indices des espèces (BiomeIds.SPECIES), désert à palmiers d'oasis.
+static func _species_look(model, biome: String) -> Dictionary:
+	var veg: Dictionary = model.params(biome)["vegetation"]
+	var cum := PackedFloat32Array()
+	var ids := PackedByteArray()
+	var total := 0.0
+	for sp in veg["species"]:
+		total += float(sp["weight"])
+		cum.append(total)
+		ids.append(BiomeIds.SPECIES.find(sp["kind"]))
+	if total <= 0.0:
+		cum.clear()
+	return {"density": float(veg["max_density_per_ha"]), "treeline": INF if veg["treeline_m"] == null else float(veg["treeline_m"]),
+		"generic": not bool(veg.get("has_species", false)), "cum": cum, "ids": ids,
+		"palm": BiomeIds.SPECIES.find("palm"), "desert": biome in DESERTS}
