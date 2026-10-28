@@ -51,6 +51,8 @@ func _test_sound_synthesis_perf() -> void:
 		"corne de brume jouée une fois, diesel de la péniche en boucle (lot P29)")
 	_check(sp.stream("vehicle_pass") is AudioStreamWAV and sp.stream("tractor_engine").loop_mode == AudioStreamWAV.LOOP_FORWARD
 		and sp.stream("inconnu") == null, "sons des véhicules accessibles par stream(kind), en boucle")
+	_check(sp.kind_of(sp.stream("raptor_cry")) == "raptor_cry" and sp.kind_of(AudioStreamWAV.new()) == "",
+		"kind_of : nom du son d'un flux, vide pour un flux étranger (lot P30)")
 	var voices_ok := true
 	for k in SoundPlayer.VOICE_KINDS:
 		var v = sp.stream(k)

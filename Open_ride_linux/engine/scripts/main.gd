@@ -940,18 +940,22 @@ func _poll_route_job() -> void:
 
 ## Messages de test (--test-mode) : « screenshot » enregistre l'image affichée en PNG et journalise
 ## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py ;
-## « menu_input » joue un appui du Click dans les menus ; « command » fait envoyer une commande par l'engine.
+## « command » fait envoyer une commande par l'engine ;
+## « key » et « mouse » jouent une touche ou la souris par le vrai chemin des entrées de Godot, en menu comme en
+## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py).
 func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+		"key":
+			_test_key(str(msg.get("key", "")), bool(msg.get("shift", false)), int(msg.get("hold_ms", 100)))
+		"mouse":
+			_test_mouse(str(msg.get("kind", "click")), str(msg.get("item", "")), msg.get("at", []))
+		"menu_state":
+			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
 				living_decor.set_weather(msg["weather"])
-		"menu_input":   # appui simulé dans les menus (banc des menus, tests/menu_bench.py)
-			var ev := str(msg.get("event", ""))
-			if ev in MenuModel.EVENTS:
-				_menu_event(ev)
 		"menu_focus":   # focus sur un élément de l'écran courant du menu (tests graphiques du Garage, lot V8)
 			menu_flow.menu.focus_item(str(msg.get("id", "")))
 			_refresh_menu()
@@ -960,6 +964,99 @@ func _on_test_message(msg: Dictionary) -> void:
 			avatar_view.set_visible_for_view(_avatar_view_name())
 		"command":   # commande du contrat envoyée par l'engine lui-même (pause, end_session…)
 			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
+
+
+## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…) : appui, puis relâchement
+## `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
+## Les deux événements sont traités tout de suite (flush_buffered_events) et l'attente bloque l'image en cours :
+## la durée mesurée par key_map.gd est celle demandée, même à 1 image/s sous Xvfb.
+func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
+	var code := OS.find_keycode_from_string(key_name)
+	if code == KEY_NONE:
+		ipc.test_log("key unknown=%s" % key_name)
+		return
+	var down := InputEventKey.new()
+	down.keycode = code
+	down.physical_keycode = code
+	down.shift_pressed = shift
+	down.pressed = true
+	if key_name.length() == 1:
+		down.unicode = (key_name.to_upper() if shift else key_name.to_lower()).unicode_at(0)
+	Input.parse_input_event(down)
+	Input.flush_buffered_events()
+	OS.delay_usec(maxi(hold_ms, 0) * 1000)
+	var up: InputEventKey = down.duplicate()
+	up.pressed = false
+	Input.parse_input_event(up)
+	Input.flush_buffered_events()
+	ipc.test_log("key done=%s shift=%s hold_ms=%d" % [key_name, shift, hold_ms])
+
+
+## Souris simulée : `kind` click (bouton gauche), right, wheel_up, wheel_down ou move ; sur la rangée de l'élément
+## `item` du menu, sinon au point `at` ([x, y] en pixels de la fenêtre), sinon au centre de la fenêtre. Déplacement,
+## appui puis relâchement à l'image suivante (rangées mises en page), par Input.parse_input_event (même chemin que la
+## vraie souris), traités tout de suite.
+func _test_mouse(kind: String, item: String, at) -> void:
+	await get_tree().process_frame   # mise en page des rangées tout juste affichées faite (conteneurs triés en différé)
+	var to_pixels := get_viewport().get_final_transform()
+	var pos := get_viewport().get_visible_rect().get_center() * to_pixels.get_scale()
+	if item != "":
+		var r: Rect2 = menu_view.item_rect(item)
+		if not r.has_area():
+			ipc.test_log("mouse hidden=%s" % item)
+			return
+		pos = to_pixels * r.get_center()
+	elif at is Array and at.size() == 2:
+		pos = Vector2(float(at[0]), float(at[1]))
+	var move := InputEventMouseMotion.new()
+	move.position = pos
+	move.global_position = pos
+	Input.parse_input_event(move)
+	Input.flush_buffered_events()
+	var buttons := {"click": MOUSE_BUTTON_LEFT, "right": MOUSE_BUTTON_RIGHT, "wheel_up": MOUSE_BUTTON_WHEEL_UP,
+		"wheel_down": MOUSE_BUTTON_WHEEL_DOWN}
+	if buttons.has(kind):
+		var press := InputEventMouseButton.new()
+		press.position = pos
+		press.global_position = pos
+		press.button_index = buttons[kind]
+		press.button_mask = 1 << (int(buttons[kind]) - 1)
+		press.pressed = true
+		Input.parse_input_event(press)
+		Input.flush_buffered_events()
+		var release: InputEventMouseButton = press.duplicate()
+		release.pressed = false
+		release.button_mask = 0
+		Input.parse_input_event(release)
+		Input.flush_buffered_events()
+	ipc.test_log("mouse done=%s item=%s at=%d,%d" % [kind, item, int(pos.x), int(pos.y)])
+
+
+## État des menus pour le banc (`req` : numéro de la demande, rendu tel quel) : écran, titre, focus, éléments,
+## rangées affichées avec leur rectangle en pixels, aide des boutons, pastilles des appareils, carte de détail, séance,
+## monde ouvert, Cyber-Rogue.
+func _test_menu_state(req: String) -> Dictionary:
+	var st: Dictionary = menu_flow.state()
+	var items: Array = []
+	for it in st["items"]:
+		items.append({"id": str(it.get("id", "")), "label": str(it.get("label", "")), "detail": str(it.get("detail", "")),
+			"enabled": bool(it.get("enabled", true))})
+	var focus := int(st["focus"])
+	var to_pixels := get_viewport().get_final_transform()
+	var rows: Array = []
+	for row in menu_view.test_rows():
+		var r: Rect2 = to_pixels * (row["rect"] as Rect2)
+		rows.append({"id": row["id"], "text": row["text"], "focused": row["focused"],
+			"rect": [r.position.x, r.position.y, r.size.x, r.size.y]})
+	var world := {"visible": world_menu_view != null and world_menu_view.visible}
+	if world["visible"]:
+		world["state"] = str(world_menu_view.vm.state)
+	return {"req": req, "visible": menu_view.visible, "screen": st["screen"], "title": st["title"],
+		"status": st["status"], "focus": focus, "focus_id": items[focus]["id"] if focus >= 0 and focus < items.size() else "",
+		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
+		"hint": menu_view.hint_text(), "devices": menu_view.devices.text() if menu_view.devices.visible else "",
+		"card": menu_view.card.text() if menu_view.card.visible else "", "session_state": menu_flow.session_state, "world_menu": world,
+		"rogue": rogue_host.is_active(), "hud": hud.visible, "quality": _quality_name}
 
 
 func _avatar_info() -> Dictionary:
