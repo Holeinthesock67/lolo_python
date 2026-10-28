@@ -122,6 +122,7 @@ var _job: Dictionary = {}
 var _generation := 0
 var _loaded_chunks: Dictionary = {}  # k -> true (tronçons OSM affichés)
 var _fog_base := Vector2(-1.0, -1.0)
+var _fog_vol_base := 0.0
 var _fog_at := -INF
 var _fog_boost := 0.0
 var _valley_alt := 0.0
@@ -391,6 +392,7 @@ func set_fog_base(env: Environment) -> void:
 		return
 	environment = env
 	_fog_base = Vector2(env.fog_depth_begin, env.fog_depth_end)
+	_fog_vol_base = env.volumetric_fog_density if env.volumetric_fog_enabled else 0.0
 	_fog_at = -INF
 
 
@@ -427,7 +429,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		var boost := float(weather_eval.get("fog_boost", 0.0))
 		if absf(boost - _fog_boost) > 0.01 or fog_updates == 0:
 			_fog_boost = boost
-			RenderQuality.apply_weather_fog(environment, _fog_base, boost)
+			RenderQuality.apply_weather_fog(environment, _fog_base, boost, _fog_vol_base)
 			fog_updates += 1
 	# Oiseaux et animaux (P11, P22 à P24), éoliennes, drapeaux et eau (P12)
 	var t_fauna := Time.get_ticks_usec()
