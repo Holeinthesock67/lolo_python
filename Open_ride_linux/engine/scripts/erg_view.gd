@@ -10,20 +10,21 @@ extends Panel
 ## reçue, profil coupé), l'histogramme se replie sur une bande de `block_count` cases égales.
 ## Pas de class_name : charger par preload("res://scripts/erg_view.gd").
 
+const UiTheme := preload("res://scripts/ui_theme.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 
 ## Zones de Coggan, mêmes seuils que `openride-core summary` (session_summary.ZONES), en % de FTP.
 const ZONE_HIGH_PCT := [55.0, 75.0, 90.0, 105.0, 120.0, 150.0]
 const ZONE_COLORS := [
-	Color(0.55, 0.57, 0.60),   # Z1 récupération
-	Color(0.25, 0.55, 0.95),   # Z2 endurance
-	Color(0.30, 0.75, 0.35),   # Z3 tempo
-	Color(0.95, 0.80, 0.20),   # Z4 seuil
-	Color(0.95, 0.50, 0.15),   # Z5 PMA
-	Color(0.90, 0.20, 0.15),   # Z6 anaérobie
-	Color(0.65, 0.25, 0.80),   # Z7 neuromusculaire
+	UiTheme.ZONE_1,   # Z1 récupération
+	UiTheme.ZONE_2,   # Z2 endurance
+	UiTheme.ZONE_3,   # Z3 tempo
+	UiTheme.ZONE_4,   # Z4 seuil
+	UiTheme.ZONE_5,   # Z5 PMA
+	UiTheme.ZONE_6,   # Z6 anaérobie
+	UiTheme.ZONE_7,   # Z7 neuromusculaire
 ]
-const FREERIDE_COLOR := Color(0.40, 0.42, 0.45)
+const FREERIDE_COLOR := UiTheme.FREERIDE
 ## Blocs autres que le bloc en cours : bien visibles du début à la fin, pour se préparer aux efforts
 ## (retour d'essai du 25 octobre) ; le bloc en cours garde son cadre et son curseur.
 const DIM_ALPHA := 0.85
@@ -68,7 +69,7 @@ func _init() -> void:
 func _build_ui() -> void:
 	name = "ErgView"
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.07, 0.10, 0.70)
+	style.bg_color = UiTheme.PANEL_BG
 	style.set_corner_radius_all(8)
 	add_theme_stylebox_override("panel", style)
 	anchor_left = 0.0
@@ -94,7 +95,7 @@ func _build_ui() -> void:
 	target_label = _label(row, 36, false)
 	remaining_label = _label(row, 36, false)
 	next_label = _label(row, 22, false)
-	next_label.modulate = Color(0.75, 0.80, 0.85)
+	next_label.modulate = UiTheme.HUD_DIM
 	next_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
@@ -266,7 +267,7 @@ func _on_histogram_draw() -> void:
 	var prof: Variant = _profiles.get(str(_erg.get("workout_name", "")), null)
 	var lay := layout(_erg, _eval, prof, ftp_w, w, h)
 	_bars = lay["bars"]
-	histogram.draw_rect(Rect2(0, 0, w, h), Color(0.04, 0.06, 0.08, 0.65))
+	histogram.draw_rect(Rect2(0, 0, w, h), UiTheme.CHART_BG)
 	var cur: Dictionary = {}
 	for b in _bars:
 		var c: Color = b["color"]
@@ -277,7 +278,7 @@ func _on_histogram_draw() -> void:
 		else:
 			cur = b
 		histogram.draw_colored_polygon(b["polygon"], c)
-		histogram.draw_line(Vector2(b["x0"], 0.0), Vector2(b["x0"], h), Color(0.0, 0.0, 0.0, 0.6), 1.0)
+		histogram.draw_line(Vector2(b["x0"], 0.0), Vector2(b["x0"], h), UiTheme.SHADOW_LINE, 1.0)
 	if not cur.is_empty():
 		# Contour blanc du bloc en cours.
 		var poly: PackedVector2Array = cur["polygon"]
