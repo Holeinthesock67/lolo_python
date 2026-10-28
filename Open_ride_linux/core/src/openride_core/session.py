@@ -30,6 +30,7 @@ from .config import GPX_DIR, OPENRIDE_HOME, WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
+from . import latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
@@ -1411,6 +1412,7 @@ class CoreSession:
             # appuis restent des braquets.
             erg.change_bias(BIAS_STEPS[ev])
             self._sync_erg_state()
+            latency_log.expect_cp()   # nouvelle cible ERG écrite au Control Point
             return
         n = self.cfg.gearing.long_press_gears
         if ev == InputEvent.PLUS_SHORT:
@@ -1423,6 +1425,7 @@ class CoreSession:
             self.gearing.shift_down(n)
         self.state.gear = self.gearing.k
         self._shift_pending = True   # le changement de braquet doit se sentir tout de suite
+        latency_log.expect_cp()
 
     def _drain_inputs(self) -> None:
         if self._identify and time.monotonic() > self._identify["until"]:
@@ -1430,11 +1433,12 @@ class CoreSession:
         for provider in self.inputs:
             while not provider.events.empty():
                 ev = provider.events.get_nowait()
-                if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
-                        and getattr(provider, "_conn_address", "") not in ("", "?", None):
-                    self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
-                    continue
-                self._handle_input(ev)
+                with latency_log.handling(provider):   # lot X7 : étage « evenement » de l'appui suivi
+                    if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
+                            and getattr(provider, "_conn_address", "") not in ("", "?", None):
+                        self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
+                        continue
+                    self._handle_input(ev)
         # Statut d'entrée : celui du premier fournisseur (Click s'il est configuré) ; la paire de
         # Click est « connectée » dès qu'un des deux boîtiers l'est.
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]

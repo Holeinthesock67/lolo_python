@@ -90,6 +90,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         cfg.drivers.mock_replay = str(args.replay)
     if args.trace_ftms:
         cfg.trainer.trace_ftms = True
+    if args.latence:
+        cfg.log.latence = True
+    from . import latency_log
+    latency_log.enable(cfg.log.latence)
 
     bots_list = []
     if args.bot or args.bot_profile:
@@ -261,6 +265,8 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
     run.add_argument("--ftp-test", choices=["ramp", "20min"],
                      help="avec --autostart : séance de test de FTP (rampe par paliers ou 20 minutes)")
+    run.add_argument("--latence", action="store_true",
+                     help="journal de latence des appuis du Click, lignes [latence] (lot X7 ; [log] latence)")
     run.add_argument("--trace-ftms", action="store_true",
                      help="trace horodatée de chaque échange Control Point FTMS (lot Q3)")
     rel = sub.add_parser("release-trainer",

@@ -183,6 +183,11 @@ class AudioConfig:
 
 
 @dataclass
+class LogConfig:
+    latence: bool = False   # journal de latence des appuis du Click, `[latence]` (lot X7, docs/OUTILS_DE_TEST.md)
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -200,6 +205,7 @@ class Config:
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
     bots: BotsConfig = field(default_factory=BotsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
+    log: LogConfig = field(default_factory=LogConfig)
 
     @property
     def total_mass_kg(self) -> float:
