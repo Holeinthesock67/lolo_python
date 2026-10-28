@@ -1,0 +1,9 @@
+{
+  "description": "Démarrage : tous les appareils simulés se connectent, l'écran « Connexion des appareils » passe seul à l'accueil.",
+  "voies": ["clavier"],
+  "etapes": [
+    {"ecran": "connect", "titre": "Connexion des appareils", "delai": 15},
+    {"ecran": "home", "titre": "OpenRide", "elements": ["world", "ride", "erg", "plan", "ftp", "sim", "settings", "quit"], "delai": 15},
+    {"ecran": "home", "contient": ["Parcours : à choisir"]}
+  ]
+}
