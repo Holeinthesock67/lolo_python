@@ -119,12 +119,13 @@ Les ajouts suivent ceux de la série P, qui prend la version 1.3 du contrat IPC 
 | T8 | Engine : lignes de départ et d'arrivée en 3D, arches de bonus, panneaux « Sprint » et « Montée » | T1 | Interne (rendu) |
 | T9 | Engine : HUD segment (approche, chrono, écart au record, résultat) et HUD bonus (icône, compte à rebours), coin supérieur droit | T1, P16 | Interne |
 | T10 | Menu : records par parcours, option bonus | T5, N6 | Interne |
-| T11 | Recette sur ton PC et ton vélo : un sprint, une montée réelle, chaque bonus, une course contre 4 bots à profil | T3 à T10, T12 à T15 | Propriétaire |
+| T11 | Recette sur ton PC et ton vélo : un sprint, une montée réelle, chaque bonus, une course contre 4 bots à profil | T3 à T10, T12 à T15, T17 | Propriétaire |
 | T12 | Bots à profil : CP, W', masse, pic sur 10 s, stratégie par segment (grimpeur, sprinteur, puncheur, diesel) | N9, R2, T2 | Délégable |
 | T13 | Équilibrage des bots : niveau 90, 100 ou 110 % de la FTP, calibrage par simulation du parcours | T12 | Délégable |
 | T14 | Points et maillots de la séance (vert, à pois), bots compris | T4, T12 | Délégable |
 | T15 | Engine : HUD des bots (maillot, profil, FTP en W et W/kg, écart, jauge W') et encart des deux voisins (devant, derrière) | O7, T9, T16 | Interne |
 | T16 | Écarts en temps de passage : historique des passages, `gap_s`, `bot_ahead`, `bot_behind`, repli distance ÷ vitesse, boucles | T1, N9 | Délégable |
+| T17 | Engine : jingles des événements du parcours, sommet d'une montée, fin de sprint, arche de bonus, fin de séance ([cahier](../lots/LOT_T17_jingles_evenements.md), demande du 27 octobre) | T8, T9 | Interne (son) |
 
 Ordre conseillé : T1 après P1, puis T2, T4 et T6 en parallèle ; T3, T5, T7 et T12 ensuite, puis T13, T14 et T16 ; enfin l'engine (T8 à T10, T15) et la recette T11. Les numéros T ne se confondent pas avec les constats d'audit, et les lots R non plus (les constats « R3 » et « S2 » du lot M9 sont sans rapport).
 

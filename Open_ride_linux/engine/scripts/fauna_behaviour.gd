@@ -17,6 +17,12 @@ extends RefCounted
 ## - Corneilles (Lot P23) : posées au sol (`idle`) ; dès que le cycliste est à moins de CROW_ALERT_M du
 ##   groupe, elles s'envolent l'une après l'autre (CROW_STAGGER_S d'écart, événement `crow_caw`), montent à
 ##   CROW_FLIGHT_H_M et se reposent en CROW_FLIGHT_S à leur point `land`, plus loin de la route (`landed`).
+## - Troupeaux (Lot P24) : quand le cycliste est à moins de HERD_CALL_M d'une bête, le troupeau meugle, bêle
+##   ou hennit (HERD_CALLS selon l'espèce) une fois par période de HERD_CALL_PERIOD_S, décalée par son
+##   identifiant ; jamais au chargement.
+## - Lièvre (Lot P24) : `idle` (immobile, il tourne la tête), puis `flee` dès que le cycliste est à moins de
+##   HARE_ALERT_M : il file à HARE_SPEED_MPS le long de `flee_dir` en zigzag (± HARE_ZIG_M, période
+##   HARE_ZIG_S), puis `gone` après HARE_FLEE_S.
 ## `events` : sons à jouer, rendus par le dernier `update`, `[{sound, pos}]`.
 ## Le travail par image est fait par groupe (bande, troupeau, site), pas par bête : `update` coûte
 ## quelques microsecondes pour 200 animaux ; les positions des oiseaux se calculent à la demande.
@@ -43,6 +49,14 @@ const CROW_FLIGHT_S := 5.0
 const CROW_FLIGHT_H_M := 14.0
 const CROW_YAW_SWING := 0.8
 const CROW_YAW_PERIOD_S := 7.0
+const HERD_CALL_M := 120.0
+const HERD_CALL_PERIOD_S := 40.0
+const HERD_CALLS := {"cow": "cow_moo", "sheep": "sheep_baa", "horse": "horse_neigh"}
+const HARE_ALERT_M := 25.0
+const HARE_SPEED_MPS := 11.0
+const HARE_FLEE_S := 3.5
+const HARE_ZIG_M := 2.5
+const HARE_ZIG_S := 0.8
 
 var groups: Array = []
 var events: Array = []
@@ -57,10 +71,14 @@ func setup(new_groups: Array) -> void:
 			"birds":
 				if not g.has("dodge"):
 					g["dodge"] = Vector3.ZERO
-			"deer":
+			"deer", "hare":
 				if not g.has("state"):
 					g["state"] = "idle"
 					g["flee_at"] = NAN
+			"herd":
+				if not g.has("call_slot"):
+					g["call_slot"] = -1
+					g["call_offset"] = float(FaunaPlacer.VegetationPlacer.hash_string(str(g.get("id", ""))) & 0xFFFF) / 65536.0
 			"crows":
 				if not g.has("state"):
 					g["state"] = "idle"
@@ -90,15 +108,32 @@ func update(rider_pos: Vector3, now_s: float) -> void:
 				target = Vector3(dir.x * BIRD_DODGE_SHIFT_M * push, BIRD_DODGE_RISE_M * push, dir.y * BIRD_DODGE_SHIFT_M * push)
 			var cur: Vector3 = g["dodge"]
 			g["dodge"] = cur + (target - cur) * k
-		elif t == "deer":
+		elif t == "deer" or t == "hare":
+			var deer := t == "deer"
 			var st: String = g["state"]
 			if st == "idle":
 				var p: Vector3 = g["pos"]
-				if Vector2(p.x, p.z).distance_to(r2) < DEER_ALERT_M:
+				if Vector2(p.x, p.z).distance_to(r2) < (DEER_ALERT_M if deer else HARE_ALERT_M):
 					g["state"] = "flee"
 					g["flee_at"] = now_s
-			elif st == "flee" and now_s - float(g["flee_at"]) >= DEER_FLEE_S:
+			elif st == "flee" and now_s - float(g["flee_at"]) >= (DEER_FLEE_S if deer else HARE_FLEE_S):
 				g["state"] = "gone"
+		elif t == "herd":
+			# Comme le rapace : une période de cri par troupeau, la première seulement prise au chargement
+			var slot := int(floor(now_s / HERD_CALL_PERIOD_S + float(g["call_offset"])))
+			var prev: int = g["call_slot"]
+			g["call_slot"] = slot
+			if prev >= 0 and slot != prev and HERD_CALLS.has(str(g.get("species", ""))):
+				var nearest := INF
+				var where := Vector3.ZERO
+				for m in g["members"]:
+					var mp: Vector3 = m["pos"]
+					var d := Vector2(mp.x, mp.z).distance_to(r2)
+					if d < nearest:
+						nearest = d
+						where = mp
+				if nearest < HERD_CALL_M:
+					events.append({"sound": HERD_CALLS[str(g["species"])], "pos": where})
 		elif t == "crows":
 			var st: String = g["state"]
 			if st == "idle":
@@ -164,14 +199,37 @@ static func deer_position(g: Dictionary, now_s: float) -> Vector3:
 	return p + (g["flee_dir"] as Vector3) * DEER_SPEED_MPS * t
 
 
-## Visibilité du chevreuil : 1 au repos, s'efface pendant la dernière seconde de fuite, 0 ensuite.
-static func deer_alpha(g: Dictionary, now_s: float) -> float:
+## Position du lièvre : son gîte au repos, puis course en zigzag le long de `flee_dir`.
+static func hare_position(g: Dictionary, now_s: float) -> Vector3:
+	var p: Vector3 = g["pos"]
+	if str(g.get("state", "idle")) == "idle":
+		return p
+	var t := clampf(now_s - float(g["flee_at"]), 0.0, HARE_FLEE_S)
+	var fd: Vector3 = g["flee_dir"]
+	var side := Vector3(-fd.z, 0.0, fd.x)
+	return p + fd * HARE_SPEED_MPS * t + side * HARE_ZIG_M * sin(TAU * t / HARE_ZIG_S)
+
+
+## Cap du lièvre : le sien au repos, celui de sa course (zigzag compris) en fuite.
+static func hare_yaw(g: Dictionary, now_s: float) -> float:
+	if str(g.get("state", "idle")) == "idle":
+		return float(g["yaw"]) + 0.4 * sin(now_s * 0.9 + float(g["yaw"]))
+	var t := clampf(now_s - float(g["flee_at"]), 0.0, HARE_FLEE_S)
+	var fd: Vector3 = g["flee_dir"]
+	var side := Vector3(-fd.z, 0.0, fd.x)
+	var v := fd * HARE_SPEED_MPS + side * HARE_ZIG_M * TAU / HARE_ZIG_S * cos(TAU * t / HARE_ZIG_S)
+	return atan2(v.x, v.z)
+
+
+## Visibilité d'un chevreuil ou d'un lièvre : 1 au repos, s'efface pendant la dernière seconde de fuite.
+static func wild_alpha(g: Dictionary, now_s: float) -> float:
 	match str(g.get("state", "idle")):
 		"idle":
 			return 1.0
 		"gone":
 			return 0.0
-	return clampf(DEER_FLEE_S - (now_s - float(g["flee_at"])), 0.0, 1.0)
+	var flee_s := DEER_FLEE_S if str(g["type"]) == "deer" else HARE_FLEE_S
+	return clampf(flee_s - (now_s - float(g["flee_at"])), 0.0, 1.0)
 
 
 ## Position du rapace à l'instant `now_s` : cercle de `radius_m`, légère houle de ± 2 m.
