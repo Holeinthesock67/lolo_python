@@ -13,6 +13,8 @@ const MarkerViews := preload("res://scripts/rogue/marker_views.gd")
 const FirewallView := preload("res://scripts/rogue/firewall_view.gd")
 const HudModel := preload("res://scripts/rogue/rogue_hud_model.gd")
 const HudView := preload("res://scripts/rogue/rogue_hud_view.gd")
+const EnemyModel := preload("res://scripts/rogue/enemy_model.gd")
+const EnemyViews := preload("res://scripts/rogue/enemy_views.gd")
 const CameraFx := preload("res://scripts/rogue/rogue_camera_fx.gd")
 const SheetScript := preload("res://scripts/rogue/rogue_style_sheet.gd")
 const RIBBON_SHADER := preload("res://scripts/rogue/ribbon.gdshader")
@@ -50,6 +52,12 @@ var _ribbon_mat: ShaderMaterial
 var hud_model = HudModel.new()
 var hud_view: Node3D              # rogue_hud_view.gd
 var camera_fx = CameraFx.new()
+var enemy_model = EnemyModel.new()
+var enemy_view: Node3D            # enemy_views.gd
+var _grade_pct := 0.0
+var _enemy_seq := -1
+var _enemy_rogue = null
+var effects_ok := true            # faux si le préréglage `low` ne tient pas son budget d'images
 var _hud_events: Array = []
 
 
@@ -85,6 +93,11 @@ func _ready() -> void:
 	_ribbon_mat = ShaderMaterial.new()
 	_ribbon_mat.shader = RIBBON_SHADER
 	ribbon.material_override = _ribbon_mat
+	enemy_view = EnemyViews.new()
+	enemy_view.name = "Enemy"
+	enemy_view.preset = preset
+	enemy_view.adapted = adapted
+	add_child(enemy_view)
 	hud_view = HudView.new()
 	hud_view.name = "Hud"
 	hud_view.preset = preset
@@ -105,6 +118,8 @@ func set_style(new_preset: String, new_adapted: bool) -> void:
 	firewall.set_style(preset, adapted)
 	if hud_view != null:
 		hud_view.set_style(preset, adapted)
+	if enemy_view != null:
+		enemy_view.set_style(preset, adapted)
 	_ribbon_mat.set_shader_parameter("body_color", Palette.body_color())
 	_ribbon_mat.set_shader_parameter("intensity", Palette.INTENSITY.get(preset, 1.6))
 	_ribbon_mat.set_shader_parameter("ahead_m", RibbonColors.AHEAD_M)
@@ -174,6 +189,9 @@ func on_hud(state: Dictionary, now_s: float) -> void:
 	var events: Array = hud_model.take_events()
 	_hud_events.append_array(events)
 	hud_view.show_events(events)
+	_enemy_rogue = state.get("rogue", null)
+	_enemy_seq = int(state.get("seq", -1))
+	_grade_pct = float(state.get("grade", 0.0))
 
 
 func _process(delta: float) -> void:
@@ -182,6 +200,7 @@ func _process(delta: float) -> void:
 		_s_disp = _s_target       # saut de salle : pas de glissement
 	_update_pose()
 	_tick_hud(delta)
+	_tick_enemy(delta)
 
 
 func _update_pose() -> void:
@@ -192,6 +211,18 @@ func _update_pose() -> void:
 		firewall.place(_s_disp - _gap_m, ribbon_y(_s_disp - _gap_m), _gap_m)
 	_ribbon_mat.set_shader_parameter("player_s", _s_disp)
 	_place_camera()
+
+
+func _tick_enemy(delta: float) -> void:
+	# Le modèle tourne à chaque image sur la dernière trame ; une trame déjà vue (même seq) ne rejoue pas ses événements.
+	enemy_model.update(_enemy_rogue, _enemy_seq, _grade_pct, delta, effects_ok)
+	for imp in enemy_model.take_impacts():
+		enemy_view.impact(bool(imp["crit"]), float(imp["flash_s"]))
+	var pose: Dictionary = enemy_model.pose()
+	if ribbon.visible and bool(pose.get("visible", false)):
+		var s_e := _s_disp + float(pose["distance_m"])
+		enemy_view.position = Vector3(0.0, ribbon_y(s_e) + 1.4, -s_e)
+	enemy_view.apply(pose, delta)
 
 
 func _tick_hud(delta: float) -> void:
