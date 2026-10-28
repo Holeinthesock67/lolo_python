@@ -8,7 +8,7 @@ extends RefCounted
 ##   --quality=low|medium|high préréglage de qualité graphique (défaut : low, lot L4)
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
 ##   --biome=ID|auto          biome forcé sur tout le parcours, pour les essais (défaut : auto ; série U, lot U5)
-##   --visual-grade=K         exagération visuelle du relief de 1.0 à 2.0 (défaut : 1.0, lot Q2)
+##   --visual-grade=K         exagération visuelle du relief de 1.0 à 3.0 (défaut : 2.5, lots Q2 et Y15)
 ##   --perf-probe=FICHIER.csv sonde de performance : une ligne de mesures par seconde (lot X13)
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
@@ -21,9 +21,9 @@ const DEFAULT_STATE_PORT := 5005
 const DEFAULT_CMD_PORT := 5006
 const DEFAULT_QUALITY := "low"
 const DEFAULT_THEME := "default"
-const DEFAULT_VISUAL_GRADE := 1.0
+const DEFAULT_VISUAL_GRADE := 2.5
 const MIN_VISUAL_GRADE := 1.0
-const MAX_VISUAL_GRADE := 2.0
+const MAX_VISUAL_GRADE := 3.0
 const VALID_QUALITIES := ["low", "medium", "high"]
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
@@ -157,8 +157,8 @@ static func _visual_grade(arg: String, fallback: float) -> float:
 		return fallback
 	var val := float(text)
 	if val < MIN_VISUAL_GRADE or val > MAX_VISUAL_GRADE:
-		last_error = "Argument ignoré (visual_grade hors bornes [1.0, 2.0]) : " + arg
-		printerr("Argument ignoré (visual_grade hors bornes [1.0, 2.0]) : ", arg)
+		last_error = "Argument ignoré (visual_grade hors bornes [1.0, 3.0]) : " + arg
+		printerr("Argument ignoré (visual_grade hors bornes [1.0, 3.0]) : ", arg)
 		return fallback
 	return val
 static func _living(arg: String, fallback: bool) -> bool:

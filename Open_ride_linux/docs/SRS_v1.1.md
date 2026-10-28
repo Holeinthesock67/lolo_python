@@ -388,7 +388,7 @@ sim_scenario = ""            # scénario du Bluetooth simulé (vide : demo), voi
 [render]
 quality = "low"      # low, medium, high
 theme = "default"
-visual_grade_scale = 1.0   # exagération visuelle du relief, de 1,0 à 2,0 (lot Q2 ; physique et HUD inchangés)
+visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lots Q2 et Y15 ; physique et HUD inchangés)
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite

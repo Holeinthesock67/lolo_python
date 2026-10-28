@@ -22,6 +22,11 @@ uniform float snow_line_m = 2200.0;
 uniform float blend_sharpness : hint_range(0.1, 32.0) = 4.0;
 uniform float roughness : hint_range(0.0, 1.0) = 1.0;
 
+// Relief affiché (lots Q2 et Y15) : hauteurs étirées de relief_k autour de relief_origin_m. Roche et neige se
+// décident sur le relief réel (pente et altitude ramenées à k = 1) : seule la géométrie est exagérée.
+uniform float relief_k = 1.0;
+uniform float relief_origin_m = 0.0;
+
 // Constantes de la fonction de référence (ThemeRenderParams, lot L3), remplies par terrain_material.gd :
 // le shader ne recopie aucune valeur à la main.
 uniform float snow_melt_band_m = 50.0;
@@ -106,15 +111,18 @@ void fragment() {
 	float tri_tot = tri_p.x + tri_p.y + tri_p.z;
 	vec3 tri_weights = tri_p / max(tri_tot, 1e-6);
 
-	// Pente en degrés depuis la normale monde (n.y = cos(pente))
-	float slope_deg = degrees(acos(clamp(n.y, -1.0, 1.0)));
+	// Pente réelle en degrés (n.y = cos(pente)) : la normale affichée a ses composantes horizontales
+	// multipliées par relief_k, le relief réel les divise d'autant.
+	vec3 n_real = normalize(vec3(n.x, n.y * relief_k, n.z));
+	float slope_deg = degrees(acos(clamp(n_real.y, -1.0, 1.0)));
+	float alt_real = relief_origin_m + (v_world_pos.y - relief_origin_m) / relief_k;
 
 	// Demi-largeur de transition herbe/roche (lot L3, SRS §8.1)
 	float half_band = clamp(12.0 / max(blend_sharpness, 1.0), min_slope_half_band_deg, max_slope_half_band_deg);
 	float t_rock = smoothstep(slope_threshold_deg - half_band, slope_threshold_deg + half_band, slope_deg);
 
 	// Neige au-dessus de snow_line_m, fondue sur snow_melt_band_m, absente sur la roche raide
-	float snow_alt = smoothstep(snow_line_m, snow_line_m + snow_melt_band_m, v_world_pos.y);
+	float snow_alt = smoothstep(snow_line_m, snow_line_m + snow_melt_band_m, alt_real);
 	float snow_slope = 1.0 - smoothstep(steep_snow_start_deg, steep_snow_max_deg, slope_deg);
 	float w_snow = clamp(snow_alt * snow_slope, 0.0, 1.0);
 

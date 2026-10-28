@@ -143,6 +143,8 @@ func get_active_tree_count() -> int:
 
 
 ## Génère les données de placement des arbres d'une tuile (exécutable en thread secondaire).
+## `heights` : hauteurs réelles (pente, limite des arbres et biomes jugés sur le vrai relief) ; les arbres gardés sont
+## posés à la hauteur affichée de la route (`route.display_y`, relief exagéré des lots Q2 et Y15).
 ## Renvoie un dictionnaire avec la clé de tuile et les listes d'arbres par case [0..15].
 func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary,
 		density_factor: float, areas: Array = [], buildings: Array = []) -> Dictionary:
@@ -252,6 +254,10 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		var assigned := VegetationPlacer.assign_species(trees, biome_model, float(veg["max_density_per_ha"]) / maxf(clampf(density_factor, 0.0, 1.0), 1e-6), near_water)
 		trees = assigned["trees"]
 		tree_species = assigned["species"]
+	if route != null and route.relief_k != 1.0:
+		for k in range(trees.size()):
+			var tr := trees[k]
+			trees[k] = Vector4(tr.x, route.display_y(tr.y), tr.z, tr.w)
 	var t_cells := Time.get_ticks_usec()
 
 	# Répartition des arbres dans les 16 cases de 250 m x 250 m

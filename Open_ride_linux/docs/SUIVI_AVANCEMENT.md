@@ -301,6 +301,7 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 ### Retours de l'essai du 25 octobre sur le HomeTrainer (série Q rédigée le 25 octobre)
 - [x] Difficulté du trainer à 50 % par défaut, réglable pendant la séance par un curseur du menu (lot Q1, contrat IPC v1.2 accepté ; curseur dans O4). Depuis le 27 octobre, elle n'est plus affichée en permanence dans le HUD : on la lit dans les Réglages et sur l'écran de pause.
 - [x] Pentes plus lisibles à l'écran : caméra inclinée, relief exagéré à l'affichage seulement (lot Q2, `camera_follow.gd` `pitch_deg`, `[render] visual_grade_scale` et `--visual-grade=K`, défaut 1,0 en attendant l'essai sur le PC ; testé par `test_camera_pitch.gd` et `test_visual_grade_scale.gd`).
+- [ ] Pente encore plus marquée à l'écran (lot Y15, demande du 28 octobre) : relief affiché ×2,5 par défaut porté par `route_data.gd` (`relief_k`), regard à mi-pente, champ de vision qui respire, roche, neige et arbres jugés sur le vrai relief ; vitrine `vitrine_pente.gd` ; séance sur le PC à faire.
 - [x] Journal des commandes FTMS et des accusés, délais dans `log_report` (lot Q3, `ftms_driver.py`, option `--trace-ftms`, clé `[trainer] trace_ftms`, analyse des délais et statuts dans `log_report`, testé par `test_ftms_trace.py`).
 - [x] Rampe de pente plus rapide, surtout à la descente (lot Q4, `grade_rate_up_pct_per_s` et `grade_rate_down_pct_per_s`, testé par `test_grade_ramp.py`).
 - [x] FC relayée par le trainer figée : écrite comme absente (lot Q5, `hr_relay_freeze_s`, testé par `test_hr_relay_freeze.py`).
