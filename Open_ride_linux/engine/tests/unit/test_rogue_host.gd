@@ -101,6 +101,7 @@ func _run() -> void:
 	# échauffement : pas de ruban
 	host.update({"mode": "ROGUE", "rogue": _rogue("WARMUP", 0, 0.0)}, main, classic, we, cam, "low", 103.0)
 	_check(not sc.ribbon.visible and not sc.firewall.visible, "échauffement : ni ruban ni Firewall")
+	_check(sc.audio != null and sc.audio.get_parent() == sc, "le noeud sonore du mode est dans la scène")
 	# sortie
 	host.update({"mode": "SIM", "rogue": null}, main, classic, we, cam, "low", 104.0)
 	await process_frame
