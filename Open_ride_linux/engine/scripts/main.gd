@@ -33,6 +33,7 @@ const LivingDecor := preload("res://scripts/living_decor.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
+const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
@@ -149,6 +150,8 @@ var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
 var _beep_until_s := -INF
+## Série R (lot R10) : scène du mode Cyber-Rogue, instanciée quand `state.mode` vaut « ROGUE ».
+var rogue_host = RogueHost.new()
 
 
 func _ready() -> void:
@@ -215,6 +218,7 @@ func _ready() -> void:
 	add_child(segment_markers)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
+	ipc.room_received.connect(rogue_host.on_room)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
 	ipc.error_received.connect(_on_core_error)
@@ -606,6 +610,8 @@ func _process(delta: float) -> void:
 	fps_counter.add_frame(delta)
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
+	if rogue_host.is_active():
+		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
 		return
 	if not follow.has_frame():
@@ -1006,6 +1012,10 @@ func _on_state_received(state: Dictionary) -> void:
 		var heading_deg: float = route.sample_heading_deg(route.wrap_s(float(state.get("s", 0.0)))) if route != null else 0.0
 		if hud != null and hud.has_method("update_wind"):
 			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s))
+
+	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
+			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
+		ipc.request_rogue_resync()
 
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0

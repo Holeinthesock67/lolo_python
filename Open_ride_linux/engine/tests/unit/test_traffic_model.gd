@@ -2,10 +2,12 @@ extends SceneTree
 
 ## Tests sans écran de la circulation `traffic_model.gd` (Lot P13) : séance simulée de 30 km à 30 km/h,
 ## sécurité (écarts, dépassements), déterminisme, budget, coût par image ; affichage `traffic_renderer.gd`.
+## Lot P25 : sept sortes et leurs vitesses, phares, affichage refait (caisse, roues, son par sorte).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_traffic_model.gd
 
 const TrafficModel := preload("res://scripts/traffic_model.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
+const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
@@ -136,14 +138,41 @@ func _test_renderer(route) -> void:
 			var slot: Dictionary = tr._slots[j]
 			var v: Dictionary = tm.vehicles[j]
 			match_ok = match_ok and slot["root"].transform.origin.is_equal_approx(tm.world_transform(v).origin) \
-				and slot["bodies"][v["kind"]].visible
-			var w: Node3D = slot["wheels"][v["kind"]][0]
+				and slot["body"].mesh == tr._bodies[v["kind"]]
+			var w: Node3D = slot["wheels"][0]
 			spun = spun or absf(w.rotation.x) > 0.1
-			var want: Resource = sp.stream("tractor_engine" if v["kind"] == "tractor" else "vehicle_pass")
-			sound_ok = sound_ok and slot["audio"].stream == want
+			var snd: Array = TrafficRenderer.SOUND[v["kind"]]
+			sound_ok = sound_ok and slot["audio"].stream == sp.stream(snd[0]) and is_equal_approx(slot["audio"].pitch_scale, snd[2])
 		s += 30.0 / 3.6 / 30.0
 	_check(match_ok and max_shown >= 1 and max_shown <= 3, "affichage : un véhicule du pool par véhicule du modèle, à sa place (%d au plus)" % max_shown)
-	_check(spun and sound_ok, "roues qui tournent, son du passage ou du tracteur sur chaque véhicule")
+	_check(spun and sound_ok, "roues qui tournent, son du passage (à la hauteur de la sorte) ou du tracteur sur chaque véhicule")
+	var mat: ShaderMaterial = tr._slots[0]["mat"]
+	tr.set_lights(true)
+	var lit: bool = float(mat.get_shader_parameter("lights")) == 1.0
+	tr.set_lights(false)
+	_check(lit and float(mat.get_shader_parameter("lights")) == 0.0, "phares allumés puis éteints")
+	# Chaque sorte habillée : sa caisse, ses roues, sa peinture
+	var fake := {"vehicles": []}
+	var kinds: Array = TrafficModel.KINDS.keys()
+	for j in range(kinds.size()):
+		fake["vehicles"].append({"id": "f%d" % j, "kind": kinds[j], "color": j, "s": 600.0 + 30.0 * j, "dir": -1,
+			"lateral": -3.0, "wheel": 0.0})
+	var fm = TrafficModel.new()
+	fm.configure(route, {}, [], 8, 1)
+	fm.vehicles = fake["vehicles"]
+	tr.setup(fm, sp)
+	tr.update()
+	var dressed := true
+	for j in range(kinds.size()):
+		var slot: Dictionary = tr._slots[j]
+		var nw := VehicleMesh.wheel_list(kinds[j]).size()
+		var shown := 0
+		for w in slot["wheels"]:
+			if w.visible:
+				shown += 1
+		dressed = dressed and slot["body"].mesh == tr._bodies[kinds[j]] and shown == nw \
+			and slot["mat"].get_shader_parameter("paint") == VehicleMesh.paint(kinds[j], j)
+	_check(dressed and tr.visible_count() == kinds.size(), "les %d sortes habillées : caisse, roues et peinture" % kinds.size())
 	_check(tr.get_child_count() == n0, "aucun nœud créé après le démarrage")
 	var avg := usec / 1000.0 / 9000.0
 	_check(PerfBudget.check("traffic_frame", avg), "modèle et affichage mis à jour en %.4f ms par image" % avg)
@@ -180,6 +209,29 @@ func _run() -> void:
 		safe = safe and rs["overlap"] == 0 and rs["too_close"] == 0 and rs["bad_pass"] == 0 and rs["bad_spawn"] == 0 \
 			and rs["max_live"] <= 5 and rs["count"] >= 3 and rs["count"] <= 15
 	_check(safe, "12 autres graines, budget 5 : mêmes garanties, de 3 à 15 véhicules (%s)" % str(counts))
+	# Lot P25 : les sept sortes, d'après leurs parts
+	var drawn := {}
+	var tm_k = TrafficModel.new()
+	for sd in range(200):
+		tm_k.configure(route, {}, _villages(), 5, 100 + sd)
+		for k in range(int(LENGTH_M / TrafficModel.SLOT_M)):
+			var ev: Dictionary = tm_k.slot_event(k)
+			if ev.is_empty():
+				continue
+			drawn[ev["kind"]] = int(drawn.get(ev["kind"], 0)) + 1
+			var kmh: Vector2 = TrafficModel.KINDS[ev["kind"]]["kmh"]
+			safe = safe and float(ev["cruise_mps"]) * 3.6 >= kmh.x - 1e-3 and float(ev["cruise_mps"]) * 3.6 <= kmh.y + 1e-3
+	var share_sum := 0.0
+	for kind in TrafficModel.KINDS:
+		share_sum += float(TrafficModel.KINDS[kind]["share"])
+	_check(drawn.size() == TrafficModel.KINDS.size() and safe and absf(share_sum - 1.0) < 1e-6,
+		"sept sortes tirées sur 200 graines, vitesses dans la plage de chaque sorte (%s)" % str(drawn))
+	_check(TrafficModel.pick_kind(0.0) == "car_a" and TrafficModel.pick_kind(0.999) == "tractor",
+		"tirage de la sorte dans l'ordre de la table")
+	var sun := 45.0
+	_check(not TrafficModel.headlights({"fog_boost": 0.0, "rain": 0.0}, sun) and TrafficModel.headlights({"fog_boost": 0.5}, sun)
+		and TrafficModel.headlights({"rain": 0.6}, sun) and TrafficModel.headlights({}, 3.0),
+		"phares : éteints par beau temps, allumés dans la brume, sous la pluie ou au soleil bas")
 	var r0: Dictionary = _ride(route, 0, 7)
 	_check(r0["count"] == 0, "budget nul : aucun véhicule")
 	_check(PerfBudget.check("traffic_view_frame", r["avg_ms"]), "mise à jour en %.4f ms par image" % r["avg_ms"])

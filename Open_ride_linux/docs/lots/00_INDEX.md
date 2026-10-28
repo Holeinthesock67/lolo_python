@@ -118,6 +118,7 @@
 | [P22](LOT_P22_pres_champs_routes_voisines.md) | Format `.world` 1.5 : prés, champs et prairies dans la végétation, couche facultative des routes voisines | Python + GDScript | I3, I4, K4, T1 | Moyenne | **Livré le 27 octobre** (deuxième vague du décor vivant ; affichage par P24 et P25) |
 | [P23](LOT_P23_oiseaux_campagne.md) | Oiseaux de la campagne : rapace en cercle, volées en V, corneilles qui s'envolent au passage, cris | GDScript + shader | P11, P17, P21 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire (deuxième vague du décor vivant, P22 à P27 proposés le 27 octobre) |
 | [P24](LOT_P24_animaux_par_terrain.md) | Animaux par terrain : vaches et chevaux dans les prés, moutons sur les prairies en pente, lièvres des champs qui détalent, meuglements, bêlements et hennissements | GDScript | P11, P17, P22, P23, Y14 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire |
+| [P25](LOT_P25_vehicules_au_sol.md) | Véhicules au sol : voitures détaillées, utilitaires, camions, autocars et motos, circulation des routes voisines, tracteurs qui hersent les champs, phares dans la brume, sous la pluie ou au soleil bas | GDScript + shader | P13, P17, P22, Y14 | Moyenne | **Livré le 28 octobre**, séance sur le PC à faire |
 | [P27](LOT_P27_integration_recette_decor_vivant_2.md) | Intégration et recette de la deuxième vague du décor vivant : mesure de toute la série, budgets, fiche de recette, documentation | GDScript + doc | P22 à P26, P28 | Moyenne | Non : interne (mesure et recette sur le PC) |
 | [P28](LOT_P28_cyclistes_route.md) | Cyclistes sur la route du parcours : seuls ou en petits groupes, en face, doublés ou qui doublent, plus nombreux en montée et près des villages (sans effet sur la physique) | GDScript | P13, P17, P21, Y14 ; après P25 | Moyenne | Oui (demande du propriétaire du 28 octobre) |
 | P29 | Bateaux sur les lacs et la mer (voiliers, barques, ferries au large) | GDScript | P12 (eau), P17 | Moyenne | Oui ; cahier à écrire par le fil du décor (demande du propriétaire du 28 octobre) |
@@ -153,7 +154,7 @@
 | [R7](LOT_R7_equilibrage_run_simulee.md) | Table d'équilibrage en données et run simulée avec cyclistes types | Python | R6, R15 | Moyenne | **Livré le 27 octobre** (rapport : `docs/2.0/RAPPORT_EQUILIBRAGE_R7.md`), **version 2.0** |
 | [R8](LOT_R8_integration_session.md) | Intégration dans la session du core : mode ROGUE, formule centrée, boutons Z et A, pause Y, journal, pause et reprise | Python | T1, R6, R15, Q4 | Grande | **Livré le 27 octobre**, **version 2.0** |
 | [R9](LOT_R9_progression_permanente.md) | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies | Python | R6, V2, V3b, V4 | Petite | **Livré le 27 octobre**, **version 2.0** |
-| [R10](LOT_R10_scene_neon_ruban.md) | Engine : scène néon, ruban 3D, shader de pente, arches et zones | GDScript + shader | T1 | Grande | Non : interne (rendu, contrôle visuel), **version 2.0** |
+| [R10](LOT_R10_scene_neon_ruban.md) | Engine : scène néon, ruban 3D, shader de pente, arches et zones | GDScript + shader | T1 | Grande | Non : interne (rendu, contrôle visuel) ; **Livré le 28 octobre** (sauf contrôle visuel), **version 2.0** |
 | [R11](LOT_R11_hud_diegetique.md) | Engine : HUD diégétique, arcs au sol, champ de vision et tremblement | GDScript | T1, R10 | Moyenne | Modèle oui, rendu interne ; **version 2.0** |
 | [R12](LOT_R12_ennemis_boss.md) | Engine : ennemis et boss géométriques, effets d'impact | GDScript + shader | R10 | Moyenne | Non : interne (rendu, contrôle visuel), **version 2.0** |
 | [R13](LOT_R13_menu_cyber_rogue.md) | Engine : lancement depuis l'accueil, écran de départ, couloirs et cartes, pause, fin de run | GDScript | T1, R8, R10, R11, N6, O4 | Moyenne | Non : interne (`main.gd`, menu), **version 2.0** |
@@ -342,7 +343,7 @@ E3 ──► O1 ;  N3 ──► O2 ;  N12 ──► O3 ──► O4 ;  Q1 ──
 O9 ──► O11 ;  O3 ──► O10 ──► O11 ;  O5 ──► O15 ──► O16 ;  N6, O4, O10, O11, O15 ──► O12 ;  O13, N7 ──► O14
 N, O1, O2, O6 ──► O8 (recette 1.0)
 O8 ──► P1 ──► P2 ──► P3 (avec N9) ;  P1 ──► P4 ──► P5, P6, P8, P9, P10, P11, P12, P14
-P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7) ;  P11, P17, P21 ──► P23 ;  I3, I4, K4, T1 ──► P22 ;  P22, P23, Y14 ──► P24
+P9 ──► P13 ;  P9, P14 ──► P15 ──► P21 ;  P2, P4, P5, P6, P9, P10 ──► P16 ──► P17 (avec P3, P8, P11 à P15, P21, O7) ;  P11, P17, P21 ──► P23 ;  I3, I4, K4, T1 ──► P22 ;  P22, P23, Y14 ──► P24 ;  P13, P17, P22, Y14 ──► P25
 Q1 ──► Q4 ;  Q3 ──► Q5 ;  Q2, Q6 : indépendants
 O1, Q2 ──► S1
 Version 2.0 : Q3, Q4 ──► R0 ;  P1, PR #287 ──► T1 ;  R3 ──► R4 ;  R0, R2, R3, R4 ──► R5 ──► R6 ──► R15 ──► R7 ;  T1, R6, R15 ──► R8
