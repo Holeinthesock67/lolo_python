@@ -28,6 +28,7 @@ const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const RoadTrafficModel := preload("res://scripts/road_traffic_model.gd")
 const BoatModel := preload("res://scripts/boat_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 signal chunk_loaded(k: int, extras: Dictionary)
 signal chunk_freed(k: int)
@@ -211,6 +212,7 @@ func _start_jobs() -> void:
 
 
 func _build_chunk_job(job: Dictionary) -> void:
+	var t0 := Time.get_ticks_usec()
 	var k: int = job["k"]
 	var w_dir: String = job["world_dir"]
 	var layers: Array = job["layers"]
@@ -227,6 +229,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 	var w_items := {"lines": [], "areas": []}
 	var boats := []
 	# 1. Bâtiments
+	var t_buildings := Time.get_ticks_usec()
 	if layers.has("buildings"):
 		var b_res := OsmLayers.load_chunk(w_dir, "buildings", k, job.get("route"))
 		if b_res.get("ok", false):
@@ -249,6 +252,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 					if not arr.is_empty():
 						meshes_data.append({"kind": "buildings", "arrays": arr})
 
+	PerfProbe.task("batiments", str(k), (Time.get_ticks_usec() - t_buildings) / 1000.0)
 	# 2. Eau (lines et areas)
 	if layers.has("water"):
 		var w_res := OsmLayers.load_chunk(w_dir, "water", k, job.get("route"))
@@ -364,6 +368,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 				traffic.append_array(RoadTrafficModel.road_paths(lines))
 		traffic.append_array(RoadTrafficModel.field_paths(veg_items, height_at))
 
+	PerfProbe.task("osm", str(k), (Time.get_ticks_usec() - t0) / 1000.0)
 	job["result"] = {
 		"k": k,
 		"meshes_data": meshes_data,
@@ -487,6 +492,7 @@ func integrate(max_new: int) -> int:
 		var k: int = item["k"]
 		if not _wanted_chunks.has(k) or _chunk_instances.has(k):
 			continue
+		var t0 := Time.get_ticks_usec()
 
 		var nodes: Array[MeshInstance3D] = []
 		var m_list: Array = item["meshes_data"]
@@ -520,6 +526,7 @@ func integrate(max_new: int) -> int:
 			_pois_by_chunk[k] = item["pois"]
 			_update_sound_pois()
 		chunk_loaded.emit(k, {"fauna": item.get("fauna", []), "traffic": item.get("traffic", []), "boats": item.get("boats", [])})
+		PerfProbe.mark("osm", str(k), (Time.get_ticks_usec() - t0) / 1000.0)
 
 	_start_jobs()
 	return created

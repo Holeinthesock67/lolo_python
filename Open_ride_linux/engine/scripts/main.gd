@@ -742,6 +742,7 @@ func _process(delta: float) -> void:
 		avatar_view.set_visible_for_view(_avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, heading, now, pitch_deg)
+		_probe.distance_m = s_route
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
@@ -931,6 +932,7 @@ func _poll_route_job() -> void:
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
 			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"]])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
+	_probe.route_ready()   # démarrage : première image jouable comptée à partir d'ici (lot X15)
 
 
 # --- messages du core --------------------------------------------------------------------
