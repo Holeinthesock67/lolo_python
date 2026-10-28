@@ -88,6 +88,16 @@ func _run() -> void:
 	host.on_loot({"cards": [{}, {}, {}], "doors": [{}, {}], "reroll_cost": 50, "gold": 10})
 	host.update({"mode": "ROGUE", "rogue": _rogue("CORRIDOR", 5, 120.0)}, main, classic, we, cam, "low", 102.5)
 	_check(sc.hud_model.values()["corridor"]["cards"].size() == 3, "cartes du couloir relayées au modèle")
+	# Ennemi (R12) : le corps de l'archétype est construit au premier rendu (de retour en salle, hors couloir)
+	host.update({"mode": "ROGUE", "rogue": _rogue("ROOM", 5, 120.0, 80.0, windows)}, main, classic, we, cam, "low", 102.7)
+	await process_frame
+	await process_frame
+	_check(sc.enemy_view.archetype == "diesel" and sc.enemy_view.visible, "ennemi : train du Diesel affiché")
+	_check(sc.enemy_view.body.get_child_count() >= 1, "ennemi : volume construit")
+	for arch in ["puncheur", "grimpeur", "sprinteur", "saboteur", "boss"]:
+		sc.enemy_view.set_archetype(arch)
+		_check(sc.enemy_view.body.get_child_count() >= 1, "ennemi %s : volume construit" % arch)
+	sc.enemy_view.set_archetype("diesel")
 	# échauffement : pas de ruban
 	host.update({"mode": "ROGUE", "rogue": _rogue("WARMUP", 0, 0.0)}, main, classic, we, cam, "low", 103.0)
 	_check(not sc.ribbon.visible and not sc.firewall.visible, "échauffement : ni ruban ni Firewall")

@@ -23,7 +23,6 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
-const FaunaShader := preload("res://shaders/fauna.gdshader")
 
 const SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
@@ -253,13 +252,7 @@ func _add_cyclists(vp: SubViewport) -> void:
 ## à l'échelle des rapaces, ailes battantes.
 func _add_animals(vp: SubViewport) -> void:
 	for sp in FaunaRenderer.SPECIES:
-		var mat := ShaderMaterial.new()
-		mat.shader = FaunaShader
-		mat.set_shader_parameter("mode", 0 if sp == "bird" else 1)
-		for key in ["albedo", "accent", "light"]:
-			var table: Dictionary = {"albedo": FaunaRenderer.ALBEDO, "accent": FaunaRenderer.ACCENT, "light": FaunaRenderer.LIGHT}[key]
-			mat.set_shader_parameter(key, table[sp])
-		mat.set_shader_parameter("patches", FaunaRenderer.PATCHES[sp])
+		var mat := FaunaRenderer.make_material(sp)
 		var mine := ANIMALS.filter(func(a): return a[0] == sp)
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D

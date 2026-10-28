@@ -12,11 +12,15 @@ extends Node3D
 ## Vent (Lot P5) : quand `QualityPresets.living(preset).tree_sway` est vrai, les deux LOD utilisent le
 ## shader `tree_sway.gdshader` ; sinon les StandardMaterial3D d'origine (rendu inchangé).
 ## `apply_wind(eval)` met à jour une fois par image les paramètres globaux du vent du shader.
+## Biomes (lot U7) : avec `biome_model` actif (couche biome ou forçage), la densité et la limite des
+## arbres suivent les biomes de la tuile et chaque arbre reçoit une espèce (tree_species.gd) ; une case
+## a alors une paire de MultiMeshInstance3D par espèce présente (`parts`). Sans biome : rendu inchangé.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
+const TreeSpecies := preload("res://scripts/tree_species.gd")
 const LOD1_SWAY_FACTOR := 0.6   # amplitude réduite des panneaux croisés du LOD 1
 
 const CELL_SIZE_M := 250.0
@@ -38,6 +42,12 @@ var _lod1_mesh: ArrayMesh
 var _lod0_material: Material
 var _lod1_material: Material
 var _tree_sway := false
+## Modèle de biome (biome_model.gd) ; null ou inactif : végétation d'avant la série U.
+var biome_model = null
+## (x, z) -> vrai près de l'eau (oasis des déserts) ; invalide : aucun palmier au désert.
+var near_water := Callable()
+## Maillages et matériaux par espèce, construits à la première rencontre : { index: {lod0, lod1, m0, m1} }.
+var _species := {}
 
 ## { tile_key: { cell_idx: { lod0: MultiMeshInstance3D, lod1: MultiMeshInstance3D, count: int, center: Vector3 } } }
 var _tiles: Dictionary = {}
@@ -75,10 +85,13 @@ func set_preset(preset_name: String, living_enabled: bool = true) -> void:
 	if sway != _tree_sway:
 		_tree_sway = sway
 		_init_materials()
+		_species.clear()
 		for tile_cells in _tiles.values():
 			for cell_info in tile_cells.values():
-				(cell_info["lod0"] as MultiMeshInstance3D).material_override = _lod0_material
-				(cell_info["lod1"] as MultiMeshInstance3D).material_override = _lod1_material
+				for part in cell_info["parts"]:
+					var look := _look(int(part["species"]))
+					(part["lod0"] as MultiMeshInstance3D).material_override = look["m0"]
+					(part["lod1"] as MultiMeshInstance3D).material_override = look["m1"]
 
 
 func is_tree_sway() -> bool:
@@ -96,6 +109,23 @@ static func sway_material(lod1: bool) -> ShaderMaterial:
 	else:
 		mat.shader = TreeSwayShader
 	return mat
+
+
+## Maillages et matériaux d'une espèce (GENERIC : arbre d'avant la série U).
+func _look(index: int) -> Dictionary:
+	if index == TreeSpecies.GENERIC:
+		return {"lod0": _lod0_mesh, "lod1": _lod1_mesh, "m0": _lod0_material, "m1": _lod1_material}
+	if not _species.has(index):
+		var built := TreeSpecies.build(TreeSpecies.kind_of(index))
+		var m0: Material = _lod0_material
+		var m1: Material = _lod1_material
+		if _tree_sway:
+			m0 = sway_material(false)
+			m1 = sway_material(true)
+			for m in [m0, m1]:
+				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
+		_species[index] = {"lod0": built["lod0"], "lod1": built["lod1"], "m0": m0, "m1": m1}
+	return _species[index]
 
 
 ## Met à jour en un appel par image le vent de tous les arbres et touffes (sortie de wind_model.evaluate).
@@ -123,6 +153,17 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 	veg = veg.duplicate(true) if typeof(veg) == TYPE_DICTIONARY else {}
 	var base_dens = veg.get("max_density_per_ha", VegetationPlacer.DEFAULT_MAX_DENSITY)
 	veg["max_density_per_ha"] = float(base_dens) * clampf(density_factor, 0.0, 1.0)
+	var biomes_on: bool = biome_model != null and biome_model.active()
+	if biomes_on:
+		# Placement à la densité du biome le plus dense de la tuile, puis éclaircie par biome (assign_species).
+		var dens := 0.0
+		var treeline := -INF
+		for b in biome_model.top_biomes(tile_x, tile_z, 4).keys():
+			var bv: Dictionary = biome_model.params(b)["vegetation"]
+			dens = maxf(dens, float(bv["max_density_per_ha"]))
+			treeline = maxf(treeline, 1.0e6 if bv["treeline_m"] == null else float(bv["treeline_m"]))
+		veg["max_density_per_ha"] = dens * clampf(density_factor, 0.0, 1.0)
+		veg["treeline_m"] = treeline
 	tile_theme["vegetation"] = veg
 
 	var height_fn: Callable
@@ -206,20 +247,29 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 	var t_buildings := Time.get_ticks_usec()
 	if not buildings.is_empty():
 		trees = exclude_buildings(trees, buildings)
+	var tree_species := PackedByteArray()
+	if biomes_on:
+		var assigned := VegetationPlacer.assign_species(trees, biome_model, float(veg["max_density_per_ha"]) / maxf(clampf(density_factor, 0.0, 1.0), 1e-6), near_water)
+		trees = assigned["trees"]
+		tree_species = assigned["species"]
 	var t_cells := Time.get_ticks_usec()
 
 	# Répartition des arbres dans les 16 cases de 250 m x 250 m
 	var tile_origin_x := float(tile_x * 1000)
 	var tile_origin_z := float(tile_z * 1000)
 	var cells: Array[PackedVector4Array] = []
+	var cell_species: Array[PackedByteArray] = []
 	for i in range(16):
 		cells.append(PackedVector4Array())
+		cell_species.append(PackedByteArray())
 
-	for tree in trees:
+	for k in range(trees.size()):
+		var tree := trees[k]
 		var cx := clampi(int(floor((tree.x - tile_origin_x) / CELL_SIZE_M)), 0, CELLS_PER_TILE - 1)
 		var cz := clampi(int(floor((tree.z - tile_origin_z) / CELL_SIZE_M)), 0, CELLS_PER_TILE - 1)
 		var cell_idx := cz * CELLS_PER_TILE + cx
 		cells[cell_idx].append(tree)
+		cell_species[cell_idx].append(tree_species[k] if biomes_on else TreeSpecies.GENERIC)
 
 	var t_end := Time.get_ticks_usec()
 	last_profile = {
@@ -236,6 +286,7 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		"tile_z": tile_z,
 		"tile_key": Vector2i(tile_x, tile_z),
 		"cells": cells,
+		"species": cell_species,
 		"tile_origin": Vector3(tile_origin_x, 0.0, tile_origin_z),
 	}
 
@@ -287,6 +338,7 @@ func add_tile(data: Dictionary) -> void:
 
 	var tile_cells := {}
 	var cells_data: Array = data["cells"]
+	var species_data: Array = data.get("species", [])
 	var tile_x: int = data["tile_x"]
 	var tile_z: int = data["tile_z"]
 
@@ -305,69 +357,98 @@ func add_tile(data: Dictionary) -> void:
 		var center_y := sum_y / float(tree_list.size())
 		var cell_center := Vector3(center_x, center_y, center_z)
 
-		var count := tree_list.size()
+		# Arbres de la case groupés par espèce (une seule espèce, GENERIC, sans biome).
+		var groups := {}
+		var sp: PackedByteArray = species_data[cell_idx] if cell_idx < species_data.size() else PackedByteArray()
+		for i in range(tree_list.size()):
+			var key := int(sp[i]) if i < sp.size() else TreeSpecies.GENERIC
+			if not groups.has(key):
+				groups[key] = []   # Array (référence) : un tableau compact serait copié par groups[key]
+			(groups[key] as Array).append(tree_list[i])
 
-		# LOD 0 MultiMeshInstance3D
-		var mm0 := MultiMesh.new()
-		mm0.transform_format = MultiMesh.TRANSFORM_3D
-		mm0.use_colors = true
-		mm0.mesh = _lod0_mesh
-		mm0.instance_count = count
-
-		# LOD 1 MultiMeshInstance3D
-		var mm1 := MultiMesh.new()
-		mm1.transform_format = MultiMesh.TRANSFORM_3D
-		mm1.use_colors = true
-		mm1.mesh = _lod1_mesh
-		mm1.instance_count = count
-
-		for i in range(count):
-			var t := tree_list[i]
-			var px := t.x
-			var py := t.y
-			var pz := t.z
-			var scale_f := t.w
-
-			var h_rot := VegetationPlacer.hash3(0x5EED, int(px), int(pz))
-			var angle := float(h_rot & 0xFFFF) / 65536.0 * TAU
-			var basis := Basis(Vector3.UP, angle).scaled(Vector3.ONE * scale_f)
-			var xform := Transform3D(basis, Vector3(px, py, pz))
-
-			var h_col := VegetationPlacer.hash3(0xCAFE, int(px), int(pz))
-			var tint := (float(h_col & 0xFF) / 255.0 - 0.5) * 0.16
-			var col := Color(1.0 + tint, 1.0 + tint, 1.0 + tint, 1.0)
-
-			mm0.set_instance_transform(i, xform)
-			mm0.set_instance_color(i, col)
-
-			mm1.set_instance_transform(i, xform)
-			mm1.set_instance_color(i, col)
-
-		var mmi0 := MultiMeshInstance3D.new()
-		mmi0.multimesh = mm0
-		mmi0.material_override = _lod0_material
-		mmi0.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
-		mmi0.visibility_range_begin = 0.0
-		mmi0.visibility_range_end = LOD0_MAX_DIST_M
-		add_child(mmi0)
-
-		var mmi1 := MultiMeshInstance3D.new()
-		mmi1.multimesh = mm1
-		mmi1.material_override = _lod1_material
-		mmi1.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
-		mmi1.visibility_range_begin = LOD0_MAX_DIST_M
-		mmi1.visibility_range_end = LOD1_MAX_DIST_M
-		add_child(mmi1)
+		var parts := []
+		var keys := groups.keys()
+		keys.sort()
+		for key in keys:
+			parts.append(_make_part(int(key), PackedVector4Array(groups[key])))
 
 		tile_cells[cell_idx] = {
-			"lod0": mmi0,
-			"lod1": mmi1,
-			"count": count,
+			"parts": parts,
+			"count": tree_list.size(),
 			"center": cell_center,
 		}
-		_active_tree_count += count
+		_active_tree_count += tree_list.size()
 
 	_tiles[tile_key] = tile_cells
+
+
+## Paire de MultiMeshInstance3D (LOD 0 et LOD 1) des arbres d'une espèce dans une case.
+func _make_part(species: int, tree_list: PackedVector4Array) -> Dictionary:
+	var look := _look(species)
+	var count := tree_list.size()
+	var mm0 := MultiMesh.new()
+	mm0.transform_format = MultiMesh.TRANSFORM_3D
+	mm0.use_colors = true
+	mm0.mesh = look["lod0"]
+	mm0.instance_count = count
+	var mm1 := MultiMesh.new()
+	mm1.transform_format = MultiMesh.TRANSFORM_3D
+	mm1.use_colors = true
+	mm1.mesh = look["lod1"]
+	mm1.instance_count = count
+	var vine := species == TreeSpecies.index_of("vine_row")
+
+	for i in range(count):
+		var t := tree_list[i]
+		var px := t.x
+		var py := t.y
+		var pz := t.z
+		var scale_f := t.w
+
+		var h_rot := VegetationPlacer.hash3(0x5EED, int(px), int(pz))
+		var angle := float(h_rot & 0xFFFF) / 65536.0 * TAU
+		if vine:
+			# Rangs de vigne parallèles dans toute la case (orientation tirée par case de 250 m).
+			angle = float(VegetationPlacer.hash3(0x7111, int(floor(px / CELL_SIZE_M)), int(floor(pz / CELL_SIZE_M))) & 0x3) * 0.25 * PI
+			scale_f = 1.0
+		var basis := Basis(Vector3.UP, angle).scaled(Vector3.ONE * scale_f)
+		var xform := Transform3D(basis, Vector3(px, py, pz))
+
+		var h_col := VegetationPlacer.hash3(0xCAFE, int(px), int(pz))
+		var tint := (float(h_col & 0xFF) / 255.0 - 0.5) * 0.16
+		var col := Color(1.0 + tint, 1.0 + tint, 1.0 + tint, 1.0)
+
+		mm0.set_instance_transform(i, xform)
+		mm0.set_instance_color(i, col)
+		mm1.set_instance_transform(i, xform)
+		mm1.set_instance_color(i, col)
+
+	var mmi0 := MultiMeshInstance3D.new()
+	mmi0.multimesh = mm0
+	mmi0.material_override = look["m0"]
+	mmi0.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	mmi0.visibility_range_begin = 0.0
+	mmi0.visibility_range_end = LOD0_MAX_DIST_M
+	add_child(mmi0)
+
+	var mmi1 := MultiMeshInstance3D.new()
+	mmi1.multimesh = mm1
+	mmi1.material_override = look["m1"]
+	mmi1.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+	mmi1.visibility_range_begin = LOD0_MAX_DIST_M
+	mmi1.visibility_range_end = LOD1_MAX_DIST_M
+	add_child(mmi1)
+	return {"lod0": mmi0, "lod1": mmi1, "species": species, "count": count}
+
+
+func _free_cell(cell_info: Dictionary) -> void:
+	for part in cell_info["parts"]:
+		for key in ["lod0", "lod1"]:
+			var mmi: MultiMeshInstance3D = part[key]
+			if mmi != null:
+				if mmi.get_parent() == self:
+					remove_child(mmi)
+				mmi.free()
 
 
 func remove_tile(tile_key: Vector2i) -> void:
@@ -377,16 +458,7 @@ func remove_tile(tile_key: Vector2i) -> void:
 	for cell_idx in tile_cells.keys():
 		var cell_info: Dictionary = tile_cells[cell_idx]
 		_active_tree_count -= int(cell_info["count"])
-		var mmi0: MultiMeshInstance3D = cell_info["lod0"]
-		var mmi1: MultiMeshInstance3D = cell_info["lod1"]
-		if mmi0 != null:
-			if mmi0.get_parent() == self:
-				remove_child(mmi0)
-			mmi0.free()
-		if mmi1 != null:
-			if mmi1.get_parent() == self:
-				remove_child(mmi1)
-			mmi1.free()
+		_free_cell(cell_info)
 	_tiles.erase(tile_key)
 
 
@@ -394,17 +466,7 @@ func clear() -> void:
 	for tile_key in _tiles.keys():
 		var tile_cells: Dictionary = _tiles[tile_key]
 		for cell_idx in tile_cells.keys():
-			var cell_info: Dictionary = tile_cells[cell_idx]
-			var mmi0: MultiMeshInstance3D = cell_info["lod0"]
-			var mmi1: MultiMeshInstance3D = cell_info["lod1"]
-			if mmi0 != null:
-				if mmi0.get_parent() == self:
-					remove_child(mmi0)
-				mmi0.free()
-			if mmi1 != null:
-				if mmi1.get_parent() == self:
-					remove_child(mmi1)
-				mmi1.free()
+			_free_cell(tile_cells[cell_idx])
 	_tiles.clear()
 	_active_tree_count = 0
 
@@ -430,16 +492,7 @@ func enforce_budget(cam_pos: Vector3) -> void:
 			break
 		var cell_info: Dictionary = item["cell"]
 		_active_tree_count -= int(cell_info["count"])
-		var mmi0: MultiMeshInstance3D = cell_info["lod0"]
-		var mmi1: MultiMeshInstance3D = cell_info["lod1"]
-		if mmi0 != null:
-			if mmi0.get_parent() == self:
-				remove_child(mmi0)
-			mmi0.free()
-		if mmi1 != null:
-			if mmi1.get_parent() == self:
-				remove_child(mmi1)
-			mmi1.free()
+		_free_cell(cell_info)
 		_tiles[item["tile_key"]].erase(item["cell_idx"])
 
 

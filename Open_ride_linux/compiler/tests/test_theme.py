@@ -17,6 +17,7 @@ from openride_compiler.theme import (
     SCHEMA_PATH,
     check_theme,
     resolve_theme,
+    without_biomes,
 )
 
 
@@ -79,7 +80,8 @@ def test_minimal_theme_resolves_to_default(tmp_path: Path) -> None:
     for version in ("1.0", default_data["version"]):
         (tmp_path / "theme.json").write_text(f'{{"version": "{version}"}}\n', encoding="utf-8")
         assert check_theme(tmp_path) == []
-        assert resolve_theme(tmp_path) == {**default_data, "version": version}
+        # Le pack de biomes du défaut (thème 2.0, lot U15) n'est pas prêté aux autres thèmes.
+        assert resolve_theme(tmp_path) == {**without_biomes(default_data), "version": version}
 
 
 @pytest.mark.parametrize("bad_color", ["vert", "#12345", "#1234567", "#GGGGGG"])

@@ -193,6 +193,7 @@ func _ready() -> void:
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
+	streamer.forced_biome = str(cfg.get("biome", "auto"))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"
@@ -406,12 +407,19 @@ func _apply_theme(name: String) -> void:
 	print("Thème : ", name)
 
 
+## Ciel et brouillard du thème ; avec un modèle de biome actif (série U, lot U17), ceux du biome du départ :
+## densité du brouillard du biome, horizon voilé par `haze` (poussière, brume) et teinté par `light_tint`.
 func _apply_sky_params(theme_dict: Dictionary) -> void:
 	var sky := ThemeRenderParams.sky_params(theme_dict)
+	var model = streamer.biome_model
+	if model != null and model.active():
+		sky = model.params(streamer.start_biome())["sky"]
 	if sun != null:
 		var sun_dir: Vector3 = sky["sun_direction"]
 		sun.basis = Basis.looking_at(-sun_dir, Vector3.UP)
 	var horizon: Color = sky.get("horizon_color", RenderQuality.FOG_COLOR)
+	if sky.has("haze"):
+		horizon = horizon.lerp(RenderQuality.HAZE_COLOR, float(sky["haze"]) * 0.6) * (sky["light_tint"] as Color)
 	var fog_dens: float = float(sky.get("fog_density", 0.01))
 	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
 
@@ -868,10 +876,7 @@ func _poll_route_job() -> void:
 	if living_world != null:
 		living_world.set_route(route, float(streamer.get("_road_width_m")))
 		living_world.terrain_material = streamer.get("_terrain_material")
-	var sky_params := ThemeRenderParams.sky_params(streamer._theme_dict)
-	var horizon: Color = sky_params.get("horizon_color", RenderQuality.FOG_COLOR)
-	var fog_dens: float = float(sky_params.get("fog_density", 0.01))
-	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
+	_apply_sky_params(streamer._theme_dict)
 	if living_decor != null:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
