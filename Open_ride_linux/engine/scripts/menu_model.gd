@@ -61,16 +61,22 @@ const NO_WORKOUT_ID := "_sim"
 ## Modes de séance de l'accueil, dans l'ordre d'affichage : {mode: libellé}. Filtrés par `modes`, la
 ## liste que le core annoncera dans hello_ack.config (2.0, PLAN_SERIE_R §6) ; absente : DEFAULT_MODES.
 ## Un nouveau mode (Cyber-Rogue) n'ajoute qu'une ligne ici.
-const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert"}
+const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world": "Monde ouvert",
+	"rogue": "Cyber-Rogue"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 const IMPORT_WORKOUT_ID := "_import"
 ## Bot de l'écran Prêt (lot O7), dans l'ordre du cycle : libellé et élément de l'argument `bots` de `start`.
+## Bots à profil (lots T12 et T13) : chaque profil à 90, 100 et 110 % de ta FTP, calibré par le core.
 const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 200}],
 	["250 W", {"kind": "constant", "power_w": 250}], ["300 W", {"kind": "constant", "power_w": 300}],
 	["90 % de la FTP", {"kind": "constant", "ftp_pct": 90}], ["100 % de la FTP", {"kind": "constant", "ftp_pct": 100}],
-	["110 % de la FTP", {"kind": "constant", "ftp_pct": 110}]]
+	["110 % de la FTP", {"kind": "constant", "ftp_pct": 110}],
+	["Grimpeur 90 %", {"kind": "profile", "profile": "climber", "level_pct": 90}], ["Grimpeur 100 %", {"kind": "profile", "profile": "climber", "level_pct": 100}], ["Grimpeur 110 %", {"kind": "profile", "profile": "climber", "level_pct": 110}],
+	["Rouleur 90 %", {"kind": "profile", "profile": "rouleur", "level_pct": 90}], ["Rouleur 100 %", {"kind": "profile", "profile": "rouleur", "level_pct": 100}], ["Rouleur 110 %", {"kind": "profile", "profile": "rouleur", "level_pct": 110}],
+	["Sprinteur 90 %", {"kind": "profile", "profile": "sprinter", "level_pct": 90}], ["Sprinteur 100 %", {"kind": "profile", "profile": "sprinter", "level_pct": 100}], ["Sprinteur 110 %", {"kind": "profile", "profile": "sprinter", "level_pct": 110}],
+	["Diesel 90 %", {"kind": "profile", "profile": "diesel", "level_pct": 90}], ["Diesel 100 %", {"kind": "profile", "profile": "diesel", "level_pct": 100}], ["Diesel 110 %", {"kind": "profile", "profile": "diesel", "level_pct": 110}]]
 ## Fin de la liste des parcours (bibliothèque, lot O12) : tri et filtre par étiquette, en cycle.
 const SORT_ROUTES_ID := "_sort"
 const FILTER_ROUTES_ID := "_filter"
@@ -94,6 +100,14 @@ var sim_session := false
 var _routes_return := HOME
 ## Modes annoncés par le core (set_modes) ; les modes inconnus de HOME_MODES sont ignorés.
 var modes: Array = DEFAULT_MODES.duplicate()
+## Écran Prêt du Cyber-Rogue (lot R13) : `mode` « rogue » et rappel des choix (objectif, durée, W').
+func set_rogue_ready(text: String) -> void:
+	mode = "rogue"
+	rogue_ready = text
+	_clear_start()
+	_refresh_home()
+
+
 ## Entrée des plans de l'accueil (lot O12) : « Séance du jour » avec un plan actif, sinon « Choisir un plan ».
 var plan_label := "Choisir un plan"
 var plan_detail := ""
@@ -103,6 +117,8 @@ var start_args: Dictionary = {}
 ## Bot choisi (index de BOT_CHOICES) et fantôme demandé, pour la séance préparée (lot O7).
 var bot_choice := 0
 var ghost := false
+## Cyber-Rogue (lot R13) : rappel des choix affiché sur l'écran Prêt quand `mode` vaut « rogue ».
+var rogue_ready := ""
 ## Garage (lot V8) : l'accueil gagne « Garage » quand le core annonce une progression (set_garage).
 var garage := false
 
@@ -139,6 +155,11 @@ func _refresh_home() -> void:
 		items.append(_item("garage", "Garage"))
 	items.append_array([_item("settings", "Réglages"), _item("quit", "Quitter")])
 	_screens[HOME]["items"] = items
+	if mode == "rogue":
+		_screens[READY]["items"] = [_item("start", "Démarrer", true, rogue_ready),
+			_item("rogue_change", "Changer les choix")]
+		_screens[READY]["title"] = "Prêt : Cyber-Rogue"
+		return
 	_screens[READY]["items"] = [
 		_item("start", "Démarrer"),
 		_item("workout", "Changer d'entraînement" if mode == "erg" else "Passer en session ERG"),
@@ -235,6 +256,8 @@ func reset() -> void:
 	_clear_start()
 	bot_choice = 0
 	ghost = false
+	if mode == "rogue":
+		mode = "free"
 	_refresh_home()
 	_open(HOME, false)
 
@@ -516,7 +539,7 @@ func _validate() -> Dictionary:
 					_open(SETTINGS)
 				"quit":
 					_confirm("Quitter OpenRide ?", {"action": "quit"})
-				"plan", "ftp", "garage":
+				"plan", "ftp", "rogue", "garage":
 					return {"action": "item", "screen": HOME, "id": id}
 		ROUTES:
 			if id in [SORT_ROUTES_ID, FILTER_ROUTES_ID]:
@@ -565,6 +588,8 @@ func _validate() -> Dictionary:
 				"change_route":
 					_routes_return = READY
 					_open(ROUTES)
+				"rogue_change":
+					return {"action": "item", "screen": READY, "id": id}
 				"records":   # écran « Records » (série T, lot T10), traité par menu_flow.gd
 					return {"action": "item", "screen": READY, "id": id}
 		CONFIRM:

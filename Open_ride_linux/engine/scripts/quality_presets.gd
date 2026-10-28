@@ -167,6 +167,19 @@ static func max_biomes(name: String) -> int:
 	return MAX_BIOMES.get(key, MAX_BIOMES[DEFAULT_PRESET])
 
 
+## Côté des textures de sol des biomes en pixels (série U, décision U-Q4 ; lot U6).
+const GROUND_TEXTURE_PX := {
+	"low": 1024,
+	"medium": 1024,
+	"high": 2048,
+}
+
+
+static func ground_texture_px(name: String) -> int:
+	var key := name.strip_edges()
+	return GROUND_TEXTURE_PX.get(key, GROUND_TEXTURE_PX[DEFAULT_PRESET])
+
+
 ## Budgets du décor vivant de la série P selon le préréglage (Lot P4), lus par les lots P5 à P15 et P21.
 ## `low` vise ≥ 55 images/s et un temps d'image p99 sous 25 ms sur la GTX 1060 du PC cible, toute la
 ## série activée. `passersby` est le budget des passants des villages (P21). `birds` compte aussi les
