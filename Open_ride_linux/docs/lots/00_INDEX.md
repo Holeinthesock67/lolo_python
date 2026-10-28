@@ -267,6 +267,7 @@
 | [X36](LOT_X36_pre_vol_seance_velo.md) | Série X (outils de test) : Pré-vol avant une séance vélo, verdict « prêt à rouler » | Python | X4, X33 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x36`), essai sur le PC avant la prochaine séance |
 | [X37](LOT_X37_persistance_reglages.md) | Série X (outils de test) : Persistance de tous les réglages après un redémarrage | Python | banc des menus | Petite | Oui |
 | [X38](LOT_X38_couleurs_du_theme.md) | Série X (outils de test) : Couleurs du thème : aucune couleur en dur dans le HUD et le globe | GDScript | N20 | Petite | Oui |
+| [X39](LOT_X39_ecart_progression.md) | Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -347,7 +348,8 @@ Lots de la série X (P0 = avant la 1.0, P1 = pour la 1.0, P2 = 2.0 ; X1, X2, X4,
 - X35 : fiabilité du banc simulé (Cloud + PC, P0) ;
 - X36 : pré-vol avant une séance vélo (PC, P1) ;
 - X37 : persistance de tous les réglages (Cloud, P1) ;
-- X38 : couleurs du thème (Cloud, P2).
+- X38 : couleurs du thème (Cloud, P2) ;
+- X39 : écart de progression avant/après une PR (Cloud + PC, P2, proposition du fil V5).
 
 Répartition du 28 octobre (règle du coordinateur : les fils graphiques livrent eux-mêmes leurs petits outils locaux) : S1 livre la détection des « pop », les captures tous les N mètres, la colonne `culled_near` et `compare_captures.py` (X18) ; la série U livre la comparaison des vitrines des biomes et des sols, le contrôle d'exposition et les coutures de tuiles ; Y8 livre le test de rendu des façades et le détecteur de pixels isolés ; la série P livre les comptes du décor dans le rapport du banc, les sons du décor joués et le décor figé en pause ; la série R livre la run Cyber-Rogue simulée de bout en bout, son banc visuel et la cohérence entre sons et événements ; le banc des menus (clic, clavier, souris, Garage et Cyber-Rogue) est fait par son propre fil. Ordre de réalisation : X32, X33, X34, X35, X36, X14, X37, X38, puis X20, X22, X27, X12, X15, X3, puis les autres.
 
