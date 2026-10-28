@@ -35,6 +35,7 @@ import base64
 import copy
 import html
 import json
+import math
 import os
 import re
 import shutil
@@ -56,6 +57,8 @@ ENGINE_DIR = Path(__file__).resolve().parents[1]
 CORE_SRC = ENGINE_DIR.parent / "core" / "src"
 COMPILER_SRC = ENGINE_DIR.parent / "compiler" / "src"
 DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
+TAU = 2.0 * math.pi
+AVATAR_CADENCE_RPM = 37.0   # cadence des scènes de l'avatar (un tour en 1,62 s)
 # Mêmes tolérances que run_engine_tests.sh, plus la synchronisation verticale sous Xvfb.
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 GODOT_TOLERATED = re.compile(
@@ -236,6 +239,11 @@ def fraction(img: Image, box, pred, step: int = 2) -> float:
         n += 1
         hit += 1 if pred(p) else 0
     return hit / n if n else 0.0
+
+
+def wrapped_angle(x: float) -> float:
+    """Angle ramené dans [−π, π[ (écart entre deux positions du pédalier)."""
+    return (x + math.pi) % TAU - math.pi
 
 
 def mean_abs_diff(a: Image, b: Image, box=None, step: int = 2) -> float:
@@ -784,17 +792,29 @@ def _scenes(s: Session) -> None:
 
     # 3 ter ter. Avatar (lot V6), vu par la caméra de contrôle derrière lui (la caméra du jeu reste
     # subjective, où l'avatar est caché) : visible, jambes à des angles différents sur deux captures
-    # espacées (cadence de 37 tr/min : moins d'un tour entre les deux), assis à plat, en danseuse sur une pente de 10 %.
+    # espacées (cadence de 37 tr/min, angle attendu tiré du temps entre les captures), assis à plat, en danseuse sur une pente de 10 %.
     shot = s.capture("avatar_subjectif")
     if shot:
         s.check("avatar_subjectif", "avatar caché en vue subjective", not shot[1].get("avatar", {}).get("visible", True),
                 f"{shot[1].get('avatar')}")
-    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
+    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=AVATAR_CADENCE_RPM)
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
     time.sleep(1.0)
     a = s.capture("avatar_assis")
-    time.sleep(0.37)
-    b = s.capture("avatar_assis_2")
+    # Entre deux captures, le pédalier avance de ω·Δt : Δt dépend du temps d'écriture des PNG (plus long sur
+    # le PC en fenêtre réelle) et peut tomber près d'un tour entier, d'où deux images au même angle. Δt est lu
+    # dans les captures (`ticks_ms`) : tant que l'avance attendue est à moins de 0,8 rad d'un tour entier,
+    # nouvelle capture après un demi-tour d'attente (phase décalée de π ; trois essais au plus).
+    omega = AVATAR_CADENCE_RPM / 60.0 * TAU
+    b, expected = None, 0.0
+    for attempt in range(3):
+        time.sleep(0.37 if attempt == 0 else math.pi / omega)
+        b = s.capture("avatar_assis_2")
+        if not (a and b):
+            break
+        expected = wrapped_angle(omega * (b[1].get("ticks_ms", 0) - a[1].get("ticks_ms", 0)) / 1000.0)
+        if abs(expected) >= 0.8:
+            break
     if a and b:
         (img_a, info_a), (img_b, info_b) = a, b
         av_a, av_b = info_a.get("avatar", {}), info_b.get("avatar", {})
@@ -803,8 +823,9 @@ def _scenes(s: Session) -> None:
         s.check("avatar_assis", "avatar assis à plat", av_a.get("standing") is False)
         s.check("avatar_assis", "avatar entier (niveau de détail 0)", av_a.get("lod") == 0 and av_a.get("triangles", 0) > 1000,
                 f"{av_a.get('triangles')} triangles")
-        turn = abs((av_b.get("crank", 0.0) - av_a.get("crank", 0.0) + 3.14159) % 6.28318 - 3.14159)
-        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.15, f"{turn:.2f} rad d'écart")
+        turn = abs(wrapped_angle(av_b.get("crank", 0.0) - av_a.get("crank", 0.0)))
+        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.15,
+                f"{turn:.2f} rad d'écart, {abs(expected):.2f} rad attendus d'après le temps entre les captures")
         box = (s.width * 0.30, s.height * 0.25, s.width * 0.70, s.height * 0.95)
         d = mean_abs_diff(img_a, img_b, box)
         s.check("avatar_assis_2", "les jambes changent l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
