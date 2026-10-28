@@ -23,12 +23,13 @@
     },
     "items": {
       "type": "array",
-      "maxItems": 12,
+      "maxItems": 24,
       "items": {
         "type": "object",
         "required": [
           "key",
           "label",
+          "group",
           "type",
           "value",
           "applies"
@@ -41,6 +42,16 @@
           "label": {
             "type": "string",
             "maxLength": 32
+          },
+          "group": {
+            "enum": [
+              "rider",
+              "ride",
+              "display",
+              "sound",
+              "wind"
+            ],
+            "description": "Sous-écran de « Réglages » (révision 1.5)."
           },
           "type": {
             "enum": [

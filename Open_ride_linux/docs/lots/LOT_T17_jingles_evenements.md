@@ -20,7 +20,7 @@ T8 et T9 (codés) ; T7 pour les vraies trames.
   - `segment_result` nouveau (doublons déjà écartés par `segment_hud_model.on_result`) : `kind` « climb » donne `jingle_summit` (la fin d'une montée est son sommet), « sprint » donne `jingle_sprint` ; avec `pr` vrai, variante `_pr` ;
   - arche franchie par `s` cumulé, même règle que `ArchSchedule.crossed` du core, en `RUNNING` avec le champ `powerup` seulement (arches affichées, T8) ; un saut de plus de 100 m (reprise après coupure) ne compte pas ;
   - fin de séance au passage de `RUNNING` ou `PAUSED` à `FINISHED`, en SIM comme en ERG.
-- **Synthèse et lecture** dans `sound_player.gd` : un flux non bouclé par jingle, lu sur un lecteur non spatialisé du bus « Events » (catégorie « événements » du volume réglable), trois voix au plus ; `~/OpenRide/Sounds/<nom>.ogg` remplace le son généré.
+- **Synthèse et lecture** dans `sound_player.gd` : un flux non bouclé par jingle, lu sur un lecteur non spatialisé du bus « Events » (`AudioMix.bus(AudioMix.EVENTS)`, réglage « Volume bips et événements »), trois voix au plus ; `~/OpenRide/Sounds/<nom>.ogg` remplace le son généré.
 
 ## 5. Fichiers concernés
 
@@ -39,7 +39,7 @@ Aucune.
 
 ## 8. Hors périmètre
 
-- Bruitages du mode Cyber-Rogue (série R, lot R18), qui reprendront la même palette ; réglage du volume par catégorie (autre lot, bus « Events »).
+- Bruitages du mode Cyber-Rogue (série R, lot R18), qui reprendront la même palette ; réglage du volume par catégorie (audio_mix.gd, docs/AUDIO.md).
 
 ## 9. Livraison (27 octobre 2026, code ; validation sur le PC)
 
@@ -52,5 +52,5 @@ Aucune.
 - Choix faits :
   - aucun champ IPC nouveau : sommet et sprint viennent de `segment_result`, l'arche des positions déjà calculées par T8 ;
   - plusieurs arches dans une même trame donnent un seul jingle ;
-  - niveau −6 dB sur le bus « Events », qui passe par Master tant que le volume réglable ne l'a pas créé.
+  - niveau −6 dB sur le bus « Events » d'audio_mix.gd, réglé par « Volume bips et événements » des Réglages.
 - Tests : `engine/tests/unit/test_event_sounds_model.gd`, à lancer sur le PC ou par la CI (Godot n'a pas pu être lancé dans l'environnement cloud).

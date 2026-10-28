@@ -90,10 +90,7 @@ func _run() -> void:
 	m.on_state(_st(0.0, "READY", false))
 	_check(m.on_state(_st(0.0, "FINISHED", false)).is_empty(), "READY → FINISHED : rien")
 
-	# Synthèse (bus « Events » créé ici comme le fera le volume réglable : sans lui, Godot rend « Master »)
-	if AudioServer.get_bus_index("Events") < 0:
-		AudioServer.add_bus()
-		AudioServer.set_bus_name(AudioServer.bus_count - 1, "Events")
+	# Synthèse (bus « Events » créé par audio_mix.gd)
 	var sp = SoundPlayer.new()
 	for jingle in Model.JINGLES:
 		var wav: AudioStreamWAV = sp.stream(jingle)
