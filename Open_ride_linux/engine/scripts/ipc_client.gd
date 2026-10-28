@@ -38,6 +38,9 @@ signal world_menu_received(kind: String, msg: Dictionary)
 signal test_message_received(msg: Dictionary)
 ## Révision 1.4 (série T, lot T9) : passage de segment terminé (message répété 3 fois par le core).
 signal segment_result_received(msg: Dictionary)
+## Série R (lot R10, contrat 1.4) : salle du mode Cyber-Rogue (une partie) et butin proposé en couloir.
+signal room_received(msg: Dictionary)
+signal loot_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -275,6 +278,10 @@ func _poll_incoming() -> void:
 				settings_received.emit(json_obj)
 			"segment_result":
 				segment_result_received.emit(json_obj)
+			"room":
+				room_received.emit(json_obj)
+			"loot":
+				loot_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -358,6 +365,20 @@ func _send_json(dict: Dictionary) -> void:
 	var err := _peer.put_packet(payload)
 	if err != OK:
 		print("[diag] envoi UDP en échec (code ", err, ") : ", dict.get("type", "?"))
+
+
+## Salle inconnue du mode Cyber-Rogue (lot R10) : demande au core de renvoyer la salle courante et ses portes.
+## Au plus une demande par seconde ; renvoie le cmd_id, ou -1 si la demande est trop proche de la précédente.
+const ROGUE_RESYNC_MIN_MS := 1000
+var _last_rogue_resync_ms := -ROGUE_RESYNC_MIN_MS
+
+
+func request_rogue_resync() -> int:
+	var now := Time.get_ticks_msec()
+	if now - _last_rogue_resync_ms < ROGUE_RESYNC_MIN_MS:
+		return -1
+	_last_rogue_resync_ms = now
+	return send_command("rogue_resync", {})
 
 
 ## Demande la liste des parcours au core (lot N3, contrat v1.1). Réponse : signal routes_received.

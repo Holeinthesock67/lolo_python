@@ -3,7 +3,7 @@
 - **Rampe** (`ramp_workout`) : échauffement, puis paliers d'une minute en watts absolus (+20 W par
   palier, jusqu'à 700 W au plus), puis retour au calme de 5 min à 100 W. La fin de la rampe est
   détectée par `RampWatch` : cadence sous 50 tr/min pendant 5 s, ou puissance sous 80 % de la cible
-  pendant 10 s, ou abandon (geste de saut de bloc du Click). La séance saute alors au retour au
+  pendant 10 s, ou abandon (Z, geste du bloc suivant). La séance saute alors au retour au
   calme au lieu de s'arrêter net. FTP = 75 % de la meilleure puissance moyenne sur 1 minute.
 - **20 minutes** (`twenty_min_workout`) : échauffement de 20 min avec deux efforts courts,
   récupération, 20 min en roue libre (bloc `freeride`, sans cible), retour au calme.

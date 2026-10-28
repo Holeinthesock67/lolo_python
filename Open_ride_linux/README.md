@@ -12,7 +12,7 @@ Matériel de référence : home trainer HomeTrainer (FTMS), Zwift Cog, Zwift Cli
 Version `0.9.0` (fichier `VERSION`) ; la 1.0 réunit les séries N et O. OpenRide s'installe en une commande et s'utilise ensuite depuis son icône, au Click ou au clavier, sans terminal : [docs/GUIDE_UTILISATION.md](docs/GUIDE_UTILISATION.md). Le détail des lots est dans [docs/SUIVI_AVANCEMENT.md](docs/SUIVI_AVANCEMENT.md), les essais restants dans son §3 et dans [docs/PROTOCOLE_TEST_2026-10-26.md](docs/PROTOCOLE_TEST_2026-10-26.md).
 
 - **Sur `main` :** HomeTrainer en SIM et ERG validé sur le matériel, Zwift Click V2 à deux boîtiers, fréquence cardiaque relayée par le trainer ; séance, journal, FIT et bilan ; lancement sans terminal, écran des appareils et menus pilotés au Click selon le plan des boutons commun ; réglages ; entraînements `.zwo`, `.erg` et `.mrc` (choix, création, import) ; test de FTP, plans d'entraînement, bibliothèque de parcours et pack « Cols célèbres » ; rendu 3D (route, terrain, ciel, arbres, bâtiments, eau, sons), décor vivant et vent (série P, mises à jour 1.x), brouillard par préréglage ; outils de test de la série X.
-- **Reste pour la 1.0 :** boutons de l'ERG au plan commun (lot O17), puis la recette sur le matériel et la publication (O8). Écrans des plans, du test de FTP et de la bibliothèque (O12), courbes de la séance (O14), bots à l'écran (O7) et guide d'utilisation (O6) sont sur `main`.
+- **Reste pour la 1.0 :** la recette sur le matériel et la publication (O8). Écrans des plans, du test de FTP et de la bibliothèque (O12), courbes de la séance (O14), bots à l'écran (O7) et guide d'utilisation (O6) sont sur `main`.
 - **Déjà prêt pour la 2.0, sans branchement :** contrat IPC 1.4 (lot T1), modules purs des segments, bonus, records, maillots et écarts (série T), de la progression et de l'équipement (série V), mesures du monde ouvert (W0).
 
 ## Installation (PC Ubuntu)
@@ -57,7 +57,7 @@ Open_ride_linux/
 
 ### Tests
 
-- **Tests :** 1508 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop`, rampe de pente du trainer et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 423 côté compilateur (dont contrat des biomes (lot U1), traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, 65 fichiers de tests unitaires lancés par découverte, 7 tests de rendu, les couches OSM, l'ERG, le rendu par tronçons et 8 scénarios IPC, plus le bout en bout, les tests graphiques et le banc simulé ([docs/OUTILS_DE_TEST.md](docs/OUTILS_DE_TEST.md)). Ils se lancent sur le PC cible (`python3 scripts/recette_pc.py`) ; la configuration GitHub Actions (Python 3.11 / 3.14 et Godot 4.3) reste dans le dépôt.
+- **Tests :** 1509 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop`, rampe de pente du trainer et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 423 côté compilateur (dont contrat des biomes (lot U1), traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, 81 fichiers de tests unitaires lancés par découverte, 7 tests de rendu, les couches OSM, l'ERG, le rendu par tronçons et 8 scénarios IPC, plus le bout en bout, les tests graphiques et le banc simulé ([docs/OUTILS_DE_TEST.md](docs/OUTILS_DE_TEST.md)). Ils se lancent sur le PC cible (`python3 scripts/recette_pc.py`) ; la configuration GitHub Actions (Python 3.11 / 3.14 et Godot 4.3) reste dans le dépôt.
 
 ## Version
 
@@ -139,15 +139,15 @@ scripts/openride-dev.sh --trainer ftms --input click --autostart --route <parcou
 
 **Commandes pendant la séance :**
 
-| Action | Click | Clavier (fenêtre Godot) |
-| --- | --- | --- |
-| Braquet + 1 / − 1 | Appui court + / − (ou B) | `+` / `−` ou flèches haut / bas |
-| Braquet + 10 / − 10 (bornés de 1 à 24) | Appui long (≥ 0,9 s) + / − (ou B) | `Page haut` / `Page bas` |
-| Pause et reprise de la séance | Y (boîtier droit) | `P`, `Espace` ou `Échap` |
-| ERG : intensité ± 2 % | Appui court + / − (ou B) | `+` / `−` ou flèches haut / bas |
-| ERG : bloc suivant ; pause ERG à 0 % | Appui long + ; appui long − | `Page haut` ; `Page bas` |
+| Action | Click |
+| --- | --- |
+| Braquet + 1 / − 1 | Appui court + / − (ou B) |
+| Braquet + 10 / − 10 (bornés de 1 à 24) | Appui long (≥ 0,9 s) + / − (ou B) |
+| Pause et reprise de la séance | Y (boîtier droit) |
+| ERG : intensité ± 2 % ; ± 10 % | Appui court + / − (ou B) ; appui long |
+| ERG : bloc suivant | Z |
 
-Chaque type d'appui a son bip. Les menus suivent le plan des boutons commun (+ / − pour choisir, A long pour valider, Y pour revenir ; [spécification générale](docs/SPECIFICATION_GENERALE.md) §7.1). Le lot O17 met l'ERG à ce plan avant la 1.0 (± long = intensité ± 10 %, Z = bloc suivant) et le clavier touche pour touche sur le Click.
+Chaque type d'appui a son bip. Les menus suivent le même plan de boutons (+ / − pour choisir, A long pour valider, Y pour revenir ; [spécification générale](docs/SPECIFICATION_GENERALE.md) §7.1). Le clavier double le Click touche pour touche, avec les mêmes durées d'appui (lot O17) : `+` (ou `=`), `-`, `A`, `Y`, `Z` et les flèches ; `Page haut`, `Page bas`, `Maj+A`, `Entrée` et `Maj+Z` font l'appui long d'un coup, `Échap` vaut Y ([guide](docs/GUIDE_UTILISATION.md) §6).
 
 **Difficulté du trainer :**
 Le paramètre `[trainer] difficulty_pct` (de 0 à 100 %, défaut 50 %) réduit proportionnellement la pente envoyée au trainer, à l'image du réglage de difficulté de Zwift, sans altérer la vitesse virtuelle calculée par la physique. La difficulté est modifiable pendant la séance par la commande IPC `set_difficulty` (`{"pct": nombre}`) et son pourcentage se lit dans le menu Réglages et sur l'écran de pause ; il n'est pas affiché en permanence dans le HUD (décision du 27 octobre).
@@ -180,7 +180,7 @@ Un plan range des entraînements de la bibliothèque `~/OpenRide/Workouts/` par 
 
 ### Test de FTP (lot O10)
 
-Deux tests se roulent comme un entraînement, de préférence sur une boucle (un parcours avec arrivée termine la séance) : `openride-core run --autostart --route ID --ftp-test ramp` (paliers d'une minute, +20 W à partir de 100 W, jusqu'à ne plus tenir ; FTP = 75 % de la meilleure minute) ou `--ftp-test 20min` (échauffement guidé de 20 min, puis 20 min à fond sans cible ; FTP = 95 % de la moyenne). La rampe s'arrête d'elle-même quand la cadence reste sous 50 tr/min pendant 5 s ou la puissance sous 80 % de la cible pendant 10 s, ou sur un appui long « + » (abandon) : la séance passe alors au retour au calme, 5 min à 100 W. Le résultat est écrit à la fin du journal et affiché par `openride-core summary`. Dans un plan, les journées `ftp_test:ramp` et `ftp_test:20min` lancent ces tests.
+Deux tests se roulent comme un entraînement, de préférence sur une boucle (un parcours avec arrivée termine la séance) : `openride-core run --autostart --route ID --ftp-test ramp` (paliers d'une minute, +20 W à partir de 100 W, jusqu'à ne plus tenir ; FTP = 75 % de la meilleure minute) ou `--ftp-test 20min` (échauffement guidé de 20 min, puis 20 min à fond sans cible ; FTP = 95 % de la moyenne). La rampe s'arrête d'elle-même quand la cadence reste sous 50 tr/min pendant 5 s ou la puissance sous 80 % de la cible pendant 10 s, ou sur Z, le geste du bloc suivant (abandon) : la séance passe alors au retour au calme, 5 min à 100 W. Le résultat est écrit à la fin du journal et affiché par `openride-core summary`. Dans un plan, les journées `ftp_test:ramp` et `ftp_test:20min` lancent ces tests.
 
 ```bash
 openride-core ftp-test             # dernier test : FTP proposée, FTP actuelle, écart et avertissements

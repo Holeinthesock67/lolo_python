@@ -61,12 +61,12 @@ static func _clean(value: Variant, hi: float, clamp_negative := true) -> float:
 	return f
 
 
-## Rappel des commandes du Click (et du clavier) affiché au départ de la séance et à la reprise.
+## Rappel des commandes du Click affiché au départ de la séance et à la reprise (spécification générale
+## §7.1) ; le clavier double le Click touche pour touche (key_map.gd, lot O17).
 static func controls_text(erg: bool) -> String:
 	if erg:
-		return "Click : Y = pause · + / − = intensité · + long = bloc suivant · − long = pause ERG" \
-			+ "   (clavier : P = pause, ↑ / ↓)"
-	return "Click : Y = pause · + / − = braquet · appui long = 10 braquets   (clavier : P = pause, ↑ / ↓)"
+		return "Click : Y = pause · + / − = intensité ± 2 %, long ± 10 % · Z = bloc suivant   (clavier : mêmes touches)"
+	return "Click : Y = pause · + / − = braquet · appui long = 10 braquets   (clavier : mêmes touches)"
 
 
 ## Explication d'un appui ni court ni long (PLUS_UNCLEAR ou MINUS_UNCLEAR), menu affiché ou en séance.
@@ -75,7 +75,7 @@ static func unclear_press_text(event_name: String, in_menu: bool) -> String:
 	if in_menu:
 		return ("Appui ni court ni long, ignoré : bref sur %s pour l'élément %s, une seconde pour cinq ; A long pour valider"
 			% ["+" if plus else "−", "suivant" if plus else "précédent"])
-	return "Appui ignoré (ni court ni long) : appui bref pour un braquet, une seconde pour un appui long"
+	return "Appui ignoré (ni court ni long) : appui bref pour un pas (braquet ou intensité), une seconde pour un grand pas"
 
 
 static func format_hms(seconds: float) -> String:
