@@ -23,6 +23,8 @@ const FOG_BEGIN_FRACTION := 0.4
 ## Sans terrain (sol plat) : début et fin fixes (m), la fin ne dépassant pas celle du préréglage.
 const FOG_FLAT := {"begin": 300.0, "end": 3000.0}
 const FOG_COLOR := Color(0.70, 0.78, 0.86)
+## Voile de l'horizon des biomes (série U) : poussière et brume, mélangé à l'horizon selon `sky.haze` du biome.
+const HAZE_COLOR := Color(0.86, 0.80, 0.68)
 ## Part du brouillard posée sur le ciel. Godot met 1 par défaut : en Forward+ (PC cible), le ciel entier
 ## prenait alors la couleur du brouillard et les nuages de P6 étaient invisibles (recette P16). À 0, le
 ## ciel reste dessiné ; le ciel nuageux raccorde son horizon à la couleur du brouillard (sky_clouds.gd).

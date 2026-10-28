@@ -47,3 +47,11 @@ Aucune.
 ## 8. Hors périmètre
 
 - Sons des ennemis (lot R18 ; bruits d'ennemis détaillés au-delà de sa liste après la recette R14).
+
+## 9. Livraison (28 octobre 2026)
+
+- **Modèle :** `engine/scripts/rogue/enemy_model.gd` (sans nœud) : l'ennemi se tient à 30 m à pleins PV et recule jusqu'à 60 m à zéro PV ; `room_fled` et `room_skipped` le font fuir (40 m/s, éteint en 2 s), `room_won` l'éteint sur place en 0,5 s ; phase du boss et effet associé (verrous, ondes de choc, rouge écarlate) ; drapeaux par archétype lus dans la trame (charge du tunnel du Diesel, zone de parade allumée du Puncheur, Sprinteur invisible quand le Firewall est à moins de 30 m, Saboteur qui grésille pendant un piratage et s'éparpille à la purge, relèvement de la route du Grimpeur selon la pente) ; impacts `hit`, `crit` et `parry` rendus une fois par trame, coupés quand `effects_ok` est faux.
+- **Vue :** `engine/scripts/rogue/enemy_views.gd` : train de trois voitures, moto à deux anneaux avec son mur d'énergie, drone pyramidal, chasseur en losange, essaim de 24 cubes (un seul `MultiMesh`), chimère de cinq formes pour le boss ; flash de 0,1 s (le double pour un coup critique) et éclat de particules. Couleurs : jetons du catalogue R17 (`enemy_*`, `boss_chimera`). Aucune texture ni modèle.
+- **Scène :** `rogue_scene.gd` place l'ennemi sur le ruban devant le joueur et fait tourner le modèle à chaque image sur la dernière trame.
+- **Écarts :** la fuite et l'extinction se font par réduction d'échelle plutôt que par transparence (les matériaux de la charte sont partagés) ; le budget d'images n'est pas encore mesuré, `effects_ok` reste vrai tant que le préréglage `low` n'est pas relié à la mesure d'images (mesure sur la GTX 1060 : critère 2 à faire par le propriétaire) ; pas de mise en avant de la forme de la phase dans la chimère.
+- Tests : `engine/tests/unit/test_enemy_model.gd` et `test_rogue_host.gd` (étendu : construction des six volumes). Reste : contrôle visuel et mesure du Saboteur à 60 images/s.
