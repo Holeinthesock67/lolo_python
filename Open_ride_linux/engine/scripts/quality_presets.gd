@@ -118,6 +118,12 @@ const BUILDING_VISIBILITY_END := {
 
 
 ## Renvoie le dictionnaire du préréglage demandé (`low`, `medium`, `high`), ou `low` si le nom est inconnu.
+## Nom du préréglage réellement appliqué pour `name` : `low` si le nom est inconnu (lot X32, vitrines).
+static func applied_name(name: String) -> String:
+	var key := name.strip_edges()
+	return key if PRESETS.has(key) else DEFAULT_PRESET
+
+
 static func preset(name: String) -> Dictionary:
 	var key := name.strip_edges()
 	if PRESETS.has(key):
