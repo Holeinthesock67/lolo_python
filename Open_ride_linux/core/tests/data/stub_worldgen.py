@@ -8,6 +8,8 @@ vivant minimal (route droite vers l'est, pente sinusoïdale, deux carrefours). P
     --crash-times N      nombre de plantages successifs (marqueurs `crash.<k>` à côté du dossier de séance)
     --stall-m M          à partir de M, plus de prolongation (`data` = `missing`) tant que `resume.flag`
                          (à côté du dossier de séance) n'existe pas
+    --late-m M           à partir de M, plus de prolongation tant que `resume.flag` n'existe pas, mais
+                         `data` reste `cached` : générateur en retard sur le cycliste (machine lente)
     --no-ready           ne répond jamais à `open` (préparation interminable)
     --unavailable        répond `world_unavailable` à `open`
 """
@@ -26,6 +28,7 @@ ap.add_argument("--horizon", type=float, default=2000.0)
 ap.add_argument("--crash-after-m", type=float)
 ap.add_argument("--crash-times", type=int, default=1)
 ap.add_argument("--stall-m", type=float)
+ap.add_argument("--late-m", type=float)
 ap.add_argument("--no-ready", action="store_true")
 ap.add_argument("--unavailable", action="store_true")
 args = ap.parse_args()
@@ -149,6 +152,8 @@ def handle(msg: dict) -> bool:
         if state["data"] == "missing":
             state["data"] = "cached"
             status("ready")
+        if args.late_m is not None and s >= args.late_m and not (SIDE / "resume.flag").exists():
+            return True
         extend(s)
     elif kind == "choose" and state["opened"]:
         j = next((x for x in JUNCTIONS if x["id"] == msg["junction_id"]), None)

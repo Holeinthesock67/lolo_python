@@ -321,8 +321,9 @@ def test_pause_world_data_then_automatic_resume(session, tmp_path):
     s = session(7040, power=450.0, stub_args=["--stall-m", "800", "--horizon", "1000"])
     open_world(s)
     s._on_command("start", {}, 2)
-    assert wait_until(s, lambda: s.state.session_state == "PAUSED", timeout=60.0)
-    assert s.state.pause_reason == "world_data" and s.openworld.data == "missing"
+    # les pauses d'un générateur seulement en retard sur la simulation accélérée reprennent seules
+    assert wait_until(s, lambda: s.state.session_state == "PAUSED" and s.openworld.data == "missing", timeout=60.0)
+    assert s.state.pause_reason == "world_data"
     s_pause = s.physics.s
     assert s.openworld.route.length_m - s_pause < 200.0 and s_pause > 700.0
     assert s.state.open_world["data"] == "missing"
@@ -332,6 +333,23 @@ def test_pause_world_data_then_automatic_resume(session, tmp_path):
     assert wait_until(s, lambda: s.state.session_state == "RUNNING", timeout=20.0)
     assert s.openworld.route.length_m - s.physics.s >= 500.0 or s.openworld.known_ahead(s.physics.s) > 200.0
     assert s.state.open_world["data"] == "cached"
+
+
+def test_late_generator_pauses_instead_of_riding_past_the_known_route(session, tmp_path):
+    """Générateur en retard (données présentes, route pas encore prolongée) : pause au bout de la route."""
+    s = session(7052, power=450.0, stub_args=["--late-m", "800", "--horizon", "1000"])
+    open_world(s)
+    s._on_command("start", {}, 2)
+    # route figée vers 1 800 m (800 m + horizon) : pause à moins de 200 m de son bout
+    assert wait_until(s, lambda: s.state.session_state == "PAUSED" and s.physics.s > 1500.0, timeout=60.0)
+    assert s.state.pause_reason == "world_data" and s.openworld.data == "cached"
+    s_pause = s.physics.s
+    assert 0.0 < s.openworld.known_ahead(s_pause) < 200.0
+    step(s, 30.0)
+    assert s.state.session_state == "PAUSED" and s.physics.s == s_pause    # jamais au-delà de la route connue
+    (tmp_path / "cache" / "seances" / "resume.flag").write_text("x")
+    assert wait_until(s, lambda: s.state.session_state == "RUNNING", timeout=20.0)
+    assert s.openworld.known_ahead(s.physics.s) >= 500.0
 
 
 # --- critère 7 : générateur tué ----------------------------------------------------------------------------
@@ -355,9 +373,9 @@ def test_generator_falling_again_pauses_world_data(session):
     s = session(7044, power=450.0, stub_args=["--crash-after-m", "300", "--crash-times", "2", "--horizon", "700"])
     open_world(s)
     s._on_command("start", {}, 2)
-    assert wait_until(s, lambda: s.state.session_state == "PAUSED", timeout=90.0)
-    assert s.state.pause_reason == "world_data" and s.openworld.dead
-    assert s.openworld.known_ahead(s.physics.s) < 200.0
+    assert wait_until(s, lambda: s.state.session_state == "PAUSED" and s.openworld.dead, timeout=90.0)
+    assert s.state.pause_reason == "world_data"
+    assert s.openworld.known_ahead(s.physics.s) < 500.0      # pause au bout de la route, ou plus tôt si le générateur était en retard
     step(s, 3.0)
     assert s.state.session_state == "PAUSED"                 # pas de reprise : plus de générateur
 
