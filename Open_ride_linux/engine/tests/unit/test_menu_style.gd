@@ -3,7 +3,8 @@ extends SceneTree
 ## Tests sans écran du thème commun des menus (lot « présentation des menus », étape 1) : jetons et
 ## contrastes de `ui_theme.gd`, aide des boutons (`button_help.gd`) fidèle au plan des boutons §7.1,
 ## pictogrammes (`ui_icons.gd`), menu plein écran (`menu_view.gd`) avec l'accueil entier, la sélection,
-## les éléments désactivés et la carte de détail, aucune couleur écrite en dur dans les vues des menus ;
+## les éléments désactivés et la carte de détail, table des couleurs de données (couleurs en dur :
+## test_theme_colors.gd) ;
 ## étape 2 : fiches de la carte (catalog_model.route_sheet, workout_sheet), carte selon l'écran
 ## (menu_flow.card), carte affichée (detail_card.gd : tuiles, graphique, lignes).
 ## Les hauteurs ne se vérifient pas ici (métriques de police fausses sans écran) : tests graphiques.
@@ -17,6 +18,10 @@ const MenuModel := preload("res://scripts/menu_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
 const DetailCard := preload("res://scripts/detail_card.gd")
+const ErgView := preload("res://scripts/erg_view.gd")
+const HudView := preload("res://scripts/hud_view.gd")
+const WorldMenuView := preload("res://scripts/world_menu_view.gd")
+const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
 
 const ROUTE := {"id": "col", "name": "Col", "length_m": 10000.0, "status": "ready", "stats": {"distance_m": 10000.0,
 	"gain_m": 300.0, "max_grade_pct": 8.0, "duration_s": 1800.0, "difficulty": 2, "main_climb": {"length_m": 4000.0,
@@ -276,15 +281,24 @@ func _test_settings() -> void:
 	v.free()
 
 
-func _test_no_literal_colors() -> void:
-	var re := RegEx.create_from_string("Color\\(\\s*[0-9.]")
-	var found: Array = []
-	for path in ["res://scripts/menu_view.gd", "res://scripts/devices_view.gd", "res://scripts/summary_view.gd",
-			"res://scripts/button_bar.gd", "res://scripts/detail_card.gd"]:
-		var src := FileAccess.get_file_as_string(path)
-		if re.search(src) != null:
-			found.append(path.get_file())
-	_check(found.is_empty(), "vues des menus sans couleur écrite en dur (jetons de ui_theme.gd) %s" % str(found))
+func _test_theme_data() -> void:
+	# Couleurs écrites en dur : test_theme_colors.gd (lot X38).
+	# Table des couleurs de données (étape 4) : toutes des couleurs, zones de Coggan distinctes, les vues la lisent.
+	var bad: Array = []
+	for k in UiTheme.DATA:
+		if not UiTheme.DATA[k] is Color:
+			bad.append(k)
+	_check(UiTheme.DATA.size() >= 60 and bad.is_empty(), "DATA : %d couleurs de données, toutes des Color %s" % [UiTheme.DATA.size(), str(bad)])
+	var zones: Array = []
+	for i in range(1, 8):
+		zones.append(UiTheme.DATA["zone_%d" % i])
+	var distinct := {}
+	for z in zones:
+		distinct[z.to_html()] = true
+	_check(distinct.size() == 7 and ErgView.ZONE_COLORS == zones and ErgView.FREERIDE_COLOR == UiTheme.DATA["freeride"],
+		"zones de Coggan : sept couleurs distinctes, celles de l'ERG et des blocs")
+	_check(HudView.COLOR_STEEP == UiTheme.DATA["grade_steep"] and WorldMenuView.ROAD_COLORS["p"] == UiTheme.DATA["road_p"]
+		and WorkoutChartView.HR_COLOR == UiTheme.DATA["heart_rate"], "les vues lisent la table (pente, routes du globe, courbes)")
 
 
 func _initialize() -> void:
@@ -294,6 +308,6 @@ func _initialize() -> void:
 	_test_view()
 	_test_cards()
 	_test_settings()
-	_test_no_literal_colors()
+	_test_theme_data()
 	print("test_menu_style : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

@@ -474,6 +474,12 @@ func card(st: Dictionary) -> Dictionary:
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
 	if screen == SUMMARY:
 		return {"title": "Bilan de la séance"}
+	if screen == RECORDS:
+		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
+	if screen == RECORD_TABLE:
+		if focused.begins_with("row:"):
+			return records.sheet_row(menu.world_id, _record_segment, _record_bonus, int(focused.substr(4)))
+		return records.sheet_segment(menu.world_id, _record_segment)
 	if screen == SETTING_EDIT and str(settings.editing.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
 		return garage.sheet(GarageViewModel.AVATAR, "")
 	if screen in GarageViewModel.SCREENS:
@@ -795,7 +801,8 @@ func handle(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
-		"start_run":   # confirmation du premier lancement acceptée (lot R13)
+		"start_run":   # confirmation du premier lancement acceptée (lot R13) : l'avertissement n'est plus redemandé
+			rogue.mark_warned()
 			return _launch_rogue(act)
 		"start_plan", "stop_plan":
 			return _send_plan_request(act)
@@ -946,7 +953,6 @@ func _handle_rogue(item_id: String) -> Dictionary:
 		return {}
 	var act := {"action": "start_run", "args": rogue.start_args()}
 	if rogue.needs_warning():
-		rogue.mark_warned()
 		menu.confirm(RogueMenuModel.WARNING, act)
 		return {}
 	return _launch_rogue(act)
