@@ -1,15 +1,16 @@
 extends SceneTree
 
-## Tests unitaires sans écran du maillage des bâtiments `building_mesh.gd` (Lot L1).
+## Tests unitaires sans écran du maillage des bâtiments `building_mesh.gd` (Lots L1 et Y8).
+## Les critères de L1 (géométrie des murs et du toit plat) utilisent le style à toits plats `toit_plat_blanc` ;
+## les toits à pans, le débord, les familles et les styles par biome sont vérifiés à part (Y8).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_building_mesh.gd
 
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
+const BuildingStyles := preload("res://scripts/building_styles.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 
-# Couleurs figées attendues pour `w123456` avec le thème par défaut (critère 5)
-const EXPECTED_WALL_HEX_W123456 := "cdb48a"
-const EXPECTED_ROOF_HEX_W123456 := "a65a3a"
+const FLAT := "toit_plat_blanc"
 
 var _failures := 0
 var _checked := 0
@@ -81,7 +82,7 @@ func _roof_area_and_checks(res: Dictionary, expected_top_y: float, hole_rect: Re
 func _test_box() -> void:
 	var outer := [[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]]
 	var b := _building("box_10x8x6", outer, 120.0, 6.0)
-	var res: Dictionary = BuildingMesh.build([b], _theme)
+	var res: Dictionary = BuildingMesh.build([b], _theme, 0.0, FLAT)
 	_check(res["built"] == 1 and res["skipped"] == 0 and res["errors"].is_empty(),
 		"boîte 10×8×6 : built = 1, skipped = 0")
 	var stats := _roof_area_and_checks(res, 126.0)
@@ -113,7 +114,7 @@ func _test_box() -> void:
 func _test_l_shape_and_courtyard() -> void:
 	# Bâtiment en L : rectangle 20×20 privé d'un coin 10×10 -> aire = 400 - 100 = 300 m²
 	var l_outer := [[0.0, 0.0], [20.0, 0.0], [20.0, 10.0], [10.0, 10.0], [10.0, 20.0], [0.0, 20.0]]
-	var res_l: Dictionary = BuildingMesh.build([_building("b_l", l_outer, 50.0, 8.0)], _theme)
+	var res_l: Dictionary = BuildingMesh.build([_building("b_l", l_outer, 50.0, 8.0)], _theme, 0.0, FLAT)
 	var stats_l := _roof_area_and_checks(res_l, 58.0)
 	_check(res_l["built"] == 1 and absf(stats_l["roof_area"] - 300.0) <= 0.01 and stats_l["all_roof_facing_up"],
 		"bâtiment en L (6 sommets, concave) : aire du toit = %.4f m² (attendu 300,00 ± 0,01)" % stats_l["roof_area"])
@@ -121,7 +122,7 @@ func _test_l_shape_and_courtyard() -> void:
 	# Cour intérieure : trou 4×4 ([8..12] × [8..12]) dans 20×20 -> aire = 400 - 16 = 384 m²
 	var c_outer := [[0.0, 0.0], [20.0, 0.0], [20.0, 20.0], [0.0, 20.0]]
 	var hole := [[8.0, 8.0], [8.0, 12.0], [12.0, 12.0], [12.0, 8.0]]
-	var res_c: Dictionary = BuildingMesh.build([_building("b_cour", c_outer, 100.0, 9.0, [hole])], _theme)
+	var res_c: Dictionary = BuildingMesh.build([_building("b_cour", c_outer, 100.0, 9.0, [hole])], _theme, 0.0, FLAT)
 	var hole_rect := Rect2(Vector2(8.01, 8.01), Vector2(3.98, 3.98))
 	var stats_c := _roof_area_and_checks(res_c, 109.0, hole_rect)
 	_check(res_c["built"] == 1 and absf(stats_c["roof_area"] - 384.0) <= 0.01,
@@ -140,13 +141,11 @@ func _test_clockwise_ring() -> void:
 	var r_cw: Dictionary = BuildingMesh.build([_building("b_orient", cw, 10.0, 5.0, [], "gabled")], _theme)
 	_check(r_ccw["reversed_rings"] == 0 and r_cw["reversed_rings"] == 1,
 		"anneau horaire détecté et retourné (reversed_rings = %d)" % r_cw["reversed_rings"])
-	_check(r_cw["gabled_as_flat"] == 1,
-		"toit gabled traité comme flat et compté (gabled_as_flat = %d)" % r_cw["gabled_as_flat"])
+	_check(r_cw["pitched"] == 1,
+		"toit gabled donné par la couche : deux pans (pitched = %d)" % r_cw["pitched"])
 	var v_ccw: PackedVector3Array = r_ccw["vertices"]
 	var v_cw: PackedVector3Array = r_cw["vertices"]
-	var s_ccw := _roof_area_and_checks(r_ccw, 15.0)
-	var s_cw := _roof_area_and_checks(r_cw, 15.0)
-	_check(v_ccw == v_cw and is_equal_approx(s_ccw["roof_area"], s_cw["roof_area"]),
+	_check(v_ccw == v_cw,
 		"anneau horaire retourné : même maillage que l'anneau antihoraire (%d sommets)" % v_cw.size())
 
 
@@ -161,11 +160,20 @@ func _test_determinism_and_colors() -> void:
 	_check(r1["vertices"] == r2["vertices"] and r1["normals"] == r2["normals"]
 		and r1["colors"] == r2["colors"] and r1["indices"] == r2["indices"],
 		"déterminisme : deux appels identiques produisent des tableaux strictement égaux")
-	var cols: PackedColorArray = r1["colors"]
-	var wall_hex := cols[0].to_html(false)
-	var roof_hex := cols[16].to_html(false)
-	_check(wall_hex == EXPECTED_WALL_HEX_W123456 and roof_hex == EXPECTED_ROOF_HEX_W123456,
-		"couleur figée de w123456 : mur #%s, toit #%s" % [wall_hex, roof_hex])
+	# Enduit et tuiles plates : couleurs du thème ; autres matières : palettes de building_styles.gd
+	var walls_ok := true
+	for i in range(2):
+		var one: Dictionary = BuildingMesh.build([b_list[i]], _theme)
+		var c: Color = (one["colors"] as PackedColorArray)[0]
+		var allowed := []
+		for hex in _theme["buildings"]["walls"]:
+			allowed.append(hex.trim_prefix("#"))
+		for key in BuildingStyles.MATERIAL_COLORS:
+			for hex in BuildingStyles.MATERIAL_COLORS[key]:
+				allowed.append(hex.trim_prefix("#"))
+		if not (c.to_html(false) in allowed):
+			walls_ok = false
+	_check(walls_ok, "couleurs des murs tirées du thème ou des palettes des matières")
 
 
 # Critère 6 : cinq cas invalides -> skipped = 5, aucune erreur Godot
@@ -212,12 +220,77 @@ func _test_performance_500() -> void:
 
 func _test_skirt() -> void:
 	var b := _building("b_skirt", [[0.0, 0.0], [10.0, 0.0], [10.0, 10.0], [0.0, 10.0]], 100.0, 5.0)
-	var res: Dictionary = BuildingMesh.build([b], _theme, 3.0)
+	var res: Dictionary = BuildingMesh.build([b], _theme, 3.0, FLAT)
 	var verts: PackedVector3Array = res["vertices"]
 	var min_y := INF
 	for v in verts:
 		min_y = minf(min_y, v.y)
 	_check(absf(min_y - 97.0) < 1e-4, "jupe de 3 m sous base_y : min_y = %.2f (attendu 97.0)" % min_y)
+
+
+# Y8 : maison 10 × 8 × 6 à deux pans (45°) : faîte à 6 + 4 m, débord de 0,4 m sous l'égout, murs jusqu'au toit
+func _test_gabled_house() -> void:
+	var b := _building("maison_pignon", [[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]], 100.0, 6.0, [], "gabled")
+	var res: Dictionary = BuildingMesh.build([b], _theme, 0.0, "tuile_plate")
+	var verts: PackedVector3Array = res["vertices"]
+	var norms: PackedVector3Array = res["normals"]
+	var max_y := -INF
+	var min_roof_y := INF
+	var wall_tops_ok := true
+	var box := BuildingMesh.oriented_box(PackedVector2Array([Vector2(0, 0), Vector2(10, 0), Vector2(10, 8), Vector2(0, 8)]))
+	var planes := BuildingMesh.roof_planes(BuildingStyles.SHAPE_GABLED, 45.0, box)
+	var wall_quads := 0
+	for i in range(verts.size()):
+		var v := verts[i]
+		max_y = maxf(max_y, v.y)
+		if absf(norms[i].y) > 0.5 and norms[i].y > 0.0:
+			min_roof_y = minf(min_roof_y, v.y)
+		if absf(norms[i].y) < 1e-6:
+			if i % 4 == 0:
+				wall_quads += 1
+			if v.y > 100.0 + 1e-3 and absf(v.y - (106.0 + BuildingMesh.roof_height(planes, Vector2(v.x, v.z)))) > 1e-3:
+				wall_tops_ok = false
+	_check(res["pitched"] == 1 and absf(max_y - 110.0) < 1e-3, "maison à deux pans : faîte à 110 m (%.3f)" % max_y)
+	_check(absf(min_roof_y - 105.6) < 1e-3, "débord de 0,4 m : égout à 105,6 m (%.3f)" % min_roof_y)
+	_check(wall_quads == 6, "murs coupés au faîtage : 2 longs pans + 2 pignons en deux morceaux = 6 quadrilatères (%d)" % wall_quads)
+	_check(wall_tops_ok, "haut des murs exactement sur la surface du toit (pas de jour entre mur et toit)")
+
+
+# Y8 : toit à croupes et forme choisie par la famille et le contour
+func _test_roof_shapes() -> void:
+	var box := BuildingMesh.oriented_box(PackedVector2Array([Vector2(0, 0), Vector2(12, 0), Vector2(12, 8), Vector2(0, 8)]))
+	var hip := BuildingMesh.roof_planes(BuildingStyles.SHAPE_HIPPED, 45.0, box)
+	_check(hip.size() == 4 and absf(BuildingMesh.roof_height(hip, Vector2(6, 4)) - 4.0) < 1e-4
+		and absf(BuildingMesh.roof_height(hip, Vector2(0.5, 4)) - 0.5) < 1e-4,
+		"croupes : 4 pans, faîte à 4 m au centre, 0,5 m à 0,5 m du pignon")
+	var church := BuildingStyles.dress("tuile_plate", BuildingStyles.classify("church"), 1.0, 10.0, 11.0, 0.5, 0.5, 0.5)
+	_check(church["shape"] == BuildingStyles.SHAPE_GABLED and church["pitch_deg"] == BuildingStyles.WORSHIP_PITCH_DEG
+		and church["wall"] == BuildingStyles.WALL_STONE, "église : pierre, deux pans à 50°")
+	var hall := BuildingStyles.dress("tuile_plate", BuildingStyles.classify("industrial"), 1.0, 26.0, 8.0, 0.1, 0.5, 0.2)
+	_check(hall["shape"] == BuildingStyles.SHAPE_FLAT and hall["wall"] == BuildingStyles.WALL_METAL,
+		"hangar de 26 m de large : toit plat, bardage de tôle")
+	var l_house := BuildingStyles.dress("tuile_plate", BuildingStyles.classify("yes"), 0.75, 10.0, 6.0, 0.5, 0.9, 0.5)
+	_check(l_house["shape"] == BuildingStyles.SHAPE_FLAT, "contour en L (remplissage 0,75 < 0,8) : toit plat")
+	var desert := BuildingStyles.dress("toit_plat_blanc", BuildingStyles.FAMILY_HOUSE, 1.0, 8.0, 6.0, 0.5, 0.5, 0.5)
+	_check(desert["shape"] == BuildingStyles.SHAPE_FLAT and desert["roof"] == BuildingStyles.ROOF_FLAT,
+		"style toit_plat_blanc : maisons à toit plat")
+
+
+# Y8 : style par variante régionale (U1 §4.3), sinon par biome (U0), sinon défaut ; clé `style` du bâtiment
+func _test_styles_by_biome() -> void:
+	_check(BuildingStyles.resolve("ardoise", "mediterranean") == "ardoise", "la variante de la tuile l'emporte sur le biome")
+	_check(BuildingStyles.resolve("", "mediterranean") == "tuile_ronde" and BuildingStyles.resolve("", "boreal_forest") == "bois"
+		and BuildingStyles.resolve("", "sand_desert") == "toit_plat_blanc", "sans variante : style du biome dominant")
+	_check(BuildingStyles.resolve("", "inconnu") == BuildingStyles.STYLE_DEFAULT, "biome inconnu : style par défaut")
+	var all_known := true
+	for biome in BuildingStyles.BIOME_STYLES:
+		if not BuildingStyles.STYLES.has(BuildingStyles.BIOME_STYLES[biome]):
+			all_known = false
+	_check(all_known and BuildingStyles.BIOME_STYLES.size() == 16, "16 biomes du lot U0, chacun vers un style connu")
+	var b := _building("maison_desert", [[0.0, 0.0], [10.0, 0.0], [10.0, 8.0], [0.0, 8.0]], 0.0, 6.0)
+	b["style"] = "toit_plat_blanc"
+	var res: Dictionary = BuildingMesh.build([b], _theme)
+	_check(res["pitched"] == 0, "clé `style` du bâtiment : prend le pas sur le style du tronçon")
 
 
 func _init() -> void:
@@ -230,5 +303,8 @@ func _init() -> void:
 	_test_invalid_cases()
 	_test_performance_500()
 	_test_skirt()
+	_test_gabled_house()
+	_test_roof_shapes()
+	_test_styles_by_biome()
 	print("test_building_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)
