@@ -13,6 +13,9 @@ vivant minimal (route droite vers l'est, pente sinusoïdale, deux carrefours). P
     --no-ready           ne répond jamais à `open` (préparation interminable)
     --unavailable        répond `world_unavailable` à `open`
 
+Après chaque message traité, `handled.<pid>.json` (à côté du dossier de séance) donne le nombre de messages
+lus et de messages écrits : un essai attend que la doublure ait répondu avant d'avancer son horloge simulée.
+
 Avec `--stall-m` ou `--late-m`, `held.flag` (à côté du dossier de séance) donne, dès l'arrêt de la
 prolongation, la dernière révision publiée : un essai sait quand le core a chargé la route figée.
 """
@@ -48,9 +51,22 @@ JUNCTIONS = [
 ]
 
 
+COUNTS = {"handled": 0, "sent": 0}
+
+
 def send(msg: dict) -> None:
     sys.stdout.write(json.dumps(msg, separators=(",", ":")) + "\n")
     sys.stdout.flush()
+    COUNTS["sent"] += 1
+
+
+def handled() -> None:
+    """Un message de plus traité, réponses écrites (écriture atomique de `handled.<pid>.json`)."""
+    COUNTS["handled"] += 1
+    path = SIDE / f"handled.{os.getpid()}.json"
+    tmp = path.with_name(path.name + ".tmp")
+    tmp.write_text(json.dumps(COUNTS))
+    os.replace(tmp, path)
 
 
 def write(path: Path, obj: dict) -> None:
@@ -192,5 +208,7 @@ for line in sys.stdin:
         msg = json.loads(line)
     except json.JSONDecodeError:
         continue
-    if not handle(msg):
+    going = handle(msg)
+    handled()
+    if not going:
         break

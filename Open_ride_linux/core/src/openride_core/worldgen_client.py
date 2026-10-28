@@ -33,6 +33,8 @@ class WorldgenClient:
         self._inbox: queue.Queue[dict[str, Any]] = queue.Queue()
         self._threads: list[threading.Thread] = []
         self.bad_lines = 0           # lignes illisibles ignorées (contrat §2)
+        self.sent = 0                # messages écrits au générateur
+        self.received = 0            # messages lus du générateur (les essais attendent ses réponses)
         self.closed = False          # `closed` reçu
         self.exit_code: int | None = None
 
@@ -66,6 +68,7 @@ class WorldgenClient:
                 if msg["type"] == "closed":
                     self.closed = True
                 self._inbox.put(msg)
+                self.received += 1
             else:
                 self.bad_lines += 1
 
@@ -84,6 +87,7 @@ class WorldgenClient:
         try:
             self._proc.stdin.write((json.dumps(msg, ensure_ascii=False, separators=(",", ":")) + "\n").encode())
             self._proc.stdin.flush()
+            self.sent += 1
             return True
         except (BrokenPipeError, OSError, ValueError):
             return False

@@ -1,0 +1,24 @@
+{
+  "description": "Décor vivant, deuxième vague (lot P27) : 5 min sur le monde de test OSM (prés, champs, routes voisines, troupeau, lac, canal, montée à 5 %) en SIM à 300 W, difficulté 20 % (vers 21 km/h avec le trainer simulé), pour mesurer avec la sonde X13 les oiseaux, les animaux, la circulation, les cyclistes, le ciel et les bateaux ensemble.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3,
+    "rider_power_w": 300,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "bench": {
+    "world": "osm",
+    "duration_s": 300,
+    "difficulty_pct": 20,
+    "every_s": 30
+  }
+}
