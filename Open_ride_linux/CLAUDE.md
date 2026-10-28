@@ -109,6 +109,7 @@ openride --compile-only                                                   # comp
 openride --no-compile                                                     # lance la séance sans compiler les traces GPX (lot N11)
 openride-core run --replay ~/OpenRide/Activities/<séance>.fit --input keyboard --autostart   # rejoue une séance réelle
 openride-core run --bot 200 --ghost ~/OpenRide/Activities/<séance>.fit --autostart   # bots virtuels (lot N9)
+openride-core run --bot-profile climber --bot-profile sprinter --autostart          # bots à profil (lot T12)
 
 # Après un essai (depuis core/) : résumé du journal (Perf, pertes trainer et Click, pauses)
 python -m openride_core.tools.log_report ~/run_trainer.log
@@ -129,6 +130,7 @@ openride-compiler theme-install SOURCE # installe un thème depuis un dossier ou
 openride-core recover                  # FIT depuis le dernier journal après un plantage
 openride-core release-trainer          # libère le trainer resté réservé après un arrêt brutal
 openride-core summary --ftp 250        # bilan du dernier journal (ou d'un .jsonl/.fit) : NP, IF, TSS, zones ; --json
+openride-core session-report           # analyse du dernier journal (lot X12) : ~/OpenRide/rapports/<séance>/rapport.html ; --log, --engine-log
 openride-core history --weeks 8        # historique des séances et cumul par semaine ISO ; --json
 
 # Diagnostic matériel

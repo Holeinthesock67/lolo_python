@@ -116,17 +116,20 @@ func _init() -> void:
 		"min_slope_half_band_deg": ThemeRenderParams.MIN_SLOPE_HALF_BAND_DEG,
 		"max_slope_half_band_deg": ThemeRenderParams.MAX_SLOPE_HALF_BAND_DEG,
 	}
-	var code: String = default_mat.shader.code
+	# Règle de L3 dans terrain_shade.gdshaderinc (commune aux shaders de terrain d'un thème et des biomes, lot U6)
+	var code: String = default_mat.shader.code + FileAccess.get_file_as_string("res://shaders/terrain_shade.gdshaderinc")
+	_check(default_mat.shader.code.contains('#include "res://shaders/terrain_shade.gdshaderinc"'), "terrain.gdshader inclut terrain_shade.gdshaderinc")
 	for key in l3:
 		_check(absf(float(default_mat.get_shader_parameter(key)) - float(l3[key])) < 1e-6, "%s = %s (L3)" % [key, l3[key]])
 		_check(code.contains("uniform float %s" % key), "uniform %s déclaré dans le shader" % key)
-	_check(code.contains("12.0 / max(blend_sharpness, 1.0)"), "demi-bande de pente : 12 / blend_sharpness, comme blend_weights")
-	var frag := code.substr(code.find("void fragment()"))
-	var literal_ok := true
+	_check(code.contains("12.0 / max(sharpness, 1.0)"), "demi-bande de pente : 12 / blend_sharpness, comme blend_weights")
+	var start := code.find("vec3 layer_weights(")
+	var rule := code.substr(start, code.find("\n}", start) - start)
+	var literal_ok := start >= 0
 	for lit in ["44.0", "50.0", "1.5", "3.0"]:
-		if frag.contains(lit):
+		if rule.contains(lit):
 			literal_ok = false
-	_check(literal_ok, "aucune constante de L3 écrite en dur dans fragment()")
+	_check(literal_ok, "aucune constante de L3 écrite en dur dans layer_weights()")
 
 	# 7. Route : la ligne médiane reste peinte sur une texture de thème
 	var road_tex_color := Color(0.2, 0.25, 0.3)

@@ -9,7 +9,12 @@ extends Node3D
 ##   plus loin ; tuiles lointaines présentes à moins de far_radius_m (fin du brouillard du préréglage
 ##   plus une tuile lointaine, au plus FAR_RADIUS_M = 12 km, lot Y1) ;
 ## - tuile proche manquante : rien si une tuile lointaine couvre l'endroit (elle est dessinée dessous),
-##   sinon tuile plate à l'altitude de la route la plus proche (format §10).
+##   sinon tuile plate à l'altitude de la route la plus proche (format §10) ;
+## - lot S1 (`culling`, faux par défaut faute de gain mesuré, `--culling=on` pour l'essayer) : une tuile proche n'est voulue
+##   que si elle est à moins de `culling_keep_m` de la caméra (distance des ombres plus une case d'arbres)
+##   ou dans le champ de la caméra active, maintenant ou le long des prochains mètres de route
+##   (view_culling.gd) ; les tuiles proches derrière la caméra ne sont ni construites, ni garnies d'arbres,
+##   ni dessinées. Les tuiles lointaines restent toutes chargées : elles servent de fond si la vue change.
 ## Les tableaux de sommets se calculent dans WorkerThreadPool ; les ArrayMesh et MeshInstance3D se
 ## créent sur le fil principal, au plus MAX_NEW_PER_FRAME par image. Ce qui sort de la fenêtre est
 ## libéré tout de suite (free) ; un changement de parcours vide tout (set_world).
@@ -26,6 +31,8 @@ const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
+const BiomeTextures := preload("res://scripts/biome_textures.gd")
+const ViewCulling := preload("res://scripts/view_culling.gd")
 
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
@@ -48,13 +55,37 @@ var far_radius_m: float = FAR_RADIUS_M:
 		if _ground != null and _ground.mesh is PlaneMesh:
 			(_ground.mesh as PlaneMesh).size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 var tree_renderer: Node3D = null
+## Lot S1 : tri des tuiles proches selon le champ de la caméra active ; rayon gardé tout autour réglé par
+## render_quality.gd (ViewCulling.keep_radius_for, distance des ombres du préréglage).
+var culling := false
+var culling_keep_m: float = ViewCulling.keep_radius_for(150.0)
+## Tuiles proches écartées par le dernier update_window (sonde X13, tests).
+var culled_near := 0
+## Contrôles du mode test (lot S1, `--test-mode`) : à chaque tuile proche instanciée, journal
+## « [test] pop … » si elle apparaît dans le champ à moins de TEST_POP_DIST_M (apparition soudaine), et
+## « [test] seam … » si son bord s'écarte de plus de TEST_SEAM_TOL_M de celui d'une tuile proche voisine.
+var test_log := false
+const TEST_POP_DIST_M := 1000.0
+const TEST_SEAM_TOL_M := 0.05
+var _view_now: Dictionary = {}
+var _s_now := 0.0
 var osm_streamer: Node3D = null
 ## Série U (lot U17, première partie) : biome forcé (`--biome=`, "auto" = données du parcours) et modèle de
-## biome du parcours courant, créé par set_world et transmis aux arbres (U7) et aux animaux (U12). Tant que le
-## sol multi-biome (U6) n'est pas là, le sol prend les couleurs du biome sous le départ (start_biome).
+## biome du parcours courant, créé par set_world et transmis aux arbres (U7) et aux animaux (U12). Sol
+## multi-biome (U6) : chaque tuile de terrain reçoit un matériau de `biome_textures` (terrain_biomes.gdshader) ;
+## le sol plat sans terrain prend la couleur du biome sous le départ (start_biome).
 ## Modèle inactif (ni couche biome ni forçage) : rendu d'avant la série U.
 var forced_biome := "auto"
 var biome_model = null
+var biome_textures = null
+## Préréglage de qualité (render_quality.gd) : 3 ou 4 biomes par tuile et côté des textures de sol (U-Q4).
+var quality_preset := "":
+	set(value):
+		if value == quality_preset:
+			return
+		quality_preset = value
+		if biome_textures != null:
+			_make_biome_textures()
 
 var _near_index: Dictionary = {}     # Vector2i -> true
 var _far_index: Dictionary = {}
@@ -77,6 +108,7 @@ var _road_width_m: float = RoadBuilder.ROAD_WIDTH_M
 var _ground_color: Color = FLAT_GROUND_COLOR
 var _ground: MeshInstance3D = null
 var _theme_dict: Dictionary = {}
+var _theme_dir := ""
 var _manifest: Variant = null
 ## Monde vivant (lot W10) : amorces des branches non suivies des carrefours, clé "<carrefour>:<branche>" -> MeshInstance3D.
 const PREVIEW_FADE_M := 100.0
@@ -95,6 +127,8 @@ func _init() -> void:
 
 func _process(_delta: float) -> void:
 	integrate(MAX_NEW_PER_FRAME)
+	if biome_textures != null:
+		biome_textures.sync_from(_terrain_material)   # ombre des nuages réglée par living_world.gd
 	# Bâtiments et eau (lot E4) : sans cet appel, les tronçons OSM préparés n'entraient jamais
 	# dans la scène (seuls les tests appelaient flush()).
 	if osm_streamer != null:
@@ -141,11 +175,11 @@ func _set_biome_model() -> void:
 		tree_renderer.biome_model = active
 	if osm_streamer != null:
 		osm_streamer.biome_model = active
+	biome_textures = null
 	if active == null:
 		return
+	_make_biome_textures()
 	var ground: Dictionary = biome_model.terrain_theme(start_biome())
-	if _terrain_material is ShaderMaterial:
-		TerrainMaterial.apply_to_material(_terrain_material, ground)
 	_ground_color = ThemeRenderParams.terrain_uniforms(ground)["grass_color"]
 	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
 		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
@@ -159,6 +193,24 @@ func _apply_relief_to_material() -> void:
 	(_terrain_material as ShaderMaterial).set_shader_parameter("relief_k", k)
 	(_terrain_material as ShaderMaterial).set_shader_parameter("relief_origin_m",
 		route.alt_m[0] if route != null and route.n > 0 else 0.0)
+
+
+## Sols des biomes (lot U6) pour le préréglage courant ; les tuiles déjà affichées changent de matériau.
+func _make_biome_textures() -> void:
+	biome_textures = BiomeTextures.new(biome_model, _theme_dir, quality_preset)
+	biome_textures.sync_from(_terrain_material)
+	for key in _instances:
+		if not (key as String).begins_with("road:"):
+			(_instances[key] as MeshInstance3D).mesh.surface_set_material(0, _terrain_material_for(key))
+
+
+## Matériau d'une tuile de terrain ("near:ix:iz", "far:ix:iz" ou "flat:ix:iz") : celui du thème, ou celui
+## de ses biomes quand le modèle de biome est actif.
+func _terrain_material_for(key: String) -> Material:
+	if biome_textures == null:
+		return _terrain_material
+	var parts := key.split(":")
+	return biome_textures.tile_material("far" if parts[0] == "far" else "near", int(parts[1]), int(parts[2]))
 
 
 ## Biome le plus présent au départ du parcours (biome par défaut sans parcours ni modèle).
@@ -371,6 +423,27 @@ func near_window(points: Array) -> Dictionary:
 	return out
 
 
+## Vues de la caméra active (lot S1) : maintenant puis le long de la route ; vide hors de l'arbre de
+## scène, sans caméra, ou caméra pas encore placée à `cam_pos` (chargement d'un parcours), et tout est
+## alors voulu. Calculées même sans tri, pour les contrôles du mode test.
+func _views(s_pos: float, v: float, cam_pos: Vector3) -> Array:
+	if not is_inside_tree() or route == null:
+		return []
+	var cam := get_viewport().get_camera_3d()
+	if cam == null or cam.global_position.distance_to(cam_pos) > ViewCulling.CAMERA_MATCH_M:
+		return []
+	return ViewCulling.route_views(ViewCulling.view_of(cam), route, s_pos, v)
+
+
+## Tuile proche voulue pour ces vues (lot S1) ; `loaded` : déjà chargée ou en construction, gardée avec
+## la marge d'hystérésis.
+func near_tile_wanted(t: Vector2i, views: Array, loaded: bool = false) -> bool:
+	var size: float = TerrainTiles.LEVELS["near"]["size"]
+	var extra := deg_to_rad(ViewCulling.KEEP_MARGIN_DEG) if loaded else 0.0
+	return ViewCulling.rect_wanted(Rect2(t.x * size, t.y * size, size, size), views, NEAR_RADIUS_M,
+		culling_keep_m, extra)
+
+
 ## Une tuile proche (1 000 m) est toujours entièrement dans une seule tuile lointaine (5 000 m).
 func _far_covers(near_tile: Vector2i) -> bool:
 	var c := TerrainTiles.tile_origin("near", near_tile.x, near_tile.y) + Vector3(1.0, 0.0, 1.0)
@@ -397,14 +470,23 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 	if route == null:
 		return
 	var wanted := {}
+	var views := _views(s_pos, v, cam_pos)
+	_view_now = views[0] if not views.is_empty() else {}
+	_s_now = s_pos
+	if not culling:
+		views = []
 	for k in road_window(s_pos, v):
 		wanted["road:%d" % k] = {"kind": "road", "k": k, "dist": 0.0}
 	if has_terrain:
 		var ahead: Vector3 = route.sample_point(route.wrap_s(s_pos + maxf(v, 0.0) * LOOKAHEAD_S))
 		var near := near_window([Vector2(cam_pos.x, cam_pos.z), Vector2(ahead.x, ahead.z)])
+		culled_near = 0
 		for t in near:
-			wanted["%s:%d:%d" % [near[t], t.x, t.y]] = {"kind": near[t], "tile": t,
-				"dist": _rect_distance("near", t, cam_pos.x, cam_pos.z)}
+			var key := "%s:%d:%d" % [near[t], t.x, t.y]
+			if not near_tile_wanted(t, views, _instances.has(key) or _jobs.has(key)):
+				culled_near += 1
+				continue
+			wanted[key] = {"kind": near[t], "tile": t, "dist": _rect_distance("near", t, cam_pos.x, cam_pos.z)}
 		for t in far_window(cam_pos.x, cam_pos.z):
 			wanted["far:%d:%d" % [t.x, t.y]] = {"kind": "far", "tile": t,
 				"dist": 10000.0 + _rect_distance("far", t, cam_pos.x, cam_pos.z)}
@@ -417,7 +499,7 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 	if _ground != null:
 		_ground.position = Vector3(cam_pos.x, _ground.position.y, cam_pos.z)
 	if tree_renderer != null:
-		tree_renderer.enforce_budget(cam_pos)
+		tree_renderer.enforce_budget(cam_pos, views[0] if not views.is_empty() else {})
 	if osm_streamer != null and route != null:
 		osm_streamer.update_window(s_pos - float(chunks_behind) * 1000.0, s_pos + float(chunks_ahead) * 1000.0 + v * LOOKAHEAD_S)
 
@@ -511,7 +593,7 @@ func integrate(max_new: int) -> int:
 			continue
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["arrays"])
-		mesh.surface_set_material(0, road_material_for(int((r["key"] as String).get_slice(":", 1))) if r["kind"] == "road" else _terrain_material)
+		mesh.surface_set_material(0, road_material_for(int((r["key"] as String).get_slice(":", 1))) if r["kind"] == "road" else _terrain_material_for(r["key"]))
 		var mi := MeshInstance3D.new()
 		mi.name = (r["key"] as String).replace(":", "_")
 		mi.mesh = mesh
@@ -520,9 +602,56 @@ func integrate(max_new: int) -> int:
 		_instances[r["key"]] = mi
 		if r.has("trees_data") and tree_renderer != null and not (r["trees_data"] as Dictionary).is_empty():
 			tree_renderer.add_tile(r["trees_data"])
+		if test_log and r["kind"] == "near":
+			_test_check_tile(r["key"], r["arrays"][Mesh.ARRAY_VERTEX])
 		created += 1
 	_start_jobs()
 	return created
+
+
+## Mode test (lot S1) : apparition soudaine dans le champ et jointure avec les tuiles proches voisines.
+func _test_check_tile(key: String, verts: PackedVector3Array) -> void:
+	var parts := key.split(":")
+	var t := Vector2i(int(parts[1]), int(parts[2]))
+	var size: float = TerrainTiles.LEVELS["near"]["size"]
+	if not _view_now.is_empty():
+		var rect := Rect2(t.x * size, t.y * size, size, size)
+		var d := ViewCulling.rect_distance(rect, _view_now["pos"])
+		if d < TEST_POP_DIST_M and ViewCulling.rect_in_view(rect, _view_now):
+			print("[test] pop key=%s dist=%.0f s=%.1f" % [key, d, _s_now])
+	for dt in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var nkey := "near:%d:%d" % [t.x + dt.x, t.y + dt.y]
+		if not _instances.has(nkey) or nkey == key:
+			continue
+		var other: PackedVector3Array = (_instances[nkey] as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var gap := seam_gap(verts, other, dt.x, dt.y)
+		if gap > TEST_SEAM_TOL_M:
+			print("[test] seam key=%s voisine=%s ecart=%.2f s=%.1f" % [key, nkey, gap, _s_now])
+
+
+## Plus grand écart de hauteur (m) entre le bord d'une tuile proche (`a`, sommets de build_arrays) et
+## le bord commun de sa voisine `b` placée en (dx, dz) = (±1, 0) ou (0, ±1).
+static func seam_gap(a: PackedVector3Array, b: PackedVector3Array, dx: int, dz: int) -> float:
+	var n := TerrainTiles.SAMPLES
+	var last := TerrainTiles.CELLS
+	var gap := 0.0
+	for k in range(n):
+		var ia: int
+		var ib: int
+		if dx == 1:
+			ia = k * n + last
+			ib = k * n
+		elif dx == -1:
+			ia = k * n
+			ib = k * n + last
+		elif dz == 1:
+			ia = last * n + k
+			ib = k
+		else:
+			ia = k
+			ib = last * n + k
+		gap = maxf(gap, absf(a[ia].y - b[ib].y))
+	return gap
 
 
 ## Attend et instancie tout ce que demande la fenêtre courante (tests, chargement initial).
@@ -557,6 +686,8 @@ func _free_instance(key: String) -> void:
 	var mi: MeshInstance3D = _instances[key]
 	_instances.erase(key)
 	remove_child(mi)
+	if biome_textures != null and not key.begins_with("road:"):
+		biome_textures.release(mi.mesh.surface_get_material(0))
 	mi.mesh = null   # maillage libéré avant le nœud (évite une erreur du rendu factice sans écran)
 	mi.free()
 	if key.begins_with("near:") and tree_renderer != null:
@@ -567,6 +698,7 @@ func _free_instance(key: String) -> void:
 ## Configure les matériaux de route et de terrain selon le thème (Lot E2).
 func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	_theme_dict = theme_dict
+	_theme_dir = theme_dir
 	var r_params := ThemeRenderParams.road_params(theme_dict)
 	_road_width_m = float(r_params["width_m"])
 	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture") if theme_dir != "" else null

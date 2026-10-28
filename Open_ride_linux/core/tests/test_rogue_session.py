@@ -45,7 +45,7 @@ def env(tmp_path, monkeypatch):
         s = CoreSession(cfg, driver=MockDriver(base_power_w=FTP, ramp_amplitude_w=0.0), inputs=[NullProvider()],
                         journal_dir=tmp_path / "journal", routes_root=tmp_path / "routes",
                         workouts_dir=tmp_path / "Workouts", records_path=tmp_path / "records.json",
-                        powerups_path=tmp_path / "powerups.toml")
+                        powerups_path=tmp_path / "powerups.toml", config_path=tmp_path / "config.toml")
         sent: list[dict] = []
         s.server.send_raw = lambda m, max_size=None: sent.append(m)
         return s, sent

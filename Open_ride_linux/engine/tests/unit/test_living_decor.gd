@@ -4,7 +4,8 @@ extends SceneTree
 ## (particules, brume, chaussée mouillée, pluie dans l'ambiance), animaux suivant les tronçons OSM,
 ## éoliennes et drapeaux, eau qui scintille, panneaux et chiffres peints, véhicules figés en pause,
 ## spectateurs et passants jamais sur le cycliste, ni enterrés ni en l'air, coupure complète avec
-## `living = false`, abri dans le HUD, coût par image.
+## `living = false`, abri dans le HUD, coût par image ; lot P27 : aucun nœud de la deuxième vague créé après
+## le démarrage, enveloppe de P23 à P26, P28 et P29 en medium.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_living_decor.gd
 
 const LivingDecor := preload("res://scripts/living_decor.gd")
@@ -137,6 +138,13 @@ func _init() -> void:
 	call_deferred("_run")
 
 
+static func _count_nodes(nodes: Array) -> int:
+	var n := 0
+	for nd in nodes:
+		n += 1 + _count_nodes((nd as Node).get_children())
+	return n
+
+
 var _route_dict: Dictionary = {}
 
 
@@ -198,6 +206,10 @@ func _run() -> void:
 	_check(osm.boats_enabled and boat_kinds.has("rowboat") and boat_kinds.has("barge"),
 		"bateaux : barque sur le lac, péniches sur le canal (%s)" % str(boat_kinds.keys()))
 
+	# Nœuds de la deuxième vague (P23 à P26, P28, P29) : tous créés par `configure`
+	var wave2_views: Array = [dec.fauna, dec.traffic_view, dec.road_traffic_view, dec.cyclists_view, dec.sky_view, dec.boats_view]
+	var nodes_before := _count_nodes(wave2_views)
+
 	# 2. Roule dans le village puis jusqu'au sommet, sous la pluie
 	var base_end := env.fog_depth_end
 	var now := 10.0
@@ -258,6 +270,20 @@ func _run() -> void:
 	_check(dec.passersby_view.visible_count() >= 0, "passants affichés")
 	print("Décor vivant (deuxième vague) : %.3f ms par image (high)" % per_frame_ms)
 	_check(PerfBudget.check("living_decor_frame", per_frame_ms), "coût du branchement en %.3f ms par image" % per_frame_ms)
+	var nodes_after := _count_nodes(wave2_views)
+	_check(nodes_after == nodes_before, "deuxième vague : %d nœuds créés au démarrage, %d après %d images" % [nodes_before, nodes_after, frames])
+	# Enveloppe de la deuxième vague (P27) : P23 à P26, P28 et P29 ensemble en medium
+	var mid_parts := _decor("medium", true, theme, Environment.new())
+	var mid = mid_parts[0]
+	var ms := 1000.0
+	var mnow := 10.0
+	while ms < 3995.0:
+		mid.step(mnow, 0.05, route.sample_point(ms) + Vector3(0.0, 1.4, 0.0), ms, 8.0, float(route.sample(ms)["alt_m"]), false, wind, state)
+		ms += 0.4
+		mnow += 0.05
+	var wave2_ms: float = mid.wave2_us / 1000.0 / maxi(1, mid.wave2_frames)
+	print("Deuxième vague (P23 à P26, P28, P29) : %.3f ms par image (medium)" % wave2_ms)
+	_check(PerfBudget.check("decor_vivant_2_frame", wave2_ms), "enveloppe de la deuxième vague en medium : %.3f ms par image" % wave2_ms)
 	# Brume du matin en fond de vallée : brouillard rapproché
 	var dv := LivingDecor.new()
 	root.add_child(dv)
@@ -289,6 +315,7 @@ func _run() -> void:
 	for v in dec.traffic.vehicles:
 		before.append(float(v["s"]))
 	var pos2: Vector3 = route.sample_point(s) + Vector3(0.0, 1.4, 0.0)
+	var sig_before: float = dec.frozen_signature()
 	for i in range(20):
 		dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
 		now += 0.05
@@ -296,6 +323,8 @@ func _run() -> void:
 	for v in dec.traffic.vehicles:
 		after.append(float(v["s"]))
 	_check(before == after, "pause : %d véhicules figés" % before.size())
+	_check(sig_before != 0.0 and dec.frozen_signature() == sig_before,
+		"pause : signature de ce qui se fige inchangée (%.2f, lot P30)" % sig_before)
 	var clock_before: float = dec.road_traffic.clock_s
 	dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
 	_check(dec.road_traffic.clock_s == clock_before, "pause : circulation lointaine figée")
@@ -357,7 +386,7 @@ func _run() -> void:
 	_check(real_ws.road_material_for(3) is StandardMaterial3D, "world_streamer : sans décor vivant, matériau de la 1.0")
 	real_ws.free()
 
-	for nd in [dec, dv, hud, off]:
+	for nd in [dec, dv, hud, off, mid]:
 		nd.queue_free()
 	await process_frame
 	print("test_living_decor : %d vérifications, %d échecs" % [_checked, _failures])

@@ -51,6 +51,7 @@ const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
+const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 
@@ -58,7 +59,7 @@ const SUMMARY := "summary"
 const CONNECT := "connect"
 const PAIRING := PairingViewModel.SCREEN
 const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
-## Sous-écran de « Réglages » (Cycliste, Séance, Affichage, Son, Vent) ; titre et éléments du groupe ouvert.
+## Sous-écran de « Réglages » (Cycliste, Séance, Graphisme, Son, Vent) ; titre et éléments du groupe ouvert.
 const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
@@ -143,6 +144,9 @@ var ready_message := ""
 var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
+var rogue = RogueMenuModel.new()
+## `start_run` accusé par le core depuis le dernier lancement : l'écran d'attente peut céder la place à Prêt.
+var _rogue_acked := false
 ## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
 var garage = GarageViewModel.new()
 ## Bilan de progression de la séance (lot V9) : dernier message `xp_result` ({} sans), et qu'il a déjà été annoncé.
@@ -172,6 +176,9 @@ func _init() -> void:
 	_refresh_ftp_test()
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
+	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": RogueMenuModel.LOADING, "title": "Composition de la run…", "on_back": "", "items": []})
+	menu.set_screen_items(RogueMenuModel.LOADING, [{"id": "wait", "label": "Composition de la run…", "enabled": false}])
 	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
 	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
 		menu.add_screen({"id": screen, "title": "Garage", "on_back": GarageViewModel.SCREEN, "items": []})
@@ -179,7 +186,7 @@ func _init() -> void:
 	_refresh_builder()
 	_refresh_pairing()
 	_refresh_settings()
-	menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
+	_refresh_pause_difficulty()
 
 
 func is_visible() -> bool:
@@ -197,7 +204,7 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var diff = state.get("difficulty_pct", null)
 	if (diff is int or diff is float) and int(diff) != difficulty_pct:
 		difficulty_pct = int(diff)
-		menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
+		_refresh_pause_difficulty()
 	if session_state == "" and st != "" and not connect_done:
 		if st in ["IDLE", "READY"]:
 			menu.open_screen(CONNECT)
@@ -228,6 +235,12 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 		if st != "FINISHED":
 			xp_result = {}
 			_xp_announced = false
+	# Run composée (lot R13) : `start_run` accusé par la trame qui suit son traitement. Le core passe de
+	# READY à LOADING puis READY dans la même commande : l'état seul ne dit pas qu'une nouvelle run est prête.
+	if _rogue_acked and st == "READY" and menu.current_screen() == RogueMenuModel.LOADING:
+		_rogue_acked = false
+		menu.set_rogue_ready(rogue.ready_text())
+		menu.open_screen(MenuModel.READY)
 	if st != "" and not _lists_requested:
 		_lists_requested = true
 		out.append({"action": "list"})
@@ -331,6 +344,11 @@ func on_error(code: String, text: String) -> void:
 		else:
 			summary_message = "Échec : " + text
 		return
+	if code in ["run_invalid", "item_locked", "busy"] and menu.current_screen() == RogueMenuModel.LOADING:
+		rogue.message = "Échec : " + text
+		_refresh_rogue()
+		menu.open_screen(RogueMenuModel.SCREEN)
+		return
 	if menu.current_screen() in GarageViewModel.SCREENS and garage.on_error(code, text):
 		_refresh_garage()
 		return
@@ -351,6 +369,8 @@ func on_error(code: String, text: String) -> void:
 
 
 func on_command_acked(cmd_name: String) -> void:
+	if cmd_name == "start_run":
+		_rogue_acked = true
 	if cmd_name == "pair_devices":
 		pairing.on_pair_acked()
 		_refresh_pairing()
@@ -758,7 +778,7 @@ func handle(event: String) -> Dictionary:
 		return {}
 	ready_message = ""
 	if not settings.editing.is_empty():
-		if menu.current_screen() in [SETTING_EDIT, SETTINGS_GROUP, WORKOUT_CREATE]:
+		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE]:
 			return _handle_edit(event)
 		settings.cancel()   # menu quitté pendant un réglage (séance lancée, perte du core…)
 	if menu.current_screen() == RECORD_TABLE and event == "A_SHORT":   # A court : bascule de table (T10)
@@ -775,12 +795,25 @@ func handle(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"start_run":   # confirmation du premier lancement acceptée (lot R13) : l'avertissement n'est plus redemandé
+			rogue.mark_warned()
+			return _launch_rogue(act)
 		"start_plan", "stop_plan":
 			return _send_plan_request(act)
 		"accept_ftp":
 			_ftp_pending = true
 			summary_message = "Enregistrement de la FTP…"
 			return act
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "rogue":
+		_refresh_rogue()
+		menu.push_screen(RogueMenuModel.SCREEN)
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == RogueMenuModel.SCREEN:
+		return _handle_rogue(str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == "rogue_change":
+		_refresh_rogue()
+		menu.open_screen(RogueMenuModel.SCREEN)
+		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME:
 		if str(act["id"]) == "garage":
 			garage.message = ""
@@ -851,8 +884,7 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:
 		settings.begin_pause_difficulty(difficulty_pct)
-		menu.set_screen_items(SETTING_EDIT, settings.edit_items(), "Difficulté")
-		menu.push_screen(SETTING_EDIT)
+		_refresh_pause_difficulty()
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == PAIRING:
 		act = pairing.handle(str(act["id"]))
@@ -899,6 +931,30 @@ func handle(event: String) -> Dictionary:
 			"details":
 				show_details = not show_details
 				return {}
+	return act
+
+
+## Écran de départ du Cyber-Rogue (lot R13) : les trois premiers éléments font défiler leur valeur, « Lancer »
+## demande confirmation au premier lancement (efforts au-delà de 140 % de la FTP possibles) puis envoie `start_run`.
+func _refresh_rogue() -> void:
+	menu.set_screen_items(RogueMenuModel.SCREEN, rogue.items())
+
+
+func _handle_rogue(item_id: String) -> Dictionary:
+	if item_id != "launch":
+		rogue.cycle(item_id)
+		_refresh_rogue()
+		return {}
+	var act := {"action": "start_run", "args": rogue.start_args()}
+	if rogue.needs_warning():
+		menu.confirm(RogueMenuModel.WARNING, act)
+		return {}
+	return _launch_rogue(act)
+
+
+func _launch_rogue(act: Dictionary) -> Dictionary:
+	_rogue_acked = false
+	menu.open_screen(RogueMenuModel.LOADING)
 	return act
 
 
@@ -997,12 +1053,21 @@ func _refresh_record_table() -> void:
 
 
 ## Réglage en cours de modification : la rangée de la liste ouverte (Réglages, Créer un entraînement)
-## passe en mode édition ; la difficulté de la pause et les champs de l'avatar du Garage (V8) gardent
-## leur écran (étape 4).
+## passe en mode édition ; la difficulté de la pause se règle de même dans sa rangée. Seuls les champs
+## de l'avatar du Garage gardent leur écran.
+func _refresh_pause_difficulty() -> void:
+	var it := {"label": "Difficulté", "type": "int", "unit": "%", "min": 0, "max": 100,
+		"value": difficulty_pct}
+	var ed: Dictionary = settings.editing if str(settings.editing.get("key", "")) == SettingsViewModel.PAUSE_DIFFICULTY else {}
+	menu.set_pause_difficulty(SettingsViewModel.row("difficulty", it, ed))
+
+
 func _refresh_edit() -> void:
 	match menu.current_screen():
 		SETTING_EDIT:
 			menu.set_screen_items(SETTING_EDIT, settings.edit_items())
+		MenuModel.PAUSE:
+			_refresh_pause_difficulty()
 		WORKOUT_CREATE:
 			menu.set_screen_items(WORKOUT_CREATE, builder.menu_items(str(settings.editing.get("key", "")),
 				settings.editing.get("value", 0)))
@@ -1026,7 +1091,6 @@ func _handle_edit(event: String) -> Dictionary:
 				menu.handle("Y_SHORT")
 			if act.get("action", "") == "set_difficulty":
 				difficulty_pct = int(act["pct"])
-				menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
 			if act.get("action", "") == "garage_set":
 				garage.set_field(str(act["key"]), int(act["value"]))
 				_refresh_garage()

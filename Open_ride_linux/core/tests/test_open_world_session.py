@@ -51,20 +51,47 @@ def make_session(tmp_path, monkeypatch, port, power=250.0, stub_args=(), cmd=Non
     return s
 
 
-def step(s, seconds, pause=0.002):
-    """Avance de `seconds` secondes simulées, en laissant au générateur le temps de répondre."""
-    n = int(seconds / 0.02)
-    for i in range(n):
+SYNC_TIMEOUT_S = 10.0   # attente au plus des réponses de la doublure, par message (machine très chargée)
+
+
+def sync(s):
+    """Attend que le générateur ait traité tout ce que le core lui a écrit et que ses réponses soient lues.
+
+    L'horloge simulée avance bien plus vite que le temps réel (0,5 s simulée en quelques ms) ; sans cette
+    attente, une CI chargée laisse la doublure en retard et la séance part en pause world_data au hasard.
+    La doublure écrit `handled.<pid>.json` (messages lus et écrits) après chaque message traité. Sans ce
+    fichier (`open` pas encore lu, vrai faux générateur du lot W15), pas d'attente ; un générateur qui ne
+    répond plus (plantage simulé) ne fait attendre que SYNC_TIMEOUT_S au plus."""
+    ow = s.openworld
+    c = ow.client if ow is not None else None
+    if c is None or c._proc is None or c.sent == getattr(c, "synced", 0):
+        return
+    path = ow.folder.parent / f"handled.{c._proc.pid}.json"
+    deadline = time.monotonic() + SYNC_TIMEOUT_S
+    while c.alive and path.exists() and time.monotonic() < deadline:
+        try:
+            counts = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if counts["handled"] >= c.sent and c.received >= counts["sent"]:
+            break
+        time.sleep(0.001)
+    c.synced = c.sent
+
+
+def step(s, seconds):
+    """Avance de `seconds` secondes simulées ; à chaque message écrit au générateur, attend sa réponse."""
+    for _ in range(int(seconds / 0.02)):
         s.clock += 0.02
         s._step(0.02, s.clock)
-        if i % 25 == 24:
-            time.sleep(pause)
+        sync(s)
 
 
 def wait_until(s, cond, timeout=20.0):
     t0 = time.time()
     while time.time() - t0 < timeout:
-        step(s, 0.1, pause=0.01)
+        step(s, 0.1)
+        time.sleep(0.005)   # préparation hors message (lancement du processus, `--no-ready`)
         if cond():
             return True
     return False
@@ -317,14 +344,26 @@ def test_untouched_junction_takes_the_default_branch(session):
 
 # --- critère 5 : route qui ne s'allonge plus -----------------------------------------------------------
 
+def held_and_paused(s, tmp_path):
+    """Générateur figé (`held.flag` de la doublure), sa dernière révision chargée, séance en pause.
+
+    Sans cette synchronisation, l'essai dépend de la cadence : une révision encore en route peut relancer
+    la séance, et une pause de retard peut précéder l'arrêt de la prolongation.
+    """
+    flag = tmp_path / "cache" / "seances" / "held.flag"
+    return (flag.exists() and s.openworld.route.revision >= int(flag.read_text())
+            and s.state.session_state == "PAUSED")
+
+
 def test_pause_world_data_then_automatic_resume(session, tmp_path):
     s = session(7040, power=450.0, stub_args=["--stall-m", "800", "--horizon", "1000"])
     open_world(s)
     s._on_command("start", {}, 2)
-    assert wait_until(s, lambda: s.state.session_state == "PAUSED", timeout=60.0)
-    assert s.state.pause_reason == "world_data" and s.openworld.data == "missing"
+    assert wait_until(s, lambda: held_and_paused(s, tmp_path) and s.openworld.data == "missing", timeout=60.0)
+    assert s.state.pause_reason == "world_data"
     s_pause = s.physics.s
-    assert s.openworld.route.length_m - s_pause < 200.0 and s_pause > 700.0
+    # pause sous le seuil de reprise (500 m), à 200 m du bout ou plus tôt si le générateur était en retard
+    assert s.openworld.known_ahead(s_pause) < 500.0 and s_pause > 700.0
     assert s.state.open_world["data"] == "missing"
     step(s, 3.0)
     assert s.state.session_state == "PAUSED" and s.physics.s == s_pause    # la séance reste figée
@@ -332,6 +371,22 @@ def test_pause_world_data_then_automatic_resume(session, tmp_path):
     assert wait_until(s, lambda: s.state.session_state == "RUNNING", timeout=20.0)
     assert s.openworld.route.length_m - s.physics.s >= 500.0 or s.openworld.known_ahead(s.physics.s) > 200.0
     assert s.state.open_world["data"] == "cached"
+
+
+def test_late_generator_pauses_instead_of_riding_past_the_known_route(session, tmp_path):
+    """Générateur en retard (données présentes, route pas encore prolongée) : pause au bout de la route."""
+    s = session(7052, power=450.0, stub_args=["--late-m", "800", "--horizon", "1000"])
+    open_world(s)
+    s._on_command("start", {}, 2)
+    assert wait_until(s, lambda: held_and_paused(s, tmp_path), timeout=60.0)
+    assert s.state.pause_reason == "world_data" and s.openworld.data == "cached"
+    s_pause = s.physics.s
+    assert 0.0 < s.openworld.known_ahead(s_pause) < 500.0    # sous le seuil de reprise : la pause tient
+    step(s, 30.0)
+    assert s.state.session_state == "PAUSED" and s.physics.s == s_pause    # jamais au-delà de la route connue
+    (tmp_path / "cache" / "seances" / "resume.flag").write_text("x")
+    assert wait_until(s, lambda: s.state.session_state == "RUNNING", timeout=20.0)
+    assert s.openworld.known_ahead(s.physics.s) >= 500.0
 
 
 # --- critère 7 : générateur tué ----------------------------------------------------------------------------
@@ -355,9 +410,9 @@ def test_generator_falling_again_pauses_world_data(session):
     s = session(7044, power=450.0, stub_args=["--crash-after-m", "300", "--crash-times", "2", "--horizon", "700"])
     open_world(s)
     s._on_command("start", {}, 2)
-    assert wait_until(s, lambda: s.state.session_state == "PAUSED", timeout=90.0)
-    assert s.state.pause_reason == "world_data" and s.openworld.dead
-    assert s.openworld.known_ahead(s.physics.s) < 200.0
+    assert wait_until(s, lambda: s.state.session_state == "PAUSED" and s.openworld.dead, timeout=90.0)
+    assert s.state.pause_reason == "world_data"
+    assert s.openworld.known_ahead(s.physics.s) < 500.0      # pause au bout de la route, ou plus tôt si le générateur était en retard
     step(s, 3.0)
     assert s.state.session_state == "PAUSED"                 # pas de reprise : plus de générateur
 
@@ -403,7 +458,7 @@ def test_real_fake_generator_starts_a_ride(tmp_path, monkeypatch):
         assert wait_until(s, lambda: s.state.session_state != "LOADING", timeout=120.0)
         assert s.state.session_state == "READY"
         s._on_command("start", {}, 2)
-        step(s, 60.0, pause=0.005)
+        step(s, 60.0)
         assert s.state.session_state == "RUNNING" and s.physics.s > 100.0
         assert s.state.open_world["next"] is not None and s.state.lat != 0.0
     finally:

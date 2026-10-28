@@ -11,7 +11,7 @@ from openride_core import fit_export
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
 from openride_core.ipc_budget import encode
-from openride_core.ipc_server import IpcServer, IpcState
+from openride_core.ipc_server import LIST_MESSAGE_TYPES, IpcServer, IpcState
 from openride_core.mock_driver import MockDriver
 from openride_core.session import CoreSession
 
@@ -19,7 +19,7 @@ CONTRACTS = Path(__file__).resolve().parents[2] / "docs" / "contracts"
 IPC_DIR = CONTRACTS / "ipc"
 MAX_DATAGRAM = 1400         # marge interne des trames `state` du core (place des ajouts de la 2.0)
 MAX_STATE_DATAGRAM = 4096  # state depuis la révision 1.3, tout message hors parties depuis la 1.5 (§2)
-MAX_LIST_DATAGRAM = 60000   # routes et workouts (révision 1.1, §2)
+MAX_LIST_DATAGRAM = 60000   # messages en parties et `plans` (§2, ipc_server.LIST_MESSAGE_TYPES)
 
 
 def schema(name: str) -> dict:
@@ -31,7 +31,7 @@ def assert_valid(msg: dict) -> None:
     assert not errors, f"{msg['type']} invalide : {errors}"
     # Limite unique du contrat (révision 1.5, §2) : 4 096 octets hors listes. Les trames `state`, envoyées
     # à 30 Hz, restent sous 1 400 octets : les tests le vérifient pour garder la place des ajouts de la 2.0.
-    if msg["type"] in ("routes", "workouts", "room", "garage", "plans"):
+    if msg["type"] in LIST_MESSAGE_TYPES:
         limit = MAX_LIST_DATAGRAM
     elif msg["type"] == "state":
         limit = MAX_DATAGRAM

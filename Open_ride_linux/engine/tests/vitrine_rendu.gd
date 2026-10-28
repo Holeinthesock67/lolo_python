@@ -9,8 +9,10 @@ extends SceneTree
 ##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
 ##     --audio-driver Dummy --script res://tests/vitrine_rendu.gd -- --out DOSSIER [--quality low,medium,high]
 ##
-## Écrit DOSSIER/<vue>_<préréglage>.png et DOSSIER/vitrine.csv (vue ; préréglage ; triangles ; appels
-## de dessin ; objets). Les temps du processeur graphique se mesurent sur le PC cible (perf_probe.py),
+## Le préréglage demandé est appliqué comme dans la scène principale (render_quality.gd : image, ombres,
+## brouillard ; lot X32) ; avant, la vitrine n'en appliquait aucun et ne montrait pas les effets de Y13.
+## Écrit DOSSIER/<vue>_<préréglage>.png et DOSSIER/vitrine.csv (vue ; préréglage ; qualité appliquée ;
+## triangles ; appels de dessin ; objets). Les temps du processeur graphique se mesurent sur le PC cible (perf_probe.py),
 ## pas ici : le rendu logiciel de Xvfb ne dit rien de la GTX 1060.
 
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
@@ -23,6 +25,9 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
+const BuildingMesh := preload("res://scripts/building_mesh.gd")
+const ThemeLoader := preload("res://scripts/theme_loader.gd")
+const RenderQuality := preload("res://scripts/render_quality.gd")
 
 const SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
@@ -39,7 +44,29 @@ const VIEWS := {
 	"passants": [Vector3(0.5, 1.5, -24.0), Vector3(5.0, 0.9, -31.0), 60.0],
 	"animaux": [Vector3(-1.5, 1.6, -3.0), Vector3(-7.0, 0.8, -12.5), 55.0],
 	"animaux_pres": [Vector3(-4.0, 1.2, -9.6), Vector3(-7.5, 0.9, -13.0), 50.0],
+	"village": [Vector3(1.0, 1.6, -14.0), Vector3(-1.0, 4.0, -60.0), 70.0],
+	"maisons": [Vector3(2.0, 1.6, -16.0), Vector3(14.0, 3.5, -28.0), 60.0],
+	"facades_pres": [Vector3(-3.5, 1.6, -18.0), Vector3(-11.0, 3.0, -26.0), 55.0],
+	"toits": [Vector3(3.0, 22.0, -6.0), Vector3(-2.0, 2.0, -48.0), 60.0],
+	"styles": [Vector3(-104.0, 30.0, -82.0), Vector3(-104.0, 1.0, -134.0), 58.0],
 }
+## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée
+## loin de la route : les styles que prendront les biomes et les régions de la série U.
+const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
+## Bâtiments de la vitrine (forme de la couche `buildings` du .world) : type OSM, contour [x, z], hauteur des murs (m).
+## Un échantillon des types courants des villages : maisons, ferme, église, immeuble, atelier, hangar, magasin.
+const BUILDINGS := [
+	["house", [[-9.0, -21.0], [-9.0, -29.0], [-19.0, -29.0], [-19.0, -21.0]], 6.0],
+	["house", [[-9.5, -33.0], [-10.5, -41.0], [-18.5, -40.0], [-17.5, -32.0]], 6.5],
+	["yes", [[-9.0, -46.0], [-9.0, -56.0], [-15.0, -56.0], [-15.0, -50.0], [-21.0, -50.0], [-21.0, -46.0]], 5.5],
+	["church", [[-12.0, -64.0], [-12.0, -86.0], [-22.0, -86.0], [-22.0, -64.0]], 11.0],
+	["shed", [[-21.5, -22.0], [-21.5, -26.0], [-24.5, -26.0], [-24.5, -22.0]], 2.6],
+	["barn", [[10.0, -19.0], [10.0, -35.0], [22.0, -35.0], [22.0, -19.0]], 6.5],
+	["apartments", [[9.0, -40.0], [9.0, -60.0], [21.0, -60.0], [21.0, -40.0]], 12.0],
+	["retail", [[9.0, -66.0], [9.0, -80.0], [27.0, -80.0], [27.0, -66.0]], 5.0],
+	["industrial", [[30.0, -40.0], [30.0, -80.0], [56.0, -80.0], [56.0, -40.0]], 8.0],
+]
+
 ## Animaux (fauna_renderer.gd build_mesh et fauna.gdshader) : espèce, position, cap (radians), phase, tête levée.
 const ANIMALS := [
 	["cow", Vector3(-7.5, 0.0, -13.0), 1.75, 0.1, 1.0], ["cow", Vector3(-10.5, 0.0, -17.0), 2.6, 0.7, 0.0],
@@ -110,7 +137,7 @@ func _init() -> void:
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(_out_dir)
 	var csv := FileAccess.open(_out_dir.path_join("vitrine.csv"), FileAccess.WRITE)
-	csv.store_line("vue;préréglage;triangles;appels_dessin;objets")
+	csv.store_line("vue;préréglage;qualite_appliquee;triangles;appels_dessin;objets")
 	for preset in _presets:
 		var vp := _build_world(preset)
 		for view in VIEWS:
@@ -127,7 +154,7 @@ func _run() -> void:
 			var tris := RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME)
 			var draws := RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 			var objs := RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
-			csv.store_line("%s;%s;%d;%d;%d" % [view, preset, tris, draws, objs])
+			csv.store_line("%s;%s;%s;%d;%d;%d" % [view, preset, QualityPresets.applied_name(preset), tris, draws, objs])
 			print("[vitrine] %s : %d triangles, %d appels de dessin, %d objets" % [path, tris, draws, objs])
 		vp.queue_free()
 		await process_frame
@@ -196,11 +223,14 @@ func _build_world(preset: String) -> SubViewport:
 	passersby.update_passersby(Vector3(0.5, 1.5, -24.0), 24.0, 0.0)
 	_add_cyclists(vp)
 	_add_animals(vp)
+	_add_buildings(vp, preset)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
-	cam.far = 2000.0
 	cam.current = true
 	vp.add_child(cam)
+	RenderQuality.apply_preset(preset, cam, sun, env, vp)
+	RenderQuality.apply_fog(env, preset, false)
+	print("Qualité appliquée : %s (demandée %s, source vitrine)" % [QualityPresets.applied_name(preset), preset])
 	return vp
 
 
@@ -268,3 +298,38 @@ func _add_animals(vp: SubViewport) -> void:
 		mmi.multimesh = mm
 		mmi.material_override = mat
 		vp.add_child(mmi)
+
+
+## Village de BUILDINGS maillé par building_mesh.gd avec le matériau de la scène principale (osm_streamer.gd).
+func _add_buildings(vp: SubViewport, preset: String) -> void:
+	var items := []
+	for i in range(BUILDINGS.size()):
+		var b: Array = BUILDINGS[i]
+		items.append({"id": "vitrine_%d" % i, "outer": b[1], "holes": [], "base_y": 0.0, "height_m": b[2],
+			"roof": "flat", "hint": {"building": b[0], "colour": null}})
+	for j in range(STYLE_ROW.size()):
+		var x0 := -150.0 + j * 16.0
+		items.append({"id": "style_maison_%d" % j, "outer": [[x0, -120.0], [x0 + 11.0, -120.0], [x0 + 11.0, -128.0], [x0, -128.0]],
+			"holes": [], "base_y": 0.0, "height_m": 6.0, "roof": "flat", "style": STYLE_ROW[j],
+			"hint": {"building": "house", "colour": null}})
+		items.append({"id": "style_grange_%d" % j, "outer": [[x0, -134.0], [x0 + 12.0, -134.0], [x0 + 12.0, -146.0], [x0, -146.0]],
+			"holes": [], "base_y": 0.0, "height_m": 5.0, "roof": "flat", "style": STYLE_ROW[j],
+			"hint": {"building": "barn", "colour": null}})
+	var theme: Dictionary = ThemeLoader.new().load_named("default")["theme"]
+	var m := BuildingMesh.build(items, theme, 3.0)
+	var arr := []
+	arr.resize(Mesh.ARRAY_MAX)
+	arr[Mesh.ARRAY_VERTEX] = m["vertices"]
+	arr[Mesh.ARRAY_NORMAL] = m["normals"]
+	arr[Mesh.ARRAY_COLOR] = m["colors"]
+	arr[Mesh.ARRAY_TEX_UV] = m["uvs"]
+	arr[Mesh.ARRAY_TEX_UV2] = m["uvs2"]
+	arr[Mesh.ARRAY_INDEX] = m["indices"]
+	var mesh := ArrayMesh.new()
+	mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, arr)
+	var mi := MeshInstance3D.new()
+	mi.mesh = mesh
+	var mat := BuildingMesh.make_material()
+	BuildingMesh.apply_preset(mat, preset)
+	mi.material_override = mat
+	vp.add_child(mi)

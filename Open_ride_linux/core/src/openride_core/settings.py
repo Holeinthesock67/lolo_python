@@ -10,7 +10,7 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
     {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50,
      "max": 600, "step": 5, "unit": "W", "applies": "next_session"}
 
-`group` range le réglage dans un sous-écran de « Réglages » (`GROUPS` : cycliste, séance, affichage,
+`group` range le réglage dans un sous-écran de « Réglages » (`GROUPS` : cycliste, séance, graphisme,
 son, vent) ; l'engine donne les titres.
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
@@ -57,17 +57,18 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("rider.ftp_w", "FTP", "rider", 5, "W"),
     Setting("rider.mass_kg", "Poids", "rider", 1, "kg"),
     Setting("bike.mass_kg", "Poids du vélo", "rider", 1, "kg"),
-    # Séance ; bonus du mode classique (série T, lots T7 et T10)
+    # Séance ; bonus et niveau des bots du mode classique (série T, lots T7, T10 et T13)
     Setting("trainer.difficulty_pct", "Difficulté en SIM", "ride", 10, "%"),
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     Setting("powerups.mode", "Bonus", "ride"),
-    # Affichage
-    Setting("render.quality", "Qualité graphique", "display", applies="now"),
-    Setting("render.theme", "Thème", "display", applies="now"),
-    Setting("render.chart", "Courbes de la séance", "display", applies="now"),
-    Setting("render.display", "Mode d'affichage", "display", applies="now"),
-    Setting("render.fps", "Afficher les images/s", "display", applies="now"),
-    Setting("render.camera", "Vue de caméra", "display", applies="now"),
+    Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    # Graphisme
+    Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
+    Setting("render.theme", "Thème", "graphics", applies="now"),
+    Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
+    Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
+    Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
+    Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
     Setting("audio.master_pct", "Volume général", "sound", 10, "%", "now"),
     Setting("audio.ride_pct", "Volume vent et roue libre", "sound", 10, "%", "now"),
@@ -81,7 +82,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("wind.max_grade_offset_pct", "Plafond du vent", "wind", 1, "pts"),
 )
 # Sous-écrans de « Réglages », dans l'ordre d'affichage (champ `group` de chaque élément).
-GROUPS = ("rider", "ride", "display", "sound", "wind")
+GROUPS = ("rider", "ride", "graphics", "sound", "wind")
 KEYS = tuple(s.key for s in SETTINGS)
 
 

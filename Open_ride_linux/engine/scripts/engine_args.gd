@@ -12,6 +12,7 @@ extends RefCounted
 ##   --perf-probe=FICHIER.csv sonde de performance : une ligne de mesures par seconde (lot X13)
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
+##   --culling=on|off         tri de ce que la caméra ne voit pas (défaut : off, aucun gain mesuré ; on : essai, lot S1)
 ##   --display=windowed|borderless|fullscreen  mode d'affichage (défaut : windowed ; display_mode.gd)
 ##   --camera=subjective|follow_near|follow_far|side  vue de caméra de départ (défaut : follow_near ; camera_views.gd)
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
@@ -40,7 +41,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, biome, visual_grade, living, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, biome, visual_grade, living, culling, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -52,6 +53,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"biome": "auto",
 		"visual_grade": DEFAULT_VISUAL_GRADE,
 		"living": true,
+		"culling": false,
 		"display": DisplayMode.DEFAULT,
 		"camera": CameraViews.DEFAULT_VIEW,
 		"test_mode": false,
@@ -82,7 +84,9 @@ static func parse(args: PackedStringArray) -> Dictionary:
 				csv = _home() + csv.substr(1)
 			out["perf_probe"] = csv
 		elif arg.begins_with("--living="):
-			out["living"] = _living(arg, true)
+			out["living"] = _on_off(arg, true, "décor vivant")
+		elif arg.begins_with("--culling="):
+			out["culling"] = _on_off(arg, false, "tri du visible")
 		elif arg.begins_with("--camera="):
 			out["camera"] = _camera(arg, CameraViews.DEFAULT_VIEW)
 		elif arg.begins_with("--display="):
@@ -161,14 +165,16 @@ static func _visual_grade(arg: String, fallback: float) -> float:
 		printerr("Argument ignoré (visual_grade hors bornes [1.0, 3.0]) : ", arg)
 		return fallback
 	return val
-static func _living(arg: String, fallback: bool) -> bool:
+
+
+static func _on_off(arg: String, fallback: bool, what: String) -> bool:
 	var val := arg.get_slice("=", 1).strip_edges().to_lower()
 	if val in ["on", "true", "1", "oui"]:
 		return true
 	if val in ["off", "false", "0", "non"]:
 		return false
-	last_error = "Argument ignoré (décor vivant : on ou off) : " + arg
-	printerr("Argument ignoré (décor vivant : on ou off) : ", arg)
+	last_error = "Argument ignoré (%s : on ou off) : %s" % [what, arg]
+	printerr(last_error)
 	return fallback
 
 

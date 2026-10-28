@@ -54,6 +54,7 @@ SUMMARY = (
     ("static_mb", "mémoire statique (Godot)", "Mo"), ("nodes", "nœuds", ""),
     ("near_tiles", "tuiles proches", ""), ("far_tiles", "tuiles lointaines", ""),
     ("osm_chunks", "tronçons OSM", ""), ("trees", "arbres", ""),
+    ("culled_near", "tuiles proches écartées (S1)", ""),
     ("gpu_util_pct", "charge du GPU", "%"), ("gpu_mem_mb", "mémoire vidéo (nvidia-smi)", "Mo"),
     ("gpu_temp_c", "température du GPU", "°C"), ("core_cpu_pct", "CPU du core", "%"),
     ("godot_cpu_pct", "CPU de Godot", "%"), ("core_rss_mb", "mémoire du core", "Mo"),
@@ -68,7 +69,7 @@ CHARTS = (
     ("Primitives dessinées", (("primitives", "primitives", "#2c3e50"),)),
     ("Mémoire vidéo (Mo)", (("vram_mb", "Godot", "#27ae60"), ("gpu_mem_mb", "nvidia-smi", "#c0392b"))),
     ("Décor chargé", (("near_tiles", "tuiles proches", "#2980b9"), ("far_tiles", "lointaines", "#7f8c8d"),
-                      ("osm_chunks", "tronçons OSM", "#d35400"))),
+                      ("osm_chunks", "tronçons OSM", "#d35400"), ("culled_near", "écartées (S1)", "#c0392b"))),
     ("Arbres", (("trees", "arbres", "#27ae60"),)),
     ("CPU des processus (% d'un cœur)", (("godot_cpu_pct", "Godot", "#2980b9"), ("core_cpu_pct", "core", "#d35400"))),
     ("GPU (nvidia-smi)", (("gpu_util_pct", "charge %", "#c0392b"), ("gpu_temp_c", "température °C", "#8e44ad"))),
@@ -362,6 +363,26 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
     return out
 
 
+def presets_of(rows: list[dict[str, Any]]) -> list[str]:
+    """Préréglages appliqués, dans l'ordre (l'engine note la qualité réellement appliquée, lot X32)."""
+    out: list[str] = []
+    for r in rows:
+        p = str(r.get("preset") or "")
+        if p and (not out or out[-1] != p):
+            out.append(p)
+    return out
+
+
+def quality_check(summary: dict[str, Any], wanted: str) -> tuple[bool, str]:
+    """Garde-fou du lot X32 : toutes les secondes mesurées l'ont été dans le préréglage voulu."""
+    seen = summary.get("presets") or []
+    if not seen:
+        return False, "aucun préréglage noté dans la sonde"
+    if any(p != wanted for p in seen):
+        return False, f"qualité voulue {wanted}, mesurée en {', puis '.join(seen)}"
+    return True, f"{wanted} sur toute la mesure"
+
+
 # --- écriture ------------------------------------------------------------------------------
 
 def write_csv(rows: list[dict[str, Any]], path: Path) -> None:
@@ -411,7 +432,9 @@ def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de p
     text = summary_text(summary, title)
     (out / "sonde.txt").write_text(text, encoding="utf-8")
     charts = "\n".join(c for c in (svg_chart(rows, t, s) for t, s in CHARTS) if c)
-    preset = next((r["preset"] for r in rows if r.get("preset")), "")
+    summary["presets"] = presets_of(rows)
+    summary["preset"] = summary["presets"][-1] if summary["presets"] else ""
+    preset = ", puis ".join(summary["presets"])
     (out / "rapport.html").write_text(f"""<!doctype html>
 <html lang="fr"><head><meta charset="utf-8"><title>{html.escape(title)}</title>
 <style>body{{font-family:sans-serif;margin:16px;max-width:960px}} pre{{background:#f4f4f4;padding:8px;overflow-x:auto}}
@@ -429,7 +452,7 @@ pour les temps de la vue, dernière image pour les compteurs du rendu.</p>
 # --- commandes -----------------------------------------------------------------------------
 
 def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float = 120.0,
-          idle_stop_s: float = IDLE_STOP_S, period_s: float = 1.0) -> int:
+          idle_stop_s: float = IDLE_STOP_S, period_s: float = 1.0, quality: str | None = None) -> int:
     print(f"Sonde : attente du fichier de l'engine {engine_csv} …", flush=True)
     t0 = time.monotonic()
     while not engine_csv.is_file() and time.monotonic() - t0 < wait_s:
@@ -457,10 +480,18 @@ def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float =
         print()
     sampler.stop()
     rows = merge(read_engine_csv(engine_csv), sampler.rows)
-    write_report(rows, out)
+    summary = write_report(rows, out)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
     print(f"Rapport : {out / 'rapport.html'}")
-    return 0
+    return _quality_verdict(summary, quality)
+
+
+def _quality_verdict(summary: dict[str, Any], quality: str | None) -> int:
+    if not quality:
+        return 0
+    ok, msg = quality_check(summary, quality)
+    print(f"[{'OK' if ok else 'ÉCHEC'}] qualité réellement appliquée : {msg}")
+    return 0 if ok else 1
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -471,22 +502,24 @@ def main(argv: list[str] | None = None) -> int:
                    help=f"fichier écrit par l'engine (défaut : OPENRIDE_PERF_PROBE ou {DEFAULT_ENGINE_CSV})")
     w.add_argument("--out", type=Path, help=f"dossier du rapport (défaut : {DEFAULT_OUT}/<date>)")
     w.add_argument("--duration", type=float, help="durée maximale en secondes")
+    w.add_argument("--quality", help="préréglage voulu : échec si une seconde a été mesurée dans un autre (lot X32)")
     r = sub.add_parser("report", help="refaire le rapport d'un dossier (sonde.csv) ou d'un fichier de l'engine")
     r.add_argument("source", type=Path)
     r.add_argument("--out", type=Path)
+    r.add_argument("--quality", help="préréglage voulu : échec si une seconde a été mesurée dans un autre (lot X32)")
     args = ap.parse_args(argv)
     if args.cmd == "watch":
         out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        return watch(args.engine_csv.expanduser(), out, args.duration)
+        return watch(args.engine_csv.expanduser(), out, args.duration, quality=args.quality)
     src = args.source / "sonde.csv" if args.source.is_dir() else args.source
     rows = read_engine_csv(src)
     if not rows:
         print(f"Aucune mesure dans {src}")
         return 1
     out = args.out or (args.source if args.source.is_dir() else args.source.parent)
-    write_report(rows, out)
+    summary = write_report(rows, out)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
-    return 0
+    return _quality_verdict(summary, args.quality)
 
 
 if __name__ == "__main__":

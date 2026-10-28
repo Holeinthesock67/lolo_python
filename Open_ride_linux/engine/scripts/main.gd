@@ -8,6 +8,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
@@ -192,6 +193,8 @@ func _ready() -> void:
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
+	streamer.culling = bool(cfg.get("culling", false))
+	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
@@ -210,7 +213,9 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+	streamer.osm_streamer.set_preset(_quality_name)
 	RenderQuality.apply_fog(world_env.environment, _quality_name, false)
+	_report_quality(_quality_name, "cli" if _quality_from_cli() else "defaut")
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
 	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
 	if RenderingServer.get_rendering_device() == null:   # Compatibility : pas de RenderingDevice
@@ -351,6 +356,22 @@ func _ready() -> void:
 		_refresh_menu())
 
 
+## Qualité réellement appliquée (lot X32) : ligne toujours écrite, ligne de test pour les bancs
+## (engine/tests/quality_guard.py) et préréglage noté dans la sonde de performance (lot X13).
+func _report_quality(requested: String, source: String) -> void:
+	print("Qualité appliquée : %s (demandée %s, source %s)" % [_quality_name, requested, source])
+	ipc.test_log("quality applied=%s requested=%s source=%s" % [_quality_name, requested, source])
+	_probe.preset = _quality_name
+
+
+## Vrai si --quality figure dans les arguments de l'engine (sinon, valeur par défaut d'engine_args.gd).
+static func _quality_from_cli() -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--quality="):
+			return true
+	return false
+
+
 ## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
 ## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s montré ou caché.
 func _on_settings(msg: Dictionary) -> void:
@@ -363,7 +384,11 @@ func _on_settings(msg: Dictionary) -> void:
 		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
-		print("Qualité graphique : ", _quality_name)
+		if streamer.osm_streamer != null:
+			streamer.osm_streamer.set_preset(_quality_name)
+		_report_quality(q, "reglage")
+	elif q != _quality_name:
+		_report_quality(q, "reglage")   # valeur inconnue : la qualité appliquée ne change pas, et le journal le dit
 	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
 	if th != _theme_name:
 		_apply_theme(th)
@@ -533,6 +558,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("end_session", {"save": bool(act.get("save", true))})
 		"start", "resume":
 			ipc.send_command(name, act.get("args", {}))
+		"start_run":
+			ipc.start_run(act.get("args", {}))
 		"open_world_menu":
 			world_menu_view.open()
 			ipc.send_command("world_regions")
@@ -685,6 +712,9 @@ func _process(delta: float) -> void:
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
+	# Personnages et animaux (anim_clock.gd) : figés avec le décor quand le core ne répond plus.
+	if not banner.has_message("core_lost"):
+		AnimClock.advance(delta)
 	if rogue_host.is_active():
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
@@ -692,9 +722,14 @@ func _process(delta: float) -> void:
 		return
 	if not follow.has_frame():
 		return
-	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd).
+	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd), figée 1,1 s après la
+	# dernière trame ; journalisée en mode test même core muet (scénario 4 de fake_core.py).
 	var s_disp: float = follow.update(now)
 	_test_log_camera(now, s_disp)
+	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
+	# l'horloge des personnages et des animaux ci-dessus.
+	if banner.has_message("core_lost"):
+		return
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		var pos: Vector3 = route.sample_point(s_route)
@@ -716,9 +751,9 @@ func _process(delta: float) -> void:
 
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
-## Core non joignable : le décor se fige avec la caméra (pas de nuages ni d'herbe qui bougent).
+## Core non joignable : pas appelé (_process fige toute la scène), donc ni nuages ni herbe qui bougent.
 func _step_living(delta: float, s_route: float, v: float) -> void:
-	if living_world == null or route == null or banner.has_message("core_lost"):
+	if living_world == null or route == null:
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0
@@ -902,18 +937,22 @@ func _poll_route_job() -> void:
 
 ## Messages de test (--test-mode) : « screenshot » enregistre l'image affichée en PNG et journalise
 ## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py ;
-## « menu_input » joue un appui du Click dans les menus ; « command » fait envoyer une commande par l'engine.
+## « command » fait envoyer une commande par l'engine ;
+## « key » et « mouse » jouent une touche ou la souris par le vrai chemin des entrées de Godot, en menu comme en
+## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py).
 func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+		"key":
+			_test_key(str(msg.get("key", "")), bool(msg.get("shift", false)), int(msg.get("hold_ms", 100)))
+		"mouse":
+			_test_mouse(str(msg.get("kind", "click")), str(msg.get("item", "")), msg.get("at", []))
+		"menu_state":
+			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
 				living_decor.set_weather(msg["weather"])
-		"menu_input":   # appui simulé dans les menus (banc des menus, tests/menu_bench.py)
-			var ev := str(msg.get("event", ""))
-			if ev in MenuModel.EVENTS:
-				_menu_event(ev)
 		"menu_focus":   # focus sur un élément de l'écran courant du menu (tests graphiques du Garage, lot V8)
 			menu_flow.menu.focus_item(str(msg.get("id", "")))
 			_refresh_menu()
@@ -922,6 +961,99 @@ func _on_test_message(msg: Dictionary) -> void:
 			avatar_view.set_visible_for_view(_avatar_view_name())
 		"command":   # commande du contrat envoyée par l'engine lui-même (pause, end_session…)
 			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
+
+
+## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…) : appui, puis relâchement
+## `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
+## Les deux événements sont traités tout de suite (flush_buffered_events) et l'attente bloque l'image en cours :
+## la durée mesurée par key_map.gd est celle demandée, même à 1 image/s sous Xvfb.
+func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
+	var code := OS.find_keycode_from_string(key_name)
+	if code == KEY_NONE:
+		ipc.test_log("key unknown=%s" % key_name)
+		return
+	var down := InputEventKey.new()
+	down.keycode = code
+	down.physical_keycode = code
+	down.shift_pressed = shift
+	down.pressed = true
+	if key_name.length() == 1:
+		down.unicode = (key_name.to_upper() if shift else key_name.to_lower()).unicode_at(0)
+	Input.parse_input_event(down)
+	Input.flush_buffered_events()
+	OS.delay_usec(maxi(hold_ms, 0) * 1000)
+	var up: InputEventKey = down.duplicate()
+	up.pressed = false
+	Input.parse_input_event(up)
+	Input.flush_buffered_events()
+	ipc.test_log("key done=%s shift=%s hold_ms=%d" % [key_name, shift, hold_ms])
+
+
+## Souris simulée : `kind` click (bouton gauche), right, wheel_up, wheel_down ou move ; sur la rangée de l'élément
+## `item` du menu, sinon au point `at` ([x, y] en pixels de la fenêtre), sinon au centre de la fenêtre. Déplacement,
+## appui puis relâchement à l'image suivante (rangées mises en page), par Input.parse_input_event (même chemin que la
+## vraie souris), traités tout de suite.
+func _test_mouse(kind: String, item: String, at) -> void:
+	await get_tree().process_frame   # mise en page des rangées tout juste affichées faite (conteneurs triés en différé)
+	var to_pixels := get_viewport().get_final_transform()
+	var pos := get_viewport().get_visible_rect().get_center() * to_pixels.get_scale()
+	if item != "":
+		var r: Rect2 = menu_view.item_rect(item)
+		if not r.has_area():
+			ipc.test_log("mouse hidden=%s" % item)
+			return
+		pos = to_pixels * r.get_center()
+	elif at is Array and at.size() == 2:
+		pos = Vector2(float(at[0]), float(at[1]))
+	var move := InputEventMouseMotion.new()
+	move.position = pos
+	move.global_position = pos
+	Input.parse_input_event(move)
+	Input.flush_buffered_events()
+	var buttons := {"click": MOUSE_BUTTON_LEFT, "right": MOUSE_BUTTON_RIGHT, "wheel_up": MOUSE_BUTTON_WHEEL_UP,
+		"wheel_down": MOUSE_BUTTON_WHEEL_DOWN}
+	if buttons.has(kind):
+		var press := InputEventMouseButton.new()
+		press.position = pos
+		press.global_position = pos
+		press.button_index = buttons[kind]
+		press.button_mask = 1 << (int(buttons[kind]) - 1)
+		press.pressed = true
+		Input.parse_input_event(press)
+		Input.flush_buffered_events()
+		var release: InputEventMouseButton = press.duplicate()
+		release.pressed = false
+		release.button_mask = 0
+		Input.parse_input_event(release)
+		Input.flush_buffered_events()
+	ipc.test_log("mouse done=%s item=%s at=%d,%d" % [kind, item, int(pos.x), int(pos.y)])
+
+
+## État des menus pour le banc (`req` : numéro de la demande, rendu tel quel) : écran, titre, focus, éléments,
+## rangées affichées avec leur rectangle en pixels, aide des boutons, pastilles des appareils, carte de détail, séance,
+## monde ouvert, Cyber-Rogue.
+func _test_menu_state(req: String) -> Dictionary:
+	var st: Dictionary = menu_flow.state()
+	var items: Array = []
+	for it in st["items"]:
+		items.append({"id": str(it.get("id", "")), "label": str(it.get("label", "")), "detail": str(it.get("detail", "")),
+			"enabled": bool(it.get("enabled", true))})
+	var focus := int(st["focus"])
+	var to_pixels := get_viewport().get_final_transform()
+	var rows: Array = []
+	for row in menu_view.test_rows():
+		var r: Rect2 = to_pixels * (row["rect"] as Rect2)
+		rows.append({"id": row["id"], "text": row["text"], "focused": row["focused"],
+			"rect": [r.position.x, r.position.y, r.size.x, r.size.y]})
+	var world := {"visible": world_menu_view != null and world_menu_view.visible}
+	if world["visible"]:
+		world["state"] = str(world_menu_view.vm.state)
+	return {"req": req, "visible": menu_view.visible, "screen": st["screen"], "title": st["title"],
+		"status": st["status"], "focus": focus, "focus_id": items[focus]["id"] if focus >= 0 and focus < items.size() else "",
+		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
+		"hint": menu_view.hint_text(), "devices": menu_view.devices.text() if menu_view.devices.visible else "",
+		"card": menu_view.card.text() if menu_view.card.visible else "", "session_state": menu_flow.session_state, "world_menu": world,
+		"rogue": rogue_host.is_active(), "hud": hud.visible, "quality": _quality_name}
 
 
 func _avatar_info() -> Dictionary:
@@ -948,6 +1080,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
+		"bots_gap1": hud.bots_gaps[0], "bots_ahead": hud.neighbor_labels[0], "bots_behind": hud.neighbor_labels[1],
+		"bots_jerseys": hud.jerseys_label, "segment_panel": hud.panel_segment,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
 		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}
@@ -968,6 +1102,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 	var info := {
 		"tag": tag, "path": path, "ok": err == OK, "size": [img.get_width(), img.get_height()],
 		"fps": Engine.get_frames_per_second(), "meshes": meshes, "ticks_ms": Time.get_ticks_msec(),
+		"quality": _quality_name,
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
@@ -1112,6 +1247,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		chart_mode = ch
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
 
 
@@ -1185,7 +1321,9 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if running and route != null:
 		_give_cues(state)
-	bots_model.push(state.get("bots", null) if running or session_state == "PAUSED" else null, Time.get_ticks_usec())
+	var in_session := running or session_state == "PAUSED"
+	bots_model.push(state.get("bots", null) if in_session else null, Time.get_ticks_usec())
+	bots_model.set_race(state if in_session else null)
 
 	_feed_chart(state, running, previous_session_state)
 
@@ -1275,7 +1413,7 @@ func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> vo
 func _show_bots(rider_s: float, rider_v: float) -> void:
 	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
 	if hud != null and hud.has_method("update_bots"):
-		hud.update_bots(view)
+		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
 

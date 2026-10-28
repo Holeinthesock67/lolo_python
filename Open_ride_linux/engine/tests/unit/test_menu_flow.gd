@@ -5,6 +5,7 @@ extends SceneTree
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
+const MenuModel := preload("res://scripts/menu_model.gd")
 
 const ROUTES := [
 	{"id": "demo", "name": "Démo", "length_m": 4000.0, "is_loop": true, "status": "ready"},
@@ -276,7 +277,7 @@ func _test_settings_screen() -> void:
 			"step": 5, "unit": "W", "applies": "next_session"},
 		{"key": "trainer.difficulty_pct", "label": "Difficulté en SIM", "group": "ride", "type": "int", "value": 50,
 			"min": 0, "max": 100, "step": 10, "unit": "%", "applies": "next_session"},
-		{"key": "render.quality", "label": "Qualité graphique", "group": "display", "type": "choice", "value": "high",
+		{"key": "render.quality", "label": "Qualité graphique", "group": "graphics", "type": "choice", "value": "high",
 			"choices": ["low", "medium", "high"], "applies": "now"},
 		{"key": "wind.from_deg", "label": "Direction du vent", "group": "wind", "type": "int", "value": 270, "min": 0,
 			"max": 360, "step": 45, "unit": "°", "applies": "next_session"},
@@ -286,7 +287,7 @@ func _test_settings_screen() -> void:
 	f.handle("MINUS_SHORT")
 	f.handle("A_LONG")   # Réglages
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
-	_check(labels == ["Appareils : rechercher et appairer", "Cycliste", "Séance", "Affichage", "Vent",
+	_check(labels == ["Appareils : rechercher et appairer", "Cycliste", "Séance", "Graphisme", "Vent",
 			"Autres réglages", "OpenRide " + f.engine_version], "réglages rangés en sous-écrans : %s" % str(labels))
 	_check(f.state()["items"][1]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
 	_check(f.state()["items"][-1]["enabled"] == false, "ligne de version non sélectionnable")
@@ -324,7 +325,7 @@ func _test_settings_screen() -> void:
 	_check(f.state()["screen"] == "settings" and _focus_id(f) == "group:rider", "retour aux Réglages sur Cycliste")
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
-	f.handle("A_LONG")   # Affichage
+	f.handle("A_LONG")   # Graphisme
 	f.handle("A_LONG")   # Qualité
 	f.handle("PLUS_SHORT")
 	_check(f.state()["items"][0]["detail"] == "◀ low ▶", "choix en boucle : high → low")
@@ -339,14 +340,14 @@ func _test_settings_screen() -> void:
 	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
 	f.on_state({"session_state": "PAUSED", "difficulty_pct": 50})
 	f.handle("MINUS_SHORT")
-	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["label"] == "Difficulté : ■■■■■□□□□□ 50 %",
+	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["detail"] == "50 %" and f.state()["items"][3]["bar"] == 50,
 			"pause : curseur de difficulté")
 	f.handle("A_LONG")
 	f.handle("MINUS_SHORT")
 	f.handle("MINUS_SHORT")
 	act = f.handle("A_LONG")
 	_check(act == {"action": "set_difficulty", "pct": 30} and f.state()["screen"] == "pause"
-			and f.state()["items"][3]["label"] == "Difficulté : ■■■□□□□□□□ 30 %", "pause : set_difficulty à 30 (%s)" % str(act))
+			and f.state()["items"][3]["detail"] == "30 %" and not f.state()["items"][3]["editing"], "pause : set_difficulty à 30 (%s)" % str(act))
 
 
 func _test_erg_submenu() -> void:
@@ -655,6 +656,16 @@ func _test_bots_menu() -> void:
 		"test de FTP et bot : arguments réunis")
 	g.menu.reset()
 	_check(g.menu.bot_choice == 0 and not g.menu.ghost, "nouvelle séance : bots remis à zéro")
+	# Bots à profil (lot T13) : après les bots constants, chaque profil à 90, 100 et 110 % de la FTP.
+	var labels: Array = []
+	for c in MenuModel.BOT_CHOICES:
+		labels.append(c[0])
+	_check(labels.slice(7) == ["Grimpeur 90 %", "Grimpeur 100 %", "Grimpeur 110 %", "Rouleur 90 %", "Rouleur 100 %",
+		"Rouleur 110 %", "Sprinteur 90 %", "Sprinteur 100 %", "Sprinteur 110 %", "Diesel 90 %", "Diesel 100 %", "Diesel 110 %"],
+		"profils et niveaux au menu (%s)" % str(labels))
+	g.menu.bot_choice = 9
+	_check(g.menu._start_args() == {"bots": [{"kind": "profile", "profile": "climber", "level_pct": 110}]},
+		"start avec un grimpeur à 110 %% (%s)" % str(g.menu._start_args()))
 
 
 func _init() -> void:

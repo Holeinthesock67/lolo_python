@@ -20,7 +20,7 @@ N9, R2, T2, T7 et T14 livrés. O7 pour l'argument `bots` de `start` (en cours de
 - **Nouvelle classe `ProfileBot`** dans `bots.py`, même modèle physique que `ConstantPowerBot` (pente réelle, pas de braquet), mais puissance décidée à chaque pas par sa stratégie et limitée par sa réserve :
   - réserve W′bal calculée par `rogue/wbal.py` (`wbal_step`, sans bonus de cadence : `cadence_rpm` à 0), **un seul module pour le joueur et les bots** (plan §3.4) ;
   - au-dessus de la CP, la puissance demandée est ramenée à la CP quand la réserve est vide ;
-  - `kind` vaut `"profile"`, `to_dict()` ajoute `profile`, `cp_w`, `mass_kg` et `wbal_pct` (0 à 100) aux champs de N9.
+  - `kind` reste `"constant"` dans la trame (le contrat 1.4 fixe `constant` ou `ghost`, et son exemple montre un bot à profil en `constant`), `to_dict()` ajoute `profile`, `cp_w`, `mass_kg` et `wbal_pct` (0 à 100) aux champs de N9.
 - **Profils** (table de données dans `bots.py`, valeurs du 27 octobre, CP en W/kg) :
 
   | Profil (`profile`) | Nom affiché | Masse | CP | W′ | Pic |
@@ -69,3 +69,12 @@ L'élément `{ "kind": "profile", "profile": … }` de l'argument `bots` de `sta
 - Mise à l'échelle sur ta FTP et niveaux 90, 100, 110 % (T13).
 - Choix des profils au menu de l'engine (T13) et HUD des bots (T15).
 - Aspiration entre bots, bonus des bots.
+
+## 9. Livraison (28 octobre 2026)
+
+- **`ProfileBot`** dans `core/src/openride_core/bots.py`, sous-classe de `ConstantPowerBot` : table `PROFILES` (`BotProfile` : masse, CP en W/kg, W′, pic, fractions de la stratégie), réserve `wbal_step` de `rogue/wbal.py` avec une cadence de 0, puissance ramenée à la CP quand la réserve est vide, pic du sprinteur de 10 s au plus par passage de sprint (sprint et tour). Masse physique : masse du profil plus celle du vélo de `config.toml` (8 kg par défaut hors séance). Paramètre `scale` (CP, W′ et pic) préparé pour T13.
+- **`kind`** reste `constant` dans la trame : le contrat 1.4 fixe `constant` ou `ghost` et son exemple montre un bot à profil en `constant` ; le champ `profile` le distingue (l'engine de T15 le colore d'après ce champ).
+- **Segments** : `attach_segments` donne aux bots à profil les segments de la couche au départ de la séance (`CoreSession._new_race`).
+- **Création** : `openride-core run --bot-profile climber` (répétable, au plus 4 bots en tout avec `--bot`, « Grimpeur 2 » pour un deuxième), élément `{kind: "profile", profile}` de `start.bots` (`bots_from_menu`), `bot_invalid` pour un profil inconnu ; contrat : une ligne dans l'historique de la révision 1.5.
+- **Tests** : `core/tests/test_profile_bots.py` (critères 2 à 8).
+

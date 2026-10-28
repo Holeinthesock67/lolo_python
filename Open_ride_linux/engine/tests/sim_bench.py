@@ -5,7 +5,7 @@ Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
-                 [--probe] [--out DOSSIER] [--list]
+                 [--culling on|off] [--probe] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -26,11 +26,16 @@ et le CPU des processus : rapport dans `<scénario>/sonde/` (lot X13). Le scéna
 roule une heure, relance le parcours à chaque fin et vérifie images/s, saccades et croissance de la mémoire.
 `--display` (avec `--native`) choisit le mode d'affichage de l'engine (`display_mode.gd`) : fenêtre de
 `--size` par défaut, `borderless` ou `fullscreen` à la définition native de l'écran, pour comparer les modes
-avec la sonde.
+avec la sonde. `--culling on` active le tri de ce que la caméra ne voit pas (lot S1, coupé par défaut faute de gain
+mesuré) : scénario `rendu_invisible`, à comparer avec `--culling off` (défaut).
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
 qui peuvent fixer `world`, `workout`, `duration_s` et `difficulty_pct` dans une section
 `bench`), ou un fichier JSON au format de `docs/SIMULATION_BLE.md`. `--list` les énumère.
+Décor vivant (lot P30) : chaque capture relève les objets affichés par sorte et les sons du décor démarrés
+(`decor` de la ligne `screenshot`) ; le rapport les trace et `decor.csv` les garde. La section `bench` peut
+demander `decor_expect` (sortes vues au moins une fois, ex. `["birds", "animals"]`) et `sounds_expect`
+(groupes de sons dont un au moins doit démarrer, ex. `[["raptor_cry", "crow_caw"]]`).
 
 Code de sortie : 0 si toutes les vérifications passent, 1 sinon, 2 si Godot ou xvfb-run manque.
 """
@@ -60,12 +65,19 @@ sys.path.insert(0, str(REPO / "core" / "src"))
 
 from e2e_check import Proc, free_udp_ports, now, send_cmd, snapshot_home  # noqa: E402
 import perf_probe  # noqa: E402
+import quality_guard  # noqa: E402
 from openride_core import sim_scenarios  # noqa: E402
 from openride_core.tools.guide import Guide  # noqa: E402
 
 BENCH_SCENARIOS_DIR = TESTS_DIR / "sim_bench_scenarios"
+# Sortes du décor vivant relevées à chaque capture (living_decor.gd `test_info`, lot P30) : clé -> libellé, couleur.
+DECOR_KINDS = {"birds": ("oiseaux", "#2980b9"), "animals": ("animaux", "#8e5a2b"), "vehicles": ("véhicules", "#c0392b"),
+               "distant_vehicles": ("véhicules lointains", "#e67e22"), "cyclists": ("cyclistes", "#27ae60"),
+               "aircraft": ("ciel", "#8e44ad"), "boats": ("bateaux", "#16a085")}
 CMD_ID_BASE = 20_000
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
+# Lot S1 : apparitions ignorées pendant le premier chargement (m de route).
+POP_WARMUP_M = 100.0
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 # Mêmes tolérances que visual_check.py (avertissements connus du mode test et de Xvfb).
 GODOT_TOLERATED = re.compile(
@@ -181,12 +193,19 @@ class Bench:
         self.name = name
         self.spec = spec
         self.scenario_arg = scenario_arg
-        self.world = str(settings.get("world") or args.world)
+        # --world donné explicitement l'emporte sur le monde du scénario (même scénario, autre parcours).
+        self.world = str(args.world or settings.get("world") or "demo")
         self.workout = settings.get("workout", args.workout)
         self.difficulty = settings.get("difficulty_pct", args.difficulty)
         self.duration = float(args.duration or settings.get("duration_s") or
                               min(max(scenario_duration(spec) + 15.0, 45.0), 600.0))
         self.every = float(args.every or settings.get("every_s") or 15.0)
+        self.decor_expect = [str(k) for k in settings.get("decor_expect", [])]
+        self.sounds_expect = [[str(k) for k in group] for group in settings.get("sounds_expect", [])]
+        # Lot S1 : captures tous les N mètres de route (même endroit d'un essai à l'autre) au lieu de toutes
+        # les N secondes ; contrôles des tuiles (apparitions, jointures, trous) stricts si le scénario le demande.
+        self.every_m = float(getattr(args, "every_m", None) or settings.get("every_m") or 0.0)
+        self.strict_tiles = bool(settings.get("strict_tiles"))
         # Essai d'endurance (lot X16) : sonde de performance et vérifications de durée.
         self.endurance = bool(settings.get("endurance"))
         self.probe = bool(args.probe or self.endurance)
@@ -204,6 +223,7 @@ class Bench:
         self.t0_wall = 0.0
         self.sampler: perf_probe.SystemSampler | None = None
         self.probe_summary: dict[str, Any] | None = None
+        self.applied_quality = ""   # qualité lue au journal de l'engine (lot X32), affichée au rapport
 
     # Temps relatif au « Core démarré » (même origine que les événements du scénario).
     def rel(self, t: float) -> float:
@@ -269,7 +289,7 @@ class Bench:
                     "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
-                    f"--display={a.display}", f"--camera={a.camera}"]
+                    f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}"]
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
                 cmd.append(f"--perf-probe={(self.out / 'moteur.csv').resolve()}")
                 self.sampler = perf_probe.SystemSampler()
@@ -333,7 +353,10 @@ class Bench:
             try:
                 data = json.loads(got[1].group(1))
                 info.update(ok=bool(data.get("ok")), fps=data.get("fps"), meshes=data.get("meshes"),
+                            quality=data.get("quality"),
                             draw_calls=data.get("draw_calls"),
+                            decor={k: int(data.get("decor", {}).get(k, 0)) for k in DECOR_KINDS},
+                            sounds=dict(data.get("decor", {}).get("sounds", {})),
                             widgets={k: v.get("text", "") for k, v in data.get("widgets", {}).items()
                                      if v.get("visible")})
             except ValueError:
@@ -341,10 +364,11 @@ class Bench:
         self.shots.append(info)
 
     def _capture_loop(self, engine: Proc, port: int) -> None:
-        """Captures périodiques et juste après chaque événement du scénario, jusqu'à la durée voulue."""
+        """Captures périodiques (au temps, ou tous les `every_m` mètres) et juste après chaque événement du
+        scénario, jusqu'à la durée voulue."""
         plan: list[tuple[float, str]] = []
         t = 3.0
-        while t < self.duration:
+        while t < self.duration and self.every_m <= 0.0:
             plan.append((t, f"t{int(t):03d}"))
             t += self.every
         for k, ev in enumerate(self.spec.get("events", [])):
@@ -356,17 +380,47 @@ class Bench:
             if ev.get("seconds") and et + float(ev["seconds"]) < self.duration:
                 plan.append((et + float(ev["seconds"]) - 0.5, f"ev{k}_{label}_fin"))
         plan.sort()
-        for at, tag in plan:
-            wait = self.t_core + at - now()
-            if wait > 0:
-                time.sleep(wait)
+        next_m = self.every_m
+        cam_after = 0.0
+        while True:
+            t_rel = now() - self.t_core
+            if t_rel >= self.duration:
+                return
             if engine.p.poll() is not None:
                 self.report.check(False, "engine vivant", f"engine arrêté à {self.rel(now()):.0f} s")
                 return
-            self._shot(engine, port, tag)
-        wait = self.t_core + self.duration - now()
-        if wait > 0:
-            time.sleep(wait)
+            if plan and plan[0][0] <= t_rel:
+                self._shot(engine, port, plan.pop(0)[1])
+                continue
+            until = min(plan[0][0] if plan else self.duration, self.duration) - t_rel
+            if self.every_m <= 0.0:
+                time.sleep(max(0.0, until))
+                continue
+            # Position de la caméra lue au journal du mode test (« [test] cam s=… », 20 fois par seconde).
+            got = engine.wait_for(r"\[test\] cam s=([0-9.]+)", min(0.2, max(until, 0.01)), after=cam_after)
+            if got is None:
+                continue
+            cam_after = got[0] + 1e-6
+            s_m = float(got[1].group(1))
+            if s_m >= next_m:
+                self._shot(engine, port, f"d{int(next_m):05d}")
+                while next_m <= s_m:
+                    next_m += self.every_m
+
+    def _tile_checks(self, log: list[str]) -> None:
+        """Lot S1 : apparitions soudaines dans le champ (une tuile qui manque dans le champ est un trou ou un
+        pop) et jointures des tuiles proches voisines, lues au journal du mode test de l'engine."""
+        r = self.report
+        strict = True if self.strict_tiles else None
+        pops = [m for ln in log if (m := re.search(r"\[test\] pop key=(\S+) dist=(\d+) s=([0-9.]+)", ln))
+                and float(m.group(3)) > POP_WARMUP_M]
+        r.check(not pops if strict else None, "aucune tuile n'apparaît dans le champ à moins de 1 km",
+                f"{len(pops)} apparition(s)" + (f", ex. {pops[0].group(1)} à {pops[0].group(2)} m (s = {float(pops[0].group(3)):.0f} m)"
+                                                if pops else ""))
+        seams = [m for ln in log if (m := re.search(r"\[test\] seam key=(\S+) voisine=(\S+) ecart=([0-9.]+)", ln))]
+        r.check(not seams if strict else None, "jointures des tuiles proches voisines",
+                f"{len(seams)} bord(s) disjoint(s)" + (f", ex. {seams[0].group(1)} / {seams[0].group(2)} : "
+                                                      f"{seams[0].group(3)} m" if seams else ""))
 
     def _relaunch_loop(self, core: Proc, cmd_port: int, route_id: str) -> None:
         """Essai d'endurance : à chaque fin de parcours, recharge le parcours et repart."""
@@ -418,18 +472,28 @@ class Bench:
         ok = [s for s in self.shots if s.get("ok")]
         r.check(len(ok) == len(self.shots) and ok, "captures de l'engine",
                 f"{len(ok)}/{len(self.shots)} images enregistrées")
-        fps = [s["fps"] for s in ok if isinstance(s.get("fps"), (int, float)) and s["tag"].startswith("t")]
+        fps = [s["fps"] for s in ok if isinstance(s.get("fps"), (int, float)) and s["tag"][:1] in ("t", "d")]
         if fps:
             fps_line = (f"images par seconde de l'engine : min {min(fps):.0f}, médiane "
                         f"{sorted(fps)[len(fps) // 2]:.0f}, max {max(fps):.0f} ({len(fps)} relevés)")
             print("   " + fps_line)
-            (self.out / "fps.csv").write_text("t_s,fps,maillages,appels_de_dessin,capture\n" + "".join(
-                f"{s['t']:.1f},{s.get('fps')},{s.get('meshes')},{s.get('draw_calls')},{s['file']}\n"
-                for s in ok), encoding="utf-8")
+            (self.out / "fps.csv").write_text("t_s,fps,maillages,appels_de_dessin,qualite,capture\n" + "".join(
+                f"{s['t']:.1f},{s.get('fps')},{s.get('meshes')},{s.get('draw_calls')},{s.get('quality') or ''},"
+                f"{s['file']}\n" for s in ok), encoding="utf-8")
+        engine_text = (self.out / "engine.log").read_text(encoding="utf-8", errors="replace")
+        # Qualité réellement appliquée (lot X32) : un banc « medium » qui rend du low est un échec.
+        q_ok, q_msg = quality_guard.check(engine_text, a.quality)
+        r.check(q_ok if q_ok is not None else False, "qualité réellement appliquée", q_msg)
+        seq = quality_guard.applied_sequence(engine_text)
+        self.applied_quality = seq[-1][0] if seq else "?"
+        if self.probe_summary is not None:
+            p_ok, p_msg = perf_probe.quality_check(self.probe_summary, a.quality)
+            r.check(p_ok, "qualité notée par la sonde", p_msg)
         # Erreurs Godot.
-        log = (self.out / "engine.log").read_text(encoding="utf-8", errors="replace").splitlines()
+        log = engine_text.splitlines()
         issues = [ln for ln in log if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
         r.check(not issues, "erreurs et avertissements de Godot", "aucun" if not issues else " | ".join(issues[:3]))
+        self._tile_checks(log)
         # Exceptions du core.
         core_log = (self.out / "core.log").read_text(encoding="utf-8", errors="replace")
         m = re.search(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),(\d{3}) .*Core démarré", core_log, re.M)
@@ -516,10 +580,33 @@ class Bench:
             if grades and sent:
                 print(f"   pente du parcours {min(grades):.1f} à {max(grades):.1f} %, "
                       f"pente envoyée {min(sent):.1f} à {max(sent):.1f} %")
+        self._decor_checks()
         hr = [x.get("hr") for x in recs if x.get("hr")]
         if "hr" in self.spec:
             r.check(bool(hr), "fréquence cardiaque au journal",
                     f"{len(hr)} échantillons, {min(hr)} à {max(hr)} bpm" if hr else "aucune fréquence cardiaque")
+
+
+    def _decor_checks(self) -> None:
+        """Décor vivant (lot P30) : `decor.csv`, sortes vues et sons démarrés demandés par le scénario."""
+        shots = [x for x in self.shots if x.get("decor")]
+        if not shots:
+            return
+        lines = ["t_s;" + ";".join(DECOR_KINDS) + ";sons"]
+        for x in shots:
+            sounds = " ".join(f"{k}={n}" for k, n in sorted(x.get("sounds", {}).items()))
+            lines.append(f"{x['t']:.1f};" + ";".join(str(x["decor"][k]) for k in DECOR_KINDS) + f";{sounds}")
+        (self.out / "decor.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        for k in self.decor_expect:
+            seen = [x["decor"].get(k, 0) for x in shots]
+            label = DECOR_KINDS.get(k, (k, ""))[0]
+            self.report.check(max(seen) > 0, f"décor : {label} vus",
+                              f"{sum(1 for v in seen if v)} captures sur {len(seen)}, {max(seen)} au plus")
+        heard = shots[-1].get("sounds", {})
+        for group in self.sounds_expect:
+            got = {k: heard[k] for k in group if heard.get(k)}
+            self.report.check(bool(got), f"son du décor : {' ou '.join(group)}",
+                              ", ".join(f"{k} ×{n}" for k, n in got.items()) or "jamais démarré")
 
 
 # --- rapport HTML ------------------------------------------------------------------------------
@@ -571,6 +658,42 @@ def svg_fps(shots: list[dict[str, Any]], width: int = 900, height: int = 120) ->
             f'<polyline points="{line}" fill="none" stroke="#27ae60" stroke-width="1.6"/></svg>')
 
 
+def svg_decor(shots: list[dict[str, Any]], width: int = 900, height: int = 140) -> str:
+    """Objets du décor vivant affichés par sorte à chaque capture (lot P30)."""
+    pts = [x for x in shots if x.get("decor")]
+    if len(pts) < 2:
+        return ""
+    tmax = max(max(x["t"] for x in pts), 1.0)
+    hi = max(max(max(x["decor"].values()) for x in pts), 1)
+    parts = [f'<svg viewBox="0 0 {width} {height}" class="chart" role="img" aria-label="Décor vivant">',
+             '<text x="2" y="12" class="lbl">Décor vivant : objets affichés par sorte (à chaque capture)</text>',
+             f'<text x="2" y="{height - 8}" class="lbl">0</text><text x="2" y="26" class="lbl">{hi}</text>']
+    for i, (k, (label, color)) in enumerate(DECOR_KINDS.items()):
+        line = " ".join(f"{40 + x['t'] / tmax * (width - 50):.1f},{10 + (1 - x['decor'][k] / hi) * (height - 25):.1f}"
+                        for x in pts)
+        parts.append(f'<polyline points="{line}" fill="none" stroke="{color}" stroke-width="1.6"/>')
+        parts.append(f'<text x="{60 + i * 120}" y="12" class="lbl" fill="{color}" style="fill:{color}">{html.escape(label)}</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def decor_table(shots: list[dict[str, Any]]) -> str:
+    """Tableau du décor vivant : par sorte, captures où elle est vue, médiane et maximum ; sons démarrés."""
+    pts = [x for x in shots if x.get("decor")]
+    if not pts:
+        return ""
+    rows = []
+    for k, (label, _) in DECOR_KINDS.items():
+        vals = sorted(x["decor"][k] for x in pts)
+        rows.append(f"<tr><td>{html.escape(label)}</td><td>{sum(1 for v in vals if v)}/{len(vals)}</td>"
+                    f"<td>{vals[len(vals) // 2]}</td><td>{vals[-1]}</td></tr>")
+    heard = pts[-1].get("sounds", {})
+    sounds = ", ".join(f"{html.escape(k)} ×{n}" for k, n in sorted(heard.items())) or "aucun"
+    return ("<h2>Décor vivant</h2><table><tr><td><b>Sorte</b></td><td><b>Captures où elle est vue</b></td>"
+            "<td><b>Médiane</b></td><td><b>Maximum</b></td></tr>" + "".join(rows) +
+            f"</table><p>Sons du décor démarrés pendant la séance : {sounds}. Détail : <a href=\"decor.csv\">decor.csv</a>.</p>")
+
+
 def write_html(b: Bench) -> None:
     rows = "".join(f'<tr class="{"info" if ok is None else "ok" if ok else "ko"}">'
                    f'<td>{"INFO" if ok is None else "OK" if ok else "ÉCHEC"}</td><td>{html.escape(lb)}</td>'
@@ -586,6 +709,7 @@ def write_html(b: Bench) -> None:
         svg_chart(b.records, "gear", "Braquet", "#2980b9", events),
         svg_chart(b.records, "speed", "Vitesse (m/s)", "#34495e", events),
         svg_fps(b.shots),
+        svg_decor(b.shots),
     ])
     shots = []
     for s in b.shots:
@@ -616,11 +740,12 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
 <h1>Banc simulé : {html.escape(b.name)}</h1>
 <p>{html.escape(str(b.spec.get("description", "")))}<br>Parcours <b>{html.escape(b.world)}</b>,
 {f"ERG {html.escape(str(b.workout))}" if b.workout else "SIM"}, {b.duration:.0f} s,
-{f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {b.args.quality}
+{f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {html.escape(b.applied_quality or "?")} (qualité appliquée ; demandée {b.args.quality})
 {f"(écran réel, affichage {b.args.display})" if b.args.native else "(Xvfb, OpenGL logiciel)"}.</p>
 <h2>Vérifications</h2><table>{rows}</table>
 {'<p><a href="sonde/rapport.html">Sonde de performance du moteur</a> (lot X13).</p>' if b.probe_summary else ""}
 <h2>Courbes de la séance</h2><p>Lignes orange : événements du scénario.</p>{charts}
+{decor_table(b.shots)}
 <h2>Captures</h2><div class="grid">{"".join(shots)}</div>
 <h2>Bandeau de l'engine</h2><pre>{html.escape(banners)}</pre>
 <h2>Bilan (openride-core summary)</h2><pre>{html.escape(b.summary_text)}</pre>
@@ -647,7 +772,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
         "GODOT", Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
-    ap.add_argument("--world", default="demo", help="demo, village (bâtiments, montée et descente), osm, ou dossier .world")
+    ap.add_argument("--world", help="demo (défaut), village (bâtiments, montée et descente), osm, ou dossier .world ; "
+                    "l'emporte sur le monde du scénario")
     ap.add_argument("--workout", help="ERG : erg_court (5 min 30 intégré) ou fichier .zwo")
     ap.add_argument("--duration", type=float, help="durée de chaque séance en s (défaut : fin du scénario + 15 s)")
     ap.add_argument("--every", type=float, help="intervalle des captures en s (défaut : celui du scénario, sinon 15)")
@@ -659,6 +785,10 @@ def main(argv: list[str] | None = None) -> int:
                     help="vue de caméra mesurée (lot V12, exigence 2.0-CAM-5 : au moins 55 images/s en low pour chacune)")
     ap.add_argument("--display", default="windowed", choices=("windowed", "borderless", "fullscreen"),
                     help="mode d'affichage de l'engine (défaut windowed ; les pleins écrans demandent --native)")
+    ap.add_argument("--every-m", type=float,
+                    help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
+    ap.add_argument("--culling", default="off", choices=("on", "off"),
+                    help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
     ap.add_argument("--probe", action="store_true",
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))

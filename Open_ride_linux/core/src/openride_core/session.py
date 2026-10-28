@@ -427,6 +427,7 @@ class CoreSession:
             self.state.difficulty_pct = new_val
             if self.server.hello_config:
                 self.server.hello_config["difficulty_pct"] = new_val
+            self._save_difficulty(new_val)
         elif name == "list_routes":
             self._spawn(self._handle_list_routes(cmd_id))
         elif name == "list_workouts":
@@ -639,7 +640,8 @@ class CoreSession:
 
         try:
             bots = bots_from_menu(args["bots"], PhysicsParams.from_config(self.cfg), self.cfg.rider.ftp_w,
-                                  self.state.route_id, self.journal_dir, s=self.physics.s)
+                                  self.state.route_id, self.journal_dir, s=self.physics.s,
+                                  bike_mass_kg=self.cfg.bike.mass_kg)
         except BotError as exc:
             self.server.send_error("bot_invalid", f"Bots refusés : {exc}")
             return False
@@ -745,6 +747,17 @@ class CoreSession:
 
         self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
                               "items": settings.current(self.cfg)})
+
+    def _save_difficulty(self, pct: int) -> None:
+        """Difficulté choisie à la pause gardée dans `config.toml` pour la séance suivante (tout réglage du menu persiste)."""
+        from . import settings
+
+        if self.sim is not None and self.config_path is None:   # Bluetooth simulé : pas de fichier à écrire
+            return
+        try:
+            settings.apply(self.cfg, {"trainer.difficulty_pct": pct}, self.config_path)
+        except settings.SettingError as exc:
+            log.warning("Difficulté non enregistrée : %s", exc)
 
     def _set_setting(self, args: dict, cmd_id: int) -> None:
         from . import settings
@@ -1233,6 +1246,16 @@ class CoreSession:
             route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
             loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
             powerups_on=self.cfg.powerups.mode == "on")
+        from .bots import RefRider, attach_segments, calibrate_bots
+
+        attach_segments(self.bots, self._segments)   # montées et sprints des bots à profil (lot T12)
+        t0 = time.perf_counter()
+        rider = RefRider(self.cfg.rider.ftp_w, PhysicsParams.from_config(self.cfg))   # niveau des bots, lot T13
+        scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
+                                self.cfg.bike.mass_kg)
+        if scales:
+            log.info("Bots calibrés en %.0f ms : %s.", 1000.0 * (time.perf_counter() - t0),
+                     ", ".join(f"{p} à {lv:g} % : CP × {k:.2f}" for (p, lv), k in scales.items()))
         self.race.start(self._t_session, self.physics.s, self.bots)
         if self._segments:
             log.info("Mode classique : %d segment(s), bonus %s.", len(self._segments), self.cfg.powerups.mode)
