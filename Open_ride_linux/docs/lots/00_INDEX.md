@@ -243,7 +243,7 @@
 | [X7](LOT_X7_latence_click.md) | Série X (outils de test) : Latence appui Click → commande → écran, par étage | Python + GDScript | — | Petite | Script oui, essai sur le vélo ; issue #205 |
 | [X9](LOT_X9_recette_frequence_cardiaque.md) | Série X (outils de test) : Recette guidée de la fréquence cardiaque (gel, retrait, retour) | Python | Q5 | Petite | Script oui, essai sur le vélo ; issue #207 |
 | [X10](LOT_X10_coupures_verifiees.md) | Série X (outils de test) : Coupures volontaires, attendu contre obtenu au journal | Python | — | Moyenne | Script oui, essai sur le vélo ; issue #208 |
-| [X11](LOT_X11_controle_fit_reel.md) | Série X (outils de test) : Contrôle d'un FIT de séance réelle, en local | Python | H5 | Petite | Oui ; issue #209 |
+| [X11](LOT_X11_controle_fit_reel.md) | Série X (outils de test) : Contrôle d'un FIT de séance réelle, en local | Python | H5 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x11`) ; issue #209 |
 | [X12](LOT_X12_analyse_seance_reelle.md) | Série X (outils de test) : Analyse automatique d'une séance réelle (`openride-core session-report`) | Python | — | Moyenne | Oui ; issue #210 |
 | [X14](LOT_X14_reference_performance.md) | Série X (outils de test) : Référence de performance, comparateur avant/après et verdict de budget par préréglage | Python | X13, X32 | Moyenne | Oui (mesures finales sur le PC) ; issue #212 |
 | [X15](LOT_X15_saccades_demarrage.md) | Série X (outils de test) : Saccades avec leur cause, tâches de fond par tronçon, temps de démarrage | GDScript + Python | X13 | Petite | Oui ; issue #213 |

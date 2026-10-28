@@ -17,6 +17,9 @@ Sous-commandes disponibles à ce stade :
                                       liberté et le déconnecte (après un arrêt brutal)
     openride-core summary [FICHIER] [--ftp W] [--json]
                                       bilan d'une séance (.jsonl ou .fit ; défaut : dernier journal)
+    openride-core fit-check FICHIER.fit [--journal JOURNAL.jsonl] [--json]
+                                      contrôle local d'un FIT de séance réelle avec le SDK Garmin
+                                      (messages, pauses, trous, FC figée, totaux ; lot X11)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
     openride-core xp [--dir DOSSIER] [--json] [--config FICHIER]
@@ -158,6 +161,12 @@ def cmd_summary(args: argparse.Namespace) -> int:
     return run(args.file, args.ftp, args.json, args.config)
 
 
+def cmd_fit_check(args: argparse.Namespace) -> int:
+    from .tools.fit_check import run
+
+    return run(args.file, args.journal, args.json)
+
+
 def cmd_history(args: argparse.Namespace) -> int:
     from .tools.history import run
 
@@ -271,6 +280,10 @@ def build_parser() -> argparse.ArgumentParser:
     summ.add_argument("--ftp", type=float, help="FTP en watts (défaut : config.toml)")
     summ.add_argument("--json", action="store_true", help="sortie JSON")
     summ.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    fitc = sub.add_parser("fit-check", help="contrôle local d'un FIT de séance réelle (SDK Garmin, lot X11)")
+    fitc.add_argument("file", type=Path, help="fichier .fit")
+    fitc.add_argument("--journal", type=Path, help="journal .jsonl de la séance : distance et durée à ± 1 %%")
+    fitc.add_argument("--json", action="store_true", help="sortie JSON")
     hist = sub.add_parser("history", help="historique des séances et cumul par semaine ISO")
     hist.add_argument("--dir", type=Path, dest="directory",
                       help="dossier des séances (défaut : ~/OpenRide/Activities)")
@@ -347,6 +360,7 @@ def main(argv: list[str] | None = None) -> int:
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary, "xp": cmd_xp,
+            "fit-check": cmd_fit_check,
             "history": cmd_history, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
             "open-world-save": cmd_open_world_save}[args.command](args)

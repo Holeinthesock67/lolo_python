@@ -304,8 +304,9 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 
 ### F1. FIT de séance dans Garmin Connect et GoldenCheetah (O8 ligne 21)
 
-- **Étapes :** importer le FIT de D1 ou E1 (`~/OpenRide/Activities/`) dans Garmin Connect, puis dans GoldenCheetah.
-- **Attendu :** import sans erreur, puissance, cadence et FC présentes.
+- **Étapes :** d'abord `openride-core fit-check ~/OpenRide/Activities/<séance>.fit --journal ~/OpenRide/Activities/.journal/<séance>.jsonl` (contrôle local, X11 : le fichier ne quitte pas le PC) ; puis importer le FIT de D1 ou E1 (`~/OpenRide/Activities/`) dans Garmin Connect, puis dans GoldenCheetah.
+- **Attendu :** `fit-check` sans ÉCHEC (une ATTENTION se note) ; import sans erreur, puissance, cadence et FC présentes.
+- [ ] `fit-check` sans échec
 - [ ] Garmin Connect
 - [ ] GoldenCheetah
 
