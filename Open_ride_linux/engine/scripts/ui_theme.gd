@@ -55,7 +55,9 @@ const TRACK_SOFT := Color(1, 1, 1, 0.1)
 const TRACK_FAINT := Color(1, 1, 1, 0.12)
 const HUD_DIM := Color(0.75, 0.8, 0.85)
 const PANEL_BG := Color(0.05, 0.07, 0.1, 0.7)
-const CHART_BG := Color(0.04, 0.06, 0.08, 0.65)
+## Fond des graphiques (courbes de la séance, histogramme ERG, profil d'altitude) : léger, pour voir la
+## route derrière ; les traits et les textes posés dessus portent leur propre contour (OUTLINE).
+const CHART_BG := Color(0.04, 0.06, 0.08, 0.3)
 const SHADOW_LINE := Color(0, 0, 0, 0.6)
 const OUTLINE := Color(0, 0, 0, 0.8)
 # Zones de Coggan (Z1 à Z7, seuils de erg_view.gd) et roue libre

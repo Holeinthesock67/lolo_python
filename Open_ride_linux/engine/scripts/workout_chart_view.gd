@@ -21,8 +21,10 @@ const CADENCE_COLOR := UiTheme.CADENCE
 const BG_COLOR := UiTheme.CHART_BG
 const GRID_COLOR := UiTheme.GRID
 const TEXT_COLOR := UiTheme.CHART_TEXT
-const PROFILE_ALPHA := 0.45          # profil atténué : les courbes passent devant
+const PROFILE_ALPHA := 0.75          # profil atténué, couleurs de zone gardées sur le fond léger ; les courbes passent devant
 const POWER_WIDTH := 3.5
+const CURVE_OUTLINE := 2.0           # contour sombre de chaque côté des courbes (fond léger)
+const AXIS_OUTLINE := 4
 const CURVE_WIDTH := 2.0
 const LEGEND_SIZE := 22
 const AXIS_SIZE := 15
@@ -83,6 +85,7 @@ func _on_draw() -> void:
 		var y := h - float(tick) / w_top * h
 		draw_line(Vector2(0.0, y), Vector2(w, y), GRID_COLOR, 1.0)
 		if mode == "full" and float(tick) > 0.0 and y > AXIS_SIZE:
+			draw_string_outline(font, Vector2(4.0, y - 2.0), "%d" % int(tick), HORIZONTAL_ALIGNMENT_LEFT, -1, AXIS_SIZE, AXIS_OUTLINE, UiTheme.OUTLINE)
 			draw_string(font, Vector2(4.0, y - 2.0), "%d" % int(tick), HORIZONTAL_ALIGNMENT_LEFT, -1, AXIS_SIZE, TEXT_COLOR)
 	# Profil des watts cibles, atténué ; roue libre : bande basse grise.
 	for poly in geo["profile"]:
@@ -122,7 +125,13 @@ func _on_draw() -> void:
 		x += float(widths[i]) + 18.0
 
 
+## Courbes tracées sur un contour sombre, lisibles sur le ciel comme sur la route.
 func _draw_lines(lines: Array, color: Color, width: float) -> void:
+	_draw_strokes(lines, UiTheme.OUTLINE, width + 2.0 * CURVE_OUTLINE)
+	_draw_strokes(lines, color, width)
+
+
+func _draw_strokes(lines: Array, color: Color, width: float) -> void:
 	for pts in lines:
 		var p: PackedVector2Array = pts
 		if p.size() >= 2:

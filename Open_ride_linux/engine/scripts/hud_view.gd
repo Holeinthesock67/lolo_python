@@ -228,11 +228,15 @@ func _build_ui() -> void:
 
 	alt_min_label = Label.new()
 	alt_min_label.add_theme_font_size_override("font_size", 20)
+	alt_min_label.add_theme_color_override("font_outline_color", UiTheme.OUTLINE)
+	alt_min_label.add_theme_constant_override("outline_size", 6)
 	alt_min_label.position = Vector2(8.0, 80.0)
 	profile_panel.add_child(alt_min_label)
 
 	alt_max_label = Label.new()
 	alt_max_label.add_theme_font_size_override("font_size", 20)
+	alt_max_label.add_theme_color_override("font_outline_color", UiTheme.OUTLINE)
+	alt_max_label.add_theme_constant_override("outline_size", 6)
 	alt_max_label.position = Vector2(8.0, 4.0)
 	profile_panel.add_child(alt_max_label)
 
