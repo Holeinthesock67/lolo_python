@@ -88,7 +88,8 @@ func _run() -> void:
 	host.on_loot({"cards": [{}, {}, {}], "doors": [{}, {}], "reroll_cost": 50, "gold": 10})
 	host.update({"mode": "ROGUE", "rogue": _rogue("CORRIDOR", 5, 120.0)}, main, classic, we, cam, "low", 102.5)
 	_check(sc.hud_model.values()["corridor"]["cards"].size() == 3, "cartes du couloir relayées au modèle")
-	# Ennemi (R12) : le corps de l'archétype est construit au premier rendu
+	# Ennemi (R12) : le corps de l'archétype est construit au premier rendu (de retour en salle, hors couloir)
+	host.update({"mode": "ROGUE", "rogue": _rogue("ROOM", 5, 120.0, 80.0, windows)}, main, classic, we, cam, "low", 102.7)
 	await process_frame
 	await process_frame
 	_check(sc.enemy_view.archetype == "diesel" and sc.enemy_view.visible, "ennemi : train du Diesel affiché")
