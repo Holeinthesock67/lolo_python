@@ -33,6 +33,16 @@ func _rogue(over: Dictionary = {}) -> Dictionary:
 	return r
 
 
+## Avance le modèle de `secs` secondes par pas de 0,5 s (le pas du modèle est borné à 1 s), à partir de `t0`.
+func _advance(m, rogue: Dictionary, t0: float, secs: float, seq0: int) -> float:
+	var t := t0
+	var n := int(round(secs / 0.5))
+	for i in n:
+		t += 0.5
+		m.update(rogue, 5, seq0 + i, t)
+	return t
+
+
 func _run() -> void:
 	# Un son par événement, sons rendus une fois par trame
 	var m = SoundModel.new()
@@ -114,7 +124,7 @@ func _run() -> void:
 	o.update(_rogue(), 5, 1, 0.0)
 	o.update(_rogue({"overheat": true}), 5, 2, 0.5)
 	_check(is_equal_approx(float(o.loops()["overheat_db"]), -60.0 + 6.0), "surchauffe : +6 dB en 0,5 s")
-	o.update(_rogue({"overheat": true}), 5, 3, 5.5)
+	_advance(o, _rogue({"overheat": true}), 0.5, 5.0, 3)
 	_check(is_equal_approx(float(o.loops()["overheat_db"]), -12.0), "surchauffe : plafond -12 dB")
 	var h = SoundModel.new()
 	h.update(_rogue({"firewall_gap_m": 100.0}), 5, 1, 0.0)
@@ -125,18 +135,19 @@ func _run() -> void:
 	for i in 20:
 		h.update(_rogue({"firewall_gap_m": 3.0}), 5, 30 + i, 11.0 + 0.5 * i)
 	_check(float(h.loops()["hum_db"]) > mid_db and float(h.loops()["hum_db"]) <= -6.0, "le ronflement monte quand le mur approche")
+	h.update(_rogue({"firewall_gap_m": 1.0}), 5, 80, 22.0)
 	_check(h.loops()["beat"], "battement de l'alarme au contact")
 
 	# Musique par phase, fondu de 2 s
 	var mu = SoundModel.new()
 	mu.update(_rogue({"phase": "WARMUP"}), 5, 1, 0.0)
-	mu.update(_rogue({"phase": "WARMUP"}), 5, 2, 2.0)
+	var tm := _advance(mu, _rogue({"phase": "WARMUP"}), 0.0, 2.0, 2)
 	_check(is_equal_approx(float(mu.music()["bass"]), 1.0) and float(mu.music()["pulse"]) == 0.0, "échauffement : basse seule")
-	mu.update(_rogue({"phase": "ROOM"}), 5, 3, 3.0)
+	tm = _advance(mu, _rogue({"phase": "ROOM"}), tm, 1.0, 10)
 	_check(is_equal_approx(float(mu.music()["pulse"]), 0.5), "salle : pulsation à moitié après 1 s")
-	mu.update(_rogue({"phase": "ROOM"}), 5, 4, 5.0)
+	tm = _advance(mu, _rogue({"phase": "ROOM"}), tm, 1.0, 20)
 	_check(is_equal_approx(float(mu.music()["pulse"]), 1.0) and float(mu.music()["arp"]) == 0.0, "pulsation pleine, pas d'arpège")
-	mu.update(_rogue({"phase": "BOSS"}), 5, 5, 7.0)
+	tm = _advance(mu, _rogue({"phase": "BOSS"}), tm, 2.0, 30)
 	_check(is_equal_approx(float(mu.music()["arp"]), 1.0), "boss : arpège")
 
 	# Volumes des bus du mode
