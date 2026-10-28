@@ -8,6 +8,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
@@ -212,6 +213,7 @@ func _ready() -> void:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
 	RenderQuality.apply_fog(world_env.environment, _quality_name, false)
+	_report_quality(_quality_name, "cli" if _quality_from_cli() else "defaut")
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
 	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
 	if RenderingServer.get_rendering_device() == null:   # Compatibility : pas de RenderingDevice
@@ -353,6 +355,22 @@ func _ready() -> void:
 		_refresh_menu())
 
 
+## Qualité réellement appliquée (lot X32) : ligne toujours écrite, ligne de test pour les bancs
+## (engine/tests/quality_guard.py) et préréglage noté dans la sonde de performance (lot X13).
+func _report_quality(requested: String, source: String) -> void:
+	print("Qualité appliquée : %s (demandée %s, source %s)" % [_quality_name, requested, source])
+	ipc.test_log("quality applied=%s requested=%s source=%s" % [_quality_name, requested, source])
+	_probe.preset = _quality_name
+
+
+## Vrai si --quality figure dans les arguments de l'engine (sinon, valeur par défaut d'engine_args.gd).
+static func _quality_from_cli() -> bool:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--quality="):
+			return true
+	return false
+
+
 ## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
 ## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s montré ou caché.
 func _on_settings(msg: Dictionary) -> void:
@@ -365,7 +383,9 @@ func _on_settings(msg: Dictionary) -> void:
 		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
-		print("Qualité graphique : ", _quality_name)
+		_report_quality(q, "reglage")
+	elif q != _quality_name:
+		_report_quality(q, "reglage")   # valeur inconnue : la qualité appliquée ne change pas, et le journal le dit
 	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
 	if th != _theme_name:
 		_apply_theme(th)
@@ -689,12 +709,19 @@ func _process(delta: float) -> void:
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
+	# Personnages et animaux (anim_clock.gd) : figés avec le décor quand le core ne répond plus.
+	if not banner.has_message("core_lost"):
+		AnimClock.advance(delta)
 	if rogue_host.is_active():
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
 		camera_views.snap()
 		return
 	if not follow.has_frame():
+		return
+	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
+	# l'horloge des personnages et des animaux ci-dessus.
+	if banner.has_message("core_lost"):
 		return
 	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd).
 	var s_disp: float = follow.update(now)
@@ -721,9 +748,9 @@ func _process(delta: float) -> void:
 
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
-## Core non joignable : le décor se fige avec la caméra (pas de nuages ni d'herbe qui bougent).
+## Core non joignable : pas appelé (_process fige toute la scène), donc ni nuages ni herbe qui bougent.
 func _step_living(delta: float, s_route: float, v: float) -> void:
-	if living_world == null or route == null or banner.has_message("core_lost"):
+	if living_world == null or route == null:
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0
@@ -953,6 +980,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
+		"bots_gap1": hud.bots_gaps[0], "bots_ahead": hud.neighbor_labels[0], "bots_behind": hud.neighbor_labels[1],
+		"bots_jerseys": hud.jerseys_label, "segment_panel": hud.panel_segment,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
 		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}
@@ -973,6 +1002,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 	var info := {
 		"tag": tag, "path": path, "ok": err == OK, "size": [img.get_width(), img.get_height()],
 		"fps": Engine.get_frames_per_second(), "meshes": meshes, "ticks_ms": Time.get_ticks_msec(),
+		"quality": _quality_name,
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
@@ -1191,7 +1221,9 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if running and route != null:
 		_give_cues(state)
-	bots_model.push(state.get("bots", null) if running or session_state == "PAUSED" else null, Time.get_ticks_usec())
+	var in_session := running or session_state == "PAUSED"
+	bots_model.push(state.get("bots", null) if in_session else null, Time.get_ticks_usec())
+	bots_model.set_race(state if in_session else null)
 
 	_feed_chart(state, running, previous_session_state)
 
@@ -1281,7 +1313,7 @@ func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> vo
 func _show_bots(rider_s: float, rider_v: float) -> void:
 	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
 	if hud != null and hud.has_method("update_bots"):
-		hud.update_bots(view)
+		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route, _visual_grade_scale, route.alt_m[0] if route != null and route.n > 0 else 0.0)
 

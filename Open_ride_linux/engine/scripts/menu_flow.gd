@@ -59,7 +59,7 @@ const SUMMARY := "summary"
 const CONNECT := "connect"
 const PAIRING := PairingViewModel.SCREEN
 const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
-## Sous-écran de « Réglages » (Cycliste, Séance, Affichage, Son, Vent) ; titre et éléments du groupe ouvert.
+## Sous-écran de « Réglages » (Cycliste, Séance, Graphisme, Son, Vent) ; titre et éléments du groupe ouvert.
 const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
@@ -184,7 +184,7 @@ func _init() -> void:
 	_refresh_builder()
 	_refresh_pairing()
 	_refresh_settings()
-	menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
+	_refresh_pause_difficulty()
 
 
 func is_visible() -> bool:
@@ -202,7 +202,7 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	var diff = state.get("difficulty_pct", null)
 	if (diff is int or diff is float) and int(diff) != difficulty_pct:
 		difficulty_pct = int(diff)
-		menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
+		_refresh_pause_difficulty()
 	if session_state == "" and st != "" and not connect_done:
 		if st in ["IDLE", "READY"]:
 			menu.open_screen(CONNECT)
@@ -771,7 +771,7 @@ func handle(event: String) -> Dictionary:
 		return {}
 	ready_message = ""
 	if not settings.editing.is_empty():
-		if menu.current_screen() in [SETTING_EDIT, SETTINGS_GROUP, WORKOUT_CREATE]:
+		if menu.current_screen() in [SETTING_EDIT, MenuModel.PAUSE, SETTINGS_GROUP, WORKOUT_CREATE]:
 			return _handle_edit(event)
 		settings.cancel()   # menu quitté pendant un réglage (séance lancée, perte du core…)
 	if menu.current_screen() == RECORD_TABLE and event == "A_SHORT":   # A court : bascule de table (T10)
@@ -877,8 +877,7 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:
 		settings.begin_pause_difficulty(difficulty_pct)
-		menu.set_screen_items(SETTING_EDIT, settings.edit_items(), "Difficulté")
-		menu.push_screen(SETTING_EDIT)
+		_refresh_pause_difficulty()
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == PAIRING:
 		act = pairing.handle(str(act["id"]))
@@ -1046,12 +1045,21 @@ func _refresh_record_table() -> void:
 
 
 ## Réglage en cours de modification : la rangée de la liste ouverte (Réglages, Créer un entraînement)
-## passe en mode édition ; la difficulté de la pause et les champs de l'avatar du Garage (V8) gardent
-## leur écran (étape 4).
+## passe en mode édition ; la difficulté de la pause se règle de même dans sa rangée. Seuls les champs
+## de l'avatar du Garage gardent leur écran.
+func _refresh_pause_difficulty() -> void:
+	var it := {"label": "Difficulté", "type": "int", "unit": "%", "min": 0, "max": 100,
+		"value": difficulty_pct}
+	var ed: Dictionary = settings.editing if str(settings.editing.get("key", "")) == SettingsViewModel.PAUSE_DIFFICULTY else {}
+	menu.set_pause_difficulty(SettingsViewModel.row("difficulty", it, ed))
+
+
 func _refresh_edit() -> void:
 	match menu.current_screen():
 		SETTING_EDIT:
 			menu.set_screen_items(SETTING_EDIT, settings.edit_items())
+		MenuModel.PAUSE:
+			_refresh_pause_difficulty()
 		WORKOUT_CREATE:
 			menu.set_screen_items(WORKOUT_CREATE, builder.menu_items(str(settings.editing.get("key", "")),
 				settings.editing.get("value", 0)))
@@ -1075,7 +1083,6 @@ func _handle_edit(event: String) -> Dictionary:
 				menu.handle("Y_SHORT")
 			if act.get("action", "") == "set_difficulty":
 				difficulty_pct = int(act["pct"])
-				menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
 			if act.get("action", "") == "garage_set":
 				garage.set_field(str(act["key"]), int(act["value"]))
 				_refresh_garage()
