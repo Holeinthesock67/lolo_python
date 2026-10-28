@@ -1,6 +1,6 @@
 # Lot Y8 – Habillage des bâtiments : toits à pans, façades et styles par région et par biome
 
-**Statut : étape 1 livrée le 28 octobre** (bâtiments, PR #470), mesurée sur la GTX 1060 (§5), en attente de l'avis du propriétaire sur l'aspect. Ce cahier remplace la première version du 28 octobre (PR #462) ; les écarts sont au §7. Étapes suivantes au §6 (arbres, panneaux, poteaux, barrières, éoliennes). L'étalonnage d'Y8 est passé dans Y13.
+**Statut : étape 1 livrée le 28 octobre** (bâtiments, PR #470), mesurée sur la GTX 1060 (§5), en attente de l'avis du propriétaire sur l'aspect. Ce cahier remplace la première version du 28 octobre (PR #462) ; les écarts sont au §7. Étape 2 (arbres) en PR le 28 octobre (§8). Étapes suivantes au §6 (panneaux, poteaux, barrières, éoliennes). L'étalonnage d'Y8 est passé dans Y13.
 
 ## 1. Objectif
 
@@ -56,7 +56,7 @@ Préréglages : le faux relief est coupé en `low` (`BuildingMesh.RELIEF`) ; fen
 
 ## 6. Suite (une PR par étape)
 
-1. Étape 2 : arbres (écorce, feuillage à deux tons et trouées), même couche de surface ; styles d'arbres par biome avec le lot U7.
+1. Étape 2 : arbres (écorce, feuillage à deux tons et trouées), même couche de surface, sur les 18 essences du lot U7 : voir §8.
 2. Étape 3 : panneaux, bornes et poteaux (bois, métal galvanisé, rouille, rétroréfléchissant), barrières et glissières.
 3. Étape 4 : éoliennes et ouvrages (ponts, murets) quand ils existeront dans le monde.
 4. Si la mesure dépasse : fondu des motifs à plus courte distance, ou dessous du débord limité à la bande de débord.
@@ -68,3 +68,14 @@ Préréglages : le faux relief est coupé en `low` (`BuildingMesh.RELIEF`) ; fen
 - Pente selon le style (25 à 45°, 50° pour les lieux de culte) au lieu de 35° partout ; rectangle orienté rempli à 80 % au lieu de 85 % ; débord de 0,4 m au lieu de 0,3 m ; toit en pente jusqu'à 22 m de large, sans limite de hauteur.
 - Les variantes régionales des murs et des toits, prévues hors périmètre (U14), sont faites ici par la table des styles, à la demande du propriétaire du 28 octobre ; U14 n'a plus qu'à poser la clé `style`.
 - La coupure des fenêtres au loin se fait par le fondu du détail plus fin qu'un pixel de `surface_detail.gdshaderinc`, sans distance fixe.
+
+## 8. Étape 2 : arbres
+
+- **Une matière par face**, portée par l'alpha de la couleur du sommet (code ÷ 16, constantes `MAT_*` de `engine/scripts/tree_species.gd`) : écorce crevassée, lisse, de bouleau, en plaques (pins, mélèze), stipe de palmier, côtes de cactus, tiges ; feuillus, aiguilles, palmes et frondes. Les 18 essences du lot U7 et l'arbre d'avant la série U ont leurs codes, aux deux niveaux de détail. Un alpha de 0,7 ou plus (herbe d'Y11) garde la couleur unie : un seul shader, aucune exception.
+- **Motifs procéduraux** dans `tree_sway.gdshader`, en coordonnées de l'objet (les motifs suivent l'arbre au vent), décalés par arbre sans hachage d'une valeur interpolée (leçon de l'étape 1) :
+  - écorces : crevasses verticales, plaques rousses à joints sombres, lenticelles du bouleau et pied noirci, anneaux du palmier, côtes et aréoles du cactus ;
+  - feuillage : touffes d'un mètre, bouquets de 30 cm et trouées sombres, feuilles fondues au loin (`sd_visible`), reflets jaunes au soleil ; étages de branches des conifères ; folioles des palmes ;
+  - houppier traité comme un volume : normale tirée vers le haut, lumière à travers les feuilles (`BACKLIGHT`) et lumière du ciel diffusée, pour qu'un houppier à l'ombre reste vert au lieu de noir.
+- **Préréglages** : faux relief coupé en `low` (`TreeRenderer.RELIEF`, appliqué aussi aux arbres déjà affichés) ; herbe sans relief.
+- **Coût** : aucune géométrie ajoutée (mêmes triangles et appels de dessin, vues `arbres_temperes`, `arbres_sud` et `ecorces` de la vitrine) ; coût du shader par pixel de feuillage à mesurer sur la GTX 1060.
+- **Tests** : `engine/tests/render/test_tree_render.gd` (points parasites, feuillage varié, contre-jour, bouleau ; sans habillage, 6 vérifications sur 10 échouent) et codes de matière de chaque essence dans `engine/tests/unit/test_vegetation_biomes.gd`.

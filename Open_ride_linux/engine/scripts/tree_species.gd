@@ -36,10 +36,35 @@ const INFO := {
 	"vine_row": {"height": 1.6, "deciduous": true},
 }
 
-const BARK := Color(0.33, 0.24, 0.16)
-const BARK_GREY := Color(0.45, 0.43, 0.40)
-const BARK_WHITE := Color(0.86, 0.85, 0.80)
-const BARK_RED := Color(0.48, 0.30, 0.20)
+## Matière de chaque face, portée par l'alpha de la couleur du sommet (code / 16) et dessinée par
+## tree_sway.gdshader (lot Y8 étape 2) ; alpha 1 : couleur unie.
+const MAT_BARK := 1          # écorce crevassée
+const MAT_BARK_SMOOTH := 2   # écorce lisse
+const MAT_BARK_BIRCH := 3
+const MAT_BARK_PLATES := 4   # écorce en plaques des pins
+const MAT_PALM_TRUNK := 5
+const MAT_CACTUS := 6
+const MAT_STEM := 7          # ceps, tiges
+const MAT_LEAVES := 8
+const MAT_NEEDLES := 9
+const MAT_FRONDS := 10
+
+const BARK := Color(0.33, 0.24, 0.16, MAT_BARK / 16.0)
+const BARK_GREY := Color(0.45, 0.43, 0.40, MAT_BARK / 16.0)
+const BARK_SMOOTH := Color(0.47, 0.45, 0.42, MAT_BARK_SMOOTH / 16.0)
+const BARK_WHITE := Color(0.86, 0.85, 0.80, MAT_BARK_BIRCH / 16.0)
+const BARK_RED := Color(0.48, 0.30, 0.20, MAT_BARK_PLATES / 16.0)
+const PALM_TRUNK := Color(0.45, 0.40, 0.33, MAT_PALM_TRUNK / 16.0)
+
+
+## Couleur `rgb` avec la matière `code` dans l'alpha.
+static func mat(rgb: Color, code: int) -> Color:
+	return Color(rgb.r, rgb.g, rgb.b, code / 16.0)
+
+
+## Couleur assombrie de `f`, matière gardée.
+static func shade(col: Color, f: float) -> Color:
+	return Color(col.r * f, col.g * f, col.b * f, col.a)
 
 
 static func index_of(kind: String) -> int:
@@ -93,7 +118,7 @@ static func _cone(st: SurfaceTool, y0: float, y1: float, r: float, col: Color, c
 		var p0 := center + Vector3(cos(a0) * r, y0, sin(a0) * r)
 		var p1 := center + Vector3(cos(a1) * r, y0, sin(a1) * r)
 		_tri(st, p1, p0, tip, col)
-		_tri(st, center + Vector3(0, y0, 0), p0, p1, col * 0.8, Vector3.DOWN)
+		_tri(st, center + Vector3(0, y0, 0), p0, p1, shade(col, 0.8), Vector3.DOWN)
 
 
 ## Houppier en ellipsoïde à facettes (6 méridiens, `rings` parallèles) : 12 × (rings − 1) triangles.
@@ -112,12 +137,11 @@ static func _blob(st: SurfaceTool, c: Vector3, radii: Vector3, col: Color, rings
 			var b: Vector3 = pts[r][(i + 1) % SIDES]
 			var d: Vector3 = pts[r + 1][i]
 			var e: Vector3 = pts[r + 1][(i + 1) % SIDES]
-			var shade := col * (1.0 - 0.18 * float(r) / rings)
-			shade.a = 1.0
+			var tone := shade(col, 1.0 - 0.18 * float(r) / rings)
 			if r > 0:
-				_tri(st, a, d, b, shade, ((a + b + d) / 3.0 - c).normalized())
+				_tri(st, a, d, b, tone, ((a + b + d) / 3.0 - c).normalized())
 			if r < rings - 1:
-				_tri(st, b, d, e, shade, ((b + d + e) / 3.0 - c).normalized())
+				_tri(st, b, d, e, tone, ((b + d + e) / 3.0 - c).normalized())
 
 
 ## Palme ou fronde : bande en deux segments qui retombe, vue des deux côtés (8 triangles).
@@ -135,8 +159,8 @@ static func _frond(st: SurfaceTool, base: Vector3, angle: float, length: float, 
 		_tri(st, p0 - w, p1 - w, p1 + w, col, Vector3.UP)
 		_tri(st, p0 - w, p1 + w, p0 + w, col, Vector3.UP)
 		# Dessous éclairé comme le dessus (normale vers le haut) : une palme vue d'en bas reste verte.
-		_tri(st, p1 + w, p1 - w, p0 - w, col * 0.85, Vector3.UP)
-		_tri(st, p0 + w, p1 + w, p0 - w, col * 0.85, Vector3.UP)
+		_tri(st, p1 + w, p1 - w, p0 - w, shade(col, 0.85), Vector3.UP)
+		_tri(st, p0 + w, p1 + w, p0 - w, shade(col, 0.85), Vector3.UP)
 
 
 ## Panneaux croisés du LOD 1 à la silhouette de l'espèce : houppier en cône (`cone`, du pied de la
@@ -194,72 +218,72 @@ static func build(kind: String) -> Dictionary:
 		"oak":
 			_limb(st, Vector3.ZERO, Vector3(0, 5.5, 0), 0.45, 0.32, BARK)
 			_limb(st, Vector3(0, 4.5, 0), Vector3(1.8, 7.5, 0.4), 0.22, 0.12, BARK, 4)
-			_blob(st, Vector3(0, 9.0, 0), Vector3(4.8, 4.2, 4.6), Color(0.22, 0.38, 0.14))
-			_blob(st, Vector3(2.2, 8.0, 1.2), Vector3(2.8, 2.6, 2.6), Color(0.25, 0.42, 0.16))
-			crown = {"w": 9.0, "col": Color(0.22, 0.38, 0.14), "shape": "round", "cy": 8.8, "ry": 4.4, "trunk_w": 0.6}
+			_blob(st, Vector3(0, 9.0, 0), Vector3(4.8, 4.2, 4.6), mat(Color(0.22, 0.38, 0.14), MAT_LEAVES))
+			_blob(st, Vector3(2.2, 8.0, 1.2), Vector3(2.8, 2.6, 2.6), mat(Color(0.25, 0.42, 0.16), MAT_LEAVES))
+			crown = {"w": 9.0, "col": mat(Color(0.22, 0.38, 0.14), MAT_LEAVES), "shape": "round", "cy": 8.8, "ry": 4.4, "trunk_w": 0.6}
 		"beech":
-			_limb(st, Vector3.ZERO, Vector3(0, 8.0, 0), 0.35, 0.25, BARK_GREY)
-			_blob(st, Vector3(0, 11.5, 0), Vector3(3.8, 5.5, 3.8), Color(0.26, 0.46, 0.18), 5)
-			crown = {"w": 7.5, "col": Color(0.26, 0.46, 0.18), "shape": "round", "cy": 11.5, "ry": 5.5, "trunk_w": 0.5}
+			_limb(st, Vector3.ZERO, Vector3(0, 8.0, 0), 0.35, 0.25, BARK_SMOOTH)
+			_blob(st, Vector3(0, 11.5, 0), Vector3(3.8, 5.5, 3.8), mat(Color(0.26, 0.46, 0.18), MAT_LEAVES), 5)
+			crown = {"w": 7.5, "col": mat(Color(0.26, 0.46, 0.18), MAT_LEAVES), "shape": "round", "cy": 11.5, "ry": 5.5, "trunk_w": 0.5}
 		"spruce":
 			_limb(st, Vector3.ZERO, Vector3(0, 3.0, 0), 0.35, 0.28, BARK)
-			_cone(st, 2.0, 9.0, 3.4, Color(0.10, 0.25, 0.13))
-			_cone(st, 6.5, 14.0, 2.6, Color(0.11, 0.27, 0.14))
-			_cone(st, 11.0, 20.0, 1.7, Color(0.12, 0.29, 0.15))
-			crown = {"w": 6.0, "col": Color(0.11, 0.27, 0.14), "shape": "cone", "cy": 2.0, "ry": 0.0, "trunk_w": 0.5}
+			_cone(st, 2.0, 9.0, 3.4, mat(Color(0.10, 0.25, 0.13), MAT_NEEDLES))
+			_cone(st, 6.5, 14.0, 2.6, mat(Color(0.11, 0.27, 0.14), MAT_NEEDLES))
+			_cone(st, 11.0, 20.0, 1.7, mat(Color(0.12, 0.29, 0.15), MAT_NEEDLES))
+			crown = {"w": 6.0, "col": mat(Color(0.11, 0.27, 0.14), MAT_NEEDLES), "shape": "cone", "cy": 2.0, "ry": 0.0, "trunk_w": 0.5}
 		"pine":
 			_limb(st, Vector3.ZERO, Vector3(0, 10.0, 0), 0.32, 0.22, BARK_RED)
-			_cone(st, 8.0, 13.5, 3.0, Color(0.16, 0.30, 0.14))
-			_cone(st, 11.5, 16.0, 2.0, Color(0.17, 0.32, 0.15))
-			crown = {"w": 5.5, "col": Color(0.16, 0.30, 0.14), "shape": "cone", "cy": 8.0, "ry": 0.0, "trunk_w": 0.45}
+			_cone(st, 8.0, 13.5, 3.0, mat(Color(0.16, 0.30, 0.14), MAT_NEEDLES))
+			_cone(st, 11.5, 16.0, 2.0, mat(Color(0.17, 0.32, 0.15), MAT_NEEDLES))
+			crown = {"w": 5.5, "col": mat(Color(0.16, 0.30, 0.14), MAT_NEEDLES), "shape": "cone", "cy": 8.0, "ry": 0.0, "trunk_w": 0.45}
 		"birch":
 			_limb(st, Vector3.ZERO, Vector3(0.2, 7.0, 0), 0.18, 0.12, BARK_WHITE)
-			_blob(st, Vector3(0.2, 8.6, 0), Vector3(2.2, 3.8, 2.2), Color(0.42, 0.58, 0.24))
-			crown = {"w": 4.2, "col": Color(0.42, 0.58, 0.24), "shape": "round", "cy": 8.6, "ry": 3.8, "trunk_w": 0.3}
+			_blob(st, Vector3(0.2, 8.6, 0), Vector3(2.2, 3.8, 2.2), mat(Color(0.42, 0.58, 0.24), MAT_LEAVES))
+			crown = {"w": 4.2, "col": mat(Color(0.42, 0.58, 0.24), MAT_LEAVES), "shape": "round", "cy": 8.6, "ry": 3.8, "trunk_w": 0.3}
 		"larch":
 			_limb(st, Vector3.ZERO, Vector3(0, 4.0, 0), 0.3, 0.24, BARK_RED)
-			_cone(st, 3.0, 11.0, 3.0, Color(0.36, 0.52, 0.22))
-			_cone(st, 8.0, 17.0, 2.0, Color(0.38, 0.55, 0.24))
-			crown = {"w": 5.5, "col": Color(0.37, 0.53, 0.23), "shape": "cone", "cy": 3.0, "ry": 0.0, "trunk_w": 0.45}
+			_cone(st, 3.0, 11.0, 3.0, mat(Color(0.36, 0.52, 0.22), MAT_NEEDLES))
+			_cone(st, 8.0, 17.0, 2.0, mat(Color(0.38, 0.55, 0.24), MAT_NEEDLES))
+			crown = {"w": 5.5, "col": mat(Color(0.37, 0.53, 0.23), MAT_NEEDLES), "shape": "cone", "cy": 3.0, "ry": 0.0, "trunk_w": 0.45}
 		"olive":
 			_limb(st, Vector3.ZERO, Vector3(0.4, 1.8, 0.2), 0.32, 0.26, BARK_GREY)
 			_limb(st, Vector3(0.4, 1.6, 0.2), Vector3(-0.8, 3.0, 0.3), 0.18, 0.12, BARK_GREY, 4)
-			_blob(st, Vector3(0.1, 3.9, 0.1), Vector3(2.8, 1.9, 2.6), Color(0.45, 0.52, 0.36))
-			crown = {"w": 5.2, "col": Color(0.45, 0.52, 0.36), "shape": "round", "cy": 3.9, "ry": 1.9, "trunk_w": 0.5}
+			_blob(st, Vector3(0.1, 3.9, 0.1), Vector3(2.8, 1.9, 2.6), mat(Color(0.45, 0.52, 0.36), MAT_LEAVES))
+			crown = {"w": 5.2, "col": mat(Color(0.45, 0.52, 0.36), MAT_LEAVES), "shape": "round", "cy": 3.9, "ry": 1.9, "trunk_w": 0.5}
 		"holm_oak":
 			_limb(st, Vector3.ZERO, Vector3(0, 3.0, 0), 0.3, 0.22, BARK_GREY)
-			_blob(st, Vector3(0, 5.6, 0), Vector3(3.4, 3.2, 3.3), Color(0.17, 0.29, 0.14))
-			crown = {"w": 6.4, "col": Color(0.17, 0.29, 0.14), "shape": "round", "cy": 5.6, "ry": 3.2, "trunk_w": 0.45}
+			_blob(st, Vector3(0, 5.6, 0), Vector3(3.4, 3.2, 3.3), mat(Color(0.17, 0.29, 0.14), MAT_LEAVES))
+			crown = {"w": 6.4, "col": mat(Color(0.17, 0.29, 0.14), MAT_LEAVES), "shape": "round", "cy": 5.6, "ry": 3.2, "trunk_w": 0.45}
 		"cypress":
 			_limb(st, Vector3.ZERO, Vector3(0, 1.0, 0), 0.25, 0.22, BARK)
-			_blob(st, Vector3(0, 7.2, 0), Vector3(1.2, 6.8, 1.2), Color(0.12, 0.24, 0.12), 6)
-			crown = {"w": 2.4, "col": Color(0.12, 0.24, 0.12), "shape": "round", "cy": 7.2, "ry": 6.8, "trunk_w": 0.4}
+			_blob(st, Vector3(0, 7.2, 0), Vector3(1.2, 6.8, 1.2), mat(Color(0.12, 0.24, 0.12), MAT_NEEDLES), 6)
+			crown = {"w": 2.4, "col": mat(Color(0.12, 0.24, 0.12), MAT_NEEDLES), "shape": "round", "cy": 7.2, "ry": 6.8, "trunk_w": 0.4}
 		"stone_pine":
 			_limb(st, Vector3.ZERO, Vector3(0.3, 9.5, 0), 0.32, 0.22, BARK_RED)
 			_limb(st, Vector3(0.3, 8.5, 0), Vector3(2.5, 10.8, 0.6), 0.16, 0.1, BARK_RED, 4)
-			_blob(st, Vector3(0.6, 11.4, 0.2), Vector3(5.2, 1.6, 5.0), Color(0.18, 0.33, 0.15))
-			crown = {"w": 10.0, "col": Color(0.18, 0.33, 0.15), "shape": "round", "cy": 11.4, "ry": 1.6, "trunk_w": 0.45}
+			_blob(st, Vector3(0.6, 11.4, 0.2), Vector3(5.2, 1.6, 5.0), mat(Color(0.18, 0.33, 0.15), MAT_NEEDLES))
+			crown = {"w": 10.0, "col": mat(Color(0.18, 0.33, 0.15), MAT_NEEDLES), "shape": "round", "cy": 11.4, "ry": 1.6, "trunk_w": 0.45}
 		"palm":
-			_limb(st, Vector3.ZERO, Vector3(0.6, 6.0, 0), 0.26, 0.2, BARK_GREY)
-			_limb(st, Vector3(0.6, 6.0, 0), Vector3(0.9, 11.0, 0), 0.2, 0.17, BARK_GREY)
+			_limb(st, Vector3.ZERO, Vector3(0.6, 6.0, 0), 0.26, 0.2, PALM_TRUNK)
+			_limb(st, Vector3(0.6, 6.0, 0), Vector3(0.9, 11.0, 0), 0.2, 0.17, PALM_TRUNK)
 			for i in range(8):
-				_frond(st, Vector3(0.9, 11.0, 0), TAU * i / 8.0 + 0.3, 4.2, 0.6, 2.2, 1.5, Color(0.22, 0.42, 0.16))
-			crown = {"w": 7.0, "col": Color(0.22, 0.42, 0.16), "shape": "round", "cy": 10.6, "ry": 1.8, "trunk_w": 0.4}
+				_frond(st, Vector3(0.9, 11.0, 0), TAU * i / 8.0 + 0.3, 4.2, 0.6, 2.2, 1.5, mat(Color(0.22, 0.42, 0.16), MAT_FRONDS))
+			crown = {"w": 7.0, "col": mat(Color(0.22, 0.42, 0.16), MAT_FRONDS), "shape": "round", "cy": 10.6, "ry": 1.8, "trunk_w": 0.4}
 		"acacia":
 			_limb(st, Vector3.ZERO, Vector3(0.3, 4.0, 0), 0.22, 0.16, BARK)
 			_limb(st, Vector3(0.3, 3.6, 0), Vector3(2.4, 6.0, 0.5), 0.12, 0.08, BARK, 4)
 			_limb(st, Vector3(0.3, 3.6, 0), Vector3(-1.8, 6.1, -0.8), 0.12, 0.08, BARK, 4)
-			_blob(st, Vector3(0.3, 6.8, 0), Vector3(5.0, 1.0, 4.6), Color(0.33, 0.42, 0.18))
-			crown = {"w": 10.0, "col": Color(0.33, 0.42, 0.18), "shape": "round", "cy": 6.8, "ry": 1.0, "trunk_w": 0.35}
+			_blob(st, Vector3(0.3, 6.8, 0), Vector3(5.0, 1.0, 4.6), mat(Color(0.33, 0.42, 0.18), MAT_LEAVES))
+			crown = {"w": 10.0, "col": mat(Color(0.33, 0.42, 0.18), MAT_LEAVES), "shape": "round", "cy": 6.8, "ry": 1.0, "trunk_w": 0.35}
 		"baobab":
-			_limb(st, Vector3.ZERO, Vector3(0, 9.0, 0), 2.2, 1.4, Color(0.55, 0.45, 0.38), 8)
+			_limb(st, Vector3.ZERO, Vector3(0, 9.0, 0), 2.2, 1.4, mat(Color(0.55, 0.45, 0.38), MAT_BARK_SMOOTH), 8)
 			for i in range(5):
 				var a := TAU * i / 5.0
-				_limb(st, Vector3(0, 8.6, 0), Vector3(cos(a) * 3.2, 12.0, sin(a) * 3.2), 0.4, 0.15, Color(0.55, 0.45, 0.38), 4)
-			_blob(st, Vector3(0, 12.6, 0), Vector3(4.0, 1.2, 4.0), Color(0.30, 0.42, 0.18))
-			crown = {"w": 8.0, "col": Color(0.42, 0.40, 0.30), "shape": "round", "cy": 12.4, "ry": 1.6, "trunk_w": 3.6}
+				_limb(st, Vector3(0, 8.6, 0), Vector3(cos(a) * 3.2, 12.0, sin(a) * 3.2), 0.4, 0.15, mat(Color(0.55, 0.45, 0.38), MAT_BARK_SMOOTH), 4)
+			_blob(st, Vector3(0, 12.6, 0), Vector3(4.0, 1.2, 4.0), mat(Color(0.30, 0.42, 0.18), MAT_LEAVES))
+			crown = {"w": 8.0, "col": mat(Color(0.42, 0.40, 0.30), MAT_LEAVES), "shape": "round", "cy": 12.4, "ry": 1.6, "trunk_w": 3.6}
 		"cactus":
-			var green := Color(0.28, 0.42, 0.22)
+			var green := mat(Color(0.28, 0.42, 0.22), MAT_CACTUS)
 			_limb(st, Vector3.ZERO, Vector3(0, 4.5, 0), 0.32, 0.28, green, 8)
 			_limb(st, Vector3(0, 1.6, 0), Vector3(0.9, 1.9, 0), 0.2, 0.2, green, 6)
 			_limb(st, Vector3(0.9, 1.9, 0), Vector3(0.9, 3.4, 0), 0.2, 0.18, green, 6)
@@ -267,31 +291,31 @@ static func build(kind: String) -> Dictionary:
 			_limb(st, Vector3(-0.8, 2.4, 0.2), Vector3(-0.8, 3.6, 0.2), 0.18, 0.16, green, 6)
 			crown = {"w": 2.2, "col": green, "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0}
 		"tree_fern":
-			_limb(st, Vector3.ZERO, Vector3(0.2, 4.6, 0), 0.22, 0.18, Color(0.25, 0.18, 0.12))
+			_limb(st, Vector3.ZERO, Vector3(0.2, 4.6, 0), 0.22, 0.18, mat(Color(0.25, 0.18, 0.12), MAT_BARK))
 			for i in range(9):
-				_frond(st, Vector3(0.2, 4.6, 0), TAU * i / 9.0, 2.8, 0.7, 1.2, 1.3, Color(0.20, 0.45, 0.16))
-			crown = {"w": 5.0, "col": Color(0.20, 0.45, 0.16), "shape": "round", "cy": 4.8, "ry": 1.2, "trunk_w": 0.35}
+				_frond(st, Vector3(0.2, 4.6, 0), TAU * i / 9.0, 2.8, 0.7, 1.2, 1.3, mat(Color(0.20, 0.45, 0.16), MAT_FRONDS))
+			crown = {"w": 5.0, "col": mat(Color(0.20, 0.45, 0.16), MAT_FRONDS), "shape": "round", "cy": 4.8, "ry": 1.2, "trunk_w": 0.35}
 		"reed":
 			for i in range(7):
 				var a := TAU * i / 7.0
 				var r := 0.25 + 0.15 * (i % 3)
 				var base := Vector3(cos(a) * r, 0, sin(a) * r)
 				var top := base * 1.6 + Vector3(0, 1.8 + 0.2 * (i % 2), 0)
-				_limb(st, base, top, 0.03, 0.02, Color(0.52, 0.56, 0.30), 3)
-				_limb(st, top, top + Vector3(0, 0.35, 0), 0.06, 0.02, Color(0.40, 0.30, 0.20), 3)
-			crown = {"w": 1.4, "col": Color(0.52, 0.56, 0.30), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0}
+				_limb(st, base, top, 0.03, 0.02, mat(Color(0.52, 0.56, 0.30), MAT_STEM), 3)
+				_limb(st, top, top + Vector3(0, 0.35, 0), 0.06, 0.02, mat(Color(0.40, 0.30, 0.20), MAT_STEM), 3)
+			crown = {"w": 1.4, "col": mat(Color(0.52, 0.56, 0.30), MAT_LEAVES), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0}
 		"dwarf_shrub":
-			_blob(st, Vector3(0, 0.4, 0), Vector3(0.8, 0.45, 0.7), Color(0.35, 0.36, 0.20), 3)
-			_blob(st, Vector3(0.6, 0.3, 0.4), Vector3(0.5, 0.32, 0.5), Color(0.40, 0.34, 0.22), 3)
-			crown = {"w": 1.8, "col": Color(0.37, 0.35, 0.21), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0}
+			_blob(st, Vector3(0, 0.4, 0), Vector3(0.8, 0.45, 0.7), mat(Color(0.35, 0.36, 0.20), MAT_LEAVES), 3)
+			_blob(st, Vector3(0.6, 0.3, 0.4), Vector3(0.5, 0.32, 0.5), mat(Color(0.40, 0.34, 0.22), MAT_LEAVES), 3)
+			crown = {"w": 1.8, "col": mat(Color(0.37, 0.35, 0.21), MAT_LEAVES), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0}
 		"vine_row":
 			# Rang de 6 m : piquets et ceps sous une haie de feuillage basse, orienté selon x.
 			for i in range(4):
 				var x := -3.0 + 2.0 * i
-				_limb(st, Vector3(x, 0, 0), Vector3(x, 1.4, 0), 0.04, 0.04, Color(0.40, 0.33, 0.24), 4)
+				_limb(st, Vector3(x, 0, 0), Vector3(x, 1.4, 0), 0.04, 0.04, mat(Color(0.40, 0.33, 0.24), MAT_STEM), 4)
 			for i in range(3):
-				_blob(st, Vector3(-2.0 + 2.0 * i, 1.05, 0), Vector3(1.15, 0.45, 0.4), Color(0.28, 0.44, 0.16), 3)
-			crown = {"w": 6.0, "col": Color(0.28, 0.44, 0.16), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0}
+				_blob(st, Vector3(-2.0 + 2.0 * i, 1.05, 0), Vector3(1.15, 0.45, 0.4), mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), 3)
+			crown = {"w": 6.0, "col": mat(Color(0.28, 0.44, 0.16), MAT_LEAVES), "shape": "box", "cy": 0.0, "ry": 0.0, "trunk_w": 0.0}
 		_:
 			return {}
 	var mesh := st.commit()

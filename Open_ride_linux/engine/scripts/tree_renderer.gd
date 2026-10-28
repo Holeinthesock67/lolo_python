@@ -23,6 +23,8 @@ const ViewCulling := preload("res://scripts/view_culling.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
 const LOD1_SWAY_FACTOR := 0.6   # amplitude réduite des panneaux croisés du LOD 1
+## Faux relief de l'écorce et du feuillage par préréglage (lot Y8 étape 2, comme les bâtiments).
+const RELIEF := {"low": 0.0, "medium": 1.0, "high": 1.0}
 
 const CELL_SIZE_M := 250.0
 const CELLS_PER_TILE := 4   # 4 x 4 = 16 cases par tuile de 1000 m
@@ -45,6 +47,7 @@ var _lod1_mesh: ArrayMesh
 var _lod0_material: Material
 var _lod1_material: Material
 var _tree_sway := false
+var _relief := 1.0
 ## Modèle de biome (biome_model.gd) ; null ou inactif : végétation d'avant la série U.
 var biome_model = null
 ## (x, z) -> vrai près de l'eau (oasis des déserts) ; invalide : aucun palmier au désert.
@@ -69,8 +72,8 @@ func _init() -> void:
 
 func _init_materials() -> void:
 	if _tree_sway:
-		_lod0_material = sway_material(false)
-		_lod1_material = sway_material(true)
+		_lod0_material = sway_material(false, _relief)
+		_lod1_material = sway_material(true, _relief)
 		return
 	_lod0_material = StandardMaterial3D.new()
 	_lod0_material.vertex_color_use_as_albedo = true
@@ -85,8 +88,10 @@ func _init_materials() -> void:
 func set_preset(preset_name: String, living_enabled: bool = true) -> void:
 	_budget = QualityPresets.tree_budget(preset_name)
 	var sway: bool = QualityPresets.living(preset_name, living_enabled)["tree_sway"]
-	if sway != _tree_sway:
+	var relief := float(RELIEF.get(QualityPresets.applied_name(preset_name), 1.0))
+	if sway != _tree_sway or relief != _relief:
 		_tree_sway = sway
+		_relief = relief
 		_init_materials()
 		_species.clear()
 		for tile_cells in _tiles.values():
@@ -101,9 +106,11 @@ func is_tree_sway() -> bool:
 	return _tree_sway
 
 
-## Matériau de balancement (Lot P5) ; `lod1` : panneaux croisés vus des deux côtés, amplitude réduite.
-static func sway_material(lod1: bool) -> ShaderMaterial:
+## Matériau de balancement (Lot P5) ; `lod1` : panneaux croisés vus des deux côtés, amplitude réduite ;
+## `relief` : faux relief de l'écorce et du feuillage (RELIEF du préréglage, 0 pour l'herbe).
+static func sway_material(lod1: bool, relief: float = 1.0) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
+	mat.set_shader_parameter("relief", relief)
 	if lod1:
 		var sh := Shader.new()
 		sh.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode cull_disabled;")
@@ -123,8 +130,8 @@ func _look(index: int) -> Dictionary:
 		var m0: Material = _lod0_material
 		var m1: Material = _lod1_material
 		if _tree_sway:
-			m0 = sway_material(false)
-			m1 = sway_material(true)
+			m0 = sway_material(false, _relief)
+			m1 = sway_material(true, _relief)
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
 		_species[index] = {"lod0": built["lod0"], "lod1": built["lod1"], "m0": m0, "m1": m1}
@@ -509,7 +516,7 @@ func enforce_budget(cam_pos: Vector3, view: Dictionary = {}) -> void:
 static func build_lod0_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var trunk_col := Color(0.35, 0.22, 0.12)
+	var trunk_col := TreeSpecies.mat(Color(0.35, 0.22, 0.12), TreeSpecies.MAT_BARK)
 	var sides := 6
 
 	# Tronc (6 faces latérales = 12 triangles)
@@ -553,7 +560,7 @@ static func build_lod0_mesh() -> ArrayMesh:
 		{"y0": 2.2, "r": 1.2, "y1": 4.2},
 		{"y0": 3.2, "r": 0.8, "y1": 5.4},
 	]
-	var foliage_col := Color(0.18, 0.40, 0.18)
+	var foliage_col := TreeSpecies.mat(Color(0.18, 0.40, 0.18), TreeSpecies.MAT_NEEDLES)
 	for c in cones:
 		var y0: float = c["y0"]
 		var r: float = c["r"]
@@ -577,13 +584,13 @@ static func build_lod0_mesh() -> ArrayMesh:
 			st.add_vertex(tip)
 
 			var n_down := Vector3.DOWN
-			st.set_color(foliage_col * 0.8)
+			st.set_color(TreeSpecies.shade(foliage_col, 0.8))
 			st.set_normal(n_down)
 			st.add_vertex(Vector3(0.0, y0, 0.0))
-			st.set_color(foliage_col * 0.8)
+			st.set_color(TreeSpecies.shade(foliage_col, 0.8))
 			st.set_normal(n_down)
 			st.add_vertex(p1)
-			st.set_color(foliage_col * 0.8)
+			st.set_color(TreeSpecies.shade(foliage_col, 0.8))
 			st.set_normal(n_down)
 			st.add_vertex(p0)
 
@@ -593,7 +600,7 @@ static func build_lod0_mesh() -> ArrayMesh:
 static func build_lod1_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var col := Color(0.20, 0.38, 0.18)
+	var col := TreeSpecies.mat(Color(0.20, 0.38, 0.18), TreeSpecies.MAT_NEEDLES)
 	var w := 1.4
 	var h := 5.4
 
