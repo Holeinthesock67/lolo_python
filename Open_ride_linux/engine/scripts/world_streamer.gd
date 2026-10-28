@@ -26,6 +26,7 @@ const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
+const BiomeTextures := preload("res://scripts/biome_textures.gd")
 
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
@@ -51,11 +52,21 @@ var far_radius_m: float = FAR_RADIUS_M:
 var tree_renderer: Node3D = null
 var osm_streamer: Node3D = null
 ## Série U (lot U17, première partie) : biome forcé (`--biome=`, "auto" = données du parcours) et modèle de
-## biome du parcours courant, créé par set_world et transmis aux arbres (U7) et aux animaux (U12). Tant que le
-## sol multi-biome (U6) n'est pas là, le sol prend les couleurs du biome sous le départ (start_biome).
+## biome du parcours courant, créé par set_world et transmis aux arbres (U7) et aux animaux (U12). Sol
+## multi-biome (U6) : chaque tuile de terrain reçoit un matériau de `biome_textures` (terrain_biomes.gdshader) ;
+## le sol plat sans terrain prend la couleur du biome sous le départ (start_biome).
 ## Modèle inactif (ni couche biome ni forçage) : rendu d'avant la série U.
 var forced_biome := "auto"
 var biome_model = null
+var biome_textures = null
+## Préréglage de qualité (render_quality.gd) : 3 ou 4 biomes par tuile et côté des textures de sol (U-Q4).
+var quality_preset := "":
+	set(value):
+		if value == quality_preset:
+			return
+		quality_preset = value
+		if biome_textures != null:
+			_make_biome_textures()
 
 var _near_index: Dictionary = {}     # Vector2i -> true
 var _far_index: Dictionary = {}
@@ -78,6 +89,7 @@ var _road_width_m: float = RoadBuilder.ROAD_WIDTH_M
 var _ground_color: Color = FLAT_GROUND_COLOR
 var _ground: MeshInstance3D = null
 var _theme_dict: Dictionary = {}
+var _theme_dir := ""
 var _manifest: Variant = null
 ## Monde vivant (lot W10) : amorces des branches non suivies des carrefours, clé "<carrefour>:<branche>" -> MeshInstance3D.
 const PREVIEW_FADE_M := 100.0
@@ -96,6 +108,8 @@ func _init() -> void:
 
 func _process(_delta: float) -> void:
 	integrate(MAX_NEW_PER_FRAME)
+	if biome_textures != null:
+		biome_textures.sync_from(_terrain_material)   # ombre des nuages réglée par living_world.gd
 	# Bâtiments et eau (lot E4) : sans cet appel, les tronçons OSM préparés n'entraient jamais
 	# dans la scène (seuls les tests appelaient flush()).
 	if osm_streamer != null:
@@ -142,14 +156,32 @@ func _set_biome_model() -> void:
 		tree_renderer.biome_model = active
 	if osm_streamer != null:
 		osm_streamer.biome_model = active
+	biome_textures = null
 	if active == null:
 		return
+	_make_biome_textures()
 	var ground: Dictionary = biome_model.terrain_theme(start_biome())
-	if _terrain_material is ShaderMaterial:
-		TerrainMaterial.apply_to_material(_terrain_material, ground)
 	_ground_color = ThemeRenderParams.terrain_uniforms(ground)["grass_color"]
 	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
 		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
+
+
+## Sols des biomes (lot U6) pour le préréglage courant ; les tuiles déjà affichées changent de matériau.
+func _make_biome_textures() -> void:
+	biome_textures = BiomeTextures.new(biome_model, _theme_dir, quality_preset)
+	biome_textures.sync_from(_terrain_material)
+	for key in _instances:
+		if not (key as String).begins_with("road:"):
+			(_instances[key] as MeshInstance3D).mesh.surface_set_material(0, _terrain_material_for(key))
+
+
+## Matériau d'une tuile de terrain ("near:ix:iz", "far:ix:iz" ou "flat:ix:iz") : celui du thème, ou celui
+## de ses biomes quand le modèle de biome est actif.
+func _terrain_material_for(key: String) -> Material:
+	if biome_textures == null:
+		return _terrain_material
+	var parts := key.split(":")
+	return biome_textures.tile_material("far" if parts[0] == "far" else "near", int(parts[1]), int(parts[2]))
 
 
 ## Biome le plus présent au départ du parcours (biome par défaut sans parcours ni modèle).
@@ -505,7 +537,7 @@ func integrate(max_new: int) -> int:
 			continue
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["arrays"])
-		mesh.surface_set_material(0, road_material_for(int((r["key"] as String).get_slice(":", 1))) if r["kind"] == "road" else _terrain_material)
+		mesh.surface_set_material(0, road_material_for(int((r["key"] as String).get_slice(":", 1))) if r["kind"] == "road" else _terrain_material_for(r["key"]))
 		var mi := MeshInstance3D.new()
 		mi.name = (r["key"] as String).replace(":", "_")
 		mi.mesh = mesh
@@ -551,6 +583,8 @@ func _free_instance(key: String) -> void:
 	var mi: MeshInstance3D = _instances[key]
 	_instances.erase(key)
 	remove_child(mi)
+	if biome_textures != null and not key.begins_with("road:"):
+		biome_textures.release(mi.mesh.surface_get_material(0))
 	mi.mesh = null   # maillage libéré avant le nœud (évite une erreur du rendu factice sans écran)
 	mi.free()
 	if key.begins_with("near:") and tree_renderer != null:
@@ -561,6 +595,7 @@ func _free_instance(key: String) -> void:
 ## Configure les matériaux de route et de terrain selon le thème (Lot E2).
 func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	_theme_dict = theme_dict
+	_theme_dir = theme_dir
 	var r_params := ThemeRenderParams.road_params(theme_dict)
 	_road_width_m = float(r_params["width_m"])
 	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture") if theme_dir != "" else null

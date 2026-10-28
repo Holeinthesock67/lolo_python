@@ -268,8 +268,13 @@ class OpenWorld:
         return self.route.known_ahead_m(s) if self.route and self.route.ready else 0.0
 
     def should_pause(self, s: float) -> bool:
-        """Moins de 200 m de route connue devant et générateur sans données (contrat IPC §9)."""
-        return (self.data == "missing" or self.dead) and self.known_ahead(s) < PAUSE_BELOW_M
+        """Moins de 200 m de route connue devant, quelle qu'en soit la cause (contrat IPC §9).
+
+        Générateur sans données, tombé ou simplement en retard sur le cycliste : le cycliste ne roule
+        jamais au-delà de la route connue, si bien que la distance de la séance reste sur la route et que
+        la balade enregistrée (lot W14) n'est jamais tronquée.
+        """
+        return self.known_ahead(s) < PAUSE_BELOW_M
 
     def can_resume(self, s: float) -> bool:
         return not self.dead and self.known_ahead(s) >= RESUME_ABOVE_M
