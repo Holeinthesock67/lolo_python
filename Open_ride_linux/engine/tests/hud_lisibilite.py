@@ -25,7 +25,7 @@ VALUE_CONTRAST = 4.5              # WCAG 2, texte courant
 LABEL_CONTRAST = 3.0              # WCAG 2, grand texte et éléments d'interface
 VALUES = ("power", "speed", "cadence", "hr", "grade")
 LABELS = ("power_caption", "speed_caption", "cadence_caption", "hr_caption", "grade_caption",
-          "bots_ahead", "bots_behind", "bots_line1", "bots_line2", "bots_jerseys",
+          "bots_line1", "bots_line2", "bots_jerseys",
           "segment_title", "segment_main", "bonus_held", "wind_speed", "wind_level")
 # Panneaux qui ne doivent ni sortir de l'écran ni se chevaucher (le contenu d'un panneau le recouvre, d'où
 # des panneaux seulement).

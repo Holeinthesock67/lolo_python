@@ -65,7 +65,7 @@ CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
               "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2",
-              "bots_gap1", "bots_ahead", "bots_behind", "bots_jerseys")
+              "bots_gap1", "bots_jerseys")   # bots_ahead, bots_behind : lignes de bots (lot X22)
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -1075,15 +1075,15 @@ def _bots_segment_bonus_scene(s: Session) -> None:
     if shot:
         img, info = shot
         w = info["widgets"]
-        # Les lignes de bots qui ne tiennent pas au-dessus du profil sont cachées, les voisins restent (T15) :
-        # leur nombre est noté, sans seuil (à 720 lignes, aucune ne tient sous les blocs segment et bonus).
-        need = ("segment_panel", "bonus_panel", "bots_panel", "bots_ahead", "bots_behind")
+        # Lot X22 : blocs segment et bonus à la hauteur de leur contenu ; l'encart garde au moins les deux
+        # lignes autour du cycliste (ses voisins, avec FTP, maillot et W′) et la ligne des maillots.
+        need = ("segment_panel", "bonus_panel", "bots_panel", "bots_ahead", "bots_behind", "bots_line1", "bots_line2",
+                "bots_jerseys")
         missing = [k for k in need if not w[k]["visible"]]
-        rows = sum(1 for k in ("bots_line1", "bots_line2") if w[k]["visible"])
-        s.check("bots_segment_bonus", "blocs segment et bonus, encart des bots et voisins affichés", not missing,
-                ("manquent : " + ", ".join(missing) + " ; " if missing else "") + f"{rows} ligne(s) de bot sur les 2 suivies, "
-                f"maillots {'affichés' if w['bots_jerseys']['visible'] else 'cachés'}")
-        s.check_texts("bots_segment_bonus", info, {"bots_ahead": "Rouleur", "bots_behind": "Sprinteur"}, contains=True)
+        s.check("bots_segment_bonus", "blocs segment et bonus, voisins avec leur ligne complète et maillots affichés",
+                not missing, "manquent : " + ", ".join(missing) if missing else "")
+        s.check_texts("bots_segment_bonus", info, {"bots_ahead": "Rouleur  281 W", "bots_behind": "Sprinteur  255 W",
+                                                   "bots_jerseys": "Vert : Sprinteur · Pois : Grimpeur"}, contains=True)
         seg, bonus, panel = w["segment_panel"]["rect"], w["bonus_panel"]["rect"], w["bots_panel"]["rect"]
         s.check("bots_segment_bonus", "segment, bonus puis bots empilés", seg[1] < bonus[1] < panel[1],
                 f"hauts {seg[1]:.0f}, {bonus[1]:.0f}, {panel[1]:.0f} px")
