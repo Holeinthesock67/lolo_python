@@ -124,8 +124,10 @@ func _test_tree_generation_and_determinism() -> void:
 	var valid_lods := true
 	for cell_idx in cell_info.keys():
 		var info: Dictionary = cell_info[cell_idx]
-		var mmi0: MultiMeshInstance3D = info["lod0"]
-		var mmi1: MultiMeshInstance3D = info["lod1"]
+		if info["parts"].size() != 1 or int(info["parts"][0]["species"]) != 255:
+			valid_lods = false
+		var mmi0: MultiMeshInstance3D = info["parts"][0]["lod0"]
+		var mmi1: MultiMeshInstance3D = info["parts"][0]["lod1"]
 		if mmi0.visibility_range_begin != 0.0 or mmi0.visibility_range_end != 300.0:
 			valid_lods = false
 		if mmi1.visibility_range_begin != 300.0 or mmi1.visibility_range_end != 1500.0:

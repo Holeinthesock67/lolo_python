@@ -23,6 +23,9 @@ extends RefCounted
 ## - Lièvre (Lot P24) : `idle` (immobile, il tourne la tête), puis `flee` dès que le cycliste est à moins de
 ##   HARE_ALERT_M : il file à HARE_SPEED_MPS le long de `flee_dir` en zigzag (± HARE_ZIG_M, période
 ##   HARE_ZIG_S), puis `gone` après HARE_FLEE_S.
+## Lot U12 : les nouvelles espèces des biomes reprennent ces comportements (zèbres, girafes, rennes, dromadaires,
+## bouquetins, flamants et hérons en troupeau, marmottes comme les lièvres, mouettes posées comme les corneilles,
+## perroquets et mouettes en bande) ; seules les espèces de HERD_CALLS et FLIGHT_CALLS crient.
 ## `events` : sons à jouer, rendus par le dernier `update`, `[{sound, pos}]`.
 ## Le travail par image est fait par groupe (bande, troupeau, site), pas par bête : `update` coûte
 ## quelques microsecondes pour 200 animaux ; les positions des oiseaux se calculent à la demande.
@@ -52,6 +55,7 @@ const CROW_YAW_PERIOD_S := 7.0
 const HERD_CALL_M := 120.0
 const HERD_CALL_PERIOD_S := 40.0
 const HERD_CALLS := {"cow": "cow_moo", "sheep": "sheep_baa", "horse": "horse_neigh"}
+const FLIGHT_CALLS := {"bird": "crow_caw"}   # cri à l'envol des oiseaux posés (`crows`), par espèce
 const HARE_ALERT_M := 25.0
 const HARE_SPEED_MPS := 11.0
 const HARE_FLEE_S := 3.5
@@ -141,7 +145,8 @@ func update(rider_pos: Vector3, now_s: float) -> void:
 				if Vector2(p.x, p.z).distance_to(r2) < CROW_ALERT_M:
 					g["state"] = "flight"
 					g["flight_at"] = now_s
-					events.append({"sound": "crow_caw", "pos": p})
+					if FLIGHT_CALLS.has(str(g.get("species", "bird"))):
+						events.append({"sound": FLIGHT_CALLS[str(g.get("species", "bird"))], "pos": p})
 			elif st == "flight" and now_s - float(g["flight_at"]) >= CROW_FLIGHT_S + CROW_STAGGER_S * ((g["members"] as Array).size() - 1):
 				g["state"] = "landed"
 		elif t == "raptor":

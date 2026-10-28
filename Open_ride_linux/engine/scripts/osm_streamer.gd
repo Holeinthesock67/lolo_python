@@ -17,6 +17,7 @@ extends Node3D
 ## de road_traffic_model.gd des routes voisines et des tracteurs des champs ; lot P29, quand `boats_enabled` :
 ## `extras.boats`, chemins des bateaux de boat_model.gd), le tronçon retiré `chunk_freed(k)`. Eau qui scintille
 ## (water_mesh.gd, P12) avec `set_water_shimmer(true)`, avant le chargement des tronçons.
+## `biome_model` (biome_model.gd, série U, lot U17) : transmis au placement des animaux (faune par biome, U12).
 ## Pas de class_name (charger par preload).
 
 const OsmLayers := preload("res://scripts/osm_layers.gd")
@@ -62,6 +63,7 @@ var sound_player: Node = null
 var fauna_enabled := false
 var traffic_enabled := false           # Lot P25 : chemins des routes voisines et des tracteurs des champs
 var boats_enabled := false             # Lot P29 : chemins des bateaux des plans d'eau et des cours d'eau
+var biome_model = null
 var water_shimmer := false
 
 
@@ -202,6 +204,7 @@ func _start_jobs() -> void:
 				"fauna": fauna_enabled,
 				"traffic": traffic_enabled,
 				"boats": boats_enabled,
+				"biome_model": biome_model,
 			}
 			job["task"] = WorkerThreadPool.add_task(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
 			_jobs[k] = job
@@ -339,6 +342,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 			"height_at": height_at,
 			"buildings": b_items,
 			"water": w_items,
+			"biome_model": job.get("biome_model", null),
 		})
 
 	# 5. Circulation des routes voisines et tracteurs des champs (Lot P25)
