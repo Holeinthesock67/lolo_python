@@ -46,6 +46,8 @@ def test_current_lists_the_six_settings_with_bounds_from_config():
     display = next(it for it in items if it["key"] == "render.display")
     assert display == {"key": "render.display", "label": "Mode d'affichage", "value": "fullscreen",
                        "applies": "now", "type": "choice", "choices": ["windowed", "borderless", "fullscreen"]}
+    camera = next(it for it in items if it["key"] == "render.camera")
+    assert camera["value"] == "follow_near" and camera["choices"] == ["subjective", "follow_near", "follow_far", "side"]   # lot V12
 
 
 def test_bounds_and_choices_come_from_config(monkeypatch):
@@ -96,6 +98,7 @@ def test_cli_set_changes_only_that_line_and_keeps_the_rest(tmp_path: Path, capsy
     ("rider.ftp_w", "20", "50 à 600"),
     ("render.quality", "ultra", "low, medium, high"),
     ("render.display", "maximized", "windowed, borderless, fullscreen"),
+    ("render.camera", "drone", "subjective, follow_near, follow_far, side"),
     ("rider.inconnu", "1", "réglage inconnu"),
     ("rider.mass_kg", "beaucoup", "nombre attendu"),
 ])

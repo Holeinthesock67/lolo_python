@@ -264,7 +264,7 @@ Règles de numérotation (décision du propriétaire du 27 octobre, « au plus p
 
 ### 6.3 Configuration
 
-Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts prévus : `[wind]` (P1), `[render] living` et `texture_level` (P4, P20), `[open_world]` avec `cache_dir` et `cache_max_gb` (W2), `[render] camera` (V12) ; `[render] biome` et `theme_library_gb`, section `[gravel]` (U1, U15) ; sections `[rogue]` (`w_prime_j`, `cp_w`, rampe de pente en run) et `[avatar]` (seuils de la danseuse), fixées par le contrat 1.4 (T1, SRS §11).
+Les sections de `~/OpenRide/config.toml` de la 1.0 sont dans la SRS §11. Ajouts prévus : `[wind]` (P1), `[render] living` et `texture_level` (P4, P20), `[open_world]` avec `cache_dir` et `cache_max_gb` (W2), `[render] camera` (V12, livré) ; `[render] biome` et `theme_library_gb`, section `[gravel]` (U1, U15) ; sections `[rogue]` (`w_prime_j`, `cp_w`, rampe de pente en run) et `[avatar]` (seuils de la danseuse), fixées par le contrat 1.4 (T1, SRS §11).
 
 ## 7. Boutons du Click et vues de caméra
 

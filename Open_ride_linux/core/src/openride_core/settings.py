@@ -56,6 +56,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.theme", "Thème", applies="now"),
     Setting("render.chart", "Courbes de la séance", applies="now"),
     Setting("render.display", "Mode d'affichage", applies="now"),
+    Setting("render.camera", "Vue de caméra", applies="now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
     Setting("wind.mode", "Vent"),
     Setting("wind.speed_kmh", "Force du vent", 5, "km/h"),

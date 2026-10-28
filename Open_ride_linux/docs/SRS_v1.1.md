@@ -247,7 +247,7 @@ Le compilateur transforme un `.gpx` déposé dans `~/OpenRide/GPX/` en dossier `
 
 ## 8. Moteur de rendu Godot
 
-L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`. En 2.0, la caméra devient un choix de plusieurs vues, avec un avatar (spécification générale, §7.2).
+L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`. En 2.0, la caméra devient un choix de quatre vues, avec un avatar (spécification générale, §7.2) : subjective, suivi proche (par défaut avec l'avatar), suivi éloigné et latérale, changées au Click par A et les flèches haut et bas, la dernière retenue dans `[render] camera` (lot V12).
 
 **MVP visuel (sprint 3)**
 
@@ -390,6 +390,7 @@ theme = "default"
 visual_grade_scale = 1.0   # exagération visuelle du relief, de 1,0 à 2,0 (lot Q2 ; physique et HUD inchangés)
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
+camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 
 [ipc]

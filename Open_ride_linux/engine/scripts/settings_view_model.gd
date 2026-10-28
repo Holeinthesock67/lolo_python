@@ -26,6 +26,7 @@ const PAUSE_DIFFICULTY := "pause.difficulty"
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
+	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 }
 

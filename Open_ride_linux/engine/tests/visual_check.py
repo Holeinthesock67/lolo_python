@@ -602,7 +602,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
             "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
     v_grade = getattr(args, "visual_grade", 1.0)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
-            "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}"]
+            "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}",
+            "--camera=subjective"]   # les scènes d'avant le lot V12 supposent la caméra subjective
     gold = Path(args.golden) / name if args.golden else None
     s = Session(name, width, height, core, out_dir, report, gold, args.update_golden)
     print(f"== {name} ==", flush=True)
@@ -839,6 +840,8 @@ def _scenes(s: Session) -> None:
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
     core.set_scene(grade=0.0, grade_sent=0.0, power=250.0, power_3s=248.0, cadence=90.0)
     time.sleep(1.0)
+
+    _camera_scenes(s)
 
     # 3 quater. Pluie (lot P17) : météo imposée, particules autour de la caméra et chaussée mouillée.
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather",
@@ -1106,6 +1109,75 @@ def _menu_scenes(s: Session) -> None:
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
     _progress_scenes(s)
+
+
+def _camera_scenes(s: Session) -> None:
+    """Lot V12 : quatre vues de caméra au Click sur le parcours de démonstration. A court et flèches : vue suivante,
+    précédente ; A long : vue par défaut ; l'avatar n'apparaît pas en vue subjective ; la vue choisie est mémorisée
+    (`set_setting render.camera`) au bout de quelques secondes."""
+    core = s.core
+
+    def press(event: str, wait: float = 1.2) -> None:
+        core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+        time.sleep(wait)
+
+    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
+    time.sleep(0.8)
+    shots: dict[str, Any] = {}
+    expected = [("subjective", None), ("follow_near", "A_SHORT"), ("follow_far", "A_SHORT"), ("side", "UP_SHORT"),
+                ("subjective", "A_SHORT")]
+    for view, event in expected:
+        if event:
+            press(event)
+        shot = s.capture(f"camera_{view}" if view not in shots else f"camera_{view}_2")
+        if not shot:
+            continue
+        img, info = shot
+        label = f"camera_{view}" if view not in shots else f"camera_{view}_2"
+        shots.setdefault(view, shot)
+        s.check(label, f"vue {view} affichée", info.get("camera_view") == view and not info.get("camera_transition"),
+                f"{info.get('camera_view')}")
+        av = info.get("avatar", {})
+        if view == "subjective":
+            s.check(label, "avatar masqué en vue subjective", av.get("visible") is False, f"{av}")
+        else:
+            s.check(label, "avatar visible dans le champ de la caméra", av.get("visible") and av.get("on_screen"), f"{av}")
+    names = [n for n in ("subjective", "follow_near", "follow_far", "side") if n in shots]
+    for i, a_name in enumerate(names):
+        for b_name in names[i + 1:]:
+            d = mean_abs_diff(shots[a_name][0], shots[b_name][0], (0, 0, s.width, s.height))
+            s.check(f"camera_{b_name}", f"{a_name} et {b_name} se distinguent", d >= 1.0, f"écart moyen {d:.2f} niveaux")
+    far, near = shots.get("follow_far"), shots.get("follow_near")
+    if far and near:
+        cam_far, cam_near = far[1]["camera"], near[1]["camera"]
+        s.check("camera_follow_far", "suivi éloigné plus haut que le suivi proche", cam_far[1] > cam_near[1] + 2.0,
+                f"{cam_far[1]:.1f} m contre {cam_near[1]:.1f} m")
+    # Transition douce : une image prise 0,15 s après l'appui est en cours de transition, sans saut de position
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_SHORT"})   # subjective -> suivi proche
+    time.sleep(0.15)
+    shot = s.capture("camera_transition")
+    if shot:
+        s.check("camera_transition", "pose intermédiaire pendant la transition", shot[1].get("camera_transition") is True,
+                f"{shot[1].get('camera_transition')}")
+    time.sleep(1.0)
+    press("A_SHORT")   # suivi éloigné
+    press("A_LONG")    # vue par défaut
+    shot = s.capture("camera_defaut")
+    if shot:
+        s.check("camera_defaut", "A long : retour au suivi proche", shot[1].get("camera_view") == "follow_near", f"{shot[1].get('camera_view')}")
+    press("DOWN_SHORT")
+    shot = s.capture("camera_precedente")
+    if shot:
+        s.check("camera_precedente", "flèche bas : vue précédente (subjective)", shot[1].get("camera_view") == "subjective",
+                f"{shot[1].get('camera_view')}")
+    time.sleep(2.5)
+    with core.lock:
+        saved = [r.msg.get("args", {}) for r in core.received if r.msg.get("name") == "set_setting"
+                 and r.msg.get("args", {}).get("key") == "render.camera"]
+    s.check("camera_memoire", "dernière vue écrite dans render.camera", bool(saved) and saved[-1].get("value") == "subjective",
+            f"{saved}")
+    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=250.0, power_3s=248.0, cadence=90.0)
+    time.sleep(1.0)
 
 
 XP_RESULT = {"type": "xp_result", "v": CONTRACT_VERSION, "eligible": True, "reason": None,

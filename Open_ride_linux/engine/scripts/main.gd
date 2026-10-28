@@ -6,6 +6,7 @@ extends Node3D
 const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
+const CameraViews := preload("res://scripts/camera_views.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
@@ -89,6 +90,9 @@ var _quality_name: String = "low"
 var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
 var _theme_name: String = "default"
 var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage en place (--display, puis le menu)
+## Vues de caméra (lot V12) : modèle (camera_views.gd) et dernière valeur de render.camera reçue du core.
+var camera_views = CameraViews.new()
+var _camera_setting := ""
 var _display_setting := ""   # dernière valeur de render.display reçue du core (vide avant la première liste)
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
@@ -105,6 +109,8 @@ const BEEPS := {
 	"Y_SHORT": [[550.0, 0.10], [330.0, 0.14]],
 	"LEFT_SHORT": [[440.0, 0.08]],
 	"RIGHT_SHORT": [[880.0, 0.08]],
+	"UP_SHORT": [[880.0, 0.08]],
+	"DOWN_SHORT": [[440.0, 0.08]],
 }
 const BEEP_LEVEL := 0.3
 ## Durées d'affichage du rappel des commandes en séance et de l'explication d'un appui ambigu.
@@ -161,6 +167,7 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
+	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)))
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
@@ -350,6 +357,13 @@ func _on_settings(msg: Dictionary) -> void:
 			DisplayMode.apply(_display_name)
 			print("Mode d'affichage : ", _display_name)
 		_display_setting = disp
+	# Vue de caméra choisie au menu (lot V12) : appliquée si elle change après la première réception.
+	var cam := str(menu_flow.settings.item("render.camera").get("value", ""))
+	if CameraViews.is_valid(cam):
+		if _camera_setting != "" and cam != _camera_setting and cam != camera_views.current:
+			camera_views.set_view(cam)
+			print("Vue de caméra : ", cam)
+		_camera_setting = cam
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -388,7 +402,40 @@ func _on_input_event(event_name: String) -> void:
 		return
 	print("Bip : ", event_name)
 	_play_tones(BEEPS[event_name], BEEP_LEVEL)
+	if _camera_event(event_name):
+		return
 	_menu_event(event_name)
+
+
+## Vues de caméra au Click (lot V12, spécification générale §7.1) : A court et flèche haut, vue suivante ; flèche
+## bas, vue précédente ; A long, vue par défaut. Seulement quand rien n'est affiché à choisir (menu, carrefour du
+## monde ouvert) : A agit alors sur le choix. Renvoie vrai quand l'événement a servi à changer de vue.
+func _camera_event(event_name: String) -> bool:
+	if event_name not in ["A_SHORT", "A_LONG", "UP_SHORT", "DOWN_SHORT"]:
+		return false
+	if menu_flow.is_visible() or (world_menu_view != null and world_menu_view.visible):
+		return false
+	if event_name.begins_with("A_") and junction_view != null and junction_view.vm.is_visible():
+		return false
+	var now_s := Time.get_ticks_usec() / 1000000.0
+	var changed := false
+	match event_name:
+		"A_SHORT", "UP_SHORT":
+			changed = camera_views.next_view(now_s)
+		"DOWN_SHORT":
+			changed = camera_views.previous_view(now_s)
+		"A_LONG":
+			changed = camera_views.reset_default(now_s)
+	if changed:
+		print("Vue de caméra : ", camera_views.current)
+	return true
+
+
+## Écrit la vue choisie dans `[render] camera` quelques secondes après le dernier changement.
+func _remember_camera_view(now_s: float) -> void:
+	if camera_views.remember_due(now_s):
+		_camera_setting = camera_views.current
+		ipc.set_setting("render.camera", camera_views.current)
 
 
 # --- menus (lot N6) ----------------------------------------------------------------------
@@ -588,6 +635,11 @@ func _unhandled_input(event: InputEvent) -> void:
 				var pick: Dictionary = junction_view.vm.press(-1 if event.keycode == KEY_LEFT else 1)
 				if not pick.is_empty():
 					ipc.send_command("choose_branch", pick)
+			KEY_TAB, KEY_ENTER, KEY_KP_ENTER:
+				# A du Click : vue de caméra suivante (court), vue par défaut (long) ; flèches haut et bas : lot O17.
+				var aev := "A_SHORT" if event.keycode == KEY_TAB else "A_LONG"
+				_play_tones(BEEPS[aev], BEEP_LEVEL)
+				_camera_event(aev)
 			KEY_PAGEUP:
 				ipc.send_command("input_event", {"event": "PLUS_LONG"})
 			KEY_PAGEDOWN:
@@ -604,7 +656,9 @@ func _process(delta: float) -> void:
 	_record_frame_perf(delta)
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
+	_remember_camera_view(now / 1000000.0)
 	if _menu_camera(delta):
+		camera_views.snap()
 		return
 	if not follow.has_frame():
 		return
@@ -616,16 +670,14 @@ func _process(delta: float) -> void:
 		var pos: Vector3 = route.sample_point(s_route)
 		if _visual_grade_scale != 1.0 and route != null and route.n > 0:
 			pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
-		# Caméra subjective placée à 1.4 m de hauteur (hauteur des yeux du cycliste)
-		camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
-
-		# Orienter la caméra selon le cap et la pente de la route (Lot Q2)
+		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
-		# Dans Godot : -Z est le nord. La rotation Y s'applique sur le cap horaire.
-		camera.rotation.y = -heading
-		camera.rotation.x = deg_to_rad(follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale))
+		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale)
+		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
+		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
+		avatar_view.set_visible_for_view(_avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
-		_step_avatar(pos, heading, now, follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale))
+		_step_avatar(pos, heading, now, pitch_deg)
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
@@ -891,6 +943,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
+		"camera_view": camera_views.effective(), "camera_transition": camera_views.in_transition(),
 		"widgets": widgets,
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
@@ -925,14 +978,15 @@ func _widget_text(key: String) -> String:
 func _configure_avatar() -> void:
 	var prog = ipc.core_config.get("progression", {})
 	var raw = prog.get("avatar") if prog is Dictionary else null
+	camera_views.has_avatar = prog is Dictionary and not prog.is_empty()   # sans avatar : vue subjective seule (2.0-CAM-3)
 	avatar_model.configure(raw, float(ipc.core_config.get("ftp_w", 0.0)))
 	avatar_view.configure(avatar_model.settings, 0)
 	avatar_view.set_visible_for_view(_avatar_view_name())
 
 
-## Vue de caméra courante : « subjective » sauf pendant une caméra de contrôle de test.
+## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.
 func _avatar_view_name() -> String:
-	return _avatar_cam if _avatar_cam != "" else "subjective"
+	return _avatar_cam if _avatar_cam != "" else camera_views.effective()
 
 
 ## Une fois par image : pédalier et position du modèle d'après la dernière trame, avatar posé sur la route.
