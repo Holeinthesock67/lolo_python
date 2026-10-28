@@ -137,6 +137,24 @@ func items_text() -> String:
 	return " | ".join(parts)
 
 
+## Rangées affichées (tests, banc des menus) : identifiant, texte, focus et rectangle (repère du canevas).
+func test_rows() -> Array:
+	var out: Array = []
+	for p in _item_panels:
+		if p.visible:
+			out.append({"id": str(p.get_meta("item_id", "")), "text": _row_text(p), "focused": bool(p.get_meta("focused", false)),
+				"rect": p.get_global_rect()})
+	return out
+
+
+## Rectangle (repère du canevas) de la rangée affichée de l'élément `item_id` ; vide s'il n'est pas affiché.
+func item_rect(item_id: String) -> Rect2:
+	for p in _item_panels:
+		if p.visible and str(p.get_meta("item_id", "")) == item_id:
+			return p.get_global_rect()
+	return Rect2()
+
+
 ## Aide des boutons affichée, en une ligne (tests).
 func hint_text() -> String:
 	return button_bar.text()

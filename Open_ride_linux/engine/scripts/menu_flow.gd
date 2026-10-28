@@ -145,6 +145,8 @@ var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
 var rogue = RogueMenuModel.new()
+## `start_run` accusé par le core depuis le dernier lancement : l'écran d'attente peut céder la place à Prêt.
+var _rogue_acked := false
 ## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
 var garage = GarageViewModel.new()
 ## Bilan de progression de la séance (lot V9) : dernier message `xp_result` ({} sans), et qu'il a déjà été annoncé.
@@ -230,12 +232,15 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 			"IDLE", "READY":
 				if prev in ["RUNNING", "PAUSED"]:
 					menu.reset()
-				elif st == "READY" and menu.current_screen() == RogueMenuModel.LOADING:
-					menu.set_rogue_ready(rogue.ready_text())
-					menu.open_screen(MenuModel.READY)
 		if st != "FINISHED":
 			xp_result = {}
 			_xp_announced = false
+	# Run composée (lot R13) : `start_run` accusé par la trame qui suit son traitement. Le core passe de
+	# READY à LOADING puis READY dans la même commande : l'état seul ne dit pas qu'une nouvelle run est prête.
+	if _rogue_acked and st == "READY" and menu.current_screen() == RogueMenuModel.LOADING:
+		_rogue_acked = false
+		menu.set_rogue_ready(rogue.ready_text())
+		menu.open_screen(MenuModel.READY)
 	if st != "" and not _lists_requested:
 		_lists_requested = true
 		out.append({"action": "list"})
@@ -364,6 +369,8 @@ func on_error(code: String, text: String) -> void:
 
 
 func on_command_acked(cmd_name: String) -> void:
+	if cmd_name == "start_run":
+		_rogue_acked = true
 	if cmd_name == "pair_devices":
 		pairing.on_pair_acked()
 		_refresh_pairing()
@@ -946,6 +953,7 @@ func _handle_rogue(item_id: String) -> Dictionary:
 
 
 func _launch_rogue(act: Dictionary) -> Dictionary:
+	_rogue_acked = false
 	menu.open_screen(RogueMenuModel.LOADING)
 	return act
 
