@@ -15,6 +15,9 @@ extends Node3D
 ## silhouette, à l'échelle BIRD_SCALE de leur sorte ; ailes repliées au sol). `setup_sound(sound_player)` :
 ## croassements à l'envol des corneilles et cris des rapaces (fauna_behaviour.gd `events`) sur un lecteur 3D,
 ## au volume `ambience.volume` du thème.
+## Lot P24 : chevaux des prés et lièvres des champs (fauna_placer.gd), deux espèces de plus ; un lièvre est
+## traité comme un chevreuil (une bête seule, mise à jour à chaque image, réduite à rien une fois partie).
+## Meuglements, bêlements et hennissements des troupeaux sur le même lecteur 3D.
 ## Tous les nœuds sont créés à l'initialisation ; aucun n'est créé ensuite.
 
 const FaunaBehaviour := preload("res://scripts/fauna_behaviour.gd")
@@ -22,12 +25,15 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const FaunaShader := preload("res://shaders/fauna.gdshader")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 
-const SPECIES := ["bird", "cow", "sheep", "deer"]
+const SPECIES := ["bird", "cow", "sheep", "deer", "horse", "hare"]
+const GROUND_SPECIES := ["cow", "sheep", "deer", "horse", "hare"]
 const ALBEDO := {
 	"bird": Color(0.12, 0.12, 0.14),
 	"cow": Color(0.55, 0.42, 0.32),
 	"sheep": Color(0.86, 0.84, 0.78),
 	"deer": Color(0.52, 0.34, 0.2),
+	"horse": Color(0.4, 0.24, 0.13),
+	"hare": Color(0.5, 0.4, 0.28),
 }
 ## Lot Y14 : zones de couleur des maillages (CUSTOM0.x) : robe (ALBEDO), teinte d'appoint (ACCENT : mufle et
 ## mamelle, tête et pattes noires du mouton, bec), sombre (sabots, yeux, truffe), corne, clair (LIGHT : face et
@@ -43,14 +49,18 @@ const ACCENT := {
 	"cow": Color(0.8, 0.58, 0.54),
 	"sheep": Color(0.16, 0.14, 0.13),
 	"deer": Color(0.42, 0.27, 0.16),
+	"horse": Color(0.07, 0.055, 0.045),
+	"hare": Color(0.08, 0.07, 0.06),
 }
 const LIGHT := {
 	"bird": Color(0.3, 0.3, 0.32),
 	"cow": Color(0.9, 0.87, 0.8),
 	"sheep": Color(0.86, 0.84, 0.78),
 	"deer": Color(0.9, 0.87, 0.8),
+	"horse": Color(0.88, 0.85, 0.8),
+	"hare": Color(0.86, 0.83, 0.76),
 }
-const PATCHES := {"bird": 0.0, "cow": 0.4, "sheep": 0.0, "deer": 0.0}
+const PATCHES := {"bird": 0.0, "cow": 0.4, "sheep": 0.0, "deer": 0.0, "horse": 0.0, "hare": 0.0}
 const RESELECT_M := 20.0
 const HERD_UPDATE_EVERY := 4
 ## Lot P23 : échelle de la silhouette d'oiseau (0,9 m d'envergure) et battement d'ailes (INSTANCE_CUSTOM.z)
@@ -117,7 +127,7 @@ func set_preset(preset_name: String, enabled: bool = true) -> void:
 	budget_birds = int(living.get("birds", 0))
 	budget_animals = int(living.get("animals", 0))
 	_mmi["bird"].multimesh.instance_count = budget_birds
-	for sp in ["cow", "sheep", "deer"]:
+	for sp in GROUND_SPECIES:
 		_mmi[sp].multimesh.instance_count = budget_animals
 	_dirty = true
 
@@ -167,7 +177,7 @@ func _select(cam_pos: Vector3) -> void:
 				var members: Array = g["members"]
 				for i in range(members.size()):
 					animals.append([(members[i]["pos"] as Vector3).distance_squared_to(cam_pos), gi, i])
-			"deer":
+			"deer", "hare":
 				if str(g.get("state", "idle")) != "gone":
 					animals.append([(g["pos"] as Vector3).distance_squared_to(cam_pos), gi, -1])
 	var by_dist := func(a, b): return a[0] < b[0] or (a[0] == b[0] and (a[1] < b[1] or (a[1] == b[1] and a[2] < b[2])))
@@ -184,12 +194,14 @@ func _select(cam_pos: Vector3) -> void:
 	# Chaque bête gardée reçoit une case fixe de son espèce jusqu'au tri suivant.
 	_sel_animals.clear()
 	_slots.clear()
-	var used := {"cow": 0, "sheep": 0, "deer": 0}
+	var used := {}
+	for sp in GROUND_SPECIES:
+		used[sp] = 0
 	for j in range(mini(budget_animals, animals.size())):
 		var gi: int = animals[j][1]
 		var i: int = animals[j][2]
 		var g: Dictionary = groups[gi]
-		var sp: String = "deer" if i < 0 else str(g["species"])
+		var sp: String = str(g["species"])
 		var slot: int = used[sp]
 		used[sp] = slot + 1
 		_sel_animals.append(Vector2i(gi, i))
@@ -229,19 +241,14 @@ func update(cam_pos: Vector3, rider_pos: Vector3, now_s: float) -> void:
 			mm_b.set_instance_custom_data(j, _bird_custom(g, s.y, now_s))
 		mm_b.set_instance_transform(j, bird_transform(g, s.y, now_s))
 
-	# Chevreuils à chaque image ; bétail (rotation lente) par quart, une image sur quatre chacun.
-	var mm_d: MultiMesh = _mmi["deer"].multimesh
+	# Chevreuils et lièvres à chaque image ; bétail (rotation lente) par quart, une image sur quatre chacun.
 	for j in range(_sel_animals.size()):
 		var s := _sel_animals[j]
 		var g: Dictionary = groups[s.x]
 		if s.y < 0:
-			var alpha := FaunaBehaviour.deer_alpha(g, now_s)
-			var idle := str(g["state"]) == "idle"
-			var fd: Vector3 = g["flee_dir"]
-			var yaw := float(g["yaw"]) if idle else atan2(fd.x, fd.z)
-			mm_d.set_instance_transform(_slots[j], Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * maxf(alpha, 0.001)),
-				FaunaBehaviour.deer_position(g, now_s) - (Vector3.ZERO if alpha > 0.0 else Vector3(0.0, 50.0, 0.0))))
-			mm_d.set_instance_custom_data(_slots[j], Color(0.3, 0.0 if idle else 1.0, 0.0, 0.0))
+			var mm_w: MultiMesh = _mmi[str(g["species"])].multimesh
+			mm_w.set_instance_transform(_slots[j], wild_transform(g, now_s))
+			mm_w.set_instance_custom_data(_slots[j], Color(0.3, 0.0 if str(g["state"]) == "idle" else 1.0, 0.0, 0.0))
 		elif (j + _frame) % HERD_UPDATE_EVERY == 0:
 			var m: Dictionary = g["members"][s.y]
 			var mm: MultiMesh = _mmi[str(g["species"])].multimesh
@@ -249,6 +256,22 @@ func update(cam_pos: Vector3, rider_pos: Vector3, now_s: float) -> void:
 	for ev in behaviour.events:
 		_play(ev)
 	last_update_usec = Time.get_ticks_usec() - t0
+
+
+## Transformée d'un chevreuil ou d'un lièvre (lot P24) : réduit à rien et caché sous le sol une fois parti.
+static func wild_transform(g: Dictionary, now_s: float) -> Transform3D:
+	var alpha := FaunaBehaviour.wild_alpha(g, now_s)
+	var pos: Vector3
+	var yaw: float
+	if str(g["type"]) == "hare":
+		pos = FaunaBehaviour.hare_position(g, now_s)
+		yaw = FaunaBehaviour.hare_yaw(g, now_s)
+	else:
+		pos = FaunaBehaviour.deer_position(g, now_s)
+		var fd: Vector3 = g["flee_dir"]
+		yaw = float(g["yaw"]) if str(g["state"]) == "idle" else atan2(fd.x, fd.z)
+	return Transform3D(Basis(Vector3.UP, yaw).scaled(Vector3.ONE * maxf(alpha, 0.001)),
+		pos - (Vector3.ZERO if alpha > 0.0 else Vector3(0.0, 50.0, 0.0)))
 
 
 ## Point de référence d'un groupe d'oiseaux pour le tri par distance.
@@ -312,7 +335,7 @@ func _play(ev: Dictionary) -> void:
 # CUSTOM0.x : zone (FAUNA_*), qui choisit la couleur dans shaders/fauna.gdshader ; UV.x : poids de l'aile
 # (oiseau) ; UV.y : poids de la tête qui broute (bêtes au sol, progressif le long du cou).
 
-## Maillage d'une espèce (`bird`, `cow`, `sheep`, `deer`), avant vers +z, pieds à y = 0 ; l'oiseau est centré,
+## Maillage d'une espèce (`bird`, `cow`, `sheep`, `deer`, `horse`, `hare`), avant vers +z, pieds à y = 0 ; l'oiseau est centré,
 ## ailes le long de x (0,9 m d'envergure, repliées par l'écrasement de x d'une corneille posée).
 static func build_mesh(sp: String) -> ArrayMesh:
 	match sp:
@@ -322,6 +345,10 @@ static func build_mesh(sp: String) -> ArrayMesh:
 			return _build_cow()
 		"sheep":
 			return _build_sheep()
+		"horse":
+			return _build_horse()
+		"hare":
+			return _build_hare()
 		_:
 			return _build_deer()
 
@@ -465,5 +492,65 @@ static func _build_deer() -> ArrayMesh:
 		m.prism(Vector3(sx * 0.03, 1.42, 0.62), Vector3(sx * 0.05, 1.58, 0.6), Vector2(0.012, 0.012), Vector2(0.006, 0.006), 4)
 		m.prism(Vector3(sx * 0.04, 1.5, 0.61), Vector3(sx * 0.05, 1.54, 0.68), Vector2(0.007, 0.007), Vector2(0.004, 0.004), 4)
 		m.region = FAUNA_DARK
+	m.uv = Vector2.ZERO
+	return m.commit()
+
+
+## Cheval bai (lot P24) : tronc long, croupe ronde, garrot haut, encolure arquée, crinière et queue sombres,
+## liste blanche et balzanes, longues pattes fines à sabots.
+static func _build_horse() -> ArrayMesh:
+	var m := PeopleMesh.Builder.new()
+	m.region = FAUNA_COAT
+	m.prism(Vector3(0.0, 1.18, -0.62), Vector3(0.0, 1.22, 0.55), Vector2(0.27, 0.32), Vector2(0.26, 0.36))   # tronc
+	m.ellipsoid(Vector3(0.0, 1.2, -0.62), Vector3(0.29, 0.33, 0.24))   # croupe
+	m.ellipsoid(Vector3(0.0, 1.24, 0.55), Vector3(0.26, 0.36, 0.2))    # poitrail
+	m.ellipsoid(Vector3(0.0, 1.5, 0.42), Vector3(0.14, 0.12, 0.2), -30.0, 3)   # garrot
+	for lx in [-1.0, 1.0]:
+		for lz in [-0.6, 0.5]:
+			_leg(m, lx * 0.17, lz, 1.1, 0.1, 0.04, FAUNA_LIGHT if lz < 0.0 else FAUNA_COAT)   # balzanes derrière
+	# Encolure arquée puis tête, qui descendent brouter (UV.y)
+	m.prism(Vector3(0.0, 1.34, 0.58), Vector3(0.0, 1.78, 0.9), Vector2(0.15, 0.24), Vector2(0.1, 0.13), SIDES, 1.0)
+	m.uv = Vector2(0.0, 1.0)
+	m.prism(Vector3(0.0, 1.84, 0.9), Vector3(0.0, 1.52, 1.25), Vector2(0.1, 0.12), Vector2(0.06, 0.08))   # tête
+	m.region = FAUNA_LIGHT
+	m.prism(Vector3(0.0, 1.8, 1.0), Vector3(0.0, 1.55, 1.27), Vector2(0.035, 0.02), Vector2(0.025, 0.015), 4)   # liste
+	m.region = FAUNA_DARK
+	m.ellipsoid(Vector3(0.0, 1.51, 1.26), Vector3(0.06, 0.05, 0.04), -90.0, 3)   # bout du nez
+	for sx in [-1.0, 1.0]:
+		m.ellipsoid(Vector3(sx * 0.075, 1.75, 1.04), Vector3(0.016, 0.018, 0.018), -90.0, 3)   # yeux
+		m.region = FAUNA_COAT
+		m.prism(Vector3(sx * 0.05, 1.88, 0.92), Vector3(sx * 0.06, 2.0, 0.9), Vector2(0.03, 0.02), Vector2(0.006, 0.006), 4)   # oreilles
+		m.region = FAUNA_DARK
+	m.region = FAUNA_ACCENT
+	m.prism(Vector3(0.0, 1.92, 0.88), Vector3(0.0, 1.5, 0.5), Vector2(0.03, 0.07), Vector2(0.025, 0.05), 4, 1.0)   # crinière
+	m.uv = Vector2.ZERO
+	m.prism(Vector3(0.0, 1.3, -0.85), Vector3(0.0, 0.7, -0.98), Vector2(0.06, 0.06), Vector2(0.03, 0.05), 5)   # queue
+	return m.commit()
+
+
+## Lièvre (lot P24) : corps ramassé, longues pattes arrière, très longues oreilles à pointe noire,
+## ventre et dessous de la queue blancs, 0,6 m de long.
+static func _build_hare() -> ArrayMesh:
+	var m := PeopleMesh.Builder.new()
+	m.region = FAUNA_COAT
+	m.ellipsoid(Vector3(0.0, 0.24, -0.06), Vector3(0.11, 0.13, 0.2))   # corps, arrière plus haut
+	m.ellipsoid(Vector3(0.0, 0.22, 0.1), Vector3(0.09, 0.1, 0.11))
+	for sx in [-1.0, 1.0]:
+		m.ellipsoid(Vector3(sx * 0.08, 0.17, -0.12), Vector3(0.05, 0.09, 0.11), -90.0, 4)   # cuisses
+		m.prism(Vector3(sx * 0.08, 0.02, -0.08), Vector3(sx * 0.08, 0.02, 0.06), Vector2(0.02, 0.015), Vector2(0.015, 0.012), 4)   # pieds arrière
+		m.prism(Vector3(sx * 0.05, 0.16, 0.14), Vector3(sx * 0.05, 0.0015, 0.16), Vector2(0.015, 0.015), Vector2(0.012, 0.012), 4)   # pattes avant
+	m.region = FAUNA_LIGHT
+	m.ellipsoid(Vector3(0.0, 0.16, 0.0), Vector3(0.07, 0.05, 0.16), -90.0, 3)   # ventre
+	m.ellipsoid(Vector3(0.0, 0.3, -0.26), Vector3(0.04, 0.04, 0.03), -90.0, 3)   # queue
+	m.region = FAUNA_COAT
+	m.uv = Vector2(0.0, 1.0)
+	m.ellipsoid(Vector3(0.0, 0.33, 0.2), Vector3(0.06, 0.06, 0.08))   # tête
+	for sx in [-1.0, 1.0]:
+		m.prism(Vector3(sx * 0.025, 0.37, 0.18), Vector3(sx * 0.045, 0.5, 0.12), Vector2(0.022, 0.008), Vector2(0.02, 0.007), 4)   # oreille
+		m.region = FAUNA_ACCENT
+		m.prism(Vector3(sx * 0.045, 0.5, 0.12), Vector3(sx * 0.05, 0.53, 0.11), Vector2(0.02, 0.007), Vector2(0.004, 0.004), 4)   # pointe noire
+		m.region = FAUNA_DARK
+		m.ellipsoid(Vector3(sx * 0.04, 0.35, 0.24), Vector3(0.011, 0.012, 0.012), -90.0, 3)   # yeux
+		m.region = FAUNA_COAT
 	m.uv = Vector2.ZERO
 	return m.commit()
