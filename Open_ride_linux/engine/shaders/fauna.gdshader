@@ -11,6 +11,8 @@ render_mode cull_disabled, diffuse_lambert, specular_disabled;
 // - CUSTOM0.x : zone de couleur du maillage (Lot Y14, fauna_renderer.gd FAUNA_*) : 0 robe, 1 teinte d'appoint,
 //   2 sombre (sabots, yeux), 3 corne, 4 clair ; `patches` : part de la robe en taches claires (vache pie),
 //   dessinées dans le repère de la bête et décalées par sa phase.
+// - Lot U12 : `stripes` (rayures de la robe par mètre, zèbre ; 0 = aucune), en travers du corps et des pattes ;
+//   `graze_m` : descente de la tête qui broute, à l'échelle de la bête (girafe, marmotte, flamant).
 #include "res://shaders/surface_detail.gdshaderinc"
 
 uniform int mode = 0;
@@ -18,6 +20,8 @@ uniform vec3 albedo : source_color = vec3(0.3, 0.3, 0.3);
 uniform vec3 accent : source_color = vec3(0.3, 0.3, 0.3);
 uniform vec3 light : source_color = vec3(0.9, 0.9, 0.9);
 uniform float patches = 0.0;
+uniform float stripes = 0.0;
+uniform float graze_m = 0.45;
 const vec3 DARK = vec3(0.05, 0.045, 0.04);
 const vec3 HORN = vec3(0.82, 0.76, 0.62);
 
@@ -38,8 +42,8 @@ void vertex() {
 	} else {
 		float down = 0.5 + 0.5 * sin(TIME * 6.2831853 * graze_hz + phase);
 		down = smoothstep(0.35, 0.9, down) * (1.0 - INSTANCE_CUSTOM.y);
-		VERTEX.y -= UV.y * down * 0.45;
-		VERTEX.z += UV.y * down * 0.12;
+		VERTEX.y -= UV.y * down * graze_m;
+		VERTEX.z += UV.y * down * graze_m * 0.27;
 	}
 }
 
@@ -54,6 +58,10 @@ void fragment() {
 		c = HORN;
 	} else if (region == 4) {
 		c = light;
+	} else if (stripes > 0.0) {
+		// Bandes en travers du corps (le long de z), inclinées vers l'avant ; en travers des pattes (le long de y)
+		float q = v_local.z + 0.35 * v_local.y + 0.15 * sin(v_local.y * 7.0 + v_local.x * 3.0);
+		c = sin(q * stripes * 6.2831853) > 0.1 ? albedo : light;
 	} else if (patches > 0.0) {
 		vec2 q = v_local.zy * 2.2 + vec2(v_seed * 37.0, v_seed * 11.0);
 		float n = sd_noise(q) * 0.7 + sd_noise(q * 2.3 + v_local.x) * 0.3;
