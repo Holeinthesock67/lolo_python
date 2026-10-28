@@ -719,13 +719,14 @@ func _process(delta: float) -> void:
 		return
 	if not follow.has_frame():
 		return
+	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd), figée 1,1 s après la
+	# dernière trame ; journalisée en mode test même core muet (scénario 4 de fake_core.py).
+	var s_disp: float = follow.update(now)
+	_test_log_camera(now, s_disp)
 	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
 	# l'horloge des personnages et des animaux ci-dessus.
 	if banner.has_message("core_lost"):
 		return
-	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd).
-	var s_disp: float = follow.update(now)
-	_test_log_camera(now, s_disp)
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		var pos: Vector3 = route.sample_point(s_route)
@@ -980,6 +981,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
+		"bots_gap1": hud.bots_gaps[0], "bots_ahead": hud.neighbor_labels[0], "bots_behind": hud.neighbor_labels[1],
+		"bots_jerseys": hud.jerseys_label, "segment_panel": hud.panel_segment,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
 		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}
@@ -1219,7 +1222,9 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if running and route != null:
 		_give_cues(state)
-	bots_model.push(state.get("bots", null) if running or session_state == "PAUSED" else null, Time.get_ticks_usec())
+	var in_session := running or session_state == "PAUSED"
+	bots_model.push(state.get("bots", null) if in_session else null, Time.get_ticks_usec())
+	bots_model.set_race(state if in_session else null)
 
 	_feed_chart(state, running, previous_session_state)
 
@@ -1309,7 +1314,7 @@ func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> vo
 func _show_bots(rider_s: float, rider_v: float) -> void:
 	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
 	if hud != null and hud.has_method("update_bots"):
-		hud.update_bots(view)
+		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route, _visual_grade_scale, route.alt_m[0] if route != null and route.n > 0 else 0.0)
 
