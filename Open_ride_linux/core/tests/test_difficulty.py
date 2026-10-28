@@ -22,6 +22,7 @@ def make_session(tmp_path, monkeypatch, cfg=None, port=5850):
         inputs=[NullProvider()],
         journal_dir=tmp_path / "journal",
         routes_root=tmp_path / "routes",
+        config_path=tmp_path / "config.toml",
     )
     return s
 
@@ -191,5 +192,18 @@ def test_difficulty_in_state_hello_ack_and_jsonl(tmp_path, monkeypatch):
         assert len(records) >= 2
         assert records[0]["difficulty_pct"] == 50
         assert records[-1]["difficulty_pct"] == 35
+
+    asyncio.run(scenario())
+
+
+def test_set_difficulty_is_saved_for_the_next_session(tmp_path, monkeypatch):
+    """Tout réglage du menu persiste : la difficulté choisie à la pause est écrite dans config.toml."""
+    from openride_core import config as config_mod
+
+    async def scenario():
+        s = make_session(tmp_path, monkeypatch, port=5880)
+        s._on_command("set_difficulty", {"pct": 30}, 1)
+        assert config_mod.load(tmp_path / "config.toml").trainer.difficulty_pct == 30
+        assert s.cfg.trainer.difficulty_pct == 30
 
     asyncio.run(scenario())

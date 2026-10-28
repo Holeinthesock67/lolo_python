@@ -54,6 +54,7 @@ import quality_guard  # noqa: E402
 
 ENGINE_DIR = Path(__file__).resolve().parents[1]
 CORE_SRC = ENGINE_DIR.parent / "core" / "src"
+COMPILER_SRC = ENGINE_DIR.parent / "compiler" / "src"
 DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
 # Mêmes tolérances que run_engine_tests.sh, plus la synchronisation verticale sous Xvfb.
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
@@ -62,7 +63,8 @@ GODOT_TOLERATED = re.compile(
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
-              "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2")
+              "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2",
+              "bots_gap1", "bots_ahead", "bots_behind", "bots_jerseys")
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -745,13 +747,15 @@ def _scenes(s: Session) -> None:
     time.sleep(2.5)
 
     # 3 ter bis. Bots (lot O7) : un bot à 20 m devant, un fantôme à 60 m derrière ; silhouettes sur la route,
-    # encart du HUD sous le panneau de droite (au plus 5 lignes), sans chevauchement.
+    # encart du HUD sous le panneau de droite (au plus 5 lignes), sans chevauchement ; lot T15 : voisins
+    # immédiats (`bot_ahead`, `bot_behind`) et porteurs des maillots (`jerseys`).
     # La caméra ne recule jamais pendant une séance (camera_follow.gd) : les bots se placent autour de la
     # position actuelle du cycliste, sans revenir à FIXED_S.
     s_now = core.current_s()
     core.set_scene(speed=0.0, bots=[
         {"id": "bot1", "name": "Bot 250 W", "s": s_now + 20.0, "v": 0.0, "kind": "constant"},
-        {"id": "ghost", "name": "Fantôme du 26/10", "s": s_now - 60.0, "v": 0.0, "kind": "ghost"}])
+        {"id": "ghost", "name": "Fantôme du 26/10", "s": s_now - 60.0, "v": 0.0, "kind": "ghost"}],
+        bot_ahead="bot1", bot_behind="ghost", jerseys={"sprint": "me", "kom": "bot1"})
     time.sleep(SETTLE_S)
     shot = s.capture("bots")
     if shot:
@@ -760,13 +764,15 @@ def _scenes(s: Session) -> None:
         s.check("bots", "encart des bots affiché", w["bots_panel"]["visible"] and w["bots_line1"]["visible"]
                 and w["bots_line2"]["visible"])
         s.check_texts("bots", info, {"bots_line1": "Bot 250 W", "bots_line2": "Fantôme du 26/10"}, contains=True)
+        s.check_texts("bots", info, {"bots_ahead": "Bot 250 W", "bots_behind": "Fantôme du 26/10",
+                                     "bots_jerseys": "Vert : toi · Pois : Bot 250 W"}, contains=True)
         s.check("bots", "encart sous le panneau de droite", w["bots_panel"]["rect"][1] >= w["panel"]["rect"][1],
                 f"rectangle {w['bots_panel']['rect']}")
         b = info.get("bots", {})
         s.check("bots", "bot devant visible dans le champ de la caméra", b.get("shown") == 2 and b.get("in_view", 0) >= 1,
                 f"{b}")
         s.check_layout("bots", info)
-    core.set_scene(speed=SPEED_MPS, bots=None)
+    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None)
     time.sleep(SETTLE_S)
     shot = s.capture("sans_bot")
     if shot:
@@ -1031,6 +1037,7 @@ def _scenes(s: Session) -> None:
         s.check_layout("erreur", info)
     _menu_scenes(s)
     _pentes_scenes(s)
+    _decor_vivant_scene(s)
     fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
 
@@ -1061,6 +1068,51 @@ def _pentes_scenes(s: Session) -> None:
         s.check_world("pente_4pct", img, info)
     # Le parcours demo ne dépasse pas 4,5 % : l'aspect d'une pente de 8 % se juge sur la scène
     # pente_4pct lancée avec --visual-grade=1.8 (captures suffixées _k1.8).
+
+
+## Lot P27 : monde de test OSM (make_osm_world.py) : troupeau à 2 180 m, route secondaire à 100 m et
+## autoroute à 250 m du parcours, canal à 120 m ; la scène roule de DECOR_S pendant DECOR_WAIT_S au plus.
+## Avec la graine 0 de traffic_model.gd, la case de 1 500 à 1 750 m porte un utilitaire qui double.
+OSM_ROUTE_ID = "osm-test"
+DECOR_S = 1480.0
+DECOR_WAIT_S = 30.0
+DECOR_KINDS = {"animals": "troupeau", "birds": "oiseaux", "vehicles": "véhicule croisé",
+               "distant_vehicles": "véhicule lointain", "aircraft": "objet du ciel"}
+
+
+def _decor_vivant_scene(s: Session) -> None:
+    """Lot P27 : décor vivant de la deuxième vague sur le monde de test OSM, vérifié par la présence des
+    objets (le décor bouge : pas d'image de référence). Captures toutes les 2 s jusqu'à ce que chaque sorte
+    ait été vue, DECOR_WAIT_S au plus ; la dernière est gardée dans le rapport."""
+    core = s.core
+    mark = core.log.mark()
+    core.route_id = OSM_ROUTE_ID
+    core.set_scene(speed=SPEED_MPS, s=DECOR_S, session_state="RUNNING", grade=5.0, grade_sent=5.0, power=280.0,
+                   cadence=88.0, hr=150, summary=None)
+    loaded = core.log.wait_for(rf"^route_loaded id={OSM_ROUTE_ID}", ROUTE_TIMEOUT_S, mark)
+    s.check("decor_vivant", "monde de test OSM chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(SETTLE_S)
+    seen = dict.fromkeys(DECOR_KINDS, 0)
+    t0 = now()
+    shot = None
+    while now() - t0 < DECOR_WAIT_S:
+        shot = s.capture("decor_vivant") or shot
+        dec = shot[1].get("decor", {}) if shot else {}
+        for k in seen:
+            seen[k] = max(seen[k], int(dec.get(k, 0)))
+        if all(seen.values()):
+            break
+        time.sleep(2.0)
+    caps = [c for c in s.report.captures if c.config == s.name and c.scene == "decor_vivant"]
+    for c in caps[:-1]:
+        s.report.captures.remove(c)
+    if shot:
+        img, info = shot
+        s.check("decor_vivant", "décor vivant préparé", bool(info.get("decor", {}).get("prepared")))
+        for k, label in DECOR_KINDS.items():
+            s.check("decor_vivant", f"{label} en vue", seen[k] > 0, f"{seen[k]} au plus")
+        s.check_layout("decor_vivant", info)
+        s.check_world("decor_vivant", img, info)
 
 
 def _menu_scenes(s: Session) -> None:
@@ -1363,6 +1415,16 @@ def main() -> int:
         if gen.returncode != 0:
             print("Génération du parcours demo avec terrain impossible :\n" + gen.stderr)
             return 1
+        # Monde de test OSM de la scène decor_vivant (lot P27), avec le vrai compilateur
+        osm_work = Path(tempfile.mkdtemp(prefix="openride-visual-osm-"))
+        gen = subprocess.run([sys.executable, str(ENGINE_DIR / "tests" / "make_osm_world.py"), "--out", str(osm_work)],
+                             env={**os.environ, "PYTHONPATH": os.pathsep.join([str(COMPILER_SRC), str(CORE_SRC)])},
+                             capture_output=True, text=True)
+        if gen.returncode != 0:
+            print("Génération du monde de test OSM impossible (compilateur installé ?) :\n" + gen.stderr)
+            return 1
+        shutil.copytree(osm_work / f"{OSM_ROUTE_ID}.world", routes_dir / f"{OSM_ROUTE_ID}.world")
+        shutil.rmtree(osm_work, ignore_errors=True)
         for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
             run_config(config, args, routes_dir, out_dir, report)
     finally:
