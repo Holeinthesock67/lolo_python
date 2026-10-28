@@ -1,0 +1,54 @@
+{
+  "description": "Réglages et sous-écrans (Cycliste, Séance, Affichage, Son, Vent) : tableau des boutons, modification en place, enregistrement dans config.toml (A long), annulation (Y), retours.",
+  "canaux": ["clavier", "click", "souris"],
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"ouvrir": "settings"},
+    {"ecran": "settings", "titre": "Réglages", "focus": "devices",
+     "elements": ["devices", "group:rider", "group:ride", "group:display", "group:sound", "group:wind"], "inactifs": ["version"]},
+    {"capture": "reglages"},
+    {"tableau": null, "retour_vers": "home"},
+    {"ouvrir": "settings"}, {"ecran": "settings"},
+
+    {"ouvrir": "group:rider", "note": "Cycliste : FTP modifiée puis enregistrée"},
+    {"ecran": "settings_group", "titre": "Réglages › Cycliste", "elements": ["set:rider.ftp_w", "set:rider.mass_kg", "set:bike.mass_kg"]},
+    {"tableau": ["+ court", "- court", "A court", "droite", "gauche", "Z court", "haut"]},
+    {"ouvrir": "set:rider.ftp_w"}, {"edition": true, "texte": "250 W"},
+    {"capture": "ftp_en_modification"},
+    {"bouton": "+ court", "n": 3}, {"texte": "265 W", "edition": true},
+    {"bouton": "Z court", "note": "Z ne fait rien, même en modification"}, {"texte": "265 W", "edition": true},
+    {"bouton": "A long"}, {"edition": false, "texte": "FTP — 265 W", "config": {"rider.ftp_w": 265}},
+    {"ouvrir": "set:rider.mass_kg", "note": "Poids modifié puis annulé par Y : rien d'écrit"},
+    {"bouton": "+ court", "n": 2}, {"texte": "77 kg"},
+    {"bouton": "Y court"}, {"ecran": "settings_group", "edition": false, "texte": "Poids — 75 kg", "config_absent": ["rider.mass_kg"]},
+    {"bouton": "Y court"}, {"ecran": "settings", "focus": "group:rider"},
+
+    {"ouvrir": "group:ride", "note": "Séance : difficulté en SIM"},
+    {"ecran": "settings_group", "titre": "Réglages › Séance", "elements": ["set:trainer.difficulty_pct", "set:gearing.start_gear", "set:powerups.mode"]},
+    {"ouvrir": "set:trainer.difficulty_pct"}, {"bouton": "- court"}, {"bouton": "A long"},
+    {"config": {"trainer.difficulty_pct": 40}, "texte": "40 %"},
+    {"bouton": "Y court"}, {"ecran": "settings"},
+
+    {"ouvrir": "group:display", "note": "Affichage : qualité appliquée tout de suite"},
+    {"ecran": "settings_group", "titre": "Réglages › Affichage", "elements": ["set:render.quality", "set:render.theme", "set:render.camera"]},
+    {"ouvrir": "set:render.quality"}, {"bouton": "+ court"}, {"bouton": "A long"},
+    {"config": {"render.quality": "medium"}, "journal_engine": "Qualité appliquée : medium"},
+    {"bouton": "Y court"}, {"ecran": "settings"},
+
+    {"ouvrir": "group:sound", "note": "Son : volume général"},
+    {"ecran": "settings_group", "titre": "Réglages › Son", "elements": ["set:audio.master_pct", "set:audio.ride_pct", "set:audio.ambience_pct", "set:audio.events_pct"]},
+    {"ouvrir": "set:audio.master_pct"}, {"bouton": "- court"}, {"bouton": "A long"},
+    {"config": {"audio.master_pct": 90}},
+    {"bouton": "Y court"}, {"ecran": "settings"},
+
+    {"ouvrir": "group:wind", "note": "Vent : mode puis force"},
+    {"ecran": "settings_group", "titre": "Réglages › Vent", "elements": ["set:wind.mode", "set:wind.speed_kmh", "set:wind.from_deg"]},
+    {"ouvrir": "set:wind.mode"}, {"bouton": "+ court"}, {"bouton": "A long"},
+    {"config_present": ["wind.mode"]},
+    {"ouvrir": "set:wind.speed_kmh"}, {"bouton": "+ court", "n": 2}, {"bouton": "A long"},
+    {"config_present": ["wind.speed_kmh"]},
+    {"capture": "vent"},
+    {"bouton": "Y court"}, {"ecran": "settings", "focus": "group:wind"},
+    {"bouton": "Y court"}, {"ecran": "home", "focus": "settings"}
+  ]
+}

@@ -17,7 +17,7 @@ Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. 
 
 Détail des tests de l'engine : [engine/tests/README.md](../engine/tests/README.md).
 
-**Isolation des suites pytest (27 octobre) :** `core/tests/conftest.py` et `compiler/tests/conftest.py` chargent `scripts/isolation_tests.py` avant tout import. HOME, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME` et `XDG_STATE_HOME` pointent vers un dossier temporaire neuf (`~/OpenRide/...` compris), supprimé en fin de suite ; `zenity`, `kdialog` et `notify-send` sont remplacés par des programmes muets, sous-processus compris. Garde-fou : un test qui écrit, crée, renomme ou supprime un fichier hors du dossier temporaire du système, ou dans ce HOME temporaire (sous-processus compris), échoue avec le chemin et la ligne en cause ; un test écrit dans son `tmp_path`. Une seule suite à la fois sur la machine : pytest, `scripts/recette_pc.py`, `scripts/pre_vol.py`, `sim_bench.py`, `menu_bench.py` et `e2e_check.py` prennent le même verrou (`/tmp/openride-tests-<uid>.lock`) et une deuxième suite attend la fin de la première, pour ne pas fausser les mesures de performance. Le journal temporaire de `run_engine_tests.sh` est supprimé quand tout passe.
+**Isolation des suites pytest (27 octobre) :** `core/tests/conftest.py` et `compiler/tests/conftest.py` chargent `scripts/isolation_tests.py` avant tout import. HOME, `XDG_CONFIG_HOME`, `XDG_DATA_HOME`, `XDG_CACHE_HOME` et `XDG_STATE_HOME` pointent vers un dossier temporaire neuf (`~/OpenRide/...` compris), supprimé en fin de suite ; `zenity`, `kdialog` et `notify-send` sont remplacés par des programmes muets, sous-processus compris. Garde-fou : un test qui écrit, crée, renomme ou supprime un fichier hors du dossier temporaire du système, ou dans ce HOME temporaire (sous-processus compris), échoue avec le chemin et la ligne en cause ; un test écrit dans son `tmp_path`. Une seule suite à la fois sur la machine : pytest, `scripts/recette_pc.py`, `scripts/pre_vol.py`, `sim_bench.py`, `menu_bench.py`, `menu_robot.py` et `e2e_check.py` prennent le même verrou (`/tmp/openride-tests-<uid>.lock`) et une deuxième suite attend la fin de la première, pour ne pas fausser les mesures de performance. Le journal temporaire de `run_engine_tests.sh` est supprimé quand tout passe.
 
 Protocole pas à pas sur le PC et le vélo (tout sur `main` depuis le 27 octobre, sauf deux essais qui attendent leur PR) : [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md).
 
@@ -85,6 +85,33 @@ python3 engine/tests/menu_bench.py --parcours appareils --native   # fenêtre vi
 ```
 
 Parcours : `erg` (lot N16 : entraînement créé puis lu par le core, fichier des Téléchargements importé) ; `reglages` (lots O3 et O4 : FTP écrite dans `config.toml`, qualité appliquée tout de suite, curseur de difficulté de la pause) ; `connexion_auto` (tout se connecte, l'écran de connexion passe seul à l'accueil) ; `sessions` (lot N15 : monde, session libre, pause, bilan, session ERG, « Session simulée » : code 65) ; `appareils` (un seul boîtier du Click, « Passer », Réglages → Appareils, recherche, enregistrement dans `config.toml`, « Relancer » : code de sortie 64). Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
+
+### Robot des menus (`engine/tests/menu_robot.py`, 28 octobre)
+
+Test automatique de tous les menus, au Click simulé, au clavier simulé et à la souris simulée, sans toucher au code des menus. Chaque scénario de `engine/tests/menu_scenarios/` (un fichier JSON déclaratif : appuis, touches, clics, puis écran, focus, éléments, valeur écrite dans `config.toml`, fichier créé, état de la séance, code de sortie attendus) lance un vrai core sur Bluetooth simulé et un vrai engine, puis se joue une fois par canal :
+
+- **Click** : appuis envoyés au Click simulé par le port de pilotage du Bluetooth simulé (`control_port`) ; ils passent par le vrai pilote, le décodeur des trames et le relais `input` du core, comme le vrai Click (A, B, Y, Z, flèches, + et −, appuis courts, longs et ambigus) ;
+- **clavier** : touches injectées dans Godot avec la vraie durée d'appui (`Input.parse_input_event`), lues par `key_map.gd` comme une vraie touche, synonymes compris (Entrée, Échap, Page haut, Maj+A…) ;
+- **souris** : survol, clic sur la ligne, clic droit et molette injectés dans le menu ; un bouton sans geste de souris est joué au clavier et compté.
+
+Un seul tableau bouton → action (spécification générale §7.1) donne le geste de chaque canal et l'effet attendu ; l'étape « tableau » vérifie chaque bouton sur chaque écran (élément suivant, précédent, cinq plus loin borné, rien pour Z, haut, bas et l'appui ambigu). Les scénarios désignent écrans et éléments par leurs identifiants stables, pas par leurs libellés. Couverts : connexion des appareils, accueil, Réglages et leurs cinq sous-écrans (modification, enregistrement, annulation), Appareils (recherche, confirmation, relance), parcours (tri, filtre), écran Prêt (bot, fantôme, records), entraînements (création, import), plans, tests de FTP, séance (pause par Y, difficulté, abandon annulé, reprise), bilan, Garage, confirmations (Quitter, Abandonner, Session simulée), monde ouvert, Cyber-Rogue (écran de départ, avertissement, composition de la run, écran Prêt).
+
+```bash
+python3 engine/tests/menu_robot.py --list                          # scénarios et canaux
+python3 engine/tests/menu_robot.py                                 # tout (~25 min), rapport.html
+python3 engine/tests/menu_robot.py --rapide                        # un canal par scénario (~10 min)
+python3 engine/tests/menu_robot.py --scenario reglages --canal click --native   # fenêtre visible
+```
+
+Rapport dans `--out` (défaut : dossier temporaire) : `rapport.html` (réussi ou échec par scénario et par canal, chaque vérification, captures, capture et état du menu à chaque échec), `rapport.json`, journaux du core et de l'engine. Un défaut connu se marque `connu` dans le scénario : signalé sans compter. Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque ou qu'un scénario est invalide. Format des scénarios : [engine/tests/menu_scenarios/README.md](../engine/tests/menu_scenarios/README.md). Parties sans Godot (tableau, règles de focus, validité des scénarios) : `core/tests/test_menu_robot.py`.
+
+Défauts trouvés à la mise en place :
+
+- le catalogue du Garage (environ 5 400 octets) dépassait la limite de 4 096 octets d'un datagramme et était jeté par le core : l'écran Garage restait vide ; corrigé (`ipc_server.py` : les messages en parties ont la limite des listes, test `test_ipc_budget.py`) ;
+- dans le menu du monde ouvert, la touche Y est tapée dans la recherche au lieu de revenir (Échap fonctionne), contraire au §7.1 (« une touche n'a jamais d'autre rôle que celui de son bouton ») ; marqué `connu` dans le scénario `accueil` ;
+- le menu du monde ouvert ne lit pas la souris (`world_menu_view.gd`) : le clic droit ne revient pas, contrairement aux autres menus ; marqué `connu`.
+
+Sans écran (Xvfb, rendu logiciel, quelques images par seconde) le passage complet a réussi pour les 12 scénarios et les trois canaux (22 parties). Godot : variable `GODOT`, comme `run_engine_tests.sh`. En intégration continue, la configuration (hors de `Open_ride_linux/`) peut ajouter au travail `engine` l'étape `GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" python3 engine/tests/menu_robot.py --rapide`.
 
 ## 4. Parcours d'essai sans réseau
 

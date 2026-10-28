@@ -1,0 +1,26 @@
+{
+  "description": "Plans et test de FTP : liste des plans, fiche d'un plan, démarrage (plan actif écrit par le core), séance du jour à l'accueil, tests de FTP (rampe, 20 minutes) jusqu'à l'écran Prêt.",
+  "canaux": ["clavier", "souris"],
+  "preparation": {"plans": true},
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"ouvrir": "plan"}, {"ecran": "plans", "elements": ["plan:plan_banc"], "delai": 5},
+    {"capture": "plans"},
+    {"ouvrir": "plan:plan_banc"}, {"ecran": "plan", "elements": ["info", "start"]},
+    {"ouvrir": "start"}, {"fichier": "OpenRide/plan_state.toml"},
+    {"ecran": "plans", "elements": ["stop"], "delai": 5},
+    {"capture": "plan_actif"},
+    {"bouton": "Y court"}, {"ecran": "home"},
+    {"ouvrir": "ftp"}, {"ecran": "ftp_test", "elements": ["ramp", "20min"], "statut": "boucle"},
+    {"tableau": ["+ court", "- court", "A court", "Z court"]},
+    {"ouvrir": "ramp", "note": "sans parcours choisi : la liste des parcours d'abord"},
+    {"ecran": "routes"}, {"ouvrir": "demo"},
+    {"ecran": "ready", "titre_debut": "Prêt : test de FTP (rampe)"},
+    {"capture": "pret_ftp"},
+    {"bouton": "Y court", "note": "Y revient au choix du test"}, {"ecran": "ftp_test"},
+    {"ouvrir": "20min", "note": "parcours déjà choisi : directement l'écran Prêt"},
+    {"ecran": "ready", "titre_debut": "Prêt : test de FTP (20 min)"},
+    {"bouton": "Y court"}, {"ecran": "ftp_test"},
+    {"bouton": "Y court"}, {"ecran": "home", "focus": "ftp"}
+  ]
+}

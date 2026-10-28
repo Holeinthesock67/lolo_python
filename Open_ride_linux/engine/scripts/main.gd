@@ -32,6 +32,7 @@ const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
 const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 const KeyMap := preload("res://scripts/key_map.gd")
+const TestInput := preload("res://scripts/test_input.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
@@ -954,6 +955,69 @@ func _on_test_message(msg: Dictionary) -> void:
 			avatar_view.set_visible_for_view(_avatar_view_name())
 		"command":   # commande du contrat envoyée par l'engine lui-même (pause, end_session…)
 			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
+		"key":   # touche simulée (robot des menus, tests/menu_robot.py) : chemin d'une vraie touche, durée comprise
+			_test_key(str(msg.get("key", "")), msg)
+		"mouse":   # geste de la souris simulé sur un élément du menu ou au milieu de la liste (banc des menus)
+			_test_mouse(str(msg.get("kind", "")), str(msg.get("item", "")))
+		"menu_state":   # état des menus pour le banc des menus (écran, focus, éléments, lignes affichées)
+			_test_menu_state(str(msg.get("tag", "")))
+
+
+## Touche du robot des menus : appui (`pressed`), relâchement, ou les deux séparés de `hold_s` secondes. Avec
+## `hold_s`, l'attente bloque la boucle (mode test seulement) : la durée lue par key_map.gd est exacte même à
+## quelques images par seconde (Xvfb), alors que deux messages séparés se décalent d'une image chacun.
+func _test_key(name: String, msg: Dictionary) -> void:
+	var shift := bool(msg.get("shift", false))
+	var down := TestInput.key_event(name, true, shift)
+	if down == null:
+		ipc.test_log("key_unknown " + name)
+		return
+	if not msg.has("hold_s"):
+		Input.parse_input_event(down if bool(msg.get("pressed", true)) else TestInput.key_event(name, false, shift))
+		return
+	# Les événements injectés attendent l'image suivante : sans vidage, appui et relâchement arriveraient
+	# ensemble et tout appui serait court.
+	Input.parse_input_event(down)
+	Input.flush_buffered_events()
+	OS.delay_usec(int(clampf(float(msg["hold_s"]), 0.0, 2.0) * 1000000.0))
+	Input.parse_input_event(TestInput.key_event(name, false, shift))
+	Input.flush_buffered_events()
+	ipc.test_log("key_done " + name)
+
+
+## Geste de la souris du banc des menus : sur la ligne de l'élément `item_id` s'il est affiché, sinon au milieu
+## de la liste ; injecté par Input.parse_input_event (menu_view.gd le reçoit comme un vrai clic).
+func _test_mouse(kind: String, item_id: String) -> void:
+	var to_pixels := get_viewport().get_final_transform()
+	var target: Vector2 = menu_view.items_box.get_global_rect().get_center()
+	var found := item_id == ""
+	for row in menu_view.item_rows():
+		if row["id"] == item_id:
+			target = (row["rect"] as Rect2).get_center()
+			found = true
+	if not found:
+		ipc.test_log("mouse_miss " + JSON.stringify({"kind": kind, "item": item_id}))
+		return
+	var events := TestInput.mouse_events(kind, to_pixels * target)
+	for ev in events:
+		Input.parse_input_event(ev)
+	ipc.test_log("mouse_done " + JSON.stringify({"kind": kind, "item": item_id, "events": events.size()}))
+
+
+func _test_menu_state(tag: String) -> void:
+	await get_tree().process_frame   # événements injectés juste avant : traités
+	var to_pixels := get_viewport().get_final_transform()
+	var rows: Array = []
+	for row in menu_view.item_rows():
+		var r: Rect2 = to_pixels * (row["rect"] as Rect2)
+		rows.append({"id": row["id"], "focused": row["focused"], "rect": [r.position.x, r.position.y, r.size.x, r.size.y]})
+	var snap := TestInput.menu_snapshot(menu_flow.state(), rows, {
+		"tag": tag, "visible": menu_view.visible, "flow_visible": menu_flow.is_visible(),
+		"world_menu": world_menu_view != null and world_menu_view.visible, "hint": menu_view.hint_text(),
+		"session_state": str(_last_state.get("session_state", "")), "mode": str(_last_state.get("mode", "")),
+		"rogue": rogue_host.is_active(), "banner": banner.text if banner is Label else "",
+		"camera_view": camera_views.effective(), "ticks_ms": Time.get_ticks_msec()})
+	ipc.test_log("menu_state " + JSON.stringify(snap))
 
 
 func _avatar_info() -> Dictionary:

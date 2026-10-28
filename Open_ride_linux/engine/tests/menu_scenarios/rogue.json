@@ -1,0 +1,22 @@
+{
+  "description": "Cyber-Rogue : écran de départ (tableau), choix qui tournent (objectif, durée), avertissement de sécurité (Non revient ; montré une fois), composition de la run demandée au core (start_run), écran Prêt du Cyber-Rogue.",
+  "canaux": ["clavier", "click"],
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"ouvrir": "rogue"},
+    {"ecran": "rogue_start", "elements": ["objective", "duration", "wprime", "launch"], "focus": "objective"},
+    {"capture": "rogue_depart"},
+    {"tableau": null, "retour_vers": "home"},
+    {"ouvrir": "rogue"}, {"ecran": "rogue_start"},
+    {"ouvrir": "duration"}, {"ecran": "rogue_start", "focus": "duration", "note": "A long fait tourner la durée sur place"},
+    {"ouvrir": "launch"}, {"ecran": "confirm", "focus": "no", "texte": "VO2max"},
+    {"ouvrir": "no"}, {"ecran": "rogue_start"},
+    {"ouvrir": "launch", "note": "avertissement montré une fois par lancement d'OpenRide, même refusé (rogue_menu_model.mark_warned)"},
+    {"action_menu": "start_run", "delai": 10},
+    {"capture": "rogue_composition"},
+    {"ecran": "ready", "delai": 30, "elements": ["start", "rogue_change"], "note": "run composée par le core : écran Prêt du Cyber-Rogue"},
+    {"capture": "rogue_pret"},
+    {"ouvrir": "rogue_change"}, {"ecran": "rogue_start"},
+    {"bouton": "Y court"}
+  ]
+}

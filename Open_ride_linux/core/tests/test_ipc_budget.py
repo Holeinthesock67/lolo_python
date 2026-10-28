@@ -75,6 +75,26 @@ def test_random_oversized_frames_always_fit():
             assert len(frame["route_id"]) > 200
 
 
+def test_messages_in_parts_use_the_60000_byte_limit(caplog):
+    """Contrat §2 : un message en parties (`garage`, `room`, `places`…) va jusqu'à 60 000 octets ; le catalogue
+    du Garage (≈ 5 400 octets) était jeté à 4 096 et l'écran restait sur « Catalogue en cours de chargement »
+    (trouvé par le robot des menus, 28 octobre)."""
+    sent = []
+
+    class Sock:
+        def sendto(self, payload, addr):
+            sent.append(payload)
+
+    srv = IpcServer()
+    srv._tx_sock = Sock()
+    items = [{"id": f"piece_{i}", "name": "x" * 40} for i in range(100)]
+    srv.send_raw({"type": "garage", "v": 1, "request_cmd_id": 3, "part": 1, "parts": 1, "items": items})
+    srv.send_raw({"type": "plans", "v": 1, "request_cmd_id": 4, "items": items})
+    assert len(sent) == 2 and all(SERVER_LIMIT < len(p) <= 60000 for p in sent)
+    srv.send_raw({"type": "settings", "v": 1, "request_cmd_id": 5, "items": items})   # hors parties : jeté
+    assert len(sent) == 2 and any("trop grand" in r.message for r in caplog.records)
+
+
 def test_server_sends_degraded_state_instead_of_dropping(caplog):
     sent = []
 

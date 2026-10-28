@@ -1,0 +1,24 @@
+{
+  "description": "Connexion des appareils avec un seul boîtier du Click (« Passer »), puis Réglages › Appareils : recherche, confirmation Non puis Oui, écriture dans config.toml, « Relancer » (code 64).",
+  "canaux": ["clavier", "click"],
+  "preparation": {"click": "unilateral"},
+  "etapes": [
+    {"attendre_ecran": "connect", "delai": 15},
+    {"ecran": "connect", "titre": "Connexion des appareils", "elements": ["continue", "pairing", "quit"], "focus": "continue"},
+    {"texte": "Passer"},
+    {"capture": "connexion"},
+    {"tableau": ["+ court", "B court", "A court", "Z court"], "note": "un seul boîtier : B recule (§7.1)"},
+    {"ouvrir": "continue"}, {"ecran": "home"},
+    {"ouvrir": "settings"}, {"ouvrir": "devices"},
+    {"ecran": "pairing", "titre": "Appareils", "elements": ["scan", "trainer", "hr", "save", "back"]},
+    {"journal_engine": "scan_results done=true", "delai": 20, "note": "recherche lancée à l'ouverture"},
+    {"texte": "HomeTrainer", "delai": 5},
+    {"capture": "appareils"},
+    {"ouvrir": "save"}, {"ecran": "confirm", "focus": "no", "titre_debut": "Enregistrer"},
+    {"ouvrir": "no"}, {"ecran": "pairing", "config_absent": ["drivers.trainer_address"]},
+    {"ouvrir": "save"}, {"ecran": "confirm"},
+    {"ouvrir": "yes"}, {"config_present": ["drivers.trainer_address"], "delai": 5},
+    {"ecran": "pairing", "elements": ["relaunch"], "texte": "Relancer OpenRide maintenant"},
+    {"ouvrir": "relaunch"}, {"sortie_engine": 64, "delai": 10}
+  ]
+}

@@ -1,0 +1,31 @@
+{
+  "description": "Séance libre de bout en bout : Démarrer, menu caché en séance, Y met en pause (chemin du Click ou de la touche par le core), écran de pause (tableau, difficulté, abandon annulé, reprise par Y), Terminer et enregistrer, bilan, Nouvelle séance.",
+  "canaux": ["clavier", "click"],
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"ouvrir": "world"}, {"ouvrir": "demo"}, {"ouvrir": "ride"}, {"ecran": "ready"},
+    {"ouvrir": "start"}, {"attendre_etat": "RUNNING", "delai": 10},
+    {"menu_visible": false, "delai": 3},
+    {"bouton": "A court", "note": "A court en séance : vue de caméra suivante, pas de menu"}, {"menu_visible": false},
+    {"bouton": "Y court", "note": "Y en séance : pause par le core"},
+    {"attendre_etat": "PAUSED", "delai": 5},
+    {"ecran": "pause", "titre": "Pause", "elements": ["resume", "end_save", "abandon", "difficulty"], "focus": "resume"},
+    {"capture": "pause"},
+    {"tableau": ["+ court", "- court", "B court", "A court", "droite", "gauche", "+ long", "- long", "Z court", "haut"]},
+    {"bouton": "Y court", "note": "Y sur la pause : reprendre"}, {"attendre_etat": "RUNNING", "delai": 5}, {"menu_visible": false},
+    {"bouton": "Y court"}, {"attendre_etat": "PAUSED", "delai": 5}, {"ecran": "pause"},
+    {"ouvrir": "difficulty"}, {"edition": true},
+    {"bouton": "- court"}, {"bouton": "A long"},
+    {"journal_core": "Difficulté : 50 % -> 40 %", "texte": "40 %"},
+    {"ouvrir": "abandon"}, {"ecran": "confirm", "focus": "no"},
+    {"ouvrir": "no"}, {"ecran": "pause"},
+    {"ouvrir": "end_save"}, {"attendre_etat": "FINISHED", "delai": 15},
+    {"attendre_ecran": "summary", "delai": 10},
+    {"titre": "Fin de séance", "elements": ["new_session", "details", "quit"]},
+    {"capture": "bilan"},
+    {"tableau": ["+ court", "- court", "A court", "Z court"]},
+    {"ouvrir": "details"}, {"ecran": "summary"},
+    {"capture": "bilan_detaille"},
+    {"ouvrir": "new_session"}, {"ecran": "home", "delai": 10}
+  ]
+}

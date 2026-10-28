@@ -69,7 +69,7 @@ Une section absente retire l'appareil. Les temps sont en secondes depuis le lanc
 
 | Action | Paramètres | Effet |
 | --- | --- | --- |
-| `press` | `button` (`+` ou `-`), `duration_s` (0,12 par défaut) | Appui sur le Click, relayé par le « − » pour un « + ». |
+| `press` | `button` (`+` ou `-` ; aussi `A`, `B`, `Y`, `Z` du boîtier droit et `LEFT`, `RIGHT`, `UP`, `DOWN` du boîtier gauche), `duration_s` (0,12 par défaut) | Appui sur le Click, relayé par le « − » pour un « + » ; les autres boutons ne sont envoyés que par leur boîtier. |
 | `drop` | | Coupure du lien côté appareil. |
 | `wake`, `sleep` | | L'appareil s'annonce, ou plus (et refuse les connexions). |
 | `connect_failures` | `count` | Les prochaines connexions échouent. |
@@ -82,6 +82,8 @@ Une section absente retire l'appareil. Les temps sont en secondes depuis le lanc
 | `rider` | `watts`, `cadence_rpm` | Effort du cycliste en SIM (0 : arrêt de pédalage). |
 | `bpm` | `bpm` (null : suit la puissance) | Fréquence de la ceinture. |
 | `contact` | `value` (vrai par défaut, faux : absent, null : non géré) | Contact du capteur de la ceinture (ou de la montre). |
+
+**Pilotage en direct** (`control_port`, clé du scénario, 28 octobre) : le monde simulé écoute ce port UDP sur `127.0.0.1` ; chaque datagramme est un événement JSON sans `t` (`{"action": "press", "button": "A", "duration_s": 1.1}`, `{"device": "trainer", "action": "drop"}`), appliqué à sa réception. Le robot des menus (`engine/tests/menu_robot.py`) s'en sert pour appuyer sur le Click simulé au moment voulu ; un datagramme illisible est journalisé et ignoré.
 
 ## Rejouer une panne vue sur le vélo
 

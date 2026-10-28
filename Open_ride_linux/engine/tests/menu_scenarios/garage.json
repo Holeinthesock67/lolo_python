@@ -1,0 +1,20 @@
+{
+  "description": "Garage : écran principal (tableau), vélo, tenue, avatar (champ modifié, Enregistrer puis profil écrit), retours.",
+  "canaux": ["clavier", "souris"],
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"ouvrir": "garage"}, {"ecran": "garage", "elements": ["bike", "outfit", "avatar"]},
+    {"capture": "garage"},
+    {"tableau": null, "retour_vers": "home"},
+    {"ouvrir": "garage"},
+    {"ouvrir": "bike"}, {"ecran": "garage_bike", "elements": ["item:*"], "delai": 5},
+    {"capture": "garage_velo"},
+    {"bouton": "Y court"}, {"ecran": "garage"},
+    {"ouvrir": "outfit"}, {"ecran": "garage_outfit", "elements": ["item:*"], "delai": 5},
+    {"bouton": "Y court"}, {"ecran": "garage"},
+    {"ouvrir": "avatar"}, {"elements": ["field:*", "save", "cancel"], "inactifs": ["save", "cancel"]},
+    {"capture": "garage_avatar"},
+    {"bouton": "Y court"}, {"ecran": "garage"},
+    {"bouton": "Y court"}, {"ecran": "home", "focus": "garage"}
+  ]
+}

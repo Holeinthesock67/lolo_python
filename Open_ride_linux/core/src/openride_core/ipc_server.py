@@ -30,7 +30,9 @@ CONTRACT_REV = "1.5"
 CORE_MODES = ("ride", "erg", "open_world", "rogue")   # monde ouvert : révision 1.5, lot W9 ; rogue : lot R8
 MAX_LIST_DATAGRAM_SIZE = 60000
 # Messages en parties (`part`, `parts`) : 60 000 octets au plus par partie (contrat §2).
-LIST_MESSAGE_TYPES = ("routes", "workouts", "imports")
+# Messages en parties et `plans` (contrat §2) : 60 000 octets. Tout message qui porte `parts` (garage, room,
+# places, world_map, world_regions) suit la même limite (le catalogue du Garage, 5 400 octets, était jeté).
+LIST_MESSAGE_TYPES = ("routes", "workouts", "imports", "plans")
 INVALID_LOG_PERIOD_S = 10.0   # au plus un avertissement « datagramme rejeté » par période
 
 
@@ -194,7 +196,7 @@ class IpcServer:
         msg_type = msg_dict.get("type")
         if max_size is not None:
             limit = max_size
-        elif msg_type in LIST_MESSAGE_TYPES:
+        elif msg_type in LIST_MESSAGE_TYPES or "parts" in msg_dict:
             limit = MAX_LIST_DATAGRAM_SIZE
         else:
             limit = MAX_DATAGRAM_SIZE
