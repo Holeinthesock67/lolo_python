@@ -66,7 +66,7 @@ def test_erg_bias_is_journaled(tmp_path, monkeypatch):
         after = _records(s)[n:]
         assert after and all(r["block"] == 2 and r["erg_bias_pct"] == 4 for r in after)
         assert all(r["target_w"] == pytest.approx(round(250 * 0.8 * 1.04), abs=1) for r in after[3:])
-        s._handle_input(InputEvent.MINUS_LONG)   # pause ERG
+        s._handle_input(InputEvent.Y_SHORT)   # pause de la séance (Y)
         n = len(_records(s))
         run(s, 5.0)
         assert all(r["erg_bias_pct"] is None and r["target_w"] is None for r in _records(s)[n:])

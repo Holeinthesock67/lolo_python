@@ -113,13 +113,13 @@ func _test_presets_table() -> void:
 
 # Lot P4 : budgets du décor vivant (critère 10)
 func _test_living() -> void:
-	var keys := ["ambience_voices", "animals", "birds", "clouds", "cyclists", "distant_vehicles", "grass_tufts", "passersby",
+	var keys := ["aircraft", "ambience_voices", "animals", "birds", "boats", "clouds", "cyclists", "distant_vehicles", "grass_tufts", "passersby",
 		"spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
 	for name in ["low", "medium", "high"]:
 		var l: Dictionary = QualityPresets.living(name)
 		var k := l.keys()
 		k.sort()
-		_check(k == keys, "living(%s) : les 13 budgets attendus" % name)
+		_check(k == keys, "living(%s) : les 15 budgets attendus" % name)
 	var low: Dictionary = QualityPresets.living("low")
 	_check(low["tree_sway"] == true and low["grass_tufts"] == 1500 and low["clouds"] == "flat"
 		and low["weather_particles"] == 600 and low["birds"] == 24 and low["animals"] == 20
@@ -129,7 +129,8 @@ func _test_living() -> void:
 	var med: Dictionary = QualityPresets.living("medium")
 	var high: Dictionary = QualityPresets.living("high")
 	var growing := true
-	for key in ["grass_tufts", "weather_particles", "birds", "animals", "vehicles", "distant_vehicles", "cyclists", "spectators",
+	for key in ["grass_tufts", "weather_particles", "birds", "animals", "vehicles", "distant_vehicles", "aircraft", "boats", "cyclists",
+			"spectators",
 			"passersby", "ambience_voices"]:
 		growing = growing and int(low[key]) <= int(med[key]) and int(med[key]) <= int(high[key])
 	_check(growing, "living : budgets croissants de low à high")
@@ -138,6 +139,10 @@ func _test_living() -> void:
 	_check(low["distant_vehicles"] == 6 and med["distant_vehicles"] == 12 and high["distant_vehicles"] == 24,
 		"living : véhicules lointains 6, 12 et 24 (cahier P25 §4)")
 	_check(low["cyclists"] == 4 and med["cyclists"] == 8 and high["cyclists"] == 16, "living : cyclistes 4/8/16 (cahier P28)")
+	_check(low["aircraft"] == 4 and med["aircraft"] == 8 and high["aircraft"] == 12,
+		"living : engins volants 4, 8 et 12 (cahier P26 §4)")
+	_check(low["boats"] == 4 and med["boats"] == 8 and high["boats"] == 16,
+		"living : bateaux 4, 8 et 16 (cahier P29 §4)")
 	var off: Dictionary = QualityPresets.living("high", false)
 	var all_off: bool = off["clouds"] == "off"
 	for key in off:

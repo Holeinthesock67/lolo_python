@@ -26,6 +26,7 @@ const BotsView := preload("res://scripts/bots_view.gd")
 const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
 const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
+const KeyMap := preload("res://scripts/key_map.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
@@ -33,6 +34,7 @@ const LivingDecor := preload("res://scripts/living_decor.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
+const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
 const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
@@ -107,6 +109,10 @@ const BEEPS := {
 	"Y_SHORT": [[550.0, 0.10], [330.0, 0.14]],
 	"LEFT_SHORT": [[440.0, 0.08]],
 	"RIGHT_SHORT": [[880.0, 0.08]],
+	"UP_SHORT": [[880.0, 0.08]],
+	"DOWN_SHORT": [[440.0, 0.08]],
+	"Z_SHORT": [[880.0, 0.08]],
+	"Z_LONG": [[660.0, 0.10], [990.0, 0.14]],
 }
 const BEEP_LEVEL := 0.3
 ## Durées d'affichage du rappel des commandes en séance et de l'explication d'un appui ambigu.
@@ -123,6 +129,8 @@ var _cues = CueModel.new()
 ## Menus (lot N6) : déroulé (menu_flow.gd) et affichage (menu_view.gd), plein écran sur une couche
 ## au-dessus du HUD, qui est caché pendant un menu (lot « présentation des menus »).
 var menu_flow = MenuFlow.new()
+## Clavier = Click (lot O17) : touche et durée d'appui vers événement du Click.
+var key_map = KeyMap.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
 var bots_model = BotsViewModel.new()
 var bots_view: Node3D
@@ -149,6 +157,8 @@ var segment_hud = SegmentHudModel.new()
 ## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
 var event_sounds = EventSoundsModel.new()
 var _beep_until_s := -INF
+## Série R (lot R10) : scène du mode Cyber-Rogue, instanciée quand `state.mode` vaut « ROGUE ».
+var rogue_host = RogueHost.new()
 
 
 func _ready() -> void:
@@ -215,6 +225,7 @@ func _ready() -> void:
 	add_child(segment_markers)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
+	ipc.room_received.connect(rogue_host.on_room)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
 	ipc.error_received.connect(_on_core_error)
@@ -561,38 +572,30 @@ func _play_tones(notes: Array, level: float) -> void:
 
 
 func _unhandled_input(event: InputEvent) -> void:
-	# Touches + / − (ou flèches haut / bas) = boutons du Click, utiles sans Click ou en test.
-	if event is InputEventKey and event.pressed and not event.echo:
-		if world_menu_view != null and world_menu_view.visible:
-			if not _world_menu_key(event):
-				var wev := MenuModel.key_to_event(event.keycode)
-				if wev != "":
-					_play_tones(BEEPS[wev], BEEP_LEVEL)
-					_world_menu_event(wev)
-			return
-		if menu_flow.is_visible():
-			# Menu affiché : navigation locale (Entrée valide, Échap revient), bip sans passer par le core.
-			var ev := MenuModel.key_to_event(event.keycode)
-			if ev != "":
-				_play_tones(BEEPS[ev], BEEP_LEVEL)
-				_menu_event(ev)
-			return
-		match event.keycode:
-			KEY_P, KEY_SPACE, KEY_ESCAPE:
-				ipc.send_command("pause")   # l'écran de pause s'ouvre quand le core passe en PAUSED
-			KEY_EQUAL, KEY_PLUS, KEY_KP_ADD, KEY_UP:
-				ipc.send_command("input_event", {"event": "PLUS_SHORT"})
-			KEY_MINUS, KEY_KP_SUBTRACT, KEY_DOWN:
-				ipc.send_command("input_event", {"event": "MINUS_SHORT"})
-			KEY_LEFT, KEY_RIGHT:
-				# Monde ouvert : branche voisine du carrefour proposé (←, →) ; rien hors carrefour ou verrouillé.
-				var pick: Dictionary = junction_view.vm.press(-1 if event.keycode == KEY_LEFT else 1)
-				if not pick.is_empty():
-					ipc.send_command("choose_branch", pick)
-			KEY_PAGEUP:
-				ipc.send_command("input_event", {"event": "PLUS_LONG"})
-			KEY_PAGEDOWN:
-				ipc.send_command("input_event", {"event": "MINUS_LONG"})
+	# Clavier = Click, touche pour touche (lot O17, key_map.gd) : l'événement part au relâchement, puis suit le
+	# chemin d'un appui du Click. Menu affiché : traité ici (bip, menu), sans passer par le core ; en séance :
+	# envoyé au core (input_event), qui le traite et le relaie à l'engine comme un appui du Click.
+	var key := event as InputEventKey
+	if key == null or key.echo:
+		return
+	var now_s := Time.get_ticks_usec() / 1000000.0
+	if key.pressed:
+		if world_menu_view != null and world_menu_view.visible and _world_menu_key(key):
+			return   # saisie de la recherche du monde ouvert : la touche est une lettre, pas un bouton
+		key_map.press(key.keycode, key.shift_pressed, now_s)
+		return
+	var ev: String = key_map.release(key.keycode, now_s)
+	if ev == "":
+		return
+	if menu_flow.is_visible() or (world_menu_view != null and world_menu_view.visible):
+		_on_input_event(ev)
+	else:
+		ipc.send_command("input_event", {"event": ev})
+
+
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
+		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
 
 
 func _process(delta: float) -> void:
@@ -606,6 +609,8 @@ func _process(delta: float) -> void:
 	fps_counter.add_frame(delta)
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
+	if rogue_host.is_active():
+		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
 		return
 	if not follow.has_frame():
@@ -1006,6 +1011,10 @@ func _on_state_received(state: Dictionary) -> void:
 		var heading_deg: float = route.sample_heading_deg(route.wrap_s(float(state.get("s", 0.0)))) if route != null else 0.0
 		if hud != null and hud.has_method("update_wind"):
 			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s))
+
+	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
+			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
+		ipc.request_rogue_resync()
 
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0

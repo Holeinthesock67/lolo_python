@@ -310,8 +310,9 @@ func _test_controls_help() -> void:
 	var erg: String = HudViewModel.controls_text(true)
 	_check(sim.contains("Y = pause") and sim.contains("braquet") and not sim.contains("intensité"),
 		"rappel en séance libre : Y = pause, + / − = braquet")
-	_check(erg.contains("Y = pause") and erg.contains("intensité") and erg.contains("bloc suivant"),
-		"rappel en ERG : Y = pause, intensité, bloc suivant")
+	_check(erg.contains("Y = pause") and erg.contains("intensité") and erg.contains("Z = bloc suivant")
+		and not erg.contains("pause ERG"), "rappel en ERG : Y = pause, intensité, Z = bloc suivant, plus de pause ERG")
+	_check(not sim.contains("P = pause") and not erg.contains("P = pause"), "rappel : plus de touche P")
 	_check(HudViewModel.unclear_press_text("PLUS_UNCLEAR", true).contains("A long pour valider")
 		and HudViewModel.unclear_press_text("MINUS_UNCLEAR", true).contains("précédent")
 		and HudViewModel.unclear_press_text("PLUS_UNCLEAR", false).contains("braquet"),
