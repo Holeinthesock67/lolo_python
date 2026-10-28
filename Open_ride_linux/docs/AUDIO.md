@@ -30,6 +30,13 @@ Les deux dernières lignes : le lot R18 crée les bus dans l'engine (`rogue_audi
 - Un lecteur prend son bus par `AudioMix.bus(AudioMix.RIDE)` (ou `AMBIENCE`, `EVENTS`) au moment où il
   est créé ; aucun lecteur ne reste sur `Master` sauf s'il n'appartient à aucune catégorie.
 - `[render] living = false` coupe toujours le décor vivant et ses sons, quels que soient les volumes.
+- Sons synthétisés en boucle (`sound_player.gd`) : raccord sans saut ni fondu au silence. Fréquences et
+  modulations à un nombre entier de cycles par boucle, bruits filtrés périodiques (`_periodic_lowpass`),
+  événements (chants, stridulations, gouttes, cliquets) qui débordent de la fin repris au début. Aucun motif
+  ne bat une mesure fixe (le « tac-tac » régulier entendu le 28/10 venait des insectes hachés à 2 Hz pile et
+  du fondu de 10 ms aux bords de chaque fond). Un son joué une fois (`ONE_SHOT_KINDS` : corne, cloche) n'est
+  jamais relancé par les points sonores : la cloche ne sonne qu'aux coups de l'heure pleine.
 
-Tests : `engine/tests/unit/test_audio_mix.gd` (bus, courbe, lecteurs) et `core/tests/test_settings.py`
+Tests : `engine/tests/unit/test_audio_mix.gd` (bus, courbe, lecteurs), `test_sound_player.gd`
+(`_test_seamless_loops`, raccords) et `core/tests/test_settings.py`
 (`test_audio_volumes_in_menu`).

@@ -53,7 +53,13 @@ const BELL_INTERVAL_S := 2.2
 
 const MIX_RATE := 22050
 const SAMPLE_COUNT := 22050   # 1 seconde de boucle
-const ONE_SHOT_KINDS := ["ship_horn"]   # sons synthétisés joués une fois (Lot P29)
+const ONE_SHOT_KINDS := ["ship_horn", "church_bell"]   # sons joués une fois (P29 ; cloche : un coup par update_bells)
+const ONE_SHOT_TAIL_S := 0.03
+## Coefficient du passe-bas du bruit de chaque son en boucle qui en contient un (bruit périodique, sans clic).
+const NOISE_LOWPASS := {"vehicle_pass": 0.08, "crowd_cheer": 0.15, "helicopter_rotor": 0.25, "airliner_rumble": 0.02,
+	"barge_engine": 0.05}
+## Coups de la sonnaille sur la boucle d'une seconde : [instant s, force], irréguliers pour ne pas battre la mesure.
+const LIVESTOCK_STRIKES := [[0.0, 1.0], [0.29, 0.55], [0.71, 0.8]]
 const FREEWHEEL_LOOP_CLICKS := 140.0   # coups par seconde de la boucle à pitch_scale = 1 (≈ 30 km/h)
 const FREEWHEEL_MIN_PITCH := 0.05
 const FREEWHEEL_JITTER := 0.08         # décalage aléatoire de chaque coup, en fraction de période
@@ -91,7 +97,6 @@ var clacs_played := 0                   # « clac » de reprise joués (tests)
 var _poi_players: Array[AudioStreamPlayer3D] = []
 
 var _streams: Dictionary = {}
-var _lp := 0.0                          # état du filtre passe-bas de la synthèse
 
 var ambience := AmbienceModel.new()
 var _bed_players: Dictionary = {}       # fond -> AudioStreamPlayer
@@ -126,6 +131,7 @@ func _init_players() -> void:
 	_wheel_player = AudioStreamPlayer.new()
 	_wheel_player.name = "WheelPlayer"
 	_wheel_player.volume_db = SoundModel.SILENCE_DB
+	_wheel_player.bus = AudioMix.bus(AudioMix.RIDE)
 	add_child(_wheel_player)
 
 	_clac_player = AudioStreamPlayer.new()
@@ -250,7 +256,8 @@ func update_audio(state: Dictionary, now_s: float, rider_pos: Vector3) -> Dictio
 			else:
 				player.position = poi["position"]
 			player.volume_db = float(poi["volume_db"])
-			if is_inside_tree() and not player.playing and player.stream != null:
+			# Un son joué une fois (cloche : un coup par update_bells) n'est pas relancé dès qu'il se tait
+			if is_inside_tree() and not player.playing and player.stream != null and kind not in ONE_SHOT_KINDS:
 				player.play()
 		else:
 			player.volume_db = SoundModel.SILENCE_DB
@@ -333,6 +340,9 @@ func _try_load_custom(kind: String) -> Resource:
 	return null
 
 
+## Sons en boucle d'une seconde (et sons joués une fois, ONE_SHOT_KINDS). Raccord sans clic : les
+## fréquences et modulations font un nombre entier de cycles par boucle et les bruits filtrés sont
+## périodiques (`_periodic_lowpass`), donc la fin de la boucle enchaîne exactement sur son début.
 func _synthesize_stream(kind: String) -> AudioStreamWAV:
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
@@ -349,67 +359,55 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		wav.data = _freewheel_bytes()
 		return wav
 
-	var bytes := PackedByteArray()
-	bytes.resize(SAMPLE_COUNT * 2)
-
-	var seed_val := 0x12345678
-	var h := func() -> int:
-		seed_val = (seed_val * 1103515245 + 12345) & 0x7FFFFFFF
-		return seed_val
-
-	_lp = 0.0
-	for i in range(SAMPLE_COUNT):
+	var n := SAMPLE_COUNT
+	var noisy: bool = kind == "river" or NOISE_LOWPASS.has(kind)
+	var noise: PackedFloat32Array = _lcg_noise(n, 0x12345678) if noisy else PackedFloat32Array()
+	var lp: PackedFloat32Array = _periodic_lowpass(noise, float(NOISE_LOWPASS[kind])) if NOISE_LOWPASS.has(kind) else PackedFloat32Array()
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	for i in range(n):
 		var t := float(i) / float(MIX_RATE)
 		var sample := 0.0
 
 		match kind:
 			"church_bell":
-				# Tintement de cloche amorti avec partiels
+				# Tintement de cloche amorti avec partiels, joué une fois par coup (update_bells)
 				sample = (sin(TAU * 440.0 * t) + 0.5 * sin(TAU * 880.0 * t) + 0.25 * sin(TAU * 1320.0 * t)) * exp(-t * 2.5) * 0.5
 			"river":
 				# Murmure d'eau vive (bruit doux avec ondulations)
-				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
-				sample = (sin(TAU * 240.0 * t) * 0.4 + r * 0.3) * (0.8 + 0.2 * sin(TAU * 3.0 * t))
+				sample = (sin(TAU * 240.0 * t) * 0.4 + noise[i] * 0.3) * (0.8 + 0.2 * sin(TAU * 3.0 * t))
 			"livestock":
-				# Sonnaille métallique
-				var phase := fmod(t * 1.5, 1.0)
-				sample = (sin(TAU * 720.0 * t) + sin(TAU * 1150.0 * t)) * exp(-phase * 6.0) * 0.4
+				# Sonnaille métallique : coups à des instants irréguliers (LIVESTOCK_STRIKES), amortis sur la boucle
+				var env := 0.0
+				for s in LIVESTOCK_STRIKES:
+					env += float(s[1]) * exp(-fposmod(t - float(s[0]), 1.0) * 6.0)
+				sample = (sin(TAU * 720.0 * t) + sin(TAU * 1150.0 * t)) * env * 0.4
 			"village":
 				# Rumeur de village
 				sample = sin(TAU * 85.0 * t) * 0.3 + sin(TAU * 140.0 * t) * 0.2
 			"vehicle_pass":
 				# Lot P13 : roulement de pneus et souffle d'une voiture (bruit filtré, ronflement à 60 Hz) ;
 				# l'effet Doppler vient de l'AudioStreamPlayer3D qui suit le véhicule.
-				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
-				_lp = _lp + 0.08 * (r - _lp)
-				sample = _lp * 2.2 + sin(TAU * 60.0 * t) * 0.12
+				sample = lp[i] * 2.2 + sin(TAU * 60.0 * t) * 0.12
 			"crowd_cheer":
 				# Lot P15 : clameur (bruit filtré qui ondule) et applaudissements (claquements brefs à 9 Hz,
 				# décalés par une phase tirée au hasard), joués par crowd_renderer.gd sur le groupe le plus proche
-				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
-				_lp = _lp + 0.15 * (r - _lp)
 				var swell := 0.7 + 0.3 * sin(TAU * 2.0 * t) * sin(TAU * 3.0 * t)
 				var clap_phase := fmod(t * 9.0 + 0.37 * sin(TAU * t), 1.0)
-				var clap := exp(-clap_phase * 60.0) * (float(h.call() & 0xFFFF) / 32768.0 - 1.0)
-				sample = _lp * 1.8 * swell + clap * 0.5
+				var clap := exp(-clap_phase * 60.0) * noise[(i * 7919) % n]
+				sample = lp[i] * 1.8 * swell + clap * 0.5
 			"helicopter_rotor":
 				# Lot P26 : battement des pales (6 coups par seconde, un nombre entier sur la boucle) sur un
 				# sifflement de turbine
-				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
-				_lp = _lp + 0.25 * (r - _lp)
 				var blade := pow(0.5 + 0.5 * cos(TAU * 6.0 * t), 6.0)
-				sample = _lp * (0.25 + 1.6 * blade) + sin(TAU * 1900.0 * t) * 0.03
+				sample = lp[i] * (0.25 + 1.6 * blade) + sin(TAU * 1900.0 * t) * 0.03
 			"airliner_rumble":
 				# Lot P26 : grondement lointain d'un avion de ligne (bruit très filtré qui ondule lentement)
-				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
-				_lp = _lp + 0.02 * (r - _lp)
-				sample = _lp * 5.0 * (0.8 + 0.2 * sin(TAU * t))
+				sample = lp[i] * 5.0 * (0.8 + 0.2 * sin(TAU * t))
 			"barge_engine":
 				# Lot P29 : diesel lent d'une péniche (22 Hz et harmoniques, battement des cylindres à 5 Hz)
 				var beat := 0.7 + 0.3 * pow(0.5 + 0.5 * sin(TAU * 5.0 * t), 2.0)
-				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
-				_lp = _lp + 0.05 * (r - _lp)
-				sample = (sin(TAU * 22.0 * t) * 0.4 + sin(TAU * 44.0 * t) * 0.3 + sin(TAU * 66.0 * t) * 0.12 + _lp * 0.6) * beat
+				sample = (sin(TAU * 22.0 * t) * 0.4 + sin(TAU * 44.0 * t) * 0.3 + sin(TAU * 66.0 * t) * 0.12 + lp[i] * 0.6) * beat
 			"ship_horn":
 				# Lot P29 : corne de brume d'un ferry, une fois (non bouclée) : 98 Hz et harmoniques, attaque et
 				# fin adoucies
@@ -420,15 +418,43 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 				# Lot P13 : moteur grave du tracteur (28 Hz et harmoniques, battement des cylindres à 7 Hz)
 				var beat := 0.75 + 0.25 * sin(TAU * 7.0 * t)
 				sample = (sin(TAU * 28.0 * t) * 0.45 + sin(TAU * 56.0 * t) * 0.25 + sin(TAU * 84.0 * t) * 0.12) * beat
+		buf[i] = sample
 
-		var s16 := clampi(int(sample * 32767.0), -32768, 32767)
-		if s16 < 0:
-			s16 += 65536
-		bytes[i * 2] = s16 & 0xFF
-		bytes[i * 2 + 1] = (s16 >> 8) & 0xFF
-
+	if kind in ONE_SHOT_KINDS:
+		# Son joué une fois : fin fondue en ONE_SHOT_TAIL_S, sans coupure sèche
+		var tail := int(ONE_SHOT_TAIL_S * MIX_RATE)
+		for j in range(tail):
+			buf[n - 1 - j] *= float(j) / float(tail)
+	var bytes := PackedByteArray()
+	bytes.resize(n * 2)
+	for i in range(n):
+		bytes.encode_s16(i * 2, clampi(int(buf[i] * 32767.0), -32768, 32767))
 	wav.data = bytes
 	return wav
+
+
+## Bruit blanc de `n` échantillons (−1 à 1), générateur congruentiel de graine `seed_val` (même son à chaque lancement).
+static func _lcg_noise(n: int, seed_val: int) -> PackedFloat32Array:
+	var out := PackedFloat32Array()
+	out.resize(n)
+	for i in range(n):
+		seed_val = (seed_val * 1103515245 + 12345) & 0x7FFFFFFF
+		out[i] = float(seed_val & 0xFFFF) / 32768.0 - 1.0
+	return out
+
+
+## Passe-bas à un pôle (coefficient `alpha`) d'un bruit bouclé, en régime établi : le filtre fait d'abord un
+## tour de boucle à vide, si bien que la sortie est elle-même périodique (fin raccordée au début, sans clic).
+static func _periodic_lowpass(noise: PackedFloat32Array, alpha: float) -> PackedFloat32Array:
+	var n := noise.size()
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var lp := 0.0
+	for pass_i in range(2):
+		for i in range(n):
+			lp += alpha * (noise[i] - lp)
+			out[i] = lp
+	return out
 
 
 ## Vent (Lot P10, refait après la recette P16) : grondement grave (bruit blanc passé deux fois dans un
@@ -670,7 +696,9 @@ static func _synthesize_clac() -> AudioStreamWAV:
 
 
 ## Fonds d'ambiance procéduraux (Lot P9), boucles de 2 s sans raccord audible : modulations à un nombre
-## entier de cycles par boucle, motifs tirés d'un générateur déterministe (même son à chaque lancement).
+## entier de cycles par boucle, bruits filtrés périodiques (`_periodic_lowpass`), chants, stridulations et
+## gouttes qui débordent de la fin reprennent au début ; motifs tirés d'un générateur déterministe (même son
+## à chaque lancement). Aucun fondu au silence aux bords : il s'entendait comme un « tac » toutes les 2 s.
 static func _synthesize_bed(bed: String) -> AudioStreamWAV:
 	var n := BED_SAMPLES
 	var buf := PackedFloat32Array()
@@ -693,50 +721,52 @@ static func _synthesize_bed(bed: String) -> AudioStreamWAV:
 					var len := int(dur * MIX_RATE)
 					var ph := 0.0
 					for i in range(len):
-						var idx := start + i
-						if idx >= n:
-							break
 						var u := float(i) / float(len)
 						ph += TAU * lerpf(f0, f1, u) / MIX_RATE
-						buf[idx] += sin(ph) * sin(PI * u) * amp
+						buf[(start + i) % n] += sin(ph) * sin(PI * u) * amp
 				t0 += rng.randf_range(0.25, 0.6)
 		"field_insects":
-			# Stridulation : porteuse de 4,6 kHz hachée à 30 Hz, par salves de 0,4 s
-			for i in range(n):
-				var t := float(i) / MIX_RATE
-				var burst := 1.0 if fmod(t, 0.5) < 0.4 else 0.0
-				var chop := maxf(sin(TAU * 30.0 * t), 0.0)
-				buf[i] = sin(TAU * 4600.0 * t) * chop * burst * 0.25
+			# Stridulation : trains de 3 à 8 brèves (25 à 55 ms, enveloppe douce) d'une porteuse de 4,2 à 5 kHz,
+			# séparés par des silences irréguliers ; plus de salves hachées à 2 Hz pile (« tac tac » mécanique).
+			var t0 := 0.0
+			while t0 < loop_s:
+				var f := rng.randf_range(4200.0, 5000.0)
+				var amp := rng.randf_range(0.12, 0.22)
+				for k in range(rng.randi_range(3, 8)):
+					var len := int(rng.randf_range(0.025, 0.055) * MIX_RATE)
+					var start := int(t0 * MIX_RATE)
+					var a := amp * rng.randf_range(0.7, 1.0)
+					for i in range(len):
+						var env := sin(PI * float(i) / float(len))
+						buf[(start + i) % n] += sin(TAU * f * float(i) / MIX_RATE) * env * env * a
+					t0 += float(len) / MIX_RATE + rng.randf_range(0.015, 0.045)
+				t0 += rng.randf_range(0.12, 0.4)
 		"water_flow", "village_murmur", "high_wind", "rain":
 			# Bruits filtrés passe-bas (un pôle), plus ou moins sourds
 			var alpha: float = {"water_flow": 0.18, "village_murmur": 0.04, "high_wind": 0.02, "rain": 0.6}[bed]
-			var lp := 0.0
+			var noise := PackedFloat32Array()
+			noise.resize(n)
+			for i in range(n):
+				noise[i] = rng.randf() * 2.0 - 1.0
+			var lp := _periodic_lowpass(noise, alpha)
 			for i in range(n):
 				var t := float(i) / MIX_RATE
-				var r := rng.randf() * 2.0 - 1.0
-				lp += alpha * (r - lp)
-				var v := lp
+				var v := lp[i]
 				match bed:
 					"water_flow":
-						v = lp * (0.8 + 0.2 * sin(TAU * 3.0 * t / loop_s)) * 1.6
+						v = lp[i] * (0.8 + 0.2 * sin(TAU * 3.0 * t / loop_s)) * 1.6
 					"village_murmur":
-						v = lp * 2.5 + sin(TAU * 110.0 * t) * 0.05 * (0.5 + 0.5 * sin(TAU * t / loop_s))
+						v = lp[i] * 2.5 + sin(TAU * 110.0 * t) * 0.05 * (0.5 + 0.5 * sin(TAU * t / loop_s))
 					"high_wind":
-						v = lp * 4.0 * (0.6 + 0.4 * sin(TAU * t / loop_s))
+						v = lp[i] * 4.0 * (0.6 + 0.4 * sin(TAU * t / loop_s))
 					"rain":
-						v = (r - lp) * 0.35
+						v = (noise[i] - lp[i]) * 0.35
 				buf[i] = v
 			if bed == "rain":
 				for d in range(40):   # gouttes
-					var at := rng.randi_range(0, n - 400)
+					var at := rng.randi_range(0, n - 1)
 					for i in range(300):
-						buf[at + i] += sin(TAU * 1800.0 * i / MIX_RATE) * exp(-float(i) / 40.0) * 0.3
-	# Fondu de 10 ms aux bords pour éviter un clic au raccord
-	var edge := int(0.01 * MIX_RATE)
-	for i in range(edge):
-		var g := float(i) / float(edge)
-		buf[i] *= g
-		buf[n - 1 - i] *= g
+						buf[(at + i) % n] += sin(TAU * 1800.0 * i / MIX_RATE) * exp(-float(i) / 40.0) * 0.3
 	var bytes := PackedByteArray()
 	bytes.resize(n * 2)
 	for i in range(n):
