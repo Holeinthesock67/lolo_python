@@ -256,13 +256,12 @@ def test_state_frames_in_erg(tmp_path, monkeypatch):
         s._on_command("select_workout", {"workout_id": "erg"}, 3)
         s._on_command("start", {}, 4)
         types = set()
-        for step in range(230):                     # 200 s de blocs + 5 s de pause ERG
+        for step in range(230):                     # 200 s de blocs + 5 s de pause
             run_steps(s, 50, 100.0 + step)          # 1 s par tour
             if step == 10:
-                s._handle_input(__import__("openride_core.zwift_click", fromlist=["InputEvent"])
-                                .InputEvent.MINUS_LONG)   # pause ERG puis reprise
+                s._on_command("input_event", {"event": "Y_SHORT"}, 5)   # pause de la séance (Y) puis reprise
             if step == 15:
-                s._on_command("input_event", {"event": "MINUS_LONG"}, 5)
+                s._on_command("resume", {}, 6)
             s.server.send_state(s.state)
             if s.state.erg:
                 types.add(s.state.erg["block_type"])

@@ -64,6 +64,8 @@ DT_STATE = 1.0 / 30.0    # 30 Hz
 STATS_PERIOD_S = 60.0
 SHUTDOWN_GRACE_S = 5.0   # délai laissé aux pilotes pour relâcher le trainer et se déconnecter
 MAX_STEP_S = 0.1         # un pas plus long (gel du processus) est borné
+# Biais ERG par appui de + ou − (§7.1) : petit pas ± 2 %, grand pas ± 10 % (cinq pas de BIAS_STEP_PCT).
+BIAS_STEPS = {InputEvent.PLUS_SHORT: +1, InputEvent.MINUS_SHORT: -1, InputEvent.PLUS_LONG: +5, InputEvent.MINUS_LONG: -5}
 WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révision 1.3)
 DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" / "default" / "theme.json"
 
@@ -334,6 +336,9 @@ class CoreSession:
                 self._rec.event("pause", now)
             elif new == "RUNNING" and old == "PAUSED":
                 self._rec.event("resume", now)
+        if self.erg:
+            self.erg.paused = new == "PAUSED"   # l'ERG suit la pause de la séance (Y), seule pause (§7.1)
+            self._sync_erg_state()
         if self.race and new == "PAUSED" and old == "RUNNING":
             self.race.pause(reason or "user")   # passages en cours annulés (T4)
         if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
@@ -1364,29 +1369,24 @@ class CoreSession:
                 if self.rogue.shift(ev.value):
                     self.state.gear = self.rogue.gear
             return
-        if ev == InputEvent.Z_SHORT and self.state.session_state == "RUNNING" and self.race:
-            if self.race.activate(self._t_session):   # mode classique : bonus en réserve (T6, T7)
-                log.info("Bonus activé : %s.", self.race.powerups.active)
-                self._flush_race_journal()
-            return
-        if ev not in (InputEvent.PLUS_SHORT, InputEvent.MINUS_SHORT, InputEvent.PLUS_LONG, InputEvent.MINUS_LONG):
-            return   # A, Z long, flèches, appui ambigu : rien en séance pour l'instant (O17, vues de caméra)
         if self.state.session_state != "RUNNING":
             return
         erg = self.erg
-        if erg and (ev in (InputEvent.PLUS_LONG, InputEvent.MINUS_LONG) or not erg.is_freeride):
-            # ERG (SRS §4.4) : court ± = biais, long + = bloc suivant, long − = pause ERG.
-            # En roue libre, les appuis courts restent des braquets.
-            if ev == InputEvent.PLUS_SHORT:
-                erg.change_bias(+1)
-            elif ev == InputEvent.MINUS_SHORT:
-                erg.change_bias(-1)
-            elif ev == InputEvent.PLUS_LONG:
+        if ev == InputEvent.Z_SHORT:
+            # Z court : action du mode (§7.1) ; bloc suivant en ERG, roue libre comprise ; sinon, en mode
+            # classique, bonus en réserve (T6, T7).
+            if erg:
                 self._skip_block()
-                return
-            else:
-                erg.toggle_pause()
-                log.info("ERG %s.", "en pause (pente 0 %)" if erg.paused else "repris")
+            elif self.race and self.race.activate(self._t_session):
+                log.info("Bonus activé : %s.", self.race.powerups.active)
+                self._flush_race_journal()
+            return
+        if ev not in BIAS_STEPS:
+            return   # ni + ni − (A, Z long, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
+        if erg and not erg.is_freeride:
+            # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 %. En roue libre, les
+            # appuis restent des braquets.
+            erg.change_bias(BIAS_STEPS[ev])
             self._sync_erg_state()
             return
         n = self.cfg.gearing.long_press_gears
@@ -1395,7 +1395,7 @@ class CoreSession:
         elif ev == InputEvent.MINUS_SHORT:
             self.gearing.shift_down()
         elif ev == InputEvent.PLUS_LONG:
-            self.gearing.shift_up(n)     # SIM : saut de plusieurs braquets (essai ; ERG : bloc suivant)
+            self.gearing.shift_up(n)     # grand pas : plusieurs braquets d'un coup (§7.1)
         elif ev == InputEvent.MINUS_LONG:
             self.gearing.shift_down(n)
         self.state.gear = self.gearing.k
@@ -1499,9 +1499,6 @@ class CoreSession:
             # ERG : cible de puissance, aucune pente envoyée ; la physique garde la pente du terrain.
             self._grade_sent = 0.0
             self.driver.set_target_power(erg.target_w)
-        elif erg and erg.paused:
-            self._grade_sent = 0.0   # pause ERG : pente 0 % en SIM (SRS §4.4)
-            self.driver.set_sim_grade(0.0)
         else:
             # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
             target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0)
