@@ -56,6 +56,8 @@ const SUMMARY := "summary"
 const CONNECT := "connect"
 const PAIRING := PairingViewModel.SCREEN
 const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
+## Sous-écran de « Réglages » (Cycliste, Séance, Affichage, Son, Vent) ; titre et éléments du groupe ouvert.
+const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
 const PLANS := "plans"
@@ -96,6 +98,8 @@ var _lists_requested := false
 var devices_model = DevicesViewModel.new()
 var pairing = PairingViewModel.new()
 var settings = SettingsViewModel.new()
+## Groupe du sous-écran de « Réglages » ouvert en dernier ("" : aucun).
+var settings_group := ""
 ## Versions de l'engine et du core pour la ligne « OpenRide X.Y.Z » des réglages (lots O2 et O4).
 var engine_version := str(ProjectSettings.get_setting("application/config/version", "0.0.0"))
 var core_version := ""
@@ -148,6 +152,7 @@ func _init() -> void:
 	summary_model.attach_to_menu(menu)
 	menu.add_screen({"id": CONNECT, "title": "Connexion des appareils", "on_back": "", "items": []})
 	menu.add_screen({"id": PAIRING, "title": "Appareils", "on_back": MenuModel.SETTINGS, "items": []})
+	menu.add_screen({"id": SETTINGS_GROUP, "title": "Réglages", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": SETTING_EDIT, "title": "Réglage", "on_back": MenuModel.SETTINGS, "items": []})
 	menu.add_screen({"id": WORKOUT_CREATE, "title": "Créer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
@@ -260,14 +265,18 @@ func _refresh_pairing() -> void:
 	menu.set_screen_items(PAIRING, pairing.menu_items())
 
 
-## Écran « Réglages » : Appareils (lot N13) puis les réglages reçus du core (lot O4).
+## Écran « Réglages » : Appareils (lot N13), puis un sous-écran par groupe des réglages reçus du core
+## (lot O4) ; le sous-écran ouvert est mis à jour avec la liste.
 func _refresh_settings() -> void:
 	var items: Array = [{"id": "devices", "label": "Appareils : rechercher et appairer"}]
-	items.append_array(settings.menu_items())
+	items.append_array(settings.group_items())
 	if settings.items.is_empty():
 		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
 	items.append(SettingsViewModel.version_item(engine_version, core_version))
 	menu.set_screen_items(MenuModel.SETTINGS, items)
+	if settings_group != "":
+		menu.set_screen_items(SETTINGS_GROUP, settings.menu_items(settings_group),
+			SettingsViewModel.group_title(settings_group))
 
 
 ## Versions affichées en bas des réglages : engine (project.godot) et core (hello_ack.core_version).
@@ -702,6 +711,13 @@ func handle(event: String) -> Dictionary:
 		var item_id := str(act["id"])
 		if item_id == "devices":
 			return _open_pairing()
+		if item_id.begins_with("group:"):
+			settings_group = item_id.substr(6)
+			_refresh_settings()
+			menu.push_screen(SETTINGS_GROUP)
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == SETTINGS_GROUP:
+		var item_id := str(act["id"])
 		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
 			_open_edit()
 		return {}
