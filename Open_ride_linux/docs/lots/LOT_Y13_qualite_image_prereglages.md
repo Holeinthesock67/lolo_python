@@ -99,6 +99,8 @@ Deux blocs de moins de 10 minutes, PC au calme, sans séance vélo, fenêtre ann
 1. `main` puis la branche, `medium`, monde `village` : `python3 engine/tests/sim_bench.py --native --probe --quality medium --size LxH --world village --scenario montee_descente`, `LxH` étant la résolution native de l'écran (1680 × 1050 sur le PC du propriétaire), environ 3 min chacun.
 2. La branche en `low` puis en `high`, même commande.
 
+**Défaut du banc corrigé dans cette PR (28 octobre) :** `sim_bench.py` passait `--quality` à l'engine mais n'écrivait pas `[render] quality` dans la configuration du core ; le core renvoyait sa valeur par défaut (`low`) dans ses réglages au démarrage et l'engine l'appliquait (« Qualité graphique : low » dans `engine.log`), alors que la colonne `preset` de la sonde affichait le préréglage demandé. Les bancs `medium` et `high` mesuraient donc du `low` depuis l'envoi des réglages par le core (O4). Vérifier cette ligne de `engine.log` à chaque banc.
+
 Critères : budgets du §3 ; écart d'images/s et de p99 entre `main` et la branche ; GPU médian et pointe dans `sonde.csv`. Si `medium` dépasse son enveloppe, retirer d'abord le SSIL, puis passer le MSAA à 2×.
 
 ## 7. Étapes suivantes (après l'accord du propriétaire sur l'étape 1)

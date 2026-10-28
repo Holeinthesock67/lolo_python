@@ -130,6 +130,13 @@
         "alt_source": {
           "type": "string",
           "description": "Origine de l'altitude de la route : « gpx » ou nom de la source MNT (format 1.1)."
+        },
+        "surface_source": {
+          "enum": [
+            "osm",
+            "none"
+          ],
+          "description": "Origine de la colonne surface de route.json (format 1.6, lot U1) ; absent = none."
         }
       }
     },
@@ -266,6 +273,158 @@
               ]
             }
           }
+        },
+        "biome": {
+          "type": "object",
+          "description": "Facultative, format 1.6 (lot U1) : dossiers biome/near et biome/far, poids de biome par tuile de terrain (§8 quater).",
+          "required": [
+            "present"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": "string"
+            },
+            "default_biome": {
+              "enum": [
+                "temperate_grassland",
+                "temperate_forest",
+                "farmland",
+                "boreal_forest",
+                "alpine",
+                "tundra",
+                "polar",
+                "mediterranean",
+                "steppe",
+                "savanna",
+                "sand_desert",
+                "rock_desert",
+                "jungle",
+                "wetland",
+                "coast",
+                "volcanic"
+              ]
+            },
+            "forced": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "enum": [
+                    "temperate_grassland",
+                    "temperate_forest",
+                    "farmland",
+                    "boreal_forest",
+                    "alpine",
+                    "tundra",
+                    "polar",
+                    "mediterranean",
+                    "steppe",
+                    "savanna",
+                    "sand_desert",
+                    "rock_desert",
+                    "jungle",
+                    "wetland",
+                    "coast",
+                    "volcanic"
+                  ]
+                }
+              ]
+            },
+            "sources": {
+              "type": "array",
+              "items": {
+                "type": "string"
+              }
+            },
+            "shares": {
+              "type": "object",
+              "propertyNames": {
+                "enum": [
+                  "temperate_grassland",
+                  "temperate_forest",
+                  "farmland",
+                  "boreal_forest",
+                  "alpine",
+                  "tundra",
+                  "polar",
+                  "mediterranean",
+                  "steppe",
+                  "savanna",
+                  "sand_desert",
+                  "rock_desert",
+                  "jungle",
+                  "wetland",
+                  "coast",
+                  "volcanic"
+                ]
+              },
+              "additionalProperties": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "tiles": {
+              "type": "object",
+              "properties": {
+                "near": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                },
+                "far": {
+                  "type": "array",
+                  "items": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 2,
+                    "items": {
+                      "type": "integer"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "coast": {
+          "type": "object",
+          "description": "Facultative, format 1.6 (lot U1) : dossier coast/, lignes de côte et plages (§8 quinquies).",
+          "required": [
+            "present"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": "string"
+            },
+            "lines_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "beaches_count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "osm_date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
         }
       }
     },
@@ -354,6 +513,23 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 5
+        },
+        "surface_pct": {
+          "type": "object",
+          "propertyNames": {
+            "enum": [
+              "paved",
+              "compacted",
+              "gravel",
+              "dirt"
+            ]
+          },
+          "additionalProperties": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 100
+          },
+          "description": "Depuis 1.6 : part de chaque surface sur le parcours, en %, quand route.json a une colonne surface."
         }
       }
     },

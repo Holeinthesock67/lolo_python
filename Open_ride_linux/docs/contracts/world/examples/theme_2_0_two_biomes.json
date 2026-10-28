@@ -1,0 +1,166 @@
+{
+  "version": "2.0",
+  "name": "Exemple deux biomes",
+  "default_biome": "temperate_grassland",
+  "biomes": {
+    "temperate_grassland": {
+      "ground": {
+        "layers": [
+          {
+            "name": "herbe",
+            "role": "flat",
+            "color": "#6f9a4a",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "roche",
+            "role": "steep",
+            "color": "#9a9488",
+            "texture": null,
+            "scale_m": 12.0
+          },
+          {
+            "name": "neige",
+            "role": "high",
+            "color": "#f2f5f8",
+            "texture": null,
+            "scale_m": 8.0
+          }
+        ],
+        "slope_threshold_deg": 22,
+        "high_line_m": 2200,
+        "blend_sharpness": 4.0
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "oak",
+            "weight": 3
+          },
+          {
+            "kind": "beech",
+            "weight": 2
+          },
+          {
+            "kind": "birch",
+            "weight": 1
+          }
+        ],
+        "max_density_per_ha": 400,
+        "treeline_m": 2000
+      },
+      "water": {
+        "color": "#3d6b7a",
+        "turbidity": 0.3
+      },
+      "sky": {
+        "fog_density": 0.0008,
+        "haze": 0.1,
+        "light_tint": "#ffffff"
+      },
+      "seasons": {
+        "calendar": "four",
+        "offset_months": 0,
+        "durations_months": [
+          3,
+          3,
+          3,
+          3
+        ]
+      }
+    },
+    "mediterranean": {
+      "ground": {
+        "layers": [
+          {
+            "name": "terre ocre",
+            "role": "flat",
+            "color": "#b39461",
+            "texture": null,
+            "scale_m": 6.0
+          },
+          {
+            "name": "calcaire",
+            "role": "steep",
+            "color": "#d8d2c2",
+            "texture": null,
+            "scale_m": 12.0
+          }
+        ],
+        "slope_threshold_deg": 25,
+        "high_line_m": null,
+        "blend_sharpness": 4.0
+      },
+      "vegetation": {
+        "species": [
+          {
+            "kind": "olive",
+            "weight": 4
+          },
+          {
+            "kind": "holm_oak",
+            "weight": 3
+          },
+          {
+            "kind": "cypress",
+            "weight": 1
+          },
+          {
+            "kind": "stone_pine",
+            "weight": 2
+          }
+        ],
+        "max_density_per_ha": 150,
+        "treeline_m": null
+      },
+      "water": {
+        "color": "#2f7f8f",
+        "turbidity": 0.15
+      },
+      "sky": {
+        "fog_density": 0.0005,
+        "haze": 0.25,
+        "light_tint": "#fff3e0"
+      },
+      "ambience": {
+        "volume": 0.6,
+        "birds": 0.3,
+        "insects": 0.9
+      },
+      "seasons": {
+        "calendar": "four",
+        "offset_months": 0,
+        "durations_months": [
+          2,
+          5,
+          2,
+          3
+        ]
+      }
+    }
+  },
+  "variants": {
+    "calcaire_blanc": {
+      "rock_color": "#e2ddd0",
+      "soil_color": "#c9b48a"
+    },
+    "tuile_ronde": {
+      "walls": [
+        "#e8dcc0",
+        "#dccaa4"
+      ],
+      "roofs": [
+        "#b8643c",
+        "#a85a36"
+      ]
+    }
+  },
+  "surfaces": {
+    "gravel": {
+      "color": "#a59a86",
+      "texture": null,
+      "width_m": 3.5
+    }
+  }
+}
