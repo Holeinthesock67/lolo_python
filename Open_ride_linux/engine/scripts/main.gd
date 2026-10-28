@@ -243,6 +243,7 @@ func _ready() -> void:
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
 	ipc.room_received.connect(rogue_host.on_room)
+	ipc.loot_received.connect(rogue_host.on_loot)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
 	ipc.garage_received.connect(_on_garage)
@@ -1214,6 +1215,7 @@ func _on_state_received(state: Dictionary) -> void:
 		if hud != null and hud.has_method("update_wind"):
 			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s))
 
+	rogue_host.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
 			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
 		ipc.request_rogue_resync()

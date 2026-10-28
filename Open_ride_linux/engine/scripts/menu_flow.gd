@@ -290,7 +290,7 @@ func _refresh_settings() -> void:
 	menu.set_screen_items(MenuModel.SETTINGS, items)
 	if settings_group != "":
 		menu.set_screen_items(SETTINGS_GROUP, settings.menu_items(settings_group),
-			SettingsViewModel.group_title(settings_group))
+			SettingsViewModel.crumb(settings_group))
 
 
 ## Versions affichées en bas des réglages : engine (project.godot) et core (hello_ack.core_version).
@@ -437,6 +437,8 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
 	if screen == MenuModel.WORKOUTS:
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
+	if screen == SETTINGS_GROUP:
+		return settings.sheet(focused.substr(4)) if focused.begins_with("set:") else {}
 	if screen == WORKOUT_CREATE:
 		var blocks: Array = builder.profile()
 		return CatalogModel.workout_sheet({"id": builder.workout_id(), "name": builder.workout_name(),
@@ -718,8 +720,10 @@ func handle(event: String) -> Dictionary:
 	if not is_visible():
 		return {}
 	ready_message = ""
-	if menu.current_screen() == SETTING_EDIT:
-		return _handle_edit(event)
+	if not settings.editing.is_empty():
+		if menu.current_screen() in [SETTING_EDIT, SETTINGS_GROUP, WORKOUT_CREATE]:
+			return _handle_edit(event)
+		settings.cancel()   # menu quitté pendant un réglage (séance lancée, perte du core…)
 	if menu.current_screen() == RECORD_TABLE and event == "A_SHORT":   # A court : bascule de table (T10)
 		_handle_records(RECORD_TABLE, "toggle")
 		return {}
@@ -778,7 +782,7 @@ func handle(event: String) -> Dictionary:
 	if act.get("action", "") == "item" and act.get("screen", "") == SETTINGS_GROUP:
 		var item_id := str(act["id"])
 		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
-			_open_edit()
+			_refresh_edit()
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.WORKOUTS:
 		workout_message = ""
@@ -797,7 +801,7 @@ func handle(event: String) -> Dictionary:
 			return {"action": "create_workout", "args": builder.values.duplicate()}
 		if item_id.begins_with("param:"):
 			settings.begin_with(builder.edit_item(item_id.substr(6)))
-			_open_edit()
+			_refresh_edit()
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_IMPORT:
 		var idx := int(str(act["id"]).substr(5))
@@ -810,7 +814,8 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:
 		settings.begin_pause_difficulty(difficulty_pct)
-		_open_edit()
+		menu.set_screen_items(SETTING_EDIT, settings.edit_items(), "Difficulté")
+		menu.push_screen(SETTING_EDIT)
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == PAIRING:
 		act = pairing.handle(str(act["id"]))
@@ -953,24 +958,33 @@ func _refresh_record_table() -> void:
 		records.table_title(_record_segment, _record_bonus))
 
 
-func _open_edit() -> void:
-	menu.set_screen_items(SETTING_EDIT, settings.edit_items(), str(settings.editing.get("label", "Réglage")))
-	menu.push_screen(SETTING_EDIT)
+## Réglage en cours de modification : la rangée de la liste ouverte (Réglages, Créer un entraînement)
+## passe en mode édition ; la difficulté de la pause garde son écran (étape 4).
+func _refresh_edit() -> void:
+	match menu.current_screen():
+		SETTING_EDIT:
+			menu.set_screen_items(SETTING_EDIT, settings.edit_items())
+		WORKOUT_CREATE:
+			menu.set_screen_items(WORKOUT_CREATE, builder.menu_items(str(settings.editing.get("key", "")),
+				settings.editing.get("value", 0)))
+		_:
+			_refresh_settings()
 
 
-## Écran de modification (plan des boutons, spécification générale §7.1) : + / − court, A court et
-## flèches gauche, droite changent la valeur d'un pas, + / − long de cinq pas ; A long enregistre,
-## Y annule.
+## Modification d'un réglage (plan des boutons, spécification générale §7.1) : + / B court, A court et
+## flèches gauche, droite changent la valeur d'un pas, + / B long de cinq pas ; A maintenu enregistre,
+## Y annule et rend la valeur d'avant.
 func _handle_edit(event: String) -> Dictionary:
 	match event:
 		"PLUS_SHORT", "MINUS_SHORT", "A_SHORT", "LEFT_SHORT", "RIGHT_SHORT", "PLUS_LONG", "MINUS_LONG":
 			var dir := -1 if event in ["MINUS_SHORT", "LEFT_SHORT", "MINUS_LONG"] else 1
 			for i in range(MenuModel.LONG_STEP if event.ends_with("_LONG") else 1):
 				settings.step(dir)
-			menu.set_screen_items(SETTING_EDIT, settings.edit_items())
+			_refresh_edit()
 		"A_LONG":
 			var act: Dictionary = settings.commit()
-			menu.handle("Y_SHORT")
+			if menu.current_screen() == SETTING_EDIT:
+				menu.handle("Y_SHORT")
 			if act.get("action", "") == "set_difficulty":
 				difficulty_pct = int(act["pct"])
 				menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
@@ -982,10 +996,14 @@ func _handle_edit(event: String) -> Dictionary:
 				builder.set_value(str(act["key"]), act["value"])
 				_refresh_builder()
 				return {}
+			_refresh_edit()
 			return act
 		"Y_SHORT":
 			settings.cancel()
-			menu.handle("Y_SHORT")
+			if menu.current_screen() == SETTING_EDIT:
+				menu.handle("Y_SHORT")
+			else:
+				_refresh_edit()
 	return {}
 
 
@@ -1021,4 +1039,5 @@ func state() -> Dictionary:
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
 	st["progress"] = progress_view() if st["screen"] == SUMMARY else {}
+	st["editing"] = not settings.editing.is_empty()
 	return st

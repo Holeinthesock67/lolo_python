@@ -6,7 +6,8 @@ extends RefCounted
 ## Le core envoie la liste (`settings` : {key, label, type, value, min, max, step, unit, choices,
 ## applies}) ; ce modèle la met en forme et garde la valeur en cours de modification. Écran de
 ## modification (menu_flow._handle_edit, spécification générale §7.1) : + / − changent la valeur (long :
-## cinq pas), A long enregistre, Y annule. Tout réglage en % de 0 à 100 (difficulté, volumes) s'affiche en curseur ; le curseur de la
+## cinq pas), A long enregistre, Y annule ; la rangée du réglage passe en mode édition dans sa liste
+## (row(), lot « présentation des menus »). Tout réglage en % de 0 à 100 (difficulté, volumes) s'affiche en curseur ; le curseur de la
 ## difficulté sert aussi sur l'écran de pause, où il envoie `set_difficulty` (lot Q1) sans toucher à
 ## config.toml.
 ## Le même écran sert aux paramètres de « Créer un entraînement » (lot N16, clés « workout.… ») :
@@ -104,6 +105,11 @@ static func group_title(group: String) -> String:
 	return str(OTHER_GROUP[1])
 
 
+## Titre d'un sous-écran avec le fil d'Ariane : « Réglages › Son ».
+static func crumb(group: String) -> String:
+	return "Réglages › " + group_title(group)
+
+
 ## Entrées des sous-écrans pour l'écran « Réglages » (id « group:groupe ») : titre, et en détail les
 ## réglages qu'il contient. Groupes vides omis.
 func group_items() -> Array:
@@ -118,16 +124,54 @@ func group_items() -> Array:
 	return out
 
 
-## Éléments des réglages d'un sous-écran (id « set:clé »).
+## Valeur d'une rangée de la liste : le curseur est dessiné à part (`bar`), la valeur s'écrit « 75 % ».
+static func value_text(it: Dictionary, value) -> String:
+	return "%d %%" % int(value) if is_slider(it) else format_value(it, value)
+
+
+## Rangée d'un réglage dans une liste (id donné) : libellé à gauche, valeur à droite (détail), curseur
+## (`bar`) pour un réglage en %. En cours de modification (`editing_it` vide : non), la valeur en cours
+## s'écrit entre deux flèches et la rangée porte `editing`.
+static func row(id: String, it: Dictionary, editing_it := {}) -> Dictionary:
+	var shown: Dictionary = editing_it if not editing_it.is_empty() else it
+	var value = shown.get("value")
+	var out := {"id": id, "label": str(it.get("label", it.get("key", ""))), "detail": value_text(shown, value)}
+	if is_slider(shown):
+		out["bar"] = int(value)
+	if not editing_it.is_empty():
+		out["detail"] = "◀ %s ▶" % out["detail"]
+		out["editing"] = true
+	return out
+
+
+## Éléments des réglages d'un sous-écran (id « set:clé »), le réglage en cours de modification en place.
 func menu_items(group: String) -> Array:
 	var out: Array = []
 	for it in items:
 		if not it is Dictionary or group_of(it) != group:
 			continue
-		var detail := "tout de suite" if str(it.get("applies", "")) == "now" else ""
-		out.append({"id": "set:" + str(it["key"]), "label": "%s : %s" % [it.get("label", it["key"]),
-			format_value(it, it.get("value"))], "detail": detail})
+		out.append(row("set:" + str(it["key"]), it, editing if str(editing.get("key", "")) == str(it["key"]) else {}))
 	return out
+
+
+## Carte de détail d'un réglage (clé sans « set: ») : valeur, plage ou choix, moment où il s'applique.
+func sheet(key: String) -> Dictionary:
+	var it := item(key)
+	if it.is_empty():
+		return {}
+	var tiles: Array = [{"label": "Valeur", "value": value_text(it, it.get("value")), "unit": ""}]
+	var lines: Array = []
+	if str(it.get("type", "")) == "choice":
+		var texts: Array = []
+		for c in it.get("choices", []):
+			texts.append(format_value({"key": it["key"]}, c))
+		lines.append("Choix : " + ", ".join(PackedStringArray(texts)))
+	elif it.has("min") and it.has("max"):
+		var unit := str(it.get("unit", ""))
+		tiles.append({"label": "Plage", "value": "%d à %d" % [int(it["min"]), int(it["max"])], "unit": unit})
+		tiles.append({"label": "Pas", "value": str(int(it.get("step", 1))), "unit": unit})
+	lines.append("S'applique tout de suite" if str(it.get("applies", "")) == "now" else "S'applique à la séance suivante")
+	return {"title": "Réglage", "name": str(it.get("label", key)), "tiles": tiles, "lines": lines}
 
 
 ## Ligne de version en bas de l'écran « Réglages » (lot O4, numéro unique du lot O2) : version de
@@ -174,7 +218,8 @@ func step(direction: int) -> void:
 	editing["value"] = clampi(v, int(editing.get("min", v)), int(editing.get("max", v)))
 
 
-## Écran de modification : titre et un élément (la valeur), aide en détail.
+## Écran de modification de la difficulté de la pause (étape 4) : titre et un élément, la valeur.
+## Les autres réglages se modifient en place dans leur liste (row()).
 func edit_items() -> Array:
 	return [{"id": "value", "label": format_value(editing, editing.get("value")),
 		"detail": "+ / − : changer, A long : enregistrer, Y : annuler"}]
@@ -194,6 +239,7 @@ func commit() -> Dictionary:
 	if str(e["key"]).begins_with(WorkoutBuilder.KEY_PREFIX):
 		return {"action": "builder_set", "key": str(e["key"]).substr(WorkoutBuilder.KEY_PREFIX.length()),
 			"value": int(e["value"])}
+	item(str(e["key"]))["value"] = e["value"]   # affiché tout de suite, le core confirme ensuite
 	return {"action": "set_setting", "key": e["key"], "value": e["value"]}
 
 

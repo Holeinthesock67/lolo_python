@@ -50,6 +50,8 @@ const CHIPS_H := 38           # rangée des pastilles d'appareils
 const CARD_W := 520           # carte de détail à droite
 const ICON := 28              # pictogramme d'une entrée
 const LINE_W := 2.2           # trait des pictogrammes
+const BAR_W := 180            # curseur d'un réglage en % dans une rangée
+const BAR_H := 10
 const CHART_H := 72           # profil d'altitude ou blocs d'entraînement dans la carte
 
 

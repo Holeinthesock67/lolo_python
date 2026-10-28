@@ -300,16 +300,25 @@ func _test_settings_screen() -> void:
 	_check(f.state()["items"][-1]["detail"] == "", "core pas encore connu : pas d'alerte")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Cycliste
-	_check(f.state()["screen"] == "settings_group" and f.state()["title"] == "Cycliste"
-			and f.state()["items"].map(func(it): return it["label"]) == ["FTP : 250 W"], "sous-écran Cycliste")
-	f.handle("A_LONG")   # FTP
-	_check(f.state()["screen"] == "setting_edit" and f.state()["title"] == "FTP", "modification de la FTP")
+	_check(f.state()["screen"] == "settings_group" and f.state()["title"] == "Réglages › Cycliste"
+			and f.state()["items"].map(func(it): return it["label"]) == ["FTP"] and f.state()["items"][0]["detail"] == "250 W",
+			"sous-écran Cycliste : libellé à gauche, valeur à droite")
+	_check(f.state()["card"]["name"] == "FTP" and f.state()["card"]["lines"] == ["S'applique à la séance suivante"],
+			"carte du réglage sous le focus (%s)" % str(f.state()["card"]))
+	f.handle("A_LONG")   # FTP : modification en place, pas d'autre écran
+	_check(f.state()["screen"] == "settings_group" and f.state()["editing"] and f.state()["items"][0]["detail"] == "◀ 250 W ▶"
+			and f.state()["items"][0]["editing"], "modification de la FTP dans la liste")
 	for i in range(3):
 		f.handle("PLUS_SHORT")
-	_check(f.state()["items"][0]["label"] == "265 W", "+ trois fois : 265 W (%s)" % f.state()["items"][0]["label"])
+	_check(f.state()["items"][0]["detail"] == "◀ 265 W ▶", "+ trois fois : 265 W (%s)" % f.state()["items"][0]["detail"])
 	var act: Dictionary = f.handle("A_LONG")
-	_check(act == {"action": "set_setting", "key": "rider.ftp_w", "value": 265} and f.state()["screen"] == "settings_group",
-			"appui long + : set_setting et retour au sous-écran (%s)" % str(act))
+	_check(act == {"action": "set_setting", "key": "rider.ftp_w", "value": 265} and f.state()["screen"] == "settings_group"
+			and not f.state()["editing"] and f.state()["items"][0]["detail"] == "265 W",
+			"A maintenu : set_setting une fois, valeur affichée tout de suite (%s)" % str(act))
+	f.handle("A_LONG")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("Y_SHORT").is_empty() and f.state()["items"][0]["detail"] == "265 W" and f.state()["screen"] == "settings_group",
+			"Y annule et rend la valeur d'avant")
 	f.handle("Y_SHORT")   # retour aux Réglages, focus sur Cycliste
 	_check(f.state()["screen"] == "settings" and _focus_id(f) == "group:rider", "retour aux Réglages sur Cycliste")
 	f.handle("PLUS_SHORT")
@@ -317,13 +326,13 @@ func _test_settings_screen() -> void:
 	f.handle("A_LONG")   # Affichage
 	f.handle("A_LONG")   # Qualité
 	f.handle("PLUS_SHORT")
-	_check(f.state()["items"][0]["label"] == "low", "choix en boucle : high → low")
+	_check(f.state()["items"][0]["detail"] == "◀ low ▶", "choix en boucle : high → low")
 	_check(f.handle("Y_SHORT").is_empty() and f.state()["screen"] == "settings_group", "Y : annulé")
 	f.handle("Y_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Vent
-	_check(f.state()["items"][0]["label"] == "Direction du vent : 270° (ouest)", "direction avec le point cardinal (%s)"
-			% f.state()["items"][0]["label"])
+	_check(f.state()["items"][0]["label"] == "Direction du vent" and f.state()["items"][0]["detail"] == "270° (ouest)",
+			"direction avec le point cardinal (%s)" % f.state()["items"][0]["detail"])
 	f.handle("Y_SHORT")
 	# Curseur de difficulté sur l'écran de pause : set_difficulty, sans config.toml.
 	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
@@ -354,15 +363,17 @@ func _test_erg_submenu() -> void:
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create", "écran Créer un entraînement")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Répétitions
-	_check(f.state()["screen"] == "setting_edit" and f.state()["items"][0]["label"] == "5", "modification des répétitions")
+	_check(f.state()["screen"] == "workout_create" and f.state()["items"][1]["detail"] == "◀ 5 ▶",
+		"modification des répétitions en place")
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
-	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create", "A long : retour à l'écran Créer")
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create" and not f.state()["editing"],
+		"A long : valeur gardée dans l'écran Créer")
 	_check(f.state()["items"][1]["detail"] == "7", "7 répétitions (%s)" % f.state()["items"][1]["detail"])
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Effort
 	f.handle("PLUS_SHORT")
-	_check(f.state()["items"][0]["label"] == "4 min 15 s", "effort par pas de 15 s (%s)" % f.state()["items"][0]["label"])
+	_check(f.state()["items"][2]["detail"] == "◀ 4 min 15 s ▶", "effort par pas de 15 s (%s)" % f.state()["items"][2]["detail"])
 	f.handle("Y_SHORT")  # annulé
 	f.handle("MINUS_SHORT")
 	f.handle("MINUS_SHORT")

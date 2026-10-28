@@ -311,8 +311,12 @@ func set_screen_items(screen_id: String, items: Array, title := "") -> void:
 		focused_id = _screens[screen_id]["items"][_focus]["id"]
 	var clean := []
 	for it in items:
-		clean.append(_item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
-			str(it.get("detail", ""))))
+		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
+			str(it.get("detail", "")))
+		for k in ["bar", "editing"]:   # affichage seulement : curseur (0 à 100) et valeur en cours de réglage
+			if it.has(k):
+				e[k] = it[k]
+		clean.append(e)
 	_screens[screen_id]["items"] = clean
 	if title != "":
 		_screens[screen_id]["title"] = title
