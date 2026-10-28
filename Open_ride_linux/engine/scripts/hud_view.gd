@@ -74,11 +74,11 @@ const GRADE_COLORS := {
 ## barres du profil, éclaircies et opaques, pour au moins 4,5:1 sur un panneau au-dessus d'un ciel clair
 ## (lot X22 : 3,0 à 4,1:1 avec les couleurs des barres).
 const GRADE_TEXT_COLORS := {
-	"descent": Color(0.55, 0.80, 1.00),
-	"flat": Color(0.50, 0.90, 0.55),
-	"climb": Color(1.00, 0.85, 0.35),
-	"steep": Color(1.00, 0.68, 0.40),
-	"wall": Color(1.00, 0.60, 0.58),
+	"descent": UiTheme.GRADE_TEXT_DESCENT,
+	"flat": UiTheme.GRADE_TEXT_FLAT,
+	"climb": UiTheme.GRADE_TEXT_CLIMB,
+	"steep": UiTheme.GRADE_TEXT_STEEP,
+	"wall": UiTheme.GRADE_TEXT_WALL,
 }
 
 var vm := HudViewModel.new()
