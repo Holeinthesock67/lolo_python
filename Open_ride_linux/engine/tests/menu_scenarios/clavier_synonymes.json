@@ -1,0 +1,24 @@
+{
+  "description": "Tableau du clavier (§7.1) : =, + et − du pavé, Page haut et bas, Maj+A, Entrée, Échap, Maj+Z doublent leur bouton ; P et Espace n'ont plus de rôle.",
+  "canaux": ["clavier"],
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"focus": "world"},
+    {"touche": "="}, {"focus": "ride"},
+    {"touche": "Pavé+"}, {"focus": "erg"},
+    {"touche": "Pavé-"}, {"focus": "ride"},
+    {"touche": "PageHaut"}, {"focus": "sim"},
+    {"touche": "PageBas"}, {"focus": "ride"},
+    {"touche": "Maj+Z"}, {"focus": "ride", "ecran": "home"},
+    {"touche": "P"}, {"focus": "ride", "ecran": "home"},
+    {"touche": "Espace"}, {"focus": "ride", "ecran": "home"},
+    {"aller": "settings"},
+    {"touche": "Entrée"}, {"ecran": "settings"},
+    {"touche": "Échap"}, {"ecran": "home", "focus": "settings"},
+    {"touche": "Maj+A"}, {"ecran": "settings"},
+    {"touche": "Échap"}, {"ecran": "home"},
+    {"touche": "PavéEntrée"}, {"ecran": "settings"},
+    {"touche": "Y"}, {"ecran": "home"},
+    {"touche": "A", "duree": 0.7, "note": "A entre court et long : rien"}, {"ecran": "home", "focus": "settings"}
+  ]
+}

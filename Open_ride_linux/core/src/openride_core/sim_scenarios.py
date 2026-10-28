@@ -8,12 +8,15 @@ Un scénario est un dictionnaire (ou un fichier JSON du même format) :
       "click": {"appear_at": 4, "plus": {...}, "minus": {...}, "relay_delay_s": [0.005, 0.04]},
       "hr": {"appear_at": 3, "rest_bpm": 60, "contact": true, "battery_pct": 80},
       "hr_watch": {"appear_at": 0, "rssi": -45},
-      "events": [{"t": 30, "device": "trainer", "action": "att_error", "code": 128}, ...]
+      "events": [{"t": 30, "device": "trainer", "action": "att_error", "code": 128}, ...],
+      "control_port": 47000
     }
 
 Une section absente (« trainer », « click », « hr », « hr_watch ») retire l'appareil ; `null` aussi. Les temps
 sont en secondes depuis le démarrage du monde simulé (lancement du core). Les scénarios
 intégrés reproduisent les essais réels ; `openride-core run --sim-scenario NOM|FICHIER`.
+`control_port` (facultatif) ouvre un port UDP local de pilotage : chaque datagramme est un
+événement sans « t », appliqué à sa réception (banc des menus `engine/tests/menu_robot.py`).
 """
 
 from __future__ import annotations
@@ -38,7 +41,7 @@ CLICK_BOX_KEYS = {"address", "appear_at", "connect_delay_s", "connect_failures",
 CLICK_KEYS = CLICK_BOX_KEYS - {"address"} | {"plus", "minus", "relay_delay_s"}
 HR_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
            "rest_bpm", "max_bpm", "ftp_w", "tau_s", "bpm", "contact", "battery_pct", "rssi"}
-TOP_KEYS = {"description", "seed", "trainer", "click", "hr", "hr_watch", "events"}
+TOP_KEYS = {"description", "seed", "trainer", "click", "hr", "hr_watch", "events", "control_port"}
 ACTIONS = {"press", "drop", "wake", "sleep", "connect_failures", "connect_delay", "att_error",
            "cp_silent", "silence", "control_lost", "refuse_control", "rider", "bpm", "contact"}
 EVENT_KEYS = {"t", "device", "action", "button", "duration_s", "count", "code", "seconds",
@@ -187,6 +190,9 @@ def validate(spec: Any) -> dict[str, Any]:
             if "unlock_on_ride_on" in box and box["unlock_on_ride_on"] is not None:
                 if not isinstance(box["unlock_on_ride_on"], bool):
                     raise SimScenarioError(f"click.{role}.unlock_on_ride_on : booléen attendu")
+    port = spec.get("control_port")
+    if port is not None and (isinstance(port, bool) or not isinstance(port, int) or not 1024 <= port <= 65535):
+        raise SimScenarioError("control_port : port UDP entre 1024 et 65535 attendu")
     events = spec.get("events") or []
     if not isinstance(events, list):
         raise SimScenarioError("events : liste attendue")
@@ -229,6 +235,7 @@ def build_world(spec: dict[str, Any], name: str = "sim", *, trainer: bool = True
     spec = validate(spec)
     world = SimWorld(seed=int(spec.get("seed", 0)))
     world.name = name
+    world.control_port = spec.get("control_port")
     if trainer and spec.get("trainer") is not None:
         t = dict(spec["trainer"])
         if "power_range" in t:

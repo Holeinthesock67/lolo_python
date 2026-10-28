@@ -1,0 +1,17 @@
+{
+  "description": "Actions destructrices confirmées : Abandonner une séance (Oui : bilan sans enregistrement, puis Nouvelle séance), puis Quitter (Non, puis Oui : l'engine se ferme).",
+  "canaux": ["clavier"],
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"ouvrir": "world"}, {"ouvrir": "demo"}, {"ouvrir": "ride"}, {"ouvrir": "start"},
+    {"attendre_etat": "RUNNING", "delai": 10},
+    {"bouton": "Y court"}, {"attendre_ecran": "pause", "delai": 5},
+    {"ouvrir": "abandon"}, {"ecran": "confirm", "focus": "no"},
+    {"ouvrir": "yes"}, {"attendre_etat": "FINISHED", "delai": 10},
+    {"attendre_ecran": "summary", "delai": 10, "note": "séance abandonnée : bilan sans enregistrement"},
+    {"ouvrir": "new_session"}, {"attendre_ecran": "home", "delai": 10},
+    {"ouvrir": "quit"}, {"ecran": "confirm", "focus": "no"},
+    {"ouvrir": "no"}, {"ecran": "home", "focus": "quit"},
+    {"ouvrir": "quit"}, {"ouvrir": "yes"}, {"sortie_engine": 0, "delai": 10}
+  ]
+}

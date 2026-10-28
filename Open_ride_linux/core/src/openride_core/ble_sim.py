@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
 import math
 import random
@@ -427,6 +428,11 @@ class SimTrainer(SimDevice):
 
 # --- Zwift Click --------------------------------------------------------------------------
 
+# Touches du Click V2 autres que + et − -> boîtier qui les porte (zwift_click.KEYPAD_BITS) : A, B, Y, Z
+# à droite (« + »), flèches à gauche (« − »). Un appui sur l'une d'elles n'est pas relayé.
+CLICK_BUTTONS = {"A": "+", "B": "+", "Y": "+", "Z": "+", "LEFT": "-", "RIGHT": "-", "UP": "-", "DOWN": "-"}
+
+
 def keypad_message(plus: bool, minus: bool, other_bits: Collection[int] = ()) -> bytes:
     """Trame 0x23 du Click récent : tableau de bits, 0 = appuyé (bit 12 « + », bit 8 « − » ;
     `other_bits` : autres touches appuyées, par exemple B et Y du boîtier droit)."""
@@ -625,6 +631,9 @@ class SimWorld:
         self.events: list[dict[str, Any]] = []
         self.relay_delay_s: tuple[float, float] = (0.005, 0.040)
         self.name = "sim"
+        # Port UDP local de pilotage (banc des menus, `engine/tests/menu_robot.py`) : chaque datagramme est
+        # un événement JSON du scénario sans « t », appliqué à sa réception. None : pas de pilotage.
+        self.control_port: int | None = None
         self._t0: float | None = None
         self._stop = asyncio.Event()
         self._discovering = False
@@ -724,7 +733,20 @@ class SimWorld:
         return next((b for b in self.clicks if b.role == role), None)
 
     async def press(self, button: str, duration_s: float = 0.12) -> None:
-        """Appui sur « + » ou « − » du Click simulé, avec le relais du boîtier « − »."""
+        """Appui sur un bouton du Click simulé, avec le relais du boîtier « − » pour « + ».
+
+        `button` : « + », « - » (ou « − », « minus », « moins »), ou une touche de `CLICK_BUTTONS` (A, B,
+        Y, Z du boîtier droit, flèches LEFT, RIGHT, UP, DOWN du boîtier gauche ; banc des menus).
+        """
+        key = str(button).upper()
+        if key in CLICK_BUTTONS:
+            box = self._box(CLICK_BUTTONS[key])
+            if box is not None:
+                loop = asyncio.get_running_loop()
+                box.set_button(key, True)
+                loop.call_later(duration_s, box.set_button, key, False)
+            await asyncio.sleep(duration_s)
+            return
         button = "-" if button in ("-", "−", "minus", "moins") else "+"
         own = self._box(button)
         relay = self._box("-") if button == "+" else None
@@ -744,6 +766,8 @@ class SimWorld:
 
     async def run(self) -> None:
         self.now()
+        if self.control_port:
+            await self._open_control()
         pending = sorted(self.events, key=lambda e: float(e["t"]))
         for ev in pending:
             wait = float(ev["t"]) - self.now()
@@ -759,6 +783,31 @@ class SimWorld:
             except Exception as exc:   # un événement raté ne doit pas arrêter la séance
                 log.warning("Simulation : événement %s impossible : %s", ev, exc)
         await self._stop.wait()
+
+    async def _open_control(self) -> None:
+        """Ouvre le port de pilotage (127.0.0.1 seulement) ; un datagramme illisible est journalisé et ignoré."""
+        world = self
+
+        class _Control(asyncio.DatagramProtocol):
+            def datagram_received(self, data: bytes, addr: Any) -> None:
+                try:
+                    ev = json.loads(data.decode("utf-8"))
+                    if not isinstance(ev, dict) or "action" not in ev:
+                        raise ValueError("objet avec « action » attendu")
+                except ValueError as exc:
+                    log.warning("Simulation : commande de pilotage illisible (%s)", exc)
+                    return
+                asyncio.get_running_loop().create_task(world._apply_safely(ev))
+
+        loop = asyncio.get_running_loop()
+        await loop.create_datagram_endpoint(_Control, local_addr=("127.0.0.1", int(self.control_port or 0)))
+        log.info("Simulation : pilotage des appareils sur le port UDP %d", self.control_port)
+
+    async def _apply_safely(self, ev: dict[str, Any]) -> None:
+        try:
+            await self.apply(ev)
+        except Exception as exc:   # une commande ratée ne doit pas arrêter la séance
+            log.warning("Simulation : événement %s impossible : %s", ev, exc)
 
     async def apply(self, ev: dict[str, Any]) -> None:
         action = ev["action"]

@@ -1,0 +1,11 @@
+{
+  "description": "Session simulée : confirmation (Non revient à l'accueil), Oui relance OpenRide sans matériel (code de sortie 65 de l'engine).",
+  "canaux": ["clavier", "souris"],
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"ouvrir": "sim"}, {"ecran": "confirm", "focus": "no"},
+    {"capture": "confirmation"},
+    {"tableau": ["+ court", "- court", "A court", "Z court"]},
+    {"ouvrir": "yes"}, {"sortie_engine": 65, "delai": 10}
+  ]
+}

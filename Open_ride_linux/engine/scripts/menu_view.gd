@@ -137,6 +137,16 @@ func items_text() -> String:
 	return " | ".join(parts)
 
 
+## Lignes affichées (tests, banc des menus) : [{id, rect (Rect2 global du canevas), focused}].
+func item_rows() -> Array:
+	var out: Array = []
+	for p in _item_panels:
+		if p.is_visible_in_tree():
+			out.append({"id": str(p.get_meta("item_id", "")), "rect": p.get_global_rect(),
+				"focused": bool(p.get_meta("focused", false))})
+	return out
+
+
 ## Aide des boutons affichée, en une ligne (tests).
 func hint_text() -> String:
 	return button_bar.text()

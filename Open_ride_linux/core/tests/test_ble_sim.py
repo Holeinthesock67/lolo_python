@@ -391,6 +391,50 @@ def test_sim_keyboard_presses_the_simulated_click():
     asyncio.run(scenario())
 
 
+def test_click_a_y_z_and_arrows_reach_the_real_decoder():
+    """Banc des menus : A, B, Y, Z (boîtier droit) et flèches (boîtier gauche), comme sur le vrai Click V2."""
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: all(b.ride_on for b in rig.world.clicks))
+        await rig.world.press("A", 1.0)
+        await rig.world.press("a")
+        await rig.world.press("Y")
+        await rig.world.press("Z")
+        await rig.world.press("B")          # B double « − »
+        await rig.world.press("LEFT")
+        await rig.world.press("DOWN")
+        await asyncio.sleep(0.2)
+        events = rig.events()
+        assert sorted(events) == sorted([InputEvent.A_LONG, InputEvent.A_SHORT, InputEvent.Y_SHORT,
+                                         InputEvent.Z_SHORT, InputEvent.MINUS_SHORT, InputEvent.LEFT_SHORT,
+                                         InputEvent.DOWN_SHORT])
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_control_port_applies_events_on_reception():
+    """Port de pilotage (`control_port`) : un appui envoyé en UDP passe par le vrai pilote du Click."""
+    import socket
+
+    with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+        s.bind(("127.0.0.1", 0))
+        port = s.getsockname()[1]
+
+    async def scenario():
+        rig = Rig({**READY, "control_port": port}).start()
+        assert rig.world.control_port == port
+        await wait_for(lambda: all(b.ride_on for b in rig.world.clicks))
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as tx:
+            tx.sendto(b"pas du json", ("127.0.0.1", port))      # ignoré, journalisé
+            tx.sendto(json.dumps({"action": "press", "button": "Y"}).encode(), ("127.0.0.1", port))
+            tx.sendto(json.dumps({"action": "press", "button": "+", "duration_s": 1.0}).encode(),
+                      ("127.0.0.1", port))
+        await asyncio.sleep(1.4)
+        assert rig.events() == [InputEvent.Y_SHORT, InputEvent.PLUS_LONG]
+        await rig.stop()
+    asyncio.run(scenario())
+
+
 # --- ceinture cardio ---------------------------------------------------------------------
 
 def test_hr_strap_follows_power_and_goes_stale(monkeypatch):
@@ -442,6 +486,8 @@ def test_builtin_scenarios_build(name):
     ({"events": [{"t": 1, "action": "silence"}]}, "« seconds » obligatoire"),
     ({"events": [{"t": -1, "action": "drop"}]}, "doit être positif"),
     ({"click": {"plus": {"name": "x"}}}, "click.plus"),
+    ({"control_port": 80}, "control_port : port UDP"),
+    ({"control_port": "47000"}, "control_port : port UDP"),
 ])
 def test_scenario_validation(spec, message):
     with pytest.raises(SimScenarioError, match=re.escape(message)):

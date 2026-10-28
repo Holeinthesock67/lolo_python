@@ -1,0 +1,28 @@
+{
+  "description": "Session ERG : liste des entraînements (tableau), créer un entraînement par intervalles (réglages modifiés, fichier écrit), importer un fichier des Téléchargements, choisir un entraînement jusqu'à l'écran Prêt.",
+  "canaux": ["clavier", "click"],
+  "preparation": {"entrainements": true, "imports": true},
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"ouvrir": "erg"}, {"ecran": "workouts", "titre": "Session ERG : entraînement", "elements": ["_sim", "erg_court", "_create", "_import"]},
+    {"tableau": ["+ court", "- court", "A court", "+ long", "- long", "Z court"]},
+    {"ouvrir": "_create"}, {"ecran": "workout_create", "elements": ["param:reps", "param:on_pct", "save"], "texte": "Répétitions — 5"},
+    {"capture": "creer"},
+    {"ouvrir": "param:reps"}, {"edition": true},
+    {"bouton": "+ court"}, {"bouton": "A long"}, {"edition": false, "texte": "Répétitions — 6"},
+    {"ouvrir": "param:on_pct"}, {"bouton": "- court", "n": 2}, {"bouton": "Y court", "note": "annulé"},
+    {"texte": "Puissance de l'effort — 105 % de la FTP"},
+    {"ouvrir": "save"}, {"fichier": "OpenRide/Workouts/intervalles_6x240s_105.zwo"},
+    {"ecran": "workouts", "statut": "Créé", "delai": 5},
+    {"ouvrir": "_import"}, {"ecran": "workout_import", "elements": ["file:0"], "texte": "seuil_import.zwo", "delai": 5},
+    {"capture": "importer"},
+    {"ouvrir": "file:0"}, {"fichier": "OpenRide/Workouts/seuil_import.zwo"},
+    {"ecran": "workouts", "statut": "Importé", "delai": 5},
+    {"ouvrir": "erg_court", "note": "sans parcours choisi : la liste des parcours d'abord"},
+    {"ecran": "routes"}, {"ouvrir": "demo"},
+    {"ecran": "ready", "titre_debut": "Prêt : session ERG — demo", "elements": ["start", "workout"]},
+    {"ouvrir": "workout"}, {"ecran": "workouts"},
+    {"ouvrir": "_sim"}, {"ecran": "ready", "titre_debut": "Prêt : session libre"},
+    {"bouton": "Y court"}, {"ecran": "home"}
+  ]
+}

@@ -1,0 +1,27 @@
+{
+  "description": "Parcours et écran Prêt : liste des parcours (tri), choix du parcours, Prêt (tableau, bot, fantôme, records du parcours, changer de parcours), retours.",
+  "canaux": ["clavier", "souris"],
+  "preparation": {"parcours": ["demo_bis"]},
+  "etapes": [
+    {"attendre_ecran": "home", "delai": 15},
+    {"ouvrir": "world"}, {"ecran": "routes", "elements": ["demo", "demo_bis", "_sort"], "absents": ["_filter"], "note": "filtre par étiquette absent : aucun parcours étiqueté"},
+    {"capture": "parcours"},
+    {"tableau": ["+ court", "- court", "A court", "droite", "gauche", "+ long", "- long", "Z court"]},
+    {"ouvrir": "_sort", "note": "tri en cycle : la liste reste affichée"}, {"ecran": "routes", "focus": "_sort"},
+    {"ouvrir": "demo"}, {"ecran": "home", "texte": "Parcours : demo"},
+    {"ouvrir": "ride"}, {"ecran": "ready", "titre_debut": "Prêt : session libre",
+     "elements": ["start", "workout", "change_route", "bot", "ghost", "records"], "focus": "start"},
+    {"capture": "pret"},
+    {"tableau": null},
+    {"ouvrir": "bot"}, {"ecran": "ready", "texte": "Bot : 200 W"},
+    {"ouvrir": "bot"}, {"texte": "Bot : 250 W"},
+    {"ouvrir": "ghost"}, {"texte": "Fantôme de la dernière séance : oui"},
+    {"ouvrir": "records", "note": "records du parcours : liste des segments"}, {"ecran": "records"},
+    {"capture": "records"},
+    {"bouton": "Y court"}, {"ecran": "ready"},
+    {"ouvrir": "change_route"}, {"ecran": "routes"},
+    {"ouvrir": "demo_bis", "note": "copie du parcours demo : même nom affiché, on vérifie l'identifiant chargé"},
+    {"ecran": "ready", "action_menu": "select_route", "journal_engine": "route_loaded id=demo_bis", "journal_core": "select_route \\{'route_id': 'demo_bis'\\}"},
+    {"bouton": "Y court"}, {"ecran": "home"}
+  ]
+}
