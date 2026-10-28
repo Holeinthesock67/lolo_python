@@ -1105,6 +1105,46 @@ def _menu_scenes(s: Session) -> None:
         s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance : 15,23 km"}, contains=True)
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
+    _progress_scenes(s)
+
+
+XP_RESULT = {"type": "xp_result", "v": CONTRACT_VERSION, "eligible": True, "reason": None,
+             "gains": [{"source": "distance", "points": 302}, {"source": "climb", "points": 302}], "total": 604,
+             "xp_total": 100, "xp_next_level": 1600, "level_before": 9, "level_after": 10, "coins_gained": 42,
+             "coins_total": 232, "equipment_gain_s": -12.5, "unlocked": ["frame_aero"], "challenges": [], "more": False}
+
+
+def _progress_scenes(s: Session) -> None:
+    """Lot V9 : bilan de progression en fin de séance (xp_result répété par le core) : lignes, barre, niveau,
+    déblocage, bandeau « Niveau N ! » et accès au Garage ; séance refusée."""
+    core = s.core
+    for _ in range(3):   # le core répète le message une fois par seconde
+        core.send(dict(XP_RESULT))
+        time.sleep(1.0)
+    shot = s.capture("progression")
+    if shot:
+        img, info = shot
+        s.check_texts("progression", info, {"menu": "Distance 15,2 km : +302 XP"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Niveau 10 : ■□□□□□□□□□ 100 / 1600 XP"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Niveau 10 !"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Aller au Garage"}, contains=True)
+        s.check_layout("progression", info)
+        banner = info["widgets"]["banner"]
+        s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
+                f"{banner.get('text')}")
+    core.set_scene(session_state="IDLE", summary=None)
+    time.sleep(0.5)
+    core.set_scene(session_state="FINISHED", summary={"duration_s": 120.0, "distance_m": 800.0})
+    time.sleep(1.0)
+    for _ in range(2):
+        core.send({"type": "xp_result", "v": CONTRACT_VERSION, "eligible": False, "reason": "too_short"})
+        time.sleep(1.0)
+    shot = s.capture("progression_refusee")
+    if shot:
+        img, info = shot
+        s.check_texts("progression_refusee", info, {"menu": "Séance de moins de 5 minutes : pas d'expérience"}, contains=True)
+        s.check_layout("progression_refusee", info)
 
 
 def _garage_scenes(s: Session) -> None:

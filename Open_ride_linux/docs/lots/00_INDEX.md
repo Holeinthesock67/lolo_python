@@ -163,7 +163,7 @@
 | [V6](LOT_V6_avatar_engine.md) | Engine : avatar généré par le code, pédalage synchronisé, danseuse (sans caméra : V12) | GDScript | T1 ; O7 utile | Grande | **Livré le 27 octobre** (issue #372) ; recette de rendu sur le PC |
 | [V7](LOT_V7_rendu_equipement.md) | Engine : cadres, roues et tenues sur l'avatar, sons des roues, traînées d'air | GDScript | V6 ; P10 pour les sons | Moyenne | **Livré le 27 octobre** (issue #373) ; recette de rendu sur le PC |
 | [V8](LOT_V8_menu_garage.md) | Menu « Garage » : équipement, achats, avatar, aperçu 3D | GDScript | T1, V6, V11, N6 | Moyenne | **Livré le 27 octobre** (issue #374) ; recette au Click sur le PC |
-| [V9](LOT_V9_fin_de_seance_progression.md) | Fin de séance : expérience, pièces, temps gagné, niveau, déblocages | GDScript | T1, V11, N4 | Petite | Non : interne (écran) |
+| [V9](LOT_V9_fin_de_seance_progression.md) | Fin de séance : expérience, pièces, temps gagné, niveau, déblocages | GDScript | T1, V11, N4 | Petite | **Livré le 27 octobre** ; relecture sur le PC |
 | [V10](LOT_V10_recette_progression.md) | Recette de la série V sur le PC et le vélo du propriétaire | — | V2 à V9, V11 | Moyenne | Non : propriétaire |
 | [V11](LOT_V11_branchement_core.md) | Core : progression branchée dans la séance et commandes du Garage | Python | T1, V2, V3, V3b, V4 | Moyenne | **Livré le 27 octobre** (issue #406) ; essai sur le PC |
 | [V12](LOT_V12_vues_camera.md) | Engine : quatre vues de caméra (subjective, suivi proche, suivi éloigné, latérale) au Click et au clavier (décision D5 du 27 octobre) | GDScript | V6, PR #287, O17 ; S1 utile | Moyenne | Non : interne (rendu) |

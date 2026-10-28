@@ -223,6 +223,7 @@ func _ready() -> void:
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
 	ipc.garage_received.connect(_on_garage)
+	ipc.xp_result_received.connect(_on_xp_result)
 	ipc.progression_received.connect(_on_progression)
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
@@ -916,7 +917,7 @@ func _garage_info() -> Dictionary:
 func _widget_text(key: String) -> String:
 	if key == "menu":
 		return "%s || %s || %s || %s || %s" % [menu_view.status_label.text, menu_view.items_text(), menu_view.devices.text() if menu_view.devices.visible else "",
-				menu_view.summary.text() if menu_view.summary.visible else "", menu_view.card.text() if menu_view.card.visible else ""]
+				(menu_view.summary.text() + " || " + menu_view.summary.progress_text()) if menu_view.summary.visible else "", menu_view.card.text() if menu_view.card.visible else ""]
 	return ""
 
 
@@ -972,6 +973,18 @@ func _on_garage(items: Array) -> void:
 			_look_of_id[it.get("id")] = it.get("look")
 	_apply_equipment()
 	menu_flow.on_garage(items)
+	_refresh_menu()
+
+
+## `xp_result` de fin de séance (lot V9) : bilan dans le résumé, bandeau « Niveau N ! » une seule fois.
+const LEVEL_UP_S := 6.0
+
+
+func _on_xp_result(msg: Dictionary) -> void:
+	var text := menu_flow.on_xp_result(msg)
+	if text != "":
+		banner.show_message("level_up", text, LEVEL_UP_S)
+	menu_view.summary.animate = _quality_name != "low"
 	_refresh_menu()
 
 

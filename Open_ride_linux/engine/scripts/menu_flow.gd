@@ -52,6 +52,7 @@ const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
+const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -140,6 +141,10 @@ var _ftp_pending := false
 var records = RecordsViewModel.new()
 ## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
 var garage = GarageViewModel.new()
+## Bilan de progression de la séance (lot V9) : dernier message `xp_result` ({} sans), et qu'il a déjà été annoncé.
+var progress = ProgressViewModel.new()
+var xp_result: Dictionary = {}
+var _xp_announced := false
 var records_path := ""
 var _record_segment := ""
 var _record_bonus := false
@@ -218,6 +223,9 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 			"IDLE", "READY":
 				if prev in ["RUNNING", "PAUSED"]:
 					menu.reset()
+		if st != "FINISHED":
+			xp_result = {}
+			_xp_announced = false
 	if st != "" and not _lists_requested:
 		_lists_requested = true
 		out.append({"action": "list"})
@@ -567,6 +575,27 @@ static func _ftp_text(ftp: Dictionary) -> String:
 	return text
 
 
+## Message `xp_result` (répété par le core) : gardé pour le bloc « Progression » ; renvoie le texte du bandeau
+## « Niveau N ! » la première fois qu'un passage de niveau est annoncé, sinon "".
+func on_xp_result(msg: Dictionary) -> String:
+	if session_state != "FINISHED" or (_xp_announced and xp_result.is_empty()):
+		return ""
+	xp_result = msg
+	_refresh_summary()
+	if _xp_announced:
+		return ""
+	_xp_announced = true
+	return str(progress_view().get("level_up", ""))
+
+
+## Bloc « Progression » du bilan ({} sans `xp_result`).
+func progress_view() -> Dictionary:
+	var names := {}
+	for it in garage.items:
+		names[str(it["id"])] = {"name": it.get("name", it["id"]), "slot": it.get("slot", "")}
+	return progress.view(xp_result, summary, names)
+
+
 ## Bilan : « Accepter » et « Garder » en tête tant qu'une FTP calculée reste à décider.
 func _refresh_summary() -> void:
 	var items: Array = []
@@ -576,6 +605,8 @@ func _refresh_summary() -> void:
 		items.append({"id": "keep_ftp", "label": ("Garder %d W" % int(prev)) if prev != null else "Garder l'ancienne FTP"})
 	for it in summary_model.menu_screen()["items"]:
 		items.append(it)
+		if it["id"] == "details" and garage.enabled and bool(progress_view().get("garage", false)):
+			items.append({"id": "garage", "label": "Aller au Garage", "detail": "une pièce est devenue achetable"})
 	menu.set_screen_items(SUMMARY, items)
 
 
@@ -788,10 +819,17 @@ func handle(event: String) -> Dictionary:
 				ftp_offer = {}
 				_refresh_summary()
 				return {}
+		if str(act["id"]) == "garage":
+			garage.message = ""
+			_refresh_garage()
+			menu.push_screen(GarageViewModel.SCREEN)
+			return {"action": "list_garage"}
 		act = summary_model.handle_action(str(act["id"]), menu)
 		match act.get("action", ""):
 			"new_session":
 				show_details = false
+				xp_result = {}
+				_xp_announced = true   # les copies du bilan encore envoyées par le core ne rouvrent rien
 				summary = {}
 				ftp_offer = {}
 				summary_message = ""
@@ -966,4 +1004,5 @@ func state() -> Dictionary:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
 	st["card"] = card(st)
 	st["preview"] = garage_preview(st)
+	st["progress"] = progress_view() if st["screen"] == SUMMARY else {}
 	return st

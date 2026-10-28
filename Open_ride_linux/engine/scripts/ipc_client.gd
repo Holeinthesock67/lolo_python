@@ -41,6 +41,8 @@ signal segment_result_received(msg: Dictionary)
 ## Garage (lots V3/V7, contrat 1.4) : `garage_received` une fois toutes les parties arrivées (éléments
 ## réunis) ; `progression_received` après chaque succès du Garage.
 signal garage_received(items: Array)
+## Bilan de progression de fin de séance (lot V9) : répété par le core jusqu'à 10 fois, une fois par seconde.
+signal xp_result_received(msg: Dictionary)
 signal progression_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
@@ -283,6 +285,8 @@ func _poll_incoming() -> void:
 				_on_garage_part(json_obj)
 			"progression":
 				progression_received.emit(json_obj)
+			"xp_result":
+				xp_result_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)

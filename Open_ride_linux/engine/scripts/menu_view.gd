@@ -177,6 +177,7 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	button_bar.update_display(screen)
 	if summary.visible:
 		summary.update_display(summary_data, show_details, str(state.get("mode", "")))
+		summary.update_progress(menu.get("progress", {}))
 	if devices.visible:
 		devices.update_display(state)
 
