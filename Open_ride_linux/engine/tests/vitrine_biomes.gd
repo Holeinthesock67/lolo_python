@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Vitrine des biomes (série U) : pour chaque biome forcé, une route droite dans un paysage plat avec le sol (lot U6),
-## la végétation (lot U7), les animaux (lot U12), le brouillard et la teinte de la lumière du biome, tirés du
+## la végétation (lot U7), les animaux (lot U12), les détails de sol (rochers, herbes hautes, termitières, lot U8), le brouillard et la teinte de la lumière du biome, tirés du
 ## thème par défaut 2.0 (lot U15) par biome_model.gd. Un étang à droite de la route (oasis des déserts, flamants),
 ## un bois, un pré, un champ et une prairie (zones OSM de la faune d'avant la série U). Sans core ni parcours ;
 ## captures comparables d'un biome à l'autre. La vue `faune` cadre le groupe d'animaux propre au biome.
@@ -12,7 +12,7 @@ extends SceneTree
 ##
 ## Écrit DOSSIER/<biome>_<vue>_<préréglage>.png et DOSSIER/vitrine_biomes.csv (biome ; vue ; préréglage ;
 ## arbres ; triangles ; appels de dessin ; objets ; préparation des arbres en ms ; bêtes et oiseaux affichés ;
-## espèces animales placées ; placement des animaux en ms). Les temps du processeur
+## espèces animales placées ; placement des animaux en ms ; rochers, herbes hautes et termitières affichés). Les temps du processeur
 ## graphique se mesurent sur le PC cible, pas ici : le rendu logiciel de Xvfb ne dit rien de la GTX 1060.
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -26,6 +26,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
+const GroundDetails := preload("res://scripts/ground_details.gd")
 
 const ROAD_WIDTH_M := 6.0
 const GROUND_Y := 100.0
@@ -75,7 +76,7 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(_out_dir)
 	var theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	var csv := FileAccess.open(_out_dir.path_join("vitrine_biomes.csv"), FileAccess.WRITE)
-	csv.store_line("biome;vue;préréglage;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms")
+	csv.store_line("biome;vue;préréglage;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms;rochers;herbes_hautes;termitieres")
 	for preset in _presets:
 		for biome in _biomes:
 			var model = BiomeModel.new(theme, null)
@@ -107,8 +108,10 @@ func _run() -> void:
 				var tris := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME)
 				var draws := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 				var objs := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
-				csv.store_line("%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f" % [biome, view, preset, built["trees"], tris, draws, objs, built["prep_ms"],
-					n_animals, n_birds, built["species"], built["fauna_ms"]])
+				var details: Node = vp.get_node("GroundDetails")
+				csv.store_line("%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f;%d;%d;%d" % [biome, view, preset, built["trees"], tris, draws, objs, built["prep_ms"],
+					n_animals, n_birds, built["species"], built["fauna_ms"], details.get_positions("rock").size(),
+					details.get_positions("grass").size(), details.get_positions("termite").size()])
 				print("[vitrine_biomes] %s : %d arbres, %d bêtes, %d oiseaux, %d triangles, %d appels de dessin" % [path, built["trees"], n_animals, n_birds, tris, draws])
 			vp.queue_free()
 			await process_frame
@@ -216,6 +219,20 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	var species := {}
 	for g in groups:
 		species[str(g.get("species", ""))] = true
+
+	# Détails de sol : budgets du décor vivant, hors étang ; posés autour du début de la route
+	var details := GroundDetails.new()
+	details.name = "GroundDetails"
+	vp.add_child(details)
+	var living := QualityPresets.living(preset)
+	details.configure({"rock": int(living["ground_rocks"]), "grass": int(living["ground_grass"]),
+		"termite": int(living["ground_termites"])}, route, model, ROAD_WIDTH_M)
+	details.exclusions = [PackedVector2Array([POND.position, Vector2(POND.end.x, POND.position.y), POND.end,
+		Vector2(POND.position.x, POND.end.y)])]
+	for i in range(400):
+		details.update(60.0)
+		if details.is_settled():
+			break
 
 	var cam := Camera3D.new()
 	cam.name = "Camera"

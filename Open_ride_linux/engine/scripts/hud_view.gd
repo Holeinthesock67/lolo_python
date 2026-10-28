@@ -20,12 +20,13 @@ extends CanvasLayer
 ##   l'indicateur du vent (à sa place quand il n'y a pas de vent) ; cachée sans abri.
 ## - Lot O7 : encart des bots (`update_bots`, sortie de bots_view_model.view()) sous le panneau de
 ##   droite et points colorés des bots sur le profil d'altitude ; caché sans bot.
-## - Lot T15 : l'encart suit bot_hud_model.gd : voisins immédiats (triangle vers le haut devant, vers le
-##   bas derrière, nom, écart « +8,4 s »), puis une ligne par bot (pastille du maillot, nom et profil,
-##   FTP en W et en W/kg, écart, jauge de réserve W′), puis les porteurs des maillots. Colonne de droite
-##   empilée sous le panneau de droite (`_layout_right_column`) : bloc segment, bloc bonus, encart des
-##   bots, qui s'arrête au-dessus du profil d'altitude (ou du bandeau ERG) ; les lignes de bots qui ne
-##   tiennent pas sont cachées, les voisins restent.
+## - Lot T15 : l'encart suit bot_hud_model.gd : une ligne par bot (pastille du maillot, nom et profil,
+##   FTP en W et en W/kg, triangle des voisins immédiats, vers le haut devant, vers le bas derrière,
+##   écart « +8,4 s », jauge de réserve W′), puis les porteurs des maillots. Colonne de droite empilée
+##   sous le panneau de droite (`_layout_right_column`) : bloc segment, bloc bonus, encart des bots, qui
+##   s'arrête au-dessus du profil d'altitude (ou du bandeau ERG). Lot X22 : blocs segment et bonus à la
+##   hauteur de leur contenu ; quand la place manque, l'encart garde les deux lignes autour du cycliste
+##   (ses voisins, avec maillot et W′), puis les maillots, puis les autres lignes.
 
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
@@ -50,6 +51,7 @@ const WIND_BAR_OFF := Color(0.85, 0.90, 0.95, 0.18)
 const SEGMENT_TONES := {"good": Color(0.35, 0.90, 0.45), "bad": Color(0.95, 0.40, 0.35), "": Color(0.92, 0.94, 0.96)}
 const BONUS_COLOR := Color(0.62, 0.32, 0.92, 0.95)   # violet des arches de bonus (lot T8)
 const BLOCK_GAP := 8.0
+const BLOCK_PAD := 4.0
 ## Haut de la colonne de droite (sous le panneau de droite) et réserve du bas : profil d'altitude, ou
 ## bandeau ERG au-dessus de lui.
 const RIGHT_COLUMN_TOP := 20.0 + 320.0 + BLOCK_GAP
@@ -66,6 +68,16 @@ const GRADE_COLORS := {
 	"climb": COLOR_CLIMB,
 	"steep": COLOR_STEEP,
 	"wall": COLOR_WALL,
+}
+## Teintes de texte des classes de pente (valeur de la pente du HUD, carrefours) : mêmes teintes que les
+## barres du profil, éclaircies et opaques, pour au moins 4,5:1 sur un panneau au-dessus d'un ciel clair
+## (lot X22 : 3,0 à 4,1:1 avec les couleurs des barres).
+const GRADE_TEXT_COLORS := {
+	"descent": Color(0.55, 0.80, 1.00),
+	"flat": Color(0.50, 0.90, 0.55),
+	"climb": Color(1.00, 0.85, 0.35),
+	"steep": Color(1.00, 0.68, 0.40),
+	"wall": Color(1.00, 0.60, 0.58),
 }
 
 var vm := HudViewModel.new()
@@ -103,9 +115,7 @@ var _wind_view: Dictionary = {}
 var draft_label: Label
 # Encart des bots (lots O7 et T15)
 var panel_bots: Panel
-var neighbor_labels: Array[Label] = []
-var neighbor_gaps: Array[Label] = []
-var neighbor_arrows: Array[Control] = []
+var bots_arrows: Array[Control] = []
 var bots_lines: Array[Label] = []
 var bots_gaps: Array[Label] = []
 var bots_jerseys: Array[ColorRect] = []
@@ -281,17 +291,6 @@ func _build_bots_panel() -> void:
 	panel_bots = _create_panel(Vector2(-320.0, RIGHT_COLUMN_TOP), Vector2(300.0, 100.0), true, false)
 	panel_bots.name = "BotsPanel"
 	panel_bots.visible = false
-	for i in range(2):
-		var arrow := Control.new()
-		arrow.size = Vector2(16.0, 16.0)
-		arrow.set_meta("dir", "ahead")
-		arrow.draw.connect(func() -> void: _draw_neighbor_arrow(arrow))
-		panel_bots.add_child(arrow)
-		neighbor_arrows.append(arrow)
-		neighbor_labels.append(_bots_label(Vector2(178.0, BotHudModel.NEIGHBOR_ROW), 18))
-		var gap := _bots_label(Vector2(80.0, BotHudModel.NEIGHBOR_ROW), 18)
-		gap.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
-		neighbor_gaps.append(gap)
 	for i in range(BotsViewModel.MAX_LINES):
 		var swatch := ColorRect.new()
 		swatch.size = Vector2(10.0, 18.0)
@@ -303,7 +302,14 @@ func _build_bots_panel() -> void:
 		dot.color = KOM_DOT
 		swatch.add_child(dot)
 		bots_kom_dots.append(dot)
-		bots_lines.append(_bots_label(Vector2(184.0, 26.0), 18))
+		bots_lines.append(_bots_label(Vector2(160.0, 26.0), 18))
+		var arrow := Control.new()
+		arrow.size = Vector2(16.0, 16.0)
+		arrow.visible = false
+		arrow.set_meta("dir", "ahead")
+		arrow.draw.connect(func() -> void: _draw_neighbor_arrow(arrow))
+		panel_bots.add_child(arrow)
+		bots_arrows.append(arrow)
 		var gap := _bots_label(Vector2(80.0, 26.0), 18)
 		gap.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 		bots_gaps.append(gap)
@@ -379,40 +385,23 @@ func _layout_right_column() -> void:
 
 func _layout_bots_panel(top: float, avail: float) -> void:
 	var v := _bots_hud
-	var neighbors: Array = v["neighbors"]
 	var rows: Array = v["rows"]
-	var n_rows := BotHudModel.rows_that_fit(v, avail)
-	var jerseys := str(v["jerseys_text"])
-	var show_jerseys := jerseys != "" and BotHudModel.height(v, 0) <= avail
+	var shown_rows := BotHudModel.fit(v, avail)
+	var first: int = shown_rows["first"]
+	var n_rows: int = shown_rows["count"]
 	var y := BotHudModel.PADDING / 2.0
-	for i in range(neighbor_labels.size()):
-		var shown := i < neighbors.size()
-		neighbor_labels[i].visible = shown
-		neighbor_gaps[i].visible = shown
-		neighbor_arrows[i].visible = shown
-		if not shown:
-			continue
-		var nb: Dictionary = neighbors[i]
-		neighbor_labels[i].text = str(nb["name"])
-		neighbor_labels[i].modulate = nb["color"]
-		neighbor_labels[i].position = Vector2(32.0, y)
-		neighbor_gaps[i].text = str(nb["gap_text"])
-		neighbor_gaps[i].position = Vector2(210.0, y)
-		neighbor_arrows[i].position = Vector2(10.0, y + 6.0)
-		neighbor_arrows[i].modulate = nb["color"]
-		neighbor_arrows[i].set_meta("dir", nb["dir"])
-		neighbor_arrows[i].queue_redraw()
-		y += BotHudModel.NEIGHBOR_ROW
 	for i in range(bots_lines.size()):
 		var shown := i < n_rows
-		var r: Dictionary = rows[i] if shown else {}
+		var r: Dictionary = rows[first + i] if shown else {}
 		var jersey := str(r.get("jersey", ""))
 		var wbal := float(r.get("wbal", -1.0))
+		var dir := str(r.get("dir", ""))
 		bots_lines[i].visible = shown
 		bots_gaps[i].visible = shown
 		bots_jerseys[i].visible = shown and jersey != ""
 		bots_kom_dots[i].visible = jersey == "kom"
 		bots_wbal_bg[i].visible = shown and wbal >= 0.0
+		bots_arrows[i].visible = shown and dir != ""
 		if not shown:
 			continue
 		var detail := str(r["detail"])
@@ -423,15 +412,27 @@ func _layout_bots_panel(top: float, avail: float) -> void:
 		bots_gaps[i].position = Vector2(210.0, y)
 		bots_jerseys[i].position = Vector2(10.0, y + 4.0)
 		bots_jerseys[i].color = JERSEY_COLORS.get(jersey, Color.WHITE)
+		bots_arrows[i].position = Vector2(193.0, y + 5.0)
+		bots_arrows[i].modulate = r["color"]
+		bots_arrows[i].set_meta("dir", dir)
+		bots_arrows[i].queue_redraw()
 		bots_wbal_bg[i].position = Vector2(26.0, y + 26.0)
 		bots_wbal[i].size.x = bots_wbal_bg[i].size.x * maxf(wbal, 0.0)
 		y += BotHudModel.BOT_ROW
-	jerseys_label.visible = show_jerseys
-	if show_jerseys:
-		jerseys_label.text = jerseys
+	jerseys_label.visible = bool(shown_rows["jerseys"])
+	if jerseys_label.visible:
+		jerseys_label.text = str(v["jerseys_text"])
 		jerseys_label.position = Vector2(10.0, y)
 		y += BotHudModel.JERSEY_ROW
 	_place(panel_bots, top, y + BotHudModel.PADDING / 2.0)
+
+
+## Ligne de l'encart qui porte le voisin `dir` ("ahead" ou "behind"), null s'il n'est pas affiché (tests).
+func neighbor_line(dir: String) -> Label:
+	for i in range(bots_lines.size()):
+		if bots_lines[i].visible and bots_arrows[i].visible and str(bots_arrows[i].get_meta("dir", "")) == dir:
+			return bots_lines[i]
+	return null
 
 
 ## Pastille « Abri 30 % » (Lot P17), même largeur que l'indicateur du vent.
@@ -495,6 +496,7 @@ func update_segment(view: Dictionary) -> void:
 		segment_main.text = str(seg.get("main", ""))
 		segment_main.visible = segment_main.text != ""
 		segment_detail.text = str(seg.get("detail", ""))
+		segment_detail.visible = segment_detail.text != ""
 		segment_detail.modulate = SEGMENT_TONES.get(str(seg.get("tone", "")), SEGMENT_TONES[""])
 		segment_main.modulate = SEGMENT_TONES["good"] if mode == "result" and str(seg.get("tone", "")) == "good" else SEGMENT_TONES[""]
 	var pu: Dictionary = view.get("powerup", {})
@@ -510,7 +512,25 @@ func update_segment(view: Dictionary) -> void:
 		if absf(fraction - _bonus_fraction) > 0.005:
 			_bonus_fraction = fraction
 			bonus_bar.queue_redraw()
+	_fit_block(panel_segment, [[segment_title, 20.0, 32.0], [segment_main, 40.0, 46.0], [segment_detail, 28.0, 28.0]])
+	_fit_block(panel_bonus, [[bonus_held, 32.0, 36.0], [bonus_active, 26.0, 28.0], [bonus_bar, 8.0, 10.0]])
 	_layout_right_column()
+
+
+## Bloc à la hauteur de son contenu (lot X22) : lignes visibles empilées depuis le haut, `[nœud, pas,
+## étendue]` : le pas mène à la ligne suivante (les boîtes des libellés se recouvrent, pas leurs chiffres),
+## l'étendue va jusqu'au bas du texte plus la marge.
+func _fit_block(p: Panel, lines: Array) -> void:
+	var y := BLOCK_PAD
+	var bottom := 0.0
+	for line in lines:
+		var c: Control = line[0]
+		if not c.visible:
+			continue
+		c.position.y = y
+		bottom = y + float(line[2])
+		y += float(line[1])
+	p.offset_bottom = p.offset_top + bottom
 
 
 func _on_bonus_bar_draw() -> void:
@@ -658,7 +678,7 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 	if grade_val != null:
 		grade_val.text = lines["grade_val"]
 		var g_class: String = lines.get("grade_class", "flat")
-		grade_val.modulate = GRADE_COLORS.get(g_class, COLOR_FLAT)
+		grade_val.modulate = GRADE_TEXT_COLORS.get(g_class, GRADE_TEXT_COLORS["flat"])
 
 	if erg_label != null:
 		erg_label.text = lines.get("erg", "")

@@ -42,3 +42,20 @@ Livré le 28 octobre (branche `claude/project-thread-818r6t-x22`).
   - la valeur de la pente, colorée selon la classe de pente avec une transparence de 0,85, n'a que 3,0:1 (plat) à 4,1:1 (4 %) sur le fond du panneau (seuil 4,5:1) ;
   - le nom d'un bot à puissance constante (orange) tombe à 2,9:1 en 1024×600 au-dessus d'un ciel clair ;
   - à 720 lignes, avec les blocs segment et bonus, l'encart des bots ne garde que les deux voisins : aucune ligne de bot (maillot, W′) ni porteurs des maillots. C'est la priorité prévue par T15 ; la scène note le nombre de lignes affichées sans seuil.
+
+## 8. Corrections du HUD (28 octobre, suite)
+
+Les trois constats ci-dessus sont corrigés (branche `claude/project-thread-m4q7p0`), mesurés avec `visual_check.py --lisibilite` au cloud (Xvfb, `low`), avant et après, sur toutes les captures :
+
+| Mesure | Seuil | Avant | Après |
+|---|---|---|---|
+| Contraste de la pente, 1280×720 | 4,5:1 | 2,7 à 4,7:1 | 5,3 à 7,3:1 |
+| Contraste de la pente, 1024×600 | 4,5:1 | 2,7 à 4,7:1 | 5,2 à 7,3:1 |
+| Nom de bot le plus faible, 1280×720 | 3:1 | 3,5:1 | 4,6:1 |
+| Nom de bot le plus faible, 1024×600 | 3:1 | 2,8:1 | 4,0:1 |
+| Encart des bots à 720 lignes, segment et bonus affichés | — | 2 voisins seuls | 2 voisins avec maillot, FTP et W′, et ligne des maillots |
+
+- **Pente** : `hud_view.gd` sépare les teintes des barres du profil (`GRADE_COLORS`, inchangées) des teintes de texte (`GRADE_TEXT_COLORS`, mêmes teintes éclaircies et opaques), prises aussi par les carrefours (`junction_view.gd`).
+- **Noms des bots** : orange des bots à puissance constante éclairci (`bots_view_model.gd`).
+- **Encart des bots** : voisins marqués sur leur propre ligne, blocs segment et bonus à la hauteur de leur contenu ; détail dans la révision du cahier T15. La scène `bots_segment_bonus` exige maintenant les deux voisins avec leur ligne complète et la ligne des maillots ; `test_bot_hud_model.gd` vérifie la même chose en 720 lignes.
+

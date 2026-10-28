@@ -120,6 +120,7 @@
 | [P24](LOT_P24_animaux_par_terrain.md) | Animaux par terrain : vaches et chevaux dans les prés, moutons sur les prairies en pente, lièvres des champs qui détalent, meuglements, bêlements et hennissements | GDScript | P11, P17, P22, P23, Y14 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire |
 | [P25](LOT_P25_vehicules_au_sol.md) | Véhicules au sol : voitures détaillées, utilitaires, camions, autocars et motos, circulation des routes voisines, tracteurs qui hersent les champs, phares dans la brume, sous la pluie ou au soleil bas | GDScript + shader | P13, P17, P22, Y14 | Moyenne | **Livré le 28 octobre**, séance sur le PC à faire |
 | [P26](LOT_P26_ciel.md) | Ciel : avions de ligne et leurs traînées, hélicoptère, parapentes au-dessus des montées, montgolfières par vent faible, sons du rotor et des réacteurs | GDScript + shader | P6, P8, P17, Y14, P25 | Petite à moyenne | **Livré le 28 octobre**, séance sur le PC à faire |
+| [P30](LOT_P30_auto_tests_decor_vivant.md) | Auto-tests du décor vivant : objets par sorte et sons au banc simulé, sons du décor relevés, pause vérifiée dans la vraie scène | Python + GDScript | P27 | Petite | **Livré le 28 octobre** |
 | [P28](LOT_P28_cyclistes_route.md) | Cyclistes du décor sur la route du parcours : seuls ou en groupes, en face, doublés ou qui doublent (« Salut ! »), plus nombreux en montée, jamais sur le cycliste ni sur un bot | GDScript | P13, P17, P21, Y14, P25 | Moyenne | **Livré le 28 octobre** (PR #469), séance sur le PC à faire (demande du 28 octobre : « plutôt plus de vélos ») |
 | [P29](LOT_P29_bateaux.md) | Bateaux : voiliers, barques et pédalos sur les lacs, péniches sur les canaux, canoës et kayaks sur les rivières, ferry et porte-conteneurs en mer (avec U9), sillages, diesel et corne de brume | GDScript + shader | P12, P25, P26, Y14 (U9 pour la mer) | Moyenne | **Livré le 28 octobre**, séance sur le PC à faire |
 | [P27](LOT_P27_integration_recette_decor_vivant_2.md) | Intégration et recette de la deuxième vague du décor vivant : mesure de toute la série, budgets, fiche de recette, documentation | GDScript + doc | P22 à P26, P28, P29 | Moyenne | **Livré le 28 octobre** : branchement relu, enveloppe tenue, banc `decor_vivant_2` ; recette sur le PC à faire ([RECETTE_P27.md](../RECETTE_P27.md)) |
@@ -164,7 +165,7 @@
 | [R15](LOT_R15_scenariste_run.md) | Scénariste de run : calendrier et salles composés à partir de l'objectif et de la durée | Python | R3, R6 | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
 | [R16](LOT_R16_estimation_cp_wprime.md) | Estimation de CP et W' à partir des séances passées | Python | — | Petite | **Livré le 27 octobre** (outil pur ; le core l'appellera au lancement, R8), **version 2.0** |
 | [R17](LOT_R17_direction_artistique.md) | Direction artistique du mode : charte néon, matériaux et shaders partagés, catalogue des objets graphiques et des effets, planche de démonstration | GDScript + shader | T1 | Moyenne | Modèles et shaders oui ; charte validée par le propriétaire ; **Livré le 27 octobre** (données, matériaux, shaders et planche ; captures et accord du propriétaire à venir), **version 2.0** |
-| [R18](LOT_R18_bruitages_rogue.md) | Bruitages et musique du mode : 24 sons synthétisés, musique par couches, volumes réglables | GDScript | R8, R17 | Moyenne | Non : interne (sons du moteur), **version 2.0** |
+| [R18](LOT_R18_bruitages_rogue.md) | Bruitages et musique du mode : 24 sons synthétisés, musique par couches, volumes réglables | GDScript | R8, R17 | Moyenne | Non : interne (sons du moteur) ; **Livré le 28 octobre** (sauf écoute), **version 2.0** |
 | [V2](LOT_V2_moteur_experience.md) | Moteur d'expérience : gains, niveaux, défis, recalcul depuis le journal, commande `openride-core xp` | Python | — | Moyenne | **Livré le 27 octobre** (PR #273, issue #239) ; branchement par V11 |
 | [V3](LOT_V3_catalogue_equipement.md) | Catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain, temps gagné par l'équipement | Python | V2 | Moyenne | **Livré le 27 octobre** (PR #278, issue #241) ; branchement par V11 |
 | [V3b](LOT_V3b_pieces.md) | Pièces : gains, prix, achats, solde, vies du mode Cyber-Rogue | Python | V2, V3, V4 | Petite | **Livré le 27 octobre** (PR #281, issue #242) ; branchement par V11 |
@@ -244,7 +245,7 @@
 | [X9](LOT_X9_recette_frequence_cardiaque.md) | Série X (outils de test) : Recette guidée de la fréquence cardiaque (gel, retrait, retour) | Python | Q5 | Petite | Script oui, essai sur le vélo ; issue #207 |
 | [X10](LOT_X10_coupures_verifiees.md) | Série X (outils de test) : Coupures volontaires, attendu contre obtenu au journal | Python | — | Moyenne | Script oui, essai sur le vélo ; issue #208 |
 | [X11](LOT_X11_controle_fit_reel.md) | Série X (outils de test) : Contrôle d'un FIT de séance réelle, en local | Python | H5 | Petite | Oui ; issue #209 |
-| [X12](LOT_X12_analyse_seance_reelle.md) | Série X (outils de test) : Analyse automatique d'une séance réelle (`openride-core session-report`) | Python | — | Moyenne | Oui ; issue #210 |
+| [X12](LOT_X12_analyse_seance_reelle.md) | Série X (outils de test) : Analyse automatique d'une séance réelle (`openride-core session-report`) | Python | — | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x12`), essai sur le journal de la prochaine séance vélo ; issue #210 |
 | [X14](LOT_X14_reference_performance.md) | Série X (outils de test) : Référence de performance, comparateur avant/après et verdict de budget par préréglage | Python | X13, X32 | Moyenne | Oui (mesures finales sur le PC) ; issue #212 |
 | [X15](LOT_X15_saccades_demarrage.md) | Série X (outils de test) : Saccades avec leur cause, tâches de fond par tronçon, temps de démarrage | GDScript + Python | X13 | Petite | Oui ; issue #213 |
 | [X17](LOT_X17_gigue_boucle_ipc.md) | Série X (outils de test) : Gigue de la boucle physique et des trames `state`, sous charge | Python + GDScript | — | Petite | Oui ; issue #215 |
@@ -261,11 +262,12 @@
 | [X31](LOT_X31_pente_max_garmin.md) | Série X (outils de test) : Pente maximale et D+ face à Garmin Connect, en local | Python | — | Petite | Oui ; issue #229 |
 | [X32](LOT_X32_garde_fou_qualite.md) | Série X (outils de test) : Garde-fou de la qualité réellement appliquée dans les bancs et les vitrines | Python + GDScript | #481 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x32`) |
 | [X33](LOT_X33_seance_simulee_serie_t_boutons_erg.md) | Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | Oui |
-| [X34](LOT_X34_hygiene_des_suites.md) | Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | Oui |
+| [X34](LOT_X34_hygiene_des_suites.md) | Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x34`) |
 | [X35](LOT_X35_fiabilite_banc_simule.md) | Série X (outils de test) : Fiabilité du banc simulé : captures, pics de capture, couches, vitesse imposée | Python + GDScript | X13 | Petite | Oui |
 | [X36](LOT_X36_pre_vol_seance_velo.md) | Série X (outils de test) : Pré-vol avant une séance vélo, verdict « prêt à rouler » | Python | X4, X33 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x36`), essai sur le PC avant la prochaine séance |
 | [X37](LOT_X37_persistance_reglages.md) | Série X (outils de test) : Persistance de tous les réglages après un redémarrage | Python | banc des menus | Petite | Oui |
 | [X38](LOT_X38_couleurs_du_theme.md) | Série X (outils de test) : Couleurs du thème : aucune couleur en dur dans le HUD et le globe | GDScript | N20 | Petite | Oui |
+| [X39](LOT_X39_ecart_progression.md) | Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -346,7 +348,8 @@ Lots de la série X (P0 = avant la 1.0, P1 = pour la 1.0, P2 = 2.0 ; X1, X2, X4,
 - X35 : fiabilité du banc simulé (Cloud + PC, P0) ;
 - X36 : pré-vol avant une séance vélo (PC, P1) ;
 - X37 : persistance de tous les réglages (Cloud, P1) ;
-- X38 : couleurs du thème (Cloud, P2).
+- X38 : couleurs du thème (Cloud, P2) ;
+- X39 : écart de progression avant/après une PR (Cloud + PC, P2, proposition du fil V5).
 
 Répartition du 28 octobre (règle du coordinateur : les fils graphiques livrent eux-mêmes leurs petits outils locaux) : S1 livre la détection des « pop », les captures tous les N mètres, la colonne `culled_near` et `compare_captures.py` (X18) ; la série U livre la comparaison des vitrines des biomes et des sols, le contrôle d'exposition et les coutures de tuiles ; Y8 livre le test de rendu des façades et le détecteur de pixels isolés ; la série P livre les comptes du décor dans le rapport du banc, les sons du décor joués et le décor figé en pause ; la série R livre la run Cyber-Rogue simulée de bout en bout, son banc visuel et la cohérence entre sons et événements ; le banc des menus (clic, clavier, souris, Garage et Cyber-Rogue) est fait par son propre fil. Ordre de réalisation : X32, X33, X34, X35, X36, X14, X37, X38, puis X20, X22, X27, X12, X15, X3, puis les autres.
 
