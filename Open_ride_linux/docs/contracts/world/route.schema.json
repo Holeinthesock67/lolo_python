@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideWorldRoute",
-  "description": "Couche route d'un .world (Format .world v1, §4).",
+  "description": "Couche route d'un .world (Format .world v1, §4 ; colonne surface depuis 1.6, lot U1).",
   "type": "object",
   "required": [
     "version",
@@ -105,6 +105,19 @@
         "minimum": 0,
         "exclusiveMaximum": 360
       }
+    },
+    "surface": {
+      "type": "array",
+      "minItems": 2,
+      "items": {
+        "enum": [
+          "paved",
+          "compacted",
+          "gravel",
+          "dirt"
+        ]
+      },
+      "description": "Facultative, depuis 1.6 : surface de chaque point ; absente = tout en paved."
     }
   }
 }

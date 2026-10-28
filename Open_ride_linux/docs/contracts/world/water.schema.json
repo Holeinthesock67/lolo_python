@@ -1,7 +1,7 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "title": "OpenRideWorldWaterChunk",
-  "description": "Tronçon de 1 km de la couche eau (Format .world v1, §8).",
+  "description": "Tronçon de 1 km de la couche eau (Format .world v1, §8 ; mer depuis 1.6, lot U1).",
   "type": "object",
   "required": [
     "version",
@@ -97,8 +97,10 @@
             "enum": [
               "lake",
               "pond",
-              "reservoir"
-            ]
+              "reservoir",
+              "sea"
+            ],
+            "description": "Depuis 1.6 : sea, polygone de mer refermé sur le bord de l'étendue du terrain, level_y = 0."
           },
           "level_y": {
             "type": "number"

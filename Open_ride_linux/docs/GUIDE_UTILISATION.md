@@ -134,7 +134,7 @@ Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîti
 
 **Thèmes.** Un thème change l'apparence de la route, du terrain et du ciel. Les thèmes ajoutés se placent dans `~/OpenRide/Themes/` avec `openride-compiler theme-install DOSSIER` (et `theme-list` pour voir ceux qui sont installés), puis se choisissent dans **Réglages**.
 
-**Sons.** OpenRide génère lui-même les sons du parcours (vent, roue libre, cloches, rivières). Un fichier OGG déposé dans `~/OpenRide/Sounds/` sous le nom du son (`wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) le remplace.
+**Sons.** OpenRide génère lui-même les sons du parcours (vent, roue libre, cloches, rivières). Un fichier OGG déposé dans `~/OpenRide/Sounds/` sous le nom du son (`wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) le remplace. En mode classique, un court jingle marque le sommet d'une montée, la fin d'un sprint, le passage sous une arche de bonus et la fin de la séance ; il se remplace de la même façon (`jingle_summit.ogg`, `jingle_summit_pr.ogg` pour un record, `jingle_sprint.ogg`, `jingle_sprint_pr.ogg`, `jingle_arch.ogg`, `jingle_finish.ogg`).
 
 ## 8. Retrouver ses séances
 
