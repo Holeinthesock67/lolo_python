@@ -253,6 +253,8 @@ func _run() -> void:
 	_check(boats_max >= 1 and boats_max <= 16 and boats_on_route == 0, "bateaux : jusqu'à %d affichés (budget 16), jamais sur le parcours" % boats_max)
 	_check(spectators_on_road == 0 and max_people_below < 1.0, "spectateurs hors de la chaussée, à %.2f m au plus de la route en altitude" % max_people_below)
 	_check(cheer_max > 0.2, "clameur au sommet : %.2f" % cheer_max)
+	_check(dec.cyclists.spawned_total > 0 and dec.test_info(null).has("cyclists") and dec.cyclists.rider_count() <= 16,
+		"cyclistes du décor croisés : %d (lot P28)" % dec.cyclists.spawned_total)
 	_check(dec.passersby_view.visible_count() >= 0, "passants affichés")
 	print("Décor vivant (deuxième vague) : %.3f ms par image (high)" % per_frame_ms)
 	_check(PerfBudget.check("living_decor_frame", per_frame_ms), "coût du branchement en %.3f ms par image" % per_frame_ms)
