@@ -11,6 +11,10 @@ float sd_hash(vec2 p) {
 	return fract(p.x * p.y);
 }
 
+vec2 sd_hash2(vec2 p) {
+	return vec2(sd_hash(p), sd_hash(p + vec2(17.13, 3.71)));
+}
+
 // Hachage entier d'une cellule (pcg2d, Jarzynski et Olano 2020), de 0 à 1 : exact à toute distance de
 // l'origine. Le hachage flottant de sd_hash perd ses décimales au-delà de quelques centaines de mètres
 // pour les cellules de 3 cm à 30 cm de l'herbe et de la route : le motif devenait un damier de carrés.
