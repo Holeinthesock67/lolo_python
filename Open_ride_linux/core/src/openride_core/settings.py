@@ -67,6 +67,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
+    Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
     Setting("audio.master_pct", "Volume général", "sound", 10, "%", "now"),
     Setting("audio.ride_pct", "Volume vent et roue libre", "sound", 10, "%", "now"),

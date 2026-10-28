@@ -248,7 +248,7 @@ Le compilateur transforme un `.gpx` déposé dans `~/OpenRide/GPX/` en dossier `
 
 ## 8. Moteur de rendu Godot
 
-L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`. En 2.0, la caméra devient un choix de plusieurs vues, avec un avatar (spécification générale, §7.2).
+L'engine reçoit l'état du core, charge les couches du `.world` qui existent et ignore les autres. Il n'a ni avatar ni vélo : la caméra est subjective et suit la position `s`. En 2.0, la caméra devient un choix de quatre vues, avec un avatar (spécification générale, §7.2) : subjective, suivi proche (par défaut avec l'avatar), suivi éloigné et latérale, changées au Click par A et les flèches haut et bas, la dernière retenue dans `[render] camera` (lot V12).
 
 **MVP visuel (sprint 3)**
 
@@ -391,6 +391,7 @@ theme = "default"
 visual_grade_scale = 1.0   # exagération visuelle du relief, de 1,0 à 2,0 (lot Q2 ; physique et HUD inchangés)
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
+camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
 fps = "off"          # compteur d'images/s du HUD : off, on (« Afficher les images/s » dans Réglages)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 
@@ -422,6 +423,9 @@ feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms"
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
 [progression]
 enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0
+[avatar]
+standing_grade_pct = 8.0     # l'avatar se met en danseuse au-dessus de cette pente (3 à 15 %, lot V6)
+standing_power_pct = 150.0   # ou de cette puissance, en % de la FTP (100 à 300)
 [powerups]
 mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
 [audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
@@ -452,8 +456,8 @@ La section `[audio]` donne un volume par catégorie de sons (docs/AUDIO.md), de 
 | `[rogue] cp_w` | 0 (0 : la FTP) | 0 à 1 000 | R2 |
 | `[rogue] grade_rate_up_pct_per_s` | 8,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
 | `[rogue] grade_rate_down_pct_per_s` | 12,0 | 0,1 à 100 | R8 (valeur mesurée par R0) |
-| `[avatar] standing_grade_pct` | 8 (pente, %) | fixées par V6 | V6 |
-| `[avatar] standing_power_pct` | 150 (% de la FTP) | fixées par V6 | V6 |
+| `[avatar] standing_grade_pct` | 8 (pente, %) | 3 à 15 | V6 |
+| `[avatar] standing_power_pct` | 150 (% de la FTP) | 100 à 300 | V6 |
 
 Le reste de l'avatar (taille, silhouette, couleurs, numéro) est dans `~/OpenRide/profile.json` (lot V4), réglé au Click par `set_avatar`.
 
