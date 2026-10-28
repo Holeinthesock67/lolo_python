@@ -696,7 +696,7 @@ static func _synthesize_clac() -> AudioStreamWAV:
 
 
 ## Fonds d'ambiance procéduraux (Lot P9), boucles de 2 s sans raccord audible : modulations à un nombre
-## entier de cycles par boucle, bruits filtrés périodiques (`_periodic_lowpass`), chants, stridulations et
+## entier de cycles par boucle, bruits filtrés périodiques (`_periodic_lowpass`), chants et
 ## gouttes qui débordent de la fin reprennent au début ; motifs tirés d'un générateur déterministe (même son
 ## à chaque lancement). Aucun fondu au silence aux bords : il s'entendait comme un « tac » toutes les 2 s.
 static func _synthesize_bed(bed: String) -> AudioStreamWAV:
@@ -726,21 +726,12 @@ static func _synthesize_bed(bed: String) -> AudioStreamWAV:
 						buf[(start + i) % n] += sin(ph) * sin(PI * u) * amp
 				t0 += rng.randf_range(0.25, 0.6)
 		"field_insects":
-			# Stridulation : trains de 3 à 8 brèves (25 à 55 ms, enveloppe douce) d'une porteuse de 4,2 à 5 kHz,
-			# séparés par des silences irréguliers ; plus de salves hachées à 2 Hz pile (« tac tac » mécanique).
-			var t0 := 0.0
-			while t0 < loop_s:
-				var f := rng.randf_range(4200.0, 5000.0)
-				var amp := rng.randf_range(0.12, 0.22)
-				for k in range(rng.randi_range(3, 8)):
-					var len := int(rng.randf_range(0.025, 0.055) * MIX_RATE)
-					var start := int(t0 * MIX_RATE)
-					var a := amp * rng.randf_range(0.7, 1.0)
-					for i in range(len):
-						var env := sin(PI * float(i) / float(len))
-						buf[(start + i) % n] += sin(TAU * f * float(i) / MIX_RATE) * env * env * a
-					t0 += float(len) / MIX_RATE + rng.randf_range(0.015, 0.045)
-				t0 += rng.randf_range(0.12, 0.4)
+			# Stridulation : porteuse de 4,6 kHz hachée à 30 Hz, par salves de 0,4 s (bords sur des zéros)
+			for i in range(n):
+				var t := float(i) / MIX_RATE
+				var burst := 1.0 if fmod(t, 0.5) < 0.4 else 0.0
+				var chop := maxf(sin(TAU * 30.0 * t), 0.0)
+				buf[i] = sin(TAU * 4600.0 * t) * chop * burst * 0.25
 		"water_flow", "village_murmur", "high_wind", "rain":
 			# Bruits filtrés passe-bas (un pôle), plus ou moins sourds
 			var alpha: float = {"water_flow": 0.18, "village_murmur": 0.04, "high_wind": 0.02, "rain": 0.6}[bed]
