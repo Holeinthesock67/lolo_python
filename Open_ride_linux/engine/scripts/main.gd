@@ -6,6 +6,7 @@ extends Node3D
 const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
+const CameraViews := preload("res://scripts/camera_views.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
@@ -23,6 +24,9 @@ const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
+const AvatarModel := preload("res://scripts/avatar_model.gd")
+const AvatarView := preload("res://scripts/avatar_view.gd")
+const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 const WorkoutChartModel := preload("res://scripts/workout_chart_model.gd")
 const WorkoutChartView := preload("res://scripts/workout_chart_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
@@ -93,6 +97,9 @@ var _quality_name: String = "low"
 var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
 var _theme_name: String = "default"
 var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage en place (--display, puis le menu)
+## Vues de caméra (lot V12) : modèle (camera_views.gd) et dernière valeur de render.camera reçue du core.
+var camera_views = CameraViews.new()
+var _camera_setting := ""
 var _display_setting := ""   # dernière valeur de render.display reçue du core (vide avant la première liste)
 var _frame_times: Array[float] = []
 var _last_perf_log_us: int = 0
@@ -134,6 +141,12 @@ var key_map = KeyMap.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
 var bots_model = BotsViewModel.new()
 var bots_view: Node3D
+## Avatar du cycliste (lot V6) : modèle sans nœud (pédalier, danseuse) et vue ; caché en vue subjective, la
+## seule caméra du jeu avant le lot V12. `_avatar_cam` : caméra de contrôle du banc visuel (« follow »,
+## « side » ou « » sans), qui montre l'avatar sans changer la caméra du jeu.
+var avatar_model = AvatarModel.new()
+var avatar_view: Node3D
+var _avatar_cam := ""
 ## Courbes de la séance (lot O14) : un modèle, deux vues (bandeau ERG, panneau SIM), taille par réglage.
 var chart_model = WorkoutChartModel.new()
 var chart_sim = null
@@ -169,6 +182,7 @@ func _ready() -> void:
 	if cfg["test_mode"]:
 		Engine.max_fps = 60   # sans écran, le rendu n'est pas limité par la synchronisation verticale
 	_quality_name = str(cfg.get("quality", RenderQuality.DEFAULT_PRESET))
+	camera_views.set_view(str(cfg.get("camera", CameraViews.DEFAULT_VIEW)))
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
@@ -220,6 +234,9 @@ func _ready() -> void:
 	living_decor.set_fog_base(world_env.environment)
 	bots_view = BotsView.new()
 	add_child(bots_view)
+	avatar_view = AvatarView.new()
+	add_child(avatar_view)
+	_configure_avatar()
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
 	segment_markers.visual_grade_scale = _visual_grade_scale
@@ -230,6 +247,9 @@ func _ready() -> void:
 	ipc.loot_received.connect(rogue_host.on_loot)
 	ipc.input_event_received.connect(_on_input_event)
 	ipc.hello_ack_received.connect(_on_hello_ack)
+	ipc.garage_received.connect(_on_garage)
+	ipc.xp_result_received.connect(_on_xp_result)
+	ipc.progression_received.connect(_on_progression)
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
 	ipc.core_lost.connect(_on_core_lost)
@@ -362,6 +382,13 @@ func _on_settings(msg: Dictionary) -> void:
 			DisplayMode.apply(_display_name)
 			print("Mode d'affichage : ", _display_name)
 		_display_setting = disp
+	# Vue de caméra choisie au menu (lot V12) : appliquée si elle change après la première réception.
+	var cam := str(menu_flow.settings.item("render.camera").get("value", ""))
+	if CameraViews.is_valid(cam):
+		if _camera_setting != "" and cam != _camera_setting and cam != camera_views.current:
+			camera_views.set_view(cam)
+			print("Vue de caméra : ", cam)
+		_camera_setting = cam
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
@@ -407,7 +434,40 @@ func _on_input_event(event_name: String) -> void:
 		return
 	print("Bip : ", event_name)
 	_play_tones(BEEPS[event_name], BEEP_LEVEL)
+	if _camera_event(event_name):
+		return
 	_menu_event(event_name)
+
+
+## Vues de caméra au Click (lot V12, spécification générale §7.1) : A court et flèche haut, vue suivante ; flèche
+## bas, vue précédente ; A long, vue par défaut. Seulement quand rien n'est affiché à choisir (menu, carrefour du
+## monde ouvert) : A agit alors sur le choix. Renvoie vrai quand l'événement a servi à changer de vue.
+func _camera_event(event_name: String) -> bool:
+	if event_name not in ["A_SHORT", "A_LONG", "UP_SHORT", "DOWN_SHORT"]:
+		return false
+	if menu_flow.is_visible() or (world_menu_view != null and world_menu_view.visible):
+		return false
+	if event_name.begins_with("A_") and junction_view != null and junction_view.vm.is_visible():
+		return false
+	var now_s := Time.get_ticks_usec() / 1000000.0
+	var changed := false
+	match event_name:
+		"A_SHORT", "UP_SHORT":
+			changed = camera_views.next_view(now_s)
+		"DOWN_SHORT":
+			changed = camera_views.previous_view(now_s)
+		"A_LONG":
+			changed = camera_views.reset_default(now_s)
+	if changed:
+		print("Vue de caméra : ", camera_views.current)
+	return true
+
+
+## Écrit la vue choisie dans `[render] camera` quelques secondes après le dernier changement.
+func _remember_camera_view(now_s: float) -> void:
+	if camera_views.remember_due(now_s):
+		_camera_setting = camera_views.current
+		ipc.set_setting("render.camera", camera_views.current)
 
 
 # --- menus (lot N6) ----------------------------------------------------------------------
@@ -478,6 +538,14 @@ func _run_menu_action(act: Dictionary) -> void:
 		"open_world_menu":
 			world_menu_view.open()
 			ipc.send_command("world_regions")
+		"list_garage":
+			ipc.request_garage()
+		"equip":
+			ipc.send_command("equip", {"slot": str(act["slot"]), "item_id": str(act["item_id"])})
+		"buy":
+			ipc.send_command("buy", {"item_id": str(act["item_id"])})
+		"set_avatar":
+			ipc.send_command("set_avatar", {"avatar": act["avatar"]})
 
 
 # --- menu « Monde ouvert » (lot W11) -----------------------------------------------------
@@ -618,9 +686,11 @@ func _process(delta: float) -> void:
 	fps_counter.add_frame(delta)
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
+	_remember_camera_view(now / 1000000.0)
 	if rogue_host.is_active():
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
+		camera_views.snap()
 		return
 	if not follow.has_frame():
 		return
@@ -632,15 +702,14 @@ func _process(delta: float) -> void:
 		var pos: Vector3 = route.sample_point(s_route)
 		if _visual_grade_scale != 1.0 and route != null and route.n > 0:
 			pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
-		# Caméra subjective placée à 1.4 m de hauteur (hauteur des yeux du cycliste)
-		camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
-
-		# Orienter la caméra selon le cap et la pente de la route (Lot Q2)
+		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
-		# Dans Godot : -Z est le nord. La rotation Y s'applique sur le cap horaire.
-		camera.rotation.y = -heading
-		camera.rotation.x = deg_to_rad(follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale))
+		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale)
+		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
+		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
+		avatar_view.set_visible_for_view(_avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
+		_step_avatar(pos, heading, now, pitch_deg)
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
@@ -848,8 +917,25 @@ func _on_test_message(msg: Dictionary) -> void:
 			var ev := str(msg.get("event", ""))
 			if ev in MenuModel.EVENTS:
 				_menu_event(ev)
+		"menu_focus":   # focus sur un élément de l'écran courant du menu (tests graphiques du Garage, lot V8)
+			menu_flow.menu.focus_item(str(msg.get("id", "")))
+			_refresh_menu()
+		"avatar_camera":   # caméra de contrôle derrière (« follow ») ou à côté (« side ») de l'avatar (lot V6)
+			_avatar_cam = str(msg.get("view", "")) if str(msg.get("view", "")) in ["follow", "side"] else ""
+			avatar_view.set_visible_for_view(_avatar_view_name())
 		"command":   # commande du contrat envoyée par l'engine lui-même (pause, end_session…)
 			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
+
+
+func _avatar_info() -> Dictionary:
+	if avatar_view == null:
+		return {}
+	var info: Dictionary = avatar_view.test_info()
+	info["standing"] = avatar_model.standing
+	info["crank"] = avatar_model.crank_angle
+	info["on_screen"] = avatar_view.visible and not camera.is_position_behind(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)) \
+		and get_viewport().get_visible_rect().has_point(camera.unproject_position(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)))
+	return info
 
 
 func _test_screenshot(path: String, tag: String) -> void:
@@ -861,7 +947,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
-		"menu_card": menu_view.card,
+		"menu_card": menu_view.card, "garage_preview": menu_view.preview,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
@@ -890,22 +976,138 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
+		"camera_view": camera_views.effective(), "camera_transition": camera_views.in_transition(),
 		"widgets": widgets,
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
+		"avatar": _avatar_info(),
+		"garage": _garage_info(),
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
+
+
+## Garage (lot V8) pour les tests : solde, choix, avatar enregistré et brouillon, états des pièces, aperçu 3D.
+func _garage_info() -> Dictionary:
+	var g = menu_flow.garage
+	var states := {}
+	for it in g.items:
+		states[str(it["id"])] = str(it.get("state", ""))
+	var out := {"enabled": g.enabled, "level": g.level, "coins": g.coins, "equipped": g.equipped, "avatar": g.saved_avatar,
+		"draft": g.draft_avatar, "dirty": g.is_dirty(), "message": g.message, "states": states, "preview": {}}
+	if menu_view.preview.visible:
+		out["preview"] = menu_view.preview.test_info()
+	return out
 
 
 ## Texte des zones composées du menu (éléments, appareils, bilan), pour les tests graphiques.
 func _widget_text(key: String) -> String:
 	if key == "menu":
 		return "%s || %s || %s || %s || %s" % [menu_view.status_label.text, menu_view.items_text(), menu_view.devices.text() if menu_view.devices.visible else "",
-				menu_view.summary.text() if menu_view.summary.visible else "", menu_view.card.text() if menu_view.card.visible else ""]
+				(menu_view.summary.text() + " || " + menu_view.summary.progress_text()) if menu_view.summary.visible else "", menu_view.card.text() if menu_view.card.visible else ""]
 	return ""
 
 
+## Avatar (lot V6) : réglages du profil et FTP du hello_ack (core sans `progression` : avatar par défaut).
+func _configure_avatar() -> void:
+	var prog = ipc.core_config.get("progression", {})
+	var raw = prog.get("avatar") if prog is Dictionary else null
+	camera_views.has_avatar = prog is Dictionary and not prog.is_empty()   # sans avatar : vue subjective seule (2.0-CAM-3)
+	avatar_model.configure(raw, float(ipc.core_config.get("ftp_w", 0.0)))
+	avatar_view.configure(avatar_model.settings, 0)
+	avatar_view.set_visible_for_view(_avatar_view_name())
+
+
+## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.
+func _avatar_view_name() -> String:
+	return _avatar_cam if _avatar_cam != "" else camera_views.effective()
+
+
+## Une fois par image : pédalier et position du modèle d'après la dernière trame, avatar posé sur la route.
+## `pos` : point de la route sous le cycliste (déjà à l'échelle du relief), `heading` en radians.
+func _step_avatar(pos: Vector3, heading: float, now_us: int, pitch_deg: float) -> void:
+	if avatar_view == null:
+		return
+	var paused := session_state == "PAUSED"
+	avatar_model.update(now_us / 1000000.0, _last_state.get("cadence", null), _last_state.get("power", null),
+		_last_state.get("grade", null), paused)
+	if not avatar_view.visible:
+		return
+	avatar_view.apply(avatar_model)
+	var v = _last_state.get("v", 0.0)
+	avatar_view.set_speed(float(v) * 3.6 if (v is float or v is int) else 0.0, now_us / 1000000.0)
+	avatar_view.position = pos
+	avatar_view.rotation = Vector3(deg_to_rad(pitch_deg), -heading, 0.0)
+	if _avatar_cam != "":
+		var fwd := Vector3(sin(heading), 0.0, -cos(heading))
+		var right := Vector3(cos(heading), 0.0, sin(heading))
+		if _avatar_cam == "side":
+			camera.global_position = pos + right * 3.2 + Vector3(0.0, 1.0, 0.0)
+		else:
+			camera.global_position = pos - fwd * 3.0 + Vector3(0.0, 1.7, 0.0)
+		camera.look_at(pos + Vector3(0.0, 0.95, 0.0), Vector3.UP)
+
+
+## Équipement affiché (lot V7) : `look` de chaque identifiant (message `garage`), identifiants équipés
+## (hello_ack puis `progression`).
+var _look_of_id := {}
+var _equipped_ids := {}
+
+
+func _on_garage(items: Array) -> void:
+	_look_of_id.clear()
+	for it in items:
+		if it is Dictionary:
+			_look_of_id[it.get("id")] = it.get("look")
+	_apply_equipment()
+	menu_flow.on_garage(items)
+	_refresh_menu()
+
+
+## `xp_result` de fin de séance (lot V9) : bilan dans le résumé, bandeau « Niveau N ! » une seule fois.
+const LEVEL_UP_S := 6.0
+
+
+func _on_xp_result(msg: Dictionary) -> void:
+	var text := menu_flow.on_xp_result(msg)
+	if text != "":
+		banner.show_message("level_up", text, LEVEL_UP_S)
+	menu_view.summary.animate = _quality_name != "low"
+	_refresh_menu()
+
+
+## `progression` après equip, buy ou set_avatar : l'avatar et l'équipement affichés suivent, le catalogue
+## est redemandé (états des pièces) et le Garage se met à jour.
+func _on_progression(msg: Dictionary) -> void:
+	var eq = msg.get("equipped")
+	_equipped_ids = eq if eq is Dictionary else {}
+	var prog := {}
+	for key in ["level", "xp", "xp_next_level", "coins", "equipped", "avatar", "lives"]:
+		if msg.has(key):
+			prog[key] = msg[key]
+	ipc.core_config["progression"] = prog
+	_configure_avatar()
+	_apply_equipment()
+	menu_flow.on_progression(msg)
+	ipc.request_garage()
+	_refresh_menu()
+
+
+func _apply_equipment() -> void:
+	var looks := EquipmentMeshes.equip_looks(_equipped_ids, _look_of_id)
+	if avatar_view != null:
+		avatar_view.set_equipment(looks)
+	if sound_player != null:
+		sound_player.model.set_wheel_kind(EquipmentMeshes.wheel_sound(str(looks["wheels"])))
+
+
 func _on_hello_ack(_ack: Dictionary) -> void:
+	_configure_avatar()
+	var prog = ipc.core_config.get("progression", {})
+	menu_flow.on_hello_progression(prog)
+	var eq = prog.get("equipped") if prog is Dictionary else null
+	_equipped_ids = eq if eq is Dictionary else {}
+	_apply_equipment()
+	ipc.request_garage()
 	# ipc.core_config garde ftp_w, gears_total et theme pour l'affichage. Core (re)démarré : listes
 	# redemandées au prochain état affichant le menu. Modes de l'accueil : hello_ack.config.modes
 	# (2.0 ; absent en 1.0).
