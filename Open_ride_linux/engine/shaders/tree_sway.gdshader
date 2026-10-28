@@ -12,7 +12,8 @@ render_mode cull_back;
 // Habillage (lot Y8 étape 2) : l'alpha de la couleur du sommet porte la matière (tree_species.gd, codes
 // MAT_*) : écorces crevassée, lisse, de bouleau, en plaques, de palmier, côtes de cactus, puis feuillus,
 // aiguilles et palmes. Motifs procéduraux en coordonnées de l'objet (mètres), sans texture, avec la couche
-// commune surface_detail.gdshaderinc ; faux relief coupé en `low` (`relief` = 0). Alpha de 0,7 ou plus
+// commune surface_detail.gdshaderinc, sans faux relief (mesure du 28 octobre : la perturbation de la normale
+// par dérivées d'écran sur les houppiers coûtait trop en medium sur la GTX 1060). Alpha de 0,7 ou plus
 // (herbe, anciens maillages) : couleur unie comme avant.
 
 #include "res://shaders/surface_detail.gdshaderinc"
@@ -39,8 +40,6 @@ uniform float fade_end_m = 0.0;
 uniform bool normals_up_both_sides = false;
 // Teinte du feuillage, neutre par défaut ; réglée par les saisons (P18, version 2.0).
 uniform vec3 foliage_tint : source_color = vec3(1.0);
-// Faux relief de l'écorce et du feuillage (0 : coupé, préréglage low).
-uniform float relief = 1.0;
 
 // Position du sommet dans l'objet (avant le vent : les motifs suivent l'arbre) et décalage propre à l'arbre.
 varying vec3 v_obj;
@@ -89,7 +88,6 @@ void fragment() {
 	}
 	int code = int(floor(COLOR.a * 16.0 + 0.5));
 	vec3 col = COLOR.rgb * foliage_tint;
-	float h = 0.0;
 	float rough = roughness_value;
 	float through = 0.0;   // part de lumière qui traverse les feuilles
 	vec3 p = v_obj + v_shift;
@@ -101,42 +99,36 @@ void fragment() {
 			float f = n3(p * vec3(5.0, 0.7, 5.0));
 			float ridge = contour(f, 3.0, 0.35);
 			col *= mix(0.42, 1.1, ridge) * (0.9 + 0.2 * n3(p * 4.0));
-			h = ridge * 0.02;
 			rough = 0.95;
 		} else if (code == 2) {
 			// Écorce lisse (hêtre, baobab) : marbrures et plaques de lichen
 			float m = n3(p * vec3(3.0, 1.0, 3.0));
 			col *= 0.88 + 0.22 * m;
 			col = mix(col, col * vec3(0.95, 1.05, 0.85) + 0.05, smoothstep(0.62, 0.72, n3(p * 1.7 + 4.0)) * 0.6);
-			h = m * 0.004;
 		} else if (code == 3) {
 			// Bouleau : blanc, lenticelles sombres horizontales, pied noirci
 			float l = n3(p * vec3(3.5, 28.0, 3.5));
 			float dark = smoothstep(0.64, 0.7, l) * near;
 			col = mix(col, vec3(0.08, 0.07, 0.06), dark);
 			col = mix(col, vec3(0.12, 0.1, 0.08), (1.0 - smoothstep(0.3, 1.4, v_obj.y + 0.4 * n3(p * 3.0))) * 0.85);
-			h = -dark * 0.004;
 			rough = 0.7;
 		} else if (code == 4) {
 			// Écorce en plaques (pins, mélèze) : plaques rousses séparées de joints sombres
 			float f = n3(p * vec3(3.2, 1.2, 3.2));
 			float plate = contour(f, 4.0, 0.18);
 			col *= mix(0.35, 1.15, plate) * (0.85 + 0.3 * n3(p * vec3(6.0, 2.0, 6.0)));
-			h = plate * 0.02;
 			rough = 0.95;
 		} else if (code == 5) {
 			// Stipe de palmier : anneaux des anciennes palmes
 			float r = fract(v_obj.y * 3.2 + 0.3 * n3(p * 2.0));
 			float ring = smoothstep(0.0, 0.3, r) * (1.0 - smoothstep(0.75, 1.0, r));
 			col *= mix(0.55, 1.05, ring);
-			h = ring * 0.015;
 		} else if (code == 6) {
 			// Cactus : côtes verticales (12 par tour) et aréoles claires
 			float rib = 0.5 + 0.5 * cos(atan(v_obj.z, v_obj.x) * 12.0);
 			col *= 0.72 + 0.4 * rib;
 			float spot = smoothstep(0.8, 0.86, n3(p * vec3(14.0, 10.0, 14.0))) * rib * near;
 			col = mix(col, vec3(0.85, 0.82, 0.7), spot * 0.7);
-			h = rib * 0.02;
 			rough = 0.6;
 		} else if (code == 7) {
 			// Ceps et tiges : fibres longitudinales
@@ -161,13 +153,9 @@ void fragment() {
 			col *= mix(0.55, 1.3, clamp(m, 0.0, 1.0));
 			// Reflets jaunes des feuilles au soleil
 			col = mix(col, col * vec3(1.18, 1.12, 0.7), smoothstep(0.62, 0.9, leaf) * 0.45);
-			h = clump * 0.2 + twig * 0.06 + leaf * 0.02;
 			through = code == 9 ? 0.25 : 0.5;
 			rough = 0.8;
 		}
-	}
-	if (relief > 0.0) {
-		NORMAL = sd_bump(NORMAL, VERTEX, h * relief);
 	}
 	if (through > 0.0) {
 		// Houppier vu comme un volume : normale tirée vers le haut (dessous moins noir), lumière à travers

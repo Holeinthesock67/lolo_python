@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Rendu hors écran de l'habillage des arbres (Lot Y8 étape 2, shaders/tree_sway.gdshader) : chêne, bouleau,
 ## épicéa et palmier de tree_species.gd avec le matériau de la scène principale (tree_renderer.gd).
-## - Aucun point parasite sur les houppiers et les troncs éclairés, relief en marche (détecteur speckle.gd) ;
+## - Aucun point parasite sur les houppiers et les troncs éclairés (détecteur speckle.gd) ;
 ## - houppier dessiné (bouquets et trouées : luminance variée sans éclairage) ;
 ## - houppier à contre-jour encore vert, pas noir (lumière à travers les feuilles) ;
 ## - bouleau blanc à lenticelles sombres.
@@ -60,7 +60,7 @@ func _viewport(unshaded: bool) -> SubViewport:
 		var built := TreeSpecies.build(KINDS[i])
 		var mi := MeshInstance3D.new()
 		mi.mesh = built["lod0"]
-		var mat := TreeRenderer.sway_material(false, TreeRenderer.RELIEF["medium"])
+		var mat := TreeRenderer.sway_material(false)
 		mat.set_shader_parameter("sway_height_m", float(built["height"]))
 		mi.material_override = mat
 		mi.position = Vector3(i * SPACING_M, 0.0, 0.0)

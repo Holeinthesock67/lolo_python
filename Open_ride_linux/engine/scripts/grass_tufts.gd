@@ -79,7 +79,7 @@ func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: i
 		_mm = null
 	if _per_chunk <= 0:
 		return
-	_material = TreeRenderer.sway_material(true, 0.0)
+	_material = TreeRenderer.sway_material(true)
 	_material.set_shader_parameter("use_local_wind", true)
 	_material.set_shader_parameter("sway_height_m", TUFT_HEIGHT_M)
 	_material.set_shader_parameter("sway_amplitude_m", 0.12)

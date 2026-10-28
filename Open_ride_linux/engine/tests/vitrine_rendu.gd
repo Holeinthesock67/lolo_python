@@ -317,7 +317,7 @@ func _add_trees(vp: SubViewport, preset: String) -> void:
 		for i in range(kinds.size()):
 			var kind: String = kinds[i]
 			var mi := MeshInstance3D.new()
-			var mat := TreeRenderer.sway_material(false, float(TreeRenderer.RELIEF.get(preset, 1.0)))
+			var mat := TreeRenderer.sway_material(false)
 			if kind == "generic":
 				mi.mesh = TreeRenderer.build_lod0_mesh()
 			else:

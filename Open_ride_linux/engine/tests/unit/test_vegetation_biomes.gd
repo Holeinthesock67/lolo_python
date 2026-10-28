@@ -182,6 +182,16 @@ func _init() -> void:
 	med._budget = 3000
 	med.enforce_budget(Vector3(500, 300, 500))
 	_check(med.get_active_tree_count() <= 3000, "budget : %d arbres actifs (≤ 3 000)" % med.get_active_tree_count())
+	# Un seul Shader par niveau de détail pour toutes les espèces (pas de pipelines compilés en double, lot Y8)
+	med.set_preset("medium")
+	var shaders := {}
+	for cell in med._tiles[Vector2i(0, 0)].values():
+		for part in cell["parts"]:
+			for key in ["lod0", "lod1"]:
+				var m = (part[key] as MultiMeshInstance3D).material_override
+				if m is ShaderMaterial:
+					shaders[(m as ShaderMaterial).shader.get_instance_id()] = key
+	_check(shaders.size() == 2, "matériaux des espèces : %d shaders en tout (un par niveau de détail)" % shaders.size())
 	med.clear()
 	_check(med.get_child_count() == 0, "clear : plus aucun MultiMeshInstance3D")
 	for r in [plain, muted, med, des, pol, sav, alp]:

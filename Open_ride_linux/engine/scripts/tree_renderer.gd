@@ -23,8 +23,6 @@ const ViewCulling := preload("res://scripts/view_culling.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
 const LOD1_SWAY_FACTOR := 0.6   # amplitude réduite des panneaux croisés du LOD 1
-## Faux relief de l'écorce et du feuillage par préréglage (lot Y8 étape 2, comme les bâtiments).
-const RELIEF := {"low": 0.0, "medium": 1.0, "high": 1.0}
 
 const CELL_SIZE_M := 250.0
 const CELLS_PER_TILE := 4   # 4 x 4 = 16 cases par tuile de 1000 m
@@ -47,7 +45,6 @@ var _lod1_mesh: ArrayMesh
 var _lod0_material: Material
 var _lod1_material: Material
 var _tree_sway := false
-var _relief := 1.0
 ## Modèle de biome (biome_model.gd) ; null ou inactif : végétation d'avant la série U.
 var biome_model = null
 ## (x, z) -> vrai près de l'eau (oasis des déserts) ; invalide : aucun palmier au désert.
@@ -72,8 +69,8 @@ func _init() -> void:
 
 func _init_materials() -> void:
 	if _tree_sway:
-		_lod0_material = sway_material(false, _relief)
-		_lod1_material = sway_material(true, _relief)
+		_lod0_material = sway_material(false)
+		_lod1_material = sway_material(true)
 		return
 	_lod0_material = StandardMaterial3D.new()
 	_lod0_material.vertex_color_use_as_albedo = true
@@ -88,10 +85,8 @@ func _init_materials() -> void:
 func set_preset(preset_name: String, living_enabled: bool = true) -> void:
 	_budget = QualityPresets.tree_budget(preset_name)
 	var sway: bool = QualityPresets.living(preset_name, living_enabled)["tree_sway"]
-	var relief := float(RELIEF.get(QualityPresets.applied_name(preset_name), 1.0))
-	if sway != _tree_sway or relief != _relief:
+	if sway != _tree_sway:
 		_tree_sway = sway
-		_relief = relief
 		_init_materials()
 		_species.clear()
 		for tile_cells in _tiles.values():
@@ -106,15 +101,19 @@ func is_tree_sway() -> bool:
 	return _tree_sway
 
 
-## Matériau de balancement (Lot P5) ; `lod1` : panneaux croisés vus des deux côtés, amplitude réduite ;
-## `relief` : faux relief de l'écorce et du feuillage (RELIEF du préréglage, 0 pour l'herbe).
-static func sway_material(lod1: bool, relief: float = 1.0) -> ShaderMaterial:
+## Shader des panneaux croisés (copie cull_disabled de tree_sway.gdshader), un seul pour tous les
+## matériaux : un Shader par matériau ferait compiler autant de fois les mêmes pipelines (lot Y8 étape 2).
+static var _lod1_shader: Shader
+
+
+## Matériau de balancement (Lot P5) ; `lod1` : panneaux croisés vus des deux côtés, amplitude réduite.
+static func sway_material(lod1: bool) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
-	mat.set_shader_parameter("relief", relief)
 	if lod1:
-		var sh := Shader.new()
-		sh.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode cull_disabled;")
-		mat.shader = sh
+		if _lod1_shader == null:
+			_lod1_shader = Shader.new()
+			_lod1_shader.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode cull_disabled;")
+		mat.shader = _lod1_shader
 		mat.set_shader_parameter("sway_amplitude_m", 0.45 * LOD1_SWAY_FACTOR)
 	else:
 		mat.shader = TreeSwayShader
@@ -130,8 +129,8 @@ func _look(index: int) -> Dictionary:
 		var m0: Material = _lod0_material
 		var m1: Material = _lod1_material
 		if _tree_sway:
-			m0 = sway_material(false, _relief)
-			m1 = sway_material(true, _relief)
+			m0 = sway_material(false)
+			m1 = sway_material(true)
 			for m in [m0, m1]:
 				(m as ShaderMaterial).set_shader_parameter("sway_height_m", float(built["height"]))
 		_species[index] = {"lod0": built["lod0"], "lod1": built["lod1"], "m0": m0, "m1": m1}
