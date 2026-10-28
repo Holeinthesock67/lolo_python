@@ -30,6 +30,8 @@ extends Node
 ## cloches et points sonores sur le bus `Ambience`.
 ## Lot P23 : même synthèse pour deux cris d'oiseaux, `crow_caw` (deux croassements rauques) et `raptor_cry`
 ## (miaulement de buse qui descend), joués par fauna_renderer.gd.
+## Lot P25 : `truck_pass` (diesel grave et souffle long, camions et bus) et `moto_pass` (moteur aigu qui monte
+## puis redescend), en boucle comme `vehicle_pass`, joués par traffic_renderer.gd.
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
@@ -227,7 +229,8 @@ func update_bells(hour: float, now_s: float) -> void:
 # --- Génération et chargement des flux audio ---
 
 func _generate_all_streams() -> void:
-	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer"]
+	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer",
+		"truck_pass", "moto_pass"]
 	for k in kinds:
 		var custom_stream = _try_load_custom(k)
 		if custom_stream != null:
@@ -318,6 +321,20 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 				# Lot P13 : moteur grave du tracteur (28 Hz et harmoniques, battement des cylindres à 7 Hz)
 				var beat := 0.75 + 0.25 * sin(TAU * 7.0 * t)
 				sample = (sin(TAU * 28.0 * t) * 0.45 + sin(TAU * 56.0 * t) * 0.25 + sin(TAU * 84.0 * t) * 0.12) * beat
+			"truck_pass":
+				# Lot P25 : diesel grave (45 Hz et harmoniques, battement à 9 Hz) et souffle filtré plus fort et
+				# plus sourd que celui d'une voiture
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.04 * (r - _lp)
+				var beat := 0.8 + 0.2 * sin(TAU * 9.0 * t)
+				sample = _lp * 2.8 + (sin(TAU * 45.0 * t) * 0.3 + sin(TAU * 90.0 * t) * 0.15 + sin(TAU * 135.0 * t) * 0.06) * beat
+			"moto_pass":
+				# Lot P25 : moteur aigu dont la fréquence monte puis redescend (120 ± 40 Hz sur la boucle, nombre
+				# entier de cycles : raccord sans clic), harmoniques et un peu de souffle
+				var ph := TAU * (120.0 * t + 40.0 * (1.0 - cos(TAU * t)) / TAU)
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.2 * (r - _lp)
+				sample = sin(ph) * 0.3 + sin(ph * 2.0) * 0.18 + sin(ph * 3.0) * 0.08 + _lp * 0.5
 
 		var s16 := clampi(int(sample * 32767.0), -32768, 32767)
 		if s16 < 0:

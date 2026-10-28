@@ -98,9 +98,9 @@ func _test_players_on_buses() -> void:
 	var tr = TrafficRenderer.new()
 	root.add_child(tr)
 	var traffic_ok := true
-	for slot in tr._slots:
-		traffic_ok = traffic_ok and slot["audio"].bus == AudioMix.AMBIENCE
-	_check(traffic_ok and tr._slots.size() > 0, "véhicules sur le bus Ambience")
+	for audio in tr._audio:
+		traffic_ok = traffic_ok and audio.bus == AudioMix.AMBIENCE
+	_check(traffic_ok and tr._audio.size() > 0, "véhicules sur le bus Ambience")
 	var crowd = CrowdRenderer.new()
 	var passers = CrowdRenderer.new("passersby")
 	root.add_child(crowd)
