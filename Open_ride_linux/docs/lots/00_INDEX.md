@@ -134,7 +134,7 @@
 | Y5 | Arbres lointains en imposteurs (notre propre version, sans extension), feuillage en alpha scissor | GDScript + shader | O1, Y2 | Moyenne | Oui (aspect validé par le propriétaire) ; issue #361 |
 | Y6 | Résolution 3D par préréglage et résolution adaptative (FSR 1.0), FXAA ou SMAA en `low` | GDScript | Y2, X13 | Petite | Oui ; issue #362 |
 | Y7 | Essai du moteur Mobile pour `low` (mesure seule, décision du propriétaire) | GDScript | Y2 | Petite | Oui (mesure) ; issue #363 |
-| Y8 | Habillage : toits à pans et façades texturées, puis étalonnage (décalques de route dans Y11) | GDScript + shader | Y3, P20 | Grande | En partie ; issue #364 |
+| Y8 | Habillage : toits à pans et façades procédurales, styles par variante régionale et par biome (U1, U0), puis arbres et petit mobilier ; cahier `LOT_Y8_habillage_batiments.md` (étalonnage dans Y13, décalques de route dans Y11) | GDScript + shader | Y3, P20 | Grande | En partie ; issue #364 |
 | Y9 | Lissage des bots à l'écran (mémoire de trames, Hermite, déplacements latéraux, LOD) | GDScript | O7 | Moyenne | Oui ; issue #365 |
 | Y10 | Comportement des bots dans le core (profils, attaques, abri) | Python | Y9, séries T et R | Moyenne | Oui ; issue #366 |
 | [Y11](LOT_Y11_chaussee_herbe_relief.md) | Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée) et faux relief de l'herbe | Shader + GDScript | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie ; issue #385. Prototype procédural (grain de la chaussée, rapiéçages, bandes de roulement, bas-côtés, relief et plaques de l'herbe, vagues de vent, touffes en brins) en essai le 27 octobre, en attente de l'accord du propriétaire et de la mesure sur la GTX 1060 |

@@ -183,6 +183,7 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+	streamer.osm_streamer.set_preset(_quality_name)
 	RenderQuality.apply_fog(world_env.environment, _quality_name, false)
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
 	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
@@ -328,6 +329,8 @@ func _on_settings(msg: Dictionary) -> void:
 		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
+		if streamer.osm_streamer != null:
+			streamer.osm_streamer.set_preset(_quality_name)
 		print("Qualité graphique : ", _quality_name)
 	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
 	if th != _theme_name:
