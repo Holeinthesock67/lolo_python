@@ -29,7 +29,8 @@ func _check(cond: bool, msg: String) -> void:
 		printerr("[ÉCHEC] ", msg)
 
 
-func _init() -> void:
+## _initialize (et non _init) : la racine est alors dans l'arbre, la caméra de test a une position globale.
+func _initialize() -> void:
 	_test_cone()
 	_test_cameras()
 	_test_hysteresis()
