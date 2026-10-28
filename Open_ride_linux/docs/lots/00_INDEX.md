@@ -159,7 +159,7 @@
 | [R10](LOT_R10_scene_neon_ruban.md) | Engine : scène néon, ruban 3D, shader de pente, arches et zones | GDScript + shader | T1 | Grande | Non : interne (rendu, contrôle visuel) ; **Livré le 28 octobre** (sauf contrôle visuel), **version 2.0** |
 | [R11](LOT_R11_hud_diegetique.md) | Engine : HUD diégétique, arcs au sol, champ de vision et tremblement | GDScript | T1, R10 | Moyenne | Modèle oui, rendu interne ; **Livré le 28 octobre** (sauf contrôle visuel), **version 2.0** |
 | [R12](LOT_R12_ennemis_boss.md) | Engine : ennemis et boss géométriques, effets d'impact | GDScript + shader | R10 | Moyenne | Non : interne (rendu, contrôle visuel) ; **Livré le 28 octobre** (sauf contrôle visuel et mesure), **version 2.0** |
-| [R13](LOT_R13_menu_cyber_rogue.md) | Engine : lancement depuis l'accueil, écran de départ, couloirs et cartes, pause, fin de run | GDScript | T1, R8, R10, R11, N6, O4 | Moyenne | Non : interne (`main.gd`, menu), **version 2.0** |
+| [R13](LOT_R13_menu_cyber_rogue.md) | Engine : lancement depuis l'accueil, écran de départ, couloirs et cartes, pause, fin de run | GDScript | T1, R8, R10, R11, N6, O4 | Moyenne | Non : interne (`main.gd`, menu) ; **Livré le 28 octobre** (sauf contrôle à l'écran), **version 2.0** |
 | [R14](LOT_R14_recette.md) | Recette du mode Cyber-Rogue sur le PC et le vélo | — | R8, R9, R10 à R13, R15, R16 | Moyenne | Non : propriétaire, **version 2.0** |
 | [R15](LOT_R15_scenariste_run.md) | Scénariste de run : calendrier et salles composés à partir de l'objectif et de la durée | Python | R3, R6 | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
 | [R16](LOT_R16_estimation_cp_wprime.md) | Estimation de CP et W' à partir des séances passées | Python | — | Petite | **Livré le 27 octobre** (outil pur ; le core l'appellera au lancement, R8), **version 2.0** |
@@ -259,7 +259,7 @@
 | [X28](LOT_X28_reseau_degrade.md) | Série X (outils de test) : Réseau dégradé pour le monde ouvert : faux serveur de tuiles | Python | W15 | Moyenne | Oui ; issue #226 |
 | [X30](LOT_X30_tableau_recette.md) | Série X (outils de test) : Tableau de recette 1.0 relié aux rapports des outils | Python | O8 | Petite | Oui ; issue #228 |
 | [X31](LOT_X31_pente_max_garmin.md) | Série X (outils de test) : Pente maximale et D+ face à Garmin Connect, en local | Python | — | Petite | Oui ; issue #229 |
-| [X32](LOT_X32_garde_fou_qualite.md) | Série X (outils de test) : Garde-fou de la qualité réellement appliquée dans les bancs et les vitrines | Python + GDScript | #481 | Petite | Oui |
+| [X32](LOT_X32_garde_fou_qualite.md) | Série X (outils de test) : Garde-fou de la qualité réellement appliquée dans les bancs et les vitrines | Python + GDScript | #481 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x32`) |
 | [X33](LOT_X33_seance_simulee_serie_t_boutons_erg.md) | Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | Oui |
 | [X34](LOT_X34_hygiene_des_suites.md) | Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | Oui |
 | [X35](LOT_X35_fiabilite_banc_simule.md) | Série X (outils de test) : Fiabilité du banc simulé : captures, pics de capture, couches, vitesse imposée | Python + GDScript | X13 | Petite | Oui |

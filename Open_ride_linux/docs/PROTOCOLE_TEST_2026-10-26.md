@@ -446,8 +446,8 @@ Ces essais s'ajoutent aux blocs A à H ; chacun dit s'il se fait sur le vélo. L
 
 ### J7. Boutons de l'ERG définitifs (O17), sur le vélo
 
-- **Prérequis :** `engine/tests/run_engine_tests.sh` avec `UNIT=test_key_map` puis en entier (hors séance).
-- **Étapes :** `--trainer mock` puis le vélo : séance ERG courte, au Click puis au clavier de la fenêtre : ± courts, ± longs (touche tenue une seconde, puis `Page haut` et `Page bas`), Z, Y, `Échap` ; en séance libre, flèches haut et bas.
+- **Prérequis, faits sans vélo (automatisés le 28 octobre) :** `engine/tests/run_engine_tests.sh` avec `UNIT=test_key_map` puis en entier ; `cd core && pytest -m recette_sans_velo` (flèches du Click et du clavier relayées sans effet sur le braquet en séance libre, clavier du terminal touche pour touche comme le Click).
+- **Étapes :** `--trainer mock` puis le vélo : séance ERG courte, au Click puis au clavier de la fenêtre : ± courts, ± longs (touche tenue une seconde, puis `Page haut` et `Page bas`), Z, Y, `Échap`.
 - **Attendu :** ± court = biais ± 2 %, ± long = biais ± 10 % (borné à 80 % et 120 %), aucun bloc sauté ; Z = bloc suivant ; Y et `Échap` = pause de la séance, reprise depuis l'écran de pause ; même bip au clavier qu'au Click ; en séance libre, flèches haut et bas sans effet sur le braquet.
 - [ ] Gestes du plan commun au Click
 - [ ] Mêmes gestes au clavier
