@@ -94,7 +94,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `target_w` | nombre | Cible de puissance en cours, biais inclus |
 | `next_target_w` | nombre ou `null` | Cible du bloc suivant |
 | `bias_pct` | nombre | Biais d'intensité (80 à 120) |
-| `paused` | booléen | ERG en pause |
+| `paused` | booléen | ERG en pause : séance en pause (Y), seule pause depuis le lot O17 |
 
 **Bilan enrichi (champs facultatifs de `summary`)**
 
@@ -211,7 +211,7 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 | `resume` | `{}` | Reprend après une pause, quelle qu'en soit la raison |
 | `end_session` | `{ "save": booléen }` | Termine ; avec `save` vrai, produit le FIT puis passe à `FINISHED` |
 | `input_event` | `{ "event": chaîne }` | Touches lues par l'engine, même effet qu'un appui sur le Click (`PLUS_SHORT`, `MINUS_SHORT`, …) |
-| `skip_block` | `{}` | Équivalent de l'appui long + en ERG, pour le clavier ou le menu |
+| `skip_block` | `{}` | Bloc suivant en ERG, comme Z court au Click (spécification générale §7.1) ; pour le menu ou un outil |
 | `list_routes` | `{}` | Demande la liste des parcours ; réponse `routes` |
 | `list_workouts` | `{}` | Demande la liste des entraînements ; réponse `workouts` |
 | `set_difficulty` | `{ "pct": nombre }` | Change la difficulté du trainer (0 à 100) pour la séance en cours |
