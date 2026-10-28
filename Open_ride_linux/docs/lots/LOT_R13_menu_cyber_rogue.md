@@ -62,3 +62,12 @@ Aucune au-delà de la révision 1.4 (lot T1).
 ## 8. Hors périmètre
 
 - Garage et avatar (série V), statistiques détaillées des runs (après R9).
+
+## 9. Livraison (28 octobre 2026)
+
+- **Menu de départ :** `engine/scripts/rogue/rogue_menu_model.gd` (sans nœud) : objectif, durée, W' (avec l'estimation de R16 quand `hello_ack.config.rogue` en donne une) et châssis (R9) à faire défiler, arguments de `start_run` (`seed` nul, `w_prime_j` nul sauf estimation choisie, `chassis` seulement s'il y a des châssis), texte de l'écran Prêt. `menu_flow.gd` en fait l'écran « Départ Cyber-Rogue » ; « Lancer » demande une confirmation au premier lancement (efforts au-delà de 140 % de la FTP possibles en VO2max, sortie sans pénalité), envoie `start_run`, affiche « Composition de la run… » puis l'écran Prêt quand le core passe en `READY`. Une erreur `run_invalid`, `item_locked` ou `busy` ramène au départ avec le message.
+- **Accueil :** `menu_model.gd` : l'entrée « Cyber-Rogue » est dans `HOME_MODES` et n'apparaît que si `"rogue"` est annoncé (sans `modes`, l'accueil de la 1.0 est inchangé) ; l'écran Prêt du mode propose « Démarrer » et « Changer les choix ». `ipc_client.gd` : `start_run()` ; `main.gd` : configuration depuis `hello_ack` et envoi de la commande.
+- **Couloirs :** `rogue_corridor_view.gd` affiche les trois cartes et les deux portes en surimpression avec le style des menus (`ui_theme.gd`), la sélection suit `loot_focus` (0 à 2 : cartes, 3 et 4 : portes) et le coût de relance. Le message `loot` passe par `rogue_host.gd` jusqu'au modèle du HUD (R11).
+- **Pause et bilan :** la pause reste celle des autres modes (Y, Reprendre en premier, Terminer et enregistrer, Abandonner avec confirmation, `end_session`). `summary_view_model.gd` ajoute les lignes de `summary.rogue` : objectif et durée, résultat, salles gagnées, fuies ou manquées, boss, or, cartes, Perfect Shifts, déblocages.
+- **Écarts :** les derniers choix ne sont gardés que le temps du programme (les garder d'une fois sur l'autre demande un réglage du core) et l'avertissement se redemande à chaque lancement d'OpenRide ; le deck et les métriques de la run ne sont pas dans la pause (le contrat 1.4 ne les envoie pas) ; l'essai de bout en bout avec le faux core n'est pas fait, le déroulé est couvert par `test_rogue_menu_flow.gd` (accueil, départ, avertissement, `start_run`, chargement, Prêt, erreur, pause, abandon, bilan) ; la mise en page du couloir reste à contrôler à l'écran (R14).
+- Tests : `engine/tests/unit/test_rogue_menu_model.gd` et `test_rogue_menu_flow.gd`.

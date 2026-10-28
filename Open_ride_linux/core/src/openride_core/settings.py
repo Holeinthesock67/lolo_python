@@ -57,10 +57,11 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("rider.ftp_w", "FTP", "rider", 5, "W"),
     Setting("rider.mass_kg", "Poids", "rider", 1, "kg"),
     Setting("bike.mass_kg", "Poids du vélo", "rider", 1, "kg"),
-    # Séance ; bonus du mode classique (série T, lots T7 et T10)
+    # Séance ; bonus et niveau des bots du mode classique (série T, lots T7, T10 et T13)
     Setting("trainer.difficulty_pct", "Difficulté en SIM", "ride", 10, "%"),
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     Setting("powerups.mode", "Bonus", "ride"),
+    Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.theme", "Thème", "graphics", applies="now"),
