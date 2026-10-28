@@ -140,10 +140,10 @@ func _init() -> void:
 		_check(_dicts_equal(b_res["theme"], default_theme), "borne numérique %d -> repli default" % idx)
 
 	# 6. Version majeure non supportée -> erreur
-	var v2_dir := base_tmp.path_join("v2")
-	_write_theme(v2_dir, '{"version": "2.0"}')
-	var v2_res := ThemeLoader.load_theme(v2_dir)
-	_check(v2_res["errors"].size() > 0, "version 2.0 -> erreur")
+	var v3_dir := base_tmp.path_join("v3")
+	_write_theme(v3_dir, '{"version": "3.0"}')
+	var v3_res := ThemeLoader.load_theme(v3_dir)
+	_check(v3_res["errors"].size() > 0, "version 3.0 -> erreur (2.0 acceptée depuis le lot U5)")
 
 	# 7. JSON mal formé -> erreur + repli sur default
 	var bad_json_dir := base_tmp.path_join("bad_json")
@@ -183,6 +183,28 @@ func _init() -> void:
 	_check(named_res["errors"].size() == 0, "load_named inexistant: 0 erreur")
 	_check(named_res["warnings"].size() == 1, "load_named inexistant: 1 avertissement")
 	_check(_dicts_equal(named_res["theme"], default_theme), "load_named inexistant: renvoie default")
+
+	# 12. Thème 2.0 (lot U1, pack de biomes) : accepté, repli 1.x par fusion ; erreurs du pack refusées
+	var v2_dir := base_tmp.path_join("v2_ok")
+	_write_theme(v2_dir, JSON.stringify({"version": "2.0", "default_biome": "alpine",
+		"biomes": {"alpine": {"ground": {"layers": [{"name": "pelouse", "role": "flat", "color": "#7f8f5a"}]}}}}))
+	var v2_res := ThemeLoader.load_theme(v2_dir)
+	_check(v2_res["errors"].size() == 0 and v2_res["warnings"].size() == 0, "thème 2.0 : 0 erreur, 0 avertissement")
+	_check(v2_res["theme"]["version"] == "2.0" and v2_res["theme"]["terrain"] == default_theme["terrain"], "thème 2.0 : clés 1.x du défaut gardées")
+	var v2_bad := [
+		{"version": "2.0", "default_biome": "desert"},
+		{"version": "2.0", "biomes": {"lune": {}}},
+		{"version": "2.0", "biomes": {"alpine": {"ground": {"layers": [{"name": "a", "role": "flat", "color": "#000000"}, {"name": "b", "role": "flat", "color": "#000000"}]}}}},
+		{"version": "2.0", "biomes": {"alpine": {"vegetation": {"species": [{"kind": "banana", "weight": 1}]}}}},
+		{"version": "2.0", "biomes": {"savanna": {"seasons": {"calendar": "monsoon"}}}},
+		{"version": "2.0", "variants": {"brique": {}}},
+		{"version": "3.0"},
+	]
+	for idx in range(v2_bad.size()):
+		var bd := base_tmp.path_join("v2_bad_%d" % idx)
+		_write_theme(bd, JSON.stringify(v2_bad[idx]))
+		var br := ThemeLoader.load_theme(bd)
+		_check(br["errors"].size() > 0 and br["theme_dir"] == ThemeLoader.DEFAULT_THEME_DIR, "thème 2.0 invalide n°%d : erreur et repli (%s)" % [idx, br["errors"][0] if br["errors"].size() > 0 else ""])
 
 	print("test_theme_loader : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

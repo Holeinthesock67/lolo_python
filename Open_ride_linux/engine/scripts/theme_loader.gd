@@ -8,7 +8,11 @@ extends RefCounted
 ##   repli complet sur le thème `default` ;
 ## - avertissements (clé inconnue, texture absente ou non puissance de 2) -> repli de la texture
 ##   sur la couleur unie `color`.
+## Thème 2.0 (lot U1, pack de biomes) : `default_biome`, `biomes`, `variants` et `surfaces` validés ici ;
+## les clés 1.x gardent leur sens et servent de valeurs aux biomes qui ne les donnent pas (biome_model.gd).
 ## Pas de class_name : charger par preload("res://scripts/theme_loader.gd").
+
+const BiomeIds := preload("res://scripts/biome_ids.gd")
 
 const DEFAULT_THEME_DIR := "res://themes/default"
 const DEFAULT_THEME_PATH := "res://themes/default/theme.json"
@@ -63,7 +67,7 @@ static func _is_valid_version(v: Variant) -> bool:
 	if typeof(v) != TYPE_STRING:
 		return false
 	var s: String = v
-	if not s.begins_with("1.") or s.length() < 3:
+	if not (s.begins_with("1.") or s.begins_with("2.")) or s.length() < 3:
 		return false
 	for i in range(2, s.length()):
 		var c := s.unicode_at(i)
@@ -260,6 +264,130 @@ static func _validate_schema(data: Dictionary, errors: PackedStringArray) -> voi
 					errors.append("sky.fog_density : doit être >= 0")
 
 
+## Clés du thème 2.0 absentes du thème par défaut tant qu'il est en 1.x.
+const V2_KEYS := ["default_biome", "biomes", "variants", "surfaces"]
+
+
+static func _is_v2(data: Dictionary) -> bool:
+	return typeof(data.get("version", null)) == TYPE_STRING and str(data["version"]).begins_with("2.")
+
+
+static func _check_color_key(d: Dictionary, key: String, label: String, errors: PackedStringArray) -> void:
+	if d.has(key) and not _is_hex_color(d[key]):
+		errors.append(label + "." + key + " : couleur hexadécimale #RRGGBB invalide")
+
+
+static func _check_unit_key(d: Dictionary, key: String, label: String, errors: PackedStringArray) -> void:
+	if d.has(key) and (not _is_number(d[key]) or float(d[key]) < 0.0 or float(d[key]) > 1.0):
+		errors.append(label + "." + key + " : doit être dans [0, 1]")
+
+
+static func _validate_biome(b: Variant, label: String, errors: PackedStringArray) -> void:
+	if typeof(b) != TYPE_DICTIONARY:
+		errors.append(label + " : doit être un objet")
+		return
+	var bd: Dictionary = b
+	if typeof(bd.get("ground", null)) == TYPE_DICTIONARY:
+		var g: Dictionary = bd["ground"]
+		if g.has("layers"):
+			if typeof(g["layers"]) != TYPE_ARRAY or (g["layers"] as Array).is_empty() or (g["layers"] as Array).size() > 3:
+				errors.append(label + ".ground.layers : de 1 à 3 couches")
+			else:
+				var roles := []
+				for layer in g["layers"]:
+					if typeof(layer) != TYPE_DICTIONARY or not BiomeIds.GROUND_ROLES.has(layer.get("role", "")):
+						errors.append(label + ".ground.layers : role flat, steep ou high obligatoire")
+						continue
+					if roles.has(layer["role"]):
+						errors.append(label + ".ground.layers : role " + str(layer["role"]) + " en double")
+					roles.append(layer["role"])
+					_validate_surface_layer(layer, label + ".ground." + str(layer["role"]), errors)
+					if not layer.has("color"):
+						errors.append(label + ".ground." + str(layer["role"]) + ".color : obligatoire")
+		if g.has("slope_threshold_deg") and (not _is_number(g["slope_threshold_deg"]) or float(g["slope_threshold_deg"]) < 0.0 or float(g["slope_threshold_deg"]) > 90.0):
+			errors.append(label + ".ground.slope_threshold_deg : doit être dans [0, 90]")
+		if g.has("high_line_m") and g["high_line_m"] != null and not _is_number(g["high_line_m"]):
+			errors.append(label + ".ground.high_line_m : nombre ou null")
+	elif bd.has("ground"):
+		errors.append(label + ".ground : doit être un objet")
+	if typeof(bd.get("vegetation", null)) == TYPE_DICTIONARY:
+		var v: Dictionary = bd["vegetation"]
+		if v.has("species"):
+			if typeof(v["species"]) != TYPE_ARRAY:
+				errors.append(label + ".vegetation.species : doit être un tableau")
+			else:
+				for sp in v["species"]:
+					if typeof(sp) != TYPE_DICTIONARY or not BiomeIds.SPECIES.has(sp.get("kind", "")):
+						errors.append(label + ".vegetation.species : espèce inconnue " + str(sp))
+					elif not _is_number(sp.get("weight", null)) or float(sp["weight"]) <= 0.0:
+						errors.append(label + ".vegetation.species : weight > 0 obligatoire")
+		if v.has("max_density_per_ha") and (not _is_number(v["max_density_per_ha"]) or float(v["max_density_per_ha"]) < 0.0):
+			errors.append(label + ".vegetation.max_density_per_ha : doit être >= 0")
+		if v.has("treeline_m") and v["treeline_m"] != null and not _is_number(v["treeline_m"]):
+			errors.append(label + ".vegetation.treeline_m : nombre ou null")
+	if typeof(bd.get("water", null)) == TYPE_DICTIONARY:
+		_check_color_key(bd["water"], "color", label + ".water", errors)
+		_check_unit_key(bd["water"], "turbidity", label + ".water", errors)
+	if typeof(bd.get("sky", null)) == TYPE_DICTIONARY:
+		var sk: Dictionary = bd["sky"]
+		_check_color_key(sk, "light_tint", label + ".sky", errors)
+		_check_unit_key(sk, "haze", label + ".sky", errors)
+		if sk.has("fog_density") and (not _is_number(sk["fog_density"]) or float(sk["fog_density"]) < 0.0):
+			errors.append(label + ".sky.fog_density : doit être >= 0")
+	if typeof(bd.get("seasons", null)) == TYPE_DICTIONARY:
+		var se: Dictionary = bd["seasons"]
+		if se.has("calendar") and not BiomeIds.CALENDARS.has(se["calendar"]):
+			errors.append(label + ".seasons.calendar : four, wet_dry, polar ou none")
+
+
+## Clés du thème 2.0 (Format .world v1 §9, lot U1).
+static func _validate_v2(data: Dictionary, errors: PackedStringArray) -> void:
+	if data.has("default_biome") and not BiomeIds.is_biome(data["default_biome"]):
+		errors.append("default_biome : biome inconnu " + str(data["default_biome"]))
+	if data.has("biomes"):
+		if typeof(data["biomes"]) != TYPE_DICTIONARY:
+			errors.append("biomes : doit être un objet")
+		else:
+			for id in data["biomes"].keys():
+				if not BiomeIds.is_biome(id):
+					errors.append("biomes : biome inconnu " + str(id))
+				else:
+					_validate_biome(data["biomes"][id], "biomes." + str(id), errors)
+	if data.has("variants"):
+		if typeof(data["variants"]) != TYPE_DICTIONARY:
+			errors.append("variants : doit être un objet")
+		else:
+			for id in data["variants"].keys():
+				if not (BiomeIds.GROUND_VARIANTS.has(id) or BiomeIds.ROOF_VARIANTS.has(id)):
+					errors.append("variants : variante inconnue " + str(id))
+					continue
+				var va = data["variants"][id]
+				if typeof(va) != TYPE_DICTIONARY:
+					errors.append("variants." + str(id) + " : doit être un objet")
+					continue
+				_check_color_key(va, "rock_color", "variants." + str(id), errors)
+				_check_color_key(va, "soil_color", "variants." + str(id), errors)
+				for arr_key in ["walls", "roofs"]:
+					if va.has(arr_key):
+						if typeof(va[arr_key]) != TYPE_ARRAY:
+							errors.append("variants." + str(id) + "." + arr_key + " : doit être un tableau")
+						else:
+							for item in va[arr_key]:
+								if not _is_hex_color(item):
+									errors.append("variants." + str(id) + "." + arr_key + " : couleur #RRGGBB invalide")
+	if data.has("surfaces"):
+		if typeof(data["surfaces"]) != TYPE_DICTIONARY:
+			errors.append("surfaces : doit être un objet")
+		else:
+			for id in data["surfaces"].keys():
+				if not BiomeIds.SURFACES.has(id):
+					errors.append("surfaces : surface inconnue " + str(id))
+				elif typeof(data["surfaces"][id]) != TYPE_DICTIONARY:
+					errors.append("surfaces." + str(id) + " : doit être un objet")
+				else:
+					_check_color_key(data["surfaces"][id], "color", "surfaces." + str(id), errors)
+
+
 static func _resolve_tex_path(theme_dir: String, rel_path: String) -> String:
 	var base := ProjectSettings.globalize_path(theme_dir).simplify_path()
 	var full := base.path_join(rel_path).simplify_path()
@@ -339,7 +467,14 @@ static func load_theme(theme_dir: String) -> Dictionary:
 
 	var dict_data: Dictionary = data
 	_validate_schema(dict_data, errors)
-	_warn_unknown_keys(dict_data, default_theme, "", warnings)
+	var reference := default_theme
+	if _is_v2(dict_data):
+		_validate_v2(dict_data, errors)
+		reference = default_theme.duplicate()
+		for key in V2_KEYS:
+			if dict_data.has(key):
+				reference[key] = dict_data[key]
+	_warn_unknown_keys(dict_data, reference, "", warnings)
 
 	if dict_data.has("terrain") and typeof(dict_data["terrain"]) == TYPE_DICTIONARY:
 		var t: Dictionary = dict_data["terrain"]
@@ -353,6 +488,16 @@ static func load_theme(theme_dir: String) -> Dictionary:
 		var r: Dictionary = dict_data["road"]
 		if r.has("texture"):
 			_check_texture_field(theme_dir, "road.texture", r["texture"], warnings)
+
+	if errors.is_empty() and _is_v2(dict_data) and typeof(dict_data.get("biomes", null)) == TYPE_DICTIONARY:
+		for id in dict_data["biomes"].keys():
+			var ground = dict_data["biomes"][id].get("ground", {})
+			if typeof(ground) != TYPE_DICTIONARY or typeof(ground.get("layers", null)) != TYPE_ARRAY:
+				continue
+			for layer in ground["layers"]:
+				for field in ["texture", "normal"]:
+					if layer.has(field):
+						_check_texture_field(theme_dir, "biomes.%s.ground.%s.%s" % [id, layer["role"], field], layer[field], warnings)
 
 	if errors.size() > 0:
 		print("[theme] thème invalide (", theme_dir, ") : ", errors[0], " ; repli sur default")
