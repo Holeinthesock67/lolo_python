@@ -57,8 +57,16 @@ var tree_renderer: Node3D = null
 ## render_quality.gd (ViewCulling.keep_radius_for, distance des ombres du préréglage).
 var culling := true
 var culling_keep_m: float = ViewCulling.keep_radius_for(150.0)
-## Tuiles proches écartées par le dernier update_window (tests, journal).
+## Tuiles proches écartées par le dernier update_window (sonde X13, tests).
 var culled_near := 0
+## Contrôles du mode test (lot S1, `--test-mode`) : à chaque tuile proche instanciée, journal
+## « [test] pop … » si elle apparaît dans le champ à moins de TEST_POP_DIST_M (apparition soudaine), et
+## « [test] seam … » si son bord s'écarte de plus de TEST_SEAM_TOL_M de celui d'une tuile proche voisine.
+var test_log := false
+const TEST_POP_DIST_M := 1000.0
+const TEST_SEAM_TOL_M := 0.05
+var _view_now: Dictionary = {}
+var _s_now := 0.0
 var osm_streamer: Node3D = null
 
 var _near_index: Dictionary = {}     # Vector2i -> true
@@ -333,11 +341,11 @@ func near_window(points: Array) -> Dictionary:
 	return out
 
 
-## Vues de la caméra active (lot S1) : maintenant puis le long de la route ; vide sans tri (culling
-## coupé, hors de l'arbre de scène, sans caméra, ou caméra pas encore placée à `cam_pos`, comme au
-## chargement d'un parcours), et tout est alors voulu.
+## Vues de la caméra active (lot S1) : maintenant puis le long de la route ; vide hors de l'arbre de
+## scène, sans caméra, ou caméra pas encore placée à `cam_pos` (chargement d'un parcours), et tout est
+## alors voulu. Calculées même sans tri, pour les contrôles du mode test.
 func _views(s_pos: float, v: float, cam_pos: Vector3) -> Array:
-	if not culling or not is_inside_tree() or route == null:
+	if not is_inside_tree() or route == null:
 		return []
 	var cam := get_viewport().get_camera_3d()
 	if cam == null or cam.global_position.distance_to(cam_pos) > ViewCulling.CAMERA_MATCH_M:
@@ -381,6 +389,10 @@ func update_window(s_pos: float, v: float, cam_pos: Vector3) -> void:
 		return
 	var wanted := {}
 	var views := _views(s_pos, v, cam_pos)
+	_view_now = views[0] if not views.is_empty() else {}
+	_s_now = s_pos
+	if not culling:
+		views = []
 	for k in road_window(s_pos, v):
 		wanted["road:%d" % k] = {"kind": "road", "k": k, "dist": 0.0}
 	if has_terrain:
@@ -510,9 +522,56 @@ func integrate(max_new: int) -> int:
 		_instances[r["key"]] = mi
 		if r.has("trees_data") and tree_renderer != null and not (r["trees_data"] as Dictionary).is_empty():
 			tree_renderer.add_tile(r["trees_data"])
+		if test_log and r["kind"] == "near":
+			_test_check_tile(r["key"], r["arrays"][Mesh.ARRAY_VERTEX])
 		created += 1
 	_start_jobs()
 	return created
+
+
+## Mode test (lot S1) : apparition soudaine dans le champ et jointure avec les tuiles proches voisines.
+func _test_check_tile(key: String, verts: PackedVector3Array) -> void:
+	var parts := key.split(":")
+	var t := Vector2i(int(parts[1]), int(parts[2]))
+	var size: float = TerrainTiles.LEVELS["near"]["size"]
+	if not _view_now.is_empty():
+		var rect := Rect2(t.x * size, t.y * size, size, size)
+		var d := ViewCulling.rect_distance(rect, _view_now["pos"])
+		if d < TEST_POP_DIST_M and ViewCulling.rect_in_view(rect, _view_now):
+			print("[test] pop key=%s dist=%.0f s=%.1f" % [key, d, _s_now])
+	for dt in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		var nkey := "near:%d:%d" % [t.x + dt.x, t.y + dt.y]
+		if not _instances.has(nkey) or nkey == key:
+			continue
+		var other: PackedVector3Array = (_instances[nkey] as MeshInstance3D).mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+		var gap := seam_gap(verts, other, dt.x, dt.y)
+		if gap > TEST_SEAM_TOL_M:
+			print("[test] seam key=%s voisine=%s ecart=%.2f s=%.1f" % [key, nkey, gap, _s_now])
+
+
+## Plus grand écart de hauteur (m) entre le bord d'une tuile proche (`a`, sommets de build_arrays) et
+## le bord commun de sa voisine `b` placée en (dx, dz) = (±1, 0) ou (0, ±1).
+static func seam_gap(a: PackedVector3Array, b: PackedVector3Array, dx: int, dz: int) -> float:
+	var n := TerrainTiles.SAMPLES
+	var last := TerrainTiles.CELLS
+	var gap := 0.0
+	for k in range(n):
+		var ia: int
+		var ib: int
+		if dx == 1:
+			ia = k * n + last
+			ib = k * n
+		elif dx == -1:
+			ia = k * n
+			ib = k * n + last
+		elif dz == 1:
+			ia = last * n + k
+			ib = k
+		else:
+			ia = k
+			ib = last * n + k
+		gap = maxf(gap, absf(a[ia].y - b[ib].y))
+	return gap
 
 
 ## Attend et instancie tout ce que demande la fenêtre courante (tests, chargement initial).

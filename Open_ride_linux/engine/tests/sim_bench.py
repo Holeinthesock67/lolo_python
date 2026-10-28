@@ -67,6 +67,8 @@ from openride_core.tools.guide import Guide  # noqa: E402
 BENCH_SCENARIOS_DIR = TESTS_DIR / "sim_bench_scenarios"
 CMD_ID_BASE = 20_000
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
+# Lot S1 : apparitions ignorées pendant le premier chargement (m de route).
+POP_WARMUP_M = 100.0
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 # Mêmes tolérances que visual_check.py (avertissements connus du mode test et de Xvfb).
 GODOT_TOLERATED = re.compile(
@@ -182,12 +184,17 @@ class Bench:
         self.name = name
         self.spec = spec
         self.scenario_arg = scenario_arg
-        self.world = str(settings.get("world") or args.world)
+        # --world donné explicitement l'emporte sur le monde du scénario (même scénario, autre parcours).
+        self.world = str(args.world or settings.get("world") or "demo")
         self.workout = settings.get("workout", args.workout)
         self.difficulty = settings.get("difficulty_pct", args.difficulty)
         self.duration = float(args.duration or settings.get("duration_s") or
                               min(max(scenario_duration(spec) + 15.0, 45.0), 600.0))
         self.every = float(args.every or settings.get("every_s") or 15.0)
+        # Lot S1 : captures tous les N mètres de route (même endroit d'un essai à l'autre) au lieu de toutes
+        # les N secondes ; contrôles des tuiles (apparitions, jointures, trous) stricts si le scénario le demande.
+        self.every_m = float(getattr(args, "every_m", None) or settings.get("every_m") or 0.0)
+        self.strict_tiles = bool(settings.get("strict_tiles"))
         # Essai d'endurance (lot X16) : sonde de performance et vérifications de durée.
         self.endurance = bool(settings.get("endurance"))
         self.probe = bool(args.probe or self.endurance)
@@ -342,10 +349,11 @@ class Bench:
         self.shots.append(info)
 
     def _capture_loop(self, engine: Proc, port: int) -> None:
-        """Captures périodiques et juste après chaque événement du scénario, jusqu'à la durée voulue."""
+        """Captures périodiques (au temps, ou tous les `every_m` mètres) et juste après chaque événement du
+        scénario, jusqu'à la durée voulue."""
         plan: list[tuple[float, str]] = []
         t = 3.0
-        while t < self.duration:
+        while t < self.duration and self.every_m <= 0.0:
             plan.append((t, f"t{int(t):03d}"))
             t += self.every
         for k, ev in enumerate(self.spec.get("events", [])):
@@ -357,17 +365,47 @@ class Bench:
             if ev.get("seconds") and et + float(ev["seconds"]) < self.duration:
                 plan.append((et + float(ev["seconds"]) - 0.5, f"ev{k}_{label}_fin"))
         plan.sort()
-        for at, tag in plan:
-            wait = self.t_core + at - now()
-            if wait > 0:
-                time.sleep(wait)
+        next_m = self.every_m
+        cam_after = 0.0
+        while True:
+            t_rel = now() - self.t_core
+            if t_rel >= self.duration:
+                return
             if engine.p.poll() is not None:
                 self.report.check(False, "engine vivant", f"engine arrêté à {self.rel(now()):.0f} s")
                 return
-            self._shot(engine, port, tag)
-        wait = self.t_core + self.duration - now()
-        if wait > 0:
-            time.sleep(wait)
+            if plan and plan[0][0] <= t_rel:
+                self._shot(engine, port, plan.pop(0)[1])
+                continue
+            until = min(plan[0][0] if plan else self.duration, self.duration) - t_rel
+            if self.every_m <= 0.0:
+                time.sleep(max(0.0, until))
+                continue
+            # Position de la caméra lue au journal du mode test (« [test] cam s=… », 20 fois par seconde).
+            got = engine.wait_for(r"\[test\] cam s=([0-9.]+)", min(0.2, max(until, 0.01)), after=cam_after)
+            if got is None:
+                continue
+            cam_after = got[0] + 1e-6
+            s_m = float(got[1].group(1))
+            if s_m >= next_m:
+                self._shot(engine, port, f"d{int(next_m):05d}")
+                while next_m <= s_m:
+                    next_m += self.every_m
+
+    def _tile_checks(self, log: list[str]) -> None:
+        """Lot S1 : apparitions soudaines dans le champ (une tuile qui manque dans le champ est un trou ou un
+        pop) et jointures des tuiles proches voisines, lues au journal du mode test de l'engine."""
+        r = self.report
+        strict = True if self.strict_tiles else None
+        pops = [m for ln in log if (m := re.search(r"\[test\] pop key=(\S+) dist=(\d+) s=([0-9.]+)", ln))
+                and float(m.group(3)) > POP_WARMUP_M]
+        r.check(not pops if strict else None, "aucune tuile n'apparaît dans le champ à moins de 1 km",
+                f"{len(pops)} apparition(s)" + (f", ex. {pops[0].group(1)} à {pops[0].group(2)} m (s = {float(pops[0].group(3)):.0f} m)"
+                                                if pops else ""))
+        seams = [m for ln in log if (m := re.search(r"\[test\] seam key=(\S+) voisine=(\S+) ecart=([0-9.]+)", ln))]
+        r.check(not seams if strict else None, "jointures des tuiles proches voisines",
+                f"{len(seams)} bord(s) disjoint(s)" + (f", ex. {seams[0].group(1)} / {seams[0].group(2)} : "
+                                                      f"{seams[0].group(3)} m" if seams else ""))
 
     def _relaunch_loop(self, core: Proc, cmd_port: int, route_id: str) -> None:
         """Essai d'endurance : à chaque fin de parcours, recharge le parcours et repart."""
@@ -419,7 +457,7 @@ class Bench:
         ok = [s for s in self.shots if s.get("ok")]
         r.check(len(ok) == len(self.shots) and ok, "captures de l'engine",
                 f"{len(ok)}/{len(self.shots)} images enregistrées")
-        fps = [s["fps"] for s in ok if isinstance(s.get("fps"), (int, float)) and s["tag"].startswith("t")]
+        fps = [s["fps"] for s in ok if isinstance(s.get("fps"), (int, float)) and s["tag"][:1] in ("t", "d")]
         if fps:
             fps_line = (f"images par seconde de l'engine : min {min(fps):.0f}, médiane "
                         f"{sorted(fps)[len(fps) // 2]:.0f}, max {max(fps):.0f} ({len(fps)} relevés)")
@@ -431,6 +469,7 @@ class Bench:
         log = (self.out / "engine.log").read_text(encoding="utf-8", errors="replace").splitlines()
         issues = [ln for ln in log if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
         r.check(not issues, "erreurs et avertissements de Godot", "aucun" if not issues else " | ".join(issues[:3]))
+        self._tile_checks(log)
         # Exceptions du core.
         core_log = (self.out / "core.log").read_text(encoding="utf-8", errors="replace")
         m = re.search(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),(\d{3}) .*Core démarré", core_log, re.M)
@@ -648,7 +687,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
         "GODOT", Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
-    ap.add_argument("--world", default="demo", help="demo, village (bâtiments, montée et descente), osm, ou dossier .world")
+    ap.add_argument("--world", help="demo (défaut), village (bâtiments, montée et descente), osm, ou dossier .world ; "
+                    "l'emporte sur le monde du scénario")
     ap.add_argument("--workout", help="ERG : erg_court (5 min 30 intégré) ou fichier .zwo")
     ap.add_argument("--duration", type=float, help="durée de chaque séance en s (défaut : fin du scénario + 15 s)")
     ap.add_argument("--every", type=float, help="intervalle des captures en s (défaut : celui du scénario, sinon 15)")
@@ -658,6 +698,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
     ap.add_argument("--display", default="windowed", choices=("windowed", "borderless", "fullscreen"),
                     help="mode d'affichage de l'engine (défaut windowed ; les pleins écrans demandent --native)")
+    ap.add_argument("--every-m", type=float,
+                    help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="on", choices=("on", "off"),
                     help="tri de ce que la caméra ne voit pas (lot S1, défaut on ; off : mesure « avant »)")
     ap.add_argument("--probe", action="store_true",

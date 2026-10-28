@@ -10,6 +10,7 @@ const ViewCulling := preload("res://scripts/view_culling.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 
 const TILE_M := 1000.0
 ## Avance demandée sur la trajectoire : une tuile visible en s est voulue dès s − PREP_M (10 s à 36 km/h).
@@ -34,6 +35,7 @@ func _init() -> void:
 	_test_cameras()
 	_test_hysteresis()
 	_test_hairpin()
+	_test_seams()
 	print("test_culling : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
@@ -192,3 +194,32 @@ func _test_hairpin() -> void:
 			if not ViewCulling.rect_wanted(_tile(ix, iz), views, WorldStreamer.NEAR_RADIUS_M, keep):
 				culled += 1
 	_check(culled > 0, "épingle, vue avant le virage : %d tuiles sur 42 écartées" % culled)
+
+
+## Jointures (mode test de world_streamer.gd) : deux tuiles proches tirées d'un même relief ont le même
+## bord ; une marche d'un mètre est mesurée comme telle, dans les quatre directions.
+func _test_seams() -> void:
+	var n := TerrainTiles.SAMPLES
+	var cell: float = TerrainTiles.LEVELS["near"]["cell"]
+	var tiles := {}
+	for t in [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1)]:
+		var h := PackedFloat32Array()
+		h.resize(n * n)
+		for j in range(n):
+			for i in range(n):
+				var x: float = t.x * 1000.0 + i * cell
+				var z: float = t.y * 1000.0 + j * cell
+				h[j * n + i] = 300.0 + 20.0 * sin(x / 170.0) + 15.0 * cos(z / 230.0)
+		tiles[t] = TerrainTiles.build_arrays(h, "near")[Mesh.ARRAY_VERTEX]
+	var a: PackedVector3Array = tiles[Vector2i(0, 0)]
+	var east: PackedVector3Array = tiles[Vector2i(1, 0)]
+	var south: PackedVector3Array = tiles[Vector2i(0, 1)]
+	_check(WorldStreamer.seam_gap(a, east, 1, 0) < 1e-4 and WorldStreamer.seam_gap(east, a, -1, 0) < 1e-4
+		and WorldStreamer.seam_gap(a, south, 0, 1) < 1e-4 and WorldStreamer.seam_gap(south, a, 0, -1) < 1e-4,
+		"jointures : tuiles voisines d'un même relief jointives dans les quatre directions")
+	var raised := east.duplicate()
+	for k in range(raised.size()):
+		raised[k] = raised[k] + Vector3(0.0, 1.0, 0.0)
+	var gap := WorldStreamer.seam_gap(a, raised, 1, 0)
+	_check(absf(gap - 1.0) < 1e-3 and gap > WorldStreamer.TEST_SEAM_TOL_M,
+		"jointures : marche de 1 m détectée (%.3f m, seuil %.2f m)" % [gap, WorldStreamer.TEST_SEAM_TOL_M])

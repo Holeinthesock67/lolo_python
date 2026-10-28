@@ -170,6 +170,7 @@ func _ready() -> void:
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
 	streamer.culling = bool(cfg.get("culling", true))
+	streamer.test_log = bool(cfg["test_mode"])
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"

@@ -56,6 +56,8 @@ done; done
 python3 engine/tests/compare_captures.py ~/OpenRide/sim_bench/S1_low_off ~/OpenRide/sim_bench/S1_low_on --out ~/OpenRide/sim_bench/S1_low_ecarts
 ```
 
+Outils du mode test ajoutés le 28 octobre (à la demande du propriétaire, avec le fil des outils de test, cahier X18) : captures tous les N mètres (`--every-m`, `every_m` du scénario : 200 m pour `rendu_invisible`), pour que l'avant et l'après soient au même endroit ; lignes `[test] pop` (tuile proche instanciée dans le champ à moins de 1 km : apparition soudaine ou trou) et `[test] seam` (bord d'une tuile proche écarté de plus de 5 cm de celui d'une voisine), comptées par le banc, en échec avec `strict_tiles` (scénario `rendu_invisible`) ; colonne `culled_near` de la sonde. Un contrôle du ciel sous l'horizon dans les captures a été essayé puis écarté : les lignes de rive blanc bleuté de la route passent pour du ciel, et un trou montre de toute façon la couleur du sol du ciel physique, pas du bleu.
+
 Avant d'interpréter un banc `medium`, vérifier dans `engine.log` que le préréglage appliqué est bien `medium` (`sim_bench.py` écrit `[render] quality` dans la configuration du core depuis le correctif de #446).
 
 Mesures du 28 octobre (GTX 1060, 1280x720, `--native`, village simulé, médianes après 20 s ; préréglage vérifié dans la sonde) :

@@ -46,6 +46,7 @@ python3 engine/tests/sim_bench.py --scenario difficulte --difficulty 50 --out ~/
 python3 engine/tests/sim_bench.py --native --probe --scenario erg_village --display fullscreen   # mode d'affichage (protocole J10)
 python3 engine/tests/sim_bench.py --native --probe --scenario rendu_invisible --culling off   # « avant » du tri du visible (lot S1, docs/ETUDE_RENDU_INVISIBLE.md)
 python3 engine/tests/compare_captures.py AVANT_DOSSIER APRES_DOSSIER --out ECARTS   # captures de deux bancs comparées image par image (lot S1)
+python3 engine/tests/sim_bench.py --native --probe --scenario rendu_invisible --world ~/.local/share/openride/routes/essai-69.world --every-m 200   # --world l'emporte sur le monde du scénario ; captures tous les 200 m
 python3 engine/tests/sim_bench.py --scenario erg_village --scenario ceinture --scenario click_sommeil
 python3 engine/tests/sim_bench.py --scenario erreur_0x80 --world village --duration 60
 ```
