@@ -29,6 +29,8 @@ const MAX_LAYERS := 48                 # 16 biomes × 3 couches (terrain_biomes.
 const BUDGET_BYTES := 1 << 30          # textures de sol du parcours (U-Q4)
 const LEVELS_PX: Array[int] = [2048, 1024]
 const ROLES: Array[String] = ["grass", "rock", "snow"]
+## Force des rides et des dunes du sable par biome (lot U8, biome_rule.w du shader) ; 0 ailleurs.
+const SAND_RELIEF := {"sand_desert": 1.0, "coast": 0.6}
 ## Paramètres réglés en cours de route sur le matériau du thème (ombre des nuages de P6, décor d'E3 et
 ## d'Y11), recopiés sur les matériaux des tuiles par `sync_from`.
 const SHARED_PARAMS: Array[String] = [
@@ -119,7 +121,7 @@ func _collect_layers() -> void:
 				layers.append(entry)
 			ids.append(int(index[key]))
 		biome_layers[b] = {"layers": ids, "rule": Vector4(float(u["slope_threshold_deg"]), float(u["snow_line_m"]),
-			float(u["blend_sharpness"]), 0.0)}
+			float(u["blend_sharpness"]), float(SAND_RELIEF.get(b, 0.0)))}
 
 
 ## Images à charger des biomes en usage : {"a": [[couche, chemin]], "b": [[couche, chemin]]}.
@@ -153,6 +155,7 @@ func _fill_material(used: Dictionary) -> void:
 		rules.append(bl["rule"])
 		ids.append(Vector4(bl["layers"][0], bl["layers"][1], bl["layers"][2], 0.0))
 	material.set_shader_parameter("biome_rule", rules)
+	material.set_shader_parameter("sand_wind_dir", sand_wind_dir(model.theme))
 	material.set_shader_parameter("biome_layers", ids)
 	var arrays := {"a": _make_array(used["a"], "a", false), "b": _make_array(used["b"], "b", true)}
 	var colors: Array[Vector4] = []
@@ -200,6 +203,17 @@ func _make_array(items: Array, kind: String, normal_map: bool) -> Texture2DArray
 	var arr := Texture2DArray.new()
 	arr.create_from_images(images)
 	return arr
+
+
+## Direction vers laquelle souffle le vent du thème (`wind.from_deg`, 270 = vent d'ouest par défaut), dans le
+## plan x, z du monde (x = est, z = sud) : sens des rides et des dunes (lot U8).
+static func sand_wind_dir(theme: Dictionary) -> Vector2:
+	var w = theme.get("wind", {})
+	var from_deg := 270.0
+	if typeof(w) == TYPE_DICTIONARY and (typeof(w.get("from_deg", null)) == TYPE_INT or typeof(w.get("from_deg", null)) == TYPE_FLOAT):
+		from_deg = float(w["from_deg"])
+	var to := deg_to_rad(from_deg + 180.0)
+	return Vector2(sin(to), -cos(to))
 
 
 ## Poids d'une tuile pour le shader : les `max_n` biomes les plus présents de la tuile (niveau `level`)

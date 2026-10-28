@@ -111,9 +111,10 @@ float _cloud_density(vec2 p) {
 
 // Couleur du sol à partir des couleurs de base des trois couches (`grass_c`, `rock_c`, `snow_c`, lues
 // seulement quand leur poids dépasse MIN_LAYER_WEIGHT) et de leurs poids `w` ; écrit la normale de la
-// vue dans `normal_out` (`view_n` : normale de la vue avant décor, `vertex` : VERTEX, `view` : VIEW_MATRIX).
-vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 tri_weights, vec3 vertex,
-		mat4 view, out vec3 normal_out) {
+// vue dans `normal_out` (`vertex` : VERTEX, `view` : VIEW_MATRIX). `extra_h` : faux relief ajouté à
+// celui des couches (m, positif ; rides et dunes du sable, lot U8 ; 0 pour le thème 1.x).
+vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 tri_weights, float extra_h,
+		vec3 vertex, mat4 view, out vec3 normal_out) {
 	float w_grass = w.x;
 	float w_rock = w.y;
 	float w_snow = w.z;
@@ -177,7 +178,7 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 	// Normale du monde ramenée dans l'espace de la vue, celui de NORMAL
 	normal_out = normalize((view * vec4(mix(n, rock_n, clamp(w_rock, 0.0, 1.0)), 0.0)).xyz);
 	// Faux relief des trois couches (Y11) : une seule perturbation de la normale
-	float surface_h = grass_h * w_grass + rock_h * w_rock + snow_h * w_snow;
+	float surface_h = grass_h * w_grass + rock_h * w_rock + snow_h * w_snow + extra_h;
 	if (surface_h > 0.0) {
 		normal_out = sd_bump(normal_out, vertex, surface_h);
 	}
