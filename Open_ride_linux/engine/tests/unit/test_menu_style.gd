@@ -216,7 +216,7 @@ func _test_settings() -> void:
 	s.on_settings({"items": [ftp, vol, quality]})
 	var rows: Array = s.menu_items("sound")
 	_check(rows[0] == {"id": "set:sound.master_pct", "label": "Volume général", "detail": "80 %", "bar": 80},
-		"réglage en % : libellé, valeur à droite, curseur (%s)" % str(rows[0]))
+		"réglage en %% : libellé, valeur à droite, curseur (%s)" % str(rows[0]))
 	_check(s.menu_items("rider")[0] == {"id": "set:rider.ftp_w", "label": "FTP", "detail": "250 W"} and not s.menu_items("rider")[0].has("bar"),
 		"réglage en watts : pas de curseur")
 	s.begin("sound.master_pct")
@@ -231,7 +231,7 @@ func _test_settings() -> void:
 	_check(s.sheet("render.quality")["lines"][0] == "Choix : low, medium, high" and s.sheet("absent").is_empty(), "carte d'un choix")
 	_check(SettingsViewModel.crumb("sound") == "Réglages › Son", "fil d'Ariane du sous-écran")
 	var edit := ButtonHelp.entries(ButtonHelp.EDIT)
-	_check(edit[0]["hold"] and edit[0]["text"] == "Enregistrer" and edit.map(func(e): return e["keys"]).size() == 3
+	_check(edit[0]["hold"] and edit[0]["text"] == "Enregistrer" and edit.size() == 4
 		and edit[-1]["keys"] == ["Y"] and edit[-1]["text"] == "Annuler", "aide en modification : enregistrer, régler, annuler")
 	var v = MenuView.new()
 	root.add_child(v)
