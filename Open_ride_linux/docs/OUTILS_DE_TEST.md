@@ -10,6 +10,7 @@ Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. 
 | `(cd compiler && pytest -q)` | Compilateur : GPX/FIT/TCX, route, terrain, couches OSM, thèmes (réseau coupé ; `-m network` pour Copernicus) | ~1 min |
 | `engine/tests/run_engine_tests.sh` | Engine sans écran : tests unitaires `engine/tests/unit/`, couches OSM, rendu par tronçons, ERG et menus face au faux core, scénarios IPC, rendu Xvfb du shader, tests graphiques à 1280×720. Budgets de temps à part (lot X2) : `OPENRIDE_PERF=strict` pour qu'un dépassement échoue, `PERF_CSV=FICHIER` pour garder les mesures | ~3 min |
 | `engine/tests/run_e2e.sh` | Bout en bout : vrai core (trainer `mock`) et vrai engine, hello, débit des trames, commande, perte de l'engine, fin de séance, FIT | ~10 s |
+| `engine/tests/menu_bench.py --rotation` | Banc des menus face au vrai core sur Bluetooth simulé : chaque scénario de `engine/tests/menu_scenarios/` sur une voie à tour de rôle (Click V2 simulé, clavier, souris) ; sans `--rotation`, les trois voies (§3) | ~10 min |
 | `engine/tests/vitrine_rendu.gd` (lot Y14) | Vitrine de rendu sans core : route, herbe, spectateurs, passants, cyclistes et animaux vus de près par préréglage, sur une route droite de démonstration ; captures PNG et `vitrine.csv` (triangles, appels de dessin) pour comparer avant et après une retouche graphique. `xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/vitrine_rendu.gd -- --out DOSSIER [--quality low,medium,high]` | ~1 min |
 | `engine/tests/vitrine_biomes.gd` (série U, lots U7 et U12) | Vitrine des biomes sans core : pour chaque biome forcé (16 par défaut), route droite dans un paysage plat avec le sol, la végétation, les animaux, un étang, le brouillard et la lumière du biome ; quatre vues par biome (`route`, `bord`, `haut`, `faune`), captures PNG et `vitrine_biomes.csv` (arbres, triangles, appels de dessin, préparation des arbres, bêtes et oiseaux affichés, espèces, placement des animaux). `xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/vitrine_biomes.gd -- --out DOSSIER [--biomes alpine,savanna] [--quality low,medium,high] [--size 1680x1050]` | ~5 min |
 | `engine/tests/vitrine_sols.gd` (série U, lot U6) | Vitrine du sol multi-biome sans core : pour huit paires de biomes, deux tuiles de 1 km avec un relief de collines et un fondu de 250 m de part et d'autre de leur bord commun, vue aérienne oblique ; captures PNG et `vitrine_sols.csv` (triangles, appels de dessin, préparation du matériau). `xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/vitrine_sols.gd -- --out DOSSIER [--quality low,medium,high] [--size 1680x1050]` | ~1 min |
@@ -23,7 +24,7 @@ Protocole pas à pas sur le PC et le vélo (tout sur `main` depuis le 27 octobre
 
 **Cycliste virtuel et course des bots (lot X27) :** la section `rider` d'un scénario du Bluetooth simulé choisit la stratégie du cycliste qui pédale sur le trainer simulé (`constante`, `pente`, `cadence` avec appuis du Click, `rampe` jusqu'à l'échec, `sprint`, `fatigue` avec W′bal, `vitesse` ; `docs/SIMULATION_BLE.md`). `python -m openride_core.tools.bots_race --route demo|plat|col|FICHIER.world --rider-pct 85 --bots climber,rouleur,sprinter,diesel [--niveau 85] [--json]` fait tourner la vraie séance (calibrage T13, segments, maillots) au pas de 20 ms sans trainer ni engine (parcours `demo` en 8 s au cloud) et donne pour chaque bot : temps d'arrivée, écart avec le cycliste, W′ le plus bas, maillots. Elle vérifie aussi la plus grande trame `state`. Code 1 si un bot calibré au niveau du cycliste finit à plus de 2 % de lui, ou si une trame dépasse 4 096 octets. Le journal, le FIT et les records restent dans un dossier temporaire.
 
-**Tout d'un coup sur le PC (lot X4) :** `scripts/recette_pc.py` enchaîne core, compilateur, engine, bout en bout, tests graphiques et scanner de confidentialité, garde un journal par étape dans `~/OpenRide/recettes/<date>_<heure>/` avec `resume.txt`, `resume.json` et `perf.csv` (budgets de temps), et compare au passage précédent (étape passée d'OK à ÉCHEC, nombre de tests changé). Options : `--rapide` (core sans les tests lents, sans tests graphiques), `--seulement core,engine`, `--sans visual`, `--perf-strict`. Utilise `core/.venv` s'il existe.
+**Tout d'un coup sur le PC (lot X4) :** `scripts/recette_pc.py` enchaîne core, compilateur, engine, bout en bout, tests graphiques, banc des menus (`menu_bench.py`, trois voies, rapport dans `menus/`) et scanner de confidentialité, garde un journal par étape dans `~/OpenRide/recettes/<date>_<heure>/` avec `resume.txt`, `resume.json` et `perf.csv` (budgets de temps), et compare au passage précédent (étape passée d'OK à ÉCHEC, nombre de tests changé). Options : `--rapide` (core sans les tests lents, sans tests graphiques ni banc des menus), `--seulement core,engine`, `--sans visual`, `--perf-strict`. Utilise `core/.venv` s'il existe.
 
 **Pré-vol avant une séance vélo (lot X36) :** `scripts/pre_vol.py --seance t11_j7` vérifie en une commande tout ce qui se contrôle sans pédaler, pour que la séance tienne en 20 minutes de vélo : git (branche, rien de non commité, à jour avec origin), tests pytest de la marque `recette_sans_velo`, tests unitaires Godot de la séance (`UNIT`), séance simulée (scénarios du lot X33 quand ils existent), `config.toml` sauvegardé en `config.toml.<séance>`, parcours compilés présents, fichiers de la séance posés (`powerups.toml` de la séance A) ou mis de côté, trainer et Click visibles en Bluetooth (`openride-core devices --json`). Verdict « PRÊT À ROULER » ou la liste de ce qui bloque, avec bip. Séances dans `scripts/pre_vol_seances.toml` (`t11_j7`, `p27`, `erg`, `recette_1_0`, `--liste`) ; options `--sans-engine`, `--sans-bluetooth`, `--sans-reseau`, `--muet` ; journaux dans `~/OpenRide/pre_vol/<date>_<heure>/`. Code de sortie : 0 si prêt, 1 sinon, 2 si l'appel est invalide.
 
@@ -77,21 +78,52 @@ Scénarios du banc (`engine/tests/sim_bench_scenarios/`, format de `SIMULATION_B
 | `coupures_village` | village | Scénario `coupures` du core devant les bâtiments |
 | `ceinture` | demo | Montre qui diffuse (la ceinture doit être préférée), contact perdu puis retrouvé, batterie à 8 %, fréquence figée, coupure |
 | `click_sommeil` | demo | Connexions lentes, appuis longs, « − » coupé qui se rendort, « + » qui refuse une connexion |
-| `decor_vivant_2` | osm | Décor vivant de la deuxième vague (lot P27) : 5 min en SIM à 300 W (vers 21 km/h) sur le monde de test OSM (prés, champs, routes voisines, troupeau, lac, canal, montée à 5 %), à lancer avec `--probe` en `low`, `medium` et `high` |
+| `decor_vivant_2` | osm | Décor vivant de la deuxième vague (lot P27) : 5 min en SIM à 300 W (vers 21 km/h) sur le monde de test OSM (prés, champs, routes voisines, troupeau, lac, canal, montée à 5 %), à lancer avec `--probe` en `low`, `medium` et `high` ; vérifie les sortes vues et les sons du décor (lot P30 : `decor_expect`, `sounds_expect`, `decor.csv`) |
 
 Défaut trouvé à la mise en place : en séance, les bâtiments et l'eau OSM n'étaient jamais affichés (`WorldStreamer` ne faisait pas entrer les tronçons préparés par `OsmStreamer`), corrigé le 25 octobre.
 
-### Banc des menus (`engine/tests/menu_bench.py`, lot N13)
+### Banc des menus (`engine/tests/menu_bench.py`, lots N13 puis Z menus du 28 octobre)
 
-Même principe que le banc simulé, mais sans `--autostart` : le core démarre en attente, comme depuis l'icône. Le banc joue des appuis du Click dans l'engine (message de test `menu_input`), capture chaque écran et vérifie titres et éléments. Rien n'est écrit dans le vrai dossier personnel.
+Tous les menus pilotés de bout en bout, sans rien faire à la main : vrai core sur Bluetooth simulé, sans `--autostart` (le core démarre en attente, comme depuis l'icône), et vraie scène Godot sous Xvfb ou dans une fenêtre (`--native`). Les arguments de l'engine sont tirés de `config.toml` par le vrai lanceur (`build_supervisor`). Chaque scénario déclaratif (`engine/tests/menu_scenarios/*.json`) est joué une fois par **voie d'entrée** :
+
+| Voie | Chemin parcouru |
+| --- | --- |
+| `click` | Appui sur le bouton du Zwift Click V2 simulé (+, −, A, B, Y, Z, flèches ; fichier de commandes `control_file` du monde simulé) : notifications Bluetooth, `PressClassifier`, relais du core, engine |
+| `clavier` | Touche appuyée puis relâchée après la durée de l'appui (message de test `key`, `Input.parse_input_event`) : `_unhandled_input` et `key_map.gd`, comme une vraie touche ; en séance, la touche part au core |
+| `souris` | Molette (+ et −), clic droit (Y), clic gauche sur la rangée (A maintenu) (message de test `mouse`) ; un événement sans geste de souris passe par le clavier et le rapport le compte |
+
+Un seul tableau bouton → geste (`GESTES` dans le banc, d'après la spécification générale §7.1, `key_map.gd` et `menu_view.gd`). Les vérifications portent sur les identifiants stables des menus (écran, sous-écran de Réglages, focus, identifiants des éléments) lus par le message de test `menu_state`, sur `config.toml`, les journaux du core et de l'engine, les fichiers écrits dans le HOME temporaire et le code de sortie de l'engine (64 : relancer, 65 : session simulée). Chaque vérification attend son résultat quelques secondes au lieu d'attentes fixes. Étape `relancer` : core et engine arrêtés proprement puis relancés sur le même HOME, pour vérifier qu'un réglage persiste. Le format des étapes est décrit en tête de `menu_bench.py`.
 
 ```bash
-python3 engine/tests/menu_bench.py --list                      # parcours disponibles
-python3 engine/tests/menu_bench.py                             # tous les parcours, rapport.html
-python3 engine/tests/menu_bench.py --parcours appareils --native   # fenêtre visible
+python3 engine/tests/menu_bench.py --list                                  # scénarios et voies
+python3 engine/tests/menu_bench.py                                         # tout, trois voies, rapport.html
+python3 engine/tests/menu_bench.py --scenario reglages --voies clavier     # un scénario, une voie
+python3 engine/tests/menu_bench.py --scenario appareils --native           # fenêtre visible
+python3 engine/tests/menu_bench.py --captures ecrans --out ~/OpenRide/menu_bench/$(date +%F)   # capture de chaque écran vérifié
 ```
 
-Parcours : `erg` (lot N16 : entraînement créé puis lu par le core, fichier des Téléchargements importé) ; `reglages` (lots O3 et O4 : FTP écrite dans `config.toml`, qualité appliquée tout de suite, curseur de difficulté de la pause) ; `connexion_auto` (tout se connecte, l'écran de connexion passe seul à l'accueil) ; `sessions` (lot N15 : monde, session libre, pause, bilan, session ERG, « Session simulée » : code 65) ; `appareils` (un seul boîtier du Click, « Passer », Réglages → Appareils, recherche, enregistrement dans `config.toml`, « Relancer » : code de sortie 64). Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
+| Scénario | Voies | Ce qu'il vérifie |
+| --- | --- | --- |
+| `connexion_auto` | clavier | Tout se connecte, l'écran « Connexion des appareils » passe seul à l'accueil, entrées de l'accueil |
+| `appareils` | trois | Un seul boîtier du Click : « Passer » ; Réglages → Appareils : recherche, Enregistrer → confirmation (Non : rien d'écrit, Oui : `config.toml`), « Relancer » (code 64) |
+| `sessions` | trois | Parcours choisi, session libre, Y en séance (pause), fin enregistrée, bilan, session ERG, « Session simulée » confirmée (code 65) |
+| `reglages` | trois | Sous-écrans, FTP + 15 W écrite, Y annule une modification, qualité appliquée tout de suite et écrite, ligne de version |
+| `erg` | trois | Créer un entraînement par intervalles (fichier écrit), importer un fichier des Téléchargements |
+| `pause` | trois | Y reprend, curseur de difficulté (`set_difficulty`), « Abandonner » confirmé (Non, puis Oui : bilan, aucun FIT) |
+| `quitter` | trois | « Quitter » : focus sur Non, Non et Y reviennent, Oui ferme l'engine (code 0) |
+| `plans_ftp` | trois | Plans de référence : liste, fiche, démarrage, arrêt confirmé ; test de FTP par rampe jusqu'à « Prêt » |
+| `records` | trois | Records depuis « Prêt » (temps fictifs posés dans `records.json`) : segment sans temps désactivé, table, A court bascule « sans bonus » / « avec bonus », retours |
+| `garage` | trois | Garage : vélo et tenue (catalogue du core), avatar modifié, annulé, puis enregistré dans `profile.json` |
+| `monde_ouvert` | click, clavier | Menu du monde ouvert : globe, recherche ouverte par une lettre (les lettres y sont du texte), Échap ou Y revient puis ferme |
+| `cyber_rogue` | trois | Départ du Cyber-Rogue : objectif et durée, avertissement du premier lancement, run composée jusqu'à « Prêt », « Changer les choix » et run recomposée, départ, pause, abandon |
+| `clavier_synonymes` | clavier | Entrée, Maj+A, Page haut et bas, Échap, `=` et pavé +, flèches gauche et droite ; appui ambigu de 0,7 s ignoré ; flèches haut et bas sans effet en menu |
+| `souris_gestes` | souris | Clic sur un élément sans focus, molette, clic droit, clic hors des éléments et survol sans effet |
+
+Un nouvel écran s'ajoute au banc par un fichier JSON, sans toucher au script. Clé d'en-tête `fichiers` : fichiers posés dans le HOME avant le lancement (records, profil…).
+
+Défauts trouvés par le banc à sa mise en service (28 octobre), corrigés dans la même PR : catalogue du Garage jamais reçu par l'engine (plus de 4 096 octets, jeté par `send_raw` : la liste des messages à 60 000 octets reprend désormais celle du contrat §2, `plans` compris) ; Cyber-Rogue bloqué sur « Composition de la run… » quand la run est recomposée depuis « Prêt » (le core repasse en READY dans la même commande : l'engine attend maintenant l'accusé de `start_run`).
+
+Rapport dans `--out` (défaut : dossier temporaire) : `rapport.html` (tableau scénario × voie, chaque vérification, captures prises à chaque échec avec l'écran, le titre et les rangées affichées), `resultats.json`, `resume.txt`, et les journaux `core.log` et `engine.log` de chaque passage. Durée : environ 40 s par scénario et par voie sous Xvfb. Code de sortie : 0 si tout passe, 1 sinon, 2 si Godot ou `xvfb-run` manque.
 
 ## 4. Parcours d'essai sans réseau
 

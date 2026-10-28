@@ -30,6 +30,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
 import logging
 import math
 import random
@@ -605,11 +606,30 @@ class SimHrStrap(SimDevice):
 
 # --- monde simulé -------------------------------------------------------------------------
 
+# Boutons du Click simulé (Click V2, `zwift_click.KEYPAD_BITS`) : nom accepté par `press` -> (boîtier, touche).
+# Boîtier droit (« + ») : +, A, B, Y, Z ; boîtier gauche (« − ») : −, flèches.
+CLICK_BUTTONS: dict[str, tuple[str, str]] = {
+    "+": ("+", "+"), "-": ("-", "-"),
+    **{b: ("+", b) for b in ("A", "B", "Y", "Z")},
+    **{b: ("-", b) for b in ("LEFT", "UP", "RIGHT", "DOWN")},
+}
+_BUTTON_ALIASES = {"−": "-", "MINUS": "-", "MOINS": "-", "PLUS": "+"}
+
+
+def click_button(name: str) -> tuple[str, str]:
+    """(boîtier, touche) d'un bouton du Click simulé ; KeyError si le nom est inconnu."""
+    key = str(name).strip().upper()
+    return CLICK_BUTTONS[_BUTTON_ALIASES.get(key, key)]
+
+
 class SimWorld:
     """Les appareils simulés d'une séance, leur horloge et la recherche BLE.
 
     `find_device` et `client_factory` ont la signature attendue par les pilotes réels.
     `run()` déroule les événements du scénario ; l'horloge part au premier appel de `now()`.
+    `control_file` (facultatif) : fichier suivi pendant la séance, une ligne JSON par événement à
+    appliquer tout de suite (même format qu'un événement du scénario, sans « t ») ; le banc des menus
+    (`engine/tests/menu_bench.py`) y écrit ses appuis du Click.
     """
 
     write_latency_s = 0.01
@@ -623,6 +643,7 @@ class SimWorld:
         self.events: list[dict[str, Any]] = []
         self.relay_delay_s: tuple[float, float] = (0.005, 0.040)
         self.name = "sim"
+        self.control_file: str | None = None
         self._t0: float | None = None
         self._stop = asyncio.Event()
         self._discovering = False
@@ -722,9 +743,9 @@ class SimWorld:
         return next((b for b in self.clicks if b.role == role), None)
 
     async def press(self, button: str, duration_s: float = 0.12) -> None:
-        """Appui sur « + » ou « − » du Click simulé, avec le relais du boîtier « − »."""
-        button = "-" if button in ("-", "−", "minus", "moins") else "+"
-        own = self._box(button)
+        """Appui sur un bouton du Click simulé (`CLICK_BUTTONS`), avec le relais du « + » par le boîtier « − »."""
+        role, button = click_button(button)
+        own = self._box(role)
         relay = self._box("-") if button == "+" else None
         delay = self.rng.uniform(*self.relay_delay_s) if relay is not None else 0.0
         loop = asyncio.get_running_loop()
@@ -742,6 +763,8 @@ class SimWorld:
 
     async def run(self) -> None:
         self.now()
+        if self.control_file:
+            asyncio.get_running_loop().create_task(self._follow_control(self.control_file))
         pending = sorted(self.events, key=lambda e: float(e["t"]))
         for ev in pending:
             wait = float(ev["t"]) - self.now()
@@ -758,9 +781,26 @@ class SimWorld:
                 log.warning("Simulation : événement %s impossible : %s", ev, exc)
         await self._stop.wait()
 
+    async def _follow_control(self, path: str, period_s: float = 0.02) -> None:
+        """Applique chaque ligne JSON ajoutée à `path` (créé vide s'il manque) jusqu'à l'arrêt du monde."""
+        with open(path, "a+", encoding="utf-8") as f:
+            f.seek(0)
+            pending = ""
+            while not self._stop.is_set():
+                pending += f.read()
+                *lines, pending = pending.split("\n")
+                for line in filter(str.strip, lines):
+                    try:
+                        await self.apply(json.loads(line))
+                    except Exception as exc:   # ligne illisible : signalée, la séance continue
+                        log.warning("Simulation : commande %r impossible : %s", line, exc)
+                await asyncio.sleep(period_s)
+
     async def apply(self, ev: dict[str, Any]) -> None:
         action = ev["action"]
         log.info("Simulation (t=%.1f s) : %s", self.now(), _describe(ev))
+        if action == "press":
+            click_button(ev.get("button", "+"))   # bouton inconnu : KeyError avant l'appui
         if action == "press":
             # Pas d'attente : deux appuis rapprochés du scénario ne doivent pas se décaler.
             asyncio.get_running_loop().create_task(
