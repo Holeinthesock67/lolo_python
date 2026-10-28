@@ -214,7 +214,7 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 | `skip_block` | `{}` | Bloc suivant en ERG, comme Z court au Click (spécification générale §7.1) ; pour le menu ou un outil |
 | `list_routes` | `{}` | Demande la liste des parcours ; réponse `routes` |
 | `list_workouts` | `{}` | Demande la liste des entraînements ; réponse `workouts` |
-| `set_difficulty` | `{ "pct": nombre }` | Change la difficulté du trainer (0 à 100) pour la séance en cours |
+| `set_difficulty` | `{ "pct": nombre }` | Change la difficulté du trainer (0 à 100) pour la séance en cours ; la valeur est aussi écrite dans `config.toml` (`trainer.difficulty_pct`) et sert de départ à la séance suivante |
 | `scan_devices` | `{ "timeout_s": nombre }` (8 par défaut, 1 à 30) | Révision 1.2 : recherche des appareils Bluetooth ; réponses `scan_results` |
 | `identify_click_plus` | `{}` | Révision 1.2 : attend un appui « + » du Click pendant 15 s ; réponse `scan_results` avec `plus_address` |
 | `pair_devices` | `{ "trainer", "click_plus", "click_minus", "hr" }` : adresse ou `null` | Révision 1.2 : écrit les appareils choisis dans `config.toml` ; `error` `pairing_failed` en cas d'échec |
@@ -328,7 +328,7 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 
 | Message | Sens | Champs |
 | --- | --- | --- |
-| `settings` | core vers engine | `v`, `request_cmd_id`, `items` : liste de `{key, label, group, type, value, applies}` ; `group` range le réglage dans un sous-écran de « Réglages » (`rider` cycliste, `ride` séance, `display` affichage, `sound` son, `wind` vent) ; `type` vaut `int` (avec `min`, `max`, `step`, `unit`) ou `choice` (avec `choices`) ; `applies` vaut `next_session` (séance suivante, sans relancer) ou `now` (qualité, thème, courbes, compteur d'images/s `render.fps` et volumes `audio.*` : l'engine les applique tout de suite) ; 24 éléments au plus |
+| `settings` | core vers engine | `v`, `request_cmd_id`, `items` : liste de `{key, label, group, type, value, applies}` ; `group` range le réglage dans un sous-écran de « Réglages » (`rider` cycliste, `ride` séance, `graphics` graphisme, `sound` son, `wind` vent) ; `type` vaut `int` (avec `min`, `max`, `step`, `unit`) ou `choice` (avec `choices`) ; `applies` vaut `next_session` (séance suivante, sans relancer) ou `now` (qualité, thème, courbes, compteur d'images/s `render.fps` et volumes `audio.*` : l'engine les applique tout de suite) ; 24 éléments au plus |
 
 - Réglages proposés : `rider.ftp_w`, `rider.mass_kg`, `trainer.difficulty_pct`, `gearing.start_gear`, `render.quality`, `render.theme` (`default` et les thèmes de `~/OpenRide/Themes/`), `render.chart` (courbes de la séance, lot O14 : `hidden`, `reduced`, `full` ; appliqué tout de suite). Bornes et choix : ceux de la validation de `config.toml`.
 - `set_setting` : hors séance seulement (`IDLE`, `READY`, `FINISHED`, `ERROR`) ; pendant `RUNNING` ou `PAUSED`, `error` `busy` et rien n'est écrit (pendant la séance, la difficulté se change par `set_difficulty`). Valeur hors bornes ou choix inconnu : `error` `setting_invalid`, rien n'est écrit. Sinon le fichier est modifié comme pour `pair_devices` (copie `.bak`), la valeur sert dès la séance suivante (`hello_ack.config` aussi) et le core renvoie `settings` avec `request_cmd_id` de la commande.
