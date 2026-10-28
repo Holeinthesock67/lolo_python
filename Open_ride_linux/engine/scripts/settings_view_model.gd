@@ -6,8 +6,9 @@ extends RefCounted
 ## Le core envoie la liste (`settings` : {key, label, type, value, min, max, step, unit, choices,
 ## applies}) ; ce modèle la met en forme et garde la valeur en cours de modification. Écran de
 ## modification : + / − (appui court) changent la valeur, appui long + enregistre, appui long −
-## annule. La difficulté s'affiche en curseur de 0 à 100 % ; le même curseur sert sur l'écran de
-## pause, où il envoie `set_difficulty` (lot Q1) sans toucher à config.toml.
+## annule. Tout réglage en % de 0 à 100 (difficulté, volumes) s'affiche en curseur ; le curseur de la
+## difficulté sert aussi sur l'écran de pause, où il envoie `set_difficulty` (lot Q1) sans toucher à
+## config.toml.
 ## Le même écran sert aux paramètres de « Créer un entraînement » (lot N16, clés « workout.… ») :
 ## commit() renvoie alors l'action interne `builder_set`.
 ## Pas de class_name : charger par preload("res://scripts/settings_view_model.gd").
@@ -15,18 +16,28 @@ extends RefCounted
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 
 const EDIT_SCREEN := "setting_edit"
-const DIFFICULTY_KEY := "trainer.difficulty_pct"
 ## Clé de l'écran de modification ouvert depuis la pause (difficulté de la séance en cours).
 const PAUSE_DIFFICULTY := "pause.difficulty"
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
 ## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
 ## Courbes de la séance (lot O14) : `render.chart` prend `hidden` / `reduced` / `full`.
+## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
+	"render.fps": {"off": "non", "on": "oui"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 }
+
+## Sous-écrans de « Réglages » (champ `group` du message `settings`), dans l'ordre d'affichage :
+## [groupe, titre]. Un élément sans groupe connu va dans « Autres réglages », montré seulement s'il
+## n'est pas vide.
+const GROUPS := [["rider", "Cycliste"], ["ride", "Séance"], ["display", "Affichage"], ["sound", "Son"],
+	["wind", "Vent"]]
+const OTHER_GROUP := ["other", "Autres réglages"]
+## Points cardinaux d'une direction en degrés (unité « ° »), de 45 en 45 depuis le nord.
+const COMPASS := ["nord", "nord-est", "est", "sud-est", "sud", "sud-ouest", "ouest", "nord-ouest"]
 
 var items: Array = []
 ## Modification en cours : {key, label, type, value, min, max, step, unit, choices} ; vide sinon.
@@ -52,8 +63,14 @@ static func slider(pct: int) -> String:
 
 
 
+## Réglage affiché en curseur : entier en %, de 0 à 100 (difficulté, volumes).
+static func is_slider(it: Dictionary) -> bool:
+	return str(it.get("type", "")) == "int" and str(it.get("unit", "")) == "%" \
+		and int(it.get("min", -1)) == 0 and int(it.get("max", -1)) == 100
+
+
 static func format_value(it: Dictionary, value) -> String:
-	if str(it.get("key", "")) in [DIFFICULTY_KEY, PAUSE_DIFFICULTY]:
+	if is_slider(it):
 		return slider(int(value))
 	if it.has("format"):
 		return WorkoutBuilder.format_param(it, value)
@@ -61,14 +78,47 @@ static func format_value(it: Dictionary, value) -> String:
 	if texts.has(str(value)):
 		return str(texts[str(value)])
 	var unit := str(it.get("unit", ""))
+	if unit == "°":
+		return "%d° (%s)" % [int(value), COMPASS[posmod(int(round(int(value) / 45.0)), 8)]]
 	return str(value) + ((" " + unit) if unit != "" else "")
 
 
-## Éléments des réglages pour l'écran « Réglages » (id « set:clé »).
-func menu_items() -> Array:
+## Groupe d'un élément : son `group` s'il est connu, sinon « other ».
+static func group_of(it: Dictionary) -> String:
+	var g := str(it.get("group", ""))
+	for known in GROUPS:
+		if known[0] == g:
+			return g
+	return str(OTHER_GROUP[0])
+
+
+## Titre d'un sous-écran.
+static func group_title(group: String) -> String:
+	for g in GROUPS + [OTHER_GROUP]:
+		if g[0] == group:
+			return str(g[1])
+	return str(OTHER_GROUP[1])
+
+
+## Entrées des sous-écrans pour l'écran « Réglages » (id « group:groupe ») : titre, et en détail les
+## réglages qu'il contient. Groupes vides omis.
+func group_items() -> Array:
+	var out: Array = []
+	for g in GROUPS + [OTHER_GROUP]:
+		var labels := PackedStringArray()
+		for it in items:
+			if it is Dictionary and group_of(it) == g[0]:
+				labels.append(str(it.get("label", it.get("key", ""))))
+		if not labels.is_empty():
+			out.append({"id": "group:" + str(g[0]), "label": g[1], "detail": ", ".join(labels)})
+	return out
+
+
+## Éléments des réglages d'un sous-écran (id « set:clé »).
+func menu_items(group: String) -> Array:
 	var out: Array = []
 	for it in items:
-		if not it is Dictionary:
+		if not it is Dictionary or group_of(it) != group:
 			continue
 		var detail := "tout de suite" if str(it.get("applies", "")) == "now" else ""
 		out.append({"id": "set:" + str(it["key"]), "label": "%s : %s" % [it.get("label", it["key"]),

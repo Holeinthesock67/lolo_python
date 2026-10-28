@@ -241,6 +241,31 @@
               "description": "Segments déclarés dans <parcours>.segments.toml."
             }
           }
+        },
+        "roads": {
+          "type": "object",
+          "description": "Facultative, format 1.5 (lot P22) : dossier roads/, routes voisines du couloir de 400 m.",
+          "required": [
+            "present"
+          ],
+          "properties": {
+            "present": {
+              "type": "boolean"
+            },
+            "version": {
+              "type": "string"
+            },
+            "count": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "osm_date": {
+              "type": [
+                "string",
+                "null"
+              ]
+            }
+          }
         }
       }
     },

@@ -129,6 +129,7 @@ Chaque cahier part de la proposition ; une réponse différente se reporte dans 
 | R12 | Engine : ennemis et boss géométriques, effets d'impact | R10 | Interne (rendu) |
 | R13 | Engine : lancement depuis l'accueil, écran de départ (objectif, durée, W', châssis), couloirs, cartes, pause, fin de run | T1, R8, R10, R11, N6, O4 | Interne |
 | R17 | Direction artistique : charte néon (palette, formes, post-traitement), matériaux et shaders partagés, catalogue des objets graphiques (vélo, traînée, portes, cartes, coffres…) et des effets, planche de démonstration ; tout généré par le code (demande du propriétaire du 27 octobre) | T1 | Délégable (shaders) ; charte validée par le propriétaire |
+| R18 | Bruitages et musique du mode : 24 sons de jeu synthétisés (un par événement et par effet du catalogue R17), musique d'ambiance par couches, budget de voix et de mémoire, volumes réglables alignés sur le volume général des Réglages (demande du propriétaire du 27 octobre) | R8, R17 | Délégable ; écoute validée par le propriétaire en R14 |
 | R14 | Recette sur le PC et le vélo : run complète, 60 images/s, ressenti des boutons | R8, R10 à R13 | Propriétaire |
 | R15 | Scénariste de run : échauffement, salles, couloirs et boss composés à partir de l'objectif (VO2max, seuil, endurance) et de la durée | R3, R6 | Délégable |
 | R16 | Estimation de CP et W' à partir des séances passées (courbe de puissance de l'historique) | — | Délégable |

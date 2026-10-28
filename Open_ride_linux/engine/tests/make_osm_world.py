@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Données du test de lecture des couches OSM dans l'engine (lot K4), sans réseau.
 
-Produit, avec le vrai compilateur, un `.world` à quatre couches (`buildings`, `vegetation`, `poi`,
-`water`) à partir des réponses Overpass enregistrées des tests du compilateur
+Produit, avec le vrai compilateur, un `.world` à cinq couches (`buildings`, `vegetation`, `poi`,
+`water` et, depuis le lot P22, `roads`) à partir des réponses Overpass enregistrées des tests du compilateur
 (`compiler/tests/data/osm/`) et de l'altitude synthétique de ces tests (plan à 5 % vers le nord),
 puis relit le résultat et écrit les nombres attendus dans `expected.json`.
 
@@ -26,7 +26,7 @@ REPO = Path(__file__).resolve().parents[2]          # Open_ride_linux/
 DATA_DIR = REPO / "compiler" / "tests" / "data" / "osm"
 ORIGIN = (45.09, 6.06)                              # même origine que compiler/tests/conftest.py
 ROUTE_LENGTH_M = 3000.0
-LAYERS = ("buildings", "vegetation", "poi", "water")
+LAYERS = ("buildings", "vegetation", "poi", "water", "roads")
 
 
 def _no_network(*_args, **_kwargs):
@@ -34,10 +34,10 @@ def _no_network(*_args, **_kwargs):
 
 
 def _merged_overpass() -> bytes:
-    """Les deux réponses enregistrées fusionnées en une seule (identifiants distincts)."""
+    """Les trois réponses enregistrées fusionnées en une seule (identifiants distincts)."""
     elements: list[dict] = []
     first: dict | None = None
-    for name in ("sample_overpass.json", "sample_poi_water.json"):
+    for name in ("sample_overpass.json", "sample_poi_water.json", "sample_open_roads.json"):
         doc = json.loads((DATA_DIR / name).read_text(encoding="utf-8"))
         first = first or doc
         elements.extend(doc["elements"])
@@ -68,7 +68,7 @@ def _expected(world: Path) -> dict:
     manifest = json.loads((world / "manifest.json").read_text(encoding="utf-8"))
     layers = manifest["layers"]
     out: dict = {"manifest": {}, "files": {}}
-    keys = {"buildings": ["buildings"], "vegetation": ["areas"], "poi": ["points"], "water": ["lines", "areas"]}
+    keys = {"buildings": ["buildings"], "vegetation": ["areas"], "poi": ["points"], "water": ["lines", "areas"], "roads": ["lines"]}
     for layer in LAYERS:
         out["manifest"][layer] = {k: v for k, v in layers[layer].items() if k.endswith("count")}
         per_chunk = {}

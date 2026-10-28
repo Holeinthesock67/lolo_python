@@ -1,7 +1,7 @@
 extends SceneTree
 
-## Rendu hors écran des animaux du lot P11 (shaders/fauna.gdshader) : le shader compile, une vache et un
-## oiseau apparaissent à l'image avec la couleur de leur espèce, et rien n'est dessiné sans animal.
+## Rendu hors écran des animaux du lot P11 (shaders/fauna.gdshader, maillages du lot Y14) : le shader compile, une
+## vache et un oiseau apparaissent à l'image avec la couleur de leur espèce, et rien n'est dessiné sans animal.
 ## Demande Xvfb et le pilote OpenGL (lancé par run_engine_tests.sh, comme test_terrain_render.gd).
 
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
@@ -61,7 +61,8 @@ func _run() -> void:
 	var cow := [{"type": "herd", "id": "h", "species": "cow", "members": [{"pos": Vector3.ZERO, "yaw": PI / 2.0}]}]
 	var img: Image = await _shot(cow, Vector3(0.0, 1.1, 10.0), Vector3(0.0, 1.1, 0.0), 3.0)
 	var c := img.get_pixel(SIZE / 2, SIZE / 2)
-	_check(_close(c, FaunaRenderer.ALBEDO["cow"]), "vache vue de côté : couleur de l'espèce au centre (%s)" % str(c))
+	_check(_close(c, FaunaRenderer.ALBEDO["cow"]) or _close(c, FaunaRenderer.LIGHT["cow"]),
+		"vache vue de côté : robe de l'espèce (ou tache claire) au centre (%s)" % str(c))
 
 	var bird := [{"type": "birds", "id": "f", "center": Vector3(0.0, 40.0, 0.0), "ground_y": 0.0, "radius_m": 0.01,
 		"members": [{"angle": 0.0, "r": 0.0, "h": 0.0, "phase": 0.0, "omega": 0.0}]}]

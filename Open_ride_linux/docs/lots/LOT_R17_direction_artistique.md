@@ -141,5 +141,14 @@ Aucune.
 
 ## 8. Hors périmètre
 
-- Placement des objets dans la scène de jeu (R10 à R13), sons (R11).
+- Placement des objets dans la scène de jeu (R10 à R13), sons (lot R18).
 - Avatar et équipement de la série V hors du mode Cyber-Rogue.
+
+## 9. Livraison (27 octobre 2026)
+
+- Données et fabriques : `engine/scripts/rogue/neon_palette.gd` (jetons, intensités par préréglage, variante « couleurs adaptées » avec motifs, couleurs de pente de R10, contraste WCAG), `neon_catalog.gd` (les 24 objets du §4.4 et les 12 effets du §4.5, avec leur plafond de 3 clignotements par seconde), `neon_materials.gd` (arêtes, verre, hologramme, mur de lumière, grille, glitch ; un matériau par jeton, sorte et préréglage), `rogue_environment.gd` (fond `void`, brume, glow et bloom des trois préréglages).
+- Shaders : `neon_edge`, `neon_grid`, `hologram`, `glitch` (motif qui change 3 fois par seconde au plus), `energy_wall`.
+- Planche : `engine/scenes/rogue_style_sheet.tscn` (touches 1, 2, 3 = préréglage, E = effet suivant, A = couleurs adaptées), à lancer avec `godot --path engine res://scenes/rogue_style_sheet.tscn`.
+- **Écarts :** la pente « plat » de R10 est un cyan plus sombre et plus vert que `player` (`grade_flat`), pour que le joueur reste la seule source cyan vive ; les effets sont décrits par des données (durée, éclairs par seconde) plutôt que par des courbes d'animation, c'est ce que testent les critères 3 ; le vélo, les ennemis, les portes et les cartes sont des primitives Godot sur la planche, leurs vrais modèles procéduraux arrivent avec R10, R12 et R13.
+- **Pas encore fait :** les captures de la planche dans les trois préréglages par `run_visual_tests.sh` (le rendu hors écran de `tests/render/test_rogue_style_sheet_render.gd` écrit l'image low dans le dossier utilisateur de Godot (user://)), la mesure sur la GTX 1060 et l'accord du propriétaire sur la charte (critère 5).
+- Tests : `engine/tests/unit/test_neon_palette.gd`, `test_neon_materials.gd`, `engine/tests/render/test_rogue_style_sheet_render.gd`.
