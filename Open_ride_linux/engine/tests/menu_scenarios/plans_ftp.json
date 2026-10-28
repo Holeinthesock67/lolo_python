@@ -1,0 +1,29 @@
+{
+  "description": "Plans d'entraînement (plans de référence installés) : liste, fiche, démarrage, arrêt confirmé ; test de FTP par rampe jusqu'à l'écran Prêt en passant par le choix du parcours.",
+  "plans": true,
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "plan"},
+    {"ecran": "plans", "titre": "Plans d'entraînement", "elements": ["plan:reprise_4_semaines", "plan:ftp_6_semaines"], "delai": 10},
+    {"choisir": "plan:reprise_4_semaines"},
+    {"ecran": "plan", "contient": ["Reprise 4 semaines"], "elements": ["start"]},
+    {"choisir": "start"},
+    {"ecran": "plans", "elements": ["stop"], "delai": 10},
+    {"choisir": "stop"},
+    {"ecran": "confirm", "titre": "Arrêter le plan Reprise 4 semaines ?", "focus": "no"},
+    {"choisir": "yes"},
+    {"ecran": "plans", "absent": ["Arrêter le plan"], "delai": 10},
+    {"appui": "Y_SHORT"},
+    {"ecran": "home", "contient": ["Choisir un plan"]},
+    {"choisir": "ftp"},
+    {"ecran": "ftp_test", "titre": "Test de FTP", "elements": ["ramp", "20min"]},
+    {"choisir": "ramp"},
+    {"ecran": "routes"},
+    {"choisir": "demo"},
+    {"ecran": "ready", "titre": "Prêt : test de FTP (rampe) — demo"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "ftp_test", "focus": "ramp"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "home", "focus": "ftp"}
+  ]
+}

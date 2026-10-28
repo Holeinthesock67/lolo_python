@@ -48,7 +48,7 @@ Chaque défi : `id`, `name`, `stat`, `threshold`, `reward` (identifiant d'équip
 
 ### 4.7 Commande `openride-core xp`
 
-`openride-core xp [--dir DOSSIER] [--json] [--config FICHIER]` : niveau, XP, prochain seuil, défis réussis, puis une ligne par séance (date, parcours, durée, km, D+, points, ou raison du refus). Les durées des entraînements viennent de `~/OpenRide/Workouts` (dossier de la configuration). `--json` donne des clés stables, documentées en tête du module.
+`openride-core xp [--dir DOSSIER] [--json] [--config FICHIER]` : niveau, XP, prochain seuil, défis réussis, puis une ligne par séance (date, parcours, durée, km, D+, points, ou raison du refus). Les durées des entraînements viennent de `~/OpenRide/Workouts` (dossier de la configuration). `--json` donne des clés stables, documentées en tête du module. Depuis le lot X39, `--save FICHIER` écrit cette sortie comme instantané et `--compare FICHIER` donne l'écart avec elle (non-régression du recalcul avant/après une PR).
 
 ## 5. Fichiers concernés
 
