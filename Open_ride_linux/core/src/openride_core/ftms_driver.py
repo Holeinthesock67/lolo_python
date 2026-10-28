@@ -39,9 +39,24 @@ CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande s
 MAX_CONTROL_RETRIES = 2  # reprises de contrôle tentées avant de déclarer le refus
 DEFAULT_POWER_RANGE = (0.0, 2000.0)
 ATT_RETRIES = 2          # renvois après une erreur ATT (3 essais en tout), lot M1
-ATT_RETRY_DELAY_S = 0.25
+ATT_RETRY_DELAY_S = 0.25   # doublé à chaque renvoi : 0,25 s puis 0,5 s
+CP_BUSY_GRACE_S = 0.5    # procédure précédente restée sans réponse : attente de plus avant d'écrire
+# « Control Point occupé » : 0xFE (Procedure Already In Progress, FTMS) et 0x80, erreur applicative
+# renvoyée par le HomeTrainer (24 et 28 octobre ; le 28, en même temps que la montre Garmin).
+# La liaison reste ouverte : la consigne la plus récente est réessayée avec un délai croissant.
+CP_BUSY_CODES = frozenset({0x80, ftms.ATT_PROCEDURE_IN_PROGRESS})
+CP_BUSY_BACKOFF_S = (0.5, 1.0, 2.0, 4.0)
+RELEASE_BUSY_RETRIES = 3   # relâche sur un Control Point occupé : 0,25, 0,5 puis 1 s d'attente
 
 _ATT_ERROR_RE = re.compile(r"ATT error:\s*0x([0-9a-f]{1,2})\b", re.IGNORECASE)
+
+
+class ControlPointBusy(Exception):
+    """Écriture refusée par un Control Point occupé (CP_BUSY_CODES) après tous les renvois."""
+
+    def __init__(self, op: int, code: int) -> None:
+        super().__init__(f"Control Point occupé (ATT 0x{code:02x} sur 0x{op:02x})")
+        self.op, self.code = op, code
 
 
 def att_error_code(exc: BaseException) -> int | None:
@@ -109,7 +124,8 @@ class ControlPoint:
 
     Une procédure n'est finie qu'à l'indication de réponse (0x80) ; écrire avant expose à
     l'erreur ATT « Procedure Already In Progress ». Chaque écriture attend donc cette
-    indication, au plus `CP_RESPONSE_TIMEOUT_S`, puis on continue même sans réponse.
+    indication, au plus `CP_RESPONSE_TIMEOUT_S`, puis on continue même sans réponse ; si elle
+    manque encore, l'écriture suivante l'attend `CP_BUSY_GRACE_S` de plus avant de partir.
     """
 
     def __init__(self, client: Any,
@@ -145,6 +161,8 @@ class ControlPoint:
 
     async def call(self, payload: bytes, write_timeout: float | None = None) -> ftms.ControlResponse | None:
         """Écrit une commande et attend sa réponse ; None si le trainer n'a pas répondu à temps."""
+        if not self._idle.is_set():   # réponse de la commande précédente encore attendue
+            await self.wait_idle(CP_BUSY_GRACE_S)
         fut = asyncio.get_running_loop().create_future()
         self._waiting = (payload[0], fut)
         t_start = self._clock()
@@ -152,16 +170,22 @@ class ControlPoint:
         self.last_call_at = t_start
         try:
             note_trainer_write()
+            was_idle = self._idle.is_set()
             self._idle.clear()
             if self.trace:
                 op_name, vals, hex_str = format_cp_write(payload)
                 args = f" {vals}" if vals else ""
                 log.info("FTMS > %s%s (%s)", op_name, args, hex_str)
             write = self.client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True)
-            if write_timeout is None:
-                await write
-            else:
-                await asyncio.wait_for(write, timeout=write_timeout)
+            try:
+                if write_timeout is None:
+                    await write
+                else:
+                    await asyncio.wait_for(write, timeout=write_timeout)
+            except BaseException:
+                if was_idle:   # écriture refusée : aucune procédure lancée par celle-ci
+                    self._idle.set()
+                raise
             try:
                 resp = await asyncio.wait_for(fut, timeout=CP_RESPONSE_TIMEOUT_S)
                 if self.trace and resp is not None:
@@ -243,6 +267,11 @@ class FtmsDriver:
         self.supports_erg = True
         self.reconnect_count = 0
         self.att_retries = 0   # renvois après une erreur ATT ponctuelle (lot M1)
+        # Control Point occupé (CP_BUSY_CODES) après les renvois : consigne gardée et réessayée.
+        self.busy = False      # vrai jusqu'à la prochaine consigne acceptée (bandeau de l'engine)
+        self.busy_deferrals = 0
+        self._busy_streak = 0
+        self._busy_retry_at = 0.0
 
     # --- interface synchrone, commune avec MockDriver ---------------------------------
 
@@ -440,6 +469,10 @@ class FtmsDriver:
             if resp.request_op in (ftms.OP_SET_SIM_PARAMS, ftms.OP_SET_TARGET_POWER):
                 self._refusals = 0
                 self.control_refused = False
+                if self.busy:
+                    log.info("Control Point de nouveau libre : consigne acceptée")
+                self.busy = False
+                self._busy_streak = 0
             return
         if resp.request_op == ftms.OP_START_RESUME:
             # « Démarrer » refusé = le trainer tourne déjà (mesuré sur le HomeTrainer) : sans gravité.
@@ -483,6 +516,9 @@ class FtmsDriver:
         if self.reconnect_count or self.att_retries:
             log.info("Trainer : %d reconnexion(s), %d renvoi(s) après erreur ATT.",
                      self.reconnect_count, self.att_retries)
+        if self.busy_deferrals:
+            log.info("Control Point occupé : %d consigne(s) reportée(s), liaison gardée.",
+                     self.busy_deferrals)
 
     async def _session(self) -> None:
         loop = asyncio.get_running_loop()
@@ -528,10 +564,14 @@ class FtmsDriver:
             self._last_data_at = self._clock()
             self._link_up = self._ever_connected = True
             self._last_sent = None
+            self.busy, self._busy_streak, self._busy_retry_at = False, 0, 0.0
             log.info("Trainer connecté (%s)", getattr(dev, "name", dev))
             try:
                 if cp is not None:
-                    await self._take_control(cp)
+                    try:
+                        await self._take_control(cp)
+                    except ControlPointBusy as exc:
+                        self._defer(exc)   # prise de contrôle refaite par _flush_command
                 while not (dropped.is_set() or self._stop.is_set()):
                     if self._clock() - (self._last_data_at or 0.0) > FORCE_RECONNECT_S:
                         raise ConnectionError("plus de données du trainer")
@@ -555,8 +595,10 @@ class FtmsDriver:
     async def _call_retrying(self, cp: ControlPoint, build: Callable[[], bytes]) -> None:
         """Écrit `build()` ; renvoie après une erreur ATT ponctuelle, au plus ATT_RETRIES fois.
 
-        `build` est rappelé à chaque essai : un renvoi porte la consigne la plus récente. Toute
-        autre exception, ou une erreur ATT au troisième essai, remonte jusqu'à `run` (reconnexion).
+        `build` est rappelé à chaque essai : un renvoi porte la consigne la plus récente. Control
+        Point toujours occupé au troisième essai (CP_BUSY_CODES) : `ControlPointBusy`, la liaison
+        reste ouverte. Toute autre exception, ou une autre erreur ATT au troisième essai, remonte
+        jusqu'à `run` (reconnexion).
         """
         attempt = 0
         while True:
@@ -567,32 +609,53 @@ class FtmsDriver:
                 raise
             except Exception as exc:
                 code = att_error_code(exc)
-                if code is None or attempt >= ATT_RETRIES:
+                if code is None:
+                    raise
+                if attempt >= ATT_RETRIES:
+                    if code in CP_BUSY_CODES:
+                        raise ControlPointBusy(payload[0], code) from exc
                     raise
                 attempt += 1
                 self.att_retries += 1
                 log.warning("Trainer : écriture 0x%02x refusée (ATT 0x%02x), renvoi %d/%d",
                             payload[0], code, attempt, ATT_RETRIES)
-                if code == ftms.ATT_PROCEDURE_IN_PROGRESS:
+                if code in CP_BUSY_CODES:
                     await cp.wait_idle()   # fin de la procédure en cours d'abord
                 elif code == ftms.ATT_CCCD_IMPROPERLY_CONFIGURED:
                     await cp.enable()      # indications à nouveau demandées
-                await asyncio.sleep(ATT_RETRY_DELAY_S)
+                await asyncio.sleep(ATT_RETRY_DELAY_S * 2 ** (attempt - 1))
                 continue
             if attempt:
                 log.info("Trainer : écriture 0x%02x acceptée au renvoi %d", payload[0], attempt)
             return
 
+    def _defer(self, exc: ControlPointBusy) -> None:
+        """Control Point occupé : la consigne attend, réessayée après un délai croissant.
+
+        La liaison n'est pas coupée : les mesures continuent d'arriver, donc pas de pause
+        automatique. Seule la consigne la plus récente partira (`_want` n'en garde qu'une).
+        """
+        delay = CP_BUSY_BACKOFF_S[min(self._busy_streak, len(CP_BUSY_BACKOFF_S) - 1)]
+        self._busy_streak += 1
+        self.busy_deferrals += 1
+        self._busy_retry_at = self._clock() + delay
+        if not self.busy:
+            log.warning("%s : autre appareil sur le trainer (montre ?) ; liaison gardée, consigne "
+                        "réessayée dans %.1f s", exc, delay)
+        else:
+            log.info("%s : nouvel essai dans %.1f s", exc, delay)
+        self.busy = True
+
     async def _flush_command(self, cp: ControlPoint) -> None:
         now = self._clock()
-        if now - self._last_sent_at < MIN_SEND_INTERVAL_S:
+        if now - self._last_sent_at < MIN_SEND_INTERVAL_S or now < self._busy_retry_at:
             return
         mode, value = self._want.mode, self._want.value
         prev = self._last_sent
         eps = GRADE_EPSILON_PCT if mode == "sim" else ERG_EPSILON_W
         changed = prev is None or prev[0] != mode or abs(prev[1] - value) >= eps
-        changed = changed or (self._immediate and mode == "sim" and prev[1] != value)
-        self._immediate = False
+        immediate, self._immediate = self._immediate, False
+        changed = changed or (immediate and mode == "sim" and prev[1] != value)
         if not changed and now - self._last_sent_at < RESEND_S:
             return
         supported = self.supports_erg if mode == "erg" else self.supports_sim
@@ -603,8 +666,6 @@ class FtmsDriver:
             self._last_sent, self._last_sent_at = (mode, value), now
             return
         forgotten = self._forgotten
-        if prev is None:   # première consigne ou contrôle perdu
-            await self._take_control(cp)
         sent = (mode, value)
 
         def build() -> bytes:
@@ -617,7 +678,15 @@ class FtmsDriver:
                 return ftms.cmd_set_target_power(want.value)
             return ftms.cmd_set_sim_params(want.value, self._crr, self._cw, self._wind_mps)
 
-        await self._call_retrying(cp, build)
+        try:
+            if prev is None:   # première consigne ou contrôle perdu
+                await self._take_control(cp)
+            await self._call_retrying(cp, build)
+        except ControlPointBusy as exc:
+            self._immediate = self._immediate or immediate   # consigne gardée pour le prochain essai
+            self._last_sent_at = self._clock()
+            self._defer(exc)
+            return
         self._last_sent_at = now
         if self._forgotten == forgotten:   # sinon refus ou contrôle perdu pendant l'écriture
             self._last_sent = sent
@@ -645,13 +714,20 @@ async def release_control(cp: ControlPoint, crr: float = 0.004, cw_kg_m: float =
     if sim:
         steps.insert(0, ("pente 0 %", ftms.cmd_set_sim_params(0.0, crr, cw_kg_m)))
     for label, payload in steps:
-        try:
-            await cp.call(payload, write_timeout=RELEASE_WRITE_TIMEOUT_S)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            ok = False
-            log.warning("Relâche du trainer, %s impossible : %s", label, exc or type(exc).__name__)
+        for attempt in range(RELEASE_BUSY_RETRIES + 1):
+            try:
+                await cp.call(payload, write_timeout=RELEASE_WRITE_TIMEOUT_S)
+                break
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                if att_error_code(exc) in CP_BUSY_CODES and attempt < RELEASE_BUSY_RETRIES:
+                    await cp.wait_idle()   # Control Point occupé : la relâche réessaie
+                    await asyncio.sleep(ATT_RETRY_DELAY_S * 2 ** attempt)
+                    continue
+                ok = False
+                log.warning("Relâche du trainer, %s impossible : %s", label, exc or type(exc).__name__)
+                break
     if ok:
         log.info("Trainer relâché : pente 0 %, contrôle FTMS rendu.")
     return ok

@@ -177,6 +177,8 @@ PATTERNS: dict[str, re.Pattern[str]] = {
     "journal_write_error": re.compile(r"^Écriture du journal impossible : (?P<err>.+)$"),
     "fit_export_error": re.compile(r"^Export FIT impossible : (?P<err>.+)$"),
 }
+# Lignes « Trainer : … » sans coupure de liaison (renvoi après erreur ATT, bilan de fin).
+TRAINER_INFO_RE = re.compile(r"^(?:écriture 0x[0-9a-fA-F]{2} (?:refusée|acceptée)|\d+ reconnexion\(s\))")
 
 
 @dataclass
@@ -405,7 +407,10 @@ def _analyse_single_session(lines: list[str]) -> Report:
             rep.trainer.reconnections += 1
             continue
 
-        if PATTERNS["trainer_warning"].match(msg) or PATTERNS["trainer_lost_pause"].match(msg):
+        m_warn = PATTERNS["trainer_warning"].match(msg)
+        if m_warn and TRAINER_INFO_RE.match(m_warn.group("err")):
+            continue   # renvoi après erreur ATT ou bilan de fin : la liaison n'est pas coupée
+        if m_warn or PATTERNS["trainer_lost_pause"].match(msg):
             if trainer_lost_since is None:
                 rep.trainer.disconnections += 1
                 if dt is not None:

@@ -34,7 +34,7 @@ class SimScenarioError(Exception):
 
 TRAINER_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
                 "ibd_hz", "rider_power_w", "cadence_rpm", "erg_tau_s", "cp_latency_s",
-                "power_range", "refuse_control", "relayed_hr"}
+                "power_range", "refuse_control", "busy_window_s", "relayed_hr"}
 CLICK_BOX_KEYS = {"address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
                   "status_hz", "battery_pct", "sleep_on_drop", "mute_after_s", "unlock_on_ride_on"}
 CLICK_KEYS = CLICK_BOX_KEYS - {"address"} | {"plus", "minus", "relay_delay_s"}
@@ -42,7 +42,7 @@ HR_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures"
            "rest_bpm", "max_bpm", "ftp_w", "tau_s", "bpm", "contact", "battery_pct", "rssi"}
 TOP_KEYS = {"description", "seed", "trainer", "click", "hr", "hr_watch", "events", "control_file"}
 ACTIONS = {"press", "drop", "wake", "sleep", "connect_failures", "connect_delay", "att_error",
-           "cp_silent", "silence", "control_lost", "refuse_control", "rider", "bpm", "contact"}
+           "cp_silent", "other_device", "silence", "control_lost", "refuse_control", "rider", "bpm", "contact"}
 EVENT_KEYS = {"t", "device", "action", "button", "duration_s", "count", "code", "seconds",
               "value", "watts", "cadence_rpm", "bpm"}
 
@@ -65,6 +65,11 @@ def _with(base: dict[str, Any], **changes: Any) -> dict[str, Any]:
         else:
             out[key] = value
     return out
+
+
+def _burst(start: float, button: str, count: int, period: float) -> list[dict[str, Any]]:
+    """Rafale d'appuis courts sur le même bouton."""
+    return [{"t": round(start + i * period, 2), "action": "press", "button": button} for i in range(count)]
 
 
 def _gear_presses(start: float, period: float, count: int) -> list[dict[str, Any]]:
@@ -101,6 +106,22 @@ SCENARIOS: dict[str, dict[str, Any]] = {
     "erreur_0x80": _with(_READY, description=(
         "Erreur BLE ponctuelle : une écriture du Control Point échoue avec l'erreur ATT 0x80 à 20 s."),
         events=[{"t": 20.0, "device": "trainer", "action": "att_error", "code": 0x80}]),
+    "rafale_0x80": _with(_READY, description=(
+        "Rafale de braquets (séance A du 28 octobre) : le Control Point reste occupé 0,6 s après "
+        "chaque réponse et refuse les écritures rapprochées (ATT 0x80) ; cinq « − » en 6 s à 10 s, "
+        "cinq « + » en 1 s à 25 s. La liaison doit tenir, sans pause automatique."),
+        trainer={"busy_window_s": 0.6},
+        events=[*_burst(10.0, "-", 5, 1.2), *_burst(25.0, "+", 5, 0.25)]),
+    "montre_garmin": _with(_READY, description=(
+        "Montre Garmin qui se connecte au trainer (séance A du 28 octobre) : le Control Point refuse "
+        "toute écriture (ATT 0x80) pendant 8 s à 15 s puis 6 s à 40 s, braquets changés pendant ce "
+        "temps. Consignes reportées, liaison gardée, bandeau « piloté par un autre appareil »."),
+        events=[
+            {"t": 15.0, "device": "trainer", "action": "other_device", "seconds": 8},
+            *_burst(17.0, "-", 3, 1.0),
+            {"t": 40.0, "device": "trainer", "action": "other_device", "seconds": 6},
+            *_burst(41.0, "+", 2, 2.0),
+        ]),
     "connexions_retardees": _with(_READY, description=(
         "Connexions lentes : trainer à 4 s de connexion et deux échecs, Click à 2 s, ceinture à 3 s "
         "avec un échec."),
@@ -212,7 +233,7 @@ def validate(spec: Any) -> dict[str, Any]:
                                        "LEFT, UP, RIGHT, DOWN)") from None
         if ev["action"] == "contact" and not isinstance(ev.get("value", True), (bool, type(None))):
             raise SimScenarioError(f"{where}.value : vrai, faux ou null attendu pour contact")
-        if ev["action"] in ("silence", "connect_delay") and "seconds" not in ev:
+        if ev["action"] in ("silence", "connect_delay", "other_device") and "seconds" not in ev:
             raise SimScenarioError(f"{where} : « seconds » obligatoire pour {ev['action']}")
     return spec
 

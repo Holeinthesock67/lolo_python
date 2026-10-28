@@ -116,7 +116,7 @@ Mêmes définitions que `openride-core summary` (lot K7). Chaque champ vaut `nul
 
 | Clé | Contenu |
 | --- | --- |
-| `trainer` | `{status, name, address}` : `status` reprend `trainer_status` ; `name` (nom annoncé) et `address` sont des chaînes ou `null` |
+| `trainer` | `{status, name, address, busy}` : `status` reprend `trainer_status` ; `name` (nom annoncé) et `address` sont des chaînes ou `null` ; `busy` (booléen, facultatif, révision 1.5) est vrai quand le Control Point refuse les consignes parce qu'il est occupé (ATT 0x80 ou 0xFE, autre appareil sur le trainer, une montre par exemple) : liaison gardée, consigne réessayée, l'engine affiche « Trainer piloté par un autre appareil » |
 | `click` | Liste de `{side, status, battery_pct}` : `side` vaut `plus`, `minus` ou `single` ; `status` vaut `CONNECTED`, `SEARCHING` ou `LOST` ; `battery_pct` est un entier de 0 à 100 ou `null`. Liste vide sans Click configuré |
 | `hr` | `{status, source, battery_pct}` : `status` vaut `CONNECTED`, `SEARCHING`, `LOST` ou `NONE` ; `source` vaut `strap`, `trainer` ou `null` |
 
@@ -488,3 +488,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.5) | 27 octobre 2026 | Changement compatible (Réglages en sous-écrans, volumes et compteur d'images/s, docs/AUDIO.md) : champ `group` des éléments de `settings` ; réglages `bike.mass_kg`, `wind.from_deg`, `wind.gust_pct`, `render.fps` (`off` ou `on`), `audio.master_pct`, `audio.ride_pct`, `audio.ambience_pct` et `audio.events_pct` (`applies` = `now`) ; liste `settings` portée à 24 éléments au plus (12 avant), toujours sous 4 096 octets ; l'engine ignore déjà les clés qu'il ne connaît pas |
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot T12, bots à profil) : élément `{ "kind": "profile", "profile" }` de l'argument `bots` de `start` (`climber`, `rouleur`, `sprinter`, `diesel`), compté dans les 4 bots ; profil inconnu : `bot_invalid`. Dans la trame, le bot garde `kind` = `constant` avec les champs de profil de la révision 1.4 |
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot T13, équilibrage des bots à profil) : champ facultatif `level_pct` de l'élément `{ "kind": "profile" }` de `start.bots` (50 à 150 % de la FTP ; sans lui, le réglage `bots.level_pct`, « Niveau des bots ») ; hors bornes : `bot_invalid`. CP et masse calibrées publiées dans `cp_w` et `mass_kg` de la trame, sans nouveau champ |
+| 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (décrochages du trainer de la séance A) : champ facultatif `busy` de `devices.trainer`, vrai tant que le Control Point est occupé par un autre appareil ; la séance n'est pas mise en pause tant que les mesures arrivent |

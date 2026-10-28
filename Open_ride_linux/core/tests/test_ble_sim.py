@@ -9,6 +9,7 @@ from __future__ import annotations
 import asyncio
 import json
 import re
+import struct
 
 import pytest
 
@@ -161,26 +162,33 @@ def test_att_error_0x80_is_resent_without_reconnecting(caplog):
     assert not any("Reconnexion au trainer" in m for m in msgs)
 
 
-@pytest.mark.parametrize("count, reconnects", [(2, 0), (3, 1)])
-def test_repeated_att_errors(count, reconnects):
-    """Deux erreurs de suite : renvois ; trois : reconnexion, puis contrôle et consigne repris."""
+@pytest.mark.parametrize("count, code, reconnects, deferrals", [
+    (2, 0x80, 0, 0), (3, 0x80, 0, 1), (3, 0xFE, 0, 1), (3, 0x0E, 1, 0)])
+def test_repeated_att_errors(count, code, reconnects, deferrals):
+    """Deux erreurs de suite : renvois. Trois : Control Point occupé (0x80, 0xFE), consigne
+    reportée sans couper la liaison ; autre code ATT : reconnexion, contrôle et consigne repris."""
     async def scenario():
         rig = Rig(READY).start()
         await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
         rig.driver.set_sim_grade(1.0)
         await wait_for(lambda: rig.trainer.grade_pct == 1.0)
-        await rig.world.apply({"t": 0, "device": "trainer", "action": "att_error", "count": count})
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "att_error", "count": count,
+                               "code": code})
         rig.driver.set_sim_grade(3.0)
         await wait_for(lambda: rig.trainer.grade_pct == 3.0 and rig.trainer.control, timeout=6)
+        await wait_for(lambda: not rig.driver.busy)   # réponse 0x80 juste après l'écriture
         assert rig.driver.reconnect_count == reconnects
         assert rig.trainer.connections == 1 + reconnects
         assert rig.driver.att_retries == 2
+        assert rig.driver.busy_deferrals == deferrals
         await rig.stop()
     asyncio.run(scenario())
 
 
-def test_att_error_0xfe_waits_for_the_running_procedure(monkeypatch):
-    """0xFE : le renvoi attend la réponse 0x80 de la procédure en cours (ordre relevé)."""
+@pytest.mark.parametrize("latency, refused", [(1.4, False), (2.0, True)])
+def test_slow_procedure_serialises_the_next_write(monkeypatch, latency, refused):
+    """Réponse plus lente que CP_RESPONSE_TIMEOUT_S : l'écriture suivante attend la réponse 0x80
+    (CP_BUSY_GRACE_S de plus). Au-delà, 0xFE : le renvoi attend la réponse en cours."""
     async def scenario():
         rig = Rig(READY).start()
         await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
@@ -193,18 +201,109 @@ def test_att_error_0xfe_waits_for_the_running_procedure(monkeypatch):
             replies.append(rig.world.now())
             respond(reply)
         monkeypatch.setattr(rig.trainer, "_respond", spy)
-        rig.trainer.cp_latency_s = 1.4   # réponse plus lente que CP_RESPONSE_TIMEOUT_S (1 s)
+        rig.trainer.cp_latency_s = latency
+        n = len(rig.trainer.commands)
         rig.driver.set_sim_grade(2.0)
         await wait_for(lambda: rig.trainer.grade_pct == 2.0)
         rig.trainer.cp_latency_s = 0.05
-        rig.driver.set_sim_grade(3.0)   # écrite pendant la procédure lente : 0xFE
+        rig.driver.set_sim_grade(3.0)   # demandée pendant la procédure lente
         await wait_for(lambda: rig.trainer.grade_pct == 3.0, timeout=4)
-        cmds = rig.trainer.commands
-        i = next(i for i, c in enumerate(cmds) if c.result is None)
-        refused, resent = cmds[i], cmds[i + 1]
-        late_reply = next(t for t in replies if t > refused.t)
-        assert resent.result == 0x01 and resent.t >= late_reply
-        assert rig.driver.reconnect_count == 0 and rig.driver.att_retries == 1
+        cmds = rig.trainer.commands[n:]
+        late_reply = replies[0]
+        failed = [c for c in cmds if c.result is None]
+        accepted = [c for c in cmds if c.result == 0x01]
+        assert bool(failed) == refused
+        assert accepted[1].t >= late_reply   # la pente 3 % part après la réponse de la pente 2 %
+        assert rig.driver.reconnect_count == 0 and rig.driver.att_retries == int(refused)
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def _grades(cmds) -> list[float]:
+    return [struct.unpack_from("<h", c.payload, 3)[0] / 100.0 for c in cmds
+            if c.op == ftms.OP_SET_SIM_PARAMS and c.result == 0x01]
+
+
+def test_other_device_on_the_control_point_keeps_the_link(caplog):
+    """Montre Garmin sur le trainer (28 octobre) : toute écriture refusée (ATT 0x80) pendant 3 s.
+
+    Liaison gardée (jamais LOST, aucune reconnexion ni relâche), drapeau `busy` levé puis baissé,
+    et seule la dernière pente demandée pendant ce temps est écrite ensuite.
+    """
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_sim_grade(1.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 1.0)
+        seen: set = set()
+        watcher = asyncio.create_task(_watch_status(rig.driver, seen))
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "other_device", "seconds": 3})
+        n = len(rig.trainer.commands)
+        for g in (2.0, 2.5, 3.0, 4.0):
+            rig.driver.set_sim_grade(g, immediate=True)
+            await asyncio.sleep(0.3)
+        await wait_for(lambda: rig.driver.busy)
+        await wait_for(lambda: rig.trainer.grade_pct == 4.0, timeout=8)
+        await asyncio.sleep(0.2)
+        watcher.cancel()
+        assert seen == {"CONNECTED"}
+        assert not rig.driver.busy and rig.driver.busy_deferrals >= 1
+        assert rig.driver.reconnect_count == 0 and rig.trainer.connections == 1
+        assert ftms.OP_RESET not in [c.op for c in rig.trainer.commands[n:]]
+        assert _grades(rig.trainer.commands[n:]) == [4.0]
+        await rig.stop()
+    with caplog.at_level("INFO"):
+        asyncio.run(scenario())
+    msgs = [r.getMessage() for r in caplog.records]
+    assert any(m.startswith("Control Point occupé (ATT 0x80") for m in msgs)
+    assert "Control Point de nouveau libre : consigne acceptée" in msgs
+    assert not any("Reconnexion au trainer" in m for m in msgs)
+
+
+def test_erg_target_survives_a_busy_control_point():
+    """ERG pendant que le Control Point est occupé : pas de Reset ni de pente 0 % (la résistance
+    ne tombe pas), la nouvelle cible part dès que le Control Point se libère."""
+    async def scenario():
+        rig = Rig(READY).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_target_power(200)
+        await wait_for(lambda: rig.trainer.target_w == 200)
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "other_device", "seconds": 2.5})
+        n = len(rig.trainer.commands)
+        rig.driver.set_target_power(260)
+        modes: set = set()
+        end = rig.world.now() + 6
+        while rig.trainer.target_w != 260:
+            modes.add((rig.trainer.mode, rig.trainer.target_w))
+            assert rig.world.now() < end, "cible jamais écrite"
+            await asyncio.sleep(0.02)
+        assert modes <= {("erg", 200.0)}   # jamais de remise à zéro entre les deux cibles
+        ops = [c.op for c in rig.trainer.commands[n:] if c.result is not None]
+        assert ftms.OP_RESET not in ops and ftms.OP_SET_SIM_PARAMS not in ops
+        assert rig.driver.reconnect_count == 0
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_burst_of_gear_changes_on_a_slow_control_point():
+    """Rafale de braquets (5 « − » rapprochés) sur un Control Point occupé 0,6 s après chaque
+    réponse : aucune reconnexion, et une pente écrite n'est jamais plus ancienne que la précédente."""
+    async def scenario():
+        spec = {**READY, "trainer": {**READY["trainer"], "busy_window_s": 0.6}}
+        rig = Rig(spec).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_sim_grade(5.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 5.0, timeout=6)
+        n = len(rig.trainer.commands)
+        asked = [4.5, 4.0, 3.5, 3.0, 2.5]
+        for g in asked:
+            rig.driver.set_sim_grade(g, immediate=True)
+            await asyncio.sleep(0.25)
+        await wait_for(lambda: rig.trainer.grade_pct == 2.5, timeout=8)
+        written = _grades(rig.trainer.commands[n:])
+        assert written == sorted(written, reverse=True) and written[-1] == 2.5
+        assert set(written) <= set(asked)
+        assert rig.driver.reconnect_count == 0 and rig.trainer.connections == 1
         await rig.stop()
     asyncio.run(scenario())
 

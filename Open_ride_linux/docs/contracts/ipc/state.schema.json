@@ -593,6 +593,10 @@
                 "string",
                 "null"
               ]
+            },
+            "busy": {
+              "type": "boolean",
+              "description": "Facultatif (révision 1.5) : Control Point occupé par un autre appareil."
             }
           }
         },

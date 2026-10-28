@@ -294,3 +294,18 @@ def test_click_diagnostic_two_boxes() -> None:
     rep = analyse(_click_lines(("19:00:05", "up AA:01"), ("19:00:55", "up AA:02"),
                                ("19:01:05", "down - 60.0")))
     assert rep.click.connection_durations_s == [60.0]
+
+
+def test_att_retries_are_not_counted_as_disconnections() -> None:
+    """Renvoi après erreur ATT et Control Point occupé (28 octobre) : liaison gardée, pas de coupure."""
+    lines = (LOGS_DIR / "seance_normale.log").read_text(encoding="utf-8").splitlines()
+    ts = lines[-1].split(" ", 2)[:2]
+    extra = [f"{ts[0]} {ts[1]} WARNING ftms_driver {msg}" for msg in (
+        "Trainer : écriture 0x11 refusée (ATT 0x80), renvoi 1/2",
+        "Trainer : écriture 0x11 acceptée au renvoi 1",
+        "Control Point occupé (ATT 0x80 sur 0x11) : autre appareil sur le trainer (montre ?) ; "
+        "liaison gardée, consigne réessayée dans 0.5 s",
+        "Trainer : 0 reconnexion(s), 3 renvoi(s) après erreur ATT.",
+    )]
+    rep = analyse(lines[:-1] + extra + lines[-1:])
+    assert rep.trainer.disconnections == 0

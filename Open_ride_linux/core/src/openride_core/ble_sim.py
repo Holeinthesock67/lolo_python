@@ -255,7 +255,7 @@ class SimTrainer(SimDevice):
                  rider_power_w: float = 180.0, cadence_rpm: float = 88.0,
                  erg_tau_s: float = 1.5, cp_latency_s: float = 0.05,
                  power_range: tuple[int, int, int] = (0, 2000, 1),
-                 refuse_control: bool = False,
+                 refuse_control: bool = False, busy_window_s: float = 0.0,
                  relayed_hr: bool | int | None = None, **kw: Any) -> None:
         super().__init__(world, name, address, **kw)
         self.ibd_hz = ibd_hz
@@ -263,6 +263,9 @@ class SimTrainer(SimDevice):
         self.erg_tau_s, self.cp_latency_s = erg_tau_s, cp_latency_s
         self.power_range = power_range
         self.refuse_control = refuse_control
+        # Control Point encore occupé `busy_window_s` après chaque réponse : erreur ATT 0x80 aux
+        # écritures rapprochées (rafale de braquets du 28 octobre).
+        self.busy_window_s = float(busy_window_s)
         self.relayed_hr_enabled = bool(relayed_hr)
         self.fixed_relayed_hr: int | None = (
             int(relayed_hr) if isinstance(relayed_hr, (int, float)) and not isinstance(relayed_hr, bool) else None
@@ -277,6 +280,8 @@ class SimTrainer(SimDevice):
         self.control = False
         self.indications = False
         self._busy = False
+        self._busy_until = 0.0
+        self.other_device_until = 0.0   # un autre appareil (montre) occupe le Control Point
         self.silent_until = 0.0
         self.pending_att_errors: list[int] = []
         self.pending_silent_responses = 0
@@ -318,6 +323,9 @@ class SimTrainer(SimDevice):
         if self._busy:
             self.commands.append(CpRecord(now, op, data, None))
             raise att_error(ftms.ATT_PROCEDURE_IN_PROGRESS)
+        if now < max(self._busy_until, self.other_device_until):
+            self.commands.append(CpRecord(now, op, data, None))
+            raise att_error(0x80)
         if self.pending_att_errors:
             code = self.pending_att_errors.pop(0)
             log.info("Simulation : erreur ATT 0x%02x sur l'écriture 0x%02x", code, op)
@@ -336,6 +344,7 @@ class SimTrainer(SimDevice):
 
     def _respond(self, reply: bytes) -> None:
         self._busy = False
+        self._busy_until = self.world.now() + self.busy_window_s
         self.notify(ftms.CONTROL_POINT, reply)
 
     def _execute(self, op: int, data: bytes) -> int:
@@ -821,6 +830,8 @@ class SimWorld:
             dev.connect_delay_s = float(ev["seconds"])
         elif isinstance(dev, SimTrainer) and action == "att_error":
             dev.pending_att_errors.extend([int(ev.get("code", 0x80))] * int(ev.get("count", 1)))
+        elif isinstance(dev, SimTrainer) and action == "other_device":
+            dev.other_device_until = self.now() + float(ev["seconds"])
         elif isinstance(dev, SimTrainer) and action == "cp_silent":
             dev.pending_silent_responses += int(ev.get("count", 1))
         elif isinstance(dev, (SimTrainer, SimClickBox)) and action == "silence":

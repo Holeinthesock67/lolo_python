@@ -35,6 +35,8 @@ Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie s
 | `nominal` | Tout se connecte en une seconde, aucun événement. |
 | `reveil_tardif` | Trainer allumé à 6 s, ceinture à 10 s, boîtiers du Click réveillés par un appui (perdu) à 15 s et 25 s. |
 | `erreur_0x80` | Une écriture du Control Point échoue avec l'erreur ATT 0x80 à 20 s (vue le 24 octobre). Depuis le lot M1, le pilote renvoie la commande 0,25 s plus tard, sans couper la liaison. |
+| `rafale_0x80` | Rafale de braquets (séance A du 28 octobre) : Control Point occupé 0,6 s après chaque réponse (`busy_window_s`), écritures rapprochées refusées avec l'erreur ATT 0x80 ; cinq « − » en 6 s à 10 s, cinq « + » en 1 s à 25 s. Liaison gardée, aucune pause. |
+| `montre_garmin` | Montre Garmin sur le trainer (séance A du 28 octobre) : toute écriture refusée (ATT 0x80) 8 s à 15 s puis 6 s à 40 s, braquets changés pendant ce temps. Consignes reportées, liaison gardée, `devices.trainer.busy` vrai (bandeau de l'engine). |
 | `connexions_retardees` | Trainer : 4 s de connexion et deux échecs ; Click : 2 s ; ceinture : 3 s et un échec. |
 | `coupures` | Trainer coupé à 30 s, Click « − » à 40 s (réveillé à 50 s), ceinture à 45 s, trainer muet 12 s à 70 s, contrôle FTMS retiré à 100 s. |
 | `controle_refuse` | Le trainer refuse le contrôle à partir de 10 s : la séance passe en ERROR après deux reprises. |
@@ -61,7 +63,7 @@ Une section absente retire l'appareil. `control_file` (facultatif, chemin) : fic
 
 **Réglages communs** (`trainer`, `click`, `click.plus`, `click.minus`, `hr`, `hr_watch`) : `appear_at` (s), `connect_delay_s`, `connect_failures` (connexions refusées avant la première réussie), `asleep`, `address` (sauf `click`).
 
-- **trainer :** `name`, `ibd_hz`, `rider_power_w`, `cadence_rpm`, `erg_tau_s`, `cp_latency_s`, `power_range` ([min, max, pas]), `refuse_control`.
+- **trainer :** `name`, `ibd_hz`, `rider_power_w`, `cadence_rpm`, `erg_tau_s`, `cp_latency_s`, `power_range` ([min, max, pas]), `refuse_control`, `busy_window_s` (Control Point encore occupé ce temps après chaque réponse : erreur ATT 0x80 aux écritures rapprochées).
 - **click :** `status_hz`, `battery_pct`, `sleep_on_drop`, `relay_delay_s` ([min, max]).
 - **hr** et **hr_watch :** `name`, `rest_bpm`, `max_bpm`, `ftp_w`, `tau_s`, `bpm` (valeur fixe), `contact` (vrai par défaut ; faux : contact absent ; null : non géré), `battery_pct` (0 à 100 ; null : pas de service Battery), `rssi`.
 
@@ -76,6 +78,7 @@ Une section absente retire l'appareil. `control_file` (facultatif, chemin) : fic
 | `connect_delay` | `seconds` | Durée des prochaines connexions. |
 | `att_error` | `code` (128 = 0x80), `count` | Les prochaines écritures du Control Point échouent. |
 | `cp_silent` | `count` | Les prochaines commandes restent sans réponse 0x80. |
+| `other_device` | `seconds` | Trainer : un autre appareil (montre) occupe le Control Point, toute écriture échoue avec l'erreur ATT 0x80 pendant ce temps. |
 | `silence` | `seconds` | Trainer : plus d'Indoor Bike Data pendant ce temps. Boîtier du Click (`click_plus`, `click_minus`) : plus aucune notification, lien gardé (défaut du boîtier gauche à l'essai 69, recette guidée du Click, lot X8). |
 | `control_lost` | | Fitness Machine Status 0xFF : contrôle retiré. |
 | `refuse_control` | `value` (vrai par défaut) | Les demandes de contrôle sont refusées (0x05). |
@@ -103,7 +106,7 @@ Correspondances : première connexion d'un appareil → `appear_at` ; « Reconne
 
 `core/tests/test_hr_monitor.py` (lot M2) vérifie le décodage complet de 0x2A37, le contact absent puis retrouvé, le choix de la ceinture face à une montre, `hr_name`, `hr_address` et la batterie faible avec la ceinture et la montre simulées.
 
-`core/tests/test_ble_sim.py` rejoue ces comportements par de courts scénarios (quelques secondes chacun) dans la CI : règles du Control Point, ERG et SIM, relâche à l'arrêt, erreur ATT 0x80 suivie d'un renvoi sans reconnexion (une ou deux erreurs de suite ; reconnexion à la troisième), erreur 0xFE renvoyée après la réponse de la procédure en cours, liaison coupée pendant une écriture (reconnexion sans renvoi), lecture du code ATT dans les messages de BlueZ, scénario `erreur_0x80` en séance complète (lot M1, marqué `slow`), contrôle perdu puis repris, contrôle refusé, réveil tardif et connexion refusée, coupure et silence du trainer, relais et appuis longs du Click, Click endormi, ceinture, et une séance complète `CoreSession` sans matériel.
+`core/tests/test_ble_sim.py` rejoue ces comportements par de courts scénarios (quelques secondes chacun) dans la CI : règles du Control Point, ERG et SIM, relâche à l'arrêt, erreur ATT 0x80 suivie d'un renvoi sans reconnexion (une ou deux erreurs de suite ; à la troisième, Control Point occupé : consigne reportée avec un délai croissant, liaison gardée ; reconnexion pour un autre code ATT), écriture qui attend la réponse d'une procédure lente et erreur 0xFE renvoyée après cette réponse, Control Point occupé par une montre (liaison gardée, seule la dernière pente écrite), cible ERG gardée sans Reset ni pente 0 %, rafale de braquets sur un Control Point lent, liaison coupée pendant une écriture (reconnexion sans renvoi), lecture du code ATT dans les messages de BlueZ, scénario `erreur_0x80` en séance complète (lot M1, marqué `slow`), contrôle perdu puis repris, contrôle refusé, réveil tardif et connexion refusée, coupure et silence du trainer, relais et appuis longs du Click, Click endormi, ceinture, et une séance complète `CoreSession` sans matériel.
 
 **Défaut trouvé à la mise en place :** quand le trainer refuse une consigne (0x05) ou annonce la perte du contrôle (0xFF) pendant une écriture, `FtmsDriver` effaçait la consigne envoyée puis la réécrivait au retour de l'écriture : la reprise de contrôle n'avait jamais lieu et la séance finissait en ERROR après trois refus. Corrigé (`_forget_sent`).
 
