@@ -57,3 +57,12 @@ Aucune : les événements des boutons sont ajoutés à la révision 1.3 par la P
 ## 8. Hors périmètre
 
 Le bonus de la série T sur Z en SIM (T1, T6), les vues de caméra elles-mêmes (V12).
+
+## 9. Livraison (28 octobre)
+
+- **Core :** `session.py` : ± court et ± long changent le biais d'un et de cinq pas (`BIAS_STEPS`, ± 2 % et ± 10 %), Z court passe au bloc suivant (roue libre comprise), Y reste la pause de la séance. `ErgController.toggle_pause` a disparu ; l'état `paused` reste, posé par la session quand la séance passe en pause ou en sort (`_set_state`) : le champ `erg.paused` du contrat garde son sens (« ERG en pause ») sans modification de contrat, `RampWatch` l'utilise toujours, et la reprise après un plantage repart en pause de séance, plus jamais en pause ERG à 0 %. La branche « pause ERG : pente 0 % » de `_step` est retirée.
+- **Clavier de l'engine :** `key_map.gd` (tables `MEASURED`, `FIXED`, `SHIFT_LONG`, seuils de `PressClassifier`), événement au relâchement comme au Click. Choix de lecture : en séance, **toutes** les touches partent au core par `input_event`, A et les flèches comprises ; le core les relaie à l'engine comme un appui du Click, et l'engine les traite par le même chemin (`_on_input_event` : bip, vues de caméra de V12). Le clavier n'a ainsi aucun chemin propre, en séance comme en menu (en menu, `_on_input_event` est appelé directement, sans le core). Les flèches gauche et droite au carrefour passent donc par `OpenWorld.on_input`, comme celles du Click ; la commande `choose_branch` du contrat reste, sans appelant au clavier.
+- **Clavier du terminal :** `TERMINAL_KEYS` et `split_terminal_keys` (`input_providers.py`) : séquences d'échappement des flèches et de Page haut et bas ; `SimClickKeyboard` passe + et − par le Click simulé, les autres boutons en événements directs (le Click simulé n'a que + et −).
+- **Textes à l'écran :** rappel des commandes du HUD (`controls_text`), explication de l'appui ambigu, aide de l'écran de modification d'un réglage (« A long : enregistrer, Y : annuler », conforme à `menu_flow._handle_edit`).
+- **Docs :** guide §6 réécrit (tableaux des actions au Click, tableau unique du clavier) et son test `test_guide_shortcuts_match_code_and_negative`, qui relit maintenant `key_map.gd` ; SRS §4.2, §4.4, §6 ; contrat (`erg.paused`, `skip_block`) ; README, CHANGELOG, protocole (C, E, G3, J7), spécification générale.
+- **Reste sur le PC :** `test_key_map.gd` et `run_engine_tests.sh` (Godot ne tourne pas dans le conteneur de développement), puis l'essai J7.

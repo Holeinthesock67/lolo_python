@@ -13,7 +13,7 @@ const Y_LABELS := {"home": "", "pause": "Reprendre", "confirm": "Annuler", "edit
 ## clé d'aide donnée par menu_view.gd ; A maintenu enregistre, + et B règlent (menu_flow._handle_edit).
 const EDIT := "edit"
 const Y_DEFAULT := "Retour"
-## Rappel du clavier (key_to_event de menu_model.gd), coupé en dernier si la place manque.
+## Rappel du clavier (key_map.gd : chaque touche double un bouton du Click), coupé en dernier si la place manque.
 const KEYBOARD := "Clavier : Entrée valide, Échap revient"
 
 

@@ -338,7 +338,7 @@ class ErgController:
         self.index = 0
         self.t_block = 0.0
         self.bias_pct = BIAS_DEFAULT_PCT
-        self.paused = False
+        self.paused = False   # séance en pause (Y) : posé par la session, seule pause de l'ERG (§7.1)
         self.finished = False
         self._from_w: float | None = None   # début du lissage en cours, en watts sans biais (None : aucun)
         self._smooth_t = 0.0
@@ -418,9 +418,6 @@ class ErgController:
 
     def change_bias(self, steps: int) -> None:
         self.bias_pct = min(max(self.bias_pct + steps * BIAS_STEP_PCT, BIAS_MIN_PCT), BIAS_MAX_PCT)
-
-    def toggle_pause(self) -> None:
-        self.paused = not self.paused
 
     def to_dict(self) -> dict[str, Any]:
         """Objet `erg` du contrat IPC §3."""

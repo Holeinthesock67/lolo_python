@@ -1,11 +1,13 @@
 extends RefCounted
 
 ## Circulation décorative sur la route du parcours (Lot P13), sans aucun nœud ni effet sur la physique.
+## Lot P25 : sept sortes (berline, citadine, utilitaire, camion, autocar, moto, tracteur) tirées d'après leur
+## part (KINDS), huit couleurs ; `headlights` dit quand les phares s'allument.
 ## Pas de class_name : charger par preload("res://scripts/traffic_model.gd").
 ##
 ## Le parcours est découpé en cases de SLOT_M ; chaque case tire, d'après la graine et son indice,
 ## s'il porte un véhicule (probabilité BASE_RATE, plus VILLAGE_RATE à moins de VILLAGE_NEAR_M d'un point
-## `village`), sa sorte, sa couleur, sa vitesse et son sens :
+## `village`), sa sorte, sa couleur, sa vitesse (plage de sa sorte) et son sens :
 ## - en face (`dir = -1`) : il apparaît de SPAWN_AHEAD_M.x à SPAWN_AHEAD_M.y devant le cycliste quand
 ##   celui-ci atteint la case, et roule vers lui sur la voie de gauche ;
 ## - dépassement (`dir = +1`) : il apparaît SPAWN_BEHIND_M derrière le cycliste et le double à
@@ -26,13 +28,10 @@ const BASE_RATE := 0.03
 const VILLAGE_RATE := 0.25
 const VILLAGE_NEAR_M := 1000.0
 const OVERTAKE_SHARE := 0.4
-const TRACTOR_SHARE := 0.2
 const SPAWN_AHEAD_M := Vector2(600.0, 1200.0)
 const SPAWN_BEHIND_M := 250.0
 const REMOVE_BEHIND_M := 300.0
 const REMOVE_AHEAD_M := 1300.0
-const CAR_KMH := Vector2(50.0, 70.0)
-const TRACTOR_KMH := Vector2(20.0, 30.0)
 const PASS_SPEED_KMH := 30.0
 const PASS_MARGIN_KMH := 10.0
 const PASS_ZONE_M := Vector2(-60.0, 30.0)   # de 60 m derrière à 30 m devant le cycliste : voie de gauche
@@ -43,12 +42,21 @@ const DEFAULT_SNOW_LINE_M := 2200.0
 const RIDER_HALF_WIDTH_M := 0.3
 const LATERAL_CLEARANCE_M := 1.5
 const RIGHT_LANE_M := 1.5
+## Sortes (Lot P25) : demi-largeur et longueur hors tout de vehicle_mesh.gd (rétroviseurs compris), part des
+## tirages et plage de vitesse.
 const KINDS := {
-	"car_a": {"half_width": 0.9, "length": 4.3},
-	"car_b": {"half_width": 0.9, "length": 3.9},
-	"tractor": {"half_width": 1.1, "length": 3.6},
+	"car_a": {"half_width": 1.03, "length": 4.6, "share": 0.3, "kmh": Vector2(50.0, 70.0)},
+	"car_b": {"half_width": 1.0, "length": 4.1, "share": 0.25, "kmh": Vector2(50.0, 70.0)},
+	"van": {"half_width": 1.12, "length": 5.2, "share": 0.13, "kmh": Vector2(50.0, 65.0)},
+	"truck": {"half_width": 1.42, "length": 9.2, "share": 0.06, "kmh": Vector2(45.0, 60.0)},
+	"bus": {"half_width": 1.44, "length": 12.2, "share": 0.04, "kmh": Vector2(45.0, 60.0)},
+	"moto": {"half_width": 0.41, "length": 2.1, "share": 0.07, "kmh": Vector2(55.0, 80.0)},
+	"tractor": {"half_width": 1.07, "length": 3.8, "share": 0.15, "kmh": Vector2(20.0, 30.0)},
 }
-const COLORS := 4
+const COLORS := 8
+const HEADLIGHT_FOG := 0.3
+const HEADLIGHT_RAIN := 0.2
+const HEADLIGHT_SUN_DEG := 8.0
 
 var route = null
 var budget: int = 3
@@ -115,9 +123,8 @@ func slot_event(k: int) -> Dictionary:
 	var h := VegetationPlacer.hash3(seed, k, 0x7AFF1C)
 	if _u(h) >= rate:
 		return {}
-	var tractor := _u(VegetationPlacer._mix(h + 1)) < TRACTOR_SHARE
-	var kind := "tractor" if tractor else ("car_a" if (h >> 7) & 1 == 0 else "car_b")
-	var range_kmh: Vector2 = TRACTOR_KMH if tractor else CAR_KMH
+	var kind := pick_kind(_u(VegetationPlacer._mix(h + 1)))
+	var range_kmh: Vector2 = KINDS[kind]["kmh"]
 	return {
 		"slot": k,
 		"kind": kind,
@@ -126,6 +133,22 @@ func slot_event(k: int) -> Dictionary:
 		"dir": 1 if _u(VegetationPlacer._mix(h + 4)) < OVERTAKE_SHARE else -1,
 		"ahead_m": lerpf(SPAWN_AHEAD_M.x, SPAWN_AHEAD_M.y, _u(VegetationPlacer._mix(h + 5))),
 	}
+
+
+## Sorte tirée d'après `u` (0 à 1) et les parts de KINDS, dans l'ordre de la table.
+static func pick_kind(u: float) -> String:
+	var acc := 0.0
+	for k in KINDS:
+		acc += float(KINDS[k]["share"])
+		if u < acc:
+			return k
+	return KINDS.keys()[KINDS.size() - 1]
+
+
+## Phares allumés (Lot P25) : brume (`fog_boost`) ou pluie de weather_model.gd, ou soleil bas du thème.
+static func headlights(weather_eval: Dictionary, sun_elevation_deg: float) -> bool:
+	return float(weather_eval.get("fog_boost", 0.0)) >= HEADLIGHT_FOG or float(weather_eval.get("rain", 0.0)) >= HEADLIGHT_RAIN \
+		or sun_elevation_deg <= HEADLIGHT_SUN_DEG
 
 
 static func lane_lateral(kind: String) -> float:

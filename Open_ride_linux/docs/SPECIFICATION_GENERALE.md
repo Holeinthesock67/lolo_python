@@ -113,7 +113,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-ERG-2 | Formats `.erg` et `.mrc` de GoldenCheetah | — | O9 | Livré |
 | 1.0-ERG-3 | Test de FTP, plans sur plusieurs semaines, menu Entraînement | — | O10 à O12 | O10 et O11 livrés ; O12 : core livré (PR #395), écrans de l'engine en revue (PR #396) |
 | 1.0-ERG-4 | Bandeau ERG à l'écran, histogramme, bip à T − 3 s | §6 | N7 | Livré |
-| 1.0-ERG-5 | Boutons de l'ERG selon le plan commun (§7.1) : ± court biais ± 2 %, ± long biais ± 10 %, Z bloc suivant, Y pause | §4.4 | O17 | Spécifié (décision D3 du 27 octobre, issue #367) |
+| 1.0-ERG-5 | Boutons de l'ERG selon le plan commun (§7.1) : ± court biais ± 2 %, ± long biais ± 10 %, Z bloc suivant, Y pause | §4.4 | O17 | Livré, essai sur le PC à faire (décision D3 du 27 octobre, issue #367) |
 | 1.0-CMP-1 | Compilateur GPX vers `.world` : route, terrain, OSM, caches | §7 | B1, B2, I3, I4 | Livré |
 | 1.0-CMP-2 | Traces FIT et TCX, archives Garmin, compilation au lancement | §7 | M7, N11, O5 | Livré |
 | 1.0-CMP-3 | Bibliothèque de parcours et pack de cols célèbres | — | O15, O16 | Livré (pack O16 à construire une première fois sur le PC) |
@@ -310,11 +310,11 @@ Changements à reporter, tous dans des lots identifiés :
 | Où | Avant | Après | Lot |
 | --- | --- | --- | --- |
 | Menus (SRS §4.5, PR #287) | + long : valider ; − long : revenir ; puis A = valider et Z = retour (PR #287) | Tableau ci-dessus : ± déplacent, A court élément suivant, A long valide, Y revient, Z ne fait rien | PR #287, à réécrire avant fusion ; elle ajoute aussi les événements de tous les boutons à la 1.3 |
-| ERG (1.0, SRS §4.4) | + long : bloc suivant ; − long : pause ERG à 0 % | ± long : biais ± 10 % ; Z : bloc suivant ; Y : pause de la séance (déjà là) | O17, avant la 1.0 |
+| ERG (1.0, SRS §4.4) | + long : bloc suivant ; − long : pause ERG à 0 % | ± long : biais ± 10 % ; Z : bloc suivant ; Y : pause de la séance (déjà là) | O17 (fait) |
 | Cyber-Rogue (plan R) | Y : attaque ; A long : pause | Z : attaque ; Y : pause | T1 (fait dans le cahier) |
 | Monde ouvert (W-Q1) | A court : faire défiler les branches | Inchangé, plus A long : valider la branche | W1 |
 | Classique (plan T) | A libre | A : vues de caméra | V12 (§7.2) |
-| Clavier (engine `main.gd` et `menu_model.gd`, fournisseur du terminal) | Flèches haut et bas = braquet, Page haut et bas = appuis longs, P, Espace et Échap = pause, Entrée et Échap = valider et revenir dans les menus | Tableau du clavier ci-dessus | O17, avant la 1.0 |
+| Clavier (engine `key_map.gd`, fournisseur du terminal) | Flèches haut et bas = braquet, Page haut et bas = appuis longs, P, Espace et Échap = pause, Entrée et Échap = valider et revenir dans les menus | Tableau du clavier ci-dessus ; en séance, la touche suit le chemin du Click (core, puis relais à l'engine) | O17 (fait) |
 
 Conséquence : avec ce plan, le Cyber-Rogue n'a plus à être exclu du monde ouvert (point C7 levé).
 
