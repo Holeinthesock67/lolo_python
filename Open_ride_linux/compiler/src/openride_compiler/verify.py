@@ -18,7 +18,7 @@ import numpy as np
 
 from . import constants as C
 from . import segments_layer as SEG
-from .osm_layers import nearest_chunk_and_y, ring_centroid, signed_area
+from .osm_layers import nearest_chunk_and_y, ring_centroid, signed_area, vegetation_chunk_and_y
 from .terrain import LEVELS, NEAR, TILE_BYTES, RouteAxis, read_tile, tile_coords, tile_filename
 
 TILE_RE = re.compile(r"tile_(-?\d+)_(-?\d+)\.f32")
@@ -282,10 +282,15 @@ def _check_vegetation(world: Path, layers: dict, route: dict | None, problems: l
             label = f"vegetation/{chunk_file.name} ({vid})"
             if not isinstance(item.get("id"), str) or not item.get("id"):
                 problems.append(f"{label} : id invalide")
-            if item.get("kind") not in ("wood", "scrub", "orchard"):
-                problems.append(f"{label} : kind inconnu {item.get('kind')!r}")
+            kind = item.get("kind")
+            if kind not in C.VEGETATION_WOODED_KINDS + C.VEGETATION_OPEN_KINDS:
+                problems.append(f"{label} : kind inconnu {kind!r}")
             density = item.get("density")
-            if not (_is_number(density) and 0.0 < float(density) <= 1.0):
+            if kind in C.VEGETATION_OPEN_KINDS:
+                density_ok = _is_number(density) and float(density) == C.DENSITY_OPEN
+            else:
+                density_ok = _is_number(density) and 0.0 < float(density) <= 1.0
+            if not density_ok:
                 problems.append(f"{label} : density invalide {density!r}")
             outer = item.get("outer")
             holes = item.get("holes")
@@ -296,8 +301,7 @@ def _check_vegetation(world: Path, layers: dict, route: dict | None, problems: l
             for h in holes:
                 _check_ring(h, False, label, problems)
             if outer_ok and route is not None and axis is not None:
-                cx, cz = ring_centroid(outer)
-                expected_k, _ = nearest_chunk_and_y(cx, cz, route, axis, C.OSM_BAND_M)
+                expected_k, _ = vegetation_chunk_and_y(outer, str(kind), route, axis)
                 if expected_k != k:
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
 
@@ -429,6 +433,68 @@ def _check_water(world: Path, layers: dict, route: dict | None, problems: list[s
                     problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
 
 
+def _check_roads(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
+    """Couche roads (format 1.5, §8 ter) : routes voisines découpées par tronçon, hors de la route du parcours."""
+    r_layer = layers.get("roads") if isinstance(layers, dict) else None
+    if not isinstance(r_layer, dict) or not r_layer.get("present"):
+        return
+    folder = world / "roads"
+    if not folder.is_dir():
+        problems.append("roads : dossier absent")
+        return
+    axis = RouteAxis(route["x"], route["z"], route["alt_m"]) if route is not None else None
+    for chunk_file in sorted(folder.glob("chunk_*.json")):
+        m = CHUNK_RE.fullmatch(chunk_file.name)
+        if not m:
+            continue
+        k = int(m.group(1))
+        data = _load(chunk_file, problems)
+        if data is None:
+            continue
+        if not str(data.get("version", "")).startswith("1."):
+            problems.append(f"roads/{chunk_file.name} : version inattendue {data.get('version')!r}")
+        lines = data.get("lines")
+        if not isinstance(lines, list):
+            problems.append(f"roads/{chunk_file.name} : « lines » n'est pas une liste")
+            continue
+        for item in lines:
+            if not isinstance(item, dict):
+                problems.append(f"roads/{chunk_file.name} : ligne non objet")
+                continue
+            label = f"roads/{chunk_file.name} ({item.get('id', '?')})"
+            if not isinstance(item.get("id"), str) or not item.get("id"):
+                problems.append(f"{label} : id invalide")
+            if item.get("kind") not in C.ROAD_KINDS:
+                problems.append(f"{label} : kind inconnu {item.get('kind')!r}")
+            lanes = item.get("lanes")
+            if not (isinstance(lanes, int) and not isinstance(lanes, bool) and 1 <= lanes <= 8):
+                problems.append(f"{label} : lanes invalide {lanes!r}")
+            if not isinstance(item.get("oneway"), bool):
+                problems.append(f"{label} : oneway n'est pas un booléen")
+            speed = item.get("speed_kmh")
+            if not (_is_number(speed) and 0 < float(speed) <= 150):
+                problems.append(f"{label} : speed_kmh invalide {speed!r}")
+            pts = item.get("points")
+            if not isinstance(pts, list) or len(pts) < 2:
+                problems.append(f"{label} : points de ligne invalides")
+                continue
+            if not all(isinstance(pt, list) and len(pt) == 3 and all(_is_number(v) for v in pt) for pt in pts):
+                problems.append(f"{label} : point [x, z, y] invalide")
+                continue
+            if route is None or axis is None:
+                continue
+            xs = np.array([p[0] for p in pts], dtype=float)
+            zs = np.array([p[1] for p in pts], dtype=float)
+            gap, _ = axis.nearest(xs, zs, C.OSM_BAND_M)
+            if np.isfinite(gap).any() and float(np.nanmin(np.where(np.isfinite(gap), gap, np.inf))) < C.ROAD_ROUTE_GAP_M - 0.5:
+                problems.append(f"{label} : point à moins de {C.ROAD_ROUTE_GAP_M:.0f} m de la route du parcours")
+            for px, pz in ((xs[0], zs[0]), (xs[-1], zs[-1])):
+                expected_k, _ = nearest_chunk_and_y(float(px), float(pz), route, axis, C.OSM_BAND_M)
+                if expected_k != k:
+                    problems.append(f"{label} : tronçon {k} incohérent avec la position (attendu {expected_k})")
+                    break
+
+
 def _check_segments(world: Path, layers: dict, route: dict | None, problems: list[str]) -> None:
     """Couche segments (format 1.3, §8 bis) : bornes dans le parcours, identifiants uniques, types."""
     s_layer = layers.get("segments") if isinstance(layers, dict) else None
@@ -504,6 +570,7 @@ def verify_world(world: Path) -> list[str]:
     _check_vegetation(world, layers, route, problems)
     _check_poi(world, layers, route, problems)
     _check_water(world, layers, route, problems)
+    _check_roads(world, layers, route, problems)
     _check_segments(world, layers, route, problems)
     return problems
 

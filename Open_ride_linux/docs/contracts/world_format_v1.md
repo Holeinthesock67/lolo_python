@@ -29,6 +29,7 @@ col-du-galibier.world/
   vegetation/chunk_<k>.json    facultative
   poi/chunk_<k>.json           facultative
   water/chunk_<k>.json         facultative
+  roads/chunk_<k>.json         facultative, depuis 1.5 : routes voisines (§8 ter)
   segments.json                facultative, depuis 1.3 : sprints et montées (§8 bis)
 ```
 
@@ -189,8 +190,9 @@ Facultative. Le fichier `vegetation/chunk_<k>.json` décrit où poser des arbres
 }
 ```
 
-- `kind` : `wood` (forêt), `scrub` (broussailles), `orchard` (verger) ; d'autres valeurs sont ignorées.
-- `density` : de 0 à 1, proportion du maximum fixé par le thème. Les arbres sont placés de façon déterministe : la graine dérive de `id`, donc le paysage est identique d'une séance à l'autre.
+- `kind` : `wood` (forêt), `scrub` (broussailles), `orchard` (verger) ; depuis la version 1.5 (lot P22), les terrains ouverts `meadow` (pré, OSM `landuse=meadow`), `farmland` (champ cultivé, `landuse=farmland`) et `grassland` (prairie ou lande, `landuse=grass`, `natural=grassland` ou `natural=heath`), où l'engine place les animaux et les tracteurs mais aucun arbre ; d'autres valeurs sont ignorées.
+- `k` : pour un terrain ouvert dont le centre est hors du couloir de 400 m, le sommet du contour le plus proche de la route décide du tronçon (un grand champ qui touche le couloir par un bord reste gardé).
+- `density` : de 0 à 1, proportion du maximum fixé par le thème ; toujours 0 pour un terrain ouvert, de plus de 0 à 1 sinon. Les arbres sont placés de façon déterministe : la graine dérive de `id`, donc le paysage est identique d'une séance à l'autre.
 - Le manifeste porte `vegetation.source` : `osm` (polygones d'OpenStreetMap) ou `none`.
 
 **Sans polygones.** OpenStreetMap est lacunaire en montagne. Quand la couche est absente ou vide, l'engine peut semer des arbres à partir d'un bruit de densité, en dessous de la limite des arbres fixée par le thème (`treeline_m`). La couverture du sol (ESA WorldCover) pourra alimenter cette couche plus tard sans changer son format.
@@ -245,6 +247,27 @@ Couche facultative en un seul fichier `segments.json` (lot T1, série T) : les s
 - Chaque élément est `Segment.to_dict()` de `segments.py` : `id` unique dans le parcours, `name` (au plus 48 caractères), `type` (`sprint` ou `climb`), `s_start` et `s_end` en mètres le long de la route (`s_start` < `s_end` ; sur une boucle, pas de segment à cheval sur la ligne), `length_m`, `avg_grade_pct`, `gain_m`, `category` (`4`, `3`, `2`, `1`, `HC` pour une montée, `null` pour un sprint) et `source` (`auto` ou `manual`).
 - Au plus 200 segments, triés par `s_start`. Schéma : `docs/contracts/world/segments.schema.json`.
 - Un `.world` sans cette couche reste lisible : le core n'y chronomètre rien et l'engine n'affiche aucun segment. Elle ne dépend que de la route : refaire la route oblige à la refaire.
+
+## 8 ter. Couche routes voisines (depuis 1.5)
+
+Couche facultative en fichiers `roads/chunk_<k>.json` (lot P22) : les routes OpenStreetMap du couloir de 400 m autour du parcours, sans la route du parcours elle-même, pour que l'engine y fasse rouler des voitures, des camions et des bus (lot P25). `add-layer <nom>.world roads` la refait seule.
+
+```json
+{
+  "version": "1.0",
+  "lines": [
+    {"id": "w4021", "kind": "secondary", "lanes": 2, "oneway": false, "speed_kmh": 80,
+     "points": [[120.0, -340.0, 251.3], [145.5, -362.0, 251.9]]}
+  ]
+}
+```
+
+- `kind` : la balise `highway` d'OSM, parmi `motorway`, `trunk`, `primary`, `secondary`, `tertiary`, `unclassified`, `residential` et `track`.
+- `lanes` : de 1 à 8, d'après la balise `lanes`, sinon 4 pour `motorway` et `trunk`, 1 pour `track` ou un sens unique, 2 ailleurs.
+- `oneway` : vrai pour `oneway=yes` et toute `motorway` ; le sens est celui des points.
+- `speed_kmh` : d'après `maxspeed` en km/h (de 5 à 150), sinon 130 (`motorway`), 110 (`trunk`), 80 (`primary`, `secondary`, `tertiary`), 50 (`unclassified`), 30 (`residential`), 20 (`track`).
+- `points` : (x, z, y) tous les 25 m au plus, `y` étant le sol sous la route. Une ligne est coupée là où elle passe à moins de 20 m de la route du parcours (croisement ou tronc commun) et là où elle sort du couloir ; chaque morceau reste dans un seul tronçon `k` (identifiant `<id>_<n>` quand une voie OSM en donne plusieurs) et n'est gardé que s'il a au moins deux points et s'éloigne d'au moins 35 m de la route du parcours.
+- Schéma : `docs/contracts/world/roads.schema.json`. Un `.world` sans cette couche reste lisible : l'engine garde le trafic de P13 sur la route du parcours.
 
 ## 9. Thèmes : palettes, textures, shader triplanaire
 
@@ -313,7 +336,7 @@ Themes/alpes-ete/
 | --- | --- |
 | `route.json` absent ou invalide | Erreur `route_invalid` ; le parcours n'est pas proposé |
 | Couche terrain absente | L'engine dessine le ruban de route sur un sol plat bas, dans le brouillard |
-| Couche bâtiments, végétation, poi, eau ou segments absente | Ignorée sans message |
+| Couche bâtiments, végétation, poi, eau, routes voisines ou segments absente | Ignorée sans message |
 | Couche inconnue dans le manifeste | Ignorée |
 | Tuile de terrain manquante | Remplacée par le niveau lointain ou, à défaut, par un sol plat à l'altitude de la route |
 | Champ inconnu dans un fichier | Ignoré |
@@ -326,7 +349,7 @@ Themes/alpes-ete/
 
 **Validation.** `openride-compiler verify <nom>.world` contrôle : la structure et le manifeste, le nombre de valeurs de chaque tableau de la route, la cohérence entre `length_m` et les points, les tailles des tuiles de terrain (et, depuis 1.1, la présence des tuiles listées, l'égalité des bords partagés et l'absence de `NaN` à moins de 25 m de la route), et les sommes de contrôle SHA-256 optionnelles du manifeste. Des schémas JSON de chaque fichier sont publiés dans `docs/contracts/world/`.
 
-**Régénération.** Le compilateur peut refaire une couche (`add-layer`) depuis ses caches bruts sans télécharger de nouveau ; refaire la route oblige à refaire les couches qui en dépendent (terrain, bâtiments, végétation, poi, eau, segments).
+**Régénération.** Le compilateur peut refaire une couche (`add-layer`) depuis ses caches bruts sans télécharger de nouveau ; refaire la route oblige à refaire les couches qui en dépendent (terrain, bâtiments, végétation, poi, eau, routes voisines, segments). Depuis 1.5, la requête OpenStreetMap demande aussi les prés, les champs et les routes : la première régénération d'une couche OSM d'un parcours compilé avant le lot P22 télécharge donc de nouveau ses données (une fois).
 
 ## 11. Exemple de manifeste et tailles attendues
 
@@ -385,6 +408,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.2 | 26 octobre 2026 | Ajouts compatibles (lot P1) : points d'intérêt `wind_turbine` (avec `height_m` facultatif) et `flag` (§8) ; thème 1.2 avec `sky.clouds`, `sky.time_of_day`, `weather`, `season`, `wind`, `ambience` et `fauna` (§9) |
 | 1.3 | 27 octobre 2026 | Ajout compatible (lot T1, avec la révision 1.4 du contrat IPC) : couche facultative `segments.json` (§8 bis), entrée `layers.segments` du manifeste (`present`, `version`, `file`, `count`, `manual_count`) et schéma `docs/contracts/world/segments.schema.json` ; un `.world` 1.2 reste valide |
 | 1.4 | 27 octobre 2026 | Ajout compatible (lot W1, premier mineur libre après T1) : monde vivant du monde ouvert (§13) : `live`, `origin_kind`, `grid` dans le manifeste, `live.json`, route par parties, couches par tuile en coordonnées relatives au coin, `junctions.json` ; schémas `live`, `route_part`, `junctions` |
+| 1.5 | 27 octobre 2026 | Ajout compatible (lot P22) : terrains ouverts `meadow`, `farmland` et `grassland` de la couche végétation, de densité 0 (§7) ; couche facultative `roads/` des routes voisines (§8 ter), entrée `layers.roads` du manifeste (`present`, `version`, `count`, `osm_date`) et schéma `docs/contracts/world/roads.schema.json` ; `verify` les contrôle ; un `.world` 1.3 reste valide |
 
 ## 13. Monde vivant (monde ouvert, série W)
 

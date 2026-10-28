@@ -34,6 +34,12 @@ func _check(cond: bool, msg: String) -> void:
 
 ## Couleur au centre d'un plan de pente `slope_deg` à l'altitude `alt`, vu de face par une caméra orthogonale.
 func _shot(mat: ShaderMaterial, slope_deg: float, alt: float) -> Color:
+	var img: Image = await _shot_image(mat, slope_deg, alt)
+	return img.get_pixel(SIZE / 2, SIZE / 2)
+
+
+## Image entière du même plan (SIZE × SIZE pixels pour 4 m de côté).
+func _shot_image(mat: ShaderMaterial, slope_deg: float, alt: float) -> Image:
 	var vp := SubViewport.new()
 	vp.size = Vector2i(SIZE, SIZE)
 	vp.debug_draw = Viewport.DEBUG_DRAW_UNSHADED
@@ -59,10 +65,10 @@ func _shot(mat: ShaderMaterial, slope_deg: float, alt: float) -> Color:
 	cam.current = true
 	for i in 5:
 		await process_frame
-	var c := vp.get_texture().get_image().get_pixel(SIZE / 2, SIZE / 2)
+	var img := vp.get_texture().get_image()
 	vp.queue_free()
 	await process_frame
-	return c
+	return img
 
 
 ## Couleur attendue : mélange des couleurs du thème par les poids de blend_weights (lot L3).
@@ -124,13 +130,31 @@ func _run() -> void:
 	var got_tex := await _shot(mat_tex, 0.0, 1000.0)
 	_check(_close(got_tex, tex_color), "texture d'herbe utilisée (rendu #%s, attendu #%s)" % [got_tex.to_html(false), tex_color.to_html(false)])
 
-	# 4. Décor activé (detail_strength = 1.0) : variation de l'herbe bornée à ± 8 %
+	# 4. Décor activé (detail_strength = 1.0) sans le relief d'Y11 : variation de l'herbe bornée à ± 8 %
 	var mat_detail := TerrainMaterial.create_material({})
 	mat_detail.set_shader_parameter("detail_strength", 1.0)
+	mat_detail.set_shader_parameter("grass_relief", 0.0)
 	var got_detail := await _shot(mat_detail, 0.0, 1000.0)
 	var want_flat := _expected({}, 0.0, 1000.0)
 	var ratio := got_detail.r / want_flat.r if want_flat.r > 0.0 else 1.0
 	_check(abs(ratio - 1.0) <= 0.08 + TOLERANCE, "variation d herbe avec detail=1.0 bornee a +- 8 %% (ratio %.3f)" % ratio)
+
+	# 5. Relief de l'herbe (Lot Y11, H1 et H2) : mottes visibles (écart entre pixels), teinte moyenne
+	# proche de celle du thème (le brouillard et le lointain gardent leur aspect)
+	var mat_relief := TerrainMaterial.create_material({})
+	var img: Image = await _shot_image(mat_relief, 0.0, 1000.0)
+	var mean := Vector3.ZERO
+	var lo := INF
+	var hi := -INF
+	for y in range(SIZE):
+		for x in range(SIZE):
+			var c := img.get_pixel(x, y)
+			mean += Vector3(c.r, c.g, c.b)
+			lo = minf(lo, c.g)
+			hi = maxf(hi, c.g)
+	mean /= float(SIZE * SIZE)
+	_check(hi - lo > 0.04, "relief de l'herbe : mottes visibles (vert de %.3f à %.3f)" % [lo, hi])
+	_check(absf(mean.y / want_flat.g - 1.0) <= 0.2, "relief de l'herbe : vert moyen à ± 20 %% du thème (ratio %.3f)" % (mean.y / want_flat.g))
 
 	print("test_terrain_render : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

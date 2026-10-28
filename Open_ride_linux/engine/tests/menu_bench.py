@@ -16,7 +16,7 @@ Parcours (`--list`) :
   recherche, choix, enregistrement dans config.toml, « Relancer » (code de sortie 64 de l'engine) ;
 - `sessions` : menu principal, choix du monde, session libre démarrée puis terminée, session ERG
   (entraînement choisi, consigne ERG reçue), puis « Session simulée » (code de sortie 65) ;
-- `reglages` : Réglages → FTP + 15 W enregistrée dans config.toml, qualité changée tout de suite, ligne « OpenRide X.Y.Z » en bas,
+- `reglages` : Réglages en sous-écrans (Cycliste, Séance, Affichage, Son, Vent) → FTP + 15 W enregistrée dans config.toml, qualité changée tout de suite, ligne « OpenRide X.Y.Z » en bas,
   puis curseur de difficulté sur l'écran de pause (`set_difficulty`).
 
 Résultat : captures et `rapport.html` dans `--out` (défaut : dossier temporaire). Code de sortie : 0
@@ -293,7 +293,14 @@ def parcours_reglages(run: Run) -> None:
         return
     time.sleep(5.0)
     run.press("MINUS_SHORT", "MINUS_SHORT", "A_LONG")
-    run.expect("reglages", "Réglages", "FTP : 250 W", "Difficulté en SIM : ■■■■■□□□□□ 50 %")
+    run.expect("reglages", "Réglages", "Cycliste", "Séance", "Affichage", "Son", "Vent")
+    run.focus_to("Séance")
+    run.press("A_LONG")
+    run.expect("reglages_seance", "Séance", "Difficulté en SIM : ■■■■■□□□□□ 50 %")
+    run.press("Y_SHORT")
+    run.focus_to("Cycliste")
+    run.press("A_LONG")
+    run.expect("reglages_cycliste", "Cycliste", "FTP : 250 W", "Poids du vélo")
     run.focus_to("FTP")
     run.press("A_LONG")
     run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT")
@@ -302,7 +309,10 @@ def parcours_reglages(run: Run) -> None:
     time.sleep(1.0)
     text = run.config.read_text(encoding="utf-8")
     r.check("ftp_w = 265" in text, "FTP écrite dans config.toml", text.replace("\n", " ")[:120])
-    run.expect("reglages_apres", "Réglages", "FTP : 265 W")
+    run.expect("reglages_apres", "Cycliste", "FTP : 265 W")
+    run.press("Y_SHORT")
+    run.focus_to("Affichage")
+    run.press("A_LONG")
     run.focus_to("Qualité")
     t = now()
     run.press("A_LONG", "PLUS_SHORT", "A_LONG")
@@ -311,7 +321,8 @@ def parcours_reglages(run: Run) -> None:
             "qualité appliquée tout de suite au décor", "« Qualité graphique : medium » au journal de l'engine")
     r.check("quality = \"medium\"" in run.config.read_text(encoding="utf-8"), "qualité écrite dans config.toml", "medium")
     version = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
-    run.focus_to("Plafond du vent", limit=12)
+    run.press("Y_SHORT")   # retour aux Réglages
+    run.focus_to("Vent", limit=12)
     run.expect("reglages_version", "Réglages", f"OpenRide {version}")
     run.press("Y_SHORT")   # retour à l'accueil
     run.focus_to("Session libre")

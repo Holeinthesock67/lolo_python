@@ -88,7 +88,7 @@ func _run() -> void:
 	lw.set_route(route)
 	_check(SkyClouds.is_cloud_material(env.sky.sky_material) and env.sky.sky_material != old_sky,
 		"ciel de P6 à la place du ciel actuel (nuages « flat » en low)")
-	_check(lw.grass.get_capacity() == 0, "low : aucune touffe d'herbe (budget 0)")
+	_check(lw.grass.get_capacity() > 0 and lw.grass.get_capacity() <= 1500, "low : touffes d'herbe dans le budget de Y11 H5 (1 500)")
 
 	# Vent de face de 26 km/h : le cycliste roule vers l'est, le vent vient de l'est
 	var now := 100.0
