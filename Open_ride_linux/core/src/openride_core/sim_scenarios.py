@@ -8,11 +8,13 @@ Un scénario est un dictionnaire (ou un fichier JSON du même format) :
       "click": {"appear_at": 4, "plus": {...}, "minus": {...}, "relay_delay_s": [0.005, 0.04]},
       "hr": {"appear_at": 3, "rest_bpm": 60, "contact": true, "battery_pct": 80},
       "hr_watch": {"appear_at": 0, "rssi": -45},
-      "events": [{"t": 30, "device": "trainer", "action": "att_error", "code": 128}, ...]
+      "events": [{"t": 30, "device": "trainer", "action": "att_error", "code": 128}, ...],
+      "control_file": "/tmp/appuis.jsonl"
     }
 
 Une section absente (« trainer », « click », « hr », « hr_watch ») retire l'appareil ; `null` aussi. Les temps
-sont en secondes depuis le démarrage du monde simulé (lancement du core). Les scénarios
+sont en secondes depuis le démarrage du monde simulé (lancement du core). `control_file` (facultatif) :
+fichier suivi pendant la séance, une ligne JSON par événement appliqué tout de suite (sans « t »). Les scénarios
 intégrés reproduisent les essais réels ; `openride-core run --sim-scenario NOM|FICHIER`.
 """
 
@@ -23,7 +25,7 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .ble_sim import WATCH_ADDRESS, WATCH_NAME, SimClickBox, SimHrStrap, SimTrainer, SimWorld
+from .ble_sim import WATCH_ADDRESS, WATCH_NAME, SimClickBox, SimHrStrap, SimTrainer, SimWorld, click_button
 
 
 class SimScenarioError(Exception):
@@ -38,7 +40,7 @@ CLICK_BOX_KEYS = {"address", "appear_at", "connect_delay_s", "connect_failures",
 CLICK_KEYS = CLICK_BOX_KEYS - {"address"} | {"plus", "minus", "relay_delay_s"}
 HR_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
            "rest_bpm", "max_bpm", "ftp_w", "tau_s", "bpm", "contact", "battery_pct", "rssi"}
-TOP_KEYS = {"description", "seed", "trainer", "click", "hr", "hr_watch", "events"}
+TOP_KEYS = {"description", "seed", "trainer", "click", "hr", "hr_watch", "events", "control_file"}
 ACTIONS = {"press", "drop", "wake", "sleep", "connect_failures", "connect_delay", "att_error",
            "cp_silent", "silence", "control_lost", "refuse_control", "rider", "bpm", "contact"}
 EVENT_KEYS = {"t", "device", "action", "button", "duration_s", "count", "code", "seconds",
@@ -190,6 +192,8 @@ def validate(spec: Any) -> dict[str, Any]:
             if "unlock_on_ride_on" in box and box["unlock_on_ride_on"] is not None:
                 if not isinstance(box["unlock_on_ride_on"], bool):
                     raise SimScenarioError(f"click.{role}.unlock_on_ride_on : booléen attendu")
+    if spec.get("control_file") is not None and not isinstance(spec["control_file"], str):
+        raise SimScenarioError("control_file : chemin attendu")
     events = spec.get("events") or []
     if not isinstance(events, list):
         raise SimScenarioError("events : liste attendue")
@@ -203,6 +207,12 @@ def validate(spec: Any) -> dict[str, Any]:
         if ev["action"] not in ACTIONS:
             raise SimScenarioError(f"{where} : action {ev['action']!r} inconnue "
                                    f"(permises : {', '.join(sorted(ACTIONS))})")
+        if ev["action"] == "press":
+            try:
+                click_button(ev.get("button", "+"))
+            except KeyError:
+                raise SimScenarioError(f"{where}.button : bouton {ev.get('button')!r} inconnu (+, -, A, B, Y, Z, "
+                                       "LEFT, UP, RIGHT, DOWN)") from None
         if ev["action"] == "contact" and not isinstance(ev.get("value", True), (bool, type(None))):
             raise SimScenarioError(f"{where}.value : vrai, faux ou null attendu pour contact")
         if ev["action"] in ("silence", "connect_delay") and "seconds" not in ev:
@@ -232,6 +242,7 @@ def build_world(spec: dict[str, Any], name: str = "sim", *, trainer: bool = True
     spec = validate(spec)
     world = SimWorld(seed=int(spec.get("seed", 0)))
     world.name = name
+    world.control_file = spec.get("control_file")
     if trainer and spec.get("trainer") is not None:
         t = dict(spec["trainer"])
         if "power_range" in t:

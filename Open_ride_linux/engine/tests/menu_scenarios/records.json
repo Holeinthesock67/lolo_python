@@ -1,0 +1,28 @@
+{
+  "description": "Records du parcours depuis l'écran Prêt (temps fictifs posés dans ~/OpenRide/records.json) : segments de la démo, segment sans temps désactivé, table d'un segment, A court bascule « sans bonus » / « avec bonus », retours par Y.",
+  "fichiers": {
+    "OpenRide/records.json": {"version": 1, "routes": {"demo": {"climb1": {
+      "no_bonus": [{"time_s": 312.4, "date": "2026-10-27 18:05", "avg_power_w": 251.0, "avg_wkg": 3.4},
+                   {"time_s": 330.0, "date": "2026-10-20 18:00", "avg_power_w": 240.0, "avg_wkg": 3.2}],
+      "bonus": []}}}}
+  },
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "ride"},
+    {"choisir": "demo"},
+    {"ecran": "ready"},
+    {"choisir": "records"},
+    {"ecran": "records", "titre": "Records : demo", "elements": ["seg:climb1", "seg:sprint1"],
+     "contient": ["2 temps sans bonus", "Sprint 1 — aucun temps"]},
+    {"choisir": "seg:climb1"},
+    {"ecran": "record_table", "elements": ["toggle", "row:0", "row:1"], "contient": ["27/10/2026 18:05"]},
+    {"appui": "A_SHORT"},
+    {"ecran": "record_table", "elements": ["toggle", "none"], "contient": ["Aucun temps avec bonus"]},
+    {"appui": "A_SHORT"},
+    {"ecran": "record_table", "elements": ["row:0"]},
+    {"appui": "Y_SHORT"},
+    {"ecran": "records", "focus": "seg:climb1"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "ready", "focus": "records"}
+  ]
+}

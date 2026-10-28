@@ -82,6 +82,8 @@ func _test_budget() -> void:
 	r.set_preset("low")
 	var n0: int = r.get_child_count()
 	r.set_chunk(0, _herds(20, 10, Vector3.ZERO))   # 200 candidats, de 30 m à plus de 1 km
+	_check(r.visible_count("cow") + r.visible_count("sheep") + r.visible_count("bird") == 0,
+		"avant la première mise à jour : aucune instance affichée (pas de troupeau à l'origine du monde)")
 	r.update(Vector3.ZERO, Vector3.ZERO, 0.0)
 	var shown: int = r.visible_count("cow") + r.visible_count("sheep")
 	var max_kept := 0.0

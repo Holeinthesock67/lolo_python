@@ -50,7 +50,7 @@ def test_step_selection(tmp_path, monkeypatch):
     out = tmp_path / "r"
     assert rp.main(["--out", str(out), "--seulement", "core,engine", "--sans", "engine"]) == 0
     steps = {s["name"]: s["status"] for s in json.loads((out / "resume.json").read_text())["steps"]}
-    assert steps["core"] == "OK" and steps["engine"] == "SAUTÉ" and steps["visual"] == "SAUTÉ"
+    assert steps["core"] == "OK" and steps["engine"] == "SAUTÉ" and steps["visual"] == steps["menus"] == "SAUTÉ"
 
 
 def test_rapide_skips_visual_and_slow_tests(tmp_path):
@@ -65,3 +65,11 @@ def test_unknown_step_is_refused(capsys):
         rp.main(["--seulement", "inconnue"])
     assert err.value.code == 2
     assert "étape inconnue" in capsys.readouterr().err
+
+
+def test_menus_step_runs_the_menu_bench(tmp_path):
+    """Banc des menus (clavier, souris, Click simulé) dans la recette, rapport dans le dossier du passage."""
+    cmd, _ = rp.step_commands(False, tmp_path)["menus"]
+    assert cmd[1].endswith("engine/tests/menu_bench.py") and cmd[-2:] == ["--out", str(tmp_path / "menus")]
+    assert rp.detail_of("menus", "reglages clavier OK\nOK\n") == "OK"
+    assert rp.detail_of("menus", "2 passage(s) en échec sur 39\n") == "2 passage(s) en échec sur 39"

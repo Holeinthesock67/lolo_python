@@ -4,8 +4,8 @@
 Règle du projet : les tests tournent sur le PC cible, pas sur GitHub Actions. Ce script enchaîne
 les suites, garde chaque journal et écrit un résumé, comparé au passage précédent :
 
-    scripts/recette_pc.py                    # tout : core, compilateur, engine, bout en bout, graphiques, confidentialité
-    scripts/recette_pc.py --rapide           # core sans les tests lents, pas de tests graphiques
+    scripts/recette_pc.py                    # tout : core, compilateur, engine, bout en bout, graphiques, menus, confidentialité
+    scripts/recette_pc.py --rapide           # core sans les tests lents, sans tests graphiques ni banc des menus
     scripts/recette_pc.py --seulement core,engine
     scripts/recette_pc.py --sans visual
 
@@ -37,7 +37,7 @@ sys.path.insert(0, str(PROJECT / "core" / "src"))
 from openride_core.tools.guide import Guide  # noqa: E402  (bibliothèque standard seulement)
 
 DEFAULT_OUT = Path.home() / "OpenRide" / "recettes"
-STEPS = ("core", "compiler", "engine", "e2e", "visual", "privacy")
+STEPS = ("core", "compiler", "engine", "e2e", "visual", "menus", "privacy")
 
 
 @dataclass
@@ -64,6 +64,7 @@ def step_commands(rapide: bool, out: Path) -> dict[str, tuple[list[str], Path]]:
         "engine": (["bash", str(PROJECT / "engine" / "tests" / "run_engine_tests.sh")], PROJECT),
         "e2e": (["bash", str(PROJECT / "engine" / "tests" / "run_e2e.sh")], PROJECT),
         "visual": (["bash", str(PROJECT / "engine" / "tests" / "run_visual_tests.sh")], PROJECT),
+        "menus": ([py, str(PROJECT / "engine" / "tests" / "menu_bench.py"), "--out", str(out / "menus")], PROJECT),
         "privacy": ([py, str(PROJECT / "scripts" / "privacy" / "privacy_scan.py"), "--all"], REPO),
     }
 
@@ -77,6 +78,7 @@ def detail_of(name: str, text: str) -> str:
         "engine": r"^(RÉSULTAT : .*|Budgets de temps .*)$",
         "e2e": r"^(RÉSULTAT.*|.*vérifications.*)$",
         "visual": r"^(.*vérifications réussies.*|RÉSULTAT.*)$",
+        "menus": r"^(OK|\d+ passage\(s\) en échec.*|xvfb-run introuvable.*)$",
         "privacy": r"^(privacy_scan : .*)$",
     }
     found = re.findall(patterns.get(name, r"$^"), text, re.M)
@@ -154,6 +156,7 @@ def main(argv: list[str] | None = None) -> int:
     wanted = list(args.seulement or STEPS)
     if args.rapide and not args.seulement:
         wanted.remove("visual")
+        wanted.remove("menus")
     wanted = [s for s in wanted if s not in args.sans]
 
     env = dict(os.environ)
