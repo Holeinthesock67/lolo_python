@@ -30,6 +30,7 @@ var theme: Dictionary
 var layer
 var forced := ""
 var _params_cache := {}
+var _mutex := Mutex.new()   # params() appelé depuis les fils de préparation
 
 
 func _init(theme_dict: Dictionary = {}, biome_layer = null) -> void:
@@ -159,12 +160,22 @@ func _terrain_dict(ground: Dictionary) -> Dictionary:
 	return base
 
 
+## Section `terrain` au format 1.x du biome (pour TerrainMaterial tant que U6 n'est pas là, et pour les vitrines).
+func terrain_theme(biome: String) -> Dictionary:
+	var entry = theme.get("biomes", {}).get(biome, {}) if typeof(theme.get("biomes", null)) == TYPE_DICTIONARY else {}
+	var ground = entry.get("ground", {}) if typeof(entry) == TYPE_DICTIONARY else {}
+	return {"terrain": _terrain_dict(ground if typeof(ground) == TYPE_DICTIONARY else {})}
+
+
 ## Paramètres de rendu d'un biome pour une saison, l'avancée dans la saison (0 à 1) et une variante.
 ## Un biome absent du thème, ou une clé absente, prend la valeur 1.x du thème.
 func params(biome: String, season: String = "", progress: float = 0.0, variant: Variant = null) -> Dictionary:
 	var key := "%s|%s|%s" % [biome, season, str(variant)]
-	if _params_cache.has(key):
-		return _params_cache[key]
+	_mutex.lock()
+	var hit = _params_cache.get(key, null)
+	_mutex.unlock()
+	if hit != null:
+		return hit
 	var entry: Dictionary = {}
 	if typeof(theme.get("biomes", null)) == TYPE_DICTIONARY and typeof(theme["biomes"].get(biome, null)) == TYPE_DICTIONARY:
 		entry = theme["biomes"][biome]
@@ -175,6 +186,8 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 	var veg_b: Dictionary = entry.get("vegetation", {}) if typeof(entry.get("vegetation", null)) == TYPE_DICTIONARY else {}
 	var vegetation := {
 		"species": (veg_b.get("species", []) as Array).duplicate(true) if typeof(veg_b.get("species", null)) == TYPE_ARRAY else [],
+		# Faux : le biome ne donne pas d'espèces (thème 1.x ou biome absent) -> arbre d'avant la série U.
+		"has_species": typeof(veg_b.get("species", null)) == TYPE_ARRAY,
 		"max_density_per_ha": float(veg_b.get("max_density_per_ha", veg_1x.get("max_density_per_ha", 400.0))),
 		"treeline_m": veg_b["treeline_m"] if veg_b.has("treeline_m") else veg_1x.get("treeline_m", 2000.0),
 	}
@@ -208,7 +221,9 @@ func params(biome: String, season: String = "", progress: float = 0.0, variant: 
 		"season_progress": clampf(progress, 0.0, 1.0),
 		"variant": _variant_params(variant),
 	}
+	_mutex.lock()
 	_params_cache[key] = out
+	_mutex.unlock()
 	return out
 
 

@@ -21,6 +21,7 @@ var world_dir := ""
 var present := false
 var default_biome := BiomeIds.DEFAULT_BIOME
 var _cache := {}
+var _mutex := Mutex.new()   # tuiles lues depuis les fils de préparation (arbres, faune)
 var warnings := PackedStringArray()
 
 
@@ -83,8 +84,11 @@ static func parse_tile(data: Variant, errors: PackedStringArray) -> Dictionary:
 ## Tuile `(ix, iz)` du niveau `near` ou `far`, en cache ; {} si absente ou invalide.
 func tile(level: String, ix: int, iz: int) -> Dictionary:
 	var key := Vector3i(ix, iz, 0 if level == "near" else 1)
+	_mutex.lock()
 	if _cache.has(key):
-		return _cache[key]
+		var cached: Dictionary = _cache[key]
+		_mutex.unlock()
+		return cached
 	var out := {}
 	if present:
 		var path := tile_path(world_dir, level, ix, iz)
@@ -95,10 +99,13 @@ func tile(level: String, ix: int, iz: int) -> Dictionary:
 				warnings.append(path.get_file() + " : " + e)
 				print("[biome] ", path.get_file(), " ignorée : ", e)
 	_cache[key] = out
+	_mutex.unlock()
 	return out
 
 
 ## Injecte une tuile déjà construite (tests, parcours générés en mémoire).
 func put_tile(level: String, ix: int, iz: int, t: Dictionary) -> void:
 	present = true
+	_mutex.lock()
 	_cache[Vector3i(ix, iz, 0 if level == "near" else 1)] = t
+	_mutex.unlock()

@@ -243,7 +243,7 @@
           {
             "name": "champs et chaumes",
             "role": "flat",
-            "color": "#9aa156",
+            "color": "#8a9150",
             "texture": null,
             "scale_m": 6.0
           },
@@ -467,7 +467,7 @@
           {
             "name": "lichen et sol nu",
             "role": "flat",
-            "color": "#8a8a6a",
+            "color": "#7d7d60",
             "texture": null,
             "scale_m": 6.0
           },
@@ -536,7 +536,7 @@
           {
             "name": "neige",
             "role": "flat",
-            "color": "#eef3f8",
+            "color": "#cdd6e0",
             "texture": null,
             "scale_m": 6.0
           },
@@ -550,7 +550,7 @@
           {
             "name": "neige fraîche",
             "role": "high",
-            "color": "#f8fbff",
+            "color": "#e4eaf1",
             "texture": null,
             "scale_m": 8.0
           }
@@ -598,7 +598,7 @@
           {
             "name": "terre ocre et garrigue",
             "role": "flat",
-            "color": "#b39461",
+            "color": "#8f7f4e",
             "texture": null,
             "scale_m": 6.0
           },
@@ -672,7 +672,7 @@
           {
             "name": "herbe rase et sèche",
             "role": "flat",
-            "color": "#b5ad7a",
+            "color": "#a39a68",
             "texture": null,
             "scale_m": 6.0
           },
@@ -738,7 +738,7 @@
           {
             "name": "herbes hautes jaunes",
             "role": "flat",
-            "color": "#c2a35a",
+            "color": "#a08848",
             "texture": null,
             "scale_m": 6.0
           },
@@ -802,7 +802,7 @@
           {
             "name": "sable",
             "role": "flat",
-            "color": "#e0c38c",
+            "color": "#cbab72",
             "texture": null,
             "scale_m": 6.0
           },
@@ -861,7 +861,7 @@
           {
             "name": "reg",
             "role": "flat",
-            "color": "#b9875a",
+            "color": "#a9784e",
             "texture": null,
             "scale_m": 6.0
           },
@@ -1058,7 +1058,7 @@
           {
             "name": "sable et oyats",
             "role": "flat",
-            "color": "#d8c69c",
+            "color": "#c2ae86",
             "texture": null,
             "scale_m": 6.0
           },
