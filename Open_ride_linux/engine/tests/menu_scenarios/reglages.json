@@ -1,11 +1,11 @@
 {
-  "description": "Réglages et sous-écrans (Cycliste, Séance, Affichage, Son, Vent) : tableau des boutons, modification en place, enregistrement dans config.toml (A long), annulation (Y), retours.",
+  "description": "Réglages et sous-écrans (Cycliste, Séance, Graphisme, Son, Vent) : tableau des boutons, modification en place, enregistrement dans config.toml (A long), annulation (Y), retours.",
   "canaux": ["clavier", "click", "souris"],
   "etapes": [
     {"attendre_ecran": "home", "delai": 15},
     {"ouvrir": "settings"},
     {"ecran": "settings", "titre": "Réglages", "focus": "devices",
-     "elements": ["devices", "group:rider", "group:ride", "group:display", "group:sound", "group:wind"], "inactifs": ["version"]},
+     "elements": ["devices", "group:rider", "group:ride", "group:graphics", "group:sound", "group:wind"], "inactifs": ["version"]},
     {"capture": "reglages"},
     {"tableau": null, "retour_vers": "home"},
     {"ouvrir": "settings"}, {"ecran": "settings"},
@@ -29,8 +29,8 @@
     {"config": {"trainer.difficulty_pct": 40}, "texte": "40 %"},
     {"bouton": "Y court"}, {"ecran": "settings"},
 
-    {"ouvrir": "group:display", "note": "Affichage : qualité appliquée tout de suite"},
-    {"ecran": "settings_group", "titre": "Réglages › Affichage", "elements": ["set:render.quality", "set:render.theme", "set:render.camera"]},
+    {"ouvrir": "group:graphics", "note": "Graphisme : qualité appliquée tout de suite"},
+    {"ecran": "settings_group", "titre": "Réglages › Graphisme", "elements": ["set:render.quality", "set:render.theme", "set:render.camera"]},
     {"ouvrir": "set:render.quality"}, {"bouton": "+ court"}, {"bouton": "A long"},
     {"config": {"render.quality": "medium"}, "journal_engine": "Qualité appliquée : medium"},
     {"bouton": "Y court"}, {"ecran": "settings"},
