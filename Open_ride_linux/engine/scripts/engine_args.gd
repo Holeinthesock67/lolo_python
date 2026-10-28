@@ -7,11 +7,13 @@ extends RefCounted
 ##   --routes-dir=CHEMIN      dossier des parcours (défaut : ~/.local/share/openride/routes)
 ##   --quality=low|medium|high préréglage de qualité graphique (défaut : low, lot L4)
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
+##   --biome=ID|auto          biome forcé sur tout le parcours, pour les essais (défaut : auto ; série U, lot U5)
 ##   --visual-grade=K         exagération visuelle du relief de 1.0 à 2.0 (défaut : 1.0, lot Q2)
 ##   --perf-probe=FICHIER.csv sonde de performance : une ligne de mesures par seconde (lot X13)
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
 ##   --display=windowed|borderless|fullscreen  mode d'affichage (défaut : windowed ; display_mode.gd)
+##   --camera=subjective|follow_near|follow_far|side  vue de caméra de départ (défaut : follow_near ; camera_views.gd)
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
@@ -24,6 +26,8 @@ const MIN_VISUAL_GRADE := 1.0
 const MAX_VISUAL_GRADE := 2.0
 const VALID_QUALITIES := ["low", "medium", "high"]
 const DisplayMode := preload("res://scripts/display_mode.gd")
+const CameraViews := preload("res://scripts/camera_views.gd")
+const BiomeIds := preload("res://scripts/biome_ids.gd")
 
 static var last_error := ""
 
@@ -36,7 +40,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, visual_grade, living, display, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, biome, visual_grade, living, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -45,9 +49,11 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"routes_dir": default_routes_dir(),
 		"quality": DEFAULT_QUALITY,
 		"theme": DEFAULT_THEME,
+		"biome": "auto",
 		"visual_grade": DEFAULT_VISUAL_GRADE,
 		"living": true,
 		"display": DisplayMode.DEFAULT,
+		"camera": CameraViews.DEFAULT_VIEW,
 		"test_mode": false,
 		"sim_session": false,
 		"perf_probe": "",
@@ -66,6 +72,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["quality"] = _quality(arg, DEFAULT_QUALITY)
 		elif arg.begins_with("--theme="):
 			out["theme"] = _theme(arg, DEFAULT_THEME)
+		elif arg.begins_with("--biome="):
+			out["biome"] = _biome(arg, "auto")
 		elif arg.begins_with("--visual-grade="):
 			out["visual_grade"] = _visual_grade(arg, DEFAULT_VISUAL_GRADE)
 		elif arg.begins_with("--perf-probe="):
@@ -75,6 +83,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["perf_probe"] = csv
 		elif arg.begins_with("--living="):
 			out["living"] = _living(arg, true)
+		elif arg.begins_with("--camera="):
+			out["camera"] = _camera(arg, CameraViews.DEFAULT_VIEW)
 		elif arg.begins_with("--display="):
 			out["display"] = _display(arg, DisplayMode.DEFAULT)
 		elif arg == "--test-mode":
@@ -102,6 +112,15 @@ static func _quality(arg: String, fallback: String) -> String:
 	return val
 
 
+static func _camera(arg: String, fallback: String) -> String:
+	var val := arg.get_slice("=", 1).strip_edges()
+	if not CameraViews.is_valid(val):
+		last_error = "Argument ignoré (vue de caméra : subjective, follow_near, follow_far ou side) : " + arg
+		printerr("Argument ignoré (vue de caméra : subjective, follow_near, follow_far ou side) : ", arg)
+		return fallback
+	return val
+
+
 static func _display(arg: String, fallback: String) -> String:
 	var val := arg.get_slice("=", 1).strip_edges()
 	if not DisplayMode.is_valid(val):
@@ -116,6 +135,16 @@ static func _theme(arg: String, fallback: String) -> String:
 	if val.is_empty():
 		last_error = "Argument ignoré (thème vide) : " + arg
 		printerr("Argument ignoré (thème vide) : ", arg)
+		return fallback
+	return val
+
+
+## Biome forcé pour les essais et les captures (série U, lot U5) ; le menu passera par le lot U16.
+static func _biome(arg: String, fallback: String) -> String:
+	var val := arg.get_slice("=", 1).strip_edges()
+	if val != "auto" and not BiomeIds.is_biome(val):
+		last_error = "Argument ignoré (biome inconnu) : " + arg
+		printerr("Argument ignoré (biome inconnu) : ", arg)
 		return fallback
 	return val
 

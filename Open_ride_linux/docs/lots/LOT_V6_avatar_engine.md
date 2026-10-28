@@ -42,3 +42,12 @@ Aucune au-delà de T1 (les seuils de danseuse `standing_grade_pct` et `standing_
 ## 8. Hors périmètre
 
 Vues de caméra (V12), cadres, roues et tenues distincts (V7), Garage (V8), bots détaillés.
+
+## 9. Livraison (27 octobre 2026, issue #372)
+
+- **Core :** section `[avatar]` de `config.toml` (`standing_grade_pct` 8, bornes 3 à 15 ; `standing_power_pct` 150, bornes 100 à 300), transmise dans `hello_ack.config.progression.avatar` (elle remplace les valeurs écrites en dur de V11) ; exemple et tableau du SRS à jour.
+- **Engine :** `avatar_model.gd` (réglages bornés, pédalier intégré, hystérésis de la danseuse), `avatar_mesh.gd` (volumes et cinématique à deux segments), `avatar_view.gd` (nœuds, couleurs des palettes, balancement du vélo en danseuse, `set_visible_for_view`). `main.gd` crée l'avatar, le pose sur la route à chaque image et le cache en vue subjective.
+- **Triangles :** niveau 0 : 4 948 (≤ 6 000), niveau 1 et niveau 2 sous leurs limites (test unitaire). Budget : 0,05 ms par image mesuré sans écran (budget 0,3 ms, `avatar_frame` dans `perf_budgets.json`).
+- **Caméra de contrôle du banc visuel :** message de test `avatar_camera` (`follow` ou `side`) ; elle ne change pas la caméra du jeu. Scènes `avatar_subjectif`, `avatar_assis`, `avatar_assis_2` et `avatar_danseuse` dans `visual_check.py` (jambes à des angles différents entre deux captures, danseuse à 10 % de pente).
+- **Écart au cahier :** pas de niveau de détail par préréglage dans `quality_presets.gd` : le cycliste est toujours au niveau 0 (4 948 triangles, bien dans le budget) ; le niveau 2 des bots attend leur affichage détaillé.
+- **Reste, sur le PC :** lisibilité, fluidité du pédalage à 60 et 100 tr/min, images par seconde en qualité basse (`run_visual_tests.sh --open`, scène `avatar_assis`).

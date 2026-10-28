@@ -24,7 +24,7 @@ func _check(cond: bool, msg: String) -> void:
 
 func _deer() -> Dictionary:
 	# Site à 20 m de la route (axe z = 0), fuite vers la forêt au nord (+z)
-	return {"type": "deer", "id": "d1", "pos": Vector3(0.0, 0.0, 20.0), "yaw": 0.0, "flee_dir": Vector3(0.0, 0.0, 1.0)}
+	return {"type": "deer", "id": "d1", "species": "deer", "pos": Vector3(0.0, 0.0, 20.0), "yaw": 0.0, "flee_dir": Vector3(0.0, 0.0, 1.0)}
 
 
 func _test_deer() -> void:
@@ -45,7 +45,7 @@ func _test_deer() -> void:
 	for i in range(1, 80):
 		var t := i * 0.1
 		beh.update(Vector3(-56.0, 0.0, 0.0), t)
-		if FaunaBehaviour.deer_alpha(g, t) <= 0.0 and gone_at < 0.0:
+		if FaunaBehaviour.wild_alpha(g, t) <= 0.0 and gone_at < 0.0:
 			gone_at = t
 	_check(gone_at > 0.0 and gone_at < 6.0 and g["state"] == "gone", "il disparaît en %.1f s (< 6 s)" % gone_at)
 
@@ -127,7 +127,7 @@ func _test_cost() -> void:
 			m["land"] += Vector3(f * 100.0, 0.0, 0.0)
 		groups.append(c)
 	for d in range(6):
-		groups.append({"type": "deer", "id": "d%d" % d, "pos": Vector3(d * 120.0, 0.0, 90.0), "yaw": 0.0, "flee_dir": Vector3(0, 0, 1)})
+		groups.append({"type": "deer", "id": "d%d" % d, "species": "deer", "pos": Vector3(d * 120.0, 0.0, 90.0), "yaw": 0.0, "flee_dir": Vector3(0, 0, 1)})
 	r.set_chunk(0, groups)   # 90 + 52 + 2 + 9 + 18 + 6 = 177 animaux
 	var total := 0
 	var frames := 300
@@ -245,6 +245,59 @@ func _test_renderer_p23() -> void:
 	r.queue_free()
 
 
+## Lot P24 : cris des troupeaux, fuite en zigzag du lièvre, chevaux et lièvres affichés.
+func _test_p24() -> void:
+	var beh := FaunaBehaviour.new()
+	var cows := {"type": "herd", "id": "m1_herd", "species": "cow", "members": [{"pos": Vector3(0.0, 0.0, 100.0), "yaw": 0.0}]}
+	var horses := {"type": "herd", "id": "m2_herd", "species": "horse", "members": [{"pos": Vector3(400.0, 0.0, 100.0), "yaw": 0.0}]}
+	beh.setup([cows, horses])
+	var sounds := []
+	for i in range(0, 1211):
+		beh.update(Vector3.ZERO, i * 0.1)
+		for ev in beh.events:
+			sounds.append(ev["sound"])
+	_check(sounds.count("cow_moo") == 3 and not sounds.has("horse_neigh"),
+		"à 100 m, 3 meuglements en 121 s (un par période de 40 s) ; à 412 m, aucun hennissement (%s)" % str(sounds))
+	var horses2 := {"type": "herd", "id": "m2_herd", "species": "horse", "members": [{"pos": Vector3(400.0, 0.0, 100.0), "yaw": 0.0}]}
+	beh.setup([horses2])
+	sounds.clear()
+	for i in range(0, 1211):
+		beh.update(Vector3(400.0, 0.0, 0.0), 200.0 + i * 0.1)
+		for ev in beh.events:
+			sounds.append(ev["sound"])
+	_check(sounds.count("horse_neigh") == 3, "chevaux : hennissements (%d)" % sounds.count("horse_neigh"))
+
+	var hare := {"type": "hare", "id": "c0_hare0", "species": "hare", "pos": Vector3(0.0, 0.0, 30.0), "yaw": 0.0,
+		"flee_dir": Vector3(0.0, 0.0, 1.0)}
+	beh.setup([hare])
+	beh.update(Vector3(0.0, 0.0, 4.0), 0.0)
+	_check(hare["state"] == "idle", "lièvre : immobile, cycliste à 26 m")
+	beh.update(Vector3(0.0, 0.0, 6.0), 1.0)
+	_check(hare["state"] == "flee", "lièvre : il file, cycliste à 24 m")
+	var p1 := FaunaBehaviour.hare_position(hare, 2.0)
+	var lateral := 0.0
+	for j in range(20):
+		lateral = maxf(lateral, absf(FaunaBehaviour.hare_position(hare, 1.0 + j * 0.1).x))
+	_check(absf(p1.z - 41.0) < 0.1 and lateral > 2.0, "lièvre : 11 m en 1 s, loin de la route, en zigzag (écart %.1f m)" % lateral)
+	beh.update(Vector3(0.0, 0.0, 6.0), 4.6)
+	_check(hare["state"] == "gone" and FaunaBehaviour.wild_alpha(hare, 4.6) == 0.0, "lièvre : disparu après 3,5 s")
+
+	var r = FaunaRenderer.new()
+	root.add_child(r)
+	r.set_preset("low")
+	var herd := {"type": "herd", "id": "m3_herd", "species": "horse", "members": [
+		{"pos": Vector3(0.0, 0.0, 40.0), "yaw": 0.0}, {"pos": Vector3(3.0, 0.0, 42.0), "yaw": 1.0}]}
+	r.set_chunk(0, [herd, {"type": "hare", "id": "c0_hare1", "species": "hare", "pos": Vector3(0.0, 0.0, 30.0), "yaw": 0.0,
+		"flee_dir": Vector3(0.0, 0.0, 1.0)}])
+	r.update(Vector3(0.0, 2.0, -100.0), Vector3(0.0, 0.0, -100.0), 0.0)
+	_check(r.visible_count("horse") == 2 and r.visible_count("hare") == 1, "deux chevaux et un lièvre affichés")
+	r.update(Vector3(0.0, 2.0, 10.0), Vector3(0.0, 0.0, 10.0), 1.0)
+	r.update(Vector3(0.0, 2.0, 10.0), Vector3(0.0, 0.0, 10.0), 5.0)
+	var hare_g: Dictionary = r.behaviour.groups[1]
+	_check(FaunaRenderer.wild_transform(hare_g, 5.0).origin.y < -40.0, "lièvre parti : caché sous le sol jusqu'au tri suivant")
+	r.queue_free()
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -256,6 +309,7 @@ func _run() -> void:
 	_test_crows()
 	_test_vee_and_raptor()
 	_test_renderer_p23()
+	_test_p24()
 	_test_cost()
 	print("test_fauna_behaviour : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -43,3 +43,16 @@ Aucune au-delà de T1.
 ## 8. Hors périmètre
 
 Bilan de fin de séance (V9), calculs (core).
+
+## 9. Livraison (27 octobre 2026, issue #374)
+
+- **Modèle :** `garage_view_model.gd` (écrans Vélo, Tenue, Avatar, fiche de pièce, achat avec confirmation, refus lisibles, brouillon de l'avatar, conseil du parcours) ; `garage_preview.gd` (aperçu 3D qui tourne, dans la carte de détail) ; `menu_flow.gd` et `menu_model.gd` (entrée « Garage » à l'accueil quand le core annonce une `progression`) ; `ipc_client.gd` (`request_garage`, parties du message `garage` réunies) ; `main.gd` envoie `equip`, `buy` et `set_avatar`, relit `progression` et redemande le catalogue après chaque réussite.
+- **Avatar :** les réglages passent par l'écran de modification commun (+ / − changent la valeur, appui long + valide) ; rien n'est envoyé avant « Enregistrer » ; « Annuler les changements » rend les valeurs enregistrées. L'aperçu montre le brouillon.
+- **Aperçu :** l'équipement choisi, avec la pièce sous le focus à la place de celle de son emplacement.
+- **Conseil du parcours :** ligne d'état de l'écran Prêt (« Parcours plat : conseillé Polyvalent, Profilées »), même règle que le core mais limitée aux pièces possédées ; absente quand le choix est déjà le bon.
+- **Accueil :** neuf entrées avec le Garage : la fenêtre des listes passe à 10 éléments (9 avec les pastilles des appareils) pour que l'accueil tienne en entier.
+- **Faux core :** `fake_core.py` simule `list_garage`, `equip`, `buy` et `set_avatar` (états des pièces, solde, `progression`, refus).
+- **Écart au cahier :** l'écran « Caméra » (subjective ou suivi) n'est pas dans ce lot : le lot V12 apporte les quatre vues de caméra et leur choix, un seul endroit pour ce réglage (principe : éviter les doublons).
+- **Tests :** `test_garage_view_model.gd` (61 vérifications : modèle, déroulé dans les menus, aperçu 3D) ; banc visuel : scènes `garage`, `garage_velo`, `garage_fiche`, `garage_confirmation`, `garage_achat`, `garage_choix`, `garage_modif`, `garage_avatar`, `garage_enregistre` (achat puis choix d'une pièce, aperçu qui tourne et suit le focus, avatar enregistré).
+- **Reste, sur le PC :** tout régler au Click sans clavier (lisibilité de l'aperçu et des fiches).
+

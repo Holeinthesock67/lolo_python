@@ -17,6 +17,7 @@ from openride_compiler.theme import (
     SCHEMA_PATH,
     check_theme,
     resolve_theme,
+    without_biomes,
 )
 
 
@@ -79,7 +80,8 @@ def test_minimal_theme_resolves_to_default(tmp_path: Path) -> None:
     for version in ("1.0", default_data["version"]):
         (tmp_path / "theme.json").write_text(f'{{"version": "{version}"}}\n', encoding="utf-8")
         assert check_theme(tmp_path) == []
-        assert resolve_theme(tmp_path) == {**default_data, "version": version}
+        # Le pack de biomes du défaut (thème 2.0, lot U15) n'est pas prêté aux autres thèmes.
+        assert resolve_theme(tmp_path) == {**without_biomes(default_data), "version": version}
 
 
 @pytest.mark.parametrize("bad_color", ["vert", "#12345", "#1234567", "#GGGGGG"])
@@ -109,8 +111,8 @@ def test_numeric_bounds_violation_is_error(tmp_path: Path, payload: dict) -> Non
 
 
 def test_unsupported_major_version_is_error(tmp_path: Path) -> None:
-    """Cas 6 : version "2.0" -> error."""
-    (tmp_path / "theme.json").write_text('{"version": "2.0"}', encoding="utf-8")
+    """Cas 6 : version "3.0" -> error (le thème 2.0 du lot U1 est accepté)."""
+    (tmp_path / "theme.json").write_text('{"version": "3.0"}', encoding="utf-8")
     issues = check_theme(tmp_path)
     assert any(i.severity == "error" for i in issues)
 
@@ -171,7 +173,7 @@ def test_cli_theme_check(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> 
     assert rc_ok == 0
     assert "valide" in capsys.readouterr().out
 
-    (tmp_path / "theme.json").write_text('{"version": "2.0"}', encoding="utf-8")
+    (tmp_path / "theme.json").write_text('{"version": "3.0"}', encoding="utf-8")
     rc_err = cli_main(["theme-check", str(tmp_path)])
     assert rc_err == 1
     assert "erreur" in capsys.readouterr().out

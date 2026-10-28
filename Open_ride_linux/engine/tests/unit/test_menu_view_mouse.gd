@@ -38,10 +38,11 @@ func _initialize() -> void:
 	var events: Array[String] = []
 	v.item_clicked.connect(func(id: String) -> void: clicked.append(id))
 	v.mouse_event.connect(func(ev: String) -> void: events.append(ev))
-	# Focus sur le 8e élément : la fenêtre de 9 éléments (MAX_VISIBLE_ITEMS) commence au 4e (it3).
+	# Focus sur le 8e élément : la fenêtre (MAX_VISIBLE_ITEMS éléments) est centrée sur lui et bornée à la liste.
+	var first := clampi(7 - v.MAX_VISIBLE_ITEMS / 2, 0, 12 - v.MAX_VISIBLE_ITEMS)
 	v._item_panels[0].gui_input.emit(_click(MOUSE_BUTTON_LEFT))
-	v._item_panels[4].gui_input.emit(_click(MOUSE_BUTTON_LEFT))
-	_check(clicked == ["it3", "it7"], "clic gauche : identifiant de l'élément affiché, fenêtre décalée comprise")
+	v._item_panels[7 - first].gui_input.emit(_click(MOUSE_BUTTON_LEFT))
+	_check(clicked == ["it%d" % first, "it7"], "clic gauche : identifiant de l'élément affiché, fenêtre décalée comprise")
 	var release := _click(MOUSE_BUTTON_LEFT)
 	release.pressed = false
 	v._item_panels[1].gui_input.emit(release)

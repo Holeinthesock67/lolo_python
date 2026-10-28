@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Tests sans écran du placement des animaux `fauna_placer.gd` (Lot P11 ; rapaces, volées en V et
-## corneilles du Lot P23).
+## corneilles du Lot P23 ; troupeaux des prés et des prairies, lièvres des champs du Lot P24).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_fauna_placer.gd
 
 const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
@@ -255,10 +255,105 @@ func _test_open_country_birds() -> void:
 	_check(crows_steep == 0, "pente de 50 % : aucune corneille au sol")
 
 
+func _open(id: String, kind: String, x0: float, z0: float, sx: float, sz: float) -> Dictionary:
+	return {"id": id, "kind": kind, "outer": [[x0, z0], [x0 + sx, z0], [x0 + sx, z0 + sz], [x0, z0 + sz]], "holes": [], "density": 0.0}
+
+
+func _slope30(x: float, _z: float) -> float:
+	return 250.0 + 0.3 * x
+
+
+func _test_open_land_animals() -> void:
+	var route = _route()
+	var ctx := {"height_at": Callable(self, "_flat")}
+	var full := {"birds": 0.0, "livestock": 1.0, "deer": 0.0}
+	# 40 prés de 2,25 ha : vaches ou chevaux, environ PASTURE_SHARE d'entre eux
+	var meadows := []
+	for i in range(40):
+		meadows.append(_open("m%d" % i, "meadow", 60.0 * i, 40.0 + 200.0 * (i % 2), 150.0, 150.0))
+	var a: Array = FaunaPlacer.place_chunk(0, meadows, [], route, full, ctx)
+	var species := {}
+	var horses_ok := true
+	var inside_ok := true
+	for g in a:
+		inside_ok = inside_ok and g["type"] == "herd"
+		species[g["species"]] = int(species.get(g["species"], 0)) + 1
+		var n: int = (g["members"] as Array).size()
+		if g["species"] == "horse":
+			horses_ok = horses_ok and n >= FaunaPlacer.HORSE_MIN and n <= FaunaPlacer.HORSE_MAX
+		for m in g["members"]:
+			var p: Vector3 = m["pos"]
+			var mid: String = str(g["id"]).trim_suffix("_herd")
+			var area: Dictionary = meadows[int(mid.substr(1))]
+			var o: Array = area["outer"]
+			inside_ok = inside_ok and p.x >= o[0][0] and p.x <= o[1][0] and p.z >= o[0][1] and p.z <= o[2][1] and p.z > 4.0
+	_check(a.size() >= 20 and a.size() <= 36, "40 prés : %d troupeaux (environ 7 sur 10)" % a.size())
+	_check(species.get("horse", 0) >= 4 and species.get("cow", 0) >= 10 and not species.has("sheep"),
+		"prés : vaches et chevaux, aucun mouton (%s)" % str(species))
+	_check(horses_ok, "chevaux : de 2 à 6 par troupeau")
+	_check(inside_ok, "prés : seulement des troupeaux, toutes les bêtes dans leur pré, hors du couloir de la route")
+	_check(str(a) == str(FaunaPlacer.place_chunk(0, meadows, [], route, full, ctx)), "troupeaux des prés : déterministes")
+	_check(FaunaPlacer.place_chunk(0, meadows, [], route, {"birds": 0.0, "livestock": 0.0, "deer": 0.0}, ctx).is_empty(),
+		"fauna.livestock = 0 : aucun troupeau")
+	# Un point livestock dans le pré : un seul troupeau, celui du point
+	var with_poi := [meadows[0], meadows[2], meadows[4], meadows[6]]
+	var pois := []
+	for m in with_poi:
+		pois.append({"id": "n_%s" % m["id"], "kind": "livestock", "x": float(m["outer"][0][0]) + 75.0, "y": 250.0,
+			"z": float(m["outer"][0][1]) + 75.0, "radius_m": 200.0})
+	var b: Array = FaunaPlacer.place_chunk(0, with_poi, pois, route, full, ctx)
+	var from_area := 0
+	for g in b:
+		if str(g["id"]).ends_with("_herd"):
+			from_area += 1
+	_check(b.size() == 4 and from_area == 0, "pré avec un point livestock : seulement le troupeau du point (%d groupes)" % b.size())
+	# Pente de 30 % : moutons sur la prairie, aucune vache au pré
+	var steep := {"height_at": Callable(self, "_slope30")}
+	var hills := []
+	for i in range(20):
+		hills.append(_open("g%d" % i, "grassland", 60.0 * i, 40.0, 150.0, 150.0))
+		hills.append(_open("h%d" % i, "meadow", 60.0 * i, -190.0, 150.0, 150.0))
+	var c: Array = FaunaPlacer.place_chunk(0, hills, [], route, full, steep)
+	var sheep := 0
+	var others := 0
+	for g in c:
+		if g["species"] == "sheep":
+			sheep += 1
+		else:
+			others += 1
+	_check(sheep >= 8 and others == 0, "pente de 30 %% : %d troupeaux de moutons sur les prairies, aucune vache ni cheval" % sheep)
+	# Lièvres : dans les champs, de 15 à 60 m de la route, au plus 2 par tronçon, avec fauna.deer
+	var long_route = _long_route(30000.0)
+	var fields := [_open("f1", "farmland", -100.0, 5.0, 30200.0, 120.0), _open("f2", "farmland", -100.0, -125.0, 30200.0, 120.0)]
+	var hares := 0
+	var hares_ok := true
+	var per_chunk_ok := true
+	for k in range(30):
+		var g_k: Array = FaunaPlacer.place_chunk(k, fields, [], long_route, {"birds": 0.0, "livestock": 0.0, "deer": 1.0}, ctx)
+		var n_k := 0
+		for g in g_k:
+			if g["type"] != "hare":
+				continue
+			n_k += 1
+			var p: Vector3 = g["pos"]
+			var fd: Vector3 = g["flee_dir"]
+			hares_ok = hares_ok and absf(p.z) >= 14.9 and absf(p.z) <= 60.1 and g["species"] == "hare" \
+				and p.x >= k * 1000.0 - 1.0 and p.x <= (k + 1) * 1000.0 + 1.0 and fd.z * p.z > 0.0
+		hares += n_k
+		per_chunk_ok = per_chunk_ok and n_k <= FaunaPlacer.HARE_MAX
+	_check(hares >= 35 and hares <= 60 and per_chunk_ok, "30 km de champs : %d lièvres, au plus 2 par kilomètre" % hares)
+	_check(hares_ok, "lièvres de 15 à 60 m de la route, dans leur tronçon, fuite loin de la route")
+	var none := 0
+	for k in range(10):
+		none += FaunaPlacer.place_chunk(k, fields, [], long_route, {"birds": 0.0, "livestock": 1.0, "deer": 0.0}, ctx).size()
+	_check(none == 0, "fauna.deer = 0 et champs seulement : ni lièvre ni troupeau")
+
+
 func _init() -> void:
 	_test_determinism_and_exclusions()
 	_test_birds_altitude()
 	_test_absences_and_deer_spacing()
 	_test_open_country_birds()
+	_test_open_land_animals()
 	print("test_fauna_placer : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

@@ -1,6 +1,6 @@
 # Lot Y8 – Habillage des bâtiments : toits à pans, façades et styles par région et par biome
 
-**Statut : étape 1 en prototype le 28 octobre** (bâtiments), en attente de l'accord du propriétaire et de la mesure sur la GTX 1060. Étapes suivantes au §6 (arbres, panneaux, poteaux, barrières, éoliennes). L'étalonnage d'Y8 est passé dans Y13.
+**Statut : étape 1 livrée le 28 octobre** (bâtiments, PR #470), mesurée sur la GTX 1060 (§5), en attente de l'avis du propriétaire sur l'aspect. Ce cahier remplace la première version du 28 octobre (PR #462) ; les écarts sont au §7. Étapes suivantes au §6 (arbres, panneaux, poteaux, barrières, éoliennes). L'étalonnage d'Y8 est passé dans Y13.
 
 ## 1. Objectif
 
@@ -45,13 +45,14 @@ Préréglages : le faux relief est coupé en `low` (`BuildingMesh.RELIEF`) ; fen
 
 - Géométrie : une maison à deux pans passe de 10 à 24 triangles (murs coupés au faîtage, débord et son dessous) ; même nombre d'appels de dessin (un maillage par tronçon).
 - Maillage (tâche de fond) : 500 bâtiments rectangulaires en environ 110 ms au lieu de 17 ms dans le nuage ; budget `building_mesh_500` porté à 150 ms.
-- Processeur graphique : un shader par pixel de façade ; à mesurer (§5).
+- Processeur graphique : un shader par pixel de façade. Mesuré le 28 octobre sur la GTX 1060 (village, 1280 × 720, main contre la branche) : `low` 57,8 contre 57,9 images/s, GPU 4,7 contre 4,4 ms ; `medium` 57,8 contre 57,7 images/s, GPU 5,25 contre 5,17 ms. L'écart reste dans le bruit, sous l'enveloppe de +0,5 ms en `medium` et +0,2 ms en `low`.
 
 ## 5. Vérification
 
+- Rendu hors écran : `engine/tests/render/test_building_render.gd` (une maison par style : pas de points parasites sur façade et toit éclairés, fenêtres dessinées, teinte du toit propre au style) avec le détecteur commun de pixels isolés `engine/tests/render/speckle.gd`, réutilisable pour les autres shaders.
 - Tests : `engine/tests/unit/test_building_mesh.gd` (critères de L1 avec le style à toits plats, puis faîte, débord, murs jusqu'au toit, croupes, familles, styles par variante et par biome).
 - Captures avant et après : vitrine de rendu `engine/tests/vitrine_rendu.gd`, vues `village`, `maisons`, `facades_pres`, `toits` et `styles` (une maison et une grange par style).
-- Mesure sur la GTX 1060, à la résolution native (banc simulé, 2 min par préréglage, main contre la branche, `low`, `medium` puis `high`) : au moins 55 images/s en `low`, p99 sous 25 ms, et l'écart de temps GPU par image. Tour demandé dans la file des mesures du PC.
+- Mesure sur la GTX 1060, à la résolution native (banc simulé, 2 min par préréglage, main contre la branche, `low`, `medium` puis `high`) : au moins 55 images/s en `low`, p99 sous 25 ms, et l'écart de temps GPU par image. Fait le 28 octobre (§4).
 
 ## 6. Suite (une PR par étape)
 
@@ -60,3 +61,10 @@ Préréglages : le faux relief est coupé en `low` (`BuildingMesh.RELIEF`) ; fen
 3. Étape 4 : éoliennes et ouvrages (ponts, murets) quand ils existeront dans le monde.
 4. Si la mesure dépasse : fondu des motifs à plus courte distance, ou dessous du débord limité à la bande de débord.
 5. Avec U14 : passer la variante de la tuile et le biome dominant à chaque bâtiment (clé `style`).
+
+## 7. Écarts à la première version du cahier (PR #462)
+
+- Un seul shader `building.gdshader` (murs et toits) au lieu de `building_facade.gdshader`, et le test de rendu s'appelle `test_building_render.gd`.
+- Pente selon le style (25 à 45°, 50° pour les lieux de culte) au lieu de 35° partout ; rectangle orienté rempli à 80 % au lieu de 85 % ; débord de 0,4 m au lieu de 0,3 m ; toit en pente jusqu'à 22 m de large, sans limite de hauteur.
+- Les variantes régionales des murs et des toits, prévues hors périmètre (U14), sont faites ici par la table des styles, à la demande du propriétaire du 28 octobre ; U14 n'a plus qu'à poser la clé `style`.
+- La coupure des fenêtres au loin se fait par le fondu du détail plus fin qu'un pixel de `surface_detail.gdshaderinc`, sans distance fixe.

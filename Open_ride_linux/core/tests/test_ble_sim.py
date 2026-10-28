@@ -382,9 +382,11 @@ def test_sim_keyboard_presses_the_simulated_click():
         rig = Rig(READY).start()
         keys = next(p for p in rig.inputs if isinstance(p, SimClickKeyboard))
         await wait_for(lambda: all(b.ride_on for b in rig.world.clicks))
-        keys.on_char("u")
+        keys.on_data("\x1b[5~")   # Page haut : + long, par le Click simulé
         await asyncio.sleep(1.2)
         assert rig.events() == [InputEvent.PLUS_LONG] and keys.events.empty()
+        keys.on_data("z")          # Z : pas de bouton Z au Click simulé, événement direct
+        assert keys.events.get_nowait() == InputEvent.Z_SHORT
         await rig.stop()
     asyncio.run(scenario())
 

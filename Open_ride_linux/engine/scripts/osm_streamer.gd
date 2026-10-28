@@ -13,8 +13,11 @@ extends Node3D
 ## ajout ou retrait).
 ## Lot P17 : la tâche de fond d'un tronçon place aussi ses animaux (fauna_placer.gd, avec la hauteur
 ## des tuiles proches du terrain) quand `fauna_enabled` ; le tronçon intégré émet `chunk_loaded(k,
-## extras)` (`extras.fauna` : groupes d'animaux), le tronçon retiré `chunk_freed(k)`. Eau qui scintille
+## extras)` (`extras.fauna` : groupes d'animaux ; lot P25, quand `traffic_enabled` : `extras.traffic`, chemins
+## de road_traffic_model.gd des routes voisines et des tracteurs des champs ; lot P29, quand `boats_enabled` :
+## `extras.boats`, chemins des bateaux de boat_model.gd), le tronçon retiré `chunk_freed(k)`. Eau qui scintille
 ## (water_mesh.gd, P12) avec `set_water_shimmer(true)`, avant le chargement des tronçons.
+## `biome_model` (biome_model.gd, série U, lot U17) : transmis au placement des animaux (faune par biome, U12).
 ## Pas de class_name (charger par preload).
 
 const OsmLayers := preload("res://scripts/osm_layers.gd")
@@ -22,6 +25,8 @@ const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
+const RoadTrafficModel := preload("res://scripts/road_traffic_model.gd")
+const BoatModel := preload("res://scripts/boat_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 
 signal chunk_loaded(k: int, extras: Dictionary)
@@ -56,6 +61,9 @@ var shapes_version := 0
 var sound_player: Node = null
 ## Lot P17 : animaux placés dans la tâche de fond de chaque tronçon.
 var fauna_enabled := false
+var traffic_enabled := false           # Lot P25 : chemins des routes voisines et des tracteurs des champs
+var boats_enabled := false             # Lot P29 : chemins des bateaux des plans d'eau et des cours d'eau
+var biome_model = null
 var water_shimmer := false
 
 
@@ -196,6 +204,9 @@ func _start_jobs() -> void:
 				"route": route,
 				"visual_grade_scale": visual_grade_scale,
 				"fauna": fauna_enabled,
+				"traffic": traffic_enabled,
+				"boats": boats_enabled,
+				"biome_model": biome_model,
 			}
 			job["task"] = WorkerThreadPool.add_task(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
 			_jobs[k] = job
@@ -216,6 +227,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 
 	var b_items := []
 	var w_items := {"lines": [], "areas": []}
+	var boats := []
 	# 1. Bâtiments
 	if layers.has("buildings"):
 		var b_res := OsmLayers.load_chunk(w_dir, "buildings", k, job.get("route"))
@@ -293,6 +305,10 @@ func _build_chunk_job(job: Dictionary) -> void:
 					var arr := _arrays_from_mesh_dict(a_mesh)
 					if not arr.is_empty():
 						meshes_data.append({"kind": "water_areas", "arrays": arr})
+			# Bateaux (Lot P29) : sur l'eau affichée (cours d'eau coupés à la route, relief exagéré appliqué)
+			if bool(job.get("boats", false)):
+				var road := road_polyline(job["route"], k) if job.get("route") != null else PackedVector2Array()
+				boats = BoatModel.water_paths(areas, lines, road)
 
 	# Forêts (voisinage sonore et animaux : les arbres sont dessinés par tree_renderer.gd)
 	var veg_items := []
@@ -310,21 +326,45 @@ func _build_chunk_job(job: Dictionary) -> void:
 		if poi_res.get("ok", false):
 			pois = poi_res.get("items", [])
 
-	# 4. Animaux (Lot P17, placement de P11) : posés sur les tuiles proches du terrain
+	# 4. Animaux (Lot P17, placement de P11) et tracteurs des champs (P25) : posés sur les tuiles proches
+	# du terrain
 	var fauna := []
-	if bool(job.get("fauna", false)) and job.get("route") != null:
-		var fz = th.get("fauna", {})
-		var height_at := terrain_height_fn(w_dir, job["route"])
+	var traffic := []
+	var height_at := Callable()
+	if (bool(job.get("fauna", false)) or bool(job.get("traffic", false))) and job.get("route") != null:
+		height_at = terrain_height_fn(w_dir, job["route"])
 		if v_scale != 1.0:
-			# Animaux posés sur le relief exagéré, comme le terrain affiché (lot Q2)
+			# Posés sur le relief exagéré, comme le terrain affiché (lot Q2)
 			var raw_height := height_at
 			height_at = func(x: float, z: float) -> float:
 				return alt_orig + (float(raw_height.call(x, z)) - alt_orig) * v_scale
+	if bool(job.get("fauna", false)) and job.get("route") != null:
+		var fz = th.get("fauna", {})
 		fauna = FaunaPlacer.place_chunk(k, veg_items, pois, job["route"], fz if typeof(fz) == TYPE_DICTIONARY else {}, {
 			"height_at": height_at,
 			"buildings": b_items,
 			"water": w_items,
+			"biome_model": job.get("biome_model", null),
 		})
+
+	# 5. Circulation des routes voisines et tracteurs des champs (Lot P25)
+	if bool(job.get("traffic", false)) and job.get("route") != null:
+		if layers.has("roads"):
+			var r_res := OsmLayers.load_chunk(w_dir, "roads", k, job.get("route"))
+			if r_res.get("ok", false):
+				var lines: Array = r_res.get("items", [])
+				if v_scale != 1.0:
+					var scaled: Array = []
+					for line in lines:
+						var lc: Dictionary = line.duplicate()
+						var new_pts: Array = []
+						for pt in lc.get("points", []):
+							new_pts.append([pt[0], pt[1], alt_orig + (float(pt[2]) - alt_orig) * v_scale])
+						lc["points"] = new_pts
+						scaled.append(lc)
+					lines = scaled
+				traffic.append_array(RoadTrafficModel.road_paths(lines))
+		traffic.append_array(RoadTrafficModel.field_paths(veg_items, height_at))
 
 	job["result"] = {
 		"k": k,
@@ -332,6 +372,8 @@ func _build_chunk_job(job: Dictionary) -> void:
 		"pois": pois,
 		"shapes": shapes,
 		"fauna": fauna,
+		"traffic": traffic,
+		"boats": boats,
 	}
 
 
@@ -481,7 +523,7 @@ func integrate(max_new: int) -> int:
 		if not (item["pois"] as Array).is_empty():
 			_pois_by_chunk[k] = item["pois"]
 			_update_sound_pois()
-		chunk_loaded.emit(k, {"fauna": item.get("fauna", [])})
+		chunk_loaded.emit(k, {"fauna": item.get("fauna", []), "traffic": item.get("traffic", []), "boats": item.get("boats", [])})
 
 	_start_jobs()
 	return created

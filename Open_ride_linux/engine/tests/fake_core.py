@@ -108,6 +108,8 @@ class FakeCore:
     silent: bool = False          # core muet : n'émet plus rien du tout
     auto_hello_ack: bool = False
     chart: str | None = None      # hello_ack.config.chart (lot O14) ; None : champ absent
+    progression: dict[str, Any] | None = None   # hello_ack.config.progression (série V, lot V6) ; None : absent
+    garage: list[dict[str, Any]] | None = None  # éléments du message `garage` (lot V7) ; None : pas de réponse
     session_state: str = "IDLE"
     route_id: str | None = "demo"
     accept_cmd: Callable[[dict[str, Any], int], bool] = lambda msg, count: True
@@ -214,6 +216,8 @@ class FakeCore:
             if cmd_id > self.last_cmd_id and self.accept_cmd(msg, count):
                 self.last_cmd_id = cmd_id
 
+            if name in ("list_garage", "equip", "buy", "set_avatar") and self.garage is not None:
+                self._garage_command(name, msg.get("args") or {}, cmd_id)
             if getattr(self, "catalog_data", None):
                 if name == "list_routes":
                     if not getattr(self, "drop_all_catalog", False):
@@ -241,6 +245,43 @@ class FakeCore:
                     if isinstance(pct, (int, float)):
                         self.difficulty_pct = int(round(max(0, min(100, pct))))
 
+    def _garage_command(self, name: str, args: dict[str, Any], cmd_id: int) -> None:
+        """Garage simulé (lot V8) : `garage` pour list_garage ; equip, buy et set_avatar modifient le catalogue
+        et le profil puis renvoient `progression`, comme le vrai core ; refus par `error` (contrat 1.4)."""
+        def refuse(code: str, text: str) -> None:
+            self.send({"type": "error", "v": CONTRACT_VERSION, "code": code, "message": text})
+
+        items = self.garage or []
+        prog = self.progression if self.progression is not None else {}
+        by_id = {it["id"]: it for it in items}
+        if name == "list_garage":
+            self.send({"type": "garage", "v": CONTRACT_VERSION, "request_cmd_id": cmd_id, "part": 1, "parts": 1,
+                       "items": items})
+            return
+        if name == "equip":
+            it = by_id.get(args.get("item_id"))
+            if it is None or it["slot"] != args.get("slot") or it["state"] not in ("owned", "equipped"):
+                return refuse("item_locked", "pièce non possédée")
+            for other in items:
+                if other["slot"] == it["slot"] and other["state"] == "equipped":
+                    other["state"] = "owned"
+            it["state"] = "equipped"
+            prog.setdefault("equipped", {})[it["slot"]] = it["id"]
+        elif name == "buy":
+            it = by_id.get(args.get("item_id"))
+            if it is None or it["state"] != "buyable":
+                return refuse("item_locked", "pièce non achetable")
+            if int(prog.get("coins", 0)) < int(it["price"]):
+                return refuse("not_enough_coins", "solde insuffisant")
+            prog["coins"] = int(prog.get("coins", 0)) - int(it["price"])
+            it["state"] = "owned"
+        else:
+            avatar = args.get("avatar")
+            if not isinstance(avatar, dict):
+                return refuse("avatar_invalid", "avatar attendu")
+            prog.setdefault("avatar", {}).update(avatar)
+        self.send({"type": "progression", "v": CONTRACT_VERSION, "request_cmd_id": cmd_id, **prog})
+
     def send_list(self, kind: str, cmd_id: int, items: list) -> None:
         """Réponse `routes` ou `workouts` (contrat v1.1 §4), en deux parties avec --split-catalog.
 
@@ -259,6 +300,8 @@ class FakeCore:
         config = {"ftp_w": 250, "gears_total": 24, "theme": "default", "difficulty_pct": self.difficulty_pct}
         if self.chart is not None:
             config["chart"] = self.chart
+        if self.progression is not None:
+            config["progression"] = self.progression
         self.send({"type": "hello_ack", "v": CONTRACT_VERSION, "core_version": "fake", "config": config})
 
     def messages(self, kind: str, since: float = 0.0, name: str | None = None) -> list[Received]:
@@ -632,6 +675,54 @@ def run_serie_t_stream(state_port: int, cmd_port: int, duration_s: float) -> int
     return 0
 
 
+ROGUE_ROOM_LENGTH_M = 600.0
+
+
+def rogue_room_msg(room_id: int = 1) -> dict[str, Any]:
+    """Salle d'exemple du mode Cyber-Rogue (lot R10) : 600 m, pentes variées, un repère de chaque sorte."""
+    grades = [2.0] * 12 + [5.0] * 12 + [-4.0] * 12 + [7.0] * 12 + [0.0] * 12
+    profile = [[i * 10.0, grades[i]] for i in range(60)]
+    kinds = ["arch", "strike_target", "parry_zone", "pad", "purge", "tunnel", "rock"]
+    markers = [{"kind": k, "s_m": 60.0 + 70.0 * i, "len_m": 40.0 if k in ("tunnel", "parry_zone") else 10.0, "param": None}
+               for i, k in enumerate(kinds)]
+    return {"type": "room", "v": CONTRACT_VERSION, "room_id": room_id, "part": 1, "parts": 1,
+            "archetype": "diesel", "variant": "", "length_m": ROGUE_ROOM_LENGTH_M, "nominal_s": 120.0,
+            "profile": profile, "markers": markers, "next": None}
+
+
+def rogue_fields(s: float, t: float) -> dict[str, Any]:
+    """Champs `mode` et `rogue` d'une trame du mode Cyber-Rogue qui parcourt la salle d'exemple en boucle."""
+    s_room = s % ROGUE_ROOM_LENGTH_M
+    windows = [{"kind": "arch", "s_start": 55.0, "s_end": 75.0}] if 55.0 <= s_room <= 75.0 else []
+    return {"mode": "ROGUE", "rogue": {
+        "phase": "ROOM", "room_id": 1, "room_index": 1, "rooms_total": 4, "archetype": "diesel", "boss_phase": None,
+        "s_room": s_room, "enemy_hp": 600.0, "enemy_hp_max": 1000.0, "shield": 50.0, "shield_max": 50.0,
+        "adrenaline": 20.0, "w_bal_j": 15000.0, "w_prime_j": 20000.0, "posture": "FLUIDE",
+        "firewall_gap_m": 120.0, "gold": 10, "windows": windows, "hack": None, "overheat": False,
+        "loot_focus": None, "events": []}}
+
+
+def run_rogue_stream(state_port: int, cmd_port: int, duration_s: float) -> int:
+    """Run de démonstration du mode Cyber-Rogue : la salle d'exemple est envoyée au départ puis toutes les 2 s."""
+    core = FakeCore(state_port, cmd_port, EngineLog(Path("/nonexistent/engine.log")))
+    core.auto_hello_ack = True
+    core.streaming = True
+    core.route_id = None
+    core.extra = rogue_fields
+    core.start()
+    core.set_running(True)
+    end = now() + duration_s
+    next_room = 0.0
+    while now() < end:
+        if now() >= next_room:
+            core.send(rogue_room_msg())
+            next_room = now() + 2.0
+        time.sleep(0.05)
+    core.send({"type": "shutdown", "v": CONTRACT_VERSION})
+    core.stop()
+    return 0
+
+
 def run_catalog_server(state_port: int, cmd_port: int, catalog_path: Path, drop_first: bool = False,
                        drop_all: bool = False, split: bool = False) -> int:
     try:
@@ -682,7 +773,11 @@ def main() -> int:
                     help="envoie chaque liste en deux parties, la 2e d'abord (assemblage, lot N3)")
     ap.add_argument("--serie-t", type=float, default=0.0, metavar="SECONDES",
                     help="séance de démonstration du mode classique pendant SECONDES (lots T8 et T9)")
+    ap.add_argument("--rogue", type=float, default=0.0, metavar="SECONDES",
+                    help="run de démonstration du mode Cyber-Rogue pendant SECONDES (lot R10)")
     args = ap.parse_args()
+    if args.rogue > 0.0:
+        return run_rogue_stream(args.state_port, args.cmd_port, args.rogue)
     if args.serie_t > 0.0:
         return run_serie_t_stream(args.state_port, args.cmd_port, args.serie_t)
     if args.erg_workout:

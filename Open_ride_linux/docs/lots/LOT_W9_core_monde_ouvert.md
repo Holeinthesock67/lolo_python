@@ -21,7 +21,7 @@ W1 et W8 livrés. W15 (faux générateur) permet de commencer avant W8 : les tes
 - **Carrefours :** `state.open_world` (W1 §4.3) construit depuis `junctions.json` (relu à chaque révision, hors boucle) ; `next` = premier carrefour devant ; `locked` vrai quand `s ≥ lock_s_m`.
 - **Choix (W-Q1) :** en monde ouvert seulement, `LEFT_SHORT` et `RIGHT_SHORT` (bits 0 et 2 du boîtier gauche, déjà décodés par `zwift_click.py`) et `A_SHORT` du boîtier droit deviennent des choix quand un carrefour est proposé (à moins de `offer_m`) et non verrouillé, et `A_LONG` valide tout de suite la branche affichée (plan de boutons, spécification générale §7.1) ; ailleurs, ils gardent leur sens habituel. `choose_branch` de l'engine (clavier) a le même effet. Le choix est envoyé au générateur ; la réponse `branch_locked` est relayée en `error`.
 - **Pente :** la pente envoyée au trainer passe par la limitation de variation existante (`grade_rate_pct_per_s`) au changement de branche ; en ERG, la pente ne joue pas sur la résistance (W-Q5).
-- **Pause :** `pause_reason = "world_data"` quand `length_m − s < 200 m` et que le générateur signale `missing` ; reprise automatique quand la route est de nouveau connue à 500 m.
+- **Pause :** `pause_reason = "world_data"` quand `length_m − s < 200 m`, que le générateur signale `missing` ou soit seulement en retard sur le cycliste (le cycliste ne dépasse jamais la route connue) ; reprise automatique quand la route est de nouveau connue à 500 m.
 - **Journal et FIT :** positions et altitude réelles (lat, lon de `LiveRoute`) ; carrefours et choix dans le journal de séance ; FIT inchangé dans sa forme.
 - **Fin :** `close` au générateur, attente de `closed` (5 s au plus).
 
