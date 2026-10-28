@@ -169,12 +169,15 @@ func _test_roads(route) -> void:
 			if road_id == "a4":
 				heading_ok = heading_ok and fwd.x > 0.99
 			now[id] = xf.origin
-			if prev.has(id) and float(v["scale"]) >= 1.0 and float(v["dist_m"]) <= Model.DETAIL_M:
+			now[id + "#d"] = float(v["dist_m"])
+			if prev.has(id) and float(v["scale"]) >= 1.0 and float(v["dist_m"]) <= Model.DETAIL_M \
+					and float(prev.get(id + "#d", INF)) <= Model.DETAIL_M - 20.0:
 				var spd := Vector2(xf.origin.x - prev[id].x, xf.origin.z - prev[id].z).length() / dt * 3.6
 				var layer: float = {"sec": 80.0, "a4": 130.0, "trk": 30.0}[road_id]
 				var cap := float(Model.KIND_MAX_KMH.get(v["kind"], layer))
 				var hi := minf(layer, cap)
-				speed_ok = speed_ok and spd <= hi + 0.5 and spd >= minf(layer * (1.0 - Model.MAX_SLOWDOWN), cap) - 0.5
+				var ok_now := spd <= hi + 0.5 and spd >= minf(layer * (1.0 - Model.MAX_SLOWDOWN), cap) - 0.5
+				speed_ok = speed_ok and ok_now
 			sizes[v["kind"]] = true
 		prev = now
 		rider.x += 30.0 / 3.6 * dt
