@@ -39,6 +39,18 @@ extends RefCounted
 ## Exclusions des bêtes au sol : couloir de la route (moitié de la largeur + ROAD_MARGIN_M, et jamais
 ## moins de MIN_ROAD_CLEARANCE_M de l'axe), eau, bâtiments, pente au-dessus de MAX_SLOPE.
 ## Tirages dérivés du hachage de VegetationPlacer (même sortie d'une machine à l'autre).
+## Lot U12 (série U), faune par biome, avec `ctx.biome_model` (biome_model.gd) actif :
+## - `density` est remplacée par le mélange des `fauna` du thème 2.0, pondéré par les poids de biome au milieu
+##   du tronçon ;
+## - chaque groupe P11/P23/P24 prend l'espèce de BIOME_SPECIES dans le biome tiré à sa position (tirage pondéré
+##   par les poids, haché sur l'identifiant du groupe) ; une espèce "" retire le groupe ; un rôle absent du tableau
+##   garde l'espèce d'origine (prairie tempérée, forêt tempérée, campagne cultivée : faune identique à P11) ;
+## - les groupes propres au biome (BIOME_GROUPS) s'ajoutent près de la route du tronçon : troupeaux (`herd`),
+##   petites bêtes qui filent (`hare`), oiseaux posés (`crows`) ou en cercle (`birds`), chacun à `road_m` de la
+##   route et jamais à moins de `min_m` (zèbres et girafes à plus de 150 m) ; `water` : centre à moins de
+##   WATER_NEAR_M d'une eau (dromadaires des oasis, flamants) ; `wade` : bêtes qui peuvent avoir les pattes
+##   dans l'eau ; `max_slope` : pente tenue (bouquetins).
+## Tout groupe d'oiseaux porte `species` ("bird" sans biome), qui choisit sa silhouette dans fauna_renderer.gd.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 
@@ -93,6 +105,54 @@ const SHEEP_MAX_SLOPE := 0.45
 const HARE_MAX := 2
 const HARE_SHARE := 0.8                # chance de chaque lièvre du tronçon, à fauna.deer = 1
 const HARE_ROAD_M := Vector2(15.0, 60.0)
+## Lot U12
+const WATER_NEAR_M := 150.0
+const BIOME_POINTS := 2                # points tirés par tronçon pour les groupes propres au biome
+const BIOME_SPREAD_M := 25.0           # rayon d'un troupeau propre au biome
+const ROAD_SEARCH_M := 1500.0          # distance à la route mesurée sur la route à ± ROAD_SEARCH_M du point
+## Espèce par rôle et par biome. Rôle : espèce d'un groupe au sol (`cow`, `sheep`, `horse`, `deer`, `hare`) ou
+## type d'un groupe d'oiseaux (`birds`, `crows`, `vee`, `raptor`).
+const BIOME_SPECIES := {
+	"boreal_forest": {"cow": "reindeer", "sheep": "reindeer", "horse": "reindeer"},
+	"alpine": {"deer": "ibex", "hare": "marmot"},
+	"tundra": {"cow": "reindeer", "sheep": "reindeer", "horse": "reindeer", "deer": "reindeer"},
+	"polar": {"cow": "", "sheep": "", "horse": "", "deer": "", "hare": "", "birds": "gull", "crows": "gull"},
+	"mediterranean": {"cow": "sheep", "deer": ""},
+	"steppe": {"cow": "horse", "deer": ""},
+	"savanna": {"sheep": "cow", "horse": "cow", "deer": "", "hare": ""},
+	"sand_desert": {"cow": "dromedary", "sheep": "dromedary", "horse": "dromedary", "deer": "", "hare": ""},
+	"rock_desert": {"cow": "dromedary", "sheep": "dromedary", "horse": "dromedary", "deer": "", "hare": ""},
+	"jungle": {"cow": "", "sheep": "", "horse": "", "deer": "", "hare": "", "birds": "parrot", "crows": "", "vee": ""},
+	"wetland": {"crows": ""},
+	"coast": {"birds": "gull", "crows": "gull", "vee": "gull"},
+	"volcanic": {"deer": "", "hare": ""},
+}
+## Groupes propres à un biome ; `key` : densité du thème qui règle la chance `share` du groupe.
+const BIOME_GROUPS := {
+	"savanna": [
+		{"species": "zebra", "kind": "herd", "n": Vector2i(5, 12), "road_m": Vector2(170.0, 420.0), "min_m": 150.0, "share": 0.9, "key": "deer"},
+		{"species": "giraffe", "kind": "herd", "n": Vector2i(2, 5), "road_m": Vector2(190.0, 480.0), "min_m": 150.0, "share": 0.7, "key": "deer"},
+	],
+	"tundra": [{"species": "reindeer", "kind": "herd", "n": Vector2i(6, 15), "road_m": Vector2(60.0, 260.0), "min_m": 30.0, "share": 0.9, "key": "deer"}],
+	"boreal_forest": [{"species": "reindeer", "kind": "herd", "n": Vector2i(3, 8), "road_m": Vector2(50.0, 200.0), "min_m": 25.0, "share": 0.5, "key": "deer"}],
+	"alpine": [
+		{"species": "ibex", "kind": "herd", "n": Vector2i(2, 5), "road_m": Vector2(50.0, 220.0), "min_m": 25.0, "share": 0.8, "key": "deer", "max_slope": 1.2},
+		{"species": "marmot", "kind": "hare", "n": Vector2i(2, 4), "road_m": Vector2(14.0, 45.0), "min_m": 10.0, "share": 0.9, "key": "deer", "max_slope": 0.8},
+	],
+	"steppe": [{"species": "horse", "kind": "herd", "n": Vector2i(4, 10), "road_m": Vector2(60.0, 300.0), "min_m": 30.0, "share": 0.7, "key": "livestock"}],
+	"mediterranean": [{"species": "sheep", "kind": "herd", "n": Vector2i(6, 14), "road_m": Vector2(40.0, 250.0), "min_m": 20.0, "share": 0.6, "key": "livestock", "max_slope": SHEEP_MAX_SLOPE}],
+	"sand_desert": [{"species": "dromedary", "kind": "herd", "n": Vector2i(2, 6), "road_m": Vector2(25.0, 200.0), "min_m": 15.0, "share": 1.0, "key": "livestock", "water": true}],
+	"rock_desert": [{"species": "dromedary", "kind": "herd", "n": Vector2i(2, 5), "road_m": Vector2(25.0, 200.0), "min_m": 15.0, "share": 1.0, "key": "livestock", "water": true}],
+	"wetland": [
+		{"species": "flamingo", "kind": "herd", "n": Vector2i(8, 20), "road_m": Vector2(40.0, 220.0), "min_m": 25.0, "share": 0.9, "key": "birds", "water": true, "wade": true},
+		{"species": "heron", "kind": "herd", "n": Vector2i(1, 2), "road_m": Vector2(15.0, 60.0), "min_m": 10.0, "share": 0.8, "key": "birds", "wade": true},
+	],
+	"coast": [
+		{"species": "gull", "kind": "crows", "n": Vector2i(4, 9), "road_m": Vector2(18.0, 50.0), "min_m": 10.0, "share": 0.9, "key": "birds"},
+		{"species": "gull", "kind": "birds", "n": Vector2i(5, 12), "road_m": Vector2(30.0, 120.0), "min_m": 0.0, "share": 0.8, "key": "birds"},
+	],
+	"jungle": [{"species": "parrot", "kind": "birds", "n": Vector2i(5, 12), "road_m": Vector2(25.0, 110.0), "min_m": 0.0, "share": 0.9, "key": "birds"}],
+}
 
 const MASK32 := 0xFFFFFFFF
 
@@ -158,23 +218,35 @@ static func _seg_dist(p: Vector2, a: Vector2, b: Vector2) -> float:
 	return (a + ab * t).distance_to(p)
 
 
-## Vrai si une bête peut se tenir au sol en (x, z), sur une pente d'au plus `max_slope`.
-static func ground_ok(ex: Dictionary, x: float, z: float, max_slope: float = MAX_SLOPE) -> bool:
+## Distance de (x, z) à l'eau la plus proche (0 dans un plan d'eau ou dans le lit d'un cours d'eau, marge
+## WATER_MARGIN_M comprise ; INF sans eau).
+static func _water_dist(ex: Dictionary, x: float, z: float) -> float:
+	var p := Vector2(x, z)
+	var best := INF
+	for ring in ex["water_areas"]:
+		if VegetationPlacer._in_ring(x, z, ring):
+			return 0.0
+		var r: PackedVector2Array = ring
+		for i in range(r.size()):
+			best = minf(best, _seg_dist(p, r[i], r[(i + 1) % r.size()]))
+	for wl in ex["water_lines"]:
+		var pts: PackedVector2Array = wl["pts"]
+		for i in range(pts.size() - 1):
+			best = minf(best, maxf(_seg_dist(p, pts[i], pts[i + 1]) - float(wl["half"]), 0.0))
+	return best
+
+
+## Vrai si une bête peut se tenir au sol en (x, z), sur une pente d'au plus `max_slope` ; `wade` : elle peut
+## avoir les pattes dans l'eau (échassiers du lot U12).
+static func ground_ok(ex: Dictionary, x: float, z: float, max_slope: float = MAX_SLOPE, wade: bool = false) -> bool:
 	var roads: Dictionary = ex["roads"]
 	if not roads.is_empty() and VegetationPlacer._near_road(roads, x, z, ex["corridor"]):
 		return false
 	for ring in ex["buildings"]:
 		if VegetationPlacer._in_ring(x, z, ring):
 			return false
-	for ring in ex["water_areas"]:
-		if VegetationPlacer._in_ring(x, z, ring):
-			return false
-	var p := Vector2(x, z)
-	for wl in ex["water_lines"]:
-		var pts: PackedVector2Array = wl["pts"]
-		for i in range(pts.size() - 1):
-			if _seg_dist(p, pts[i], pts[i + 1]) < float(wl["half"]):
-				return false
+	if not wade and _water_dist(ex, x, z) <= 0.0:
+		return false
 	var f: Callable = ex["height_at"]
 	if f.is_valid():
 		var d := 2.0
@@ -222,7 +294,16 @@ static func _ring_centroid(ring: PackedVector2Array) -> Vector2:
 static func place_chunk(chunk_index: int, vegetation_areas: Array, pois: Array, route,
 		density: Dictionary, ctx: Dictionary = {}) -> Array:
 	var out := []
-	var ex := _make_ctx(ctx, route, _area_bounds(vegetation_areas, pois))
+	var bounds := _area_bounds(vegetation_areas, pois)
+	var model = ctx.get("biome_model", null)
+	if model != null and not model.active():
+		model = null
+	if model != null:
+		var mid := bounds.get_center()
+		if route != null and route.n >= 2:
+			mid = _route_frame(route, minf((chunk_index + 0.5) * CHUNK_M, route.length_m))["p"]
+		density = _biome_density(model, model.weights_at(mid.x, mid.y))
+	var ex := _make_ctx(ctx, route, bounds)
 	var d_live := _density(density, "livestock")
 	var d_birds := _density(density, "birds")
 	var d_deer := _density(density, "deer")
@@ -268,29 +349,8 @@ static func place_chunk(chunk_index: int, vegetation_areas: Array, pois: Array, 
 		var area_m2 := _ring_area(ring)
 		var c2 := _ring_centroid(ring)
 		if d_birds > 0.0 and area_m2 >= FLOCK_MIN_AREA_M2 and _u(_h(seed, 7)) < d_birds:
-			var gy := _ground(ex, c2.x, c2.y, 0.0)
-			var agl := lerpf(BIRD_CENTER_AGL_M.x, BIRD_CENTER_AGL_M.y, _u(_h(seed, 8)))
 			var n_birds := clampi(FLOCK_MIN + int(round((FLOCK_MAX - FLOCK_MIN) * _u(_h(seed, 9)))), FLOCK_MIN, FLOCK_MAX)
-			var radius := clampf(sqrt(area_m2) * 0.25, 15.0, 60.0)
-			var members := []
-			for i in range(n_birds):
-				var hb := _h(seed, 200 + i)
-				members.append({
-					"angle": TAU * _u(hb),
-					"r": radius * lerpf(0.6, 1.0, _u(VegetationPlacer._mix(hb + 1))),
-					"h": lerpf(-4.0, 4.0, _u(VegetationPlacer._mix(hb + 2))),
-					"phase": TAU * _u(VegetationPlacer._mix(hb + 3)),
-					"omega": lerpf(0.12, 0.22, _u(VegetationPlacer._mix(hb + 4))),
-				})
-			# Sol le plus haut sous l'orbite : aucun oiseau à moins de BIRD_MIN_AGL_M du sol
-			var top := gy
-			for j in range(16):
-				var ang := TAU * j / 16.0
-				for rr in [radius * 0.6, radius]:
-					top = maxf(top, _ground(ex, c2.x + cos(ang) * rr, c2.y + sin(ang) * rr, gy))
-			var cy := maxf(gy + agl, top + BIRD_MIN_AGL_M + 4.0 + BIRD_WAVE_M)
-			out.append({"type": "birds", "id": str(a.get("id", "")), "center": Vector3(c2.x, cy, c2.y),
-				"ground_y": gy, "radius_m": radius, "members": members})
+			out.append(_flock(seed, str(a.get("id", "")), c2, clampf(sqrt(area_m2) * 0.25, 15.0, 60.0), n_birds, "bird", ex))
 		if deer_slot and not deer_done and d_deer > 0.0 and _u(_h(seed, chunk_index & MASK32, 11)) < d_deer:
 			# Lisière : un sommet de l'anneau, poussé hors de la forêt, à l'opposé du centre
 			var start := int(_u(_h(seed, 12)) * ring.size())
@@ -320,7 +380,182 @@ static func place_chunk(chunk_index: int, vegetation_areas: Array, pois: Array, 
 		for a in woods:
 			wood_rings.append(VegetationPlacer._packed_ring(a["outer"]))
 		out.append_array(_open_country_birds(chunk_index, route, d_birds, ex, wood_rings))
+	if model != null:
+		out = _biome_species(out, model)
+		if route != null and route.n >= 2:
+			out.append_array(_biome_groups(chunk_index, route, model, ex))
 	return out
+
+
+## Bande de `n` oiseaux de l'espèce `species` en cercle de `radius` autour de `c2`, de 25 à 45 m au-dessus du
+## sol et à plus de BIRD_MIN_AGL_M du sol le plus haut sous l'orbite (tirages : `seed`, sels 8 et 200 + i).
+static func _flock(seed: int, id: String, c2: Vector2, radius: float, n: int, species: String, ex: Dictionary) -> Dictionary:
+	var gy := _ground(ex, c2.x, c2.y, 0.0)
+	var agl := lerpf(BIRD_CENTER_AGL_M.x, BIRD_CENTER_AGL_M.y, _u(_h(seed, 8)))
+	var members := []
+	for i in range(n):
+		var hb := _h(seed, 200 + i)
+		members.append({
+			"angle": TAU * _u(hb),
+			"r": radius * lerpf(0.6, 1.0, _u(VegetationPlacer._mix(hb + 1))),
+			"h": lerpf(-4.0, 4.0, _u(VegetationPlacer._mix(hb + 2))),
+			"phase": TAU * _u(VegetationPlacer._mix(hb + 3)),
+			"omega": lerpf(0.12, 0.22, _u(VegetationPlacer._mix(hb + 4))),
+		})
+	# Sol le plus haut sous l'orbite : aucun oiseau à moins de BIRD_MIN_AGL_M du sol
+	var top := gy
+	for j in range(16):
+		var ang := TAU * j / 16.0
+		for rr in [radius * 0.6, radius]:
+			top = maxf(top, _ground(ex, c2.x + cos(ang) * rr, c2.y + sin(ang) * rr, gy))
+	var cy := maxf(gy + agl, top + BIRD_MIN_AGL_M + 4.0 + BIRD_WAVE_M)
+	return {"type": "birds", "id": id, "species": species, "center": Vector3(c2.x, cy, c2.y),
+		"ground_y": gy, "radius_m": radius, "members": members}
+
+
+## Densités `fauna` du thème 2.0 mélangées selon les poids de biome `weights` (lot U12).
+static func _biome_density(model, weights: Dictionary) -> Dictionary:
+	var out := {"birds": 0.0, "livestock": 0.0, "deer": 0.0}
+	for b in weights:
+		var f: Dictionary = model.params(b)["fauna"]
+		for key in out:
+			out[key] += float(weights[b]) * _density(f, key)
+	return out
+
+
+## Biome tiré au hasard selon les poids (`u` de 0 à 1) ; ordre alphabétique pour un tirage stable.
+static func _pick_biome(weights: Dictionary, u: float) -> String:
+	var keys := weights.keys()
+	keys.sort()
+	var acc := 0.0
+	for b in keys:
+		acc += float(weights[b])
+		if u < acc:
+			return b
+	return keys[-1]
+
+
+## Point de référence d'un groupe pour le tirage de son biome.
+static func _group_anchor(g: Dictionary) -> Vector3:
+	match str(g["type"]):
+		"herd":
+			return g["members"][0]["pos"]
+		"birds", "raptor":
+			return g["center"]
+		"vee":
+			return g["origin"]
+	return g["pos"]
+
+
+## Groupes P11/P23/P24 avec l'espèce de leur biome (BIOME_SPECIES) ; les groupes d'espèce "" sont retirés.
+static func _biome_species(groups: Array, model) -> Array:
+	var out := []
+	for g in groups:
+		var t: String = g["type"]
+		var role: String = str(g["species"]) if t in ["herd", "deer", "hare"] else t
+		var p := _group_anchor(g)
+		var biome := _pick_biome(model.weights_at(p.x, p.z), _u(VegetationPlacer.hash_string(str(g["id"]) + "/biome")))
+		var table: Dictionary = BIOME_SPECIES.get(biome, {})
+		if not table.has(role):
+			out.append(g)
+			continue
+		var sp: String = table[role]
+		if sp == "":
+			continue
+		g["species"] = sp
+		out.append(g)
+	return out
+
+
+## Distance horizontale de `p` à la route, mesurée sur la route à ± ROAD_SEARCH_M de l'abscisse `s`.
+static func _road_dist(route, p: Vector2, s: float) -> float:
+	var i0 := clampi(int((s - ROAD_SEARCH_M) / route.ds_m), 0, route.n - 2)
+	var i1 := clampi(int((s + ROAD_SEARCH_M) / route.ds_m), 0, route.n - 2)
+	var best := INF
+	for i in range(i0, i1 + 1):
+		best = minf(best, _seg_dist(p, Vector2(route.x[i], route.z[i]), Vector2(route.x[i + 1], route.z[i + 1])))
+	return best
+
+
+## Groupes propres aux biomes du tronçon (BIOME_GROUPS, voir l'en-tête) : BIOME_POINTS points tirés le long de
+## la route ; chacun prend un biome selon les poids, puis chaque groupe de ce biome tente sa chance.
+static func _biome_groups(chunk_index: int, route, model, ex: Dictionary) -> Array:
+	var out := []
+	var s0 := chunk_index * CHUNK_M
+	var s_len := clampf(route.length_m - s0, 0.0, CHUNK_M)
+	if s_len <= 0.0:
+		return out
+	var seed := _h(int(route.length_m * 10.0) & MASK32, chunk_index & MASK32, 12)
+	for k in range(BIOME_POINTS):
+		var hp := _h(seed, 1 + k)
+		var s_mid := s0 + s_len * (k + _u(hp)) / BIOME_POINTS
+		var mid: Vector2 = _route_frame(route, s_mid)["p"]
+		var biome := _pick_biome(model.weights_at(mid.x, mid.y), _u(VegetationPlacer._mix(hp + 1)))
+		var entries: Array = BIOME_GROUPS.get(biome, [])
+		var dens: Dictionary = model.params(biome)["fauna"]
+		for e in range(entries.size()):
+			var spec: Dictionary = entries[e]
+			var he := _h(seed, 100 + k * 16 + e)
+			if _u(he) >= spec["share"] * _density(dens, spec["key"]):
+				continue
+			out.append_array(_biome_group(spec, "c%d_%s%d_%d" % [chunk_index, spec["species"], k, e], he, route, s_mid, s_len / BIOME_POINTS, ex))
+	return out
+
+
+## Groupes `spec` de BIOME_GROUPS près de la route autour de l'abscisse `s_mid` (± `s_half`) : un groupe, ou
+## une bête seule par groupe `hare` (colonie de marmottes), ou aucun.
+static func _biome_group(spec: Dictionary, id: String, seed: int, route, s_mid: float, s_half: float, ex: Dictionary) -> Array:
+	var road_m: Vector2 = spec["road_m"]
+	var min_m: float = maxf(float(spec["min_m"]), ex["corridor"])
+	var slope := float(spec.get("max_slope", MAX_SLOPE))
+	var wade := bool(spec.get("wade", false))
+	var n_range: Vector2i = spec["n"]
+	var n := n_range.x + int(round((n_range.y - n_range.x) * _u(_h(seed, 2))))
+	var kind: String = spec["kind"]
+	for t in range(OPEN_TRIES):
+		var hh := _h(seed, 10 + t)
+		var s := s_mid + s_half * (_u(hh) - 0.5)
+		var fr := _route_frame(route, clampf(s, 0.0, route.length_m))
+		var side := 1.0 if (hh >> 9) & 1 == 0 else -1.0
+		var away: Vector2 = fr["right"] * side
+		var c2: Vector2 = fr["p"] + away * lerpf(road_m.x, road_m.y, _u(VegetationPlacer._mix(hh + 1)))
+		if bool(spec.get("water", false)) and _water_dist(ex, c2.x, c2.y) > WATER_NEAR_M:
+			continue
+		if kind == "birds":
+			return [_flock(seed, id, c2, lerpf(15.0, 35.0, _u(VegetationPlacer._mix(hh + 2))), n, spec["species"], ex)]
+		var spread := CROW_SPREAD_M if kind == "crows" else BIOME_SPREAD_M
+		var land_d := lerpf(CROW_LAND_M.x, CROW_LAND_M.y, _u(VegetationPlacer._mix(hh + 3)))
+		var members := []
+		for i in range(n * TRIES_PER_BEAST):
+			if members.size() >= n:
+				break
+			var hm := _h(seed, 100 + t * 64 + i)
+			var ang := TAU * _u(hm)
+			var p2 := c2 + Vector2(cos(ang), sin(ang)) * spread * sqrt(_u(VegetationPlacer._mix(hm + 1)))
+			if _road_dist(route, p2, s) < min_m or not ground_ok(ex, p2.x, p2.y, slope, wade):
+				continue
+			var m := {"pos": Vector3(p2.x, _ground(ex, p2.x, p2.y, 0.0), p2.y), "yaw": TAU * _u(VegetationPlacer._mix(hm + 2))}
+			if kind == "crows":
+				var l2 := p2 + away * land_d
+				if not ground_ok(ex, l2.x, l2.y):
+					l2 = p2
+				m["land"] = Vector3(l2.x, _ground(ex, l2.x, l2.y, 0.0), l2.y)
+			members.append(m)
+		if members.is_empty():
+			continue
+		match kind:
+			"herd":
+				return [{"type": "herd", "id": id, "species": spec["species"], "members": members}]
+			"crows":
+				return [{"type": "crows", "id": id, "species": spec["species"], "pos": Vector3(c2.x, _ground(ex, c2.x, c2.y, 0.0), c2.y),
+					"away": Vector3(away.x, 0.0, away.y), "members": members}]
+			"hare":
+				var colony := []
+				for i in range(members.size()):
+					colony.append({"type": "hare", "id": "%s_%d" % [id, i], "species": spec["species"], "pos": members[i]["pos"],
+						"yaw": members[i]["yaw"], "flee_dir": Vector3(away.x, 0.0, away.y)})
+				return colony
+	return []
 
 
 ## Point de la route à l'abscisse `s`, sa direction et son vecteur unitaire à droite, `{p, fwd, right}` (Vector2).
@@ -365,7 +600,7 @@ static func _open_country_birds(chunk_index: int, route, d_birds: float, ex: Dic
 				var ang := TAU * j / 8.0
 				top = maxf(top, _ground(ex, c2.x + cos(ang) * radius, c2.y + sin(ang) * radius, top))
 			var cy := top + lerpf(RAPTOR_AGL_M.x, RAPTOR_AGL_M.y, _u(VegetationPlacer._mix(hh + 3)))
-			out.append({"type": "raptor", "id": "%s_raptor" % tag, "center": Vector3(c2.x, cy, c2.y),
+			out.append({"type": "raptor", "id": "%s_raptor" % tag, "species": "bird", "center": Vector3(c2.x, cy, c2.y),
 				"radius_m": radius, "angle": TAU * _u(VegetationPlacer._mix(hh + 4)),
 				"omega": side * lerpf(RAPTOR_OMEGA.x, RAPTOR_OMEGA.y, _u(VegetationPlacer._mix(hh + 5)))})
 			break
@@ -384,7 +619,7 @@ static func _open_country_birds(chunk_index: int, route, d_birds: float, ex: Dic
 			var rank := int((i + 1) / 2.0)
 			members.append({"back": rank * VEE_SPACING_M.x, "side": (0.0 if i == 0 else (1.0 if i % 2 == 1 else -1.0)) * rank * VEE_SPACING_M.y})
 		var gy := _ground(ex, o2.x, o2.y, 0.0)
-		out.append({"type": "vee", "id": "%s_vee" % tag,
+		out.append({"type": "vee", "id": "%s_vee" % tag, "species": "bird",
 			"origin": Vector3(o2.x, gy + lerpf(VEE_AGL_M.x, VEE_AGL_M.y, _u(VegetationPlacer._mix(hv + 4))), o2.y),
 			"dir": Vector3(dir2.x, 0.0, dir2.y),
 			"speed_mps": lerpf(VEE_SPEED_MPS.x, VEE_SPEED_MPS.y, _u(VegetationPlacer._mix(hv + 5))),
@@ -422,7 +657,7 @@ static func _open_country_birds(chunk_index: int, route, d_birds: float, ex: Dic
 					"yaw": TAU * _u(VegetationPlacer._mix(hm + 2))})
 			if members.is_empty():
 				continue
-			out.append({"type": "crows", "id": "%s_crows" % tag, "pos": Vector3(c2.x, _ground(ex, c2.x, c2.y, 0.0), c2.y),
+			out.append({"type": "crows", "id": "%s_crows" % tag, "species": "bird", "pos": Vector3(c2.x, _ground(ex, c2.x, c2.y, 0.0), c2.y),
 				"away": Vector3(away.x, 0.0, away.y), "members": members})
 			break
 	return out

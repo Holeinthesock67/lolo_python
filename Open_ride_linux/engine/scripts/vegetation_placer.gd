@@ -23,6 +23,8 @@ extends RefCounted
 ## (`_lattice`) puis interpolées (`_lattice_noise`) avec les mêmes opérations que `_value_noise` :
 ## résultat identique au bit près. `last_profile` donne le temps de chaque étape du dernier appel.
 
+const BiomeIds := preload("res://scripts/biome_ids.gd")
+
 const KIND_FACTOR := {"wood": 1.0, "scrub": 0.4, "orchard": 0.6}   # autres kind : ignorés (§7)
 const NOISE_MAX_FRACTION := 0.5
 const NOISE_SCALE_M := 180.0
@@ -400,3 +402,81 @@ func _filter(out: PackedVector4Array, cand: PackedFloat64Array, tile: Rect2, hei
 		out[n] = Vector4(px, y, pz, SCALE_MIN + (SCALE_MAX - SCALE_MIN) * u)
 		n += 1
 	out.resize(n)
+
+
+## Série U (lot U7) : espèce de chaque arbre d'après les biomes (`biome_model.gd`).
+## En chaque arbre : biome tiré selon les poids du point, arbre gardé avec la probabilité
+## densité du biome / `tile_density` (densité qui a servi au placement), coupé au-dessus de la limite
+## des arbres du biome, puis espèce tirée selon les `weight` du biome. Un biome sans espèces (polaire)
+## ne garde aucun arbre ; un biome que le thème ne décrit pas garde l'arbre d'avant la série U
+## (`GENERIC`). Palmiers des déserts seulement près de l'eau (`near_water(x, z)`, oasis à 80 m).
+## Tirages hachés sur la position au décimètre : même graine, même forêt.
+## Renvoie {"trees": PackedVector4Array, "species": PackedByteArray}.
+const DESERTS := ["sand_desert", "rock_desert"]
+const GENERIC_SPECIES := 255
+
+
+static func assign_species(trees: PackedVector4Array, model, tile_density: float,
+		near_water: Callable = Callable()) -> Dictionary:
+	var out := PackedVector4Array()
+	var species := PackedByteArray()
+	var looks := {}   # biome -> réglages résolus une fois par appel (_species_look)
+	var forced: String = model.forced
+	var weights: Dictionary = {forced: 1.0} if forced != "" else {}
+	for t in trees:
+		# Un seul mélange par arbre (position au décimètre) : ce tirage est refait pour chaque arbre de la tuile
+		var h := _mix((int(round(t.x * 10.0)) * 73856093) ^ (int(round(t.z * 10.0)) * 19349663) ^ 0xB10E)
+		if forced == "":
+			weights = model.weights_at(t.x, t.z)
+		var biome := ""
+		var draw := _unit(h)
+		var acc := 0.0
+		for b in weights:
+			acc += float(weights[b])
+			biome = b
+			if draw < acc:
+				break
+		var look: Dictionary = looks.get(biome, {})
+		if look.is_empty():
+			look = _species_look(model, biome)
+			looks[biome] = look
+		var keep: float = look["density"] / tile_density if tile_density > 0.0 else 1.0
+		if keep < 1.0 and _unit(_mix(h + 11)) >= keep:
+			continue
+		if t.y > float(look["treeline"]):
+			continue
+		if look["generic"]:
+			out.append(t)
+			species.append(GENERIC_SPECIES)
+			continue
+		var cum: PackedFloat32Array = look["cum"]
+		if cum.is_empty():
+			continue
+		var pick := _unit(_mix(h + 23)) * cum[-1]
+		var k := 0
+		while k < cum.size() - 1 and pick >= cum[k]:
+			k += 1
+		var id: int = look["ids"][k]
+		if id == look["palm"] and look["desert"] and not (near_water.is_valid() and bool(near_water.call(t.x, t.z))):
+			continue
+		out.append(t)
+		species.append(id)
+	return {"trees": out, "species": species}
+
+
+## Réglages de végétation d'un biome prêts au tirage : densité, limite des arbres (INF sans limite), arbre
+## d'avant la série U, poids cumulés et indices des espèces (BiomeIds.SPECIES), désert à palmiers d'oasis.
+static func _species_look(model, biome: String) -> Dictionary:
+	var veg: Dictionary = model.params(biome)["vegetation"]
+	var cum := PackedFloat32Array()
+	var ids := PackedByteArray()
+	var total := 0.0
+	for sp in veg["species"]:
+		total += float(sp["weight"])
+		cum.append(total)
+		ids.append(BiomeIds.SPECIES.find(sp["kind"]))
+	if total <= 0.0:
+		cum.clear()
+	return {"density": float(veg["max_density_per_ha"]), "treeline": INF if veg["treeline_m"] == null else float(veg["treeline_m"]),
+		"generic": not bool(veg.get("has_species", false)), "cum": cum, "ids": ids,
+		"palm": BiomeIds.SPECIES.find("palm"), "desert": biome in DESERTS}
