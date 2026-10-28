@@ -8,6 +8,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
@@ -708,12 +709,19 @@ func _process(delta: float) -> void:
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
+	# Personnages et animaux (anim_clock.gd) : figés avec le décor quand le core ne répond plus.
+	if not banner.has_message("core_lost"):
+		AnimClock.advance(delta)
 	if rogue_host.is_active():
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
 		camera_views.snap()
 		return
 	if not follow.has_frame():
+		return
+	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
+	# l'horloge des personnages et des animaux ci-dessus.
+	if banner.has_message("core_lost"):
 		return
 	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd).
 	var s_disp: float = follow.update(now)
@@ -740,9 +748,9 @@ func _process(delta: float) -> void:
 
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
-## Core non joignable : le décor se fige avec la caméra (pas de nuages ni d'herbe qui bougent).
+## Core non joignable : pas appelé (_process fige toute la scène), donc ni nuages ni herbe qui bougent.
 func _step_living(delta: float, s_route: float, v: float) -> void:
-	if living_world == null or route == null or banner.has_message("core_lost"):
+	if living_world == null or route == null:
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0

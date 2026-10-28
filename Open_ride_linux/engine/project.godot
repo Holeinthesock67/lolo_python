@@ -46,3 +46,7 @@ wind_phase={
 "type": "float",
 "value": 0.0
 }
+anim_time={
+"type": "float",
+"value": 0.0
+}
