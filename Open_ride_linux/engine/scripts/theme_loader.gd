@@ -503,8 +503,21 @@ static func load_theme(theme_dir: String) -> Dictionary:
 		print("[theme] thème invalide (", theme_dir, ") : ", errors[0], " ; repli sur default")
 		return {"theme": default_theme, "warnings": warnings, "errors": errors, "theme_dir": DEFAULT_THEME_DIR}
 
-	var merged := _deep_merge(default_theme, dict_data)
+	# Le pack de biomes du thème par défaut n'est jamais prêté à un autre thème : un thème 1.x décrit
+	# tous les biomes, et un biome absent d'un thème 2.0 prend ses clés 1.x (Format .world v1 §9).
+	var base := default_theme
+	if ProjectSettings.globalize_path(theme_dir).simplify_path() != ProjectSettings.globalize_path(DEFAULT_THEME_DIR).simplify_path():
+		base = without_biomes(default_theme)
+	var merged := _deep_merge(base, dict_data)
 	return {"theme": merged, "warnings": warnings, "errors": errors, "theme_dir": theme_dir}
+
+
+## Thème sans ses clés 2.0 (`default_biome`, `biomes`, `variants`, `surfaces`).
+static func without_biomes(theme: Dictionary) -> Dictionary:
+	var out := theme.duplicate(true)
+	for key in V2_KEYS:
+		out.erase(key)
+	return out
 
 
 ## Charge un thème par son nom de configuration : ~/OpenRide/Themes/<name>/, sinon res://themes/default/.

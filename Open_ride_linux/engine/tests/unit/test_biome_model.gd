@@ -58,7 +58,9 @@ func _layer_with(tiles: Dictionary) -> Object:
 
 
 func _init() -> void:
-	var theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
+	var default_theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
+	var theme := ThemeLoader.without_biomes(default_theme)
+	theme["version"] = "1.2"
 
 	# Validation légère des tuiles
 	var errors := PackedStringArray()
@@ -161,6 +163,20 @@ func _init() -> void:
 	var jungle: Dictionary = m2.params("jungle")
 	_check(jungle["terrain"]["grass_color"] == ref["grass_color"] and jungle["vegetation"]["species"].is_empty(), "biome absent du thème 2.0 : valeurs 1.x")
 	_check(m2.default_biome() == "temperate_grassland" and not m2.active(), "sans couche ni forçage : modèle muet")
+
+	# Thème par défaut 2.0 (U15) : prairie = valeurs 1.x exactes, 16 biomes distincts
+	var md = BiomeModel.new(default_theme, null)
+	var gp: Dictionary = md.params("temperate_grassland")
+	var same_grass := true
+	for k in ref.keys():
+		if typeof(ref[k]) != TYPE_DICTIONARY and gp["terrain"][k] != ref[k]:
+			same_grass = false
+	_check(same_grass, "défaut 2.0 : temperate_grassland = terrain 1.x au bit près")
+	var flats := {}
+	for id in BiomeIds.BIOMES:
+		flats[md.params(id)["terrain"]["grass_color"].to_html()] = true
+	_check(flats.size() == 16, "défaut 2.0 : 16 couleurs de sol différentes (%d)" % flats.size())
+	_check(md.params("sand_desert")["vegetation"]["species"][0]["kind"] == "palm" and md.params("polar")["vegetation"]["species"].is_empty(), "défaut 2.0 : espèces par biome")
 
 	# blend : 50/50
 	var bl := BiomeModel.blend({"temperate_grassland": 0.5, "mediterranean": 0.5},
