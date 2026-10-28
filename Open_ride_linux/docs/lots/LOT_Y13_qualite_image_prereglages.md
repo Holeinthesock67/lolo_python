@@ -59,7 +59,7 @@ Coûts estimés pour la GTX 1060 en 1080p, à confirmer au banc à chaque étape
 | --- | --- | --- | --- | --- |
 | **1 (prototype, cette PR)** | Rendu des tons Filmic, exposition, contraste et saturation (tous préréglages) | Fort : couleurs, ciel non délavé | ≈ 0 | 4.3 |
 | 1 | Ombres : atlas 4096, filtre doux par préréglage, 4 cascades en `medium` et `high` (2 en `low`) | Fort : ombres nettes sous les arbres et les bâtiments | +0,5 à 1 ms | 4.3 |
-| 1 | SSAO « medium » et SSIL « low » en demi-résolution (`medium`), SSAO « high » et SSIL « medium » en pleine résolution (`high`) | Moyen à fort : pieds des arbres, coins des maisons | +1 à 1,5 ms | 4.3 |
+| 1 | SSAO « medium » et SSIL « low » en demi-résolution (`medium`), SSAO « high » et SSIL « medium » en demi-résolution (`high`, ramené après la mesure du §6) | Moyen à fort : pieds des arbres, coins des maisons | +1 à 1,5 ms | 4.3 |
 | 1 | MSAA 4× en `medium` (2× avant), FXAA en `low` (rien avant) | Moyen : bords des arbres, lignes de route | +0,5 à 1 ms ; `low` +0,2 ms | 4.3 |
 | 1 | Filtrage anisotrope 16× (tous) | Moyen : route et sol nets au loin | +0,1 à 0,3 ms | 4.3 |
 | 1 | Glow léger sur les zones très claires (`medium`, `high`) | Faible à moyen | +0,3 ms | 4.3 |
@@ -81,7 +81,7 @@ Les plus gros gains visuels restants ne sont pas des réglages mais du contenu, 
 | --- | --- | --- | --- |
 | Rendu des tons | Filmic, exposition 1,25, blanc 6, contraste 1,08, saturation 1,18 | idem | idem |
 | Anticrénelage | FXAA | MSAA 4× | MSAA 4× |
-| SSAO / SSIL | non / non | medium / low, demi-résolution | high / medium, pleine résolution |
+| SSAO / SSIL | non / non | medium / low, demi-résolution | high / medium, demi-résolution |
 | Glow | non | oui | oui |
 | Ombres | atlas 2048, 2 cascades, filtre doux bas | atlas 4096, 4 cascades, filtre doux moyen | atlas 4096, 4 cascades, filtre doux haut |
 | Seuil LOD | 2 px | 1 px | 0,5 px |
@@ -100,6 +100,22 @@ Deux blocs de moins de 10 minutes, PC au calme, sans séance vélo, fenêtre ann
 2. La branche en `low` puis en `high`, même commande.
 
 **Défaut du banc corrigé dans cette PR (28 octobre) :** `sim_bench.py` passait `--quality` à l'engine mais n'écrivait pas `[render] quality` dans la configuration du core ; le core renvoyait sa valeur par défaut (`low`) dans ses réglages au démarrage et l'engine l'appliquait (« Qualité graphique : low » dans `engine.log`), alors que la colonne `preset` de la sonde affichait le préréglage demandé. Les bancs `medium` et `high` mesuraient donc du `low` depuis l'envoi des réglages par le core (O4). Vérifier cette ligne de `engine.log` à chaque banc.
+
+**Résultats (28 octobre, GTX 1060, Vulkan Forward+, 1680 × 1050, `village` / `montee_descente`, médianes après 20 s ; avant = `main` 80fb951, après = la branche) :**
+
+| Banc | img/s | GPU ms médian / max | CPU ms | Charge GPU médiane / max | p99 ms | Appels de rendu | Primitives | VRAM Godot |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| avant `low` | 60 | 4,87 / 5,77 | 0,80 | 35 / 40 % | 16,7 | 429 | 803 k | 143 Mo |
+| après `low` | 60 | 4,71 / 5,84 | 0,77 | 35 / 41 % | 16,7 | 410 | 498 k | 143 Mo |
+| avant `medium` | 60 | 5,06 / 6,06 | 0,86 | 35 / 44 % | 16,7 | 435 | 1 047 k | 220 Mo |
+| après `medium` | 60 | 8,47 / 9,90 | 0,97 | 54 / 67 % | 16,7 | 435 | 1 048 k | 370 Mo |
+| après `high` (pleine résolution) | 60 | 13,43 / 15,30 | 1,03 | 83 / 100 % | 16,7 | 449 | 1 486 k | 413 Mo |
+
+- `low` est gratuit (38 % de primitives en moins grâce au seuil LOD).
+- `medium` coûte +3,4 ms de GPU et +150 Mo de VRAM : 8,5 ms pour un budget de 12 ms.
+- `high` en pleine résolution dépassait son budget en pointe (15,3 ms pour 14, 18 s au-dessus de 95 % de charge) : SSAO et SSIL de `high` passent en demi-résolution, à remesurer avant la fusion.
+- Les pics de 130 à 150 ms (chargement, captures) sont présents avant comme après. Aucune erreur Godot.
+- Captures aux instants 43, 83, 123 et 163 s de chaque banc : `~/OpenRide/sim_bench/2026-10-27_Y13/captures/` sur le PC (non versionnées).
 
 Critères : budgets du §3 ; écart d'images/s et de p99 entre `main` et la branche ; GPU médian et pointe dans `sonde.csv`. Si `medium` dépasse son enveloppe, retirer d'abord le SSIL, puis passer le MSAA à 2×.
 

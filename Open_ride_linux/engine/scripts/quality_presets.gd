@@ -86,7 +86,7 @@ const IMAGE := {
 		"fxaa": false,
 		"ssao": "high",
 		"ssil": "medium",
-		"ao_half_size": false,
+		"ao_half_size": true,
 		"glow": true,
 		"shadow_atlas": 4096,
 		"shadow_splits": 4,
