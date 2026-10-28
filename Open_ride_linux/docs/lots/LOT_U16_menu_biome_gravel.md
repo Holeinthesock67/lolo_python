@@ -24,11 +24,11 @@ U1, U2 et O4 livrés ; U5 pour l'effet à l'écran.
 ## 5. Fichiers concernés
 
 - **Modifiés :** `core/src/openride_core/settings.py`, `core/src/openride_core/ipc_server.py` (`hello_ack.config`), `core/tests/test_ipc_settings.py`, `engine/scripts/menu_model.gd`, `engine/scripts/settings_view.gd`, `engine/scripts/catalog_model.gd`, `engine/tests/unit/test_menu_model.gd`, `README.md`, `docs/SUIVI_AVANCEMENT.md` (une ligne).
-- **Interdits :** compilateur, contrats (déjà faits par U1).
+- **Interdits :** compilateur, format `.world` et thème (faits par U1) ; seuls `ipc_v1.md`, `hello_ack.schema.json` et le SRS §11 changent (§6).
 
 ## 6. Modifications de contrat autorisées
 
-Aucune (U1).
+La partie IPC et configuration du lot U1 (§4.6), reportée ici le 28 octobre 2026 (U1 §9) : `hello_ack.config.biome` et `.gravel` à la révision IPC libre suivante (ajout compatible, `v` reste 1, journal de `ipc_v1.md`), `[render] biome` et `[gravel]` dans `docs/SRS_v1.1.md` §11.
 
 ## 7. Critères d'acceptation
 

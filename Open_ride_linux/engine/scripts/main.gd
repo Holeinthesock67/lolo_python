@@ -34,6 +34,7 @@ const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RogueHost := preload("res://scripts/rogue/rogue_host.gd")
+const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
@@ -146,6 +147,8 @@ var living_decor = null
 var segment_markers = null
 ## Série T (lot T9) : blocs segment et bonus du HUD.
 var segment_hud = SegmentHudModel.new()
+## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
+var event_sounds = EventSoundsModel.new()
 var _beep_until_s := -INF
 ## Série R (lot R10) : scène du mode Cyber-Rogue, instanciée quand `state.mode` vaut « ROGUE ».
 var rogue_host = RogueHost.new()
@@ -227,7 +230,8 @@ func _ready() -> void:
 	ipc.segment_result_received.connect(func(msg: Dictionary) -> void:
 		if segment_hud.on_result(msg, Time.get_ticks_msec() / 1000.0):
 			print("Segment terminé : %s en %s s" % [msg.get("segment_id", "?"), msg.get("time_s", "?")])
-			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?")))
+			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?"))
+			_play_event(event_sounds.on_segment_result(msg)))
 	banner.changed.connect(func(text: String) -> void:
 		ipc.test_log("banner text=" + text.replace("\n", " | ")))
 	var gen := AudioStreamGenerator.new()
@@ -533,6 +537,16 @@ func _refresh_menu() -> void:
 		menu_view.update_display(st, _last_state, menu_flow.summary, menu_flow.show_details)
 
 
+## Jingle d'événement (lot T17), joué par SoundPlayer sur le bus « Events » ; nom vide : rien.
+func _play_event(jingle: String) -> void:
+	if jingle.is_empty():
+		return
+	if sound_player != null:
+		sound_player.play_event(jingle)
+	print("Jingle : ", jingle)
+	ipc.test_log("event_sound kind=" + jingle)
+
+
 func _play_tones(notes: Array, level: float) -> void:
 	var pb := _beep_player.get_stream_playback() as AudioStreamGeneratorPlayback
 	if pb == null:
@@ -792,7 +806,9 @@ func _poll_route_job() -> void:
 	if living_decor != null:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
-	segment_markers.set_route(route, SegmentMarkersModel.arch_every_m_from_file(), float(streamer.get("_road_width_m")))
+	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
+	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")))
+	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop())
 	segment_hud.set_segments(route.segments)
 	menu_flow.records.set_segments(route.segments)
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
@@ -1004,6 +1020,8 @@ func _on_state_received(state: Dictionary) -> void:
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
 		sound_player.update_audio(state, now_s, camera.position)
+	for jingle in event_sounds.on_state(state):
+		_play_event(jingle)
 
 
 ## Taille des courbes (lot O14) : ERG à la place de l'histogramme, SIM dans son panneau.
