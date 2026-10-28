@@ -31,10 +31,14 @@ func _check(cond: bool, msg: String) -> void:
 
 
 func _test_sound_synthesis_perf() -> void:
+	# Les sons sont synthétisés à la construction (_init) : temps et mémoire de SoundPlayer.new().
+	var made := {}
 	var t0 := Time.get_ticks_usec()
-	var sp = SoundPlayer.new()
-	root.add_child(sp)
+	var kb := PerfBudget.memory_kb(func(): made["sp"] = SoundPlayer.new())
 	var elapsed_ms := (Time.get_ticks_usec() - t0) / 1000.0
+	var sp = made["sp"]
+	root.add_child(sp)
+	_check(PerfBudget.check_memory("sound_generation_memory", kb), "mémoire des sons synthétisés : %.0f Ko" % kb)
 	print("Génération de tous les sons : %.2f ms" % elapsed_ms)
 	_check(PerfBudget.check("sound_generation", elapsed_ms),
 		"génération des sons au démarrage dans le budget (%.2f ms)" % elapsed_ms)

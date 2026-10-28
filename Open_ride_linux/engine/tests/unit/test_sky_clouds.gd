@@ -3,6 +3,7 @@ extends SceneTree
 ## Tests unitaires sans écran du ciel nuageux `sky_clouds.gd` (Lot P6).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_sky_clouds.gd
 
+const PerfBudget := preload("res://tests/perf_budget.gd")
 const SkyClouds := preload("res://scripts/sky_clouds.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
@@ -83,11 +84,8 @@ func _test_update() -> void:
 	var current := ProceduralSkyMaterial.new()
 	SkyClouds.update(current, wind, 1.0)   # sans effet, sans erreur
 	_check(true, "update sur un autre matériau : sans effet")
-	var t0 := Time.get_ticks_usec()
-	for i in range(10000):
-		SkyClouds.update(m, wind)
-	var per_call_ms := (Time.get_ticks_usec() - t0) / 1000.0 / 10000.0
-	_check(per_call_ms < 0.05, "coût de update : %.4f ms par image" % per_call_ms)
+	var cost := PerfBudget.frame_cost(func(): SkyClouds.update(m, wind), 2000, 50)
+	_check(PerfBudget.check("sky_clouds_frame", cost["median_ms"]), "coût de update : %.4f ms par image" % cost["median_ms"])
 
 
 func _init() -> void:

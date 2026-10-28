@@ -10,6 +10,7 @@ const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -187,13 +188,12 @@ func _init() -> void:
 	_check(is_equal_approx(bl["species"]["olive"], 0.5 * 0.4) and is_equal_approx(bl["species"]["oak"], 0.25), "blend : espèces pondérées")
 
 	# Critère 7 : coût de weights_at
-	var t0 := Time.get_ticks_usec()
-	var n := 20000
-	for k in range(n):
-		model.weights_at(float(k % 2000), float(k % 997))
-	var us := float(Time.get_ticks_usec() - t0) / n
-	print("[PERF] weights_at : %.2f µs par appel (seuil indicatif 5 µs)" % us)
-	_check(us < 20.0, "weights_at : %.2f µs par appel (< 20 µs ; 5 µs indicatif)" % us)
+	var st := {"k": 0}
+	var ms := PerfBudget.measure_ms(func():
+		for i in range(1000):
+			model.weights_at(float(st["k"] % 2000), float(st["k"] % 997))
+			st["k"] += 1, 5, 1)
+	_check(PerfBudget.check("biome_weights_1000", ms), "weights_at : %.2f µs par appel" % ms)
 
 	print("test_biome_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

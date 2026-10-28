@@ -16,7 +16,8 @@
 # « none » pour les sauter ; matrice complète et rapport : run_visual_tests.sh),
 # OPENRIDE_PERF (budgets de temps, lot X2 : « report » par défaut, un dépassement est signalé sans
 # échec ; « strict » le compte comme un échec ; budgets dans tests/perf_budgets.json),
-# PERF_CSV (fichier où ajouter les mesures « date;nom;ms;budget;dépassé », facultatif).
+# PERF_CSV (fichier où ajouter les mesures « date;nom;valeur;budget;dépassé;unité », ms ou Ko, facultatif ;
+# rapport par budget : python3 engine/tests/perf_budget_report.py, lot X19).
 # Code de sortie : 0 si tout passe.
 set -u
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -85,9 +86,10 @@ perf_summary() {
   over="$(grep -c "DÉPASSÉ" "$PERF_FILE")"
   echo "Budgets de temps (OPENRIDE_PERF=${OPENRIDE_PERF:-report}) : $(wc -l <"$PERF_FILE") mesures, $over dépassement(s)"
   sed 's/^\[PERF\] /  /' "$PERF_FILE"
+  [ -z "${PERF_LINES:-}" ] || cp "$PERF_FILE" "$PERF_LINES"   # lignes brutes pour perf_budget_report.py (lot X19)
   if [ -n "${PERF_CSV:-}" ]; then
-    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) ms, budget ([0-9.inf]+) ms( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\3;\4/" "$PERF_FILE" \
-      | sed 's/; (DÉPASSÉ)$/;oui/; s/;$/;non/' >>"$PERF_CSV"
+    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) (ms|Ko), budget ([0-9.inf]+) (ms|Ko)( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\4;\6;\3/" "$PERF_FILE" \
+      | sed -E 's/; \(DÉPASSÉ\);(ms|Ko)$/;oui;\1/; s/;;(ms|Ko)$/;non;\1/' >>"$PERF_CSV"
   fi
   rm -f "$PERF_FILE"
 }

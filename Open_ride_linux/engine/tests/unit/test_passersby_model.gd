@@ -5,6 +5,7 @@ extends SceneTree
 ## salut une fois par passage, sons espacés, budget, coût par image.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_passersby_model.gd
 
+const PerfBudget := preload("res://tests/perf_budget.gd")
 const PasserbyModel := preload("res://scripts/passersby_model.gd")
 const CrowdRenderer := preload("res://scripts/crowd_renderer.gd")
 const ClimbDetector := preload("res://scripts/climb_detector.gd")
@@ -228,24 +229,23 @@ func _run() -> void:
 			moved.append(pt + shift)
 		q["path"] = moved
 		big.people.append(q)
-	var t0 := Time.get_ticks_usec()
-	var frames := 0
-	var seen := 0
-	var sx := 1800.0
-	var t_upd := 0
-	while sx < 2200.0:
-		var tu := Time.get_ticks_usec()
-		big.update(Vector3(sx, 0.0, 1.0), sx, frames / 60.0)
-		t_upd += Time.get_ticks_usec() - tu
-		var v: Array = big.visible(Vector3(sx, 1.5, 1.0), sx, frames / 60.0, 80)
-		seen = maxi(seen, v.size())
-		sx += 0.13
-		frames += 1
-	var per_frame_ms := (Time.get_ticks_usec() - t0) / 1000.0 / frames
-	var update_ms := t_upd / 1000.0 / frames
-	print("Passants : %d affichés ; modèle %.3f ms par image, avec la sélection et l'animation %.3f ms" % [seen, update_ms, per_frame_ms])
-	_check(seen == 80 and update_ms < 0.1, "80 passants : mise à jour du modèle en %.3f ms par image (< 0,1 ms)" % update_ms)
-	_check(per_frame_ms < 0.2, "80 passants : modèle, sélection et animation en %.3f ms par image (< 0,2 ms)" % per_frame_ms)
+	# Le cycliste avance de 0,13 m par image (28 km/h à 60 images/s) : d'abord modèle, sélection et
+	# animation de 1 800 à 2 000 m, puis le modèle seul sur la suite (coûts par image, lot X19).
+	var st := {"sx": 1800.0, "frames": 0, "seen": 0}
+	var full := PerfBudget.frame_cost(func():
+		big.update(Vector3(st["sx"], 0.0, 1.0), st["sx"], st["frames"] / 60.0)
+		var v: Array = big.visible(Vector3(st["sx"], 1.5, 1.0), st["sx"], st["frames"] / 60.0, 80)
+		st["seen"] = maxi(st["seen"], v.size())
+		st["sx"] += 0.13
+		st["frames"] += 1, 1520, 20)
+	var model := PerfBudget.frame_cost(func():
+		big.update(Vector3(st["sx"], 0.0, 1.0), st["sx"], st["frames"] / 60.0)
+		st["sx"] += 0.13
+		st["frames"] += 1, 1500, 20)
+	print("Passants : %d affichés ; modèle %.3f ms par image, avec la sélection et l'animation %.3f ms" % [st["seen"], model["median_ms"], full["median_ms"]])
+	_check(st["seen"] == 80, "80 passants affichés au plus près du cycliste (%d)" % st["seen"])
+	_check(PerfBudget.check("passersby_model_frame", model["median_ms"]), "80 passants : mise à jour du modèle en %.3f ms par image" % model["median_ms"])
+	_check(PerfBudget.check("passersby_frame", full["median_ms"]), "80 passants : modèle, sélection et animation en %.3f ms par image" % full["median_ms"])
 
 	r.queue_free()
 	await process_frame

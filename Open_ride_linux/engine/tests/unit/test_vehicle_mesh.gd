@@ -6,6 +6,7 @@ extends SceneTree
 ## de triangles, déterminisme et palettes.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_vehicle_mesh.gd
 
+const PerfBudget := preload("res://tests/perf_budget.gd")
 const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const TrafficModel := preload("res://scripts/traffic_model.gd")
 
@@ -86,7 +87,7 @@ func _init() -> void:
 	_check(regions_ok, "peinture, vitres, noir, métal, phares et feux arrière sur chaque véhicule")
 	_check(front_ok, "phares devant (-z), feux derrière (+z)")
 	_check(faces_ok, "faces orientées comme leurs normales")
-	_check(build_ms < 400.0, "les %d maillages construits en %.0f ms" % [VehicleMesh.KINDS.size(), build_ms])
+	_check(PerfBudget.check("vehicle_meshes_build", build_ms), "les %d maillages construits en %.0f ms" % [VehicleMesh.KINDS.size(), build_ms])
 
 	# Roues à part (véhicules proches) : nombre, centre sur l'axe, rayon
 	var wheels_ok := true

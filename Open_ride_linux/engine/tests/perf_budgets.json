@@ -1,5 +1,5 @@
 {
-  "_doc": "Budgets de temps des tests de l'engine (lot X2, perf_budget.gd). budget_ms : seuil du cahier pour le PC cible ; ci_ms : machines partagées de GitHub (variable CI). Remplacement par machine : ~/OpenRide/perf_budgets.json, {\"nom\": ms}.",
+  "_doc": "Budgets de temps des tests de l'engine (lot X2, perf_budget.gd). budget_ms : seuil du cahier pour le PC cible ; ci_ms : machines partagées de GitHub (variable CI). Mémoire (lot X19) : budget_kb et ci_kb en Ko. Remplacement par machine : ~/OpenRide/perf_budgets.json, {\"nom\": ms ou Ko}.",
   "tree_tile_high": {"budget_ms": 150, "ci_ms": 170, "lot": "E3 / O1"},
   "vegetation_tile_max": {"budget_ms": 50, "ci_ms": 150, "lot": "K3"},
   "building_mesh_500": {"budget_ms": 150, "ci_ms": 300, "lot": "L1 / Y8 (toits à pans, découpe par pans, habillage : maillage dans une tâche de fond)"},
@@ -24,5 +24,16 @@
   "grass_tufts_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P5"},
   "avatar_frame": {"budget_ms": 0.3, "ci_ms": 0.9, "lot": "V6"},
   "living_decor_frame": {"budget_ms": 2.0, "ci_ms": 6.0, "lot": "P17"},
-  "decor_vivant_2_frame": {"budget_ms": 0.8, "ci_ms": 2.4, "lot": "P27"}
+  "decor_vivant_2_frame": {"budget_ms": 0.8, "ci_ms": 2.4, "lot": "P27"},
+  "passersby_model_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P27 / X19 (ex-seuil en dur de test_passersby_model)"},
+  "passersby_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P27 / X19 (modèle, sélection et animation)"},
+  "sky_clouds_frame": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "P8 / X19"},
+  "wind_evaluate": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "Q / X19"},
+  "vegetation_tile_biomes": {"budget_ms": 150, "ci_ms": 300, "lot": "U7 / X19 (seuil d'O1)"},
+  "vehicle_meshes_build": {"budget_ms": 400, "ci_ms": 1200, "lot": "P13 / X19"},
+  "chart_geometry_2h": {"budget_ms": 5, "ci_ms": 15, "lot": "O13 / X19"},
+  "sound_generation_memory": {"budget_kb": 4096, "ci_kb": 8192, "lot": "E4 / X19 (mémoire des sons synthétisés au lancement)"},
+  "biome_weights_1000": {"budget_ms": 5, "ci_ms": 20, "lot": "U7 / X19 (1 000 appels de weights_at : 5 µs indicatif par appel, ex-seuil en dur de 20 µs)"},
+  "sound_synthesis_rogue": {"budget_ms": 300, "ci_ms": 2000, "lot": "R18 / X19 (à mesurer quand R18 sera livré)"},
+  "sound_synthesis_rogue_memory": {"budget_kb": 8192, "ci_kb": 16384, "lot": "R18 / X19 (à mesurer quand R18 sera livré)"}
 }

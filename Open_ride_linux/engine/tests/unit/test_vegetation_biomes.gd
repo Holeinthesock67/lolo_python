@@ -3,6 +3,7 @@ extends SceneTree
 ## Tests sans écran des espèces construites par code et de la végétation par biome (lot U7, série U).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_vegetation_biomes.gd
 
+const PerfBudget := preload("res://tests/perf_budget.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
@@ -93,8 +94,7 @@ func _init() -> void:
 			medi += cm[k]
 	_check(total > 0 and float(medi) / total > 0.8, "méditerranéen : %d arbres, %.0f %% d'espèces méditerranéennes" % [total, 100.0 * medi / maxi(total, 1)])
 	_check(total < VegetationPlacer.new().place_tile(0, 0, 1000.0, func(_x, _z): return 300.0, null, theme).size(), "méditerranéen : moins dense que la prairie (150 contre 400 arbres/ha)")
-	print("[PERF] préparation d'une tuile méditerranéenne : %.1f ms" % ms)
-	_check(ms < 150.0, "préparation d'une tuile avec biomes : %.1f ms (< 150 ms, seuil d'O1)" % ms)
+	_check(PerfBudget.check("vegetation_tile_biomes", ms), "préparation d'une tuile méditerranéenne : %.1f ms" % ms)
 	# Coût de préparation proportionnel à la densité : aucun biome du thème par défaut plus dense que la forêt
 	# tempérée (600 arbres/ha), jungle comprise
 	var densest := ""
@@ -110,7 +110,7 @@ func _init() -> void:
 	jun.biome_model.set_forced("jungle")
 	var tj := Time.get_ticks_usec()
 	jun.prepare_tile(0, 0, heights, null, theme, 1.0)
-	print("[PERF] préparation d'une tuile de jungle : %.1f ms (%s)" % [(Time.get_ticks_usec() - tj) / 1000.0, str(jun.last_profile)])
+	print("Profil de la préparation d'une tuile de jungle : %.1f ms (%s)" % [(Time.get_ticks_usec() - tj) / 1000.0, str(jun.last_profile)])
 	jun.free()
 	var again: Dictionary = med.prepare_tile(0, 0, heights, null, theme, 1.0)
 	_check(var_to_str(again["species"]) == var_to_str(pm["species"]) and var_to_str(again["cells"]) == var_to_str(pm["cells"]), "même graine, même forêt")
