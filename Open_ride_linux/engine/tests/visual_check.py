@@ -602,7 +602,9 @@ def ground_box(s: Session, info: dict[str, Any]) -> tuple[int, int, int, int]:
     return 0, int(s.height * 0.6), s.width, s.height
 
 
-def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Report) -> None:
+def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Report, scenes=None) -> None:
+    """Lance l'engine à une configuration et joue `scenes(session)` (les scènes de ce fichier par défaut ;
+    hud_galerie.py passe les siennes)."""
     size, _, quality = config.partition(":")
     quality = quality or "low"
     width, height = (int(v) for v in size.lower().split("x"))
@@ -629,7 +631,7 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     with engine_log.open("w") as log_fh:
         proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True)
     try:
-        _scenes(s)
+        (scenes or _scenes)(s)
     finally:
         core.stop()
         try:
@@ -924,11 +926,12 @@ def _scenes(s: Session) -> None:
         narrow = [k for k in ("erg_title", "erg_target", "erg_remaining", "erg_next") if info["widgets"][k]["rect"][2] < 20]
         s.check("erg", "textes du bandeau ERG de largeur lisible", not narrow, "trop étroits : " + ", ".join(narrow))
         s.check("erg", "ligne ERG du panneau central laissée au bandeau", not info["widgets"]["erg"]["visible"])
+        s.check("erg", "profil d'altitude caché en ERG", not info["widgets"]["profile"]["visible"])
         s.check_layout("erg", info)
         s.check_hud_pixels("erg", img, info)
         hist = info["widgets"]["erg_hist"]
         s.check("erg", "histogramme des blocs affiché", hist["visible"] and hist["rect"][2] >= 0.8 * s.width
-                and hist["rect"][3] >= 40 * info["ui_scale"] and hist["rect"][1] + hist["rect"][3] <= s.height - 120 * info["ui_scale"],
+                and hist["rect"][3] >= 40 * info["ui_scale"] and hist["rect"][1] + hist["rect"][3] <= s.height - 10 * info["ui_scale"],
                 f"rectangle {hist['rect']}")
         if hist["visible"]:
             # Case du bloc en cours (2 sur 7) colorée en zone 4 (230 W pour une FTP de 250 W) : jaune.
@@ -984,7 +987,7 @@ def _scenes(s: Session) -> None:
         chart = w["chart_erg"]
         s.check("erg_courbes", "courbes affichées à la place de l'histogramme",
                 chart["visible"] and not w["erg_hist"]["visible"] and chart["rect"][2] >= 0.8 * s.width
-                and chart["rect"][1] + chart["rect"][3] <= s.height - 120 * info["ui_scale"], f"rectangle {chart['rect']}")
+                and chart["rect"][1] + chart["rect"][3] <= s.height - 10 * info["ui_scale"], f"rectangle {chart['rect']}")
         s.check_layout("erg_courbes", info)
         box = rect_box(chart["rect"])
         # Seuil bas : à 1024x600 (échelle 0,8) le panneau ne fait que 55 px de haut et le trait blanc

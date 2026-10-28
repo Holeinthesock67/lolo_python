@@ -12,6 +12,7 @@ const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
+const HudView := preload("res://scripts/hud_view.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
@@ -292,10 +293,12 @@ func _ready() -> void:
 	chart_sim.anchor_top = 1.0
 	chart_sim.anchor_bottom = 1.0
 	chart_sim.anchor_right = 1.0
-	chart_sim.offset_left = 340.0
-	chart_sim.offset_right = -340.0
-	chart_sim.offset_bottom = -130.0
-	chart_sim.offset_top = -250.0
+	# Entre les colonnes du HUD, juste au-dessus du profil d'altitude.
+	var chart_x := HudView.TOP_MARGIN + HudView.COLUMN_W + HudView.TOP_MARGIN
+	chart_sim.offset_left = chart_x
+	chart_sim.offset_right = -chart_x
+	chart_sim.offset_bottom = -HudView.PROFILE_RESERVE - HudView.BLOCK_GAP
+	chart_sim.offset_top = chart_sim.offset_bottom - 120.0
 	chart_sim.visible = false
 	hud.add_child(chart_sim)
 	junction_view = JunctionView.new()

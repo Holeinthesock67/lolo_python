@@ -21,6 +21,10 @@ const GOLD := Color(1.000, 0.824, 0.235)          # records, valeur clé
 const OK := Color(0.271, 0.878, 0.541)            # appareil prêt
 const WARN := Color(1.000, 0.702, 0.278)          # appareil en recherche, batterie basse
 const DANGER := Color(1.000, 0.180, 0.298)        # erreur, appareil perdu
+## Bandeau de l'écran de séance (banner.gd) : alerte (core perdu, erreur) en rouge, information (rappel
+## des boutons, consigne, niveau gagné) sur le fond des panneaux du HUD avec un liseré de sélection.
+const BANNER_ALERT := Color(0.6, 0.1, 0.05, 0.85)
+const BANNER_INFO_BORDER := Color(0.094, 0.941, 1.000, 0.6)
 const KEYCAP := Color(0.102, 0.137, 0.314)        # fond des touches du bandeau
 const KEYCAP_EDGE := Color(0.227, 0.278, 0.502)
 ## Voile sur la scène 3D derrière le menu : plus dense à gauche (liste), plus léger à droite.
@@ -37,12 +41,13 @@ const GRADE_CLIMB := Color(0.95, 0.75, 0.2, 0.85)
 const GRADE_STEEP := Color(0.95, 0.45, 0.1, 0.85)
 const GRADE_WALL := Color(0.85, 0.15, 0.15, 0.85)
 # Texte des classes de pente (valeur du HUD, carrefours) : teintes des barres éclaircies et opaques,
-# au moins 4,5:1 sur un panneau au-dessus d'un ciel clair (lot X22).
-const GRADE_TEXT_DESCENT := Color(0.55, 0.80, 1.00)
-const GRADE_TEXT_FLAT := Color(0.50, 0.90, 0.55)
-const GRADE_TEXT_CLIMB := Color(1.00, 0.85, 0.35)
-const GRADE_TEXT_STEEP := Color(1.00, 0.68, 0.40)
-const GRADE_TEXT_WALL := Color(1.00, 0.60, 0.58)
+# au moins 4,5:1 sur un panneau au-dessus d'un ciel clair (lot X22) ; encore éclaircies le 28/10 quand
+# les panneaux sont passés à 60 % d'opacité.
+const GRADE_TEXT_DESCENT := Color(0.70, 0.88, 1.00)
+const GRADE_TEXT_FLAT := Color(0.62, 0.95, 0.66)
+const GRADE_TEXT_CLIMB := Color(1.00, 0.89, 0.48)
+const GRADE_TEXT_STEEP := Color(1.00, 0.77, 0.54)
+const GRADE_TEXT_WALL := Color(1.00, 0.74, 0.72)
 const WIND_GOOD := Color(0.15, 0.62, 0.25, 0.95)
 const WIND_BAD := Color(0.8, 0.18, 0.12, 0.95)
 const WIND_NEUTRAL := Color(0.45, 0.48, 0.52, 0.95)
@@ -61,7 +66,7 @@ const TRACK := Color(1, 1, 1, 0.15)
 const TRACK_SOFT := Color(1, 1, 1, 0.1)
 const TRACK_FAINT := Color(1, 1, 1, 0.12)
 const HUD_DIM := Color(0.75, 0.8, 0.85)
-const PANEL_BG := Color(0.05, 0.07, 0.1, 0.7)
+const PANEL_BG := Color(0.05, 0.07, 0.1, 0.6)   # panneaux du HUD : 10 % plus transparents que 0,7 (28/10)
 const CHART_BG := Color(0.04, 0.06, 0.08, 0.65)
 const SHADOW_LINE := Color(0, 0, 0, 0.6)
 const OUTLINE := Color(0, 0, 0, 0.8)

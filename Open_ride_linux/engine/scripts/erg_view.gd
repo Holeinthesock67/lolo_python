@@ -41,7 +41,7 @@ const BLOCK_TYPE_LABELS := {
 }
 
 const PANEL_HEIGHT := 140.0
-const BOTTOM_OFFSET := 130.0   # au-dessus du profil d'altitude du HUD (120 px + marge)
+const BOTTOM_OFFSET := 15.0    # en bas de l'écran : le profil d'altitude du HUD est caché en ERG (28/10)
 const SIDE_MARGIN := 40.0
 
 var title_label: Label

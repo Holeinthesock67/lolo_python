@@ -53,16 +53,28 @@ const SEGMENT_TONES := {"good": UiTheme.SEGMENT_GOOD, "bad": UiTheme.SEGMENT_BAD
 const BONUS_COLOR := UiTheme.BONUS   # violet des arches de bonus (lot T8)
 const BLOCK_GAP := 8.0
 const BLOCK_PAD := 4.0
-## Haut de la colonne de droite (sous le panneau de droite) et réserve du bas : profil d'altitude, ou
-## bandeau ERG au-dessus de lui.
-const RIGHT_COLUMN_TOP := 20.0 + 320.0 + BLOCK_GAP
-const PROFILE_RESERVE := 120.0
-## Colonnes gauche et droite : largeur, marge intérieure et police minimale d'une valeur réduite pour tenir
-## dans la colonne (« 152 W (98 %) » en cible ERG).
-const COLUMN_W := 300.0
-const COLUMN_PAD := 10.0
-const METRIC_SEP := 12.0
-const METRIC_MIN_FONT := 20
+## Réserve du bas : profil d'altitude, ou bandeau ERG au-dessus de lui.
+## Profil d'altitude (SIM seulement : caché en ERG, où la pente n'agit pas sur le trainer) : 40 % moins
+## haut depuis le 28/10 (105 avant), marge du bas, réserve du bas de l'écran.
+const PROFILE_H := 63.0
+const PROFILE_BOTTOM := 15.0
+const PROFILE_RESERVE := PROFILE_H + PROFILE_BOTTOM + 2.0
+## Trois panneaux du haut (colonnes gauche et droite, bandeau central) : 10 % plus petits, polices
+## comprises, depuis le 28/10 (300 de large avant) pour moins couvrir la route, et hauteur ajustée au
+## contenu (_fit_top_panels). Marge à l'écran, largeur des colonnes, hauteurs de départ, marge
+## intérieure, police minimale d'une valeur réduite pour tenir dans la colonne (« 152 W (98 %) »).
+const TOP_MARGIN := 20.0
+const COLUMN_W := 270.0
+const COLUMN_H := 288.0
+const CENTER_H := 99.0
+const CENTER_PAD := 7.0
+const COLUMN_PAD := 9.0
+const METRIC_SEP := 11.0
+const METRIC_MIN_FONT := 18
+## Blocs sous les colonnes (vent, abri, encart des bots, segment, bonus) : construits sur BLOCK_W et
+## réduits à l'affichage (scale) pour garder la largeur des colonnes, polices comprises.
+const BLOCK_W := 300.0
+const BLOCK_SCALE := COLUMN_W / BLOCK_W
 const ERG_RESERVE := ErgView.BOTTOM_OFFSET + ErgView.PANEL_HEIGHT
 const JERSEY_COLORS := {"sprint": UiTheme.JERSEY_SPRINT, "kom": UiTheme.JERSEY_KOM}
 const KOM_DOT := UiTheme.KOM_DOT
@@ -93,6 +105,8 @@ var vm := HudViewModel.new()
 var panel_left: Panel
 var panel_right: Panel
 var panel_center: Panel
+var _column_boxes: Array[VBoxContainer] = []   # contenus des colonnes gauche et droite
+var _center_box: VBoxContainer
 
 # Nœuds d'affichage
 var power_val: Label
@@ -163,51 +177,55 @@ func _build_ui() -> void:
 		return
 
 	# Panneau gauche (haut) : Puissance, Cadence, Fréquence cardiaque
-	panel_left = _create_panel(Vector2(20.0, 20.0), Vector2(COLUMN_W, 320.0), false, false)
+	panel_left = _create_panel(Vector2(TOP_MARGIN, TOP_MARGIN), Vector2(COLUMN_W, COLUMN_H), false, false)
 	var left_vbox := VBoxContainer.new()
 	left_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, int(COLUMN_PAD))
+	_column_boxes.append(left_vbox)
 	panel_left.add_child(left_vbox)
 
 	power_val = _create_metric(left_vbox, "PUISSANCE (W)", HudViewModel.NO_VALUE)
 	cadence_val = _create_metric(left_vbox, "CADENCE (RPM)", HudViewModel.NO_VALUE)
 	hr_val = _create_metric(left_vbox, "CARDIO (BPM)", HudViewModel.NO_VALUE)
 	# Cible ERG sous les mesures, affichée seulement en ERG (« roue libre » sur un bloc libre).
-	target_val = _create_metric(left_vbox, "CIBLE ERG", HudViewModel.NO_VALUE, 40, 20)
+	target_val = _create_metric(left_vbox, "CIBLE ERG", HudViewModel.NO_VALUE, 36, 18)
 	target_val.get_parent().visible = false
 
 	# Panneau droit (haut) : Vitesse, Pente, Braquet, Distance, Temps
-	panel_right = _create_panel(Vector2(-20.0 - COLUMN_W, 20.0), Vector2(COLUMN_W, 320.0), true, false)
+	panel_right = _create_panel(Vector2(-TOP_MARGIN - COLUMN_W, TOP_MARGIN), Vector2(COLUMN_W, COLUMN_H), true, false)
 	var right_vbox := VBoxContainer.new()
 	right_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, int(COLUMN_PAD))
+	_column_boxes.append(right_vbox)
 	panel_right.add_child(right_vbox)
 
 	speed_val = _create_metric(right_vbox, "VITESSE (KM/H)", HudViewModel.NO_VALUE)
 	grade_val = _create_metric(right_vbox, "PENTE", HudViewModel.NO_VALUE)
-	gear_val = _create_metric(right_vbox, "BRAQUET", HudViewModel.NO_VALUE, 32, 20)
-	distance_val = _create_metric(right_vbox, "DISTANCE", HudViewModel.NO_VALUE, 32, 20)
-	time_val = _create_metric(right_vbox, "TEMPS", HudViewModel.NO_VALUE, 32, 20)
+	gear_val = _create_metric(right_vbox, "BRAQUET", HudViewModel.NO_VALUE, 29, 18)
+	distance_val = _create_metric(right_vbox, "DISTANCE", HudViewModel.NO_VALUE, 29, 18)
+	time_val = _create_metric(right_vbox, "TEMPS", HudViewModel.NO_VALUE, 29, 18)
 
 	# Bandeau supérieur central : ERG, prochaine montée et ligne d'état de diagnostic
-	panel_center = _create_panel(Vector2(340.0, 20.0), Vector2(-680.0, 110.0), false, false, true)
+	var center_x := TOP_MARGIN + COLUMN_W + TOP_MARGIN
+	panel_center = _create_panel(Vector2(center_x, TOP_MARGIN), Vector2(-2.0 * center_x, CENTER_H), false, false, true)
 	var center_vbox := VBoxContainer.new()
-	center_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 8)
+	center_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, int(CENTER_PAD))
+	_center_box = center_vbox
 	panel_center.add_child(center_vbox)
 
 	climb_label = Label.new()
-	climb_label.add_theme_font_size_override("font_size", 24)
+	climb_label.add_theme_font_size_override("font_size", 22)
 	climb_label.text = ""
 	climb_label.clip_text = true
 	center_vbox.add_child(climb_label)
 
 	erg_label = Label.new()
-	erg_label.add_theme_font_size_override("font_size", 22)
+	erg_label.add_theme_font_size_override("font_size", 20)
 	erg_label.text = ""
 	erg_label.clip_text = true
 	center_vbox.add_child(erg_label)
 
 	# Ligne d'état de diagnostic : séance, raison de pause, trainer, entrée (affichée depuis le lot D).
 	status_label = Label.new()
-	status_label.add_theme_font_size_override("font_size", 18)
+	status_label.add_theme_font_size_override("font_size", 16)
 	status_label.text = "ÉTAT: en attente du core…"
 	status_label.clip_text = true
 	center_vbox.add_child(status_label)
@@ -226,27 +244,28 @@ func _build_ui() -> void:
 	profile_panel.anchor_bottom = 1.0
 	profile_panel.offset_left = 40.0
 	profile_panel.offset_right = -40.0
-	profile_panel.offset_top = -120.0
-	profile_panel.offset_bottom = -15.0
+	profile_panel.offset_top = -PROFILE_BOTTOM - PROFILE_H
+	profile_panel.offset_bottom = -PROFILE_BOTTOM
 	profile_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
 	profile_panel.draw.connect(_on_profile_draw)
 	add_child(profile_panel)
 
 	alt_min_label = Label.new()
-	alt_min_label.add_theme_font_size_override("font_size", 20)
-	alt_min_label.position = Vector2(8.0, 80.0)
+	alt_min_label.add_theme_font_size_override("font_size", 16)
+	alt_min_label.position = Vector2(8.0, PROFILE_H - 24.0)
 	profile_panel.add_child(alt_min_label)
 
 	alt_max_label = Label.new()
-	alt_max_label.add_theme_font_size_override("font_size", 20)
-	alt_max_label.position = Vector2(8.0, 4.0)
+	alt_max_label.add_theme_font_size_override("font_size", 16)
+	alt_max_label.position = Vector2(8.0, 2.0)
 	profile_panel.add_child(alt_max_label)
 
 
 ## Indicateur du vent (Lot P16), sous le panneau de gauche (même largeur), caché tant qu'il n'y a
 ## pas de vent dans les trames du core.
 func _build_wind_panel() -> void:
-	panel_wind = _create_panel(Vector2(20.0, 350.0), Vector2(300.0, 132.0), false, false)
+	panel_wind = _create_panel(Vector2(TOP_MARGIN, TOP_MARGIN + COLUMN_H + 10.0), Vector2(BLOCK_W, 132.0), false, false)
+	_shrink_block(panel_wind, false)
 	panel_wind.name = "WindPanel"
 	panel_wind.visible = false
 	wind_arrow = Control.new()
@@ -295,7 +314,8 @@ func _build_wind_panel() -> void:
 ## Encart des bots (lots O7 et T15), sous le panneau de droite (même largeur), caché tant qu'il n'y a pas
 ## de bot. Lignes placées par _layout_bots_panel().
 func _build_bots_panel() -> void:
-	panel_bots = _create_panel(Vector2(-320.0, RIGHT_COLUMN_TOP), Vector2(300.0, 100.0), true, false)
+	panel_bots = _create_panel(Vector2(-TOP_MARGIN - BLOCK_W, _right_column_top()), Vector2(BLOCK_W, 100.0), true, false)
+	_shrink_block(panel_bots, true)
 	panel_bots.name = "BotsPanel"
 	panel_bots.visible = false
 	for i in range(BotsViewModel.MAX_LINES):
@@ -376,18 +396,41 @@ func _place(p: Control, top: float, h: float) -> void:
 	p.offset_bottom = top + h
 
 
+## Haut des blocs de la colonne de droite : sous le panneau de droite.
+func _right_column_top() -> float:
+	return panel_right.offset_bottom + BLOCK_GAP
+
+
+## Hauteur des trois panneaux du haut ajustée à leur contenu (pas de fond vide sous les lignes), puis
+## vent et colonne de droite replacés dessous.
+func _fit_top_panels() -> void:
+	var left_h := _column_boxes[0].get_combined_minimum_size().y + 2.0 * COLUMN_PAD
+	var right_h := _column_boxes[1].get_combined_minimum_size().y + 2.0 * COLUMN_PAD
+	var center_h := _center_box.get_combined_minimum_size().y + 2.0 * CENTER_PAD
+	if is_equal_approx(panel_left.size.y, left_h) and is_equal_approx(panel_right.offset_bottom - panel_right.offset_top, right_h) \
+			and is_equal_approx(panel_center.offset_bottom - panel_center.offset_top, center_h):
+		return
+	panel_left.size.y = left_h
+	_place(panel_right, TOP_MARGIN, right_h)
+	_place(panel_center, TOP_MARGIN, center_h)
+	panel_wind.position.y = TOP_MARGIN + left_h + DRAFT_GAP
+	if draft_label.visible:
+		draft_label.position.y = panel_wind.position.y + (panel_wind.size.y * BLOCK_SCALE + DRAFT_GAP if panel_wind.visible else 0.0)
+	_layout_right_column()
+
+
 ## Colonne de droite : blocs segment et bonus visibles empilés, puis l'encart des bots jusqu'au-dessus du
 ## profil d'altitude (ou du bandeau ERG).
 func _layout_right_column() -> void:
-	var y := RIGHT_COLUMN_TOP
+	var y := _right_column_top()
 	for p in [panel_segment, panel_bonus]:
 		if p != null and p.visible:
 			var h: float = p.offset_bottom - p.offset_top
 			_place(p, y, h)
-			y += h + BLOCK_GAP
+			y += h * BLOCK_SCALE + BLOCK_GAP
 	if panel_bots != null and panel_bots.visible:
 		var bottom: float = _screen_height() - (ERG_RESERVE if _erg_active else PROFILE_RESERVE) - BLOCK_GAP
-		_layout_bots_panel(y, bottom - y)
+		_layout_bots_panel(y, (bottom - y) / BLOCK_SCALE)
 
 
 func _layout_bots_panel(top: float, avail: float) -> void:
@@ -446,8 +489,9 @@ func neighbor_line(dir: String) -> Label:
 func _build_draft_label() -> void:
 	draft_label = Label.new()
 	draft_label.name = "Draft"
-	draft_label.position = panel_wind.position + Vector2(0.0, panel_wind.size.y + DRAFT_GAP)
+	draft_label.position = panel_wind.position + Vector2(0.0, panel_wind.size.y * BLOCK_SCALE + DRAFT_GAP)
 	draft_label.size = Vector2(panel_wind.size.x, 44.0)
+	_shrink_block(draft_label, false)
 	draft_label.add_theme_font_size_override("font_size", 28)
 	draft_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	draft_label.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
@@ -461,14 +505,16 @@ func _build_draft_label() -> void:
 
 ## Blocs segment et bonus (Lot T9), sous le panneau de droite, même largeur, cachés au départ.
 func _build_segment_blocks() -> void:
-	var top := 20.0 + 320.0 + BLOCK_GAP
-	panel_segment = _create_panel(Vector2(-320.0, top), Vector2(300.0, 100.0), true, false)
+	var top := _right_column_top()
+	panel_segment = _create_panel(Vector2(-TOP_MARGIN - BLOCK_W, top), Vector2(BLOCK_W, 100.0), true, false)
+	_shrink_block(panel_segment, true)
 	panel_segment.name = "SegmentPanel"
 	panel_segment.visible = false
 	segment_title = _block_label(panel_segment, "SegmentTitle", Vector2(10.0, 4.0), 22)
 	segment_main = _block_label(panel_segment, "SegmentMain", Vector2(10.0, 30.0), 36)
 	segment_detail = _block_label(panel_segment, "SegmentDetail", Vector2(10.0, 70.0), 20)
-	panel_bonus = _create_panel(Vector2(-320.0, top + 100.0 + BLOCK_GAP), Vector2(300.0, 72.0), true, false)
+	panel_bonus = _create_panel(Vector2(-TOP_MARGIN - BLOCK_W, top + 100.0 * BLOCK_SCALE + BLOCK_GAP), Vector2(BLOCK_W, 72.0), true, false)
+	_shrink_block(panel_bonus, true)
 	panel_bonus.name = "BonusPanel"
 	panel_bonus.visible = false
 	bonus_held = _block_label(panel_bonus, "BonusHeld", Vector2(10.0, 4.0), 26)
@@ -554,7 +600,7 @@ func update_wind(view: Dictionary) -> void:
 	draft_label.visible = draft != ""
 	if draft != "":
 		draft_label.text = draft
-		var top := panel_wind.position.y + (panel_wind.size.y + DRAFT_GAP if shown else 0.0)
+		var top := panel_wind.position.y + (panel_wind.size.y * BLOCK_SCALE + DRAFT_GAP if shown else 0.0)
 		draft_label.position = Vector2(panel_wind.position.x, top)
 	if not shown:
 		_wind_view = {}
@@ -604,6 +650,13 @@ func _on_wind_bars_draw() -> void:
 		wind_bars.draw_rect(r, WIND_BAR_COLOR if i < level else WIND_BAR_OFF)
 
 
+## Bloc sous une colonne réduit à BLOCK_SCALE ; à droite, réduit vers le bord droit de l'écran.
+func _shrink_block(c: Control, right: bool) -> void:
+	c.scale = Vector2(BLOCK_SCALE, BLOCK_SCALE)
+	if right:
+		c.pivot_offset = Vector2(BLOCK_W, 0.0)
+
+
 func _create_panel(pos: Vector2, size: Vector2, anchor_right := false, anchor_bottom := false, span_h := false) -> Panel:
 	var p := Panel.new()
 	var style := StyleBoxFlat.new()
@@ -639,7 +692,7 @@ func _create_panel(pos: Vector2, size: Vector2, anchor_right := false, anchor_bo
 
 
 func _create_metric(parent: Control, label_text: String, default_val: String,
-		val_size := 48, label_size := 24) -> Label:
+		val_size := 43, label_size := 22) -> Label:
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", int(METRIC_SEP))
 	parent.add_child(hbox)
@@ -677,6 +730,8 @@ func _set_metric(val: Label, text: String) -> void:
 func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = null, s: float = 0.0) -> void:
 	_route = route
 	_erg_active = state.get("erg") != null
+	if profile_panel != null:
+		profile_panel.visible = not _erg_active
 	var now_s := Time.get_ticks_usec() / 1e6
 	vm.on_state(state, now_s)
 	var lines := HudViewModel.session_lines(state, erg_eval)
@@ -732,6 +787,9 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 		else:
 			climb_label.text = "Prochaine montée : dans %.1f km (%.1f km à %.1f %%)" % [
 				float(climb["start_m"]) / 1000.0, float(climb["length_m"]) / 1000.0, float(climb["avg_grade_pct"])]
+	if climb_label != null:
+		climb_label.visible = climb_label.text != ""   # ligne vide : pas de hauteur dans le bandeau
+	_fit_top_panels()
 
 	# Profil d'altitude (au plus 5 fois par seconde ou si s a avancé d'une colonne ~41 m)
 	var col_step := 5000.0 / 120.0
