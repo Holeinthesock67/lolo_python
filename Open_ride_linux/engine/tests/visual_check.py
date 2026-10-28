@@ -52,6 +52,7 @@ from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
 
 ENGINE_DIR = Path(__file__).resolve().parents[1]
 CORE_SRC = ENGINE_DIR.parent / "core" / "src"
+COMPILER_SRC = ENGINE_DIR.parent / "compiler" / "src"
 DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
 # Mêmes tolérances que run_engine_tests.sh, plus la synchronisation verticale sous Xvfb.
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
@@ -911,6 +912,7 @@ def _scenes(s: Session) -> None:
         s.check_layout("erreur", info)
     _menu_scenes(s)
     _pentes_scenes(s)
+    _decor_vivant_scene(s)
     fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
 
@@ -941,6 +943,51 @@ def _pentes_scenes(s: Session) -> None:
         s.check_world("pente_4pct", img, info)
     # Le parcours demo ne dépasse pas 4,5 % : l'aspect d'une pente de 8 % se juge sur la scène
     # pente_4pct lancée avec --visual-grade=1.8 (captures suffixées _k1.8).
+
+
+## Lot P27 : monde de test OSM (make_osm_world.py) : troupeau à 2 180 m, route secondaire à 100 m et
+## autoroute à 250 m du parcours, canal à 120 m ; la scène roule de DECOR_S pendant DECOR_WAIT_S au plus.
+## Avec la graine 0 de traffic_model.gd, la case de 1 500 à 1 750 m porte un utilitaire qui double.
+OSM_ROUTE_ID = "osm-test"
+DECOR_S = 1480.0
+DECOR_WAIT_S = 30.0
+DECOR_KINDS = {"animals": "troupeau", "birds": "oiseaux", "vehicles": "véhicule croisé",
+               "distant_vehicles": "véhicule lointain", "aircraft": "objet du ciel"}
+
+
+def _decor_vivant_scene(s: Session) -> None:
+    """Lot P27 : décor vivant de la deuxième vague sur le monde de test OSM, vérifié par la présence des
+    objets (le décor bouge : pas d'image de référence). Captures toutes les 2 s jusqu'à ce que chaque sorte
+    ait été vue, DECOR_WAIT_S au plus ; la dernière est gardée dans le rapport."""
+    core = s.core
+    mark = core.log.mark()
+    core.route_id = OSM_ROUTE_ID
+    core.set_scene(speed=SPEED_MPS, s=DECOR_S, session_state="RUNNING", grade=5.0, grade_sent=5.0, power=280.0,
+                   cadence=88.0, hr=150, summary=None)
+    loaded = core.log.wait_for(rf"^route_loaded id={OSM_ROUTE_ID}", ROUTE_TIMEOUT_S, mark)
+    s.check("decor_vivant", "monde de test OSM chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(SETTLE_S)
+    seen = dict.fromkeys(DECOR_KINDS, 0)
+    t0 = now()
+    shot = None
+    while now() - t0 < DECOR_WAIT_S:
+        shot = s.capture("decor_vivant") or shot
+        dec = shot[1].get("decor", {}) if shot else {}
+        for k in seen:
+            seen[k] = max(seen[k], int(dec.get(k, 0)))
+        if all(seen.values()):
+            break
+        time.sleep(2.0)
+    caps = [c for c in s.report.captures if c.config == s.name and c.scene == "decor_vivant"]
+    for c in caps[:-1]:
+        s.report.captures.remove(c)
+    if shot:
+        img, info = shot
+        s.check("decor_vivant", "décor vivant préparé", bool(info.get("decor", {}).get("prepared")))
+        for k, label in DECOR_KINDS.items():
+            s.check("decor_vivant", f"{label} en vue", seen[k] > 0, f"{seen[k]} au plus")
+        s.check_layout("decor_vivant", info)
+        s.check_world("decor_vivant", img, info)
 
 
 def _menu_scenes(s: Session) -> None:
@@ -1034,6 +1081,16 @@ def main() -> int:
         if gen.returncode != 0:
             print("Génération du parcours demo avec terrain impossible :\n" + gen.stderr)
             return 1
+        # Monde de test OSM de la scène decor_vivant (lot P27), avec le vrai compilateur
+        osm_work = Path(tempfile.mkdtemp(prefix="openride-visual-osm-"))
+        gen = subprocess.run([sys.executable, str(ENGINE_DIR / "tests" / "make_osm_world.py"), "--out", str(osm_work)],
+                             env={**os.environ, "PYTHONPATH": os.pathsep.join([str(COMPILER_SRC), str(CORE_SRC)])},
+                             capture_output=True, text=True)
+        if gen.returncode != 0:
+            print("Génération du monde de test OSM impossible (compilateur installé ?) :\n" + gen.stderr)
+            return 1
+        shutil.copytree(osm_work / f"{OSM_ROUTE_ID}.world", routes_dir / f"{OSM_ROUTE_ID}.world")
+        shutil.rmtree(osm_work, ignore_errors=True)
         for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
             run_config(config, args, routes_dir, out_dir, report)
     finally:
