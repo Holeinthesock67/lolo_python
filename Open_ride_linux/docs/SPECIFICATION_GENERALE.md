@@ -185,7 +185,7 @@ Les cahiers R0 à R17 sont sur `main` ; le contrat de la série est dans le lot 
 | Id | Exigence | Lots | Statut |
 | --- | --- | --- | --- |
 | 2.0-SEG-1 | Montées détectées automatiquement (500 m, 3 %, 30 m de gain ; catégorie 4 à HC) et sprints déclarés ou proposés, couche `segments` du `.world` | T1 à T3 | Livré (T1, PR #392 ; T2, PR #247 ; T3, PR #394) ; branchement dans la séance par T7 |
-| 2.0-SEG-2 | Chronométrage interpolé à 0,02 s près, pause qui annule, boucles et aller-retour | T4 | Livré, module pur (T4, PR #251) |
+| 2.0-SEG-2 | Chronométrage interpolé à 0,02 s près, pause Y qui annule, coupure subie qui suspend, boucles et aller-retour | T4 | Livré, module pur (T4, PR #251) |
 | 2.0-SEG-3 | Records « avec » et « sans bonus » séparés, classement local avec bots et fantôme | T5, T10 | T5 livré, module pur (PR #326) ; T10 spécifié |
 | 2.0-BON-1 | Bonus légèreté (masse × 0,90), aéro (CdA × 0,75), puissance (× 1,10), 15 s, activés par Z, désactivés en ERG, sans effet sur la résistance du trainer | T6, T7 | T6 livré, module pur (PR #262) ; T7 spécifié |
 | 2.0-BOT-1 | Bots à profil (grimpeur, sprinteur, puncheur, diesel) avec CP, W' et masse, calibrés par simulation du parcours à 90, 100 ou 110 % de la FTP ou à un niveau libre | T12, T13 | Planifié |

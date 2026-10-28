@@ -67,13 +67,27 @@ def test_interpolation_precision_with_physics_50hz():
     assert run(DT) == pytest.approx(run(0.001), abs=0.02)
 
 
-def test_pause_cancels_segment_then_next_pass_counts():
+def test_user_pause_cancels_segment_then_next_pass_counts():
     timer = SegmentTimer([Seg("climb1", 1000.0, 2000.0)], 10_000.0, loop=False)
     t, s = ride(timer, 10.0, 150.0)       # au milieu du segment (s = 1 500)
-    timer.pause("trainer_lost")
-    assert timer.cancelled == [("climb1", 0, "trainer_lost")]
+    timer.pause("user")
+    assert timer.cancelled == [("climb1", 0, "user")]
     t, s = ride(timer, 10.0, 100.0, t0=t, s0=s)   # reprise dans le segment : pas de passage
     assert timer.passes == []
+
+
+@pytest.mark.parametrize("reason", ["trainer_lost", "engine_lost", "world_data", "recording_failed",
+                                    "core_restarted"])
+def test_suffered_pause_suspends_segment(reason):
+    # Séance A du 28 octobre : coupure du trainer en pleine montée, le temps chronométré s'arrête.
+    timer = SegmentTimer([Seg("climb1", 1000.0, 2000.0)], 10_000.0, loop=False)
+    t, s = ride(timer, 10.0, 150.0)       # s = 1 500, entrée à t = 100
+    timer.pause(reason)
+    assert timer.cancelled == []
+    assert timer.live(t, s).state == "active"
+    ride(timer, 10.0, 100.0, t0=t, s0=s)  # reprise au même temps chronométré
+    (p,) = timer.passes
+    assert p.time_s == pytest.approx(100.0, abs=0.02)
 
 
 def test_loop_counts_each_lap():
@@ -149,7 +163,10 @@ def test_passes_from_journal_matches_live_and_pauses(tmp_path: Path):
         t = 0
         s = 0.0
         while s < 4000.0:
-            if t == 320:           # pause dans le sprint (s ≈ 3 200)
+            if t == 150:           # coupure du trainer dans la montée (s ≈ 1 500) : suspendue
+                w.event("pause", 1000.0 + t, "trainer_lost")
+                w.event("resume", 1010.0 + t)
+            if t == 320:           # pause sans raison (journal ancien) dans le sprint (s ≈ 3 200)
                 w.event("pause", 1000.0 + t)
                 w.event("resume", 1060.0 + t)
             w.record(Record(ts=1000.0 + t, t=float(t), distance=s, speed=10.0, power=250.0))
