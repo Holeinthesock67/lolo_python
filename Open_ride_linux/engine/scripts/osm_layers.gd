@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Lecture des couches OpenStreetMap d'un `.world` (Lot K4, Format .world v1 §2, §6, §7, §8 et §10),
+## Lecture des couches OpenStreetMap d'un `.world` (Lot K4, Format .world v1 §2, §6, §7, §8, §8 ter et §10),
 ## sans aucun nœud ni affichage. Le rendu (bâtiments extrudés, forêts, eau, sons) reste au lot E4.
 ## Pas de class_name : charger par preload("res://scripts/osm_layers.gd").
 ##
@@ -11,14 +11,16 @@ extends RefCounted
 
 const SUPPORTED_MAJOR := 1
 const CHUNK_LENGTH_M := 1000.0
-const OSM_LAYERS := ["buildings", "vegetation", "poi", "water"]
-const KNOWN_LAYERS := ["terrain", "buildings", "vegetation", "poi", "water"]
+const OSM_LAYERS := ["buildings", "vegetation", "poi", "water", "roads"]
+const KNOWN_LAYERS := ["terrain", "buildings", "vegetation", "poi", "water", "roads"]
 
 const BUILDING_ROOFS := ["flat", "gabled"]
-const VEGETATION_KINDS := ["wood", "scrub", "orchard"]
+const VEGETATION_KINDS := ["wood", "scrub", "orchard", "meadow", "farmland", "grassland"]   # 1.5 : terrains ouverts (P22)
+const VEGETATION_OPEN_KINDS := ["meadow", "farmland", "grassland"]
 const POI_KINDS := ["church_bell", "river", "livestock", "village", "viewpoint", "wind_turbine", "flag"]   # 1.2 : P12
 const WATER_LINE_KINDS := ["river", "stream", "canal"]
 const WATER_AREA_KINDS := ["lake", "pond", "reservoir"]
+const ROAD_KINDS := ["motorway", "trunk", "primary", "secondary", "tertiary", "unclassified", "residential", "track"]   # 1.5 : P22
 
 
 static func _is_number(v: Variant) -> bool:
@@ -93,6 +95,19 @@ static func _valid_water_line(l: Dictionary) -> bool:
 	var pts = l.get("points", null)
 	if not (_has_id(l) and str(l.get("kind", "")) in WATER_LINE_KINDS and _is_number(l.get("width_m", null))
 			and float(l["width_m"]) > 0.0 and typeof(pts) == TYPE_ARRAY and (pts as Array).size() >= 2):
+		return false
+	for p in pts:
+		if not _is_point(p, 3):
+			return false
+	return true
+
+
+static func _valid_road(r: Dictionary) -> bool:
+	var pts = r.get("points", null)
+	var lanes = r.get("lanes", null)
+	if not (_has_id(r) and str(r.get("kind", "")) in ROAD_KINDS and _is_number(lanes) and float(lanes) >= 1.0
+			and typeof(r.get("oneway", null)) == TYPE_BOOL and _is_number(r.get("speed_kmh", null))
+			and float(r["speed_kmh"]) > 0.0 and typeof(pts) == TYPE_ARRAY and (pts as Array).size() >= 2):
 		return false
 	for p in pts:
 		if not _is_point(p, 3):
@@ -235,7 +250,7 @@ static func _make_absolute(doc: Dictionary, layer: String, off: Vector2) -> void
 				if typeof(p) == TYPE_DICTIONARY and _is_number(p.get("x", null)) and _is_number(p.get("z", null)):
 					p["x"] = float(p["x"]) + off.x
 					p["z"] = float(p["z"]) + off.y
-		"water":
+		"water", "roads":
 			var lines = doc.get("lines", [])
 			if typeof(lines) == TYPE_ARRAY:
 				for l in lines:
@@ -284,9 +299,10 @@ static func _load_file(path: String, layer: String, offset: Vector2) -> Dictiona
 	if offset != Vector2.ZERO:
 		_make_absolute(doc, layer, offset)
 	match layer:
-		"buildings", "vegetation", "poi":
-			var key: String = {"buildings": "buildings", "vegetation": "areas", "poi": "points"}[layer]
-			var valid: Callable = {"buildings": _valid_building, "vegetation": _valid_vegetation, "poi": _valid_poi}[layer]
+		"buildings", "vegetation", "poi", "roads":
+			var key: String = {"buildings": "buildings", "vegetation": "areas", "poi": "points", "roads": "lines"}[layer]
+			var valid: Callable = {"buildings": _valid_building, "vegetation": _valid_vegetation, "poi": _valid_poi,
+				"roads": _valid_road}[layer]
 			var got = _filter(doc, key, valid)
 			if got == null:
 				res["error"] = "liste « %s » absente dans %s" % [key, path]

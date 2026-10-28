@@ -11,6 +11,7 @@ extends Node3D
 ## Tous les nœuds sont créés au démarrage (pool de MAX_VEHICLES, le budget du préréglage `high`).
 
 const TrafficModel := preload("res://scripts/traffic_model.gd")
+const AudioMix := preload("res://scripts/audio_mix.gd")
 
 const MAX_VEHICLES := 8
 const PALETTE := [Color(0.62, 0.08, 0.08), Color(0.12, 0.2, 0.45), Color(0.85, 0.85, 0.82), Color(0.18, 0.18, 0.2)]
@@ -108,6 +109,7 @@ func _init() -> void:
 		audio.unit_size = 8.0
 		audio.max_distance = 250.0
 		audio.doppler_tracking = AudioStreamPlayer3D.DOPPLER_TRACKING_IDLE_STEP
+		audio.bus = AudioMix.bus(AudioMix.AMBIENCE)
 		root.add_child(audio)
 		_slots.append({"root": root, "bodies": bodies, "wheels": wheels, "audio": audio, "kind": "",
 			"paint": [pa, pb]})

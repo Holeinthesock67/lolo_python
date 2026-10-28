@@ -16,6 +16,8 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
+const AudioMix := preload("res://scripts/audio_mix.gd")
+const FpsCounter := preload("res://scripts/fps_counter.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -31,6 +33,7 @@ const LivingDecor := preload("res://scripts/living_decor.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
+const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
 const LiveWorld := preload("res://scripts/live_world.gd")
 const JunctionView := preload("res://scripts/junction_view.gd")
 const WorldMenuView := preload("res://scripts/world_menu_view.gd")
@@ -80,6 +83,8 @@ var _test_cam_last_s := NAN
 var erg_view = ErgViewModel.new()
 ## Bandeau et histogramme ERG (lot N7), dans le HUD.
 var erg_panel = null
+## Compteur d'images/s du HUD (réglage `render.fps`, caché par défaut).
+var fps_counter = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
@@ -141,6 +146,8 @@ var living_decor = null
 var segment_markers = null
 ## Série T (lot T9) : blocs segment et bonus du HUD.
 var segment_hud = SegmentHudModel.new()
+## Jingles des événements du parcours (lot T17) : sommet, sprint, arche, fin de séance.
+var event_sounds = EventSoundsModel.new()
 var _beep_until_s := -INF
 
 
@@ -219,7 +226,8 @@ func _ready() -> void:
 	ipc.segment_result_received.connect(func(msg: Dictionary) -> void:
 		if segment_hud.on_result(msg, Time.get_ticks_msec() / 1000.0):
 			print("Segment terminé : %s en %s s" % [msg.get("segment_id", "?"), msg.get("time_s", "?")])
-			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?")))
+			ipc.test_log("segment_result id=%s" % msg.get("segment_id", "?"))
+			_play_event(event_sounds.on_segment_result(msg)))
 	banner.changed.connect(func(text: String) -> void:
 		ipc.test_log("banner text=" + text.replace("\n", " | ")))
 	var gen := AudioStreamGenerator.new()
@@ -227,6 +235,7 @@ func _ready() -> void:
 	gen.buffer_length = 0.6
 	_beep_player = AudioStreamPlayer.new()
 	_beep_player.stream = gen
+	_beep_player.bus = AudioMix.bus(AudioMix.EVENTS)
 	add_child(_beep_player)
 	_beep_player.play()
 	# Le bandeau passe sous le panneau central du HUD (ERG, montée, état) pour ne jamais le recouvrir.
@@ -255,6 +264,8 @@ func _ready() -> void:
 	hud.add_child(junction_view)
 	world_menu_view = WorldMenuView.new()
 	hud.add_child(world_menu_view)
+	fps_counter = FpsCounter.new()
+	hud.add_child(fps_counter)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
@@ -309,9 +320,12 @@ func _ready() -> void:
 		_refresh_menu())
 
 
-## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de suite.
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
+## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s montré ou caché.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
+	AudioMix.apply_settings(menu_flow.settings.items)
+	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
@@ -519,6 +533,16 @@ func _refresh_menu() -> void:
 		menu_view.update_display(st, _last_state, menu_flow.summary, menu_flow.show_details)
 
 
+## Jingle d'événement (lot T17), joué par SoundPlayer sur le bus « Events » ; nom vide : rien.
+func _play_event(jingle: String) -> void:
+	if jingle.is_empty():
+		return
+	if sound_player != null:
+		sound_player.play_event(jingle)
+	print("Jingle : ", jingle)
+	ipc.test_log("event_sound kind=" + jingle)
+
+
 func _play_tones(notes: Array, level: float) -> void:
 	var pb := _beep_player.get_stream_playback() as AudioStreamGeneratorPlayback
 	if pb == null:
@@ -579,6 +603,7 @@ func _process(delta: float) -> void:
 	_poll_route_job()
 	_poll_live_world()
 	_record_frame_perf(delta)
+	fps_counter.add_frame(delta)
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	if _menu_camera(delta):
@@ -775,7 +800,9 @@ func _poll_route_job() -> void:
 	if living_decor != null:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
-	segment_markers.set_route(route, SegmentMarkersModel.arch_every_m_from_file(), float(streamer.get("_road_width_m")))
+	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
+	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")))
+	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop())
 	segment_hud.set_segments(route.segments)
 	menu_flow.records.set_segments(route.segments)
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
@@ -987,6 +1014,8 @@ func _on_state_received(state: Dictionary) -> void:
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
 		sound_player.update_audio(state, now_s, camera.position)
+	for jingle in event_sounds.on_state(state):
+		_play_event(jingle)
 
 
 ## Taille des courbes (lot O14) : ERG à la place de l'histogramme, SIM dans son panneau.

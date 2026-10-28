@@ -14,7 +14,7 @@ DS_M = 10.0
 ROUTE_FIELDS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
 ROUTES_DIR = Path.home() / ".local" / "share" / "openride" / "routes"
 
-FORMAT_VERSION = "1.3"
+FORMAT_VERSION = "1.5"   # 1.5 : prés, champs et routes voisines (lot P22) ; 1.4 : monde vivant (W1)
 SUPPORTED_MAJOR = 1
 ROUTE_VERSION = "1.0"
 COMPILER_NAME = "openride-compiler"
@@ -55,6 +55,20 @@ OSM_BAND_M = 400.0
 DENSITY_WOOD = 0.8
 DENSITY_SCRUB = 0.4
 DENSITY_ORCHARD = 0.5
+VEGETATION_WOODED_KINDS = ("wood", "scrub", "orchard")
+# Format 1.5 (lot P22) : terrains ouverts, sans arbres (densité 0), pour les animaux et les tracteurs.
+DENSITY_OPEN = 0.0
+VEGETATION_OPEN_KINDS = ("meadow", "farmland", "grassland")
+
+# Couche routes voisines (format §8 ter, lot P22) : routes OSM du couloir, hors route du parcours.
+ROADS_VERSION = "1.0"
+ROAD_KINDS = ("motorway", "trunk", "primary", "secondary", "tertiary", "unclassified", "residential", "track")
+ROAD_ROUTE_GAP_M = 20.0        # points plus proches de l'axe du parcours : la route du parcours elle-même
+ROAD_PARALLEL_M = 35.0         # pièce dont tous les points sont à moins de cette distance : doublon du parcours
+ROAD_DEFAULT_LANES = {"motorway": 4, "trunk": 4, "track": 1}
+ROAD_DEFAULT_LANES_OTHER = 2
+ROAD_DEFAULT_SPEED_KMH = {"motorway": 130, "trunk": 110, "primary": 80, "secondary": 80, "tertiary": 80,
+                          "unclassified": 50, "residential": 30, "track": 20}
 
 # Couches OpenStreetMap : points d'intérêt et eau (format §8, lot I4).
 POI_VERSION = "1.0"

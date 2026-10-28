@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Tests sans écran de la lecture des couches OSM `osm_layers.gd` (Lot K4).
+## Tests sans écran de la lecture des couches OSM `osm_layers.gd` (Lot K4 ; terrains ouverts et routes voisines, P22).
 ## Données produites par le vrai compilateur, sans réseau : engine/tests/make_osm_world.py.
 ## Lancement : godot --headless --path engine --script res://tests/test_osm_layers.gd -- <osm-test.world> <expected.json>
 
@@ -58,7 +58,7 @@ func _test_compiled_world(world_dir: String, expected_path: String) -> void:
 		_check(false, "données de test lisibles (%s, %s)" % [world_dir, expected_path])
 		return
 	var present := OsmLayers.layers_present(manifest)
-	_check(present == ["terrain", "buildings", "vegetation", "poi", "water"], "layers_present : %s" % str(present))
+	_check(present == ["terrain", "buildings", "vegetation", "poi", "water", "roads"], "layers_present : %s" % str(present))
 	var route = RouteDataScript.new()
 	route.load_world_dir(world_dir)
 	var all_chunks: Array[int] = OsmLayers.chunks_for_window(0.0, route.length_m, route)
@@ -82,8 +82,8 @@ func _test_compiled_world(world_dir: String, expected_path: String) -> void:
 		var man: Dictionary = expected["manifest"][layer]
 		var match_manifest := true
 		match layer:
-			"buildings", "vegetation", "poi":
-				var key: String = {"buildings": "buildings", "vegetation": "areas", "poi": "points"}[layer]
+			"buildings", "vegetation", "poi", "roads":
+				var key: String = {"buildings": "buildings", "vegetation": "areas", "poi": "points", "roads": "lines"}[layer]
 				match_manifest = int(totals.get(key, 0)) == int(man["count"])
 			"water":
 				match_manifest = int(totals.get("lines", 0)) == int(man["lines_count"]) \
@@ -106,9 +106,26 @@ func _test_corrupted() -> void:
 	_write("vegetation", 2, "{\"version\": \"1.0\", \"areas\": [%s]}" % (area % [ring, "1.5"]))
 	var r2: Dictionary = OsmLayers.load_chunk(TMP, "vegetation", 2)
 	_check(r2["ok"] and r2["items"].is_empty() and r2["ignored"] == 1, "density 1,5 : élément ignoré et compté")
-	_write("vegetation", 3, "{\"version\": \"1.0\", \"areas\": [%s]}" % (area % [ring, "0.5"]).replace("wood", "meadow"))
+	_write("vegetation", 3, "{\"version\": \"1.0\", \"areas\": [%s]}" % (area % [ring, "0.5"]).replace("wood", "marsh"))
 	var r3: Dictionary = OsmLayers.load_chunk(TMP, "vegetation", 3)
 	_check(r3["ok"] and r3["items"].is_empty() and r3["ignored"] == 1, "kind inconnu : élément ignoré et compté")
+	_write("vegetation", 6, "{\"version\": \"1.0\", \"areas\": [%s, %s, %s]}" % [
+		(area % [ring, "0"]).replace("wood", "meadow"), (area % [ring, "0"]).replace("wood", "farmland"),
+		(area % [ring, "0"]).replace("wood", "grassland")])
+	var r_open: Dictionary = OsmLayers.load_chunk(TMP, "vegetation", 6)
+	_check(r_open["ok"] and r_open["items"].size() == 3 and r_open["ignored"] == 0, "1.5 : pré, champ et prairie acceptés")
+	var road := "{\"id\": \"w%d\", \"kind\": \"%s\", \"lanes\": %s, \"oneway\": %s, \"speed_kmh\": 80, \"points\": %s}"
+	var pts := "[[0, 0, 1], [25, 0, 1.5]]"
+	_write("roads", 0, "{\"version\": \"1.0\", \"lines\": [%s, %s, %s, %s, %s]}" % [
+		road % [1, "secondary", "2", "false", pts], road % [2, "footway", "2", "false", pts],
+		road % [3, "primary", "0", "false", pts], road % [4, "primary", "2", "\"yes\"", pts],
+		road % [5, "primary", "2", "true", "[[0, 0, 1], [25, 0]]"]])
+	var r_roads: Dictionary = OsmLayers.load_chunk(TMP, "roads", 0)
+	_check(r_roads["ok"] and r_roads["items"].size() == 1 and r_roads["ignored"] == 4,
+		"routes voisines : sorte, voies, sens unique et points invalides ignorés (%d gardée, %d ignorées)" % [
+		r_roads["items"].size(), r_roads["ignored"]])
+	_write("roads", 1, "{\"version\": \"1.0\"}")
+	_check(not OsmLayers.load_chunk(TMP, "roads", 1)["ok"], "routes voisines : liste « lines » absente, ok = faux")
 	_write("vegetation", 4, "{\"version\": \"2.0\", \"areas\": [%s]}" % (area % [ring, "0.5"]))
 	var r4: Dictionary = OsmLayers.load_chunk(TMP, "vegetation", 4)
 	_check(not r4["ok"] and "2.0" in r4["error"], "version 2.0 refusée (%s)" % r4["error"])
