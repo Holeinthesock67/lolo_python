@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Vitrine des biomes (série U) : pour chaque biome forcé, une route droite dans un paysage plat avec le sol,
+## Vitrine des biomes (série U) : pour chaque biome forcé, une route droite dans un paysage plat avec le sol (lot U6),
 ## la végétation (lot U7), les animaux (lot U12), le brouillard et la teinte de la lumière du biome, tirés du
 ## thème par défaut 2.0 (lot U15) par biome_model.gd. Un étang à droite de la route (oasis des déserts, flamants),
 ## un bois, un pré, un champ et une prairie (zones OSM de la faune d'avant la série U). Sans core ni parcours ;
@@ -18,7 +18,7 @@ extends SceneTree
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
-const TerrainMaterial := preload("res://scripts/terrain_material.gd")
+const BiomeTextures := preload("res://scripts/biome_textures.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
@@ -157,7 +157,7 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	plane.subdivide_depth = 60
 	ground.mesh = plane
 	ground.position = Vector3(0.0, GROUND_Y - 0.02, -500.0)
-	ground.material_override = TerrainMaterial.create_material(model.terrain_theme(biome))
+	ground.material_override = BiomeTextures.new(model, ThemeLoader.DEFAULT_THEME_DIR, preset).tile_material("near", 0, 0)
 	vp.add_child(ground)
 	var road := MeshInstance3D.new()
 	road.mesh = _road_mesh()

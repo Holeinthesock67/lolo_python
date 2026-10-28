@@ -67,10 +67,15 @@ const DEFAULT_MODES := ["ride", "erg"]
 const CREATE_WORKOUT_ID := "_create"
 const IMPORT_WORKOUT_ID := "_import"
 ## Bot de l'écran Prêt (lot O7), dans l'ordre du cycle : libellé et élément de l'argument `bots` de `start`.
+## Bots à profil (lots T12 et T13) : chaque profil à 90, 100 et 110 % de ta FTP, calibré par le core.
 const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 200}],
 	["250 W", {"kind": "constant", "power_w": 250}], ["300 W", {"kind": "constant", "power_w": 300}],
 	["90 % de la FTP", {"kind": "constant", "ftp_pct": 90}], ["100 % de la FTP", {"kind": "constant", "ftp_pct": 100}],
-	["110 % de la FTP", {"kind": "constant", "ftp_pct": 110}]]
+	["110 % de la FTP", {"kind": "constant", "ftp_pct": 110}],
+	["Grimpeur 90 %", {"kind": "profile", "profile": "climber", "level_pct": 90}], ["Grimpeur 100 %", {"kind": "profile", "profile": "climber", "level_pct": 100}], ["Grimpeur 110 %", {"kind": "profile", "profile": "climber", "level_pct": 110}],
+	["Rouleur 90 %", {"kind": "profile", "profile": "rouleur", "level_pct": 90}], ["Rouleur 100 %", {"kind": "profile", "profile": "rouleur", "level_pct": 100}], ["Rouleur 110 %", {"kind": "profile", "profile": "rouleur", "level_pct": 110}],
+	["Sprinteur 90 %", {"kind": "profile", "profile": "sprinter", "level_pct": 90}], ["Sprinteur 100 %", {"kind": "profile", "profile": "sprinter", "level_pct": 100}], ["Sprinteur 110 %", {"kind": "profile", "profile": "sprinter", "level_pct": 110}],
+	["Diesel 90 %", {"kind": "profile", "profile": "diesel", "level_pct": 90}], ["Diesel 100 %", {"kind": "profile", "profile": "diesel", "level_pct": 100}], ["Diesel 110 %", {"kind": "profile", "profile": "diesel", "level_pct": 110}]]
 ## Fin de la liste des parcours (bibliothèque, lot O12) : tri et filtre par étiquette, en cycle.
 const SORT_ROUTES_ID := "_sort"
 const FILTER_ROUTES_ID := "_filter"

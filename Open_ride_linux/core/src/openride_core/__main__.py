@@ -92,19 +92,24 @@ def cmd_run(args: argparse.Namespace) -> int:
         cfg.trainer.trace_ftms = True
 
     bots_list = []
-    if args.bot:
-        if len(args.bot) > 4:
-            print("openride-core run : erreur : au plus 4 bots à puissance constante (--bot)", file=sys.stderr)
+    if args.bot or args.bot_profile:
+        if len(args.bot or []) + len(args.bot_profile or []) > 4:
+            print("openride-core run : erreur : au plus 4 bots à puissance constante ou à profil "
+                  "(--bot, --bot-profile)", file=sys.stderr)
             return 2
-        from .bots import ConstantPowerBot, BotError
+        from .bots import ConstantPowerBot, BotError, ProfileBot, profile_bot_names
         from .physics import PhysicsParams
         phys_params = PhysicsParams.from_config(cfg)
-        for i, w in enumerate(args.bot):
-            try:
-                bots_list.append(ConstantPowerBot(w, bot_id=f"bot{i+1}", params=phys_params))
-            except BotError as exc:
-                print(f"openride-core run : erreur : {exc}", file=sys.stderr)
-                return 2
+        try:
+            for w in args.bot or []:
+                bots_list.append(ConstantPowerBot(w, bot_id=f"bot{len(bots_list) + 1}", params=phys_params))
+            profiles = args.bot_profile or []
+            for prof, name in zip(profiles, profile_bot_names(profiles)):
+                bots_list.append(ProfileBot(prof, bot_id=f"bot{len(bots_list) + 1}", name=name,
+                                            params=phys_params, bike_mass_kg=cfg.bike.mass_kg))
+        except BotError as exc:
+            print(f"openride-core run : erreur : {exc}", file=sys.stderr)
+            return 2
     if args.ghost:
         from .bots import GhostBot, BotError
         try:
@@ -237,7 +242,11 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--replay", type=Path,
                      help="rejoue une séance enregistrée (.jsonl ou .fit) avec le simulateur (force --trainer mock)")
     run.add_argument("--bot", action="append", type=float, metavar="W",
-                     help="ajoute un bot à puissance constante en watts (répétable, au plus 4)")
+                     help="ajoute un bot à puissance constante en watts (répétable, au plus 4 avec --bot-profile)")
+    run.add_argument("--bot-profile", action="append", choices=["climber", "rouleur", "sprinter", "diesel"],
+                     metavar="PROFIL",
+                     help="ajoute un bot à profil : climber (Grimpeur), rouleur, sprinter (Sprinteur) ou "
+                          "diesel (répétable, au plus 4 bots en tout avec --bot ; lot T12)")
     run.add_argument("--ghost", type=Path, metavar="FICHIER",
                      help="ajoute un fantôme rejouant une séance enregistrée (.jsonl ou .fit)")
     run.add_argument("--first-run", action="store_true",
