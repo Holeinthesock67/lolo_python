@@ -5,20 +5,21 @@ extends Control
 ## préchargement. Dessine ce que `world_menu_model.gd` décrit ; ne reçoit pas la souris.
 ## Pas de class_name (charger par preload).
 
+const UiTheme := preload("res://scripts/ui_theme.gd")
 const Model := preload("res://scripts/world_menu_model.gd")
 
 const GLOBE_DIR := "res://assets/globe/"
 const GLOBE_PX := 560
-const BG := Color(0.03, 0.05, 0.09, 0.96)
-const TEXT := Color(0.92, 0.95, 1.0)
-const DIM := Color(0.62, 0.70, 0.80)
-const ACCENT := Color(1.0, 0.85, 0.25)
-const COAST_COLOR := Color(0.85, 0.92, 1.0, 0.55)
-const BORDER_COLOR := Color(0.85, 0.92, 1.0, 0.18)
-const REGION_COLOR := Color(0.30, 0.85, 0.45)
-const PINNED_COLOR := Color(1.0, 0.55, 0.15)
-const ROAD_COLORS := {"p": Color(1.0, 0.75, 0.3), "s": Color(0.95, 0.85, 0.5), "t": Color(0.85, 0.9, 0.95),
-	"m": Color(0.6, 0.68, 0.78), "c": Color(0.35, 0.85, 0.55), "k": Color(0.75, 0.6, 0.45)}
+const BG := UiTheme.GLOBE_BG
+const TEXT := UiTheme.GLOBE_TEXT
+const DIM := UiTheme.GLOBE_DIM
+const ACCENT := UiTheme.PICK
+const COAST_COLOR := UiTheme.COAST
+const BORDER_COLOR := UiTheme.BORDER
+const REGION_COLOR := UiTheme.REGION
+const PINNED_COLOR := UiTheme.PINNED
+const ROAD_COLORS := {"p": UiTheme.ROAD_P, "s": UiTheme.ROAD_S, "t": UiTheme.PALE,
+	"m": UiTheme.ROAD_M, "c": UiTheme.ROAD_C, "k": UiTheme.ROAD_K}
 ## Rotation de la sphère qui amène la longitude 0 face à la caméra (réglée sur le rendu, tests/render).
 const TEXTURE_LON_OFFSET_DEG := 180.0
 const MAX_RESULTS := 8
@@ -106,7 +107,7 @@ func _build_globe() -> void:
 	if tex != null:
 		mat.albedo_texture = tex
 	else:
-		mat.albedo_color = Color(0.1, 0.25, 0.5)
+		mat.albedo_color = UiTheme.GLOBE_SEA
 	sphere.material_override = mat
 	globe_root.add_child(sphere)
 	globe_root.add_child(_coast_node())
@@ -281,7 +282,7 @@ func _draw_canvas() -> void:
 			_draw_map(Rect2(size.x * 0.40, 80.0, size.x * 0.56, size.y - 150.0))
 		Model.LOADING:
 			var bar := Rect2(size.x * 0.2, size.y * 0.5, size.x * 0.6, 22.0)
-			_canvas.draw_rect(bar, Color(1, 1, 1, 0.12))
+			_canvas.draw_rect(bar, UiTheme.TRACK_FAINT)
 			_canvas.draw_rect(Rect2(bar.position, Vector2(bar.size.x * vm.loading_fraction(), bar.size.y)), ACCENT)
 			body_label.position = Vector2(size.x * 0.2, size.y * 0.5 - 48.0)
 	if vm.state != Model.LOADING:
@@ -290,7 +291,7 @@ func _draw_canvas() -> void:
 
 ## Carte régionale : routes en mètres depuis le centre (x est, z sud), curseur et flèche du cap.
 func _draw_map(area: Rect2) -> void:
-	_canvas.draw_rect(area, Color(0.07, 0.10, 0.15))
+	_canvas.draw_rect(area, UiTheme.GLOBE_PANEL)
 	var scale_px := minf(area.size.x, area.size.y) * 0.5 / Model.MAP_RADIUS_M
 	var centre := area.get_center()
 	for road in vm.roads:
