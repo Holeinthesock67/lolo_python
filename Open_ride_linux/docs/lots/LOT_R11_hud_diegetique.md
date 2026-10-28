@@ -54,3 +54,11 @@ Aucune.
 ## 8. Hors périmètre
 
 - Ennemis (R12), menu de départ et écran de fin (R13).
+
+## 9. Livraison (28 octobre 2026)
+
+- **Modèle :** `engine/scripts/rogue/rogue_hud_model.gd` (sans nœud) : vitesse « 01 » à « 12 », watts en % de FTP, cadence, posture et son jeton de couleur (Roc or, Fluide neutre, Véloce violet, Arrêt bleu de grille), arcs bouclier et adrénaline avec le seuil Z à 50 %, W'bal en % (rouge sous 25 %), PV de l'ennemi, écart au Firewall (rouge sous 30 m), couloir (3 cartes, 2 portes, sélection, coût de relance) et piratage. Valeurs lissées sur 0,3 s, sauf la vitesse. Les événements d'une trame ne sont rendus qu'une fois (même `seq`).
+- **Effets de caméra :** `rogue_camera_fx.gd`, classe à part plutôt qu'une modification de `camera_follow.gd`, pour que le mode classique reste intact : 75° au repos, 95° en sprint (≥ 140 % de FTP, ouverture en 0,4 s, retour en 1 s), tremblement de 0,05 m sur 0,2 s pour `perfect_shift`, `hit`, `crit` et `parry`. La propriété `reduce_motion` coupe les deux ; le réglage « réduire les mouvements » (O4) n'existant pas encore, elle reste à faux.
+- **Vue :** `rogue_hud_view.gd` : hologramme à 1,2 m au-dessus de la roue arrière, deux demi-cercles au sol de 1,5 m (bouclier bleu à gauche, adrénaline orange à droite), bandeau « Salle manquée −10 or » de 3 s et un éclair rouge de 0,25 s. `rogue_scene.gd`, `rogue_host.gd` et `main.gd` relaient la trame, la FTP et le message `loot`.
+- **Écarts :** l'attaque Z n'a pas de drapeau dans la trame (contrat 1.4), seul le sprint ouvre le champ de vision ; les sons (Perfect Shift, impact, parade, alarme du Firewall, échec de salle) sont dans le lot R18, la vue ne fait que remonter les événements ; l'affichage des cartes et des portes du couloir est le travail de R13 (le modèle les fournit déjà).
+- Tests : `engine/tests/unit/test_rogue_hud_model.gd`, `test_rogue_camera_fx.gd` et `test_rogue_host.gd` (étendu). Reste : contrôle visuel de la lisibilité à l'effort sur la GTX 1060.

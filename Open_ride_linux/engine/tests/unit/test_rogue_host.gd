@@ -82,6 +82,12 @@ func _run() -> void:
 	_check(is_equal_approx(sc.markers[0]["node"].position.z, -105.0), "arche à 105 m (z = −105)")
 	_check(sc.firewall.visible and is_equal_approx(sc.firewall.position.z, -(sc._s_disp - 80.0)), "Firewall à 80 m derrière le joueur")
 	_check(sc.ribbon_y(150.0) > sc.ribbon_y(50.0), "le ruban monte")
+	# HUD diégétique (R11) : le modèle suit la trame, le HUD est dans la scène, le loot est relayé
+	_check(sc.hud_model.is_active() and sc.hud_model.values()["gear_text"] == "01", "modèle du HUD alimenté par la trame")
+	_check(sc.hud_view != null and sc.hud_view.get_node_or_null("ShieldArc") != null, "HUD dans la scène")
+	host.on_loot({"cards": [{}, {}, {}], "doors": [{}, {}], "reroll_cost": 50, "gold": 10})
+	host.update({"mode": "ROGUE", "rogue": _rogue("CORRIDOR", 5, 120.0)}, main, classic, we, cam, "low", 102.5)
+	_check(sc.hud_model.values()["corridor"]["cards"].size() == 3, "cartes du couloir relayées au modèle")
 	# échauffement : pas de ruban
 	host.update({"mode": "ROGUE", "rogue": _rogue("WARMUP", 0, 0.0)}, main, classic, we, cam, "low", 103.0)
 	_check(not sc.ribbon.visible and not sc.firewall.visible, "échauffement : ni ruban ni Firewall")

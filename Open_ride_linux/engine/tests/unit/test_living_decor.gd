@@ -82,6 +82,12 @@ static func _make_world() -> Dictionary:
 						"holes": [], "base_y": _alt(x), "height_m": 6.0, "roof": "flat", "hint": {"building": "house"}})
 			pois.append({"id": "village", "kind": "village", "x": 1200.0, "y": _alt(1200.0), "z": 40.0, "radius_m": 300.0, "name": "Village"})
 			pois.append({"id": "flag", "kind": "flag", "x": 1230.0, "y": _alt(1230.0), "z": 12.0, "radius_m": 5.0, "name": null})
+			# Lot P29 : canal de 15 m (péniches) à 400 m du parcours
+			var canal := []
+			for i in range(10):
+				var cx := 1000.0 + 100.0 * i
+				canal.append([cx, -400.0, _alt(cx) - 2.0])
+			lines.append({"id": "canal", "kind": "canal", "width_m": 15.0, "points": canal})
 			pois.append({"id": "turbine", "kind": "wind_turbine", "x": 1500.0, "y": _alt(1500.0), "z": -250.0, "radius_m": 30.0, "name": null, "height_m": 90.0})
 		var roads := []
 		if k == 0:
@@ -185,6 +191,12 @@ func _run() -> void:
 				fields += 1
 	_check(osm.traffic_enabled and dec.road_traffic.path_count() >= 3 and fields >= 1,
 		"circulation lointaine : %d chemins, dont %d champs avec leur tracteur" % [dec.road_traffic.path_count(), fields])
+	var boat_kinds := {}
+	for k in dec.boats.paths:
+		for path in dec.boats.paths[k]:
+			boat_kinds[path["boats"][0]["kind"]] = true
+	_check(osm.boats_enabled and boat_kinds.has("rowboat") and boat_kinds.has("barge"),
+		"bateaux : barque sur le lac, péniches sur le canal (%s)" % str(boat_kinds.keys()))
 
 	# 2. Roule dans le village puis jusqu'au sommet, sous la pluie
 	var base_end := env.fog_depth_end
@@ -199,6 +211,8 @@ func _run() -> void:
 	var distant_on_route := 0
 	var distant_seen := {}
 	var distant_max := 0
+	var boats_max := 0
+	var boats_on_route := 0
 	var state := {"power": 320.0, "bots": [{"id": "b1", "name": "Bot", "s": 3700.0, "v": 4.0, "kind": "constant"}]}
 	dec.ftp_w = 250.0
 	while s < 3995.0:
@@ -215,6 +229,10 @@ func _run() -> void:
 				distant_on_route += 1
 			distant_seen[v["kind"]] = true
 		distant_max = maxi(distant_max, dec.road_traffic_view.visible_count())
+		for b in dec.boats.boats:
+			if absf((b["xform"] as Transform3D).origin.z) < 15.0:
+				boats_on_route += 1
+		boats_max = maxi(boats_max, dec.boats_view.visible_count())
 		cheer_max = maxf(cheer_max, dec.last_cheer)
 		s += 0.4
 		now += 0.05
@@ -231,7 +249,8 @@ func _run() -> void:
 	_check(dec.traffic.spawned_total > 0 and rider_hits == 0, "véhicules croisés : %d, jamais sur le cycliste" % dec.traffic.spawned_total)
 	_check(distant_max >= 1 and distant_max <= 24 and distant_on_route == 0 and distant_seen.has("tractor_field"),
 		"routes voisines et champs : jusqu'à %d véhicules affichés (budget 24), jamais sur le parcours, sortes %s" % [distant_max, str(distant_seen.keys())])
-	_check(dec.headlights and dec.traffic_view.lights and dec.road_traffic_view.lights, "pluie : phares allumés")
+	_check(dec.headlights and dec.traffic_view.lights and dec.road_traffic_view.lights and dec.boats_view.lights, "pluie : phares et feux des bateaux allumés")
+	_check(boats_max >= 1 and boats_max <= 16 and boats_on_route == 0, "bateaux : jusqu'à %d affichés (budget 16), jamais sur le parcours" % boats_max)
 	_check(spectators_on_road == 0 and max_people_below < 1.0, "spectateurs hors de la chaussée, à %.2f m au plus de la route en altitude" % max_people_below)
 	_check(cheer_max > 0.2, "clameur au sommet : %.2f" % cheer_max)
 	_check(dec.passersby_view.visible_count() >= 0, "passants affichés")
@@ -278,6 +297,12 @@ func _run() -> void:
 	var clock_before: float = dec.road_traffic.clock_s
 	dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
 	_check(dec.road_traffic.clock_s == clock_before, "pause : circulation lointaine figée")
+	var boats_before: float = dec.boats.clock_s
+	var sky_before: float = dec.sky.clock_s
+	dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
+	_check(dec.sky.budget == 12 and dec.sky.clock_s == sky_before and dec.sky_view.visible_count() == dec.sky.craft.size(),
+		"ciel : %d engins au plus (préset high), figé en pause" % dec.sky.budget)
+	_check(dec.boats.budget == 16 and dec.boats.clock_s == boats_before, "bateaux figés en pause")
 
 	# 5. Retrait d'un tronçon : panneaux et animaux retirés
 	var props_before: int = dec.props.prop_count()
@@ -310,8 +335,9 @@ func _run() -> void:
 	var off_ws: FakeWorld = off_parts[2]
 	off.step(now, 0.05, route.sample_point(2000.0), 2000.0, 8.0, 400.0, false, wind, state)
 	_check(not off.prepared and not off_ws.road_markings and not off_parts[1].fauna_enabled and not off.particles.is_active()
-		and off.props.prop_count() == 0 and not (off_parts[1].water_material() is ShaderMaterial),
-		"living = false : ni météo, ni animaux, ni objets, route et eau de la 1.0")
+		and off.props.prop_count() == 0 and not (off_parts[1].water_material() is ShaderMaterial)
+		and off.sky.budget == 0 and off.sky_view.visible_count() == 0 and off.boats.budget == 0 and not off_parts[1].boats_enabled,
+		"living = false : ni météo, ni animaux, ni objets, ni engins volants, ni bateaux, route et eau de la 1.0")
 
 	# 8. Matériau de la route de world_streamer.gd : marquages, chiffres par tronçon, chaussée mouillée
 	var real_ws = WorldStreamer.new()
