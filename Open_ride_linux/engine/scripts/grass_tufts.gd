@@ -3,8 +3,12 @@ extends Node3D
 ## Touffes d'herbe en bord de route qui ondulent au vent apparent (Lot P5), nœud autonome.
 ## Pas de class_name : charger par preload("res://scripts/grass_tufts.gd"). Branché par P16 dans main.gd.
 ##
-## - Touffes en MultiMesh (trois quads croisés), même shader que les arbres (`tree_sway.gdshader`),
-##   avec le vent apparent du cycliste (`set_apparent_wind`).
+## - Touffes en MultiMesh, même shader que les arbres (`tree_sway.gdshader`), avec le vent apparent du
+##   cycliste (`set_apparent_wind`).
+## - Lot Y11 (H4) : une touffe est une gerbe de `BLADES` brins effilés et courbés (trois triangles par
+##   brin), base à la teinte du sol, pointe plus claire ; teinte d'instance tirée de `TINTS` (herbe
+##   fraîche, sombre, jaunie, sèche) ; touffes éclaircies avec la distance puis effacées avant la fin de
+##   la fenêtre (`thin_start_m`, `fade_end_m` du shader) pour ne pas surgir.
 ## - Placement déterministe (graine, numéro de tronçon, numéro de place) sur une bande de
 ##   `BAND_MIN_M` à `BAND_MAX_M` du bord de la route, des deux côtés, autour de la caméra : tronçons
 ##   de `CHUNK_M` mètres, `CHUNKS_BEHIND` derrière et `CHUNKS_AHEAD` devant.
@@ -19,7 +23,7 @@ const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 
 const CHUNK_M := 40.0
 const CHUNKS_BEHIND := 1
-const CHUNKS_AHEAD := 6
+const CHUNKS_AHEAD := 4
 const BAND_MIN_M := 2.0
 const BAND_MAX_M := 15.0
 const MAX_SLOPE := 0.7          # pente (tan) au-delà de laquelle il n'y a plus de touffe
@@ -27,7 +31,15 @@ const MAX_PER_FRAME := 120
 const STATION_STEP_M := 4.0
 const STATION_COST := 40        # coût d'un échantillonnage de tronçon, compté en places
 const TUFT_HEIGHT_M := 0.45
-const TUFT_WIDTH_M := 0.5
+const TUFT_RADIUS_M := 0.14
+const BLADES := 12
+const BLADE_WIDTH_M := 0.035
+## Teintes d'instance (multiplient la couleur des sommets) : fraîche, sombre, jaunie, sèche.
+const TINTS := [Color(1.0, 1.0, 1.0), Color(0.78, 0.88, 0.78), Color(1.12, 1.08, 0.78), Color(1.3, 1.15, 0.72)]
+## Fondu avec la distance (mètres) : éclaircissement à partir de THIN_START_M, effacement complet à FADE_END_M,
+## avant la fin de la fenêtre de tronçons devant la caméra (CHUNKS_AHEAD × CHUNK_M).
+const THIN_START_M := 30.0
+const FADE_END_M := 150.0
 const APPARENT_MAX_MPS := 60.0 / 3.6
 const NO_CHUNK := -(1 << 40)
 ## Place vide : échelle nulle, sous le terrain.
@@ -72,8 +84,12 @@ func configure(budget: int, route_data, road_width_m: float = 6.0, seed_value: i
 	_material.set_shader_parameter("sway_height_m", TUFT_HEIGHT_M)
 	_material.set_shader_parameter("sway_amplitude_m", 0.12)
 	_material.set_shader_parameter("sway_frequency_hz", 0.9)
+	_material.set_shader_parameter("thin_start_m", THIN_START_M)
+	_material.set_shader_parameter("fade_end_m", FADE_END_M)
+	_material.set_shader_parameter("normals_up_both_sides", true)
 	_mm = MultiMesh.new()
 	_mm.transform_format = MultiMesh.TRANSFORM_3D
+	_mm.use_colors = true
 	_mm.mesh = build_tuft_mesh()
 	_mm.instance_count = _per_chunk * groups
 	for i in range(_mm.instance_count):
@@ -156,6 +172,7 @@ func update(cam_s: float) -> void:
 			else:
 				var x: Transform3D = xf
 				_mm.set_instance_transform(idx, x)
+				_mm.set_instance_color(idx, TINTS[tint_index(k, slot)])
 				_origins[idx] = x.origin
 				_placed[idx] = 1
 				_visible_count += 0 if was_visible else 1
@@ -219,22 +236,40 @@ func tuft_transform(k: int, slot: int, stations: PackedVector4Array = PackedVect
 	return Transform3D(Basis(Vector3.UP, angle).scaled(Vector3.ONE * scale_f), Vector3(px, py, pz))
 
 
-## Touffe : trois quads croisés à 60°, vert à la base plus clair à la pointe.
+## Teinte (indice dans TINTS) de la place `slot` du tronçon `k` : surtout fraîche, parfois sèche.
+func tint_index(k: int, slot: int) -> int:
+	var u := VegetationPlacer.hash3(tuft_seed ^ 0x2C71, k, slot) & 0xFF
+	return 0 if u < 120 else (1 if u < 180 else (2 if u < 230 else 3))
+
+
+## Touffe : gerbe de BLADES brins effilés (deux segments et une pointe, trois triangles), penchés vers
+## l'extérieur et courbés, de hauteurs variées ; base à la teinte du sol, pointe plus claire. Normales
+## tournées vers le haut pour que la gerbe soit éclairée comme le sol (pas de faces noires à contre-jour).
 static func build_tuft_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var base := Color(0.22, 0.38, 0.14)
-	var tip := Color(0.42, 0.58, 0.24)
-	var w := TUFT_WIDTH_M * 0.5
-	for q in range(3):
-		var a := PI / 3.0 * q
-		var d := Vector3(cos(a), 0.0, sin(a)) * w
-		var n := Vector3(-sin(a), 0.0, cos(a))
-		var p0 := -d
-		var p1 := d
-		var p2 := d * 0.4 + Vector3(0.0, TUFT_HEIGHT_M, 0.0)
-		var p3 := -d * 0.4 + Vector3(0.0, TUFT_HEIGHT_M, 0.0)
-		for v in [[p0, base], [p1, base], [p2, tip], [p0, base], [p2, tip], [p3, tip]]:
+	var base := Color(0.3, 0.42, 0.18)
+	var mid := Color(0.4, 0.56, 0.24)
+	var tip := Color(0.58, 0.68, 0.32)
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 0x6EA55
+	for b in range(BLADES):
+		var a := TAU * (float(b) + rng.randf() * 0.6) / BLADES
+		var out := Vector3(cos(a), 0.0, sin(a))
+		var side := Vector3(-out.z, 0.0, out.x)
+		var root := out * TUFT_RADIUS_M * rng.randf_range(0.0, 0.7)
+		var h := TUFT_HEIGHT_M * rng.randf_range(0.55, 1.0)
+		var lean := rng.randf_range(0.15, 0.45) * h
+		var w := BLADE_WIDTH_M * rng.randf_range(0.8, 1.2)
+		# Points du milieu de brin : base, coude, pointe (le coude penche moins que la pointe : courbure)
+		var p0 := root
+		var p1 := root + out * lean * 0.35 + Vector3(0.0, h * 0.55, 0.0)
+		var p2 := root + out * lean + Vector3(0.0, h, 0.0)
+		var n := (Vector3.UP * 0.8 + out * 0.2).normalized()
+		var tris := [[p0 - side * w, base], [p0 + side * w, base], [p1 + side * w * 0.6, mid],
+			[p0 - side * w, base], [p1 + side * w * 0.6, mid], [p1 - side * w * 0.6, mid],
+			[p1 - side * w * 0.6, mid], [p1 + side * w * 0.6, mid], [p2, tip]]
+		for v in tris:
 			st.set_color(v[1])
 			st.set_normal(n)
 			st.add_vertex(v[0])
