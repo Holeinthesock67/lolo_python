@@ -5,6 +5,7 @@ extends SceneTree
 
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -99,7 +100,7 @@ func _init() -> void:
 		PerfProbe.mark("tuile", "near:0:0", 1.0)
 	var per_call_us := float(Time.get_ticks_usec() - t_calls) / 10000.0
 	print("mark sans sonde : %.2f µs par appel" % per_call_us)
-	_check(per_call_us < 20.0, "sans sonde, mark coûte moins de 20 µs (%.2f µs ; une dizaine d'appels par seconde)" % per_call_us)
+	_check(PerfBudget.check("perf_probe_mark_off", per_call_us / 1000.0), "sans sonde, mark coûte moins de 20 µs (%.2f µs ; une dizaine d'appels par seconde)" % per_call_us)
 	var sc: Dictionary = PerfProbe.saccade_cause([["tuile", "near:1:2", 12.0], ["arbres", "near:1:2", 30.5]], false, 60.0)
 	_check(sc["cause"] == "arbres" and sc["steps"] == "tuile near:1:2 12.0 | arbres near:1:2 30.5",
 		"cause : l'étape la plus longue (%s)" % sc["cause"])
@@ -118,9 +119,11 @@ func _init() -> void:
 	PerfProbe.task("arbres", "1:2", 7.25)
 	for i in PerfProbe.PLAYABLE_FRAMES - 1:
 		probe.frame(0.016)
-	_check(probe.startup_ms < 0, "9 images jouables : pas encore démarré")
+	var started: bool = probe.startup_ms >= 0
+	_check(not started, "9 images jouables : pas encore démarré")
 	probe.frame(0.016)
-	_check(probe.startup_ms >= 0, "10 images de suite sous 33 ms : démarrage noté (%d ms)" % probe.startup_ms)
+	started = probe.startup_ms >= 0
+	_check(started, "10 images de suite sous 33 ms : démarrage noté (%d ms)" % probe.startup_ms)
 	probe._last_us -= PerfProbe.PERIOD_US
 	probe.frame(0.016)
 	probe.close()
