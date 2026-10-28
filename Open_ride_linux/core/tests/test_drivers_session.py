@@ -3,6 +3,8 @@
 import asyncio
 import struct
 
+import pytest
+
 from openride_core import fit_export, ftms, zwift_click
 from openride_core.config import Config, TrainerConfig, BikeConfig
 from openride_core.ftms_driver import FtmsDriver
@@ -393,6 +395,7 @@ def test_long_press_jumps_ten_gears(tmp_path, monkeypatch):
     asyncio.run(scenario())
 
 
+@pytest.mark.recette_sans_velo
 def test_terminal_keyboard_doubles_the_click_key_for_key():
     # Lot O17 : tableau du clavier de la spécification générale §7.1, synonymes pour les appuis longs.
     assert split_terminal_keys("+\x1b[5~a\x1bOA\x1b") == ["+", "\x1b[5~", "a", "\x1b[A", "\x1b"]

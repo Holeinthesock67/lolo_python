@@ -8,6 +8,7 @@ const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
@@ -193,6 +194,8 @@ func _ready() -> void:
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
+	streamer.culling = bool(cfg.get("culling", false))
+	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
@@ -554,6 +557,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("end_session", {"save": bool(act.get("save", true))})
 		"start", "resume":
 			ipc.send_command(name, act.get("args", {}))
+		"start_run":
+			ipc.start_run(act.get("args", {}))
 		"open_world_menu":
 			world_menu_view.open()
 			ipc.send_command("world_regions")
@@ -706,12 +711,19 @@ func _process(delta: float) -> void:
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
+	# Personnages et animaux (anim_clock.gd) : figés avec le décor quand le core ne répond plus.
+	if not banner.has_message("core_lost"):
+		AnimClock.advance(delta)
 	if rogue_host.is_active():
 		return      # la scène du Cyber-Rogue a sa propre caméra et son propre décor
 	if _menu_camera(delta):
 		camera_views.snap()
 		return
 	if not follow.has_frame():
+		return
+	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
+	# l'horloge des personnages et des animaux ci-dessus.
+	if banner.has_message("core_lost"):
 		return
 	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd).
 	var s_disp: float = follow.update(now)
@@ -738,9 +750,9 @@ func _process(delta: float) -> void:
 
 
 ## Décor vivant (lot P16), une fois par image : vent, herbe, nuages, ambiance sonore.
-## Core non joignable : le décor se fige avec la caméra (pas de nuages ni d'herbe qui bougent).
+## Core non joignable : pas appelé (_process fige toute la scène), donc ni nuages ni herbe qui bougent.
 func _step_living(delta: float, s_route: float, v: float) -> void:
-	if living_world == null or route == null or banner.has_message("core_lost"):
+	if living_world == null or route == null:
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0
@@ -971,6 +983,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
+		"bots_gap1": hud.bots_gaps[0], "bots_ahead": hud.neighbor_labels[0], "bots_behind": hud.neighbor_labels[1],
+		"bots_jerseys": hud.jerseys_label, "segment_panel": hud.panel_segment,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
 		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}
@@ -1136,6 +1150,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		chart_mode = ch
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
 
 
@@ -1209,7 +1224,9 @@ func _on_state_received(state: Dictionary) -> void:
 
 	if running and route != null:
 		_give_cues(state)
-	bots_model.push(state.get("bots", null) if running or session_state == "PAUSED" else null, Time.get_ticks_usec())
+	var in_session := running or session_state == "PAUSED"
+	bots_model.push(state.get("bots", null) if in_session else null, Time.get_ticks_usec())
+	bots_model.set_race(state if in_session else null)
 
 	_feed_chart(state, running, previous_session_state)
 
@@ -1299,7 +1316,7 @@ func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> vo
 func _show_bots(rider_s: float, rider_v: float) -> void:
 	var view: Array = bots_model.view(rider_s, rider_v, Time.get_ticks_usec())
 	if hud != null and hud.has_method("update_bots"):
-		hud.update_bots(view)
+		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route, _visual_grade_scale, route.alt_m[0] if route != null and route.n > 0 else 0.0)
 
