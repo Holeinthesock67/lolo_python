@@ -15,6 +15,7 @@ const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -186,5 +187,5 @@ func _run() -> void:
 	var med10: int = t_k10[2]
 	var med15: int = t_k15[2]
 	var overhead_pct := (float(med15 - med10) / float(maxi(med10, 1))) * 100.0
-	_check(overhead_pct <= 5.0,
+	_check(PerfBudget.check("visual_grade_overhead", overhead_pct, "%"),
 		"coût de construction (médianes) : k=1.0 : %d µs, k=1.5 : %d µs (écart %.1f %%, au plus 5 %%)" % [med10, med15, overhead_pct])

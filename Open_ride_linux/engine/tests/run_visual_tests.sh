@@ -33,7 +33,8 @@ if [ "$update" -eq 0 ] && [ -z "$(ls -A "$GOLDEN" 2>/dev/null)" ]; then
   args+=(--update-golden)
 fi
 
-python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" --out "$OUT" --golden "$GOLDEN" "${args[@]}"
+# --lisibilite : hauteur des chiffres et contraste des textes du HUD (lot X22).
+python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" --out "$OUT" --golden "$GOLDEN" --lisibilite "${args[@]}"
 rc=$?
 if [ "$open_report" -eq 1 ] && [ -f "$OUT/rapport.html" ] && command -v xdg-open >/dev/null 2>&1; then
   xdg-open "$OUT/rapport.html" >/dev/null 2>&1 &
