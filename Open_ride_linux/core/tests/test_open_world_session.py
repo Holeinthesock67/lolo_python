@@ -325,7 +325,8 @@ def test_pause_world_data_then_automatic_resume(session, tmp_path):
     assert wait_until(s, lambda: s.state.session_state == "PAUSED" and s.openworld.data == "missing", timeout=60.0)
     assert s.state.pause_reason == "world_data"
     s_pause = s.physics.s
-    assert s.openworld.route.length_m - s_pause < 200.0 and s_pause > 700.0
+    # au bout de la route, ou plus tôt si une pause de retard a précédé le manque de données (reprise à 500 m)
+    assert s.openworld.route.length_m - s_pause < 500.0 and s_pause > 700.0
     assert s.state.open_world["data"] == "missing"
     step(s, 3.0)
     assert s.state.session_state == "PAUSED" and s.physics.s == s_pause    # la séance reste figée
