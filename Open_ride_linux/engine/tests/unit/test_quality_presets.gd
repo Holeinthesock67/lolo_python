@@ -121,11 +121,11 @@ func _test_living() -> void:
 		k.sort()
 		_check(k == keys, "living(%s) : les 11 budgets attendus" % name)
 	var low: Dictionary = QualityPresets.living("low")
-	_check(low["tree_sway"] == true and low["grass_tufts"] == 0 and low["clouds"] == "flat"
+	_check(low["tree_sway"] == true and low["grass_tufts"] == 1500 and low["clouds"] == "flat"
 		and low["weather_particles"] == 600 and low["birds"] == 24 and low["animals"] == 20
 		and low["vehicles"] == 3 and low["spectators"] == 40 and low["ambience_voices"] == 4
 		and low["water_shimmer"] == true,
-		"living(low) : valeurs du cahier P4 §4.3 (oiseaux doublés par P23)")
+		"living(low) : valeurs du cahier P4 §4.3 (oiseaux doublés par P23, touffes : Y11 H5)")
 	var med: Dictionary = QualityPresets.living("medium")
 	var high: Dictionary = QualityPresets.living("high")
 	var growing := true

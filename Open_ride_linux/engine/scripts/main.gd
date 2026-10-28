@@ -16,6 +16,8 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
+const AudioMix := preload("res://scripts/audio_mix.gd")
+const FpsCounter := preload("res://scripts/fps_counter.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
@@ -82,6 +84,8 @@ var _test_cam_last_s := NAN
 var erg_view = ErgViewModel.new()
 ## Bandeau et histogramme ERG (lot N7), dans le HUD.
 var erg_panel = null
+## Compteur d'images/s du HUD (réglage `render.fps`, caché par défaut).
+var fps_counter = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
@@ -238,6 +242,7 @@ func _ready() -> void:
 	gen.buffer_length = 0.6
 	_beep_player = AudioStreamPlayer.new()
 	_beep_player.stream = gen
+	_beep_player.bus = AudioMix.bus(AudioMix.EVENTS)
 	add_child(_beep_player)
 	_beep_player.play()
 	# Le bandeau passe sous le panneau central du HUD (ERG, montée, état) pour ne jamais le recouvrir.
@@ -266,6 +271,8 @@ func _ready() -> void:
 	hud.add_child(junction_view)
 	world_menu_view = WorldMenuView.new()
 	hud.add_child(world_menu_view)
+	fps_counter = FpsCounter.new()
+	hud.add_child(fps_counter)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
@@ -320,9 +327,12 @@ func _ready() -> void:
 		_refresh_menu())
 
 
-## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de suite.
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
+## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s montré ou caché.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
+	AudioMix.apply_settings(menu_flow.settings.items)
+	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
@@ -590,6 +600,7 @@ func _process(delta: float) -> void:
 	_poll_route_job()
 	_poll_live_world()
 	_record_frame_perf(delta)
+	fps_counter.add_frame(delta)
 	_probe.frame(delta, streamer)
 	var now := Time.get_ticks_usec()
 	if _menu_camera(delta):

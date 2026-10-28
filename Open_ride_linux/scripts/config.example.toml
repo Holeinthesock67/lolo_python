@@ -33,7 +33,14 @@ quality = "low"               # low, medium, high
 theme = "default"
 living = true                 # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"             # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
+fps = "off"                   # compteur d'images/s en haut à droite du HUD : off, on
 display = "fullscreen"        # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
+
+[audio]                       # volumes en % (0 : coupé), réglables dans le menu (docs/AUDIO.md)
+master_pct = 100
+ride_pct = 100                # vent et roue libre
+ambience_pct = 100            # fonds, cloches, véhicules, foule, passants
+events_pct = 100              # bips du Click, bloc ERG, consignes, jingles
 
 [engine]
 godot = ""                    # chemin de Godot 4.3 (rempli par scripts/install.sh)
