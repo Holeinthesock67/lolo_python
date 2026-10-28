@@ -254,7 +254,7 @@
 | [X20](LOT_X20_regression_visuelle_v2.md) | Série X (outils de test) : Non-régression visuelle v2 : SSIM, scènes figées, références par moteur et préréglage | Python + GDScript | S1 (`compare_captures.py`) | Moyenne | Oui ; issue #218 |
 | [X21](LOT_X21_tour_visuel_guide.md) | Série X (outils de test) : Tour visuel guidé sur un vrai parcours, planche à cocher | GDScript + Python | — | Moyenne | Oui ; issue #219 |
 | [X22](LOT_X22_lisibilite_hud.md) | Série X (outils de test) : Lisibilité du HUD à 2 m (hauteur, contraste) et débordements (4 bots à 720 px) | Python | — | Petite | Oui ; issue #220 |
-| [X24](LOT_X24_audit_dependances.md) | Série X (outils de test) : Audit des dépendances (pip-audit, versions des actions) | Python + YAML | — | Petite | Oui ; issue #222 |
+| [X24](LOT_X24_audit_dependances.md) | Série X (outils de test) : Audit des dépendances (pip-audit, versions des actions) | Python + YAML | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x24`) ; issue #222 |
 | [X26](LOT_X26_fuzz_fichiers.md) | Série X (outils de test) : Fuzz des fichiers d'entrée (.zwo, .erg, .mrc, GPX, FIT, TCX) | Python | — | Petite | Oui ; issue #224 |
 | [X27](LOT_X27_cycliste_virtuel.md) | Série X (outils de test) : Cycliste virtuel (cadence, pente, rampe, sprint, W′bal) et course contre les bots accélérée | Python | T12 pour `bots_race` | Moyenne | Oui ; issue #225 |
 | [X28](LOT_X28_reseau_degrade.md) | Série X (outils de test) : Réseau dégradé pour le monde ouvert : faux serveur de tuiles | Python | W15 | Moyenne | Oui ; issue #226 |
