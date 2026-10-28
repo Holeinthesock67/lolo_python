@@ -8,6 +8,7 @@ Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. 
 | --- | --- | --- |
 | `(cd core && pytest -q)` | Core : physique, braquets, FTMS, Click, ceinture, journal, FIT, IPC, lanceur, scénarios Bluetooth simulés (`test_sim_matrix.py`, `test_ble_sim.py`), cohérence de la documentation. `-m "not slow"` : ~20 s | ~3 min |
 | `(cd compiler && pytest -q)` | Compilateur : GPX/FIT/TCX, route, terrain, couches OSM, thèmes (réseau coupé ; `-m network` pour Copernicus) | ~1 min |
+| `pytest tests/test_settings_persistance.py` (dans `core/`) | Persistance des réglages (lot X37) : chaque réglage de `settings.SETTINGS` (liste lue, pas recopiée) changé par `set_setting`, puis core relancé sur le même `config.toml` : la valeur est relue ; difficulté de la pause (`set_difficulty`) de même ; un réglage non écrit fait échouer le test en le nommant | < 1 s |
 | `engine/tests/run_engine_tests.sh` | Engine sans écran : tests unitaires `engine/tests/unit/`, couches OSM, rendu par tronçons, ERG et menus face au faux core, scénarios IPC, rendu Xvfb du shader, tests graphiques à 1280×720. Budgets de temps à part (lot X2) : `OPENRIDE_PERF=strict` pour qu'un dépassement échoue, `PERF_CSV=FICHIER` pour garder les mesures | ~3 min |
 | `engine/tests/run_e2e.sh` | Bout en bout : vrai core (trainer `mock`) et vrai engine, hello, débit des trames, commande, perte de l'engine, fin de séance, FIT | ~10 s |
 | `engine/tests/menu_bench.py --rotation` | Banc des menus face au vrai core sur Bluetooth simulé : chaque scénario de `engine/tests/menu_scenarios/` sur une voie à tour de rôle (Click V2 simulé, clavier, souris) ; sans `--rotation`, les trois voies (§3) | ~10 min |
@@ -116,6 +117,7 @@ python3 engine/tests/menu_bench.py --captures ecrans --out ~/OpenRide/menu_bench
 | `cyber_rogue` | trois | Départ du Cyber-Rogue : objectif et durée, avertissement du premier lancement, run composée jusqu'à « Prêt », « Changer les choix » et run recomposée, départ, pause, abandon |
 | `clavier_synonymes` | clavier | Entrée, Maj+A, Page haut et bas, Échap, `=` et pavé +, flèches gauche et droite ; appui ambigu de 0,7 s ignoré ; flèches haut et bas sans effet en menu |
 | `souris_gestes` | souris | Clic sur un élément sans focus, molette, clic droit, clic hors des éléments et survol sans effet |
+| `persistance` | trois | Lot X37 : difficulté changée à la pause, FTP, niveau des bots, volume général et force du vent changés dans quatre sous-écrans ; `relancer` (core et engine) ; chaque valeur relue à l'écran et dans `config.toml` |
 
 Un nouvel écran s'ajoute au banc par un fichier JSON, sans toucher au script. Clé d'en-tête `fichiers` : fichiers posés dans le HOME avant le lancement (records, profil…).
 
