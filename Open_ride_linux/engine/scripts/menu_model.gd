@@ -267,8 +267,12 @@ func set_items(screen_id: String, items: Array) -> void:
 	for it in items:
 		if typeof(it) != TYPE_DICTIONARY or str(it.get("id", "")) == "":
 			continue
-		clean.append(_item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
-			str(it.get("detail", ""))))
+		var e := _item(str(it["id"]), str(it.get("label", it["id"])), bool(it.get("enabled", true)),
+			str(it.get("detail", "")))
+		for k in ["bar", "editing"]:   # affichage seulement : curseur (0 à 100) et valeur en cours de réglage
+			if it.has(k):
+				e[k] = it[k]
+		clean.append(e)
 	if screen_id == ROUTES and clean.is_empty():
 		clean.append(_item("empty", "Aucun parcours", false))
 	elif screen_id == WORKOUTS:

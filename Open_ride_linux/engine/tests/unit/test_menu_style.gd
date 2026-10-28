@@ -21,6 +21,7 @@ const DetailCard := preload("res://scripts/detail_card.gd")
 const ROUTE := {"id": "col", "name": "Col", "length_m": 10000.0, "status": "ready", "stats": {"distance_m": 10000.0,
 	"gain_m": 300.0, "max_grade_pct": 8.0, "duration_s": 1800.0, "difficulty": 2, "main_climb": {"length_m": 4000.0,
 	"gain_m": 280.0, "avg_grade_pct": 7.0, "category": "3"}}, "library": {"description": "Court et raide.", "region": "Vosges", "tags": ["col"]}}
+const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const BARE_ROUTE := {"id": "brut", "name": "Brut", "length_m": 5000.0, "status": "to_compile"}
 const WORKOUT := {"id": "ss", "name": "Sweet spot", "duration_s": 3600, "block_count": 3, "selectable": true,
 	"profile": [[600, 0.5, 0.75], [2400, 0.92, 0.92], [600, null, null]], "profile_truncated": false}
@@ -126,7 +127,7 @@ func _test_view() -> void:
 	var items := [{"id": "a", "label": "Actif", "detail": "12,0 km"}, {"id": "b", "label": "Désactivé", "enabled": false, "detail": "à compiler"}]
 	v.update_display({"screen": "routes", "title": "Parcours", "focus": 0, "items": items}, state, {}, false)
 	var off: Label = v._item_panels[1].get_child(0).get_child(1)
-	var detail: Label = v._item_panels[1].get_child(0).get_child(2)
+	var detail: Label = v._item_panels[1].get_child(0).get_child(3)
 	_check(off.get_theme_color("font_color") == UiTheme.DISABLED and detail.visible and detail.text == "à compiler",
 		"désactivé en couleur atténuée, détail à droite")
 	_check(v.items_text() == "[Actif — 12,0 km] | Désactivé — à compiler", "texte des entrées : %s" % v.items_text())
@@ -203,6 +204,52 @@ func _test_cards() -> void:
 	c.free()
 
 
+## Étape 3 : rangées des réglages (valeur à droite, curseur, modification en place), carte, aide des boutons.
+func _test_settings() -> void:
+	var ftp := {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50, "max": 600,
+		"step": 5, "unit": "W", "applies": "next_session"}
+	var vol := {"key": "sound.master_pct", "label": "Volume général", "group": "sound", "type": "int", "value": 80, "min": 0,
+		"max": 100, "step": 10, "unit": "%", "applies": "now"}
+	var quality := {"key": "render.quality", "label": "Qualité", "group": "display", "type": "choice", "value": "high",
+		"choices": ["low", "medium", "high"], "applies": "now"}
+	var s = SettingsViewModel.new()
+	s.on_settings({"items": [ftp, vol, quality]})
+	var rows: Array = s.menu_items("sound")
+	_check(rows[0] == {"id": "set:sound.master_pct", "label": "Volume général", "detail": "80 %", "bar": 80},
+		"réglage en % : libellé, valeur à droite, curseur (%s)" % str(rows[0]))
+	_check(s.menu_items("rider")[0] == {"id": "set:rider.ftp_w", "label": "FTP", "detail": "250 W"} and not s.menu_items("rider")[0].has("bar"),
+		"réglage en watts : pas de curseur")
+	s.begin("sound.master_pct")
+	s.step(1)
+	rows = s.menu_items("sound")
+	_check(rows[0]["detail"] == "◀ 90 % ▶" and rows[0]["bar"] == 90 and rows[0]["editing"], "rangée en cours de modification (%s)" % str(rows[0]))
+	s.cancel()
+	_check(s.menu_items("sound")[0]["detail"] == "80 %", "annulé : valeur d'avant")
+	var sheet: Dictionary = s.sheet("sound.master_pct")
+	_check(sheet["name"] == "Volume général" and sheet["tiles"].map(func(t): return t["label"]) == ["Valeur", "Plage", "Pas"]
+		and sheet["lines"] == ["S'applique tout de suite"], "carte d'un réglage numérique (%s)" % str(sheet["lines"]))
+	_check(s.sheet("render.quality")["lines"][0] == "Choix : low, medium, high" and s.sheet("absent").is_empty(), "carte d'un choix")
+	_check(SettingsViewModel.crumb("sound") == "Réglages › Son", "fil d'Ariane du sous-écran")
+	var edit := ButtonHelp.entries(ButtonHelp.EDIT)
+	_check(edit[0]["hold"] and edit[0]["text"] == "Enregistrer" and edit.map(func(e): return e["keys"]).size() == 3
+		and edit[-1]["keys"] == ["Y"] and edit[-1]["text"] == "Annuler", "aide en modification : enregistrer, régler, annuler")
+	var v = MenuView.new()
+	root.add_child(v)
+	var items := SettingsViewModel.new()
+	items.on_settings({"items": [vol]})
+	v.update_display({"screen": "settings_group", "title": "Réglages › Son", "focus": 0, "items": items.menu_items("sound"),
+		"card": items.sheet("sound.master_pct"), "editing": false}, {}, {}, false)
+	var row: HBoxContainer = v._item_panels[0].get_child(0)
+	_check(row.get_child(2).visible and row.get_child(3).text == "80 %" and v.button_bar.text().begins_with("A maintenir : Valider"),
+		"vue : curseur et valeur à droite, aide de la liste")
+	v.update_display({"screen": "settings_group", "title": "Réglages › Son", "focus": 0, "items": [{"id": "a", "label": "FTP",
+		"detail": "◀ 250 W ▶", "editing": true}], "card": {}, "editing": true}, {}, {}, false)
+	row = v._item_panels[0].get_child(0)
+	_check(not row.get_child(2).visible and row.get_child(3).get_theme_color("font_color") == UiTheme.FOCUS
+		and v.button_bar.text().begins_with("A maintenir : Enregistrer"), "vue : valeur en cours de réglage en couleur de sélection, aide mise à jour")
+	v.free()
+
+
 func _test_no_literal_colors() -> void:
 	var re := RegEx.create_from_string("Color\\(\\s*[0-9.]")
 	var found: Array = []
@@ -220,6 +267,7 @@ func _initialize() -> void:
 	_test_icons()
 	_test_view()
 	_test_cards()
+	_test_settings()
 	_test_no_literal_colors()
 	print("test_menu_style : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

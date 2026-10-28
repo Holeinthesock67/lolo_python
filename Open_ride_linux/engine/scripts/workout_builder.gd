@@ -106,10 +106,15 @@ func workout_id() -> String:
 
 ## Éléments de l'écran « Créer un entraînement » : les paramètres (id « param:clé », valeur en détail,
 ## alignée à droite) puis « Enregistrer ».
-func menu_items() -> Array:
+func menu_items(editing_key := "", editing_value = 0) -> Array:
 	var out: Array = []
 	for p in PARAMS:
-		out.append({"id": "param:" + str(p["key"]), "label": str(p["label"]), "detail": format_param(p, values[p["key"]])})
+		var key := str(p["key"])
+		if KEY_PREFIX + key == editing_key:
+			out.append({"id": "param:" + key, "label": str(p["label"]),
+				"detail": "◀ %s ▶" % format_param(p, editing_value), "editing": true})
+		else:
+			out.append({"id": "param:" + key, "label": str(p["label"]), "detail": format_param(p, values[key])})
 	out.append({"id": "save", "label": "Enregistrer et choisir",
 		"detail": "%s, %d min" % [workout_name(), int(round(duration_s() / 60.0))]})
 	return out
