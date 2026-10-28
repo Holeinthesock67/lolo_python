@@ -51,20 +51,47 @@ def make_session(tmp_path, monkeypatch, port, power=250.0, stub_args=(), cmd=Non
     return s
 
 
-def step(s, seconds, pause=0.002):
-    """Avance de `seconds` secondes simulées, en laissant au générateur le temps de répondre."""
-    n = int(seconds / 0.02)
-    for i in range(n):
+SYNC_TIMEOUT_S = 10.0   # attente au plus des réponses de la doublure, par message (machine très chargée)
+
+
+def sync(s):
+    """Attend que le générateur ait traité tout ce que le core lui a écrit et que ses réponses soient lues.
+
+    L'horloge simulée avance bien plus vite que le temps réel (0,5 s simulée en quelques ms) ; sans cette
+    attente, une CI chargée laisse la doublure en retard et la séance part en pause world_data au hasard.
+    La doublure écrit `handled.<pid>.json` (messages lus et écrits) après chaque message traité. Sans ce
+    fichier (`open` pas encore lu, vrai faux générateur du lot W15), pas d'attente ; un générateur qui ne
+    répond plus (plantage simulé) ne fait attendre que SYNC_TIMEOUT_S au plus."""
+    ow = s.openworld
+    c = ow.client if ow is not None else None
+    if c is None or c._proc is None or c.sent == getattr(c, "synced", 0):
+        return
+    path = ow.folder.parent / f"handled.{c._proc.pid}.json"
+    deadline = time.monotonic() + SYNC_TIMEOUT_S
+    while c.alive and path.exists() and time.monotonic() < deadline:
+        try:
+            counts = json.loads(path.read_text())
+        except (OSError, ValueError):
+            continue
+        if counts["handled"] >= c.sent and c.received >= counts["sent"]:
+            break
+        time.sleep(0.001)
+    c.synced = c.sent
+
+
+def step(s, seconds):
+    """Avance de `seconds` secondes simulées ; à chaque message écrit au générateur, attend sa réponse."""
+    for _ in range(int(seconds / 0.02)):
         s.clock += 0.02
         s._step(0.02, s.clock)
-        if i % 25 == 24:
-            time.sleep(pause)
+        sync(s)
 
 
 def wait_until(s, cond, timeout=20.0):
     t0 = time.time()
     while time.time() - t0 < timeout:
-        step(s, 0.1, pause=0.01)
+        step(s, 0.1)
+        time.sleep(0.005)   # préparation hors message (lancement du processus, `--no-ready`)
         if cond():
             return True
     return False
@@ -431,7 +458,7 @@ def test_real_fake_generator_starts_a_ride(tmp_path, monkeypatch):
         assert wait_until(s, lambda: s.state.session_state != "LOADING", timeout=120.0)
         assert s.state.session_state == "READY"
         s._on_command("start", {}, 2)
-        step(s, 60.0, pause=0.005)
+        step(s, 60.0)
         assert s.state.session_state == "RUNNING" and s.physics.s > 100.0
         assert s.state.open_world["next"] is not None and s.state.lat != 0.0
     finally:
