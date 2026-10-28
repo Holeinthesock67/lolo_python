@@ -109,8 +109,8 @@ def test_numeric_bounds_violation_is_error(tmp_path: Path, payload: dict) -> Non
 
 
 def test_unsupported_major_version_is_error(tmp_path: Path) -> None:
-    """Cas 6 : version "2.0" -> error."""
-    (tmp_path / "theme.json").write_text('{"version": "2.0"}', encoding="utf-8")
+    """Cas 6 : version "3.0" -> error (le thème 2.0 du lot U1 est accepté)."""
+    (tmp_path / "theme.json").write_text('{"version": "3.0"}', encoding="utf-8")
     issues = check_theme(tmp_path)
     assert any(i.severity == "error" for i in issues)
 
@@ -171,7 +171,7 @@ def test_cli_theme_check(tmp_path: Path, capsys: pytest.CaptureFixture[str]) -> 
     assert rc_ok == 0
     assert "valide" in capsys.readouterr().out
 
-    (tmp_path / "theme.json").write_text('{"version": "2.0"}', encoding="utf-8")
+    (tmp_path / "theme.json").write_text('{"version": "3.0"}', encoding="utf-8")
     rc_err = cli_main(["theme-check", str(tmp_path)])
     assert rc_err == 1
     assert "erreur" in capsys.readouterr().out
