@@ -428,6 +428,7 @@ class CoreSession:
             self.state.difficulty_pct = new_val
             if self.server.hello_config:
                 self.server.hello_config["difficulty_pct"] = new_val
+            self._save_difficulty(new_val)
         elif name == "list_routes":
             self._spawn(self._handle_list_routes(cmd_id))
         elif name == "list_workouts":
@@ -750,6 +751,17 @@ class CoreSession:
 
         self.server.send_raw({"type": "settings", "v": 1, "request_cmd_id": cmd_id,
                               "items": settings.current(self.cfg)})
+
+    def _save_difficulty(self, pct: int) -> None:
+        """Difficulté choisie à la pause gardée dans `config.toml` pour la séance suivante (tout réglage du menu persiste)."""
+        from . import settings
+
+        if self.sim is not None and self.config_path is None:   # Bluetooth simulé : pas de fichier à écrire
+            return
+        try:
+            settings.apply(self.cfg, {"trainer.difficulty_pct": pct}, self.config_path)
+        except settings.SettingError as exc:
+            log.warning("Difficulté non enregistrée : %s", exc)
 
     def _set_setting(self, args: dict, cmd_id: int) -> None:
         from . import settings

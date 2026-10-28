@@ -4,7 +4,7 @@
 
 Demande du propriétaire du 27 octobre : les menus sont « trop basiques » et l'aide des boutons ne se voit pas. Le système commun (thème, pictogrammes, bandeau des boutons, carte de détail) est en place depuis les étapes 1 et 2 (`docs/PRESENTATION_MENUS.md`, PR #433). Cette étape l'applique aux écrans qui restent en lignes de texte :
 
-- **Réglages** et ses cinq sous-écrans (Cycliste, Séance, Affichage, Son, Vent, PR #452) : libellé à gauche, valeur alignée à droite, édition en place, curseurs ;
+- **Réglages** et ses cinq sous-écrans (Cycliste, Séance, Graphisme, Son, Vent, PR #452) : libellé à gauche, valeur alignée à droite, édition en place, curseurs ;
 - **Appareils et connexion** : pastilles détaillées, recherche et appairage ;
 - **Plans** et **test de FTP** (lot O12) : cartes de détail.
 

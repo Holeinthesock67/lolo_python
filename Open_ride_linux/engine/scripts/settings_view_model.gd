@@ -17,8 +17,10 @@ extends RefCounted
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 
+## Écran de modification des champs de l'avatar du Garage (V8) : seul réglage qui garde son écran
+## (aperçu 3D à côté), les autres se modifient en place dans leur liste.
 const EDIT_SCREEN := "setting_edit"
-## Clé de l'écran de modification ouvert depuis la pause (difficulté de la séance en cours).
+## Clé de la modification de la difficulté ouverte depuis la pause (difficulté de la séance en cours).
 const PAUSE_DIFFICULTY := "pause.difficulty"
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
 ## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
@@ -36,7 +38,7 @@ const CHOICE_TEXTS := {
 ## Sous-écrans de « Réglages » (champ `group` du message `settings`), dans l'ordre d'affichage :
 ## [groupe, titre]. Un élément sans groupe connu va dans « Autres réglages », montré seulement s'il
 ## n'est pas vide.
-const GROUPS := [["rider", "Cycliste"], ["ride", "Séance"], ["display", "Affichage"], ["sound", "Son"],
+const GROUPS := [["rider", "Cycliste"], ["ride", "Séance"], ["graphics", "Graphisme"], ["sound", "Son"],
 	["wind", "Vent"]]
 const OTHER_GROUP := ["other", "Autres réglages"]
 ## Points cardinaux d'une direction en degrés (unité « ° »), de 45 en 45 depuis le nord.
@@ -218,8 +220,7 @@ func step(direction: int) -> void:
 	editing["value"] = clampi(v, int(editing.get("min", v)), int(editing.get("max", v)))
 
 
-## Écran de modification de la difficulté de la pause (étape 4) : titre et un élément, la valeur.
-## Les autres réglages se modifient en place dans leur liste (row()).
+## Écran de modification d'un champ de l'avatar : titre et un élément, la valeur.
 func edit_items() -> Array:
 	return [{"id": "value", "label": format_value(editing, editing.get("value")),
 		"detail": "+ / − : changer, A long : enregistrer, Y : annuler"}]

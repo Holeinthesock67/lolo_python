@@ -267,6 +267,7 @@ def test_four_bots_neighbours_gaps_and_kom(env):
 
 # --- critère 7 : bonus coupés ; trames 1.0 inchangées sans segment ---------------------------
 
+@pytest.mark.recette_sans_velo
 def test_powerups_off_and_route_without_segments(env):
     make, run, _ = env
     cfg = Config()
@@ -293,6 +294,7 @@ def test_powerups_off_and_route_without_segments(env):
 
 # --- critère 8 : reprise après un plantage du core ----------------------------------------------
 
+@pytest.mark.recette_sans_velo
 def test_game_lines_are_kept_after_crash_resume(env):
     make, run, _ = env
     a, _ = make(7170)
