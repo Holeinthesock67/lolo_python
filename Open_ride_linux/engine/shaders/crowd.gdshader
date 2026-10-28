@@ -1,8 +1,11 @@
 shader_type spatial;
 render_mode cull_disabled;
 
+global uniform float anim_time;
+
 // Spectateurs du Lot P15 et passants du Lot P21, personnages refaits par le Lot Y14 (people_mesh.gd) :
-// animation par articulations (hanche, genou, épaule) à partir du temps global TIME.
+// animation par articulations (hanche, genou, épaule) à partir du temps global anim_time
+// (anim_clock.gd : figé avec le décor quand le core ne répond plus).
 // - INSTANCE_CUSTOM.x : phase (0 à 1) ; INSTANCE_CUSTOM.y : 0 calme, 1 encourage ou salue
 //   (crowd_renderer.gd) ; INSTANCE_CUSTOM.z : animation (passersby_model.gd ANIM) : 0 debout
 //   (spectateur), 1 marche, 2 course, 3 assis, 4 jardinage, 5 sautille, 6 chien, 7 coureur qui pédale,
@@ -27,7 +30,7 @@ const float WHEEL_TURNS_PER_CRANK = 2.6;               // braquet moyen : tours 
 
 // Angle du pédalier (radians) : cadence × temps, décalé par la phase
 float crank_angle(float cadence, float phase) {
-	return TIME * cadence * 100.0 / 60.0 * 6.2831853 + phase;
+	return anim_time * cadence * 100.0 / 60.0 * 6.2831853 + phase;
 }
 
 varying flat float v_region;
@@ -80,13 +83,13 @@ void vertex() {
 	float bend = 0.0;       // buste penché vers l'avant autour de la hanche
 	float lift = 0.0;       // corps entier soulevé (m)
 	if (anim == 0) {
-		float wave = sin(TIME * 8.0 + phase);
-		arm_raise = mix(0.08 + 0.03 * sin(TIME * 1.3 + phase), 2.55 + 0.25 * wave, excite);
-		lift = excite * 0.04 * max(0.0, sin(TIME * 8.0 + phase));
+		float wave = sin(anim_time * 8.0 + phase);
+		arm_raise = mix(0.08 + 0.03 * sin(anim_time * 1.3 + phase), 2.55 + 0.25 * wave, excite);
+		lift = excite * 0.04 * max(0.0, sin(anim_time * 8.0 + phase));
 	} else if (anim == 1 || anim == 2) {
 		float run = anim == 2 ? 1.0 : 0.0;
 		float freq = mix(6.5, 11.0, run);
-		float sw = sin(TIME * freq + phase);
+		float sw = sin(anim_time * freq + phase);
 		hip = leg * sw * mix(0.38, 0.7, run);
 		knee = max(0.0, -leg * sw) * mix(0.5, 1.3, run) + run * 0.5;
 		arm_swing = -side * sw * mix(0.35, 0.8, run);
@@ -98,12 +101,12 @@ void vertex() {
 		lift = -(joints.x - 0.47);
 		arm_swing = -0.5;
 	} else if (anim == 4) {
-		bend = 0.95 + 0.3 * sin(TIME * 2.0 + phase);
-		arm_swing = -0.9 - 0.3 * sin(TIME * 2.0 + phase);
+		bend = 0.95 + 0.3 * sin(anim_time * 2.0 + phase);
+		arm_swing = -0.9 - 0.3 * sin(anim_time * 2.0 + phase);
 		knee = 0.25;
 		hip = -0.2;
 	} else if (anim == 5) {
-		lift = abs(sin(TIME * 4.0 + phase)) * 0.12;
+		lift = abs(sin(anim_time * 4.0 + phase)) * 0.12;
 		arm_raise = 0.5;
 	} else if (anim == 7) {
 		// Coureur : pied sur la pédale (jambe à deux segments résolue au genou), buste penché, mains au cintre
@@ -136,7 +139,7 @@ void vertex() {
 		VERTEX = p;
 	} else if (anim == 6) {
 		// Chien : pattes en diagonale autour de leur attache (avant et arrière)
-		float sw = sin(TIME * 9.0 + phase);
+		float sw = sin(anim_time * 9.0 + phase);
 		if (is_leg) {
 			p = rot_x(p, vec3(0.0, 0.34, sign(VERTEX.z) * 0.2), leg * sw * 0.45);
 		}
@@ -156,7 +159,7 @@ void vertex() {
 		// Bras : écartés sur le côté, puis balancés
 		vec3 shoulder = vec3(side * joints.w, joints.z, 0.0);
 		if (free_arm) {
-			float raise = waving ? 2.6 + 0.2 * sin(TIME * 9.0 + phase) : arm_raise;
+			float raise = waving ? 2.6 + 0.2 * sin(anim_time * 9.0 + phase) : arm_raise;
 			p = rot_z(p, shoulder, side * raise);
 			n = rot_z(n, vec3(0.0), side * raise);
 			float swing = waving ? 0.0 : arm_swing;
@@ -165,9 +168,9 @@ void vertex() {
 		}
 		// Porte-drapeau : le bras levé et la hampe balancent quand il encourage ; la toile ondule
 		if (holder) {
-			float a = excite * 0.35 * sin(TIME * 5.0 + phase);
+			float a = excite * 0.35 * sin(anim_time * 5.0 + phase);
 			p = rot_z(p, shoulder, a);
-			p.x += UV.x * sin(TIME * (3.0 + 5.0 * excite) - UV.x * 4.0 + phase) * (0.06 + 0.12 * excite);
+			p.x += UV.x * sin(anim_time * (3.0 + 5.0 * excite) - UV.x * 4.0 + phase) * (0.06 + 0.12 * excite);
 		}
 		// Coureur : tête relevée pour regarder la route malgré le buste penché
 		if (anim == 7 && VERTEX.y > 1.46 && !free_arm) {

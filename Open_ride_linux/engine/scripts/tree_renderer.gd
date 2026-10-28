@@ -19,6 +19,7 @@ extends Node3D
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const ViewCulling := preload("res://scripts/view_culling.gd")
 const TreeSwayShader := preload("res://shaders/tree_sway.gdshader")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
 const LOD1_SWAY_FACTOR := 0.6   # amplitude réduite des panneaux croisés du LOD 1
@@ -27,6 +28,8 @@ const CELL_SIZE_M := 250.0
 const CELLS_PER_TILE := 4   # 4 x 4 = 16 cases par tuile de 1000 m
 const LOD0_MAX_DIST_M := 300.0
 const LOD1_MAX_DIST_M := 1500.0
+## Lot S1 : distance ajoutée au rang d'une case hors du champ, pour qu'elle passe avant toute case visible.
+const OUT_OF_VIEW_RANK_M := 1.0e6
 ## Distance minimale entre un tronc et le mur d'un bâtiment OSM (houppier compris).
 const BUILDING_CLEARANCE_M := 3.0
 
@@ -471,8 +474,9 @@ func clear() -> void:
 	_active_tree_count = 0
 
 
-## Vérifie et applique le budget d'instances en retirant les cases les plus lointaines.
-func enforce_budget(cam_pos: Vector3) -> void:
+## Vérifie et applique le budget d'instances en retirant les cases les plus lointaines. Lot S1 : avec la
+## vue de la caméra active (view_culling.gd), les cases hors du champ partent avant celles du champ.
+func enforce_budget(cam_pos: Vector3, view: Dictionary = {}) -> void:
 	if _active_tree_count <= _budget:
 		return
 
@@ -482,7 +486,11 @@ func enforce_budget(cam_pos: Vector3) -> void:
 		var tile_cells: Dictionary = _tiles[tile_key]
 		for cell_idx in tile_cells.keys():
 			var cell_info: Dictionary = tile_cells[cell_idx]
-			var dist: float = (cell_info["center"] as Vector3).distance_to(cam_pos)
+			var center: Vector3 = cell_info["center"]
+			var dist: float = center.distance_to(cam_pos)
+			if not view.is_empty() and not ViewCulling.rect_in_view(Rect2(center.x - CELL_SIZE_M * 0.5,
+					center.z - CELL_SIZE_M * 0.5, CELL_SIZE_M, CELL_SIZE_M), view):
+				dist += OUT_OF_VIEW_RANK_M
 			all_cells.append({"tile_key": tile_key, "cell_idx": cell_idx, "dist": dist, "cell": cell_info})
 
 	all_cells.sort_custom(func(a, b) -> bool: return a["dist"] > b["dist"])
