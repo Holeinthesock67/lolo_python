@@ -885,7 +885,8 @@ func _handle_garage(screen: String, item_id: String) -> Dictionary:
 	elif screen == GarageViewModel.AVATAR:
 		if item_id.begins_with("field:"):
 			settings.begin_with(garage.edit_item(item_id.substr(6)))
-			_open_edit()
+			menu.set_screen_items(SETTING_EDIT, settings.edit_items(), str(settings.editing.get("label", "Réglage")))
+			menu.push_screen(SETTING_EDIT)
 		elif item_id == "save":
 			act = garage.save()
 			if not act.is_empty():
@@ -959,7 +960,8 @@ func _refresh_record_table() -> void:
 
 
 ## Réglage en cours de modification : la rangée de la liste ouverte (Réglages, Créer un entraînement)
-## passe en mode édition ; la difficulté de la pause garde son écran (étape 4).
+## passe en mode édition ; la difficulté de la pause et les champs de l'avatar du Garage (V8) gardent
+## leur écran (étape 4).
 func _refresh_edit() -> void:
 	match menu.current_screen():
 		SETTING_EDIT:
