@@ -63,6 +63,10 @@ Sortie : une ligne `[OK]` ou `[ÉCHEC]` par vérification, `rapport.html` (captu
 
 Premier défaut trouvé : le bandeau d'alerte (placé à 360 px du bord) recouvrait le HUD dès que celui-ci s'élargissait (ligne d'état, ligne ERG). Il se place désormais à droite du HUD s'il reste 360 px, sinon dessous (`banner.gd`, `layout_for`, test `unit/test_banner_layout.gd`).
 
+## Tour visuel guidé (`tour_visuel.py`, lot X21)
+
+`tour_visuel.py --world demo|village|osm|DOSSIER.world --auto [--tour demo] [--quality medium]` : la vraie scène charge le parcours face au faux core des tests graphiques et, pour chaque point (distance, vue de caméra, météo), y place le cycliste, attend que les tuiles voulues soient toutes affichées (`streaming_pending` de la capture, `world_streamer.pending_count()`) et capture. Points d'un fichier `tours/*.json` ou automatiques (`--auto` : départ, arrivée, plat, montées à 5 et 10 %, village le plus dense, forêt et eau proches de la route, frontières de biome). Sortie : une capture par point, `points.json`, `mesures.csv` (triangles, appels de dessin, maillages, images/s, tuiles en attente, particules de météo, chaussée mouillée) et `planche.html` (cases OK / à revoir / défaut et note, gardées dans la page, export JSON). Le propriétaire juge, l'outil fait le trajet. Tests : `core/tests/test_tour_visuel.py`.
+
 ## Banc des menus (`menu_bench.py`)
 
 Tous les menus joués de bout en bout au Click V2 simulé, au clavier et à la souris, face au vrai core sur Bluetooth simulé : scénarios déclaratifs de `menu_scenarios/*.json` (un écran ou un parcours de menus chacun), vérifiés par identifiants d'écran et d'élément, `config.toml`, journaux et code de sortie ; voir [docs/OUTILS_DE_TEST.md](../../docs/OUTILS_DE_TEST.md) §3. Messages de test de l'engine qu'il utilise, réutilisables par d'autres bancs (aussi en séance) : `key` (`key`, `shift`, `hold_ms` : touche appuyée puis relâchée par `Input.parse_input_event`), `mouse` (`kind` click, right, wheel_up, wheel_down ou move ; `item` ou `at`) et `menu_state` (`req` : état des menus en une ligne `[test] menu_state {…}`). Ajouter un écran au banc : un fichier JSON, sans toucher au script.
@@ -246,6 +250,7 @@ Avec `--test-mode`, l'engine écrit sur la sortie standard des lignes `[test] cl
 | `screenshot {…}` | Capture demandée par le message de test `screenshot` (tests graphiques, ci-dessus) |
 | `route_loaded id=… length_m=… path=…` / `route_missing id=…` | Parcours chargé / introuvable (la ligne d'information qui précède dit si le terrain est présent) |
 | `cam s=… age_ms=… frozen=0\|1 moved=0\|1` | Position affichée de la caméra, à 20 Hz ; `age_ms` : âge de la dernière trame |
+| `camera_view done=…` | Vue de caméra imposée par le message de test `{"action": "camera_view", "view": …}` (vue affichée : subjective tant que l'avatar n'existe pas ; tour visuel, lot X21) |
 
 Le faux core déclenche une commande par un message de test `{"type": "_test", "action": "send_command", "name": …, "args": {…}}` envoyé sur le port d'état, et une capture d'écran par `{"type": "_test", "action": "screenshot", "path": …, "tag": …}`. Hors `--test-mode`, ce type est inconnu et donc ignoré (contrat §1).
 
