@@ -3,10 +3,12 @@
 import asyncio
 import struct
 
+import pytest
+
 from openride_core import fit_export, ftms, zwift_click
 from openride_core.config import Config, TrainerConfig, BikeConfig
 from openride_core.ftms_driver import FtmsDriver
-from openride_core.input_providers import ClickPair, NullProvider, ZwiftClickProvider
+from openride_core.input_providers import ClickPair, KeyboardProvider, NullProvider, ZwiftClickProvider, split_terminal_keys
 from openride_core.mock_driver import MockDriver, TrainerMetrics
 from openride_core.session import CoreSession
 from openride_core.zwift_click import InputEvent
@@ -391,3 +393,18 @@ def test_long_press_jumps_ten_gears(tmp_path, monkeypatch):
         s._handle_input(InputEvent.PLUS_LONG)
         assert s.gearing.k == s.gearing.n_gears
     asyncio.run(scenario())
+
+
+@pytest.mark.recette_sans_velo
+def test_terminal_keyboard_doubles_the_click_key_for_key():
+    # Lot O17 : tableau du clavier de la spécification générale §7.1, synonymes pour les appuis longs.
+    assert split_terminal_keys("+\x1b[5~a\x1bOA\x1b") == ["+", "\x1b[5~", "a", "\x1b[A", "\x1b"]
+    kb = KeyboardProvider()
+    kb.on_data("+-\x1b[5~\x1b[6~aA\rz Z y\x1b\x1b[D\x1b[C\x1b[A\x1b[Bud p")
+    got = []
+    while not kb.events.empty():
+        got.append(kb.events.get_nowait())
+    E = InputEvent
+    assert got == [E.PLUS_SHORT, E.MINUS_SHORT, E.PLUS_LONG, E.MINUS_LONG, E.A_SHORT, E.A_LONG, E.A_LONG,
+                   E.Z_SHORT, E.Z_LONG, E.Y_SHORT, E.Y_SHORT, E.LEFT_SHORT, E.RIGHT_SHORT, E.UP_SHORT,
+                   E.DOWN_SHORT]   # u, d, p, espace : plus de rôle

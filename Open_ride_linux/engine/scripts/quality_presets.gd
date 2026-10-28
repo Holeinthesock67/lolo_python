@@ -5,14 +5,14 @@ extends RefCounted
 ##
 ## Valeurs retenues :
 ## - `low` (GPU intégré ou objectif ≥ 30 FPS garanti) : portée 3 km (3 tronçons devant, 1 derrière),
-##   densité de végétation 0,3, sans SSAO ni brouillard volumétrique, MSAA désactivé (0),
-##   brouillard opaque à 4 km, ombres 150 m, budget arbres 20 000.
+##   densité de végétation 0,3, sans brouillard volumétrique, brouillard opaque à 4 km, ombres 150 m,
+##   budget arbres 20 000.
 ## - `medium` (GPU dédié milieu de gamme type GTX 1060) : portée 5 km (5 tronçons devant, 1 derrière),
-##   densité de végétation 0,6, SSAO activé, sans brouillard volumétrique, MSAA 2×,
-##   brouillard opaque à 6 km, ombres 300 m, budget arbres 50 000.
+##   densité de végétation 0,8, sans brouillard volumétrique, brouillard opaque à 6 km, ombres 400 m,
+##   budget arbres 70 000, bâtiments jusqu'à 3,5 km (lot Y13, étape 2).
 ## - `high` (GPU dédié récent) : portée 8 km (8 tronçons devant, 2 derrière), densité de végétation 1,0,
-##   SSAO et brouillard volumétrique activés, MSAA 4×,
-##   brouillard opaque à 9 km, ombres 600 m, budget arbres 100 000.
+##   brouillard volumétrique activé, brouillard opaque à 9 km, ombres 600 m, budget arbres 100 000.
+## La qualité d'image (anticrénelage, filtrage, occlusion ambiante, glow, ombres) est dans IMAGE (lot Y13).
 ## `fog_end_m` (lot Y1) : distance où le brouillard devient opaque ; la caméra (`camera.far`) et le
 ## rayon des tuiles lointaines du terrain la suivent (render_quality.gd, world_streamer.gd).
 ## Le moteur de rendu ne fait pas partie des préréglages : Forward+ partout (essai Mobile : lot Y7).
@@ -25,19 +25,15 @@ const PRESETS := {
 		"chunks_ahead": 3,
 		"chunks_behind": 1,
 		"vegetation_density_factor": 0.3,
-		"ssao": false,
 		"fog_volumetric": false,
-		"msaa": 0,
 		"fog_end_m": 4000.0,
 	},
 	"medium": {
 		"view_distance_m": 5000.0,
 		"chunks_ahead": 5,
 		"chunks_behind": 1,
-		"vegetation_density_factor": 0.6,
-		"ssao": true,
+		"vegetation_density_factor": 0.8,
 		"fog_volumetric": false,
-		"msaa": 2,
 		"fog_end_m": 6000.0,
 	},
 	"high": {
@@ -45,41 +41,100 @@ const PRESETS := {
 		"chunks_ahead": 8,
 		"chunks_behind": 2,
 		"vegetation_density_factor": 1.0,
-		"ssao": true,
 		"fog_volumetric": true,
-		"msaa": 4,
 		"fog_end_m": 9000.0,
+	},
+}
+
+## Qualité d'image par préréglage (lot Y13), toujours à la résolution native de l'écran (décision du
+## propriétaire du 27 octobre : ni mise à l'échelle ni suréchantillonnage) :
+## - `msaa` : MSAA 3D (0, 2, 4 ou 8) ; `fxaa` : anticrénelage d'écran, pour `low` qui n'a pas de MSAA.
+## - `ssao`, `ssil` : occlusion ambiante et lumière indirecte d'écran, `off`, `low`, `medium` ou `high`
+##   (Forward+ seulement) ; `ao_half_size` : calcul en demi-résolution.
+## - `glow` : halo des zones claires (ciel, soleil, routes mouillées).
+## - `shadow_atlas` : taille de l'atlas des ombres du soleil ; `shadow_splits` : 2 ou 4 cascades ;
+##   `shadow_filter` : filtre doux `hard`, `very_low`, `low`, `medium`, `high`.
+## - `mesh_lod_threshold` : erreur tolérée des LOD automatiques en pixels (plus petit = plus fin).
+## Le filtrage anisotrope (16×, réglage global en Godot 4.3) est dans `project.godot`.
+const IMAGE := {
+	"low": {
+		"msaa": 0,
+		"fxaa": true,
+		"ssao": "off",
+		"ssil": "off",
+		"ao_half_size": true,
+		"glow": false,
+		"shadow_atlas": 2048,
+		"shadow_splits": 2,
+		"shadow_filter": "low",
+		"mesh_lod_threshold": 2.0,
+	},
+	"medium": {
+		"msaa": 4,
+		"fxaa": false,
+		"ssao": "medium",
+		"ssil": "low",
+		"ao_half_size": true,
+		"glow": true,
+		"shadow_atlas": 4096,
+		"shadow_splits": 4,
+		"shadow_filter": "medium",
+		"mesh_lod_threshold": 1.0,
+	},
+	"high": {
+		"msaa": 4,
+		"fxaa": false,
+		"ssao": "high",
+		"ssil": "medium",
+		"ao_half_size": true,
+		"glow": true,
+		"shadow_atlas": 4096,
+		"shadow_splits": 4,
+		"shadow_filter": "high",
+		"mesh_lod_threshold": 0.5,
 	},
 }
 
 ## Distance des ombres portées selon le préréglage (Lots E1 et E3)
 const SHADOW_DISTANCES := {
 	"low": 150.0,
-	"medium": 300.0,
+	"medium": 400.0,
 	"high": 600.0,
 }
 
 ## Budget d'arbres affichés selon le préréglage (Lot E3 / SRS §8)
 const TREE_BUDGETS := {
 	"low": 20000,
-	"medium": 50000,
+	"medium": 70000,
 	"high": 100000,
 }
 
 ## Distance d'affichage des bâtiments (Lot E4)
 const BUILDING_VISIBILITY_END := {
 	"low": 1500.0,
-	"medium": 2500.0,
+	"medium": 3500.0,
 	"high": 4000.0,
 }
 
 
 ## Renvoie le dictionnaire du préréglage demandé (`low`, `medium`, `high`), ou `low` si le nom est inconnu.
+## Nom du préréglage réellement appliqué pour `name` : `low` si le nom est inconnu (lot X32, vitrines).
+static func applied_name(name: String) -> String:
+	var key := name.strip_edges()
+	return key if PRESETS.has(key) else DEFAULT_PRESET
+
+
 static func preset(name: String) -> Dictionary:
 	var key := name.strip_edges()
 	if PRESETS.has(key):
 		return (PRESETS[key] as Dictionary).duplicate(true)
 	return (PRESETS[DEFAULT_PRESET] as Dictionary).duplicate(true)
+
+
+## Qualité d'image du préréglage (lot Y13), `low` si le nom est inconnu.
+static func image(name: String) -> Dictionary:
+	var key := name.strip_edges()
+	return (IMAGE[key] if IMAGE.has(key) else IMAGE[DEFAULT_PRESET]).duplicate(true)
 
 
 ## Distance où le brouillard de profondeur devient opaque (lot Y1), `low` si le nom est inconnu.
@@ -102,10 +157,39 @@ static func building_visibility_end_m(name: String) -> float:
 	return BUILDING_VISIBILITY_END.get(key, BUILDING_VISIBILITY_END[DEFAULT_PRESET])
 
 
+## Nombre de biomes au plus par tuile de terrain (série U, décision U-Q4 : 3 en `low`, 4 sinon).
+const MAX_BIOMES := {
+	"low": 3,
+	"medium": 4,
+	"high": 4,
+}
+
+
+static func max_biomes(name: String) -> int:
+	var key := name.strip_edges()
+	return MAX_BIOMES.get(key, MAX_BIOMES[DEFAULT_PRESET])
+
+
+## Côté des textures de sol des biomes en pixels (série U, décision U-Q4 ; lot U6).
+const GROUND_TEXTURE_PX := {
+	"low": 1024,
+	"medium": 1024,
+	"high": 2048,
+}
+
+
+static func ground_texture_px(name: String) -> int:
+	var key := name.strip_edges()
+	return GROUND_TEXTURE_PX.get(key, GROUND_TEXTURE_PX[DEFAULT_PRESET])
+
+
 ## Budgets du décor vivant de la série P selon le préréglage (Lot P4), lus par les lots P5 à P15 et P21.
 ## `low` vise ≥ 55 images/s et un temps d'image p99 sous 25 ms sur la GTX 1060 du PC cible, toute la
 ## série activée. `passersby` est le budget des passants des villages (P21). `birds` compte aussi les
-## rapaces, volées en V et corneilles de P23 (doublé par P23 : 24, 48, 80).
+## rapaces, volées en V et corneilles de P23 (doublé par P23 : 24, 48, 80). `distant_vehicles` (P25) : véhicules
+## des routes voisines et tracteurs des champs, en MultiMesh. `aircraft` (P26) : avions de ligne, hélicoptère,
+## parapentes et montgolfières. `boats` (P29) : bateaux des lacs, des canaux, des rivières et de la mer.
+## `cyclists` (P28) : cyclistes du décor sur la route du parcours.
 const LIVING := {
 	"low": {
 		"tree_sway": true,
@@ -115,6 +199,10 @@ const LIVING := {
 		"birds": 24,
 		"animals": 20,
 		"vehicles": 3,
+		"distant_vehicles": 6,
+		"cyclists": 4,
+		"aircraft": 4,
+		"boats": 4,
 		"spectators": 40,
 		"passersby": 24,
 		"ambience_voices": 4,
@@ -128,6 +216,10 @@ const LIVING := {
 		"birds": 48,
 		"animals": 40,
 		"vehicles": 5,
+		"distant_vehicles": 12,
+		"cyclists": 8,
+		"aircraft": 8,
+		"boats": 8,
 		"spectators": 80,
 		"passersby": 48,
 		"ambience_voices": 6,
@@ -141,6 +233,10 @@ const LIVING := {
 		"birds": 80,
 		"animals": 80,
 		"vehicles": 8,
+		"distant_vehicles": 24,
+		"cyclists": 16,
+		"aircraft": 12,
+		"boats": 16,
 		"spectators": 160,
 		"passersby": 80,
 		"ambience_voices": 8,

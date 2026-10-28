@@ -9,8 +9,10 @@ extends SceneTree
 ##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
 ##     --audio-driver Dummy --script res://tests/vitrine_rendu.gd -- --out DOSSIER [--quality low,medium,high]
 ##
-## Écrit DOSSIER/<vue>_<préréglage>.png et DOSSIER/vitrine.csv (vue ; préréglage ; triangles ; appels
-## de dessin ; objets). Les temps du processeur graphique se mesurent sur le PC cible (perf_probe.py),
+## Le préréglage demandé est appliqué comme dans la scène principale (render_quality.gd : image, ombres,
+## brouillard ; lot X32) ; avant, la vitrine n'en appliquait aucun et ne montrait pas les effets de Y13.
+## Écrit DOSSIER/<vue>_<préréglage>.png et DOSSIER/vitrine.csv (vue ; préréglage ; qualité appliquée ;
+## triangles ; appels de dessin ; objets). Les temps du processeur graphique se mesurent sur le PC cible (perf_probe.py),
 ## pas ici : le rendu logiciel de Xvfb ne dit rien de la GTX 1060.
 
 const GrassTufts := preload("res://scripts/grass_tufts.gd")
@@ -23,7 +25,7 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
-const FaunaShader := preload("res://shaders/fauna.gdshader")
+const RenderQuality := preload("res://scripts/render_quality.gd")
 
 const SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
@@ -111,7 +113,7 @@ func _init() -> void:
 func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(_out_dir)
 	var csv := FileAccess.open(_out_dir.path_join("vitrine.csv"), FileAccess.WRITE)
-	csv.store_line("vue;préréglage;triangles;appels_dessin;objets")
+	csv.store_line("vue;préréglage;qualite_appliquee;triangles;appels_dessin;objets")
 	for preset in _presets:
 		var vp := _build_world(preset)
 		for view in VIEWS:
@@ -128,7 +130,7 @@ func _run() -> void:
 			var tris := RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME)
 			var draws := RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 			var objs := RenderingServer.viewport_get_render_info(rid, RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
-			csv.store_line("%s;%s;%d;%d;%d" % [view, preset, tris, draws, objs])
+			csv.store_line("%s;%s;%s;%d;%d;%d" % [view, preset, QualityPresets.applied_name(preset), tris, draws, objs])
 			print("[vitrine] %s : %d triangles, %d appels de dessin, %d objets" % [path, tris, draws, objs])
 		vp.queue_free()
 		await process_frame
@@ -199,9 +201,11 @@ func _build_world(preset: String) -> SubViewport:
 	_add_animals(vp)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
-	cam.far = 2000.0
 	cam.current = true
 	vp.add_child(cam)
+	RenderQuality.apply_preset(preset, cam, sun, env, vp)
+	RenderQuality.apply_fog(env, preset, false)
+	print("Qualité appliquée : %s (demandée %s, source vitrine)" % [QualityPresets.applied_name(preset), preset])
 	return vp
 
 
@@ -253,13 +257,7 @@ func _add_cyclists(vp: SubViewport) -> void:
 ## à l'échelle des rapaces, ailes battantes.
 func _add_animals(vp: SubViewport) -> void:
 	for sp in FaunaRenderer.SPECIES:
-		var mat := ShaderMaterial.new()
-		mat.shader = FaunaShader
-		mat.set_shader_parameter("mode", 0 if sp == "bird" else 1)
-		for key in ["albedo", "accent", "light"]:
-			var table: Dictionary = {"albedo": FaunaRenderer.ALBEDO, "accent": FaunaRenderer.ACCENT, "light": FaunaRenderer.LIGHT}[key]
-			mat.set_shader_parameter(key, table[sp])
-		mat.set_shader_parameter("patches", FaunaRenderer.PATCHES[sp])
+		var mat := FaunaRenderer.make_material(sp)
 		var mine := ANIMALS.filter(func(a): return a[0] == sp)
 		var mm := MultiMesh.new()
 		mm.transform_format = MultiMesh.TRANSFORM_3D

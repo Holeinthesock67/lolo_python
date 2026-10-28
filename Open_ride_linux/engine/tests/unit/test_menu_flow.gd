@@ -5,6 +5,7 @@ extends SceneTree
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
+const MenuModel := preload("res://scripts/menu_model.gd")
 
 const ROUTES := [
 	{"id": "demo", "name": "Démo", "length_m": 4000.0, "is_loop": true, "status": "ready"},
@@ -140,6 +141,8 @@ func _test_view() -> void:
 	var many: Array = []
 	for i in range(9):
 		many.append({"id": "r%d" % i, "name": "Parcours %d" % i, "length_m": 1000.0 * (i + 1), "status": "ready"})
+	for extra in ["9b", "9c"]:   # la liste dépasse la fenêtre de MAX_VISIBLE_ITEMS éléments
+		many.append({"id": "r" + extra, "name": "Parcours " + extra, "length_m": 20000.0, "status": "ready"})
 	f.set_routes(many)
 	var v = MenuView.new()
 	var state := {"session_state": "IDLE", "trainer_status": "MOCK", "input_status": "KEYBOARD"}
@@ -153,7 +156,7 @@ func _test_view() -> void:
 	var shown := v.items_text().split(" | ")
 	_check(shown.size() == MenuView.MAX_VISIBLE_ITEMS and v.items_text().contains("[Parcours 7"),
 			"longue liste : fenêtre autour du focus (%s)" % v.items_text())
-	_check(v.more_label.text == "8 / 10", "position dans la liste (tri en dernier) : %s" % v.more_label.text)
+	_check(v.more_label.text == "8 / 12", "position dans la liste (tri en dernier) : %s" % v.more_label.text)
 	f.on_state({"session_state": "RUNNING"})
 	f.on_state({"session_state": "FINISHED", "summary": {"duration_s": 1800.0, "distance_m": 15000.0,
 			"avg_power_w": 210.0, "fit_path": "/x/y/seance.fit", "blocks": [[1, 200.0, 200.0], [2, 260.0, 230.0]]}})
@@ -235,7 +238,8 @@ func _test_pairing_screen() -> void:
 		{"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:01", "rssi": -40, "configured": false},
 		{"role": "click", "name": "Zwift Click", "address": "C1:1C:00:00:00:02", "rssi": -45, "configured": false}]})
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
-	_check("Trainer : HomeTrainer 0001" in labels, "trainer trouvé choisi : %s" % str(labels))
+	_check("Trainer" in labels and f.state()["items"][labels.find("Trainer")]["detail"] == "HomeTrainer 0001",
+		"trainer trouvé choisi : %s" % str(labels))
 	f.menu.handle("PLUS_SHORT")
 	while _focus_id(f) != "identify":
 		f.handle("PLUS_SHORT")
@@ -298,16 +302,25 @@ func _test_settings_screen() -> void:
 	_check(f.state()["items"][-1]["detail"] == "", "core pas encore connu : pas d'alerte")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Cycliste
-	_check(f.state()["screen"] == "settings_group" and f.state()["title"] == "Cycliste"
-			and f.state()["items"].map(func(it): return it["label"]) == ["FTP : 250 W"], "sous-écran Cycliste")
-	f.handle("A_LONG")   # FTP
-	_check(f.state()["screen"] == "setting_edit" and f.state()["title"] == "FTP", "modification de la FTP")
+	_check(f.state()["screen"] == "settings_group" and f.state()["title"] == "Réglages › Cycliste"
+			and f.state()["items"].map(func(it): return it["label"]) == ["FTP"] and f.state()["items"][0]["detail"] == "250 W",
+			"sous-écran Cycliste : libellé à gauche, valeur à droite")
+	_check(f.state()["card"]["name"] == "FTP" and f.state()["card"]["lines"] == ["S'applique à la séance suivante"],
+			"carte du réglage sous le focus (%s)" % str(f.state()["card"]))
+	f.handle("A_LONG")   # FTP : modification en place, pas d'autre écran
+	_check(f.state()["screen"] == "settings_group" and f.state()["editing"] and f.state()["items"][0]["detail"] == "◀ 250 W ▶"
+			and f.state()["items"][0]["editing"], "modification de la FTP dans la liste")
 	for i in range(3):
 		f.handle("PLUS_SHORT")
-	_check(f.state()["items"][0]["label"] == "265 W", "+ trois fois : 265 W (%s)" % f.state()["items"][0]["label"])
+	_check(f.state()["items"][0]["detail"] == "◀ 265 W ▶", "+ trois fois : 265 W (%s)" % f.state()["items"][0]["detail"])
 	var act: Dictionary = f.handle("A_LONG")
-	_check(act == {"action": "set_setting", "key": "rider.ftp_w", "value": 265} and f.state()["screen"] == "settings_group",
-			"appui long + : set_setting et retour au sous-écran (%s)" % str(act))
+	_check(act == {"action": "set_setting", "key": "rider.ftp_w", "value": 265} and f.state()["screen"] == "settings_group"
+			and not f.state()["editing"] and f.state()["items"][0]["detail"] == "265 W",
+			"A maintenu : set_setting une fois, valeur affichée tout de suite (%s)" % str(act))
+	f.handle("A_LONG")
+	f.handle("PLUS_SHORT")
+	_check(f.handle("Y_SHORT").is_empty() and f.state()["items"][0]["detail"] == "265 W" and f.state()["screen"] == "settings_group",
+			"Y annule et rend la valeur d'avant")
 	f.handle("Y_SHORT")   # retour aux Réglages, focus sur Cycliste
 	_check(f.state()["screen"] == "settings" and _focus_id(f) == "group:rider", "retour aux Réglages sur Cycliste")
 	f.handle("PLUS_SHORT")
@@ -315,13 +328,13 @@ func _test_settings_screen() -> void:
 	f.handle("A_LONG")   # Affichage
 	f.handle("A_LONG")   # Qualité
 	f.handle("PLUS_SHORT")
-	_check(f.state()["items"][0]["label"] == "low", "choix en boucle : high → low")
+	_check(f.state()["items"][0]["detail"] == "◀ low ▶", "choix en boucle : high → low")
 	_check(f.handle("Y_SHORT").is_empty() and f.state()["screen"] == "settings_group", "Y : annulé")
 	f.handle("Y_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Vent
-	_check(f.state()["items"][0]["label"] == "Direction du vent : 270° (ouest)", "direction avec le point cardinal (%s)"
-			% f.state()["items"][0]["label"])
+	_check(f.state()["items"][0]["label"] == "Direction du vent" and f.state()["items"][0]["detail"] == "270° (ouest)",
+			"direction avec le point cardinal (%s)" % f.state()["items"][0]["detail"])
 	f.handle("Y_SHORT")
 	# Curseur de difficulté sur l'écran de pause : set_difficulty, sans config.toml.
 	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
@@ -352,15 +365,17 @@ func _test_erg_submenu() -> void:
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create", "écran Créer un entraînement")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Répétitions
-	_check(f.state()["screen"] == "setting_edit" and f.state()["items"][0]["label"] == "5", "modification des répétitions")
+	_check(f.state()["screen"] == "workout_create" and f.state()["items"][1]["detail"] == "◀ 5 ▶",
+		"modification des répétitions en place")
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
-	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create", "A long : retour à l'écran Créer")
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create" and not f.state()["editing"],
+		"A long : valeur gardée dans l'écran Créer")
 	_check(f.state()["items"][1]["detail"] == "7", "7 répétitions (%s)" % f.state()["items"][1]["detail"])
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Effort
 	f.handle("PLUS_SHORT")
-	_check(f.state()["items"][0]["label"] == "4 min 15 s", "effort par pas de 15 s (%s)" % f.state()["items"][0]["label"])
+	_check(f.state()["items"][2]["detail"] == "◀ 4 min 15 s ▶", "effort par pas de 15 s (%s)" % f.state()["items"][2]["detail"])
 	f.handle("Y_SHORT")  # annulé
 	f.handle("MINUS_SHORT")
 	f.handle("MINUS_SHORT")
@@ -446,6 +461,14 @@ func _test_plans() -> void:
 	_check(f.state()["status"] == "Plan démarré : Essai", "plan démarré (%s)" % f.state()["status"])
 	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai"], "suivi du plan actif (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "semaine 1 / 4, 0 % fait (0 / 8)", "progression : %s" % f.state()["items"][1]["detail"])
+	f.menu.focus_item("today")
+	_check(f.state()["card"]["title"] == "Séance du jour" and f.state()["card"]["name"] == "Sweet spot"
+		and f.state()["card"]["tiles"][0]["value"] == "45 min", "plans : carte de la séance du jour (%s)" % str(f.state()["card"].get("tiles")))
+	f.menu.focus_item("stop")
+	_check(f.state()["card"]["title"] == "Plan en cours" and f.state()["card"]["tiles"][0]["value"] == "1 / 4",
+		"plans : carte du plan en cours")
+	f.menu.focus_item("plan:essai")
+	_check(f.state()["card"]["name"] == "Essai" and f.state()["card"]["tiles"][2]["label"] == "Fait", "plans : carte d'un plan")
 	f.handle("Y_SHORT")
 	var home: Dictionary = f.state()["items"][3]
 	_check(home["label"] == "Séance du jour : Sweet spot" and home["detail"] == "45 min, TSS 61",
@@ -492,6 +515,9 @@ func _test_ftp_flow() -> void:
 	f.handle("A_LONG")
 	_check(f.state()["screen"] == "ftp_test" and _ids(f) == ["ramp", "20min"] and f.state()["status"] != "",
 		"écran Test de FTP : rampe, 20 minutes, conseil (%s)" % f.state()["status"])
+	_check(f.state()["items"][0]["detail"] == "≈ 22 min" and f.state()["items"][1]["detail"] == "≈ 55 min"
+		and f.state()["card"]["name"] == "Rampe" and f.state()["card"]["tiles"][1]["value"] == "250",
+		"test de FTP : durées calculées et carte (%s)" % str(f.state()["items"].map(func(it): return it["detail"])))
 	f.handle("A_LONG")
 	_check(f.state()["screen"] == "ready" and f.state()["title"].begins_with("Prêt : test de FTP (rampe)"), "rampe : écran Prêt")
 	_check(f.handle("A_LONG") == {"action": "start", "args": {"ftp_test": "ramp"}}, "start avec ftp_test")
@@ -630,6 +656,16 @@ func _test_bots_menu() -> void:
 		"test de FTP et bot : arguments réunis")
 	g.menu.reset()
 	_check(g.menu.bot_choice == 0 and not g.menu.ghost, "nouvelle séance : bots remis à zéro")
+	# Bots à profil (lot T13) : après les bots constants, chaque profil à 90, 100 et 110 % de la FTP.
+	var labels: Array = []
+	for c in MenuModel.BOT_CHOICES:
+		labels.append(c[0])
+	_check(labels.slice(7) == ["Grimpeur 90 %", "Grimpeur 100 %", "Grimpeur 110 %", "Rouleur 90 %", "Rouleur 100 %",
+		"Rouleur 110 %", "Sprinteur 90 %", "Sprinteur 100 %", "Sprinteur 110 %", "Diesel 90 %", "Diesel 100 %", "Diesel 110 %"],
+		"profils et niveaux au menu (%s)" % str(labels))
+	g.menu.bot_choice = 9
+	_check(g.menu._start_args() == {"bots": [{"kind": "profile", "profile": "climber", "level_pct": 110}]},
+		"start avec un grimpeur à 110 %% (%s)" % str(g.menu._start_args()))
 
 
 func _init() -> void:

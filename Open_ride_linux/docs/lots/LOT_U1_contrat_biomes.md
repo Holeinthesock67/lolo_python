@@ -78,3 +78,10 @@ Celles du §4, et elles seules : ajouts compatibles pour l'IPC (`v` reste 1) et 
 ## 8. Hors périmètre
 
 Tout code. U2 à U22 implémentent ce contrat.
+
+## 9. Livraison en deux parties (28 octobre 2026)
+
+Le propriétaire a choisi le 28 octobre d'avancer le rendu des biomes avant la 3.0 sans attendre la 2.0. Le lot est donc livré en deux parties :
+
+1. **Partie format (livrée le 28 octobre) :** §4.1 à §4.5, format `.world` 1.6 (premier mineur libre après la 1.5 de P22), schémas, exemples et `compiler/tests/test_contract_biome.py`. `texture_levels` (P20) n'existe pas encore : il s'ajoutera au thème 2.0 sans autre changement. Les identifiants d'architecture sont ceux des styles de bâtiments de l'engine (`engine/scripts/building_styles.gd`, fil des textures de bâtiments).
+2. **Partie IPC et configuration (§4.6) :** reportée au lot U16, qui en a besoin le premier ; elle prend la révision IPC libre au moment de U16. En attendant, l'engine accepte `--biome=<identifiant>` en ligne de commande (comme `--theme=`) pour les essais et les captures.

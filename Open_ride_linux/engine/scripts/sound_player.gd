@@ -21,6 +21,9 @@ extends Node
 ## Lot P13 : deux sons de plus pour les véhicules, `vehicle_pass` (pneus et souffle) et `tractor_engine`
 ## (moteur grave), joués par les lecteurs 3D de traffic_renderer.gd (`stream(kind)`) ; remplaçables par
 ## ~/OpenRide/Sounds/<kind>.ogg. Lot P15 : `crowd_cheer` (clameur et applaudissements) pour crowd_renderer.gd.
+## Lot P26 : `helicopter_rotor` (battement des pales) et `airliner_rumble` (grondement lointain), joués par
+## sky_traffic_renderer.gd. Lot P29 : `barge_engine` (diesel lent d'une péniche) et `ship_horn` (corne de
+## brume, jouée une fois), joués par boat_renderer.gd.
 ##
 ## Lot P21 : quatre sons brefs, non bouclés, des passants (`VOICE_KINDS` : « Allez ! », « Bonjour ! »,
 ## aboiement, rire d'enfant), synthétisés par une source glottale filtrée par deux formants, ou lus dans
@@ -29,7 +32,10 @@ extends Node
 ## Volumes du menu Réglages (audio_mix.gd) : vent, roue libre et « clac » sur le bus `Ride`, fonds,
 ## cloches et points sonores sur le bus `Ambience`.
 ## Lot P23 : même synthèse pour deux cris d'oiseaux, `crow_caw` (deux croassements rauques) et `raptor_cry`
-## (miaulement de buse qui descend), joués par fauna_renderer.gd.
+## (miaulement de buse qui descend), joués par fauna_renderer.gd. Lot P24 : `cow_moo` (meuglement grave et long),
+## `sheep_baa` (bêlement) et `horse_neigh` (hennissement qui descend en trilles) des troupeaux.
+## Lot P28 : `voice_salut` (« Salut ! », même synthèse que les passants) pour les cyclistes du décor qui
+## doublent (road_cyclists_renderer.gd).
 ##
 ## Lot T17 : jingles des événements du parcours (`EventSoundsModel.JINGLES` : sommet, sprint, arche, fin
 ## de séance), synthétisés note par note ou lus dans ~/OpenRide/Sounds/<nom>.ogg ; `play_event(nom)`
@@ -47,6 +53,7 @@ const BELL_INTERVAL_S := 2.2
 
 const MIX_RATE := 22050
 const SAMPLE_COUNT := 22050   # 1 seconde de boucle
+const ONE_SHOT_KINDS := ["ship_horn"]   # sons synthétisés joués une fois (Lot P29)
 const FREEWHEEL_LOOP_CLICKS := 140.0   # coups par seconde de la boucle à pitch_scale = 1 (≈ 30 km/h)
 const FREEWHEEL_MIN_PITCH := 0.05
 const FREEWHEEL_JITTER := 0.08         # décalage aléatoire de chaque coup, en fraction de période
@@ -56,7 +63,8 @@ const WIND_BAND_HZ := 600.0            # souffle : passe-bande doux, plus discre
 const WIND_BAND_Q := 0.6
 const WIND_RMS := 0.22
 const CLAC_SAMPLES := 1323     # 60 ms
-const VOICE_KINDS := ["voice_allez", "voice_bonjour", "dog_bark", "kid_laugh", "crow_caw", "raptor_cry"]
+const VOICE_KINDS := ["voice_allez", "voice_bonjour", "dog_bark", "kid_laugh", "crow_caw", "raptor_cry", "cow_moo", "sheep_baa",
+	"horse_neigh", "voice_salut"]
 ## Syllabes des sons de passants : [début s, fin s, f0 début Hz, f0 fin Hz, formant 1 Hz, formant 2 Hz, souffle 0 à 1].
 const VOICE_SYLLABLES := {
 	"voice_allez": [[0.0, 0.16, 190.0, 210.0, 800.0, 1250.0, 0.05], [0.2, 0.52, 230.0, 290.0, 420.0, 2000.0, 0.08]],
@@ -66,6 +74,11 @@ const VOICE_SYLLABLES := {
 		[0.28, 0.37, 380.0, 350.0, 900.0, 1500.0, 0.5], [0.42, 0.53, 360.0, 300.0, 900.0, 1500.0, 0.5]],
 	"crow_caw": [[0.0, 0.22, 520.0, 430.0, 1100.0, 1900.0, 0.55], [0.36, 0.58, 500.0, 410.0, 1100.0, 1900.0, 0.55]],
 	"raptor_cry": [[0.0, 0.85, 1800.0, 1150.0, 2200.0, 3300.0, 0.12]],
+	"voice_salut": [[0.0, 0.17, 210.0, 235.0, 760.0, 1300.0, 0.3], [0.22, 0.5, 245.0, 190.0, 300.0, 1800.0, 0.1]],
+	"cow_moo": [[0.0, 0.3, 105.0, 125.0, 320.0, 700.0, 0.1], [0.3, 0.98, 125.0, 95.0, 380.0, 820.0, 0.12]],
+	"sheep_baa": [[0.0, 0.12, 270.0, 300.0, 600.0, 1300.0, 0.25], [0.12, 0.72, 300.0, 255.0, 750.0, 1400.0, 0.3]],
+	"horse_neigh": [[0.0, 0.18, 950.0, 880.0, 1000.0, 2300.0, 0.3], [0.2, 0.34, 860.0, 760.0, 1000.0, 2300.0, 0.3],
+		[0.36, 0.5, 740.0, 640.0, 950.0, 2200.0, 0.3], [0.52, 0.8, 620.0, 420.0, 850.0, 2000.0, 0.35]],
 }
 
 var model := SoundModel.new()
@@ -73,6 +86,7 @@ var model := SoundModel.new()
 var _wind_player: AudioStreamPlayer
 var _freewheel_player: AudioStreamPlayer
 var _clac_player: AudioStreamPlayer
+var _wheel_player: AudioStreamPlayer     # ronronnement / sifflement des roues (lot V7)
 var clacs_played := 0                   # « clac » de reprise joués (tests)
 var _poi_players: Array[AudioStreamPlayer3D] = []
 
@@ -108,6 +122,11 @@ func _init_players() -> void:
 	_freewheel_player.volume_db = SoundModel.SILENCE_DB
 	_freewheel_player.bus = AudioMix.bus(AudioMix.RIDE)
 	add_child(_freewheel_player)
+
+	_wheel_player = AudioStreamPlayer.new()
+	_wheel_player.name = "WheelPlayer"
+	_wheel_player.volume_db = SoundModel.SILENCE_DB
+	add_child(_wheel_player)
 
 	_clac_player = AudioStreamPlayer.new()
 	_clac_player.name = "ClacPlayer"
@@ -194,6 +213,21 @@ func update_audio(state: Dictionary, now_s: float, rider_pos: Vector3) -> Dictio
 			if _freewheel_player.playing:
 				_freewheel_player.stop()
 
+	# Roues (lot V7)
+	var wh: Dictionary = eval["wheel"]
+	_wheel_player.volume_db = float(wh["volume_db"])
+	_wheel_player.pitch_scale = float(wh["pitch"])
+	if str(wh["kind"]) != "none":
+		var stream = _streams.get("wheel_" + str(wh["kind"]), null)
+		if _wheel_player.stream != stream:
+			_wheel_player.stream = stream
+	if is_inside_tree():
+		if str(wh["kind"]) != "none" and float(wh["volume_db"]) > SoundModel.SILENCE_DB:
+			if not _wheel_player.playing and _wheel_player.stream != null:
+				_wheel_player.play()
+		elif _wheel_player.playing:
+			_wheel_player.stop()
+
 	# POIs spatialisés (au plus 4)
 	var pois: Array = eval["pois"]
 	for i in range(_poi_players.size()):
@@ -255,16 +289,21 @@ func update_bells(hour: float, now_s: float) -> void:
 # --- Génération et chargement des flux audio ---
 
 func _generate_all_streams() -> void:
-	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer"]
+	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer",
+		"helicopter_rotor", "airliner_rumble", "barge_engine", "ship_horn"]
 	for k in kinds:
 		var custom_stream = _try_load_custom(k)
 		if custom_stream != null:
 			_streams[k] = custom_stream
 		else:
 			_streams[k] = _synthesize_stream(k)
+			if k in ONE_SHOT_KINDS:
+				(_streams[k] as AudioStreamWAV).loop_mode = AudioStreamWAV.LOOP_DISABLED
 	for k in VOICE_KINDS:
 		var custom_voice = _try_load_custom(k)
 		_streams[k] = custom_voice if custom_voice != null else _synthesize_voice(k)
+	_streams["wheel_hum"] = _synthesize_wheel("hum")
+	_streams["wheel_whistle"] = _synthesize_wheel("whistle")
 	var custom_clac = _try_load_custom("clac")
 	_streams["clac"] = custom_clac if custom_clac != null else _synthesize_clac()
 	for bed in AmbienceModel.BEDS:
@@ -345,6 +384,30 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 				var clap_phase := fmod(t * 9.0 + 0.37 * sin(TAU * t), 1.0)
 				var clap := exp(-clap_phase * 60.0) * (float(h.call() & 0xFFFF) / 32768.0 - 1.0)
 				sample = _lp * 1.8 * swell + clap * 0.5
+			"helicopter_rotor":
+				# Lot P26 : battement des pales (6 coups par seconde, un nombre entier sur la boucle) sur un
+				# sifflement de turbine
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.25 * (r - _lp)
+				var blade := pow(0.5 + 0.5 * cos(TAU * 6.0 * t), 6.0)
+				sample = _lp * (0.25 + 1.6 * blade) + sin(TAU * 1900.0 * t) * 0.03
+			"airliner_rumble":
+				# Lot P26 : grondement lointain d'un avion de ligne (bruit très filtré qui ondule lentement)
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.02 * (r - _lp)
+				sample = _lp * 5.0 * (0.8 + 0.2 * sin(TAU * t))
+			"barge_engine":
+				# Lot P29 : diesel lent d'une péniche (22 Hz et harmoniques, battement des cylindres à 5 Hz)
+				var beat := 0.7 + 0.3 * pow(0.5 + 0.5 * sin(TAU * 5.0 * t), 2.0)
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.05 * (r - _lp)
+				sample = (sin(TAU * 22.0 * t) * 0.4 + sin(TAU * 44.0 * t) * 0.3 + sin(TAU * 66.0 * t) * 0.12 + _lp * 0.6) * beat
+			"ship_horn":
+				# Lot P29 : corne de brume d'un ferry, une fois (non bouclée) : 98 Hz et harmoniques, attaque et
+				# fin adoucies
+				var env := smoothstep(0.0, 0.12, t) * (1.0 - smoothstep(0.75, 1.0, t))
+				sample = (sin(TAU * 98.0 * t) * 0.45 + sin(TAU * 196.0 * t) * 0.25 + sin(TAU * 294.0 * t) * 0.15
+					+ sin(TAU * 392.0 * t) * 0.07) * env
 			"tractor_engine":
 				# Lot P13 : moteur grave du tracteur (28 Hz et harmoniques, battement des cylindres à 7 Hz)
 				var beat := 0.75 + 0.25 * sin(TAU * 7.0 * t)
@@ -424,6 +487,30 @@ static func _wind_noise_bytes() -> PackedByteArray:
 			v = buf[i] * g + buf[n + i] * (1.0 - g)
 		bytes.encode_s16(i * 2, clampi(int(v * gain * 32767.0), -32768, 32767))
 	return bytes
+
+
+## Son des roues (lot V7), boucle d'une seconde à nombre entier de périodes (raccord sans clic) : ronronnement
+## grave de roue lenticulaire (110 Hz et harmoniques) ou sifflement léger de jante haute (1760 Hz).
+static func _synthesize_wheel(kind: String) -> AudioStreamWAV:
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = MIX_RATE
+	wav.stereo = false
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = SAMPLE_COUNT
+	var bytes := PackedByteArray()
+	bytes.resize(SAMPLE_COUNT * 2)
+	for i in range(SAMPLE_COUNT):
+		var t := float(i) / float(MIX_RATE)
+		var v := 0.0
+		if kind == "hum":
+			v = 0.5 * sin(TAU * 110.0 * t) + 0.25 * sin(TAU * 220.0 * t) + 0.12 * sin(TAU * 330.0 * t)
+		else:
+			v = 0.4 * sin(TAU * 1760.0 * t) * (0.8 + 0.2 * sin(TAU * 6.0 * t))
+		bytes.encode_s16(i * 2, clampi(int(v * 0.6 * 32767.0), -32768, 32767))
+	wav.data = bytes
+	return wav
 
 
 ## Roue libre (Lot P10, refaite après la recette P16) : FREEWHEEL_LOOP_CLICKS « tic » par seconde, chacun

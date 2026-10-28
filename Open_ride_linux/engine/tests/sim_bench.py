@@ -4,7 +4,7 @@
 Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
-                 [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen]
+                 [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
                  [--culling on|off] [--probe] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
@@ -26,8 +26,8 @@ et le CPU des processus : rapport dans `<scénario>/sonde/` (lot X13). Le scéna
 roule une heure, relance le parcours à chaque fin et vérifie images/s, saccades et croissance de la mémoire.
 `--display` (avec `--native`) choisit le mode d'affichage de l'engine (`display_mode.gd`) : fenêtre de
 `--size` par défaut, `borderless` ou `fullscreen` à la définition native de l'écran, pour comparer les modes
-avec la sonde. `--culling off` coupe le tri de ce que la caméra ne voit pas (lot S1) : mesure « avant »
-du scénario `rendu_invisible`, à comparer avec `--culling on` (défaut).
+avec la sonde. `--culling on` active le tri de ce que la caméra ne voit pas (lot S1, coupé par défaut faute de gain
+mesuré) : scénario `rendu_invisible`, à comparer avec `--culling off` (défaut).
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
 qui peuvent fixer `world`, `workout`, `duration_s` et `difficulty_pct` dans une section
@@ -61,6 +61,7 @@ sys.path.insert(0, str(REPO / "core" / "src"))
 
 from e2e_check import Proc, free_udp_ports, now, send_cmd, snapshot_home  # noqa: E402
 import perf_probe  # noqa: E402
+import quality_guard  # noqa: E402
 from openride_core import sim_scenarios  # noqa: E402
 from openride_core.tools.guide import Guide  # noqa: E402
 
@@ -212,6 +213,7 @@ class Bench:
         self.t0_wall = 0.0
         self.sampler: perf_probe.SystemSampler | None = None
         self.probe_summary: dict[str, Any] | None = None
+        self.applied_quality = ""   # qualité lue au journal de l'engine (lot X32), affichée au rapport
 
     # Temps relatif au « Core démarré » (même origine que les événements du scénario).
     def rel(self, t: float) -> float:
@@ -277,7 +279,7 @@ class Bench:
                     "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
-                    f"--display={a.display}", f"--culling={a.culling}"]
+                    f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}"]
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
                 cmd.append(f"--perf-probe={(self.out / 'moteur.csv').resolve()}")
                 self.sampler = perf_probe.SystemSampler()
@@ -341,6 +343,7 @@ class Bench:
             try:
                 data = json.loads(got[1].group(1))
                 info.update(ok=bool(data.get("ok")), fps=data.get("fps"), meshes=data.get("meshes"),
+                            quality=data.get("quality"),
                             draw_calls=data.get("draw_calls"),
                             widgets={k: v.get("text", "") for k, v in data.get("widgets", {}).items()
                                      if v.get("visible")})
@@ -462,11 +465,20 @@ class Bench:
             fps_line = (f"images par seconde de l'engine : min {min(fps):.0f}, médiane "
                         f"{sorted(fps)[len(fps) // 2]:.0f}, max {max(fps):.0f} ({len(fps)} relevés)")
             print("   " + fps_line)
-            (self.out / "fps.csv").write_text("t_s,fps,maillages,appels_de_dessin,capture\n" + "".join(
-                f"{s['t']:.1f},{s.get('fps')},{s.get('meshes')},{s.get('draw_calls')},{s['file']}\n"
-                for s in ok), encoding="utf-8")
+            (self.out / "fps.csv").write_text("t_s,fps,maillages,appels_de_dessin,qualite,capture\n" + "".join(
+                f"{s['t']:.1f},{s.get('fps')},{s.get('meshes')},{s.get('draw_calls')},{s.get('quality') or ''},"
+                f"{s['file']}\n" for s in ok), encoding="utf-8")
+        engine_text = (self.out / "engine.log").read_text(encoding="utf-8", errors="replace")
+        # Qualité réellement appliquée (lot X32) : un banc « medium » qui rend du low est un échec.
+        q_ok, q_msg = quality_guard.check(engine_text, a.quality)
+        r.check(q_ok if q_ok is not None else False, "qualité réellement appliquée", q_msg)
+        seq = quality_guard.applied_sequence(engine_text)
+        self.applied_quality = seq[-1][0] if seq else "?"
+        if self.probe_summary is not None:
+            p_ok, p_msg = perf_probe.quality_check(self.probe_summary, a.quality)
+            r.check(p_ok, "qualité notée par la sonde", p_msg)
         # Erreurs Godot.
-        log = (self.out / "engine.log").read_text(encoding="utf-8", errors="replace").splitlines()
+        log = engine_text.splitlines()
         issues = [ln for ln in log if GODOT_ISSUE.search(ln) and not GODOT_TOLERATED.search(ln)]
         r.check(not issues, "erreurs et avertissements de Godot", "aucun" if not issues else " | ".join(issues[:3]))
         self._tile_checks(log)
@@ -656,7 +668,7 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
 <h1>Banc simulé : {html.escape(b.name)}</h1>
 <p>{html.escape(str(b.spec.get("description", "")))}<br>Parcours <b>{html.escape(b.world)}</b>,
 {f"ERG {html.escape(str(b.workout))}" if b.workout else "SIM"}, {b.duration:.0f} s,
-{f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {b.args.quality}
+{f"difficulté {b.difficulty} %, " if b.difficulty is not None else ""}{b.args.size} {html.escape(b.applied_quality or "?")} (qualité appliquée ; demandée {b.args.quality})
 {f"(écran réel, affichage {b.args.display})" if b.args.native else "(Xvfb, OpenGL logiciel)"}.</p>
 <h2>Vérifications</h2><table>{rows}</table>
 {'<p><a href="sonde/rapport.html">Sonde de performance du moteur</a> (lot X13).</p>' if b.probe_summary else ""}
@@ -696,12 +708,14 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--size", default="1280x720")
     ap.add_argument("--quality", default="low", help="low, medium, high (défaut low)")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
+    ap.add_argument("--camera", default="subjective", choices=("subjective", "follow_near", "follow_far", "side"),
+                    help="vue de caméra mesurée (lot V12, exigence 2.0-CAM-5 : au moins 55 images/s en low pour chacune)")
     ap.add_argument("--display", default="windowed", choices=("windowed", "borderless", "fullscreen"),
                     help="mode d'affichage de l'engine (défaut windowed ; les pleins écrans demandent --native)")
     ap.add_argument("--every-m", type=float,
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
-    ap.add_argument("--culling", default="on", choices=("on", "off"),
-                    help="tri de ce que la caméra ne voit pas (lot S1, défaut on ; off : mesure « avant »)")
+    ap.add_argument("--culling", default="off", choices=("on", "off"),
+                    help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
     ap.add_argument("--probe", action="store_true",
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))

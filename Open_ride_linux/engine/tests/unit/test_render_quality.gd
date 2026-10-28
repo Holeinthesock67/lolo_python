@@ -55,14 +55,21 @@ func _test_presets_application() -> void:
 			"%s : rayon gardé autour de la caméra = %.0f m (ombres plus une case d'arbres, lot S1)" % [name, streamer.culling_keep_m])
 		_check(light.shadow_enabled and absf(light.directional_shadow_max_distance - QualityPresets.shadow_distance_m(name)) < 1e-4,
 			"%s : distance d'ombre = %.0f m" % [name, QualityPresets.shadow_distance_m(name)])
-		_check(env.ssao_enabled == (bool(p["ssao"]) and fp),
-			"%s : ssao_enabled = %s" % [name, str(p["ssao"])])
-		var want_msaa = Viewport.MSAA_DISABLED
-		if int(p["msaa"]) == 2:
-			want_msaa = Viewport.MSAA_2X
-		elif int(p["msaa"]) == 4:
-			want_msaa = Viewport.MSAA_4X
-		_check(vp.msaa_3d == want_msaa, "%s : msaa_3d conforme" % name)
+		var img: Dictionary = QualityPresets.image(name)
+		_check(env.ssao_enabled == (str(img["ssao"]) != "off" and fp)
+			and env.ssil_enabled == (str(img["ssil"]) != "off" and fp),
+			"%s : SSAO %s, SSIL %s" % [name, img["ssao"], img["ssil"]])
+		_check(vp.msaa_3d == RenderQuality.MSAA[int(img["msaa"])]
+			and (vp.screen_space_aa == Viewport.SCREEN_SPACE_AA_FXAA) == bool(img["fxaa"]),
+			"%s : MSAA %d×, FXAA %s" % [name, img["msaa"], str(img["fxaa"])])
+		_check(absf(vp.mesh_lod_threshold - float(img["mesh_lod_threshold"])) < 1e-4,
+			"%s : seuil LOD %.1f px" % [name, img["mesh_lod_threshold"]])
+		_check(vp.scaling_3d_scale == 1.0, "%s : résolution native, sans mise à l'échelle 3D" % name)
+		_check(env.glow_enabled == bool(img["glow"]) and env.tonemap_mode == RenderQuality.LOOK["tonemap"]
+			and env.adjustment_enabled,
+			"%s : glow %s, rendu des tons et étalonnage communs" % [name, str(img["glow"])])
+		_check((light.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS) == (int(img["shadow_splits"]) == 4),
+			"%s : %d cascades d'ombre" % [name, img["shadow_splits"]])
 		_check(env.volumetric_fog_enabled == (bool(p["fog_volumetric"]) and fp),
 			"%s : volumetric_fog_enabled = %s" % [name, str(p["fog_volumetric"])])
 		_check(streamer.chunks_ahead == int(p["chunks_ahead"]) and streamer.chunks_behind == int(p["chunks_behind"]),
@@ -72,8 +79,7 @@ func _test_presets_application() -> void:
 
 	# Préréglage inconnu donne low
 	RenderQuality.apply_preset("inconnu_xyz", cam, light, env, vp, streamer)
-	var p_low: Dictionary = QualityPresets.preset("low")
-	_check(env.ssao_enabled == (bool(p_low["ssao"]) and fp) and light.directional_shadow_max_distance == QualityPresets.shadow_distance_m("low")
+	_check(env.ssao_enabled == (str(QualityPresets.image("low")["ssao"]) != "off" and fp) and light.directional_shadow_max_distance == QualityPresets.shadow_distance_m("low")
 		and absf(cam.far - RenderQuality.camera_far_m("low")) < 1e-3,
 		"préréglage inconnu replie sur low")
 

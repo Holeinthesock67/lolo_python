@@ -19,7 +19,7 @@ Rapport du lot S1 (`docs/lots/LOT_S1_rendu_invisible.md`, issue #190) : ce qui e
 | Piste du cahier | Lot | État |
 |---|---|---|
 | 1. Au-delà du brouillard | Y1 (#381) | fusionnée le 27 octobre ; banc sans gain ni perte (mondes trop petits) |
-| 2. Hors du champ de la caméra active (tuiles proches) | S1a | dans cette PR, interrupteur `--culling` |
+| 2. Hors du champ de la caméra active (tuiles proches) | S1a | livrée coupée par défaut (aucun gain mesuré), interrupteur `--culling=on` |
 | 6. Ne pas construire ce qui sera invisible | S1a | même tri : une tuile écartée n'est ni calculée (WorkerThreadPool) ni garnie d'arbres |
 | Budget d'arbres dépensé dans le champ | S1a | cases hors du champ retirées en premier |
 | 4. Masqué par le relief et les bâtiments | S1b | à faire : occulteurs simples tirés des tuiles (crêtes) et boîtes des bâtiments |
@@ -50,7 +50,7 @@ for q in low medium; do for c in off on; do
 done; done
 ```
 
-`--culling off` est la mesure « avant ». La sonde (X13) écrit `moteur.csv` : images/s, temps d'image p50 / p99, objets et primitives dessinés, mémoire vidéo, tuiles proches et lointaines, arbres. Les captures du banc, prises toutes les 20 s à effort constant, sont comparées automatiquement (critère 4) par `engine/tests/compare_captures.py`, qui reprend les fonctions d'écart de `visual_check.py` et écrit une image des écarts par paire :
+`--culling off` est la mesure « avant » (et le défaut depuis la décision du §5). La sonde (X13) écrit `moteur.csv` : images/s, temps d'image p50 / p99, objets et primitives dessinés, mémoire vidéo, tuiles proches et lointaines, arbres. Les captures du banc, prises toutes les 20 s à effort constant, sont comparées automatiquement (critère 4) par `engine/tests/compare_captures.py`, qui reprend les fonctions d'écart de `visual_check.py` et écrit une image des écarts par paire :
 
 ```bash
 python3 engine/tests/compare_captures.py ~/OpenRide/sim_bench/S1_low_off ~/OpenRide/sim_bench/S1_low_on --out ~/OpenRide/sim_bench/S1_low_ecarts
@@ -73,4 +73,17 @@ Captures (`compare_captures.py`, low) : 10 paires comparables, écart moyen au p
 
 Lecture : l'image est bornée par la synchronisation verticale (60 images/s) et le GPU n'est occupé que 4,7 à 5,2 ms sur 16,7 ; le tri retire 2 tuiles proches sur 8 et, en medium, 18 % des arbres, sans effet mesurable sur ce monde. Godot écartait déjà du dessin ce qui sort du cadre. Le monde du village est petit : la mesure à refaire est celle d'un vrai parcours (`essai-69`, p99 de 22 ms en low le 25 octobre), où la construction des tuiles peut provoquer des saccades.
 
-Règle de décision (cahier, §4 étape 3) : piste gardée si elle gagne au moins 3 % d'images/s en moyenne ou 1 ms de p99, sans changement visible ni apparition d'objet. Sinon, `culling` repasse à faux par défaut et le résultat est consigné ici.
+Mesure sur un vrai parcours (essai-69, 30 km de relief synthétique, même banc, low, 1280x720, fenêtre fixe ; médianes sans les 30 premières secondes) :
+
+| Tri | Images/s | CPU (ms) | GPU (ms) | Tuiles proches | Arbres | Mémoire vidéo (Mo) | Relevés > 100 ms |
+|---|---|---|---|---|---|---|---|
+| off | 58,0 | 0,61 | 4,58 | 6 à 9 | 17 858 | 122,9 | 24 |
+| on | 58,4 | 0,61 | 4,47 | 4 à 6 | 17 411 | 118,9 | 16 |
+
+Aucune ligne `[test] pop` ni `[test] seam` dans les deux passages. Captures (`compare_captures.py`, 14 paires en 1280x720) : écart moyen au plus 2,36 / 255 (herbe et arbres vus quelques centimètres plus loin, la capture tombant juste après le passage des 200 m) ; aucune différence due au tri.
+
+Les saccades d'environ 140 ms reviennent toutes les 20 s dans les deux passages, soit à chaque capture du banc (200 m à 36 km/h) : le p99 de 142 à 144 ms vient de la capture, pas du jeu, et l'écart entre 24 et 16 relevés (fenêtre glissante, une saccade compte plusieurs fois) n'est pas probant. Le banc devra écarter les images de capture du calcul des saccades (proposé au fil des outils de test).
+
+## 5. Décision
+
+Règle du cahier (§4 étape 3) : piste gardée si elle gagne au moins 3 % d'images/s en moyenne ou 1 ms de p99, sans changement visible ni apparition d'objet. Sur le village comme sur essai-69, le gain est inférieur à 1 % d'images/s et le p99 n'est pas mesurable hors captures : le GPU travaille moins de 5 ms sur 16,7, et Godot écartait déjà du dessin ce qui sort du cadre. `culling` est donc faux par défaut (engine, `engine_args.gd`, `sim_bench.py`) ; le code, `--culling=on` et les outils de test (captures par distance, `[test] pop` et `[test] seam`, colonne `culled_near`, `compare_captures.py`) restent, pour réessayer sur une machine ou un monde plus chargés (forêts OSM, préréglage high, open world W). S1b et S1c attendent un cas où le GPU ou le CPU sont réellement chargés.

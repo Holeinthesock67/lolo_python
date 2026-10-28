@@ -749,6 +749,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--quality={cfg.render.quality}",
             f"--theme={cfg.render.theme}",
             f"--visual-grade={cfg.render.visual_grade_scale}",
+            f"--camera={cfg.render.camera}",
             f"--living={'on' if cfg.render.living else 'off'}",
             f"--display={env.get('OPENRIDE_DISPLAY') or cfg.render.display}",
             *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),

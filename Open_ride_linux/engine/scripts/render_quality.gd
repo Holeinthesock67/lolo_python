@@ -1,7 +1,8 @@
 extends RefCounted
 
-## Réglages d'image (SRS §8, lots E1, L4, E3, Y1 et S1) : caméra, ombres, SSAO, MSAA, brouillard, tronçons,
-## rayon des tuiles lointaines, rayon gardé autour de la caméra par le tri des tuiles proches.
+## Réglages d'image (SRS §8, lots E1, L4, E3, Y1, Y13 et S1) : caméra, ombres, anticrénelage, filtrage,
+## occlusion ambiante, glow, rendu des tons, brouillard, tronçons, rayon des tuiles lointaines, rayon gardé
+## autour de la caméra par le tri des tuiles proches.
 ##
 ## Applique les réglages de quality_presets.gd sur la caméra, la lumière, l'environnement, le viewport
 ## et le streamer. La table interne d'E1 est supprimée au profit de quality_presets.gd.
@@ -24,10 +25,45 @@ const FOG_BEGIN_FRACTION := 0.4
 ## Sans terrain (sol plat) : début et fin fixes (m), la fin ne dépassant pas celle du préréglage.
 const FOG_FLAT := {"begin": 300.0, "end": 3000.0}
 const FOG_COLOR := Color(0.70, 0.78, 0.86)
+## Voile de l'horizon des biomes (série U) : poussière et brume, mélangé à l'horizon selon `sky.haze` du biome.
+const HAZE_COLOR := Color(0.86, 0.80, 0.68)
 ## Part du brouillard posée sur le ciel. Godot met 1 par défaut : en Forward+ (PC cible), le ciel entier
 ## prenait alors la couleur du brouillard et les nuages de P6 étaient invisibles (recette P16). À 0, le
 ## ciel reste dessiné ; le ciel nuageux raccorde son horizon à la couleur du brouillard (sky_clouds.gd).
 const FOG_SKY_AFFECT := 0.0
+
+
+## Rendu des tons et étalonnage communs à tous les préréglages (lot Y13, coût nul) : courbe « Filmic »
+## (hautes lumières du ciel adoucies au lieu d'être coupées), exposition relevée pour compenser la courbe,
+## contraste et saturation légèrement relevés. Choisi sur captures parmi Linear, Reinhard, Filmic et ACES.
+const LOOK := {
+	"tonemap": Environment.TONE_MAPPER_FILMIC,
+	"exposure": 1.25,
+	"white": 6.0,
+	"contrast": 1.08,
+	"saturation": 1.18,
+}
+## Glow des préréglages qui l'activent : léger, seulement sur ce qui dépasse le blanc (ciel, soleil).
+const GLOW := {"intensity": 0.6, "strength": 1.0, "bloom": 0.0, "hdr_threshold": 1.0}
+
+const AO_QUALITY := {
+	"low": RenderingServer.ENV_SSAO_QUALITY_LOW,
+	"medium": RenderingServer.ENV_SSAO_QUALITY_MEDIUM,
+	"high": RenderingServer.ENV_SSAO_QUALITY_HIGH,
+}
+const SSIL_QUALITY := {
+	"low": RenderingServer.ENV_SSIL_QUALITY_LOW,
+	"medium": RenderingServer.ENV_SSIL_QUALITY_MEDIUM,
+	"high": RenderingServer.ENV_SSIL_QUALITY_HIGH,
+}
+const SHADOW_FILTER := {
+	"hard": RenderingServer.SHADOW_QUALITY_HARD,
+	"very_low": RenderingServer.SHADOW_QUALITY_SOFT_VERY_LOW,
+	"low": RenderingServer.SHADOW_QUALITY_SOFT_LOW,
+	"medium": RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM,
+	"high": RenderingServer.SHADOW_QUALITY_SOFT_HIGH,
+}
+const MSAA := {0: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}
 
 
 static func apply_preset(preset_name: String, camera: Camera3D, light: DirectionalLight3D,
@@ -38,17 +74,10 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 	camera.far = camera_far_m(key)
 	light.shadow_enabled = true
 	light.directional_shadow_max_distance = QualityPresets.shadow_distance_m(key)
-	# SSAO et brouillard volumétrique n'existent qu'en Forward+ (sans RenderingDevice : Compatibility).
+	# SSAO, SSIL et brouillard volumétrique n'existent qu'en Forward+ (sans RenderingDevice : Compatibility).
 	var forward_plus := RenderingServer.get_rendering_device() != null
-	env.ssao_enabled = bool(p["ssao"]) and forward_plus
-	match int(p["msaa"]):
-		2:
-			viewport.msaa_3d = Viewport.MSAA_2X
-		4:
-			viewport.msaa_3d = Viewport.MSAA_4X
-		_:
-			viewport.msaa_3d = Viewport.MSAA_DISABLED
 	env.volumetric_fog_enabled = bool(p["fog_volumetric"]) and forward_plus
+	apply_image(QualityPresets.image(key), light, env, viewport, forward_plus)
 
 	if streamer != null:
 		if "chunks_ahead" in streamer:
@@ -61,6 +90,50 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 			streamer.far_radius_m = WorldStreamer.far_radius_for(QualityPresets.fog_end_m(key))
 		if "culling_keep_m" in streamer:
 			streamer.culling_keep_m = ViewCulling.keep_radius_for(QualityPresets.shadow_distance_m(key))
+		if "quality_preset" in streamer:
+			streamer.quality_preset = key   # biomes par tuile et textures de sol (lot U6)
+
+
+## Qualité d'image (lot Y13) : anticrénelage, filtrage, occlusion ambiante, glow, ombres, LOD, et rendu
+## des tons commun (LOOK). La résolution reste celle de l'écran : aucune mise à l'échelle 3D.
+static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environment, viewport: Viewport,
+		forward_plus: bool) -> void:
+	viewport.msaa_3d = MSAA[int(img["msaa"])]
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if bool(img["fxaa"]) else Viewport.SCREEN_SPACE_AA_DISABLED
+	viewport.mesh_lod_threshold = float(img["mesh_lod_threshold"])
+	viewport.scaling_3d_scale = 1.0
+
+	var half := bool(img["ao_half_size"])
+	var ssao := str(img["ssao"])
+	env.ssao_enabled = forward_plus and AO_QUALITY.has(ssao)
+	if env.ssao_enabled:
+		RenderingServer.environment_set_ssao_quality(AO_QUALITY[ssao], half, 0.5, 2, 50.0, 300.0)
+	var ssil := str(img["ssil"])
+	env.ssil_enabled = forward_plus and SSIL_QUALITY.has(ssil)
+	if env.ssil_enabled:
+		RenderingServer.environment_set_ssil_quality(SSIL_QUALITY[ssil], half, 0.5, 4, 50.0, 300.0)
+
+	env.glow_enabled = bool(img["glow"])
+	env.glow_intensity = GLOW["intensity"]
+	env.glow_strength = GLOW["strength"]
+	env.glow_bloom = GLOW["bloom"]
+	env.glow_hdr_threshold = GLOW["hdr_threshold"]
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
+
+	env.tonemap_mode = LOOK["tonemap"]
+	env.tonemap_exposure = LOOK["exposure"]
+	env.tonemap_white = LOOK["white"]
+	env.adjustment_enabled = true
+	env.adjustment_contrast = LOOK["contrast"]
+	env.adjustment_saturation = LOOK["saturation"]
+
+	RenderingServer.directional_shadow_atlas_set_size(int(img["shadow_atlas"]), true)
+	# Le filtre doux de Compatibility tire un bruit différent à chaque image (grain qui scintille) :
+	# ombres dures sans RenderingDevice, comme pour SSAO et SSIL.
+	RenderingServer.directional_soft_shadow_filter_set_quality(SHADOW_FILTER[str(img["shadow_filter"])] if forward_plus
+		else RenderingServer.SHADOW_QUALITY_HARD)
+	light.directional_shadow_mode = (DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if int(img["shadow_splits"]) == 4
+		else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS)
 
 
 ## Distance de vue de la caméra : fin du brouillard du préréglage plus CAMERA_FAR_MARGIN.

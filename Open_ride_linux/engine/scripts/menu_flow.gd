@@ -51,6 +51,9 @@ const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
+const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
+const GarageViewModel := preload("res://scripts/garage_view_model.gd")
+const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -141,6 +144,13 @@ var ready_message := ""
 var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
+var rogue = RogueMenuModel.new()
+## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
+var garage = GarageViewModel.new()
+## Bilan de progression de la séance (lot V9) : dernier message `xp_result` ({} sans), et qu'il a déjà été annoncé.
+var progress = ProgressViewModel.new()
+var xp_result: Dictionary = {}
+var _xp_announced := false
 var records_path := ""
 var _record_segment := ""
 var _record_bonus := false
@@ -160,13 +170,16 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": PLAN, "title": "Plan", "on_back": PLANS, "items": []})
-	var tests: Array = []
-	for t in FTP_TESTS:
-		tests.append({"id": t[0], "label": t[1], "detail": t[2]})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
-	menu.set_screen_items(FTP_TEST, tests)
+	_refresh_ftp_test()
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
+	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": RogueMenuModel.LOADING, "title": "Composition de la run…", "on_back": "", "items": []})
+	menu.set_screen_items(RogueMenuModel.LOADING, [{"id": "wait", "label": "Composition de la run…", "enabled": false}])
+	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
+	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
+		menu.add_screen({"id": screen, "title": "Garage", "on_back": GarageViewModel.SCREEN, "items": []})
 	_refresh_plans()
 	_refresh_builder()
 	_refresh_pairing()
@@ -217,6 +230,12 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 			"IDLE", "READY":
 				if prev in ["RUNNING", "PAUSED"]:
 					menu.reset()
+				elif st == "READY" and menu.current_screen() == RogueMenuModel.LOADING:
+					menu.set_rogue_ready(rogue.ready_text())
+					menu.open_screen(MenuModel.READY)
+		if st != "FINISHED":
+			xp_result = {}
+			_xp_announced = false
 	if st != "" and not _lists_requested:
 		_lists_requested = true
 		out.append({"action": "list"})
@@ -274,9 +293,10 @@ func _refresh_settings() -> void:
 		items.append({"id": "none", "label": "Réglages : en attente du core", "enabled": false})
 	items.append(SettingsViewModel.version_item(engine_version, core_version))
 	menu.set_screen_items(MenuModel.SETTINGS, items)
+	_refresh_ftp_test()   # la rampe suit la FTP
 	if settings_group != "":
 		menu.set_screen_items(SETTINGS_GROUP, settings.menu_items(settings_group),
-			SettingsViewModel.group_title(settings_group))
+			SettingsViewModel.crumb(settings_group))
 
 
 ## Versions affichées en bas des réglages : engine (project.godot) et core (hello_ack.core_version).
@@ -318,6 +338,14 @@ func on_error(code: String, text: String) -> void:
 				{"action": "accept_ftp", "force": true})
 		else:
 			summary_message = "Échec : " + text
+		return
+	if code in ["run_invalid", "item_locked", "busy"] and menu.current_screen() == RogueMenuModel.LOADING:
+		rogue.message = "Échec : " + text
+		_refresh_rogue()
+		menu.open_screen(RogueMenuModel.SCREEN)
+		return
+	if menu.current_screen() in GarageViewModel.SCREENS and garage.on_error(code, text):
+		_refresh_garage()
 		return
 	if code == "bot_invalid" and menu.current_screen() == MenuModel.READY:
 		ready_message = "Échec : " + text
@@ -398,6 +426,14 @@ func _cycle_routes(item_id: String) -> void:
 	menu.focus_item(item_id)
 
 
+## Terrain (`terrain` de `routes`, contrat 1.4) du parcours choisi, null sans parcours ou sans terrain.
+func _route_terrain():
+	for r in routes_raw:
+		if r is Dictionary and menu.world_id != "" and str(r.get("id", "")) == menu.world_id:
+			return r.get("terrain")
+	return null
+
+
 ## Carte de détail de l'écran (lot « présentation des menus », étape 2), {} sans carte : fiche du
 ## parcours choisi (Prêt), du parcours ou de l'entraînement sous le focus (listes), aperçu de
 ## l'entraînement en création, en-tête du bilan (le bilan lui-même vient de `summary`). Fiches de
@@ -412,12 +448,29 @@ func card(st: Dictionary) -> Dictionary:
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
 	if screen == MenuModel.WORKOUTS:
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
+	if screen == PLANS:
+		return _plan_card(focused)
+	if screen == PLAN:
+		return _plan_card("plan:" + _plan_shown)
+	if screen == FTP_TEST:
+		for t in FTP_TESTS:
+			if t[0] == focused:
+				return CatalogModel.ftp_test_sheet(t[0], t[1], t[2], _ftp_w())
+		return {}
+	if screen == PAIRING:
+		return pairing.sheet(focused)
+	if screen == SETTINGS_GROUP:
+		return settings.sheet(focused.substr(4)) if focused.begins_with("set:") else {}
 	if screen == WORKOUT_CREATE:
 		var blocks: Array = builder.profile()
 		return CatalogModel.workout_sheet({"id": builder.workout_id(), "name": builder.workout_name(),
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
 	if screen == SUMMARY:
 		return {"title": "Bilan de la séance"}
+	if screen == SETTING_EDIT and str(settings.editing.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
+		return garage.sheet(GarageViewModel.AVATAR, "")
+	if screen in GarageViewModel.SCREENS:
+		return garage.sheet(screen, focused)
 	return {}
 
 
@@ -468,6 +521,39 @@ static func _session_detail(d: Dictionary) -> String:
 	return ", ".join(parts)
 
 
+## Écran « Test de FTP » : une entrée par test, durée à droite (elle suit la FTP pour la rampe),
+## explication dans la carte de détail.
+func _refresh_ftp_test() -> void:
+	var tests: Array = []
+	for t in FTP_TESTS:
+		tests.append({"id": t[0], "label": t[1],
+			"detail": "≈ " + CatalogModel._format_fr_duration(CatalogModel.blocks_duration(CatalogModel.ftp_test_blocks(t[0], _ftp_w())))})
+	menu.set_screen_items(FTP_TEST, tests)
+
+
+## Profil [durée, début, fin] d'une séance de plan : test de FTP (blocs du core) ou entraînement de la liste.
+func _session_blocks(workout_id: String) -> Array:
+	if workout_id.begins_with("ftp_test:"):
+		return CatalogModel.ftp_test_blocks(workout_id.substr(9), _ftp_w())
+	for w in _workouts_raw:
+		if w is Dictionary and str(w.get("id", "")) == workout_id and w.get("profile") is Array:
+			return w["profile"]
+	return []
+
+
+func _plan_card(id: String) -> Dictionary:
+	var active = plans.get("active", null)
+	if id == "today" and not plan_day_session().is_empty():
+		var day := plan_day_session()
+		return CatalogModel.plan_day_sheet(day, _session_blocks(str(day.get("workout", ""))))
+	if id == "stop" and active is Dictionary:
+		return CatalogModel.active_plan_sheet(active)
+	if id.begins_with("plan:"):
+		var p := _plan_entry(id.substr(5))
+		return CatalogModel.plan_sheet(p, active) if not p.is_empty() else {}
+	return {}
+
+
 func _refresh_plans() -> void:
 	var active = plans.get("active", null)
 	var day := plan_day_session()
@@ -509,12 +595,7 @@ func _refresh_plans() -> void:
 
 
 static func _plan_progress(active: Dictionary) -> String:
-	if active.get("finished", false):
-		return "terminé, %d %% fait" % int(round(float(active.get("done_pct", 0.0))))
-	var week := "semaine %s / %d" % [str(active["week"]) if active.get("week", null) != null else "–",
-		int(active.get("weeks", 0))]
-	return "%s, %d %% fait (%d / %d)" % [week, int(round(float(active.get("done_pct", 0.0)))),
-		int(active.get("done", 0)), int(active.get("total", 0))]
+	return CatalogModel.active_progress(active)
 
 
 func _plan_entry(plan_id: String) -> Dictionary:
@@ -555,6 +636,27 @@ static func _ftp_text(ftp: Dictionary) -> String:
 	return text
 
 
+## Message `xp_result` (répété par le core) : gardé pour le bloc « Progression » ; renvoie le texte du bandeau
+## « Niveau N ! » la première fois qu'un passage de niveau est annoncé, sinon "".
+func on_xp_result(msg: Dictionary) -> String:
+	if session_state != "FINISHED" or (_xp_announced and xp_result.is_empty()):
+		return ""
+	xp_result = msg
+	_refresh_summary()
+	if _xp_announced:
+		return ""
+	_xp_announced = true
+	return str(progress_view().get("level_up", ""))
+
+
+## Bloc « Progression » du bilan ({} sans `xp_result`).
+func progress_view() -> Dictionary:
+	var names := {}
+	for it in garage.items:
+		names[str(it["id"])] = {"name": it.get("name", it["id"]), "slot": it.get("slot", "")}
+	return progress.view(xp_result, summary, names)
+
+
 ## Bilan : « Accepter » et « Garder » en tête tant qu'une FTP calculée reste à décider.
 func _refresh_summary() -> void:
 	var items: Array = []
@@ -564,6 +666,8 @@ func _refresh_summary() -> void:
 		items.append({"id": "keep_ftp", "label": ("Garder %d W" % int(prev)) if prev != null else "Garder l'ancienne FTP"})
 	for it in summary_model.menu_screen()["items"]:
 		items.append(it)
+		if it["id"] == "details" and garage.enabled and bool(progress_view().get("garage", false)):
+			items.append({"id": "garage", "label": "Aller au Garage", "detail": "une pièce est devenue achetable"})
 	menu.set_screen_items(SUMMARY, items)
 
 
@@ -666,8 +770,10 @@ func handle(event: String) -> Dictionary:
 	if not is_visible():
 		return {}
 	ready_message = ""
-	if menu.current_screen() == SETTING_EDIT:
-		return _handle_edit(event)
+	if not settings.editing.is_empty():
+		if menu.current_screen() in [SETTING_EDIT, SETTINGS_GROUP, WORKOUT_CREATE]:
+			return _handle_edit(event)
+		settings.cancel()   # menu quitté pendant un réglage (séance lancée, perte du core…)
 	if menu.current_screen() == RECORD_TABLE and event == "A_SHORT":   # A court : bascule de table (T10)
 		_handle_records(RECORD_TABLE, "toggle")
 		return {}
@@ -682,13 +788,30 @@ func handle(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"start_run":   # confirmation du premier lancement acceptée (lot R13)
+			return _launch_rogue(act)
 		"start_plan", "stop_plan":
 			return _send_plan_request(act)
 		"accept_ftp":
 			_ftp_pending = true
 			summary_message = "Enregistrement de la FTP…"
 			return act
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "rogue":
+		_refresh_rogue()
+		menu.push_screen(RogueMenuModel.SCREEN)
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == RogueMenuModel.SCREEN:
+		return _handle_rogue(str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == "rogue_change":
+		_refresh_rogue()
+		menu.open_screen(RogueMenuModel.SCREEN)
+		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME:
+		if str(act["id"]) == "garage":
+			garage.message = ""
+			_refresh_garage()
+			menu.push_screen(GarageViewModel.SCREEN)
+			return {"action": "list_garage"}
 		if str(act["id"]) == "ftp":
 			menu.push_screen(FTP_TEST)
 			return {}
@@ -697,6 +820,8 @@ func handle(event: String) -> Dictionary:
 		plan_message = ""
 		menu.push_screen(PLANS)
 		return {"action": "list_plans"}
+	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
+		return _handle_garage(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
 		_cycle_routes(str(act["id"]))
 		return {}
@@ -719,7 +844,7 @@ func handle(event: String) -> Dictionary:
 	if act.get("action", "") == "item" and act.get("screen", "") == SETTINGS_GROUP:
 		var item_id := str(act["id"])
 		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
-			_open_edit()
+			_refresh_edit()
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.WORKOUTS:
 		workout_message = ""
@@ -738,7 +863,7 @@ func handle(event: String) -> Dictionary:
 			return {"action": "create_workout", "args": builder.values.duplicate()}
 		if item_id.begins_with("param:"):
 			settings.begin_with(builder.edit_item(item_id.substr(6)))
-			_open_edit()
+			_refresh_edit()
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_IMPORT:
 		var idx := int(str(act["id"]).substr(5))
@@ -751,7 +876,8 @@ func handle(event: String) -> Dictionary:
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:
 		settings.begin_pause_difficulty(difficulty_pct)
-		_open_edit()
+		menu.set_screen_items(SETTING_EDIT, settings.edit_items(), "Difficulté")
+		menu.push_screen(SETTING_EDIT)
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == PAIRING:
 		act = pairing.handle(str(act["id"]))
@@ -776,10 +902,17 @@ func handle(event: String) -> Dictionary:
 				ftp_offer = {}
 				_refresh_summary()
 				return {}
+		if str(act["id"]) == "garage":
+			garage.message = ""
+			_refresh_garage()
+			menu.push_screen(GarageViewModel.SCREEN)
+			return {"action": "list_garage"}
 		act = summary_model.handle_action(str(act["id"]), menu)
 		match act.get("action", ""):
 			"new_session":
 				show_details = false
+				xp_result = {}
+				_xp_announced = true   # les copies du bilan encore envoyées par le core ne rouvrent rien
 				summary = {}
 				ftp_offer = {}
 				summary_message = ""
@@ -792,6 +925,100 @@ func handle(event: String) -> Dictionary:
 				show_details = not show_details
 				return {}
 	return act
+
+
+## Écran de départ du Cyber-Rogue (lot R13) : les trois premiers éléments font défiler leur valeur, « Lancer »
+## demande confirmation au premier lancement (efforts au-delà de 140 % de la FTP possibles) puis envoie `start_run`.
+func _refresh_rogue() -> void:
+	menu.set_screen_items(RogueMenuModel.SCREEN, rogue.items())
+
+
+func _handle_rogue(item_id: String) -> Dictionary:
+	if item_id != "launch":
+		rogue.cycle(item_id)
+		_refresh_rogue()
+		return {}
+	var act := {"action": "start_run", "args": rogue.start_args()}
+	if rogue.needs_warning():
+		rogue.mark_warned()
+		menu.confirm(RogueMenuModel.WARNING, act)
+		return {}
+	return _launch_rogue(act)
+
+
+func _launch_rogue(act: Dictionary) -> Dictionary:
+	menu.open_screen(RogueMenuModel.LOADING)
+	return act
+
+
+## Garage (lot V8) : écrans reconstruits d'après le brouillon et le catalogue.
+func _refresh_garage() -> void:
+	for screen in GarageViewModel.SCREENS:
+		menu.set_screen_items(screen, garage.screen_items(screen), garage.title(screen))
+
+
+func _handle_garage(screen: String, item_id: String) -> Dictionary:
+	var act := {}
+	if screen == GarageViewModel.SCREEN:
+		garage.message = ""
+		match item_id:
+			"bike":
+				menu.push_screen(GarageViewModel.BIKE)
+			"outfit":
+				menu.push_screen(GarageViewModel.OUTFIT)
+			"avatar":
+				menu.push_screen(GarageViewModel.AVATAR)
+	elif screen == GarageViewModel.AVATAR:
+		if item_id.begins_with("field:"):
+			settings.begin_with(garage.edit_item(item_id.substr(6)))
+			menu.set_screen_items(SETTING_EDIT, settings.edit_items(), str(settings.editing.get("label", "Réglage")))
+			menu.push_screen(SETTING_EDIT)
+		elif item_id == "save":
+			act = garage.save()
+			if not act.is_empty():
+				garage.message = "Enregistrement…"
+		elif item_id == "cancel":
+			garage.cancel()
+	else:
+		var todo: Dictionary = garage.activate(item_id)
+		match todo.get("action", ""):
+			"equip":
+				act = todo
+			"confirm_buy":
+				menu.confirm(str(todo["title"]), {"action": "buy", "item_id": todo["item_id"]})
+	_refresh_garage()
+	return act
+
+
+## Garage : `garage` du core (liste complète), `progression` (après chaque réussite) et hello_ack.
+func on_garage(list: Array) -> void:
+	garage.on_garage(list)
+	_refresh_garage()
+
+
+func on_progression(msg: Dictionary) -> void:
+	garage.on_progression(msg)
+	if garage.message == "Enregistrement…":
+		garage.message = "Enregistré"
+	_refresh_garage()
+
+
+func on_hello_progression(progression) -> void:
+	garage.on_hello(progression)
+	menu.set_garage(garage.enabled)
+	_refresh_garage()
+
+
+## Aperçu 3D du Garage pour l'état de menu `st` ({} hors Garage) : réglages de l'avatar et `look` choisis.
+func garage_preview(st: Dictionary) -> Dictionary:
+	var screen := str(st["screen"])
+	var focus := int(st.get("focus", -1))
+	var focused := str(st["items"][focus]["id"]) if focus >= 0 and focus < st["items"].size() else ""
+	if screen == SETTING_EDIT and str(settings.editing.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
+		return garage.preview(GarageViewModel.AVATAR, "", settings.editing)
+	if screen in GarageViewModel.SCREENS:
+		return garage.preview(screen, focused)
+	return {}
 
 
 ## Écrans des records (lot T10) : « Records du parcours » (écran Prêt) relit le fichier et liste les
@@ -818,35 +1045,53 @@ func _refresh_record_table() -> void:
 		records.table_title(_record_segment, _record_bonus))
 
 
-func _open_edit() -> void:
-	menu.set_screen_items(SETTING_EDIT, settings.edit_items(), str(settings.editing.get("label", "Réglage")))
-	menu.push_screen(SETTING_EDIT)
+## Réglage en cours de modification : la rangée de la liste ouverte (Réglages, Créer un entraînement)
+## passe en mode édition ; la difficulté de la pause et les champs de l'avatar du Garage (V8) gardent
+## leur écran (étape 4).
+func _refresh_edit() -> void:
+	match menu.current_screen():
+		SETTING_EDIT:
+			menu.set_screen_items(SETTING_EDIT, settings.edit_items())
+		WORKOUT_CREATE:
+			menu.set_screen_items(WORKOUT_CREATE, builder.menu_items(str(settings.editing.get("key", "")),
+				settings.editing.get("value", 0)))
+		_:
+			_refresh_settings()
 
 
-## Écran de modification (plan des boutons, spécification générale §7.1) : + / − court, A court et
-## flèches gauche, droite changent la valeur d'un pas, + / − long de cinq pas ; A long enregistre,
-## Y annule.
+## Modification d'un réglage (plan des boutons, spécification générale §7.1) : + / B court, A court et
+## flèches gauche, droite changent la valeur d'un pas, + / B long de cinq pas ; A maintenu enregistre,
+## Y annule et rend la valeur d'avant.
 func _handle_edit(event: String) -> Dictionary:
 	match event:
 		"PLUS_SHORT", "MINUS_SHORT", "A_SHORT", "LEFT_SHORT", "RIGHT_SHORT", "PLUS_LONG", "MINUS_LONG":
 			var dir := -1 if event in ["MINUS_SHORT", "LEFT_SHORT", "MINUS_LONG"] else 1
 			for i in range(MenuModel.LONG_STEP if event.ends_with("_LONG") else 1):
 				settings.step(dir)
-			menu.set_screen_items(SETTING_EDIT, settings.edit_items())
+			_refresh_edit()
 		"A_LONG":
 			var act: Dictionary = settings.commit()
-			menu.handle("Y_SHORT")
+			if menu.current_screen() == SETTING_EDIT:
+				menu.handle("Y_SHORT")
 			if act.get("action", "") == "set_difficulty":
 				difficulty_pct = int(act["pct"])
 				menu.set_pause_difficulty(SettingsViewModel.slider(difficulty_pct))
+			if act.get("action", "") == "garage_set":
+				garage.set_field(str(act["key"]), int(act["value"]))
+				_refresh_garage()
+				return {}
 			if act.get("action", "") == "builder_set":
 				builder.set_value(str(act["key"]), act["value"])
 				_refresh_builder()
 				return {}
+			_refresh_edit()
 			return act
 		"Y_SHORT":
 			settings.cancel()
-			menu.handle("Y_SHORT")
+			if menu.current_screen() == SETTING_EDIT:
+				menu.handle("Y_SHORT")
+			else:
+				_refresh_edit()
 	return {}
 
 
@@ -863,8 +1108,10 @@ func _open_pairing() -> Dictionary:
 func state() -> Dictionary:
 	var st: Dictionary = menu.state()
 	st["status"] = ""
+	st["status_error"] = false
 	if st["screen"] == PAIRING:
 		st["status"] = pairing.message
+		st["status_error"] = pairing.message_error
 	elif st["screen"] in [MenuModel.WORKOUTS, WORKOUT_CREATE, WORKOUT_IMPORT]:
 		st["status"] = workout_message
 	elif st["screen"] in [PLANS, PLAN]:
@@ -874,8 +1121,13 @@ func state() -> Dictionary:
 	elif st["screen"] == SUMMARY:
 		st["status"] = summary_message
 	elif st["screen"] == MenuModel.READY:
-		st["status"] = ready_message
+		st["status"] = ready_message if ready_message != "" else garage.route_advice(_route_terrain())
+	elif st["screen"] in GarageViewModel.SCREENS:
+		st["status"] = garage.message
 	elif st["screen"] == MenuModel.PAUSE:
 		st["status"] = str(PAUSE_REASONS.get(pause_reason, pause_reason))
 	st["card"] = card(st)
+	st["preview"] = garage_preview(st)
+	st["progress"] = progress_view() if st["screen"] == SUMMARY else {}
+	st["editing"] = not settings.editing.is_empty()
 	return st

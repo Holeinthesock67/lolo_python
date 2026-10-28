@@ -195,7 +195,7 @@ def parcours_appareils(run: Run) -> None:
     done = run.engine.wait_for(r"scan_results done=true items=(\d+)", 20.0, after=t)
     r.check(done is not None and int(done[1].group(1)) >= 3, "recherche des appareils simulés",
             f"{done[1].group(1)} appareil(s)" if done else "pas de scan_results en 20 s")
-    run.expect("appareils", "Appareils", "Trainer : HomeTrainer", "Ceinture :", "appareil(s) trouvé(s)", "[Enregistrer]")
+    run.expect("appareils", "Appareils", "Trainer — HomeTrainer", "Ceinture —", "appareil(s) trouvé(s)", "[Enregistrer]")
     if not run.focus_to("Enregistrer"):
         r.check(False, "Enregistrer actif", "focus jamais sur « Enregistrer »")
         return
@@ -296,20 +296,20 @@ def parcours_reglages(run: Run) -> None:
     run.expect("reglages", "Réglages", "Cycliste", "Séance", "Affichage", "Son", "Vent")
     run.focus_to("Séance")
     run.press("A_LONG")
-    run.expect("reglages_seance", "Séance", "Difficulté en SIM : ■■■■■□□□□□ 50 %")
+    run.expect("reglages_seance", "Réglages › Séance", "Difficulté en SIM — 50 %")
     run.press("Y_SHORT")
     run.focus_to("Cycliste")
     run.press("A_LONG")
-    run.expect("reglages_cycliste", "Cycliste", "FTP : 250 W", "Poids du vélo")
+    run.expect("reglages_cycliste", "Réglages › Cycliste", "FTP — 250 W", "Poids du vélo")
     run.focus_to("FTP")
     run.press("A_LONG")
     run.press("PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT")
-    run.expect("ftp_modifiee", "FTP", "[265 W")
+    run.expect("ftp_modifiee", "Réglages › Cycliste", "FTP — ◀ 265 W ▶")
     run.press("A_LONG")
     time.sleep(1.0)
     text = run.config.read_text(encoding="utf-8")
     r.check("ftp_w = 265" in text, "FTP écrite dans config.toml", text.replace("\n", " ")[:120])
-    run.expect("reglages_apres", "Cycliste", "FTP : 265 W")
+    run.expect("reglages_apres", "Réglages › Cycliste", "FTP — 265 W")
     run.press("Y_SHORT")
     run.focus_to("Affichage")
     run.press("A_LONG")
@@ -317,8 +317,8 @@ def parcours_reglages(run: Run) -> None:
     t = now()
     run.press("A_LONG", "PLUS_SHORT", "A_LONG")
     assert run.engine is not None
-    r.check(run.engine.wait_for(r"Qualité graphique : medium", 5.0, after=t) is not None,
-            "qualité appliquée tout de suite au décor", "« Qualité graphique : medium » au journal de l'engine")
+    r.check(run.engine.wait_for(r"Qualité appliquée : medium", 5.0, after=t) is not None,
+            "qualité appliquée tout de suite au décor", "« Qualité appliquée : medium » au journal de l'engine")
     r.check("quality = \"medium\"" in run.config.read_text(encoding="utf-8"), "qualité écrite dans config.toml", "medium")
     version = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
     run.press("Y_SHORT")   # retour aux Réglages

@@ -294,7 +294,26 @@ func _test_cadence_freewheel_and_clac() -> void:
 		"pause pendant la roue libre : silence immédiat (0,05 s), aucun « clac »")
 
 
+func _test_wheel() -> void:
+	var sm = SoundModel.new()
+	sm.on_state(_state(50.0, 200.0), Vector3.ZERO, 0.0)
+	_check(sm.evaluate(0.0)["wheel"]["kind"] == "none" and sm.evaluate(0.1)["wheel"]["volume_db"] <= -80.0, "roues ordinaires : silence")
+	sm.set_wheel_kind("hum")
+	var e: Dictionary = sm.evaluate(10.0)
+	_check(e["wheel"]["kind"] == "hum" and absf(e["wheel"]["volume_db"] - SoundModel.WHEEL_MAX_DB) < 0.01, "roue lenticulaire à 50 km/h : ronronnement à %.1f dB" % e["wheel"]["volume_db"])
+	_check(absf(e["wheel"]["pitch"] - SoundModel.WHEEL_PITCH_MAX) < 0.01, "hauteur maximale à 50 km/h")
+	sm.on_state(_state(15.0, 200.0), Vector3.ZERO, 11.0)
+	_check(sm.evaluate(40.0)["wheel"]["volume_db"] <= -80.0, "sous 20 km/h : silence")
+	sm.set_wheel_kind("whistle")
+	sm.on_state(_state(35.0, 200.0), Vector3.ZERO, 41.0)
+	var w: Dictionary = sm.evaluate(80.0)
+	_check(w["wheel"]["kind"] == "whistle" and w["wheel"]["volume_db"] > SoundModel.WHEEL_MIN_DB and w["wheel"]["volume_db"] < SoundModel.WHEEL_MAX_DB, "jantes hautes à 35 km/h : sifflement intermédiaire")
+	sm.set_wheel_kind("inconnu")
+	_check(sm.evaluate(120.0)["wheel"]["kind"] == "none", "type de roue inconnu : aucun son")
+
+
 func _init() -> void:
+	_test_wheel()
 	_test_wind()
 	_test_freewheel()
 	_test_pois_hysteresis_and_cap()

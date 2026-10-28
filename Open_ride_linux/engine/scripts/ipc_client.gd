@@ -38,6 +38,15 @@ signal world_menu_received(kind: String, msg: Dictionary)
 signal test_message_received(msg: Dictionary)
 ## Révision 1.4 (série T, lot T9) : passage de segment terminé (message répété 3 fois par le core).
 signal segment_result_received(msg: Dictionary)
+## Garage (lots V3/V7, contrat 1.4) : `garage_received` une fois toutes les parties arrivées (éléments
+## réunis) ; `progression_received` après chaque succès du Garage.
+signal garage_received(items: Array)
+## Bilan de progression de fin de séance (lot V9) : répété par le core jusqu'à 10 fois, une fois par seconde.
+signal xp_result_received(msg: Dictionary)
+signal progression_received(msg: Dictionary)
+## Série R (lot R10, contrat 1.4) : salle du mode Cyber-Rogue (une partie) et butin proposé en couloir.
+signal room_received(msg: Dictionary)
+signal loot_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -275,6 +284,16 @@ func _poll_incoming() -> void:
 				settings_received.emit(json_obj)
 			"segment_result":
 				segment_result_received.emit(json_obj)
+			"garage":
+				_on_garage_part(json_obj)
+			"progression":
+				progression_received.emit(json_obj)
+			"xp_result":
+				xp_result_received.emit(json_obj)
+			"room":
+				room_received.emit(json_obj)
+			"loot":
+				loot_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)
@@ -360,6 +379,39 @@ func _send_json(dict: Dictionary) -> void:
 		print("[diag] envoi UDP en échec (code ", err, ") : ", dict.get("type", "?"))
 
 
+var _garage_parts := {}
+
+
+## Demande le catalogue du Garage (lot V3). Réponse : signal garage_received.
+func request_garage() -> int:
+	_garage_parts.clear()
+	return send_command("list_garage", {})
+
+
+func _on_garage_part(msg: Dictionary) -> void:
+	var parts := int(msg.get("parts", 1))
+	_garage_parts[int(msg.get("part", 1))] = msg.get("items", [])
+	if _garage_parts.size() < parts:
+		return
+	var items := []
+	for n in range(1, parts + 1):
+		items.append_array(_garage_parts.get(n, []))
+	_garage_parts.clear()
+	garage_received.emit(items)
+## Salle inconnue du mode Cyber-Rogue (lot R10) : demande au core de renvoyer la salle courante et ses portes.
+## Au plus une demande par seconde ; renvoie le cmd_id, ou -1 si la demande est trop proche de la précédente.
+const ROGUE_RESYNC_MIN_MS := 1000
+var _last_rogue_resync_ms := -ROGUE_RESYNC_MIN_MS
+
+
+func request_rogue_resync() -> int:
+	var now := Time.get_ticks_msec()
+	if now - _last_rogue_resync_ms < ROGUE_RESYNC_MIN_MS:
+		return -1
+	_last_rogue_resync_ms = now
+	return send_command("rogue_resync", {})
+
+
 ## Demande la liste des parcours au core (lot N3, contrat v1.1). Réponse : signal routes_received.
 func list_routes() -> int:
 	var cmd_id := send_command("list_routes", {})
@@ -377,6 +429,11 @@ func list_workouts() -> int:
 ## Modifie la difficulté du trainer pendant la séance (lot Q1, contrat v1.2).
 func send_set_difficulty(pct: int) -> int:
 	return send_command("set_difficulty", {"pct": pct})
+
+
+## Compose une run du Cyber-Rogue (lot R13, contrat 1.4) : objective, duration_min, seed, w_prime_j, chassis.
+func start_run(args: Dictionary) -> int:
+	return send_command("start_run", args)
 
 
 ## Appairage depuis le menu (lot N13, contrat v1.2) : recherche, identification du « + », enregistrement.

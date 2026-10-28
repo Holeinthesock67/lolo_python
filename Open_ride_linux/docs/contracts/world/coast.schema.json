@@ -1,0 +1,103 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldCoastChunk",
+  "description": "Tronçon de 1 km de la couche côte (Format .world v1, §8 quinquies, depuis 1.6, lot U1).",
+  "type": "object",
+  "required": [
+    "version",
+    "lines",
+    "beaches"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "point2d": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "items": {
+        "type": "number"
+      }
+    },
+    "ring": {
+      "type": "array",
+      "minItems": 3,
+      "items": {
+        "$ref": "#/$defs/point2d"
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "lines": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "shore",
+          "points"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "shore": {
+            "enum": [
+              "sand",
+              "shingle",
+              "rock",
+              "cliff"
+            ]
+          },
+          "points": {
+            "type": "array",
+            "minItems": 2,
+            "items": {
+              "$ref": "#/$defs/point2d"
+            },
+            "description": "Points (x, z) ; la mer est à droite du sens de parcours, comme natural=coastline d'OSM."
+          }
+        }
+      }
+    },
+    "beaches": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "kind",
+          "outer",
+          "holes"
+        ],
+        "additionalProperties": true,
+        "properties": {
+          "id": {
+            "type": "string",
+            "minLength": 1
+          },
+          "kind": {
+            "enum": [
+              "sand",
+              "shingle"
+            ]
+          },
+          "outer": {
+            "$ref": "#/$defs/ring"
+          },
+          "holes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/$defs/ring"
+            }
+          }
+        }
+      }
+    }
+  }
+}
