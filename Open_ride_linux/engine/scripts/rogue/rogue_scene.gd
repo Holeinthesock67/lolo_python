@@ -15,6 +15,7 @@ const HudModel := preload("res://scripts/rogue/rogue_hud_model.gd")
 const HudView := preload("res://scripts/rogue/rogue_hud_view.gd")
 const EnemyModel := preload("res://scripts/rogue/enemy_model.gd")
 const EnemyViews := preload("res://scripts/rogue/enemy_views.gd")
+const CorridorView := preload("res://scripts/rogue/rogue_corridor_view.gd")
 const CameraFx := preload("res://scripts/rogue/rogue_camera_fx.gd")
 const SheetScript := preload("res://scripts/rogue/rogue_style_sheet.gd")
 const RIBBON_SHADER := preload("res://scripts/rogue/ribbon.gdshader")
@@ -53,6 +54,7 @@ var hud_model = HudModel.new()
 var hud_view: Node3D              # rogue_hud_view.gd
 var camera_fx = CameraFx.new()
 var enemy_model = EnemyModel.new()
+var corridor_view: CanvasLayer    # rogue_corridor_view.gd
 var enemy_view: Node3D            # enemy_views.gd
 var _grade_pct := 0.0
 var _enemy_seq := -1
@@ -98,6 +100,9 @@ func _ready() -> void:
 	enemy_view.preset = preset
 	enemy_view.adapted = adapted
 	add_child(enemy_view)
+	corridor_view = CorridorView.new()
+	corridor_view.name = "Corridor"
+	add_child(corridor_view)
 	hud_view = HudView.new()
 	hud_view.name = "Hud"
 	hud_view.preset = preset
@@ -230,6 +235,7 @@ func _tick_hud(delta: float) -> void:
 	camera_fx.update(delta, float(v.get("power_pct", 0.0)), _hud_events)
 	_hud_events = []
 	hud_view.apply(v, bike.position, delta)
+	corridor_view.apply(v.get("corridor", {}))
 
 
 func _place_camera() -> void:
