@@ -8,8 +8,8 @@ extends RefCounted
 ##   densité de végétation 0,3, brouillard opaque à 4 km, ombres 150 m,
 ##   budget arbres 20 000.
 ## - `medium` (GPU dédié milieu de gamme type GTX 1060) : portée 5 km (5 tronçons devant, 1 derrière),
-##   densité de végétation 0,6, brouillard opaque à 6 km, ombres 300 m,
-##   budget arbres 50 000.
+##   densité de végétation 0,8, brouillard opaque à 6 km, ombres 400 m, budget arbres 70 000,
+##   bâtiments jusqu'à 3,5 km (lot Y13, étape 2).
 ## - `high` (GPU dédié récent) : portée 8 km (8 tronçons devant, 2 derrière), densité de végétation 1,0,
 ##   brouillard opaque à 9 km, ombres 600 m, budget arbres 100 000.
 ## La qualité d'image (anticrénelage, filtrage, occlusion ambiante, brume volumétrique, glow, ombres) est
@@ -32,7 +32,7 @@ const PRESETS := {
 		"view_distance_m": 5000.0,
 		"chunks_ahead": 5,
 		"chunks_behind": 1,
-		"vegetation_density_factor": 0.6,
+		"vegetation_density_factor": 0.8,
 		"fog_end_m": 6000.0,
 	},
 	"high": {
@@ -101,21 +101,21 @@ const IMAGE := {
 ## Distance des ombres portées selon le préréglage (Lots E1 et E3)
 const SHADOW_DISTANCES := {
 	"low": 150.0,
-	"medium": 300.0,
+	"medium": 400.0,
 	"high": 600.0,
 }
 
 ## Budget d'arbres affichés selon le préréglage (Lot E3 / SRS §8)
 const TREE_BUDGETS := {
 	"low": 20000,
-	"medium": 50000,
+	"medium": 70000,
 	"high": 100000,
 }
 
 ## Distance d'affichage des bâtiments (Lot E4)
 const BUILDING_VISIBILITY_END := {
 	"low": 1500.0,
-	"medium": 2500.0,
+	"medium": 3500.0,
 	"high": 4000.0,
 }
 
