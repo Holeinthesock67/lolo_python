@@ -113,13 +113,13 @@ func _test_presets_table() -> void:
 
 # Lot P4 : budgets du décor vivant (critère 10)
 func _test_living() -> void:
-	var keys := ["aircraft", "ambience_voices", "animals", "birds", "boats", "clouds", "cyclists", "distant_vehicles", "grass_tufts", "passersby",
-		"spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
+	var keys := ["aircraft", "ambience_voices", "animals", "birds", "boats", "clouds", "cyclists", "distant_vehicles", "grass_tufts",
+		"ground_grass", "ground_rocks", "ground_termites", "passersby", "spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
 	for name in ["low", "medium", "high"]:
 		var l: Dictionary = QualityPresets.living(name)
 		var k := l.keys()
 		k.sort()
-		_check(k == keys, "living(%s) : les 15 budgets attendus" % name)
+		_check(k == keys, "living(%s) : les 18 budgets attendus (dont les 3 détails de sol du lot U8)" % name)
 	var low: Dictionary = QualityPresets.living("low")
 	_check(low["tree_sway"] == true and low["grass_tufts"] == 1500 and low["clouds"] == "flat"
 		and low["weather_particles"] == 600 and low["birds"] == 24 and low["animals"] == 20

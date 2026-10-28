@@ -135,9 +135,14 @@ static func ground_texture_px(name: String) -> int:
 ## des routes voisines et tracteurs des champs, en MultiMesh. `aircraft` (P26) : avions de ligne, hélicoptère,
 ## parapentes et montgolfières. `boats` (P29) : bateaux des lacs, des canaux, des rivières et de la mer.
 ## `cyclists` (P28) : cyclistes du décor sur la route du parcours.
+## `ground_rocks`, `ground_grass`, `ground_termites` (U8) : rochers épars, herbes hautes et termitières des biomes
+## (ground_details.gd), seulement quand le parcours a des biomes.
 const LIVING := {
 	"low": {
 		"tree_sway": true,
+		"ground_rocks": 240,
+		"ground_grass": 600,
+		"ground_termites": 5,
 		"grass_tufts": 1500,
 		"clouds": "flat",
 		"weather_particles": 600,
@@ -155,6 +160,9 @@ const LIVING := {
 	},
 	"medium": {
 		"tree_sway": true,
+		"ground_rocks": 600,
+		"ground_grass": 2000,
+		"ground_termites": 10,
 		"grass_tufts": 8000,
 		"clouds": "flat",
 		"weather_particles": 1500,
@@ -172,6 +180,9 @@ const LIVING := {
 	},
 	"high": {
 		"tree_sway": true,
+		"ground_rocks": 1200,
+		"ground_grass": 5000,
+		"ground_termites": 20,
 		"grass_tufts": 20000,
 		"clouds": "layered",
 		"weather_particles": 4000,
