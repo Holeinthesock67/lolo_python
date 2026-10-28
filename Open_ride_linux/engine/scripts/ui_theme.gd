@@ -27,6 +27,137 @@ const KEYCAP_EDGE := Color(0.227, 0.278, 0.502)
 const VEIL_LEFT := Color(0.020, 0.024, 0.059, 0.94)
 const VEIL_RIGHT := Color(0.043, 0.063, 0.188, 0.80)
 
+# --- Couleurs des données du HUD, des courbes et du globe (étape 4) ----------------------------
+## Une couleur par rôle de donnée ; les vues du HUD, des courbes et du globe écrivent `UiTheme.NOM`,
+## jamais de `Color(` en dur. `DATA` liste le tout (test_menu_style.gd).
+# Pente, vent, maillots, bonus et jauges du HUD
+const GRADE_DESCENT := Color(0.25, 0.6, 0.9, 0.85)
+const GRADE_FLAT := Color(0.25, 0.75, 0.3, 0.85)
+const GRADE_CLIMB := Color(0.95, 0.75, 0.2, 0.85)
+const GRADE_STEEP := Color(0.95, 0.45, 0.1, 0.85)
+const GRADE_WALL := Color(0.85, 0.15, 0.15, 0.85)
+const WIND_GOOD := Color(0.15, 0.62, 0.25, 0.95)
+const WIND_BAD := Color(0.8, 0.18, 0.12, 0.95)
+const WIND_NEUTRAL := Color(0.45, 0.48, 0.52, 0.95)
+const PALE := Color(0.85, 0.9, 0.95)
+const WIND_BAR_OFF := Color(0.85, 0.9, 0.95, 0.18)
+const DRAFT := Color(0.15, 0.42, 0.75, 0.95)
+const SEGMENT_GOOD := Color(0.35, 0.9, 0.45)
+const SEGMENT_BAD := Color(0.95, 0.4, 0.35)
+const SEGMENT_NEUTRAL := Color(0.92, 0.94, 0.96)
+const BONUS := Color(0.62, 0.32, 0.92, 0.95)
+const JERSEY_SPRINT := Color(0.2, 0.75, 0.3)
+const JERSEY_KOM := Color(0.97, 0.97, 0.97)
+const KOM_DOT := Color(0.85, 0.1, 0.1)
+const WBAL := Color(0.35, 0.8, 0.95)
+const TRACK := Color(1, 1, 1, 0.15)
+const TRACK_SOFT := Color(1, 1, 1, 0.1)
+const TRACK_FAINT := Color(1, 1, 1, 0.12)
+const HUD_DIM := Color(0.75, 0.8, 0.85)
+const PANEL_BG := Color(0.05, 0.07, 0.1, 0.7)
+const CHART_BG := Color(0.04, 0.06, 0.08, 0.65)
+const SHADOW_LINE := Color(0, 0, 0, 0.6)
+const OUTLINE := Color(0, 0, 0, 0.8)
+# Zones de Coggan (Z1 à Z7, seuils de erg_view.gd) et roue libre
+const ZONE_1 := Color(0.55, 0.57, 0.6)
+const ZONE_2 := Color(0.25, 0.55, 0.95)
+const ZONE_3 := Color(0.3, 0.75, 0.35)
+const ZONE_4 := Color(0.95, 0.8, 0.2)
+const ZONE_5 := Color(0.95, 0.5, 0.15)
+const ZONE_6 := Color(0.9, 0.2, 0.15)
+const ZONE_7 := Color(0.65, 0.25, 0.8)
+const FREERIDE := Color(0.4, 0.42, 0.45)
+# Courbes de la séance (puissance, fréquence cardiaque, cadence)
+const POWER := Color(1, 1, 1)
+const HEART_RATE := Color(0.95, 0.25, 0.25)
+const CADENCE := Color(0.55, 0.8, 1)
+const GRID := Color(1, 1, 1, 0.16)
+const CHART_TEXT := Color(0.8, 0.84, 0.88)
+# Carrefour (junction_view.gd)
+const PICK := Color(1, 0.85, 0.25)
+const JUNCTION_DEFAULT := Color(0.75, 0.85, 1)
+const JUNCTION_ARROW := Color(0.95, 0.97, 1)
+const ATTRIBUTION := Color(1, 1, 1, 0.55)
+const JUNCTION_TILE := Color(1, 1, 1, 0.06)
+const JUNCTION_DIM := Color(1, 1, 1, 0.4)
+# Globe et menu Monde ouvert (world_menu_view.gd)
+const GLOBE_BG := Color(0.03, 0.05, 0.09, 0.96)
+const GLOBE_TEXT := Color(0.92, 0.95, 1)
+const GLOBE_DIM := Color(0.62, 0.7, 0.8)
+const COAST := Color(0.85, 0.92, 1, 0.55)
+const BORDER := Color(0.85, 0.92, 1, 0.18)
+const REGION := Color(0.3, 0.85, 0.45)
+const PINNED := Color(1, 0.55, 0.15)
+const ROAD_P := Color(1, 0.75, 0.3)
+const ROAD_S := Color(0.95, 0.85, 0.5)
+const ROAD_M := Color(0.6, 0.68, 0.78)
+const ROAD_C := Color(0.35, 0.85, 0.55)
+const ROAD_K := Color(0.75, 0.6, 0.45)
+const GLOBE_SEA := Color(0.1, 0.25, 0.5)
+const GLOBE_PANEL := Color(0.07, 0.1, 0.15)
+const DATA := {
+	"grade_descent": GRADE_DESCENT,
+	"grade_flat": GRADE_FLAT,
+	"grade_climb": GRADE_CLIMB,
+	"grade_steep": GRADE_STEEP,
+	"grade_wall": GRADE_WALL,
+	"wind_good": WIND_GOOD,
+	"wind_bad": WIND_BAD,
+	"wind_neutral": WIND_NEUTRAL,
+	"pale": PALE,
+	"wind_bar_off": WIND_BAR_OFF,
+	"draft": DRAFT,
+	"segment_good": SEGMENT_GOOD,
+	"segment_bad": SEGMENT_BAD,
+	"segment_neutral": SEGMENT_NEUTRAL,
+	"bonus": BONUS,
+	"jersey_sprint": JERSEY_SPRINT,
+	"jersey_kom": JERSEY_KOM,
+	"kom_dot": KOM_DOT,
+	"wbal": WBAL,
+	"track": TRACK,
+	"track_soft": TRACK_SOFT,
+	"track_faint": TRACK_FAINT,
+	"hud_dim": HUD_DIM,
+	"panel_bg": PANEL_BG,
+	"chart_bg": CHART_BG,
+	"shadow_line": SHADOW_LINE,
+	"outline": OUTLINE,
+	"zone_1": ZONE_1,
+	"zone_2": ZONE_2,
+	"zone_3": ZONE_3,
+	"zone_4": ZONE_4,
+	"zone_5": ZONE_5,
+	"zone_6": ZONE_6,
+	"zone_7": ZONE_7,
+	"freeride": FREERIDE,
+	"power": POWER,
+	"heart_rate": HEART_RATE,
+	"cadence": CADENCE,
+	"grid": GRID,
+	"chart_text": CHART_TEXT,
+	"pick": PICK,
+	"junction_default": JUNCTION_DEFAULT,
+	"junction_arrow": JUNCTION_ARROW,
+	"attribution": ATTRIBUTION,
+	"junction_tile": JUNCTION_TILE,
+	"junction_dim": JUNCTION_DIM,
+	"globe_bg": GLOBE_BG,
+	"globe_text": GLOBE_TEXT,
+	"globe_dim": GLOBE_DIM,
+	"coast": COAST,
+	"border": BORDER,
+	"region": REGION,
+	"pinned": PINNED,
+	"road_p": ROAD_P,
+	"road_s": ROAD_S,
+	"road_m": ROAD_M,
+	"road_c": ROAD_C,
+	"road_k": ROAD_K,
+	"globe_sea": GLOBE_SEA,
+	"globe_panel": GLOBE_PANEL,
+}
+
 # --- Tailles de police --------------------------------------------------------------------------
 const TITLE_SIZE := 40
 const ITEM_SIZE := 28
