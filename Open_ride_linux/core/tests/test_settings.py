@@ -32,22 +32,23 @@ cle = 1
 """
 
 
-def test_current_lists_the_six_settings_with_bounds_from_config():
+def test_current_lists_the_settings_with_bounds_from_config():
     items = settings.current(Config())
     assert [it["key"] for it in items] == list(settings.KEYS)
     ftp = items[0]
-    assert ftp == {"key": "rider.ftp_w", "label": "FTP", "value": 250, "applies": "next_session",
-                   "type": "int", "min": 50, "max": 600, "step": 5, "unit": "W"}
+    assert ftp == {"key": "rider.ftp_w", "label": "FTP", "group": "rider", "value": 250,
+                   "applies": "next_session", "type": "int", "min": 50, "max": 600, "step": 5, "unit": "W"}
     quality = next(it for it in items if it["key"] == "render.quality")
     assert quality["type"] == "choice" and quality["choices"] == ["low", "medium", "high"]
     assert quality["applies"] == "now"
     gear = next(it for it in items if it["key"] == "gearing.start_gear")
     assert (gear["min"], gear["max"]) == (1, 24)
     display = next(it for it in items if it["key"] == "render.display")
-    assert display == {"key": "render.display", "label": "Mode d'affichage", "value": "fullscreen",
-                       "applies": "now", "type": "choice", "choices": ["windowed", "borderless", "fullscreen"]}
+    assert display == {"key": "render.display", "label": "Mode d'affichage", "group": "display",
+                       "value": "fullscreen", "applies": "now", "type": "choice", "choices": ["windowed", "borderless", "fullscreen"]}
     camera = next(it for it in items if it["key"] == "render.camera")
-    assert camera["value"] == "follow_near" and camera["choices"] == ["subjective", "follow_near", "follow_far", "side"]   # lot V12
+    assert camera["value"] == "follow_near" and camera["group"] == "display"   # lot V12
+    assert camera["choices"] == ["subjective", "follow_near", "follow_far", "side"]
 
 
 def test_bounds_and_choices_come_from_config(monkeypatch):
@@ -176,7 +177,7 @@ def test_wind_settings_lot_p16():
     assert items["wind.mode"]["choices"] == ["off", "fixed", "gusty", "theme"]
     cap = items["wind.max_grade_offset_pct"]
     assert (cap["value"], cap["min"], cap["max"], cap["step"]) == (4, 0, 8, 1)
-    assert items["wind.speed_kmh"]["max"] == 60 and "wind.from_deg" not in items   # direction : config.toml
+    assert items["wind.speed_kmh"]["max"] == 60
     assert settings.step(cfg, "wind.mode", "theme", +1) == "off"
     assert settings.step(cfg, "wind.max_grade_offset_pct", 8, +1) == 8
     assert settings.step(cfg, "wind.speed_kmh", 20, +1) == 25
@@ -201,3 +202,55 @@ def test_settings_with_installed_themes_is_sent(tmp_path: Path):
     srv.send_raw(msg)
     assert len(sent) == 1 and 1400 < len(sent[0]) <= MAX_DATAGRAM_SIZE
     assert json.loads(sent[0]) == msg
+
+
+def test_audio_volumes_in_menu(tmp_path: Path):
+    """Volumes par catégorie (docs/AUDIO.md) : 0 à 100 % par pas de 10, appliqués tout de suite, écrits
+    dans une section `[audio]` créée au besoin."""
+    cfg = Config()
+    items = {i["key"]: i for i in settings.current(cfg)}
+    keys = ["audio.master_pct", "audio.ride_pct", "audio.ambience_pct", "audio.events_pct"]
+    for key in keys:
+        it = items[key]
+        assert (it["value"], it["min"], it["max"], it["step"], it["unit"], it["applies"]) == (100, 0, 100, 10, "%", "now")
+        assert len(it["label"]) <= 32
+    assert settings.step(cfg, "audio.master_pct", 100, +1) == 100
+    assert settings.step(cfg, "audio.master_pct", 0, -1) == 0
+    path = tmp_path / "config.toml"
+    path.write_text("[rider]\nftp_w = 250\n", encoding="utf-8")
+    settings.apply(cfg, {"audio.ambience_pct": 40}, path)
+    assert cfg.audio.ambience_pct == 40
+    assert config_mod.load(path).audio.ambience_pct == 40
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "audio.master_pct", 101)
+
+
+def test_fps_counter_setting(tmp_path: Path):
+    """Compteur d'images/s du HUD : choix off / on, appliqué tout de suite, coupé par défaut."""
+    cfg = Config()
+    it = {i["key"]: i for i in settings.current(cfg)}["render.fps"]
+    assert (it["value"], it["choices"], it["applies"]) == ("off", ["off", "on"], "now")
+    path = tmp_path / "config.toml"
+    path.write_text("[render]\nquality = \"low\"\n", encoding="utf-8")
+    settings.apply(cfg, {"render.fps": "on"}, path)
+    assert config_mod.load(path).render.fps == "on"
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "render.fps", "oui")
+
+
+def test_settings_groups_and_new_entries():
+    """Sous-écrans de « Réglages » : chaque réglage a un groupe connu, groupes contigus dans l'ordre de
+    `GROUPS` ; poids du vélo, direction et rafales du vent ajoutés (bornes de config.py)."""
+    cfg = Config()
+    items = settings.current(cfg)
+    groups = [it["group"] for it in items]
+    assert set(groups) == set(settings.GROUPS)
+    assert sorted(groups, key=settings.GROUPS.index) == groups
+    by_key = {it["key"]: it for it in items}
+    bike = by_key["bike.mass_kg"]
+    assert (bike["group"], bike["value"], bike["min"], bike["max"], bike["unit"]) == ("rider", 9, 3, 30, "kg")
+    direction = by_key["wind.from_deg"]
+    assert (direction["value"], direction["min"], direction["max"], direction["step"], direction["unit"]) == (270, 0, 360, 45, "°")
+    gust = by_key["wind.gust_pct"]
+    assert (gust["value"], gust["min"], gust["max"], gust["step"]) == (0, 0, 100, 10)
+    assert settings.step(cfg, "wind.from_deg", 360, +1) == 360

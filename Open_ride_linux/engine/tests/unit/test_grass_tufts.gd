@@ -58,9 +58,9 @@ func _test_budget_and_low() -> void:
 	var route = _route()
 	var low = GrassTufts.new()
 	root.add_child(low)
-	low.configure(QualityPresets.living("low")["grass_tufts"], route)
+	low.configure(QualityPresets.living("low", false)["grass_tufts"], route)
 	low.update(100.0)
-	_check(low.get_child_count() == 0 and low.get_capacity() == 0, "low : 0 touffe, nœud vide")
+	_check(low.get_child_count() == 0 and low.get_capacity() == 0, "décor vivant coupé : 0 touffe, nœud vide")
 	for preset in ["medium", "high"]:
 		var budget: int = QualityPresets.living(preset)["grass_tufts"]
 		var g = GrassTufts.new()
@@ -182,7 +182,31 @@ func _test_tree_materials() -> void:
 	r.queue_free()
 
 
+## Lot Y11 (H4) : gerbe de brins, teintes d'instance, fondu au loin dans le matériau.
+func _test_blades_and_tints() -> void:
+	var mesh := GrassTufts.build_tuft_mesh()
+	var verts: PackedVector3Array = mesh.surface_get_arrays(0)[Mesh.ARRAY_VERTEX]
+	_check(verts.size() == GrassTufts.BLADES * 9, "touffe : %d brins de trois triangles (%d sommets)" % [GrassTufts.BLADES, verts.size()])
+	var top := 0.0
+	for v in verts:
+		top = maxf(top, v.y)
+	_check(top <= GrassTufts.TUFT_HEIGHT_M + 1e-4 and top > GrassTufts.TUFT_HEIGHT_M * 0.5, "hauteur de la gerbe : %.2f m" % top)
+	var g = GrassTufts.new()
+	g.tuft_seed = 7
+	var seen := {}
+	for slot in range(400):
+		seen[g.tint_index(3, slot)] = true
+	_check(seen.size() == GrassTufts.TINTS.size(), "les %d teintes sont tirées" % GrassTufts.TINTS.size())
+	g.configure(1000, _route())
+	var mat: ShaderMaterial = g._mmi.material_override
+	_check(is_equal_approx(float(mat.get_shader_parameter("fade_end_m")), GrassTufts.FADE_END_M)
+		and GrassTufts.FADE_END_M <= GrassTufts.CHUNKS_AHEAD * GrassTufts.CHUNK_M and g._mm.use_colors,
+		"fondu à %.0f m, avant la fin de la fenêtre (%.0f m) ; couleurs d'instance" % [GrassTufts.FADE_END_M, GrassTufts.CHUNKS_AHEAD * GrassTufts.CHUNK_M])
+	g.free()
+
+
 func _init() -> void:
+	_test_blades_and_tints()
 	_test_tree_materials()
 	_test_budget_and_low()
 	_test_determinism_and_exclusions()
