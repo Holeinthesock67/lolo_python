@@ -8,12 +8,29 @@ render_mode cull_disabled, diffuse_lambert, specular_disabled;
 // - INSTANCE_CUSTOM.y : 1 = tête levée (chevreuil aux aguets ou en fuite), 0 = broutage normal.
 // - INSTANCE_CUSTOM.z : amplitude du battement d'ailes (oiseaux, Lot P23) : 1 en vol battu, presque 0 pour
 //   un rapace qui plane, 0 pour une corneille posée.
+// - CUSTOM0.x : zone de couleur du maillage (Lot Y14, fauna_renderer.gd FAUNA_*) : 0 robe, 1 teinte d'appoint,
+//   2 sombre (sabots, yeux), 3 corne, 4 clair ; `patches` : part de la robe en taches claires (vache pie),
+//   dessinées dans le repère de la bête et décalées par sa phase.
+#include "res://shaders/surface_detail.gdshaderinc"
+
 uniform int mode = 0;
 uniform vec3 albedo : source_color = vec3(0.3, 0.3, 0.3);
+uniform vec3 accent : source_color = vec3(0.3, 0.3, 0.3);
+uniform vec3 light : source_color = vec3(0.9, 0.9, 0.9);
+uniform float patches = 0.0;
+const vec3 DARK = vec3(0.05, 0.045, 0.04);
+const vec3 HORN = vec3(0.82, 0.76, 0.62);
+
+varying flat float v_region;
+varying flat float v_seed;
+varying vec3 v_local;
 uniform float flap_hz = 6.0;
 uniform float graze_hz = 0.12;
 
 void vertex() {
+	v_region = CUSTOM0.x;
+	v_seed = INSTANCE_CUSTOM.x;
+	v_local = VERTEX;
 	float phase = INSTANCE_CUSTOM.x * 6.2831853;
 	if (mode == 0) {
 		float flap = sin(TIME * 6.2831853 * flap_hz + phase);
@@ -27,5 +44,20 @@ void vertex() {
 }
 
 void fragment() {
-	ALBEDO = albedo;
+	int region = int(v_region + 0.5);
+	vec3 c = albedo;
+	if (region == 1) {
+		c = accent;
+	} else if (region == 2) {
+		c = DARK;
+	} else if (region == 3) {
+		c = HORN;
+	} else if (region == 4) {
+		c = light;
+	} else if (patches > 0.0) {
+		vec2 q = v_local.zy * 2.2 + vec2(v_seed * 37.0, v_seed * 11.0);
+		float n = sd_noise(q) * 0.7 + sd_noise(q * 2.3 + v_local.x) * 0.3;
+		c = n > 1.0 - patches ? light : albedo;
+	}
+	ALBEDO = c;
 }
