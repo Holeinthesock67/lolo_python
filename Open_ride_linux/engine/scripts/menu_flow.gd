@@ -860,7 +860,8 @@ func _refresh_record_table() -> void:
 ## Réglage en cours de modification : la rangée de la liste ouverte (Réglages, Créer un entraînement)
 ## passe en mode édition ; la difficulté de la pause se règle de même dans sa rangée.
 func _refresh_pause_difficulty() -> void:
-	var it := {"label": "Difficulté", "type": "int", "unit": "%", "value": difficulty_pct}
+	var it := {"label": "Difficulté", "type": "int", "unit": "%", "min": 0, "max": 100,
+		"value": difficulty_pct}
 	var ed: Dictionary = settings.editing if str(settings.editing.get("key", "")) == SettingsViewModel.PAUSE_DIFFICULTY else {}
 	menu.set_pause_difficulty(SettingsViewModel.row("difficulty", it, ed))
 
