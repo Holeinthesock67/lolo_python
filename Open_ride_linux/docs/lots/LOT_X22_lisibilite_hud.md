@@ -28,3 +28,17 @@ Le critère « lisible à 2 m » n'est vérifié qu'à l'œil. Le fil de la sér
 ## 6. Hors périmètre
 
 Changer la mise en page du HUD.
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x22`).
+
+- `engine/tests/hud_lisibilite.py` : contraste WCAG mesuré dans la capture (fond : luminance médiane du rectangle ; texte : le 2 % le plus éloigné du fond), hauteur des lignes de texte ramenée à 1080 lignes, panneaux dans l'écran et sans chevauchement. Les valeurs sans chiffre (« -- ») ne sont pas mesurées.
+- `visual_check.py --lisibilite` : hauteur et contraste sur chaque capture ; `check_layout` vérifie toujours les panneaux (colonnes gauche et droite, bandeau central, vent, abri, blocs segment et bonus, encart des bots, profil). `run_visual_tests.sh` passe `--lisibilite` ; `run_engine_tests.sh` (CI) ne la passe pas, pour ne pas bloquer les PR sur les constats ci-dessous.
+- Scène `bots_segment_bonus` : 4 bots à profil (`profile`, `cp_w`, `mass_kg`, `wbal_pct`, `jersey`), voisins `bot_ahead`/`bot_behind`, segment en cours, bonus en réserve.
+- `main.gd` : la capture donne aussi les panneaux gauche et droit, le profil, le bloc bonus, les textes des blocs segment et bonus et les libellés des métriques (`set_meta("caption")` dans `hud_view.gd`).
+- `core/tests/test_hud_lisibilite.py` (5 tests) : blanc sur noir 21:1, gris moyen sur gris clair en échec, hauteur ramenée à 1080 lignes, encart volontairement trop grand en échec (hors écran et sur le profil).
+- Essai au cloud (Xvfb, 1280×720 et 1024×600, `low`) : chiffres principaux à 52 px pour 1080 lignes, contraste des valeurs blanches 10:1, aucun débordement. Constats, à trancher par le fil du HUD (hors périmètre ici) :
+  - la valeur de la pente, colorée selon la classe de pente avec une transparence de 0,85, n'a que 3,0:1 (plat) à 4,1:1 (4 %) sur le fond du panneau (seuil 4,5:1) ;
+  - le nom d'un bot à puissance constante (orange) tombe à 2,9:1 en 1024×600 au-dessus d'un ciel clair ;
+  - à 720 lignes, avec les blocs segment et bonus, l'encart des bots ne garde que les deux voisins : aucune ligne de bot (maillot, W′) ni porteurs des maillots. C'est la priorité prévue par T15 ; la scène note le nombre de lignes affichées sans seuil.

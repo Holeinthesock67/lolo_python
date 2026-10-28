@@ -984,6 +984,12 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
 		"bots_gap1": hud.bots_gaps[0], "bots_ahead": hud.neighbor_labels[0], "bots_behind": hud.neighbor_labels[1],
 		"bots_jerseys": hud.jerseys_label, "segment_panel": hud.panel_segment,
+		"segment_title": hud.segment_title, "segment_main": hud.segment_main, "bonus_panel": hud.panel_bonus,
+		"bonus_held": hud.bonus_held, "panel_left": hud.panel_left, "panel_right": hud.panel_right,
+		"profile": hud.profile_panel,
+		"power_caption": hud.power_val.get_meta("caption"), "speed_caption": hud.speed_val.get_meta("caption"),
+		"cadence_caption": hud.cadence_val.get_meta("caption"), "hr_caption": hud.hr_val.get_meta("caption"),
+		"grade_caption": hud.grade_val.get_meta("caption"),
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
 		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}

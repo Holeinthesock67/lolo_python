@@ -626,6 +626,7 @@ func _create_metric(parent: Control, label_text: String, default_val: String,
 	var val := Label.new()
 	val.text = default_val
 	val.add_theme_font_size_override("font_size", val_size)
+	val.set_meta("caption", lbl)   # libellé de la valeur (tests de lisibilité, lot X22)
 	hbox.add_child(val)
 
 	return val
