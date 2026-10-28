@@ -154,7 +154,7 @@
 | [R8](LOT_R8_integration_session.md) | Intégration dans la session du core : mode ROGUE, formule centrée, boutons Z et A, pause Y, journal, pause et reprise | Python | T1, R6, R15, Q4 | Grande | **Livré le 27 octobre**, **version 2.0** |
 | [R9](LOT_R9_progression_permanente.md) | Progression permanente : châssis à bonus de jeu, statistiques de runs, vies | Python | R6, V2, V3b, V4 | Petite | **Livré le 27 octobre**, **version 2.0** |
 | [R10](LOT_R10_scene_neon_ruban.md) | Engine : scène néon, ruban 3D, shader de pente, arches et zones | GDScript + shader | T1 | Grande | Non : interne (rendu, contrôle visuel) ; **Livré le 28 octobre** (sauf contrôle visuel), **version 2.0** |
-| [R11](LOT_R11_hud_diegetique.md) | Engine : HUD diégétique, arcs au sol, champ de vision et tremblement | GDScript | T1, R10 | Moyenne | Modèle oui, rendu interne ; **version 2.0** |
+| [R11](LOT_R11_hud_diegetique.md) | Engine : HUD diégétique, arcs au sol, champ de vision et tremblement | GDScript | T1, R10 | Moyenne | Modèle oui, rendu interne ; **Livré le 28 octobre** (sauf contrôle visuel), **version 2.0** |
 | [R12](LOT_R12_ennemis_boss.md) | Engine : ennemis et boss géométriques, effets d'impact | GDScript + shader | R10 | Moyenne | Non : interne (rendu, contrôle visuel), **version 2.0** |
 | [R13](LOT_R13_menu_cyber_rogue.md) | Engine : lancement depuis l'accueil, écran de départ, couloirs et cartes, pause, fin de run | GDScript | T1, R8, R10, R11, N6, O4 | Moyenne | Non : interne (`main.gd`, menu), **version 2.0** |
 | [R14](LOT_R14_recette.md) | Recette du mode Cyber-Rogue sur le PC et le vélo | — | R8, R9, R10 à R13, R15, R16 | Moyenne | Non : propriétaire, **version 2.0** |

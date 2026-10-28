@@ -11,6 +11,8 @@ const RogueEnvironment := preload("res://scripts/rogue/rogue_environment.gd")
 const SCENE := preload("res://scenes/rogue.tscn")
 
 var store = RoomStore.new()
+var last_loot: Dictionary = {}
+var ftp_w := 0.0                   # hello_ack.config.ftp_w
 var scene = null                   # rogue_scene.gd
 var resync_requests := 0          # demandes `rogue_resync` émises (lues par main.gd)
 var _hidden: Array = []           # [Node3D, était visible]
@@ -28,6 +30,13 @@ func on_room(msg: Dictionary) -> void:
 	store.add_part(msg)
 
 
+## Message `loot` : cartes et portes du couloir, affichées par le modèle du HUD.
+func on_loot(msg: Dictionary) -> void:
+	last_loot = msg
+	if scene != null:
+		scene.hud_model.set_loot(msg)
+
+
 ## Appelé à chaque trame `state`. `classic` : nœuds 3D du monde classique à masquer ; `world_env` et `camera`
 ## : environnement et caméra de la scène principale (peuvent être null dans les tests). Renvoie true si une
 ## demande `rogue_resync` doit être envoyée.
@@ -43,6 +52,7 @@ func update(state: Dictionary, parent: Node, classic: Array, world_env: WorldEnv
 		return false
 	scene.resync_requested = false
 	scene.on_state(rogue, now_s)
+	scene.on_hud(state, now_s)
 	if scene.resync_requested:
 		resync_requests += 1
 		return true
@@ -53,6 +63,8 @@ func _enter(parent: Node, classic: Array, world_env: WorldEnvironment, camera: C
 	scene = SCENE.instantiate()
 	scene.store = store
 	scene.preset = preset
+	scene.hud_model.set_ftp(ftp_w)
+	scene.hud_model.set_loot(last_loot)
 	parent.add_child(scene)
 	for n in classic:
 		if n is Node3D:
@@ -82,3 +94,4 @@ func _leave() -> void:
 	_classic_env = null
 	_rogue_env = null
 	store.clear()
+	last_loot = {}
