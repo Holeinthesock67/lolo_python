@@ -1,12 +1,13 @@
 extends SceneTree
 
-## Tests sans écran de la circulation `traffic_model.gd` (lots P13 et P25) : séance simulée de 30 km à 30 km/h,
-## sécurité (écarts, dépassements), déterminisme, budget, coût par image, parts des sortes, route étroite ;
-## affichage `traffic_renderer.gd`.
+## Tests sans écran de la circulation `traffic_model.gd` (Lot P13) : séance simulée de 30 km à 30 km/h,
+## sécurité (écarts, dépassements), déterminisme, budget, coût par image ; affichage `traffic_renderer.gd`.
+## Lot P25 : sept sortes et leurs vitesses, phares, affichage refait (caisse, roues, son par sorte).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_traffic_model.gd
 
 const TrafficModel := preload("res://scripts/traffic_model.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
+const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
@@ -123,9 +124,8 @@ func _test_renderer(route) -> void:
 	var s := 500.0
 	var max_shown := 0
 	var match_ok := true
-	var wheels := {}
+	var spun := false
 	var sound_ok := true
-	var kinds_seen := {}
 	var usec := 0
 	for i in range(9000):
 		var t0 := Time.get_ticks_usec()
@@ -135,87 +135,50 @@ func _test_renderer(route) -> void:
 		max_shown = maxi(max_shown, tr.visible_count())
 		match_ok = match_ok and tr.visible_count() == tm.vehicles.size()
 		for j in range(tm.vehicles.size()):
+			var slot: Dictionary = tr._slots[j]
 			var v: Dictionary = tm.vehicles[j]
-			kinds_seen[v["kind"]] = true
-			match_ok = match_ok and tr.shown_transform(j).origin.is_equal_approx(tm.world_transform(v).origin)
-			var want: Resource = sp.stream(TrafficRenderer.sound_kind(v["kind"]))
-			sound_ok = sound_ok and tr.audio_of(j).stream == want
-		if not tm.vehicles.is_empty():
-			wheels[snappedf(tr.shown_custom(0).a, 0.01)] = true
+			match_ok = match_ok and slot["root"].transform.origin.is_equal_approx(tm.world_transform(v).origin) \
+				and slot["body"].mesh == tr._bodies[v["kind"]]
+			var w: Node3D = slot["wheels"][0]
+			spun = spun or absf(w.rotation.x) > 0.1
+			var snd: Array = TrafficRenderer.SOUND[v["kind"]]
+			sound_ok = sound_ok and slot["audio"].stream == sp.stream(snd[0]) and is_equal_approx(slot["audio"].pitch_scale, snd[2])
 		s += 30.0 / 3.6 / 30.0
-	_check(match_ok and max_shown >= 1 and max_shown <= 3, "affichage : une place de MultiMesh par véhicule du modèle, à sa place (%d au plus)" % max_shown)
-	_check(wheels.size() > 10 and sound_ok, "roues qui tournent (%d angles par instance), son de chaque sorte sur chaque véhicule (%s)" % [wheels.size(), str(kinds_seen.keys())])
+	_check(match_ok and max_shown >= 1 and max_shown <= 3, "affichage : un véhicule du pool par véhicule du modèle, à sa place (%d au plus)" % max_shown)
+	_check(spun and sound_ok, "roues qui tournent, son du passage (à la hauteur de la sorte) ou du tracteur sur chaque véhicule")
+	var mat: ShaderMaterial = tr._slots[0]["mat"]
+	tr.set_lights(true)
+	var lit: bool = float(mat.get_shader_parameter("lights")) == 1.0
+	tr.set_lights(false)
+	_check(lit and float(mat.get_shader_parameter("lights")) == 0.0, "phares allumés puis éteints")
+	# Chaque sorte habillée : sa caisse, ses roues, sa peinture
+	var fake := {"vehicles": []}
+	var kinds: Array = TrafficModel.KINDS.keys()
+	for j in range(kinds.size()):
+		fake["vehicles"].append({"id": "f%d" % j, "kind": kinds[j], "color": j, "s": 600.0 + 30.0 * j, "dir": -1,
+			"lateral": -3.0, "wheel": 0.0})
+	var fm = TrafficModel.new()
+	fm.configure(route, {}, [], 8, 1)
+	fm.vehicles = fake["vehicles"]
+	tr.setup(fm, sp)
+	tr.update()
+	var dressed := true
+	for j in range(kinds.size()):
+		var slot: Dictionary = tr._slots[j]
+		var nw := VehicleMesh.wheel_list(kinds[j]).size()
+		var shown := 0
+		for w in slot["wheels"]:
+			if w.visible:
+				shown += 1
+		dressed = dressed and slot["body"].mesh == tr._bodies[kinds[j]] and shown == nw \
+			and slot["mat"].get_shader_parameter("paint") == VehicleMesh.paint(kinds[j], j)
+	_check(dressed and tr.visible_count() == kinds.size(), "les %d sortes habillées : caisse, roues et peinture" % kinds.size())
 	_check(tr.get_child_count() == n0, "aucun nœud créé après le démarrage")
 	var avg := usec / 1000.0 / 9000.0
 	_check(PerfBudget.check("traffic_frame", avg), "modèle et affichage mis à jour en %.4f ms par image" % avg)
 	tr.queue_free()
 	sp.queue_free()
 	await process_frame
-
-
-## Lot P25 : parts des sortes sur 2 000 cases tirées, loin de tout village puis près d'un village partout.
-func _test_kind_shares(route) -> void:
-	var near := []
-	for x in range(0, 33000, 1000):
-		near.append({"id": "n%d" % x, "kind": "village", "x": float(x), "y": 400.0, "z": 100.0})
-	for case in [[[], "loin des villages"], [near, "près d'un village"]]:
-		var counts := {}
-		var total := 0
-		var sd := 1
-		while total < 2000:
-			var tm = TrafficModel.new()
-			tm.configure(route, {"terrain": {"snow_line_m": 2200.0}}, case[0], 3, sd)
-			for k in range(int(route.length_m / TrafficModel.SLOT_M)):
-				var ev: Dictionary = tm.slot_event(k)
-				if not ev.is_empty():
-					counts[ev["kind"]] = int(counts.get(ev["kind"], 0)) + 1
-					total += 1
-			sd += 1
-		var want := {}
-		for e in TrafficModel.KIND_SHARES:
-			want[e[0]] = float(e[1]) * 100.0
-		var village: bool = not (case[0] as Array).is_empty()
-		var moved: String = "tractor" if village else "bus"
-		want["car_a"] += want[moved] * 0.5
-		want["car_b"] += want[moved] * 0.5
-		want[moved] = 0.0
-		var ok := int(counts.get(moved, 0)) == 0
-		var got := {}
-		for kind in want:
-			got[kind] = snappedf(100.0 * int(counts.get(kind, 0)) / total, 0.1)
-			ok = ok and absf(float(got[kind]) - float(want[kind])) <= 3.0
-		_check(ok, "%s : parts à ± 3 points de KIND_SHARES sur %d cases, aucun %s (%s)" % [case[1], total, moved, str(got)])
-
-
-## Lot P25 : camion qui rattrape le cycliste sur une route de 4 m (il suit, puis tourne) et de 6 m (il double).
-func _test_narrow(route) -> void:
-	_check(not TrafficModel.can_pass("truck", 4.0) and TrafficModel.can_pass("truck", 6.0) and TrafficModel.can_pass("moto", 4.0),
-		"route de 4 m trop étroite pour doubler en camion, assez large à 6 m et pour une moto")
-	for width in [4.0, 6.0]:
-		var tm = TrafficModel.new()
-		tm.configure(route, {}, [], 1, 7, width)
-		var s := 1000.0
-		tm.update(s, 25.0 / 3.6, 0.0)
-		tm._spawn({"slot": 9999, "kind": "truck", "color": 0, "cruise_mps": 60.0 / 3.6, "ahead_m": 0.0}, s - 200.0, 1)
-		var too_close := 0
-		var behind_ok := true
-		var passed := false
-		for i in range(30 * 400):
-			s += 25.0 / 3.6 / 30.0
-			tm.update(s, 25.0 / 3.6, 1.0 / 30.0)
-			for v in tm.vehicles:
-				var k: Dictionary = TrafficModel.KINDS[v["kind"]]
-				if absf(float(v["s"]) - s) < float(k["length"]) * 0.5 + 0.5 \
-						and absf(float(v["lateral"])) - float(k["half_width"]) - TrafficModel.RIDER_HALF_WIDTH_M < TrafficModel.LATERAL_CLEARANCE_M - 1e-4:
-					too_close += 1
-				if width == 4.0:
-					behind_ok = behind_ok and float(v["s"]) - s <= -TrafficModel.FOLLOW_GAP_M + 0.5 and float(v["lateral"]) > 0.0
-				passed = passed or float(v["s"]) > s + 10.0
-		if width == 4.0:
-			_check(behind_ok and too_close == 0 and tm.turned_total == 1 and tm.vehicles.is_empty(),
-				"route de 4 m : le camion suit à %d m sur la droite sans doubler, puis tourne" % int(TrafficModel.FOLLOW_GAP_M))
-		else:
-			_check(passed and too_close == 0 and tm.overtakes_total == 1, "route de 6 m : le camion double à 1,5 m au moins")
 
 
 func _init() -> void:
@@ -246,6 +209,29 @@ func _run() -> void:
 		safe = safe and rs["overlap"] == 0 and rs["too_close"] == 0 and rs["bad_pass"] == 0 and rs["bad_spawn"] == 0 \
 			and rs["max_live"] <= 5 and rs["count"] >= 3 and rs["count"] <= 15
 	_check(safe, "12 autres graines, budget 5 : mêmes garanties, de 3 à 15 véhicules (%s)" % str(counts))
+	# Lot P25 : les sept sortes, d'après leurs parts
+	var drawn := {}
+	var tm_k = TrafficModel.new()
+	for sd in range(200):
+		tm_k.configure(route, {}, _villages(), 5, 100 + sd)
+		for k in range(int(LENGTH_M / TrafficModel.SLOT_M)):
+			var ev: Dictionary = tm_k.slot_event(k)
+			if ev.is_empty():
+				continue
+			drawn[ev["kind"]] = int(drawn.get(ev["kind"], 0)) + 1
+			var kmh: Vector2 = TrafficModel.KINDS[ev["kind"]]["kmh"]
+			safe = safe and float(ev["cruise_mps"]) * 3.6 >= kmh.x - 1e-3 and float(ev["cruise_mps"]) * 3.6 <= kmh.y + 1e-3
+	var share_sum := 0.0
+	for kind in TrafficModel.KINDS:
+		share_sum += float(TrafficModel.KINDS[kind]["share"])
+	_check(drawn.size() == TrafficModel.KINDS.size() and safe and absf(share_sum - 1.0) < 1e-6,
+		"sept sortes tirées sur 200 graines, vitesses dans la plage de chaque sorte (%s)" % str(drawn))
+	_check(TrafficModel.pick_kind(0.0) == "car_a" and TrafficModel.pick_kind(0.999) == "tractor",
+		"tirage de la sorte dans l'ordre de la table")
+	var sun := 45.0
+	_check(not TrafficModel.headlights({"fog_boost": 0.0, "rain": 0.0}, sun) and TrafficModel.headlights({"fog_boost": 0.5}, sun)
+		and TrafficModel.headlights({"rain": 0.6}, sun) and TrafficModel.headlights({}, 3.0),
+		"phares : éteints par beau temps, allumés dans la brume, sous la pluie ou au soleil bas")
 	var r0: Dictionary = _ride(route, 0, 7)
 	_check(r0["count"] == 0, "budget nul : aucun véhicule")
 	_check(PerfBudget.check("traffic_view_frame", r["avg_ms"]), "mise à jour en %.4f ms par image" % r["avg_ms"])
@@ -261,8 +247,6 @@ func _run() -> void:
 	for i in range(50):
 		tm.update(s, 0.0, 0.1, true)
 	_check(not tm.vehicles.is_empty() and str(tm.vehicles) == before, "pause : véhicules figés")
-	_test_kind_shares(route)
-	_test_narrow(route)
 	await _test_renderer(route)
 	print("test_traffic_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

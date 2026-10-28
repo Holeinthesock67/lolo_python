@@ -113,8 +113,8 @@ func _test_presets_table() -> void:
 
 # Lot P4 : budgets du décor vivant (critère 10)
 func _test_living() -> void:
-	var keys := ["ambience_voices", "animals", "birds", "clouds", "cyclists", "distant_vehicles", "grass_tufts",
-		"passersby", "spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
+	var keys := ["ambience_voices", "animals", "birds", "clouds", "cyclists", "distant_vehicles", "grass_tufts", "passersby",
+		"spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
 	for name in ["low", "medium", "high"]:
 		var l: Dictionary = QualityPresets.living(name)
 		var k := l.keys()
@@ -126,19 +126,18 @@ func _test_living() -> void:
 		and low["vehicles"] == 3 and low["spectators"] == 40 and low["ambience_voices"] == 4
 		and low["water_shimmer"] == true,
 		"living(low) : valeurs du cahier P4 §4.3 (oiseaux doublés par P23, touffes : Y11 H5)")
-	_check(QualityPresets.living("low")["cyclists"] == 4 and QualityPresets.living("medium")["cyclists"] == 8
-		and QualityPresets.living("high")["cyclists"] == 16 and QualityPresets.living("low")["distant_vehicles"] == 6
-		and QualityPresets.living("medium")["distant_vehicles"] == 12 and QualityPresets.living("high")["distant_vehicles"] == 24,
-		"living : cyclistes 4/8/16 et véhicules lointains 6/12/24 (cahier P25)")
 	var med: Dictionary = QualityPresets.living("medium")
 	var high: Dictionary = QualityPresets.living("high")
 	var growing := true
-	for key in ["grass_tufts", "weather_particles", "birds", "animals", "vehicles", "spectators",
-			"passersby", "ambience_voices", "cyclists", "distant_vehicles"]:
+	for key in ["grass_tufts", "weather_particles", "birds", "animals", "vehicles", "distant_vehicles", "cyclists", "spectators",
+			"passersby", "ambience_voices"]:
 		growing = growing and int(low[key]) <= int(med[key]) and int(med[key]) <= int(high[key])
 	_check(growing, "living : budgets croissants de low à high")
 	_check(low["passersby"] == 24 and med["passersby"] == 48 and high["passersby"] == 80,
 		"living : passants 24, 48 et 80 (cahier P21 §4)")
+	_check(low["distant_vehicles"] == 6 and med["distant_vehicles"] == 12 and high["distant_vehicles"] == 24,
+		"living : véhicules lointains 6, 12 et 24 (cahier P25 §4)")
+	_check(low["cyclists"] == 4 and med["cyclists"] == 8 and high["cyclists"] == 16, "living : cyclistes 4/8/16 (cahier P28)")
 	var off: Dictionary = QualityPresets.living("high", false)
 	var all_off: bool = off["clouds"] == "off"
 	for key in off:

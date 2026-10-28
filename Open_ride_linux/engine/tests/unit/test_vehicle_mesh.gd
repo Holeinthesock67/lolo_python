@@ -1,14 +1,16 @@
 extends SceneTree
 
-## Tests unitaires sans écran des maillages de véhicules de `vehicle_mesh.gd` (lots P13 et P25, construits
-## avec le Builder de people_mesh.gd) : taille conforme à KINDS, roues au sol qui tournent autour de leur
-## axe, phares devant (-z) et feux derrière, zones de couleur lues par shaders/vehicle.gdshader.
+## Tests sans écran des maillages de véhicules `vehicle_mesh.gd` (Lot P25) : chaque sorte construite, à la
+## taille de traffic_model.gd (rétroviseurs compris), posée sur le sol, avant vers -z (phares devant, feux
+## derrière), toutes ses zones de couleur, faces orientées comme leurs normales, roues à leur place, nombre
+## de triangles, déterminisme et palettes.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_vehicle_mesh.gd
 
 const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
+const TrafficModel := preload("res://scripts/traffic_model.gd")
 
-## Triangles au plus par véhicule : 8 véhicules sur la route et 24 au loin restent sous 100 000.
-const MAX_TRIS := 3000
+const MAX_TRIANGLES := 2000
+const WHEELS := {"car_a": 4, "car_b": 4, "van": 4, "truck": 6, "bus": 4, "moto": 2, "tractor": 4, "tractor_field": 4}
 
 var _failures := 0
 var _checked := 0
@@ -24,66 +26,89 @@ func _check(cond: bool, msg: String) -> void:
 
 
 func _init() -> void:
-	var kinds: Array = VehicleMesh.KINDS.keys()
-	kinds.append("far")
-	for kind in kinds:
-		var arrays := VehicleMesh.build(kind).surface_get_arrays(0)
-		var verts: PackedVector3Array = arrays[Mesh.ARRAY_VERTEX]
-		var uv2s: PackedVector2Array = arrays[Mesh.ARRAY_TEX_UV2]
-		var custom: PackedFloat32Array = arrays[Mesh.ARRAY_CUSTOM0]
+	var sizes_ok := true
+	var ground_ok := true
+	var regions_ok := true
+	var front_ok := true
+	var faces_ok := true
+	var tris_ok := true
+	var report := []
+	var t0 := Time.get_ticks_usec()
+	for kind in VehicleMesh.KINDS:
+		var mesh: ArrayMesh = VehicleMesh.build_full(kind)
+		var arr := mesh.surface_get_arrays(0)
+		var verts: PackedVector3Array = arr[Mesh.ARRAY_VERTEX]
+		var normals: PackedVector3Array = arr[Mesh.ARRAY_NORMAL]
+		var custom: PackedFloat32Array = arr[Mesh.ARRAY_CUSTOM0]
+		var aabb := mesh.get_aabb()
 		var tris := verts.size() / 3
-		_check(tris >= (12 if kind == "far" else 300) and tris <= MAX_TRIS, "%s : %d triangles (au plus %d)" % [kind, tris, MAX_TRIS])
-		var lo := Vector3(INF, INF, INF)
-		var hi := -lo
-		var regions := {}
-		var head_z := []
-		var tail_z := []
-		var wheel_lo := INF
-		var wheel_ok := true
+		report.append("%s %d" % [kind, tris])
+		tris_ok = tris_ok and tris <= MAX_TRIANGLES
+		if TrafficModel.KINDS.has(kind):
+			var k: Dictionary = TrafficModel.KINDS[kind]
+			sizes_ok = sizes_ok and absf(aabb.size.x * 0.5 - float(k["half_width"])) <= 0.05 \
+				and aabb.size.z <= float(k["length"]) + 0.05 and aabb.size.z >= float(k["length"]) - 0.25
+		ground_ok = ground_ok and absf(aabb.position.y) <= 0.01
+		var seen := {}
+		var head_z := 0.0
+		var head_n := 0
+		var tail_z := 0.0
+		var tail_n := 0
 		for i in range(verts.size()):
-			var p := verts[i]
-			lo = lo.min(p)
-			hi = hi.max(p)
-			var region := int(custom[i * 4] + 0.5)
-			regions[region] = true
+			var region := int(round(custom[i * 4]))
+			seen[region] = true
 			if region == VehicleMesh.VEH_HEAD:
-				head_z.append(p.z)
+				head_z += verts[i].z
+				head_n += 1
 			elif region == VehicleMesh.VEH_TAIL:
-				tail_z.append(p.z)
-			if custom[i * 4 + 1] > 0.5:
-				wheel_lo = minf(wheel_lo, p.y)
-				# Axe (y, z) dans UV2 : rayon de la roue = hauteur de l'axe (roue posée au sol)
-				var axle := uv2s[i]
-				wheel_ok = wheel_ok and Vector2(p.y, p.z).distance_to(axle) <= axle.x * 1.15 + 0.01
-		_check(regions.has(VehicleMesh.VEH_PAINT) and regions.has(VehicleMesh.VEH_HEAD) and regions.has(VehicleMesh.VEH_TAIL),
-			"%s : peinture, phares et feux arrière (zones %s)" % [kind, str(regions.keys())])
-		_check(head_z.max() < 0.0 and tail_z.min() > 0.0, "%s : phares vers l'avant (-z), feux vers l'arrière" % kind)
-		if kind == "far":
-			_check(absf(lo.y) < 0.01 and absf(hi.x - 0.5) < 0.02 and absf(hi.z - 0.51) < 0.02 and hi.y <= 1.01,
-				"far : boîte d'un mètre posée au sol (%s, %s)" % [str(lo), str(hi)])
-			continue
-		var k: Dictionary = VehicleMesh.KINDS[kind]
-		var length := hi.z - lo.z
-		_check(absf(lo.y) < 0.02, "%s : posé au sol (y min %.3f)" % [kind, lo.y])
-		_check(absf(length - float(k["length"])) <= 0.06 * float(k["length"]) + 0.12,
-			"%s : longueur %.2f m (KINDS %.2f)" % [kind, length, float(k["length"])])
-		_check(hi.x <= float(k["half_width"]) + 0.2 and -lo.x <= float(k["half_width"]) + 0.2 and hi.x >= float(k["half_width"]) * 0.8,
-			"%s : demi-largeur %.2f m (KINDS %.2f, rétroviseurs compris)" % [kind, hi.x, float(k["half_width"])])
-		_check(hi.y <= float(k["height"]) + 0.08 and hi.y >= float(k["height"]) - 0.15,
-			"%s : hauteur %.2f m (KINDS %.2f)" % [kind, hi.y, float(k["height"])])
-		_check(wheel_ok and absf(wheel_lo) < 0.02, "%s : roues posées au sol, autour de leur axe" % kind)
-		_check(regions.has(VehicleMesh.VEH_GLASS) and regions.has(VehicleMesh.VEH_TYRE), "%s : vitres et pneus" % kind)
-	var tractor := VehicleMesh.build("tractor").surface_get_arrays(0)
-	var beacon := false
-	for i in range(0, (tractor[Mesh.ARRAY_CUSTOM0] as PackedFloat32Array).size(), 4):
-		beacon = beacon or int(tractor[Mesh.ARRAY_CUSTOM0][i] + 0.5) == VehicleMesh.VEH_BEACON
-	_check(beacon, "tracteur : gyrophare")
-	var bus := VehicleMesh.build("bus").surface_get_arrays(0)
-	var accent := false
-	for i in range(0, (bus[Mesh.ARRAY_CUSTOM0] as PackedFloat32Array).size(), 4):
-		accent = accent or int(bus[Mesh.ARRAY_CUSTOM0][i] + 0.5) == VehicleMesh.VEH_ACCENT
-	_check(accent, "bus : carrosserie claire (teinte d'appoint), bande à la couleur d'instance")
-	var sh := load("res://shaders/vehicle.gdshader") as Shader
-	_check(sh != null and sh.get_code().contains("lights_on"), "shader des véhicules chargé, phares commandés par lights_on")
+				tail_z += verts[i].z
+				tail_n += 1
+		for r in [VehicleMesh.VEH_PAINT, VehicleMesh.VEH_GLASS, VehicleMesh.VEH_DARK, VehicleMesh.VEH_METAL,
+				VehicleMesh.VEH_HEAD, VehicleMesh.VEH_TAIL]:
+			regions_ok = regions_ok and seen.has(r)
+		front_ok = front_ok and head_n > 0 and tail_n > 0 and head_z / head_n < 0.0 and tail_z / tail_n > 0.0
+		# Même sens que Builder.box : (b - a) × (c - a) opposé à la normale du triangle
+		var bad := 0
+		for t in range(0, verts.size(), 3):
+			var fn := (verts[t + 1] - verts[t]).cross(verts[t + 2] - verts[t])
+			if fn.length() < 1e-7:
+				continue
+			var n := normals[t] + normals[t + 1] + normals[t + 2]
+			if fn.dot(n) > 0.0:
+				bad += 1
+		faces_ok = faces_ok and bad == 0
+		if bad > 0:
+			printerr("%s : %d triangles à l'envers" % [kind, bad])
+	var build_ms := (Time.get_ticks_usec() - t0) / 1000.0
+	_check(tris_ok, "au plus %d triangles par véhicule (%s)" % [MAX_TRIANGLES, ", ".join(report)])
+	_check(sizes_ok, "taille hors tout de traffic_model.gd KINDS (largeur à 5 cm, longueur à 25 cm)")
+	_check(ground_ok, "roues posées sur le sol (y = 0)")
+	_check(regions_ok, "peinture, vitres, noir, métal, phares et feux arrière sur chaque véhicule")
+	_check(front_ok, "phares devant (-z), feux derrière (+z)")
+	_check(faces_ok, "faces orientées comme leurs normales")
+	_check(build_ms < 400.0, "les %d maillages construits en %.0f ms" % [VehicleMesh.KINDS.size(), build_ms])
+
+	# Roues à part (véhicules proches) : nombre, centre sur l'axe, rayon
+	var wheels_ok := true
+	for kind in VehicleMesh.KINDS:
+		var list := VehicleMesh.wheel_list(kind)
+		wheels_ok = wheels_ok and list.size() == WHEELS[kind]
+		for i in range(list.size()):
+			var a := VehicleMesh.build_wheel(kind, i).get_aabb()
+			var r: float = list[i]["radius"]
+			var pos: Vector3 = list[i]["pos"]
+			wheels_ok = wheels_ok and a.get_center().length() < 0.03 and absf(a.size.y * 0.5 - r) < 0.03 \
+				and absf(pos.y - r) < 1e-4
+	_check(wheels_ok, "roues : nombre par sorte, centrées sur leur axe, rayon = hauteur de l'axe")
+	var body := VehicleMesh.build_body("car_a").surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
+	var full := VehicleMesh.build_full("car_a").surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
+	_check(full.size() > body.size(), "caisse sans roues pour les véhicules proches")
+	var again := VehicleMesh.build_full("truck").surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array
+	_check(again == (VehicleMesh.build_full("truck").surface_get_arrays(0)[Mesh.ARRAY_VERTEX] as PackedVector3Array),
+		"même maillage à chaque construction")
+	_check(VehicleMesh.paint("car_a", 0) == VehicleMesh.CAR_PAINT[0] and VehicleMesh.paint("car_a", 9) == VehicleMesh.CAR_PAINT[1]
+		and VehicleMesh.paint("tractor", 1) == VehicleMesh.TRACTOR_PAINT[1] and VehicleMesh.paint("bus", 2) == VehicleMesh.BUS_PAINT[2]
+		and VehicleMesh.paint("tractor_field", 0) == VehicleMesh.TRACTOR_PAINT[0],
+		"palettes : voitures, tracteurs, autocars ; indice repris modulo la palette")
 	print("test_vehicle_mesh : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(0 if _failures == 0 else 1)

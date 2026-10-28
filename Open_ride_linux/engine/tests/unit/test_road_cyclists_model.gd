@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Tests sans écran des cyclistes du décor `road_cyclists_model.gd` (Lot P25) : 20 km de plaine puis 10 km de
+## Tests sans écran des cyclistes du décor `road_cyclists_model.gd` (Lot P28) : 20 km de plaine puis 10 km de
 ## montée, nombre de groupes, écarts au cycliste et aux bots, groupes doublés et qui doublent, budget, pause,
 ## vitesse en pente, cadence ; affichage `road_cyclists_renderer.gd`.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_road_cyclists_model.gd

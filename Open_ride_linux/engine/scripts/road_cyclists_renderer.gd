@@ -1,6 +1,6 @@
 extends Node3D
 
-## Affichage des cyclistes du décor de road_cyclists_model.gd (Lot P25) : coureur casqué et vélo de
+## Affichage des cyclistes du décor de road_cyclists_model.gd (Lot P28) : coureur casqué et vélo de
 ## people_mesh.gd (`build_person(false, true)`, `build_bike`), shader de pédalage des bots (crowd.gdshader,
 ## animations 7 et 8), un MultiMeshInstance3D pour les coureurs et un pour les vélos, créés au démarrage.
 ## Pas de class_name : charger par preload("res://scripts/road_cyclists_renderer.gd").

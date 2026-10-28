@@ -17,7 +17,6 @@ const HudView := preload("res://scripts/hud_view.gd")
 const WindViewModel := preload("res://scripts/wind_view_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
-const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 
 const WORLD := "user://test_living_decor.world"
 const LENGTH_M := 5000.0
@@ -49,11 +48,11 @@ static func _write(path: String, doc: Dictionary) -> void:
 ## Parcours de 5 km vers l'est avec un col, village à 1 200 m, troupeau, forêt, éolienne, drapeau, lac.
 static func _make_world() -> Dictionary:
 	var dir := ProjectSettings.globalize_path(WORLD)
-	for l in ["buildings", "vegetation", "water", "poi"]:
+	for l in ["buildings", "vegetation", "water", "poi", "roads"]:
 		DirAccess.make_dir_recursive_absolute(dir.path_join(l))
-	_write(dir.path_join("manifest.json"), {"format": "openride-world", "format_version": "1.2", "layers": {"terrain": {"present": false},
+	_write(dir.path_join("manifest.json"), {"format": "openride-world", "format_version": "1.5", "layers": {"terrain": {"present": false},
 		"buildings": {"present": true}, "vegetation": {"present": true}, "water": {"present": true},
-		"poi": {"present": true}}})
+		"poi": {"present": true}, "roads": {"present": true}}})
 	var ds := 10.0
 	var n := int(LENGTH_M / ds) + 1
 	var d := {"version": "1.0", "ds_m": ds, "n": n, "length_m": LENGTH_M, "type": "open",
@@ -84,8 +83,20 @@ static func _make_world() -> Dictionary:
 			pois.append({"id": "village", "kind": "village", "x": 1200.0, "y": _alt(1200.0), "z": 40.0, "radius_m": 300.0, "name": "Village"})
 			pois.append({"id": "flag", "kind": "flag", "x": 1230.0, "y": _alt(1230.0), "z": 12.0, "radius_m": 5.0, "name": null})
 			pois.append({"id": "turbine", "kind": "wind_turbine", "x": 1500.0, "y": _alt(1500.0), "z": -250.0, "radius_m": 30.0, "name": null, "height_m": 90.0})
+		var roads := []
 		if k == 0:
 			pois.append({"id": "cows", "kind": "livestock", "x": 600.0, "y": 300.0, "z": 70.0, "radius_m": 40.0, "name": null})
+			# Lot P25 : champs cultivés (tracteurs) et route voisine qui croise le parcours
+			for f in range(4):
+				var z0 := -80.0 - 240.0 * f
+				woods.append({"id": "field_%d" % f, "kind": "farmland", "density": 0.0,
+					"outer": [[150.0, z0], [450.0, z0], [450.0, z0 - 200.0], [150.0, z0 - 200.0]], "holes": []})
+			for side in [-1.0, 1.0]:
+				var pts := []
+				for i in range(15):
+					var z: float = side * (30.0 + 25.0 * i)
+					pts.append([800.0, z, 300.0])
+				roads.append({"id": "road_%d" % int(side), "kind": "secondary", "lanes": 2, "oneway": false, "speed_kmh": 80, "points": pts})
 		if k == 2:
 			woods.append({"id": "wood", "kind": "wood", "density": 0.8, "outer": [[2100.0, -60.0], [2600.0, -60.0], [2600.0, -360.0], [2100.0, -360.0]], "holes": []})
 		if k == 3:
@@ -95,6 +106,7 @@ static func _make_world() -> Dictionary:
 		_write(dir.path_join("vegetation/chunk_%d.json" % k), {"version": "1.0", "areas": woods})
 		_write(dir.path_join("water/chunk_%d.json" % k), {"version": "1.0", "lines": lines, "areas": areas})
 		_write(dir.path_join("poi/chunk_%d.json" % k), {"version": "1.2", "points": pois})
+		_write(dir.path_join("roads/chunk_%d.json" % k), {"version": "1.5", "lines": roads})
 	return d
 
 
@@ -113,13 +125,6 @@ class FakeWorld extends Node3D:
 
 	func set_road_wetness(w: float) -> void:
 		wetness = w
-
-
-func _count_nodes(n: Node) -> int:
-	var c := 1
-	for ch in n.get_children():
-		c += _count_nodes(ch)
-	return c
 
 
 func _init() -> void:
@@ -173,6 +178,13 @@ func _run() -> void:
 	_check(dec.passersby.people.size() > 3, "passants : %d" % dec.passersby.people.size())
 	_check(osm.water_material() is ShaderMaterial, "eau qui scintille (matériau de P12)")
 	_check(osm.fauna_enabled, "animaux placés par les tâches de fond des tronçons")
+	var fields := 0
+	for k in dec.road_traffic.paths:
+		for path in dec.road_traffic.paths[k]:
+			if path["field"]:
+				fields += 1
+	_check(osm.traffic_enabled and dec.road_traffic.path_count() >= 3 and fields >= 1,
+		"circulation lointaine : %d chemins, dont %d champs avec leur tracteur" % [dec.road_traffic.path_count(), fields])
 
 	# 2. Roule dans le village puis jusqu'au sommet, sous la pluie
 	var base_end := env.fog_depth_end
@@ -184,9 +196,11 @@ func _run() -> void:
 	var spectators_on_road := 0
 	var rider_hits := 0
 	var cheer_max := 0.0
+	var distant_on_route := 0
+	var distant_seen := {}
+	var distant_max := 0
 	var state := {"power": 320.0, "bots": [{"id": "b1", "name": "Bot", "s": 3700.0, "v": 4.0, "kind": "constant"}]}
 	dec.ftp_w = 250.0
-	var nodes_before := _count_nodes(dec)
 	while s < 3995.0:
 		var pos: Vector3 = route.sample_point(s) + Vector3(0.0, 1.4, 0.0)
 		dec.step(now, 0.05, pos, s, 8.0, float(route.sample(s)["alt_m"]), false, wind, state)
@@ -195,6 +209,12 @@ func _run() -> void:
 			var tr: Transform3D = dec.traffic.world_transform(v)
 			if Vector2(tr.origin.x - pos.x, tr.origin.z - pos.z).length() < 1.0:
 				rider_hits += 1
+		for v in dec.road_traffic.vehicles:
+			var o: Vector3 = (v["xform"] as Transform3D).origin
+			if absf(o.z) < 15.0:
+				distant_on_route += 1
+			distant_seen[v["kind"]] = true
+		distant_max = maxi(distant_max, dec.road_traffic_view.visible_count())
 		cheer_max = maxf(cheer_max, dec.last_cheer)
 		s += 0.4
 		now += 0.05
@@ -209,31 +229,13 @@ func _run() -> void:
 	_check(ws.wetness > 0.5 and absf(lw.rain - 0.6) < 1e-6, "chaussée mouillée (%.2f), pluie dans l'ambiance sonore" % ws.wetness)
 	_check(dec.fog_updates >= 1 and dec.fog_updates < frames / 5, "brume recalculée %d fois en %d images" % [dec.fog_updates, frames])
 	_check(dec.traffic.spawned_total > 0 and rider_hits == 0, "véhicules croisés : %d, jamais sur le cycliste" % dec.traffic.spawned_total)
+	_check(distant_max >= 1 and distant_max <= 24 and distant_on_route == 0 and distant_seen.has("tractor_field"),
+		"routes voisines et champs : jusqu'à %d véhicules affichés (budget 24), jamais sur le parcours, sortes %s" % [distant_max, str(distant_seen.keys())])
+	_check(dec.headlights and dec.traffic_view.lights and dec.road_traffic_view.lights, "pluie : phares allumés")
 	_check(spectators_on_road == 0 and max_people_below < 1.0, "spectateurs hors de la chaussée, à %.2f m au plus de la route en altitude" % max_people_below)
 	_check(cheer_max > 0.2, "clameur au sommet : %.2f" % cheer_max)
-	_check(_count_nodes(dec) == nodes_before, "aucun nœud créé après configure (%d nœuds)" % nodes_before)
-	_check(dec.cyclists.spawned_total > 0 and dec.test_info(null).has("cyclists"), "cyclistes du décor croisés : %d (lot P25)" % dec.cyclists.spawned_total)
-	_check(dec.test_info(null).has("distant_vehicles"), "véhicules lointains branchés (lot P25)")
-	# Phares (lot P25) : pluie à 0,6 → allumés ; hystérésis entre LIGHTS_OFF et LIGHTS_ON ; nuit de P19
-	_check(dec.lights_on and VehicleMesh.lights_level == 1.0, "pluie : phares allumés")
-	dec.weather_eval = {"fog_boost": 0.25, "rain": 0.0}
-	dec._update_lights()
-	var held: bool = dec.lights_on
-	dec.weather_eval = {"fog_boost": 0.1, "rain": 0.0}
-	dec._update_lights()
-	var off_clear: bool = not dec.lights_on and VehicleMesh.lights_level == 0.0
-	dec.weather_eval = {"fog_boost": 0.25, "rain": 0.0}
-	dec._update_lights()
-	var still_off: bool = not dec.lights_on
-	dec.weather_eval = {"fog_boost": 0.4, "rain": 0.0}
-	dec._update_lights()
-	_check(held and off_clear and still_off and dec.lights_on, "phares : brume 0,4 allumés, 0,1 éteints, 0,25 garde l'état (hystérésis)")
-	dec.weather_eval = {}
-	dec._update_lights()
-	dec.set_lights(true)
-	var night_on := VehicleMesh.lights_level == 1.0
-	dec.set_lights(false)
-	_check(night_on and VehicleMesh.lights_level == 0.0, "phares : set_lights(true) pour la nuit de P19")
+	_check(dec.cyclists.spawned_total > 0 and dec.test_info(null).has("cyclists") and dec.cyclists.rider_count() <= 16,
+		"cyclistes du décor croisés : %d (lot P28)" % dec.cyclists.spawned_total)
 	_check(dec.passersby_view.visible_count() >= 0, "passants affichés")
 	print("Décor vivant (deuxième vague) : %.3f ms par image (high)" % per_frame_ms)
 	_check(PerfBudget.check("living_decor_frame", per_frame_ms), "coût du branchement en %.3f ms par image" % per_frame_ms)
@@ -275,6 +277,9 @@ func _run() -> void:
 	for v in dec.traffic.vehicles:
 		after.append(float(v["s"]))
 	_check(before == after, "pause : %d véhicules figés" % before.size())
+	var clock_before: float = dec.road_traffic.clock_s
+	dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
+	_check(dec.road_traffic.clock_s == clock_before, "pause : circulation lointaine figée")
 
 	# 5. Retrait d'un tronçon : panneaux et animaux retirés
 	var props_before: int = dec.props.prop_count()

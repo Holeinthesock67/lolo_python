@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Vitrine de rendu : route, herbe, personnages, animaux et véhicules vus de près, sans core ni parcours, pour comparer avant et
+## Vitrine de rendu : route, herbe, personnages et animaux vus de près, sans core ni parcours, pour comparer avant et
 ## après une retouche graphique (captures PNG et compte de triangles et d'appels de dessin par vue).
 ## Mêmes scripts que la scène principale (grass_tufts.gd, crowd_renderer.gd, terrain.gdshader), posés
 ## sur une route droite de démonstration ; les modèles de foule et de passants sont remplacés par des
@@ -24,8 +24,6 @@ const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const FaunaShader := preload("res://shaders/fauna.gdshader")
-const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
-const VehicleShader := preload("res://shaders/vehicle.gdshader")
 
 const SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
@@ -42,21 +40,7 @@ const VIEWS := {
 	"passants": [Vector3(0.5, 1.5, -24.0), Vector3(5.0, 0.9, -31.0), 60.0],
 	"animaux": [Vector3(-1.5, 1.6, -3.0), Vector3(-7.0, 0.8, -12.5), 55.0],
 	"animaux_pres": [Vector3(-4.0, 1.2, -9.6), Vector3(-7.5, 0.9, -13.0), 50.0],
-	"vehicules": [Vector3(1.2, 1.5, -135.0), Vector3(-1.6, 1.2, -165.0), 55.0],
-	"vehicules_pres": [Vector3(2.6, 1.5, -142.0), Vector3(-1.4, 0.9, -150.0), 45.0],
-	"vehicules_profil": [Vector3(9.0, 2.0, -184.0), Vector3(-1.6, 1.6, -186.0), 60.0],
-	"vehicules_phares": [Vector3(1.2, 1.5, -135.0), Vector3(-1.6, 1.2, -165.0), 55.0],
-	"tracteur_champ": [Vector3(-14.0, 2.4, -163.0), Vector3(-22.0, 1.0, -170.0), 50.0],
 }
-## Véhicules (vehicle_mesh.gd et vehicle.gdshader) loin des autres vues : modèle, position, cap (radians,
-## 0 = avant vers -z), couleur. Voie de gauche : en face de la caméra ; voie de droite : dans le même sens.
-const VEHICLES := [
-	["car_a", Vector3(-1.6, 0.0, -150.0), PI, Color(0.62, 0.08, 0.08)], ["moto", Vector3(1.4, 0.0, -156.0), 0.0, Color(0.1, 0.2, 0.5)],
-	["van", Vector3(-1.7, 0.0, -160.0), PI, Color(0.9, 0.9, 0.88)], ["car_b", Vector3(1.6, 0.0, -168.0), 0.0, Color(0.12, 0.2, 0.45)],
-	["truck", Vector3(-1.75, 0.0, -176.0), PI, Color(0.15, 0.3, 0.6)], ["bus", Vector3(-1.8, 0.0, -195.0), PI, Color(0.1, 0.45, 0.25)],
-	["tractor", Vector3(-1.6, 0.0, -214.0), PI, Color(0.2, 0.45, 0.15)],
-	["tractor_plough", Vector3(-22.0, 0.0, -170.0), 0.6, Color(0.7, 0.12, 0.1)],
-]
 ## Animaux (fauna_renderer.gd build_mesh et fauna.gdshader) : espèce, position, cap (radians), phase, tête levée.
 const ANIMALS := [
 	["cow", Vector3(-7.5, 0.0, -13.0), 1.75, 0.1, 1.0], ["cow", Vector3(-10.5, 0.0, -17.0), 2.6, 0.7, 0.0],
@@ -135,8 +119,6 @@ func _run() -> void:
 			var cam: Camera3D = vp.get_node("Camera")
 			cam.fov = v[2]
 			cam.look_at_from_position(v[0], v[1])
-			for mat in vp.get_meta("vehicle_materials", []):
-				(mat as ShaderMaterial).set_shader_parameter("lights_on", 1.0 if view.ends_with("_phares") else 0.0)
 			for f in range(SETTLE_FRAMES):
 				await process_frame
 			var img := vp.get_texture().get_image()
@@ -215,7 +197,6 @@ func _build_world(preset: String) -> SubViewport:
 	passersby.update_passersby(Vector3(0.5, 1.5, -24.0), 24.0, 0.0)
 	_add_cyclists(vp)
 	_add_animals(vp)
-	_add_vehicles(vp)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
 	cam.far = 2000.0
@@ -294,32 +275,3 @@ func _add_animals(vp: SubViewport) -> void:
 		mmi.multimesh = mm
 		mmi.material_override = mat
 		vp.add_child(mmi)
-
-
-## Véhicules posés à la main (VEHICLES), un MultiMesh par modèle comme traffic_renderer.gd ; roues tournées
-## d'un angle différent par véhicule. Matériaux gardés dans la méta `vehicle_materials` (phares par vue).
-func _add_vehicles(vp: SubViewport) -> void:
-	var mats := []
-	for kind in VehicleMesh.KINDS:
-		var mine := VEHICLES.filter(func(v): return v[0] == kind)
-		if mine.is_empty():
-			continue
-		var mat := ShaderMaterial.new()
-		mat.shader = VehicleShader
-		mat.set_shader_parameter("accent", VehicleMesh.ACCENT[kind])
-		mats.append(mat)
-		var mm := MultiMesh.new()
-		mm.transform_format = MultiMesh.TRANSFORM_3D
-		mm.use_custom_data = true
-		mm.mesh = VehicleMesh.build(kind)
-		mm.instance_count = mine.size()
-		for i in range(mine.size()):
-			var v: Array = mine[i]
-			var c: Color = v[3]
-			mm.set_instance_transform(i, Transform3D(Basis(Vector3.UP, v[2]), v[1]))
-			mm.set_instance_custom_data(i, Color(c.r, c.g, c.b, 0.4 + i))
-		var mmi := MultiMeshInstance3D.new()
-		mmi.multimesh = mm
-		mmi.material_override = mat
-		vp.add_child(mmi)
-	vp.set_meta("vehicle_materials", mats)

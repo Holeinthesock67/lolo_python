@@ -1,6 +1,6 @@
 extends RefCounted
 
-## Cyclistes du décor sur la route du parcours (Lot P25, demande du propriétaire du 28 octobre : « plutôt
+## Cyclistes du décor sur la route du parcours (Lot P28, demande du propriétaire du 28 octobre : « plutôt
 ## plus de vélos »), sans aucun nœud ni effet sur la physique : ce ne sont pas des bots (ni aspiration, ni
 ## écart au HUD, ni classement). Pas de class_name : charger par preload("res://scripts/road_cyclists_model.gd").
 ##

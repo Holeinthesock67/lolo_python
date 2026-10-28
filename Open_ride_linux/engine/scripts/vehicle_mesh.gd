@@ -1,117 +1,114 @@
 extends RefCounted
 
-## Maillages des véhicules du décor (lots P13 et P25), construits par code avec le Builder de people_mesh.gd
-## (Y14), sans texture : berline `car_a`, petite voiture haute `car_b`, camionnette `van`, camion porteur
-## `truck`, autobus `bus`, moto et son pilote `moto`, tracteur `tractor`, tracteur et charrue `tractor_plough`,
-## et `far`, boîte d'un mètre de côté pour les véhicules lointains (mise à l'échelle par KINDS).
+## Maillages des véhicules du décor (Lot P25), construits par code avec le Builder de people_mesh.gd (Y14),
+## sans texture : berline `car_a`, citadine haute `car_b`, utilitaire `van`, camion porteur `truck`, autocar
+## `bus`, moto et son pilote `moto`, tracteur `tractor` et tracteur qui herse un champ `tractor_field`.
 ## Pas de class_name : charger par preload("res://scripts/vehicle_mesh.gd").
 ##
-## Avant vers -z (convention de traffic_model.world_transform), roues au sol à y = 0, centre en x = 0 et
-## au milieu de la longueur (tracteur et charrue : origine au milieu du tracteur, charrue derrière). Données par sommet lues par shaders/vehicle.gdshader :
-## - CUSTOM0.x : zone (VEH_*), qui choisit la couleur : peinture (couleur d'instance), vitres, pneus,
-##   plastique noir, métal, phares, feux arrière, teinte d'appoint du modèle (caisse du camion, carrosserie
-##   du bus, jantes du tracteur), blanc (plaques, girouette), gyrophare ;
-## - CUSTOM0.y : 1 sur une roue, qui tourne autour de son axe ; UV2 = (y, z) de cet axe.
-## KINDS : demi-largeur, longueur, hauteur et rayon des roues (arrière du tracteur) de chaque modèle (une seule source pour traffic_model.gd,
-## les véhicules lointains et les tests).
-## Matériaux partagés : `material(kind)` donne le même ShaderMaterial à la route du parcours et aux véhicules
-## lointains ; `set_lights(level)` allume ou éteint les phares de tous les véhicules par un seul paramètre
-## (`lights_on`), sans nœud de lumière ni matériau par véhicule (lot P25).
+## Repère : sol à y = 0, avant vers -z (traffic_model.gd `world_transform`), axe au milieu en x. Les caisses
+## sont un profil de côté (z, y) extrudé en largeur, rétréci au-dessus de la ligne de caisse, avec les passages
+## de roue découpés dans le bas ; vitres, phares, feux, calandre, pare-chocs, rétroviseurs et plaques en pièces
+## posées dessus.
+## CUSTOM0.x : zone lue par shaders/vehicle.gdshader (VEH_*) : peinture (couleur du véhicule), vitre, noir
+## (pneus, calandre, pare-chocs, passages de roue), métal (jantes, échappement), phare (allumé par les feux),
+## feu arrière, clair (plaques, climatisation), seconde couleur (caisse du camion, bande de l'autocar, blouson du
+## motard, jantes du tracteur).
+## - `build_body(kind)` : caisse sans les roues (véhicules proches de traffic_renderer.gd, roues à part qui
+##   tournent) ; `build_wheel(kind, i)` : une roue, centrée sur son axe (x) ; `wheel_list(kind)` : leurs places.
+## - `build_full(kind)` : caisse et roues fixes en un seul maillage (circulation lointaine en MultiMesh).
+## - `paint(kind, index)` et `second(kind)` : couleurs.
 
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
-const VehicleShader := preload("res://shaders/vehicle.gdshader")
 
 const VEH_PAINT := 0
 const VEH_GLASS := 1
-const VEH_TYRE := 2
-const VEH_TRIM := 3
-const VEH_CHROME := 4
-const VEH_HEAD := 5
-const VEH_TAIL := 6
-const VEH_ACCENT := 7
-const VEH_LIGHT := 8
-const VEH_BEACON := 9
+const VEH_DARK := 2
+const VEH_METAL := 3
+const VEH_HEAD := 4
+const VEH_TAIL := 5
+const VEH_LIGHT := 6
+const VEH_SECOND := 7
+const WHEEL_SIDES := 12
+const ARCH_STEPS := 7
+const GLASS_OUT_M := 0.008        # vitres de côté posées juste devant la tôle
 
-const KINDS := {
-	"car_a": {"half_width": 0.9, "length": 4.3, "height": 1.49, "wheel_r": 0.32},
-	"car_b": {"half_width": 0.9, "length": 3.9, "height": 1.6, "wheel_r": 0.3},
-	"van": {"half_width": 1.0, "length": 5.0, "height": 2.3, "wheel_r": 0.36},
-	"truck": {"half_width": 1.25, "length": 9.5, "height": 3.4, "wheel_r": 0.5},
-	"bus": {"half_width": 1.25, "length": 12.0, "height": 3.3, "wheel_r": 0.5},
-	"moto": {"half_width": 0.4, "length": 2.1, "height": 1.7, "wheel_r": 0.31},
-	"tractor": {"half_width": 1.1, "length": 3.6, "height": 2.85, "wheel_r": 0.8},
-	"tractor_plough": {"half_width": 1.1, "length": 7.7, "height": 2.85, "wheel_r": 0.8},
+const KINDS := ["car_a", "car_b", "van", "truck", "bus", "moto", "tractor", "tractor_field"]
+
+## Roues : [x, y, z, rayon, largeur] ; x > 0 : une roue de chaque côté, x = 0 : une roue au milieu (moto).
+const WHEELS := {
+	"car_a": [[0.78, 0.32, -1.35, 0.32, 0.21], [0.78, 0.32, 1.35, 0.32, 0.21]],
+	"car_b": [[0.76, 0.3, -1.25, 0.3, 0.2], [0.76, 0.3, 1.2, 0.3, 0.2]],
+	"van": [[0.86, 0.35, -1.75, 0.35, 0.23], [0.86, 0.35, 1.6, 0.35, 0.23]],
+	"truck": [[1.0, 0.5, -3.3, 0.5, 0.32], [0.99, 0.5, 2.0, 0.5, 0.5], [0.99, 0.5, 3.3, 0.5, 0.5]],
+	"bus": [[1.02, 0.5, -3.4, 0.5, 0.3], [0.995, 0.5, 2.9, 0.5, 0.48]],
+	"moto": [[0.0, 0.31, -0.72, 0.31, 0.13], [0.0, 0.31, 0.68, 0.31, 0.15]],
+	"tractor": [[0.72, 0.45, -1.35, 0.45, 0.28], [0.82, 0.8, 0.75, 0.8, 0.45]],
+	"tractor_field": [[0.72, 0.45, -1.35, 0.45, 0.28], [0.82, 0.8, 0.75, 0.8, 0.45]],
 }
-## Teinte d'appoint (VEH_ACCENT) de chaque modèle.
-const ACCENT := {
-	"car_a": Color(0.1, 0.1, 0.11), "car_b": Color(0.1, 0.1, 0.11), "van": Color(0.1, 0.1, 0.11),
-	"truck": Color(0.9, 0.9, 0.88), "bus": Color(0.9, 0.88, 0.8), "moto": Color(0.1, 0.1, 0.11),
-	"tractor": Color(0.86, 0.68, 0.12), "tractor_plough": Color(0.86, 0.68, 0.12), "far": Color(0.1, 0.1, 0.11),
+## Roue à crampons (pneus arrière du tracteur), à partir de ce rayon
+const LUG_RADIUS_M := 0.6
+
+const CAR_PAINT := [Color(0.62, 0.08, 0.08), Color(0.12, 0.2, 0.45), Color(0.86, 0.86, 0.83), Color(0.08, 0.08, 0.09),
+	Color(0.55, 0.57, 0.6), Color(0.32, 0.33, 0.35), Color(0.12, 0.28, 0.18), Color(0.35, 0.5, 0.7)]
+const TRACTOR_PAINT := [Color(0.2, 0.45, 0.15), Color(0.7, 0.1, 0.07), Color(0.12, 0.25, 0.6), Color(0.85, 0.42, 0.08)]
+const BUS_PAINT := [Color(0.9, 0.9, 0.88), Color(0.9, 0.84, 0.6), Color(0.15, 0.3, 0.65), Color(0.2, 0.5, 0.3)]
+const SECOND := {
+	"car_a": Color(0.5, 0.5, 0.5), "car_b": Color(0.5, 0.5, 0.5), "van": Color(0.5, 0.5, 0.5),
+	"truck": Color(0.86, 0.86, 0.84), "bus": Color(0.12, 0.2, 0.45), "moto": Color(0.1, 0.1, 0.11),
+	"tractor": Color(0.85, 0.7, 0.12), "tractor_field": Color(0.85, 0.7, 0.12),
 }
-const SIDES := 12
-## Peintures : palette de P13 et deux teintes de plus pour les voitures, camionnettes et motos ; blanc ou
-## gris clair pour les camions et les bus ; vert, rouge ou bleu pour les tracteurs.
-const PALETTE := [Color(0.62, 0.08, 0.08), Color(0.12, 0.2, 0.45), Color(0.85, 0.85, 0.82), Color(0.18, 0.18, 0.2),
-	Color(0.55, 0.57, 0.6), Color(0.86, 0.6, 0.12)]
-const HEAVY_PAINT := [Color(0.92, 0.92, 0.9), Color(0.76, 0.77, 0.79)]
-const TRACTOR_PAINT := [Color(0.2, 0.45, 0.15), Color(0.7, 0.12, 0.1), Color(0.15, 0.3, 0.6)]
-
-static var lights_level := 0.0
-static var _materials := {}
 
 
-## Matériau partagé d'un modèle (KINDS ou `far`) : shaders/vehicle.gdshader, teinte d'appoint du modèle.
-static func material(kind: String) -> ShaderMaterial:
-	if not _materials.has(kind):
-		var mat := ShaderMaterial.new()
-		mat.shader = VehicleShader
-		mat.set_shader_parameter("accent", ACCENT.get(kind, ACCENT["far"]))
-		mat.set_shader_parameter("lights_on", lights_level)
-		_materials[kind] = mat
-	return _materials[kind]
-
-
-## Peinture d'un véhicule de sorte `kind` et d'indice de couleur `index` (tirage du modèle).
 static func paint(kind: String, index: int) -> Color:
-	match kind:
-		"truck", "bus":
-			return HEAVY_PAINT[posmod(index, HEAVY_PAINT.size())]
-		"tractor", "tractor_plough":
-			return TRACTOR_PAINT[posmod(index, TRACTOR_PAINT.size())]
-	return PALETTE[posmod(index, PALETTE.size())]
+	var pal: Array = CAR_PAINT
+	if kind == "tractor" or kind == "tractor_field":
+		pal = TRACTOR_PAINT
+	elif kind == "bus":
+		pal = BUS_PAINT
+	return pal[posmod(index, pal.size())]
 
 
-## MultiMeshInstance3D de `capacity` véhicules d'un modèle (KINDS ou `far`), au matériau partagé ; aucun
-## affiché (`visible_instance_count` = 0). INSTANCE_CUSTOM = (peinture, angle des roues) : `custom`.
-static func make_instance(kind: String, capacity: int) -> MultiMeshInstance3D:
-	var mm := MultiMesh.new()
-	mm.transform_format = MultiMesh.TRANSFORM_3D
-	mm.use_custom_data = true
-	mm.mesh = build(kind)
-	mm.instance_count = capacity
-	mm.visible_instance_count = 0
-	var mmi := MultiMeshInstance3D.new()
-	mmi.name = "Vehicles_" + kind
-	mmi.multimesh = mm
-	mmi.material_override = material(kind)
-	return mmi
+static func second(kind: String) -> Color:
+	return SECOND.get(kind, SECOND["car_a"])
 
 
-## INSTANCE_CUSTOM d'un véhicule : peinture et angle des roues (radians).
-static func custom(paint_color: Color, wheel_angle: float) -> Color:
-	return Color(paint_color.r, paint_color.g, paint_color.b, fposmod(wheel_angle, TAU))
+## Places des roues : [{pos: Vector3, radius, width}], dans l'ordre de `build_wheel`.
+static func wheel_list(kind: String) -> Array:
+	var out := []
+	for w in WHEELS.get(kind, []):
+		var xs := [0.0] if float(w[0]) == 0.0 else [-float(w[0]), float(w[0])]
+		for x in xs:
+			out.append({"pos": Vector3(x, float(w[1]), float(w[2])), "radius": float(w[3]), "width": float(w[4])})
+	return out
 
 
-## Phares et feux de tous les véhicules : 0 éteints, 1 allumés.
-static func set_lights(level: float) -> void:
-	lights_level = clampf(level, 0.0, 1.0)
-	for mat in _materials.values():
-		(mat as ShaderMaterial).set_shader_parameter("lights_on", lights_level)
-
-
-## Maillage d'un modèle de KINDS ou `far`.
-static func build(kind: String) -> ArrayMesh:
+static func build_body(kind: String) -> ArrayMesh:
 	var m := PeopleMesh.Builder.new()
+	_body(m, kind)
+	return m.commit()
+
+
+static func build_full(kind: String) -> ArrayMesh:
+	var m := PeopleMesh.Builder.new()
+	_body(m, kind)
+	for w in wheel_list(kind):
+		_wheel(m, w["pos"], w["radius"], w["width"], _rim_region(kind))
+	return m.commit()
+
+
+## Roue `i` de `wheel_list(kind)`, centrée sur l'origine, axe selon x.
+static func build_wheel(kind: String, i: int) -> ArrayMesh:
+	var w: Dictionary = wheel_list(kind)[i]
+	var m := PeopleMesh.Builder.new()
+	_wheel(m, Vector3.ZERO, w["radius"], w["width"], _rim_region(kind))
+	return m.commit()
+
+
+static func _rim_region(kind: String) -> int:
+	return VEH_SECOND if kind == "tractor" or kind == "tractor_field" else VEH_METAL
+
+
+static func _body(m, kind: String) -> void:
 	match kind:
 		"car_a":
 			_car_a(m)
@@ -126,354 +123,370 @@ static func build(kind: String) -> ArrayMesh:
 		"moto":
 			_moto(m)
 		"tractor":
-			_tractor(m, false)
-		"tractor_plough":
-			_tractor(m, true)
-		_:
-			_far(m)
-	return m.commit()
+			_tractor(m)
+		"tractor_field":
+			_tractor(m)
+			_harrow(m)
 
 
-# ---------------------------------------------------------------------------------------------------
-# Pièces
+# --- Pièces ---------------------------------------------------------------------------------------------
 
-## Quadrilatère plat p0-p1-p2-p3, normale tournée à l'opposé de `inside`.
-static func _quad(m, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, inside: Vector3) -> void:
-	var n := (p1 - p0).cross(p2 - p0)
-	if n.length_squared() < 1e-10:
-		n = (p2 - p0).cross(p3 - p0)
-	n = n.normalized()
-	if n.dot((p0 + p1 + p2 + p3) * 0.25 - inside) < 0.0:
-		n = -n
-	for p in [p0, p1, p2, p0, p2, p3]:
-		m.vertex(p, n)
+## Triangle dont l'ordre des sommets suit la normale `n` (même sens que les faces de Builder.box).
+static func _tri(m, a: Vector3, b: Vector3, c: Vector3, n: Vector3) -> void:
+	if (b - a).cross(c - a).dot(n) > 0.0:
+		var t := b
+		b = c
+		c = t
+	m.vertex(a, n)
+	m.vertex(b, n)
+	m.vertex(c, n)
 
 
-## Coque de sections trapézoïdales le long de z : `sections` = [[z, y_bas, y_haut, demi-largeur en bas,
-## demi-largeur en haut], …] dans l'ordre de z ; flancs, dessus et dessous plats, bouts fermés.
-static func _hull(m, sections: Array) -> void:
-	var c := Vector3.ZERO
-	for s in sections:
-		c += Vector3(0.0, (float(s[1]) + float(s[2])) * 0.5, float(s[0]))
-	c /= sections.size()
-	var corners := func(s: Array) -> Array:
-		var z := float(s[0])
-		return [Vector3(-float(s[3]), float(s[1]), z), Vector3(float(s[3]), float(s[1]), z),
-			Vector3(float(s[4]), float(s[2]), z), Vector3(-float(s[4]), float(s[2]), z)]
-	for i in range(sections.size() - 1):
-		var a: Array = corners.call(sections[i])
-		var b: Array = corners.call(sections[i + 1])
-		var mid := Vector3(0.0, c.y, (float(sections[i][0]) + float(sections[i + 1][0])) * 0.5)
-		for k in range(4):
-			var k2 := (k + 1) % 4
-			_quad(m, a[k], a[k2], b[k2], b[k], mid)
-	var first: Array = corners.call(sections[0])
-	var last: Array = corners.call(sections[sections.size() - 1])
-	_quad(m, first[0], first[1], first[2], first[3], c)
-	_quad(m, last[0], last[1], last[2], last[3], c)
+## Cylindre effilé de `a` à `b`, section elliptique (`ra` au bout `a`, `rb` au bout `b`), bouts fermés,
+## pourtour à normales lissées ; même repère de section que Builder.prism, faces dans le sens de leurs normales.
+static func _cyl(m, a: Vector3, b: Vector3, ra: Vector2, rb: Vector2, sides: int) -> void:
+	var axis := (b - a).normalized()
+	var ref := Vector3.FORWARD if absf(axis.dot(Vector3.FORWARD)) < 0.9 else Vector3.RIGHT
+	var u := axis.cross(ref).normalized()
+	var w := axis.cross(u).normalized()
+	if absf(axis.y) > 0.7:
+		u = Vector3.RIGHT
+		w = axis.cross(u).normalized()
+		u = w.cross(axis).normalized()
+	var ring := func(c: Vector3, r: Vector2, i: int) -> Array:
+		var t := TAU * float(i) / sides
+		var d := u * cos(t) * r.x + w * sin(t) * r.y
+		var n := (u * cos(t) / maxf(r.x, 1e-4) + w * sin(t) / maxf(r.y, 1e-4)).normalized()
+		return [c + d, n]
+	for i in range(sides):
+		var a0: Array = ring.call(a, ra, i)
+		var a1: Array = ring.call(a, ra, i + 1)
+		var b0: Array = ring.call(b, rb, i)
+		var b1: Array = ring.call(b, rb, i + 1)
+		var fn: Vector3 = a0[1] + a1[1]
+		for tri in [[a0, b1, b0], [a0, a1, b1]]:
+			var p0: Vector3 = tri[0][0]
+			var p1: Vector3 = tri[1][0]
+			var p2: Vector3 = tri[2][0]
+			if (p1 - p0).cross(p2 - p0).dot(fn) > 0.0:
+				tri = [tri[0], tri[2], tri[1]]
+			for v in tri:
+				m.vertex(v[0], v[1])
+		_tri(m, a, a0[0], a1[0], -axis)
+		_tri(m, b, b0[0], b1[0], axis)
 
 
-## Panneau mince (vitre, plaque, bande) : quadrilatère de `zone`, décalé de 1 cm vers l'extérieur.
-static func _panel(m, region: int, p0: Vector3, p1: Vector3, p2: Vector3, p3: Vector3, inside: Vector3) -> void:
-	var n := (p1 - p0).cross(p2 - p0).normalized()
-	if n.dot((p0 + p1 + p2 + p3) * 0.25 - inside) < 0.0:
-		n = -n
-	var off := n * 0.012
-	var keep: int = m.region
+static func _box(m, region: int, c: Vector3, size: Vector3) -> void:
 	m.region = region
-	_quad(m, p0 + off, p1 + off, p2 + off, p3 + off, inside)
-	m.region = keep
+	m.box(c, size)
 
 
-## Paire de roues de rayon `r` et de largeur `w`, axe en (y = r, z), centres à ± x : pneu, jante et deux
-## rayons croisés qui montrent la rotation.
-static func _axle(m, x: float, z: float, r: float, w: float, rim_region: int = VEH_CHROME) -> void:
-	m.shin = 1.0
-	m.uv2 = Vector2(r, z)
-	for sx: float in ([0.0] if x == 0.0 else [-1.0, 1.0]):
-		var cx := sx * x
-		m.region = VEH_TYRE
-		m.prism(Vector3(cx - w * 0.5, r, z), Vector3(cx + w * 0.5, r, z), Vector2(r, r), Vector2(r, r), SIDES)
-		m.region = rim_region
-		var face := cx + (w * 0.5 + 0.005) * (1.0 if sx >= 0.0 else -1.0)
-		var inner := cx + (w * 0.5 - 0.03) * (1.0 if sx >= 0.0 else -1.0)
-		m.prism(Vector3(inner, r, z), Vector3(face, r, z), Vector2(r * 0.6, r * 0.6), Vector2(r * 0.6, r * 0.6), 8)
-		for a in [0.0, PI * 0.5]:
-			m.xform = Transform3D.IDENTITY.translated(Vector3(0.0, r, z)) * Transform3D(Basis(Vector3.RIGHT, a), Vector3.ZERO) \
-				* Transform3D.IDENTITY.translated(Vector3(0.0, -r, -z))
-			m.region = VEH_TRIM
-			m.box(Vector3(face + 0.005 * signf(face - cx), r, z), Vector3(0.012, r * 1.15, r * 0.09))
-		m.xform = Transform3D.IDENTITY
-	m.shin = 0.0
-	m.uv2 = Vector2.ZERO
+static func _rod(m, region: int, a: Vector3, b: Vector3, r: float, sides: int = 6) -> void:
+	m.region = region
+	_cyl(m, a, b, Vector2(r, r), Vector2(r, r), sides)
 
 
-## Phares avant (à z = `zf`) et feux arrière (à z = `zr`), à ± x, hauteurs `yf` et `yr`.
-static func _lights(m, x: float, zf: float, yf: float, zr: float, yr: float, size := Vector2(0.34, 0.14)) -> void:
-	for sx: float in [-1.0, 1.0]:
-		m.region = VEH_HEAD
-		m.box(Vector3(sx * x, yf, zf), Vector3(size.x, size.y, 0.05))
-		m.region = VEH_TAIL
-		m.box(Vector3(sx * x, yr, zr), Vector3(size.x * 0.8, size.y, 0.05))
+## Demi-largeur de la caisse à la hauteur `y` : `hw` jusqu'à la ligne de caisse, puis rétrécie jusqu'au toit.
+static func _half_width(s: Dictionary, y: float) -> float:
+	var belt: float = s["belt"]
+	if y <= belt:
+		return s["hw"]
+	return lerpf(s["hw"], s["hw"] * float(s["roof_k"]), clampf((y - belt) / maxf(float(s["top_y"]) - belt, 0.01), 0.0, 1.0))
 
 
-## Pare-chocs avant et arrière, plaques blanches.
-static func _bumpers(m, half_w: float, zf: float, zr: float, y: float) -> void:
-	m.region = VEH_TRIM
-	m.box(Vector3(0.0, y, zf - 0.04), Vector3(half_w * 2.0 - 0.1, 0.17, 0.12))
-	m.box(Vector3(0.0, y, zr + 0.04), Vector3(half_w * 2.0 - 0.1, 0.17, 0.12))
-	m.region = VEH_LIGHT
-	m.box(Vector3(0.0, y + 0.02, zf - 0.105), Vector3(0.5, 0.11, 0.01))
-	m.box(Vector3(0.0, y + 0.02, zr + 0.105), Vector3(0.5, 0.11, 0.01))
+## Caisse extrudée (voir l'en-tête). `s` : `top` [[z, y, zone de l'arête suivante], …] de l'avant bas à
+## l'arrière bas ; `floor` hauteur du bas de caisse ; `arches` [[z, rayon, y de l'axe], …] ; `hw`, `belt`,
+## `roof_k` ; `glass` contours [[z, y], …] des vitres de côté ; `panels` [[zone, contour], …] autres
+## pièces plates de côté (bande de l'autocar).
+static func _hull(m, s: Dictionary) -> void:
+	var pts := PackedVector2Array()   # (z, y)
+	var regions: Array[int] = []
+	var top_y := -INF
+	for p in s["top"]:
+		pts.append(Vector2(float(p[0]), float(p[1])))
+		regions.append(int(p[2]) if p.size() > 2 else VEH_DARK)
+		top_y = maxf(top_y, float(p[1]))
+	s["top_y"] = top_y
+	var floor_y: float = s["floor"]
+	var arches: Array = s.get("arches", []).duplicate()
+	arches.sort_custom(func(a, b): return float(a[0]) > float(b[0]))   # de l'arrière vers l'avant
+	regions[regions.size() - 1] = VEH_DARK
+	for a in arches:
+		var zc := float(a[0])
+		var r := float(a[1])
+		var wy := float(a[2])
+		pts.append(Vector2(zc + r, floor_y))
+		regions.append(VEH_DARK)
+		for i in range(ARCH_STEPS + 1):
+			var t := PI * float(i) / ARCH_STEPS
+			pts.append(Vector2(zc + r * cos(t), maxf(wy + r * sin(t), floor_y)))
+			regions.append(VEH_DARK)
+		pts.append(Vector2(zc - r, floor_y))
+		regions.append(VEH_DARK)
+	# Points confondus retirés (bas de caisse à la hauteur de l'axe d'une roue)
+	var clean := PackedVector2Array()
+	var clean_regions: Array[int] = []
+	for i in range(pts.size()):
+		if clean.is_empty() or clean[clean.size() - 1].distance_to(pts[i]) > 1e-4:
+			clean.append(pts[i])
+			clean_regions.append(regions[i])
+		else:
+			clean_regions[clean_regions.size() - 1] = regions[i]
+	pts = clean
+	regions = clean_regions
+	var area := 0.0
+	for i in range(pts.size()):
+		var a2 := pts[i]
+		var b2 := pts[(i + 1) % pts.size()]
+		area += a2.x * b2.y - b2.x * a2.y
+	var orient := 1.0 if area > 0.0 else -1.0
+	# Côtés
+	m.region = VEH_PAINT
+	var idx := Geometry2D.triangulate_polygon(pts)
+	for side in [-1.0, 1.0]:
+		var n := Vector3(side, 0.0, 0.0)
+		for t in range(0, idx.size(), 3):
+			var q := []
+			for j in range(3):
+				var p := pts[idx[t + j]]
+				q.append(Vector3(side * _half_width(s, p.y), p.y, p.x))
+			_tri(m, q[0], q[1], q[2], n)
+	# Pourtour : une bande par arête, de la zone de l'arête
+	for i in range(pts.size()):
+		var a3 := pts[i]
+		var b3 := pts[(i + 1) % pts.size()]
+		var e := b3 - a3
+		if e.length() < 1e-5:
+			continue
+		var n2 := Vector2(e.y, -e.x).normalized() * orient
+		var n := Vector3(0.0, n2.y, n2.x)
+		m.region = regions[i]
+		var la := Vector3(-_half_width(s, a3.y), a3.y, a3.x)
+		var ra := Vector3(_half_width(s, a3.y), a3.y, a3.x)
+		var lb := Vector3(-_half_width(s, b3.y), b3.y, b3.x)
+		var rb := Vector3(_half_width(s, b3.y), b3.y, b3.x)
+		_tri(m, la, lb, rb, n)
+		_tri(m, la, rb, ra, n)
+	for g in s.get("glass", []):
+		_side_panel(m, s, VEH_GLASS, g, GLASS_OUT_M)
+	for p in s.get("panels", []):
+		_side_panel(m, s, int(p[0]), p[1], GLASS_OUT_M * 0.5)
 
 
-## Rétroviseurs à ± x, devant le pare-brise.
-static func _mirrors(m, x: float, y: float, z: float) -> void:
-	m.region = VEH_TRIM
-	for sx: float in [-1.0, 1.0]:
-		m.box(Vector3(sx * x, y, z), Vector3(0.1, 0.12, 0.2))
+static func _side_panel(m, s: Dictionary, region: int, poly: Array, out_m: float) -> void:
+	var pts := PackedVector2Array()
+	for p in poly:
+		pts.append(Vector2(float(p[0]), float(p[1])))
+	var idx := Geometry2D.triangulate_polygon(pts)
+	m.region = region
+	for side in [-1.0, 1.0]:
+		var n := Vector3(side, 0.0, 0.0)
+		for t in range(0, idx.size(), 3):
+			var q := []
+			for j in range(3):
+				var p := pts[idx[t + j]]
+				q.append(Vector3(side * (_half_width(s, p.y) + out_m), p.y, p.x))
+			_tri(m, q[0], q[1], q[2], n)
 
 
-## Vitres d'une cabine : pare-brise, lunette et vitres latérales posées sur les faces d'une coque
-## `[z, y_bas, y_haut, demi-largeur bas, demi-largeur haut]`, de `inset` vers l'intérieur de chaque face.
-static func _cabin_glass(m, front: Array, roof_f: Array, roof_r: Array, rear: Array, inset := 0.06) -> void:
-	var c := Vector3(0.0, (float(front[1]) + float(roof_f[2])) * 0.5, (float(front[0]) + float(rear[0])) * 0.5)
-	var top := func(s: Array, sx: float) -> Vector3:
-		return Vector3(sx * (float(s[4]) - inset), float(s[2]) - inset, float(s[0]))
-	var bot := func(s: Array, sx: float) -> Vector3:
-		return Vector3(sx * (float(s[3]) - inset), float(s[1]) + inset, float(s[0]))
-	# Pare-brise et lunette (faces inclinées entre la ceinture et le toit)
-	_panel(m, VEH_GLASS, top.call(front, -1.0) + Vector3(0.0, 0.0, 0.03), top.call(front, 1.0) + Vector3(0.0, 0.0, 0.03),
-		top.call(roof_f, 1.0) + Vector3(0.0, 0.0, 0.05), top.call(roof_f, -1.0) + Vector3(0.0, 0.0, 0.05), c)
-	_panel(m, VEH_GLASS, top.call(rear, -1.0) - Vector3(0.0, 0.0, 0.03), top.call(rear, 1.0) - Vector3(0.0, 0.0, 0.03),
-		top.call(roof_r, 1.0) - Vector3(0.0, 0.0, 0.05), top.call(roof_r, -1.0) - Vector3(0.0, 0.0, 0.05), c)
-	# Vitres latérales : de la ceinture au toit, entre les montants
-	for sx: float in [-1.0, 1.0]:
-		var zf := float(roof_f[0]) - 0.05
-		var zr := float(roof_r[0]) + 0.05
-		var yb := float(front[2]) + 0.05
-		var yt := float(roof_f[2]) - 0.07
-		var xb := sx * float(roof_f[3])
-		var xt := sx * float(roof_f[4])
-		_panel(m, VEH_GLASS, Vector3(xb, yb, zf), Vector3(xb, yb, zr), Vector3(xt, yt, zr), Vector3(xt, yt, zf), c)
+## Roue d'axe x centrée sur `c` : pneu, flanc, jante et moyeu ; crampons au-delà de LUG_RADIUS_M.
+static func _wheel(m, c: Vector3, r: float, w: float, rim_region: int) -> void:
+	var hx := Vector3(w * 0.5, 0.0, 0.0)
+	m.region = VEH_DARK
+	_cyl(m, c - hx, c + hx, Vector2(r, r), Vector2(r, r), WHEEL_SIDES)
+	m.region = rim_region
+	var rx := Vector3(w * 0.5 + 0.006, 0.0, 0.0)
+	_cyl(m, c - rx, c + rx, Vector2(r * 0.6, r * 0.6), Vector2(r * 0.6, r * 0.6), WHEEL_SIDES)
+	m.region = VEH_METAL
+	var hub := Vector3(w * 0.5 + 0.02, 0.0, 0.0)
+	_cyl(m, c - hub, c + hub, Vector2(r * 0.16, r * 0.16), Vector2(r * 0.16, r * 0.16), 6)
+	if r >= LUG_RADIUS_M:
+		m.region = VEH_DARK
+		var lugs := 16
+		for i in range(lugs):
+			var a := TAU * float(i) / lugs
+			var saved: Transform3D = m.xform
+			m.xform = saved * Transform3D(Basis(Vector3.RIGHT, a), c)
+			m.box(Vector3(0.0, r - 0.02, 0.0), Vector3(w * 0.9, 0.05, 0.09))
+			m.xform = saved
 
 
-# ---------------------------------------------------------------------------------------------------
-# Modèles
+## Deux pièces symétriques en x.
+static func _pair(m, region: int, c: Vector3, size: Vector3) -> void:
+	for sx in [-1.0, 1.0]:
+		_box(m, region, Vector3(sx * c.x, c.y, c.z), size)
 
-## Berline : capot long, coffre, habitacle à pare-brise incliné.
+
+# --- Véhicules ------------------------------------------------------------------------------------------
+
 static func _car_a(m) -> void:
-	m.region = VEH_PAINT
-	_hull(m, [[-2.15, 0.32, 0.64, 0.82, 0.78], [-1.98, 0.25, 0.8, 0.88, 0.85], [-1.0, 0.24, 0.87, 0.9, 0.87],
-		[1.25, 0.24, 0.9, 0.9, 0.87], [2.02, 0.27, 0.93, 0.88, 0.84], [2.15, 0.36, 0.86, 0.83, 0.79]])
-	var front := [-0.95, 0.85, 0.88, 0.86, 0.84]
-	var roof_f := [-0.18, 0.86, 1.44, 0.84, 0.7]
-	var roof_r := [0.92, 0.88, 1.46, 0.84, 0.7]
-	var rear := [1.72, 0.9, 0.94, 0.85, 0.82]
-	_hull(m, [front, roof_f, roof_r, rear])
-	_cabin_glass(m, front, roof_f, roof_r, rear)
-	m.region = VEH_TRIM
-	m.box(Vector3(0.0, 0.56, -2.15), Vector3(0.75, 0.14, 0.04))   # calandre
-	_mirrors(m, 0.95, 0.98, -0.78)
-	_bumpers(m, 0.88, -2.15, 2.15, 0.4)
-	_lights(m, 0.6, -2.13, 0.7, 2.13, 0.8)
-	_axle(m, 0.8, -1.35, 0.32, 0.22)
-	_axle(m, 0.8, 1.32, 0.32, 0.22)
+	_hull(m, {
+		"top": [[-2.2, 0.3, VEH_PAINT], [-2.24, 0.62, VEH_PAINT], [-1.0, 0.84, VEH_GLASS], [-0.3, 1.4, VEH_PAINT],
+			[0.8, 1.42, VEH_GLASS], [1.62, 0.98, VEH_PAINT], [2.18, 0.94, VEH_PAINT], [2.22, 0.3]],
+		"floor": 0.3, "arches": [[-1.35, 0.37, 0.32], [1.35, 0.37, 0.32]],
+		"hw": 0.9, "belt": 0.95, "roof_k": 0.78,
+		"glass": [[[-0.76, 0.98], [-0.35, 1.33], [0.1, 1.34], [0.1, 0.98]],
+			[[0.2, 0.98], [0.2, 1.34], [0.78, 1.34], [1.38, 0.98]]],
+	})
+	_pair(m, VEH_HEAD, Vector3(0.6, 0.55, -2.235), Vector3(0.4, 0.12, 0.06))
+	_box(m, VEH_DARK, Vector3(0.0, 0.47, -2.23), Vector3(0.72, 0.14, 0.05))      # calandre
+	_box(m, VEH_DARK, Vector3(0.0, 0.34, -2.23), Vector3(1.82, 0.12, 0.1))       # pare-chocs avant
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.35, -2.285), Vector3(0.5, 0.1, 0.02))      # plaque avant
+	_pair(m, VEH_TAIL, Vector3(0.64, 0.82, 2.2), Vector3(0.38, 0.12, 0.06))
+	_box(m, VEH_DARK, Vector3(0.0, 0.36, 2.23), Vector3(1.82, 0.14, 0.1))        # pare-chocs arrière
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.62, 2.215), Vector3(0.5, 0.1, 0.02))       # plaque arrière
+	_pair(m, VEH_PAINT, Vector3(0.97, 1.0, -0.72), Vector3(0.12, 0.09, 0.16))    # rétroviseurs
+	_pair(m, VEH_DARK, Vector3(0.905, 0.82, 0.15), Vector3(0.012, 0.03, 2.4))   # baguette de porte
 
 
-## Petite voiture haute : capot court, hayon presque droit, toit haut.
 static func _car_b(m) -> void:
-	m.region = VEH_PAINT
-	_hull(m, [[-1.95, 0.3, 0.72, 0.82, 0.8], [-1.78, 0.26, 0.86, 0.87, 0.85], [1.82, 0.26, 0.92, 0.87, 0.85],
-		[1.95, 0.32, 0.9, 0.84, 0.82]])
-	var front := [-1.35, 0.86, 0.88, 0.85, 0.83]
-	var roof_f := [-0.55, 0.87, 1.55, 0.84, 0.74]
-	var roof_r := [1.62, 0.9, 1.58, 0.84, 0.76]
-	var rear := [1.86, 0.92, 1.0, 0.84, 0.82]
-	_hull(m, [front, roof_f, roof_r, rear])
-	_cabin_glass(m, front, roof_f, roof_r, rear)
-	m.region = VEH_TRIM
-	m.box(Vector3(0.0, 0.6, -1.95), Vector3(0.7, 0.16, 0.04))
-	_mirrors(m, 0.93, 1.0, -1.15)
-	_bumpers(m, 0.86, -1.95, 1.95, 0.4)
-	_lights(m, 0.6, -1.93, 0.74, 1.93, 0.86)
-	_axle(m, 0.79, -1.25, 0.3, 0.2)
-	_axle(m, 0.79, 1.25, 0.3, 0.2)
+	_hull(m, {
+		"top": [[-1.95, 0.32, VEH_PAINT], [-1.99, 0.66, VEH_PAINT], [-1.3, 0.86, VEH_GLASS], [-0.55, 1.5, VEH_PAINT],
+			[1.5, 1.53, VEH_GLASS], [1.88, 1.02, VEH_PAINT], [1.95, 0.32]],
+		"floor": 0.32, "arches": [[-1.25, 0.35, 0.3], [1.2, 0.35, 0.3]],
+		"hw": 0.87, "belt": 0.98, "roof_k": 0.82,
+		"glass": [[[-1.08, 1.0], [-0.62, 1.43], [0.2, 1.45], [0.2, 1.0]],
+			[[0.3, 1.0], [0.3, 1.45], [1.4, 1.46], [1.55, 1.0]]],
+	})
+	_pair(m, VEH_HEAD, Vector3(0.58, 0.6, -1.985), Vector3(0.36, 0.13, 0.06))
+	_box(m, VEH_DARK, Vector3(0.0, 0.5, -1.98), Vector3(0.66, 0.12, 0.05))
+	_box(m, VEH_DARK, Vector3(0.0, 0.36, -1.98), Vector3(1.76, 0.13, 0.1))
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.37, -2.035), Vector3(0.5, 0.1, 0.02))
+	_pair(m, VEH_TAIL, Vector3(0.7, 0.86, 1.925), Vector3(0.2, 0.26, 0.06))
+	_box(m, VEH_DARK, Vector3(0.0, 0.38, 1.97), Vector3(1.76, 0.14, 0.1))
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.62, 1.93), Vector3(0.5, 0.1, 0.02))
+	_pair(m, VEH_PAINT, Vector3(0.94, 1.05, -0.98), Vector3(0.12, 0.09, 0.15))
+	_box(m, VEH_DARK, Vector3(0.0, 1.56, 0.5), Vector3(1.2, 0.04, 1.6))          # barres de toit
+	_pair(m, VEH_DARK, Vector3(0.875, 0.82, 0.0), Vector3(0.012, 0.03, 2.2))
 
 
-## Camionnette : capot court, pare-brise incliné, caisse haute.
 static func _van(m) -> void:
-	m.region = VEH_PAINT
-	_hull(m, [[-2.5, 0.36, 0.85, 0.92, 0.9], [-2.32, 0.3, 1.05, 0.98, 0.96], [-1.55, 0.3, 1.18, 1.0, 0.98],
-		[-0.85, 0.3, 2.22, 1.0, 0.95], [2.45, 0.3, 2.3, 1.0, 0.95], [2.5, 0.36, 2.25, 0.98, 0.94]])
-	var c := Vector3(0.0, 1.2, 0.0)
-	_panel(m, VEH_GLASS, Vector3(-0.88, 1.24, -1.5), Vector3(0.88, 1.24, -1.5), Vector3(0.84, 2.12, -0.9), Vector3(-0.84, 2.12, -0.9), c)
-	for sx: float in [-1.0, 1.0]:
-		_panel(m, VEH_GLASS, Vector3(sx * 0.995, 1.28, -1.3), Vector3(sx * 0.995, 1.28, -0.35),
-			Vector3(sx * 0.96, 2.0, -0.35), Vector3(sx * 0.975, 2.0, -0.85), c)
-		m.region = VEH_TRIM
-		m.box(Vector3(sx * 1.0, 1.02, 0.9), Vector3(0.02, 0.05, 2.6))   # rail de la porte coulissante
-	m.region = VEH_TRIM
-	m.box(Vector3(0.0, 0.66, -2.5), Vector3(0.9, 0.2, 0.04))
-	_mirrors(m, 1.08, 1.5, -1.45)
-	_bumpers(m, 0.98, -2.5, 2.5, 0.42)
-	_lights(m, 0.7, -2.47, 0.82, 2.48, 1.1, Vector2(0.3, 0.18))
-	_axle(m, 0.86, -1.65, 0.36, 0.24)
-	_axle(m, 0.86, 1.7, 0.36, 0.24)
+	_hull(m, {
+		"top": [[-2.5, 0.36, VEH_PAINT], [-2.55, 0.78, VEH_PAINT], [-2.0, 1.08, VEH_GLASS], [-1.42, 1.98, VEH_PAINT],
+			[-1.15, 2.28, VEH_PAINT], [2.45, 2.3, VEH_PAINT], [2.5, 0.36]],
+		"floor": 0.36, "arches": [[-1.75, 0.4, 0.35], [1.6, 0.4, 0.35]],
+		"hw": 1.0, "belt": 1.15, "roof_k": 0.93,
+		"glass": [[[-1.86, 1.2], [-1.5, 1.85], [-0.8, 1.88], [-0.8, 1.2]]],
+	})
+	_pair(m, VEH_HEAD, Vector3(0.7, 0.7, -2.54), Vector3(0.4, 0.16, 0.06))
+	_box(m, VEH_DARK, Vector3(0.0, 0.6, -2.55), Vector3(0.9, 0.2, 0.05))
+	_box(m, VEH_DARK, Vector3(0.0, 0.42, -2.55), Vector3(2.0, 0.16, 0.12))
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.43, -2.615), Vector3(0.5, 0.1, 0.02))
+	_pair(m, VEH_TAIL, Vector3(0.9, 0.9, 2.495), Vector3(0.12, 0.4, 0.05))
+	_pair(m, VEH_GLASS, Vector3(0.45, 1.85, 2.5), Vector3(0.7, 0.4, 0.03))      # vitres des portes arrière
+	_box(m, VEH_DARK, Vector3(0.0, 1.3, 2.51), Vector3(0.03, 1.8, 0.02))         # jointure des portes
+	_box(m, VEH_DARK, Vector3(0.0, 0.42, 2.52), Vector3(2.0, 0.16, 0.1))
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.62, 2.515), Vector3(0.5, 0.1, 0.02))
+	_pair(m, VEH_DARK, Vector3(1.07, 1.6, -1.85), Vector3(0.1, 0.25, 0.15))
+	_pair(m, VEH_DARK, Vector3(1.005, 1.1, 0.6), Vector3(0.012, 0.9, 0.02))     # porte coulissante
+	_pair(m, VEH_DARK, Vector3(1.005, 1.6, 0.6), Vector3(0.012, 0.03, 2.6))     # rail de la porte
 
 
-## Camion porteur : cabine plate, caisse fermée claire (VEH_ACCENT), châssis, trois essieux.
 static func _truck(m) -> void:
-	m.region = VEH_PAINT
-	_hull(m, [[-4.75, 0.55, 2.7, 1.2, 1.12], [-4.57, 0.5, 2.98, 1.25, 1.16], [-2.6, 0.5, 3.02, 1.25, 1.16]])
-	var c := Vector3(0.0, 1.8, -3.65)
-	_panel(m, VEH_GLASS, Vector3(-1.05, 1.75, -4.75), Vector3(1.05, 1.75, -4.75), Vector3(1.0, 2.6, -4.75), Vector3(-1.0, 2.6, -4.75), c)
-	for sx: float in [-1.0, 1.0]:
-		_panel(m, VEH_GLASS, Vector3(sx * 1.25, 1.8, -4.4), Vector3(sx * 1.25, 1.8, -3.55),
-			Vector3(sx * 1.2, 2.6, -3.55), Vector3(sx * 1.2, 2.6, -4.4), c)
-		m.region = VEH_TRIM
-		m.box(Vector3(sx * 1.2, 0.62, -3.25), Vector3(0.12, 0.08, 0.5))   # marchepied
-	m.region = VEH_TRIM
-	m.box(Vector3(0.0, 1.2, -4.78), Vector3(1.5, 0.5, 0.04))      # calandre
-	m.box(Vector3(0.0, 0.78, 0.05), Vector3(1.6, 0.32, 9.3))      # châssis
-	_mirrors(m, 1.3, 2.1, -4.55)
-	m.region = VEH_ACCENT
-	_hull(m, [[-2.45, 0.95, 3.4, 1.25, 1.25], [4.75, 0.95, 3.4, 1.25, 1.25]])
-	m.region = VEH_TRIM
-	m.box(Vector3(0.0, 2.17, 4.76), Vector3(0.03, 2.3, 0.02))     # joint des portes arrière
-	m.box(Vector3(0.0, 0.6, 4.71), Vector3(2.3, 0.16, 0.12))
-	_lights(m, 0.9, -4.77, 0.8, 4.78, 0.7, Vector2(0.3, 0.18))
-	_axle(m, 1.0, -3.6, 0.5, 0.36)
-	_axle(m, 1.0, 2.65, 0.5, 0.42)
-	_axle(m, 1.0, 3.8, 0.5, 0.42)
+	_hull(m, {
+		"top": [[-4.5, 0.45, VEH_PAINT], [-4.55, 1.35, VEH_PAINT], [-4.5, 1.55, VEH_GLASS], [-4.35, 2.75, VEH_PAINT],
+			[-4.15, 2.98, VEH_PAINT], [-2.25, 3.0, VEH_PAINT], [-2.2, 0.45]],
+		"floor": 0.45, "arches": [[-3.3, 0.56, 0.5]],
+		"hw": 1.22, "belt": 1.6, "roof_k": 0.95,
+		"glass": [[[-4.25, 1.65], [-4.15, 2.6], [-3.2, 2.62], [-3.2, 1.65]]],
+	})
+	_box(m, VEH_SECOND, Vector3(0.0, 2.25, 1.15), Vector3(2.5, 2.5, 6.7))        # caisse
+	_box(m, VEH_DARK, Vector3(0.0, 2.25, 4.505), Vector3(0.03, 2.4, 0.02))       # portes arrière
+	_box(m, VEH_DARK, Vector3(0.0, 0.75, 1.0), Vector3(1.0, 0.35, 6.9))          # châssis
+	_pair(m, VEH_METAL, Vector3(1.2, 0.7, -0.7), Vector3(0.05, 0.12, 2.6))       # protection latérale
+	_pair(m, VEH_HEAD, Vector3(0.85, 0.72, -4.55), Vector3(0.38, 0.18, 0.06))
+	_box(m, VEH_DARK, Vector3(0.0, 1.05, -4.56), Vector3(1.4, 0.5, 0.04))        # calandre
+	_box(m, VEH_DARK, Vector3(0.0, 0.52, -4.57), Vector3(2.44, 0.22, 0.12))
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.52, -4.64), Vector3(0.5, 0.11, 0.02))
+	_box(m, VEH_DARK, Vector3(0.0, 0.6, 4.45), Vector3(2.3, 0.12, 0.1))          # barre anti-encastrement
+	_pair(m, VEH_TAIL, Vector3(0.95, 0.85, 4.47), Vector3(0.3, 0.14, 0.06))
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.85, 4.47), Vector3(0.5, 0.11, 0.03))
+	_pair(m, VEH_METAL, Vector3(1.38, 2.2, -4.2), Vector3(0.08, 0.45, 0.12))     # rétroviseurs
+	_pair(m, VEH_DARK, Vector3(0.99, 1.05, 2.65), Vector3(0.5, 0.06, 1.95))      # garde-boue arrière
 
 
-## Autobus : carrosserie claire (VEH_ACCENT), bande et bas de caisse à la couleur d'instance, rangée de
-## vitres, girouette blanche, deux essieux.
 static func _bus(m) -> void:
-	m.region = VEH_ACCENT
-	_hull(m, [[-6.0, 0.36, 2.95, 1.21, 1.16], [-5.86, 0.3, 3.1, 1.25, 1.2], [5.9, 0.3, 3.1, 1.25, 1.2], [6.0, 0.36, 3.0, 1.21, 1.16]])
-	var c := Vector3(0.0, 1.6, 0.0)
-	_panel(m, VEH_GLASS, Vector3(-1.15, 1.0, -6.0), Vector3(1.15, 1.0, -6.0), Vector3(1.12, 2.62, -6.0), Vector3(-1.12, 2.62, -6.0), c)
-	_panel(m, VEH_GLASS, Vector3(-1.05, 1.6, 6.0), Vector3(1.05, 1.6, 6.0), Vector3(1.05, 2.6, 6.0), Vector3(-1.05, 2.6, 6.0), c)
-	_panel(m, VEH_LIGHT, Vector3(-0.9, 2.7, -6.0), Vector3(0.9, 2.7, -6.0), Vector3(0.9, 2.92, -6.0), Vector3(-0.9, 2.92, -6.0), c)
-	for sx: float in [-1.0, 1.0]:
-		var x: float = sx * 1.245
-		_panel(m, VEH_GLASS, Vector3(x, 1.45, -5.2), Vector3(x, 1.45, 5.6), Vector3(x * 0.975, 2.7, 5.6), Vector3(x * 0.975, 2.7, -5.2), c)
-		_panel(m, VEH_PAINT, Vector3(x, 0.4, -5.86), Vector3(x, 0.4, 5.9), Vector3(x, 0.95, 5.9), Vector3(x, 0.95, -5.86), c)
-		_panel(m, VEH_PAINT, Vector3(x * 0.99, 2.78, -5.86), Vector3(x * 0.99, 2.78, 5.9), Vector3(x * 0.98, 2.92, 5.9), Vector3(x * 0.98, 2.92, -5.86), c)
-		m.region = VEH_TRIM
-		for z in [-2.0, 0.5, 3.0, 5.0]:
-			m.box(Vector3(x * 0.995, 2.07, z), Vector3(0.03, 1.25, 0.08))   # montants entre les vitres
-	# Porte avant, côté droit (vitrée sur toute la hauteur)
-	_panel(m, VEH_GLASS, Vector3(1.25, 0.45, -5.6), Vector3(1.25, 0.45, -4.6), Vector3(1.25, 2.6, -4.6), Vector3(1.25, 2.6, -5.6), c)
-	m.region = VEH_TRIM
-	m.box(Vector3(0.0, 3.2, 1.0), Vector3(1.6, 0.2, 2.6))      # climatisation sur le toit
-	_mirrors(m, 1.36, 2.4, -5.9)
-	_bumpers(m, 1.2, -6.0, 6.0, 0.45)
-	_lights(m, 0.95, -6.02, 0.75, 6.02, 0.9, Vector2(0.32, 0.16))
-	_axle(m, 1.02, -3.9, 0.5, 0.34)
-	_axle(m, 1.02, 3.3, 0.5, 0.4)
+	_hull(m, {
+		"top": [[-6.0, 0.35, VEH_PAINT], [-6.05, 1.05, VEH_GLASS], [-5.95, 2.85, VEH_PAINT], [-5.75, 3.08, VEH_PAINT],
+			[5.8, 3.1, VEH_PAINT], [6.0, 2.9, VEH_PAINT], [6.02, 0.35]],
+		"floor": 0.35, "arches": [[-3.4, 0.58, 0.5], [2.9, 0.58, 0.5]],
+		"hw": 1.275, "belt": 1.15, "roof_k": 0.97,
+		"glass": [[[-5.6, 1.2], [-5.6, 2.6], [5.6, 2.62], [5.6, 1.2]],
+			[[-5.5, 0.5], [-5.5, 1.15], [-4.4, 1.15], [-4.4, 0.5]]],
+		"panels": [[VEH_SECOND, [[-5.9, 0.75], [-5.9, 0.98], [-4.5, 0.98], [-4.5, 0.75]]],
+			[VEH_SECOND, [[-4.3, 0.75], [-4.3, 0.98], [5.9, 0.98], [5.9, 0.75]]]],
+	})
+	for i in range(7):   # montants entre les vitres
+		_pair(m, VEH_PAINT, Vector3(1.27, 1.9, -4.0 + 1.6 * i), Vector3(0.02, 1.4, 0.1))
+	_pair(m, VEH_HEAD, Vector3(0.95, 0.62, -6.03), Vector3(0.4, 0.16, 0.06))
+	_box(m, VEH_DARK, Vector3(0.0, 0.42, -6.06), Vector3(2.5, 0.18, 0.1))
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.62, -6.07), Vector3(0.5, 0.11, 0.02))
+	_box(m, VEH_HEAD, Vector3(0.0, 2.68, -5.96), Vector3(1.6, 0.24, 0.04))       # girouette
+	_pair(m, VEH_TAIL, Vector3(1.1, 1.0, 6.02), Vector3(0.15, 0.5, 0.06))
+	_box(m, VEH_GLASS, Vector3(0.0, 2.3, 6.01), Vector3(2.0, 0.8, 0.03))
+	_box(m, VEH_DARK, Vector3(0.0, 0.42, 6.05), Vector3(2.5, 0.18, 0.1))
+	_box(m, VEH_LIGHT, Vector3(0.0, 0.7, 6.035), Vector3(0.5, 0.11, 0.02))
+	_pair(m, VEH_METAL, Vector3(1.4, 2.5, -5.9), Vector3(0.08, 0.4, 0.1))
+	_box(m, VEH_LIGHT, Vector3(0.0, 3.22, 0.5), Vector3(1.6, 0.25, 2.2))         # climatisation
 
 
-## Moto et son pilote casqué (casque à la couleur d'instance, blouson sombre).
 static func _moto(m) -> void:
-	m.region = VEH_TRIM
-	m.box(Vector3(0.0, 0.5, 0.02), Vector3(0.3, 0.32, 0.46))                                   # moteur
-	m.prism(Vector3(0.0, 0.62, -0.18), Vector3(0.0, 0.6, 0.62), Vector2(0.05, 0.05), Vector2(0.05, 0.05), 6)   # cadre
-	for sx: float in [-1.0, 1.0]:
-		m.prism(Vector3(sx * 0.07, 0.31, -0.72), Vector3(sx * 0.07, 1.0, -0.52), Vector2(0.025, 0.025), Vector2(0.03, 0.03), 6)   # fourche
-	m.prism(Vector3(-0.38, 1.02, -0.5), Vector3(0.38, 1.02, -0.5), Vector2(0.018, 0.018), Vector2(0.018, 0.018), 6)   # guidon
-	m.prism(Vector3(0.0, 0.84, 0.02), Vector3(0.0, 0.88, 0.62), Vector2(0.13, 0.05), Vector2(0.12, 0.05), 8)   # selle
-	m.region = VEH_PAINT
-	m.ellipsoid(Vector3(0.0, 0.84, -0.2), Vector3(0.17, 0.13, 0.28))           # réservoir
-	m.prism(Vector3(0.0, 0.72, 0.55), Vector3(0.0, 0.8, 0.95), Vector2(0.09, 0.03), Vector2(0.07, 0.03), 6)   # garde-boue arrière
-	m.prism(Vector3(0.0, 0.66, -0.62), Vector3(0.0, 0.6, -0.9), Vector2(0.07, 0.03), Vector2(0.06, 0.03), 6)  # garde-boue avant
-	m.region = VEH_CHROME
-	m.prism(Vector3(0.12, 0.32, 0.0), Vector3(0.14, 0.42, 0.82), Vector2(0.04, 0.04), Vector2(0.05, 0.05), 6)   # pot
+	for sx in [-1.0, 1.0]:
+		_rod(m, VEH_METAL, Vector3(sx * 0.07, 0.31, -0.72), Vector3(sx * 0.07, 0.98, -0.5), 0.025)   # fourche
+		_rod(m, VEH_DARK, Vector3(sx * 0.09, 0.31, 0.68), Vector3(sx * 0.09, 0.47, 0.05), 0.03)    # bras oscillant
 	m.region = VEH_HEAD
-	m.ellipsoid(Vector3(0.0, 0.94, -0.62), Vector3(0.09, 0.08, 0.05))
-	m.region = VEH_TAIL
-	m.box(Vector3(0.0, 0.84, 0.94), Vector3(0.14, 0.06, 0.04))
-	# Pilote : jambes pliées sur les repose-pieds, buste penché, mains au guidon, casque
-	m.region = VEH_TRIM
-	for sx: float in [-1.0, 1.0]:
-		m.prism(Vector3(sx * 0.12, 0.92, 0.25), Vector3(sx * 0.18, 0.8, -0.14), Vector2(0.08, 0.08), Vector2(0.06, 0.06), 6)   # cuisse
-		m.prism(Vector3(sx * 0.18, 0.8, -0.14), Vector3(sx * 0.17, 0.4, 0.04), Vector2(0.055, 0.055), Vector2(0.045, 0.045), 6)   # tibia
-		m.box(Vector3(sx * 0.17, 0.36, 0.0), Vector3(0.09, 0.08, 0.22))          # botte
-		m.prism(Vector3(sx * 0.19, 1.34, 0.0), Vector3(sx * 0.33, 1.1, -0.3), Vector2(0.05, 0.05), Vector2(0.045, 0.045), 6)   # bras
-		m.prism(Vector3(sx * 0.33, 1.1, -0.3), Vector3(sx * 0.36, 1.03, -0.48), Vector2(0.04, 0.04), Vector2(0.035, 0.035), 6)   # avant-bras
-	m.prism(Vector3(0.0, 0.9, 0.28), Vector3(0.0, 1.38, -0.02), Vector2(0.16, 0.11), Vector2(0.2, 0.12), 8)   # buste
+	m.ellipsoid(Vector3(0.0, 0.96, -0.6), Vector3(0.09, 0.09, 0.06), -90.0, 4)
 	m.region = VEH_PAINT
-	m.ellipsoid(Vector3(0.0, 1.56, -0.1), Vector3(0.14, 0.15, 0.16))        # casque
-	m.region = VEH_GLASS
-	m.ellipsoid(Vector3(0.0, 1.55, -0.2), Vector3(0.11, 0.06, 0.08), -40.0, 3)   # visière
-	_axle(m, 0.0, -0.72, 0.31, 0.12)
-	_axle(m, 0.0, 0.72, 0.31, 0.14)
+	m.ellipsoid(Vector3(0.0, 0.96, -0.2), Vector3(0.17, 0.13, 0.28), -60.0, 4)   # réservoir
+	_box(m, VEH_PAINT, Vector3(0.0, 0.66, -0.72), Vector3(0.12, 0.04, 0.4))       # garde-boue avant
+	_box(m, VEH_METAL, Vector3(0.0, 0.5, -0.1), Vector3(0.32, 0.32, 0.45))        # moteur
+	_rod(m, VEH_DARK, Vector3(0.0, 0.62, -0.5), Vector3(0.0, 0.9, 0.35), 0.04)    # cadre
+	_box(m, VEH_DARK, Vector3(0.0, 0.94, 0.25), Vector3(0.26, 0.09, 0.55))        # selle
+	_box(m, VEH_PAINT, Vector3(0.0, 0.97, 0.62), Vector3(0.18, 0.1, 0.25))        # coque arrière
+	_box(m, VEH_TAIL, Vector3(0.0, 0.97, 0.75), Vector3(0.12, 0.06, 0.03))
+	_rod(m, VEH_METAL, Vector3(0.17, 0.4, 0.0), Vector3(0.2, 0.55, 0.7), 0.05)   # échappement
+	_rod(m, VEH_DARK, Vector3(-0.38, 1.08, -0.45), Vector3(0.38, 1.08, -0.45), 0.02)   # guidon
+	# Pilote, penché sur le guidon
+	for sx in [-1.0, 1.0]:
+		_rod(m, VEH_DARK, Vector3(sx * 0.13, 1.02, 0.22), Vector3(sx * 0.2, 0.86, -0.2), 0.07)   # cuisses
+		_rod(m, VEH_DARK, Vector3(sx * 0.2, 0.86, -0.2), Vector3(sx * 0.2, 0.45, 0.05), 0.055)  # jambes
+		_box(m, VEH_DARK, Vector3(sx * 0.2, 0.42, 0.0), Vector3(0.1, 0.08, 0.24))               # bottes
+		_rod(m, VEH_SECOND, Vector3(sx * 0.2, 1.5, -0.05), Vector3(sx * 0.36, 1.1, -0.45), 0.05) # bras
+	m.region = VEH_SECOND
+	_cyl(m, Vector3(0.0, 1.02, 0.22), Vector3(0.0, 1.55, -0.05), Vector2(0.17, 0.12), Vector2(0.2, 0.12), 8)
+	m.region = VEH_PAINT
+	m.ellipsoid(Vector3(0.0, 1.72, -0.1), Vector3(0.14, 0.15, 0.16))              # casque
+	_box(m, VEH_GLASS, Vector3(0.0, 1.71, -0.245), Vector3(0.18, 0.08, 0.04))      # visière
 
 
-## Tracteur : capot étroit, cabine vitrée sur quatre montants, grandes roues arrière à jantes jaunes,
-## garde-boue, échappement vertical, gyrophare ; `plough` : charrue à trois socs attelée derrière.
-static func _tractor(m, plough: bool) -> void:
+static func _tractor(m) -> void:
+	_box(m, VEH_DARK, Vector3(0.0, 0.65, -0.4), Vector3(0.7, 0.4, 2.6))           # châssis
+	_box(m, VEH_PAINT, Vector3(0.0, 1.2, -1.15), Vector3(0.95, 0.7, 1.5))         # capot
 	m.region = VEH_PAINT
-	_hull(m, [[-1.95, 0.62, 1.22, 0.36, 0.33], [-1.8, 0.58, 1.32, 0.4, 0.37], [-0.2, 0.58, 1.38, 0.42, 0.38]])
-	m.region = VEH_TRIM
-	m.box(Vector3(0.0, 0.48, -0.8), Vector3(0.6, 0.35, 2.0))              # bloc moteur et pont
-	m.box(Vector3(0.0, 0.9, -1.96), Vector3(0.6, 0.45, 0.03))             # calandre
-	m.box(Vector3(0.0, 0.62, 0.75), Vector3(0.7, 0.4, 1.2))               # pont arrière
-	m.region = VEH_PAINT
-	m.box(Vector3(0.0, 1.05, 0.72), Vector3(1.0, 0.5, 1.3))               # caisse sous la cabine
-	m.region = VEH_TRIM
-	for c in [Vector2(-0.68, 0.05), Vector2(0.68, 0.05), Vector2(-0.68, 1.35), Vector2(0.68, 1.35)]:
-		m.prism(Vector3(c.x, 1.3, c.y), Vector3(c.x * 0.97, 2.62, c.y), Vector2(0.035, 0.035), Vector2(0.035, 0.035), 6)   # montants
-	m.prism(Vector3(0.3, 1.3, -1.2), Vector3(0.3, 2.35, -1.2), Vector2(0.045, 0.045), Vector2(0.045, 0.045), 6)   # échappement
-	var c3 := Vector3(0.0, 1.9, 0.7)
-	_panel(m, VEH_GLASS, Vector3(-0.66, 1.42, 0.05), Vector3(0.66, 1.42, 0.05), Vector3(0.64, 2.55, 0.05), Vector3(-0.64, 2.55, 0.05), c3)
-	_panel(m, VEH_GLASS, Vector3(-0.66, 1.5, 1.35), Vector3(0.66, 1.5, 1.35), Vector3(0.64, 2.55, 1.35), Vector3(-0.64, 2.55, 1.35), c3)
-	for sx: float in [-1.0, 1.0]:
-		_panel(m, VEH_GLASS, Vector3(sx * 0.68, 1.75, 0.1), Vector3(sx * 0.68, 1.75, 1.3), Vector3(sx * 0.66, 2.55, 1.3), Vector3(sx * 0.66, 2.55, 0.1), c3)
-	m.region = VEH_PAINT
-	m.box(Vector3(0.0, 2.66, 0.7), Vector3(1.55, 0.1, 1.55))             # toit
-	for sx: float in [-1.0, 1.0]:
-		m.box(Vector3(sx * 0.92, 1.66, 0.95), Vector3(0.52, 0.07, 1.25))  # garde-boue
-	m.region = VEH_BEACON
-	m.ellipsoid(Vector3(0.45, 2.78, 0.95), Vector3(0.07, 0.08, 0.07), -10.0, 3)
-	m.region = VEH_HEAD
-	for sx: float in [-1.0, 1.0]:
-		m.box(Vector3(sx * 0.22, 1.05, -1.98), Vector3(0.14, 0.1, 0.04))
-		m.box(Vector3(sx * 0.62, 2.5, -0.06), Vector3(0.12, 0.1, 0.06))       # phares de travail
-	m.region = VEH_TAIL
-	for sx: float in [-1.0, 1.0]:
-		m.box(Vector3(sx * 0.98, 1.6, 1.6), Vector3(0.12, 0.1, 0.04))
-	if plough:
-		m.region = VEH_TRIM
-		m.prism(Vector3(0.0, 0.55, 1.5), Vector3(0.0, 0.55, 2.4), Vector2(0.06, 0.06), Vector2(0.06, 0.06), 6)   # attelage
-		m.prism(Vector3(-0.2, 0.55, 2.4), Vector3(0.9, 0.55, 4.8), Vector2(0.07, 0.07), Vector2(0.07, 0.07), 6)   # âge en biais
-		m.region = VEH_PAINT
-		for i in range(3):
-			var z := 2.9 + i * 0.85
-			var x := 0.05 + i * 0.36
-			m.prism(Vector3(x, 0.55, z), Vector3(x, 0.15, z + 0.1), Vector2(0.04, 0.04), Vector2(0.04, 0.04), 4)   # étançon
-			m.region = VEH_CHROME
-			m.box(Vector3(x - 0.08, 0.1, z + 0.12), Vector3(0.32, 0.18, 0.5))   # soc et versoir
-			m.region = VEH_PAINT
-		m.region = VEH_TYRE
-		m.prism(Vector3(1.0, 0.3, 5.4), Vector3(1.12, 0.3, 5.4), Vector2(0.3, 0.3), Vector2(0.3, 0.3), 10)   # roue de terrage
-	_axle(m, 0.8, -1.25, 0.45, 0.28, VEH_ACCENT)
-	_axle(m, 0.92, 0.95, 0.8, 0.45, VEH_ACCENT)
+	_cyl(m, Vector3(0.0, 1.55, -1.9), Vector3(0.0, 1.55, -0.4), Vector2(0.475, 0.08), Vector2(0.475, 0.08), 8)   # dessus arrondi
+	_box(m, VEH_DARK, Vector3(0.0, 1.15, -1.905), Vector3(0.8, 0.55, 0.02))       # calandre
+	_pair(m, VEH_HEAD, Vector3(0.33, 1.44, -1.91), Vector3(0.16, 0.1, 0.03))
+	_box(m, VEH_DARK, Vector3(0.0, 0.75, -2.0), Vector3(0.9, 0.35, 0.25))         # masse avant
+	_box(m, VEH_PAINT, Vector3(0.0, 1.25, 0.55), Vector3(1.35, 0.2, 1.5))         # plancher
+	_box(m, VEH_GLASS, Vector3(0.0, 2.0, 0.55), Vector3(1.3, 1.3, 1.45))          # cabine vitrée
+	for sx in [-1.0, 1.0]:
+		for z in [-0.18, 1.28]:
+			_box(m, VEH_PAINT, Vector3(sx * 0.66, 2.0, z), Vector3(0.07, 1.32, 0.07))   # montants
+	_box(m, VEH_PAINT, Vector3(0.0, 2.72, 0.55), Vector3(1.5, 0.14, 1.65))        # toit
+	_box(m, VEH_DARK, Vector3(0.0, 1.62, 0.85), Vector3(0.45, 0.25, 0.4))         # siège
+	_pair(m, VEH_PAINT, Vector3(0.82, 1.65, 0.75), Vector3(0.5, 0.06, 1.3))       # garde-boue
+	_pair(m, VEH_PAINT, Vector3(0.82, 1.4, 1.38), Vector3(0.5, 0.5, 0.06))
+	_pair(m, VEH_TAIL, Vector3(0.82, 1.55, 1.42), Vector3(0.12, 0.1, 0.04))
+	_rod(m, VEH_DARK, Vector3(0.35, 1.5, -0.75), Vector3(0.35, 2.55, -0.75), 0.04)   # échappement
+	_box(m, VEH_HEAD, Vector3(0.0, 2.82, 0.0), Vector3(0.12, 0.08, 0.12))          # gyrophare
 
 
-## Boîte d'un mètre (au sol, centrée), avec deux phares devant et deux feux derrière : véhicule lointain,
-## mis à l'échelle par sa demi-largeur, sa hauteur et sa longueur (KINDS).
-static func _far(m) -> void:
-	m.region = VEH_PAINT
-	m.box(Vector3(0.0, 0.55, 0.0), Vector3(1.0, 0.7, 1.0))
-	m.region = VEH_GLASS
-	m.box(Vector3(0.0, 0.92, 0.05), Vector3(0.9, 0.16, 0.7))
-	for sx: float in [-1.0, 1.0]:
-		m.region = VEH_HEAD
-		m.box(Vector3(sx * 0.32, 0.45, -0.505), Vector3(0.2, 0.12, 0.01))
-		m.region = VEH_TAIL
-		m.box(Vector3(sx * 0.34, 0.5, 0.505), Vector3(0.16, 0.12, 0.01))
-	m.region = VEH_TYRE
-	m.box(Vector3(0.0, 0.1, 0.0), Vector3(0.9, 0.2, 0.9))
+## Herse portée derrière le tracteur des champs : attelage, deux poutres, dents.
+static func _harrow(m) -> void:
+	for sx in [-1.0, 1.0]:
+		_rod(m, VEH_METAL, Vector3(sx * 0.3, 0.6, 1.3), Vector3(sx * 0.5, 0.55, 2.4), 0.04)
+	_rod(m, VEH_METAL, Vector3(0.0, 1.2, 1.3), Vector3(0.0, 0.75, 2.4), 0.04)
+	for z in [2.5, 3.1]:
+		_box(m, VEH_SECOND, Vector3(0.0, 0.5, z), Vector3(3.0, 0.12, 0.18))
+		for i in range(9):
+			_box(m, VEH_METAL, Vector3(-1.4 + 0.35 * i, 0.22, z), Vector3(0.04, 0.44, 0.04))
