@@ -83,8 +83,8 @@ Comme pour les autres sons : `~/OpenRide/Sounds/<nom>.ogg` remplace le son synth
 
 ## 5. Fichiers concernés
 
-- **Créés :** `engine/scripts/rogue/rogue_sound_model.gd`, `engine/scripts/rogue/rogue_sound_synth.gd` (formes d'onde), `engine/tests/unit/test_rogue_sound_model.gd`, `engine/tests/render/test_rogue_sound_synth.gd` (durées, niveaux, absence de saturation).
-- **Modifiés :** `engine/scripts/sound_player.gd` (lecteurs du mode sur les bus du volume général), `docs/SUIVI_AVANCEMENT.md` (une ligne), `docs/lots/00_INDEX.md`.
+- **Créés :** `engine/scripts/rogue/rogue_sound_model.gd`, `engine/scripts/rogue/rogue_sound_synth.gd` (formes d'onde), `engine/tests/unit/test_rogue_sound_model.gd`, `engine/tests/unit/test_rogue_sound_synth.gd` (durées, niveaux, absence de saturation).
+- **Modifiés :** `engine/scripts/rogue/rogue_audio.gd` (lecteurs du mode sur les bus du volume général), `engine/scripts/audio_mix.gd`, `docs/SUIVI_AVANCEMENT.md` (une ligne), `docs/lots/00_INDEX.md`.
 
 ## 6. Modifications de contrat autorisées
 
@@ -101,3 +101,9 @@ Aucune (les événements existent déjà dans l'IPC 1.4). Réglages `[audio] rog
 ## 8. Hors périmètre
 
 - Voix et paroles, sons des menus hors mode (série O), bruits d'ennemis détaillés au-delà du §4.1 (après R14).
+
+## 9. Livraison (28 octobre)
+
+Livré : synthèse de 25 sons et de 3 couches de musique (20 s, 96 battements par minute), modèle de déclenchement (un son par événement, sons dérivés des changements d'état, plafond de 8 voix, 60 ms entre deux sons identiques, priorités, boucles lissées à 12 dB/s, couches de musique avec fondu de 2 s), bus `RogueSfx` (70 %) et `RogueMusic` (40 %), remplacement par `~/OpenRide/Sounds/<nom>.ogg`.
+
+Écarts avec le cahier d'origine : les tests de synthèse sont dans `tests/unit` et non `tests/render`, un nœud séparé `rogue_audio.gd` porte les lecteurs au lieu de `sound_player.gd` ; la purge et le coffre ont un son mais aucun déclencheur (pas de signal) ; les clés `audio.rogue_sfx_pct` et `audio.rogue_music_pct` n'existent pas encore côté core (l'engine crée les bus et sait lire les clés) ; la mesure de synthèse est donnée par le test (limite large de 2 s), l'objectif de 300 ms se vérifie sur le PC. Reste : écoute par le propriétaire.
