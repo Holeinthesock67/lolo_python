@@ -8,7 +8,7 @@ Les captures de même nom (`NNN_étiquette.png`, écrites par `sim_bench.py`) so
 paire : écart moyen de luminosité (0 à 255) et part des pixels qui changent nettement, mesurés par les
 fonctions de `visual_check.py` sur la moitié haute et le centre de l'image (le HUD, dont les images/s
 changent d'un essai à l'autre, est en bas et sur les côtés). Une image des écarts (rouge) est écrite
-dans `--out` pour chaque paire. Code de sortie 0 si toutes les paires restent sous `--max-diff`, 1 sinon,
+dans `--out` pour chaque paire, avec `rapport.html` (avant, après, écarts, mesures). Code de sortie 0 si toutes les paires restent sous `--max-diff`, 1 sinon,
 2 si aucune paire n'est trouvée.
 
 Bibliothèque standard seulement.
@@ -17,6 +17,7 @@ Bibliothèque standard seulement.
 from __future__ import annotations
 
 import argparse
+import html
 import sys
 from pathlib import Path
 
@@ -45,10 +46,13 @@ def main(argv: list[str] | None = None) -> int:
         a.out.mkdir(parents=True, exist_ok=True)
     worst = 0.0
     failed = 0
+    rows: list[str] = []
     for pb, pa in pairs:
         ib, ia = vc.read_png(pb), vc.read_png(pa)
         if (ib.width, ib.height) != (ia.width, ia.height):
-            print(f"[ÉCHEC] {pb.name} : tailles différentes {ib.width}x{ib.height} et {ia.width}x{ia.height}")
+            msg = f"tailles différentes {ib.width}x{ib.height} et {ia.width}x{ia.height}"
+            print(f"[ÉCHEC] {pb.name} : {msg}")
+            rows.append(f"<tr><td>{html.escape(pb.name)}</td><td colspan=3>{msg}</td><td>ÉCHEC</td></tr>")
             failed += 1
             continue
         box = scene_box(ib)
@@ -60,6 +64,16 @@ def main(argv: list[str] | None = None) -> int:
         print(f"[{'OK' if ok else 'ÉCHEC'}] {pb.name} : écart moyen {diff:.2f}, pixels changés {changed * 100:.1f} %")
         if a.out:
             vc.write_png(a.out / f"ecart_{pb.name}", vc.diff_image(ib, ia))
+            imgs = "".join(f'<td><img src="{html.escape(p.resolve().as_uri())}" width=320></td>' for p in (pb, pa))
+            rows.append(f"<tr><td>{html.escape(pb.name)}<br>écart {diff:.2f}<br>{changed * 100:.1f} % changés</td>{imgs}"
+                        f'<td><img src="ecart_{html.escape(pb.name)}" width=320></td><td>{"OK" if ok else "ÉCHEC"}</td></tr>')
+    if a.out:
+        (a.out / "rapport.html").write_text(
+            "<!doctype html><meta charset=utf-8><title>Comparaison des captures</title>"
+            f"<h1>{html.escape(str(a.before))} → {html.escape(str(a.after))}</h1>"
+            f"<p>{len(pairs)} paires, écart moyen maximal {worst:.2f} / 255, seuil {a.max_diff}</p>"
+            "<table border=1 cellspacing=0 cellpadding=4><tr><th>capture</th><th>avant</th><th>après</th>"
+            "<th>écarts</th><th></th></tr>" + "".join(rows) + "</table>", encoding="utf-8")
     print(f"compare_captures : {len(pairs)} paires, écart moyen maximal {worst:.2f}, {failed} au-dessus de {a.max_diff}")
     return 1 if failed else 0
 
