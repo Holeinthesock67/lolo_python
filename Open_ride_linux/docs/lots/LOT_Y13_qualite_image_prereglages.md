@@ -148,6 +148,7 @@ Chaque étape : une branche et une PR, mesure avant et après avec le protocole 
 - Compatibility n'a pas de brouillard volumétrique : `off` sans RenderingDevice, comme SSAO et SSIL.
 - Coût estimé +1 à 1,5 ms en `medium`. Vérifications : pas de scintillement image figée en Forward+ (le volumétrique réutilise les images précédentes, `visual_check.py --native`), pas de traînée derrière les objets à 40 km/h (captures du banc en mouvement).
 - Repli : grille 32 × 32 et portée 400 m ; si l'enveloppe reste dépassée, `medium` reste `off`.
+- **Mesure du 28 octobre** (GTX 1060, 1680 × 1050, `village` / `montee_descente`, médianes entre 20 et 640 s) : `medium` 10,57 ms de GPU (max 12,43) contre 10,38 sur `main`, soit +0,2 ms, charge 69 / 83 % ; `high` 13,64 ms (max 15,24), charge 85 / 100 %, 27 s au-dessus de 95 %. 60 img/s et p99 16,7 ms partout. Pas de repli nécessaire ; `high` reste le préréglage des cartes plus fortes que la 1060.
 
 ### 7.3 Étape 4 : après la migration Y2 (Godot 4.7)
 
