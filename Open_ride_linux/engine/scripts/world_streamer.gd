@@ -24,6 +24,8 @@ const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const OsmLayers := preload("res://scripts/osm_layers.gd")
+const BiomeModel := preload("res://scripts/biome_model.gd")
+const BiomeLayer := preload("res://scripts/biome_layer.gd")
 
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
@@ -48,6 +50,12 @@ var far_radius_m: float = FAR_RADIUS_M:
 			(_ground.mesh as PlaneMesh).size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 var tree_renderer: Node3D = null
 var osm_streamer: Node3D = null
+## Série U (lot U17, première partie) : biome forcé (`--biome=`, "auto" = données du parcours) et modèle de
+## biome du parcours courant, créé par set_world et transmis aux arbres (U7) et aux animaux (U12). Tant que le
+## sol multi-biome (U6) n'est pas là, le sol prend les couleurs du biome sous le départ (start_biome).
+## Modèle inactif (ni couche biome ni forçage) : rendu d'avant la série U.
+var forced_biome := "auto"
+var biome_model = null
 
 var _near_index: Dictionary = {}     # Vector2i -> true
 var _far_index: Dictionary = {}
@@ -118,9 +126,43 @@ func set_world(new_route, new_world_dir: String) -> void:
 			has_terrain = false
 	if not has_terrain:
 		_make_ground()
+	_set_biome_model()
 	if osm_streamer != null:
 		osm_streamer.visual_grade_scale = visual_grade_scale
 		osm_streamer.set_world(route, world_dir)
+
+
+## Modèle de biome du parcours (couche `biome` du manifeste, forçage `forced_biome`), passé aux arbres et aux
+## animaux ; sol aux couleurs du biome du départ quand le modèle est actif.
+func _set_biome_model() -> void:
+	biome_model = BiomeModel.new(_theme_dict, BiomeLayer.new(world_dir, _manifest if typeof(_manifest) == TYPE_DICTIONARY else {}))
+	biome_model.set_forced(forced_biome)
+	var active = biome_model if biome_model.active() else null
+	if tree_renderer != null:
+		tree_renderer.biome_model = active
+	if osm_streamer != null:
+		osm_streamer.biome_model = active
+	if active == null:
+		return
+	var ground: Dictionary = biome_model.terrain_theme(start_biome())
+	if _terrain_material is ShaderMaterial:
+		TerrainMaterial.apply_to_material(_terrain_material, ground)
+	_ground_color = ThemeRenderParams.terrain_uniforms(ground)["grass_color"]
+	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
+		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
+
+
+## Biome le plus présent au départ du parcours (biome par défaut sans parcours ni modèle).
+func start_biome() -> String:
+	if biome_model == null:
+		return BiomeModel.BiomeIds.DEFAULT_BIOME
+	var p: Vector3 = route.sample_point(0.0) if route != null and route.n > 0 else Vector3.ZERO
+	var weights: Dictionary = biome_model.weights_at(p.x, p.z)
+	var best := ""
+	for b in weights:
+		if best == "" or float(weights[b]) > float(weights[best]):
+			best = b
+	return best
 
 
 func _has_layer(layer_name: String) -> bool:
