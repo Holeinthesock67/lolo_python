@@ -101,8 +101,9 @@ static func _budget(name: String, key: String, ci_key: String) -> float:
 
 
 ## Écrit la ligne `[PERF]` et rend faux seulement en mode strict quand le budget est dépassé.
-static func check(name: String, value_ms: float) -> bool:
-	return _report(name, value_ms, budget_ms(name), "ms")
+## `unit` : unité de la mesure et du budget (« ms » par défaut ; « % » pour un surcoût relatif, lot X34).
+static func check(name: String, value_ms: float, unit: String = "ms") -> bool:
+	return _report(name, value_ms, budget_ms(name), unit)
 
 
 ## Même chose pour une mémoire en Ko (`budget_kb`, `ci_kb`).
@@ -116,5 +117,5 @@ static func passes(value: float, limit: float) -> bool:
 
 
 static func _report(name: String, value: float, limit: float, unit: String) -> bool:
-	print("[PERF] %s : %.2f %s, budget %.2f %s%s" % [name, value, unit, limit, unit, " (DÉPASSÉ)" if value > limit else ""])
+	print("[PERF] %s : %.4f %s, budget %.4f %s%s" % [name, value, unit, limit, unit, " (DÉPASSÉ)" if value > limit else ""])
 	return passes(value, limit)

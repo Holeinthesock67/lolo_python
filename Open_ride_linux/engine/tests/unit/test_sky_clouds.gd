@@ -85,7 +85,7 @@ func _test_update() -> void:
 	SkyClouds.update(current, wind, 1.0)   # sans effet, sans erreur
 	_check(true, "update sur un autre matériau : sans effet")
 	var cost := PerfBudget.frame_cost(func(): SkyClouds.update(m, wind), 2000, 50)
-	_check(PerfBudget.check("sky_clouds_frame", cost["median_ms"]), "coût de update : %.4f ms par image" % cost["median_ms"])
+	_check(PerfBudget.check("sky_clouds_update", cost["median_ms"]), "coût de update : %.4f ms par image" % cost["median_ms"])
 
 
 func _init() -> void:

@@ -43,10 +43,17 @@ record() {  # record <nom> <0 si réussi> [détail]
   if [ "$2" -eq 0 ]; then SUMMARY+=("OK     $1${3:+ : $3}"); else SUMMARY+=("ÉCHEC  $1${3:+ : $3}"); status=1; fi
 }
 
-# Filtre commun : avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
+# Filtre commun (lot X34) : toute ligne SCRIPT ERROR, ERROR ou WARNING est une erreur, sauf
+# - les objets non libérés à la sortie (ObjectDB instances leaked, resources still in use at exit) ;
+# - une erreur dont la ligne « at: » suivante vient du serveur de rendu factice de --headless
+#   (servers/rendering/dummy/ : « Parameter "m" is null » de mesh_get_surface_count, il ne garde aucun maillage).
+# Avant le lot X34, toute ligne contenant « mesh … null » était tolérée, d'où qu'elle vienne.
 godot_issues() {
-  grep -E "SCRIPT ERROR|ERROR:|WARNING:" \
-    | grep -v -E "ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|mesh_get_surface_count|Parameter \"m\" is null" || true
+  awk '
+    /SCRIPT ERROR|ERROR:|WARNING:/ { if (pending != "") print pending; pending = $0; next }
+    pending != "" { if ($0 !~ /servers\/rendering\/dummy\//) print pending; pending = "" }
+    END { if (pending != "") print pending }
+  ' | grep -v -E "ObjectDB instances leaked|resources still in use at exit" || true
 }
 
 echo "== Tests unitaires (tests/unit/, lot K1) =="
@@ -88,8 +95,8 @@ perf_summary() {
   sed 's/^\[PERF\] /  /' "$PERF_FILE"
   [ -z "${PERF_LINES:-}" ] || cp "$PERF_FILE" "$PERF_LINES"   # lignes brutes pour perf_budget_report.py (lot X19)
   if [ -n "${PERF_CSV:-}" ]; then
-    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) (ms|Ko), budget ([0-9.inf]+) (ms|Ko)( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\4;\6;\3/" "$PERF_FILE" \
-      | sed -E 's/; \(DÉPASSÉ\);(ms|Ko)$/;oui;\1/; s/;;(ms|Ko)$/;non;\1/' >>"$PERF_CSV"
+    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) ([^ ,]+), budget ([0-9.inf]+) [^ ]+( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\4;\5;\3/" "$PERF_FILE" \
+      | sed -E 's/; \(DÉPASSÉ\);([^;]+)$/;oui;\1/; s/;;([^;]+)$/;non;\1/' >>"$PERF_CSV"
   fi
   rm -f "$PERF_FILE"
 }

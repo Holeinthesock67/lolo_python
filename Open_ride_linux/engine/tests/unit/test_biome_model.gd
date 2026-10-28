@@ -193,7 +193,7 @@ func _init() -> void:
 		for i in range(1000):
 			model.weights_at(float(st["k"] % 2000), float(st["k"] % 997))
 			st["k"] += 1, 5, 1)
-	_check(PerfBudget.check("biome_weights_1000", ms), "weights_at : %.2f µs par appel" % ms)
+	_check(PerfBudget.check("biome_weights_at", ms / 1000.0), "weights_at : %.2f µs par appel (5 µs indicatif)" % ms)
 
 	print("test_biome_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

@@ -3,7 +3,7 @@
 
     python3 engine/tests/perf_budget_report.py [FICHIER ...] [--json] [--strict]
 
-Lit les lignes `[PERF] nom : valeur ms|Ko, budget limite ms|Ko` écrites par `perf_budget.gd` (sortie de
+Lit les lignes `[PERF] nom : valeur ms|Ko|%, budget limite ms|Ko|%` écrites par `perf_budget.gd` (sortie de
 `run_engine_tests.sh`, ou le fichier `PERF_LINES` qu'il remplit) ou un fichier `PERF_CSV`
 (`date;nom;valeur;budget;dépassé;unité`) ; sans fichier, l'entrée standard. Pour chaque budget de
 `perf_budgets.json` : la dernière mesure, le budget appliqué sur cette machine (celui de la ligne, qui
@@ -23,8 +23,8 @@ import sys
 from pathlib import Path
 
 BUDGETS = Path(__file__).resolve().parent / "perf_budgets.json"
-PERF_RE = re.compile(r"^\[PERF\] (\S+) : ([0-9.]+|inf) (ms|Ko), budget ([0-9.]+|inf) (ms|Ko)( \(DÉPASSÉ\))?\s*$")
-CSV_RE = re.compile(r"^[^;]*;(\S+);([0-9.]+|inf);([0-9.]+|inf);(oui|non)(?:;(ms|Ko))?\s*$")
+PERF_RE = re.compile(r"^\[PERF\] (\S+) : ([0-9.]+|inf) (ms|Ko|%), budget ([0-9.]+|inf) (ms|Ko|%)( \(DÉPASSÉ\))?\s*$")
+CSV_RE = re.compile(r"^[^;]*;(\S+);([0-9.]+|inf);([0-9.]+|inf);(oui|non)(?:;(ms|Ko|%))?\s*$")
 
 
 def parse(lines) -> dict[str, dict]:
@@ -49,7 +49,7 @@ def declared(path: Path = BUDGETS) -> dict[str, dict]:
 def report(measures: dict[str, dict], budgets: dict[str, dict]) -> list[dict]:
     rows = []
     for name, entry in budgets.items():
-        unit = "Ko" if "budget_kb" in entry else "ms"
+        unit = "Ko" if "budget_kb" in entry else entry.get("unite", "ms")
         m = measures.get(name)
         if m is None:
             rows.append({"nom": name, "etat": "non mesuré", "unite": unit, "lot": entry.get("lot", "")})

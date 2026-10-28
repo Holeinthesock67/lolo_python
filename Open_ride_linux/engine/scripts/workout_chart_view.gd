@@ -13,13 +13,14 @@ extends Control
 ## que lorsqu'une nouvelle seconde de séance est arrivée (`refresh()`), jamais à chaque image.
 ## Ne décide rien. Pas de class_name : charger par preload("res://scripts/workout_chart_view.gd").
 
+const UiTheme := preload("res://scripts/ui_theme.gd")
 const MODES := ["hidden", "reduced", "full"]
-const POWER_COLOR := Color(1.0, 1.0, 1.0)
-const HR_COLOR := Color(0.95, 0.25, 0.25)
-const CADENCE_COLOR := Color(0.55, 0.80, 1.0)
-const BG_COLOR := Color(0.04, 0.06, 0.08, 0.65)
-const GRID_COLOR := Color(1.0, 1.0, 1.0, 0.16)
-const TEXT_COLOR := Color(0.80, 0.84, 0.88)
+const POWER_COLOR := UiTheme.POWER
+const HR_COLOR := UiTheme.HEART_RATE
+const CADENCE_COLOR := UiTheme.CADENCE
+const BG_COLOR := UiTheme.CHART_BG
+const GRID_COLOR := UiTheme.GRID
+const TEXT_COLOR := UiTheme.CHART_TEXT
 const PROFILE_ALPHA := 0.45          # profil atténué : les courbes passent devant
 const POWER_WIDTH := 3.5
 const CURVE_WIDTH := 2.0
@@ -116,7 +117,7 @@ func _on_draw() -> void:
 		total += tw + 18.0
 	var x := w - total - 4.0
 	for i in range(items.size()):
-		draw_string_outline(font, Vector2(x, LEGEND_SIZE + 2.0), items[i]["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_SIZE, 5, Color(0.0, 0.0, 0.0, 0.8))
+		draw_string_outline(font, Vector2(x, LEGEND_SIZE + 2.0), items[i]["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_SIZE, 5, UiTheme.OUTLINE)
 		draw_string(font, Vector2(x, LEGEND_SIZE + 2.0), items[i]["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_SIZE, items[i]["color"])
 		x += float(widths[i]) + 18.0
 

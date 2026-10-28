@@ -45,19 +45,19 @@ func _init() -> void:
 	# Budgets par machine : PC cible, CI, puis remplacement local.
 	OS.set_environment("CI", "")
 	OS.set_environment("OPENRIDE_PERF_BUDGETS", "/nonexistent/perf_budgets.json")
-	_check(PerfBudget.budget_ms("passersby_frame") == 0.2, "budget du PC cible (%.2f ms)" % PerfBudget.budget_ms("passersby_frame"))
+	_check(PerfBudget.budget_ms("passersby_frame_80") == 0.2, "budget du PC cible (%.2f ms)" % PerfBudget.budget_ms("passersby_frame_80"))
 	_check(PerfBudget.budget_kb("sound_synthesis_rogue_memory") == 8192.0, "budget mémoire des sons R18 : 8 Mo")
 	_check(PerfBudget.budget_ms("sound_synthesis_rogue") == 300.0, "budget de synthèse des sons R18 : 300 ms")
 	_check(is_inf(PerfBudget.budget_ms("inconnu")), "budget inconnu : infini")
 	OS.set_environment("CI", "true")
-	_check(PerfBudget.budget_ms("passersby_frame") == 0.6, "budget de la CI (%.2f ms)" % PerfBudget.budget_ms("passersby_frame"))
+	_check(PerfBudget.budget_ms("passersby_frame_80") == 0.6, "budget de la CI (%.2f ms)" % PerfBudget.budget_ms("passersby_frame_80"))
 	_check(PerfBudget.budget_kb("sound_synthesis_rogue_memory") == 16384.0, "budget mémoire de la CI : 16 Mo")
 	var local := OS.get_cache_dir().path_join("openride_perf_budgets_test.json")
 	var f := FileAccess.open(local, FileAccess.WRITE)
-	f.store_string(JSON.stringify({"passersby_frame": 0.35}))
+	f.store_string(JSON.stringify({"passersby_frame_80": 0.35}))
 	f.close()
 	OS.set_environment("OPENRIDE_PERF_BUDGETS", local)
-	_check(PerfBudget.budget_ms("passersby_frame") == 0.35, "remplacement par machine (%.2f ms)" % PerfBudget.budget_ms("passersby_frame"))
+	_check(PerfBudget.budget_ms("passersby_frame_80") == 0.35, "remplacement par machine (%.2f ms)" % PerfBudget.budget_ms("passersby_frame_80"))
 	DirAccess.remove_absolute(local)
 
 	# Verdicts (sans ligne [PERF], qui fausserait le rapport du passage) : report ne fait jamais

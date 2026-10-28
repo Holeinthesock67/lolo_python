@@ -244,8 +244,8 @@ func _run() -> void:
 		st["frames"] += 1, 1500, 20)
 	print("Passants : %d affichés ; modèle %.3f ms par image, avec la sélection et l'animation %.3f ms" % [st["seen"], model["median_ms"], full["median_ms"]])
 	_check(st["seen"] == 80, "80 passants affichés au plus près du cycliste (%d)" % st["seen"])
-	_check(PerfBudget.check("passersby_model_frame", model["median_ms"]), "80 passants : mise à jour du modèle en %.3f ms par image" % model["median_ms"])
-	_check(PerfBudget.check("passersby_frame", full["median_ms"]), "80 passants : modèle, sélection et animation en %.3f ms par image" % full["median_ms"])
+	_check(PerfBudget.check("passersby_update_80", model["median_ms"]), "80 passants : mise à jour du modèle en %.3f ms par image" % model["median_ms"])
+	_check(PerfBudget.check("passersby_frame_80", full["median_ms"]), "80 passants : modèle, sélection et animation en %.3f ms par image" % full["median_ms"])
 
 	r.queue_free()
 	await process_frame
