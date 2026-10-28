@@ -76,6 +76,15 @@ static func update(material: Material, wind_eval: Dictionary, dt_s: float = 1.0 
 	m.set_shader_parameter("cloud_offset", off)
 
 
+## Scène figée des tests graphiques (lot X20) : nuages placés comme s'ils avaient avancé `t_s` secondes depuis 0
+## sous le vent `wind_eval`, sans l'historique des images.
+static func place(material: Material, wind_eval: Dictionary, t_s: float) -> void:
+	if not is_cloud_material(material):
+		return
+	(material as ShaderMaterial).set_shader_parameter("cloud_offset", Vector2.ZERO)
+	update(material, wind_eval, maxf(t_s, 0.0))
+
+
 ## Uniforms de l'ombre des nuages pour terrain.gdshader : désactivée sauf en "layered" (préréglage high).
 static func terrain_shadow_params(sky_material: Material, quality: String) -> Dictionary:
 	if quality != "layered" or not is_cloud_material(sky_material):
