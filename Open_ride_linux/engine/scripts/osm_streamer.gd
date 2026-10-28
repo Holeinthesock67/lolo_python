@@ -44,7 +44,7 @@ var layers_present: Array = []
 var preset_name := "low"
 var visual_grade_scale: float = 1.0
 
-var _building_material: StandardMaterial3D
+var _building_material: ShaderMaterial
 var _water_material: Material
 
 ## Clé de tronçon "chunk:k" -> Array[MeshInstance3D] (au plus 3 nœuds)
@@ -72,10 +72,8 @@ func _init() -> void:
 
 
 func _init_materials() -> void:
-	_building_material = StandardMaterial3D.new()
-	_building_material.vertex_color_use_as_albedo = true
-	_building_material.roughness = 0.85
-
+	_building_material = BuildingMesh.make_material()
+	BuildingMesh.apply_preset(_building_material, preset_name)
 	_water_material = WaterMesh.make_material(water_shimmer)
 
 
@@ -83,7 +81,11 @@ func set_preset(preset: String) -> void:
 	preset_name = preset
 	var vis_end := QualityPresets.building_visibility_end_m(preset)
 	if _building_material != null:
-		_building_material.distance_fade_max_distance = vis_end
+		BuildingMesh.apply_preset(_building_material, preset)
+	for k in _chunk_instances:
+		for mi in _chunk_instances[k]:
+			if is_instance_valid(mi) and (mi as MeshInstance3D).name.begins_with("osm_buildings"):
+				(mi as MeshInstance3D).visibility_range_end = vis_end
 
 
 ## Eau qui scintille (Lot P12, `living(preset).water_shimmer`) : nouveau matériau pour les tronçons à venir
@@ -463,6 +465,8 @@ static func _arrays_from_mesh_dict(d: Dictionary) -> Array:
 		arr[Mesh.ARRAY_COLOR] = d["colors"]
 	if d.has("uvs"):
 		arr[Mesh.ARRAY_TEX_UV] = d["uvs"]
+	if d.has("uvs2"):
+		arr[Mesh.ARRAY_TEX_UV2] = d["uvs2"]
 	if d.has("indices"):
 		arr[Mesh.ARRAY_INDEX] = d["indices"]
 	return arr
