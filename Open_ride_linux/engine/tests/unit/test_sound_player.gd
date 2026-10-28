@@ -55,7 +55,7 @@ func _test_sound_synthesis_perf() -> void:
 		var v = sp.stream(k)
 		if not (v is AudioStreamWAV) or v.loop_mode != AudioStreamWAV.LOOP_DISABLED or v.get_length() < 0.3 or v.get_length() > 1.0:
 			voices_ok = false
-	_check(voices_ok, "lot P21 : quatre sons de passants (voix, aboiement, rire) brefs et non bouclés")
+	_check(voices_ok, "lots P21, P23 et P24 : voix, aboiement, rire, cris d'oiseaux et de troupeaux brefs (0,3 à 1 s) et non bouclés")
 	var beds_ok := true
 	for bed in AmbienceModel.BEDS:
 		var b: Resource = sp._streams.get(bed, null)

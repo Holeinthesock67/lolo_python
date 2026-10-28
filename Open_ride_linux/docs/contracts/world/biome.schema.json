@@ -1,0 +1,132 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWorldBiomeTile",
+  "description": "Tuile de la couche biome (Format .world v1, §8 quater, depuis 1.6, lot U1). La somme des poids vaut 255 en chaque point et la liste weights a autant de grilles que biomes : contrôlés par le validateur (verify), pas par ce schéma.",
+  "type": "object",
+  "required": [
+    "version",
+    "biomes",
+    "grid",
+    "weights",
+    "variant"
+  ],
+  "additionalProperties": false,
+  "$defs": {
+    "biomeId": {
+      "enum": [
+        "temperate_grassland",
+        "temperate_forest",
+        "farmland",
+        "boreal_forest",
+        "alpine",
+        "tundra",
+        "polar",
+        "mediterranean",
+        "steppe",
+        "savanna",
+        "sand_desert",
+        "rock_desert",
+        "jungle",
+        "wetland",
+        "coast",
+        "volcanic"
+      ]
+    },
+    "groundVariant": {
+      "enum": [
+        "gres_rose",
+        "calcaire_blanc",
+        "granite_gris",
+        "schiste_sombre",
+        "basalte",
+        "laterite_rouge",
+        "craie"
+      ]
+    },
+    "roofVariant": {
+      "enum": [
+        "tuile_ronde",
+        "ardoise",
+        "tuile_plate",
+        "pierre_seche",
+        "toit_plat_blanc",
+        "bois"
+      ]
+    },
+    "weightGrid": {
+      "type": "array",
+      "minItems": 289,
+      "maxItems": 289,
+      "items": {
+        "type": "integer",
+        "minimum": 0,
+        "maximum": 255
+      }
+    }
+  },
+  "properties": {
+    "version": {
+      "type": "string",
+      "pattern": "^1\\.[0-9]+$"
+    },
+    "biomes": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "uniqueItems": true,
+      "items": {
+        "$ref": "#/$defs/biomeId"
+      }
+    },
+    "grid": {
+      "const": 17,
+      "description": "17 × 17 points, 16 × 16 cases (62,5 m en proche, 312,5 m en lointain), bords partagés avec les voisines."
+    },
+    "weights": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 4,
+      "items": {
+        "$ref": "#/$defs/weightGrid"
+      },
+      "description": "Une grille par biome, dans l'ordre de biomes ; point (i, j) à l'indice j × 17 + i, rangé par ligne comme les altitudes du terrain."
+    },
+    "variant": {
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "ground",
+            "roofs"
+          ],
+          "properties": {
+            "ground": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/groundVariant"
+                }
+              ]
+            },
+            "roofs": {
+              "oneOf": [
+                {
+                  "type": "null"
+                },
+                {
+                  "$ref": "#/$defs/roofVariant"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  }
+}
