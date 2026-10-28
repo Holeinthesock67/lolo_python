@@ -37,7 +37,7 @@ func _run() -> void:
 	var sts := Builder.stations(_profile(10, 5.0), 100.0, 2.0)
 	_check(sts.size() == 11, "11 sections pour 100 m (%d)" % sts.size())
 	_check(is_equal_approx(sts[10].x, 100.0), "dernière section à la fin de la salle")
-	_check(is_equal_approx(sts[10].y, 10.0), "100 m à 5 % exagéré ×2 : +10 m (%.2f)" % sts[10].y)
+	_check(is_equal_approx(sts[10].y, 10.0), "100 m à 5 %% exagéré ×2 : +10 m (%.2f)" % sts[10].y)
 	_check(is_equal_approx(Builder.y_at(sts, 50.0), 5.0), "interpolation à 50 m : 5 m")
 	_check(Builder.y_at(sts, -5.0) == 0.0 and is_equal_approx(Builder.y_at(sts, 500.0), 10.0), "bornée aux extrémités")
 	var down := Builder.stations(_profile(5, -4.0), 50.0, 1.0)
