@@ -35,6 +35,7 @@ func on_loot(msg: Dictionary) -> void:
 	last_loot = msg
 	if scene != null:
 		scene.hud_model.set_loot(msg)
+		scene.audio.on_loot(msg, float(Time.get_ticks_msec()) / 1000.0)
 
 
 ## Appelé à chaque trame `state`. `classic` : nœuds 3D du monde classique à masquer ; `world_env` et `camera`
