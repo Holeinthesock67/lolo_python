@@ -2,7 +2,9 @@ extends Node3D
 
 ## Décor vivant, deuxième vague (Lot P17) : branche dans la scène principale la météo légère (P8), les
 ## animaux (P11), les éoliennes, les drapeaux et l'eau qui scintille (P12), les véhicules croisés (P13),
-## les panneaux, bornes et marquages (P14), les spectateurs (P15) et les passants (P21). Pas de
+## les panneaux, bornes et marquages (P14), les spectateurs (P15) et les passants (P21) ; lot P25 : la
+## circulation des routes voisines et les tracteurs des champs (road_traffic_model.gd), et les phares de tous
+## les véhicules par brume, pluie ou soleil bas (traffic_model.gd `headlights`). Pas de
 ## class_name : charger par preload("res://scripts/living_decor.gd"). Créé par main.gd, à côté de
 ## living_world.gd (P16), dont il reprend le vent évalué.
 ##
@@ -36,6 +38,9 @@ const Flags := preload("res://scripts/flags.gd")
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 const TrafficModel := preload("res://scripts/traffic_model.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
+const RoadTrafficModel := preload("res://scripts/road_traffic_model.gd")
+const RoadTrafficRenderer := preload("res://scripts/road_traffic_renderer.gd")
+const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const ClimbDetector := preload("res://scripts/climb_detector.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
@@ -66,6 +71,9 @@ var turbines: Node3D = null
 var flags: Node3D = null
 var traffic = TrafficModel.new()
 var traffic_view: Node3D = null
+var road_traffic = RoadTrafficModel.new()
+var road_traffic_view: Node3D = null
+var headlights := false
 var props: Node3D = null
 var crowd = CrowdModel.new()
 var crowd_view: Node3D = null
@@ -91,6 +99,7 @@ var _fog_at := -INF
 var _fog_boost := 0.0
 var _valley_alt := 0.0
 var _valley_at_s := -INF
+var _sun_elevation_deg := 45.0
 
 
 func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p_environment: Environment = null,
@@ -112,6 +121,9 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	crowd_view.set_preset(preset, enabled)
 	passersby_view.set_preset(preset, enabled)
 	traffic.set_budget(int(living.get("vehicles", 0)))
+	road_traffic.set_budget(int(living.get("distant_vehicles", 0)))
+	road_traffic_view.set_budget(int(living.get("distant_vehicles", 0)))
+	_sun_elevation_deg = float(ThemeRenderParams.sky_params(theme)["sun_elevation_deg"])
 	turbines.visible = enabled
 	flags.visible = enabled
 	if world_streamer != null:
@@ -124,6 +136,7 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 			osm_streamer.chunk_freed.connect(_on_chunk_freed)
 	if osm_streamer != null:
 		osm_streamer.fauna_enabled = enabled and int(living.get("animals", 0)) + int(living.get("birds", 0)) > 0
+		osm_streamer.traffic_enabled = enabled and int(living.get("distant_vehicles", 0)) > 0
 		osm_streamer.set_water_shimmer(enabled and bool(living.get("water_shimmer", false)))
 
 
@@ -144,6 +157,10 @@ func _build_nodes() -> void:
 	traffic_view.name = "Traffic"
 	add_child(traffic_view)
 	traffic_view.setup(traffic, sound_player)
+	road_traffic_view = RoadTrafficRenderer.new()
+	road_traffic_view.name = "RoadTraffic"
+	add_child(road_traffic_view)
+	road_traffic_view.setup(road_traffic)
 	props = RoadsideProps.new()
 	props.name = "RoadsideProps"
 	add_child(props)
@@ -280,6 +297,7 @@ func _on_chunk_loaded(k: int, extras: Dictionary) -> void:
 	var groups: Array = extras.get("fauna", [])
 	if not groups.is_empty():
 		fauna.set_chunk(k, groups)
+	road_traffic.set_chunk(k, extras.get("traffic", []))
 	if prepared:
 		props.add_chunk(_route, k, RoadsideModel.for_chunk(roadside_items, k))
 
@@ -287,6 +305,7 @@ func _on_chunk_loaded(k: int, extras: Dictionary) -> void:
 func _on_chunk_freed(k: int) -> void:
 	_loaded_chunks.erase(k)
 	fauna.remove_chunk(k)
+	road_traffic.remove_chunk(k)
 	props.remove_chunk(k)
 
 
@@ -342,9 +361,14 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		WaterMesh.update_shimmer(osm_streamer.water_material(), wind_eval, dt_s)
 	if not prepared:
 		return
-	# Véhicules (P13), figés en pause
+	# Véhicules (P13), routes voisines et champs (P25), figés en pause ; phares (P25)
+	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
 	traffic.update(cam_s, rider_v, dt_s, paused)
+	traffic_view.set_lights(headlights)
 	traffic_view.update()
+	road_traffic.update(cam_pos, dt_s, paused)
+	road_traffic_view.set_lights(headlights)
+	road_traffic_view.update()
 	# Spectateurs (P15) et passants (P21)
 	crowd.update(rider_pos, cam_s, now_s)
 	var bots = state.get("bots", [])
@@ -370,6 +394,8 @@ func test_info(cam: Camera3D) -> Dictionary:
 		"spectators": crowd_view.visible_count() if crowd_view != null else 0,
 		"passersby": passersby_view.visible_count() if passersby_view != null else 0,
 		"vehicles": traffic_view.visible_count() if traffic_view != null else 0,
+		"distant_vehicles": road_traffic_view.visible_count() if road_traffic_view != null else 0,
+		"headlights": headlights,
 		"particles": particles.get_active_count() if particles != null else 0,
 		"rain": float(weather_eval.get("rain", 0.0)), "wetness": float(weather_eval.get("wetness", 0.0)),
 		"fog_boost": float(weather_eval.get("fog_boost", 0.0)),
