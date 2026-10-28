@@ -16,6 +16,7 @@ const ButtonBar := preload("res://scripts/button_bar.gd")
 const UiTheme := preload("res://scripts/ui_theme.gd")
 const UiIcons := preload("res://scripts/ui_icons.gd")
 const DetailCard := preload("res://scripts/detail_card.gd")
+const ButtonHelp := preload("res://scripts/button_help.gd")
 
 ## Éléments affichés à la fois ; au-delà, la fenêtre suit le focus. Un de moins quand les pastilles des
 ## appareils sont affichées (accueil, Prêt, connexion) : l'accueil tient en entier.
@@ -165,7 +166,7 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	more_label.text = "%d / %d" % [focus + 1, items.size()] if items.size() > max_items else ""
 	devices.visible = screen in DEVICES_SCREENS
 	# Aide toujours visible (sans elle, rien ne dit qu'il faut un appui long pour valider).
-	button_bar.update_display(screen)
+	button_bar.update_display(ButtonHelp.EDIT if menu.get("editing", false) or screen == "setting_edit" else screen)
 	if summary.visible:
 		summary.update_display(summary_data, show_details, str(state.get("mode", "")))
 	if devices.visible:
@@ -199,6 +200,15 @@ func _new_row() -> PanelContainer:
 	l.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS
 	l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	row.add_child(l)
+	var bar := Control.new()   # curseur d'un réglage en % (0 à 100), dessiné par le code
+	bar.custom_minimum_size = Vector2(UiTheme.BAR_W, UiTheme.BAR_H)
+	bar.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+	bar.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	bar.draw.connect(func() -> void:
+		var fill := float(bar.get_meta("pct", 0)) / 100.0
+		bar.draw_rect(Rect2(Vector2.ZERO, bar.size), UiTheme.LINE)
+		bar.draw_rect(Rect2(Vector2.ZERO, Vector2(bar.size.x * fill, bar.size.y)), UiTheme.FOCUS if bar.get_meta("focused", false) else UiTheme.DIM))
+	row.add_child(bar)
 	var d := UiTheme.label(UiTheme.DETAIL_SIZE, UiTheme.DIM)
 	d.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	d.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
@@ -218,7 +228,8 @@ func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
 	var row: HBoxContainer = p.get_child(0)
 	var icon: Control = row.get_child(0)
 	var l: Label = row.get_child(1)
-	var d: Label = row.get_child(2)
+	var bar: Control = row.get_child(2)
+	var d: Label = row.get_child(3)
 	var enabled: bool = it.get("enabled", true)
 	var id := str(it.get("id", ""))
 	l.text = str(it.get("label", ""))
@@ -229,7 +240,12 @@ func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
 	p.add_theme_stylebox_override("panel", _focus_style if focused else _plain_style)
 	var color: Color = UiTheme.FOCUS if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED)
 	l.add_theme_color_override("font_color", UiTheme.TEXT if (focused or enabled) else UiTheme.DISABLED)
-	d.add_theme_color_override("font_color", UiTheme.TEXT if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED))
+	d.add_theme_color_override("font_color", UiTheme.FOCUS if it.get("editing", false) else
+		(UiTheme.TEXT if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED)))
+	bar.visible = it.has("bar")
+	bar.set_meta("pct", int(it.get("bar", 0)))
+	bar.set_meta("focused", focused)
+	bar.queue_redraw()
 	icon.set_meta("shape", UiIcons.for_item(id))
 	icon.set_meta("color", color)
 	icon.queue_redraw()
@@ -240,7 +256,7 @@ func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
 func _row_text(p: PanelContainer) -> String:
 	var row: HBoxContainer = p.get_child(0)
 	var l: Label = row.get_child(1)
-	var d: Label = row.get_child(2)
+	var d: Label = row.get_child(3)
 	return l.text + ((" — " + d.text) if d.text != "" else "")
 
 
