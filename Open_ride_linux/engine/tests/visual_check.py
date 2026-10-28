@@ -539,7 +539,8 @@ class Session:
                  if overlap(vis[a]["rect"], vis[b]["rect"]) > 1.0]
         self.check(scene, "lignes du HUD sans chevauchement", not pairs, ", ".join(pairs))
         # Panneaux (colonnes, vent, abri, blocs segment et bonus, encart des bots, profil) : lot X22.
-        for name, ok, detail in hud_lisibilite.panel_checks(info, self.width, self.height):
+        for name, ok, detail in (hud_lisibilite.panel_checks(info, self.width, self.height)
+                                 + hud_lisibilite.column_checks(info)):
             self.check(scene, name, ok, detail)
         if "banner" in vis:
             hit = [k for k in labels + ["panel"] if k in vis and overlap(vis[k]["rect"], vis["banner"]["rect"]) > 1.0]
@@ -941,6 +942,31 @@ def _scenes(s: Session) -> None:
             frac = fraction(img, later, yellow, step=2)
             s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
 
+    # 4 ter. Cible ERG longue (« 152 W (98 %) », biais −2 %) : la valeur tient dans la colonne gauche, police
+    # réduite au besoin, et le braquet, sans effet en ERG, est caché ; en roue libre il revient (suite X22).
+    core.set_scene(speed=7.0, mode="ERG", erg={
+        "workout_name": "Recette 8 min", "block_index": 1, "block_count": 4, "block_type": "warmup",
+        "block_remaining_s": 22.0, "block_total_s": 120.0, "target_w": 152.0, "next_target_w": 184.0,
+        "bias_pct": 98, "paused": False})
+    time.sleep(1.0)
+    shot = s.capture("erg_cible_longue")
+    if shot:
+        img, info = shot
+        s.check_texts("erg_cible_longue", info, {"target": "152 W (98 %)"})
+        s.check("erg_cible_longue", "braquet caché en ERG", not info["widgets"]["gear"]["visible"])
+        s.check_layout("erg_cible_longue", info)
+    core.set_scene(speed=7.0, mode="ERG", erg={
+        "workout_name": "Recette 8 min", "block_index": 2, "block_count": 4, "block_type": "freeride",
+        "block_remaining_s": 60.0, "block_total_s": 120.0, "target_w": 0.0, "next_target_w": 184.0,
+        "bias_pct": 98, "paused": False})
+    time.sleep(1.0)
+    shot = s.capture("erg_roue_libre")
+    if shot:
+        img, info = shot
+        s.check_texts("erg_roue_libre", info, {"target": "roue libre"})
+        s.check("erg_roue_libre", "braquet affiché en roue libre", info["widgets"]["gear"]["visible"])
+        s.check_layout("erg_roue_libre", info)
+
     # 4 bis. Courbes de la séance (lot O14), taille complète : en ERG à la place de l'histogramme (profil
     # cible, puissance blanche, FC rouge, légende) ; en SIM dans un panneau centré, sans toucher aux
     # panneaux latéraux. Le core annonce la taille dans hello_ack.config.chart.
@@ -1336,6 +1362,40 @@ def _progress_scenes(s: Session) -> None:
         banner = info["widgets"]["banner"]
         s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
                 f"{banner.get('text')}")
+    # Bilan complet (dix chiffres, fichier FIT, quatre blocs ERG du bilan détaillé) et progression : la carte
+    # tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
+    core.set_scene(session_state="IDLE", summary=None)
+    time.sleep(0.5)
+    core.set_scene(session_state="FINISHED", summary={
+        "duration_s": 516.0, "distance_m": 3210.0, "avg_power_w": 139.0, "np_w": 155.0, "intensity_factor": 0.62,
+        "tss": 6.0, "elevation_gain_m": 33.0, "avg_cadence_rpm": 49.0, "avg_hr_bpm": 119.0, "max_power_w": 400.0,
+        "fit_path": "/tmp/openride/2026-10-28_17-24_essai-69.fit",
+        "blocks": [[1, 91.0, 141.0], [2, 149.0, 170.0], [3, 127.0, 126.0], [4, 182.0, 183.0]]})
+    time.sleep(1.0)
+    for _ in range(2):
+        core.send(dict(XP_RESULT))
+        time.sleep(1.0)
+    for detailed in (False, True):
+        if detailed:
+            core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "menu_focus", "id": "details"})
+            time.sleep(0.4)
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
+            time.sleep(1.0)
+        scene = "bilan_complet_detaille" if detailed else "bilan_complet"
+        shot = s.capture(scene)
+        if shot:
+            img, info = shot
+            w = info["widgets"]
+            s.check_texts(scene, info, {"menu": "Puissance max : 400 W"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
+            if detailed:
+                s.check_texts(scene, info, {"menu": "Bloc 4 : 182 W pour 183 W"}, contains=True)
+            card, bar = w["menu_card"], w["button_bar"]
+            bottom = card["rect"][1] + card["rect"][3]
+            s.check(scene, "carte du bilan au-dessus du bandeau des boutons",
+                    card["visible"] and bottom <= bar["rect"][1] + 0.5,
+                    f"bas de la carte {bottom:.0f} px, bandeau à {bar['rect'][1]:.0f} px")
+            s.check_layout(scene, info)
     core.set_scene(session_state="IDLE", summary=None)
     time.sleep(0.5)
     core.set_scene(session_state="FINISHED", summary={"duration_s": 120.0, "distance_m": 800.0})

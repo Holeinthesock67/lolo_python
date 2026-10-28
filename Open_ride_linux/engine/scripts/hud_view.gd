@@ -57,6 +57,12 @@ const BLOCK_PAD := 4.0
 ## bandeau ERG au-dessus de lui.
 const RIGHT_COLUMN_TOP := 20.0 + 320.0 + BLOCK_GAP
 const PROFILE_RESERVE := 120.0
+## Colonnes gauche et droite : largeur, marge intérieure et police minimale d'une valeur réduite pour tenir
+## dans la colonne (« 152 W (98 %) » en cible ERG).
+const COLUMN_W := 300.0
+const COLUMN_PAD := 10.0
+const METRIC_SEP := 12.0
+const METRIC_MIN_FONT := 20
 const ERG_RESERVE := ErgView.BOTTOM_OFFSET + ErgView.PANEL_HEIGHT
 const JERSEY_COLORS := {"sprint": UiTheme.JERSEY_SPRINT, "kom": UiTheme.JERSEY_KOM}
 const KOM_DOT := UiTheme.KOM_DOT
@@ -74,11 +80,11 @@ const GRADE_COLORS := {
 ## barres du profil, éclaircies et opaques, pour au moins 4,5:1 sur un panneau au-dessus d'un ciel clair
 ## (lot X22 : 3,0 à 4,1:1 avec les couleurs des barres).
 const GRADE_TEXT_COLORS := {
-	"descent": Color(0.55, 0.80, 1.00),
-	"flat": Color(0.50, 0.90, 0.55),
-	"climb": Color(1.00, 0.85, 0.35),
-	"steep": Color(1.00, 0.68, 0.40),
-	"wall": Color(1.00, 0.60, 0.58),
+	"descent": UiTheme.GRADE_TEXT_DESCENT,
+	"flat": UiTheme.GRADE_TEXT_FLAT,
+	"climb": UiTheme.GRADE_TEXT_CLIMB,
+	"steep": UiTheme.GRADE_TEXT_STEEP,
+	"wall": UiTheme.GRADE_TEXT_WALL,
 }
 
 var vm := HudViewModel.new()
@@ -157,9 +163,9 @@ func _build_ui() -> void:
 		return
 
 	# Panneau gauche (haut) : Puissance, Cadence, Fréquence cardiaque
-	panel_left = _create_panel(Vector2(20.0, 20.0), Vector2(300.0, 320.0), false, false)
+	panel_left = _create_panel(Vector2(20.0, 20.0), Vector2(COLUMN_W, 320.0), false, false)
 	var left_vbox := VBoxContainer.new()
-	left_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 10)
+	left_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, int(COLUMN_PAD))
 	panel_left.add_child(left_vbox)
 
 	power_val = _create_metric(left_vbox, "PUISSANCE (W)", HudViewModel.NO_VALUE)
@@ -170,9 +176,9 @@ func _build_ui() -> void:
 	target_val.get_parent().visible = false
 
 	# Panneau droit (haut) : Vitesse, Pente, Braquet, Distance, Temps
-	panel_right = _create_panel(Vector2(-320.0, 20.0), Vector2(300.0, 320.0), true, false)
+	panel_right = _create_panel(Vector2(-20.0 - COLUMN_W, 20.0), Vector2(COLUMN_W, 320.0), true, false)
 	var right_vbox := VBoxContainer.new()
-	right_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 10)
+	right_vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, int(COLUMN_PAD))
 	panel_right.add_child(right_vbox)
 
 	speed_val = _create_metric(right_vbox, "VITESSE (KM/H)", HudViewModel.NO_VALUE)
@@ -635,7 +641,7 @@ func _create_panel(pos: Vector2, size: Vector2, anchor_right := false, anchor_bo
 func _create_metric(parent: Control, label_text: String, default_val: String,
 		val_size := 48, label_size := 24) -> Label:
 	var hbox := HBoxContainer.new()
-	hbox.add_theme_constant_override("separation", 12)
+	hbox.add_theme_constant_override("separation", int(METRIC_SEP))
 	parent.add_child(hbox)
 
 	var lbl := Label.new()
@@ -648,9 +654,23 @@ func _create_metric(parent: Control, label_text: String, default_val: String,
 	val.text = default_val
 	val.add_theme_font_size_override("font_size", val_size)
 	val.set_meta("caption", lbl)   # libellé de la valeur (tests de lisibilité, lot X22)
+	val.set_meta("font_max", val_size)
 	hbox.add_child(val)
 
 	return val
+
+
+## Écrit la valeur d'une métrique des colonnes et réduit sa police, de 2 en 2 depuis sa taille de départ,
+## jusqu'à ce que libellé et valeur tiennent dans la largeur de la colonne.
+func _set_metric(val: Label, text: String) -> void:
+	val.text = text
+	var caption: Label = val.get_meta("caption")
+	var avail := COLUMN_W - 2.0 * COLUMN_PAD - METRIC_SEP - caption.get_minimum_size().x
+	var font := val.get_theme_font("font")
+	var size: int = val.get_meta("font_max")
+	while size > METRIC_MIN_FONT and font.get_string_size(text, HORIZONTAL_ALIGNMENT_LEFT, -1, size).x > avail:
+		size -= 2
+	val.add_theme_font_size_override("font_size", size)
 
 
 ## Met à jour les valeurs et le profil d'altitude.
@@ -662,22 +682,24 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 	var lines := HudViewModel.session_lines(state, erg_eval)
 
 	if power_val != null:
-		power_val.text = lines["power_val"]
+		_set_metric(power_val, lines["power_val"])
 	if speed_val != null:
-		speed_val.text = lines["speed_val"]
+		_set_metric(speed_val, lines["speed_val"])
 	if cadence_val != null:
-		cadence_val.text = lines["cadence_val"]
+		_set_metric(cadence_val, lines["cadence_val"])
 	if hr_val != null:
-		hr_val.text = lines["hr_val"]
+		_set_metric(hr_val, lines["hr_val"])
 	if distance_val != null:
-		distance_val.text = lines["distance_val"]
+		_set_metric(distance_val, lines["distance_val"])
 	if time_val != null:
-		time_val.text = lines["time_val"]
+		_set_metric(time_val, lines["time_val"])
 	if gear_val != null:
-		gear_val.text = lines["gear_val"]
+		# Braquet caché en ERG avec une cible : le trainer suit la puissance et ± règle l'intensité.
+		_set_metric(gear_val, lines["gear_val"])
+		gear_val.get_parent().visible = lines.get("gear_shown", true)
 
 	if grade_val != null:
-		grade_val.text = lines["grade_val"]
+		_set_metric(grade_val, lines["grade_val"])
 		var g_class: String = lines.get("grade_class", "flat")
 		grade_val.modulate = GRADE_TEXT_COLORS.get(g_class, GRADE_TEXT_COLORS["flat"])
 
@@ -688,7 +710,7 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 	if target_val != null:
 		# Même texte que la ligne de puissance du HUD d'origine (« 230 W » ou « roue libre »).
 		var has_target: bool = lines["power"].contains("CIBLE ERG: ")
-		target_val.text = lines["power"].get_slice("CIBLE ERG: ", 1) if has_target else HudViewModel.NO_VALUE
+		_set_metric(target_val, lines["power"].get_slice("CIBLE ERG: ", 1) if has_target else HudViewModel.NO_VALUE)
 		target_val.get_parent().visible = has_target
 
 	if status_label != null:
