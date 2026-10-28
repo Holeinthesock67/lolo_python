@@ -14,10 +14,10 @@ temps.
 | Vent et roue libre | `[audio] ride_pct`, « Volume vent et roue libre » | `Ride` | vent dans les oreilles, roue libre, « clac » de reprise (`sound_player.gd`) |
 | Ambiance | `[audio] ambience_pct`, « Volume de l'ambiance » | `Ambience` | fonds d'ambiance, cloches, points sonores (`sound_player.gd`), véhicules (`traffic_renderer.gd`), foule et passants (`crowd_renderer.gd`) |
 | Bips et événements | `[audio] events_pct`, « Volume bips et événements » | `Events` | bips d'appui du Click, bip de changement de bloc ERG, consignes d'essai (`main.gd`) ; jingles d'événements (sommet de col, arche, fin de sprint, fin de séance) |
-| Rogue, bruitages | `[audio] rogue_sfx_pct` (réservé, lot R18) | `RogueSfx` | bruitages du mode Cyber-Rogue |
-| Rogue, musique | `[audio] rogue_music_pct` (réservé, lot R18) | `RogueMusic` | musique du mode Cyber-Rogue |
+| Rogue, bruitages | `[audio] rogue_sfx_pct` (défaut 70) | `RogueSfx` | bruitages du mode Cyber-Rogue |
+| Rogue, musique | `[audio] rogue_music_pct` (défaut 40) | `RogueMusic` | musique du mode Cyber-Rogue |
 
-Les deux dernières lignes sont réservées : le lot R18 crée les bus et les réglages sous ces noms.
+Les deux dernières lignes : le lot R18 crée les bus dans l'engine (`rogue_audio.gd`) et lit les réglages sous ces noms ; les clés côté core restent à ajouter par le lot du volume général.
 
 ## Règles
 

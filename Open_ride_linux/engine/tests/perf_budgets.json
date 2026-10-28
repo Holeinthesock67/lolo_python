@@ -24,5 +24,16 @@
   "grass_tufts_frame": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P5"},
   "avatar_frame": {"budget_ms": 0.3, "ci_ms": 0.9, "lot": "V6"},
   "living_decor_frame": {"budget_ms": 2.0, "ci_ms": 6.0, "lot": "P17"},
-  "decor_vivant_2_frame": {"budget_ms": 0.8, "ci_ms": 2.4, "lot": "P27"}
+  "decor_vivant_2_frame": {"budget_ms": 0.8, "ci_ms": 2.4, "lot": "P27"},
+  "biome_weights_at": {"budget_ms": 0.02, "ci_ms": 0.06, "lot": "U5"},
+  "passersby_update_80": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P21"},
+  "passersby_frame_80": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "P21"},
+  "sky_clouds_update": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "P6"},
+  "vegetation_tile_biomes": {"budget_ms": 150, "ci_ms": 450, "lot": "U7 / O1"},
+  "vehicle_meshes_build": {"budget_ms": 400, "ci_ms": 1200, "lot": "P25"},
+  "visual_grade_overhead": {"budget_ms": 5, "ci_ms": 15, "unite": "%", "lot": "Q2"},
+  "wind_evaluate": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "P4"},
+  "workout_chart_geometry": {"budget_ms": 5, "ci_ms": 15, "lot": "O13"},
+  "workout_chart_cached": {"budget_ms": 0.5, "ci_ms": 1.5, "lot": "O13"},
+  "workout_chart_push": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "O13"}
 }

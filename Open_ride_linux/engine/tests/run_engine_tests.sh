@@ -42,10 +42,17 @@ record() {  # record <nom> <0 si réussi> [détail]
   if [ "$2" -eq 0 ]; then SUMMARY+=("OK     $1${3:+ : $3}"); else SUMMARY+=("ÉCHEC  $1${3:+ : $3}"); status=1; fi
 }
 
-# Filtre commun : avertissements connus du mode sans écran (objets non libérés à la sortie, mesh nul).
+# Filtre commun (lot X34) : toute ligne SCRIPT ERROR, ERROR ou WARNING est une erreur, sauf
+# - les objets non libérés à la sortie (ObjectDB instances leaked, resources still in use at exit) ;
+# - une erreur dont la ligne « at: » suivante vient du serveur de rendu factice de --headless
+#   (servers/rendering/dummy/ : « Parameter "m" is null » de mesh_get_surface_count, il ne garde aucun maillage).
+# Avant le lot X34, toute ligne contenant « mesh … null » était tolérée, d'où qu'elle vienne.
 godot_issues() {
-  grep -E "SCRIPT ERROR|ERROR:|WARNING:" \
-    | grep -v -E "ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|mesh_get_surface_count|Parameter \"m\" is null" || true
+  awk '
+    /SCRIPT ERROR|ERROR:|WARNING:/ { if (pending != "") print pending; pending = $0; next }
+    pending != "" { if ($0 !~ /servers\/rendering\/dummy\//) print pending; pending = "" }
+    END { if (pending != "") print pending }
+  ' | grep -v -E "ObjectDB instances leaked|resources still in use at exit" || true
 }
 
 echo "== Tests unitaires (tests/unit/, lot K1) =="
@@ -86,7 +93,7 @@ perf_summary() {
   echo "Budgets de temps (OPENRIDE_PERF=${OPENRIDE_PERF:-report}) : $(wc -l <"$PERF_FILE") mesures, $over dépassement(s)"
   sed 's/^\[PERF\] /  /' "$PERF_FILE"
   if [ -n "${PERF_CSV:-}" ]; then
-    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) ms, budget ([0-9.inf]+) ms( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\3;\4/" "$PERF_FILE" \
+    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) [^ ,]+, budget ([0-9.inf]+) [^ ]+( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\3;\4/" "$PERF_FILE" \
       | sed 's/; (DÉPASSÉ)$/;oui/; s/;$/;non/' >>"$PERF_CSV"
   fi
   rm -f "$PERF_FILE"
@@ -191,6 +198,22 @@ stream_ok=0
 if [ "$stream_status" -ne 0 ] || grep -q -E "SCRIPT ERROR|ERROR:|WARNING:" "$STREAM_LOG"; then stream_ok=1; fi
 record "test_world_streamer (rendu E1)" "$stream_ok"
 rm -f "$STREAM_LOG"
+
+echo "== Coutures du sol multi-biome en scène réelle (série U) =="
+# Démo ci-dessus avec une couche biome prairie → sable ; world_streamer.gd charge les tuiles (Xvfb).
+if command -v xvfb-run >/dev/null 2>&1; then
+  SEAMS_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" xvfb-run -a "$GODOT" --path "$ENGINE_DIR" --rendering-driver opengl3 \
+    --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_biome_seams.gd -- "$ROUTES_DIR/demo.world" 2>&1)"
+  seams_rc=$?
+  echo "$SEAMS_OUT" | grep -v "^Godot Engine" || true
+  seams_issues="$(echo "$SEAMS_OUT" | grep -v -E "V-Sync|set_use_vsync" | godot_issues)"
+  seams_count="$(echo "$SEAMS_OUT" | grep -E "^test_biome_seams : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+  if [ -n "$seams_issues" ]; then echo "$seams_issues"; seams_rc=1; fi
+  if [ -z "$seams_count" ]; then seams_rc=1; fi
+  record "test_biome_seams (coutures des biomes)" "$seams_rc" "${seams_count#*: }"
+elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
+  record "test_biome_seams (coutures des biomes)" 1 "xvfb-run introuvable alors que REQUIRE_RENDER=1"
+fi
 
 echo "== ERG (lot I6) =="
 python3 "$ENGINE_DIR/tests/fake_core.py" --erg-workout --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &

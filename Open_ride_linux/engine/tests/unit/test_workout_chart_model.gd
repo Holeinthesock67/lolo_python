@@ -5,6 +5,7 @@ extends SceneTree
 
 const ChartModel := preload("res://scripts/workout_chart_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 ## sweet_spot_3x10.zwo tel que le core l'envoie (triplets du contrat v1.1).
 const SWEET_SPOT := [
@@ -142,7 +143,7 @@ func _test_long_session() -> void:
 	for line in g["curves"]["power"]:
 		drawn += line.size()
 	_check(drawn <= ChartModel.MAX_DRAWN_POINTS and g["group"] == 4, "au plus 1 800 points dessinés (%d, groupes de %d)" % [drawn, g["group"]])
-	_check(dt_ms < 5.0, "géométrie en moins de 5 ms (%.2f ms)" % dt_ms)
+	_check(PerfBudget.check("workout_chart_geometry", dt_ms), "géométrie construite (%.2f ms)" % dt_ms)
 	var w_top: float = g["scales"]["watts"][1]
 	var slow: Array = ChartModel._polylines(m.smoothed("power", 0, 0, 7200), 0, 4, 1600.0, 300.0, 0.0, 7200.0, 0.0, w_top)
 	var fast: PackedVector2Array = g["curves"]["power"][0]
@@ -151,13 +152,13 @@ func _test_long_session() -> void:
 		"groupes tenus à jour : mêmes points que le calcul seconde par seconde")
 	var t1 := Time.get_ticks_usec()
 	m.geometry(1600.0, 300.0)
-	_check((Time.get_ticks_usec() - t1) / 1000.0 < 0.5, "même seconde : géométrie en cache")
+	_check(PerfBudget.check("workout_chart_cached", (Time.get_ticks_usec() - t1) / 1000.0), "même seconde : géométrie en cache")
 	_check(ChartModel.group_factor(1800) == 1 and ChartModel.group_factor(1801) == 2 and ChartModel.group_factor(3600) == 2,
 		"facteur de regroupement")
 	var t2 := Time.get_ticks_usec()
 	for k in range(3000):
 		m.push(7200.0 + k / 30.0, 200.0, 140, 90.0, 175.0)
-	_check((Time.get_ticks_usec() - t2) / 3000.0 < 50.0, "push en temps constant (moyenne sous 50 µs)")
+	_check(PerfBudget.check("workout_chart_push", (Time.get_ticks_usec() - t2) / 3000.0 / 1000.0), "push en temps constant")
 
 
 ## Critère 6 : lissage 10 s sur une marche de 100 à 300 W.
