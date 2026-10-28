@@ -73,6 +73,19 @@ func _diff_rows(a: Image, b: Image, y0: int, y1: int) -> int:
 	return n
 
 
+## Pixels dont la couverture change (fond ou arbre) entre les lignes y0 et y1 : la silhouette, sans les motifs
+## d'écorce (lot Y8 étape 2), qui suivent le tronc et varient d'un pixel quand il fléchit de quelques millimètres.
+func _diff_mask(a: Image, b: Image, y0: int, y1: int) -> int:
+	var bg_a := a.get_pixel(0, 0)
+	var bg_b := b.get_pixel(0, 0)
+	var n := 0
+	for y in range(y0, y1):
+		for x in range(SIZE):
+			if a.get_pixel(x, y).is_equal_approx(bg_a) != b.get_pixel(x, y).is_equal_approx(bg_b):
+				n += 1
+	return n
+
+
 func _run() -> void:
 	_setup()
 	# L'image couvre y de −0,6 à 6,4 m : la cime (5,4 m) est vers la ligne 14, le pied vers la ligne 82.
@@ -83,7 +96,7 @@ func _run() -> void:
 	_check(_diff_rows(calm_a, calm_b, 0, SIZE) == 0, "vent nul : deux images identiques")
 	var windy_a := await _shot(1.0, 0.0)
 	var windy_b := await _shot(1.0, 1.0)
-	var base_diff := _diff_rows(windy_a, windy_b, base_rows[0], base_rows[1])
+	var base_diff := _diff_mask(windy_a, windy_b, base_rows[0], base_rows[1])
 	var top_diff := _diff_rows(windy_a, windy_b, top_rows[0], top_rows[1])
 	_check(base_diff == 0, "vent fort : pied de l'arbre immobile (%d pixels changés)" % base_diff)
 	_check(top_diff > 0, "vent fort : la cime bouge (%d pixels changés)" % top_diff)

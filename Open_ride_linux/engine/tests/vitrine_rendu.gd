@@ -28,6 +28,7 @@ const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
+const TreeSpecies := preload("res://scripts/tree_species.gd")
 
 const SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
@@ -49,7 +50,14 @@ const VIEWS := {
 	"facades_pres": [Vector3(-3.5, 1.6, -18.0), Vector3(-11.0, 3.0, -26.0), 55.0],
 	"toits": [Vector3(3.0, 22.0, -6.0), Vector3(-2.0, 2.0, -48.0), 60.0],
 	"styles": [Vector3(-104.0, 30.0, -82.0), Vector3(-104.0, 1.0, -134.0), 58.0],
+	"arbres_temperes": [Vector3(147.0, 5.0, -86.0), Vector3(147.0, 8.0, -120.0), 60.0],
+	"arbres_sud": [Vector3(153.0, 4.0, -128.0), Vector3(153.0, 4.5, -160.0), 60.0],
+	"ecorces": [Vector3(129.0, 1.8, -112.0), Vector3(129.0, 2.4, -120.0), 55.0],
 }
+## Arbres de tree_species.gd (lot U7) et arbre d'avant la série U, en deux rangées loin de la route.
+const TREES_TEMPERATE := ["oak", "birch", "pine", "beech", "spruce", "larch", "generic"]
+const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "acacia", "baobab", "cactus",
+	"tree_fern", "reed", "dwarf_shrub", "vine_row"]
 ## Une maison et une grange par style d'architecture (variantes du contrat U1, building_styles.gd), en rangée
 ## loin de la route : les styles que prendront les biomes et les régions de la série U.
 const STYLE_ROW := ["tuile_plate", "tuile_ronde", "ardoise", "pierre_seche", "toit_plat_blanc", "bois"]
@@ -224,6 +232,7 @@ func _build_world(preset: String) -> SubViewport:
 	_add_cyclists(vp)
 	_add_animals(vp)
 	_add_buildings(vp, preset)
+	_add_trees(vp, preset)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
 	cam.current = true
@@ -298,6 +307,26 @@ func _add_animals(vp: SubViewport) -> void:
 		mmi.multimesh = mm
 		mmi.material_override = mat
 		vp.add_child(mmi)
+
+
+## Arbres en LOD 0 avec le matériau de la scène principale (tree_renderer.gd, balancement au vent compris).
+func _add_trees(vp: SubViewport, preset: String) -> void:
+	var rows := [[TREES_TEMPERATE, 120.0, -120.0, 9.0], [TREES_SOUTH, 120.0, -160.0, 6.0]]
+	for row in rows:
+		var kinds: Array = row[0]
+		for i in range(kinds.size()):
+			var kind: String = kinds[i]
+			var mi := MeshInstance3D.new()
+			var mat := TreeRenderer.sway_material(false)
+			if kind == "generic":
+				mi.mesh = TreeRenderer.build_lod0_mesh()
+			else:
+				var built := TreeSpecies.build(kind)
+				mi.mesh = built["lod0"]
+				mat.set_shader_parameter("sway_height_m", float(built["height"]))
+			mi.material_override = mat
+			mi.position = Vector3(float(row[1]) + i * float(row[3]), 0.0, float(row[2]))
+			vp.add_child(mi)
 
 
 ## Village de BUILDINGS maillé par building_mesh.gd avec le matériau de la scène principale (osm_streamer.gd).
