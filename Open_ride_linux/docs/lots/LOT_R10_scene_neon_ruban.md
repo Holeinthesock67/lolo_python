@@ -65,3 +65,12 @@ Aucune.
 ## 8. Hors périmètre
 
 - HUD diégétique (R11), ennemis (R12), menus (R13).
+
+## 9. Livraison (28 octobre 2026)
+
+- **Ruban :** `ribbon_builder.gd` (sections tous les 10 m, 4 sommets par section, largeur 6 m, épaisseur 0,3 m, pente exagérée ×2 comme réglage `exaggeration`, `y_at`), `ribbon_colors.gd` (les cinq jetons `grade_*` de la charte, seuils −3 / 1,5 / 4 / 6,5 %), `ribbon.gdshader` (arêtes lumineuses et éclat qui baisse au-delà de 200 m devant le joueur, sans reconstruire le maillage).
+- **Scène :** `engine/scenes/rogue.tscn` + `rogue_scene.gd` (ruban, repères, Firewall, vélo du joueur, grille au sol qui suit le joueur, caméra de suivi à 6 m derrière et 2,4 m au-dessus) ; `marker_views.gd` (les huit sortes de repères sur les objets du catalogue R17, anneaux du tunnel tous les 10 m, agrandis quand leur fenêtre est active) ; `firewall_view.gd` (mur `energy_wall` rouge à `firewall_gap_m` derrière le joueur, pulsation à 1,5 Hz au contact).
+- **Hôte :** `rogue_host.gd` instancie la scène quand `state.mode` vaut « ROGUE » (enfant de la scène principale, pas de `change_scene`), masque le terrain, le soleil et le décor classiques, remplace l'environnement par celui de la charte et rend tout à la sortie ; `main.gd` n'y ajoute que dix lignes. Les salles reçues sont gardées par `room_store.gd` (réassemblage des parties, huit salles au plus, `rogue_resync` au plus une fois par seconde, aussi côté `ipc_client.request_rogue_resync`).
+- `ipc_client.gd` : signaux `room_received` et `loot_received`. Faux core : `fake_core.py --rogue SECONDES` joue une salle d'exemple de 600 m (un repère de chaque sorte, pentes variées).
+- **Écarts :** `neon_grid.gdshader` existe déjà (lot R17), il n'est pas recréé ; le vélo du joueur est une roue lumineuse provisoire (son vrai modèle procédural vient avec R12) ; la salle suivante (`next`) n'est pas encore accrochée au bout du ruban en couloir, et `loot_received` n'est pas encore affiché (R13). Contrôle visuel du propriétaire et mesure GTX 1060 à faire (critère 4).
+- Tests : `engine/tests/unit/test_ribbon_colors.gd`, `test_ribbon_builder.gd`, `test_room_store.gd`, `test_rogue_host.gd`.
