@@ -73,7 +73,7 @@ Scénarios du banc (`engine/tests/sim_bench_scenarios/`, format de `SIMULATION_B
 | `coupures_village` | village | Scénario `coupures` du core devant les bâtiments |
 | `ceinture` | demo | Montre qui diffuse (la ceinture doit être préférée), contact perdu puis retrouvé, batterie à 8 %, fréquence figée, coupure |
 | `click_sommeil` | demo | Connexions lentes, appuis longs, « − » coupé qui se rendort, « + » qui refuse une connexion |
-| `decor_vivant_2` | osm | Décor vivant de la deuxième vague (lot P27) : 5 min en SIM à 300 W (vers 21 km/h) sur le monde de test OSM (prés, champs, routes voisines, troupeau, lac, canal, montée à 5 %), à lancer avec `--probe` en `low`, `medium` et `high` |
+| `decor_vivant_2` | osm | Décor vivant de la deuxième vague (lot P27) : 5 min en SIM à 300 W (vers 21 km/h) sur le monde de test OSM (prés, champs, routes voisines, troupeau, lac, canal, montée à 5 %), à lancer avec `--probe` en `low`, `medium` et `high` ; vérifie les sortes vues et les sons du décor (lot P30 : `decor_expect`, `sounds_expect`, `decor.csv`) |
 
 Défaut trouvé à la mise en place : en séance, les bâtiments et l'eau OSM n'étaient jamais affichés (`WorldStreamer` ne faisait pas entrer les tronçons préparés par `OsmStreamer`), corrigé le 25 octobre.
 
