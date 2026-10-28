@@ -62,8 +62,9 @@ static func budget_ms(name: String) -> float:
 
 
 ## Écrit la ligne `[PERF]` et rend faux seulement en mode strict quand le budget est dépassé.
-static func check(name: String, value_ms: float) -> bool:
+## `unit` : unité de la mesure et du budget (« ms » par défaut ; « % » pour un surcoût relatif, lot X34).
+static func check(name: String, value_ms: float, unit: String = "ms") -> bool:
 	var limit := budget_ms(name)
 	var over := value_ms > limit
-	print("[PERF] %s : %.2f ms, budget %.2f ms%s" % [name, value_ms, limit, " (DÉPASSÉ)" if over else ""])
+	print("[PERF] %s : %.4f %s, budget %.4f %s%s" % [name, value_ms, unit, limit, unit, " (DÉPASSÉ)" if over else ""])
 	return not (over and mode() == "strict")

@@ -10,6 +10,7 @@ const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -193,7 +194,7 @@ func _init() -> void:
 		model.weights_at(float(k % 2000), float(k % 997))
 	var us := float(Time.get_ticks_usec() - t0) / n
 	print("[PERF] weights_at : %.2f µs par appel (seuil indicatif 5 µs)" % us)
-	_check(us < 20.0, "weights_at : %.2f µs par appel (< 20 µs ; 5 µs indicatif)" % us)
+	_check(PerfBudget.check("biome_weights_at", us / 1000.0), "weights_at : %.2f µs par appel (5 µs indicatif)" % us)
 
 	print("test_biome_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
