@@ -20,6 +20,7 @@ const LEVELS := {
 var world_dir := ""
 var present := false
 var default_biome := BiomeIds.DEFAULT_BIOME
+var shares := {}            # `layers.biome.shares` du manifeste : biome -> part du parcours en % (lot U6)
 var _cache := {}
 var _mutex := Mutex.new()   # tuiles lues depuis les fils de préparation (arbres, faune)
 var warnings := PackedStringArray()
@@ -33,6 +34,10 @@ func _init(dir: String = "", manifest: Dictionary = {}) -> void:
 		present = bool(layer.get("present", false)) and dir != ""
 		if BiomeIds.is_biome(layer.get("default_biome", null)):
 			default_biome = layer["default_biome"]
+		if typeof(layer.get("shares", null)) == TYPE_DICTIONARY:
+			for id in layer["shares"]:
+				if BiomeIds.is_biome(id) and (typeof(layer["shares"][id]) == TYPE_INT or typeof(layer["shares"][id]) == TYPE_FLOAT):
+					shares[id] = float(layer["shares"][id])
 
 
 static func tile_path(dir: String, level: String, ix: int, iz: int) -> String:

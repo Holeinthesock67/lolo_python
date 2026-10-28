@@ -317,8 +317,8 @@ def parcours_reglages(run: Run) -> None:
     t = now()
     run.press("A_LONG", "PLUS_SHORT", "A_LONG")
     assert run.engine is not None
-    r.check(run.engine.wait_for(r"Qualité graphique : medium", 5.0, after=t) is not None,
-            "qualité appliquée tout de suite au décor", "« Qualité graphique : medium » au journal de l'engine")
+    r.check(run.engine.wait_for(r"Qualité appliquée : medium", 5.0, after=t) is not None,
+            "qualité appliquée tout de suite au décor", "« Qualité appliquée : medium » au journal de l'engine")
     r.check("quality = \"medium\"" in run.config.read_text(encoding="utf-8"), "qualité écrite dans config.toml", "medium")
     version = (Path(__file__).resolve().parents[2] / "VERSION").read_text(encoding="utf-8").strip()
     run.press("Y_SHORT")   # retour aux Réglages

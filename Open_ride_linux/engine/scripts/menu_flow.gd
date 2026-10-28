@@ -51,6 +51,7 @@ const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
+const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
 
@@ -143,6 +144,7 @@ var ready_message := ""
 var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
+var rogue = RogueMenuModel.new()
 ## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
 var garage = GarageViewModel.new()
 ## Bilan de progression de la séance (lot V9) : dernier message `xp_result` ({} sans), et qu'il a déjà été annoncé.
@@ -172,6 +174,9 @@ func _init() -> void:
 	_refresh_ftp_test()
 	menu.add_screen({"id": RECORDS, "title": "Records", "on_back": MenuModel.READY, "items": []})
 	menu.add_screen({"id": RECORD_TABLE, "title": "Records", "on_back": RECORDS, "items": []})
+	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
+	menu.add_screen({"id": RogueMenuModel.LOADING, "title": "Composition de la run…", "on_back": "", "items": []})
+	menu.set_screen_items(RogueMenuModel.LOADING, [{"id": "wait", "label": "Composition de la run…", "enabled": false}])
 	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
 	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
 		menu.add_screen({"id": screen, "title": "Garage", "on_back": GarageViewModel.SCREEN, "items": []})
@@ -225,6 +230,9 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 			"IDLE", "READY":
 				if prev in ["RUNNING", "PAUSED"]:
 					menu.reset()
+				elif st == "READY" and menu.current_screen() == RogueMenuModel.LOADING:
+					menu.set_rogue_ready(rogue.ready_text())
+					menu.open_screen(MenuModel.READY)
 		if st != "FINISHED":
 			xp_result = {}
 			_xp_announced = false
@@ -330,6 +338,11 @@ func on_error(code: String, text: String) -> void:
 				{"action": "accept_ftp", "force": true})
 		else:
 			summary_message = "Échec : " + text
+		return
+	if code in ["run_invalid", "item_locked", "busy"] and menu.current_screen() == RogueMenuModel.LOADING:
+		rogue.message = "Échec : " + text
+		_refresh_rogue()
+		menu.open_screen(RogueMenuModel.SCREEN)
 		return
 	if menu.current_screen() in GarageViewModel.SCREENS and garage.on_error(code, text):
 		_refresh_garage()
@@ -775,12 +788,24 @@ func handle(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
+		"start_run":   # confirmation du premier lancement acceptée (lot R13)
+			return _launch_rogue(act)
 		"start_plan", "stop_plan":
 			return _send_plan_request(act)
 		"accept_ftp":
 			_ftp_pending = true
 			summary_message = "Enregistrement de la FTP…"
 			return act
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "rogue":
+		_refresh_rogue()
+		menu.push_screen(RogueMenuModel.SCREEN)
+		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == RogueMenuModel.SCREEN:
+		return _handle_rogue(str(act["id"]))
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == "rogue_change":
+		_refresh_rogue()
+		menu.open_screen(RogueMenuModel.SCREEN)
+		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME:
 		if str(act["id"]) == "garage":
 			garage.message = ""
@@ -899,6 +924,30 @@ func handle(event: String) -> Dictionary:
 			"details":
 				show_details = not show_details
 				return {}
+	return act
+
+
+## Écran de départ du Cyber-Rogue (lot R13) : les trois premiers éléments font défiler leur valeur, « Lancer »
+## demande confirmation au premier lancement (efforts au-delà de 140 % de la FTP possibles) puis envoie `start_run`.
+func _refresh_rogue() -> void:
+	menu.set_screen_items(RogueMenuModel.SCREEN, rogue.items())
+
+
+func _handle_rogue(item_id: String) -> Dictionary:
+	if item_id != "launch":
+		rogue.cycle(item_id)
+		_refresh_rogue()
+		return {}
+	var act := {"action": "start_run", "args": rogue.start_args()}
+	if rogue.needs_warning():
+		rogue.mark_warned()
+		menu.confirm(RogueMenuModel.WARNING, act)
+		return {}
+	return _launch_rogue(act)
+
+
+func _launch_rogue(act: Dictionary) -> Dictionary:
+	menu.open_screen(RogueMenuModel.LOADING)
 	return act
 
 

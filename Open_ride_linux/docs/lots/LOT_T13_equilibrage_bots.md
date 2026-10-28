@@ -51,3 +51,12 @@ Le champ `level_pct` de l'élément `{ "kind": "profile" }` de l'argument `bots`
 
 - Équilibrage ressenti sur le vélo (recette T11).
 - Bots du Cyber-Rogue (série R) et de la carrière (série V, lot V5).
+
+## 9. Livraison (28 octobre 2026)
+
+- **`calibrate(profile, route, level_pct, rider, segments, bike_mass_kg)`** dans `core/src/openride_core/bots.py`, fonction pure : temps de référence d'un `RefRider` (FTP et `PhysicsParams.from_config`, donc masse totale, CdA, Crr et rendement de `config.toml`) à `level_pct` % de sa FTP, puis échelle de la CP, de W′ et du pic du profil (`ProfileBot.set_scale`) cherchée sur son logarithme par une sécante gardée dans l'encadrement trouvé (dichotomie quand la sécante en sort). Départ au même W/kg que le cycliste. Tolérance de 0,2 % (sous les 0,5 % du cahier, pour couvrir le relevé du parcours), 12 essais au plus, échelle de 0,2 à 5. Sans vent.
+- **Simulation** : `RouteProfile` relève la pente et l'altitude tous les 10 m une fois pour tous les bots ; `ride_time` avance au pas de 0,5 s avec les équations de `RiderPhysics.step` et de `wbal_step` écrites en ligne (`physics.py` et `rogue/wbal.py` inchangés), égalité vérifiée par un test contre le `step` du bot. 4 bots sur 100 km : 0,2 s.
+- **Niveau** : section `[bots]` de `config.toml`, `level_pct` (défaut 100, 50 à 150, bornes dans `config.BOUNDS`), réglage « Niveau des bots » du groupe « Séance » (pas de 5) ; `level_pct` facultatif dans `{kind: "profile"}` de `start.bots`, gardé par le bot (`ProfileBot.level_pct`), hors bornes : `bot_invalid`. `calibrate_bots` calibre les bots de la séance dans `CoreSession._new_race` (un calcul par couple profil et niveau, durée au journal) ; les bots de `--bot-profile` prennent le réglage.
+- **Menu de l'engine** : `BOT_CHOICES` de `menu_model.gd` gagne les quatre profils à 90, 100 et 110 % (« Grimpeur 90 % »…), dans le même cycle de A long sur l'écran Prêt, sans nouveau bouton.
+- **Contrat** : une ligne dans l'historique de la révision 1.5 ; SRS : section `[bots]`.
+- **Tests** : `core/tests/test_bots_calibration.py` (critères 2 à 6), `engine/tests/unit/test_menu_flow.gd` (profils au menu, argument de `start`).
