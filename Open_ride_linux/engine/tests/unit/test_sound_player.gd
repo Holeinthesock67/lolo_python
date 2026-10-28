@@ -6,7 +6,7 @@ extends SceneTree
 ## - Volumes à 0,5 dB près de ceux de sound_model.gd.
 ## - Aucun nœud créé après le démarrage.
 ## - Remplacement par .ogg si disponible.
-## - Temps CPU de génération des sons au démarrage < 500 ms.
+## - Temps CPU de génération des sons au démarrage < 1 200 ms (budget `sound_generation`).
 ## - Lot P9 : fonds d'ambiance générés (ou .ogg de remplacement), lecteurs réglés par le modèle,
 ##   cloches de l'heure pleine sur les points church_bell.
 ## - Lot P10 : vent en bruit passe-bande bouclé sans clic, cliquetis calé sur le modèle, un « clac » par
