@@ -269,6 +269,7 @@
 | [X38](LOT_X38_couleurs_du_theme.md) | Série X (outils de test) : Couleurs du thème : aucune couleur en dur dans le HUD et le globe | GDScript | N20 | Petite | Oui |
 | [X39](LOT_X39_ecart_progression.md) | Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
 | [X40](LOT_X40_rogue_bout_en_bout.md) | Série X (outils de test) : Run Cyber-Rogue de bout en bout dans la séance du core (`rogue_bout_en_bout`), pause, resynchronisation, trace pour le banc visuel | Python | R8, R7 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x40`) ; issue #543 |
+| [X41](LOT_X41_banc_visuel_rogue.md) | Série X (outils de test) : Banc visuel du mode Cyber-Rogue (`rogue_bench.py`), run X40 rejouée dans la vraie scène, captures aux moments clés et planche HTML | Python, GDScript | X40, R10–R13 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x41`) ; issue #544 |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;

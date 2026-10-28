@@ -1127,6 +1127,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
+		"rogue": rogue_host.test_info(),
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 

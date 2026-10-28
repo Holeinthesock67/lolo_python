@@ -133,3 +133,16 @@ jobs:
           name: menu_bench
           path: ${{ runner.temp }}/menu_bench
           retention-days: 7
+
+      - name: Banc visuel du Cyber-Rogue (run X40 rejouée dans la scène, lot X41)
+        run: |
+          python3 engine/tests/rogue_bench.py --godot "$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" \
+            --out "$RUNNER_TEMP/rogue_bench"
+
+      - name: Rapport du banc visuel du Cyber-Rogue
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rogue_bench
+          path: ${{ runner.temp }}/rogue_bench
+          retention-days: 7
