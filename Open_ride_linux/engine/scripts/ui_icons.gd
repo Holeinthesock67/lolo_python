@@ -12,6 +12,8 @@ const ITEM_ICONS := {
 	"devices": "list", "pairing": "list", "quit": "power", "start": "play", "resume": "play",
 	"continue": "play", "records": "trophy", "end_save": "flag", "abandon": "cross", "no": "cross",
 	"yes": "check", "difficulty": "slope", "bot": "rider", "ghost": "ghost",
+	"rogue": "rider", "rogue_change": "gear", "objective": "flag", "duration": "calendar", "wprime": "bolt",
+	"chassis": "bike", "launch": "play",
 }
 ## Formes connues de draw() ; un nom inconnu ne dessine rien.
 const SHAPES := ["route", "bike", "bars", "globe", "calendar", "bolt", "chip", "gear", "list", "power",

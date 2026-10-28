@@ -140,6 +140,33 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 			"unit": "W"
 		})
 
+	if summary.get("rogue") is Dictionary:
+		out.append_array(rogue_lines(summary["rogue"]))
+
+	return out
+
+
+const ROGUE_RESULTS := {"victory": "Victoire", "defeat": "Défaite", "abandoned": "Abandon"}
+const ROGUE_BOSS := {"won": "vaincu", "fled": "fui", "not_reached": "non atteint"}
+const ROGUE_OBJECTIVES := {"endurance": "Endurance", "threshold": "Seuil", "vo2max": "VO2max"}
+
+
+## Lignes du bilan d'une run du Cyber-Rogue (lot R13, `summary.rogue`) : résultat, salles, boss, or, cartes,
+## Perfect Shifts et déblocages.
+func rogue_lines(rogue: Dictionary) -> Array:
+	var out: Array = []
+	var obj := str(ROGUE_OBJECTIVES.get(str(rogue.get("objective", "")), rogue.get("objective", "")))
+	out.append({"label": "Cyber-Rogue", "value": "%s, %d min" % [obj, int(rogue.get("duration_min", 0))], "unit": ""})
+	out.append({"label": "Résultat", "value": str(ROGUE_RESULTS.get(str(rogue.get("result", "")), "—")), "unit": ""})
+	out.append({"label": "Salles gagnées", "value": "%d / %d" % [int(rogue.get("rooms_won", 0)), int(rogue.get("rooms_total", 0))], "unit": ""})
+	out.append({"label": "Salles fuies ou manquées", "value": "%d / %d" % [int(rogue.get("rooms_fled", 0)), int(rogue.get("rooms_skipped", 0))], "unit": ""})
+	out.append({"label": "Boss", "value": str(ROGUE_BOSS.get(str(rogue.get("boss", "")), "—")), "unit": ""})
+	out.append({"label": "Or", "value": str(int(rogue.get("gold", 0))), "unit": ""})
+	out.append({"label": "Cartes", "value": str((rogue.get("cards", []) as Array).size()), "unit": ""})
+	out.append({"label": "Perfect Shifts", "value": str(int(rogue.get("perfect_shifts", 0))), "unit": ""})
+	var unlocks: Array = rogue.get("unlocks", [])
+	if not unlocks.is_empty():
+		out.append({"label": "Déblocages", "value": ", ".join(PackedStringArray(unlocks)), "unit": ""})
 	return out
 
 
