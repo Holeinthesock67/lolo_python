@@ -31,3 +31,15 @@ Le bilan de l'essai 69 a été fait à la main (médianes par section de pente, 
 ## 6. Hors périmètre
 
 Le conseil d'entraînement.
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x12`).
+
+- `core/src/openride_core/tools/session_report.py` et sous-commande `openride-core session-report` ; définitions en tête du module.
+- Sections : coupure dès que la pente s'écarte de plus de 1,5 point de la moyenne de la section, puis une section de moins de 200 m rejoint sa voisine de pente la plus proche (une bosse de 45 m reste dans son plat). Pente tirée de l'altitude sur 50 m pour un FIT.
+- Retard pente → effort : palier d'avant = médiane des 10 s avant la marche, nouveau palier = médiane de 30 à 60 s après, puissance lissée sur 3 s centrées ; marche notée sans retard si la cadence tombe à 0 ou si les paliers diffèrent de moins de 20 W.
+- `--log` passe par `log_report` (coupures du trainer et du Click, appuis par boîtier, pauses) ; `--engine-log` lit les lignes `[perf-rendu]`.
+- `core/tests/test_session_report.py` (7 tests) : réponse du 1er ordre de 10 s → retard mesuré 10 s ; sections plat et montée ; ERG à paliers ; coupure, segment et bonus ; rapport sans ressource en ligne.
+- Essai : journal du banc simulé (`sim_bench --scenario nominal`) avec `core.log` et `engine.log` ; calcul d'un journal de 3 h en 0,2 s.
+- Reste sur le PC : lancer l'outil sur le journal de la prochaine séance vélo et comparer au bilan manuel de l'essai 69.

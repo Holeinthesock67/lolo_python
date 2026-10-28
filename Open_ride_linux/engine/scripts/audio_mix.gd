@@ -9,8 +9,9 @@ extends RefCounted
 ##   (traffic_renderer.gd), foule et passants (crowd_renderer.gd) ;
 ## - `Events` : bips d'appui du Click, bip de changement de bloc ERG, consignes d'essai (main.gd),
 ##   et plus tard les jingles d'événements (sommet de col, arche, fin de sprint, fin de séance) ;
-## - réservés au mode Cyber-Rogue (lot R18) : `RogueSfx` (`audio.rogue_sfx_pct`) et `RogueMusic`
-##   (`audio.rogue_music_pct`), créés par ce lot sur le même modèle.
+## - mode Cyber-Rogue (lot R18) : `RogueSfx` (`audio.rogue_sfx_pct`, bruitages de jeu, défaut 70 %) et
+##   `RogueMusic` (`audio.rogue_music_pct`, musique, défaut 40 %) ; les réglages du core arrivent avec le
+##   volume général, l'engine règle déjà les bus à ces défauts.
 ## Chaque lecteur prend son bus par `bus(groupe)`, qui crée les bus à la première demande.
 ## Un volume va de 0 (bus coupé) à 100 % (niveau d'origine) ; la courbe est quadratique
 ## (50 % ≈ −12 dB), plus proche de l'oreille qu'une échelle linéaire d'amplitude.
@@ -20,27 +21,35 @@ const MASTER := &"Master"
 const RIDE := &"Ride"
 const AMBIENCE := &"Ambience"
 const EVENTS := &"Events"
+const ROGUE_SFX := &"RogueSfx"
+const ROGUE_MUSIC := &"RogueMusic"
+## Volume de départ des bus du mode Cyber-Rogue (en %), plus bas que les autres (confort, lot R18).
+const ROGUE_DEFAULTS := {&"RogueSfx": 70, &"RogueMusic": 40}
 ## Clé du réglage (message `settings`) -> bus réglé.
 const SETTING_BUSES := {
 	"audio.master_pct": MASTER,
 	"audio.ride_pct": RIDE,
 	"audio.ambience_pct": AMBIENCE,
 	"audio.events_pct": EVENTS,
+	"audio.rogue_sfx_pct": ROGUE_SFX,
+	"audio.rogue_music_pct": ROGUE_MUSIC,
 }
 
 
 ## Crée les bus manquants (sans effet s'ils existent déjà).
 static func ensure_buses() -> void:
-	for b in [RIDE, AMBIENCE, EVENTS]:
+	for b in [RIDE, AMBIENCE, EVENTS, ROGUE_SFX, ROGUE_MUSIC]:
 		if AudioServer.get_bus_index(b) >= 0:
 			continue
 		AudioServer.add_bus()
 		var i := AudioServer.bus_count - 1
 		AudioServer.set_bus_name(i, b)
 		AudioServer.set_bus_send(i, MASTER)
+		if ROGUE_DEFAULTS.has(b):
+			AudioServer.set_bus_volume_db(i, pct_to_db(int(ROGUE_DEFAULTS[b])))
 
 
-## Nom du bus d'un groupe (RIDE, AMBIENCE ou EVENTS), bus créés au besoin.
+## Nom du bus d'un groupe (RIDE, AMBIENCE, EVENTS, ROGUE_SFX ou ROGUE_MUSIC), bus créés au besoin.
 static func bus(group: StringName) -> StringName:
 	ensure_buses()
 	return group

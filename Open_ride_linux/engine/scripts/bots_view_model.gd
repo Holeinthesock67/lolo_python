@@ -25,7 +25,8 @@ const MAX_LINES := 5
 const MAX_EXTRAPOLATION_S := 1.0
 const MIN_SPEED_MPS := 1.0
 ## Couleur par `kind` : bot à puissance constante orange, fantôme bleu pâle ; inconnu gris. Un bot à
-## profil (T12, `kind` = `constant` avec `profile`, contrat 1.4) est jaune.
+## profil (T12, `kind` = `constant` avec `profile`, contrat 1.4) est jaune. Teintes claires : les noms de
+## l'encart des bots gardent au moins 3:1 sur le panneau au-dessus d'un ciel clair (lot X22).
 const COLORS := {"constant": UiTheme.BOT_CONSTANT, "ghost": UiTheme.BOT_GHOST}
 const PROFILE_COLOR := UiTheme.BOT_PROFILE
 ## Champs de profil (révision 1.4) recopiés tels quels dans view().

@@ -36,6 +36,13 @@ const GRADE_FLAT := Color(0.25, 0.75, 0.3, 0.85)
 const GRADE_CLIMB := Color(0.95, 0.75, 0.2, 0.85)
 const GRADE_STEEP := Color(0.95, 0.45, 0.1, 0.85)
 const GRADE_WALL := Color(0.85, 0.15, 0.15, 0.85)
+## Texte des classes de pente (HUD, carrefours) : teintes des barres éclaircies et opaques, au moins 4,5:1
+## sur un panneau au-dessus d'un ciel clair (lot X22).
+const GRADE_TEXT_DESCENT := Color(0.55, 0.80, 1.00)
+const GRADE_TEXT_FLAT := Color(0.50, 0.90, 0.55)
+const GRADE_TEXT_CLIMB := Color(1.00, 0.85, 0.35)
+const GRADE_TEXT_STEEP := Color(1.00, 0.68, 0.40)
+const GRADE_TEXT_WALL := Color(1.00, 0.60, 0.58)
 const WIND_GOOD := Color(0.15, 0.62, 0.25, 0.95)
 const WIND_BAD := Color(0.8, 0.18, 0.12, 0.95)
 const WIND_NEUTRAL := Color(0.45, 0.48, 0.52, 0.95)
@@ -99,7 +106,7 @@ const GLOBE_PANEL := Color(0.07, 0.1, 0.15)
 const INK := Color(1, 1, 1)
 const INK_EDGE := Color(0, 0, 0)
 # Adversaires (bots_view_model.gd) : puissance constante, fantôme, profil T12, inconnu
-const BOT_CONSTANT := Color(0.95, 0.55, 0.15)
+const BOT_CONSTANT := Color(1.00, 0.68, 0.30)
 const BOT_GHOST := Color(0.60, 0.75, 1.00)
 const BOT_PROFILE := Color(0.95, 0.85, 0.30)
 const BOT_OTHER := Color(0.75, 0.75, 0.75)
@@ -109,6 +116,11 @@ const DATA := {
 	"grade_climb": GRADE_CLIMB,
 	"grade_steep": GRADE_STEEP,
 	"grade_wall": GRADE_WALL,
+	"grade_text_descent": GRADE_TEXT_DESCENT,
+	"grade_text_flat": GRADE_TEXT_FLAT,
+	"grade_text_climb": GRADE_TEXT_CLIMB,
+	"grade_text_steep": GRADE_TEXT_STEEP,
+	"grade_text_wall": GRADE_TEXT_WALL,
 	"wind_good": WIND_GOOD,
 	"wind_bad": WIND_BAD,
 	"wind_neutral": WIND_NEUTRAL,
