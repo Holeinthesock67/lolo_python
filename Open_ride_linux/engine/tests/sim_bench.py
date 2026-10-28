@@ -32,6 +32,10 @@ mesuré) : scénario `rendu_invisible`, à comparer avec `--culling off` (défau
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
 qui peuvent fixer `world`, `workout`, `duration_s` et `difficulty_pct` dans une section
 `bench`), ou un fichier JSON au format de `docs/SIMULATION_BLE.md`. `--list` les énumère.
+Décor vivant (lot P30) : chaque capture relève les objets affichés par sorte et les sons du décor démarrés
+(`decor` de la ligne `screenshot`) ; le rapport les trace et `decor.csv` les garde. La section `bench` peut
+demander `decor_expect` (sortes vues au moins une fois, ex. `["birds", "animals"]`) et `sounds_expect`
+(groupes de sons dont un au moins doit démarrer, ex. `[["raptor_cry", "crow_caw"]]`).
 
 Code de sortie : 0 si toutes les vérifications passent, 1 sinon, 2 si Godot ou xvfb-run manque.
 """
@@ -66,6 +70,10 @@ from openride_core import sim_scenarios  # noqa: E402
 from openride_core.tools.guide import Guide  # noqa: E402
 
 BENCH_SCENARIOS_DIR = TESTS_DIR / "sim_bench_scenarios"
+# Sortes du décor vivant relevées à chaque capture (living_decor.gd `test_info`, lot P30) : clé -> libellé, couleur.
+DECOR_KINDS = {"birds": ("oiseaux", "#2980b9"), "animals": ("animaux", "#8e5a2b"), "vehicles": ("véhicules", "#c0392b"),
+               "distant_vehicles": ("véhicules lointains", "#e67e22"), "cyclists": ("cyclistes", "#27ae60"),
+               "aircraft": ("ciel", "#8e44ad"), "boats": ("bateaux", "#16a085")}
 CMD_ID_BASE = 20_000
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
 # Lot S1 : apparitions ignorées pendant le premier chargement (m de route).
@@ -192,6 +200,8 @@ class Bench:
         self.duration = float(args.duration or settings.get("duration_s") or
                               min(max(scenario_duration(spec) + 15.0, 45.0), 600.0))
         self.every = float(args.every or settings.get("every_s") or 15.0)
+        self.decor_expect = [str(k) for k in settings.get("decor_expect", [])]
+        self.sounds_expect = [[str(k) for k in group] for group in settings.get("sounds_expect", [])]
         # Lot S1 : captures tous les N mètres de route (même endroit d'un essai à l'autre) au lieu de toutes
         # les N secondes ; contrôles des tuiles (apparitions, jointures, trous) stricts si le scénario le demande.
         self.every_m = float(getattr(args, "every_m", None) or settings.get("every_m") or 0.0)
@@ -345,6 +355,8 @@ class Bench:
                 info.update(ok=bool(data.get("ok")), fps=data.get("fps"), meshes=data.get("meshes"),
                             quality=data.get("quality"),
                             draw_calls=data.get("draw_calls"),
+                            decor={k: int(data.get("decor", {}).get(k, 0)) for k in DECOR_KINDS},
+                            sounds=dict(data.get("decor", {}).get("sounds", {})),
                             widgets={k: v.get("text", "") for k, v in data.get("widgets", {}).items()
                                      if v.get("visible")})
             except ValueError:
@@ -568,10 +580,33 @@ class Bench:
             if grades and sent:
                 print(f"   pente du parcours {min(grades):.1f} à {max(grades):.1f} %, "
                       f"pente envoyée {min(sent):.1f} à {max(sent):.1f} %")
+        self._decor_checks()
         hr = [x.get("hr") for x in recs if x.get("hr")]
         if "hr" in self.spec:
             r.check(bool(hr), "fréquence cardiaque au journal",
                     f"{len(hr)} échantillons, {min(hr)} à {max(hr)} bpm" if hr else "aucune fréquence cardiaque")
+
+
+    def _decor_checks(self) -> None:
+        """Décor vivant (lot P30) : `decor.csv`, sortes vues et sons démarrés demandés par le scénario."""
+        shots = [x for x in self.shots if x.get("decor")]
+        if not shots:
+            return
+        lines = ["t_s;" + ";".join(DECOR_KINDS) + ";sons"]
+        for x in shots:
+            sounds = " ".join(f"{k}={n}" for k, n in sorted(x.get("sounds", {}).items()))
+            lines.append(f"{x['t']:.1f};" + ";".join(str(x["decor"][k]) for k in DECOR_KINDS) + f";{sounds}")
+        (self.out / "decor.csv").write_text("\n".join(lines) + "\n", encoding="utf-8")
+        for k in self.decor_expect:
+            seen = [x["decor"].get(k, 0) for x in shots]
+            label = DECOR_KINDS.get(k, (k, ""))[0]
+            self.report.check(max(seen) > 0, f"décor : {label} vus",
+                              f"{sum(1 for v in seen if v)} captures sur {len(seen)}, {max(seen)} au plus")
+        heard = shots[-1].get("sounds", {})
+        for group in self.sounds_expect:
+            got = {k: heard[k] for k in group if heard.get(k)}
+            self.report.check(bool(got), f"son du décor : {' ou '.join(group)}",
+                              ", ".join(f"{k} ×{n}" for k, n in got.items()) or "jamais démarré")
 
 
 # --- rapport HTML ------------------------------------------------------------------------------
@@ -623,6 +658,42 @@ def svg_fps(shots: list[dict[str, Any]], width: int = 900, height: int = 120) ->
             f'<polyline points="{line}" fill="none" stroke="#27ae60" stroke-width="1.6"/></svg>')
 
 
+def svg_decor(shots: list[dict[str, Any]], width: int = 900, height: int = 140) -> str:
+    """Objets du décor vivant affichés par sorte à chaque capture (lot P30)."""
+    pts = [x for x in shots if x.get("decor")]
+    if len(pts) < 2:
+        return ""
+    tmax = max(max(x["t"] for x in pts), 1.0)
+    hi = max(max(max(x["decor"].values()) for x in pts), 1)
+    parts = [f'<svg viewBox="0 0 {width} {height}" class="chart" role="img" aria-label="Décor vivant">',
+             '<text x="2" y="12" class="lbl">Décor vivant : objets affichés par sorte (à chaque capture)</text>',
+             f'<text x="2" y="{height - 8}" class="lbl">0</text><text x="2" y="26" class="lbl">{hi}</text>']
+    for i, (k, (label, color)) in enumerate(DECOR_KINDS.items()):
+        line = " ".join(f"{40 + x['t'] / tmax * (width - 50):.1f},{10 + (1 - x['decor'][k] / hi) * (height - 25):.1f}"
+                        for x in pts)
+        parts.append(f'<polyline points="{line}" fill="none" stroke="{color}" stroke-width="1.6"/>')
+        parts.append(f'<text x="{60 + i * 120}" y="12" class="lbl" fill="{color}" style="fill:{color}">{html.escape(label)}</text>')
+    parts.append("</svg>")
+    return "".join(parts)
+
+
+def decor_table(shots: list[dict[str, Any]]) -> str:
+    """Tableau du décor vivant : par sorte, captures où elle est vue, médiane et maximum ; sons démarrés."""
+    pts = [x for x in shots if x.get("decor")]
+    if not pts:
+        return ""
+    rows = []
+    for k, (label, _) in DECOR_KINDS.items():
+        vals = sorted(x["decor"][k] for x in pts)
+        rows.append(f"<tr><td>{html.escape(label)}</td><td>{sum(1 for v in vals if v)}/{len(vals)}</td>"
+                    f"<td>{vals[len(vals) // 2]}</td><td>{vals[-1]}</td></tr>")
+    heard = pts[-1].get("sounds", {})
+    sounds = ", ".join(f"{html.escape(k)} ×{n}" for k, n in sorted(heard.items())) or "aucun"
+    return ("<h2>Décor vivant</h2><table><tr><td><b>Sorte</b></td><td><b>Captures où elle est vue</b></td>"
+            "<td><b>Médiane</b></td><td><b>Maximum</b></td></tr>" + "".join(rows) +
+            f"</table><p>Sons du décor démarrés pendant la séance : {sounds}. Détail : <a href=\"decor.csv\">decor.csv</a>.</p>")
+
+
 def write_html(b: Bench) -> None:
     rows = "".join(f'<tr class="{"info" if ok is None else "ok" if ok else "ko"}">'
                    f'<td>{"INFO" if ok is None else "OK" if ok else "ÉCHEC"}</td><td>{html.escape(lb)}</td>'
@@ -638,6 +709,7 @@ def write_html(b: Bench) -> None:
         svg_chart(b.records, "gear", "Braquet", "#2980b9", events),
         svg_chart(b.records, "speed", "Vitesse (m/s)", "#34495e", events),
         svg_fps(b.shots),
+        svg_decor(b.shots),
     ])
     shots = []
     for s in b.shots:
@@ -673,6 +745,7 @@ pre {{ background:var(--card); border:1px solid var(--line); padding:8px; overfl
 <h2>Vérifications</h2><table>{rows}</table>
 {'<p><a href="sonde/rapport.html">Sonde de performance du moteur</a> (lot X13).</p>' if b.probe_summary else ""}
 <h2>Courbes de la séance</h2><p>Lignes orange : événements du scénario.</p>{charts}
+{decor_table(b.shots)}
 <h2>Captures</h2><div class="grid">{"".join(shots)}</div>
 <h2>Bandeau de l'engine</h2><pre>{html.escape(banners)}</pre>
 <h2>Bilan (openride-core summary)</h2><pre>{html.escape(b.summary_text)}</pre>

@@ -130,6 +130,19 @@ jobs:
       - name: Essai de bout en bout (vrai core et vrai engine, lot J8)
         run: GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_e2e.sh
 
+      - name: Banc des menus (Click simulé, clavier, souris ; une voie par scénario)
+        run: |
+          python3 engine/tests/menu_bench.py --godot "$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" \
+            --rotation --out "$RUNNER_TEMP/menu_bench"
+
+      - name: Rapport du banc des menus
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: menu_bench
+          path: ${{ runner.temp }}/menu_bench
+          retention-days: 7
+
       - name: Rapport JUnit
         if: ${{ !cancelled() }}
         uses: actions/upload-artifact@v5

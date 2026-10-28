@@ -1,0 +1,30 @@
+{
+  "description": "Garage : vélo (catalogue reçu du core), avatar modifié sur son écran de réglage, « Annuler les changements », puis modification enregistrée dans ~/OpenRide/profile.json.",
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "garage"},
+    {"ecran": "garage", "titre": "Garage : niveau 1, 0 pièces", "elements": ["bike", "outfit", "avatar"]},
+    {"choisir": "bike"},
+    {"ecran": "garage_bike", "absent": ["Catalogue en cours de chargement"], "delai": 10},
+    {"appui": "Y_SHORT"},
+    {"ecran": "garage", "focus": "bike"},
+    {"choisir": "outfit"},
+    {"ecran": "garage_outfit", "absent": ["Catalogue en cours de chargement"]},
+    {"appui": "Y_SHORT"},
+    {"choisir": "avatar"},
+    {"ecran": "garage_avatar", "elements": ["field:height", "field:build", "save", "cancel"]},
+    {"choisir": "field:height"},
+    {"ecran": "setting_edit", "titre": "Taille"},
+    {"appui": ["PLUS_SHORT", "A_LONG"]},
+    {"ecran": "garage_avatar", "contient": ["Taille — grande"]},
+    {"choisir": "cancel"},
+    {"ecran": "garage_avatar", "statut": "Changements annulés", "contient": ["Taille — moyenne"]},
+    {"choisir": "field:height"},
+    {"appui": ["PLUS_SHORT", "A_LONG"]},
+    {"choisir": "save"},
+    {"fichier": "OpenRide/profile.json"},
+    {"ecran": "garage_avatar", "contient": ["Taille — grande"], "delai": 10},
+    {"appui": ["Y_SHORT", "Y_SHORT"]},
+    {"ecran": "home", "focus": "garage"}
+  ]
+}
