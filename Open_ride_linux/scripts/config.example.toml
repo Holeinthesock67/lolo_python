@@ -47,4 +47,4 @@ ambience_pct = 100            # fonds, cloches, véhicules, foule, passants
 events_pct = 100              # bips du Click, bloc ERG, consignes, jingles
 
 [engine]
-godot = ""                    # chemin de Godot 4.3 (rempli par scripts/install.sh)
+godot = ""                    # chemin de Godot 4.7 (rempli par scripts/install.sh)
