@@ -36,8 +36,8 @@ const GRADE_FLAT := Color(0.25, 0.75, 0.3, 0.85)
 const GRADE_CLIMB := Color(0.95, 0.75, 0.2, 0.85)
 const GRADE_STEEP := Color(0.95, 0.45, 0.1, 0.85)
 const GRADE_WALL := Color(0.85, 0.15, 0.15, 0.85)
-# Texte des classes de pente (valeur de la pente du HUD, carrefours) : mêmes teintes éclaircies et opaques,
-# au moins 4,5:1 sur un panneau au-dessus d'un ciel clair (lot X22).
+## Texte des classes de pente (HUD, carrefours) : teintes des barres éclaircies et opaques, au moins 4,5:1
+## sur un panneau au-dessus d'un ciel clair (lot X22).
 const GRADE_TEXT_DESCENT := Color(0.55, 0.80, 1.00)
 const GRADE_TEXT_FLAT := Color(0.50, 0.90, 0.55)
 const GRADE_TEXT_CLIMB := Color(1.00, 0.85, 0.35)
@@ -104,6 +104,14 @@ const ROAD_C := Color(0.35, 0.85, 0.55)
 const ROAD_K := Color(0.75, 0.6, 0.45)
 const GLOBE_SEA := Color(0.1, 0.25, 0.5)
 const GLOBE_PANEL := Color(0.07, 0.1, 0.15)
+# Traits des repères (curseurs, marqueurs, flèches teintées par `modulate`) et leur liseré
+const INK := Color(1, 1, 1)
+const INK_EDGE := Color(0, 0, 0)
+# Adversaires (bots_view_model.gd) : puissance constante, fantôme, profil T12, inconnu
+const BOT_CONSTANT := Color(1.00, 0.68, 0.30)
+const BOT_GHOST := Color(0.60, 0.75, 1.00)
+const BOT_PROFILE := Color(0.95, 0.85, 0.30)
+const BOT_OTHER := Color(0.75, 0.75, 0.75)
 const DATA := {
 	"grade_descent": GRADE_DESCENT,
 	"grade_flat": GRADE_FLAT,
@@ -170,6 +178,12 @@ const DATA := {
 	"road_k": ROAD_K,
 	"globe_sea": GLOBE_SEA,
 	"globe_panel": GLOBE_PANEL,
+	"ink": INK,
+	"ink_edge": INK_EDGE,
+	"bot_constant": BOT_CONSTANT,
+	"bot_ghost": BOT_GHOST,
+	"bot_profile": BOT_PROFILE,
+	"bot_other": BOT_OTHER,
 }
 
 # --- Tailles de police --------------------------------------------------------------------------
