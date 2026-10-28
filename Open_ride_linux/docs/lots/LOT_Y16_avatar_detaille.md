@@ -1,6 +1,6 @@
 # Lot Y16 – Avatar du cycliste plus détaillé, pédalage dans le bon sens
 
-**Statut : livré le 28 octobre (PR à venir)**, mesure sur la GTX 1060 (medium, 58 images/s) par la file des mesures du PC.
+**Statut : livré le 28 octobre (PR #538)**, mesuré sur la GTX 1060 en medium.
 
 ## 1. Objectif
 
@@ -32,4 +32,13 @@ Demandes du propriétaire du 28 octobre, pendant une séance : « l'avatar pourr
 
 - Tests : `tests/unit/test_avatar_model.gd` (sens du pédalage et des roues, manivelle du maillage sur la pédale de la cinématique, chaussure sur la pédale, proportions, budgets par niveau et avec l'équipement le plus lourd, au plus 30 nœuds, roues qui tournent avec la vitesse).
 - Vitrine : `tests/vitrine_avatar.gd` (dos, profil, trois quarts, de près, niveau intermédiaire, avec les cyclistes du décor, quatre profils à des angles de pédalier successifs).
-- Sur le PC : mesure medium à 58 images/s (file des mesures), puis coup d'œil en séance.
+- Sur le PC : coup d'œil en séance.
+
+## 5. Livraison
+
+Livré le 28 octobre (PR #538).
+
+- Triangles de l'avatar : 5 640 / 1 492 / 256 par niveau de détail (équipement le plus lourd : 5 980) ; 26 nœuds au niveau 0.
+- Vitrine (rendu logiciel, medium) : appels de dessin de la vue de dos 263 → 153, profil 111 → 67.
+- Tests : `test_avatar_model.gd` (68 vérifications), `visual_check.py` 1280x720 low (460 vérifications).
+- Mesure sur la GTX 1060 en medium (village, vue de suivi proche, 28 octobre) : main 57,7 images/s, p99 19,1 ms, GPU 8,43 ms, 584 appels ; avec Y16 57,8 images/s, p99 18,1 ms, GPU 8,33 ms, 578 appels (fréquence plafonnée par la synchronisation verticale dans les deux cas).
