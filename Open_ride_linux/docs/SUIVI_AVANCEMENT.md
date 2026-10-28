@@ -232,6 +232,7 @@ Pas à pas dans [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) (bl
 - [ ] Horizon en `medium` et `low` (Y1) et facteur de relief par défaut (Q2) sur `essai-69` (protocole J6).
 - [ ] Recettes du décor vivant (P16 puis P17, protocole J8 : [RECETTE_P16.md](RECETTE_P16.md), [RECETTE_P17.md](RECETTE_P17.md)). P16 faite le 27 octobre (vent, indicateur, nuages et sons validés après la PR #432 ; restent vent de travers et de dos, `living = false` et la mesure sur une route OSM) ; P17 à faire.
 - [ ] Mesures du monde ouvert (W0, protocole J9).
+- [x] Étapes sans vélo des recettes T11 (5 « Bonus non » et 6 reprise après coupure du core) et J7 (flèches sans effet sur le braquet) : automatisées le 28 octobre, `cd core && pytest -m recette_sans_velo` (4 tests) et `engine/tests/run_engine_tests.sh` (`test_key_map`, scénario 4 « core injoignable » du faux core) ; à relancer avant chaque recette sur le vélo.
 - [ ] Mode d'affichage : trois mesures du banc (fenêtré, sans bordure, exclusif) et changement au menu (protocole J10) ; le défaut `fullscreen` se confirme avec ces chiffres.
 
 ---
