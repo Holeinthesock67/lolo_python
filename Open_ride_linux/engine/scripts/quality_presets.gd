@@ -107,7 +107,7 @@ static func building_visibility_end_m(name: String) -> float:
 ## série activée. `passersby` est le budget des passants des villages (P21). `birds` compte aussi les
 ## rapaces, volées en V et corneilles de P23 (doublé par P23 : 24, 48, 80). `distant_vehicles` (P25) : véhicules
 ## des routes voisines et tracteurs des champs, en MultiMesh. `aircraft` (P26) : avions de ligne, hélicoptère,
-## parapentes et montgolfières.
+## parapentes et montgolfières. `boats` (P29) : bateaux des lacs, des canaux, des rivières et de la mer.
 const LIVING := {
 	"low": {
 		"tree_sway": true,
@@ -119,6 +119,7 @@ const LIVING := {
 		"vehicles": 3,
 		"distant_vehicles": 6,
 		"aircraft": 4,
+		"boats": 4,
 		"spectators": 40,
 		"passersby": 24,
 		"ambience_voices": 4,
@@ -134,6 +135,7 @@ const LIVING := {
 		"vehicles": 5,
 		"distant_vehicles": 12,
 		"aircraft": 8,
+		"boats": 8,
 		"spectators": 80,
 		"passersby": 48,
 		"ambience_voices": 6,
@@ -149,6 +151,7 @@ const LIVING := {
 		"vehicles": 8,
 		"distant_vehicles": 24,
 		"aircraft": 12,
+		"boats": 16,
 		"spectators": 160,
 		"passersby": 80,
 		"ambience_voices": 8,
