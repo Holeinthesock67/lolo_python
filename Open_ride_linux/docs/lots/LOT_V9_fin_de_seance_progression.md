@@ -39,3 +39,10 @@ Aucune au-delà de T1.
 ## 8. Hors périmètre
 
 Calcul (core), Garage (V8).
+
+## 9. Livraison (27 octobre 2026)
+
+- **Modèle :** `progress_view_model.gd` transforme le message `xp_result` en lignes lisibles (distance et dénivelé de la séance, entraînement terminé, records, total, pièces avec solde, temps de l'équipement « −12,5 s sur la séance »), barre d'expérience (de avant à après, repart de zéro au changement de niveau, « Niveau maximal » sans seuil suivant), annonce « Niveau N ! », déblocages nommés (« Débloqué : cadre Profilé ») et défis. Séance refusée : une seule ligne selon le motif. Sans message : rien, le bilan de N4 reste tel quel.
+- **Menus :** `menu_flow.gd` garde le dernier `xp_result` (le core le répète jusqu'à 10 fois), l'efface en quittant FINISHED, ignore un message tardif après « Nouvelle séance », et ajoute « Aller au Garage » quand une pièce vient d'être débloquée. `summary_view.gd` dessine le bloc « Progression » et la barre (animation d'environ 1 s, coupée en qualité basse). `main.gd` affiche le bandeau « Niveau N ! » une seule fois.
+- **Tests :** `test_progress_view_model.gd` (29 vérifications) ; banc visuel : scènes `progression` et `progression_refusee` avec le faux core.
+- **Reste, sur le PC :** relire le bilan après une vraie séance.

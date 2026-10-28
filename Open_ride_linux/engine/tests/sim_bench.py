@@ -4,7 +4,7 @@
 Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
-                 [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen]
+                 [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
                  [--probe] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
@@ -220,6 +220,9 @@ class Bench:
         route_id = prepare_world(self.world, routes, tmp)
         state_port, cmd_port = free_udp_ports(2)
         cfg_lines = [f"[ipc]\nport_state = {state_port}\nport_commands = {cmd_port}\n"]
+        # Le core renvoie [render] quality à l'engine au démarrage (réglages O4) : sans cette ligne, sa valeur
+        # par défaut (low) remplaçait --quality et un banc « medium » mesurait du low.
+        cfg_lines.append(f'[render]\nquality = "{a.quality}"\n')
         if self.difficulty is not None:
             cfg_lines.append(f"[trainer]\ndifficulty_pct = {float(self.difficulty)}\n")
         cfg = tmp / "config.toml"
@@ -266,7 +269,7 @@ class Bench:
                     "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
-                    f"--display={a.display}"]
+                    f"--display={a.display}", f"--camera={a.camera}"]
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
                 cmd.append(f"--perf-probe={(self.out / 'moteur.csv').resolve()}")
                 self.sampler = perf_probe.SystemSampler()
@@ -652,6 +655,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--size", default="1280x720")
     ap.add_argument("--quality", default="low", help="low, medium, high (défaut low)")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
+    ap.add_argument("--camera", default="subjective", choices=("subjective", "follow_near", "follow_far", "side"),
+                    help="vue de caméra mesurée (lot V12, exigence 2.0-CAM-5 : au moins 55 images/s en low pour chacune)")
     ap.add_argument("--display", default="windowed", choices=("windowed", "borderless", "fullscreen"),
                     help="mode d'affichage de l'engine (défaut windowed ; les pleins écrans demandent --native)")
     ap.add_argument("--probe", action="store_true",

@@ -126,6 +126,91 @@ static func workout_sheet(item: Dictionary, ftp_w := 0.0) -> Dictionary:
 		"tiles": tiles, "lines": lines, "blocks": blocks}
 
 
+## Test de FTP : mêmes blocs que le core (ftp_test.py : rampe de 20 W par minute depuis 100 W jusqu'au
+## palier FTP / 0,75, puis retour au calme ; 20 minutes : échauffement, deux efforts d'une minute,
+## 20 min en roue libre, retour au calme).
+const FTP_REF_W := 250.0           # FTP de référence sans FTP connue (DEFAULT_PLAN_FTP_W du core)
+const RAMP_START_W := 100.0
+const RAMP_STEP_W := 20.0
+const RAMP_STEP_S := 60.0
+const RAMP_WARMUP_S := 300.0
+const RAMP_COOLDOWN_S := 300.0
+const RAMP_FACTOR := 0.75
+const TWENTY_EFFORT_S := 1200.0
+const TWENTY_BLOCKS := [[600.0, 0.5, 0.75], [180.0, 0.75, 0.75], [60.0, 1.1, 1.1], [120.0, 0.55, 0.55],
+	[60.0, 1.1, 1.1], [180.0, 0.55, 0.55], [300.0, 0.5, 0.5], [TWENTY_EFFORT_S, null, null], [600.0, 0.6, 0.4]]
+
+
+## Blocs [durée, début, fin] d'un test de FTP en fraction de la FTP (null : roue libre).
+static func ftp_test_blocks(kind: String, ftp_w: float) -> Array:
+	if kind != "ramp":
+		return TWENTY_BLOCKS.duplicate(true)
+	var ref := ftp_w if ftp_w > 0.0 else FTP_REF_W
+	var last_w := maxf(ref / RAMP_FACTOR, RAMP_START_W)
+	var out: Array = [[RAMP_WARMUP_S, 0.6 * RAMP_START_W / ref, RAMP_START_W / ref]]
+	var w := RAMP_START_W
+	while w <= last_w:
+		out.append([RAMP_STEP_S, w / ref, w / ref])
+		w += RAMP_STEP_W
+	out.append([RAMP_COOLDOWN_S, RAMP_START_W / ref, RAMP_START_W / ref])
+	return out
+
+
+static func blocks_duration(blocks: Array) -> float:
+	var total := 0.0
+	for b in blocks:
+		total += float(b[0])
+	return total
+
+
+## Fiche d'un test de FTP (écran « Test de FTP ») : durée, FTP actuelle, part retenue, blocs, explication.
+static func ftp_test_sheet(kind: String, name: String, how: String, ftp_w: float) -> Dictionary:
+	var blocks := ftp_test_blocks(kind, ftp_w)
+	return {"title": "Test de FTP", "name": name, "blocks": blocks, "lines": [how],
+		"tiles": [_tile("Durée", _format_fr_duration(blocks_duration(blocks)), ""),
+			_tile("FTP actuelle", str(int(round(ftp_w))) if ftp_w > 0.0 else "—", "W" if ftp_w > 0.0 else ""),
+			_tile("Retenu", "75" if kind == "ramp" else "95", "%")]}
+
+
+## Fiche d'un plan de la liste (`plans.items`) ; `active` : plan en cours de la réponse (ou null).
+static func plan_sheet(plan: Dictionary, active) -> Dictionary:
+	var tiles: Array = [_tile("Semaines", str(int(plan.get("weeks", 0))), ""),
+		_tile("Séances", str(int(plan.get("sessions", 0))), "")]
+	var lines: Array = []
+	if plan.get("error", null) != null:
+		lines.append(str(plan["error"]))
+	if active is Dictionary and str(active.get("id", "")) == str(plan.get("id", "")):
+		tiles.append(_tile("Fait", str(int(round(float(active.get("done_pct", 0.0))))), "%"))
+		lines.append("En cours : " + active_progress(active))
+	return {"title": "Plan", "name": str(plan.get("name", plan.get("id", ""))), "tiles": tiles, "lines": lines}
+
+
+## Fiche du plan en cours : semaine, part faite, séances faites.
+static func active_plan_sheet(active: Dictionary) -> Dictionary:
+	var week := "%s / %d" % [str(active["week"]) if active.get("week", null) != null else "–", int(active.get("weeks", 0))]
+	return {"title": "Plan en cours", "name": str(active.get("name", "")), "lines": [active_progress(active)],
+		"tiles": [_tile("Semaine", week, ""), _tile("Fait", str(int(round(float(active.get("done_pct", 0.0))))), "%"),
+			_tile("Séances", "%d / %d" % [int(active.get("done", 0)), int(active.get("total", 0))], "")]}
+
+
+static func active_progress(active: Dictionary) -> String:
+	if active.get("finished", false):
+		return "terminé, %d %% fait" % int(round(float(active.get("done_pct", 0.0))))
+	return "semaine %s / %d, %d %% fait (%d / %d)" % [str(active["week"]) if active.get("week", null) != null else "–",
+		int(active.get("weeks", 0)), int(round(float(active.get("done_pct", 0.0)))), int(active.get("done", 0)), int(active.get("total", 0))]
+
+
+## Fiche de la séance du jour d'un plan : durée, TSS, date, retard ; `blocks` : profil de la séance si connu.
+static func plan_day_sheet(day: Dictionary, blocks: Array) -> Dictionary:
+	var tiles: Array = [_tile("Durée", _format_fr_duration(float(day.get("duration_s", 0.0))), "")]
+	if day.get("tss", null) != null:
+		tiles.append(_tile("TSS", str(int(round(float(day["tss"])))), ""))
+	var lines: Array = [str(day.get("date", ""))]
+	if day.get("late", false):
+		lines.append("En retard : à rattraper")
+	return {"title": "Séance du jour", "name": str(day.get("name", "")), "tiles": tiles, "lines": lines, "blocks": blocks}
+
+
 static func _tile(label: String, value: String, unit: String) -> Dictionary:
 	return {"label": label, "value": value, "unit": unit}
 
