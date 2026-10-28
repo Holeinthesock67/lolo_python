@@ -450,10 +450,10 @@ def test_scenario_validation(spec, message):
 
 def test_scenario_from_json_file(tmp_path):
     path = tmp_path / "mon_scenario.json"
-    path.write_text(json.dumps({"trainer": {"rider_power_w": 150},
+    path.write_text(json.dumps({"trainer": {}, "rider": {"watts": 150},
                                 "events": [{"t": 2, "device": "trainer", "action": "att_error"}]}))
     world = build_world(load_scenario(str(path)))
-    assert world.trainer.rider_power_w == 150 and not world.clicks and world.hr is None
+    assert world.trainer.rider.watts == 150 and not world.clicks and world.hr is None
     assert len(world.events) == 1
     with pytest.raises(SimScenarioError, match="inconnu"):
         load_scenario(str(tmp_path / "absent.json"))
@@ -466,9 +466,9 @@ def test_scenario_events_play_in_order():
         world = build_world(spec)
         task = asyncio.create_task(world.run())
         await asyncio.sleep(0.15)
-        assert world.hr.fixed_bpm == 150 and world.trainer.rider_power_w == 180
+        assert world.hr.fixed_bpm == 150 and world.trainer.rider.watts == 180
         await asyncio.sleep(0.15)
-        assert world.trainer.rider_power_w == 90
+        assert world.trainer.rider.watts == 90
         world.stop()
         await asyncio.wait_for(task, 1)
     asyncio.run(scenario())

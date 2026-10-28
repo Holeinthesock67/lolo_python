@@ -38,7 +38,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Collection
 
 from . import ftms, zwift_click
-from .physics import PhysicsParams, resistive_force
+from .sim_rider import SimRider
 
 log = logging.getLogger("ble_sim")
 
@@ -246,25 +246,20 @@ class CpRecord:
     result: int | None   # None : pas de réponse (erreur ATT ou réponse supprimée)
 
 
-SPEED_PHYSICS = PhysicsParams()   # vitesse imposée : mêmes réglages que la configuration par défaut du core
-
-
 class SimTrainer(SimDevice):
     uuids = (ftms.FTMS_SERVICE, ftms.FEATURE, ftms.SUPPORTED_POWER_RANGE, ftms.INDOOR_BIKE_DATA,
              ftms.CONTROL_POINT, ftms.MACHINE_STATUS)
 
     def __init__(self, world: "SimWorld", name: str = TRAINER_NAME,
                  address: str = "5A:1A:00:00:00:00", *, ibd_hz: float = 4.0,
-                 rider_power_w: float = 180.0, cadence_rpm: float = 88.0,
+                 rider: SimRider | None = None,
                  erg_tau_s: float = 1.5, cp_latency_s: float = 0.05,
                  power_range: tuple[int, int, int] = (0, 2000, 1),
                  refuse_control: bool = False,
-                 relayed_hr: bool | int | None = None,
-                 target_speed_kmh: float | None = None, **kw: Any) -> None:
+                 relayed_hr: bool | int | None = None, **kw: Any) -> None:
         super().__init__(world, name, address, **kw)
         self.ibd_hz = ibd_hz
-        self.rider_power_w, self.cadence_rpm = rider_power_w, cadence_rpm
-        self.target_speed_kmh = target_speed_kmh
+        self.rider = rider or SimRider()   # cycliste virtuel (lot X27, section `rider` du scénario)
         self.erg_tau_s, self.cp_latency_s = erg_tau_s, cp_latency_s
         self.power_range = power_range
         self.refuse_control = refuse_control
@@ -391,24 +386,6 @@ class SimTrainer(SimDevice):
         self.control = False
         self._status(bytes([ftms.STATUS_CONTROL_LOST]))
 
-    def _rider_power(self, t: float) -> float:
-        """Puissance du cycliste en SIM : un peu plus d'effort en montée, un peu de bruit.
-
-        Avec `target_speed_kmh` (vitesse imposée du banc simulé, lot X35), la puissance qui tient cette
-        vitesse sur la pente reçue, avec la physique du core (`physics.resistive_force`, réglages par
-        défaut) : la vitesse virtuelle du core suit alors la consigne si la pente reçue est celle du
-        parcours (difficulté 100 %, ce que fait `sim_bench.py --speed-kmh`)."""
-        if self.cadence_rpm <= 0:
-            return 0.0
-        if self.target_speed_kmh is not None:
-            v = max(float(self.target_speed_kmh), 0.0) / 3.6
-            p = resistive_force(v, self.grade_pct, 0.0, SPEED_PHYSICS) * v / SPEED_PHYSICS.efficiency
-            return max(p + 2.0 * math.sin(t * 0.9), 0.0)
-        if self.rider_power_w <= 0:
-            return 0.0
-        p = self.rider_power_w * (1.0 + 0.04 * self.grade_pct) + 4.0 * math.sin(t * 0.9)
-        return max(p, 0.0)
-
     async def _data_loop(self) -> None:
         period = 1.0 / self.ibd_hz
         last = self.world.now()
@@ -416,15 +393,19 @@ class SimTrainer(SimDevice):
             await asyncio.sleep(period)
             t = self.world.now()
             dt, last = t - last, t
-            if self.mode == "erg" and self.target_w is not None and self.cadence_rpm > 0:
+            erg = self.mode == "erg" and self.target_w is not None
+            rider = self.rider.step(t, dt, self.grade_pct, self.target_w if erg else None)
+            if rider.press:   # braquet changé par le cycliste virtuel (stratégie `cadence`)
+                asyncio.get_running_loop().create_task(self.world.press(rider.press))
+            if erg and rider.cadence_rpm > 0:
                 goal = self.target_w + 2.0 * math.sin(t * 1.5)
             else:
-                goal = self._rider_power(t)
+                goal = rider.power_w
             alpha = 1.0 - math.exp(-dt / max(self.erg_tau_s, 1e-3))
             self.power_w += alpha * (goal - self.power_w)
             if t < self.silent_until:
                 continue
-            cadence = self.cadence_rpm + (1.5 * math.sin(t * 0.7) if self.cadence_rpm > 0 else 0.0)
+            cadence = rider.cadence_rpm + (1.5 * math.sin(t * 0.7) if rider.cadence_rpm > 0 else 0.0)
             speed_kmh = 3.6 * (max(self.power_w, 0.0) / 0.9) ** (1 / 3) if self.power_w > 0 else 0.0
             flags = 0x0004 | 0x0040   # vitesse (bit 0 à 0), cadence, puissance
             if self.relayed_hr_enabled:
@@ -807,10 +788,7 @@ class SimWorld:
         elif isinstance(dev, SimTrainer) and action == "refuse_control":
             dev.refuse_control = bool(ev.get("value", True))
         elif isinstance(dev, SimTrainer) and action == "rider":
-            if "watts" in ev:
-                dev.rider_power_w = float(ev["watts"])
-            if "cadence_rpm" in ev:
-                dev.cadence_rpm = float(ev["cadence_rpm"])
+            dev.rider.update(**{k: ev[k] for k in ("watts", "cadence_rpm") if k in ev})
         elif isinstance(dev, SimTrainer) and action == "bpm":
             dev.relayed_hr_enabled = True
             dev.fixed_relayed_hr = None if ev.get("bpm") is None else int(ev["bpm"])

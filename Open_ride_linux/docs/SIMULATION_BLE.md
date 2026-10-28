@@ -44,7 +44,8 @@ Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie s
 ```json
 {
   "seed": 0,
-  "trainer": {"appear_at": 2, "connect_delay_s": 0.5, "rider_power_w": 200, "cadence_rpm": 90},
+  "trainer": {"appear_at": 2, "connect_delay_s": 0.5},
+  "rider": {"strategy": "constante", "watts": 200, "cadence_rpm": 90},
   "click": {"appear_at": 3, "relay_delay_s": [0.005, 0.04], "minus": {"connect_failures": 1}},
   "hr": {"appear_at": 1, "rest_bpm": 58},
   "events": [
@@ -61,7 +62,17 @@ Une section absente retire l'appareil. Les temps sont en secondes depuis le lanc
 
 **Réglages communs** (`trainer`, `click`, `click.plus`, `click.minus`, `hr`, `hr_watch`) : `appear_at` (s), `connect_delay_s`, `connect_failures` (connexions refusées avant la première réussie), `asleep`, `address` (sauf `click`).
 
-- **trainer :** `name`, `ibd_hz`, `rider_power_w`, `cadence_rpm`, `erg_tau_s`, `cp_latency_s`, `power_range` ([min, max, pas]), `refuse_control`, `target_speed_kmh` (vitesse imposée, lot X35 : en SIM, la puissance du cycliste tient cette vitesse sur la pente reçue avec la physique du core, réglages par défaut ; à difficulté 100 % la vitesse virtuelle suit la consigne ; remplace `rider_power_w`).
+- **trainer :** `name`, `ibd_hz`, `erg_tau_s`, `cp_latency_s`, `power_range` ([min, max, pas]), `refuse_control`.
+- **rider** (cycliste virtuel qui pédale sur le trainer, `core/src/openride_core/sim_rider.py`, lot X27 ; absente : 180 W et 88 rpm) : `strategy` et ses réglages, `seed` (bruit déterministe) :
+  - `constante` (défaut) : `watts`, `cadence_rpm` ; un peu plus en montée (+4 % par point de pente) ;
+  - `pente` : `ftp_w`, `pct_ftp` ; la puissance suit la pente reçue (+6 % par point, de 40 à 150 %) ;
+  - `cadence` : comme `pente`, et la cadence est tenue entre `cadence_low` et `cadence_high` (80 et 95 rpm) par des appuis du Click simulé (un toutes les 2 s au plus) ;
+  - `rampe` : `ramp_start_w`, `ramp_w_per_min` (20) ; le cycliste lâche (cadence 0) quand la puissance, ou la cible ERG du trainer, dépasse `ramp_fail_pct_ftp` % de la FTP (133) ; pour le test de FTP (O10) ;
+  - `sprint` : comme `pente`, avec des sprints de `sprint_s` s (10) à `sprint_w` (2,5 × FTP) aux temps `sprint_at_s` ;
+  - `fatigue` : `fatigue_pct_ftp` % de la FTP (110) tant que la réserve W′bal (`w_prime_j`, CP = FTP) le permet, puis `recover_frac` × CP (0,85) jusqu'à ce que la réserve remonte au-dessus de `resume_pct` % (30) ;
+  - `vitesse` : `speed_kmh` ; la puissance qui tient cette vitesse sur la pente reçue, avec la physique du core (`sim_bench.py --speed-kmh`, lot X35).
+
+  En ERG, le trainer tient sa cible tant que le cycliste pédale (cadence non nulle).
 - **click :** `status_hz`, `battery_pct`, `sleep_on_drop`, `relay_delay_s` ([min, max]).
 - **hr** et **hr_watch :** `name`, `rest_bpm`, `max_bpm`, `ftp_w`, `tau_s`, `bpm` (valeur fixe), `contact` (vrai par défaut ; faux : contact absent ; null : non géré), `battery_pct` (0 à 100 ; null : pas de service Battery), `rssi`.
 
@@ -79,7 +90,7 @@ Une section absente retire l'appareil. Les temps sont en secondes depuis le lanc
 | `silence` | `seconds` | Trainer : plus d'Indoor Bike Data pendant ce temps. Boîtier du Click (`click_plus`, `click_minus`) : plus aucune notification, lien gardé (défaut du boîtier gauche à l'essai 69, recette guidée du Click, lot X8). |
 | `control_lost` | | Fitness Machine Status 0xFF : contrôle retiré. |
 | `refuse_control` | `value` (vrai par défaut) | Les demandes de contrôle sont refusées (0x05). |
-| `rider` | `watts`, `cadence_rpm` | Effort du cycliste en SIM (0 : arrêt de pédalage). |
+| `rider` | `watts`, `cadence_rpm` | Effort du cycliste virtuel (`watts` : stratégie `constante` ; `cadence_rpm` 0 : arrêt de pédalage). |
 | `bpm` | `bpm` (null : suit la puissance) | Fréquence de la ceinture. |
 | `contact` | `value` (vrai par défaut, faux : absent, null : non géré) | Contact du capteur de la ceinture (ou de la montre). |
 

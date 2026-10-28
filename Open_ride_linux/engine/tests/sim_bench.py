@@ -226,7 +226,7 @@ class Bench:
         self.world = str(settings.get("world") or args.world)
         self.workout = settings.get("workout", args.workout)
         self.difficulty = settings.get("difficulty_pct", args.difficulty)
-        # Vitesse imposée (lot X35) : le trainer simulé tient cette vitesse sur la pente reçue, qui n'est la
+        # Vitesse imposée (lot X35) : le cycliste simulé (stratégie `vitesse`) tient cette vitesse sur la pente reçue, qui n'est la
         # pente du parcours qu'à difficulté 100 %.
         self.speed_kmh = args.speed_kmh or settings.get("speed_kmh")
         if self.speed_kmh:
@@ -234,8 +234,7 @@ class Bench:
                 raise SystemExit(f"{name} : vitesse imposée avec la difficulté {self.difficulty} % : la vitesse "
                                  "imposée demande la difficulté 100 % (pente reçue = pente du parcours)")
             self.difficulty = 100.0
-            self.spec = {**spec, "trainer": {**(spec.get("trainer") or {}),
-                                             "target_speed_kmh": float(self.speed_kmh)}}
+            self.spec = {**spec, "rider": {"strategy": "vitesse", "speed_kmh": float(self.speed_kmh)}}
             self.scenario_arg = ""   # scénario modifié : écrit dans un fichier
         self.ready_at = SETTLE_S     # temps relatif de la première capture comptée (après le chargement)
         self.duration = float(args.duration or settings.get("duration_s") or
