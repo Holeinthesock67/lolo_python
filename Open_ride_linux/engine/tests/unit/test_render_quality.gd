@@ -66,8 +66,12 @@ func _test_presets_application() -> void:
 			"%s : glow %s, rendu des tons et étalonnage communs" % [name, str(img["glow"])])
 		_check((light.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS) == (int(img["shadow_splits"]) == 4),
 			"%s : %d cascades d'ombre" % [name, img["shadow_splits"]])
-		_check(env.volumetric_fog_enabled == (bool(p["fog_volumetric"]) and fp),
-			"%s : volumetric_fog_enabled = %s" % [name, str(p["fog_volumetric"])])
+		var vol := str(img["fog_volumetric"])
+		_check(env.volumetric_fog_enabled == (fp and RenderQuality.VOLUMETRIC.has(vol)),
+			"%s : brume volumétrique %s" % [name, vol])
+		if env.volumetric_fog_enabled:
+			_check(absf(env.volumetric_fog_length - float(RenderQuality.VOLUMETRIC[vol]["length_m"])) < 1e-3,
+				"%s : portée de la brume %.0f m" % [name, RenderQuality.VOLUMETRIC[vol]["length_m"]])
 		_check(streamer.chunks_ahead == int(p["chunks_ahead"]) and streamer.chunks_behind == int(p["chunks_behind"]),
 			"%s : tronçons ahead=%d, behind=%d" % [name, p["chunks_ahead"], p["chunks_behind"]])
 		_check(absf(streamer.vegetation_density_factor - float(p["vegetation_density_factor"])) < 1e-4,
@@ -109,11 +113,17 @@ func _test_fog() -> void:
 		_check(absf(env.fog_depth_begin - 300.0) < 1e-4 and absf(env.fog_depth_end - 3000.0) < 1e-4,
 			"%s : brouillard sol plat [300, 3000] m" % name)
 
-	# Preset high (volumetric fog activé)
+	# Brume volumétrique (Y13 étape 3) : densité du niveau, ou du thème si elle est plus forte ; couleur d'horizon.
 	env.volumetric_fog_enabled = true
+	RenderQuality.apply_fog(env, "medium", true, horizon, 0.0008)
+	_check(absf(env.volumetric_fog_density - float(RenderQuality.VOLUMETRIC["light"]["density"])) < 1e-6
+		and env.volumetric_fog_albedo == horizon, "medium : brume légère (%.4f) couleur d'horizon" % env.volumetric_fog_density)
+	RenderQuality.apply_fog(env, "high", true, horizon, 0.0008)
+	_check(absf(env.volumetric_fog_density - float(RenderQuality.VOLUMETRIC["full"]["density"])) < 1e-6,
+		"high : brume pleine (%.4f)" % env.volumetric_fog_density)
 	RenderQuality.apply_fog(env, "high", true, horizon, 0.035)
-	_check(env.volumetric_fog_enabled and absf(env.volumetric_fog_density - 0.035) < 1e-4,
-		"brouillard volumétrique actif avec densité du thème")
+	_check(absf(env.volumetric_fog_density - 0.035) < 1e-6, "high : un thème plus brumeux l'emporte (0,035)")
+	_check(RenderQuality.volumetric_density("low", 0.035) == 0.0, "low : pas de brume volumétrique")
 
 	# Avant le chargement du parcours, la scène garde aussi un brouillard à pleine opacité (revue E2, R2).
 	var scene: PackedScene = load("res://scenes/main.tscn")
@@ -170,6 +180,12 @@ func _test_weather_fog() -> void:
 	var env := Environment.new()
 	RenderQuality.apply_weather_fog(env, base, 1.0)
 	_check(absf(env.fog_depth_end - RenderQuality.MIST_END_M) < 1e-3, "apply_weather_fog : fin du brouillard appliquée")
+	env.volumetric_fog_enabled = true
+	RenderQuality.apply_weather_fog(env, base, 0.5, 0.004)
+	_check(absf(env.volumetric_fog_density - 0.004 * (1.0 + RenderQuality.MIST_VOLUMETRIC_GAIN * 0.5)) < 1e-6,
+		"brume 0,5 : brume volumétrique épaissie (%.4f)" % env.volumetric_fog_density)
+	RenderQuality.apply_weather_fog(env, base, 0.0, 0.004)
+	_check(absf(env.volumetric_fog_density - 0.004) < 1e-6, "brume nulle : brume volumétrique d'origine")
 
 
 func _init() -> void:

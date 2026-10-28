@@ -5,14 +5,15 @@ extends RefCounted
 ##
 ## Valeurs retenues :
 ## - `low` (GPU intégré ou objectif ≥ 30 FPS garanti) : portée 3 km (3 tronçons devant, 1 derrière),
-##   densité de végétation 0,3, sans brouillard volumétrique, brouillard opaque à 4 km, ombres 150 m,
+##   densité de végétation 0,3, brouillard opaque à 4 km, ombres 150 m,
 ##   budget arbres 20 000.
 ## - `medium` (GPU dédié milieu de gamme type GTX 1060) : portée 5 km (5 tronçons devant, 1 derrière),
-##   densité de végétation 0,6, sans brouillard volumétrique, brouillard opaque à 6 km, ombres 300 m,
+##   densité de végétation 0,6, brouillard opaque à 6 km, ombres 300 m,
 ##   budget arbres 50 000.
 ## - `high` (GPU dédié récent) : portée 8 km (8 tronçons devant, 2 derrière), densité de végétation 1,0,
-##   brouillard volumétrique activé, brouillard opaque à 9 km, ombres 600 m, budget arbres 100 000.
-## La qualité d'image (anticrénelage, filtrage, occlusion ambiante, glow, ombres) est dans IMAGE (lot Y13).
+##   brouillard opaque à 9 km, ombres 600 m, budget arbres 100 000.
+## La qualité d'image (anticrénelage, filtrage, occlusion ambiante, brume volumétrique, glow, ombres) est
+## dans IMAGE (lot Y13).
 ## `fog_end_m` (lot Y1) : distance où le brouillard devient opaque ; la caméra (`camera.far`) et le
 ## rayon des tuiles lointaines du terrain la suivent (render_quality.gd, world_streamer.gd).
 ## Le moteur de rendu ne fait pas partie des préréglages : Forward+ partout (essai Mobile : lot Y7).
@@ -25,7 +26,6 @@ const PRESETS := {
 		"chunks_ahead": 3,
 		"chunks_behind": 1,
 		"vegetation_density_factor": 0.3,
-		"fog_volumetric": false,
 		"fog_end_m": 4000.0,
 	},
 	"medium": {
@@ -33,7 +33,6 @@ const PRESETS := {
 		"chunks_ahead": 5,
 		"chunks_behind": 1,
 		"vegetation_density_factor": 0.6,
-		"fog_volumetric": false,
 		"fog_end_m": 6000.0,
 	},
 	"high": {
@@ -41,7 +40,6 @@ const PRESETS := {
 		"chunks_ahead": 8,
 		"chunks_behind": 2,
 		"vegetation_density_factor": 1.0,
-		"fog_volumetric": true,
 		"fog_end_m": 9000.0,
 	},
 }
@@ -51,6 +49,8 @@ const PRESETS := {
 ## - `msaa` : MSAA 3D (0, 2, 4 ou 8) ; `fxaa` : anticrénelage d'écran, pour `low` qui n'a pas de MSAA.
 ## - `ssao`, `ssil` : occlusion ambiante et lumière indirecte d'écran, `off`, `low`, `medium` ou `high`
 ##   (Forward+ seulement) ; `ao_half_size` : calcul en demi-résolution.
+## - `fog_volumetric` : brume volumétrique de près, `off`, `light` ou `full` (Forward+ seulement ;
+##   réglages dans RenderQuality.VOLUMETRIC). Le brouillard de profondeur (`fog_end_m`) ne change pas.
 ## - `glow` : halo des zones claires (ciel, soleil, routes mouillées).
 ## - `shadow_atlas` : taille de l'atlas des ombres du soleil ; `shadow_splits` : 2 ou 4 cascades ;
 ##   `shadow_filter` : filtre doux `hard`, `very_low`, `low`, `medium`, `high`.
@@ -63,6 +63,7 @@ const IMAGE := {
 		"ssao": "off",
 		"ssil": "off",
 		"ao_half_size": true,
+		"fog_volumetric": "off",
 		"glow": false,
 		"shadow_atlas": 2048,
 		"shadow_splits": 2,
@@ -75,6 +76,7 @@ const IMAGE := {
 		"ssao": "medium",
 		"ssil": "low",
 		"ao_half_size": true,
+		"fog_volumetric": "light",
 		"glow": true,
 		"shadow_atlas": 4096,
 		"shadow_splits": 4,
@@ -87,6 +89,7 @@ const IMAGE := {
 		"ssao": "high",
 		"ssil": "medium",
 		"ao_half_size": true,
+		"fog_volumetric": "full",
 		"glow": true,
 		"shadow_atlas": 4096,
 		"shadow_splits": 4,
