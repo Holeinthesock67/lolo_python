@@ -50,7 +50,13 @@ for q in low medium; do for c in off on; do
 done; done
 ```
 
-`--culling off` est la mesure « avant ». La sonde (X13) écrit `moteur.csv` : images/s, temps d'image p50 / p99, objets et primitives dessinés, mémoire vidéo, tuiles proches et lointaines, arbres. Les captures du banc, prises toutes les 20 s à la même position dans les deux essais, servent à vérifier qu'aucune différence n'est visible.
+`--culling off` est la mesure « avant ». La sonde (X13) écrit `moteur.csv` : images/s, temps d'image p50 / p99, objets et primitives dessinés, mémoire vidéo, tuiles proches et lointaines, arbres. Les captures du banc, prises toutes les 20 s à effort constant, sont comparées automatiquement (critère 4) par `engine/tests/compare_captures.py`, qui reprend les fonctions d'écart de `visual_check.py` et écrit une image des écarts par paire :
+
+```bash
+python3 engine/tests/compare_captures.py ~/OpenRide/sim_bench/S1_low_off ~/OpenRide/sim_bench/S1_low_on --out ~/OpenRide/sim_bench/S1_low_ecarts
+```
+
+Avant d'interpréter un banc `medium`, vérifier dans `engine.log` que le préréglage appliqué est bien `medium` (`sim_bench.py` écrit `[render] quality` dans la configuration du core depuis le correctif de #446).
 
 | Préréglage | Tri | Images/s moy. | p99 (ms) | Objets | Primitives | Mémoire vidéo (Mo) | Tuiles proches | Arbres |
 |---|---|---|---|---|---|---|---|---|
