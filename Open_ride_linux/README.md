@@ -154,7 +154,7 @@ Le paramètre `[trainer] difficulty_pct` (de 0 à 100 %, défaut 50 %) réduit p
 
 ### Sons du parcours et sons personnalisés (Lot E4)
 
-L'engine synthétise ses sons procéduraux au démarrage (vent qui suit la vitesse, roue libre en coupant l'effort, cloches d'église, rivières, bétail, village). Un fichier audio OGG déposé dans `~/OpenRide/Sounds/<nom>.ogg` (par exemple `wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) remplace automatiquement le son généré correspondant.
+L'engine synthétise ses sons procéduraux au démarrage (vent qui suit la vitesse, roue libre en coupant l'effort, cloches d'église, rivières, bétail, village). Un fichier audio OGG déposé dans `~/OpenRide/Sounds/<nom>.ogg` (par exemple `wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) remplace automatiquement le son généré correspondant, y compris les jingles du mode classique (sommet, sprint, arche, fin de séance, lot T17 : `jingle_summit.ogg`, `jingle_arch.ogg`, etc.).
 
 **Commandes utiles du core :**
 

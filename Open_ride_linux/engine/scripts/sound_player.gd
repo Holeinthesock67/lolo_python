@@ -31,10 +31,18 @@ extends Node
 ## Lot P23 : même synthèse pour deux cris d'oiseaux, `crow_caw` (deux croassements rauques) et `raptor_cry`
 ## (miaulement de buse qui descend), joués par fauna_renderer.gd. Lot P24 : `cow_moo` (meuglement grave et long),
 ## `sheep_baa` (bêlement) et `horse_neigh` (hennissement qui descend en trilles) des troupeaux.
+##
+## Lot T17 : jingles des événements du parcours (`EventSoundsModel.JINGLES` : sommet, sprint, arche, fin
+## de séance), synthétisés note par note ou lus dans ~/OpenRide/Sounds/<nom>.ogg ; `play_event(nom)`
+## les joue sur un lecteur non spatialisé du bus `Events` (« Volume bips et événements » des Réglages,
+## audio_mix.gd), trois à la fois au plus.
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
 const AudioMix := preload("res://scripts/audio_mix.gd")
+const EventSoundsModel := preload("res://scripts/event_sounds_model.gd")
+const EVENT_DB := -6.0
+const EVENT_POLYPHONY := 3
 const BED_SAMPLES := 44100    # fonds d'ambiance : boucles de 2 secondes
 const BELL_INTERVAL_S := 2.2
 
@@ -83,6 +91,8 @@ var _bell_queue := 0                    # coups de cloche restant à sonner
 var _bell_next_s := 0.0
 var _bell_hour := NAN
 var bell_strikes_rung := 0              # coups effectivement sonnés (tests)
+var _event_player: AudioStreamPlayer
+var events_played := []                # jingles demandés (tests)
 
 
 func _init() -> void:
@@ -122,6 +132,13 @@ func _init_players() -> void:
 		add_child(p)
 		_poi_players.append(p)
 
+	_event_player = AudioStreamPlayer.new()
+	_event_player.name = "EventPlayer"
+	_event_player.bus = AudioMix.bus(AudioMix.EVENTS)
+	_event_player.max_polyphony = EVENT_POLYPHONY
+	_event_player.volume_db = EVENT_DB
+	add_child(_event_player)
+
 	for bed in AmbienceModel.BEDS:
 		var bp := AudioStreamPlayer.new()
 		bp.name = "Ambience_%s" % bed
@@ -135,6 +152,17 @@ func _init_players() -> void:
 ## Flux d'une sorte de son (synthétisé ou .ogg de remplacement), null si inconnue.
 func stream(kind: String) -> Resource:
 	return _streams.get(kind, null)
+
+
+## Joue un jingle d'événement (lot T17) ; nom inconnu : rien.
+func play_event(jingle: String) -> void:
+	var st: Resource = _streams.get(jingle, null)
+	if st == null or not EventSoundsModel.JINGLES.has(jingle):
+		return
+	events_played.append(jingle)
+	_event_player.stream = st
+	if is_inside_tree():
+		_event_player.play()
 
 
 func set_pois(points: Array) -> void:
@@ -248,6 +276,9 @@ func _generate_all_streams() -> void:
 	for bed in AmbienceModel.BEDS:
 		var custom_bed = _try_load_custom(bed)
 		_streams[bed] = custom_bed if custom_bed != null else _synthesize_bed(bed)
+	for jingle in EventSoundsModel.JINGLES:
+		var custom_jingle = _try_load_custom(jingle)
+		_streams[jingle] = custom_jingle if custom_jingle != null else _synthesize_jingle(jingle)
 
 
 func _try_load_custom(kind: String) -> Resource:
@@ -482,6 +513,48 @@ static func _synthesize_voice(kind: String) -> AudioStreamWAV:
 			s16 += 65536
 		bytes[i * 2] = s16 & 0xFF
 		bytes[i * 2 + 1] = (s16 >> 8) & 0xFF
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = MIX_RATE
+	wav.stereo = false
+	wav.loop_mode = AudioStreamWAV.LOOP_DISABLED
+	wav.data = bytes
+	return wav
+
+
+## Jingle d'événement (lot T17) : somme des notes de `EventSoundsModel.JINGLES`. Timbre `tone` : attaque
+## de 8 ms, fondamentale et harmoniques 2 et 3 (0,3 et 0,1), décroissance douce puis fondu de 30 ms ;
+## timbre `bell` : partiels 1 ; 2,76 ; 5,40 (0,5 et 0,25) amortis en exp(−4 t / durée). Pic ramené à 0,8.
+static func _synthesize_jingle(jingle: String) -> AudioStreamWAV:
+	var notes: Array = EventSoundsModel.JINGLES[jingle]
+	var n := int(ceil(EventSoundsModel.duration_s(jingle) * MIX_RATE)) + 1
+	var out := PackedFloat32Array()
+	out.resize(n)
+	var peak := 0.0
+	for note in notes:
+		var i0 := int(float(note[0]) * MIX_RATE)
+		var dur := float(note[2])
+		var m := mini(int(dur * MIX_RATE), n - i0)
+		var f := float(note[1])
+		var level := float(note[3])
+		var bell: bool = note[4] == "bell"
+		for j in range(m):
+			var t := float(j) / MIX_RATE
+			var v := 0.0
+			if bell:
+				v = (sin(TAU * f * t) + 0.5 * sin(TAU * f * 2.76 * t) + 0.25 * sin(TAU * f * 5.4 * t)) \
+						* exp(-4.0 * t / dur) * minf(1.0, t / 0.002)
+			else:
+				var env := minf(1.0, t / 0.008) * minf(1.0, (dur - t) / 0.03) * exp(-1.5 * t / dur)
+				v = (sin(TAU * f * t) + 0.3 * sin(TAU * 2.0 * f * t) + 0.1 * sin(TAU * 3.0 * f * t)) * env
+			out[i0 + j] += v * level
+	for i in range(n):
+		peak = maxf(peak, absf(out[i]))
+	var gain := 0.8 / maxf(peak, 1e-6)
+	var bytes := PackedByteArray()
+	bytes.resize(n * 2)
+	for i in range(n):
+		bytes.encode_s16(i * 2, clampi(int(out[i] * gain * 32767.0), -32768, 32767))
 	var wav := AudioStreamWAV.new()
 	wav.format = AudioStreamWAV.FORMAT_16_BITS
 	wav.mix_rate = MIX_RATE
