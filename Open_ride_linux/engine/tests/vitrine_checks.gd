@@ -10,9 +10,9 @@ extends RefCounted
 ##   --max-saturated PCT    part de pixels saturés admise dans la zone du sol (5 % par défaut)
 ## Code de sortie de la vitrine : 0 si tout passe, 1 si une capture dépasse un seuil ou s'écarte de la référence.
 
-## Pixel saturé : sa composante la plus claire atteint ce niveau (sol « brûlé », détail perdu).
 const QualityPresets := preload("res://scripts/quality_presets.gd")
 
+## Pixel saturé : sa composante la plus claire atteint ce niveau (sol « brûlé », détail perdu).
 const SATURATED := 0.985
 const DEFAULT_MAX_SATURATED_PCT := 5.0   # marquages blancs de la route : environ 3 % de la vue `route`
 const DEFAULT_MAX_DIFF := 3.0
