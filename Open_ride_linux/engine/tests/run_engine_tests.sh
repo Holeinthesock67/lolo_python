@@ -201,6 +201,22 @@ if [ "$stream_status" -ne 0 ] || grep -q -E "SCRIPT ERROR|ERROR:|WARNING:" "$STR
 record "test_world_streamer (rendu E1)" "$stream_ok"
 rm -f "$STREAM_LOG"
 
+echo "== Coutures du sol multi-biome en scène réelle (série U) =="
+# Démo ci-dessus avec une couche biome prairie → sable ; world_streamer.gd charge les tuiles (Xvfb).
+if command -v xvfb-run >/dev/null 2>&1; then
+  SEAMS_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" xvfb-run -a "$GODOT" --path "$ENGINE_DIR" --rendering-driver opengl3 \
+    --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_biome_seams.gd -- "$ROUTES_DIR/demo.world" 2>&1)"
+  seams_rc=$?
+  echo "$SEAMS_OUT" | grep -v "^Godot Engine" || true
+  seams_issues="$(echo "$SEAMS_OUT" | grep -v -E "V-Sync|set_use_vsync" | godot_issues)"
+  seams_count="$(echo "$SEAMS_OUT" | grep -E "^test_biome_seams : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+  if [ -n "$seams_issues" ]; then echo "$seams_issues"; seams_rc=1; fi
+  if [ -z "$seams_count" ]; then seams_rc=1; fi
+  record "test_biome_seams (coutures des biomes)" "$seams_rc" "${seams_count#*: }"
+elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
+  record "test_biome_seams (coutures des biomes)" 1 "xvfb-run introuvable alors que REQUIRE_RENDER=1"
+fi
+
 echo "== ERG (lot I6) =="
 python3 "$ENGINE_DIR/tests/fake_core.py" --erg-workout --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &
 ERG_FAKE_PID=$!

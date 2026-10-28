@@ -63,6 +63,17 @@ func _init() -> void:
 		ok = ok and tris > 0 and tris < 300 and TreeSpecies.triangle_count(b["lod1"]) <= 40
 		ok = ok and absf(h - TreeSpecies.height_m(kind)) <= 0.25 * TreeSpecies.height_m(kind) and aabb.position.y >= -0.4
 		_check(ok, "%s : %d triangles, hauteur %.1f m (nominale %.1f)" % [kind, tris, h, TreeSpecies.height_m(kind)])
+	# 1 bis. Matières (lot Y8 étape 2) : chaque face porte un code d'écorce ou de feuillage connu
+	for kind in BiomeIds.SPECIES + ["generic"]:
+		var meshes: Array = [TreeRenderer.build_lod0_mesh(), TreeRenderer.build_lod1_mesh()] if kind == "generic" \
+			else [TreeSpecies.build(kind)["lod0"], TreeSpecies.build(kind)["lod1"]]
+		var codes := {}
+		for mesh in meshes:
+			for c in ((mesh as ArrayMesh).surface_get_arrays(0)[Mesh.ARRAY_COLOR] as PackedColorArray):
+				codes[int(roundf(c.a * 16.0))] = true
+		var known: bool = codes.keys().all(func(k): return k >= TreeSpecies.MAT_BARK and k <= TreeSpecies.MAT_FRONDS)
+		var foliage: bool = codes.keys().any(func(k): return k >= TreeSpecies.MAT_LEAVES) or kind in ["cactus", "reed"]
+		_check(known and foliage, "%s : matières %s (écorce 1 à 7, feuillage 8 à 10)" % [kind, str(codes.keys())])
 	var cactus_h := (TreeSpecies.build("cactus")["lod0"] as ArrayMesh).get_aabb().end.y
 	var baobab_h := (TreeSpecies.build("baobab")["lod0"] as ArrayMesh).get_aabb().end.y
 	_check(cactus_h >= 1.0 and cactus_h <= 6.0 and baobab_h >= 8.0 and baobab_h <= 20.0, "cactus %.1f m (1 à 6), baobab %.1f m (8 à 20)" % [cactus_h, baobab_h])
@@ -171,6 +182,16 @@ func _init() -> void:
 	med._budget = 3000
 	med.enforce_budget(Vector3(500, 300, 500))
 	_check(med.get_active_tree_count() <= 3000, "budget : %d arbres actifs (≤ 3 000)" % med.get_active_tree_count())
+	# Un seul Shader par niveau de détail pour toutes les espèces (pas de pipelines compilés en double, lot Y8)
+	med.set_preset("medium")
+	var shaders := {}
+	for cell in med._tiles[Vector2i(0, 0)].values():
+		for part in cell["parts"]:
+			for key in ["lod0", "lod1"]:
+				var m = (part[key] as MultiMeshInstance3D).material_override
+				if m is ShaderMaterial:
+					shaders[(m as ShaderMaterial).shader.get_instance_id()] = key
+	_check(shaders.size() == 2, "matériaux des espèces : %d shaders en tout (un par niveau de détail)" % shaders.size())
 	med.clear()
 	_check(med.get_child_count() == 0, "clear : plus aucun MultiMeshInstance3D")
 	for r in [plain, muted, med, des, pol, sav, alp]:
