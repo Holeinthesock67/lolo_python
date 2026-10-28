@@ -5,6 +5,7 @@ extends SceneTree
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
+const MenuModel := preload("res://scripts/menu_model.gd")
 
 const ROUTES := [
 	{"id": "demo", "name": "Démo", "length_m": 4000.0, "is_loop": true, "status": "ready"},
@@ -653,6 +654,16 @@ func _test_bots_menu() -> void:
 		"test de FTP et bot : arguments réunis")
 	g.menu.reset()
 	_check(g.menu.bot_choice == 0 and not g.menu.ghost, "nouvelle séance : bots remis à zéro")
+	# Bots à profil (lot T13) : après les bots constants, chaque profil à 90, 100 et 110 % de la FTP.
+	var labels: Array = []
+	for c in MenuModel.BOT_CHOICES:
+		labels.append(c[0])
+	_check(labels.slice(7) == ["Grimpeur 90 %", "Grimpeur 100 %", "Grimpeur 110 %", "Rouleur 90 %", "Rouleur 100 %",
+		"Rouleur 110 %", "Sprinteur 90 %", "Sprinteur 100 %", "Sprinteur 110 %", "Diesel 90 %", "Diesel 100 %", "Diesel 110 %"],
+		"profils et niveaux au menu (%s)" % str(labels))
+	g.menu.bot_choice = 9
+	_check(g.menu._start_args() == {"bots": [{"kind": "profile", "profile": "climber", "level_pct": 110}]},
+		"start avec un grimpeur à 110 %% (%s)" % str(g.menu._start_args()))
 
 
 func _init() -> void:

@@ -159,6 +159,12 @@ class PowerupsConfig:
 
 
 @dataclass
+class BotsConfig:
+    """Bots à profil du mode classique (série T, lot T13) : calibrés au départ sur la FTP du cycliste."""
+    level_pct: int = 100           # niveau des bots, en % de la FTP (50 à 150 ; 110 : plus forts que toi)
+
+
+@dataclass
 class AudioConfig:
     """Volumes du menu Réglages, en % (0 : coupé), un par catégorie de docs/AUDIO.md ; appliqués tout de
     suite par l'engine sur ses bus audio (audio_mix.gd)."""
@@ -183,6 +189,7 @@ class Config:
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
+    bots: BotsConfig = field(default_factory=BotsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
 
     @property
@@ -239,6 +246,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rogue", "cp_w"): (0, 1000),
     ("rogue", "grade_rate_up_pct_per_s"): (0.1, 100),
     ("rogue", "grade_rate_down_pct_per_s"): (0.1, 100),
+    ("bots", "level_pct"): (50, 150),
     ("audio", "master_pct"): (0, 100),
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),

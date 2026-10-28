@@ -424,6 +424,8 @@ max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable
 enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0
 [powerups]
 mode = "on"                  # "on" (défaut) ou "off" : bonus et arches du mode classique (série T)
+[bots]
+level_pct = 100              # niveau des bots à profil, 50 à 150 % de la FTP par pas de 5 ; réglable dans le menu (lot T13)
 [audio]                      # volumes en % (0 : coupé), réglables dans le menu, voir docs/AUDIO.md
 master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre

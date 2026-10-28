@@ -6,6 +6,8 @@
   réserve W′bal du modèle de la série R (`rogue/wbal.py`), le même pour le joueur et les bots.
   `kind` reste `constant` (contrat 1.4 : `kind` vaut `constant` ou `ghost`) ; le champ `profile` le
   distingue. Cahier : `docs/lots/LOT_T12_bots_profil.md`.
+- calibrate (lot T13) : échelle de la CP d'un bot à profil pour qu'il finisse le parcours dans le temps
+  d'un cycliste de référence à `level_pct` % de sa FTP. Cahier : `docs/lots/LOT_T13_equilibrage_bots.md`.
 """
 
 from __future__ import annotations
@@ -19,7 +21,8 @@ from typing import Any
 
 from dataclasses import dataclass
 
-from .physics import PhysicsParams, RiderPhysics
+from .config import BOUNDS
+from .physics import G, V_FLOOR, V_MAX, PhysicsParams, RiderPhysics, air_density
 from .rogue.wbal import WbalState, wbal_initial, wbal_step
 from .route import Route
 from .tools.session_summary import Session, load_session, running_records
@@ -264,7 +267,8 @@ class ProfileBot(ConstantPowerBot):
 
     `segments` : segments de la couche du parcours (montées et sprints, ceux de `classic.py`) ;
     sans segment, la règle « plat » partout. `scale` met CP, W′ et pic à l'échelle (lot T13). Masse
-    physique : masse du profil (W/kg) plus `bike_mass_kg` (le vélo du cycliste, `config.toml`)."""
+    physique : masse du profil (W/kg) plus `bike_mass_kg` (le vélo du cycliste, `config.toml`).
+    `level_pct` : niveau demandé au menu (lot T13) ; None : le réglage `bots.level_pct` de la séance."""
 
     def __init__(
         self,
@@ -277,20 +281,29 @@ class ProfileBot(ConstantPowerBot):
         bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
         s: float = 0.0,
         v: float = 0.0,
+        level_pct: float | None = None,
     ) -> None:
         if profile not in PROFILES:
             raise BotError(f"profil de bot inconnu : {profile!r} ({', '.join(PROFILES)})")
-        if not math.isfinite(scale) or scale <= 0:
-            raise BotError(f"échelle de bot invalide : {scale}")
         self.profile = profile
         self.spec = PROFILES[profile]
-        self.cp_w = self.spec.cp_wkg * self.spec.mass_kg * scale
-        self.w_prime_j = self.spec.w_prime_j * scale
-        self.peak_w = self.spec.peak_wkg * self.spec.mass_kg * scale
-        super().__init__(self.cp_w, bot_id=bot_id, name=name if name is not None else self.spec.name,
+        super().__init__(self.spec.cp_wkg * self.spec.mass_kg, bot_id=bot_id,
+                         name=name if name is not None else self.spec.name,
                          params=params, mass_kg=self.spec.mass_kg + bike_mass_kg, s=s, v=v)
         self.mass_kg = self.spec.mass_kg
         self.segments = tuple(segments)
+        self.level_pct = level_pct
+        self.set_scale(scale)
+
+    def set_scale(self, scale: float) -> None:
+        """CP, W′ et pic du profil multipliés par `scale` ; réserve pleine (départ de séance, lot T13)."""
+        if not math.isfinite(scale) or scale <= 0:
+            raise BotError(f"échelle de bot invalide : {scale}")
+        self.scale = float(scale)
+        self.cp_w = self.spec.cp_wkg * self.spec.mass_kg * scale
+        self.w_prime_j = self.spec.w_prime_j * scale
+        self.peak_w = self.spec.peak_wkg * self.spec.mass_kg * scale
+        self.power_w = self.cp_w
         self.wbal: WbalState = wbal_initial(self.w_prime_j)
         self._peak_key: tuple | None = None    # sprint (id, tour) dont le pic est entamé
         self._peak_used_s = 0.0
@@ -308,15 +321,18 @@ class ProfileBot(ConstantPowerBot):
                 return seg, lap
         return None
 
-    def target_power(self, s: float, length_m: float = 0.0, is_loop: bool = False) -> float:
-        """Puissance demandée par la stratégie à la position s, avant la limite de la réserve."""
+    def target_power(self, s: float, length_m: float = 0.0, is_loop: bool = False,
+                     wbal_pct: float | None = None) -> float:
+        """Puissance demandée par la stratégie à la position s, avant la limite de la réserve
+        (`wbal_pct` : réserve à prendre en compte, celle du bot sinon ; simulation du calibrage)."""
         spec = self.spec
         here = self._segment_here(s, length_m, is_loop)
         if here is None:
             return spec.flat * self.cp_w
         seg, lap = here
         if seg.type == "climb":
-            attack = spec.climb_attack > 0 and self.wbal_pct > 100.0 * spec.climb_reserve
+            reserve = self.wbal_pct if wbal_pct is None else wbal_pct
+            attack = spec.climb_attack > 0 and reserve > 100.0 * spec.climb_reserve
             return (spec.climb_attack if attack else spec.climb) * self.cp_w
         pos = s % length_m if is_loop and length_m > 0 else s
         if self.peak_w > 0 and seg.s_end - pos <= spec.sprint_last_m:
@@ -366,9 +382,155 @@ def attach_segments(bots: list[Any], segments: tuple) -> None:
             b.segments = tuple(segments)
 
 
+# --- équilibrage des bots à profil (lot T13) ------------------------------------------------------
+
+CALIBRATION_DT = 0.5          # s : pas de la simulation du calibrage (pas les 50 Hz de la séance)
+CALIBRATION_TOL = 0.002       # écart de temps visé, sous les 0,5 % du cahier (relevé du parcours à 10 m)
+CALIBRATION_CELL_M = 10.0     # pente et altitude relevées tous les 10 m
+CALIBRATION_MAX_ITER = 12
+SCALE_BOUNDS = (0.2, 5.0)
+
+
+@dataclass(frozen=True)
+class RefRider:
+    """Cycliste de référence du calibrage : FTP et physique du cycliste (`PhysicsParams.from_config` :
+    masse totale, CdA, Crr et rendement de `config.toml`)."""
+
+    ftp_w: float
+    params: PhysicsParams
+
+
+class RouteProfile:
+    """Parcours relevé une fois pour tous les bots : sinus, cosinus de la pente et densité de l'air
+    tous les `cell_m` mètres, sur un tour pour une boucle."""
+
+    def __init__(self, route: Any, cell_m: float = CALIBRATION_CELL_M) -> None:
+        self.length_m = float(route.length_m)
+        self.cell_m = cell_m
+        n = max(1, int(math.ceil(self.length_m / cell_m)))
+        self.sin: list[float] = []
+        self.cos: list[float] = []
+        self.rho: list[float] = []
+        for i in range(n):
+            here = route.sample(min((i + 0.5) * cell_m, self.length_m))
+            theta = math.atan(here.grade_pct / 100.0)
+            self.sin.append(math.sin(theta))
+            self.cos.append(math.cos(theta))
+            self.rho.append(air_density(here.alt_m))
+
+
+def ride_time(prof: RouteProfile, params: PhysicsParams, power_w: float = 0.0,
+              bot: ProfileBot | None = None, dt: float = CALIBRATION_DT) -> float:
+    """Temps d'un tour du parcours, depuis l'arrêt, au pas `dt` : puissance constante `power_w`, ou
+    stratégie et réserve W′bal de `bot` (remis à neuf par son `set_scale`). Mêmes équations que
+    `RiderPhysics.step` et `wbal_step` (vérifié par `test_bots_calibration.py`), écrites en ligne pour
+    tenir le coût du cahier : moins de 0,5 s pour 4 bots sur 100 km."""
+    m, eff, crr, wind = params.mass_kg, params.efficiency, params.crr, params.wind_mps
+    gravity = [m * G * (sn + crr * cs) for sn, cs in zip(prof.sin, prof.cos)]
+    aero = [0.5 * rho * params.cda_m2 for rho in prof.rho]
+    n, cell, length = len(gravity), prof.cell_m, prof.length_m
+    max_t = 24 * 3600.0
+    cp = wp = w = peak = 0.0
+    if bot is not None:
+        cp, wp, peak = bot.cp_w, bot.w_prime_j, bot.peak_w
+        w = wp
+    s = v = t = 0.0
+    while s < length and t < max_t:
+        i = min(int(s / cell), n - 1)
+        p = power_w
+        if bot is not None:
+            p = bot.target_power(s, length, False, 100.0 * w / wp)
+            if p > cp and w <= 0.0:
+                p = cp
+            if p == peak and peak > 0:
+                bot._peak_used_s += dt
+            if p > cp:
+                w = max(w - (p - cp) * dt, 0.0)
+            else:
+                w = wp - (wp - w) * math.exp(-(cp - p) / wp * dt)
+        if v < V_FLOOR and (p > 0.0 or gravity[i] < 0.0):
+            v = V_FLOOR
+        va = v + wind
+        energy = 0.5 * m * v * v + (eff * p - (aero[i] * va * abs(va) + gravity[i]) * v) * dt
+        v_new = min(math.sqrt(max(energy, 0.0) * 2.0 / m), V_MAX)
+        if s + v_new * dt >= length and v_new > 0:
+            return t + (length - s) / v_new   # fraction du dernier pas
+        s += v_new * dt
+        v = v_new
+        t += dt
+    return t
+
+
+def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segments: tuple = (),
+              bike_mass_kg: float = DEFAULT_BIKE_MASS_KG, prof: RouteProfile | None = None) -> float:
+    """Échelle de la CP (et de W′ et du pic) du profil pour finir le parcours dans le temps du cycliste
+    de référence à `level_pct` % de sa FTP, à `CALIBRATION_TOL` près. Fonction pure.
+
+    Recherche sur le logarithme de l'échelle : sécante, gardée dans l'encadrement trouvé (dichotomie
+    quand la sécante en sort) ; le temps décroît avec l'échelle. `prof` : relevé du parcours à partager
+    entre bots."""
+    if profile not in PROFILES:
+        raise BotError(f"profil de bot inconnu : {profile!r} ({', '.join(PROFILES)})")
+    prof = prof or RouteProfile(route)
+    still = replace(rider.params, wind_mps=0.0)   # calibrage sans vent, pour le cycliste comme pour le bot
+    t_ref = ride_time(prof, still, power_w=rider.ftp_w * level_pct / 100.0)
+    bot = ProfileBot(profile, params=still, segments=segments, bike_mass_kg=bike_mass_kg)
+    lo_x, hi_x = math.log(SCALE_BOUNDS[0]), math.log(SCALE_BOUNDS[1])
+
+    def err(x: float) -> float:
+        bot.set_scale(math.exp(x))
+        return math.log(ride_time(prof, bot.params, bot=bot) / t_ref)
+
+    # Départ : même W/kg que le cycliste de référence.
+    spec = PROFILES[profile]
+    rider_wkg = rider.ftp_w * level_pct / 100.0 / max(rider.params.mass_kg - bike_mass_kg, 1.0)
+    x0 = min(max(math.log(rider_wkg / spec.cp_wkg), lo_x), hi_x)
+    f0 = err(x0)
+    best = (abs(f0), x0)
+    x1 = min(max(x0 + f0 / 0.7, lo_x), hi_x)   # temps à peu près en échelle^-0,7
+    lo, hi = (lo_x, hi_x)
+    for _ in range(CALIBRATION_MAX_ITER):
+        if best[0] <= math.log1p(CALIBRATION_TOL):
+            break
+        f1 = err(x1)
+        best = min(best, (abs(f1), x1))
+        # Encadrement : erreur positive (trop lent) à gauche, négative à droite.
+        if f1 > 0:
+            lo = max(lo, x1)
+        else:
+            hi = min(hi, x1)
+        if f0 > 0:
+            lo = max(lo, x0)
+        else:
+            hi = min(hi, x0)
+        x2 = x1 - f1 * (x1 - x0) / (f1 - f0) if f1 != f0 else 0.5 * (lo + hi)
+        if not lo < x2 < hi:
+            x2 = 0.5 * (lo + hi)
+        x0, f0, x1 = x1, f1, x2
+    return math.exp(best[1])
+
+
+def calibrate_bots(bots: list[Any], route: Any, rider: RefRider, level_pct: float, segments: tuple = (),
+                   bike_mass_kg: float = DEFAULT_BIKE_MASS_KG) -> dict[tuple[str, float], float]:
+    """Calibre les bots à profil de la séance (niveau du bot, `level_pct` du réglage sinon) ; un calcul
+    par couple (profil, niveau). Renvoie les échelles trouvées."""
+    scales: dict[tuple[str, float], float] = {}
+    prof: RouteProfile | None = None
+    for b in bots:
+        if not isinstance(b, ProfileBot):
+            continue
+        key = (b.profile, float(b.level_pct if b.level_pct is not None else level_pct))
+        if key not in scales:
+            prof = prof or RouteProfile(route)
+            scales[key] = calibrate(b.profile, route, key[1], rider, segments, bike_mass_kg, prof)
+        b.set_scale(scales[key])
+    return scales
+
+
 # --- bots choisis au menu (lot O7, contrat IPC révision 1.3) --------------------------------------
 
 MAX_CONSTANT_BOTS = 4
+LEVEL_BOUNDS = BOUNDS[("bots", "level_pct")]   # % de la FTP : bornes du réglage `bots.level_pct`
 
 
 def last_ride(route_id: str | None, directory: Path) -> Path | None:
@@ -394,7 +556,8 @@ def last_ride(route_id: str | None, directory: Path) -> Path | None:
 def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: str | None,
                    journal_dir: Path, s: float = 0.0, bike_mass_kg: float = DEFAULT_BIKE_MASS_KG) -> list[Any]:
     """Bots de l'argument `bots` de `start` : `{kind: "constant", power_w}` ou `{kind: "constant",
-    ftp_pct}`, `{kind: "profile", profile}` (lot T12 ; au plus 4 bots de ces deux genres en tout) et
+    ftp_pct}`, `{kind: "profile", profile, level_pct?}` (lots T12 et T13 ; au plus 4 bots de ces deux
+    genres en tout ; `level_pct` dans les bornes du réglage `bots.level_pct`, celui-ci sans lui) et
     `{kind: "ghost"}` (dernière séance sur ce parcours, un seul).
 
     Lève BotError (rien ne démarre) si la liste est mal écrite ou si le fantôme n'a pas de séance.
@@ -423,11 +586,17 @@ def bots_from_menu(items: Any, params: PhysicsParams, ftp_w: float, route_id: st
             profile = it.get("profile")
             if not isinstance(profile, str) or profile not in PROFILES:
                 raise BotError(f"profil de bot inconnu : {profile!r} ({', '.join(PROFILES)})")
+            level = it.get("level_pct")
+            lo, hi = LEVEL_BOUNDS
+            if level is not None and (isinstance(level, bool) or not isinstance(level, (int, float))
+                                      or not lo <= level <= hi):
+                raise BotError(f"niveau de bot : {level!r} refusé ({lo:g} à {hi:g} % de la FTP)")
             constant += 1
             if constant > MAX_CONSTANT_BOTS:
                 raise BotError(f"au plus {MAX_CONSTANT_BOTS} bots à puissance constante ou à profil")
             out.append(ProfileBot(profile, bot_id=f"bot{constant}", name=next(names), params=params,
-                                  bike_mass_kg=bike_mass_kg, s=s))
+                                  bike_mass_kg=bike_mass_kg, s=s,
+                                  level_pct=float(level) if level is not None else None))
         elif kind == "ghost":
             if ghost:
                 raise BotError("un seul fantôme")
