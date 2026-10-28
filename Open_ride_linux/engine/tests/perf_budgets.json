@@ -11,6 +11,7 @@
   "traffic_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P13"},
   "road_traffic_frame": {"budget_ms": 0.15, "ci_ms": 0.45, "lot": "P25"},
   "road_traffic_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P25"},
+  "sky_traffic_frame": {"budget_ms": 0.3, "ci_ms": 0.9, "lot": "P26"},
   "living_world_frame": {"budget_ms": 1.0, "ci_ms": 3.0, "lot": "P16"},
   "weather_particles_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P8"},
   "fauna_frame_200": {"budget_ms": 0.45, "ci_ms": 1.35, "lot": "P11 / P23"},

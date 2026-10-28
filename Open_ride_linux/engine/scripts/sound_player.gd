@@ -21,6 +21,8 @@ extends Node
 ## Lot P13 : deux sons de plus pour les véhicules, `vehicle_pass` (pneus et souffle) et `tractor_engine`
 ## (moteur grave), joués par les lecteurs 3D de traffic_renderer.gd (`stream(kind)`) ; remplaçables par
 ## ~/OpenRide/Sounds/<kind>.ogg. Lot P15 : `crowd_cheer` (clameur et applaudissements) pour crowd_renderer.gd.
+## Lot P26 : `helicopter_rotor` (battement des pales) et `airliner_rumble` (grondement lointain), joués par
+## sky_traffic_renderer.gd.
 ##
 ## Lot P21 : quatre sons brefs, non bouclés, des passants (`VOICE_KINDS` : « Allez ! », « Bonjour ! »,
 ## aboiement, rire d'enfant), synthétisés par une source glottale filtrée par deux formants, ou lus dans
@@ -261,7 +263,8 @@ func update_bells(hour: float, now_s: float) -> void:
 # --- Génération et chargement des flux audio ---
 
 func _generate_all_streams() -> void:
-	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer"]
+	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer",
+		"helicopter_rotor", "airliner_rumble"]
 	for k in kinds:
 		var custom_stream = _try_load_custom(k)
 		if custom_stream != null:
@@ -351,6 +354,18 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 				var clap_phase := fmod(t * 9.0 + 0.37 * sin(TAU * t), 1.0)
 				var clap := exp(-clap_phase * 60.0) * (float(h.call() & 0xFFFF) / 32768.0 - 1.0)
 				sample = _lp * 1.8 * swell + clap * 0.5
+			"helicopter_rotor":
+				# Lot P26 : battement des pales (6 coups par seconde, un nombre entier sur la boucle) sur un
+				# sifflement de turbine
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.25 * (r - _lp)
+				var blade := pow(0.5 + 0.5 * cos(TAU * 6.0 * t), 6.0)
+				sample = _lp * (0.25 + 1.6 * blade) + sin(TAU * 1900.0 * t) * 0.03
+			"airliner_rumble":
+				# Lot P26 : grondement lointain d'un avion de ligne (bruit très filtré qui ondule lentement)
+				var r := float(h.call() & 0xFFFF) / 32768.0 - 1.0
+				_lp = _lp + 0.02 * (r - _lp)
+				sample = _lp * 5.0 * (0.8 + 0.2 * sin(TAU * t))
 			"tractor_engine":
 				# Lot P13 : moteur grave du tracteur (28 Hz et harmoniques, battement des cylindres à 7 Hz)
 				var beat := 0.75 + 0.25 * sin(TAU * 7.0 * t)

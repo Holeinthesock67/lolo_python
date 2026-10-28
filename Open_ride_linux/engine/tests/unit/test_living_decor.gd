@@ -278,6 +278,10 @@ func _run() -> void:
 	var clock_before: float = dec.road_traffic.clock_s
 	dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
 	_check(dec.road_traffic.clock_s == clock_before, "pause : circulation lointaine figée")
+	var sky_before: float = dec.sky.clock_s
+	dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
+	_check(dec.sky.budget == 12 and dec.sky.clock_s == sky_before and dec.sky_view.visible_count() == dec.sky.craft.size(),
+		"ciel : %d engins au plus (préset high), figé en pause" % dec.sky.budget)
 
 	# 5. Retrait d'un tronçon : panneaux et animaux retirés
 	var props_before: int = dec.props.prop_count()
@@ -310,8 +314,9 @@ func _run() -> void:
 	var off_ws: FakeWorld = off_parts[2]
 	off.step(now, 0.05, route.sample_point(2000.0), 2000.0, 8.0, 400.0, false, wind, state)
 	_check(not off.prepared and not off_ws.road_markings and not off_parts[1].fauna_enabled and not off.particles.is_active()
-		and off.props.prop_count() == 0 and not (off_parts[1].water_material() is ShaderMaterial),
-		"living = false : ni météo, ni animaux, ni objets, route et eau de la 1.0")
+		and off.props.prop_count() == 0 and not (off_parts[1].water_material() is ShaderMaterial)
+		and off.sky.budget == 0 and off.sky_view.visible_count() == 0,
+		"living = false : ni météo, ni animaux, ni objets, ni engins volants, route et eau de la 1.0")
 
 	# 8. Matériau de la route de world_streamer.gd : marquages, chiffres par tronçon, chaussée mouillée
 	var real_ws = WorldStreamer.new()
