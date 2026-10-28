@@ -194,6 +194,8 @@ func _ready() -> void:
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
+	streamer.culling = bool(cfg.get("culling", false))
+	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
@@ -212,6 +214,7 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+	streamer.osm_streamer.set_preset(_quality_name)
 	RenderQuality.apply_fog(world_env.environment, _quality_name, false)
 	_report_quality(_quality_name, "cli" if _quality_from_cli() else "defaut")
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
@@ -383,6 +386,8 @@ func _on_settings(msg: Dictionary) -> void:
 		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
+		if streamer.osm_streamer != null:
+			streamer.osm_streamer.set_preset(_quality_name)
 		_report_quality(q, "reglage")
 	elif q != _quality_name:
 		_report_quality(q, "reglage")   # valeur inconnue : la qualité appliquée ne change pas, et le journal le dit
@@ -719,13 +724,14 @@ func _process(delta: float) -> void:
 		return
 	if not follow.has_frame():
 		return
+	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd), figée 1,1 s après la
+	# dernière trame ; journalisée en mode test même core muet (scénario 4 de fake_core.py).
+	var s_disp: float = follow.update(now)
+	_test_log_camera(now, s_disp)
 	# Core non joignable : la scène se fige entière (caméra et son lissage, avatar, tuiles, décor vivant), comme
 	# l'horloge des personnages et des animaux ci-dessus.
 	if banner.has_message("core_lost"):
 		return
-	# Interpolation et extrapolation de s à la cadence de rendu (camera_follow.gd).
-	var s_disp: float = follow.update(now)
-	_test_log_camera(now, s_disp)
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		var pos: Vector3 = route.sample_point(s_route)

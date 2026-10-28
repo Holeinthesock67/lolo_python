@@ -167,6 +167,14 @@ func stream(kind: String) -> Resource:
 	return _streams.get(kind, null)
 
 
+## Nom du son d'un flux de `stream` (« » s'il n'en vient pas) : sons du décor entendus (lot P30).
+func kind_of(st: Resource) -> String:
+	for k in _streams:
+		if _streams[k] == st:
+			return k
+	return ""
+
+
 ## Joue un jingle d'événement (lot T17) ; nom inconnu : rien.
 func play_event(jingle: String) -> void:
 	var st: Resource = _streams.get(jingle, null)
