@@ -15,7 +15,7 @@ extends Node
 ## vitesse dans l'air ; la boucle de roue libre contient `FREEWHEEL_LOOP_CLICKS` coups par seconde et
 ## `pitch_scale` la cale sur `freewheel.clicks_per_s` du modèle ; un lecteur dédié joue le « clac » de
 ## reprise (60 ms, `clacs_played` compte les reprises jouées). Sons refaits après la recette P16 (jugés
-## désagréables) : vent = grondement grave (bruit brun) et souffle doux qui respire, en boucle de 4 s ;
+## désagréables) : vent = grondement grave (bruit brun) et souffle doux, en boucle de 4 s (sans « respiration » depuis le 28/10) ;
 ## roue libre = petits « tic » secs et irréguliers au lieu d'un bip pur à 2,4 kHz.
 ##
 ## Lot P13 : deux sons de plus pour les véhicules, `vehicle_pass` (pneus et souffle) et `tractor_engine`
@@ -457,16 +457,19 @@ static func _periodic_lowpass(noise: PackedFloat32Array, alpha: float) -> Packed
 	return out
 
 
-## Vent (Lot P10, refait après la recette P16) : grondement grave (bruit blanc passé deux fois dans un
-## passe-bas à WIND_RUMBLE_HZ) et souffle doux (passe-bande WIND_BAND_HZ, Q WIND_BAND_Q) qui respire
-## lentement (0,5 et 0,75 Hz : nombre entier de cycles sur la boucle), ramenés à WIND_RMS ; boucle de
-## WIND_LOOP_SAMPLES dont les 250 dernières ms sont fondues dans les premières (raccord sans clic).
+## Vent (Lot P10, refait après la recette P16, puis le 28/10) : grondement grave (bruit blanc passé deux fois
+## dans un passe-bas à WIND_RUMBLE_HZ) et souffle doux (passe-bande WIND_BAND_HZ, Q WIND_BAND_Q), de niveau
+## constant, ramenés à WIND_RMS. Les filtres font d'abord un tour de boucle à vide sur le même bruit : la sortie
+## est périodique et la boucle de WIND_LOOP_SAMPLES se raccorde exactement, sans fondu enchaîné. Ni fondu ni
+## « respiration » à 0,5 Hz : tous deux revenaient toutes les 4 s et s'entendaient comme une vague.
 static func _wind_noise_bytes() -> PackedByteArray:
 	var n := WIND_LOOP_SAMPLES
-	var fade := int(0.25 * MIX_RATE)
-	var total := n + fade
 	var rng := RandomNumberGenerator.new()
 	rng.seed = 0x77696e64
+	var noise := PackedFloat32Array()
+	noise.resize(n)
+	for i in range(n):
+		noise[i] = rng.randf() * 2.0 - 1.0
 	var k_lp := 1.0 - exp(-TAU * WIND_RUMBLE_HZ / MIX_RATE)
 	var w0 := TAU * WIND_BAND_HZ / MIX_RATE
 	var alpha := sin(w0) / (2.0 * WIND_BAND_Q)
@@ -476,25 +479,26 @@ static func _wind_noise_bytes() -> PackedByteArray:
 	var a2 := (1.0 - alpha) / a0
 	var rumble := PackedFloat32Array()
 	var band := PackedFloat32Array()
-	rumble.resize(total)
-	band.resize(total)
+	rumble.resize(n)
+	band.resize(n)
 	var lp1 := 0.0
 	var lp2 := 0.0
 	var x1 := 0.0
 	var x2 := 0.0
 	var y1 := 0.0
 	var y2 := 0.0
-	for i in range(total):
-		var x := rng.randf() * 2.0 - 1.0
-		lp1 += k_lp * (x - lp1)
-		lp2 += k_lp * (lp1 - lp2)
-		rumble[i] = lp2
-		var y := b0 * x - b0 * x2 - a1 * y1 - a2 * y2
-		x2 = x1
-		x1 = x
-		y2 = y1
-		y1 = y
-		band[i] = y
+	for pass_i in range(2):
+		for i in range(n):
+			var x := noise[i]
+			lp1 += k_lp * (x - lp1)
+			lp2 += k_lp * (lp1 - lp2)
+			rumble[i] = lp2
+			var y := b0 * x - b0 * x2 - a1 * y1 - a2 * y2
+			x2 = x1
+			x1 = x
+			y2 = y1
+			y1 = y
+			band[i] = y
 	var rms_r := 0.0
 	var rms_b := 0.0
 	for i in range(n):
@@ -503,23 +507,16 @@ static func _wind_noise_bytes() -> PackedByteArray:
 	rms_r = sqrt(rms_r / n)
 	rms_b = sqrt(rms_b / n)
 	var buf := PackedFloat32Array()
-	buf.resize(total)
-	for i in range(total):
-		var t := float(i % n) / MIX_RATE
-		var breath := 0.75 + 0.15 * sin(TAU * 0.5 * t) + 0.1 * sin(TAU * 0.75 * t + 1.0)
-		buf[i] = rumble[i] / rms_r * (0.9 + 0.1 * breath) + band[i] / rms_b * 0.55 * breath
+	buf.resize(n)
 	var rms := 0.0
 	for i in range(n):
+		buf[i] = rumble[i] / rms_r + band[i] / rms_b * 0.45
 		rms += buf[i] * buf[i]
 	var gain := WIND_RMS / sqrt(rms / n)
 	var bytes := PackedByteArray()
 	bytes.resize(n * 2)
 	for i in range(n):
-		var v := buf[i]
-		if i < fade:
-			var g := float(i) / float(fade)
-			v = buf[i] * g + buf[n + i] * (1.0 - g)
-		bytes.encode_s16(i * 2, clampi(int(v * gain * 32767.0), -32768, 32767))
+		bytes.encode_s16(i * 2, clampi(int(buf[i] * gain * 32767.0), -32768, 32767))
 	return bytes
 
 

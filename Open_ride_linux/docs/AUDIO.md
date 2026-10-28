@@ -34,7 +34,8 @@ Les deux dernières lignes : le lot R18 crée les bus dans l'engine (`rogue_audi
   modulations à un nombre entier de cycles par boucle, bruits filtrés périodiques (`_periodic_lowpass`),
   événements (chants, gouttes, cliquets) qui débordent de la fin repris au début. Le « tac-tac » régulier
   entendu le 28/10 venait du fondu au silence de 10 ms aux bords de chaque fond (un creux toutes les 2 s) ;
-  les insectes gardent leurs salves à 2 Hz, préférées à l'écoute. Un son joué une fois (`ONE_SHOT_KINDS` : corne, cloche) n'est
+  les insectes gardent leurs salves à 2 Hz, préférées à l'écoute. Le vent n'a plus de fondu enchaîné ni de
+  « respiration » à 0,5 Hz : tous deux revenaient toutes les 4 s et s'entendaient comme une vague. Un son joué une fois (`ONE_SHOT_KINDS` : corne, cloche) n'est
   jamais relancé par les points sonores : la cloche ne sonne qu'aux coups de l'heure pleine.
 
 Tests : `engine/tests/unit/test_audio_mix.gd` (bus, courbe, lecteurs), `test_sound_player.gd`
