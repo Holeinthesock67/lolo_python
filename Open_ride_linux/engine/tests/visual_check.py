@@ -32,6 +32,7 @@ from __future__ import annotations
 
 import argparse
 import base64
+import copy
 import html
 import json
 import os
@@ -280,6 +281,40 @@ def overlap(a: list[float], b: list[float]) -> float:
     w = min(a[0] + a[2], b[0] + b[2]) - max(a[0], b[0])
     h = min(a[1] + a[3], b[1] + b[3]) - max(a[1], b[1])
     return max(0.0, w) * max(0.0, h)
+
+
+# Profil de démonstration du hello_ack (lot V6) : avatar réglé, seuils de danseuse par défaut.
+# Catalogue de démonstration du message `garage` (lot V7) : un identifiant par `look`, un par emplacement.
+# Lot V8 : états, niveaux, prix et noms pour le Garage ; frame_round, wheels_spoked et kit_plain sont choisis.
+GARAGE_NAMES = {"frame_round": "Polyvalent", "frame_light": "Léger", "frame_aero": "Profilé", "frame_tt": "Contre-la-montre",
+                "wheels_spoked": "Standard", "wheels_spoked_light": "Légères", "wheels_deep": "Profilées", "wheels_disc": "Lenticulaire",
+                "kit_plain": "Unie", "kit_stripes": "Rayée", "kit_polka": "À pois", "kit_neon": "Néon",
+                "helmet_road": "Route", "socks_white": "Blanches", "glasses_clear": "Claires"}
+GARAGE_STATES = {"frame_round": "equipped", "wheels_spoked": "equipped", "kit_plain": "equipped", "helmet_road": "equipped",
+                 "socks_white": "equipped", "glasses_clear": "equipped", "frame_light": "owned", "wheels_spoked_light": "owned",
+                 "kit_stripes": "owned", "frame_aero": "buyable", "wheels_deep": "buyable", "kit_polka": "buyable",
+                 "frame_tt": "locked", "wheels_disc": "locked", "kit_neon": "locked"}
+GARAGE_PRICES = {"frame_aero": 150, "wheels_deep": 90, "kit_polka": 400, "frame_tt": 600, "wheels_disc": 500, "kit_neon": 300}
+GARAGE_LEVELS = {"frame_light": 2, "wheels_spoked_light": 3, "kit_stripes": 2, "frame_aero": 5, "wheels_deep": 4, "kit_polka": 6,
+                 "frame_tt": 20, "wheels_disc": 15, "kit_neon": 12}
+AVATAR_GARAGE = [{"id": look, "slot": slot, "name": GARAGE_NAMES[look], "state": GARAGE_STATES[look],
+                  "level_required": GARAGE_LEVELS.get(look, 1), "price": GARAGE_PRICES.get(look, 0), "challenge": None,
+                  "mass_delta_kg": -1.5 if look == "frame_light" else 0.0, "cda_delta_pct": -4.0 if look == "frame_aero" else 0.0,
+                  "terrain": "flat" if look in ("frame_aero", "wheels_deep") else "all", "look": look}
+                 for slot, looks in {
+                     "frame": ["frame_round", "frame_light", "frame_aero", "frame_tt"],
+                     "wheels": ["wheels_spoked", "wheels_spoked_light", "wheels_deep", "wheels_disc"],
+                     "helmet": ["helmet_road"], "socks": ["socks_white"], "glasses": ["glasses_clear"],
+                     "kit": ["kit_plain", "kit_stripes", "kit_polka", "kit_neon"]}.items() for look in looks]
+
+AVATAR_PROGRESSION = {
+    "level": 8, "xp": 4310, "xp_level_start": 3800, "xp_next_level": 5000, "coins": 210,
+    "equipped": {"frame": "frame_round", "wheels": "wheels_spoked", "helmet": "helmet_road",
+                 "kit": "kit_plain", "socks": "socks_white", "glasses": "glasses_clear"},
+    "avatar": {"height": "M", "build": "medium", "skin": 3, "hair": 2, "hair_color": 1, "kit_primary": 4,
+               "kit_secondary": 11, "number": 27, "standing_grade_pct": 8, "standing_power_pct": 150},
+    "lives": 0,
+}
 
 
 # --- faux core piloté pas à pas -------------------------------------------------------------------
@@ -565,6 +600,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     engine_log = out_dir / f"{name}_engine.log"
     engine_log.write_text("")
     core = VisualCore(state_port, cmd_port, EngineLog(engine_log))
+    core.progression = copy.deepcopy(AVATAR_PROGRESSION)   # le faux core les modifie (achats, choix)
+    core.garage = copy.deepcopy(AVATAR_GARAGE)
     core.start()
     cmd = [args.godot, "--path", str(ENGINE_DIR), "--resolution", f"{width}x{height}", "--audio-driver", "Dummy"]
     if not args.native:
@@ -572,7 +609,8 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
             "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
     v_grade = getattr(args, "visual_grade", 1.0)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
-            "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}"]
+            "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}",
+            "--camera=subjective"]   # les scènes d'avant le lot V12 supposent la caméra subjective
     gold = Path(args.golden) / name if args.golden else None
     s = Session(name, width, height, core, out_dir, report, gold, args.update_golden)
     print(f"== {name} ==", flush=True)
@@ -733,6 +771,84 @@ def _scenes(s: Session) -> None:
                 not info["widgets"]["bots_panel"]["visible"] and info.get("bots", {}).get("shown") == 0,
                 f"{info.get('bots')}")
     time.sleep(1.0)
+
+    # 3 ter ter. Avatar (lot V6), vu par la caméra de contrôle derrière lui (la caméra du jeu reste
+    # subjective, où l'avatar est caché) : visible, jambes à des angles différents sur deux captures
+    # espacées (cadence de 37 tr/min : moins d'un tour entre les deux), assis à plat, en danseuse sur une pente de 10 %.
+    shot = s.capture("avatar_subjectif")
+    if shot:
+        s.check("avatar_subjectif", "avatar caché en vue subjective", not shot[1].get("avatar", {}).get("visible", True),
+                f"{shot[1].get('avatar')}")
+    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    time.sleep(1.0)
+    a = s.capture("avatar_assis")
+    time.sleep(0.37)
+    b = s.capture("avatar_assis_2")
+    if a and b:
+        (img_a, info_a), (img_b, info_b) = a, b
+        av_a, av_b = info_a.get("avatar", {}), info_b.get("avatar", {})
+        s.check("avatar_assis", "avatar visible dans le champ de la caméra de contrôle",
+                av_a.get("visible") and av_a.get("on_screen"), f"{av_a}")
+        s.check("avatar_assis", "avatar assis à plat", av_a.get("standing") is False)
+        s.check("avatar_assis", "avatar entier (niveau de détail 0)", av_a.get("lod") == 0 and av_a.get("triangles", 0) > 1000,
+                f"{av_a.get('triangles')} triangles")
+        turn = abs((av_b.get("crank", 0.0) - av_a.get("crank", 0.0) + 3.14159) % 6.28318 - 3.14159)
+        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.15, f"{turn:.2f} rad d'écart")
+        box = (s.width * 0.30, s.height * 0.25, s.width * 0.70, s.height * 0.95)
+        d = mean_abs_diff(img_a, img_b, box)
+        s.check("avatar_assis_2", "les jambes changent l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
+        s.check_world("avatar_assis", img_a, info_a)
+    core.set_scene(grade=10.0, grade_sent=10.0)
+    time.sleep(1.5)
+    shot = s.capture("avatar_danseuse")
+    if shot:
+        av = shot[1].get("avatar", {})
+        s.check("avatar_danseuse", "en danseuse sur 10 % de pente", av.get("standing") is True and av.get("on_screen"), f"{av}")
+    # Équipement (lot V7) : quatre cadres et quatre roues se distinguent à l'image (caméra de côté) ;
+    # traînées d'air à 50 km/h, absentes à 40 km/h.
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "side"})
+    core.set_scene(grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
+
+    def equip(**ids: str) -> None:
+        core.send({"type": "progression", "v": CONTRACT_VERSION, "request_cmd_id": 0, "level": 9, "xp": 0, "xp_next_level": 1,
+                   "coins": 0, "equipped": ids, "avatar": AVATAR_PROGRESSION["avatar"], "lives": 3})
+        time.sleep(0.8)
+
+    shots: dict[str, Any] = {}
+    box = (s.width * 0.20, s.height * 0.20, s.width * 0.80, s.height * 0.95)
+    for group, slot, looks in (("cadre", "frame", ["frame_round", "frame_light", "frame_aero", "frame_tt"]),
+                               ("roues", "wheels", ["wheels_spoked", "wheels_spoked_light", "wheels_deep", "wheels_disc"])):
+        for look in looks:
+            equip(**{slot: look})
+            shot = s.capture(f"avatar_{look}")
+            if shot:
+                shots[look] = shot
+                s.check(f"avatar_{look}", f"{look} : équipement appliqué", shot[1].get("avatar", {}).get("looks", {}).get(slot) == look,
+                        f"{shot[1].get('avatar', {}).get('looks')}")
+        names = [n for n in looks if n in shots]
+        for i, a_name in enumerate(names):
+            for b_name in names[i + 1:]:
+                d = mean_abs_diff(shots[a_name][0], shots[b_name][0], box)
+                s.check(f"avatar_{b_name}", f"{group} : {a_name} et {b_name} se distinguent", d >= 0.15, f"écart moyen {d:.2f} niveaux")
+    equip(kit="kit_stripes")
+    core.set_scene(speed=40.0 / 3.6)
+    time.sleep(0.8)
+    shot = s.capture("avatar_40kmh")
+    if shot:
+        s.check("avatar_40kmh", "pas de traînées d'air à 40 km/h", shot[1].get("avatar", {}).get("streaks") is False, f"{shot[1].get('avatar')}")
+    core.set_scene(speed=50.0 / 3.6)
+    time.sleep(0.8)
+    shot = s.capture("avatar_50kmh")
+    if shot:
+        s.check("avatar_50kmh", "traînées d'air visibles à 50 km/h", shot[1].get("avatar", {}).get("streaks") is True, f"{shot[1].get('avatar')}")
+    equip()
+    core.set_scene(speed=0.0)
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
+    core.set_scene(grade=0.0, grade_sent=0.0, power=250.0, power_3s=248.0, cadence=90.0)
+    time.sleep(1.0)
+
+    _camera_scenes(s)
 
     # 3 quater. Pluie (lot P17) : météo imposée, particules autour de la caméra et chaussée mouillée.
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "weather",
@@ -988,6 +1104,7 @@ def _menu_scenes(s: Session) -> None:
         line = fraction(img, rect_box(card["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
         s.check("pret", "profil d'altitude tracé dans la carte (trait cyan)", card["visible"] and line >= 0.002,
                 f"{line:.2%} de pixels cyan")
+    _garage_scenes(s)
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
         "elevation_gain_m": 180.0, "fit_path": "/tmp/openride/seance.fit"})
@@ -998,6 +1115,214 @@ def _menu_scenes(s: Session) -> None:
         s.check_texts("bilan", info, {"menu_title": "Fin de séance", "menu": "Distance : 15,23 km"}, contains=True)
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
+    _progress_scenes(s)
+
+
+def _camera_scenes(s: Session) -> None:
+    """Lot V12 : quatre vues de caméra au Click sur le parcours de démonstration. A court et flèches : vue suivante,
+    précédente ; A long : vue par défaut ; l'avatar n'apparaît pas en vue subjective ; la vue choisie est mémorisée
+    (`set_setting render.camera`) au bout de quelques secondes."""
+    core = s.core
+
+    def press(event: str, wait: float = 1.2) -> None:
+        core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+        time.sleep(wait)
+
+    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
+    time.sleep(0.8)
+    shots: dict[str, Any] = {}
+    expected = [("subjective", None), ("follow_near", "A_SHORT"), ("follow_far", "A_SHORT"), ("side", "UP_SHORT"),
+                ("subjective", "A_SHORT")]
+    for view, event in expected:
+        if event:
+            press(event)
+        shot = s.capture(f"camera_{view}" if view not in shots else f"camera_{view}_2")
+        if not shot:
+            continue
+        img, info = shot
+        label = f"camera_{view}" if view not in shots else f"camera_{view}_2"
+        shots.setdefault(view, shot)
+        s.check(label, f"vue {view} affichée", info.get("camera_view") == view and not info.get("camera_transition"),
+                f"{info.get('camera_view')}")
+        av = info.get("avatar", {})
+        if view == "subjective":
+            s.check(label, "avatar masqué en vue subjective", av.get("visible") is False, f"{av}")
+        else:
+            s.check(label, "avatar visible dans le champ de la caméra", av.get("visible") and av.get("on_screen"), f"{av}")
+    names = [n for n in ("subjective", "follow_near", "follow_far", "side") if n in shots]
+    for i, a_name in enumerate(names):
+        for b_name in names[i + 1:]:
+            d = mean_abs_diff(shots[a_name][0], shots[b_name][0], (0, 0, s.width, s.height))
+            s.check(f"camera_{b_name}", f"{a_name} et {b_name} se distinguent", d >= 1.0, f"écart moyen {d:.2f} niveaux")
+    far, near = shots.get("follow_far"), shots.get("follow_near")
+    if far and near:
+        cam_far, cam_near = far[1]["camera"], near[1]["camera"]
+        s.check("camera_follow_far", "suivi éloigné plus haut que le suivi proche", cam_far[1] > cam_near[1] + 2.0,
+                f"{cam_far[1]:.1f} m contre {cam_near[1]:.1f} m")
+    # Transition douce : une image prise 0,15 s après l'appui est en cours de transition, sans saut de position
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_SHORT"})   # subjective -> suivi proche
+    time.sleep(0.15)
+    shot = s.capture("camera_transition")
+    if shot:
+        s.check("camera_transition", "pose intermédiaire pendant la transition", shot[1].get("camera_transition") is True,
+                f"{shot[1].get('camera_transition')}")
+    time.sleep(1.0)
+    press("A_SHORT")   # suivi éloigné
+    press("A_LONG")    # vue par défaut
+    shot = s.capture("camera_defaut")
+    if shot:
+        s.check("camera_defaut", "A long : retour au suivi proche", shot[1].get("camera_view") == "follow_near", f"{shot[1].get('camera_view')}")
+    press("DOWN_SHORT")
+    shot = s.capture("camera_precedente")
+    if shot:
+        s.check("camera_precedente", "flèche bas : vue précédente (subjective)", shot[1].get("camera_view") == "subjective",
+                f"{shot[1].get('camera_view')}")
+    time.sleep(2.5)
+    with core.lock:
+        saved = [r.msg.get("args", {}) for r in core.received if r.msg.get("name") == "set_setting"
+                 and r.msg.get("args", {}).get("key") == "render.camera"]
+    s.check("camera_memoire", "dernière vue écrite dans render.camera", bool(saved) and saved[-1].get("value") == "subjective",
+            f"{saved}")
+    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=250.0, power_3s=248.0, cadence=90.0)
+    time.sleep(1.0)
+
+
+XP_RESULT = {"type": "xp_result", "v": CONTRACT_VERSION, "eligible": True, "reason": None,
+             "gains": [{"source": "distance", "points": 302}, {"source": "climb", "points": 302}], "total": 604,
+             "xp_total": 100, "xp_next_level": 1600, "level_before": 9, "level_after": 10, "coins_gained": 42,
+             "coins_total": 232, "equipment_gain_s": -12.5, "unlocked": ["frame_aero"], "challenges": [], "more": False}
+
+
+def _progress_scenes(s: Session) -> None:
+    """Lot V9 : bilan de progression en fin de séance (xp_result répété par le core) : lignes, barre, niveau,
+    déblocage, bandeau « Niveau N ! » et accès au Garage ; séance refusée."""
+    core = s.core
+    for _ in range(3):   # le core répète le message une fois par seconde
+        core.send(dict(XP_RESULT))
+        time.sleep(1.0)
+    shot = s.capture("progression")
+    if shot:
+        img, info = shot
+        s.check_texts("progression", info, {"menu": "Distance 15,2 km : +302 XP"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Niveau 10 : ■□□□□□□□□□ 100 / 1600 XP"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Niveau 10 !"}, contains=True)
+        s.check_texts("progression", info, {"menu": "Aller au Garage"}, contains=True)
+        s.check_layout("progression", info)
+        banner = info["widgets"]["banner"]
+        s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
+                f"{banner.get('text')}")
+    core.set_scene(session_state="IDLE", summary=None)
+    time.sleep(0.5)
+    core.set_scene(session_state="FINISHED", summary={"duration_s": 120.0, "distance_m": 800.0})
+    time.sleep(1.0)
+    for _ in range(2):
+        core.send({"type": "xp_result", "v": CONTRACT_VERSION, "eligible": False, "reason": "too_short"})
+        time.sleep(1.0)
+    shot = s.capture("progression_refusee")
+    if shot:
+        img, info = shot
+        s.check_texts("progression_refusee", info, {"menu": "Séance de moins de 5 minutes : pas d'expérience"}, contains=True)
+        s.check_layout("progression_refusee", info)
+
+
+def _garage_scenes(s: Session) -> None:
+    """Lot V8 : Garage au Click avec le faux core : en-tête, fiche et aperçu 3D qui suit la pièce sous le focus,
+    achat avec confirmation, choix de la pièce achetée, réglage de l'avatar et Enregistrer."""
+    core = s.core
+
+    def press(*events: str, wait: float = 0.5) -> None:
+        for event in events:
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+            time.sleep(wait)
+
+    def focus(item_id: str) -> None:
+        core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "menu_focus", "id": item_id})
+        time.sleep(0.4)
+
+    press("Y_SHORT", wait=0.4)   # accueil
+    focus("garage")
+    press("A_LONG", wait=0.4)
+    time.sleep(1.0)
+    shot = s.capture("garage")
+    if shot:
+        img, info = shot
+        s.check_texts("garage", info, {"menu_title": "Garage : niveau 8, 210 pièces", "menu": "[Vélo : cadre et roues"}, contains=True)
+        s.check_texts("garage", info, {"menu": "Niveau 8"}, contains=True)
+        s.check_layout("garage", info)
+        prev = info["widgets"]["garage_preview"]
+        s.check("garage", "aperçu 3D visible dans la carte", prev["visible"] and info["garage"]["preview"].get("triangles", 0) > 1000,
+                f"{info['garage'].get('preview')}")
+        time.sleep(0.6)
+        shot2 = s.capture("garage_2")
+        if shot2:
+            d = mean_abs_diff(img, shot2[0], rect_box(prev["rect"]))
+            s.check("garage_2", "l'aperçu tourne", d >= 0.3, f"écart moyen {d:.2f} niveaux")
+    press("A_LONG", wait=0.4)   # Vélo
+    shot = s.capture("garage_velo")
+    if shot:
+        img, info = shot
+        s.check_texts("garage_velo", info, {"menu_title": "Garage : vélo", "menu": "Cadre : Polyvalent — choisie"}, contains=True)
+        s.check_texts("garage_velo", info, {"menu": "Cadre : Profilé — 150 pièces"}, contains=True)
+        s.check_layout("garage_velo", info)
+    focus("item:frame_aero")   # Profilé (achetable)
+    time.sleep(0.5)
+    shot = s.capture("garage_fiche")
+    if shot:
+        img, info = shot
+        s.check_texts("garage_fiche", info, {"menu": "Profilé"}, contains=True)
+        s.check_texts("garage_fiche", info, {"menu": "−4,0"}, contains=True)
+        s.check("garage_fiche", "l'aperçu montre le cadre sous le focus avant l'achat",
+                info["garage"]["preview"].get("looks", {}).get("frame") == "frame_aero", f"{info['garage'].get('preview', {}).get('looks')}")
+        s.check("garage_fiche", "l'équipement choisi ne change pas avant l'achat", info["garage"]["equipped"]["frame"] == "frame_round")
+    press("A_LONG", wait=0.5)   # achat : confirmation
+    shot = s.capture("garage_confirmation")
+    if shot:
+        s.check_texts("garage_confirmation", shot[1], {"menu_title": "Acheter Profilé pour 150 pièces ? Solde après : 60"})
+    press("PLUS_SHORT", "A_LONG", wait=0.5)   # Oui
+    time.sleep(1.2)
+    shot = s.capture("garage_achat")
+    if shot:
+        img, info = shot
+        s.check("garage_achat", "pièce achetée : possédée, solde 60", info["garage"]["states"]["frame_aero"] == "owned"
+                and info["garage"]["coins"] == 60, f"{info['garage']['coins']} pièces, {info['garage']['states'].get('frame_aero')}")
+        s.check_texts("garage_achat", info, {"menu": "Cadre : Profilé — possédée"}, contains=True)
+    press("A_LONG", wait=0.5)   # choisir le cadre
+    time.sleep(1.0)
+    shot = s.capture("garage_choix")
+    if shot:
+        img, info = shot
+        s.check("garage_choix", "cadre choisi, états mis à jour", info["garage"]["equipped"]["frame"] == "frame_aero"
+                and info["garage"]["states"]["frame_aero"] == "equipped" and info["garage"]["states"]["frame_round"] == "owned",
+                f"{info['garage']['equipped']}")
+        s.check("garage_choix", "l'avatar du jeu porte le nouveau cadre", info["avatar"].get("looks", {}).get("frame") == "frame_aero",
+                f"{info['avatar'].get('looks')}")
+    press("Y_SHORT", wait=0.4)   # Garage
+    focus("avatar")
+    press("A_LONG", wait=0.4)   # Avatar
+    focus("field:height")
+    press("A_LONG", wait=0.4)   # Taille
+    shot = s.capture("garage_modif")
+    if shot:
+        img, info = shot
+        s.check_texts("garage_modif", info, {"menu_title": "Taille", "menu": "moyenne"}, contains=True)
+        s.check("garage_modif", "aperçu visible pendant la modification", info["widgets"]["garage_preview"]["visible"])
+    press("PLUS_SHORT", "A_LONG", wait=0.4)   # grande, valider
+    shot = s.capture("garage_avatar")
+    if shot:
+        img, info = shot
+        s.check("garage_avatar", "brouillon modifié, rien d'enregistré", info["garage"]["draft"]["height"] == "L"
+                and info["garage"]["avatar"]["height"] == "M" and info["garage"]["dirty"], f"{info['garage']['draft']}")
+    focus("save")
+    press("A_LONG", wait=0.4)   # Enregistrer
+    time.sleep(1.0)
+    shot = s.capture("garage_enregistre")
+    if shot:
+        img, info = shot
+        s.check("garage_enregistre", "avatar enregistré par le core", info["garage"]["avatar"]["height"] == "L" and not info["garage"]["dirty"],
+                f"{info['garage']['avatar']}")
+        s.check_texts("garage_enregistre", info, {"menu": "Enregistré"}, contains=True)
+    press("Y_SHORT", "Y_SHORT", wait=0.3)
 
 
 def main() -> int:

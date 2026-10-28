@@ -115,6 +115,7 @@ Deux blocs de moins de 10 minutes, PC au calme, sans séance vélo, fenêtre ann
 - `medium` coûte +3,4 ms de GPU et +150 Mo de VRAM : 8,5 ms pour un budget de 12 ms.
 - `high` en pleine résolution dépassait son budget en pointe (15,3 ms pour 14, 18 s au-dessus de 95 % de charge) : SSAO et SSIL de `high` passent en demi-résolution, à remesurer avant la fusion.
 - Les pics de 130 à 150 ms (chargement, captures) sont présents avant comme après. Aucune erreur Godot.
+- **Remesure du 28 octobre** (branche à jour avec `main` 8bfb255, qui apporte l'herbe et les arbres de Y14 : +30 à 50 % de primitives) : `medium` 10,02 ms médian / 12,03 ms max, charge 65 / 81 %, 1 357 k primitives, 376 Mo ; `high` (SSAO/SSIL en demi-résolution) 13,07 / 15,52 ms, charge 82 / 99 %, 17 s au-dessus de 95 %, 2 187 k primitives, 393 Mo. 60 img/s et p99 16,7 ms pour les deux. `high` tient sa médiane ; il reste 2 ms à `medium` pour l'étape 2.
 - Captures aux instants 43, 83, 123 et 163 s de chaque banc : `~/OpenRide/sim_bench/2026-10-27_Y13/captures/` sur le PC (non versionnées).
 
 Critères : budgets du §3 ; écart d'images/s et de p99 entre `main` et la branche ; GPU médian et pointe dans `sonde.csv`. Si `medium` dépasse son enveloppe, retirer d'abord le SSIL, puis passer le MSAA à 2×.

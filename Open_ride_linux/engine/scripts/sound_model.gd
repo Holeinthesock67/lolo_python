@@ -24,6 +24,10 @@ extends RefCounted
 ##   36 points : 171 coups par seconde à 36 km/h) ; volume de `FREEWHEEL_MIN_DB = -24.0` à 5 km/h à
 ##   `FREEWHEEL_MAX_DB = -16.0` à `FREEWHEEL_LOUD_KMH = 40.0` km/h (baissé après la recette P16).
 ## - Reprise du pédalage pendant la roue libre : `freewheel.clac` vrai pour une seule évaluation.
+## - Roues (lot V7) : `set_wheel_kind("hum" | "whistle" | "none")` (equipment_meshes.gd wheel_sound). Un
+##   ronronnement grave (roue lenticulaire) ou un sifflement léger (jantes hautes) naît à `WHEEL_MIN_KMH = 20.0`
+##   à `WHEEL_MIN_DB = -40.0` et monte à `WHEEL_MAX_DB = -26.0` à `WHEEL_LOUD_KMH = 50.0` km/h ; hauteur de
+##   `WHEEL_PITCH_MIN = 0.8` à `WHEEL_PITCH_MAX = 1.3`, linéaire en vitesse. Silence en pause et sans roue sonore.
 ## - `HYSTERESIS_EXIT_FACTOR = 1.1` : un POI entre à `radius_m` et sort à `1,1 × radius_m`.
 ## - `SLEW_RATE_DB_PER_S = 12.0` : variation maximale de tout volume (12 dB/s, soit 1,2 dB pour 0,1 s).
 ## - `MAX_POI_SOURCES = 4` : nombre maximal de points d'intérêt audibles simultanément (les plus proches).
@@ -49,6 +53,13 @@ const FREEWHEEL_MAX_DB := -16.0
 const FREEWHEEL_LOUD_KMH := 40.0
 const WHEEL_CIRCUMFERENCE_M := 2.1
 const ENGAGEMENT_POINTS := 36
+
+const WHEEL_MIN_KMH := 20.0
+const WHEEL_LOUD_KMH := 50.0
+const WHEEL_MIN_DB := -40.0
+const WHEEL_MAX_DB := -26.0
+const WHEEL_PITCH_MIN := 0.8
+const WHEEL_PITCH_MAX := 1.3
 
 const HYSTERESIS_EXIT_FACTOR := 1.1
 const SLEW_RATE_DB_PER_S := 12.0
@@ -77,6 +88,8 @@ var _last_eval_s: float = NAN
 var _wind_db: float = SILENCE_DB
 var _freewheel_db: float = SILENCE_DB
 var _poi_db: Dictionary = {}
+var _wheel_kind := "none"
+var _wheel_db: float = SILENCE_DB
 
 
 static func _is_number(v: Variant) -> bool:
@@ -262,6 +275,18 @@ static func _slew(current_db: float, target_db: float, max_step_db: float) -> fl
 	return move_toward(current_db, target_db, max_step_db)
 
 
+func set_wheel_kind(kind: String) -> void:
+	_wheel_kind = kind if kind in ["hum", "whistle"] else "none"
+
+
+## Volume cible de la roue sonore (SILENCE_DB sans roue sonore, à l'arrêt ou en pause).
+static func _target_wheel_db(kind: String, speed_kmh: float, paused: bool) -> float:
+	if paused or kind == "none" or speed_kmh < WHEEL_MIN_KMH:
+		return SILENCE_DB
+	var t := clampf((speed_kmh - WHEEL_MIN_KMH) / (WHEEL_LOUD_KMH - WHEEL_MIN_KMH), 0.0, 1.0)
+	return lerpf(WHEEL_MIN_DB, WHEEL_MAX_DB, t)
+
+
 ## Évalue les paramètres sonores à l'instant `now_s`.
 func evaluate(now_s: float) -> Dictionary:
 	if not is_nan(_zero_power_since_s) and (now_s - _zero_power_since_s) >= FREEWHEEL_DELAY_S - 1e-6 and _speed_kmh > FREEWHEEL_MIN_KMH and not _paused:
@@ -290,6 +315,7 @@ func evaluate(now_s: float) -> Dictionary:
 		var loud := clampf((_speed_kmh - FREEWHEEL_MIN_KMH) / (FREEWHEEL_LOUD_KMH - FREEWHEEL_MIN_KMH), 0.0, 1.0)
 		target_fw_db = lerpf(FREEWHEEL_MIN_DB, FREEWHEEL_MAX_DB, loud)
 	_freewheel_db = SILENCE_DB if _paused else _slew(_freewheel_db, target_fw_db, max_step)
+	_wheel_db = SILENCE_DB if _paused else _slew(_wheel_db, _target_wheel_db(_wheel_kind, _speed_kmh, _paused), max_step)
 	var clac := _clac_pending and not _paused
 	_clac_pending = false
 
@@ -345,6 +371,11 @@ func evaluate(now_s: float) -> Dictionary:
 			"volume_db": _freewheel_db,
 			"clicks_per_s": freewheel_clicks_per_s(_speed_kmh) if fw_playing else 0.0,
 			"clac": clac,
+		},
+		"wheel": {
+			"kind": _wheel_kind,
+			"volume_db": _wheel_db,
+			"pitch": lerpf(WHEEL_PITCH_MIN, WHEEL_PITCH_MAX, clampf(_speed_kmh / WHEEL_LOUD_KMH, 0.0, 1.0)),
 		},
 		"pois": out_pois,
 		"events": events_out,
