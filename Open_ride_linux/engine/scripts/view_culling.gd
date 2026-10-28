@@ -52,9 +52,10 @@ static func view_at(pos: Vector2, fwd: Vector2, half: float) -> Dictionary:
 	return {"pos": pos, "fwd": f, "half": minf(half, deg_to_rad(MAX_HALF_DEG))}
 
 
-## Vue de la caméra donnée (position et regard projetés sur le plan x, z).
+## Vue de la caméra donnée (position et regard projetés sur le plan x, z) ; hors de l'arbre de scène
+## (tests sans écran), sa transformation locale.
 static func view_of(cam: Camera3D) -> Dictionary:
-	var t := cam.global_transform
+	var t := cam.global_transform if cam.is_inside_tree() else cam.transform
 	var f := -t.basis.z
 	var aspect := 16.0 / 9.0
 	if cam.is_inside_tree():

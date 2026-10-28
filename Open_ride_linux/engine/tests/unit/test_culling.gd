@@ -29,8 +29,7 @@ func _check(cond: bool, msg: String) -> void:
 		printerr("[ÉCHEC] ", msg)
 
 
-## _initialize (et non _init) : la racine est alors dans l'arbre, la caméra de test a une position globale.
-func _initialize() -> void:
+func _init() -> void:
 	_test_cone()
 	_test_cameras()
 	_test_hysteresis()
@@ -64,6 +63,11 @@ func _test_cone() -> void:
 		"demi-champ borné à %.0f°" % ViewCulling.MAX_HALF_DEG)
 
 
+## Caméra hors de l'arbre (test sans écran) : transformation locale posée directement.
+func _place(cam: Camera3D, eye: Vector3, target: Vector3) -> void:
+	cam.transform = Transform3D(Basis.looking_at(target - eye, Vector3.UP), eye)
+
+
 ## Caméra active passée au tri : vue subjective, puis caméra 6 m derrière et 3 m au-dessus du cycliste.
 func _test_cameras() -> void:
 	var keep_low := ViewCulling.keep_radius_for(QualityPresets.shadow_distance_m("low"))
@@ -71,14 +75,12 @@ func _test_cameras() -> void:
 	var rider := Vector3(500.0, 0.0, 500.0)
 	var cam := Camera3D.new()
 	cam.fov = 65.0
-	root.add_child(cam)
 	var setups := {
 		"subjective": [rider + Vector3(0.0, 1.4, 0.0), rider + Vector3(0.0, 1.4, -10.0)],
 		"6 m derrière, 3 m au-dessus": [rider + Vector3(0.0, 3.0, 6.0), rider + Vector3(0.0, 1.0, 0.0)],
 	}
 	for label in setups:
-		cam.global_position = setups[label][0]
-		cam.look_at(setups[label][1], Vector3.UP)
+		_place(cam, setups[label][0], setups[label][1])
 		var views := [ViewCulling.view_of(cam)]
 		_check(ViewCulling.rect_wanted(_tile(0, -1), views, WorldStreamer.NEAR_RADIUS_M, keep_low),
 			"%s : tuile devant à 500 m voulue" % label)
@@ -91,13 +93,12 @@ func _test_cameras() -> void:
 		_check(not ViewCulling.rect_wanted(_tile(0, -3), views, WorldStreamer.NEAR_RADIUS_M, keep_low),
 			"%s : tuile devant au-delà du rayon des tuiles proches écartée" % label)
 	# Caméra latérale (vue de V12) : le champ suit la caméra, pas le cycliste.
-	cam.global_position = rider + Vector3(8.0, 1.6, 0.0)
-	cam.look_at(rider + Vector3(0.0, 1.0, 0.0), Vector3.UP)
+	_place(cam, rider + Vector3(8.0, 1.6, 0.0), rider + Vector3(0.0, 1.0, 0.0))
 	var side := [ViewCulling.view_of(cam)]
 	_check(ViewCulling.rect_wanted(_tile(-1, 0), side, WorldStreamer.NEAR_RADIUS_M, keep_low)
 		and not ViewCulling.rect_wanted(_tile(0, -2), side, WorldStreamer.NEAR_RADIUS_M, keep_low),
 		"caméra latérale : tuile à sa gauche voulue, tuile devant le cycliste écartée")
-	cam.queue_free()
+	cam.free()
 
 
 ## Une tuile chargée juste au bord du champ reste voulue (marge de maintien) ; non chargée, elle ne l'est pas.
