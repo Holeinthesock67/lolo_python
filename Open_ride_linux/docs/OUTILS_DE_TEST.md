@@ -120,6 +120,7 @@ python3 engine/tests/menu_bench.py --captures ecrans --out ~/OpenRide/menu_bench
 | `clavier_synonymes` | clavier | Entrée, Maj+A, Page haut et bas, Échap, `=` et pavé +, flèches gauche et droite ; appui ambigu de 0,7 s ignoré ; flèches haut et bas sans effet en menu |
 | `souris_gestes` | souris | Clic sur un élément sans focus, molette, clic droit, clic hors des éléments et survol sans effet |
 | `persistance` | trois | Lot X37 : difficulté changée à la pause, FTP, niveau des bots, volume général et force du vent changés dans quatre sous-écrans ; `relancer` (core et engine) ; chaque valeur relue à l'écran et dans `config.toml` |
+| `erg_libre` | trois | Lot O18 : session libre, pause, Mode SIM → ERG (ligne Puissance cible), puissance + 25 W, ERG cadence (ligne Cadence cible), reprise, puis retour en SIM et fin enregistrée |
 
 Un nouvel écran s'ajoute au banc par un fichier JSON, sans toucher au script. Clé d'en-tête `fichiers` : fichiers posés dans le HOME avant le lancement (records, profil…).
 

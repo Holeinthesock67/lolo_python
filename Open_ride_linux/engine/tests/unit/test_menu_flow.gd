@@ -339,6 +339,7 @@ func _test_settings_screen() -> void:
 	# Curseur de difficulté sur l'écran de pause : set_difficulty, sans config.toml.
 	f.on_state({"session_state": "RUNNING", "difficulty_pct": 50})
 	f.on_state({"session_state": "PAUSED", "difficulty_pct": 50})
+	f.handle("MINUS_SHORT")   # dernière ligne : mode de la session libre (lot O18)
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "difficulty" and f.state()["items"][3]["detail"] == "50 %" and f.state()["items"][3]["bar"] == 50,
 			"pause : curseur de difficulté")
