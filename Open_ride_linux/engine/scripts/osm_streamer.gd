@@ -15,6 +15,7 @@ extends Node3D
 ## des tuiles proches du terrain) quand `fauna_enabled` ; le tronçon intégré émet `chunk_loaded(k,
 ## extras)` (`extras.fauna` : groupes d'animaux), le tronçon retiré `chunk_freed(k)`. Eau qui scintille
 ## (water_mesh.gd, P12) avec `set_water_shimmer(true)`, avant le chargement des tronçons.
+## `biome_model` (biome_model.gd, série U, lot U17) : transmis au placement des animaux (faune par biome, U12).
 ## Pas de class_name (charger par preload).
 
 const OsmLayers := preload("res://scripts/osm_layers.gd")
@@ -56,6 +57,7 @@ var shapes_version := 0
 var sound_player: Node = null
 ## Lot P17 : animaux placés dans la tâche de fond de chaque tronçon.
 var fauna_enabled := false
+var biome_model = null
 var water_shimmer := false
 
 
@@ -194,6 +196,7 @@ func _start_jobs() -> void:
 				"route": route,
 				"visual_grade_scale": visual_grade_scale,
 				"fauna": fauna_enabled,
+				"biome_model": biome_model,
 			}
 			job["task"] = WorkerThreadPool.add_task(_build_chunk_job.bind(job), false, "OSM chunk %d" % k)
 			_jobs[k] = job
@@ -322,6 +325,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 			"height_at": height_at,
 			"buildings": b_items,
 			"water": w_items,
+			"biome_model": job.get("biome_model", null),
 		})
 
 	job["result"] = {

@@ -1,7 +1,8 @@
 extends SceneTree
 
 ## Tests sans écran de la faune par biome (lot U12, série U) : espèces de chaque biome (fauna_placer.gd
-## BIOME_SPECIES et BIOME_GROUPS), distances à la route, eau des oasis, densités mélangées, budgets d'affichage.
+## BIOME_SPECIES et BIOME_GROUPS), distances à la route, eau des oasis, densités mélangées, budgets d'affichage ;
+## branchement du modèle de biome dans world_streamer.gd (lot U17, première partie : `--biome=`).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_fauna_biomes.gd
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -12,6 +13,9 @@ const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const FaunaBehaviour := preload("res://scripts/fauna_behaviour.gd")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
+const WorldStreamer := preload("res://scripts/world_streamer.gd")
+const TreeRenderer := preload("res://scripts/tree_renderer.gd")
+const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 
 const CHUNKS := 6
 
@@ -236,6 +240,26 @@ func _init() -> void:
 			kinds += 1
 	_check(kinds >= 4, "low : %d espèces à l'écran" % kinds)
 	r.free()
+
+	# 9. world_streamer.gd : biome forcé transmis aux arbres et aux animaux, sol aux couleurs du biome ; « auto »
+	#    sans couche biome : rendu d'avant la série U
+	var ws = WorldStreamer.new()
+	var trees = TreeRenderer.new()
+	var osm = OsmStreamer.new()
+	ws.tree_renderer = trees
+	ws.osm_streamer = osm
+	ws.set_theme(_theme)
+	ws.forced_biome = "savanna"
+	ws.set_world(route, "")
+	var sand: Color = _model("savanna").params("savanna")["terrain"]["grass_color"]
+	_check(trees.biome_model != null and osm.biome_model == trees.biome_model and ws.start_biome() == "savanna"
+		and ws._ground_color.is_equal_approx(sand), "--biome=savanna : arbres et animaux suivent la savane, sol couleur sable")
+	ws.forced_biome = "auto"
+	ws.set_world(route, "")
+	_check(trees.biome_model == null and osm.biome_model == null, "--biome=auto sans couche biome : arbres et animaux d'avant la série U")
+	ws.free()
+	trees.free()
+	osm.free()
 
 	print("test_fauna_biomes : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

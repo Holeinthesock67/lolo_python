@@ -128,7 +128,7 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	var sky_mat := ProceduralSkyMaterial.new()
 	var haze: float = p["sky"]["haze"]
 	var tint: Color = p["sky"]["light_tint"]
-	var horizon := RenderQuality.FOG_COLOR.lerp(Color(0.86, 0.80, 0.68), haze * 0.6) * tint
+	var horizon := RenderQuality.FOG_COLOR.lerp(RenderQuality.HAZE_COLOR, haze * 0.6) * tint
 	sky_mat.sky_horizon_color = horizon
 	sky_mat.ground_horizon_color = horizon
 	env.background_mode = Environment.BG_SKY
