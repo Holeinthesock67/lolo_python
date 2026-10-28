@@ -125,6 +125,8 @@ Chaque étape : une branche et une PR, mesure avant et après avec le protocole 
 
 ### 7.1 Étape 2 : densités et distances en `medium`
 
+Accord du propriétaire le 28 octobre (« généraliser et continuer »). Valeurs appliquées dans `quality_presets.gd` ; mesure avant (étape 1) et après sur `village` et `osm` à faire sur le PC.
+
 | Réglage (`quality_presets.gd`) | `medium` avant | `medium` après | `low` / `high` |
 | --- | --- | --- | --- |
 | `vegetation_density_factor` | 0,6 | 0,8 | inchangés (0,3 / 1,0) |
