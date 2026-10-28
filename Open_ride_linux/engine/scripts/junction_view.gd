@@ -123,7 +123,7 @@ func _make_cell(cell: Dictionary) -> Control:
 	var grade := Label.new()
 	grade.text = str(cell["grade_text"])
 	grade.add_theme_font_size_override("font_size", 18)
-	grade.add_theme_color_override("font_color", HudView.GRADE_COLORS.get(cell["grade_class"], HudView.COLOR_FLAT))
+	grade.add_theme_color_override("font_color", HudView.GRADE_TEXT_COLORS.get(cell["grade_class"], HudView.GRADE_TEXT_COLORS["flat"]))
 	grade.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	col.add_child(grade)
 	return holder

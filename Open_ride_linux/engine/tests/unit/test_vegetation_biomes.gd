@@ -9,6 +9,7 @@ const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
 const TreeRenderer := preload("res://scripts/tree_renderer.gd")
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -94,7 +95,7 @@ func _init() -> void:
 	_check(total > 0 and float(medi) / total > 0.8, "méditerranéen : %d arbres, %.0f %% d'espèces méditerranéennes" % [total, 100.0 * medi / maxi(total, 1)])
 	_check(total < VegetationPlacer.new().place_tile(0, 0, 1000.0, func(_x, _z): return 300.0, null, theme).size(), "méditerranéen : moins dense que la prairie (150 contre 400 arbres/ha)")
 	print("[PERF] préparation d'une tuile méditerranéenne : %.1f ms" % ms)
-	_check(ms < 150.0, "préparation d'une tuile avec biomes : %.1f ms (< 150 ms, seuil d'O1)" % ms)
+	_check(PerfBudget.check("vegetation_tile_biomes", ms), "préparation d'une tuile avec biomes : %.1f ms (seuil d'O1)" % ms)
 	# Coût de préparation proportionnel à la densité : aucun biome du thème par défaut plus dense que la forêt
 	# tempérée (600 arbres/ha), jungle comprise
 	var densest := ""

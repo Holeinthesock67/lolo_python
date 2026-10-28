@@ -4,6 +4,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_wind_model.gd
 
 const WindModel := preload("res://scripts/wind_model.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -121,7 +122,7 @@ func _test_cost() -> void:
 	for i in range(10000):
 		m.evaluate(i * 0.0167)
 	var per_call_ms := (Time.get_ticks_usec() - t0) / 1000.0 / 10000.0
-	_check(per_call_ms < 0.05, "evaluate : %.4f ms par appel (< 0,05 ms)" % per_call_ms)
+	_check(PerfBudget.check("wind_evaluate", per_call_ms), "evaluate : %.4f ms par appel" % per_call_ms)
 
 
 func _init() -> void:
