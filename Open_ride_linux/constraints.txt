@@ -5,6 +5,7 @@ bleak==3.0.2
 dbus-fast==5.2.0
 fit-tool==0.9.16
 garmin-fit-sdk==21.218.0
+hypothesis==6.170.13
 jsonschema==4.26.0
 numpy==2.4.6
 osmium==4.3.2

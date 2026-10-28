@@ -19,7 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 # openride-core sert aux tests seulement (vérification croisée avec load_world) :
 # l'installer à part avec `pip install -e ../core`.
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "hypothesis>=6.100"]
 # Monde ouvert (série W) : lecture des extraits régionaux .osm.pbf (lot W3).
 worldgen = ["osmium>=4.0"]
 
@@ -40,4 +40,7 @@ testpaths = ["tests"]
 pythonpath = ["src"]
 # Le test d'intégration réseau (Copernicus réel) est sauté par défaut : `pytest -m network`.
 addopts = "-m 'not network'"
-markers = ["network: télécharge des tuiles Copernicus réelles (sauté par défaut)"]
+markers = [
+    "network: télécharge des tuiles Copernicus réelles (sauté par défaut)",
+    "fuzz: fuzz des lecteurs de traces (lot X26) ; `pytest -m fuzz --hypothesis-profile=long` sur le PC",
+]
