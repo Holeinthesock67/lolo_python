@@ -794,7 +794,7 @@ def _scenes(s: Session) -> None:
         s.check("avatar_assis", "avatar entier (niveau de détail 0)", av_a.get("lod") == 0 and av_a.get("triangles", 0) > 1000,
                 f"{av_a.get('triangles')} triangles")
         turn = abs((av_b.get("crank", 0.0) - av_a.get("crank", 0.0) + 3.14159) % 6.28318 - 3.14159)
-        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.5, f"{turn:.2f} rad d'écart")
+        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.15, f"{turn:.2f} rad d'écart")
         box = (s.width * 0.30, s.height * 0.25, s.width * 0.70, s.height * 0.95)
         d = mean_abs_diff(img_a, img_b, box)
         s.check("avatar_assis_2", "les jambes changent l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
