@@ -32,14 +32,7 @@ static func apply_to_material(mat: ShaderMaterial, theme: Dictionary = {}, theme
 	mat.set_shader_parameter("slope_threshold_deg", uniforms["slope_threshold_deg"])
 	mat.set_shader_parameter("snow_line_m", uniforms["snow_line_m"])
 	mat.set_shader_parameter("blend_sharpness", uniforms["blend_sharpness"])
-	# Constantes de la fonction de référence du lot L3 (le shader n'en recopie aucune).
-	mat.set_shader_parameter("snow_melt_band_m", ThemeRenderParams.SNOW_MELT_BAND_M)
-	mat.set_shader_parameter("steep_snow_start_deg", ThemeRenderParams.STEEP_SNOW_START_DEG)
-	mat.set_shader_parameter("steep_snow_max_deg", ThemeRenderParams.STEEP_SNOW_MAX_DEG)
-	mat.set_shader_parameter("min_slope_half_band_deg", ThemeRenderParams.MIN_SLOPE_HALF_BAND_DEG)
-	mat.set_shader_parameter("max_slope_half_band_deg", ThemeRenderParams.MAX_SLOPE_HALF_BAND_DEG)
-	mat.set_shader_parameter("rock_facet_strength", 0.6)
-	mat.set_shader_parameter("detail_strength", 1.0)
+	apply_shared(mat)
 
 	var tex_grass: Texture2D = null
 	var tex_rock: Texture2D = null
@@ -67,3 +60,15 @@ static func apply_to_material(mat: ShaderMaterial, theme: Dictionary = {}, theme
 		mat.set_shader_parameter("has_snow_texture", true)
 	else:
 		mat.set_shader_parameter("has_snow_texture", false)
+
+
+## Paramètres communs aux shaders de terrain (terrain_shade.gdshaderinc) : constantes de la fonction de
+## référence du lot L3 (le shader n'en recopie aucune) et décor d'E3. Aussi pour terrain_biomes.gdshader (U6).
+static func apply_shared(mat: ShaderMaterial) -> void:
+	mat.set_shader_parameter("snow_melt_band_m", ThemeRenderParams.SNOW_MELT_BAND_M)
+	mat.set_shader_parameter("steep_snow_start_deg", ThemeRenderParams.STEEP_SNOW_START_DEG)
+	mat.set_shader_parameter("steep_snow_max_deg", ThemeRenderParams.STEEP_SNOW_MAX_DEG)
+	mat.set_shader_parameter("min_slope_half_band_deg", ThemeRenderParams.MIN_SLOPE_HALF_BAND_DEG)
+	mat.set_shader_parameter("max_slope_half_band_deg", ThemeRenderParams.MAX_SLOPE_HALF_BAND_DEG)
+	mat.set_shader_parameter("rock_facet_strength", 0.6)
+	mat.set_shader_parameter("detail_strength", 1.0)

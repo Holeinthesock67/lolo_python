@@ -535,6 +535,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("end_session", {"save": bool(act.get("save", true))})
 		"start", "resume":
 			ipc.send_command(name, act.get("args", {}))
+		"start_run":
+			ipc.start_run(act.get("args", {}))
 		"open_world_menu":
 			world_menu_view.open()
 			ipc.send_command("world_regions")
@@ -1115,6 +1117,7 @@ func _on_hello_ack(_ack: Dictionary) -> void:
 		chart_mode = ch
 		_apply_chart_mode()
 	menu_flow.menu.set_modes(ipc.core_config.get("modes"))
+	menu_flow.rogue.configure(ipc.core_config.get("rogue"))
 	menu_flow.set_versions(ipc.engine_version, ipc.core_version)
 
 

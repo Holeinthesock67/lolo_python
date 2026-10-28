@@ -254,9 +254,13 @@ func _init() -> void:
 	var sand: Color = _model("savanna").params("savanna")["terrain"]["grass_color"]
 	_check(trees.biome_model != null and osm.biome_model == trees.biome_model and ws.start_biome() == "savanna"
 		and ws._ground_color.is_equal_approx(sand), "--biome=savanna : arbres et animaux suivent la savane, sol couleur sable")
+	var tile_mat = ws._terrain_material_for("near:0:0")
+	_check(ws.biome_textures != null and tile_mat is ShaderMaterial and (tile_mat as ShaderMaterial).shader.resource_path.ends_with("terrain_biomes.gdshader"),
+		"--biome=savanna : tuiles de terrain au shader multi-biome (U6)")
 	ws.forced_biome = "auto"
 	ws.set_world(route, "")
-	_check(trees.biome_model == null and osm.biome_model == null, "--biome=auto sans couche biome : arbres et animaux d'avant la série U")
+	_check(trees.biome_model == null and osm.biome_model == null and ws.biome_textures == null
+		and ws._terrain_material_for("near:0:0") == ws._terrain_material, "--biome=auto sans couche biome : arbres, animaux et sol d'avant la série U")
 	ws.free()
 	trees.free()
 	osm.free()
