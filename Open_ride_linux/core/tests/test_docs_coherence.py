@@ -568,43 +568,10 @@ def check_markdown_links(text: str, doc_path: Path, root: Path = REPO_ROOT) -> l
 
 # --- 8. Nombres de tests dans la documentation (lot J7) ------------------------------
 
-# (paquet, motif) : chaque motif doit figurer dans chaque document de TEST_COUNT_DOCS.
-TEST_COUNT_PATTERNS: dict[str, dict[str, str]] = {
-    "README.md": {
-        "core": r"(\d+) tests automatiques côté core",
-        "compiler": r"et (\d+) côté compilateur",
-    },
-    "docs/SUIVI_AVANCEMENT.md": {
-        "core": r"(\d+) tests pytest passent dans le core",
-        "compiler": r"et (\d+) dans le compilateur",
-    },
-}
-
-
-def collected_test_count(package_dir: Path) -> int:
-    """Nombre de tests que `pytest -q` lance dans `package_dir` (options du paquet, donc sans
-    les tests `network` du compilateur)."""
-    proc = subprocess.run(
-        [sys.executable, "-m", "pytest", "--collect-only", "-q", "-p", "no:cacheprovider"],
-        cwd=package_dir, capture_output=True, text=True, timeout=60,
-    )
-    m = re.search(r"^(\d+)(?:/\d+)? tests? collected", proc.stdout, flags=re.MULTILINE)
-    if proc.returncode != 0 or m is None:
-        raise RuntimeError(f"collecte impossible dans {package_dir} :\n{proc.stdout[-2000:]}")
-    return int(m.group(1))
-
-
-def check_test_counts(text: str, doc_name: str, actual: dict[str, int]) -> list[str]:
-    errors: list[str] = []
-    for package, pattern in TEST_COUNT_PATTERNS[doc_name].items():
-        found = re.findall(pattern, text)
-        if not found:
-            errors.append(f"{doc_name} : phrase du nombre de tests {package} absente ({pattern})")
-        for value in found:
-            if int(value) != actual[package]:
-                errors.append(f"{doc_name} : {value} tests {package} annoncés, "
-                              f"écrire {actual[package]} (tests collectés)")
-    return errors
+# Motifs, comptes et correction dans scripts/recompte_tests.py (lot X34), qui réécrit les nombres faux
+# après une fusion : `python3 scripts/recompte_tests.py`.
+from recompte_tests import (TEST_COUNT_PATTERNS, check_test_counts, collected_test_count,  # noqa: E402
+                            engine_counts, fix_test_counts)
 
 
 # --- 9. Chemins du projet cités (lot J7) ---------------------------------------------
@@ -678,7 +645,7 @@ def test_github_anchors() -> None:
 
 
 def test_documented_test_counts_and_negative() -> None:
-    actual = {"core": collected_test_count(REPO_ROOT / "core")}
+    actual = {"core": collected_test_count(REPO_ROOT / "core"), **engine_counts(REPO_ROOT)}
     try:
         import openride_compiler  # noqa: F401
     except ImportError:
@@ -690,10 +657,15 @@ def test_documented_test_counts_and_negative() -> None:
         errors += check_test_counts((REPO_ROOT / doc_name).read_text(encoding="utf-8"), doc_name, actual)
     assert errors == []
 
-    text = "231 tests automatiques côté core (dont x) et 123 côté compilateur"
-    errs = check_test_counts(text, "README.md", {"core": 230, "compiler": 123})
-    assert errs == ["README.md : 231 tests core annoncés, écrire 230 (tests collectés)"]
-    assert len(check_test_counts("aucun nombre", "README.md", {"core": 1, "compiler": 1})) == 2
+    text = "231 tests automatiques côté core (dont x) et 123 côté compilateur ; 89 fichiers de tests unitaires, 7 tests de rendu"
+    counts = {"core": 230, "compiler": 123, "engine_unit": 89, "engine_render": 11}
+    errs = check_test_counts(text, "README.md", counts)
+    assert errs == ["README.md : 231 tests core annoncés, écrire 230 (python3 scripts/recompte_tests.py)",
+                    "README.md : 7 tests de rendu de l'engine annoncés, écrire 11 (python3 scripts/recompte_tests.py)"]
+    fixed = fix_test_counts(text, "README.md", counts)
+    assert fixed == "230 tests automatiques côté core (dont x) et 123 côté compilateur ; 89 fichiers de tests unitaires, 11 tests de rendu"
+    assert check_test_counts(fixed, "README.md", counts) == []
+    assert len(check_test_counts("aucun nombre", "README.md", counts)) == 4
 
 
 def test_cited_paths_exist_and_negative() -> None:
