@@ -106,7 +106,7 @@ func _on_draw() -> void:
 	# Curseur de position (profil connu).
 	if model.has_profile:
 		var cx: float = geo["cursor_x"]
-		draw_line(Vector2(cx, 0.0), Vector2(cx, h), Color.WHITE, 2.0)
+		draw_line(Vector2(cx, 0.0), Vector2(cx, h), UiTheme.INK, 2.0)
 	# Légende, alignée à droite, de gauche à droite : puissance, FC, cadence.
 	var items := legend(geo["current"], mode)
 	var widths: Array = []
