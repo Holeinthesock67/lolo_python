@@ -227,4 +227,15 @@ def resolve_theme(theme_dir: Path) -> dict[str, Any]:
 
     default_theme = _load_default_theme()
     user_theme = json.loads((theme_dir / "theme.json").read_text(encoding="utf-8"))
+    if theme_dir.resolve() != DEFAULT_THEME_DIR.resolve():
+        # Le pack de biomes du thème par défaut n'est pas prêté (Format .world v1 §9, comme theme_loader.gd).
+        default_theme = without_biomes(default_theme)
     return _deep_merge(default_theme, user_theme)
+
+
+V2_KEYS = ("default_biome", "biomes", "variants", "surfaces")
+
+
+def without_biomes(theme: dict[str, Any]) -> dict[str, Any]:
+    """Thème sans ses clés 2.0 (pack de biomes)."""
+    return {k: copy.deepcopy(v) for k, v in theme.items() if k not in V2_KEYS}

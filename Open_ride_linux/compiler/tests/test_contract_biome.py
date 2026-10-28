@@ -80,12 +80,36 @@ def test_biome_ids_match_lot_u0() -> None:
     assert layer["properties"]["default_biome"]["enum"] == BIOMES
 
 
-def test_theme_2_0_example_and_default_theme_1_x_are_valid() -> None:
+def test_theme_2_0_example_and_default_theme_are_valid() -> None:
     theme_schema = schema("theme")
     jsonschema.validate(load(THEME_2_0), theme_schema)
     default = load(DEFAULT_THEME)
-    assert default["version"].startswith("1.")
     jsonschema.validate(default, theme_schema)
+    one_x = {k: v for k, v in default.items() if k not in ("default_biome", "biomes", "variants", "surfaces")}
+    one_x["version"] = "1.2"
+    jsonschema.validate(one_x, theme_schema)
+
+
+def test_default_theme_2_0_has_sixteen_biomes_and_keeps_1_x_grassland() -> None:
+    """Lot U15 : thème par défaut 2.0 en couleurs unies ; la prairie reprend exactement le 1.x."""
+    default = load(DEFAULT_THEME)
+    assert default["version"] == "2.0" and list(default["biomes"]) == BIOMES
+    terrain = default["terrain"]
+    grass = default["biomes"]["temperate_grassland"]["ground"]
+    by_role = {layer["role"]: layer for layer in grass["layers"]}
+    for role, key in (("flat", "grass"), ("steep", "rock"), ("high", "snow")):
+        assert {k: by_role[role][k] for k in ("color", "texture", "scale_m")} == terrain[key]
+    assert grass["high_line_m"] == terrain["snow_line_m"]
+    assert grass["slope_threshold_deg"] == terrain["slope_threshold_deg"]
+    veg = default["biomes"]["temperate_grassland"]["vegetation"]
+    assert veg["max_density_per_ha"] == default["vegetation"]["max_density_per_ha"]
+    assert veg["treeline_m"] == default["vegetation"]["treeline_m"]
+    flats = {b["ground"]["layers"][0]["color"] for b in default["biomes"].values()}
+    assert len(flats) == 16
+    for biome in default["biomes"].values():
+        assert sum(biome["seasons"]["durations_months"]) == 12
+        for layer in biome["ground"]["layers"]:
+            assert layer["texture"] is None
 
 
 def test_theme_2_0_ground_roles_are_unique() -> None:
