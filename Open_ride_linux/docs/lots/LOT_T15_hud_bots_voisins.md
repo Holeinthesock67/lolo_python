@@ -50,3 +50,5 @@ Aucune.
 - **Tests :** `test_bot_hud_model.gd` (nouveau), `test_bots_view_model.gd` (lignes du HUD), scène « bots » de `visual_check.py` (voisins et maillots).
 - Aucun nouveau bouton, aucune modification du core ni du contrat.
 
+**Révision du 28 octobre (suite du lot X22).** À 720 lignes avec les blocs segment et bonus, l'encart ne gardait que les deux voisins, sans maillot ni W′. Les voisins ne sont plus des lignes à part : le triangle ▲ ou ▼ est tracé sur la ligne du bot lui-même, entre son nom et son écart (`rows[].dir` ; le champ `neighbors` est supprimé). Quand la place manque, `bot_hud_model.fit()` garde les deux lignes autour du cycliste (ses voisins, avec maillot, FTP et W′), puis la ligne des maillots, puis d'autres lignes en élargissant la fenêtre autour du cycliste. Les blocs segment et bonus prennent la hauteur de leur contenu (`_fit_block`) : segment 92 px au lieu de 100 avec l'écart au record, bonus 40 px au lieu de 72 quand un bonus est seulement en réserve. Le nom d'un bot à puissance constante passe d'orange (0,95 ; 0,55 ; 0,15) à un orange plus clair (1,00 ; 0,68 ; 0,30) pour garder 3:1 au-dessus d'un ciel clair.
+
