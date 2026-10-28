@@ -270,6 +270,7 @@
 | [X39](LOT_X39_ecart_progression.md) | Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
 | [X40](LOT_X40_rogue_bout_en_bout.md) | Série X (outils de test) : Run Cyber-Rogue de bout en bout dans la séance du core (`rogue_bout_en_bout`), pause, resynchronisation, trace pour le banc visuel | Python | R8, R7 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x40`) ; issue #543 |
 | [X41](LOT_X41_banc_visuel_rogue.md) | Série X (outils de test) : Banc visuel du mode Cyber-Rogue (`rogue_bench.py`), run X40 rejouée dans la vraie scène, captures aux moments clés et planche HTML | Python, GDScript | X40, R10–R13 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x41`) ; issue #544 |
+| [X42](LOT_X42_matrice_boutons_reglages.md) | Série X (outils de test) : Matrice des boutons et des réglages par mode et par phase (`matrice_boutons`), plan des boutons §7.1 lu comme référence | Python | X40, §7.1 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x42`) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
