@@ -25,11 +25,15 @@ extends Node
 ## Lot P21 : quatre sons brefs, non bouclés, des passants (`VOICE_KINDS` : « Allez ! », « Bonjour ! »,
 ## aboiement, rire d'enfant), synthétisés par une source glottale filtrée par deux formants, ou lus dans
 ## ~/OpenRide/Sounds/<kind>.ogg (CC0) ; joués par crowd_renderer.gd en mode « passants ».
+##
+## Volumes du menu Réglages (audio_mix.gd) : vent, roue libre et « clac » sur le bus `Ride`, fonds,
+## cloches et points sonores sur le bus `Ambience`.
 ## Lot P23 : même synthèse pour deux cris d'oiseaux, `crow_caw` (deux croassements rauques) et `raptor_cry`
 ## (miaulement de buse qui descend), joués par fauna_renderer.gd.
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
+const AudioMix := preload("res://scripts/audio_mix.gd")
 const BED_SAMPLES := 44100    # fonds d'ambiance : boucles de 2 secondes
 const BELL_INTERVAL_S := 2.2
 
@@ -85,18 +89,21 @@ func _init_players() -> void:
 	_wind_player.name = "WindPlayer"
 	_wind_player.stream = _streams.get("wind", null)
 	_wind_player.volume_db = SoundModel.SILENCE_DB
+	_wind_player.bus = AudioMix.bus(AudioMix.RIDE)
 	add_child(_wind_player)
 
 	_freewheel_player = AudioStreamPlayer.new()
 	_freewheel_player.name = "FreewheelPlayer"
 	_freewheel_player.stream = _streams.get("freewheel", null)
 	_freewheel_player.volume_db = SoundModel.SILENCE_DB
+	_freewheel_player.bus = AudioMix.bus(AudioMix.RIDE)
 	add_child(_freewheel_player)
 
 	_clac_player = AudioStreamPlayer.new()
 	_clac_player.name = "ClacPlayer"
 	_clac_player.stream = _streams.get("clac", null)
 	_clac_player.volume_db = -12.0
+	_clac_player.bus = AudioMix.bus(AudioMix.RIDE)
 	add_child(_clac_player)
 
 	for i in range(SoundModel.MAX_POI_SOURCES):
@@ -105,6 +112,7 @@ func _init_players() -> void:
 		p.unit_size = 10.0
 		p.max_distance = 150.0
 		p.volume_db = SoundModel.SILENCE_DB
+		p.bus = AudioMix.bus(AudioMix.AMBIENCE)
 		add_child(p)
 		_poi_players.append(p)
 
@@ -113,6 +121,7 @@ func _init_players() -> void:
 		bp.name = "Ambience_%s" % bed
 		bp.stream = _streams.get(bed, null)
 		bp.volume_db = SoundModel.SILENCE_DB
+		bp.bus = AudioMix.bus(AudioMix.AMBIENCE)
 		add_child(bp)
 		_bed_players[bed] = bp
 
