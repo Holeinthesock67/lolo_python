@@ -315,6 +315,7 @@ func _run() -> void:
 	for v in dec.traffic.vehicles:
 		before.append(float(v["s"]))
 	var pos2: Vector3 = route.sample_point(s) + Vector3(0.0, 1.4, 0.0)
+	var sig_before: float = dec.frozen_signature()
 	for i in range(20):
 		dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
 		now += 0.05
@@ -322,6 +323,8 @@ func _run() -> void:
 	for v in dec.traffic.vehicles:
 		after.append(float(v["s"]))
 	_check(before == after, "pause : %d véhicules figés" % before.size())
+	_check(sig_before != 0.0 and dec.frozen_signature() == sig_before,
+		"pause : signature de ce qui se fige inchangée (%.2f, lot P30)" % sig_before)
 	var clock_before: float = dec.road_traffic.clock_s
 	dec.step(now, 0.05, pos2, s, 0.0, float(route.sample(s)["alt_m"]), true, wind, state)
 	_check(dec.road_traffic.clock_s == clock_before, "pause : circulation lointaine figée")

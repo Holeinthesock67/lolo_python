@@ -385,8 +385,32 @@ def test_sim_keyboard_presses_the_simulated_click():
         keys.on_data("\x1b[5~")   # Page haut : + long, par le Click simulé
         await asyncio.sleep(1.2)
         assert rig.events() == [InputEvent.PLUS_LONG] and keys.events.empty()
-        keys.on_data("z")          # Z : pas de bouton Z au Click simulé, événement direct
-        assert keys.events.get_nowait() == InputEvent.Z_SHORT
+        keys.on_data("z")          # Z court : bouton Z du boîtier droit simulé
+        keys.on_data("\x1b[D")     # flèche gauche : boîtier gauche
+        await asyncio.sleep(0.4)
+        assert rig.events() == [InputEvent.Z_SHORT, InputEvent.LEFT_SHORT] and keys.events.empty()
+        await rig.stop()
+    asyncio.run(scenario())
+
+
+def test_every_click_v2_button_and_the_control_file(tmp_path):
+    """Tous les boutons du Click V2 simulé, appuyés par le fichier de commandes (banc des menus)."""
+    control = tmp_path / "appuis.jsonl"
+
+    async def scenario():
+        rig = Rig({**READY, "control_file": str(control)}).start()
+        await wait_for(lambda: all(b.ride_on for b in rig.world.clicks))
+        with control.open("a", encoding="utf-8") as f:
+            for button, duration in (("A", 1.0), ("A", 0.12), ("B", 0.12), ("Y", 1.0), ("Z", 1.0), ("UP", 0.12),
+                                     ("DOWN", 0.12), ("RIGHT", 0.12), ("-", 1.0), ("bidon", 0.1), ("+", 0.12)):
+                f.write(json.dumps({"action": "press", "button": button, "duration_s": duration}) + "\n")
+                f.flush()
+                await asyncio.sleep(duration + 0.3)
+        await asyncio.sleep(0.3)
+        # Boîtier droit (A, B = −, Y, Z, +) puis boîtier gauche (flèches, −), chacun dans l'ordre des appuis.
+        assert rig.events() == [InputEvent.A_LONG, InputEvent.A_SHORT, InputEvent.MINUS_SHORT, InputEvent.Y_SHORT,
+                                InputEvent.Z_LONG, InputEvent.PLUS_SHORT, InputEvent.UP_SHORT, InputEvent.DOWN_SHORT,
+                                InputEvent.RIGHT_SHORT, InputEvent.MINUS_LONG]
         await rig.stop()
     asyncio.run(scenario())
 
