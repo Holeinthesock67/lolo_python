@@ -3,13 +3,14 @@ extends Control
 ## Panneau du carrefour et ligne d'attribution (lot W12) : dessine ce que `junction_view_model.gd` décrit.
 ## Enfant du HUD ; ne reçoit pas la souris. Pas de class_name (charger par preload).
 
+const UiTheme := preload("res://scripts/ui_theme.gd")
 const JunctionViewModel := preload("res://scripts/junction_view_model.gd")
 const HudView := preload("res://scripts/hud_view.gd")
 
-const CHOSEN_COLOR := Color(1.0, 0.85, 0.25)
-const DEFAULT_COLOR := Color(0.75, 0.85, 1.0)
-const ARROW_COLOR := Color(0.95, 0.97, 1.0)
-const ATTRIBUTION_COLOR := Color(1.0, 1.0, 1.0, 0.55)
+const CHOSEN_COLOR := UiTheme.PICK
+const DEFAULT_COLOR := UiTheme.JUNCTION_DEFAULT
+const ARROW_COLOR := UiTheme.JUNCTION_ARROW
+const ATTRIBUTION_COLOR := UiTheme.ATTRIBUTION
 
 var vm := JunctionViewModel.new()
 var panel: Panel
@@ -24,7 +25,7 @@ func _init() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 	panel = Panel.new()
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.07, 0.10, 0.70)
+	style.bg_color = UiTheme.PANEL_BG
 	for corner in ["top_left", "top_right", "bottom_left", "bottom_right"]:
 		style.set("corner_radius_" + corner, 8)
 	panel.add_theme_stylebox_override("panel", style)
@@ -95,7 +96,7 @@ func _make_cell(cell: Dictionary) -> Control:
 	holder.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	holder.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(1.0, 1.0, 1.0, 0.06)
+	style.bg_color = UiTheme.JUNCTION_TILE
 	var border := 3 if cell["is_chosen"] else (1 if cell["is_default"] else 0)
 	for side in ["left", "top", "right", "bottom"]:
 		style.set("border_width_" + side, border)
@@ -104,7 +105,7 @@ func _make_cell(cell: Dictionary) -> Control:
 		style.set("corner_radius_" + corner, 6)
 	holder.add_theme_stylebox_override("panel", style)
 	if cell["greyed"]:
-		holder.modulate = Color(1.0, 1.0, 1.0, 0.4)
+		holder.modulate = UiTheme.JUNCTION_DIM
 	var col := VBoxContainer.new()
 	col.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	col.alignment = BoxContainer.ALIGNMENT_CENTER

@@ -27,38 +27,39 @@ extends CanvasLayer
 ##   bots, qui s'arrête au-dessus du profil d'altitude (ou du bandeau ERG) ; les lignes de bots qui ne
 ##   tiennent pas sont cachées, les voisins restent.
 
+const UiTheme := preload("res://scripts/ui_theme.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotHudModel := preload("res://scripts/bot_hud_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
 
-const COLOR_DESCENT := Color(0.25, 0.60, 0.90, 0.85)
-const COLOR_FLAT := Color(0.25, 0.75, 0.30, 0.85)
-const COLOR_CLIMB := Color(0.95, 0.75, 0.20, 0.85)
-const COLOR_STEEP := Color(0.95, 0.45, 0.10, 0.85)
-const COLOR_WALL := Color(0.85, 0.15, 0.15, 0.85)
+const COLOR_DESCENT := UiTheme.GRADE_DESCENT
+const COLOR_FLAT := UiTheme.GRADE_FLAT
+const COLOR_CLIMB := UiTheme.GRADE_CLIMB
+const COLOR_STEEP := UiTheme.GRADE_STEEP
+const COLOR_WALL := UiTheme.GRADE_WALL
 
 const WIND_TONES := {
-	"good": Color(0.15, 0.62, 0.25, 0.95),
-	"bad": Color(0.80, 0.18, 0.12, 0.95),
-	"neutral": Color(0.45, 0.48, 0.52, 0.95),
+	"good": UiTheme.WIND_GOOD,
+	"bad": UiTheme.WIND_BAD,
+	"neutral": UiTheme.WIND_NEUTRAL,
 }
-const WIND_BAR_COLOR := Color(0.85, 0.90, 0.95)
-const DRAFT_COLOR := Color(0.15, 0.42, 0.75, 0.95)
+const WIND_BAR_COLOR := UiTheme.PALE
+const DRAFT_COLOR := UiTheme.DRAFT
 const DRAFT_GAP := 10.0
-const WIND_BAR_OFF := Color(0.85, 0.90, 0.95, 0.18)
-const SEGMENT_TONES := {"good": Color(0.35, 0.90, 0.45), "bad": Color(0.95, 0.40, 0.35), "": Color(0.92, 0.94, 0.96)}
-const BONUS_COLOR := Color(0.62, 0.32, 0.92, 0.95)   # violet des arches de bonus (lot T8)
+const WIND_BAR_OFF := UiTheme.WIND_BAR_OFF
+const SEGMENT_TONES := {"good": UiTheme.SEGMENT_GOOD, "bad": UiTheme.SEGMENT_BAD, "": UiTheme.SEGMENT_NEUTRAL}
+const BONUS_COLOR := UiTheme.BONUS   # violet des arches de bonus (lot T8)
 const BLOCK_GAP := 8.0
 ## Haut de la colonne de droite (sous le panneau de droite) et réserve du bas : profil d'altitude, ou
 ## bandeau ERG au-dessus de lui.
 const RIGHT_COLUMN_TOP := 20.0 + 320.0 + BLOCK_GAP
 const PROFILE_RESERVE := 120.0
 const ERG_RESERVE := ErgView.BOTTOM_OFFSET + ErgView.PANEL_HEIGHT
-const JERSEY_COLORS := {"sprint": Color(0.20, 0.75, 0.30), "kom": Color(0.97, 0.97, 0.97)}
-const KOM_DOT := Color(0.85, 0.10, 0.10)
-const WBAL_BG := Color(1, 1, 1, 0.15)
-const WBAL_COLOR := Color(0.35, 0.80, 0.95)
+const JERSEY_COLORS := {"sprint": UiTheme.JERSEY_SPRINT, "kom": UiTheme.JERSEY_KOM}
+const KOM_DOT := UiTheme.KOM_DOT
+const WBAL_BG := UiTheme.TRACK
+const WBAL_COLOR := UiTheme.WBAL
 
 const GRADE_COLORS := {
 	"descent": COLOR_DESCENT,
@@ -258,7 +259,7 @@ func _build_wind_panel() -> void:
 	wind_level_label.position = Vector2(172.0, 50.0)
 	wind_level_label.size = Vector2(120.0, 32.0)
 	wind_level_label.add_theme_font_size_override("font_size", 22)
-	wind_level_label.modulate = Color(0.75, 0.80, 0.85)
+	wind_level_label.modulate = UiTheme.HUD_DIM
 	wind_level_label.clip_text = true
 	panel_wind.add_child(wind_level_label)
 	wind_verdict_label = Label.new()
@@ -514,7 +515,7 @@ func update_segment(view: Dictionary) -> void:
 
 
 func _on_bonus_bar_draw() -> void:
-	bonus_bar.draw_rect(Rect2(Vector2.ZERO, bonus_bar.size), Color(1, 1, 1, 0.15))
+	bonus_bar.draw_rect(Rect2(Vector2.ZERO, bonus_bar.size), UiTheme.TRACK)
 	bonus_bar.draw_rect(Rect2(Vector2.ZERO, Vector2(bonus_bar.size.x * _bonus_fraction, bonus_bar.size.y)), BONUS_COLOR)
 
 
@@ -550,7 +551,7 @@ func update_wind(view: Dictionary) -> void:
 ## vers le bas ; vent de droite, flèche vers la gauche.
 func _on_wind_arrow_draw() -> void:
 	var c := wind_arrow.size * 0.5
-	wind_arrow.draw_circle(c, 34.0, Color(1, 1, 1, 0.10))
+	wind_arrow.draw_circle(c, 34.0, UiTheme.TRACK_SOFT)
 	if _wind_view.is_empty():
 		return
 	# arrow_deg : d'où vient le vent (0 = de face) ; la flèche pointe là où il va.
@@ -580,7 +581,7 @@ func _on_wind_bars_draw() -> void:
 func _create_panel(pos: Vector2, size: Vector2, anchor_right := false, anchor_bottom := false, span_h := false) -> Panel:
 	var p := Panel.new()
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.07, 0.10, 0.70)
+	style.bg_color = UiTheme.PANEL_BG
 	style.corner_radius_top_left = 8
 	style.corner_radius_top_right = 8
 	style.corner_radius_bottom_left = 8
@@ -620,7 +621,7 @@ func _create_metric(parent: Control, label_text: String, default_val: String,
 	var lbl := Label.new()
 	lbl.text = label_text
 	lbl.add_theme_font_size_override("font_size", label_size)
-	lbl.modulate = Color(0.75, 0.80, 0.85)
+	lbl.modulate = UiTheme.HUD_DIM
 	hbox.add_child(lbl)
 
 	var val := Label.new()
@@ -719,7 +720,7 @@ func _on_profile_draw() -> void:
 		return
 
 	# Fond du panneau profil
-	profile_panel.draw_rect(Rect2(0, 0, w, h), Color(0.04, 0.06, 0.08, 0.65))
+	profile_panel.draw_rect(Rect2(0, 0, w, h), UiTheme.CHART_BG)
 
 	var col_w := w / float(cols)
 	for i in range(cols):
