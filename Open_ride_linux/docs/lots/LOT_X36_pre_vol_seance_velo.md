@@ -33,3 +33,12 @@ Règle du propriétaire (28 octobre) : une séance vélo tient en 20 minutes de 
 ## 6. Hors périmètre
 
 La séance elle-même.
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x36`).
+
+- `scripts/pre_vol.py` : six étapes (git, tests, engine, séance simulée, fichiers, Bluetooth) puis le verdict, avec un journal par étape, `resume.txt`, `resume.json` et `guide.jsonl` ; même verrou que les autres suites.
+- `scripts/pre_vol_seances.toml` : `t11_j7` (tests `recette_sans_velo`, `test_key_map`, `powerups.toml` posé), `p27` (`test_living_decor`, parcours `grand-ballon`, `powerups.toml` mis de côté), `erg`, `recette_1_0` (scénario `nominal` du banc simulé).
+- Écarts : la marque `recette_sans_velo` vient de la PR #490 (fil de la séance vélo), pas de ce lot ; tant qu'elle n'est pas fusionnée, l'étape « tests » dit « aucun test ne porte la marque ». Les scénarios X33 seront ajoutés aux séances quand X33 sera livré. Un fichier « retiré » est mis de côté (`<nom>.pre_vol-<date>`), jamais supprimé.
+- Tests : `core/tests/test_pre_vol.py` (13 tests, chaque étape OK, en échec et sautée, avec des commandes simulées). Essai au cloud : `pre_vol.py --seance t11_j7 --sans-bluetooth --sans-engine` dans un HOME temporaire tourne et donne les deux blocages attendus (branche pas encore poussée, marque absente avant #490).
