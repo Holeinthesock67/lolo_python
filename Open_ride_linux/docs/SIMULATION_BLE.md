@@ -79,7 +79,7 @@ Une section absente retire l'appareil. `control_file` (facultatif, chemin) : fic
 
 **Trainer réaliste (lot X6).** En réponse `instant`, la puissance rejoint la consigne ERG ou l'effort du cycliste avec la constante `erg_tau_s` (1,5 s) et la pente ne change pas la résistance. En `realiste` (`ble_sim.TrainerResponse`) :
 - le frein voit la consigne avec un retard pur (`brake_delay_s`, 0,6 s) puis la rejoint en `brake_tau_up_s` (2 s) quand l'effort monte et en `brake_tau_down_s` (4,9 s) quand il baisse : 90 % du relâchement vers 12 s, comme à l'essai du 25 octobre ;
-- en ERG, la force du frein est la cible divisée par la vitesse ; en SIM, l'effort de la route à la vitesse du volant : m g (sin θ + Crr cos θ) + Cw (v + vent)², avec la pente, le Crr, le Cw et le vent de la trame SIM (masse et valeurs absentes : réglages par défaut du core) ;
+- en ERG, la force du frein est la cible divisée par la vitesse ; en SIM, l'effort de la route à la vitesse du volant : m g (sin θ + Crr cos θ) + ½ Cw (v + vent)² (Cw = ρ · CdA, comme dans ANT+ FE-C et FTMS), avec la pente, le Crr, le Cw et le vent de la trame SIM (masse et valeurs absentes : réglages par défaut du core) ;
 - le volant (`flywheel_kg_m2`, 0,6, ramené à la jante) relie l'effort et la vitesse ; le cycliste tient sa cadence à braquet fixe (vitesse de son effort sur le plat, ou `speed_kmh` de la stratégie `vitesse`) sans dépasser `rider_max_w` (2,5 fois l'effort du cycliste par défaut) : dans une montée trop raide pour lui, le volant ralentit ;
 - la puissance envoyée est celle du cycliste (frein et accélération du volant), la vitesse celle du volant ;
 - les trames Indoor Bike Data partent à `ibd_hz` avec une gigue de ± `notify_jitter_s` (40 ms), tirée à part du hasard du monde.
