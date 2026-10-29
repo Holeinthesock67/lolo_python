@@ -260,11 +260,17 @@ static func blend_to_far(heights: PackedFloat32Array, ix: int, iz: int, near_ind
 	return out
 
 
-## Terrain lointain enfoncé sous le proche : un sommet lointain dont les cellules voisines (± une maille de
-## 50 m) sont toutes couvertes de tuiles proches descend, si besoin, à `margin` sous la plus basse des
-## altitudes proches de ce carré (comptée à l'affichage, FAR_DROP_M compris). Le maillage lointain, plus
-## grossier, perçait sinon le proche au creux des collines (jusqu'à 5,7 m sur la démo avec terrain).
-## Les sommets d'un bord du terrain proche ne bougent pas : leur raccord (blend_to_far) reste exact.
+## Terrain lointain enfoncé sous le proche, juste ce qu'il faut : pour chaque maille lointaine (50 m) couverte
+## d'une tuile proche, on mesure de combien le maillage lointain affiché passe au-dessus du proche aux
+## échantillons proches de la maille (10 m), moins `margin` (FAR_DROP_M compris, relief exagéré compris), puis
+## chaque sommet descend du plus fort de ces dépassements sur ses mailles voisines. Comme un point de maille
+## est une moyenne pondérée de ses quatre sommets, il passe alors sous le proche. Sur une pente régulière, le
+## lointain est déjà sous le proche et ne bouge pas : la règle précédente (sommet posé sous le plus bas du
+## proche à ± 50 m) creusait le lointain de plusieurs dizaines de mètres sur les flancs (relief ×2,5), et ce
+## lointain se voit au-delà du rayon des tuiles proches (coutures en zigzag et bandes grises, 29 octobre).
+## Seuls les sommets dont les quatre mailles sont couvertes bougent : le bord de la zone proche garde son
+## raccord exact (blend_to_far). Sur le bord de la tuile lointaine, seuls les échantillons du bord comptent :
+## ils ne dépendent que des sommets du bord, communs aux deux tuiles, qui reçoivent donc la même valeur.
 ## `near_tile(ix, iz)` : hauteurs brutes d'une tuile proche (NaN admis). Exécutable dans une tâche de fond.
 static func sink_under_near(heights: PackedFloat32Array, ix: int, iz: int, near_index: Dictionary,
 		near_tile: Callable, visual_grade_scale: float = 1.0, margin: float = FAR_CARVE_MARGIN_M) -> PackedFloat32Array:
@@ -275,48 +281,79 @@ static func sink_under_near(heights: PackedFloat32Array, ix: int, iz: int, near_
 	var n_cell: float = LEVELS["near"]["cell"]
 	var n_size: float = LEVELS["near"]["size"]
 	var lift := (FAR_DROP_M - margin) / maxf(visual_grade_scale, 0.01)
+	var steps := roundi(cell / n_cell)   # échantillons proches par maille lointaine
+	var x0 := ix * size
+	var z0 := iz * size
+	# Tuile proche qui contient chaque maille lointaine (les grilles sont alignées) ; vide si non couverte
 	var cache := {}
+	var cell_near := func(ci: int, cj: int) -> PackedFloat32Array:
+		var nt := tile_of("near", x0 + (ci + 0.5) * cell, z0 + (cj + 0.5) * cell)
+		if not near_index.has(nt):
+			return PackedFloat32Array()
+		if not cache.has(nt):
+			cache[nt] = near_tile.call(nt.x, nt.y)
+		return cache[nt]
+	# Dépassement du lointain sur le proche, par maille : intérieur (tous les échantillons) et bords de tuile
+	var excess := PackedFloat32Array()
+	excess.resize(CELLS * CELLS)
+	excess.fill(NAN)   # NaN : maille non couverte
+	var edge_excess := {}   # Vector2i(sommet) -> dépassement le long du bord de la tuile lointaine
+	for cj in range(CELLS):
+		for ci in range(CELLS):
+			var near: PackedFloat32Array = cell_near.call(ci, cj)
+			if near.is_empty():
+				continue
+			var nt := tile_of("near", x0 + (ci + 0.5) * cell, z0 + (cj + 0.5) * cell)
+			var bi := roundi((x0 + ci * cell - nt.x * n_size) / n_cell)
+			var bj := roundi((z0 + cj * cell - nt.y * n_size) / n_cell)
+			var a := heights[cj * SAMPLES + ci]
+			var b := heights[cj * SAMPLES + ci + 1]
+			var c := heights[(cj + 1) * SAMPLES + ci]
+			var d := heights[(cj + 1) * SAMPLES + ci + 1]
+			var e := -INF
+			for sj in range(steps + 1):
+				for si in range(steps + 1):
+					var hn := near[(bj + sj) * SAMPLES + bi + si]
+					if is_nan(hn):
+						continue
+					var u := float(si) / steps
+					var v := float(sj) / steps
+					var hf := a + u * (b - a) + v * (c - a) if u + v <= 1.0 else d + (1.0 - u) * (c - d) + (1.0 - v) * (b - d)
+					var ex := hf - hn - lift
+					e = maxf(e, ex)
+					# Échantillons posés sur un bord de la tuile lointaine : ne dépendent que de ses deux sommets
+					var on_edge := (ci == 0 and si == 0) or (ci == CELLS - 1 and si == steps) \
+							or (cj == 0 and sj == 0) or (cj == CELLS - 1 and sj == steps)
+					if on_edge and ex > 0.0:
+						for vk in [Vector2i(ci + (1 if si == steps else 0), cj + (1 if sj == steps else 0)),
+								Vector2i(ci + (0 if si == 0 else 1), cj + (0 if sj == 0 else 1))]:
+							if vk.x == 0 or vk.x == CELLS or vk.y == 0 or vk.y == CELLS:
+								edge_excess[vk] = maxf(float(edge_excess.get(vk, 0.0)), ex)
+			excess[cj * CELLS + ci] = e
 	var out := heights
 	var copied := false
 	for j in range(SAMPLES):
 		for i in range(SAMPLES):
-			var x := ix * size + i * cell
-			var z := iz * size + j * cell
-			var lo := tile_of("near", x - cell + 0.5, z - cell + 0.5)
-			var hi := tile_of("near", x + cell - 0.5, z + cell - 0.5)
+			# Les quatre mailles autour du sommet doivent être couvertes, voisines de l'autre tuile comprises
 			var covered := true
-			for tz in range(lo.y, hi.y + 1):
-				for tx in range(lo.x, hi.x + 1):
-					covered = covered and near_index.has(Vector2i(tx, tz))
+			for dj in [-0.5, 0.5]:
+				for di in [-0.5, 0.5]:
+					covered = covered and near_index.has(tile_of("near", x0 + (i + di) * cell, z0 + (j + dj) * cell))
 			if not covered:
 				continue
-			# Plus basse altitude proche du carré (± cell) : échantillons de la grille proche
-			var m := INF
-			for tz in range(lo.y, hi.y + 1):
-				for tx in range(lo.x, hi.x + 1):
-					var key := Vector2i(tx, tz)
-					if not cache.has(key):
-						cache[key] = near_tile.call(tx, tz)
-					var h: PackedFloat32Array = cache[key]
-					if h.is_empty():
-						continue
-					var i0 := clampi(roundi((x - cell - tx * n_size) / n_cell), 0, CELLS)
-					var i1 := clampi(roundi((x + cell - tx * n_size) / n_cell), 0, CELLS)
-					var j0 := clampi(roundi((z - cell - tz * n_size) / n_cell), 0, CELLS)
-					var j1 := clampi(roundi((z + cell - tz * n_size) / n_cell), 0, CELLS)
-					for nj in range(j0, j1 + 1):
-						for ni in range(i0, i1 + 1):
-							var v := h[nj * SAMPLES + ni]
-							if not is_nan(v):
-								m = minf(m, v)
-			if is_inf(m):
-				continue
-			var idx := j * SAMPLES + i
-			if out[idx] > m + lift:
+			var drop := 0.0
+			if i == 0 or i == CELLS or j == 0 or j == CELLS:
+				# Bord de la tuile lointaine : échantillons du bord seulement (la tuile voisine trouve la même valeur)
+				drop = float(edge_excess.get(Vector2i(i, j), 0.0))
+			else:
+				for dj in [-1, 0]:
+					for di in [-1, 0]:
+						drop = maxf(drop, excess[(j + dj) * CELLS + i + di])
+			if drop > 0.0:
 				if not copied:
 					out = heights.duplicate()
 					copied = true
-				out[idx] = m + lift
+				out[j * SAMPLES + i] -= drop
 	return out
 
 
