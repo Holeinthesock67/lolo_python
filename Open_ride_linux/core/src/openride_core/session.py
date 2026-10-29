@@ -1711,13 +1711,18 @@ class CoreSession:
             self._finish(True)
 
     def _update_draft(self, dt: float, route: Route | None, heading_deg: float) -> None:
-        """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; poussée du bot suivi."""
+        """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; abri, roue suivie et
+        poussée des bots (lot AS1, `draft.update_bots`), tous sur les positions du pas précédent."""
         length = route.length_m if route else None
         is_loop = bool(route and route.is_loop)
-        cross = 0.0
-        if self.wind.active:
-            ws = self._wind_sample
-            cross = ws.speed_mps * math.sin(math.radians(ws.from_deg - heading_deg))
+        ws = self._wind_sample if self.wind.active else None
+
+        def cross_at(heading: float) -> float:
+            return ws.speed_mps * math.sin(math.radians(ws.from_deg - heading)) if ws else 0.0
+
+        cross = cross_at(heading_deg)
+        draft_mod.update_bots(self.bots, draft_mod.Source(self.physics.s, self.physics.v), dt, length, is_loop,
+                              (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
         target, bot_id = draft_mod.best_draft(self.physics.s, self.bots, length, is_loop,
                                               self.physics.v, self._head_mps, cross)
         self._draft = draft_mod.smooth(self._draft, target, dt)
@@ -1728,9 +1733,7 @@ class CoreSession:
         for bot in self.bots:   # poussée vers l'avant : le bot suivi de près résiste un peu moins
             base = self._bot_cda.get(id(bot))
             if base is not None:
-                push = draft_mod.push_bonus(self.physics.s, bot.s, length, is_loop) \
-                    if draft_mod.PUSH_ENABLED else 0.0
-                bot.params.cda_m2 = base * (1.0 - push)
+                bot.params.cda_m2 = base * (1.0 - getattr(bot, "push", 0.0))
 
     def _fill_wind_frame(self) -> None:
         """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (taille de la trame)."""
