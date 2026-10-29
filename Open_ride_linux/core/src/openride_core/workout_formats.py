@@ -114,10 +114,14 @@ def parse_erg(text: str, workout_id: str, source: str = "<erg>", *, percent: boo
             body = parts[1:]
             if len(body) >= 2:
                 try:
-                    dur = float(body[-1])
-                    body = body[:-1]
+                    last = float(body[-1].replace(",", "."))
                 except ValueError:
-                    pass
+                    last = None        # dernier mot du message, pas une durée
+                if last is not None:
+                    if not math.isfinite(last) or last <= 0:
+                        raise WorkoutError(f"ligne {lineno} : durée du message invalide ({body[-1]!r})")
+                    dur = last
+                    body = body[:-1]
             texts.append((t_s, " ".join(body), dur))
         else:
             raise WorkoutError(f"ligne {lineno} : texte hors de toute section ({line!r})")

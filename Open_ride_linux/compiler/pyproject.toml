@@ -19,7 +19,7 @@ dependencies = [
 [project.optional-dependencies]
 # openride-core sert aux tests seulement (vérification croisée avec load_world) :
 # l'installer à part avec `pip install -e ../core`.
-dev = ["pytest>=8"]
+dev = ["pytest>=8", "hypothesis>=6.100"]
 # Monde ouvert (série W) : lecture des extraits régionaux .osm.pbf (lot W3).
 worldgen = ["osmium>=4.0"]
 
@@ -27,17 +27,22 @@ worldgen = ["osmium>=4.0"]
 openride-compiler = "openride_compiler.cli:main"
 openride-worldgen = "openride_compiler.worldgen.process:main"
 openride-worldgen-fake = "openride_compiler.worldgen.synthetic:fake_main"
+openride-worldgen-netcheck = "openride_compiler.worldgen.netcheck:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-# Recettes des packs de parcours livrés (lot O16), lues par `route-pack-build`.
-openride_compiler = ["route_packs/*/*.toml"]
+# Recettes des packs de parcours livrés (lot O16), lues par `route-pack-build` ; scénarios de réseau
+# dégradé (lot X28), lus par `openride-worldgen-netcheck`.
+openride_compiler = ["route_packs/*/*.toml", "worldgen/reseau/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 pythonpath = ["src"]
 # Le test d'intégration réseau (Copernicus réel) est sauté par défaut : `pytest -m network`.
 addopts = "-m 'not network'"
-markers = ["network: télécharge des tuiles Copernicus réelles (sauté par défaut)"]
+markers = [
+    "network: télécharge des tuiles Copernicus réelles (sauté par défaut)",
+    "fuzz: fuzz des lecteurs de traces (lot X26) ; `pytest -m fuzz --hypothesis-profile=long` sur le PC",
+]

@@ -63,13 +63,13 @@ _UNCLEAR = Action("", "Appui ni court ni long (0,5 à 0,9 s)",
 # ici pour un seul sens ; `test_boutons_click` compare le reste du tableau mot pour mot.
 PLAN: dict[InputEvent, Action] = {
     InputEvent.PLUS_SHORT: Action("+ / B (ou −), court", "Déplacer ou doser, petit pas", (
-        "Élément suivant", "Braquet + 1", "Biais + 2 %", "Vitesse du frein + 1", _SAME)),
+        "Élément suivant", "Braquet + 1", "Biais + 2 % ; braquet + 1 en roue libre", "Vitesse du frein + 1", _SAME)),
     InputEvent.MINUS_SHORT: Action("+ / B (ou −), court", "Déplacer ou doser, petit pas", (
-        "Élément précédent", "Braquet − 1", "Biais − 2 %", "Vitesse du frein − 1", _SAME)),
+        "Élément précédent", "Braquet − 1", "Biais − 2 % ; braquet − 1 en roue libre", "Vitesse du frein − 1", _SAME)),
     InputEvent.PLUS_LONG: Action("+ / B (ou −), long", "Déplacer ou doser, grand pas", (
-        "Cinq éléments plus loin", "Braquet + 10", "Biais + 10 %", "Vitesse du frein + 3", "Comme le mode roulé")),
+        "Cinq éléments plus loin", "Braquet + 10", "Biais + 10 % ; braquet + 10 en roue libre", "Vitesse du frein + 3", "Comme le mode roulé")),
     InputEvent.MINUS_LONG: Action("+ / B (ou −), long", "Déplacer ou doser, grand pas", (
-        "Cinq éléments plus haut", "Braquet − 10", "Biais − 10 %", "Vitesse du frein − 3", "Comme le mode roulé")),
+        "Cinq éléments plus haut", "Braquet − 10", "Biais − 10 % ; braquet − 10 en roue libre", "Vitesse du frein − 3", "Comme le mode roulé")),
     InputEvent.PLUS_UNCLEAR: _UNCLEAR,
     InputEvent.MINUS_UNCLEAR: _UNCLEAR,
     InputEvent.Y_SHORT: Action("Y court", "Interrompre et revenir", (

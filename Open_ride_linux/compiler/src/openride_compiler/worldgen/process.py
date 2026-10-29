@@ -18,7 +18,9 @@ Organisation :
   choisie avant `lock_s_m` ;
 - relief en avance : la tuile Copernicus voisine est téléchargée dans un fil dès que la route
   engagée passe à moins de 10 km de son bord ; hors ligne, seules les arêtes dont le relief est
-  sur le PC sont engagées (sinon demi-tour), et la séance ne s'arrête jamais pour attendre.
+  sur le PC sont engagées (sinon demi-tour), et la séance ne s'arrête jamais pour attendre ;
+- tuiles vectorielles en échec (X28) : la cellule reste « incomplète », ses tuiles sont redemandées
+  après leur recul à chaque `progress`, et le graphe est complété dès qu'elles arrivent.
 """
 
 from __future__ import annotations
@@ -41,7 +43,7 @@ import numpy as np
 from .. import __version__
 from .. import constants as C
 from ..cache import Downloader, Log
-from ..elevation import CopernicusGlo30Provider, ElevationProvider, SyntheticProvider, copernicus_tile_name
+from ..elevation import COPERNICUS_BASE_URL, CopernicusGlo30Provider, ElevationProvider, SyntheticProvider, copernicus_tile_name
 from ..errors import CompileError
 from ..pipeline import sample_positions
 from .edge_profile import EdgeProfile, NodeAltitudes, concat, edge_profile, split_parts
@@ -62,6 +64,7 @@ REWRITE_BACK_M = 100.0        # lissage du profil : la partie qui contient s −
 EVICT_EVERY_S = 60.0
 CLOSE_TIMEOUT_S = 5.0
 MAX_BRANCHES = 4
+OPEN_TILES_WAIT_S = 20.0      # départ sans extrait : tuiles en échec redemandées pendant au plus 20 s
 PROGRESS_FAKE_DT_S = 0.5
 
 
@@ -185,6 +188,8 @@ class WorldSession:
         self.db: OsmDb | None = None
         self.tiles = None                 # TileSource (W13) quand il n'y a pas d'extrait régional
         self.tile_net = None              # accès HTTP des tuiles (doublure dans les tests)
+        self.tilejson_url: str | None = None   # autre serveur de tuiles (`--tiles-url`, X28)
+        self.partial_cells: dict[tuple[int, int], tuple[float, float, float, float]] = {}
         self.opened = False
         self.closed = False
         self.legs: list[Leg] = []
@@ -295,9 +300,9 @@ class WorldSession:
         """Sans extrait régional : tuiles vectorielles OpenFreeMap (W13) versées dans `tuiles.sqlite`."""
         from .vector_tiles import TileSource
         self.status("tiles", "tuiles vectorielles du départ", "downloading" if self.network else "offline")
-        self.tiles = TileSource(self.cache, self.tile_net, self.network, self.clock, self.log)
+        self.tiles = TileSource(self.cache, self.tile_net, self.network, self.clock, self.log, self.tilejson_url)
         d = 0.02
-        if self.tiles.ensure((lon - d * 1.5, lat - d, lon + d * 1.5, lat + d)) == 0:
+        if self.tiles.ensure((lon - d * 1.5, lat - d, lon + d * 1.5, lat + d), wait_s=OPEN_TILES_WAIT_S) == 0:
             return None
         return OsmDb(self.tiles.db_path)
 
@@ -375,6 +380,23 @@ class WorldSession:
                 bbox = lonlat_bbox(self.frame, cx * GRID_M, cz * GRID_M, (cx + 1) * GRID_M, (cz + 1) * GRID_M)
                 if self.tiles is not None:
                     self.tiles.ensure(bbox)
+                    if self.tiles.missing(bbox):
+                        self.partial_cells[(cx, cz)] = bbox
+                self.graph.extend(self.db, bbox)
+
+    def _retry_tiles(self) -> None:
+        """Cellules incomplètes : tuiles redemandées une fois leur recul écoulé, graphe complété (X28)."""
+        if self.tiles is None or not self.network:
+            return
+        for cell, bbox in list(self.partial_cells.items()):
+            left = self.tiles.missing(bbox)
+            if left and not any(self.tiles.due(k) for k in left):
+                continue
+            self.tiles.ensure(bbox)
+            now_left = self.tiles.missing(bbox)
+            if not now_left:
+                del self.partial_cells[cell]
+            if len(now_left) < len(left):
                 self.graph.extend(self.db, bbox)
 
     def _ensure_around_node(self, node: int) -> None:
@@ -553,6 +575,7 @@ class WorldSession:
         if not self.opened:
             return
         self.s_m = max(0.0, s_m)
+        self._retry_tiles()
         old = self.length_m
         if self._extend():
             self._request_squares()
@@ -824,6 +847,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-network", action="store_true", help="aucun téléchargement : cache seulement")
     ap.add_argument("--fake-clock", action="store_true", help="horloge simulée (tests)")
     ap.add_argument("--synthetic-relief", metavar="LAT,LON", help="relief analytique (tests, sans réseau)")
+    ap.add_argument("--tiles-url", metavar="URL", help="TileJSON d'un autre serveur de tuiles (tests, X28)")
+    ap.add_argument("--dem-url", metavar="URL", help="autre serveur du relief Copernicus (tests, X28)")
     args = ap.parse_args(argv)
 
     def log(m: str) -> None:
@@ -842,10 +867,12 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     network = bool(cfg.get("network", True)) and not args.no_network
     provider: ElevationProvider = (_synthetic(args.synthetic_relief) if args.synthetic_relief
-                                   else CopernicusGlo30Provider(offline=not network, log=log))
+                                   else CopernicusGlo30Provider(offline=not network, log=log,
+                                                                base_url=args.dem_url or COPERNICUS_BASE_URL))
     fake = FakeClock() if args.fake_clock else None
     session = WorldSession(cache, provider, send, cfg, args.session, network=network,
                            clock=fake or time.time, log=log)
+    session.tilejson_url = args.tiles_url
     log(f"openride-worldgen {__version__} prêt ({'réseau autorisé' if network else 'hors ligne'})")
     return serve(session, sys.stdin, fake)
 

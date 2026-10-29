@@ -223,7 +223,7 @@ def test_ble_sim_trainer_follows_the_cadence_lock(tmp_path, monkeypatch):
 
     async def scenario():
         rig = Rig(READY).start()
-        rig.trainer.cadence_rpm = 110.0                  # le cycliste tourne trop vite
+        rig.trainer.rider.update(cadence_rpm=110.0)       # le cycliste tourne trop vite
         await wait_for(lambda: rig.driver.status == "CONNECTED")
         await wait_for(lambda: rig.driver.poll().cadence_rpm > 100)
         cfg = Config()

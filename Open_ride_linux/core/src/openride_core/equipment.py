@@ -13,6 +13,7 @@ série T se composent ensuite par multiplication (lot T6).
 from __future__ import annotations
 
 import bisect
+import math
 from dataclasses import dataclass, replace
 from typing import Any, Iterable
 
@@ -273,6 +274,32 @@ def equipment_time_gain(records: Iterable[dict], equipped: PhysicsParams, base: 
     if any(x is None for x in times):
         return None
     return (times[0] - times[2]) - (times[1] - times[3])
+
+
+SEGMENT_GAIN_DT_S = 0.25        # pas de la simulation d'un passage : 4 pas par relevé, écart < 0,01 s
+SEGMENT_MARGIN_S = 2.0          # relevés pris avant l'entrée du segment (relevés à 1 Hz)
+SEGMENT_PAD = 0.3               # durée ajoutée après la sortie, en fraction du passage (plus 5 s)
+
+
+def segment_time_gain(records: Iterable[dict], equipped: PhysicsParams, base: PhysicsParams,
+                      t_start: float, t_end: float, s_start: float, s_end: float,
+                      dt: float = SEGMENT_GAIN_DT_S) -> float | None:
+    """Temps gagné par l'équipement sur un passage de segment (lot V5, `segment_result`).
+
+    `records` : relevés à 1 Hz de la séance (temps `t` chronométré, distance cumulée). Seuls ceux
+    du passage servent ; le dernier est prolongé (même puissance, même pente) pour que la
+    simulation la plus lente atteigne aussi la sortie, le passage venant juste de finir.
+    """
+    if equipped == base:
+        return 0.0
+    window = [r for r in records if r.get("kind", "record") == "record" and r.get("t") is not None
+              and t_start - SEGMENT_MARGIN_S <= float(r["t"]) <= t_end]
+    if len(window) < 2:
+        return None
+    last = window[-1]
+    pad = int(math.ceil((t_end - t_start) * SEGMENT_PAD)) + 5
+    window += [{**last, "t": float(last["t"]) + k} for k in range(1, pad + 1)]
+    return equipment_time_gain(window, equipped, base, s_start, s_end, dt)
 
 
 def gain_text(item_name: str, slot: str, seconds: float, where: str = "sur la séance") -> str:

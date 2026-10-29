@@ -12,7 +12,8 @@ Sortes de lignes :
   champ facultatif `plan` = `{"id": ..., "week": n, "day": "mardi"}` quand la séance réalise une
   séance d'un plan d'entraînement actif (lot O11), absent sinon ;
   champ facultatif `loadout` = `{"frame": ..., "wheels": ..., "mass_delta_kg": ..., "cda_delta_pct": ...}`
-  (équipement du cadre et des roues, lot V11) ;
+  (équipement du cadre et des roues, lot V11), `null` pour une run Cyber-Rogue où il ne
+  s'applique pas (lot V5) ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
 - `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ; une pause porte
   aussi sa raison, `"reason": "user" | "trainer_lost" | "engine_lost" | ...` (champ facultatif, absent

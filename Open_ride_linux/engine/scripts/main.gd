@@ -26,6 +26,8 @@ const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
+const DraftGaugeModel := preload("res://scripts/draft_gauge_model.gd")
+const DraftGauge := preload("res://scripts/draft_gauge.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
@@ -87,6 +89,8 @@ var world_menu_view = null
 var _route_job: Dictionary = {}
 var _test_cam_last_us := 0
 var _test_cam_last_s := NAN
+## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : instant imposé au décor, NAN sinon.
+var _freeze_t := NAN
 
 var erg_view = ErgViewModel.new()
 ## Bandeau et histogramme ERG (lot N7), dans le HUD.
@@ -128,6 +132,7 @@ const BEEP_LEVEL := 0.3
 ## Durées d'affichage du rappel des commandes en séance et de l'explication d'un appui ambigu.
 const CONTROLS_HINT_S := 10.0
 const PRESS_HINT_S := 4.0
+const LATENCY_WAIT_MS := 2000   # appui suivi (lot X7) : changement du HUD attendu au plus 2 s
 ## Bip de changement de bloc ERG à T − 3 s (lot N7) : une seule note, plus aiguë, plus longue et plus
 ## forte que les bips d'appui, pour passer au-dessus du vent et de la roue libre (SoundPlayer).
 const ERG_BEEP := [[1320.0, 0.30]]
@@ -144,6 +149,10 @@ var key_map = KeyMap.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
 var bots_model = BotsViewModel.new()
 var bots_view: Node3D
+## Jauge d'abri au-dessus du bot qui abrite le cycliste (réglage `render.draft_gauge`, coupée par défaut).
+var draft_gauge: Node3D
+var _draft_gauge_on := false
+var _draft := {"draft": null, "draft_bot": null}   # champs `draft` et `draft_bot` de la dernière trame en séance
 ## Avatar du cycliste (lot V6) : modèle sans nœud (pédalier, danseuse) et vue ; caché en vue subjective, la
 ## seule caméra du jeu avant le lot V12. `_avatar_cam` : caméra de contrôle du banc visuel (« follow »,
 ## « side » ou « » sans), qui montre l'avatar sans changer la caméra du jeu.
@@ -159,6 +168,7 @@ var _chart_points := 0
 var menu_view = null
 var menu_layer: CanvasLayer = null
 var _last_state: Dictionary = {}
+var _latency_waiting: Array = []   # [identifiant, signature du HUD à la réception, heure ms] (lot X7)
 var _menu_s := 0.0
 ## Décor vivant, première vague (lot P16) : vent, arbres et herbe, nuages, fonds sonores.
 var living_world = null
@@ -239,6 +249,8 @@ func _ready() -> void:
 	living_decor.set_fog_base(world_env.environment)
 	bots_view = BotsView.new()
 	add_child(bots_view)
+	draft_gauge = DraftGauge.new()
+	add_child(draft_gauge)
 	avatar_view = AvatarView.new()
 	add_child(avatar_view)
 	_configure_avatar()
@@ -250,6 +262,7 @@ func _ready() -> void:
 	ipc.room_received.connect(rogue_host.on_room)
 	ipc.loot_received.connect(rogue_host.on_loot)
 	ipc.input_event_received.connect(_on_input_event)
+	ipc.latency_input_received.connect(_on_latency_input)
 	ipc.hello_ack_received.connect(_on_hello_ack)
 	ipc.garage_received.connect(_on_garage)
 	ipc.xp_result_received.connect(_on_xp_result)
@@ -376,11 +389,12 @@ static func _quality_from_cli() -> bool:
 
 
 ## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
-## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s montré ou caché.
+## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	AudioMix.apply_settings(menu_flow.settings.items)
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
+	_draft_gauge_on = str(menu_flow.settings.item(DraftGaugeModel.SETTING_KEY).get("value", "off")) == "on"
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
@@ -448,6 +462,41 @@ func _apply_sky_params(theme_dict: Dictionary) -> void:
 		horizon = horizon.lerp(RenderQuality.HAZE_COLOR, float(sky["haze"]) * 0.6) * (sky["light_tint"] as Color)
 	var fog_dens: float = float(sky.get("fog_density", 0.01))
 	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
+
+
+## Latence des appuis (lot X7, core lancé avec --latence) : étage « recu » à la réception de l'événement,
+## « affiche » à la première image dessinée après le changement du HUD qu'il provoque (braquet, cible ou
+## biais ERG). Heure murale du système, la même que celle du core sur la même machine.
+func _on_latency_input(press_id: int) -> void:
+	print("[latence] id=%d etage=recu t=%.6f" % [press_id, Time.get_unix_time_from_system()])
+	_latency_waiting.append([press_id, _hud_signature(_last_state), Time.get_ticks_msec()])
+
+
+static func _hud_signature(state: Dictionary) -> String:
+	var erg = state.get("erg", null)
+	var erg_part := [erg.get("target_w", null), erg.get("bias_pct", null)] if erg is Dictionary else []
+	return JSON.stringify([state.get("gear", null), erg_part])
+
+
+func _check_latency(state: Dictionary) -> void:
+	if _latency_waiting.is_empty():
+		return
+	var sig := _hud_signature(state)
+	var now := Time.get_ticks_msec()
+	var shown: Array = []
+	var still: Array = []
+	for w in _latency_waiting:
+		if w[1] != sig:
+			shown.append(w[0])
+		elif now - int(w[2]) < LATENCY_WAIT_MS:
+			still.append(w)
+	_latency_waiting = still
+	if shown.is_empty():
+		return
+	await RenderingServer.frame_post_draw
+	var t := Time.get_unix_time_from_system()
+	for press_id in shown:
+		print("[latence] id=%d etage=affiche t=%.6f" % [press_id, t])
 
 
 func _on_input_event(event_name: String) -> void:
@@ -752,6 +801,7 @@ func _process(delta: float) -> void:
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
 			_show_bots(s_route, float(follow.last_frame["v"]))
+		_show_draft_gauge()
 		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
 		segment_markers.update(s_route, _last_state.has("powerup"))
 
@@ -763,6 +813,11 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0
+	if not is_nan(_freeze_t):   # scène figée : même instant et pas nul à chaque image
+		now_s = _freeze_t
+		delta = 0.0
+		if living_world.frozen_at != _freeze_t:
+			living_world.freeze(_freeze_t)
 	var paused := session_state == "PAUSED"
 	living_world.step(now_s, delta, camera.global_position, s_route, v, float(smp["heading_deg"]),
 		float(smp["alt_m"]), paused)
@@ -919,8 +974,9 @@ func _poll_route_job() -> void:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
-	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")))
-	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop())
+	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
+	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
+		not route.live)
 	segment_hud.set_segments(route.segments)
 	menu_flow.records.set_segments(route.segments)
 	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
@@ -948,17 +1004,25 @@ func _poll_route_job() -> void:
 ## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py ;
 ## « command » fait envoyer une commande par l'engine ;
 ## « key » et « mouse » jouent une touche ou la souris par le vrai chemin des entrées de Godot, en menu comme en
-## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py).
+## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py) ;
+## « freeze » fige le décor (vent, nuages, herbe, personnages, animaux) à un instant donné.
 func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+		"freeze":   # scène figée à l'instant `t` (s), null : libérée (tests graphiques, lot X20)
+			var t = msg.get("t", null)
+			_freeze_t = float(t) if (typeof(t) == TYPE_INT or typeof(t) == TYPE_FLOAT) else NAN
+			AnimClock.freeze(_freeze_t)
 		"key":
 			_test_key(str(msg.get("key", "")), bool(msg.get("shift", false)), int(msg.get("hold_ms", 100)))
 		"mouse":
 			_test_mouse(str(msg.get("kind", "click")), str(msg.get("item", "")), msg.get("at", []))
 		"menu_state":
 			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
+		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
+			camera_views.set_view(str(msg.get("view", "")))
+			ipc.test_log("camera_view done=" + camera_views.effective())
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
 				living_decor.set_weather(msg["weather"])
@@ -1128,13 +1192,17 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"quality": _quality_name,
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		"triangles": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		"streaming_pending": streamer.pending_count(),   # tuiles voulues pas encore affichées (tour visuel, X21)
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
 		"camera_view": camera_views.effective(), "camera_transition": camera_views.in_transition(),
 		"widgets": widgets,
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
+		"draft_gauge": draft_gauge.test_info(camera) if draft_gauge != null else {},
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
+		"rogue": rogue_host.test_info(),
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -1312,6 +1380,7 @@ func _on_state_received(state: Dictionary) -> void:
 		print("Premier état reçu du core : ", state.get("session_state", "?"), " trainer=", state.get("trainer_status", "?"))
 	banner.clear_message("shutdown")
 	_last_state = menu_flow.with_devices(state)
+	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
 	_refresh_menu()
@@ -1348,6 +1417,8 @@ func _on_state_received(state: Dictionary) -> void:
 	var in_session := running or session_state == "PAUSED"
 	bots_model.push(state.get("bots", null) if in_session else null, Time.get_ticks_usec())
 	bots_model.set_race(state if in_session else null)
+	_draft = {"draft": state.get("draft", null) if in_session else null,
+		"draft_bot": state.get("draft_bot", null) if in_session else null}
 
 	_feed_chart(state, running, previous_session_state)
 
@@ -1440,6 +1511,12 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
+
+
+## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste.
+func _show_draft_gauge() -> void:
+	var view := DraftGaugeModel.view(_draft_gauge_on, _draft["draft"], _draft["draft_bot"], _quality_name)
+	draft_gauge.update_view(view, bots_view.anchor_of(str(view["bot"])) if view["visible"] else null)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les
