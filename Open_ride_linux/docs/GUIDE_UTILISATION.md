@@ -76,7 +76,7 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 **Plans d'entraînement.** L'accueil affiche **Séance du jour** quand un plan est en cours, sinon **Choisir un plan**. Un plan range des entraînements par semaine et par jour ; il garde en mémoire ce qui est fait et ce qui est en retard. `openride-core plan install` copie deux plans de départ (« Reprise 4 semaines » et « FTP 6 semaines »).
 
-**Test de FTP.** **Test de FTP** à l'accueil propose deux tests : la rampe (paliers d'une minute, +20 W, jusqu'à l'épuisement) et les 20 minutes. Roulez-les de préférence sur une boucle, car un parcours avec arrivée termine la séance. Au bilan, **Accepter** écrit la nouvelle FTP dans la configuration ; **Garder** conserve l'ancienne.
+**Test de FTP.** **Test de FTP** à l'accueil lance la rampe : paliers d'une minute, +20 W, jusqu'à ce que tu ne puisses plus suivre. Roulez-la de préférence sur une boucle, car un parcours avec arrivée termine la séance. Au bilan, **Accepter** écrit la nouvelle FTP dans la configuration ; **Garder** conserve l'ancienne.
 
 ## 6. Commandes du Click et du clavier
 
@@ -111,7 +111,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Bloc suivant | Z |
 | Pause et reprise | Y |
 
-Pendant un bloc de roue libre, « + » et « − » changent le braquet, comme en Session libre. En ERG d'une session libre (section 5), Z garde son rôle de la Session libre (bonus) ; en ERG cadence, « + » et « − » changent la cadence cible de ± 2 % (appui long ± 10 %).
+Un entraînement ERG n'a jamais de roue libre : la consigne ne descend pas sous 50 W, et un bloc « FreeRide » d'un fichier `.zwo` devient un palier à 50 W. En ERG d'une session libre (section 5), Z garde son rôle de la Session libre (bonus) ; en ERG cadence, « + » et « − » changent la cadence cible de ± 2 % (appui long ± 10 %).
 
 **Au clavier**
 

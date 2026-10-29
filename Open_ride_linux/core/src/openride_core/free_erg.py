@@ -2,7 +2,7 @@
 
 Deux contrôleurs, choisis en séance depuis l'écran de pause (commande `set_ride_mode`, contrat IPC
 révision 1.5) et pilotés par la session comme l'`ErgController` d'un entraînement (mêmes attributs
-`paused`, `finished`, `is_freeride`, `target_active`, `target_w`, `bias_pct`, mêmes méthodes `step`,
+`paused`, `finished`, `target_active`, `target_w`, `bias_pct`, mêmes méthodes `step`,
 `change_bias` et `to_dict`), sans blocs : Z garde son rôle de la séance libre.
 
 - `FreeErg` : cible fixe en watts × biais du Click (± 2 %, long ± 10 %, borné à 80–120 %, comme un
@@ -22,9 +22,9 @@ from __future__ import annotations
 import math
 from typing import Any
 
-from .workout import BIAS_DEFAULT_PCT, BIAS_MAX_PCT, BIAS_MIN_PCT, BIAS_STEP_PCT
+from .workout import BIAS_DEFAULT_PCT, BIAS_MAX_PCT, BIAS_MIN_PCT, BIAS_STEP_PCT, ERG_MIN_W
 
-POWER_MIN_W = 50
+POWER_MIN_W = ERG_MIN_W          # consigne ERG minimale commune (lot O19)
 POWER_MAX_W = 1000
 POWER_MAX_FTP = 1.5               # plafond de la cadence verrouillée : 150 % de la FTP
 POWER_STEP_W = 5                  # pas de la puissance cible dans le menu, arrondi de la cible de départ
@@ -83,15 +83,13 @@ class FreeErg:
         self.paused = False   # posé par la session, comme pour un entraînement
         self.finished = False
 
-    is_freeride = False
-
     @property
     def target_active(self) -> bool:
         return not self.paused
 
     @property
     def target_w(self) -> int:
-        return round(self.base_w * self.bias_pct / 100.0)
+        return max(round(self.base_w * self.bias_pct / 100.0), ERG_MIN_W)
 
     def step(self, dt: float, cadence_rpm: float | None = None) -> None:
         if not (math.isfinite(dt) and dt >= 0):

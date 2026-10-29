@@ -90,16 +90,15 @@ def workout_info_to_dict(w: Any, ftp_w: float = 250.0) -> dict[str, Any]:
             "profile_truncated": False,
         }
 
-    profile_triplets: list[list[float | None]] = []
+    profile_triplets: list[list[float]] = []
     for b in w.profile[:MAX_PROFILE_TRIPLETS]:
         start, end = b.profile_fracs(ftp_w)
         profile_triplets.append([
             round(b.duration_s, 1),
-            round(start, 4) if start is not None else None,
-            round(end, 4) if end is not None else None,
+            round(start, 4),
+            round(end, 4),
         ])
 
-    targets = [b for b in w.profile if not b.free]
     return {
         "id": w.id,
         "name": w.name,
@@ -110,7 +109,7 @@ def workout_info_to_dict(w: Any, ftp_w: float = 250.0) -> dict[str, Any]:
         "profile": profile_triplets,
         "profile_truncated": len(w.profile) > MAX_PROFILE_TRIPLETS,
         # Révision 1.3 (lot O12) : cibles du fichier en watts absolus (`.erg`), profil ramené à la FTP.
-        "unit": "watts" if targets and all(b.absolute for b in targets) else "ftp",
+        "unit": "watts" if w.profile and all(b.absolute for b in w.profile) else "ftp",
     }
 
 

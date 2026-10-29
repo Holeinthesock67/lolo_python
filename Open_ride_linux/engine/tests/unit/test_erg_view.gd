@@ -67,7 +67,7 @@ func _test_banner() -> void:
 	_check(l["next"] == "" and l["title"].ends_with("Retour au calme"), "dernier bloc : pas de cible suivante")
 	e = _erg({"next_target_w": null})
 	l = ErgView.banner_lines(e, vm.update(e, 3.0))
-	_check(l["next"] == "Ensuite : roue libre", "bloc suivant en roue libre")
+	_check(l["next"] == "", "cible suivante inconnue : rien d'annoncé (jamais de roue libre, lot O19)")
 	e = _erg({"paused": true})
 	l = ErgView.banner_lines(e, vm.update(e, 4.0))
 	_check(l["remaining"].ends_with("(pause)"), "pause signalée (%s)" % l["remaining"])
@@ -82,7 +82,7 @@ func _test_zones() -> void:
 			ok = false
 			printerr("zone de %.3f : %d au lieu de %d" % [c[0], ErgView.zone_of_frac(c[0]), c[1]])
 	_check(ok, "zones de Coggan aux seuils de openride-core summary")
-	_check(ErgView.zone_color(null) == ErgView.FREERIDE_COLOR, "roue libre en gris")
+	_check(ErgView.zone_color(null) == ErgView.NEUTRAL_COLOR, "zone inconnue en gris neutre")
 
 
 func _test_layout_profile() -> void:
@@ -107,9 +107,10 @@ func _test_layout_profile() -> void:
 	var lay2 := ErgView.layout(e, ev2, SWEET_SPOT, 250.0, 1200.0, 80.0)
 	var dx := float(lay2["cursor_x"]) - float(lay["cursor_x"])
 	_check(absf(dx - 1200.0 / 3900.0) < 0.01, "curseur juste à la seconde (+%.3f px)" % dx)
-	var free_prof := [[60, null, null], [60, 1.0, 1.0]]
-	var lay3 := ErgView.layout(_erg({"block_index": 1, "block_count": 2, "block_type": "freeride"}), ev, free_prof, 250.0, 100.0, 50.0)
-	_check(lay3["bars"][0]["color"] == ErgView.FREERIDE_COLOR, "bloc libre du profil en gris")
+	var broken_prof := [[60, null, null], [60, 1.0, 1.0]]
+	var lay3 := ErgView.layout(_erg({"block_index": 1, "block_count": 2}), ev, broken_prof, 250.0, 100.0, 50.0)
+	_check(not lay3["from_profile"] and lay3["bars"][1]["color"] == ErgView.NEUTRAL_COLOR,
+		"case sans fraction : bande de cases égales, autres cases en gris neutre")
 
 
 func _test_layout_fallback() -> void:

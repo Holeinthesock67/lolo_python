@@ -5,7 +5,7 @@ Une seule boucle asyncio :
 - trame `state` à 30 Hz vers l'engine, commandes et heartbeat lus à chaque tour ;
 - BLE (trainer, Click) dans des tâches asyncio séparées ;
 - journal JSONL à 1 Hz ; FIT en fin de séance ;
-- entraînements ERG (`.zwo`, SRS §6) : cible de puissance au lieu de la pente, hors roue libre ;
+- entraînements ERG (`.zwo`, SRS §6) : cible de puissance au lieu de la pente, jamais sous 50 W (pas de roue libre, lot O19) ;
 - mesures de performance (durée du pas, retard de boucle, CPU) pour la décision Rust (SRS §14.1).
 """
 
@@ -1068,7 +1068,7 @@ class CoreSession:
         log.info("Entraînement « %s » choisi : %d blocs, %.0f s.", w.name, len(w.blocks), w.duration_s)
 
     def _load_workout(self, workout_id: str) -> Workout:
-        """Entraînement de la bibliothèque, ou test de FTP (`ftp_test:ramp`, `ftp_test:20min`, lot O10)."""
+        """Entraînement de la bibliothèque, ou test de FTP (`ftp_test:ramp`, lot O10)."""
         kind = ftp_test_kind(workout_id)
         if kind:
             return ftp_test_workout(kind, self.cfg.rider.ftp_w)
@@ -1155,7 +1155,7 @@ class CoreSession:
             log.info("Entraînement « %s » terminé : retour au mode SIM, parcours libre.", erg.workout.name)
             self.erg = erg = None
             self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
-        self.state.mode = "ROGUE" if self.rogue is not None else ("ERG" if erg and not erg.is_freeride else "SIM")
+        self.state.mode = "ROGUE" if self.rogue is not None else ("ERG" if erg else "SIM")
         self.state.erg = erg.to_dict() if erg else None
 
     def _on_engine_lost(self) -> None:
@@ -1502,7 +1502,7 @@ class CoreSession:
             return
         erg = self.erg
         if ev == InputEvent.Z_SHORT:
-            # Z court : action du mode (§7.1) ; bloc suivant en ERG, roue libre comprise ; sinon, en mode
+            # Z court : action du mode (§7.1) ; bloc suivant en ERG ; sinon, en mode
             # classique et en ERG d'une session libre (sans blocs, lot O18), bonus en réserve (T6, T7).
             if self._workout_erg():
                 self._skip_block()
@@ -1512,10 +1512,9 @@ class CoreSession:
             return
         if ev not in BIAS_STEPS:
             return   # ni + ni − (A, Z long, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
-        if erg and not erg.is_freeride:
+        if erg:
             # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 % ; en cadence
-            # verrouillée (lot O18), cadence cible ± 2 % et ± 10 %. En roue libre, les appuis restent
-            # des braquets.
+            # verrouillée (lot O18), cadence cible ± 2 % et ± 10 %.
             erg.change_bias(BIAS_STEPS[ev])
             self._sync_erg_state()
             latency_log.expect_cp()   # nouvelle cible ERG écrite au Control Point

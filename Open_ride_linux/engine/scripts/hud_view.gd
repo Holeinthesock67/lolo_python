@@ -194,7 +194,7 @@ func _build_ui() -> void:
 	power_val = _create_metric(left_vbox, "PUISSANCE (W)", HudViewModel.NO_VALUE)
 	cadence_val = _create_metric(left_vbox, "CADENCE (RPM)", HudViewModel.NO_VALUE)
 	hr_val = _create_metric(left_vbox, "CARDIO (BPM)", HudViewModel.NO_VALUE)
-	# Cible ERG sous les mesures, affichée seulement en ERG (« roue libre » sur un bloc libre).
+	# Cible ERG sous les mesures, affichée seulement en ERG.
 	target_val = _create_metric(left_vbox, "CIBLE ERG", HudViewModel.NO_VALUE, 32, 16)
 	target_val.get_parent().visible = false
 
@@ -781,7 +781,7 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 		erg_label.visible = show_erg_line and lines.get("erg", "") != ""
 
 	if target_val != null:
-		# Même texte que la ligne de puissance du HUD d'origine (« 230 W » ou « roue libre »).
+		# Même texte que la ligne de puissance du HUD d'origine (« 230 W »).
 		var has_target: bool = lines["power"].contains("CIBLE ERG: ")
 		_set_metric(target_val, lines["power"].get_slice("CIBLE ERG: ", 1) if has_target else HudViewModel.NO_VALUE)
 		target_val.get_parent().visible = has_target

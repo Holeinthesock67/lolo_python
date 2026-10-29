@@ -881,7 +881,8 @@ def _scenes(s: Session) -> None:
             s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
 
     # 4 ter. Cible ERG longue (« 152 W (98 %) », biais −2 %) : la valeur tient dans la colonne gauche, police
-    # réduite au besoin, et le braquet, sans effet en ERG, est caché ; en roue libre il revient (suite X22).
+    # réduite au besoin, et le braquet, sans effet en ERG, est caché (suite X22) ; même au palier de 50 W d'un
+    # FreeRide (lot O19 : jamais de roue libre en ERG).
     core.set_scene(speed=7.0, mode="ERG", erg={
         "workout_name": "Recette 8 min", "block_index": 1, "block_count": 4, "block_type": "warmup",
         "block_remaining_s": 22.0, "block_total_s": 120.0, "target_w": 152.0, "next_target_w": 184.0,
@@ -894,16 +895,16 @@ def _scenes(s: Session) -> None:
         s.check("erg_cible_longue", "braquet caché en ERG", not info["widgets"]["gear"]["visible"])
         s.check_layout("erg_cible_longue", info)
     core.set_scene(speed=7.0, mode="ERG", erg={
-        "workout_name": "Recette 8 min", "block_index": 2, "block_count": 4, "block_type": "freeride",
-        "block_remaining_s": 60.0, "block_total_s": 120.0, "target_w": 0.0, "next_target_w": 184.0,
+        "workout_name": "Recette 8 min", "block_index": 2, "block_count": 4, "block_type": "steady",
+        "block_remaining_s": 60.0, "block_total_s": 120.0, "target_w": 50.0, "next_target_w": 184.0,
         "bias_pct": 98, "paused": False})
     time.sleep(1.0)
-    shot = s.capture("erg_roue_libre")
+    shot = s.capture("erg_palier_50w")
     if shot:
         img, info = shot
-        s.check_texts("erg_roue_libre", info, {"target": "roue libre"})
-        s.check("erg_roue_libre", "braquet affiché en roue libre", info["widgets"]["gear"]["visible"])
-        s.check_layout("erg_roue_libre", info)
+        s.check_texts("erg_palier_50w", info, {"target": "50 W (98 %)"})
+        s.check("erg_palier_50w", "braquet caché au palier de 50 W", not info["widgets"]["gear"]["visible"])
+        s.check_layout("erg_palier_50w", info)
 
     # 4 bis. Courbes de la séance (lot O14), taille complète : en ERG à la place de l'histogramme (profil
     # cible, puissance blanche, FC rouge, légende) ; en SIM dans un panneau centré, sans toucher aux

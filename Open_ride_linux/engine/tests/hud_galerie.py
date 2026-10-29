@@ -6,8 +6,8 @@
 
 L'engine réel tourne avec le faux core de visual_check.py (Xvfb, ou l'écran avec --native) sur le parcours
 de démonstration et passe par les cas de CAS : SIM simple, vent et abri, bots avec segment et bonus, ERG
-avec une cible courte ou longue, roue libre, courbes réduites et complètes, teintes des zones de puissance et
-de FC, valeurs extrêmes. Sur chaque
+avec une cible courte ou longue, palier de 50 W (FreeRide, lot O19), courbes réduites et complètes, teintes des
+zones de puissance et de FC, valeurs extrêmes. Sur chaque
 capture : panneaux dans l'écran et sans chevauchement, textes dans leur colonne, hauteur et contraste des
 chiffres (hud_lisibilite.py), texte attendu des valeurs. Sortie : une capture par cas et par
 configuration, une planche par configuration (`planche_<config>.png`, cas dans l'ordre de CAS, trois par
@@ -88,8 +88,8 @@ CAS: list[dict[str, Any]] = [
      "shown": ["target", "erg_hist"], "hidden": ["gear", "profile"]},
     {"name": "erg_cible_longue", "state": {"mode": "ERG", "erg": _erg(152.0, 98)}, "texts": {"target": "152 W (98 %)"},
      "hidden": ["gear", "profile"]},
-    {"name": "erg_roue_libre", "state": {"mode": "ERG", "erg": _erg(0.0, 98, "freeride")}, "texts": {"target": "roue libre"},
-     "shown": ["gear"], "hidden": ["profile"]},
+    {"name": "erg_palier_50w", "state": {"mode": "ERG", "erg": _erg(50.0, 98, "steady")}, "texts": {"target": "50 W (98 %)"},
+     "hidden": ["gear", "profile"]},
     {"name": "erg_courbes_reduites", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "chart": "reduced", "wait": 7.0,
      "shown": ["chart_erg"], "hidden": ["profile"]},
     {"name": "erg_courbes_completes", "state": {"mode": "ERG", "erg": _erg(230.0, 100)}, "chart": "full", "wait": 7.0,

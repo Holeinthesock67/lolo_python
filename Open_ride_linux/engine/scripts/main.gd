@@ -1503,7 +1503,7 @@ func _feed_chart(state: Dictionary, running: bool, previous_state: String) -> vo
 			chart_model.set_workout(prof, float(ipc.core_config.get("ftp_w", 0.0)), 0.0)
 	if running:
 		var target = null
-		if in_erg and str(erg.get("block_type", "steady")) != "freeride":
+		if in_erg:
 			target = erg.get("target_w", null)
 		chart_model.push(float(state.get("t", -1.0)), state.get("power", null), state.get("hr", null), state.get("cadence", null), target)
 	var n: int = chart_model.point_count()
