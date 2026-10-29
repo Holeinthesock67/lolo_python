@@ -12,6 +12,8 @@ extends RefCounted
 ## Valeur absente, nulle ou non finie (NaN, infini) : « — ». Valeur négative là où elle n'a pas de sens
 ## (vitesse, cadence, puissance) : 0. Valeur hors des bornes plausibles ci-dessous : « — ».
 
+const ErgView := preload("res://scripts/erg_view.gd")
+
 const NO_VALUE := "—"
 
 # Bornes plausibles de l'affichage (au-delà : « — »).
@@ -28,6 +30,9 @@ const GRADE_DESCENT_BELOW := -2.0   # < −2 % : descent
 const GRADE_CLIMB_FROM := 2.0       # [−2 ; 2[ : flat ; [2 ; 6[ : climb
 const GRADE_STEEP_FROM := 6.0       # [6 ; 10] : steep
 const GRADE_WALL_ABOVE := 10.0      # > 10 % : wall
+
+# Zones de fréquence cardiaque (Z1 à Z5, en % de la FC max) : bornes hautes de Z1 à Z4, basses exclues.
+const HR_ZONE_HIGH_PCT := [60.0, 70.0, 80.0, 90.0]
 
 # Détection des montées (next_climb) : pas d'analyse, pente de début de montée et replat toléré.
 const CLIMB_STEP_M := 10.0
@@ -99,6 +104,24 @@ static func format_grade(grade: float) -> String:
 	if absf(r) < 0.05:
 		return "0.0 %"
 	return ("+%.1f %%" if r > 0.0 else "%.1f %%") % r
+
+
+## Zone de Coggan (0 à 6, seuils de erg_view.gd) de la puissance, -1 sans FTP ou sans mesure.
+static func power_zone(power_w: float, ftp_w: float) -> int:
+	if is_nan(power_w) or ftp_w <= 0.0:
+		return -1
+	return ErgView.zone_of_frac(power_w / ftp_w)
+
+
+## Zone de fréquence cardiaque (0 à 4), -1 sans FC max ou sans mesure (0 ou absente).
+static func hr_zone(hr: float, hr_max_bpm: float) -> int:
+	if is_nan(hr) or hr <= 0.0 or hr_max_bpm <= 0.0:
+		return -1
+	var pct := hr / hr_max_bpm * 100.0
+	for i in range(HR_ZONE_HIGH_PCT.size()):
+		if pct < HR_ZONE_HIGH_PCT[i]:
+			return i
+	return HR_ZONE_HIGH_PCT.size()
 
 
 static func grade_class(grade: float) -> String:
@@ -282,7 +305,9 @@ func _climb(route, here: float, start: float, end: float, min_length_m: float, m
 ## (`erg_view_model.gd`, clé `visible` fausse hors ERG). En ERG, les appuis courts règlent l'intensité
 ## (biais) et non le braquet : la ligne du braquet le dit, et la cible envoyée au trainer remplace la
 ## pente envoyée (le trainer est en mode puissance). La fréquence cardiaque absente s'affiche « — ».
-static func session_lines(state: Dictionary, erg_view: Dictionary) -> Dictionary:
+## `ftp_w` et `hr_max_bpm` (config de hello_ack) donnent les zones de la puissance affichée et de la
+## fréquence cardiaque (`power_zone`, `hr_zone`, -1 sans référence ni mesure).
+static func session_lines(state: Dictionary, erg_view: Dictionary, ftp_w := 0.0, hr_max_bpm := 0.0) -> Dictionary:
 	var p := _clean(state.get("power", null), MAX_POWER_W)
 	var p3s := _clean(state.get("power_3s", state.get("power", null)), MAX_POWER_W)
 	var v := _clean(float(state.get("v", NAN)) * 3.6 if _finite(state.get("v", null)) else NAN, MAX_SPEED_KMH)
@@ -324,6 +349,8 @@ static func session_lines(state: Dictionary, erg_view: Dictionary) -> Dictionary
 	out["speed_val"] = "%.1f" % v if not is_nan(v) else NO_VALUE
 	out["cadence_val"] = "%d" % int(round(cad)) if not is_nan(cad) else NO_VALUE
 	out["hr_val"] = "%d" % int(round(hr)) if not is_nan(hr) and hr > 0.0 else NO_VALUE
+	out["power_zone"] = power_zone(p3s, ftp_w)
+	out["hr_zone"] = hr_zone(hr, hr_max_bpm)
 	out["grade_val"] = format_grade(grade)
 	out["grade_class"] = grade_class(grade) if not is_nan(grade) else "flat"
 	out["distance_val"] = "%.2f km" % (s / 1000.0) if not is_nan(s) else NO_VALUE

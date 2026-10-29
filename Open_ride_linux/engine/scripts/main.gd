@@ -306,11 +306,11 @@ func _ready() -> void:
 	chart_sim.anchor_top = 1.0
 	chart_sim.anchor_bottom = 1.0
 	chart_sim.anchor_right = 1.0
-	# Entre les colonnes du HUD, juste au-dessus du profil d'altitude.
+	# Entre les colonnes du HUD, en bas de l'écran (le profil d'altitude est sous la colonne de droite).
 	var chart_x := HudView.TOP_MARGIN + HudView.COLUMN_W + HudView.TOP_MARGIN
 	chart_sim.offset_left = chart_x
 	chart_sim.offset_right = -chart_x
-	chart_sim.offset_bottom = -HudView.PROFILE_RESERVE - HudView.BLOCK_GAP
+	chart_sim.offset_bottom = -HudView.SCREEN_BOTTOM
 	chart_sim.offset_top = chart_sim.offset_bottom - 120.0
 	chart_sim.visible = false
 	hud.add_child(chart_sim)
@@ -434,6 +434,9 @@ func _on_settings(msg: Dictionary) -> void:
 	var ftp = menu_flow.settings.item("rider.ftp_w").get("value", null)
 	if ftp != null:
 		ipc.core_config["ftp_w"] = ftp
+	var hr_max = menu_flow.settings.item("rider.hr_max_bpm").get("value", null)
+	if hr_max != null:
+		ipc.core_config["hr_max_bpm"] = hr_max
 	_refresh_menu()
 
 
@@ -1180,6 +1183,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 			"text": c.text if c is Label else _widget_text(key),
 			"visible": c.is_visible_in_tree(),
 			"rect": [r.position.x, r.position.y, r.size.x, r.size.y],
+			"color": c.modulate.to_html(false),   # teinte du nœud (zones de la puissance et de la FC)
 		}
 	# Voisins immédiats : la ligne de l'encart qui porte leur triangle (lot X22), cachée sans voisin affiché.
 	for dir in ["ahead", "behind"]:
@@ -1449,6 +1453,8 @@ func _on_state_received(state: Dictionary) -> void:
 		erg_panel.update_display(state.get("erg", null), erg_eval)
 
 	if hud != null and hud.has_method("update_display"):
+		hud.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
+		hud.hr_max_bpm = float(ipc.core_config.get("hr_max_bpm", 0.0))
 		hud.update_display(state, erg_eval, route, float(state.get("s", 0.0)))
 		hud.update_segment(segment_hud.view(state, Time.get_ticks_msec() / 1000.0))
 	if junction_view != null:
