@@ -2,8 +2,11 @@
   "description": "Endurance d'une heure (lot X16) : boucles du village simulé en SIM, effort qui change toutes les 5 min, un appui Click à chaque changement ; sonde de performance pendant tout l'essai (mémoire de chaque processus, mémoire vidéo, images/s, saccades). À lancer en fenêtre réelle sur le PC cible : sim_bench.py --native --scenario endurance.",
   "trainer": {
     "appear_at": 0.3,
-    "connect_delay_s": 0.3,
-    "rider_power_w": 220,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 220,
     "cadence_rpm": 90
   },
   "click": {

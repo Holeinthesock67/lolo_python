@@ -2,8 +2,11 @@
   "description": "Parcours complet du village simulé en SIM : plat, montée à 7 %, sommet, descente à −6 %, village du haut ; braquets changés au Click, effort qui suit la pente.",
   "trainer": {
     "appear_at": 0.3,
-    "connect_delay_s": 0.3,
-    "rider_power_w": 250,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 250,
     "cadence_rpm": 90
   },
   "click": {

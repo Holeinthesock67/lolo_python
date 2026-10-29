@@ -69,13 +69,22 @@ jobs:
         run: pip check
 
       - name: Tests du core
-        run: cd core && pytest -q
+        run: cd core && pytest -q --junitxml=../junit/core.xml
 
       - name: Tests du compilateur
-        run: cd compiler && pytest -q
+        run: cd compiler && pytest -q --junitxml=../junit/compiler.xml
 
       - name: Contrôle des vecteurs de route
         run: python -m openride_core.tools.route_vectors --check
+
+      # Rapports JUnit gardés (lot X3) : durée et statut de chaque test, lus par scripts/stabilite_tests.py.
+      - name: Rapports JUnit
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: junit-python-${{ matrix.python-version }}
+          path: Open_ride_linux/junit/
+          if-no-files-found: ignore
 
   engine:
     name: engine (Godot 4.3)
@@ -119,7 +128,7 @@ jobs:
       - name: Tests de l'engine sans écran
         run: |
           chmod +x ~/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64
-          REQUIRE_RENDER=1 GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_engine_tests.sh
+          REQUIRE_RENDER=1 ENGINE_JUNIT="$PWD/junit/engine.xml" GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_engine_tests.sh
 
       - name: Essai de bout en bout (vrai core et vrai engine, lot J8)
         run: GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_e2e.sh
@@ -136,3 +145,53 @@ jobs:
           name: menu_bench
           path: ${{ runner.temp }}/menu_bench
           retention-days: 7
+
+      - name: Banc visuel du Cyber-Rogue (run X40 rejouée dans la scène, lot X41)
+        run: |
+          python3 engine/tests/rogue_bench.py --godot "$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" \
+            --out "$RUNNER_TEMP/rogue_bench"
+
+      - name: Rapport du banc visuel du Cyber-Rogue
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: rogue_bench
+          path: ${{ runner.temp }}/rogue_bench
+          retention-days: 7
+
+      - name: Rapport JUnit
+        if: ${{ !cancelled() }}
+        uses: actions/upload-artifact@v5
+        with:
+          name: junit-engine
+          path: Open_ride_linux/junit/
+          if-no-files-found: ignore
+
+  # Lot X24 : audit hebdomadaire des dépendances (vulnérabilités connues, actions en retard, paquets
+  # anciens), seulement dans le run du lundi et sur demande. Échoue si une vulnérabilité est connue.
+  dependances:
+    name: audit des dépendances
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du dépôt
+        uses: actions/checkout@v5
+
+      - name: Installation de Python 3.14
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Installation de pip-audit
+        run: pip install -c constraints.txt pip-audit
+
+      - name: Audit
+        run: python3 scripts/audit_dependances.py --out "$RUNNER_TEMP/deps"
+
+      - name: Résumé de l'audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependances
+          path: ${{ runner.temp }}/deps
+          retention-days: 30

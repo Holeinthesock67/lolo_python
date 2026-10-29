@@ -33,6 +33,7 @@ const BiomeModel := preload("res://scripts/biome_model.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
@@ -544,9 +545,11 @@ func _build_job(job: Dictionary) -> void:
 			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
 			if spec["kind"] == "near" and tree_renderer != null:
+				var t_trees := Time.get_ticks_usec()
 				# Hauteurs réelles : pente et limite des arbres jugées sur le vrai relief, arbres posés à la hauteur affichée.
 				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
 					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t))
+				PerfProbe.task("arbres", "%d:%d" % [t.x, t.y], (Time.get_ticks_usec() - t_trees) / 1000.0)
 		"flat":
 			var t: Vector2i = spec["tile"]
 			var c := TerrainTiles.tile_origin("near", t.x, t.y) + Vector3(500.0, 0.0, 500.0)
@@ -558,6 +561,7 @@ func _build_job(job: Dictionary) -> void:
 				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, flat_h, r, _theme_dict,
 					vegetation_density_factor, [])
 	var dt := Time.get_ticks_usec() - t0
+	PerfProbe.task(spec["kind"], str(spec["k"]) if spec["kind"] == "road" else "%d:%d" % [spec["tile"].x, spec["tile"].y], dt / 1000.0)
 	_stats_mutex.lock()
 	var st: Array = build_stats.get(spec["kind"], [0, 0])
 	build_stats[spec["kind"]] = [st[0] + 1, st[1] + dt]
@@ -591,6 +595,7 @@ func integrate(max_new: int) -> int:
 		var r: Dictionary = _ready.pop_front()
 		if not _wanted.has(r["key"]) or _instances.has(r["key"]):
 			continue
+		var t0 := Time.get_ticks_usec()
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["arrays"])
 		mesh.surface_set_material(0, road_material_for(int((r["key"] as String).get_slice(":", 1))) if r["kind"] == "road" else _terrain_material_for(r["key"]))
@@ -600,8 +605,11 @@ func integrate(max_new: int) -> int:
 		mi.position = r["origin"]
 		add_child(mi)
 		_instances[r["key"]] = mi
+		var t1 := Time.get_ticks_usec()
+		PerfProbe.mark("route" if r["kind"] == "road" else "tuile", r["key"], (t1 - t0) / 1000.0)
 		if r.has("trees_data") and tree_renderer != null and not (r["trees_data"] as Dictionary).is_empty():
 			tree_renderer.add_tile(r["trees_data"])
+			PerfProbe.mark("arbres", r["key"], (Time.get_ticks_usec() - t1) / 1000.0)
 		if test_log and r["kind"] == "near":
 			_test_check_tile(r["key"], r["arrays"][Mesh.ARRAY_VERTEX])
 		created += 1
@@ -675,6 +683,16 @@ func loaded_tile_counts() -> Dictionary:
 			kind = "near"
 		out[kind] = int(out.get(kind, 0)) + 1
 	return out
+
+
+## Tuiles voulues autour de la caméra pas encore affichées (en calcul ou en attente) : 0 quand la vue est
+## complète (tour visuel, lot X21).
+func pending_count() -> int:
+	var n := 0
+	for key in _wanted:
+		if not _instances.has(key):
+			n += 1
+	return n
 
 
 ## Attend les travaux en cours sans dépasser le budget d'objets par image (tests en temps simulé).

@@ -18,6 +18,14 @@ Usage, avec le vrai jeu :
 fermé), `--duration` ou Ctrl+C, puis écrit le rapport dans `~/OpenRide/sonde/<date>_<heure>/`.
 `report DOSSIER` refait le rapport d'un dossier déjà mesuré. Le banc simulé l'utilise aussi :
 `sim_bench.py --probe` (rapport dans le dossier du scénario).
+Budgets du préréglage (lot X14) : `sonde.txt` juge images/s, p99, GPU de la vue et GPU saturé face à
+`perf_targets.json`, pour le préréglage noté par l'engine ; avec `--budgets`, un budget dépassé donne le
+code de sortie 1 (`report --xvfb` : rendu logiciel, budgets en INFO).
+
+Saccades et démarrage (lot X15) : l'engine écrit aussi, à côté de son fichier, `saccades.csv` (chaque
+image de plus de 33 ms avec sa cause : tuile de terrain, tronçon OSM, arbres, capture, ou « inconnue »),
+`taches.csv` (durée des tâches de fond) et `demarrage.txt` (première image jouable). Le rapport y ajoute
+les 20 pires saccades, le compte par cause, les durées des tâches de fond et le temps de démarrage.
 Bibliothèque standard seulement.
 """
 
@@ -26,6 +34,7 @@ from __future__ import annotations
 import argparse
 import csv
 import html
+import json
 import os
 import shutil
 import statistics
@@ -35,7 +44,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 DEFAULT_ENGINE_CSV = Path.home() / "OpenRide" / "sonde" / "moteur.csv"
 DEFAULT_OUT = Path.home() / "OpenRide" / "sonde"
@@ -255,6 +264,10 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         v = values(rows, key)
         if v:
             out["stats"][key] = {"p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
+    # Images d'une capture d'écran de test (lot X35) : déjà hors p99 et pire image côté engine, comptées à part.
+    cap = values(rows, "capture")
+    if cap and sum(cap) > 0:
+        out["captures"] = {"frames": int(sum(cap)), "max_ms": max(values(rows, "capture_max_ms"), default=0.0)}
     if ts and out["duration_s"] >= 120.0:
         t_first, t_last = min(ts) + 60.0, max(ts) - 60.0
         for key in DRIFT:
@@ -273,6 +286,10 @@ def summary_text(summary: dict[str, Any], title: str) -> str:
         lab, unit = labels[key]
         name = f"{lab} ({unit})" if unit else lab
         lines.append(f"  {name:<28} {st['p50']:>10.1f} {st['p99']:>10.1f} {st['max']:>10.1f}")
+    if summary.get("captures"):
+        c = summary["captures"]
+        lines += ["", f"Images des captures d'écran mises à part : {c['frames']} (pire {c['max_ms']:.0f} ms), "
+                  "hors temps d'image p99, pire image et saccades."]
     if summary["drift"]:
         lines += ["", "Dérive (médiane de la dernière minute − première minute) :"]
         for key, d in summary["drift"].items():
@@ -348,9 +365,11 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
         stutters = sum(w > lim["stutter_ms"] for w in worst)
         hours = max((max(ts) - warm) / 3600.0, 1e-6)
         rate = stutters / hours
+        shots = sum(w > lim["stutter_ms"] for w in values(steady, "capture_max_ms"))
         out.append((rate <= lim["max_stutters_per_h"] if real_window else None, "endurance : saccades",
                     f"{stutters} seconde(s) avec une image de plus de {lim['stutter_ms']:.0f} ms, {rate:.1f} par heure"
-                    f" (seuil {lim['max_stutters_per_h']:.0f})"))
+                    f" (seuil {lim['max_stutters_per_h']:.0f})"
+                    + (f" ; {shots} autre(s) due(s) aux captures d'écran, non comptée(s)" if shots else "")))
     long_enough = max(ts) - warm >= lim["min_slope_span_s"]
     labels = {k: lab for k, lab, _ in SUMMARY}
     for key, max_slope in lim["slopes_mb_per_h"].items():
@@ -361,6 +380,65 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
         out.append((slope <= max_slope if long_enough else None, f"endurance : croissance de la {labels.get(key, key)}",
                     f"{slope:+.1f} Mo/h (seuil {max_slope:.0f}{note})"))
     return out
+
+
+# --- budgets par préréglage (lot X14) ---------------------------------------------------------
+
+TARGETS_FILE = Path(__file__).resolve().parent / "perf_targets.json"
+
+
+def load_targets(path: Path = TARGETS_FILE) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def budget_checks(rows: list[dict[str, Any]], targets: dict[str, Any] | None = None,
+                  real_window: bool = True) -> list[tuple[bool | None, str, str]]:
+    """Vérifications des budgets du préréglage noté par l'engine dans la sonde (pas celui de la ligne de
+    commande : lot X32) : (réussi, libellé, mesure). Réussi vaut None sous Xvfb (rendu logiciel, à titre
+    indicatif) et pour une mesure absente (pas de nvidia-smi)."""
+    t = targets or load_targets()
+    presets = presets_of(rows)
+    if len(presets) != 1:
+        return [(False, "budgets du préréglage", "aucun préréglage noté dans la sonde" if not presets
+                 else f"plusieurs préréglages dans la mesure ({', puis '.join(presets)}) : budgets non jugés")]
+    preset = presets[0]
+    budget = t["presets"].get(preset)
+    if budget is None:
+        return [(False, "budgets du préréglage", f"pas de budget pour {preset} dans perf_targets.json")]
+    ts = values(rows, "t_s")
+    warm = (min(ts) if ts else 0.0) + float(t.get("warmup_s", 0))
+    steady = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= warm]
+    note = "" if real_window else ", indicatif sous Xvfb"
+    out: list[tuple[bool | None, str, str]] = []
+
+    def judge(label: str, vals: list[float], ok_of: Callable[[float], bool], text: Callable[[float], str]) -> None:
+        if not vals:
+            out.append((None, label, "pas de mesure"))
+            return
+        v = statistics.median(vals)
+        out.append((ok_of(v) if real_window else None, label, text(v) + note))
+
+    fmin, pmax, gmax = budget["fps_median_min"], budget["p99_ms_max"], budget["gpu_ms_median_max"]
+    judge(f"budget {preset} : images/s", values(steady, "fps"), lambda v: v >= fmin,
+          lambda v: f"médiane {v:.1f} (au moins {fmin})")
+    judge(f"budget {preset} : temps d'image p99", values(steady, "frame_p99_ms"), lambda v: v < pmax,
+          lambda v: f"{v:.1f} ms (médiane des p99 de chaque seconde, sous {pmax} ms)")
+    judge(f"budget {preset} : GPU de la vue", values(steady, "gpu_ms"), lambda v: v <= gmax,
+          lambda v: f"médiane {v:.2f} ms (au plus {gmax} ms)")
+    util = values(steady, "gpu_util_pct")
+    busy_max, busy = budget["gpu_busy95_pct_max"], float(t.get("busy_pct", 95))
+    if util:
+        share = 100.0 * sum(u > busy for u in util) / len(util)
+        out.append(((share <= busy_max) if real_window else None, f"budget {preset} : GPU saturé",
+                    f"{share:.1f} % des secondes au-dessus de {busy:.0f} % de charge (au plus {busy_max} %){note}"))
+    else:
+        out.append((None, f"budget {preset} : GPU saturé", "pas de mesure (nvidia-smi absent)"))
+    return out
+
+
+def budget_text(checks: list[tuple[bool | None, str, str]]) -> str:
+    return "\n".join(f"  [{'INFO' if ok is None else 'OK' if ok else 'ÉCHEC'}] {label} : {msg}"
+                     for ok, label, msg in checks)
 
 
 def presets_of(rows: list[dict[str, Any]]) -> list[str]:
@@ -381,6 +459,68 @@ def quality_check(summary: dict[str, Any], wanted: str) -> tuple[bool, str]:
     if any(p != wanted for p in seen):
         return False, f"qualité voulue {wanted}, mesurée en {', puis '.join(seen)}"
     return True, f"{wanted} sur toute la mesure"
+
+
+# --- saccades et démarrage (lot X15) -----------------------------------------------------
+
+STALL_TOP = 20
+STARTUP_PREFIX = "Démarrage : première image jouable à "
+
+
+def read_stalls(engine_dir: Path) -> dict[str, Any] | None:
+    """Fichiers X15 de l'engine dans `engine_dir` : saccades, tâches de fond et démarrage (ms, ou None).
+    None si l'engine n'en a écrit aucun (engine plus ancien)."""
+    sac, tasks = engine_dir / "saccades.csv", engine_dir / "taches.csv"
+    start = engine_dir / "demarrage.txt"
+    if not (sac.is_file() or tasks.is_file() or start.is_file()):
+        return None
+    startup = None
+    if start.is_file():
+        text = start.read_text(encoding="utf-8").strip()
+        if text.startswith(STARTUP_PREFIX):
+            try:
+                startup = float(text[len(STARTUP_PREFIX):].split()[0])
+            except (ValueError, IndexError):
+                pass
+    return {"saccades": read_engine_csv(sac), "tasks": read_engine_csv(tasks), "startup_ms": startup}
+
+
+def stall_summary(stalls: dict[str, Any]) -> dict[str, Any]:
+    """Compte des saccades par cause (nombre, pire), les STALL_TOP pires, durées des tâches par type."""
+    sac = [r for r in stalls["saccades"] if isinstance(r.get("frame_ms"), float)]
+    causes: dict[str, dict[str, float]] = {}
+    for r in sac:
+        c = causes.setdefault(str(r.get("cause") or "inconnue"), {"count": 0, "worst_ms": 0.0, "total_ms": 0.0})
+        c["count"] += 1
+        c["worst_ms"] = max(c["worst_ms"], r["frame_ms"])
+        c["total_ms"] += r["frame_ms"]
+    tasks: dict[str, dict[str, float]] = {}
+    for kind in sorted({str(r.get("kind")) for r in stalls["tasks"]}):
+        v = [float(r["ms"]) for r in stalls["tasks"] if str(r.get("kind")) == kind and isinstance(r.get("ms"), float)]
+        if v:
+            tasks[kind] = {"count": len(v), "p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
+    return {"count": len(sac), "causes": dict(sorted(causes.items(), key=lambda kv: -kv[1]["count"])),
+            "top": sorted(sac, key=lambda r: -r["frame_ms"])[:STALL_TOP], "tasks": tasks,
+            "startup_ms": stalls["startup_ms"]}
+
+
+def stall_text(st: dict[str, Any]) -> str:
+    lines = ["Démarrage : " + (f"première image jouable à {st['startup_ms'] / 1000:.1f} s"
+                               if st["startup_ms"] is not None else "pas de première image jouable notée"),
+             "", f"Saccades (images de plus de 33 ms) : {st['count']}"]
+    for cause, c in st["causes"].items():
+        lines.append(f"  {cause:<10} {c['count']:>5} image(s), pire {c['worst_ms']:.0f} ms, total {c['total_ms'] / 1000:.1f} s")
+    if st["top"]:
+        lines += ["", f"Les {len(st['top'])} pires saccades :", f"  {'t (s)':>8} {'ms':>7} {'distance':>9}  cause : étapes"]
+        for r in st["top"]:
+            dist = r.get("distance_m")
+            lines.append(f"  {r.get('t_s', 0.0):>8.1f} {r['frame_ms']:>7.1f} "
+                         f"{(f'{dist:.0f} m') if isinstance(dist, float) else '':>9}  {r.get('cause', '')} : {r.get('steps', '')}")
+    if st["tasks"]:
+        lines += ["", "Tâches de fond (ms) :", f"  {'type':<10} {'nombre':>7} {'médiane':>8} {'p99':>8} {'max':>8}"]
+        for kind, t in st["tasks"].items():
+            lines.append(f"  {kind:<10} {t['count']:>7} {t['p50']:>8.1f} {t['p99']:>8.1f} {t['max']:>8.1f}")
+    return "\n".join(lines) + "\n"
 
 
 # --- écriture ------------------------------------------------------------------------------
@@ -424,12 +564,25 @@ def svg_chart(rows: list[dict[str, Any]], title: str, series: tuple[tuple[str, s
     return "".join(parts)
 
 
-def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de performance du moteur") -> dict[str, Any]:
-    """Écrit sonde.csv, sonde.txt et rapport.html dans `out` ; renvoie le résumé."""
+def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de performance du moteur",
+                 real_window: bool = True, engine_dir: Path | None = None) -> dict[str, Any]:
+    """Écrit sonde.csv, sonde.txt et rapport.html dans `out` ; renvoie le résumé. Avec `engine_dir` (dossier
+    du fichier de l'engine), y ajoute les saccades, les tâches de fond et le démarrage (lot X15), recopiés
+    dans `out`."""
     out.mkdir(parents=True, exist_ok=True)
     write_csv(rows, out / "sonde.csv")
     summary = summarize(rows)
     text = summary_text(summary, title)
+    summary["budgets"] = budget_checks(rows, real_window=real_window) if values(rows, "fps") else []
+    if summary["budgets"]:
+        text += "\nBudgets du préréglage (engine/tests/perf_targets.json, lot X14) :\n" + budget_text(summary["budgets"]) + "\n"
+    stalls = read_stalls(engine_dir) if engine_dir is not None else None
+    if stalls is not None:
+        summary["stalls"] = stall_summary(stalls)
+        text += "\n" + stall_text(summary["stalls"])
+        for name in ("saccades.csv", "taches.csv", "demarrage.txt"):
+            if (engine_dir / name).is_file() and (engine_dir / name).resolve() != (out / name).resolve():
+                shutil.copyfile(engine_dir / name, out / name)
     (out / "sonde.txt").write_text(text, encoding="utf-8")
     charts = "\n".join(c for c in (svg_chart(rows, t, s) for t, s in CHARTS) if c)
     summary["presets"] = presets_of(rows)
@@ -451,7 +604,7 @@ pour les temps de la vue, dernière image pour les compteurs du rendu.</p>
 
 # --- commandes -----------------------------------------------------------------------------
 
-def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float = 120.0,
+def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float = 120.0, budgets: bool = False,
           idle_stop_s: float = IDLE_STOP_S, period_s: float = 1.0, quality: str | None = None) -> int:
     print(f"Sonde : attente du fichier de l'engine {engine_csv} …", flush=True)
     t0 = time.monotonic()
@@ -480,10 +633,15 @@ def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float =
         print()
     sampler.stop()
     rows = merge(read_engine_csv(engine_csv), sampler.rows)
-    summary = write_report(rows, out)
+    summary = write_report(rows, out, engine_dir=engine_csv.parent)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
     print(f"Rapport : {out / 'rapport.html'}")
-    return _quality_verdict(summary, quality)
+    return max(_quality_verdict(summary, quality), _budget_verdict(summary, budgets))
+
+
+def _budget_verdict(summary: dict[str, Any], strict: bool) -> int:
+    """Code 1 si un budget est dépassé et que `--budgets` est demandé."""
+    return 1 if strict and any(ok is False for ok, _, _ in summary.get("budgets", [])) else 0
 
 
 def _quality_verdict(summary: dict[str, Any], quality: str | None) -> int:
@@ -503,23 +661,26 @@ def main(argv: list[str] | None = None) -> int:
     w.add_argument("--out", type=Path, help=f"dossier du rapport (défaut : {DEFAULT_OUT}/<date>)")
     w.add_argument("--duration", type=float, help="durée maximale en secondes")
     w.add_argument("--quality", help="préréglage voulu : échec si une seconde a été mesurée dans un autre (lot X32)")
+    w.add_argument("--budgets", action="store_true", help="code 1 si un budget de perf_targets.json est dépassé (lot X14)")
     r = sub.add_parser("report", help="refaire le rapport d'un dossier (sonde.csv) ou d'un fichier de l'engine")
     r.add_argument("source", type=Path)
     r.add_argument("--out", type=Path)
     r.add_argument("--quality", help="préréglage voulu : échec si une seconde a été mesurée dans un autre (lot X32)")
+    r.add_argument("--budgets", action="store_true", help="code 1 si un budget de perf_targets.json est dépassé (lot X14)")
+    r.add_argument("--xvfb", action="store_true", help="mesure sous Xvfb : budgets en INFO")
     args = ap.parse_args(argv)
     if args.cmd == "watch":
         out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        return watch(args.engine_csv.expanduser(), out, args.duration, quality=args.quality)
+        return watch(args.engine_csv.expanduser(), out, args.duration, quality=args.quality, budgets=args.budgets)
     src = args.source / "sonde.csv" if args.source.is_dir() else args.source
     rows = read_engine_csv(src)
     if not rows:
         print(f"Aucune mesure dans {src}")
         return 1
     out = args.out or (args.source if args.source.is_dir() else args.source.parent)
-    summary = write_report(rows, out)
+    summary = write_report(rows, out, real_window=not args.xvfb, engine_dir=src.parent)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
-    return _quality_verdict(summary, args.quality)
+    return max(_quality_verdict(summary, args.quality), _budget_verdict(summary, args.budgets))
 
 
 if __name__ == "__main__":

@@ -6,6 +6,7 @@ extends Node
 
 signal state_received(state_dict: Dictionary)
 signal input_event_received(event_name: String)
+signal latency_input_received(press_id: int)   # appui suivi (core lancé avec --latence, lot X7)
 signal hello_ack_received(ack_dict: Dictionary)
 signal error_received(code: String, message: String)
 signal shutdown_received
@@ -62,6 +63,8 @@ const CLOCK_TICK_MS := 10            # pas du fil d'horloge (hello et heartbeat)
 const CMD_RESEND_US := 200_000        # contrat §4 : renvoi toutes les 200 ms
 const CMD_TIMEOUT_US := 3_000_000     # contrat §4 : abandon après 3 s
 const CORE_TIMEOUT_US := 1_000_000    # contrat §6 : core injoignable après 1 s sans state
+const GAP_REPORT_US := 60_000_000     # gigue (lot X17) : une ligne [gigue] par minute
+const GAP_BINS := 500                 # écarts entre trames state, cases de 1 ms jusqu'à 500 ms
 
 var state_port: int = EngineArgs.DEFAULT_STATE_PORT
 var cmd_port: int = EngineArgs.DEFAULT_CMD_PORT
@@ -99,6 +102,12 @@ var _hello_lock := Mutex.new()
 var _hello_wanted := false
 var _hello_now := false
 var _last_state_us := 0
+## Écarts entre trames state reçues (lot X17) : histogramme fixe, une ligne [gigue] par minute.
+## La lecture se fait à chaque image : l'écart mesuré comprend la cadence de l'affichage.
+var _gap_counts := PackedInt32Array()
+var _gap_n := 0
+var _gap_max_ms := 0.0
+var _gap_next_us := 0
 var _core_reachable := true
 var _hb_thread: Thread
 var _hb_stop := false
@@ -235,6 +244,8 @@ func _poll_incoming() -> void:
 			"state":
 				_on_state(json_obj)
 			"input":
+				if json_obj.has("latence_id"):
+					latency_input_received.emit(int(json_obj["latence_id"]))
 				input_event_received.emit(str(json_obj.get("event", "")))
 			"hello_ack":
 				_hello_acked = true
@@ -299,6 +310,38 @@ func _poll_incoming() -> void:
 					_on_test_message(json_obj)
 
 
+## Écart (ms) entre deux trames state ; publie la ligne de la minute quand elle est écoulée.
+func note_state_gap(gap_ms: float, now_us: int) -> void:
+	if _gap_counts.is_empty():
+		_gap_counts.resize(GAP_BINS + 1)
+		_gap_next_us = now_us + GAP_REPORT_US
+	_gap_counts[mini(int(gap_ms), GAP_BINS)] += 1
+	_gap_n += 1
+	_gap_max_ms = maxf(_gap_max_ms, gap_ms)
+	if now_us >= _gap_next_us:
+		print(state_gap_line())
+		_gap_counts.fill(0)
+		_gap_n = 0
+		_gap_max_ms = 0.0
+		_gap_next_us = now_us + GAP_REPORT_US
+
+
+## Quantile q des écarts : borne haute de sa case de 1 ms, bornée par le maximum (le maximum au-delà de 500 ms).
+func state_gap_percentile(q: float) -> float:
+	var rank := q * _gap_n
+	var seen := 0
+	for i in _gap_counts.size():
+		seen += _gap_counts[i]
+		if _gap_counts[i] > 0 and seen >= rank:
+			return _gap_max_ms if i == GAP_BINS else minf(float(i + 1), _gap_max_ms)
+	return _gap_max_ms
+
+
+func state_gap_line() -> String:
+	return "[gigue] state : écart entre trames p50 %.1f p99 %.1f max %.1f ms (%d trames)" % [
+		state_gap_percentile(0.5), state_gap_percentile(0.99), _gap_max_ms, _gap_n]
+
+
 func _on_state(msg: Dictionary) -> void:
 	var seq := int(msg.get("seq", 0))
 	if seq <= last_state_seq:
@@ -309,7 +352,10 @@ func _on_state(msg: Dictionary) -> void:
 	if last_state_seq >= 0 and seq > last_state_seq + 1:
 		seq_gap_count += seq - last_state_seq - 1
 	last_state_seq = seq
-	_last_state_us = Time.get_ticks_usec()
+	var now_us := Time.get_ticks_usec()
+	if _core_reachable and _hello_acked:
+		note_state_gap((now_us - _last_state_us) / 1000.0, now_us)
+	_last_state_us = now_us
 	if not _core_reachable:
 		_core_reachable = true
 		print("Core de nouveau joignable.")

@@ -15,7 +15,7 @@ import time
 from dataclasses import asdict, dataclass
 from typing import Any, Callable
 
-from . import __version__
+from . import __version__, latency_log
 from .ipc_budget import encode, fit_state
 
 log = logging.getLogger("ipc_server")
@@ -238,6 +238,7 @@ class IpcServer:
             "type": "input",
             "v": CONTRACT_VERSION,
             "event": event_name,
+            **latency_log.ipc_fields(),   # latence_id, latence_t : seulement avec `--latence` (lot X7)
         }
         self.send_raw(msg)
 

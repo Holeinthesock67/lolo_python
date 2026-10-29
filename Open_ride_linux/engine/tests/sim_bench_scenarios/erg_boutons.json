@@ -1,0 +1,146 @@
+{
+  "description": "Boutons de l'ERG (essai J7, lot O17) sur erg_court : + et − courts et longs, Page haut et bas, Z (bloc suivant), Y puis Échap (pause, reprise), au Click simulé puis au clavier ; aucun bonus en ERG (T11 §4).",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3,
+    "rider_power_w": 200,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "inputs": [
+    {
+      "t": 72,
+      "button": "+",
+      "bias": 2,
+      "recette": "J7 au Click"
+    },
+    {
+      "t": 80,
+      "button": "-",
+      "bias": -2,
+      "recette": "J7 au Click"
+    },
+    {
+      "t": 88,
+      "button": "+",
+      "duration_s": 1.2,
+      "bias": 10,
+      "recette": "J7 au Click"
+    },
+    {
+      "t": 98,
+      "button": "-",
+      "duration_s": 1.2,
+      "bias": -10,
+      "recette": "J7 au Click"
+    },
+    {
+      "t": 162,
+      "key": "Equal",
+      "hold_ms": 150,
+      "bias": 2,
+      "recette": "J7 au clavier"
+    },
+    {
+      "t": 170,
+      "key": "Minus",
+      "hold_ms": 150,
+      "bias": -2,
+      "recette": "J7 au clavier"
+    },
+    {
+      "t": 178,
+      "key": "PageUp",
+      "hold_ms": 150,
+      "bias": 10,
+      "recette": "J7 au clavier"
+    },
+    {
+      "t": 188,
+      "key": "PageDown",
+      "hold_ms": 150,
+      "bias": -10,
+      "recette": "J7 au clavier"
+    },
+    {
+      "t": 196,
+      "key": "Equal",
+      "hold_ms": 1100,
+      "bias": 10,
+      "recette": "J7 au clavier"
+    },
+    {
+      "t": 206,
+      "key": "Z",
+      "hold_ms": 150,
+      "block": 1,
+      "recette": "J7 au clavier"
+    },
+    {
+      "t": 222,
+      "key": "Y",
+      "hold_ms": 150,
+      "state": "PAUSED",
+      "recette": "J7 au clavier"
+    },
+    {
+      "t": 232,
+      "key": "Escape",
+      "hold_ms": 150,
+      "state": "RUNNING",
+      "recette": "J7 au clavier"
+    },
+    {
+      "t": 246,
+      "button": "Z",
+      "block": 1,
+      "recette": "J7 au Click"
+    },
+    {
+      "t": 262,
+      "button": "Y",
+      "state": "PAUSED",
+      "recette": "J7 au Click"
+    },
+    {
+      "t": 272,
+      "button": "Y",
+      "state": "RUNNING",
+      "recette": "J7 au Click"
+    }
+  ],
+  "bench": {
+    "world": "demo",
+    "workout": "erg_court",
+    "duration_s": 300,
+    "every_s": 30,
+    "expect": [
+      {
+        "journal": "powerup",
+        "max": 0,
+        "recette": "T11 §4",
+        "label": "aucun bonus en ERG (ligne powerup)"
+      },
+      {
+        "log": "engine",
+        "motif": "event_sound kind=jingle_arch",
+        "max": 0,
+        "recette": "T11 §4",
+        "label": "aucune arche en ERG"
+      },
+      {
+        "widget": "erg_title",
+        "recette": "J7",
+        "label": "bandeau ERG à l'écran"
+      }
+    ]
+  }
+}

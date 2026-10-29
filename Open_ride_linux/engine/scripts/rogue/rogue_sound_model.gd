@@ -128,7 +128,9 @@ func update(rogue: Variant, gear: int, seq: int, now_s: float, result: String = 
 	if fresh:
 		for ev in rogue.get("events", []):
 			var e := String(ev)
-			if e == "room_won" and String(rogue.get("archetype", "")) == "boss":
+			# Trame de la victoire : le core a déjà quitté la salle (`archetype` nul, phase suivante) ;
+			# c'est la phase de la trame précédente qui dit si c'était le boss.
+			if e == "room_won" and String(_prev.get("phase", "")) == "BOSS":
 				_request("rogue_boss_won", now_s)
 			elif EVENT_SOUNDS.has(e):
 				_request(EVENT_SOUNDS[e], now_s)
