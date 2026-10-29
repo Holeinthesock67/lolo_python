@@ -737,9 +737,9 @@ func _set_metric(val: Label, text: String) -> void:
 	val.add_theme_font_size_override("font_size", size)
 
 
-## Teinte du texte d'une zone (0 = Z1), blanc sans zone.
+## Teinte du texte d'une zone (0 = Z1), encre du HUD sans zone.
 func _zone_color(zone: int) -> Color:
-	return ZONE_TEXT_COLORS[zone] if zone >= 0 and zone < ZONE_TEXT_COLORS.size() else Color.WHITE
+	return ZONE_TEXT_COLORS[zone] if zone >= 0 and zone < ZONE_TEXT_COLORS.size() else UiTheme.INK
 
 
 ## Met à jour les valeurs et le profil d'altitude.
