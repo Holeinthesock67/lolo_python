@@ -791,7 +791,8 @@ def _scenes(s: Session) -> None:
         s.check("bots", "bot devant visible dans le champ de la caméra", b.get("shown") == 2 and b.get("in_view", 0) >= 1,
                 f"{b}")
         s.check_layout("bots", info)
-    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None)
+    _draft_gauge_scene(s)
+    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=None, draft_bot=None)
     time.sleep(SETTLE_S)
     shot = s.capture("sans_bot")
     if shot:
@@ -1290,6 +1291,45 @@ def _menu_scenes(s: Session) -> None:
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
     _progress_scenes(s)
+
+
+def _draft_gauge_scene(s: Session) -> None:
+    """Jauge d'abri (maquette C validée le 29 octobre) : un bot à 6 m devant donne 13,5 % d'abri (« Abri 30 % ») ;
+    réglage `render.draft_gauge` coupé par défaut, rien au-dessus du bot ; à « on », arc au-dessus du bot, dans le
+    champ de la caméra, avec « 30 % » en medium et high ; coupé à nouveau, plus rien."""
+    core = s.core
+
+    def gauge_setting(value: str) -> None:
+        core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+            {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+             "value": value, "choices": ["off", "on"], "applies": "now"}]})
+        time.sleep(0.6)
+
+    s_now = core.current_s()
+    core.set_scene(speed=0.0, bots=[{"id": "bot1", "name": "Bot 250 W", "s": s_now + 6.0, "v": 0.0, "kind": "constant"}],
+                   bot_ahead="bot1", bot_behind=None, jerseys=None, draft=0.135, draft_bot="bot1")
+    time.sleep(SETTLE_S)
+    shot = s.capture("jauge_abri_coupee")
+    if shot:
+        g = shot[1].get("draft_gauge", {})
+        s.check("jauge_abri_coupee", "réglage coupé par défaut : pas de jauge", g.get("visible") is False, f"{g}")
+    gauge_setting("on")
+    shot = s.capture("jauge_abri")
+    if shot:
+        img, info = shot
+        g = info.get("draft_gauge", {})
+        s.check("jauge_abri", "jauge au-dessus du bot qui abrite, dans l'image",
+                g.get("visible") and g.get("bot") == "bot1" and g.get("on_screen"), f"{g}")
+        want = "" if info.get("quality") == "low" else "30 %"
+        s.check("jauge_abri", f"texte sous l'arc : « {want} »", g.get("text") == want, f"{g.get('text')!r}")
+        s.check("jauge_abri", "pastille du HUD au même pourcentage", info["widgets"]["draft"]["text"] == "Abri 30 %",
+                f"{info['widgets']['draft']['text']!r}")
+        s.check_layout("jauge_abri", info)
+    gauge_setting("off")
+    shot = s.capture("jauge_abri_retiree")
+    if shot:
+        g = shot[1].get("draft_gauge", {})
+        s.check("jauge_abri_retiree", "réglage recoupé : jauge cachée", g.get("visible") is False, f"{g}")
 
 
 def _camera_scenes(s: Session) -> None:
