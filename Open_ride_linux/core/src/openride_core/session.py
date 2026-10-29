@@ -30,6 +30,7 @@ from .config import GPX_DIR, OPENRIDE_HOME, WORKOUTS_DIR, Config
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
+from . import latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
@@ -335,14 +336,14 @@ class CoreSession:
         now = time.time()
         if self._rec:
             if new == "PAUSED" and old == "RUNNING":
-                self._rec.event("pause", now)
+                self._rec.event("pause", now, reason or "user")
             elif new == "RUNNING" and old == "PAUSED":
                 self._rec.event("resume", now)
         if self.erg:
             self.erg.paused = new == "PAUSED"   # l'ERG suit la pause de la séance (Y), seule pause (§7.1)
             self._sync_erg_state()
         if self.race and new == "PAUSED" and old == "RUNNING":
-            self.race.pause(reason or "user")   # passages en cours annulés (T4)
+            self.race.pause(reason or "user")   # pause Y : passages annulés ; coupure subie : suspendus (T4)
         if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
             self._release_trainer()
 
@@ -613,6 +614,9 @@ class CoreSession:
                 ts=round(time.time(), 3), t=round(self._t_session, 2), distance=round(st.s, 2),
                 speed=round(st.v, 3), power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(out.grade_enemy, 2), mode="ROGUE", gear=rg.gear, grade_sent=st.grade_sent))
+        if rg.done:   # comme l'arrivée d'un parcours : la séance se termine d'elle-même, avec le bilan
+            log.info("Run Cyber-Rogue terminée : %s.", rg.engine.result)
+            self._finish(True)
 
     def _choose_start_workout(self, args: dict) -> bool:
         """`start` avec `ftp_test` ou `plan_day` : choisit l'entraînement avant de démarrer.
@@ -1466,6 +1470,7 @@ class CoreSession:
             # des braquets.
             erg.change_bias(BIAS_STEPS[ev])
             self._sync_erg_state()
+            latency_log.expect_cp()   # nouvelle cible ERG écrite au Control Point
             return
         n = self.cfg.gearing.long_press_gears
         if ev == InputEvent.PLUS_SHORT:
@@ -1478,6 +1483,7 @@ class CoreSession:
             self.gearing.shift_down(n)
         self.state.gear = self.gearing.k
         self._shift_pending = True   # le changement de braquet doit se sentir tout de suite
+        latency_log.expect_cp()
 
     def _drain_inputs(self) -> None:
         if self._identify and time.monotonic() > self._identify["until"]:
@@ -1485,11 +1491,12 @@ class CoreSession:
         for provider in self.inputs:
             while not provider.events.empty():
                 ev = provider.events.get_nowait()
-                if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
-                        and getattr(provider, "_conn_address", "") not in ("", "?", None):
-                    self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
-                    continue
-                self._handle_input(ev)
+                with latency_log.handling(provider):   # lot X7 : étage « evenement » de l'appui suivi
+                    if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
+                            and getattr(provider, "_conn_address", "") not in ("", "?", None):
+                        self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
+                        continue
+                    self._handle_input(ev)
         # Statut d'entrée : celui du premier fournisseur (Click s'il est configuré) ; la paire de
         # Click est « connectée » dès qu'un des deux boîtiers l'est.
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
@@ -1738,7 +1745,7 @@ class CoreSession:
                                     source=self._journal_source())
         if rs.running:
             # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
-            self._rec.event("pause", rs.last_ts)
+            self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
@@ -1774,7 +1781,7 @@ class CoreSession:
         self._rec = SessionRecorder(self.journal_dir, "rogue", on_failure=self._on_recording_failure,
                                     resume_path=path, lines=rs.lines, source=self._journal_source())
         if rs.running:
-            self._rec.event("pause", rs.last_ts)
+            self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
