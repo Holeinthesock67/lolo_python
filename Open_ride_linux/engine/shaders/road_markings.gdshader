@@ -15,6 +15,8 @@ shader_type spatial;
 // variation lente de teinte (25 m) et rapiéçages plus sombres et plus rugueux ; bandes de roulement
 // plus lisses ; bas-côtés en gravillons et terre avec une limite irrégulière. `grain` règle le relief
 // (0 : chaussée lisse d'avant Y11).
+// Lot Y16 (essai) : parallaxe du grain (« parallax occlusion mapping ») en `high`, `surface_parallax_steps`
+// pas le long du rayon de vue (0 : coupé) ; le relief masque ce qui est derrière lui en vue rasante.
 #include "res://shaders/surface_detail.gdshaderinc"
 uniform vec3 road_color : source_color = vec3(0.29, 0.29, 0.30);
 uniform vec3 line_color : source_color = vec3(0.95, 0.95, 0.95);
@@ -35,6 +37,8 @@ uniform float digit_w_m = 1.2;
 uniform float digit_lane_m = 1.5;     // centre du chiffre, à droite de l'axe
 uniform float grain : hint_range(0.0, 2.0) = 1.0;
 uniform vec3 shoulder_color : source_color = vec3(0.36, 0.33, 0.27);
+global uniform int surface_parallax_steps;
+const float PARALLAX_DEPTH_M = 0.012;   // relief le plus haut du grain (gravillons et bosses), en mètres
 
 const int SEG[10] = int[](0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F);
 
@@ -63,12 +67,68 @@ float digit_mask(int d, vec2 uv) {
 	return o;
 }
 
+// Hauteur du grain de l'enrobé au point `p` (m) : gravillons de 4 cm et bosses de 25 cm.
+float grain_height(vec2 p, float vis_fine, float vis_mid, out vec2 peb, out float stone) {
+	peb = sd_pebbles(p / 0.04);
+	stone = 1.0 - smoothstep(0.15, 0.55, peb.x);
+	return (stone * 0.004 * (0.6 + 0.8 * peb.y)) * vis_fine + sd_noise(p / 0.25) * 0.006 * vis_mid;
+}
+
+// Parallaxe : point de la surface en relief vu à travers le point `p0` du ruban, rayon de vue `vt`
+// (repère de la route : x en travers, y le long, z vers le haut). La surface est creusée sous le ruban.
+vec2 parallax(vec2 p0, vec3 vt, float vis_fine, float vis_mid) {
+	vec2 step_xy = -vt.xy / max(vt.z, 0.08) * (PARALLAX_DEPTH_M / float(surface_parallax_steps));
+	float dz = PARALLAX_DEPTH_M / float(surface_parallax_steps);
+	vec2 peb;
+	float stone;
+	vec2 p = p0;
+	float depth = 0.0;
+	float prev_gap = 0.0;
+	for (int i = 0; i < 32; i++) {
+		if (i >= surface_parallax_steps) break;
+		float gap = (PARALLAX_DEPTH_M - grain_height(p, vis_fine, vis_mid, peb, stone)) - depth;
+		if (gap <= 0.0) {
+			// Entre le pas précédent et celui-ci : interpolation linéaire
+			float t = prev_gap / max(prev_gap - gap, 1e-6);
+			return p - step_xy * (1.0 - t);
+		}
+		prev_gap = gap;
+		p += step_xy;
+		depth += dz;
+	}
+	return p;
+}
+
 void fragment() {
 	float total = road_width_m + 2.0 * shoulder_m;
 	float lat = UV.x * total - total * 0.5;          // m, positif à droite
 	float s = UV.y * v_repeat_m;                       // m le long du parcours
 	float aa_lat = max(fwidth(lat), 1e-4);
 	float aa_s = max(fwidth(s), 1e-4);
+	float vis_fine = sd_visible(vec2(lat, s), 0.04) * grain;
+	float vis_mid = sd_visible(vec2(lat, s), 0.25) * grain;
+	// Repère de la route dans l'espace de la vue, tiré des dérivées d'écran de (lat, s) ; dérivées
+	// prises hors de toute branche (fausses dans un flot non uniforme)
+	vec2 dpx = vec2(dFdx(lat), dFdx(s));
+	vec2 dpy = vec2(dFdy(lat), dFdy(s));
+	vec3 dvx = dFdx(VERTEX);
+	vec3 dvy = dFdy(VERTEX);
+	bool shifted = false;
+	vec3 t_lat = vec3(1.0, 0.0, 0.0);
+	vec3 t_s = vec3(0.0, 0.0, 1.0);
+	if (surface_parallax_steps > 0 && vis_fine > 0.0) {
+		float det = dpx.x * dpy.y - dpx.y * dpy.x;
+		if (abs(det) > 1e-12) {
+			t_lat = normalize((dvx * dpy.y - dvy * dpx.y) / det);
+			t_s = normalize((dvy * dpx.x - dvx * dpy.x) / det);
+			vec3 v = normalize(-VERTEX);
+			vec3 vt = vec3(dot(v, t_lat), dot(v, t_s), dot(v, NORMAL));
+			vec2 q = parallax(vec2(lat, s), vt, vis_fine, vis_mid);
+			lat = q.x;
+			s = q.y;
+			shifted = true;
+		}
+	}
 
 	float paint = 0.0;
 	// Ligne médiane discontinue
@@ -97,11 +157,9 @@ void fragment() {
 	paint *= (1.0 - worn) * (1.0 - 0.35 * wear);
 
 	// Grain de l'enrobé (A1) : gravillons de 4 cm et bosses de 25 cm, effacés au loin
-	float vis_fine = sd_visible(p, 0.04) * grain;
-	float vis_mid = sd_visible(p, 0.25) * grain;
-	vec2 peb = sd_pebbles(p / 0.04);
-	float stone = 1.0 - smoothstep(0.15, 0.55, peb.x);
-	float bumps = sd_noise(p / 0.25);
+	vec2 peb;
+	float stone;
+	float h = grain_height(p, vis_fine, vis_mid, peb, stone);
 	// Variation lente (A2) et rapiéçages (A3)
 	float macro = sd_noise(p / 25.0) - 0.5;
 	vec2 cell = floor(p / vec2(1.5, 5.0));
@@ -114,9 +172,20 @@ void fragment() {
 	float lane_off = abs(abs(lat) - road_width_m * 0.25);
 	float track = (1.0 - smoothstep(0.25, 0.55, abs(lane_off - 0.8))) * on_road;
 
-	float h = (stone * 0.004 * (0.6 + 0.8 * peb.y)) * vis_fine + bumps * 0.006 * vis_mid;
 	h *= 1.0 - 0.7 * paint;
-	NORMAL = sd_bump(NORMAL, VERTEX, h * (1.0 - 0.6 * patch));
+	vec3 n_bump = sd_bump(NORMAL, VERTEX, h * (1.0 - 0.6 * patch));
+	if (shifted) {
+		// Point déplacé par la parallaxe : ses dérivées d'écran sautent d'un caillou à l'autre (points
+		// noirs) ; pente du relief par différences finies de 5 mm le long de la route et en travers.
+		float k = (1.0 - 0.7 * paint) * (1.0 - 0.6 * patch);
+		vec2 peb2;
+		float st2;
+		float h0 = grain_height(p, vis_fine, vis_mid, peb2, st2);
+		float d_lat = (grain_height(p + vec2(0.005, 0.0), vis_fine, vis_mid, peb2, st2) - h0) / 0.005;
+		float d_s = (grain_height(p + vec2(0.0, 0.005), vis_fine, vis_mid, peb2, st2) - h0) / 0.005;
+		n_bump = normalize(NORMAL - k * (d_lat * t_lat + d_s * t_s));
+	}
+	NORMAL = n_bump;
 
 	vec3 asphalt = road_color * (1.0 + macro * 0.12 - patch * 0.12 - track * 0.05);
 	asphalt *= 1.0 + (peb.y - 0.5) * 0.35 * stone * vis_fine;

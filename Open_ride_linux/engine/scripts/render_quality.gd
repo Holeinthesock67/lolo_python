@@ -112,6 +112,7 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 		forward_plus: bool) -> void:
 	viewport.msaa_3d = MSAA[int(img["msaa"])]
 	viewport.anisotropic_filtering_level = ANISOTROPY[int(img["anisotropy"])]
+	RenderingServer.global_shader_parameter_set("surface_parallax_steps", int(img["parallax_steps"]))
 	# Anticrénelage d'écran : Forward+ seulement, comme l'occlusion et la brume (Compatibility le refuse en 4.7)
 	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if forward_plus and bool(img["fxaa"]) \
 			else Viewport.SCREEN_SPACE_AA_DISABLED

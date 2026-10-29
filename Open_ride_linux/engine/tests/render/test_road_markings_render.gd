@@ -95,6 +95,32 @@ func _run() -> void:
 	# Chiffre 1 : segments b et c (côté droit du chiffre, vu du cycliste) sur la voie de droite
 	_check(_close(px.call(42.0, 41.2, 2.0), line) and _close(px.call(42.0, 41.2, 1.0), road),
 		"chiffre « 1 » peint sur la voie de droite à 40 m")
+	# Parallaxe du grain (lot Y16) : vue rasante, le relief déplace le motif sans trou ni pixel noir ; vue
+	# de dessus, presque rien ne bouge (les marquages restent à leur place).
+	vp.debug_draw = Viewport.DEBUG_DRAW_DISABLED
+	cam.projection = Camera3D.PROJECTION_PERSPECTIVE
+	cam.fov = 45.0
+	cam.look_at_from_position(Vector3(10.0, y0 + 0.9, 2.4), Vector3(16.0, y0, 1.6), Vector3.UP)
+	var grazing := {}
+	for steps in [0, 12]:
+		RenderingServer.global_shader_parameter_set("surface_parallax_steps", steps)
+		for i in 5:
+			await process_frame
+		grazing[steps] = vp.get_texture().get_image()
+	RenderingServer.global_shader_parameter_set("surface_parallax_steps", 0)
+	var diff := 0.0
+	var dark := 0
+	var a: Image = grazing[0]
+	var b: Image = grazing[12]
+	for y in range(SIZE / 2, SIZE):
+		for x in range(SIZE):
+			var cb := b.get_pixel(x, y)
+			diff += absf(a.get_pixel(x, y).get_luminance() - cb.get_luminance())
+			if cb.get_luminance() < 0.01:
+				dark += 1
+	diff /= float(SIZE * SIZE / 2)
+	_check(diff > 0.002, "parallaxe : le grain bouge en vue rasante (écart moyen %.4f)" % diff)
+	_check(dark == 0, "parallaxe : aucun pixel noir sur la chaussée (%d)" % dark)
 	vp.queue_free()
 	await process_frame
 	print("test_road_markings_render : %d vérifications, %d échecs" % [_checked, _failures])

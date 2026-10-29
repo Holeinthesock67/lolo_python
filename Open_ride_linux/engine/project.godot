@@ -30,6 +30,10 @@ textures/vram_compression/import_etc2_astc=true
 
 [shader_globals]
 
+surface_parallax_steps={
+"type": "int",
+"value": 0
+}
 wind_dir={
 "type": "vec3",
 "value": Vector3(0, 0, 0)

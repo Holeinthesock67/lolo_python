@@ -57,8 +57,10 @@ const PRESETS := {
 ## - `mesh_lod_threshold` : erreur tolérée des LOD automatiques en pixels (plus petit = plus fin).
 ## - `anisotropy` : filtrage anisotrope des textures vues en biais (route, herbe), 2, 4, 8 ou 16×
 ##   (réglage du viewport depuis Godot 4.4, étape 4 d'Y13).
+## - `parallax_steps` : pas de la parallaxe du grain de la route (lot Y16, essai ; 0 : coupée).
 const IMAGE := {
 	"low": {
+		"parallax_steps": 0,
 		"anisotropy": 4,
 		"msaa": 0,
 		"fxaa": true,
@@ -73,6 +75,7 @@ const IMAGE := {
 		"mesh_lod_threshold": 2.0,
 	},
 	"medium": {
+		"parallax_steps": 0,
 		"anisotropy": 8,
 		"msaa": 4,
 		"fxaa": false,
@@ -87,6 +90,7 @@ const IMAGE := {
 		"mesh_lod_threshold": 1.0,
 	},
 	"high": {
+		"parallax_steps": 12,
 		"anisotropy": 16,
 		"msaa": 4,
 		"fxaa": false,

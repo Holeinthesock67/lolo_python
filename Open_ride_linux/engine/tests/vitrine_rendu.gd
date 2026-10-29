@@ -40,6 +40,7 @@ const SETTLE_FRAMES := 30
 ## Vues : position de la caméra, point visé, champ vertical (degrés).
 const VIEWS := {
 	"route": [Vector3(0.8, 1.4, 0.0), Vector3(0.0, 0.0, -9.0), 70.0],
+	"route_rasante": [Vector3(2.4, 0.9, 0.0), Vector3(1.6, 0.0, -6.0), 45.0],
 	"herbe": [Vector3(2.6, 1.4, 0.0), Vector3(5.0, 0.4, -14.0), 70.0],
 	"herbe_loin": [Vector3(0.0, 1.4, 0.0), Vector3(0.0, 0.8, -60.0), 70.0],
 	"foule": [Vector3(1.0, 1.5, -2.0), Vector3(4.6, 1.1, -10.0), 55.0],
