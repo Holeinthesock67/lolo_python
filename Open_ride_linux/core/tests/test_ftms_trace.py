@@ -284,8 +284,9 @@ def test_log_report_absent_without_trace():
 
 # --- 7. Cadence et coût de journalisation (Critère 6) -----------------------------------
 
-def test_trace_rate_limit_under_2_lines_per_second(caplog):
-    """Vérifie que la cadence des lignes FTMS ne dépasse pas 2 lignes/s en moyenne."""
+def test_trace_rate_limit_under_3_lines_per_second(caplog):
+    """Vérifie que la cadence des lignes FTMS reste bornée : 2 lignes/s de commandes au plus, plus la
+    ligne de mesures (une par notification Indoor Bike Data, soit environ 1 par seconde)."""
     async def scenario():
         world = build_world(READY, hr=False, click=False)
         cfg = TrainerConfig(trace_ftms=True)
@@ -323,7 +324,7 @@ def test_trace_rate_limit_under_2_lines_per_second(caplog):
         steady_records = caplog.records[idx_start:idx_end]
         ftms_lines = [rec.message for rec in steady_records if rec.message.startswith("FTMS")]
         rate = len(ftms_lines) / duration
-        assert rate <= 2.0, f"Cadence trop élevée : {rate:.2f} lignes/s ({len(ftms_lines)} lignes en {duration:.2f} s)"
+        assert rate <= 3.0, f"Cadence trop élevée : {rate:.2f} lignes/s ({len(ftms_lines)} lignes en {duration:.2f} s)"
 
     asyncio.run(scenario())
 
@@ -341,7 +342,7 @@ def _ibd(speed_kmh: float, cadence_rpm: float, power_w: int, resistance: int | N
 
 @pytest.mark.parametrize("trace, lines", [(True, 3), (False, 0)])
 def test_trace_logs_trainer_measures_each_notification(caplog, trace, lines):
-    """Avec trace_ftms : vitesse et niveau de résistance du trainer à côté de la consigne, une ligne par notification, 0,5 s d'écart au moins."""
+    """Avec trace_ftms : vitesse et niveau de résistance du trainer à côté de la consigne, une ligne par notification, 0,9 s d'écart au moins."""
     now = [100.0]
     drv = FtmsDriver(TrainerConfig(trace_ftms=trace), BikeConfig(), clock=lambda: now[0])
     drv._last_sent = ("sim", 0.68)
@@ -406,3 +407,19 @@ def test_brake_loss_retried_at_most_every_ten_seconds():
     drv.set_sim_grade(1.0)
     _drive(drv, now, [(0.0, 400, 80), (1.0, 0, 80), (2.0, 400, 80), (3.0, 0, 80), (12.0, 400, 80), (13.0, 0, 80)])
     assert drv.brake_losses == 2   # 1 s et 13 s : jamais deux fois en moins de 10 s
+
+
+# --- 7. Spin Down Status et statuts à paramètres (hypothèse du 29 octobre) -------------------------
+
+def test_spin_down_status_is_logged_even_without_trace(caplog):
+    drv = FtmsDriver(TrainerConfig(trace_ftms=False), BikeConfig())
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        drv._on_status(None, bytearray([0x14, 0x01]))
+    assert any("Spin Down Status" in r.getMessage() and "01" in r.getMessage() for r in caplog.records)
+
+
+def test_status_parameters_are_traced(caplog):
+    drv = FtmsDriver(TrainerConfig(trace_ftms=True), BikeConfig())
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        drv._on_status(None, bytearray([0x02, 0x01]))
+    assert any("octets 01" in r.getMessage() for r in caplog.records)

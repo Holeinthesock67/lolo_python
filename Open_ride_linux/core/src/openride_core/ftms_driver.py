@@ -33,7 +33,7 @@ FORCE_RECONNECT_S = 10.0  # sans donnée au-delà : on coupe et on reconnecte
 RESEND_S = 2.0           # la consigne est renvoyée au moins toutes les 2 s
 MIN_SEND_INTERVAL_S = 0.2
 GRADE_EPSILON_PCT = 0.1
-TRACE_IBD_EVERY_S = 0.5   # avec trace_ftms : une ligne de mesures par notification Indoor Bike Data (≈ 1 Hz), 2 lignes/s au plus
+TRACE_IBD_EVERY_S = 0.9   # avec trace_ftms : une ligne de mesures par notification Indoor Bike Data (≈ 1 Hz)
 # Frein lâché par le trainer (29 octobre : 449 W puis 0 W en 2 s, à 73 tr/min et 31 km/h, sans erreur
 # ni statut) : puissance qui passe de plus de BRAKE_LOSS_FROM_W à moins de BRAKE_LOSS_TO_W en
 # BRAKE_LOSS_WINDOW_S, pédales et volant encore en mouvement ; une reprise de contrôle au plus
@@ -516,6 +516,8 @@ class FtmsDriver:
             elif code == 0x12 and len(data) >= 7:
                 _, grade, _, _ = struct.unpack_from("<hhBB", data, 1)
                 valeurs = f"pente {grade / 100.0:.2f} %"
+            elif len(data) > 1:
+                valeurs = f"octets {bytes(data[1:]).hex()}"   # ex. Spin Down Status : 1 demandé, 2 réussi, 3 erreur, 4 arrêter de pédaler
             qualification = "écho probable de notre commande" if is_echo else "par un tiers"
             vals_str = f" {valeurs}" if valeurs else ""
             log.info("FTMS < statut %s%s (%s)", name, vals_str, qualification)
@@ -534,6 +536,10 @@ class FtmsDriver:
         elif code in (0x02, 0x03):
             # Arrêt voulu sur le trainer (ou clé de sécurité) : pas de redémarrage forcé.
             log.info("Trainer : état machine %s", name)
+        elif code == 0x14:
+            # Spin Down Status : étalonnage lancé par le trainer, volant lancé puis frein relâché
+            # (hypothèse du décrochage du 29 octobre) ; toujours au journal, pas seulement en trace.
+            log.info("Trainer : étalonnage (Spin Down Status) %s", bytes(data[1:]).hex())
         else:
             log.debug("Trainer : état machine %s %s", name, bytes(data[1:]).hex())
 
