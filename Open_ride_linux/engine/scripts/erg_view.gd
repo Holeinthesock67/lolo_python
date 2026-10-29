@@ -70,10 +70,9 @@ func _init() -> void:
 
 func _build_ui() -> void:
 	name = "ErgView"
-	var style := StyleBoxFlat.new()
-	style.bg_color = UiTheme.PANEL_BG
-	style.set_corner_radius_all(8)
-	add_theme_stylebox_override("panel", style)
+	# Fond sombre sous la ligne des textes seulement ; le graphique en dessous garde son fond léger
+	# (UiTheme.CHART_BG), pour voir la route à travers.
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	anchor_left = 0.0
 	anchor_right = 1.0
 	anchor_top = 1.0
@@ -86,13 +85,22 @@ func _build_ui() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var vbox := VBoxContainer.new()
-	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 8)
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 0)
 	vbox.add_theme_constant_override("separation", 4)
 	add_child(vbox)
 
+	var header := PanelContainer.new()
+	header.name = "ErgHeader"
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = UiTheme.PANEL_BG
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(8)
+	header.add_theme_stylebox_override("panel", style)
+	vbox.add_child(header)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
-	vbox.add_child(row)
+	header.add_child(row)
 	title_label = _label(row, 24, true)
 	target_label = _label(row, 36, false)
 	remaining_label = _label(row, 36, false)

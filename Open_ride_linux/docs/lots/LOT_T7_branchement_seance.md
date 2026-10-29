@@ -21,7 +21,7 @@ T1 et T3 (livrés le 27 octobre), T2, T4, T5, T6, T14, T16, P2, P3 et la PR #287
 
 **À chaque pas de `RUNNING` :**
 
-- chronométrage des segments pour le cycliste et pour chaque bot (même `SegmentTimer` par coureur) ; une pause annule les passages en cours du cycliste ;
+- chronométrage des segments pour le cycliste et pour chaque bot (même `SegmentTimer` par coureur) ; une pause Y annule les passages en cours du cycliste, une pause subie (trainer perdu…) les suspend (révision du 28 octobre 2026) ;
 - bonus : `PowerUps.step(dt)`, arches franchies (`award("arch")`), bonus à la fin de chaque segment (`award("segment")`) ; `params(base)` donne les `PhysicsParams` du pas et `power(mesurée)` la puissance prise en compte ;
 - **supplément vent et aspiration avec le CdA courant** (ancien contenu de T7) : le supplément de pente de P2 et P3 (`feel = "grade"`) se calcule avec les `PhysicsParams` du pas, bonus compris ; un bonus aéro l'allège donc, sans deuxième calcul. La pente du parcours envoyée au trainer ne dépend pas des bonus (décision T-Q3) ;
 - arrivées sur les lignes de fin envoyées à `Standings.finish` ; écarts en temps de passage par `GapTracker` (T16).
