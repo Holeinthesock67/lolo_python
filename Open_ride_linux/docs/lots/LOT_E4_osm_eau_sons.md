@@ -96,7 +96,7 @@ Aucune. La couleur de l'eau, les sons par `kind` et la règle de mélange bruit 
    - parcours sans couche `vegetation` : positions identiques à celles d'E3 (même empreinte) hors de la bande des 300 m sous la limite des arbres ;
    - même parcours relancé : mêmes arbres.
 7. Sons, sur une suite de trames simulées (arrêt, 30 km/h, roue libre, passage près de 6 points d'intérêt) : jamais plus de 4 lecteurs 3D actifs, volumes à 0,5 dB près de ceux de `sound_model.gd`, aucun nœud créé après le démarrage ; un fichier `<kind>.ogg` présent remplace le son généré.
-8. Temps CPU sans écran, relevés dans le rapport : lecture et maillage d'un tronçon de 300 bâtiments (seuil 40 ms en intégration continue), génération de tous les sons au démarrage (seuil 500 ms).
+8. Temps CPU sans écran, relevés dans le rapport : lecture et maillage d'un tronçon de 300 bâtiments (seuil 40 ms en intégration continue), génération de tous les sons au démarrage (budget `sound_generation`, 1 200 ms depuis le 28/10).
 
 **Sur le PC cible (le propriétaire, GTX 1060, 1 920 × 1 080) :**
 9. Trace réelle avec un village, préréglage `low` : lignes `[perf-rendu]` dans le village, moyenne ≥ 55 images/s, jamais sous 30 ; aucun à-coup à l'entrée d'un nouveau tronçon.
@@ -113,7 +113,7 @@ Aucune. La couleur de l'eau, les sons par `kind` et la règle de mélange bruit 
 
 - **Jupe des bâtiments** : paramètre skirt_m: float = 0.0 dans engine/scripts/building_mesh.gd, parois descendant à base_y - skirt_m (3 mètres par défaut dans le streamer) pour compenser les irrégularités du relief.
 - **Arbres avec forêts OSM** : intégration dans engine/scripts/tree_renderer.gd des polygones de végétation OSM (densité nominale) et peuplement aléatoire hors polygones selon p_region.
-- **Modèle sonore spatialisé et synthèse procédurale** : engine/scripts/sound_player.gd synthétisant au lancement en < 100 ms (seuil 500 ms) les sons de vent (modulé par la vitesse), roue libre, cloche d'église, rivière, bétail et clameur de village ; gestion de 4 lecteurs 3D actifs avec fondu ; surcharge possible via fichiers .ogg dans ~/OpenRide/Sounds/.
+- **Modèle sonore spatialisé et synthèse procédurale** : engine/scripts/sound_player.gd synthétisant au lancement sous le budget `sound_generation` (1 200 ms) les sons de vent (modulé par la vitesse), roue libre, cloche d'église, rivière, bétail et clameur de village ; gestion de 4 lecteurs 3D actifs avec fondu ; surcharge possible via fichiers .ogg dans ~/OpenRide/Sounds/.
 - **Diffusion continue OSM** : engine/scripts/osm_streamer.gd chargeant les tronçons OSM en arrière-plan sans à-coup, avec au plus 3 nœuds mesh par tronçon (bâtiments, cours d'eau, plans d'eau) ; intégration dans world_streamer.gd et main.gd.
 - **Tests unitaires et headless** :
   - engine/tests/unit/test_building_mesh.gd (19 vérifications avec test de la jupe) ;
