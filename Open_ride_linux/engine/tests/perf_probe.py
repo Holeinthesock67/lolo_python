@@ -18,6 +18,11 @@ Usage, avec le vrai jeu :
 fermé), `--duration` ou Ctrl+C, puis écrit le rapport dans `~/OpenRide/sonde/<date>_<heure>/`.
 `report DOSSIER` refait le rapport d'un dossier déjà mesuré. Le banc simulé l'utilise aussi :
 `sim_bench.py --probe` (rapport dans le dossier du scénario).
+
+Saccades et démarrage (lot X15) : l'engine écrit aussi, à côté de son fichier, `saccades.csv` (chaque
+image de plus de 33 ms avec sa cause : tuile de terrain, tronçon OSM, arbres, capture, ou « inconnue »),
+`taches.csv` (durée des tâches de fond) et `demarrage.txt` (première image jouable). Le rapport y ajoute
+les 20 pires saccades, le compte par cause, les durées des tâches de fond et le temps de démarrage.
 Bibliothèque standard seulement.
 """
 
@@ -255,6 +260,10 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         v = values(rows, key)
         if v:
             out["stats"][key] = {"p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
+    # Images d'une capture d'écran de test (lot X35) : déjà hors p99 et pire image côté engine, comptées à part.
+    cap = values(rows, "capture")
+    if cap and sum(cap) > 0:
+        out["captures"] = {"frames": int(sum(cap)), "max_ms": max(values(rows, "capture_max_ms"), default=0.0)}
     if ts and out["duration_s"] >= 120.0:
         t_first, t_last = min(ts) + 60.0, max(ts) - 60.0
         for key in DRIFT:
@@ -273,6 +282,10 @@ def summary_text(summary: dict[str, Any], title: str) -> str:
         lab, unit = labels[key]
         name = f"{lab} ({unit})" if unit else lab
         lines.append(f"  {name:<28} {st['p50']:>10.1f} {st['p99']:>10.1f} {st['max']:>10.1f}")
+    if summary.get("captures"):
+        c = summary["captures"]
+        lines += ["", f"Images des captures d'écran mises à part : {c['frames']} (pire {c['max_ms']:.0f} ms), "
+                  "hors temps d'image p99, pire image et saccades."]
     if summary["drift"]:
         lines += ["", "Dérive (médiane de la dernière minute − première minute) :"]
         for key, d in summary["drift"].items():
@@ -348,9 +361,11 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
         stutters = sum(w > lim["stutter_ms"] for w in worst)
         hours = max((max(ts) - warm) / 3600.0, 1e-6)
         rate = stutters / hours
+        shots = sum(w > lim["stutter_ms"] for w in values(steady, "capture_max_ms"))
         out.append((rate <= lim["max_stutters_per_h"] if real_window else None, "endurance : saccades",
                     f"{stutters} seconde(s) avec une image de plus de {lim['stutter_ms']:.0f} ms, {rate:.1f} par heure"
-                    f" (seuil {lim['max_stutters_per_h']:.0f})"))
+                    f" (seuil {lim['max_stutters_per_h']:.0f})"
+                    + (f" ; {shots} autre(s) due(s) aux captures d'écran, non comptée(s)" if shots else "")))
     long_enough = max(ts) - warm >= lim["min_slope_span_s"]
     labels = {k: lab for k, lab, _ in SUMMARY}
     for key, max_slope in lim["slopes_mb_per_h"].items():
@@ -381,6 +396,68 @@ def quality_check(summary: dict[str, Any], wanted: str) -> tuple[bool, str]:
     if any(p != wanted for p in seen):
         return False, f"qualité voulue {wanted}, mesurée en {', puis '.join(seen)}"
     return True, f"{wanted} sur toute la mesure"
+
+
+# --- saccades et démarrage (lot X15) -----------------------------------------------------
+
+STALL_TOP = 20
+STARTUP_PREFIX = "Démarrage : première image jouable à "
+
+
+def read_stalls(engine_dir: Path) -> dict[str, Any] | None:
+    """Fichiers X15 de l'engine dans `engine_dir` : saccades, tâches de fond et démarrage (ms, ou None).
+    None si l'engine n'en a écrit aucun (engine plus ancien)."""
+    sac, tasks = engine_dir / "saccades.csv", engine_dir / "taches.csv"
+    start = engine_dir / "demarrage.txt"
+    if not (sac.is_file() or tasks.is_file() or start.is_file()):
+        return None
+    startup = None
+    if start.is_file():
+        text = start.read_text(encoding="utf-8").strip()
+        if text.startswith(STARTUP_PREFIX):
+            try:
+                startup = float(text[len(STARTUP_PREFIX):].split()[0])
+            except (ValueError, IndexError):
+                pass
+    return {"saccades": read_engine_csv(sac), "tasks": read_engine_csv(tasks), "startup_ms": startup}
+
+
+def stall_summary(stalls: dict[str, Any]) -> dict[str, Any]:
+    """Compte des saccades par cause (nombre, pire), les STALL_TOP pires, durées des tâches par type."""
+    sac = [r for r in stalls["saccades"] if isinstance(r.get("frame_ms"), float)]
+    causes: dict[str, dict[str, float]] = {}
+    for r in sac:
+        c = causes.setdefault(str(r.get("cause") or "inconnue"), {"count": 0, "worst_ms": 0.0, "total_ms": 0.0})
+        c["count"] += 1
+        c["worst_ms"] = max(c["worst_ms"], r["frame_ms"])
+        c["total_ms"] += r["frame_ms"]
+    tasks: dict[str, dict[str, float]] = {}
+    for kind in sorted({str(r.get("kind")) for r in stalls["tasks"]}):
+        v = [float(r["ms"]) for r in stalls["tasks"] if str(r.get("kind")) == kind and isinstance(r.get("ms"), float)]
+        if v:
+            tasks[kind] = {"count": len(v), "p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
+    return {"count": len(sac), "causes": dict(sorted(causes.items(), key=lambda kv: -kv[1]["count"])),
+            "top": sorted(sac, key=lambda r: -r["frame_ms"])[:STALL_TOP], "tasks": tasks,
+            "startup_ms": stalls["startup_ms"]}
+
+
+def stall_text(st: dict[str, Any]) -> str:
+    lines = ["Démarrage : " + (f"première image jouable à {st['startup_ms'] / 1000:.1f} s"
+                               if st["startup_ms"] is not None else "pas de première image jouable notée"),
+             "", f"Saccades (images de plus de 33 ms) : {st['count']}"]
+    for cause, c in st["causes"].items():
+        lines.append(f"  {cause:<10} {c['count']:>5} image(s), pire {c['worst_ms']:.0f} ms, total {c['total_ms'] / 1000:.1f} s")
+    if st["top"]:
+        lines += ["", f"Les {len(st['top'])} pires saccades :", f"  {'t (s)':>8} {'ms':>7} {'distance':>9}  cause : étapes"]
+        for r in st["top"]:
+            dist = r.get("distance_m")
+            lines.append(f"  {r.get('t_s', 0.0):>8.1f} {r['frame_ms']:>7.1f} "
+                         f"{(f'{dist:.0f} m') if isinstance(dist, float) else '':>9}  {r.get('cause', '')} : {r.get('steps', '')}")
+    if st["tasks"]:
+        lines += ["", "Tâches de fond (ms) :", f"  {'type':<10} {'nombre':>7} {'médiane':>8} {'p99':>8} {'max':>8}"]
+        for kind, t in st["tasks"].items():
+            lines.append(f"  {kind:<10} {t['count']:>7} {t['p50']:>8.1f} {t['p99']:>8.1f} {t['max']:>8.1f}")
+    return "\n".join(lines) + "\n"
 
 
 # --- écriture ------------------------------------------------------------------------------
@@ -424,12 +501,22 @@ def svg_chart(rows: list[dict[str, Any]], title: str, series: tuple[tuple[str, s
     return "".join(parts)
 
 
-def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de performance du moteur") -> dict[str, Any]:
-    """Écrit sonde.csv, sonde.txt et rapport.html dans `out` ; renvoie le résumé."""
+def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de performance du moteur",
+                 engine_dir: Path | None = None) -> dict[str, Any]:
+    """Écrit sonde.csv, sonde.txt et rapport.html dans `out` ; renvoie le résumé. Avec `engine_dir` (dossier
+    du fichier de l'engine), y ajoute les saccades, les tâches de fond et le démarrage (lot X15), recopiés
+    dans `out`."""
     out.mkdir(parents=True, exist_ok=True)
     write_csv(rows, out / "sonde.csv")
     summary = summarize(rows)
     text = summary_text(summary, title)
+    stalls = read_stalls(engine_dir) if engine_dir is not None else None
+    if stalls is not None:
+        summary["stalls"] = stall_summary(stalls)
+        text += "\n" + stall_text(summary["stalls"])
+        for name in ("saccades.csv", "taches.csv", "demarrage.txt"):
+            if (engine_dir / name).is_file() and (engine_dir / name).resolve() != (out / name).resolve():
+                shutil.copyfile(engine_dir / name, out / name)
     (out / "sonde.txt").write_text(text, encoding="utf-8")
     charts = "\n".join(c for c in (svg_chart(rows, t, s) for t, s in CHARTS) if c)
     summary["presets"] = presets_of(rows)
@@ -480,7 +567,7 @@ def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float =
         print()
     sampler.stop()
     rows = merge(read_engine_csv(engine_csv), sampler.rows)
-    summary = write_report(rows, out)
+    summary = write_report(rows, out, engine_dir=engine_csv.parent)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
     print(f"Rapport : {out / 'rapport.html'}")
     return _quality_verdict(summary, quality)
@@ -517,7 +604,7 @@ def main(argv: list[str] | None = None) -> int:
         print(f"Aucune mesure dans {src}")
         return 1
     out = args.out or (args.source if args.source.is_dir() else args.source.parent)
-    summary = write_report(rows, out)
+    summary = write_report(rows, out, engine_dir=src.parent)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
     return _quality_verdict(summary, args.quality)
 

@@ -1,10 +1,12 @@
 extends Node3D
 
 ## Affichage de sky_traffic_model.gd (Lot P26) : avions de ligne et leurs traînées (shaders/vehicle_far.gdshader
-## et contrail.gdshader, sans brouillard), hélicoptère et son rotor, parapentes, montgolfières
-## (shaders/vehicle.gdshader), maillages de sky_mesh.gd ; un matériau par engin (couleurs, feux à éclats,
-## brûleur). Lecteurs 3D : battement du rotor de l'hélicoptère, grondement lointain des avions
-## (`helicopter_rotor`, `airliner_rumble` de sound_player.gd), sur le bus Ambience.
+## et contrail.gdshader, sans brouillard), hélicoptère et son rotor, parapentes, paramoteurs (lot P31),
+## montgolfières (shaders/vehicle.gdshader), maillages de sky_mesh.gd ; un matériau par engin (couleurs,
+## feux à éclats, brûleur) ; une montgolfière prend le maillage de son motif d'enveloppe (`style`, lot P31 :
+## même matériau, rien à recompiler). Lecteurs 3D : battement du rotor de l'hélicoptère, grondement lointain
+## des avions, bourdonnement des paramoteurs (`helicopter_rotor`, `airliner_rumble`, `paramotor_buzz` de
+## sound_player.gd), sur le bus Ambience.
 ## Pas de class_name : charger par preload("res://scripts/sky_traffic_renderer.gd").
 ##
 ## - `setup(model, sound_player)` ; `update()` une fois par image, après `model.update`.
@@ -18,7 +20,8 @@ const ContrailShader := preload("res://shaders/contrail.gdshader")
 const AudioMix := preload("res://scripts/audio_mix.gd")
 
 const POOL := SkyModel.MAX_AT_ONCE
-const SOUND := {"airliner": ["airliner_rumble", 2.0, 600.0, 4000.0], "helicopter": ["helicopter_rotor", 2.0, 60.0, 1500.0]}
+const SOUND := {"airliner": ["airliner_rumble", 2.0, 600.0, 4000.0], "helicopter": ["helicopter_rotor", 2.0, 60.0, 1500.0],
+	"paramotor": ["paramotor_buzz", -2.0, 40.0, 1000.0]}
 
 var model = null
 var _sound = null
@@ -27,14 +30,16 @@ var _meshes: Dictionary = {}
 
 
 func _init() -> void:
-	for kind in ["airliner", "helicopter", "rotor", "paraglider", "balloon", "contrail"]:
+	for kind in ["airliner", "helicopter", "rotor", "paraglider", "paramotor", "contrail"]:
 		_meshes[kind] = SkyMesh.build(kind)
+	for style in range(SkyMesh.BALLOON_STYLES.size()):
+		_meshes[_mesh_key("balloon", style)] = SkyMesh.build("balloon", style)
 	for kind in POOL:
 		var list := []
 		for i in range(POOL[kind]):
 			var root := MeshInstance3D.new()
 			root.name = "Sky_%s_%d" % [kind, i]
-			root.mesh = _meshes[kind]
+			root.mesh = _meshes[_mesh_key(kind, 0)]
 			root.visible = false
 			root.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if kind == "airliner" else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
 			var mat := ShaderMaterial.new()
@@ -69,6 +74,11 @@ func _init() -> void:
 				slot["audio"] = audio
 			list.append(slot)
 		_slots[kind] = list
+
+
+## Clé du maillage d'une sorte : un maillage par motif d'enveloppe des montgolfières, un seul sinon.
+static func _mesh_key(kind: String, style: int) -> String:
+	return "%s_%d" % [kind, posmod(style, SkyMesh.BALLOON_STYLES.size())] if kind == "balloon" else kind
 
 
 func setup(sky_model, sound_player = null) -> void:
@@ -108,6 +118,7 @@ func update() -> void:
 			var col: Array = SkyMesh.colors(kind, int(c["color"]))
 			mat.set_shader_parameter("paint", col[0])
 			mat.set_shader_parameter("second", col[1])
+			root.mesh = _meshes[_mesh_key(kind, int(c["style"]))]
 		if float(c["lights"]) != float(slot["lights"]):
 			slot["lights"] = c["lights"]
 			mat.set_shader_parameter("lights", float(c["lights"]))
