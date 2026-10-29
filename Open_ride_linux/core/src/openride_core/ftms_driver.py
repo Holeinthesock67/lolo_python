@@ -123,7 +123,7 @@ def format_cp_write(payload: bytes) -> tuple[str, str, str]:
             wind, grade, crr, cw = struct.unpack_from("<hhBB", payload, 1)
             grade_pct = grade / 100.0
             crr_val = crr / 10000.0
-            cw_val = cw / 1000.0 if cw > 50 else cw / 100.0
+            cw_val = cw / 100.0
             vals = [f"pente {grade_pct:.2f} %", f"crr {crr_val:.4f}", f"cw {cw_val:.3f}"]
             if wind != 0:
                 vals.insert(0, f"vent {wind / 1000.0:.1f} m/s")
@@ -250,7 +250,7 @@ class FtmsDriver:
         self._clock = clock
         # Cw = 0,5 · ρ · CdA (kg/m), cf. ftms.cmd_set_sim_params.
         self._crr = bike.crr
-        self._cw = 0.5 * RHO0 * bike.cda_m2
+        self._cw = RHO0 * bike.cda_m2   # Cw FTMS = CdA × ρ, sans le ½ (voir ftms.cmd_set_sim_params)
         self._wind_mps = 0.0   # champ vent de la commande 0x11 ([wind] feel = "ftms", lot P2)
 
         self._want = _Want()
@@ -805,7 +805,7 @@ class FtmsDriver:
         await release_control(cp, self._crr, self._cw, sim=self.supports_sim)
 
 
-async def release_control(cp: ControlPoint, crr: float = 0.004, cw_kg_m: float = 0.20,
+async def release_control(cp: ControlPoint, crr: float = 0.004, cw_kg_m: float = 0.39,
                           sim: bool = True) -> bool:
     """Pente 0 % (si le mode SIM existe) puis Reset ; True si les écritures ont abouti.
 
@@ -870,6 +870,6 @@ async def release_trainer(
                 raise
             except Exception as exc:
                 log.debug("Prise de contrôle avant relâche refusée : %s", exc)
-            ok = await release_control(cp, bike.crr, 0.5 * RHO0 * bike.cda_m2)
+            ok = await release_control(cp, bike.crr, RHO0 * bike.cda_m2)
     log.info("Trainer déconnecté.")
     return ok

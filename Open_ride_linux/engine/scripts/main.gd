@@ -395,6 +395,7 @@ static func _quality_from_cli() -> bool:
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	AudioMix.apply_settings(menu_flow.settings.items)
+	fps_counter.probe_active = _probe.is_open()
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
 	_draft_gauge_on = str(menu_flow.settings.item(DraftGaugeModel.SETTING_KEY).get("value", "off")) == "on"
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))

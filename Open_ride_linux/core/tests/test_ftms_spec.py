@@ -217,3 +217,14 @@ def test_split_data_record_keeps_heart_rate():
         drv.stop()
         await asyncio.wait_for(task, 3)
     asyncio.run(scenario())
+
+
+def test_sim_cw_is_rho_times_cda_without_the_half():
+    """FTMS (comme ANT+ FE-C) : Cw = ρ · CdA ; c'est le trainer qui applique ½ · Cw · v²."""
+    from openride_core.config import BikeConfig
+    from openride_core.ftms_driver import FtmsDriver
+    from openride_core.config import TrainerConfig
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(cda_m2=0.32))
+    assert abs(drv._cw - 1.225 * 0.32) < 1e-9
+    raw = ftms.cmd_set_sim_params(0.0, drv._crr, drv._cw)
+    assert raw[6] == 39   # 0,39 kg/m à 0,01 près ; Zwift envoie 0,51

@@ -326,10 +326,10 @@ class TrainerResponse:
             return target_w / max(v, 1.0)
         theta = math.atan((grade_pct if mode == "sim" else 0.0) / 100.0)
         p = self.physics
-        cw = cw if cw is not None else 0.5 * 1.225 * p.cda_m2
+        cw = cw if cw is not None else 1.225 * p.cda_m2   # Cw FTMS = ρ · CdA
         crr = crr if crr is not None else p.crr
         va = v + wind
-        return p.mass_kg * G * (math.sin(theta) + crr * math.cos(theta)) + cw * va * abs(va)
+        return p.mass_kg * G * (math.sin(theta) + crr * math.cos(theta)) + 0.5 * cw * va * abs(va)
 
     def step(self, dt: float, cmd: tuple, v_ride: float, rider_max_w: float) -> float:
         """Avance de `dt` s avec la consigne courante `cmd` (mode, cible W, pente %, Crr, Cw, vent m/s) ;
