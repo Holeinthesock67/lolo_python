@@ -4,7 +4,7 @@
   "vegetation_tile_max": {"budget_ms": 50, "ci_ms": 150, "lot": "K3"},
   "building_mesh_500": {"budget_ms": 150, "ci_ms": 300, "lot": "L1 / Y8 (toits à pans, découpe par pans, habillage : maillage dans une tâche de fond)"},
   "osm_buildings_200": {"budget_ms": 20, "ci_ms": 60, "lot": "K4"},
-  "sound_generation": {"budget_ms": 500, "ci_ms": 1000, "lot": "E4"},
+  "sound_generation": {"budget_ms": 1200, "ci_ms": 2400, "lot": "E4 (revu le 28/10 : 910 ms mesurés sur le PC cible avec tous les sons des lots P)"},
   "hud_profile_120": {"budget_ms": 2, "ci_ms": 6, "lot": "K2"},
   "weather_evaluate": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "P8"},
   "traffic_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P13"},
