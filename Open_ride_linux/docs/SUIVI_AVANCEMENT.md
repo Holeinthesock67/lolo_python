@@ -395,6 +395,11 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] AS1 (1.x) : les bots s'abritent entre eux et derrière le cycliste.
 - [ ] AS2 à AS7 (2.0) : zone latérale et placement automatique, bordure, groupes (plafond 55 %), ressenti, abri derrière les véhicules (activé par défaut) et les cyclistes du décor (`docs/lots/00_INDEX.md`, série AS).
 
+### Version 2.0 : profils de joueurs et profil d'essai (série MJ rédigée le 29 octobre)
+- [x] Plan et cahiers MJ1 à MJ10 (lot MJ0, `docs/2.0/PLAN_SERIE_MJ.md`).
+- [ ] Profil d'essai utilisable : contexte de profil (MJ1), profil `_essai` (MJ2), campagne simulée (MJ3).
+- [ ] Multi-joueur : configuration à deux couches (MJ4), migration (MJ5), contrat (MJ6), core (MJ7), écrans (MJ8), outils (MJ9), recette PC (MJ10).
+
 ### Sprint 4 et suivants
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le HomeTrainer à faire).
 - [x] Couches OpenStreetMap côté compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau) ; reste le rendu dans l'engine (à rédiger).
