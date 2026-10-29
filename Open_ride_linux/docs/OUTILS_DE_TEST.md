@@ -1,6 +1,6 @@
 # Outils de test d'OpenRide
 
-Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. `GODOT` désigne l'exécutable Godot 4.3 (`~/Applications/godot/Godot_v4.3-stable_linux.x86_64` sur le PC cible). Aucun n'écrit dans le vrai dossier personnel, sauf mention contraire (rapports dans `~/OpenRide/…`).
+Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. `GODOT` désigne l'exécutable Godot 4.7.2 (`~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64` sur le PC cible). Aucun n'écrit dans le vrai dossier personnel, sauf mention contraire (rapports dans `~/OpenRide/…`).
 
 ## 1. Suites automatiques
 

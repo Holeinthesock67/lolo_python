@@ -43,7 +43,7 @@ record() {  # record <nom> <0 si réussi> [détail]
 }
 
 # Filtre commun (lot X34) : toute ligne SCRIPT ERROR, ERROR ou WARNING est une erreur, sauf
-# - les objets non libérés à la sortie (ObjectDB instances leaked, resources still in use at exit) ;
+# - les objets non libérés à la sortie (ObjectDB instances leaked ou were leaked en 4.7, resources still in use at exit) ;
 # - une erreur dont la ligne « at: » suivante vient du serveur de rendu factice de --headless
 #   (servers/rendering/dummy/ : « Parameter "m" is null » de mesh_get_surface_count, il ne garde aucun maillage).
 # Avant le lot X34, toute ligne contenant « mesh … null » était tolérée, d'où qu'elle vienne.
