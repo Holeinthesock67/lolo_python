@@ -61,8 +61,8 @@ class TrainerConfig:
 class GearingConfig:
     n_gears: int = 24
     start_gear: int = 12
-    ratio_min: float = 0.40
-    ratio_max: float = 3.00
+    ratio_min: float = 0.65    # 0,40 à 3,00 avant le 28 octobre : petits braquets à plat, moitié haute inutile
+    ratio_max: float = 2.00
     g_base_pct: float = 2.0
     long_press_gears: int = 10    # appui long en SIM : braquets sautés (3 était plus lent que des appuis courts)
 
@@ -71,7 +71,7 @@ class GearingConfig:
 class RenderConfig:
     quality: str = "low"
     theme: str = "default"
-    visual_grade_scale: float = 1.0
+    visual_grade_scale: float = 2.5   # relief affiché ×2,5 (lot Y15) ; 1,0 : relief réel ; physique et HUD inchangés
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
@@ -235,7 +235,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gearing", "long_press_gears"): (1, 10),
     ("ipc", "port_state"): (1024, 65535),
     ("ipc", "port_commands"): (1024, 65535),
-    ("render", "visual_grade_scale"): (1.0, 2.0),
+    ("render", "visual_grade_scale"): (1.0, 3.0),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
     ("open_world", "cache_max_gb"): (0.5, 500),

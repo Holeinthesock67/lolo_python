@@ -10,6 +10,10 @@ extends RefCounted
 ## Couche facultative `segments.json` (format 1.3, §8 bis, lot T8) : lue si le manifeste la déclare,
 ## dans `segments` (dictionnaires `{id, name, type, s_start, s_end, length_m, avg_grade_pct, gain_m,
 ## category}`, triés par `s_start`) ; absente ou invalide : aucun segment, la route reste chargée.
+## Relief affiché (lot Q2, amplifié au lot Y15) : `relief_k` multiplie l'écart d'altitude au départ du parcours,
+## `display_y(alt)` = alt_m[0] + (alt − alt_m[0]) × relief_k. `sample()["y"]` et `sample_point()` donnent cette
+## hauteur affichée : route, caméra, avatar, bots, décor et terrain la suivent tous de la même façon. `alt_m` et
+## `grade_pct` restent les vraies valeurs (HUD, profil, physique du core).
 ## Pas de class_name : la scène est lancée sans passer par l'éditeur (charger par preload).
 
 const FORMAT_NAME := "openride-world"
@@ -36,6 +40,7 @@ var x: PackedFloat64Array = PackedFloat64Array()
 var z: PackedFloat64Array = PackedFloat64Array()
 var grade_pct: PackedFloat64Array = PackedFloat64Array()
 var heading_deg: PackedFloat64Array = PackedFloat64Array()
+var relief_k := 1.0                 # exagération visuelle du relief (`--visual-grade`), 1,0 : relief réel
 
 var segments: Array = []            # couche segments (série T) ; vide sans couche
 var segments_present := false       # couche déclarée et valide : seule source des montées du décor
@@ -254,6 +259,7 @@ func revised_from(k: int, new_parts: Array):
 	fresh.live = true
 	fresh.live_dir = live_dir
 	fresh.quiet_errors = quiet_errors
+	fresh.relief_k = relief_k
 	fresh.parts = parts.duplicate()
 	if not fresh.replace_parts(k, new_parts):
 		load_error = fresh.load_error
@@ -389,7 +395,15 @@ static func _shortest_delta_deg(a: float, b: float) -> float:
 	return d - 360.0 if d > 180.0 else d
 
 
-## Échantillon complet : x, y, z (repère du monde), lat, lon, alt_m, grade_pct, heading_deg.
+## Hauteur affichée d'une altitude réelle (relief exagéré par `relief_k` autour du départ du parcours).
+func display_y(alt: float) -> float:
+	if relief_k == 1.0 or n == 0:
+		return alt
+	return alt_m[0] + (alt - alt_m[0]) * relief_k
+
+
+## Échantillon complet : x, y, z (repère du monde, y à la hauteur affichée), lat, lon, alt_m, grade_pct
+## (vraies valeurs), heading_deg.
 func sample(pos: float) -> Dictionary:
 	var seg := _segment(wrap_s(pos))
 	var i: int = seg[0]
@@ -397,7 +411,7 @@ func sample(pos: float) -> Dictionary:
 	var p := catmull_rom(_point(i - 1), _point(i), _point(i + 1), _point(i + 2), u)
 	var h0: float = heading_deg[i]
 	return {
-		"x": p[0], "y": p[1], "z": p[2],
+		"x": p[0], "y": display_y(p[1]), "z": p[2],
 		"lat": lat[i] + (lat[i + 1] - lat[i]) * u,
 		"lon": lon[i] + (lon[i + 1] - lon[i]) * u,
 		"alt_m": alt_m[i] + (alt_m[i + 1] - alt_m[i]) * u,

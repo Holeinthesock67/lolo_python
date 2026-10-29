@@ -21,6 +21,10 @@ Barème (documenté aussi dans `docs/contracts/world_format_v1.md`, champ `stats
 - difficulté de 1 à 5 : 5 si montée HC ou plus de 2 000 m de dénivelé positif, 4 si catégorie 1
   ou 1 200 m, 3 si catégorie 2 ou 600 m, 2 si catégorie 3 ou 4 ou 200 m, sinon 1.
 
+Comparaison à Garmin Connect (lot X31, recette 1.0 ligne 22) : `compare_garmin` met en face des valeurs
+lues dans Garmin Connect la pente maximale (même fenêtre glissante, 100 m par défaut), le dénivelé positif
+et la longueur du parcours ; tolérances ± 1 point, ± 5 % et ± 1 %.
+
 Fiche saisie : `load_library` lit et contrôle un `<trace>.toml` (`name`, `description`, `region`,
 `tags`, `credits`) ; une région ne contient jamais de coordonnées.
 """
@@ -49,6 +53,9 @@ RHO = 1.225
 G = 9.81
 V_DESCENT_MAX = 20.0
 DURATION_POWERS_W = tuple(range(100, 401, 25))
+GARMIN_GRADE_TOL_PT = 1.0
+GARMIN_GAIN_TOL = 0.05
+GARMIN_LENGTH_TOL = 0.01
 
 
 def _positions(route: dict[str, Any]) -> list[float]:
@@ -183,6 +190,25 @@ def compute_stats(route: dict[str, Any], power_w: float = 200.0) -> dict[str, An
         "durations_s": {str(w): round(estimate_duration_s(route, w)) for w in DURATION_POWERS_W},
         "difficulty": difficulty(gain, main["category"] if main else None),
     }
+
+
+def compare_garmin(route: dict[str, Any], max_grade_pct: float, gain_m: float, length_km: float | None = None,
+                   window: float = MAX_GRADE_WINDOW_M) -> list[dict[str, Any]]:
+    """Lignes {"mesure", "parcours", "garmin", "ecart", "tolerance", "ok"} face aux valeurs de Garmin Connect."""
+    s, alt = _positions(route), [float(a) for a in route["alt_m"]]
+    grade = max_grade(s, alt, window)
+    gain = gain_loss(alt)[0]
+    rows = [{"mesure": f"pente maximale sur {window:g} m (%)", "parcours": round(grade, 1), "garmin": max_grade_pct,
+             "ecart": round(grade - max_grade_pct, 1), "tolerance": f"± {GARMIN_GRADE_TOL_PT:g} point",
+             "ok": abs(grade - max_grade_pct) <= GARMIN_GRADE_TOL_PT},
+            {"mesure": "dénivelé positif (m)", "parcours": round(gain), "garmin": gain_m, "ecart": round(gain - gain_m),
+             "tolerance": f"± {GARMIN_GAIN_TOL * 100:g} %", "ok": abs(gain - gain_m) <= GARMIN_GAIN_TOL * gain_m}]
+    if length_km is not None:
+        km = float(route["length_m"]) / 1000.0
+        rows.append({"mesure": "longueur (km)", "parcours": round(km, 2), "garmin": length_km,
+                     "ecart": round(km - length_km, 2), "tolerance": f"± {GARMIN_LENGTH_TOL * 100:g} %",
+                     "ok": abs(km - length_km) <= GARMIN_LENGTH_TOL * length_km})
+    return rows
 
 
 def stats_usable(stats: object) -> bool:

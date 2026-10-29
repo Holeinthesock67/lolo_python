@@ -64,6 +64,8 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 **Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 %, les appuis longs de ± 10 % ; **Z** passe au bloc suivant et **Y** met la séance en pause. Le détail est dans la section 6.
 
+**Passer en ERG pendant une session libre.** Mettez en pause (**Y**) : la ligne **Mode** de l'écran de pause passe de **SIM** à **ERG** ou à **ERG cadence** (« + » ou « − » pour changer, A maintenu pour appliquer, Y pour annuler), puis **Reprendre**. En **ERG**, la ligne **Puissance cible** règle la puissance par pas de 5 W ; elle part de votre puissance des 3 dernières secondes, et « + » et « − » règlent ensuite l'intensité de ± 2 % en roulant. En **ERG cadence**, la ligne **Cadence cible** règle la cadence à tenir (elle part de votre cadence du moment) : tant que vous restez à ± 15 % de cette cadence, la puissance ne bouge pas ; si vous tournez plus vite, elle monte peu à peu, si vous tournez moins vite, elle baisse, entre 50 W et 150 % de votre FTP. En roulant, « + » et « − » changent la cadence cible de ± 2 % (appui long ± 10 %). Le bandeau dit si vous êtes dans la plage. Revenez en **SIM** de la même façon. Pas de bascule pendant un entraînement ni en Cyber-Rogue.
+
 **Courbes de la séance.** Un graphique façon GoldenCheetah montre la cible, votre puissance, votre fréquence cardiaque et votre cadence. Sa taille se règle dans **Réglages**, **Graphisme**, **Courbes de la séance** : masquées, réduites (cible et puissance) ou complètes.
 
 **Volume sonore.** Quatre curseurs dans **Réglages**, **Son**, de 0 (coupé) à 100 % par pas de 10, pris en compte tout de suite : **Volume général**, **Volume vent et roue libre**, **Volume de l'ambiance** (oiseaux, cloches, véhicules, foule) et **Volume bips et événements** (bips du Click, changement de bloc ERG). Détail des catégories : [AUDIO.md](AUDIO.md).
@@ -107,7 +109,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Bloc suivant | Z |
 | Pause et reprise | Y |
 
-Pendant un bloc de roue libre, « + » et « − » changent le braquet, comme en Session libre.
+Pendant un bloc de roue libre, « + » et « − » changent le braquet, comme en Session libre. En ERG d'une session libre (section 5), Z garde son rôle de la Session libre (bonus) ; en ERG cadence, « + » et « − » changent la cadence cible de ± 2 % (appui long ± 10 %).
 
 **Au clavier**
 
