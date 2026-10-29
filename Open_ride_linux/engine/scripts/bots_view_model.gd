@@ -18,6 +18,7 @@ extends RefCounted
 ##   (contrat 1.4) et se reconnaît à `profile`. Lignes de l'encart : bot_hud_model.gd.
 ## Pas de class_name : charger par preload("res://scripts/bots_view_model.gd").
 
+const UiTheme := preload("res://scripts/ui_theme.gd")
 const VISIBLE_M := 300.0
 const NAME_M := 50.0
 const MAX_LINES := 5
@@ -26,11 +27,11 @@ const MIN_SPEED_MPS := 1.0
 ## Couleur par `kind` : bot à puissance constante orange, fantôme bleu pâle ; inconnu gris. Un bot à
 ## profil (T12, `kind` = `constant` avec `profile`, contrat 1.4) est jaune. Teintes claires : les noms de
 ## l'encart des bots gardent au moins 3:1 sur le panneau au-dessus d'un ciel clair (lot X22).
-const COLORS := {"constant": Color(1.00, 0.68, 0.30), "ghost": Color(0.60, 0.75, 1.00)}
-const PROFILE_COLOR := Color(0.95, 0.85, 0.30)
+const COLORS := {"constant": UiTheme.BOT_CONSTANT, "ghost": UiTheme.BOT_GHOST}
+const PROFILE_COLOR := UiTheme.BOT_PROFILE
 ## Champs de profil (révision 1.4) recopiés tels quels dans view().
 const PROFILE_FIELDS := ["profile", "cp_w", "mass_kg", "wbal_pct", "jersey"]
-const OTHER_COLOR := Color(0.75, 0.75, 0.75)
+const OTHER_COLOR := UiTheme.BOT_OTHER
 
 ## Longueur de la boucle (0 si le parcours n'est pas une boucle).
 var loop_length_m := 0.0

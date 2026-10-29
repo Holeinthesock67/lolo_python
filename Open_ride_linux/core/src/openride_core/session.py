@@ -49,6 +49,7 @@ from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
+from .free_erg import CadenceLock, FreeErg, start_cadence, start_power
 from .ftp_test import KINDS as FTP_TEST_KINDS
 from .ftp_test import FtpResult, RampWatch, cooldown_index, estimate_ftp
 from .ftp_test import kind_of as ftp_test_kind
@@ -292,7 +293,8 @@ class CoreSession:
         self._workout: Workout | None = None     # entraînement choisi (select_workout)
         self._workout_id: str | None = None
         self._click_seen: dict[str, str] = {}   # boîtiers du Click vus, sans adresse configurée
-        self.erg: ErgController | None = None   # entraînement en cours pendant la séance
+        # Contrôleur ERG de la séance : entraînement en cours, ou ERG d'une session libre (lot O18).
+        self.erg: ErgController | FreeErg | None = None
         self._ramp_watch: RampWatch | None = None   # fin de la rampe d'un test de FTP (lot O10)
         self._ftp_result: FtpResult | None = None   # dernier test de FTP, pour `accept_ftp` (lot O12)
         self._plan_day: str | None = None           # séance du jour du dernier message `plans` (lot O12)
@@ -395,8 +397,10 @@ class CoreSession:
                 self._sync_erg_state()
             self._new_race()
             self._set_state("RUNNING")
-        elif name == "skip_block" and self.erg and st in ("RUNNING", "PAUSED"):
+        elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
+        elif name == "set_ride_mode":
+            self._set_ride_mode(args if isinstance(args, dict) else {}, st)
         elif name == "pause" and st == "RUNNING":
             self._set_state("PAUSED", "user")
         elif name == "resume" and st == "PAUSED":
@@ -1066,8 +1070,58 @@ class CoreSession:
         self.erg.goto(cooldown_index(self.erg.workout))
         self._sync_erg_state()
 
+    def _workout_erg(self) -> ErgController | None:
+        """Contrôleur de l'entraînement en cours (None en SIM et en ERG d'une session libre)."""
+        return self.erg if isinstance(self.erg, ErgController) else None
+
+    def _set_ride_mode(self, args: dict, st: str) -> None:
+        """Bascule SIM, ERG libre ou ERG cadence pendant une session libre (lot O18, révision 1.5).
+
+        `mode` : `sim`, `erg` ou `cadence` ; `target_w` (ERG) et `cadence_rpm` (cadence) facultatifs :
+        sans eux, la cible en cours, sinon la mesure (puissance des 3 dernières secondes, cadence)."""
+        if st not in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Changement de mode possible seulement pendant une séance.")
+            return
+        if self.rogue is not None or self._workout_erg() is not None:
+            self.server.send_error("busy", "Changement de mode impossible pendant un entraînement ou une run.")
+            return
+        mode = args.get("mode")
+        if mode not in ("sim", "erg", "cadence"):
+            self.server.send_error("bad_args", "set_ride_mode attend 'mode' : sim, erg ou cadence")
+            return
+        nums: dict[str, float | None] = {}
+        for key in ("target_w", "cadence_rpm"):
+            raw = args.get(key)
+            if raw is not None and (isinstance(raw, bool) or not isinstance(raw, (int, float))
+                                    or not math.isfinite(raw)):
+                self.server.send_error("bad_args", f"set_ride_mode : '{key}' doit être un nombre")
+                return
+            nums[key] = None if raw is None else float(raw)
+        cur = self.erg
+        ftp = self.cfg.rider.ftp_w
+        self._ramp_watch = None   # rampe d'un test de FTP déjà terminé : plus rien à surveiller
+        if mode == "sim":
+            self.erg = None
+            self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
+        elif mode == "erg":
+            w = nums["target_w"]
+            if w is None:
+                w = cur.target_w if cur is not None else start_power(self.state.power_3s, ftp)
+            self.erg = FreeErg(w)
+        else:
+            w = cur.target_w if cur is not None else start_power(self.state.power_3s, ftp)
+            rpm = nums["cadence_rpm"]
+            if rpm is None:
+                rpm = cur.cadence_target if isinstance(cur, CadenceLock) else start_cadence(self.state.cadence)
+            self.erg = CadenceLock(rpm, w, ftp)
+        if self.erg is not None:
+            self.erg.paused = st == "PAUSED"
+        log.info("Mode de la séance : %s%s.", mode.upper(),
+                 f", cible {self.erg.target_w} W" if self.erg is not None else "")
+        self._sync_erg_state()
+
     def _skip_block(self) -> None:
-        assert self.erg is not None
+        assert isinstance(self.erg, ErgController)
         if self._ramp_watch and self._ramp_watch.abandon(self.erg):
             self._end_ramp("abandon")   # pendant la rampe, le saut de bloc vaut abandon du test
             return
@@ -1400,8 +1454,8 @@ class CoreSession:
         erg = self.erg
         if ev == InputEvent.Z_SHORT:
             # Z court : action du mode (§7.1) ; bloc suivant en ERG, roue libre comprise ; sinon, en mode
-            # classique, bonus en réserve (T6, T7).
-            if erg:
+            # classique et en ERG d'une session libre (sans blocs, lot O18), bonus en réserve (T6, T7).
+            if self._workout_erg():
                 self._skip_block()
             elif self.race and self.race.activate(self._t_session):
                 log.info("Bonus activé : %s.", self.race.powerups.active)
@@ -1410,8 +1464,9 @@ class CoreSession:
         if ev not in BIAS_STEPS:
             return   # ni + ni − (A, Z long, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
         if erg and not erg.is_freeride:
-            # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 %. En roue libre, les
-            # appuis restent des braquets.
+            # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 % ; en cadence
+            # verrouillée (lot O18), cadence cible ± 2 % et ± 10 %. En roue libre, les appuis restent
+            # des braquets.
             erg.change_bias(BIAS_STEPS[ev])
             self._sync_erg_state()
             return
@@ -1489,12 +1544,14 @@ class CoreSession:
             self._step_rogue(dt, m)
             return
         if self.erg:
-            self.erg.step(dt)        # le temps du bloc ne court que pendant RUNNING
+            self.erg.step(dt, m.cadence_rpm)   # le temps du bloc ne court que pendant RUNNING
             reason = self._ramp_watch.update(dt, m.power_w, m.cadence_rpm, self.erg) if self._ramp_watch else None
             if reason:
                 self._end_ramp(reason)
             self._sync_erg_state()
         erg = self.erg
+        workout_erg = self._workout_erg()
+        free_erg = erg if isinstance(erg, FreeErg) else None
         s = self.physics.s
         tau = self.cfg.trainer.latency_tau_s
         route = self.route
@@ -1585,14 +1642,16 @@ class CoreSession:
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
                 difficulty_pct=round(self.difficulty_pct),
-                block=erg.index + 1 if erg else None,
+                block=workout_erg.index + 1 if workout_erg else None,
                 target_w=erg.target_w if erg and erg.target_active else None,
                 erg_bias_pct=erg.bias_pct - BIAS_DEFAULT_PCT if erg and erg.target_active else None,
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
                 draft=round(self._draft, 3) if self.bots else None,
-                hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None))
+                hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None,
+                erg_kind=free_erg.kind if free_erg else None,
+                cadence_target_rpm=free_erg.cadence_target if isinstance(free_erg, CadenceLock) else None))
 
         if route and not route.is_loop and self.openworld is None and st.s >= route.length_m:   # ni une boucle, ni le monde ouvert
             log.info("Arrivée atteinte.")
@@ -1667,6 +1726,12 @@ class CoreSession:
                 erg.bias_pct = BIAS_DEFAULT_PCT + rs.erg_bias_pct
             self.erg = erg
             self._watch_ramp()
+        elif rs.erg_kind in ("free", "cadence"):
+            # ERG d'une session libre (lot O18) : même mode, même cible et même cadence cible.
+            ftp = self.cfg.rider.ftp_w
+            w = rs.target_w if rs.target_w is not None else start_power(None, ftp)
+            self.erg = FreeErg(w) if rs.erg_kind == "free" else \
+                CadenceLock(rs.cadence_target_rpm or start_cadence(None), w, ftp)
         self._sync_erg_state()
         st = self.state
         st.t, st.s, st.v = rs.t, rs.s, 0.0

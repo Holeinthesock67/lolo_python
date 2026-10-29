@@ -6,11 +6,13 @@ extends SceneTree
 ## - Volumes à 0,5 dB près de ceux de sound_model.gd.
 ## - Aucun nœud créé après le démarrage.
 ## - Remplacement par .ogg si disponible.
-## - Temps CPU de génération des sons au démarrage < 500 ms.
+## - Temps CPU de génération des sons au démarrage < 1 200 ms (budget `sound_generation`).
 ## - Lot P9 : fonds d'ambiance générés (ou .ogg de remplacement), lecteurs réglés par le modèle,
 ##   cloches de l'heure pleine sur les points church_bell.
 ## - Lot P10 : vent en bruit passe-bande bouclé sans clic, cliquetis calé sur le modèle, un « clac » par
 ##   reprise du pédalage.
+## - « Tac-tac » régulier (28/10) : toutes les boucles raccordées sans saut, bruit filtré périodique, cloche
+##   jouée une fois par coup et pas relancée par les points sonores.
 
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const SoundModel := preload("res://scripts/sound_model.gd")
@@ -213,6 +215,41 @@ func _test_p10_wind_and_freewheel() -> void:
 	sp.queue_free()
 
 
+# « Tac-tac » régulier entendu en séance (28/10) : aucune boucle ne saute à son raccord, le bruit filtré est
+# périodique, la cloche n'est jouée qu'aux coups de l'heure pleine.
+func _test_seamless_loops() -> void:
+	var sp = SoundPlayer.new()
+	root.add_child(sp)
+	await process_frame
+	var bad := []
+	for k in sp._streams:
+		var w = sp._streams[k]
+		if not (w is AudioStreamWAV) or (w as AudioStreamWAV).loop_mode != AudioStreamWAV.LOOP_FORWARD:
+			continue
+		var d: PackedByteArray = (w as AudioStreamWAV).data
+		var m := (w as AudioStreamWAV).loop_end
+		var max_step := 0
+		for i in range(1, m):
+			max_step = maxi(max_step, absi(d.decode_s16(i * 2) - d.decode_s16(i * 2 - 2)))
+		if absi(d.decode_s16(0) - d.decode_s16((m - 1) * 2)) > max_step:
+			bad.append(k)
+	_check(bad.is_empty(), "boucles : raccord pas plus brusque que le son lui-même (en défaut : %s)" % str(bad))
+	var noise := SoundPlayer._lcg_noise(4000, 7)
+	var lp := SoundPlayer._periodic_lowpass(noise, 0.02)
+	var next := lp[3999] + 0.02 * (noise[0] - lp[3999])
+	_check(absf(next - lp[0]) < 1e-4, "bruit filtré périodique : le pas qui suit la fin redonne le début (%.6f)" % absf(next - lp[0]))
+	_check(sp.stream("church_bell").loop_mode == AudioStreamWAV.LOOP_DISABLED, "cloche : un coup, sans boucle")
+	sp.set_pois([{"id": "b", "kind": "church_bell", "x": 5.0, "y": 0.0, "z": 0.0, "radius_m": 80.0}])
+	var bell_player: AudioStreamPlayer3D = null
+	for i in range(180):   # 3 s hors de l'heure pleine
+		sp.update_audio({"v": 0.0, "power": 0.0, "paused": false}, i / 60.0, Vector3.ZERO)
+		for p in sp._poi_players:
+			if p.stream == sp.stream("church_bell") and p.volume_db > SoundModel.SILENCE_DB:
+				bell_player = p
+	_check(bell_player != null and not bell_player.playing, "cloche à portée hors de l'heure pleine : muette")
+	sp.queue_free()
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -223,5 +260,6 @@ func _run() -> void:
 	_test_ogg_override()
 	await _test_ambience_and_bells()
 	await _test_p10_wind_and_freewheel()
+	await _test_seamless_loops()
 	print("test_sound_player : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

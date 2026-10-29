@@ -36,6 +36,9 @@ class ResumeState:
     running: bool = True              # le chronomètre tournait au moment du plantage
     lines: list[dict] = field(default_factory=list)   # lignes à reprendre en mémoire (sans en-tête)
     rogue: dict | None = None         # dernier instantané `rogue_snapshot` d'une run Cyber-Rogue (lot R8)
+    erg_kind: str | None = None       # ERG d'une session libre (`free`, `cadence`, lot O18), None sinon
+    target_w: float | None = None     # dernière cible ERG écrite (W), pour l'ERG d'une session libre
+    cadence_target_rpm: int | None = None  # cadence cible de l'ERG cadence (lot O18)
 
 
 def _timer_events(lines: list[dict]) -> list[dict]:
@@ -92,6 +95,11 @@ def load_resume_state(path: Path) -> ResumeState:
     state.mode = str(last.get("mode") or "SIM")
     state.last_ts = max(state.last_ts, float(last["ts"]))
     state.block = last.get("block")
+    state.erg_kind = last.get("erg_kind")
+    if state.erg_kind is not None:
+        state.cadence_target_rpm = last.get("cadence_target_rpm")
+        state.target_w = next((r.get("target_w") for r in reversed(records)
+                               if r.get("target_w") is not None and r.get("erg_kind") == state.erg_kind), None)
     if state.block is not None:
         # Entrée dans le bloc : entre la dernière ligne du bloc précédent et la première de
         # celui-ci (lignes à 1 Hz), donc à 0,5 s près en prenant le milieu.
