@@ -153,3 +153,32 @@ jobs:
           name: junit-engine
           path: Open_ride_linux/junit/
           if-no-files-found: ignore
+
+  # Lot X24 : audit hebdomadaire des dépendances (vulnérabilités connues, actions en retard, paquets
+  # anciens), seulement dans le run du lundi et sur demande. Échoue si une vulnérabilité est connue.
+  dependances:
+    name: audit des dépendances
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupération du dépôt
+        uses: actions/checkout@v5
+
+      - name: Installation de Python 3.14
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.14"
+
+      - name: Installation de pip-audit
+        run: pip install -c constraints.txt pip-audit
+
+      - name: Audit
+        run: python3 scripts/audit_dependances.py --out "$RUNNER_TEMP/deps"
+
+      - name: Résumé de l'audit
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: dependances
+          path: ${{ runner.temp }}/deps
+          retention-days: 30

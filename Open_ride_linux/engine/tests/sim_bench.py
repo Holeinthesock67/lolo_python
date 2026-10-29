@@ -94,6 +94,8 @@ CMD_ID_BASE = 20_000
 SETTLE_S = 5.0          # après route_loaded : premières tuiles et premier décor avant la première capture
 SHOT_TIMEOUT_S = 5.0    # attente de la réponse d'une capture, une fois redemandée
 SPEED_TOLERANCE = 0.10  # vitesse imposée : médiane à ± 10 %
+LATENCY_MIN_PRESSES = 10   # lot X7 : appuis du Click appariés de bout en bout
+LATENCY_P95_MS = 150.0     # notification → image affichée, p95 (strict en fenêtre réelle)
 SPEED_WARMUP_S = 20.0   # départ arrêté : hors médiane de la vitesse
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
 # Lot S1 : apparitions ignorées pendant le premier chargement (m de route).
@@ -342,6 +344,8 @@ class Bench:
                 "--input", "sim", "--hr", "sim", "--autostart", "--route", route_id]
         for prof in self.bot_profiles:
             argv += ["--bot-profile", prof]
+        if a.latence:
+            argv.append("--latence")   # lignes [latence] du core et de l'engine (lot X7)
         if self.scenario_arg:
             argv += ["--sim-scenario", self.scenario_arg]
         else:
@@ -590,12 +594,14 @@ class Bench:
         if self.sampler is not None:
             rows = perf_probe.merge(perf_probe.read_engine_csv(self.out / "moteur.csv"), self.sampler.rows)
             self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}",
-                                                        engine_dir=self.out)
+                                                         real_window=a.native, engine_dir=self.out)
             r.check(self.probe_summary["rows"] > 0, "sonde de performance",
                     f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
             if self.endurance:
                 for ok, label, measure in perf_probe.endurance_checks(rows, real_window=a.native):
                     r.check(ok, label, measure)
+            for ok, label, measure in self.probe_summary.get("budgets", []):   # budgets du préréglage (lot X14)
+                r.check(ok, label, measure)
         # Captures.
         ok = [s for s in self.shots if s.get("ok")]
         r.check(*capture_check(self.shots), "captures de l'engine")
@@ -655,11 +661,36 @@ class Bench:
         self.log_report_text = p.stdout + p.stderr
         r.check(p.returncode == 0, "log_report", "analyse du journal du core lue" if p.returncode == 0
                 else p.stderr[-200:])
+        if a.latence:
+            self._latency_checks(env)
         self._scenario_checks()
         (self.out / "log_report.txt").write_text(self.log_report_text, encoding="utf-8")
         (self.out / "summary.txt").write_text(self.summary_text, encoding="utf-8")
         write_html(self)
         del a
+
+    def _latency_checks(self, env: dict[str, str]) -> None:
+        """Lot X7 : appuis du Click appariés de bout en bout (au moins LATENCY_MIN_PRESSES) et p95 de la
+        notification à l'image affichée sous LATENCY_P95_MS (indicatif sous Xvfb, strict avec --native)."""
+        r = self.report
+        p = subprocess.run([sys.executable, "-m", "openride_core.tools.log_report", "--json", "--latence",
+                            str(self.out / "core.log"), str(self.out / "engine.log")], env=env, capture_output=True, text=True)
+        try:
+            lat = json.loads(p.stdout)
+        except ValueError:
+            r.check(False, "latence des appuis", (p.stderr or p.stdout)[-200:])
+            return
+        (self.out / "latence.json").write_text(json.dumps(lat, ensure_ascii=False, indent=2), encoding="utf-8")
+        r.check(lat["complete"] >= LATENCY_MIN_PRESSES, "latence : appuis appariés de bout en bout",
+                f"{lat['complete']} sur {lat['presses']} (au moins {LATENCY_MIN_PRESSES})")
+        e2e = lat["hops"].get("bout en bout (notification → image)")
+        if e2e:
+            r.check(e2e["p95_ms"] < LATENCY_P95_MS if self.args.native else None, "latence : notification → image",
+                    f"médiane {e2e['median_ms']:.0f} ms, p95 {e2e['p95_ms']:.0f} ms, max {e2e['max_ms']:.0f} ms "
+                    f"(seuil p95 {LATENCY_P95_MS:.0f} ms{'' if self.args.native else ', non appliqué sous Xvfb'})")
+        for label, h in lat["hops"].items():
+            if not label.startswith("bout en bout"):
+                r.check(None, f"latence : {label}", f"médiane {h['median_ms']:.1f} ms, p95 {h['p95_ms']:.1f} ms")
 
     def _scenario_checks(self) -> None:
         """Attentes tirées des événements : ce que l'écran et le journal doivent montrer."""
@@ -980,6 +1011,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="off", choices=("on", "off"),
                     help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
+    ap.add_argument("--latence", action="store_true",
+                    help="latence des appuis du Click jusqu'à l'image (lot X7) : core et engine avec --latence")
     ap.add_argument("--probe", action="store_true",
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))

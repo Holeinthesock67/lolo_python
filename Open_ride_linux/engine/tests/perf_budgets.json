@@ -1,5 +1,5 @@
 {
-  "_doc": "Budgets de temps des tests de l'engine (lot X2, perf_budget.gd). budget_ms : seuil du cahier pour le PC cible ; ci_ms : machines partagées de GitHub (variable CI). Remplacement par machine : ~/OpenRide/perf_budgets.json, {\"nom\": ms}.",
+  "_doc": "Budgets de temps des tests de l'engine (lot X2, perf_budget.gd). budget_ms : seuil du cahier pour le PC cible ; ci_ms : machines partagées de GitHub (variable CI). Mémoire (lot X19) : budget_kb et ci_kb en Ko. Remplacement par machine : ~/OpenRide/perf_budgets.json, {\"nom\": ms ou Ko}.",
   "tree_tile_high": {"budget_ms": 150, "ci_ms": 170, "lot": "E3 / O1"},
   "vegetation_tile_max": {"budget_ms": 50, "ci_ms": 150, "lot": "K3"},
   "building_mesh_500": {"budget_ms": 150, "ci_ms": 300, "lot": "L1 / Y8 (toits à pans, découpe par pans, habillage : maillage dans une tâche de fond)"},
@@ -36,5 +36,8 @@
   "wind_evaluate": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "P4"},
   "workout_chart_geometry": {"budget_ms": 5, "ci_ms": 15, "lot": "O13"},
   "workout_chart_cached": {"budget_ms": 0.5, "ci_ms": 1.5, "lot": "O13"},
-  "workout_chart_push": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "O13"}
+  "workout_chart_push": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "O13"},
+  "sound_generation_memory": {"budget_kb": 4096, "ci_kb": 8192, "lot": "E4 / X19 (mémoire des sons synthétisés au lancement)"},
+  "sound_synthesis_rogue": {"budget_ms": 300, "ci_ms": 2000, "lot": "R18 / X19 (à mesurer quand R18 sera livré)"},
+  "sound_synthesis_rogue_memory": {"budget_kb": 8192, "ci_kb": 16384, "lot": "R18 / X19 (à mesurer quand R18 sera livré)"}
 }
