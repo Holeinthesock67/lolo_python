@@ -339,6 +339,7 @@ Toutes les valeurs ajustables sont dans un seul fichier `~/OpenRide/config.toml`
 ```toml
 [rider]
 ftp_w = 250
+hr_max_bpm = 185
 mass_kg = 75
 
 [bike]
