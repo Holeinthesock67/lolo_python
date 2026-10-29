@@ -47,3 +47,4 @@ Aucune.
 
 - **Fait directement :** concurrence (annulation seulement sur les demandes de fusion, chaque envoi sur `main` testé jusqu'au bout), exécution hebdomadaire (lundi 5 h UTC), étape `pip check`, `actions/checkout@v5` et `actions/setup-python@v6`.
 - **Reste à confier :** rapports JUnit publiés en artefact (critère 4), et vérification qu'aucun avertissement Node.js 20 ne subsiste (critère 5, `actions/cache` compris).
+- **Rapports JUnit (28 octobre, lot X3)** : les deux suites Python (`--junitxml`, artefacts `junit-python-3.11` et `junit-python-3.14`) et les tests de l'engine (`ENGINE_JUNIT`, artefact `junit-engine`) sont gardés en artefact avec `actions/upload-artifact@v5`, même après un échec. Le critère 5 (aucun avertissement Node.js 20) reste à vérifier sur une exécution, `actions/cache@v4` compris.

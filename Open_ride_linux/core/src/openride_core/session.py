@@ -335,14 +335,14 @@ class CoreSession:
         now = time.time()
         if self._rec:
             if new == "PAUSED" and old == "RUNNING":
-                self._rec.event("pause", now)
+                self._rec.event("pause", now, reason or "user")
             elif new == "RUNNING" and old == "PAUSED":
                 self._rec.event("resume", now)
         if self.erg:
             self.erg.paused = new == "PAUSED"   # l'ERG suit la pause de la séance (Y), seule pause (§7.1)
             self._sync_erg_state()
         if self.race and new == "PAUSED" and old == "RUNNING":
-            self.race.pause(reason or "user")   # passages en cours annulés (T4)
+            self.race.pause(reason or "user")   # pause Y : passages annulés ; coupure subie : suspendus (T4)
         if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
             self._release_trainer()
 
@@ -1742,7 +1742,7 @@ class CoreSession:
                                     source=self._journal_source())
         if rs.running:
             # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
-            self._rec.event("pause", rs.last_ts)
+            self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
@@ -1778,7 +1778,7 @@ class CoreSession:
         self._rec = SessionRecorder(self.journal_dir, rogue_mode.JOURNAL_ROUTE_ID, on_failure=self._on_recording_failure,
                                     resume_path=path, lines=rs.lines, source=self._journal_source())
         if rs.running:
-            self._rec.event("pause", rs.last_ts)
+            self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
