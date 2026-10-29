@@ -89,6 +89,8 @@ var world_menu_view = null
 var _route_job: Dictionary = {}
 var _test_cam_last_us := 0
 var _test_cam_last_s := NAN
+## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : instant imposé au décor, NAN sinon.
+var _freeze_t := NAN
 
 var erg_view = ErgViewModel.new()
 ## Bandeau et histogramme ERG (lot N7), dans le HUD.
@@ -811,6 +813,11 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0
+	if not is_nan(_freeze_t):   # scène figée : même instant et pas nul à chaque image
+		now_s = _freeze_t
+		delta = 0.0
+		if living_world.frozen_at != _freeze_t:
+			living_world.freeze(_freeze_t)
 	var paused := session_state == "PAUSED"
 	living_world.step(now_s, delta, camera.global_position, s_route, v, float(smp["heading_deg"]),
 		float(smp["alt_m"]), paused)
@@ -995,11 +1002,16 @@ func _poll_route_job() -> void:
 ## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py ;
 ## « command » fait envoyer une commande par l'engine ;
 ## « key » et « mouse » jouent une touche ou la souris par le vrai chemin des entrées de Godot, en menu comme en
-## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py).
+## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py) ;
+## « freeze » fige le décor (vent, nuages, herbe, personnages, animaux) à un instant donné.
 func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+		"freeze":   # scène figée à l'instant `t` (s), null : libérée (tests graphiques, lot X20)
+			var t = msg.get("t", null)
+			_freeze_t = float(t) if (typeof(t) == TYPE_INT or typeof(t) == TYPE_FLOAT) else NAN
+			AnimClock.freeze(_freeze_t)
 		"key":
 			_test_key(str(msg.get("key", "")), bool(msg.get("shift", false)), int(msg.get("hold_ms", 100)))
 		"mouse":
