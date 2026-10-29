@@ -185,7 +185,7 @@ Ordre : CT0, CT1, puis CT2, CT7 et CT9, puis CT3, CT4 et CT5, puis CT6 (après l
 
 - **2.0** : série AS (AS2 placement latéral, AS3 bordure, AS4 groupes et plafond de 55 %) ; Y10 (relais, attaques, réponses), qui recoupe AS1 pour l'abri entre bots, un seul des deux à faire ; T12 et T13 (bots à profil et calibrage) ; T5 (records avec et sans bonus) ; R2 et R16 (W′bal, estimation de CP et W′) ; R17 (charte néon) ; W (carrefours) ; Y16 (avatar).
 - **3.0** : série U pour les revêtements des voies rugueuses (facultatif : un Crr par voie suffit pour démarrer).
-- **4.0** : série TT (catalogue des power-ups, `docs/4.0/PLAN_SERIE_TT.md`), dont la 5.0 réutilise le modèle d'effets de TT2 ; test du boîtier gauche du Click avec l'appli Zwift, reporté à la 4.0, qui rendrait les flèches fiables pour les bifurcations.
+- **4.0** : série TT (catalogue des power-ups, plan de la série TT de la PR #571), dont la 5.0 réutilise le modèle d'effets de TT2 ; test du boîtier gauche du Click avec l'appli Zwift, reporté à la 4.0, qui rendrait les flèches fiables pour les bifurcations.
 
 ---
 
