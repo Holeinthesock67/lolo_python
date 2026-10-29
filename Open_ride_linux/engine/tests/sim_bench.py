@@ -526,7 +526,8 @@ class Bench:
         a = self.args
         if self.sampler is not None:
             rows = perf_probe.merge(perf_probe.read_engine_csv(self.out / "moteur.csv"), self.sampler.rows)
-            self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}")
+            self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}",
+                                                        engine_dir=self.out)
             r.check(self.probe_summary["rows"] > 0, "sonde de performance",
                     f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
             if self.endurance:
