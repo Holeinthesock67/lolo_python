@@ -18,7 +18,7 @@ func _init() -> void:
 	add_theme_stylebox_override("panel", UiTheme.help_style())
 	custom_minimum_size.y = UiTheme.HELP_H
 	_rows = VBoxContainer.new()
-	_rows.add_theme_constant_override("separation", 6)
+	_rows.add_theme_constant_override("separation", 4)
 	add_child(_rows)
 
 
@@ -70,9 +70,9 @@ func _line(title: String, screen: String, keyboard: bool) -> HBoxContainer:
 func _keycap(letter: String, accent: bool) -> PanelContainer:
 	var cap := PanelContainer.new()
 	cap.add_theme_stylebox_override("panel", UiTheme.keycap_style(accent))
-	cap.custom_minimum_size = Vector2(34, 34)
+	cap.custom_minimum_size = Vector2(32, 32)
 	cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var l := UiTheme.label(18, UiTheme.FOCUS if accent else UiTheme.TEXT, letter)
+	var l := UiTheme.label(17, UiTheme.FOCUS if accent else UiTheme.TEXT, letter)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	cap.add_child(l)

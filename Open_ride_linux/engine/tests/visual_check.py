@@ -1294,8 +1294,8 @@ def _records_scene(s: Session) -> None:
         img, info = shot
         s.check_texts("records", info, {"menu_title": "Records", "menu": "Montée 1 · 4:08,1"}, contains=True)
         s.check_texts("records", info, {"menu": "Sprint 1"}, contains=True)
-        s.check_texts("records", info, {"menu_card": "Record 4:08,1"}, contains=True)
-        s.check_texts("records", info, {"menu_card": "Écart au 2e +3,4 s"}, contains=True)
+        s.check_texts("records", info, {"menu": "Record 4:08,1"}, contains=True)
+        s.check_texts("records", info, {"menu": "Écart au 2e +3,4 s"}, contains=True)
         s.check_layout("records", info)
         card = info["widgets"]["menu_card"]
         gold = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 220 and 180 < p[1] < 240 and p[2] < 100, step=1)
