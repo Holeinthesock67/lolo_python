@@ -267,7 +267,7 @@ class CoreSession:
             port_state=cfg.ipc.port_state, port_commands=cfg.ipc.port_commands,
             on_command=self._on_command, on_engine_lost=self._on_engine_lost,
             on_engine_returned=lambda: log.info("Engine connecté."),
-            hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
+            hello_config={"ftp_w": cfg.rider.ftp_w, "hr_max_bpm": cfg.rider.hr_max_bpm, "gears_total": self.gearing.n_gears,
                           "theme": cfg.render.theme, "chart": cfg.render.chart,
                           "difficulty_pct": round(self.difficulty_pct),
                           "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")})
@@ -806,7 +806,7 @@ class CoreSession:
         self.gearing.k = min(max(self.cfg.gearing.start_gear, 1), self.gearing.n_gears)
         self.difficulty_pct = float(self.cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
-        self.server.hello_config.update(ftp_w=self.cfg.rider.ftp_w, theme=self.cfg.render.theme,
+        self.server.hello_config.update(ftp_w=self.cfg.rider.ftp_w, hr_max_bpm=self.cfg.rider.hr_max_bpm, theme=self.cfg.render.theme,
                                         chart=self.cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
         self._send_settings(cmd_id)
 
