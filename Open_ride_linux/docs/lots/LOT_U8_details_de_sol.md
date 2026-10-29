@@ -17,7 +17,7 @@ U6 livré ; U7 utile (même placement déterministe).
 
 - **Dunes et rides :** normales procédurales dans le shader (bruit orienté selon une direction de vent fixe du thème, longueur d'onde 0,3 m pour les rides, 40 m pour les dunes), seulement là où `sand_desert` ou `coast` dominent ; aucune modification de géométrie.
 - **Rochers épars :** `MultiMesh` de rochers construits par code (3 formes, teinte de la variante régionale), densité par biome (`alpine`, `rock_desert`, `tundra`, `volcanic`), jamais sur la route ni à moins de 3 m du bord.
-- **Herbes hautes :** touffes en croix (deux quads) pour `savanna` et `steppe`, balancées par le vent (P5), dans les 60 m autour de la caméra ; termitières rares en `savanna`.
+- **Herbes hautes :** touffes en croix (deux quads) pour `savanna` et `steppe`, balancées par le vent (P5), dans les 60 m autour de la caméra ; termitières en `savanna`, à moins de 30 m de la route pour être vues (15, 30, 50 selon la qualité).
 - Budgets par préréglage (`ground_details` dans `quality_presets.gd`), tout se coupe par `living(preset)`.
 
 ## 5. Fichiers concernés
