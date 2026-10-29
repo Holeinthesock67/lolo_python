@@ -218,6 +218,32 @@
         },
         "paused": {
           "type": "boolean"
+        },
+        "kind": {
+          "type": "string",
+          "enum": [
+            "workout",
+            "free",
+            "cadence"
+          ]
+        },
+        "cadence_target_rpm": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "cadence_low_rpm": {
+          "type": "number"
+        },
+        "cadence_high_rpm": {
+          "type": "number"
+        },
+        "cadence_zone": {
+          "type": "string",
+          "enum": [
+            "low",
+            "in",
+            "high"
+          ]
         }
       },
       "required": [
