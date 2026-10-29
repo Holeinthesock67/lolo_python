@@ -163,6 +163,30 @@ def test_ftms_driver_small_shift_sent_at_once():
     asyncio.run(scenario())
 
 
+@pytest.mark.parametrize("resend_s, resent", [(2.0, True), (12.0, False)])
+def test_ftms_driver_resend_interval_is_configurable(resend_s, resent):
+    """Une pente qui dérive de moins de GRADE_EPSILON_PCT n'est renvoyée qu'après `[trainer] resend_s`."""
+    async def scenario():
+        client = FakeClient([ftms.INDOOR_BIKE_DATA])
+        now = [100.0]
+        drv = FtmsDriver(TrainerConfig(resend_s=resend_s), BikeConfig(), device_finder=fake_finder,
+                         client_factory=make_factory(client), clock=lambda: now[0])
+        task = asyncio.create_task(drv.run())
+
+        def grades():
+            return [struct.unpack_from("<h", w, 3)[0] for _, w in client.writes
+                    if w[0] == ftms.OP_SET_SIM_PARAMS]
+        drv.set_sim_grade(2.69)
+        await wait_for(lambda: 269 in grades())
+        now[0] += 3.0
+        drv.set_sim_grade(2.72)                      # dérive de 0,03 % : sous le seuil
+        await asyncio.sleep(0.4)
+        assert (272 in grades()) == resent
+        drv.stop()
+        await asyncio.wait_for(task, 3)
+    asyncio.run(scenario())
+
+
 def click_frame(mask):
     out = bytearray([zwift_click.MSG_KEYPAD_STATUS, 0x08])
     v = mask
