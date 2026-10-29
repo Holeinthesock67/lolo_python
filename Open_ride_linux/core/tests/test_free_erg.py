@@ -56,7 +56,7 @@ def test_start_values():
 
 def test_free_erg_bias_like_a_workout():
     erg = FreeErg(200)
-    assert erg.target_active and erg.target_w == 200 and not erg.is_freeride
+    assert erg.target_active and erg.target_w == 200
     erg.change_bias(+1)
     assert erg.target_w == 204 and erg.bias_pct == 102
     erg.change_bias(+50)
@@ -223,7 +223,7 @@ def test_ble_sim_trainer_follows_the_cadence_lock(tmp_path, monkeypatch):
 
     async def scenario():
         rig = Rig(READY).start()
-        rig.trainer.cadence_rpm = 110.0                  # le cycliste tourne trop vite
+        rig.trainer.rider.update(cadence_rpm=110.0)       # le cycliste tourne trop vite
         await wait_for(lambda: rig.driver.status == "CONNECTED")
         await wait_for(lambda: rig.driver.poll().cadence_rpm > 100)
         cfg = Config()

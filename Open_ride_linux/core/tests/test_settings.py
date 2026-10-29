@@ -226,16 +226,33 @@ def test_audio_volumes_in_menu(tmp_path: Path):
 
 
 def test_fps_counter_setting(tmp_path: Path):
-    """Compteur d'images/s du HUD : choix off / on, appliqué tout de suite, coupé par défaut."""
+    """Compteur d'images/s du HUD : choix off / on / detail (temps CPU et GPU en plus, pour les essais),
+    appliqué tout de suite, coupé par défaut."""
     cfg = Config()
     it = {i["key"]: i for i in settings.current(cfg)}["render.fps"]
-    assert (it["value"], it["choices"], it["applies"]) == ("off", ["off", "on"], "now")
+    assert (it["value"], it["choices"], it["applies"]) == ("off", ["off", "on", "detail"], "now")
     path = tmp_path / "config.toml"
     path.write_text("[render]\nquality = \"low\"\n", encoding="utf-8")
     settings.apply(cfg, {"render.fps": "on"}, path)
     assert config_mod.load(path).render.fps == "on"
+    settings.apply(config_mod.load(path), {"render.fps": "detail"}, path)
+    assert config_mod.load(path).render.fps == "detail"
     with pytest.raises(settings.SettingError):
         settings.check(cfg, "render.fps", "oui")
+
+
+def test_draft_gauge_setting(tmp_path: Path):
+    """Jauge d'abri au-dessus des bots (demande du 29 octobre) : choix off / on, graphisme, appliquée tout de
+    suite, coupée par défaut."""
+    cfg = Config()
+    it = {i["key"]: i for i in settings.current(cfg)}["render.draft_gauge"]
+    assert (it["value"], it["choices"], it["applies"], it["group"]) == ("off", ["off", "on"], "now", "graphics")
+    path = tmp_path / "config.toml"
+    path.write_text("[render]\nquality = \"low\"\n", encoding="utf-8")
+    settings.apply(cfg, {"render.draft_gauge": "on"}, path)
+    assert config_mod.load(path).render.draft_gauge == "on"
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "render.draft_gauge", "oui")
 
 
 def test_settings_groups_and_new_entries():

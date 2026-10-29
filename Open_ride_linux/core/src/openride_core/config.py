@@ -32,6 +32,7 @@ CACHE_DIR = Path.home() / ".cache" / "openride"
 class RiderConfig:
     ftp_w: float = 250.0
     mass_kg: float = 75.0
+    hr_max_bpm: int = 185   # fréquence cardiaque maximale : zones de FC du HUD
 
 
 @dataclass
@@ -61,8 +62,8 @@ class TrainerConfig:
 class GearingConfig:
     n_gears: int = 24
     start_gear: int = 12
-    ratio_min: float = 0.40
-    ratio_max: float = 3.00
+    ratio_min: float = 0.65    # 0,40 à 3,00 avant le 28 octobre : petits braquets à plat, moitié haute inutile
+    ratio_max: float = 2.00
     g_base_pct: float = 2.0
     long_press_gears: int = 10    # appui long en SIM : braquets sautés (3 était plus lent que des appuis courts)
 
@@ -71,11 +72,12 @@ class GearingConfig:
 class RenderConfig:
     quality: str = "low"
     theme: str = "default"
-    visual_grade_scale: float = 1.0
+    visual_grade_scale: float = 2.5   # relief affiché ×2,5 (lot Y15) ; 1,0 : relief réel ; physique et HUD inchangés
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
-    fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off ou on
+    fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
+    draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
 
 
@@ -183,6 +185,11 @@ class AudioConfig:
 
 
 @dataclass
+class LogConfig:
+    latence: bool = False   # journal de latence des appuis du Click, `[latence]` (lot X7, docs/OUTILS_DE_TEST.md)
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -200,6 +207,7 @@ class Config:
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
     bots: BotsConfig = field(default_factory=BotsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
+    log: LogConfig = field(default_factory=LogConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -214,6 +222,7 @@ class ConfigError(Exception):
 BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rider", "ftp_w"): (50, 600),
     ("rider", "mass_kg"): (20, 200),
+    ("rider", "hr_max_bpm"): (120, 230),
     ("bike", "mass_kg"): (3, 30),
     ("bike", "cda_m2"): (0.1, 1.0),
     ("bike", "crr"): (0.001, 0.02),
@@ -235,7 +244,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("gearing", "long_press_gears"): (1, 10),
     ("ipc", "port_state"): (1024, 65535),
     ("ipc", "port_commands"): (1024, 65535),
-    ("render", "visual_grade_scale"): (1.0, 2.0),
+    ("render", "visual_grade_scale"): (1.0, 3.0),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
     ("open_world", "cache_max_gb"): (0.5, 500),
@@ -272,7 +281,8 @@ ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
-    ("render", "fps"): ("off", "on"),
+    ("render", "fps"): ("off", "on", "detail"),
+    ("render", "draft_gauge"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),

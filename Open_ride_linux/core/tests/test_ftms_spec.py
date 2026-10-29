@@ -53,6 +53,7 @@ def test_control_point_goes_on_without_response():
     """Trainer muet : on continue après `CP_RESPONSE_TIMEOUT_S`, sans rester bloqué."""
     async def scenario():
         ftms_driver.CP_RESPONSE_TIMEOUT_S, saved = 0.05, ftms_driver.CP_RESPONSE_TIMEOUT_S
+        ftms_driver.CP_BUSY_GRACE_S, saved_grace = 0.05, ftms_driver.CP_BUSY_GRACE_S
         try:
             client = FakeClient([ftms.INDOOR_BIKE_DATA], cp_result=None)
             drv, task = await start(client)
@@ -62,6 +63,7 @@ def test_control_point_goes_on_without_response():
             assert cp_ops(client)[-1] == ftms.OP_RESET
         finally:
             ftms_driver.CP_RESPONSE_TIMEOUT_S = saved
+            ftms_driver.CP_BUSY_GRACE_S = saved_grace
     asyncio.run(scenario())
 
 

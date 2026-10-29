@@ -68,6 +68,14 @@ func _init() -> void:
 	# 4. Boîtier « − » LOST puis CONNECTED : une alerte de perte, une de retour, rien entre les deux
 	func_test_lost_reconnected_alerts(vm)
 
+	# 4 bis. Control Point occupé (révision 1.5) : drapeau lu, absent ou null sans erreur
+	_check(DevicesViewModel.trainer_busy({"devices": {"trainer": {"status": "CONNECTED", "busy": true}}}),
+		"trainer_busy : vrai quand devices.trainer.busy est vrai")
+	_check(not DevicesViewModel.trainer_busy({"devices": {"trainer": {"status": "CONNECTED", "busy": false}}}),
+		"trainer_busy : faux quand busy est faux")
+	_check(not DevicesViewModel.trainer_busy(state_demo), "trainer_busy : faux sans le champ busy (core 1.4)")
+	_check(not DevicesViewModel.trainer_busy({"devices": null}), "trainer_busy : faux avec devices à null")
+
 	# 5. ready_to_ride : trainer LOST refusé avec une raison ; Click absent accepté avec la raison « clavier seul »
 	var st_ready := vm.ready_to_ride(state_demo)
 	_check(st_ready["ok"] == true, "ready_to_ride : demo complet prêt")

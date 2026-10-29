@@ -249,7 +249,7 @@ func _test_next_climb() -> void:
 		"boucle : montée trouvée après l'arrivée, à %.0f m" % c4.get("start_m", -1.0))
 
 
-## Lignes du HUD de séance (main.gd) : SIM, ERG, roue libre, fréquence cardiaque.
+## Lignes du HUD de séance (main.gd) : SIM, ERG, palier à 50 W (lot O19), fréquence cardiaque.
 func _test_session_lines() -> void:
 	var sim := {"power": 251.6, "power_3s": 245.3, "v": 10.0, "cadence": 88, "hr": 151, "gear": 9,
 		"gears_total": 24, "grade": 4.25, "grade_sent": 2.1, "s": 1234.0, "mode": "SIM", "erg": null}
@@ -286,13 +286,33 @@ func _test_session_lines() -> void:
 	erg2["target_w"] = 250
 	l = HudViewModel.session_lines(st, vm.update(erg2, 0.1))
 	_check(l["power"].ends_with("CIBLE ERG: 250 W (105 %)"), "ERG : biais rafraîchi (%s)" % l["power"])
-	var free := erg.duplicate()
-	free["block_type"] = "freeride"
-	l = HudViewModel.session_lines(st.merged({"erg": free}, true), ErgViewModel.new().update(free, 0.0))
-	_check(l["power"].ends_with("CIBLE ERG: roue libre") and l["speed"].ends_with("[Braquet: 10/24]"),
-		"roue libre : braquets actifs (%s / %s)" % [l["power"], l["speed"]])
-	_check(l["gear_shown"], "roue libre : braquet affiché")
+	var floor_erg := erg.duplicate()          # FreeRide d'un .zwo : palier ERG à 50 W (lot O19)
+	floor_erg["target_w"] = 50
+	floor_erg["bias_pct"] = 100
+	l = HudViewModel.session_lines(st.merged({"erg": floor_erg}, true), ErgViewModel.new().update(floor_erg, 0.0))
+	_check(l["power"].ends_with("CIBLE ERG: 50 W") and l["speed"].ends_with("± = intensité en ERG]"),
+		"palier à 50 W : ERG comme les autres blocs (%s / %s)" % [l["power"], l["speed"]])
+	_check(not l["gear_shown"], "palier à 50 W : braquet caché, pas de roue libre")
 	_check(HudViewModel.session_lines(sim, no_erg)["gear_shown"], "SIM : braquet affiché")
+
+
+func _test_zones() -> void:
+	# Puissance : zones de Coggan (Z1 = 0 … Z7 = 6) ; FC : Z1 à Z5 en % de la FC max ; -1 sans référence.
+	_check(HudViewModel.power_zone(100.0, 250.0) == 0 and HudViewModel.power_zone(248.0, 250.0) == 3
+		and HudViewModel.power_zone(330.0, 250.0) == 5 and HudViewModel.power_zone(450.0, 250.0) == 6,
+		"zones de puissance (40, 99, 132, 180 % de FTP)")
+	_check(HudViewModel.power_zone(137.5, 250.0) == 1, "55 % de FTP : Z2 (borne basse incluse)")
+	_check(HudViewModel.power_zone(NAN, 250.0) == -1 and HudViewModel.power_zone(200.0, 0.0) == -1,
+		"puissance sans mesure ou sans FTP : pas de zone")
+	_check(HudViewModel.hr_zone(100.0, 185.0) == 0 and HudViewModel.hr_zone(120.0, 185.0) == 1
+		and HudViewModel.hr_zone(142.0, 185.0) == 2 and HudViewModel.hr_zone(160.0, 185.0) == 3
+		and HudViewModel.hr_zone(176.0, 185.0) == 4, "zones de FC (54, 65, 77, 86, 95 % de la FC max)")
+	_check(HudViewModel.hr_zone(0.0, 185.0) == -1 and HudViewModel.hr_zone(NAN, 185.0) == -1
+		and HudViewModel.hr_zone(150.0, 0.0) == -1, "FC absente ou FC max inconnue : pas de zone")
+	var l := HudViewModel.session_lines({"power_3s": 248.0, "hr": 142}, {"visible": false}, 250.0, 185.0)
+	_check(l["power_zone"] == 3 and l["hr_zone"] == 2, "lignes du HUD : zones de la puissance 3 s et de la FC")
+	_check(HudViewModel.session_lines({"power_3s": 248.0, "hr": 142}, {"visible": false})["power_zone"] == -1,
+		"lignes du HUD sans FTP : pas de zone")
 
 
 func _test_difficulty() -> void:
@@ -331,6 +351,7 @@ func _init() -> void:
 	_test_profile_open()
 	_test_profile_loop()
 	_test_next_climb()
+	_test_zones()
 	_test_difficulty()
 	print("test_hud_view_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

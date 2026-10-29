@@ -4,7 +4,7 @@ Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
     openride-core run [--trainer mock|ftms|sim] [--input click|keyboard|none|sim]
                       [--hr none|ble|sim] [--sim-scenario NOM|FICHIER] [--gear N]
-                      [--autostart [--route ID] [--workout ID | --ftp-test ramp|20min]]
+                      [--autostart [--route ID] [--workout ID | --ftp-test ramp]]
                       [--resume JOURNAL]
                                       boucle de séance (BLE, physique, IPC, journal) ; avec
                                       --autostart, parcours <routes>/<ID>.world (défaut demo) et
@@ -20,6 +20,9 @@ Sous-commandes disponibles à ce stade :
     openride-core session-report [FICHIER] [--log F] [--engine-log F] [--out DOSSIER] [--json]
                                       analyse d'une séance réelle : sections de pente, retard
                                       pente → effort, ERG, coupures, segments (lot X12)
+    openride-core fit-check FICHIER.fit [--journal JOURNAL.jsonl] [--json]
+                                      contrôle local d'un FIT de séance réelle avec le SDK Garmin
+                                      (messages, pauses, trous, FC figée, totaux ; lot X11)
     openride-core history [--dir DOSSIER] [--weeks N] [--ftp W] [--json]
                                       historique des séances et cumul par semaine ISO
     openride-core xp [--dir DOSSIER] [--json] [--config FICHIER] [--save F | --compare F]
@@ -94,6 +97,10 @@ def cmd_run(args: argparse.Namespace) -> int:
         cfg.drivers.mock_replay = str(args.replay)
     if args.trace_ftms:
         cfg.trainer.trace_ftms = True
+    if args.latence:
+        cfg.log.latence = True
+    from . import latency_log
+    latency_log.enable(cfg.log.latence)
 
     bots_list = []
     if args.bot or args.bot_profile:
@@ -166,6 +173,10 @@ def cmd_session_report(args: argparse.Namespace) -> int:
     from .tools.session_report import run
 
     return run(args.file, args.log, args.engine_log, args.out, args.json)
+def cmd_fit_check(args: argparse.Namespace) -> int:
+    from .tools.fit_check import run
+
+    return run(args.file, args.journal, args.json)
 
 
 def cmd_history(args: argparse.Namespace) -> int:
@@ -269,8 +280,10 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : parcours <routes>/<ID>.world (défaut : demo)")
     run.add_argument("--workout", metavar="ID",
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
-    run.add_argument("--ftp-test", choices=["ramp", "20min"],
-                     help="avec --autostart : séance de test de FTP (rampe par paliers ou 20 minutes)")
+    run.add_argument("--ftp-test", choices=["ramp"],
+                     help="avec --autostart : séance de test de FTP (rampe par paliers)")
+    run.add_argument("--latence", action="store_true",
+                     help="journal de latence des appuis du Click, lignes [latence] (lot X7 ; [log] latence)")
     run.add_argument("--trace-ftms", action="store_true",
                      help="trace horodatée de chaque échange Control Point FTMS (lot Q3)")
     rel = sub.add_parser("release-trainer",
@@ -288,6 +301,10 @@ def build_parser() -> argparse.ArgumentParser:
     srep.add_argument("--engine-log", type=Path, help="journal de l'engine (lignes [perf-rendu])")
     srep.add_argument("--out", type=Path, help="dossier du rapport (défaut : ~/OpenRide/rapports/<séance>)")
     srep.add_argument("--json", action="store_true", help="sortie JSON")
+    fitc = sub.add_parser("fit-check", help="contrôle local d'un FIT de séance réelle (SDK Garmin, lot X11)")
+    fitc.add_argument("file", type=Path, help="fichier .fit")
+    fitc.add_argument("--journal", type=Path, help="journal .jsonl de la séance : distance et durée à ± 1 %%")
+    fitc.add_argument("--json", action="store_true", help="sortie JSON")
     hist = sub.add_parser("history", help="historique des séances et cumul par semaine ISO")
     hist.add_argument("--dir", type=Path, dest="directory",
                       help="dossier des séances (défaut : ~/OpenRide/Activities)")
@@ -368,6 +385,7 @@ def main(argv: list[str] | None = None) -> int:
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary, "session-report": cmd_session_report, "xp": cmd_xp,
+            "fit-check": cmd_fit_check,
             "history": cmd_history, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
             "open-world-save": cmd_open_world_save}[args.command](args)

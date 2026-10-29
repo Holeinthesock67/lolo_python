@@ -2,14 +2,15 @@ extends Node3D
 
 ## Silhouettes des bots sur la route (Lot O7) : forme stylisée et légère (cadre, deux roues, coureur),
 ## couleur par `kind` (bots_view_model.gd), posée à `s` avec le cap de route_data.gd et décalée de
-## LATERAL_M vers la droite pour ne pas masquer la route devant la caméra ; nom au-dessus à moins de
+## LATERAL_M vers la droite (à droite du cycliste, vers le bord : road_builder.gd, lot P32) ; nom au-dessus à moins de
 ## NAME_M. Une silhouette par bot visible (moins de 300 m), maillages et matériaux partagés ;
 ## sans bot, aucun nœud. Ne décide rien : affiche la sortie de bots_view_model.view().
 ## Pas de class_name : charger par preload("res://scripts/bots_view.gd").
 
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 
-const LATERAL_M := 1.5
+const LATERAL_M := RoadBuilder.BOT_LATERAL_M
 const NAME_HEIGHT_M := 2.1
 const GHOST_ALPHA := 0.55
 
@@ -84,9 +85,9 @@ func _make_node(kind: String) -> Node3D:
 	return root
 
 
-## `view` : sortie de bots_view_model.view() ; `route` : route_data.gd ; relief exagéré comme la
-## caméra (`grade_scale`, `alt0` : altitude de référence du parcours).
-func update_view(view: Array, route, grade_scale := 1.0, alt0 := 0.0) -> void:
+## `view` : sortie de bots_view_model.view() ; `route` : route_data.gd (hauteur affichée, relief exagéré comme la
+## caméra).
+func update_view(view: Array, route) -> void:
 	var seen := {}
 	for b in view:
 		var id: String = b["id"]
@@ -99,8 +100,6 @@ func update_view(view: Array, route, grade_scale := 1.0, alt0 := 0.0) -> void:
 		var node: Node3D = _nodes[key]
 		var smp: Dictionary = route.sample(route.wrap_s(float(b["s"])))
 		var pos := Vector3(smp["x"], smp["y"], smp["z"])
-		if grade_scale != 1.0:
-			pos.y = alt0 + (pos.y - alt0) * grade_scale
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		var right := Vector3(cos(h), 0.0, sin(h))
 		node.position = pos + right * LATERAL_M
@@ -114,6 +113,14 @@ func update_view(view: Array, route, grade_scale := 1.0, alt0 := 0.0) -> void:
 			remove_child(_nodes[key])
 			_nodes[key].queue_free()
 			_nodes.erase(key)
+
+
+## Position dans le monde de la silhouette du bot `id` (jauge d'abri, draft_gauge.gd) ; null s'il n'est pas affiché.
+func anchor_of(id: String) -> Variant:
+	for key in _nodes:
+		if str(key).get_slice(":", 0) == id and _nodes[key].visible:
+			return _nodes[key].global_position
+	return null
 
 
 ## Pour les tests graphiques : silhouettes affichées et celles dans le champ de la caméra.

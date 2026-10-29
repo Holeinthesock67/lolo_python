@@ -90,6 +90,8 @@ EXPECTATIONS = {
     "nominal": _expect_no_reconnect,
     "demo": _expect_no_reconnect,
     "erreur_0x80": _expect_att_error_seen,
+    "rafale_0x80": lambda r: _expect_att_error_seen(r) + _expect_no_reconnect(r),
+    "montre_garmin": lambda r: _expect_att_error_seen(r) + _expect_no_reconnect(r),
     "connexions_retardees": _expect_hr_connected,
     "controle_refuse": _expect_refused,
 }
@@ -188,7 +190,7 @@ def play(name: str, spec: dict, mode: str, port: int, workdir: str) -> dict[str,
     out["reconnect_count"] = s.driver.reconnect_count
     out["click_connections"] = {b.role: b.connections for b in s.sim.clicks}
     out["att_failures"] = sum(1 for c in trainer.commands if c.result is None)
-    out["ops"] = [c.op for c in trainer.commands]
+    out["ops"] = [c.op for c in trainer.commands if c.result is not None]   # écritures reçues
     out["released"] = {"control": trainer.control, "client": trainer.client is not None,
                        "mode": trainer.mode, "last_grade": None}
     sims = [c for c in trainer.commands if c.op == ftms.OP_SET_SIM_PARAMS]

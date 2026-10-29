@@ -1,13 +1,14 @@
 extends SceneTree
 
-## Vitrine de rendu : route, herbe, personnages et animaux vus de près, sans core ni parcours, pour comparer avant et
+## Vitrine de rendu : route, herbe, personnages, animaux et engins du ciel vus de près, sans core ni parcours, pour comparer avant et
 ## après une retouche graphique (captures PNG et compte de triangles et d'appels de dessin par vue).
 ## Mêmes scripts que la scène principale (grass_tufts.gd, crowd_renderer.gd, terrain.gdshader), posés
 ## sur une route droite de démonstration ; les modèles de foule et de passants sont remplacés par des
 ## listes fixes pour que deux captures soient comparables.
 ##
 ##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
-##     --audio-driver Dummy --script res://tests/vitrine_rendu.gd -- --out DOSSIER [--quality low,medium,high]
+##     --audio-driver Dummy --script res://tests/vitrine_rendu.gd -- --out DOSSIER [--quality low,medium,high] \
+##     [--size 1920x1080] [--views ciel,ciel_proche,panneau_col,borne,portes]
 ##
 ## Le préréglage demandé est appliqué comme dans la scène principale (render_quality.gd : image, ombres,
 ## brouillard ; lot X32) ; avant, la vitrine n'en appliquait aucun et ne montrait pas les effets de Y13.
@@ -28,9 +29,12 @@ const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
+const SkyTrafficRenderer := preload("res://scripts/sky_traffic_renderer.gd")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
+const RoadsideProps := preload("res://scripts/roadside_props.gd")
+const WindTurbines := preload("res://scripts/wind_turbines.gd")
 
-const SIZE := Vector2i(1280, 720)
+const DEFAULT_SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
 const SETTLE_FRAMES := 30
 
@@ -50,10 +54,25 @@ const VIEWS := {
 	"facades_pres": [Vector3(-3.5, 1.6, -18.0), Vector3(-11.0, 3.0, -26.0), 55.0],
 	"toits": [Vector3(3.0, 22.0, -6.0), Vector3(-2.0, 2.0, -48.0), 60.0],
 	"styles": [Vector3(-104.0, 30.0, -82.0), Vector3(-104.0, 1.0, -134.0), 58.0],
+	"ciel": [Vector3(0.0, 1.4, 0.0), Vector3(0.0, 70.0, -200.0), 70.0],
+	"ciel_proche": [Vector3(0.0, 1.4, 0.0), Vector3(8.0, 72.0, -270.0), 22.0],
 	"arbres_temperes": [Vector3(147.0, 5.0, -86.0), Vector3(147.0, 8.0, -120.0), 60.0],
 	"arbres_sud": [Vector3(153.0, 4.0, -128.0), Vector3(153.0, 4.5, -160.0), 60.0],
 	"ecorces": [Vector3(129.0, 1.8, -112.0), Vector3(129.0, 2.4, -120.0), 55.0],
+	"panneaux": [Vector3(58.5, 1.5, -15.5), Vector3(61.5, 1.3, -22.0), 50.0],
+	"panneau_col": [Vector3(58.6, 2.3, -18.6), Vector3(60.0, 2.3, -22.0), 40.0],
+	"borne": [Vector3(61.0, 0.9, -17.4), Vector3(61.8, 0.45, -19.5), 40.0],
+	"portes": [Vector3(-4.0, 1.6, -24.0), Vector3(-9.0, 1.2, -25.0), 60.0],
+	"eolienne": [Vector3(-75.0, 2.0, -150.0), Vector3(-120.0, 55.0, -300.0), 60.0],
+	"eolienne_pied": [Vector3(-113.0, 1.7, -287.0), Vector3(-120.0, 8.0, -300.0), 60.0],
 }
+## Objets du bord de route (roadside_props.gd, lot P14) : panneau de col, panneau d'approche, borne, avec les
+## textes que leur donne roadside_model.gd.
+const PROPS := [
+	[{"kind": "summit", "s": 0.0, "lines": ["Col de la Croix", "1 234 m"]}, Vector3(60.0, 0.0, -22.0)],
+	[{"kind": "approach", "s": 0.0, "lines": ["Sommet à 2 km", "Pente moyenne 7 %"]}, Vector3(63.0, 0.0, -24.0)],
+	[{"kind": "km", "s": 0.0, "lines": ["km 3"]}, Vector3(61.8, 0.0, -19.5)],
+]
 ## Arbres de tree_species.gd (lot U7) et arbre d'avant la série U, en deux rangées loin de la route.
 const TREES_TEMPERATE := ["oak", "birch", "pine", "beech", "spruce", "larch", "generic"]
 const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "acacia", "baobab", "cactus",
@@ -82,6 +101,26 @@ const ANIMALS := [
 	["sheep", Vector3(-4.4, 0.0, -16.8), 2.2, 0.8, 1.0], ["deer", Vector3(-12.0, 0.0, -11.5), 0.6, 0.3, 1.0],
 	["bird", Vector3(-4.5, 2.4, -8.5), 1.2, 0.0, 0.0], ["bird", Vector3(-6.5, 3.0, -10.0), 0.9, 0.4, 0.0],
 ]
+
+
+## Engins du ciel posés à la main (forme de `craft` de sky_traffic_model.gd), affichés par sky_traffic_renderer.gd :
+## montgolfières de chaque motif d'enveloppe (`style`), parapentes et paramoteur, en grand angle (vue `ciel`)
+## et au téléobjectif (vue `ciel_proche`). Sorte, position, cap (radians), inclinaison (radians), couleur, motif, feux.
+const SKY := [
+	["balloon", Vector3(-70.0, 62.0, -240.0), 0.3, 0.0, 0, 3, 1.0], ["balloon", Vector3(12.0, 92.0, -310.0), 1.1, 0.0, 1, 1, 0.0],
+	["balloon", Vector3(40.0, 120.0, -330.0), 2.0, 0.0, 2, 2, 0.0], ["paraglider", Vector3(-45.0, 48.0, -120.0), 0.4, 0.3, 0, 0, 0.0],
+	["paraglider", Vector3(55.0, 85.0, -210.0), 2.7, -0.3, 2, 0, 0.0], ["paramotor", Vector3(-22.0, 40.0, -105.0), -0.5, 0.15, 1, 0, 0.0],
+]
+
+
+class FixedSky:
+	var craft := []
+	func _init() -> void:
+		for i in range(SKY.size()):
+			var c: Array = SKY[i]
+			var basis := Basis(Vector3.UP, c[2]) * Basis(Vector3.FORWARD, c[3])
+			craft.append({"id": "v%d" % i, "kind": c[0], "color": c[4], "style": c[5], "xform": Transform3D(basis, c[1]),
+				"contrail_m": 0.0, "rotor": 0.0, "lights": c[6], "dist": (c[1] as Vector3).length()})
 
 
 ## Route droite le long de -z (cap 0, comme route_data.gd) : seules les méthodes lues par grass_tufts.gd.
@@ -130,6 +169,8 @@ class FixedPassersby:
 
 var _out_dir := "user://vitrine"
 var _presets := ["low", "medium", "high"]
+var _size := DEFAULT_SIZE
+var _views: Array = VIEWS.keys()
 
 
 func _init() -> void:
@@ -139,6 +180,11 @@ func _init() -> void:
 			_out_dir = args[i + 1]
 		elif args[i] == "--quality":
 			_presets = Array(args[i + 1].split(","))
+		elif args[i] == "--size":
+			var wh := args[i + 1].split("x")
+			_size = Vector2i(int(wh[0]), int(wh[1]))
+		elif args[i] == "--views":
+			_views = Array(args[i + 1].split(","))
 	call_deferred("_run")
 
 
@@ -148,7 +194,7 @@ func _run() -> void:
 	csv.store_line("vue;préréglage;qualite_appliquee;triangles;appels_dessin;objets")
 	for preset in _presets:
 		var vp := _build_world(preset)
-		for view in VIEWS:
+		for view in _views:
 			var v: Array = VIEWS[view]
 			var cam: Camera3D = vp.get_node("Camera")
 			cam.fov = v[2]
@@ -174,7 +220,7 @@ func _run() -> void:
 ## spectateurs et passants avec les budgets de `QualityPresets.living(preset)`.
 func _build_world(preset: String) -> SubViewport:
 	var vp := SubViewport.new()
-	vp.size = SIZE
+	vp.size = _size
 	vp.own_world_3d = true
 	vp.msaa_3d = Viewport.MSAA_4X
 	vp.render_target_update_mode = SubViewport.UPDATE_ALWAYS
@@ -232,7 +278,17 @@ func _build_world(preset: String) -> SubViewport:
 	_add_cyclists(vp)
 	_add_animals(vp)
 	_add_buildings(vp, preset)
+	var sky = SkyTrafficRenderer.new()
+	vp.add_child(sky)
+	sky.setup(FixedSky.new())
+	sky.update()
 	_add_trees(vp, preset)
+	_add_props(vp, preset)
+	var turbines = WindTurbines.new()
+	turbines.set_preset(preset)
+	vp.add_child(turbines)
+	turbines.set_points([{"kind": "wind_turbine", "id": "vitrine", "x": -120.0, "y": 0.0, "z": -300.0, "height_m": 100.0}])
+	turbines.update({"dir": Vector3(0.0, 0.0, 1.0), "strength": 0.0}, Vector3(-75.0, 2.0, -150.0), 0.0)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
 	cam.current = true
@@ -327,6 +383,18 @@ func _add_trees(vp: SubViewport, preset: String) -> void:
 			mi.material_override = mat
 			mi.position = Vector3(float(row[1]) + i * float(row[3]), 0.0, float(row[2]))
 			vp.add_child(mi)
+
+
+## Panneaux et borne de PROPS avec les matériaux de la scène principale, face à la caméra de la vue `panneaux`.
+func _add_props(vp: SubViewport, preset: String) -> void:
+	var props = RoadsideProps.new()
+	props.set_preset(preset)
+	vp.add_child(props)
+	for it in PROPS:
+		var node: Node3D = props.build_prop(it[0])
+		node.position = it[1]
+		node.rotation.y = -0.35
+		props.add_child(node)
 
 
 ## Village de BUILDINGS maillé par building_mesh.gd avec le matériau de la scène principale (osm_streamer.gd).

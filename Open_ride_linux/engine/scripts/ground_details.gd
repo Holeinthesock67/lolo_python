@@ -226,6 +226,7 @@ func detail_at(kind: String, shape: int, k: int, slot: int, stations: PackedVect
 	var fi := u * (stations.size() - 1)
 	var i0 := mini(int(fi), stations.size() - 2)
 	var st := stations[i0].lerp(stations[i0 + 1], fi - i0)
+	st.w = lerp_angle(stations[i0].w, stations[i0 + 1].w, fi - i0)   # cap qui passe par le nord (359° → 1°)
 	var right := Vector3(cos(st.w), 0.0, sin(st.w))
 	var scale_f := _scale(kind, h2)
 	var radius: float = RADIUS_M[kind] * scale_f

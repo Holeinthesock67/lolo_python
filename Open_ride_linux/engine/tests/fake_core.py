@@ -297,7 +297,7 @@ class FakeCore:
                        "part": part, "parts": len(chunks), "items": chunk, "truncated": False})
 
     def send_hello_ack(self) -> None:
-        config = {"ftp_w": 250, "gears_total": 24, "theme": "default", "difficulty_pct": self.difficulty_pct}
+        config = {"ftp_w": 250, "hr_max_bpm": 185, "gears_total": 24, "theme": "default", "difficulty_pct": self.difficulty_pct}
         if self.chart is not None:
             config["chart"] = self.chart
         if self.progression is not None:
@@ -530,8 +530,8 @@ REFERENCE_ERG_BLOCKS: list[tuple[str, float, int, int | None]] = [
     ("interval_on", 60.0, 300, 125),
     ("interval_off", 60.0, 125, 300),
     ("interval_on", 60.0, 300, 125),
-    ("interval_off", 60.0, 125, 0),
-    ("freeride", 120.0, 0, 175),
+    ("interval_off", 60.0, 125, 50),
+    ("steady", 120.0, 50, 175),         # FreeRide du fichier : palier à 50 W (lot O19)
     ("cooldown", 300.0, 175, None),
 ]
 

@@ -28,6 +28,7 @@ const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const RoadTrafficModel := preload("res://scripts/road_traffic_model.gd")
 const BoatModel := preload("res://scripts/boat_model.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 signal chunk_loaded(k: int, extras: Dictionary)
 signal chunk_freed(k: int)
@@ -42,7 +43,6 @@ var route = null
 var world_dir := ""
 var layers_present: Array = []
 var preset_name := "low"
-var visual_grade_scale: float = 1.0
 
 var _building_material: ShaderMaterial
 var _water_material: Material
@@ -202,7 +202,6 @@ func _start_jobs() -> void:
 				"layers": layers_present.duplicate(),
 				"theme": _theme,
 				"route": route,
-				"visual_grade_scale": visual_grade_scale,
 				"fauna": fauna_enabled,
 				"traffic": traffic_enabled,
 				"boats": boats_enabled,
@@ -213,6 +212,7 @@ func _start_jobs() -> void:
 
 
 func _build_chunk_job(job: Dictionary) -> void:
+	var t0 := Time.get_ticks_usec()
 	var k: int = job["k"]
 	var w_dir: String = job["world_dir"]
 	var layers: Array = job["layers"]
@@ -222,13 +222,15 @@ func _build_chunk_job(job: Dictionary) -> void:
 	var pois := []
 	var shapes := {"forests": [], "buildings": [], "waters": []}
 
-	var v_scale: float = float(job.get("visual_grade_scale", 1.0))
-	var alt_orig: float = job["route"].alt_m[0] if job.get("route") != null and job["route"].n > 0 else 0.0
+	# Relief affiché (lot Q2) : les hauteurs des couches suivent `route.display_y`, comme la route et le terrain.
+	var r_disp = job.get("route")
+	var v_scale: float = r_disp.relief_k if r_disp != null else 1.0
 
 	var b_items := []
 	var w_items := {"lines": [], "areas": []}
 	var boats := []
 	# 1. Bâtiments
+	var t_buildings := Time.get_ticks_usec()
 	if layers.has("buildings"):
 		var b_res := OsmLayers.load_chunk(w_dir, "buildings", k, job.get("route"))
 		if b_res.get("ok", false):
@@ -242,7 +244,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 					for b in items:
 						var bc: Dictionary = b.duplicate()
 						if bc.has("base_y"):
-							bc["base_y"] = alt_orig + (float(bc["base_y"]) - alt_orig) * v_scale
+							bc["base_y"] = r_disp.display_y(float(bc["base_y"]))
 						scaled_items.append(bc)
 					items = scaled_items
 				var m := BuildingMesh.build(items, th, SKIRT_M)
@@ -251,6 +253,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 					if not arr.is_empty():
 						meshes_data.append({"kind": "buildings", "arrays": arr})
 
+	PerfProbe.task("batiments", str(k), (Time.get_ticks_usec() - t_buildings) / 1000.0)
 	# 2. Eau (lines et areas)
 	if layers.has("water"):
 		var w_res := OsmLayers.load_chunk(w_dir, "water", k, job.get("route"))
@@ -278,7 +281,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 						var new_pts: Array = []
 						for pt in pts:
 							if pt.size() >= 3:
-								new_pts.append([pt[0], pt[1], alt_orig + (float(pt[2]) - alt_orig) * v_scale])
+								new_pts.append([pt[0], pt[1], r_disp.display_y(float(pt[2]))])
 							else:
 								new_pts.append(pt)
 						lc["points"] = new_pts
@@ -297,7 +300,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 					for area in areas:
 						var ac: Dictionary = area.duplicate()
 						if ac.has("level_y"):
-							ac["level_y"] = alt_orig + (float(ac["level_y"]) - alt_orig) * v_scale
+							ac["level_y"] = r_disp.display_y(float(ac["level_y"]))
 						scaled_areas.append(ac)
 					areas = scaled_areas
 				var a_mesh := WaterMesh.build_areas(areas)
@@ -337,7 +340,7 @@ func _build_chunk_job(job: Dictionary) -> void:
 			# Posés sur le relief exagéré, comme le terrain affiché (lot Q2)
 			var raw_height := height_at
 			height_at = func(x: float, z: float) -> float:
-				return alt_orig + (float(raw_height.call(x, z)) - alt_orig) * v_scale
+				return r_disp.display_y(float(raw_height.call(x, z)))
 	if bool(job.get("fauna", false)) and job.get("route") != null:
 		var fz = th.get("fauna", {})
 		fauna = FaunaPlacer.place_chunk(k, veg_items, pois, job["route"], fz if typeof(fz) == TYPE_DICTIONARY else {}, {
@@ -359,13 +362,14 @@ func _build_chunk_job(job: Dictionary) -> void:
 						var lc: Dictionary = line.duplicate()
 						var new_pts: Array = []
 						for pt in lc.get("points", []):
-							new_pts.append([pt[0], pt[1], alt_orig + (float(pt[2]) - alt_orig) * v_scale])
+							new_pts.append([pt[0], pt[1], r_disp.display_y(float(pt[2]))])
 						lc["points"] = new_pts
 						scaled.append(lc)
 					lines = scaled
 				traffic.append_array(RoadTrafficModel.road_paths(lines))
 		traffic.append_array(RoadTrafficModel.field_paths(veg_items, height_at))
 
+	PerfProbe.task("osm", str(k), (Time.get_ticks_usec() - t0) / 1000.0)
 	job["result"] = {
 		"k": k,
 		"meshes_data": meshes_data,
@@ -491,6 +495,7 @@ func integrate(max_new: int) -> int:
 		var k: int = item["k"]
 		if not _wanted_chunks.has(k) or _chunk_instances.has(k):
 			continue
+		var t0 := Time.get_ticks_usec()
 
 		var nodes: Array[MeshInstance3D] = []
 		var m_list: Array = item["meshes_data"]
@@ -524,6 +529,7 @@ func integrate(max_new: int) -> int:
 			_pois_by_chunk[k] = item["pois"]
 			_update_sound_pois()
 		chunk_loaded.emit(k, {"fauna": item.get("fauna", []), "traffic": item.get("traffic", []), "boats": item.get("boats", [])})
+		PerfProbe.mark("osm", str(k), (Time.get_ticks_usec() - t0) / 1000.0)
 
 	_start_jobs()
 	return created

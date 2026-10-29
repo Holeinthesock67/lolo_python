@@ -33,6 +33,7 @@ const BiomeModel := preload("res://scripts/biome_model.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
+const PerfProbe := preload("res://scripts/perf_probe.gd")
 
 const LOOKAHEAD_S := 10.0
 const NEAR_RADIUS_M := 1500.0
@@ -48,7 +49,6 @@ var has_terrain := false
 var chunks_ahead: int = 3
 var chunks_behind: int = 1
 var vegetation_density_factor: float = 0.3
-var visual_grade_scale: float = 1.0
 ## Rayon des tuiles lointaines et demi-côté du sol plat, réglé par render_quality.gd (far_radius_for).
 var far_radius_m: float = FAR_RADIUS_M:
 	set(value):
@@ -145,6 +145,7 @@ func set_world(new_route, new_world_dir: String) -> void:
 	clear()
 	route = new_route
 	world_dir = new_world_dir
+	_apply_relief_to_material()
 	has_terrain = false
 	_manifest = JSON.parse_string(FileAccess.get_file_as_string(world_dir.path_join("manifest.json"))) \
 		if FileAccess.file_exists(world_dir.path_join("manifest.json")) else null
@@ -162,7 +163,6 @@ func set_world(new_route, new_world_dir: String) -> void:
 		_make_ground()
 	_set_biome_model()
 	if osm_streamer != null:
-		osm_streamer.visual_grade_scale = visual_grade_scale
 		osm_streamer.set_world(route, world_dir)
 
 
@@ -184,6 +184,16 @@ func _set_biome_model() -> void:
 	_ground_color = ThemeRenderParams.terrain_uniforms(ground)["grass_color"]
 	if _ground != null and _ground.mesh != null and _ground.mesh.material is StandardMaterial3D:
 		(_ground.mesh.material as StandardMaterial3D).albedo_color = _ground_color
+
+
+## Relief affiché de la route (lots Q2 et Y15) passé au shader du terrain : roche et neige jugées sur le vrai relief.
+func _apply_relief_to_material() -> void:
+	if not _terrain_material is ShaderMaterial:
+		return
+	var k: float = route.relief_k if route != null else 1.0
+	(_terrain_material as ShaderMaterial).set_shader_parameter("relief_k", k)
+	(_terrain_material as ShaderMaterial).set_shader_parameter("relief_origin_m",
+		route.alt_m[0] if route != null and route.n > 0 else 0.0)
 
 
 ## Sols des biomes (lot U6) pour le préréglage courant ; les tuiles déjà affichées changent de matériau.
@@ -270,6 +280,9 @@ func swap_route(new_route, from_part: int) -> void:
 	if has_terrain or _has_layer("terrain"):
 		var near_new := TerrainTiles.scan_index(world_dir, "near")
 		var far_new := TerrainTiles.scan_index(world_dir, "far")
+		# Copies : les tâches de fond en cours lisent les index (raccords des tuiles, sink_under_near)
+		_near_index = _near_index.duplicate()
+		_far_index = _far_index.duplicate()
 		for t in near_new:
 			if not _near_index.has(t):
 				_near_index[t] = true
@@ -292,14 +305,13 @@ func set_previews(items: Array) -> void:
 			_free_preview(key)
 	if route == null:
 		return
-	var alt_orig: float = route.alt_m[0] if route.n > 0 else 0.0
 	for key in wanted:
 		if _previews.has(key):
 			continue
 		var it: Dictionary = wanted[key]
 		var ys: Array = it["ys"]
-		if visual_grade_scale != 1.0:
-			ys = ys.map(func(y): return alt_orig + (float(y) - alt_orig) * visual_grade_scale)
+		if route.relief_k != 1.0:
+			ys = ys.map(func(y): return route.display_y(float(y)))
 		var arrays := RoadBuilder.build_polyline_arrays(it["xs"], ys, it["zs"], _road_width_m, PREVIEW_FADE_M)
 		if arrays.is_empty():
 			continue
@@ -508,10 +520,9 @@ func _start_jobs() -> void:
 	for key in todo:
 		if _jobs.size() >= MAX_RUNNING_TASKS:
 			break
-		var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
 			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
-			"visual_grade_scale": visual_grade_scale, "alt_orig": alt_orig}
+			"near_index": _near_index, "far_index": _far_index}
 		job["task"] = WorkerThreadPool.add_task(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
 
@@ -521,25 +532,38 @@ func _build_job(job: Dictionary) -> void:
 	var t0 := Time.get_ticks_usec()
 	var spec: Dictionary = job["spec"]
 	var r = job["route"]
-	var v_scale: float = float(job.get("visual_grade_scale", 1.0))
-	var alt_orig: float = float(job.get("alt_orig", 0.0))
+	# Relief affiché (lot Q2) : facteur et origine portés par la route, comme pour la chaussée.
+	var v_scale: float = r.relief_k if r != null else 1.0
+	var alt_orig: float = r.alt_m[0] if r != null and r.n > 0 else 0.0
 	match spec["kind"]:
 		"road":
-			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)), v_scale)
+			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)))
 		"near", "far":
 			var t: Vector2i = spec["tile"]
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
 			if heights.is_empty():
 				return
+			var near_index: Dictionary = job["near_index"]
 			if spec["kind"] == "far":
-				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r, TerrainTiles.FAR_CARVE_MARGIN_M, v_scale, alt_orig)
+				heights = TerrainTiles.carve_under_route(heights, "far", t.x, t.y, r)
+				heights = TerrainTiles.sink_under_near(heights, t.x, t.y, near_index,
+					func(nx: int, nz: int) -> PackedFloat32Array: return TerrainTiles.load_tile(job["world_dir"], "near", nx, nz), v_scale)
+			else:
+				var o := TerrainTiles.tile_origin("near", t.x, t.y) + Vector3(1.0, 0.0, 1.0)
+				var ft := TerrainTiles.tile_of("far", o.x, o.z)
+				if job["far_index"].has(ft):
+					var far := TerrainTiles.load_filled(job["world_dir"], "far", ft.x, ft.y, r)
+					far = TerrainTiles.carve_under_route(far, "far", ft.x, ft.y, r)
+					heights = TerrainTiles.blend_to_far(heights, t.x, t.y, near_index, far, ft, v_scale)
 			var edges := TerrainTiles.load_neighbour_edges(job["world_dir"], spec["kind"], t.x, t.y)
 			job["arrays"] = TerrainTiles.build_arrays(heights, spec["kind"], edges, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin(spec["kind"], t.x, t.y)
 			if spec["kind"] == "near" and tree_renderer != null:
-				var h_scaled := TerrainTiles.scale_heights(heights, alt_orig, v_scale) if v_scale != 1.0 else heights
-				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, h_scaled, r, _theme_dict,
+				var t_trees := Time.get_ticks_usec()
+				# Hauteurs réelles : pente et limite des arbres jugées sur le vrai relief, arbres posés à la hauteur affichée.
+				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, heights, r, _theme_dict,
 					vegetation_density_factor, _get_vegetation_areas(t), _get_buildings(t))
+				PerfProbe.task("arbres", "%d:%d" % [t.x, t.y], (Time.get_ticks_usec() - t_trees) / 1000.0)
 		"flat":
 			var t: Vector2i = spec["tile"]
 			var c := TerrainTiles.tile_origin("near", t.x, t.y) + Vector3(500.0, 0.0, 500.0)
@@ -548,10 +572,10 @@ func _build_job(job: Dictionary) -> void:
 			job["arrays"] = TerrainTiles.build_arrays(flat_h, "near", {}, v_scale, alt_orig)
 			job["origin"] = TerrainTiles.tile_origin("near", t.x, t.y)
 			if tree_renderer != null:
-				var flat_scaled := TerrainTiles.scale_heights(flat_h, alt_orig, v_scale) if v_scale != 1.0 else flat_h
-				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, flat_scaled, r, _theme_dict,
+				job["trees_data"] = tree_renderer.prepare_tile(t.x, t.y, flat_h, r, _theme_dict,
 					vegetation_density_factor, [])
 	var dt := Time.get_ticks_usec() - t0
+	PerfProbe.task(spec["kind"], str(spec["k"]) if spec["kind"] == "road" else "%d:%d" % [spec["tile"].x, spec["tile"].y], dt / 1000.0)
 	_stats_mutex.lock()
 	var st: Array = build_stats.get(spec["kind"], [0, 0])
 	build_stats[spec["kind"]] = [st[0] + 1, st[1] + dt]
@@ -585,6 +609,7 @@ func integrate(max_new: int) -> int:
 		var r: Dictionary = _ready.pop_front()
 		if not _wanted.has(r["key"]) or _instances.has(r["key"]):
 			continue
+		var t0 := Time.get_ticks_usec()
 		var mesh := ArrayMesh.new()
 		mesh.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, r["arrays"])
 		mesh.surface_set_material(0, road_material_for(int((r["key"] as String).get_slice(":", 1))) if r["kind"] == "road" else _terrain_material_for(r["key"]))
@@ -594,8 +619,11 @@ func integrate(max_new: int) -> int:
 		mi.position = r["origin"]
 		add_child(mi)
 		_instances[r["key"]] = mi
+		var t1 := Time.get_ticks_usec()
+		PerfProbe.mark("route" if r["kind"] == "road" else "tuile", r["key"], (t1 - t0) / 1000.0)
 		if r.has("trees_data") and tree_renderer != null and not (r["trees_data"] as Dictionary).is_empty():
 			tree_renderer.add_tile(r["trees_data"])
+			PerfProbe.mark("arbres", r["key"], (Time.get_ticks_usec() - t1) / 1000.0)
 		if test_log and r["kind"] == "near":
 			_test_check_tile(r["key"], r["arrays"][Mesh.ARRAY_VERTEX])
 		created += 1
@@ -669,6 +697,16 @@ func loaded_tile_counts() -> Dictionary:
 			kind = "near"
 		out[kind] = int(out.get(kind, 0)) + 1
 	return out
+
+
+## Tuiles voulues autour de la caméra pas encore affichées (en calcul ou en attente) : 0 quand la vue est
+## complète (tour visuel, lot X21).
+func pending_count() -> int:
+	var n := 0
+	for key in _wanted:
+		if not _instances.has(key):
+			n += 1
+	return n
 
 
 ## Attend les travaux en cours sans dépasser le budget d'objets par image (tests en temps simulé).
@@ -774,9 +812,8 @@ func _make_ground() -> void:
 			min_alt = minf(min_alt, a)
 	if is_inf(min_alt):
 		min_alt = 0.0
-	var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
-	if visual_grade_scale != 1.0:
-		min_alt = alt_orig + (min_alt - alt_orig) * visual_grade_scale
+	if route != null:
+		min_alt = route.display_y(min_alt)
 	var plane := PlaneMesh.new()
 	plane.size = Vector2(2.0 * far_radius_m, 2.0 * far_radius_m)
 	var mat := StandardMaterial3D.new()

@@ -236,3 +236,131 @@ def test_sim_grade_offset_from_draft_and_summary(tmp_path, monkeypatch):
     run(s0, 5.0)
     solo = [line for line in s0._rec.lines if line.get("kind") == "record"]
     assert "draft_time_s" not in compute_summary(Session(solo, [], "jsonl"), cfg.rider.ftp_w)
+
+
+# --- lot AS1 : les bots s'abritent entre eux et derrière le cycliste ----------------------------
+
+AS1_DT = 0.02
+
+
+class AS1Rider:
+    """Cycliste sans séance : physique d'un bot à puissance constante, abri de `best_draft` (P3)."""
+
+    def __init__(self, power: float, s: float, v: float = 9.0) -> None:
+        self.bot = ConstantPowerBot(power, bot_id="rider", s=s, v=v)
+
+    def source(self) -> d.Source:
+        return d.Source(self.bot.s, self.bot.v)
+
+
+def as1_ride(bots, rider, route, seconds, probe=None):
+    """Pas de séance : abris de tous sur les positions du pas précédent, puis tout le monde avance."""
+    length, loop = route.length_m, route.is_loop
+    for i in range(int(seconds / AS1_DT)):
+        d.update_bots(bots, rider.source() if rider else None, AS1_DT, length, loop)
+        if rider:
+            target, _ = d.best_draft(rider.bot.s, bots, length, loop, rider.bot.v)
+            rider.bot.draft = d.smooth(rider.bot.draft, target, AS1_DT)
+            rider.bot.step(AS1_DT, route)
+        for b in bots:
+            b.step(AS1_DT, route)
+        if probe:
+            probe()
+
+
+def test_as1_two_bots_glued_ride_faster_than_one():
+    flat = FlatRoute()
+    solo = ConstantPowerBot(250.0, bot_id="s", s=0.0, v=9.0)
+    first = ConstantPowerBot(250.0, bot_id="a", s=d.BIKE_LENGTH_M + 0.5, v=9.0)
+    second = ConstantPowerBot(250.0, bot_id="b", s=0.0, v=9.0)
+    as1_ride([solo], None, flat, 600.0)
+    spread = []
+    as1_ride([first, second], None, flat, 600.0, lambda: spread.append(abs(first.s - second.s)))
+    assert second.s > solo.s + 2.0, f"second {second.s:.1f} m, seul {solo.s:.1f} m"
+    # Collés pendant 10 min : à puissance égale, celui qui suit rattrape et se range au niveau de l'autre
+    # (en une dimension, le chevauchement ; le côté vient avec AS2), jamais plus de 3 m d'écart.
+    assert max(spread) < d.BIKE_LENGTH_M + d.WHEEL_GAP_M
+
+
+def test_as1_bot_catching_the_rider_gets_draft():
+    flat = FlatRoute()
+    rider = AS1Rider(240.0, s=30.0)
+    chaser = ConstantPowerBot(250.0, bot_id="b1", s=0.0, v=9.0)
+    best = []
+    as1_ride([chaser], rider, flat, 900.0,
+             lambda: best.append(chaser.draft) if chaser.s < rider.bot.s else None)
+    assert max(best) > 0.3
+
+
+def test_as1_profile_bot_holds_the_wheel_then_attacks_uphill():
+    from test_profile_bots import FakeRoute, seg
+
+    from openride_core.bots import ProfileBot
+
+    route = FakeRoute(20_000.0, lambda s: 6.0 if 6000.0 <= s < 8000.0 else 0.0)
+    climber = ProfileBot("climber", s=0.0, v=9.0, segments=(seg("climb", 6000.0, 8000.0),))
+    rider = AS1Rider(0.9 * climber.spec.flat * climber.cp_w, s=d.BIKE_LENGTH_M + 2.0)
+    gaps = []
+    as1_ride([climber], rider, route, 900.0,
+             lambda: gaps.append((rider.bot.s, rider.bot.s - climber.s - d.BIKE_LENGTH_M)))
+    flat_gaps = [g for s, g in gaps if 500.0 < s < 6000.0]
+    assert flat_gaps and all(-d.BIKE_LENGTH_M < g < 1.0 for g in flat_gaps)   # dans la roue sur le plat
+    assert climber.s > rider.bot.s + 100.0                                    # attaque dans la montée
+
+
+def test_as1_order_of_bots_does_not_matter():
+    flat = FlatRoute()
+
+    def pack():
+        return [ConstantPowerBot(230.0 + 10.0 * i, bot_id=f"b{i}", s=3.0 * i, v=9.0) for i in range(4)]
+
+    a, b = pack(), pack()
+    as1_ride(a, AS1Rider(240.0, s=5.0), flat, 60.0)
+    as1_ride(list(reversed(b)), AS1Rider(240.0, s=5.0), flat, 60.0)
+    for x, y in zip(a, b):
+        assert x.s == pytest.approx(y.s, abs=1e-3)
+
+
+def test_as1_ghost_neither_gives_nor_gets_draft():
+    flat = FlatRoute()
+    ghost = FakeGhost()
+    ghost.s = 10.0 + d.BIKE_LENGTH_M + 0.5
+    follower = ConstantPowerBot(250.0, bot_id="b1", s=10.0, v=9.0)
+    d.update_bots([ghost, follower], None, AS1_DT, flat.length_m, True)
+    assert follower.draft == 0.0 and follower.wheel is None
+    assert not hasattr(ghost, "draft")
+    # Un bot devant le fantôme ne lui donne rien, et le fantôme ne pousse personne
+    leader = ConstantPowerBot(250.0, bot_id="b2", s=ghost.s + d.BIKE_LENGTH_M + 0.5, v=9.0)
+    d.update_bots([ghost, leader], None, AS1_DT, flat.length_m, True)
+    assert leader.push == 0.0 and not hasattr(ghost, "draft")
+
+
+def test_as1_cost_five_bots_and_the_rider():
+    bots = [ConstantPowerBot(240.0, bot_id=f"b{i}", s=2.5 * i, v=9.0) for i in range(5)]
+    rider = d.Source(6.0, 9.0)
+    n = 10_000
+    t0 = time.perf_counter()
+    for _ in range(n):
+        d.update_bots(bots, rider, AS1_DT, 20_000.0, True)
+        d.best_draft(rider.s, bots, 20_000.0, True, rider.v)
+    per_step_ms = (time.perf_counter() - t0) * 1000.0 / n
+    assert per_step_ms < 0.1, f"{per_step_ms:.4f} ms par pas"
+
+
+def test_as1_bot_in_session_gets_draft_behind_the_rider_and_erg_unchanged(tmp_path, monkeypatch):
+    workouts = tmp_path / "wk"
+    workouts.mkdir()
+    (workouts / "plat.zwo").write_text(
+        '<workout_file><name>Plat</name><workout><SteadyState Duration="600" Power="0.8"/>'
+        '</workout></workout_file>', encoding="utf-8")
+    cfg = Config()
+    follower = ConstantPowerBot(150.0, bot_id="b1", params=flat_params(cfg), s=-d.BIKE_LENGTH_M - 0.4, v=9.0)
+    s, drv = make_session(tmp_path, monkeypatch, 5992, 200.0, [follower], workouts)
+    s.route = FlatRoute()
+    s._on_command("select_workout", {"workout_id": "plat"}, 2)
+    s._on_command("start", {}, 3)
+    s.physics.v = 9.0
+    run(s, 5.0)
+    assert follower.draft > 0.2                       # abri du bot derrière le cycliste
+    assert s._draft == 0.0                            # le bot derrière n'abrite pas le cycliste
+    assert drv.target_power_w == pytest.approx(0.8 * cfg.rider.ftp_w, abs=1.0)

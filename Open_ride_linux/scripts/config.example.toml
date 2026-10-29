@@ -6,6 +6,7 @@
 [rider]
 ftp_w = 250          # puissance critique (W), utilisée par les séances ERG
 mass_kg = 75         # masse du cycliste (kg)
+hr_max_bpm = 185     # fréquence cardiaque maximale (zones de FC du HUD)
 
 [bike]
 mass_kg = 9
@@ -34,7 +35,8 @@ theme = "default"
 living = true                 # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"             # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"        # vue de caméra : subjective, follow_near, follow_far ou side (la dernière vue choisie y est écrite)
-fps = "off"                   # compteur d'images/s en haut à droite du HUD : off, on
+fps = "off"                   # compteur d'images/s en haut à droite du HUD : off, on, detail (+ temps CPU et GPU, pour les essais)
+draft_gauge = "off"           # jauge d'abri au-dessus du bot qui t'abrite : off, on
 display = "fullscreen"        # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
 
 [bots]
@@ -45,6 +47,9 @@ master_pct = 100
 ride_pct = 100                # vent et roue libre
 ambience_pct = 100            # fonds, cloches, véhicules, foule, passants
 events_pct = 100              # bips du Click, bloc ERG, consignes, jingles
+
+[log]
+latence = false               # journal de latence des appuis du Click (lot X7, docs/OUTILS_DE_TEST.md)
 
 [engine]
 godot = ""                    # chemin de Godot 4.3 (rempli par scripts/install.sh)

@@ -12,7 +12,9 @@ Comportements reproduits (essais réels du 23 et 24 octobre 2026) :
   l'indication de réponse, 0xFD sans abonnement aux indications), refus 0x05 sans contrôle,
   « Start/Resume » refusé quand il tourne déjà, Reset qui rend le contrôle, Fitness Machine
   Status 0xFF (contrôle perdu), puissance ERG qui rejoint la cible en ~1,5 s, Indoor Bike Data
-  à 4 Hz ;
+  à 4 Hz ; avec `response: "realiste"` (lot X6), frein à retard pur et constantes de temps de
+  serrage et de relâchement, volant d'inertie, effort de la route en SIM (pente, Crr et Cw reçus)
+  et notifications avec gigue ;
 - **Zwift Click** : deux boîtiers de même nom ; un boîtier endormi ne s'annonce qu'après un appui
   (l'appui qui le réveille est perdu) ; état des touches envoyé à ~10 Hz (type 0x23) ; le
   boîtier « − » relaie les appuis du « + » 5 à 40 ms plus tard ; il se rendort quand le lien
@@ -29,16 +31,22 @@ d'événements datés depuis le démarrage du monde simulé.
 from __future__ import annotations
 
 import asyncio
+import collections
 import contextlib
+import csv
 import json
 import logging
 import math
 import random
+import statistics
 import struct
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any, Callable, Collection
 
 from . import ftms, zwift_click
+from .physics import G, PhysicsParams, steady_speed
+from .sim_rider import RiderOutput, SimRider
 
 log = logging.getLogger("ble_sim")
 
@@ -246,23 +254,152 @@ class CpRecord:
     result: int | None   # None : pas de réponse (erreur ATT ou réponse supprimée)
 
 
+SPEED_PHYSICS = PhysicsParams()   # vitesse imposée : mêmes réglages que la configuration par défaut du core
+
+
+# --- Réponse réaliste du trainer (lot X6) -------------------------------------------------
+
+RESPONSES = ("instant", "realiste")
+# Préréglage « realiste » : valeurs moyennes de l'essai du 25 octobre (relâchement du frein vers 12 s
+# à 90 %, serrage plus rapide), sans marque ni numéro de série.
+REALISTE = {"brake_delay_s": 0.6, "brake_tau_up_s": 2.0, "brake_tau_down_s": 4.9,
+            "flywheel_kg_m2": 0.6, "notify_jitter_s": 0.04}
+WHEEL_RADIUS_M = 0.336         # rayon de la roue : ramène l'inertie du volant à une masse à la jante
+RIDER_TAU_S = 1.0              # le cycliste rattrape sa cadence (braquet fixe) en une seconde environ
+RIDER_RESERVE = 2.5            # puissance maximale du cycliste : 2,5 × son effort habituel
+SUBSTEP_S = 0.01
+
+
+def load_calibration(path: str | Path) -> dict[str, float]:
+    """Retard et constantes de temps tirés de `steps.csv` du banc de paliers (lot X5).
+
+    Pour un 1er ordre à retard pur d : t10 = d + 0,105 τ et t63 = d + τ, donc τ = (t63 − t10) / 0,895.
+    Médianes des paliers montants (serrage) et descendants (relâchement) ; retard : médiane de tous."""
+    ups: list[float] = []
+    downs: list[float] = []
+    delays: list[float] = []
+    with Path(path).expanduser().open(encoding="utf-8", newline="") as fh:
+        for row in csv.DictReader(fh):
+            try:
+                t10, t63, delta = float(row["t10_s"]), float(row["t63_s"]), float(row["delta_w"])
+            except (KeyError, TypeError, ValueError):
+                continue   # palier de départ, ou sans mesure
+            tau = (t63 - t10) / 0.895
+            if tau <= 0:
+                continue
+            (ups if delta > 0 else downs).append(tau)
+            delays.append(max(t63 - tau, 0.0))
+    if not ups or not downs:
+        raise ValueError(f"{path} : il faut au moins un palier montant et un descendant mesurés")
+    return {"brake_delay_s": round(statistics.median(delays), 3), "brake_tau_up_s": round(statistics.median(ups), 3),
+            "brake_tau_down_s": round(statistics.median(downs), 3)}
+
+
+class TrainerResponse:
+    """Modèle de réponse réaliste (lot X6), sans asyncio : `step(dt, …)` avance le temps.
+
+    - **Frein** : la force demandée (ERG : cible / vitesse ; SIM : effort de la route à la vitesse du
+      volant, m g (sin θ + Crr cos θ) + Cw (v + vent)², avec la pente, le Crr, le Cw et le vent reçus ;
+      sans consigne : route plate) est vue avec un retard pur `brake_delay_s`, puis rejointe avec la
+      constante `brake_tau_up_s` quand elle augmente et `brake_tau_down_s` quand elle baisse.
+    - **Volant** : masse équivalente à la jante `flywheel_kg_m2 / r²` ; m v dv/dt = P_cycliste − F_frein v.
+    - **Cycliste** : tient sa cadence à braquet fixe (vitesse de l'effort habituel sur le plat, ou
+      stratégie `vitesse` du cycliste), en rattrapant l'écart en ~1 s, sans dépasser `rider_max_w`.
+    - Puissance mesurée par le trainer : celle du cycliste (frein + accélération du volant)."""
+
+    def __init__(self, *, brake_delay_s: float, brake_tau_up_s: float, brake_tau_down_s: float,
+                 flywheel_kg_m2: float, physics: PhysicsParams = SPEED_PHYSICS) -> None:
+        self.delay_s = max(brake_delay_s, 0.0)
+        self.tau_up_s, self.tau_down_s = max(brake_tau_up_s, 1e-3), max(brake_tau_down_s, 1e-3)
+        self.mass_eq_kg = max(flywheel_kg_m2, 1e-3) / WHEEL_RADIUS_M ** 2
+        self.physics = physics
+        self.force_n: float | None = None   # force du frein ; None avant le premier pas
+        self.v = 0.0
+        self.power_w = 0.0
+        self.t = 0.0
+        self._commands: collections.deque = collections.deque()   # (t, consigne) en attente du retard
+        self._applied: tuple = (None, None, 0.0, None, None, 0.0)
+
+    def _command_force(self, cmd: tuple, v: float) -> float:
+        mode, target_w, grade_pct, crr, cw, wind = cmd
+        if mode == "erg" and target_w is not None:
+            return target_w / max(v, 1.0)
+        theta = math.atan((grade_pct if mode == "sim" else 0.0) / 100.0)
+        p = self.physics
+        cw = cw if cw is not None else 0.5 * 1.225 * p.cda_m2
+        crr = crr if crr is not None else p.crr
+        va = v + wind
+        return p.mass_kg * G * (math.sin(theta) + crr * math.cos(theta)) + cw * va * abs(va)
+
+    def step(self, dt: float, cmd: tuple, v_ride: float, rider_max_w: float) -> float:
+        """Avance de `dt` s avec la consigne courante `cmd` (mode, cible W, pente %, Crr, Cw, vent m/s) ;
+        renvoie la puissance mesurée."""
+        if not self._commands or self._commands[-1][1] != cmd:
+            self._commands.append((self.t, cmd))
+        if self.force_n is None:   # départ : roule déjà à sa vitesse, frein établi
+            self.v = v_ride
+            self._applied = cmd
+            self.force_n = max(self._command_force(cmd, self.v), 0.0)
+        n = max(1, int(math.ceil(dt / SUBSTEP_S)))
+        h = dt / n
+        for _ in range(n):
+            self.t += h
+            while self._commands and self._commands[0][0] <= self.t - self.delay_s:
+                self._applied = self._commands.popleft()[1]
+            goal = max(self._command_force(self._applied, self.v), 0.0)
+            tau = self.tau_up_s if goal > self.force_n else self.tau_down_s
+            self.force_n += (goal - self.force_n) * (1.0 - math.exp(-h / tau))
+            v = max(self.v, 0.5)
+            brake_w = self.force_n * v
+            rider_w = brake_w + self.mass_eq_kg * v * (v_ride - v) / RIDER_TAU_S
+            rider_w = min(max(rider_w, 0.0), rider_max_w) if v_ride > 0 else 0.0
+            self.v = max(self.v + (rider_w - brake_w) / (self.mass_eq_kg * v) * h, 0.0)
+            self.power_w = rider_w
+        return self.power_w
+
+
 class SimTrainer(SimDevice):
     uuids = (ftms.FTMS_SERVICE, ftms.FEATURE, ftms.SUPPORTED_POWER_RANGE, ftms.INDOOR_BIKE_DATA,
              ftms.CONTROL_POINT, ftms.MACHINE_STATUS)
 
     def __init__(self, world: "SimWorld", name: str = TRAINER_NAME,
                  address: str = "5A:1A:00:00:00:00", *, ibd_hz: float = 4.0,
-                 rider_power_w: float = 180.0, cadence_rpm: float = 88.0,
+                 rider: SimRider | None = None,
                  erg_tau_s: float = 1.5, cp_latency_s: float = 0.05,
                  power_range: tuple[int, int, int] = (0, 2000, 1),
-                 refuse_control: bool = False,
-                 relayed_hr: bool | int | None = None, **kw: Any) -> None:
+                 refuse_control: bool = False, busy_window_s: float = 0.0,
+                 relayed_hr: bool | int | None = None,
+                 response: str = "instant", brake_delay_s: float | None = None,
+                 brake_tau_up_s: float | None = None, brake_tau_down_s: float | None = None,
+                 flywheel_kg_m2: float | None = None, notify_jitter_s: float | None = None,
+                 rider_max_w: float | None = None, calibration: str | None = None, **kw: Any) -> None:
         super().__init__(world, name, address, **kw)
         self.ibd_hz = ibd_hz
-        self.rider_power_w, self.cadence_rpm = rider_power_w, cadence_rpm
+        self.rider = rider or SimRider()   # cycliste virtuel (lot X27, section `rider` du scénario)
+        # Réponse (lot X6) : « instant » (premier ordre de `erg_tau_s`) ou « realiste » (TrainerResponse).
+        self.response = response
+        self.rider_max_w = rider_max_w
+        self.model: TrainerResponse | None = None
+        self.notify_jitter_s = 0.0
+        if response == "realiste":
+            params = dict(REALISTE)
+            if calibration:
+                params.update(load_calibration(calibration))
+            given = {"brake_delay_s": brake_delay_s, "brake_tau_up_s": brake_tau_up_s,
+                     "brake_tau_down_s": brake_tau_down_s, "flywheel_kg_m2": flywheel_kg_m2,
+                     "notify_jitter_s": notify_jitter_s}
+            params.update({k: float(v) for k, v in given.items() if v is not None})
+            self.notify_jitter_s = params.pop("notify_jitter_s")
+            self.model = TrainerResponse(**params)
+        self._jitter_rng = random.Random(address)   # à part : ne décale pas le tirage du monde
+        self.wind_mps, self.crr, self.cw = 0.0, None, None   # reçus dans la trame SIM
+        self._v_ride_cache: tuple[float, float] = (-1.0, 0.0)
         self.erg_tau_s, self.cp_latency_s = erg_tau_s, cp_latency_s
         self.power_range = power_range
         self.refuse_control = refuse_control
+        # Control Point encore occupé `busy_window_s` après chaque réponse : erreur ATT 0x80 aux
+        # écritures rapprochées (rafale de braquets du 28 octobre).
+        self.busy_window_s = float(busy_window_s)
         self.relayed_hr_enabled = bool(relayed_hr)
         self.fixed_relayed_hr: int | None = (
             int(relayed_hr) if isinstance(relayed_hr, (int, float)) and not isinstance(relayed_hr, bool) else None
@@ -277,6 +414,8 @@ class SimTrainer(SimDevice):
         self.control = False
         self.indications = False
         self._busy = False
+        self._busy_until = 0.0
+        self.other_device_until = 0.0   # un autre appareil (montre) occupe le Control Point
         self.silent_until = 0.0
         self.pending_att_errors: list[int] = []
         self.pending_silent_responses = 0
@@ -318,6 +457,9 @@ class SimTrainer(SimDevice):
         if self._busy:
             self.commands.append(CpRecord(now, op, data, None))
             raise att_error(ftms.ATT_PROCEDURE_IN_PROGRESS)
+        if now < max(self._busy_until, self.other_device_until):
+            self.commands.append(CpRecord(now, op, data, None))
+            raise att_error(0x80)
         if self.pending_att_errors:
             code = self.pending_att_errors.pop(0)
             log.info("Simulation : erreur ATT 0x%02x sur l'écriture 0x%02x", code, op)
@@ -336,6 +478,7 @@ class SimTrainer(SimDevice):
 
     def _respond(self, reply: bytes) -> None:
         self._busy = False
+        self._busy_until = self.world.now() + self.busy_window_s
         self.notify(ftms.CONTROL_POINT, reply)
 
     def _execute(self, op: int, data: bytes) -> int:
@@ -368,7 +511,9 @@ class SimTrainer(SimDevice):
             return ok
         if op == ftms.OP_SET_SIM_PARAMS and len(data) >= 7:
             self.mode, self.target_w = "sim", None
+            self.wind_mps = struct.unpack_from("<h", data, 1)[0] / 1000.0
             self.grade_pct = struct.unpack_from("<h", data, 3)[0] / 100.0
+            self.crr, self.cw = data[5] / 10000.0, data[6] / 100.0
             self._status(bytes([0x12]) + data[1:7])
             return ok
         if op in (ftms.OP_SET_TARGET_POWER, ftms.OP_SET_SIM_PARAMS):
@@ -386,30 +531,49 @@ class SimTrainer(SimDevice):
         self.control = False
         self._status(bytes([ftms.STATUS_CONTROL_LOST]))
 
-    def _rider_power(self, t: float) -> float:
-        """Puissance du cycliste en SIM : un peu plus d'effort en montée, un peu de bruit."""
-        if self.rider_power_w <= 0 or self.cadence_rpm <= 0:
+    def _ride_speed(self, rider: RiderOutput) -> float:
+        """Vitesse tenue par le cycliste à braquet fixe (modèle réaliste) : `speed_kmh` de la stratégie
+        `vitesse`, sinon la vitesse de son effort sur le plat (arrondi au watt) ; 0 sans pédaler."""
+        if rider.cadence_rpm <= 0:
             return 0.0
-        p = self.rider_power_w * (1.0 + 0.04 * self.grade_pct) + 4.0 * math.sin(t * 0.9)
-        return max(p, 0.0)
+        if self.rider.speed_kmh is not None:
+            return self.rider.speed_kmh / 3.6
+        watts = round(max(rider.power_w, 0.0))
+        if self._v_ride_cache[0] != watts:
+            self._v_ride_cache = (watts, steady_speed(watts, 0.0, SPEED_PHYSICS))
+        return self._v_ride_cache[1]
+
+    def _step_power(self, t: float, dt: float, rider: RiderOutput) -> float:
+        """Puissance mesurée après `dt` s, et vitesse affichée en km/h."""
+        if self.model is not None:
+            cmd = (self.mode, self.target_w, self.grade_pct, self.crr, self.cw, self.wind_mps)
+            cap = self.rider_max_w if self.rider_max_w is not None else RIDER_RESERVE * max(rider.power_w, 1.0)
+            self.power_w = self.model.step(dt, cmd, self._ride_speed(rider), cap)
+            return 3.6 * self.model.v
+        if self.mode == "erg" and self.target_w is not None and rider.cadence_rpm > 0:
+            goal = self.target_w + 2.0 * math.sin(t * 1.5)
+        else:
+            goal = rider.power_w
+        alpha = 1.0 - math.exp(-dt / max(self.erg_tau_s, 1e-3))
+        self.power_w += alpha * (goal - self.power_w)
+        return 3.6 * (max(self.power_w, 0.0) / 0.9) ** (1 / 3) if self.power_w > 0 else 0.0
 
     async def _data_loop(self) -> None:
         period = 1.0 / self.ibd_hz
         last = self.world.now()
         while True:
-            await asyncio.sleep(period)
+            jitter = self._jitter_rng.uniform(-self.notify_jitter_s, self.notify_jitter_s) if self.notify_jitter_s else 0.0
+            await asyncio.sleep(max(period + jitter, 0.0))
             t = self.world.now()
             dt, last = t - last, t
-            if self.mode == "erg" and self.target_w is not None and self.cadence_rpm > 0:
-                goal = self.target_w + 2.0 * math.sin(t * 1.5)
-            else:
-                goal = self._rider_power(t)
-            alpha = 1.0 - math.exp(-dt / max(self.erg_tau_s, 1e-3))
-            self.power_w += alpha * (goal - self.power_w)
+            erg = self.mode == "erg" and self.target_w is not None
+            rider = self.rider.step(t, dt, self.grade_pct, self.target_w if erg else None)
+            if rider.press:   # braquet changé par le cycliste virtuel (stratégie `cadence`)
+                asyncio.get_running_loop().create_task(self.world.press(rider.press))
+            speed_kmh = self._step_power(t, dt, rider)
             if t < self.silent_until:
                 continue
-            cadence = self.cadence_rpm + (1.5 * math.sin(t * 0.7) if self.cadence_rpm > 0 else 0.0)
-            speed_kmh = 3.6 * (max(self.power_w, 0.0) / 0.9) ** (1 / 3) if self.power_w > 0 else 0.0
+            cadence = rider.cadence_rpm + (1.5 * math.sin(t * 0.7) if rider.cadence_rpm > 0 else 0.0)
             flags = 0x0004 | 0x0040   # vitesse (bit 0 à 0), cadence, puissance
             if self.relayed_hr_enabled:
                 flags |= 0x0200
@@ -821,6 +985,8 @@ class SimWorld:
             dev.connect_delay_s = float(ev["seconds"])
         elif isinstance(dev, SimTrainer) and action == "att_error":
             dev.pending_att_errors.extend([int(ev.get("code", 0x80))] * int(ev.get("count", 1)))
+        elif isinstance(dev, SimTrainer) and action == "other_device":
+            dev.other_device_until = self.now() + float(ev["seconds"])
         elif isinstance(dev, SimTrainer) and action == "cp_silent":
             dev.pending_silent_responses += int(ev.get("count", 1))
         elif isinstance(dev, (SimTrainer, SimClickBox)) and action == "silence":
@@ -830,10 +996,7 @@ class SimWorld:
         elif isinstance(dev, SimTrainer) and action == "refuse_control":
             dev.refuse_control = bool(ev.get("value", True))
         elif isinstance(dev, SimTrainer) and action == "rider":
-            if "watts" in ev:
-                dev.rider_power_w = float(ev["watts"])
-            if "cadence_rpm" in ev:
-                dev.cadence_rpm = float(ev["cadence_rpm"])
+            dev.rider.update(**{k: ev[k] for k in ("watts", "cadence_rpm") if k in ev})
         elif isinstance(dev, SimTrainer) and action == "bpm":
             dev.relayed_hr_enabled = True
             dev.fixed_relayed_hr = None if ev.get("bpm") is None else int(ev["bpm"])

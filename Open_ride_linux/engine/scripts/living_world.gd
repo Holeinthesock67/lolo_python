@@ -86,6 +86,7 @@ func set_route(route, road_width_m: float = 6.0) -> void:
 	if grass != null:
 		grass.configure(int(living.get("grass_tufts", 0)) if enabled else 0, route, road_width_m)
 		grass.exclusions = _exclusions()
+		grass.height_at = _terrain_height(route)
 	if ground_details != null:
 		# Biomes du parcours : modèle actif passé par world_streamer à osm_streamer (nul : pas de détails)
 		var model = osm_streamer.biome_model if osm_streamer != null and "biome_model" in osm_streamer else null
@@ -102,6 +103,19 @@ func on_state(state: Dictionary, now_s: float) -> void:
 
 func wind_hud(state: Dictionary, heading_deg: float, now_s: float) -> Dictionary:
 	return wind_view.view(state, heading_deg, now_s)
+
+
+## Instant où la scène est figée (tests graphiques, lot X20), NAN sinon.
+var frozen_at := NAN
+
+
+## Fige le décor à l'instant `t_s` : vent posé sur ses cibles, nuages placés ; ensuite `step` est appelé avec
+## ce même instant et un pas nul, et rien ne bouge.
+func freeze(t_s: float) -> void:
+	frozen_at = t_s
+	wind.settle(t_s)
+	last_wind = wind.evaluate(t_s)
+	SkyClouds.place(sky_material, last_wind, t_s)
 
 
 func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: float, heading_deg: float,
@@ -171,18 +185,16 @@ func _refresh_shapes() -> void:
 		ground_details.exclusions = _exclusions()
 
 
-## Hauteur du terrain affiché (relief exagéré du lot Q2 compris), comme les animaux d'osm_streamer.gd ;
-## vide sans dossier de parcours (hauteur de la route).
+## Hauteur du terrain affiché (relief exagéré `route.display_y`, lots Q2 et Y15), comme les animaux
+## d'osm_streamer.gd ; vide sans dossier de parcours (hauteur de la route).
 func _terrain_height(route) -> Callable:
 	if osm_streamer == null or route == null or not "world_dir" in osm_streamer or str(osm_streamer.world_dir) == "":
 		return Callable()
 	var raw := OsmStreamer.terrain_height_fn(osm_streamer.world_dir, route)
-	var k := float(osm_streamer.visual_grade_scale) if "visual_grade_scale" in osm_streamer else 1.0
-	if k == 1.0:
+	if route.relief_k == 1.0:
 		return raw
-	var alt_orig: float = route.alt_m[0] if route.n > 0 else 0.0
 	return func(x: float, z: float) -> float:
-		return alt_orig + (float(raw.call(x, z)) - alt_orig) * k
+		return route.display_y(float(raw.call(x, z)))
 
 
 ## Bâtiments et plans d'eau : pas de touffe d'herbe ni de détail de sol dedans.

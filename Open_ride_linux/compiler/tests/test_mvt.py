@@ -1,98 +1,13 @@
-"""Décodeur MVT minimal (lot W0) : tuiles encodées par le test, décodées à l'identique."""
+"""Décodeur MVT minimal (lot W0) : tuiles encodées par `mvt.encode_tile`, décodées à l'identique."""
 
 from __future__ import annotations
 
 import gzip
-import struct
 
 import pytest
 
 from openride_compiler.worldgen import mvt
-
-
-# --- encodeur de test (le strict nécessaire de MVT 2.1) ---------------------------------------
-
-def varint(n: int) -> bytes:
-    out = bytearray()
-    while True:
-        b = n & 0x7F
-        n >>= 7
-        if n:
-            out.append(b | 0x80)
-        else:
-            out.append(b)
-            return bytes(out)
-
-
-def key(num: int, wire: int) -> bytes:
-    return varint(num << 3 | wire)
-
-
-def ld(num: int, payload: bytes) -> bytes:
-    return key(num, 2) + varint(len(payload)) + payload
-
-
-def packed(values: list[int]) -> bytes:
-    return b"".join(varint(v) for v in values)
-
-
-def zz(n: int) -> int:
-    return (n << 1) ^ (n >> 63)
-
-
-def encode_value(v) -> bytes:
-    if isinstance(v, bool):
-        return key(7, 0) + varint(int(v))
-    if isinstance(v, str):
-        return ld(1, v.encode())
-    if isinstance(v, float):
-        return key(3, 1) + struct.pack("<d", v)
-    if v < 0:
-        return key(6, 0) + varint(zz(v))
-    return key(5, 0) + varint(v)
-
-
-def encode_paths(paths: list[tuple[list[tuple[int, int]], bool]]) -> list[int]:
-    cmds: list[int] = []
-    x = y = 0
-    for pts, closed in paths:
-        px, py = pts[0]
-        cmds += [1 | 1 << 3, zz(px - x), zz(py - y)]
-        x, y = px, py
-        cmds.append(2 | (len(pts) - 1) << 3)
-        for px, py in pts[1:]:
-            cmds += [zz(px - x), zz(py - y)]
-            x, y = px, py
-        if closed:
-            cmds.append(7 | 1 << 3)
-    return cmds
-
-
-def encode_layer(name: str, features: list[dict], extent: int = 4096) -> bytes:
-    keys: list[str] = []
-    values: list = []
-    body = key(15, 0) + varint(2) + ld(1, name.encode())
-    for f in features:
-        tags: list[int] = []
-        for k, v in f["tags"].items():
-            if k not in keys:
-                keys.append(k)
-            if v not in values:
-                values.append(v)
-            tags += [keys.index(k), values.index(v)]
-        fb = key(1, 0) + varint(f["id"]) + ld(2, packed(tags)) + key(3, 0) + varint(f["type"])
-        fb += ld(4, packed(encode_paths(f["paths"])))
-        body += ld(2, fb)
-    for k in keys:
-        body += ld(3, k.encode())
-    for v in values:
-        body += ld(4, encode_value(v))
-    body += key(5, 0) + varint(extent)
-    return body
-
-
-def encode_tile(layers: dict[str, list[dict]], extent: int = 4096) -> bytes:
-    return b"".join(ld(3, encode_layer(n, f, extent)) for n, f in layers.items())
+from openride_compiler.worldgen.mvt import encode_tile
 
 
 OUTER = [(100, 100), (900, 100), (900, 900), (100, 900)]          # aire positive (y vers le bas)

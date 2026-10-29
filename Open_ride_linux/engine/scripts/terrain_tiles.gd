@@ -8,6 +8,8 @@ extends RefCounted
 ##   float32 petit-boutistes, rangées par ligne : (i, j) à x = ix·T + i·maille, z = iz·T + j·maille.
 ## - Le lointain est dessiné FAR_DROP_M plus bas que ses valeurs, le proche à son altitude exacte :
 ##   le relief proche recouvre le lointain sans scintillement (écart voulu au format §5, voir lot E1).
+##   Là où le proche s'arrête, il rejoint le lointain sur EDGE_BLEND_M (blend_to_far) ; sous le proche, le
+##   lointain est enfoncé pour ne jamais le percer (sink_under_near).
 ## - Triangles : (a, b, c) et (b, d, c) pour la cellule a = (i, j), b = (i+1, j), c = (i, j+1),
 ##   d = (i+1, j+1), dans le sens horaire vu du dessus (faces avant de Godot).
 ## - Pas de couleur de sommet : herbe, roche et neige viennent du shader triplanaire du thème (lot E2).
@@ -20,6 +22,8 @@ const FAR_DROP_M := 2.0
 ## l'axe (chaussée de 6 m et bas-côtés de 0,5 m) et marge sous l'altitude de la route.
 const ROAD_CLEAR_HALF_M := 4.0
 const FAR_CARVE_MARGIN_M := 0.5
+## Largeur du raccord du terrain proche au lointain là où le proche s'arrête (blend_to_far).
+const EDGE_BLEND_M := 50.0
 
 ## Niveaux : dossier, maille, taille de tuile, décalage vertical au dessin.
 const LEVELS := {
@@ -170,7 +174,7 @@ static func scale_heights(heights: PackedFloat32Array, alt_orig: float, visual_g
 
 
 static func carve_under_route(heights: PackedFloat32Array, level: String, ix: int, iz: int, route,
-		margin: float = FAR_CARVE_MARGIN_M, visual_grade_scale: float = 1.0, alt_orig: float = 0.0) -> PackedFloat32Array:
+		margin: float = FAR_CARVE_MARGIN_M) -> PackedFloat32Array:
 	if route == null or route.n < 2:
 		return heights
 	var out := heights.duplicate()
@@ -189,10 +193,8 @@ static func carve_under_route(heights: PackedFloat32Array, level: String, ix: in
 			var pz: float = lerpf(route.z[k], route.z[k1], f)
 			if px < x0 - pad or px > x0 + size + pad or pz < z0 - pad or pz > z0 + size + pad:
 				continue
-			var r_alt: float = minf(route.alt_m[k], route.alt_m[k1])
-			if visual_grade_scale != 1.0:
-				r_alt = alt_orig + (r_alt - alt_orig) * visual_grade_scale
-			var alt: float = r_alt - margin
+			# Hauteur affichée de la route (relief exagéré, lot Q2) : `heights` est déjà à cette échelle.
+			var alt: float = route.display_y(minf(route.alt_m[k], route.alt_m[k1])) - margin
 			var i0 := clampi(floori((px - x0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)
 			var i1 := clampi(floori((px - x0 + ROAD_CLEAR_HALF_M) / cell) + 1, 0, CELLS)
 			var j0 := clampi(floori((pz - z0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)
@@ -202,6 +204,119 @@ static func carve_under_route(heights: PackedFloat32Array, level: String, ix: in
 					var idx := j * SAMPLES + i
 					if out[idx] > alt:
 						out[idx] = alt
+	return out
+
+
+## Distance (m) du point (x, z) à la zone sans terrain proche (tuiles absentes de `near_index`), cherchée
+## dans les tuiles voisines de celle du point ; INF si elle est à plus d'une tuile. Fonction du seul point :
+## deux tuiles voisines donnent la même valeur à leurs sommets communs.
+static func distance_to_uncovered(near_index: Dictionary, x: float, z: float) -> float:
+	var size: float = LEVELS["near"]["size"]
+	var t := tile_of("near", x, z)
+	var best := INF
+	for dj in range(-1, 2):
+		for di in range(-1, 2):
+			var n := Vector2i(t.x + di, t.y + dj)
+			if near_index.has(n):
+				continue
+			var dx := maxf(maxf(n.x * size - x, 0.0), x - (n.x + 1) * size)
+			var dz := maxf(maxf(n.y * size - z, 0.0), z - (n.y + 1) * size)
+			best = minf(best, Vector2(dx, dz).length())
+	return best
+
+
+## Raccord du terrain proche au lointain là où le proche s'arrête (bord sans tuile proche voisine) : sur
+## EDGE_BLEND_M, les hauteurs passent à celles du maillage lointain affiché (FAR_DROP_M plus bas, `far` déjà
+## abaissé sous la route). Sans cela, une marche d'environ 2 m (FAR_DROP_M et maille de 50 m) dessinait le
+## contour des tuiles proches dans le paysage (« tuiles non jointives », 28 octobre).
+## `far` : hauteurs de la tuile lointaine `far_tile` qui contient la tuile proche ; `visual_grade_scale` : la
+## chute de FAR_DROP_M est appliquée après l'exagération du relief (build_arrays). Exécutable dans une tâche de fond.
+static func blend_to_far(heights: PackedFloat32Array, ix: int, iz: int, near_index: Dictionary,
+		far: PackedFloat32Array, far_tile: Vector2i, visual_grade_scale: float = 1.0) -> PackedFloat32Array:
+	if far.is_empty():
+		return heights
+	var cell: float = LEVELS["near"]["cell"]
+	var size: float = LEVELS["near"]["size"]
+	# Tuile entourée de tuiles proches : rien à raccorder
+	var alone := false
+	for dj in range(-1, 2):
+		for di in range(-1, 2):
+			alone = alone or not near_index.has(Vector2i(ix + di, iz + dj))
+	if not alone:
+		return heights
+	var drop := FAR_DROP_M / maxf(visual_grade_scale, 0.01)
+	var out := heights.duplicate()
+	for j in range(SAMPLES):
+		for i in range(SAMPLES):
+			var x := ix * size + i * cell
+			var z := iz * size + j * cell
+			var d := distance_to_uncovered(near_index, x, z)
+			if d >= EDGE_BLEND_M:
+				continue
+			var k := smoothstep(0.0, EDGE_BLEND_M, d)
+			var target := mesh_height_at(far, "far", far_tile.x, far_tile.y, x, z) - drop
+			var idx := j * SAMPLES + i
+			out[idx] = lerpf(target, out[idx], k)
+	return out
+
+
+## Terrain lointain enfoncé sous le proche : un sommet lointain dont les cellules voisines (± une maille de
+## 50 m) sont toutes couvertes de tuiles proches descend, si besoin, à `margin` sous la plus basse des
+## altitudes proches de ce carré (comptée à l'affichage, FAR_DROP_M compris). Le maillage lointain, plus
+## grossier, perçait sinon le proche au creux des collines (jusqu'à 5,7 m sur la démo avec terrain).
+## Les sommets d'un bord du terrain proche ne bougent pas : leur raccord (blend_to_far) reste exact.
+## `near_tile(ix, iz)` : hauteurs brutes d'une tuile proche (NaN admis). Exécutable dans une tâche de fond.
+static func sink_under_near(heights: PackedFloat32Array, ix: int, iz: int, near_index: Dictionary,
+		near_tile: Callable, visual_grade_scale: float = 1.0, margin: float = FAR_CARVE_MARGIN_M) -> PackedFloat32Array:
+	if near_index.is_empty():
+		return heights
+	var cell: float = LEVELS["far"]["cell"]
+	var size: float = LEVELS["far"]["size"]
+	var n_cell: float = LEVELS["near"]["cell"]
+	var n_size: float = LEVELS["near"]["size"]
+	var lift := (FAR_DROP_M - margin) / maxf(visual_grade_scale, 0.01)
+	var cache := {}
+	var out := heights
+	var copied := false
+	for j in range(SAMPLES):
+		for i in range(SAMPLES):
+			var x := ix * size + i * cell
+			var z := iz * size + j * cell
+			var lo := tile_of("near", x - cell + 0.5, z - cell + 0.5)
+			var hi := tile_of("near", x + cell - 0.5, z + cell - 0.5)
+			var covered := true
+			for tz in range(lo.y, hi.y + 1):
+				for tx in range(lo.x, hi.x + 1):
+					covered = covered and near_index.has(Vector2i(tx, tz))
+			if not covered:
+				continue
+			# Plus basse altitude proche du carré (± cell) : échantillons de la grille proche
+			var m := INF
+			for tz in range(lo.y, hi.y + 1):
+				for tx in range(lo.x, hi.x + 1):
+					var key := Vector2i(tx, tz)
+					if not cache.has(key):
+						cache[key] = near_tile.call(tx, tz)
+					var h: PackedFloat32Array = cache[key]
+					if h.is_empty():
+						continue
+					var i0 := clampi(roundi((x - cell - tx * n_size) / n_cell), 0, CELLS)
+					var i1 := clampi(roundi((x + cell - tx * n_size) / n_cell), 0, CELLS)
+					var j0 := clampi(roundi((z - cell - tz * n_size) / n_cell), 0, CELLS)
+					var j1 := clampi(roundi((z + cell - tz * n_size) / n_cell), 0, CELLS)
+					for nj in range(j0, j1 + 1):
+						for ni in range(i0, i1 + 1):
+							var v := h[nj * SAMPLES + ni]
+							if not is_nan(v):
+								m = minf(m, v)
+			if is_inf(m):
+				continue
+			var idx := j * SAMPLES + i
+			if out[idx] > m + lift:
+				if not copied:
+					out = heights.duplicate()
+					copied = true
+				out[idx] = m + lift
 	return out
 
 

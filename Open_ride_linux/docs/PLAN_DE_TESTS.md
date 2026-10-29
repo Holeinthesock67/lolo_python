@@ -1,6 +1,6 @@
 # OpenRide Linux – Plan de tests
 
-Version du 29 octobre 2026. Ce document dit **quoi tester, où, comment le lancer et ce qu'on doit obtenir**. Le catalogue des commandes et de leurs options reste [OUTILS_DE_TEST.md](OUTILS_DE_TEST.md) ; le pas à pas des essais sur le PC et sur le vélo reste [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) ; la liste de ce qui reste à essayer sur le matériel est le §3 de [SUIVI_AVANCEMENT.md](SUIVI_AVANCEMENT.md). Toutes les commandes se lancent depuis `Open_ride_linux/`, `GODOT` désigne l'exécutable Godot 4.3.
+Version du 29 octobre 2026 au soir. Ce document dit **quoi tester, où, comment le lancer et ce qu'on doit obtenir**. Le catalogue des commandes et de leurs options reste [OUTILS_DE_TEST.md](OUTILS_DE_TEST.md) ; le pas à pas des essais sur le PC et sur le vélo reste [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) ; la liste de ce qui reste à essayer sur le matériel est le §3 de [SUIVI_AVANCEMENT.md](SUIVI_AVANCEMENT.md). Toutes les commandes se lancent depuis `Open_ride_linux/`, `GODOT` désigne l'exécutable Godot 4.3.
 
 ## 1. Règles communes
 
@@ -73,6 +73,8 @@ Scénarios intégrés et attendus (détail dans [SIMULATION_BLE.md](SIMULATION_B
 | `connexions_retardees` | Échecs de connexion repris sans intervention |
 | `coupures` | Chaque coupure suivie de `down` puis `up` au journal ; pause `trainer_lost` pendant le silence du trainer, reprise ensuite |
 | `controle_refuse` | Séance en `ERROR` après deux reprises |
+| `rafale_0x80` | Rafale de braquets sur un Control Point lent : écritures refusées en 0x80 reprises, liaison gardée, aucune pause |
+| `montre_garmin` | Écritures refusées pendant que la montre tient le trainer : consignes reportées, `devices.trainer.busy` vrai, bandeau, aucune pause |
 
 Une panne vue sur le vélo se rejoue : `python -m openride_core.tools.log_scenario -o ~/panne.json`, puis `--sim-scenario ~/panne.json`.
 
@@ -90,8 +92,8 @@ Vrai core sur trainer `mock` et vrai engine, HOME temporaire. Attendu : `hello_a
 
 ### 3.7 Tests graphiques
 
-- **Scène principale** : `engine/tests/run_visual_tests.sh [--native]` lance `visual_check.py` face au faux core : captures du HUD, bandeau, menus, bilans (`bilan_complet`, `bilan_complet_detaille`), ERG (cible longue, roue libre), contrôles de lisibilité (chiffres d'au moins 28 px ramenés à 1080 lignes, contraste 4,5:1 pour les valeurs et 3:1 pour les libellés) et de débordement (panneaux dans l'écran, sans chevauchement, textes dans leur colonne). Rapport dans `~/OpenRide/visual_tests/`.
-- **Galerie des cas du HUD** : `python3 engine/tests/hud_galerie.py [--configs 1024x600:medium,1920x1080:high] [--native]` capture les dix cas (SIM, vent et abri, bots avec segment et bonus, ERG avec cible courte, cible longue, roue libre, courbes réduites et complètes, courbes en SIM, valeurs extrêmes) ; attendu : braquet et profil cachés en ERG avec une cible, rien ne déborde, `planche_<config>.png` et `rapport.html` à montrer au propriétaire.
+- **Scène principale** : `engine/tests/run_visual_tests.sh [--native]` lance `visual_check.py` face au faux core : captures du HUD, bandeau, menus, bilans (`bilan_complet`, `bilan_complet_detaille`), ERG (cible longue, palier de 50 W), contrôles de lisibilité (chiffres d'au moins 28 px ramenés à 1080 lignes, contraste 4,5:1 pour les valeurs et 3:1 pour les libellés) et de débordement (panneaux dans l'écran, sans chevauchement, textes dans leur colonne). Rapport dans `~/OpenRide/visual_tests/`.
+- **Galerie des cas du HUD** : `python3 engine/tests/hud_galerie.py [--configs 1024x600:medium,1920x1080:high] [--native]` capture chaque cas (SIM, zones de puissance, vent et abri, bots avec segment et bonus, ERG avec cible courte, cible longue et palier de 50 W, courbes réduites et complètes, courbes en SIM, valeurs extrêmes) ; attendu : braquet et profil cachés en ERG, rien ne déborde, `planche_<config>.png` et `rapport.html` à montrer au propriétaire.
 - **Qualité appliquée (X32)** : chaque banc vérifie dans le journal de l'engine que la capture a été rendue dans la qualité demandée (`engine/tests/quality_guard.py`) ; sinon ÉCHEC « qualité demandée medium, appliquée low ».
 - **Couleurs du thème (X38)** : `test_theme_colors.gd` refuse toute couleur écrite en dur dans les scripts d'interface.
 
@@ -135,6 +137,9 @@ Séance complète sur Bluetooth simulé dans la vraie scène, captures réguliè
 | `decor_vivant_2` | Décor vivant P27 sur le monde OSM ; ≥ 55 i/s en `low`, p99 < 25 ms |
 | `rendu_invisible` | Tri du visible coupé puis activé (`--culling`), captures comparables par `compare_captures.py` |
 | `endurance` | Une heure en fenêtre : images/s stables, mémoire sans dérive |
+| `serie_t` | Recette T11 §1 à §3 sans vélo (X33) : segment, résultats de la montée et du sprint, arches, Z, jingles, records |
+| `erg_boutons` | Essai J7 sans vélo (X33) : chaque appui du Click puis chaque touche du clavier a l'effet du plan (biais, bloc suivant, pause), aucun bonus en ERG |
+| `course_bots` | Recette T11 §8 sans vélo (X33) : 4 bots à profil calibrés au journal, encart des bots et écarts à l'écran |
 
 Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot ni exception du core, journal et FIT écrits, fin de séance, vrai HOME inchangé, qualité appliquée égale à la demande.
 
@@ -169,35 +174,38 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 
 ## 5. Changements récents : comment les tester
 
-État de `main` au 29 octobre 2026.
+État de `main` au 29 octobre 2026 au soir.
 
 | Changement | Tests automatiques | Lancement | Reste à faire |
 | --- | --- | --- | --- |
-| ERG d'une session libre et ERG à cadence verrouillée (O18, PR #550) | `core/tests/test_free_erg.py` (10 tests : départ, biais, plage ± 15 % et sens, bornes et 10 W/s, pas d'oscillation, bascule dans la séance, refus `busy` et `bad_args`, journal et reprise, trainer simulé qui suit) ; `engine/tests/unit/test_free_erg_menu.gd` ; scénario `erg_libre` du banc des menus ; exemples du contrat (§3.3) | `(cd core && pytest -q tests/test_free_erg.py)` ; `UNIT=test_free_erg_menu engine/tests/run_engine_tests.sh` ; `python3 engine/tests/menu_bench.py --scenario erg_libre` | Essai de 10 min sur le vélo : bascule au Click, au clavier et à la souris, ressenti de la plage de 15 % (10 % en option) |
-| HUD ERG et bilan de fin de séance sans débordement (PR #549, suite X22) | Scènes `erg_cible_longue`, `erg_roue_libre`, `bilan_complet`, `bilan_complet_detaille` de `visual_check.py` ; contrôle « textes dans leur colonne » | `engine/tests/run_visual_tests.sh --native` ; `python3 engine/tests/hud_galerie.py --native` | Captures à 1024×600 et 1920×1080 montrées au propriétaire |
-| Lisibilité du HUD (X22), galerie du HUD | `visual_check.py --lisibilite`, `hud_galerie.py` | §3.7 | Lecture à 2 m sur le vélo |
-| Persistance des réglages (X37) | `core/tests/test_settings_persistance.py`, scénario `persistance` | §3.1, §3.8 | — |
-| Couleurs du thème (X38) | `test_theme_colors.gd` | `run_engine_tests.sh` | — |
-| Qualité réellement appliquée (X32) | `quality_guard.py` dans les bancs | §3.7 | Remesures medium et high par la file du PC |
-| Hygiène des suites (X34) | `scripts/recompte_tests.py`, erreurs Godot relevées | `python3 scripts/recompte_tests.py --verifier` | — |
-| Auto-tests des biomes (PR #493) | Vitrines avec `--compare`, coutures en scène réelle (`test_biome_seams.gd`) | §3.10, §3.5 | Référence prise sur la GTX 1060 |
-| Son sans « tac-tac » (PR #535), termitières (PR #545) | Tests unitaires du son et du décor | `run_engine_tests.sh` | Écoute et captures sur le PC |
+| ERG d'une session libre et ERG à cadence verrouillée (O18, PR #550) | `core/tests/test_free_erg.py` (départ, biais, plage ± 15 % et sens, bornes et 10 W/s, pas d'oscillation, bascule dans la séance, refus `busy` et `bad_args`, journal et reprise, trainer simulé qui suit) ; `engine/tests/unit/test_free_erg_menu.gd` ; scénario `erg_libre` du banc des menus ; exemples du contrat (§3.3) | `(cd core && pytest -q tests/test_free_erg.py)` ; `UNIT=test_free_erg_menu engine/tests/run_engine_tests.sh` ; `python3 engine/tests/menu_bench.py --scenario erg_libre` | Essai de 10 min sur le vélo : bascule au Click, au clavier et à la souris, ressenti de la plage de 15 % (10 % en option), ERG libre à 50 W |
+| Aucune roue libre en ERG (O19, PR #569) : consigne jamais sous 50 W, bloc FreeRide = palier de 50 W, test de FTP par la rampe seule | Tests du core sur le plancher de 50 W ; scène `erg_palier_50w` de `visual_check.py` et de la galerie du HUD | `(cd core && pytest -q)` ; `engine/tests/run_visual_tests.sh` | Ressenti sur le vélo avec un `.zwo` qui contient un FreeRide |
+| HUD ERG et bilan de fin de séance sans débordement (PR #549, suite X22) | Scènes `erg_cible_longue`, `bilan_complet`, `bilan_complet_detaille` ; contrôle « textes dans leur colonne » | `engine/tests/run_visual_tests.sh --native` ; `python3 engine/tests/hud_galerie.py --native` | Captures à 1024×600 et 1920×1080 montrées au propriétaire |
+| Control Point occupé sans décrochage (PR #540) | Scénarios `rafale_0x80` et `montre_garmin` (§3.4), tests du pilote dans `core/tests/test_ble_sim.py` | `scripts/openride-dev.sh --trainer sim --input sim --sim-scenario montre_garmin --autostart` | Bloc vélo avec la montre Garmin allumée |
+| Coupure subie qui suspend la montée au lieu de l'annuler (PR #542) | `core/tests/test_segment_timing.py`, `core/tests/test_session_serie_t.py` | `(cd core && pytest -q tests/test_segment_timing.py tests/test_session_serie_t.py)` | — |
+| Braquets SIM resserrés à 0,65–2,00 (PR #547) | `core/tests/test_gearing_config.py` | `(cd core && pytest -q tests/test_gearing_config.py)` | Ressenti des petits braquets sur le vélo |
+| Séance simulée série T et boutons de l'ERG (X33, PR #534) | Scénarios `serie_t`, `erg_boutons`, `course_bots` (§3.9) | `python3 engine/tests/sim_bench.py --scenario erg_boutons` | Ne laisse au vélo que le ressenti de T11 et J7 |
+| Matrice des boutons et des réglages (X42, PR #552) | `python -m openride_core.tools.matrice_boutons --partie tout` ; `core/tests/test_matrice_boutons.py` | idem | — |
+| Cyber-Rogue de bout en bout (X40, #546) et banc visuel (X41, #548) | `python -m openride_core.tools.rogue_bout_en_bout --objective tous` ; `python3 engine/tests/rogue_bench.py --godot GODOT` | idem | Planche `rapport.html` montrée au propriétaire |
+| Lisibilité du HUD (X22), persistance des réglages (X37), couleurs du thème (X38), qualité appliquée (X32), hygiène des suites (X34) | §3.7, §3.8, `core/tests/test_settings_persistance.py`, `scripts/recompte_tests.py` | voir les sections citées | Remesures medium et high par la file du PC |
+| Autres outils X fusionnés le 29 octobre (X3, X10, X11, X14, X15, X17, X19, X20, X21, X24, X26, X27, X28, X30, X31, X35) | Chacun décrit dans [OUTILS_DE_TEST.md](OUTILS_DE_TEST.md) avec sa commande | voir le catalogue | Premier passage sur le PC pour ceux qui mesurent le matériel |
 
-## 6. En revue : PR ouvertes au 29 octobre 2026
+## 6. En revue : PR ouvertes au 29 octobre 2026 au soir
 
 Rien de ce tableau n'est sur `main`. À la fusion, chaque PR met à jour le catalogue ([OUTILS_DE_TEST.md](OUTILS_DE_TEST.md)) et, pour l'IPC, le journal du contrat ; la ligne disparaît d'ici.
 
-| PR | Contenu | Tests apportés | Effet sur les documents |
-| --- | --- | --- | --- |
-| #540 | Control Point occupé sans décrochage (ATT 0x80, montre Garmin sur le trainer) | Scénarios simulés `rafale_0x80` et `montre_garmin`, action `other_device` ; tests du pilote dans `test_ble_sim.py` | Champ `devices.trainer.busy` (IPC 1.5), bandeau de l'engine |
-| #542 | Une coupure subie du trainer suspend la montée chronométrée au lieu de l'annuler | `test_segment_timing.py`, `test_session_serie_t.py` | Champ `reason` des lignes `event` du journal ; exigence 2.0-SEG-2 |
-| #547 | Braquets SIM resserrés de 0,40–3,00 à 0,65–2,00 (option B de l'étude du 28 octobre) | `test_gearing_config.py` | Exigence 1.0-PHY-2, SRS, exemple de configuration |
-| #552 | Matrice des boutons et des réglages par mode et par phase (X42), 3 défauts corrigés | `python -m openride_core.tools.matrice_boutons [--partie boutons\|reglages\|tout] [--mode …]` ; `test_matrice_boutons.py` | `set_setting` accepté en séance pour les réglages `applies` = `now` (IPC) ; ± règlent le braquet dans un bloc de roue libre (§7.1 de la spécification générale) |
-| #546 | Run Cyber-Rogue de bout en bout dans la vraie séance du core (X40) | `python -m openride_core.tools.rogue_bout_en_bout [--objective tous] [--trace F.jsonl]` (~2 s par run) | Fin de séance après les résultats de la run |
-| #548 | Banc visuel du Cyber-Rogue (X41) : la run de X40 rejouée dans la scène, captures aux moments clés | `rogue_bench.py --godot GODOT` (~3 min) | Planche `rapport.html` |
-| #533 | Panneaux, poteaux, bornes et éoliennes habillés (Y8, étapes 3 et 4) | `test_props_render.gd`, vue des accessoires dans `vitrine_rendu.gd` | Mesure medium sur le PC en cours |
-| #534 | Séance simulée de la série T et des boutons de l'ERG (X33) | Scénarios du banc pour T11 et J7 | Le pré-vol pourra les lancer (`sim_scenarios`) |
-| #502, #498, #500, #508, #514, #515, #523, #524, #525, #526, #527, #529, #530, #536, #541, #522 | Autres outils de la série X : cycliste virtuel et course des bots (X27), fiabilité du banc (X35), référence de performance (X14), régression visuelle v2 (X20), saccades et démarrage (X15), instabilité des tests (X3), coût par image (X19), coupures vérifiées (X10), tableau de recette (X30), dépendances (X24), FIT réel (X11), fuzz des fichiers (X26), gigue (X17), tour visuel (X21), réseau dégradé (X28), pente maximale face à Garmin (X31) | Chaque PR décrit ses commandes | Catalogue mis à jour à la fusion |
+| PR | Contenu | Ce qu'il faudra tester |
+| --- | --- | --- |
+| #580 | Trainer : frein lâché détecté, contrôle repris, trace fine des mesures | Scénario simulé du frein lâché, puis un bloc vélo |
+| #582 | SIM : Cw envoyé au trainer corrigé (ρ × CdA, sans le ½) | Tests de la physique et de FTMS ; ressenti sur le plat |
+| #578 | Trace FTMS : mesures annoncées par le trainer toutes les 2 s | Lecture de la trace dans le journal |
+| #583 | Banc du trainer X43 : paliers SIM à puissance cible, plafond, relances courtes, vitesse du volant | Passage du banc sur le vélo (file du PC) |
+| #581 | Terrain lointain enfoncé juste ce qu'il faut sous le proche (coutures des flancs, relief × 2,5) | Captures dans les trois qualités, montrées au propriétaire |
+| #572, #574, #575, #577 | Série MJ : profils, profil d'essai `_essai`, campagne simulée accélérée | Tests du core de chaque lot ; séances simulées comptées à part |
+| #559 | Y13 étape 4 : rendu des tons AgX et filtrage anisotrope par préréglage | Captures et images/s par préréglage, après #557 |
+| #557 | Y2 : migration de Godot 4.3 vers 4.7.2 | Toutes les suites de l'engine, les bancs et la recette du PC sous 4.7 |
+| #507 | Robot des menus : Click, clavier et souris simulés de bout en bout | Recoupe le banc des menus (§3.8) |
+| #322 | Zwift Click : comparaison avant et après la mise à jour du firmware | Essai du boîtier gauche, reporté à la 4.0 |
 
 ## 7. Mesures de performance
 
@@ -225,16 +233,16 @@ Après l'ajout : `python3 scripts/recompte_tests.py` (nombres du README et du su
 
 ## 9. Couverture au 29 octobre face à l'audit du 28 octobre
 
-L'audit de couverture du 28 octobre relevait sept trous. État sur `main` :
+L'audit de couverture du 28 octobre relevait sept trous. État sur `main` le 29 octobre au soir :
 
 | Trou relevé le 28 octobre | État le 29 octobre |
 | --- | --- |
 | Qualité effective non vérifiée dans les bancs | **Comblé** : garde-fou X32 dans `sim_bench`, `visual_check`, `perf_probe` |
-| Pas de séance simulée série T et boutons de l'ERG | En revue : X33 (#534) ; la matrice X42 (#552) couvre aussi chaque bouton à chaque phase |
+| Pas de séance simulée série T et boutons de l'ERG | **Comblé** : scénarios `serie_t`, `erg_boutons`, `course_bots` (X33) et matrice des boutons X42 |
 | Menus au clavier et à la souris, persistance, écrans 2.0, banc hors CI | **Comblé** : banc des menus à trois voies, 16 scénarios, en CI (`--rotation`) et dans la recette du PC ; persistance X37 |
-| Pas de référence visuelle ni de détection d'apparition | En partie : comparaison des vitrines (`--compare`, PR #493) ; X20 (#508) en revue ; X18 livré avec S1 (outils) |
-| Pas de référence de performance ni d'alerte | En revue : X14 (#500) |
-| Analyse des séances sur le vélo à la main | **Comblé** : `openride-core session-report` (X12) ; FIT réel X11 (#527) en revue |
-| Outils jamais validés sur le PC : X4, X5, X8, X16 | Toujours à faire (§3 de [SUIVI_AVANCEMENT.md](SUIVI_AVANCEMENT.md)) |
+| Pas de référence visuelle ni de détection d'apparition | **Comblé** : régression visuelle v2 (X20), comparaison des vitrines (`--compare`), outils d'apparition livrés avec S1 (X18) |
+| Pas de référence de performance ni d'alerte | **Comblé** : référence et comparateur avant/après (X14), coût par image (X19) |
+| Analyse des séances sur le vélo à la main | **Comblé** : `openride-core session-report` (X12), `openride-core fit-check` (X11) |
+| Outils jamais validés sur le PC : X4, X5, X8, X16 | En cours : paliers du trainer (X5) passés sur le PC le 29 octobre ; X4, X8 et X16 toujours à faire (§3 de [SUIVI_AVANCEMENT.md](SUIVI_AVANCEMENT.md)) |
 
-Restent sans outil sur `main` : trainer simulé réaliste (X6), latence Click → écran (X7), coupures volontaires (X10, #524), fuzz des fichiers (X26, #529), dépendances (X24, #526), instabilité des tests (X3, #515).
+Restent sans outil sur `main` : trainer simulé réaliste (X6) et latence Click → écran (X7) ; le banc du trainer X43 est en revue (#583).

@@ -1,6 +1,6 @@
 # Lot Y8 – Habillage des bâtiments : toits à pans, façades et styles par région et par biome
 
-**Statut : étape 1 livrée le 28 octobre** (bâtiments, PR #470), mesurée sur la GTX 1060 (§5), en attente de l'avis du propriétaire sur l'aspect. Ce cahier remplace la première version du 28 octobre (PR #462) ; les écarts sont au §7. Étape 2 (arbres) en PR le 28 octobre (§8). Étapes suivantes au §6 (panneaux, poteaux, barrières, éoliennes). L'étalonnage d'Y8 est passé dans Y13.
+**Statut : étape 1 livrée le 28 octobre** (bâtiments, PR #470), mesurée sur la GTX 1060 (§5), en attente de l'avis du propriétaire sur l'aspect. Ce cahier remplace la première version du 28 octobre (PR #462) ; les écarts sont au §7. Étape 2 (arbres) en PR le 28 octobre (§8). Étapes 3 et 4 (panneaux, poteaux, bornes, éoliennes) au §9. L'étalonnage d'Y8 est passé dans Y13.
 
 ## 1. Objectif
 
@@ -79,3 +79,28 @@ Préréglages : le faux relief est coupé en `low` (`BuildingMesh.RELIEF`) ; fen
 - **Pas de faux relief sur les arbres**, et un seul `Shader` par niveau de détail pour toutes les essences (la copie `cull_disabled` des panneaux croisés est partagée). Première mesure du 28 octobre sur la GTX 1060 (village, `medium`) : 58 → 7,5 images/s avec un relief par dérivées d'écran et un Shader du LOD 1 recréé pour chaque essence ; `low` inchangé (58,2 images/s). Corrigé avant fusion, mesure à refaire.
 - **Coût** : aucune géométrie ajoutée (mêmes triangles et appels de dessin, vues `arbres_temperes`, `arbres_sud` et `ecorces` de la vitrine) ; coût du shader par pixel de feuillage à mesurer sur la GTX 1060.
 - **Tests** : `engine/tests/render/test_tree_render.gd` (points parasites, feuillage varié, contre-jour, bouleau ; sans habillage, 6 vérifications sur 10 échouent) et codes de matière de chaque essence dans `engine/tests/unit/test_vegetation_biomes.gd`.
+
+## 9. Étapes 3 et 4 : objets du bord de route et éoliennes
+
+- **Un shader commun** `engine/shaders/props.gdshader` pour les objets construits par code : une matière par pièce (`kind`), motifs en coordonnées de la pièce en mètres (échelle du nœud comprise, `size_m` = dimensions du maillage), couche `surface_detail.gdshaderinc`, couleurs écrites en sRGB et converties.
+  - Panneaux (`roadside_props.gd`) : tôle peinte à liseré blanc et rebord, film rétroréfléchissant, dos et tranches en tôle galvanisée, rayures fines et salissure du bas.
+  - Poteaux : acier galvanisé à paillettes de zinc, rouille éparse, terre au pied.
+  - Bornes : béton blanc à grain, coulures, pied sali ; tête rouge écaillée.
+  - Éoliennes (`wind_turbines.gd`) : mât à joints de tronçons, coulures, porte au pied et dégradé vert sur le bas ; capot de nacelle à panneaux et grilles ; pales au bord d'attaque usé.
+- **Préréglages** : `RoadsideProps.RELIEF` (relief coupé en `low`), appliqué aux panneaux et aux éoliennes par `living_decor.gd`.
+- **Barrières et glissières** : le monde n'en a pas encore ; elles prendront ce shader quand un lot les ajoutera.
+- **Coût** : aucune géométrie ajoutée (vues `panneaux`, `eolienne`, `eolienne_pied` de la vitrine : mêmes triangles et appels de dessin) ; ces objets couvrent peu de pixels.
+- **Tests** : `engine/tests/render/test_props_render.gd` (points parasites, liseré du panneau, poteau galvanisé, pied de borne sali, dégradé du mât).
+
+## 10. Retouche du 29 octobre : portes, panneaux et bornes
+
+Demande du propriétaire (29/10) : « améliorer le design des portes, panneaux et bornes kilométriques ».
+
+- **Portes des maisons** (`building.gdshader`, `house_door`) : encadrement de pierre en harpes avec linteau et clé, seuil de pierre sombre, cadre dormant, imposte vitrée en éventail, vantail à panneaux moulurés (en relief), vitré en partie haute ou à lames verticales avec pentures noires (portes rurales), plaque de propreté, poignée et serrure. La travée de la porte n'a plus ni volets ni morceaux de fenêtre autour (défaut d'avant). Relief des ouvertures transmis au faux relief (`open_h`), coupé en `low` comme le reste.
+- **Panneaux** (`roadside_props.gd`) : plaque de tôle à coins arrondis construite par code, **dimensionnée d'après le texte** (avant, « Sommet à 3 km » et « Pente moyenne 7 % » débordaient du panneau d'approche), lettres de 32 cm (col : lisible à 25 m, 6 pixels sur 720 lignes au moins, contrôle de `visual_check.py`) et 20 cm (approche), 12 cm au moins, plaque de 3,2 m au plus ; deux poteaux au-delà de 1,3 m de large, colliers de fixation, poteaux derrière la plaque ; deux raidisseurs au dos. Un maillage par taille de plaque (pas de 5 cm), partagé.
+- **Bornes** : forme de la borne française, socle de béton, fût blanc, tête en demi-cercle peinte en rouge et filet noir ; « km » en blanc sur la tête, le numéro en noir sur le fût. Un seul maillage et un seul appel de dessin pour la pierre (avant : fût et tête séparés).
+- **Shader** `props.gdshader` : matières renumérotées sans trou (0 panneau, 1 poteaux, 2 borne avec sa tête, 3 mât, 4 nacelle, 5 pale ; `wind_turbines.gd` suit) ; les maillages construits par code portent leurs dimensions en UV2, `size_m` reste pour les maillages primitifs.
+- **Portes du couloir Cyber-Rogue** (`rogue_corridor_view.gd`) : portails cintrés à la couleur de l'ennemi de l'archétype (catalogue R17), côté, nom de l'archétype et ce qui attend le joueur (« Paliers de montée »…), halo sur la porte choisie ; bloc calé en bas qui grandit vers le haut : les portes et la relance ne sont plus coupées (constat X41 en 720p, aussi en 1024 × 600). Couleurs des cartes lues dans le catalogue R17 (mêmes teintes, plus de couleurs écrites en dur).
+- **Captures** : `vitrine_rendu.gd` (options `--size` et `--views`, vues `panneau_col`, `borne`, `portes` ; textes réels de `roadside_model.gd`) et `engine/tests/vitrine_couloir.gd` (nouvelle : écran du couloir par focus, échec si un bloc sort de l'écran).
+- **Coût** : vue `panneaux` 87 appels de dessin au lieu de 88 et +436 triangles ; bornes : un maillage de moins par borne (pierre d’un seul tenant), un texte de plus (« km »). Portes : calcul seulement sur les pixels de la porte. Images/s à mesurer en `medium` sur la GTX 1060 (file des mesures).
+

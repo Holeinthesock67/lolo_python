@@ -172,7 +172,7 @@ func update_display(summary: Dictionary, details: bool, mode := "", ftp_w := 0) 
 		if b.get("target_w") != null:
 			line += " pour %d W (%s, %s)" % [int(round(float(b["target_w"]))), b.get("delta_w_text", ""), b.get("delta_pct_text", "")]
 		else:
-			line += ", roue libre"
+			line += ", sans cible"
 		_block_line(line, str(b.get("color", SummaryViewModel.COLOR_NEUTRAL)))
 	if blks.size() > MAX_BLOCK_LINES:
 		_block_line("… et %d autres blocs" % (blks.size() - MAX_BLOCK_LINES), SummaryViewModel.COLOR_NEUTRAL)

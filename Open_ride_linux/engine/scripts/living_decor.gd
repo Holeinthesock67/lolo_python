@@ -6,7 +6,8 @@ extends Node3D
 ## (P22 à P29, intégrée par P27) : oiseaux de campagne (P23) et animaux selon le terrain (P24) dans
 ## fauna_renderer.gd ; circulation des routes voisines et tracteurs des champs (P25, road_traffic_model.gd)
 ## et phares de tous les véhicules par brume, pluie ou soleil bas (traffic_model.gd `headlights`) ; avions
-## de ligne, hélicoptère, parapentes au-dessus des montées et montgolfières (P26, sky_traffic_model.gd) ;
+## de ligne, hélicoptère, parapentes au-dessus des montées et montgolfières (P26, sky_traffic_model.gd),
+## variés selon le biome, et paramoteurs des pays plats (P31) ;
 ## cyclistes du décor sur la route, qui laissent la place aux bots (P28, road_cyclists_model.gd) ; bateaux
 ## des lacs et des cours d'eau, feux allumés avec les phares (P29, boat_model.gd). Pas de class_name :
 ## charger par preload("res://scripts/living_decor.gd"). Créé par main.gd, à côté de living_world.gd
@@ -117,6 +118,12 @@ var _sound_at := -INF
 
 var _route = null
 var _road_width_m := RoadBuilder.ROAD_WIDTH_M
+var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par step (placements des tests, lot P32)
+var _rider_v := 0.0
+var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
+const CONTACT_M := 300.0
+var contacts := 0                  # lot P32 : contacts vus sur la route (images × paires), doit rester à 0
+var last_contact := ""             # lot P32 : qui touchait qui la dernière fois, pour le rapport des tests
 var _job: Dictionary = {}
 var _generation := 0
 var _loaded_chunks: Dictionary = {}  # k -> true (tronçons OSM affichés)
@@ -148,6 +155,8 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	fauna.setup_sound(sound_player)
 	crowd_view.set_preset(preset, enabled)
 	passersby_view.set_preset(preset, enabled)
+	props.set_preset(QualityPresets.applied_name(preset))
+	turbines.set_preset(QualityPresets.applied_name(preset))
 	traffic.set_budget(int(living.get("vehicles", 0)))
 	road_traffic.set_budget(int(living.get("distant_vehicles", 0)))
 	road_traffic_view.set_budget(int(living.get("distant_vehicles", 0)))
@@ -347,6 +356,7 @@ func _poll_job(wait: bool = false) -> void:
 	passersby_view.setup_passersby(passersby, sound_player)
 	traffic.configure(_route, theme, pois, int(living.get("vehicles", 0)))
 	cyclists.configure(_route, climbs, pois, int(living.get("cyclists", 0)), 0, _road_width_m, traffic)
+	sky.biome_model = _active_biome_model()
 	sky.configure(_route, theme, climbs, int(living.get("aircraft", 0)))
 	turbines.set_points(pois)
 	flags.set_points(pois)
@@ -355,6 +365,12 @@ func _poll_job(wait: bool = false) -> void:
 	for k in _loaded_chunks:
 		props.add_chunk(_route, k, RoadsideModel.for_chunk(roadside_items, k))
 	prepared = true
+
+
+## Modèle de biome du parcours quand il suit des biomes (couche ou forçage, lot U5), sinon null (lot P31).
+func _active_biome_model():
+	var model = world_streamer.get("biome_model") if world_streamer != null else null
+	return model if model != null and model.active() else null
 
 
 func _on_chunk_loaded(k: int, extras: Dictionary) -> void:
@@ -408,6 +424,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	_poll_job()
 	if not enabled or _route == null:
 		return
+	_cam_s = cam_s
+	_rider_v = rider_v
+	var h := deg_to_rad(float(_route.sample(cam_s)["heading_deg"]))
+	_cam_lateral = (cam_pos - _route.sample_point(cam_s)).dot(Vector3(cos(h), 0.0, sin(h)))
 	var rider_pos := cam_pos - Vector3(0.0, 1.4, 0.0)
 	# Météo (P8)
 	weather_eval = WeatherModel.evaluate(weather, alt_m, _valley_alt_at(cam_s), wind_eval)
@@ -449,7 +469,12 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	cyclists_view.update(dt_s, paused)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
-	traffic.update(cam_s, rider_v, dt_s, paused)
+	var others: Array = cyclists.riders()
+	for b in bots_s:
+		others.append({"s": float(b), "lateral": RoadBuilder.BOT_LATERAL_M, "dir": 1})
+	traffic.update(cam_s, rider_v, dt_s, paused, others)
+	if not paused:
+		_count_contacts(others)
 	traffic_view.set_lights(headlights)
 	traffic_view.update()
 	road_traffic.update(cam_pos, dt_s, paused)
@@ -506,6 +531,66 @@ func _animal_count() -> int:
 
 ## État du décor pour les captures des tests graphiques : nombres affichés, météo, et le panneau le plus
 ## proche devant la caméra (texte, distance, hauteur des lettres à l'écran en pixels de l'image).
+## Placement demandé par un test (`_test` « decor_place », lot P32) : `vehicle` {kind, dir, rel_m, kmh} et
+## `cyclists` {case, rel_m, size, abreast}, posés par rapport à la dernière position du cycliste.
+func test_place(spec: Dictionary) -> void:
+	if not prepared:
+		return
+	if spec.get("vehicle") is Dictionary:
+		var v: Dictionary = spec["vehicle"]
+		traffic.place_for_test(_cam_s, _rider_v, str(v.get("kind", "car_a")), int(v.get("dir", -1)), float(v.get("rel_m", 60.0)),
+			float(v.get("kmh", 50.0)))
+	if spec.get("cyclists") is Dictionary:
+		var c: Dictionary = spec["cyclists"]
+		cyclists.place_for_test(_cam_s, _rider_v, str(c.get("case", "ahead")), float(c.get("rel_m", 30.0)),
+			int(c.get("size", 1)), bool(c.get("abreast", false)))
+
+
+## Usagers de la route du parcours à moins de `within_m` du cycliste (lot P32) : sorte, sens (+1 comme le
+## cycliste), écart à l'axe (positif à droite du sens du parcours) et abscisse relative.
+func road_users(within_m: float = 300.0) -> Array:
+	var out := []
+	for v in traffic.vehicles:
+		var rel := float(v["s"]) - _cam_s
+		if absf(rel) <= within_m:
+			out.append({"what": "vehicle", "kind": str(v["kind"]), "dir": int(v["dir"]), "lateral": float(v["lateral"]),
+				"half_width": float(TrafficModel.KINDS[v["kind"]]["half_width"]), "rel_m": rel})
+	for r in cyclists.riders():
+		var rel := float(r["s"]) - _cam_s
+		if absf(rel) <= within_m:
+			out.append({"what": "cyclist", "kind": str(r["group"]["case"]), "dir": int(r["dir"]), "lateral": float(r["lateral"]),
+				"half_width": RoadCyclistsModel.RIDER_HALF_WIDTH_M, "rel_m": rel})
+	return out
+
+
+## Lot P32 : compte les paires qui se touchent à cette image (carrosseries et cyclistes de moins de CONTACT_M de
+## la caméra) : véhicules entre eux, véhicule et cycliste, cyclistes de groupes différents, bots et cycliste
+## compris. `others` : cyclistes du décor et bots, comme traffic_model.gd les reçoit.
+func _count_contacts(others: Array) -> void:
+	var items := []
+	for v in traffic.vehicles:
+		if absf(float(v["s"]) - _cam_s) <= CONTACT_M:
+			var k: Dictionary = TrafficModel.KINDS[v["kind"]]
+			items.append({"name": str(v["kind"]), "s": float(v["s"]), "lateral": float(v["lateral"]),
+				"half_len": float(k["length"]) * 0.5, "half_width": float(k["half_width"]), "group": v})
+	var you := {"s": _cam_s, "lateral": RoadBuilder.RIDER_LATERAL_M, "name": "cycliste"}
+	for o in others + [you]:
+		if absf(float(o["s"]) - _cam_s) <= CONTACT_M:
+			items.append({"name": str(o["group"]["case"]) if o.has("group") else str(o.get("name", "bot")),
+				"s": float(o["s"]), "lateral": float(o["lateral"]), "half_len": TrafficModel.CYCLIST_HALF_LENGTH_M,
+				"half_width": TrafficModel.RIDER_HALF_WIDTH_M, "group": o.get("group", o)})
+	for i in range(items.size()):
+		for j in range(i + 1, items.size()):
+			var a: Dictionary = items[i]
+			var b: Dictionary = items[j]
+			if is_same(a["group"], b["group"]):
+				continue
+			if absf(float(a["s"]) - float(b["s"])) < float(a["half_len"]) + float(b["half_len"]) \
+					and absf(float(a["lateral"]) - float(b["lateral"])) < float(a["half_width"]) + float(b["half_width"]):
+				contacts += 1
+				last_contact = "%s / %s à %.0f m" % [a["name"], b["name"], float(a["s"]) - _cam_s]
+
+
 func test_info(cam: Camera3D) -> Dictionary:
 	var out := {
 		"enabled": enabled, "prepared": prepared, "props": props.prop_count() if props != null else 0,
@@ -524,6 +609,9 @@ func test_info(cam: Camera3D) -> Dictionary:
 		"fog_boost": float(weather_eval.get("fog_boost", 0.0)),
 		"sounds": sounds_heard.duplicate(),
 		"frozen_sig": frozen_signature(),
+		"road_users": road_users(),
+		"rider_lateral": _cam_lateral,
+		"contacts": contacts, "last_contact": last_contact,
 		"sign": {},
 	}
 	if cam == null or props == null:

@@ -8,7 +8,10 @@ Cahier : `docs/lots/LOT_T4_chronometrage_segments.md`.
 Règles (plan de la série T §3.2) :
 - l'entrée et la sortie sont interpolées linéairement entre deux pas : à 50 Hz et 10 m/s,
   l'erreur reste sous 0,02 s ;
-- une pause pendant un segment l'annule, quelle qu'en soit la raison (`trainer_lost` aussi) ;
+- une pause voulue (Y, raison `user`) pendant un segment l'annule ; une pause subie (trainer perdu,
+  engine perdu, données du monde, journal, core relancé : `SUSPENDING_PAUSES`) la suspend : le temps
+  chronométré s'arrête avec la séance et le passage reprend à la reprise (décision du 28 octobre 2026,
+  séance A : la montée 1 annulée par deux coupures du trainer). Raison inconnue : annulation ;
 - boucle : chaque tour donne un passage ; aller-retour : `s` ne fait que croître, le segment
   ne se chronomètre donc que dans le sens où il a été défini ;
 - chaque passage garde temps, puissance moyenne (mesurée), W/kg, vitesse moyenne et bonus
@@ -27,6 +30,9 @@ from typing import Iterable, Iterator, Protocol
 from .journal import read_journal
 
 TIMER_STEP_S = 0.02     # pas de 50 Hz de la boucle du core
+# Pauses subies : le passage en cours est suspendu, pas annulé (raisons de `pause_reason`, contrat IPC).
+SUSPENDING_PAUSES = frozenset({"trainer_lost", "engine_lost", "world_data", "recording_failed",
+                               "core_restarted"})
 
 
 class SegmentLike(Protocol):
@@ -190,11 +196,14 @@ class SegmentTimer:
             avg_speed_kmh=3.6 * (a.s1 - a.s0) / time_s, bonuses=tuple(a.bonuses))
 
     def pause(self, reason: str = "user") -> None:
-        """Pause de la séance : les passages en cours sont annulés."""
+        """Pause de la séance : passages en cours annulés (pause voulue) ou suspendus (pause subie)."""
+        # Le pas précédent est gardé : `t` et `s` s'arrêtent avec la séance, la reprise repart de là
+        # sans faux franchissement, et un départ en s = 0 encore à franchir le reste (séance A).
+        if reason in SUSPENDING_PAUSES:
+            return
         for a in self._active:
             self.cancelled.append((a.seg.id, a.lap, reason))
         self._active = []
-        self._prev = None    # la reprise ne doit pas faire croire à un franchissement
 
     # --- affichage -----------------------------------------------------------------------
 
@@ -233,7 +242,7 @@ def passes_from_journal(path: Path, segments: Iterable[SegmentLike], length_m: f
     for line in read_journal(path):
         kind = line.get("kind")
         if kind == "event" and line.get("event") == "pause":
-            timer.pause("journal")
+            timer.pause(str(line.get("reason") or "journal"))
         elif kind == "powerup":
             try:
                 t0 = float(line["t"])

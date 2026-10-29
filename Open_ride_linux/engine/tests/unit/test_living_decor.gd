@@ -12,6 +12,7 @@ const LivingDecor := preload("res://scripts/living_decor.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const WorldStreamer := preload("res://scripts/world_streamer.gd")
+const BiomeModel := preload("res://scripts/biome_model.gd")
 const RouteData := preload("res://scripts/route_data.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const HudView := preload("res://scripts/hud_view.gd")
@@ -120,6 +121,7 @@ static func _make_world() -> Dictionary:
 ## Faux world_streamer.gd : seulement ce que living_decor.gd appelle.
 class FakeWorld extends Node3D:
 	var osm_streamer = null
+	var biome_model = null
 	var road_markings := false
 	var marks: Dictionary = {}
 	var wetness := 0.0
@@ -259,6 +261,7 @@ func _run() -> void:
 	_check(ws.wetness > 0.5 and absf(lw.rain - 0.6) < 1e-6, "chaussée mouillée (%.2f), pluie dans l'ambiance sonore" % ws.wetness)
 	_check(dec.fog_updates >= 1 and dec.fog_updates < frames / 5, "brume recalculée %d fois en %d images" % [dec.fog_updates, frames])
 	_check(dec.traffic.spawned_total > 0 and rider_hits == 0, "véhicules croisés : %d, jamais sur le cycliste" % dec.traffic.spawned_total)
+	_check(dec.contacts == 0, "compteur de contacts de la route (lot P32) : %d %s" % [dec.contacts, dec.last_contact])
 	_check(distant_max >= 1 and distant_max <= 24 and distant_on_route == 0 and distant_seen.has("tractor_field"),
 		"routes voisines et champs : jusqu'à %d véhicules affichés (budget 24), jamais sur le parcours, sortes %s" % [distant_max, str(distant_seen.keys())])
 	_check(dec.headlights and dec.traffic_view.lights and dec.road_traffic_view.lights and dec.boats_view.lights, "pluie : phares et feux des bateaux allumés")
@@ -334,6 +337,18 @@ func _run() -> void:
 	_check(dec.sky.budget == 12 and dec.sky.clock_s == sky_before and dec.sky_view.visible_count() == dec.sky.craft.size(),
 		"ciel : %d engins au plus (préset high), figé en pause" % dec.sky.budget)
 	_check(dec.boats.budget == 16 and dec.boats.clock_s == boats_before, "bateaux figés en pause")
+	# Lot P31 : le ciel suit le modèle de biome du world_streamer quand il est actif
+	var ws_b = parts[2]
+	var sky_none = dec.sky.biome_model
+	ws_b.biome_model = BiomeModel.new()
+	dec.set_route(parts[4], WORLD, 6.0)
+	dec.flush()
+	var sky_inactive = dec.sky.biome_model
+	ws_b.biome_model.set_forced("alpine")
+	dec.set_route(parts[4], WORLD, 6.0)
+	dec.flush()
+	_check(sky_none == null and sky_inactive == null and dec.sky.biome_model == ws_b.biome_model,
+		"ciel : biome du parcours quand la couche biome ou le forçage est actif, sinon biome par défaut (lot P31)")
 
 	# 5. Retrait d'un tronçon : panneaux et animaux retirés
 	var props_before: int = dec.props.prop_count()

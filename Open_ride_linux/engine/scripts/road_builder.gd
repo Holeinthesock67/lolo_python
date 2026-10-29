@@ -19,6 +19,13 @@ const SHOULDER_WIDTH_M := 0.5
 const SHOULDER_DROP_M := 0.05
 const V_REPEAT_M := 6.0
 const VERTS_PER_SECTION := 6       # bas-côté gauche (2), chaussée (2), bas-côté droit (2)
+## Places en travers de la chaussée (lot P32, demande du 29 octobre : « on roule à droite, pas au milieu ») :
+## écart à l'axe, positif à droite du sens du parcours. Le cycliste (caméra, avatar) roule dans la voie de
+## droite, les bots à sa droite vers le bord ; les véhicules prennent le milieu de leur voie (celle d'en face
+## à −LANE_CENTER_M). traffic_model.gd, road_cyclists_model.gd et bots_view.gd se placent d'après elles.
+const RIDER_LATERAL_M := 1.2
+const BOT_LATERAL_M := 2.1
+const LANE_CENTER_M := 1.5
 
 const ROAD_COLOR := Color(0.29, 0.29, 0.30)
 const LINE_COLOR := Color(0.95, 0.95, 0.95)
@@ -41,7 +48,9 @@ static func section_s(route, k: int) -> PackedFloat64Array:
 
 
 ## Tableaux de maillage (Mesh.ARRAY_MAX) du tronçon k.
-static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M, visual_grade_scale: float = 1.0) -> Array:
+## Hauteurs à l'échelle du relief affiché (`route.relief_k`, lot Q2) : l'axe suit `sample()["y"]`, la pente des normales
+## est multipliée par le même facteur.
+static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M) -> Array:
 	var half := road_width_m * 0.5
 	var outer := half + SHOULDER_WIDTH_M
 	# Décalages en travers (m, vers la droite) et descente de chaque sommet de la coupe.
@@ -52,16 +61,14 @@ static func build_chunk_arrays(route, k: int, road_width_m: float = ROAD_WIDTH_M
 	var vertices := PackedVector3Array()
 	var normals := PackedVector3Array()
 	var uvs := PackedVector2Array()
-	var alt_orig: float = route.alt_m[0] if route != null and route.n > 0 else 0.0
+	var relief_k: float = route.relief_k
 	for s_cut in s_values:
 		var smp: Dictionary = route.sample(s_cut)
 		var center := Vector3(smp["x"], smp["y"], smp["z"])
-		if visual_grade_scale != 1.0:
-			center.y = alt_orig + (center.y - alt_orig) * visual_grade_scale
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		# Cap horaire depuis le nord (−z) : avant = (sin h, 0, −cos h), droite = (cos h, 0, sin h).
 		var right := Vector3(cos(h), 0.0, sin(h))
-		var grade := (float(smp["grade_pct"]) / 100.0) * visual_grade_scale
+		var grade := (float(smp["grade_pct"]) / 100.0) * relief_k
 		var forward := Vector3(sin(h), grade, -cos(h))
 		var up_road := right.cross(forward).normalized()
 		var left_shoulder := (right * SHOULDER_WIDTH_M + Vector3.UP * SHOULDER_DROP_M).cross(forward).normalized()

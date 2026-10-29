@@ -301,6 +301,14 @@ class RunEngine:
                     self.focus = 0 if self.focus is None else (self.focus + 1) % len(self.offer)
                 elif self.stage == "door":
                     self.focus = 3 if self.focus in (None, 4) else 4
+            elif name in ("LEFT_SHORT", "RIGHT_SHORT"):
+                # Flèches (plan des boutons §7.1) : carte précédente ou suivante, sans boucle ; porte de gauche
+                # ou de droite. Sans carte choisie, la première flèche choisit la première carte.
+                step = -1 if name == "LEFT_SHORT" else 1
+                if self.stage == "card":
+                    self.focus = 0 if self.focus is None else min(max(self.focus + step, 0), len(self.offer) - 1)
+                elif self.stage == "door":
+                    self.focus = 3 if step < 0 else 4
             elif name == "A_LONG" and self.focus is not None:
                 if self.stage == "card":
                     cid = self.offer[self.focus]

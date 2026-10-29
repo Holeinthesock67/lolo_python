@@ -38,7 +38,7 @@ Ce plan réutilise ce que la série R a déjà prévu : règles du jeu dans le c
 ### 3.2 Chronométrage et records
 
 - L'heure d'entrée et de sortie est interpolée entre deux pas de 50 Hz : la précision est d'environ 0,02 s.
-- Une pause pendant un segment l'annule ; une pause `trainer_lost` aussi.
+- Une pause voulue (Y) pendant un segment l'annule. Une pause subie (`trainer_lost`, `engine_lost`, `world_data`, `recording_failed`, `core_restarted`) le suspend : le chrono de séance s'arrête et le passage reprend à la reprise (séance A du 28 octobre 2026 : la montée 1 annulée par deux coupures du trainer).
 - Chaque passage garde : temps, puissance moyenne, W/kg, vitesse moyenne, bonus utilisés. Les records « avec bonus » et « sans bonus » sont tenus séparément (décision T-Q1).
 - Les records personnels par parcours et par segment sont dans `~/OpenRide/`, recalculables depuis le journal des séances.
 - En direct : distance jusqu'au prochain segment, chrono, écart au record (« −3,2 s »), puis le résultat à l'arrivée.
