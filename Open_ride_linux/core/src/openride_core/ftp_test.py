@@ -337,9 +337,9 @@ def run(file: Path | None, accept: bool, force: bool, history: bool, as_json: bo
     """`openride-core ftp-test [FICHIER] [--accept [--force]] [--history] [--json]`."""
     from . import config as config_mod
     from . import config_edit
-    from .journal import JOURNAL_DIR
+    from . import profiles
 
-    journal_dir = JOURNAL_DIR if journal_dir is None else journal_dir
+    journal_dir = profiles.current().journal_dir if journal_dir is None else journal_dir
     if history:
         found = find_results(journal_dir)
         if as_json:

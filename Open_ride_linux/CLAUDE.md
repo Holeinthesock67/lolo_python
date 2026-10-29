@@ -64,6 +64,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9) ;
 - `progression.py` : expérience, niveaux et défis de la série V recalculés depuis le journal, tables dans `data/progression.toml` (lot V2) ;
 - `profile.py` : profil local `~/OpenRide/profile.json` (équipement choisi, achats, vies, avatar), écriture sûre et migration (lot V4) ;
+- `profiles.py` : profils de joueurs (série MJ, lot MJ1) : `ProfileContext` (dossiers du joueur en cours : profil V4, records, plan actif, séances et journaux, caches), `current()` lu à l'appel par tous les modules, `--profil ID` sur toutes les sous-commandes et `OPENRIDE_PROFIL`, verrou `.verrou` d'une séance par profil ; sans profil, les chemins de `~/OpenRide/` d'avant ;
 - `equipment.py` : catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain et temps gagné par l'équipement (lot V3) ;
 - `garage.py` : progression branchée dans la séance (profil, équipement appliqué à la physique, commandes du Garage, bilan `xp_result`) (lot V11) ;
 - `coins.py` : pièces (gains, solde recalculé, état des pièces, achats, vies du mode Cyber-Rogue) (lot V3b) ;

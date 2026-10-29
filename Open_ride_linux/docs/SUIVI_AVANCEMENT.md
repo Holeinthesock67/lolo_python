@@ -397,7 +397,8 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 
 ### Version 2.0 : profils de joueurs et profil d'essai (série MJ rédigée le 29 octobre)
 - [x] Plan et cahiers MJ1 à MJ10 (lot MJ0, `docs/2.0/PLAN_SERIE_MJ.md`).
-- [ ] Profil d'essai utilisable : contexte de profil (MJ1), profil `_essai` (MJ2), campagne simulée (MJ3).
+- [x] Contexte de profil dans le core (lot MJ1, `profiles.py`, 29 octobre) : plus aucun chemin de joueur figé à l'import, `--profil ID` sur toutes les sous-commandes d'`openride-core` et du lanceur (`OPENRIDE_PROFIL`), verrou d'une séance par profil ; sans profil, chemins d'avant (aucun changement visible).
+- [ ] Profil d'essai utilisable : profil `_essai` (MJ2), campagne simulée (MJ3).
 - [ ] Multi-joueur : configuration à deux couches (MJ4), migration (MJ5), contrat (MJ6), core (MJ7), écrans (MJ8), outils (MJ9), recette PC (MJ10).
 
 ### Sprint 4 et suivants

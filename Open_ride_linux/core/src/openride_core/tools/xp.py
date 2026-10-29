@@ -38,9 +38,9 @@ from pathlib import Path
 from typing import Any
 
 from .. import config as config_mod
-from ..journal import JOURNAL_DIR
+from .. import profiles
 from ..coins import CoinsError, balance, coin_table, coins_by_session, earned_coins
-from ..profile import PROFILE_PATH, peek_profile
+from ..profile import peek_profile
 from ..progression import ProgressionError, load_table, recompute
 from ..garage import workout_duration_finder
 
@@ -56,16 +56,17 @@ def _fr(x: float, digits: int = 1) -> str:
 
 
 def run(directory: Path | None, as_json: bool, config_path: Path | None,
-        workouts_dir: Path | None = None, profile_path: Path = PROFILE_PATH,
+        workouts_dir: Path | None = None, profile_path: Path | None = None,
         save: Path | None = None, compare: Path | None = None) -> int:
     try:
         cfg = config_mod.load(config_path)
-        table = load_table()
+        ctx = profiles.current()   # profil de joueur en cours (série MJ, lot MJ1)
+        table = load_table(ctx.table_path)
         ct = coin_table(table, cfg.rider.ftp_w)
     except (config_mod.ConfigError, ProgressionError, CoinsError) as exc:
         print(f"Erreur : {exc}", file=sys.stderr)
         return 2
-    directory = directory or JOURNAL_DIR
+    directory = directory or ctx.journal_dir
     progress = recompute(directory, table,
                          workout_duration_finder(workouts_dir or config_mod.WORKOUTS_DIR))
     lv = progress.level

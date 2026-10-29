@@ -68,11 +68,7 @@ def cmd_recover(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    import asyncio
-
     from . import config as config_mod
-    from .session import AutostartError, CoreSession
-    from .sim_scenarios import SimScenarioError
 
     try:
         cfg = config_mod.load(args.config)
@@ -132,6 +128,30 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.first_run:
         logging.getLogger("openride_core").info(
             "Premier démarrage : configurez vos appareils avec openride-core devices --save.")
+    from . import profiles
+
+    ctx = profiles.current()
+    lock = profiles.ProfileLock(ctx) if ctx.id is not None else None
+    if lock is not None:
+        try:
+            lock.acquire()   # une seule séance par profil (rendu à l'arrêt ou au plantage du core)
+        except profiles.ProfileContextError as exc:
+            print(f"openride-core : {exc}", file=sys.stderr)
+            return 1
+        logging.getLogger("openride_core").info("Profil de joueur : %s (%s).", ctx.id, ctx.root)
+    try:
+        return _run_session(cfg, bots_list, args)
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+def _run_session(cfg, bots_list: list, args: argparse.Namespace) -> int:
+    import asyncio
+
+    from .session import AutostartError, CoreSession
+    from .sim_scenarios import SimScenarioError
+
     try:
         session = CoreSession(cfg, bots=bots_list, config_path=args.config)
     except SimScenarioError as exc:
@@ -222,14 +242,13 @@ def cmd_plan(args: argparse.Namespace) -> int:
 def cmd_open_world_save(args: argparse.Namespace) -> int:
     from . import config as config_mod
     from .config import GPX_DIR
-    from .journal import JOURNAL_DIR
     from .open_world_save import MIN_SAVE_M, save_from_folder
     from .route import WorldError
 
     cfg = config_mod.load(args.config)
     try:
         path, s_end = save_from_folder(args.ride_id, cfg.open_world, args.gpx_dir or GPX_DIR,
-                                       args.journal_dir or JOURNAL_DIR,
+                                       args.journal_dir,
                                        args.km * 1000.0 if args.km else None)
     except WorldError as exc:
         print(f"openride-core open-world-save : {exc}", file=sys.stderr)
@@ -363,6 +382,10 @@ def build_parser() -> argparse.ArgumentParser:
     ows.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ows.add_argument("--gpx-dir", type=Path, help="dossier des traces (défaut : ~/OpenRide/GPX)")
     ows.add_argument("--journal-dir", type=Path, help="journaux (défaut : ~/OpenRide/Activities/.journal)")
+    for cmd in sub.choices.values():   # profil de joueur, sur toutes les sous-commandes (série MJ, lot MJ1)
+        cmd.add_argument("--profil", metavar="ID",
+                         help="profil de joueur ~/OpenRide/Profils/<ID>/ (défaut : $OPENRIDE_PROFIL, "
+                              "sinon les dossiers de ~/OpenRide/ d'avant les profils)")
     return p
 
 
@@ -383,6 +406,13 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(2)   # code d'argparse pour une ligne de commande refusée
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
+    from . import profiles
+
+    try:
+        profiles.activate(profiles.resolve(args.profil))
+    except profiles.ProfileContextError as exc:
+        print(f"openride-core {args.command} : erreur : {exc}", file=sys.stderr)
+        raise SystemExit(2) from None
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary, "session-report": cmd_session_report, "xp": cmd_xp,
             "fit-check": cmd_fit_check,

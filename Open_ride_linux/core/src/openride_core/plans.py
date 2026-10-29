@@ -304,8 +304,16 @@ def plan_summary(plan: Plan, ftp_w: float, workouts_dir: Path | None = None) -> 
 
 # --- plan actif --------------------------------------------------------------------------------
 
+def _state_path(state_path: Path | None) -> Path:
+    """Chemin donné, sinon le plan actif du profil de joueur en cours (série MJ, lot MJ1)."""
+    if state_path is not None:
+        return state_path
+    from . import profiles
+    return profiles.current().plan_state_path
+
+
 def load_state(state_path: Path | None = None) -> PlanState | None:
-    path = STATE_PATH if state_path is None else state_path
+    path = _state_path(state_path)
     try:
         data = tomllib.loads(path.read_text(encoding="utf-8"))
         active = data["active"]
@@ -319,7 +327,7 @@ def start_plan(plan_id: str, start: date | None = None, plans_dir: Path | None =
     """Rend le plan actif ; refuse un plan invalide (rien n'est écrit)."""
     load_plan(plan_id, plans_dir, workouts_dir)
     st = PlanState(plan_id, date.today() if start is None else start)
-    path = STATE_PATH if state_path is None else state_path
+    path = _state_path(state_path)
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text("# Plan d'entraînement actif (openride-core plan start), lot O11\n"
                     f'[active]\nplan = "{st.plan_id}"\nstart = "{st.start.isoformat()}"\n', encoding="utf-8")
@@ -327,7 +335,7 @@ def start_plan(plan_id: str, start: date | None = None, plans_dir: Path | None =
 
 
 def stop_plan(state_path: Path | None = None) -> bool:
-    path = STATE_PATH if state_path is None else state_path
+    path = _state_path(state_path)
     if path.exists():
         path.unlink()
         return True
@@ -489,7 +497,7 @@ def run(args: Any) -> int:
         return 1
     plans_dir = args.plans_dir or PLANS_DIR
     workouts_dir = args.workouts_dir or config_mod.WORKOUTS_DIR
-    state_path = args.state or STATE_PATH
+    state_path = _state_path(args.state)
     try:
         if args.action == "list":
             infos = list_plans(plans_dir, workouts_dir)

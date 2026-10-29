@@ -36,14 +36,14 @@ from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClick
 from . import latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
-from .journal import JOURNAL_DIR, Record
+from .journal import Record
 from .progression import journal_source
 from .mock_driver import MockDriver
 from .garage import GarageError, ProgressionService, workout_duration_finder
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
 from .physics import PhysicsParams, RiderPhysics
-from . import powerups as powerups_mod, records as records_mod
+from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
 from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
@@ -227,10 +227,12 @@ class AutostartError(Exception):
 
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
-                 journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
+                 journal_dir: Path | None = None, routes_root: Path | None = None,
                  workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None,
                  config_path: Path | None = None, records_path: Path | None = None,
                  powerups_path: Path | None = None, profile_path: Path | None = None) -> None:
+        # Fichiers du joueur : ceux du profil en cours (série MJ, lot MJ1), sauf chemins donnés (tests).
+        self.profile_ctx = profiles.current()
         self.cfg = cfg
         self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
@@ -239,7 +241,7 @@ class CoreSession:
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
         self.hr = build_hr(cfg, self.sim)
-        self.journal_dir = journal_dir
+        self.journal_dir = journal_dir if journal_dir is not None else self.profile_ctx.journal_dir
         self.routes_root = routes_root or routes_dir()
         self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
@@ -257,7 +259,7 @@ class CoreSession:
         self.route: Route | None = None
         self._segments: tuple = ()               # couche segments du parcours (série T)
         self.race: ClassicRace | None = None      # mode classique de la séance (lot T7)
-        self.records_path: Path = records_path or records_mod.RECORDS_FILE      # lot T5
+        self.records_path: Path = records_path or self.profile_ctx.records_path  # lot T5
         self.powerups_path: Path = powerups_path or powerups_mod.POWERUPS_FILE  # lot T6
         self._records_writable = True
         self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
@@ -453,10 +455,8 @@ class CoreSession:
     # --- progression, Garage et bilan d'expérience (série V, lot V11, contrat IPC révision 1.4) ----
 
     def _build_progression(self, profile_path: Path | None) -> ProgressionService:
-        from .garage import PROFILE_PATH
-
         return ProgressionService(self.cfg, self.journal_dir, workout_duration_finder(self.workouts_dir),
-                                  profile_path or PROFILE_PATH)
+                                  profile_path or self.profile_ctx.profile_path, self.profile_ctx.table_path)
 
     def _equipped_params(self) -> PhysicsParams:
         """Paramètres physiques de la séance : `config.toml` et équipement choisi (cadre, roues)."""
