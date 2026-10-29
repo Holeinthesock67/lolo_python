@@ -995,6 +995,9 @@ func _on_test_message(msg: Dictionary) -> void:
 			_test_mouse(str(msg.get("kind", "click")), str(msg.get("item", "")), msg.get("at", []))
 		"menu_state":
 			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
+		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
+			camera_views.set_view(str(msg.get("view", "")))
+			ipc.test_log("camera_view done=" + camera_views.effective())
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
 				living_decor.set_weather(msg["weather"])
@@ -1164,6 +1167,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"quality": _quality_name,
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		"triangles": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		"streaming_pending": streamer.pending_count(),   # tuiles voulues pas encore affichées (tour visuel, X21)
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
 		"camera_view": camera_views.effective(), "camera_transition": camera_views.in_transition(),
 		"widgets": widgets,
