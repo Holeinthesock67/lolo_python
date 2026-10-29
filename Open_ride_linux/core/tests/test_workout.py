@@ -14,6 +14,7 @@ from openride_core.journal import read_journal
 from openride_core.mock_driver import MockDriver
 from openride_core.session import CoreSession
 from openride_core.workout import (
+    ERG_MIN_W,
     MAX_REPEAT, ErgController, WorkoutError, list_workouts, load_workout, parse_workout,
 )
 from openride_core.zwift_click import InputEvent
@@ -93,8 +94,9 @@ def test_reference_file_blocks(workouts_dir):
     assert w.duration_s == 2580.0
     expected = [("warmup", 600, 0.5, 0.75), ("steady", 1200, 0.95, 0.95)]
     expected += [("interval_on", 60, 1.2, 1.2), ("interval_off", 60, 0.5, 0.5)] * 3
-    expected += [("freeride", 120, None, None), ("cooldown", 300, 0.7, 0.4)]
+    expected += [("steady", 120, None, None), ("cooldown", 300, 0.7, 0.4)]   # FreeRide : palier à 50 W (O19)
     assert [(b.type, b.duration_s, b.start_frac, b.end_frac) for b in w.blocks] == expected
+    assert (w.blocks[8].start_w, w.blocks[8].end_w) == (ERG_MIN_W, ERG_MIN_W) == (50, 50)
 
 
 def test_metadata_tags_logged_at_debug_only(workouts_dir, caplog):
@@ -210,14 +212,20 @@ def test_skip_and_pause(workouts_dir):
     assert advance(c, 1.0).to_dict()["block_remaining_s"] == pytest.approx(remaining - 1.0, abs=0.01)
 
 
-def test_freeride_and_end(workouts_dir):
+def test_freeride_is_a_50_w_step_and_end(workouts_dir):
+    # Lot O19 : pas de roue libre en ERG ; le FreeRide du fichier est un palier ERG à 50 W.
     c = reference(workouts_dir)
     c.step(2170.0)
-    assert c.block.type == "freeride" and c.is_freeride and not c.target_active
+    assert c.block.type == "steady" and c.block.absolute and c.target_active
     d = c.to_dict()
-    assert d["target_w"] == 0 and d["next_target_w"] == 175
-    c.step(110.0)                                  # début du retour au calme
-    assert c.block.type == "cooldown" and c.target_w == 175   # pas de lissage après la roue libre
+    assert d["target_w"] == 50 and d["next_target_w"] == 175 and d["block_type"] == "steady"
+    c.change_bias(-10)                             # biais à 80 % : jamais sous la consigne minimale
+    assert c.bias_pct == 80 and c.target_w == 50
+    c.change_bias(10)
+    c.step(110.0)                                  # début du retour au calme, lissé depuis 50 W
+    assert c.block.type == "cooldown" and c.target_w == 50
+    c.step(2.0)
+    assert c.target_w == pytest.approx(175, abs=1)
     assert c.to_dict()["next_target_w"] is None
     c.skip()
     assert c.finished
@@ -311,7 +319,7 @@ def test_session_erg_flow(tmp_path, monkeypatch, workouts_dir):
     asyncio.run(scenario())
 
 
-def test_session_freeride_uses_gears(tmp_path, monkeypatch, workouts_dir):
+def test_session_freeride_stays_erg_at_50_w(tmp_path, monkeypatch, workouts_dir):
     async def scenario():
         s, driver, _ = make_session(tmp_path, monkeypatch, workouts_dir, port=5960)
         s._on_command("select_route", {"route_id": "demo"}, 1)
@@ -319,16 +327,17 @@ def test_session_freeride_uses_gears(tmp_path, monkeypatch, workouts_dir):
         s._on_command("start", {}, 3)
         for _ in range(8):
             s._on_command("skip_block", {}, 0)
-        run(s, 1.0)
+        run(s, 2.5)                                    # lissage de 2 s vers 50 W
         erg = s.state.erg
-        assert s.state.mode == "SIM" and erg["block_type"] == "freeride"
-        assert erg["target_w"] == 0 and erg["next_target_w"] == 175
-        assert driver.target_power_w is None
-        s._handle_input(InputEvent.PLUS_SHORT)
-        assert s.gearing.k == 13 and s.state.erg["bias_pct"] == 100
+        assert s.state.mode == "ERG" and erg["block_type"] == "steady"
+        assert erg["target_w"] == 50 and erg["next_target_w"] == 175
+        assert driver.target_power_w == 50
+        gear = s.gearing.k
+        s._handle_input(InputEvent.PLUS_SHORT)        # ERG : biais, pas de braquet (lot O19)
+        assert s.gearing.k == gear and s.state.erg["bias_pct"] == 102 and s.state.erg["target_w"] == 51
         s._on_command("skip_block", {}, 0)
-        run(s, 0.1)
-        assert s.state.mode == "ERG" and driver.target_power_w == 175
+        run(s, 2.1)                                    # lissage de 2 s depuis 51 W
+        assert s.state.mode == "ERG" and driver.target_power_w == pytest.approx(178, abs=1)
         s._on_command("skip_block", {}, 0)             # dernier bloc : fin de l'entraînement
         assert s.state.mode == "SIM" and s.state.erg is None
         run(s, 0.1)
@@ -393,8 +402,8 @@ def test_full_workout_journal(tmp_path, monkeypatch, workouts_dir):
         blocks = [r["block"] for r in records if r["block"] is not None]
         assert blocks == sorted(blocks) and blocks[0] == 1 and blocks[-1] == 10
         assert set(blocks) == set(range(1, 11))
-        assert {r["mode"] for r in records if r["block"] == 9} == {"SIM"}   # roue libre
-        assert all(r["target_w"] is None for r in records if r["block"] == 9)
+        assert {r["mode"] for r in records if r["block"] == 9} == {"ERG"}   # FreeRide : 50 W (O19)
+        assert {r["target_w"] for r in records if r["block"] == 9 and r["t"] > 2165.0} == {50}
         assert records[-1]["block"] is None and records[-1]["target_w"] is None  # après la fin
 
         # Critère 2 du lot L6 : SteadyState 0,8 × FTP = 200 W, biais 110 % = 220 W, puis FreeRide.
@@ -425,6 +434,7 @@ def test_full_workout_journal(tmp_path, monkeypatch, workouts_dir):
         post_workout = [r for r in recs2 if r["block"] is None]
         assert before_bias and all(r["target_w"] == 200 for r in before_bias)
         assert after_bias and all(r["target_w"] == 220 for r in after_bias)
-        assert freeride_recs and all(r["target_w"] is None for r in freeride_recs)
+        assert freeride_recs and all(r["target_w"] >= 50 for r in freeride_recs)   # lissé depuis 220 W
+        assert freeride_recs[-1]["target_w"] == 55                                  # 50 W × 110 %
         assert post_workout and all(r["target_w"] is None for r in post_workout)
     asyncio.run(scenario())

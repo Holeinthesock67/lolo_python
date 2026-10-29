@@ -1,16 +1,16 @@
-"""Tests de FTP (lot O10) : rampe par paliers et test de 20 minutes, roulés comme un entraînement.
+"""Test de FTP (lot O10) : rampe par paliers, roulée comme un entraînement ERG.
 
 - **Rampe** (`ramp_workout`) : échauffement, puis paliers d'une minute en watts absolus (+20 W par
   palier, jusqu'à 700 W au plus), puis retour au calme de 5 min à 100 W. La fin de la rampe est
   détectée par `RampWatch` : cadence sous 50 tr/min pendant 5 s, ou puissance sous 80 % de la cible
   pendant 10 s, ou abandon (Z, geste du bloc suivant). La séance saute alors au retour au
   calme au lieu de s'arrêter net. FTP = 75 % de la meilleure puissance moyenne sur 1 minute.
-- **20 minutes** (`twenty_min_workout`) : échauffement de 20 min avec deux efforts courts,
-  récupération, 20 min en roue libre (bloc `freeride`, sans cible), retour au calme.
-  FTP = 95 % de la puissance moyenne des 20 minutes.
 
-Une séance de test se choisit comme un entraînement, avec l'identifiant `ftp_test:ramp` ou
-`ftp_test:20min` (`openride-core run --ftp-test ramp|20min`, ou une journée d'un plan, lot O11).
+Le test de 20 minutes « à fond » a été retiré (lot O19) : il imposait 20 min de roue libre, et
+un entraînement ERG n'a jamais de roue libre. Un ancien résultat `20min` du journal est ignoré.
+
+Une séance de test se choisit comme un entraînement, avec l'identifiant `ftp_test:ramp`
+(`openride-core run --ftp-test ramp`, ou une journée d'un plan, lot O11).
 À la fin de la séance, `estimate_ftp` calcule le résultat (`FtpResult`) et la session l'écrit au
 journal (ligne `ftp_test`, voir `journal.py`). La nouvelle FTP n'est enregistrée dans
 `config.toml` qu'après accord : `openride-core ftp-test --accept` (via `config_edit`).
@@ -36,15 +36,13 @@ from .workout import Block, ErgController, Workout
 
 log = logging.getLogger("ftp_test")
 
-KINDS = ("ramp", "20min")
+KINDS = ("ramp",)
 ID_PREFIX = "ftp_test:"
 
 RAMP_MAX_W = 700
 RAMP_COOLDOWN_W = 100
 RAMP_COOLDOWN_S = 300
 RAMP_FACTOR = 0.75            # FTP = 75 % de la meilleure minute
-TWENTY_FACTOR = 0.95          # FTP = 95 % de la moyenne des 20 minutes
-TWENTY_EFFORT_S = 1200
 
 # Fin de la rampe (RampWatch).
 LOW_CADENCE_RPM = 50.0
@@ -54,7 +52,6 @@ LOW_POWER_S = 10.0
 
 # Résultat.
 MIN_RAMP_STEPS_S = 240        # moins de 4 min de paliers : test trop court
-MIN_TWENTY_S = 1140           # moins de 19 min d'effort : test trop court
 CADENCE_STDEV_RPM = 12.0
 RAMP_FAILURE_TAIL_S = 15      # dernières secondes de la rampe (cadence qui s'effondre) ignorées
 DEFAULT_PLAN_FTP_W = 250.0    # FTP supposée pour la durée prévue d'une journée de plan
@@ -66,8 +63,8 @@ WARNINGS = {
     "paused": "pause pendant l'effort",
 }
 BLOCKING = ("too_short", "trainer_dropout", "paused")
-METHODS = {"ramp": "75 % de la meilleure minute", "20min": "95 % de la moyenne des 20 minutes"}
-NAMES = {"ramp": "Test de FTP : rampe", "20min": "Test de FTP : 20 minutes"}
+METHODS = {"ramp": "75 % de la meilleure minute"}
+NAMES = {"ramp": "Test de FTP : rampe"}
 
 
 class FtpTestError(Exception):
@@ -92,26 +89,8 @@ def ramp_workout(start_w: int = 100, step_w: int = 20, step_s: int = 60, warmup_
                    f"Paliers de {step_s} s, +{step_w} W, à partir de {start_w} W, jusqu'à ne plus tenir.")
 
 
-def twenty_min_workout(ftp_w: float) -> Workout:
-    """Échauffement de 20 min (deux efforts d'une minute), récupération de 5 min, 20 min en roue
-    libre, retour au calme de 10 min. Cibles en fraction de la FTP actuelle."""
-    del ftp_w   # les cibles suivent la FTP de la séance (ErgController) ; paramètre gardé pour workout_for
-    blocks = (
-        Block("warmup", 600.0, 0.50, 0.75),
-        Block("steady", 180.0, 0.75, 0.75),
-        Block("interval_on", 60.0, 1.10, 1.10),
-        Block("interval_off", 120.0, 0.55, 0.55),
-        Block("interval_on", 60.0, 1.10, 1.10),
-        Block("interval_off", 180.0, 0.55, 0.55),
-        Block("steady", 300.0, 0.50, 0.50),
-        Block("freeride", float(TWENTY_EFFORT_S), None, None),
-        Block("cooldown", 600.0, 0.60, 0.40),
-    )
-    return Workout("ftp_test:20min", NAMES["20min"], blocks, "20 minutes à fond, sans cible, après échauffement.")
-
-
 def kind_of(workout_id: str | None) -> str | None:
-    """`ramp` ou `20min` pour un identifiant `ftp_test:…`, None pour un autre entraînement."""
+    """`ramp` pour un identifiant `ftp_test:…`, None pour un autre entraînement."""
     if workout_id and workout_id.startswith(ID_PREFIX) and workout_id[len(ID_PREFIX):] in KINDS:
         return workout_id[len(ID_PREFIX):]
     return None
@@ -125,15 +104,14 @@ def _check_kind(kind: str) -> None:
 def workout_for(kind: str, ftp_w: float) -> Workout:
     """Entraînement roulé par la séance de test."""
     _check_kind(kind)
-    return ramp_workout() if kind == "ramp" else twenty_min_workout(ftp_w)
+    del ftp_w   # paliers en watts absolus : la FTP ne change pas la rampe
+    return ramp_workout()
 
 
 def planned_workout(kind: str, ftp_w: float) -> Workout:
     """Séance attendue, pour la durée et le TSS d'un plan (lot O11) : la rampe s'arrête au palier
     où la meilleure minute vaut FTP / 0,75, puis retour au calme."""
     full = workout_for(kind, ftp_w)
-    if kind != "ramp":
-        return full
     last_w = ftp_w / RAMP_FACTOR
     steps = [b for b in full.blocks if b.type == "steady" and b.start_w is not None and b.start_w <= last_w]
     return Workout(full.id, full.name, (full.blocks[0], *steps, full.blocks[-1]), full.description)
@@ -144,10 +122,8 @@ def planned_duration_s(kind: str, ftp_w: float = DEFAULT_PLAN_FTP_W) -> float:
 
 
 def effort_blocks(workout: Workout) -> set[int]:
-    """Numéros de blocs (à partir de 1, comme `block` du journal) de l'effort mesuré."""
-    if workout.id == "ftp_test:ramp":
-        return {i + 1 for i, b in enumerate(workout.blocks) if b.type == "steady"}
-    return {i + 1 for i, b in enumerate(workout.blocks) if b.type == "freeride"}
+    """Numéros de blocs (à partir de 1, comme `block` du journal) des paliers de la rampe."""
+    return {i + 1 for i, b in enumerate(workout.blocks) if b.type == "steady"}
 
 
 def cooldown_index(workout: Workout) -> int:
@@ -196,9 +172,9 @@ class FtpResult:
     kind: str
     ftp_w: int | None                  # FTP proposée, None si l'effort ne permet aucun calcul
     method: str
-    ref_power_w: int | None            # meilleure minute (rampe) ou moyenne des 20 min
-    held_s: int                        # secondes d'effort (paliers de la rampe, ou bloc libre)
-    step_w: int | None = None          # dernier palier atteint (rampe)
+    ref_power_w: int | None            # meilleure minute
+    held_s: int                        # secondes d'effort (paliers de la rampe)
+    step_w: int | None = None          # dernier palier atteint
     warnings: tuple[str, ...] = ()
     previous_ftp_w: int | None = None  # FTP de la séance
     ts: float | None = None
@@ -224,12 +200,11 @@ class FtpResult:
                    line.get("ts"))
 
     def describe(self) -> str:
-        what = "rampe" if self.kind == "ramp" else "20 minutes"
         if self.ftp_w is None:
-            text = f"Test de FTP ({what}) : aucune FTP calculable"
+            text = "Test de FTP (rampe) : aucune FTP calculable"
         else:
             step = f", dernier palier {self.step_w} W" if self.step_w else ""
-            text = (f"Test de FTP ({what}) : FTP proposée {self.ftp_w} W ({self.method}, "
+            text = (f"Test de FTP (rampe) : FTP proposée {self.ftp_w} W ({self.method}, "
                     f"{self.ref_power_w} W{step}, effort {_mmss(self.held_s)})")
         if self.warnings:
             text += " ; avertissements : " + ", ".join(WARNINGS.get(w, w) for w in self.warnings)
@@ -275,20 +250,11 @@ def estimate_ftp(records: list[dict], kind: str, events: Iterable[dict] = (), de
     powers = [max(0.0, float(r["power"])) if r.get("power") is not None else 0.0 for r in effort]
     held_s = len(effort)
     warnings: list[str] = []
-    step_w = None
-    if kind == "ramp":
-        ref = _best_mean(powers, 60)
-        last = workout.blocks[max(int(r["block"]) for r in effort) - 1]
-        step_w = _int(last.start_w)
-        too_short = held_s < MIN_RAMP_STEPS_S or ref is None
-        factor = RAMP_FACTOR
-        cad_records = effort[:-RAMP_FAILURE_TAIL_S] if len(effort) > RAMP_FAILURE_TAIL_S else effort
-    else:
-        ref = sum(powers) / held_s
-        too_short = held_s < MIN_TWENTY_S
-        factor = TWENTY_FACTOR
-        cad_records = effort
-    if too_short:
+    ref = _best_mean(powers, 60)
+    last = workout.blocks[max(int(r["block"]) for r in effort) - 1]
+    step_w = _int(last.start_w)
+    cad_records = effort[:-RAMP_FAILURE_TAIL_S] if len(effort) > RAMP_FAILURE_TAIL_S else effort
+    if held_s < MIN_RAMP_STEPS_S or ref is None:
         warnings.append("too_short")
     cads = [float(r["cadence"]) for r in cad_records if r.get("cadence")]
     if len(cads) >= 2 and statistics.pstdev(cads) > CADENCE_STDEV_RPM:
@@ -298,7 +264,7 @@ def estimate_ftp(records: list[dict], kind: str, events: Iterable[dict] = (), de
         warnings.append("trainer_dropout")
     if any(e.get("event") == "pause" for e in _within(events, start, end)):
         warnings.append("paused")
-    ftp = None if ref is None else round(factor * ref)
+    ftp = None if ref is None else round(RAMP_FACTOR * ref)
     return FtpResult(kind, ftp, METHODS[kind], _int(ref), held_s, step_w, tuple(warnings), previous, ts)
 
 
@@ -351,7 +317,7 @@ def run(file: Path | None, accept: bool, force: bool, history: bool, as_json: bo
         for _, r in found:
             ftp = f"{r.ftp_w} W" if r.ftp_w is not None else "—"
             note = f"  ({', '.join(WARNINGS.get(w, w) for w in r.warnings)})" if r.warnings else ""
-            print(f"{_date(r.ts)}  {'rampe' if r.kind == 'ramp' else '20 min':<6}  FTP {ftp:>6}{note}")
+            print(f"{_date(r.ts)}  rampe  FTP {ftp:>6}{note}")
         return 0
 
     if file is not None:
@@ -398,7 +364,7 @@ def run(file: Path | None, accept: bool, force: bool, history: bool, as_json: bo
 
 
 def main(argv: list[str] | None = None) -> int:
-    p = argparse.ArgumentParser(prog="python -m openride_core.ftp_test", description="Résultat des tests de FTP.")
+    p = argparse.ArgumentParser(prog="python -m openride_core.ftp_test", description="Résultat des tests de FTP (rampe).")
     p.add_argument("file", nargs="?", type=Path)
     p.add_argument("--accept", action="store_true")
     p.add_argument("--force", action="store_true")

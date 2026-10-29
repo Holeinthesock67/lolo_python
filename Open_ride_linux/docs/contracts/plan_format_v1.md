@@ -23,7 +23,7 @@ days = [
 
 - `workout` : identifiant d'un entraînement de la bibliothèque `~/OpenRide/Workouts/` (nom du
   fichier `.zwo`, `.erg` ou `.mrc` sans extension, mêmes règles que `--workout`), ou
-  `ftp_test:ramp` / `ftp_test:20min` (tests de FTP du lot O10 ; refusés tant que ce lot manque).
+  `ftp_test:ramp` (test de FTP du lot O10 ; le test `ftp_test:20min` est retiré au lot O19 et refusé).
 - `day` : `lundi` à `dimanche` (plan au calendrier) ou `jour1` à `jour7` (plan sans calendrier) ;
   les deux formes ne se mélangent pas dans un plan ; un jour au plus une fois par semaine.
 
