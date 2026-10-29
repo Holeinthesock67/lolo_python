@@ -980,6 +980,8 @@ func _poll_route_job() -> void:
 		not route.live)
 	segment_hud.set_segments(route.segments)
 	menu_flow.records.set_segments(route.segments)
+	# Fichier des records de remplacement (tests visuels) ; vide : ~/OpenRide/records.json.
+	menu_flow.records_path = OS.get_environment("OPENRIDE_RECORDS_FILE")
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
 	_refresh_menu()
 	if route.segments_present:
