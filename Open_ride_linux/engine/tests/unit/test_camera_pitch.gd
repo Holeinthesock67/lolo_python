@@ -5,7 +5,7 @@ extends SceneTree
 ## Critère 2 :
 ## - 0° sur le plat ;
 ## - pente constante 8 % : atan(0,08) ± 0,3° une fois le lissage établi ;
-## - bornes à ±12° ;
+## - bornes à ±PITCH_MAX_DEG (18° depuis le lot Y15) ;
 ## - variation lissée (pas de saut de plus de 1° par image à 60 images/s sur une marche 0 → 8 %).
 
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
@@ -81,20 +81,20 @@ func _run() -> void:
 	_check(absf(prev_p - expected_8_deg) <= 0.3,
 		"pente constante 8 %% après lissage : %.3f° (cible %.3f° ± 0.3°)" % [prev_p, expected_8_deg])
 
-	# 3. Bornes à ±12° sur pentes extrêmes (+30 % et -30 %)
+	# 3. Bornes à ±PITCH_MAX_DEG sur pentes extrêmes (+40 % et -40 %)
 	follow.reset()
-	var route_steep_up = _make_route(30.0)
+	var route_steep_up = _make_route(40.0)
 	for _i in range(120):
 		follow.pitch_deg(route_steep_up, 200.0, 8.0, 0.05)
 	var p_up: float = follow.pitch_deg(route_steep_up, 200.0, 8.0, 0.05)
-	_check(absf(p_up - 12.0) < 0.001, "borne haute à +12° : %.3f°" % p_up)
+	_check(absf(p_up - follow.PITCH_MAX_DEG) < 0.001, "borne haute à +%.0f° : %.3f°" % [follow.PITCH_MAX_DEG, p_up])
 
 	follow.reset()
-	var route_steep_down = _make_route(-30.0)
+	var route_steep_down = _make_route(-40.0)
 	for _i in range(120):
 		follow.pitch_deg(route_steep_down, 200.0, 8.0, 0.05)
 	var p_down: float = follow.pitch_deg(route_steep_down, 200.0, 8.0, 0.05)
-	_check(absf(p_down - (-12.0)) < 0.001, "borne basse à -12° : %.3f°" % p_down)
+	_check(absf(p_down + follow.PITCH_MAX_DEG) < 0.001, "borne basse à -%.0f° : %.3f°" % [follow.PITCH_MAX_DEG, p_down])
 
 	# 4. Route nulle gérée sans crash
 	follow.reset()
