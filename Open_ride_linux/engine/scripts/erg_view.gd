@@ -42,7 +42,7 @@ const BLOCK_TYPE_LABELS := {
 	"freeride": "Roue libre",
 }
 
-const PANEL_HEIGHT := 140.0
+const PANEL_HEIGHT := 126.0   # 10 % plus bas, polices comprises, depuis le 29/10 (140 avant)
 const BOTTOM_OFFSET := 15.0    # en bas de l'écran : le profil d'altitude du HUD est caché en ERG (28/10)
 const SIDE_MARGIN := 40.0
 
@@ -93,10 +93,10 @@ func _build_ui() -> void:
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
 	vbox.add_child(row)
-	title_label = _label(row, 24, true)
-	target_label = _label(row, 36, false)
-	remaining_label = _label(row, 36, false)
-	next_label = _label(row, 22, false)
+	title_label = _label(row, 22, true)
+	target_label = _label(row, 32, false)
+	remaining_label = _label(row, 32, false)
+	next_label = _label(row, 20, false)
 	next_label.modulate = UiTheme.HUD_DIM
 	next_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -104,7 +104,7 @@ func _build_ui() -> void:
 	histogram = Control.new()
 	histogram.name = "ErgHistogram"
 	histogram.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	histogram.custom_minimum_size = Vector2(0.0, 56.0)
+	histogram.custom_minimum_size = Vector2(0.0, 50.0)
 	histogram.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	histogram.draw.connect(_on_histogram_draw)
 	vbox.add_child(histogram)

@@ -79,6 +79,16 @@ const ZONE_5 := Color(0.95, 0.5, 0.15)
 const ZONE_6 := Color(0.9, 0.2, 0.15)
 const ZONE_7 := Color(0.65, 0.25, 0.8)
 const FREERIDE := Color(0.4, 0.42, 0.45)
+# Texte de la puissance (Z1 à Z7) et de la fréquence cardiaque (Z1 à Z5) du HUD selon la zone : teintes des
+# zones éclaircies et opaques, au moins 4,5:1 sur un panneau au-dessus d'un ciel clair ; Z6 en rose et non
+# en rouge, réservé aux alertes (29/10).
+const ZONE_TEXT_1 := Color(0.93, 0.94, 0.96)
+const ZONE_TEXT_2 := Color(0.70, 0.84, 1.00)
+const ZONE_TEXT_3 := Color(0.62, 0.95, 0.66)
+const ZONE_TEXT_4 := Color(1.00, 0.89, 0.48)
+const ZONE_TEXT_5 := Color(1.00, 0.77, 0.54)
+const ZONE_TEXT_6 := Color(1.00, 0.72, 0.86)
+const ZONE_TEXT_7 := Color(0.86, 0.76, 1.00)
 # Courbes de la séance (puissance, fréquence cardiaque, cadence)
 const POWER := Color(1, 1, 1)
 const HEART_RATE := Color(0.95, 0.25, 0.25)
@@ -156,6 +166,13 @@ const DATA := {
 	"zone_6": ZONE_6,
 	"zone_7": ZONE_7,
 	"freeride": FREERIDE,
+	"zone_text_1": ZONE_TEXT_1,
+	"zone_text_2": ZONE_TEXT_2,
+	"zone_text_3": ZONE_TEXT_3,
+	"zone_text_4": ZONE_TEXT_4,
+	"zone_text_5": ZONE_TEXT_5,
+	"zone_text_6": ZONE_TEXT_6,
+	"zone_text_7": ZONE_TEXT_7,
 	"power": POWER,
 	"heart_rate": HEART_RATE,
 	"cadence": CADENCE,

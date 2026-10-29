@@ -6,7 +6,8 @@
 
 L'engine réel tourne avec le faux core de visual_check.py (Xvfb, ou l'écran avec --native) sur le parcours
 de démonstration et passe par les cas de CAS : SIM simple, vent et abri, bots avec segment et bonus, ERG
-avec une cible courte ou longue, roue libre, courbes réduites et complètes, valeurs extrêmes. Sur chaque
+avec une cible courte ou longue, roue libre, courbes réduites et complètes, teintes des zones de puissance et
+de FC, valeurs extrêmes. Sur chaque
 capture : panneaux dans l'écran et sans chevauchement, textes dans leur colonne, hauteur et contraste des
 chiffres (hud_lisibilite.py), texte attendu des valeurs. Sortie : une capture par cas et par
 configuration, une planche par configuration (`planche_<config>.png`, cas dans l'ordre de CAS, trois par
@@ -39,6 +40,18 @@ SIM = {"session_state": "RUNNING", "mode": "SIM", "erg": None, "power": 250.0, "
        "bot_ahead": None, "bot_behind": None, "jerseys": None, "segment": None, "powerup": None}
 
 
+# Teintes du texte par zone (UiTheme.ZONE_TEXT_1 à 7) : puissance selon la FTP (250 W du faux core), fréquence
+# cardiaque selon la FC max (185 bpm du faux core).
+ZONE_TEXT = {1: (0.93, 0.94, 0.96), 2: (0.70, 0.84, 1.00), 3: (0.62, 0.95, 0.66), 4: (1.00, 0.89, 0.48),
+             5: (1.00, 0.77, 0.54), 6: (1.00, 0.72, 0.86), 7: (0.86, 0.76, 1.00)}
+
+
+def zone_color_ok(html: str, zone: int) -> bool:
+    """Couleur `to_html(false)` de Godot égale (à un pas de 8 bits près) à la teinte de la zone."""
+    rgb = [int(html[i:i + 2], 16) / 255.0 for i in (0, 2, 4)]
+    return all(abs(a - b) <= 1.5 / 255.0 for a, b in zip(rgb, ZONE_TEXT[zone]))
+
+
 def _erg(target_w: float, bias_pct: int, block_type: str = "interval_on") -> dict[str, Any]:
     return {"workout_name": "Sweet spot 3x10", "block_index": 2, "block_count": 7, "block_type": block_type,
             "block_remaining_s": 95.0, "block_total_s": 600.0, "target_w": target_w, "next_target_w": 150.0,
@@ -50,11 +63,18 @@ def _bots(s_now: float) -> list[dict[str, Any]]:
             for b in vc.PROFILE_BOTS]
 
 
-# Cas : nom, valeurs de la trame `state` (par-dessus SIM), textes attendus des widgets, widgets visibles ou
-# cachés, taille des courbes (chart, None : courbes cachées) et attente avant la capture.
+# Cas : nom, valeurs de la trame `state` (par-dessus SIM), textes attendus des widgets, zones attendues des
+# teintes (zones, de 1 à 7), widgets visibles ou cachés, taille des courbes (chart, None : courbes cachées)
+# et attente avant la capture.
 CAS: list[dict[str, Any]] = [
-    {"name": "sim", "state": {}, "texts": {"power": "248", "grade": "+4.5 %"}, "shown": ["gear", "profile"],
-     "hidden": ["target", "erg_hist"]},
+    {"name": "sim", "state": {}, "texts": {"power": "248", "grade": "+4.5 %"}, "zones": {"power": 4, "hr": 3},
+     "shown": ["gear", "profile"], "hidden": ["target", "erg_hist"]},
+    {"name": "zones_recuperation", "state": {"power": 100.0, "power_3s": 100.0, "hr": 100},
+     "zones": {"power": 1, "hr": 1}},
+    {"name": "zones_sprint", "state": {"power": 450.0, "power_3s": 450.0, "hr": 176},
+     "zones": {"power": 7, "hr": 5}},
+    {"name": "zones_seuil_vo2", "state": {"power": 330.0, "power_3s": 330.0, "hr": 120},
+     "zones": {"power": 6, "hr": 2}},
     {"name": "sim_vent_abri", "state": {"wind": {"speed_mps": 26.0 / 3.6, "from_deg": 100.0, "gust": 0.0,
                                                  "head_mps": 26.0 / 3.6, "grade_pct": 1.2}, "draft": 0.135},
      "shown": ["wind", "draft"]},
@@ -114,6 +134,9 @@ def _cases(s: vc.Session, names: list[str] | None) -> None:
         w = info["widgets"]
         if cas.get("texts"):
             s.check_texts(cas["name"], info, cas["texts"])
+        for key, zone in cas.get("zones", {}).items():
+            s.check(cas["name"], f"{key} teinté en zone {zone}", zone_color_ok(w[key]["color"], zone),
+                    f"teinte #{w[key]['color']}")
         for key in cas.get("shown", []):
             s.check(cas["name"], f"{key} affiché", w[key]["visible"])
         for key in cas.get("hidden", []):

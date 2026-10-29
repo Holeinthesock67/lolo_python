@@ -32,6 +32,7 @@ CACHE_DIR = Path.home() / ".cache" / "openride"
 class RiderConfig:
     ftp_w: float = 250.0
     mass_kg: float = 75.0
+    hr_max_bpm: int = 185   # fréquence cardiaque maximale : zones de FC du HUD
 
 
 @dataclass
@@ -214,6 +215,7 @@ class ConfigError(Exception):
 BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("rider", "ftp_w"): (50, 600),
     ("rider", "mass_kg"): (20, 200),
+    ("rider", "hr_max_bpm"): (120, 230),
     ("bike", "mass_kg"): (3, 30),
     ("bike", "cda_m2"): (0.1, 1.0),
     ("bike", "crr"): (0.001, 0.02),

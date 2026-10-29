@@ -56,6 +56,7 @@ SETTINGS: tuple[Setting, ...] = (
     # Cycliste
     Setting("rider.ftp_w", "FTP", "rider", 5, "W"),
     Setting("rider.mass_kg", "Poids", "rider", 1, "kg"),
+    Setting("rider.hr_max_bpm", "FC max", "rider", 1, "bpm"),
     Setting("bike.mass_kg", "Poids du vélo", "rider", 1, "kg"),
     # Séance ; bonus et niveau des bots du mode classique (série T, lots T7, T10 et T13)
     Setting("trainer.difficulty_pct", "Difficulté en SIM", "ride", 10, "%"),

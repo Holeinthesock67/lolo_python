@@ -297,7 +297,7 @@ class FakeCore:
                        "part": part, "parts": len(chunks), "items": chunk, "truncated": False})
 
     def send_hello_ack(self) -> None:
-        config = {"ftp_w": 250, "gears_total": 24, "theme": "default", "difficulty_pct": self.difficulty_pct}
+        config = {"ftp_w": 250, "hr_max_bpm": 185, "gears_total": 24, "theme": "default", "difficulty_pct": self.difficulty_pct}
         if self.chart is not None:
             config["chart"] = self.chart
         if self.progression is not None:

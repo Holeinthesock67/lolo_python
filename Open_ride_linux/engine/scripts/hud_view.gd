@@ -53,24 +53,25 @@ const SEGMENT_TONES := {"good": UiTheme.SEGMENT_GOOD, "bad": UiTheme.SEGMENT_BAD
 const BONUS_COLOR := UiTheme.BONUS   # violet des arches de bonus (lot T8)
 const BLOCK_GAP := 8.0
 const BLOCK_PAD := 4.0
-## Réserve du bas : profil d'altitude, ou bandeau ERG au-dessus de lui.
-## Profil d'altitude (SIM seulement : caché en ERG, où la pente n'agit pas sur le trainer) : 40 % moins
-## haut depuis le 28/10 (105 avant), marge du bas, réserve du bas de l'écran.
-const PROFILE_H := 63.0
-const PROFILE_BOTTOM := 15.0
-const PROFILE_RESERVE := PROFILE_H + PROFILE_BOTTOM + 2.0
-## Trois panneaux du haut (colonnes gauche et droite, bandeau central) : 10 % plus petits, polices
-## comprises, depuis le 28/10 (300 de large avant) pour moins couvrir la route, et hauteur ajustée au
-## contenu (_fit_top_panels). Marge à l'écran, largeur des colonnes, hauteurs de départ, marge
-## intérieure, police minimale d'une valeur réduite pour tenir dans la colonne (« 152 W (98 %) »).
+## Profil d'altitude (SIM seulement : caché en ERG, où la pente n'agit pas sur le trainer) : depuis le
+## 29/10, sous le panneau de droite et de sa largeur, en tête de la colonne de droite (avant : bandeau en
+## bas de l'écran, sur toute la largeur). Hauteur, marge du bas de l'écran (bas de l'encart des bots).
+const PROFILE_H := 57.0
+const PROFILE_LABEL_W := 52.0   # colonne des altitudes haute et basse, à gauche des barres
+const SCREEN_BOTTOM := 15.0
+## Trois panneaux du haut (colonnes gauche et droite, bandeau central) : réduits deux fois de 10 %,
+## polices comprises (300 de large jusqu'au 28/10, 270 le 28/10, 243 le 29/10) pour moins couvrir la
+## route, et hauteur ajustée au contenu (_fit_top_panels). Marge à l'écran, largeur des colonnes,
+## hauteurs de départ, marge intérieure, police minimale d'une valeur réduite pour tenir dans la colonne
+## (« 152 W (98 %) »).
 const TOP_MARGIN := 20.0
-const COLUMN_W := 270.0
-const COLUMN_H := 288.0
-const CENTER_H := 99.0
-const CENTER_PAD := 7.0
-const COLUMN_PAD := 9.0
-const METRIC_SEP := 11.0
-const METRIC_MIN_FONT := 18
+const COLUMN_W := 243.0
+const COLUMN_H := 259.0
+const CENTER_H := 89.0
+const CENTER_PAD := 6.0
+const COLUMN_PAD := 8.0
+const METRIC_SEP := 10.0
+const METRIC_MIN_FONT := 16
 ## Blocs sous les colonnes (vent, abri, encart des bots, segment, bonus) : construits sur BLOCK_W et
 ## réduits à l'affichage (scale) pour garder la largeur des colonnes, polices comprises.
 const BLOCK_W := 300.0
@@ -99,7 +100,14 @@ const GRADE_TEXT_COLORS := {
 	"wall": UiTheme.GRADE_TEXT_WALL,
 }
 
+## Teintes du texte de la puissance et de la fréquence cardiaque par zone (Z1 en premier).
+const ZONE_TEXT_COLORS := [UiTheme.ZONE_TEXT_1, UiTheme.ZONE_TEXT_2, UiTheme.ZONE_TEXT_3, UiTheme.ZONE_TEXT_4,
+	UiTheme.ZONE_TEXT_5, UiTheme.ZONE_TEXT_6, UiTheme.ZONE_TEXT_7]
+
 var vm := HudViewModel.new()
+## FTP et FC max de la config de hello_ack (main.gd) : zones de la puissance et de la fréquence cardiaque.
+var ftp_w := 0.0
+var hr_max_bpm := 0.0
 
 # Panneaux principaux
 var panel_left: Panel
@@ -187,7 +195,7 @@ func _build_ui() -> void:
 	cadence_val = _create_metric(left_vbox, "CADENCE (RPM)", HudViewModel.NO_VALUE)
 	hr_val = _create_metric(left_vbox, "CARDIO (BPM)", HudViewModel.NO_VALUE)
 	# Cible ERG sous les mesures, affichée seulement en ERG (« roue libre » sur un bloc libre).
-	target_val = _create_metric(left_vbox, "CIBLE ERG", HudViewModel.NO_VALUE, 36, 18)
+	target_val = _create_metric(left_vbox, "CIBLE ERG", HudViewModel.NO_VALUE, 32, 16)
 	target_val.get_parent().visible = false
 
 	# Panneau droit (haut) : Vitesse, Pente, Braquet, Distance, Temps
@@ -199,9 +207,9 @@ func _build_ui() -> void:
 
 	speed_val = _create_metric(right_vbox, "VITESSE (KM/H)", HudViewModel.NO_VALUE)
 	grade_val = _create_metric(right_vbox, "PENTE", HudViewModel.NO_VALUE)
-	gear_val = _create_metric(right_vbox, "BRAQUET", HudViewModel.NO_VALUE, 29, 18)
-	distance_val = _create_metric(right_vbox, "DISTANCE", HudViewModel.NO_VALUE, 29, 18)
-	time_val = _create_metric(right_vbox, "TEMPS", HudViewModel.NO_VALUE, 29, 18)
+	gear_val = _create_metric(right_vbox, "BRAQUET", HudViewModel.NO_VALUE, 26, 16)
+	distance_val = _create_metric(right_vbox, "DISTANCE", HudViewModel.NO_VALUE, 26, 16)
+	time_val = _create_metric(right_vbox, "TEMPS", HudViewModel.NO_VALUE, 26, 16)
 
 	# Bandeau supérieur central : ERG, prochaine montée et ligne d'état de diagnostic
 	var center_x := TOP_MARGIN + COLUMN_W + TOP_MARGIN
@@ -212,52 +220,48 @@ func _build_ui() -> void:
 	panel_center.add_child(center_vbox)
 
 	climb_label = Label.new()
-	climb_label.add_theme_font_size_override("font_size", 22)
+	climb_label.add_theme_font_size_override("font_size", 20)
 	climb_label.text = ""
 	climb_label.clip_text = true
 	center_vbox.add_child(climb_label)
 
 	erg_label = Label.new()
-	erg_label.add_theme_font_size_override("font_size", 20)
+	erg_label.add_theme_font_size_override("font_size", 18)
 	erg_label.text = ""
 	erg_label.clip_text = true
 	center_vbox.add_child(erg_label)
 
 	# Ligne d'état de diagnostic : séance, raison de pause, trainer, entrée (affichée depuis le lot D).
 	status_label = Label.new()
-	status_label.add_theme_font_size_override("font_size", 16)
+	status_label.add_theme_font_size_override("font_size", 14)
 	status_label.text = "ÉTAT: en attente du core…"
 	status_label.clip_text = true
 	center_vbox.add_child(status_label)
 
 	_build_wind_panel()
 	_build_draft_label()
+
+	# Profil d'altitude : sous le panneau de droite, de sa largeur (placé par _layout_right_column)
+	profile_panel = Control.new()
+	profile_panel.name = "ProfilePanel"
+	profile_panel.anchor_left = 1.0
+	profile_panel.anchor_right = 1.0
+	profile_panel.offset_left = -TOP_MARGIN - COLUMN_W
+	profile_panel.offset_right = -TOP_MARGIN
+	_place(profile_panel, _right_column_top(), PROFILE_H)
+	profile_panel.draw.connect(_on_profile_draw)
+	add_child(profile_panel)
 	_build_bots_panel()
 	_build_segment_blocks()
 
-	# Panneau inférieur : Profil d'altitude
-	profile_panel = Control.new()
-	profile_panel.name = "ProfilePanel"
-	profile_panel.anchor_left = 0.0
-	profile_panel.anchor_right = 1.0
-	profile_panel.anchor_top = 1.0
-	profile_panel.anchor_bottom = 1.0
-	profile_panel.offset_left = 40.0
-	profile_panel.offset_right = -40.0
-	profile_panel.offset_top = -PROFILE_BOTTOM - PROFILE_H
-	profile_panel.offset_bottom = -PROFILE_BOTTOM
-	profile_panel.grow_vertical = Control.GROW_DIRECTION_BEGIN
-	profile_panel.draw.connect(_on_profile_draw)
-	add_child(profile_panel)
-
 	alt_min_label = Label.new()
-	alt_min_label.add_theme_font_size_override("font_size", 16)
-	alt_min_label.position = Vector2(8.0, PROFILE_H - 24.0)
+	alt_min_label.add_theme_font_size_override("font_size", 14)
+	alt_min_label.position = Vector2(5.0, PROFILE_H - 21.0)
 	profile_panel.add_child(alt_min_label)
 
 	alt_max_label = Label.new()
-	alt_max_label.add_theme_font_size_override("font_size", 16)
-	alt_max_label.position = Vector2(8.0, 2.0)
+	alt_max_label.add_theme_font_size_override("font_size", 14)
+	alt_max_label.position = Vector2(5.0, 1.0)
 	profile_panel.add_child(alt_max_label)
 
 
@@ -419,17 +423,20 @@ func _fit_top_panels() -> void:
 	_layout_right_column()
 
 
-## Colonne de droite : blocs segment et bonus visibles empilés, puis l'encart des bots jusqu'au-dessus du
-## profil d'altitude (ou du bandeau ERG).
+## Colonne de droite : profil d'altitude (SIM), blocs segment et bonus visibles empilés, puis l'encart des
+## bots jusqu'au bas de l'écran (ou au-dessus du bandeau ERG).
 func _layout_right_column() -> void:
 	var y := _right_column_top()
+	if profile_panel != null and profile_panel.visible:
+		_place(profile_panel, y, PROFILE_H)
+		y += PROFILE_H + BLOCK_GAP
 	for p in [panel_segment, panel_bonus]:
 		if p != null and p.visible:
 			var h: float = p.offset_bottom - p.offset_top
 			_place(p, y, h)
 			y += h * BLOCK_SCALE + BLOCK_GAP
 	if panel_bots != null and panel_bots.visible:
-		var bottom: float = _screen_height() - (ERG_RESERVE if _erg_active else PROFILE_RESERVE) - BLOCK_GAP
+		var bottom: float = _screen_height() - (ERG_RESERVE if _erg_active else SCREEN_BOTTOM)
 		_layout_bots_panel(y, (bottom - y) / BLOCK_SCALE)
 
 
@@ -692,7 +699,7 @@ func _create_panel(pos: Vector2, size: Vector2, anchor_right := false, anchor_bo
 
 
 func _create_metric(parent: Control, label_text: String, default_val: String,
-		val_size := 43, label_size := 22) -> Label:
+		val_size := 39, label_size := 20) -> Label:
 	var hbox := HBoxContainer.new()
 	hbox.add_theme_constant_override("separation", int(METRIC_SEP))
 	parent.add_child(hbox)
@@ -726,6 +733,11 @@ func _set_metric(val: Label, text: String) -> void:
 	val.add_theme_font_size_override("font_size", size)
 
 
+## Teinte du texte d'une zone (0 = Z1), blanc sans zone.
+func _zone_color(zone: int) -> Color:
+	return ZONE_TEXT_COLORS[zone] if zone >= 0 and zone < ZONE_TEXT_COLORS.size() else Color.WHITE
+
+
 ## Met à jour les valeurs et le profil d'altitude.
 func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = null, s: float = 0.0) -> void:
 	_route = route
@@ -734,16 +746,18 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 		profile_panel.visible = not _erg_active
 	var now_s := Time.get_ticks_usec() / 1e6
 	vm.on_state(state, now_s)
-	var lines := HudViewModel.session_lines(state, erg_eval)
+	var lines := HudViewModel.session_lines(state, erg_eval, ftp_w, hr_max_bpm)
 
 	if power_val != null:
 		_set_metric(power_val, lines["power_val"])
+		power_val.modulate = _zone_color(int(lines["power_zone"]))
 	if speed_val != null:
 		_set_metric(speed_val, lines["speed_val"])
 	if cadence_val != null:
 		_set_metric(cadence_val, lines["cadence_val"])
 	if hr_val != null:
 		_set_metric(hr_val, lines["hr_val"])
+		hr_val.modulate = _zone_color(int(lines["hr_zone"]))
 	if distance_val != null:
 		_set_metric(distance_val, lines["distance_val"])
 	if time_val != null:
@@ -798,8 +812,8 @@ func update_display(state: Dictionary, erg_eval: Dictionary, route: Variant = nu
 		_last_profile_time_s = now_s
 		_profile_data = vm.profile(route, s)
 		if alt_min_label != null and alt_max_label != null:
-			alt_min_label.text = "min %.0f m" % float(_profile_data.get("alt_min", 0.0))
-			alt_max_label.text = "max %.0f m" % float(_profile_data.get("alt_max", 0.0))
+			alt_min_label.text = "%.0f m" % float(_profile_data.get("alt_min", 0.0))
+			alt_max_label.text = "%.0f m" % float(_profile_data.get("alt_max", 0.0))
 		if profile_panel != null:
 			profile_panel.queue_redraw()
 
@@ -814,20 +828,21 @@ func _on_profile_draw() -> void:
 	var alt_max: float = float(_profile_data.get("alt_max", 1.0))
 	var alt_range := maxf(alt_max - alt_min, 1.0)
 
-	var w: float = profile_panel.size.x
+	var x0 := PROFILE_LABEL_W
+	var w: float = profile_panel.size.x - x0
 	var h: float = profile_panel.size.y
 	var cols := alts.size()
 	if cols < 2:
 		return
 
 	# Fond du panneau profil
-	profile_panel.draw_rect(Rect2(0, 0, w, h), UiTheme.CHART_BG)
+	profile_panel.draw_rect(Rect2(0, 0, x0 + w, h), UiTheme.CHART_BG)
 
 	var col_w := w / float(cols)
 	for i in range(cols):
 		var norm_h := clampf((float(alts[i]) - alt_min) / alt_range, 0.05, 0.95)
 		var bar_h := norm_h * h
-		var bar_rect := Rect2(i * col_w, h - bar_h, col_w + 0.5, bar_h)
+		var bar_rect := Rect2(x0 + i * col_w, h - bar_h, col_w + 0.5, bar_h)
 		var col_grade: String = classes[i] if i < classes.size() else "flat"
 		var color: Color = GRADE_COLORS.get(col_grade, COLOR_FLAT)
 		profile_panel.draw_rect(bar_rect, color)
@@ -838,14 +853,14 @@ func _on_profile_draw() -> void:
 	if to_m > from_m:
 		for mark in BotsViewModel.profile_marks(_bots_view, from_m, to_m):
 			var idx := clampi(int(round((float(mark["rel_m"]) - from_m) / (to_m - from_m) * float(cols - 1))), 0, cols - 1)
-			var bx := (idx + 0.5) * col_w
+			var bx := x0 + (idx + 0.5) * col_w
 			var by := h - clampf((float(alts[idx]) - alt_min) / alt_range, 0.05, 0.95) * h
 			profile_panel.draw_circle(Vector2(bx, by), 5.0, UiTheme.INK_EDGE)
 			profile_panel.draw_circle(Vector2(bx, by), 3.5, mark["color"])
 
 	# Repère de position
 	if marker_idx >= 0 and marker_idx < cols:
-		var mx := (marker_idx + 0.5) * col_w
+		var mx := x0 + (marker_idx + 0.5) * col_w
 		var my := h - clampf((float(alts[marker_idx]) - alt_min) / alt_range, 0.05, 0.95) * h
 		profile_panel.draw_circle(Vector2(mx, my), 6.0, UiTheme.INK)
 		profile_panel.draw_circle(Vector2(mx, my), 3.0, UiTheme.INK_EDGE)

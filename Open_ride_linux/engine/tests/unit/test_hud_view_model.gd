@@ -295,6 +295,25 @@ func _test_session_lines() -> void:
 	_check(HudViewModel.session_lines(sim, no_erg)["gear_shown"], "SIM : braquet affiché")
 
 
+func _test_zones() -> void:
+	# Puissance : zones de Coggan (Z1 = 0 … Z7 = 6) ; FC : Z1 à Z5 en % de la FC max ; -1 sans référence.
+	_check(HudViewModel.power_zone(100.0, 250.0) == 0 and HudViewModel.power_zone(248.0, 250.0) == 3
+		and HudViewModel.power_zone(330.0, 250.0) == 5 and HudViewModel.power_zone(450.0, 250.0) == 6,
+		"zones de puissance (40, 99, 132, 180 % de FTP)")
+	_check(HudViewModel.power_zone(137.5, 250.0) == 1, "55 % de FTP : Z2 (borne basse incluse)")
+	_check(HudViewModel.power_zone(NAN, 250.0) == -1 and HudViewModel.power_zone(200.0, 0.0) == -1,
+		"puissance sans mesure ou sans FTP : pas de zone")
+	_check(HudViewModel.hr_zone(100.0, 185.0) == 0 and HudViewModel.hr_zone(120.0, 185.0) == 1
+		and HudViewModel.hr_zone(142.0, 185.0) == 2 and HudViewModel.hr_zone(160.0, 185.0) == 3
+		and HudViewModel.hr_zone(176.0, 185.0) == 4, "zones de FC (54, 65, 77, 86, 95 % de la FC max)")
+	_check(HudViewModel.hr_zone(0.0, 185.0) == -1 and HudViewModel.hr_zone(NAN, 185.0) == -1
+		and HudViewModel.hr_zone(150.0, 0.0) == -1, "FC absente ou FC max inconnue : pas de zone")
+	var l := HudViewModel.session_lines({"power_3s": 248.0, "hr": 142}, {"visible": false}, 250.0, 185.0)
+	_check(l["power_zone"] == 3 and l["hr_zone"] == 2, "lignes du HUD : zones de la puissance 3 s et de la FC")
+	_check(HudViewModel.session_lines({"power_3s": 248.0, "hr": 142}, {"visible": false})["power_zone"] == -1,
+		"lignes du HUD sans FTP : pas de zone")
+
+
 func _test_difficulty() -> void:
 	# La difficulté se règle et se lit dans le menu Réglages (et l'écran de pause), pas dans le HUD
 	# permanent (demande du propriétaire du 27 octobre) : aucune sortie du HUD n'en porte le texte.
@@ -331,6 +350,7 @@ func _init() -> void:
 	_test_profile_open()
 	_test_profile_loop()
 	_test_next_climb()
+	_test_zones()
 	_test_difficulty()
 	print("test_hud_view_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

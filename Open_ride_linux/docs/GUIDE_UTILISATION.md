@@ -52,7 +52,7 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 3. L'écran **Prêt** montre la fiche du parcours (distance, dénivelé, montée principale, durée estimée). Il propose aussi **Bot : …** (un cycliste virtuel à puissance constante), **Fantôme de la dernière séance** et **Records du parcours**.
 4. **Démarrer** lance la séance : le vélo avance dès que vous pédalez.
 
-**Pendant la séance.** Le HUD montre puissance, cadence, fréquence cardiaque, vitesse, distance, pente et profil d'altitude. La touche **Y** du Click (ou `Y`, `Échap` au clavier) met en pause : l'écran de pause propose **Reprendre**, **Terminer et enregistrer**, **Abandonner** et le curseur de **Difficulté**.
+**Pendant la séance.** Le HUD montre puissance, cadence, fréquence cardiaque, vitesse, distance, pente et profil d'altitude (sous le panneau de droite, en SIM). La puissance prend la couleur de sa zone de FTP (Z1 à Z7) et la fréquence cardiaque celle de sa zone de FC (Z1 à Z5, d'après la **FC max** des réglages du cycliste). La touche **Y** du Click (ou `Y`, `Échap` au clavier) met en pause : l'écran de pause propose **Reprendre**, **Terminer et enregistrer**, **Abandonner** et le curseur de **Difficulté**.
 
 **Fin de séance.** À l'arrivée d'un parcours ou avec **Terminer et enregistrer**, le bilan affiche la durée, la distance, les puissances (NP, IF, TSS) et les zones. La séance est enregistrée dans `~/OpenRide/Activities/` (section 8).
 
