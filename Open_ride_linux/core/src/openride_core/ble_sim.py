@@ -45,7 +45,8 @@ from pathlib import Path
 from typing import Any, Callable, Collection
 
 from . import ftms, zwift_click
-from .physics import G, PhysicsParams, resistive_force, steady_speed
+from .physics import G, PhysicsParams, steady_speed
+from .sim_rider import RiderOutput, SimRider
 
 log = logging.getLogger("ble_sim")
 
@@ -303,7 +304,7 @@ class TrainerResponse:
       constante `brake_tau_up_s` quand elle augmente et `brake_tau_down_s` quand elle baisse.
     - **Volant** : masse équivalente à la jante `flywheel_kg_m2 / r²` ; m v dv/dt = P_cycliste − F_frein v.
     - **Cycliste** : tient sa cadence à braquet fixe (vitesse de l'effort habituel sur le plat, ou
-      `target_speed_kmh`), en rattrapant l'écart en ~1 s, sans dépasser `rider_max_w`.
+      stratégie `vitesse` du cycliste), en rattrapant l'écart en ~1 s, sans dépasser `rider_max_w`.
     - Puissance mesurée par le trainer : celle du cycliste (frein + accélération du volant)."""
 
     def __init__(self, *, brake_delay_s: float, brake_tau_up_s: float, brake_tau_down_s: float,
@@ -363,20 +364,18 @@ class SimTrainer(SimDevice):
 
     def __init__(self, world: "SimWorld", name: str = TRAINER_NAME,
                  address: str = "5A:1A:00:00:00:00", *, ibd_hz: float = 4.0,
-                 rider_power_w: float = 180.0, cadence_rpm: float = 88.0,
+                 rider: SimRider | None = None,
                  erg_tau_s: float = 1.5, cp_latency_s: float = 0.05,
                  power_range: tuple[int, int, int] = (0, 2000, 1),
                  refuse_control: bool = False,
                  relayed_hr: bool | int | None = None,
-                 target_speed_kmh: float | None = None,
                  response: str = "instant", brake_delay_s: float | None = None,
                  brake_tau_up_s: float | None = None, brake_tau_down_s: float | None = None,
                  flywheel_kg_m2: float | None = None, notify_jitter_s: float | None = None,
                  rider_max_w: float | None = None, calibration: str | None = None, **kw: Any) -> None:
         super().__init__(world, name, address, **kw)
         self.ibd_hz = ibd_hz
-        self.rider_power_w, self.cadence_rpm = rider_power_w, cadence_rpm
-        self.target_speed_kmh = target_speed_kmh
+        self.rider = rider or SimRider()   # cycliste virtuel (lot X27, section `rider` du scénario)
         # Réponse (lot X6) : « instant » (premier ordre de `erg_tau_s`) ou « realiste » (TrainerResponse).
         self.response = response
         self.rider_max_w = rider_max_w
@@ -523,46 +522,29 @@ class SimTrainer(SimDevice):
         self.control = False
         self._status(bytes([ftms.STATUS_CONTROL_LOST]))
 
-    def _rider_power(self, t: float) -> float:
-        """Puissance du cycliste en SIM : un peu plus d'effort en montée, un peu de bruit.
-
-        Avec `target_speed_kmh` (vitesse imposée du banc simulé, lot X35), la puissance qui tient cette
-        vitesse sur la pente reçue, avec la physique du core (`physics.resistive_force`, réglages par
-        défaut) : la vitesse virtuelle du core suit alors la consigne si la pente reçue est celle du
-        parcours (difficulté 100 %, ce que fait `sim_bench.py --speed-kmh`)."""
-        if self.cadence_rpm <= 0:
+    def _ride_speed(self, rider: RiderOutput) -> float:
+        """Vitesse tenue par le cycliste à braquet fixe (modèle réaliste) : `speed_kmh` de la stratégie
+        `vitesse`, sinon la vitesse de son effort sur le plat (arrondi au watt) ; 0 sans pédaler."""
+        if rider.cadence_rpm <= 0:
             return 0.0
-        if self.target_speed_kmh is not None:
-            v = max(float(self.target_speed_kmh), 0.0) / 3.6
-            p = resistive_force(v, self.grade_pct, 0.0, SPEED_PHYSICS) * v / SPEED_PHYSICS.efficiency
-            return max(p + 2.0 * math.sin(t * 0.9), 0.0)
-        if self.rider_power_w <= 0:
-            return 0.0
-        p = self.rider_power_w * (1.0 + 0.04 * self.grade_pct) + 4.0 * math.sin(t * 0.9)
-        return max(p, 0.0)
-
-    def _ride_speed(self) -> float:
-        """Vitesse tenue par le cycliste à braquet fixe (modèle réaliste) : `target_speed_kmh`, sinon
-        la vitesse de son effort habituel sur le plat ; 0 sans pédaler."""
-        if self.cadence_rpm <= 0:
-            return 0.0
-        if self.target_speed_kmh is not None:
-            return max(float(self.target_speed_kmh), 0.0) / 3.6
-        if self._v_ride_cache[0] != self.rider_power_w:
-            self._v_ride_cache = (self.rider_power_w, steady_speed(max(self.rider_power_w, 0.0), 0.0, SPEED_PHYSICS))
+        if self.rider.speed_kmh is not None:
+            return self.rider.speed_kmh / 3.6
+        watts = round(max(rider.power_w, 0.0))
+        if self._v_ride_cache[0] != watts:
+            self._v_ride_cache = (watts, steady_speed(watts, 0.0, SPEED_PHYSICS))
         return self._v_ride_cache[1]
 
-    def _step_power(self, t: float, dt: float) -> float:
+    def _step_power(self, t: float, dt: float, rider: RiderOutput) -> float:
         """Puissance mesurée après `dt` s, et vitesse affichée en km/h."""
         if self.model is not None:
             cmd = (self.mode, self.target_w, self.grade_pct, self.crr, self.cw, self.wind_mps)
-            cap = self.rider_max_w if self.rider_max_w is not None else RIDER_RESERVE * max(self.rider_power_w, 1.0)
-            self.power_w = self.model.step(dt, cmd, self._ride_speed(), cap)
+            cap = self.rider_max_w if self.rider_max_w is not None else RIDER_RESERVE * max(rider.power_w, 1.0)
+            self.power_w = self.model.step(dt, cmd, self._ride_speed(rider), cap)
             return 3.6 * self.model.v
-        if self.mode == "erg" and self.target_w is not None and self.cadence_rpm > 0:
+        if self.mode == "erg" and self.target_w is not None and rider.cadence_rpm > 0:
             goal = self.target_w + 2.0 * math.sin(t * 1.5)
         else:
-            goal = self._rider_power(t)
+            goal = rider.power_w
         alpha = 1.0 - math.exp(-dt / max(self.erg_tau_s, 1e-3))
         self.power_w += alpha * (goal - self.power_w)
         return 3.6 * (max(self.power_w, 0.0) / 0.9) ** (1 / 3) if self.power_w > 0 else 0.0
@@ -575,10 +557,14 @@ class SimTrainer(SimDevice):
             await asyncio.sleep(max(period + jitter, 0.0))
             t = self.world.now()
             dt, last = t - last, t
-            speed_kmh = self._step_power(t, dt)
+            erg = self.mode == "erg" and self.target_w is not None
+            rider = self.rider.step(t, dt, self.grade_pct, self.target_w if erg else None)
+            if rider.press:   # braquet changé par le cycliste virtuel (stratégie `cadence`)
+                asyncio.get_running_loop().create_task(self.world.press(rider.press))
+            speed_kmh = self._step_power(t, dt, rider)
             if t < self.silent_until:
                 continue
-            cadence = self.cadence_rpm + (1.5 * math.sin(t * 0.7) if self.cadence_rpm > 0 else 0.0)
+            cadence = rider.cadence_rpm + (1.5 * math.sin(t * 0.7) if rider.cadence_rpm > 0 else 0.0)
             flags = 0x0004 | 0x0040   # vitesse (bit 0 à 0), cadence, puissance
             if self.relayed_hr_enabled:
                 flags |= 0x0200
@@ -999,10 +985,7 @@ class SimWorld:
         elif isinstance(dev, SimTrainer) and action == "refuse_control":
             dev.refuse_control = bool(ev.get("value", True))
         elif isinstance(dev, SimTrainer) and action == "rider":
-            if "watts" in ev:
-                dev.rider_power_w = float(ev["watts"])
-            if "cadence_rpm" in ev:
-                dev.cadence_rpm = float(ev["cadence_rpm"])
+            dev.rider.update(**{k: ev[k] for k in ("watts", "cadence_rpm") if k in ev})
         elif isinstance(dev, SimTrainer) and action == "bpm":
             dev.relayed_hr_enabled = True
             dev.fixed_relayed_hr = None if ev.get("bpm") is None else int(ev["bpm"])

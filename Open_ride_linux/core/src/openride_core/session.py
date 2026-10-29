@@ -247,20 +247,13 @@ class CoreSession:
         # Paramètres sans bonus de la série T (lot T7), avec le cadre et les roues choisis (série V)
         self._base_params = self._equipped_params()
         self.physics = RiderPhysics(self._base_params)
-        self.wind = WindModel.from_config(
-            cfg.wind, theme_wind(cfg.render.theme) if cfg.wind.mode == "theme" else None)
-        self._wind_sample = self.wind.sample(0.0) if self.wind.active else CALM
+        self._build_wind()
         self._head_mps = 0.0          # vent de face au point s (physique à 50 Hz)
         self._wind_offset = 0.0       # supplément de pente dû au vent (feel = "grade")
         self._wind_pending = False    # trame `wind` décalée parce que la trame portait `devices`
         self._draft = 0.0             # abri lissé derrière un bot (lot P3)
         self._draft_bot: str | None = None
         self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
-        if self.wind.active:
-            log.info("Vent : mode %s, %.0f km/h venant de %.0f°, rafales %.0f %%, ressenti %s "
-                     "(supplément de pente borné à %.1f points)", self.wind.mode, self.wind.base_mps * 3.6,
-                     self.wind.from_deg, self.wind.gust_frac * 100, cfg.wind.feel,
-                     cfg.wind.max_grade_offset_pct)
         self.route: Route | None = None
         self._segments: tuple = ()               # couche segments du parcours (série T)
         self.race: ClassicRace | None = None      # mode classique de la séance (lot T7)
@@ -773,13 +766,28 @@ class CoreSession:
         except settings.SettingError as exc:
             log.warning("Difficulté non enregistrée : %s", exc)
 
+    def _build_wind(self) -> None:
+        """Vent des séances d'après `[wind]` (et le thème en mode `theme`) : au lancement et après un réglage."""
+        cfg = self.cfg
+        self.wind = WindModel.from_config(
+            cfg.wind, theme_wind(cfg.render.theme) if cfg.wind.mode == "theme" else None)
+        self._wind_sample = self.wind.sample(0.0) if self.wind.active else CALM
+        if self.wind.active:
+            log.info("Vent : mode %s, %.0f km/h venant de %.0f°, rafales %.0f %%, ressenti %s "
+                     "(supplément de pente borné à %.1f points)", self.wind.mode, self.wind.base_mps * 3.6,
+                     self.wind.from_deg, self.wind.gust_frac * 100, cfg.wind.feel,
+                     cfg.wind.max_grade_offset_pct)
+
     def _set_setting(self, args: dict, cmd_id: int) -> None:
         from . import settings
 
-        if self.state.session_state in ("RUNNING", "PAUSED"):
+        key = args.get("key") if isinstance(args, dict) else None
+        in_session = self.state.session_state in ("RUNNING", "PAUSED")
+        if in_session and str(key) in settings.KEYS and settings.get(str(key)).applies != "now":
+            # Réglage de la séance suivante : refusé pendant une séance. Ceux que l'engine applique tout de
+            # suite (`applies = now` : vue, qualité, volumes...) restent permis : la séance n'en dépend pas.
             self.server.send_error("busy", "Réglage impossible pendant une séance (terminer d'abord).")
             return
-        key = args.get("key") if isinstance(args, dict) else None
         try:
             changed = settings.apply(self.cfg, {str(key): args.get("value")}, self.config_path)
         except settings.SettingError as exc:
@@ -788,7 +796,11 @@ class CoreSession:
             return
         log.info("Réglage enregistré (%s) : %s", self.config_path or "config.toml",
                  "; ".join(changed) if changed else "inchangé")
+        if in_session:
+            self._send_settings(cmd_id)
+            return
         # Prise en compte pour la séance suivante, sans relancer.
+        self._build_wind()
         self._base_params = self._equipped_params()
         self.physics.p = self._base_params
         self.gearing.k = min(max(self.cfg.gearing.start_gear, 1), self.gearing.n_gears)

@@ -19,6 +19,13 @@ const SHOULDER_WIDTH_M := 0.5
 const SHOULDER_DROP_M := 0.05
 const V_REPEAT_M := 6.0
 const VERTS_PER_SECTION := 6       # bas-côté gauche (2), chaussée (2), bas-côté droit (2)
+## Places en travers de la chaussée (lot P32, demande du 29 octobre : « on roule à droite, pas au milieu ») :
+## écart à l'axe, positif à droite du sens du parcours. Le cycliste (caméra, avatar) roule dans la voie de
+## droite, les bots à sa droite vers le bord ; les véhicules prennent le milieu de leur voie (celle d'en face
+## à −LANE_CENTER_M). traffic_model.gd, road_cyclists_model.gd et bots_view.gd se placent d'après elles.
+const RIDER_LATERAL_M := 1.2
+const BOT_LATERAL_M := 2.1
+const LANE_CENTER_M := 1.5
 
 const ROAD_COLOR := Color(0.29, 0.29, 0.30)
 const LINE_COLOR := Color(0.95, 0.95, 0.95)
