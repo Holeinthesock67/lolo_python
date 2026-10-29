@@ -101,23 +101,35 @@ func head_mps(now_s: float) -> float:
 	return _wire_head_mps if has_wire(now_s) else 0.0
 
 
-func evaluate(now_s: float) -> Dictionary:
-	var target_speed := 0.0
-	var target_from := _from_deg
-	var target_gust := 0.0
-	var blowing := true
+## Cibles du vent à l'instant `now_s` : [vitesse (m/s), provenance (degrés), rafale, souffle].
+func _targets(now_s: float) -> Array:
 	if has_wire(now_s):
-		target_speed = _wire_speed_mps
-		target_from = _wire_from_deg
-		target_gust = _wire_gust
-	elif _theme_speed_mps > 0.0:
+		return [_wire_speed_mps, _wire_from_deg, _wire_gust, true]
+	if _theme_speed_mps > 0.0:
 		# Vent décoratif du thème : une rafale lente, de ± la moitié de gust_pct autour du vent de base.
 		var g := 0.5 + 0.5 * sin(TAU * now_s / THEME_GUST_PERIOD_S)
-		target_from = _theme_from_deg
-		target_gust = _theme_gust * g
-		target_speed = _theme_speed_mps * (1.0 + 0.5 * _theme_gust * (2.0 * g - 1.0))
-	else:
-		blowing = _speed_mps > 1e-3   # le vent retombe doucement au calme
+		return [_theme_speed_mps * (1.0 + 0.5 * _theme_gust * (2.0 * g - 1.0)), _theme_from_deg, _theme_gust * g, true]
+	return [0.0, _from_deg, 0.0, _speed_mps > 1e-3]   # le vent retombe doucement au calme
+
+
+## Scène figée des tests graphiques (lot X20) : vent posé sur ses cibles à l'instant `now_s`, sans l'historique
+## du lissage, et phase calculée depuis 0 ; deux passages figés au même instant voient le même vent.
+func settle(now_s: float) -> void:
+	var t := _targets(now_s)
+	_speed_mps = float(t[0])
+	_from_deg = fposmod(float(t[1]), 360.0)
+	_gust = float(t[2])
+	_dir_ready = true
+	_phase = maxf(now_s, 0.0) * lerpf(PHASE_RATE_MIN, PHASE_RATE_MAX, clampf(_speed_mps / MAX_SPEED_MPS, 0.0, 1.0))
+	_last_eval_s = now_s
+
+
+func evaluate(now_s: float) -> Dictionary:
+	var t := _targets(now_s)
+	var target_speed: float = t[0]
+	var target_from: float = t[1]
+	var target_gust: float = t[2]
+	var blowing: bool = t[3]
 
 	var dt := 0.0 if is_nan(_last_eval_s) else clampf(now_s - _last_eval_s, 0.0, 1.0)
 	_last_eval_s = now_s
