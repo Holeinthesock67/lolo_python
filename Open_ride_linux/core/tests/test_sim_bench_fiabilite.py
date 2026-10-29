@@ -8,8 +8,6 @@ from pathlib import Path
 import pytest
 
 from openride_core import sim_scenarios
-from openride_core.ble_sim import SPEED_PHYSICS, SimTrainer, SimWorld
-from openride_core.physics import steady_speed
 
 TESTS = Path(__file__).resolve().parents[2] / "engine" / "tests"
 
@@ -115,26 +113,14 @@ def test_installed_compiler_knows_every_bench_layer():
 
 # --- vitesse imposée -------------------------------------------------------------------------------
 
-@pytest.mark.parametrize("grade", [0.0, 3.0, 6.0])
-def test_simulated_trainer_power_holds_the_target_speed(grade):
-    trainer = SimTrainer(SimWorld(seed=1), target_speed_kmh=35.0)
-    trainer.grade_pct = grade
-    power = trainer._rider_power(0.0)   # sin(0) : sans le bruit
-    assert steady_speed(power, grade, SPEED_PHYSICS) * 3.6 == pytest.approx(35.0, abs=0.05)
-
-
-def test_without_target_speed_the_rider_power_is_unchanged():
-    trainer = SimTrainer(SimWorld(seed=1), rider_power_w=180.0)
-    trainer.grade_pct = 5.0
-    assert trainer._rider_power(0.0) == pytest.approx(180.0 * 1.2)
-
-
-def test_target_speed_key_is_validated():
-    assert sim_scenarios.validate({"trainer": {"target_speed_kmh": 35}})["trainer"]["target_speed_kmh"] == 35
+def test_target_speed_is_the_rider_speed_strategy():
+    # La puissance de la stratégie `vitesse` (sim_rider.py, lot X27) est vérifiée dans test_sim_rider.py.
+    spec = sim_scenarios.validate({"trainer": {}, "rider": {"strategy": "vitesse", "speed_kmh": 35}})
+    assert sim_scenarios.build_world(spec).trainer.rider.speed_kmh == 35.0
     with pytest.raises(sim_scenarios.SimScenarioError, match="entre 0 et 80"):
-        sim_scenarios.validate({"trainer": {"target_speed_kmh": 0}})
+        sim_scenarios.validate({"rider": {"strategy": "vitesse", "speed_kmh": 0}})
     with pytest.raises(sim_scenarios.SimScenarioError, match="nombre attendu"):
-        sim_scenarios.validate({"trainer": {"target_speed_kmh": "35"}})
+        sim_scenarios.validate({"rider": {"strategy": "vitesse", "speed_kmh": "35"}})
 
 
 def test_speed_check_on_journal_records():
@@ -155,8 +141,8 @@ def test_bench_with_speed_rides_at_difficulty_100_with_a_written_scenario(tmp_pa
     spec = sim_scenarios.load_scenario("nominal")
     b = sb.Bench(_args(speed_kmh=35.0), "nominal", spec, {}, "nominal", tmp_path)
     assert b.difficulty == 100.0 and b.scenario_arg == ""
-    assert b.spec["trainer"]["target_speed_kmh"] == 35.0
-    assert "target_speed_kmh" not in (spec.get("trainer") or {})   # scénario d'origine intact
+    assert b.spec["rider"] == {"strategy": "vitesse", "speed_kmh": 35.0}
+    assert "rider" not in spec   # scénario d'origine intact
     with pytest.raises(SystemExit, match="difficulté 100 %"):
         sb.Bench(_args(speed_kmh=35.0, difficulty=50.0), "nominal", spec, {}, "nominal", tmp_path)
     assert sb.Bench(_args(), "nominal", spec, {"speed_kmh": 30}, "nominal", tmp_path).speed_kmh == 30

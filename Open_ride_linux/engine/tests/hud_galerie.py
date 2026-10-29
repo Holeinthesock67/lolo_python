@@ -193,6 +193,7 @@ def main() -> int:
     ap.add_argument("--native", action="store_true", help="écran réel et rendu habituel, sans Xvfb")
     args = ap.parse_args()
     args.visual_grade, args.golden, args.update_golden, args.lisibilite = 1.0, None, False, True
+    args.fige, args.decor_vivant = None, "on"   # options de visual_check : scène animée, décor vivant
     names = [n.strip() for n in args.cas.split(",") if n.strip()] or None
     unknown = [n for n in names or [] if n not in {c["name"] for c in CAS}]
     if unknown:

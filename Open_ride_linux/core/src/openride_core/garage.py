@@ -113,10 +113,15 @@ class ProgressionService:
             return base
         return equipment_mod.apply_equipment(base, self.profile.equipped, self.catalogue)
 
-    def journal_header(self) -> dict[str, Any] | None:
-        """`loadout` et `ftp_w` pour l'en-tête du journal ; `None` si la progression est coupée."""
+    def journal_header(self, equipped: bool = True) -> dict[str, Any] | None:
+        """`loadout` et `ftp_w` pour l'en-tête du journal ; `None` si la progression est coupée.
+
+        `equipped=False` (run Cyber-Rogue, lot V5) : l'équipement ne s'applique pas, `loadout` vaut None.
+        """
         if not self.enabled:
             return None
+        if not equipped:
+            return {"ftp_w": self.cfg.rider.ftp_w, "loadout": None}
         mass, cda = equipment_mod.physical_deltas(self.profile.equipped, self.catalogue)
         return {"ftp_w": self.cfg.rider.ftp_w,
                 "loadout": {"frame": self.profile.equipped.get("frame"),

@@ -13,7 +13,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-dev = ["pytest>=8", "jsonschema>=4", "garmin-fit-sdk>=21"]
+dev = ["pytest>=8", "jsonschema>=4", "garmin-fit-sdk>=21", "hypothesis>=6.100", "pip-audit>=2.7"]
 
 [project.scripts]
 openride-core = "openride_core.__main__:main"
@@ -32,4 +32,5 @@ pythonpath = ["src"]
 markers = [
     "slow: tests longs (séances simulées de 3 h) ; `pytest -m \"not slow\"` pour les sauter",
     "recette_sans_velo: étapes des recettes T11 (5 et 6) et J7 (flèches) faites sans vélo ; `pytest -m recette_sans_velo`",
+    "fuzz: fuzz des lecteurs de fichiers (lot X26) ; `pytest -m fuzz --hypothesis-profile=long` sur le PC",
 ]

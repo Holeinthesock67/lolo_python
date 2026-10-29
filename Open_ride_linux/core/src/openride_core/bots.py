@@ -393,8 +393,8 @@ SCALE_BOUNDS = (0.2, 5.0)
 
 @dataclass(frozen=True)
 class RefRider:
-    """Cycliste de référence du calibrage : FTP et physique du cycliste (`PhysicsParams.from_config` :
-    masse totale, CdA, Crr et rendement de `config.toml`)."""
+    """Cycliste de référence du calibrage : FTP et physique du cycliste dans la séance (`config.toml`
+    et équipement de la série V : `apply_equipment`, lot V5), pour que le niveau choisi reste juste."""
 
     ftp_w: float
     params: PhysicsParams
@@ -462,9 +462,14 @@ def ride_time(prof: RouteProfile, params: PhysicsParams, power_w: float = 0.0,
 
 
 def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segments: tuple = (),
-              bike_mass_kg: float = DEFAULT_BIKE_MASS_KG, prof: RouteProfile | None = None) -> float:
+              bike_mass_kg: float = DEFAULT_BIKE_MASS_KG, prof: RouteProfile | None = None,
+              bot_params: PhysicsParams | None = None) -> float:
     """Échelle de la CP (et de W′ et du pic) du profil pour finir le parcours dans le temps du cycliste
     de référence à `level_pct` % de sa FTP, à `CALIBRATION_TOL` près. Fonction pure.
+
+    `bot_params` : physique du bot pendant la séance (CdA, Crr, rendement ; sa masse vient du profil),
+    celle du cycliste par défaut. L'équipement du cycliste (lot V5) ne s'applique qu'à lui : le bot
+    roule sans, son échelle compense.
 
     Recherche sur le logarithme de l'échelle : sécante, gardée dans l'encadrement trouvé (dichotomie
     quand la sécante en sort) ; le temps décroît avec l'échelle. `prof` : relevé du parcours à partager
@@ -474,7 +479,8 @@ def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segme
     prof = prof or RouteProfile(route)
     still = replace(rider.params, wind_mps=0.0)   # calibrage sans vent, pour le cycliste comme pour le bot
     t_ref = ride_time(prof, still, power_w=rider.ftp_w * level_pct / 100.0)
-    bot = ProfileBot(profile, params=still, segments=segments, bike_mass_kg=bike_mass_kg)
+    bot = ProfileBot(profile, params=replace(bot_params or rider.params, wind_mps=0.0), segments=segments,
+                     bike_mass_kg=bike_mass_kg)
     lo_x, hi_x = math.log(SCALE_BOUNDS[0]), math.log(SCALE_BOUNDS[1])
 
     def err(x: float) -> float:
@@ -511,9 +517,10 @@ def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segme
 
 
 def calibrate_bots(bots: list[Any], route: Any, rider: RefRider, level_pct: float, segments: tuple = (),
-                   bike_mass_kg: float = DEFAULT_BIKE_MASS_KG) -> dict[tuple[str, float], float]:
+                   bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
+                   bot_params: PhysicsParams | None = None) -> dict[tuple[str, float], float]:
     """Calibre les bots à profil de la séance (niveau du bot, `level_pct` du réglage sinon) ; un calcul
-    par couple (profil, niveau). Renvoie les échelles trouvées."""
+    par couple (profil, niveau). Renvoie les échelles trouvées. `bot_params` : voir `calibrate`."""
     scales: dict[tuple[str, float], float] = {}
     prof: RouteProfile | None = None
     for b in bots:
@@ -522,7 +529,7 @@ def calibrate_bots(bots: list[Any], route: Any, rider: RefRider, level_pct: floa
         key = (b.profile, float(b.level_pct if b.level_pct is not None else level_pct))
         if key not in scales:
             prof = prof or RouteProfile(route)
-            scales[key] = calibrate(b.profile, route, key[1], rider, segments, bike_mass_kg, prof)
+            scales[key] = calibrate(b.profile, route, key[1], rider, segments, bike_mass_kg, prof, bot_params)
         b.set_scale(scales[key])
     return scales
 

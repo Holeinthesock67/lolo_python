@@ -16,7 +16,8 @@
 # « none » pour les sauter ; matrice complète et rapport : run_visual_tests.sh),
 # OPENRIDE_PERF (budgets de temps, lot X2 : « report » par défaut, un dépassement est signalé sans
 # échec ; « strict » le compte comme un échec ; budgets dans tests/perf_budgets.json),
-# PERF_CSV (fichier où ajouter les mesures « date;nom;ms;budget;dépassé », facultatif),
+# PERF_CSV (fichier où ajouter les mesures « date;nom;valeur;budget;dépassé;unité », ms ou Ko, facultatif ;
+# rapport par budget : python3 engine/tests/perf_budget_report.py, lot X19),
 # ENGINE_JUNIT (fichier JUnit XML à écrire, lot X3 : une entrée par test du résumé, avec son statut et
 # sa durée, temps écoulé depuis l'entrée précédente ; facultatif, rien n'est écrit sans).
 # Code de sortie : 0 si tout passe.
@@ -127,9 +128,10 @@ perf_summary() {
   over="$(grep -c "DÉPASSÉ" "$PERF_FILE")"
   echo "Budgets de temps (OPENRIDE_PERF=${OPENRIDE_PERF:-report}) : $(wc -l <"$PERF_FILE") mesures, $over dépassement(s)"
   sed 's/^\[PERF\] /  /' "$PERF_FILE"
+  [ -z "${PERF_LINES:-}" ] || cp "$PERF_FILE" "$PERF_LINES"   # lignes brutes pour perf_budget_report.py (lot X19)
   if [ -n "${PERF_CSV:-}" ]; then
-    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) [^ ,]+, budget ([0-9.inf]+) [^ ]+( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\3;\4/" "$PERF_FILE" \
-      | sed 's/; (DÉPASSÉ)$/;oui/; s/;$/;non/' >>"$PERF_CSV"
+    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) ([^ ,]+), budget ([0-9.inf]+) [^ ]+( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\4;\5;\3/" "$PERF_FILE" \
+      | sed -E 's/; \(DÉPASSÉ\);([^;]+)$/;oui;\1/; s/;;([^;]+)$/;non;\1/' >>"$PERF_CSV"
   fi
   rm -f "$PERF_FILE"
 }
@@ -208,8 +210,11 @@ if [ "$VISUAL_CONFIGS" = "none" ]; then
   echo "VISUAL_CONFIGS=none : tests graphiques sautés"
 elif command -v xvfb-run >/dev/null 2>&1; then
   VISUAL_DIR="$(mktemp -d -t openride-visual.XXXXXX)"
+  # Scène figée et, en 1280x720 low, comparaison aux vignettes du dépôt (tests/golden/xvfb/low, SSIM ≥ 0,97, lot X20).
+  golden_args=()
+  if [ "$VISUAL_CONFIGS" = "1280x720:low" ]; then golden_args=(--golden "$ENGINE_DIR/tests/golden"); fi
   VISUAL_OUT="$(timeout -k 5 600 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
-    --configs "$VISUAL_CONFIGS" --out "$VISUAL_DIR" 2>&1)"
+    --configs "$VISUAL_CONFIGS" --out "$VISUAL_DIR" --fige "${golden_args[@]}" 2>&1)"
   visual_rc=$?
   echo "$VISUAL_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
   if [ "$visual_rc" -eq 0 ]; then rm -rf "$VISUAL_DIR"; else echo "Captures, journaux et rapport gardés : $VISUAL_DIR/rapport.html"; fi

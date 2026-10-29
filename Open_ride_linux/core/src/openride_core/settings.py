@@ -14,7 +14,7 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
 son, vent) ; l'engine donne les titres.
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer) ou `now` (qualité, thème, mode d'affichage, courbes, images/s et volumes :
+la séance suivante, sans relancer) ou `now` (qualité, thème, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
 l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le thème et le mode d'affichage à
 l'engine aux lancements suivants).
 `apply(cfg, changes, path)` valide, écrit dans `config.toml` (commentaires et reste du fichier
@@ -69,6 +69,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
+    Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
     Setting("audio.master_pct", "Volume général", "sound", 10, "%", "now"),
