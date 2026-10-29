@@ -39,3 +39,27 @@ PR du banc des menus (messages `key` et `control_file` du Click simulé). T11 et
 ## 7. Hors périmètre
 
 Le ressenti au vélo (dureté, son, lisibilité), le bloc P27 de la séance B.
+
+## 8. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x33`).
+
+- **`engine/tests/sim_bench_inputs.py`** (module pur) : section `inputs` des scénarios du banc, à côté de `events`.
+  - `{"t": 42, "key": "Z", "hold_ms": 200}` : touche envoyée par le message de test `key` de l'engine ;
+  - `{"t": 42, "button": "Z", "duration_s": 0.2}` : bouton du Click simulé. Il devient un événement `press` du scénario Bluetooth (chemin Bluetooth complet), sans `control_file` : le scénario Bluetooth sait déjà appuyer ;
+  - effet attendu sur chaque appui, lu au journal de séance : `bias` (écart du biais ERG, et cible dans le même rapport à ± 0,5 point, même bloc), `block` (bloc suivant), `state` (`PAUSED` ou `RUNNING`, ligne `pause` ou `resume`) ;
+  - `bench.expect` : lignes du journal de séance (`journal` + `where`), motifs des journaux du core et de l'engine (`log` + `motif`), éléments du HUD dans les captures (`widget`), fichiers du HOME (`file`), vitesse pendant les bonus (`bonus_speed`, information) ; `min` et `max` ;
+  - chaque ligne du rapport commence par son renvoi à la recette : « [T11 §1] », « [J7 au clavier] ».
+- **`sim_bench.py`** : touches jouées au temps voulu (fil à part), capture juste après chaque touche, `bench.powerups` (écrit `~/OpenRide/powerups.toml` du HOME temporaire), `bench.bot_profiles` (`--bot-profile` du core), journal de séance gardé en entier.
+- **Scénarios** :
+  - `serie_t` (T11 §1 à §3) : 6 min à 600 W sur `demo`, arches tous les 1 000 m, Z au Click toutes les 20 s ;
+  - `erg_boutons` (J7, T11 §4) : 15 appuis au Click puis au clavier ;
+  - `course_bots` (T11 §8) : 4 bots à profil. T12, T13 et T15 étant sur `main`, il est actif.
+- **Mesuré au cloud sous Xvfb** (critère 1) : les trois scénarios passent, 44 attentes de recette OK en 14 min.
+  - Toutes les lignes `segment`, `pr` et `powerup` attendues ont été trouvées.
+  - Jingles : sommet, sprint, deux records, arches, fin.
+  - Pour chaque appui ERG, le biais varie de ± 2 ou ± 10 % et la cible suit à 0,3 point près.
+- **Critère 2** : avec `input_event` coupé dans `main.gd` pour l'essai, les 8 vérifications d'effet des touches du clavier échouent (biais, bloc, pause, reprise). Les appuis du Click passent toujours.
+- **Écran « Records du parcours »** : le banc vérifie `records.json`. L'écran lui-même est couvert par le scénario `records` du banc des menus.
+- **Tests** : `core/tests/test_sim_bench_scenarios.py` (31 tests). Il vérifie que les scénarios sont lisibles et que leurs clés sont connues. Il joue les vérifications sur des journaux fabriqués, avec les cas négatifs : clavier coupé, mauvais rapport, échantillon absent, bloc changé, touche non jouée.
+

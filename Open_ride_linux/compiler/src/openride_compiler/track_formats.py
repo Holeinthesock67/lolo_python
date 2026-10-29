@@ -33,7 +33,7 @@ import zlib
 from pathlib import Path
 
 from .errors import CompileError
-from .gpx import GpxPoint, _local, parse_gpx
+from .gpx import GpxPoint, _local, parse_gpx, xml_root
 
 SEMICIRCLES_TO_DEG = 180.0 / 2**31
 FORMATS = (".gpx", ".fit", ".tcx")
@@ -112,7 +112,8 @@ def _unzip(data: bytes, name: str, notes: list[str] | None) -> tuple[bytes, str]
                 out = fh.read(MAX_UNPACKED_BYTES + 1)
     except CompileError:
         raise
-    except (zipfile.BadZipFile, OSError, EOFError, zlib.error, NotImplementedError) as exc:
+    except (zipfile.BadZipFile, OSError, EOFError, zlib.error, NotImplementedError, ValueError) as exc:
+        # ValueError : en-tête local incohérent (« negative seek value », fuzz du 28 octobre)
         raise CompileError(f"{name} : archive .zip corrompue ({exc})") from None
     if len(out) > MAX_UNPACKED_BYTES:
         raise CompileError(f"{name} : {first.filename} trop gros une fois décompressé")
@@ -218,10 +219,7 @@ def _float(el: ET.Element | None) -> float | None:
 
 
 def parse_tcx(data: bytes) -> list[GpxPoint]:
-    try:
-        root = ET.fromstring(data)
-    except ET.ParseError as exc:
-        raise CompileError(f"TCX illisible : {exc}") from exc
+    root = xml_root(data, "TCX")
     points = []
     for el in root.iter():   # ordre du document : tours d'une activité, puis piste d'un parcours
         if _local(el.tag) != "Trackpoint":

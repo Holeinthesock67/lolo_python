@@ -35,15 +35,14 @@ import base64
 import copy
 import html
 import json
+import math
 import os
 import re
 import shutil
-import struct
 import subprocess
 import sys
 import tempfile
 import time
-import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
@@ -51,25 +50,32 @@ from typing import Any
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
 import hud_lisibilite  # noqa: E402
+import image_diff  # noqa: E402
+from image_diff import Image, luminance, mean_abs_diff, read_png, write_png  # noqa: E402
 import quality_guard  # noqa: E402
 
 ENGINE_DIR = Path(__file__).resolve().parents[1]
 CORE_SRC = ENGINE_DIR.parent / "core" / "src"
 COMPILER_SRC = ENGINE_DIR.parent / "compiler" / "src"
 DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
+TAU = 2.0 * math.pi
+AVATAR_CADENCE_RPM = 37.0   # cadence des scènes de l'avatar (un tour en 1,62 s)
 # Mêmes tolérances que run_engine_tests.sh, plus la synchronisation verticale sous Xvfb.
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 GODOT_TOLERATED = re.compile(
     r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
-HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
+HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "time", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
               "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2",
               "bots_gap1", "bots_jerseys")   # bots_ahead, bots_behind : lignes de bots (lot X22)
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
-GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
-GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
-CHANGED_LEVEL = 40
+GOLDEN_SSIM = 0.97                # SSIM minimale face aux images de référence (lot X20, image_diff.py)
+FREEZE_SSIM = 0.995               # deux captures de suite d'une scène figée (--fige)
+FREEZE_T = 30.0                   # instant imposé au décor vivant par --fige (s)
+# Éléments du HUD ignorés dans la comparaison aux références : valeurs qui dépendent de l'instant de la capture.
+GOLDEN_MASKS = ("status", "distance", "time", "erg_remaining", "chart_sim", "chart_erg", "bots_line1", "bots_line2")
+FREEZE_SETTLE_S = 8.0             # --fige : attente du chargement complet des tuiles et du décor avant la vue fixe
 ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
 SPEED_MPS = 8.0
@@ -101,111 +107,19 @@ MENU_DEVICES = {
 }
 
 
-# --- PNG (bibliothèque standard) ------------------------------------------------------------------
-
-@dataclass
-class Image:
-    width: int
-    height: int
-    rgb: bytes                    # 3 octets par pixel, ligne par ligne
-
-    def pixel(self, x: int, y: int) -> tuple[int, int, int]:
-        i = (y * self.width + x) * 3
-        return self.rgb[i], self.rgb[i + 1], self.rgb[i + 2]
-
-    def pixels(self, box: tuple[int, int, int, int] | None = None, step: int = 2):
-        """Pixels d'un rectangle (x0, y0, x1, y1), un sur `step` dans chaque direction."""
-        x0, y0, x1, y1 = box if box else (0, 0, self.width, self.height)
-        x0, y0 = max(0, int(x0)), max(0, int(y0))
-        x1, y1 = min(self.width, int(x1)), min(self.height, int(y1))
-        for y in range(y0, y1, step):
-            row = y * self.width * 3
-            for x in range(x0, x1, step):
-                i = row + x * 3
-                yield self.rgb[i], self.rgb[i + 1], self.rgb[i + 2]
-
-
-def _paeth(a: int, b: int, c: int) -> int:
-    p = a + b - c
-    pa, pb, pc = abs(p - a), abs(p - b), abs(p - c)
-    if pa <= pb and pa <= pc:
-        return a
-    return b if pb <= pc else c
-
-
-def read_png(path: Path) -> Image:
-    data = path.read_bytes()
-    if data[:8] != b"\x89PNG\r\n\x1a\n":
-        raise ValueError(f"{path} : pas un PNG")
-    pos, idat, width = 8, bytearray(), 0
-    height = depth = ctype = 0
-    while pos < len(data):
-        (length,) = struct.unpack(">I", data[pos:pos + 4])
-        kind = data[pos + 4:pos + 8]
-        body = data[pos + 8:pos + 8 + length]
-        pos += 12 + length
-        if kind == b"IHDR":
-            width, height, depth, ctype, _, _, interlace = struct.unpack(">IIBBBBB", body)
-            if depth != 8 or ctype not in (2, 6) or interlace:
-                raise ValueError(f"{path} : PNG non pris en charge (profondeur {depth}, type {ctype})")
-        elif kind == b"IDAT":
-            idat += body
-        elif kind == b"IEND":
-            break
-    bpp = 3 if ctype == 2 else 4
-    raw = zlib.decompress(bytes(idat))
-    stride = width * bpp
-    out = bytearray(width * height * 3)
-    prev = bytearray(stride)
-    for y in range(height):
-        f = raw[y * (stride + 1)]
-        line = bytearray(raw[y * (stride + 1) + 1:(y + 1) * (stride + 1)])
-        if f == 1:
-            for i in range(bpp, stride):
-                line[i] = (line[i] + line[i - bpp]) & 0xFF
-        elif f == 2:
-            for i in range(stride):
-                line[i] = (line[i] + prev[i]) & 0xFF
-        elif f == 3:
-            for i in range(stride):
-                left = line[i - bpp] if i >= bpp else 0
-                line[i] = (line[i] + ((left + prev[i]) >> 1)) & 0xFF
-        elif f == 4:
-            for i in range(stride):
-                left = line[i - bpp] if i >= bpp else 0
-                up_left = prev[i - bpp] if i >= bpp else 0
-                line[i] = (line[i] + _paeth(left, prev[i], up_left)) & 0xFF
-        if bpp == 3:
-            out[y * width * 3:(y + 1) * width * 3] = line
-        else:
-            o = y * width * 3
-            for x in range(width):
-                out[o + x * 3:o + x * 3 + 3] = line[x * 4:x * 4 + 3]
-        prev = line
-    return Image(width, height, bytes(out))
-
-
-def write_png(path: Path, img: Image) -> None:
-    stride = img.width * 3
-    raw = b"".join(b"\x00" + img.rgb[y * stride:(y + 1) * stride] for y in range(img.height))
-
-    def chunk(kind: bytes, body: bytes) -> bytes:
-        return struct.pack(">I", len(body)) + kind + body + struct.pack(">I", zlib.crc32(kind + body))
-
-    path.write_bytes(b"\x89PNG\r\n\x1a\n" + chunk(b"IHDR", struct.pack(">IIBBBBB", img.width, img.height, 8, 2, 0, 0, 0))
-                     + chunk(b"IDAT", zlib.compress(raw, 6)) + chunk(b"IEND", b""))
-
-
 # --- mesures sur l'image -------------------------------------------------------------------------
-
-def luminance(p: tuple[int, int, int]) -> float:
-    return (0.2126 * p[0] + 0.7152 * p[1] + 0.0722 * p[2]) / 255.0
-
 
 def is_sky(p: tuple[int, int, int]) -> bool:
     """Bleu du ciel procédural (zénith à l'horizon), brume de l'horizon ou nuage (lot P16)."""
     r, g, b = p
     return (b >= 190 and b >= r + 25 and b >= g + 5) or is_cloud(p)
+
+
+def is_open_sky(p: tuple[int, int, int]) -> bool:
+    """Bleu franc du ciel (zénith et haut de l'horizon), sans la route ni la brume grises bleutées : un trou dans
+    le terrain sous l'horizon le laisse voir (lot X20)."""
+    r, _, b = p
+    return b >= 200 and b - r >= 50
 
 
 def is_cloud(p: tuple[int, int, int]) -> bool:
@@ -239,40 +153,9 @@ def fraction(img: Image, box, pred, step: int = 2) -> float:
     return hit / n if n else 0.0
 
 
-def mean_abs_diff(a: Image, b: Image, box=None, step: int = 2) -> float:
-    """Écart moyen par composante, en niveaux sur 255 (images de même taille)."""
-    if (a.width, a.height) != (b.width, b.height):
-        return 255.0
-    n = 0
-    total = 0
-    for pa, pb in zip(a.pixels(box, step), b.pixels(box, step)):
-        n += 1
-        total += abs(pa[0] - pb[0]) + abs(pa[1] - pb[1]) + abs(pa[2] - pb[2])
-    return total / (3 * n) if n else 0.0
-
-
-def changed_fraction(a: Image, b: Image, level: int = CHANGED_LEVEL, step: int = 2) -> float:
-    """Part des pixels dont une composante change de plus de `level` niveaux (défaut localisé)."""
-    if (a.width, a.height) != (b.width, b.height):
-        return 1.0
-    n = hit = 0
-    for pa, pb in zip(a.pixels(None, step), b.pixels(None, step)):
-        n += 1
-        if max(abs(pa[0] - pb[0]), abs(pa[1] - pb[1]), abs(pa[2] - pb[2])) > level:
-            hit += 1
-    return hit / n if n else 0.0
-
-
-def diff_image(a: Image, b: Image) -> Image:
-    """Écarts amplifiés ×4, en rouge sur l'image de référence assombrie."""
-    out = bytearray(len(a.rgb))
-    for i in range(0, len(a.rgb), 3):
-        d = (abs(a.rgb[i] - b.rgb[i]) + abs(a.rgb[i + 1] - b.rgb[i + 1]) + abs(a.rgb[i + 2] - b.rgb[i + 2])) // 3
-        base = (a.rgb[i] + a.rgb[i + 1] + a.rgb[i + 2]) // 12
-        out[i] = min(255, base + 4 * d)
-        out[i + 1] = base
-        out[i + 2] = base
-    return Image(a.width, a.height, bytes(out))
+def wrapped_angle(x: float) -> float:
+    """Angle ramené dans [−π, π[ (écart entre deux positions du pédalier)."""
+    return (x + math.pi) % TAU - math.pi
 
 
 def rect_box(rect: list[float]) -> tuple[int, int, int, int]:
@@ -374,7 +257,8 @@ class Capture:
     scene: str
     png: Path
     info: dict[str, Any]
-    golden_diff: float | None = None
+    golden_diff: float | None = None      # écart moyen à la référence (information)
+    golden_ssim: float | None = None
     diff_png: Path | None = None
 
 
@@ -425,11 +309,13 @@ def write_html(report: Report, out_dir: Path, elapsed: float) -> Path:
             bad = [c for c in report.checks if c.config == config and c.scene == cap.scene and not c.ok]
             info = cap.info
             meta = (f"fps {info.get('fps')} · {info.get('meshes')} maillages · {info.get('draw_calls')} appels de dessin"
-                    + (f" · écart à la référence {cap.golden_diff:.2f}" if cap.golden_diff is not None else ""))
+                    + (f" · SSIM {cap.golden_ssim:.4f}, écart moyen {cap.golden_diff:.2f} à la référence"
+                       if cap.golden_ssim is not None else ""))
             parts.append(f"<div class='cap{' ko' if bad else ''}'><b>{html.escape(cap.scene)}</b><br>"
                          + _img_tag(cap.png) + f"<br><small>{html.escape(meta)}</small>")
             if cap.diff_png is not None:
-                parts.append("<br><small>écarts à la référence (rouge)</small><br>" + _img_tag(cap.diff_png))
+                parts.append("<br><small>écarts à la référence (blocs en rouge, masques en bleu)</small><br>"
+                             + _img_tag(cap.diff_png))
             texts = "\n".join(f"{k}: {w['text']}" for k, w in info.get("widgets", {}).items()
                               if w.get("visible") and w.get("text"))
             parts.append(f"<pre>{html.escape(texts)}</pre></div>")
@@ -468,8 +354,9 @@ class Session:
     core: VisualCore
     out_dir: Path
     report: Report
-    golden_dir: Path | None
-    update_golden: bool
+    golden_dir: Path | None       # <références>/<moteur>/<préréglage>
+    update_golden: set[str] | None   # scènes dont la référence est réécrite ; {"*"} : toutes
+    freeze_t: float | None = None    # --fige : instant imposé au décor
     lisibilite: bool = False      # --lisibilite : hauteur et contraste des textes du HUD (lot X22)
 
     def check(self, scene: str, name: str, ok: bool, detail: str = "") -> bool:
@@ -497,26 +384,42 @@ class Session:
         return img, info
 
     def _golden(self, cap: Capture, img: Image) -> None:
+        """Comparaison à l'image de référence de la scène (vignette de 640 pixels de large, lot X20) : SSIM par
+        blocs sur la luminance, éléments du HUD de GOLDEN_MASKS ignorés."""
         if self.golden_dir is None or cap.scene not in GOLDEN_SCENES:
             return
-        ref_path = self.golden_dir / cap.png.name
-        if self.update_golden:
+        ref_path = self.golden_dir / f"{cap.scene}.png"
+        if self.update_golden and ("*" in self.update_golden or cap.scene in self.update_golden):
             self.golden_dir.mkdir(parents=True, exist_ok=True)
-            shutil.copyfile(cap.png, ref_path)
+            write_png(ref_path, image_diff.vignette(img))
             return
         if not ref_path.exists():
             self.check(cap.scene, "image de référence", False, f"{ref_path} absente (lancer avec --update-golden)")
             return
         ref = read_png(ref_path)
-        d = mean_abs_diff(ref, img)
-        cap.golden_diff = d
-        if d > 0.5 and (ref.width, ref.height) == (img.width, img.height):
+        if not image_diff.same_format(ref, img):
+            self.check(cap.scene, "écart à l'image de référence", False,
+                       f"référence {ref.width}x{ref.height}, capture {img.width}x{img.height} : autre format")
+            return
+        masks = self.golden_masks(cap.info, img.width, ref.width)
+        res = image_diff.compare(ref, img, masks)
+        small = image_diff.resize(img, ref.width, ref.height)
+        cap.golden_ssim, cap.golden_diff = res.score, mean_abs_diff(ref, small)
+        ok = res.score >= GOLDEN_SSIM
+        if not ok:
             cap.diff_png = self.out_dir / f"{self.name}_{cap.scene}_ecart.png"
-            write_png(cap.diff_png, diff_image(ref, img))
-        changed = changed_fraction(ref, img)
-        self.check(cap.scene, "écart à l'image de référence", d <= GOLDEN_TOLERANCE and changed <= GOLDEN_CHANGED_MAX,
-                   f"écart moyen {d:.2f} niveaux sur 255 (seuil {GOLDEN_TOLERANCE}), {changed:.2%} de pixels "
-                   f"très différents (seuil {GOLDEN_CHANGED_MAX:.0%})")
+            write_png(cap.diff_png, image_diff.ssim_map(ref, res, masks))
+        self.check(cap.scene, "écart à l'image de référence", ok,
+                   f"SSIM {res.score:.4f} (seuil {GOLDEN_SSIM}), pire bloc {res.worst:.2f}, écart moyen "
+                   f"{cap.golden_diff:.2f} niveaux, {res.masked} blocs masqués")
+
+    @staticmethod
+    def golden_masks(info: dict[str, Any], width: int, ref_width: int) -> list[tuple[int, int, int, int]]:
+        """Rectangles des éléments de GOLDEN_MASKS affichés, à l'échelle d'une image de `ref_width` pixels de large."""
+        k = ref_width / width
+        widgets = info.get("widgets", {})
+        return [image_diff.scale_box(rect_box(widgets[key]["rect"]), k, k) for key in GOLDEN_MASKS
+                if widgets.get(key, {}).get("visible")]
 
     # --- vérifications communes ---
 
@@ -623,10 +526,12 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
             "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
     v_grade = getattr(args, "visual_grade", 1.0)
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes_dir}",
-            "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}",
+            "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}", f"--living={args.decor_vivant}",
             "--camera=subjective"]   # les scènes d'avant le lot V12 supposent la caméra subjective
-    gold = Path(args.golden) / name if args.golden else None
-    s = Session(name, width, height, core, out_dir, report, gold, args.update_golden, args.lisibilite)
+    preset_dir = quality + ("" if args.decor_vivant == "on" else "_sans_vivant") + ("" if v_grade == 1.0 else f"_k{v_grade}")
+    gold = Path(args.golden) / ("natif" if args.native else "xvfb") / preset_dir if args.golden else None
+    update = {v.strip() for v in args.update_golden.split(",") if v.strip()} if args.update_golden else None
+    s = Session(name, width, height, core, out_dir, report, gold, update, args.fige, args.lisibilite)
     print(f"== {name} ==", flush=True)
     with engine_log.open("w") as log_fh:
         proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True)
@@ -655,6 +560,8 @@ def _scenes(s: Session) -> None:
     t0 = now()
     while now() - t0 < 20.0 and "IpcClient attaché" not in core.log.path.read_text(errors="replace"):
         time.sleep(0.1)
+    if s.freeze_t is not None:   # avant toute trame : le vent du thème et le décor sont posés à l'instant imposé
+        core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "freeze", "t": s.freeze_t})
     time.sleep(1.5)
 
     # 1. Attente du core : aucun hello_ack, aucune trame.
@@ -675,7 +582,7 @@ def _scenes(s: Session) -> None:
     core.streaming = True
     loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
     s.check("vue_fixe", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
-    time.sleep(SETTLE_S)
+    time.sleep(SETTLE_S if s.freeze_t is None else FREEZE_SETTLE_S)
     shot = s.capture("vue_fixe")
     if shot:
         img, info = shot
@@ -690,6 +597,20 @@ def _scenes(s: Session) -> None:
         s.check_layout("vue_fixe", info)
         s.check_hud_pixels("vue_fixe", img, info)
         s.check_world("vue_fixe", img, info)
+        if s.freeze_t is not None:
+            # Scène figée (lot X20) : la même vue, 2 s plus tard, donne la même image (hors chronomètre et bandeau
+            # de l'aide des commandes, qui s'efface au bout de quelques secondes).
+            time.sleep(2.0)
+            again = s.capture("vue_fixe_figee")
+            if again:
+                a, b = image_diff.vignette(img), image_diff.vignette(again[0])
+                k = a.width / img.width
+                masks = s.golden_masks(again[1], img.width, a.width) + [
+                    image_diff.scale_box(rect_box(i["widgets"]["banner"]["rect"]), k, k)
+                    for i in (info, again[1]) if i["widgets"]["banner"]["visible"]]
+                res = image_diff.ssim(a, b, masks)
+                s.check("vue_fixe_figee", "scène figée : image identique 2 s plus tard", res.score >= FREEZE_SSIM,
+                        f"SSIM {res.score:.4f} (seuil {FREEZE_SSIM}), pire bloc {res.worst:.2f}")
 
     # 2 bis. Nuages (lot P16) : ciel de P6 du thème par défaut (couverture 0,3), pixels clairs au-dessus
     # de l'horizon, entre les panneaux du HUD.
@@ -783,7 +704,8 @@ def _scenes(s: Session) -> None:
         s.check("bots", "bot devant visible dans le champ de la caméra", b.get("shown") == 2 and b.get("in_view", 0) >= 1,
                 f"{b}")
         s.check_layout("bots", info)
-    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None)
+    _draft_gauge_scene(s)
+    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, draft=None, draft_bot=None)
     time.sleep(SETTLE_S)
     shot = s.capture("sans_bot")
     if shot:
@@ -796,17 +718,29 @@ def _scenes(s: Session) -> None:
 
     # 3 ter ter. Avatar (lot V6), vu par la caméra de contrôle derrière lui (la caméra du jeu reste
     # subjective, où l'avatar est caché) : visible, jambes à des angles différents sur deux captures
-    # espacées (cadence de 37 tr/min : moins d'un tour entre les deux), assis à plat, en danseuse sur une pente de 10 %.
+    # espacées (cadence de 37 tr/min, angle attendu tiré du temps entre les captures), assis à plat, en danseuse sur une pente de 10 %.
     shot = s.capture("avatar_subjectif")
     if shot:
         s.check("avatar_subjectif", "avatar caché en vue subjective", not shot[1].get("avatar", {}).get("visible", True),
                 f"{shot[1].get('avatar')}")
-    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
+    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=AVATAR_CADENCE_RPM)
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
     time.sleep(1.0)
     a = s.capture("avatar_assis")
-    time.sleep(0.37)
-    b = s.capture("avatar_assis_2")
+    # Entre deux captures, le pédalier avance de ω·Δt : Δt dépend du temps d'écriture des PNG (plus long sur
+    # le PC en fenêtre réelle) et peut tomber près d'un tour entier, d'où deux images au même angle. Δt est lu
+    # dans les captures (`ticks_ms`) : tant que l'avance attendue est à moins de 0,8 rad d'un tour entier,
+    # nouvelle capture après un demi-tour d'attente (phase décalée de π ; trois essais au plus).
+    omega = AVATAR_CADENCE_RPM / 60.0 * TAU
+    b, expected = None, 0.0
+    for attempt in range(3):
+        time.sleep(0.37 if attempt == 0 else math.pi / omega)
+        b = s.capture("avatar_assis_2")
+        if not (a and b):
+            break
+        expected = wrapped_angle(omega * (b[1].get("ticks_ms", 0) - a[1].get("ticks_ms", 0)) / 1000.0)
+        if abs(expected) >= 0.8:
+            break
     if a and b:
         (img_a, info_a), (img_b, info_b) = a, b
         av_a, av_b = info_a.get("avatar", {}), info_b.get("avatar", {})
@@ -815,8 +749,9 @@ def _scenes(s: Session) -> None:
         s.check("avatar_assis", "avatar assis à plat", av_a.get("standing") is False)
         s.check("avatar_assis", "avatar entier (niveau de détail 0)", av_a.get("lod") == 0 and av_a.get("triangles", 0) > 1000,
                 f"{av_a.get('triangles')} triangles")
-        turn = abs((av_b.get("crank", 0.0) - av_a.get("crank", 0.0) + 3.14159) % 6.28318 - 3.14159)
-        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.15, f"{turn:.2f} rad d'écart")
+        turn = abs(wrapped_angle(av_b.get("crank", 0.0) - av_a.get("crank", 0.0)))
+        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.15,
+                f"{turn:.2f} rad d'écart, {abs(expected):.2f} rad attendus d'après le temps entre les captures")
         box = (s.width * 0.30, s.height * 0.25, s.width * 0.70, s.height * 0.95)
         d = mean_abs_diff(img_a, img_b, box)
         s.check("avatar_assis_2", "les jambes changent l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
@@ -1076,6 +1011,7 @@ def _scenes(s: Session) -> None:
     _menu_scenes(s)
     _pentes_scenes(s)
     _decor_vivant_scene(s)
+    _voies_scene(s)
     fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
 
@@ -1198,6 +1134,7 @@ def _decor_vivant_scene(s: Session) -> None:
             s.check("decor_vivant", f"{label} en vue", seen[k] > 0, f"{seen[k]} au plus")
         s.check_layout("decor_vivant", info)
         s.check_world("decor_vivant", img, info)
+        _check_contacts(s, "decor_vivant", info)
     # Pause : véhicules, cyclistes, ciel et bateaux figés
     core.set_scene(speed=0.0, session_state="PAUSED", pause_reason="user")
     time.sleep(1.0)
@@ -1210,6 +1147,99 @@ def _decor_vivant_scene(s: Session) -> None:
         s.check("decor_pause", "décor figé en pause (véhicules, cyclistes, ciel, bateaux)",
                 sig_a is not None and sig_a != 0 and sig_a == sig_b, f"signature {sig_a} puis {sig_b}")
     core.set_scene(speed=SPEED_MPS, session_state="RUNNING", pause_reason=None)
+
+
+PASS_WINDOW_M = 10.0   # voiture qui double vue à moins de 10 m devant ou derrière le cycliste (lot P32)
+PASS_WAIT_S = 60.0   # la voiture d'en face croisée, puis l'utilitaire qui double (décor ralenti sous Xvfb)
+
+
+def _place(s: Session, **spec: Any) -> None:
+    s.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "decor_place", **spec})
+
+
+def _check_lanes(s: Session, scene: str, info: dict[str, Any]) -> None:
+    """Lot P32 : chacun roule à droite dans son sens. Cycliste à droite de l'axe ; usagers en face à gauche de
+    l'axe (leur droite) ; cyclistes du décor qui roulent devant, dans le même sens, à droite."""
+    dec = info.get("decor", {})
+    rider = float(dec.get("rider_lateral", 0.0))
+    s.check(scene, "cycliste dans la voie de droite", 0.5 <= rider <= 2.0, f"{rider:+.2f} m de l'axe")
+    users = dec.get("road_users", [])
+    facing = [u for u in users if u["dir"] < 0]
+    s.check(scene, "usagers en face sur leur droite (à gauche de l'axe)", bool(facing) and all(u["lateral"] < 0.0 for u in facing),
+            ", ".join(f"{u['what']} {u['lateral']:+.2f} m" for u in facing) or "aucun en face")
+    ahead = [u for u in users if u["dir"] > 0 and u["what"] == "cyclist" and u["kind"] == "ahead"]
+    if ahead:
+        s.check(scene, "cyclistes devant, même sens, à droite du cycliste", all(u["lateral"] > rider for u in ahead),
+                ", ".join(f"{u['lateral']:+.2f} m" for u in ahead))
+
+
+def _check_contacts(s: Session, scene: str, info: dict[str, Any]) -> None:
+    """Lot P32 : compteur de contacts du décor (living_decor.gd), cumulé depuis le début : véhicules entre eux,
+    véhicule et cycliste, cyclistes de groupes différents, bots et cycliste compris."""
+    dec = info.get("decor", {})
+    n = int(dec.get("contacts", -1))
+    s.check(scene, "aucun contact sur la route", n == 0, f"{n} ({dec.get('last_contact', '')})" if n else "0")
+
+
+def _voies_scene(s: Session) -> None:
+    """Lot P32 (demande du 29 octobre : « les véhicules et les cyclistes roulent à droite de la route et pas au
+    milieu ») : une voiture et un cycliste en face, deux cyclistes devant dans le même sens, puis un utilitaire
+    posé en train de doubler (caméra derrière l'avatar), posés par le test (`decor_place`) ; positions lues dans
+    `road_users`. Le décor avance au pas de l'image : sous Xvfb (quelques images/s), il paraît ralenti."""
+    core = s.core
+    core.set_scene(speed=SPEED_MPS, s=DECOR_S + 400.0, session_state="RUNNING", grade=0.0, grade_sent=0.0)
+    time.sleep(SETTLE_S)
+    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 70.0, "kmh": 40.0},
+           cyclists={"case": "ahead", "rel_m": 14.0, "size": 2, "abreast": False})
+    _place(s, cyclists={"case": "oncoming", "rel_m": 45.0, "size": 1})
+    time.sleep(1.5)
+    shot = s.capture("voies_face")
+    if shot:
+        _check_lanes(s, "voies_face", shot[1])
+        s.check_world("voies_face", *shot)
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    time.sleep(1.0)
+    # Demande du 29 octobre : « un véhicule doit attendre avant de dépasser si obstacle en face ». Une voiture
+    # arrive en face, l'utilitaire posé en train de doubler reste derrière ; il double une fois la voie libre.
+    _place(s, vehicle={"kind": "car_b", "dir": -1, "rel_m": 70.0, "kmh": 50.0})
+    _place(s, vehicle={"kind": "van", "dir": 1, "rel_m": 4.0, "kmh": 60.0})
+    time.sleep(0.7)   # affiché à l'image suivante : deux images au moins sous Xvfb
+    wait = s.capture("voies_attente")
+    if wait:
+        users = wait[1].get("decor", {}).get("road_users", [])
+        vans = [u for u in users if u["what"] == "vehicle" and u["dir"] > 0]
+        facing = [u for u in users if u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] > 0.0]
+        s.check("voies_attente", "voiture en face : l'utilitaire attend derrière au lieu de doubler",
+                bool(facing) and bool(vans) and all(u["rel_m"] < -PASS_WINDOW_M for u in vans),
+                ", ".join(f"{u['kind']} à {u['rel_m']:+.0f} m" for u in vans + facing))
+    # Une fois la voiture d'en face croisée, un utilitaire posé en train de doubler double vraiment. Le décor
+    # avance au pas de l'image et le cycliste en temps réel : sous Xvfb, celui qui attend derrière ne rattrape
+    # jamais le cycliste, d'où un second utilitaire posé à côté de lui.
+    shot = None
+    t0 = now()
+    while now() - t0 < PASS_WAIT_S:
+        time.sleep(0.5)
+        shot = s.capture("voies_depassement")
+        users = shot[1].get("decor", {}).get("road_users", []) if shot else []
+        if any(u["what"] == "vehicle" and u["dir"] > 0 and -PASS_WINDOW_M < u["rel_m"] < PASS_WINDOW_M for u in users):
+            break
+        if not any(u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] > 0.0 for u in users):
+            _place(s, vehicle={"kind": "van", "dir": 1, "rel_m": 4.0, "kmh": 60.0})
+            time.sleep(0.7)
+    caps = [c for c in s.report.captures if c.config == s.name and c.scene == "voies_depassement"]
+    for c in caps[:-1]:
+        s.report.captures.remove(c)
+    if shot:
+        dec = shot[1].get("decor", {})
+        rider = float(dec.get("rider_lateral", 0.0))
+        passing = [u for u in dec.get("road_users", []) if u["what"] == "vehicle" and u["dir"] > 0
+                   and -PASS_WINDOW_M < u["rel_m"] < PASS_WINDOW_M]
+        gap = [abs(rider - u["lateral"]) - u["half_width"] - 0.3 for u in passing]
+        s.check("voies_depassement", "voiture qui double à 1,5 m au moins, sur la gauche", bool(passing)
+                and all(u["lateral"] < rider for u in passing) and min(gap) >= 1.5 - 1e-3,
+                ", ".join(f"{u['lateral']:+.2f} m, écart {g:.2f} m" for u, g in zip(passing, gap)) or "aucune à côté")
+        _check_contacts(s, "voies_depassement", shot[1])
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 
 def _menu_scenes(s: Session) -> None:
@@ -1271,6 +1301,45 @@ def _menu_scenes(s: Session) -> None:
     _progress_scenes(s)
 
 
+def _draft_gauge_scene(s: Session) -> None:
+    """Jauge d'abri (maquette C validée le 29 octobre) : un bot à 6 m devant donne 13,5 % d'abri (« Abri 30 % ») ;
+    réglage `render.draft_gauge` coupé par défaut, rien au-dessus du bot ; à « on », arc au-dessus du bot, dans le
+    champ de la caméra, avec « 30 % » en medium et high ; coupé à nouveau, plus rien."""
+    core = s.core
+
+    def gauge_setting(value: str) -> None:
+        core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": [
+            {"key": "render.draft_gauge", "label": "Jauge d'abri des bots", "group": "graphics", "type": "choice",
+             "value": value, "choices": ["off", "on"], "applies": "now"}]})
+        time.sleep(0.6)
+
+    s_now = core.current_s()
+    core.set_scene(speed=0.0, bots=[{"id": "bot1", "name": "Bot 250 W", "s": s_now + 6.0, "v": 0.0, "kind": "constant"}],
+                   bot_ahead="bot1", bot_behind=None, jerseys=None, draft=0.135, draft_bot="bot1")
+    time.sleep(SETTLE_S)
+    shot = s.capture("jauge_abri_coupee")
+    if shot:
+        g = shot[1].get("draft_gauge", {})
+        s.check("jauge_abri_coupee", "réglage coupé par défaut : pas de jauge", g.get("visible") is False, f"{g}")
+    gauge_setting("on")
+    shot = s.capture("jauge_abri")
+    if shot:
+        img, info = shot
+        g = info.get("draft_gauge", {})
+        s.check("jauge_abri", "jauge au-dessus du bot qui abrite, dans l'image",
+                g.get("visible") and g.get("bot") == "bot1" and g.get("on_screen"), f"{g}")
+        want = "" if info.get("quality") == "low" else "30 %"
+        s.check("jauge_abri", f"texte sous l'arc : « {want} »", g.get("text") == want, f"{g.get('text')!r}")
+        s.check("jauge_abri", "pastille du HUD au même pourcentage", info["widgets"]["draft"]["text"] == "Abri 30 %",
+                f"{info['widgets']['draft']['text']!r}")
+        s.check_layout("jauge_abri", info)
+    gauge_setting("off")
+    shot = s.capture("jauge_abri_retiree")
+    if shot:
+        g = shot[1].get("draft_gauge", {})
+        s.check("jauge_abri_retiree", "réglage recoupé : jauge cachée", g.get("visible") is False, f"{g}")
+
+
 def _camera_scenes(s: Session) -> None:
     """Lot V12 : quatre vues de caméra au Click sur le parcours de démonstration. A court et flèches : vue suivante,
     précédente ; A long : vue par défaut ; l'avatar n'apparaît pas en vue subjective ; la vue choisie est mémorisée
@@ -1312,13 +1381,17 @@ def _camera_scenes(s: Session) -> None:
         cam_far, cam_near = far[1]["camera"], near[1]["camera"]
         s.check("camera_follow_far", "suivi éloigné plus haut que le suivi proche", cam_far[1] > cam_near[1] + 2.0,
                 f"{cam_far[1]:.1f} m contre {cam_near[1]:.1f} m")
-    # Transition douce : une image prise 0,15 s après l'appui est en cours de transition, sans saut de position
+    # Transition douce : une image prise 0,1 s après l'appui est en cours de transition, sans saut de position, et
+    # le terrain couvre déjà le bas de l'image (pas de ciel sous l'horizon pendant la bascule, lot X20).
     core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_SHORT"})   # subjective -> suivi proche
-    time.sleep(0.15)
+    time.sleep(0.1)
     shot = s.capture("camera_transition")
     if shot:
         s.check("camera_transition", "pose intermédiaire pendant la transition", shot[1].get("camera_transition") is True,
                 f"{shot[1].get('camera_transition')}")
+        low = fraction(shot[0], (0, s.height * 2 // 3, s.width, s.height), is_open_sky, step=4)
+        s.check("camera_transition", "pas de ciel sous l'horizon pendant la bascule", low <= 0.02,
+                f"{low:.1%} de pixels de ciel dans le tiers bas")
     time.sleep(1.0)
     press("A_SHORT")   # suivi éloigné
     press("A_LONG")    # vue par défaut
@@ -1521,8 +1594,14 @@ def main() -> int:
                     help=f"résolution:qualité, séparées par des virgules (défaut {DEFAULT_CONFIGS})")
     ap.add_argument("--out", type=Path, default=None, help="dossier des captures et du rapport (défaut : dossier temporaire)")
     ap.add_argument("--native", action="store_true", help="écran réel et rendu habituel, sans Xvfb")
-    ap.add_argument("--golden", default=None, help="dossier des images de référence (un sous-dossier par configuration)")
-    ap.add_argument("--update-golden", action="store_true", help="enregistre les captures comme nouvelles références")
+    ap.add_argument("--golden", default=None,
+                    help="dossier des images de référence : <dossier>/<xvfb|natif>/<préréglage>/<scène>.png")
+    ap.add_argument("--update-golden", nargs="?", const="*", default=None, metavar="SCÈNES",
+                    help="réécrit les références (toutes, ou seulement les scènes listées, séparées par des virgules)")
+    ap.add_argument("--fige", nargs="?", type=float, const=FREEZE_T, default=None, metavar="T",
+                    help=f"scène figée : décor vivant, nuages, herbe et personnages arrêtés à l'instant T (défaut {FREEZE_T:g} s)")
+    ap.add_argument("--decor-vivant", choices=("on", "off"), default="on",
+                    help="off : décor vivant coupé, rendu de la 1.0 (références dans <préréglage>_sans_vivant)")
     ap.add_argument("--lisibilite", action="store_true",
                     help="hauteur des chiffres et contraste des textes du HUD sur chaque capture (lot X22)")
     args = ap.parse_args()
@@ -1563,7 +1642,7 @@ def main() -> int:
     finally:
         shutil.rmtree(routes_dir, ignore_errors=True)
     if args.update_golden:
-        report.notes.append(f"Références enregistrées dans {args.golden}.")
+        report.notes.append(f"Références enregistrées dans {args.golden} ({args.update_golden}).")
     page = write_html(report, out_dir, now() - t0)
     fails = report.failures()
     print(f"Tests graphiques : {len(report.checks) - len(fails)}/{len(report.checks)} vérifications réussies")

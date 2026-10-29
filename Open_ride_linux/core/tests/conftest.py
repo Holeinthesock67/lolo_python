@@ -21,3 +21,20 @@ def records_and_powerups_in_tmp(tmp_path, monkeypatch):
     from openride_core import powerups, records
     monkeypatch.setattr(records, "RECORDS_FILE", tmp_path / "OpenRide" / "records.json")
     monkeypatch.setattr(powerups, "POWERUPS_FILE", tmp_path / "OpenRide" / "powerups.toml")
+
+# Profils du fuzz des fichiers (lot X26) : 200 exemples par lecteur, `--hypothesis-profile=long` (5 000)
+# sur le PC ; pas de délai par exemple (la limite de 2 s est vérifiée dans les tests).
+# Le dossier de travail d'hypothesis va dans un dossier temporaire : rien n'est écrit dans le dépôt
+# (garde-fou d'isolation), et pas de base d'exemples gardée d'un passage à l'autre.
+try:
+    import tempfile as _tempfile
+
+    from hypothesis import settings as _hyp_settings
+    from hypothesis.configuration import set_hypothesis_home_dir as _hyp_home
+
+    _hyp_home(_tempfile.mkdtemp(prefix="openride-hypothesis-"))
+    _hyp_settings.register_profile("default", max_examples=200, deadline=None, database=None)
+    _hyp_settings.register_profile("long", max_examples=5000, deadline=None, database=None)
+    _hyp_settings.load_profile("default")
+except ImportError:   # extra dev absent : les tests test_fuzz_* sont sautés (importorskip)
+    pass

@@ -11,6 +11,11 @@ cadence des notifications (nouvelles lignes du lot K8), et coupures « corrélé
 celles qui tombent à moins de ``CORRELATION_WINDOW_S`` d'une écriture au trainer (valeur portée
 par la ligne de coupure) ou d'un événement du trainer dans le journal (connexion, reconnexion,
 perte, commande refusée…).
+
+Latence des appuis du Click (lot X7) : ``--latence CORE.log ENGINE.log`` apparie par identifiant les
+lignes ``[latence] id=N etage=… t=…`` du core (notif, evenement, ipc, cp) et de l'engine (recu, affiche),
+puis donne médiane, p95 et maximum de chaque étage et de bout en bout (notification → image affichée) ;
+les appuis incomplets (sans image affichée : appui de menu, Control Point absent…) sont comptés à part.
 """
 
 from __future__ import annotations
@@ -53,6 +58,10 @@ CORE_FORMAT_STRINGS: dict[str, tuple[str, str]] = {
         "session.py",
         'Perf : pas p50 %.2f / p99 %.2f / max %.2f ms ; retard p99 %.1f / max %.1f ms ;"\n'
         '                         " CPU %.1f %%',
+    ),
+    "jitter": (
+        "jitter.py",
+        "Gigue%s : physique p50 %.2f p99 %.2f max %.2f ms ; state p99 %.2f max %.2f ms (%d pas)",
     ),
     "trainer_lost_pause": (
         "session.py",
@@ -141,6 +150,11 @@ PATTERNS: dict[str, re.Pattern[str]] = {
         r"^Perf : pas p50 (?P<step_p50>[0-9.]+) / p99 (?P<step_p99>[0-9.]+) / max (?P<step_max>[0-9.]+) ms ; "
         r"retard p99 (?P<lag_p99>[0-9.]+) / max (?P<lag_max>[0-9.]+) ms ; "
         r"CPU (?P<cpu>[0-9.]+) %$"
+    ),
+    "jitter": re.compile(
+        r"^Gigue(?P<whole> \(séance entière\))? : physique p50 (?P<p50>[0-9.]+) p99 (?P<p99>[0-9.]+) "
+        r"max (?P<max>[0-9.]+) ms ; state p99 (?P<state_p99>[0-9.]+) max (?P<state_max>[0-9.]+) ms "
+        r"\((?P<n>\d+) pas\)$"
     ),
     "trainer_lost_pause": re.compile(r"^Trainer perdu : pause automatique\.$"),
     "engine_lost_pause": re.compile(r"^Engine perdu : pause automatique\.$"),
@@ -816,6 +830,109 @@ def _format_click_details(c: ClickReport) -> list[str]:
     return out
 
 
+# --- gigue de la boucle (lot X17) ------------------------------------------------------------
+
+JITTER_P99_LIMIT_MS = 5.0   # critère de la série W : gigue de la physique à 50 Hz sous 5 ms (p99)
+ENGINE_JITTER_RE = re.compile(
+    r"\[gigue\] state : écart entre trames p50 (?P<p50>[0-9.]+) p99 (?P<p99>[0-9.]+) max (?P<max>[0-9.]+) ms "
+    r"\((?P<n>\d+) trames\)")
+
+
+def jitter_report(lines: Iterable[str]) -> dict[str, Any]:
+    """Lignes `Gigue` du core (une par minute, une pour la séance) et `[gigue]` de l'engine ; verdict
+    « p99 de la physique < 5 ms » sur la séance entière, sinon sur la pire minute."""
+    minutes, engine, whole = [], [], None
+    for line in lines:
+        head = LINE_RE.match(line.rstrip("\n"))
+        m = PATTERNS["jitter"].match(head["msg"]) if head else None
+        if m:
+            row = {"heure": head["ts"][:19], "p50_ms": float(m["p50"]),
+                   "p99_ms": float(m["p99"]), "max_ms": float(m["max"]), "state_p99_ms": float(m["state_p99"]),
+                   "state_max_ms": float(m["state_max"]), "pas": int(m["n"])}
+            if m["whole"]:
+                whole = row
+            else:
+                minutes.append(row)
+            continue
+        e = ENGINE_JITTER_RE.search(line)
+        if e:
+            engine.append({"p50_ms": float(e["p50"]), "p99_ms": float(e["p99"]), "max_ms": float(e["max"]),
+                           "trames": int(e["n"])})
+    ref = whole["p99_ms"] if whole else max((r["p99_ms"] for r in minutes), default=None)
+    return {"minutes": minutes, "seance": whole, "engine": engine, "limite_p99_ms": JITTER_P99_LIMIT_MS,
+            "p99_ms": ref, "ok": ref is not None and ref < JITTER_P99_LIMIT_MS}
+
+
+def format_jitter(rep: dict[str, Any]) -> str:
+    out = ["Gigue de la boucle du core (lot X17)", "",
+           "  heure                physique p50   p99    max  | state p99    max |   pas"]
+    for r in rep["minutes"] + ([dict(rep["seance"], heure="séance entière")] if rep["seance"] else []):
+        out.append(f"  {r['heure'] or '?':<19}        {r['p50_ms']:6.2f} {r['p99_ms']:6.2f} {r['max_ms']:6.2f} |"
+                   f"    {r['state_p99_ms']:6.2f} {r['state_max_ms']:6.2f} | {r['pas']:5d}")
+    for r in rep["engine"]:
+        out.append(f"  engine : écart entre trames state p50 {r['p50_ms']:.1f}, p99 {r['p99_ms']:.1f}, "
+                   f"max {r['max_ms']:.1f} ms ({r['trames']} trames)")
+    if rep["p99_ms"] is None:
+        out += ["", "Aucune ligne « Gigue » : journal d'un core antérieur au lot X17 ou séance de moins d'une minute."]
+    else:
+        out += ["", f"[{'OK' if rep['ok'] else 'ÉCHEC'}] gigue de la physique p99 {rep['p99_ms']:.2f} ms "
+                    f"(limite {JITTER_P99_LIMIT_MS:g} ms)"]
+    return "\n".join(out)
+
+
+# --- latence des appuis (lot X7) -------------------------------------------------------
+
+LATENCY_RE = re.compile(r"\[latence\] id=(\d+) etage=(\w+) t=([0-9.]+)")
+LATENCY_STAGES = ("notif", "evenement", "ipc", "cp", "recu", "affiche")
+# Étages mesurés : (libellé, étage de départ, étage d'arrivée).
+LATENCY_HOPS = (("notification → événement", "notif", "evenement"), ("événement → envoi à l'engine", "evenement", "ipc"),
+                ("événement → Control Point", "evenement", "cp"), ("envoi → reçu par l'engine", "ipc", "recu"),
+                ("reçu → image affichée", "recu", "affiche"), ("bout en bout (notification → image)", "notif", "affiche"))
+
+
+def parse_latency(lines: Iterable[str]) -> dict[int, dict[str, float]]:
+    """Identifiant d'appui → {étage: heure} ; un étage répété garde sa première heure."""
+    out: dict[int, dict[str, float]] = {}
+    for line in lines:
+        m = LATENCY_RE.search(line)
+        if m:
+            out.setdefault(int(m.group(1)), {}).setdefault(m.group(2), float(m.group(3)))
+    return out
+
+
+def latency_report(core_lines: Iterable[str], engine_lines: Iterable[str]) -> dict[str, Any]:
+    """Statistiques en ms de chaque étage sur les appuis qui ont les deux bouts ; appuis complets et incomplets."""
+    presses = parse_latency(core_lines)
+    for pid, stages in parse_latency(engine_lines).items():
+        presses.setdefault(pid, {}).update({k: v for k, v in stages.items() if k not in presses.get(pid, {})})
+    complete = [pid for pid, st in presses.items() if "notif" in st and "affiche" in st]
+    missing: dict[str, int] = {}
+    for pid, st in presses.items():
+        if pid not in complete:
+            for stage in LATENCY_STAGES:
+                if stage not in st:
+                    missing[stage] = missing.get(stage, 0) + 1
+    hops = {}
+    for label, a, b in LATENCY_HOPS:
+        vals = [(st[b] - st[a]) * 1000.0 for st in presses.values() if a in st and b in st]
+        if vals:
+            hops[label] = {"count": len(vals), "median_ms": round(statistics.median(vals), 1),
+                           "p95_ms": _p95(vals), "max_ms": round(max(vals), 1)}
+    return {"presses": len(presses), "complete": len(complete), "incomplete": len(presses) - len(complete),
+            "missing_stages": missing, "hops": hops}
+
+
+def format_latency(rep: dict[str, Any]) -> str:
+    lines = [f"Latence des appuis du Click : {rep['presses']} appui(s), {rep['complete']} apparié(s) de bout en bout, "
+             f"{rep['incomplete']} incomplet(s)"]
+    if rep["missing_stages"]:
+        lines.append("  étages manquants des incomplets : " + ", ".join(f"{k} {v}" for k, v in rep["missing_stages"].items()))
+    for label, h in rep["hops"].items():
+        lines.append(f"  {label:<38} médiane {h['median_ms']:>7.1f} ms   p95 {h['p95_ms']:>7.1f} ms   "
+                     f"max {h['max_ms']:>7.1f} ms   ({h['count']})")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m openride_core.tools.log_report",
@@ -840,12 +957,40 @@ def main(argv: list[str] | None = None) -> int:
         dest="all_sessions",
         help="Analyse tous les lancements présents dans le fichier (défaut : dernier lancement)",
     )
+    parser.add_argument(
+        "--gigue",
+        action="store_true",
+        help="Gigue de la boucle par minute et verdict « p99 < 5 ms » (lot X17) ; code 1 si dépassé",
+    )
+    parser.add_argument(
+        "--latence",
+        nargs=2,
+        type=Path,
+        metavar=("CORE.log", "ENGINE.log"),
+        help="Latence des appuis du Click (lot X7) : journaux du core et de l'engine lancés avec --latence",
+    )
     args = parser.parse_args(argv)
+
+    if args.latence:
+        texts = []
+        for p in args.latence:
+            if not p.expanduser().is_file():
+                print(f"Erreur : fichier journal introuvable : {p}", file=sys.stderr)
+                return 1
+            texts.append(p.expanduser().read_text(encoding="utf-8", errors="replace").splitlines())
+        lat = latency_report(*texts)
+        print(json.dumps(lat, ensure_ascii=False, indent=2) if args.as_json else format_latency(lat))
+        return 0
 
     path = Path(args.journal).expanduser()
     if not path.is_file():
         print(f"Erreur : fichier journal introuvable : {path}", file=sys.stderr)
         return 1
+    if args.gigue:
+        with path.open(encoding="utf-8", errors="replace") as fh:
+            jrep = jitter_report(fh)
+        print(json.dumps(jrep, ensure_ascii=False, indent=2) if args.as_json else format_jitter(jrep))
+        return 0 if jrep["ok"] or jrep["p99_ms"] is None else 1
 
     with path.open(encoding="utf-8", errors="replace") as fh:
         rep = analyse(fh, all_sessions=args.all_sessions)

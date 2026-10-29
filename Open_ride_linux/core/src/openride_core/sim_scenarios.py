@@ -4,7 +4,8 @@ Un scénario est un dictionnaire (ou un fichier JSON du même format) :
 
     {
       "seed": 0,
-      "trainer": {"appear_at": 2, "connect_delay_s": 0.5, "rider_power_w": 180},
+      "trainer": {"appear_at": 2, "connect_delay_s": 0.5},
+      "rider": {"strategy": "constante", "watts": 180, "cadence_rpm": 88},
       "click": {"appear_at": 4, "plus": {...}, "minus": {...}, "relay_delay_s": [0.005, 0.04]},
       "hr": {"appear_at": 3, "rest_bpm": 60, "contact": true, "battery_pct": 80},
       "hr_watch": {"appear_at": 0, "rssi": -45},
@@ -12,9 +13,11 @@ Un scénario est un dictionnaire (ou un fichier JSON du même format) :
       "control_file": "/tmp/appuis.jsonl"
     }
 
-Une section absente (« trainer », « click », « hr », « hr_watch ») retire l'appareil ; `null` aussi. Les temps
-sont en secondes depuis le démarrage du monde simulé (lancement du core). `control_file` (facultatif) :
-fichier suivi pendant la séance, une ligne JSON par événement appliqué tout de suite (sans « t »). Les scénarios
+Une section absente (« trainer », « click », « hr », « hr_watch ») retire l'appareil ; `null` aussi.
+« rider » décrit le cycliste virtuel qui pédale sur le trainer (`sim_rider.py`, lot X27) ; absente, il
+roule à 180 W et 88 rpm. Les temps sont en secondes depuis le démarrage du monde simulé (lancement du
+core). `control_file` (facultatif) : fichier suivi pendant la séance, une ligne JSON par événement
+appliqué tout de suite (sans « t »). Les scénarios
 intégrés reproduisent les essais réels ; `openride-core run --sim-scenario NOM|FICHIER`.
 """
 
@@ -25,7 +28,9 @@ import json
 from pathlib import Path
 from typing import Any
 
-from .ble_sim import WATCH_ADDRESS, WATCH_NAME, SimClickBox, SimHrStrap, SimTrainer, SimWorld, click_button
+from .ble_sim import (RESPONSES, WATCH_ADDRESS, WATCH_NAME, SimClickBox, SimHrStrap, SimTrainer, SimWorld,
+                      click_button, load_calibration)
+from .sim_rider import RIDER_KEYS, STRATEGIES, SimRider
 
 
 class SimScenarioError(Exception):
@@ -33,14 +38,18 @@ class SimScenarioError(Exception):
 
 
 TRAINER_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
-                "ibd_hz", "rider_power_w", "cadence_rpm", "erg_tau_s", "cp_latency_s",
-                "power_range", "refuse_control", "busy_window_s", "relayed_hr", "target_speed_kmh"}
+                "ibd_hz", "erg_tau_s", "cp_latency_s", "power_range", "refuse_control", "busy_window_s", "relayed_hr",
+                "response", "brake_delay_s", "brake_tau_up_s", "brake_tau_down_s", "flywheel_kg_m2",
+                "notify_jitter_s", "rider_max_w", "calibration"}
+# Réglages du modèle réaliste (lot X6) : nombres positifs, sans effet en réponse « instant ».
+RESPONSE_KEYS = ("brake_delay_s", "brake_tau_up_s", "brake_tau_down_s", "flywheel_kg_m2", "notify_jitter_s",
+                 "rider_max_w")
 CLICK_BOX_KEYS = {"address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
                   "status_hz", "battery_pct", "sleep_on_drop", "mute_after_s", "unlock_on_ride_on"}
 CLICK_KEYS = CLICK_BOX_KEYS - {"address"} | {"plus", "minus", "relay_delay_s"}
 HR_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures", "asleep",
            "rest_bpm", "max_bpm", "ftp_w", "tau_s", "bpm", "contact", "battery_pct", "rssi"}
-TOP_KEYS = {"description", "seed", "trainer", "click", "hr", "hr_watch", "events", "control_file"}
+TOP_KEYS = {"description", "seed", "trainer", "rider", "click", "hr", "hr_watch", "events", "control_file"}
 ACTIONS = {"press", "drop", "wake", "sleep", "connect_failures", "connect_delay", "att_error",
            "cp_silent", "other_device", "silence", "control_lost", "refuse_control", "rider", "bpm", "contact"}
 EVENT_KEYS = {"t", "device", "action", "button", "duration_s", "count", "code", "seconds",
@@ -159,6 +168,11 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             {"t": 15.0, "action": "press", "button": "-"},
             {"t": 20.0, "action": "press", "button": "+"},
         ]),
+    "realiste": _with(_READY, description=(
+        "Trainer à réponse réaliste (lot X6) : frein à retard pur, serrage en 2 s, relâchement en 4,9 s "
+        "(90 % vers 12 s, comme à l'essai du 25 octobre), volant d'inertie, effort de la route en SIM."),
+        trainer={"response": "realiste"},
+        events=[]),
     "fc_relayee_figee": _with(_READY, description=(
         "Ceinture appairée au trainer : FC relayée qui varie, puis reste figée 40 s avant de reprendre."),
         trainer={"appear_at": 0.3, "connect_delay_s": 0.3, "relayed_hr": True},
@@ -192,9 +206,32 @@ def validate(spec: Any) -> dict[str, Any]:
                           ("hr_watch", HR_KEYS)):
         if spec.get(section) is not None:
             _check_keys(section, spec[section], keys)
-    speed = (spec.get("trainer") or {}).get("target_speed_kmh")
-    if speed is not None and not 0 < _num("trainer.target_speed_kmh", speed) <= 80:
-        raise SimScenarioError("trainer.target_speed_kmh : entre 0 et 80 km/h")
+    rider = spec.get("rider")
+    if rider is not None:
+        _check_keys("rider", rider, RIDER_KEYS)
+        if rider.get("strategy", "constante") not in STRATEGIES:
+            raise SimScenarioError(f"rider.strategy : {rider['strategy']!r} inconnue ({', '.join(STRATEGIES)})")
+        for key, value in rider.items():
+            if key == "sprint_at_s":
+                if not isinstance(value, list):
+                    raise SimScenarioError("rider.sprint_at_s : liste de temps attendue")
+                for v in value:
+                    _num("rider.sprint_at_s", v)
+            elif key not in ("strategy", "seed") and value is not None:
+                _num(f"rider.{key}", value)
+        if rider.get("strategy") == "vitesse" and not 0 < _num("rider.speed_kmh", rider.get("speed_kmh")) <= 80:
+            raise SimScenarioError("rider.speed_kmh : entre 0 et 80 km/h")
+    trainer = spec.get("trainer") or {}
+    if trainer.get("response", "instant") not in RESPONSES:
+        raise SimScenarioError(f"trainer.response : {' ou '.join(RESPONSES)} attendu")
+    for key in RESPONSE_KEYS:
+        if trainer.get(key) is not None and _num(f"trainer.{key}", trainer[key]) < 0:
+            raise SimScenarioError(f"trainer.{key} : doit être positif")
+    if trainer.get("calibration") is not None:
+        try:
+            load_calibration(str(trainer["calibration"]))
+        except (OSError, ValueError) as exc:
+            raise SimScenarioError(f"trainer.calibration : {exc}") from None
     for section in ("hr", "hr_watch"):
         hr = spec.get(section) or {}
         if hr.get("contact") is not None and not isinstance(hr["contact"], bool):
@@ -268,7 +305,7 @@ def build_world(spec: dict[str, Any], name: str = "sim", *, trainer: bool = True
         t = dict(spec["trainer"])
         if "power_range" in t:
             t["power_range"] = tuple(int(v) for v in t["power_range"])
-        world.trainer = SimTrainer(world, **t)
+        world.trainer = SimTrainer(world, rider=SimRider.from_spec(spec.get("rider")), **t)
     if click and spec.get("click") is not None:
         c = dict(spec["click"])
         plus, minus = c.pop("plus", None) or {}, c.pop("minus", None) or {}
