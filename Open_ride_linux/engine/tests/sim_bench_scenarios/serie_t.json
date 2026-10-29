@@ -2,8 +2,11 @@
   "description": "Série T (recette T11 §1 à §3) : montée et sprint du parcours de démonstration à 600 W (sprint fini vers 5 min), arches tous les 1 000 m, Z au Click simulé toutes les 20 s, jingles, records.",
   "trainer": {
     "appear_at": 0.3,
-    "connect_delay_s": 0.3,
-    "rider_power_w": 600,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 600,
     "cadence_rpm": 92
   },
   "click": {
