@@ -62,10 +62,13 @@ func _test_presets_application() -> void:
 		_check(vp.msaa_3d == RenderQuality.MSAA[int(img["msaa"])]
 			and (vp.screen_space_aa == Viewport.SCREEN_SPACE_AA_FXAA) == (bool(img["fxaa"]) and fp),
 			"%s : MSAA %d×, FXAA %s" % [name, img["msaa"], str(img["fxaa"])])
+		_check(vp.anisotropic_filtering_level == RenderQuality.ANISOTROPY[int(img["anisotropy"])],
+			"%s : filtrage anisotrope %d×" % [name, img["anisotropy"]])
 		_check(absf(vp.mesh_lod_threshold - float(img["mesh_lod_threshold"])) < 1e-4,
 			"%s : seuil LOD %.1f px" % [name, img["mesh_lod_threshold"]])
 		_check(vp.scaling_3d_scale == 1.0, "%s : résolution native, sans mise à l'échelle 3D" % name)
-		_check(env.glow_enabled == bool(img["glow"]) and env.tonemap_mode == RenderQuality.LOOK["tonemap"]
+		_check(env.glow_enabled == bool(img["glow"]) and env.tonemap_mode == Environment.TONE_MAPPER_AGX
+			and absf(env.tonemap_agx_white - RenderQuality.LOOK["agx_white"]) < 1e-3
 			and env.adjustment_enabled,
 			"%s : glow %s, rendu des tons et étalonnage communs" % [name, str(img["glow"])])
 		_check((light.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS) == (int(img["shadow_splits"]) == 4),

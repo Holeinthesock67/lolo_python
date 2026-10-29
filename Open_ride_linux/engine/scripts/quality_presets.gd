@@ -55,9 +55,11 @@ const PRESETS := {
 ## - `shadow_atlas` : taille de l'atlas des ombres du soleil ; `shadow_splits` : 2 ou 4 cascades ;
 ##   `shadow_filter` : filtre doux `hard`, `very_low`, `low`, `medium`, `high`.
 ## - `mesh_lod_threshold` : erreur tolérée des LOD automatiques en pixels (plus petit = plus fin).
-## Le filtrage anisotrope (16×, réglage global en Godot 4.3) est dans `project.godot`.
+## - `anisotropy` : filtrage anisotrope des textures vues en biais (route, herbe), 2, 4, 8 ou 16×
+##   (réglage du viewport depuis Godot 4.4, étape 4 d'Y13).
 const IMAGE := {
 	"low": {
+		"anisotropy": 4,
 		"msaa": 0,
 		"fxaa": true,
 		"ssao": "off",
@@ -71,6 +73,7 @@ const IMAGE := {
 		"mesh_lod_threshold": 2.0,
 	},
 	"medium": {
+		"anisotropy": 8,
 		"msaa": 4,
 		"fxaa": false,
 		"ssao": "medium",
@@ -84,6 +87,7 @@ const IMAGE := {
 		"mesh_lod_threshold": 1.0,
 	},
 	"high": {
+		"anisotropy": 16,
 		"msaa": 4,
 		"fxaa": false,
 		"ssao": "high",
