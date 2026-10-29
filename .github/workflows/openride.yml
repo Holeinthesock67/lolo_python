@@ -1,7 +1,10 @@
 name: Tests OpenRide
 
 on:
+  # Les branches des demandes de fusion sont testées par l'événement pull_request seulement :
+  # un envoi testé deux fois (push + pull_request) doublait la file d'attente de la CI.
   push:
+    branches: [main]
     paths:
       - "Open_ride_linux/**"
       - ".github/workflows/openride.yml"
