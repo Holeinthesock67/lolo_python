@@ -106,7 +106,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-MAT-3 | Zwift Click V2 (deux boîtiers), B lu comme « − », boîtier gauche bridé | §4.2 | K8, Q6 | Livré (K8 ; Q6, PR #193 ; essai du boîtier gauche sur le PC à faire) |
 | 1.0-MAT-4 | Bluetooth simulé et mode mock : tout se développe sans le vélo | §12 | H3, M5, M6 | Livré |
 | 1.0-PHY-1 | Physique à 50 Hz par bilan d'énergie, 250 W à plat ≈ 10,2 m/s | §5 | — | Livré |
-| 1.0-PHY-2 | 24 braquets virtuels de 0,40 à 3,00, pente effective bornée | §4.3 | — | Livré |
+| 1.0-PHY-2 | 24 braquets virtuels de 0,65 à 2,00, pente effective bornée | §4.3 | — | Livré |
 | 1.0-PHY-3 | Coefficient de difficulté, 50 % par défaut, réglable en séance | §5, §11 | Q1 | Livré |
 | 1.0-PHY-4 | Rampe de pente distincte à la montée et à la descente | §5 | Q4 | Livré (PR #194) |
 | 1.0-ERG-1 | Lecteur `.zwo`, cibles lissées, biais au Click, saut de bloc, pause | §6 | F, L6 | Livré |
@@ -114,6 +114,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-ERG-3 | Test de FTP, plans sur plusieurs semaines, menu Entraînement | — | O10 à O12 | O10 et O11 livrés ; O12 : core livré (PR #395), écrans de l'engine en revue (PR #396) |
 | 1.0-ERG-4 | Bandeau ERG à l'écran, histogramme, bip à T − 3 s | §6 | N7 | Livré |
 | 1.0-ERG-5 | Boutons de l'ERG selon le plan commun (§7.1) : ± court biais ± 2 %, ± long biais ± 10 %, Z bloc suivant, Y pause | §4.4 | O17 | Livré, essai sur le PC à faire (décision D3 du 27 octobre, issue #367) |
+| 1.0-ERG-6 | ERG dans une session libre depuis l'écran de pause : SIM, ERG libre (puissance cible) ou ERG à cadence verrouillée (cadence ± 15 %, puissance adaptée) ; ± = biais de la cible (puissance, ou cadence en ERG cadence), Z = bonus comme en SIM | — | O18 | En PR (demande du propriétaire du 28 octobre), essai sur le vélo à faire |
 | 1.0-CMP-1 | Compilateur GPX vers `.world` : route, terrain, OSM, caches | §7 | B1, B2, I3, I4 | Livré |
 | 1.0-CMP-2 | Traces FIT et TCX, archives Garmin, compilation au lancement | §7 | M7, N11, O5 | Livré |
 | 1.0-CMP-3 | Bibliothèque de parcours et pack de cols célèbres | — | O15, O16 | Livré (pack O16 à construire une première fois sur le PC) |
@@ -292,6 +293,7 @@ Règles communes, valables partout :
 - **Y revient en arrière** : pause en séance, écran précédent dans un menu, reprise depuis l'écran de pause.
 - **Z n'a que l'action du mode** ; il ne fait rien dans un menu.
 - **Bloc de roue libre d'un entraînement ERG** : la séance reste en ERG pour les boutons. Il n'y a pas de cible à biaiser, donc ± règlent le braquet, et Z passe au bloc suivant (outil X42, 28 octobre).
+- **ERG d'une session libre (lot O18)** : choisi sur l'écran de pause, il garde la colonne ERG, sauf Z, qui reste le bonus de la colonne SIM (pas de blocs) ; en ERG à cadence verrouillée, le biais s'applique à la cadence cible.
 - **Le grand pas vaut dix petits pas en séance** et cinq éléments dans un menu.
 - **Clavier (décision D6 du 27 octobre) :** il double le Click touche pour touche, avec les mêmes seuils d'appui (court sous 0,5 s, long à 0,9 s ou plus, zone floue entre les deux), en menu comme en séance ; une touche n'a jamais d'autre rôle que celui de son bouton. Pas de bouton pour la difficulté (décision Q1).
 
