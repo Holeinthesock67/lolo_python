@@ -145,12 +145,14 @@ Accord du propriétaire le 28 octobre (« généraliser et continuer »). Valeur
 ### 7.2 Étape 3 : brume volumétrique légère en `medium`
 
 - La clé `fog_volumetric` quitte `PRESETS` pour `IMAGE` (même règle que `ssao` et `msaa` à l'étape 1 : toute la qualité d'image au même endroit) et devient un niveau : `off` (`low`), `light` (`medium`), `full` (`high`).
-- `light` : brouillard volumétrique de Godot avec une grille réduite (`RenderingServer.environment_set_volumetric_fog_volume_size(48, 48)`, filtre actif), portée `volumetric_fog_length` 600 m, densité basse (0,004, ou celle du thème si elle est plus faible), anisotropie 0,6 pour que le soleil éclaire la brume vers l'avant (rayons dans les trouées des arbres), `volumetric_fog_sky_affect` 0 (règle de P16 : le ciel et les nuages restent visibles).
-- `full` (`high`) : grille 64 × 64, portée 1 200 m, densité du thème (0,01 par défaut).
+- `light` : brouillard volumétrique de Godot avec une grille réduite (`RenderingServer.environment_set_volumetric_fog_volume_size(48, 64)`, filtre actif), portée `volumetric_fog_length` 600 m, densité 0,004, anisotropie 0,6 pour que le soleil éclaire la brume vers l'avant (rayons dans les trouées des arbres), couleur de l'horizon, `volumetric_fog_sky_affect` 0 (règle de P16 : le ciel et les nuages restent visibles).
+- `full` (`high`) : grille 64 × 64, portée 1 200 m, densité 0,006.
+- **Constat du 28 octobre :** les densités des thèmes (0,0004 à 0,0012) ne se voyaient pas, et `high` gardait la portée par défaut de Godot (64 m) : son brouillard volumétrique ne montrait rien. Les densités du niveau sont donc des minimums ; un thème plus brumeux l'emporte. Captures du rendu logiciel : la brume adoucit les arbres et les collines au loin sans voiler la route.
 - Le brouillard de profondeur d'Y1 (opaque à 4 / 6 / 9 km) ne change pas : la brume volumétrique ajoute la profondeur de l'air de près, sans rapprocher l'horizon. La brume de la météo (P17, `fog_boost`) agit sur les deux : la densité volumétrique est multipliée par `1 + 3 × fog_boost` dans `apply_weather_fog`.
 - Compatibility n'a pas de brouillard volumétrique : `off` sans RenderingDevice, comme SSAO et SSIL.
 - Coût estimé +1 à 1,5 ms en `medium`. Vérifications : pas de scintillement image figée en Forward+ (le volumétrique réutilise les images précédentes, `visual_check.py --native`), pas de traînée derrière les objets à 40 km/h (captures du banc en mouvement).
 - Repli : grille 32 × 32 et portée 400 m ; si l'enveloppe reste dépassée, `medium` reste `off`.
+- **Mesure du 28 octobre** (GTX 1060, 1680 × 1050, `village` / `montee_descente`, médianes entre 20 et 640 s) : `medium` 10,57 ms de GPU (max 12,43) contre 10,38 sur `main`, soit +0,2 ms, charge 69 / 83 % ; `high` 13,64 ms (max 15,24), charge 85 / 100 %, 27 s au-dessus de 95 %. 60 img/s et p99 16,7 ms partout. Pas de repli nécessaire ; `high` reste le préréglage des cartes plus fortes que la 1060.
 
 ### 7.3 Étape 4 : après la migration Y2 (Godot 4.7)
 

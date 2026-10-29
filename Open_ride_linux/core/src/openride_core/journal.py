@@ -79,11 +79,14 @@ class Record:
     wind_grade_pct: float | None = None  # supplément de pente dû au vent et à l'abri (SIM), lots P2 et P3
     draft: float | None = None         # abri derrière un bot (0 à 0,45), None sans bot (lot P3)
     hr_frozen: bool | None = None      # True : FC relayée par le trainer figée, ignorée (lot Q5)
+    erg_kind: str | None = None        # ERG d'une session libre : `free` ou `cadence`, None sinon (lot O18)
+    cadence_target_rpm: int | None = None  # cadence cible de l'ERG cadence (tr/min), None sinon (lot O18)
 
 
-# Champs de la série P absents de la ligne quand ils valent None (vent coupé, pas de bot) :
+# Champs facultatifs (séries P et Q, lot O18) absents de la ligne quand ils valent None (vent coupé,
+# pas de bot, pas d'ERG libre) :
 # une séance sans vent ni bot garde exactement les lignes d'avant, et la mémoire de la séance aussi.
-OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen")
+OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen", "erg_kind", "cadence_target_rpm")
 
 
 # Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).

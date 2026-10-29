@@ -82,7 +82,8 @@ func _test_placement() -> void:
 	var climb: Transform3D = v.goal(pos, heading, 10.0)
 	_check(climb.origin.y < flat.origin.y and (-climb.basis.z).y > (-flat.basis.z).y, "montée : suivi plus bas et regard relevé (pente sur toutes les vues)")
 	v.set_view("subjective")
-	_check(absf((-v.goal(pos, heading, 10.0).basis.z).y - sin(deg_to_rad(10.0))) < 1e-4, "subjective : tangage de la pente")
+	_check(absf((-v.goal(pos, heading, 10.0).basis.z).y - sin(deg_to_rad(10.0 * CameraViews.CAMERA_PITCH_FOLLOW))) < 1e-4,
+		"subjective : tangage partiel de la pente (lot Y15)")
 
 
 func _test_transition() -> void:

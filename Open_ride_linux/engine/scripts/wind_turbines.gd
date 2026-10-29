@@ -26,12 +26,19 @@ const YAW_MAX_DEG_S := 3.0
 const LOD_DISTANCE_M := 2000.0
 const RESELECT_M := 50.0
 const COLOR := Color(0.92, 0.93, 0.94)
+const PropShader := preload("res://shaders/props.gdshader")
+const RoadsideProps := preload("res://scripts/roadside_props.gd")
+## Matières de props.gdshader (lot Y8 étape 4) : joints des tronçons et porte du mât, capot, pales usées.
+const KIND_TOWER := 4
+const KIND_NACELLE := 5
+const KIND_BLADE := 6
 
 var _points: Array = []          # {pos: Vector3, height: float, yaw: float, rotor: float}
 var _slots: Array = []           # {root, nacelle, rotor, point: int}
 var _last_select := Vector3(INF, INF, INF)
 var _dirty := true
 var _meshes: Array = []   # gardés ici : les maillages partagés survivent aux nœuds qui les affichent
+var _mats: Array = []     # mât, nacelle, pale
 var last_update_usec := 0
 
 
@@ -64,9 +71,14 @@ static func _baked(pm: PrimitiveMesh) -> ArrayMesh:
 	return am
 
 func _init() -> void:
-	var mat := StandardMaterial3D.new()
-	mat.albedo_color = COLOR
-	mat.roughness = 0.6
+	var mats := []
+	for k in [KIND_TOWER, KIND_NACELLE, KIND_BLADE]:
+		var m := ShaderMaterial.new()
+		m.shader = PropShader
+		m.set_shader_parameter("kind", k)
+		m.set_shader_parameter("base_color", COLOR)
+		mats.append(m)
+	_mats = mats
 	var tower_near := CylinderMesh.new()
 	tower_near.top_radius = 0.012
 	tower_near.bottom_radius = 0.022
@@ -80,6 +92,9 @@ func _init() -> void:
 	var blade_mesh := BoxMesh.new()
 	blade_mesh.size = Vector3(0.018, BLADE_RATIO, 0.006)
 	_meshes = [_baked(tower_near), _baked(tower_far), _baked(nacelle_mesh), _baked(blade_mesh)]
+	(_mats[0] as ShaderMaterial).set_shader_parameter("size_m", Vector3(0.044, 1.0, 0.044))
+	(_mats[1] as ShaderMaterial).set_shader_parameter("size_m", nacelle_mesh.size)
+	(_mats[2] as ShaderMaterial).set_shader_parameter("size_m", blade_mesh.size)
 	var lods := [[_meshes[0], 0.0, LOD_DISTANCE_M], [_meshes[1], LOD_DISTANCE_M, 0.0]]
 	var nacelle_am: ArrayMesh = _meshes[2]
 	var blade_am: ArrayMesh = _meshes[3]
@@ -91,7 +106,7 @@ func _init() -> void:
 		for lod in lods:
 			var t := MeshInstance3D.new()
 			t.mesh = lod[0]
-			t.material_override = mat
+			t.material_override = _mats[0]
 			t.position = Vector3(0.0, 0.5, 0.0)
 			t.visibility_range_begin = lod[1]
 			t.visibility_range_end = lod[2]
@@ -101,7 +116,7 @@ func _init() -> void:
 		root.add_child(nacelle)
 		var body := MeshInstance3D.new()
 		body.mesh = nacelle_am
-		body.material_override = mat
+		body.material_override = _mats[1]
 		body.position = Vector3(0.0, 0.0, 0.02)
 		nacelle.add_child(body)
 		var rotor := Node3D.new()
@@ -113,10 +128,16 @@ func _init() -> void:
 			rotor.add_child(arm)
 			var blade := MeshInstance3D.new()
 			blade.mesh = blade_am
-			blade.material_override = mat
+			blade.material_override = _mats[2]
 			blade.position = Vector3(0.0, BLADE_RATIO * 0.5, 0.0)
 			arm.add_child(blade)
 		_slots.append({"root": root, "nacelle": nacelle, "rotor": rotor, "point": -1})
+
+
+## Faux relief des joints selon le préréglage (RoadsideProps.RELIEF : coupé en low).
+func set_preset(preset_name: String) -> void:
+	for m in _mats:
+		(m as ShaderMaterial).set_shader_parameter("relief", float(RoadsideProps.RELIEF.get(preset_name, 1.0)))
 
 
 func set_points(points: Array) -> void:
