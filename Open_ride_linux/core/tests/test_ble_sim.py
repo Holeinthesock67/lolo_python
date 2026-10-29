@@ -224,6 +224,7 @@ def _grades(cmds) -> list[float]:
             if c.op == ftms.OP_SET_SIM_PARAMS and c.result == 0x01]
 
 
+@pytest.mark.recette_sans_velo
 def test_other_device_on_the_control_point_keeps_the_link(caplog):
     """Montre Garmin sur le trainer (28 octobre) : toute écriture refusée (ATT 0x80) pendant 3 s.
 
@@ -260,6 +261,7 @@ def test_other_device_on_the_control_point_keeps_the_link(caplog):
     assert not any("Reconnexion au trainer" in m for m in msgs)
 
 
+@pytest.mark.recette_sans_velo
 def test_erg_target_survives_a_busy_control_point():
     """ERG pendant que le Control Point est occupé : pas de Reset ni de pente 0 % (la résistance
     ne tombe pas), la nouvelle cible part dès que le Control Point se libère."""
@@ -285,6 +287,7 @@ def test_erg_target_survives_a_busy_control_point():
     asyncio.run(scenario())
 
 
+@pytest.mark.recette_sans_velo
 def test_burst_of_gear_changes_on_a_slow_control_point():
     """Rafale de braquets (5 « − » rapprochés) sur un Control Point occupé 0,6 s après chaque
     réponse : aucune reconnexion, et une pente écrite n'est jamais plus ancienne que la précédente."""

@@ -282,6 +282,7 @@ def test_as1_two_bots_glued_ride_faster_than_one():
     assert max(spread) < d.BIKE_LENGTH_M + d.WHEEL_GAP_M
 
 
+@pytest.mark.recette_sans_velo
 def test_as1_bot_catching_the_rider_gets_draft():
     flat = FlatRoute()
     rider = AS1Rider(240.0, s=30.0)
@@ -347,6 +348,7 @@ def test_as1_cost_five_bots_and_the_rider():
     assert per_step_ms < 0.1, f"{per_step_ms:.4f} ms par pas"
 
 
+@pytest.mark.recette_sans_velo
 def test_as1_bot_in_session_gets_draft_behind_the_rider_and_erg_unchanged(tmp_path, monkeypatch):
     workouts = tmp_path / "wk"
     workouts.mkdir()

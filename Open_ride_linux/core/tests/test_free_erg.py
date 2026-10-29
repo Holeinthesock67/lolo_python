@@ -122,6 +122,7 @@ def test_cadence_lock_does_not_oscillate_with_a_rider_that_reacts():
 
 # --- séance (trainer simulé) ----------------------------------------------------------------
 
+@pytest.mark.recette_sans_velo
 def test_session_switches_sim_erg_cadence_and_back(tmp_path, monkeypatch, workouts_dir):
     async def scenario():
         s, driver, errors = make_session(tmp_path, monkeypatch, workouts_dir, port=6510)
@@ -217,6 +218,7 @@ def test_journal_and_resume_keep_the_free_erg(tmp_path, monkeypatch):
     assert e["target_w"] == round(last["target_w"])
 
 
+@pytest.mark.recette_sans_velo
 def test_ble_sim_trainer_follows_the_cadence_lock(tmp_path, monkeypatch):
     """Vrai pilote FTMS contre le trainer simulé : la cible ERG suit la cadence du cycliste."""
     monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
