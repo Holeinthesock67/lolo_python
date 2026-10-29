@@ -32,9 +32,9 @@ def test_parse_indoor_bike_data_more_data_and_distance():
 
 
 def test_sim_params_encoding():
-    raw = ftms.cmd_set_sim_params(-3.45, crr=0.004, cw_kg_m=0.20)
+    raw = ftms.cmd_set_sim_params(-3.45, crr=0.004, cw_kg_m=0.39)
     op, wind, grade, crr, cw = struct.unpack("<BhhBB", raw)
-    assert (op, wind, grade, crr, cw) == (0x11, 0, -345, 40, 20)
+    assert (op, wind, grade, crr, cw) == (0x11, 0, -345, 40, 39)
 
 
 def test_target_power_encoding():

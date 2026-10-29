@@ -16,7 +16,7 @@ Aucun. `ftms_driver.py` est aussi modifié par Q5 : faire Q3 et Q5 l'un après l
 ## 4. Travail demandé
 
 - **Trace FTMS**, activée par `[trainer] trace_ftms = true` (défaut faux) ou par l'option `--trace-ftms` de `openride-core run` et du lanceur :
-  - à chaque écriture au Control Point, une ligne `FTMS > <opération> <valeurs lisibles> (<hex>)`, par exemple `FTMS > SIM pente 3.20 % crr 0.0040 cw 0.196 (11 0000 4001 28 c4)` ;
+  - à chaque écriture au Control Point, une ligne `FTMS > <opération> <valeurs lisibles> (<hex>)`, par exemple `FTMS > SIM pente 3.20 % crr 0.0040 cw 0.390 (11 0000 4001 28 27)` ;
   - à chaque indication, `FTMS < réponse <opération> <résultat> en <n> ms` (délai depuis l'écriture correspondante), ou `FTMS < sans réponse après <n> ms` à l'expiration ;
   - à chaque Machine Status, `FTMS < statut <nom> <valeurs>` en précisant s'il suit, de moins de 2 s, une commande envoyée par OpenRide (`écho probable de notre commande`) ;
   - horodatage à la milliseconde (horloge du driver), au niveau INFO quand la trace est active, rien sinon ;
