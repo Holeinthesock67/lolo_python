@@ -52,12 +52,12 @@ def test_cli_trace_ftms_option():
 # --- 2. Formatage des trames Control Point -----------------------------------------------
 
 def test_format_cp_write_sim_payload():
-    # Exemple cité dans le cahier LOT_Q3 : SIM pente 3.20 % crr 0.0040 cw 0.196 (11 0000 4001 28 c4)
-    payload = bytes.fromhex("11 0000 4001 28 c4")
+    # Exemple cité dans le cahier LOT_Q3 : SIM pente 3.20 % crr 0.0040 cw 0.39 (11 0000 4001 28 27)
+    payload = bytes.fromhex("11 0000 4001 28 27")
     op_name, vals, hex_str = format_cp_write(payload)
     assert op_name == "SIM"
-    assert vals == "pente 3.20 % crr 0.0040 cw 0.196"
-    assert hex_str == "11 0000 4001 28 c4"
+    assert vals == "pente 3.20 % crr 0.0040 cw 0.390"
+    assert hex_str == "11 0000 4001 28 27"
 
 
 def test_format_cp_write_erg_and_control():
@@ -284,8 +284,9 @@ def test_log_report_absent_without_trace():
 
 # --- 7. Cadence et coût de journalisation (Critère 6) -----------------------------------
 
-def test_trace_rate_limit_under_2_lines_per_second(caplog):
-    """Vérifie que la cadence des lignes FTMS ne dépasse pas 2 lignes/s en moyenne."""
+def test_trace_rate_limit_under_3_lines_per_second(caplog):
+    """Vérifie que la cadence des lignes FTMS reste bornée : 2 lignes/s de commandes au plus, plus la
+    ligne de mesures (une par notification Indoor Bike Data, soit environ 1 par seconde)."""
     async def scenario():
         world = build_world(READY, hr=False, click=False)
         cfg = TrainerConfig(trace_ftms=True)
@@ -323,6 +324,130 @@ def test_trace_rate_limit_under_2_lines_per_second(caplog):
         steady_records = caplog.records[idx_start:idx_end]
         ftms_lines = [rec.message for rec in steady_records if rec.message.startswith("FTMS")]
         rate = len(ftms_lines) / duration
-        assert rate <= 2.0, f"Cadence trop élevée : {rate:.2f} lignes/s ({len(ftms_lines)} lignes en {duration:.2f} s)"
+        assert rate <= 3.0, f"Cadence trop élevée : {rate:.2f} lignes/s ({len(ftms_lines)} lignes en {duration:.2f} s)"
 
     asyncio.run(scenario())
+
+
+# --- 5. Mesures annoncées par le trainer (décrochage du 29 octobre) ---------------------------
+
+def _ibd(speed_kmh: float, cadence_rpm: float, power_w: int, resistance: int | None = None) -> bytes:
+    import struct
+    flags = 0x0004 | 0x0040 | (0x0020 if resistance is not None else 0)
+    out = struct.pack("<HH", flags, round(speed_kmh * 100)) + struct.pack("<H", round(cadence_rpm * 2))
+    if resistance is not None:
+        out += struct.pack("<h", resistance)
+    return out + struct.pack("<h", power_w)
+
+
+@pytest.mark.parametrize("trace, lines", [(True, 3), (False, 0)])
+def test_trace_logs_trainer_measures_each_notification(caplog, trace, lines):
+    """Avec trace_ftms : vitesse et niveau de résistance du trainer à côté de la consigne, une ligne par notification, 0,9 s d'écart au moins."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(trace_ftms=trace), BikeConfig(), clock=lambda: now[0])
+    drv._last_sent = ("sim", 0.68)
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        for t, power, level in [(0.0, 318, 40), (0.3, 300, 40), (1.0, 120, 38), (1.2, 100, 30), (2.0, 27, 12)]:
+            now[0] = 100.0 + t
+            drv._on_ibd(None, bytearray(_ibd(24.8, 73, power, level)))
+    got = [r.getMessage() for r in caplog.records if r.getMessage().startswith("FTMS ~ mesures")]
+    assert len(got) == lines
+    if trace:
+        assert "puissance 318 W" in got[0] and "niveau de résistance 40" in got[0]
+        assert "vitesse du trainer 24.8 km/h" in got[0] and "consigne envoyée pente 0.68 %" in got[0]
+        assert "puissance 120 W" in got[1] and "puissance 27 W" in got[2] and "niveau de résistance 12" in got[2]
+
+
+# --- 6. Frein lâché par le trainer (29 octobre) -------------------------------------------------
+
+def _drive(drv, now, frames):
+    for t, power, rpm in frames:
+        now[0] = 100.0 + t
+        drv._on_ibd(None, bytearray(_ibd(30.0, rpm, power)))
+
+
+def test_brake_loss_is_detected_and_control_taken_again(caplog):
+    """449 W puis 0 W à cadence constante (20:21:35) : avertissement, consigne oubliée pour reprise du contrôle."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(2.8)
+    drv._last_sent = ("sim", 2.8)
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        _drive(drv, now, [(0.0, 449, 73), (2.0, 449, 73), (4.0, 0, 73), (6.0, 0, 0)])
+    msgs = [r.getMessage() for r in caplog.records]
+    assert drv.brake_losses == 1 and drv._last_sent is None
+    assert sum("le frein a lâché (449 W puis 0 W à 73 tr/min, volant 30 km/h)" in m for m in msgs) == 1
+
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        _drive(drv, now, [(7.0, 320, 70)])
+    assert any(m.startswith("Trainer : puissance revenue (320 W) 3.0 s") for m in
+               (r.getMessage() for r in caplog.records))
+
+
+@pytest.mark.parametrize("frames, mode_value, why", [
+    ([(0.0, 449, 73), (5.0, 0, 73)], ("sim", 2.8), "chute trop lente (plus de 3 s)"),
+    ([(0.0, 150, 73), (2.0, 0, 73)], ("sim", 2.8), "pas de charge avant la chute"),
+    ([(0.0, 449, 73), (2.0, 0, 20)], ("sim", 2.8), "cycliste qui a cessé de pédaler"),
+    ([(0.0, 300, 80), (2.0, 0, 80)], ("erg", 0.0), "repos d'un bloc ERG à 0 W"),
+])
+def test_no_brake_loss_when_the_rider_or_the_workout_explains_it(frames, mode_value, why):
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    if mode_value[0] == "erg":
+        drv.set_target_power(mode_value[1])
+    else:
+        drv.set_sim_grade(mode_value[1])
+    _drive(drv, now, frames)
+    assert drv.brake_losses == 0, why
+
+
+def test_brake_loss_retried_at_most_every_ten_seconds():
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(1.0)
+    _drive(drv, now, [(0.0, 400, 80), (1.0, 0, 80), (2.0, 400, 80), (3.0, 0, 80), (12.0, 400, 80), (13.0, 0, 80)])
+    assert drv.brake_losses == 2   # 1 s et 13 s : jamais deux fois en moins de 10 s
+
+
+# --- 7. Spin Down Status et statuts à paramètres (hypothèse du 29 octobre) -------------------------
+
+def test_spin_down_status_is_logged_even_without_trace(caplog):
+    drv = FtmsDriver(TrainerConfig(trace_ftms=False), BikeConfig())
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        drv._on_status(None, bytearray([0x14, 0x01]))
+    assert any("Spin Down Status" in r.getMessage() and "01" in r.getMessage() for r in caplog.records)
+
+
+def test_status_parameters_are_traced(caplog):
+    drv = FtmsDriver(TrainerConfig(trace_ftms=True), BikeConfig())
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        drv._on_status(None, bytearray([0x02, 0x01]))
+    assert any("octets 01" in r.getMessage() for r in caplog.records)
+
+
+# --- 8. Lignes `ftms` du journal JSONL ------------------------------------------------------------
+
+def test_ftms_events_reach_the_journal_sink():
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(trace_ftms=False), BikeConfig(), clock=lambda: now[0])
+    got: list[dict] = []
+    drv.event_sink = got.append
+    drv._on_status(None, bytearray([0x14, 0x02]))
+    drv._on_training_status(None, bytearray([0x00, 0x0d]))
+    _drive(drv, now, [(0, 450, 80), (1, 440, 80), (2, 5, 80)])
+    drv.set_sim_grade(2.0)
+    kinds = [(g["event"], g.get("code"), g.get("data")) for g in got]
+    assert ("status", "0x14", "02") in kinds and ("training_status", None, "000d") in kinds
+    loss = next(g for g in got if g["event"] == "brake_loss")
+    assert loss["kind"] == "ftms" and loss["from_w"] == 440 and loss["to_w"] == 5 and loss["cadence_rpm"] == 80
+
+
+def test_ftms_line_is_written_by_the_recorder(tmp_path):
+    from openride_core.recorder import SessionRecorder
+    from openride_core.journal import read_journal
+    rec = SessionRecorder(tmp_path, "r")
+    rec.event("start", 1.0)
+    rec.ftms({"ts": 2.0, "event": "brake_loss", "from_w": 450, "to_w": 5, "cadence_rpm": 80, "speed_kmh": 36.0})
+    lines = list(read_journal(rec.path))
+    assert [ln["kind"] for ln in lines] == ["header", "event", "ftms"]
+    assert rec.events == [lines[1]] and lines[2]["event"] == "brake_loss"

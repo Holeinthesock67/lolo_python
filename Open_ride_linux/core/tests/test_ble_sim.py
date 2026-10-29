@@ -224,6 +224,7 @@ def _grades(cmds) -> list[float]:
             if c.op == ftms.OP_SET_SIM_PARAMS and c.result == 0x01]
 
 
+@pytest.mark.recette_sans_velo
 def test_other_device_on_the_control_point_keeps_the_link(caplog):
     """Montre Garmin sur le trainer (28 octobre) : toute écriture refusée (ATT 0x80) pendant 3 s.
 
@@ -260,6 +261,7 @@ def test_other_device_on_the_control_point_keeps_the_link(caplog):
     assert not any("Reconnexion au trainer" in m for m in msgs)
 
 
+@pytest.mark.recette_sans_velo
 def test_erg_target_survives_a_busy_control_point():
     """ERG pendant que le Control Point est occupé : pas de Reset ni de pente 0 % (la résistance
     ne tombe pas), la nouvelle cible part dès que le Control Point se libère."""
@@ -285,6 +287,7 @@ def test_erg_target_survives_a_busy_control_point():
     asyncio.run(scenario())
 
 
+@pytest.mark.recette_sans_velo
 def test_burst_of_gear_changes_on_a_slow_control_point():
     """Rafale de braquets (5 « − » rapprochés) sur un Control Point occupé 0,6 s après chaque
     réponse : aucune reconnexion, et une pente écrite n'est jamais plus ancienne que la précédente."""
@@ -663,3 +666,32 @@ def test_erreur_0x80_scenario_full_session(tmp_path, monkeypatch, caplog):
     with caplog.at_level("INFO"):
         asyncio.run(scenario())
     assert not [r for r in caplog.records if r.levelname == "ERROR"]
+
+
+@pytest.mark.parametrize("recovers", [True, False])
+def test_brake_loss_is_detected_and_control_retaken(caplog, recovers):
+    """Frein coupé par le trainer sans erreur (29 octobre) : détection, nouvelle prise de contrôle, une seule fois."""
+    async def scenario():
+        spec = {**READY, "rider": {"watts": 320, "cadence_rpm": 80}}
+        rig = Rig(spec).start()
+        await wait_for(lambda: rig.driver.status == "CONNECTED" and rig.trainer.control)
+        rig.driver.set_sim_grade(2.0)
+        await wait_for(lambda: rig.trainer.grade_pct == 2.0 and rig.driver._raw_power > 250, timeout=8)
+        n = rig.ops().count(ftms.OP_REQUEST_CONTROL)
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "brake_loss", "seconds": 2.5,
+                               "value": recovers})
+        await wait_for(lambda: rig.driver.brake_losses == 1, timeout=6)
+        await wait_for(lambda: rig.ops().count(ftms.OP_REQUEST_CONTROL) > n)   # contrôle repris
+        if recovers:
+            await wait_for(lambda: rig.driver._raw_power > 250, timeout=6)
+            assert rig.driver._brake_lost_at is None
+        else:
+            await asyncio.sleep(0.8)
+            assert rig.driver._raw_power < 10
+        assert rig.driver.brake_losses == 1 and rig.driver.reconnect_count == 0
+        await rig.stop()
+    with caplog.at_level("INFO"):
+        asyncio.run(scenario())
+    msgs = [r.getMessage() for r in caplog.records]
+    assert sum("Trainer : le frein a lâché" in m for m in msgs) == 1
+    assert any("puissance revenue" in m for m in msgs) == recovers

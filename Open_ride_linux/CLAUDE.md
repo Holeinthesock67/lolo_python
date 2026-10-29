@@ -26,6 +26,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - `docs/VERIFICATION_2026-10-24.md`, `docs/AUDIT_FTMS_2026-10-24.md`, `docs/REVUE_CODE_2026-10-24.md` : vérification, audit FTMS et revue de code du 24 octobre (constats ouverts : §5 de la revue).
 - `docs/spikes.md` : faits mesurés sur le matériel.
 - `docs/OUTILS_DE_TEST.md` : liste des outils de test (suites, matériel simulé, banc d'essai simulé, parcours d'essai, diagnostic).
+- `docs/PLAN_DE_TESTS.md` : plan de tests (niveaux, périmètre, scénarios, lancement, résultat attendu, lieu : CI, PC ou vélo), tests des changements récents, PR en revue, mesures de performance et écriture d'un nouveau test.
 
 **Règle :** un contrat ne se modifie que par ajout compatible, avec une ligne au journal des changements du document. Si un contrat paraît faux, le signaler au lieu de l'interpréter.
 

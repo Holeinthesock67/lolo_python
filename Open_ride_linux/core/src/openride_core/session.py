@@ -242,6 +242,8 @@ class CoreSession:
         self._cli_bots = self.bots   # ceux de la ligne de commande, remis quand `start` n'a pas de `bots`
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
+        if hasattr(self.driver, "event_sink"):   # statuts du trainer et perte de frein au journal
+            self.driver.event_sink = lambda line: self._rec.ftms(line) if self._rec else None
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
         self.hr = build_hr(cfg, self.sim)
         self.journal_dir = journal_dir

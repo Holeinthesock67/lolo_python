@@ -33,6 +33,19 @@ FORCE_RECONNECT_S = 10.0  # sans donnée au-delà : on coupe et on reconnecte
 RESEND_S = 2.0           # la consigne est renvoyée au moins toutes les 2 s
 MIN_SEND_INTERVAL_S = 0.2
 GRADE_EPSILON_PCT = 0.1
+TRACE_IBD_EVERY_S = 0.9   # avec trace_ftms : une ligne de mesures par notification Indoor Bike Data (≈ 1 Hz)
+# Frein lâché par le trainer (29 octobre : 449 W puis 0 W en 2 s, à 73 tr/min et 31 km/h, sans erreur
+# ni statut) : puissance qui passe de plus de BRAKE_LOSS_FROM_W à moins de BRAKE_LOSS_TO_W en
+# BRAKE_LOSS_WINDOW_S, pédales et volant encore en mouvement ; une reprise de contrôle au plus
+# toutes les BRAKE_LOSS_COOLDOWN_S.
+BRAKE_LOSS_FROM_W = 200.0
+BRAKE_LOSS_TO_W = 10.0
+BRAKE_LOSS_WINDOW_S = 3.0
+BRAKE_LOSS_MIN_RPM = 40.0
+BRAKE_LOSS_MIN_KMH = 15.0
+BRAKE_LOSS_COOLDOWN_S = 10.0
+BRAKE_BACK_W = 50.0   # puissance qui revient après la reprise : le frein est revenu
+BRAKE_BACK_WINDOW_S = 15.0
 ERG_EPSILON_W = 1.0
 RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (arrêt jamais bloqué)
 CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
@@ -110,7 +123,7 @@ def format_cp_write(payload: bytes) -> tuple[str, str, str]:
             wind, grade, crr, cw = struct.unpack_from("<hhBB", payload, 1)
             grade_pct = grade / 100.0
             crr_val = crr / 10000.0
-            cw_val = cw / 1000.0 if cw > 50 else cw / 100.0
+            cw_val = cw / 100.0
             vals = [f"pente {grade_pct:.2f} %", f"crr {crr_val:.4f}", f"cw {cw_val:.3f}"]
             if wind != 0:
                 vals.insert(0, f"vent {wind / 1000.0:.1f} m/s")
@@ -237,7 +250,7 @@ class FtmsDriver:
         self._clock = clock
         # Cw = 0,5 · ρ · CdA (kg/m), cf. ftms.cmd_set_sim_params.
         self._crr = bike.crr
-        self._cw = 0.5 * RHO0 * bike.cda_m2
+        self._cw = RHO0 * bike.cda_m2   # Cw FTMS = CdA × ρ, sans le ½ (voir ftms.cmd_set_sim_params)
         self._wind_mps = 0.0   # champ vent de la commande 0x11 ([wind] feel = "ftms", lot P2)
 
         self._want = _Want()
@@ -253,6 +266,15 @@ class FtmsDriver:
         self._raw_power = 0.0
         self._power = 0.0
         self._cadence = 0.0
+        self._trainer_speed_kmh: float | None = None
+        self._trainer_resistance: int | None = None
+        self._trace_ibd_at = float("-inf")
+        self._last_brake_loss_at = float("-inf")
+        self.event_sink: Callable[[dict], None] | None = None   # lignes `ftms` du journal (posé par la session)
+        self.brake_losses = 0   # pertes de frein détectées (reprise de contrôle tentée à chacune)
+        self._loaded_at = float("-inf")   # dernier instant à plus de BRAKE_LOSS_FROM_W
+        self._loaded_w = 0.0
+        self._brake_lost_at: float | None = None
         self._hr_ibd: int | None = None
         self._hr_service: int | None = None
         self._hr_relay_val: int | None = None
@@ -397,9 +419,72 @@ class FtmsDriver:
             self._raw_power = max(float(d.power_w), 0.0)
         if d.cadence_rpm is not None:
             self._cadence = d.cadence_rpm
+        if d.speed_kmh is not None:
+            self._trainer_speed_kmh = d.speed_kmh
+        if d.resistance_level is not None:
+            self._trainer_resistance = d.resistance_level
+        self._trace_ibd(self._last_data_at)
+        if d.power_w is not None:
+            self._check_brake_loss(self._last_data_at, max(float(d.power_w), 0.0))
         if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
             self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
+
+    def _emit(self, event: str, **fields: Any) -> None:
+        """Ligne `ftms` du journal JSONL (statuts du trainer, perte de frein) ; jamais bloquante."""
+        if self.event_sink is None:
+            return
+        try:
+            self.event_sink({"kind": "ftms", "ts": round(time.time(), 3), "event": event, **fields})
+        except Exception:
+            log.debug("Ligne ftms du journal perdue", exc_info=True)
+
+    def _check_brake_loss(self, now: float, power_w: float) -> None:
+        """Détecte un frein lâché par le trainer et tente une reprise du contrôle (voir BRAKE_LOSS_*)."""
+        if power_w >= BRAKE_LOSS_FROM_W:
+            self._loaded_at, self._loaded_w = now, power_w
+        if self._brake_lost_at is not None:
+            if power_w >= BRAKE_BACK_W and self._cadence >= BRAKE_LOSS_MIN_RPM:
+                log.info("Trainer : puissance revenue (%.0f W) %.1f s après la reprise du contrôle",
+                         power_w, now - self._brake_lost_at)
+                self._emit("power_back", after_s=round(now - self._brake_lost_at, 1), power_w=round(power_w))
+                self._brake_lost_at = None
+            elif now - self._brake_lost_at > BRAKE_BACK_WINDOW_S:
+                log.warning("Trainer : la puissance n'est pas revenue %.0f s après la reprise du contrôle",
+                            BRAKE_BACK_WINDOW_S)
+                self._emit("power_not_back", after_s=BRAKE_BACK_WINDOW_S)
+                self._brake_lost_at = None
+        want = self._want
+        loaded = want.mode == "sim" or want.value >= 100.0   # ERG à 0 W (repos d'un bloc) : pas de frein attendu
+        speed_ok = self._trainer_speed_kmh is None or self._trainer_speed_kmh >= BRAKE_LOSS_MIN_KMH
+        if (power_w < BRAKE_LOSS_TO_W and now - self._loaded_at <= BRAKE_LOSS_WINDOW_S and loaded
+                and self._cadence >= BRAKE_LOSS_MIN_RPM and speed_ok
+                and now - self._last_brake_loss_at >= BRAKE_LOSS_COOLDOWN_S):
+            self._last_brake_loss_at = now
+            self._brake_lost_at = now
+            self.brake_losses += 1
+            speed = "—" if self._trainer_speed_kmh is None else f"{self._trainer_speed_kmh:.0f} km/h"
+            log.warning("Trainer : le frein a lâché (%.0f W puis %.0f W à %.0f tr/min, volant %s) ; "
+                        "contrôle repris et consigne renvoyée", self._loaded_w, power_w, self._cadence, speed)
+            self._emit("brake_loss", from_w=round(self._loaded_w), to_w=round(power_w),
+                       cadence_rpm=round(self._cadence), speed_kmh=self._trainer_speed_kmh)
+            self._forget_sent()   # nouvelle prise de contrôle et renvoi de la consigne au prochain tour
+
+    def _trace_ibd(self, now: float) -> None:
+        """Avec trace_ftms : ce que le trainer annonce lui-même (vitesse du volant, niveau de
+        résistance) à côté de la consigne envoyée, pour séparer une chute de résistance du trainer
+        d'une consigne trop basse du core (décrochage du 29 octobre, braquet 1 après un sprint)."""
+        if not self.cfg.trace_ftms or now - self._trace_ibd_at < TRACE_IBD_EVERY_S:
+            return
+        self._trace_ibd_at = now
+        sent = self._last_sent
+        want = "aucune" if sent is None else (
+            f"{sent[1]:.0f} W" if sent[0] == "erg" else f"pente {sent[1]:.2f} %")
+        speed = "—" if self._trainer_speed_kmh is None else f"{self._trainer_speed_kmh:.1f} km/h"
+        level = "—" if self._trainer_resistance is None else str(self._trainer_resistance)
+        log.info("FTMS ~ mesures : puissance %.0f W, cadence %.0f tr/min, vitesse du trainer %s, "
+                 "niveau de résistance %s, consigne envoyée %s",
+                 self._raw_power, self._cadence, speed, level, want)
 
     def _on_hr(self, _ch: Any, data: bytearray) -> None:
         try:
@@ -427,6 +512,10 @@ class FtmsDriver:
             return (now - last_t) < 2.0
         return (now - self._cp.last_call_at) < 2.0
 
+    def _on_training_status(self, _ch: Any, data: bytearray) -> None:
+        log.info("FTMS < Training Status %s", bytes(data).hex())
+        self._emit("training_status", data=bytes(data).hex())
+
     def _on_status(self, _ch: Any, data: bytearray) -> None:
         status = ftms.parse_machine_status(bytes(data))
         if status is None:
@@ -434,6 +523,7 @@ class FtmsDriver:
         code, name = status
         now = self._clock()
         is_echo = self._is_status_echo(code, now)
+        self._emit("status", code=f"0x{code:02X}", name=name, data=bytes(data[1:]).hex(), echo=is_echo)
         if self.cfg.trace_ftms:
             valeurs = ""
             if code == 0x08 and len(data) >= 3:
@@ -442,6 +532,8 @@ class FtmsDriver:
             elif code == 0x12 and len(data) >= 7:
                 _, grade, _, _ = struct.unpack_from("<hhBB", data, 1)
                 valeurs = f"pente {grade / 100.0:.2f} %"
+            elif len(data) > 1:
+                valeurs = f"octets {bytes(data[1:]).hex()}"   # ex. Spin Down Status : 1 demandé, 2 réussi, 3 erreur, 4 arrêter de pédaler
             qualification = "écho probable de notre commande" if is_echo else "par un tiers"
             vals_str = f" {valeurs}" if valeurs else ""
             log.info("FTMS < statut %s%s (%s)", name, vals_str, qualification)
@@ -460,6 +552,10 @@ class FtmsDriver:
         elif code in (0x02, 0x03):
             # Arrêt voulu sur le trainer (ou clé de sécurité) : pas de redémarrage forcé.
             log.info("Trainer : état machine %s", name)
+        elif code == 0x14:
+            # Spin Down Status : étalonnage lancé par le trainer, volant lancé puis frein relâché
+            # (hypothèse du décrochage du 29 octobre) ; toujours au journal, pas seulement en trace.
+            log.info("Trainer : étalonnage (Spin Down Status) %s", bytes(data[1:]).hex())
         else:
             log.debug("Trainer : état machine %s %s", name, bytes(data[1:]).hex())
 
@@ -517,6 +613,8 @@ class FtmsDriver:
         if self.reconnect_count or self.att_retries:
             log.info("Trainer : %d reconnexion(s), %d renvoi(s) après erreur ATT.",
                      self.reconnect_count, self.att_retries)
+        if self.brake_losses:
+            log.info("Trainer : %d perte(s) de frein détectée(s).", self.brake_losses)
         if self.busy_deferrals:
             log.info("Control Point occupé : %d consigne(s) reportée(s), liaison gardée.",
                      self.busy_deferrals)
@@ -558,6 +656,11 @@ class FtmsDriver:
                 log.warning("Trainer sans Control Point FTMS : mesures seules, aucune consigne")
             if services.get_characteristic(ftms.MACHINE_STATUS) is not None:
                 await client.start_notify(ftms.MACHINE_STATUS, self._on_status)
+            if self.cfg.trace_ftms and services.get_characteristic(ftms.TRAINING_STATUS) is not None:
+                try:   # Training Status : seulement pour le journal (protection éventuelle du trainer)
+                    await client.start_notify(ftms.TRAINING_STATUS, self._on_training_status)
+                except Exception as exc:
+                    log.debug("Training Status indisponible : %s", exc)
             await client.start_notify(ftms.INDOOR_BIKE_DATA, self._on_ibd)
             if services.get_characteristic(ftms.HR_MEASUREMENT) is not None:
                 await client.start_notify(ftms.HR_MEASUREMENT, self._on_hr)
@@ -702,7 +805,7 @@ class FtmsDriver:
         await release_control(cp, self._crr, self._cw, sim=self.supports_sim)
 
 
-async def release_control(cp: ControlPoint, crr: float = 0.004, cw_kg_m: float = 0.20,
+async def release_control(cp: ControlPoint, crr: float = 0.004, cw_kg_m: float = 0.39,
                           sim: bool = True) -> bool:
     """Pente 0 % (si le mode SIM existe) puis Reset ; True si les écritures ont abouti.
 
@@ -767,6 +870,6 @@ async def release_trainer(
                 raise
             except Exception as exc:
                 log.debug("Prise de contrôle avant relâche refusée : %s", exc)
-            ok = await release_control(cp, bike.crr, 0.5 * RHO0 * bike.cda_m2)
+            ok = await release_control(cp, bike.crr, RHO0 * bike.cda_m2)
     log.info("Trainer déconnecté.")
     return ok

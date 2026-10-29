@@ -326,10 +326,10 @@ class TrainerResponse:
             return target_w / max(v, 1.0)
         theta = math.atan((grade_pct if mode == "sim" else 0.0) / 100.0)
         p = self.physics
-        cw = cw if cw is not None else 0.5 * 1.225 * p.cda_m2
+        cw = cw if cw is not None else 1.225 * p.cda_m2   # Cw FTMS = ρ · CdA
         crr = crr if crr is not None else p.crr
         va = v + wind
-        return p.mass_kg * G * (math.sin(theta) + crr * math.cos(theta)) + cw * va * abs(va)
+        return p.mass_kg * G * (math.sin(theta) + crr * math.cos(theta)) + 0.5 * cw * va * abs(va)
 
     def step(self, dt: float, cmd: tuple, v_ride: float, rider_max_w: float) -> float:
         """Avance de `dt` s avec la consigne courante `cmd` (mode, cible W, pente %, Crr, Cw, vent m/s) ;
@@ -417,6 +417,10 @@ class SimTrainer(SimDevice):
         self._busy_until = 0.0
         self.other_device_until = 0.0   # un autre appareil (montre) occupe le Control Point
         self.silent_until = 0.0
+        # Frein coupé par le trainer (protection ?) : puissance annoncée nulle, sans aucune erreur ni
+        # statut ; `brake_recovers` : une nouvelle prise de contrôle rend le frein (hypothèse à tester).
+        self.brake_loss_until = 0.0
+        self.brake_recovers = True
         self.pending_att_errors: list[int] = []
         self.pending_silent_responses = 0
         self.commands: list[CpRecord] = []
@@ -486,6 +490,8 @@ class SimTrainer(SimDevice):
         if op == ftms.OP_REQUEST_CONTROL:
             if self.refuse_control:
                 return refused
+            if self.brake_recovers:
+                self.brake_loss_until = 0.0
             self.control = True
             return ok
         if not self.control:
@@ -571,6 +577,8 @@ class SimTrainer(SimDevice):
             if rider.press:   # braquet changé par le cycliste virtuel (stratégie `cadence`)
                 asyncio.get_running_loop().create_task(self.world.press(rider.press))
             speed_kmh = self._step_power(t, dt, rider)
+            if t < self.brake_loss_until:
+                self.power_w = 0.0
             if t < self.silent_until:
                 continue
             cadence = rider.cadence_rpm + (1.5 * math.sin(t * 0.7) if rider.cadence_rpm > 0 else 0.0)
@@ -987,6 +995,9 @@ class SimWorld:
             dev.pending_att_errors.extend([int(ev.get("code", 0x80))] * int(ev.get("count", 1)))
         elif isinstance(dev, SimTrainer) and action == "other_device":
             dev.other_device_until = self.now() + float(ev["seconds"])
+        elif isinstance(dev, SimTrainer) and action == "brake_loss":
+            dev.brake_loss_until = self.now() + float(ev["seconds"])
+            dev.brake_recovers = bool(ev.get("value", True))
         elif isinstance(dev, SimTrainer) and action == "cp_silent":
             dev.pending_silent_responses += int(ev.get("count", 1))
         elif isinstance(dev, (SimTrainer, SimClickBox)) and action == "silence":
