@@ -48,4 +48,4 @@ Code des effets (CT10) et du HUD (CT11).
 - Charte : `docs/5.0/CHARTE_CARTOON_CT9.md` (10 jetons, formes qui doublent chaque couleur, catalogue des effets en `low`, `medium` et `high` avec coût GPU estimé, réglage « Effets », règles de confort chiffrées).
 - Maquettes : `/mnt/project-files/captures/course-tactique-maquettes/`, 6 scènes en 1680×1050 et 1024×600 dans les trois qualités (36 images), 7 planches (une par scène, une pour le réglage « Effets »), et le script qui les dessine (SVG rendu par Chromium, hors dépôt).
 - **Écarts :** CT1 n'est pas encore fusionné ; la charte s'appuie sur les champs proposés au §6 du plan et ne demande aucun changement de contrat. Les coûts GPU sont des estimations, que CT10 mesure sur la GTX 1060 avec la sonde X13 en `low`, `medium` et `high`.
-- **Pas encore fait :** la validation du propriétaire (critère 1), à noter en tête de la charte avant CT10.
+- **Validation :** maquettes validées telles quelles par le propriétaire le 29 octobre 2026 à 22 h 12 (critère 1), notée en tête de la charte.

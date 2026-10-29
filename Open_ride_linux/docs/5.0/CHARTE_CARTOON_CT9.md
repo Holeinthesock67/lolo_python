@@ -4,7 +4,7 @@ Version 5.0, série CT. Cahier : `docs/lots/LOT_CT9_charte_cartoon.md`. Plan : `
 
 Cette charte fixe les couleurs, les formes, les effets et leurs trois niveaux de qualité du mode `tactical`. Elle s'applique seulement à ce mode : le classique garde le rendu réaliste (Y16) et le Cyber-Rogue garde la charte néon (R17). CT10 (effets) et CT11 (HUD) la suivent sans exception.
 
-**Statut : maquettes soumises au propriétaire le 29 octobre 2026. Validation : à noter ici (date et heure) avant le début de CT10.**
+**Statut : maquettes soumises au propriétaire le 29 octobre 2026 et validées telles quelles le 29 octobre 2026 à 22 h 12 (heure de Paris). CT10 peut commencer, dans l'ordre de la série.**
 
 ---
 

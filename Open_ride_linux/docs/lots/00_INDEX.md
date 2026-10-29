@@ -295,7 +295,7 @@
 | [CT6](LOT_CT6_economie_capacites.md) | Série CT : crédits gagnés en tête et capacités payées | Python | TT2 à TT5 (4.0), Y10, CT1 | Moyenne | Prêt (version 5.0) |
 | [CT7](LOT_CT7_virages.md) | Série CT : virages : vitesse critique, freinage automatique et Apex | Python | AS2, CT2 | Moyenne | Prêt (version 5.0) |
 | [CT8](LOT_CT8_circuits_variantes.md) | Série CT : circuits générés et variantes asymétriques | Python | CT0, CT1 ; W (étape 2) | Grande | Prêt (version 5.0) |
-| [CT9](LOT_CT9_charte_cartoon.md) | Série CT : charte graphique cartoon de la Course tactique et maquettes | Documentation et maquettes | CT1 | Moyenne | **En revue le 29 octobre** : charte `docs/5.0/CHARTE_CARTOON_CT9.md` et maquettes des 6 scènes en low, medium et high soumises au propriétaire ; validation attendue avant CT10 |
+| [CT9](LOT_CT9_charte_cartoon.md) | Série CT : charte graphique cartoon de la Course tactique et maquettes | Documentation et maquettes | CT1 | Moyenne | **Maquettes validées le 29 octobre (22 h 12)** : charte `docs/5.0/CHARTE_CARTOON_CT9.md`, 6 scènes en low, medium et high (PR #585) |
 | [CT10](LOT_CT10_effets_engine.md) | Série CT : effets cartoon dans l'engine | GDScript | CT9, CT2 à CT8 | Grande | Prêt (version 5.0) |
 | [CT11](LOT_CT11_hud_menus.md) | Série CT : hUD, menus et bilan de la Course tactique | GDScript | CT9, CT10 | Grande | Prêt (version 5.0) |
 | [CT12](LOT_CT12_recette_velo.md) | Série CT : recette de la Course tactique sur le vélo | Essai sur le vélo | CT2 à CT11 | Moyenne | Interne (propriétaire, version 5.0) |
