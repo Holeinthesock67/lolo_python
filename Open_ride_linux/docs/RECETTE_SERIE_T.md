@@ -36,6 +36,8 @@ per_segment = true
 
 Remarque : …
 
+Fait sans vélo (lot X33, 28 octobre) : `python3 engine/tests/sim_bench.py --scenario serie_t --scenario erg_boutons --scenario course_bots` (14 min sous Xvfb, rapport `~/OpenRide/sim_bench/<date>/index.html`) joue §1 à §4 et §8 sur Bluetooth simulé et vérifie seul ce que le journal et l'écran montrent : résultats et records de la montée et du sprint, bonus en réserve puis activé par Z, jingles du sommet, du sprint, des records, des arches et de la fin (chacun le bon nombre de fois), `records.json`, aucun bonus ni arche en ERG, encart et écarts des bots. Chaque ligne du rapport renvoie à sa section (« [T11 §1] »). Au vélo, il reste le ressenti : vitesse sous bonus, son, lisibilité, équilibrage des bots, écran « Records du parcours » (menus : `menu_bench.py --scenario records`).
+
 ## 1. Montée et sprint du parcours de démonstration (9 minutes au plus)
 
 Mode classique (SIM), parcours `demo`, option « Bonus » à « oui ». Arrête-toi juste après la ligne d'arrivée du sprint (km 3,3), ou au bout de 9 minutes.

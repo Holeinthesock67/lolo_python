@@ -267,7 +267,7 @@
 | [X30](LOT_X30_tableau_recette.md) | Série X (outils de test) : Tableau de recette 1.0 relié aux rapports des outils | Python | O8 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x30`) ; issue #228 |
 | [X31](LOT_X31_pente_max_garmin.md) | Série X (outils de test) : Pente maximale et D+ face à Garmin Connect, en local | Python | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x31`) ; issue #229 |
 | [X32](LOT_X32_garde_fou_qualite.md) | Série X (outils de test) : Garde-fou de la qualité réellement appliquée dans les bancs et les vitrines | Python + GDScript | #481 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x32`) |
-| [X33](LOT_X33_seance_simulee_serie_t_boutons_erg.md) | Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | Oui |
+| [X33](LOT_X33_seance_simulee_serie_t_boutons_erg.md) | Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x33`) |
 | [X34](LOT_X34_hygiene_des_suites.md) | Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x34`) |
 | [X35](LOT_X35_fiabilite_banc_simule.md) | Série X (outils de test) : Fiabilité du banc simulé : captures, pics de capture, couches, vitesse imposée | Python + GDScript | X13 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x35`), essai `--speed-kmh 35` sur le PC à faire |
 | [X36](LOT_X36_pre_vol_seance_velo.md) | Série X (outils de test) : Pré-vol avant une séance vélo, verdict « prêt à rouler » | Python | X4, X33 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x36`), essai sur le PC avant la prochaine séance |
@@ -276,6 +276,7 @@
 | [X39](LOT_X39_ecart_progression.md) | Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
 | [X40](LOT_X40_rogue_bout_en_bout.md) | Série X (outils de test) : Run Cyber-Rogue de bout en bout dans la séance du core (`rogue_bout_en_bout`), pause, resynchronisation, trace pour le banc visuel | Python | R8, R7 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x40`) ; issue #543 |
 | [X41](LOT_X41_banc_visuel_rogue.md) | Série X (outils de test) : Banc visuel du mode Cyber-Rogue (`rogue_bench.py`), run X40 rejouée dans la vraie scène, captures aux moments clés et planche HTML | Python, GDScript | X40, R10–R13 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x41`) ; issue #544 |
+| [X42](LOT_X42_matrice_boutons_reglages.md) | Série X (outils de test) : Matrice des boutons du Click, des touches du clavier et des réglages par mode et par phase (`matrice_boutons`), secours du boîtier gauche, plan des boutons §7.1 lu comme référence | Python | X40, §7.1 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x42`) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
