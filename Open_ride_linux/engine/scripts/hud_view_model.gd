@@ -300,20 +300,18 @@ static func session_lines(state: Dictionary, erg_view: Dictionary) -> Dictionary
 	var pct := func(x: float) -> String: return NO_VALUE if is_nan(x) else "%.1f %%" % x
 
 	var erg_on := bool(erg_view.get("visible", false))
-	var erg: Variant = state.get("erg", null)
-	var freeride := erg_on and typeof(erg) == TYPE_DICTIONARY and str(erg.get("block_type", "")) == "freeride"
 	var out := {}
 	out["power"] = "PUISSANCE: %s (3s: %s)" % [w.call(p), w.call(p3s)]
 	if erg_on:
-		out["power"] += "  |  CIBLE ERG: %s" % ("roue libre" if freeride else str(erg_view.get("target_text", NO_VALUE)))
+		out["power"] += "  |  CIBLE ERG: %s" % str(erg_view.get("target_text", NO_VALUE))
 	var speed_text := NO_VALUE if is_nan(v) else "%.1f km/h" % v
-	if erg_on and not freeride:
+	if erg_on:
 		out["speed"] = "VITESSE: %s  [Braquet: %s, ± = intensité en ERG]" % [speed_text, gear_text]
 	else:
 		out["speed"] = "VITESSE: %s  [Braquet: %s]" % [speed_text, gear_text]
 	out["cadence"] = "CADENCE: %s" % (NO_VALUE if is_nan(cad) else "%d rpm" % int(round(cad)))
 	out["hr"] = "FC: %s" % (NO_VALUE if is_nan(hr) or hr == 0.0 else "%d bpm" % int(round(hr)))
-	if erg_on and not freeride:
+	if erg_on:
 		out["grade"] = "PENTE: %s  (trainer en ERG)" % pct.call(grade)
 	else:
 		out["grade"] = "PENTE: %s  (envoyée au trainer: %s)" % [pct.call(grade), pct.call(grade_sent)]
@@ -330,8 +328,8 @@ static func session_lines(state: Dictionary, erg_view: Dictionary) -> Dictionary
 	out["grade_class"] = grade_class(grade) if not is_nan(grade) else "flat"
 	out["distance_val"] = "%.2f km" % (s / 1000.0) if not is_nan(s) else NO_VALUE
 	out["gear_val"] = gear_text
-	# Braquet sans effet en ERG avec une cible (± = intensité) : caché ; en roue libre il sert, donc affiché.
-	out["gear_shown"] = not (erg_on and not freeride)
+	# Braquet sans effet en ERG (± = intensité, jamais de roue libre depuis le lot O19) : caché.
+	out["gear_shown"] = not erg_on
 	out["time_val"] = format_hms(t)
 
 	var erg_line := ""

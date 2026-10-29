@@ -242,7 +242,7 @@ ERG_ZWO = """<workout_file><name>Contrat ERG</name><workout>
 
 
 def test_state_frames_in_erg(tmp_path, monkeypatch):
-    """Lot F : trames state en ERG (blocs, pause ERG, roue libre, fin) et erreur workout_invalid."""
+    """Lot F : trames state en ERG (blocs, pause ERG, FreeRide à 50 W, fin) et erreur workout_invalid."""
     async def scenario():
         workouts = tmp_path / "Workouts"
         workouts.mkdir()
@@ -266,7 +266,9 @@ def test_state_frames_in_erg(tmp_path, monkeypatch):
             if s.state.erg:
                 types.add(s.state.erg["block_type"])
         erg_frames = [f for f in cap.of("state") if f["erg"] is not None]
-        assert {"warmup", "interval_on", "interval_off", "freeride", "cooldown"} <= types
+        assert {"warmup", "interval_on", "interval_off", "steady", "cooldown"} <= types
+        assert "freeride" not in types                              # lot O19 : jamais de roue libre en ERG
+        assert all(f["mode"] == "ERG" and f["erg"]["target_w"] >= 50 for f in erg_frames)
         assert any(f["erg"]["paused"] for f in erg_frames)
         assert any(f["mode"] == "ERG" for f in erg_frames)
         assert any(f["erg"]["next_target_w"] is None for f in erg_frames)

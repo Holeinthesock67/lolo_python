@@ -1,4 +1,4 @@
-"""Tests de FTP : rampe par paliers et test de 20 minutes (lot O10)."""
+"""Test de FTP : rampe par paliers (lot O10) ; le test de 20 minutes est retiré (lot O19)."""
 
 import asyncio
 import json
@@ -10,7 +10,7 @@ from test_workout import make_session, run, workouts_dir  # noqa: F401  (fixture
 
 from openride_core import __main__ as cli
 from openride_core import ftp_test, plans
-from openride_core.ftp_test import FtpResult, RampWatch, estimate_ftp, ramp_workout, twenty_min_workout
+from openride_core.ftp_test import FtpResult, RampWatch, estimate_ftp, ramp_workout
 from openride_core.journal import read_journal
 from openride_core.tools.session_summary import compute_summary, format_text, load_session
 from openride_core.workout import ErgController
@@ -38,12 +38,11 @@ def test_ramp_workout_steps():
         ramp_workout(step_w=0)
 
 
-def test_twenty_min_workout_and_plan_durations():
-    w = twenty_min_workout(250.0)
-    i = next(k for k, b in enumerate(w.blocks) if b.type == "freeride")
-    assert sum(b.duration_s for b in w.blocks[:6]) == 1200 and w.blocks[i].duration_s == 1200
-    assert sum(1 for b in w.blocks[:6] if b.type == "interval_on") == 2
-    assert ftp_test.planned_duration_s("20min") == w.duration_s == 3300
+def test_only_the_ramp_and_plan_durations():
+    # Lot O19 : plus de test de 20 minutes (20 min de roue libre) ; la rampe est le seul test.
+    assert ftp_test.KINDS == ("ramp",) and ftp_test.kind_of("ftp_test:20min") is None
+    with pytest.raises(ftp_test.FtpTestError):
+        ftp_test.workout_for("20min", 250.0)
     # Rampe attendue pour 250 W : dernier palier 320 W (meilleure minute visée 333 W).
     assert ftp_test.planned_duration_s("ramp") == 300 + 12 * 60 + 300
     assert ftp_test.kind_of("ftp_test:ramp") == "ramp" and ftp_test.kind_of("ftp_test:sprint") is None
@@ -170,69 +169,56 @@ def test_session_skip_during_ramp_is_abandon(tmp_path, monkeypatch, workouts_dir
     asyncio.run(scenario())
 
 
-def test_session_twenty_minutes_at_260(tmp_path, monkeypatch, workouts_dir):  # noqa: F811
+def test_session_refuses_the_old_twenty_minutes(tmp_path, monkeypatch, workouts_dir):  # noqa: F811
     async def scenario():
-        s, driver, _ = make_session(tmp_path, monkeypatch, workouts_dir, port=5974)
-        driver.base_power_w, driver.ramp_amplitude_w = 260.0, 0.0
-        s._on_command("select_route", {"route_id": "demo"}, 1)
-        s.route.type = "loop"                       # parcours sans arrivée : le test va jusqu'au bout
-        s._on_command("select_workout", {"workout_id": "ftp_test:20min"}, 2)
-        s._on_command("start", {}, 3)
-        assert s._ramp_watch is None
-        s.erg.goto(7)                               # début des 20 minutes libres
-        s._sync_erg_state()
-        assert s.state.mode == "SIM" and s.erg.block.type == "freeride"
-        run(s, 1205.0, dt=0.25)
-        assert s.erg.block.type == "cooldown"
-        s._on_command("end_session", {"save": True}, 4)
-        _, lines = journal_line(s, "ftp_test")
-        assert (lines[0]["test"], lines[0]["ftp_w"], lines[0]["ref_power_w"]) == ("20min", 247, 260)
-        assert lines[0]["warnings"] == [] and lines[0]["held_s"] >= 1199
+        s, _, _ = make_session(tmp_path, monkeypatch, workouts_dir, port=5974)
+        s._on_command("select_workout", {"workout_id": "ftp_test:ramp"}, 2)
+        assert s._workout_id != "ftp_test:20min"   # identifiant inconnu : workout_invalid
     asyncio.run(scenario())
 
 
 def test_autostart_and_command_line(tmp_path, monkeypatch, workouts_dir):  # noqa: F811
     async def scenario():
         s, _, _ = make_session(tmp_path, monkeypatch, workouts_dir, port=5976)
-        s.check_autostart("demo", "ftp_test:20min")
+        s.check_autostart("demo", "ftp_test:ramp")
     asyncio.run(scenario())
     for argv in (["run", "--ftp-test", "ramp"], ["run", "--autostart", "--ftp-test", "ramp", "--workout", "x"]):
         with pytest.raises(SystemExit) as exc:
             cli.main(argv)
         assert exc.value.code == 2
-    args = cli.build_parser().parse_args(["run", "--autostart", "--ftp-test", "20min"])
-    assert args.ftp_test == "20min"
+    args = cli.build_parser().parse_args(["run", "--autostart", "--ftp-test", "ramp"])
+    assert args.ftp_test == "ramp"
+    with pytest.raises(SystemExit):
+        cli.build_parser().parse_args(["run", "--autostart", "--ftp-test", "20min"])
 
 
 # --- résultat --------------------------------------------------------------------------------
 
-def records(seconds, power=260.0, block=8, cadence=90.0, t0=1000.0):
+def records(seconds, power=260.0, block=10, cadence=90.0, t0=1000.0):   # bloc 10 : palier de 260 W
     return [{"kind": "record", "ts": t0 + i, "t": float(i), "power": power, "cadence": cadence, "block": block}
             for i in range(seconds)]
 
 
-def test_estimate_twenty_minutes():
-    r = estimate_ftp(records(1200), "20min", previous_ftp_w=250)
-    assert (r.ftp_w, r.ref_power_w, r.held_s, r.warnings) == (247, 260, 1200, ())
-    short = estimate_ftp(records(600), "20min")
-    assert short.warnings == ("too_short",) and not short.reliable
-    assert estimate_ftp(records(60, block=2), "20min").ftp_w is None
+def test_estimate_ramp():
+    r = estimate_ftp(records(600, power=300.0), "ramp", previous_ftp_w=250)
+    assert (r.ftp_w, r.ref_power_w, r.held_s, r.step_w, r.warnings) == (225, 300, 600, 260, ())
+    assert estimate_ftp(records(60, block=1), "ramp").ftp_w is None     # échauffement seul
 
 
 def test_estimate_warnings():
     recs = records(1200)
     down = [{"kind": "device", "ts": 1500.0, "device": "trainer", "state": "down"},
             {"kind": "device", "ts": 1503.0, "device": "trainer", "state": "up"}]
-    r = estimate_ftp(recs, "20min", devices=down)
-    assert r.warnings == ("trainer_dropout",) and not r.reliable and r.ftp_w == 247
+    r = estimate_ftp(recs, "ramp", devices=down)
+    assert r.warnings == ("trainer_dropout",) and not r.reliable and r.ftp_w == 195
     assert "coupure du trainer" in r.describe()
-    paused = estimate_ftp(recs, "20min", events=[{"kind": "event", "ts": 1700.0, "event": "pause"}])
+    paused = estimate_ftp(recs, "ramp", events=[{"kind": "event", "ts": 1700.0, "event": "pause"}])
     assert paused.warnings == ("paused",)
     wobbly = [dict(rec, cadence=60.0 if i % 2 else 100.0) for i, rec in enumerate(recs)]
-    r = estimate_ftp(wobbly, "20min")
+    r = estimate_ftp(wobbly, "ramp")
     assert r.warnings == ("erratic_cadence",) and r.reliable
     outside = [{"kind": "device", "ts": 900.0, "device": "trainer", "state": "down"}]
-    assert estimate_ftp(recs, "20min", devices=outside).warnings == ()
+    assert estimate_ftp(recs, "ramp", devices=outside).warnings == ()
 
 
 def test_estimate_ramp_too_short():
@@ -244,7 +230,7 @@ def test_estimate_ramp_too_short():
 
 def write_journal(directory: Path, name: str, result: FtpResult | None) -> Path:
     directory.mkdir(parents=True, exist_ok=True)
-    lines = [{"kind": "header", "version": 1, "route_id": "demo", "workout_id": "ftp_test:20min"},
+    lines = [{"kind": "header", "version": 1, "route_id": "demo", "workout_id": "ftp_test:ramp"},
              {"kind": "event", "event": "start", "ts": 1000.0}, *records(5)]
     if result is not None:
         lines.append(result.to_line())
@@ -254,7 +240,7 @@ def write_journal(directory: Path, name: str, result: FtpResult | None) -> Path:
     return path
 
 
-GOOD = FtpResult("20min", 263, "95 % de la moyenne des 20 minutes", 277, 1200, None, (), 250, 1761550000.0)
+GOOD = FtpResult("ramp", 263, "75 % de la meilleure minute", 351, 1200, 340, (), 250, 1761550000.0)
 
 
 def test_accept_changes_only_ftp(tmp_path, capsys):
@@ -278,7 +264,7 @@ def test_accept_refuses_doubtful_and_out_of_bounds(tmp_path, capsys):
     cfg = tmp_path / "config.toml"
     cfg.write_text(CONFIG, encoding="utf-8")
     jdir = tmp_path / "journal"
-    doubtful = FtpResult("20min", 263, "", 277, 1200, None, ("trainer_dropout",), 250, 1761550000.0)
+    doubtful = FtpResult("ramp", 263, "", 351, 1200, 340, ("trainer_dropout",), 250, 1761550000.0)
     write_journal(jdir, "2026-10-20_18-00-00.jsonl", doubtful)
     assert ftp_test.run(None, True, False, False, config_path=cfg, journal_dir=jdir) == 1
     assert "résultat douteux" in capsys.readouterr().out and cfg.read_text(encoding="utf-8") == CONFIG
@@ -301,11 +287,14 @@ def test_history_and_old_journals(tmp_path, capsys):
     summary = compute_summary(load_session(old), 250.0)
     assert "ftp_test" not in summary and "FTP" not in format_text(summary).split("IF")[1]
     write_journal(jdir, "2026-10-20_18-00-00.jsonl", GOOD)
+    twenty = write_journal(jdir, "2026-10-24_18-00-00.jsonl", None)     # ancien test de 20 min : ignoré
+    twenty.write_text(twenty.read_text(encoding="utf-8") + json.dumps(
+        {"kind": "ftp_test", "ts": 1761900000.0, "test": "20min", "ftp_w": 247}) + "\n", encoding="utf-8")
     write_journal(jdir, "2026-10-27_18-00-00.jsonl",
                   FtpResult("ramp", 270, "", 360, 900, 360, ("erratic_cadence",), 263, 1762150000.0))
     assert ftp_test.run(None, False, False, True, journal_dir=jdir) == 0
     out = capsys.readouterr().out.splitlines()
-    assert len(out) == 2 and "20 min" in out[0] and "FTP  263 W" in out[0]
+    assert len(out) == 2 and "rampe" in out[0] and "FTP  263 W" in out[0]
     assert "rampe" in out[1] and "cadence erratique" in out[1]
     assert cli.main(["ftp-test", "--history", "--json", "--dir", str(jdir)]) == 0
     assert [t["ftp_w"] for t in json.loads(capsys.readouterr().out)] == [263, 270]
