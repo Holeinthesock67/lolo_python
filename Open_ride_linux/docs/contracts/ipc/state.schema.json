@@ -194,8 +194,7 @@
             "interval_on",
             "interval_off",
             "ramp",
-            "cooldown",
-            "freeride"
+            "cooldown"
           ]
         },
         "block_remaining_s": {
@@ -539,8 +538,7 @@
           "properties": {
             "test": {
               "enum": [
-                "ramp",
-                "20min"
+                "ramp"
               ]
             },
             "ftp_w": {

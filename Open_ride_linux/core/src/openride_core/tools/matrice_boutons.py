@@ -4,7 +4,7 @@
         [--json] [--md RAPPORT.md]
 
 **Boutons.** Chaque mode (classique SIM, ERG, Cyber-Rogue, monde ouvert) est amené à chacune de ses phases :
-prêt, en route, bonus en réserve, roue libre, dernier bloc et fin de l'entraînement ERG, échauffement, salle,
+prêt, en route, bonus en réserve, bloc FreeRide (palier à 50 W, lot O19), dernier bloc et fin de l'entraînement ERG, échauffement, salle,
 couloir, boss, retour au calme et résultats du Cyber-Rogue, carrefour du monde ouvert, pause, bilan. À chaque
 phase, la séance est copiée une fois par bouton du Click (les 16 événements, appuis courts, longs et ambigus).
 Chaque copie reçoit son appui par le chemin du Click (`_handle_input`) et avance d'une seconde. L'effet relevé
@@ -242,10 +242,8 @@ class Expect:
     fallback: str = "engine"     # choix sans choix affiché : vue de caméra (engine) ; « Aucune » sinon
 
 
-def expect_of(cell: str, sign: int, column: str, freeride: bool = False) -> Expect | None:
+def expect_of(cell: str, sign: int, column: str) -> Expect | None:
     c = cell.lower()
-    if freeride and (num := re.search(r"braquet ± (\d+) en roue libre", c)):
-        return Expect("gear", sign * int(num.group(1)))
     if c.startswith("comme le mode roulé"):
         return None              # résolu par l'appelant (colonne SIM ou ERG)
     if num := re.match(r"braquet ± (\d+)", c):
@@ -407,7 +405,7 @@ def phases_erg(h: Harness) -> Iterator[Phase]:
     h.cmd(p, "pause")
     yield Phase("ERG", "pause", p)
     h.run(s, 100.0)
-    yield Phase("ERG", "roue libre", s, "bloc sans cible : la séance annonce le mode SIM")
+    yield Phase("ERG", "bloc FreeRide", s, "FreeRide du fichier : palier ERG à 50 W, pas de roue libre (lot O19)")
     h.run(s, 60.0)
     yield Phase("ERG", "dernier bloc", s)
     h.run(s, 70.0)
@@ -578,15 +576,14 @@ def press(h: Harness, ph: Phase, ev: InputEvent, keyboard: bool = False
 def check(h: Harness, ph: Phase, ev: InputEvent, plan: dict, keys: list[str] | None = None) -> Cell:
     running = ph.session.state.session_state == "RUNNING"
     s = ph.session
-    # Colonne du mode roulé : monde ouvert, ERG tant qu'un entraînement est en cours (roue libre comprise,
-    # §7.1), sinon le mode que la séance annonce.
+    # Colonne du mode roulé : monde ouvert, ERG tant qu'un entraînement est en cours (§7.1), sinon le
+    # mode que la séance annonce.
     column = ("MONDE" if ph.mode == "MONDE" else "ERG" if s.erg is not None else s.state.mode) if running else "MENU"
-    freeride = s.erg is not None and s.erg.is_freeride
     # ERG d'une session libre (lot O18) : colonne ERG, sauf Z, qui garde son rôle de la colonne SIM (§7.1).
     plan_column = "SIM" if running and isinstance(s.erg, FreeErg) and ev in (InputEvent.Z_SHORT, InputEvent.Z_LONG) \
         else column
     text, sign = plan[(ev, plan_column)]
-    exp = expect_of(text, sign, column, freeride)
+    exp = expect_of(text, sign, column)
     if exp is None and text.lower().startswith("comme le mode roulé"):
         text, sign = plan[(ev, ph.session.state.mode if ph.session.state.mode in ("SIM", "ERG") else "SIM")]
         exp = expect_of(text, sign, column)

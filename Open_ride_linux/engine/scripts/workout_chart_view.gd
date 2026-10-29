@@ -28,7 +28,6 @@ const AXIS_OUTLINE := 4
 const CURVE_WIDTH := 2.0
 const LEGEND_SIZE := 22
 const AXIS_SIZE := 15
-const FREERIDE_BAND := 5.0
 
 ## Modèle partagé (workout_chart_model.gd), donné par main.gd.
 var model = null
@@ -87,15 +86,12 @@ func _on_draw() -> void:
 		if mode == "full" and float(tick) > 0.0 and y > AXIS_SIZE:
 			draw_string_outline(font, Vector2(4.0, y - 2.0), "%d" % int(tick), HORIZONTAL_ALIGNMENT_LEFT, -1, AXIS_SIZE, AXIS_OUTLINE, UiTheme.OUTLINE)
 			draw_string(font, Vector2(4.0, y - 2.0), "%d" % int(tick), HORIZONTAL_ALIGNMENT_LEFT, -1, AXIS_SIZE, TEXT_COLOR)
-	# Profil des watts cibles, atténué ; roue libre : bande basse grise.
+	# Profil des watts cibles, atténué (gris neutre sans FTP connue).
 	for poly in geo["profile"]:
 		var pts: PackedVector2Array = poly["polygon"]
 		if pts.size() < 4 or absf(pts[3].x - pts[0].x) < 0.5:
 			continue
 		var color: Color = poly["color"]
-		if int(poly["zone"]) < 0:
-			draw_rect(Rect2(pts[0].x, h - FREERIDE_BAND, pts[3].x - pts[0].x, FREERIDE_BAND), color)
-			continue
 		if minf(pts[1].y, pts[2].y) >= h - 0.5:
 			continue
 		color.a = PROFILE_ALPHA

@@ -12,7 +12,9 @@
 
 Arrondi : la cible est arrondie au watt par `round()` de Python, qui arrondit les demis au pair
 (237,5 W donne 238 W, 212,5 W donne 212 W).
-Pendant un bloc `freeride`, il n'y a pas de cible : `target_w` vaut 0 et le core repasse en SIM.
+Consigne minimale (lot O19) : en ERG, la cible envoyée au trainer ne descend jamais sous
+`ERG_MIN_W` (50 W), biais compris. Un bloc `FreeRide` d'un `.zwo` devient un palier à `ERG_MIN_W`
+en watts absolus : un entraînement ERG reste en ERG du premier au dernier bloc.
 Les métadonnées `author`, `sportType` et `tags` sont notées au niveau DEBUG ; les autres balises
 inconnues (`textevent`, …) donnent un avertissement. Un `sportType` autre que `bike` est refusé.
 """
@@ -31,6 +33,7 @@ log = logging.getLogger("workout")
 
 MAX_POWER_FRAC = 3.0
 MAX_REPEAT = 100                    # borne de Repeat (IntervalsT) : un fichier aberrant ne doit pas épuiser la mémoire
+ERG_MIN_W = 50                      # consigne ERG minimale (lot O19), aussi plancher de l'ERG libre
 SMOOTH_S = 2.0                      # lissage des changements de bloc (SRS §6)
 BIAS_DEFAULT_PCT = 100
 BIAS_STEP_PCT = 2
@@ -58,9 +61,9 @@ class WorkoutError(Exception):
 
 @dataclass(frozen=True)
 class Block:
-    type: str                  # warmup, steady, interval_on, interval_off, ramp, cooldown, freeride
+    type: str                  # warmup, steady, interval_on, interval_off, ramp, cooldown
     duration_s: float
-    start_frac: float | None   # None pour freeride et pour un bloc en watts absolus
+    start_frac: float | None   # None pour un bloc en watts absolus
     end_frac: float | None
     start_w: float | None = None   # cibles absolues en watts (`.erg`, lot O9), sans la FTP
     end_w: float | None = None
@@ -69,28 +72,27 @@ class Block:
     def absolute(self) -> bool:
         return self.start_w is not None and self.end_w is not None
 
-    @property
-    def free(self) -> bool:
-        """Bloc sans cible (roue libre)."""
-        return not self.absolute and (self.start_frac is None or self.end_frac is None)
+    def __post_init__(self) -> None:
+        # Tout bloc a une cible (lot O19 : pas de roue libre en ERG), en fraction de la FTP ou en watts.
+        if not self.absolute and (self.start_frac is None or self.end_frac is None):
+            raise ValueError(f"bloc {self.type} sans cible")
 
     def frac_at(self, t: float) -> float | None:
-        """Fraction de la FTP à t secondes du début du bloc (linéaire dans une rampe) ; None en
-        roue libre et pour un bloc en watts absolus."""
-        if self.start_frac is None or self.end_frac is None:
+        """Fraction de la FTP à t secondes du début du bloc (linéaire dans une rampe) ; None pour un
+        bloc en watts absolus."""
+        if self.absolute:
             return None
         u = min(max(t / self.duration_s, 0.0), 1.0)
         return self.start_frac + (self.end_frac - self.start_frac) * u
 
-    def watts_at(self, t: float, ftp_w: float) -> float | None:
-        """Cible en watts à t secondes du début du bloc, sans biais (None en roue libre)."""
+    def watts_at(self, t: float, ftp_w: float) -> float:
+        """Cible en watts à t secondes du début du bloc, sans biais ni plancher."""
+        u = min(max(t / self.duration_s, 0.0), 1.0)
         if self.absolute:
-            u = min(max(t / self.duration_s, 0.0), 1.0)
             return self.start_w + (self.end_w - self.start_w) * u
-        frac = self.frac_at(t)
-        return None if frac is None else ftp_w * frac
+        return ftp_w * (self.start_frac + (self.end_frac - self.start_frac) * u)
 
-    def profile_fracs(self, ftp_w: float) -> tuple[float | None, float | None]:
+    def profile_fracs(self, ftp_w: float) -> tuple[float, float]:
         """(début, fin) en fraction de la FTP, pour le profil affiché (watts absolus ramenés à la FTP)."""
         if self.absolute:
             return self.start_w / ftp_w, self.end_w / ftp_w
@@ -181,8 +183,8 @@ class _Reader:
         if tag == "steadystate":
             p = self.power(a, "power", tag)
             return [Block("steady", self.duration(a, "duration", tag), p, p)]
-        if tag == "freeride":
-            return [Block("freeride", self.duration(a, "duration", tag), None, None)]
+        if tag == "freeride":   # pas de roue libre en ERG (lot O19) : palier à la consigne minimale
+            return [Block("steady", self.duration(a, "duration", tag), None, None, float(ERG_MIN_W), float(ERG_MIN_W))]
         # intervalst
         repeat = self.number(a, "repeat", tag)
         if repeat < 1 or repeat != int(repeat):
@@ -317,10 +319,10 @@ class ErgController:
     """Cible de puissance d'un entraînement, avancée par pas de temps (SRS §6, §4.4).
 
     - Cible = FTP × fraction × biais / 100, arrondie au watt ; pour un bloc en watts absolus
-      (`.erg`, lot O9) : watts × biais / 100, quelle que soit la FTP.
+      (`.erg`, lot O9) : watts × biais / 100, quelle que soit la FTP. Jamais sous `ERG_MIN_W`
+      (lot O19).
     - À chaque changement de bloc, la cible sans biais passe linéairement de l'ancienne valeur à
-      la nouvelle en 2 s ; le biais s'applique sans lissage. Après un bloc `freeride` (sans cible),
-      le bloc suivant démarre directement à sa cible.
+      la nouvelle en 2 s ; le biais s'applique sans lissage.
     - Pause ERG : le temps du bloc et le lissage s'arrêtent.
 
     Entrées refusées (`ValueError`, constat R3 de la vérification du 24 octobre) : FTP ≤ 0 ou
@@ -348,35 +350,28 @@ class ErgController:
         return self.workout.blocks[self.index]
 
     @property
-    def is_freeride(self) -> bool:
-        return self.block.free
-
-    @property
     def target_active(self) -> bool:
-        """Vrai quand le trainer doit recevoir une cible ERG (ni roue libre, ni pause, ni fin)."""
-        return not (self.finished or self.paused or self.is_freeride)
+        """Vrai quand le trainer doit recevoir une cible ERG (ni pause, ni fin)."""
+        return not (self.finished or self.paused)
 
-    def base_w(self) -> float | None:
-        """Cible en cours en watts, lissage compris, sans biais (None en roue libre)."""
+    def base_w(self) -> float:
+        """Cible en cours en watts, lissage compris, sans biais."""
         w = self.block.watts_at(self.t_block, self.ftp_w)
-        if w is None or self._from_w is None or self._smooth_t >= SMOOTH_S:
+        if self._from_w is None or self._smooth_t >= SMOOTH_S:
             return w
         return self._from_w + (w - self._from_w) * (self._smooth_t / SMOOTH_S)
 
-    def fraction(self) -> float | None:
-        """Fraction de la FTP en cours, lissage compris (None en roue libre)."""
-        w = self.base_w()
-        return None if w is None else w / self.ftp_w
+    def fraction(self) -> float:
+        """Fraction de la FTP en cours, lissage compris."""
+        return self.base_w() / self.ftp_w
 
-    def _watts(self, base_w: float | None) -> int | None:
-        if base_w is None:
-            return None
-        return round(base_w * self.bias_pct / 100.0)
+    def _watts(self, base_w: float) -> int:
+        return max(round(base_w * self.bias_pct / 100.0), ERG_MIN_W)
 
     @property
     def target_w(self) -> int:
-        """Cible lissée en watts, biais compris ; 0 en roue libre."""
-        return self._watts(self.base_w()) or 0
+        """Cible lissée en watts, biais compris, jamais sous `ERG_MIN_W`."""
+        return self._watts(self.base_w())
 
     @property
     def next_target_w(self) -> int | None:

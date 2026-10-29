@@ -16,7 +16,7 @@
     {"appui": "Y_SHORT"},
     {"ecran": "home", "contient": ["Choisir un plan"]},
     {"choisir": "ftp"},
-    {"ecran": "ftp_test", "titre": "Test de FTP", "elements": ["ramp", "20min"]},
+    {"ecran": "ftp_test", "titre": "Test de FTP", "elements": ["ramp"]},
     {"choisir": "ramp"},
     {"ecran": "routes"},
     {"choisir": "demo"},

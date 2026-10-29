@@ -56,7 +56,7 @@ def test_start_values():
 
 def test_free_erg_bias_like_a_workout():
     erg = FreeErg(200)
-    assert erg.target_active and erg.target_w == 200 and not erg.is_freeride
+    assert erg.target_active and erg.target_w == 200
     erg.change_bias(+1)
     assert erg.target_w == 204 and erg.bias_pct == 102
     erg.change_bias(+50)

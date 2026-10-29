@@ -36,7 +36,7 @@ extends RefCounted
 ##   (action list_plans à l'ouverture) montre le suivi du plan actif et la liste, l'écran d'un plan
 ##   le démarre (start_plan, remplacement confirmé) ou l'arrête (stop_plan, confirmé) ; réponse `plans`
 ##   par on_plans(), erreur plan_invalid sur la ligne d'état ;
-## - « Test de FTP » : rampe ou 20 minutes, puis écran Prêt, `start` avec ftp_test ; au bilan,
+## - « Test de FTP » : la rampe (seul test depuis le lot O19), puis écran Prêt, `start` avec ftp_test ; au bilan,
 ##   « Accepter » (accept_ftp ; résultat douteux : confirmation puis accept_ftp avec force) ou « Garder » ;
 ## - parcours : tri et filtre par étiquette en cycle en fin de liste, fiche du parcours sur l'écran Prêt ;
 ## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
@@ -72,9 +72,7 @@ const RECORD_TABLE := "record_table"
 ## Tests de FTP proposés (lot O10) : id, libellé, explication courte, nom de la séance (écran Prêt).
 const FTP_TESTS := [
 	["ramp", "Rampe", "≈ 25 min : +20 W par minute jusqu'à ne plus tenir ; FTP = 75 % de la meilleure minute",
-		"test de FTP (rampe)"],
-	["20min", "20 minutes", "≈ 1 h avec l'échauffement : 20 min à fond, régulier ; FTP = 95 % de la moyenne",
-		"test de FTP (20 min)"]]
+		"test de FTP (rampe)"]]
 const FTP_HINT := "Sur une boucle : l'arrivée d'un parcours arrête le test"
 ## Avertissements du test de FTP (summary.ftp_test.warnings), comme `openride-core ftp-test`.
 const FTP_WARNINGS := {"too_short": "test trop court", "erratic_cadence": "cadence erratique",
