@@ -8,11 +8,16 @@ extends SceneTree
 ##
 ##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
 ##     --audio-driver Dummy --script res://tests/vitrine_biomes.gd -- --out DOSSIER \
-##     [--biomes alpine,savanna] [--quality low,medium,high] [--size 1680x1050]
+##     [--biomes alpine,savanna] [--quality low,medium,high] [--size 1680x1050] \
+##     [--compare REF] [--max-diff 3] [--max-saturated 5]
 ##
 ## Écrit DOSSIER/<biome>_<vue>_<préréglage>.png et DOSSIER/vitrine_biomes.csv (biome ; vue ; préréglage ;
+## préréglage appliqué ;
 ## arbres ; triangles ; appels de dessin ; objets ; préparation des arbres en ms ; bêtes et oiseaux affichés ;
-## espèces animales placées ; placement des animaux en ms ; rochers, herbes hautes et termitières affichés). Les temps du processeur
+## espèces animales placées ; placement des animaux en ms ; rochers, herbes hautes et termitières affichés ;
+## part de pixels saturés du sol en % ; luminance moyenne du sol). Contrôles automatiques (vitrine_checks.gd) :
+## exposition du sol (bas de l'image, sauf vue `faune`), et comparaison à des captures de référence avec
+## --compare ; code de sortie 1 si l'un échoue. Les temps du processeur
 ## graphique se mesurent sur le PC cible, pas ici : le rendu logiciel de Xvfb ne dit rien de la GTX 1060.
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
@@ -27,6 +32,7 @@ const QualityPresets := preload("res://scripts/quality_presets.gd")
 const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const GroundDetails := preload("res://scripts/ground_details.gd")
+const VitrineChecks := preload("res://tests/vitrine_checks.gd")
 
 const ROAD_WIDTH_M := 6.0
 const GROUND_Y := 100.0
@@ -55,10 +61,12 @@ var _out_dir := "user://vitrine_biomes"
 var _presets: Array = ["low"]
 var _biomes: Array = BiomeIds.BIOMES.duplicate()
 var _size := Vector2i(1280, 720)
+var _checks = VitrineChecks.new()
 
 
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
+	_checks.parse_args(args)
 	for i in range(args.size() - 1):
 		if args[i] == "--out":
 			_out_dir = args[i + 1]
@@ -76,8 +84,9 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(_out_dir)
 	var theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	var csv := FileAccess.open(_out_dir.path_join("vitrine_biomes.csv"), FileAccess.WRITE)
-	csv.store_line("biome;vue;préréglage;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms;rochers;herbes_hautes;termitieres")
+	csv.store_line("biome;vue;préréglage;qualite_appliquee;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms;rochers;herbes_hautes;termitieres;sol_sature_pct;sol_luminance")
 	for preset in _presets:
+		var applied := VitrineChecks.applied_quality(preset, "vitrine_biomes")
 		for biome in _biomes:
 			var model = BiomeModel.new(theme, null)
 			if not model.set_forced(biome):
@@ -102,21 +111,25 @@ func _run() -> void:
 				for sp in FaunaRenderer.BIRD_SPECIES:
 					n_birds += fauna.visible_count(sp)
 				var path := _out_dir.path_join("%s_%s_%s.png" % [biome, view, preset])
-				vp.get_texture().get_image().save_png(path)
+				var img := vp.get_texture().get_image()
+				img.save_png(path)
+				# Sol : bas de l'image, route comprise ; la vue `faune` cadre une bête, parfois d'en dessous
+				var expo: Dictionary = _checks.exposure(img, "%s_%s_%s" % [biome, view, preset]) if view != "faune" else {"saturated_pct": NAN, "luma": NAN}
 				var rid := vp.get_viewport_rid()
 				var vis := RenderingServer.VIEWPORT_RENDER_INFO_TYPE_VISIBLE
 				var tris := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_PRIMITIVES_IN_FRAME)
 				var draws := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 				var objs := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
 				var details: Node = vp.get_node("GroundDetails")
-				csv.store_line("%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f;%d;%d;%d" % [biome, view, preset, built["trees"], tris, draws, objs, built["prep_ms"],
+				csv.store_line("%s;%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f;%d;%d;%d;%.2f;%.3f" % [biome, view, preset, applied, built["trees"], tris, draws, objs, built["prep_ms"],
 					n_animals, n_birds, built["species"], built["fauna_ms"], details.get_positions("rock").size(),
-					details.get_positions("grass").size(), details.get_positions("termite").size()])
+					details.get_positions("grass").size(), details.get_positions("termite").size(), expo["saturated_pct"], expo["luma"]])
 				print("[vitrine_biomes] %s : %d arbres, %d bêtes, %d oiseaux, %d triangles, %d appels de dessin" % [path, built["trees"], n_animals, n_birds, tris, draws])
 			vp.queue_free()
 			await process_frame
 	csv.close()
-	quit(0)
+	_checks.compare(_out_dir)
+	quit(_checks.exit_code("vitrine_biomes"))
 
 
 func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Dictionary:

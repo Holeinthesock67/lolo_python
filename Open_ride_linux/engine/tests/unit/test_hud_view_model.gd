@@ -279,6 +279,7 @@ func _test_session_lines() -> void:
 	_check(l["power"].ends_with("|  CIBLE ERG: 238 W"), "ERG : cible envoyée au trainer (%s)" % l["power"])
 	_check(l["speed"].contains("± = intensité en ERG"), "ERG : ± règle l'intensité (%s)" % l["speed"])
 	_check(l["grade"].ends_with("(trainer en ERG)"), "ERG : pas de pente envoyée (%s)" % l["grade"])
+	_check(not l["gear_shown"], "ERG : braquet sans effet, caché dans le HUD")
 	_check(l["erg"].begins_with("ERG: Sweet spot 3x10 — Bloc 3 / 7  |  reste 8:32"), "ERG : ligne du bloc (%s)" % l["erg"])
 	var erg2 := erg.duplicate()
 	erg2["bias_pct"] = 105
@@ -290,6 +291,8 @@ func _test_session_lines() -> void:
 	l = HudViewModel.session_lines(st.merged({"erg": free}, true), ErgViewModel.new().update(free, 0.0))
 	_check(l["power"].ends_with("CIBLE ERG: roue libre") and l["speed"].ends_with("[Braquet: 10/24]"),
 		"roue libre : braquets actifs (%s / %s)" % [l["power"], l["speed"]])
+	_check(l["gear_shown"], "roue libre : braquet affiché")
+	_check(HudViewModel.session_lines(sim, no_erg)["gear_shown"], "SIM : braquet affiché")
 
 
 func _test_difficulty() -> void:

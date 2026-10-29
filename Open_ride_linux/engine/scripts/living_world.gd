@@ -172,18 +172,16 @@ func _refresh_shapes() -> void:
 		ground_details.exclusions = _exclusions()
 
 
-## Hauteur du terrain affiché (relief exagéré du lot Q2 compris), comme les animaux d'osm_streamer.gd ;
-## vide sans dossier de parcours (hauteur de la route).
+## Hauteur du terrain affiché (relief exagéré `route.display_y`, lots Q2 et Y15), comme les animaux
+## d'osm_streamer.gd ; vide sans dossier de parcours (hauteur de la route).
 func _terrain_height(route) -> Callable:
 	if osm_streamer == null or route == null or not "world_dir" in osm_streamer or str(osm_streamer.world_dir) == "":
 		return Callable()
 	var raw := OsmStreamer.terrain_height_fn(osm_streamer.world_dir, route)
-	var k := float(osm_streamer.visual_grade_scale) if "visual_grade_scale" in osm_streamer else 1.0
-	if k == 1.0:
+	if route.relief_k == 1.0:
 		return raw
-	var alt_orig: float = route.alt_m[0] if route.n > 0 else 0.0
 	return func(x: float, z: float) -> float:
-		return alt_orig + (float(raw.call(x, z)) - alt_orig) * k
+		return route.display_y(float(raw.call(x, z)))
 
 
 ## Bâtiments et plans d'eau : pas de touffe d'herbe ni de détail de sol dedans.

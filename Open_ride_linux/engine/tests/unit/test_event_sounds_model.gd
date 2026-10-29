@@ -3,7 +3,9 @@ extends SceneTree
 ## Tests sans écran des jingles d'événements (lot T17) : modèle event_sounds_model.gd (sommet, sprint et
 ## variantes record, arches comme `ArchSchedule.crossed` du core, sauts ignorés, sans bonus ni hors
 ## séance, fin de séance en SIM et en ERG) et synthèse de sound_player.gd (un flux par jingle, non
-## bouclé, durée, niveau sans écrêtage, lecteur sur le bus « Events »).
+## bouclé, durée, niveau sans écrêtage, lecteur sur le bus « Events »). Depuis le 29/10 : départ du parcours
+## (READY → RUNNING), portiques de départ des segments et ligne d'une boucle, jamais en monde ouvert ni en
+## Rogue, un seul jingle par trame, jingles tous différents.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_event_sounds_model.gd
 
 const Model := preload("res://scripts/event_sounds_model.gd")
@@ -89,6 +91,42 @@ func _run() -> void:
 	_check(m.on_state(_st(0.0, "FINISHED", false)) == ["jingle_finish"], "ERG en pause → FINISHED : fin de séance")
 	m.on_state(_st(0.0, "READY", false))
 	_check(m.on_state(_st(0.0, "FINISHED", false)).is_empty(), "READY → FINISHED : rien")
+
+	# Portiques (29/10) : départ du parcours, départ d'un sprint ou d'une montée, ligne d'une boucle.
+	var gates := [{"s": 2860.0, "jingle": "jingle_start"}]
+	m.set_route(0.0, 5000.0, false, gates, true)
+	m.on_state(_st(0.0, "READY", false))
+	_check(m.on_state(_st(0.0, "RUNNING", false)) == ["jingle_start"], "READY → RUNNING : départ du parcours")
+	_check(_ride(m, 0.0, 5000.0, 10.0, false) == ["jingle_start"], "départ du sprint franchi une fois, sans bonus (ERG compris)")
+	m.set_route(0.0, 5000.0, false, gates, false)
+	m.on_state(_st(0.0, "READY", false))
+	_check(m.on_state(_st(0.0, "RUNNING", false)).is_empty(), "monde ouvert (sans portique de départ) : rien au départ")
+	m.on_state(_st(2800.0, "PAUSED", false))
+	_check(m.on_state(_st(2800.0, "RUNNING", false)).is_empty(), "PAUSED → RUNNING : pas un départ")
+	m.set_route(0.0, 5000.0, false, gates, true)
+	m.on_state(_st(100.0, "RUNNING", false))
+	_check(m.on_state(_st(2900.0, "RUNNING", false)).is_empty(), "saut par-dessus un portique : ignoré")
+	var rogue := _st(0.0, "READY", false)
+	rogue["mode"] = "ROGUE"
+	m.on_state(rogue)
+	rogue["session_state"] = "RUNNING"
+	_check(m.on_state(rogue).is_empty(), "mode Rogue : aucun jingle de portique")
+	m.set_route(2500.0, 5000.0, false, [{"s": 2500.0, "jingle": "jingle_start"}], true)
+	m.on_state(_st(2490.0))
+	_check(m.on_state(_st(2510.0)) == ["jingle_start"], "portique et arche au même endroit : un seul jingle, le portique")
+	m.set_route(0.0, 5000.0, true, [{"s": 0.0, "jingle": "jingle_lap"}, {"s": 300.0, "jingle": "jingle_start"}], true)
+	m.on_state(_st(0.0, "READY", false))
+	got = [m.on_state(_st(0.0, "RUNNING", false))]
+	got.append(_ride(m, 10.0, 15000.0, 10.0, false))
+	_check(got == [["jingle_start"], ["jingle_start", "jingle_lap", "jingle_start", "jingle_lap", "jingle_start", "jingle_lap"]],
+		"boucle : départ, puis ligne et départ du sprint à chaque tour (%s)" % str(got))
+	_check(m.crossed_gate(4990.0, 5310.0) == "jingle_start", "deux portiques dans une trame : le dernier franchi")
+	# Quatre passages, quatre jingles distincts : départ, sprint, sommet, arrivée (et ligne, arche).
+	var distinct := {}
+	for j in ["jingle_start", "jingle_sprint", "jingle_summit", "jingle_finish", "jingle_lap", "jingle_arch"]:
+		distinct[str(Model.JINGLES[j])] = j
+	_check(distinct.size() == 6, "jingles de départ, sprint, sommet, arrivée, ligne et arche tous différents")
+	_check(Model.duration_s("jingle_start") < 0.6 and Model.duration_s("jingle_lap") < 1.0, "départ et ligne brefs")
 
 	# Synthèse (bus « Events » créé par audio_mix.gd)
 	var sp = SoundPlayer.new()

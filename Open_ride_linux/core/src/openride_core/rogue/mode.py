@@ -32,6 +32,8 @@ FIGHT_PHASES = ("ROOM", "BOSS")
 GEAR_BUTTONS = ("PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG")
 GAME_BUTTONS = ("Z_SHORT", "Z_LONG", "A_SHORT", "A_LONG")
 KEPT_MESSAGES = 12                      # messages `room` et `loot` gardés pour `rogue_resync`
+JOURNAL_ROUTE_ID = "rogue"              # parcours inscrit au journal d'une run (la trame `state` porte route_id null)
+RESULTS_HOLD_S = 3.0                    # phase RESULTS montée à l'engine (jingle de fin) avant FINISHED et le bilan
 
 
 class RunInvalid(ValueError):
@@ -143,6 +145,7 @@ class RogueMode:
         self.phase = ""
         self.sent: list[dict] = []          # messages `room` et `loot` récents, renvoyés par `rogue_resync`
         self.out: RunOutputs | None = None
+        self.results_s = 0.0                # temps passé en RESULTS ; la séance se termine après RESULTS_HOLD_S
         self.hash = balance_hash(self.balance)
 
     # --- entrées ------------------------------------------------------------------------------
@@ -199,6 +202,8 @@ class RogueMode:
         if (out.phase != self.phase or new_room) and out.phase in SNAPSHOT_PHASES:
             lines.append(self.snapshot_line(ts))
         self.phase, self.room_id = out.phase, e.room_id
+        if self.finished:
+            self.results_s += dt
         return out, lines
 
     def target_grade(self, rate_up: float, rate_down: float, dt: float) -> tuple[float, bool]:
@@ -218,6 +223,11 @@ class RogueMode:
     @property
     def finished(self) -> bool:
         return self.engine.phase == "RESULTS"
+
+    @property
+    def done(self) -> bool:
+        """Résultats montrés assez longtemps : la séance passe en FINISHED avec le bilan (lot X40)."""
+        return self.results_s >= RESULTS_HOLD_S
 
     def summary(self) -> dict:
         """Bilan `summary.rogue` ; `abandoned` si la run n'a pas atteint les résultats."""

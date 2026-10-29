@@ -44,7 +44,7 @@ Le core et le compilateur sont installés en mode éditable, et Godot lit `engin
 - Noter chaque écart sans s'arrêter : `echo "$(date +%T) C2 flèche haut descend" >> ~/OpenRide/Logs/recette_notes.txt`.
 - Journal du lanceur (core, Godot préfixé `[engine]`) : `~/OpenRide/Logs/openride_<date>.log`, lien `~/run_trainer.log`.
 - Séances : `~/OpenRide/Activities/` (FIT et `.jsonl`). Mise à jour : `~/OpenRide/Logs/update.log`.
-- Rapports des outils : `~/OpenRide/recettes/`, `recettes_install/`, `trainer_steps/`, `click_recette/`, `fc_recette/`, `boutons_click/`, `sim_bench/`.
+- Rapports des outils : `~/OpenRide/recettes/`, `recettes_install/`, `trainer_steps/`, `click_recette/`, `fc_recette/`, `coupures/`, `boutons_click/`, `sim_bench/`.
 - Après un test raté : garder le dossier, ne pas relancer tout de suite, noter l'heure, puis le dire dans le fil. Je lis les journaux sur le PC ; les adresses Bluetooth et les traces réelles restent sur le PC.
 
 ### 0.4 Ordre conseillé et durées
@@ -57,7 +57,7 @@ Le core et le compilateur sont installés en mode éditable, et Godot lit `engin
 | D. Séances SIM et session simulée | vélo | 40 min (dont 25 guidées) |
 | E. ERG | vélo | 45 min (dont 13 guidées ; + 60 min pour le `sweet_spot_3x10` complet) |
 | F. Fichiers, plans, courbes | bureau | 20 min |
-| G. Trainer et Click (outils X5, X8, test des boutons) | vélo (G3 : bureau, Click en main) | 60 min |
+| G. Trainer et Click (outils X5, X8, X10, test des boutons) | vélo (G3 : bureau, Click en main) | 70 min |
 | H. Performance et endurance (X13, X16) | PC seul, fenêtre visible | 75 min (sans surveiller) |
 | J. Lots du 27 octobre | vélo (J2, J5, J6, J7) et bureau | 3 h environ, sur plusieurs jours |
 | I. Clôture | bureau | 10 min |
@@ -69,7 +69,7 @@ Les blocs A, F et H se font sans pédaler ; D, E et G le même jour, échauffé.
 Sur le vélo, tu n'as pas à lire ce document ni à chronométrer :
 
 - **Dans le jeu** (D1, E0) : `python -m openride_core.tools.seance_guidee` écrit deux parcours d'essai, `recette-velo` (séance libre en SIM, 25 min) et `recette-erg` (ERG, 13 min, entraînement « Recette ERG guidée »), avec leurs consignes. Chaque consigne s'affiche dans le bandeau avec un bip, au bon moment de la séance. Quand il faut du matériel (retirer la ceinture, sprint, fin de séance), un préavis « Dans 1 min, prépare … » arrive une minute avant. À chaque consigne, le journal du lanceur note le temps, la puissance, la cadence, la FC, le braquet et la pente envoyée (lignes `[essai]`).
-- **Dans les outils de test** (X4, X5, X8, X9, X16, test des boutons G3) : un écran de guidage en grand (consigne, compte à rebours, bip au début et à la fin de chaque étape, relevés horodatés dans `guide.jsonl`) et une option `--materiel` qui donne la liste du matériel et la durée avant de commencer. Il est sur `main` depuis la [PR #300](https://github.com/Holeinthesock67/lolo_python/pull/300) : `python -m openride_core.tools.guide materiel` donne le matériel de tous les essais, à lire la veille ; `python -m openride_core.tools.guide bips` sert à régler le volume avant de monter sur le vélo ; `--muet` coupe les bips et `--sans-attente` enchaîne sans pause. Agrandir la police du terminal (Ctrl + +) pour le lire depuis le vélo.
+- **Dans les outils de test** (X4, X5, X8, X9, X10, X16, test des boutons G3) : un écran de guidage en grand (consigne, compte à rebours, bip au début et à la fin de chaque étape, relevés horodatés dans `guide.jsonl`) et une option `--materiel` qui donne la liste du matériel et la durée avant de commencer. Il est sur `main` depuis la [PR #300](https://github.com/Holeinthesock67/lolo_python/pull/300) : `python -m openride_core.tools.guide materiel` donne le matériel de tous les essais, à lire la veille ; `python -m openride_core.tools.guide bips` sert à régler le volume avant de monter sur le vélo ; `--muet` coupe les bips et `--sans-attente` enchaîne sans pause. Agrandir la police du terminal (Ctrl + +) pour le lire depuis le vélo.
 
 `python -m openride_core.tools.seance_guidee --materiel` affiche ce qu'il faut préparer, sans rien écrire ; `--retirer` efface les parcours d'essai.
 
@@ -81,6 +81,7 @@ Sur le vélo, tu n'as pas à lire ce document ni à chronométrer :
 | X5 (G1) | Le même vélo, un braquet moyen gardé tout l'essai, 5 min d'échauffement avant | Paliers annoncés par l'outil |
 | X8 (G2) | Les deux boîtiers, piles chargées, jeu fermé ; vélo conseillé | Rappel d'appui toutes les 5 min |
 | X9 (B3) | Ceinture portée et humidifiée, un peu d'eau pour la remise ; vélo sur le HomeTrainer | Bip à chaque phase (retrait, remise) |
+| X10 (G4) | Séance SIM en cours, interrupteur du HomeTrainer à portée, ceinture portée ; sans adresse du Click dans `config.toml`, de quoi retirer les piles | Bip et compte à rebours avant chaque coupure |
 | Boutons (G3) | Les deux boîtiers, piles chargées, jeu fermé, son du PC allumé | Bip au début de chaque appui demandé |
 | X16, X13 (H) | Rien (trainer simulé) ; PC sans mise en veille, sur la GTX 1060 | Bip au départ et à la fin |
 
@@ -316,8 +317,9 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 
 ### F1. FIT de séance dans Garmin Connect et GoldenCheetah (O8 ligne 21)
 
-- **Étapes :** importer le FIT de D1 ou E1 (`~/OpenRide/Activities/`) dans Garmin Connect, puis dans GoldenCheetah.
-- **Attendu :** import sans erreur, puissance, cadence et FC présentes.
+- **Étapes :** d'abord `openride-core fit-check ~/OpenRide/Activities/<séance>.fit --journal ~/OpenRide/Activities/.journal/<séance>.jsonl` (contrôle local, X11 : le fichier ne quitte pas le PC) ; puis importer le FIT de D1 ou E1 (`~/OpenRide/Activities/`) dans Garmin Connect, puis dans GoldenCheetah.
+- **Attendu :** `fit-check` sans ÉCHEC (une ATTENTION se note) ; import sans erreur, puissance, cadence et FC présentes.
+- [ ] `fit-check` sans échec
 - [ ] Garmin Connect
 - [ ] GoldenCheetah
 
@@ -327,6 +329,8 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 - **Attendu :** compilation au lancement avec notification ; le parcours apparaît dans la liste et se roule ; l'archive vide est refusée avec un message sans empêcher les autres ; deux fichiers de même nom (`col.gpx`, `col.fit`) : un seul compilé, l'autre signalé.
 - [ ] Sortie Garmin compilée et roulée
 - [ ] Archive invalide refusée proprement
+- **Pente d'un col (O8 ligne 22, outil X31) :** pour une sortie qui passe un col, lire dans Garmin Connect la pente maximale, le dénivelé positif et la longueur, puis `openride-compiler compare-garmin ~/.local/share/openride/routes/<parcours>.world --pente-max P --dplus D --longueur KM`. Attendu : pente à ± 1 point, D+ à ± 5 %, longueur à ± 1 % ; rien n'est écrit.
+- [ ] Pente maximale du col conforme à Garmin Connect
 - **Journaux :** journal du lanceur (compilation), `openride-compiler list`.
 - **Rappel :** ces traces restent sur le PC, jamais dans le dépôt.
 
@@ -378,6 +382,16 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 - [ ] Boîtier droit : 10 appuis reconnus
 - **Journaux :** `~/OpenRide/boutons_click/<date>/` (`rapport.txt`, `rapport.json`, `guide.jsonl`).
 - **Si échec :** garder le dossier ; `-v` affiche le journal du Click.
+
+### G4. Coupures volontaires, 6 min (X10, essai 69)
+
+- **Prérequis :** une séance SIM en cours, lancée par l'icône ; l'interrupteur du HomeTrainer à portée de main ; ceinture portée (`python -m openride_core.tools.guide materiel coupures`).
+- **Étapes :** essai à blanc `python -m openride_core.tools.coupures --sim --court` (sans matériel) ; puis, pendant la séance, `python -m openride_core.tools.coupures` dans un terminal et suivre les consignes en roulant : l'outil arrête Godot, puis demande d'éteindre le HomeTrainer 5 s, coupe le boîtier droit du Click 30 s puis les deux (`bluetoothctl block` si leurs adresses sont dans `config.toml`, sinon retirer les piles), puis demande de retirer la ceinture 30 s. Appuyer sur chaque boîtier coupé quand l'outil le demande.
+- **Attendu :** « tout l'attendu est obtenu » : Godot relancé par le lanceur et relié au core en 40 s au plus ; trainer `down`, pause, `up` et reprise ; `down` puis `up` de chaque boîtier ; FC absente puis revenue (FC relayée par le trainer : absente au plus 17 s après le retrait, gel du lot Q5).
+- [ ] Essai à blanc OK
+- [ ] Tableau attendu contre obtenu sans échec
+- **Journaux :** `~/OpenRide/coupures/<date>/` (`rapport.txt`, `actions.jsonl`, `journal.jsonl`, `lanceur.log`).
+- **Si échec :** joindre `rapport.txt` ; `--analyse DOSSIER` refait la comparaison sans rouler.
 
 ---
 

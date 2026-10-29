@@ -35,6 +35,7 @@ import base64
 import copy
 import html
 import json
+import math
 import os
 import re
 import shutil
@@ -57,6 +58,8 @@ ENGINE_DIR = Path(__file__).resolve().parents[1]
 CORE_SRC = ENGINE_DIR.parent / "core" / "src"
 COMPILER_SRC = ENGINE_DIR.parent / "compiler" / "src"
 DEFAULT_CONFIGS = "1280x720:low,1920x1080:high,1024x600:medium"
+TAU = 2.0 * math.pi
+AVATAR_CADENCE_RPM = 37.0   # cadence des scènes de l'avatar (un tour en 1,62 s)
 # Mêmes tolérances que run_engine_tests.sh, plus la synchronisation verticale sous Xvfb.
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 GODOT_TOLERATED = re.compile(
@@ -237,6 +240,11 @@ def fraction(img: Image, box, pred, step: int = 2) -> float:
         n += 1
         hit += 1 if pred(p) else 0
     return hit / n if n else 0.0
+
+
+def wrapped_angle(x: float) -> float:
+    """Angle ramené dans [−π, π[ (écart entre deux positions du pédalier)."""
+    return (x + math.pi) % TAU - math.pi
 
 
 def mean_abs_diff(a: Image, b: Image, box=None, step: int = 2) -> float:
@@ -539,7 +547,8 @@ class Session:
                  if overlap(vis[a]["rect"], vis[b]["rect"]) > 1.0]
         self.check(scene, "lignes du HUD sans chevauchement", not pairs, ", ".join(pairs))
         # Panneaux (colonnes, vent, abri, blocs segment et bonus, encart des bots, profil) : lot X22.
-        for name, ok, detail in hud_lisibilite.panel_checks(info, self.width, self.height):
+        for name, ok, detail in (hud_lisibilite.panel_checks(info, self.width, self.height)
+                                 + hud_lisibilite.column_checks(info)):
             self.check(scene, name, ok, detail)
         if "banner" in vis:
             hit = [k for k in labels + ["panel"] if k in vis and overlap(vis[k]["rect"], vis["banner"]["rect"]) > 1.0]
@@ -601,7 +610,9 @@ def ground_box(s: Session, info: dict[str, Any]) -> tuple[int, int, int, int]:
     return 0, int(s.height * 0.6), s.width, s.height
 
 
-def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Report) -> None:
+def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Report, scenes=None) -> None:
+    """Lance l'engine à une configuration et joue `scenes(session)` (les scènes de ce fichier par défaut ;
+    hud_galerie.py passe les siennes)."""
     size, _, quality = config.partition(":")
     quality = quality or "low"
     width, height = (int(v) for v in size.lower().split("x"))
@@ -628,7 +639,7 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     with engine_log.open("w") as log_fh:
         proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True)
     try:
-        _scenes(s)
+        (scenes or _scenes)(s)
     finally:
         core.stop()
         try:
@@ -793,17 +804,29 @@ def _scenes(s: Session) -> None:
 
     # 3 ter ter. Avatar (lot V6), vu par la caméra de contrôle derrière lui (la caméra du jeu reste
     # subjective, où l'avatar est caché) : visible, jambes à des angles différents sur deux captures
-    # espacées (cadence de 37 tr/min : moins d'un tour entre les deux), assis à plat, en danseuse sur une pente de 10 %.
+    # espacées (cadence de 37 tr/min, angle attendu tiré du temps entre les captures), assis à plat, en danseuse sur une pente de 10 %.
     shot = s.capture("avatar_subjectif")
     if shot:
         s.check("avatar_subjectif", "avatar caché en vue subjective", not shot[1].get("avatar", {}).get("visible", True),
                 f"{shot[1].get('avatar')}")
-    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=37.0)
+    core.set_scene(speed=0.0, grade=0.0, grade_sent=0.0, power=200.0, power_3s=200.0, cadence=AVATAR_CADENCE_RPM)
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
     time.sleep(1.0)
     a = s.capture("avatar_assis")
-    time.sleep(0.37)
-    b = s.capture("avatar_assis_2")
+    # Entre deux captures, le pédalier avance de ω·Δt : Δt dépend du temps d'écriture des PNG (plus long sur
+    # le PC en fenêtre réelle) et peut tomber près d'un tour entier, d'où deux images au même angle. Δt est lu
+    # dans les captures (`ticks_ms`) : tant que l'avance attendue est à moins de 0,8 rad d'un tour entier,
+    # nouvelle capture après un demi-tour d'attente (phase décalée de π ; trois essais au plus).
+    omega = AVATAR_CADENCE_RPM / 60.0 * TAU
+    b, expected = None, 0.0
+    for attempt in range(3):
+        time.sleep(0.37 if attempt == 0 else math.pi / omega)
+        b = s.capture("avatar_assis_2")
+        if not (a and b):
+            break
+        expected = wrapped_angle(omega * (b[1].get("ticks_ms", 0) - a[1].get("ticks_ms", 0)) / 1000.0)
+        if abs(expected) >= 0.8:
+            break
     if a and b:
         (img_a, info_a), (img_b, info_b) = a, b
         av_a, av_b = info_a.get("avatar", {}), info_b.get("avatar", {})
@@ -812,8 +835,9 @@ def _scenes(s: Session) -> None:
         s.check("avatar_assis", "avatar assis à plat", av_a.get("standing") is False)
         s.check("avatar_assis", "avatar entier (niveau de détail 0)", av_a.get("lod") == 0 and av_a.get("triangles", 0) > 1000,
                 f"{av_a.get('triangles')} triangles")
-        turn = abs((av_b.get("crank", 0.0) - av_a.get("crank", 0.0) + 3.14159) % 6.28318 - 3.14159)
-        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.15, f"{turn:.2f} rad d'écart")
+        turn = abs(wrapped_angle(av_b.get("crank", 0.0) - av_a.get("crank", 0.0)))
+        s.check("avatar_assis_2", "pédalier à un autre angle d'une capture à l'autre", turn > 0.15,
+                f"{turn:.2f} rad d'écart, {abs(expected):.2f} rad attendus d'après le temps entre les captures")
         box = (s.width * 0.30, s.height * 0.25, s.width * 0.70, s.height * 0.95)
         d = mean_abs_diff(img_a, img_b, box)
         s.check("avatar_assis_2", "les jambes changent l'image", d >= 0.2, f"écart moyen {d:.2f} niveaux")
@@ -923,11 +947,12 @@ def _scenes(s: Session) -> None:
         narrow = [k for k in ("erg_title", "erg_target", "erg_remaining", "erg_next") if info["widgets"][k]["rect"][2] < 20]
         s.check("erg", "textes du bandeau ERG de largeur lisible", not narrow, "trop étroits : " + ", ".join(narrow))
         s.check("erg", "ligne ERG du panneau central laissée au bandeau", not info["widgets"]["erg"]["visible"])
+        s.check("erg", "profil d'altitude caché en ERG", not info["widgets"]["profile"]["visible"])
         s.check_layout("erg", info)
         s.check_hud_pixels("erg", img, info)
         hist = info["widgets"]["erg_hist"]
         s.check("erg", "histogramme des blocs affiché", hist["visible"] and hist["rect"][2] >= 0.8 * s.width
-                and hist["rect"][3] >= 40 * info["ui_scale"] and hist["rect"][1] + hist["rect"][3] <= s.height - 120 * info["ui_scale"],
+                and hist["rect"][3] >= 40 * info["ui_scale"] and hist["rect"][1] + hist["rect"][3] <= s.height - 10 * info["ui_scale"],
                 f"rectangle {hist['rect']}")
         if hist["visible"]:
             # Case du bloc en cours (2 sur 7) colorée en zone 4 (230 W pour une FTP de 250 W) : jaune.
@@ -940,6 +965,31 @@ def _scenes(s: Session) -> None:
             later = (x0 + (x1 - x0) * 0.55, y0, x1, y1)
             frac = fraction(img, later, yellow, step=2)
             s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
+
+    # 4 ter. Cible ERG longue (« 152 W (98 %) », biais −2 %) : la valeur tient dans la colonne gauche, police
+    # réduite au besoin, et le braquet, sans effet en ERG, est caché ; en roue libre il revient (suite X22).
+    core.set_scene(speed=7.0, mode="ERG", erg={
+        "workout_name": "Recette 8 min", "block_index": 1, "block_count": 4, "block_type": "warmup",
+        "block_remaining_s": 22.0, "block_total_s": 120.0, "target_w": 152.0, "next_target_w": 184.0,
+        "bias_pct": 98, "paused": False})
+    time.sleep(1.0)
+    shot = s.capture("erg_cible_longue")
+    if shot:
+        img, info = shot
+        s.check_texts("erg_cible_longue", info, {"target": "152 W (98 %)"})
+        s.check("erg_cible_longue", "braquet caché en ERG", not info["widgets"]["gear"]["visible"])
+        s.check_layout("erg_cible_longue", info)
+    core.set_scene(speed=7.0, mode="ERG", erg={
+        "workout_name": "Recette 8 min", "block_index": 2, "block_count": 4, "block_type": "freeride",
+        "block_remaining_s": 60.0, "block_total_s": 120.0, "target_w": 0.0, "next_target_w": 184.0,
+        "bias_pct": 98, "paused": False})
+    time.sleep(1.0)
+    shot = s.capture("erg_roue_libre")
+    if shot:
+        img, info = shot
+        s.check_texts("erg_roue_libre", info, {"target": "roue libre"})
+        s.check("erg_roue_libre", "braquet affiché en roue libre", info["widgets"]["gear"]["visible"])
+        s.check_layout("erg_roue_libre", info)
 
     # 4 bis. Courbes de la séance (lot O14), taille complète : en ERG à la place de l'histogramme (profil
     # cible, puissance blanche, FC rouge, légende) ; en SIM dans un panneau centré, sans toucher aux
@@ -958,7 +1008,7 @@ def _scenes(s: Session) -> None:
         chart = w["chart_erg"]
         s.check("erg_courbes", "courbes affichées à la place de l'histogramme",
                 chart["visible"] and not w["erg_hist"]["visible"] and chart["rect"][2] >= 0.8 * s.width
-                and chart["rect"][1] + chart["rect"][3] <= s.height - 120 * info["ui_scale"], f"rectangle {chart['rect']}")
+                and chart["rect"][1] + chart["rect"][3] <= s.height - 10 * info["ui_scale"], f"rectangle {chart['rect']}")
         s.check_layout("erg_courbes", info)
         box = rect_box(chart["rect"])
         # Seuil bas : à 1024x600 (échelle 0,8) le panneau ne fait que 55 px de haut et le trait blanc
@@ -1336,6 +1386,40 @@ def _progress_scenes(s: Session) -> None:
         banner = info["widgets"]["banner"]
         s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
                 f"{banner.get('text')}")
+    # Bilan complet (dix chiffres, fichier FIT, quatre blocs ERG du bilan détaillé) et progression : la carte
+    # tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
+    core.set_scene(session_state="IDLE", summary=None)
+    time.sleep(0.5)
+    core.set_scene(session_state="FINISHED", summary={
+        "duration_s": 516.0, "distance_m": 3210.0, "avg_power_w": 139.0, "np_w": 155.0, "intensity_factor": 0.62,
+        "tss": 6.0, "elevation_gain_m": 33.0, "avg_cadence_rpm": 49.0, "avg_hr_bpm": 119.0, "max_power_w": 400.0,
+        "fit_path": "/tmp/openride/2026-10-28_17-24_essai-69.fit",
+        "blocks": [[1, 91.0, 141.0], [2, 149.0, 170.0], [3, 127.0, 126.0], [4, 182.0, 183.0]]})
+    time.sleep(1.0)
+    for _ in range(2):
+        core.send(dict(XP_RESULT))
+        time.sleep(1.0)
+    for detailed in (False, True):
+        if detailed:
+            core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "menu_focus", "id": "details"})
+            time.sleep(0.4)
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
+            time.sleep(1.0)
+        scene = "bilan_complet_detaille" if detailed else "bilan_complet"
+        shot = s.capture(scene)
+        if shot:
+            img, info = shot
+            w = info["widgets"]
+            s.check_texts(scene, info, {"menu": "Puissance max : 400 W"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
+            if detailed:
+                s.check_texts(scene, info, {"menu": "Bloc 4 : 182 W pour 183 W"}, contains=True)
+            card, bar = w["menu_card"], w["button_bar"]
+            bottom = card["rect"][1] + card["rect"][3]
+            s.check(scene, "carte du bilan au-dessus du bandeau des boutons",
+                    card["visible"] and bottom <= bar["rect"][1] + 0.5,
+                    f"bas de la carte {bottom:.0f} px, bandeau à {bar['rect'][1]:.0f} px")
+            s.check_layout(scene, info)
     core.set_scene(session_state="IDLE", summary=None)
     time.sleep(0.5)
     core.set_scene(session_state="FINISHED", summary={"duration_s": 120.0, "distance_m": 800.0})

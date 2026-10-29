@@ -16,7 +16,10 @@
 # « none » pour les sauter ; matrice complète et rapport : run_visual_tests.sh),
 # OPENRIDE_PERF (budgets de temps, lot X2 : « report » par défaut, un dépassement est signalé sans
 # échec ; « strict » le compte comme un échec ; budgets dans tests/perf_budgets.json),
-# PERF_CSV (fichier où ajouter les mesures « date;nom;ms;budget;dépassé », facultatif).
+# PERF_CSV (fichier où ajouter les mesures « date;nom;valeur;budget;dépassé;unité », ms ou Ko, facultatif ;
+# rapport par budget : python3 engine/tests/perf_budget_report.py, lot X19),
+# ENGINE_JUNIT (fichier JUnit XML à écrire, lot X3 : une entrée par test du résumé, avec son statut et
+# sa durée, temps écoulé depuis l'entrée précédente ; facultatif, rien n'est écrit sans).
 # Code de sortie : 0 si tout passe.
 set -u
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -36,10 +39,43 @@ fi
 status=0
 PERF_FILE="$(mktemp -t openride-perf.XXXXXX)"   # lignes [PERF] de tous les tests (lot X2)
 
-# Résumé final : une ligne par test (fichier ou étape) et son résultat.
+# Résumé final : une ligne par test (fichier ou étape) et son résultat ; JUnit (lot X3) : nom, statut,
+# durée depuis l'entrée précédente, détail.
 SUMMARY=()
+JUNIT_CASES=()
+JUNIT_LAST="$(date +%s.%N)"
+JUNIT_START="$JUNIT_LAST"
 record() {  # record <nom> <0 si réussi> [détail]
   if [ "$2" -eq 0 ]; then SUMMARY+=("OK     $1${3:+ : $3}"); else SUMMARY+=("ÉCHEC  $1${3:+ : $3}"); status=1; fi
+  local now
+  now="$(date +%s.%N)"
+  JUNIT_CASES+=("$1"$'\t'"$2"$'\t'"$(awk -v a="$JUNIT_LAST" -v b="$now" 'BEGIN { printf "%.3f", b - a }')"$'\t'"${3:-}")
+  JUNIT_LAST="$now"
+}
+
+xml_escape() {
+  printf '%s' "$1" | sed -e 's/&/\&amp;/g' -e 's/</\&lt;/g' -e 's/>/\&gt;/g' -e 's/"/\&quot;/g'
+}
+
+# Rapport JUnit XML (lot X3) si ENGINE_JUNIT est donné : une entrée <testcase> par appel de record.
+write_junit() {
+  [ -n "${ENGINE_JUNIT:-}" ] || return 0
+  local failures=0 total name rc secs detail
+  for c in "${JUNIT_CASES[@]}"; do [ "$(cut -f2 <<<"$c")" = 0 ] || failures=$((failures + 1)); done
+  total="$(awk -v a="$JUNIT_START" -v b="$(date +%s.%N)" 'BEGIN { printf "%.3f", b - a }')"
+  mkdir -p "$(dirname "$ENGINE_JUNIT")"
+  {
+    echo '<?xml version="1.0" encoding="utf-8"?>'
+    echo "<testsuites><testsuite name=\"engine\" tests=\"${#JUNIT_CASES[@]}\" failures=\"$failures\" errors=\"0\" skipped=\"0\" time=\"$total\">"
+    for c in "${JUNIT_CASES[@]}"; do
+      IFS=$'\t' read -r name rc secs detail <<<"$c"
+      printf '  <testcase classname="engine" name="%s" time="%s"' "$(xml_escape "$name")" "$secs"
+      if [ "$rc" = 0 ]; then echo '/>'; else
+        printf '><failure message="%s"/></testcase>\n' "$(xml_escape "${detail:-échec}")"
+      fi
+    done
+    echo "</testsuite></testsuites>"
+  } >"$ENGINE_JUNIT"
 }
 
 # Filtre commun (lot X34) : toute ligne SCRIPT ERROR, ERROR ou WARNING est une erreur, sauf
@@ -92,9 +128,10 @@ perf_summary() {
   over="$(grep -c "DÉPASSÉ" "$PERF_FILE")"
   echo "Budgets de temps (OPENRIDE_PERF=${OPENRIDE_PERF:-report}) : $(wc -l <"$PERF_FILE") mesures, $over dépassement(s)"
   sed 's/^\[PERF\] /  /' "$PERF_FILE"
+  [ -z "${PERF_LINES:-}" ] || cp "$PERF_FILE" "$PERF_LINES"   # lignes brutes pour perf_budget_report.py (lot X19)
   if [ -n "${PERF_CSV:-}" ]; then
-    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) [^ ,]+, budget ([0-9.inf]+) [^ ]+( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\3;\4/" "$PERF_FILE" \
-      | sed 's/; (DÉPASSÉ)$/;oui/; s/;$/;non/' >>"$PERF_CSV"
+    sed -E "s/^\[PERF\] ([^ ]+) : ([0-9.]+) ([^ ,]+), budget ([0-9.inf]+) [^ ]+( \(DÉPASSÉ\))?$/$(date +%F_%T);\1;\2;\4;\5;\3/" "$PERF_FILE" \
+      | sed -E 's/; \(DÉPASSÉ\);([^;]+)$/;oui;\1/; s/;;([^;]+)$/;non;\1/' >>"$PERF_CSV"
   fi
   rm -f "$PERF_FILE"
 }
@@ -106,6 +143,7 @@ if [ -n "${UNIT:-}" ]; then
   echo "Résumé :"
   for line in "${SUMMARY[@]}"; do echo "  $line"; done
   if [ "$status" -eq 0 ]; then echo "RÉSULTAT : tous les tests de l'engine passent"; else echo "RÉSULTAT : ÉCHEC"; fi
+  write_junit
   exit "$status"
 fi
 
@@ -199,6 +237,22 @@ if [ "$stream_status" -ne 0 ] || grep -q -E "SCRIPT ERROR|ERROR:|WARNING:" "$STR
 record "test_world_streamer (rendu E1)" "$stream_ok"
 rm -f "$STREAM_LOG"
 
+echo "== Coutures du sol multi-biome en scène réelle (série U) =="
+# Démo ci-dessus avec une couche biome prairie → sable ; world_streamer.gd charge les tuiles (Xvfb).
+if command -v xvfb-run >/dev/null 2>&1; then
+  SEAMS_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" xvfb-run -a "$GODOT" --path "$ENGINE_DIR" --rendering-driver opengl3 \
+    --rendering-method gl_compatibility --audio-driver Dummy --script res://tests/test_biome_seams.gd -- "$ROUTES_DIR/demo.world" 2>&1)"
+  seams_rc=$?
+  echo "$SEAMS_OUT" | grep -v "^Godot Engine" || true
+  seams_issues="$(echo "$SEAMS_OUT" | grep -v -E "V-Sync|set_use_vsync" | godot_issues)"
+  seams_count="$(echo "$SEAMS_OUT" | grep -E "^test_biome_seams : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+  if [ -n "$seams_issues" ]; then echo "$seams_issues"; seams_rc=1; fi
+  if [ -z "$seams_count" ]; then seams_rc=1; fi
+  record "test_biome_seams (coutures des biomes)" "$seams_rc" "${seams_count#*: }"
+elif [ "${REQUIRE_RENDER:-0}" = "1" ]; then
+  record "test_biome_seams (coutures des biomes)" 1 "xvfb-run introuvable alors que REQUIRE_RENDER=1"
+fi
+
 echo "== ERG (lot I6) =="
 python3 "$ENGINE_DIR/tests/fake_core.py" --erg-workout --state-port "$STATE_PORT" --cmd-port "$CMD_PORT" &
 ERG_FAKE_PID=$!
@@ -279,4 +333,5 @@ echo "Résumé :"
 for line in "${SUMMARY[@]}"; do echo "  $line"; done
 if [ "$status" -eq 0 ]; then echo "RÉSULTAT : tous les tests de l'engine passent"; else echo "RÉSULTAT : ÉCHEC"; fi
 if [ "$status" -eq 0 ] && [ "$ENGINE_LOG_TEMP" = 1 ]; then rm -f "$ENGINE_LOG"; else echo "Journal de l'engine gardé : $ENGINE_LOG"; fi
+write_junit
 exit "$status"

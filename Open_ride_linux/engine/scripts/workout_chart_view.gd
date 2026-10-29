@@ -2,11 +2,11 @@ extends Control
 
 ## Courbes de la séance à l'écran (Lot O14) : dessin de la géométrie de workout_chart_model.gd (O13),
 ## « comme GoldenCheetah » : profil des watts cibles coloré par zone, atténué, courbe de puissance en
-## blanc épais et, en taille complète, fréquence cardiaque en rouge et cadence en bleu clair, avec la
-## légende des valeurs courantes. Trois tailles (`mode`, réglage `[render] chart` du core) :
+## blanc épais, fréquence cardiaque en rouge et cadence en bleu clair, avec la légende des valeurs
+## courantes. Trois tailles (`mode`, réglage `[render] chart` du core) :
 ## - `hidden` : rien (en ERG, l'histogramme de N7 reste affiché) ;
-## - `reduced` : profil cible et puissance, valeur courante en watts ;
-## - `full` : cible, puissance, FC, cadence, graduations et légende.
+## - `reduced` : profil cible, puissance, FC, cadence et légende (FC et cadence depuis le 28/10) ;
+## - `full` : la même chose, plus les graduations des watts.
 ## Une instance en ERG, dans le bandeau d'erg_view.gd à la place de l'histogramme (le profil cible du
 ## graphique joue ce rôle, curseur compris) ; une instance en SIM dans un panneau du HUD, qui montre
 ## les 10 dernières minutes sans profil. Les deux lisent le même modèle ; le dessin n'est redemandé
@@ -21,8 +21,10 @@ const CADENCE_COLOR := UiTheme.CADENCE
 const BG_COLOR := UiTheme.CHART_BG
 const GRID_COLOR := UiTheme.GRID
 const TEXT_COLOR := UiTheme.CHART_TEXT
-const PROFILE_ALPHA := 0.45          # profil atténué : les courbes passent devant
+const PROFILE_ALPHA := 0.75          # profil atténué, couleurs de zone gardées sur le fond léger ; les courbes passent devant
 const POWER_WIDTH := 3.5
+const CURVE_OUTLINE := 2.0           # contour sombre de chaque côté des courbes (fond léger)
+const AXIS_OUTLINE := 4
 const CURVE_WIDTH := 2.0
 const LEGEND_SIZE := 22
 const AXIS_SIZE := 15
@@ -57,7 +59,7 @@ static func legend(current: Dictionary, chart_mode: String) -> Array:
 	var out: Array = []
 	var p = current.get("power", null)
 	out.append({"text": "—" if p == null else "%d W" % int(round(float(p))), "color": POWER_COLOR})
-	if chart_mode == "full":
+	if chart_mode in ["reduced", "full"]:
 		var h = current.get("hr", null)
 		out.append({"text": "—" if h == null else "%d bpm" % int(round(float(h))), "color": HR_COLOR})
 		var c = current.get("cadence", null)
@@ -83,6 +85,7 @@ func _on_draw() -> void:
 		var y := h - float(tick) / w_top * h
 		draw_line(Vector2(0.0, y), Vector2(w, y), GRID_COLOR, 1.0)
 		if mode == "full" and float(tick) > 0.0 and y > AXIS_SIZE:
+			draw_string_outline(font, Vector2(4.0, y - 2.0), "%d" % int(tick), HORIZONTAL_ALIGNMENT_LEFT, -1, AXIS_SIZE, AXIS_OUTLINE, UiTheme.OUTLINE)
 			draw_string(font, Vector2(4.0, y - 2.0), "%d" % int(tick), HORIZONTAL_ALIGNMENT_LEFT, -1, AXIS_SIZE, TEXT_COLOR)
 	# Profil des watts cibles, atténué ; roue libre : bande basse grise.
 	for poly in geo["profile"]:
@@ -99,14 +102,13 @@ func _on_draw() -> void:
 		draw_colored_polygon(pts, color)
 	# Courbes : FC et cadence d'abord, puissance par-dessus.
 	var curves: Dictionary = geo["curves"]
-	if mode == "full":
-		_draw_lines(curves.get("hr", []), HR_COLOR, CURVE_WIDTH)
-		_draw_lines(curves.get("cadence", []), CADENCE_COLOR, CURVE_WIDTH)
+	_draw_lines(curves.get("hr", []), HR_COLOR, CURVE_WIDTH)
+	_draw_lines(curves.get("cadence", []), CADENCE_COLOR, CURVE_WIDTH)
 	_draw_lines(curves.get("power", []), POWER_COLOR, POWER_WIDTH)
 	# Curseur de position (profil connu).
 	if model.has_profile:
 		var cx: float = geo["cursor_x"]
-		draw_line(Vector2(cx, 0.0), Vector2(cx, h), Color.WHITE, 2.0)
+		draw_line(Vector2(cx, 0.0), Vector2(cx, h), UiTheme.INK, 2.0)
 	# Légende, alignée à droite, de gauche à droite : puissance, FC, cadence.
 	var items := legend(geo["current"], mode)
 	var widths: Array = []
@@ -122,7 +124,13 @@ func _on_draw() -> void:
 		x += float(widths[i]) + 18.0
 
 
+## Courbes tracées sur un contour sombre, lisibles sur le ciel comme sur la route.
 func _draw_lines(lines: Array, color: Color, width: float) -> void:
+	_draw_strokes(lines, UiTheme.OUTLINE, width + 2.0 * CURVE_OUTLINE)
+	_draw_strokes(lines, color, width)
+
+
+func _draw_strokes(lines: Array, color: Color, width: float) -> void:
 	for pts in lines:
 		var p: PackedVector2Array = pts
 		if p.size() >= 2:

@@ -4,18 +4,24 @@ extends RefCounted
 ## vehicle_mesh.gd, mêmes zones de couleur (VEH_*, shaders/vehicle.gdshader) : avion de ligne `airliner`
 ## (à l'échelle réelle, 38 m), traînées de condensation `contrail` (shaders/contrail.gdshader), hélicoptère
 ## `helicopter` et son rotor `rotor`, parapente `paraglider` (voile en caissons, suspentes, pilote),
-## montgolfière `balloon` (enveloppe en fuseaux de deux couleurs, nacelle, flamme du brûleur).
+## paramoteur `paramotor` (même voile, cage et hélice dans le dos du pilote, lot P31), montgolfière `balloon`
+## (enveloppe de révolution de deux couleurs, nacelle, flamme du brûleur), en BALLOON_STYLES motifs
+## d'enveloppe : `build("balloon", style)` (lot P31).
 ## Pas de class_name : charger par preload("res://scripts/sky_mesh.gd").
 ##
 ## Repère : avant vers -z, y vers le haut. Avion et hélicoptère : origine au milieu du fuselage ; rotor :
-## origine sur son axe ; parapente : origine au pilote ; montgolfière : origine sous la nacelle.
+## origine sur son axe ; parapente et paramoteur : origine au pilote ; montgolfière : origine sous la nacelle.
 ## Traînée : deux rubans en croix derrière chaque réacteur, de z = 0 à z = 1 (longueur donnée par l'échelle
 ## du nœud en z), UV.y de 0 (réacteur) à 1 (bout), UV.x en travers.
 
 const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 
-const KINDS := ["airliner", "helicopter", "paraglider", "balloon"]
+const KINDS := ["airliner", "helicopter", "paraglider", "paramotor", "balloon"]
+## Motifs d'enveloppe des montgolfières (lot P31) : fuseaux alternés, fuseaux et ceinture de la seconde
+## couleur, damier, spirale. Même maillage à la zone de couleur près : aucun triangle de plus.
+const BALLOON_STYLES := ["fuseaux", "ceinture", "damier", "spirale"]
+const BALLOON_SIDES := 16
 const ENGINE_X := 5.8
 const ENGINE_Y := -1.6
 const ENGINE_REAR_Z := -1.0
@@ -26,6 +32,8 @@ const WING_RADIUS_M := 6.5
 const WING_CELLS := 11
 const BALLOON_TOP_M := 26.3
 const BURNER_Y := 4.6
+const CAGE_Z := 0.75
+const CAGE_RADIUS_M := 0.7
 
 const AIRLINER_PAINT := [Color(0.93, 0.93, 0.94), Color(0.95, 0.95, 0.96), Color(0.9, 0.9, 0.92)]
 const AIRLINER_TAIL := [Color(0.08, 0.16, 0.42), Color(0.75, 0.1, 0.1), Color(0.95, 0.55, 0.1)]
@@ -43,13 +51,14 @@ static func colors(kind: String, index: int) -> Array:
 			return [AIRLINER_PAINT[posmod(index, AIRLINER_PAINT.size())], AIRLINER_TAIL[posmod(index, AIRLINER_TAIL.size())]]
 		"helicopter":
 			return [HELICOPTER_PAINT[posmod(index, HELICOPTER_PAINT.size())], Color(0.9, 0.9, 0.9)]
-		"paraglider":
+		"paraglider", "paramotor":
 			return [WING_PAINT[posmod(index, WING_PAINT.size())], WING_SECOND[posmod(index, WING_SECOND.size())]]
 		_:
 			return [BALLOON_PAINT[posmod(index, BALLOON_PAINT.size())], BALLOON_SECOND[posmod(index, BALLOON_SECOND.size())]]
 
 
-static func build(kind: String) -> ArrayMesh:
+## Maillage d'une sorte ; `style` : motif d'enveloppe d'une montgolfière (indice de BALLOON_STYLES).
+static func build(kind: String, style: int = 0) -> ArrayMesh:
 	var m := PeopleMesh.Builder.new()
 	match kind:
 		"airliner":
@@ -60,8 +69,11 @@ static func build(kind: String) -> ArrayMesh:
 			_rotor(m)
 		"paraglider":
 			_paraglider(m)
+		"paramotor":
+			_paraglider(m)
+			_motor(m)
 		"balloon":
-			_balloon(m)
+			_balloon(m, style)
 		"contrail":
 			_contrail(m)
 	return m.commit()
@@ -87,14 +99,14 @@ static func _plate(m, region: int, poly: Array, n: Vector3, thick: float) -> voi
 		VehicleMesh._tri(m, a + h, b - h, a - h, en)
 
 
-## Surface de révolution autour de y : profil [[rayon, y], …] de bas en haut ; fuseaux de zone alternée
-## (`regions`), normales lissées.
-static func _revolve(m, profile: Array, sides: int, regions: Array) -> void:
+## Surface de révolution autour de y : profil [[rayon, y], …] de bas en haut ; zone de couleur de chaque
+## case (fuseau `i`, anneau `j`) donnée par `region_of.call(i, j)`, normales lissées.
+static func _revolve(m, profile: Array, sides: int, region_of: Callable) -> void:
 	for i in range(sides):
-		m.region = regions[i % regions.size()]
 		var a0 := TAU * float(i) / sides
 		var a1 := TAU * float(i + 1) / sides
 		for j in range(profile.size() - 1):
+			m.region = region_of.call(i, j)
 			var r0 := float(profile[j][0])
 			var y0 := float(profile[j][1])
 			var r1 := float(profile[j + 1][0])
@@ -216,9 +228,24 @@ static func _paraglider(m) -> void:
 	m.ellipsoid(Vector3(0.0, 0.95, 0.08), Vector3(0.15, 0.16, 0.17))   # casque
 
 
-static func _balloon(m) -> void:
+## Zone de couleur d'une case de l'enveloppe (fuseau `i`, anneau `j` de 0 en bas à 6 au sommet) pour un motif.
+static func balloon_region(style: int, i: int, j: int) -> int:
+	var second := false
+	match posmod(style, BALLOON_STYLES.size()):
+		0:
+			second = i % 2 == 1
+		1:
+			second = i % 2 == 1 or j == 3
+		2:
+			second = (i + j) % 2 == 1
+		_:
+			second = posmod(i - j, 4) < 2
+	return VehicleMesh.VEH_SECOND if second else VehicleMesh.VEH_PAINT
+
+
+static func _balloon(m, style: int) -> void:
 	var profile := [[2.2, 5.0], [4.5, 8.0], [7.5, 12.0], [9.0, 16.0], [9.2, 19.0], [8.2, 22.5], [5.5, 25.2], [0.01, BALLOON_TOP_M]]
-	_revolve(m, profile, 16, [VehicleMesh.VEH_PAINT, VehicleMesh.VEH_SECOND])
+	_revolve(m, profile, BALLOON_SIDES, func(i: int, j: int) -> int: return balloon_region(style, i, j))
 	VehicleMesh._box(m, VehicleMesh.VEH_DARK, Vector3(0.0, 0.55, 0.0), Vector3(1.4, 1.1, 1.4))   # nacelle
 	VehicleMesh._box(m, VehicleMesh.VEH_LIGHT, Vector3(0.0, 1.12, 0.0), Vector3(1.5, 0.06, 1.5))   # bord
 	for sx in [-1.0, 1.0]:
@@ -227,3 +254,19 @@ static func _balloon(m) -> void:
 	VehicleMesh._box(m, VehicleMesh.VEH_METAL, Vector3(0.0, 3.4, 0.0), Vector3(0.5, 0.35, 0.5))   # brûleur
 	m.region = VehicleMesh.VEH_HEAD
 	m.ellipsoid(Vector3(0.0, BURNER_Y, 0.0), Vector3(0.22, 0.6, 0.22), -90.0, 4)   # flamme
+
+
+## Moteur du paramoteur dans le dos du pilote (lot P31) : bloc moteur, cage ronde et hélice floue (disque).
+static func _motor(m) -> void:
+	VehicleMesh._box(m, VehicleMesh.VEH_METAL, Vector3(0.0, 0.3, CAGE_Z - 0.2), Vector3(0.32, 0.36, 0.26))   # moteur
+	var ring := []
+	var disc := []
+	for i in range(10):
+		var a := TAU * float(i) / 10.0
+		ring.append(Vector3(sin(a) * CAGE_RADIUS_M, 0.3 + cos(a) * CAGE_RADIUS_M, CAGE_Z))
+		disc.append(Vector3(sin(a) * CAGE_RADIUS_M * 0.9, 0.3 + cos(a) * CAGE_RADIUS_M * 0.9, CAGE_Z - 0.05))
+	for i in range(ring.size()):
+		VehicleMesh._rod(m, VehicleMesh.VEH_METAL, ring[i], ring[(i + 1) % ring.size()], 0.02, 3)   # cage
+	for i in [0, 3, 7]:
+		VehicleMesh._rod(m, VehicleMesh.VEH_METAL, ring[i], Vector3(0.0, 0.3, CAGE_Z - 0.2), 0.015, 3)   # rayons
+	_plate(m, VehicleMesh.VEH_DARK, disc, Vector3.BACK, 0.02)   # hélice qui tourne (disque flou)

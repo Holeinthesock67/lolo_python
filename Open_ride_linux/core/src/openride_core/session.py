@@ -25,11 +25,15 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
-from .classic import ClassicRace
+from .classic import ClassicRace, GainJob
 from .config import GPX_DIR, OPENRIDE_HOME, WORKOUTS_DIR, Config
+from .equipment import segment_time_gain
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
+from .jitter import JitterMeter
+from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
+from . import latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
@@ -49,6 +53,7 @@ from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
+from .free_erg import CadenceLock, FreeErg, start_cadence, start_power
 from .ftp_test import KINDS as FTP_TEST_KINDS
 from .ftp_test import FtpResult, RampWatch, cooldown_index, estimate_ftp
 from .ftp_test import kind_of as ftp_test_kind
@@ -292,7 +297,8 @@ class CoreSession:
         self._workout: Workout | None = None     # entraînement choisi (select_workout)
         self._workout_id: str | None = None
         self._click_seen: dict[str, str] = {}   # boîtiers du Click vus, sans adresse configurée
-        self.erg: ErgController | None = None   # entraînement en cours pendant la séance
+        # Contrôleur ERG de la séance : entraînement en cours, ou ERG d'une session libre (lot O18).
+        self.erg: ErgController | FreeErg | None = None
         self._ramp_watch: RampWatch | None = None   # fin de la rampe d'un test de FTP (lot O10)
         self._ftp_result: FtpResult | None = None   # dernier test de FTP, pour `accept_ftp` (lot O12)
         self._plan_day: str | None = None           # séance du jour du dernier message `plans` (lot O12)
@@ -333,14 +339,14 @@ class CoreSession:
         now = time.time()
         if self._rec:
             if new == "PAUSED" and old == "RUNNING":
-                self._rec.event("pause", now)
+                self._rec.event("pause", now, reason or "user")
             elif new == "RUNNING" and old == "PAUSED":
                 self._rec.event("resume", now)
         if self.erg:
             self.erg.paused = new == "PAUSED"   # l'ERG suit la pause de la séance (Y), seule pause (§7.1)
             self._sync_erg_state()
         if self.race and new == "PAUSED" and old == "RUNNING":
-            self.race.pause(reason or "user")   # passages en cours annulés (T4)
+            self.race.pause(reason or "user")   # pause Y : passages annulés ; coupure subie : suspendus (T4)
         if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
             self._release_trainer()
 
@@ -395,8 +401,10 @@ class CoreSession:
                 self._sync_erg_state()
             self._new_race()
             self._set_state("RUNNING")
-        elif name == "skip_block" and self.erg and st in ("RUNNING", "PAUSED"):
+        elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
+        elif name == "set_ride_mode":
+            self._set_ride_mode(args if isinstance(args, dict) else {}, st)
         elif name == "pause" and st == "RUNNING":
             self._set_state("PAUSED", "user")
         elif name == "resume" and st == "PAUSED":
@@ -499,7 +507,7 @@ class CoreSession:
         self._publish_progression()
         self.server.send_raw(svc.progression_message(cmd_id))
 
-    def _after_session(self, journal: str, records: list[dict]) -> None:
+    def _after_session(self, journal: str, records: list[dict] | None) -> None:
         """Bilan d'expérience de la séance qui vient de finir : calcul hors de la boucle, puis envoi."""
         if not self.progress_svc.enabled:
             return
@@ -511,14 +519,14 @@ class CoreSession:
             return
         self._spawn(self._send_xp_result(journal, records))
 
-    def _build_xp_result(self, journal: str, records: list[dict]) -> dict[str, Any]:
+    def _build_xp_result(self, journal: str, records: list[dict] | None) -> dict[str, Any]:
         svc = self.progress_svc
         old = svc.refresh()
         msg = svc.xp_result(journal, old, records, PhysicsParams.from_config(self.cfg))
         self._publish_progression()
         return msg
 
-    async def _send_xp_result(self, journal: str, records: list[dict]) -> None:
+    async def _send_xp_result(self, journal: str, records: list[dict] | None) -> None:
         """`xp_result` à la fin de la séance, répété chaque seconde tant qu'elle reste `FINISHED`."""
         try:
             msg = await asyncio.to_thread(self._build_xp_result, journal, records)
@@ -551,13 +559,15 @@ class CoreSession:
         self._close_open_world()
         self.state.open_world = None
         self._set_state("LOADING")
-        self.rogue = rogue_mode.RogueMode(self.cfg, request, chassis=chassis, lives=lives, params=self._base_params)
+        # L'équipement de la série V ne s'applique pas dans ce mode : les châssis en tiennent lieu (lot V5).
+        plain = PhysicsParams.from_config(self.cfg)
+        self.rogue = rogue_mode.RogueMode(self.cfg, request, chassis=chassis, lives=lives, params=plain)
         self.route, self._segments, self.race = None, (), None
         self.erg, self._workout, self._workout_id, self._ramp_watch = None, None, None, None
-        self.physics = RiderPhysics(self._base_params)
+        self.physics = RiderPhysics(plain)
         self._t_session, self._grade_sent, self._rogue_dist = 0.0, 0.0, 0.0
         self._sync_erg_state()
-        self.state.route_id, self.state.route_length_m = "rogue", None
+        self.state.route_id, self.state.route_length_m = None, None   # contrat IPC : null en mode ROGUE
         self.state.gear, self.state.gears_total = self.rogue.gear, self.rogue.balance.gear_max
         self.state.lat = self.state.lon = self.state.alt = None
         self.state.summary = None
@@ -572,6 +582,7 @@ class CoreSession:
             return
         log.info("Run Cyber-Rogue abandonnée avant le départ.")
         self.rogue = None
+        self.physics.p = self._base_params   # l'équipement revient hors du Cyber-Rogue (lot V5)
         self.state.rogue = None
         self.state.gears_total = self.gearing.n_gears
         self.state.gear = self.gearing.k
@@ -609,6 +620,9 @@ class CoreSession:
                 ts=round(time.time(), 3), t=round(self._t_session, 2), distance=round(st.s, 2),
                 speed=round(st.v, 3), power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(out.grade_enemy, 2), mode="ROGUE", gear=rg.gear, grade_sent=st.grade_sent))
+        if rg.done:   # comme l'arrivée d'un parcours : la séance se termine d'elle-même, avec le bilan
+            log.info("Run Cyber-Rogue terminée : %s.", rg.engine.result)
+            self._finish(True)
 
     def _choose_start_workout(self, args: dict) -> bool:
         """`start` avec `ftp_test` ou `plan_day` : choisit l'entraînement avant de démarrer.
@@ -1063,8 +1077,58 @@ class CoreSession:
         self.erg.goto(cooldown_index(self.erg.workout))
         self._sync_erg_state()
 
+    def _workout_erg(self) -> ErgController | None:
+        """Contrôleur de l'entraînement en cours (None en SIM et en ERG d'une session libre)."""
+        return self.erg if isinstance(self.erg, ErgController) else None
+
+    def _set_ride_mode(self, args: dict, st: str) -> None:
+        """Bascule SIM, ERG libre ou ERG cadence pendant une session libre (lot O18, révision 1.5).
+
+        `mode` : `sim`, `erg` ou `cadence` ; `target_w` (ERG) et `cadence_rpm` (cadence) facultatifs :
+        sans eux, la cible en cours, sinon la mesure (puissance des 3 dernières secondes, cadence)."""
+        if st not in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Changement de mode possible seulement pendant une séance.")
+            return
+        if self.rogue is not None or self._workout_erg() is not None:
+            self.server.send_error("busy", "Changement de mode impossible pendant un entraînement ou une run.")
+            return
+        mode = args.get("mode")
+        if mode not in ("sim", "erg", "cadence"):
+            self.server.send_error("bad_args", "set_ride_mode attend 'mode' : sim, erg ou cadence")
+            return
+        nums: dict[str, float | None] = {}
+        for key in ("target_w", "cadence_rpm"):
+            raw = args.get(key)
+            if raw is not None and (isinstance(raw, bool) or not isinstance(raw, (int, float))
+                                    or not math.isfinite(raw)):
+                self.server.send_error("bad_args", f"set_ride_mode : '{key}' doit être un nombre")
+                return
+            nums[key] = None if raw is None else float(raw)
+        cur = self.erg
+        ftp = self.cfg.rider.ftp_w
+        self._ramp_watch = None   # rampe d'un test de FTP déjà terminé : plus rien à surveiller
+        if mode == "sim":
+            self.erg = None
+            self._grade_sent = 0.0   # la pente reprend depuis 0 % avec la limitation de variation
+        elif mode == "erg":
+            w = nums["target_w"]
+            if w is None:
+                w = cur.target_w if cur is not None else start_power(self.state.power_3s, ftp)
+            self.erg = FreeErg(w)
+        else:
+            w = cur.target_w if cur is not None else start_power(self.state.power_3s, ftp)
+            rpm = nums["cadence_rpm"]
+            if rpm is None:
+                rpm = cur.cadence_target if isinstance(cur, CadenceLock) else start_cadence(self.state.cadence)
+            self.erg = CadenceLock(rpm, w, ftp)
+        if self.erg is not None:
+            self.erg.paused = st == "PAUSED"
+        log.info("Mode de la séance : %s%s.", mode.upper(),
+                 f", cible {self.erg.target_w} W" if self.erg is not None else "")
+        self._sync_erg_state()
+
     def _skip_block(self) -> None:
-        assert self.erg is not None
+        assert isinstance(self.erg, ErgController)
         if self._ramp_watch and self._ramp_watch.abandon(self.erg):
             self._end_ramp("abandon")   # pendant la rampe, le saut de bloc vaut abandon du test
             return
@@ -1092,10 +1156,11 @@ class CoreSession:
     def _open_journal(self) -> None:
         from .plans import active_tag
 
-        self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
+        route_id = rogue_mode.JOURNAL_ROUTE_ID if self.rogue is not None else self.state.route_id
+        self._rec = SessionRecorder(self.journal_dir, route_id,
                                     on_failure=self._on_recording_failure,
                                     workout_id=self._workout_id, source=self._journal_source(),
-                                    progression=self.progress_svc.journal_header(),
+                                    progression=self.progress_svc.journal_header(equipped=self.rogue is None),
                                     plan=active_tag(self._workout_id, state_path=self.plan_state_path,
                                                     plans_dir=self.plans_dir, workouts_dir=self.workouts_dir))
         self._rec.event("start", time.time())
@@ -1166,7 +1231,7 @@ class CoreSession:
     def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
         journal: str | None = None
-        records_done: list[dict] = []
+        records_done: list[dict] | None = []
         race, self.race = self.race, None
         if race and self._rec:
             for line in race.take_journal() + race.jersey_lines():
@@ -1183,7 +1248,7 @@ class CoreSession:
                 rec.game(self.rogue.run_line(time.time()))
             fit_path, s, fit_error = rec.finish(save, ts=ts)
             records, events = rec.records, rec.events
-            records_done = records
+            records_done = records if self.rogue is None else None   # pas d'équipement en Cyber-Rogue (V5)
             if fit_error and save:
                 self.server.send_error("recording_failed", f"FIT non produit : {fit_error}")
 
@@ -1218,6 +1283,7 @@ class CoreSession:
             self.rogue = None
             self.state.rogue = None
             self.state.gears_total, self.state.gear = self.gearing.n_gears, self.gearing.k
+            self.physics.p = self._base_params   # l'équipement revient hors du Cyber-Rogue (lot V5)
         self._sync_erg_state()
         self._set_state(final_state)
         if journal is not None and final_state == "FINISHED":
@@ -1242,17 +1308,22 @@ class CoreSession:
         except PowerUpError as exc:
             log.warning("Valeurs des bonus refusées, valeurs par défaut : %s", exc)
             table = None
+        header = self.progress_svc.journal_header()   # équipement de la série V (None : progression coupée)
+        plain = PhysicsParams.from_config(self.cfg)
+        gain_mode = "off" if header is None else ("zero" if self._base_params == plain else "compute")
         self.race = ClassicRace(
             route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
             loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
-            powerups_on=self.cfg.powerups.mode == "on")
+            powerups_on=self.cfg.powerups.mode == "on",
+            loadout=header["loadout"] if header else None, gain_mode=gain_mode)
         from .bots import RefRider, attach_segments, calibrate_bots
 
         attach_segments(self.bots, self._segments)   # montées et sprints des bots à profil (lot T12)
         t0 = time.perf_counter()
-        rider = RefRider(self.cfg.rider.ftp_w, PhysicsParams.from_config(self.cfg))   # niveau des bots, lot T13
+        # Niveau des bots (lot T13) : cycliste équipé (lot V5), bots sans équipement (leur physique de séance).
+        rider = RefRider(self.cfg.rider.ftp_w, self._base_params)
         scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
-                                self.cfg.bike.mass_kg)
+                                self.cfg.bike.mass_kg, bot_params=plain)
         if scales:
             log.info("Bots calibrés en %.0f ms : %s.", 1000.0 * (time.perf_counter() - t0),
                      ", ".join(f"{p} à {lv:g} % : CP × {k:.2f}" for (p, lv), k in scales.items()))
@@ -1271,6 +1342,29 @@ class CoreSession:
         if race.book_dirty:
             race.book_dirty = False
             self._save_records(race.book)
+
+    def _segment_gain(self, job: GainJob) -> None:
+        """`equipment_gain_s` d'un passage (lot V5) : simulation hors de la boucle à 50 Hz."""
+        records = self._rec.records if self._rec else []
+        equipped, plain = self._base_params, PhysicsParams.from_config(self.cfg)
+
+        def compute() -> float | None:
+            return segment_time_gain(records, equipped, plain, job.t_start, job.t_end, job.s_start, job.s_end)
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # tests et outils sans boucle asyncio : calcul direct
+            job.resolve(compute())
+            return
+
+        async def run() -> None:
+            try:
+                job.resolve(await asyncio.to_thread(compute))
+            except Exception:
+                log.exception("Temps gagné par l'équipement non calculé (segment)")
+                job.resolve(None)
+
+        self._spawn(run())
 
     def _save_records(self, book: RecordBook) -> None:
         if not self._records_writable:
@@ -1397,8 +1491,8 @@ class CoreSession:
         erg = self.erg
         if ev == InputEvent.Z_SHORT:
             # Z court : action du mode (§7.1) ; bloc suivant en ERG, roue libre comprise ; sinon, en mode
-            # classique, bonus en réserve (T6, T7).
-            if erg:
+            # classique et en ERG d'une session libre (sans blocs, lot O18), bonus en réserve (T6, T7).
+            if self._workout_erg():
                 self._skip_block()
             elif self.race and self.race.activate(self._t_session):
                 log.info("Bonus activé : %s.", self.race.powerups.active)
@@ -1407,10 +1501,12 @@ class CoreSession:
         if ev not in BIAS_STEPS:
             return   # ni + ni − (A, Z long, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
         if erg and not erg.is_freeride:
-            # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 %. En roue libre, les
-            # appuis restent des braquets.
+            # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 % ; en cadence
+            # verrouillée (lot O18), cadence cible ± 2 % et ± 10 %. En roue libre, les appuis restent
+            # des braquets.
             erg.change_bias(BIAS_STEPS[ev])
             self._sync_erg_state()
+            latency_log.expect_cp()   # nouvelle cible ERG écrite au Control Point
             return
         n = self.cfg.gearing.long_press_gears
         if ev == InputEvent.PLUS_SHORT:
@@ -1423,6 +1519,7 @@ class CoreSession:
             self.gearing.shift_down(n)
         self.state.gear = self.gearing.k
         self._shift_pending = True   # le changement de braquet doit se sentir tout de suite
+        latency_log.expect_cp()
 
     def _drain_inputs(self) -> None:
         if self._identify and time.monotonic() > self._identify["until"]:
@@ -1430,11 +1527,12 @@ class CoreSession:
         for provider in self.inputs:
             while not provider.events.empty():
                 ev = provider.events.get_nowait()
-                if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
-                        and getattr(provider, "_conn_address", "") not in ("", "?", None):
-                    self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
-                    continue
-                self._handle_input(ev)
+                with latency_log.handling(provider):   # lot X7 : étage « evenement » de l'appui suivi
+                    if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
+                            and getattr(provider, "_conn_address", "") not in ("", "?", None):
+                        self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
+                        continue
+                    self._handle_input(ev)
         # Statut d'entrée : celui du premier fournisseur (Click s'il est configuré) ; la paire de
         # Click est « connectée » dès qu'un des deux boîtiers l'est.
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
@@ -1486,12 +1584,14 @@ class CoreSession:
             self._step_rogue(dt, m)
             return
         if self.erg:
-            self.erg.step(dt)        # le temps du bloc ne court que pendant RUNNING
+            self.erg.step(dt, m.cadence_rpm)   # le temps du bloc ne court que pendant RUNNING
             reason = self._ramp_watch.update(dt, m.power_w, m.cadence_rpm, self.erg) if self._ramp_watch else None
             if reason:
                 self._end_ramp(reason)
             self._sync_erg_state()
         erg = self.erg
+        workout_erg = self._workout_erg()
+        free_erg = erg if isinstance(erg, FreeErg) else None
         s = self.physics.s
         tau = self.cfg.trainer.latency_tau_s
         route = self.route
@@ -1554,6 +1654,8 @@ class CoreSession:
 
         if race:
             race.step(self._t_session, dt, self.physics.s, m.power_w, self.bots)
+            for job in race.take_gain_jobs():
+                self._segment_gain(job)
             self._flush_race_journal()
             for msg in race.due_results(self._t_session):
                 self.server.send_raw(msg)
@@ -1582,14 +1684,16 @@ class CoreSession:
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
                 difficulty_pct=round(self.difficulty_pct),
-                block=erg.index + 1 if erg else None,
+                block=workout_erg.index + 1 if workout_erg else None,
                 target_w=erg.target_w if erg and erg.target_active else None,
                 erg_bias_pct=erg.bias_pct - BIAS_DEFAULT_PCT if erg and erg.target_active else None,
                 head_mps=round(self._head_mps, 2) if self.wind.active else None,
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
                 draft=round(self._draft, 3) if self.bots else None,
-                hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None))
+                hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None,
+                erg_kind=free_erg.kind if free_erg else None,
+                cadence_target_rpm=free_erg.cadence_target if isinstance(free_erg, CadenceLock) else None))
 
         if route and not route.is_loop and self.openworld is None and st.s >= route.length_m:   # ni une boucle, ni le monde ouvert
             log.info("Arrivée atteinte.")
@@ -1640,7 +1744,7 @@ class CoreSession:
         Lève `ResumeError` si le journal ne peut pas être repris.
         """
         rs = load_resume_state(path)
-        if rs.route_id == "rogue":
+        if rs.route_id == rogue_mode.JOURNAL_ROUTE_ID:
             return self._resume_rogue(path, rs)
         route_id = rs.route_id or "demo"
         self._select_route(route_id, previous="IDLE")
@@ -1664,6 +1768,12 @@ class CoreSession:
                 erg.bias_pct = BIAS_DEFAULT_PCT + rs.erg_bias_pct
             self.erg = erg
             self._watch_ramp()
+        elif rs.erg_kind in ("free", "cadence"):
+            # ERG d'une session libre (lot O18) : même mode, même cible et même cadence cible.
+            ftp = self.cfg.rider.ftp_w
+            w = rs.target_w if rs.target_w is not None else start_power(None, ftp)
+            self.erg = FreeErg(w) if rs.erg_kind == "free" else \
+                CadenceLock(rs.cadence_target_rpm or start_cadence(None), w, ftp)
         self._sync_erg_state()
         st = self.state
         st.t, st.s, st.v = rs.t, rs.s, 0.0
@@ -1673,7 +1783,7 @@ class CoreSession:
                                     source=self._journal_source())
         if rs.running:
             # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
-            self._rec.event("pause", rs.last_ts)
+            self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
@@ -1693,23 +1803,23 @@ class CoreSession:
             req = snap["req"]
             request = rogue_mode.RunRequest(req["objective"], int(req["duration_min"]), int(req["seed"]),
                                             float(req["w_prime_j"]), str(snap.get("chassis", "standard")))
-            self.rogue = rogue_mode.RogueMode(self.cfg, request, params=self._base_params)
+            self.rogue = rogue_mode.RogueMode(self.cfg, request, params=PhysicsParams.from_config(self.cfg))
             self.rogue.restore(snap)
         except (KeyError, TypeError, ValueError, EOFError, zlib.error) as exc:
             self.rogue = None
             raise ResumeError(f"instantané de la run illisible : {exc}") from exc
         self.route, self._segments, self.race, self.erg, self._workout = None, (), None, None, None
-        self.physics = RiderPhysics(self._base_params)
+        self.physics = RiderPhysics(PhysicsParams.from_config(self.cfg))   # sans équipement (lot V5)
         self._t_session, self._grade_sent, self._rogue_dist = rs.t, 0.0, rs.s
         self._sync_erg_state()
         st = self.state
-        st.route_id, st.route_length_m, st.t, st.s, st.v = "rogue", None, rs.t, rs.s, 0.0
+        st.route_id, st.route_length_m, st.t, st.s, st.v = None, None, rs.t, rs.s, 0.0
         st.gear, st.gears_total = self.rogue.gear, self.rogue.balance.gear_max
         st.lat = st.lon = st.alt = None
-        self._rec = SessionRecorder(self.journal_dir, "rogue", on_failure=self._on_recording_failure,
+        self._rec = SessionRecorder(self.journal_dir, rogue_mode.JOURNAL_ROUTE_ID, on_failure=self._on_recording_failure,
                                     resume_path=path, lines=rs.lines, source=self._journal_source())
         if rs.running:
-            self._rec.event("pause", rs.last_ts)
+            self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
@@ -1795,8 +1905,10 @@ class CoreSession:
         next_tick = last = mono()
         next_state = next_check = last
         next_stats = last + STATS_PERIOD_S
+        physics, state, physics_all, state_all = (JitterMeter() for _ in range(4))   # gigue (lot X17)
         while not self.stop_event.is_set():
             now = mono()
+            physics.interval(now, DT_PHYSICS)
             lag = max(now - next_tick, 0.0)
             t0 = mono()
             self.server.process_incoming_datagrams()
@@ -1811,6 +1923,7 @@ class CoreSession:
                 next_check = now + 0.5
                 self.server.check_liveness()
             if now >= next_state:
+                state.add((now - next_state) * 1000.0)
                 # Échéances fixes : « now + DT_STATE » ne tomberait qu'un pas de 20 ms sur deux (25 Hz).
                 next_state += DT_STATE
                 if next_state <= now:   # retard de plus d'une trame : on se recale
@@ -1835,11 +1948,20 @@ class CoreSession:
                 log.info("Perf : pas p50 %.2f / p99 %.2f / max %.2f ms ; retard p99 %.1f / max %.1f ms ;"
                          " CPU %.1f %%", r["step_p50_ms"], r["step_p99_ms"], r["step_max_ms"],
                          r["lag_p99_ms"], r["lag_max_ms"], r["cpu_pct"])
+                log.info(jitter_line(physics, state))
+                physics_all.merge(physics)
+                state_all.merge(state)
+                physics.clear()
+                state.clear()
 
             next_tick += DT_PHYSICS
             if next_tick < mono() - 0.5:   # très en retard : on se recale au lieu de rattraper
                 next_tick = mono()
             await asyncio.sleep(max(next_tick - mono(), 0.0))
+        physics_all.merge(physics)
+        state_all.merge(state)
+        if physics_all.n:
+            log.info(jitter_line(physics_all, state_all, whole=True))
 
     async def _shutdown(self, tasks: list[asyncio.Task]) -> None:
         log.info("Arrêt du core…")

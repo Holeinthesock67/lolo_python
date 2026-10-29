@@ -174,7 +174,7 @@ static func scale_heights(heights: PackedFloat32Array, alt_orig: float, visual_g
 
 
 static func carve_under_route(heights: PackedFloat32Array, level: String, ix: int, iz: int, route,
-		margin: float = FAR_CARVE_MARGIN_M, visual_grade_scale: float = 1.0, alt_orig: float = 0.0) -> PackedFloat32Array:
+		margin: float = FAR_CARVE_MARGIN_M) -> PackedFloat32Array:
 	if route == null or route.n < 2:
 		return heights
 	var out := heights.duplicate()
@@ -193,10 +193,8 @@ static func carve_under_route(heights: PackedFloat32Array, level: String, ix: in
 			var pz: float = lerpf(route.z[k], route.z[k1], f)
 			if px < x0 - pad or px > x0 + size + pad or pz < z0 - pad or pz > z0 + size + pad:
 				continue
-			var r_alt: float = minf(route.alt_m[k], route.alt_m[k1])
-			if visual_grade_scale != 1.0:
-				r_alt = alt_orig + (r_alt - alt_orig) * visual_grade_scale
-			var alt: float = r_alt - margin
+			# Hauteur affichée de la route (relief exagéré, lot Q2) : `heights` est déjà à cette échelle.
+			var alt: float = route.display_y(minf(route.alt_m[k], route.alt_m[k1])) - margin
 			var i0 := clampi(floori((px - x0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)
 			var i1 := clampi(floori((px - x0 + ROAD_CLEAR_HALF_M) / cell) + 1, 0, CELLS)
 			var j0 := clampi(floori((pz - z0 - ROAD_CLEAR_HALF_M) / cell), 0, CELLS)

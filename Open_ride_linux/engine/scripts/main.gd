@@ -12,6 +12,7 @@ const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
+const HudView := preload("res://scripts/hud_view.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
@@ -95,7 +96,8 @@ var fps_counter = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
-var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
+var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lots Q2 et Y15)
+var _base_fov := 65.0                  # champ de vision de la scène, avant la respiration selon la pente (lot Y15)
 var _theme_name: String = "default"
 var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage en place (--display, puis le menu)
 ## Vues de caméra (lot V12) : modèle (camera_views.gd) et dernière valeur de render.camera reçue du core.
@@ -126,6 +128,7 @@ const BEEP_LEVEL := 0.3
 ## Durées d'affichage du rappel des commandes en séance et de l'explication d'un appui ambigu.
 const CONTROLS_HINT_S := 10.0
 const PRESS_HINT_S := 4.0
+const LATENCY_WAIT_MS := 2000   # appui suivi (lot X7) : changement du HUD attendu au plus 2 s
 ## Bip de changement de bloc ERG à T − 3 s (lot N7) : une seule note, plus aiguë, plus longue et plus
 ## forte que les bips d'appui, pour passer au-dessus du vent et de la roue libre (SoundPlayer).
 const ERG_BEEP := [[1320.0, 0.30]]
@@ -157,6 +160,7 @@ var _chart_points := 0
 var menu_view = null
 var menu_layer: CanvasLayer = null
 var _last_state: Dictionary = {}
+var _latency_waiting: Array = []   # [identifiant, signature du HUD à la réception, heure ms] (lot X7)
 var _menu_s := 0.0
 ## Décor vivant, première vague (lot P16) : vent, arbres et herbe, nuages, fonds sonores.
 var living_world = null
@@ -187,10 +191,8 @@ func _ready() -> void:
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
-	_visual_grade_scale = float(cfg.get("visual_grade", 1.0))
-	streamer.visual_grade_scale = _visual_grade_scale
-	if streamer.osm_streamer != null:
-		streamer.osm_streamer.visual_grade_scale = _visual_grade_scale
+	_visual_grade_scale = float(cfg.get("visual_grade", EngineArgs.DEFAULT_VISUAL_GRADE))
+	_base_fov = camera.fov
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
@@ -244,13 +246,13 @@ func _ready() -> void:
 	_configure_avatar()
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
-	segment_markers.visual_grade_scale = _visual_grade_scale
 	add_child(segment_markers)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
 	ipc.room_received.connect(rogue_host.on_room)
 	ipc.loot_received.connect(rogue_host.on_loot)
 	ipc.input_event_received.connect(_on_input_event)
+	ipc.latency_input_received.connect(_on_latency_input)
 	ipc.hello_ack_received.connect(_on_hello_ack)
 	ipc.garage_received.connect(_on_garage)
 	ipc.xp_result_received.connect(_on_xp_result)
@@ -292,10 +294,12 @@ func _ready() -> void:
 	chart_sim.anchor_top = 1.0
 	chart_sim.anchor_bottom = 1.0
 	chart_sim.anchor_right = 1.0
-	chart_sim.offset_left = 340.0
-	chart_sim.offset_right = -340.0
-	chart_sim.offset_bottom = -130.0
-	chart_sim.offset_top = -250.0
+	# Entre les colonnes du HUD, juste au-dessus du profil d'altitude.
+	var chart_x := HudView.TOP_MARGIN + HudView.COLUMN_W + HudView.TOP_MARGIN
+	chart_sim.offset_left = chart_x
+	chart_sim.offset_right = -chart_x
+	chart_sim.offset_bottom = -HudView.PROFILE_RESERVE - HudView.BLOCK_GAP
+	chart_sim.offset_top = chart_sim.offset_bottom - 120.0
 	chart_sim.visible = false
 	hud.add_child(chart_sim)
 	junction_view = JunctionView.new()
@@ -449,6 +453,41 @@ func _apply_sky_params(theme_dict: Dictionary) -> void:
 	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
 
 
+## Latence des appuis (lot X7, core lancé avec --latence) : étage « recu » à la réception de l'événement,
+## « affiche » à la première image dessinée après le changement du HUD qu'il provoque (braquet, cible ou
+## biais ERG). Heure murale du système, la même que celle du core sur la même machine.
+func _on_latency_input(press_id: int) -> void:
+	print("[latence] id=%d etage=recu t=%.6f" % [press_id, Time.get_unix_time_from_system()])
+	_latency_waiting.append([press_id, _hud_signature(_last_state), Time.get_ticks_msec()])
+
+
+static func _hud_signature(state: Dictionary) -> String:
+	var erg = state.get("erg", null)
+	var erg_part := [erg.get("target_w", null), erg.get("bias_pct", null)] if erg is Dictionary else []
+	return JSON.stringify([state.get("gear", null), erg_part])
+
+
+func _check_latency(state: Dictionary) -> void:
+	if _latency_waiting.is_empty():
+		return
+	var sig := _hud_signature(state)
+	var now := Time.get_ticks_msec()
+	var shown: Array = []
+	var still: Array = []
+	for w in _latency_waiting:
+		if w[1] != sig:
+			shown.append(w[0])
+		elif now - int(w[2]) < LATENCY_WAIT_MS:
+			still.append(w)
+	_latency_waiting = still
+	if shown.is_empty():
+		return
+	await RenderingServer.frame_post_draw
+	var t := Time.get_unix_time_from_system()
+	for press_id in shown:
+		print("[latence] id=%d etage=affiche t=%.6f" % [press_id, t])
+
+
 func _on_input_event(event_name: String) -> void:
 	if event_name in ["PLUS_UNCLEAR", "MINUS_UNCLEAR"]:
 		print("Appui ambigu : ", event_name)
@@ -552,6 +591,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.import_workout(str(act["path"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
+		"set_ride_mode":   # session libre : SIM, ERG ou ERG cadence depuis la pause (lot O18)
+			ipc.send_command("set_ride_mode", act["args"])
 		"select_route":
 			ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"select_workout":
@@ -735,16 +776,16 @@ func _process(delta: float) -> void:
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		var pos: Vector3 = route.sample_point(s_route)
-		if _visual_grade_scale != 1.0 and route != null and route.n > 0:
-			pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
-		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale)
+		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
 		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
+		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
 		avatar_view.set_visible_for_view(_avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, heading, now, pitch_deg)
+		_probe.distance_m = s_route
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
@@ -776,11 +817,10 @@ func _menu_camera(delta: float) -> bool:
 		return false
 	_menu_s = route.wrap_s(_menu_s + MENU_CAMERA_MPS * delta)
 	var pos: Vector3 = route.sample_point(_menu_s)
-	if _visual_grade_scale != 1.0 and route != null and route.n > 0:
-		pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
+	camera.fov = _base_fov
 	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
-	camera.rotation.x = deg_to_rad(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS, -1.0, _visual_grade_scale))
+	camera.rotation.x = deg_to_rad(CameraViews.camera_pitch_deg(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS)))
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
@@ -873,6 +913,7 @@ func _request_route(route_id) -> void:
 		# Un chargement est déjà en cours : son résultat sera ignoré (_poll_route_job).
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
 	var job := {"id": str(route_id), "route": RouteDataScript.new(), "path": path, "ok": false}
+	job["route"].relief_k = _visual_grade_scale   # relief affiché (lot Q2) : toute la scène suit la route
 	job["task"] = WorkerThreadPool.add_task(_load_route_job.bind(job), false, "chargement du parcours")
 	_route_job = job
 
@@ -916,8 +957,9 @@ func _poll_route_job() -> void:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
-	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")))
-	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop())
+	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
+	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
+		not route.live)
 	segment_hud.set_segments(route.segments)
 	menu_flow.records.set_segments(route.segments)
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
@@ -934,6 +976,7 @@ func _poll_route_job() -> void:
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
 			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"]])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
+	_probe.route_ready()   # démarrage : première image jouable comptée à partir d'ici (lot X15)
 
 
 # --- messages du core --------------------------------------------------------------------
@@ -953,6 +996,9 @@ func _on_test_message(msg: Dictionary) -> void:
 			_test_mouse(str(msg.get("kind", "click")), str(msg.get("item", "")), msg.get("at", []))
 		"menu_state":
 			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
+		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
+			camera_views.set_view(str(msg.get("view", "")))
+			ipc.test_log("camera_view done=" + camera_views.effective())
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
 				living_decor.set_weather(msg["weather"])
@@ -1074,12 +1120,13 @@ func _test_screenshot(path: String, tag: String) -> void:
 	await RenderingServer.frame_post_draw
 	var img := get_viewport().get_texture().get_image()
 	var err := img.save_png(path) if path != "" else ERR_FILE_BAD_PATH
+	_probe.mark_capture()   # pic de la lecture et de l'écriture : hors p99 de la sonde (lot X35)
 	var widgets := {}
 	var nodes := {
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
-		"menu_card": menu_view.card, "garage_preview": menu_view.preview,
+		"menu_card": menu_view.card, "garage_preview": menu_view.preview, "button_bar": menu_view.button_bar,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
@@ -1091,6 +1138,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"power_caption": hud.power_val.get_meta("caption"), "speed_caption": hud.speed_val.get_meta("caption"),
 		"cadence_caption": hud.cadence_val.get_meta("caption"), "hr_caption": hud.hr_val.get_meta("caption"),
 		"grade_caption": hud.grade_val.get_meta("caption"),
+		"target_caption": hud.target_val.get_meta("caption"), "gear": hud.gear_val, "time": hud.time_val,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
 		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}
@@ -1120,6 +1168,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"quality": _quality_name,
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		"triangles": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		"streaming_pending": streamer.pending_count(),   # tuiles voulues pas encore affichées (tour visuel, X21)
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
 		"camera_view": camera_views.effective(), "camera_transition": camera_views.in_transition(),
 		"widgets": widgets,
@@ -1127,6 +1177,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
+		"rogue": rogue_host.test_info(),
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 
@@ -1304,6 +1355,7 @@ func _on_state_received(state: Dictionary) -> void:
 		print("Premier état reçu du core : ", state.get("session_state", "?"), " trainer=", state.get("trainer_status", "?"))
 	banner.clear_message("shutdown")
 	_last_state = menu_flow.with_devices(state)
+	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
 	_refresh_menu()
@@ -1313,7 +1365,8 @@ func _on_state_received(state: Dictionary) -> void:
 		session_state = new_session_state
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
 		if session_state == "RUNNING":
-			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null), CONTROLS_HINT_S)
+			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null,
+					str(state["erg"].get("kind", "workout")) if state.get("erg", null) is Dictionary else "workout"), CONTROLS_HINT_S)
 		else:
 			banner.clear_message("controls")
 		# Une erreur reste au moins 5 s ; au-delà, elle reste tant que la séance est en ERROR.
@@ -1430,7 +1483,7 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 	if hud != null and hud.has_method("update_bots"):
 		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
-		bots_view.update_view(view, route, _visual_grade_scale, route.alt_m[0] if route != null and route.n > 0 else 0.0)
+		bots_view.update_view(view, route)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les

@@ -46,5 +46,8 @@ ride_pct = 100                # vent et roue libre
 ambience_pct = 100            # fonds, cloches, véhicules, foule, passants
 events_pct = 100              # bips du Click, bloc ERG, consignes, jingles
 
+[log]
+latence = false               # journal de latence des appuis du Click (lot X7, docs/OUTILS_DE_TEST.md)
+
 [engine]
 godot = ""                    # chemin de Godot 4.3 (rempli par scripts/install.sh)
