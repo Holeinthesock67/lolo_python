@@ -2,8 +2,11 @@
   "description": "Course contre 4 bots à profil (recette T11 §8, lots T12, T13, T15) sur le parcours de démonstration à 280 W : encart des bots, voisins devant et derrière, écarts.",
   "trainer": {
     "appear_at": 0.3,
-    "connect_delay_s": 0.3,
-    "rider_power_w": 280,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 280,
     "cadence_rpm": 90
   },
   "click": {
