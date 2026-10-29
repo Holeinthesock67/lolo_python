@@ -393,8 +393,11 @@ class ErgController:
         self._smooth_t = carry_s
         self.index, self.t_block = index, carry_s
 
-    def step(self, dt: float) -> None:
-        """Avance le temps de l'entraînement de dt secondes (rien en pause ou après la fin)."""
+    def step(self, dt: float, cadence_rpm: float | None = None) -> None:
+        """Avance le temps de l'entraînement de dt secondes (rien en pause ou après la fin).
+
+        `cadence_rpm` : cadence mesurée, donnée par la session à tout contrôleur ERG ; sans effet sur
+        un entraînement (lue par la cadence verrouillée, `free_erg.CadenceLock`, lot O18)."""
         if not (math.isfinite(dt) and dt >= 0):
             raise ValueError(f"pas de temps invalide : {dt!r} s (attendu un nombre fini ≥ 0)")
         if self.finished or self.paused:
@@ -423,6 +426,7 @@ class ErgController:
         """Objet `erg` du contrat IPC §3."""
         b = self.block
         return {
+            "kind": "workout",   # révision 1.5 (lot O18) : `free` et `cadence` pour l'ERG d'une session libre
             "workout_name": self.workout.name,
             "block_index": self.index + 1,
             "block_count": len(self.workout.blocks),

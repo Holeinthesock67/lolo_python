@@ -552,6 +552,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.import_workout(str(act["path"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
+		"set_ride_mode":   # session libre : SIM, ERG ou ERG cadence depuis la pause (lot O18)
+			ipc.send_command("set_ride_mode", act["args"])
 		"select_route":
 			ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"select_workout":
@@ -1313,7 +1315,8 @@ func _on_state_received(state: Dictionary) -> void:
 		session_state = new_session_state
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
 		if session_state == "RUNNING":
-			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null), CONTROLS_HINT_S)
+			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null,
+					str(state["erg"].get("kind", "workout")) if state.get("erg", null) is Dictionary else "workout"), CONTROLS_HINT_S)
 		else:
 			banner.clear_message("controls")
 		# Une erreur reste au moins 5 s ; au-delà, elle reste tant que la séance est en ERROR.
