@@ -2,7 +2,7 @@
 
 ## 1. Objectif
 
-Séance du 29 octobre : le banc `trainer_steps` (lot X5) envoyait des paliers de pente fixes. Le palier à 6 % demandait environ 600 W pendant 40 s. Il était intenable, et le lâcher venait alors du cycliste (la cadence baissait d'abord). Il ne prouvait donc rien sur le trainer. Le protocole revu ([PROTOCOLE_PALIERS_RETARD_TRAINER.md](/mnt/project-files/plans/PROTOCOLE_PALIERS_RETARD_TRAINER.md), fil FTMS) demande :
+Séance du 29 octobre : le banc `trainer_steps` (lot X5) envoyait des paliers de pente fixes. Le palier à 6 % demandait environ 600 W pendant 40 s. Il était intenable, et le lâcher venait alors du cycliste (la cadence baissait d'abord). Il ne prouvait donc rien sur le trainer. Le protocole revu (`/mnt/project-files/plans/PROTOCOLE_PALIERS_RETARD_TRAINER.md`, fil FTMS) demande :
 - des paliers SIM tenables (250 à 350 W au plus), définis par la puissance et non par la pente ;
 - des relances courtes de 10 à 15 s à 450–500 W, pour voir si le frein lâche à cadence constante.
 
