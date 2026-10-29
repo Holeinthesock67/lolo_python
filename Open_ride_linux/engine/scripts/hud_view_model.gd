@@ -89,6 +89,14 @@ static func unclear_press_text(event_name: String, in_menu: bool) -> String:
 	return "Appui ignoré (ni court ni long) : appui bref pour un pas (braquet ou intensité), une seconde pour un grand pas"
 
 
+## Z long en roulant, hors Cyber-Rogue et hors menu (spécification générale §7.1, lot X47) : le core écrit un
+## repère « décrochage » au journal ; l'écran le confirme. Texte vide quand l'appui ne pose pas de repère.
+static func dropout_mark_text(event_name: String, session_state: String, rogue: bool, in_menu: bool) -> String:
+	if event_name != "Z_LONG" or session_state != "RUNNING" or rogue or in_menu:
+		return ""
+	return "Repère « décrochage » noté au journal"
+
+
 static func format_hms(seconds: float) -> String:
 	if not is_finite(seconds) or seconds < 0.0 or seconds > MAX_ELAPSED_S:
 		return NO_VALUE
