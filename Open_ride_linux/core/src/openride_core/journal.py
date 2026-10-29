@@ -21,6 +21,9 @@ Sortes de lignes :
 - `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un
   plantage reprend la séance dans le même fichier (lot N8) ; ce n'est pas un événement du
   chronomètre : les lectures du chronomètre et le FIT ne gardent que `TIMER_EVENTS` ;
+- `{"kind": "event", "ts": ..., "event": "decrochage"}` : repère posé par le cycliste (Z long au Click,
+  Maj+Z au clavier, spécification générale §7.1, lot X47) quand il sent le trainer décrocher ; relu par
+  l'outil `decrochages` (lot X44), hors chronomètre comme `resume_after_crash` ;
 - `{"kind": "device", "ts": ..., "device": "trainer" | "click_plus" | "click_minus" | "hr",
   "state": "up" | "down"}` au changement d'état d'un appareil (lot M4, absentes des journaux
   antérieurs au 24 octobre 2026). Les lectures qui ne connaissent pas cette sorte l'ignorent ;
@@ -59,7 +62,7 @@ JOURNAL_DIR = OPENRIDE_HOME / "Activities" / ".journal"
 FSYNC_EVERY_S = 5.0   # fsync bloque la boucle ~7 ms ; flush à chaque ligne protège déjà d'un plantage du programme
 
 TIMER_EVENTS = ("start", "pause", "resume", "stop")
-EVENTS = (*TIMER_EVENTS, "resume_after_crash")
+EVENTS = (*TIMER_EVENTS, "resume_after_crash", "decrochage")
 DEVICES = ("trainer", "click_plus", "click_minus", "hr")
 DEVICE_STATES = ("up", "down")
 

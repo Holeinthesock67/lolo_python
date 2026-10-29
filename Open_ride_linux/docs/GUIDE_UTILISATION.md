@@ -101,6 +101,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Braquet plus dix, moins dix (de 1 à 24) | « + » long, « − » long |
 | Pause et reprise | Y |
 | Activer le bonus en réserve (mode classique) | Z |
+| Noter un décrochage du trainer au journal | Z long |
 
 **Pendant la séance, en ERG**
 
@@ -109,7 +110,10 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Intensité plus ou moins 2 % | « + » court, « − » court |
 | Intensité plus ou moins 10 % (de 80 à 120 %) | « + » long, « − » long |
 | Bloc suivant | Z |
+| Noter un décrochage du trainer au journal | Z long |
 | Pause et reprise | Y |
+
+**Z long** (ou `Maj+Z` au clavier) note un repère « décrochage » au journal quand vous sentez la résistance du trainer lâcher (sauf en Cyber-Rogue, où Z long joue la carte active). L'écran le confirme ; rien d'autre ne change. L'outil `decrochages` relit ces repères en face des chutes de puissance mesurées.
 
 Un entraînement ERG n'a jamais de roue libre : la consigne ne descend pas sous 50 W, et un bloc « FreeRide » d'un fichier `.zwo` devient un palier à 50 W. En ERG d'une session libre (section 5), Z garde son rôle de la Session libre (bonus) ; en ERG cadence, « + » et « − » changent la cadence cible de ± 2 % (appui long ± 10 %).
 

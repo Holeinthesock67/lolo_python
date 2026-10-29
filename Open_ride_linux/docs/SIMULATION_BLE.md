@@ -42,6 +42,8 @@ Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie s
 | `coupures` | Trainer coupé à 30 s, Click « − » à 40 s (réveillé à 50 s), ceinture à 45 s, trainer muet 12 s à 70 s, contrôle FTMS retiré à 100 s. |
 | `controle_refuse` | Le trainer refuse le contrôle à partir de 10 s : la séance passe en ERROR après deux reprises. |
 | `realiste` | Tout se connecte en une seconde ; trainer à réponse réaliste (lot X6, voir plus bas). |
+| `pignon_unique` | Séance du 29 octobre, en valeurs génériques (lot X46) : trainer réaliste, cycliste à braquet réel 50 × 14 (pignon unique, grand plateau) à 85 rpm, soit ≈ 38 km/h au volant, au plus 600 W. La cadence annoncée suit le volant : dans une pente trop dure, elle baisse. |
+| `decrochage_trainer` | Même braquet ; relances à 100 rpm de 25 à 45 s et de 85 à 105 s ; décrochages du frein (`brake_loss`, 8 s) à 33 s, 93 s et 160 s : puissance annoncée qui tombe vers 0 W en moins de 2 s, vitesse du volant qui baisse, cadence inchangée, sans erreur ni reconnexion. Le rapport `decrochages` (lot X44) les classe « trainer ». |
 
 ## Écrire un scénario (JSON)
 
@@ -76,14 +78,18 @@ Une section absente retire l'appareil. `control_file` (facultatif, chemin) : fic
   - `fatigue` : `fatigue_pct_ftp` % de la FTP (110) tant que la réserve W′bal (`w_prime_j`, CP = FTP) le permet, puis `recover_frac` × CP (0,85) jusqu'à ce que la réserve remonte au-dessus de `resume_pct` % (30) ;
   - `vitesse` : `speed_kmh` ; la puissance qui tient cette vitesse sur la pente reçue, avec la physique du core (`sim_bench.py --speed-kmh`, lot X35).
 
+  Braquet réel (lot X46), pour toutes les stratégies : `chainring` et `sprocket` (dents, ensemble) et `wheel_m` (circonférence, 2,105 m). Le cycliste roule à braquet fixe sur un trainer à entraînement direct à pignon unique : avec le trainer réaliste, la vitesse du volant visée est celle de sa cadence à ce braquet, et la cadence annoncée suit le volant (elle baisse quand le frein bat le cycliste).
+
   En ERG, le trainer tient sa cible tant que le cycliste pédale (cadence non nulle).
 
 **Trainer réaliste (lot X6).** En réponse `instant`, la puissance rejoint la consigne ERG ou l'effort du cycliste avec la constante `erg_tau_s` (1,5 s) et la pente ne change pas la résistance. En `realiste` (`ble_sim.TrainerResponse`) :
 - le frein voit la consigne avec un retard pur (`brake_delay_s`, 0,6 s) puis la rejoint en `brake_tau_up_s` (2 s) quand l'effort monte et en `brake_tau_down_s` (4,9 s) quand il baisse : 90 % du relâchement vers 12 s, comme à l'essai du 25 octobre ;
 - en ERG, la force du frein est la cible divisée par la vitesse ; en SIM, l'effort de la route à la vitesse du volant : m g (sin θ + Crr cos θ) + ½ Cw (v + vent)² (Cw = ρ · CdA, comme dans ANT+ FE-C et FTMS), avec la pente, le Crr, le Cw et le vent de la trame SIM (masse et valeurs absentes : réglages par défaut du core) ;
-- le volant (`flywheel_kg_m2`, 0,6, ramené à la jante) relie l'effort et la vitesse ; le cycliste tient sa cadence à braquet fixe (vitesse de son effort sur le plat, ou `speed_kmh` de la stratégie `vitesse`) sans dépasser `rider_max_w` (2,5 fois l'effort du cycliste par défaut) : dans une montée trop raide pour lui, le volant ralentit ;
+- le volant (`flywheel_kg_m2`, 0,6, ramené à la jante) relie l'effort et la vitesse ; le cycliste tient sa cadence à braquet fixe (vitesse de sa cadence au braquet réel `chainring` × `sprocket`, sinon vitesse de son effort sur le plat, ou `speed_kmh` de la stratégie `vitesse`) sans dépasser `rider_max_w` (2,5 fois l'effort du cycliste par défaut) : dans une montée trop raide pour lui, le volant ralentit ;
 - la puissance envoyée est celle du cycliste (frein et accélération du volant), la vitesse celle du volant ;
 - les trames Indoor Bike Data partent à `ibd_hz` avec une gigue de ± `notify_jitter_s` (40 ms), tirée à part du hasard du monde.
+
+Banc du trainer sur le simulé : `trainer_steps --trainer sim --scenario decrochage_trainer --mode relances` prend le braquet du scénario (ou `--plateau`/`--pignon`, transmis au cycliste simulé avec `--cadence`) et déroule ses événements.
 
 `calibration` remplace le retard et les constantes de temps par ceux d'un essai réel (`trainer_steps`, lot X5) : τ = (t63 − t10) / 0,895 et retard = t63 − τ, médianes des paliers montants et descendants. Vérification : `python -m openride_core.tools.trainer_steps --trainer sim --response realiste --mode erg_paliers` compare chaque t63 au modèle (± 20 %).
 - **click :** `status_hz`, `battery_pct`, `sleep_on_drop`, `relay_delay_s` ([min, max]).
@@ -100,7 +106,7 @@ Une section absente retire l'appareil. `control_file` (facultatif, chemin) : fic
 | `connect_delay` | `seconds` | Durée des prochaines connexions. |
 | `att_error` | `code` (128 = 0x80), `count` | Les prochaines écritures du Control Point échouent. |
 | `cp_silent` | `count` | Les prochaines commandes restent sans réponse 0x80. |
-| `brake_loss` | `seconds`, `value` (vrai par défaut : une nouvelle prise de contrôle rend le frein) | Trainer : puissance annoncée nulle pendant ce temps, sans erreur ni statut (frein lâché, 29 octobre). |
+| `brake_loss` | `seconds`, `value` (vrai par défaut : une nouvelle prise de contrôle rend le frein) | Trainer : frein lâché (séance du 29 octobre) pendant ce temps. La puissance annoncée tombe vers 0 W (divisée par e en 0,5 s) et la vitesse du volant baisse (constante de 8 s, lot X46). Cadence, Control Point et liaison restent inchangés, sans statut ni erreur. |
 | `other_device` | `seconds` | Trainer : un autre appareil (montre) occupe le Control Point, toute écriture échoue avec l'erreur ATT 0x80 pendant ce temps. |
 | `silence` | `seconds` | Trainer : plus d'Indoor Bike Data pendant ce temps. Boîtier du Click (`click_plus`, `click_minus`) : plus aucune notification, lien gardé (défaut du boîtier gauche à l'essai 69, recette guidée du Click, lot X8). |
 | `control_lost` | | Fitness Machine Status 0xFF : contrôle retiré. |

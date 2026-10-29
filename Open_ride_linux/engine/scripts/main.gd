@@ -515,6 +515,10 @@ func _on_input_event(event_name: String) -> void:
 		return
 	print("Bip : ", event_name)
 	_play_tones(BEEPS[event_name], BEEP_LEVEL)
+	var mark := HudViewModel.dropout_mark_text(event_name, session_state, rogue_host.is_active(), menu_flow.is_visible())
+	if mark != "":
+		banner.show_message("press", mark, PRESS_HINT_S)
+		return
 	if _camera_event(event_name):
 		return
 	_menu_event(event_name)

@@ -11,6 +11,7 @@ le cycliste, et mesure pour chaque palier :
     python -m openride_core.tools.trainer_steps --mode erg --cadence 85
     python -m openride_core.tools.trainer_steps --trainer sim --mode sim --fast   # Bluetooth simulé
     python -m openride_core.tools.trainer_steps --trainer sim --response realiste --mode erg_paliers
+    python -m openride_core.tools.trainer_steps --trainer sim --scenario decrochage_trainer --mode relances
     python -m openride_core.tools.trainer_steps --analyse DOSSIER        # relit samples.csv
     python -m openride_core.tools.trainer_steps --materiel               # matériel à préparer
 
@@ -31,6 +32,15 @@ F = m·g·(pente + Crr) + ½·Cw·v², avec la masse du `config.toml` local. Un 
 `paliers_puissance` (150 → 300 W, tenables) et `relances` (12 s à 470 W puis récupération, trois fois),
 `relances_erg` (les mêmes en ERG). `samples.csv` garde aussi la vitesse annoncée par le trainer (volant)
 et le niveau de résistance ; `steps.csv`, la cible, la pente envoyée et la vitesse théorique du volant.
+
+Décrochages et pompage (lot X44) : le rapport dit pour chaque chute brutale de la puissance si elle vient
+du trainer (cadence inchangée) ou du cycliste (cadence d'abord), avec les statuts annoncés par le trainer
+(lignes `ftms` du pilote, PR #580, notées `ftms` dans `events.csv`), et mesure le pompage par palier
+(module `decrochages`).
+
+Suivi en direct (lot X45) : `--fenetre` ouvre une fenêtre de terminal à part (`suivi_direct`) qui montre
+le palier, le compte à rebours, la puissance, la cadence et les alertes, et qui reste ouverte après la fin
+de l'essai avec le verdict et les décrochages relevés ; utile quand le banc est lancé à distance.
 
 Trainer simulé réaliste (lot X6) : `--response realiste` (frein à retard pur, serrage et relâchement,
 volant d'inertie ; `--calibration steps.csv` d'un essai réel pour reprendre ses valeurs) ; le banc compare
@@ -57,6 +67,8 @@ from pathlib import Path
 from typing import Any
 
 from .. import config
+from ..physics import WHEEL_CIRCUMFERENCE_M, gear_speed_mps
+from . import decrochages, suivi_direct
 from .guide import Guide
 
 DEFAULT_OUT = Path.home() / "OpenRide" / "trainer_steps"
@@ -94,7 +106,7 @@ CADENCE_TOL_RPM = 10.0  # alerte si la cadence s'écarte plus que ça de la cade
 CADENCE_ALERT_S = 3.0   # … pendant au moins ce temps
 CEILING_WINDOW_S = 3.0  # plafond : moyenne de la puissance sur 3 s
 CEILING_MARGIN = 1.25   # plafond par défaut : 125 % du plus fort palier du protocole
-WHEEL_M = 2.105         # circonférence par défaut (700 × 28c)
+WHEEL_M = WHEEL_CIRCUMFERENCE_M
 
 
 @dataclass(frozen=True)
@@ -106,7 +118,7 @@ class Gearing:
     wheel_m: float = WHEEL_M
 
     def speed_mps(self, cadence_rpm: float) -> float:
-        return cadence_rpm / 60.0 * self.chainring / self.sprocket * self.wheel_m
+        return gear_speed_mps(cadence_rpm, self.chainring, self.sprocket, self.wheel_m)
 
 
 def grade_for_power(target_w: float, cadence_rpm: float, gearing: Gearing, mass_kg: float, crr: float,
@@ -339,11 +351,22 @@ th{{background:#eef0ee}}</style>
 <table><tr><th>Palier</th><th>De</th><th>À</th><th>Écriture (ms)</th><th>Accusé (ms)</th><th>Départ (W)</th>
 <th>Final (W)</th><th>t10 (s)</th><th>t63 (s)</th><th>t90 (s)</th><th>Stable (s)</th><th>Dépassement (%)</th>
 <th>Cadence</th><th>Pente envoyée (%)</th><th>Écart à la cible (W)</th><th>Volant (km/h)</th><th>Résistance</th>
-<th>Note</th></tr>{rows}</table></html>
+<th>Note</th></tr>{rows}</table>
+{decrochages.html_section(*decrochages.analyse(bench_source(rec, out.name)))}</html>
 """
     path = out / "rapport.html"
     path.write_text(html, encoding="utf-8")
     return path
+
+
+def bench_source(rec: Recording, name: str) -> decrochages.Source:
+    """L'essai vu par le module `decrochages` (lot X44) : relevés, statuts du trainer, paliers."""
+    end = rec.samples[-1][0] if rec.samples else 0.0
+    segments = [(t, rec.steps[k + 1][0] if k + 1 < len(rec.steps) else end, f"palier {k + 1}")
+                for k, (t, _) in enumerate(rec.steps)]
+    return decrochages.Source(name, [decrochages.Sample(t, p, c) for t, p, c, *_ in rec.samples],
+                              [(t, d) for t, kind, d in rec.events if kind == "ftms"],
+                              [t for t, kind, _ in rec.events if kind == "decrochage"], segments)
 
 
 # --- banc -------------------------------------------------------------------------------
@@ -426,6 +449,8 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
                             None if res is None else float(res)))
 
     drv._on_ibd = tap   # avant run() : start_notify prend l'attribut de l'instance
+    # Statuts du trainer et frein lâché (lignes `ftms` du pilote, PR #580) : dans events.csv (lot X44).
+    drv.event_sink = lambda line: rec.events.append((clock(), "ftms", decrochages.status_text(line)))
     handler = _CpLogTap(rec, clock)
     ftms_log = logging.getLogger("ftms_driver")
     ftms_log.addHandler(handler)
@@ -465,6 +490,8 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
             await asyncio.sleep(0.1)
 
     task = asyncio.create_task(drv.run())
+    # Événements datés du scénario simulé (décrochages du frein, relances…, lot X46).
+    world_task = asyncio.create_task(sim_world.run()) if sim_world is not None else None
     try:
         g.step("Connexion au trainer", connect_timeout_s, "pédale doucement pour le réveiller", beep=False)
         end = time.monotonic() + connect_timeout_s
@@ -496,9 +523,29 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
             await asyncio.wait_for(task, timeout=10.0)
         except (asyncio.TimeoutError, Exception):
             task.cancel()
+        if world_task is not None:
+            sim_world.stop()
+            world_task.cancel()
         ftms_log.removeHandler(handler)
         ftms_log.setLevel(old_level)
     return rec
+
+
+def scenario_spec(name: str) -> dict[str, Any]:
+    """Scénario du trainer simulé, vide s'il est illisible (l'erreur est donnée à la construction du monde)."""
+    from ..sim_scenarios import SimScenarioError, load_scenario
+    try:
+        return load_scenario(name)
+    except SimScenarioError:
+        return {}
+
+
+def scenario_gearing(spec: dict[str, Any]) -> Gearing | None:
+    """Braquet réel du cycliste simulé d'un scénario (lot X46), ou None."""
+    rider = spec.get("rider") or {}
+    if rider.get("chainring") is None:
+        return None
+    return Gearing(rider["chainring"], rider["sprocket"], rider.get("wheel_m", WHEEL_M))
 
 
 def load_protocol(name_or_path: str, fast: bool = False, fast_hold_s: float = 6.0) -> list[Step]:
@@ -549,12 +596,17 @@ def main(argv: list[str] | None = None) -> int:
                     help="puissance (W, moyenne sur 3 s) qui coupe le palier ; défaut : 125 %% du plus fort palier")
     ap.add_argument("--response", choices=("instant", "realiste"), default="instant",
                     help="réponse du trainer simulé (--trainer sim, lot X6)")
+    ap.add_argument("--scenario", default="nominal",
+                    help="scénario du trainer simulé (--trainer sim) : nom intégré (pignon_unique, "
+                         "decrochage_trainer…) ou fichier JSON (lot X46)")
     ap.add_argument("--calibration", type=Path, help="steps.csv d'un essai réel : valeurs du modèle réaliste")
     ap.add_argument("--out", type=Path, help="dossier de sortie")
     ap.add_argument("--analyse", type=Path, metavar="DOSSIER", help="relit un essai et refait l'analyse")
     ap.add_argument("--materiel", action="store_true", help="affiche le matériel à préparer et quitte")
     ap.add_argument("--sans-attente", action="store_true", help="démarre sans attendre « Entrée »")
     ap.add_argument("--muet", action="store_true", help="sans bips")
+    ap.add_argument("--fenetre", action="store_true",
+                    help="suivi en direct dans une fenêtre à part, qui reste ouverte à la fin (lot X45)")
     args = ap.parse_args(argv)
     if args.materiel:
         from .guide import materials_text
@@ -568,9 +620,11 @@ def main(argv: list[str] | None = None) -> int:
         rec = load(args.analyse)
         out = args.analyse
     else:
+        sim_spec = scenario_spec(args.scenario) if args.trainer == "sim" else {}
         try:
             # Trainer simulé réaliste : relâchement à 90 % vers 12 s, paliers rapides de 20 s.
-            realiste = args.trainer == "sim" and (args.response == "realiste" or args.calibration is not None)
+            realiste = args.trainer == "sim" and (args.response == "realiste" or args.calibration is not None
+                                                  or (sim_spec.get("trainer") or {}).get("response") == "realiste")
             steps = load_protocol(args.mode, args.fast, 20.0 if realiste else 6.0)
         except (OSError, ValueError, KeyError) as exc:
             print(f"Protocole illisible : {exc}", file=sys.stderr)
@@ -580,7 +634,7 @@ def main(argv: list[str] | None = None) -> int:
                 v is not None and v <= 0 for v in (args.plateau, args.pignon)) or args.roue <= 0:
             print("Braquet réel : donner --plateau et --pignon ensemble (dents > 0), --roue > 0", file=sys.stderr)
             return 2
-        gearing = None if args.plateau is None else Gearing(args.plateau, args.pignon, args.roue)
+        gearing = Gearing(args.plateau, args.pignon, args.roue) if args.plateau is not None else scenario_gearing(sim_spec)
         if any(s.mode == "sim_w" for s in steps) and gearing is None:
             print("Paliers à puissance cible : donner --plateau et --pignon (dents du braquet réel)", file=sys.stderr)
             return 2
@@ -588,20 +642,35 @@ def main(argv: list[str] | None = None) -> int:
         world = None
         if args.trainer == "sim":
             from ..sim_scenarios import SimScenarioError, build_world, load_scenario
-            spec = load_scenario("nominal")
+            try:
+                spec = load_scenario(args.scenario)
+            except SimScenarioError as exc:
+                print(f"Trainer simulé : {exc}", file=sys.stderr)
+                return 2
+            if gearing is not None:   # même braquet réel et même cadence pour le cycliste simulé (lot X46)
+                spec["rider"] = {**(spec.get("rider") or {}), "chainring": gearing.chainring,
+                                 "sprocket": gearing.sprocket, "wheel_m": gearing.wheel_m,
+                                 "cadence_rpm": args.cadence}
             if realiste:
                 # Le protocole demande de tenir la cadence quoi qu'il arrive : pas de limite de puissance.
-                spec["trainer"].update({"response": "realiste", "rider_max_w": 2000})
+                spec["trainer"]["response"] = "realiste"
+                spec["trainer"].setdefault("rider_max_w", 2000)
                 if args.calibration:
                     spec["trainer"]["calibration"] = str(args.calibration)
             try:
-                world = build_world(spec, "nominal", click=False, hr=False)
+                world = build_world(spec, args.scenario, click=False, hr=False)
             except SimScenarioError as exc:
                 print(f"Trainer simulé : {exc}", file=sys.stderr)
                 return 2
         out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
         guide = Guide(f"Banc de latence du trainer ({args.mode})", out / "guide.jsonl",
-                      sound=False if args.muet else None)
+                      sound=False if args.muet else None,
+                      live_file=out / suivi_direct.LIVE_NAME if args.fenetre else None)
+        if args.fenetre:
+            guide.publish(force=True)
+            opened = suivi_direct.launch(out / suivi_direct.LIVE_NAME)
+            print(f"Fenêtre de suivi : {opened}" if opened else "Aucun terminal trouvé pour la fenêtre de suivi : "
+                  f"lancer {' '.join(suivi_direct.command(out / suivi_direct.LIVE_NAME))}")
         try:
             interactive = args.trainer == "ftms" and not args.sans_attente and sys.stdin.isatty()
             guide.prepare("trainer_steps", wait=interactive, auto_s=0 if args.fast else 10.0)
@@ -618,10 +687,15 @@ def main(argv: list[str] | None = None) -> int:
         for r in results:
             if r.t90_s is not None:
                 guide.measure(f"palier {r.index} ({step_label(Step(r.mode, r.value, 0, r.grade_pct))})", f"t90 {r.t90_s:g}", "s")
+        drops, _ = decrochages.analyse(bench_source(rec, out.name))
+        for d in drops:
+            guide.note(f"Décrochage à {d.t:.0f} s ({d.from_w:g} → {d.to_w:g} W) : {decrochages.KIND_TEXT[d.kind]}")
         guide.finish(True, "Essai fini : tu peux arrêter de pédaler")
         guide.close()
     results = analyse(rec)
     print(write_results(results, out), end="")
+    src = bench_source(rec, out.name)
+    print(decrochages.text_report(src, *decrochages.analyse(src)), end="")
     print(f"Rapport : {write_report(rec, results, out)}")
     model = getattr(getattr(world, "trainer", None), "model", None) if not args.analyse else None
     if model is not None:
