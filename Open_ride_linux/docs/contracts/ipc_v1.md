@@ -95,6 +95,12 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `next_target_w` | nombre ou `null` | Cible du bloc suivant |
 | `bias_pct` | nombre | Biais d'intensité (80 à 120) |
 | `paused` | booléen | ERG en pause : séance en pause (Y), seule pause depuis le lot O17 |
+| `kind` | chaîne, facultatif | Révision 1.5 (lot O18) : `workout` (entraînement), `free` (ERG libre d'une session libre) ou `cadence` (ERG à cadence verrouillée) ; absent : `workout` |
+| `cadence_target_rpm` | entier, facultatif | `cadence` seulement : cadence cible, biais compris (`bias_pct` s'applique à la cadence, pas à la puissance) |
+| `cadence_low_rpm`, `cadence_high_rpm` | nombres, facultatifs | `cadence` seulement : bornes de la plage (cible ± 15 %) |
+| `cadence_zone` | chaîne, facultatif | `cadence` seulement : `low` (sous la plage, la puissance baisse), `in`, `high` (au-dessus, la puissance monte) |
+
+ERG d'une session libre (`free`, `cadence`, lot O18) : un seul bloc `steady` sans durée (`block_index` = `block_count` = 1, `block_remaining_s` = `block_total_s` = 0, `next_target_w` = `null`) ; `mode` vaut `ERG`.
 
 **Bilan enrichi (champs facultatifs de `summary`)**
 
@@ -238,6 +244,7 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 | `world_search` | `{ "query": chaîne }` | Monde ouvert, menu : recherche de lieu ; réponse `places` |
 | `world_map` | `{ "lat", "lon", "radius_m" }` | Monde ouvert, menu : routes autour d'un point ; réponse `world_map` |
 | `world_regions` | `{}` | Monde ouvert, menu : régions du cache local ; réponse `world_regions` |
+| `set_ride_mode` | `{ "mode": "sim" ou "erg" ou "cadence", "target_w": nombre (facultatif), "cadence_rpm": nombre (facultatif) }` | Révision 1.5 (lot O18) : pendant une session libre (`RUNNING` ou `PAUSED`, sans entraînement ni run), passe en SIM, en ERG libre (cible `target_w`, 50 à 1 000 W) ou en ERG à cadence verrouillée (cadence cible `cadence_rpm`, 50 à 120 tr/min, plage ± 15 %, puissance adaptée entre 50 W et 150 % de la FTP). Sans `target_w` : la cible en cours, sinon la puissance des 3 dernières secondes arrondie à 5 W (60 % de la FTP si elle manque) ; sans `cadence_rpm` : la cadence cible en cours, sinon la cadence mesurée arrondie à 5 (85 tr/min si elle manque) ; valeurs hors bornes ramenées aux bornes ; le biais repart à 100 %. Hors séance : `error` `busy` ; pendant un entraînement ou une run : `busy` ; `mode` inconnu ou nombre mal typé : `bad_args` |
 | `world_pin` | `{ "region_id": chaîne, "pinned": booléen }` | Monde ouvert, menu : épingle ou libère une région du cache ; réponse `world_regions` |
 
 
@@ -488,4 +495,5 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.5) | 27 octobre 2026 | Changement compatible (Réglages en sous-écrans, volumes et compteur d'images/s, docs/AUDIO.md) : champ `group` des éléments de `settings` ; réglages `bike.mass_kg`, `wind.from_deg`, `wind.gust_pct`, `render.fps` (`off` ou `on`), `audio.master_pct`, `audio.ride_pct`, `audio.ambience_pct` et `audio.events_pct` (`applies` = `now`) ; liste `settings` portée à 24 éléments au plus (12 avant), toujours sous 4 096 octets ; l'engine ignore déjà les clés qu'il ne connaît pas |
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot T12, bots à profil) : élément `{ "kind": "profile", "profile" }` de l'argument `bots` de `start` (`climber`, `rouleur`, `sprinter`, `diesel`), compté dans les 4 bots ; profil inconnu : `bot_invalid`. Dans la trame, le bot garde `kind` = `constant` avec les champs de profil de la révision 1.4 |
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot T13, équilibrage des bots à profil) : champ facultatif `level_pct` de l'élément `{ "kind": "profile" }` de `start.bots` (50 à 150 % de la FTP ; sans lui, le réglage `bots.level_pct`, « Niveau des bots ») ; hors bornes : `bot_invalid`. CP et masse calibrées publiées dans `cp_w` et `mass_kg` de la trame, sans nouveau champ |
+| 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot O18, ERG d'une session libre, demande du propriétaire du 28 octobre) : commande `set_ride_mode` ; champs facultatifs `kind`, `cadence_target_rpm`, `cadence_low_rpm`, `cadence_high_rpm` et `cadence_zone` de l'objet `erg` |
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (décrochages du trainer de la séance A) : champ facultatif `busy` de `devices.trainer`, vrai tant que le Control Point est occupé par un autre appareil ; la séance n'est pas mise en pause tant que les mesures arrivent |

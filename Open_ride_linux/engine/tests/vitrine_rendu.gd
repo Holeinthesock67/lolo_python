@@ -29,6 +29,8 @@ const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const TreeSpecies := preload("res://scripts/tree_species.gd")
+const RoadsideProps := preload("res://scripts/roadside_props.gd")
+const WindTurbines := preload("res://scripts/wind_turbines.gd")
 
 const SIZE := Vector2i(1280, 720)
 const ROAD_WIDTH_M := 6.0
@@ -53,7 +55,16 @@ const VIEWS := {
 	"arbres_temperes": [Vector3(147.0, 5.0, -86.0), Vector3(147.0, 8.0, -120.0), 60.0],
 	"arbres_sud": [Vector3(153.0, 4.0, -128.0), Vector3(153.0, 4.5, -160.0), 60.0],
 	"ecorces": [Vector3(129.0, 1.8, -112.0), Vector3(129.0, 2.4, -120.0), 55.0],
+	"panneaux": [Vector3(58.5, 1.5, -15.5), Vector3(61.5, 1.3, -22.0), 50.0],
+	"eolienne": [Vector3(-75.0, 2.0, -150.0), Vector3(-120.0, 55.0, -300.0), 60.0],
+	"eolienne_pied": [Vector3(-113.0, 1.7, -287.0), Vector3(-120.0, 8.0, -300.0), 60.0],
 }
+## Objets du bord de route (roadside_props.gd, lot P14) : panneau de col, panneau d'approche, borne.
+const PROPS := [
+	[{"kind": "summit", "s": 0.0, "lines": ["COL DE TEST", "1 234 m"]}, Vector3(60.0, 0.0, -22.0)],
+	[{"kind": "approach", "s": 0.0, "lines": ["SOMMET 2 km", "7 %"]}, Vector3(63.0, 0.0, -24.0)],
+	[{"kind": "km", "s": 0.0, "lines": ["3"]}, Vector3(61.8, 0.0, -19.5)],
+]
 ## Arbres de tree_species.gd (lot U7) et arbre d'avant la série U, en deux rangées loin de la route.
 const TREES_TEMPERATE := ["oak", "birch", "pine", "beech", "spruce", "larch", "generic"]
 const TREES_SOUTH := ["olive", "holm_oak", "cypress", "stone_pine", "palm", "acacia", "baobab", "cactus",
@@ -233,6 +244,12 @@ func _build_world(preset: String) -> SubViewport:
 	_add_animals(vp)
 	_add_buildings(vp, preset)
 	_add_trees(vp, preset)
+	_add_props(vp, preset)
+	var turbines = WindTurbines.new()
+	turbines.set_preset(preset)
+	vp.add_child(turbines)
+	turbines.set_points([{"kind": "wind_turbine", "id": "vitrine", "x": -120.0, "y": 0.0, "z": -300.0, "height_m": 100.0}])
+	turbines.update({"dir": Vector3(0.0, 0.0, 1.0), "strength": 0.0}, Vector3(-75.0, 2.0, -150.0), 0.0)
 	var cam := Camera3D.new()
 	cam.name = "Camera"
 	cam.current = true
@@ -327,6 +344,18 @@ func _add_trees(vp: SubViewport, preset: String) -> void:
 			mi.material_override = mat
 			mi.position = Vector3(float(row[1]) + i * float(row[3]), 0.0, float(row[2]))
 			vp.add_child(mi)
+
+
+## Panneaux et borne de PROPS avec les matériaux de la scène principale, face à la caméra de la vue `panneaux`.
+func _add_props(vp: SubViewport, preset: String) -> void:
+	var props = RoadsideProps.new()
+	props.set_preset(preset)
+	vp.add_child(props)
+	for it in PROPS:
+		var node: Node3D = props.build_prop(it[0])
+		node.position = it[1]
+		node.rotation.y = -0.35
+		props.add_child(node)
 
 
 ## Village de BUILDINGS maillé par building_mesh.gd avec le matériau de la scène principale (osm_streamer.gd).
