@@ -335,14 +335,14 @@ class CoreSession:
         now = time.time()
         if self._rec:
             if new == "PAUSED" and old == "RUNNING":
-                self._rec.event("pause", now)
+                self._rec.event("pause", now, reason or "user")
             elif new == "RUNNING" and old == "PAUSED":
                 self._rec.event("resume", now)
         if self.erg:
             self.erg.paused = new == "PAUSED"   # l'ERG suit la pause de la séance (Y), seule pause (§7.1)
             self._sync_erg_state()
         if self.race and new == "PAUSED" and old == "RUNNING":
-            self.race.pause(reason or "user")   # passages en cours annulés (T4)
+            self.race.pause(reason or "user")   # pause Y : passages annulés ; coupure subie : suspendus (T4)
         if new in ("PAUSED", "READY", "FINISHED", "IDLE", "ERROR"):
             self._release_trainer()
 
@@ -613,6 +613,9 @@ class CoreSession:
                 ts=round(time.time(), 3), t=round(self._t_session, 2), distance=round(st.s, 2),
                 speed=round(st.v, 3), power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(out.grade_enemy, 2), mode="ROGUE", gear=rg.gear, grade_sent=st.grade_sent))
+        if rg.done:   # comme l'arrivée d'un parcours : la séance se termine d'elle-même, avec le bilan
+            log.info("Run Cyber-Rogue terminée : %s.", rg.engine.result)
+            self._finish(True)
 
     def _choose_start_workout(self, args: dict) -> bool:
         """`start` avec `ftp_test` ou `plan_day` : choisit l'entraînement avant de démarrer.
@@ -1738,7 +1741,7 @@ class CoreSession:
                                     source=self._journal_source())
         if rs.running:
             # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
-            self._rec.event("pause", rs.last_ts)
+            self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
@@ -1774,7 +1777,7 @@ class CoreSession:
         self._rec = SessionRecorder(self.journal_dir, "rogue", on_failure=self._on_recording_failure,
                                     resume_path=path, lines=rs.lines, source=self._journal_source())
         if rs.running:
-            self._rec.event("pause", rs.last_ts)
+            self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
         self._device_up = self._device_states()
         self._next_record = float(int(rs.t)) + 1.0
