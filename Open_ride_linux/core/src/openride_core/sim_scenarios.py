@@ -87,6 +87,11 @@ def _gear_presses(start: float, period: float, count: int) -> list[dict[str, Any
     return [{"t": start + i * period, "action": "press", "button": seq[i % 3]} for i in range(count)]
 
 
+# Braquet de la séance du 29 octobre, en valeurs génériques : grand plateau, pignon unique, cadence
+# tenue. Le volant tourne vite : l'effort de la route (dont ½ Cw v²) pèse beaucoup même sur le plat.
+_PIGNON_UNIQUE = _with(_READY, trainer={"response": "realiste", "rider_max_w": 600},
+                       rider={"cadence_rpm": 85, "chainring": 50, "sprocket": 14})
+
 SCENARIOS: dict[str, dict[str, Any]] = {
     "nominal": _with(_READY, description="Tout se connecte en une seconde, aucune panne.",
                      events=[]),
@@ -186,6 +191,25 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             {"t": 10.0, "device": "trainer", "action": "bpm", "bpm": 105},
             {"t": 50.0, "device": "trainer", "action": "bpm", "bpm": None},
         ]),
+    "pignon_unique": _with(_PIGNON_UNIQUE, description=(
+        "Pignon unique sur le grand plateau (séance du 29 octobre) : trainer réaliste, braquet réel 50 × 14 à "
+        "85 rpm (≈ 38 km/h au volant). La cadence annoncée suit le volant : quand l'effort demandé dépasse "
+        "ce que le cycliste peut donner (600 W), le volant ralentit et la cadence baisse."),
+        events=[]),
+    "decrochage_trainer": _with(_PIGNON_UNIQUE, description=(
+        "Décrochages du frein (séance du 29 octobre), sur le braquet de « pignon_unique » : relances à "
+        "100 rpm de 25 à 45 s et de 85 à 105 s ; à 33 s, 93 s (en pleine relance) et 160 s, la puissance "
+        "annoncée tombe vers 0 W en moins de 2 s et la vitesse du volant baisse pendant 8 s, cadence "
+        "inchangée, sans erreur ni reconnexion : le rapport des décrochages (lot X44) les classe « trainer »."),
+        events=[
+            {"t": 25.0, "device": "trainer", "action": "rider", "cadence_rpm": 100},
+            {"t": 33.0, "device": "trainer", "action": "brake_loss", "seconds": 8},
+            {"t": 45.0, "device": "trainer", "action": "rider", "cadence_rpm": 85},
+            {"t": 85.0, "device": "trainer", "action": "rider", "cadence_rpm": 100},
+            {"t": 93.0, "device": "trainer", "action": "brake_loss", "seconds": 8},
+            {"t": 105.0, "device": "trainer", "action": "rider", "cadence_rpm": 85},
+            {"t": 160.0, "device": "trainer", "action": "brake_loss", "seconds": 8},
+        ]),
 }
 DEFAULT_SCENARIO = "demo"
 
@@ -224,6 +248,9 @@ def validate(spec: Any) -> dict[str, Any]:
                     _num("rider.sprint_at_s", v)
             elif key not in ("strategy", "seed") and value is not None:
                 _num(f"rider.{key}", value)
+        if ("chainring" in rider) != ("sprocket" in rider) or any(
+                rider.get(k) is not None and _num(f"rider.{k}", rider[k]) <= 0 for k in ("chainring", "sprocket", "wheel_m")):
+            raise SimScenarioError("rider : braquet réel = chainring et sprocket ensemble (dents > 0), wheel_m > 0")
         if rider.get("strategy") == "vitesse" and not 0 < _num("rider.speed_kmh", rider.get("speed_kmh")) <= 80:
             raise SimScenarioError("rider.speed_kmh : entre 0 et 80 km/h")
     trainer = spec.get("trainer") or {}

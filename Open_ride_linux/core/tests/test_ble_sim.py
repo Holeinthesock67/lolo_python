@@ -678,7 +678,8 @@ def test_brake_loss_is_detected_and_control_retaken(caplog, recovers):
         rig.driver.set_sim_grade(2.0)
         await wait_for(lambda: rig.trainer.grade_pct == 2.0 and rig.driver._raw_power > 250, timeout=8)
         n = rig.ops().count(ftms.OP_REQUEST_CONTROL)
-        await rig.world.apply({"t": 0, "device": "trainer", "action": "brake_loss", "seconds": 2.5,
+        # 4 s : la puissance tombe en ~1,5 s (lot X46), il reste le temps de voir le frein toujours lâché.
+        await rig.world.apply({"t": 0, "device": "trainer", "action": "brake_loss", "seconds": 4.0,
                                "value": recovers})
         await wait_for(lambda: rig.driver.brake_losses == 1, timeout=6)
         await wait_for(lambda: rig.ops().count(ftms.OP_REQUEST_CONTROL) > n)   # contrôle repris

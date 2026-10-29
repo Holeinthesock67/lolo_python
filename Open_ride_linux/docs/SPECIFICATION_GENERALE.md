@@ -283,7 +283,7 @@ Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches (bridé sans d�
 | + / B (ou −), long | Déplacer ou doser, grand pas | Cinq éléments plus loin, plus haut (bornés à la liste) | Braquet ± 10 | Biais ± 10 % | Vitesse du frein ± 3 | Comme le mode roulé |
 | Y court | Interrompre et revenir | Écran précédent ; sur l'écran de pause, reprendre | Pause et reprise | Pause et reprise | Pause et reprise | Pause et reprise |
 | Z court | Action du mode | Aucune (un menu n'est pas un mode) | Bonus (T) | Bloc suivant | Attaque | Bonus (T) |
-| Z long | Action spéciale du mode | Aucune | Aucune | Aucune | Carte ou relique active (T1) | Aucune |
+| Z long | Action spéciale du mode | Aucune | Repère « décrochage » au journal | Repère « décrochage » au journal | Carte ou relique active (T1) | Repère « décrochage » au journal |
 | A court | Choisir : option suivante du choix affiché | Élément suivant | Vue de caméra suivante | Vue de caméra suivante | Couloir ou carte suivant | Branche suivante au carrefour, sinon vue suivante |
 | A long | Valider le choix affiché | Valider l'élément | Revenir à la vue par défaut | Revenir à la vue par défaut | Valider le couloir ou la carte | Valider la branche, sinon revenir à la vue par défaut |
 | Flèches gauche, droite (boîtier gauche) | Choisir, raccourci | Élément précédent, suivant | Aucune | Aucune | Couloir ou carte précédent, suivant | Branche à gauche, à droite |
@@ -296,6 +296,7 @@ Règles communes, valables partout :
 - **Z n'a que l'action du mode** ; il ne fait rien dans un menu.
 - **Pas de roue libre en ERG** (choix du propriétaire du 29 octobre, lot O19) : la consigne ERG ne descend jamais sous 50 W, biais compris, et un bloc FreeRide d'un `.zwo` devient un palier à 50 W. Les boutons gardent donc la colonne ERG d'un bout à l'autre de l'entraînement. Le test de FTP se fait par la rampe seule.
 - **ERG d'une session libre (lot O18)** : choisi sur l'écran de pause, il garde la colonne ERG, sauf Z, qui reste le bonus de la colonne SIM (pas de blocs) ; en ERG à cadence verrouillée, le biais s'applique à la cadence cible.
+- **Repère « décrochage » (lot X47, séance du 29 octobre)** : en roulant, hors Cyber-Rogue, Z long (Maj+Z au clavier) écrit `{"kind": "event", "event": "decrochage"}` au journal quand le cycliste sent le trainer décrocher, et l'écran le confirme. L'outil `decrochages` (lot X44) met ce repère face aux chutes de puissance mesurées. Rien d'autre ne change : ni braquet, ni consigne, ni chronomètre.
 - **Le grand pas vaut dix petits pas en séance** et cinq éléments dans un menu.
 - **Clavier (décision D6 du 27 octobre) :** il double le Click touche pour touche, avec les mêmes seuils d'appui (court sous 0,5 s, long à 0,9 s ou plus, zone floue entre les deux), en menu comme en séance ; une touche n'a jamais d'autre rôle que celui de son bouton. Pas de bouton pour la difficulté (décision Q1).
 
