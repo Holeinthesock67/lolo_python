@@ -32,10 +32,18 @@ Champ `equipment_gain_s` de `segment_result`, s'il n'a pas été ajouté par T1.
 ## 7. Critères d'acceptation
 
 1. `pytest -q` passe en entier dans `core/`.
-2. Journal synthétique avec deux segments (dont un record) et un maillot à pois : 50 + 100 + 200 points de plus qu'une séance sans événement, pièces 5 + 5 + 20, défi « maillot à pois » réussi.
+2. Journal synthétique avec deux segments (dont un record) et un maillot à pois : 2 × 50 + 100 + 200 points de plus qu'une séance sans événement, pièces 5 + 5 + 10 + 20 (prime de record de segment décidée le 27 octobre, lot V3b), défi « maillot à pois » réussi.
 3. Calibrage d'un bot au même niveau avec et sans équipement aéro sur un parcours plat : temps d'arrivée du bot identique à celui du cycliste simulé équipé (à 1 % près).
 4. Passage de segment : équipement noté dans le record, `equipment_gain_s` nul avec l'équipement de départ.
 
 ## 8. Hors périmètre
 
 Affichage des records (T10) et du bilan (V9) ; règles du jeu des séries T et R.
+
+## 9. Livraison (28 octobre)
+
+- Les lignes `segment`, `jersey` et `rogue_run` du journal étaient déjà lues par `session_facts` (V2) et comptées par `coins.py` (V3b) ; les trois défis sont dans `data/progression.toml`. V5 ajoute les tests de bout en bout (`core/tests/test_v5_liens_series_t_r.py`).
+- `records.py` : champ facultatif `loadout` (`frame`, `wheels`) par record, absent des fichiers plus anciens ; `RecordBook.add(..., loadout)` et `rebuild` lisent l'en-tête du journal. Le rang ne dépend pas de l'équipement.
+- `classic.py` : `gain_mode` (`off` sans progression : `null` ; `zero` avec l'équipement de départ : 0 ; `compute` sinon). En `compute`, le message `segment_result` attend que la séance ait calculé le temps gagné (`equipment.segment_time_gain`, fil de fond, pas de 0,25 s), puis part trois fois comme avant.
+- `bots.py` : `calibrate(..., bot_params)` ; la séance calibre sur le cycliste équipé (`_base_params`) et simule le bot avec sa physique de séance (sans équipement).
+- `session.py` : run Cyber-Rogue (départ et reprise) avec `PhysicsParams.from_config` ; en-tête `loadout: null` ; pas de temps gagné dans `xp_result` ; l'équipement revient à la fin de la run.

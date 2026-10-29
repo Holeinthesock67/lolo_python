@@ -685,6 +685,16 @@ func loaded_tile_counts() -> Dictionary:
 	return out
 
 
+## Tuiles voulues autour de la caméra pas encore affichées (en calcul ou en attente) : 0 quand la vue est
+## complète (tour visuel, lot X21).
+func pending_count() -> int:
+	var n := 0
+	for key in _wanted:
+		if not _instances.has(key):
+			n += 1
+	return n
+
+
 ## Attend les travaux en cours sans dépasser le budget d'objets par image (tests en temps simulé).
 func wait_jobs() -> void:
 	_poll_jobs(true)

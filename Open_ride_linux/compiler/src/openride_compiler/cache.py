@@ -9,6 +9,7 @@
 
 from __future__ import annotations
 
+import http.client
 import os
 import shutil
 import sys
@@ -85,7 +86,7 @@ class Downloader:
                 if exc.code == 404:
                     raise NotFoundError(f"{label} introuvable sur le serveur (404) : {url}") from exc
                 last_error = exc
-            except (urllib.error.URLError, OSError, TimeoutError) as exc:
+            except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as exc:
                 tmp.unlink(missing_ok=True)
                 last_error = exc
         raise CompileError(f"échec du téléchargement de {label} après {RETRIES} reprises : {last_error}")
