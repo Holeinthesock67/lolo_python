@@ -28,3 +28,13 @@ Les suites prennent bien plus longtemps sur GitHub que la durée annoncée, et c
 ## 6. Hors périmètre
 
 Corriger les tests instables trouvés (lots à part).
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x3`).
+
+- **`scripts/stabilite_tests.py`** : `--fois N` (5 par défaut), `--suites core,compiler,engine`, `--out DOSSIER` (défaut `~/OpenRide/stabilite/<date>_<heure>/`), `--godot`. Les passages se font sous le verrou commun des suites (`verrou_suite("stabilite_tests")`) ; pytest est lancé avec `--junitxml` et `--durations=0` (sources du dépôt dans `PYTHONPATH`, même sans installation), l'engine avec `ENGINE_JUNIT`. Le dossier reçoit `junit/<suite>_<passage>.xml`, `journaux/<suite>_<passage>.log`, `passages.json` (code et durée de chaque suite), `tests.csv` (suite, test, passages, échecs, absences, durée médiane, durée maximale), `resume.txt` et `resume.json` (tests instables, tests toujours en échec, les 20 plus lents, durée médiane de chaque suite). `--analyse DOSSIER` refait l'analyse sans relancer. Code 0 sans test instable ni toujours en échec, 1 sinon, 2 pour une option fausse.
+- **Règles** : un test sauté ne compte pas comme un passage ; un test absent d'un passage (ajouté ou retiré entre deux passages) compte une absence, sans échec ; instable = au moins un échec et une réussite ; toujours en échec = échec à chaque passage où il a tourné.
+- **`run_engine_tests.sh`** : avec `ENGINE_JUNIT=FICHIER`, un `<testcase>` par ligne du résumé (fichier de test unitaire, test de rendu ou étape), la durée étant le temps écoulé depuis la ligne précédente et le détail de l'échec en message ; sans la variable, rien ne change.
+- **CI** : les JUnit des deux suites Python (`junit-python-3.11`, `junit-python-3.14`) et de l'engine (`junit-engine`) sont gardés en artefact (`actions/upload-artifact@v5`, même après un échec), ce qui termine le critère 4 du lot J5.
+- Tests : `core/tests/test_stabilite_tests.py` (5 tests : test instable, toujours en échec, test sauté, classement des lents, absence d'un passage, fichiers écrits, JUnit de `run_engine_tests.sh` avec un faux Godot lu par `xml.etree`).
