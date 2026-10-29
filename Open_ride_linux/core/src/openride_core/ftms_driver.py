@@ -30,7 +30,7 @@ log = logging.getLogger("ftms_driver")
 
 STALE_S = 3.0            # sans donnée au-delà : trainer considéré perdu (contrat IPC §6)
 FORCE_RECONNECT_S = 10.0  # sans donnée au-delà : on coupe et on reconnecte
-RESEND_S = 2.0           # la consigne est renvoyée au moins toutes les 2 s
+RESEND_S = 2.0           # valeur par défaut de [trainer] resend_s : consigne renvoyée au moins toutes les 2 s
 MIN_SEND_INTERVAL_S = 0.2
 GRADE_EPSILON_PCT = 0.1
 ERG_EPSILON_W = 1.0
@@ -657,7 +657,7 @@ class FtmsDriver:
         changed = prev is None or prev[0] != mode or abs(prev[1] - value) >= eps
         immediate, self._immediate = self._immediate, False
         changed = changed or (immediate and mode == "sim" and prev[1] != value)
-        if not changed and now - self._last_sent_at < RESEND_S:
+        if not changed and now - self._last_sent_at < self.cfg.resend_s:
             return
         supported = self.supports_erg if mode == "erg" else self.supports_sim
         if not supported:   # opcode exclu par Fitness Machine Feature (FTMS tableau 4.15)
