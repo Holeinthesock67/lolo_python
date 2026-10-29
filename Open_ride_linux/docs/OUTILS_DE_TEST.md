@@ -1,6 +1,6 @@
 # Outils de test d'OpenRide
 
-Liste du 25 octobre 2026. Tous les outils se lancent depuis `Open_ride_linux/`. `GODOT` désigne l'exécutable Godot 4.3 (`~/Applications/godot/Godot_v4.3-stable_linux.x86_64` sur le PC cible). Aucun n'écrit dans le vrai dossier personnel, sauf mention contraire (rapports dans `~/OpenRide/…`).
+Liste du 25 octobre 2026, tenue à jour à chaque fusion. Ce qu'il faut tester, où, et le résultat attendu de chaque niveau sont dans le [plan de tests](PLAN_DE_TESTS.md). Tous les outils se lancent depuis `Open_ride_linux/`. `GODOT` désigne l'exécutable Godot 4.3 (`~/Applications/godot/Godot_v4.3-stable_linux.x86_64` sur le PC cible). Aucun n'écrit dans le vrai dossier personnel, sauf mention contraire (rapports dans `~/OpenRide/…`).
 
 ## 1. Suites automatiques
 
@@ -208,7 +208,7 @@ Pour rouler le village dans une vraie séance : `make_sim_world.py --out ~/.loca
 | `python -m openride_core.tools.route_vectors` | Vecteurs de test de la route, partagés core et engine |
 | `openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]` | Monde ouvert (lot W0) : volumes du relief, des tuiles vectorielles et de l'extrait régional, temps de génération par carré de 1 km ; rapport dans `~/OpenRide/Cache/monde/mesures/<date>/` |
 | `openride-compiler compare-garmin PARCOURS.world --pente-max P --dplus D [--longueur KM] [--fenetre 100] [--json]` | Recette 1.0 ligne 22 (lot X31) : pente maximale du parcours sur la même fenêtre glissante que Garmin (100 m), D+ et longueur face aux valeurs lues dans Garmin Connect ; OK à ± 1 point, ± 5 % et ± 1 %, code 1 sinon ; rien n'est écrit |
-| `python -m openride_core.ipc_budget` | Taille de la trame `state` la plus lourde de chaque révision du contrat face à la limite de 1 400 octets (lot X25) ; une trame trop grande est allégée par le core au lieu d'être jetée |
+| `python -m openride_core.ipc_budget` | Taille de la trame `state` la plus lourde de chaque révision du contrat face à sa limite : 1 400 octets jusqu'à la révision 1.2, 4 096 octets depuis la 1.3 (lot X25) ; une trame trop grande est allégée par le core au lieu d'être jetée |
 
 ## 6. Confidentialité (lot X23)
 
