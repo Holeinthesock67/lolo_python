@@ -24,7 +24,7 @@ Sortes de lignes :
 - `{"kind": "device", "ts": ..., "device": "trainer" | "click_plus" | "click_minus" | "hr",
   "state": "up" | "down"}` au changement d'état d'un appareil (lot M4, absentes des journaux
   antérieurs au 24 octobre 2026). Les lectures qui ne connaissent pas cette sorte l'ignorent ;
-- `{"kind": "ftp_test", "ts": ..., "test": "ramp" | "20min", "ftp_w": ..., "method": ...,
+- `{"kind": "ftp_test", "ts": ..., "test": "ramp", "ftp_w": ..., "method": ...,
   "ref_power_w": ..., "held_s": ..., "step_w": ..., "warnings": [...], "previous_ftp_w": ...}`
   à la fin d'une séance de test de FTP, juste avant l'événement `stop` (lot O10, voir
   `ftp_test.py`) ; `ftp_w`, `ref_power_w` et `step_w` peuvent valoir `null`. Ligne facultative :
