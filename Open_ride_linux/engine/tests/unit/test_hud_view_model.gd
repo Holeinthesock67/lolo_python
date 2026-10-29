@@ -340,6 +340,12 @@ func _test_controls_help() -> void:
 		and HudViewModel.unclear_press_text("MINUS_UNCLEAR", true).contains("précédent")
 		and HudViewModel.unclear_press_text("PLUS_UNCLEAR", false).contains("braquet"),
 		"appui ambigu expliqué : pas et A long dans les menus, braquet en séance")
+	_check(HudViewModel.dropout_mark_text("Z_LONG", "RUNNING", false, false).contains("décrochage")
+		and HudViewModel.dropout_mark_text("Z_LONG", "PAUSED", false, false) == ""
+		and HudViewModel.dropout_mark_text("Z_LONG", "RUNNING", true, false) == ""
+		and HudViewModel.dropout_mark_text("Z_LONG", "RUNNING", false, true) == ""
+		and HudViewModel.dropout_mark_text("Z_SHORT", "RUNNING", false, false) == "",
+		"Z long en roulant (hors Cyber-Rogue et menus) : repère « décrochage » confirmé à l'écran (§7.1, X47)")
 
 
 func _init() -> void:

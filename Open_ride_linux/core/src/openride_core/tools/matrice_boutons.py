@@ -268,6 +268,8 @@ def expect_of(cell: str, sign: int, column: str) -> Expect | None:
         return Expect("choice", sign, "engine" if "sinon" in c else "none")
     if c.startswith("valider la branche"):
         return Expect("validate")
+    if c.startswith("repère « décrochage »"):
+        return Expect("mark")
     if c.startswith(("vue de caméra", "revenir à la vue", "vue suivante")):
         return Expect("engine")
     if c.startswith("aucune"):
@@ -512,6 +514,7 @@ def observe(s: CoreSession) -> dict[str, Any]:
         "biais": erg.bias_pct if erg else None, "bloc": getattr(erg, "index", None) if erg else None,
         "bonus actif": race.powerups.active if race else None,
         "bonus en réserve": race.powerups.reserve if race else None,
+        "repères décrochage": s.dropout_marks,
     }
     if rg is not None:
         e = rg.engine
@@ -637,6 +640,11 @@ def _verify(exp: Expect, ev: InputEvent, ph: Phase, before: dict, now: dict, lat
             return ok, f"bonus {held} en réserve → actif {now['bonus actif']}"
         extra = _changed(before, now, set())
         return not extra and relayed, "aucun bonus en réserve : rien ne change" + _x(extra) + _r(relayed)
+    if exp.kind == "mark":
+        extra = _changed(before, now, {"repères décrochage"})
+        ok = now["repères décrochage"] == before["repères décrochage"] + 1 and not extra and relayed
+        return ok, (f"repère « décrochage » au journal : {before['repères décrochage']} → "
+                    f"{now['repères décrochage']}" + _x(extra) + _r(relayed))
     if exp.kind == "block":
         if before["bloc"] is None:
             return False, "pas d'entraînement ERG en cours"
