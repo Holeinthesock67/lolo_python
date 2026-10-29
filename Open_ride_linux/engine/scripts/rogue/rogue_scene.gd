@@ -256,3 +256,14 @@ func _place_camera() -> void:
 	var target := Vector3(0.0, ribbon_y(_s_disp + CAMERA_LOOK_AHEAD_M) + 0.5, -(_s_disp + CAMERA_LOOK_AHEAD_M))
 	camera.fov = camera_fx.fov_deg()
 	camera.look_at_from_position(eye + camera_fx.shake_offset(), target)
+
+
+## Ce que la scène affiche, pour les tests (banc visuel du mode, lot X41) : salle construite, ruban, repères,
+## Firewall, ennemi, écran de couloir, hologramme du HUD et bandeau « Salle manquée ».
+func test_info() -> Dictionary:
+	return {"room_shown": shown_room_id, "ribbon": ribbon.visible, "markers": markers.size() if ribbon.visible else 0,
+		"firewall": firewall.visible, "enemy": enemy_view.visible and ribbon.visible,
+		"enemy_archetype": str(enemy_view.archetype) if enemy_view.visible else "",
+		"corridor": corridor_view.visible, "hud": hud_view.visible,
+		"holo": hud_view.holo.text if hud_view.visible else "", "gauges": hud_view.gauges.text if hud_view.visible else "",
+		"banner": hud_view.banner.visible}

@@ -957,8 +957,9 @@ func _poll_route_job() -> void:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
-	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")))
-	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop())
+	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
+	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
+		not route.live)
 	segment_hud.set_segments(route.segments)
 	menu_flow.records.set_segments(route.segments)
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
@@ -995,6 +996,9 @@ func _on_test_message(msg: Dictionary) -> void:
 			_test_mouse(str(msg.get("kind", "click")), str(msg.get("item", "")), msg.get("at", []))
 		"menu_state":
 			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
+		"camera_view":   # vue de caméra imposée, sans transition (tour visuel, lot X21)
+			camera_views.set_view(str(msg.get("view", "")))
+			ipc.test_log("camera_view done=" + camera_views.effective())
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
 				living_decor.set_weather(msg["weather"])
@@ -1164,6 +1168,8 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"quality": _quality_name,
 		"ui_scale": to_pixels.get_scale().x,
 		"draw_calls": Performance.get_monitor(Performance.RENDER_TOTAL_DRAW_CALLS_IN_FRAME),
+		"triangles": Performance.get_monitor(Performance.RENDER_TOTAL_PRIMITIVES_IN_FRAME),
+		"streaming_pending": streamer.pending_count(),   # tuiles voulues pas encore affichées (tour visuel, X21)
 		"camera": [camera.global_position.x, camera.global_position.y, camera.global_position.z],
 		"camera_view": camera_views.effective(), "camera_transition": camera_views.in_transition(),
 		"widgets": widgets,
@@ -1171,6 +1177,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
+		"rogue": rogue_host.test_info(),
 	}
 	ipc.test_log("screenshot " + JSON.stringify(info))
 

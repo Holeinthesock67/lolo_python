@@ -8,6 +8,7 @@ garmin-fit-sdk==21.218.0
 jsonschema==4.26.0
 numpy==2.4.6
 osmium==4.3.2
+pip-audit==2.10.1
 pyproj==3.7.2
 pytest==9.1.1
 rasterio==1.4.4

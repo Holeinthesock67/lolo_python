@@ -25,8 +25,9 @@ from datetime import date
 from pathlib import Path
 from typing import Any, Callable
 
-from .classic import ClassicRace
+from .classic import ClassicRace, GainJob
 from .config import GPX_DIR, OPENRIDE_HOME, WORKOUTS_DIR, Config
+from .equipment import segment_time_gain
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
@@ -506,7 +507,7 @@ class CoreSession:
         self._publish_progression()
         self.server.send_raw(svc.progression_message(cmd_id))
 
-    def _after_session(self, journal: str, records: list[dict]) -> None:
+    def _after_session(self, journal: str, records: list[dict] | None) -> None:
         """Bilan d'expérience de la séance qui vient de finir : calcul hors de la boucle, puis envoi."""
         if not self.progress_svc.enabled:
             return
@@ -518,14 +519,14 @@ class CoreSession:
             return
         self._spawn(self._send_xp_result(journal, records))
 
-    def _build_xp_result(self, journal: str, records: list[dict]) -> dict[str, Any]:
+    def _build_xp_result(self, journal: str, records: list[dict] | None) -> dict[str, Any]:
         svc = self.progress_svc
         old = svc.refresh()
         msg = svc.xp_result(journal, old, records, PhysicsParams.from_config(self.cfg))
         self._publish_progression()
         return msg
 
-    async def _send_xp_result(self, journal: str, records: list[dict]) -> None:
+    async def _send_xp_result(self, journal: str, records: list[dict] | None) -> None:
         """`xp_result` à la fin de la séance, répété chaque seconde tant qu'elle reste `FINISHED`."""
         try:
             msg = await asyncio.to_thread(self._build_xp_result, journal, records)
@@ -558,13 +559,15 @@ class CoreSession:
         self._close_open_world()
         self.state.open_world = None
         self._set_state("LOADING")
-        self.rogue = rogue_mode.RogueMode(self.cfg, request, chassis=chassis, lives=lives, params=self._base_params)
+        # L'équipement de la série V ne s'applique pas dans ce mode : les châssis en tiennent lieu (lot V5).
+        plain = PhysicsParams.from_config(self.cfg)
+        self.rogue = rogue_mode.RogueMode(self.cfg, request, chassis=chassis, lives=lives, params=plain)
         self.route, self._segments, self.race = None, (), None
         self.erg, self._workout, self._workout_id, self._ramp_watch = None, None, None, None
-        self.physics = RiderPhysics(self._base_params)
+        self.physics = RiderPhysics(plain)
         self._t_session, self._grade_sent, self._rogue_dist = 0.0, 0.0, 0.0
         self._sync_erg_state()
-        self.state.route_id, self.state.route_length_m = "rogue", None
+        self.state.route_id, self.state.route_length_m = None, None   # contrat IPC : null en mode ROGUE
         self.state.gear, self.state.gears_total = self.rogue.gear, self.rogue.balance.gear_max
         self.state.lat = self.state.lon = self.state.alt = None
         self.state.summary = None
@@ -579,6 +582,7 @@ class CoreSession:
             return
         log.info("Run Cyber-Rogue abandonnée avant le départ.")
         self.rogue = None
+        self.physics.p = self._base_params   # l'équipement revient hors du Cyber-Rogue (lot V5)
         self.state.rogue = None
         self.state.gears_total = self.gearing.n_gears
         self.state.gear = self.gearing.k
@@ -1152,10 +1156,11 @@ class CoreSession:
     def _open_journal(self) -> None:
         from .plans import active_tag
 
-        self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
+        route_id = rogue_mode.JOURNAL_ROUTE_ID if self.rogue is not None else self.state.route_id
+        self._rec = SessionRecorder(self.journal_dir, route_id,
                                     on_failure=self._on_recording_failure,
                                     workout_id=self._workout_id, source=self._journal_source(),
-                                    progression=self.progress_svc.journal_header(),
+                                    progression=self.progress_svc.journal_header(equipped=self.rogue is None),
                                     plan=active_tag(self._workout_id, state_path=self.plan_state_path,
                                                     plans_dir=self.plans_dir, workouts_dir=self.workouts_dir))
         self._rec.event("start", time.time())
@@ -1226,7 +1231,7 @@ class CoreSession:
     def _finish(self, save: bool, final_state: str = "FINISHED", ts: float | None = None) -> None:
         summary = None
         journal: str | None = None
-        records_done: list[dict] = []
+        records_done: list[dict] | None = []
         race, self.race = self.race, None
         if race and self._rec:
             for line in race.take_journal() + race.jersey_lines():
@@ -1243,7 +1248,7 @@ class CoreSession:
                 rec.game(self.rogue.run_line(time.time()))
             fit_path, s, fit_error = rec.finish(save, ts=ts)
             records, events = rec.records, rec.events
-            records_done = records
+            records_done = records if self.rogue is None else None   # pas d'équipement en Cyber-Rogue (V5)
             if fit_error and save:
                 self.server.send_error("recording_failed", f"FIT non produit : {fit_error}")
 
@@ -1278,6 +1283,7 @@ class CoreSession:
             self.rogue = None
             self.state.rogue = None
             self.state.gears_total, self.state.gear = self.gearing.n_gears, self.gearing.k
+            self.physics.p = self._base_params   # l'équipement revient hors du Cyber-Rogue (lot V5)
         self._sync_erg_state()
         self._set_state(final_state)
         if journal is not None and final_state == "FINISHED":
@@ -1302,17 +1308,22 @@ class CoreSession:
         except PowerUpError as exc:
             log.warning("Valeurs des bonus refusées, valeurs par défaut : %s", exc)
             table = None
+        header = self.progress_svc.journal_header()   # équipement de la série V (None : progression coupée)
+        plain = PhysicsParams.from_config(self.cfg)
+        gain_mode = "off" if header is None else ("zero" if self._base_params == plain else "compute")
         self.race = ClassicRace(
             route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
             loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
-            powerups_on=self.cfg.powerups.mode == "on")
+            powerups_on=self.cfg.powerups.mode == "on",
+            loadout=header["loadout"] if header else None, gain_mode=gain_mode)
         from .bots import RefRider, attach_segments, calibrate_bots
 
         attach_segments(self.bots, self._segments)   # montées et sprints des bots à profil (lot T12)
         t0 = time.perf_counter()
-        rider = RefRider(self.cfg.rider.ftp_w, PhysicsParams.from_config(self.cfg))   # niveau des bots, lot T13
+        # Niveau des bots (lot T13) : cycliste équipé (lot V5), bots sans équipement (leur physique de séance).
+        rider = RefRider(self.cfg.rider.ftp_w, self._base_params)
         scales = calibrate_bots(self.bots, route, rider, self.cfg.bots.level_pct, self._segments,
-                                self.cfg.bike.mass_kg)
+                                self.cfg.bike.mass_kg, bot_params=plain)
         if scales:
             log.info("Bots calibrés en %.0f ms : %s.", 1000.0 * (time.perf_counter() - t0),
                      ", ".join(f"{p} à {lv:g} % : CP × {k:.2f}" for (p, lv), k in scales.items()))
@@ -1331,6 +1342,29 @@ class CoreSession:
         if race.book_dirty:
             race.book_dirty = False
             self._save_records(race.book)
+
+    def _segment_gain(self, job: GainJob) -> None:
+        """`equipment_gain_s` d'un passage (lot V5) : simulation hors de la boucle à 50 Hz."""
+        records = self._rec.records if self._rec else []
+        equipped, plain = self._base_params, PhysicsParams.from_config(self.cfg)
+
+        def compute() -> float | None:
+            return segment_time_gain(records, equipped, plain, job.t_start, job.t_end, job.s_start, job.s_end)
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # tests et outils sans boucle asyncio : calcul direct
+            job.resolve(compute())
+            return
+
+        async def run() -> None:
+            try:
+                job.resolve(await asyncio.to_thread(compute))
+            except Exception:
+                log.exception("Temps gagné par l'équipement non calculé (segment)")
+                job.resolve(None)
+
+        self._spawn(run())
 
     def _save_records(self, book: RecordBook) -> None:
         if not self._records_writable:
@@ -1620,6 +1654,8 @@ class CoreSession:
 
         if race:
             race.step(self._t_session, dt, self.physics.s, m.power_w, self.bots)
+            for job in race.take_gain_jobs():
+                self._segment_gain(job)
             self._flush_race_journal()
             for msg in race.due_results(self._t_session):
                 self.server.send_raw(msg)
@@ -1708,7 +1744,7 @@ class CoreSession:
         Lève `ResumeError` si le journal ne peut pas être repris.
         """
         rs = load_resume_state(path)
-        if rs.route_id == "rogue":
+        if rs.route_id == rogue_mode.JOURNAL_ROUTE_ID:
             return self._resume_rogue(path, rs)
         route_id = rs.route_id or "demo"
         self._select_route(route_id, previous="IDLE")
@@ -1767,20 +1803,20 @@ class CoreSession:
             req = snap["req"]
             request = rogue_mode.RunRequest(req["objective"], int(req["duration_min"]), int(req["seed"]),
                                             float(req["w_prime_j"]), str(snap.get("chassis", "standard")))
-            self.rogue = rogue_mode.RogueMode(self.cfg, request, params=self._base_params)
+            self.rogue = rogue_mode.RogueMode(self.cfg, request, params=PhysicsParams.from_config(self.cfg))
             self.rogue.restore(snap)
         except (KeyError, TypeError, ValueError, EOFError, zlib.error) as exc:
             self.rogue = None
             raise ResumeError(f"instantané de la run illisible : {exc}") from exc
         self.route, self._segments, self.race, self.erg, self._workout = None, (), None, None, None
-        self.physics = RiderPhysics(self._base_params)
+        self.physics = RiderPhysics(PhysicsParams.from_config(self.cfg))   # sans équipement (lot V5)
         self._t_session, self._grade_sent, self._rogue_dist = rs.t, 0.0, rs.s
         self._sync_erg_state()
         st = self.state
-        st.route_id, st.route_length_m, st.t, st.s, st.v = "rogue", None, rs.t, rs.s, 0.0
+        st.route_id, st.route_length_m, st.t, st.s, st.v = None, None, rs.t, rs.s, 0.0
         st.gear, st.gears_total = self.rogue.gear, self.rogue.balance.gear_max
         st.lat = st.lon = st.alt = None
-        self._rec = SessionRecorder(self.journal_dir, "rogue", on_failure=self._on_recording_failure,
+        self._rec = SessionRecorder(self.journal_dir, rogue_mode.JOURNAL_ROUTE_ID, on_failure=self._on_recording_failure,
                                     resume_path=path, lines=rs.lines, source=self._journal_source())
         if rs.running:
             self._rec.event("pause", rs.last_ts, "core_restarted")
