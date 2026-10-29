@@ -57,7 +57,7 @@ Protocole pas à pas sur le PC et le vélo (tout sur `main` depuis le 27 octobre
 
 | Outil | Usage |
 | --- | --- |
-| `--trainer sim --input sim --hr sim [--sim-scenario NOM\|FICHIER.json]` | Vrais pilotes FTMS, Click et ceinture devant des appareils simulés (`ble_sim.py`). Scénarios intégrés : `demo`, `nominal`, `reveil_tardif`, `erreur_0x80`, `rafale_0x80`, `montre_garmin`, `connexions_retardees`, `coupures`, `controle_refuse`. Guide : [SIMULATION_BLE.md](SIMULATION_BLE.md) |
+| `--trainer sim --input sim --hr sim [--sim-scenario NOM\|FICHIER.json]` | Vrais pilotes FTMS, Click et ceinture devant des appareils simulés (`ble_sim.py`). Scénarios intégrés : `demo`, `nominal`, `reveil_tardif`, `erreur_0x80`, `rafale_0x80`, `montre_garmin`, `frein_lache`, `connexions_retardees`, `coupures`, `controle_refuse`. Guide : [SIMULATION_BLE.md](SIMULATION_BLE.md) |
 | `--trainer mock --input keyboard` | Générateur de puissance sans Bluetooth, clavier du terminal |
 | `openride-core run --replay SEANCE.jsonl\|.fit` | Rejoue une séance enregistrée avec le simulateur |
 | `--bot W`, `--ghost FICHIER` | Bots à puissance constante, fantôme d'une séance passée |

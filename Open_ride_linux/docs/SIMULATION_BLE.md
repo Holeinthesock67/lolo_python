@@ -37,6 +37,7 @@ Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie s
 | `erreur_0x80` | Une écriture du Control Point échoue avec l'erreur ATT 0x80 à 20 s (vue le 24 octobre). Depuis le lot M1, le pilote renvoie la commande 0,25 s plus tard, sans couper la liaison. |
 | `rafale_0x80` | Rafale de braquets (séance A du 28 octobre) : Control Point occupé 0,6 s après chaque réponse (`busy_window_s`), écritures rapprochées refusées avec l'erreur ATT 0x80 ; cinq « − » en 6 s à 10 s, cinq « + » en 1 s à 25 s. Liaison gardée, aucune pause. |
 | `montre_garmin` | Montre Garmin sur le trainer (séance A du 28 octobre) : toute écriture refusée (ATT 0x80) 8 s à 15 s puis 6 s à 40 s, braquets changés pendant ce temps. Consignes reportées, liaison gardée, `devices.trainer.busy` vrai (bandeau de l'engine). |
+| `frein_lache` | Le trainer lâche le frein sans aucune erreur (séance du 29 octobre) : relances à 320 W, puissance annoncée nulle pendant 4 s à 20 s ; une nouvelle prise de contrôle rend le frein. Le pilote détecte la chute, reprend le contrôle et renvoie la consigne. |
 | `connexions_retardees` | Trainer : 4 s de connexion et deux échecs ; Click : 2 s ; ceinture : 3 s et un échec. |
 | `coupures` | Trainer coupé à 30 s, Click « − » à 40 s (réveillé à 50 s), ceinture à 45 s, trainer muet 12 s à 70 s, contrôle FTMS retiré à 100 s. |
 | `controle_refuse` | Le trainer refuse le contrôle à partir de 10 s : la séance passe en ERROR après deux reprises. |
@@ -99,6 +100,7 @@ Une section absente retire l'appareil. `control_file` (facultatif, chemin) : fic
 | `connect_delay` | `seconds` | Durée des prochaines connexions. |
 | `att_error` | `code` (128 = 0x80), `count` | Les prochaines écritures du Control Point échouent. |
 | `cp_silent` | `count` | Les prochaines commandes restent sans réponse 0x80. |
+| `brake_loss` | `seconds`, `value` (vrai par défaut : une nouvelle prise de contrôle rend le frein) | Trainer : puissance annoncée nulle pendant ce temps, sans erreur ni statut (frein lâché, 29 octobre). |
 | `other_device` | `seconds` | Trainer : un autre appareil (montre) occupe le Control Point, toute écriture échoue avec l'erreur ATT 0x80 pendant ce temps. |
 | `silence` | `seconds` | Trainer : plus d'Indoor Bike Data pendant ce temps. Boîtier du Click (`click_plus`, `click_minus`) : plus aucune notification, lien gardé (défaut du boîtier gauche à l'essai 69, recette guidée du Click, lot X8). |
 | `control_lost` | | Fitness Machine Status 0xFF : contrôle retiré. |

@@ -339,14 +339,14 @@ def _ibd(speed_kmh: float, cadence_rpm: float, power_w: int, resistance: int | N
     return out + struct.pack("<h", power_w)
 
 
-@pytest.mark.parametrize("trace, lines", [(True, 2), (False, 0)])
-def test_trace_logs_trainer_measures_every_two_seconds(caplog, trace, lines):
-    """Avec trace_ftms : vitesse et niveau de résistance du trainer à côté de la consigne, 2 s d'écart."""
+@pytest.mark.parametrize("trace, lines", [(True, 3), (False, 0)])
+def test_trace_logs_trainer_measures_each_notification(caplog, trace, lines):
+    """Avec trace_ftms : vitesse et niveau de résistance du trainer à côté de la consigne, une ligne par notification, 0,5 s d'écart au moins."""
     now = [100.0]
     drv = FtmsDriver(TrainerConfig(trace_ftms=trace), BikeConfig(), clock=lambda: now[0])
     drv._last_sent = ("sim", 0.68)
     with caplog.at_level(logging.INFO, logger="ftms_driver"):
-        for t, power, level in [(0.0, 318, 40), (0.5, 300, 40), (1.9, 120, 38), (2.1, 27, 12), (3.0, 27, 12)]:
+        for t, power, level in [(0.0, 318, 40), (0.3, 300, 40), (1.0, 120, 38), (1.2, 100, 30), (2.0, 27, 12)]:
             now[0] = 100.0 + t
             drv._on_ibd(None, bytearray(_ibd(24.8, 73, power, level)))
     got = [r.getMessage() for r in caplog.records if r.getMessage().startswith("FTMS ~ mesures")]
@@ -354,4 +354,55 @@ def test_trace_logs_trainer_measures_every_two_seconds(caplog, trace, lines):
     if trace:
         assert "puissance 318 W" in got[0] and "niveau de résistance 40" in got[0]
         assert "vitesse du trainer 24.8 km/h" in got[0] and "consigne envoyée pente 0.68 %" in got[0]
-        assert "puissance 27 W" in got[1] and "niveau de résistance 12" in got[1]
+        assert "puissance 120 W" in got[1] and "puissance 27 W" in got[2] and "niveau de résistance 12" in got[2]
+
+
+# --- 6. Frein lâché par le trainer (29 octobre) -------------------------------------------------
+
+def _drive(drv, now, frames):
+    for t, power, rpm in frames:
+        now[0] = 100.0 + t
+        drv._on_ibd(None, bytearray(_ibd(30.0, rpm, power)))
+
+
+def test_brake_loss_is_detected_and_control_taken_again(caplog):
+    """449 W puis 0 W à cadence constante (20:21:35) : avertissement, consigne oubliée pour reprise du contrôle."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(2.8)
+    drv._last_sent = ("sim", 2.8)
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        _drive(drv, now, [(0.0, 449, 73), (2.0, 449, 73), (4.0, 0, 73), (6.0, 0, 0)])
+    msgs = [r.getMessage() for r in caplog.records]
+    assert drv.brake_losses == 1 and drv._last_sent is None
+    assert sum("le frein a lâché (449 W puis 0 W à 73 tr/min, volant 30 km/h)" in m for m in msgs) == 1
+
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        _drive(drv, now, [(7.0, 320, 70)])
+    assert any(m.startswith("Trainer : puissance revenue (320 W) 3.0 s") for m in
+               (r.getMessage() for r in caplog.records))
+
+
+@pytest.mark.parametrize("frames, mode_value, why", [
+    ([(0.0, 449, 73), (5.0, 0, 73)], ("sim", 2.8), "chute trop lente (plus de 3 s)"),
+    ([(0.0, 150, 73), (2.0, 0, 73)], ("sim", 2.8), "pas de charge avant la chute"),
+    ([(0.0, 449, 73), (2.0, 0, 20)], ("sim", 2.8), "cycliste qui a cessé de pédaler"),
+    ([(0.0, 300, 80), (2.0, 0, 80)], ("erg", 0.0), "repos d'un bloc ERG à 0 W"),
+])
+def test_no_brake_loss_when_the_rider_or_the_workout_explains_it(frames, mode_value, why):
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    if mode_value[0] == "erg":
+        drv.set_target_power(mode_value[1])
+    else:
+        drv.set_sim_grade(mode_value[1])
+    _drive(drv, now, frames)
+    assert drv.brake_losses == 0, why
+
+
+def test_brake_loss_retried_at_most_every_ten_seconds():
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(1.0)
+    _drive(drv, now, [(0.0, 400, 80), (1.0, 0, 80), (2.0, 400, 80), (3.0, 0, 80), (12.0, 400, 80), (13.0, 0, 80)])
+    assert drv.brake_losses == 2   # 1 s et 13 s : jamais deux fois en moins de 10 s
