@@ -8,6 +8,8 @@ extends Panel
 ## `erg` de la trame. Le profil des blocs (durées et fractions de FTP) vient de l'élément `workouts` du
 ## contrat v1.1 (`profile`), donné par `set_profiles()` ; sans profil connu (core v1, liste pas encore
 ## reçue, profil coupé), l'histogramme se replie sur une bande de `block_count` cases égales.
+## ERG d'une session libre (lot O18, `kind` = `free` ou `cadence`) : bandeau sans type de bloc ni bloc
+## suivant, histogramme vide (pas de blocs).
 ## Pas de class_name : charger par preload("res://scripts/erg_view.gd").
 
 const UiTheme := preload("res://scripts/ui_theme.gd")
@@ -41,7 +43,7 @@ const BLOCK_TYPE_LABELS := {
 }
 
 const PANEL_HEIGHT := 140.0
-const BOTTOM_OFFSET := 130.0   # au-dessus du profil d'altitude du HUD (120 px + marge)
+const BOTTOM_OFFSET := 15.0    # en bas de l'écran : le profil d'altitude du HUD est caché en ERG (28/10)
 const SIDE_MARGIN := 40.0
 
 var title_label: Label
@@ -172,6 +174,12 @@ func update_display(erg: Variant, erg_eval: Dictionary) -> void:
 
 ## Textes du bandeau (fonction pure, testée sans scène).
 static func banner_lines(erg: Dictionary, erg_eval: Dictionary) -> Dictionary:
+	if is_free(erg):
+		var state: String = str(erg_eval.get("next_text", ""))
+		if str(erg_eval.get("paused_text", "")) != "":
+			state = "En pause" if state == "" else state + " (pause)"
+		return {"title": str(erg_eval.get("title", "")), "target": str(erg_eval.get("target_text", "")),
+			"remaining": "", "next": state}
 	var b_type := str(erg.get("block_type", "steady"))
 	var title := "%s · %s" % [erg_eval.get("title", ""), BLOCK_TYPE_LABELS.get(b_type, b_type)]
 	var remaining := str(erg_eval.get("remaining_text", ""))
@@ -182,6 +190,11 @@ static func banner_lines(erg: Dictionary, erg_eval: Dictionary) -> Dictionary:
 	if int(erg.get("block_index", 1)) < int(erg.get("block_count", 1)):
 		next = "Ensuite : " + ("roue libre" if next_w == null else "%d W" % int(round(float(next_w))))
 	return {"title": title, "target": str(erg_eval.get("target_text", "")), "remaining": remaining, "next": next}
+
+
+## ERG d'une session libre (lot O18) : pas de blocs.
+static func is_free(erg: Dictionary) -> bool:
+	return str(erg.get("kind", "workout")) in ["free", "cadence"]
 
 
 ## Zone de Coggan (0 à 6) d'une fraction de FTP.
@@ -260,7 +273,7 @@ static func blocks_frac(profile: Array, i: int) -> Dictionary:
 
 
 func _on_histogram_draw() -> void:
-	if _erg.is_empty():
+	if _erg.is_empty() or is_free(_erg):
 		return
 	var w := histogram.size.x
 	var h := histogram.size.y

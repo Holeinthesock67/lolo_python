@@ -9,6 +9,13 @@ extends Node3D
 ## Texte dimensionné pour être lisible à READABLE_AT_M : lettres de LETTER_HEIGHT_M au moins.
 
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
+const PropShader := preload("res://shaders/props.gdshader")
+## Matières de props.gdshader (lot Y8 étape 3) et faux relief par préréglage, comme les bâtiments.
+const KIND_BOARD := 0
+const KIND_POST := 1
+const KIND_KM := 2
+const KIND_CAP := 3
+const RELIEF := {"low": 0.0, "medium": 1.0, "high": 1.0}
 
 const READABLE_AT_M := 30.0
 const LETTER_HEIGHT_M := 0.12        # ~ 14 minutes d'arc à 30 m
@@ -31,9 +38,7 @@ func _init() -> void:
 		var am := ArrayMesh.new()
 		am.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, b.get_mesh_arrays())
 		_meshes[kind] = am
-		var m := StandardMaterial3D.new()
-		m.albedo_color = BOARD[kind]["color"]
-		_mats[kind] = m
+		_mats[kind] = _material(KIND_KM if kind == "km" else KIND_BOARD, BOARD[kind]["color"], BOARD[kind]["size"])
 	var post := CylinderMesh.new()
 	post.top_radius = 0.04
 	post.bottom_radius = 0.04
@@ -48,12 +53,23 @@ func _init() -> void:
 	var cam := ArrayMesh.new()
 	cam.add_surface_from_arrays(Mesh.PRIMITIVE_TRIANGLES, cap.get_mesh_arrays())
 	_meshes["cap"] = cam
-	var grey := StandardMaterial3D.new()
-	grey.albedo_color = Color(0.6, 0.6, 0.62)
-	_mats["post"] = grey
-	var red := StandardMaterial3D.new()
-	red.albedo_color = Color(0.75, 0.1, 0.08)
-	_mats["cap"] = red
+	_mats["post"] = _material(KIND_POST, Color(0.6, 0.6, 0.62), Vector3(0.08, 1.0, 0.08))
+	_mats["cap"] = _material(KIND_CAP, Color(0.75, 0.1, 0.08), cap.size)
+
+
+static func _material(kind: int, color: Color, size: Vector3) -> ShaderMaterial:
+	var m := ShaderMaterial.new()
+	m.shader = PropShader
+	m.set_shader_parameter("kind", kind)
+	m.set_shader_parameter("base_color", color)
+	m.set_shader_parameter("size_m", size)
+	return m
+
+
+## Faux relief des panneaux et bornes selon le préréglage (coupé en low).
+func set_preset(preset_name: String) -> void:
+	for m in _mats.values():
+		(m as ShaderMaterial).set_shader_parameter("relief", float(RELIEF.get(preset_name, 1.0)))
 
 
 func _mesh(parent: Node3D, key: String, pos: Vector3, scale: Vector3 = Vector3.ONE) -> MeshInstance3D:

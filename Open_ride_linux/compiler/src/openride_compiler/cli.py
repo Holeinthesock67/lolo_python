@@ -12,6 +12,7 @@
     openride-compiler region-add <région Geofabrik> [--keep-pbf] | region-update <région> | region-list [--json]
     openride-compiler verify <dossier.world>
     openride-compiler info <dossier.world>
+    openride-compiler compare-garmin <dossier.world> --pente-max P --dplus D [--longueur KM] [--fenetre 100] [--json]
     openride-compiler world-measure --lat LAT --lon LON [--heading DEG] [--km 10] [--region R] [--synthetic]
 
 Codes de retour : 0 succès, 1 erreur d'entrée, 2 erreur interne.
@@ -51,6 +52,7 @@ from .osm_layers import (
 )
 from .pipeline import compile_route
 from . import segments_layer as SEG
+from . import route_stats as RS
 from .route_stats import (SORT_KEYS, LibraryError, compute_stats, duration_at, load_library, query,
                           sidecar_path, stats_usable)
 from .terrain import build_terrain, replace_terrain_dir, terrain_manifest, write_terrain
@@ -124,6 +126,16 @@ def build_parser() -> argparse.ArgumentParser:
 
     i = sub.add_parser("info", help="résume un dossier .world")
     i.add_argument("world", type=Path)
+
+    cg = sub.add_parser("compare-garmin", help="pente maximale, D+ et longueur face aux valeurs de Garmin Connect "
+                                               "(lot X31, recette 1.0 ligne 22)")
+    cg.add_argument("world", type=Path)
+    cg.add_argument("--pente-max", type=float, required=True, help="pente maximale lue dans Garmin Connect (%%)")
+    cg.add_argument("--dplus", type=float, required=True, help="dénivelé positif lu dans Garmin Connect (m)")
+    cg.add_argument("--longueur", type=float, help="longueur lue dans Garmin Connect (km)")
+    cg.add_argument("--fenetre", type=float, default=RS.MAX_GRADE_WINDOW_M,
+                    help=f"fenêtre glissante de la pente maximale en m (défaut {RS.MAX_GRADE_WINDOW_M:g})")
+    cg.add_argument("--json", action="store_true", help="résultat en JSON")
 
     tc = sub.add_parser("theme-check", help="contrôle un dossier de thème visuel")
     tc.add_argument("theme_dir", type=Path)
@@ -441,6 +453,29 @@ def cmd_info(args: argparse.Namespace) -> int:
     segments = info.get("segments")
     print(f"Segments          : {SEG.summarize(segments) if segments is not None else 'absents'}")
     return EXIT_OK
+
+
+def cmd_compare_garmin(args: argparse.Namespace) -> int:
+    """Recette 1.0 ligne 22 : rien n'est écrit, les valeurs de Garmin sont saisies à la main."""
+    problems = verify_world(args.world)
+    if problems:
+        print(f"{args.world} : invalide ({len(problems)} problème(s)), lancer « verify » pour le détail",
+              file=sys.stderr)
+        return EXIT_INPUT
+    manifest = json.loads((Path(args.world) / "manifest.json").read_text(encoding="utf-8"))
+    mroute = manifest.get("route") if isinstance(manifest.get("route"), dict) else {}
+    route = json.loads((Path(args.world) / str(mroute.get("file", "route.json"))).read_text(encoding="utf-8"))
+    rows = RS.compare_garmin(route, args.pente_max, args.dplus, args.longueur, args.fenetre)
+    ok = all(r["ok"] for r in rows)
+    if args.json:
+        print(json.dumps({"parcours": Path(args.world).name, "ok": ok, "mesures": rows}, ensure_ascii=False, indent=2))
+    else:
+        print(f"{Path(args.world).name} face à Garmin Connect")
+        for r in rows:
+            print(f"  [{'OK' if r['ok'] else 'ÉCHEC'}] {r['mesure']} : parcours {r['parcours']}, Garmin {r['garmin']}, "
+                  f"écart {r['ecart']:+} ({r['tolerance']})")
+        print("Verdict : " + ("conforme" if ok else "écart hors tolérance"))
+    return EXIT_OK if ok else EXIT_INPUT
 
 
 def cmd_theme_list(args: argparse.Namespace) -> int:
@@ -779,6 +814,7 @@ COMMANDS = {
     "add-layer": cmd_add_layer,
     "verify": cmd_verify,
     "info": cmd_info,
+    "compare-garmin": cmd_compare_garmin,
     "theme-check": cmd_theme_check,
     "theme-list": cmd_theme_list,
     "theme-install": cmd_theme_install,
