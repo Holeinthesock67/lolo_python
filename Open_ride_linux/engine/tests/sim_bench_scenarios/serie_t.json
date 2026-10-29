@@ -1,0 +1,214 @@
+{
+  "description": "Série T (recette T11 §1 à §3) : montée et sprint du parcours de démonstration à 600 W (sprint fini vers 5 min), arches tous les 1 000 m, Z au Click simulé toutes les 20 s, jingles, records.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 600,
+    "cadence_rpm": 92
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "inputs": [
+    {
+      "t": 30,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 50,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 70,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 90,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 110,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 130,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 150,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 170,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 190,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 210,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 230,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 250,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 270,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 290,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 310,
+      "button": "Z",
+      "recette": "T11 §3"
+    },
+    {
+      "t": 330,
+      "button": "Z",
+      "recette": "T11 §3"
+    }
+  ],
+  "bench": {
+    "world": "demo",
+    "duration_s": 360,
+    "every_s": 20,
+    "powerups": {
+      "obtain": {
+        "arch_every_m": 1000,
+        "per_segment": true
+      }
+    },
+    "expect": [
+      {
+        "widget": "segment_title",
+        "recette": "T11 §1",
+        "label": "bloc du segment du HUD (chrono de la montée, puis du sprint)"
+      },
+      {
+        "journal": "segment",
+        "where": {
+          "segment_id": "climb1"
+        },
+        "recette": "T11 §1",
+        "label": "résultat de la montée au journal de séance"
+      },
+      {
+        "journal": "segment",
+        "where": {
+          "segment_id": "sprint1"
+        },
+        "recette": "T11 §1",
+        "label": "résultat du sprint au journal de séance"
+      },
+      {
+        "journal": "segment",
+        "where": {
+          "pr": true
+        },
+        "min": 2,
+        "recette": "T11 §1",
+        "label": "« Record ! » au premier passage des deux segments"
+      },
+      {
+        "widget": "bonus_held",
+        "contains": "Z : ",
+        "recette": "T11 §1",
+        "label": "bonus en réserve « Z : … » dans le bloc du bonus"
+      },
+      {
+        "log": "engine",
+        "motif": "event_sound kind=jingle_summit",
+        "min": 1,
+        "max": 1,
+        "recette": "T11 §1",
+        "label": "jingle du sommet, une seule fois"
+      },
+      {
+        "log": "engine",
+        "motif": "event_sound kind=jingle_sprint",
+        "min": 1,
+        "max": 1,
+        "recette": "T11 §1",
+        "label": "jingle de fin du sprint, une seule fois"
+      },
+      {
+        "log": "engine",
+        "motif": "event_sound kind=jingle_(summit|sprint)_pr",
+        "min": 2,
+        "max": 2,
+        "recette": "T11 §1",
+        "label": "variante « record » des deux jingles"
+      },
+      {
+        "log": "engine",
+        "motif": "event_sound kind=jingle_arch",
+        "min": 1,
+        "recette": "T11 §3",
+        "label": "arpège de cloches sous les arches"
+      },
+      {
+        "journal": "powerup",
+        "recette": "T11 §3",
+        "label": "bonus activé par Z (ligne powerup)"
+      },
+      {
+        "log": "core",
+        "motif": "Bonus activé",
+        "recette": "T11 §3"
+      },
+      {
+        "bonus_speed": 15,
+        "recette": "T11 §3"
+      },
+      {
+        "log": "engine",
+        "motif": "event_sound kind=jingle_finish",
+        "min": 1,
+        "max": 1,
+        "recette": "T11 §2",
+        "label": "fanfare de fin de séance, une seule fois"
+      },
+      {
+        "file": "OpenRide/records.json",
+        "contains": [
+          "climb1",
+          "sprint1"
+        ],
+        "recette": "T11 §2",
+        "label": "records du parcours écrits (lus par l'écran « Records du parcours »)"
+      }
+    ]
+  }
+}

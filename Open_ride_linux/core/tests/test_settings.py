@@ -241,6 +241,20 @@ def test_fps_counter_setting(tmp_path: Path):
         settings.check(cfg, "render.fps", "oui")
 
 
+def test_draft_gauge_setting(tmp_path: Path):
+    """Jauge d'abri au-dessus des bots (demande du 29 octobre) : choix off / on, graphisme, appliquée tout de
+    suite, coupée par défaut."""
+    cfg = Config()
+    it = {i["key"]: i for i in settings.current(cfg)}["render.draft_gauge"]
+    assert (it["value"], it["choices"], it["applies"], it["group"]) == ("off", ["off", "on"], "now", "graphics")
+    path = tmp_path / "config.toml"
+    path.write_text("[render]\nquality = \"low\"\n", encoding="utf-8")
+    settings.apply(cfg, {"render.draft_gauge": "on"}, path)
+    assert config_mod.load(path).render.draft_gauge == "on"
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "render.draft_gauge", "oui")
+
+
 def test_settings_groups_and_new_entries():
     """Sous-écrans de « Réglages » : chaque réglage a un groupe connu, groupes contigus dans l'ordre de
     `GROUPS` ; poids du vélo, direction et rafales du vent ajoutés (bornes de config.py)."""

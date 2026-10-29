@@ -7,6 +7,7 @@ const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
@@ -26,6 +27,8 @@ const CueModel := preload("res://scripts/cue_model.gd")
 const MenuFlow := preload("res://scripts/menu_flow.gd")
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
+const DraftGaugeModel := preload("res://scripts/draft_gauge_model.gd")
+const DraftGauge := preload("res://scripts/draft_gauge.gd")
 const AvatarModel := preload("res://scripts/avatar_model.gd")
 const AvatarView := preload("res://scripts/avatar_view.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
@@ -87,6 +90,8 @@ var world_menu_view = null
 var _route_job: Dictionary = {}
 var _test_cam_last_us := 0
 var _test_cam_last_s := NAN
+## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : instant imposé au décor, NAN sinon.
+var _freeze_t := NAN
 
 var erg_view = ErgViewModel.new()
 ## Bandeau et histogramme ERG (lot N7), dans le HUD.
@@ -145,6 +150,10 @@ var key_map = KeyMap.new()
 ## Bots à l'écran (lot O7) : modèle (écarts, visibilité) et silhouettes sur la route.
 var bots_model = BotsViewModel.new()
 var bots_view: Node3D
+## Jauge d'abri au-dessus du bot qui abrite le cycliste (réglage `render.draft_gauge`, coupée par défaut).
+var draft_gauge: Node3D
+var _draft_gauge_on := false
+var _draft := {"draft": null, "draft_bot": null}   # champs `draft` et `draft_bot` de la dernière trame en séance
 ## Avatar du cycliste (lot V6) : modèle sans nœud (pédalier, danseuse) et vue ; caché en vue subjective, la
 ## seule caméra du jeu avant le lot V12. `_avatar_cam` : caméra de contrôle du banc visuel (« follow »,
 ## « side » ou « » sans), qui montre l'avatar sans changer la caméra du jeu.
@@ -241,6 +250,8 @@ func _ready() -> void:
 	living_decor.set_fog_base(world_env.environment)
 	bots_view = BotsView.new()
 	add_child(bots_view)
+	draft_gauge = DraftGauge.new()
+	add_child(draft_gauge)
 	avatar_view = AvatarView.new()
 	add_child(avatar_view)
 	_configure_avatar()
@@ -379,12 +390,13 @@ static func _quality_from_cli() -> bool:
 
 
 ## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
-## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s montré ou caché.
+## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	AudioMix.apply_settings(menu_flow.settings.items)
 	fps_counter.probe_active = _probe.is_open()
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
+	_draft_gauge_on = str(menu_flow.settings.item(DraftGaugeModel.SETTING_KEY).get("value", "off")) == "on"
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
@@ -776,9 +788,9 @@ func _process(delta: float) -> void:
 		return
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
-		var pos: Vector3 = route.sample_point(s_route)
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
+		var pos := _rider_point(s_route, heading)
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
 		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
@@ -791,6 +803,7 @@ func _process(delta: float) -> void:
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
 			_show_bots(s_route, float(follow.last_frame["v"]))
+		_show_draft_gauge()
 		# Arches de bonus seulement quand le core en donne (champ `powerup` : SIM, option « Bonus »).
 		segment_markers.update(s_route, _last_state.has("powerup"))
 
@@ -802,6 +815,11 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 		return
 	var smp: Dictionary = route.sample(s_route)
 	var now_s := Time.get_ticks_msec() / 1000.0
+	if not is_nan(_freeze_t):   # scène figée : même instant et pas nul à chaque image
+		now_s = _freeze_t
+		delta = 0.0
+		if living_world.frozen_at != _freeze_t:
+			living_world.freeze(_freeze_t)
 	var paused := session_state == "PAUSED"
 	living_world.step(now_s, delta, camera.global_position, s_route, v, float(smp["heading_deg"]),
 		float(smp["alt_m"]), paused)
@@ -817,10 +835,10 @@ func _menu_camera(delta: float) -> bool:
 	if ipc.test_mode or route == null or not session_state in ["IDLE", "READY", "FINISHED"]:
 		return false
 	_menu_s = route.wrap_s(_menu_s + MENU_CAMERA_MPS * delta)
-	var pos: Vector3 = route.sample_point(_menu_s)
-	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
+	var heading: float = deg_to_rad(route.sample_heading_deg(_menu_s))
+	camera.global_position = _rider_point(_menu_s, heading) + Vector3(0.0, 1.4, 0.0)
 	camera.fov = _base_fov
-	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
+	camera.rotation.y = -heading
 	camera.rotation.x = deg_to_rad(CameraViews.camera_pitch_deg(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS)))
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
@@ -986,11 +1004,16 @@ func _poll_route_job() -> void:
 ## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py ;
 ## « command » fait envoyer une commande par l'engine ;
 ## « key » et « mouse » jouent une touche ou la souris par le vrai chemin des entrées de Godot, en menu comme en
-## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py).
+## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py) ;
+## « freeze » fige le décor (vent, nuages, herbe, personnages, animaux) à un instant donné.
 func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+		"freeze":   # scène figée à l'instant `t` (s), null : libérée (tests graphiques, lot X20)
+			var t = msg.get("t", null)
+			_freeze_t = float(t) if (typeof(t) == TYPE_INT or typeof(t) == TYPE_FLOAT) else NAN
+			AnimClock.freeze(_freeze_t)
 		"key":
 			_test_key(str(msg.get("key", "")), bool(msg.get("shift", false)), int(msg.get("hold_ms", 100)))
 		"mouse":
@@ -1006,6 +1029,9 @@ func _on_test_message(msg: Dictionary) -> void:
 		"menu_focus":   # focus sur un élément de l'écran courant du menu (tests graphiques du Garage, lot V8)
 			menu_flow.menu.focus_item(str(msg.get("id", "")))
 			_refresh_menu()
+		"decor_place":   # véhicule ou cyclistes du décor posés près du cycliste (captures et contrôle des voies, lot P32)
+			if living_decor != null:
+				living_decor.test_place(msg)
 		"avatar_camera":   # caméra de contrôle derrière (« follow ») ou à côté (« side ») de l'avatar (lot V6)
 			_avatar_cam = str(msg.get("view", "")) if str(msg.get("view", "")) in ["follow", "side"] else ""
 			avatar_view.set_visible_for_view(_avatar_view_name())
@@ -1176,6 +1202,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"widgets": widgets,
 		"decor": living_decor.test_info(camera) if living_decor != null else {},
 		"bots": bots_view.test_info(camera) if bots_view != null else {},
+		"draft_gauge": draft_gauge.test_info(camera) if draft_gauge != null else {},
 		"avatar": _avatar_info(),
 		"garage": _garage_info(),
 		"rogue": rogue_host.test_info(),
@@ -1212,6 +1239,12 @@ func _configure_avatar() -> void:
 	avatar_model.configure(raw, float(ipc.core_config.get("ftp_w", 0.0)))
 	avatar_view.configure(avatar_model.settings, 0)
 	avatar_view.set_visible_for_view(_avatar_view_name())
+
+
+## Place du cycliste à `s` : dans la voie de droite, à RoadBuilder.RIDER_LATERAL_M de l'axe (lot P32) ; `heading`
+## en radians. La caméra, l'avatar et la vue des menus en partent.
+func _rider_point(s: float, heading: float) -> Vector3:
+	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * RoadBuilder.RIDER_LATERAL_M
 
 
 ## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.
@@ -1393,6 +1426,8 @@ func _on_state_received(state: Dictionary) -> void:
 	var in_session := running or session_state == "PAUSED"
 	bots_model.push(state.get("bots", null) if in_session else null, Time.get_ticks_usec())
 	bots_model.set_race(state if in_session else null)
+	_draft = {"draft": state.get("draft", null) if in_session else null,
+		"draft_bot": state.get("draft_bot", null) if in_session else null}
 
 	_feed_chart(state, running, previous_session_state)
 
@@ -1485,6 +1520,12 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
+
+
+## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste.
+func _show_draft_gauge() -> void:
+	var view := DraftGaugeModel.view(_draft_gauge_on, _draft["draft"], _draft["draft_bot"], _quality_name)
+	draft_gauge.update_view(view, bots_view.anchor_of(str(view["bot"])) if view["visible"] else null)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les

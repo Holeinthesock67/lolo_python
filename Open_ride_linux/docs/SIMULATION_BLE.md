@@ -45,7 +45,8 @@ Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie s
 ```json
 {
   "seed": 0,
-  "trainer": {"appear_at": 2, "connect_delay_s": 0.5, "rider_power_w": 200, "cadence_rpm": 90},
+  "trainer": {"appear_at": 2, "connect_delay_s": 0.5},
+  "rider": {"strategy": "constante", "watts": 200, "cadence_rpm": 90},
   "click": {"appear_at": 3, "relay_delay_s": [0.005, 0.04], "minus": {"connect_failures": 1}},
   "hr": {"appear_at": 1, "rest_bpm": 58},
   "events": [
@@ -62,12 +63,22 @@ Une section absente retire l'appareil. `control_file` (facultatif, chemin) : fic
 
 **Réglages communs** (`trainer`, `click`, `click.plus`, `click.minus`, `hr`, `hr_watch`) : `appear_at` (s), `connect_delay_s`, `connect_failures` (connexions refusées avant la première réussie), `asleep`, `address` (sauf `click`).
 
-- **trainer :** `name`, `ibd_hz`, `rider_power_w`, `cadence_rpm`, `erg_tau_s`, `cp_latency_s`, `power_range` ([min, max, pas]), `refuse_control`, `target_speed_kmh` (vitesse imposée, lot X35 : en SIM, la puissance du cycliste tient cette vitesse sur la pente reçue avec la physique du core, réglages par défaut ; à difficulté 100 % la vitesse virtuelle suit la consigne ; remplace `rider_power_w`) ; réponse du trainer (lot X6) : `response` (`instant` par défaut, `realiste`), puis pour `realiste` seulement `brake_delay_s`, `brake_tau_up_s`, `brake_tau_down_s`, `flywheel_kg_m2`, `notify_jitter_s`, `rider_max_w` et `calibration` (chemin d'un `steps.csv` du banc de paliers).
+- **trainer :** `name`, `ibd_hz`, `erg_tau_s`, `cp_latency_s`, `power_range` ([min, max, pas]), `refuse_control` ; réponse du trainer (lot X6) : `response` (`instant` par défaut, `realiste`), puis pour `realiste` seulement `brake_delay_s`, `brake_tau_up_s`, `brake_tau_down_s`, `flywheel_kg_m2`, `notify_jitter_s`, `rider_max_w` et `calibration` (chemin d'un `steps.csv` du banc de paliers).
+- **rider** (cycliste virtuel qui pédale sur le trainer, `core/src/openride_core/sim_rider.py`, lot X27 ; absente : 180 W et 88 rpm) : `strategy` et ses réglages, `seed` (bruit déterministe) :
+  - `constante` (défaut) : `watts`, `cadence_rpm` ; un peu plus en montée (+4 % par point de pente) ;
+  - `pente` : `ftp_w`, `pct_ftp` ; la puissance suit la pente reçue (+6 % par point, de 40 à 150 %) ;
+  - `cadence` : comme `pente`, et la cadence est tenue entre `cadence_low` et `cadence_high` (80 et 95 rpm) par des appuis du Click simulé (un toutes les 2 s au plus) ;
+  - `rampe` : `ramp_start_w`, `ramp_w_per_min` (20) ; le cycliste lâche (cadence 0) quand la puissance, ou la cible ERG du trainer, dépasse `ramp_fail_pct_ftp` % de la FTP (133) ; pour le test de FTP (O10) ;
+  - `sprint` : comme `pente`, avec des sprints de `sprint_s` s (10) à `sprint_w` (2,5 × FTP) aux temps `sprint_at_s` ;
+  - `fatigue` : `fatigue_pct_ftp` % de la FTP (110) tant que la réserve W′bal (`w_prime_j`, CP = FTP) le permet, puis `recover_frac` × CP (0,85) jusqu'à ce que la réserve remonte au-dessus de `resume_pct` % (30) ;
+  - `vitesse` : `speed_kmh` ; la puissance qui tient cette vitesse sur la pente reçue, avec la physique du core (`sim_bench.py --speed-kmh`, lot X35).
+
+  En ERG, le trainer tient sa cible tant que le cycliste pédale (cadence non nulle).
 
 **Trainer réaliste (lot X6).** En réponse `instant`, la puissance rejoint la consigne ERG ou l'effort du cycliste avec la constante `erg_tau_s` (1,5 s) et la pente ne change pas la résistance. En `realiste` (`ble_sim.TrainerResponse`) :
 - le frein voit la consigne avec un retard pur (`brake_delay_s`, 0,6 s) puis la rejoint en `brake_tau_up_s` (2 s) quand l'effort monte et en `brake_tau_down_s` (4,9 s) quand il baisse : 90 % du relâchement vers 12 s, comme à l'essai du 25 octobre ;
 - en ERG, la force du frein est la cible divisée par la vitesse ; en SIM, l'effort de la route à la vitesse du volant : m g (sin θ + Crr cos θ) + Cw (v + vent)², avec la pente, le Crr, le Cw et le vent de la trame SIM (masse et valeurs absentes : réglages par défaut du core) ;
-- le volant (`flywheel_kg_m2`, 0,6, ramené à la jante) relie l'effort et la vitesse ; le cycliste tient sa cadence à braquet fixe (vitesse de son effort habituel sur le plat, ou `target_speed_kmh`) sans dépasser `rider_max_w` (2,5 fois `rider_power_w` par défaut) : dans une montée trop raide pour lui, le volant ralentit ;
+- le volant (`flywheel_kg_m2`, 0,6, ramené à la jante) relie l'effort et la vitesse ; le cycliste tient sa cadence à braquet fixe (vitesse de son effort sur le plat, ou `speed_kmh` de la stratégie `vitesse`) sans dépasser `rider_max_w` (2,5 fois l'effort du cycliste par défaut) : dans une montée trop raide pour lui, le volant ralentit ;
 - la puissance envoyée est celle du cycliste (frein et accélération du volant), la vitesse celle du volant ;
 - les trames Indoor Bike Data partent à `ibd_hz` avec une gigue de ± `notify_jitter_s` (40 ms), tirée à part du hasard du monde.
 
@@ -89,7 +100,7 @@ Une section absente retire l'appareil. `control_file` (facultatif, chemin) : fic
 | `silence` | `seconds` | Trainer : plus d'Indoor Bike Data pendant ce temps. Boîtier du Click (`click_plus`, `click_minus`) : plus aucune notification, lien gardé (défaut du boîtier gauche à l'essai 69, recette guidée du Click, lot X8). |
 | `control_lost` | | Fitness Machine Status 0xFF : contrôle retiré. |
 | `refuse_control` | `value` (vrai par défaut) | Les demandes de contrôle sont refusées (0x05). |
-| `rider` | `watts`, `cadence_rpm` | Effort du cycliste en SIM (0 : arrêt de pédalage). |
+| `rider` | `watts`, `cadence_rpm` | Effort du cycliste virtuel (`watts` : stratégie `constante` ; `cadence_rpm` 0 : arrêt de pédalage). |
 | `bpm` | `bpm` (null : suit la puissance) | Fréquence de la ceinture. |
 | `contact` | `value` (vrai par défaut, faux : absent, null : non géré) | Contact du capteur de la ceinture (ou de la montre). |
 

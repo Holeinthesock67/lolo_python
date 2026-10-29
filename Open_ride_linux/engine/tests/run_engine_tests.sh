@@ -210,8 +210,11 @@ if [ "$VISUAL_CONFIGS" = "none" ]; then
   echo "VISUAL_CONFIGS=none : tests graphiques sautés"
 elif command -v xvfb-run >/dev/null 2>&1; then
   VISUAL_DIR="$(mktemp -d -t openride-visual.XXXXXX)"
+  # Scène figée et, en 1280x720 low, comparaison aux vignettes du dépôt (tests/golden/xvfb/low, SSIM ≥ 0,97, lot X20).
+  golden_args=()
+  if [ "$VISUAL_CONFIGS" = "1280x720:low" ]; then golden_args=(--golden "$ENGINE_DIR/tests/golden"); fi
   VISUAL_OUT="$(timeout -k 5 600 python3 "$ENGINE_DIR/tests/visual_check.py" --godot "$GODOT" \
-    --configs "$VISUAL_CONFIGS" --out "$VISUAL_DIR" 2>&1)"
+    --configs "$VISUAL_CONFIGS" --out "$VISUAL_DIR" --fige "${golden_args[@]}" 2>&1)"
   visual_rc=$?
   echo "$VISUAL_OUT" | grep -E "^\[ÉCHEC\]|^Tests graphiques|introuvable" || true
   if [ "$visual_rc" -eq 0 ]; then rm -rf "$VISUAL_DIR"; else echo "Captures, journaux et rapport gardés : $VISUAL_DIR/rapport.html"; fi
