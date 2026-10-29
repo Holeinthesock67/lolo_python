@@ -11,6 +11,11 @@ cadence des notifications (nouvelles lignes du lot K8), et coupures « corrélé
 celles qui tombent à moins de ``CORRELATION_WINDOW_S`` d'une écriture au trainer (valeur portée
 par la ligne de coupure) ou d'un événement du trainer dans le journal (connexion, reconnexion,
 perte, commande refusée…).
+
+Latence des appuis du Click (lot X7) : ``--latence CORE.log ENGINE.log`` apparie par identifiant les
+lignes ``[latence] id=N etage=… t=…`` du core (notif, evenement, ipc, cp) et de l'engine (recu, affiche),
+puis donne médiane, p95 et maximum de chaque étage et de bout en bout (notification → image affichée) ;
+les appuis incomplets (sans image affichée : appui de menu, Control Point absent…) sont comptés à part.
 """
 
 from __future__ import annotations
@@ -870,6 +875,59 @@ def format_jitter(rep: dict[str, Any]) -> str:
     return "\n".join(out)
 
 
+# --- latence des appuis (lot X7) -------------------------------------------------------
+
+LATENCY_RE = re.compile(r"\[latence\] id=(\d+) etage=(\w+) t=([0-9.]+)")
+LATENCY_STAGES = ("notif", "evenement", "ipc", "cp", "recu", "affiche")
+# Étages mesurés : (libellé, étage de départ, étage d'arrivée).
+LATENCY_HOPS = (("notification → événement", "notif", "evenement"), ("événement → envoi à l'engine", "evenement", "ipc"),
+                ("événement → Control Point", "evenement", "cp"), ("envoi → reçu par l'engine", "ipc", "recu"),
+                ("reçu → image affichée", "recu", "affiche"), ("bout en bout (notification → image)", "notif", "affiche"))
+
+
+def parse_latency(lines: Iterable[str]) -> dict[int, dict[str, float]]:
+    """Identifiant d'appui → {étage: heure} ; un étage répété garde sa première heure."""
+    out: dict[int, dict[str, float]] = {}
+    for line in lines:
+        m = LATENCY_RE.search(line)
+        if m:
+            out.setdefault(int(m.group(1)), {}).setdefault(m.group(2), float(m.group(3)))
+    return out
+
+
+def latency_report(core_lines: Iterable[str], engine_lines: Iterable[str]) -> dict[str, Any]:
+    """Statistiques en ms de chaque étage sur les appuis qui ont les deux bouts ; appuis complets et incomplets."""
+    presses = parse_latency(core_lines)
+    for pid, stages in parse_latency(engine_lines).items():
+        presses.setdefault(pid, {}).update({k: v for k, v in stages.items() if k not in presses.get(pid, {})})
+    complete = [pid for pid, st in presses.items() if "notif" in st and "affiche" in st]
+    missing: dict[str, int] = {}
+    for pid, st in presses.items():
+        if pid not in complete:
+            for stage in LATENCY_STAGES:
+                if stage not in st:
+                    missing[stage] = missing.get(stage, 0) + 1
+    hops = {}
+    for label, a, b in LATENCY_HOPS:
+        vals = [(st[b] - st[a]) * 1000.0 for st in presses.values() if a in st and b in st]
+        if vals:
+            hops[label] = {"count": len(vals), "median_ms": round(statistics.median(vals), 1),
+                           "p95_ms": _p95(vals), "max_ms": round(max(vals), 1)}
+    return {"presses": len(presses), "complete": len(complete), "incomplete": len(presses) - len(complete),
+            "missing_stages": missing, "hops": hops}
+
+
+def format_latency(rep: dict[str, Any]) -> str:
+    lines = [f"Latence des appuis du Click : {rep['presses']} appui(s), {rep['complete']} apparié(s) de bout en bout, "
+             f"{rep['incomplete']} incomplet(s)"]
+    if rep["missing_stages"]:
+        lines.append("  étages manquants des incomplets : " + ", ".join(f"{k} {v}" for k, v in rep["missing_stages"].items()))
+    for label, h in rep["hops"].items():
+        lines.append(f"  {label:<38} médiane {h['median_ms']:>7.1f} ms   p95 {h['p95_ms']:>7.1f} ms   "
+                     f"max {h['max_ms']:>7.1f} ms   ({h['count']})")
+    return "\n".join(lines)
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(
         prog="python -m openride_core.tools.log_report",
@@ -899,7 +957,25 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Gigue de la boucle par minute et verdict « p99 < 5 ms » (lot X17) ; code 1 si dépassé",
     )
+    parser.add_argument(
+        "--latence",
+        nargs=2,
+        type=Path,
+        metavar=("CORE.log", "ENGINE.log"),
+        help="Latence des appuis du Click (lot X7) : journaux du core et de l'engine lancés avec --latence",
+    )
     args = parser.parse_args(argv)
+
+    if args.latence:
+        texts = []
+        for p in args.latence:
+            if not p.expanduser().is_file():
+                print(f"Erreur : fichier journal introuvable : {p}", file=sys.stderr)
+                return 1
+            texts.append(p.expanduser().read_text(encoding="utf-8", errors="replace").splitlines())
+        lat = latency_report(*texts)
+        print(json.dumps(lat, ensure_ascii=False, indent=2) if args.as_json else format_latency(lat))
+        return 0
 
     path = Path(args.journal).expanduser()
     if not path.is_file():

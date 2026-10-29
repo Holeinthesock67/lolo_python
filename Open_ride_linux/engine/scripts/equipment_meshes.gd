@@ -1,9 +1,9 @@
 extends RefCounted
 
-## Pièces d'équipement de l'avatar (lot V7), toutes générées par le code : une forme par `look` du
-## catalogue du core (`data/progression.toml`, lot V3), cadres, roues, casques, tenues (motifs), chaussettes
-## et lunettes. Sans nœud : des spécifications (couleurs, dimensions, posture) et des maillages que
-## avatar_view.gd assemble.
+## Pièces d'équipement de l'avatar (lot V7) : une forme par `look` du catalogue du core
+## (`data/progression.toml`, lot V3), cadres, roues, casques, tenues (motifs), chaussettes et lunettes. Sans
+## nœud ni maillage : des spécifications (couleurs, dimensions, posture) et les motifs de tenue ;
+## avatar_mesh.gd en tire les maillages (lot Y16) et avatar_view.gd les assemble.
 ##
 ## - `LOOKS` liste les `look` connus par emplacement ; un test du core vérifie que chaque `look` du catalogue
 ##   y figure. Un `look` inconnu (ou absent) retombe sur la pièce par défaut de l'emplacement (`resolve`).
@@ -51,32 +51,33 @@ static func equip_looks(equipped, look_of_id) -> Dictionary:
 
 
 static func frame_spec(look: String) -> Dictionary:
-	var base := {"tube": Vector2(0.032, 0.032), "color": Color(0.16, 0.17, 0.20), "lean_add": 0.0,
-		"bar_half_x": 0.19, "bar_z": -0.45, "extensions": false}
+	var base := {"tube": Vector2(0.032, 0.034), "color": Color(0.16, 0.17, 0.20), "lean_add": 0.0,
+		"bar_half_x": 0.205, "bar_z": -0.58, "extensions": false}
 	match resolve("frame", look):
 		"frame_light":
 			base.merge({"tube": Vector2(0.026, 0.026), "color": Color(0.88, 0.89, 0.92)}, true)
 		"frame_round_light":
 			base.merge({"tube": Vector2(0.028, 0.028), "color": Color(0.20, 0.34, 0.55)}, true)
 		"frame_aero":
-			base.merge({"tube": Vector2(0.034, 0.078), "color": Color(0.06, 0.06, 0.08), "lean_add": 0.12,
-				"bar_half_x": 0.15}, true)
+			base.merge({"tube": Vector2(0.034, 0.06), "color": Color(0.06, 0.06, 0.08), "lean_add": 0.12,
+				"bar_half_x": 0.165}, true)
 		"frame_tt":
-			base.merge({"tube": Vector2(0.038, 0.090), "color": Color(0.62, 0.10, 0.10), "lean_add": 0.22,
-				"bar_half_x": 0.10, "bar_z": -0.60, "extensions": true}, true)
+			base.merge({"tube": Vector2(0.036, 0.07), "color": Color(0.62, 0.10, 0.10), "lean_add": 0.22,
+				"bar_half_x": 0.10, "bar_z": -0.70, "extensions": true}, true)
 	return base
 
 
-## Roue : `kind` spoked (rayons), deep (jante haute) ou disc (disque plein).
+## Roue : `kind` spoked (rayons), deep (jante haute, moins de rayons) ou disc (disque plein) ; `rim` :
+## hauteur de la jante ; `spokes` : rayons par roue.
 static func wheel_spec(look: String) -> Dictionary:
 	match resolve("wheels", look):
 		"wheels_spoked_light":
-			return {"kind": "spoked", "rim": 0.014, "color": Color(0.80, 0.82, 0.86), "spokes": 10}
+			return {"kind": "spoked", "rim": 0.016, "color": Color(0.80, 0.82, 0.86), "spokes": 16}
 		"wheels_deep":
-			return {"kind": "deep", "rim": 0.045, "color": Color(0.07, 0.07, 0.09), "spokes": 0}
+			return {"kind": "deep", "rim": 0.05, "color": Color(0.07, 0.07, 0.09), "spokes": 12}
 		"wheels_disc":
 			return {"kind": "disc", "rim": 0.0, "color": Color(0.05, 0.05, 0.06), "spokes": 0}
-	return {"kind": "spoked", "rim": 0.014, "color": Color(0.40, 0.42, 0.46), "spokes": 10}
+	return {"kind": "spoked", "rim": 0.02, "color": Color(0.40, 0.42, 0.46), "spokes": 20}
 
 
 ## Son de la roue (sound_model.gd) : `hum` grave (lenticulaire), `whistle` léger (jantes hautes), `none`.
@@ -158,78 +159,3 @@ static func _rows(img: Image, y0: int, y1: int, color: Color) -> void:
 
 static func is_emissive_kit(look: String) -> bool:
 	return resolve("kit", look) == "kit_neon"
-
-
-static func _box(size: Vector3) -> BoxMesh:
-	var m := BoxMesh.new()
-	m.size = size
-	return m
-
-
-static func _torus(radius: float, tube: float, rings: int, segs: int) -> TorusMesh:
-	var m := TorusMesh.new()
-	m.inner_radius = radius - tube
-	m.outer_radius = radius + tube
-	m.rings = rings
-	m.ring_segments = segs
-	return m
-
-
-static func _cylinder(radius: float, height: float, radial: int) -> CylinderMesh:
-	var m := CylinderMesh.new()
-	m.top_radius = radius
-	m.bottom_radius = radius
-	m.height = height
-	m.radial_segments = radial
-	m.rings = 1
-	return m
-
-
-static func _capsule(radius: float, length: float, radial: int, rings: int) -> CapsuleMesh:
-	var m := CapsuleMesh.new()
-	m.radius = radius
-	m.height = length + radius
-	m.radial_segments = radial
-	m.rings = rings
-	return m
-
-
-## Maillages des pièces d'un équipement pour un niveau de détail 0 ou 1 : {nom : {"mesh", "count"}}.
-## `looks` : sortie de equip_looks ; `d` : dimensions de avatar_mesh.dims().
-static func build(lod: int, looks: Dictionary, d: Dictionary) -> Dictionary:
-	var parts := {}
-	var fs := frame_spec(str(looks.get("frame", "")))
-	var tube: Vector2 = fs["tube"]
-	parts["frame"] = {"mesh": _box(Vector3(tube.x, 1.0, tube.y)), "count": 3}
-	if fs["extensions"]:
-		parts["extension"] = {"mesh": _box(Vector3(0.035, 0.34, 0.035)), "count": 2}
-		parts["pad"] = {"mesh": _box(Vector3(0.07, 0.03, 0.12)), "count": 2}
-	var ws := wheel_spec(str(looks.get("wheels", "")))
-	var fine := lod == 0
-	parts["tyre"] = {"mesh": _torus(WHEEL_R - 0.015, 0.015, 24 if fine else 8, 6 if fine else 3), "count": 2}
-	match ws["kind"]:
-		"spoked":
-			parts["rim"] = {"mesh": _torus(WHEEL_R - 0.034, float(ws["rim"]), 24 if fine else 8, 4 if fine else 3), "count": 2}
-			if fine:   # niveau intermédiaire : jante seule, sans rayons
-				parts["spoke"] = {"mesh": _box(Vector3(0.006, WHEEL_R - 0.05, 0.006)), "count": int(ws["spokes"]) * 2}
-		"deep":
-			parts["rim"] = {"mesh": _torus(WHEEL_R - 0.04, float(ws["rim"]), 24 if fine else 8, 6 if fine else 3), "count": 2}
-		"disc":
-			parts["rim"] = {"mesh": _cylinder(WHEEL_R - 0.03, 0.028, 32 if fine else 16), "count": 2}
-	var hs := helmet_spec(str(looks.get("helmet", "")))
-	parts["helmet"] = {"mesh": _sphere(float(d["r_head"]) * 1.12, 20 if fine else 10, 8 if fine else 4, 0.8), "count": 1}
-	if hs["visor"]:
-		parts["visor"] = {"mesh": _box(Vector3(0.17, 0.01, 0.11)), "count": 1}
-	var ss := socks_spec(str(looks.get("socks", "")))
-	parts["sock"] = {"mesh": _capsule(float(d["r_shin"]) * 1.12, float(d["shin"]) * float(ss["length"]), 10 if fine else 6, 2 if fine else 1), "count": 2}
-	parts["glasses"] = {"mesh": _box(Vector3(float(d["r_head"]) * 1.7, 0.034, 0.02)), "count": 1}
-	return parts
-
-
-static func _sphere(radius: float, radial: int, rings: int, squash := 1.0) -> SphereMesh:
-	var m := SphereMesh.new()
-	m.radius = radius
-	m.height = 2.0 * radius * squash
-	m.radial_segments = radial
-	m.rings = rings
-	return m

@@ -6,6 +6,7 @@ extends Node
 
 signal state_received(state_dict: Dictionary)
 signal input_event_received(event_name: String)
+signal latency_input_received(press_id: int)   # appui suivi (core lancé avec --latence, lot X7)
 signal hello_ack_received(ack_dict: Dictionary)
 signal error_received(code: String, message: String)
 signal shutdown_received
@@ -243,6 +244,8 @@ func _poll_incoming() -> void:
 			"state":
 				_on_state(json_obj)
 			"input":
+				if json_obj.has("latence_id"):
+					latency_input_received.emit(int(json_obj["latence_id"]))
 				input_event_received.emit(str(json_obj.get("event", "")))
 			"hello_ack":
 				_hello_acked = true
