@@ -2,24 +2,25 @@ extends Control
 
 ## Courbes de la séance à l'écran (Lot O14) : dessin de la géométrie de workout_chart_model.gd (O13),
 ## « comme GoldenCheetah » : profil des watts cibles coloré par zone, atténué, courbe de puissance en
-## blanc épais et, en taille complète, fréquence cardiaque en rouge et cadence en bleu clair, avec la
-## légende des valeurs courantes. Trois tailles (`mode`, réglage `[render] chart` du core) :
+## blanc épais, fréquence cardiaque en rouge et cadence en bleu clair, avec la légende des valeurs
+## courantes. Trois tailles (`mode`, réglage `[render] chart` du core) :
 ## - `hidden` : rien (en ERG, l'histogramme de N7 reste affiché) ;
-## - `reduced` : profil cible et puissance, valeur courante en watts ;
-## - `full` : cible, puissance, FC, cadence, graduations et légende.
+## - `reduced` : profil cible, puissance, FC, cadence et légende (FC et cadence depuis le 28/10) ;
+## - `full` : la même chose, plus les graduations des watts.
 ## Une instance en ERG, dans le bandeau d'erg_view.gd à la place de l'histogramme (le profil cible du
 ## graphique joue ce rôle, curseur compris) ; une instance en SIM dans un panneau du HUD, qui montre
 ## les 10 dernières minutes sans profil. Les deux lisent le même modèle ; le dessin n'est redemandé
 ## que lorsqu'une nouvelle seconde de séance est arrivée (`refresh()`), jamais à chaque image.
 ## Ne décide rien. Pas de class_name : charger par preload("res://scripts/workout_chart_view.gd").
 
+const UiTheme := preload("res://scripts/ui_theme.gd")
 const MODES := ["hidden", "reduced", "full"]
-const POWER_COLOR := Color(1.0, 1.0, 1.0)
-const HR_COLOR := Color(0.95, 0.25, 0.25)
-const CADENCE_COLOR := Color(0.55, 0.80, 1.0)
-const BG_COLOR := Color(0.04, 0.06, 0.08, 0.65)
-const GRID_COLOR := Color(1.0, 1.0, 1.0, 0.16)
-const TEXT_COLOR := Color(0.80, 0.84, 0.88)
+const POWER_COLOR := UiTheme.POWER
+const HR_COLOR := UiTheme.HEART_RATE
+const CADENCE_COLOR := UiTheme.CADENCE
+const BG_COLOR := UiTheme.CHART_BG
+const GRID_COLOR := UiTheme.GRID
+const TEXT_COLOR := UiTheme.CHART_TEXT
 const PROFILE_ALPHA := 0.45          # profil atténué : les courbes passent devant
 const POWER_WIDTH := 3.5
 const CURVE_WIDTH := 2.0
@@ -56,7 +57,7 @@ static func legend(current: Dictionary, chart_mode: String) -> Array:
 	var out: Array = []
 	var p = current.get("power", null)
 	out.append({"text": "—" if p == null else "%d W" % int(round(float(p))), "color": POWER_COLOR})
-	if chart_mode == "full":
+	if chart_mode in ["reduced", "full"]:
 		var h = current.get("hr", null)
 		out.append({"text": "—" if h == null else "%d bpm" % int(round(float(h))), "color": HR_COLOR})
 		var c = current.get("cadence", null)
@@ -98,14 +99,13 @@ func _on_draw() -> void:
 		draw_colored_polygon(pts, color)
 	# Courbes : FC et cadence d'abord, puissance par-dessus.
 	var curves: Dictionary = geo["curves"]
-	if mode == "full":
-		_draw_lines(curves.get("hr", []), HR_COLOR, CURVE_WIDTH)
-		_draw_lines(curves.get("cadence", []), CADENCE_COLOR, CURVE_WIDTH)
+	_draw_lines(curves.get("hr", []), HR_COLOR, CURVE_WIDTH)
+	_draw_lines(curves.get("cadence", []), CADENCE_COLOR, CURVE_WIDTH)
 	_draw_lines(curves.get("power", []), POWER_COLOR, POWER_WIDTH)
 	# Curseur de position (profil connu).
 	if model.has_profile:
 		var cx: float = geo["cursor_x"]
-		draw_line(Vector2(cx, 0.0), Vector2(cx, h), Color.WHITE, 2.0)
+		draw_line(Vector2(cx, 0.0), Vector2(cx, h), UiTheme.INK, 2.0)
 	# Légende, alignée à droite, de gauche à droite : puissance, FC, cadence.
 	var items := legend(geo["current"], mode)
 	var widths: Array = []
@@ -116,7 +116,7 @@ func _on_draw() -> void:
 		total += tw + 18.0
 	var x := w - total - 4.0
 	for i in range(items.size()):
-		draw_string_outline(font, Vector2(x, LEGEND_SIZE + 2.0), items[i]["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_SIZE, 5, Color(0.0, 0.0, 0.0, 0.8))
+		draw_string_outline(font, Vector2(x, LEGEND_SIZE + 2.0), items[i]["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_SIZE, 5, UiTheme.OUTLINE)
 		draw_string(font, Vector2(x, LEGEND_SIZE + 2.0), items[i]["text"], HORIZONTAL_ALIGNMENT_LEFT, -1, LEGEND_SIZE, items[i]["color"])
 		x += float(widths[i]) + 18.0
 

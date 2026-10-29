@@ -11,7 +11,6 @@ const EXPECTED_KEYS := [
 	"chunks_ahead",
 	"chunks_behind",
 	"fog_end_m",
-	"fog_volumetric",
 	"vegetation_density_factor",
 	"view_distance_m",
 ]
@@ -87,7 +86,7 @@ func _test_presets_table() -> void:
 	var keys_high := high.keys()
 	keys_high.sort()
 	_check(keys_low == EXPECTED_KEYS and keys_med == EXPECTED_KEYS and keys_high == EXPECTED_KEYS,
-		"preset : les 3 préréglages exposent exactement les 6 clés attendues")
+		"preset : les 3 préréglages exposent exactement les 5 clés attendues")
 
 	_check(float(low["view_distance_m"]) < float(med["view_distance_m"])
 		and float(med["view_distance_m"]) < float(high["view_distance_m"]),
@@ -117,13 +116,13 @@ func _test_presets_table() -> void:
 
 # Lot P4 : budgets du décor vivant (critère 10)
 func _test_living() -> void:
-	var keys := ["aircraft", "ambience_voices", "animals", "birds", "boats", "clouds", "cyclists", "distant_vehicles", "grass_tufts", "passersby",
-		"spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
+	var keys := ["aircraft", "ambience_voices", "animals", "birds", "boats", "clouds", "cyclists", "distant_vehicles", "grass_tufts",
+		"ground_grass", "ground_rocks", "ground_termites", "passersby", "spectators", "tree_sway", "vehicles", "water_shimmer", "weather_particles"]
 	for name in ["low", "medium", "high"]:
 		var l: Dictionary = QualityPresets.living(name)
 		var k := l.keys()
 		k.sort()
-		_check(k == keys, "living(%s) : les 15 budgets attendus" % name)
+		_check(k == keys, "living(%s) : les 18 budgets attendus (dont les 3 détails de sol du lot U8)" % name)
 	var low: Dictionary = QualityPresets.living("low")
 	_check(low["tree_sway"] == true and low["grass_tufts"] == 1500 and low["clouds"] == "flat"
 		and low["weather_particles"] == 600 and low["birds"] == 24 and low["animals"] == 20
@@ -162,8 +161,9 @@ func _test_living() -> void:
 
 # Lot Y13 : qualité d'image par préréglage, croissante de low à high, toujours un anticrénelage.
 func _test_image() -> void:
-	const KEYS := ["ao_half_size", "fxaa", "glow", "mesh_lod_threshold", "msaa", "shadow_atlas",
+	const KEYS := ["ao_half_size", "fog_volumetric", "fxaa", "glow", "mesh_lod_threshold", "msaa", "shadow_atlas",
 		"shadow_filter", "shadow_splits", "ssao", "ssil"]
+	var fogs := ["off", "light", "full"]
 	var levels := ["off", "low", "medium", "high"]
 	var filters := ["hard", "very_low", "low", "medium", "high"]
 	var prev := {}
@@ -173,13 +173,15 @@ func _test_image() -> void:
 		keys.sort()
 		_check(keys == KEYS, "image %s : les %d clés attendues" % [name, KEYS.size()])
 		_check(int(img["msaa"]) in [0, 2, 4, 8] and str(img["ssao"]) in levels and str(img["ssil"]) in levels
-			and str(img["shadow_filter"]) in filters and int(img["shadow_splits"]) in [2, 4],
+			and str(img["shadow_filter"]) in filters and int(img["shadow_splits"]) in [2, 4]
+			and str(img["fog_volumetric"]) in fogs,
 			"image %s : valeurs connues" % name)
 		_check(int(img["msaa"]) > 0 or bool(img["fxaa"]), "image %s : toujours un anticrénelage" % name)
 		if not prev.is_empty():
 			_check(int(img["msaa"]) >= int(prev["msaa"])
 				and levels.find(str(img["ssao"])) >= levels.find(str(prev["ssao"]))
 				and levels.find(str(img["ssil"])) >= levels.find(str(prev["ssil"]))
+				and fogs.find(str(img["fog_volumetric"])) >= fogs.find(str(prev["fog_volumetric"]))
 				and filters.find(str(img["shadow_filter"])) >= filters.find(str(prev["shadow_filter"]))
 				and int(img["shadow_atlas"]) >= int(prev["shadow_atlas"])
 				and float(img["mesh_lod_threshold"]) <= float(prev["mesh_lod_threshold"]),

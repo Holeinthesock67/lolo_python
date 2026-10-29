@@ -1,0 +1,25 @@
+{
+  "description": "Sous-menu ERG : créer un entraînement par intervalles (6 répétitions) puis importer un fichier des Téléchargements.",
+  "entrainement": true,
+  "telechargements": {"seuil_import.zwo": "Seuil importé"},
+  "etapes": [
+    {"ecran": "home", "delai": 15},
+    {"choisir": "erg"},
+    {"ecran": "workouts", "elements": ["erg_court", "_create", "_import"]},
+    {"choisir": "_create"},
+    {"ecran": "workout_create", "titre": "Créer un entraînement", "contient": ["Répétitions — 5", "Puissance de l'effort — 105 % de la FTP"]},
+    {"choisir": "param:reps"},
+    {"appui": ["PLUS_SHORT", "A_LONG"]},
+    {"ecran": "workout_create", "contient": ["Répétitions — 6"]},
+    {"choisir": "save"},
+    {"fichier": "OpenRide/Workouts/intervalles_6x240s_105.zwo"},
+    {"ecran": "workouts", "statut": "Créé : Intervalles 6 × 4 min à 105 %"},
+    {"choisir": "_import"},
+    {"ecran": "workout_import", "titre": "Importer un entraînement", "contient": ["seuil_import.zwo"], "delai": 10},
+    {"choisir": "file:0"},
+    {"fichier": "OpenRide/Workouts/seuil_import.zwo"},
+    {"ecran": "workouts", "statut": "Importé : Seuil importé"},
+    {"appui": "Y_SHORT"},
+    {"ecran": "home"}
+  ]
+}

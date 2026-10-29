@@ -1,9 +1,10 @@
 extends SceneTree
 
-## Tests sans écran de l'encart des bots du HUD (lot T15) : modèle bot_hud_model.gd (voisins présents ou
-## absents, bots sans champs de profil, FTP en W et en W/kg, réserve W′, maillots et porteurs, lignes qui
-## tiennent) et encart de hud_view.gd (lignes affichées, colonne de droite sans chevauchement, au-dessus
-## du profil d'altitude).
+## Tests sans écran de l'encart des bots du HUD (lot T15) : modèle bot_hud_model.gd (voisins marqués sur
+## leur ligne, présents ou absents, bots sans champs de profil, FTP en W et en W/kg, réserve W′, maillots
+## et porteurs, lignes qui tiennent autour du cycliste) et encart de hud_view.gd (lignes affichées, colonne
+## de droite sans chevauchement, au-dessus du profil d'altitude ; lot X22 : en 720 lignes avec les blocs
+## segment et bonus, les deux voisins avec maillot et W′ et la ligne des maillots).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_bot_hud_model.gd
 
 const Model := preload("res://scripts/bot_hud_model.gd")
@@ -60,12 +61,12 @@ func _test_model() -> void:
 	var bv := _view(_profile_bots())
 	var v: Dictionary = Model.view(bv, {"bot_ahead": "b2", "bot_behind": "b3",
 		"jerseys": {"sprint": "me", "kom": "b1"}})
-	var nb: Array = v["neighbors"]
-	_check(nb.size() == 2 and nb[0]["dir"] == "ahead" and nb[0]["name"] == "Rouleur" and nb[0]["gap_text"] == "+1,2 s",
-		"voisin devant : %s" % str(nb[0] if nb.size() > 0 else {}))
-	_check(nb.size() == 2 and nb[1]["dir"] == "behind" and nb[1]["name"] == "Diesel" and nb[1]["gap_text"] == "−3,1 s",
-		"voisin derrière : %s" % str(nb[1] if nb.size() > 1 else {}))
 	var rows: Array = v["rows"]
+	_check(rows[1]["dir"] == "ahead" and rows[1]["name"] == "Rouleur" and rows[1]["gap_text"] == "+1,2 s",
+		"voisin devant marqué sur sa ligne : %s" % str(rows[1]))
+	_check(rows[2]["dir"] == "behind" and rows[2]["name"] == "Diesel" and rows[2]["gap_text"] == "−3,1 s",
+		"voisin derrière marqué sur sa ligne : %s" % str(rows[2]))
+	_check(rows[0]["dir"] == "" and rows[3]["dir"] == "" and v["rider_index"] == 2, "autres lignes sans triangle, cycliste en 3e place")
 	_check(rows.size() == 4 and rows[0]["name"] == "Grimpeur" and rows[0]["detail"] == "248 W · 4,1 W/kg",
 		"ligne du grimpeur : nom, FTP en W et en W/kg (%s)" % str(rows[0]))
 	_check(is_equal_approx(rows[0]["wbal"], 0.715) and rows[0]["jersey"] == "kom" and rows[0]["gap_text"] == "+8,4 s",
@@ -74,10 +75,10 @@ func _test_model() -> void:
 	_check(rows[2]["jersey"] == "sprint" and rows[2]["wbal"] == 0.0 and rows[1]["jersey"] == "", "maillot vert, réserve vide, sans maillot")
 	_check(v["jerseys_text"] == "Vert : toi · Pois : Grimpeur", "porteurs des maillots : %s" % v["jerseys_text"])
 	_check(v["visible"], "encart visible avec des bots")
-	# Voisins absents : la ligne disparaît.
+	# Voisins absents : pas de triangle.
 	v = Model.view(bv, {"bot_ahead": null, "bot_behind": "b3", "jerseys": null})
-	_check(v["neighbors"].size() == 1 and v["neighbors"][0]["dir"] == "behind", "bot_ahead à null : une seule ligne de voisin")
-	_check(Model.view(bv, {"bot_ahead": "inconnu"})["neighbors"].is_empty(), "voisin hors de la liste : pas de ligne")
+	_check(v["rows"].map(func(r): return r["dir"]) == ["", "", "behind", ""], "bot_ahead à null : un seul voisin marqué")
+	_check(Model.view(bv, {"bot_ahead": "inconnu"})["rows"].all(func(r): return r["dir"] == ""), "voisin hors de la liste : aucun triangle")
 	_check(Model.view(bv, {})["jerseys_text"] == "", "sans jerseys : pas de ligne des maillots")
 	_check(Model.view(bv, {"jerseys": {"sprint": null, "kom": null}})["jerseys_text"] == "", "maillots sans porteur : pas de ligne")
 	# Bots sans champs de profil (puissance constante, fantôme, core sans T12).
@@ -113,10 +114,15 @@ func _test_race_fields() -> void:
 func _test_fit() -> void:
 	var v: Dictionary = Model.view(_view(_profile_bots()), {"bot_ahead": "b2", "bot_behind": "b3",
 		"jerseys": {"sprint": "me", "kom": "b1"}})
-	var full := Model.height(v, 4)
-	_check(Model.rows_that_fit(v, full) == 4 and Model.rows_that_fit(v, full + 500.0) == 4, "toutes les lignes tiennent")
-	_check(Model.rows_that_fit(v, full - 1.0) == 3, "un pixel de moins : une ligne de bot en moins")
-	_check(Model.rows_that_fit(v, 40.0) == 0, "place pour les voisins seulement : aucune ligne de bot")
+	var full := Model.height(4, true)
+	_check(Model.fit(v, full) == {"first": 0, "count": 4, "jerseys": true} and Model.fit(v, full + 500.0)["count"] == 4,
+		"toutes les lignes tiennent")
+	_check(Model.fit(v, full - 1.0) == {"first": 0, "count": 3, "jerseys": true}, "un pixel de moins : une ligne en moins, le plus loin derrière")
+	_check(Model.fit(v, Model.height(2, true)) == {"first": 1, "count": 2, "jerseys": true},
+		"place pour deux lignes : les deux voisins, puis les maillots")
+	_check(Model.fit(v, 40.0) == {"first": 1, "count": 2, "jerseys": false}, "sans place : les deux voisins restent, sans maillots")
+	_check(Model.window_start(0, 2, 4) == 0 and Model.window_start(4, 2, 4) == 2 and Model.window_start(2, 1, 4) == 1,
+		"fenêtre au début, à la fin, ligne devant pour un compte impair")
 
 
 func _test_hud() -> void:
@@ -124,8 +130,9 @@ func _test_hud() -> void:
 	root.add_child(hud)
 	var bv := _view(_profile_bots())
 	hud.update_bots(bv, {"bot_ahead": "b2", "bot_behind": "b3", "jerseys": {"sprint": "me", "kom": "b1"}})
-	_check(hud.panel_bots.visible and hud.neighbor_labels[0].visible and hud.neighbor_labels[0].text == "Rouleur"
-		and hud.neighbor_gaps[1].text == "−3,1 s", "HUD : encart des voisins")
+	_check(hud.panel_bots.visible and hud.neighbor_line("ahead") == hud.bots_lines[1]
+		and hud.neighbor_line("behind") == hud.bots_lines[2] and hud.bots_gaps[2].text == "−3,1 s"
+		and not hud.bots_arrows[0].visible, "HUD : triangles des voisins sur leurs lignes")
 	_check(hud.bots_lines[0].text == "Grimpeur  248 W · 4,1 W/kg" and hud.bots_gaps[0].text == "+8,4 s"
 		and hud.bots_jerseys[0].visible and hud.bots_kom_dots[0].visible and hud.bots_wbal_bg[0].visible,
 		"HUD : ligne du grimpeur (%s)" % hud.bots_lines[0].text)
@@ -135,7 +142,10 @@ func _test_hud() -> void:
 	var bots: Rect2 = hud.panel_bots.get_rect()
 	var bottom: float = maxf(hud.get_viewport().get_visible_rect().size.y, 720.0) - HudView.PROFILE_RESERVE
 	_check(bots.position.y >= right.end.y and bots.end.y <= bottom, "encart sous le panneau de droite, au-dessus du profil (%s)" % bots)
-	# Blocs segment et bonus affichés : l'encart descend, les lignes de bots qui ne tiennent plus sont cachées.
+	# Blocs segment et bonus affichés en 720 lignes : l'encart descend, les lignes de bots qui ne tiennent plus
+	# sont cachées.
+	root.size = Vector2i(1280, 720)
+	bottom = 720.0 - HudView.PROFILE_RESERVE
 	hud.update_segment({"segment": {"mode": "active", "title": "Montée 1", "main": "1:02", "detail": "", "tone": ""},
 		"powerup": {"visible": true, "held_text": "Z : Aéro", "active_text": "", "fraction": 0.0}})
 	var seg: Rect2 = hud.panel_segment.get_rect()
@@ -143,11 +153,18 @@ func _test_hud() -> void:
 	bots = hud.panel_bots.get_rect()
 	_check(not seg.intersects(bonus) and not bonus.intersects(bots) and bots.position.y >= bonus.end.y,
 		"colonne de droite empilée sans chevauchement (%s, %s, %s)" % [seg, bonus, bots])
-	_check(hud.neighbor_labels[0].visible and hud.neighbor_labels[1].visible, "voisins toujours affichés")
-	_check(bots.end.y <= bottom or not hud.bots_lines[0].visible, "lignes de bots cachées faute de place (%s)" % bots)
+	# Blocs réduits à HudView.BLOCK_SCALE (28/10) : les quatre lignes tiennent de nouveau sous les blocs.
+	var shown: int = hud.bots_lines.filter(func(l): return l.visible).size()
+	_check(shown == 4 and hud.neighbor_line("ahead") != null
+		and hud.neighbor_line("behind") != null and hud.jerseys_label.visible
+		and hud.panel_bots.get_global_rect().end.y <= bottom + 0.5,
+		"720 lignes, segment et bonus : voisins et maillots, encart au-dessus du profil (%d lignes, encart %s)" % [shown, hud.panel_bots.get_global_rect()])
+	_check(bots.end.y <= bottom, "encart au-dessus du profil (%s)" % bots)
+	_check(hud.panel_segment.size.y < 100.0 and hud.panel_bonus.size.y < 72.0,
+		"blocs à la hauteur de leur contenu (segment %.0f, bonus %.0f px)" % [hud.panel_segment.size.y, hud.panel_bonus.size.y])
 	# Sans voisin ni bot.
 	hud.update_bots(_view([{"id": "c1", "name": "Bot 200 W", "s": 1100.0, "v": 7.0, "kind": "constant"}]), {})
-	_check(not hud.neighbor_labels[0].visible and not hud.jerseys_label.visible and not hud.bots_wbal_bg[0].visible
+	_check(not hud.bots_arrows[0].visible and not hud.jerseys_label.visible and not hud.bots_wbal_bg[0].visible
 		and not hud.bots_jerseys[0].visible, "bot sans profil : ni voisin, ni maillot, ni jauge")
 	hud.update_bots([], {})
 	_check(not hud.panel_bots.visible, "sans bot : encart caché")

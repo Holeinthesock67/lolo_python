@@ -5,6 +5,7 @@ extends SceneTree
 
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
 var _checked := 0
@@ -89,6 +90,56 @@ func _init() -> void:
 	_check(col.call("frame_max_ms") == "16.00" and col.call("frame_p99_ms") == "16.00",
 		"p99 et pire image sans la capture (%s, %s)" % [col.call("frame_p99_ms"), col.call("frame_max_ms")])
 	_check(col.call("fps") == "38.66", "images/s avec les images de la capture : 15 images en 388 ms (%s)" % col.call("fps"))
+	# Saccades et démarrage (lot X15).
+	_check(not PerfProbe.active, "sonde fermée : inactive")
+	PerfProbe.mark("tuile", "near:0:0", 50.0)
+	PerfProbe.task("osm", "3", 80.0)
+	_check(PerfProbe._steps.is_empty() and PerfProbe._tasks.is_empty(), "sans sonde, mark et task ne retiennent rien")
+	var t_calls := Time.get_ticks_usec()
+	for i in 10000:
+		PerfProbe.mark("tuile", "near:0:0", 1.0)
+	var per_call_us := float(Time.get_ticks_usec() - t_calls) / 10000.0
+	print("mark sans sonde : %.2f µs par appel" % per_call_us)
+	_check(PerfBudget.check("perf_probe_mark_off", per_call_us / 1000.0), "sans sonde, mark coûte moins de 20 µs (%.2f µs ; une dizaine d'appels par seconde)" % per_call_us)
+	var sc: Dictionary = PerfProbe.saccade_cause([["tuile", "near:1:2", 12.0], ["arbres", "near:1:2", 30.5]], false, 60.0)
+	_check(sc["cause"] == "arbres" and sc["steps"] == "tuile near:1:2 12.0 | arbres near:1:2 30.5",
+		"cause : l'étape la plus longue (%s)" % sc["cause"])
+	_check(PerfProbe.saccade_cause([["arbres", "near:1:2", 18.5]], false, 147.0)["cause"] == "inconnue",
+		"étape de moins du quart de l'image : inconnue")
+	_check(PerfProbe.saccade_cause([], false, 40.0)["cause"] == "inconnue" and PerfProbe.saccade_cause([["osm", "4", 9.0]], true, 40.0)["cause"] == "capture",
+		"sans étape : inconnue ; capture prioritaire")
+	probe = PerfProbe.new()
+	_check(probe.open(csv, null, "low") and PerfProbe.active, "sonde rouverte : active")
+	probe.route_ready()
+	probe.distance_m = 1234.5
+	PerfProbe.mark("tuile", "near:1:2", 40.0)
+	probe.frame(0.045)                 # saccade due à la tuile
+	probe.frame(0.016)                 # étapes déjà comptées : rien à signaler
+	probe.frame(0.060)                 # saccade sans étape
+	PerfProbe.task("arbres", "1:2", 7.25)
+	for i in PerfProbe.PLAYABLE_FRAMES - 1:
+		probe.frame(0.016)
+	var started: bool = probe.startup_ms >= 0
+	_check(not started, "9 images jouables : pas encore démarré")
+	probe.frame(0.016)
+	started = probe.startup_ms >= 0
+	_check(started, "10 images de suite sous 33 ms : démarrage noté (%d ms)" % probe.startup_ms)
+	probe._last_us -= PerfProbe.PERIOD_US
+	probe.frame(0.016)
+	probe.close()
+	_check(not PerfProbe.active, "sonde refermée : inactive")
+	var sac := FileAccess.get_file_as_string(dir.path_join("saccades.csv")).strip_edges().split("\n")
+	_check(sac.size() == 3 and sac[0] == ";".join(PerfProbe.SACCADE_COLUMNS) and probe.saccades_written == 2, "deux saccades écrites")
+	var s1 := sac[1].split(";") if sac.size() == 3 else PackedStringArray(["", "", "", "", "", ""])
+	_check(s1[2] == "45.0" and s1[3] == "1234.5" and s1[4] == "tuile" and s1[5] == "tuile near:1:2 40.0",
+		"saccade 1 : 45 ms à 1234,5 m, cause tuile (%s)" % sac[1] if sac.size() > 1 else "?")
+	_check(sac.size() == 3 and sac[2].split(";")[4] == "inconnue", "saccade 2 sans étape : inconnue")
+	var tasks := FileAccess.get_file_as_string(dir.path_join("taches.csv")).strip_edges().split("\n")
+	_check(tasks.size() == 2 and tasks[1].ends_with(";arbres;1:2;7.25"), "tâche de fond écrite à la seconde (%s)" % tasks[-1])
+	_check(FileAccess.get_file_as_string(dir.path_join("demarrage.txt")).begins_with("Démarrage : première image jouable à "),
+		"demarrage.txt écrit")
+	for f in ["saccades.csv", "taches.csv", "demarrage.txt"]:
+		DirAccess.remove_absolute(dir.path_join(f))
 	DirAccess.remove_absolute(csv)
 	DirAccess.remove_absolute(dir)
 

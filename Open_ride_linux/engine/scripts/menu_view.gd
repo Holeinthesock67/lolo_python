@@ -40,6 +40,7 @@ var summary: VBoxContainer
 ## Aperçu 3D du Garage (lot V8), dans la carte de détail.
 var preview   # garage_preview.gd
 var button_bar: PanelContainer
+var _header: VBoxContainer
 var _item_panels: Array[PanelContainer] = []
 var _focus_style := UiTheme.row_style(true)
 var _plain_style := UiTheme.row_style(false)
@@ -69,6 +70,7 @@ func _init() -> void:
 	margins.add_child(box)
 	# En-tête : titre, ligne d'état, filet.
 	var header := VBoxContainer.new()
+	_header = header
 	header.add_theme_constant_override("separation", 6)
 	box.add_child(header)
 	title_label = UiTheme.label(UiTheme.TITLE_SIZE)
@@ -137,6 +139,24 @@ func items_text() -> String:
 	return " | ".join(parts)
 
 
+## Rangées affichées (tests, banc des menus) : identifiant, texte, focus et rectangle (repère du canevas).
+func test_rows() -> Array:
+	var out: Array = []
+	for p in _item_panels:
+		if p.visible:
+			out.append({"id": str(p.get_meta("item_id", "")), "text": _row_text(p), "focused": bool(p.get_meta("focused", false)),
+				"rect": p.get_global_rect()})
+	return out
+
+
+## Rectangle (repère du canevas) de la rangée affichée de l'élément `item_id` ; vide s'il n'est pas affiché.
+func item_rect(item_id: String) -> Rect2:
+	for p in _item_panels:
+		if p.visible and str(p.get_meta("item_id", "")) == item_id:
+			return p.get_global_rect()
+	return Rect2()
+
+
 ## Aide des boutons affichée, en une ligne (tests).
 func hint_text() -> String:
 	return button_bar.text()
@@ -153,6 +173,7 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	card.visible = not sheet.is_empty()
 	card.update_display(sheet)
 	summary.visible = screen == "summary"
+	card.custom_minimum_size.x = UiTheme.SUMMARY_CARD_W if summary.visible else UiTheme.CARD_W
 	var garage_preview: Dictionary = menu.get("preview", {})
 	preview.visible = not garage_preview.is_empty()
 	if preview.visible:
@@ -174,14 +195,26 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 		if p.visible:
 			_set_row(p, items[first + i], first + i == focus)
 	more_label.text = "%d / %d" % [focus + 1, items.size()] if items.size() > max_items else ""
+	more_label.visible = more_label.text != ""   # vide, il prendrait une ligne au-dessus du bandeau des boutons
 	devices.visible = screen in DEVICES_SCREENS
 	# Aide toujours visible (sans elle, rien ne dit qu'il faut un appui long pour valider).
 	button_bar.update_display(ButtonHelp.EDIT if menu.get("editing", false) or screen == "setting_edit" else screen)
 	if summary.visible:
 		summary.update_display(summary_data, show_details, str(state.get("mode", "")))
 		summary.update_progress(menu.get("progress", {}))
+		_fit_summary()
 	if devices.visible:
 		devices.update_display(state)
+
+
+## Bilan compacté pour que la carte tienne entre l'en-tête et le bandeau des boutons (taille de base de
+## l'écran, 1280 de large et au moins 720 de haut avec l'étirement canvas_items).
+func _fit_summary() -> void:
+	var screen_h := size.y if size.y > 0.0 else 720.0   # plein écran : hauteur de base de l'écran
+	var avail := screen_h - UiTheme.TOP - _header.get_combined_minimum_size().y - 2 * UiTheme.GAP \
+		- button_bar.get_combined_minimum_size().y
+	var pad: float = card.get_theme_stylebox("panel").get_minimum_size().x
+	summary.fit(UiTheme.SUMMARY_CARD_W - pad, func() -> bool: return card.get_combined_minimum_size().y <= avail)
 
 
 ## Entrée de liste : pictogramme, libellé, détail aligné à droite ; repère dessiné à gauche de la sélection.

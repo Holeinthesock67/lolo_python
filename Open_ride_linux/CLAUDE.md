@@ -50,6 +50,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `route_stats.py` : fiches des parcours (dénivelé, montée principale, durée, difficulté, fiche `.toml`), tri et filtres du catalogue (lot O15) ; copie exacte dans le compilateur ;
 - `demo_world.py` : parcours de démonstration ;
 - `workout.py`, `workout_formats.py` : lecture des `.zwo`, des `.erg` et `.mrc` de GoldenCheetah (lot O9) et contrôleur ERG ; `workout_menu.py` : entraînements créés ou importés depuis le menu ERG, écrits par le core seul (sous-menu ERG, décision D4 de l'audit IPC) ;
+- `free_erg.py` : ERG d'une session libre choisi sur l'écran de pause (commande `set_ride_mode`, lot O18) : cible constante (`FreeErg`) ou cadence verrouillée dans une plage de ± 15 % (`CadenceLock`, puissance adaptée progressivement), module pur ;
 - `mock_driver.py`, `replay.py` : simulateur de trainer et rejeu d'une séance enregistrée (`.jsonl` ou `.fit`) ;
 - `ble_sim.py`, `sim_scenarios.py` : Bluetooth simulé (HomeTrainer, paire de Click, ceinture) derrière les vrais pilotes, scénarios de pannes (`docs/SIMULATION_BLE.md`) ;
 - `hr_monitor.py` : ceinture cardio Bluetooth facultative (service 0x180D) ;
@@ -130,6 +131,7 @@ openride-compiler theme-install SOURCE # installe un thème depuis un dossier ou
 openride-core recover                  # FIT depuis le dernier journal après un plantage
 openride-core release-trainer          # libère le trainer resté réservé après un arrêt brutal
 openride-core summary --ftp 250        # bilan du dernier journal (ou d'un .jsonl/.fit) : NP, IF, TSS, zones ; --json
+openride-core session-report           # analyse du dernier journal (lot X12) : ~/OpenRide/rapports/<séance>/rapport.html ; --log, --engine-log
 openride-core history --weeks 8        # historique des séances et cumul par semaine ISO ; --json
 
 # Diagnostic matériel
@@ -187,5 +189,5 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
 
 - Il teste sur le vrai vélo et colle les journaux dans la conversation. Pour un problème, demander les lignes utiles : `grep -E "WARNING|ERROR|Perf|Click" ~/run_trainer.log | tail -30`.
 - Lui donner des commandes complètes, à copier-coller, en partant de `/home/utilisateur/Games/lolo_python`.
-- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, le statut dans `docs/lots/00_INDEX.md` (avec une section « Livraison » dans le lot) et `README.md` si les commandes changent. Les nombres de tests du `README.md` et du suivi doivent rester exacts : `core/tests/test_docs_coherence.py` les compare aux tests collectés et donne la valeur à écrire.
+- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, le statut dans `docs/lots/00_INDEX.md` (avec une section « Livraison » dans le lot) et `README.md` si les commandes changent. Les nombres de tests du `README.md` et du suivi (core, compilateur, fichiers de tests unitaires et tests de rendu de l'engine) doivent rester exacts : `core/tests/test_docs_coherence.py` les compare aux tests collectés ; `python3 scripts/recompte_tests.py` les réécrit (à lancer après chaque fusion de `main` dans une branche, avant de pousser).
 - Les lots de `docs/lots/` peuvent être réalisés directement ou confiés à une autre IA (modèle de message dans `00_INDEX.md` §4).

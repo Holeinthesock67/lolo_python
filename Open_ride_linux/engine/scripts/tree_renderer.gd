@@ -101,13 +101,19 @@ func is_tree_sway() -> bool:
 	return _tree_sway
 
 
+## Shader des panneaux croisés (copie cull_disabled de tree_sway.gdshader), un seul pour tous les
+## matériaux : un Shader par matériau ferait compiler autant de fois les mêmes pipelines (lot Y8 étape 2).
+static var _lod1_shader: Shader
+
+
 ## Matériau de balancement (Lot P5) ; `lod1` : panneaux croisés vus des deux côtés, amplitude réduite.
 static func sway_material(lod1: bool) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	if lod1:
-		var sh := Shader.new()
-		sh.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode cull_disabled;")
-		mat.shader = sh
+		if _lod1_shader == null:
+			_lod1_shader = Shader.new()
+			_lod1_shader.code = TreeSwayShader.code.replace("render_mode cull_back;", "render_mode cull_disabled;")
+		mat.shader = _lod1_shader
 		mat.set_shader_parameter("sway_amplitude_m", 0.45 * LOD1_SWAY_FACTOR)
 	else:
 		mat.shader = TreeSwayShader
@@ -146,6 +152,8 @@ func get_active_tree_count() -> int:
 
 
 ## Génère les données de placement des arbres d'une tuile (exécutable en thread secondaire).
+## `heights` : hauteurs réelles (pente, limite des arbres et biomes jugés sur le vrai relief) ; les arbres gardés sont
+## posés à la hauteur affichée de la route (`route.display_y`, relief exagéré des lots Q2 et Y15).
 ## Renvoie un dictionnaire avec la clé de tuile et les listes d'arbres par case [0..15].
 func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, theme: Dictionary,
 		density_factor: float, areas: Array = [], buildings: Array = []) -> Dictionary:
@@ -255,6 +263,10 @@ func prepare_tile(tile_x: int, tile_z: int, heights: PackedFloat32Array, route, 
 		var assigned := VegetationPlacer.assign_species(trees, biome_model, float(veg["max_density_per_ha"]) / maxf(clampf(density_factor, 0.0, 1.0), 1e-6), near_water)
 		trees = assigned["trees"]
 		tree_species = assigned["species"]
+	if route != null and route.relief_k != 1.0:
+		for k in range(trees.size()):
+			var tr := trees[k]
+			trees[k] = Vector4(tr.x, route.display_y(tr.y), tr.z, tr.w)
 	var t_cells := Time.get_ticks_usec()
 
 	# Répartition des arbres dans les 16 cases de 250 m x 250 m
@@ -509,7 +521,7 @@ func enforce_budget(cam_pos: Vector3, view: Dictionary = {}) -> void:
 static func build_lod0_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var trunk_col := Color(0.35, 0.22, 0.12)
+	var trunk_col := TreeSpecies.mat(Color(0.35, 0.22, 0.12), TreeSpecies.MAT_BARK)
 	var sides := 6
 
 	# Tronc (6 faces latérales = 12 triangles)
@@ -553,7 +565,7 @@ static func build_lod0_mesh() -> ArrayMesh:
 		{"y0": 2.2, "r": 1.2, "y1": 4.2},
 		{"y0": 3.2, "r": 0.8, "y1": 5.4},
 	]
-	var foliage_col := Color(0.18, 0.40, 0.18)
+	var foliage_col := TreeSpecies.mat(Color(0.18, 0.40, 0.18), TreeSpecies.MAT_NEEDLES)
 	for c in cones:
 		var y0: float = c["y0"]
 		var r: float = c["r"]
@@ -577,13 +589,13 @@ static func build_lod0_mesh() -> ArrayMesh:
 			st.add_vertex(tip)
 
 			var n_down := Vector3.DOWN
-			st.set_color(foliage_col * 0.8)
+			st.set_color(TreeSpecies.shade(foliage_col, 0.8))
 			st.set_normal(n_down)
 			st.add_vertex(Vector3(0.0, y0, 0.0))
-			st.set_color(foliage_col * 0.8)
+			st.set_color(TreeSpecies.shade(foliage_col, 0.8))
 			st.set_normal(n_down)
 			st.add_vertex(p1)
-			st.set_color(foliage_col * 0.8)
+			st.set_color(TreeSpecies.shade(foliage_col, 0.8))
 			st.set_normal(n_down)
 			st.add_vertex(p0)
 
@@ -593,7 +605,7 @@ static func build_lod0_mesh() -> ArrayMesh:
 static func build_lod1_mesh() -> ArrayMesh:
 	var st := SurfaceTool.new()
 	st.begin(Mesh.PRIMITIVE_TRIANGLES)
-	var col := Color(0.20, 0.38, 0.18)
+	var col := TreeSpecies.mat(Color(0.20, 0.38, 0.18), TreeSpecies.MAT_NEEDLES)
 	var w := 1.4
 	var h := 5.4
 
