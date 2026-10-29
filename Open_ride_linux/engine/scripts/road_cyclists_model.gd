@@ -17,14 +17,17 @@ extends RefCounted
 ##   derrière, se rabat à MERGE_AHEAD_M devant ; s'il ne gagne plus de terrain, il disparaît après GIVE_UP_S.
 ## Vitesse : vitesse de plat tirée du cas, convertie en puissance constante (frottement, pente, air), puis
 ## vitesse sur la pente sous le groupe (dans son sens), recalculée toutes les SPEED_PERIOD_S, au plus MAX_KMH.
-## Écart latéral : centre à centre, au moins MIN_GAP_M + 2 × RIDER_HALF_WIDTH_M du cycliste (sur l'axe) et,
-## à moins de BOT_LOOK_M d'un bot (posé à BOT_LATERAL_M, bots_view.gd), de ce bot : le groupe `ahead` se met
-## en file sur l'accotement. Au plus `budget` cyclistes à la fois (`living(preset).cyclists`), supprimés à plus
+## Écart latéral : centre à centre, au moins MIN_GAP_M + 2 × RIDER_HALF_WIDTH_M du cycliste (dans la voie de
+## droite, à RIDER_LATERAL_M de l'axe, lot P32) et, à moins de BOT_LOOK_M d'un bot (posé à BOT_LATERAL_M,
+## bots_view.gd), de ce bot : le groupe `ahead` se met en file sur l'accotement. Chacun roule à droite dans
+## son sens : `ahead` sur le bord droit, `oncoming` sur le bord gauche (sa droite), `overtake` passe à gauche
+## du cycliste puis se rabat sur le bord droit. Au plus `budget` cyclistes à la fois (`living(preset).cyclists`), supprimés à plus
 ## de REMOVE_BEHIND_M derrière ou REMOVE_AHEAD_M devant. En pause, tout est figé.
 ## Un groupe qui double dit « Salut ! » une fois sur SALUT_EVERY en passant (`last_event`, voix des passants).
 ## `lateral` : écart à l'axe, positif à droite du sens du parcours.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 
 const SLOT_M := 250.0
 const RATE_FLAT := 0.25
@@ -50,10 +53,11 @@ const GIVE_UP_S := 60.0
 const ABREAST_M := 0.6
 const FILE_GAP_M := 1.5
 const RIDER_HALF_WIDTH_M := 0.3
-const MIN_GAP_M := 1.2
+const MIN_GAP_M := 0.7                # d'épaule à épaule, comme un cycliste qui en double un autre
 const EDGE_IN_M := 0.5                # roues à 0,5 m du bord de la chaussée
 const SHOULDER_M := 0.5
-const BOT_LATERAL_M := 1.5
+const RIDER_LATERAL_M := RoadBuilder.RIDER_LATERAL_M
+const BOT_LATERAL_M := RoadBuilder.BOT_LATERAL_M
 const BOT_LOOK_M := 30.0
 const SIDE_SPEED_MPS := 1.5
 const SPEED_PERIOD_S := 1.0
@@ -198,9 +202,10 @@ static func speed_on_grade(p: float, grade_pct: float) -> float:
 	return clampf(lo, MIN_KMH / 3.6, MAX_KMH / 3.6)
 
 
-## Distance au bord intérieur (côté du cycliste) des places d'un groupe rangé sur un bord de la route.
+## Écart à l'axe de la place la plus proche de l'axe d'un groupe rangé sur le bord droit, à MIN_GAP_M au
+## moins du cycliste.
 func _edge_lateral() -> float:
-	return maxf(road_width_m * 0.5 - EDGE_IN_M, MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M)
+	return maxf(road_width_m * 0.5 - EDGE_IN_M, RIDER_LATERAL_M + MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M)
 
 
 func _grade_at(s: float, dir: int) -> float:
@@ -232,22 +237,25 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, b
 	groups = kept
 
 
-func _spawn(ev: Dictionary, rider_s: float, rider_v: float, bots_s: Array = []) -> void:
+func _spawn(ev: Dictionary, rider_s: float, rider_v: float, bots_s: Array = [], at_s: float = NAN) -> void:
 	var case_name: String = ev["case"]
 	var dir := -1 if case_name == "oncoming" else 1
 	var s0 := rider_s
-	match case_name:
-		"oncoming":
-			if traffic != null and not (traffic.vehicles as Array).is_empty():
-				return
-			s0 = rider_s + lerpf(SPAWN_AHEAD_M.x, SPAWN_AHEAD_M.y, float(ev["dist_m"]))
-		"ahead":
-			s0 = rider_s + lerpf(SPAWN_SLOW_M.x, SPAWN_SLOW_M.y, float(ev["dist_m"]))
-		_:
-			s0 = rider_s - SPAWN_BEHIND_M
-			if s0 < 0.0:
-				return
-	if s0 > route.length_m:
+	if not is_nan(at_s):
+		s0 = at_s
+	else:
+		match case_name:
+			"oncoming":
+				if traffic != null and not (traffic.vehicles as Array).is_empty():
+					return
+				s0 = rider_s + lerpf(SPAWN_AHEAD_M.x, SPAWN_AHEAD_M.y, float(ev["dist_m"]))
+			"ahead":
+				s0 = rider_s + lerpf(SPAWN_SLOW_M.x, SPAWN_SLOW_M.y, float(ev["dist_m"]))
+			_:
+				s0 = rider_s - SPAWN_BEHIND_M
+				if s0 < 0.0:
+					return
+	if s0 < 0.0 or s0 > route.length_m:
 		return
 	var flat := float(ev["kmh"]) / 3.6
 	if case_name == "overtake":
@@ -278,6 +286,16 @@ func _spawn(ev: Dictionary, rider_s: float, rider_v: float, bots_s: Array = []) 
 	spawned_total += 1
 
 
+## Groupe posé par un test (lot P32 : captures et contrôle des voies) : cas `case_name`, `size` cyclistes, de
+## front si `abreast`, tête à `rel_m` du cycliste ; il suit ensuite les mêmes règles que les autres.
+func place_for_test(rider_s: float, rider_v: float, case_name: String, rel_m: float, size: int = 1, abreast: bool = false) -> void:
+	if route == null or not case_name in ["oncoming", "ahead", "overtake"]:
+		return
+	var kmh: float = {"oncoming": ONCOMING_KMH.x, "ahead": AHEAD_KMH.x, "overtake": OVERTAKE_KMH.y}[case_name]
+	_spawn({"case": case_name, "slot": 1000000 + spawned_total, "kmh": kmh, "dist_m": 0.0, "size": maxi(1, size),
+		"abreast": abreast, "hash": 7919 * (spawned_total + 1), "salut": false}, rider_s, rider_v, [], rider_s + rel_m)
+
+
 ## Vrai si un bot est à moins de BOT_LOOK_M du groupe (de son dernier à son premier).
 func _bot_near(g: Dictionary, bots_s: Array) -> bool:
 	var head := float(g["s"])
@@ -294,10 +312,10 @@ func _target_lateral(g: Dictionary, m: Dictionary) -> float:
 	var col := float(m["col"]) * ABREAST_M
 	match str(g["case"]):
 		"oncoming":
-			return -(edge + col)
+			return -(road_width_m * 0.5 - EDGE_IN_M + col)
 		"overtake":
 			if str(g["side"]) == "left":
-				return -(MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M)
+				return RIDER_LATERAL_M - (MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M)
 	if bool(g.get("bot_near", false)):
 		return maxf(edge, BOT_LATERAL_M + MIN_GAP_M + 2.0 * RIDER_HALF_WIDTH_M)
 	return edge + col

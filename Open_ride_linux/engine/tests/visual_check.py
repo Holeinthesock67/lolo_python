@@ -1076,6 +1076,7 @@ def _scenes(s: Session) -> None:
     _menu_scenes(s)
     _pentes_scenes(s)
     _decor_vivant_scene(s)
+    _voies_scene(s)
     fps = [c.info.get("fps", 0) for c in s.report.captures if c.config == s.name]
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
 
@@ -1210,6 +1211,72 @@ def _decor_vivant_scene(s: Session) -> None:
         s.check("decor_pause", "décor figé en pause (véhicules, cyclistes, ciel, bateaux)",
                 sig_a is not None and sig_a != 0 and sig_a == sig_b, f"signature {sig_a} puis {sig_b}")
     core.set_scene(speed=SPEED_MPS, session_state="RUNNING", pause_reason=None)
+
+
+PASS_WINDOW_M = 10.0   # voiture qui double vue à moins de 10 m devant ou derrière le cycliste (lot P32)
+PASS_WAIT_S = 12.0
+
+
+def _place(s: Session, **spec: Any) -> None:
+    s.core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "decor_place", **spec})
+
+
+def _check_lanes(s: Session, scene: str, info: dict[str, Any]) -> None:
+    """Lot P32 : chacun roule à droite dans son sens. Cycliste à droite de l'axe ; usagers en face à gauche de
+    l'axe (leur droite) ; cyclistes du décor qui roulent devant, dans le même sens, à droite."""
+    dec = info.get("decor", {})
+    rider = float(dec.get("rider_lateral", 0.0))
+    s.check(scene, "cycliste dans la voie de droite", 0.5 <= rider <= 2.0, f"{rider:+.2f} m de l'axe")
+    users = dec.get("road_users", [])
+    facing = [u for u in users if u["dir"] < 0]
+    s.check(scene, "usagers en face sur leur droite (à gauche de l'axe)", bool(facing) and all(u["lateral"] < 0.0 for u in facing),
+            ", ".join(f"{u['what']} {u['lateral']:+.2f} m" for u in facing) or "aucun en face")
+    ahead = [u for u in users if u["dir"] > 0 and u["what"] == "cyclist" and u["kind"] == "ahead"]
+    if ahead:
+        s.check(scene, "cyclistes devant, même sens, à droite du cycliste", all(u["lateral"] > rider for u in ahead),
+                ", ".join(f"{u['lateral']:+.2f} m" for u in ahead))
+
+
+def _voies_scene(s: Session) -> None:
+    """Lot P32 (demande du 29 octobre : « les véhicules et les cyclistes roulent à droite de la route et pas au
+    milieu ») : une voiture et un cycliste en face, deux cyclistes devant dans le même sens, puis un utilitaire
+    posé en train de doubler (caméra derrière l'avatar), posés par le test (`decor_place`) ; positions lues dans
+    `road_users`. Le décor avance au pas de l'image : sous Xvfb (quelques images/s), il paraît ralenti."""
+    core = s.core
+    core.set_scene(speed=SPEED_MPS, s=DECOR_S + 400.0, session_state="RUNNING", grade=0.0, grade_sent=0.0)
+    time.sleep(SETTLE_S)
+    _place(s, vehicle={"kind": "car_a", "dir": -1, "rel_m": 70.0, "kmh": 40.0},
+           cyclists={"case": "ahead", "rel_m": 14.0, "size": 2, "abreast": False})
+    _place(s, cyclists={"case": "oncoming", "rel_m": 45.0, "size": 1})
+    time.sleep(1.5)
+    shot = s.capture("voies_face")
+    if shot:
+        _check_lanes(s, "voies_face", shot[1])
+        s.check_world("voies_face", *shot)
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
+    time.sleep(1.0)
+    _place(s, vehicle={"kind": "van", "dir": 1, "rel_m": 4.0, "kmh": 60.0})
+    shot = None
+    t0 = now()
+    while now() - t0 < PASS_WAIT_S:
+        time.sleep(0.3)
+        shot = s.capture("voies_depassement")
+        users = shot[1].get("decor", {}).get("road_users", []) if shot else []
+        if any(u["what"] == "vehicle" and u["dir"] > 0 and 0.0 < u["rel_m"] < PASS_WINDOW_M for u in users):
+            break
+    caps = [c for c in s.report.captures if c.config == s.name and c.scene == "voies_depassement"]
+    for c in caps[:-1]:
+        s.report.captures.remove(c)
+    if shot:
+        dec = shot[1].get("decor", {})
+        rider = float(dec.get("rider_lateral", 0.0))
+        passing = [u for u in dec.get("road_users", []) if u["what"] == "vehicle" and u["dir"] > 0
+                   and -PASS_WINDOW_M < u["rel_m"] < PASS_WINDOW_M]
+        gap = [abs(rider - u["lateral"]) - u["half_width"] - 0.3 for u in passing]
+        s.check("voies_depassement", "voiture qui double à 1,5 m au moins, sur la gauche", bool(passing)
+                and all(u["lateral"] < rider for u in passing) and min(gap) >= 1.5 - 1e-3,
+                ", ".join(f"{u['lateral']:+.2f} m, écart {g:.2f} m" for u, g in zip(passing, gap)) or "aucune à côté")
+    core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 
 def _menu_scenes(s: Session) -> None:

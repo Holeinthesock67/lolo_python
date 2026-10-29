@@ -118,6 +118,9 @@ var _sound_at := -INF
 
 var _route = null
 var _road_width_m := RoadBuilder.ROAD_WIDTH_M
+var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par step (placements des tests, lot P32)
+var _rider_v := 0.0
+var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
 var _job: Dictionary = {}
 var _generation := 0
 var _loaded_chunks: Dictionary = {}  # k -> true (tronçons OSM affichés)
@@ -418,6 +421,10 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	_poll_job()
 	if not enabled or _route == null:
 		return
+	_cam_s = cam_s
+	_rider_v = rider_v
+	var h := deg_to_rad(float(_route.sample(cam_s)["heading_deg"]))
+	_cam_lateral = (cam_pos - _route.sample_point(cam_s)).dot(Vector3(cos(h), 0.0, sin(h)))
 	var rider_pos := cam_pos - Vector3(0.0, 1.4, 0.0)
 	# Météo (P8)
 	weather_eval = WeatherModel.evaluate(weather, alt_m, _valley_alt_at(cam_s), wind_eval)
@@ -516,6 +523,38 @@ func _animal_count() -> int:
 
 ## État du décor pour les captures des tests graphiques : nombres affichés, météo, et le panneau le plus
 ## proche devant la caméra (texte, distance, hauteur des lettres à l'écran en pixels de l'image).
+## Placement demandé par un test (`_test` « decor_place », lot P32) : `vehicle` {kind, dir, rel_m, kmh} et
+## `cyclists` {case, rel_m, size, abreast}, posés par rapport à la dernière position du cycliste.
+func test_place(spec: Dictionary) -> void:
+	if not prepared:
+		return
+	if spec.get("vehicle") is Dictionary:
+		var v: Dictionary = spec["vehicle"]
+		traffic.place_for_test(_cam_s, str(v.get("kind", "car_a")), int(v.get("dir", -1)), float(v.get("rel_m", 60.0)),
+			float(v.get("kmh", 50.0)))
+	if spec.get("cyclists") is Dictionary:
+		var c: Dictionary = spec["cyclists"]
+		cyclists.place_for_test(_cam_s, _rider_v, str(c.get("case", "ahead")), float(c.get("rel_m", 30.0)),
+			int(c.get("size", 1)), bool(c.get("abreast", false)))
+
+
+## Usagers de la route du parcours à moins de `within_m` du cycliste (lot P32) : sorte, sens (+1 comme le
+## cycliste), écart à l'axe (positif à droite du sens du parcours) et abscisse relative.
+func road_users(within_m: float = 300.0) -> Array:
+	var out := []
+	for v in traffic.vehicles:
+		var rel := float(v["s"]) - _cam_s
+		if absf(rel) <= within_m:
+			out.append({"what": "vehicle", "kind": str(v["kind"]), "dir": int(v["dir"]), "lateral": float(v["lateral"]),
+				"half_width": float(TrafficModel.KINDS[v["kind"]]["half_width"]), "rel_m": rel})
+	for r in cyclists.riders():
+		var rel := float(r["s"]) - _cam_s
+		if absf(rel) <= within_m:
+			out.append({"what": "cyclist", "kind": str(r["group"]["case"]), "dir": int(r["dir"]), "lateral": float(r["lateral"]),
+				"half_width": RoadCyclistsModel.RIDER_HALF_WIDTH_M, "rel_m": rel})
+	return out
+
+
 func test_info(cam: Camera3D) -> Dictionary:
 	var out := {
 		"enabled": enabled, "prepared": prepared, "props": props.prop_count() if props != null else 0,
@@ -534,6 +573,8 @@ func test_info(cam: Camera3D) -> Dictionary:
 		"fog_boost": float(weather_eval.get("fog_boost", 0.0)),
 		"sounds": sounds_heard.duplicate(),
 		"frozen_sig": frozen_signature(),
+		"road_users": road_users(),
+		"rider_lateral": _cam_lateral,
 		"sign": {},
 	}
 	if cam == null or props == null:

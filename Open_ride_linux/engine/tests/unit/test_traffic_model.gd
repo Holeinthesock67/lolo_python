@@ -6,6 +6,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_traffic_model.gd
 
 const TrafficModel := preload("res://scripts/traffic_model.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
 const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
@@ -71,6 +72,7 @@ func _ride(route, budget: int, rng_seed: int) -> Dictionary:
 	var max_live := 0
 	var overlap := 0
 	var too_close := 0
+	var wrong_side := 0
 	var bad_pass := 0
 	var bad_spawn := 0
 	var usec := 0
@@ -91,8 +93,13 @@ func _ride(route, budget: int, rng_seed: int) -> Dictionary:
 					bad_spawn += 1
 			var k: Dictionary = TrafficModel.KINDS[v["kind"]]
 			if absf(float(v["s"]) - s) < float(k["length"]) * 0.5 + 0.5:
-				if absf(float(v["lateral"])) - float(k["half_width"]) - TrafficModel.RIDER_HALF_WIDTH_M < TrafficModel.LATERAL_CLEARANCE_M - 1e-4:
+				if absf(float(v["lateral"]) - RoadBuilder.RIDER_LATERAL_M) - float(k["half_width"]) - TrafficModel.RIDER_HALF_WIDTH_M < TrafficModel.LATERAL_CLEARANCE_M - 1e-4:
 					too_close += 1
+			# Lot P32 : à droite dans son sens, hors dépassement ; le cycliste dans la voie de droite
+			var rel_v := float(v["s"]) - s
+			if (int(v["dir"]) == -1 and float(v["lateral"]) >= 0.0) or (int(v["dir"]) == 1 and float(v["lateral"]) <= 0.0
+					and (rel_v < TrafficModel.PASS_ZONE_M.x - 60.0 or rel_v > TrafficModel.PASS_ZONE_M.y + 60.0)):
+				wrong_side += 1
 			if int(v["dir"]) == 1 and float(v["lateral"]) < 0.0:
 				for o in vs:
 					if int(o["dir"]) == -1 and float(o["s"]) > float(v["s"]) and float(o["s"]) - float(v["s"]) < 150.0:
@@ -108,7 +115,7 @@ func _ride(route, budget: int, rng_seed: int) -> Dictionary:
 					overlap += 1
 		s += v_mps * dt
 	return {"count": seen.size(), "overtakes": tm.overtakes_total, "log": log, "max_live": max_live, "overlap": overlap,
-		"too_close": too_close, "bad_pass": bad_pass, "bad_spawn": bad_spawn, "avg_ms": usec / 1000.0 / frames}
+		"too_close": too_close, "wrong_side": wrong_side, "bad_pass": bad_pass, "bad_spawn": bad_spawn, "avg_ms": usec / 1000.0 / frames}
 
 
 func _test_renderer(route) -> void:
@@ -195,6 +202,14 @@ func _run() -> void:
 	_check(r["bad_spawn"] == 0, "aucun véhicule au-dessus de la limite de neige ni sur la pente de 10 %")
 	_check(r["overlap"] == 0, "jamais deux véhicules au même endroit")
 	_check(r["too_close"] == 0, "jamais un véhicule à moins de 1,5 m latéralement du cycliste")
+	_check(r["wrong_side"] == 0, "chaque véhicule à droite dans son sens hors dépassement (%d écarts)" % r["wrong_side"])
+	_check(RoadBuilder.RIDER_LATERAL_M > 0.5 and RoadBuilder.RIDER_LATERAL_M < RoadBuilder.ROAD_WIDTH_M * 0.5,
+		"cycliste dans la voie de droite (%.1f m de l'axe)" % RoadBuilder.RIDER_LATERAL_M)
+	for k in TrafficModel.KINDS:
+		var on := TrafficModel.oncoming_lateral(k)
+		var hw := float(TrafficModel.KINDS[k]["half_width"])
+		_check(on < 0.0 and RoadBuilder.RIDER_LATERAL_M - on - hw - TrafficModel.RIDER_HALF_WIDTH_M >= TrafficModel.LATERAL_CLEARANCE_M - 1e-4,
+			"%s en face sur sa droite (%.2f m), à 1,5 m au moins du cycliste" % [k, on])
 	_check(r["bad_pass"] == 0, "jamais de dépassement face à un véhicule venant en sens inverse")
 	_check(r["max_live"] <= 3, "jamais plus que le budget de 3 (%d)" % r["max_live"])
 	var r2: Dictionary = _ride(route, 3, 7)
@@ -206,7 +221,7 @@ func _run() -> void:
 	for sd in range(1, 13):
 		var rs: Dictionary = _ride(route, 5, sd)
 		counts.append(rs["count"])
-		safe = safe and rs["overlap"] == 0 and rs["too_close"] == 0 and rs["bad_pass"] == 0 and rs["bad_spawn"] == 0 \
+		safe = safe and rs["overlap"] == 0 and rs["too_close"] == 0 and rs["wrong_side"] == 0 and rs["bad_pass"] == 0 and rs["bad_spawn"] == 0 \
 			and rs["max_live"] <= 5 and rs["count"] >= 3 and rs["count"] <= 15
 	_check(safe, "12 autres graines, budget 5 : mêmes garanties, de 3 à 15 véhicules (%s)" % str(counts))
 	# Lot P25 : les sept sortes, d'après leurs parts

@@ -7,6 +7,7 @@ const IpcClientScript := preload("res://scripts/ipc_client.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
 const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
@@ -737,9 +738,9 @@ func _process(delta: float) -> void:
 		return
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
-		var pos: Vector3 = route.sample_point(s_route)
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
+		var pos := _rider_point(s_route, heading)
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
 		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
@@ -778,10 +779,10 @@ func _menu_camera(delta: float) -> bool:
 	if ipc.test_mode or route == null or not session_state in ["IDLE", "READY", "FINISHED"]:
 		return false
 	_menu_s = route.wrap_s(_menu_s + MENU_CAMERA_MPS * delta)
-	var pos: Vector3 = route.sample_point(_menu_s)
-	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
+	var heading: float = deg_to_rad(route.sample_heading_deg(_menu_s))
+	camera.global_position = _rider_point(_menu_s, heading) + Vector3(0.0, 1.4, 0.0)
 	camera.fov = _base_fov
-	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
+	camera.rotation.y = -heading
 	camera.rotation.x = deg_to_rad(CameraViews.camera_pitch_deg(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS)))
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
@@ -963,6 +964,9 @@ func _on_test_message(msg: Dictionary) -> void:
 		"menu_focus":   # focus sur un élément de l'écran courant du menu (tests graphiques du Garage, lot V8)
 			menu_flow.menu.focus_item(str(msg.get("id", "")))
 			_refresh_menu()
+		"decor_place":   # véhicule ou cyclistes du décor posés près du cycliste (captures et contrôle des voies, lot P32)
+			if living_decor != null:
+				living_decor.test_place(msg)
 		"avatar_camera":   # caméra de contrôle derrière (« follow ») ou à côté (« side ») de l'avatar (lot V6)
 			_avatar_cam = str(msg.get("view", "")) if str(msg.get("view", "")) in ["follow", "side"] else ""
 			avatar_view.set_visible_for_view(_avatar_view_name())
@@ -1166,6 +1170,12 @@ func _configure_avatar() -> void:
 	avatar_model.configure(raw, float(ipc.core_config.get("ftp_w", 0.0)))
 	avatar_view.configure(avatar_model.settings, 0)
 	avatar_view.set_visible_for_view(_avatar_view_name())
+
+
+## Place du cycliste à `s` : dans la voie de droite, à RoadBuilder.RIDER_LATERAL_M de l'axe (lot P32) ; `heading`
+## en radians. La caméra, l'avatar et la vue des menus en partent.
+func _rider_point(s: float, heading: float) -> Vector3:
+	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * RoadBuilder.RIDER_LATERAL_M
 
 
 ## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.
