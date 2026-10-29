@@ -1,0 +1,4 @@
+{
+  "description": "Serveur surchargé : la première demande de chaque chemin reçoit 429, 500 ou 503.",
+  "serveur": {"latence_s": 0.05, "erreurs": {"codes": [429, 500, 503], "par_chemin": 1}}
+}
