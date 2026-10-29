@@ -423,3 +423,31 @@ def test_status_parameters_are_traced(caplog):
     with caplog.at_level(logging.INFO, logger="ftms_driver"):
         drv._on_status(None, bytearray([0x02, 0x01]))
     assert any("octets 01" in r.getMessage() for r in caplog.records)
+
+
+# --- 8. Lignes `ftms` du journal JSONL ------------------------------------------------------------
+
+def test_ftms_events_reach_the_journal_sink():
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(trace_ftms=False), BikeConfig(), clock=lambda: now[0])
+    got: list[dict] = []
+    drv.event_sink = got.append
+    drv._on_status(None, bytearray([0x14, 0x02]))
+    drv._on_training_status(None, bytearray([0x00, 0x0d]))
+    _drive(drv, now, [(0, 450, 80), (1, 440, 80), (2, 5, 80)])
+    drv.set_sim_grade(2.0)
+    kinds = [(g["event"], g.get("code"), g.get("data")) for g in got]
+    assert ("status", "0x14", "02") in kinds and ("training_status", None, "000d") in kinds
+    loss = next(g for g in got if g["event"] == "brake_loss")
+    assert loss["kind"] == "ftms" and loss["from_w"] == 440 and loss["to_w"] == 5 and loss["cadence_rpm"] == 80
+
+
+def test_ftms_line_is_written_by_the_recorder(tmp_path):
+    from openride_core.recorder import SessionRecorder
+    from openride_core.journal import read_journal
+    rec = SessionRecorder(tmp_path, "r")
+    rec.event("start", 1.0)
+    rec.ftms({"ts": 2.0, "event": "brake_loss", "from_w": 450, "to_w": 5, "cadence_rpm": 80, "speed_kmh": 36.0})
+    lines = list(read_journal(rec.path))
+    assert [ln["kind"] for ln in lines] == ["header", "event", "ftms"]
+    assert rec.events == [lines[1]] and lines[2]["event"] == "brake_loss"

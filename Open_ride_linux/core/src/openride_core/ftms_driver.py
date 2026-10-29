@@ -270,6 +270,7 @@ class FtmsDriver:
         self._trainer_resistance: int | None = None
         self._trace_ibd_at = float("-inf")
         self._last_brake_loss_at = float("-inf")
+        self.event_sink: Callable[[dict], None] | None = None   # lignes `ftms` du journal (posé par la session)
         self.brake_losses = 0   # pertes de frein détectées (reprise de contrôle tentée à chacune)
         self._loaded_at = float("-inf")   # dernier instant à plus de BRAKE_LOSS_FROM_W
         self._loaded_w = 0.0
@@ -429,6 +430,15 @@ class FtmsDriver:
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
             self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
 
+    def _emit(self, event: str, **fields: Any) -> None:
+        """Ligne `ftms` du journal JSONL (statuts du trainer, perte de frein) ; jamais bloquante."""
+        if self.event_sink is None:
+            return
+        try:
+            self.event_sink({"kind": "ftms", "ts": round(time.time(), 3), "event": event, **fields})
+        except Exception:
+            log.debug("Ligne ftms du journal perdue", exc_info=True)
+
     def _check_brake_loss(self, now: float, power_w: float) -> None:
         """Détecte un frein lâché par le trainer et tente une reprise du contrôle (voir BRAKE_LOSS_*)."""
         if power_w >= BRAKE_LOSS_FROM_W:
@@ -437,10 +447,12 @@ class FtmsDriver:
             if power_w >= BRAKE_BACK_W and self._cadence >= BRAKE_LOSS_MIN_RPM:
                 log.info("Trainer : puissance revenue (%.0f W) %.1f s après la reprise du contrôle",
                          power_w, now - self._brake_lost_at)
+                self._emit("power_back", after_s=round(now - self._brake_lost_at, 1), power_w=round(power_w))
                 self._brake_lost_at = None
             elif now - self._brake_lost_at > BRAKE_BACK_WINDOW_S:
                 log.warning("Trainer : la puissance n'est pas revenue %.0f s après la reprise du contrôle",
                             BRAKE_BACK_WINDOW_S)
+                self._emit("power_not_back", after_s=BRAKE_BACK_WINDOW_S)
                 self._brake_lost_at = None
         want = self._want
         loaded = want.mode == "sim" or want.value >= 100.0   # ERG à 0 W (repos d'un bloc) : pas de frein attendu
@@ -454,6 +466,8 @@ class FtmsDriver:
             speed = "—" if self._trainer_speed_kmh is None else f"{self._trainer_speed_kmh:.0f} km/h"
             log.warning("Trainer : le frein a lâché (%.0f W puis %.0f W à %.0f tr/min, volant %s) ; "
                         "contrôle repris et consigne renvoyée", self._loaded_w, power_w, self._cadence, speed)
+            self._emit("brake_loss", from_w=round(self._loaded_w), to_w=round(power_w),
+                       cadence_rpm=round(self._cadence), speed_kmh=self._trainer_speed_kmh)
             self._forget_sent()   # nouvelle prise de contrôle et renvoi de la consigne au prochain tour
 
     def _trace_ibd(self, now: float) -> None:
@@ -500,6 +514,7 @@ class FtmsDriver:
 
     def _on_training_status(self, _ch: Any, data: bytearray) -> None:
         log.info("FTMS < Training Status %s", bytes(data).hex())
+        self._emit("training_status", data=bytes(data).hex())
 
     def _on_status(self, _ch: Any, data: bytearray) -> None:
         status = ftms.parse_machine_status(bytes(data))
@@ -508,6 +523,7 @@ class FtmsDriver:
         code, name = status
         now = self._clock()
         is_echo = self._is_status_echo(code, now)
+        self._emit("status", code=f"0x{code:02X}", name=name, data=bytes(data[1:]).hex(), echo=is_echo)
         if self.cfg.trace_ftms:
             valeurs = ""
             if code == 0x08 and len(data) >= 3:
