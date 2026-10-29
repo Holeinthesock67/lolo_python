@@ -124,8 +124,11 @@ func _test_profile() -> void:
 	m.set_ftp(200.0)
 	m.set_workout_w([[60, 150, 150], [60, null, null]], 120.0)
 	var gw: Dictionary = m.geometry(120.0, 400.0)
-	_check(gw["profile"].size() == 2 and gw["profile"][1]["zone"] == -1 and gw["profile"][1]["color"] == ErgView.FREERIDE_COLOR,
-		"profil en watts (.erg) : roue libre grise")
+	_check(gw["profile"].size() == 1, "profil en watts (.erg) : case sans cible ignorée (pas de roue libre, lot O19)")
+	var nf = ChartModel.new()
+	nf.set_workout_w([[60, 150, 150]], 60.0)
+	var gn: Dictionary = nf.geometry(60.0, 400.0)
+	_check(gn["profile"][0]["zone"] == -1 and gn["profile"][0]["color"] == ErgView.NEUTRAL_COLOR, "sans FTP connue : gris neutre")
 	_check(gw["profile"][0]["zone"] == 2, "150 W à FTP 200 (75 %) : zone 3")
 
 

@@ -2,7 +2,7 @@
 
 Un plan (`~/OpenRide/Plans/<id>.toml`, format décrit dans `docs/contracts/plan_format_v1.md`)
 range par semaine et par jour des entraînements de la bibliothèque (`~/OpenRide/Workouts/`,
-`.zwo`, `.erg`, `.mrc`) ou des tests de FTP (`ftp_test:ramp`, `ftp_test:20min`, lot O10).
+`.zwo`, `.erg`, `.mrc`) ou des tests de FTP (`ftp_test:ramp`, lot O10).
 
 - Jours : `lundi` à `dimanche` (calendrier) ou `jour1` à `jour7` (plan sans calendrier). La
   semaine 1 est la semaine du lundi au dimanche qui contient la date de début ; les séances de
@@ -38,7 +38,7 @@ BUILTIN_WORKOUTS_DIR = Path(__file__).resolve().parents[2] / "workouts"
 
 WEEKDAYS = ("lundi", "mardi", "mercredi", "jeudi", "vendredi", "samedi", "dimanche")
 GENERIC_DAYS = tuple(f"jour{i}" for i in range(1, 8))
-FTP_TESTS = ("ftp_test:ramp", "ftp_test:20min")
+FTP_TESTS = ("ftp_test:ramp",)
 CATCH_UP_DAYS = 3
 DONE_RATIO = 0.8
 PLAN_ID_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")

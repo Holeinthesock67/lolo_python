@@ -75,7 +75,6 @@ func evaluate(now_s: float) -> Dictionary:
 	var workout_name := str(_last_erg.get("workout_name", ""))
 	var block_index := int(_last_erg.get("block_index", 1))
 	var block_count := maxi(1, int(_last_erg.get("block_count", 1)))
-	var block_type := str(_last_erg.get("block_type", "steady"))
 	var block_total_s := maxf(0.0, float(_last_erg.get("block_total_s", 0.0)))
 	var target_w := int(round(float(_last_erg.get("target_w", 0))))
 	var next_target_raw: Variant = _last_erg.get("next_target_w", null)
@@ -90,18 +89,15 @@ func evaluate(now_s: float) -> Dictionary:
 
 	var title := "%s — Bloc %d / %d" % [workout_name, block_index, block_count]
 
-	var target_text := "Roue libre" if block_type == "freeride" else ("%d W" % target_w)
+	var target_text := "%d W" % target_w
 	if bias_pct != 100:
 		target_text += " (%d %%)" % bias_pct
 
 	var rem_text := format_mm_ss(rem_s)
 
 	var next_text := ""
-	if block_index < block_count:
-		if next_target_raw == null:
-			next_text = "Ensuite : Roue libre dans %s" % rem_text
-		else:
-			next_text = "Ensuite : %d W dans %s" % [int(round(float(next_target_raw))), rem_text]
+	if block_index < block_count and next_target_raw != null:
+		next_text = "Ensuite : %d W dans %s" % [int(round(float(next_target_raw))), rem_text]
 
 	var progress := 0.0
 	if block_total_s > 0.0:
@@ -222,7 +218,7 @@ static func profile_bars(blocks: Array, ftp_w: float, width: float, height: floa
 		var ef := 0.0
 		var start_w := 0
 		var end_w := 0
-		if b_type != "freeride" and sf_raw != null:
+		if sf_raw != null:
 			sf = maxf(0.0, float(sf_raw))
 			ef = maxf(0.0, float(ef_raw if ef_raw != null else sf_raw))
 			start_w = int(round(ftp_w * sf))
