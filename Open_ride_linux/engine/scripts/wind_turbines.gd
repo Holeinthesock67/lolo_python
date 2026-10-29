@@ -29,9 +29,9 @@ const COLOR := Color(0.92, 0.93, 0.94)
 const PropShader := preload("res://shaders/props.gdshader")
 const RoadsideProps := preload("res://scripts/roadside_props.gd")
 ## Matières de props.gdshader (lot Y8 étape 4) : joints des tronçons et porte du mât, capot, pales usées.
-const KIND_TOWER := 4
-const KIND_NACELLE := 5
-const KIND_BLADE := 6
+const KIND_TOWER := 3
+const KIND_NACELLE := 4
+const KIND_BLADE := 5
 
 var _points: Array = []          # {pos: Vector3, height: float, yaw: float, rotor: float}
 var _slots: Array = []           # {root, nacelle, rotor, point: int}
