@@ -37,6 +37,10 @@ du trainer (cadence inchangée) ou du cycliste (cadence d'abord), avec les statu
 (lignes `ftms` du pilote, PR #580, notées `ftms` dans `events.csv`), et mesure le pompage par palier
 (module `decrochages`).
 
+Suivi en direct (lot X45) : `--fenetre` ouvre une fenêtre de terminal à part (`suivi_direct`) qui montre
+le palier, le compte à rebours, la puissance, la cadence et les alertes, et qui reste ouverte après la fin
+de l'essai avec le verdict et les décrochages relevés ; utile quand le banc est lancé à distance.
+
 Trainer simulé réaliste (lot X6) : `--response realiste` (frein à retard pur, serrage et relâchement,
 volant d'inertie ; `--calibration steps.csv` d'un essai réel pour reprendre ses valeurs) ; le banc compare
 alors chaque t63 mesuré à celui du modèle (retard + constante de temps), à ± 20 %. Protocoles en plus de
@@ -62,7 +66,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import config
-from . import decrochages
+from . import decrochages, suivi_direct
 from .guide import Guide
 
 DEFAULT_OUT = Path.home() / "OpenRide" / "trainer_steps"
@@ -574,6 +578,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--materiel", action="store_true", help="affiche le matériel à préparer et quitte")
     ap.add_argument("--sans-attente", action="store_true", help="démarre sans attendre « Entrée »")
     ap.add_argument("--muet", action="store_true", help="sans bips")
+    ap.add_argument("--fenetre", action="store_true",
+                    help="suivi en direct dans une fenêtre à part, qui reste ouverte à la fin (lot X45)")
     args = ap.parse_args(argv)
     if args.materiel:
         from .guide import materials_text
@@ -620,7 +626,13 @@ def main(argv: list[str] | None = None) -> int:
                 return 2
         out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
         guide = Guide(f"Banc de latence du trainer ({args.mode})", out / "guide.jsonl",
-                      sound=False if args.muet else None)
+                      sound=False if args.muet else None,
+                      live_file=out / suivi_direct.LIVE_NAME if args.fenetre else None)
+        if args.fenetre:
+            guide.publish(force=True)
+            opened = suivi_direct.launch(out / suivi_direct.LIVE_NAME)
+            print(f"Fenêtre de suivi : {opened}" if opened else "Aucun terminal trouvé pour la fenêtre de suivi : "
+                  f"lancer {' '.join(suivi_direct.command(out / suivi_direct.LIVE_NAME))}")
         try:
             interactive = args.trainer == "ftms" and not args.sans_attente and sys.stdin.isatty()
             guide.prepare("trainer_steps", wait=interactive, auto_s=0 if args.fast else 10.0)
@@ -637,6 +649,9 @@ def main(argv: list[str] | None = None) -> int:
         for r in results:
             if r.t90_s is not None:
                 guide.measure(f"palier {r.index} ({step_label(Step(r.mode, r.value, 0, r.grade_pct))})", f"t90 {r.t90_s:g}", "s")
+        drops, _ = decrochages.analyse(bench_source(rec, out.name))
+        for d in drops:
+            guide.note(f"Décrochage à {d.t:.0f} s ({d.from_w:g} → {d.to_w:g} W) : {decrochages.KIND_TEXT[d.kind]}")
         guide.finish(True, "Essai fini : tu peux arrêter de pédaler")
         guide.close()
     results = analyse(rec)
