@@ -52,12 +52,12 @@ def test_cli_trace_ftms_option():
 # --- 2. Formatage des trames Control Point -----------------------------------------------
 
 def test_format_cp_write_sim_payload():
-    # Exemple cité dans le cahier LOT_Q3 : SIM pente 3.20 % crr 0.0040 cw 0.196 (11 0000 4001 28 c4)
-    payload = bytes.fromhex("11 0000 4001 28 c4")
+    # Exemple cité dans le cahier LOT_Q3 : SIM pente 3.20 % crr 0.0040 cw 0.39 (11 0000 4001 28 27)
+    payload = bytes.fromhex("11 0000 4001 28 27")
     op_name, vals, hex_str = format_cp_write(payload)
     assert op_name == "SIM"
-    assert vals == "pente 3.20 % crr 0.0040 cw 0.196"
-    assert hex_str == "11 0000 4001 28 c4"
+    assert vals == "pente 3.20 % crr 0.0040 cw 0.390"
+    assert hex_str == "11 0000 4001 28 27"
 
 
 def test_format_cp_write_erg_and_control():
