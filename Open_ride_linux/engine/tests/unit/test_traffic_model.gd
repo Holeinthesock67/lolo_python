@@ -6,6 +6,8 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_traffic_model.gd
 
 const TrafficModel := preload("res://scripts/traffic_model.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
+const RoadCyclistsModel := preload("res://scripts/road_cyclists_model.gd")
 const TrafficRenderer := preload("res://scripts/traffic_renderer.gd")
 const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const SoundPlayer := preload("res://scripts/sound_player.gd")
@@ -71,6 +73,7 @@ func _ride(route, budget: int, rng_seed: int) -> Dictionary:
 	var max_live := 0
 	var overlap := 0
 	var too_close := 0
+	var wrong_side := 0
 	var bad_pass := 0
 	var bad_spawn := 0
 	var usec := 0
@@ -91,8 +94,13 @@ func _ride(route, budget: int, rng_seed: int) -> Dictionary:
 					bad_spawn += 1
 			var k: Dictionary = TrafficModel.KINDS[v["kind"]]
 			if absf(float(v["s"]) - s) < float(k["length"]) * 0.5 + 0.5:
-				if absf(float(v["lateral"])) - float(k["half_width"]) - TrafficModel.RIDER_HALF_WIDTH_M < TrafficModel.LATERAL_CLEARANCE_M - 1e-4:
+				if absf(float(v["lateral"]) - RoadBuilder.RIDER_LATERAL_M) - float(k["half_width"]) - TrafficModel.RIDER_HALF_WIDTH_M < TrafficModel.LATERAL_CLEARANCE_M - 1e-4:
 					too_close += 1
+			# Lot P32 : à droite dans son sens, hors dépassement ; le cycliste dans la voie de droite
+			var rel_v := float(v["s"]) - s
+			if (int(v["dir"]) == -1 and float(v["lateral"]) >= 0.0) or (int(v["dir"]) == 1 and float(v["lateral"]) <= 0.0
+					and (rel_v < TrafficModel.PASS_ZONE_M.x - 60.0 or rel_v > TrafficModel.PASS_ZONE_M.y + 60.0)):
+				wrong_side += 1
 			if int(v["dir"]) == 1 and float(v["lateral"]) < 0.0:
 				for o in vs:
 					if int(o["dir"]) == -1 and float(o["s"]) > float(v["s"]) and float(o["s"]) - float(v["s"]) < 150.0:
@@ -108,7 +116,70 @@ func _ride(route, budget: int, rng_seed: int) -> Dictionary:
 					overlap += 1
 		s += v_mps * dt
 	return {"count": seen.size(), "overtakes": tm.overtakes_total, "log": log, "max_live": max_live, "overlap": overlap,
-		"too_close": too_close, "bad_pass": bad_pass, "bad_spawn": bad_spawn, "avg_ms": usec / 1000.0 / frames}
+		"too_close": too_close, "wrong_side": wrong_side, "bad_pass": bad_pass, "bad_spawn": bad_spawn, "avg_ms": usec / 1000.0 / frames}
+
+
+## Lot P32 : véhicules, cyclistes du décor et un bot ensemble, 30 km à 30 km/h ; collisions (carrosseries qui se
+## touchent, entre véhicules ou avec un cycliste ou le bot) et écarts de carrosserie aux cyclistes dépassés.
+func _ride_mixed(route, rng_seed: int) -> Dictionary:
+	var tm = TrafficModel.new()
+	tm.configure(route, {"terrain": {"snow_line_m": 2200.0}}, _villages(), 5, rng_seed)
+	var cy = RoadCyclistsModel.new()
+	cy.configure(route, [], _villages(), 12, rng_seed, RoadBuilder.ROAD_WIDTH_M, tm)
+	var v_mps := 30.0 / 3.6
+	var dt := 1.0 / 15.0     # 15 images/s : mêmes résultats qu’à 30 (vérifié), deux fois plus rapide
+	var s := 300.0
+	var bot := 150.0
+	var hits := 0
+	var hit_vehicles := 0
+	var hit_cyclists := 0
+	var close_pass := 0
+	var met := 0
+	var waited := 0
+	while s < 30500.0:
+		cy.update(s, v_mps, dt, false, [bot])
+		var others: Array = cy.riders()
+		others.append({"s": bot, "lateral": RoadBuilder.BOT_LATERAL_M, "dir": 1})
+		tm.update(s, v_mps, dt, false, others)
+		var vs: Array = tm.vehicles
+		for v in vs:
+			var k: Dictionary = TrafficModel.KINDS[v["kind"]]
+			if int(v["dir"]) == 1 and not v.get("committed", false) and float(v["s"]) - s > -TrafficModel.FOLLOW_GAP_M - 2.0 \
+					and float(v["s"]) < s:
+				waited += 1
+			for o in others:
+				if absf(float(o["s"]) - float(v["s"])) < float(k["length"]) * 0.5 + TrafficModel.CYCLIST_HALF_LENGTH_M:
+					met += 1
+					var side := absf(float(o["lateral"]) - float(v["lateral"])) - float(k["half_width"]) - TrafficModel.RIDER_HALF_WIDTH_M
+					if side < 0.0:
+						hits += 1
+					elif int(o["dir"]) == int(v["dir"]) and side < TrafficModel.LATERAL_CLEARANCE_M - 1e-3:
+						close_pass += 1
+		for i in range(vs.size()):
+			for j in range(i + 1, vs.size()):
+				var a: Dictionary = vs[i]
+				var b: Dictionary = vs[j]
+				var ka: Dictionary = TrafficModel.KINDS[a["kind"]]
+				var kb: Dictionary = TrafficModel.KINDS[b["kind"]]
+				if absf(float(a["s"]) - float(b["s"])) < (float(ka["length"]) + float(kb["length"])) * 0.5 \
+						and absf(float(a["lateral"]) - float(b["lateral"])) < float(ka["half_width"]) + float(kb["half_width"]):
+					hit_vehicles += 1
+		# Cyclistes du décor entre eux (groupes différents), avec le cycliste et avec le bot
+		var everyone: Array = others.duplicate()
+		everyone.append({"s": s, "lateral": RoadBuilder.RIDER_LATERAL_M, "dir": 1})
+		for i in range(everyone.size()):
+			for j in range(i + 1, everyone.size()):
+				var p: Dictionary = everyone[i]
+				var q: Dictionary = everyone[j]
+				if p.has("group") and q.has("group") and p["group"] == q["group"]:
+					continue
+				if absf(float(p["s"]) - float(q["s"])) < 2.0 * TrafficModel.CYCLIST_HALF_LENGTH_M \
+						and absf(float(p["lateral"]) - float(q["lateral"])) < 2.0 * TrafficModel.RIDER_HALF_WIDTH_M:
+					hit_cyclists += 1
+		s += v_mps * dt
+		bot += 31.0 / 3.6 * dt
+	return {"hits": hits, "hit_vehicles": hit_vehicles, "hit_cyclists": hit_cyclists, "close_pass": close_pass, "met": met, "waited": waited,
+		"spawned": tm.spawned_total, "groups": cy.spawned_total}
 
 
 func _test_renderer(route) -> void:
@@ -195,6 +266,14 @@ func _run() -> void:
 	_check(r["bad_spawn"] == 0, "aucun véhicule au-dessus de la limite de neige ni sur la pente de 10 %")
 	_check(r["overlap"] == 0, "jamais deux véhicules au même endroit")
 	_check(r["too_close"] == 0, "jamais un véhicule à moins de 1,5 m latéralement du cycliste")
+	_check(r["wrong_side"] == 0, "chaque véhicule à droite dans son sens hors dépassement (%d écarts)" % r["wrong_side"])
+	_check(RoadBuilder.RIDER_LATERAL_M > 0.5 and RoadBuilder.RIDER_LATERAL_M < RoadBuilder.ROAD_WIDTH_M * 0.5,
+		"cycliste dans la voie de droite (%.1f m de l'axe)" % RoadBuilder.RIDER_LATERAL_M)
+	for k in TrafficModel.KINDS:
+		var on := TrafficModel.oncoming_lateral(k)
+		var hw := float(TrafficModel.KINDS[k]["half_width"])
+		_check(on < 0.0 and RoadBuilder.RIDER_LATERAL_M - on - hw - TrafficModel.RIDER_HALF_WIDTH_M >= TrafficModel.LATERAL_CLEARANCE_M - 1e-4,
+			"%s en face sur sa droite (%.2f m), à 1,5 m au moins du cycliste" % [k, on])
 	_check(r["bad_pass"] == 0, "jamais de dépassement face à un véhicule venant en sens inverse")
 	_check(r["max_live"] <= 3, "jamais plus que le budget de 3 (%d)" % r["max_live"])
 	var r2: Dictionary = _ride(route, 3, 7)
@@ -206,9 +285,20 @@ func _run() -> void:
 	for sd in range(1, 13):
 		var rs: Dictionary = _ride(route, 5, sd)
 		counts.append(rs["count"])
-		safe = safe and rs["overlap"] == 0 and rs["too_close"] == 0 and rs["bad_pass"] == 0 and rs["bad_spawn"] == 0 \
+		safe = safe and rs["overlap"] == 0 and rs["too_close"] == 0 and rs["wrong_side"] == 0 and rs["bad_pass"] == 0 and rs["bad_spawn"] == 0 \
 			and rs["max_live"] <= 5 and rs["count"] >= 3 and rs["count"] <= 15
 	_check(safe, "12 autres graines, budget 5 : mêmes garanties, de 3 à 15 véhicules (%s)" % str(counts))
+	# Lot P32 : aucune collision avec les cyclistes du décor, le bot ni entre véhicules
+	var mixed := {"hits": 0, "hit_vehicles": 0, "hit_cyclists": 0, "close_pass": 0, "met": 0, "waited": 0, "spawned": 0, "groups": 0}
+	for sd in range(1, 17):
+		var rm: Dictionary = _ride_mixed(route, sd)
+		for key in mixed:
+			mixed[key] = int(mixed[key]) + int(rm[key])
+	print("véhicules et cyclistes ensemble, 16 graines : %s" % str(mixed))
+	_check(mixed["met"] > 0 and mixed["hits"] == 0, "jamais un véhicule sur un cycliste du décor ou le bot (%d croisements)" % mixed["met"])
+	_check(mixed["hit_vehicles"] == 0, "jamais deux véhicules l'un sur l'autre, cyclistes du décor présents")
+	_check(mixed["hit_cyclists"] == 0, "jamais deux cyclistes l'un sur l'autre (décor, cycliste, bot) (%d)" % mixed["hit_cyclists"])
+	_check(mixed["close_pass"] == 0, "cyclistes du décor et bot doublés à 1,5 m au moins (%d écarts)" % mixed["close_pass"])
 	# Lot P25 : les sept sortes, d'après leurs parts
 	var drawn := {}
 	var tm_k = TrafficModel.new()
