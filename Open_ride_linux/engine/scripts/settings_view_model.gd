@@ -9,7 +9,8 @@ extends RefCounted
 ## cinq pas), A long enregistre, Y annule ; la rangée du réglage passe en mode édition dans sa liste
 ## (row(), lot « présentation des menus »). Tout réglage en % de 0 à 100 (difficulté, volumes) s'affiche en curseur ; le curseur de la
 ## difficulté sert aussi sur l'écran de pause, où il envoie `set_difficulty` (lot Q1) sans toucher à
-## config.toml.
+## config.toml. Les autres lignes de la pause (lot O18, session libre) : mode SIM / ERG / ERG cadence,
+## puissance cible et cadence cible, qui envoient `set_ride_mode` ; clés « pause.… » (pause_item()).
 ## Le même écran sert aux paramètres de « Créer un entraînement » (lot N16, clés « workout.… ») :
 ## commit() renvoie alors l'action interne `builder_set`.
 ## Pas de class_name : charger par preload("res://scripts/settings_view_model.gd").
@@ -20,8 +21,13 @@ const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 ## Écran de modification des champs de l'avatar du Garage (V8) : seul réglage qui garde son écran
 ## (aperçu 3D à côté), les autres se modifient en place dans leur liste.
 const EDIT_SCREEN := "setting_edit"
-## Clé de la modification de la difficulté ouverte depuis la pause (difficulté de la séance en cours).
-const PAUSE_DIFFICULTY := "pause.difficulty"
+## Clés des lignes modifiables de l'écran de pause : « pause. » + identifiant de la ligne (menu_model.gd).
+const PAUSE_PREFIX := "pause."
+const PAUSE_DIFFICULTY := "pause.difficulty"   # difficulté de la séance en cours
+const PAUSE_RIDE_MODE := "pause.ride_mode"     # session libre : SIM, ERG ou ERG cadence (lot O18)
+const PAUSE_TARGET_W := "pause.target_w"       # ERG libre : puissance cible
+const PAUSE_CADENCE := "pause.cadence_rpm"     # ERG cadence : cadence cible
+const RIDE_MODES := ["sim", "erg", "cadence"]
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
 ## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
 ## Courbes de la séance (lot O14) : `render.chart` prend `hidden` / `reduced` / `full`.
@@ -33,6 +39,7 @@ const CHOICE_TEXTS := {
 	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},
 	"render.fps": {"off": "non", "on": "oui"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
+	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 
 ## Sous-écrans de « Réglages » (champ `group` du message `settings`), dans l'ordre d'affichage :
@@ -199,10 +206,27 @@ func begin_with(it: Dictionary) -> void:
 	editing = it.duplicate(true)
 
 
-## Modification de la difficulté depuis la pause, à partir de la valeur de la séance.
-func begin_pause_difficulty(pct: int) -> void:
-	editing = {"key": PAUSE_DIFFICULTY, "label": "Difficulté", "type": "int", "value": pct,
-		"min": 0, "max": 100, "step": 10, "unit": "%"}
+## Ligne modifiable de l'écran de pause (clé « pause.… ») avec sa valeur ; {} pour une clé inconnue.
+## Bornes de la puissance et de la cadence : celles du core (free_erg.py, contrat 1.5 `set_ride_mode`).
+static func pause_item(key: String, value) -> Dictionary:
+	match key:
+		PAUSE_DIFFICULTY:
+			return {"key": key, "label": "Difficulté", "type": "int", "value": value, "min": 0, "max": 100,
+				"step": 10, "unit": "%"}
+		PAUSE_RIDE_MODE:
+			return {"key": key, "label": "Mode", "type": "choice", "value": value, "choices": RIDE_MODES.duplicate()}
+		PAUSE_TARGET_W:
+			return {"key": key, "label": "Puissance cible", "type": "int", "value": value, "min": 50, "max": 1000,
+				"step": 5, "unit": "W"}
+		PAUSE_CADENCE:
+			return {"key": key, "label": "Cadence cible", "type": "int", "value": value, "min": 50, "max": 120,
+				"step": 1, "unit": "tr/min"}
+	return {}
+
+
+## Modification d'une ligne de l'écran de pause, à partir de la valeur de la séance.
+func begin_pause(key: String, value) -> void:
+	editing = pause_item(key, value)
 
 
 func step(direction: int) -> void:
@@ -232,8 +256,15 @@ func commit() -> Dictionary:
 	editing = {}
 	if e.is_empty():
 		return {}
-	if e["key"] == PAUSE_DIFFICULTY:
-		return {"action": "set_difficulty", "pct": int(e["value"])}
+	match str(e["key"]):
+		PAUSE_DIFFICULTY:
+			return {"action": "set_difficulty", "pct": int(e["value"])}
+		PAUSE_RIDE_MODE:
+			return {"action": "set_ride_mode", "args": {"mode": str(e["value"])}}
+		PAUSE_TARGET_W:
+			return {"action": "set_ride_mode", "args": {"mode": "erg", "target_w": int(e["value"])}}
+		PAUSE_CADENCE:
+			return {"action": "set_ride_mode", "args": {"mode": "cadence", "cadence_rpm": int(e["value"])}}
 	if str(e["key"]).begins_with(GarageViewModel.KEY_PREFIX):
 		return {"action": "garage_set", "key": str(e["key"]).substr(GarageViewModel.KEY_PREFIX.length()),
 			"value": int(e["value"])}

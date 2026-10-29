@@ -153,9 +153,12 @@ func _test_hud() -> void:
 	bots = hud.panel_bots.get_rect()
 	_check(not seg.intersects(bonus) and not bonus.intersects(bots) and bots.position.y >= bonus.end.y,
 		"colonne de droite empilée sans chevauchement (%s, %s, %s)" % [seg, bonus, bots])
-	_check(hud.bots_lines[0].text.begins_with("Rouleur") and hud.bots_lines[1].text.begins_with("Diesel")
-		and not hud.bots_lines[2].visible and hud.bots_wbal_bg[0].visible and hud.bots_jerseys[1].visible
-		and hud.jerseys_label.visible, "720 lignes, segment et bonus : les deux voisins avec maillot et W′, puis les maillots (%s | %s | %s, encart %s)" % [hud.bots_lines[0].text, hud.bots_lines[1].text, hud.bots_lines[2].visible, hud.panel_bots.get_rect()])
+	# Blocs réduits à HudView.BLOCK_SCALE (28/10) : les quatre lignes tiennent de nouveau sous les blocs.
+	var shown: int = hud.bots_lines.filter(func(l): return l.visible).size()
+	_check(shown == 4 and hud.neighbor_line("ahead") != null
+		and hud.neighbor_line("behind") != null and hud.jerseys_label.visible
+		and hud.panel_bots.get_global_rect().end.y <= bottom + 0.5,
+		"720 lignes, segment et bonus : voisins et maillots, encart au-dessus du profil (%d lignes, encart %s)" % [shown, hud.panel_bots.get_global_rect()])
 	_check(bots.end.y <= bottom, "encart au-dessus du profil (%s)" % bots)
 	_check(hud.panel_segment.size.y < 100.0 and hud.panel_bonus.size.y < 72.0,
 		"blocs à la hauteur de leur contenu (segment %.0f, bonus %.0f px)" % [hud.panel_segment.size.y, hud.panel_bonus.size.y])

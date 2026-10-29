@@ -232,15 +232,26 @@ func _start_args() -> Dictionary:
 	return out
 
 
-## Difficulté de la séance affichée sur l'écran de pause (curseur du lot O4, commande set_difficulty).
-## `row` : rangée de SettingsViewModel.row() (curseur, valeur, mode édition en place).
-func set_pause_difficulty(row: Dictionary) -> void:
-	for it in _screens[PAUSE]["items"]:
-		if it["id"] == "difficulty":
-			it["label"] = str(row["label"])
-			it["detail"] = str(row["detail"])
+## Lignes modifiables de l'écran de pause, après Reprendre, Terminer et Abandonner : difficulté (curseur
+## du lot O4, commande set_difficulty) et, en session libre (lot O18), mode SIM / ERG / ERG cadence,
+## puissance ou cadence cible (set_ride_mode). `rows` : rangées de SettingsViewModel.row() (valeur,
+## curseur, mode édition en place) ; leur `id` est renvoyé par une action « item » de l'écran de pause.
+## Le focus reste sur la même ligne quand la liste change.
+func set_pause_rows(rows: Array) -> void:
+	var items: Array = [_item("resume", "Reprendre"), _item("end_save", "Terminer et enregistrer"),
+		_item("abandon", "Abandonner")]
+	for row in rows:
+		var it := _item(str(row["id"]), str(row["label"]), true, str(row.get("detail", "")))
+		if row.has("bar"):
 			it["bar"] = int(row["bar"])
-			it["editing"] = bool(row.get("editing", false))
+		it["editing"] = bool(row.get("editing", false))
+		items.append(it)
+	var focused_id := ""
+	if _screen == PAUSE and _focus >= 0 and _focus < _screens[PAUSE]["items"].size():
+		focused_id = _screens[PAUSE]["items"][_focus]["id"]
+	_screens[PAUSE]["items"] = items
+	if _screen == PAUSE:
+		_focus = _first_enabled_from(_index_of(focused_id), 1)
 
 
 func set_sim_session(on: bool) -> void:
@@ -614,7 +625,7 @@ func _validate() -> Dictionary:
 					return {"action": "end_session", "save": true}
 				"abandon":
 					_confirm("Abandonner la séance ?", {"action": "end_session", "save": false})
-				"difficulty":
+				_:   # lignes modifiables (set_pause_rows) : modifiées en place par menu_flow.gd
 					return {"action": "item", "screen": PAUSE, "id": id}
 		_:
 			return {"action": "item", "screen": _screen, "id": id}
