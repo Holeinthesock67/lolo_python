@@ -181,13 +181,13 @@ def parse_erg(text: str, workout_id: str, source: str = "<erg>", *, percent: boo
 
 def to_mrc(workout: Workout, ftp_w: float) -> str:
     """Texte `.mrc` d'un entraînement (cibles absolues ramenées à `ftp_w`), pour `workouts install
-    --erg-relative`. Les roues libres sont écrites à 0 %."""
+    --erg-relative`."""
     lines = ["[COURSE HEADER]", "VERSION = 2", "UNITS = ENGLISH", f"DESCRIPTION = {workout.name}",
              "MINUTES PERCENT", "[END COURSE HEADER]", "[COURSE DATA]"]
     t = 0.0
     for b in workout.blocks:
         a, z = b.profile_fracs(ftp_w)
-        a, z = (a or 0.0) * 100.0, (z or 0.0) * 100.0
+        a, z = a * 100.0, z * 100.0
         lines.append(f"{t / 60.0:.4f}\t{a:.2f}")
         t += b.duration_s
         lines.append(f"{t / 60.0:.4f}\t{z:.2f}")

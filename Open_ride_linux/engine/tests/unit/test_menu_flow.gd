@@ -514,9 +514,9 @@ func _test_ftp_flow() -> void:
 	for i in range(4):
 		f.handle("PLUS_SHORT")
 	f.handle("A_LONG")
-	_check(f.state()["screen"] == "ftp_test" and _ids(f) == ["ramp", "20min"] and f.state()["status"] != "",
-		"écran Test de FTP : rampe, 20 minutes, conseil (%s)" % f.state()["status"])
-	_check(f.state()["items"][0]["detail"] == "≈ 22 min" and f.state()["items"][1]["detail"] == "≈ 55 min"
+	_check(f.state()["screen"] == "ftp_test" and _ids(f) == ["ramp"] and f.state()["status"] != "",
+		"écran Test de FTP : la rampe seule (lot O19), conseil (%s)" % f.state()["status"])
+	_check(f.state()["items"][0]["detail"] == "≈ 22 min"
 		and f.state()["card"]["name"] == "Rampe" and f.state()["card"]["tiles"][1]["value"] == "250",
 		"test de FTP : durées calculées et carte (%s)" % str(f.state()["items"].map(func(it): return it["detail"])))
 	f.handle("A_LONG")
@@ -547,7 +547,7 @@ func _test_ftp_flow() -> void:
 	_check(f.handle("A_LONG").is_empty() and f.state()["status"] == "FTP gardée : 250 W" and _ids(f)[0] == "new_session",
 		"Garder : FTP inchangée")
 	f.on_state({"session_state": "RUNNING"})
-	f.on_state({"session_state": "FINISHED", "summary": {"ftp_test": {"test": "20min", "ftp_w": null,
+	f.on_state({"session_state": "FINISHED", "summary": {"ftp_test": {"test": "ramp", "ftp_w": null,
 		"previous_ftp_w": 250, "warnings": ["too_short"], "reliable": false}}})
 	_check(f.state()["status"] == "Test de FTP : aucune FTP calculable ; test trop court" and _ids(f)[0] == "new_session",
 		"sans FTP calculable : rien à accepter")

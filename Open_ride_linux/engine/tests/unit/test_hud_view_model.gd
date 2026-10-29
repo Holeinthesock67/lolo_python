@@ -249,7 +249,7 @@ func _test_next_climb() -> void:
 		"boucle : montée trouvée après l'arrivée, à %.0f m" % c4.get("start_m", -1.0))
 
 
-## Lignes du HUD de séance (main.gd) : SIM, ERG, roue libre, fréquence cardiaque.
+## Lignes du HUD de séance (main.gd) : SIM, ERG, palier à 50 W (lot O19), fréquence cardiaque.
 func _test_session_lines() -> void:
 	var sim := {"power": 251.6, "power_3s": 245.3, "v": 10.0, "cadence": 88, "hr": 151, "gear": 9,
 		"gears_total": 24, "grade": 4.25, "grade_sent": 2.1, "s": 1234.0, "mode": "SIM", "erg": null}
@@ -286,12 +286,13 @@ func _test_session_lines() -> void:
 	erg2["target_w"] = 250
 	l = HudViewModel.session_lines(st, vm.update(erg2, 0.1))
 	_check(l["power"].ends_with("CIBLE ERG: 250 W (105 %)"), "ERG : biais rafraîchi (%s)" % l["power"])
-	var free := erg.duplicate()
-	free["block_type"] = "freeride"
-	l = HudViewModel.session_lines(st.merged({"erg": free}, true), ErgViewModel.new().update(free, 0.0))
-	_check(l["power"].ends_with("CIBLE ERG: roue libre") and l["speed"].ends_with("[Braquet: 10/24]"),
-		"roue libre : braquets actifs (%s / %s)" % [l["power"], l["speed"]])
-	_check(l["gear_shown"], "roue libre : braquet affiché")
+	var floor_erg := erg.duplicate()          # FreeRide d'un .zwo : palier ERG à 50 W (lot O19)
+	floor_erg["target_w"] = 50
+	floor_erg["bias_pct"] = 100
+	l = HudViewModel.session_lines(st.merged({"erg": floor_erg}, true), ErgViewModel.new().update(floor_erg, 0.0))
+	_check(l["power"].ends_with("CIBLE ERG: 50 W") and l["speed"].ends_with("± = intensité en ERG]"),
+		"palier à 50 W : ERG comme les autres blocs (%s / %s)" % [l["power"], l["speed"]])
+	_check(not l["gear_shown"], "palier à 50 W : braquet caché, pas de roue libre")
 	_check(HudViewModel.session_lines(sim, no_erg)["gear_shown"], "SIM : braquet affiché")
 
 

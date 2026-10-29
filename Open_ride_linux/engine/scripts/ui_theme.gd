@@ -72,7 +72,7 @@ const PANEL_BG := Color(0.05, 0.07, 0.1, 0.6)   # panneaux du HUD : 10 % plus tr
 const CHART_BG := Color(0.04, 0.06, 0.08, 0.3)
 const SHADOW_LINE := Color(0, 0, 0, 0.6)
 const OUTLINE := Color(0, 0, 0, 0.8)
-# Zones de Coggan (Z1 à Z7, seuils de erg_view.gd) et roue libre
+# Zones de Coggan (Z1 à Z7, seuils de erg_view.gd) et bloc sans zone connue (FTP inconnue, case vide)
 const ZONE_1 := Color(0.55, 0.57, 0.6)
 const ZONE_2 := Color(0.25, 0.55, 0.95)
 const ZONE_3 := Color(0.3, 0.75, 0.35)
@@ -80,7 +80,7 @@ const ZONE_4 := Color(0.95, 0.8, 0.2)
 const ZONE_5 := Color(0.95, 0.5, 0.15)
 const ZONE_6 := Color(0.9, 0.2, 0.15)
 const ZONE_7 := Color(0.65, 0.25, 0.8)
-const FREERIDE := Color(0.4, 0.42, 0.45)
+const NEUTRAL_BLOCK := Color(0.4, 0.42, 0.45)
 # Courbes de la séance (puissance, fréquence cardiaque, cadence)
 const POWER := Color(1, 1, 1)
 const HEART_RATE := Color(0.95, 0.25, 0.25)
@@ -157,7 +157,7 @@ const DATA := {
 	"zone_5": ZONE_5,
 	"zone_6": ZONE_6,
 	"zone_7": ZONE_7,
-	"freeride": FREERIDE,
+	"neutral_block": NEUTRAL_BLOCK,
 	"power": POWER,
 	"heart_rate": HEART_RATE,
 	"cadence": CADENCE,

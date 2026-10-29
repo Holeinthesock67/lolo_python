@@ -85,7 +85,7 @@ func _init() -> void:
 	_check(blks[0]["color"] == "vert", "bloc +2 % : couleur vert")
 	_check(blks[1]["color"] == "orange", "bloc −7 % : couleur orange")
 	_check(blks[2]["color"] == "rouge", "bloc +12 % : couleur rouge")
-	# Bloc en roue libre : cible null autorisée par le contrat v1.1 (§3, blocks)
+	# Bloc sans cible connue (ancien journal) : cible null autorisée par le contrat v1.1 (§3, blocks)
 	var free_blks: Array = vm.blocks({"blocks": [[1, 150.0, null], [2, 250.0, 250.0]]})
 	_check(free_blks.size() == 2, "ERG : bloc à cible null gardé, les autres aussi")
 	_check(free_blks[0]["color"] == "neutre" and free_blks[0]["delta_w"] == null, "bloc à cible null : couleur neutre, pas d'écart")

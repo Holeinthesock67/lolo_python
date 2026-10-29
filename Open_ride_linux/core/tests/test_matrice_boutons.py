@@ -26,7 +26,7 @@ def test_plan_is_read_from_the_specification():
     assert plan[(InputEvent.MINUS_SHORT, "ERG")][1] == -1
     assert plan[(InputEvent.UP_SHORT, "ERG")] == plan[(InputEvent.UP_SHORT, "SIM")]      # « idem »
     assert tool.expect_of(*plan[(InputEvent.Z_SHORT, "ERG")], "ERG") == tool.Expect("block")
-    assert tool.expect_of("Biais ± 2 % ; braquet ± 1 en roue libre", -1, "ERG", freeride=True) == tool.Expect("gear", -1)
+    assert tool.expect_of("Biais ± 2 %", -1, "ERG") == tool.Expect("bias", -2.0)       # pas de roue libre (O19)
     assert tool.expect_of("Une action inventée", 1, "SIM") is None                     # case non décrite
 
 
@@ -44,7 +44,7 @@ def test_every_button_in_every_phase_follows_the_plan(modes):
     phases = {c.phase for c in rep.cells}
     assert {"pause", "bilan"} <= phases or modes == ("monde",)
     if "erg" in modes:
-        assert {"roue libre", "dernier bloc", "fin de l'entraînement"} <= phases
+        assert {"bloc FreeRide", "dernier bloc", "fin de l'entraînement"} <= phases
     if "rogue" in modes:
         assert {"échauffement", "salle", "couloir, carte choisie", "boss", "retour au calme", "résultats"} <= phases
 

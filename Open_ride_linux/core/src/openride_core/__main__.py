@@ -4,7 +4,7 @@ Sous-commandes disponibles à ce stade :
     openride-core recover [JOURNAL]   transforme le dernier journal (ou celui donné) en FIT
     openride-core run [--trainer mock|ftms|sim] [--input click|keyboard|none|sim]
                       [--hr none|ble|sim] [--sim-scenario NOM|FICHIER] [--gear N]
-                      [--autostart [--route ID] [--workout ID | --ftp-test ramp|20min]]
+                      [--autostart [--route ID] [--workout ID | --ftp-test ramp]]
                       [--resume JOURNAL]
                                       boucle de séance (BLE, physique, IPC, journal) ; avec
                                       --autostart, parcours <routes>/<ID>.world (défaut demo) et
@@ -325,8 +325,8 @@ def build_parser() -> argparse.ArgumentParser:
                      help="avec --autostart : parcours <routes>/<ID>.world (défaut : demo)")
     run.add_argument("--workout", metavar="ID",
                      help="avec --autostart : entraînement ERG ~/OpenRide/Workouts/<ID>.zwo (absent : SIM)")
-    run.add_argument("--ftp-test", choices=["ramp", "20min"],
-                     help="avec --autostart : séance de test de FTP (rampe par paliers ou 20 minutes)")
+    run.add_argument("--ftp-test", choices=["ramp"],
+                     help="avec --autostart : séance de test de FTP (rampe par paliers)")
     run.add_argument("--latence", action="store_true",
                      help="journal de latence des appuis du Click, lignes [latence] (lot X7 ; [log] latence)")
     run.add_argument("--trace-ftms", action="store_true",

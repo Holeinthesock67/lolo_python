@@ -26,7 +26,7 @@ const ZONE_COLORS := [
 	UiTheme.ZONE_6,   # Z6 anaérobie
 	UiTheme.ZONE_7,   # Z7 neuromusculaire
 ]
-const FREERIDE_COLOR := UiTheme.FREERIDE
+const NEUTRAL_COLOR := UiTheme.NEUTRAL_BLOCK
 ## Blocs autres que le bloc en cours : bien visibles du début à la fin, pour se préparer aux efforts
 ## (retour d'essai du 25 octobre) ; le bloc en cours garde son cadre et son curseur.
 const DIM_ALPHA := 0.85
@@ -39,7 +39,6 @@ const BLOCK_TYPE_LABELS := {
 	"interval_off": "Récupération",
 	"ramp": "Rampe",
 	"cooldown": "Retour au calme",
-	"freeride": "Roue libre",
 }
 
 const PANEL_HEIGHT := 140.0
@@ -195,8 +194,8 @@ static func banner_lines(erg: Dictionary, erg_eval: Dictionary) -> Dictionary:
 		remaining += " (pause)"
 	var next := ""
 	var next_w: Variant = erg.get("next_target_w", null)
-	if int(erg.get("block_index", 1)) < int(erg.get("block_count", 1)):
-		next = "Ensuite : " + ("roue libre" if next_w == null else "%d W" % int(round(float(next_w))))
+	if int(erg.get("block_index", 1)) < int(erg.get("block_count", 1)) and next_w != null:
+		next = "Ensuite : %d W" % int(round(float(next_w)))
 	return {"title": title, "target": str(erg_eval.get("target_text", "")), "remaining": remaining, "next": next}
 
 
@@ -216,19 +215,18 @@ static func zone_of_frac(frac: float) -> int:
 
 static func zone_color(frac: Variant) -> Color:
 	if frac == null:
-		return FREERIDE_COLOR
+		return NEUTRAL_COLOR
 	return ZONE_COLORS[zone_of_frac(float(frac))]
 
 
-## Blocs au format de `ErgViewModel.profile_bars` à partir d'un profil v1.1 ([durée, début, fin]).
+## Blocs au format de `ErgViewModel.profile_bars` à partir d'un profil v1.1 ([durée, début, fin]) ;
+## une case sans fraction est ignorée (jamais envoyée depuis le lot O19 : pas de roue libre en ERG).
 static func profile_to_blocks(profile: Array) -> Array:
 	var out: Array = []
 	for t in profile:
-		if typeof(t) != TYPE_ARRAY or (t as Array).size() < 3:
+		if typeof(t) != TYPE_ARRAY or (t as Array).size() < 3 or t[1] == null or t[2] == null:
 			continue
-		var free: bool = t[1] == null
-		out.append({"type": "freeride" if free else "steady", "duration_s": float(t[0]),
-				"start_frac": null if free else float(t[1]), "end_frac": null if free else float(t[2])})
+		out.append({"type": "steady", "duration_s": float(t[0]), "start_frac": float(t[1]), "end_frac": float(t[2])})
 	return out
 
 
@@ -253,7 +251,7 @@ static func layout(erg: Dictionary, erg_eval: Dictionary, profile: Variant, ftp:
 	else:
 		bars = []
 		var cur_frac: Variant = null
-		if str(erg.get("block_type", "")) != "freeride" and ftp > 0.0:
+		if ftp > 0.0:
 			cur_frac = float(erg.get("target_w", 0.0)) / ftp
 		for i in range(count):
 			var x0 := width * float(i) / float(count)
@@ -263,7 +261,7 @@ static func layout(erg: Dictionary, erg_eval: Dictionary, profile: Variant, ftp:
 			bars.append({"index": i + 1, "x0": x0, "x1": x1, "width": x1 - x0, "h0": h, "h1": h,
 					"polygon": PackedVector2Array([Vector2(x0, height), Vector2(x0, height - h),
 							Vector2(x1, height - h), Vector2(x1, height)]),
-					"color": zone_color(cur_frac) if is_cur else FREERIDE_COLOR})
+					"color": zone_color(cur_frac) if is_cur else NEUTRAL_COLOR})
 	var cursor_x := 0.0
 	for b in bars:
 		b["current"] = int(b["index"]) == idx
@@ -275,9 +273,7 @@ static func layout(erg: Dictionary, erg_eval: Dictionary, profile: Variant, ftp:
 
 static func blocks_frac(profile: Array, i: int) -> Dictionary:
 	var t: Array = profile[i]
-	if t[1] == null:
-		return {"mean": null}
-	return {"mean": (float(t[1]) + float(t[2] if t[2] != null else t[1])) / 2.0}
+	return {"mean": (float(t[1]) + float(t[2])) / 2.0}
 
 
 func _on_histogram_draw() -> void:
