@@ -4,7 +4,7 @@ extends Node3D
 ## de la route autour de la caméra. Les rides et dunes du sable sont dans terrain_biomes.gdshader.
 ## Pas de class_name : charger par preload("res://scripts/ground_details.gd"). Branché par living_world.gd.
 ## - Sans modèle de biome actif (`biome_model` nul) : rien n'est créé (rendu d'avant la série U).
-## - Placement déterministe (graine, sorte, tronçon, place) sur une bande de `ROAD_CLEAR_M` à `BAND_MAX_M`
+## - Placement déterministe (graine, sorte, tronçon, place) sur une bande de `ROAD_CLEAR_M` à `BAND_M` (selon la sorte)
 ##   du bord de la route, des deux côtés ; tronçons de `CHUNK_M` mètres, `CHUNKS_BEHIND` derrière et
 ##   `CHUNKS_AHEAD` devant la caméra. Le biome d'une place est tiré selon les poids du modèle ; la sorte n'y
 ##   est gardée qu'avec la probabilité de DENSITY[sorte][biome].
@@ -26,7 +26,8 @@ const CHUNK_M := 60.0
 const CHUNKS_BEHIND := 1
 const CHUNKS_AHEAD := 3
 const ROAD_CLEAR_M := 3.0
-const BAND_MAX_M := 60.0
+## Largeur de la bande de chaque sorte de part et d'autre de la route (m) : termitières près de la route, pour être vues.
+const BAND_M := {"rock": 60.0, "grass": 60.0, "termite": 30.0}
 const MAX_PER_FRAME := 50           # places remplies par image : un tronçon de high en ~25 images (0,4 s)
 const GRID_M := 25.0
 const ROCK_SHAPES := 3
@@ -230,7 +231,7 @@ func detail_at(kind: String, shape: int, k: int, slot: int, stations: PackedVect
 	var scale_f := _scale(kind, h2)
 	var radius: float = RADIUS_M[kind] * scale_f
 	var clear := road_half_width_m + ROAD_CLEAR_M + radius
-	var off := clear + lat * (BAND_MAX_M - clear)
+	var off := clear + lat * (float(BAND_M[kind]) - clear)
 	var px: float = st.x + right.x * off * side
 	var pz: float = st.z + right.z * off * side
 	var biome := _pick_biome(px, pz, h2)
@@ -259,7 +260,7 @@ func detail_at(kind: String, shape: int, k: int, slot: int, stations: PackedVect
 	return {"xf": Transform3D(basis.scaled(Vector3.ONE * scale_f), Vector3(px, py, pz)), "color": color, "biome": biome}
 
 
-## Échelle d'un objet : rochers surtout petits (0,4 à 2), herbes 0,8 à 1,3, termitières 0,8 à 1,6.
+## Échelle d'un objet : rochers surtout petits (0,4 à 2), herbes 0,8 à 1,3, termitières 1 à 2 (1,6 à 3,2 m de haut).
 static func _scale(kind: String, h2: int) -> float:
 	var r := float((h2 >> 24) & 0x7F) / 127.0
 	match kind:
@@ -267,7 +268,7 @@ static func _scale(kind: String, h2: int) -> float:
 			return 0.4 + 1.6 * r * r
 		"grass":
 			return 0.8 + 0.5 * r
-	return 0.8 + 0.8 * r
+	return 1.0 + 1.0 * r
 
 
 func _pick_biome(x: float, z: float, h2: int) -> String:

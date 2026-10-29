@@ -20,7 +20,7 @@ P1 et P4 livrés. Version 1.0 publiée.
   - sortie : volume cible de chaque fond `forest_birds`, `field_insects`, `water_flow`, `village_murmur`, `high_wind`, `rain` ; au plus `living(preset).ambience_voices` fonds non muets à la fois (les plus forts gagnent) ;
   - fondus de 4 s, hystérésis comme les points d'intérêt ; oiseaux réduits la nuit et sous la pluie, insectes seulement en journée (saison : P18, version 2.0) ;
   - volume général `ambience.volume` du thème ; tout à zéro en pause.
-- `sound_player.gd` : nouveaux sons synthétisés au lancement (chants d'oiseaux par motifs aléatoires déterministes, stridulation, eau, rumeur, pluie), remplaçables par `~/OpenRide/Sounds/<sorte>.ogg` comme aujourd'hui ; lecteurs non spatialisés pour les fonds ; synthèse totale toujours sous 500 ms.
+- `sound_player.gd` : nouveaux sons synthétisés au lancement (chants d'oiseaux par motifs aléatoires déterministes, stridulation, eau, rumeur, pluie), remplaçables par `~/OpenRide/Sounds/<sorte>.ogg` comme aujourd'hui ; lecteurs non spatialisés pour les fonds ; synthèse totale toujours sous le budget `sound_generation` (1 200 ms depuis le 28/10).
 - Cloches au village : les points `church_bell` existants sonnent aussi l'heure pleine (nombre de coups selon l'heure fournie, celle du PC par défaut).
 
 ## 5. Fichiers concernés
@@ -39,7 +39,7 @@ Aucune.
 2. Voisinage 80 % forêt, jour : `forest_birds` est le fond le plus fort ; 0 % forêt et 0 % bâti, midi : `field_insects` ; eau à 20 m : `water_flow` audible ; nuit : oiseaux au moins 20 dB plus bas qu'à midi.
 3. Jamais plus de `ambience_voices` fonds audibles.
 4. Passage brusque de la forêt au champ : aucune variation de plus de 3 dB en 0,5 s.
-5. Synthèse de tous les sons (anciens et nouveaux) sous 500 ms ; fichier `.ogg` de remplacement utilisé s'il existe.
+5. Synthèse de tous les sons (anciens et nouveaux) sous le budget `sound_generation` (1 200 ms) ; fichier `.ogg` de remplacement utilisé s'il existe.
 6. Cloche : 3 coups à 15 h, aucun hors de l'heure pleine.
 7. `evaluate` sous 0,1 ms.
 
