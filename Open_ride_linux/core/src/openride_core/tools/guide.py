@@ -104,16 +104,14 @@ TRIALS: dict[str, Trial] = {
         ("17 appuis demandés tour à tour, le boîtier gauche d'abord, flèches en tête (il se tait environ une minute après la connexion)",
          "chaque appui reçu s'affiche avec son action dans chaque mode (spécification générale §7.1)")),
     "recette_v10": Trial(
-        "Recette de la série V : progression, équipement, avatar (lot V10)", "5 min sur le PC, puis 2 × 10 min de vélo",
-        ("python -m openride_core.tools.recette_v10 preparer",
-         "python -m openride_core.tools.recette_v10 pc",
-         "python -m openride_core.tools.recette_v10 bilan"),
+        "Recette de la série V : progression, équipement, avatar (lot V10)", "environ 30 min, dont 2 × 10 min de vélo",
+        ("python -m openride_core.tools.recette_v10",),
         ("vélo sur le HomeTrainer, Bluetooth du PC allumé, aucune autre application reliée au trainer",
-         "les deux boîtiers Click réveillés (ou le clavier : A, flèches, Y)",
+         "les deux boîtiers Click réveillés (ou le clavier : A ou flèche haut)",
          "écran visible et son audible depuis le vélo : bip et préavis d'une minute à chaque consigne",
          "bidon et serviette"),
-        ("bloc 1 sur recette-v10-depart, Garage entre les blocs, bloc 2 sur recette-v10-equipe à la même puissance",
-         "`bilan` compare les deux blocs dans les journaux ; `restaurer` remet le profil et retire les parcours")),
+        ("l'outil lance et ferme OpenRide lui-même, pose le vélo de chaque bloc, compte la pause de 2 min",
+         "verdict lu dans les journaux à la fin ; profil et parcours restaurés, même après Ctrl+C")),
 }
 
 

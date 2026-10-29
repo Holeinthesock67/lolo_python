@@ -1,18 +1,21 @@
-"""Recette guidée de la série V (lot V10) : progression, équipement et avatar sur le vrai matériel.
+"""Recette guidée de la série V (lot V10) : progression, équipement et avatar, en une commande.
 
-Prépare tout, guide à l'écran et lit les journaux après coup ; le propriétaire n'a qu'à pédaler.
+    python -m openride_core.tools.recette_v10              # tout : prépare, roule les 2 blocs, bilan, restaure
+    python -m openride_core.tools.recette_v10 materiel     # ce qu'il faut avoir sous la main, durées
 
-    python -m openride_core.tools.recette_v10 materiel     # matériel, durées, ce qui sera vérifié
-    python -m openride_core.tools.recette_v10 preparer     # sauvegardes, parcours, consignes, pièces conseillées
-    python -m openride_core.tools.recette_v10 pc           # essais sans vélo (expérience, profil effacé), guidés
-    python -m openride_core.tools.recette_v10 bilan        # après les deux blocs : verdict lu dans les journaux
-    python -m openride_core.tools.recette_v10 restaurer    # profil d'essai retiré, parcours et consignes retirés
-
-Sur le vélo, deux blocs de 10 min sur le même parcours plat (`recette-v10-depart`, puis
-`recette-v10-equipe`), avec les consignes de l'engine (`cue_model.gd`) : texte à l'écran, bip, préavis
-d'une minute avant chaque geste et 30 à 40 s pour le faire. Entre les deux blocs, sans pédaler : Garage au
-Click (cadre et roues aéro). `bilan` compare ensuite les deux blocs : vitesse à puissance égale, pente
-envoyée au trainer, équipement noté dans l'en-tête du journal, temps gagné recalculé.
+Déroulé de la commande seule (environ 30 min, le propriétaire n'a qu'à pédaler) :
+  1. sans vélo : sauvegarde de `config.toml` et `profile.json`, deux parcours plats identiques avec leurs
+     consignes, expérience recalculée, profil effacé puis remis ;
+  2. bloc 1 : vélo de départ posé dans le profil, OpenRide lancé directement en séance (`--autostart`) sur
+     `recette-v10-depart` ; l'outil suit le journal et ferme OpenRide à 10 min de séance (séance enregistrée) ;
+  3. pause de 2 min : cadre et roues aéro posés dans le profil (sans achat), compte à rebours et bips ;
+  4. bloc 2 : même chose sur `recette-v10-equipe` ;
+  5. bilan lu dans les journaux (équipement de l'en-tête, vitesse à puissance égale, pente envoyée à
+     braquet égal, temps gagné recalculé, expérience), puis restauration du profil et retrait des parcours,
+     même après Ctrl+C.
+Dans le jeu, les consignes (`cue_model.gd`) annoncent chaque geste une minute avant et restent 20 à 45 s.
+Le Garage au Click n'est pas recetté ici : le banc des menus (`menu_bench`) le couvre.
+Les étapes se lancent aussi une à une : `pc`, `bilan`, `restaurer`.
 
 Rien n'est écrit dans le dépôt ; parcours fictifs (même origine que `demo`), aucune donnée personnelle.
 """
@@ -21,8 +24,13 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import shutil
+import signal
+import subprocess
 import sys
+import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -34,20 +42,25 @@ from .fake_world import add_terrain_layer
 from .seance_guidee import CREATED, ESSAIS_DIR, cues_json
 
 RECETTE = "recette-v10"                      # dossier de la recette sous ~/OpenRide/Essais
-BACKUP = "sauvegarde"                        # copies de config.toml et profile.json faites par `preparer`
-TRIAL_MARK = "profil_essai"                  # présent si `preparer --profil-essai` a remplacé le profil
+BACKUP = "sauvegarde"                        # copies de config.toml et profile.json d'avant la recette
+TRIAL_MARK = "profil_essai"                  # présent tant que l'outil a changé le vélo du profil
 ROUTE_LENGTH_M = 12_000.0
 SPRINTS_M = (1500.0, 3000.0, 4500.0)         # trois sprints de 400 m : un temps gagné par passage
 SPRINT_LENGTH_M = 400.0
 BLOCK_S = 600
+PAUSE_S = 120                                # entre les blocs, sans pédaler
+GET_READY_S = 60                             # avant le bloc 1 : monter sur le vélo
+BLOCK_MAX_S = 30 * 60                        # garde-fou : OpenRide fermé quoi qu'il arrive
+LAUNCH_WAIT_S = 180                          # pas de journal après ce délai : lancement raté
 
-# Pièces aéro conseillées, de la plus forte à la plus faible (catalogue du lot V3).
+# Cadre et roues du bloc 2, les plus aéro du catalogue (lot V3), posés sans achat.
 AERO_FRAMES = ("frame_tt", "frame_aero")
 AERO_WHEELS = ("wheels_disc", "wheels_deep")
+AERO_LOADOUT = {"frame": AERO_FRAMES[0], "wheels": AERO_WHEELS[0]}
 
 # Consigne : (temps de séance en s, texte, durée d'affichage en s, à préparer ou "").
 BLOCK1_CUES: list[tuple[float, str, float, str]] = [
-    (0, ("Bloc 1 sur 2, équipement de départ. Roule 10 min à puissance régulière (endurance) : "
+    (0, ("Bloc 1 sur 2, vélo de départ. Roule 10 min à puissance régulière (endurance) : "
          "retiens ta puissance, tu la referas au bloc 2"), 40, ""),
     (60, "Caméra : A (ou flèche haut) passe à la vue suivante. Une vue toutes les 20 s, 4 vues", 40, ""),
     (150, "Vue de suivi proche (A jusqu'à la retrouver) : regarde le pédalage de l'avatar", 30, ""),
@@ -56,42 +69,37 @@ BLOCK1_CUES: list[tuple[float, str, float, str]] = [
     (330, "Retour à ta puissance d'endurance, cadence habituelle", 25, ""),
     (420, "Sprint 10 s à fond : l'avatar se met en danseuse", 20, "un sprint de 10 s"),
     (450, "Reprends ta puissance d'endurance jusqu'à la fin", 25, ""),
-    (540, "Dernière minute. À 10 min : Y, « Terminer et enregistrer », lis le bilan (expérience, pièces)", 45,
-     "la fin du bloc (bilan à lire)"),
+    (540, "Dernière minute. À 10 min, la séance s'arrête et s'enregistre toute seule", 45, ""),
 ]
 
 BLOCK2_CUES: list[tuple[float, str, float, str]] = [
-    (0, "Bloc 2 sur 2, cadre et roues aéro. Même puissance qu'au bloc 1, même cadence", 40, ""),
+    (0, "Bloc 2 sur 2, cadre et roues aéro déjà posés. Même puissance qu'au bloc 1, même cadence", 40, ""),
     (60, "Compare : la vitesse doit être un peu plus haute qu'au bloc 1, la résistance la même", 40, ""),
     (240, "Toujours la même puissance. Au sprint (vers 3 km) : « temps gagné » sous le chrono du segment", 40, ""),
-    (420, "Ressenti : la résistance du trainer est-elle la même qu'au bloc 1 ? Note-le pour le bilan", 40, ""),
-    (540, "Dernière minute. À 10 min : Y, « Terminer et enregistrer » ; « temps gagné » au bilan", 45,
-     "la fin du bloc (bilan à lire)"),
+    (420, "Ressenti : la résistance du trainer est-elle la même qu'au bloc 1 ?", 40, ""),
+    (540, "Dernière minute. À 10 min, la séance s'arrête ; le verdict s'affiche au terminal", 45, ""),
 ]
 
 SESSIONS = (("recette-v10-depart", BLOCK1_CUES), ("recette-v10-equipe", BLOCK2_CUES))
 
-MATERIEL = """Recette V10 (progression, équipement, avatar) : à préparer
+MATERIEL = """Recette V10 (progression, équipement, avatar) : environ 30 min, une seule commande
 
-Sans vélo, sur le PC (environ 5 min, tout est automatique) :
-  python -m openride_core.tools.recette_v10 preparer
-  python -m openride_core.tools.recette_v10 pc
+  python -m openride_core.tools.recette_v10
 
-Sur le vélo : 2 blocs de 10 min, 2 min de pause entre les deux (environ 25 min en tout) :
+À avoir avant de lancer :
 - vélo sur le HomeTrainer, Bluetooth du PC allumé, aucune autre application reliée au trainer ;
-- les deux boîtiers du Click réveillés (le clavier fait aussi l'affaire : A, flèches, Y) ;
+- les deux boîtiers du Click réveillés (le clavier fait aussi l'affaire : A ou flèche haut) ;
 - écran visible depuis le vélo, son du PC audible (bip à chaque consigne, préavis d'une minute) ;
 - bidon et serviette.
 
-Bloc 1 : « Monde » → recette-v10-depart → « Session libre ». Vues de caméra, avatar à 60 et 100 tr/min,
-  sprint de 10 s (danseuse), bilan de fin.
-Entre les blocs, sans pédaler : « Garage » au Click, choisir le cadre et les roues indiqués par `preparer`.
-Bloc 2 : « Monde » → recette-v10-equipe → « Session libre », même puissance qu'au bloc 1.
+L'outil fait tout le reste : sauvegarde, parcours, essais sans vélo (3 min), lancement et arrêt d'OpenRide
+pour chaque bloc, vélo aéro posé pendant la pause, bilan, restauration.
+Tes gestes : pédaler à puissance régulière ; 60 puis 100 tr/min, 30 s chacun ; un sprint de 10 s ;
+au bloc 1, quatre appuis sur A pour voir les vues de caméra. Chaque geste est annoncé une minute avant.
+Au bloc 2, même puissance qu'au bloc 1.
 
-Après : python -m openride_core.tools.recette_v10 bilan       (verdict lu dans les journaux)
-Enfin : python -m openride_core.tools.recette_v10 restaurer   (profil d'essai, parcours et consignes retirés)
-Hors vélo, à mettre dans la file des mesures du PC : banc par vue de caméra, au moins 55 images/s en low :
-  engine/tests/sim_bench.py --godot <godot> --native --quality low --camera follow_near   (puis follow_far, side)
+Hors vélo, dans la file des mesures du PC : banc par vue de caméra en low, medium et high (au moins 55 images/s
+en low), engine/tests/sim_bench.py --native --quality low --camera follow_near (puis follow_far, side).
 """
 
 
@@ -157,56 +165,38 @@ def backup(files: list[Path], backup_dir: Path) -> list[Path]:
     return saved
 
 
-@dataclass
-class Advice:
-    frame: str | None          # pièce conseillée pour le bloc 2, None si aucune n'est à portée
-    wheels: str | None
-    lines: list[str]
+def base_loadout() -> dict[str, str]:
+    from ..profile import DEFAULT_EQUIPPED
+
+    return {"frame": DEFAULT_EQUIPPED["frame"], "wheels": DEFAULT_EQUIPPED["wheels"]}
 
 
-def advise(svc: Any) -> Advice:
-    """Cadre et roues aéro pour le bloc 2 : possédés d'abord, puis achetables avec le solde actuel."""
-    from .. import coins as coins_mod
+def set_bike(profile_path: Path, loadout: dict[str, str], recette_dir: Path) -> None:
+    """Pose cadre et roues dans le profil, sans achat (profil d'origine sauvegardé, remis par `restore`)."""
+    from ..profile import load_profile, save_profile
 
-    progress, profile, cat = svc.progress, svc.profile, svc.catalogue
-    owned = coins_mod.owned_items(progress, profile, cat)
-    coins = svc.balance()
-    lines = [f"Niveau {progress.level.level}, {progress.total_xp} points, {coins} pièces."]
-    picks: dict[str, str | None] = {}
-    for slot, ids in (("frame", AERO_FRAMES), ("wheels", AERO_WHEELS)):
-        pick = next((i for i in ids if i in owned), None)
-        how = "déjà possédé"
-        if pick is None:
-            pick = next((i for i in ids if coins_mod.item_state(cat.items[i], progress, profile, cat) == "buyable"
-                         and cat.items[i].price <= coins), None)
-            how = "à acheter au Garage"
-            if pick is not None:
-                coins -= cat.items[pick].price
-        picks[slot] = pick
-        label = "Cadre" if slot == "frame" else "Roues"
-        if pick is None:
-            need = ", ".join(f"{cat.items[i].name} : niveau {cat.items[i].level}, {cat.items[i].price} pièces"
-                             for i in ids)
-            lines.append(f"{label} : aucune pièce aéro à portée ({need}).")
-        else:
-            lines.append(f"{label} : {cat.items[pick].name} ({how}, {cat.items[pick].price} pièces).")
-    if picks["frame"] is None and picks["wheels"] is None:
-        lines.append("Bloc 2 impossible sans pièce aéro : relancer avec --profil-essai (le profil est sauvegardé, "
-                     "`restaurer` le remet).")
-    return Advice(picks["frame"], picks["wheels"], lines)
-
-
-def trial_profile(svc: Any, profile_path: Path, recette_dir: Path) -> list[str]:
-    """Profil d'essai : cadre et roues les plus aéro choisis sans achat (rendu par `restaurer`)."""
-    from ..profile import save_profile
-
-    svc.profile.equipped.update({"frame": AERO_FRAMES[0], "wheels": AERO_WHEELS[0]})
-    save_profile(svc.profile, profile_path)
+    profile = load_profile(profile_path)
+    profile.equipped.update(loadout)
+    save_profile(profile, profile_path)
     recette_dir.mkdir(parents=True, exist_ok=True)
-    (recette_dir / TRIAL_MARK).write_text("profil d'essai écrit par `preparer --profil-essai`\n", encoding="utf-8")
-    cat = svc.catalogue
-    return [(f"Profil d'essai : {cat.items[AERO_FRAMES[0]].name} et {cat.items[AERO_WHEELS[0]].name} déjà choisis. "
-             "Au Garage, vérifier seulement qu'ils sont marqués « équipé » (pas d'achat).")]
+    (recette_dir / TRIAL_MARK).write_text("vélo du profil changé par recette_v10\n", encoding="utf-8")
+
+
+def restore(profile_path: Path, routes_dir: Path, essais_dir: Path) -> list[str]:
+    """Profil d'avant la recette remis (retiré s'il n'y en avait pas), parcours et consignes retirés."""
+    recette_dir = essais_dir / RECETTE
+    saved, mark = recette_dir / BACKUP / profile_path.name, recette_dir / TRIAL_MARK
+    done: list[str] = []
+    if mark.is_file():
+        if saved.is_file():
+            shutil.copy2(saved, profile_path)
+            done.append(f"Profil remis : {profile_path}")
+        else:   # pas de profil avant la recette : on revient à « pas de profil »
+            profile_path.unlink(missing_ok=True)
+            done.append(f"Profil d'essai retiré : {profile_path}")
+        mark.unlink()
+    done += [f"Retiré : {path}" for path in remove_all(routes_dir, essais_dir)]
+    return done
 
 
 # --- essais sans vélo ------------------------------------------------------------------------
@@ -354,6 +344,114 @@ def verdict(blocks: dict[str, Block], plain: Any, equipped: Any) -> tuple[bool, 
     return ok, lines
 
 
+# --- blocs sur le vélo -------------------------------------------------------------------------
+
+def launch_command(route_id: str, config_path: Path | None) -> list[str]:
+    """OpenRide par son lanceur (core, engine, libération du trainer), séance démarrée sur `route_id`."""
+    cfg_args = ["--config", str(config_path)] if config_path is not None else []
+    return [sys.executable, "-m", "openride_core.launcher", "--no-compile", "--trainer", "ftms", "--input", "click",
+            *cfg_args, "--autostart", "--route", route_id]
+
+
+def last_record(path: Path) -> dict | None:
+    """Dernier relevé d'un journal en cours d'écriture (lecture de la fin du fichier seulement)."""
+    try:
+        with path.open("rb") as fh:
+            fh.seek(0, os.SEEK_END)
+            fh.seek(max(fh.tell() - 4096, 0))
+            tail = fh.read().decode("utf-8", errors="replace").splitlines()
+    except OSError:
+        return None
+    for line in reversed(tail):
+        try:
+            obj = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        if isinstance(obj, dict) and obj.get("kind") == "record":
+            return obj
+    return None
+
+
+def new_journal(journal_dir: Path, since: float, route_id: str) -> Path | None:
+    """Journal du bloc : modifié après le lancement, en-tête sur `route_id`."""
+    for path in sorted(journal_dir.glob("*.jsonl"), key=lambda p: p.stat().st_mtime, reverse=True):
+        if path.stat().st_mtime < since:
+            break
+        try:
+            with path.open(encoding="utf-8") as fh:
+                head = json.loads(fh.readline() or "{}")
+        except (OSError, json.JSONDecodeError):
+            continue
+        if head.get("route_id") == route_id:
+            return path
+    return None
+
+
+@dataclass
+class BlockRun:
+    journal: Path | None
+    session_s: float        # temps de séance atteint (s)
+    reason: str             # "fin" (10 min), "ferme" (OpenRide fermé avant), "garde_fou", "pas_de_journal"
+
+
+def stop(proc: Any, sleep: Callable[[float], None] = time.sleep, wait_s: float = 30.0) -> None:
+    """Ferme OpenRide comme Ctrl+C : le lanceur arrête le core (séance enregistrée) puis l'engine."""
+    if proc.poll() is not None:
+        return
+    proc.send_signal(signal.SIGTERM)
+    for _ in range(int(wait_s)):
+        if proc.poll() is not None:
+            return
+        sleep(1.0)
+    proc.kill()
+
+
+def ride_block(route_id: str, guide: Any, journal_dir: Path, config_path: Path | None, *,
+               spawn: Callable[[list[str]], Any] | None = None, wall: Callable[[], float] = time.time,
+               sleep: Callable[[float], None] = time.sleep, block_s: float = BLOCK_S) -> BlockRun:
+    """Lance OpenRide sur le parcours, suit le temps de séance dans le journal, ferme OpenRide à `block_s`."""
+    spawn = spawn or (lambda cmd: subprocess.Popen(cmd, start_new_session=True))
+    started = wall()
+    proc = spawn(launch_command(route_id, config_path))
+    journal, session_s, reason = None, 0.0, "garde_fou"
+    try:
+        while wall() - started < BLOCK_MAX_S:
+            if journal is None:
+                journal = new_journal(journal_dir, started - 1.0, route_id)
+                if journal is None and wall() - started > LAUNCH_WAIT_S:
+                    reason = "pas_de_journal"
+                    break
+            rec = last_record(journal) if journal is not None else None
+            if rec is not None:
+                session_s = float(rec.get("t") or 0.0)
+                power, cadence = rec.get("power"), rec.get("cadence")
+                guide.tick({"séance": f"{int(session_s) // 60}:{int(session_s) % 60:02d} sur {int(block_s) // 60}:00",
+                            "puissance": f"{power:.0f} W" if power is not None else "-",
+                            "cadence": f"{cadence:.0f} tr/min" if cadence is not None else "-"})
+            else:
+                guide.tick({"séance": "lancement d'OpenRide…"})
+            if session_s >= block_s:
+                reason = "fin"
+                break
+            if proc.poll() is not None:
+                reason = "ferme"
+                break
+            sleep(1.0)
+    finally:
+        stop(proc, sleep)
+    return BlockRun(journal, session_s, reason)
+
+
+def countdown(guide: Any, text: str, seconds: float, detail: str = "", *,
+              clock: Callable[[], float] = time.monotonic, sleep: Callable[[float], None] = time.sleep) -> None:
+    guide.step(text, seconds, detail)
+    end = clock() + seconds
+    while clock() < end:
+        guide.tick()
+        sleep(0.5)
+    guide.tick()
+
+
 # --- commandes ---------------------------------------------------------------------------------
 
 def _service(profile_path: Path, journal_dir: Path, cfg: Any) -> Any:
@@ -362,11 +460,83 @@ def _service(profile_path: Path, journal_dir: Path, cfg: Any) -> Any:
     return ProgressionService(cfg, journal_dir, None, profile_path)
 
 
-def main(argv: list[str] | None = None) -> int:
+def pc_steps(profile_path: Path, journal_dir: Path, cfg: Any, backup_dir: Path) -> list[tuple[str, Callable]]:
+    return [("Expérience recalculée depuis le journal", lambda: check_xp(_service(profile_path, journal_dir, cfg))),
+            ("Profil effacé puis remis", lambda: check_profile_reset(
+                lambda: _service(profile_path, journal_dir, cfg), profile_path, backup_dir))]
+
+
+def bilan_steps(profile_path: Path, journal_dir: Path, cfg: Any) -> list[tuple[str, Callable]]:
+    from ..equipment import apply_equipment
+    from ..physics import PhysicsParams
+
+    plain = PhysicsParams.from_config(cfg)
+    blocks = last_blocks(journal_dir)
+    kit = (blocks["recette-v10-equipe"].loadout or {}) if "recette-v10-equipe" in blocks else {}
+    svc = _service(profile_path, journal_dir, cfg)
+    equipped = apply_equipment(plain, {k: v for k, v in kit.items() if k in ("frame", "wheels") and v},
+                               svc.catalogue)
+    return [("Comparaison des deux blocs", lambda: verdict(blocks, plain, equipped)),
+            ("Expérience après les deux blocs", lambda: check_xp(svc))]
+
+
+def run_checks(guide: Any, steps: list[tuple[str, Callable]]) -> bool:
+    all_ok = True
+    for i, (title, run) in enumerate(steps, 1):
+        guide.step(title, index=i, total=len(steps), beep=False)
+        ok, lines = run()
+        for line in lines:
+            guide.measure(title, line, ok=ok)
+        all_ok &= ok
+    return all_ok
+
+
+@dataclass
+class Ride:
+    """Horloges et lancement d'OpenRide, remplaçables dans les tests."""
+    spawn: Callable[[list[str]], Any] | None = None
+    wall: Callable[[], float] = time.time
+    clock: Callable[[], float] = time.monotonic
+    sleep: Callable[[float], None] = time.sleep
+
+
+def run_all(args: Any, cfg: Any, profile_path: Path, config_path: Path, guide: Any, ride: Ride) -> bool:
+    """La recette entière ; profil et parcours restaurés quoi qu'il arrive."""
+    recette_dir = args.essais_dir / RECETTE
+    backup_dir = recette_dir / BACKUP
+    for path in backup([config_path, profile_path], backup_dir):
+        guide.log("sauvegarde", chemin=str(path))
+    try:
+        write_all(args.routes_dir, args.essais_dir, terrain=not args.sans_terrain)
+        ok = run_checks(guide, pc_steps(profile_path, args.journal_dir, cfg, backup_dir))
+        launch_cfg = config_path if args.config is not None else None
+        for i, ((route_id, _), loadout) in enumerate(zip(SESSIONS, (base_loadout(), AERO_LOADOUT)), 1):
+            set_bike(profile_path, loadout, recette_dir)
+            if i == 1:
+                countdown(guide, "Monte sur le vélo : le bloc 1 démarre seul", GET_READY_S,
+                          "OpenRide s'ouvre directement en séance ; pédale dès que le parcours s'affiche",
+                          clock=ride.clock, sleep=ride.sleep)
+            else:
+                countdown(guide, "Pause sans pédaler : cadre et roues aéro posés", PAUSE_S,
+                          "bois un coup ; le bloc 2 démarre seul à la fin du compte à rebours",
+                          clock=ride.clock, sleep=ride.sleep)
+            guide.step(f"Bloc {i} sur 2 : {route_id}", BLOCK_S, "suis les consignes à l'écran du jeu")
+            run = ride_block(route_id, guide, args.journal_dir, launch_cfg,
+                             spawn=ride.spawn, wall=ride.wall, sleep=ride.sleep)
+            done = run.reason == "fin"
+            guide.measure(f"Bloc {i}", f"{run.session_s / 60:.1f} min de séance ({run.reason})", ok=done)
+            if not done:
+                guide.alert(f"Bloc {i} interrompu ({run.reason}) : recette arrêtée, profil restauré.")
+                return False
+        return run_checks(guide, bilan_steps(profile_path, args.journal_dir, cfg)) and ok
+    finally:
+        for line in restore(profile_path, args.routes_dir, args.essais_dir):
+            guide.log("restauration", texte=line)
+
+
+def main(argv: list[str] | None = None, ride: Ride | None = None) -> int:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("commande", choices=("materiel", "preparer", "pc", "bilan", "restaurer"))
-    p.add_argument("--profil-essai", action="store_true",
-                   help="preparer : choisir cadre et roues aéro sans achat (profil sauvegardé puis rendu)")
+    p.add_argument("commande", nargs="?", default="tout", choices=("tout", "materiel", "pc", "bilan", "restaurer"))
     p.add_argument("--routes-dir", type=Path, default=config.ROUTES_DIR)
     p.add_argument("--essais-dir", type=Path, default=ESSAIS_DIR)
     p.add_argument("--journal-dir", type=Path, default=JOURNAL_DIR)
@@ -384,69 +554,31 @@ def main(argv: list[str] | None = None) -> int:
     profile_path = args.profile or PROFILE_PATH
     config_path = args.config or config.DEFAULT_CONFIG_PATH
     recette_dir = args.essais_dir / RECETTE
-    backup_dir = recette_dir / BACKUP
-    cfg = config.load(config_path if config_path.is_file() else None)
     if args.commande == "restaurer":
-        saved, mark = backup_dir / profile_path.name, recette_dir / TRIAL_MARK
-        if not mark.is_file():
-            print("Profil gardé : pas de profil d'essai (les achats faits au Garage restent).")
-        elif saved.is_file():
-            shutil.copy2(saved, profile_path)
-            print(f"Profil remis : {profile_path}")
-        else:   # pas de profil avant la recette : on revient à « pas de profil »
-            profile_path.unlink(missing_ok=True)
-            print(f"Profil d'essai retiré : {profile_path}")
-        mark.unlink(missing_ok=True)
-        for path in remove_all(args.routes_dir, args.essais_dir):
-            print(f"Retiré : {path}")
+        for line in restore(profile_path, args.routes_dir, args.essais_dir) or ["Rien à restaurer."]:
+            print(line)
         return 0
+    cfg = config.load(config_path if config_path.is_file() else None)
     if not cfg.progression.enabled:
         print("[progression] enabled = false dans config.toml : la recette V10 demande la progression active.")
         return 1
 
-    if args.commande == "preparer":
-        for path in backup([config_path, profile_path], backup_dir):
-            print(f"Sauvegardé : {path}")
-        for path in write_all(args.routes_dir, args.essais_dir, terrain=not args.sans_terrain):
-            print(f"Écrit : {path}")
-        svc = _service(profile_path, args.journal_dir, cfg)
-        advice = advise(svc)
-        lines = advice.lines + (trial_profile(svc, profile_path, recette_dir) if args.profil_essai else [])
-        print()
-        print("\n".join(lines))
-        print()
-        print(MATERIEL, end="")
-        return 0
-
     recette_dir.mkdir(parents=True, exist_ok=True)
     guide = Guide("Recette V10", recette_dir / "guide.jsonl")
-    if args.commande == "pc":
-        steps = [("Expérience recalculée depuis le journal", lambda: check_xp(_service(profile_path, args.journal_dir, cfg))),
-                 ("Profil effacé puis remis", lambda: check_profile_reset(
-                     lambda: _service(profile_path, args.journal_dir, cfg), profile_path, backup_dir))]
-    else:
-        from ..physics import PhysicsParams
-
-        plain = PhysicsParams.from_config(cfg)
-        blocks = last_blocks(args.journal_dir)
-        kit = (blocks.get("recette-v10-equipe").loadout or {}) if "recette-v10-equipe" in blocks else {}
-        svc = _service(profile_path, args.journal_dir, cfg)
-        from ..equipment import apply_equipment
-
-        equipped = apply_equipment(plain, {k: v for k, v in kit.items() if k in ("frame", "wheels") and v},
-                                   svc.catalogue)
-        steps = [("Comparaison des deux blocs", lambda: verdict(blocks, plain, equipped)),
-                 ("Expérience après les deux blocs", lambda: check_xp(svc))]
-    all_ok = True
-    for i, (title, run) in enumerate(steps, 1):
-        guide.step(title, index=i, total=len(steps))
-        ok, lines = run()
-        for line in lines:
-            guide.measure(title, line, ok=ok)
-        all_ok &= ok
-    guide.finish(all_ok, "Recette V10 : tout est bon" if all_ok else "Recette V10 : écart à regarder (lignes ÉCHEC)")
-    guide.close()
-    return 0 if all_ok else 1
+    ok = False
+    try:
+        if args.commande == "tout":
+            ok = run_all(args, cfg, profile_path, config_path, guide, ride or Ride())
+        elif args.commande == "pc":
+            ok = run_checks(guide, pc_steps(profile_path, args.journal_dir, cfg, recette_dir / BACKUP))
+        else:
+            ok = run_checks(guide, bilan_steps(profile_path, args.journal_dir, cfg))
+        guide.finish(ok, "Recette V10 : tout est bon" if ok else "Recette V10 : écart à regarder (lignes NON)")
+    except KeyboardInterrupt:
+        guide.finish(False, "Recette V10 arrêtée (Ctrl+C) : profil et parcours restaurés")
+    finally:
+        guide.close()
+    return 0 if ok else 1
 
 
 if __name__ == "__main__":

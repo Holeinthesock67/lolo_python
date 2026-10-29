@@ -68,14 +68,14 @@ def test_backup_keeps_the_first_copy(tmp_path):
     assert (tmp_path / "bk" / "config.toml").read_text(encoding="utf-8") == "a"
 
 
-def test_advice_without_coins_offers_the_trial_profile(tmp_path):
-    svc = _service(tmp_path, tmp_path / "profile.json")
-    adv = rv.advise(svc)
-    assert adv.frame is None and adv.wheels is None
-    assert "--profil-essai" in adv.lines[-1]
-    lines = rv.trial_profile(svc, tmp_path / "profile.json", tmp_path)
-    assert lines and (tmp_path / rv.TRIAL_MARK).is_file()
-    assert {k: load_profile(tmp_path / "profile.json").equipped[k] for k in AERO} == AERO
+def test_set_bike_then_restore_returns_to_no_profile(tmp_path):
+    profile_path, essais = tmp_path / "profile.json", tmp_path / "Essais"
+    rv.set_bike(profile_path, AERO, essais / rv.RECETTE)
+    assert {k: load_profile(profile_path).equipped[k] for k in AERO} == AERO
+    rv.write_all(tmp_path / "routes", essais, terrain=False)
+    lines = rv.restore(profile_path, tmp_path / "routes", essais)
+    assert not profile_path.exists() and len(lines) == 5
+    assert rv.restore(profile_path, tmp_path / "routes", essais) == []
 
 
 def test_profile_reset_check_restores_the_profile(tmp_path):
@@ -115,21 +115,70 @@ def test_verdict_names_a_missing_block(tmp_path):
 def test_materiel_prints_the_plan(capsys):
     assert rv.main(["materiel"]) == 0
     out = capsys.readouterr().out
-    assert "recette-v10-depart" in out and "recette-v10-equipe" in out and "Garage" in out
+    assert "python -m openride_core.tools.recette_v10\n" in out and "sprint" in out
 
 
-def test_command_line_from_preparer_to_restaurer(tmp_path, capsys):
-    """preparer --profil-essai, bilan sur deux blocs, restaurer : on revient à l'état de départ."""
-    dirs = ["--routes-dir", str(tmp_path / "routes"), "--essais-dir", str(tmp_path / "Essais"),
+class FakeOpenRide:
+    """Lanceur simulé : écrit d'un coup le journal d'un bloc de 10 min avec le vélo du profil, puis attend SIGTERM."""
+
+    def __init__(self, tmp_path, ride_s=600):
+        self.tmp, self.ride_s, self.cmds, self.signals = tmp_path, ride_s, [], []
+
+    def __call__(self, cmd):
+        self.cmds.append(cmd)
+        route = cmd[cmd.index("--route") + 1]
+        equipped = load_profile(self.tmp / "profile.json").equipped
+        loadout = {k: equipped[k] for k in ("frame", "wheels")}
+        _write_block(self.tmp / "journal" / f"{route}.jsonl", route, loadout,
+                     9.3 if loadout == AERO else 9.0, minutes=self.ride_s // 60)
+        self.done = False
+        return self
+
+    def poll(self):
+        return 0 if self.done else None
+
+    def send_signal(self, sig):
+        self.signals.append(sig)
+        self.done = True
+
+    def kill(self):
+        self.done = True
+
+
+def _ride(fake):
+    clock = iter(range(0, 10**6, 1))
+    return rv.Ride(spawn=fake, clock=lambda: float(next(clock)), sleep=lambda s: None)
+
+
+def _dirs(tmp_path):
+    return ["--routes-dir", str(tmp_path / "routes"), "--essais-dir", str(tmp_path / "Essais"),
             "--journal-dir", str(tmp_path / "journal"), "--profile", str(tmp_path / "profile.json"),
-            "--config", str(tmp_path / "absent.toml")]
-    assert rv.main(["preparer", "--sans-terrain", "--profil-essai", *dirs]) == 0
-    assert (tmp_path / "routes" / "recette-v10-depart.world").is_dir()
-    assert load_profile(tmp_path / "profile.json").equipped["frame"] == AERO["frame"]
-    _write_block(tmp_path / "journal" / "a.jsonl", "recette-v10-depart", BASE, 9.0)
-    _write_block(tmp_path / "journal" / "b.jsonl", "recette-v10-equipe", AERO, 9.3)
-    assert rv.main(["bilan", *dirs]) == 0
-    assert rv.main(["restaurer", *dirs]) == 0
-    assert not (tmp_path / "profile.json").exists()
+            "--config", str(tmp_path / "absent.toml"), "--sans-terrain"]
+
+
+def test_one_command_runs_both_blocks_and_restores(tmp_path):
+    """Une seule commande : essais PC, bloc 1 vélo de départ, bloc 2 aéro, verdict, profil et parcours restaurés."""
+    p = Profile()
+    p.equipped.update({"helmet": "helmet_route"})
+    save_profile(p, tmp_path / "profile.json")
+    before = (tmp_path / "profile.json").read_bytes()
+    fake = FakeOpenRide(tmp_path)
+    assert rv.main(_dirs(tmp_path), ride=_ride(fake)) == 0
+    assert [c[c.index("--route") + 1] for c in fake.cmds] == ["recette-v10-depart", "recette-v10-equipe"]
+    assert all("--autostart" in c and "--no-compile" in c for c in fake.cmds)
+    assert len(fake.signals) == 2   # OpenRide fermé par l'outil à 10 min, deux fois
+    assert (tmp_path / "profile.json").read_bytes() == before
     assert not (tmp_path / "routes" / "recette-v10-depart.world").exists()
     assert not (tmp_path / "Essais" / "recette-v10-equipe.consignes.json").exists()
+
+
+def test_block_cut_short_stops_and_restores(tmp_path):
+    fake = FakeOpenRide(tmp_path, ride_s=120)
+    fake.poll = lambda: 0   # OpenRide fermé avant les 10 min
+    assert rv.main(_dirs(tmp_path), ride=_ride(fake)) == 1
+    assert len(fake.cmds) == 1 and not (tmp_path / "profile.json").exists()
+
+
+def test_restaurer_without_a_run_does_nothing(tmp_path, capsys):
+    assert rv.main(["restaurer", *_dirs(tmp_path)[:-1]]) == 0
+    assert "Rien à restaurer" in capsys.readouterr().out

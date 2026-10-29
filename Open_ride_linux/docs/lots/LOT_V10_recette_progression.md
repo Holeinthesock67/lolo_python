@@ -22,7 +22,7 @@ T1 (contrat 1.4), V2 à V9 et V11 livrés (V5 pour la partie segments, maillots 
 4. **Avatar :** caméra de suivi, pédalage à 60 et 100 rpm, danseuse dans une rampe, réglages de l'avatar ; ligne `[perf-rendu]` : au moins 55 images/s en qualité basse avec la série P activée.
 5. **Robustesse :** effacer `~/OpenRide/profile.json` (après copie) : niveau et pièces gagnées recalculés, choix revenus aux défauts.
 
-**Programme guidé :** `python -m openride_core.tools.recette_v10` (`materiel`, `preparer`, `pc`, `bilan`, `restaurer`) prépare les étapes 2 à 5 en deux blocs de 10 min sur un même parcours plat, avec consignes à l'écran et préavis d'une minute, puis lit le verdict dans les journaux ([OUTILS_DE_TEST.md](../OUTILS_DE_TEST.md)). La danseuse s'y voit au sprint de 10 s (au moins 150 % de la FTP) plutôt que dans une rampe.
+**Programme guidé :** `python -m openride_core.tools.recette_v10` fait toute la recette en une commande : sauvegardes, parcours, étapes 1 et 5 sans vélo, puis deux blocs de 10 min lancés et arrêtés par l'outil sur un même parcours plat, vélo de départ puis cadre et roues aéro posés sans achat (choix du propriétaire du 29/10 : le Garage au Click est couvert par le banc des menus), consignes à l'écran avec préavis d'une minute, verdict lu dans les journaux et restauration ([OUTILS_DE_TEST.md](../OUTILS_DE_TEST.md)). La danseuse s'y voit au sprint de 10 s (au moins 150 % de la FTP) plutôt que dans une rampe.
 
 ## 5. Critères d'acceptation
 
