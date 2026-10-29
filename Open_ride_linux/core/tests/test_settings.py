@@ -226,14 +226,17 @@ def test_audio_volumes_in_menu(tmp_path: Path):
 
 
 def test_fps_counter_setting(tmp_path: Path):
-    """Compteur d'images/s du HUD : choix off / on, appliqué tout de suite, coupé par défaut."""
+    """Compteur d'images/s du HUD : choix off / on / detail (temps CPU et GPU en plus, pour les essais),
+    appliqué tout de suite, coupé par défaut."""
     cfg = Config()
     it = {i["key"]: i for i in settings.current(cfg)}["render.fps"]
-    assert (it["value"], it["choices"], it["applies"]) == ("off", ["off", "on"], "now")
+    assert (it["value"], it["choices"], it["applies"]) == ("off", ["off", "on", "detail"], "now")
     path = tmp_path / "config.toml"
     path.write_text("[render]\nquality = \"low\"\n", encoding="utf-8")
     settings.apply(cfg, {"render.fps": "on"}, path)
     assert config_mod.load(path).render.fps == "on"
+    settings.apply(config_mod.load(path), {"render.fps": "detail"}, path)
+    assert config_mod.load(path).render.fps == "detail"
     with pytest.raises(settings.SettingError):
         settings.check(cfg, "render.fps", "oui")
 
