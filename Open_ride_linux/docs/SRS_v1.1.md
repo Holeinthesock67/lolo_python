@@ -37,7 +37,7 @@ La v1.1 garde le découplage matériel/rendu et le modèle 1D sur rail, et corri
 | Physique | Dans Godot | Dans le core Python | Source de vérité unique ; l'enregistrement survit à un plantage du rendu ; testable sans Godot |
 | IPC | Trame JSON sans version | Versionné, numéro de séquence, heartbeat | Détecter les pertes et les incompatibilités |
 | Intégration de la vitesse | P/v avec seuil v_min | Bilan d'énergie cinétique | Stable à l'arrêt, plus de contournement |
-| Braquets | R1 = 0,55, R24 = 1,85 | R1 = 0,40, R24 = 3,00, étagement calculé | Rapport 7,5 : un braquet doit se sentir sur le plat (essai HomeTrainer du 24 octobre) |
+| Braquets | R1 = 0,55, R24 = 1,85 | R1 = 0,65, R24 = 2,00, étagement calculé | Rapport 7,5 (0,40 à 3,00) le 24 octobre pour sentir un braquet sur le plat, ramené à 3,1 le 28 octobre : en petit braquet, une montée devenait plate et la moitié haute ne servait pas |
 | Zwift Click | Appuis longs actifs en SIM | Appuis longs : ± 10 vitesses en SIM (essai du 24 octobre), biais ± 10 % en ERG ; Z : bloc suivant en ERG (lot O17) | Changer vite de braquet en côte ; même famille d'action dans chaque mode (spécification générale §7.1) |
 | Route | B-spline | Polyligne à 10 m lissée | Une B-spline ne passe pas par les points du tracé |
 | Altitude | API à points | Tuiles raster avec cache | Pas de limite de débit, parcours longs possibles |
@@ -120,7 +120,7 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 La chaîne reste sur le pignon fixe du Zwift Cog ; le braquet n'agit que sur la résistance ressentie, donc sur la cadence pour une puissance donnée. La vitesse virtuelle est calculée avec la puissance mesurée et la pente réelle du terrain, jamais avec le braquet.
 
 - Index `k` de 1 à 24, 12 au lancement.
-- Rapport géométrique entre R_min = 0,40 et R_max = 3,00 (rapport 7,5, soit environ 9,2 % par clic) ; R_12 vaut alors environ 1,05, ce qui est accepté comme « neutre ».
+- Rapport géométrique entre R_min = 0,65 et R_max = 2,00 (rapport 3,1, soit environ 5 % par clic) ; R_12 vaut alors environ 1,11, ce qui est accepté comme « neutre ». Jusqu'au 28 octobre, la plage allait de 0,40 à 3,00 : en braquet 1 à 50 % de difficulté, une montée de 3,6 % devenait une consigne de 0,12 %, donc une route plate, et la moitié haute de la plage dépassait 180 W sur 3,6 %. La plage resserrée a été choisie par le propriétaire après l'étude des petits braquets : au braquet 1, la même montée donne 0,82 %, et chaque clic se sent sur toute la plage.
 - Pente envoyée au trainer :
 
 ```latex
@@ -363,8 +363,8 @@ hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce 
 [gearing]
 n_gears = 24
 start_gear = 12
-ratio_min = 0.40
-ratio_max = 3.00
+ratio_min = 0.65
+ratio_max = 2.00
 g_base_pct = 2.0
 long_press_gears = 10
 
@@ -388,7 +388,7 @@ sim_scenario = ""            # scénario du Bluetooth simulé (vide : demo), voi
 [render]
 quality = "low"      # low, medium, high
 theme = "default"
-visual_grade_scale = 1.0   # exagération visuelle du relief, de 1,0 à 2,0 (lot Q2 ; physique et HUD inchangés)
+visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lots Q2 et Y15 ; physique et HUD inchangés)
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
@@ -505,7 +505,7 @@ Le `.world` est désormais un dossier, et non un fichier unique comme dans la v1
 | Domaine | Test |
 | --- | --- |
 | Physique | 250 W à plat ≈ 10,2 m/s ± 3 % ; stabilité à l'arrêt ; pas de recul en montée à 0 W ; descente à 0 W accélère |
-| Braquets | Rapports strictement croissants de k = 1 à 24 ; R_12 ≈ 1,05 ; pente effective bornée |
+| Braquets | Rapports strictement croissants de k = 1 à 24 ; R_12 ≈ 1,11 ; pente effective bornée |
 | ERG | Calcul des cibles à partir d'un `.zwo` de référence ; lissage de 2 s ; saut de bloc |
 | IPC | Chaque trame d'exemple valide son schéma JSON ; comportement sur perte et désordre |
 | Compilateur | Pente et longueur d'un GPX de référence ; relance sans nouveau téléchargement |

@@ -11,7 +11,7 @@ const ITEM_ICONS := {
 	"open_world": "globe", "plan": "calendar", "ftp": "bolt", "sim": "chip", "settings": "gear",
 	"devices": "list", "pairing": "list", "quit": "power", "start": "play", "resume": "play",
 	"continue": "play", "records": "trophy", "end_save": "flag", "abandon": "cross", "no": "cross",
-	"yes": "check", "difficulty": "slope", "bot": "rider", "ghost": "ghost",
+	"yes": "check", "difficulty": "slope", "ride_mode": "bars", "target_w": "bolt", "cadence_rpm": "bike", "bot": "rider", "ghost": "ghost",
 	"rogue": "rider", "rogue_change": "gear", "objective": "flag", "duration": "calendar", "wprime": "bolt",
 	"chassis": "bike", "launch": "play",
 	"garage": "bike", "bike": "bike", "outfit": "rider", "avatar": "rider", "save": "check", "cancel": "cross",
