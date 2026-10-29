@@ -268,3 +268,89 @@ def lonlat_to_tile(z: int, lon: float, lat: float) -> tuple[int, int]:
     fx = (lon + 180.0) / 360.0
     fy = (1.0 - math.asinh(math.tan(math.radians(lat))) / math.pi) / 2.0
     return min(int(fx * n), n - 1), min(int(fy * n), n - 1)
+
+
+# --- encodeur (le strict nécessaire de MVT 2.1 : faux serveur de tuiles X28 et tests) ---------
+
+def _enc_varint(n: int) -> bytes:
+    out = bytearray()
+    while True:
+        b = n & 0x7F
+        n >>= 7
+        if n:
+            out.append(b | 0x80)
+        else:
+            out.append(b)
+            return bytes(out)
+
+
+def _enc_key(num: int, wire: int) -> bytes:
+    return _enc_varint(num << 3 | wire)
+
+
+def _enc_ld(num: int, payload: bytes) -> bytes:
+    return _enc_key(num, 2) + _enc_varint(len(payload)) + payload
+
+
+def _enc_packed(values: list[int]) -> bytes:
+    return b"".join(_enc_varint(v) for v in values)
+
+
+def _enc_zigzag(n: int) -> int:
+    return (n << 1) ^ (n >> 63)
+
+
+def _enc_value(v) -> bytes:
+    if isinstance(v, bool):
+        return _enc_key(7, 0) + _enc_varint(int(v))
+    if isinstance(v, str):
+        return _enc_ld(1, v.encode())
+    if isinstance(v, float):
+        return _enc_key(3, 1) + struct.pack("<d", v)
+    if v < 0:
+        return _enc_key(6, 0) + _enc_varint(_enc_zigzag(v))
+    return _enc_key(5, 0) + _enc_varint(v)
+
+
+def _enc_paths(paths: list[tuple[list[tuple[int, int]], bool]]) -> list[int]:
+    cmds: list[int] = []
+    x = y = 0
+    for pts, closed in paths:
+        px, py = pts[0]
+        cmds += [1 | 1 << 3, _enc_zigzag(px - x), _enc_zigzag(py - y)]
+        x, y = px, py
+        cmds.append(2 | (len(pts) - 1) << 3)
+        for px, py in pts[1:]:
+            cmds += [_enc_zigzag(px - x), _enc_zigzag(py - y)]
+            x, y = px, py
+        if closed:
+            cmds.append(7 | 1 << 3)
+    return cmds
+
+
+def _enc_layer(name: str, features: list[dict], extent: int = 4096) -> bytes:
+    keys: list[str] = []
+    values: list = []
+    body = _enc_key(15, 0) + _enc_varint(2) + _enc_ld(1, name.encode())
+    for f in features:
+        tags: list[int] = []
+        for k, v in f["tags"].items():
+            if k not in keys:
+                keys.append(k)
+            if v not in values:
+                values.append(v)
+            tags += [keys.index(k), values.index(v)]
+        fb = _enc_key(1, 0) + _enc_varint(f["id"]) + _enc_ld(2, _enc_packed(tags)) + _enc_key(3, 0) + _enc_varint(f["type"])
+        fb += _enc_ld(4, _enc_packed(_enc_paths(f["paths"])))
+        body += _enc_ld(2, fb)
+    for k in keys:
+        body += _enc_ld(3, k.encode())
+    for v in values:
+        body += _enc_ld(4, _enc_value(v))
+    body += _enc_key(5, 0) + _enc_varint(extent)
+    return body
+
+
+def encode_tile(layers: dict[str, list[dict]], extent: int = 4096) -> bytes:
+    """Tuile MVT 2.1 non compressée : `{couche: [{"id", "type" (1 point, 2 ligne, 3 surface), "tags", "paths"}]}`."""
+    return b"".join(_enc_ld(3, _enc_layer(n, f, extent)) for n, f in layers.items())

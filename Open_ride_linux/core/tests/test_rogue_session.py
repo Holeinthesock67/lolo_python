@@ -102,7 +102,7 @@ def test_start_run_goes_loading_then_ready_in_rogue_mode(env):
     real = s._set_state
     s._set_state = lambda new, reason=None: (states.append(new), real(new, reason))[1]
     start(s)
-    assert states == ["LOADING", "READY"] and s.state.mode == "ROGUE" and s.state.route_id == "rogue"
+    assert states == ["LOADING", "READY"] and s.state.mode == "ROGUE" and s.state.route_id is None
     assert s.state.gear == 6 and s.state.gears_total == 12 and s.state.lat is None
     s.server.send_state(s.state)
     STATE.validate([m for m in sent if m["type"] == "state"][-1])

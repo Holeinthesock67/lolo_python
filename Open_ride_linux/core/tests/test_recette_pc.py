@@ -29,7 +29,8 @@ def test_all_steps_pass_and_summary_written(tmp_path, monkeypatch):
     out = tmp_path / "r1"
     assert rp.main(["--out", str(out)]) == 0
     summary = json.loads((out / "resume.json").read_text(encoding="utf-8"))
-    assert summary["ok"] and [s["status"] for s in summary["steps"]] == ["OK"] * len(rp.STEPS)
+    expected = ["SAUTÉ" if n in rp.OPTIONAL_STEPS else "OK" for n in rp.STEPS]   # deps : seulement si nommée
+    assert summary["ok"] and [s["status"] for s in summary["steps"]] == expected
     core = summary["steps"][0]
     assert core["detail"] == "600 passed, 2 skipped" and (out / "core.log").is_file()
     assert "Premier passage" in (out / "resume.txt").read_text(encoding="utf-8")
@@ -73,3 +74,17 @@ def test_menus_step_runs_the_menu_bench(tmp_path):
     assert cmd[1].endswith("engine/tests/menu_bench.py") and cmd[-2:] == ["--out", str(tmp_path / "menus")]
     assert rp.detail_of("menus", "reglages clavier OK\nOK\n") == "OK"
     assert rp.detail_of("menus", "2 passage(s) en échec sur 39\n") == "2 passage(s) en échec sur 39"
+
+
+def test_deps_step_is_optional_and_skipped_without_network(tmp_path, monkeypatch):
+    """Audit des dépendances (lot X24) : seulement avec --seulement deps ; code 75 sans réseau = SAUTÉ."""
+    cmd, _ = rp.step_commands(False, tmp_path)["deps"]
+    assert cmd[1].endswith("scripts/audit_dependances.py") and cmd[-2:] == ["--out", str(tmp_path / "deps")]
+    monkeypatch.setattr(rp, "step_commands", fake_commands(
+        {"deps": ("audit_dependances : pas de réseau vers PyPI, audit sauté", rp.EXIT_SKIPPED)}))
+    out = tmp_path / "r"
+    assert rp.main(["--out", str(out), "--seulement", "deps"]) == 0
+    steps = {s["name"]: s for s in json.loads((out / "resume.json").read_text())["steps"]}
+    assert steps["deps"]["status"] == "SAUTÉ" and steps["deps"]["detail"].startswith("audit_dependances : pas de réseau")
+    monkeypatch.setattr(rp, "step_commands", fake_commands({"deps": ("Vulnérabilités connues : 1", 1)}))
+    assert rp.main(["--out", str(tmp_path / "r2"), "--seulement", "deps"]) == 1

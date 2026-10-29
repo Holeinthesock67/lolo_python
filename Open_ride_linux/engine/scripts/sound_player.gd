@@ -40,7 +40,9 @@ extends Node
 ## Lot T17 : jingles des événements du parcours (`EventSoundsModel.JINGLES` : sommet, sprint, arche, fin
 ## de séance), synthétisés note par note ou lus dans ~/OpenRide/Sounds/<nom>.ogg ; `play_event(nom)`
 ## les joue sur un lecteur non spatialisé du bus `Events` (« Volume bips et événements » des Réglages,
-## audio_mix.gd), trois à la fois au plus.
+## audio_mix.gd), trois à la fois au plus. Depuis le 29/10 (jingles de départ et de ligne d'une boucle), les
+## jingles ne sont plus faits au démarrage mais un par image ensuite (`_process`, 8 à 60 ms chacun), ou tout
+## de suite s'il en faut un avant : le budget `sound_generation` du démarrage y gagne ~0,2 s.
 
 const SoundModel := preload("res://scripts/sound_model.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
@@ -170,7 +172,23 @@ func _init_players() -> void:
 
 ## Flux d'une sorte de son (synthétisé ou .ogg de remplacement), null si inconnue.
 func stream(kind: String) -> Resource:
+	if not _streams.has(kind) and EventSoundsModel.JINGLES.has(kind):
+		_make_jingle(kind)
 	return _streams.get(kind, null)
+
+
+## Jingles restant à faire, un par image après le démarrage.
+func _process(_delta: float) -> void:
+	for jingle in EventSoundsModel.JINGLES:
+		if not _streams.has(jingle):
+			_make_jingle(jingle)
+			return
+	set_process(false)
+
+
+func _make_jingle(jingle: String) -> void:
+	var custom_jingle = _try_load_custom(jingle)
+	_streams[jingle] = custom_jingle if custom_jingle != null else _synthesize_jingle(jingle)
 
 
 ## Nom du son d'un flux de `stream` (« » s'il n'en vient pas) : sons du décor entendus (lot P30).
@@ -183,9 +201,9 @@ func kind_of(st: Resource) -> String:
 
 ## Joue un jingle d'événement (lot T17) ; nom inconnu : rien.
 func play_event(jingle: String) -> void:
-	var st: Resource = _streams.get(jingle, null)
-	if st == null or not EventSoundsModel.JINGLES.has(jingle):
+	if not EventSoundsModel.JINGLES.has(jingle):
 		return
+	var st: Resource = stream(jingle)
 	events_played.append(jingle)
 	_event_player.stream = st
 	if is_inside_tree():
@@ -324,9 +342,6 @@ func _generate_all_streams() -> void:
 	for bed in AmbienceModel.BEDS:
 		var custom_bed = _try_load_custom(bed)
 		_streams[bed] = custom_bed if custom_bed != null else _synthesize_bed(bed)
-	for jingle in EventSoundsModel.JINGLES:
-		var custom_jingle = _try_load_custom(jingle)
-		_streams[jingle] = custom_jingle if custom_jingle != null else _synthesize_jingle(jingle)
 
 
 func _try_load_custom(kind: String) -> Resource:

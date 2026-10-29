@@ -256,14 +256,14 @@
 | [X15](LOT_X15_saccades_demarrage.md) | Série X (outils de test) : Saccades avec leur cause, tâches de fond par tronçon, temps de démarrage | GDScript + Python | X13 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x15`, sur X35) ; mesure en fenêtre réelle sur le PC ; issue #213 |
 | [X17](LOT_X17_gigue_boucle_ipc.md) | Série X (outils de test) : Gigue de la boucle physique et des trames `state`, sous charge | Python + GDScript | — | Petite | Oui ; issue #215 |
 | [X18](LOT_X18_apparitions_avant_apres.md) | Série X (outils de test) : Contrôle d'apparition (« pop ») et comparaison avant/après (outils livrés par S1) | Python + GDScript | S1 | Petite | Non : livré par le lot S1 ; issue #216 |
-| [X19](LOT_X19_micro_banc_decor.md) | Série X (outils de test) : Micro-banc par image et budgets par machine (décor, synthèse des sons) | GDScript + Python | X2 | Petite | Oui ; issue #217 |
+| [X19](LOT_X19_micro_banc_decor.md) | Série X (outils de test) : Micro-banc par image et budgets par machine (décor, synthèse des sons) | GDScript + Python | X2 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x19`) ; issue #217 |
 | [X20](LOT_X20_regression_visuelle_v2.md) | Série X (outils de test) : Non-régression visuelle v2 : SSIM, scènes figées, références par moteur et préréglage | Python + GDScript | S1 (`compare_captures.py`) | Moyenne | Oui ; issue #218 |
-| [X21](LOT_X21_tour_visuel_guide.md) | Série X (outils de test) : Tour visuel guidé sur un vrai parcours, planche à cocher | GDScript + Python | — | Moyenne | Oui ; issue #219 |
+| [X21](LOT_X21_tour_visuel_guide.md) | Série X (outils de test) : Tour visuel guidé sur un vrai parcours, planche à cocher | GDScript + Python | — | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x21`) ; issue #219 |
 | [X22](LOT_X22_lisibilite_hud.md) | Série X (outils de test) : Lisibilité du HUD à 2 m (hauteur, contraste) et débordements (4 bots à 720 px) | Python | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x22`) ; issue #220 |
-| [X24](LOT_X24_audit_dependances.md) | Série X (outils de test) : Audit des dépendances (pip-audit, versions des actions) | Python + YAML | — | Petite | Oui ; issue #222 |
+| [X24](LOT_X24_audit_dependances.md) | Série X (outils de test) : Audit des dépendances (pip-audit, versions des actions) | Python + YAML | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x24`) ; issue #222 |
 | [X26](LOT_X26_fuzz_fichiers.md) | Série X (outils de test) : Fuzz des fichiers d'entrée (.zwo, .erg, .mrc, GPX, FIT, TCX) | Python | — | Petite | Oui ; issue #224 |
 | [X27](LOT_X27_cycliste_virtuel.md) | Série X (outils de test) : Cycliste virtuel (cadence, pente, rampe, sprint, W′bal) et course contre les bots accélérée | Python | T12 pour `bots_race` | Moyenne | Oui ; issue #225 |
-| [X28](LOT_X28_reseau_degrade.md) | Série X (outils de test) : Réseau dégradé pour le monde ouvert : faux serveur de tuiles | Python | W15 | Moyenne | Oui ; issue #226 |
+| [X28](LOT_X28_reseau_degrade.md) | Série X (outils de test) : Réseau dégradé pour le monde ouvert : faux serveur de tuiles | Python | W15 | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x28`) ; issue #226 |
 | [X30](LOT_X30_tableau_recette.md) | Série X (outils de test) : Tableau de recette 1.0 relié aux rapports des outils | Python | O8 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x30`) ; issue #228 |
 | [X31](LOT_X31_pente_max_garmin.md) | Série X (outils de test) : Pente maximale et D+ face à Garmin Connect, en local | Python | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x31`) ; issue #229 |
 | [X32](LOT_X32_garde_fou_qualite.md) | Série X (outils de test) : Garde-fou de la qualité réellement appliquée dans les bancs et les vitrines | Python + GDScript | #481 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x32`) |
@@ -275,6 +275,7 @@
 | [X38](LOT_X38_couleurs_du_theme.md) | Série X (outils de test) : Couleurs du thème : aucune couleur en dur dans le HUD et le globe | GDScript | N20 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x38`) |
 | [X39](LOT_X39_ecart_progression.md) | Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
 | [X40](LOT_X40_rogue_bout_en_bout.md) | Série X (outils de test) : Run Cyber-Rogue de bout en bout dans la séance du core (`rogue_bout_en_bout`), pause, resynchronisation, trace pour le banc visuel | Python | R8, R7 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x40`) ; issue #543 |
+| [X41](LOT_X41_banc_visuel_rogue.md) | Série X (outils de test) : Banc visuel du mode Cyber-Rogue (`rogue_bench.py`), run X40 rejouée dans la vraie scène, captures aux moments clés et planche HTML | Python, GDScript | X40, R10–R13 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x41`) ; issue #544 |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
