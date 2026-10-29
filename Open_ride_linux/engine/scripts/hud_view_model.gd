@@ -330,6 +330,8 @@ static func session_lines(state: Dictionary, erg_view: Dictionary) -> Dictionary
 	out["grade_class"] = grade_class(grade) if not is_nan(grade) else "flat"
 	out["distance_val"] = "%.2f km" % (s / 1000.0) if not is_nan(s) else NO_VALUE
 	out["gear_val"] = gear_text
+	# Braquet sans effet en ERG avec une cible (± = intensité) : caché ; en roue libre il sert, donc affiché.
+	out["gear_shown"] = not (erg_on and not freeride)
 	out["time_val"] = format_hms(t)
 
 	var erg_line := ""
