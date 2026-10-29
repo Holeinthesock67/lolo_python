@@ -141,7 +141,7 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 | Z court | Bonus en réserve (mode classique, série T) | Bloc suivant (lissage de 2 s ; au dernier bloc, fin de l'entraînement) |
 | Y | Pause et reprise de la séance | Pause et reprise de la séance (temps du bloc arrêté) |
 
-Dans un bloc de roue libre, + et − restent des braquets ; Z passe quand même au bloc suivant. Il n'y a qu'une pause : celle de la séance par Y (lot N6, choix du propriétaire du 25 octobre 2026) ; l'ancienne pause propre à l'ERG (− long, pente 0 %) a disparu avec le lot O17, et le champ `erg.paused` du contrat suit la pause de la séance.
+Un entraînement ERG n'a jamais de roue libre (lot O19, choix du propriétaire du 29 octobre 2026) : la consigne ne descend pas sous 50 W et un bloc FreeRide d'un `.zwo` devient un palier à 50 W. Il n'y a qu'une pause : celle de la séance par Y (lot N6, choix du propriétaire du 25 octobre 2026) ; l'ancienne pause propre à l'ERG (− long, pente 0 %) a disparu avec le lot O17, et le champ `erg.paused` du contrat suit la pause de la séance.
 
 Le demi-tour sur la route et le réglage des bots sont reportés à la 1.x, dans les menus (§14, lots N17 et N18).
 
