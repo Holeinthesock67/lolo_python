@@ -94,7 +94,15 @@ static func format_value(it: Dictionary, value) -> String:
 	var unit := str(it.get("unit", ""))
 	if unit == "°":
 		return "%d° (%s)" % [int(value), COMPASS[posmod(int(round(int(value) / 45.0)), 8)]]
-	return str(value) + ((" " + unit) if unit != "" else "")
+	return number_text(value) + ((" " + unit) if unit != "" else "")
+
+
+## Nombre lu dans le JSON du core (toujours un flottant) : « 250 » et non « 250.0 » quand il est entier
+## (depuis Godot 4.4, str() d'un flottant entier garde « .0 »).
+static func number_text(value) -> String:
+	if typeof(value) == TYPE_FLOAT and is_equal_approx(value, roundf(value)):
+		return str(int(roundf(value)))
+	return str(value)
 
 
 ## Groupe d'un élément : son `group` s'il est connu, sinon « other ».
