@@ -114,6 +114,7 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-ERG-3 | Test de FTP, plans sur plusieurs semaines, menu Entraînement | — | O10 à O12 | O10 et O11 livrés ; O12 : core livré (PR #395), écrans de l'engine en revue (PR #396) |
 | 1.0-ERG-4 | Bandeau ERG à l'écran, histogramme, bip à T − 3 s | §6 | N7 | Livré |
 | 1.0-ERG-5 | Boutons de l'ERG selon le plan commun (§7.1) : ± court biais ± 2 %, ± long biais ± 10 %, Z bloc suivant, Y pause | §4.4 | O17 | Livré, essai sur le PC à faire (décision D3 du 27 octobre, issue #367) |
+| 1.0-ERG-6 | ERG dans une session libre depuis l'écran de pause : SIM, ERG libre (puissance cible) ou ERG à cadence verrouillée (cadence ± 15 %, puissance adaptée) ; ± = biais de la cible (puissance, ou cadence en ERG cadence), Z = bonus comme en SIM | — | O18 | En PR (demande du propriétaire du 28 octobre), essai sur le vélo à faire |
 | 1.0-CMP-1 | Compilateur GPX vers `.world` : route, terrain, OSM, caches | §7 | B1, B2, I3, I4 | Livré |
 | 1.0-CMP-2 | Traces FIT et TCX, archives Garmin, compilation au lancement | §7 | M7, N11, O5 | Livré |
 | 1.0-CMP-3 | Bibliothèque de parcours et pack de cols célèbres | — | O15, O16 | Livré (pack O16 à construire une première fois sur le PC) |
@@ -291,6 +292,7 @@ Règles communes, valables partout :
 - **A agit sur le choix affiché.** Un menu, un carrefour, une liste de couloirs ou de cartes sont des choix : A court passe à l'option suivante, A long valide. Sans choix affiché (en roulant), le choix est celui de la vue de caméra.
 - **Y revient en arrière** : pause en séance, écran précédent dans un menu, reprise depuis l'écran de pause.
 - **Z n'a que l'action du mode** ; il ne fait rien dans un menu.
+- **ERG d'une session libre (lot O18)** : choisi sur l'écran de pause, il garde la colonne ERG, sauf Z, qui reste le bonus de la colonne SIM (pas de blocs) ; en ERG à cadence verrouillée, le biais s'applique à la cadence cible.
 - **Le grand pas vaut dix petits pas en séance** et cinq éléments dans un menu.
 - **Clavier (décision D6 du 27 octobre) :** il double le Click touche pour touche, avec les mêmes seuils d'appui (court sous 0,5 s, long à 0,9 s ou plus, zone floue entre les deux), en menu comme en séance ; une touche n'a jamais d'autre rôle que celui de son bouton. Pas de bouton pour la difficulté (décision Q1).
 
