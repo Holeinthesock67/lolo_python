@@ -20,7 +20,7 @@ from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
-from . import ftms
+from . import ftms, latency_log
 from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, note_trainer_write
 from .config import BikeConfig, TrainerConfig
 from .mock_driver import TrainerMetrics
@@ -152,6 +152,7 @@ class ControlPoint:
         self.last_call_at = t_start
         try:
             note_trainer_write()
+            latency_log.cp_written()   # lot X7 : étage « cp » des appuis qui attendent cette écriture
             self._idle.clear()
             if self.trace:
                 op_name, vals, hex_str = format_cp_write(payload)

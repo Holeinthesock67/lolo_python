@@ -1,14 +1,17 @@
 extends Node3D
 
-## Avatar du cycliste à l'écran (lots V6 et V7) : assemble les maillages de avatar_mesh.gd et de
-## equipment_meshes.gd, les colore selon les réglages du profil (palettes de avatar_model.gd) et l'équipement
-## choisi (`look` de chaque pièce), et les anime à chaque image d'après avatar_model.gd (pédalier à la
-## cadence réelle, danseuse). Ne décide rien : affiche l'état du modèle.
+## Avatar du cycliste à l'écran (lots V6, V7 et Y16) : assemble les maillages de avatar_mesh.gd, colorés
+## selon les réglages du profil (palettes de avatar_model.gd, cuites dans les couleurs de sommet) et
+## l'équipement choisi (`look` de chaque pièce, equipment_meshes.gd), et les anime à chaque image d'après
+## avatar_model.gd (pédalier à la cadence réelle, danseuse). Ne décide rien : affiche l'état du modèle.
+## Peu de nœuds (un vélo fixe, deux roues, un pédalier, les segments du corps) et trois matériaux partagés :
+## l'avatar détaillé coûte peu d'appels de dessin.
 ##
-## - `apply(model)` : place jambes, bras, tronc, tête, pédales pour l'angle de pédalier et la position du
-##   modèle ; en danseuse le vélo se balance d'un côté à l'autre au rythme du pédalier.
+## - `apply(model)` : place jambes, bras, tronc, tête, pédalier et pieds pour l'angle de pédalier et la
+##   position du modèle ; en danseuse le vélo se balance d'un côté à l'autre au rythme du pédalier.
 ## - `set_equipment(looks)` : `look` résolu par emplacement (equipment_meshes.gd equip_looks) ; reconstruit.
-## - `set_speed(kmh)` : au-dessus de AIR_STREAK_KMH, quelques traînées d'air translucides le long de l'avatar.
+## - `set_speed(kmh, now_s)` : les roues tournent à la vitesse du vélo (sens de la marche, comme le
+##   pédalier) ; au-dessus de AIR_STREAK_KMH, quelques traînées d'air translucides le long de l'avatar.
 ## - `set_visible_for_view(view)` : caché en vue subjective (la caméra est dans la tête), visible ailleurs
 ##   (vues de caméra du lot V12 et caméra de contrôle du banc visuel) ; les traînées suivent.
 ## - `set_lod(n)` : 0 cycliste, 1 intermédiaire, 2 allégé des bots (sans équipement détaillé).
@@ -19,9 +22,6 @@ const AvatarMesh := preload("res://scripts/avatar_mesh.gd")
 const EquipmentMeshes := preload("res://scripts/equipment_meshes.gd")
 
 const SWAY_RAD := 0.07
-const FRAME_COLOR := Color(0.16, 0.17, 0.20)
-const TYRE_COLOR := Color(0.05, 0.05, 0.06)
-const SHOE_COLOR := Color(0.12, 0.12, 0.14)
 const STREAK_COUNT := 6
 const STREAK_LENGTH_M := 1.6
 const STREAK_PERIOD_S := 0.5
@@ -37,6 +37,8 @@ var _bike: Node3D          # vélo seul : se balance en danseuse
 var _rig: Node3D           # cycliste et vélo
 var _streaks: Node3D
 var _speed_kmh := 0.0
+var _wheel_angle := 0.0
+var _last_speed_s := -1.0
 var _nodes := {}           # nom → MeshInstance3D (ou liste pour les pièces doubles)
 var _number: Label3D
 var _mats := {}
@@ -78,6 +80,12 @@ func set_visible_for_view(new_view: String) -> void:
 ## Vitesse (km/h) : traînées d'air au-delà de EquipmentMeshes.AIR_STREAK_KMH, défilant vers l'arrière.
 func set_speed(kmh: float, now_s := 0.0) -> void:
 	_speed_kmh = kmh
+	var dt := clampf(now_s - _last_speed_s, 0.0, 0.25) if _last_speed_s >= 0.0 else 0.0
+	_last_speed_s = now_s
+	_wheel_angle = fposmod(_wheel_angle + kmh / 3.6 / AvatarMesh.WHEEL_R * dt, TAU)
+	var wheels := _list("wheel")
+	for i in range(wheels.size()):
+		wheels[i].basis = AvatarMesh.spin_x(_wheel_angle + 0.7 * i)
 	if _streaks == null:
 		return
 	var on := kmh >= EquipmentMeshes.AIR_STREAK_KMH and lod <= 1
@@ -90,12 +98,15 @@ func set_speed(kmh: float, now_s := 0.0) -> void:
 			s.position = base + Vector3(0.0, 0.0, fmod(phase + float(i) / STREAK_COUNT, 1.0) * 1.2)
 
 
-func _mat(color: Color, texture: Texture2D = null, emissive := false, metallic := 0.0) -> StandardMaterial3D:
-	var key := "%s|%s|%s|%s" % [color.to_html(true), texture.get_rid().get_id() if texture != null else 0, emissive, metallic]
+## Matériau partagé ; les couleurs de sommet des maillages (avatar_mesh.gd) multiplient la couleur.
+## `roughness` < 0 : 0,8 (mat), ou 0,25 si métallique.
+func _mat(color: Color, texture: Texture2D = null, emissive := false, metallic := 0.0, roughness := -1.0) -> StandardMaterial3D:
+	var key := "%s|%s|%s|%s|%s" % [color.to_html(true), texture.get_rid().get_id() if texture != null else 0, emissive, metallic, roughness]
 	if not _mats.has(key):
 		var m := StandardMaterial3D.new()
 		m.albedo_color = color
-		m.roughness = 0.8 if metallic == 0.0 else 0.25
+		m.vertex_color_use_as_albedo = true
+		m.roughness = roughness if roughness >= 0.0 else (0.8 if metallic == 0.0 else 0.25)
 		m.metallic = metallic
 		if texture != null:
 			m.albedo_texture = texture
@@ -138,43 +149,33 @@ func _rebuild() -> void:
 	_bike = Node3D.new()
 	_bike.name = "Bike"
 	_rig.add_child(_bike)
-	var parts := AvatarMesh.build(lod, _dims, looks)
-	var skin: Color = AvatarModel.SKIN_COLORS[int(settings["skin"])]
-	var hair: Color = AvatarModel.HAIR_COLORS[int(settings["hair_color"])]
 	var primary: Color = AvatarModel.KIT_COLORS[int(settings["kit_primary"])]
 	var secondary: Color = AvatarModel.KIT_COLORS[int(settings["kit_secondary"])]
+	var hs := EquipmentMeshes.helmet_spec(str(looks["helmet"]))
+	var parts := AvatarMesh.build(lod, _dims, looks, {
+		"skin": AvatarModel.SKIN_COLORS[int(settings["skin"])], "hair": AvatarModel.HAIR_COLORS[int(settings["hair_color"])],
+		"primary": primary, "secondary": secondary,
+		"helmet": secondary if hs["color_kit"] else Color(0.92, 0.92, 0.94)})
 	var detailed := lod <= 1
 	var kit_look := str(looks["kit"])
 	var kit_mat: StandardMaterial3D = _mat(Color.WHITE, EquipmentMeshes.kit_texture(kit_look, primary, secondary),
 		EquipmentMeshes.is_emissive_kit(kit_look)) if detailed else _mat(primary)
 	if detailed and EquipmentMeshes.is_emissive_kit(kit_look):
 		kit_mat.emission = primary
-	var ws := EquipmentMeshes.wheel_spec(str(looks["wheels"]))
-	var hs := EquipmentMeshes.helmet_spec(str(looks["helmet"]))
-	var ss := EquipmentMeshes.socks_spec(str(looks["socks"]))
+	var body := _mat(Color.WHITE)
+	var gloss := _mat(Color.WHITE, null, false, 0.0, 0.35)
 	var gs := EquipmentMeshes.glasses_spec(str(looks["glasses"]))
-	var sock_mat := _mat(ss["color"], EquipmentMeshes.kit_texture("kit_stripes", Color.WHITE, secondary) if ss["striped"] else null)
 	for part in parts:
 		var mesh: Mesh = parts[part]["mesh"]
-		var n := int(parts[part]["count"])
-		var mat: Material = _mat(FRAME_COLOR)
-		var parent: Node3D = _bike
+		var mat: Material = body
+		var parent: Node3D = _rig
 		match part:
-			"torso", "upper_arm": mat = kit_mat if detailed else _mat(primary); parent = _rig
-			"thigh", "pelvis": mat = _mat(secondary); parent = _rig
-			"shin", "forearm", "head": mat = _mat(skin); parent = _rig
-			"helmet": mat = _mat(secondary if hs["color_kit"] else Color(0.92, 0.92, 0.94)); parent = _rig
-			"visor": mat = _mat(Color(0.08, 0.08, 0.1)); parent = _rig
-			"hair": mat = _mat(hair); parent = _rig
-			"shoe": mat = _mat(SHOE_COLOR); parent = _rig
-			"sock": mat = sock_mat; parent = _rig
-			"glasses": mat = _mat(gs["color"], null, false, float(gs["metallic"])); parent = _rig
-			"frame", "extension": mat = _mat(_frame_spec["color"])
-			"pad": mat = _mat(Color(0.08, 0.08, 0.1))
-			"tyre": mat = _mat(TYRE_COLOR)
-			"rim", "spoke": mat = _mat(ws["color"] if part == "rim" else Color(0.7, 0.72, 0.75))
-			_: mat = _mat(FRAME_COLOR)
-		for i in range(n):
+			"torso", "sleeve": mat = kit_mat
+			"glasses":
+				mat = _mat(gs["color"], null, false, float(gs["metallic"]))
+				(mat as StandardMaterial3D).cull_mode = BaseMaterial3D.CULL_DISABLED
+			"bike", "wheel", "crank": mat = gloss; parent = _bike
+		for i in range(int(parts[part]["count"])):
 			_add(part, mesh, mat, parent)
 	_number = null
 	if lod == 0:
@@ -186,56 +187,19 @@ func _rebuild() -> void:
 		_number.modulate = secondary
 		_number.visible = int(settings["number"]) > 0
 		_rig.add_child(_number)
-	_place_bike(ws)
+	_place_bike()
 	_build_streaks()
 	apply_pose(0.0, false)
 
 
-## Cadre, roues, selle et cintre : positions fixes (le pédalier et la danseuse ne les déplacent pas).
-func _place_bike(ws: Dictionary) -> void:
-	var hub_z := AvatarMesh.WHEEL_BASE * 0.5
-	var tyres := _list("tyre")
-	var rims := _list("rim")
-	var wheel_rot := Basis(Vector3.BACK, PI / 2.0)
-	for i in range(maxi(tyres.size(), rims.size())):
-		var z := hub_z * (-1.0 if i == 0 else 1.0)
-		var center := Vector3(0.0, AvatarMesh.WHEEL_R, z)
-		if i < tyres.size():
-			tyres[i].transform = Transform3D(wheel_rot, center)
-		if i < rims.size():
-			rims[i].transform = Transform3D(wheel_rot, center)
-	var spokes := _list("spoke")
-	var per_wheel := spokes.size() / 2
-	for i in range(spokes.size()):
-		var wheel := i / maxi(per_wheel, 1)
-		var k := i % maxi(per_wheel, 1)
-		var theta := TAU * float(k) / float(per_wheel) + (0.0 if wheel == 0 else 0.15)
-		var center := Vector3(0.0, AvatarMesh.WHEEL_R, hub_z * (-1.0 if wheel == 0 else 1.0))
-		var len_m := AvatarMesh.WHEEL_R - 0.05
-		var dir := Vector3(0.0, cos(theta), sin(theta))
-		spokes[i].transform = Transform3D(Basis(Vector3.RIGHT, theta), center + dir * len_m * 0.5)
-	var frames := _list("frame")
-	var tubes := [[Vector3(0.0, 0.70, 0.25), Vector3(0.0, 0.72, -0.30)],
-		[Vector3(0.0, 0.72, -0.30), AvatarMesh.BB], [AvatarMesh.BB, Vector3(0.0, 0.70, 0.25)]]
-	for i in range(frames.size()):
-		var tf := AvatarMesh.segment_transform(tubes[i][0], tubes[i][1])
-		var length: float = (tubes[i][1] - tubes[i][0]).length()
-		frames[i].transform = Transform3D(tf.basis.scaled(Vector3(1.0, length, 1.0)), tf.origin)
-	for m in _list("saddle"):
-		m.position = Vector3(0.0, 0.72, 0.25)
-	for m in _list("bar"):
-		m.position = AvatarMesh.BAR
-	var bar_half := float(_frame_spec.get("bar_half_x", AvatarMesh.BAR_HALF_X))
-	var bar_z := float(_frame_spec.get("bar_z", AvatarMesh.BAR.z))
-	var ext := _list("extension")
-	for i in range(ext.size()):
-		var side := 1.0 if i == 0 else -1.0
-		ext[i].transform = AvatarMesh.segment_transform(Vector3(side * bar_half, AvatarMesh.BAR.y, bar_z + 0.34),
-			Vector3(side * bar_half, AvatarMesh.BAR.y, bar_z))
-	var pads := _list("pad")
-	for i in range(pads.size()):
-		var side := 1.0 if i == 0 else -1.0
-		pads[i].position = Vector3(side * bar_half, AvatarMesh.BAR.y - 0.04, bar_z + 0.22)
+## Roues sur leurs axes et pédalier sur le boîtier ; le reste du vélo est un seul maillage fixe.
+func _place_bike() -> void:
+	var wheels := _list("wheel")
+	for i in range(wheels.size()):
+		wheels[i].position = AvatarMesh.FRONT_AXLE if i == 0 else AvatarMesh.REAR_AXLE
+		wheels[i].basis = AvatarMesh.spin_x(_wheel_angle + 0.7 * i)
+	for m in _list("crank"):
+		m.position = AvatarMesh.BB
 
 
 func _build_streaks() -> void:
@@ -278,9 +242,12 @@ func apply_pose(angle: float, standing: bool) -> void:
 		return
 	var p := AvatarMesh.pose(angle, standing, _dims, _frame_spec)
 	_place("torso", [[p["hip"], p["shoulder"]]])
+	_place("pelvis", [[p["hip"], p["shoulder"]]])
+	_place("neck", [[p["neck"], p["chin"]]])
 	_place("thigh", [[p["hip_r"], p["knee_r"]], [p["hip_l"], p["knee_l"]]])
 	_place("shin", [[p["knee_r"], p["ankle_r"]], [p["knee_l"], p["ankle_l"]]])
 	_place("upper_arm", [[p["shoulder_r"], p["elbow_r"]], [p["shoulder_l"], p["elbow_l"]]])
+	_place("sleeve", [[p["shoulder_r"], p["elbow_r"]], [p["shoulder_l"], p["elbow_l"]]])
 	_place("forearm", [[p["elbow_r"], p["hand_r"]], [p["elbow_l"], p["hand_l"]]])
 	var socks := EquipmentMeshes.socks_spec(str(looks["socks"]))
 	var sock_nodes := _list("sock")
@@ -289,34 +256,27 @@ func apply_pose(angle: float, standing: bool) -> void:
 		var ankle: Vector3 = p["ankle_" + side]
 		var knee: Vector3 = p["knee_" + side]
 		sock_nodes[i].transform = AvatarMesh.segment_transform(ankle, ankle + (knee - ankle) * float(socks["length"]))
-	for m in _list("head"):
-		m.position = p["head"]
+	var hands := _list("hand")
+	for i in range(hands.size()):
+		hands[i].position = p["hand_r" if i == 0 else "hand_l"]
+	for part in ["head", "glasses", "hair"]:
+		for m in _list(part):
+			m.position = p["head"]
 	var hs := EquipmentMeshes.helmet_spec(str(looks["helmet"]))
 	for m in _list("helmet"):
-		m.position = p["head"] + Vector3(0.0, 0.025, 0.012) + hs["shift"] * float(_dims["hs"])
+		m.position = p["head"] + hs["shift"] * float(_dims["hs"])
 		m.scale = hs["scale"]
-	for m in _list("visor"):
-		m.position = p["head"] + Vector3(0.0, 0.085 * float(_dims["hs"]), -0.095 * float(_dims["hs"]))
-	for m in _list("glasses"):
-		m.position = p["head"] + Vector3(0.0, 0.012, -float(_dims["r_head"]) * 0.93)
 	for m in _list("hair"):
-		m.position = p["head"] + Vector3(0.0, -0.01, 0.025)
 		m.visible = int(settings["hair"]) > 0
-		m.scale = Vector3.ONE * [1.0, 0.9, 1.0, 1.1, 1.0, 1.25][int(settings["hair"])]
-	for m in _list("pelvis"):
-		m.position = p["hip"]
+		m.scale = Vector3.ONE * [1.0, 0.95, 1.0, 1.04, 1.0, 1.1][int(settings["hair"])]
 	var shoes := _list("shoe")
-	var crank := _list("crank")
 	for i in range(shoes.size()):
-		var side := 1 if i == 0 else -1
-		shoes[i].position = AvatarMesh.pedal_pos(angle, side) + Vector3(0.0, 0.035, -0.04)
-	for i in range(crank.size()):
-		var side := 1 if i == 0 else -1
-		crank[i].transform = AvatarMesh.segment_transform(
-			Vector3(side * AvatarMesh.PEDAL_HALF_X, AvatarMesh.BB.y, 0.0), AvatarMesh.pedal_pos(angle, side))
+		shoes[i].transform = AvatarMesh.foot_transform(angle, 1 if i == 0 else -1)
+	for m in _list("crank"):
+		m.basis = AvatarMesh.spin_x(angle)
 	if _number != null:
 		var lean := AvatarMesh.STANDING_LEAN if standing else AvatarMesh.SEATED_LEAN + float(_frame_spec.get("lean_add", 0.0))
-		_number.position = p["hip"].lerp(p["shoulder"], 0.55) + Vector3(0.0, sin(lean), cos(lean)) * (float(_dims["r_torso"]) + 0.012)
+		_number.position = p["hip"].lerp(p["shoulder"], 0.55) + Vector3(0.0, sin(lean), cos(lean)) * (AvatarMesh.BACK_DEPTH * float(_dims["bs"]) + 0.02)
 		_number.rotation = Vector3(-lean, 0.0, 0.0)
 	# Danseuse : le vélo se balance d'un côté à l'autre, au rythme du pédalier (une oscillation par tour).
 	_bike.rotation.z = sin(angle) * SWAY_RAD if standing else 0.0
