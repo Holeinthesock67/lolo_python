@@ -35,7 +35,6 @@ const COLORS := {
 }
 
 var road_width_m := 6.0
-var visual_grade_scale := 1.0       # exagération du relief (lot Q2), comme la route affichée
 var marks: Array = []
 var _starts := PackedFloat64Array()
 var _route = null
@@ -214,8 +213,6 @@ func _place(node: Node3D, mark: Dictionary) -> void:
 	var right := Vector3(cos(h), 0.0, sin(h))
 	var fwd := Vector3(sin(h), 0.0, -cos(h))
 	var pos := Vector3(smp["x"], smp["y"], smp["z"])
-	if visual_grade_scale != 1.0 and _route.n > 0:
-		pos.y = _route.alt_m[0] + (pos.y - _route.alt_m[0]) * visual_grade_scale
 	if int(mark["side"]) != 0:
 		pos += right * float(mark["side"]) * (road_width_m * 0.5 + PANEL_OUT_M)
 	# +z local (face des panneaux et banderoles) vers le cycliste qui arrive, donc vers -fwd

@@ -96,7 +96,8 @@ var fps_counter = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
-var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
+var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lots Q2 et Y15)
+var _base_fov := 65.0                  # champ de vision de la scène, avant la respiration selon la pente (lot Y15)
 var _theme_name: String = "default"
 var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage en place (--display, puis le menu)
 ## Vues de caméra (lot V12) : modèle (camera_views.gd) et dernière valeur de render.camera reçue du core.
@@ -188,10 +189,8 @@ func _ready() -> void:
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
-	_visual_grade_scale = float(cfg.get("visual_grade", 1.0))
-	streamer.visual_grade_scale = _visual_grade_scale
-	if streamer.osm_streamer != null:
-		streamer.osm_streamer.visual_grade_scale = _visual_grade_scale
+	_visual_grade_scale = float(cfg.get("visual_grade", EngineArgs.DEFAULT_VISUAL_GRADE))
+	_base_fov = camera.fov
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
@@ -245,7 +244,6 @@ func _ready() -> void:
 	_configure_avatar()
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
-	segment_markers.visual_grade_scale = _visual_grade_scale
 	add_child(segment_markers)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
@@ -740,13 +738,12 @@ func _process(delta: float) -> void:
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		var pos: Vector3 = route.sample_point(s_route)
-		if _visual_grade_scale != 1.0 and route != null and route.n > 0:
-			pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
-		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale)
+		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
 		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
+		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
 		avatar_view.set_visible_for_view(_avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, heading, now, pitch_deg)
@@ -781,11 +778,10 @@ func _menu_camera(delta: float) -> bool:
 		return false
 	_menu_s = route.wrap_s(_menu_s + MENU_CAMERA_MPS * delta)
 	var pos: Vector3 = route.sample_point(_menu_s)
-	if _visual_grade_scale != 1.0 and route != null and route.n > 0:
-		pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
+	camera.fov = _base_fov
 	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
-	camera.rotation.x = deg_to_rad(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS, -1.0, _visual_grade_scale))
+	camera.rotation.x = deg_to_rad(CameraViews.camera_pitch_deg(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS)))
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
@@ -878,6 +874,7 @@ func _request_route(route_id) -> void:
 		# Un chargement est déjà en cours : son résultat sera ignoré (_poll_route_job).
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
 	var job := {"id": str(route_id), "route": RouteDataScript.new(), "path": path, "ok": false}
+	job["route"].relief_k = _visual_grade_scale   # relief affiché (lot Q2) : toute la scène suit la route
 	job["task"] = WorkerThreadPool.add_task(_load_route_job.bind(job), false, "chargement du parcours")
 	_route_job = job
 
@@ -1437,7 +1434,7 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 	if hud != null and hud.has_method("update_bots"):
 		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
-		bots_view.update_view(view, route, _visual_grade_scale, route.alt_m[0] if route != null and route.n > 0 else 0.0)
+		bots_view.update_view(view, route)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les
