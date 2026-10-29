@@ -6,9 +6,9 @@ extends SceneTree
 ## de triangles, déterminisme et palettes.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_vehicle_mesh.gd
 
+const PerfBudget := preload("res://tests/perf_budget.gd")
 const VehicleMesh := preload("res://scripts/vehicle_mesh.gd")
 const TrafficModel := preload("res://scripts/traffic_model.gd")
-const PerfBudget := preload("res://tests/perf_budget.gd")
 
 const MAX_TRIANGLES := 2000
 const WHEELS := {"car_a": 4, "car_b": 4, "van": 4, "truck": 6, "bus": 4, "moto": 2, "tractor": 4, "tractor_field": 4}
