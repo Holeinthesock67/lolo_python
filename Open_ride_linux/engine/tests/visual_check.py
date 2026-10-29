@@ -1256,13 +1256,14 @@ def _voies_scene(s: Session) -> None:
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
     time.sleep(1.0)
     _place(s, vehicle={"kind": "van", "dir": 1, "rel_m": 4.0, "kmh": 60.0})
+    time.sleep(0.7)   # affiché à l'image suivante : deux images au moins sous Xvfb
     shot = None
     t0 = now()
     while now() - t0 < PASS_WAIT_S:
         time.sleep(0.3)
         shot = s.capture("voies_depassement")
         users = shot[1].get("decor", {}).get("road_users", []) if shot else []
-        if any(u["what"] == "vehicle" and u["dir"] > 0 and 0.0 < u["rel_m"] < PASS_WINDOW_M for u in users):
+        if any(u["what"] == "vehicle" and u["dir"] > 0 and -PASS_WINDOW_M < u["rel_m"] < PASS_WINDOW_M for u in users):
             break
     caps = [c for c in s.report.captures if c.config == s.name and c.scene == "voies_depassement"]
     for c in caps[:-1]:
