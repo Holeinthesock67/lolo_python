@@ -70,9 +70,9 @@ func _line(title: String, screen: String, keyboard: bool) -> HBoxContainer:
 func _keycap(letter: String, accent: bool) -> PanelContainer:
 	var cap := PanelContainer.new()
 	cap.add_theme_stylebox_override("panel", UiTheme.keycap_style(accent))
-	cap.custom_minimum_size = Vector2(32, 32)
+	cap.custom_minimum_size = Vector2(30, 30)
 	cap.size_flags_vertical = Control.SIZE_SHRINK_CENTER
-	var l := UiTheme.label(17, UiTheme.FOCUS if accent else UiTheme.TEXT, letter)
+	var l := UiTheme.label(16, UiTheme.FOCUS if accent else UiTheme.TEXT, letter)
 	l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 	cap.add_child(l)
