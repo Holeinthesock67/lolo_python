@@ -39,6 +39,7 @@ from dataclasses import dataclass
 from typing import Any, Callable, Collection
 
 from . import ftms, zwift_click
+from .physics import PhysicsParams, resistive_force
 
 log = logging.getLogger("ble_sim")
 
@@ -246,6 +247,9 @@ class CpRecord:
     result: int | None   # None : pas de réponse (erreur ATT ou réponse supprimée)
 
 
+SPEED_PHYSICS = PhysicsParams()   # vitesse imposée : mêmes réglages que la configuration par défaut du core
+
+
 class SimTrainer(SimDevice):
     uuids = (ftms.FTMS_SERVICE, ftms.FEATURE, ftms.SUPPORTED_POWER_RANGE, ftms.INDOOR_BIKE_DATA,
              ftms.CONTROL_POINT, ftms.MACHINE_STATUS)
@@ -256,10 +260,12 @@ class SimTrainer(SimDevice):
                  erg_tau_s: float = 1.5, cp_latency_s: float = 0.05,
                  power_range: tuple[int, int, int] = (0, 2000, 1),
                  refuse_control: bool = False, busy_window_s: float = 0.0,
-                 relayed_hr: bool | int | None = None, **kw: Any) -> None:
+                 relayed_hr: bool | int | None = None,
+                 target_speed_kmh: float | None = None, **kw: Any) -> None:
         super().__init__(world, name, address, **kw)
         self.ibd_hz = ibd_hz
         self.rider_power_w, self.cadence_rpm = rider_power_w, cadence_rpm
+        self.target_speed_kmh = target_speed_kmh
         self.erg_tau_s, self.cp_latency_s = erg_tau_s, cp_latency_s
         self.power_range = power_range
         self.refuse_control = refuse_control
@@ -396,8 +402,19 @@ class SimTrainer(SimDevice):
         self._status(bytes([ftms.STATUS_CONTROL_LOST]))
 
     def _rider_power(self, t: float) -> float:
-        """Puissance du cycliste en SIM : un peu plus d'effort en montée, un peu de bruit."""
-        if self.rider_power_w <= 0 or self.cadence_rpm <= 0:
+        """Puissance du cycliste en SIM : un peu plus d'effort en montée, un peu de bruit.
+
+        Avec `target_speed_kmh` (vitesse imposée du banc simulé, lot X35), la puissance qui tient cette
+        vitesse sur la pente reçue, avec la physique du core (`physics.resistive_force`, réglages par
+        défaut) : la vitesse virtuelle du core suit alors la consigne si la pente reçue est celle du
+        parcours (difficulté 100 %, ce que fait `sim_bench.py --speed-kmh`)."""
+        if self.cadence_rpm <= 0:
+            return 0.0
+        if self.target_speed_kmh is not None:
+            v = max(float(self.target_speed_kmh), 0.0) / 3.6
+            p = resistive_force(v, self.grade_pct, 0.0, SPEED_PHYSICS) * v / SPEED_PHYSICS.efficiency
+            return max(p + 2.0 * math.sin(t * 0.9), 0.0)
+        if self.rider_power_w <= 0:
             return 0.0
         p = self.rider_power_w * (1.0 + 0.04 * self.grade_pct) + 4.0 * math.sin(t * 0.9)
         return max(p, 0.0)
