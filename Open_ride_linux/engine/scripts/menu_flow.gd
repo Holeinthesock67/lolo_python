@@ -108,6 +108,11 @@ var engine_version := str(ProjectSettings.get_setting("application/config/versio
 var core_version := ""
 ## Difficulté de la séance (trame d'état, lot Q1), pour le curseur de la pause.
 var difficulty_pct := 50
+## Mode d'une session libre (lot O18, ride_mode_of()) : "sim", "erg", "cadence" ; "" hors session libre
+## (entraînement, run) : la pause n'a alors pas les lignes du mode. Cibles en cours pour ses lignes.
+var ride_mode := ""
+var erg_target_w := 0
+var cadence_target_rpm := 0
 ## Dernier objet `devices` reçu (une trame sur 30 le porte, contrat §3) : gardé jusqu'au suivant.
 var devices: Dictionary = {}
 ## Écran de connexion déjà quitté (ou séance déjà en cours au premier état : --autostart, reprise).
@@ -145,6 +150,8 @@ var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
 var rogue = RogueMenuModel.new()
+## `start_run` accusé par le core depuis le dernier lancement : l'écran d'attente peut céder la place à Prêt.
+var _rogue_acked := false
 ## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
 var garage = GarageViewModel.new()
 ## Bilan de progression de la séance (lot V9) : dernier message `xp_result` ({} sans), et qu'il a déjà été annoncé.
@@ -184,7 +191,7 @@ func _init() -> void:
 	_refresh_builder()
 	_refresh_pairing()
 	_refresh_settings()
-	_refresh_pause_difficulty()
+	_refresh_pause_rows()
 
 
 func is_visible() -> bool:
@@ -200,9 +207,21 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 	if state.get("devices") is Dictionary:
 		devices = state["devices"]
 	var diff = state.get("difficulty_pct", null)
+	var pause_changed := false
 	if (diff is int or diff is float) and int(diff) != difficulty_pct:
 		difficulty_pct = int(diff)
-		_refresh_pause_difficulty()
+		pause_changed = true
+	var erg = state.get("erg", null)
+	var rm: String = ride_mode_of(state)
+	var tw: int = int(round(float(erg.get("target_w", 0)))) if erg is Dictionary else 0
+	var cad: int = int(erg.get("cadence_target_rpm", 0)) if erg is Dictionary else 0
+	if rm != ride_mode or tw != erg_target_w or cad != cadence_target_rpm:
+		ride_mode = rm
+		erg_target_w = tw
+		cadence_target_rpm = cad
+		pause_changed = true
+	if pause_changed:
+		_refresh_pause_rows()
 	if session_state == "" and st != "" and not connect_done:
 		if st in ["IDLE", "READY"]:
 			menu.open_screen(CONNECT)
@@ -230,12 +249,15 @@ func on_state(state: Dictionary, now_s := -1.0) -> Array:
 			"IDLE", "READY":
 				if prev in ["RUNNING", "PAUSED"]:
 					menu.reset()
-				elif st == "READY" and menu.current_screen() == RogueMenuModel.LOADING:
-					menu.set_rogue_ready(rogue.ready_text())
-					menu.open_screen(MenuModel.READY)
 		if st != "FINISHED":
 			xp_result = {}
 			_xp_announced = false
+	# Run composée (lot R13) : `start_run` accusé par la trame qui suit son traitement. Le core passe de
+	# READY à LOADING puis READY dans la même commande : l'état seul ne dit pas qu'une nouvelle run est prête.
+	if _rogue_acked and st == "READY" and menu.current_screen() == RogueMenuModel.LOADING:
+		_rogue_acked = false
+		menu.set_rogue_ready(rogue.ready_text())
+		menu.open_screen(MenuModel.READY)
 	if st != "" and not _lists_requested:
 		_lists_requested = true
 		out.append({"action": "list"})
@@ -364,6 +386,8 @@ func on_error(code: String, text: String) -> void:
 
 
 func on_command_acked(cmd_name: String) -> void:
+	if cmd_name == "start_run":
+		_rogue_acked = true
 	if cmd_name == "pair_devices":
 		pairing.on_pair_acked()
 		_refresh_pairing()
@@ -467,6 +491,12 @@ func card(st: Dictionary) -> Dictionary:
 			"duration_s": builder.duration_s(), "block_count": blocks.size(), "profile": blocks}).merged({"title": "Aperçu"}, true)
 	if screen == SUMMARY:
 		return {"title": "Bilan de la séance"}
+	if screen == RECORDS:
+		return records.sheet_segment(menu.world_id, focused.substr(4)) if focused.begins_with("seg:") else {}
+	if screen == RECORD_TABLE:
+		if focused.begins_with("row:"):
+			return records.sheet_row(menu.world_id, _record_segment, _record_bonus, int(focused.substr(4)))
+		return records.sheet_segment(menu.world_id, _record_segment)
 	if screen == SETTING_EDIT and str(settings.editing.get("key", "")).begins_with(GarageViewModel.KEY_PREFIX):
 		return garage.sheet(GarageViewModel.AVATAR, "")
 	if screen in GarageViewModel.SCREENS:
@@ -788,7 +818,8 @@ func handle(event: String) -> Dictionary:
 				menu.confirm("Quitter OpenRide ?", {"action": "quit"})
 		return {}
 	match act.get("action", ""):
-		"start_run":   # confirmation du premier lancement acceptée (lot R13)
+		"start_run":   # confirmation du premier lancement acceptée (lot R13) : l'avertissement n'est plus redemandé
+			rogue.mark_warned()
 			return _launch_rogue(act)
 		"start_plan", "stop_plan":
 			return _send_plan_request(act)
@@ -875,8 +906,9 @@ func handle(event: String) -> Dictionary:
 		_handle_records(str(act["screen"]), str(act["id"]))
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.PAUSE:
-		settings.begin_pause_difficulty(difficulty_pct)
-		_refresh_pause_difficulty()
+		var key: String = SettingsViewModel.PAUSE_PREFIX + str(act["id"])
+		settings.begin_pause(key, _pause_value(key))
+		_refresh_pause_rows()
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == PAIRING:
 		act = pairing.handle(str(act["id"]))
@@ -939,13 +971,13 @@ func _handle_rogue(item_id: String) -> Dictionary:
 		return {}
 	var act := {"action": "start_run", "args": rogue.start_args()}
 	if rogue.needs_warning():
-		rogue.mark_warned()
 		menu.confirm(RogueMenuModel.WARNING, act)
 		return {}
 	return _launch_rogue(act)
 
 
 func _launch_rogue(act: Dictionary) -> Dictionary:
+	_rogue_acked = false
 	menu.open_screen(RogueMenuModel.LOADING)
 	return act
 
@@ -1047,11 +1079,49 @@ func _refresh_record_table() -> void:
 ## Réglage en cours de modification : la rangée de la liste ouverte (Réglages, Créer un entraînement)
 ## passe en mode édition ; la difficulté de la pause se règle de même dans sa rangée. Seuls les champs
 ## de l'avatar du Garage gardent leur écran.
-func _refresh_pause_difficulty() -> void:
-	var it := {"label": "Difficulté", "type": "int", "unit": "%", "min": 0, "max": 100,
-		"value": difficulty_pct}
-	var ed: Dictionary = settings.editing if str(settings.editing.get("key", "")) == SettingsViewModel.PAUSE_DIFFICULTY else {}
-	menu.set_pause_difficulty(SettingsViewModel.row("difficulty", it, ed))
+## Mode d'une session libre d'après une trame `state` (lot O18) : "sim" sans objet `erg`, "erg" ou
+## "cadence" selon `erg.kind` ; "" pendant un entraînement (`kind` absent ou `workout`) ou une run.
+static func ride_mode_of(state: Dictionary) -> String:
+	if str(state.get("mode", "")) == "ROGUE":
+		return ""
+	var erg = state.get("erg", null)
+	if not erg is Dictionary:
+		return "sim"
+	match str(erg.get("kind", "workout")):
+		"free":
+			return "erg"
+		"cadence":
+			return "cadence"
+	return ""
+
+
+## Valeur en cours d'une ligne de la pause (clé « pause.… »).
+func _pause_value(key: String):
+	if key == SettingsViewModel.PAUSE_RIDE_MODE:
+		return ride_mode
+	if key == SettingsViewModel.PAUSE_TARGET_W:
+		return erg_target_w
+	if key == SettingsViewModel.PAUSE_CADENCE:
+		return cadence_target_rpm
+	return difficulty_pct
+
+
+## Lignes modifiables de la pause : difficulté ; en session libre, mode, puis puissance cible (ERG) ou
+## cadence cible (ERG cadence). La ligne en cours de modification passe en mode édition.
+func _refresh_pause_rows() -> void:
+	var keys := [SettingsViewModel.PAUSE_DIFFICULTY]
+	if ride_mode != "":
+		keys.append(SettingsViewModel.PAUSE_RIDE_MODE)
+	if ride_mode == "erg":
+		keys.append(SettingsViewModel.PAUSE_TARGET_W)
+	elif ride_mode == "cadence":
+		keys.append(SettingsViewModel.PAUSE_CADENCE)
+	var rows: Array = []
+	for key in keys:
+		var it: Dictionary = SettingsViewModel.pause_item(key, _pause_value(key))
+		var ed: Dictionary = settings.editing if str(settings.editing.get("key", "")) == key else {}
+		rows.append(SettingsViewModel.row(key.substr(SettingsViewModel.PAUSE_PREFIX.length()), it, ed))
+	menu.set_pause_rows(rows)
 
 
 func _refresh_edit() -> void:
@@ -1059,7 +1129,7 @@ func _refresh_edit() -> void:
 		SETTING_EDIT:
 			menu.set_screen_items(SETTING_EDIT, settings.edit_items())
 		MenuModel.PAUSE:
-			_refresh_pause_difficulty()
+			_refresh_pause_rows()
 		WORKOUT_CREATE:
 			menu.set_screen_items(WORKOUT_CREATE, builder.menu_items(str(settings.editing.get("key", "")),
 				settings.editing.get("value", 0)))
@@ -1083,6 +1153,8 @@ func _handle_edit(event: String) -> Dictionary:
 				menu.handle("Y_SHORT")
 			if act.get("action", "") == "set_difficulty":
 				difficulty_pct = int(act["pct"])
+			if act.get("action", "") == "set_ride_mode":   # affiché tout de suite, la trame suivante confirme
+				ride_mode = str(act["args"]["mode"])
 			if act.get("action", "") == "garage_set":
 				garage.set_field(str(act["key"]), int(act["value"]))
 				_refresh_garage()

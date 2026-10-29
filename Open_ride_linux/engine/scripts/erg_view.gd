@@ -8,22 +8,25 @@ extends Panel
 ## `erg` de la trame. Le profil des blocs (durées et fractions de FTP) vient de l'élément `workouts` du
 ## contrat v1.1 (`profile`), donné par `set_profiles()` ; sans profil connu (core v1, liste pas encore
 ## reçue, profil coupé), l'histogramme se replie sur une bande de `block_count` cases égales.
+## ERG d'une session libre (lot O18, `kind` = `free` ou `cadence`) : bandeau sans type de bloc ni bloc
+## suivant, histogramme vide (pas de blocs).
 ## Pas de class_name : charger par preload("res://scripts/erg_view.gd").
 
+const UiTheme := preload("res://scripts/ui_theme.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 
 ## Zones de Coggan, mêmes seuils que `openride-core summary` (session_summary.ZONES), en % de FTP.
 const ZONE_HIGH_PCT := [55.0, 75.0, 90.0, 105.0, 120.0, 150.0]
 const ZONE_COLORS := [
-	Color(0.55, 0.57, 0.60),   # Z1 récupération
-	Color(0.25, 0.55, 0.95),   # Z2 endurance
-	Color(0.30, 0.75, 0.35),   # Z3 tempo
-	Color(0.95, 0.80, 0.20),   # Z4 seuil
-	Color(0.95, 0.50, 0.15),   # Z5 PMA
-	Color(0.90, 0.20, 0.15),   # Z6 anaérobie
-	Color(0.65, 0.25, 0.80),   # Z7 neuromusculaire
+	UiTheme.ZONE_1,   # Z1 récupération
+	UiTheme.ZONE_2,   # Z2 endurance
+	UiTheme.ZONE_3,   # Z3 tempo
+	UiTheme.ZONE_4,   # Z4 seuil
+	UiTheme.ZONE_5,   # Z5 PMA
+	UiTheme.ZONE_6,   # Z6 anaérobie
+	UiTheme.ZONE_7,   # Z7 neuromusculaire
 ]
-const FREERIDE_COLOR := Color(0.40, 0.42, 0.45)
+const FREERIDE_COLOR := UiTheme.FREERIDE
 ## Blocs autres que le bloc en cours : bien visibles du début à la fin, pour se préparer aux efforts
 ## (retour d'essai du 25 octobre) ; le bloc en cours garde son cadre et son curseur.
 const DIM_ALPHA := 0.85
@@ -40,7 +43,7 @@ const BLOCK_TYPE_LABELS := {
 }
 
 const PANEL_HEIGHT := 140.0
-const BOTTOM_OFFSET := 130.0   # au-dessus du profil d'altitude du HUD (120 px + marge)
+const BOTTOM_OFFSET := 15.0    # en bas de l'écran : le profil d'altitude du HUD est caché en ERG (28/10)
 const SIDE_MARGIN := 40.0
 
 var title_label: Label
@@ -68,7 +71,7 @@ func _init() -> void:
 func _build_ui() -> void:
 	name = "ErgView"
 	var style := StyleBoxFlat.new()
-	style.bg_color = Color(0.05, 0.07, 0.10, 0.70)
+	style.bg_color = UiTheme.PANEL_BG
 	style.set_corner_radius_all(8)
 	add_theme_stylebox_override("panel", style)
 	anchor_left = 0.0
@@ -94,7 +97,7 @@ func _build_ui() -> void:
 	target_label = _label(row, 36, false)
 	remaining_label = _label(row, 36, false)
 	next_label = _label(row, 22, false)
-	next_label.modulate = Color(0.75, 0.80, 0.85)
+	next_label.modulate = UiTheme.HUD_DIM
 	next_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 
@@ -171,6 +174,12 @@ func update_display(erg: Variant, erg_eval: Dictionary) -> void:
 
 ## Textes du bandeau (fonction pure, testée sans scène).
 static func banner_lines(erg: Dictionary, erg_eval: Dictionary) -> Dictionary:
+	if is_free(erg):
+		var state: String = str(erg_eval.get("next_text", ""))
+		if str(erg_eval.get("paused_text", "")) != "":
+			state = "En pause" if state == "" else state + " (pause)"
+		return {"title": str(erg_eval.get("title", "")), "target": str(erg_eval.get("target_text", "")),
+			"remaining": "", "next": state}
 	var b_type := str(erg.get("block_type", "steady"))
 	var title := "%s · %s" % [erg_eval.get("title", ""), BLOCK_TYPE_LABELS.get(b_type, b_type)]
 	var remaining := str(erg_eval.get("remaining_text", ""))
@@ -181,6 +190,11 @@ static func banner_lines(erg: Dictionary, erg_eval: Dictionary) -> Dictionary:
 	if int(erg.get("block_index", 1)) < int(erg.get("block_count", 1)):
 		next = "Ensuite : " + ("roue libre" if next_w == null else "%d W" % int(round(float(next_w))))
 	return {"title": title, "target": str(erg_eval.get("target_text", "")), "remaining": remaining, "next": next}
+
+
+## ERG d'une session libre (lot O18) : pas de blocs.
+static func is_free(erg: Dictionary) -> bool:
+	return str(erg.get("kind", "workout")) in ["free", "cadence"]
 
 
 ## Zone de Coggan (0 à 6) d'une fraction de FTP.
@@ -259,14 +273,14 @@ static func blocks_frac(profile: Array, i: int) -> Dictionary:
 
 
 func _on_histogram_draw() -> void:
-	if _erg.is_empty():
+	if _erg.is_empty() or is_free(_erg):
 		return
 	var w := histogram.size.x
 	var h := histogram.size.y
 	var prof: Variant = _profiles.get(str(_erg.get("workout_name", "")), null)
 	var lay := layout(_erg, _eval, prof, ftp_w, w, h)
 	_bars = lay["bars"]
-	histogram.draw_rect(Rect2(0, 0, w, h), Color(0.04, 0.06, 0.08, 0.65))
+	histogram.draw_rect(Rect2(0, 0, w, h), UiTheme.CHART_BG)
 	var cur: Dictionary = {}
 	for b in _bars:
 		var c: Color = b["color"]
@@ -277,13 +291,13 @@ func _on_histogram_draw() -> void:
 		else:
 			cur = b
 		histogram.draw_colored_polygon(b["polygon"], c)
-		histogram.draw_line(Vector2(b["x0"], 0.0), Vector2(b["x0"], h), Color(0.0, 0.0, 0.0, 0.6), 1.0)
+		histogram.draw_line(Vector2(b["x0"], 0.0), Vector2(b["x0"], h), UiTheme.SHADOW_LINE, 1.0)
 	if not cur.is_empty():
 		# Contour blanc du bloc en cours.
 		var poly: PackedVector2Array = cur["polygon"]
 		var outline := PackedVector2Array(poly)
 		outline.append(poly[0])
-		histogram.draw_polyline(outline, Color.WHITE, 2.0)
+		histogram.draw_polyline(outline, UiTheme.INK, 2.0)
 	var cx: float = lay["cursor_x"]
-	histogram.draw_line(Vector2(cx, 0.0), Vector2(cx, h), Color.WHITE, 3.0)
-	histogram.draw_circle(Vector2(cx, 4.0), 5.0, Color.WHITE)
+	histogram.draw_line(Vector2(cx, 0.0), Vector2(cx, h), UiTheme.INK, 3.0)
+	histogram.draw_circle(Vector2(cx, 4.0), 5.0, UiTheme.INK)

@@ -12,6 +12,7 @@ const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
+const HudView := preload("res://scripts/hud_view.gd")
 const ErgViewModel := preload("res://scripts/erg_view_model.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
@@ -95,7 +96,8 @@ var fps_counter = null
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
-var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lot Q2)
+var _visual_grade_scale: float = 1.0   # exagération visuelle du relief (--visual-grade, lots Q2 et Y15)
+var _base_fov := 65.0                  # champ de vision de la scène, avant la respiration selon la pente (lot Y15)
 var _theme_name: String = "default"
 var _display_name: String = DisplayMode.DEFAULT   # mode d'affichage en place (--display, puis le menu)
 ## Vues de caméra (lot V12) : modèle (camera_views.gd) et dernière valeur de render.camera reçue du core.
@@ -189,10 +191,8 @@ func _ready() -> void:
 	_display_name = str(cfg.get("display", DisplayMode.DEFAULT))
 	DisplayMode.apply(_display_name)
 	print("Mode d'affichage : ", _display_name)
-	_visual_grade_scale = float(cfg.get("visual_grade", 1.0))
-	streamer.visual_grade_scale = _visual_grade_scale
-	if streamer.osm_streamer != null:
-		streamer.osm_streamer.visual_grade_scale = _visual_grade_scale
+	_visual_grade_scale = float(cfg.get("visual_grade", EngineArgs.DEFAULT_VISUAL_GRADE))
+	_base_fov = camera.fov
 	if str(cfg.get("perf_probe", "")) != "":
 		_probe.open(str(cfg["perf_probe"]), get_viewport(), _quality_name)
 	_living_enabled = bool(cfg.get("living", true))
@@ -246,7 +246,6 @@ func _ready() -> void:
 	_configure_avatar()
 	segment_markers = SegmentMarkers.new()
 	segment_markers.name = "SegmentMarkers"
-	segment_markers.visual_grade_scale = _visual_grade_scale
 	add_child(segment_markers)
 	print("Décor vivant : %s (préréglage %s)" % ["actif" if _living_enabled else "coupé (rendu 1.0)", _quality_name])
 	ipc.state_received.connect(_on_state_received)
@@ -295,10 +294,12 @@ func _ready() -> void:
 	chart_sim.anchor_top = 1.0
 	chart_sim.anchor_bottom = 1.0
 	chart_sim.anchor_right = 1.0
-	chart_sim.offset_left = 340.0
-	chart_sim.offset_right = -340.0
-	chart_sim.offset_bottom = -130.0
-	chart_sim.offset_top = -250.0
+	# Entre les colonnes du HUD, juste au-dessus du profil d'altitude.
+	var chart_x := HudView.TOP_MARGIN + HudView.COLUMN_W + HudView.TOP_MARGIN
+	chart_sim.offset_left = chart_x
+	chart_sim.offset_right = -chart_x
+	chart_sim.offset_bottom = -HudView.PROFILE_RESERVE - HudView.BLOCK_GAP
+	chart_sim.offset_top = chart_sim.offset_bottom - 120.0
 	chart_sim.visible = false
 	hud.add_child(chart_sim)
 	junction_view = JunctionView.new()
@@ -590,6 +591,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.import_workout(str(act["path"]))
 		"set_difficulty":
 			ipc.send_set_difficulty(int(act["pct"]))
+		"set_ride_mode":   # session libre : SIM, ERG ou ERG cadence depuis la pause (lot O18)
+			ipc.send_command("set_ride_mode", act["args"])
 		"select_route":
 			ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"select_workout":
@@ -773,16 +776,16 @@ func _process(delta: float) -> void:
 	if route:
 		var s_route: float = route.wrap_s(s_disp)
 		var pos: Vector3 = route.sample_point(s_route)
-		if _visual_grade_scale != 1.0 and route != null and route.n > 0:
-			pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
-		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]), -1.0, _visual_grade_scale)
+		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
 		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
+		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
 		avatar_view.set_visible_for_view(_avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
 		_step_avatar(pos, heading, now, pitch_deg)
+		_probe.distance_m = s_route
 		streamer.update_window(s_route, float(follow.last_frame["v"]), camera.global_position)
 		_step_living(delta, s_route, float(follow.last_frame["v"]))
 		if bots_model.count() > 0:
@@ -814,11 +817,10 @@ func _menu_camera(delta: float) -> bool:
 		return false
 	_menu_s = route.wrap_s(_menu_s + MENU_CAMERA_MPS * delta)
 	var pos: Vector3 = route.sample_point(_menu_s)
-	if _visual_grade_scale != 1.0 and route != null and route.n > 0:
-		pos.y = route.alt_m[0] + (pos.y - route.alt_m[0]) * _visual_grade_scale
 	camera.global_position = pos + Vector3(0.0, 1.4, 0.0)
+	camera.fov = _base_fov
 	camera.rotation.y = -deg_to_rad(route.sample_heading_deg(_menu_s))
-	camera.rotation.x = deg_to_rad(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS, -1.0, _visual_grade_scale))
+	camera.rotation.x = deg_to_rad(CameraViews.camera_pitch_deg(follow.pitch_deg(route, _menu_s, MENU_CAMERA_MPS)))
 	streamer.update_window(_menu_s, MENU_CAMERA_MPS, camera.global_position)
 	_step_living(delta, _menu_s, MENU_CAMERA_MPS)
 	return true
@@ -911,6 +913,7 @@ func _request_route(route_id) -> void:
 		# Un chargement est déjà en cours : son résultat sera ignoré (_poll_route_job).
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
 	var job := {"id": str(route_id), "route": RouteDataScript.new(), "path": path, "ok": false}
+	job["route"].relief_k = _visual_grade_scale   # relief affiché (lot Q2) : toute la scène suit la route
 	job["task"] = WorkerThreadPool.add_task(_load_route_job.bind(job), false, "chargement du parcours")
 	_route_job = job
 
@@ -972,24 +975,29 @@ func _poll_route_job() -> void:
 	print("Parcours « %s » chargé : %.0f m, type %s, terrain %s (%s)" % [job["id"], route.length_m, route.type,
 			"présent" if streamer.has_terrain else "absent (sol plat)", job["path"]])
 	ipc.test_log("route_loaded id=%s length_m=%.1f path=%s" % [job["id"], route.length_m, job["path"]])
+	_probe.route_ready()   # démarrage : première image jouable comptée à partir d'ici (lot X15)
 
 
 # --- messages du core --------------------------------------------------------------------
 
 ## Messages de test (--test-mode) : « screenshot » enregistre l'image affichée en PNG et journalise
 ## l'état des éléments du HUD (texte, visibilité, rectangle à l'écran), pour tests/visual_check.py ;
-## « menu_input » joue un appui du Click dans les menus ; « command » fait envoyer une commande par l'engine.
+## « command » fait envoyer une commande par l'engine ;
+## « key » et « mouse » jouent une touche ou la souris par le vrai chemin des entrées de Godot, en menu comme en
+## séance ; « menu_state » journalise l'état des menus (banc des menus, tests/menu_bench.py).
 func _on_test_message(msg: Dictionary) -> void:
 	match str(msg.get("action", "")):
 		"screenshot":
 			_test_screenshot(str(msg.get("path", "")), str(msg.get("tag", "")))
+		"key":
+			_test_key(str(msg.get("key", "")), bool(msg.get("shift", false)), int(msg.get("hold_ms", 100)))
+		"mouse":
+			_test_mouse(str(msg.get("kind", "click")), str(msg.get("item", "")), msg.get("at", []))
+		"menu_state":
+			ipc.test_log("menu_state " + JSON.stringify(_test_menu_state(str(msg.get("req", "")))))
 		"weather":   # météo imposée (tests graphiques du lot P17)
 			if living_decor != null and typeof(msg.get("weather")) == TYPE_DICTIONARY:
 				living_decor.set_weather(msg["weather"])
-		"menu_input":   # appui simulé dans les menus (banc des menus, tests/menu_bench.py)
-			var ev := str(msg.get("event", ""))
-			if ev in MenuModel.EVENTS:
-				_menu_event(ev)
 		"menu_focus":   # focus sur un élément de l'écran courant du menu (tests graphiques du Garage, lot V8)
 			menu_flow.menu.focus_item(str(msg.get("id", "")))
 			_refresh_menu()
@@ -998,6 +1006,99 @@ func _on_test_message(msg: Dictionary) -> void:
 			avatar_view.set_visible_for_view(_avatar_view_name())
 		"command":   # commande du contrat envoyée par l'engine lui-même (pause, end_session…)
 			ipc.send_command(str(msg.get("name", "")), msg.get("args", {}) if msg.get("args") is Dictionary else {})
+
+
+## Touche simulée (nom de OS.find_keycode_from_string : « A », « Enter », « Escape »…) : appui, puis relâchement
+## `hold_ms` plus tard, par Input.parse_input_event : même chemin qu'une vraie touche (_unhandled_input, key_map.gd).
+## Les deux événements sont traités tout de suite (flush_buffered_events) et l'attente bloque l'image en cours :
+## la durée mesurée par key_map.gd est celle demandée, même à 1 image/s sous Xvfb.
+func _test_key(key_name: String, shift: bool, hold_ms: int) -> void:
+	var code := OS.find_keycode_from_string(key_name)
+	if code == KEY_NONE:
+		ipc.test_log("key unknown=%s" % key_name)
+		return
+	var down := InputEventKey.new()
+	down.keycode = code
+	down.physical_keycode = code
+	down.shift_pressed = shift
+	down.pressed = true
+	if key_name.length() == 1:
+		down.unicode = (key_name.to_upper() if shift else key_name.to_lower()).unicode_at(0)
+	Input.parse_input_event(down)
+	Input.flush_buffered_events()
+	OS.delay_usec(maxi(hold_ms, 0) * 1000)
+	var up: InputEventKey = down.duplicate()
+	up.pressed = false
+	Input.parse_input_event(up)
+	Input.flush_buffered_events()
+	ipc.test_log("key done=%s shift=%s hold_ms=%d" % [key_name, shift, hold_ms])
+
+
+## Souris simulée : `kind` click (bouton gauche), right, wheel_up, wheel_down ou move ; sur la rangée de l'élément
+## `item` du menu, sinon au point `at` ([x, y] en pixels de la fenêtre), sinon au centre de la fenêtre. Déplacement,
+## appui puis relâchement à l'image suivante (rangées mises en page), par Input.parse_input_event (même chemin que la
+## vraie souris), traités tout de suite.
+func _test_mouse(kind: String, item: String, at) -> void:
+	await get_tree().process_frame   # mise en page des rangées tout juste affichées faite (conteneurs triés en différé)
+	var to_pixels := get_viewport().get_final_transform()
+	var pos := get_viewport().get_visible_rect().get_center() * to_pixels.get_scale()
+	if item != "":
+		var r: Rect2 = menu_view.item_rect(item)
+		if not r.has_area():
+			ipc.test_log("mouse hidden=%s" % item)
+			return
+		pos = to_pixels * r.get_center()
+	elif at is Array and at.size() == 2:
+		pos = Vector2(float(at[0]), float(at[1]))
+	var move := InputEventMouseMotion.new()
+	move.position = pos
+	move.global_position = pos
+	Input.parse_input_event(move)
+	Input.flush_buffered_events()
+	var buttons := {"click": MOUSE_BUTTON_LEFT, "right": MOUSE_BUTTON_RIGHT, "wheel_up": MOUSE_BUTTON_WHEEL_UP,
+		"wheel_down": MOUSE_BUTTON_WHEEL_DOWN}
+	if buttons.has(kind):
+		var press := InputEventMouseButton.new()
+		press.position = pos
+		press.global_position = pos
+		press.button_index = buttons[kind]
+		press.button_mask = 1 << (int(buttons[kind]) - 1)
+		press.pressed = true
+		Input.parse_input_event(press)
+		Input.flush_buffered_events()
+		var release: InputEventMouseButton = press.duplicate()
+		release.pressed = false
+		release.button_mask = 0
+		Input.parse_input_event(release)
+		Input.flush_buffered_events()
+	ipc.test_log("mouse done=%s item=%s at=%d,%d" % [kind, item, int(pos.x), int(pos.y)])
+
+
+## État des menus pour le banc (`req` : numéro de la demande, rendu tel quel) : écran, titre, focus, éléments,
+## rangées affichées avec leur rectangle en pixels, aide des boutons, pastilles des appareils, carte de détail, séance,
+## monde ouvert, Cyber-Rogue.
+func _test_menu_state(req: String) -> Dictionary:
+	var st: Dictionary = menu_flow.state()
+	var items: Array = []
+	for it in st["items"]:
+		items.append({"id": str(it.get("id", "")), "label": str(it.get("label", "")), "detail": str(it.get("detail", "")),
+			"enabled": bool(it.get("enabled", true))})
+	var focus := int(st["focus"])
+	var to_pixels := get_viewport().get_final_transform()
+	var rows: Array = []
+	for row in menu_view.test_rows():
+		var r: Rect2 = to_pixels * (row["rect"] as Rect2)
+		rows.append({"id": row["id"], "text": row["text"], "focused": row["focused"],
+			"rect": [r.position.x, r.position.y, r.size.x, r.size.y]})
+	var world := {"visible": world_menu_view != null and world_menu_view.visible}
+	if world["visible"]:
+		world["state"] = str(world_menu_view.vm.state)
+	return {"req": req, "visible": menu_view.visible, "screen": st["screen"], "title": st["title"],
+		"status": st["status"], "focus": focus, "focus_id": items[focus]["id"] if focus >= 0 and focus < items.size() else "",
+		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
+		"hint": menu_view.hint_text(), "devices": menu_view.devices.text() if menu_view.devices.visible else "",
+		"card": menu_view.card.text() if menu_view.card.visible else "", "session_state": menu_flow.session_state, "world_menu": world,
+		"rogue": rogue_host.is_active(), "hud": hud.visible, "quality": _quality_name}
 
 
 func _avatar_info() -> Dictionary:
@@ -1021,12 +1122,19 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
-		"menu_card": menu_view.card, "garage_preview": menu_view.preview,
+		"menu_card": menu_view.card, "garage_preview": menu_view.preview, "button_bar": menu_view.button_bar,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
-		"bots_gap1": hud.bots_gaps[0], "bots_ahead": hud.neighbor_labels[0], "bots_behind": hud.neighbor_labels[1],
+		"bots_gap1": hud.bots_gaps[0],
 		"bots_jerseys": hud.jerseys_label, "segment_panel": hud.panel_segment,
+		"segment_title": hud.segment_title, "segment_main": hud.segment_main, "bonus_panel": hud.panel_bonus,
+		"bonus_held": hud.bonus_held, "panel_left": hud.panel_left, "panel_right": hud.panel_right,
+		"profile": hud.profile_panel,
+		"power_caption": hud.power_val.get_meta("caption"), "speed_caption": hud.speed_val.get_meta("caption"),
+		"cadence_caption": hud.cadence_val.get_meta("caption"), "hr_caption": hud.hr_val.get_meta("caption"),
+		"grade_caption": hud.grade_val.get_meta("caption"),
+		"target_caption": hud.target_val.get_meta("caption"), "gear": hud.gear_val, "time": hud.time_val,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
 		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
 	}
@@ -1040,6 +1148,12 @@ func _test_screenshot(path: String, tag: String) -> void:
 			"visible": c.is_visible_in_tree(),
 			"rect": [r.position.x, r.position.y, r.size.x, r.size.y],
 		}
+	# Voisins immédiats : la ligne de l'encart qui porte leur triangle (lot X22), cachée sans voisin affiché.
+	for dir in ["ahead", "behind"]:
+		var line: Label = hud.neighbor_line(dir)
+		var r := to_pixels * line.get_global_rect() if line != null else Rect2()
+		widgets["bots_" + dir] = {"text": line.text if line != null else "", "visible": line != null,
+			"rect": [r.position.x, r.position.y, r.size.x, r.size.y]}
 	var meshes := 0
 	for n in streamer.find_children("*", "MeshInstance3D", true, false):
 		if (n as MeshInstance3D).is_visible_in_tree():
@@ -1244,7 +1358,8 @@ func _on_state_received(state: Dictionary) -> void:
 		session_state = new_session_state
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
 		if session_state == "RUNNING":
-			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null), CONTROLS_HINT_S)
+			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null,
+					str(state["erg"].get("kind", "workout")) if state.get("erg", null) is Dictionary else "workout"), CONTROLS_HINT_S)
 		else:
 			banner.clear_message("controls")
 		# Une erreur reste au moins 5 s ; au-delà, elle reste tant que la séance est en ERROR.
@@ -1361,7 +1476,7 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 	if hud != null and hud.has_method("update_bots"):
 		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
-		bots_view.update_view(view, route, _visual_grade_scale, route.alt_m[0] if route != null and route.n > 0 else 0.0)
+		bots_view.update_view(view, route)
 
 
 ## Consignes d'essai atteintes : bandeau, bip et ligne « [essai] » dans le journal du lanceur, avec les

@@ -15,7 +15,7 @@ const PITCH_LOOKAHEAD_NOMINAL_M := 20.0
 const PITCH_LOOKAHEAD_MIN_M := 15.0
 const PITCH_LOOKAHEAD_MAX_M := 30.0
 const PITCH_SMOOTH_TAU_S := 0.5
-const PITCH_MAX_DEG := 12.0
+const PITCH_MAX_DEG := 18.0   # 12° jusqu'au lot Y15 : avec le relief ×2, une pente de 16 % réelle reste suivie
 
 ## Longueur de la boucle (0 si le parcours n'est pas une boucle) : sert à dérouler s.
 var loop_length_m := 0.0
@@ -100,9 +100,9 @@ func update(now_us: int) -> float:
 
 ## Inclinaison de la caméra vers la route devant (Lot Q2).
 ## Angle de la droite qui joint l'œil au point de la route situé 20 m devant (entre 15 et 30 m selon v),
-## lissé avec une constante de temps de 0,5 s et borné à ±12°. `visual_grade_scale` : exagération du relief
-## affiché (lot Q2), qui multiplie l'écart d'altitude entre l'œil et le point visé.
-func pitch_deg(route, s: float, v: float, dt_s: float = -1.0, visual_grade_scale: float = 1.0) -> float:
+## lissé avec une constante de temps de 0,5 s et borné à ±PITCH_MAX_DEG. Les points viennent de `sample_point`,
+## donc à la hauteur affichée : l'angle suit le relief exagéré (`route.relief_k`, lots Q2 et Y15).
+func pitch_deg(route, s: float, v: float, dt_s: float = -1.0) -> float:
 	if route == null or route.n < 2:
 		return 0.0
 	var lookahead := clampf(PITCH_LOOKAHEAD_NOMINAL_M + (v - 8.0) * 0.75, PITCH_LOOKAHEAD_MIN_M, PITCH_LOOKAHEAD_MAX_M)
@@ -112,7 +112,7 @@ func pitch_deg(route, s: float, v: float, dt_s: float = -1.0, visual_grade_scale
 	var target_pos: Vector3 = route.sample_point(s_target)
 	var dx := target_pos.x - eye_pos.x
 	var dz := target_pos.z - eye_pos.z
-	var dy := (target_pos.y - eye_pos.y) * visual_grade_scale
+	var dy := target_pos.y - eye_pos.y
 	var dxz := sqrt(dx * dx + dz * dz)
 	var raw_angle_rad := atan2(dy, dxz) if dxz > 1e-6 else 0.0
 	var target_pitch_deg := clampf(rad_to_deg(raw_angle_rad), -PITCH_MAX_DEG, PITCH_MAX_DEG)

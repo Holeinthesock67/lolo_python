@@ -1,6 +1,6 @@
 extends SceneTree
 
-## Placement du bandeau d'alerte (banner.gd, layout_for) : à droite du HUD s'il reste la place,
+## Placement du bandeau (banner.gd, layout_for) : à droite du HUD s'il reste la place,
 ## sinon dessous ; jamais par-dessus le HUD. Défaut trouvé par les tests graphiques (visual_check.py).
 
 const Banner := preload("res://scripts/banner.gd")
@@ -52,3 +52,15 @@ func _run() -> void:
 			var r := _banner_rect(hud, w)
 			_check(not r.intersects(hud) and r.size.x > 0.0,
 				"%d px, HUD de %d px : pas de recouvrement, largeur %d" % [w, hud_w, r.size.x])
+
+	# Ton du bandeau (28/10) : rouge seulement pour une alerte, fond des panneaux du HUD sinon.
+	var b = Banner.new()
+	b.show_message("controls", "Click : Y = pause")
+	var info: StyleBoxFlat = b.get_theme_stylebox("normal")
+	_check(not b.is_alert() and info.bg_color == Banner.UiTheme.PANEL_BG, "rappel des boutons : bandeau d'information")
+	b.show_message("core_lost", "Core non joignable")
+	var alert: StyleBoxFlat = b.get_theme_stylebox("normal")
+	_check(b.is_alert() and alert.bg_color == Banner.UiTheme.BANNER_ALERT, "core perdu : bandeau rouge, même avec le rappel")
+	b.clear_message("core_lost")
+	_check(not b.is_alert(), "alerte effacée : retour au bandeau d'information")
+	b.free()

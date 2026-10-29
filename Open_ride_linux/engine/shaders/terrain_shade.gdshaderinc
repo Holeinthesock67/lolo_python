@@ -13,6 +13,11 @@ uniform float min_slope_half_band_deg = 1.5;
 uniform float max_slope_half_band_deg = 3.0;
 uniform float roughness : hint_range(0.0, 1.0) = 1.0;
 
+// Relief affiché (lots Q2 et Y15) : hauteurs étirées de relief_k autour de relief_origin_m. Roche et neige se
+// décident sur le relief réel (pente et altitude ramenées à k = 1) : seule la géométrie est exagérée.
+uniform float relief_k = 1.0;
+uniform float relief_origin_m = 0.0;
+
 // Décor du terrain (Lot E3 / SRS §8.1) : variation de l'herbe et facettes de la roche
 uniform float rock_facet_strength : hint_range(0.0, 1.0) = 0.6;
 uniform float detail_strength : hint_range(0.0, 1.0) = 1.0;
@@ -61,8 +66,11 @@ vec4 sample_triplanar(sampler2D tex, vec3 pos, float inv_scale, vec3 weights) {
 
 // Poids (herbe, roche, neige) de la règle de L3 (SRS §8.1) pour une normale monde et une altitude
 vec3 layer_weights(vec3 n, float alt, float slope_threshold, float snow_line, float sharpness) {
-	// Pente en degrés depuis la normale monde (n.y = cos(pente))
-	float slope_deg = degrees(acos(clamp(n.y, -1.0, 1.0)));
+	// Pente et altitude réelles : la normale affichée a ses composantes horizontales multipliées par relief_k,
+	// l'altitude affichée est étirée autour de relief_origin_m (n.y = cos(pente)).
+	vec3 n_real = normalize(vec3(n.x, n.y * relief_k, n.z));
+	float slope_deg = degrees(acos(clamp(n_real.y, -1.0, 1.0)));
+	alt = relief_origin_m + (alt - relief_origin_m) / relief_k;
 
 	// Demi-largeur de transition herbe/roche (lot L3, SRS §8.1)
 	float half_band = clamp(12.0 / max(sharpness, 1.0), min_slope_half_band_deg, max_slope_half_band_deg);
@@ -103,9 +111,10 @@ float _cloud_density(vec2 p) {
 
 // Couleur du sol à partir des couleurs de base des trois couches (`grass_c`, `rock_c`, `snow_c`, lues
 // seulement quand leur poids dépasse MIN_LAYER_WEIGHT) et de leurs poids `w` ; écrit la normale de la
-// vue dans `normal_out` (`view_n` : normale de la vue avant décor, `vertex` : VERTEX, `view` : VIEW_MATRIX).
-vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 tri_weights, vec3 vertex,
-		mat4 view, out vec3 normal_out) {
+// vue dans `normal_out` (`vertex` : VERTEX, `view` : VIEW_MATRIX). `extra_h` : faux relief ajouté à
+// celui des couches (m, positif ; rides et dunes du sable, lot U8 ; 0 pour le thème 1.x).
+vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 tri_weights, float extra_h,
+		vec3 vertex, mat4 view, out vec3 normal_out) {
 	float w_grass = w.x;
 	float w_rock = w.y;
 	float w_snow = w.z;
@@ -169,7 +178,7 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 	// Normale du monde ramenée dans l'espace de la vue, celui de NORMAL
 	normal_out = normalize((view * vec4(mix(n, rock_n, clamp(w_rock, 0.0, 1.0)), 0.0)).xyz);
 	// Faux relief des trois couches (Y11) : une seule perturbation de la normale
-	float surface_h = grass_h * w_grass + rock_h * w_rock + snow_h * w_snow;
+	float surface_h = grass_h * w_grass + rock_h * w_rock + snow_h * w_snow + extra_h;
 	if (surface_h > 0.0) {
 		normal_out = sd_bump(normal_out, vertex, surface_h);
 	}

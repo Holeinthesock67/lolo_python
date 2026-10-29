@@ -57,7 +57,7 @@ Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie s
 }
 ```
 
-Une section absente retire l'appareil. Les temps sont en secondes depuis le lancement du core. Une clé ou une action inconnue est refusée au lancement, avec un message clair.
+Une section absente retire l'appareil. `control_file` (facultatif, chemin) : fichier suivi pendant la séance, une ligne JSON par événement appliqué tout de suite, sans `t` (par exemple `{"action": "press", "button": "A", "duration_s": 1.1}`) ; le banc des menus (`engine/tests/menu_bench.py`) y écrit ses appuis du Click. Les temps sont en secondes depuis le lancement du core. Une clé ou une action inconnue est refusée au lancement, avec un message clair.
 
 **Réglages communs** (`trainer`, `click`, `click.plus`, `click.minus`, `hr`, `hr_watch`) : `appear_at` (s), `connect_delay_s`, `connect_failures` (connexions refusées avant la première réussie), `asleep`, `address` (sauf `click`).
 
@@ -69,7 +69,7 @@ Une section absente retire l'appareil. Les temps sont en secondes depuis le lanc
 
 | Action | Paramètres | Effet |
 | --- | --- | --- |
-| `press` | `button` (`+` ou `-`), `duration_s` (0,12 par défaut) | Appui sur le Click, relayé par le « − » pour un « + ». |
+| `press` | `button` (`+`, `-`, `A`, `B`, `Y`, `Z`, `LEFT`, `UP`, `RIGHT`, `DOWN` : boutons du Click V2), `duration_s` (0,12 par défaut) | Appui sur le Click : +, A, B, Y et Z sur le boîtier droit (`click_plus`), − et flèches sur le gauche (`click_minus`) ; un « + » est relayé par le « − ». |
 | `drop` | | Coupure du lien côté appareil. |
 | `wake`, `sleep` | | L'appareil s'annonce, ou plus (et refuse les connexions). |
 | `connect_failures` | `count` | Les prochaines connexions échouent. |

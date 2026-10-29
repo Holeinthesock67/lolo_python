@@ -50,6 +50,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from fake_core import CONTRACT_VERSION, EngineLog, FakeCore, now  # noqa: E402
+import hud_lisibilite  # noqa: E402
 import quality_guard  # noqa: E402
 
 ENGINE_DIR = Path(__file__).resolve().parents[1]
@@ -64,7 +65,7 @@ CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
               "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2",
-              "bots_gap1", "bots_ahead", "bots_behind", "bots_jerseys")
+              "bots_gap1", "bots_jerseys")   # bots_ahead, bots_behind : lignes de bots (lot X22)
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_TOLERANCE = 6.0            # écart moyen admis aux références, en niveaux sur 255
 GOLDEN_CHANGED_MAX = 0.01         # part admise de pixels changés de plus de CHANGED_LEVEL (défaut local)
@@ -469,6 +470,7 @@ class Session:
     report: Report
     golden_dir: Path | None
     update_golden: bool
+    lisibilite: bool = False      # --lisibilite : hauteur et contraste des textes du HUD (lot X22)
 
     def check(self, scene: str, name: str, ok: bool, detail: str = "") -> bool:
         return self.report.check(self.name, scene, name, ok, detail)
@@ -489,6 +491,9 @@ class Session:
         self.check(scene, "taille de l'image", (img.width, img.height) == (self.width, self.height),
                    f"{img.width}x{img.height}, attendu {self.width}x{self.height}")
         self._golden(cap, img)
+        if self.lisibilite:
+            for name, ok, detail in hud_lisibilite.readability_checks(img, info):
+                self.check(scene, name, ok, detail)
         return img, info
 
     def _golden(self, cap: Capture, img: Image) -> None:
@@ -533,6 +538,10 @@ class Session:
         pairs = [f"{a}/{b}" for i, a in enumerate(labels) for b in labels[i + 1:]
                  if overlap(vis[a]["rect"], vis[b]["rect"]) > 1.0]
         self.check(scene, "lignes du HUD sans chevauchement", not pairs, ", ".join(pairs))
+        # Panneaux (colonnes, vent, abri, blocs segment et bonus, encart des bots, profil) : lot X22.
+        for name, ok, detail in (hud_lisibilite.panel_checks(info, self.width, self.height)
+                                 + hud_lisibilite.column_checks(info)):
+            self.check(scene, name, ok, detail)
         if "banner" in vis:
             hit = [k for k in labels + ["panel"] if k in vis and overlap(vis[k]["rect"], vis["banner"]["rect"]) > 1.0]
             self.check(scene, "bandeau sans chevauchement du HUD", not hit, "recouvre : " + ", ".join(hit) if hit else "")
@@ -593,7 +602,9 @@ def ground_box(s: Session, info: dict[str, Any]) -> tuple[int, int, int, int]:
     return 0, int(s.height * 0.6), s.width, s.height
 
 
-def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Report) -> None:
+def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Report, scenes=None) -> None:
+    """Lance l'engine à une configuration et joue `scenes(session)` (les scènes de ce fichier par défaut ;
+    hud_galerie.py passe les siennes)."""
     size, _, quality = config.partition(":")
     quality = quality or "low"
     width, height = (int(v) for v in size.lower().split("x"))
@@ -615,12 +626,12 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
             "--test-mode", f"--quality={quality}", f"--visual-grade={v_grade}",
             "--camera=subjective"]   # les scènes d'avant le lot V12 supposent la caméra subjective
     gold = Path(args.golden) / name if args.golden else None
-    s = Session(name, width, height, core, out_dir, report, gold, args.update_golden)
+    s = Session(name, width, height, core, out_dir, report, gold, args.update_golden, args.lisibilite)
     print(f"== {name} ==", flush=True)
     with engine_log.open("w") as log_fh:
         proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True)
     try:
-        _scenes(s)
+        (scenes or _scenes)(s)
     finally:
         core.stop()
         try:
@@ -781,6 +792,7 @@ def _scenes(s: Session) -> None:
                 not info["widgets"]["bots_panel"]["visible"] and info.get("bots", {}).get("shown") == 0,
                 f"{info.get('bots')}")
     time.sleep(1.0)
+    _bots_segment_bonus_scene(s)
 
     # 3 ter ter. Avatar (lot V6), vu par la caméra de contrôle derrière lui (la caméra du jeu reste
     # subjective, où l'avatar est caché) : visible, jambes à des angles différents sur deux captures
@@ -914,11 +926,12 @@ def _scenes(s: Session) -> None:
         narrow = [k for k in ("erg_title", "erg_target", "erg_remaining", "erg_next") if info["widgets"][k]["rect"][2] < 20]
         s.check("erg", "textes du bandeau ERG de largeur lisible", not narrow, "trop étroits : " + ", ".join(narrow))
         s.check("erg", "ligne ERG du panneau central laissée au bandeau", not info["widgets"]["erg"]["visible"])
+        s.check("erg", "profil d'altitude caché en ERG", not info["widgets"]["profile"]["visible"])
         s.check_layout("erg", info)
         s.check_hud_pixels("erg", img, info)
         hist = info["widgets"]["erg_hist"]
         s.check("erg", "histogramme des blocs affiché", hist["visible"] and hist["rect"][2] >= 0.8 * s.width
-                and hist["rect"][3] >= 40 * info["ui_scale"] and hist["rect"][1] + hist["rect"][3] <= s.height - 120 * info["ui_scale"],
+                and hist["rect"][3] >= 40 * info["ui_scale"] and hist["rect"][1] + hist["rect"][3] <= s.height - 10 * info["ui_scale"],
                 f"rectangle {hist['rect']}")
         if hist["visible"]:
             # Case du bloc en cours (2 sur 7) colorée en zone 4 (230 W pour une FTP de 250 W) : jaune.
@@ -931,6 +944,31 @@ def _scenes(s: Session) -> None:
             later = (x0 + (x1 - x0) * 0.55, y0, x1, y1)
             frac = fraction(img, later, yellow, step=2)
             s.check("erg", "blocs à venir visibles en couleur de zone", frac >= 0.02, f"{frac:.1%} de pixels jaunes")
+
+    # 4 ter. Cible ERG longue (« 152 W (98 %) », biais −2 %) : la valeur tient dans la colonne gauche, police
+    # réduite au besoin, et le braquet, sans effet en ERG, est caché ; en roue libre il revient (suite X22).
+    core.set_scene(speed=7.0, mode="ERG", erg={
+        "workout_name": "Recette 8 min", "block_index": 1, "block_count": 4, "block_type": "warmup",
+        "block_remaining_s": 22.0, "block_total_s": 120.0, "target_w": 152.0, "next_target_w": 184.0,
+        "bias_pct": 98, "paused": False})
+    time.sleep(1.0)
+    shot = s.capture("erg_cible_longue")
+    if shot:
+        img, info = shot
+        s.check_texts("erg_cible_longue", info, {"target": "152 W (98 %)"})
+        s.check("erg_cible_longue", "braquet caché en ERG", not info["widgets"]["gear"]["visible"])
+        s.check_layout("erg_cible_longue", info)
+    core.set_scene(speed=7.0, mode="ERG", erg={
+        "workout_name": "Recette 8 min", "block_index": 2, "block_count": 4, "block_type": "freeride",
+        "block_remaining_s": 60.0, "block_total_s": 120.0, "target_w": 0.0, "next_target_w": 184.0,
+        "bias_pct": 98, "paused": False})
+    time.sleep(1.0)
+    shot = s.capture("erg_roue_libre")
+    if shot:
+        img, info = shot
+        s.check_texts("erg_roue_libre", info, {"target": "roue libre"})
+        s.check("erg_roue_libre", "braquet affiché en roue libre", info["widgets"]["gear"]["visible"])
+        s.check_layout("erg_roue_libre", info)
 
     # 4 bis. Courbes de la séance (lot O14), taille complète : en ERG à la place de l'histogramme (profil
     # cible, puissance blanche, FC rouge, légende) ; en SIM dans un panneau centré, sans toucher aux
@@ -949,7 +987,7 @@ def _scenes(s: Session) -> None:
         chart = w["chart_erg"]
         s.check("erg_courbes", "courbes affichées à la place de l'histogramme",
                 chart["visible"] and not w["erg_hist"]["visible"] and chart["rect"][2] >= 0.8 * s.width
-                and chart["rect"][1] + chart["rect"][3] <= s.height - 120 * info["ui_scale"], f"rectangle {chart['rect']}")
+                and chart["rect"][1] + chart["rect"][3] <= s.height - 10 * info["ui_scale"], f"rectangle {chart['rect']}")
         s.check_layout("erg_courbes", info)
         box = rect_box(chart["rect"])
         # Seuil bas : à 1024x600 (échelle 0,8) le panneau ne fait que 55 px de haut et le trait blanc
@@ -1042,6 +1080,50 @@ def _scenes(s: Session) -> None:
     s.check("journal", "rendu actif (images par seconde)", bool(fps) and max(fps) >= 1, f"fps relevés : {fps}")
 
 
+# Colonne de droite la plus chargée (lot X22) : 4 bots à profil (maillots, jauges W′), deux voisins, un
+# segment en cours et un bonus en réserve, empilés sous le panneau de droite jusqu'au-dessus du profil.
+PROFILE_BOTS = [
+    {"id": "b1", "name": "Grimpeur", "profile": "climber", "cp_w": 262.0, "mass_kg": 62.0, "wbal_pct": 74.0, "jersey": "kom", "ds": 35.0},
+    {"id": "b2", "name": "Rouleur", "profile": "rouleur", "cp_w": 281.0, "mass_kg": 75.0, "wbal_pct": 92.0, "jersey": None, "ds": 12.0},
+    {"id": "b3", "name": "Sprinteur", "profile": "sprinter", "cp_w": 255.0, "mass_kg": 72.0, "wbal_pct": 38.0, "jersey": "sprint", "ds": -15.0},
+    {"id": "b4", "name": "Diesel", "profile": "diesel", "cp_w": 248.0, "mass_kg": 70.0, "wbal_pct": 100.0, "jersey": None, "ds": -40.0},
+]
+
+
+def _bots_segment_bonus_scene(s: Session) -> None:
+    core = s.core
+    s_now = core.current_s()
+    bots = [{k: v for k, v in b.items() if k != "ds"} | {"s": s_now + b["ds"], "v": 0.0, "kind": "constant"}
+            for b in PROFILE_BOTS]
+    core.set_scene(speed=0.0, bots=bots, bot_ahead="b2", bot_behind="b3", jerseys={"sprint": "b3", "kom": "b1"},
+                   segment={"id": "climb1", "kind": "climb", "category": "4", "d_to_start_m": 0.0,
+                            "elapsed_s": 42.0, "gap_to_pr_s": -1.6},
+                   powerup={"held": "aero", "active": None, "remaining_s": 0.0})
+    time.sleep(SETTLE_S)
+    shot = s.capture("bots_segment_bonus")
+    if shot:
+        img, info = shot
+        w = info["widgets"]
+        # Lot X22 : blocs segment et bonus à la hauteur de leur contenu ; l'encart garde au moins les deux
+        # lignes autour du cycliste (ses voisins, avec FTP, maillot et W′) et la ligne des maillots.
+        need = ("segment_panel", "bonus_panel", "bots_panel", "bots_ahead", "bots_behind", "bots_line1", "bots_line2",
+                "bots_jerseys")
+        missing = [k for k in need if not w[k]["visible"]]
+        s.check("bots_segment_bonus", "blocs segment et bonus, voisins avec leur ligne complète et maillots affichés",
+                not missing, "manquent : " + ", ".join(missing) if missing else "")
+        s.check_texts("bots_segment_bonus", info, {"bots_ahead": "Rouleur  281 W", "bots_behind": "Sprinteur  255 W",
+                                                   "bots_jerseys": "Vert : Sprinteur · Pois : Grimpeur"}, contains=True)
+        seg, bonus, panel = w["segment_panel"]["rect"], w["bonus_panel"]["rect"], w["bots_panel"]["rect"]
+        s.check("bots_segment_bonus", "segment, bonus puis bots empilés", seg[1] < bonus[1] < panel[1],
+                f"hauts {seg[1]:.0f}, {bonus[1]:.0f}, {panel[1]:.0f} px")
+        prof = w["profile"]["rect"]
+        s.check("bots_segment_bonus", "encart des bots au-dessus du profil d'altitude",
+                panel[1] + panel[3] <= prof[1] + 0.5, f"bas de l'encart {panel[1] + panel[3]:.0f} px, profil à {prof[1]:.0f} px")
+        s.check_layout("bots_segment_bonus", info)
+    core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, segment=None, powerup=None)
+    time.sleep(SETTLE_S)
+
+
 def _pentes_scenes(s: Session) -> None:
     """Lot Q2 : captures sur le parcours demo à des points de ~0 % (0,6 %) et ~4 % (4,5 %)."""
     core = s.core
@@ -1076,6 +1158,7 @@ def _pentes_scenes(s: Session) -> None:
 OSM_ROUTE_ID = "osm-test"
 DECOR_S = 1480.0
 DECOR_WAIT_S = 30.0
+DECOR_PAUSE_S = 2.0
 DECOR_KINDS = {"animals": "troupeau", "birds": "oiseaux", "vehicles": "véhicule croisé",
                "distant_vehicles": "véhicule lointain", "aircraft": "objet du ciel"}
 
@@ -1083,7 +1166,9 @@ DECOR_KINDS = {"animals": "troupeau", "birds": "oiseaux", "vehicles": "véhicule
 def _decor_vivant_scene(s: Session) -> None:
     """Lot P27 : décor vivant de la deuxième vague sur le monde de test OSM, vérifié par la présence des
     objets (le décor bouge : pas d'image de référence). Captures toutes les 2 s jusqu'à ce que chaque sorte
-    ait été vue, DECOR_WAIT_S au plus ; la dernière est gardée dans le rapport."""
+    ait été vue, DECOR_WAIT_S au plus ; la dernière est gardée dans le rapport. Lot P30 : pause, ce qui se
+    fige (véhicules, cyclistes, ciel, bateaux) n'a pas bougé entre deux captures à DECOR_PAUSE_S d'écart
+    (`frozen_sig` du décor). Les sons du décor, plus rares, se vérifient au banc simulé (decor_vivant_2)."""
     core = s.core
     mark = core.log.mark()
     core.route_id = OSM_ROUTE_ID
@@ -1113,6 +1198,18 @@ def _decor_vivant_scene(s: Session) -> None:
             s.check("decor_vivant", f"{label} en vue", seen[k] > 0, f"{seen[k]} au plus")
         s.check_layout("decor_vivant", info)
         s.check_world("decor_vivant", img, info)
+    # Pause : véhicules, cyclistes, ciel et bateaux figés
+    core.set_scene(speed=0.0, session_state="PAUSED", pause_reason="user")
+    time.sleep(1.0)
+    a = s.capture("decor_pause_1")
+    time.sleep(DECOR_PAUSE_S)
+    b = s.capture("decor_pause_2")
+    if a and b:
+        sig_a = a[1].get("decor", {}).get("frozen_sig")
+        sig_b = b[1].get("decor", {}).get("frozen_sig")
+        s.check("decor_pause", "décor figé en pause (véhicules, cyclistes, ciel, bateaux)",
+                sig_a is not None and sig_a != 0 and sig_a == sig_b, f"signature {sig_a} puis {sig_b}")
+    core.set_scene(speed=SPEED_MPS, session_state="RUNNING", pause_reason=None)
 
 
 def _menu_scenes(s: Session) -> None:
@@ -1268,6 +1365,40 @@ def _progress_scenes(s: Session) -> None:
         banner = info["widgets"]["banner"]
         s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
                 f"{banner.get('text')}")
+    # Bilan complet (dix chiffres, fichier FIT, quatre blocs ERG du bilan détaillé) et progression : la carte
+    # tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
+    core.set_scene(session_state="IDLE", summary=None)
+    time.sleep(0.5)
+    core.set_scene(session_state="FINISHED", summary={
+        "duration_s": 516.0, "distance_m": 3210.0, "avg_power_w": 139.0, "np_w": 155.0, "intensity_factor": 0.62,
+        "tss": 6.0, "elevation_gain_m": 33.0, "avg_cadence_rpm": 49.0, "avg_hr_bpm": 119.0, "max_power_w": 400.0,
+        "fit_path": "/tmp/openride/2026-10-28_17-24_essai-69.fit",
+        "blocks": [[1, 91.0, 141.0], [2, 149.0, 170.0], [3, 127.0, 126.0], [4, 182.0, 183.0]]})
+    time.sleep(1.0)
+    for _ in range(2):
+        core.send(dict(XP_RESULT))
+        time.sleep(1.0)
+    for detailed in (False, True):
+        if detailed:
+            core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "menu_focus", "id": "details"})
+            time.sleep(0.4)
+            core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
+            time.sleep(1.0)
+        scene = "bilan_complet_detaille" if detailed else "bilan_complet"
+        shot = s.capture(scene)
+        if shot:
+            img, info = shot
+            w = info["widgets"]
+            s.check_texts(scene, info, {"menu": "Puissance max : 400 W"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
+            if detailed:
+                s.check_texts(scene, info, {"menu": "Bloc 4 : 182 W pour 183 W"}, contains=True)
+            card, bar = w["menu_card"], w["button_bar"]
+            bottom = card["rect"][1] + card["rect"][3]
+            s.check(scene, "carte du bilan au-dessus du bandeau des boutons",
+                    card["visible"] and bottom <= bar["rect"][1] + 0.5,
+                    f"bas de la carte {bottom:.0f} px, bandeau à {bar['rect'][1]:.0f} px")
+            s.check_layout(scene, info)
     core.set_scene(session_state="IDLE", summary=None)
     time.sleep(0.5)
     core.set_scene(session_state="FINISHED", summary={"duration_s": 120.0, "distance_m": 800.0})
@@ -1392,6 +1523,8 @@ def main() -> int:
     ap.add_argument("--native", action="store_true", help="écran réel et rendu habituel, sans Xvfb")
     ap.add_argument("--golden", default=None, help="dossier des images de référence (un sous-dossier par configuration)")
     ap.add_argument("--update-golden", action="store_true", help="enregistre les captures comme nouvelles références")
+    ap.add_argument("--lisibilite", action="store_true",
+                    help="hauteur des chiffres et contraste des textes du HUD sur chaque capture (lot X22)")
     args = ap.parse_args()
 
     if not (Path(args.godot).is_file() and os.access(args.godot, os.X_OK)):

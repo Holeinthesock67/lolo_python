@@ -12,7 +12,7 @@ Overpass fabriquée ici (aucune donnée réelle) :
   couleurs variés, immeubles, église), fermes isolées le long de la montée ;
 - végétation : forêts sur les flancs de la montée et de la descente, verger, broussailles ;
 - eau : rivière qui croise la route, ruisseau, lac au sommet ; points d'intérêt : villages,
-  église, belvédère.
+  église, belvédère, éoliennes sur le plateau du col (une près de la route pour voir son pied).
 
     python3 engine/tests/make_sim_world.py --out DOSSIER [--seed N]
     → DOSSIER/village-simule.world/ et DOSSIER/village-simule.json (nombres et profil attendus)
@@ -241,6 +241,9 @@ def build_overpass(frame: Frame, seed: int) -> Overpass:
     op.way(lake, {"natural": "water", "water": "lake", "name": "Lac du Sommet"})
     op.counts["water_areas"] += 1
     op.node(road_x(2350.0) + 25.0, -2350.0, {"tourism": "viewpoint", "name": "Belvédère du Col"})
+    # Éoliennes sur le plateau du col (Lot P12, habillage Y8 étape 4) : une rangée au loin, une près de la route.
+    for s, off in ((2250.0, 150.0), (2420.0, 210.0), (2590.0, 170.0), (2460.0, 60.0)):
+        op.node(road_x(s) + off, -s, {"power": "generator", "generator:source": "wind", "height": "95"})
     return op
 
 
