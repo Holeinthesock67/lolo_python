@@ -74,6 +74,15 @@ TRIALS: dict[str, Trial] = {
          "un peu d'eau pour remouiller la ceinture à la remise"),
         ("4 phases d'une minute : ceinture portée, retirée, remise, portée ; on roule tout du long",
          "absence, valeur figée et retour de la FC sont mesurés par l'outil")),
+    "coupures": Trial(
+        "Coupures volontaires (lot X10, essai 69)", "environ 6 min",
+        ("python -m openride_core.tools.coupures",),
+        ("une séance OpenRide lancée par l'icône, en cours (SIM), vélo sur le HomeTrainer",
+         "l'interrupteur du HomeTrainer à portée de main",
+         "les deux boîtiers Click réveillés ; sans adresse dans config.toml, de quoi retirer leurs piles",
+         "la ceinture portée, un peu d'eau pour la remettre"),
+        ("l'outil arrête Godot lui-même, puis annonce chaque coupure avec un bip et un compte à rebours",
+         "à la fin, le tableau attendu contre obtenu, lu dans les journaux")),
     "endurance": Trial(
         "Endurance d'une heure (lot X16)", "1 h 05",
         ("engine/tests/sim_bench.py --native --scenario endurance --probe",),

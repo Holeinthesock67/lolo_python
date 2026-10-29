@@ -3,7 +3,7 @@ extends PanelContainer
 ## Carte de détail à droite des menus (lot « présentation des menus », étape 2) : en-tête, nom, tuiles des
 ## chiffres clés, graphique tracé par le code (profil d'altitude d'un parcours chargé, blocs d'un
 ## entraînement colorés par zone), lignes de texte. Affiche une fiche de menu_flow.card() :
-## {title, name, tiles [{label, value, unit}], lines, profile (HudViewModel.profile), blocks ([durée,
+## {title, name, tiles [{label, value, unit, gold}] (gold : valeur en or), lines, profile (HudViewModel.profile), blocks ([durée,
 ## début, fin])} ; les clés absentes ne montrent rien. `body` reçoit d'autres contenus (bilan, menu_view).
 ## Couleurs et tailles du thème commun (ui_theme.gd). Pas de class_name : charger par
 ## preload("res://scripts/detail_card.gd").
@@ -129,6 +129,8 @@ func _set_tile(t: PanelContainer, tile: Dictionary) -> void:
 	var row: HBoxContainer = box.get_child(1)
 	(box.get_child(0) as Label).text = str(tile.get("label", ""))
 	(row.get_child(0) as Label).text = str(tile.get("value", ""))
+	# Valeur clé (record) en or ; sinon couleur du texte.
+	(row.get_child(0) as Label).add_theme_color_override("font_color", UiTheme.GOLD if tile.get("gold", false) else UiTheme.TEXT)
 	(row.get_child(1) as Label).text = str(tile.get("unit", ""))
 
 

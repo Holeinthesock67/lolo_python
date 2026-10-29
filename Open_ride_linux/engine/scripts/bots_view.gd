@@ -84,9 +84,9 @@ func _make_node(kind: String) -> Node3D:
 	return root
 
 
-## `view` : sortie de bots_view_model.view() ; `route` : route_data.gd ; relief exagéré comme la
-## caméra (`grade_scale`, `alt0` : altitude de référence du parcours).
-func update_view(view: Array, route, grade_scale := 1.0, alt0 := 0.0) -> void:
+## `view` : sortie de bots_view_model.view() ; `route` : route_data.gd (hauteur affichée, relief exagéré comme la
+## caméra).
+func update_view(view: Array, route) -> void:
 	var seen := {}
 	for b in view:
 		var id: String = b["id"]
@@ -99,8 +99,6 @@ func update_view(view: Array, route, grade_scale := 1.0, alt0 := 0.0) -> void:
 		var node: Node3D = _nodes[key]
 		var smp: Dictionary = route.sample(route.wrap_s(float(b["s"])))
 		var pos := Vector3(smp["x"], smp["y"], smp["z"])
-		if grade_scale != 1.0:
-			pos.y = alt0 + (pos.y - alt0) * grade_scale
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		var right := Vector3(cos(h), 0.0, sin(h))
 		node.position = pos + right * LATERAL_M
