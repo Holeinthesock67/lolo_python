@@ -568,6 +568,31 @@
               "type": "boolean"
             }
           }
+        },
+        "wtf": {
+          "type": "object",
+          "description": "Révision 1.5 (lot WTF2) : bilan du mode WTF.",
+          "required": [
+            "points",
+            "events"
+          ],
+          "properties": {
+            "points": {
+              "type": "integer"
+            },
+            "events": {
+              "type": "object",
+              "additionalProperties": {
+                "type": "integer"
+              }
+            },
+            "kata_size": {
+              "type": "number"
+            },
+            "kata_count": {
+              "type": "integer"
+            }
+          }
         }
       },
       "required": [
@@ -1247,6 +1272,107 @@
             "offline",
             "missing"
           ]
+        }
+      }
+    },
+    "wtf": {
+      "type": "object",
+      "description": "Facultatif, révision 1.5 (lot WTF2) : présent seulement en mode WTF.",
+      "required": [
+        "points",
+        "event"
+      ],
+      "properties": {
+        "points": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "event": {
+          "type": [
+            "object",
+            "null"
+          ],
+          "required": [
+            "id",
+            "left_s"
+          ],
+          "properties": {
+            "id": {
+              "type": "string",
+              "enum": [
+                "gravity",
+                "upside_down",
+                "collapse",
+                "cheese",
+                "micro",
+                "eggs",
+                "tiny",
+                "storm",
+                "camera",
+                "chef"
+              ]
+            },
+            "left_s": {
+              "type": "number",
+              "minimum": 0
+            }
+          }
+        },
+        "next_s": {
+          "type": "number",
+          "minimum": 0
+        },
+        "kata": {
+          "type": "object",
+          "required": [
+            "size",
+            "count",
+            "next"
+          ],
+          "properties": {
+            "size": {
+              "type": "number"
+            },
+            "count": {
+              "type": "integer"
+            },
+            "last": {
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "next": {
+              "type": "array",
+              "maxItems": 3
+            }
+          }
+        },
+        "skins": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "string",
+            "enum": [
+              "grandma",
+              "tractor",
+              "bathtub",
+              "whale"
+            ]
+          }
+        },
+        "attack": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "clock_h": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 24
+        },
+        "fish": {
+          "type": "boolean"
         }
       }
     }

@@ -305,6 +305,14 @@
 | [CT10](LOT_CT10_effets_engine.md) | Série CT : effets cartoon dans l'engine | GDScript | CT9, CT2 à CT8 | Grande | Prêt (version 5.0) |
 | [CT11](LOT_CT11_hud_menus.md) | Série CT : hUD, menus et bilan de la Course tactique | GDScript | CT9, CT10 | Grande | Prêt (version 5.0) |
 | [CT12](LOT_CT12_recette_velo.md) | Série CT : recette de la Course tactique sur le vélo | Essai sur le vélo | CT2 à CT11 | Moyenne | Interne (propriétaire, version 5.0) |
+| [WTF1](LOT_WTF1_regles_core.md) | Série WTF : règles du mode « What the fuck » dans le core (13 règles désactivables, surprise du chef) | Python | — | Moyenne | **Livré le 29 octobre** (version 2.0) |
+| [WTF2](LOT_WTF2_seance_contrat.md) | Série WTF : mode WTF branché dans la séance et contrat IPC | Python | WTF1 | Moyenne | **Livré le 29 octobre** (version 2.0) |
+| [WTF3](LOT_WTF3_menu_regles.md) | Série WTF : menu du mode et écran des treize interrupteurs | GDScript | WTF2 | Petite | Prêt (version 2.0) |
+| [WTF4](LOT_WTF4_maquettes.md) | Série WTF : maquettes cartoon des gags | Documentation et maquettes | WTF1 | Moyenne | Prêt (version 2.0), maquettes validées par le propriétaire |
+| [WTF5](LOT_WTF5_gags_physiques.md) | Série WTF : engine, gags physiques (gravité, monde à l'envers, route qui s'effondre, fromage, tempête) | GDScript | WTF2, WTF4 | Grande | Prêt (version 2.0) |
+| [WTF6](LOT_WTF6_decor_bots_camera.md) | Série WTF : engine, Katamari, peloton délirant, horloge, vélo minuscule, caméras | GDScript | WTF2, WTF4 | Grande | Prêt (version 2.0) |
+| [WTF7](LOT_WTF7_hud_chef.md) | Série WTF : engine, HUD des défis, surprise du chef, bilan et sons | GDScript | WTF2, WTF4 | Moyenne | Prêt (version 2.0) |
+| [WTF8](LOT_WTF8_recette.md) | Série WTF : recette du mode sur le vélo | Essai sur le vélo | WTF3 à WTF7 | Petite | Interne (propriétaire, version 2.0) |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
@@ -440,6 +448,7 @@ Version 3.0, série U : U0 ──► U1 ──► U2, U3, U4, U5, U15, U19, U20,
 U19 ──► U22 ;  U2, O4 ──► U16 ;  U5 à U15, U19, U22 ──► U17 ──► U18 ;  U19 à U22 ──► U18
 Série AS : P3, T12, T13 ──► AS1 (1.x) ──► AS2 ──► AS3, AS4, AS6 ;  AS2, AS6 ──► AS7 ;  P3, P10, P17 ──► AS5
 Version 5.0, série CT : Y10, T13 ──► CT0 ──► CT1 ──► CT2, CT7, CT9 ;  CT2, AS1, AS4 ──► CT3 ;  AS2, CT2 ──► CT4 ──► CT5 ;  TT2 à TT5 (4.0) ──► CT6 ;  CT0, CT1 ──► CT8 ;  CT9, CT2 à CT8 ──► CT10 ──► CT11 ──► CT12
+Version 2.0, série WTF : WTF1 ──► WTF2 ──► WTF3 ;  WTF1 ──► WTF4 ;  WTF2, WTF4 ──► WTF5, WTF6, WTF7 ──► WTF8
 Fin de projet, série Y : Y1 (avancé) ──► S1 ;  Y1 ──► Y13 ;  Y1, X2, X13 ──► Y2 ──► Y4, Y6, Y7 ;  Y2, S1 ──► Y3 ──► Y8 (avec P20) ;  O1, Y2 ──► Y5 ;  O7 ──► Y9 ──► Y10 (avec les séries T et R) ;  Y8, P20, Y2 ──► Y11 ──► Y12 (avec R17)
 ```
 

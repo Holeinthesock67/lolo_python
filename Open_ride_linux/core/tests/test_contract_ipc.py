@@ -331,7 +331,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
         assert len(acks) == 2
         for ack in acks:
             assert_valid(ack)
-            assert ack["rev"] == "1.5" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue"]
+            assert ack["rev"] == "1.5" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf"]
         assert s.server.engine_rev is None
     asyncio.run(scenario())
     hello = jsonschema.Draft202012Validator(schema("hello"))

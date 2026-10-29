@@ -67,6 +67,7 @@ class ConstantPowerBot:
         self.draft = 0.0                       # abri lissé (lot AS1), posé par draft.update_bots
         self.wheel: tuple[float, float] | None = None   # roue suivie : écart (m) et vitesse du coureur devant
         self.push = 0.0                        # poussée du coureur qui suit de près
+        self.power_factor = 1.0                # mamie à l'attaque du mode WTF (lot WTF2)
 
     @property
     def s(self) -> float:
@@ -93,7 +94,7 @@ class ConstantPowerBot:
             grade = here.grade_pct
             alt = here.alt_m
 
-        self.physics.step(self.power_w, grade, alt, dt, alpha_draft=self.draft)
+        self.physics.step(self.power_w * self.power_factor, grade, alt, dt, alpha_draft=self.draft)
         if route is not None and not route.is_loop and self.physics.s >= route.length_m:
             self.physics.s = route.length_m
             self.physics.v = 0.0
