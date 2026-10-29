@@ -96,6 +96,8 @@ class SessionRecorder:
                 self._writer.ftp_test(line)
             elif line["kind"] == "junction":
                 self._writer.junction(line)
+            elif line["kind"] == "ftms":
+                self._writer.ftms(line)
             elif line["kind"] in GAME_KINDS:
                 self._writer.game(line)
             else:
@@ -121,6 +123,12 @@ class SessionRecorder:
 
     def ftp_test(self, line: dict) -> None:
         """Résultat d'un test de FTP (lot O10), écrit avant `finish`."""
+        self.lines.append(line)
+        self._write(line)
+
+    def ftms(self, line: dict) -> None:
+        """Statut ou perte de frein du trainer (ligne `ftms`) ; absente du FIT."""
+        line = {**line, "kind": "ftms"}
         self.lines.append(line)
         self._write(line)
 
