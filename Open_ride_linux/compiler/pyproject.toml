@@ -27,13 +27,15 @@ worldgen = ["osmium>=4.0"]
 openride-compiler = "openride_compiler.cli:main"
 openride-worldgen = "openride_compiler.worldgen.process:main"
 openride-worldgen-fake = "openride_compiler.worldgen.synthetic:fake_main"
+openride-worldgen-netcheck = "openride_compiler.worldgen.netcheck:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
 
 [tool.setuptools.package-data]
-# Recettes des packs de parcours livrés (lot O16), lues par `route-pack-build`.
-openride_compiler = ["route_packs/*/*.toml"]
+# Recettes des packs de parcours livrés (lot O16), lues par `route-pack-build` ; scénarios de réseau
+# dégradé (lot X28), lus par `openride-worldgen-netcheck`.
+openride_compiler = ["route_packs/*/*.toml", "worldgen/reseau/*.json"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

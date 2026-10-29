@@ -16,7 +16,7 @@ from openride_compiler.worldgen.osmdb import OsmDb
 from openride_compiler.worldgen.process import FakeClock, WorldSession
 from openride_compiler.worldgen.squares import zone_frame
 from openride_compiler.worldgen.store import WorldCache
-from test_mvt import encode_tile
+from openride_compiler.worldgen.mvt import encode_tile
 
 LAT, LON = 43.0, 4.6                    # point fictif en mer (comme W15)
 TX, TY = mvt.lonlat_to_tile(14, LON, LAT)

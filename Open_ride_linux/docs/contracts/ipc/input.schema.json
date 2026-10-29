@@ -34,6 +34,15 @@
         "UP_SHORT",
         "DOWN_SHORT"
       ]
+    },
+    "latence_id": {
+      "type": "integer",
+      "minimum": 1,
+      "description": "Identifiant de l'appui suivi, seulement quand le core est lancé avec --latence ([log] latence, lot X7)"
+    },
+    "latence_t": {
+      "type": "number",
+      "description": "Heure murale (s) de l'envoi par le core, avec latence_id (lot X7)"
     }
   }
 }
