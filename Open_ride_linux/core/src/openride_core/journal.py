@@ -15,7 +15,9 @@ Sortes de lignes :
   (équipement du cadre et des roues, lot V11), `null` pour une run Cyber-Rogue où il ne
   s'applique pas (lot V5) ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
-- `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ;
+- `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ; une pause porte
+  aussi sa raison, `"reason": "user" | "trainer_lost" | "engine_lost" | ...` (champ facultatif, absent
+  des journaux antérieurs au 28 octobre 2026), lue par le chronométrage des segments ;
 - `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un
   plantage reprend la séance dans le même fichier (lot N8) ; ce n'est pas un événement du
   chronomètre : les lectures du chronomètre et le FIT ne gardent que `TIMER_EVENTS` ;
@@ -80,11 +82,14 @@ class Record:
     wind_grade_pct: float | None = None  # supplément de pente dû au vent et à l'abri (SIM), lots P2 et P3
     draft: float | None = None         # abri derrière un bot (0 à 0,45), None sans bot (lot P3)
     hr_frozen: bool | None = None      # True : FC relayée par le trainer figée, ignorée (lot Q5)
+    erg_kind: str | None = None        # ERG d'une session libre : `free` ou `cadence`, None sinon (lot O18)
+    cadence_target_rpm: int | None = None  # cadence cible de l'ERG cadence (tr/min), None sinon (lot O18)
 
 
-# Champs de la série P absents de la ligne quand ils valent None (vent coupé, pas de bot) :
+# Champs facultatifs (séries P et Q, lot O18) absents de la ligne quand ils valent None (vent coupé,
+# pas de bot, pas d'ERG libre) :
 # une séance sans vent ni bot garde exactement les lignes d'avant, et la mémoire de la séance aussi.
-OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen")
+OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen", "erg_kind", "cadence_target_rpm")
 
 
 # Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).
@@ -126,10 +131,13 @@ class JournalWriter:
     def record(self, rec: Record) -> None:
         self._write(record_line(rec))
 
-    def event(self, name: str, ts: float) -> None:
+    def event(self, name: str, ts: float, reason: str | None = None) -> None:
         if name not in EVENTS:
             raise ValueError(f"événement inconnu : {name}")
-        self._write({"kind": "event", "event": name, "ts": ts})
+        line = {"kind": "event", "event": name, "ts": ts}
+        if reason:
+            line["reason"] = reason
+        self._write(line)
 
     def device(self, device: str, state: str, ts: float) -> None:
         """Changement d'état d'un appareil (coupure ou retour), lot M4."""

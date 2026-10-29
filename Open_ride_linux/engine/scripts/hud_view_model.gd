@@ -62,8 +62,14 @@ static func _clean(value: Variant, hi: float, clamp_negative := true) -> float:
 
 
 ## Rappel des commandes du Click affiché au départ de la séance et à la reprise (spécification générale
-## §7.1) ; le clavier double le Click touche pour touche (key_map.gd, lot O17).
-static func controls_text(erg: bool) -> String:
+## §7.1) ; le clavier double le Click touche pour touche (key_map.gd, lot O17). `kind` : `erg.kind` de
+## la trame (lot O18) ; l'ERG d'une session libre n'a pas de blocs, et en cadence verrouillée ± règlent
+## la cadence cible.
+static func controls_text(erg: bool, kind := "workout") -> String:
+	if erg and kind == "cadence":
+		return "Click : Y = pause · + / − = cadence cible ± 2 %, long ± 10 %   (clavier : mêmes touches)"
+	if erg and kind == "free":
+		return "Click : Y = pause · + / − = intensité ± 2 %, long ± 10 %   (clavier : mêmes touches)"
 	if erg:
 		return "Click : Y = pause · + / − = intensité ± 2 %, long ± 10 % · Z = bloc suivant   (clavier : mêmes touches)"
 	return "Click : Y = pause · + / − = braquet · appui long = 10 braquets   (clavier : mêmes touches)"
@@ -324,11 +330,15 @@ static func session_lines(state: Dictionary, erg_view: Dictionary) -> Dictionary
 	out["grade_class"] = grade_class(grade) if not is_nan(grade) else "flat"
 	out["distance_val"] = "%.2f km" % (s / 1000.0) if not is_nan(s) else NO_VALUE
 	out["gear_val"] = gear_text
+	# Braquet sans effet en ERG avec une cible (± = intensité) : caché ; en roue libre il sert, donc affiché.
+	out["gear_shown"] = not (erg_on and not freeride)
 	out["time_val"] = format_hms(t)
 
 	var erg_line := ""
 	if erg_on:
-		erg_line = "ERG: %s  |  reste %s" % [erg_view.get("title", ""), erg_view.get("remaining_text", "")]
+		erg_line = "ERG: %s" % erg_view.get("title", "")
+		if str(erg_view.get("remaining_text", "")) != "":   # ERG d'une session libre : pas de temps restant
+			erg_line += "  |  reste %s" % erg_view["remaining_text"]
 		if str(erg_view.get("next_text", "")) != "":
 			erg_line += "  |  " + str(erg_view["next_text"])
 		if str(erg_view.get("paused_text", "")) != "":

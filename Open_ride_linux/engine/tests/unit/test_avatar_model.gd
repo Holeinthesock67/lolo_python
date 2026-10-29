@@ -111,6 +111,24 @@ func _test_kinematics() -> void:
 	_check(absf(float(low["ankle_r"].y) - float(high["ankle_r"].y)) > 0.25, "pédales à des hauteurs différentes à 0 et π")
 	_check(absf(float(low["ankle_r"].y) - float(low["ankle_l"].y)) > 0.25, "pédales droite et gauche en opposition")
 	_check(float(AvatarMesh.pose(0.0, true, d)["hip"].y) > float(low["hip"].y), "danseuse : hanche plus haute qu'assis")
+	# Sens du pédalage (lot Y16) : le vélo avance vers −Z ; la pédale du bas recule (+Z) et celle du haut
+	# avance (−Z) quand l'angle croît avec le temps, comme le bas et le haut des roues.
+	var da := 0.05
+	var bottom_dz: float = AvatarMesh.pedal_pos(da, 1).z - AvatarMesh.pedal_pos(0.0, 1).z
+	var top_dz: float = AvatarMesh.pedal_pos(PI + da, 1).z - AvatarMesh.pedal_pos(PI, 1).z
+	_check(bottom_dz > 0.0 and top_dz < 0.0, "pédalage dans le bon sens : pédale du bas vers l'arrière, du haut vers l'avant (%.3f / %.3f m)" % [bottom_dz, top_dz])
+	var wheel_bottom: Vector3 = AvatarMesh.spin_x(da) * Vector3(0.0, -AvatarMesh.WHEEL_R, 0.0)
+	_check(wheel_bottom.z > 0.0, "roues dans le sens de la marche : le bas de la roue recule (%.3f m)" % wheel_bottom.z)
+	var crank_tip: Vector3 = AvatarMesh.spin_x(1.0) * Vector3(0.0, -AvatarMesh.CRANK_R, 0.0)
+	_check(crank_tip.is_equal_approx(AvatarMesh.pedal_pos(1.0, 1) - AvatarMesh.BB - Vector3(AvatarMesh.PEDAL_HALF_X, 0.0, 0.0)),
+		"manivelle du maillage du pédalier sur la pédale de la cinématique")
+	var foot := AvatarMesh.foot_transform(1.0, 1)
+	_check(foot.origin.is_equal_approx(AvatarMesh.pedal_pos(1.0, 1)), "chaussure posée sur la pédale")
+	_check(AvatarMesh.foot_pitch(PI * 0.5, 1) > AvatarMesh.foot_pitch(PI * 1.5, 1), "pointe du pied plus basse en remontant derrière qu'en poussant devant")
+	# Proportions : selle sous la hanche, mains au niveau du cintre, tête au-dessus des épaules
+	_check(float(low["hip"].y) > 0.85 and float(low["hip"].y) < 1.05, "hanche assise à %.2f m du sol" % float(low["hip"].y))
+	_check(float(low["head"].y) > float(low["shoulder"].y) + 0.1 and float(low["head"].z) < float(low["shoulder"].z), "tête au-dessus et en avant des épaules")
+	_check(float(low["shoulder"].y) > AvatarMesh.BAR.y + 0.2, "épaules au-dessus du cintre")
 	var reach := 0.0
 	for i in range(24):
 		var p := AvatarMesh.pose(TAU * i / 24.0, false, d)
@@ -126,6 +144,9 @@ func _test_lods() -> void:
 		counts.append(n)
 		_check(n <= int(AvatarMesh.LOD_MAX_TRIANGLES[lod]) and n > 0, "niveau %d : %d triangles (≤ %d)" % [lod, n, AvatarMesh.LOD_MAX_TRIANGLES[lod]])
 	_check(counts[0] > counts[1] and counts[1] > counts[2], "chaque niveau est plus léger que le précédent")
+	var tt := {"frame": "frame_tt", "wheels": "wheels_spoked", "helmet": "helmet_summit", "socks": "socks_striped"}
+	var n_tt := AvatarMesh.triangle_count(0, d, tt)
+	_check(n_tt <= int(AvatarMesh.LOD_MAX_TRIANGLES[0]), "niveau 0, équipement le plus lourd : %d triangles" % n_tt)
 
 
 func _test_view() -> void:
@@ -133,7 +154,8 @@ func _test_view() -> void:
 	v.configure(AvatarModel.parse_settings({"number": 27, "hair": 0}), 0)
 	root.add_child(v)
 	var info: Dictionary = v.test_info()
-	_check(info["nodes"] > 20 and info["triangles"] > 1000, "niveau 0 : %d nœuds, %d triangles affichés" % [info["nodes"], info["triangles"]])
+	_check(info["nodes"] >= 20 and info["nodes"] <= 30 and info["triangles"] > 2500,
+		"niveau 0 : %d nœuds (≤ 30 : peu d'appels de dessin), %d triangles affichés" % [info["nodes"], info["triangles"]])
 	_check(not v.visible, "caché en vue subjective au départ")
 	v.set_visible_for_view("follow")
 	_check(v.visible, "visible en vue de suivi")
@@ -149,6 +171,12 @@ func _test_view() -> void:
 		m.update(0.1 + i * 0.1, 90.0, 200.0, 0.0, false)
 	v.apply(m)
 	_check(shoe_a.distance_to(v._list("shoe")[0].position) > 0.05, "le pied bouge avec le pédalier")
+	v.set_speed(36.0, 10.0)
+	var w0: Basis = v._list("wheel")[0].basis
+	v.set_speed(36.0, 10.1)
+	var w1: Basis = v._list("wheel")[0].basis
+	var turned := (w1 * Vector3(0.0, -1.0, 0.0)).z - (w0 * Vector3(0.0, -1.0, 0.0)).z
+	_check(turned > 0.0, "les roues tournent avec la vitesse, le bas vers l'arrière")
 	var number: Label3D = v._number
 	_check(number != null and number.visible and number.text == "27", "numéro 27 sur le dos")
 	v.set_lod(2)
@@ -183,13 +211,11 @@ func _test_equipment() -> void:
 	_check(tt["hand_r"].z < base["hand_r"].z, "contre-la-montre : mains avancées sur les prolongateurs")
 	var standing := AvatarMesh.pose(0.0, true, d, EquipmentMeshes.frame_spec("frame_tt"))
 	_check(standing["shoulder"].is_equal_approx(AvatarMesh.pose(0.0, true, d)["shoulder"]), "en danseuse, la posture du cadre ne change rien")
-	# Roues : quatre formes distinctes ; sons
+	# Roues : quatre formes distinctes (rayons, rayons légers, jante haute, disque) ; sons
 	var kinds := {}
 	for w in EquipmentMeshes.LOOKS["wheels"]:
-		var parts := EquipmentMeshes.build(0, {"wheels": w}, d)
-		var sig := "%d|%d|%d" % [AvatarMesh.triangles_of(parts["rim"]["mesh"]), parts["rim"]["count"], parts["spoke"]["count"] if parts.has("spoke") else 0]
-		kinds[sig] = true
-	_check(kinds.size() == 3, "roues : rayons, jante haute et disque se distinguent par leur maillage (%d signatures)" % kinds.size())
+		kinds[AvatarMesh.triangles_of(AvatarMesh.wheel_mesh(0, EquipmentMeshes.wheel_spec(w)))] = true
+	_check(kinds.size() == 4, "roues : les quatre roues se distinguent par leur maillage (%d signatures)" % kinds.size())
 	_check(EquipmentMeshes.wheel_sound("wheels_disc") == "hum" and EquipmentMeshes.wheel_sound("wheels_deep") == "whistle"
 		and EquipmentMeshes.wheel_sound("wheels_spoked") == "none", "sons des roues")
 	# Motifs de tenue : chaque tenue a sa texture, et change avec les couleurs

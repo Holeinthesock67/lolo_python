@@ -226,7 +226,7 @@ def test_erg_times_segments_without_powerups(env):
 
 # --- critère 5 : pause pendant un segment -----------------------------------------------------
 
-def test_pause_inside_segment_cancels_the_pass(env):
+def test_user_pause_inside_segment_cancels_the_pass(env):
     make, run, tmp = env
     s, sent = make(7140)
     s._on_command("start", {}, 2)
@@ -241,6 +241,72 @@ def test_pause_inside_segment_cancels_the_pass(env):
     assert not s.race.book.table("demo", "climb1", False)
     assert not (tmp / "records.json").exists() or "climb1" not in json.loads(
         (tmp / "records.json").read_text(encoding="utf-8"))["routes"].get("demo", {})
+
+
+# --- séance A du 28 octobre : montée 1 coupée par deux pertes du trainer -------------------------
+
+@pytest.mark.recette_sans_velo
+def test_climb_starting_at_zero_gives_result_without_pause(env):
+    """Montée 1 de la démo (départ à s = 0), sans pause : chrono en direct, résultat, record et journal."""
+    make, run, _ = env
+    s, sent = make(7154)
+    s._on_command("start", {}, 2)
+    frames: list[dict] = []
+    while s.physics.s < 1510.0:
+        run(s, 10.0, frames.append)
+    assert any(f.get("segment", {}).get("id") == "climb1" and f["segment"]["elapsed_s"] is not None
+               for f in frames)
+    assert results(sent) and {m["segment_id"] for m in results(sent)} == {"climb1"}
+    assert s.race.book.table("demo", "climb1", False)
+    assert [ln["segment_id"] for ln in read_journal(s._rec.path) if ln.get("kind") == "segment"] == ["climb1"]
+
+
+@pytest.mark.recette_sans_velo
+def test_trainer_lost_inside_climb_starting_at_zero_keeps_the_pass(env):
+    """Montée 1 de la démo (départ à s = 0) : arrêt au départ, deux coupures du trainer en pleine montée.
+
+    Le passage est suspendu pendant les pauses subies puis chronométré : résultat, record et journal.
+    """
+    make, run, tmp = env
+    s, sent = make(7150)
+    s.driver.base_power_w = 0.0
+    s._on_command("start", {}, 2)
+    run(s, 10.0)                       # immobile sur la ligne de départ
+    assert s.physics.s == 0.0
+    s.driver.base_power_w = 250.0
+    run(s, 40.0)
+    for k in range(2):
+        assert 0.0 < s.physics.s < 1500.0
+        s.driver.simulate_disconnect()
+        run(s, 5.0)
+        assert (s.state.session_state, s.state.pause_reason) == ("PAUSED", "trainer_lost")
+        assert frame(s)["segment"]["id"] == "climb1" and frame(s)["segment"]["elapsed_s"] is not None
+        s.driver.simulate_reconnect()
+        s._on_command("resume", {}, 3 + k)
+        run(s, 20.0)
+    while s.physics.s < 1510.0:
+        run(s, 10.0)
+    msgs = [m for m in results(sent) if m["segment_id"] == "climb1"]
+    assert msgs and msgs[0]["pr"]
+    assert msgs[0]["time_s"] < s._t_session   # temps des pauses exclu
+    assert s.race.book.table("demo", "climb1", False)
+    lines = list(read_journal(s._rec.path))
+    assert [ln.get("reason") for ln in lines if ln.get("event") == "pause"] == ["trainer_lost"] * 2
+    assert [ln["segment_id"] for ln in lines if ln.get("kind") == "segment"] == ["climb1"]
+
+
+@pytest.mark.recette_sans_velo
+def test_user_pause_before_moving_keeps_the_climb(env):
+    """Pause Y sur la ligne de départ (s = 0), avant le premier coup de pédale : la montée compte."""
+    make, run, _ = env
+    s, sent = make(7152)
+    s._on_command("start", {}, 2)
+    s._on_command("pause", {}, 3)
+    run(s, 5.0)
+    s._on_command("resume", {}, 4)
+    while s.physics.s < 1510.0:
+        run(s, 10.0)
+    assert [m["segment_id"] for m in results(sent)][:1] == ["climb1"]
 
 
 # --- critère 6 : quatre bots de N9 ------------------------------------------------------------
