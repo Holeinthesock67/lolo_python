@@ -24,7 +24,7 @@ import time
 from contextlib import AsyncExitStack
 from typing import Any, Awaitable, Callable
 
-from . import zwift_click
+from . import latency_log, zwift_click
 from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, last_trainer_write_at
 from .zwift_click import InputEvent, PressClassifier
 
@@ -212,6 +212,7 @@ class ZwiftClickProvider:
                 self._last_press_at = now
                 log.info("Click : %s", ev.value)
                 self.events.put_nowait(ev)
+                latency_log.new_press(self)   # lot X7 : sans effet hors `--latence`
 
         if self.trace_raw:
             self._trace_raw_notification(now, char_name, msg_type, category, raw, has_button)

@@ -128,6 +128,7 @@ const BEEP_LEVEL := 0.3
 ## Durées d'affichage du rappel des commandes en séance et de l'explication d'un appui ambigu.
 const CONTROLS_HINT_S := 10.0
 const PRESS_HINT_S := 4.0
+const LATENCY_WAIT_MS := 2000   # appui suivi (lot X7) : changement du HUD attendu au plus 2 s
 ## Bip de changement de bloc ERG à T − 3 s (lot N7) : une seule note, plus aiguë, plus longue et plus
 ## forte que les bips d'appui, pour passer au-dessus du vent et de la roue libre (SoundPlayer).
 const ERG_BEEP := [[1320.0, 0.30]]
@@ -159,6 +160,7 @@ var _chart_points := 0
 var menu_view = null
 var menu_layer: CanvasLayer = null
 var _last_state: Dictionary = {}
+var _latency_waiting: Array = []   # [identifiant, signature du HUD à la réception, heure ms] (lot X7)
 var _menu_s := 0.0
 ## Décor vivant, première vague (lot P16) : vent, arbres et herbe, nuages, fonds sonores.
 var living_world = null
@@ -250,6 +252,7 @@ func _ready() -> void:
 	ipc.room_received.connect(rogue_host.on_room)
 	ipc.loot_received.connect(rogue_host.on_loot)
 	ipc.input_event_received.connect(_on_input_event)
+	ipc.latency_input_received.connect(_on_latency_input)
 	ipc.hello_ack_received.connect(_on_hello_ack)
 	ipc.garage_received.connect(_on_garage)
 	ipc.xp_result_received.connect(_on_xp_result)
@@ -448,6 +451,41 @@ func _apply_sky_params(theme_dict: Dictionary) -> void:
 		horizon = horizon.lerp(RenderQuality.HAZE_COLOR, float(sky["haze"]) * 0.6) * (sky["light_tint"] as Color)
 	var fog_dens: float = float(sky.get("fog_density", 0.01))
 	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
+
+
+## Latence des appuis (lot X7, core lancé avec --latence) : étage « recu » à la réception de l'événement,
+## « affiche » à la première image dessinée après le changement du HUD qu'il provoque (braquet, cible ou
+## biais ERG). Heure murale du système, la même que celle du core sur la même machine.
+func _on_latency_input(press_id: int) -> void:
+	print("[latence] id=%d etage=recu t=%.6f" % [press_id, Time.get_unix_time_from_system()])
+	_latency_waiting.append([press_id, _hud_signature(_last_state), Time.get_ticks_msec()])
+
+
+static func _hud_signature(state: Dictionary) -> String:
+	var erg = state.get("erg", null)
+	var erg_part := [erg.get("target_w", null), erg.get("bias_pct", null)] if erg is Dictionary else []
+	return JSON.stringify([state.get("gear", null), erg_part])
+
+
+func _check_latency(state: Dictionary) -> void:
+	if _latency_waiting.is_empty():
+		return
+	var sig := _hud_signature(state)
+	var now := Time.get_ticks_msec()
+	var shown: Array = []
+	var still: Array = []
+	for w in _latency_waiting:
+		if w[1] != sig:
+			shown.append(w[0])
+		elif now - int(w[2]) < LATENCY_WAIT_MS:
+			still.append(w)
+	_latency_waiting = still
+	if shown.is_empty():
+		return
+	await RenderingServer.frame_post_draw
+	var t := Time.get_unix_time_from_system()
+	for press_id in shown:
+		print("[latence] id=%d etage=affiche t=%.6f" % [press_id, t])
 
 
 func _on_input_event(event_name: String) -> void:
@@ -1315,6 +1353,7 @@ func _on_state_received(state: Dictionary) -> void:
 		print("Premier état reçu du core : ", state.get("session_state", "?"), " trainer=", state.get("trainer_status", "?"))
 	banner.clear_message("shutdown")
 	_last_state = menu_flow.with_devices(state)
+	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
 	_refresh_menu()

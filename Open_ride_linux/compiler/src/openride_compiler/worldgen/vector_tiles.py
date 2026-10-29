@@ -7,6 +7,9 @@ aucune différence.
 - Source : URL lue dans le TileJSON `https://tiles.openfreemap.org/planet`, relu au plus une fois par
   jour (copie dans `brut/tuiles/tilejson.json`) ; `User-Agent` du projet ; au plus 4 requêtes à la
   fois ; fichiers `brut/tuiles/14/<x>/<y>.mvt` enregistrés dans le cache (W2).
+- Échecs (lot X28) : une tuile (ou le TileJSON) qui n'arrive pas — coupure, 429/500/503, réponse
+  tronquée ou illisible — n'est redemandée qu'après un recul `TILE_RETRY_S` qui double (2 s, 4 s…
+  30 s, puis toutes les 30 s) ; entre-temps rien n'attend : le générateur roule avec ce qu'il a.
 - Géométrie : tout est ramené en pixels globaux (tuile × étendue + pixel), puis découpé au carré
   exact de la tuile (la marge des tuiles voisines se recouvre) : une route coupée entre deux tuiles
   finit des deux côtés au même point du bord, donc au même nœud.
@@ -44,6 +47,8 @@ ZOOM = 14
 TILEJSON_URL = "https://tiles.openfreemap.org/planet"
 TILEJSON_MAX_AGE_S = 86_400.0
 MAX_PARALLEL = 4
+TILE_RETRY_S = (2.0, 4.0, 8.0, 16.0, 30.0)   # recul avant de redemander ; la dernière valeur se répète
+TILEJSON_KEY = "tilejson"
 DB_NAME = "tuiles"
 ATTRIBUTION = "© OpenMapTiles © contributeurs OpenStreetMap"
 PREFETCH_HEADROOM = 0.9
@@ -394,16 +399,45 @@ class TileSource:
     """Tuiles OpenFreeMap vers le cache, puis versées dans `tuiles.sqlite`."""
 
     def __init__(self, cache: WorldCache, net: Any | None = None, network: bool = True,
-                 clock: Callable[[], float] = time.time, log: Log = stderr_log) -> None:
+                 clock: Callable[[], float] = time.time, log: Log = stderr_log,
+                 tilejson_url: str | None = None, monotonic: Callable[[], float] = time.monotonic,
+                 sleep: Callable[[float], None] = time.sleep) -> None:
         self.cache = cache
         self.net = net or Net()
         self.network = network
         self.clock = clock
         self.log = log
+        self.tilejson_url = tilejson_url or TILEJSON_URL
+        self.monotonic = monotonic
+        self.sleep = sleep
         self.db_path = cache.osm_db_path(DB_NAME)
         self.db = TileDb(self.db_path)
         self.downloads = 0
+        self.failures = 0
         self._template: str | None = None
+        self._backoff: dict[Any, tuple[int, float]] = {}   # clé -> (échecs de suite, prochaine demande)
+
+    # --- recul après échec (X28) ----------------------------------------------------------------
+
+    def due(self, key: Any) -> bool:
+        """La tuile (ou le TileJSON) peut être demandée : jamais en échec, ou recul écoulé."""
+        return self.next_try(key) <= self.monotonic()
+
+    def next_try(self, key: Any) -> float:
+        return self._backoff.get(key, (0, -math.inf))[1]
+
+    def _failed(self, key: Any) -> None:
+        n = self._backoff.get(key, (0, 0.0))[0]
+        delay = TILE_RETRY_S[min(n, len(TILE_RETRY_S) - 1)] if TILE_RETRY_S else math.inf
+        self._backoff[key] = (n + 1, self.monotonic() + delay)
+        self.failures += 1
+
+    def _succeeded(self, key: Any) -> None:
+        self._backoff.pop(key, None)
+
+    def missing(self, bbox: BBox) -> list[tuple[int, int]]:
+        """Tuiles de l'emprise absentes du PC."""
+        return [k for k in tiles_for_bbox(bbox) if not self.path(*k).is_file()]
 
     def path(self, x: int, y: int) -> Path:
         return self.cache.vector_tile_path(x, y, ZOOM)
@@ -422,10 +456,15 @@ class TileSource:
                 data = cached.read_bytes()
             else:
                 try:
-                    data = self.net.get(TILEJSON_URL)
+                    if not self.due(TILEJSON_KEY):
+                        raise CompileError("nouvelle demande après le recul")
+                    data = self.net.get(self.tilejson_url)
                     cached.parent.mkdir(parents=True, exist_ok=True)
                     cached.write_bytes(data)
+                    self._succeeded(TILEJSON_KEY)
                 except CompileError as exc:
+                    if self.due(TILEJSON_KEY):
+                        self._failed(TILEJSON_KEY)
                     if not cached.is_file():
                         raise CompileError(f"TileJSON OpenFreeMap indisponible ({exc}) : "
                                            "seules les tuiles déjà sur le PC servent") from exc
@@ -438,9 +477,9 @@ class TileSource:
         return self._template
 
     def fetch(self, keys: Iterable[tuple[int, int]], prefetch: bool = False) -> list[tuple[int, int]]:
-        """Télécharge les tuiles absentes (4 à la fois) ; renvoie celles qui sont sur le PC."""
+        """Télécharge les tuiles absentes (4 à la fois) dont le recul est écoulé ; renvoie celles qui sont sur le PC."""
         keys = sorted(set(keys))
-        missing = [k for k in keys if not self.path(*k).is_file()]
+        missing = [k for k in keys if not self.path(*k).is_file() and self.due(k)]
         if missing and self.network:
             try:
                 tpl = self.template()
@@ -457,7 +496,13 @@ class TileSource:
                         self.log(f"tuile {ZOOM}/{k[0]}/{k[1]} non téléchargée : {exc}")
                         return None
                 with ThreadPoolExecutor(MAX_PARALLEL) as pool:
-                    done = [k for k in pool.map(one, missing) if k is not None]
+                    got = list(pool.map(one, missing))
+                done = [k for k in got if k is not None]
+                for k in missing:
+                    if k in done:
+                        self._succeeded(k)
+                    else:
+                        self._failed(k)
                 for k in done:
                     self.downloads += 1
                     self.cache.add(tile_key(*k), "tile", self.path(*k), {"zoom": ZOOM}, prefetch=prefetch)
@@ -467,17 +512,34 @@ class TileSource:
                 self.cache.mark_used(tile_key(*k))
         return have
 
-    def ensure(self, bbox: BBox, prefetch: bool = False) -> int:
-        """Tuiles de l'emprise téléchargées si possible et versées dans la base ; renvoie leur nombre."""
-        n = 0
-        for x, y in self.fetch(tiles_for_bbox(bbox), prefetch=prefetch):
-            try:
-                self.db.load(x, y, self.path(x, y).read_bytes())
-                n += 1
-            except mvt.MvtError as exc:
-                self.log(f"tuile {ZOOM}/{x}/{y} illisible, supprimée : {exc}")
-                self.path(x, y).unlink(missing_ok=True)
-        return n
+    def ensure(self, bbox: BBox, prefetch: bool = False, wait_s: float = 0.0) -> int:
+        """Tuiles de l'emprise téléchargées si possible et versées dans la base ; renvoie leur nombre.
+
+        `wait_s` (départ seulement) : les tuiles en échec sont redemandées après leur recul tant que
+        le délai n'est pas écoulé ; pendant la séance (0), rien n'attend.
+        """
+        deadline = self.monotonic() + wait_s
+        while True:
+            n = 0
+            for x, y in self.fetch(tiles_for_bbox(bbox), prefetch=prefetch):
+                if self.db.loaded(x, y):
+                    n += 1
+                    continue
+                try:
+                    self.db.load(x, y, self.path(x, y).read_bytes())
+                    n += 1
+                except mvt.MvtError as exc:
+                    self.log(f"tuile {ZOOM}/{x}/{y} illisible, supprimée : {exc}")
+                    self.path(x, y).unlink(missing_ok=True)
+                    self._failed((x, y))
+            left = self.missing(bbox) if self.network else []
+            if not left:
+                return n
+            # sans TileJSON, aucune tuile ne se demande : c'est son recul qui compte
+            nxt = self.next_try(TILEJSON_KEY) if self._template is None else min(self.next_try(k) for k in left)
+            if nxt > deadline:
+                return n
+            self.sleep(max(0.0, nxt - self.monotonic()))
 
 
 # --- préchargement (W-Q4) ---------------------------------------------------------------------------
