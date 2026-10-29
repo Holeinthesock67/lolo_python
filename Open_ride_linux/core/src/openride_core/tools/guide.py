@@ -51,12 +51,17 @@ TRIALS: dict[str, Trial] = {
     "trainer_steps": Trial(
         "Banc de latence du trainer (lot X5, essai R0)", "environ 15 min, échauffement compris",
         ("python -m openride_core.tools.trainer_steps --mode sim",
-         "python -m openride_core.tools.trainer_steps --mode erg --cadence 85"),
+         "python -m openride_core.tools.trainer_steps --mode erg --cadence 85",
+         "python -m openride_core.tools.trainer_steps --mode paliers_puissance --plateau 38 --pignon 15 --cadence 85",
+         "python -m openride_core.tools.trainer_steps --mode relances --plateau 52 --pignon 15 --cadence 85"),
         ("vélo installé sur le HomeTrainer, trainer branché",
          "Bluetooth du PC allumé, aucune autre application reliée au trainer (Zwift, téléphone)",
          "un braquet moyen choisi d'avance et gardé pendant tout l'essai",
          "bidon et serviette : 5 min d'échauffement avant de lancer"),
         ("SIM : 7 paliers de pente, environ 4 min ; ERG : 5 paliers de puissance, environ 3 min",
+         "paliers_puissance : 6 paliers SIM tenables de 150 à 300 W, environ 4 min 20 ; relances : trois fois "
+         "12 s à 470 W, environ 4 min 10 ; donner le plateau et le pignon réellement montés",
+         "un palier qui dépasse le plafond (125 % du plus fort palier) est coupé tout seul",
          "tout est chronométré par l'outil : rien à relever à la main")),
     "click_recette": Trial(
         "Recette du Zwift Click (lot X8)", "environ 35 min",
