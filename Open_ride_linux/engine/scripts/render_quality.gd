@@ -63,6 +63,15 @@ const SHADOW_FILTER := {
 	"medium": RenderingServer.SHADOW_QUALITY_SOFT_MEDIUM,
 	"high": RenderingServer.SHADOW_QUALITY_SOFT_HIGH,
 }
+## Brume volumétrique par niveau (lot Y13, étape 3) : grille (cases en largeur et en hauteur d'écran),
+## portée en m, densité minimale et anisotropie (le soleil éclaire la brume vers l'avant, rayons dans
+## les trouées des arbres). Les densités des thèmes (0,0004 à 0,0012) ne se voient pas à ces portées :
+## celle du thème ne l'emporte que si elle est plus forte. La brume prend la couleur de l'horizon.
+const VOLUMETRIC := {
+	"light": {"grid": 48, "length_m": 600.0, "density": 0.004, "anisotropy": 0.6},
+	"full": {"grid": 64, "length_m": 1200.0, "density": 0.006, "anisotropy": 0.6},
+}
+const VOLUMETRIC_DEPTH := 64
 const MSAA := {0: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}
 
 
@@ -76,7 +85,6 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 	light.directional_shadow_max_distance = QualityPresets.shadow_distance_m(key)
 	# SSAO, SSIL et brouillard volumétrique n'existent qu'en Forward+ (sans RenderingDevice : Compatibility).
 	var forward_plus := RenderingServer.get_rendering_device() != null
-	env.volumetric_fog_enabled = bool(p["fog_volumetric"]) and forward_plus
 	apply_image(QualityPresets.image(key), light, env, viewport, forward_plus)
 
 	if streamer != null:
@@ -112,6 +120,14 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 	env.ssil_enabled = forward_plus and SSIL_QUALITY.has(ssil)
 	if env.ssil_enabled:
 		RenderingServer.environment_set_ssil_quality(SSIL_QUALITY[ssil], half, 0.5, 4, 50.0, 300.0)
+
+	var vol := str(img["fog_volumetric"])
+	env.volumetric_fog_enabled = forward_plus and VOLUMETRIC.has(vol)
+	if env.volumetric_fog_enabled:
+		RenderingServer.environment_set_volumetric_fog_volume_size(int(VOLUMETRIC[vol]["grid"]), VOLUMETRIC_DEPTH)
+		RenderingServer.environment_set_volumetric_fog_filter_active(true)
+		env.volumetric_fog_length = VOLUMETRIC[vol]["length_m"]
+		env.volumetric_fog_anisotropy = VOLUMETRIC[vol]["anisotropy"]
 
 	env.glow_enabled = bool(img["glow"])
 	env.glow_intensity = GLOW["intensity"]
@@ -163,14 +179,23 @@ static func apply_fog(env: Environment, preset_name: String, has_terrain: bool,
 	env.fog_sky_affect = FOG_SKY_AFFECT
 	env.volumetric_fog_sky_affect = FOG_SKY_AFFECT
 	if env.volumetric_fog_enabled:
-		env.volumetric_fog_density = theme_fog_density if theme_fog_density > 0.0 else 0.01
+		env.volumetric_fog_density = volumetric_density(preset_name, theme_fog_density)
+		env.volumetric_fog_albedo = horizon_color
+
+
+## Densité de la brume volumétrique : celle du niveau du préréglage, ou celle du thème si elle est plus forte.
+static func volumetric_density(preset_name: String, theme_fog_density: float) -> float:
+	var vol := str(QualityPresets.image(preset_name)["fog_volumetric"])
+	return maxf(float(VOLUMETRIC[vol]["density"]), theme_fog_density) if VOLUMETRIC.has(vol) else 0.0
 
 
 ## Brume de la météo (Lot P17, `fog_boost` de weather_model.gd, 0 à 1) : rapproche le brouillard en
 ## profondeur posé par `apply_fog` (début et fin `base` en m). À `fog_boost` = 1, le brouillard
-## commence à MIST_BEGIN_M et est plein à MIST_END_M ; 0 redonne `base`.
+## commence à MIST_BEGIN_M et est plein à MIST_END_M ; 0 redonne `base`. La brume volumétrique, si elle
+## est active, s'épaissit avec : densité `vol_base` × (1 + MIST_VOLUMETRIC_GAIN × `fog_boost`).
 const MIST_BEGIN_M := 20.0
 const MIST_END_M := 450.0
+const MIST_VOLUMETRIC_GAIN := 3.0
 
 
 static func weather_fog_range(base: Vector2, fog_boost: float) -> Vector2:
@@ -180,7 +205,9 @@ static func weather_fog_range(base: Vector2, fog_boost: float) -> Vector2:
 	return Vector2(begin, end)
 
 
-static func apply_weather_fog(env: Environment, base: Vector2, fog_boost: float) -> void:
+static func apply_weather_fog(env: Environment, base: Vector2, fog_boost: float, vol_base: float = 0.0) -> void:
 	var r := weather_fog_range(base, fog_boost)
 	env.fog_depth_begin = r.x
 	env.fog_depth_end = r.y
+	if env.volumetric_fog_enabled and vol_base > 0.0:
+		env.volumetric_fog_density = vol_base * (1.0 + MIST_VOLUMETRIC_GAIN * clampf(fog_boost, 0.0, 1.0))

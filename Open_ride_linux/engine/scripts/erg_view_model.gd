@@ -4,10 +4,16 @@ extends RefCounted
 ##
 ## Calcule l'état d'affichage du bandeau ERG, le déclenchement unique du bip à T − 3 s
 ## et la géométrie de l'histogramme des blocs (`profile_bars`), sans aucun nœud Godot.
+## ERG d'une session libre (lot O18, `erg.kind` = `free` ou `cadence`) : pas de blocs, donc ni temps
+## restant, ni bloc suivant, ni bip ; en cadence verrouillée, le titre donne la cadence cible et sa
+## plage, et la ligne suivante dit si la cadence est dans la plage (`cadence_zone`).
 ## Pas de class_name : charger par preload("res://scripts/erg_view_model.gd").
 
 const BEEP_THRESHOLD_S := 3.0
 const MIN_BEEP_BLOCK_TOTAL_S := 4.0
+## État de la cadence en ERG cadence (`erg.cadence_zone`, lot O18).
+const CADENCE_ZONE_TEXTS := {"in": "Cadence dans la plage", "high": "Trop vite : la puissance monte",
+	"low": "Trop lent : la puissance baisse"}
 
 var _has_state: bool = false
 var _last_erg: Dictionary = {}
@@ -75,6 +81,9 @@ func evaluate(now_s: float) -> Dictionary:
 	var next_target_raw: Variant = _last_erg.get("next_target_w", null)
 	var bias_pct := int(round(float(_last_erg.get("bias_pct", 100))))
 	var paused := bool(_last_erg.get("paused", false))
+	var kind := str(_last_erg.get("kind", "workout"))
+	if kind == "free" or kind == "cadence":
+		return _free_eval(kind, target_w, bias_pct, paused)
 
 	var dt := 0.0 if paused else maxf(0.0, now_s - _frame_time_s)
 	var rem_s := maxf(0.0, _raw_remaining_s - dt)
@@ -123,13 +132,39 @@ func evaluate(now_s: float) -> Dictionary:
 	}
 
 
+## Évaluation de l'ERG d'une session libre : cible seule (`free`) ou cible, cadence et plage (`cadence`).
+func _free_eval(kind: String, target_w: int, bias_pct: int, paused: bool) -> Dictionary:
+	var title := "ERG libre"
+	var target_text := "%d W" % target_w
+	var next_text := ""
+	if kind == "cadence":
+		title = "ERG cadence %d tr/min (%d–%d)" % [int(_last_erg.get("cadence_target_rpm", 0)),
+			int(round(float(_last_erg.get("cadence_low_rpm", 0.0)))),
+			int(round(float(_last_erg.get("cadence_high_rpm", 0.0))))]
+		next_text = str(CADENCE_ZONE_TEXTS.get(str(_last_erg.get("cadence_zone", "in")), ""))
+	elif bias_pct != 100:
+		target_text += " (%d %%)" % bias_pct
+	return {
+		"visible": true,
+		"kind": kind,
+		"title": title,
+		"target_text": target_text,
+		"next_text": next_text,
+		"remaining_text": "",
+		"remaining_s": 0.0,
+		"progress": 0.0,
+		"beep": false,
+		"paused_text": "ERG en pause" if paused else "",
+	}
+
+
 ## Méthode combinée : met à jour la trame si `erg` a changé, puis évalue à l'heure de rendu `now_s`.
 func update(erg: Variant, now_s: float) -> Dictionary:
 	if erg == null or typeof(erg) != TYPE_DICTIONARY or (erg as Dictionary).is_empty():
 		reset()
 		return evaluate(now_s)
 	var d: Dictionary = erg
-	var is_new_frame := (
+	var is_new_frame: bool = (
 		not _has_state
 		or int(d.get("block_index", 1)) != _last_block_index
 		or absf(float(d.get("block_remaining_s", 0.0)) - _raw_remaining_s) > 1e-6
@@ -137,6 +172,8 @@ func update(erg: Variant, now_s: float) -> Dictionary:
 		or int(round(float(d.get("bias_pct", 100)))) != int(round(float(_last_erg.get("bias_pct", 100))))
 		or int(round(float(d.get("target_w", 0)))) != int(round(float(_last_erg.get("target_w", 0))))
 		or str(d.get("workout_name", "")) != str(_last_erg.get("workout_name", ""))
+		or d.get("cadence_target_rpm") != _last_erg.get("cadence_target_rpm")
+		or d.get("cadence_zone") != _last_erg.get("cadence_zone")
 	)
 	if is_new_frame:
 		on_state(d, now_s)

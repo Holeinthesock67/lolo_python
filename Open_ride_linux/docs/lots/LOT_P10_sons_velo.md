@@ -51,7 +51,7 @@ Aucune.
 4. Rythme : 36 km/h donne environ 171 coups par seconde (± 2 %), 18 km/h la moitié.
 5. Reprise : exactement un « clac » à la reprise, aucun pendant le pédalage continu.
 6. Trames de L5 sans `cadence` ni `wind` : comportement identique aux tests actuels (anciens tests conservés, sauf les valeurs de la courbe de volume, mises à jour et justifiées).
-7. Synthèse de tous les sons sous 500 ms.
+7. Synthèse de tous les sons sous le budget `sound_generation` (1 200 ms depuis le 28/10).
 
 **Sur le vélo (le propriétaire) :** arrêter de pédaler à 35 km/h en descente, puis reprendre : cliquetis qui ralentit avec la vitesse, « clac » à la reprise ; vent qui forcit nettement avec le vent de face de P2.
 
