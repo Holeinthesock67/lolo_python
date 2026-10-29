@@ -121,6 +121,9 @@ var _road_width_m := RoadBuilder.ROAD_WIDTH_M
 var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par step (placements des tests, lot P32)
 var _rider_v := 0.0
 var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
+const CONTACT_M := 300.0
+var contacts := 0                  # lot P32 : contacts vus sur la route (images × paires), doit rester à 0
+var last_contact := ""             # lot P32 : qui touchait qui la dernière fois, pour le rapport des tests
 var _job: Dictionary = {}
 var _generation := 0
 var _loaded_chunks: Dictionary = {}  # k -> true (tronçons OSM affichés)
@@ -466,7 +469,12 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	cyclists_view.update(dt_s, paused)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
-	traffic.update(cam_s, rider_v, dt_s, paused)
+	var others: Array = cyclists.riders()
+	for b in bots_s:
+		others.append({"s": float(b), "lateral": RoadBuilder.BOT_LATERAL_M, "dir": 1})
+	traffic.update(cam_s, rider_v, dt_s, paused, others)
+	if not paused:
+		_count_contacts(others)
 	traffic_view.set_lights(headlights)
 	traffic_view.update()
 	road_traffic.update(cam_pos, dt_s, paused)
@@ -530,7 +538,7 @@ func test_place(spec: Dictionary) -> void:
 		return
 	if spec.get("vehicle") is Dictionary:
 		var v: Dictionary = spec["vehicle"]
-		traffic.place_for_test(_cam_s, str(v.get("kind", "car_a")), int(v.get("dir", -1)), float(v.get("rel_m", 60.0)),
+		traffic.place_for_test(_cam_s, _rider_v, str(v.get("kind", "car_a")), int(v.get("dir", -1)), float(v.get("rel_m", 60.0)),
 			float(v.get("kmh", 50.0)))
 	if spec.get("cyclists") is Dictionary:
 		var c: Dictionary = spec["cyclists"]
@@ -555,6 +563,34 @@ func road_users(within_m: float = 300.0) -> Array:
 	return out
 
 
+## Lot P32 : compte les paires qui se touchent à cette image (carrosseries et cyclistes de moins de CONTACT_M de
+## la caméra) : véhicules entre eux, véhicule et cycliste, cyclistes de groupes différents, bots et cycliste
+## compris. `others` : cyclistes du décor et bots, comme traffic_model.gd les reçoit.
+func _count_contacts(others: Array) -> void:
+	var items := []
+	for v in traffic.vehicles:
+		if absf(float(v["s"]) - _cam_s) <= CONTACT_M:
+			var k: Dictionary = TrafficModel.KINDS[v["kind"]]
+			items.append({"name": str(v["kind"]), "s": float(v["s"]), "lateral": float(v["lateral"]),
+				"half_len": float(k["length"]) * 0.5, "half_width": float(k["half_width"]), "group": v})
+	var you := {"s": _cam_s, "lateral": RoadBuilder.RIDER_LATERAL_M, "name": "cycliste"}
+	for o in others + [you]:
+		if absf(float(o["s"]) - _cam_s) <= CONTACT_M:
+			items.append({"name": str(o["group"]["case"]) if o.has("group") else str(o.get("name", "bot")),
+				"s": float(o["s"]), "lateral": float(o["lateral"]), "half_len": TrafficModel.CYCLIST_HALF_LENGTH_M,
+				"half_width": TrafficModel.RIDER_HALF_WIDTH_M, "group": o.get("group", o)})
+	for i in range(items.size()):
+		for j in range(i + 1, items.size()):
+			var a: Dictionary = items[i]
+			var b: Dictionary = items[j]
+			if is_same(a["group"], b["group"]):
+				continue
+			if absf(float(a["s"]) - float(b["s"])) < float(a["half_len"]) + float(b["half_len"]) \
+					and absf(float(a["lateral"]) - float(b["lateral"])) < float(a["half_width"]) + float(b["half_width"]):
+				contacts += 1
+				last_contact = "%s / %s à %.0f m" % [a["name"], b["name"], float(a["s"]) - _cam_s]
+
+
 func test_info(cam: Camera3D) -> Dictionary:
 	var out := {
 		"enabled": enabled, "prepared": prepared, "props": props.prop_count() if props != null else 0,
@@ -575,6 +611,7 @@ func test_info(cam: Camera3D) -> Dictionary:
 		"frozen_sig": frozen_signature(),
 		"road_users": road_users(),
 		"rider_lateral": _cam_lateral,
+		"contacts": contacts, "last_contact": last_contact,
 		"sign": {},
 	}
 	if cam == null or props == null:

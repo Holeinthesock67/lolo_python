@@ -15,6 +15,7 @@ const FLAT_M := 20000.0
 const LENGTH_M := 31000.0
 const CLIMB_PCT := 6.0
 const MIN_CENTRE_M := Model.MIN_GAP_M + 2.0 * Model.RIDER_HALF_WIDTH_M
+const PASS_NEAR_M := 30.0   # loin du cycliste, un groupe `ahead` peut en doubler un autre vers l'axe (lot P32)
 const ALONGSIDE_M := 2.0     # longueur d'un vélo et demi : « à la même abscisse »
 
 var _failures := 0
@@ -63,7 +64,7 @@ class FakeTraffic:
 func _ride(route, budget: int, rng_seed: int, traffic = null) -> Dictionary:
 	var m = Model.new()
 	m.configure(route, CLIMBS, [], budget, rng_seed, 6.0, traffic)
-	var dt := 1.0 / 30.0
+	var dt := 1.0 / 15.0     # 15 images/s : sous la limite de 120 s de run_engine_tests.sh
 	var s := 300.0
 	var bot := 100.0
 	var seen := {}
@@ -97,7 +98,7 @@ func _ride(route, budget: int, rng_seed: int, traffic = null) -> Dictionary:
 		for r in m.riders():
 			# Lot P32 : en face sur le bord gauche (sa droite), devant sur le bord droit, à droite du cycliste
 			var case_r := str(r["group"]["case"])
-			if (case_r == "oncoming" and float(r["lateral"]) >= 0.0) or (case_r == "ahead" and float(r["lateral"]) <= Model.RIDER_LATERAL_M):
+			if (case_r == "oncoming" and float(r["lateral"]) >= 0.0) or (case_r == "ahead" and absf(float(r["s"]) - s) < PASS_NEAR_M and float(r["lateral"]) <= Model.RIDER_LATERAL_M):
 				wrong_side += 1
 			if absf(float(r["s"]) - s) < ALONGSIDE_M and absf(float(r["lateral"]) - Model.RIDER_LATERAL_M) < MIN_CENTRE_M - 1e-3:
 				too_close += 1
@@ -179,7 +180,7 @@ func _run() -> void:
 		salut += int(rs["salut"])
 		safe = safe and rs["too_close"] == 0 and rs["wrong_side"] == 0 and rs["bot_close"] == 0 and rs["max_riders"] <= 8
 		if not safe:
-			print("graine %d : %d trop près, %d près d'un bot, %d au plus" % [sd, rs["too_close"], rs["bot_close"], rs["max_riders"]])
+			print("graine %d : %d trop près, %d du mauvais côté, %d près d'un bot, %d au plus" % [sd, rs["too_close"], rs["wrong_side"], rs["bot_close"], rs["max_riders"]])
 	_check(safe, "6 autres graines, budget 8 : mêmes garanties")
 	_check(salut >= 1, "un groupe qui double dit « Salut ! » de temps en temps (%d)" % salut)
 	var r0: Dictionary = _ride(route, 0, 7)

@@ -421,6 +421,8 @@ class Bench:
                             draw_calls=data.get("draw_calls"),
                             decor={k: int(data.get("decor", {}).get(k, 0)) for k in DECOR_KINDS},
                             sounds=dict(data.get("decor", {}).get("sounds", {})),
+                            contacts=data.get("decor", {}).get("contacts"),
+                            last_contact=str(data.get("decor", {}).get("last_contact", "")),
                             widgets={k: v.get("text", "") for k, v in data.get("widgets", {}).items()
                                      if v.get("visible")})
             except ValueError:
@@ -667,6 +669,13 @@ class Bench:
             label = DECOR_KINDS.get(k, (k, ""))[0]
             self.report.check(max(seen) > 0, f"décor : {label} vus",
                               f"{sum(1 for v in seen if v)} captures sur {len(seen)}, {max(seen)} au plus")
+        # Lot P32 : compteur de contacts du décor (véhicules, cyclistes du décor, bots, cycliste), cumulé : 0 à la fin
+        counted = [x for x in shots if x.get("contacts") is not None]
+        if counted:
+            last = counted[-1]
+            self.report.check(int(last["contacts"]) == 0, "décor : aucun contact sur la route",
+                              f"{last['contacts']} (dernier : {last['last_contact']})" if last["contacts"]
+                              else f"0 sur {len(counted)} captures")
         heard = shots[-1].get("sounds", {})
         for group in self.sounds_expect:
             got = {k: heard[k] for k in group if heard.get(k)}

@@ -1199,6 +1199,7 @@ def _decor_vivant_scene(s: Session) -> None:
             s.check("decor_vivant", f"{label} en vue", seen[k] > 0, f"{seen[k]} au plus")
         s.check_layout("decor_vivant", info)
         s.check_world("decor_vivant", img, info)
+        _check_contacts(s, "decor_vivant", info)
     # Pause : véhicules, cyclistes, ciel et bateaux figés
     core.set_scene(speed=0.0, session_state="PAUSED", pause_reason="user")
     time.sleep(1.0)
@@ -1214,7 +1215,7 @@ def _decor_vivant_scene(s: Session) -> None:
 
 
 PASS_WINDOW_M = 10.0   # voiture qui double vue à moins de 10 m devant ou derrière le cycliste (lot P32)
-PASS_WAIT_S = 12.0
+PASS_WAIT_S = 60.0   # la voiture d'en face croisée, puis l'utilitaire qui double (décor ralenti sous Xvfb)
 
 
 def _place(s: Session, **spec: Any) -> None:
@@ -1237,6 +1238,14 @@ def _check_lanes(s: Session, scene: str, info: dict[str, Any]) -> None:
                 ", ".join(f"{u['lateral']:+.2f} m" for u in ahead))
 
 
+def _check_contacts(s: Session, scene: str, info: dict[str, Any]) -> None:
+    """Lot P32 : compteur de contacts du décor (living_decor.gd), cumulé depuis le début : véhicules entre eux,
+    véhicule et cycliste, cyclistes de groupes différents, bots et cycliste compris."""
+    dec = info.get("decor", {})
+    n = int(dec.get("contacts", -1))
+    s.check(scene, "aucun contact sur la route", n == 0, f"{n} ({dec.get('last_contact', '')})" if n else "0")
+
+
 def _voies_scene(s: Session) -> None:
     """Lot P32 (demande du 29 octobre : « les véhicules et les cyclistes roulent à droite de la route et pas au
     milieu ») : une voiture et un cycliste en face, deux cyclistes devant dans le même sens, puis un utilitaire
@@ -1255,16 +1264,33 @@ def _voies_scene(s: Session) -> None:
         s.check_world("voies_face", *shot)
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
     time.sleep(1.0)
+    # Demande du 29 octobre : « un véhicule doit attendre avant de dépasser si obstacle en face ». Une voiture
+    # arrive en face, l'utilitaire posé en train de doubler reste derrière ; il double une fois la voie libre.
+    _place(s, vehicle={"kind": "car_b", "dir": -1, "rel_m": 70.0, "kmh": 50.0})
     _place(s, vehicle={"kind": "van", "dir": 1, "rel_m": 4.0, "kmh": 60.0})
     time.sleep(0.7)   # affiché à l'image suivante : deux images au moins sous Xvfb
+    wait = s.capture("voies_attente")
+    if wait:
+        users = wait[1].get("decor", {}).get("road_users", [])
+        vans = [u for u in users if u["what"] == "vehicle" and u["dir"] > 0]
+        facing = [u for u in users if u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] > 0.0]
+        s.check("voies_attente", "voiture en face : l'utilitaire attend derrière au lieu de doubler",
+                bool(facing) and bool(vans) and all(u["rel_m"] < -PASS_WINDOW_M for u in vans),
+                ", ".join(f"{u['kind']} à {u['rel_m']:+.0f} m" for u in vans + facing))
+    # Une fois la voiture d'en face croisée, un utilitaire posé en train de doubler double vraiment. Le décor
+    # avance au pas de l'image et le cycliste en temps réel : sous Xvfb, celui qui attend derrière ne rattrape
+    # jamais le cycliste, d'où un second utilitaire posé à côté de lui.
     shot = None
     t0 = now()
     while now() - t0 < PASS_WAIT_S:
-        time.sleep(0.3)
+        time.sleep(0.5)
         shot = s.capture("voies_depassement")
         users = shot[1].get("decor", {}).get("road_users", []) if shot else []
         if any(u["what"] == "vehicle" and u["dir"] > 0 and -PASS_WINDOW_M < u["rel_m"] < PASS_WINDOW_M for u in users):
             break
+        if not any(u["what"] == "vehicle" and u["dir"] < 0 and u["rel_m"] > 0.0 for u in users):
+            _place(s, vehicle={"kind": "van", "dir": 1, "rel_m": 4.0, "kmh": 60.0})
+            time.sleep(0.7)
     caps = [c for c in s.report.captures if c.config == s.name and c.scene == "voies_depassement"]
     for c in caps[:-1]:
         s.report.captures.remove(c)
@@ -1277,6 +1303,7 @@ def _voies_scene(s: Session) -> None:
         s.check("voies_depassement", "voiture qui double à 1,5 m au moins, sur la gauche", bool(passing)
                 and all(u["lateral"] < rider for u in passing) and min(gap) >= 1.5 - 1e-3,
                 ", ".join(f"{u['lateral']:+.2f} m, écart {g:.2f} m" for u, g in zip(passing, gap)) or "aucune à côté")
+        _check_contacts(s, "voies_depassement", shot[1])
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": ""})
 
 

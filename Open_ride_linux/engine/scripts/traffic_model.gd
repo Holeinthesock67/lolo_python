@@ -21,6 +21,9 @@ extends RefCounted
 ## un autre se cale à sa vitesse. En pause, tout est figé.
 ## Le cycliste roule dans la voie de droite, à RoadBuilder.RIDER_LATERAL_M de l'axe (lot P32) ; `lateral` est
 ## l'écart à l'axe, positif à droite du sens du parcours ; les écarts au cycliste se comptent depuis sa place.
+## Lot P32, aucune collision : les cyclistes du décor et les bots (`others` d'update) sont évités. Un véhicule
+## s'écarte (LATERAL_MPS) pour laisser LATERAL_CLEARANCE_M à ceux qu'il double, CYCLIST_GAP_M à ceux qu'il
+## croise, dès CYCLIST_LOOK_M avant eux ; il ne commence pas un dépassement face à un cycliste qui arrive.
 
 const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -44,6 +47,12 @@ const DEFAULT_SNOW_LINE_M := 2200.0
 const RIDER_HALF_WIDTH_M := 0.3
 const LATERAL_CLEARANCE_M := 1.5
 const RIGHT_LANE_M := RoadBuilder.LANE_CENTER_M
+const LATERAL_MPS := 1.5
+const CYCLIST_GAP_M := 0.5
+const CYCLIST_LOOK_M := 40.0
+const CYCLIST_HALF_LENGTH_M := 0.9
+const LANE_FREE_M := 150.0
+const HOLD_GAP_M := 5.0
 ## Sortes (Lot P25) : demi-largeur et longueur hors tout de vehicle_mesh.gd (rétroviseurs compris), part des
 ## tirages et plage de vitesse.
 const KINDS := {
@@ -70,6 +79,7 @@ var _villages: Array = []          # Vector2 (x, z)
 var _snow_line_m: float = DEFAULT_SNOW_LINE_M
 var _next_slot: int = 0
 var _last_rider_s: float = NAN
+var _others: Array = []            # cyclistes du décor et bots de la dernière image : {s, lateral, dir}
 
 
 ## `theme` fusionné (theme_loader.gd), `pois` les points d'intérêt (seuls les `village` comptent).
@@ -184,10 +194,12 @@ func _overtaking() -> bool:
 	return false
 
 
-## Une image : `rider_s` position du cycliste (m), `rider_v` sa vitesse (m/s).
-func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false) -> void:
+## Une image : `rider_s` position du cycliste (m), `rider_v` sa vitesse (m/s) ; `others` : cyclistes du décor et
+## bots à éviter, {s, lateral, dir}.
+func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false, others: Array = []) -> void:
 	if route == null or paused:
 		return
+	_others = others
 	if is_nan(_last_rider_s):
 		_next_slot = maxi(0, int(floor(rider_s / SLOT_M)) + 1)
 	_last_rider_s = rider_s
@@ -199,12 +211,12 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false) -
 			continue
 		if int(ev["dir"]) == -1:
 			var s0 := rider_s + float(ev["ahead_m"])
-			if _overtaking() or not _segment_ok(s0) or not _free_at(s0, -1):
+			if _overtaking() or not _segment_ok(s0) or not _free_at(s0, -1) or not _others_clear_at(s0):
 				continue
 			_spawn(ev, s0, -1)
 		else:
 			var s1 := rider_s - SPAWN_BEHIND_M
-			if _overtaking() or not _segment_ok(maxf(s1, 0.0)) or float(ev["cruise_mps"]) <= rider_v:
+			if _overtaking() or not _segment_ok(maxf(s1, 0.0)) or float(ev["cruise_mps"]) <= rider_v or not _others_clear_at(s1):
 				continue
 			_spawn(ev, s1, 1)
 	# Déplacement
@@ -219,9 +231,10 @@ func update(rider_s: float, rider_v: float, dt_s: float, paused: bool = false) -
 					spd = minf(spd, float(o["speed_mps"]))
 			v["speed_mps"] = spd
 			v["s"] = float(v["s"]) - spd * dt_s
-			v["lateral"] = oncoming_lateral(v["kind"])
+			v["lateral"] = move_toward(float(v["lateral"]), _clear_of_others(v, oncoming_lateral(v["kind"])), LATERAL_MPS * dt_s)
 		else:
 			_move_overtaker(v, rel, rider_v, dt_s)
+		_hold(v)
 		v["wheel"] = fposmod(float(v["wheel"]) + float(v["speed_mps"]) * dt_s / 0.33, TAU)
 	# Suppressions
 	var kept := []
@@ -258,15 +271,96 @@ func _move_overtaker(v: Dictionary, rel: float, rider_v: float, dt_s: float) -> 
 			spd = rider_v
 	v["speed_mps"] = spd
 	v["s"] = float(v["s"]) + spd * dt_s
-	v["lateral"] = move_toward(float(v["lateral"]), target_lat, 1.5 * dt_s)
+	v["lateral"] = move_toward(float(v["lateral"]), _clear_of_others(v, target_lat), LATERAL_MPS * dt_s)
 	if not v.get("passed", false) and rel > 0.0:
 		v["passed"] = true
 		overtakes_total += 1
 
 
-## Vrai si aucun véhicule en face ne peut croiser le dépassant avant qu'il ait fini de doubler.
+## Vrai si aucun cycliste du décor ni aucun bot n'est à moins de MIN_SPACING_M de `s` (apparition d'un véhicule).
+func _others_clear_at(s: float) -> bool:
+	for o in _others:
+		if absf(float(o["s"]) - s) < MIN_SPACING_M:
+			return false
+	return true
+
+
+## Écart à l'axe visé `target`, décalé pour ne toucher aucun cycliste du décor ni aucun bot sur sa longueur et
+## CYCLIST_LOOK_M devant lui. Ceux du même sens sont doublés à LATERAL_CLEARANCE_M de carrosserie, seulement si
+## la voie d'en face est libre (`_lane_free`) et une fois écarté ; sinon le véhicule attend derrière (`hold_s`,
+## appliqué par `_hold`). Ceux d'en face sont croisés à CYCLIST_GAP_M.
+func _clear_of_others(v: Dictionary, target: float) -> float:
+	var k: Dictionary = KINDS[v["kind"]]
+	var hw := float(k["half_width"])
+	var half_len := float(k["length"]) * 0.5 + CYCLIST_HALF_LENGTH_M
+	var dir := int(v["dir"])
+	var out := target
+	v.erase("hold_s")
+	for same in [true, false]:
+		for o in _others:
+			if (int(o["dir"]) == dir) != same:
+				continue
+			var ahead := (float(o["s"]) - float(v["s"])) * dir
+			if ahead < -half_len or ahead > half_len + CYCLIST_LOOK_M:
+				continue
+			var room := RIDER_HALF_WIDTH_M + (LATERAL_CLEARANCE_M if same else CYCLIST_GAP_M) + hw
+			var lat := float(o["lateral"])
+			# Pas encore écarté : il attend derrière d'avoir pris sa place pour doubler
+			if same and ahead > half_len and absf(float(v["lateral"]) - lat) < room - 0.05:
+				_hold_behind(v, float(o["s"]))
+			if absf(out - lat) >= room:
+				continue
+			if same and ahead > half_len and not _lane_free(v):
+				_hold_behind(v, float(o["s"]))
+				continue
+			out = lat - room if out < lat else lat + room
+	return out
+
+
+## Garde dans `hold_s` le plus proche devant de ceux derrière qui le véhicule `v` doit attendre.
+func _hold_behind(v: Dictionary, s: float) -> void:
+	if not v.has("hold_s") or (s - float(v["hold_s"])) * int(v["dir"]) < 0.0:
+		v["hold_s"] = s
+
+
+## Vrai si rien ne vient en face du véhicule `v` à moins de LANE_FREE_M : ni véhicule, ni cycliste du décor, ni
+## bot, ni (pour un véhicule en face) le cycliste.
+func _lane_free(v: Dictionary) -> bool:
+	var dir := int(v["dir"])
+	var s := float(v["s"])
+	for o in _others:
+		var ahead := (float(o["s"]) - s) * dir
+		if int(o["dir"]) != dir and ahead > -5.0 and ahead < LANE_FREE_M:
+			return false
+	for o in vehicles:
+		var ahead2 := (float(o["s"]) - s) * dir
+		if int(o["dir"]) != dir and ahead2 > -5.0 and ahead2 < LANE_FREE_M:
+			return false
+	if dir == -1:
+		var ahead3 := s - _last_rider_s
+		if ahead3 > -5.0 and ahead3 < LANE_FREE_M:
+			return false
+	return true
+
+
+## Véhicule qui attend derrière un cycliste du décor ou un bot (`hold_s`) : il ne s'en approche pas à moins de
+## HOLD_GAP_M de sa carrosserie, à la vitesse de celui-ci.
+func _hold(v: Dictionary) -> void:
+	if not v.has("hold_s"):
+		return
+	var dir := int(v["dir"])
+	var limit := float(v["hold_s"]) - dir * (float(KINDS[v["kind"]]["length"]) * 0.5 + CYCLIST_HALF_LENGTH_M + HOLD_GAP_M)
+	if (float(v["s"]) - limit) * dir > 0.0:
+		v["s"] = limit
+
+
+## Vrai si aucun véhicule ni cycliste du décor en face ne peut croiser le dépassant avant qu'il ait fini de doubler.
 func _clear_to_pass(v: Dictionary, rel: float, rider_v: float, pass_mps: float) -> bool:
 	var t_pass := (PASS_ZONE_M.y - rel) / maxf(pass_mps - rider_v, 0.5)
+	for o in _others:
+		var gap_o := float(o["s"]) - float(v["s"])
+		if int(o["dir"]) == -1 and gap_o > 0.0 and gap_o < t_pass * (10.0 + pass_mps) + 100.0:
+			return false
 	for o in vehicles:
 		if int(o["dir"]) != -1:
 			continue
@@ -294,8 +388,9 @@ func _spawn(ev: Dictionary, s: float, dir: int) -> void:
 
 ## Véhicule posé par un test (lot P32 : captures et contrôle des voies) : sorte `kind`, sens `dir`, à `rel_m` du
 ## cycliste (négatif : derrière), à `kmh` ; dans le même sens et dans PASS_ZONE_M, il est posé en train de
-## doubler (voie de gauche). Il suit ensuite les mêmes règles que les autres.
-func place_for_test(rider_s: float, kind: String, dir: int, rel_m: float, kmh: float) -> void:
+## doubler (voie de gauche) si la voie d'en face le permet (`_clear_to_pass`), sinon FOLLOW_GAP_M derrière le
+## cycliste, où il attend. Il suit ensuite les mêmes règles que les autres.
+func place_for_test(rider_s: float, rider_v: float, kind: String, dir: int, rel_m: float, kmh: float) -> void:
 	if route == null or not KINDS.has(kind):
 		return
 	var d := 1 if dir >= 0 else -1
@@ -303,8 +398,23 @@ func place_for_test(rider_s: float, kind: String, dir: int, rel_m: float, kmh: f
 		rider_s + rel_m, d)
 	if d == 1 and rel_m >= PASS_ZONE_M.x and rel_m < PASS_ZONE_M.y:
 		var v: Dictionary = vehicles[vehicles.size() - 1]
-		v["committed"] = true
-		v["lateral"] = lane_lateral(kind)
+		var pass_mps := minf(kmh / 3.6, maxf(PASS_SPEED_KMH / 3.6, rider_v + PASS_MARGIN_KMH / 3.6))
+		if _clear_to_pass(v, rel_m, rider_v, pass_mps):
+			v["committed"] = true
+			v["lateral"] = lane_lateral(kind)
+		else:
+			# Attend derrière, à FOLLOW_GAP_M ou plus loin, derrière le dernier cycliste du décor ou bot qui y roule
+			var room := float(KINDS[kind]["length"]) * 0.5 + CYCLIST_HALF_LENGTH_M + HOLD_GAP_M
+			var hold_s := rider_s - FOLLOW_GAP_M
+			for _i in range(2 * _others.size() + 1):
+				var free := true
+				for o in _others:
+					if absf(float(o["s"]) - hold_s) < room:
+						hold_s = float(o["s"]) - room
+						free = false
+				if free:
+					break
+			v["s"] = hold_s
 
 
 ## Position et cap (rad autour de y) d'un véhicule dans le monde.
