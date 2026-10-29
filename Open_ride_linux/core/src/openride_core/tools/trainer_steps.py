@@ -32,6 +32,11 @@ F = m·g·(pente + Crr) + ½·Cw·v², avec la masse du `config.toml` local. Un 
 `relances_erg` (les mêmes en ERG). `samples.csv` garde aussi la vitesse annoncée par le trainer (volant)
 et le niveau de résistance ; `steps.csv`, la cible, la pente envoyée et la vitesse théorique du volant.
 
+Décrochages et pompage (lot X44) : le rapport dit pour chaque chute brutale de la puissance si elle vient
+du trainer (cadence inchangée) ou du cycliste (cadence d'abord), avec les statuts annoncés par le trainer
+(lignes `ftms` du pilote, PR #580, notées `ftms` dans `events.csv`), et mesure le pompage par palier
+(module `decrochages`).
+
 Trainer simulé réaliste (lot X6) : `--response realiste` (frein à retard pur, serrage et relâchement,
 volant d'inertie ; `--calibration steps.csv` d'un essai réel pour reprendre ses valeurs) ; le banc compare
 alors chaque t63 mesuré à celui du modèle (retard + constante de temps), à ± 20 %. Protocoles en plus de
@@ -57,6 +62,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import config
+from . import decrochages
 from .guide import Guide
 
 DEFAULT_OUT = Path.home() / "OpenRide" / "trainer_steps"
@@ -339,11 +345,22 @@ th{{background:#eef0ee}}</style>
 <table><tr><th>Palier</th><th>De</th><th>À</th><th>Écriture (ms)</th><th>Accusé (ms)</th><th>Départ (W)</th>
 <th>Final (W)</th><th>t10 (s)</th><th>t63 (s)</th><th>t90 (s)</th><th>Stable (s)</th><th>Dépassement (%)</th>
 <th>Cadence</th><th>Pente envoyée (%)</th><th>Écart à la cible (W)</th><th>Volant (km/h)</th><th>Résistance</th>
-<th>Note</th></tr>{rows}</table></html>
+<th>Note</th></tr>{rows}</table>
+{decrochages.html_section(*decrochages.analyse(bench_source(rec, out.name)))}</html>
 """
     path = out / "rapport.html"
     path.write_text(html, encoding="utf-8")
     return path
+
+
+def bench_source(rec: Recording, name: str) -> decrochages.Source:
+    """L'essai vu par le module `decrochages` (lot X44) : relevés, statuts du trainer, paliers."""
+    end = rec.samples[-1][0] if rec.samples else 0.0
+    segments = [(t, rec.steps[k + 1][0] if k + 1 < len(rec.steps) else end, f"palier {k + 1}")
+                for k, (t, _) in enumerate(rec.steps)]
+    return decrochages.Source(name, [decrochages.Sample(t, p, c) for t, p, c, *_ in rec.samples],
+                              [(t, d) for t, kind, d in rec.events if kind == "ftms"],
+                              [t for t, kind, _ in rec.events if kind == "decrochage"], segments)
 
 
 # --- banc -------------------------------------------------------------------------------
@@ -426,6 +443,8 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
                             None if res is None else float(res)))
 
     drv._on_ibd = tap   # avant run() : start_notify prend l'attribut de l'instance
+    # Statuts du trainer et frein lâché (lignes `ftms` du pilote, PR #580) : dans events.csv (lot X44).
+    drv.event_sink = lambda line: rec.events.append((clock(), "ftms", decrochages.status_text(line)))
     handler = _CpLogTap(rec, clock)
     ftms_log = logging.getLogger("ftms_driver")
     ftms_log.addHandler(handler)
@@ -622,6 +641,8 @@ def main(argv: list[str] | None = None) -> int:
         guide.close()
     results = analyse(rec)
     print(write_results(results, out), end="")
+    src = bench_source(rec, out.name)
+    print(decrochages.text_report(src, *decrochages.analyse(src)), end="")
     print(f"Rapport : {write_report(rec, results, out)}")
     model = getattr(getattr(world, "trainer", None), "model", None) if not args.analyse else None
     if model is not None:
