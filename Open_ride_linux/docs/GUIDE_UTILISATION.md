@@ -72,6 +72,8 @@ En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pe
 
 **Images par seconde.** **Réglages**, **Graphisme**, **Afficher les images/s** : oui affiche en haut à droite, pendant la séance, « 60 images/s · p99 17 ms » (images de la dernière seconde, et temps d'image que 99 % d'entre elles ne dépassent pas : une valeur haute signale des saccades).
 
+**Jauge d'abri des bots.** **Réglages**, **Graphisme**, **Jauge d'abri des bots** : oui affiche un petit arc bleu au-dessus du bot qui t'abrite, rempli selon l'abri que tu reçois (le même pourcentage que la pastille « Abri » du HUD). Elle apparaît dans la roue d'un bot, dès que la pastille « Abri » apparaît (jusqu'à 15 m environ derrière lui), et disparaît quand tu en sors. En medium et high, le pourcentage s'affiche sous l'arc ; en high, l'arc a un léger halo. Coupée par défaut. Seuls les bots abritent : ni le fantôme, ni les cyclistes du décor, ni les véhicules.
+
 **Plans d'entraînement.** L'accueil affiche **Séance du jour** quand un plan est en cours, sinon **Choisir un plan**. Un plan range des entraînements par semaine et par jour ; il garde en mémoire ce qui est fait et ce qui est en retard. `openride-core plan install` copie deux plans de départ (« Reprise 4 semaines » et « FTP 6 semaines »).
 
 **Test de FTP.** **Test de FTP** à l'accueil propose deux tests : la rampe (paliers d'une minute, +20 W, jusqu'à l'épuisement) et les 20 minutes. Roulez-les de préférence sur une boucle, car un parcours avec arrivée termine la séance. Au bilan, **Accepter** écrit la nouvelle FTP dans la configuration ; **Garder** conserve l'ancienne.

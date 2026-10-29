@@ -114,6 +114,14 @@ func update_view(view: Array, route) -> void:
 			_nodes.erase(key)
 
 
+## Position dans le monde de la silhouette du bot `id` (jauge d'abri, draft_gauge.gd) ; null s'il n'est pas affiché.
+func anchor_of(id: String) -> Variant:
+	for key in _nodes:
+		if str(key).get_slice(":", 0) == id and _nodes[key].visible:
+			return _nodes[key].global_position
+	return null
+
+
 ## Pour les tests graphiques : silhouettes affichées et celles dans le champ de la caméra.
 func test_info(camera: Camera3D) -> Dictionary:
 	var shown := 0
