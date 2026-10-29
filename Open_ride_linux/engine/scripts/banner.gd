@@ -1,8 +1,13 @@
 extends Label
 
-## Bandeau d'alerte en haut de l'écran : plusieurs messages peuvent être actifs, chacun sous une clé
+## Bandeau en haut de l'écran : plusieurs messages peuvent être actifs, chacun sous une clé
 ## (core_lost, shutdown, error, route, command…), avec ou sans durée. Caché quand aucun n'est actif.
+## Rouge tant qu'une alerte est active, sinon sombre et transparent comme les panneaux du HUD (clés de
+## INFO_KEYS : rappel des boutons, appui ambigu, consigne, niveau gagné ; 28/10, le rouge était agressif).
 ## Pas de class_name (script attaché dans main.tscn).
+
+const UiTheme := preload("res://scripts/ui_theme.gd")
+const INFO_KEYS := ["controls", "press", "cue", "level_up"]
 
 signal changed(text: String)
 
@@ -67,7 +72,27 @@ func _refresh() -> void:
 		lines.append(_messages[key]["text"])
 	text = "\n".join(lines)
 	visible = not lines.is_empty()
+	add_theme_stylebox_override("normal", _style(is_alert()))
 	changed.emit(text)
+
+
+func _style(alert: bool) -> StyleBoxFlat:
+	var s := StyleBoxFlat.new()
+	s.content_margin_left = 16.0
+	s.content_margin_right = 16.0
+	s.content_margin_top = 8.0
+	s.content_margin_bottom = 8.0
+	s.set_corner_radius_all(8)
+	s.bg_color = UiTheme.BANNER_ALERT if alert else UiTheme.PANEL_BG
+	if not alert:
+		s.border_color = UiTheme.BANNER_INFO_BORDER
+		s.set_border_width_all(1)
+	return s
+
+
+## Alerte affichée (bandeau rouge) : au moins un message hors INFO_KEYS (tests).
+func is_alert() -> bool:
+	return _order.any(func(k): return not k in INFO_KEYS)
 
 
 ## Place le bandeau à droite du HUD (rectangle `hud` à l'écran) s'il y reste au moins MIN_WIDTH pixels,

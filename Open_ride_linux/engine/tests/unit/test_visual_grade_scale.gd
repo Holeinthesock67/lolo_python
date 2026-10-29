@@ -9,12 +9,17 @@ extends SceneTree
 ## - arbres et bâtiments : hauteur de maillage inchangée avec k = 1,5, base posée au sol exagéré à 5 cm près ;
 ## - HUD : valeur de pente et profil identiques avec k = 1,0 et 1,5 ;
 ## - Coût : construction pas plus de 5 % plus lente qu'avant.
+## Lot Y15 (relief porté par la route) :
+## - `sample()["y"]` à la hauteur affichée, `alt_m` et `grade_pct` réels ; terrain lointain creusé sous la route affichée ;
+## - tangage de la caméra sur 8 % avec k = 2 : atan(0,16) ; champ de vision resserré en montée, élargi en descente.
 
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const RouteDataScript := preload("res://scripts/route_data.gd")
 const BuildingMesh := preload("res://scripts/building_mesh.gd")
 const HudViewModel := preload("res://scripts/hud_view_model.gd")
+const CameraFollow := preload("res://scripts/camera_follow.gd")
+const CameraViews := preload("res://scripts/camera_views.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 
 var _failures := 0
@@ -75,14 +80,17 @@ func _run() -> void:
 
 	# --- 1. Route : k = 1,0 vs défaut (exactitude) ---
 	var arr_def := RoadBuilder.build_chunk_arrays(route, 0)
-	var arr_k1 := RoadBuilder.build_chunk_arrays(route, 0, RoadBuilder.ROAD_WIDTH_M, 1.0)
+	route.relief_k = 1.0
+	var arr_k1 := RoadBuilder.build_chunk_arrays(route, 0)
 	var verts_def: PackedVector3Array = arr_def[Mesh.ARRAY_VERTEX]
 	var verts_k1: PackedVector3Array = arr_k1[Mesh.ARRAY_VERTEX]
 	_check(verts_def == verts_k1, "k = 1,0 : sommets de route identiques au comportement par défaut")
 
 	# --- 2. Route : k = 1,5 vs k = 1,0 (élévation de l'axe multipliée par 1,5 à 1 cm près ; les décalages
 	# de la coupe en travers, comme la descente des accotements, ne sont pas exagérés) ---
-	var arr_k15 := RoadBuilder.build_chunk_arrays(route, 0, RoadBuilder.ROAD_WIDTH_M, 1.5)
+	route.relief_k = 1.5
+	var arr_k15 := RoadBuilder.build_chunk_arrays(route, 0)
+	route.relief_k = 1.0
 	var verts_k15: PackedVector3Array = arr_k15[Mesh.ARRAY_VERTEX]
 	var route_k15_ok := true
 	var max_err_route := 0.0
@@ -172,16 +180,19 @@ func _run() -> void:
 	var t_k10: Array = []
 	var t_k15: Array = []
 	for _rep in range(5):
+		route.relief_k = 1.0
 		var t0 := Time.get_ticks_usec()
 		for _it in range(10):
-			RoadBuilder.build_chunk_arrays(route, 0, RoadBuilder.ROAD_WIDTH_M, 1.0)
+			RoadBuilder.build_chunk_arrays(route, 0)
 			TerrainTiles.build_arrays(raw_h, "near", {}, 1.0, alt_orig)
 		t_k10.append(Time.get_ticks_usec() - t0)
+		route.relief_k = 1.5
 		var t1 := Time.get_ticks_usec()
 		for _it in range(10):
-			RoadBuilder.build_chunk_arrays(route, 0, RoadBuilder.ROAD_WIDTH_M, 1.5)
+			RoadBuilder.build_chunk_arrays(route, 0)
 			TerrainTiles.build_arrays(raw_h, "near", {}, 1.5, alt_orig)
 		t_k15.append(Time.get_ticks_usec() - t1)
+	route.relief_k = 1.0
 	t_k10.sort()
 	t_k15.sort()
 	var med10: int = t_k10[2]
@@ -189,3 +200,36 @@ func _run() -> void:
 	var overhead_pct := (float(med15 - med10) / float(maxi(med10, 1))) * 100.0
 	_check(PerfBudget.check("visual_grade_overhead", overhead_pct, "%"),
 		"coût de construction (médianes) : k=1.0 : %d µs, k=1.5 : %d µs (écart %.1f %%, au plus 5 %%)" % [med10, med15, overhead_pct])
+
+	# --- 8. Lot Y15 : relief porté par la route ---
+	route.relief_k = 2.0
+	var smp: Dictionary = route.sample(500.0)
+	_check(absf(float(smp["y"]) - (alt_orig + 2.0 * 0.06 * 500.0)) < 0.01,
+		"k = 2,0 : sample()[\"y\"] à la hauteur affichée (%.2f m)" % float(smp["y"]))
+	_check(absf(float(smp["alt_m"]) - (alt_orig + 0.06 * 500.0)) < 0.01 and absf(float(smp["grade_pct"]) - 6.0) < 1e-6,
+		"k = 2,0 : alt_m et grade_pct restent les vraies valeurs")
+	_check(route.display_y(alt_orig) == alt_orig, "le départ du parcours ne bouge pas")
+	var carved := TerrainTiles.carve_under_route(_make_terrain_heights(route, alt_orig + 1000.0), "far", 0, -1, route)
+	var carve_ok := true
+	for s_val in [100.0, 400.0, 700.0]:
+		var p: Vector3 = route.sample_point(s_val)
+		var h := TerrainTiles.mesh_height_at(carved, "far", 0, -1, p.x, p.z)
+		if not (h < p.y):
+			carve_ok = false
+	_check(carve_ok, "k = 2,0 : terrain lointain creusé sous la route affichée")
+
+	var steep = _make_route(8.0)
+	steep.relief_k = 2.0
+	var follow = CameraFollow.new()
+	var pitch := 0.0
+	for _i in range(120):
+		pitch = follow.pitch_deg(steep, 300.0, 8.0, 1.0 / 60.0)
+	var want := rad_to_deg(atan(0.16))
+	_check(absf(pitch - want) < 0.3, "tangage sur 8 %% avec k = 2,0 : %.2f° (attendu %.2f°)" % [pitch, want])
+	_check(CameraViews.fov_deg(65.0, 0.0) == 65.0, "champ de vision inchangé sur le plat")
+	var fov_up := CameraViews.fov_deg(65.0, pitch)
+	var fov_down := CameraViews.fov_deg(65.0, -pitch)
+	_check(fov_up < 65.0 and fov_up >= 65.0 - CameraViews.FOV_CLIMB_DEG, "champ de vision resserré en montée (%.1f°)" % fov_up)
+	_check(fov_down > 65.0 and fov_down <= 65.0 + CameraViews.FOV_DESCENT_DEG, "champ de vision élargi en descente (%.1f°)" % fov_down)
+	_check(CameraViews.fov_deg(65.0, 40.0) == 65.0 - CameraViews.FOV_CLIMB_DEG, "écart du champ de vision borné")
+	route.relief_k = 1.0
