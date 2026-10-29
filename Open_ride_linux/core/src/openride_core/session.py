@@ -282,6 +282,7 @@ class CoreSession:
         self._grade_sent = 0.0
         self._power_window: list[tuple[float, float]] = []
         self._rec: SessionRecorder | None = None
+        self.dropout_marks = 0   # repères « décrochage » posés au Z long (§7.1, lot X47)
         self._device_up: dict[str, bool] = {}   # dernier état écrit au journal (lignes `device`)
         self._next_record = 0.0
         self._trainer_lost_since: float | None = None
@@ -1481,6 +1482,15 @@ class CoreSession:
 
     # --- entrées utilisateur -------------------------------------------------------------
 
+    def _mark_dropout(self) -> None:
+        """Z long en roulant (§7.1, lot X47) : le cycliste sent le trainer décrocher ; repère au journal, relu par
+        l'outil `decrochages` (lot X44) pour le mettre face aux chutes de puissance mesurées."""
+        self.dropout_marks += 1
+        log.warning("Repère « décrochage » du cycliste (Z long) : %.0f W, %.0f rpm, %.1f km/h.",
+                    self.state.power, self.state.cadence, self.state.v * 3.6)
+        if self._rec:
+            self._rec.event("decrochage", time.time())
+
     def _handle_input(self, ev: InputEvent) -> None:
         # Rôle des boutons : spécification générale §7.1. Y en séance : pause, sans relais ; ailleurs
         # (menus, écran de pause), l'engine en fait « écran précédent » ou « reprendre ».
@@ -1503,6 +1513,9 @@ class CoreSession:
         if self.state.session_state != "RUNNING":
             return
         erg = self.erg
+        if ev == InputEvent.Z_LONG:
+            self._mark_dropout()
+            return
         if ev == InputEvent.Z_SHORT:
             # Z court : action du mode (§7.1) ; bloc suivant en ERG ; sinon, en mode
             # classique et en ERG d'une session libre (sans blocs, lot O18), bonus en réserve (T6, T7).
@@ -1513,7 +1526,7 @@ class CoreSession:
                 self._flush_race_journal()
             return
         if ev not in BIAS_STEPS:
-            return   # ni + ni − (A, Z long, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
+            return   # ni + ni − (A, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
         if erg:
             # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 % ; en cadence
             # verrouillée (lot O18), cadence cible ± 2 % et ± 10 %.
