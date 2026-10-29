@@ -448,6 +448,18 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 {"type":"hello_ack","v":1,"core_version":"0.9.0","rev":"1.4","config":{"ftp_w":250,"gears_total":24,"theme":"default","modes":["ride","erg","rogue"],"rogue":{"w_prime_j":20000,"w_prime_estimate_j":null,"cp_w":240,"objectives":["endurance","threshold","vo2max"],"durations_min":[30,45,60,90],"chassis":{"unlocked":["standard","blinde"],"selected":"standard"},"lives":2},"progression":{"level":8,"xp":4310,"xp_level_start":3800,"xp_next_level":5000,"coins":210,"equipped":{"frame":"frame-alu","wheels":"wheels-carbon-40","helmet":"helmet-basic","kit":"kit-blue","socks":"socks-white","glasses":"glasses-none"},"avatar":{"height":"M","build":"medium","skin":3,"hair":2,"hair_color":1,"kit_primary":4,"kit_secondary":11,"number":27,"standing_grade_pct":8,"standing_power_pct":150},"lives":2}}}
 ```
 
+**Objet `erg` d'une session libre en ERG à cadence verrouillée** (révision 1.5, lot O18 ; le cycliste tourne au-dessus de la plage, la puissance monte)
+
+```json
+{"kind":"cadence","workout_name":"ERG cadence","block_index":1,"block_count":1,"block_type":"steady","block_remaining_s":0.0,"block_total_s":0.0,"target_w":207,"next_target_w":null,"bias_pct":100,"paused":false,"cadence_target_rpm":90,"cadence_low_rpm":76.5,"cadence_high_rpm":103.5,"cadence_zone":"high"}
+```
+
+**Bascule de mode d'une session libre** (révision 1.5, lot O18)
+
+```json
+{"type":"cmd","v":1,"cmd_id":21,"name":"set_ride_mode","args":{"mode":"cadence","cadence_rpm":90}}
+```
+
 **Séquence nominale**
 
 | Étape | Sens | Message ou événement |
@@ -463,6 +475,20 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 | 9 | engine vers core | `cmd end_session` avec `save` vrai |
 | 10 | core vers engine | `state` avec `FINISHED` et `summary` (chemin du FIT) |
 
+**Séquence : ERG dans une session libre** (révision 1.5, lot O18)
+
+| Étape | Sens | Message ou événement |
+| --- | --- | --- |
+| 1 | core vers engine | `state` avec `RUNNING`, `mode` = `SIM`, pas d'objet `erg` (session libre, sans entraînement ni run) |
+| 2 | Click ou engine vers core | Y court (Click, ou touche envoyée par `input_event`) : le core passe en `PAUSED` (`pause_reason` = `user`) ; l'engine affiche l'écran de pause avec la ligne Mode |
+| 3 | engine vers core | `cmd set_ride_mode` `{ "mode": "erg" }` (A long sur la ligne Mode) ; le core la compte dans `last_cmd_id` et journalise « Mode de la séance : ERG, cible … W » |
+| 4 | core vers engine | `state` avec `mode` = `ERG` et `erg.kind` = `free`, `erg.paused` vrai tant que la séance est en pause |
+| 5 | engine vers core | facultatif : `cmd set_ride_mode` `{ "mode": "erg", "target_w": … }` (ligne Puissance cible) ou `{ "mode": "cadence" }` (ERG cadence : `erg.kind` = `cadence`, champs `cadence_*`) |
+| 6 | engine vers core | `Y_SHORT` ou ligne Reprendre : `RUNNING` ; le core écrit la cible au trainer (consigne de puissance FTMS, braquet ignoré) ; ± changent `bias_pct` (cible de puissance, ou cadence cible en ERG cadence) |
+| 7 | engine vers core | retour : pause, `cmd set_ride_mode` `{ "mode": "sim" }` ; `state` sans `erg`, `mode` = `SIM`, la pente reprend depuis 0 % avec la limitation de variation |
+
+Refus : hors `RUNNING` et `PAUSED`, pendant un entraînement (`erg.kind` = `workout`) ou une run, `error` `busy` ; `mode` inconnu ou nombre mal typé, `error` `bad_args` ; dans les deux cas rien ne change.
+
 ## 8. Compatibilité et évolution du contrat
 
 Le champ `v` est la version majeure du contrat.
@@ -473,6 +499,7 @@ Le champ `v` est la version majeure du contrat.
 - **Schémas :** chaque message a un schéma JSON dans `docs/contracts/ipc/`, avec des trames d'exemple ; les tests des deux programmes valident leurs messages contre ces schémas.
 - **Révisions :** elles se suivent dans l'ordre des fusions ; un programme qui annonce `rev` « 1.3 » connaît tout ce qui est noté jusqu'à la 1.3. Une révision fermée ne reçoit plus d'ajout : la 1.2 est fermée depuis la fusion de la 1.3, qui reste ouverte jusqu'à l'étiquette `v1.0.0` et reçoit les ajouts de la 1.0 fusionnés avant elle ; la 1.4 est celle des séries R, T et V, la 1.5 celle de la série W (spécification générale §6.1, décision du propriétaire du 27 octobre).
 - **Journal des changements :** tenu en bas de ce document.
+- **Ajouts en revue :** les changements du contrat portés par des PR encore ouvertes ne sont notés ici qu'à leur fusion ; leur liste à jour est dans la [spécification générale §6.1](../SPECIFICATION_GENERALE.md#61-révisions-du-contrat-ipc).
 
 | Version | Date | Changement |
 | --- | --- | --- |
