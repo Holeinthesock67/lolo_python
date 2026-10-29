@@ -1,7 +1,8 @@
 extends RefCounted
 
 ## Jingles des événements du parcours (lot T17, série T) : sommet d'une montée, fin d'un sprint, passage sous
-## une arche de bonus, fin de séance ; sans aucun nœud. Pas de class_name : charger par
+## une arche de bonus, fin de séance ; depuis le 29/10, départ (début de séance, portique de départ d'un
+## sprint ou d'une montée) et ligne d'une boucle ; sans aucun nœud. Pas de class_name : charger par
 ## preload("res://scripts/event_sounds_model.gd").
 ##
 ## Aucun champ IPC nouveau : tout vient de ce que l'engine reçoit déjà (contrat 1.4).
@@ -13,7 +14,13 @@ extends RefCounted
 ##     core (lot T6, positions de segment_markers_model.arch_positions), seulement en `RUNNING` avec le
 ##     champ `powerup` (arches affichées, lot T8) ; un saut de plus de `MAX_STEP_M` (reprise après
 ##     coupure, nouvelle séance) ne compte pas ; plusieurs arches dans une trame : un seul jingle ;
-##   - `jingle_finish` au passage de `RUNNING` ou `PAUSED` à `FINISHED` (SIM comme ERG).
+##   - `jingle_finish` au passage de `RUNNING` ou `PAUSED` à `FINISHED` (SIM comme ERG) : l'arrivée du
+##     parcours ouvert, la fin d'un entraînement ;
+##   - `jingle_start` au passage de `READY` à `RUNNING` (départ du parcours) quand le parcours a ses
+##     portiques (pas le monde ouvert), et au franchissement d'un portique de `gates` (positions et jingles
+##     de segment_markers_model.gate_jingles : départ d'un sprint ou d'une montée `jingle_start`, ligne d'une
+##     boucle `jingle_lap`), mêmes règles que les arches mais sans le champ `powerup` ; jamais en mode Rogue
+##     (`mode` ROGUE, ses propres bruitages) ; un seul jingle par trame, l'arche passe après le portique.
 ## - `JINGLES` : notes `[début s, fréquence Hz, durée s, niveau 0 à 1, timbre]`, timbre `tone` (note
 ##   douce, deux harmoniques) ou `bell` (cloche, partiels inharmoniques amortis). Palette commune aux
 ##   bruitages du mode Rogue (lot R18) : gamme de do majeur, notes de 523 à 2 093 Hz, au-dessus du vent
@@ -31,6 +38,11 @@ const G6 := 1568.0
 const C7 := 2093.0
 
 const JINGLES := {
+	# départ : appel bref et clair, deux notes répétées puis la quinte (plus aigu et plus court que le sprint)
+	"jingle_start": [[0.0, C6, 0.06, 0.5, "tone"], [0.09, C6, 0.06, 0.5, "tone"], [0.18, G6, 0.32, 0.55, "tone"],
+		[0.18, C6, 0.32, 0.25, "tone"]],
+	# ligne d'une boucle : « ding-dong » de deux cloches descendantes (l'arche monte en arpège)
+	"jingle_lap": [[0.0, E6, 0.6, 0.45, "bell"], [0.16, C6, 0.8, 0.45, "bell"]],
 	"jingle_summit": [[0.0, C5, 0.16, 0.55, "tone"], [0.15, E5, 0.16, 0.55, "tone"], [0.30, G5, 0.45, 0.6, "tone"],
 		[0.30, C6, 1.2, 0.45, "bell"]],
 	"jingle_summit_pr": [[0.0, C5, 0.16, 0.55, "tone"], [0.15, E5, 0.16, 0.55, "tone"], [0.30, G5, 0.16, 0.6, "tone"],
@@ -44,15 +56,20 @@ const JINGLES := {
 }
 
 var _arches := PackedFloat64Array()
+var _gates: Array = []             # [{s, jingle}] des portiques sonores
+var _start_gate := false
 var _length_m := 0.0
 var _loop := false
 var _prev_s := NAN
 var _prev_session := ""
 
 
-## Arches du parcours courant : `every_m` (powerups.toml, 0 : aucune), longueur d'un tour, boucle.
-func set_route(every_m: float, length_m: float, loop: bool) -> void:
+## Arches du parcours courant : `every_m` (powerups.toml, 0 : aucune), longueur d'un tour, boucle ; portiques
+## sonores `gates` (segment_markers_model.gate_jingles) ; `start_gate` : départ du parcours (faux en monde ouvert).
+func set_route(every_m: float, length_m: float, loop: bool, gates: Array = [], start_gate: bool = false) -> void:
 	_arches = SegmentMarkersModel.arch_positions(every_m, length_m)
+	_gates = gates
+	_start_gate = start_gate
 	_length_m = length_m
 	_loop = loop
 	_prev_s = NAN
@@ -70,8 +87,15 @@ func on_state(state: Dictionary) -> Array:
 	var out := []
 	var session := str(state.get("session_state", ""))
 	var s := float(state.get("s", 0.0))
-	if session == "RUNNING" and state.has("powerup") and not is_nan(_prev_s) and s - _prev_s <= MAX_STEP_M \
-			and crossed(_prev_s, s) > 0:
+	var rogue := str(state.get("mode", "")) == "ROGUE"
+	var moving := session == "RUNNING" and not is_nan(_prev_s) and s - _prev_s <= MAX_STEP_M
+	if session == "RUNNING" and _prev_session == "READY" and _start_gate and not rogue:
+		out.append("jingle_start")
+	elif moving and not rogue:
+		var gate := crossed_gate(_prev_s, s)
+		if not gate.is_empty():
+			out.append(gate)
+	if moving and state.has("powerup") and out.is_empty() and crossed(_prev_s, s) > 0:
 		out.append("jingle_arch")
 	_prev_s = s if session in ["RUNNING", "PAUSED"] else NAN
 	if session == "FINISHED" and _prev_session in ["RUNNING", "PAUSED"]:
@@ -91,6 +115,26 @@ func crossed(s_prev: float, s: float) -> int:
 		else:
 			count += int(floor((s - p) / _length_m) - floor((s_prev - p) / _length_m))
 	return count
+
+
+## Jingle du dernier portique franchi entre deux positions cumulées (`s_prev` exclu, `s` inclus) ; "" sinon.
+func crossed_gate(s_prev: float, s: float) -> String:
+	var best := ""
+	var best_at := -INF
+	if s <= s_prev:
+		return best
+	for g in _gates:
+		var p := float(g["s"])
+		var at := -INF
+		if not _loop:
+			if s_prev < p and p <= s:
+				at = p
+		elif floor((s - p) / _length_m) > floor((s_prev - p) / _length_m):
+			at = p + floor((s - p) / _length_m) * _length_m
+		if at > best_at:
+			best_at = at
+			best = str(g["jingle"])
+	return best
 
 
 ## Durée d'un jingle en secondes (fin de la dernière note).
