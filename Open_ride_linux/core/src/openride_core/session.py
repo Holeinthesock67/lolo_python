@@ -613,6 +613,9 @@ class CoreSession:
                 ts=round(time.time(), 3), t=round(self._t_session, 2), distance=round(st.s, 2),
                 speed=round(st.v, 3), power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
                 grade=round(out.grade_enemy, 2), mode="ROGUE", gear=rg.gear, grade_sent=st.grade_sent))
+        if rg.done:   # comme l'arrivée d'un parcours : la séance se termine d'elle-même, avec le bilan
+            log.info("Run Cyber-Rogue terminée : %s.", rg.engine.result)
+            self._finish(True)
 
     def _choose_start_workout(self, args: dict) -> bool:
         """`start` avec `ftp_test` ou `plan_day` : choisit l'entraînement avant de démarrer.

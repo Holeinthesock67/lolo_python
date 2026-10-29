@@ -242,7 +242,7 @@
 | [N18](LOT_N18_bots_menu.md) | 1.x série N : bots réglés depuis les menus (réglages et écran de pause) | Python + GDScript | O3, O4 ; O7 utile | Moyenne | Non : interne (contrat et menus), **version 1.x** |
 | [N19](LOT_N19_menus_reglages_appareils_plans.md) | Présentation des menus, étape 3 : Réglages (valeur alignée, édition en place, curseurs), Appareils et connexion, plans et test de FTP | GDScript | étapes 1 et 2, PR #452 | Moyenne | Non : interne (menus, captures sur le PC) |
 | [N20](LOT_N20_menus_records_bilan_pause_hud.md) | Présentation des menus, étape 4 : records, bilan, pause, confirmation ; couleurs du HUD et du globe ramenées au thème | GDScript | N19 | Moyenne | Non : interne (menus, captures sur le PC) |
-| [X3](LOT_X3_instabilite_durees_tests.md) | Série X (outils de test) : Rapport d'instabilité et de durée des tests (JUnit, tests lents ou instables) | Python + Bash | X2 | Petite | Oui ; issue #201 |
+| [X3](LOT_X3_instabilite_durees_tests.md) | Série X (outils de test) : Rapport d'instabilité et de durée des tests (JUnit, tests lents ou instables) | Python + Bash | X2 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x3`) ; passages longs sur le PC ; issue #201 |
 | [X6](LOT_X6_trainer_simule_realiste.md) | Série X (outils de test) : Trainer simulé réaliste : frein du 1er ordre à retard, volant d'inertie, gigue des notifications | Python | X5 | Moyenne | Oui ; issue #204 |
 | [X7](LOT_X7_latence_click.md) | Série X (outils de test) : Latence appui Click → commande → écran, par étage | Python + GDScript | — | Petite | Script oui, essai sur le vélo ; issue #205 |
 | [X9](LOT_X9_recette_frequence_cardiaque.md) | Série X (outils de test) : Recette guidée de la fréquence cardiaque (gel, retrait, retour) | Python | Q5 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x9`), essai sur le vélo ; issue #207 |
@@ -261,7 +261,7 @@
 | [X26](LOT_X26_fuzz_fichiers.md) | Série X (outils de test) : Fuzz des fichiers d'entrée (.zwo, .erg, .mrc, GPX, FIT, TCX) | Python | — | Petite | Oui ; issue #224 |
 | [X27](LOT_X27_cycliste_virtuel.md) | Série X (outils de test) : Cycliste virtuel (cadence, pente, rampe, sprint, W′bal) et course contre les bots accélérée | Python | T12 pour `bots_race` | Moyenne | Oui ; issue #225 |
 | [X28](LOT_X28_reseau_degrade.md) | Série X (outils de test) : Réseau dégradé pour le monde ouvert : faux serveur de tuiles | Python | W15 | Moyenne | Oui ; issue #226 |
-| [X30](LOT_X30_tableau_recette.md) | Série X (outils de test) : Tableau de recette 1.0 relié aux rapports des outils | Python | O8 | Petite | Oui ; issue #228 |
+| [X30](LOT_X30_tableau_recette.md) | Série X (outils de test) : Tableau de recette 1.0 relié aux rapports des outils | Python | O8 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x30`) ; issue #228 |
 | [X31](LOT_X31_pente_max_garmin.md) | Série X (outils de test) : Pente maximale et D+ face à Garmin Connect, en local | Python | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x31`) ; issue #229 |
 | [X32](LOT_X32_garde_fou_qualite.md) | Série X (outils de test) : Garde-fou de la qualité réellement appliquée dans les bancs et les vitrines | Python + GDScript | #481 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x32`) |
 | [X33](LOT_X33_seance_simulee_serie_t_boutons_erg.md) | Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | Oui |
@@ -271,6 +271,7 @@
 | [X37](LOT_X37_persistance_reglages.md) | Série X (outils de test) : Persistance de tous les réglages après un redémarrage | Python | banc des menus | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x37`) |
 | [X38](LOT_X38_couleurs_du_theme.md) | Série X (outils de test) : Couleurs du thème : aucune couleur en dur dans le HUD et le globe | GDScript | N20 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x38`) |
 | [X39](LOT_X39_ecart_progression.md) | Série X (outils de test) : Écart de progression avant/après une PR (`openride-core xp --compare`) | Python | V2, V3b | Petite | Oui |
+| [X40](LOT_X40_rogue_bout_en_bout.md) | Série X (outils de test) : Run Cyber-Rogue de bout en bout dans la séance du core (`rogue_bout_en_bout`), pause, resynchronisation, trace pour le banc visuel | Python | R8, R7 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x40`) ; issue #543 |
 
 **Restent en interne** (matériel nécessaire) :
 - stabilité du Zwift Click (déconnexions spontanées) ;
