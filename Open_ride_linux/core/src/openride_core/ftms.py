@@ -286,12 +286,13 @@ def cmd_set_target_power(watts: float) -> bytes:
     return struct.pack("<Bh", OP_SET_TARGET_POWER, _sint16(watts))
 
 
-def cmd_set_sim_params(grade_pct: float, crr: float = 0.004, cw_kg_m: float = 0.20,
+def cmd_set_sim_params(grade_pct: float, crr: float = 0.004, cw_kg_m: float = 0.39,
                        wind_mps: float = 0.0) -> bytes:
     """Opcode 0x11. Résolutions : vent 0,001 m/s, pente 0,01 %, Crr 0,0001, Cw 0,01 kg/m.
 
-    Cw (« wind resistance coefficient ») = 0,5 · ρ · CdA ; pour CdA 0,32 m² à 1,225 kg/m³,
-    Cw ≈ 0,196 kg/m, arrondi à 0,20 par défaut.
+    Cw (« wind resistance coefficient ») = ρ · CdA, sans le ½ (définition d'ANT+ FE-C reprise par
+    FTMS : le trainer calcule lui-même la force 0,5 · Cw · v²) ; pour CdA 0,32 m² à 1,225 kg/m³,
+    Cw ≈ 0,39 kg/m, valeur par défaut (Zwift envoie 0,51).
     """
     return struct.pack(
         "<BhhBB",
