@@ -18,6 +18,9 @@ Usage, avec le vrai jeu :
 fermé), `--duration` ou Ctrl+C, puis écrit le rapport dans `~/OpenRide/sonde/<date>_<heure>/`.
 `report DOSSIER` refait le rapport d'un dossier déjà mesuré. Le banc simulé l'utilise aussi :
 `sim_bench.py --probe` (rapport dans le dossier du scénario).
+Budgets du préréglage (lot X14) : `sonde.txt` juge images/s, p99, GPU de la vue et GPU saturé face à
+`perf_targets.json`, pour le préréglage noté par l'engine ; avec `--budgets`, un budget dépassé donne le
+code de sortie 1 (`report --xvfb` : rendu logiciel, budgets en INFO).
 
 Saccades et démarrage (lot X15) : l'engine écrit aussi, à côté de son fichier, `saccades.csv` (chaque
 image de plus de 33 ms avec sa cause : tuile de terrain, tronçon OSM, arbres, capture, ou « inconnue »),
@@ -31,6 +34,7 @@ from __future__ import annotations
 import argparse
 import csv
 import html
+import json
 import os
 import shutil
 import statistics
@@ -40,7 +44,7 @@ import threading
 import time
 from datetime import datetime
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 DEFAULT_ENGINE_CSV = Path.home() / "OpenRide" / "sonde" / "moteur.csv"
 DEFAULT_OUT = Path.home() / "OpenRide" / "sonde"
@@ -378,6 +382,65 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
     return out
 
 
+# --- budgets par préréglage (lot X14) ---------------------------------------------------------
+
+TARGETS_FILE = Path(__file__).resolve().parent / "perf_targets.json"
+
+
+def load_targets(path: Path = TARGETS_FILE) -> dict[str, Any]:
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def budget_checks(rows: list[dict[str, Any]], targets: dict[str, Any] | None = None,
+                  real_window: bool = True) -> list[tuple[bool | None, str, str]]:
+    """Vérifications des budgets du préréglage noté par l'engine dans la sonde (pas celui de la ligne de
+    commande : lot X32) : (réussi, libellé, mesure). Réussi vaut None sous Xvfb (rendu logiciel, à titre
+    indicatif) et pour une mesure absente (pas de nvidia-smi)."""
+    t = targets or load_targets()
+    presets = presets_of(rows)
+    if len(presets) != 1:
+        return [(False, "budgets du préréglage", "aucun préréglage noté dans la sonde" if not presets
+                 else f"plusieurs préréglages dans la mesure ({', puis '.join(presets)}) : budgets non jugés")]
+    preset = presets[0]
+    budget = t["presets"].get(preset)
+    if budget is None:
+        return [(False, "budgets du préréglage", f"pas de budget pour {preset} dans perf_targets.json")]
+    ts = values(rows, "t_s")
+    warm = (min(ts) if ts else 0.0) + float(t.get("warmup_s", 0))
+    steady = [r for r in rows if isinstance(r.get("t_s"), (int, float)) and r["t_s"] >= warm]
+    note = "" if real_window else ", indicatif sous Xvfb"
+    out: list[tuple[bool | None, str, str]] = []
+
+    def judge(label: str, vals: list[float], ok_of: Callable[[float], bool], text: Callable[[float], str]) -> None:
+        if not vals:
+            out.append((None, label, "pas de mesure"))
+            return
+        v = statistics.median(vals)
+        out.append((ok_of(v) if real_window else None, label, text(v) + note))
+
+    fmin, pmax, gmax = budget["fps_median_min"], budget["p99_ms_max"], budget["gpu_ms_median_max"]
+    judge(f"budget {preset} : images/s", values(steady, "fps"), lambda v: v >= fmin,
+          lambda v: f"médiane {v:.1f} (au moins {fmin})")
+    judge(f"budget {preset} : temps d'image p99", values(steady, "frame_p99_ms"), lambda v: v < pmax,
+          lambda v: f"{v:.1f} ms (médiane des p99 de chaque seconde, sous {pmax} ms)")
+    judge(f"budget {preset} : GPU de la vue", values(steady, "gpu_ms"), lambda v: v <= gmax,
+          lambda v: f"médiane {v:.2f} ms (au plus {gmax} ms)")
+    util = values(steady, "gpu_util_pct")
+    busy_max, busy = budget["gpu_busy95_pct_max"], float(t.get("busy_pct", 95))
+    if util:
+        share = 100.0 * sum(u > busy for u in util) / len(util)
+        out.append(((share <= busy_max) if real_window else None, f"budget {preset} : GPU saturé",
+                    f"{share:.1f} % des secondes au-dessus de {busy:.0f} % de charge (au plus {busy_max} %){note}"))
+    else:
+        out.append((None, f"budget {preset} : GPU saturé", "pas de mesure (nvidia-smi absent)"))
+    return out
+
+
+def budget_text(checks: list[tuple[bool | None, str, str]]) -> str:
+    return "\n".join(f"  [{'INFO' if ok is None else 'OK' if ok else 'ÉCHEC'}] {label} : {msg}"
+                     for ok, label, msg in checks)
+
+
 def presets_of(rows: list[dict[str, Any]]) -> list[str]:
     """Préréglages appliqués, dans l'ordre (l'engine note la qualité réellement appliquée, lot X32)."""
     out: list[str] = []
@@ -502,7 +565,7 @@ def svg_chart(rows: list[dict[str, Any]], title: str, series: tuple[tuple[str, s
 
 
 def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de performance du moteur",
-                 engine_dir: Path | None = None) -> dict[str, Any]:
+                 real_window: bool = True, engine_dir: Path | None = None) -> dict[str, Any]:
     """Écrit sonde.csv, sonde.txt et rapport.html dans `out` ; renvoie le résumé. Avec `engine_dir` (dossier
     du fichier de l'engine), y ajoute les saccades, les tâches de fond et le démarrage (lot X15), recopiés
     dans `out`."""
@@ -510,6 +573,9 @@ def write_report(rows: list[dict[str, Any]], out: Path, title: str = "Sonde de p
     write_csv(rows, out / "sonde.csv")
     summary = summarize(rows)
     text = summary_text(summary, title)
+    summary["budgets"] = budget_checks(rows, real_window=real_window) if values(rows, "fps") else []
+    if summary["budgets"]:
+        text += "\nBudgets du préréglage (engine/tests/perf_targets.json, lot X14) :\n" + budget_text(summary["budgets"]) + "\n"
     stalls = read_stalls(engine_dir) if engine_dir is not None else None
     if stalls is not None:
         summary["stalls"] = stall_summary(stalls)
@@ -538,7 +604,7 @@ pour les temps de la vue, dernière image pour les compteurs du rendu.</p>
 
 # --- commandes -----------------------------------------------------------------------------
 
-def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float = 120.0,
+def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float = 120.0, budgets: bool = False,
           idle_stop_s: float = IDLE_STOP_S, period_s: float = 1.0, quality: str | None = None) -> int:
     print(f"Sonde : attente du fichier de l'engine {engine_csv} …", flush=True)
     t0 = time.monotonic()
@@ -570,7 +636,12 @@ def watch(engine_csv: Path, out: Path, duration_s: float | None, wait_s: float =
     summary = write_report(rows, out, engine_dir=engine_csv.parent)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
     print(f"Rapport : {out / 'rapport.html'}")
-    return _quality_verdict(summary, quality)
+    return max(_quality_verdict(summary, quality), _budget_verdict(summary, budgets))
+
+
+def _budget_verdict(summary: dict[str, Any], strict: bool) -> int:
+    """Code 1 si un budget est dépassé et que `--budgets` est demandé."""
+    return 1 if strict and any(ok is False for ok, _, _ in summary.get("budgets", [])) else 0
 
 
 def _quality_verdict(summary: dict[str, Any], quality: str | None) -> int:
@@ -590,23 +661,26 @@ def main(argv: list[str] | None = None) -> int:
     w.add_argument("--out", type=Path, help=f"dossier du rapport (défaut : {DEFAULT_OUT}/<date>)")
     w.add_argument("--duration", type=float, help="durée maximale en secondes")
     w.add_argument("--quality", help="préréglage voulu : échec si une seconde a été mesurée dans un autre (lot X32)")
+    w.add_argument("--budgets", action="store_true", help="code 1 si un budget de perf_targets.json est dépassé (lot X14)")
     r = sub.add_parser("report", help="refaire le rapport d'un dossier (sonde.csv) ou d'un fichier de l'engine")
     r.add_argument("source", type=Path)
     r.add_argument("--out", type=Path)
     r.add_argument("--quality", help="préréglage voulu : échec si une seconde a été mesurée dans un autre (lot X32)")
+    r.add_argument("--budgets", action="store_true", help="code 1 si un budget de perf_targets.json est dépassé (lot X14)")
+    r.add_argument("--xvfb", action="store_true", help="mesure sous Xvfb : budgets en INFO")
     args = ap.parse_args(argv)
     if args.cmd == "watch":
         out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
-        return watch(args.engine_csv.expanduser(), out, args.duration, quality=args.quality)
+        return watch(args.engine_csv.expanduser(), out, args.duration, quality=args.quality, budgets=args.budgets)
     src = args.source / "sonde.csv" if args.source.is_dir() else args.source
     rows = read_engine_csv(src)
     if not rows:
         print(f"Aucune mesure dans {src}")
         return 1
     out = args.out or (args.source if args.source.is_dir() else args.source.parent)
-    summary = write_report(rows, out, engine_dir=src.parent)
+    summary = write_report(rows, out, real_window=not args.xvfb, engine_dir=src.parent)
     print((out / "sonde.txt").read_text(encoding="utf-8"), end="")
-    return _quality_verdict(summary, args.quality)
+    return max(_quality_verdict(summary, args.quality), _budget_verdict(summary, args.budgets))
 
 
 if __name__ == "__main__":
