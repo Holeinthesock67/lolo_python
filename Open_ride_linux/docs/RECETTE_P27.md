@@ -53,9 +53,9 @@ living = true
 
 - [ ] Oiseaux : un rapace qui tourne en cercle, une volée en V, des corneilles qui s'envolent au passage (P23).
 - [ ] Animaux selon le terrain : vaches et chevaux dans les prés, moutons sur les prairies en pente, un lièvre qui détale d'un champ (P24). Aucun sur la route, ni enterré, ni en l'air.
-- [ ] Véhicules de la route : voitures, utilitaires, camions, autocars ou motos qui croisent et doublent à bonne distance (P25).
+- [ ] Le cycliste roule dans la voie de droite ; véhicules de la route : voitures, utilitaires, camions, autocars ou motos qui croisent dans la voie d'en face et doublent à bonne distance, puis se rabattent à droite (P25, P32).
 - [ ] Véhicules lointains sur les routes voisines, un tracteur qui herse un champ (P25). Aucun sur le parcours.
-- [ ] Cyclistes du décor : seuls ou en petits groupes, en face, doublés ou qui doublent ; jamais sur le cycliste ni sur le bot (P28).
+- [ ] Cyclistes du décor : seuls ou en petits groupes, en face sur leur droite, doublés sur le bord droit ou qui doublent par la gauche ; jamais sur le cycliste ni sur le bot (P28, P32).
 - [ ] Bateaux : barque, voilier ou pédalo sur le lac, péniche sur le canal, avec leur sillage (P29).
 - [ ] Pause (bouton Y) : véhicules, cyclistes du décor, ciel et bateaux se figent (les animaux et les oiseaux continuent, comme depuis P11) ; reprise sans saut. Vérifié aussi automatiquement par la scène `decor_vivant` de `visual_check.py` (lot P30).
 
