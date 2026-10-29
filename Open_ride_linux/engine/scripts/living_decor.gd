@@ -149,6 +149,8 @@ func configure(preset_name: String, living_enabled: bool, p_theme: Dictionary, p
 	fauna.setup_sound(sound_player)
 	crowd_view.set_preset(preset, enabled)
 	passersby_view.set_preset(preset, enabled)
+	props.set_preset(QualityPresets.applied_name(preset))
+	turbines.set_preset(QualityPresets.applied_name(preset))
 	traffic.set_budget(int(living.get("vehicles", 0)))
 	road_traffic.set_budget(int(living.get("distant_vehicles", 0)))
 	road_traffic_view.set_budget(int(living.get("distant_vehicles", 0)))
