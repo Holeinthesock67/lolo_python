@@ -79,7 +79,7 @@ def test_brake_loss_is_classified_as_a_trainer_dropout():
     during = [s for s in trace if 36 <= s[0] < 41]
     assert max(p for _, p, _, _ in during) < 20                          # puissance annoncée vers 0 W
     assert min(c for _, _, c, _ in during) > 90                          # cadence de la relance gardée
-    assert during[-1][3] < trace[int(32 / DT)][3] * 0.5                  # vitesse du volant qui baisse
+    assert during[-1][3] < trace[int(32 / DT)][3] * 0.7                  # vitesse du volant qui baisse
     assert trace[int(50 / DT)][1] > 200                                  # puissance revenue après 8 s
 
 

@@ -273,7 +273,8 @@ RIDER_TAU_S = 1.0              # le cycliste rattrape sa cadence (braquet fixe) 
 RIDER_RESERVE = 2.5            # puissance maximale du cycliste : 2,5 × son effort habituel
 SUBSTEP_S = 0.01
 BRAKE_LOSS_TAU_S = 0.5         # décrochage : puissance annoncée divisée par e en 0,5 s (449 → 0 W en < 2 s)
-BRAKE_LOSS_SPEED_TAU_S = 3.0   # … et vitesse du volant annoncée qui baisse plus lentement
+BRAKE_LOSS_SPEED_TAU_S = 8.0   # … et vitesse du volant annoncée qui baisse plus lentement (encore au-dessus de 15 km/h quand
+                               # la puissance est à 0 : condition de détection du pilote FTMS, #580)
 
 
 def load_calibration(path: str | Path) -> dict[str, float]:
@@ -333,10 +334,10 @@ class TrainerResponse:
             return target_w / max(v, 1.0)
         theta = math.atan((grade_pct if mode == "sim" else 0.0) / 100.0)
         p = self.physics
-        cw = cw if cw is not None else 0.5 * 1.225 * p.cda_m2
+        cw = cw if cw is not None else 1.225 * p.cda_m2   # Cw FTMS = ρ · CdA
         crr = crr if crr is not None else p.crr
         va = v + wind
-        return p.mass_kg * G * (math.sin(theta) + crr * math.cos(theta)) + cw * va * abs(va)
+        return p.mass_kg * G * (math.sin(theta) + crr * math.cos(theta)) + 0.5 * cw * va * abs(va)
 
     def step(self, dt: float, cmd: tuple, v_ride: float, rider_max_w: float) -> float:
         """Avance de `dt` s avec la consigne courante `cmd` (mode, cible W, pente %, Crr, Cw, vent m/s) ;
@@ -424,7 +425,12 @@ class SimTrainer(SimDevice):
         self._busy_until = 0.0
         self.other_device_until = 0.0   # un autre appareil (montre) occupe le Control Point
         self.silent_until = 0.0
-        self.brake_loss: tuple[float, float] | None = None   # (début, fin) d'un décrochage du frein
+        # Frein coupé par le trainer (protection ?, séance du 29 octobre) : puissance annoncée qui tombe vers
+        # 0 W et vitesse du volant qui baisse (lot X46), sans aucune erreur ni statut ; `brake_recovers` : une
+        # nouvelle prise de contrôle rend le frein (hypothèse à tester).
+        self.brake_loss_from = 0.0
+        self.brake_loss_until = 0.0
+        self.brake_recovers = True
         self.pending_att_errors: list[int] = []
         self.pending_silent_responses = 0
         self.commands: list[CpRecord] = []
@@ -494,6 +500,8 @@ class SimTrainer(SimDevice):
         if op == ftms.OP_REQUEST_CONTROL:
             if self.refuse_control:
                 return refused
+            if self.brake_recovers:
+                self.brake_loss_until = 0.0
             self.control = True
             return ok
         if not self.control:
@@ -589,8 +597,8 @@ class SimTrainer(SimDevice):
             asyncio.get_running_loop().create_task(self.world.press(rider.press))
         speed_kmh = self._step_power(t, dt, rider)
         power_w = self.power_w
-        if self.brake_loss is not None and self.brake_loss[0] <= t < self.brake_loss[1]:
-            lost_s = t - self.brake_loss[0]
+        if t < self.brake_loss_until:
+            lost_s = t - self.brake_loss_from
             power_w *= math.exp(-lost_s / BRAKE_LOSS_TAU_S)
             speed_kmh *= math.exp(-lost_s / BRAKE_LOSS_SPEED_TAU_S)
         if t < self.silent_until:
@@ -1004,12 +1012,14 @@ class SimWorld:
             dev.pending_att_errors.extend([int(ev.get("code", 0x80))] * int(ev.get("count", 1)))
         elif isinstance(dev, SimTrainer) and action == "other_device":
             dev.other_device_until = self.now() + float(ev["seconds"])
+        elif isinstance(dev, SimTrainer) and action == "brake_loss":
+            dev.brake_loss_from = self.now()
+            dev.brake_loss_until = self.now() + float(ev["seconds"])
+            dev.brake_recovers = bool(ev.get("value", True))
         elif isinstance(dev, SimTrainer) and action == "cp_silent":
             dev.pending_silent_responses += int(ev.get("count", 1))
         elif isinstance(dev, (SimTrainer, SimClickBox)) and action == "silence":
             dev.silent_until = self.now() + float(ev["seconds"])
-        elif isinstance(dev, SimTrainer) and action == "brake_loss":
-            dev.brake_loss = (self.now(), self.now() + float(ev["seconds"]))
         elif isinstance(dev, SimTrainer) and action == "control_lost":
             dev.lose_control()
         elif isinstance(dev, SimTrainer) and action == "refuse_control":

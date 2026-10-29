@@ -51,8 +51,7 @@ HR_KEYS = {"name", "address", "appear_at", "connect_delay_s", "connect_failures"
            "rest_bpm", "max_bpm", "ftp_w", "tau_s", "bpm", "contact", "battery_pct", "rssi"}
 TOP_KEYS = {"description", "seed", "trainer", "rider", "click", "hr", "hr_watch", "events", "control_file"}
 ACTIONS = {"press", "drop", "wake", "sleep", "connect_failures", "connect_delay", "att_error",
-           "cp_silent", "other_device", "silence", "control_lost", "refuse_control", "rider", "bpm", "contact",
-           "brake_loss"}
+           "cp_silent", "other_device", "brake_loss", "silence", "control_lost", "refuse_control", "rider", "bpm", "contact"}
 EVENT_KEYS = {"t", "device", "action", "button", "duration_s", "count", "code", "seconds",
               "value", "watts", "cadence_rpm", "bpm"}
 
@@ -137,6 +136,11 @@ SCENARIOS: dict[str, dict[str, Any]] = {
             {"t": 40.0, "device": "trainer", "action": "other_device", "seconds": 6},
             *_burst(41.0, "+", 2, 2.0),
         ]),
+    "frein_lache": _with(_READY, description=(
+        "Le trainer lâche le frein sans aucune erreur (séance du 29 octobre) : relances à 320 W, puis "
+        "puissance annoncée nulle pendant 4 s à 20 s ; une nouvelle prise de contrôle rend le frein."),
+        events=[{"t": 20.0, "device": "trainer", "action": "brake_loss", "seconds": 4.0}],
+        rider={"watts": 320, "cadence_rpm": 80}),
     "connexions_retardees": _with(_READY, description=(
         "Connexions lentes : trainer à 4 s de connexion et deux échecs, Click à 2 s, ceinture à 3 s "
         "avec un échec."),

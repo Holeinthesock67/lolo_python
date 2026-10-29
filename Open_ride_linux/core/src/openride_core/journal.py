@@ -37,6 +37,12 @@ Sortes de lignes :
   (lot W9), la branche prise à un carrefour, écrite au verrouillage ; `how` dit si c'est la branche par
   défaut du navigateur, un choix au Click, au clavier ou validé tout de suite. Les lectures qui ne
   connaissent pas cette sorte l'ignorent.
+- `{"kind": "ftms", "ts": ..., "event": "status", "code": "0x14", "name": "SPIN_DOWN_STATUS", "data": "<hex>",
+  "echo": bool}` : chaque Fitness Machine Status du trainer (0x02, 0x03, 0x14, 0xFF…) ; `"event":
+  "training_status"` (`data`, avec `trace_ftms`) ; `"event": "brake_loss"` (`from_w`, `to_w`,
+  `cadence_rpm`, `speed_kmh`), puis `"power_back"` (`after_s`, `power_w`) ou `"power_not_back"`
+  (`after_s`) : le frein lâché du 29 octobre 2026. Lignes facultatives, absentes du FIT ; les lectures
+  qui ne connaissent pas cette sorte l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """
 
@@ -153,6 +159,10 @@ class JournalWriter:
     def ftp_test(self, line: dict) -> None:
         """Résultat d'un test de FTP (lot O10) : `FtpResult.to_line()`."""
         self._write({**line, "kind": "ftp_test"})
+
+    def ftms(self, line: dict) -> None:
+        """Statut ou perte de frein du trainer (29 octobre 2026) : ligne `ftms` déjà formée."""
+        self._write({**line, "kind": "ftms"})
 
     def junction(self, line: dict) -> None:
         """Branche prise à un carrefour du monde ouvert (lot W9)."""
