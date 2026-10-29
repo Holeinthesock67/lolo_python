@@ -28,3 +28,15 @@
 ## 6. Hors périmètre
 
 Changer les délais de reconnexion.
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x10`).
+
+- **`python -m openride_core.tools.coupures`** : actions `godot`, `trainer`, `click_droit`, `clicks`, `ceinture` (`--actions` pour en choisir), guidées (guide X5/X8, essai `coupures` de `guide materiel`). Godot est tué par l'outil (tous les processus `Godot*`, comme `essais/coupures.sh`) ; les boîtiers du Click sont coupés par `bluetoothctl block` quand leur adresse est dans `config.toml`, sinon l'outil demande de retirer les piles ; trainer et ceinture sont des consignes.
+- **Attendus** (écrits avec chaque action dans `actions.jsonl`, relus par `--analyse`) : `godot` : « l'engine a planté » au journal du lanceur en 5 s, puis « Reçu 'hello' de l'engine » en 40 s ; `trainer` : `down` et pause en 10 s, `up` et reprise en 30 s après la fin ; boîtiers : `down` en 10 s, `up` en 30 s après la fin ; ceinture : FC absente des relevés en 10 s (FC relayée : gel Q5 + 2 s, 17 s par défaut), revenue en 20 s après la fin. Une ligne n'est cherchée qu'entre la coupure et l'action suivante : une reprise tardive est en ÉCHEC avec son délai, une reprise absente en ÉCHEC « absent ».
+- **Repli clavier :** le clavier reste actif en parallèle du Click (contrat IPC §6) ; il n'y a pas de repli à vérifier, l'attendu n'est donc pas listé.
+- **`--sim`** : scénario généré (`sleep` + `drop` puis `wake` pour le trainer et les boîtiers, `contact` pour la ceinture), core avec les vrais pilotes, vrai lanceur (`launcher.Supervisor`, compilation coupée) et Godot sous Xvfb ; l'action `godot` tue l'engine lancé par l'outil et lui seul. `--sans-engine` : core seul, sans l'action `godot`. `--court` : coupures de 4 à 10 s.
+- **Mesuré au cloud** : `--sim --court --actions godot,trainer` : plantage noté en 0,1 s, engine relié de nouveau en 3,0 s, pause 3,1 s après la coupure, reprise 0,4 s après la fin ; `--sim --sans-engine --court` : les 12 attendus des quatre coupures matérielles obtenus.
+- Tests : `core/tests/test_coupures.py` (9 tests : reprise à temps, trop tardive, absente et non confondue avec l'action suivante, chronologie du journal du lanceur et de la FC, délai de la FC relayée, `--analyse`, arrêt de Godot limité aux descendants, essai simulé sans engine, essai du guide).
+

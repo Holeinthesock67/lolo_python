@@ -14,7 +14,9 @@ extends RefCounted
 ## - `table_items(route_id, segment_id, with_bonus)` : les 10 meilleurs temps de la table « sans bonus »
 ##   ou « avec bonus » : place, temps au dixième, date, puissance moyenne et W/kg ; premier élément
 ##   « toggle » (A court ou A long : autre table) ;
-## - `table_title(segment_id, with_bonus)`.
+## - `table_title(segment_id, with_bonus)` ;
+## - `sheet_segment(route_id, segment_id)` et `sheet_row(...)` : fiches de la carte de détail (record en
+##   grand chiffre `gold`, écart au deuxième temps, date, puissance), format de detail_card.gd.
 
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
 const RoadsideModel := preload("res://scripts/roadside_model.gd")
@@ -138,12 +140,90 @@ func table_items(route_id: String, segment_id: String, with_bonus: bool) -> Arra
 		return out
 	for i in range(rows.size()):
 		var e: Dictionary = rows[i]
-		var detail: Array[String] = []
-		if typeof(e.get("avg_power_w")) in [TYPE_INT, TYPE_FLOAT]:
-			detail.append("%d W" % int(round(float(e["avg_power_w"]))))
-		if typeof(e.get("avg_wkg")) in [TYPE_INT, TYPE_FLOAT]:
-			detail.append(RoadsideModel.format_dec(float(e["avg_wkg"]), 1) + " W/kg")
 		out.append({"id": "row:%d" % i, "label": "%d. %s · %s" % [i + 1,
 			SegmentHudModel.time_text(float(e["time_s"]), true), date_text(str(e.get("date", "")))],
-			"detail": ", ".join(detail)})
+			"detail": power_text(e)})
 	return out
+
+
+# --- fiches de la carte de détail ------------------------------------------------------------
+
+func _info(segment_id: String) -> Dictionary:
+	for s in segments:
+		if str(s.get("id", "")) == segment_id:
+			return s
+	return {}
+
+
+## « Montée · cat. 4 », « Sprint ».
+func _kind_title(segment_id: String) -> String:
+	var info := _info(segment_id)
+	var kind := "Montée" if str(info.get("type", "")) == "climb" else "Sprint"
+	var cat := SegmentHudModel.category_short(info.get("category"))
+	return kind + (" · " + cat if cat != "" else "")
+
+
+static func _gap_tile(gap_s: float) -> Dictionary:
+	return {"label": "Écart au 2e", "value": "+" + RoadsideModel.format_dec(gap_s, 1), "unit": "s"}
+
+
+## « 251 W, 3,4 W/kg » (parties absentes omises) ; "" sans aucune.
+static func power_text(e: Dictionary) -> String:
+	var parts: Array[String] = []
+	if typeof(e.get("avg_power_w")) in [TYPE_INT, TYPE_FLOAT]:
+		parts.append("%d W" % int(round(float(e["avg_power_w"]))))
+	if typeof(e.get("avg_wkg")) in [TYPE_INT, TYPE_FLOAT]:
+		parts.append(RoadsideModel.format_dec(float(e["avg_wkg"]), 1) + " W/kg")
+	return ", ".join(parts)
+
+
+## Fiche d'un segment : le record (sans bonus, sinon avec bonus) en `gold`, l'écart du deuxième temps,
+## le nombre de temps ; un segment sans temps dit « pas encore de temps », sans zéro.
+func sheet_segment(route_id: String, segment_id: String) -> Dictionary:
+	var sheet := {"title": _kind_title(segment_id), "name": _name(segment_id)}
+	var plain := entries(route_id, segment_id, false)
+	var bonus := entries(route_id, segment_id, true)
+	if plain.is_empty() and bonus.is_empty():
+		sheet["lines"] = ["pas encore de temps"]
+		return sheet
+	var rows := plain if not plain.is_empty() else bonus
+	var best: Dictionary = rows[0]
+	var tiles: Array = [{"label": "Record", "value": SegmentHudModel.time_text(float(best["time_s"]), true), "gold": true}]
+	tiles.append(_gap_tile(float(rows[1]["time_s"]) - float(best["time_s"])) if rows.size() > 1
+		else {"label": "Écart au 2e", "value": "—"})
+	tiles.append({"label": "Temps", "value": str(rows.size())})
+	sheet["tiles"] = tiles
+	var lines: Array = []
+	if str(best.get("date", "")) != "":
+		lines.append(date_text(str(best["date"])))
+	if power_text(best) != "":
+		lines.append(power_text(best))
+	if not plain.is_empty() and not bonus.is_empty():
+		lines.append("avec bonus : " + SegmentHudModel.time_text(float(bonus[0]["time_s"]), true))
+	elif plain.is_empty():
+		lines.append("temps avec bonus seulement")
+	sheet["lines"] = lines
+	return sheet
+
+
+## Fiche d'une ligne de table (index à partir de 0) : place, temps (`gold` pour le record), écart au record.
+func sheet_row(route_id: String, segment_id: String, with_bonus: bool, index: int) -> Dictionary:
+	var rows := entries(route_id, segment_id, with_bonus)
+	if index < 0 or index >= rows.size():
+		return {}
+	var e: Dictionary = rows[index]
+	var t := float(e["time_s"])
+	var gap_tile := {"label": "Écart au record", "value": "—"}
+	if index > 0:
+		gap_tile = _gap_tile(t - float(rows[0]["time_s"]))
+		gap_tile["label"] = "Écart au record"
+	var sheet := {"title": table_title(segment_id, with_bonus), "name": _name(segment_id),
+		"tiles": [{"label": "Place", "value": str(index + 1)},
+			{"label": "Temps", "value": SegmentHudModel.time_text(t, true), "gold": index == 0}, gap_tile]}
+	var lines: Array = []
+	if str(e.get("date", "")) != "":
+		lines.append(date_text(str(e["date"])))
+	if power_text(e) != "":
+		lines.append(power_text(e))
+	sheet["lines"] = lines
+	return sheet

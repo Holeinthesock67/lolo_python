@@ -24,8 +24,8 @@ func _check(cond: bool, msg: String) -> void:
 		printerr("[ÉCHEC] ", msg)
 
 
-## Route droite plein sud le long de x = 500, de 2 km.
-func _route() -> Variant:
+## Route droite plein sud le long de x = 500, de 2 km (ou plein nord, cap alterné 359° / 1° : il passe par 0).
+func _route(north: bool = false) -> Variant:
 	var ds := 10.0
 	var n := 201
 	var d := {"version": "1.0", "ds_m": ds, "n": n, "length_m": ds * (n - 1), "type": "open",
@@ -35,9 +35,9 @@ func _route() -> Variant:
 		d["lon"].append(6.0)
 		d["alt_m"].append(1000.0)
 		d["x"].append(500.0)
-		d["z"].append(i * ds)
+		d["z"].append(-i * ds if north else i * ds)
 		d["grade_pct"].append(0.0)
-		d["heading_deg"].append(180.0)
+		d["heading_deg"].append((359.0 if i % 2 == 0 else 1.0) if north else 180.0)
 	var route = RouteDataScript.new()
 	route.load_route_dict(d)
 	return route
@@ -102,6 +102,19 @@ func _test_determinism_and_exclusions() -> void:
 			out_band += 1
 	_check(on_road == 0, "aucune touffe sur la route ni à moins de 2 m de son bord")
 	_check(out_band == 0, "toutes les touffes dans la bande de 2 à 15 m du bord")
+
+	# Cap qui passe par le nord entre deux stations : la normale à la route reste perpendiculaire
+	var nr = GrassTufts.new()
+	root.add_child(nr)
+	nr.configure(4000, _route(true), 6.0, 7)
+	_settle(nr, 500.0)
+	var on_road_n := 0
+	for p in _positions(nr):
+		if absf(p.x - 500.0) < 3.0 + GrassTufts.BAND_MIN_M - 0.05:
+			on_road_n += 1
+	_check(on_road_n == 0 and _positions(nr).size() > 0,
+		"cap 359° / 1° : aucune touffe sur la route (%d sur %d)" % [on_road_n, _positions(nr).size()])
+	nr.queue_free()
 
 	# Bâtiment et étang : rectangles à droite et à gauche de la route
 	var house := PackedVector2Array([Vector2(506, 400), Vector2(520, 400), Vector2(520, 600), Vector2(506, 600)])
