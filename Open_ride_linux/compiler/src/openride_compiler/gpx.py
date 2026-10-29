@@ -45,12 +45,18 @@ def _point(el: ET.Element) -> GpxPoint:
     return GpxPoint(lat, lon, ele)
 
 
+def xml_root(data: bytes, what: str) -> ET.Element:
+    """Racine d'un document XML ; `CompileError` s'il est mal formé ou déclare un encodage inconnu
+    (`encoding="UTF--1"` levait LookupError, fuzz du 28 octobre)."""
+    try:
+        return ET.fromstring(data)
+    except (ET.ParseError, LookupError) as exc:
+        raise CompileError(f"{what} illisible : {exc}") from exc
+
+
 def parse_gpx(data: bytes) -> list[GpxPoint]:
     """Tous les `trkpt` (tous les `trk` et `trkseg`, dans l'ordre), à défaut les `rtept`."""
-    try:
-        root = ET.fromstring(data)
-    except ET.ParseError as exc:
-        raise CompileError(f"GPX illisible : {exc}") from exc
+    root = xml_root(data, "GPX")
     trkpts, rtepts = [], []
     for el in root.iter():
         name = _local(el.tag)

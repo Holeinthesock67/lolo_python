@@ -2,8 +2,11 @@
   "description": "Boutons de l'ERG (essai J7, lot O17) sur erg_court : + et − courts et longs, Page haut et bas, Z (bloc suivant), Y puis Échap (pause, reprise), au Click simulé puis au clavier ; aucun bonus en ERG (T11 §4).",
   "trainer": {
     "appear_at": 0.3,
-    "connect_delay_s": 0.3,
-    "rider_power_w": 200,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 200,
     "cadence_rpm": 90
   },
   "click": {
