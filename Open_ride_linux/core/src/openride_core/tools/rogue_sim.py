@@ -81,10 +81,12 @@ GAP_MAX_PTS = 25.0
 class Bot:
     """Cycliste simulé : produit les entrées de `RunEngine` pas à pas."""
 
-    def __init__(self, engine: RunEngine, profile: Profile, seed: int) -> None:
+    def __init__(self, engine: RunEngine, profile: Profile, seed: int, body: RiderPhysics | None = None) -> None:
         self.e, self.p = engine, profile
         self.rng = random.Random(f"{seed}|bot|{profile.name}")
-        self.body = RiderPhysics(PHYSICS)
+        # `body` : physique tenue par l'appelant (la séance du core, lot X40), qui la fait avancer lui-même.
+        self.own_body = body is None
+        self.body = body if body is not None else RiderPhysics(PHYSICS)
         self.room_id: int | None = None
         self.noise = 0.0
         self.gear = DEFAULT_BALANCE.gear_ref
@@ -223,11 +225,13 @@ class Bot:
 
     # --- un pas ------------------------------------------------------------------------------
 
-    def step(self):
+    def decide(self) -> tuple[float, float, frozenset, float]:
+        """Décision d'un pas : puissance, cadence, boutons et distance dans la salle ; braquet voulu dans `gear`."""
         e = self.e
         if e.room is not None and e.room_id != self.room_id:
             self.room_id = e.room_id
-            self.body = RiderPhysics(PHYSICS)
+            if self.own_body:
+                self.body = RiderPhysics(PHYSICS)
             self.pending_shift.clear()
             self.boost = 0
         fight = e.room is not None and e.phase in ("ROOM", "BOSS")
@@ -235,8 +239,13 @@ class Bot:
         v = self.body.v
         buttons = self._fight_buttons(s, v) if fight else self._corridor_buttons()
         power = self._power(fight)
-        inp = RunInputs(power_w=power, cadence_rpm=self._cadence(s) if fight else BASE_CADENCE, gear=self.gear,
-                        ftp_w=self.p.ftp_w, s_m=s, v_mps=v, buttons=buttons)
+        return power, self._cadence(s) if fight else BASE_CADENCE, buttons, s
+
+    def step(self):
+        e = self.e
+        power, cadence, buttons, s = self.decide()
+        inp = RunInputs(power_w=power, cadence_rpm=cadence, gear=self.gear,
+                        ftp_w=self.p.ftp_w, s_m=s, v_mps=self.body.v, buttons=buttons)
         out = e.step(DT, inp)
         if out.force_gear:
             self.gear = out.force_gear

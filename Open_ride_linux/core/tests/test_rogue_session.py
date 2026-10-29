@@ -61,7 +61,8 @@ def env(tmp_path, monkeypatch):
                 s.driver.base_power_w = 0.6 * FTP
             wall[0] += dt
             s._step(dt, 100.0 + i * dt)
-            if every and frames is not None and i % every == 0:
+            results = (s.state.rogue or {}).get("phase") == "RESULTS"     # montrée avant FINISHED (lot X40)
+            if every and frames is not None and (i % every == 0 or results):
                 s.server.seq += 1
                 frames.append(s.state.to_dict())
             if s.state.session_state in ("FINISHED", "ERROR"):
@@ -101,7 +102,7 @@ def test_start_run_goes_loading_then_ready_in_rogue_mode(env):
     real = s._set_state
     s._set_state = lambda new, reason=None: (states.append(new), real(new, reason))[1]
     start(s)
-    assert states == ["LOADING", "READY"] and s.state.mode == "ROGUE" and s.state.route_id == "rogue"
+    assert states == ["LOADING", "READY"] and s.state.mode == "ROGUE" and s.state.route_id is None
     assert s.state.gear == 6 and s.state.gears_total == 12 and s.state.lat is None
     s.server.send_state(s.state)
     STATE.validate([m for m in sent if m["type"] == "state"][-1])
@@ -257,7 +258,8 @@ def run_to_the_end(env, port=6100, seed=5):
 
 def test_full_run_reaches_the_results_with_valid_frames_and_summary(env):
     s, sent, frames, tmp = run_to_the_end(env)
-    assert s.rogue.finished
+    # Terminée d'elle-même, comme à l'arrivée d'un parcours, après RESULTS_HOLD_S en RESULTS (lot X40).
+    assert s.state.session_state == "FINISHED" and s.rogue is None
     phases = []
     for f in frames:
         STATE.validate(f)
@@ -271,7 +273,6 @@ def test_full_run_reaches_the_results_with_valid_frames_and_summary(env):
         elif m["type"] == "loot":
             LOOT.validate(m)
     assert any(m["type"] == "room" for m in sent) and any(m["type"] == "loot" for m in sent)
-    s._on_command("end_session", {"save": True}, 9)
     summary = s.state.summary
     validator("state").validate({**frames[-1], "summary": summary, "session_state": "FINISHED", "mode": "SIM"})
     assert summary["rogue"]["result"] in ("victory", "defeat") and summary["rogue"]["objective"] == "threshold"

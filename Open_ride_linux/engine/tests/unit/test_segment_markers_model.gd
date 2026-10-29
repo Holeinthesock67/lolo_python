@@ -85,7 +85,7 @@ func _demo_route() -> void:
 		"couche segments lue : climb1 puis sprint1 (%s)" % str(route.segments))
 	var marks: Array = Model.items(route, route.segments, 5000.0)
 	var expect := ["start@0", "panel@15", "panel@500", "panel@1000", "finish@1500", "panel@1860",
-		"panel@2360", "panel@2660", "start@2860", "finish@3290"]
+		"panel@2360", "panel@2660", "start@2860", "finish@3290", "finish@5000"]
 	_check(_summary(marks) == expect, "marques du parcours de démonstration (%s)" % str(_summary(marks)))
 	var texts := {}
 	for m in marks:
@@ -98,8 +98,18 @@ func _demo_route() -> void:
 	_check(texts.get(1860) == ["Sprint dans 1 km"] and texts.get(2360) == ["Sprint dans 500 m"]
 		and texts.get(2660) == ["Sprint dans 200 m"], "sprint dans 1 km, 500 m et 200 m")
 	var gantry: Dictionary = marks[0]
-	_check(gantry["lines"] == ["Montée 1", "Départ"] and gantry["type"] == "climb" and marks[4]["lines"][1] == "Arrivée",
-		"portiques : nom du segment, départ et arrivée")
+	_check(gantry["style"] == "route_start" and gantry["lines"] == ["Départ", "Montée 1 · 4e catégorie"]
+		and gantry["type"] == "climb" and gantry["segment_id"] == "climb1",
+		"départ du parcours fondu avec celui de la montée : titre, nom et catégorie (%s)" % str(gantry["lines"]))
+	_check(marks[4]["style"] == "summit" and marks[4]["lines"] == ["Sommet", "Montée 1 · 4e catégorie"],
+		"sommet de la montée (%s)" % str(marks[4]["lines"]))
+	_check(marks[8]["style"] == "sprint_start" and marks[8]["lines"] == ["Sprint", "Sprint 1"]
+		and marks[9]["style"] == "sprint_finish" and marks[9]["lines"] == ["Fin du sprint", "Sprint 1"],
+		"départ et fin du sprint")
+	_check(marks[10]["style"] == "route_finish" and marks[10]["lines"] == ["Arrivée"] and marks[10]["segment_id"] == "",
+		"arrivée du parcours ouvert")
+	_check(Model.gate_jingles(marks) == [{"s": 2860.0, "jingle": "jingle_start"}],
+		"portiques sonores : départ du sprint (départ du parcours : début de séance) (%s)" % str(Model.gate_jingles(marks)))
 	_check(marks.all(func(m): return m["kind"] != "panel" or int(m["side"]) == -1), "panneaux à gauche de la route")
 	_check(Model.category_text("HC") == "hors catégorie" and Model.category_text("1") == "1re catégorie"
 		and Model.category_text("3") == "3e catégorie", "noms des catégories")
@@ -113,9 +123,11 @@ func _demo_route() -> void:
 func _without_layer_and_invalid() -> void:
 	var plain = ClimbTest.make_route(12000.0, Callable(self, "_flat"))
 	_check(not plain.segments_present and plain.segments.is_empty(), "route sans couche : aucun segment")
-	_check(_summary(Model.items(plain, plain.segments, 5000.0)) == ["arch@5000", "arch@10000"],
-		"route sans couche : seulement les arches")
-	_check(Model.items(plain, plain.segments, 0.0).is_empty(), "arch_every_m = 0 : aucune arche")
+	_check(_summary(Model.items(plain, plain.segments, 5000.0)) == ["start@0", "arch@5000", "arch@10000", "finish@12000"],
+		"route sans couche : départ, arches, arrivée")
+	_check(_summary(Model.items(plain, plain.segments, 5000.0, false)) == ["arch@5000", "arch@10000"],
+		"monde ouvert (sans portiques du parcours) : seulement les arches")
+	_check(Model.items(plain, plain.segments, 0.0, false).is_empty(), "arch_every_m = 0 : aucune arche")
 	_check(LivingDecor.climbs_of(plain).is_empty(), "décor : détection de climb_detector.gd sans couche")
 	var good := {"version": "1.0", "segments": [
 		{"id": "sprint1", "name": "Sprint", "type": "sprint", "s_start": 4000.0, "s_end": 4400.0, "extra": 1}]}
@@ -141,14 +153,26 @@ func _loop_and_window() -> void:
 		{"id": "sprint1", "name": "Sprint", "type": "sprint", "s_start": 300.0, "s_end": 700.0}]})
 	_check(ok, "boucle : couche lue")
 	var marks: Array = Model.items(loop, loop.segments, 0.0)
-	_check(_summary(marks) == ["panel@100", "start@300", "finish@700", "panel@4300", "panel@4800"],
-		"boucle : panneaux d'approche au tour précédent (%s)" % str(_summary(marks)))
+	_check(_summary(marks) == ["start@0", "panel@100", "start@300", "finish@700", "panel@4300", "panel@4800"],
+		"boucle : ligne et panneaux d'approche au tour précédent (%s)" % str(_summary(marks)))
+	_check(marks[0]["style"] == "route_line" and marks[0]["lines"] == ["Départ · Arrivée"],
+		"boucle : une seule ligne de départ et d'arrivée")
+	_check(Model.gate_jingles(marks) == [{"s": 0.0, "jingle": "jingle_lap"}, {"s": 300.0, "jingle": "jingle_start"}],
+		"boucle : la ligne sonne à chaque tour, le départ du sprint aussi")
+	var merged = ClimbTest.make_route(5000.0, Callable(self, "_flat"))
+	merged.type = "loop"
+	merged.load_segments_dict({"version": "1.0", "segments": [
+		{"id": "s1", "name": "Sprint final", "type": "sprint", "s_start": 4700.0, "s_end": 4990.0}]})
+	var m2: Array = Model.items(merged, merged.segments, 0.0)
+	_check(_summary(m2).count("start@0") == 1 and not _summary(m2).has("finish@4990")
+		and m2[0]["lines"] == ["Départ · Arrivée", "Sprint final"],
+		"boucle : sprint qui finit sur la ligne fondu avec elle (%s)" % str(_summary(m2)))
 	var starts := Model.starts(marks)
 	var seen := []
 	for i in Model.window(starts, 4900.0, 5000.0, true):
 		seen.append(_summary([marks[i]])[0])
 	seen.sort()
-	_check(seen == ["panel@100", "start@300"], "fenêtre à cheval sur la ligne (%s)" % str(seen))
+	_check(seen == ["panel@100", "start@0", "start@300"], "fenêtre à cheval sur la ligne (%s)" % str(seen))
 	var open_seen := Model.window(starts, 4700.0, 5000.0, false)
 	_check(open_seen.size() == 1 and marks[open_seen[0]]["s"] == 4800.0,
 		"parcours ouvert : pas de retour au départ (%s)" % str(open_seen))

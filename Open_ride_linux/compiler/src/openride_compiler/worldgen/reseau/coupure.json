@@ -1,0 +1,4 @@
+{
+  "description": "Coupure de 12 s en pleine séance (8 min simulées), quand le cycliste a besoin de nouvelles tuiles, puis retour du réseau.",
+  "serveur": {"latence_s": 0.05, "coupure_s": [10, 22]}
+}

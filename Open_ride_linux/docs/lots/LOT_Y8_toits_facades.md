@@ -91,3 +91,16 @@ Préréglages : le faux relief est coupé en `low` (`BuildingMesh.RELIEF`) ; fen
 - **Barrières et glissières** : le monde n'en a pas encore ; elles prendront ce shader quand un lot les ajoutera.
 - **Coût** : aucune géométrie ajoutée (vues `panneaux`, `eolienne`, `eolienne_pied` de la vitrine : mêmes triangles et appels de dessin) ; ces objets couvrent peu de pixels.
 - **Tests** : `engine/tests/render/test_props_render.gd` (points parasites, liseré du panneau, poteau galvanisé, pied de borne sali, dégradé du mât).
+
+## 10. Retouche du 29 octobre : portes, panneaux et bornes
+
+Demande du propriétaire (29/10) : « améliorer le design des portes, panneaux et bornes kilométriques ».
+
+- **Portes des maisons** (`building.gdshader`, `house_door`) : encadrement de pierre en harpes avec linteau et clé, seuil de pierre sombre, cadre dormant, imposte vitrée en éventail, vantail à panneaux moulurés (en relief), vitré en partie haute ou à lames verticales avec pentures noires (portes rurales), plaque de propreté, poignée et serrure. La travée de la porte n'a plus ni volets ni morceaux de fenêtre autour (défaut d'avant). Relief des ouvertures transmis au faux relief (`open_h`), coupé en `low` comme le reste.
+- **Panneaux** (`roadside_props.gd`) : plaque de tôle à coins arrondis construite par code, **dimensionnée d'après le texte** (avant, « Sommet à 3 km » et « Pente moyenne 7 % » débordaient du panneau d'approche), lettres de 32 cm (col : lisible à 25 m, 6 pixels sur 720 lignes au moins, contrôle de `visual_check.py`) et 20 cm (approche), 12 cm au moins, plaque de 3,2 m au plus ; deux poteaux au-delà de 1,3 m de large, colliers de fixation, poteaux derrière la plaque ; deux raidisseurs au dos. Un maillage par taille de plaque (pas de 5 cm), partagé.
+- **Bornes** : forme de la borne française, socle de béton, fût blanc, tête en demi-cercle peinte en rouge et filet noir ; « km » en blanc sur la tête, le numéro en noir sur le fût. Un seul maillage et un seul appel de dessin pour la pierre (avant : fût et tête séparés).
+- **Shader** `props.gdshader` : matières renumérotées sans trou (0 panneau, 1 poteaux, 2 borne avec sa tête, 3 mât, 4 nacelle, 5 pale ; `wind_turbines.gd` suit) ; les maillages construits par code portent leurs dimensions en UV2, `size_m` reste pour les maillages primitifs.
+- **Portes du couloir Cyber-Rogue** (`rogue_corridor_view.gd`) : portails cintrés à la couleur de l'ennemi de l'archétype (catalogue R17), côté, nom de l'archétype et ce qui attend le joueur (« Paliers de montée »…), halo sur la porte choisie ; bloc calé en bas qui grandit vers le haut : les portes et la relance ne sont plus coupées (constat X41 en 720p, aussi en 1024 × 600). Couleurs des cartes lues dans le catalogue R17 (mêmes teintes, plus de couleurs écrites en dur).
+- **Captures** : `vitrine_rendu.gd` (options `--size` et `--views`, vues `panneau_col`, `borne`, `portes` ; textes réels de `roadside_model.gd`) et `engine/tests/vitrine_couloir.gd` (nouvelle : écran du couloir par focus, échec si un bloc sort de l'écran).
+- **Coût** : vue `panneaux` 87 appels de dessin au lieu de 88 et +436 triangles ; bornes : un maillage de moins par borne (pierre d’un seul tenant), un texte de plus (« km »). Portes : calcul seulement sur les pixels de la porte. Images/s à mesurer en `medium` sur la GTX 1060 (file des mesures).
+

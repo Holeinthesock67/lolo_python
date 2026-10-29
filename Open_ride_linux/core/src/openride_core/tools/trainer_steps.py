@@ -10,6 +10,7 @@ le cycliste, et mesure pour chaque palier :
     python -m openride_core.tools.trainer_steps --mode sim               # vrai trainer
     python -m openride_core.tools.trainer_steps --mode erg --cadence 85
     python -m openride_core.tools.trainer_steps --trainer sim --mode sim --fast   # Bluetooth simulé
+    python -m openride_core.tools.trainer_steps --trainer sim --response realiste --mode erg_paliers
     python -m openride_core.tools.trainer_steps --analyse DOSSIER        # relit samples.csv
     python -m openride_core.tools.trainer_steps --materiel               # matériel à préparer
 
@@ -20,6 +21,12 @@ bip à chaque palier. Le journal de l'essai (`guide.jsonl`) est écrit avec les 
 Sortie dans `~/OpenRide/trainer_steps/<date>_<heure>/` : `samples.csv` (chaque trame Indoor
 Bike Data), `events.csv` (consignes, écritures, accusés), `steps.csv` (résultats par palier) et
 `rapport.html` (courbes). Le trainer est relâché à la fin (Reset, comme en séance).
+
+Trainer simulé réaliste (lot X6) : `--response realiste` (frein à retard pur, serrage et relâchement,
+volant d'inertie ; `--calibration steps.csv` d'un essai réel pour reprendre ses valeurs) ; le banc compare
+alors chaque t63 mesuré à celui du modèle (retard + constante de temps), à ± 20 %. Protocoles en plus de
+`sim` et `erg` : `marche_pente` (0 → 7 → 0 %), `erg_paliers` (150 → 250 → 150 W) et `rogue_fenetres`
+(consignes de 1,5 s, fenêtres du mode Cyber-Rogue).
 """
 
 from __future__ import annotations
@@ -50,7 +57,13 @@ PROTOCOLS: dict[str, list[tuple[str, float, float]]] = {
             ("sim", 8.0, 30), ("sim", 0.0, 40)],
     "erg": [("erg", 150.0, 60), ("erg", 250.0, 30), ("erg", 150.0, 30), ("erg", 300.0, 30),
             ("erg", 150.0, 40)],
+    # Lot X6 : marches simples pour le trainer simulé réaliste, et fenêtres de 1,5 s (série R).
+    "marche_pente": [("sim", 0.0, 30), ("sim", 7.0, 30), ("sim", 0.0, 40)],
+    "erg_paliers": [("erg", 150.0, 30), ("erg", 250.0, 30), ("erg", 150.0, 40)],
+    "rogue_fenetres": [("sim", 0.0, 20), ("sim", 6.0, 1.5), ("sim", 0.0, 1.5), ("sim", 6.0, 1.5),
+                       ("sim", 0.0, 1.5), ("sim", 6.0, 1.5), ("sim", 0.0, 20)],
 }
+MODEL_TOL = 0.20        # t63 du trainer simulé réaliste : à ± 20 % du modèle (lot X6)
 BASELINE_S = 5.0        # fenêtre de la valeur de départ, juste avant la consigne
 FINAL_S = 5.0           # fenêtre de la valeur finale, fin du palier
 SETTLE_PCT = 10.0       # stable : à ± 10 % du changement de puissance…
@@ -369,7 +382,7 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
     return rec
 
 
-def load_protocol(name_or_path: str, fast: bool = False) -> list[Step]:
+def load_protocol(name_or_path: str, fast: bool = False, fast_hold_s: float = 6.0) -> list[Step]:
     if name_or_path in PROTOCOLS:
         raw = [{"mode": m, "value": v, "hold_s": h} for m, v, h in PROTOCOLS[name_or_path]]
     else:
@@ -378,9 +391,28 @@ def load_protocol(name_or_path: str, fast: bool = False) -> list[Step]:
     for s in steps:
         if s.mode not in ("sim", "erg") or s.hold_s <= 0:
             raise ValueError(f"palier invalide : {s}")
-    if fast:   # essai rapide (Bluetooth simulé) : paliers de 6 s au plus
-        steps = [Step(s.mode, s.value, min(s.hold_s, 8.0 if i == 0 else 6.0)) for i, s in enumerate(steps)]
+    if fast:   # essai rapide (Bluetooth simulé) : paliers de `fast_hold_s` (6 s) au plus
+        steps = [Step(s.mode, s.value, min(s.hold_s, max(8.0, fast_hold_s) if i == 0 else fast_hold_s))
+                 for i, s in enumerate(steps)]
     return steps
+
+
+def model_checks(results: list[StepResult], model: Any, frame_s: float = 0.25) -> list[tuple[bool, str]]:
+    """t63 mesuré contre le modèle du trainer simulé réaliste (lot X6), à ± MODEL_TOL : écriture de la
+    consigne, retard du frein, constante de temps de serrage (puissance qui monte) ou de relâchement (qui
+    baisse), plus une trame (`frame_s`) de retard de la moyenne glissante sur 3 trames de l'analyse.
+    L'écart admis ne descend pas sous deux trames : le départ et le franchissement sont chacun lus à une
+    trame près (paliers courts des tests). Paliers sans t63 ignorés."""
+    out = []
+    for r in results:
+        if r.t63_s is None or r.delta_w is None:
+            continue
+        want = ((r.write_ms or 0.0) / 1000.0 + frame_s + model.delay_s
+                + (model.tau_up_s if r.delta_w > 0 else model.tau_down_s))
+        gap = (r.t63_s - want) / want
+        out.append((abs(r.t63_s - want) <= max(MODEL_TOL * want, 2 * frame_s), f"palier {r.index} ({step_label(Step(r.mode, r.value, 0))}) : t63 "
+                    f"{r.t63_s:g} s, modèle {want:.2f} s ({gap * 100:+.0f} %)"))
+    return out
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -390,6 +422,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ap.add_argument("--cadence", type=float, default=85.0, help="cadence à tenir, rappelée à l'écran")
     ap.add_argument("--fast", action="store_true", help="paliers courts (essai du banc)")
+    ap.add_argument("--response", choices=("instant", "realiste"), default="instant",
+                    help="réponse du trainer simulé (--trainer sim, lot X6)")
+    ap.add_argument("--calibration", type=Path, help="steps.csv d'un essai réel : valeurs du modèle réaliste")
     ap.add_argument("--out", type=Path, help="dossier de sortie")
     ap.add_argument("--analyse", type=Path, metavar="DOSSIER", help="relit un essai et refait l'analyse")
     ap.add_argument("--materiel", action="store_true", help="affiche le matériel à préparer et quitte")
@@ -409,15 +444,27 @@ def main(argv: list[str] | None = None) -> int:
         out = args.analyse
     else:
         try:
-            steps = load_protocol(args.mode, args.fast)
+            # Trainer simulé réaliste : relâchement à 90 % vers 12 s, paliers rapides de 20 s.
+            realiste = args.trainer == "sim" and (args.response == "realiste" or args.calibration is not None)
+            steps = load_protocol(args.mode, args.fast, 20.0 if realiste else 6.0)
         except (OSError, ValueError, KeyError) as exc:
             print(f"Protocole illisible : {exc}", file=sys.stderr)
             return 2
         cfg = config.load(args.config) if args.config else config.load()
         world = None
         if args.trainer == "sim":
-            from ..sim_scenarios import build_world, load_scenario
-            world = build_world(load_scenario("nominal"), "nominal", click=False, hr=False)
+            from ..sim_scenarios import SimScenarioError, build_world, load_scenario
+            spec = load_scenario("nominal")
+            if realiste:
+                # Le protocole demande de tenir la cadence quoi qu'il arrive : pas de limite de puissance.
+                spec["trainer"].update({"response": "realiste", "rider_max_w": 2000})
+                if args.calibration:
+                    spec["trainer"]["calibration"] = str(args.calibration)
+            try:
+                world = build_world(spec, "nominal", click=False, hr=False)
+            except SimScenarioError as exc:
+                print(f"Trainer simulé : {exc}", file=sys.stderr)
+                return 2
         out = args.out or DEFAULT_OUT / datetime.now().strftime("%Y-%m-%d_%H%M%S")
         guide = Guide(f"Banc de latence du trainer ({args.mode})", out / "guide.jsonl",
                       sound=False if args.muet else None)
@@ -441,6 +488,12 @@ def main(argv: list[str] | None = None) -> int:
     results = analyse(rec)
     print(write_results(results, out), end="")
     print(f"Rapport : {write_report(rec, results, out)}")
+    model = getattr(getattr(world, "trainer", None), "model", None) if not args.analyse else None
+    if model is not None:
+        checks = model_checks(results, model, 1.0 / world.trainer.ibd_hz)
+        for ok, msg in checks:
+            print(f"[{'OK' if ok else 'ÉCHEC'}] {msg}")
+        return 0 if all(ok for ok, _ in checks) else 1
     return 0
 
 

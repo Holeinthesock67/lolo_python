@@ -12,9 +12,12 @@ Sortes de lignes :
   champ facultatif `plan` = `{"id": ..., "week": n, "day": "mardi"}` quand la séance réalise une
   séance d'un plan d'entraînement actif (lot O11), absent sinon ;
   champ facultatif `loadout` = `{"frame": ..., "wheels": ..., "mass_delta_kg": ..., "cda_delta_pct": ...}`
-  (équipement du cadre et des roues, lot V11) ;
+  (équipement du cadre et des roues, lot V11), `null` pour une run Cyber-Rogue où il ne
+  s'applique pas (lot V5) ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
-- `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ;
+- `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ; une pause porte
+  aussi sa raison, `"reason": "user" | "trainer_lost" | "engine_lost" | ...` (champ facultatif, absent
+  des journaux antérieurs au 28 octobre 2026), lue par le chronométrage des segments ;
 - `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un
   plantage reprend la séance dans le même fichier (lot N8) ; ce n'est pas un événement du
   chronomètre : les lectures du chronomètre et le FIT ne gardent que `TIMER_EVENTS` ;
@@ -128,10 +131,13 @@ class JournalWriter:
     def record(self, rec: Record) -> None:
         self._write(record_line(rec))
 
-    def event(self, name: str, ts: float) -> None:
+    def event(self, name: str, ts: float, reason: str | None = None) -> None:
         if name not in EVENTS:
             raise ValueError(f"événement inconnu : {name}")
-        self._write({"kind": "event", "event": name, "ts": ts})
+        line = {"kind": "event", "event": name, "ts": ts}
+        if reason:
+            line["reason"] = reason
+        self._write(line)
 
     def device(self, device: str, state: str, ts: float) -> None:
         """Changement d'état d'un appareil (coupure ou retour), lot M4."""
