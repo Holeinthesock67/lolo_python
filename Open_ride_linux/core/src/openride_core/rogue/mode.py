@@ -32,6 +32,7 @@ FIGHT_PHASES = ("ROOM", "BOSS")
 GEAR_BUTTONS = ("PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG")
 GAME_BUTTONS = ("Z_SHORT", "Z_LONG", "A_SHORT", "A_LONG")
 KEPT_MESSAGES = 12                      # messages `room` et `loot` gardés pour `rogue_resync`
+JOURNAL_ROUTE_ID = "rogue"              # parcours inscrit au journal d'une run (la trame `state` porte route_id null)
 RESULTS_HOLD_S = 3.0                    # phase RESULTS montée à l'engine (jingle de fin) avant FINISHED et le bilan
 
 
