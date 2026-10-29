@@ -22,7 +22,7 @@ extends Node
 ## (moteur grave), joués par les lecteurs 3D de traffic_renderer.gd (`stream(kind)`) ; remplaçables par
 ## ~/OpenRide/Sounds/<kind>.ogg. Lot P15 : `crowd_cheer` (clameur et applaudissements) pour crowd_renderer.gd.
 ## Lot P26 : `helicopter_rotor` (battement des pales) et `airliner_rumble` (grondement lointain), joués par
-## sky_traffic_renderer.gd. Lot P29 : `barge_engine` (diesel lent d'une péniche) et `ship_horn` (corne de
+## sky_traffic_renderer.gd ; lot P31 : `paramotor_buzz` (bourdonnement d'un paramoteur). Lot P29 : `barge_engine` (diesel lent d'une péniche) et `ship_horn` (corne de
 ## brume, jouée une fois), joués par boat_renderer.gd.
 ##
 ## Lot P21 : quatre sons brefs, non bouclés, des passants (`VOICE_KINDS` : « Allez ! », « Bonjour ! »,
@@ -57,7 +57,7 @@ const ONE_SHOT_KINDS := ["ship_horn", "church_bell"]   # sons joués une fois (P
 const ONE_SHOT_TAIL_S := 0.03
 ## Coefficient du passe-bas du bruit de chaque son en boucle qui en contient un (bruit périodique, sans clic).
 const NOISE_LOWPASS := {"vehicle_pass": 0.08, "crowd_cheer": 0.15, "helicopter_rotor": 0.25, "airliner_rumble": 0.02,
-	"barge_engine": 0.05}
+	"paramotor_buzz": 0.3, "barge_engine": 0.05}
 ## Coups de la sonnaille sur la boucle d'une seconde : [instant s, force], irréguliers pour ne pas battre la mesure.
 const LIVESTOCK_STRIKES := [[0.0, 1.0], [0.29, 0.55], [0.71, 0.8]]
 const FREEWHEEL_LOOP_CLICKS := 140.0   # coups par seconde de la boucle à pitch_scale = 1 (≈ 30 km/h)
@@ -305,7 +305,7 @@ func update_bells(hour: float, now_s: float) -> void:
 
 func _generate_all_streams() -> void:
 	var kinds := ["wind", "freewheel", "church_bell", "river", "livestock", "village", "vehicle_pass", "tractor_engine", "crowd_cheer",
-		"helicopter_rotor", "airliner_rumble", "barge_engine", "ship_horn"]
+		"helicopter_rotor", "airliner_rumble", "paramotor_buzz", "barge_engine", "ship_horn"]
 	for k in kinds:
 		var custom_stream = _try_load_custom(k)
 		if custom_stream != null:
@@ -404,6 +404,11 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 			"airliner_rumble":
 				# Lot P26 : grondement lointain d'un avion de ligne (bruit très filtré qui ondule lentement)
 				sample = lp[i] * 5.0 * (0.8 + 0.2 * sin(TAU * t))
+			"paramotor_buzz":
+				# Lot P31 : bourdonnement d'un paramoteur (deux-temps à 120 Hz et harmoniques, explosions à 60 Hz
+				# dans un souffle d'hélice), nombres entiers de périodes sur la boucle
+				var fire := pow(0.5 + 0.5 * cos(TAU * 60.0 * t), 4.0)
+				sample = sin(TAU * 120.0 * t) * 0.22 + sin(TAU * 240.0 * t) * 0.16 + sin(TAU * 360.0 * t) * 0.08 + lp[i] * (0.2 + 0.6 * fire)
 			"barge_engine":
 				# Lot P29 : diesel lent d'une péniche (22 Hz et harmoniques, battement des cylindres à 5 Hz)
 				var beat := 0.7 + 0.3 * pow(0.5 + 0.5 * sin(TAU * 5.0 * t), 2.0)
