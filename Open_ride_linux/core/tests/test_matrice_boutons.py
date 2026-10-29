@@ -49,6 +49,24 @@ def test_every_button_in_every_phase_follows_the_plan(modes):
         assert {"échauffement", "salle", "couloir, carte choisie", "boss", "retour au calme", "résultats"} <= phases
 
 
+def test_free_session_erg_keeps_the_sim_buttons_but_plus_minus_b():
+    """Propriétaire, 29/10 : en session libre avec l'ERG, tous les boutons gardent leur fonction, sauf +, − et B
+    (B = « − ») qui changent la cible. En ERG à cadence verrouillée, ± change la cadence cible (lot O18)."""
+    rep = tool.run("boutons", ("sim",))
+    assert not failed(rep), failed(rep)
+    by = {(c.phase, c.event, c.source): c for c in rep.cells}
+    changed = {"PLUS_SHORT", "PLUS_LONG", "MINUS_SHORT", "MINUS_LONG"}
+    for erg in ("ERG libre", "ERG à cadence verrouillée"):
+        cells = [c for c in rep.cells if c.phase == erg]
+        assert len(cells) == len([c for c in rep.cells if c.phase == "en route"])
+        for c in cells:
+            sim = by[("en route", c.event, c.source)]
+            if c.event in changed:
+                assert "Biais" in c.plan and "Braquet" in sim.plan, c
+            else:
+                assert c.plan == sim.plan, c                 # Z reste le bonus, pas « bloc suivant »
+
+
 def test_every_setting_in_every_phase():
     rep = tool.run("reglages")
     assert len(rep.settings) == 6 * len(tool.settings_mod.SETTINGS)

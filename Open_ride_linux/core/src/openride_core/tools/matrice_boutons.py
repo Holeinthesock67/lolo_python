@@ -53,6 +53,7 @@ from unittest import mock
 from .. import fit_export
 from .. import settings as settings_mod
 from ..config import Config
+from ..free_erg import FreeErg
 from ..input_providers import NullProvider
 from ..mock_driver import MockDriver
 from ..session import CoreSession
@@ -375,6 +376,14 @@ def phases_sim(h: Harness) -> Iterator[Phase]:
     h.cmd(s, "start")
     h.run(s, 20.0)
     yield Phase("SIM", "en route", s)
+    for mode, name in (("erg", "ERG libre"), ("cadence", "ERG à cadence verrouillée")):   # lot O18
+        e = h.fork(s)
+        h.cmd(e, "set_ride_mode", {"mode": mode})
+        yield Phase("SIM", name, e)
+        if e.race is not None and mode == "erg":
+            b = h.fork(e)
+            b.race.powerups.reserve = next(iter(b.race.powerups.table.specs))
+            yield Phase("SIM", "ERG libre, bonus en réserve", b)
     if s.race is not None:
         b = h.fork(s)
         b.race.powerups.reserve = next(iter(b.race.powerups.table.specs))
@@ -502,7 +511,7 @@ def observe(s: CoreSession) -> dict[str, Any]:
     rg = s.rogue
     o: dict[str, Any] = {
         "séance": s.state.session_state, "mode": s.state.mode, "braquet": s.state.gear,
-        "biais": erg.bias_pct if erg else None, "bloc": erg.index if erg else None,
+        "biais": erg.bias_pct if erg else None, "bloc": getattr(erg, "index", None) if erg else None,
         "bonus actif": race.powerups.active if race else None,
         "bonus en réserve": race.powerups.reserve if race else None,
     }
@@ -573,7 +582,10 @@ def check(h: Harness, ph: Phase, ev: InputEvent, plan: dict, keys: list[str] | N
     # §7.1), sinon le mode que la séance annonce.
     column = ("MONDE" if ph.mode == "MONDE" else "ERG" if s.erg is not None else s.state.mode) if running else "MENU"
     freeride = s.erg is not None and s.erg.is_freeride
-    text, sign = plan[(ev, column)]
+    # ERG d'une session libre (lot O18) : colonne ERG, sauf Z, qui garde son rôle de la colonne SIM (§7.1).
+    plan_column = "SIM" if running and isinstance(s.erg, FreeErg) and ev in (InputEvent.Z_SHORT, InputEvent.Z_LONG) \
+        else column
+    text, sign = plan[(ev, plan_column)]
     exp = expect_of(text, sign, column, freeride)
     if exp is None and text.lower().startswith("comme le mode roulé"):
         text, sign = plan[(ev, ph.session.state.mode if ph.session.state.mode in ("SIM", "ERG") else "SIM")]

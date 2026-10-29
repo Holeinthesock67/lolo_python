@@ -33,7 +33,7 @@ La vraie séance du core est amenée à chaque phase de chaque mode, sans traine
 
 | Mode | Phases |
 | --- | --- |
-| Classique SIM | prêt, en route, bonus en réserve, pause, bilan |
+| Classique SIM | prêt, en route, bonus en réserve, ERG libre, ERG libre avec bonus en réserve, ERG à cadence verrouillée, pause, bilan |
 | ERG | prêt, bloc, pause, roue libre, dernier bloc, fin de l'entraînement, bilan |
 | Cyber-Rogue | prêt, échauffement, salle, pause, couloir sans carte choisie, couloir avec carte choisie, boss, retour au calme, résultats, bilan |
 | Monde ouvert | prêt, en route, carrefour proposé, pause |
@@ -47,6 +47,7 @@ Le monde ouvert utilise la doublure du générateur des tests du lot W9.
 
 **Choix de la colonne :**
 - En séance, la colonne est celle du mode roulé : monde ouvert, ERG tant qu'un entraînement est en cours, sinon le mode annoncé.
+- ERG d'une session libre (lot O18, ERG libre ou à cadence verrouillée) : colonne ERG, sauf Z, qui garde la case de la colonne SIM. Le propriétaire l'a redit le 29 octobre : « En mode libre si la fonction ERG est activée tous les boutons ont la même fonction. Sauf +, − et B qui changent la cible de résistance. » Un test compare donc chaque bouton de ces phases à « en route » en SIM : seuls + et − (B compris) changent, du braquet au biais. En cadence verrouillée, le biais porte sur la cadence cible.
 - Hors séance (prêt, pause, bilan), l'écran est un menu de l'engine. Le core doit alors relayer l'appui sans rien changer. Les menus eux-mêmes sont vérifiés par `menu_bench`.
 
 **Effets vérifiés :**
@@ -172,15 +173,16 @@ Il annonce pourtant le mode SIM. La règle est ajoutée au §7.1, en attente de 
 
 ### Mesuré au cloud
 
-- 849 cases, toutes conformes, en 5 s :
-  - 390 appuis du Click et 225 du clavier sur 26 phases ;
+- 945 cases, toutes conformes, en 5 s :
+  - 435 appuis du Click et 270 du clavier sur 29 phases ;
   - 55 cas du plan du clavier comparés à `key_map.gd` ;
-  - 47 secours du boîtier gauche ;
+  - 53 secours du boîtier gauche ;
   - 132 réglages.
-- Tests : `core/tests/test_matrice_boutons.py`, 12 tests :
+- Tests : `core/tests/test_matrice_boutons.py`, 13 tests :
   - lecture du plan ;
   - plan illisible ;
   - boutons des quatre modes ;
+  - ERG d'une session libre : boutons de SIM sauf + et − ;
   - réglages ;
   - les trois défauts rejoués ;
   - plan du clavier et écarts de `key_map.gd` ;
