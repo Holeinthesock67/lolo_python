@@ -122,7 +122,7 @@ Mêmes définitions que `openride-core summary` (lot K7). Chaque champ vaut `nul
 
 | Clé | Contenu |
 | --- | --- |
-| `trainer` | `{status, name, address}` : `status` reprend `trainer_status` ; `name` (nom annoncé) et `address` sont des chaînes ou `null` |
+| `trainer` | `{status, name, address, busy}` : `status` reprend `trainer_status` ; `name` (nom annoncé) et `address` sont des chaînes ou `null` ; `busy` (booléen, facultatif, révision 1.5) est vrai quand le Control Point refuse les consignes parce qu'il est occupé (ATT 0x80 ou 0xFE, autre appareil sur le trainer, une montre par exemple) : liaison gardée, consigne réessayée, l'engine affiche « Trainer piloté par un autre appareil » |
 | `click` | Liste de `{side, status, battery_pct}` : `side` vaut `plus`, `minus` ou `single` ; `status` vaut `CONNECTED`, `SEARCHING` ou `LOST` ; `battery_pct` est un entier de 0 à 100 ou `null`. Liste vide sans Click configuré |
 | `hr` | `{status, source, battery_pct}` : `status` vaut `CONNECTED`, `SEARCHING`, `LOST` ou `NONE` ; `source` vaut `strap`, `trainer` ou `null` |
 
@@ -497,3 +497,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot T13, équilibrage des bots à profil) : champ facultatif `level_pct` de l'élément `{ "kind": "profile" }` de `start.bots` (50 à 150 % de la FTP ; sans lui, le réglage `bots.level_pct`, « Niveau des bots ») ; hors bornes : `bot_invalid`. CP et masse calibrées publiées dans `cp_w` et `mass_kg` de la trame, sans nouveau champ |
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot O18, ERG d'une session libre, demande du propriétaire du 28 octobre) : commande `set_ride_mode` ; champs facultatifs `kind`, `cadence_target_rpm`, `cadence_low_rpm`, `cadence_high_rpm` et `cadence_zone` de l'objet `erg` |
 | 1 (révision 1.5) | 29 octobre 2026 | Ajout compatible (jauge d'abri, demande du propriétaire du 29 octobre) : réglage `render.draft_gauge` (`off` ou `on`, `applies` = `now`, coupé par défaut) dans `settings` ; l'engine affiche alors au-dessus du bot `draft_bot` une jauge remplie selon `draft` ; aucun champ nouveau dans `state` |
+| 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (décrochages du trainer de la séance A) : champ facultatif `busy` de `devices.trainer`, vrai tant que le Control Point est occupé par un autre appareil ; la séance n'est pas mise en pause tant que les mesures arrivent |

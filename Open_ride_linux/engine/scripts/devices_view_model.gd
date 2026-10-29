@@ -26,6 +26,15 @@ static func _text(v) -> String:
 	return "" if v == null else str(v)
 
 
+const TRAINER_BUSY_TEXT := "Trainer piloté par un autre appareil (montre ?) : consignes en attente"
+
+
+## Vrai quand le core signale un Control Point occupé (`devices.trainer.busy`, révision 1.5) :
+## un autre appareil (montre Garmin…) pilote le trainer, la liaison est gardée.
+static func trainer_busy(state: Dictionary) -> bool:
+	return _dict(_dict(state.get("devices")).get("trainer")).get("busy", false) == true
+
+
 ## Formate les lignes d'état des appareils à partir d'une trame state.
 ## Renvoie une liste de dictionnaires : {id, label, status_text, level}.
 func rows(state: Dictionary) -> Array:

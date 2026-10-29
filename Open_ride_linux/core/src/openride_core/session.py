@@ -1431,6 +1431,8 @@ class CoreSession:
             "status": trainer_st,
             "name": str(trainer_name) if trainer_name else None,
             "address": str(trainer_addr) if trainer_addr else None,
+            # Control Point occupé (autre appareil sur le trainer) : bandeau de l'engine
+            "busy": bool(getattr(self.driver, "busy", False)),
         }
 
         clicks: list[dict[str, Any]] = []

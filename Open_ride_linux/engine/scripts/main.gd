@@ -9,6 +9,7 @@ const CameraFollowScript := preload("res://scripts/camera_follow.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 const EngineArgs := preload("res://scripts/engine_args.gd")
+const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const AnimClock := preload("res://scripts/anim_clock.gd")
 const RenderQuality := preload("res://scripts/render_quality.gd")
 const DisplayMode := preload("res://scripts/display_mode.gd")
@@ -1394,6 +1395,10 @@ func _on_state_received(state: Dictionary) -> void:
 		print("Premier état reçu du core : ", state.get("session_state", "?"), " trainer=", state.get("trainer_status", "?"))
 	banner.clear_message("shutdown")
 	_last_state = menu_flow.with_devices(state)
+	if DevicesViewModel.trainer_busy(_last_state):
+		banner.show_message("trainer_busy", DevicesViewModel.TRAINER_BUSY_TEXT)
+	else:
+		banner.clear_message("trainer_busy")
 	_check_latency(state)
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
