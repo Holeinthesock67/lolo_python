@@ -3,7 +3,8 @@ extends SceneTree
 ## Tests sans écran du thème commun des menus (lot « présentation des menus », étape 1) : jetons et
 ## contrastes de `ui_theme.gd`, aide des boutons (`button_help.gd`) fidèle au plan des boutons §7.1,
 ## pictogrammes (`ui_icons.gd`), menu plein écran (`menu_view.gd`) avec l'accueil entier, la sélection,
-## les éléments désactivés et la carte de détail, aucune couleur écrite en dur dans les vues des menus ;
+## les éléments désactivés et la carte de détail, table des couleurs de données (couleurs en dur :
+## test_theme_colors.gd) ;
 ## étape 2 : fiches de la carte (catalog_model.route_sheet, workout_sheet), carte selon l'écran
 ## (menu_flow.card), carte affichée (detail_card.gd : tuiles, graphique, lignes).
 ## Les hauteurs ne se vérifient pas ici (métriques de police fausses sans écran) : tests graphiques.
@@ -280,17 +281,8 @@ func _test_settings() -> void:
 	v.free()
 
 
-func _test_no_literal_colors() -> void:
-	var re := RegEx.create_from_string("Color\\(\\s*[0-9.]")
-	var found: Array = []
-	for path in ["res://scripts/menu_view.gd", "res://scripts/devices_view.gd", "res://scripts/summary_view.gd",
-			"res://scripts/button_bar.gd", "res://scripts/detail_card.gd", "res://scripts/hud_view.gd",
-			"res://scripts/erg_view.gd", "res://scripts/workout_chart_view.gd", "res://scripts/junction_view.gd",
-			"res://scripts/world_menu_view.gd", "res://scripts/banner.gd"]:
-		var src := FileAccess.get_file_as_string(path)
-		if re.search(src) != null:
-			found.append(path.get_file())
-	_check(found.is_empty(), "vues des menus, du HUD, des courbes et du globe sans couleur écrite en dur (ui_theme.gd) %s" % str(found))
+func _test_theme_data() -> void:
+	# Couleurs écrites en dur : test_theme_colors.gd (lot X38).
 	# Table des couleurs de données (étape 4) : toutes des couleurs, zones de Coggan distinctes, les vues la lisent.
 	var bad: Array = []
 	for k in UiTheme.DATA:
@@ -316,6 +308,6 @@ func _initialize() -> void:
 	_test_view()
 	_test_cards()
 	_test_settings()
-	_test_no_literal_colors()
+	_test_theme_data()
 	print("test_menu_style : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

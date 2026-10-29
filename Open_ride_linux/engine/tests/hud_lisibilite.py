@@ -9,7 +9,8 @@ et `pixel(x, y)` → (r, g, b) (l'`Image` de visual_check.py).
 - **Contraste** texte/fond mesuré dans la capture, au sens des WCAG 2 : au moins 4,5:1 pour les valeurs,
   3:1 pour les étiquettes (libellés des métriques, encart des bots, blocs segment et bonus, vent).
 - **Débordements** : panneaux du HUD dans l'écran et sans chevauchement entre eux (colonnes, vent, abri,
-  blocs segment et bonus, encart des bots, profil d'altitude).
+  blocs segment et bonus, encart des bots, profil d'altitude) ; libellés et valeurs des colonnes gauche et
+  droite dans leur colonne (cible ERG longue « 152 W (98 %) »).
 
 Chaque fonction `*_checks` rend une liste de (nom, réussi, détail) ; `visual_check.py --lisibilite` les
 range dans son rapport. Bibliothèque standard seulement.
@@ -31,6 +32,10 @@ LABELS = ("power_caption", "speed_caption", "cadence_caption", "hr_caption", "gr
 # des panneaux seulement).
 PANELS = ("panel_left", "panel_right", "panel", "wind", "draft", "segment_panel", "bonus_panel", "bots_panel",
           "profile")
+# Libellés et valeurs de chaque colonne : ils doivent rester dans le rectangle de la colonne.
+COLUMNS = {"panel_left": ("power", "power_caption", "cadence", "cadence_caption", "hr", "hr_caption",
+                          "target", "target_caption"),
+           "panel_right": ("speed", "speed_caption", "grade", "grade_caption", "gear", "distance", "time")}
 TEXT_SHARE = 0.5                  # pixel de texte : au moins la moitié de l'écart entre le fond et le texte
 
 
@@ -119,3 +124,22 @@ def panel_checks(info: dict[str, Any], width: int, height: int,
     pairs = [f"{a}/{b}" for i, a in enumerate(vis) for b in vis[i + 1:] if overlap(w[a]["rect"], w[b]["rect"]) > 1.0]
     return [("panneaux dans l'écran", not outside, "hors écran : " + ", ".join(outside) if outside else f"{len(vis)} panneaux"),
             ("panneaux sans chevauchement", not pairs, ", ".join(pairs))]
+
+
+def column_checks(info: dict[str, Any], columns: dict[str, Iterable[str]] = COLUMNS) -> list[tuple[str, bool, str]]:
+    """Libellés et valeurs visibles des colonnes gauche et droite contenus dans leur colonne."""
+    w = info["widgets"]
+    out: list[tuple[str, bool, str]] = []
+    for panel, keys in columns.items():
+        if panel not in w or not w[panel]["visible"]:
+            continue
+        px, py, pw, ph = w[panel]["rect"]
+        over = []
+        for k in keys:
+            if k not in w or not w[k]["visible"]:
+                continue
+            x, y, kw, kh = w[k]["rect"]
+            if x < px - 0.5 or y < py - 0.5 or x + kw > px + pw + 0.5 or y + kh > py + ph + 0.5:
+                over.append(f"{k} « {w[k]['text']} »")
+        out.append((f"textes dans {panel}", not over, "débordent : " + ", ".join(over) if over else ""))
+    return out
