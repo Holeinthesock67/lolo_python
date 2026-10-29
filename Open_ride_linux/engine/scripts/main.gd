@@ -919,8 +919,9 @@ func _poll_route_job() -> void:
 		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
-	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")))
-	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop())
+	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
+	event_sounds.set_route(arch_every_m, route.length_m, route.is_loop(), SegmentMarkersModel.gate_jingles(segment_markers.marks),
+		not route.live)
 	segment_hud.set_segments(route.segments)
 	menu_flow.records.set_segments(route.segments)
 	_route_profile = {"id": job["id"], "profile": hud.vm.profile(route, 0.0, 0.0, route.length_m, ROUTE_PROFILE_COLUMNS)}
