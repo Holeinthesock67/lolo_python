@@ -435,6 +435,8 @@ master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre
 ambience_pct = 100           # ambiance : fonds, cloches, véhicules, foule, passants
 events_pct = 100             # bips et événements : appuis du Click, bloc ERG, consignes, jingles
+[log]
+latence = false              # journal de latence des appuis du Click, lignes [latence] (lot X7 ; --latence)
 [rogue]
 w_prime_j = 20000.0          # réserve anaérobie W' du mode Cyber-Rogue, 5 000 à 60 000 J (lot R2)
 cp_w = 0.0                   # puissance critique, 0 à 1 000 W ; 0 : la FTP
@@ -449,6 +451,8 @@ La section `[progression]` (lot V11) coupe, avec `enabled = false`, l'équipemen
 La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
 
 La section `[bots]` (lot T13) donne le niveau des bots à profil : `level_pct` (50 à 150, défaut 100) est le pourcentage de ta FTP visé par le calibrage. Au départ de la séance, le core simule le parcours au pas de 0,5 s et ajuste la CP de chaque bot à profil pour qu'il finisse dans le temps d'un cycliste de ta masse roulant à ce niveau. Réglage « Niveau des bots » du menu (clé `bots.level_pct`, pas de 5) ; un bot choisi au menu à 90, 100 ou 110 % garde son propre niveau.
+
+La section `[log]` (lot X7) active avec `latence = true` (ou `openride-core run --latence`) le journal de latence des appuis du Click : une ligne `[latence]` par étage (notification, événement, envoi à l'engine, Control Point) dans le journal du core, et `recu` puis `affiche` dans celui de l'engine ; `openride-core log-report --latence` en fait la statistique (docs/OUTILS_DE_TEST.md). Sans elle, aucune ligne.
 
 La section `[audio]` donne un volume par catégorie de sons (docs/AUDIO.md), de 0 (coupé) à 100 % par pas de 10, réglables dans « Réglages » et appliqués tout de suite par l'engine sur ses bus audio (`Master`, `Ride`, `Ambience`, `Events`).
 

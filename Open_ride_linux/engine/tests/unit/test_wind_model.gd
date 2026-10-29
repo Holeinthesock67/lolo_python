@@ -3,8 +3,8 @@ extends SceneTree
 ## Tests unitaires sans écran du modèle du vent `wind_model.gd` (Lot P4).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_wind_model.gd
 
-const WindModel := preload("res://scripts/wind_model.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
+const WindModel := preload("res://scripts/wind_model.gd")
 
 var _failures := 0
 var _checked := 0
@@ -118,11 +118,11 @@ func _test_apparent() -> void:
 func _test_cost() -> void:
 	var m = WindModel.new()
 	m.on_state(_wind(25.0, 300.0, 2.0, 0.4), 0.0)
-	var t0 := Time.get_ticks_usec()
-	for i in range(10000):
-		m.evaluate(i * 0.0167)
-	var per_call_ms := (Time.get_ticks_usec() - t0) / 1000.0 / 10000.0
-	_check(PerfBudget.check("wind_evaluate", per_call_ms), "evaluate : %.4f ms par appel" % per_call_ms)
+	var st := {"t": 0.0}
+	var cost := PerfBudget.frame_cost(func():
+		m.evaluate(st["t"])
+		st["t"] += 0.0167, 2000, 50)
+	_check(PerfBudget.check("wind_evaluate", cost["median_ms"]), "evaluate : %.4f ms par appel" % cost["median_ms"])
 
 
 func _init() -> void:
