@@ -33,6 +33,7 @@ FORCE_RECONNECT_S = 10.0  # sans donnée au-delà : on coupe et on reconnecte
 RESEND_S = 2.0           # la consigne est renvoyée au moins toutes les 2 s
 MIN_SEND_INTERVAL_S = 0.2
 GRADE_EPSILON_PCT = 0.1
+TRACE_IBD_EVERY_S = 2.0   # avec trace_ftms : une ligne de mesures du trainer toutes les 2 s
 ERG_EPSILON_W = 1.0
 RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (arrêt jamais bloqué)
 CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
@@ -253,6 +254,9 @@ class FtmsDriver:
         self._raw_power = 0.0
         self._power = 0.0
         self._cadence = 0.0
+        self._trainer_speed_kmh: float | None = None
+        self._trainer_resistance: int | None = None
+        self._trace_ibd_at = float("-inf")
         self._hr_ibd: int | None = None
         self._hr_service: int | None = None
         self._hr_relay_val: int | None = None
@@ -397,9 +401,30 @@ class FtmsDriver:
             self._raw_power = max(float(d.power_w), 0.0)
         if d.cadence_rpm is not None:
             self._cadence = d.cadence_rpm
+        if d.speed_kmh is not None:
+            self._trainer_speed_kmh = d.speed_kmh
+        if d.resistance_level is not None:
+            self._trainer_resistance = d.resistance_level
+        self._trace_ibd(self._last_data_at)
         if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
             self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
+
+    def _trace_ibd(self, now: float) -> None:
+        """Avec trace_ftms : ce que le trainer annonce lui-même (vitesse du volant, niveau de
+        résistance) à côté de la consigne envoyée, pour séparer une chute de résistance du trainer
+        d'une consigne trop basse du core (décrochage du 29 octobre, braquet 1 après un sprint)."""
+        if not self.cfg.trace_ftms or now - self._trace_ibd_at < TRACE_IBD_EVERY_S:
+            return
+        self._trace_ibd_at = now
+        sent = self._last_sent
+        want = "aucune" if sent is None else (
+            f"{sent[1]:.0f} W" if sent[0] == "erg" else f"pente {sent[1]:.2f} %")
+        speed = "—" if self._trainer_speed_kmh is None else f"{self._trainer_speed_kmh:.1f} km/h"
+        level = "—" if self._trainer_resistance is None else str(self._trainer_resistance)
+        log.info("FTMS ~ mesures : puissance %.0f W, cadence %.0f tr/min, vitesse du trainer %s, "
+                 "niveau de résistance %s, consigne envoyée %s",
+                 self._raw_power, self._cadence, speed, level, want)
 
     def _on_hr(self, _ch: Any, data: bytearray) -> None:
         try:

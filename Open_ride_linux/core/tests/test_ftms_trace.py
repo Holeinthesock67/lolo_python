@@ -326,3 +326,32 @@ def test_trace_rate_limit_under_2_lines_per_second(caplog):
         assert rate <= 2.0, f"Cadence trop élevée : {rate:.2f} lignes/s ({len(ftms_lines)} lignes en {duration:.2f} s)"
 
     asyncio.run(scenario())
+
+
+# --- 5. Mesures annoncées par le trainer (décrochage du 29 octobre) ---------------------------
+
+def _ibd(speed_kmh: float, cadence_rpm: float, power_w: int, resistance: int | None = None) -> bytes:
+    import struct
+    flags = 0x0004 | 0x0040 | (0x0020 if resistance is not None else 0)
+    out = struct.pack("<HH", flags, round(speed_kmh * 100)) + struct.pack("<H", round(cadence_rpm * 2))
+    if resistance is not None:
+        out += struct.pack("<h", resistance)
+    return out + struct.pack("<h", power_w)
+
+
+@pytest.mark.parametrize("trace, lines", [(True, 2), (False, 0)])
+def test_trace_logs_trainer_measures_every_two_seconds(caplog, trace, lines):
+    """Avec trace_ftms : vitesse et niveau de résistance du trainer à côté de la consigne, 2 s d'écart."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(trace_ftms=trace), BikeConfig(), clock=lambda: now[0])
+    drv._last_sent = ("sim", 0.68)
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        for t, power, level in [(0.0, 318, 40), (0.5, 300, 40), (1.9, 120, 38), (2.1, 27, 12), (3.0, 27, 12)]:
+            now[0] = 100.0 + t
+            drv._on_ibd(None, bytearray(_ibd(24.8, 73, power, level)))
+    got = [r.getMessage() for r in caplog.records if r.getMessage().startswith("FTMS ~ mesures")]
+    assert len(got) == lines
+    if trace:
+        assert "puissance 318 W" in got[0] and "niveau de résistance 40" in got[0]
+        assert "vitesse du trainer 24.8 km/h" in got[0] and "consigne envoyée pente 0.68 %" in got[0]
+        assert "puissance 27 W" in got[1] and "niveau de résistance 12" in got[1]
