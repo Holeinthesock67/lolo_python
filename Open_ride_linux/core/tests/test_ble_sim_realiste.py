@@ -139,7 +139,7 @@ def test_instant_response_is_unchanged():
         tr = SimTrainer(world)
         tr.mode, tr.target_w = "erg", 250.0
         tr.power_w = 150.0
-        return tr, tr._step_power(10.0, 1.5)
+        return tr, tr._step_power(10.0, 1.5, tr.rider.step(10.0, 1.5, 0.0, 250.0))
     tr, speed = asyncio.run(go())
     assert tr.model is None and tr.notify_jitter_s == 0.0
     goal = 250.0 + 2.0 * math.sin(15.0)

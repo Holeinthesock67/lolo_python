@@ -262,10 +262,11 @@ def sim_world(source: str) -> Any:
     """Monde simulé de l'essai : trainer qui relaie la FC, ou ceinture Bluetooth et trainer sans relais."""
     from .. import sim_scenarios
 
-    trainer = {"appear_at": 0.2, "connect_delay_s": 0.2, "rider_power_w": 180, "cadence_rpm": 88}
+    trainer = {"appear_at": 0.2, "connect_delay_s": 0.2}
     if source == "trainer":
         trainer["relayed_hr"] = True
-    spec = {"seed": 9, "trainer": trainer, "click": None, "events": [],
+    spec = {"seed": 9, "trainer": trainer, "rider": {"strategy": "constante", "watts": 180, "cadence_rpm": 88},
+            "click": None, "events": [],
             "hr": {"appear_at": 0.2, "connect_delay_s": 0.2, "tau_s": 3.0} if source == "ceinture" else None}
     return sim_scenarios.build_world(spec, click=False)
 
@@ -276,7 +277,7 @@ def sim_rider(world: Any, source: str) -> Any:
     watts = {"portee": 180, "retiree": 210, "remise": 170, "portee_fin": 200}
 
     def on_phase(key: str) -> None:
-        world.trainer.rider_power_w = watts[key]
+        world.trainer.rider.update(watts=watts[key])
         if source == "trainer" and key == "retiree":
             world.trainer.fixed_relayed_hr = int(round(130 + 3.0 * math.sin(world.now() * 0.5)))
         elif source == "trainer" and key == "remise":
