@@ -107,7 +107,9 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environment, viewport: Viewport,
 		forward_plus: bool) -> void:
 	viewport.msaa_3d = MSAA[int(img["msaa"])]
-	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if bool(img["fxaa"]) else Viewport.SCREEN_SPACE_AA_DISABLED
+	# Anticrénelage d'écran : Forward+ seulement, comme l'occlusion et la brume (Compatibility le refuse en 4.7)
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if forward_plus and bool(img["fxaa"]) \
+			else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.mesh_lod_threshold = float(img["mesh_lod_threshold"])
 	viewport.scaling_3d_scale = 1.0
 

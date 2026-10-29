@@ -329,7 +329,7 @@ static func nice_ticks(lo: float, hi: float, max_ticks: int = 5) -> PackedFloat3
 		if m * mag >= raw - 1e-9:
 			step = m * mag
 			break
-	var v := ceilf(lo / step - 1e-9) * step
+	var v := ceilf(lo / step - 1e-9) * step + 0.0   # + 0.0 : -0.0 devient 0.0 (Godot 4.7 compare les tableaux bit à bit)
 	while v <= hi + 1e-6:
 		out.append(v)
 		v += step

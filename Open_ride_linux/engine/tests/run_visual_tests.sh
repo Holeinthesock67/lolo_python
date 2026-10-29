@@ -9,11 +9,11 @@
 # les compare. Après un changement graphique voulu, relancer avec --update-golden.
 # Le rapport (rapport.html et captures) va dans ~/OpenRide/visual_tests/<date> (VISUAL_OUT pour un autre
 # dossier) ; --open l'ouvre dans le navigateur à la fin.
-# Variables : GODOT (exécutable Godot 4.3), VISUAL_GOLDEN, VISUAL_OUT.
+# Variables : GODOT (exécutable Godot 4.7), VISUAL_GOLDEN, VISUAL_OUT.
 # Code de sortie : 0 si tout passe, 1 si une vérification échoue, 2 si Godot ou xvfb-run manque.
 set -u
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.3-stable_linux.x86_64}"
+GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.7.2-stable_linux.x86_64}"
 GOLDEN="${VISUAL_GOLDEN:-$HOME/.cache/openride/visual_golden}"
 OUT="${VISUAL_OUT:-$HOME/OpenRide/visual_tests/$(date +%Y-%m-%d_%H%M%S)}"
 

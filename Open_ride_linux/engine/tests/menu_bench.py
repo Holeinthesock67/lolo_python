@@ -624,7 +624,7 @@ def write_reports(out: Path, runs: list[Run]) -> Path:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
-        "GODOT", Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+        "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="nom (menu_scenarios/) ou fichier JSON ; défaut : tous")
     ap.add_argument("--voies", default=",".join(VOIES), help="voies d'entrée, séparées par des virgules")
     ap.add_argument("--rotation", action="store_true",
