@@ -80,6 +80,11 @@ ROUTE_TIMEOUT_S = 20.0
 SETTLE_S = 2.5                    # tuiles de terrain et lissage de la caméra après un saut de s
 SPEED_MPS = 8.0
 # Scènes reproductibles (s fixé, rien ne bouge) : les seules comparées aux images de référence.
+# Records de la scène « records » : la montée a deux temps sans bonus et un avec bonus, le sprint aucun.
+DEMO_RECORDS = {"version": 1, "routes": {"demo": {"climb1": {
+    "no_bonus": [{"time_s": 248.07, "date": "2026-10-27 18:05", "avg_power_w": 251.0, "avg_wkg": 3.38},
+                 {"time_s": 251.5, "date": "2026-10-26 18:00", "avg_power_w": 240.0, "avg_wkg": 3.2}],
+    "bonus": [{"time_s": 239.9, "date": "2026-10-27 18:05", "avg_power_w": 251.0, "avg_wkg": None}]}}}}
 GOLDEN_SCENES = ("attente", "vue_fixe", "pause", "erreur", "menu_accueil", "bilan", "pente_0pct", "pente_4pct")
 FIXED_S = 1500.0
 DEMO_SUMMIT_S = 1500.0             # sommet de `climb1`, seule montée de la couche segments de la démo (T3, T8)
@@ -533,8 +538,11 @@ def run_config(config: str, args, routes_dir: Path, out_dir: Path, report: Repor
     update = {v.strip() for v in args.update_golden.split(",") if v.strip()} if args.update_golden else None
     s = Session(name, width, height, core, out_dir, report, gold, update, args.fige, args.lisibilite)
     print(f"== {name} ==", flush=True)
+    records_file = out_dir / f"{name}_records.json"   # records de démonstration, pas ceux du propriétaire
+    records_file.write_text(json.dumps(DEMO_RECORDS), encoding="utf-8")
     with engine_log.open("w") as log_fh:
-        proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True)
+        proc = subprocess.Popen(cmd, stdout=log_fh, stderr=subprocess.STDOUT, start_new_session=True,
+                                env={**os.environ, "OPENRIDE_RECORDS_FILE": str(records_file)})
     try:
         (scenes or _scenes)(s)
     finally:
@@ -1291,6 +1299,7 @@ def _menu_scenes(s: Session) -> None:
         line = fraction(img, rect_box(card["rect"]), lambda p: p[0] < 110 and p[1] > 170 and p[2] > 170, step=1)
         s.check("pret", "profil d'altitude tracé dans la carte (trait cyan)", card["visible"] and line >= 0.002,
                 f"{line:.2%} de pixels cyan")
+    _records_scene(s)
     _garage_scenes(s)
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 1805.0, "distance_m": 15230.0, "avg_power_w": 212.0, "np_w": 221.0, "tss": 41.0,
@@ -1303,6 +1312,58 @@ def _menu_scenes(s: Session) -> None:
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
     _progress_scenes(s)
+
+
+def _records_scene(s: Session) -> None:
+    """Étape 4c des menus : écran Records du parcours (depuis l'écran Prêt) avec la carte du record en or,
+    puis la table des temps d'une montée ; retour à l'écran Prêt."""
+    core = s.core
+    for _ in range(5):   # Rouler, Entraînement, Changer de parcours, Bot, Fantôme, puis Records du parcours
+        core.send({"type": "input", "v": CONTRACT_VERSION, "event": "PLUS_SHORT"})
+        time.sleep(0.2)
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
+    time.sleep(0.8)
+    shot = s.capture("records")
+    if shot:
+        img, info = shot
+        s.check_texts("records", info, {"menu_title": "Records", "menu": "Montée 1 · 4:08,1"}, contains=True)
+        s.check_texts("records", info, {"menu": "Sprint 1"}, contains=True)
+        s.check_texts("records", info, {"menu": "Record 4:08,1"}, contains=True)
+        s.check_texts("records", info, {"menu": "Écart au 2e +3,4 s"}, contains=True)
+        s.check_layout("records", info)
+        card = info["widgets"]["menu_card"]
+        gold = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 220 and 180 < p[1] < 240 and p[2] < 100, step=1)
+        s.check("records", "record en or dans la carte", card["visible"] and gold >= 0.0005, f"{gold:.2%} de pixels or")
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "A_LONG"})
+    time.sleep(0.6)
+    shot = s.capture("records_table")
+    if shot:
+        img, info = shot
+        s.check_texts("records_table", info, {"menu_title": "Montée 1 : sans bonus", "menu": "1. 4:08,1 · 27/10/2026 18:05"}, contains=True)
+        s.check_layout("records_table", info)
+    for event in ("Y_SHORT", "Y_SHORT"):
+        core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+        time.sleep(0.4)
+    time.sleep(0.6)
+
+
+def _menus_only(s: Session) -> None:
+    """`--menus` : seulement les scènes des menus (accueil, parcours, Prêt, records, garage, bilan,
+    progression), pour des captures de menus à chaque qualité en quelques minutes."""
+    core = s.core
+    t0 = now()
+    while now() - t0 < 20.0 and "IpcClient attaché" not in core.log.path.read_text(errors="replace"):
+        time.sleep(0.1)
+    time.sleep(1.5)
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="IDLE", power=0.0, mode="SIM", erg=None, pause_reason=None,
+                   trainer_status="CONNECTED", input_status="CONNECTED")
+    core.auto_hello_ack = True
+    core.catalog_data = MENU_CATALOG
+    core.streaming = True
+    loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
+    s.check("menus", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(SETTLE_S)
+    _menu_scenes(s)
 
 
 def _draft_gauge_scene(s: Session) -> None:
@@ -1597,6 +1658,7 @@ def main() -> int:
     ap.add_argument("--configs", default=DEFAULT_CONFIGS,
                     help=f"résolution:qualité, séparées par des virgules (défaut {DEFAULT_CONFIGS})")
     ap.add_argument("--out", type=Path, default=None, help="dossier des captures et du rapport (défaut : dossier temporaire)")
+    ap.add_argument("--menus", action="store_true", help="seulement les scènes des menus (captures rapides)")
     ap.add_argument("--native", action="store_true", help="écran réel et rendu habituel, sans Xvfb")
     ap.add_argument("--golden", default=None,
                     help="dossier des images de référence : <dossier>/<xvfb|natif>/<préréglage>/<scène>.png")
@@ -1642,7 +1704,7 @@ def main() -> int:
         shutil.copytree(osm_work / f"{OSM_ROUTE_ID}.world", routes_dir / f"{OSM_ROUTE_ID}.world")
         shutil.rmtree(osm_work, ignore_errors=True)
         for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
-            run_config(config, args, routes_dir, out_dir, report)
+            run_config(config, args, routes_dir, out_dir, report, _menus_only if args.menus else None)
     finally:
         shutil.rmtree(routes_dir, ignore_errors=True)
     if args.update_golden:
