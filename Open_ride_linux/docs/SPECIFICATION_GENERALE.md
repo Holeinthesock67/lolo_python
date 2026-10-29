@@ -111,10 +111,10 @@ Le détail est dans la [SRS v1.1](SRS_v1.1.md) ; ce tableau en donne l'état. Le
 | 1.0-PHY-4 | Rampe de pente distincte à la montée et à la descente | §5 | Q4 | Livré (PR #194) |
 | 1.0-ERG-1 | Lecteur `.zwo`, cibles lissées, biais au Click, saut de bloc, pause | §6 | F, L6 | Livré |
 | 1.0-ERG-2 | Formats `.erg` et `.mrc` de GoldenCheetah | — | O9 | Livré |
-| 1.0-ERG-3 | Test de FTP, plans sur plusieurs semaines, menu Entraînement | — | O10 à O12 | O10 et O11 livrés ; O12 : core livré (PR #395), écrans de l'engine en revue (PR #396) |
+| 1.0-ERG-3 | Test de FTP, plans sur plusieurs semaines, menu Entraînement | — | O10 à O12 | O10, O11 et O12 livrés (O12 : core PR #395, écrans de l'engine PR #396) |
 | 1.0-ERG-4 | Bandeau ERG à l'écran, histogramme, bip à T − 3 s | §6 | N7 | Livré |
 | 1.0-ERG-5 | Boutons de l'ERG selon le plan commun (§7.1) : ± court biais ± 2 %, ± long biais ± 10 %, Z bloc suivant, Y pause | §4.4 | O17 | Livré, essai sur le PC à faire (décision D3 du 27 octobre, issue #367) |
-| 1.0-ERG-6 | ERG dans une session libre depuis l'écran de pause : SIM, ERG libre (puissance cible) ou ERG à cadence verrouillée (cadence ± 15 %, puissance adaptée) ; ± = biais de la cible (puissance, ou cadence en ERG cadence), Z = bonus comme en SIM | — | O18 | En PR (demande du propriétaire du 28 octobre), essai sur le vélo à faire |
+| 1.0-ERG-6 | ERG dans une session libre depuis l'écran de pause : SIM, ERG libre (puissance cible) ou ERG à cadence verrouillée (cadence ± 15 %, puissance adaptée) ; ± = biais de la cible (puissance, ou cadence en ERG cadence), Z = bonus comme en SIM | — | O18 | Livré (PR #550, fusionnée le 29 octobre ; demande du propriétaire du 28 octobre), essai sur le vélo à faire |
 | 1.0-CMP-1 | Compilateur GPX vers `.world` : route, terrain, OSM, caches | §7 | B1, B2, I3, I4 | Livré |
 | 1.0-CMP-2 | Traces FIT et TCX, archives Garmin, compilation au lancement | §7 | M7, N11, O5 | Livré |
 | 1.0-CMP-3 | Bibliothèque de parcours et pack de cols célèbres | — | O15, O16 | Livré (pack O16 à construire une première fois sur le PC) |
@@ -212,10 +212,10 @@ Les cahiers V2 à V11 sont sur `main` et les questions V-Q1 à V-Q13 sont tranch
 | Id | Exigence | Lots | Statut |
 | --- | --- | --- | --- |
 | 2.0-MON-1 | Départ choisi sur un globe ou par recherche de lieu, puis sur une carte régionale | W11 | Spécifié |
-| 2.0-MON-2 | Monde généré en direct par `openride-worldgen` ; au moins 3 km de route engagée devant le cycliste ; choix au carrefour jusqu'à 30 m avant, sinon le navigateur choisit | W1, W4 à W9 | W0 livré (PR #279) ; W1 en revue (PR #282) ; W4 à W8 en revue (PR #303, #304, #309, #310, #313) ; W9 spécifié |
-| 2.0-MON-3 | Cache local de 5 Go par défaut, éviction des moins récemment utilisés, régions épinglées ; rien n'est retéléchargé au retour au même endroit | W2 | En revue (PR #285) |
-| 2.0-MON-4 | Cartes : tuiles vectorielles mondiales au fil de la balade et préchargées autour des lieux de départ habituels ; extrait régional facultatif ; Overpass jamais pendant la séance | W3, W13 | W3 et W13 en revue (PR #302, #318) |
-| 2.0-MON-5 | Monde ouvert autorisé en ERG ; balade, destination ou boucle de X km ; balade enregistrable comme parcours | W6, W14 | W6 en revue (PR #309) ; W14 spécifié |
+| 2.0-MON-2 | Monde généré en direct par `openride-worldgen` ; au moins 3 km de route engagée devant le cycliste ; choix au carrefour jusqu'à 30 m avant, sinon le navigateur choisit | W1, W4 à W9 | W0 livré (PR #279) ; code de W1 et W4 à W8 fusionné (PR #282, #303, #304, #309, #310, #313) ; W9 branché dans la séance (`open_world.py`) ; statuts de l'index des lots W à reporter |
+| 2.0-MON-3 | Cache local de 5 Go par défaut, éviction des moins récemment utilisés, régions épinglées ; rien n'est retéléchargé au retour au même endroit | W2 | Code fusionné (PR #285) |
+| 2.0-MON-4 | Cartes : tuiles vectorielles mondiales au fil de la balade et préchargées autour des lieux de départ habituels ; extrait régional facultatif ; Overpass jamais pendant la séance | W3, W13 | Code de W3 et W13 fusionné (PR #302, #318) |
+| 2.0-MON-5 | Monde ouvert autorisé en ERG ; balade, destination ou boucle de X km ; balade enregistrable comme parcours | W6, W14 | W6 fusionné (PR #309) ; W14 : enregistrement GPX dans `open_world_save.py` |
 | 2.0-MON-6 | Recette : une heure sans pause d'attente, 55 images/s, gigue de la physique sous 5 ms | W16 | Spécifié |
 
 ### 5.3 Version 3.0
@@ -246,9 +246,17 @@ Le champ `v` reste 1 : tous les ajouts sont compatibles. Chaque révision est no
 | 1.1 | Listes des parcours et entraînements, `devices`, bilan enrichi, reprise après plantage | N1 | 1.0 | Livré |
 | 1.2 | `set_difficulty`, `difficulty_pct` ; appairage depuis le menu (`scan_devices`, `pair_devices`…). Fermée : plus aucun ajout | Q1, N13 | 1.0 | Livré |
 | 1.3 | Révision de la sortie de la 1.0 : champs `wind` et `draft` de `state`, `state` à 4 096 octets, `rev` et `modes` (P1, livrés) ; réglages (`list_settings`, `set_setting`, message `settings`), précisions de X25, `bad_args`, imports d'entraînements (`list_imports`, `create_workout`, `import_workout`), `PLUS_UNCLEAR` et `MINUS_UNCLEAR` ; événements de tous les boutons du Click (`A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`, plan de boutons du §7.1) ; demi-tour et bots réglés au menu s'ils fusionnent avant l'étiquette `v1.0.0`. Se ferme à l'étiquette `v1.0.0` | P1, O3, O4, X25, #288, N16, #287 | 1.0 (P1 sert la 1.x) | P1, X25, O3, O4, l'audit IPC (#288), N16 (#249), événements des boutons (#287) et contrat d'O12 (#395) livrés |
-| 1.4 | (Les événements des boutons sont déjà en 1.3.) Mode `ROGUE` et valeur `"rogue"` de `modes` ; champs `segment`, `powerup`, `jerseys`, `bot_ahead`, `bot_behind` et objet `rogue` de `state` ; champs des bots à profil ; `summary.segments` et `summary.rogue` ; messages `segment_result`, `room`, `loot`, `garage`, `progression`, `xp_result` ; commandes `start_run`, `rogue_resync`, `list_garage`, `equip`, `buy`, `set_avatar` ; `hello_ack.config.rogue` et `progression` | T1 | 2.0 | Contrat validé par le propriétaire et fusionné le 27 octobre (lot T1, PR #392, un seul lot de contrat, décision D4) ; le core annonce encore `rev` « 1.3 » jusqu'au branchement (R8, T7, V11) |
-| 1.5 | Monde ouvert : `start_open_world`, `choose_branch`, champ `open_world`, `world_status` et messages de la carte ; limite unique de 4 096 octets pour tout message hors messages en parties (décision du propriétaire du 27 octobre) | W1 | 2.0 | En revue (PR #282) |
+| 1.4 | (Les événements des boutons sont déjà en 1.3.) Mode `ROGUE` et valeur `"rogue"` de `modes` ; champs `segment`, `powerup`, `jerseys`, `bot_ahead`, `bot_behind` et objet `rogue` de `state` ; champs des bots à profil ; `summary.segments` et `summary.rogue` ; messages `segment_result`, `room`, `loot`, `garage`, `progression`, `xp_result` ; commandes `start_run`, `rogue_resync`, `list_garage`, `equip`, `buy`, `set_avatar` ; `hello_ack.config.rogue` et `progression` | T1 | 2.0 | Contrat validé par le propriétaire et fusionné le 27 octobre (lot T1, PR #392, un seul lot de contrat, décision D4) ; branché depuis (R8, T7, V11), le core annonce désormais `rev` « 1.5 » |
+| 1.5 | Monde ouvert : `start_open_world`, `choose_branch`, champ `open_world`, `world_status` et messages de la carte ; limite unique de 4 096 octets pour tout message hors messages en parties (décision du propriétaire du 27 octobre) ; puis, dans l'ordre des fusions : champ `group` et réglages des volumes et des images/s (24 réglages au plus), bots à profil dans `start.bots` et leur `level_pct` (T12, T13), ERG d'une session libre (`set_ride_mode`, `erg.kind` et champs `cadence_*`, O18) | W1, T12, T13, O18 | 2.0 (O18 sert la 1.0) | Livré : W1 (PR #282), T12 (#487), T13 (#488), O18 (#550) ; le core et l'engine annoncent `rev` « 1.5 » ; ajouts en revue ci-dessous |
 | 1.6 | Série U : clés facultatives `biome` et `gravel` de `hello_ack.config`, aucun nouveau message (le menu passe par `set_setting`) | U1, U16 | 3.0 | Spécifié (cahier U1) ; numéro provisoire : la série U prend la première révision libre à sa fusion (§6.1) |
+
+**Ajouts du contrat en revue (PR ouvertes au 29 octobre 2026, rien n'est fusionné).** Ils entreront dans la 1.5, révision ouverte, avec leur ligne au journal de [ipc_v1.md](contracts/ipc_v1.md) à leur fusion :
+
+| PR | Ajout | Nature |
+| --- | --- | --- |
+| #540 | Champ facultatif `busy` de `devices.trainer` : vrai tant que le Control Point est occupé par un autre appareil (ATT 0x80 ou 0xFE, montre Garmin) ; liaison gardée, consigne réessayée, pas de pause tant que les mesures arrivent ; bandeau « Trainer piloté par un autre appareil » | Ajout compatible (`state.schema.json`) |
+| #552 | `set_setting` pendant `RUNNING` ou `PAUSED` : les réglages `applies` = `now` (qualité, thème, courbes, mode d'affichage, images/s, vue de caméra, volumes) sont écrits ; les autres reçoivent toujours `busy`. Défaut trouvé par la matrice X42 : la vue de caméra choisie en roulant (V12) recevait `busy` | Précision de comportement, sans nouveau champ |
+| #542 | Aucun changement IPC : la ligne `event` du journal de séance gagne un champ facultatif `reason` (`user`, `trainer_lost`, `engine_lost`…), lu par le chronométrage des segments (une coupure subie suspend la montée au lieu de l'annuler) | Format du journal `.jsonl` |
 
 Règles de numérotation (décision du propriétaire du 27 octobre, « au plus propre », audit de cohérence) : les révisions se suivent dans l'ordre des fusions, si bien qu'un programme qui annonce `rev` « 1.3 » connaît tout ce qui est noté 1.2 et 1.3. Une révision fermée ne reçoit plus d'ajout : la 1.2 est fermée depuis la fusion de la 1.3 ; la 1.3 reste ouverte jusqu'à l'étiquette `v1.0.0` et reçoit tous les ajouts de la 1.0 qui fusionnent avant elle ; la 1.4 est celle des séries R, T et V, en un seul lot de contrat, T1 (décisions D2 de l'audit IPC et D4 de l'audit de cohérence) ; les événements de tous les boutons sont déjà dans la 1.3, une seule fois ; W1 prend la 1.5. Un ajout fait après la 1.0 hors de ces séries prend la première révision libre à sa fusion. Numérotation 1.4 et 1.5 confirmée par le propriétaire le 26 octobre (décision D2 de l'audit IPC). L'ancienne proposition N13 = 1.3, P1 = 1.4, R/T = 1.5 est périmée.
 
@@ -260,7 +268,7 @@ Règles de numérotation (décision du propriétaire du 27 octobre, « au plus p
 | Points d'intérêt `wind_turbine` et `flag` ; thème 1.2 (nuages, météo, ambiance, faune, saison, heure) | P1 | 1.x | Spécifié |
 | Niveaux de textures dans le thème | P20 | 2.0 | Spécifié |
 | Couche `segments` (format 1.3, `segments.json`) | T1, T3 | 2.0 | Format écrit (T1) ; écrite par le compilateur et le parcours de démonstration (T3) |
-| Monde vivant : `live`, origine sur grille UTM, route par parties, couches par carré, `junctions.json` | W1 | 2.0 | En revue (PR #282) |
+| Monde vivant : `live`, origine sur grille UTM, route par parties, couches par carré, `junctions.json` | W1 | 2.0 | Livré (PR #282) |
 | Couche `biome`, variante régionale, eau `sea`, couche `coast` ; colonne `surface` de la route et classe `g` du monde ouvert ; thème 2.0 en pack de biomes | U1 | 3.0 | Spécifié (cahier U1 ; mineur libre suivant celui de W1) |
 
 ### 6.3 Configuration
@@ -374,3 +382,4 @@ Demande du propriétaire du 26 octobre (point C6) : la caméra unique de la SRS 
 | 27 octobre 2026 | Série U : cahiers U0 à U22, lots de l'option « gravel » (U20 à U22), révision 1.6 provisoire de l'IPC, écart C11 |
 | 27 octobre 2026 | Audit de cohérence (C12) : révisions 1.2 et 1.3 (§6.1), plan de boutons réécrit sans exception (§7.1), exigences 1.0-ERG-5, 1.x-UI-1 et 1.x-UI-2, C10 réglé |
 | 27 octobre 2026 | Statuts remis à l'état de `main` après les fusions du jour (séries O, P, Q, T, V, W0, Y1, contrat 1.4) ; cahiers R, U, V et W sur `main` notés « Spécifié » ; C2 corrigé |
+| 29 octobre 2026 | Révision 1.5 de l'IPC remise à l'état de `main` (W1, T12, T13, O18 livrés) et ajouts en revue listés (#540, #552, #542) ; 1.0-ERG-6 (O18) livré ; statuts « en revue » d'O12 et de la série W remplacés par l'état des PR, toutes fusionnées |
