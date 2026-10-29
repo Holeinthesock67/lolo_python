@@ -328,6 +328,8 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 - **Attendu :** compilation au lancement avec notification ; le parcours apparaît dans la liste et se roule ; l'archive vide est refusée avec un message sans empêcher les autres ; deux fichiers de même nom (`col.gpx`, `col.fit`) : un seul compilé, l'autre signalé.
 - [ ] Sortie Garmin compilée et roulée
 - [ ] Archive invalide refusée proprement
+- **Pente d'un col (O8 ligne 22, outil X31) :** pour une sortie qui passe un col, lire dans Garmin Connect la pente maximale, le dénivelé positif et la longueur, puis `openride-compiler compare-garmin ~/.local/share/openride/routes/<parcours>.world --pente-max P --dplus D --longueur KM`. Attendu : pente à ± 1 point, D+ à ± 5 %, longueur à ± 1 % ; rien n'est écrit.
+- [ ] Pente maximale du col conforme à Garmin Connect
 - **Journaux :** journal du lanceur (compilation), `openride-compiler list`.
 - **Rappel :** ces traces restent sur le PC, jamais dans le dépôt.
 

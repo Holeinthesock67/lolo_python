@@ -13,6 +13,13 @@ extends RefCounted
 ##   relief et le tangage s'appliquent à toutes les vues (2.0-CAM-4).
 ## - `step(dt, goal)` : pose affichée ; au changement de vue, interpolation (position et orientation) en
 ##   TRANSITION_S secondes. `snap()` oublie la pose affichée (reprise après un menu : pas de glissement).
+## - Tangage partiel (lot Y15) : les caméras ne suivent que CAMERA_PITCH_FOLLOW de l'inclinaison de la route
+##   (`camera_pitch_deg`). La rampe reste visible à l'écran (elle monte dans l'image en montée, plonge en descente)
+##   et l'horizon bouge quand même ; avec une caméra qui suit toute la pente, la route paraît plate dans l'image.
+##   Les vues de suivi restent posées le long de la route (pente entière), seul le regard est moins incliné.
+## - `fov_deg(base_fov, pitch_deg)` (lot Y15) : champ de vision qui respire avec la pente, pour toutes les vues ; resserré
+##   en montée (effet de téléobjectif : la rampe paraît plus raide et plus proche), élargi en descente (vitesse).
+##   `pitch_deg` vient de camera_follow.gd, déjà lissé (0,5 s) : pas de saut d'une image à l'autre.
 ## - `remember_due(now_s)` : vrai une fois, REMEMBER_DELAY_S après le dernier changement, pour écrire la vue dans
 ##   `[render] camera` sans écrire le fichier à chaque appui.
 ## Pas de class_name : charger par preload("res://scripts/camera_views.gd").
@@ -32,6 +39,12 @@ const FAR_AHEAD_M := 8.0
 const SIDE_OFFSET_M := 8.0
 const SIDE_HEIGHT_M := 1.6
 const SIDE_AHEAD_M := 2.0
+## Champ de vision selon la pente affichée (lot Y15) : écart maximal atteint à FOV_FULL_PITCH_DEG d'inclinaison.
+## Part de l'inclinaison de la route suivie par la caméra (lot Y15) ; 1,0 jusque-là.
+const CAMERA_PITCH_FOLLOW := 0.5
+const FOV_CLIMB_DEG := 5.0
+const FOV_DESCENT_DEG := 6.0
+const FOV_FULL_PITCH_DEG := 10.0
 ## Hauteur visée sur le cycliste en vue de suivi ou latérale.
 const TARGET_HEIGHT_M := 1.0
 
@@ -115,11 +128,14 @@ func snap() -> void:
 ## `pitch_deg` : inclinaison de la route (positive en montée).
 func goal(pos: Vector3, heading_rad: float, pitch_deg: float) -> Transform3D:
 	var view := effective()
-	var p := deg_to_rad(pitch_deg)
+	var p_cam := deg_to_rad(camera_pitch_deg(pitch_deg))
 	if view == "subjective":
 		# Même orientation que la caméra de la 1.0 : cap sur Y, tangage sur X.
-		return Transform3D(Basis.from_euler(Vector3(p, -heading_rad, 0.0)), pos + Vector3(0.0, EYE_HEIGHT_M, 0.0))
+		return Transform3D(Basis.from_euler(Vector3(p_cam, -heading_rad, 0.0)), pos + Vector3(0.0, EYE_HEIGHT_M, 0.0))
+	var p := deg_to_rad(pitch_deg)
 	var fwd := Vector3(sin(heading_rad) * cos(p), sin(p), -cos(heading_rad) * cos(p))
+	# Regard : même cap, tangage partiel (CAMERA_PITCH_FOLLOW).
+	var look := Vector3(sin(heading_rad) * cos(p_cam), sin(p_cam), -cos(heading_rad) * cos(p_cam))
 	var right := Vector3(cos(heading_rad), 0.0, sin(heading_rad))
 	var target_base := pos + Vector3(0.0, TARGET_HEIGHT_M, 0.0)
 	var eye: Vector3
@@ -127,14 +143,25 @@ func goal(pos: Vector3, heading_rad: float, pitch_deg: float) -> Transform3D:
 	match view:
 		"follow_far":
 			eye = pos - fwd * FAR_BACK_M + Vector3(0.0, FAR_HEIGHT_M, 0.0)
-			target = target_base + fwd * FAR_AHEAD_M
+			target = target_base + look * FAR_AHEAD_M
 		"side":
 			eye = pos + right * SIDE_OFFSET_M + Vector3(0.0, SIDE_HEIGHT_M, 0.0)
-			target = target_base + fwd * SIDE_AHEAD_M
+			target = target_base + look * SIDE_AHEAD_M
 		_:
 			eye = pos - fwd * NEAR_BACK_M + Vector3(0.0, NEAR_HEIGHT_M, 0.0)
-			target = target_base + fwd * NEAR_AHEAD_M
+			target = target_base + look * NEAR_AHEAD_M
 	return Transform3D(Basis.looking_at(target - eye, Vector3.UP), eye)
+
+
+## Tangage de la caméra (degrés) pour une inclinaison de route `pitch_deg` : CAMERA_PITCH_FOLLOW de celle-ci.
+static func camera_pitch_deg(pitch_deg: float) -> float:
+	return pitch_deg * CAMERA_PITCH_FOLLOW
+
+
+## Champ de vision vertical (degrés) pour une inclinaison de route `pitch_deg` (positive en montée).
+static func fov_deg(base_fov: float, pitch_deg: float) -> float:
+	var t := clampf(pitch_deg / FOV_FULL_PITCH_DEG, -1.0, 1.0)
+	return base_fov - FOV_CLIMB_DEG * t if t > 0.0 else base_fov - FOV_DESCENT_DEG * t
 
 
 ## Pose affichée à cette image : la pose visée, ou son mélange avec la pose d'avant le changement de vue.

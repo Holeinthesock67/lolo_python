@@ -163,7 +163,7 @@ func _test_layout_resolutions() -> void:
 		var r: Rect2 = view.get_global_rect()
 		var screen := Rect2(Vector2.ZERO, Vector2(res))
 		_check(screen.encloses(r) and r.size.x > 0.8 * res.x, "%dx%d : bandeau dans l'écran, toute la largeur (%s)" % [res.x, res.y, r])
-		_check(r.end.y <= res.y - 120.0, "%dx%d : au-dessus du profil d'altitude" % [res.x, res.y])
+		_check(r.end.y <= res.y - ErgView.BOTTOM_OFFSET + 0.5, "%dx%d : en bas de l'écran, profil d'altitude caché en ERG" % [res.x, res.y])
 		r.size.y = 1000.0   # sans écran, la hauteur des textes est surestimée : seule la largeur compte
 		var labels: Array = [view.title_label, view.target_label, view.remaining_label, view.next_label]
 		var inside := true

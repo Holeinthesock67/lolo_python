@@ -26,10 +26,11 @@ func _init() -> void:
 
 
 func _run() -> void:
-	# Légende : puissance seule en taille réduite, avec FC et cadence en taille complète ; trou = tiret.
+	# Légende : puissance, FC et cadence dans les deux tailles (réduite aussi depuis le 28/10) ; trou = tiret.
 	var cur := {"power": 231.6, "hr": 141.2, "cadence": 88.4}
 	var reduced := ChartView.legend(cur, "reduced")
-	_check(reduced.size() == 1 and reduced[0]["text"] == "232 W", "taille réduite : puissance seule (%s)" % str(reduced))
+	_check(reduced.size() == 3 and reduced[0]["text"] == "232 W" and reduced[1]["text"] == "141 bpm",
+		"taille réduite : W, bpm, rpm (%s)" % str(reduced))
 	var full := ChartView.legend(cur, "full")
 	_check(full.size() == 3 and full[1]["text"] == "141 bpm" and full[2]["text"] == "88 rpm", "taille complète : W, bpm, rpm")
 	var holes := ChartView.legend({"power": null, "hr": null, "cadence": null}, "full")

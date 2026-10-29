@@ -36,6 +36,7 @@ const SAND_RELIEF := {"sand_desert": 1.0, "coast": 0.6}
 const SHARED_PARAMS: Array[String] = [
 	"cloud_shadow_enabled", "cloud_shadow_coverage", "cloud_shadow_offset", "cloud_shadow_altitude_m",
 	"cloud_shadow_strength", "cloud_shadow_scale_m", "detail_strength", "grass_relief", "rock_facet_strength",
+	"relief_k", "relief_origin_m",   # relief affiché de la route (lots Q2 et Y15)
 ]
 
 var model
