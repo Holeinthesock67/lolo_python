@@ -8,17 +8,24 @@ extends RefCounted
 ## tuiles proches écartées par le tri du visible (lot S1).
 ## Le fichier est vidé à chaque ligne : il se lit pendant l'essai (`engine/tests/perf_probe.py`, qui
 ## ajoute nvidia-smi et le CPU des processus, puis trace les courbes).
+## Les images d'une capture d'écran de test (`mark_capture`, lot X35) et les deux suivantes sont mises à
+## part : la lecture de l'image et l'écriture du PNG coûtent 100 à 150 ms et faussaient p99 et pire image.
+## Elles comptent dans les images/s, sortent de p50, p99 et pire image, et sont comptées dans `capture`
+## (nombre d'images mises à part dans la seconde) et `capture_max_ms`.
 ## Pas de class_name : chargé par preload.
 
 const COLUMNS := ["t_s", "unix_s", "fps", "frame_p50_ms", "frame_p99_ms", "frame_max_ms", "cpu_ms", "gpu_ms",
 	"draw_calls", "objects", "primitives", "vram_mb", "texture_mb", "buffer_mb", "static_mb", "nodes",
-	"near_tiles", "far_tiles", "osm_chunks", "trees", "culled_near", "preset"]
+	"near_tiles", "far_tiles", "osm_chunks", "trees", "culled_near", "capture", "capture_max_ms", "preset"]
 const PERIOD_US := 1_000_000
+const CAPTURE_FRAMES := 3   # image de la capture et les deux suivantes
 
 var path := ""
 var preset := ""
 var _file: FileAccess = null
 var _frames: Array[float] = []
+var _captured: Array[float] = []
+var _capture_left := 0
 var _cpu_sum := 0.0
 var _gpu_sum := 0.0
 var _start_us := 0
@@ -52,11 +59,20 @@ func is_open() -> bool:
 	return _file != null
 
 
+## À appeler juste après une capture d'écran de test : les CAPTURE_FRAMES prochaines images sont mises à part.
+func mark_capture() -> void:
+	_capture_left = CAPTURE_FRAMES
+
+
 ## À appeler à chaque image. `streamer` : world_streamer.gd (ou null).
 func frame(delta: float, streamer = null) -> void:
 	if _file == null:
 		return
-	_frames.append(delta * 1000.0)
+	if _capture_left > 0:
+		_capture_left -= 1
+		_captured.append(delta * 1000.0)
+	else:
+		_frames.append(delta * 1000.0)
 	if _viewport_rid.is_valid():
 		_cpu_sum += RenderingServer.viewport_get_measured_render_time_cpu(_viewport_rid) \
 			+ RenderingServer.get_frame_setup_time_cpu()
@@ -65,7 +81,8 @@ func frame(delta: float, streamer = null) -> void:
 	if now - _last_us < PERIOD_US:
 		return
 	var row := frame_stats(_frames)
-	var n := maxi(_frames.size(), 1)
+	row.merge(capture_stats(_frames, _captured), true)
+	var n := maxi(_frames.size() + _captured.size(), 1)
 	row["t_s"] = float(now - _start_us) / 1e6
 	row["unix_s"] = Time.get_unix_time_from_system()   # recalage avec nvidia-smi et le CPU des processus
 	row["cpu_ms"] = _cpu_sum / n
@@ -77,6 +94,7 @@ func frame(delta: float, streamer = null) -> void:
 	_file.flush()
 	rows_written += 1
 	_frames.clear()
+	_captured.clear()
 	_cpu_sum = 0.0
 	_gpu_sum = 0.0
 	_last_us = now
@@ -106,6 +124,20 @@ static func frame_stats(times_ms: Array) -> Dictionary:
 		"frame_p99_ms": float(sorted[mini(int(floor(float(n) * 0.99)), n - 1)]),
 		"frame_max_ms": float(sorted[n - 1]),
 	}
+
+
+## Images mises à part pour une capture : leur nombre, la pire, et les images/s de la seconde comptées
+## avec elles (le temps passé reste du temps écoulé).
+static func capture_stats(times_ms: Array, captured_ms: Array) -> Dictionary:
+	var out := {"capture": captured_ms.size(), "capture_max_ms": 0.0}
+	if captured_ms.is_empty():
+		return out
+	var total := 0.0
+	for t in times_ms + captured_ms:
+		total += float(t)
+	out["capture_max_ms"] = float(captured_ms.max())
+	out["fps"] = float(times_ms.size() + captured_ms.size()) / (total / 1000.0) if total > 0.0 else 0.0
+	return out
 
 
 ## Compteurs du rendu de la dernière image et mémoire (Mo).

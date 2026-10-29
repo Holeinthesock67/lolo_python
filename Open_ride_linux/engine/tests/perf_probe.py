@@ -255,6 +255,10 @@ def summarize(rows: list[dict[str, Any]]) -> dict[str, Any]:
         v = values(rows, key)
         if v:
             out["stats"][key] = {"p50": statistics.median(v), "p99": percentile(v, 0.99), "max": max(v)}
+    # Images d'une capture d'écran de test (lot X35) : déjà hors p99 et pire image côté engine, comptées à part.
+    cap = values(rows, "capture")
+    if cap and sum(cap) > 0:
+        out["captures"] = {"frames": int(sum(cap)), "max_ms": max(values(rows, "capture_max_ms"), default=0.0)}
     if ts and out["duration_s"] >= 120.0:
         t_first, t_last = min(ts) + 60.0, max(ts) - 60.0
         for key in DRIFT:
@@ -273,6 +277,10 @@ def summary_text(summary: dict[str, Any], title: str) -> str:
         lab, unit = labels[key]
         name = f"{lab} ({unit})" if unit else lab
         lines.append(f"  {name:<28} {st['p50']:>10.1f} {st['p99']:>10.1f} {st['max']:>10.1f}")
+    if summary.get("captures"):
+        c = summary["captures"]
+        lines += ["", f"Images des captures d'écran mises à part : {c['frames']} (pire {c['max_ms']:.0f} ms), "
+                  "hors temps d'image p99, pire image et saccades."]
     if summary["drift"]:
         lines += ["", "Dérive (médiane de la dernière minute − première minute) :"]
         for key, d in summary["drift"].items():
@@ -348,9 +356,11 @@ def endurance_checks(rows: list[dict[str, Any]], real_window: bool,
         stutters = sum(w > lim["stutter_ms"] for w in worst)
         hours = max((max(ts) - warm) / 3600.0, 1e-6)
         rate = stutters / hours
+        shots = sum(w > lim["stutter_ms"] for w in values(steady, "capture_max_ms"))
         out.append((rate <= lim["max_stutters_per_h"] if real_window else None, "endurance : saccades",
                     f"{stutters} seconde(s) avec une image de plus de {lim['stutter_ms']:.0f} ms, {rate:.1f} par heure"
-                    f" (seuil {lim['max_stutters_per_h']:.0f})"))
+                    f" (seuil {lim['max_stutters_per_h']:.0f})"
+                    + (f" ; {shots} autre(s) due(s) aux captures d'écran, non comptée(s)" if shots else "")))
     long_enough = max(ts) - warm >= lim["min_slope_span_s"]
     labels = {k: lab for k, lab, _ in SUMMARY}
     for key, max_slope in lim["slopes_mb_per_h"].items():
