@@ -1,0 +1,4 @@
+{
+  "description": "Réponses tronquées : la première réponse de chaque chemin s'arrête à mi-chemin.",
+  "serveur": {"latence_s": 0.05, "tronque": {"par_chemin": 1, "part": 0.5}}
+}
