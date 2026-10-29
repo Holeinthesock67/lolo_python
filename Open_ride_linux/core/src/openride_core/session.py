@@ -31,6 +31,7 @@ from .equipment import segment_time_gain
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
+from . import latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
@@ -564,7 +565,7 @@ class CoreSession:
         self.physics = RiderPhysics(plain)
         self._t_session, self._grade_sent, self._rogue_dist = 0.0, 0.0, 0.0
         self._sync_erg_state()
-        self.state.route_id, self.state.route_length_m = "rogue", None
+        self.state.route_id, self.state.route_length_m = None, None   # contrat IPC : null en mode ROGUE
         self.state.gear, self.state.gears_total = self.rogue.gear, self.rogue.balance.gear_max
         self.state.lat = self.state.lon = self.state.alt = None
         self.state.summary = None
@@ -1153,7 +1154,8 @@ class CoreSession:
     def _open_journal(self) -> None:
         from .plans import active_tag
 
-        self._rec = SessionRecorder(self.journal_dir, self.state.route_id,
+        route_id = rogue_mode.JOURNAL_ROUTE_ID if self.rogue is not None else self.state.route_id
+        self._rec = SessionRecorder(self.journal_dir, route_id,
                                     on_failure=self._on_recording_failure,
                                     workout_id=self._workout_id, source=self._journal_source(),
                                     progression=self.progress_svc.journal_header(equipped=self.rogue is None),
@@ -1502,6 +1504,7 @@ class CoreSession:
             # des braquets.
             erg.change_bias(BIAS_STEPS[ev])
             self._sync_erg_state()
+            latency_log.expect_cp()   # nouvelle cible ERG écrite au Control Point
             return
         n = self.cfg.gearing.long_press_gears
         if ev == InputEvent.PLUS_SHORT:
@@ -1514,6 +1517,7 @@ class CoreSession:
             self.gearing.shift_down(n)
         self.state.gear = self.gearing.k
         self._shift_pending = True   # le changement de braquet doit se sentir tout de suite
+        latency_log.expect_cp()
 
     def _drain_inputs(self) -> None:
         if self._identify and time.monotonic() > self._identify["until"]:
@@ -1521,11 +1525,12 @@ class CoreSession:
         for provider in self.inputs:
             while not provider.events.empty():
                 ev = provider.events.get_nowait()
-                if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
-                        and getattr(provider, "_conn_address", "") not in ("", "?", None):
-                    self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
-                    continue
-                self._handle_input(ev)
+                with latency_log.handling(provider):   # lot X7 : étage « evenement » de l'appui suivi
+                    if self._identify and ev in (InputEvent.PLUS_SHORT, InputEvent.PLUS_LONG) \
+                            and getattr(provider, "_conn_address", "") not in ("", "?", None):
+                        self._identify_done(provider._conn_address)   # appui d'identification : pas de menu
+                        continue
+                    self._handle_input(ev)
         # Statut d'entrée : celui du premier fournisseur (Click s'il est configuré) ; la paire de
         # Click est « connectée » dès qu'un des deux boîtiers l'est.
         clicks = [p for p in self.inputs if isinstance(p, ZwiftClickProvider)]
@@ -1737,7 +1742,7 @@ class CoreSession:
         Lève `ResumeError` si le journal ne peut pas être repris.
         """
         rs = load_resume_state(path)
-        if rs.route_id == "rogue":
+        if rs.route_id == rogue_mode.JOURNAL_ROUTE_ID:
             return self._resume_rogue(path, rs)
         route_id = rs.route_id or "demo"
         self._select_route(route_id, previous="IDLE")
@@ -1806,10 +1811,10 @@ class CoreSession:
         self._t_session, self._grade_sent, self._rogue_dist = rs.t, 0.0, rs.s
         self._sync_erg_state()
         st = self.state
-        st.route_id, st.route_length_m, st.t, st.s, st.v = "rogue", None, rs.t, rs.s, 0.0
+        st.route_id, st.route_length_m, st.t, st.s, st.v = None, None, rs.t, rs.s, 0.0
         st.gear, st.gears_total = self.rogue.gear, self.rogue.balance.gear_max
         st.lat = st.lon = st.alt = None
-        self._rec = SessionRecorder(self.journal_dir, "rogue", on_failure=self._on_recording_failure,
+        self._rec = SessionRecorder(self.journal_dir, rogue_mode.JOURNAL_ROUTE_ID, on_failure=self._on_recording_failure,
                                     resume_path=path, lines=rs.lines, source=self._journal_source())
         if rs.running:
             self._rec.event("pause", rs.last_ts, "core_restarted")

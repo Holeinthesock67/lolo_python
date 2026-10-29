@@ -3,9 +3,9 @@ extends SceneTree
 ## Tests unitaires sans écran du modèle des courbes de la séance (workout_chart_model.gd, lot O13).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_workout_chart_model.gd
 
+const PerfBudget := preload("res://tests/perf_budget.gd")
 const ChartModel := preload("res://scripts/workout_chart_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
-const PerfBudget := preload("res://tests/perf_budget.gd")
 
 ## sweet_spot_3x10.zwo tel que le core l'envoie (triplets du contrat v1.1).
 const SWEET_SPOT := [
@@ -143,7 +143,7 @@ func _test_long_session() -> void:
 	for line in g["curves"]["power"]:
 		drawn += line.size()
 	_check(drawn <= ChartModel.MAX_DRAWN_POINTS and g["group"] == 4, "au plus 1 800 points dessinés (%d, groupes de %d)" % [drawn, g["group"]])
-	_check(PerfBudget.check("workout_chart_geometry", dt_ms), "géométrie construite (%.2f ms)" % dt_ms)
+	_check(PerfBudget.check("workout_chart_geometry", dt_ms), "géométrie de 2 h de courbes en %.2f ms" % dt_ms)
 	var w_top: float = g["scales"]["watts"][1]
 	var slow: Array = ChartModel._polylines(m.smoothed("power", 0, 0, 7200), 0, 4, 1600.0, 300.0, 0.0, 7200.0, 0.0, w_top)
 	var fast: PackedVector2Array = g["curves"]["power"][0]

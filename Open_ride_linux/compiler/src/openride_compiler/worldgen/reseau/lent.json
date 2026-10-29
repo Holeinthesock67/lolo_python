@@ -1,0 +1,4 @@
+{
+  "description": "Réseau lent : 0,1 à 0,4 s de latence par demande, débit plafonné à 150 ko/s.",
+  "serveur": {"latence_s": [0.1, 0.4], "debit_ko_s": 150}
+}
