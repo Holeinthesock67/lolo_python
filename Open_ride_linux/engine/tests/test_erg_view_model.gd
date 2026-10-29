@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Tests sans écran du modèle de vue ERG `erg_view_model.gd` (Lot I6).
 ##
-## - Cas unitaires : toutes les règles du §4.1 (visible, title, target_text, biais, roue libre,
+## - Cas unitaires : toutes les règles du §4.1 (visible, title, target_text, biais, palier de 50 W,
 ##   next_text, dernier bloc, remaining_text interpolé et figé en pause, progress, beep unique
 ##   à 30 Hz et 144 Hz, bloc < 4 s, saut de bloc, paused_text, profile_bars).
 ## - Scénario face au faux core (`fake_core.py --erg-workout`) : reçoit les trames UDP `state`
@@ -58,15 +58,15 @@ func _run_unit_tests() -> void:
 	_check(d_std["paused_text"] == "", "paused_text vide hors pause")
 	_check(d_std["beep"] == false, "pas de bip à 42 s")
 
-	# 3. Biais != 100 % et roue libre
+	# 3. Biais != 100 % et consigne minimale (pas de roue libre en ERG, lot O19)
 	var d_bias: Dictionary = vm.update(_make_erg({"bias_pct": 110}), 11.0)
 	_check(d_bias["target_text"] == "238 W (110 %)", "target_text avec biais 110 %")
 
-	var d_free: Dictionary = vm.update(_make_erg({"block_type": "freeride", "target_w": 0}), 12.0)
-	_check(d_free["target_text"] == "Roue libre", "target_text en freeride")
+	var d_min: Dictionary = vm.update(_make_erg({"target_w": 50}), 12.0)
+	_check(d_min["target_text"] == "50 W", "target_text au palier FreeRide (50 W)")
 
-	var d_free_bias: Dictionary = vm.update(_make_erg({"block_type": "freeride", "target_w": 0, "bias_pct": 96}), 13.0)
-	_check(d_free_bias["target_text"] == "Roue libre (96 %)", "target_text en freeride avec biais")
+	var d_min_bias: Dictionary = vm.update(_make_erg({"target_w": 50, "bias_pct": 96}), 13.0)
+	_check(d_min_bias["target_text"] == "50 W (96 %)", "target_text à 50 W avec biais (plancher du core)")
 
 	# 4. Dernier bloc -> next_text vide
 	var d_last: Dictionary = vm.update(_make_erg({"block_index": 10, "block_count": 10, "next_target_w": null}), 14.0)
@@ -133,7 +133,7 @@ func _run_unit_tests() -> void:
 	var ref_blocks := [
 		{"type": "warmup", "duration_s": 600.0, "start_frac": 0.5, "end_frac": 0.75},
 		{"type": "steady", "duration_s": 1200.0, "start_frac": 0.95, "end_frac": 0.95},
-		{"type": "freeride", "duration_s": 120.0, "start_frac": null, "end_frac": null},
+		{"type": "steady", "duration_s": 120.0, "start_frac": null, "end_frac": null},
 		{"type": "cooldown", "duration_s": 300.0, "start_frac": 0.7, "end_frac": 0.4},
 	]
 	var bars: Array = ErgViewModel.profile_bars(ref_blocks, 250.0, 400.0, 100.0)
@@ -141,7 +141,7 @@ func _run_unit_tests() -> void:
 	_check(absf(float(bars[0]["x0"]) - 0.0) < 1e-5 and absf(float(bars[3]["x1"]) - 400.0) < 1e-4, "profile_bars: couvre [0, width]")
 	_check(float(bars[0]["h0"]) < float(bars[0]["h1"]), "profile_bars: warmup monte (trapèze)")
 	_check(absf(float(bars[1]["h0"]) - float(bars[1]["h1"])) < 1e-5, "profile_bars: steady plat (rectangle)")
-	_check(float(bars[2]["h0"]) == 0.0 and float(bars[2]["h1"]) == 0.0, "profile_bars: freeride hauteur 0")
+	_check(float(bars[2]["h0"]) == 0.0 and float(bars[2]["h1"]) == 0.0, "profile_bars: bloc sans fraction à hauteur 0")
 
 
 func _get_arg_int(prefix: String, default_val: int) -> int:

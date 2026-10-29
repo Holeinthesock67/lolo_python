@@ -286,8 +286,8 @@ Boîtier droit : +, A, B, Y, Z ; boîtier gauche : −, flèches (bridé sans d�
 
 | Bouton | Famille | Menus | Classique SIM | ERG | Cyber-Rogue | Monde ouvert |
 | --- | --- | --- | --- | --- | --- | --- |
-| + / B (ou −), court | Déplacer ou doser, petit pas | Élément suivant, précédent | Braquet ± 1 | Biais ± 2 % ; braquet ± 1 en roue libre | Vitesse du frein ± 1 | Comme le mode roulé (SIM ou ERG) |
-| + / B (ou −), long | Déplacer ou doser, grand pas | Cinq éléments plus loin, plus haut (bornés à la liste) | Braquet ± 10 | Biais ± 10 % ; braquet ± 10 en roue libre | Vitesse du frein ± 3 | Comme le mode roulé |
+| + / B (ou −), court | Déplacer ou doser, petit pas | Élément suivant, précédent | Braquet ± 1 | Biais ± 2 % | Vitesse du frein ± 1 | Comme le mode roulé (SIM ou ERG) |
+| + / B (ou −), long | Déplacer ou doser, grand pas | Cinq éléments plus loin, plus haut (bornés à la liste) | Braquet ± 10 | Biais ± 10 % | Vitesse du frein ± 3 | Comme le mode roulé |
 | Y court | Interrompre et revenir | Écran précédent ; sur l'écran de pause, reprendre | Pause et reprise | Pause et reprise | Pause et reprise | Pause et reprise |
 | Z court | Action du mode | Aucune (un menu n'est pas un mode) | Bonus (T) | Bloc suivant | Attaque | Bonus (T) |
 | Z long | Action spéciale du mode | Aucune | Aucune | Aucune | Carte ou relique active (T1) | Aucune |
@@ -301,7 +301,7 @@ Règles communes, valables partout :
 - **A agit sur le choix affiché.** Un menu, un carrefour, une liste de couloirs ou de cartes sont des choix : A court passe à l'option suivante, A long valide. Sans choix affiché (en roulant), le choix est celui de la vue de caméra.
 - **Y revient en arrière** : pause en séance, écran précédent dans un menu, reprise depuis l'écran de pause.
 - **Z n'a que l'action du mode** ; il ne fait rien dans un menu.
-- **Bloc de roue libre d'un entraînement ERG** : la séance reste en ERG pour les boutons. Il n'y a pas de cible à biaiser, donc ± règlent le braquet, et Z passe au bloc suivant (outil X42, 28 octobre).
+- **Pas de roue libre en ERG** (choix du propriétaire du 29 octobre, lot O19) : la consigne ERG ne descend jamais sous 50 W, biais compris, et un bloc FreeRide d'un `.zwo` devient un palier à 50 W. Les boutons gardent donc la colonne ERG d'un bout à l'autre de l'entraînement. Le test de FTP se fait par la rampe seule.
 - **ERG d'une session libre (lot O18)** : choisi sur l'écran de pause, il garde la colonne ERG, sauf Z, qui reste le bonus de la colonne SIM (pas de blocs) ; en ERG à cadence verrouillée, le biais s'applique à la cadence cible.
 - **Le grand pas vaut dix petits pas en séance** et cinq éléments dans un menu.
 - **Clavier (décision D6 du 27 octobre) :** il double le Click touche pour touche, avec les mêmes seuils d'appui (court sous 0,5 s, long à 0,9 s ou plus, zone floue entre les deux), en menu comme en séance ; une touche n'a jamais d'autre rôle que celui de son bouton. Pas de bouton pour la difficulté (décision Q1).

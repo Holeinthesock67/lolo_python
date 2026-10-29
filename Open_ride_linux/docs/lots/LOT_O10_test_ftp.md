@@ -1,5 +1,7 @@
 # Lot O10 – Test de FTP : test par paliers (rampe) et test de 20 minutes, côté core
 
+> **Mise à jour du 29 octobre (lot O19)** : le test de 20 minutes est retiré, à la demande du propriétaire (aucune roue libre en ERG). Le test de FTP est la rampe seule. Ce cahier garde la description d'origine.
+
 ## 1. Objectif
 
 Pour que l'ERG soit juste, la FTP doit être la vraie. Ce lot ajoute deux tests de FTP qui se roulent comme un entraînement et proposent à la fin une nouvelle FTP, enregistrée dans `~/OpenRide/config.toml` après accord du cycliste :

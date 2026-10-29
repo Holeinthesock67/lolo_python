@@ -127,8 +127,7 @@ static func workout_sheet(item: Dictionary, ftp_w := 0.0) -> Dictionary:
 
 
 ## Test de FTP : mêmes blocs que le core (ftp_test.py : rampe de 20 W par minute depuis 100 W jusqu'au
-## palier FTP / 0,75, puis retour au calme ; 20 minutes : échauffement, deux efforts d'une minute,
-## 20 min en roue libre, retour au calme).
+## palier FTP / 0,75, puis retour au calme ; le test de 20 minutes est retiré au lot O19).
 const FTP_REF_W := 250.0           # FTP de référence sans FTP connue (DEFAULT_PLAN_FTP_W du core)
 const RAMP_START_W := 100.0
 const RAMP_STEP_W := 20.0
@@ -136,15 +135,12 @@ const RAMP_STEP_S := 60.0
 const RAMP_WARMUP_S := 300.0
 const RAMP_COOLDOWN_S := 300.0
 const RAMP_FACTOR := 0.75
-const TWENTY_EFFORT_S := 1200.0
-const TWENTY_BLOCKS := [[600.0, 0.5, 0.75], [180.0, 0.75, 0.75], [60.0, 1.1, 1.1], [120.0, 0.55, 0.55],
-	[60.0, 1.1, 1.1], [180.0, 0.55, 0.55], [300.0, 0.5, 0.5], [TWENTY_EFFORT_S, null, null], [600.0, 0.6, 0.4]]
 
 
-## Blocs [durée, début, fin] d'un test de FTP en fraction de la FTP (null : roue libre).
+## Blocs [durée, début, fin] de la rampe du test de FTP en fraction de la FTP (`kind` : `ramp`, seul test).
 static func ftp_test_blocks(kind: String, ftp_w: float) -> Array:
 	if kind != "ramp":
-		return TWENTY_BLOCKS.duplicate(true)
+		return []
 	var ref := ftp_w if ftp_w > 0.0 else FTP_REF_W
 	var last_w := maxf(ref / RAMP_FACTOR, RAMP_START_W)
 	var out: Array = [[RAMP_WARMUP_S, 0.6 * RAMP_START_W / ref, RAMP_START_W / ref]]
@@ -169,7 +165,7 @@ static func ftp_test_sheet(kind: String, name: String, how: String, ftp_w: float
 	return {"title": "Test de FTP", "name": name, "blocks": blocks, "lines": [how],
 		"tiles": [_tile("Durée", _format_fr_duration(blocks_duration(blocks)), ""),
 			_tile("FTP actuelle", str(int(round(ftp_w))) if ftp_w > 0.0 else "—", "W" if ftp_w > 0.0 else ""),
-			_tile("Retenu", "75" if kind == "ramp" else "95", "%")]}
+			_tile("Retenu", str(int(RAMP_FACTOR * 100.0)), "%")]}
 
 
 ## Fiche d'un plan de la liste (`plans.items`) ; `active` : plan en cours de la réponse (ou null).
