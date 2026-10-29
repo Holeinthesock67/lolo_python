@@ -1,6 +1,6 @@
 # Lot Y8 – Habillage des bâtiments : toits à pans, façades et styles par région et par biome
 
-**Statut : étape 1 livrée le 28 octobre** (bâtiments, PR #470), mesurée sur la GTX 1060 (§5), en attente de l'avis du propriétaire sur l'aspect. Ce cahier remplace la première version du 28 octobre (PR #462) ; les écarts sont au §7. Étape 2 (arbres) en PR le 28 octobre (§8). Étapes suivantes au §6 (panneaux, poteaux, barrières, éoliennes). L'étalonnage d'Y8 est passé dans Y13.
+**Statut : étape 1 livrée le 28 octobre** (bâtiments, PR #470), mesurée sur la GTX 1060 (§5), en attente de l'avis du propriétaire sur l'aspect. Ce cahier remplace la première version du 28 octobre (PR #462) ; les écarts sont au §7. Étape 2 (arbres) en PR le 28 octobre (§8). Étapes 3 et 4 (panneaux, poteaux, bornes, éoliennes) au §9. L'étalonnage d'Y8 est passé dans Y13.
 
 ## 1. Objectif
 
@@ -79,3 +79,15 @@ Préréglages : le faux relief est coupé en `low` (`BuildingMesh.RELIEF`) ; fen
 - **Pas de faux relief sur les arbres**, et un seul `Shader` par niveau de détail pour toutes les essences (la copie `cull_disabled` des panneaux croisés est partagée). Première mesure du 28 octobre sur la GTX 1060 (village, `medium`) : 58 → 7,5 images/s avec un relief par dérivées d'écran et un Shader du LOD 1 recréé pour chaque essence ; `low` inchangé (58,2 images/s). Corrigé avant fusion, mesure à refaire.
 - **Coût** : aucune géométrie ajoutée (mêmes triangles et appels de dessin, vues `arbres_temperes`, `arbres_sud` et `ecorces` de la vitrine) ; coût du shader par pixel de feuillage à mesurer sur la GTX 1060.
 - **Tests** : `engine/tests/render/test_tree_render.gd` (points parasites, feuillage varié, contre-jour, bouleau ; sans habillage, 6 vérifications sur 10 échouent) et codes de matière de chaque essence dans `engine/tests/unit/test_vegetation_biomes.gd`.
+
+## 9. Étapes 3 et 4 : objets du bord de route et éoliennes
+
+- **Un shader commun** `engine/shaders/props.gdshader` pour les objets construits par code : une matière par pièce (`kind`), motifs en coordonnées de la pièce en mètres (échelle du nœud comprise, `size_m` = dimensions du maillage), couche `surface_detail.gdshaderinc`, couleurs écrites en sRGB et converties.
+  - Panneaux (`roadside_props.gd`) : tôle peinte à liseré blanc et rebord, film rétroréfléchissant, dos et tranches en tôle galvanisée, rayures fines et salissure du bas.
+  - Poteaux : acier galvanisé à paillettes de zinc, rouille éparse, terre au pied.
+  - Bornes : béton blanc à grain, coulures, pied sali ; tête rouge écaillée.
+  - Éoliennes (`wind_turbines.gd`) : mât à joints de tronçons, coulures, porte au pied et dégradé vert sur le bas ; capot de nacelle à panneaux et grilles ; pales au bord d'attaque usé.
+- **Préréglages** : `RoadsideProps.RELIEF` (relief coupé en `low`), appliqué aux panneaux et aux éoliennes par `living_decor.gd`.
+- **Barrières et glissières** : le monde n'en a pas encore ; elles prendront ce shader quand un lot les ajoutera.
+- **Coût** : aucune géométrie ajoutée (vues `panneaux`, `eolienne`, `eolienne_pied` de la vitrine : mêmes triangles et appels de dessin) ; ces objets couvrent peu de pixels.
+- **Tests** : `engine/tests/render/test_props_render.gd` (points parasites, liseré du panneau, poteau galvanisé, pied de borne sali, dégradé du mât).
