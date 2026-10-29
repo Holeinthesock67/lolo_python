@@ -27,3 +27,22 @@
 ## 6. Hors périmètre
 
 Mettre à jour les dépendances trouvées.
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x24`).
+
+- **`scripts/audit_dependances.py`** fait trois contrôles :
+  - **Vulnérabilités** : `python -m pip_audit -r constraints.txt --format json` ; chaque avis est donné par paquet, avec son identifiant et la version corrigée.
+  - **Actions GitHub** : les `uses: propriétaire/action@vN` de `.github/workflows/*.yml` sont comparés à la plus grande étiquette `vN` publiée. Les étiquettes sont lues par `git ls-remote --tags`, sans jeton : l'API GitHub n'est pas joignable depuis toutes les sessions cloud.
+  - **Paquets anciens** : date de publication de la version fixée, lue dans l'API JSON de PyPI ; un paquet publié il y a plus de 365 jours est listé.
+- Sortie et codes : `resume.txt` et `resume.json` ; `--hors-ligne` saute les deux contrôles réseau. Code 1 si une vulnérabilité est connue, 2 si `pip-audit` manque, 75 sans réseau.
+- **`pip-audit`** est dans l'extra `dev` du core, fixé à 2.10.1 dans `constraints.txt`.
+- **Job `dependances`** de `openride.yml` : seulement sur `schedule` (lundi 5 h UTC) et `workflow_dispatch`. Le résumé est publié en artefact (30 jours).
+- **`recette_pc.py`** : étape facultative `deps` (`--seulement deps`). Elle n'est pas dans la liste par défaut, et le code 75 la marque SAUTÉ.
+- **Mesuré au cloud le 28 octobre** : aucune vulnérabilité connue sur les 13 paquets fixés. Les écarts trouvés seront corrigés dans une PR à part (hors périmètre) :
+  - quatre actions en retard : `checkout` v5 → v7, `setup-python` v6 → v7, `cache` v4 → v6, `upload-artifact` v4 → v7 ;
+  - `pyproj` 3.7.2, publié le 14 août 2025.
+- **Tests** :
+  - `core/tests/test_audit_dependances.py` (5 tests, sans réseau) : fichiers réels lus, workflows fabriqués, action en retard, sortie de `pip-audit` fabriquée qui donne le code 1, `pip-audit` absent, pas de réseau ;
+  - `test_recette_pc` : étape `deps`.

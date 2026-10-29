@@ -5,7 +5,7 @@ Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
-                 [--culling on|off] [--probe] [--out DOSSIER] [--list]
+                 [--culling on|off] [--probe] [--speed-kmh V] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -37,7 +37,16 @@ Décor vivant (lot P30) : chaque capture relève les objets affichés par sorte 
 demander `decor_expect` (sortes vues au moins une fois, ex. `["birds", "animals"]`) et `sounds_expect`
 (groupes de sons dont un au moins doit démarrer, ex. `[["raptor_cry", "crow_caw"]]`).
 
-Code de sortie : 0 si toutes les vérifications passent, 1 sinon, 2 si Godot ou xvfb-run manque.
+Fiabilité (lot X35) : les captures périodiques commencent après le chargement du parcours (`route_loaded`
+puis SETTLE_S) et une capture sans réponse est redemandée une fois ; seules les captures demandées après le
+chargement comptent dans la vérification « captures de l'engine ». L'engine met à part, dans la sonde, les
+images d'une capture (pic de lecture et d'écriture du PNG). Avant de construire le monde `village` ou `osm`,
+le banc vérifie que le compilateur installé connaît chaque couche demandée. `--speed-kmh` (ou `speed_kmh`
+dans la section `bench`) fait tenir cette vitesse au trainer simulé, difficulté 100 % (pente reçue = pente
+du parcours), avec la vérification « vitesse médiane à ± 10 % ».
+
+Code de sortie : 0 si toutes les vérifications passent, 1 sinon, 2 si Godot ou xvfb-run manque, ou si le
+compilateur installé ne connaît pas une couche du monde demandé.
 """
 
 from __future__ import annotations
@@ -75,6 +84,12 @@ DECOR_KINDS = {"birds": ("oiseaux", "#2980b9"), "animals": ("animaux", "#8e5a2b"
                "distant_vehicles": ("véhicules lointains", "#e67e22"), "cyclists": ("cyclistes", "#27ae60"),
                "aircraft": ("ciel", "#8e44ad"), "boats": ("bateaux", "#16a085")}
 CMD_ID_BASE = 20_000
+SETTLE_S = 5.0          # après route_loaded : premières tuiles et premier décor avant la première capture
+SHOT_TIMEOUT_S = 5.0    # attente de la réponse d'une capture, une fois redemandée
+SPEED_TOLERANCE = 0.10  # vitesse imposée : médiane à ± 10 %
+LATENCY_MIN_PRESSES = 10   # lot X7 : appuis du Click appariés de bout en bout
+LATENCY_P95_MS = 150.0     # notification → image affichée, p95 (strict en fenêtre réelle)
+SPEED_WARMUP_S = 20.0   # départ arrêté : hors médiane de la vitesse
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
 # Lot S1 : apparitions ignorées pendant le premier chargement (m de route).
 POP_WARMUP_M = 100.0
@@ -171,6 +186,10 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return "demo"
     if kind in ("village", "osm"):
         script = "make_sim_world.py" if kind == "village" else "make_osm_world.py"
+        problem = compiler_problem(world_layers(kind))
+        if problem:
+            print(f"ÉCHEC monde {kind} : {problem}", file=sys.stderr)
+            raise SystemExit(2)
         work = tmp / f"world-{kind}"
         subprocess.run([sys.executable, str(TESTS_DIR / script), "--out", str(work)], check=True,
                        stdout=subprocess.DEVNULL)
@@ -182,6 +201,30 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         raise SystemExit(f"parcours introuvable : {kind} (demo, village, osm ou dossier .world)")
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
+
+
+def world_layers(kind: str) -> tuple[str, ...]:
+    """Couches que le script du monde `village` ou `osm` demande au compilateur."""
+    import make_osm_world
+    import make_sim_world
+    return ("route", "terrain") + (make_sim_world.LAYERS if kind == "village" else make_osm_world.LAYERS)
+
+
+def missing_layers(wanted: tuple[str, ...], known: tuple[str, ...]) -> list[str]:
+    return [la for la in wanted if la not in known]
+
+
+def compiler_problem(wanted: tuple[str, ...]) -> str:
+    """Message d'arrêt si le compilateur installé manque ou ne connaît pas une couche ; vide sinon."""
+    try:
+        from openride_compiler import cli
+    except ImportError as exc:
+        return f"compilateur non installé ({exc}) : pip install -e compiler"
+    missing = missing_layers(wanted, tuple(cli.LAYERS))
+    if missing:
+        return (f"compilateur installé trop ancien : couche(s) {', '.join(missing)} inconnue(s) ; "
+                "réinstaller (`pip install -e compiler`)")
+    return ""
 
 
 # --- une séance --------------------------------------------------------------------------------
@@ -197,6 +240,18 @@ class Bench:
         self.world = str(args.world or settings.get("world") or "demo")
         self.workout = settings.get("workout", args.workout)
         self.difficulty = settings.get("difficulty_pct", args.difficulty)
+        # Vitesse imposée (lot X35) : le trainer simulé tient cette vitesse sur la pente reçue, qui n'est la
+        # pente du parcours qu'à difficulté 100 %.
+        self.speed_kmh = args.speed_kmh or settings.get("speed_kmh")
+        if self.speed_kmh:
+            if self.difficulty is not None and float(self.difficulty) != 100.0:
+                raise SystemExit(f"{name} : vitesse imposée avec la difficulté {self.difficulty} % : la vitesse "
+                                 "imposée demande la difficulté 100 % (pente reçue = pente du parcours)")
+            self.difficulty = 100.0
+            self.spec = {**spec, "trainer": {**(spec.get("trainer") or {}),
+                                             "target_speed_kmh": float(self.speed_kmh)}}
+            self.scenario_arg = ""   # scénario modifié : écrit dans un fichier
+        self.ready_at = SETTLE_S     # temps relatif de la première capture comptée (après le chargement)
         self.duration = float(args.duration or settings.get("duration_s") or
                               min(max(scenario_duration(spec) + 15.0, 45.0), 600.0))
         self.every = float(args.every or settings.get("every_s") or 15.0)
@@ -249,6 +304,8 @@ class Bench:
         cfg.write_text("\n".join(cfg_lines), encoding="utf-8")
         argv = [sys.executable, "-m", "openride_core", "run", "--config", str(cfg), "--trainer", "sim",
                 "--input", "sim", "--hr", "sim", "--autostart", "--route", route_id]
+        if a.latence:
+            argv.append("--latence")   # lignes [latence] du core et de l'engine (lot X7)
         if self.scenario_arg:
             argv += ["--sim-scenario", self.scenario_arg]
         else:
@@ -301,6 +358,7 @@ class Bench:
             loaded = engine.wait_for(rf"route_loaded id={re.escape(route_id)}", 30.0)
             r.check(loaded is not None, "parcours chargé par l'engine",
                     f"{route_id} à {self.rel(loaded[0]):.1f} s" if loaded else f"{route_id} non chargé en 30 s")
+            self.ready_at = (self.rel(loaded[0]) if loaded else self.rel(now())) + SETTLE_S
             relauncher = None
             if self.endurance:   # parcours fini avant la durée voulue : on repart, comme « Rouler encore »
                 relauncher = threading.Thread(target=self._relaunch_loop, args=(core, cmd_port, route_id),
@@ -340,15 +398,25 @@ class Bench:
         return r
 
     def _shot(self, engine: Proc, port: int, tag: str) -> None:
+        """Capture ; redemandée une fois sans réponse en SHOT_TIMEOUT_S. Les captures demandées avant la fin du
+        chargement (`ready_at`) sont gardées mais marquées `early` : elles ne comptent pas dans la vérification."""
         idx = len(self.shots)
         path = (self.out / f"{idx:03d}_{tag}.png").resolve()
         t = now()
         msg = {"type": "_test", "action": "screenshot", "path": str(path), "tag": tag}
         import socket
-        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
-            s.sendto(json.dumps(msg).encode(), ("127.0.0.1", port))
-        got = engine.wait_for(r"\[test\] screenshot (\{.*\})$", 5.0, after=t)
-        info: dict[str, Any] = {"tag": tag, "t": self.rel(t), "file": path.name, "ok": False}
+        got = None
+        tries = 0
+        while got is None and tries < 2:
+            tries += 1
+            sent = now()
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.sendto(json.dumps(msg).encode(), ("127.0.0.1", port))
+            got = engine.wait_for(rf'\[test\] screenshot (\{{.*"tag":"{re.escape(tag)}".*\}})$', SHOT_TIMEOUT_S,
+                                  after=sent)
+        info: dict[str, Any] = {"tag": tag, "t": self.rel(t), "file": path.name, "ok": False,
+                                "early": self.rel(t) < self.ready_at, "retried": tries > 1,
+                                "delay_s": round(got[0] - t, 2) if got else None}
         if got:
             try:
                 data = json.loads(got[1].group(1))
@@ -367,7 +435,7 @@ class Bench:
         """Captures périodiques (au temps, ou tous les `every_m` mètres) et juste après chaque événement du
         scénario, jusqu'à la durée voulue."""
         plan: list[tuple[float, str]] = []
-        t = 3.0
+        t = max(3.0, self.ready_at)
         while t < self.duration and self.every_m <= 0.0:
             plan.append((t, f"t{int(t):03d}"))
             t += self.every
@@ -402,7 +470,7 @@ class Bench:
                 continue
             cam_after = got[0] + 1e-6
             s_m = float(got[1].group(1))
-            if s_m >= next_m:
+            if s_m >= next_m and t_rel >= self.ready_at:   # pas de capture comptée pendant le chargement (X35)
                 self._shot(engine, port, f"d{int(next_m):05d}")
                 while next_m <= s_m:
                     next_m += self.every_m
@@ -462,16 +530,18 @@ class Bench:
         a = self.args
         if self.sampler is not None:
             rows = perf_probe.merge(perf_probe.read_engine_csv(self.out / "moteur.csv"), self.sampler.rows)
-            self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}")
+            self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}",
+                                                         real_window=a.native, engine_dir=self.out)
             r.check(self.probe_summary["rows"] > 0, "sonde de performance",
                     f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
             if self.endurance:
                 for ok, label, measure in perf_probe.endurance_checks(rows, real_window=a.native):
                     r.check(ok, label, measure)
+            for ok, label, measure in self.probe_summary.get("budgets", []):   # budgets du préréglage (lot X14)
+                r.check(ok, label, measure)
         # Captures.
         ok = [s for s in self.shots if s.get("ok")]
-        r.check(len(ok) == len(self.shots) and ok, "captures de l'engine",
-                f"{len(ok)}/{len(self.shots)} images enregistrées")
+        r.check(*capture_check(self.shots), "captures de l'engine")
         fps = [s["fps"] for s in ok if isinstance(s.get("fps"), (int, float)) and s["tag"][:1] in ("t", "d")]
         if fps:
             fps_line = (f"images par seconde de l'engine : min {min(fps):.0f}, médiane "
@@ -527,11 +597,36 @@ class Bench:
         self.log_report_text = p.stdout + p.stderr
         r.check(p.returncode == 0, "log_report", "analyse du journal du core lue" if p.returncode == 0
                 else p.stderr[-200:])
+        if a.latence:
+            self._latency_checks(env)
         self._scenario_checks()
         (self.out / "log_report.txt").write_text(self.log_report_text, encoding="utf-8")
         (self.out / "summary.txt").write_text(self.summary_text, encoding="utf-8")
         write_html(self)
         del a
+
+    def _latency_checks(self, env: dict[str, str]) -> None:
+        """Lot X7 : appuis du Click appariés de bout en bout (au moins LATENCY_MIN_PRESSES) et p95 de la
+        notification à l'image affichée sous LATENCY_P95_MS (indicatif sous Xvfb, strict avec --native)."""
+        r = self.report
+        p = subprocess.run([sys.executable, "-m", "openride_core.tools.log_report", "--json", "--latence",
+                            str(self.out / "core.log"), str(self.out / "engine.log")], env=env, capture_output=True, text=True)
+        try:
+            lat = json.loads(p.stdout)
+        except ValueError:
+            r.check(False, "latence des appuis", (p.stderr or p.stdout)[-200:])
+            return
+        (self.out / "latence.json").write_text(json.dumps(lat, ensure_ascii=False, indent=2), encoding="utf-8")
+        r.check(lat["complete"] >= LATENCY_MIN_PRESSES, "latence : appuis appariés de bout en bout",
+                f"{lat['complete']} sur {lat['presses']} (au moins {LATENCY_MIN_PRESSES})")
+        e2e = lat["hops"].get("bout en bout (notification → image)")
+        if e2e:
+            r.check(e2e["p95_ms"] < LATENCY_P95_MS if self.args.native else None, "latence : notification → image",
+                    f"médiane {e2e['median_ms']:.0f} ms, p95 {e2e['p95_ms']:.0f} ms, max {e2e['max_ms']:.0f} ms "
+                    f"(seuil p95 {LATENCY_P95_MS:.0f} ms{'' if self.args.native else ', non appliqué sous Xvfb'})")
+        for label, h in lat["hops"].items():
+            if not label.startswith("bout en bout"):
+                r.check(None, f"latence : {label}", f"médiane {h['median_ms']:.1f} ms, p95 {h['p95_ms']:.1f} ms")
 
     def _scenario_checks(self) -> None:
         """Attentes tirées des événements : ce que l'écran et le journal doivent montrer."""
@@ -580,12 +675,13 @@ class Bench:
             if grades and sent:
                 print(f"   pente du parcours {min(grades):.1f} à {max(grades):.1f} %, "
                       f"pente envoyée {min(sent):.1f} à {max(sent):.1f} %")
+        if self.speed_kmh:
+            r.check(*speed_check(recs, float(self.speed_kmh)), f"vitesse imposée {float(self.speed_kmh):.0f} km/h")
         self._decor_checks()
         hr = [x.get("hr") for x in recs if x.get("hr")]
         if "hr" in self.spec:
             r.check(bool(hr), "fréquence cardiaque au journal",
                     f"{len(hr)} échantillons, {min(hr)} à {max(hr)} bpm" if hr else "aucune fréquence cardiaque")
-
 
     def _decor_checks(self) -> None:
         """Décor vivant (lot P30) : `decor.csv`, sortes vues et sons démarrés demandés par le scénario."""
@@ -607,6 +703,51 @@ class Bench:
             got = {k: heard[k] for k in group if heard.get(k)}
             self.report.check(bool(got), f"son du décor : {' ou '.join(group)}",
                               ", ".join(f"{k} ×{n}" for k, n in got.items()) or "jamais démarré")
+
+
+def capture_check(shots: list[dict[str, Any]]) -> tuple[bool, str]:
+    """Captures demandées après le chargement : toutes enregistrées ? Avec les redemandes et les délais."""
+    counted = [s for s in shots if not s.get("early")]
+    ok = [s for s in counted if s.get("ok")]
+    delays = sorted(s["delay_s"] for s in shots if isinstance(s.get("delay_s"), (int, float)))
+    retried = sum(1 for s in shots if s.get("retried"))
+    early = len(shots) - len(counted)
+    msg = f"{len(ok)}/{len(counted)} images enregistrées après le chargement"
+    if early:
+        msg += f" (+{early} avant, hors compte : {sum(1 for s in shots if s.get('early') and s.get('ok'))} enregistrée(s))"
+    if retried:
+        msg += f", {retried} redemandée(s)"
+    if delays:
+        msg += f", réponse en {delays[len(delays) // 2]:.2f} s (médiane), {delays[-1]:.2f} s au pire"
+    return bool(counted) and len(ok) == len(counted), msg
+
+
+def shot_timing(s: dict[str, Any]) -> str:
+    """Délai de réponse d'une capture pour la légende du rapport."""
+    d = s.get("delay_s")
+    out = f" · réponse en {d:.2f} s" if isinstance(d, (int, float)) else " · pas de réponse"
+    if s.get("retried"):
+        out += " · redemandée"
+    if s.get("early"):
+        out += " · avant la fin du chargement"
+    return out
+
+
+def speed_check(recs: list[dict[str, Any]], target_kmh: float, tolerance: float = SPEED_TOLERANCE,
+                warmup_s: float = SPEED_WARMUP_S) -> tuple[bool, str]:
+    """Vitesse médiane du journal (m/s, 1 Hz) après la mise en vitesse, comparée à la vitesse imposée."""
+    ts = [x["ts"] for x in recs if isinstance(x.get("ts"), (int, float))]
+    if not ts:
+        return False, "aucun échantillon de vitesse au journal"
+    t0 = min(ts)
+    v = sorted(float(x["speed"]) * 3.6 for x in recs if isinstance(x.get("speed"), (int, float))
+               and isinstance(x.get("ts"), (int, float)) and x["ts"] - t0 >= warmup_s)
+    if not v:
+        return False, f"aucun échantillon de vitesse après {warmup_s:.0f} s"
+    med = v[len(v) // 2]
+    ok = abs(med - target_kmh) <= tolerance * target_kmh
+    return ok, (f"médiane {med:.1f} km/h sur {len(v)} s (attendu {target_kmh:.1f} ± {tolerance * target_kmh:.1f}), "
+                f"de {v[0]:.1f} à {v[-1]:.1f} km/h")
 
 
 # --- rapport HTML ------------------------------------------------------------------------------
@@ -719,6 +860,7 @@ def write_html(b: Bench) -> None:
         shots.append(f'<figure><a href="{s["file"]}"><img src="{s["file"]}" loading="lazy" alt="{html.escape(s["tag"])}"></a>'
                      f'<figcaption><b>{s["t"]:.0f} s · {html.escape(s["tag"])}</b> · {s.get("fps", "?")} img/s'
                      f' · {s.get("meshes", "?")} maillages · {s.get("draw_calls", "?")} appels de dessin'
+                     f'{shot_timing(s)}'
                      f'<br>{html.escape(txt)}</figcaption></figure>')
     evlines = "\n".join(f"{t:7.1f} s  {line}" for t, line in b.core_events[-400:])
     banners = "\n".join(f"{t:7.1f} s  {txt}" for t, txt in b.banners) or "(aucun)"
@@ -780,6 +922,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--difficulty", type=float, help="[trainer] difficulty_pct de la configuration")
     ap.add_argument("--size", default="1280x720")
     ap.add_argument("--quality", default="low", help="low, medium, high (défaut low)")
+    ap.add_argument("--speed-kmh", type=float, help="vitesse tenue par le trainer simulé (difficulté 100 %%, lot X35)")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
     ap.add_argument("--camera", default="subjective", choices=("subjective", "follow_near", "follow_far", "side"),
                     help="vue de caméra mesurée (lot V12, exigence 2.0-CAM-5 : au moins 55 images/s en low pour chacune)")
@@ -789,6 +932,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="off", choices=("on", "off"),
                     help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
+    ap.add_argument("--latence", action="store_true",
+                    help="latence des appuis du Click jusqu'à l'image (lot X7) : core et engine avec --latence")
     ap.add_argument("--probe", action="store_true",
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))

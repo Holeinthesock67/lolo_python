@@ -3,9 +3,16 @@ extends RefCounted
 ## Marques des segments et arches de bonus (lot T8, série T), sans aucun nœud. Pas de class_name :
 ## charger par preload("res://scripts/segment_markers_model.gd").
 ##
-## `items(route, segments, arch_every_m)` rend `[{kind, s, side, type, segment_id, lines}]`, trié par `s` :
-## - `start` et `finish` au départ et à l'arrivée de chaque segment (ligne au sol et portique, vert pour
-##   un sprint, blanc à pois rouges pour une montée), avec le nom du segment ;
+## `items(route, segments, arch_every_m, route_gates)` rend `[{kind, style, s, side, type, segment_id, lines}]`,
+## trié par `s` ; `lines` : titre du bandeau puis sous-titre (portiques), lignes du panneau (panneaux) :
+## - `start` et `finish` au départ et à l'arrivée de chaque segment (ligne au sol et arche, 29/10) : styles
+##   `sprint_start` (« Sprint », nom), `sprint_finish` (« Fin du sprint », nom), `climb_start` (« Montée »,
+##   nom et catégorie), `summit` (« Sommet », nom et catégorie) ;
+## - avec `route_gates` (vrai sauf monde ouvert) : départ et arrivée du parcours, `start` de style
+##   `route_start` à 0 et `finish` de style `route_finish` à la fin d'un parcours ouvert, un seul `start` de
+##   style `route_line` (« Départ · Arrivée ») à 0 sur une boucle ; un portique de segment à moins de
+##   `MERGE_M` d'un portique du parcours n'est pas doublé : le portique du parcours prend son nom en
+##   sous-titre, son `type` et son `segment_id` ;
 ## - `panel` avant un sprint (« Sprint dans 1 km », « 500 m », « 200 m ») ; au pied d'une montée
 ##   (« Montée de 2e catégorie » et « 4,2 km à 6,1 % »), puis « Sommet dans 1 km » et « 500 m » ;
 ##   panneaux à gauche (`side` = -1), pour ne pas cacher ceux du bord droit (P14) ;
@@ -19,6 +26,9 @@ extends RefCounted
 ## comme le core (5 000 m sans fichier ou sans clé, valeur refusée par le core : 5 000 m).
 ## `climbs(route, segments)` : montées de la couche au format de climb_detector.gd, pour le décor (une
 ## seule source des montées quand la couche existe).
+## `gate_jingles(marks)` : `[{s, jingle}]` des portiques qui sonnent quand on les franchit (event_sounds_model.gd) :
+## départ d'un sprint ou d'une montée `jingle_start`, ligne d'une boucle `jingle_lap` ; les arrivées sonnent
+## par `segment_result` (sprint, sommet) et par la fin de séance (arrivée du parcours).
 ## `window(starts, cam_s, length_m, loop, ahead_m, behind_m)` : indices des marques à afficher autour de
 ## la caméra, par recherche dichotomique dans les positions triées.
 ## Textes en français, nombres au format français.
@@ -33,6 +43,7 @@ const SUMMIT_PANELS_M := [1000.0, 500.0]
 const FOOT_PANEL_BEFORE_M := 30.0     # panneau de pied de montée, juste avant la ligne
 const FOOT_PANEL_AFTER_M := 15.0      # ou juste après, pour une montée dès le départ
 const MAX_KM_STEP_M := 20.0
+const MERGE_M := 25.0                 # portique de segment fondu dans celui du départ ou de l'arrivée du parcours
 const AHEAD_M := 400.0
 const BEHIND_M := 30.0
 const EPS_M := 1e-6
@@ -115,37 +126,90 @@ static func _before(route, s: float, before_m: float) -> float:
 	return -1.0
 
 
-static func items(route, segments: Array, arch_every_m: float = DEFAULT_ARCH_EVERY_M) -> Array:
+static func items(route, segments: Array, arch_every_m: float = DEFAULT_ARCH_EVERY_M, route_gates: bool = true) -> Array:
 	var out: Array = []
+	var length := float(route.length_m)
+	var loop: bool = route.is_loop()
+	var first: Dictionary = {}
+	var last: Dictionary = {}
+	if route_gates:
+		if loop:
+			first = {"kind": "start", "style": "route_line", "s": 0.0, "side": 0, "type": "", "segment_id": "",
+				"lines": ["Départ · Arrivée"]}
+			last = first
+		else:
+			first = {"kind": "start", "style": "route_start", "s": 0.0, "side": 0, "type": "", "segment_id": "",
+				"lines": ["Départ"]}
+			last = {"kind": "finish", "style": "route_finish", "s": length, "side": 0, "type": "", "segment_id": "",
+				"lines": ["Arrivée"]}
+			out.append(last)
+		out.append(first)
 	for seg in segments:
 		var kind: String = seg["type"]
 		var sid: String = seg["id"]
 		var s0 := float(seg["s_start"])
 		var s1 := float(seg["s_end"])
 		var seg_name: String = seg["name"]
-		out.append({"kind": "start", "s": s0, "side": 0, "type": kind, "segment_id": sid, "lines": [seg_name, "Départ"]})
-		out.append({"kind": "finish", "s": s1, "side": 0, "type": kind, "segment_id": sid, "lines": [seg_name, "Arrivée"]})
+		var sub := seg_name
+		if kind == "climb" and seg.get("category") != null:
+			sub += " · " + category_text(seg.get("category"))
+		var gates := [["start", s0, "sprint_start" if kind == "sprint" else "climb_start",
+				"Sprint" if kind == "sprint" else "Montée"],
+			["finish", s1, "sprint_finish" if kind == "sprint" else "summit", "Fin du sprint" if kind == "sprint" else "Sommet"]]
+		for g in gates:
+			var host := _route_gate(first, last, g[0], float(g[1]), length, loop)
+			if host.is_empty():
+				out.append({"kind": g[0], "style": g[2], "s": g[1], "side": 0, "type": kind, "segment_id": sid,
+					"lines": [g[3], sub]})
+			elif str(host["segment_id"]).is_empty():
+				host["lines"] = [host["lines"][0], sub]
+				host["type"] = kind
+				host["segment_id"] = sid
 		if kind == "sprint":
 			for d in SPRINT_PANELS_M:
 				var at := _before(route, s0, d)
 				if at >= 0.0:
-					out.append({"kind": "panel", "s": at, "side": -1, "type": kind, "segment_id": sid,
+					out.append({"kind": "panel", "style": "panel", "s": at, "side": -1, "type": kind, "segment_id": sid,
 						"lines": ["Sprint dans " + _distance_text(d)]})
 		else:
 			var foot := _before(route, s0, FOOT_PANEL_BEFORE_M)
 			if foot < 0.0:   # montée dès le départ d'un parcours ouvert : panneau juste après la ligne
 				foot = s0 + FOOT_PANEL_AFTER_M
-			out.append({"kind": "panel", "s": foot, "side": -1, "type": kind, "segment_id": sid,
+			out.append({"kind": "panel", "style": "panel", "s": foot, "side": -1, "type": kind, "segment_id": sid,
 				"lines": ["Montée de " + category_text(seg.get("category")),
 					"%s km à %s %%" % [RoadsideModel.format_dec(float(seg["length_m"]) / 1000.0, 1),
 						RoadsideModel.format_dec(float(seg["avg_grade_pct"]), 1)]]})
 			for d in SUMMIT_PANELS_M:
 				if d < s1 - s0:
-					out.append({"kind": "panel", "s": s1 - d, "side": -1, "type": kind, "segment_id": sid,
+					out.append({"kind": "panel", "style": "panel", "s": s1 - d, "side": -1, "type": kind, "segment_id": sid,
 						"lines": ["Sommet dans " + _distance_text(d)]})
-	for p in arch_positions(arch_every_m, float(route.length_m)):
-		out.append({"kind": "arch", "s": p, "side": 0, "type": "", "segment_id": "", "lines": ["Bonus"]})
+	for p in arch_positions(arch_every_m, length):
+		out.append({"kind": "arch", "style": "arch", "s": p, "side": 0, "type": "", "segment_id": "", "lines": ["Bonus"]})
 	out.sort_custom(func(a, b): return float(a["s"]) < float(b["s"]))
+	return out
+
+
+## Portique du parcours qui prend un portique de segment (`kind` start ou finish) à moins de MERGE_M de `s` :
+## départ pour un départ, arrivée pour une arrivée, ligne d'une boucle pour les deux ; sinon {}.
+static func _route_gate(first: Dictionary, last: Dictionary, kind: String, s: float, length: float, loop: bool) -> Dictionary:
+	if first.is_empty():
+		return {}
+	if loop:
+		return first if minf(s, length - s) < MERGE_M else {}
+	if kind == "start":
+		return first if s < MERGE_M else {}
+	return last if length - s < MERGE_M else {}
+
+
+## Portiques qui sonnent quand on les franchit : `[{s, jingle}]` triés par `s`.
+static func gate_jingles(marks: Array) -> Array:
+	var out: Array = []
+	for m in marks:
+		var style := str(m.get("style", ""))
+		if style == "route_line":
+			out.append({"s": float(m["s"]), "jingle": "jingle_lap"})
+		elif style in ["sprint_start", "climb_start"]:
+			out.append({"s": float(m["s"]), "jingle": "jingle_start"})
 	return out
 
 
