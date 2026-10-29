@@ -325,7 +325,7 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 | Message | Sens | Champs | Rôle |
 | --- | --- | --- | --- |
 | `hello` | engine vers core | `v`, `engine_version`, `rev` (facultatif, révision 1.3) | Premier message de l'engine, répété chaque seconde jusqu'au `hello_ack` |
-| `hello_ack` | core vers engine | `v`, `core_version`, `rev` (facultatif, révision 1.3), `config` (pour l'affichage : `ftp_w`, `gears_total`, `theme`, `chart` (facultatif, révision 1.3, lot O14 : taille des courbes de la séance), `difficulty_pct` ; `modes`, facultatif, révision 1.3 ; `open_world_dir`, facultatif, révision 1.5) | Confirme la version du contrat et donne la configuration utile |
+| `hello_ack` | core vers engine | `v`, `core_version`, `rev` (facultatif, révision 1.3), `config` (pour l'affichage : `ftp_w`, `hr_max_bpm` (facultatif, révision 1.5 : zones de FC du HUD), `gears_total`, `theme`, `chart` (facultatif, révision 1.3, lot O14 : taille des courbes de la séance), `difficulty_pct` ; `modes`, facultatif, révision 1.3 ; `open_world_dir`, facultatif, révision 1.5) | Confirme la version du contrat et donne la configuration utile |
 | `heartbeat` | engine vers core | `seq`, `fps` (nombre, facultatif) | À 2 Hz ; prouve que l'engine est vivant |
 | `error` | core vers engine | `code`, `message` | Erreur à afficher (voir codes ci-dessous) |
 | `bye` | engine vers core | — | L'engine se ferme volontairement |
@@ -337,7 +337,7 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 | --- | --- | --- |
 | `settings` | core vers engine | `v`, `request_cmd_id`, `items` : liste de `{key, label, group, type, value, applies}` ; `group` range le réglage dans un sous-écran de « Réglages » (`rider` cycliste, `ride` séance, `graphics` graphisme, `sound` son, `wind` vent) ; `type` vaut `int` (avec `min`, `max`, `step`, `unit`) ou `choice` (avec `choices`) ; `applies` vaut `next_session` (séance suivante, sans relancer) ou `now` (qualité, thème, courbes, compteur d'images/s `render.fps`, jauge d'abri `render.draft_gauge` et volumes `audio.*` : l'engine les applique tout de suite) ; 24 éléments au plus |
 
-- Réglages proposés : `rider.ftp_w`, `rider.mass_kg`, `trainer.difficulty_pct`, `gearing.start_gear`, `render.quality`, `render.theme` (`default` et les thèmes de `~/OpenRide/Themes/`), `render.chart` (courbes de la séance, lot O14 : `hidden`, `reduced`, `full` ; appliqué tout de suite). Bornes et choix : ceux de la validation de `config.toml`.
+- Réglages proposés : `rider.ftp_w`, `rider.mass_kg`, `rider.hr_max_bpm`, `trainer.difficulty_pct`, `gearing.start_gear`, `render.quality`, `render.theme` (`default` et les thèmes de `~/OpenRide/Themes/`), `render.chart` (courbes de la séance, lot O14 : `hidden`, `reduced`, `full` ; appliqué tout de suite). Bornes et choix : ceux de la validation de `config.toml`.
 - `set_setting` : hors séance (`IDLE`, `READY`, `FINISHED`, `ERROR`), tout réglage. Pendant `RUNNING` ou `PAUSED`, seuls les réglages que l'engine applique tout de suite (`applies` = `now` : qualité, thème, courbes, mode d'affichage, images/s, vue de caméra, volumes) sont écrits ; les autres reçoivent `error` `busy` et rien n'est écrit (pendant la séance, la difficulté se change par `set_difficulty`). Précision du 28 octobre (outil X42) : la vue de caméra choisie en roulant, écrite par l'engine (lot V12), recevait `busy`. Valeur hors bornes ou choix inconnu : `error` `setting_invalid`, rien n'est écrit. Sinon le fichier est modifié comme pour `pair_devices` (copie `.bak`), la valeur sert dès la séance suivante (`hello_ack.config` aussi) et le core renvoie `settings` avec `request_cmd_id` de la commande.
 
 **Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche ou appairage demandé pendant une séance ; aussi un réglage en révision 1.3), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée) ; révision 1.3 : `setting_invalid` (réglage inconnu ou valeur refusée), `bad_args` (arguments d'une commande absents ou mal typés, par exemple `set_difficulty` sans `pct` numérique ; rien n'est appliqué), `workout_write_failed` (entraînement impossible à écrire, lot N16), `plan_invalid` (plan inconnu ou invalide, date mal écrite, aucune séance du jour : lot O12), `ftp_result_missing` et `ftp_result_doubtful` (`accept_ftp`, lot O12), `bot_invalid` (argument `bots` de `start` refusé, lot O7) ; révision 1.4 : `run_invalid` (objectif ou durée de run hors liste), `item_locked` (pièce non débloquée ou non possédée), `not_enough_coins`, `avatar_invalid` (réglage d'avatar hors bornes) ; révision 1.5 (monde ouvert) : `branch_locked` (choix après le verrouillage), `unknown_junction`, `world_unavailable` (départ impossible : hors cache sans réseau, ou aucune route proche).
@@ -448,6 +448,18 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 {"type":"hello_ack","v":1,"core_version":"0.9.0","rev":"1.4","config":{"ftp_w":250,"gears_total":24,"theme":"default","modes":["ride","erg","rogue"],"rogue":{"w_prime_j":20000,"w_prime_estimate_j":null,"cp_w":240,"objectives":["endurance","threshold","vo2max"],"durations_min":[30,45,60,90],"chassis":{"unlocked":["standard","blinde"],"selected":"standard"},"lives":2},"progression":{"level":8,"xp":4310,"xp_level_start":3800,"xp_next_level":5000,"coins":210,"equipped":{"frame":"frame-alu","wheels":"wheels-carbon-40","helmet":"helmet-basic","kit":"kit-blue","socks":"socks-white","glasses":"glasses-none"},"avatar":{"height":"M","build":"medium","skin":3,"hair":2,"hair_color":1,"kit_primary":4,"kit_secondary":11,"number":27,"standing_grade_pct":8,"standing_power_pct":150},"lives":2}}}
 ```
 
+**Objet `erg` d'une session libre en ERG à cadence verrouillée** (révision 1.5, lot O18 ; le cycliste tourne au-dessus de la plage, la puissance monte)
+
+```json
+{"kind":"cadence","workout_name":"ERG cadence","block_index":1,"block_count":1,"block_type":"steady","block_remaining_s":0.0,"block_total_s":0.0,"target_w":207,"next_target_w":null,"bias_pct":100,"paused":false,"cadence_target_rpm":90,"cadence_low_rpm":76.5,"cadence_high_rpm":103.5,"cadence_zone":"high"}
+```
+
+**Bascule de mode d'une session libre** (révision 1.5, lot O18)
+
+```json
+{"type":"cmd","v":1,"cmd_id":21,"name":"set_ride_mode","args":{"mode":"cadence","cadence_rpm":90}}
+```
+
 **Séquence nominale**
 
 | Étape | Sens | Message ou événement |
@@ -463,6 +475,20 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 | 9 | engine vers core | `cmd end_session` avec `save` vrai |
 | 10 | core vers engine | `state` avec `FINISHED` et `summary` (chemin du FIT) |
 
+**Séquence : ERG dans une session libre** (révision 1.5, lot O18)
+
+| Étape | Sens | Message ou événement |
+| --- | --- | --- |
+| 1 | core vers engine | `state` avec `RUNNING`, `mode` = `SIM`, pas d'objet `erg` (session libre, sans entraînement ni run) |
+| 2 | Click ou engine vers core | Y court (Click, ou touche envoyée par `input_event`) : le core passe en `PAUSED` (`pause_reason` = `user`) ; l'engine affiche l'écran de pause avec la ligne Mode |
+| 3 | engine vers core | `cmd set_ride_mode` `{ "mode": "erg" }` (A long sur la ligne Mode) ; le core la compte dans `last_cmd_id` et journalise « Mode de la séance : ERG, cible … W » |
+| 4 | core vers engine | `state` avec `mode` = `ERG` et `erg.kind` = `free`, `erg.paused` vrai tant que la séance est en pause |
+| 5 | engine vers core | facultatif : `cmd set_ride_mode` `{ "mode": "erg", "target_w": … }` (ligne Puissance cible) ou `{ "mode": "cadence" }` (ERG cadence : `erg.kind` = `cadence`, champs `cadence_*`) |
+| 6 | engine vers core | `Y_SHORT` ou ligne Reprendre : `RUNNING` ; le core écrit la cible au trainer (consigne de puissance FTMS, braquet ignoré) ; ± changent `bias_pct` (cible de puissance, ou cadence cible en ERG cadence) |
+| 7 | engine vers core | retour : pause, `cmd set_ride_mode` `{ "mode": "sim" }` ; `state` sans `erg`, `mode` = `SIM`, la pente reprend depuis 0 % avec la limitation de variation |
+
+Refus : hors `RUNNING` et `PAUSED`, pendant un entraînement (`erg.kind` = `workout`) ou une run, `error` `busy` ; `mode` inconnu ou nombre mal typé, `error` `bad_args` ; dans les deux cas rien ne change.
+
 ## 8. Compatibilité et évolution du contrat
 
 Le champ `v` est la version majeure du contrat.
@@ -473,6 +499,7 @@ Le champ `v` est la version majeure du contrat.
 - **Schémas :** chaque message a un schéma JSON dans `docs/contracts/ipc/`, avec des trames d'exemple ; les tests des deux programmes valident leurs messages contre ces schémas.
 - **Révisions :** elles se suivent dans l'ordre des fusions ; un programme qui annonce `rev` « 1.3 » connaît tout ce qui est noté jusqu'à la 1.3. Une révision fermée ne reçoit plus d'ajout : la 1.2 est fermée depuis la fusion de la 1.3, qui reste ouverte jusqu'à l'étiquette `v1.0.0` et reçoit les ajouts de la 1.0 fusionnés avant elle ; la 1.4 est celle des séries R, T et V, la 1.5 celle de la série W (spécification générale §6.1, décision du propriétaire du 27 octobre).
 - **Journal des changements :** tenu en bas de ce document.
+- **Ajouts en revue :** les changements du contrat portés par des PR encore ouvertes ne sont notés ici qu'à leur fusion ; leur liste à jour est dans la [spécification générale §6.1](../SPECIFICATION_GENERALE.md#61-révisions-du-contrat-ipc).
 
 | Version | Date | Changement |
 | --- | --- | --- |
@@ -492,7 +519,7 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.4) | 27 octobre 2026 | Ajouts compatibles des séries R, T et V réunis en une révision (lot T1, décision D4 du propriétaire du 27 octobre ; anciens lots R1 et V1) : mode `ROGUE` et valeur `"rogue"` de `modes`, `lat`, `lon` et `alt` à `null` en run ; champs `segment`, `powerup`, `jerseys`, `bot_ahead`, `bot_behind` et objet `rogue` dans `state`, champs de profil des bots ; `summary.segments` et `summary.rogue` ; messages `segment_result`, `room`, `loot`, `garage`, `progression` et `xp_result` ; commandes `start_run`, `rogue_resync`, `list_garage`, `equip`, `buy`, `set_avatar` ; `hello_ack.config.rogue` et `hello_ack.config.progression` ; champ `terrain` des parcours ; codes `run_invalid`, `item_locked`, `not_enough_coins`, `avatar_invalid` ; aucun nouvel événement de bouton ; couche `segments` du format `.world` 1.3 |
 | 1 (révision 1.5) | 27 octobre 2026 | Ajouts compatibles (lot W1, monde ouvert de la 2.0, numéro 1.5 validé par le propriétaire le 26 octobre (audit IPC, décision D2) ; après les révisions 1.3 (P1) et 1.4 (T1)) : commandes `start_open_world`, `choose_branch`, `world_search`, `world_map`, `world_regions`, `world_pin` ; messages `world_status`, `places`, `world_map`, `world_regions` ; champ `open_world` de `state` ; `hello_ack.config.open_world_dir` ; `pause_reason` = `world_data` ; codes `branch_locked`, `unknown_junction`, `world_unavailable` |
 | 1 (révision 1.5) | 27 octobre 2026 | Changement compatible (décision du propriétaire du 27 octobre, essai-69 : la liste `settings` dépassait 1 400 octets avec les thèmes installés et était jetée) : une seule limite de 4 096 octets pour tout message hors messages en parties (§2), au lieu de 1 400 octets et 4 096 pour `state` ; l'engine annonce `rev` « 1.5 » |
-| 1 (révision 1.5) | 27 octobre 2026 | Changement compatible (Réglages en sous-écrans, volumes et compteur d'images/s, docs/AUDIO.md) : champ `group` des éléments de `settings` ; réglages `bike.mass_kg`, `wind.from_deg`, `wind.gust_pct`, `render.fps` (`off` ou `on`), `audio.master_pct`, `audio.ride_pct`, `audio.ambience_pct` et `audio.events_pct` (`applies` = `now`) ; liste `settings` portée à 24 éléments au plus (12 avant), toujours sous 4 096 octets ; l'engine ignore déjà les clés qu'il ne connaît pas |
+| 1 (révision 1.5) | 27 octobre 2026 | Changement compatible (Réglages en sous-écrans, volumes et compteur d'images/s, docs/AUDIO.md) : champ `group` des éléments de `settings` ; réglages `bike.mass_kg`, `wind.from_deg`, `wind.gust_pct`, `render.fps` (`off`, `on` ou, depuis le 29 octobre, `detail` : temps CPU et GPU en plus ; simple valeur de `choices`, aucun changement de message), `audio.master_pct`, `audio.ride_pct`, `audio.ambience_pct` et `audio.events_pct` (`applies` = `now`) ; liste `settings` portée à 24 éléments au plus (12 avant), toujours sous 4 096 octets ; l'engine ignore déjà les clés qu'il ne connaît pas |
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot T12, bots à profil) : élément `{ "kind": "profile", "profile" }` de l'argument `bots` de `start` (`climber`, `rouleur`, `sprinter`, `diesel`), compté dans les 4 bots ; profil inconnu : `bot_invalid`. Dans la trame, le bot garde `kind` = `constant` avec les champs de profil de la révision 1.4 |
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot T13, équilibrage des bots à profil) : champ facultatif `level_pct` de l'élément `{ "kind": "profile" }` de `start.bots` (50 à 150 % de la FTP ; sans lui, le réglage `bots.level_pct`, « Niveau des bots ») ; hors bornes : `bot_invalid`. CP et masse calibrées publiées dans `cp_w` et `mass_kg` de la trame, sans nouveau champ |
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (lot O18, ERG d'une session libre, demande du propriétaire du 28 octobre) : commande `set_ride_mode` ; champs facultatifs `kind`, `cadence_target_rpm`, `cadence_low_rpm`, `cadence_high_rpm` et `cadence_zone` de l'objet `erg` |

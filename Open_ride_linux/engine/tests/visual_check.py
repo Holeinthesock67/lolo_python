@@ -1061,9 +1061,12 @@ def _bots_segment_bonus_scene(s: Session) -> None:
         seg, bonus, panel = w["segment_panel"]["rect"], w["bonus_panel"]["rect"], w["bots_panel"]["rect"]
         s.check("bots_segment_bonus", "segment, bonus puis bots empilés", seg[1] < bonus[1] < panel[1],
                 f"hauts {seg[1]:.0f}, {bonus[1]:.0f}, {panel[1]:.0f} px")
-        prof = w["profile"]["rect"]
-        s.check("bots_segment_bonus", "encart des bots au-dessus du profil d'altitude",
-                panel[1] + panel[3] <= prof[1] + 0.5, f"bas de l'encart {panel[1] + panel[3]:.0f} px, profil à {prof[1]:.0f} px")
+        prof, right = w["profile"]["rect"], w["panel_right"]["rect"]
+        s.check("bots_segment_bonus", "profil d'altitude sous le panneau de droite, au-dessus du segment",
+                right[1] + right[3] <= prof[1] + 0.5 and prof[1] + prof[3] <= seg[1] + 0.5
+                and abs(prof[0] - right[0]) <= 1.0 and abs(prof[2] - right[2]) <= 1.0,
+                f"profil {prof[1]:.0f}–{prof[1] + prof[3]:.0f} px, panneau jusqu'à {right[1] + right[3]:.0f} px, "
+                f"segment à {seg[1]:.0f} px")
         s.check_layout("bots_segment_bonus", info)
     core.set_scene(speed=SPEED_MPS, bots=None, bot_ahead=None, bot_behind=None, jerseys=None, segment=None, powerup=None)
     time.sleep(SETTLE_S)
