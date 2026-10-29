@@ -45,3 +45,14 @@ Aucune. Les deux clés d'en-tête sont du format du journal, pas de l'IPC.
 ## 8. Hors périmètre
 
 Campagne accélérée et garde-fou d'empreinte (MJ3) ; bandeau ESSAI à l'écran (MJ8).
+
+## Livraison
+
+Livré le 29 octobre 2026 (branche `claude/project-thread-grv91v-mj2`, empilée sur MJ1).
+
+- `profiles.py` : description `profil.toml` lue par `ProfileContext.for_id` (`type`, `nom`, `cree`, `seances_comptees`, contrôles et `ProfileContextError`), valeurs par défaut en table (`DEFAULTS` pour `_essai`, `PLAYER_DEFAULTS`), `ensure_description` (écrit à la première séance), `owns` (journal du profil), `journal_header`, `fit_suffix`, `clear` (profil d'essai seulement).
+- `progression.py` : `recompute(..., counted, owns)` et `ineligible_reason(..., counted)` ; `SessionFacts.profile_id` ; raison `other_profile` ; cache des faits en version 2.
+- Journal : `profile_id` et `profile_type` dans l'en-tête (`journal.py`, `recorder.py`, `session.py`), absents sans profil.
+- `openride-core profil essai [--vider] [--json]` ; `xp` affiche le profil et le marque « PROFIL D'ESSAI ».
+- Lanceur : `SIM_CORE_ARGS` porte `--profil _essai` (tout `--profil` donné est remplacé) ; en session simulée, la reprise cherche les journaux du profil d'essai et `recover` y écrit le FIT.
+- Tests : `core/tests/test_profil_essai.py`.

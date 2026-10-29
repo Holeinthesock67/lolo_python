@@ -141,6 +141,7 @@ openride-core history --weeks 8        # historique des séances et cumul par se
 openride-core devices                  # appareils classés (trainer, Click, ceinture) et bloc [drivers] à recopier ; --json ; --save : écrit dans ~/OpenRide/config.toml (pairing.py, lot N12)
 openride-core settings [--json]        # réglages du menu (FTP, poids, difficulté, braquet, qualité, thème) ; settings set CLÉ VALEUR écrit ~/OpenRide/config.toml (settings.py, lots O3 et O4)
 openride-core ftp-test [--accept] [--history]   # résultat du dernier test de FTP, enregistrement de la FTP (lot O10)
+openride-core profil essai [--vider]   # profil d'essai : séances simulées comptées, remise à zéro (série MJ, lot MJ2) ; --profil ID sur toute sous-commande
 openride-ble-diag scan | trainer --name HomeTrainer --duration 30 | click --duration 60
 ```
 
