@@ -9,7 +9,7 @@ Remplacer le hasard des bonus par une économie : rouler devant pour les autres 
 ## 2. À lire
 
 1. `docs/5.0/PLAN_SERIE_CT.md` (décisions du propriétaire du 29 octobre), `docs/SPECIFICATION_GENERALE.md` §6.1 et §7.1, `docs/contracts/ipc_v1.md`.
-2. Étude 4.0 et cahiers TT2 à TT5 ; code `powerups.py` réécrit par TT2 (modèle d'effets décrit par des données), `classic.py`, `draft.py`.
+2. Plan `docs/4.0/PLAN_SERIE_TT.md` et cahiers TT2 à TT5 (TT2 modèle unique, TT3 Aspiration +, TT4 Échappée, TT5 Rouleau) ; code `powerups.py` réécrit par TT2 (modèle d'effets décrit par des données), `classic.py`, `draft.py`.
 
 ## 3. Prérequis
 
@@ -19,7 +19,7 @@ TT2 à TT5 (4.0) livrés ; Y10 livré ; CT1 fusionné.
 
 - Module pur `tactical/credits.py`.
 - **Gain** : le travail aérodynamique fourni pour les autres, `aéro × v × α_suiveur` intégré, quand au moins un coureur profite de l'abri du cycliste ; rien pour un coureur seul. Un relais compte à partir de 15 s en tête.
-- **Paliers** : Sillage furtif (25 %) = effet `shield` ou `stealth` de la 4.0 (ou leur fusion « Échappée ») ; Bouclier d'inertie (50 %) = nouvel effet du modèle TT2 : pas de Burnout et pas de perte en virage pendant 10 s ; Overdrive aéro (100 %) = effet `aero` (CdA × 0,75) sur 20 à 25 s.
+- **Paliers** : Sillage furtif (25 %) = effet `breakaway` (« Échappée ») de la 4.0, avec son refus à moins de 400 m de l'arrivée ; Bouclier d'inertie (50 %) = nouvel effet du modèle TT2 : pas de Burnout et pas de perte en virage pendant 10 s ; Overdrive aéro (100 %) = effet `aero` (CdA × 0,75) sur 20 à 25 s.
 - **Boutons** : Z court déclenche la capacité la plus haute que la jauge peut payer sous 100 % ; Z long l'Overdrive. A reste aux vues et aux variantes (§7.1).
 - Pas de bonus au hasard dans ce mode ; les bonus classiques (T6) restent dans le classique.
 - Records : séance comptée « avec bonus » (T5).

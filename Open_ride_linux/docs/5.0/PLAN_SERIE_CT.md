@@ -71,7 +71,7 @@ Faits du trainer qui comptent pour ce GDD :
 - **Seuil « 15 s en tête »** : à garder comme durée minimale d'un relais qui compte.
 - **Cohésion d'échappée** (le bot suivant prend un relais de 20 s à 110 %) : c'est Y10 (relais de 30 à 60 s). Recommandation : une seule règle de relais, celle de Y10, avec un paramètre « relais appuyé » dans le nouveau mode, plutôt qu'une deuxième mécanique.
 - **Jauge de capacités à 25, 50 et 100 %** : à garder, mais **les effets doivent venir du catalogue 4.0** (série TT de la 4.0 : un seul modèle d'effets décrit par des données dans `powerups.py`, vitesse virtuelle seulement, coupé en ERG ; accord des deux fils le 29 octobre). Correspondance proposée avec les noms et identifiants de la 4.0, encore à valider par le propriétaire :
-  - Sillage furtif (25 %) : « Sillage coupé » (`shield`, abri donné aux suiveurs annulé 20 s) ou « Furtif » (`stealth`, les bots ne répondent pas à l'attaque 15 s) ; si la 4.0 les fusionne en « Échappée », c'est lui ;
+  - Sillage furtif (25 %) : « Échappée » (`breakaway`, fusion de Burrito et Fantôme décidée le 29 octobre pour la 4.0 : pendant 20 s, pas d'abri pour les suiveurs et pas de réponse des bots ; refusée à moins de 400 m de l'arrivée) ;
   - Bouclier d'inertie (50 %) : sans équivalent dans la 4.0. Je propose « pas de Burnout et pas de perte en virage pendant 10 s », ajouté au même modèle de données, plutôt qu'un effet sur la masse ;
   - Overdrive aéro (100 %) : « Casque aéro » (`aero`, CdA × 0,75), sur 20 à 25 s au lieu de 15 s.
 - **« Supprimer le hasard »** : compatible avec la 4.0 si les power-ups 4.0 sont gagnés au hasard en classique (comme T6) et achetés avec des crédits dans le nouveau mode. Même effet, deux façons de l'obtenir : aucune exception dans le moteur.
@@ -147,7 +147,7 @@ Ce qui va dans le classique, sans règle de jeu : W′ du cycliste calculée et 
 
 ## 6. Contrat IPC et HUD
 
-Ajouts compatibles, révision à prendre à la fusion : la première libre après celles de la série U (3.0, 1.6 provisoire) et de TT1 (4.0), qui demande aussi la 1.6. Les deux fils doivent régler ce doublon ; règle du §6.1 : ordre des fusions.
+Ajouts compatibles, révision à prendre à la fusion : la première libre (spécification générale §6.1, ordre des fusions), comme la série U (3.0) et le contrat TT1 de la 4.0.
 - `modes` : valeur `"tactical"` ;
 - `state.tactical` (nouveau mode seulement) : `wbal_pct` et `burnout_s` du cycliste, `sling_pct` (charge de la catapulte), `credits_pct` (jauge de capacités), `active` (capacité en cours, reste en s), `corner` (`v_crit_kmh`, `d_m`, `apex` dans la fenêtre), `leech` (id du bot qui charge dans votre roue, et sa charge) ;
 - éléments de `bots` : `burnout` (booléen), `sling_pct` ; `wbal_pct` existe déjà ;
@@ -185,7 +185,7 @@ Ordre : CT0, CT1, puis CT2, CT7 et CT9, puis CT3, CT4 et CT5, puis CT6 (après l
 
 - **2.0** : série AS (AS2 placement latéral, AS3 bordure, AS4 groupes et plafond de 55 %) ; Y10 (relais, attaques, réponses), qui recoupe AS1 pour l'abri entre bots, un seul des deux à faire ; T12 et T13 (bots à profil et calibrage) ; T5 (records avec et sans bonus) ; R2 et R16 (W′bal, estimation de CP et W′) ; R17 (charte néon) ; W (carrefours) ; Y16 (avatar).
 - **3.0** : série U pour les revêtements des voies rugueuses (facultatif : un Crr par voie suffit pour démarrer).
-- **4.0** : série TT (catalogue des power-ups), dont la 5.0 réutilise le modèle d'effets de TT2 ; test du boîtier gauche du Click avec l'appli Zwift, reporté à la 4.0, qui rendrait les flèches fiables pour les bifurcations.
+- **4.0** : série TT (catalogue des power-ups, `docs/4.0/PLAN_SERIE_TT.md`), dont la 5.0 réutilise le modèle d'effets de TT2 ; test du boîtier gauche du Click avec l'appli Zwift, reporté à la 4.0, qui rendrait les flèches fiables pour les bifurcations.
 
 ---
 
