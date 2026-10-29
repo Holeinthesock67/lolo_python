@@ -147,6 +147,12 @@ func _run() -> void:
 		for p in sav[kind]:
 			min_d = minf(min_d, _road_distance(route, p))
 	_check(min_d >= ROAD_WIDTH_M / 2.0 + GroundDetails.ROAD_CLEAR_M, "savane : objet le plus proche à %.2f m de l'axe (bord + 3 m = %.1f m), épingle comprise" % [min_d, ROAD_WIDTH_M / 2.0 + 3.0])
+	# Termitières près de la route, pour être vues : toutes dans leur bande (30 m) et en nombre (budget du préréglage)
+	var termite_far := 0.0
+	for p in sav["termite"]:
+		termite_far = maxf(termite_far, _road_distance(route, p))
+	_check(termite_far <= float(GroundDetails.BAND_M["termite"]) + 0.5 and sav["termite"].size() >= 20,
+		"savane : %d termitières, la plus loin à %.1f m de l'axe (bande %.0f m)" % [sav["termite"].size(), termite_far, GroundDetails.BAND_M["termite"]])
 	var slots := 0
 	for kind in ["rock", "grass", "termite"]:
 		slots += gs.get_capacity(kind)

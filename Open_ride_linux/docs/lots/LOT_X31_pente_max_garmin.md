@@ -24,3 +24,13 @@ Ligne 22 de la recette 1.0 : la pente maximale d'un parcours compilé doit être
 ## 6. Hors périmètre
 
 Changer le lissage du relief.
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x31`).
+
+- **`route_stats.compare_garmin(route, pente, dplus, longueur, fenetre)`** : pente maximale par la fonction de la fiche (`max_grade`, fenêtre glissante de 100 m par défaut), D+ par `gain_loss` (hystérésis de 1 m, comme la fiche), longueur `length_m`. Tolérances : ± 1 point, ± 5 %, ± 1 %. Le module reste copié à l'identique dans le core (`test_catalog_parity`).
+- **`openride-compiler compare-garmin PARCOURS.world --pente-max P --dplus D [--longueur KM] [--fenetre M] [--json]`** : contrôle le `.world` (`verify`), une ligne OK ou ÉCHEC par mesure, code 0 si tout est conforme, 1 sinon. Rien n'est écrit.
+- **Tests** `compiler/tests/test_compare_garmin.py` (5 tests) : rampe fabriquée à 8 % sur 500 m (8,0 % ; 2 points d'écart donnent ÉCHEC), tolérances du D+ et de la longueur, effet de la fenêtre, commande sur un parcours compilé à 5 %.
+- **Docs** : `README.md`, `docs/OUTILS_DE_TEST.md`, protocole F2, `SUIVI_AVANCEMENT.md`.
+- **Reste sur le PC** : une vraie sortie avec un col (protocole F2).

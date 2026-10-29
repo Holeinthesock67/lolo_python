@@ -2,11 +2,11 @@ extends Control
 
 ## Courbes de la séance à l'écran (Lot O14) : dessin de la géométrie de workout_chart_model.gd (O13),
 ## « comme GoldenCheetah » : profil des watts cibles coloré par zone, atténué, courbe de puissance en
-## blanc épais et, en taille complète, fréquence cardiaque en rouge et cadence en bleu clair, avec la
-## légende des valeurs courantes. Trois tailles (`mode`, réglage `[render] chart` du core) :
+## blanc épais, fréquence cardiaque en rouge et cadence en bleu clair, avec la légende des valeurs
+## courantes. Trois tailles (`mode`, réglage `[render] chart` du core) :
 ## - `hidden` : rien (en ERG, l'histogramme de N7 reste affiché) ;
-## - `reduced` : profil cible et puissance, valeur courante en watts ;
-## - `full` : cible, puissance, FC, cadence, graduations et légende.
+## - `reduced` : profil cible, puissance, FC, cadence et légende (FC et cadence depuis le 28/10) ;
+## - `full` : la même chose, plus les graduations des watts.
 ## Une instance en ERG, dans le bandeau d'erg_view.gd à la place de l'histogramme (le profil cible du
 ## graphique joue ce rôle, curseur compris) ; une instance en SIM dans un panneau du HUD, qui montre
 ## les 10 dernières minutes sans profil. Les deux lisent le même modèle ; le dessin n'est redemandé
@@ -59,7 +59,7 @@ static func legend(current: Dictionary, chart_mode: String) -> Array:
 	var out: Array = []
 	var p = current.get("power", null)
 	out.append({"text": "—" if p == null else "%d W" % int(round(float(p))), "color": POWER_COLOR})
-	if chart_mode == "full":
+	if chart_mode in ["reduced", "full"]:
 		var h = current.get("hr", null)
 		out.append({"text": "—" if h == null else "%d bpm" % int(round(float(h))), "color": HR_COLOR})
 		var c = current.get("cadence", null)
@@ -102,9 +102,8 @@ func _on_draw() -> void:
 		draw_colored_polygon(pts, color)
 	# Courbes : FC et cadence d'abord, puissance par-dessus.
 	var curves: Dictionary = geo["curves"]
-	if mode == "full":
-		_draw_lines(curves.get("hr", []), HR_COLOR, CURVE_WIDTH)
-		_draw_lines(curves.get("cadence", []), CADENCE_COLOR, CURVE_WIDTH)
+	_draw_lines(curves.get("hr", []), HR_COLOR, CURVE_WIDTH)
+	_draw_lines(curves.get("cadence", []), CADENCE_COLOR, CURVE_WIDTH)
 	_draw_lines(curves.get("power", []), POWER_COLOR, POWER_WIDTH)
 	# Curseur de position (profil connu).
 	if model.has_profile:
