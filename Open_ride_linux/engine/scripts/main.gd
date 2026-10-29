@@ -1091,7 +1091,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 	var widgets := {}
 	var nodes := {
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
-		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "time": hud.time_val, "erg": hud.erg_label,
+		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
 		"menu_card": menu_view.card, "garage_preview": menu_view.preview, "button_bar": menu_view.button_bar,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
