@@ -11,6 +11,7 @@ le cycliste, et mesure pour chaque palier :
     python -m openride_core.tools.trainer_steps --mode erg --cadence 85
     python -m openride_core.tools.trainer_steps --trainer sim --mode sim --fast   # Bluetooth simulé
     python -m openride_core.tools.trainer_steps --trainer sim --response realiste --mode erg_paliers
+    python -m openride_core.tools.trainer_steps --trainer sim --scenario decrochage_trainer --mode relances
     python -m openride_core.tools.trainer_steps --analyse DOSSIER        # relit samples.csv
     python -m openride_core.tools.trainer_steps --materiel               # matériel à préparer
 
@@ -66,6 +67,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import config
+from ..physics import WHEEL_CIRCUMFERENCE_M, gear_speed_mps
 from . import decrochages, suivi_direct
 from .guide import Guide
 
@@ -104,7 +106,7 @@ CADENCE_TOL_RPM = 10.0  # alerte si la cadence s'écarte plus que ça de la cade
 CADENCE_ALERT_S = 3.0   # … pendant au moins ce temps
 CEILING_WINDOW_S = 3.0  # plafond : moyenne de la puissance sur 3 s
 CEILING_MARGIN = 1.25   # plafond par défaut : 125 % du plus fort palier du protocole
-WHEEL_M = 2.105         # circonférence par défaut (700 × 28c)
+WHEEL_M = WHEEL_CIRCUMFERENCE_M
 
 
 @dataclass(frozen=True)
@@ -116,7 +118,7 @@ class Gearing:
     wheel_m: float = WHEEL_M
 
     def speed_mps(self, cadence_rpm: float) -> float:
-        return cadence_rpm / 60.0 * self.chainring / self.sprocket * self.wheel_m
+        return gear_speed_mps(cadence_rpm, self.chainring, self.sprocket, self.wheel_m)
 
 
 def grade_for_power(target_w: float, cadence_rpm: float, gearing: Gearing, mass_kg: float, crr: float,
@@ -488,6 +490,8 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
             await asyncio.sleep(0.1)
 
     task = asyncio.create_task(drv.run())
+    # Événements datés du scénario simulé (décrochages du frein, relances…, lot X46).
+    world_task = asyncio.create_task(sim_world.run()) if sim_world is not None else None
     try:
         g.step("Connexion au trainer", connect_timeout_s, "pédale doucement pour le réveiller", beep=False)
         end = time.monotonic() + connect_timeout_s
@@ -519,9 +523,29 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
             await asyncio.wait_for(task, timeout=10.0)
         except (asyncio.TimeoutError, Exception):
             task.cancel()
+        if world_task is not None:
+            sim_world.stop()
+            world_task.cancel()
         ftms_log.removeHandler(handler)
         ftms_log.setLevel(old_level)
     return rec
+
+
+def scenario_spec(name: str) -> dict[str, Any]:
+    """Scénario du trainer simulé, vide s'il est illisible (l'erreur est donnée à la construction du monde)."""
+    from ..sim_scenarios import SimScenarioError, load_scenario
+    try:
+        return load_scenario(name)
+    except SimScenarioError:
+        return {}
+
+
+def scenario_gearing(spec: dict[str, Any]) -> Gearing | None:
+    """Braquet réel du cycliste simulé d'un scénario (lot X46), ou None."""
+    rider = spec.get("rider") or {}
+    if rider.get("chainring") is None:
+        return None
+    return Gearing(rider["chainring"], rider["sprocket"], rider.get("wheel_m", WHEEL_M))
 
 
 def load_protocol(name_or_path: str, fast: bool = False, fast_hold_s: float = 6.0) -> list[Step]:
@@ -572,6 +596,9 @@ def main(argv: list[str] | None = None) -> int:
                     help="puissance (W, moyenne sur 3 s) qui coupe le palier ; défaut : 125 %% du plus fort palier")
     ap.add_argument("--response", choices=("instant", "realiste"), default="instant",
                     help="réponse du trainer simulé (--trainer sim, lot X6)")
+    ap.add_argument("--scenario", default="nominal",
+                    help="scénario du trainer simulé (--trainer sim) : nom intégré (pignon_unique, "
+                         "decrochage_trainer…) ou fichier JSON (lot X46)")
     ap.add_argument("--calibration", type=Path, help="steps.csv d'un essai réel : valeurs du modèle réaliste")
     ap.add_argument("--out", type=Path, help="dossier de sortie")
     ap.add_argument("--analyse", type=Path, metavar="DOSSIER", help="relit un essai et refait l'analyse")
@@ -593,9 +620,11 @@ def main(argv: list[str] | None = None) -> int:
         rec = load(args.analyse)
         out = args.analyse
     else:
+        sim_spec = scenario_spec(args.scenario) if args.trainer == "sim" else {}
         try:
             # Trainer simulé réaliste : relâchement à 90 % vers 12 s, paliers rapides de 20 s.
-            realiste = args.trainer == "sim" and (args.response == "realiste" or args.calibration is not None)
+            realiste = args.trainer == "sim" and (args.response == "realiste" or args.calibration is not None
+                                                  or (sim_spec.get("trainer") or {}).get("response") == "realiste")
             steps = load_protocol(args.mode, args.fast, 20.0 if realiste else 6.0)
         except (OSError, ValueError, KeyError) as exc:
             print(f"Protocole illisible : {exc}", file=sys.stderr)
@@ -605,7 +634,7 @@ def main(argv: list[str] | None = None) -> int:
                 v is not None and v <= 0 for v in (args.plateau, args.pignon)) or args.roue <= 0:
             print("Braquet réel : donner --plateau et --pignon ensemble (dents > 0), --roue > 0", file=sys.stderr)
             return 2
-        gearing = None if args.plateau is None else Gearing(args.plateau, args.pignon, args.roue)
+        gearing = Gearing(args.plateau, args.pignon, args.roue) if args.plateau is not None else scenario_gearing(sim_spec)
         if any(s.mode == "sim_w" for s in steps) and gearing is None:
             print("Paliers à puissance cible : donner --plateau et --pignon (dents du braquet réel)", file=sys.stderr)
             return 2
@@ -613,14 +642,23 @@ def main(argv: list[str] | None = None) -> int:
         world = None
         if args.trainer == "sim":
             from ..sim_scenarios import SimScenarioError, build_world, load_scenario
-            spec = load_scenario("nominal")
+            try:
+                spec = load_scenario(args.scenario)
+            except SimScenarioError as exc:
+                print(f"Trainer simulé : {exc}", file=sys.stderr)
+                return 2
+            if gearing is not None:   # même braquet réel et même cadence pour le cycliste simulé (lot X46)
+                spec["rider"] = {**(spec.get("rider") or {}), "chainring": gearing.chainring,
+                                 "sprocket": gearing.sprocket, "wheel_m": gearing.wheel_m,
+                                 "cadence_rpm": args.cadence}
             if realiste:
                 # Le protocole demande de tenir la cadence quoi qu'il arrive : pas de limite de puissance.
-                spec["trainer"].update({"response": "realiste", "rider_max_w": 2000})
+                spec["trainer"]["response"] = "realiste"
+                spec["trainer"].setdefault("rider_max_w", 2000)
                 if args.calibration:
                     spec["trainer"]["calibration"] = str(args.calibration)
             try:
-                world = build_world(spec, "nominal", click=False, hr=False)
+                world = build_world(spec, args.scenario, click=False, hr=False)
             except SimScenarioError as exc:
                 print(f"Trainer simulé : {exc}", file=sys.stderr)
                 return 2
