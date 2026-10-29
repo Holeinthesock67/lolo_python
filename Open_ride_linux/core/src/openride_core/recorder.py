@@ -89,7 +89,7 @@ class SessionRecorder:
             return
         try:
             if line["kind"] == "event":
-                self._writer.event(line["event"], line["ts"])
+                self._writer.event(line["event"], line["ts"], line.get("reason"))
             elif line["kind"] == "device":
                 self._writer.device(line["device"], line["state"], line["ts"])
             elif line["kind"] == "ftp_test":
@@ -106,8 +106,10 @@ class SessionRecorder:
 
     # --- API -----------------------------------------------------------------------------
 
-    def event(self, name: str, ts: float) -> None:
+    def event(self, name: str, ts: float, reason: str | None = None) -> None:
         line = {"kind": "event", "event": name, "ts": ts}
+        if reason:
+            line["reason"] = reason   # raison de la pause, lue par le chronométrage des segments
         self.lines.append(line)
         self._write(line)
 
