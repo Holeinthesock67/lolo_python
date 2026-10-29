@@ -12,29 +12,29 @@ def test_ratios_strictly_increasing():
     g = Gearing(GearingConfig())
     assert len(g.ratios) == 24
     assert all(a < b for a, b in zip(g.ratios, g.ratios[1:]))
-    assert g.ratios[0] == pytest.approx(0.40)
-    assert g.ratios[-1] == pytest.approx(3.00)
+    assert g.ratios[0] == pytest.approx(0.65)
+    assert g.ratios[-1] == pytest.approx(2.00)
 
 
 def test_r12_is_about_neutral():
     g = Gearing(GearingConfig())
     assert g.k == 12
-    assert g.ratio == pytest.approx(1.05, abs=0.01)
+    assert g.ratio == pytest.approx(1.11, abs=0.01)
 
 
-def test_step_about_9_2_percent():
+def test_step_about_5_percent():
     g = Gearing(GearingConfig())
-    assert g.ratios[1] / g.ratios[0] == pytest.approx(1.092, abs=0.002)
+    assert g.ratios[1] / g.ratios[0] == pytest.approx(1.050, abs=0.002)
 
 
 def test_effective_grade_formula_and_bounds():
     g = Gearing(GearingConfig())
     g.k = 24
-    assert g.effective_grade(0.0) == pytest.approx((0 + 2) * 3.00 - 2)
+    assert g.effective_grade(0.0) == pytest.approx((0 + 2) * 2.00 - 2)
     assert g.effective_grade(12.0) == 16.0          # borne haute
     assert g.effective_grade(-10.0) == -10.0        # borne basse : -20 % bornée
     g.k = 1
-    assert g.effective_grade(-10.0) == pytest.approx(-5.2)  # petit braquet : descente adoucie
+    assert g.effective_grade(-10.0) == pytest.approx(-7.2)  # petit braquet : descente adoucie
     for k in range(1, 25):
         g.k = k
         for terrain in (-25, -5, 0, 5, 25):
@@ -50,10 +50,18 @@ def test_effective_grade_keeps_terrain_sign():
             assert g.effective_grade(terrain) >= 0.0
             assert g.effective_grade(-terrain) <= 0.0
     g.k = 1
-    assert g.effective_grade(1.0) == 0.0          # (1 + 2) × 0,4 − 2 < 0 : ramené à plat
-    assert g.effective_grade(6.0) == pytest.approx((6 + 2) * 0.40 - 2)
+    assert g.effective_grade(1.0) == 0.0          # (1 + 2) × 0,65 − 2 < 0 : ramené à plat
+    assert g.effective_grade(6.0) == pytest.approx((6 + 2) * 0.65 - 2)
     g.k = 24
-    assert g.effective_grade(-1.0) == 0.0         # (−1 + 2) × 3 − 2 > 0 : ramené à plat
+    assert g.effective_grade(-1.0) == pytest.approx(0.0, abs=1e-9)   # (−1 + 2) × 2 − 2 = 0 : reste plat
+
+
+def test_small_gear_still_feels_the_climb():
+    """Séance A du 28 octobre : en braquet 1 à 50 %, 3,6 % devenait 0,12 % (route plate)."""
+    g = Gearing(GearingConfig())
+    g.k = 1
+    assert g.effective_grade(3.6, 0.5) == pytest.approx(((3.6 + 2) * 0.65 - 2) * 0.5)
+    assert g.effective_grade(3.6, 0.5) > 0.8
 
 
 def test_shift_limits():

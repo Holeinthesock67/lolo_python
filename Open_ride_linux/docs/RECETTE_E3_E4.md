@@ -21,7 +21,7 @@ Machine cible : PC du propriétaire (GPU NVIDIA GeForce GTX 1060 6 Go, écran 1 
 - **Jupe des bâtiments** : extension de 3 m sous la base (`skirt_m = 3.0`) pour une insertion naturelle dans le relief sans coupure ni flottaison.
 - **Forêts OSM** : priorité aux polygones de végétation OSM (densité nominale), semis de bruit complémentaire hors zones (`p_region`) diminuant sous la limite des arbres.
 - **Plans d'eau et cours d'eau** : maillage continu des rivières et lacs avec textures semi-transparentes du thème.
-- **Modèle sonore spatialisé** : synthèse sonore procédurale au démarrage en moins de 100 ms (seuil 500 ms) pour le vent, la roue libre, la cloche d'église, la rivière, le bétail et le village ; gestion de 4 lecteurs 3D actifs avec atténuation et fondu ; surcharge optionnelle via `~/OpenRide/Sounds/<nom>.ogg`.
+- **Modèle sonore spatialisé** : synthèse sonore procédurale au démarrage sous le budget `sound_generation` (1 200 ms sur le PC cible depuis le 28/10, avec tous les sons ajoutés par les lots P) pour le vent, la roue libre, la cloche d'église, la rivière, le bétail et le village ; gestion de 4 lecteurs 3D actifs avec atténuation et fondu ; surcharge optionnelle via `~/OpenRide/Sounds/<nom>.ogg`.
 - **Diffusion continue OSM** : chargement asynchrone par `osm_streamer.gd` en arrière-plan, fusion à au plus 3 maillages par tronçon (bâtiments, cours d'eau, plans d'eau).
 
 ---
