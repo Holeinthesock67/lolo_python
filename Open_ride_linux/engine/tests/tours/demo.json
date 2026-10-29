@@ -1,0 +1,10 @@
+{
+  "description": "Parcours de démonstration : montée, sommet vu de loin, pluie de côté, sprint de près (recettes E3/E4, P17, T11).",
+  "world": "demo",
+  "points": [
+    {"id": "pied_montee", "s": 200, "label": "Pied de la montée, vue subjective (E3/E4 : route et herbe de près)"},
+    {"id": "sommet", "s": 1500, "camera": "follow_far", "label": "Sommet de la montée vu de loin (pente marquée, Y15)"},
+    {"id": "pluie", "s": 2200, "camera": "side", "weather": {"kind": "rain", "intensity": 0.8}, "label": "Pluie forte vue de côté (P17 : chaussée mouillée, gouttes)"},
+    {"id": "sprint", "s": 3000, "camera": "follow_near", "label": "Portique du sprint, caméra proche (T11)"}
+  ]
+}

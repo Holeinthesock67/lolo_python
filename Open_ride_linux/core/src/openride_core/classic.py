@@ -163,7 +163,7 @@ class ClassicRace:
                              "time_s": round(p.time_s, 2), "bonuses": list(p.bonuses), "pr": added.is_record})
 
     def pause(self, reason: str) -> None:
-        """Pause : les passages en cours du cycliste sont annulés (toutes les raisons)."""
+        """Pause : passages en cours du cycliste annulés (pause Y) ou suspendus (coupure subie, T4)."""
         self.timer.pause(reason)
         self._prev_s = None
 

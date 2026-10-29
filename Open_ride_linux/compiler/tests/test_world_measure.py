@@ -13,7 +13,7 @@ from openride_compiler.errors import CompileError
 from openride_compiler.worldgen import measure
 from openride_compiler.worldgen.measure import FrameRelief, Measure, MeasureConfig
 
-from test_mvt import encode_tile
+from openride_compiler.worldgen.mvt import encode_tile
 
 START = (45.09, 6.06)       # lieu d'exemple des tests du compilateur (Oisans)
 
