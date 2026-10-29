@@ -142,6 +142,23 @@ def test_corridor_pick_card_and_right_door():
     assert r.outs[-1].rogue["archetype"] == "grimpeur"
 
 
+def test_arrows_move_the_card_then_pick_the_door():
+    """Plan des boutons §7.1 : flèches gauche et droite = carte précédente, suivante (bornées), puis porte."""
+    e = engine()
+    r = Rider(e)
+    t0 = run_to_corridor(e, r)
+    r.script = corridor_script(t0, [(1, "RIGHT_SHORT"), (2, "RIGHT_SHORT"), (3, "LEFT_SHORT")])
+    r.run(max_s=t0 + 1.5)
+    assert r.outs[-1].rogue["loot_focus"] == 0          # première flèche : première carte
+    r.run(max_s=t0 + 2.5)
+    assert r.outs[-1].rogue["loot_focus"] == 1
+    r.run(max_s=t0 + 3.5)
+    assert r.outs[-1].rogue["loot_focus"] == 0
+    r.script = corridor_script(t0, [(4, "LEFT_SHORT"), (5, "A_LONG"), (6, "RIGHT_SHORT"), (7, "A_LONG")])
+    r.run(max_s=t0 + 8)
+    assert len(e.deck) == 1 and e.door_pick == 1
+
+
 def test_reroll_costs_and_needs_gold():
     e = engine()
     r = Rider(e)

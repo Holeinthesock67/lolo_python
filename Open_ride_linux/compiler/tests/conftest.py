@@ -95,13 +95,43 @@ def plane(x, z):
 
 @pytest.fixture(autouse=True)
 def offline_and_synthetic(request, monkeypatch, tmp_path):
-    """Réseau coupé (sauf tests `network`), cache MNT/OSM temporaire, MNT synthétique pour la CLI."""
+    """Réseau coupé (sauf tests `network` et boucle locale : faux serveur de tuiles X28), cache MNT/OSM
+    temporaire, MNT synthétique pour la CLI."""
     monkeypatch.setenv("OPENRIDE_DEM_CACHE", str(tmp_path / "dem-cache"))
     monkeypatch.setenv("OPENRIDE_OSM_CACHE", str(tmp_path / "osm-cache"))
     if request.node.get_closest_marker("network"):
         return
-    def no_network(*args, **kwargs):
+    connect, create_connection = socket.socket.connect, socket.create_connection
+
+    def local(address) -> bool:
+        return isinstance(address, tuple) and address[0] in ("127.0.0.1", "localhost", "::1")
+
+    def no_network_connect(sock, address, *args, **kwargs):
+        if local(address):
+            return connect(sock, address, *args, **kwargs)
         raise OSError("réseau interdit pendant les tests")
-    monkeypatch.setattr(socket.socket, "connect", no_network)
-    monkeypatch.setattr(socket, "create_connection", no_network)
+
+    def no_network_create(address, *args, **kwargs):
+        if local(address):
+            return create_connection(address, *args, **kwargs)
+        raise OSError("réseau interdit pendant les tests")
+    monkeypatch.setattr(socket.socket, "connect", no_network_connect)
+    monkeypatch.setattr(socket, "create_connection", no_network_create)
     monkeypatch.setattr(cli, "make_provider", lambda offline, log=None: SyntheticProvider(*ORIGIN, plane))
+
+# Profils du fuzz des fichiers (lot X26) : 200 exemples par lecteur, `--hypothesis-profile=long` (5 000)
+# sur le PC ; pas de délai par exemple (la limite de 2 s est vérifiée dans les tests).
+# Le dossier de travail d'hypothesis va dans un dossier temporaire : rien n'est écrit dans le dépôt
+# (garde-fou d'isolation), et pas de base d'exemples gardée d'un passage à l'autre.
+try:
+    import tempfile as _tempfile
+
+    from hypothesis import settings as _hyp_settings
+    from hypothesis.configuration import set_hypothesis_home_dir as _hyp_home
+
+    _hyp_home(_tempfile.mkdtemp(prefix="openride-hypothesis-"))
+    _hyp_settings.register_profile("default", max_examples=200, deadline=None, database=None)
+    _hyp_settings.register_profile("long", max_examples=5000, deadline=None, database=None)
+    _hyp_settings.load_profile("default")
+except ImportError:   # extra dev absent : les tests test_fuzz_* sont sautés (importorskip)
+    pass

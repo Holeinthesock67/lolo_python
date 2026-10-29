@@ -26,6 +26,15 @@ func is_active() -> bool:
 	return scene != null
 
 
+## Pour les tests (lot X41) : {} hors du mode, sinon ce que la scène affiche et les demandes `rogue_resync`.
+func test_info() -> Dictionary:
+	if scene == null:
+		return {}
+	var info: Dictionary = scene.test_info()
+	info["resync_requests"] = resync_requests
+	return info
+
+
 func on_room(msg: Dictionary) -> void:
 	store.add_part(msg)
 

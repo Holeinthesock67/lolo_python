@@ -36,6 +36,12 @@ Décor vivant (lot P30) : chaque capture relève les objets affichés par sorte 
 (`decor` de la ligne `screenshot`) ; le rapport les trace et `decor.csv` les garde. La section `bench` peut
 demander `decor_expect` (sortes vues au moins une fois, ex. `["birds", "animals"]`) et `sounds_expect`
 (groupes de sons dont un au moins doit démarrer, ex. `[["raptor_cry", "crow_caw"]]`).
+Appuis et attentes (lot X33, `sim_bench_inputs.py`) : section `inputs` (touche du clavier par le message de test
+`key`, ou bouton du Click simulé par le chemin Bluetooth complet), chacun avec son effet attendu au journal de
+séance (biais et cible ERG, bloc, pause et reprise) et une capture juste après ; `bench.expect` (lignes du
+journal de séance, motifs des journaux du core et de l'engine, éléments du HUD, fichiers du HOME), chaque
+attente avec son renvoi à l'étape de la recette ; `bench.powerups` (contenu de `~/OpenRide/powerups.toml`,
+ex. arches rapprochées) et `bench.bot_profiles` (`--bot-profile` du core).
 
 Fiabilité (lot X35) : les captures périodiques commencent après le chargement du parcours (`route_loaded`
 puis SETTLE_S) et une capture sans réponse est redemandée une fois ; seules les captures demandées après le
@@ -75,6 +81,7 @@ sys.path.insert(0, str(REPO / "core" / "src"))
 from e2e_check import Proc, free_udp_ports, now, send_cmd, snapshot_home  # noqa: E402
 import perf_probe  # noqa: E402
 import quality_guard  # noqa: E402
+import sim_bench_inputs as inputs_mod  # noqa: E402
 from openride_core import sim_scenarios  # noqa: E402
 from openride_core.tools.guide import Guide  # noqa: E402
 
@@ -87,6 +94,8 @@ CMD_ID_BASE = 20_000
 SETTLE_S = 5.0          # après route_loaded : premières tuiles et premier décor avant la première capture
 SHOT_TIMEOUT_S = 5.0    # attente de la réponse d'une capture, une fois redemandée
 SPEED_TOLERANCE = 0.10  # vitesse imposée : médiane à ± 10 %
+LATENCY_MIN_PRESSES = 10   # lot X7 : appuis du Click appariés de bout en bout
+LATENCY_P95_MS = 150.0     # notification → image affichée, p95 (strict en fenêtre réelle)
 SPEED_WARMUP_S = 20.0   # départ arrêté : hors médiane de la vitesse
 RELAUNCH_CMD_ID_BASE = 10_000   # relances de l'essai d'endurance, sous end_session
 # Lot S1 : apparitions ignorées pendant le premier chargement (m de route).
@@ -153,6 +162,14 @@ def resolve_scenario(name: str) -> tuple[str, dict[str, Any], dict[str, Any], st
         raise SystemExit(f"scénario inconnu : {name} (--list pour la liste)")
     doc = json.loads(path.read_text(encoding="utf-8"))
     settings = doc.pop("bench", {}) or {}
+    try:
+        settings["inputs"] = inputs_mod.validate_inputs(doc.pop("inputs", []))
+        settings["expect"] = inputs_mod.validate_expect(settings.get("expect", []))
+    except inputs_mod.InputsError as exc:
+        raise SystemExit(f"scénario {path.name} : {exc}") from None
+    # Boutons du Click joués comme les autres appuis du scénario Bluetooth (événements `press`).
+    doc["events"] = sorted(doc.get("events", []) + inputs_mod.click_events(settings["inputs"]),
+                           key=lambda e: float(e.get("t", 0)))
     spec = sim_scenarios.validate(doc)
     return path.stem, spec, settings, ""
 
@@ -170,6 +187,17 @@ def list_scenarios() -> None:
 def scenario_duration(spec: dict[str, Any]) -> float:
     ts = [float(e.get("t", 0)) + float(e.get("seconds", 0) or 0) for e in spec.get("events", [])]
     return max(ts, default=0.0)
+
+
+def toml_text(table: dict[str, Any]) -> str:
+    """TOML d'une table à un niveau de sections (`bench.powerups` -> powerups.toml)."""
+    def val(v: Any) -> str:
+        return ("true" if v else "false") if isinstance(v, bool) else json.dumps(v)
+    lines = [f"{k} = {val(v)}" for k, v in table.items() if not isinstance(v, dict)]
+    for section, body in table.items():
+        if isinstance(body, dict):
+            lines += ["", f"[{section}]"] + [f"{k} = {val(v)}" for k, v in body.items()]
+    return "\n".join(lines).strip() + "\n"
 
 
 # --- parcours ----------------------------------------------------------------------------------
@@ -238,7 +266,7 @@ class Bench:
         self.world = str(args.world or settings.get("world") or "demo")
         self.workout = settings.get("workout", args.workout)
         self.difficulty = settings.get("difficulty_pct", args.difficulty)
-        # Vitesse imposée (lot X35) : le trainer simulé tient cette vitesse sur la pente reçue, qui n'est la
+        # Vitesse imposée (lot X35) : le cycliste simulé (stratégie `vitesse`) tient cette vitesse sur la pente reçue, qui n'est la
         # pente du parcours qu'à difficulté 100 %.
         self.speed_kmh = args.speed_kmh or settings.get("speed_kmh")
         if self.speed_kmh:
@@ -246,8 +274,7 @@ class Bench:
                 raise SystemExit(f"{name} : vitesse imposée avec la difficulté {self.difficulty} % : la vitesse "
                                  "imposée demande la difficulté 100 % (pente reçue = pente du parcours)")
             self.difficulty = 100.0
-            self.spec = {**spec, "trainer": {**(spec.get("trainer") or {}),
-                                             "target_speed_kmh": float(self.speed_kmh)}}
+            self.spec = {**spec, "rider": {"strategy": "vitesse", "speed_kmh": float(self.speed_kmh)}}
             self.scenario_arg = ""   # scénario modifié : écrit dans un fichier
         self.ready_at = SETTLE_S     # temps relatif de la première capture comptée (après le chargement)
         self.duration = float(args.duration or settings.get("duration_s") or
@@ -255,6 +282,14 @@ class Bench:
         self.every = float(args.every or settings.get("every_s") or 15.0)
         self.decor_expect = [str(k) for k in settings.get("decor_expect", [])]
         self.sounds_expect = [[str(k) for k in group] for group in settings.get("sounds_expect", [])]
+        # Lot X33 : appuis joués (clavier ; ceux du Click sont déjà des événements du scénario), attentes,
+        # valeurs des bonus et bots à profil.
+        self.inputs: list[dict[str, Any]] = settings.get("inputs", [])
+        self.expect: list[dict[str, Any]] = settings.get("expect", [])
+        self.powerups: dict[str, Any] | None = settings.get("powerups")
+        self.bot_profiles = [str(p) for p in settings.get("bot_profiles", [])]
+        self.rows: list[dict[str, Any]] = []      # journal de séance entier (records, jeu, événements)
+        self.home: Path | None = None
         # Lot S1 : captures tous les N mètres de route (même endroit d'un essai à l'autre) au lieu de toutes
         # les N secondes ; contrôles des tuiles (apparitions, jointures, trous) stricts si le scénario le demande.
         self.every_m = float(getattr(args, "every_m", None) or settings.get("every_m") or 0.0)
@@ -289,6 +324,10 @@ class Bench:
         tmp = Path(tempfile.mkdtemp(prefix="openride-bench-"))
         home = tmp / "home"
         home.mkdir()
+        self.home = home
+        if self.powerups is not None:
+            (home / "OpenRide").mkdir()
+            (home / "OpenRide" / "powerups.toml").write_text(toml_text(self.powerups), encoding="utf-8")
         routes = home / ".local" / "share" / "openride" / "routes"
         route_id = prepare_world(self.world, routes, tmp)
         state_port, cmd_port = free_udp_ports(2)
@@ -302,6 +341,10 @@ class Bench:
         cfg.write_text("\n".join(cfg_lines), encoding="utf-8")
         argv = [sys.executable, "-m", "openride_core", "run", "--config", str(cfg), "--trainer", "sim",
                 "--input", "sim", "--hr", "sim", "--autostart", "--route", route_id]
+        for prof in self.bot_profiles:
+            argv += ["--bot-profile", prof]
+        if a.latence:
+            argv.append("--latence")   # lignes [latence] du core et de l'engine (lot X7)
         if self.scenario_arg:
             argv += ["--sim-scenario", self.scenario_arg]
         else:
@@ -360,8 +403,14 @@ class Bench:
                 relauncher = threading.Thread(target=self._relaunch_loop, args=(core, cmd_port, route_id),
                                               daemon=True)
                 relauncher.start()
+            presser = None
+            if any("key" in x for x in self.inputs):
+                presser = threading.Thread(target=self._key_loop, args=(engine, state_port), daemon=True)
+                presser.start()
             self._capture_loop(engine, state_port)
             self._stop_relaunch.set()
+            if presser is not None:
+                presser.join(timeout=5.0)
             if relauncher is not None:
                 relauncher.join(timeout=40.0)
                 r.check(True, "tours du parcours", f"{self.laps + 1} (relances après la fin du parcours : {self.laps})")
@@ -445,6 +494,9 @@ class Bench:
             plan.append((et + 2.0, f"ev{k}_{label}"))
             if ev.get("seconds") and et + float(ev["seconds"]) < self.duration:
                 plan.append((et + float(ev["seconds"]) - 0.5, f"ev{k}_{label}_fin"))
+        for k, x in enumerate(self.inputs):   # lot X33 : capture juste après chaque touche
+            if "key" in x and float(x["t"]) < self.duration:
+                plan.append((float(x["t"]) + inputs_mod.held_s(x) + 1.5, f"in{k}_{re.sub(r'[^A-Za-z0-9]', '', x['key'])}"))
         plan.sort()
         next_m = self.every_m
         cam_after = 0.0
@@ -472,6 +524,20 @@ class Bench:
                 self._shot(engine, port, f"d{int(next_m):05d}")
                 while next_m <= s_m:
                     next_m += self.every_m
+
+    def _key_loop(self, engine: Proc, port: int) -> None:
+        """Lot X33 : touches de `inputs` envoyées à l'engine au temps voulu (message de test `key`)."""
+        import socket
+        for x in [x for x in self.inputs if "key" in x]:
+            wait = float(x["t"]) - (now() - self.t_core)
+            if wait > 0:
+                time.sleep(wait)
+            if float(x["t"]) >= self.duration or engine.p.poll() is not None:
+                return
+            msg = {"type": "_test", "action": "key", "key": x["key"], "shift": bool(x.get("shift", False)),
+                   "hold_ms": int(x.get("hold_ms", 100))}
+            with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+                s.sendto(json.dumps(msg).encode(), ("127.0.0.1", port))
 
     def _tile_checks(self, log: list[str]) -> None:
         """Lot S1 : apparitions soudaines dans le champ (une tuile qui manque dans le champ est un trou ou un
@@ -529,12 +595,14 @@ class Bench:
         if self.sampler is not None:
             rows = perf_probe.merge(perf_probe.read_engine_csv(self.out / "moteur.csv"), self.sampler.rows)
             self.probe_summary = perf_probe.write_report(rows, self.out / "sonde", f"Sonde de performance : {self.name}",
-                                                        engine_dir=self.out)
+                                                         real_window=a.native, engine_dir=self.out)
             r.check(self.probe_summary["rows"] > 0, "sonde de performance",
                     f"{self.probe_summary['rows']} relevés, rapport sonde/rapport.html")
             if self.endurance:
                 for ok, label, measure in perf_probe.endurance_checks(rows, real_window=a.native):
                     r.check(ok, label, measure)
+            for ok, label, measure in self.probe_summary.get("budgets", []):   # budgets du préréglage (lot X14)
+                r.check(ok, label, measure)
         # Captures.
         ok = [s for s in self.shots if s.get("ok")]
         r.check(*capture_check(self.shots), "captures de l'engine")
@@ -578,6 +646,7 @@ class Bench:
                     row = json.loads(line)
                 except ValueError:
                     continue
+                self.rows.append(row)
                 if row.get("kind") in ("record", "device", "event"):
                     self.records.append(row)
             shutil.copy(journals[-1], self.out / "seance.jsonl")
@@ -593,11 +662,36 @@ class Bench:
         self.log_report_text = p.stdout + p.stderr
         r.check(p.returncode == 0, "log_report", "analyse du journal du core lue" if p.returncode == 0
                 else p.stderr[-200:])
+        if a.latence:
+            self._latency_checks(env)
         self._scenario_checks()
         (self.out / "log_report.txt").write_text(self.log_report_text, encoding="utf-8")
         (self.out / "summary.txt").write_text(self.summary_text, encoding="utf-8")
         write_html(self)
         del a
+
+    def _latency_checks(self, env: dict[str, str]) -> None:
+        """Lot X7 : appuis du Click appariés de bout en bout (au moins LATENCY_MIN_PRESSES) et p95 de la
+        notification à l'image affichée sous LATENCY_P95_MS (indicatif sous Xvfb, strict avec --native)."""
+        r = self.report
+        p = subprocess.run([sys.executable, "-m", "openride_core.tools.log_report", "--json", "--latence",
+                            str(self.out / "core.log"), str(self.out / "engine.log")], env=env, capture_output=True, text=True)
+        try:
+            lat = json.loads(p.stdout)
+        except ValueError:
+            r.check(False, "latence des appuis", (p.stderr or p.stdout)[-200:])
+            return
+        (self.out / "latence.json").write_text(json.dumps(lat, ensure_ascii=False, indent=2), encoding="utf-8")
+        r.check(lat["complete"] >= LATENCY_MIN_PRESSES, "latence : appuis appariés de bout en bout",
+                f"{lat['complete']} sur {lat['presses']} (au moins {LATENCY_MIN_PRESSES})")
+        e2e = lat["hops"].get("bout en bout (notification → image)")
+        if e2e:
+            r.check(e2e["p95_ms"] < LATENCY_P95_MS if self.args.native else None, "latence : notification → image",
+                    f"médiane {e2e['median_ms']:.0f} ms, p95 {e2e['p95_ms']:.0f} ms, max {e2e['max_ms']:.0f} ms "
+                    f"(seuil p95 {LATENCY_P95_MS:.0f} ms{'' if self.args.native else ', non appliqué sous Xvfb'})")
+        for label, h in lat["hops"].items():
+            if not label.startswith("bout en bout"):
+                r.check(None, f"latence : {label}", f"médiane {h['median_ms']:.1f} ms, p95 {h['p95_ms']:.1f} ms")
 
     def _scenario_checks(self) -> None:
         """Attentes tirées des événements : ce que l'écran et le journal doivent montrer."""
@@ -649,10 +743,25 @@ class Bench:
         if self.speed_kmh:
             r.check(*speed_check(recs, float(self.speed_kmh)), f"vitesse imposée {float(self.speed_kmh):.0f} km/h")
         self._decor_checks()
+        self._input_checks()
         hr = [x.get("hr") for x in recs if x.get("hr")]
         if "hr" in self.spec:
             r.check(bool(hr), "fréquence cardiaque au journal",
                     f"{len(hr)} échantillons, {min(hr)} à {max(hr)} bpm" if hr else "aucune fréquence cardiaque")
+
+    def _input_checks(self) -> None:
+        """Lot X33 : effet de chaque appui de `inputs` et attentes de `bench.expect`, renvoi à la recette."""
+        if not self.inputs and not self.expect:
+            return
+        engine_text = (self.out / "engine.log").read_text(encoding="utf-8", errors="replace")
+        core_text = (self.out / "core.log").read_text(encoding="utf-8", errors="replace")
+        inputs = [x for x in self.inputs if float(x["t"]) + 8 <= self.duration]
+        for ok, label, measure in inputs_mod.input_checks(inputs, self.rows, self.t0_wall,
+                                                          inputs_mod.keys_done(engine_text)):
+            self.report.check(ok, label, measure)
+        for ok, label, measure in inputs_mod.expect_checks(self.expect, self.rows, core_text, engine_text,
+                                                           self.shots, self.home or Path(), self.t0_wall):
+            self.report.check(ok, label, measure)
 
     def _decor_checks(self) -> None:
         """Décor vivant (lot P30) : `decor.csv`, sortes vues et sons démarrés demandés par le scénario."""
@@ -910,6 +1019,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="off", choices=("on", "off"),
                     help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
+    ap.add_argument("--latence", action="store_true",
+                    help="latence des appuis du Click jusqu'à l'image (lot X7) : core et engine avec --latence")
     ap.add_argument("--probe", action="store_true",
                     help="sonde de performance du moteur (lot X13) : rapport dans <scénario>/sonde/")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "sim_bench" / time.strftime("%Y-%m-%d_%H%M%S"))

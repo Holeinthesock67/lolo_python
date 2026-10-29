@@ -95,3 +95,18 @@ def test_bench_on_simulated_trainer():
     up = ts.analyse(rec)[1]
     assert up.ack_ms is not None and up.ack_ms < 200
     assert up.t63_s is not None and 0.8 <= up.t63_s <= 3.0   # constante du trainer simulé : 1,5 s
+
+
+def test_bench_measures_the_realistic_model():
+    """Lot X6 : sur le trainer simulé réaliste, le banc retrouve le t63 du modèle à ± 20 %."""
+    spec = load_scenario("realiste")
+    spec["trainer"].update({"brake_delay_s": 0.3, "brake_tau_up_s": 0.8, "brake_tau_down_s": 1.6,
+                            "rider_max_w": 2000})
+    world = build_world(spec, "realiste", click=False, hr=False)
+    steps = [ts.Step("erg", 150, 4), ts.Step("erg", 250, 7), ts.Step("erg", 150, 9)]
+    rec = asyncio.run(ts.run_bench(steps, config.Config(), sim_world=world, lead_in_s=0))
+    checks = ts.model_checks(ts.analyse(rec), world.trainer.model, 1.0 / world.trainer.ibd_hz)
+    assert len(checks) == 2 and all(ok for ok, _ in checks), checks
+    assert ts.load_protocol("marche_pente", fast=True, fast_hold_s=20.0)[1].hold_s == 20.0
+    assert [s.hold_s for s in ts.load_protocol("rogue_fenetres")[1:6]] == [1.5] * 5
+

@@ -157,8 +157,126 @@ vec3 shutter_color(float seed) {
 	return vec3(0.82, 0.8, 0.74);
 }
 
+// Porte d'entrée dans sa travée (l : mètres, x centré sur la travée, y depuis le sol) : encadrement de pierre
+// à harpes et clé de linteau, seuil, vantail à panneaux moulurés, à lames et pentures ou vitré en partie haute,
+// imposte vitrée, poignée et plaque de propreté. Renvoie false hors de l'encadrement (le mur reste visible).
+bool house_door(vec2 l, float seed, inout vec3 col, inout float rough, inout float h) {
+	const float W = 0.5;            // demi-largeur du vantail
+	const float SILL = 0.12;        // dessus du seuil
+	const float LEAF_TOP = 2.05;
+	const float TOP = 2.42;         // haut de l'imposte
+	const float JAMB = 0.17;        // largeur des pierres d'encadrement
+	if (abs(l.x) > W + JAMB || l.y > TOP + 0.24) {
+		return false;
+	}
+	float vis = sd_visible(l, 0.04);
+	float style = sd_hash(vec2(seed * 23.0, 4.0));
+	vec3 paint = shutter_color(fract(seed * 7.0)) * 0.85;
+	// Encadrement : piédroits en harpes (pierres alternées longues et courtes), linteau avec clé
+	if (abs(l.x) > W || l.y > TOP) {
+		float course = floor(l.y / 0.34);
+		float long_stone = mod(course, 2.0);
+		float reach = W + JAMB - 0.06 + 0.06 * long_stone;
+		bool lintel = l.y > TOP;
+		if (!lintel && abs(l.x) > reach) {
+			return false;
+		}
+		if (lintel && abs(l.x) > W + JAMB) {
+			return false;
+		}
+		vec3 stone_col = mix(vec3(0.78, 0.74, 0.66), vec3(0.66, 0.6, 0.52), step(0.6, fract(seed * 11.0)));
+		float joint = lintel ? step(abs(abs(l.x) - 0.11), 0.008) : step(fract(l.y / 0.34), 0.03);
+		float key = lintel ? step(abs(l.x), 0.11) : 0.0;
+		col = stone_col * (0.88 + 0.16 * sd_noise(l / 0.06) * vis + 0.06 * key) * (1.0 - 0.3 * joint * vis);
+		float edge = lintel ? min(min(TOP + 0.24 - l.y, l.y - TOP), W + JAMB - abs(l.x)) : min(reach - abs(l.x), abs(l.x) - W);
+		h = (0.012 + 0.004 * key) * smoothstep(0.0, 0.03, edge) * (1.0 - joint * vis);
+		rough = 0.85;
+		return true;
+	}
+	// Seuil de pierre sombre, un peu en avant
+	if (l.y < SILL) {
+		col = vec3(0.5, 0.48, 0.45) * (0.9 + 0.15 * sd_noise(l / 0.05) * vis);
+		h = 0.008 * smoothstep(0.0, 0.02, SILL - l.y);
+		rough = 0.8;
+		return true;
+	}
+	// Feuillure : cadre dormant peint autour du vantail et de l'imposte
+	float frame_d = min(min(W - abs(l.x), l.y - SILL), TOP - l.y);
+	float transom_bar = step(abs(l.y - LEAF_TOP - 0.03), 0.03);
+	if (frame_d < 0.05 || transom_bar > 0.5) {
+		col = mix(paint, vec3(0.85, 0.84, 0.8), 0.55);
+		h = -0.004;
+		rough = 0.55;
+		return true;
+	}
+	// Imposte vitrée en éventail
+	if (l.y > LEAF_TOP + 0.06) {
+		vec2 c = l - vec2(0.0, LEAF_TOP + 0.06);
+		float ang = atan(c.x, c.y);
+		float ray = step(abs(fract(ang / 0.45 + 0.5) - 0.5), 0.05) * step(0.06, length(c));
+		col = mix(glass(l + vec2(0.0, 0.6), seed), mix(paint, vec3(0.85, 0.84, 0.8), 0.55), ray);
+		h = -0.012 + 0.006 * ray;
+		rough = mix(0.08, 0.55, ray);
+		return true;
+	}
+	// Vantail
+	vec2 d = vec2(l.x, l.y - SILL);
+	float leaf_h = LEAF_TOP - SILL;
+	float wear = 1.0 - 0.18 * (1.0 - smoothstep(0.0, 0.35, d.y)) * sd_noise(l / 0.08);
+	h = -0.01;
+	rough = 0.5;
+	if (style < 0.3) {
+		// Porte rurale : lames verticales, deux pentures noires et une écharpe en Z
+		float lame = fract((d.x + W) / 0.125);
+		float gap = smoothstep(0.06, 0.0, min(lame, 1.0 - lame)) * vis;
+		vec3 wood_col = mix(vec3(0.42, 0.29, 0.17), paint, step(0.15, style));
+		col = wood_col * (0.82 + 0.25 * sd_hash(vec2(floor((d.x + W) / 0.125), seed))) * (0.9 + 0.12 * sd_noise(vec2(d.x * 30.0, d.y * 2.0)) * vis);
+		col *= 1.0 - 0.45 * gap;
+		h -= 0.003 * gap;
+		float hinge = (step(abs(d.y - 0.3), 0.025) + step(abs(d.y - leaf_h + 0.3), 0.025)) * step(d.x, 0.25);
+		col = mix(col, vec3(0.06), hinge);
+		h += 0.004 * hinge;
+		rough = mix(0.75, 0.4, hinge);
+	} else {
+		// Porte à panneaux moulurés (deux en bas, deux ou un vitrage en haut)
+		bool glazed = style > 0.72;
+		float mid = leaf_h * 0.52;
+		vec2 q = vec2(abs(d.x), d.y < mid ? d.y : d.y - mid);
+		float ph = d.y < mid ? mid : leaf_h - mid;
+		float inset = min(min(q.x - 0.08, W - 0.08 - q.x), min(q.y - 0.12, ph - 0.1 - q.y));
+		if (glazed && d.y >= mid) {
+			float pane = min(W - 0.1 - abs(d.x), min(d.y - mid - 0.06, leaf_h - 0.1 - d.y));
+			if (pane > 0.0) {
+				float bar = step(abs(d.x), 0.018) + step(abs(d.y - (mid + leaf_h) * 0.5), 0.018);
+				col = mix(glass(l, seed), paint, min(bar, 1.0));
+				h = -0.016 + 0.006 * min(bar, 1.0);
+				rough = mix(0.06, 0.5, min(bar, 1.0));
+				return true;
+			}
+		}
+		col = paint * (0.95 + 0.06 * sd_noise(l / 0.3));
+		// Moulure en biseau autour de chaque panneau, panneau plat au fond
+		float bevel = smoothstep(0.0, 0.035, inset);
+		h += inset > 0.0 ? -0.006 * bevel : 0.0;
+		col *= inset > 0.0 ? 0.93 + 0.07 * bevel : 1.0;
+		// Plaque de propreté au bas du vantail
+		if (d.y < 0.1) {
+			col = vec3(0.55, 0.45, 0.25);
+			rough = 0.3;
+		}
+	}
+	col *= wear;
+	// Poignée et serrure, côté opposé aux paumelles
+	float knob = smoothstep(0.03, 0.022, length(d - vec2(W - 0.11, 0.95)));
+	float plate = box(d, vec2(W - 0.14, 0.82), vec2(W - 0.08, 1.02));
+	col = mix(col, vec3(0.62, 0.5, 0.25), max(knob, plate * 0.8));
+	h += 0.006 * knob + 0.002 * plate;
+	rough = mix(rough, 0.25, max(knob, plate));
+	return true;
+}
+
 // Bâtiment avec fenêtres à volets (maisons), par travées d'environ 3,2 m ; porte sur certains murs
-void house_openings(vec2 uv, float seg, float eave, float seed, bool shutters, inout vec3 col, inout float rough) {
+void house_openings(vec2 uv, float seg, float eave, float seed, bool shutters, inout vec3 col, inout float rough, inout float h) {
 	float nb = floor(seg / 3.2);
 	if (nb < 1.0) {
 		return;
@@ -174,13 +292,9 @@ void house_openings(vec2 uv, float seg, float eave, float seed, bool shutters, i
 	float wall_id = sd_hash(vec2(seg * 7.31, seed * 17.0));
 	float door_cell = floor(sd_hash(vec2(seed * 5.0, seg)) * nb);
 	if (fi == 0.0 && cell == door_cell && wall_id < 0.55 && seg > 4.0) {
-		float d = window_mask(l, 1.0, 0.0, 2.15, 0.08);
-		if (d > 0.0) {
-			vec3 door = shutter_color(fract(seed * 7.0)) * 0.8;
-			float panel = box(abs(l - vec2(0.0, 1.1)), vec2(0.12, 0.2), vec2(0.36, 0.9));
-			col = d < 0.75 ? vec3(0.78, 0.76, 0.7) : door * (1.0 - 0.15 * panel);
-			return;
-		}
+		// Travée de la porte : ni fenêtre ni volets autour
+		house_door(l, seed, col, rough, h);
+		return;
 	}
 	float w = window_mask(l, 1.05, 0.9, 1.35, 0.07);
 	float sill = box(l, vec2(-0.62, 0.82), vec2(0.62, 0.9));
@@ -278,7 +392,8 @@ void shop_openings(vec2 uv, float seg, float eave, float seed, inout vec3 col, i
 			col = shutter_color(fract(seed * 3.0));
 		}
 	} else {
-		house_openings(uv, seg, eave, seed, false, col, rough);
+		float shop_h = 0.0;
+		house_openings(uv, seg, eave, seed, false, col, rough, shop_h);
 	}
 }
 
@@ -439,8 +554,9 @@ void fragment() {
 			h = pn * 0.01 * sd_visible(uv, 0.25);
 		}
 		vec3 c_before = col;
+		float open_h = 0.0;     // relief des ouvertures (portes)
 		if (openings == WIN_HOUSE) {
-			house_openings(uv, seg, eave, seed, wall != WALL_CONCRETE && wall != WALL_METAL, col, rough);
+			house_openings(uv, seg, eave, seed, wall != WALL_CONCRETE && wall != WALL_METAL, col, rough, open_h);
 		} else if (openings == WIN_BANDS) {
 			band_openings(uv, eave, col, rough);
 		} else if (openings == WIN_BARN) {
@@ -452,7 +568,7 @@ void fragment() {
 		}
 		if (col != c_before) {
 			metal = 0.0;
-			h = 0.0;
+			h = open_h;
 		}
 	}
 

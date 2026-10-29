@@ -76,6 +76,7 @@ class RenderConfig:
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off ou on
+    draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
 
 
@@ -183,6 +184,11 @@ class AudioConfig:
 
 
 @dataclass
+class LogConfig:
+    latence: bool = False   # journal de latence des appuis du Click, `[latence]` (lot X7, docs/OUTILS_DE_TEST.md)
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -200,6 +206,7 @@ class Config:
     powerups: PowerupsConfig = field(default_factory=PowerupsConfig)
     bots: BotsConfig = field(default_factory=BotsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
+    log: LogConfig = field(default_factory=LogConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -273,6 +280,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on"),
+    ("render", "draft_gauge"): ("off", "on"),
     ("render", "display"): ("windowed", "borderless", "fullscreen"),
     ("render", "camera"): ("subjective", "follow_near", "follow_far", "side"),
     ("drivers", "trainer"): ("mock", "ftms", "sim"),

@@ -9,9 +9,21 @@ extends RefCounted
 const PARAM := "anim_time"
 
 static var seconds := 0.0
+## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : l'horloge ne bouge plus.
+static var frozen := false
 
 
-## Avance l'horloge de `dt_s` secondes.
+## Avance l'horloge de `dt_s` secondes (sauf scène figée).
 static func advance(dt_s: float) -> void:
+	if frozen:
+		return
 	seconds += maxf(dt_s, 0.0)
 	RenderingServer.global_shader_parameter_set(PARAM, seconds)
+
+
+## Fige l'horloge à `t_s` secondes (scène figée des tests graphiques) ; NAN la libère.
+static func freeze(t_s: float) -> void:
+	frozen = not is_nan(t_s)
+	if frozen:
+		seconds = maxf(t_s, 0.0)
+		RenderingServer.global_shader_parameter_set(PARAM, seconds)
