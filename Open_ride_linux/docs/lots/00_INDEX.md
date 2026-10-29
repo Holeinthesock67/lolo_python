@@ -300,7 +300,7 @@
 | [CT11](LOT_CT11_hud_menus.md) | Série CT : hUD, menus et bilan de la Course tactique | GDScript | CT9, CT10 | Grande | Prêt (version 5.0) |
 | [CT12](LOT_CT12_recette_velo.md) | Série CT : recette de la Course tactique sur le vélo | Essai sur le vélo | CT2 à CT11 | Moyenne | Interne (propriétaire, version 5.0) |
 | [WTF1](LOT_WTF1_regles_core.md) | Série WTF : règles du mode « What the fuck » dans le core (13 règles désactivables, surprise du chef) | Python | — | Moyenne | **Livré le 29 octobre** (version 2.0) |
-| [WTF2](LOT_WTF2_seance_contrat.md) | Série WTF : mode WTF branché dans la séance et contrat IPC | Python | WTF1 | Moyenne | Prêt (version 2.0) |
+| [WTF2](LOT_WTF2_seance_contrat.md) | Série WTF : mode WTF branché dans la séance et contrat IPC | Python | WTF1 | Moyenne | **Livré le 29 octobre** (version 2.0) |
 | [WTF3](LOT_WTF3_menu_regles.md) | Série WTF : menu du mode et écran des treize interrupteurs | GDScript | WTF2 | Petite | Prêt (version 2.0) |
 | [WTF4](LOT_WTF4_maquettes.md) | Série WTF : maquettes cartoon des gags | Documentation et maquettes | WTF1 | Moyenne | Prêt (version 2.0), maquettes validées par le propriétaire |
 | [WTF5](LOT_WTF5_gags_physiques.md) | Série WTF : engine, gags physiques (gravité, monde à l'envers, route qui s'effondre, fromage, tempête) | GDScript | WTF2, WTF4 | Grande | Prêt (version 2.0) |

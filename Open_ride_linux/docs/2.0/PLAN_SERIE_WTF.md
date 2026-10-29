@@ -51,7 +51,7 @@ Pourquoi cette règle : elle mélange l'effet de surprise du tirage, un choix ta
 ## 4. Architecture
 
 - **Core, modules purs** `core/src/openride_core/wtf/` (lot WTF1, livré) : `rules.py` (catalogue, fichier `wtf.toml`), `events.py` (événements), `chef.py` (surprise du chef), `mode.py` (`WtfMode` : tirage, règles permanentes, effets combinés et bornés, champ `wtf` proposé, lignes `wtf` du journal, bilan).
-- **Séance** (lot WTF2) : `WtfMode.step` à chaque pas en `RUNNING` ; pente transformée pour la physique et pour la pente envoyée (avant braquet, puis supplément borné, puis bornes du mode, puis limitation de variation habituelle) ; costumes et attaques appliqués aux bots ; abri de la baleine ; Z court relayé au mode.
+- **Séance** (lot WTF2, livré) : `WtfMode.step` à chaque pas en `RUNNING` ; pente transformée pour la physique et pour la pente envoyée (avant braquet, puis supplément borné, puis bornes du mode, puis limitation de variation habituelle) ; costumes et attaques appliqués aux bots ; abri de la baleine ; Z court relayé au mode.
 - **Engine** (lots WTF3 à WTF7) : n'affiche que ce que le core envoie dans `wtf`. Style **cartoon, flashy et exagéré**, même famille que la charte CT9 de la Course tactique, pour ne pas créer un troisième style.
 
 Boutons (plan unique §7.1 de la spécification) : rien de nouveau. Z court refuse le plat du chef ; les braquets restent sur + et − ; Y reste la pause.
@@ -75,7 +75,7 @@ Forme produite par `WtfMode.frame` (environ 300 octets avec quatre bots, sous 1 
 | Lot | Titre | Dépend de | Taille |
 | --- | --- | --- | --- |
 | [WTF1](../lots/LOT_WTF1_regles_core.md) | Règles du mode dans le core (modules purs, tests) | — | Moyenne, **livré** |
-| [WTF2](../lots/LOT_WTF2_seance_contrat.md) | Branchement dans la séance et contrat IPC | WTF1 | Moyenne |
+| [WTF2](../lots/LOT_WTF2_seance_contrat.md) | Branchement dans la séance et contrat IPC | WTF1 | Moyenne, **livré** |
 | [WTF3](../lots/LOT_WTF3_menu_regles.md) | Entrée du menu et écran des treize interrupteurs | WTF2 | Petite |
 | [WTF4](../lots/LOT_WTF4_maquettes.md) | Maquettes cartoon des gags, validées par le propriétaire | WTF1 | Moyenne |
 | [WTF5](../lots/LOT_WTF5_gags_physiques.md) | Engine : gravité, monde à l'envers, route qui s'effondre, fromage, tempête | WTF2, WTF4 | Grande |

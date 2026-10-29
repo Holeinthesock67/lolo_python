@@ -430,4 +430,4 @@ def test_summary_counts_events():
     assert sum(summary["events"].values()) == len(mode.played) > 0
     assert summary["points"] == sum(line["points"] for line in mode.played)
     lines = mode.take_journal()
-    assert lines and all(line["type"] == "wtf" for line in lines) and mode.take_journal() == []
+    assert lines and all(line["kind"] == "wtf" for line in lines) and mode.take_journal() == []

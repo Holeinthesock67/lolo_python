@@ -21,3 +21,14 @@ Lancer une séance en mode WTF depuis l'engine, appliquer les effets de `WtfMode
 1. Séance simulée de 30 min en mode WTF (`--trainer sim`) : pente envoyée toujours entre − 6 % et + 10 %, puissance du FIT identique à la puissance mesurée.
 2. Chaque règle coupée par `set_wtf_rule` n'apparaît plus dans `wtf`.
 3. Taille de la trame `state` avec quatre bots sous 4 096 octets.
+
+## 5. Livraison
+
+Livré le 29 octobre 2026 (branche `claude/project-thread-i6o5pd`, même PR que WTF1) :
+- `start` avec `mode` = `wtf` crée `WtfMode` (règles de `wtf.toml`, costumes des bots) ; pas de segments, records ni bonus, bots calibrés comme en classique ;
+- à chaque pas : pente du parcours et pente anticipée transformées, supplément ressenti borné ajouté après le vent et l'abri, pente bornée de − 6 % à + 10 % avant la limitation de variation ; masse, roulement et vent de la règle en cours ; puissance prise en compte × le facteur du plat (piment) ; mamies à l'attaque (`power_factor` des bots) ; abri derrière la baleine ;
+- Z court relayé au chef ; `set_ride_mode` vers l'ERG refusé (`busy`) ; `wtf` dans `state`, `summary.wtf`, lignes `wtf_start`, `wtf` et `wtf_summary` au journal (pente du parcours gardée au journal) ;
+- contrat 1.5 : `start.mode`, `modes` = `wtf`, `list_wtf_rules`, `set_wtf_rule`, `wtf_rules`, `wtf_rule_invalid`, schémas JSON ;
+- `core/tests/test_wtf_session.py` (6 tests).
+
+Limite connue : après un plantage du core, la reprise (N8) repart en séance ordinaire, sans les règles WTF.

@@ -131,7 +131,7 @@ class WtfMode:
 
     def _close(self, ev: Event, t: float) -> None:
         self.points += ev.points
-        line = {"type": "wtf", "t": round(t, 2), "event": ev.id, "outcome": ev.outcome, "points": ev.points}
+        line = {"kind": "wtf", "t": round(t, 2), "event": ev.id, "outcome": ev.outcome, "points": ev.points}
         if isinstance(ev, Chef):
             line["dish"] = ev.dish
             self.vexed = ev.refused
