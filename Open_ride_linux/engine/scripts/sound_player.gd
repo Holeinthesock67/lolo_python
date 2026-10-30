@@ -57,6 +57,8 @@ const MIX_RATE := 22050
 const SAMPLE_COUNT := 22050   # 1 seconde de boucle
 const ONE_SHOT_KINDS := ["ship_horn", "church_bell"]   # sons joués une fois (P29 ; cloche : un coup par update_bells)
 const ONE_SHOT_TAIL_S := 0.03
+const NOISE_LOOP_S := 4.0       # boucle des sons à bruit (river et NOISE_LOWPASS), comme le vent
+const NOISE_MIX_RATE := 11025   # leur bruit est sourd : demi-fréquence, même coût qu'une boucle de 2 s
 ## Coefficient du passe-bas du bruit de chaque son en boucle qui en contient un (bruit périodique, sans clic).
 const NOISE_LOWPASS := {"vehicle_pass": 0.08, "crowd_cheer": 0.15, "helicopter_rotor": 0.25, "airliner_rumble": 0.02,
 	"paramotor_buzz": 0.3, "barge_engine": 0.05}
@@ -355,7 +357,8 @@ func _try_load_custom(kind: String) -> Resource:
 	return null
 
 
-## Sons en boucle d'une seconde (et sons joués une fois, ONE_SHOT_KINDS). Raccord sans clic : les
+## Sons en boucle d'une seconde, ou de NOISE_LOOP_S pour ceux qui contiennent du bruit (et sons joués une fois,
+## ONE_SHOT_KINDS). Raccord sans clic : les
 ## fréquences et modulations font un nombre entier de cycles par boucle et les bruits filtrés sont
 ## périodiques (`_periodic_lowpass`), donc la fin de la boucle enchaîne exactement sur son début.
 func _synthesize_stream(kind: String) -> AudioStreamWAV:
@@ -374,14 +377,23 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		wav.data = _freewheel_bytes()
 		return wav
 
-	var n := SAMPLE_COUNT
+	# Sons à bruit : boucle de NOISE_LOOP_S à NOISE_MIX_RATE (un bruit figé d'une seconde se répétait et
+	# s'entendait comme une pulsation régulière d'une seconde, mesure du 30/10) ; graine propre à chaque son.
 	var noisy: bool = kind == "river" or NOISE_LOWPASS.has(kind)
-	var noise: PackedFloat32Array = _lcg_noise(n, 0x12345678) if noisy else PackedFloat32Array()
-	var lp: PackedFloat32Array = _periodic_lowpass(noise, float(NOISE_LOWPASS[kind])) if NOISE_LOWPASS.has(kind) else PackedFloat32Array()
+	var rate := NOISE_MIX_RATE if noisy else MIX_RATE
+	var n := int(NOISE_LOOP_S * rate) if noisy else SAMPLE_COUNT
+	wav.mix_rate = rate
+	wav.loop_end = n
+	var noise: PackedFloat32Array = _lcg_noise(n, hash(kind) & 0x7FFFFFFF) if noisy else PackedFloat32Array()
+	var lp := PackedFloat32Array()
+	if NOISE_LOWPASS.has(kind):
+		# Même fréquence de coupure qu'à MIX_RATE
+		var alpha := 1.0 - pow(1.0 - float(NOISE_LOWPASS[kind]), float(MIX_RATE) / float(rate))
+		lp = _periodic_lowpass(noise, alpha)
 	var buf := PackedFloat32Array()
 	buf.resize(n)
 	for i in range(n):
-		var t := float(i) / float(MIX_RATE)
+		var t := float(i) / float(rate)
 		var sample := 0.0
 
 		match kind:
@@ -442,7 +454,7 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 
 	if kind in ONE_SHOT_KINDS:
 		# Son joué une fois : fin fondue en ONE_SHOT_TAIL_S, sans coupure sèche
-		var tail := int(ONE_SHOT_TAIL_S * MIX_RATE)
+		var tail := int(ONE_SHOT_TAIL_S * rate)
 		for j in range(tail):
 			buf[n - 1 - j] *= float(j) / float(tail)
 	var bytes := PackedByteArray()
