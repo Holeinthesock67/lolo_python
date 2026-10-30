@@ -22,6 +22,8 @@ const FAR_DROP_M := 2.0
 ## l'axe (chaussée de 6 m et bas-côtés de 0,5 m) et marge sous l'altitude de la route.
 const ROAD_CLEAR_HALF_M := 4.0
 const FAR_CARVE_MARGIN_M := 0.5
+## Hauteur des jupes des tuiles proches (_add_skirts) : plus que FAR_DROP_M et la marge sous le proche.
+const SKIRT_M := 3.0
 ## Largeur du raccord du terrain proche au lointain là où le proche s'arrête (blend_to_far).
 const EDGE_BLEND_M := 50.0
 
@@ -452,12 +454,41 @@ static func build_arrays(heights: PackedFloat32Array, level: String, edges: Dict
 			indices[w + 4] = d
 			indices[w + 5] = c
 			w += 6
+	if level == "near":
+		_add_skirts(vertices, normals, indices)
 	var arrays := []
 	arrays.resize(Mesh.ARRAY_MAX)
 	arrays[Mesh.ARRAY_VERTEX] = vertices
 	arrays[Mesh.ARRAY_NORMAL] = normals
 	arrays[Mesh.ARRAY_INDEX] = indices
 	return arrays
+
+
+## Jupes des tuiles proches : chaque bord descend de SKIRT_M (faces des deux côtés, normale du bord pour un
+## éclairage de sol). Deux tuiles voisines ont les mêmes hauteurs au bord, mais chaque maillage a sa propre
+## transformation : la carte graphique peut laisser entre elles des pixels non couverts, qui montrent le
+## lointain plus bas (pointillés sombres en escalier sur les flancs, PC du 29 octobre). Les jupes bouchent
+## aussi la marche vers le lointain là où la tuile voisine n'est pas chargée. Les sommets de la grille gardent
+## leurs indices (j × SAMPLES + i) : les jupes sont ajoutées après.
+static func _add_skirts(vertices: PackedVector3Array, normals: PackedVector3Array, indices: PackedInt32Array) -> void:
+	var sides := [
+		range(0, SAMPLES),                                          # nord (j = 0)
+		range(CELLS * SAMPLES, SAMPLES * SAMPLES),                  # sud (j = CELLS)
+		range(0, SAMPLES * SAMPLES, SAMPLES),                       # ouest (i = 0)
+		range(CELLS, SAMPLES * SAMPLES, SAMPLES),                   # est (i = CELLS)
+	]
+	for side in sides:
+		var top: Array = side
+		var base := vertices.size()
+		for idx in top:
+			vertices.append(vertices[idx] - Vector3(0.0, SKIRT_M, 0.0))
+			normals.append(normals[idx])
+		for m in range(top.size() - 1):
+			var a: int = top[m]
+			var b: int = top[m + 1]
+			var c := base + m
+			var d := base + m + 1
+			indices.append_array(PackedInt32Array([a, b, c, b, d, c, a, c, b, b, c, d]))
 
 
 ## Origine (coin nord-ouest) d'une tuile dans le repère du monde.
