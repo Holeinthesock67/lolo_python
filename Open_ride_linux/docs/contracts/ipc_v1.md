@@ -253,6 +253,11 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 | `list_wtf_rules` | `{}` | Révision 1.5 (lot WTF2) : demande les treize règles du mode WTF ; réponse `wtf_rules` |
 | `set_wtf_rule` | `{ "id": chaîne, "on": booléen }` | Révision 1.5 (lot WTF2) : allume ou coupe une règle (écrit `~/OpenRide/wtf.toml`), à tout moment, prise en compte tout de suite pendant une séance WTF ; réponse `wtf_rules` ; règle inconnue : `error` `wtf_rule_invalid` ; arguments mal typés : `bad_args` |
 | `world_pin` | `{ "region_id": chaîne, "pinned": booléen }` | Monde ouvert, menu : épingle ou libère une région du cache ; réponse `world_regions` |
+| `list_profiles` | `{}` | Révision 1.5 (lot MJ6) : profils de joueurs ; réponse `profiles` |
+| `select_profile` | `{ "id": chaîne }` | Révision 1.5 (lot MJ6) : change de profil sans relancer, hors séance seulement ; réponse : `hello_ack` complet, puis `settings` et `progression` ; `busy` pendant une séance, `profile_invalid` pour un profil inconnu, illisible ou déjà utilisé |
+| `create_profile` | `{ "name": chaîne }` | Révision 1.5 (lot MJ6) : crée un profil de joueur et le rend actif ; réponse : `hello_ack` complet, puis `profiles` ; `name_invalid`, ou `profile_invalid` au-delà de huit profils |
+| `rename_profile` | `{ "id": chaîne, "name": chaîne }` | Révision 1.5 (lot MJ6) : change le nom affiché (l'identifiant ne change pas) ; réponse `profiles` ; `name_invalid` ou `profile_invalid` |
+| `delete_profile` | `{ "id": chaîne }` | Révision 1.5 (lot MJ6) : met le profil à la corbeille ; refusé (`profile_invalid`) pour le profil en cours, le profil d'essai et le dernier profil joueur ; réponse `profiles` |
 
 
 **Cyber-Rogue et Garage (révision 1.4, lot T1).** Fin de run : `end_session` avec `save` vrai suffit, le résultat (`abandoned` si la run n'est pas finie) est dans `summary.rogue` ; il n'y a pas de commande d'abandon (décision R-Q3 du 26 octobre). Les commandes du Garage (`list_garage`, `equip`, `buy`, `set_avatar`) ne sont acceptées que hors séance (`IDLE`, `READY`) ; sinon `error` `busy`. Quand `[progression] enabled` est faux, le core ne met pas `progression` dans `hello_ack` et répond `bad_args` à ces commandes ; si le profil ne peut pas être écrit, `recording_failed` et rien ne change. Après `equip`, `buy` ou `set_avatar` réussi, le core envoie le message `progression` (`v`, `request_cmd_id` et les champs de `hello_ack.config.progression`, §5) : l'engine n'a rien à recalculer, et aucun nouveau `hello_ack` n'est envoyé (l'engine le traite comme la fin de la poignée de main). Le message `garage` porte `v`, `request_cmd_id`, `part`, `parts` et `items` ; chaque élément : `id`, `slot` (`frame`, `wheels`, `helmet`, `kit`, `socks`, `glasses`), `name`, `state` (`locked`, `buyable`, `owned`, `equipped`), `level_required`, `price`, `challenge` (texte du défi qui offre la pièce, ou `null`), `mass_delta_kg`, `cda_delta_pct`, `terrain` (`flat`, `rolling`, `climb`, `all`), `look` (identifiant de rendu, lot V7). Chaque élément de `routes` gagne le champ facultatif `terrain` (`flat`, `rolling`, `climb` ou `null`, calculé par le core, lot V3 §4.3), pour le conseil d'équipement de l'écran « Prêt » (V8).
@@ -325,6 +330,18 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 
 `places`, `world_map` et `world_regions` suivent les règles de `routes` (parties de 60 000 octets, `request_cmd_id`, nouvelle demande si une partie manque). `world_search` lit d'abord la liste embarquée et les bases locales ; il n'interroge Nominatim que si le réseau est permis, à la demande du cycliste, une requête par seconde au plus.
 
+**Profils de joueurs (révision 1.5, lot MJ6, plan `docs/2.0/PLAN_SERIE_MJ.md` §6).** Un profil est un joueur : ses réglages (FTP, poids, FC max, séance, vent, caméra, courbes, ceinture cardio), sa progression, ses records, son plan et ses séances. Le core lit et écrit les profils ; l'engine affiche « Qui roule ? », la saisie du nom et la gestion.
+
+| Message | Sens | Champs |
+| --- | --- | --- |
+| `profiles` | core vers engine | `v`, `request_cmd_id`, `active` (identifiant du profil en cours), `items` : au plus 8 `{id, name, type, level, last_ride, kit_primary}`, un seul datagramme (moins de 1 000 octets) |
+
+- `type` vaut `joueur` ou `essai` ; `level` est le niveau de progression (1 à 50) ; `last_ride` la date de la dernière séance (`AAAA-MM-JJ`) ou `null` ; `kit_primary` la couleur principale du maillot de l'avatar (0 à 15, comme `progression.avatar`). Les profils de type `joueur` sont triés par nom ; le profil d'essai `_essai` n'y figure que s'il est le profil en cours.
+- `select_profile`, `create_profile`, `rename_profile` et `delete_profile` : hors séance seulement (`IDLE`, `READY`, `FINISHED`, `ERROR`), sinon `error` `busy`. `list_profiles` est accepté à tout moment.
+- Nom (`create_profile`, `rename_profile`) : 1 à 16 caractères, lettres (accents compris), chiffres, espace et tiret, différent des noms des autres profils ; sinon `error` `name_invalid`. L'identifiant du dossier est tiré du nom à la création et ne change plus.
+- Après `select_profile` ou `create_profile`, le core envoie un nouveau `hello_ack` complet (§5) : l'engine le traite comme une nouvelle poignée de main et redemande ses listes. La liaison Bluetooth du trainer et du Click n'est pas coupée.
+- Les commandes de profil sont idempotentes : le core répond à chaque copie reçue, comme pour les listes ; une copie de `create_profile` déjà traitée ne crée pas un second profil.
+
 **Événements du Click (révision 1.3).** `type: "input"`, `event` parmi : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG` (+ et −, B valant −) ; `PLUS_UNCLEAR`, `MINUS_UNCLEAR` (appui de + ou − entre 0,5 et 0,9 s : sans effet, l'engine explique comment refaire l'appui) ; `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG` (entre court et long : aucun événement) ; `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT` (un seul événement, quelle que soit la durée). Le rôle de chaque bouton dans les menus et dans chaque mode est fixé par la spécification générale §7.1, seule référence. Le core relaie tous les événements à l'engine, hors séance (menus) comme pendant `RUNNING` (retour sonore et explications ; l'engine ignore alors leur sens de menu), sauf `Y_SHORT` pendant `RUNNING`, que le core consomme (pause). Pendant `RUNNING`, le core agit lui-même sur + et − (braquet, biais, saut de bloc, pause ERG). Un événement `input` perdu n'est pas rejoué : sur localhost la perte est négligeable et un appui de menu manqué se refait. Mesure de latence (lot X7) : quand le core est lancé avec `--latence` (`[log] latence = true`), l'événement d'un appui du Click porte en plus `latence_id` (entier, identifiant de l'appui) et `latence_t` (heure murale de l'envoi, en secondes) ; l'engine écrit alors dans son journal `[latence] id=N etage=recu` à la réception et `etage=affiche` à la première image dessinée après le changement du HUD (braquet, cible ou biais ERG). Champs de diagnostic, absents en usage normal : ils ne changent pas la révision du contrat (§8, champs inconnus ignorés).
 
 ## 5. Messages de session : hello, heartbeat, fin
@@ -332,7 +349,7 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 | Message | Sens | Champs | Rôle |
 | --- | --- | --- | --- |
 | `hello` | engine vers core | `v`, `engine_version`, `rev` (facultatif, révision 1.3) | Premier message de l'engine, répété chaque seconde jusqu'au `hello_ack` |
-| `hello_ack` | core vers engine | `v`, `core_version`, `rev` (facultatif, révision 1.3), `config` (pour l'affichage : `ftp_w`, `hr_max_bpm` (facultatif, révision 1.5 : zones de FC du HUD), `gears_total`, `theme`, `chart` (facultatif, révision 1.3, lot O14 : taille des courbes de la séance), `difficulty_pct` ; `modes`, facultatif, révision 1.3 ; `open_world_dir`, facultatif, révision 1.5) | Confirme la version du contrat et donne la configuration utile |
+| `hello_ack` | core vers engine | `v`, `core_version`, `rev` (facultatif, révision 1.3), `config` (pour l'affichage : `ftp_w`, `hr_max_bpm` (facultatif, révision 1.5 : zones de FC du HUD), `profile` (facultatif, révision 1.5, lot MJ6 : profil en cours, `{id, name, type, count}`, `count` étant le nombre de profils de type `joueur`), `gears_total`, `theme`, `chart` (facultatif, révision 1.3, lot O14 : taille des courbes de la séance), `difficulty_pct` ; `modes`, facultatif, révision 1.3 ; `open_world_dir`, facultatif, révision 1.5) | Confirme la version du contrat et donne la configuration utile |
 | `heartbeat` | engine vers core | `seq`, `fps` (nombre, facultatif) | À 2 Hz ; prouve que l'engine est vivant |
 | `error` | core vers engine | `code`, `message` | Erreur à afficher (voir codes ci-dessous) |
 | `bye` | engine vers core | — | L'engine se ferme volontairement |
@@ -347,7 +364,9 @@ Tailles mesurées par `python -m openride_core.ipc_budget` avec les longueurs ma
 - Réglages proposés : `rider.ftp_w`, `rider.mass_kg`, `rider.hr_max_bpm`, `trainer.difficulty_pct`, `gearing.start_gear`, `render.quality`, `render.theme` (`default` et les thèmes de `~/OpenRide/Themes/`), `render.chart` (courbes de la séance, lot O14 : `hidden`, `reduced`, `full` ; appliqué tout de suite). Bornes et choix : ceux de la validation de `config.toml`.
 - `set_setting` : hors séance (`IDLE`, `READY`, `FINISHED`, `ERROR`), tout réglage. Pendant `RUNNING` ou `PAUSED`, seuls les réglages que l'engine applique tout de suite (`applies` = `now` : qualité, thème, courbes, mode d'affichage, images/s, vue de caméra, volumes) sont écrits ; les autres reçoivent `error` `busy` et rien n'est écrit (pendant la séance, la difficulté se change par `set_difficulty`). Précision du 28 octobre (outil X42) : la vue de caméra choisie en roulant, écrite par l'engine (lot V12), recevait `busy`. Valeur hors bornes ou choix inconnu : `error` `setting_invalid`, rien n'est écrit. Sinon le fichier est modifié comme pour `pair_devices` (copie `.bak`), la valeur sert dès la séance suivante (`hello_ack.config` aussi) et le core renvoie `settings` avec `request_cmd_id` de la commande.
 
-**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche ou appairage demandé pendant une séance ; aussi un réglage en révision 1.3), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée) ; révision 1.3 : `setting_invalid` (réglage inconnu ou valeur refusée), `bad_args` (arguments d'une commande absents ou mal typés, par exemple `set_difficulty` sans `pct` numérique ; rien n'est appliqué), `workout_write_failed` (entraînement impossible à écrire, lot N16), `plan_invalid` (plan inconnu ou invalide, date mal écrite, aucune séance du jour : lot O12), `ftp_result_missing` et `ftp_result_doubtful` (`accept_ftp`, lot O12), `bot_invalid` (argument `bots` de `start` refusé, lot O7) ; révision 1.4 : `run_invalid` (objectif ou durée de run hors liste), `item_locked` (pièce non débloquée ou non possédée), `not_enough_coins`, `avatar_invalid` (réglage d'avatar hors bornes) ; révision 1.5 (monde ouvert) : `branch_locked` (choix après le verrouillage), `unknown_junction`, `world_unavailable` (départ impossible : hors cache sans réseau, ou aucune route proche) ; `wtf_rule_invalid` (règle du mode WTF inconnue ou fichier non écrit, lot WTF2).
+**Codes d'erreur :** `version_mismatch` (versions majeures différentes), `route_not_found`, `route_invalid`, `workout_invalid`, `trainer_control_refused`, `recording_failed` ; révision 1.2 : `busy` (recherche ou appairage demandé pendant une séance ; aussi un réglage en révision 1.3), `scan_failed` (Bluetooth indisponible), `pairing_failed` (écriture refusée) ; révision 1.3 : `setting_invalid` (réglage inconnu ou valeur refusée), `bad_args` (arguments d'une commande absents ou mal typés, par exemple `set_difficulty` sans `pct` numérique ; rien n'est appliqué), `workout_write_failed` (entraînement impossible à écrire, lot N16), `plan_invalid` (plan inconnu ou invalide, date mal écrite, aucune séance du jour : lot O12), `ftp_result_missing` et `ftp_result_doubtful` (`accept_ftp`, lot O12), `bot_invalid` (argument `bots` de `start` refusé, lot O7) ; révision 1.4 : `run_invalid` (objectif ou durée de run hors liste), `item_locked` (pièce non débloquée ou non possédée), `not_enough_coins`, `avatar_invalid` (réglage d'avatar hors bornes) ; révision 1.5 (monde ouvert) : `branch_locked` (choix après le verrouillage), `unknown_junction`, `world_unavailable` (départ impossible : hors cache sans réseau, ou aucune route proche) ; `wtf_rule_invalid` (règle du mode WTF inconnue ou fichier non écrit, lot WTF2) ; `profile_invalid` (profil inconnu, illisible ou déjà utilisé, plus de huit profils, suppression refusée : lot MJ6), `name_invalid` (nom de profil vide, trop long, caractère refusé ou déjà pris : lot MJ6).
+
+**`hello_ack` en cours de route (révision 1.5, lot MJ6).** Après un changement de profil (`select_profile`, `create_profile`), le core envoie un `hello_ack` complet sans `hello` préalable. L'engine repart alors de zéro sur ce qu'il tient du core : configuration, réglages, Garage, listes des parcours, des entraînements et des plans ; il les redemande. Un engine d'avant la 1.5 ne change jamais de profil et ne reçoit donc jamais ce `hello_ack`.
 
 **Version.** Le core refuse un `hello` dont `v` diffère du sien, répond par une erreur `version_mismatch` et n'ouvre pas la séance. La règle d'évolution est au §8.
 
@@ -467,6 +486,24 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 {"type":"cmd","v":1,"cmd_id":21,"name":"set_ride_mode","args":{"mode":"cadence","cadence_rpm":90}}
 ```
 
+**Liste des profils** (révision 1.5, lot MJ6 ; deux profils de joueur)
+
+```json
+{"type":"profiles","v":1,"request_cmd_id":30,"active":"cycliste-a","items":[{"id":"cycliste-a","name":"Cycliste A","type":"joueur","level":7,"last_ride":"2026-10-29","kit_primary":3},{"id":"cycliste-b","name":"Cycliste B","type":"joueur","level":1,"last_ride":null,"kit_primary":11}]}
+```
+
+**Changement de profil** (révision 1.5, lot MJ6)
+
+```json
+{"type":"cmd","v":1,"cmd_id":31,"name":"select_profile","args":{"id":"cycliste-b"}}
+```
+
+**Profil en cours dans `hello_ack`** (révision 1.5, lot MJ6)
+
+```json
+{"type":"hello_ack","v":1,"core_version":"0.9.0","rev":"1.5","config":{"ftp_w":250,"gears_total":24,"theme":"default","profile":{"id":"cycliste-b","name":"Cycliste B","type":"joueur","count":2}}}
+```
+
 **Séquence nominale**
 
 | Étape | Sens | Message ou événement |
@@ -481,6 +518,16 @@ Le core ne démarre jamais une séance (`RUNNING`) sans avoir reçu un `hello` v
 | 8 | core vers engine | `state` à 30 Hz avec `RUNNING` ; `heartbeat` de l'engine à 2 Hz |
 | 9 | engine vers core | `cmd end_session` avec `save` vrai |
 | 10 | core vers engine | `state` avec `FINISHED` et `summary` (chemin du FIT) |
+
+**Séquence : changement de profil** (révision 1.5, lot MJ6)
+
+| Étape | Sens | Message ou événement |
+| --- | --- | --- |
+| 1 | engine vers core | `cmd list_profiles` (écran « Qui roule ? ») ; réponse `profiles` |
+| 2 | engine vers core | `cmd select_profile` `{ "id": … }` (A maintenu sur un profil), hors séance |
+| 3 | core | Recharge la configuration effective, la progression, les records, le plan et le dossier des séances du profil ; garde la liaison du trainer et du Click |
+| 4 | core vers engine | `hello_ack` complet (`config.profile` du nouveau profil), puis `settings` et `progression` |
+| 5 | engine vers core | `cmd list_routes`, `list_workouts`, … comme après une poignée de main |
 
 **Séquence : ERG dans une session libre** (révision 1.5, lot O18)
 
@@ -534,3 +581,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.5) | 28 octobre 2026 | Ajout compatible (décrochages du trainer de la séance A) : champ facultatif `busy` de `devices.trainer`, vrai tant que le Control Point est occupé par un autre appareil ; la séance n'est pas mise en pause tant que les mesures arrivent |
 | 1 (révision 1.5) | 29 octobre 2026 | Ajouts compatibles (lot WTF2, mode « What the fuck », demande du propriétaire du 29 octobre) : argument `mode` de `start` ; valeur `"wtf"` de `hello_ack.config.modes` ; objet facultatif `wtf` dans `state` et `summary.wtf` ; commandes `list_wtf_rules` et `set_wtf_rule`, message `wtf_rules`, code d'erreur `wtf_rule_invalid` ; `set_ride_mode` vers l'ERG refusé (`busy`) pendant une séance WTF |
 | 1 (révision 1.5) | 30 octobre 2026 | Ajouts compatibles (fin de la série R, demande du propriétaire du 30 octobre) : réglages `audio.rogue_sfx_pct` et `audio.rogue_music_pct` (`applies` = `now`, défauts 70 et 40, docs/AUDIO.md) dans `settings`, liste portée à 32 éléments au plus et rangée avec `plans` parmi les messages de 60 000 octets au plus (§2 ; avec les thèmes installés, 26 réglages dépassaient 4 096 octets, l'engine lit déjà ces tailles) ; champ facultatif `last` de `hello_ack.config.rogue` (dernière run : objectif et durée) ; `chassis.selected` donne le châssis de la dernière run |
+| 1 (révision 1.5) | 30 octobre 2026 | Ajouts compatibles (lot MJ6, profils de joueurs, plan de la série MJ validé par le propriétaire le 29 octobre) : commandes `list_profiles`, `select_profile`, `create_profile`, `rename_profile` et `delete_profile`, message `profiles` (8 profils au plus, moins de 1 000 octets), objet facultatif `profile` de `hello_ack.config`, `hello_ack` renvoyé en cours de route après un changement de profil (§5), codes d'erreur `profile_invalid` et `name_invalid` |

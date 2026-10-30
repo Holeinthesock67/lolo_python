@@ -45,7 +45,7 @@ Retour à une version antérieure (la sauvegarde le permet à la main).
 
 ## Livraison
 
-Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj5`, empilée sur MJ4).
+Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj5b`, empilée sur MJ4).
 
 - `migration_profils.py` : dix étapes notées dans `Profils/.migration` (`sauvegarde`, `instantane`, `profil`, `plan`, `deplacement`, `records`, `caches`, `config`, `controle`, `fini`) ; chaque étape se refait sans dégât, la liste des déplacements est écrite d'un coup (`Profils/.migration_plan.json`) avant le premier renommage, une coupure au milieu reprend donc la même liste. Un FIT suit son journal par son nom (`fit_export.default_fit_path`). Un parcours introuvable garde ses anciens records ; un parcours sans séance réelle perd les siens (ils restent dans la sauvegarde).
 - Contrôle X39 : `tools/xp.snapshot` (sortie de `xp --json`, partagée avec la commande) avant et après ; les séances parties à l'essai ne comptaient pas avant et sont retirées de la comparaison ; tout autre écart annule (`annulee`, fichiers remis depuis la sauvegarde, détail dans `Profils/.migration_ecart.txt`) et la migration n'est plus retentée seule.
