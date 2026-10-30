@@ -217,3 +217,21 @@ def test_square_time(db, tmp_path) -> None:
     med = statistics.median(times)
     print(f"carré de 1 km : médiane {med * 1000:.0f} ms ({', '.join(f'{t * 1000:.0f}' for t in times)} ms)")
     assert med < 3.0 and math.isfinite(med)      # seuil large ; 300 ms visés sur le PC (W0)
+
+
+def test_zero_length_road_has_no_profile(db, tmp_path) -> None:
+    """Un tronçon aux points confondus ne fait tomber ni les profils ni la génération du carré."""
+    w = OsmDbWriter(tmp_path / "osm0.sqlite", "test", "test/carres0")
+    n_road = IN * 1000 + 500
+    p = lonlat(IX * 1000 + 300, n_road)
+    w.add_road(1, {"highway": "secondary"}, [1, 2], [lonlat(IX * 1000 + 100, n_road), p])
+    w.add_road(2, {"highway": "secondary"}, [2, 3], [p, p])
+    w.add_road(3, {"highway": "secondary"}, [3, 4], [p, lonlat(IX * 1000 + 600, n_road)])
+    w.add_road(4, {"highway": "tertiary"}, [2, 5], [p, lonlat(IX * 1000 + 300, n_road - 200)])   # carrefours aux deux bouts
+    w.add_road(5, {"highway": "tertiary"}, [3, 6], [p, lonlat(IX * 1000 + 300, n_road + 200)])
+    w.finish(osm_date="2026-10-20T00:00:00Z")
+    db0 = OsmDb(tmp_path / "osm0.sqlite")
+    graph, profiles = squares.square_edges(SquareKey(ZONE, IX, IN), db0, provider())
+    assert any(e.degenerate for e in graph.edges.values())
+    assert profiles and all(not graph.edges[k].degenerate for k in profiles)
+    generate_square(SquareKey(ZONE, IX, IN), db0, provider(), cache(tmp_path / "cache0"))

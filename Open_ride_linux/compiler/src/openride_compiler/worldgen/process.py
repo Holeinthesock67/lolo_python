@@ -313,6 +313,8 @@ class WorldSession:
     def _snap_start(self, x: float, z: float, heading: float) -> bool:
         best = None
         for e in self.graph.edges.values():
+            if e.degenerate:
+                continue
             d, t, h = project_on(e.points, x, z)
             if best is None or (d, e.id) < (best[0], best[1].id):
                 best = (d, e, t, h)

@@ -73,6 +73,8 @@ func load_world_dir(world_dir: String) -> bool:
 	var major := int(str(manifest.get("format_version", "0")).split(".")[0])
 	if major > SUPPORTED_MAJOR:
 		return _fail("format_version trop récent : " + str(manifest.get("format_version")))
+	if manifest.get("live", false) == true:
+		return load_live_dir(world_dir)          # monde vivant (§13) : même chargement quel que soit l'identifiant
 	var route_info = manifest.get("route", {})
 	var route_file: String = "route.json"
 	if typeof(route_info) == TYPE_DICTIONARY:

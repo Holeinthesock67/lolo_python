@@ -74,6 +74,7 @@ Vrai core sur Bluetooth simulé (trainer, paire de Click, ceinture) et vraie sc�
 
 ```bash
 python3 engine/tests/sim_bench.py --list                                    # scénarios disponibles
+python3 engine/tests/sim_bench.py --world ouvert --scenario coupures_village --native   # monde ouvert synthétique (W16a)
 python3 engine/tests/sim_bench.py --scenario coupures_village --native     # fenêtre visible
 python3 engine/tests/sim_bench.py --scenario difficulte --difficulty 50 --out ~/OpenRide/sim_bench/d50
 python3 engine/tests/sim_bench.py --native --probe --scenario erg_village --display fullscreen   # mode d'affichage (protocole J10)
