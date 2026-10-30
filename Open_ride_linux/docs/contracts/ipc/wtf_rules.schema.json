@@ -1,0 +1,56 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "OpenRideWtfRulesMessage",
+  "description": "Révision 1.5 (lot WTF2) : règles du mode « What the fuck ».",
+  "type": "object",
+  "required": [
+    "type",
+    "v",
+    "rules"
+  ],
+  "properties": {
+    "type": {
+      "const": "wtf_rules"
+    },
+    "v": {
+      "type": "integer",
+      "const": 1
+    },
+    "rules": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 24,
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "label",
+          "family",
+          "pitch",
+          "on"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "label": {
+            "type": "string"
+          },
+          "family": {
+            "type": "string",
+            "enum": [
+              "event",
+              "ambient"
+            ]
+          },
+          "pitch": {
+            "type": "string"
+          },
+          "on": {
+            "type": "boolean"
+          }
+        }
+      }
+    }
+  }
+}

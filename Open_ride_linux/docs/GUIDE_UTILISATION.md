@@ -52,7 +52,7 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 3. L'écran **Prêt** montre la fiche du parcours (distance, dénivelé, montée principale, durée estimée). Il propose aussi **Bot : …** (un cycliste virtuel à puissance constante), **Fantôme de la dernière séance** et **Records du parcours**.
 4. **Démarrer** lance la séance : le vélo avance dès que vous pédalez.
 
-**Pendant la séance.** Le HUD montre puissance, cadence, fréquence cardiaque, vitesse, distance, pente et profil d'altitude. La touche **Y** du Click (ou `Y`, `Échap` au clavier) met en pause : l'écran de pause propose **Reprendre**, **Terminer et enregistrer**, **Abandonner** et le curseur de **Difficulté**.
+**Pendant la séance.** Le HUD montre puissance, cadence, fréquence cardiaque, vitesse, distance, pente et profil d'altitude (sous le panneau de droite, en SIM). La puissance prend la couleur de sa zone de FTP (Z1 à Z7) et la fréquence cardiaque celle de sa zone de FC (Z1 à Z5, d'après la **FC max** des réglages du cycliste). La touche **Y** du Click (ou `Y`, `Échap` au clavier) met en pause : l'écran de pause propose **Reprendre**, **Terminer et enregistrer**, **Abandonner** et le curseur de **Difficulté**.
 
 **Fin de séance.** À l'arrivée d'un parcours ou avec **Terminer et enregistrer**, le bilan affiche la durée, la distance, les puissances (NP, IF, TSS) et les zones. La séance est enregistrée dans `~/OpenRide/Activities/` (section 8).
 
@@ -101,6 +101,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Braquet plus dix, moins dix (de 1 à 24) | « + » long, « − » long |
 | Pause et reprise | Y |
 | Activer le bonus en réserve (mode classique) | Z |
+| Noter un décrochage du trainer au journal | Z long |
 
 **Pendant la séance, en ERG**
 
@@ -109,7 +110,10 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Intensité plus ou moins 2 % | « + » court, « − » court |
 | Intensité plus ou moins 10 % (de 80 à 120 %) | « + » long, « − » long |
 | Bloc suivant | Z |
+| Noter un décrochage du trainer au journal | Z long |
 | Pause et reprise | Y |
+
+**Z long** (ou `Maj+Z` au clavier) note un repère « décrochage » au journal quand vous sentez la résistance du trainer lâcher (sauf en Cyber-Rogue, où Z long joue la carte active). L'écran le confirme ; rien d'autre ne change. L'outil `decrochages` relit ces repères en face des chutes de puissance mesurées.
 
 Un entraînement ERG n'a jamais de roue libre : la consigne ne descend pas sous 50 W, et un bloc « FreeRide » d'un fichier `.zwo` devient un palier à 50 W. En ERG d'une session libre (section 5), Z garde son rôle de la Session libre (bonus) ; en ERG cadence, « + » et « − » changent la cadence cible de ± 2 % (appui long ± 10 %).
 

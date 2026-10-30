@@ -21,6 +21,9 @@ Sortes de lignes :
 - `{"kind": "event", "ts": ..., "event": "resume_after_crash"}` : le core relancé après un
   plantage reprend la séance dans le même fichier (lot N8) ; ce n'est pas un événement du
   chronomètre : les lectures du chronomètre et le FIT ne gardent que `TIMER_EVENTS` ;
+- `{"kind": "event", "ts": ..., "event": "decrochage"}` : repère posé par le cycliste (Z long au Click,
+  Maj+Z au clavier, spécification générale §7.1, lot X47) quand il sent le trainer décrocher ; relu par
+  l'outil `decrochages` (lot X44), hors chronomètre comme `resume_after_crash` ;
 - `{"kind": "device", "ts": ..., "device": "trainer" | "click_plus" | "click_minus" | "hr",
   "state": "up" | "down"}` au changement d'état d'un appareil (lot M4, absentes des journaux
   antérieurs au 24 octobre 2026). Les lectures qui ne connaissent pas cette sorte l'ignorent ;
@@ -34,6 +37,12 @@ Sortes de lignes :
   (lot W9), la branche prise à un carrefour, écrite au verrouillage ; `how` dit si c'est la branche par
   défaut du navigateur, un choix au Click, au clavier ou validé tout de suite. Les lectures qui ne
   connaissent pas cette sorte l'ignorent.
+- `{"kind": "ftms", "ts": ..., "event": "status", "code": "0x14", "name": "SPIN_DOWN_STATUS", "data": "<hex>",
+  "echo": bool}` : chaque Fitness Machine Status du trainer (0x02, 0x03, 0x14, 0xFF…) ; `"event":
+  "training_status"` (`data`, avec `trace_ftms`) ; `"event": "brake_loss"` (`from_w`, `to_w`,
+  `cadence_rpm`, `speed_kmh`), puis `"power_back"` (`after_s`, `power_w`) ou `"power_not_back"`
+  (`after_s`) : le frein lâché du 29 octobre 2026. Lignes facultatives, absentes du FIT ; les lectures
+  qui ne connaissent pas cette sorte l'ignorent.
 `ts` est l'heure Unix (secondes, UTC).
 """
 
@@ -53,7 +62,7 @@ JOURNAL_DIR = OPENRIDE_HOME / "Activities" / ".journal"
 FSYNC_EVERY_S = 5.0   # fsync bloque la boucle ~7 ms ; flush à chaque ligne protège déjà d'un plantage du programme
 
 TIMER_EVENTS = ("start", "pause", "resume", "stop")
-EVENTS = (*TIMER_EVENTS, "resume_after_crash")
+EVENTS = (*TIMER_EVENTS, "resume_after_crash", "decrochage")
 DEVICES = ("trainer", "click_plus", "click_minus", "hr")
 DEVICE_STATES = ("up", "down")
 
@@ -93,7 +102,8 @@ OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen", "erg
 
 
 # Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).
-GAME_KINDS = ("powerup", "segment", "jersey", "rogue", "rogue_run", "rogue_snapshot")   # R8 : run Cyber-Rogue
+GAME_KINDS = ("powerup", "segment", "jersey", "rogue", "rogue_run", "rogue_snapshot",   # R8 : run Cyber-Rogue
+              "wtf_start", "wtf", "wtf_summary")   # lot WTF2 : mode « What the fuck »
 
 def record_line(rec: Record) -> dict:
     # Dictionnaire construit sans ces clés (un `del` ne réduirait pas sa table en mémoire).
@@ -150,6 +160,10 @@ class JournalWriter:
     def ftp_test(self, line: dict) -> None:
         """Résultat d'un test de FTP (lot O10) : `FtpResult.to_line()`."""
         self._write({**line, "kind": "ftp_test"})
+
+    def ftms(self, line: dict) -> None:
+        """Statut ou perte de frein du trainer (29 octobre 2026) : ligne `ftms` déjà formée."""
+        self._write({**line, "kind": "ftms"})
 
     def junction(self, line: dict) -> None:
         """Branche prise à un carrefour du monde ouvert (lot W9)."""

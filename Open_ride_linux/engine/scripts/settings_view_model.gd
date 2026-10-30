@@ -31,14 +31,14 @@ const RIDE_MODES := ["sim", "erg", "cadence"]
 ## Textes des choix envoyés par le core sous une forme technique : {clé: {valeur: texte}}.
 ## Option « Bonus » du mode classique (série T, lot T10) : `on` / `off` affichés « oui » / « non ».
 ## Courbes de la séance (lot O14) : `render.chart` prend `hidden` / `reduced` / `full`.
-## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` ; jauge d'abri des bots
-## (draft_gauge.gd) : `render.draft_gauge` aussi.
+## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail` ; jauge d'abri
+## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
 	"render.camera": {"subjective": "subjective", "follow_near": "suivi proche", "follow_far": "suivi éloigné", "side": "latérale"},
-	"render.fps": {"off": "non", "on": "oui"},
+	"render.fps": {"off": "non", "on": "oui", "detail": "détaillé"},
 	"render.draft_gauge": {"off": "non", "on": "oui"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},

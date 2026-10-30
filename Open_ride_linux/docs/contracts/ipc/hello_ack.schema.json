@@ -35,6 +35,11 @@
           "type": "integer",
           "minimum": 2
         },
+        "hr_max_bpm": {
+          "type": "integer",
+          "description": "Facultatif, révision 1.5 : fréquence cardiaque maximale (zones de FC du HUD).",
+          "minimum": 1
+        },
         "theme": {
           "type": "string"
         },

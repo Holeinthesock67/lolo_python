@@ -156,9 +156,9 @@ def test_c5_hello_ack_reflects_config(tmp_path, monkeypatch):
     assert progression["level"] == 1 and progression["coins"] == 0
     rogue = ack["config"].pop("rogue")            # bloc Cyber-Rogue (lot R8) : testé dans test_rogue_session
     assert rogue["cp_w"] == 280.0
-    assert ack["config"] == {"ftp_w": 280.0, "gears_total": 22, "theme": "default", "chart": "reduced",
+    assert ack["config"] == {"ftp_w": 280.0, "hr_max_bpm": 185, "gears_total": 22, "theme": "default", "chart": "reduced",
                              "difficulty_pct": 50,
-                             "modes": ["ride", "erg", "open_world", "rogue"],     # modes : révision 1.3, monde ouvert 1.5, Cyber-Rogue 1.4
+                             "modes": ["ride", "erg", "open_world", "rogue", "wtf"],   # modes : révision 1.3, monde ouvert 1.5, Cyber-Rogue 1.4, WTF 1.5
                              "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")}
 
 
