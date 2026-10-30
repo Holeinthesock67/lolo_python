@@ -394,7 +394,7 @@ func _on_chunk_freed(k: int) -> void:
 	props.remove_chunk(k)
 
 
-## Brouillard de référence (RenderQuality.apply_fog) : la brume le rapproche.
+## Brouillard de référence (RenderQuality.apply_fog, posé par atmosphere_view.gd) : la brume le rapproche.
 func set_fog_base(env: Environment) -> void:
 	if env == null:
 		return
@@ -402,6 +402,7 @@ func set_fog_base(env: Environment) -> void:
 	_fog_base = Vector2(env.fog_depth_begin, env.fog_depth_end)
 	_fog_vol_base = env.volumetric_fog_density if env.volumetric_fog_enabled else 0.0
 	_fog_at = -INF
+	_fog_boost = -1.0   # brouillard reposé (atmosphere_view.gd) : la brume de la météo est rajoutée au pas suivant
 
 
 ## Altitude moyenne de la route à ± VALLEY_WINDOW_M de `s` (9 points), recalculée tous les 100 m.

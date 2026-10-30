@@ -36,6 +36,18 @@ def test_every_bench_scenario_resolves(name: str) -> None:
         assert set(x) <= si.EXPECT_KEYS
 
 
+def test_biome_scenarios_force_known_biomes() -> None:
+    """Lot U17 : un scénario `biome_<id>` par biome mesuré, chacun forçant un biome du thème par défaut ;
+    les six du premier jalon (U-Q5) sont là."""
+    theme = json.loads((ENGINE_TESTS.parent / "themes" / "default" / "theme.json").read_text(encoding="utf-8"))
+    names = [n for n in sim_bench.bench_scenarios() if n.startswith("biome_")]
+    for name in names:
+        _, _, settings, _ = sim_bench.resolve_scenario(name)
+        assert settings["biome"] == name.removeprefix("biome_") and settings["biome"] in theme["biomes"]
+    first = {"temperate_grassland", "temperate_forest", "farmland", "alpine", "mediterranean", "coast"}
+    assert first <= {n.removeprefix("biome_") for n in names}
+
+
 def test_x33_scenarios_cover_the_recipes() -> None:
     _, spec, settings, _ = sim_bench.resolve_scenario("serie_t")
     presses = [e for e in spec["events"] if e["action"] == "press"]
