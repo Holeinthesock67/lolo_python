@@ -49,3 +49,15 @@ Configuration : clé facultative `[render] load_guard` (booléen, vrai par défa
 
 - Baisse de résolution, FSR, rendu à débit variable (VRS : exclu, la GTX 1060 ne le gère pas).
 - Choix des effets de chaque préréglage : Y13.
+
+## 9. Réalisation, étape 1 : SMAA en `low` (30 octobre)
+
+Le propriétaire a donné son accord le 30 octobre, après la migration Y2 vers Godot 4.7.2.
+
+- `QualityPresets.IMAGE` remplace le booléen `fxaa` par la clé `screen_aa` (`off`, `fxaa` ou `smaa`). `low` passe à `smaa`, `medium` et `high` restent à `off` (ils ont le MSAA 4×). `RenderQuality.SCREEN_AA` fait le lien avec `Viewport.SCREEN_SPACE_AA_*`. L'anticrénelage d'écran ne s'applique qu'en Forward+, comme avant.
+- Tests : `test_quality_presets` vérifie la clé et sa valeur, et qu'il y a toujours un anticrénelage (41 vérifications). `test_render_quality` vérifie l'anticrénelage appliqué au viewport (72 vérifications).
+- Captures dans le cloud (Forward+ lavapipe, 1280×720, `low`, vitrine `route`, `village`, `arbres_temperes`, `eolienne` et `panneaux`), FXAA de main contre SMAA. Le SMAA garde le texte des panneaux, les fenêtres et les écorces nets, là où le FXAA les floute. Les bords des pales, des troncs et de la route restent lissés.
+- Reste à faire :
+  - mesure sur le PC (GTX 1060, 1680×1011) en `low`, `medium` et `high`, pour le critère d'au plus +0,3 ms en `low` ;
+  - captures montrées au propriétaire ;
+  - le garde-fou de charge, qui fera l'étape 2 avec sa propre PR.
