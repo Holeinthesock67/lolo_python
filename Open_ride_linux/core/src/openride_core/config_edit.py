@@ -4,6 +4,10 @@ Change quelques clés sans réécrire le fichier : commentaires, ordre, autres s
 inconnues restent tels quels. Une copie `config.toml.bak` est faite avant l'écriture, le
 résultat doit passer `config.validate` (sinon rien n'est écrit) et le remplacement est atomique.
 
+`update_layers` (série MJ, lot MJ4) répartit les valeurs entre `config.toml` (la machine) et le
+`profil.toml` du profil en cours (clés de `config.PROFILE_KEYS`), mêmes garanties, et valide la
+configuration effective des deux fichiers.
+
 En ligne de commande (utilisé par `scripts/install.sh`) :
     python -m openride_core.config_edit FICHIER SECTION CLÉ VALEUR
 """
@@ -84,31 +88,76 @@ def plan_text(text: str, values: list[tuple[str, str, object]]) -> tuple[str, li
     return "\n".join(lines) + "\n", changed
 
 
+def _read_text(path: Path) -> str:
+    try:
+        return path.read_text(encoding="utf-8") if path.exists() else ""
+    except OSError as exc:
+        raise ConfigEditError(f"{path} : lecture impossible : {exc}") from None
+
+
+def _parse(path: Path, text: str) -> dict:
+    try:
+        return tomllib.loads(text)
+    except tomllib.TOMLDecodeError as exc:
+        raise ConfigEditError(f"{path} : écriture refusée, TOML invalide : {exc}") from None
+
+
+def _write(path: Path, text: str) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    if path.exists():
+        shutil.copy2(path, path.with_name(path.name + ".bak"))
+    tmp = path.with_name(path.name + ".tmp")   # même dossier : remplacement atomique
+    tmp.write_text(text, encoding="utf-8")
+    os.replace(tmp, path)
+
+
 def update_config(path: Path, values: list[tuple[str, str, object]]) -> list[str]:
     """Écrit les valeurs dans `path` ; renvoie les lignes changées (vide : rien à faire).
 
     Lève `ConfigEditError` si le fichier final ne passe pas `config.validate` : rien n'est écrit.
     """
-    try:
-        old = path.read_text(encoding="utf-8") if path.exists() else ""
-    except OSError as exc:
-        raise ConfigEditError(f"{path} : lecture impossible : {exc}") from None
-    new, changed = plan_text(old, values)
+    new, changed = plan_text(_read_text(path), values)
     if not changed:
         return []
     try:
-        config_mod.from_dict(tomllib.loads(new), str(path))
-    except tomllib.TOMLDecodeError as exc:
-        raise ConfigEditError(f"{path} : écriture refusée, TOML invalide : {exc}") from None
+        config_mod.from_dict(_parse(path, new), str(path))
     except config_mod.ConfigError as exc:
         raise ConfigEditError(f"écriture refusée : {exc}") from None
-    path.parent.mkdir(parents=True, exist_ok=True)
-    if path.exists():
-        shutil.copy2(path, path.with_name(path.name + ".bak"))
-    tmp = path.with_name(path.name + ".tmp")   # même dossier : remplacement atomique
-    tmp.write_text(new, encoding="utf-8")
-    os.replace(tmp, path)
+    _write(path, new)
     return changed
+
+
+_ACTIVE = config_mod._ACTIVE
+
+
+def update_layers(values: list[tuple[str, str, object]], config_path: Path | None = None,
+                  profile_path: object = _ACTIVE) -> list[str]:
+    """Écrit chaque valeur dans son fichier : `profil.toml` du profil pour une clé joueur, sinon
+    `config.toml` ; sans profil (contexte historique), tout va dans `config.toml`.
+
+    La configuration effective des deux fichiers doit passer `config.validate`, sinon rien n'est écrit.
+    """
+    config_path = config_path or config_mod.DEFAULT_CONFIG_PATH
+    if profile_path is _ACTIVE:
+        profile_path = config_mod.active_profile_file()
+    player = [v for v in values if profile_path is not None and config_mod.is_profile_key(v[0], v[1])]
+    machine = [v for v in values if v not in player]
+    m_new, m_changed = plan_text(_read_text(config_path), machine)
+    p_new, p_changed = (plan_text(_read_text(profile_path), player) if player and profile_path is not None
+                        else ("", []))
+    if not m_changed and not p_changed:
+        return []
+    try:
+        p_data = _parse(profile_path, p_new) if p_changed else (
+            _parse(profile_path, _read_text(profile_path)) if profile_path is not None else {})
+        config_mod.from_layers(_parse(config_path, m_new), p_data, str(config_path), str(profile_path))
+    except config_mod.ConfigError as exc:
+        raise ConfigEditError(f"écriture refusée : {exc}") from None
+    if m_changed:
+        _write(config_path, m_new)
+    if p_changed:
+        _write(profile_path, p_new)
+    return m_changed + p_changed
 
 
 def main(argv: list[str] | None = None) -> int:

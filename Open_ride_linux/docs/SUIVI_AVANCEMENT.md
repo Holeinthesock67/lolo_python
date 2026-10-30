@@ -408,6 +408,14 @@ Les travaux confiables à une autre IA sont décrits dans [`docs/lots/`](lots/00
 - [ ] AS2 à AS7 (2.0) : zone latérale et placement automatique, bordure, groupes (plafond 55 %), ressenti, abri derrière les véhicules (activé par défaut) et les cyclistes du décor (`docs/lots/00_INDEX.md`, série AS).
 - [ ] CT0 à CT12 (5.0) : mode « Course tactique » (W′ et Burnout, catapulte, capacités payées par les relais, virages, circuits à variantes, effets cartoon ; `docs/5.0/PLAN_SERIE_CT.md`, série CT).
 
+### Version 2.0 : profils de joueurs et profil d'essai (série MJ rédigée le 29 octobre)
+- [x] Plan et cahiers MJ1 à MJ10 (lot MJ0, `docs/2.0/PLAN_SERIE_MJ.md`).
+- [x] Contexte de profil dans le core (lot MJ1, `profiles.py`, 29 octobre) : plus aucun chemin de joueur figé à l'import, `--profil ID` sur toutes les sous-commandes d'`openride-core` et du lanceur (`OPENRIDE_PROFIL`), verrou d'une séance par profil ; sans profil, chemins d'avant (aucun changement visible).
+- [x] Profil d'essai `_essai` (lot MJ2, 29 octobre) : `profil.toml` (type, séances comptées), séances simulées comptées sur ce seul profil, `profile_id` et `profile_type` dans l'en-tête du journal (un journal d'un autre profil ne compte jamais : `other_profile`), FIT suffixés `_essai`, `openride-core profil essai [--vider]`, « Session simulée » du menu relancée sur `_essai` (reprise après plantage dans ses journaux).
+- [x] Campagne simulée accélérée sur le profil d'essai et garde-fou d'empreinte du vrai profil (lot MJ3, `tools/campagne_profil.py`, 29 octobre) : 8 séances en environ 5 s dans le cloud, dans la suite pytest ; `--reel` sur le PC. Le profil d'essai est utilisable (MJ1 à MJ3).
+- [x] Configuration à deux couches (lot MJ4, 30 octobre) : configuration effective = défauts ← `config.toml` (machine) ← `Profils/<id>/profil.toml` (joueur) ; table `PROFILE_KEYS` de `config.py` (cycliste, séance, vent, caméra, courbes, ceinture cardio) ; `Setting.scope` (« profil » ou « machine ») ; réglages du menu, FTP d'un test et ceinture appairée écrits dans le fichier de leur portée par `config_edit.update_layers` (configuration effective validée, `.bak`, commentaires gardés) ; sans profil, tout reste dans `config.toml` ; tests `core/tests/test_config_couches.py`.
+- [ ] Multi-joueur : migration (MJ5), contrat (MJ6), core (MJ7), écrans (MJ8), outils (MJ9), recette PC (MJ10).
+
 ### Sprint 4 et suivants
 - [x] Entraînements ERG `.zwo` (lot F, fusionné le 23 octobre ; essai sur le HomeTrainer à faire).
 - [x] Couches OpenStreetMap côté compilateur (lots I3 bâtiments et végétation, I4 points d'intérêt et eau) ; reste le rendu dans l'engine (à rédiger).
