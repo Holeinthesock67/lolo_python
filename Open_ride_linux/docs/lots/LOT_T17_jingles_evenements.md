@@ -54,3 +54,10 @@ Aucune.
   - plusieurs arches dans une même trame donnent un seul jingle ;
   - niveau −6 dB sur le bus « Events » d'audio_mix.gd, réglé par « Volume bips et événements » des Réglages.
 - Tests : `engine/tests/unit/test_event_sounds_model.gd`, à lancer sur le PC ou par la CI (Godot n'a pas pu être lancé dans l'environnement cloud).
+
+## 10. Jingles des portiques (29 octobre 2026)
+
+- Deux jingles de plus : `jingle_start` (départ : do, do brefs puis quinte, 0,5 s) au passage de `READY` à `RUNNING` quand le parcours a ses portiques (pas le monde ouvert) et au franchissement du portique de départ d'un sprint ou d'une montée ; `jingle_lap` (« ding-dong » de deux cloches, 0,96 s) à chaque passage de la ligne d'une boucle. Arrivées inchangées : fin de sprint `jingle_sprint`, sommet `jingle_summit`, arrivée du parcours ou fin d'entraînement `jingle_finish`.
+- Positions des portiques sonores : `segment_markers_model.gate_jingles(marks)`, mêmes règles que les arches (sauts de plus de 100 m ignorés, cumul sur une boucle) mais sans le champ `powerup` (ERG compris) ; jamais en mode Rogue ; un seul jingle par trame (portique avant arche).
+- Démarrage : les jingles ne sont plus synthétisés au démarrage mais un par image ensuite (ou tout de suite s'il en faut un avant) ; la génération des sons du démarrage (budget `sound_generation`, 1 200 ms) y gagne environ 0,2 s malgré les deux jingles ajoutés.
+- Écoute : fichiers WAV des six jingles dans les fichiers du projet (`audio-jingles-portiques/`). Tests : `engine/tests/unit/test_event_sounds_model.gd` (départ, portiques, boucle, monde ouvert, Rogue, un jingle par trame, jingles tous différents).

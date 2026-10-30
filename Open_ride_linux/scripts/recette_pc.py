@@ -8,6 +8,7 @@ les suites, garde chaque journal et écrit un résumé, comparé au passage pré
     scripts/recette_pc.py --rapide           # core sans les tests lents, sans tests graphiques ni banc des menus
     scripts/recette_pc.py --seulement core,engine
     scripts/recette_pc.py --sans visual
+    scripts/recette_pc.py --seulement deps    # étape facultative : audit des dépendances (lot X24), réseau
 
 Sortie : `~/OpenRide/recettes/<date>_<heure>/` (`--out` pour un autre dossier) avec un journal par
 étape, `resume.txt`, `resume.json` et `perf.csv` (budgets de temps de l'engine, lot X2).
@@ -37,7 +38,9 @@ sys.path.insert(0, str(PROJECT / "core" / "src"))
 from openride_core.tools.guide import Guide  # noqa: E402  (bibliothèque standard seulement)
 
 DEFAULT_OUT = Path.home() / "OpenRide" / "recettes"
-STEPS = ("core", "compiler", "engine", "e2e", "visual", "menus", "privacy")
+STEPS = ("core", "compiler", "engine", "e2e", "visual", "menus", "privacy", "deps")
+OPTIONAL_STEPS = ("deps",)    # lancées seulement si nommées dans --seulement
+EXIT_SKIPPED = 75             # code d'une étape impossible ici (sans réseau) : SAUTÉ
 
 
 @dataclass
@@ -66,6 +69,7 @@ def step_commands(rapide: bool, out: Path) -> dict[str, tuple[list[str], Path]]:
         "visual": (["bash", str(PROJECT / "engine" / "tests" / "run_visual_tests.sh")], PROJECT),
         "menus": ([py, str(PROJECT / "engine" / "tests" / "menu_bench.py"), "--out", str(out / "menus")], PROJECT),
         "privacy": ([py, str(PROJECT / "scripts" / "privacy" / "privacy_scan.py"), "--all"], REPO),
+        "deps": ([py, str(PROJECT / "scripts" / "audit_dependances.py"), "--out", str(out / "deps")], PROJECT),
     }
 
 
@@ -80,6 +84,7 @@ def detail_of(name: str, text: str) -> str:
         "visual": r"^(.*vérifications réussies.*|RÉSULTAT.*)$",
         "menus": r"^(OK|\d+ passage\(s\) en échec.*|xvfb-run introuvable.*)$",
         "privacy": r"^(privacy_scan : .*)$",
+        "deps": r"^(Vulnérabilités connues : .*|Actions GitHub : .*|audit_dependances : .*)$",
     }
     found = re.findall(patterns.get(name, r"$^"), text, re.M)
     return " ; ".join(found[-2:])
@@ -98,7 +103,7 @@ def run_step(name: str, cmd: list[str], cwd: Path, out: Path, env: dict[str, str
             rc = 127
     seconds = time.monotonic() - t0
     text = log.read_text(encoding="utf-8", errors="replace")
-    status = "OK" if rc == 0 else "ÉCHEC"
+    status = "OK" if rc == 0 else "SAUTÉ" if rc == EXIT_SKIPPED else "ÉCHEC"
     detail = detail_of(name, text) or f"code {rc}"
     return StepResult(name, status, round(seconds, 1), detail, log.name)
 
@@ -153,7 +158,7 @@ def main(argv: list[str] | None = None) -> int:
     out = args.out or DEFAULT_OUT / started.strftime("%Y-%m-%d_%H%M%S")
     out.mkdir(parents=True, exist_ok=True)
 
-    wanted = list(args.seulement or STEPS)
+    wanted = list(args.seulement or [s for s in STEPS if s not in OPTIONAL_STEPS])
     if args.rapide and not args.seulement:
         wanted.remove("visual")
         wanted.remove("menus")

@@ -78,7 +78,8 @@ PLAN: dict[InputEvent, Action] = {
     InputEvent.Z_SHORT: Action("Z court", "Action du mode", (
         "Aucune (un menu n'est pas un mode)", "Bonus (T)", "Bloc suivant", "Attaque", "Bonus (T)")),
     InputEvent.Z_LONG: Action("Z long", "Action spéciale du mode", (
-        "Aucune", "Aucune", "Aucune", "Carte ou relique active (T1)", "Aucune")),
+        "Aucune", "Repère « décrochage » au journal", "Repère « décrochage » au journal",
+        "Carte ou relique active (T1)", "Repère « décrochage » au journal")),
     InputEvent.A_SHORT: Action("A court", "Choisir : option suivante du choix affiché", (
         "Élément suivant", "Vue de caméra suivante", "Vue de caméra suivante", "Couloir ou carte suivant",
         "Branche suivante au carrefour, sinon vue suivante")),

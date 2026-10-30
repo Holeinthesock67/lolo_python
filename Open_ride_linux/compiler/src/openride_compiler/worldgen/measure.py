@@ -19,6 +19,7 @@ dans le dépôt. `--synthetic` remplace relief et routes par des données analyt
 
 from __future__ import annotations
 
+import http.client
 import json
 import math
 import os
@@ -96,12 +97,15 @@ class Net:
             return urllib.request.urlopen(req, timeout=self.timeout_s)
         except urllib.error.HTTPError as exc:
             raise CompileError(f"{url} : erreur HTTP {exc.code}") from exc
-        except (urllib.error.URLError, OSError, TimeoutError) as exc:
+        except (urllib.error.URLError, OSError, TimeoutError, http.client.HTTPException) as exc:
             raise CompileError(f"{url} : {exc}") from exc
 
     def get(self, url: str) -> bytes:
         with self._open(url) as resp:
-            return resp.read()
+            try:
+                return resp.read()
+            except (http.client.HTTPException, OSError) as exc:   # réponse tronquée, coupure
+                raise CompileError(f"{url} : réponse incomplète ({exc!r})") from exc
 
     def head_size(self, url: str) -> int | None:
         with self._open(url, "HEAD") as resp:
@@ -116,6 +120,8 @@ class Net:
             with self._open(url) as resp, open(tmp, "wb") as out:
                 shutil.copyfileobj(resp, out, length=1 << 20)
             os.replace(tmp, dest)
+        except (http.client.HTTPException, OSError) as exc:   # réponse tronquée, coupure en cours de lecture
+            raise CompileError(f"{url} : réponse incomplète ({exc!r})") from exc
         finally:
             tmp.unlink(missing_ok=True)
         return dest.stat().st_size

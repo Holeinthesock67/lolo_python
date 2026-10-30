@@ -22,7 +22,7 @@ const KEY_FIT_PATH := "fit_path"
 const COLOR_GREEN := "vert"
 const COLOR_ORANGE := "orange"
 const COLOR_RED := "rouge"
-const COLOR_NEUTRAL := "neutre"   # bloc sans cible (roue libre)
+const COLOR_NEUTRAL := "neutre"   # bloc sans cible connue (ancien journal, cible absente)
 
 
 static func _format_fr_float(val: float, decimals: int) -> String:
@@ -199,7 +199,7 @@ func blocks(summary: Dictionary) -> Array:
 		else:
 			continue
 
-		# Cible null (roue libre) ou moyenne absente : pas d'écart, couleur neutre.
+		# Cible null (ancien journal) ou moyenne absente : pas d'écart, couleur neutre.
 		if avg_raw == null or tgt_raw == null or float(tgt_raw) <= 0.0:
 			out.append({
 				"block": idx,

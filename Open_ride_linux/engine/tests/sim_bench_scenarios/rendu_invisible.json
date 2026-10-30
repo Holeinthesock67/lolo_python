@@ -2,8 +2,11 @@
   "description": "Lot S1 : village simulé (ou --world) roulé 5 min à effort constant (250 W, 90 tr/min), sans événement, pour comparer le rendu avec et sans tri du visible (--culling on puis off, --probe, low puis medium) : captures tous les 200 m (mêmes endroits d'un essai à l'autre), apparitions dans le champ et jointures des tuiles vérifiées.",
   "trainer": {
     "appear_at": 0.3,
-    "connect_delay_s": 0.3,
-    "rider_power_w": 250,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 250,
     "cadence_rpm": 90
   },
   "click": {

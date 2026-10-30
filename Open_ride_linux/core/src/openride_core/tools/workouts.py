@@ -12,7 +12,7 @@ Estimation de charge dans ``check`` :
 La puissance normalisée approchée (NP), le facteur d'intensité (IF) et le score de charge
 d'entraînement (TSS) sont calculés par échantillonnage à 1 s sur les blocs de l'entraînement
 (sans fenêtre glissante de 30 s) :
-- ``NP = (moyenne(P(t)^4))^(1/4)`` (0 W pendant les blocs ``freeride``) ;
+- ``NP = (moyenne(P(t)^4))^(1/4)`` (cible jamais sous 50 W, lot O19) ;
 - ``IF = NP / FTP`` ;
 - ``TSS = (durée_s * NP * IF) / (FTP * 3600) * 100``.
 """
@@ -29,6 +29,7 @@ from pathlib import Path
 from .. import config as config_mod
 from ..config import WORKOUTS_DIR
 from ..workout import (
+    ERG_MIN_W,
     WORKOUT_SUFFIXES,
     Workout,
     WorkoutError,
@@ -53,8 +54,7 @@ def estimate_metrics(workout: Workout, ftp_w: float) -> dict[str, float]:
     for blk in workout.blocks:
         dur = max(int(round(blk.duration_s)), 1)
         for sec in range(dur):
-            w = blk.watts_at(sec + 0.5, ftp_w)
-            samples_w.append(w if w is not None else 0.0)
+            samples_w.append(max(blk.watts_at(sec + 0.5, ftp_w), ERG_MIN_W))
 
     if not samples_w or ftp_w <= 0:
         return {"avg_w": 0.0, "np_w": 0.0, "if": 0.0, "tss": 0.0}
@@ -129,9 +129,7 @@ def cmd_check(args: argparse.Namespace) -> int:
         f"{workout.duration_s:.0f} s ({format_hms(workout.duration_s)}), FTP {ftp_w:.0f} W"
     )
     for idx, blk in enumerate(workout.blocks, start=1):
-        if blk.free:
-            target_str = "roue libre (SIM)"
-        elif blk.absolute:
+        if blk.absolute:
             target_str = (f"{blk.start_w:.0f} W (absolu)" if blk.start_w == blk.end_w else
                           f"{blk.start_w:.0f} -> {blk.end_w:.0f} W (absolu)")
         elif blk.start_frac == blk.end_frac:

@@ -7,6 +7,7 @@ const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
 const HudView := preload("res://scripts/hud_view.gd")
 const ClimbTest := preload("res://tests/unit/test_climb_detector.gd")
+const RoadBuilder := preload("res://scripts/road_builder.gd")
 
 const US := 1000000
 
@@ -99,7 +100,7 @@ func _test_nodes() -> void:
 	_check(bv.get_child_count() == 2, "une silhouette par bot visible (%d)" % bv.get_child_count())
 	var node: Node3D = bv.get_child(0)
 	var label: Label3D = node.get_node("Name")
-	_check(absf(node.position.x - 1000.0) < 1.0 and absf(node.position.z - 1.5) < 0.1, "posée sur la route, décalée à droite (%s)" % str(node.position))
+	_check(absf(node.position.x - 1000.0) < 1.0 and absf(node.position.z - BotsView.LATERAL_M) < 0.1 and BotsView.LATERAL_M > RoadBuilder.RIDER_LATERAL_M, "posée sur la route, à droite du cycliste (lot P32) (%s)" % str(node.position))
 	_check(label.visible, "nom affiché à moins de 50 m")
 	bv.update_view([], route)
 	_check(bv.get_child_count() == 0, "sans bot : aucune silhouette")

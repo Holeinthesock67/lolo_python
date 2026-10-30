@@ -28,3 +28,13 @@ Aucune référence de performance n'existe : une PR peut faire perdre 10 images/
 ## 6. Hors périmètre
 
 Les mesures sur la GTX 1060 (file des mesures du PC).
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x14`, sur X35 et X32).
+
+- `engine/tests/perf_targets.json` (budgets du §3 de Y13, `gpu_busy95_pct_max` fixé à 5 % : `high` passait 17 s sur 300 au-dessus de 95 % le 28 octobre) ; `perf_probe.budget_checks` juge le préréglage lu dans la sonde, refuse une mesure qui change de préréglage, met en INFO sous Xvfb et sans nvidia-smi ; lignes dans `sonde.txt`, vérifications dans `sim_bench.py --probe`, `perf_probe.py report|watch --budgets` (code 1) et `report --xvfb`.
+- Le p99 jugé est la médiane des p99 de chaque seconde (la valeur que donnent les tableaux de Y13) ; les pics des captures en sont déjà retirés (X35).
+- `engine/tests/compare_bench.py` : bancs (sonde, à défaut `fps.csv`) et vitrines (`vitrine.csv`, `vitrine_biomes.csv`) ; HTML avec curseur glissant, `ecarts.csv`.
+- `engine/tests/perf_reference.py run|compare|update` : mondes `village` et `demo` par défaut (`osm` en option) ; le parcours par biome U19 s'ajoutera à `DEFAULT_WORLDS` quand il existera.
+- Tests : `core/tests/test_perf_targets.py` (6), `core/tests/test_compare_bench.py` (8).

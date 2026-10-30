@@ -26,7 +26,7 @@ const ZONE_COLORS := [
 	UiTheme.ZONE_6,   # Z6 anaérobie
 	UiTheme.ZONE_7,   # Z7 neuromusculaire
 ]
-const FREERIDE_COLOR := UiTheme.FREERIDE
+const NEUTRAL_COLOR := UiTheme.NEUTRAL_BLOCK
 ## Blocs autres que le bloc en cours : bien visibles du début à la fin, pour se préparer aux efforts
 ## (retour d'essai du 25 octobre) ; le bloc en cours garde son cadre et son curseur.
 const DIM_ALPHA := 0.85
@@ -39,10 +39,9 @@ const BLOCK_TYPE_LABELS := {
 	"interval_off": "Récupération",
 	"ramp": "Rampe",
 	"cooldown": "Retour au calme",
-	"freeride": "Roue libre",
 }
 
-const PANEL_HEIGHT := 140.0
+const PANEL_HEIGHT := 126.0   # 10 % plus bas, polices comprises, depuis le 29/10 (140 avant)
 const BOTTOM_OFFSET := 15.0    # en bas de l'écran : le profil d'altitude du HUD est caché en ERG (28/10)
 const SIDE_MARGIN := 40.0
 
@@ -70,10 +69,9 @@ func _init() -> void:
 
 func _build_ui() -> void:
 	name = "ErgView"
-	var style := StyleBoxFlat.new()
-	style.bg_color = UiTheme.PANEL_BG
-	style.set_corner_radius_all(8)
-	add_theme_stylebox_override("panel", style)
+	# Fond sombre sous la ligne des textes seulement ; le graphique en dessous garde son fond léger
+	# (UiTheme.CHART_BG), pour voir la route à travers.
+	add_theme_stylebox_override("panel", StyleBoxEmpty.new())
 	anchor_left = 0.0
 	anchor_right = 1.0
 	anchor_top = 1.0
@@ -86,17 +84,26 @@ func _build_ui() -> void:
 	mouse_filter = Control.MOUSE_FILTER_IGNORE
 
 	var vbox := VBoxContainer.new()
-	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 8)
+	vbox.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT, Control.PRESET_MODE_KEEP_SIZE, 0)
 	vbox.add_theme_constant_override("separation", 4)
 	add_child(vbox)
 
+	var header := PanelContainer.new()
+	header.name = "ErgHeader"
+	header.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	var style := StyleBoxFlat.new()
+	style.bg_color = UiTheme.PANEL_BG
+	style.set_corner_radius_all(8)
+	style.set_content_margin_all(8)
+	header.add_theme_stylebox_override("panel", style)
+	vbox.add_child(header)
 	var row := HBoxContainer.new()
 	row.add_theme_constant_override("separation", 24)
-	vbox.add_child(row)
-	title_label = _label(row, 24, true)
-	target_label = _label(row, 36, false)
-	remaining_label = _label(row, 36, false)
-	next_label = _label(row, 22, false)
+	header.add_child(row)
+	title_label = _label(row, 22, true)
+	target_label = _label(row, 32, false)
+	remaining_label = _label(row, 32, false)
+	next_label = _label(row, 20, false)
 	next_label.modulate = UiTheme.HUD_DIM
 	next_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
 	title_label.size_flags_vertical = Control.SIZE_SHRINK_CENTER
@@ -104,7 +111,7 @@ func _build_ui() -> void:
 	histogram = Control.new()
 	histogram.name = "ErgHistogram"
 	histogram.size_flags_vertical = Control.SIZE_EXPAND_FILL
-	histogram.custom_minimum_size = Vector2(0.0, 56.0)
+	histogram.custom_minimum_size = Vector2(0.0, 50.0)
 	histogram.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	histogram.draw.connect(_on_histogram_draw)
 	vbox.add_child(histogram)
@@ -187,8 +194,8 @@ static func banner_lines(erg: Dictionary, erg_eval: Dictionary) -> Dictionary:
 		remaining += " (pause)"
 	var next := ""
 	var next_w: Variant = erg.get("next_target_w", null)
-	if int(erg.get("block_index", 1)) < int(erg.get("block_count", 1)):
-		next = "Ensuite : " + ("roue libre" if next_w == null else "%d W" % int(round(float(next_w))))
+	if int(erg.get("block_index", 1)) < int(erg.get("block_count", 1)) and next_w != null:
+		next = "Ensuite : %d W" % int(round(float(next_w)))
 	return {"title": title, "target": str(erg_eval.get("target_text", "")), "remaining": remaining, "next": next}
 
 
@@ -208,19 +215,18 @@ static func zone_of_frac(frac: float) -> int:
 
 static func zone_color(frac: Variant) -> Color:
 	if frac == null:
-		return FREERIDE_COLOR
+		return NEUTRAL_COLOR
 	return ZONE_COLORS[zone_of_frac(float(frac))]
 
 
-## Blocs au format de `ErgViewModel.profile_bars` à partir d'un profil v1.1 ([durée, début, fin]).
+## Blocs au format de `ErgViewModel.profile_bars` à partir d'un profil v1.1 ([durée, début, fin]) ;
+## une case sans fraction est ignorée (jamais envoyée depuis le lot O19 : pas de roue libre en ERG).
 static func profile_to_blocks(profile: Array) -> Array:
 	var out: Array = []
 	for t in profile:
-		if typeof(t) != TYPE_ARRAY or (t as Array).size() < 3:
+		if typeof(t) != TYPE_ARRAY or (t as Array).size() < 3 or t[1] == null or t[2] == null:
 			continue
-		var free: bool = t[1] == null
-		out.append({"type": "freeride" if free else "steady", "duration_s": float(t[0]),
-				"start_frac": null if free else float(t[1]), "end_frac": null if free else float(t[2])})
+		out.append({"type": "steady", "duration_s": float(t[0]), "start_frac": float(t[1]), "end_frac": float(t[2])})
 	return out
 
 
@@ -245,7 +251,7 @@ static func layout(erg: Dictionary, erg_eval: Dictionary, profile: Variant, ftp:
 	else:
 		bars = []
 		var cur_frac: Variant = null
-		if str(erg.get("block_type", "")) != "freeride" and ftp > 0.0:
+		if ftp > 0.0:
 			cur_frac = float(erg.get("target_w", 0.0)) / ftp
 		for i in range(count):
 			var x0 := width * float(i) / float(count)
@@ -255,7 +261,7 @@ static func layout(erg: Dictionary, erg_eval: Dictionary, profile: Variant, ftp:
 			bars.append({"index": i + 1, "x0": x0, "x1": x1, "width": x1 - x0, "h0": h, "h1": h,
 					"polygon": PackedVector2Array([Vector2(x0, height), Vector2(x0, height - h),
 							Vector2(x1, height - h), Vector2(x1, height)]),
-					"color": zone_color(cur_frac) if is_cur else FREERIDE_COLOR})
+					"color": zone_color(cur_frac) if is_cur else NEUTRAL_COLOR})
 	var cursor_x := 0.0
 	for b in bars:
 		b["current"] = int(b["index"]) == idx
@@ -267,9 +273,7 @@ static func layout(erg: Dictionary, erg_eval: Dictionary, profile: Variant, ftp:
 
 static func blocks_frac(profile: Array, i: int) -> Dictionary:
 	var t: Array = profile[i]
-	if t[1] == null:
-		return {"mean": null}
-	return {"mean": (float(t[1]) + float(t[2] if t[2] != null else t[1])) / 2.0}
+	return {"mean": (float(t[1]) + float(t[2])) / 2.0}
 
 
 func _on_histogram_draw() -> void:

@@ -56,7 +56,7 @@ def test_start_values():
 
 def test_free_erg_bias_like_a_workout():
     erg = FreeErg(200)
-    assert erg.target_active and erg.target_w == 200 and not erg.is_freeride
+    assert erg.target_active and erg.target_w == 200
     erg.change_bias(+1)
     assert erg.target_w == 204 and erg.bias_pct == 102
     erg.change_bias(+50)
@@ -122,6 +122,7 @@ def test_cadence_lock_does_not_oscillate_with_a_rider_that_reacts():
 
 # --- séance (trainer simulé) ----------------------------------------------------------------
 
+@pytest.mark.recette_sans_velo
 def test_session_switches_sim_erg_cadence_and_back(tmp_path, monkeypatch, workouts_dir):
     async def scenario():
         s, driver, errors = make_session(tmp_path, monkeypatch, workouts_dir, port=6510)
@@ -217,13 +218,14 @@ def test_journal_and_resume_keep_the_free_erg(tmp_path, monkeypatch):
     assert e["target_w"] == round(last["target_w"])
 
 
+@pytest.mark.recette_sans_velo
 def test_ble_sim_trainer_follows_the_cadence_lock(tmp_path, monkeypatch):
     """Vrai pilote FTMS contre le trainer simulé : la cible ERG suit la cadence du cycliste."""
     monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
 
     async def scenario():
         rig = Rig(READY).start()
-        rig.trainer.cadence_rpm = 110.0                  # le cycliste tourne trop vite
+        rig.trainer.rider.update(cadence_rpm=110.0)       # le cycliste tourne trop vite
         await wait_for(lambda: rig.driver.status == "CONNECTED")
         await wait_for(lambda: rig.driver.poll().cadence_rpm > 100)
         cfg = Config()

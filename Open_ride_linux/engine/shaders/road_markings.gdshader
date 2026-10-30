@@ -153,7 +153,7 @@ void fragment() {
 	// Hors chaussée (bas-côtés) : pas de peinture
 	paint *= on_road;
 	// Usure : peinture éclaircie et cassée par plaques de 20 cm
-	float worn = step(sd_hash(floor(vec2(lat, s) * 5.0)), wear * 0.6);
+	float worn = step(sd_cell_hash(floor(vec2(lat, s) * 5.0), 4u), wear * 0.6);
 	paint *= (1.0 - worn) * (1.0 - 0.35 * wear);
 
 	// Grain de l'enrobé (A1) : gravillons de 4 cm et bosses de 25 cm, effacés au loin
@@ -164,10 +164,10 @@ void fragment() {
 	float macro = sd_noise(p / 25.0) - 0.5;
 	vec2 cell = floor(p / vec2(1.5, 5.0));
 	vec2 in_cell = fract(p / vec2(1.5, 5.0)) - 0.5;
-	vec2 half_size = vec2(0.15, 0.1) + sd_hash2(cell + vec2(5.0, 9.0)) * vec2(0.2, 0.2);
+	vec2 half_size = vec2(0.15, 0.1) + sd_cell_hash2(cell, 5u) * vec2(0.2, 0.2);
 	vec2 aa_cell = max(fwidth(in_cell), vec2(1e-4));
 	vec2 inside = clamp((half_size - abs(in_cell)) / aa_cell + 0.5, 0.0, 1.0);
-	float patch = step(sd_hash(cell + vec2(31.0, 7.0)), 0.03) * inside.x * inside.y * on_road;
+	float patch = step(sd_cell_hash(cell, 7u), 0.03) * inside.x * inside.y * on_road;
 	// Bandes de roulement : deux par voie, à 0,8 m de part et d'autre du milieu de la voie
 	float lane_off = abs(abs(lat) - road_width_m * 0.25);
 	float track = (1.0 - smoothstep(0.25, 0.55, abs(lane_off - 0.8))) * on_road;
