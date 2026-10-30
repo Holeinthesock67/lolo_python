@@ -15,9 +15,9 @@ spec.loader.exec_module(ri)
 
 
 def fake_godot(tmp_path: Path) -> Path:
-    godot = tmp_path / "godot" / "Godot_v4.3-stable_linux.x86_64"
+    godot = tmp_path / "godot" / "Godot_v4.7.2-stable_linux.x86_64"
     godot.parent.mkdir()
-    godot.write_text("#!/bin/sh\necho 4.3.stable.official.essai\n")
+    godot.write_text("#!/bin/sh\necho 4.7.2.stable.official.essai\n")
     godot.chmod(0o755)
     return godot
 

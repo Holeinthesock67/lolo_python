@@ -63,7 +63,7 @@ AVATAR_CADENCE_RPM = 37.0   # cadence des scènes de l'avatar (un tour en 1,62 s
 # Mêmes tolérances que run_engine_tests.sh, plus la synchronisation verticale sous Xvfb.
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 GODOT_TOLERATED = re.compile(
-    r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync|"
+    r"ObjectDB instances (were )?leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync|"
     r"XOpenIM failed|XCreateIC couldn't create")   # méthode de saisie X du bureau, hors OpenRide
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "time", "erg", "status",
@@ -1654,7 +1654,7 @@ def _garage_scenes(s: Session) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--godot", default=os.environ.get(
-        "GODOT", str(Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+        "GODOT", str(Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--visual-grade", type=float, default=1.0, help="facteur d'exagération visuelle du relief (lot Q2, défaut : 1.0)")
     ap.add_argument("--configs", default=DEFAULT_CONFIGS,
                     help=f"résolution:qualité, séparées par des virgules (défaut {DEFAULT_CONFIGS})")

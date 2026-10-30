@@ -4,7 +4,7 @@
 # 1. crée l'environnement Python (core/.venv) et y installe le core et le compilateur ;
 # 2. relie `openride` et `openride-core` dans ~/.local/bin ;
 # 3. crée ~/OpenRide/config.toml depuis scripts/config.example.toml s'il manque ;
-# 4. vérifie Godot 4.3 (chemin demandé une fois, gardé dans [engine] godot de config.toml) ;
+# 4. vérifie Godot 4.7 (chemin demandé une fois, gardé dans [engine] godot de config.toml) ;
 # 5. installe les entrées de bureau (scripts/install-desktop.sh).
 # Peut être relancé sans dommage. Variables : GODOT (chemin de Godot), OPENRIDE_VENV,
 # OPENRIDE_NO_PIP=1 (tests : pas de création du venv ni de pip, OPENRIDE_PYTHON donné).
@@ -17,7 +17,7 @@ VENV="${OPENRIDE_VENV:-${PROJECT_DIR}/core/.venv}"
 OPENRIDE_HOME="${HOME}/OpenRide"
 CONFIG="${OPENRIDE_HOME}/config.toml"
 BIN_DIR="${HOME}/.local/bin"
-DEFAULT_GODOT="${HOME}/Applications/godot/Godot_v4.3-stable_linux.x86_64"
+DEFAULT_GODOT="${HOME}/Applications/godot/Godot_v4.7.2-stable_linux.x86_64"
 
 say() { echo "install.sh : $*"; }
 die() { echo "install.sh : $*" >&2; exit 1; }
@@ -56,7 +56,7 @@ if [[ ! -f "${CONFIG}" ]]; then
     say "configuration créée : ${CONFIG}"
 fi
 
-# 4. Godot 4.3
+# 4. Godot 4.7
 configured="$("${PYTHON}" -c 'import sys, tomllib
 try:
     print(tomllib.load(open(sys.argv[1], "rb")).get("engine", {}).get("godot", ""))
@@ -66,13 +66,13 @@ godot="${GODOT:-${configured:-${DEFAULT_GODOT}}}"
 godot="${godot/#\~/${HOME}}"
 if [[ ! -x "${godot}" ]]; then
     if [[ -t 0 ]]; then
-        read -r -p "Chemin de Godot 4.3 (exécutable) : " godot
+        read -r -p "Chemin de Godot 4.7 (exécutable) : " godot
         godot="${godot/#\~/${HOME}}"
     fi
-    [[ -x "${godot}" ]] || die "Godot 4.3 introuvable (${godot:-aucun chemin}). Téléchargez-le sur godotengine.org puis relancez avec GODOT=/chemin/vers/godot."
+    [[ -x "${godot}" ]] || die "Godot 4.7 introuvable (${godot:-aucun chemin}). Téléchargez-le sur godotengine.org puis relancez avec GODOT=/chemin/vers/godot."
 fi
 version="$("${godot}" --version 2>/dev/null | head -n 1 || true)"
-[[ "${version}" == 4.3* ]] || die "Godot 4.3 attendu, trouvé « ${version:-?} » (${godot})."
+[[ "${version}" == 4.7* ]] || die "Godot 4.7 attendu, trouvé « ${version:-?} » (${godot}). Téléchargez Godot_v4.7.2-stable_linux.x86_64.zip sur https://github.com/godotengine/godot/releases/tag/4.7.2-stable puis relancez avec GODOT=/chemin/vers/godot."
 "${PYTHON}" -m openride_core.config_edit "${CONFIG}" engine godot "${godot}" >/dev/null
 say "Godot ${version} : ${godot}"
 
