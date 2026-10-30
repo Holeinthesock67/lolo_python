@@ -53,6 +53,7 @@ def test_control_point_goes_on_without_response():
     """Trainer muet : on continue après `CP_RESPONSE_TIMEOUT_S`, sans rester bloqué."""
     async def scenario():
         ftms_driver.CP_RESPONSE_TIMEOUT_S, saved = 0.05, ftms_driver.CP_RESPONSE_TIMEOUT_S
+        ftms_driver.CP_BUSY_GRACE_S, saved_grace = 0.05, ftms_driver.CP_BUSY_GRACE_S
         try:
             client = FakeClient([ftms.INDOOR_BIKE_DATA], cp_result=None)
             drv, task = await start(client)
@@ -62,6 +63,7 @@ def test_control_point_goes_on_without_response():
             assert cp_ops(client)[-1] == ftms.OP_RESET
         finally:
             ftms_driver.CP_RESPONSE_TIMEOUT_S = saved
+            ftms_driver.CP_BUSY_GRACE_S = saved_grace
     asyncio.run(scenario())
 
 
@@ -215,3 +217,14 @@ def test_split_data_record_keeps_heart_rate():
         drv.stop()
         await asyncio.wait_for(task, 3)
     asyncio.run(scenario())
+
+
+def test_sim_cw_is_rho_times_cda_without_the_half():
+    """FTMS (comme ANT+ FE-C) : Cw = ρ · CdA ; c'est le trainer qui applique ½ · Cw · v²."""
+    from openride_core.config import BikeConfig
+    from openride_core.ftms_driver import FtmsDriver
+    from openride_core.config import TrainerConfig
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(cda_m2=0.32))
+    assert abs(drv._cw - 1.225 * 0.32) < 1e-9
+    raw = ftms.cmd_set_sim_params(0.0, drv._crr, drv._cw)
+    assert raw[6] == 39   # 0,39 kg/m à 0,01 près ; Zwift envoie 0,51

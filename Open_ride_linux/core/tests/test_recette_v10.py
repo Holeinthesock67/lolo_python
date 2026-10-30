@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 
+import pytest
+
 from openride_core import config
 from openride_core.equipment import apply_equipment, load_catalogue
 from openride_core.garage import ProgressionService
@@ -156,6 +158,7 @@ def _dirs(tmp_path):
             "--config", str(tmp_path / "absent.toml"), "--sans-terrain"]
 
 
+@pytest.mark.recette_sans_velo
 def test_one_command_runs_both_blocks_and_restores(tmp_path):
     """Une seule commande : essais PC, bloc 1 vélo de départ, bloc 2 aéro, verdict, profil et parcours restaurés."""
     p = Profile()
@@ -172,6 +175,7 @@ def test_one_command_runs_both_blocks_and_restores(tmp_path):
     assert not (tmp_path / "Essais" / "recette-v10-equipe.consignes.json").exists()
 
 
+@pytest.mark.recette_sans_velo
 def test_block_cut_short_stops_and_restores(tmp_path):
     fake = FakeOpenRide(tmp_path, ride_s=120)
     fake.poll = lambda: 0   # OpenRide fermé avant les 10 min

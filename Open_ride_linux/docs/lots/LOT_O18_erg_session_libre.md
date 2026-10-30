@@ -38,3 +38,13 @@ Révision 1.5 (ajout compatible) : commande `set_ride_mode`, champs facultatifs 
 ## 6. Hors périmètre
 
 Basculer pendant un entraînement structuré ou une run ; réglage de la largeur de plage (refusé par le propriétaire le 28 octobre).
+
+## 7. Livraison
+
+Livré le 29 octobre (PR #550, branche `claude/project-thread-ay70fd`).
+
+- Core : `free_erg.py` (`FreeErg`, `CadenceLock`), commande `set_ride_mode` dans `session.py`, ERG libre gardé au journal et à la reprise après un plantage du core.
+- Engine : lignes Mode, Puissance cible et Cadence cible de l'écran de pause, bandeau ERG (« dans la plage », sous ou au-dessus).
+- Contrat : révision 1.5 (`set_ride_mode`, `erg.kind`, champs `cadence_*`), exemples et séquence au §7 de `docs/contracts/ipc_v1.md`.
+- Tests : `core/tests/test_free_erg.py` (10 tests : valeurs de départ, biais, plage et sens de la cadence verrouillée, bornes et vitesse, absence d'oscillation avec un cycliste qui réagit, bascule SIM → ERG → cadence → SIM dans la séance, refus `busy` et `bad_args`, journal et reprise, trainer du Bluetooth simulé qui suit la cadence verrouillée), `engine/tests/unit/test_free_erg_menu.gd`, scénario `erg_libre` du banc des menus (trois voies).
+- Reste : critère 4, l'essai sur le vélo (10 min : bascule au Click, au clavier et à la souris, ressenti de la plage de 15 %, 10 % à revoir après l'essai).

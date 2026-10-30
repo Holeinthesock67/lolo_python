@@ -26,6 +26,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
 - `docs/VERIFICATION_2026-10-24.md`, `docs/AUDIT_FTMS_2026-10-24.md`, `docs/REVUE_CODE_2026-10-24.md` : vérification, audit FTMS et revue de code du 24 octobre (constats ouverts : §5 de la revue).
 - `docs/spikes.md` : faits mesurés sur le matériel.
 - `docs/OUTILS_DE_TEST.md` : liste des outils de test (suites, matériel simulé, banc d'essai simulé, parcours d'essai, diagnostic).
+- `docs/PLAN_DE_TESTS.md` : plan de tests (niveaux, périmètre, scénarios, lancement, résultat attendu, lieu : CI, PC ou vélo), tests des changements récents, PR en revue, mesures de performance et écriture d'un nouveau test.
 
 **Règle :** un contrat ne se modifie que par ajout compatible, avec une ligne au journal des changements du document. Si un contrat paraît faux, le signaler au lieu de l'interpréter.
 
@@ -70,6 +71,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `segments.py` : détection des montées et des sprints d'un parcours, segments manuels (série T, lot T2, module pur).
 - `segment_timing.py` : chronométrage des segments : franchissements interpolés, pauses, boucles, relecture du journal (série T, lot T4, module pur).
 - `rogue/` : mode Cyber-Rogue de la 2.0, modules purs : W'bal de Skiba, postures de cadence avec hystérésis et table des valeurs `RogueBalance` (série R, lot R2), lue dans le fichier embarqué `balance.toml` avec surcharge facultative `~/OpenRide/rogue_balance.toml` (lot R7) ; châssis, statistiques de runs recalculées depuis le journal et vies (lot R9) ;
+- `wtf/` : mode « What the fuck » (série WTF, lot WTF1), modules purs : catalogue des treize règles désactivables une à une et fichier `~/OpenRide/wtf.toml`, événements à durée limitée, surprise du chef, chef d'orchestre `WtfMode` qui tire les événements, fait vivre les règles permanentes et combine les effets sous des bornes sûres ;
 - `powerups.py` : bonus légèreté, aérodynamique et puissance, arches, valeurs dans `~/OpenRide/powerups.toml` (série T, lot T6, module pur).
 - `gaps.py` : écarts en temps de passage avec les bots, voisins devant et derrière (série T, lot T16, module pur) ;
 - `records.py` : records personnels par segment dans `~/OpenRide/records.json`, avec et sans bonus, classement local, recalcul depuis les journaux (série T, lot T5, module pur) ;

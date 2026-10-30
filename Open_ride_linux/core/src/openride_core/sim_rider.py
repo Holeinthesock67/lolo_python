@@ -18,6 +18,11 @@ Stratégies :
   puis la CP × `recover_frac` jusqu'à ce que la réserve remonte au-dessus de `resume_pct` % ;
 - `vitesse` : la puissance qui tient `speed_kmh` sur la pente reçue, avec la physique du core (lot X35).
 
+Braquet réel (lot X46) : avec `chainring` et `sprocket` (dents) et `wheel_m` (circonférence, 2,105 m par
+défaut), le cycliste roule à braquet fixe sur un trainer à entraînement direct à pignon unique : la vitesse
+du volant suit la cadence, et la cadence suit le volant quand le frein ralentit le cycliste (modèle
+réaliste du trainer).
+
 Le bruit des stratégies (hors `constante`, qui garde la sinusoïde d'avant ce lot) vient d'un générateur à
 graine (`seed`) : un même scénario donne la même séance.
 """
@@ -29,14 +34,15 @@ import random
 from dataclasses import dataclass
 from typing import Any
 
-from .physics import PhysicsParams, resistive_force
+from .physics import WHEEL_CIRCUMFERENCE_M, PhysicsParams, gear_speed_mps, resistive_force
 from .rogue.wbal import wbal_initial, wbal_step
 
 STRATEGIES = ("constante", "pente", "cadence", "rampe", "sprint", "fatigue", "vitesse")
 # Clés de la section `rider` d'un scénario (et de l'action `rider` pour celles qui changent en cours).
 RIDER_KEYS = {"strategy", "watts", "cadence_rpm", "ftp_w", "pct_ftp", "cadence_low", "cadence_high",
               "ramp_start_w", "ramp_w_per_min", "ramp_fail_pct_ftp", "sprint_at_s", "sprint_w", "sprint_s",
-              "fatigue_pct_ftp", "w_prime_j", "recover_frac", "resume_pct", "speed_kmh", "seed"}
+              "fatigue_pct_ftp", "w_prime_j", "recover_frac", "resume_pct", "speed_kmh", "seed",
+              "chainring", "sprocket", "wheel_m"}
 SPEED_PHYSICS = PhysicsParams()   # vitesse imposée : mêmes réglages que la configuration par défaut du core
 CADENCE_PER_GRADE = 2.5           # rpm perdus par point de pente reçue (stratégie `cadence`)
 PRESS_GAP_S = 2.0                 # attente entre deux appuis du Click (le braquet agit sur la pente reçue)
@@ -57,12 +63,17 @@ class SimRider:
                  sprint_at_s: list[float] | tuple[float, ...] = (), sprint_w: float | None = None,
                  sprint_s: float = 10.0, fatigue_pct_ftp: float = 110.0, w_prime_j: float = 20000.0,
                  recover_frac: float = 0.85, resume_pct: float = 30.0, speed_kmh: float | None = None,
-                 seed: int = 0) -> None:
+                 seed: int = 0, chainring: float | None = None, sprocket: float | None = None,
+                 wheel_m: float = WHEEL_CIRCUMFERENCE_M) -> None:
         if strategy not in STRATEGIES:
             raise ValueError(f"stratégie de cycliste inconnue : {strategy!r} ({', '.join(STRATEGIES)})")
         if strategy == "vitesse" and not speed_kmh:
             raise ValueError("stratégie vitesse : speed_kmh manquant")
+        if (chainring is None) != (sprocket is None) or any(v is not None and v <= 0 for v in (chainring, sprocket)) \
+                or wheel_m <= 0:
+            raise ValueError("braquet réel : chainring et sprocket ensemble (dents > 0), wheel_m > 0")
         self.strategy = strategy
+        self.gear = None if chainring is None else (float(chainring), float(sprocket), float(wheel_m))
         self.watts, self.cadence_rpm = float(watts), float(cadence_rpm)
         self.ftp_w, self.pct_ftp = float(ftp_w), float(pct_ftp)
         self.cadence_low, self.cadence_high = float(cadence_low), float(cadence_high)
@@ -90,6 +101,10 @@ class SimRider:
             self.watts = float(values["watts"])
         if "cadence_rpm" in values:
             self.cadence_rpm = float(values["cadence_rpm"])
+
+    def gear_speed_mps(self, cadence_rpm: float) -> float | None:
+        """Vitesse du volant au braquet réel, ou None sans braquet réel."""
+        return None if self.gear is None else gear_speed_mps(cadence_rpm, *self.gear)
 
     @property
     def wbal_pct(self) -> float:

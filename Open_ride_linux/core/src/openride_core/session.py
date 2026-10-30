@@ -21,6 +21,7 @@ import signal
 import threading
 import time
 import zlib
+from dataclasses import replace
 from datetime import date
 from pathlib import Path
 from typing import Any, Callable
@@ -53,6 +54,9 @@ from .demo_world import ensure_demo_world
 from .route import Route, WorldError, find_world, load_world, routes_dir
 from . import draft as draft_mod
 from .wind import CALM, WindModel, grade_offset_pct, head_component, wind_frame
+from .wtf import rules as wtf_rules
+from .wtf.events import WtfInput
+from .wtf.mode import WtfMode
 from .free_erg import CadenceLock, FreeErg, start_cadence, start_power
 from .ftp_test import KINDS as FTP_TEST_KINDS
 from .ftp_test import FtpResult, RampWatch, cooldown_index, estimate_ftp
@@ -230,13 +234,16 @@ class CoreSession:
                  journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
                  workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None,
                  config_path: Path | None = None, records_path: Path | None = None,
-                 powerups_path: Path | None = None, profile_path: Path | None = None) -> None:
+                 powerups_path: Path | None = None, profile_path: Path | None = None,
+                 wtf_path: Path | None = None) -> None:
         self.cfg = cfg
         self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
         self._cli_bots = self.bots   # ceux de la ligne de commande, remis quand `start` n'a pas de `bots`
         self.sim = build_sim_world(cfg)
         self.driver = driver if driver is not None else build_driver(cfg, self.sim)
+        if hasattr(self.driver, "event_sink"):   # statuts du trainer et perte de frein au journal
+            self.driver.event_sink = lambda line: self._rec.ftms(line) if self._rec else None
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
         self.hr = build_hr(cfg, self.sim)
         self.journal_dir = journal_dir
@@ -259,6 +266,8 @@ class CoreSession:
         self.race: ClassicRace | None = None      # mode classique de la séance (lot T7)
         self.records_path: Path = records_path or records_mod.RECORDS_FILE      # lot T5
         self.powerups_path: Path = powerups_path or powerups_mod.POWERUPS_FILE  # lot T6
+        self.wtf_path: Path = wtf_path or wtf_rules.WTF_FILE   # règles du mode WTF (lot WTF2)
+        self.wtf: WtfMode | None = None
         self._records_writable = True
         self.difficulty_pct: float = float(cfg.trainer.difficulty_pct)
         self.state = IpcState(session_state="IDLE", gears_total=self.gearing.n_gears,
@@ -267,7 +276,7 @@ class CoreSession:
             port_state=cfg.ipc.port_state, port_commands=cfg.ipc.port_commands,
             on_command=self._on_command, on_engine_lost=self._on_engine_lost,
             on_engine_returned=lambda: log.info("Engine connecté."),
-            hello_config={"ftp_w": cfg.rider.ftp_w, "gears_total": self.gearing.n_gears,
+            hello_config={"ftp_w": cfg.rider.ftp_w, "hr_max_bpm": cfg.rider.hr_max_bpm, "gears_total": self.gearing.n_gears,
                           "theme": cfg.render.theme, "chart": cfg.render.chart,
                           "difficulty_pct": round(self.difficulty_pct),
                           "open_world_dir": str(Path(cfg.open_world.cache_dir).expanduser() / "seances")})
@@ -282,6 +291,7 @@ class CoreSession:
         self._grade_sent = 0.0
         self._power_window: list[tuple[float, float]] = []
         self._rec: SessionRecorder | None = None
+        self.dropout_marks = 0   # repères « décrochage » posés au Z long (§7.1, lot X47)
         self._device_up: dict[str, bool] = {}   # dernier état écrit au journal (lignes `device`)
         self._next_record = 0.0
         self._trainer_lost_since: float | None = None
@@ -380,7 +390,19 @@ class CoreSession:
                 self.server.send_error("unknown_junction", "Pas de monde ouvert en cours.")
             else:
                 self.openworld.choose_branch(str(args.get("junction_id") or ""), args.get("branch"), self.physics.s)
+        elif name == "list_wtf_rules":
+            self._send_wtf_rules()
+        elif name == "set_wtf_rule":
+            self._set_wtf_rule(args if isinstance(args, dict) else {})
         elif name == "start" and st == "READY":
+            game_mode = (args if isinstance(args, dict) else {}).get("mode")
+            if game_mode not in (None, "ride", "wtf"):
+                self.server.send_error("bad_args", "start : 'mode' vaut ride ou wtf")
+                return
+            if game_mode == "wtf" and self._workout is not None:
+                # Mode WTF : SIM seulement, comme la Course tactique (plan de la série WTF §1).
+                self.server.send_error("bad_args", "Le mode WTF se joue sans entraînement ERG.")
+                return
             if not self._choose_start_workout(args if isinstance(args, dict) else {}):
                 return
             if not self._choose_start_bots(args if isinstance(args, dict) else {}):
@@ -392,7 +414,9 @@ class CoreSession:
                          len(self._workout.blocks), self._workout.duration_s)
                 self._watch_ramp()
                 self._sync_erg_state()
-            self._new_race()
+            if game_mode == "wtf":
+                self._start_wtf()
+            self._new_race(classic=self.wtf is None)
             self._set_state("RUNNING")
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
@@ -806,7 +830,7 @@ class CoreSession:
         self.gearing.k = min(max(self.cfg.gearing.start_gear, 1), self.gearing.n_gears)
         self.difficulty_pct = float(self.cfg.trainer.difficulty_pct)
         self.state.difficulty_pct = round(self.difficulty_pct)
-        self.server.hello_config.update(ftp_w=self.cfg.rider.ftp_w, theme=self.cfg.render.theme,
+        self.server.hello_config.update(ftp_w=self.cfg.rider.ftp_w, hr_max_bpm=self.cfg.rider.hr_max_bpm, theme=self.cfg.render.theme,
                                         chart=self.cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
         self._send_settings(cmd_id)
 
@@ -1104,6 +1128,9 @@ class CoreSession:
         if self.rogue is not None or self._workout_erg() is not None:
             self.server.send_error("busy", "Changement de mode impossible pendant un entraînement ou une run.")
             return
+        if self.wtf is not None and args.get("mode") != "sim":
+            self.server.send_error("busy", "Le mode WTF se joue en SIM seulement.")
+            return
         mode = args.get("mode")
         if mode not in ("sim", "erg", "cadence"):
             self.server.send_error("bad_args", "set_ride_mode attend 'mode' : sim, erg ou cadence")
@@ -1245,9 +1272,19 @@ class CoreSession:
         journal: str | None = None
         records_done: list[dict] | None = []
         race, self.race = self.race, None
+        wtf, self.wtf = self.wtf, None
+        self.state.wtf = None
         if race and self._rec:
             for line in race.take_journal() + race.jersey_lines():
                 self._rec.game(line)
+        if wtf is not None and self._rec:
+            for line in wtf.take_journal():
+                self._rec.game({**line, "ts": round(time.time(), 3)})
+            self._rec.game({"kind": "wtf_summary", "ts": round(time.time(), 3), **wtf.summary()})
+            self.physics.p = self._base_params
+            for bot in self.bots:
+                if hasattr(bot, "power_factor"):
+                    bot.power_factor = 1.0
         if self._rec:
             rec, self._rec = self._rec, None
             journal = rec.path.name if rec.path is not None else None
@@ -1273,6 +1310,8 @@ class CoreSession:
             }
             if rogue_summary is not None:   # lot R8 : bilan de la run
                 summary["rogue"] = rogue_summary
+            if wtf is not None:   # lot WTF2 : points et événements joués
+                summary["wtf"] = wtf.summary()
             segments = race.summary() if race else None
             if segments is not None:   # série T (lot T7, révision 1.4)
                 summary["segments"] = segments
@@ -1301,13 +1340,66 @@ class CoreSession:
         if journal is not None and final_state == "FINISHED":
             self._after_session(journal, records_done)
 
+    # --- mode « What the fuck » (série WTF, lot WTF2) -----------------------------------
+
+    def _wtf_table(self) -> wtf_rules.WtfTable:
+        try:
+            return wtf_rules.load_table(self.wtf_path)
+        except wtf_rules.WtfError as exc:
+            log.warning("Règles du mode WTF refusées, toutes actives : %s", exc)
+            return wtf_rules.DEFAULT_TABLE
+
+    def _start_wtf(self) -> None:
+        """Séance en mode WTF : règles de `wtf.toml`, costumes des bots, ligne `wtf_start` au journal."""
+        table = self._wtf_table()
+        self.wtf = WtfMode(table, float(self.cfg.rider.ftp_w), replace(self._base_params),
+                           seed=int(time.time()) & 0xFFFFFFFF)
+        for bot in self.bots:
+            self.wtf.bot_skin(bot.id)
+        if self._rec:
+            self._rec.game({"kind": "wtf_start", "ts": round(time.time(), 3), "rules": sorted(table.enabled)})
+        log.info("Mode WTF : %d règle(s) active(s) sur %d.", len(table.enabled), len(wtf_rules.RULE_IDS))
+
+    def _send_wtf_rules(self) -> None:
+        table = self.wtf.table if self.wtf is not None else self._wtf_table()
+        self.server.send_raw({"type": "wtf_rules", "v": 1, "rules": table.rules_list()})
+
+    def _set_wtf_rule(self, args: dict) -> None:
+        """Allume ou coupe une règle (écrit `wtf.toml`) ; prise en compte tout de suite pendant une séance."""
+        rule, on = args.get("id"), args.get("on")
+        if not isinstance(rule, str) or not isinstance(on, bool):
+            self.server.send_error("bad_args", "set_wtf_rule attend 'id' (texte) et 'on' (vrai ou faux)")
+            return
+        try:
+            table = self._wtf_table().with_rule(rule, on)
+            wtf_rules.save_table(table, self.wtf_path)
+        except wtf_rules.WtfError as exc:
+            self.server.send_error("wtf_rule_invalid", str(exc))
+            return
+        except OSError as exc:
+            self.server.send_error("wtf_rule_invalid", f"règles non écrites : {exc}")
+            return
+        if self.wtf is not None:
+            self.wtf.table = table
+        log.info("Mode WTF : règle %s %s.", rule, "allumée" if on else "coupée")
+        self._send_wtf_rules()
+
+    def _fill_wtf_frame(self) -> None:
+        st = self.state
+        if self.wtf is None or st.session_state not in ("RUNNING", "PAUSED"):
+            st.wtf = None
+            return
+        st.wtf = self.wtf.frame(self._t_session, self.physics.s)
+
     # --- mode classique de la série T (lot T7) ------------------------------------------
 
-    def _new_race(self) -> None:
-        """Segments, records, bonus, maillots et écarts de la séance qui commence."""
+    def _new_race(self, classic: bool = True) -> None:
+        """Segments, records, bonus, maillots et écarts de la séance qui commence.
+
+        `classic` faux (mode WTF) : pas de segments, de records ni de bonus, seulement les bots calibrés."""
         route = self.route
+        self.race = None
         if route is None:
-            self.race = None
             return
         try:
             book = RecordBook.load(self.records_path)
@@ -1323,11 +1415,12 @@ class CoreSession:
         header = self.progress_svc.journal_header()   # équipement de la série V (None : progression coupée)
         plain = PhysicsParams.from_config(self.cfg)
         gain_mode = "off" if header is None else ("zero" if self._base_params == plain else "compute")
-        self.race = ClassicRace(
-            route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
-            loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
-            powerups_on=self.cfg.powerups.mode == "on",
-            loadout=header["loadout"] if header else None, gain_mode=gain_mode)
+        if classic:
+            self.race = ClassicRace(
+                route_id=self.state.route_id or "demo", segments=self._segments, length_m=route.length_m,
+                loop=route.is_loop, rider_mass_kg=self.cfg.rider.mass_kg, book=book, table=table,
+                powerups_on=self.cfg.powerups.mode == "on",
+                loadout=header["loadout"] if header else None, gain_mode=gain_mode)
         from .bots import RefRider, attach_segments, calibrate_bots
 
         attach_segments(self.bots, self._segments)   # montées et sprints des bots à profil (lot T12)
@@ -1339,6 +1432,8 @@ class CoreSession:
         if scales:
             log.info("Bots calibrés en %.0f ms : %s.", 1000.0 * (time.perf_counter() - t0),
                      ", ".join(f"{p} à {lv:g} % : CP × {k:.2f}" for (p, lv), k in scales.items()))
+        if self.race is None:
+            return
         self.race.start(self._t_session, self.physics.s, self.bots)
         if self._segments:
             log.info("Mode classique : %d segment(s), bonus %s.", len(self._segments), self.cfg.powerups.mode)
@@ -1431,6 +1526,8 @@ class CoreSession:
             "status": trainer_st,
             "name": str(trainer_name) if trainer_name else None,
             "address": str(trainer_addr) if trainer_addr else None,
+            # Control Point occupé (autre appareil sur le trainer) : bandeau de l'engine
+            "busy": bool(getattr(self.driver, "busy", False)),
         }
 
         clicks: list[dict[str, Any]] = []
@@ -1479,6 +1576,15 @@ class CoreSession:
 
     # --- entrées utilisateur -------------------------------------------------------------
 
+    def _mark_dropout(self) -> None:
+        """Z long en roulant (§7.1, lot X47) : le cycliste sent le trainer décrocher ; repère au journal, relu par
+        l'outil `decrochages` (lot X44) pour le mettre face aux chutes de puissance mesurées."""
+        self.dropout_marks += 1
+        log.warning("Repère « décrochage » du cycliste (Z long) : %.0f W, %.0f rpm, %.1f km/h.",
+                    self.state.power, self.state.cadence, self.state.v * 3.6)
+        if self._rec:
+            self._rec.event("decrochage", time.time())
+
     def _handle_input(self, ev: InputEvent) -> None:
         # Rôle des boutons : spécification générale §7.1. Y en séance : pause, sans relais ; ailleurs
         # (menus, écran de pause), l'engine en fait « écran précédent » ou « reprendre ».
@@ -1500,7 +1606,12 @@ class CoreSession:
             return
         if self.state.session_state != "RUNNING":
             return
+        if self.wtf is not None and self.wtf.press(ev.value):   # Z court : « Non merci, chef ! »
+            return
         erg = self.erg
+        if ev == InputEvent.Z_LONG:
+            self._mark_dropout()
+            return
         if ev == InputEvent.Z_SHORT:
             # Z court : action du mode (§7.1) ; bloc suivant en ERG ; sinon, en mode
             # classique et en ERG d'une session libre (sans blocs, lot O18), bonus en réserve (T6, T7).
@@ -1511,7 +1622,7 @@ class CoreSession:
                 self._flush_race_journal()
             return
         if ev not in BIAS_STEPS:
-            return   # ni + ni − (A, Z long, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
+            return   # ni + ni − (A, flèches, appui ambigu) : rien dans le core (vues de caméra : engine, V12)
         if erg:
             # ERG (§7.1, SRS §4.4) : ± court = biais ± 2 %, ± long = biais ± 10 % ; en cadence
             # verrouillée (lot O18), cadence cible ± 2 % et ± 10 %.
@@ -1617,10 +1728,25 @@ class CoreSession:
             # Bonus de masse ou de CdA : paramètres du pas, utilisés aussi par le supplément de vent et
             # d'aspiration ci-dessous (CdA courant, ancien contenu de T7). Pente du parcours inchangée.
             self.physics.p = race.params(self._base_params)
+        route_grade = grade
+        wtf = self.wtf
+        wtf_eff = None
+        if wtf is not None:
+            # Mode WTF (lot WTF2) : pente transformée pour la physique et la pente envoyée, masse,
+            # roulement et vent de la règle en cours ; la puissance mesurée reste celle du journal.
+            wtf.set_erg(self.state.mode == "ERG")
+            wtf.step(WtfInput(self._t_session, dt, self.physics.s, self.physics.v, m.power_w, m.cadence_rpm,
+                              grade, measures_ok=m.connected and not getattr(self.driver, "busy", False)))
+            wtf_eff = wtf.effects()
+            grade, ahead = wtf.grade(grade, wtf_eff), wtf.grade(ahead, wtf_eff)
+            self.physics.p = wtf.physics_params(self._base_params, wtf_eff)
+            for bot in self.bots:
+                if hasattr(bot, "power_factor"):
+                    bot.power_factor = wtf.bot_power_factor(bot.id)
         if self.wind.active:   # vent figé en pause : son temps est celui de la séance
             self._wind_sample = self.wind.sample(self._t_session)
             self._head_mps = head_component(self._wind_sample, here.heading_deg if here else 0.0)
-            self.physics.p.wind_mps = self._head_mps
+            self.physics.p.wind_mps = self._head_mps + (wtf_eff.wind_add_mps if wtf_eff else 0.0)
             if wcfg.feel == "ftms":
                 setter = getattr(self.driver, "set_wind", None)
                 if setter:
@@ -1628,6 +1754,7 @@ class CoreSession:
         self._wind_offset = 0.0
         if self.bots:
             self._update_draft(dt, route, here.heading_deg if here else 0.0)
+        draft = wtf.draft(self._draft_bot, self._draft) if wtf is not None else self._draft   # baleine volante
 
         if erg and erg.target_active:
             # ERG : cible de puissance, aucune pente envoyée ; la physique garde la pente du terrain.
@@ -1636,13 +1763,15 @@ class CoreSession:
         else:
             # Pente envoyée : anticipée de la latence du trainer, braquet appliqué, variation limitée.
             target = self.gearing.effective_grade(ahead, self.difficulty_pct / 100.0)
-            if (self.wind.active and wcfg.feel == "grade") or self._draft > 0.0:
+            if (self.wind.active and wcfg.feel == "grade") or draft > 0.0:
                 # Vent et abri ressentis : supplément de pente avant la limitation de variation et les
                 # bornes. Avec feel = "ftms", le vent part dans la commande 0x11 et seul l'abri passe ici.
                 head = self._head_mps if wcfg.feel == "grade" else 0.0
-                self._wind_offset = grade_offset_pct(self.physics.v, head, self._draft, alt,
+                self._wind_offset = grade_offset_pct(self.physics.v, head, draft, alt,
                                                      self.physics.p, wcfg.max_grade_offset_pct)
                 target += self._wind_offset
+            if wtf_eff is not None:   # supplément du mode WTF borné, puis bornes du mode
+                target = wtf.clamp_feel(target + wtf.feel_offset(wtf_eff))
             rate = (self.cfg.trainer.grade_rate_up_pct_per_s
                     if target >= self._grade_sent
                     else self.cfg.trainer.grade_rate_down_pct_per_s)
@@ -1655,8 +1784,10 @@ class CoreSession:
                 self._grade_sent += min(max(target - self._grade_sent, -max_delta), max_delta)
             self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
 
-        self.physics.step(race.power(m.power_w) if race else m.power_w, grade, alt, dt,
-                          alpha_draft=self._draft)
+        power_used = race.power(m.power_w) if race else m.power_w
+        if wtf_eff is not None:
+            power_used = wtf.power(power_used, wtf_eff)
+        self.physics.step(power_used, grade, alt, dt, alpha_draft=draft)
         for bot in self.bots:
             params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
             if self.wind.active and params is not None and route:
@@ -1670,6 +1801,9 @@ class CoreSession:
             self._flush_race_journal()
             for msg in race.due_results(self._t_session):
                 self.server.send_raw(msg)
+        if wtf is not None and self._rec:
+            for line in wtf.take_journal():
+                self._rec.game({**line, "ts": round(time.time(), 3)})
 
         self._power_window.append((self._t_session, m.power_w))
         while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
@@ -1693,7 +1827,7 @@ class CoreSession:
                 ts=round(time.time(), 3), t=round(self._t_session, 2), lat=st.lat, lon=st.lon,
                 alt=round(alt, 2), distance=round(st.s, 2), speed=round(st.v, 3),
                 power=round(m.power_w), cadence=round(m.cadence_rpm), hr=m.hr_bpm,
-                grade=round(grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
+                grade=round(route_grade, 2), mode=st.mode, gear=self.gearing.k, grade_sent=st.grade_sent,
                 difficulty_pct=round(self.difficulty_pct),
                 block=workout_erg.index + 1 if workout_erg else None,
                 target_w=erg.target_w if erg and erg.target_active else None,
@@ -1711,13 +1845,18 @@ class CoreSession:
             self._finish(True)
 
     def _update_draft(self, dt: float, route: Route | None, heading_deg: float) -> None:
-        """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; poussée du bot suivi."""
+        """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; abri, roue suivie et
+        poussée des bots (lot AS1, `draft.update_bots`), tous sur les positions du pas précédent."""
         length = route.length_m if route else None
         is_loop = bool(route and route.is_loop)
-        cross = 0.0
-        if self.wind.active:
-            ws = self._wind_sample
-            cross = ws.speed_mps * math.sin(math.radians(ws.from_deg - heading_deg))
+        ws = self._wind_sample if self.wind.active else None
+
+        def cross_at(heading: float) -> float:
+            return ws.speed_mps * math.sin(math.radians(ws.from_deg - heading)) if ws else 0.0
+
+        cross = cross_at(heading_deg)
+        draft_mod.update_bots(self.bots, draft_mod.Source(self.physics.s, self.physics.v), dt, length, is_loop,
+                              (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
         target, bot_id = draft_mod.best_draft(self.physics.s, self.bots, length, is_loop,
                                               self.physics.v, self._head_mps, cross)
         self._draft = draft_mod.smooth(self._draft, target, dt)
@@ -1728,9 +1867,7 @@ class CoreSession:
         for bot in self.bots:   # poussée vers l'avant : le bot suivi de près résiste un peu moins
             base = self._bot_cda.get(id(bot))
             if base is not None:
-                push = draft_mod.push_bonus(self.physics.s, bot.s, length, is_loop) \
-                    if draft_mod.PUSH_ENABLED else 0.0
-                bot.params.cda_m2 = base * (1.0 - push)
+                bot.params.cda_m2 = base * (1.0 - getattr(bot, "push", 0.0))
 
     def _fill_wind_frame(self) -> None:
         """Champ `wind` une trame sur quinze, jamais dans la trame qui porte `devices` (taille de la trame)."""
@@ -1952,6 +2089,7 @@ class CoreSession:
                     self.state.bots = None
                 self._fill_race_frame()
                 self._fill_wind_frame()
+                self._fill_wtf_frame()
                 self.server.send_state(self.state)
             if now >= next_stats:
                 next_stats = now + STATS_PERIOD_S
