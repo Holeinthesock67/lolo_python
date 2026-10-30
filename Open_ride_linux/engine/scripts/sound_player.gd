@@ -389,8 +389,8 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 				# Tintement de cloche amorti avec partiels, joué une fois par coup (update_bells)
 				sample = (sin(TAU * 440.0 * t) + 0.5 * sin(TAU * 880.0 * t) + 0.25 * sin(TAU * 1320.0 * t)) * exp(-t * 2.5) * 0.5
 			"river":
-				# Murmure d'eau vive (bruit doux avec ondulations)
-				sample = (sin(TAU * 240.0 * t) * 0.4 + noise[i] * 0.3) * (0.8 + 0.2 * sin(TAU * 3.0 * t))
+				# Murmure d'eau vive (bruit doux, niveau constant)
+				sample = (sin(TAU * 240.0 * t) * 0.4 + noise[i] * 0.3) * 0.8
 			"livestock":
 				# Sonnaille métallique : coups à des instants irréguliers (LIVESTOCK_STRIKES), amortis sur la boucle
 				var env := 0.0
@@ -417,8 +417,8 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 				var blade := pow(0.5 + 0.5 * cos(TAU * 6.0 * t), 6.0)
 				sample = lp[i] * (0.25 + 1.6 * blade) + sin(TAU * 1900.0 * t) * 0.03
 			"airliner_rumble":
-				# Lot P26 : grondement lointain d'un avion de ligne (bruit très filtré qui ondule lentement)
-				sample = lp[i] * 5.0 * (0.8 + 0.2 * sin(TAU * t))
+				# Lot P26 : grondement lointain d'un avion de ligne (bruit très filtré ; il monte et descend avec la distance)
+				sample = lp[i] * 4.0
 			"paramotor_buzz":
 				# Lot P31 : bourdonnement d'un paramoteur (deux-temps à 120 Hz et harmoniques, explosions à 60 Hz
 				# dans un souffle d'hélice), nombres entiers de périodes sur la boucle
@@ -716,6 +716,8 @@ static func _synthesize_clac() -> AudioStreamWAV:
 ## entier de cycles par boucle, bruits filtrés périodiques (`_periodic_lowpass`), chants et
 ## gouttes qui débordent de la fin reprennent au début ; motifs tirés d'un générateur déterministe (même son
 ## à chaque lancement). Aucun fondu au silence aux bords : il s'entendait comme un « tac » toutes les 2 s.
+## Niveaux constants (29/10) : les ondulations de 0,5 à 1,5 Hz (vent d'altitude, eau, rumeur) s'entendaient comme
+## une vague, même à l'arrêt ; le niveau ne varie que par AmbienceModel (altitude, vent, voisinage).
 static func _synthesize_bed(bed: String) -> AudioStreamWAV:
 	var n := BED_SAMPLES
 	var buf := PackedFloat32Array()
@@ -762,11 +764,11 @@ static func _synthesize_bed(bed: String) -> AudioStreamWAV:
 				var v := lp[i]
 				match bed:
 					"water_flow":
-						v = lp[i] * (0.8 + 0.2 * sin(TAU * 3.0 * t / loop_s)) * 1.6
+						v = lp[i] * 1.3
 					"village_murmur":
-						v = lp[i] * 2.5 + sin(TAU * 110.0 * t) * 0.05 * (0.5 + 0.5 * sin(TAU * t / loop_s))
+						v = lp[i] * 2.5 + sin(TAU * 110.0 * t) * 0.025
 					"high_wind":
-						v = lp[i] * 4.0 * (0.6 + 0.4 * sin(TAU * t / loop_s))
+						v = lp[i] * 2.6
 					"rain":
 						v = (noise[i] - lp[i]) * 0.35
 				buf[i] = v

@@ -212,6 +212,7 @@ def test_skip_and_pause(workouts_dir):
     assert advance(c, 1.0).to_dict()["block_remaining_s"] == pytest.approx(remaining - 1.0, abs=0.01)
 
 
+@pytest.mark.recette_sans_velo
 def test_freeride_is_a_50_w_step_and_end(workouts_dir):
     # Lot O19 : pas de roue libre en ERG ; le FreeRide du fichier est un palier ERG à 50 W.
     c = reference(workouts_dir)
