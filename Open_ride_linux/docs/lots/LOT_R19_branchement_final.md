@@ -42,6 +42,9 @@ Série R (version 2.0). Demande du propriétaire du 30 octobre : « terminer le 
   vers le haut et les jauges vers le bas (plus de chevauchement), plus petits ; au couloir, l'hologramme et
   les jauges se retirent sous les cartes. Les portes coupées en 720p étaient déjà corrigées le 29 octobre.
   Le banc vérifie maintenant « HUD classique caché pendant la run » et « hologramme retiré au couloir ».
+  Sans le HUD classique, l'échauffement, le retour au calme et les résultats n'ont plus que la grille
+  (environ 0,1 % de pixels néon) : le seuil « néons dessinés » de ces phases passe à 0,05 %, celui des
+  phases avec ruban reste à 0,2 %.
 
 ## 3. Tests
 
@@ -52,8 +55,8 @@ Série R (version 2.0). Demande du propriétaire du 30 octobre : « terminer le 
   standard ; `core/tests/test_settings.py` : volumes du Cyber-Rogue, `settings` au-delà de 4 096 octets.
 - `engine/tests/unit/test_rogue_menu_model.gd` : choix repris depuis `last`, avertissement sauté ;
   `test_hud_view_model.gd` : rappel des commandes du mode.
-- Banc visuel (`rogue_bench.py`, 1280×720, Godot 4.3 dans le cloud) : 84/84 en low et medium, 82/84 en high
-  (deux captures sombres, déjà 75/77 sur `main`). Captures dans les fichiers du projet, `rogue-r19/`.
+- Banc visuel (`rogue_bench.py`, 1280×720 dans le cloud) : avec Godot 4.3, 84/84 en low et medium, 82/84 en
+  high (deux captures sombres, déjà 75/77 sur `main`) ; avec Godot 4.7.2 (celui de la CI depuis Y2), 84/84. Captures dans les fichiers du projet, `rogue-r19/`.
 
 ## 4. Reste (hors code de ce lot)
 
