@@ -15,6 +15,10 @@ shader_type spatial;
 // variation lente de teinte (25 m) et rapiéçages plus sombres et plus rugueux ; bandes de roulement
 // plus lisses ; bas-côtés en gravillons et terre avec une limite irrégulière. `grain` règle le relief
 // (0 : chaussée lisse d'avant Y11).
+// Lot U22 (option « gravel ») : sur les portions non revêtues, le ruban porte COLOR = couleur de la surface du
+// thème avec a = 1 − part non revêtue, et UV2.x = demi-largeur de la chaussée (ruban plus étroit, bords
+// irréguliers). Sans ces tableaux (COLOR blanc opaque, UV2 nul) : la chaussée d'avant U22. Pas de peinture sur
+// la terre ni le gravier ; grain plus gros (gravillons de 3 cm et cailloux de 12 cm) et teinte de la surface.
 #include "res://shaders/surface_detail.gdshaderinc"
 uniform vec3 road_color : source_color = vec3(0.29, 0.29, 0.30);
 uniform vec3 line_color : source_color = vec3(0.95, 0.95, 0.95);
@@ -66,6 +70,8 @@ float digit_mask(int d, vec2 uv) {
 void fragment() {
 	float total = road_width_m + 2.0 * shoulder_m;
 	float lat = UV.x * total - total * 0.5;          // m, positif à droite
+	float half_w = UV2.x > 0.0 ? UV2.x : road_width_m * 0.5;
+	float unpaved = clamp(1.0 - COLOR.a, 0.0, 1.0);
 	float s = UV.y * v_repeat_m;                       // m le long du parcours
 	float aa_lat = max(fwidth(lat), 1e-4);
 	float aa_s = max(fwidth(s), 1e-4);
@@ -76,7 +82,7 @@ void fragment() {
 	float dash = band(ph - dash_m * 0.5, dash_m * 0.5, aa_s);
 	paint = max(paint, band(lat, line_w_m * 0.5, aa_lat) * dash);
 	// Bandes de rive
-	float edge = road_width_m * 0.5 - edge_inset_m - edge_w_m * 0.5;
+	float edge = half_w - edge_inset_m - edge_w_m * 0.5;
 	paint = max(paint, band(abs(lat) - edge, edge_w_m * 0.5, aa_lat));
 	// Chiffres des kilomètres restants
 	for (int i = 0; i < 8; i++) {
@@ -89,9 +95,9 @@ void fragment() {
 	// Limite chaussée / bas-côté irrégulière (A4)
 	vec2 p = vec2(lat, s);
 	float edge_jitter = (sd_noise(vec2(s * 1.3, 3.1)) - 0.5) * 0.16;
-	float on_road = 1.0 - smoothstep(-0.02, 0.02, abs(lat) - road_width_m * 0.5 - edge_jitter);
+	float on_road = 1.0 - smoothstep(-0.02, 0.02, abs(lat) - half_w - edge_jitter);
 	// Hors chaussée (bas-côtés) : pas de peinture
-	paint *= on_road;
+	paint *= on_road * (1.0 - unpaved);
 	// Usure : peinture éclaircie et cassée par plaques de 20 cm
 	float worn = step(sd_cell_hash(floor(vec2(lat, s) * 5.0), 4u), wear * 0.6);
 	paint *= (1.0 - worn) * (1.0 - 0.35 * wear);
@@ -121,8 +127,14 @@ void fragment() {
 	vec3 asphalt = road_color * (1.0 + macro * 0.12 - patch * 0.12 - track * 0.05);
 	asphalt *= 1.0 + (peb.y - 0.5) * 0.35 * stone * vis_fine;
 	vec3 verge = shoulder_color * (0.85 + 0.3 * peb.y * vis_fine) * (1.0 + macro * 0.2);
+	// Terre ou gravier (U22) : teinte de la surface, grain plus gros et irrégulier
+	vec2 grit = sd_pebbles(p / 0.03);
+	float gravel_vis = sd_visible(p, 0.03);
+	float cobble = sd_noise(p / 0.12);
+	vec3 unpaved_col = COLOR.rgb * (1.0 + (grit.y - 0.5) * 0.3 * gravel_vis + (cobble - 0.5) * 0.12 + macro * 0.15);
+	asphalt = mix(asphalt, unpaved_col, unpaved);
 	vec3 base = mix(verge, asphalt, on_road);
 	ALBEDO = mix(base, line_color, paint) * (1.0 - 0.45 * wetness);
-	float rough = mix(0.97, 0.9 - 0.14 * track + 0.06 * patch, on_road);
+	float rough = mix(0.97, mix(0.9 - 0.14 * track + 0.06 * patch, 0.97, unpaved), on_road);
 	ROUGHNESS = mix(mix(rough, 0.7, paint), 0.3, wetness);
 }
