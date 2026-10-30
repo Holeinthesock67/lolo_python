@@ -68,7 +68,7 @@ func _run() -> void:
 		total_bytes += m.size() * 2
 		music_ok = music_ok and absf(float(m.size()) / Synth.RATE - 20.0) < 0.01 and _peak(m) <= PEAK_MAX and _peak(m) > 0.05
 	print("[mesure] synthèse de la musique : %.0f ms" % (float(Time.get_ticks_usec() - t0) / 1000.0))
-	_check(music_ok, "trois couches de 8 mesures à 96 bpm (20 s), crête sous −3 dBFS")
+	_check(music_ok, "quatre couches (dont le thème 8 bits du boss) de 8 mesures à 96 bpm (20 s), crête sous −3 dBFS")
 	_check(total_bytes < MEMORY_MAX_BYTES, "mémoire des sons et de la musique sous 8 Mo (%.2f Mo)" % (total_bytes / 1048576.0))
 
 	print("test_rogue_sound_synth : %d vérifications, %d échecs" % [_checked, _failures])
