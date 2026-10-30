@@ -208,7 +208,7 @@ openride-ble-diag click --duration 60
 openride-ble-diag trace ~/run_trainer.log   # analyse d'une trace brute du Click
 ```
 
-Diagnostic du Zwift Click V2 : `[drivers] click_trace_raw = true` (trace brute par notification), `click_mute_after_s = 60` (détection de boîtier muet) et `click_rehandshake_s = 30` (tentatives de reprise échelonnées : renvoi de RideOn, réabonnement, reconnexion). `click_reset_locked = true` (essai : redémarre le boîtier gauche quand Zwift le verrouille, voir `docs/RECHERCHE_CLICK_GAUCHE.md` §9). Voir `docs/DIAG_CLICK_GAUCHE.md` et la recherche publique `docs/RECHERCHE_CLICK_GAUCHE.md` (verrou du boîtier gauche par Zwift).
+Diagnostic du Zwift Click V2 : `[drivers] click_trace_raw = true` (trace brute par notification), `click_mute_after_s = 60` (détection de boîtier muet) et `click_rehandshake_s = 30` (tentatives de reprise échelonnées : renvoi de RideOn, réabonnement, reconnexion). `click_reset_locked` (vrai par défaut : redémarre le boîtier gauche quand Zwift le verrouille, environ 4 s de coupure par minute, voir `docs/RECHERCHE_CLICK_GAUCHE.md` §9). Voir `docs/DIAG_CLICK_GAUCHE.md` et la recherche publique `docs/RECHERCHE_CLICK_GAUCHE.md` (verrou du boîtier gauche par Zwift).
 
 Les rapports sont écrits dans `spike_reports/`.
 
