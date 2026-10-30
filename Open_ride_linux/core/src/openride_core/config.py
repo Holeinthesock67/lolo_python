@@ -80,6 +80,7 @@ class RenderConfig:
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
     draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
+    theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
 
 
 @dataclass
@@ -250,6 +251,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("ipc", "port_state"): (1024, 65535),
     ("ipc", "port_commands"): (1024, 65535),
     ("render", "visual_grade_scale"): (1.0, 3.0),
+    ("render", "theme_library_gb"): (1, 50),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
     ("open_world", "cache_max_gb"): (0.5, 500),
