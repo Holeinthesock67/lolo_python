@@ -103,7 +103,8 @@ POP_WARMUP_M = 100.0
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 # Mêmes tolérances que visual_check.py (avertissements connus du mode test et de Xvfb).
 GODOT_TOLERATED = re.compile(
-    r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
+    r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync|"
+    r"XOpenIM failed|XCreateIC couldn't create")   # méthode de saisie X du bureau, hors OpenRide
 # Lignes du journal du core gardées pour la frise des événements.
 CORE_EVENT = re.compile(r"Reconnexion|reconnect|perdu|coupé|déconnect|connecté|renvoi|refus|ERROR|"
                         r"PAUSED|RUNNING|FINISHED|silence|plus de données|ceinture|Click|contrôle", re.I)
@@ -996,6 +997,24 @@ def write_index(out: Path, results: list[tuple[str, Report]]) -> None:
         f"<th>Résultat</th></tr>{rows}</table></body></html>", encoding="utf-8")
 
 
+
+def home_changes(before: dict, after: dict, out: Path, home: Path) -> list[str]:
+    """Entrées de ~/OpenRide changées pendant le banc, hors rapports des bancs.
+
+    Le dossier des rapports et ses parents (dont la date de modification change) sont attendus,
+    comme tout ~/OpenRide/sim_bench : un autre passage de l'outil y écrit ses rapports (pré-vols
+    enchaînés, 7am du 29 octobre). La date de ~/OpenRide seule ne compte pas : un fichier ajouté ou
+    retiré apparaît de lui-même."""
+    out = out.resolve()
+    reports = (home / "OpenRide" / "sim_bench").resolve()
+    expected = {out, *out.parents, (home / "OpenRide").resolve()}
+    changed = set()
+    for p, _ in set(before.items()) ^ set(after.items()):
+        r = Path(p).resolve()
+        if not (r.is_relative_to(out) or r.is_relative_to(reports) or r in expected):
+            changed.add(p)
+    return sorted(changed)
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
@@ -1056,12 +1075,7 @@ def main(argv: list[str] | None = None) -> int:
         rep = bench.run()
         guide.measure(sname, "OK" if not rep.failed else f"{rep.failed} échec(s)", ok=not rep.failed)
         results.append((sname, rep))
-    after = snapshot_home(real_home)
-    # Le dossier des rapports et ses parents (dont la date de modification change) sont attendus.
-    out = args.out.resolve()
-    expected = {out, *out.parents}
-    changed = sorted({p for p, _ in set(before.items()) ^ set(after.items())
-                      if not Path(p).resolve().is_relative_to(out) and Path(p).resolve() not in expected})
+    changed = home_changes(before, snapshot_home(real_home), args.out, real_home)
     ok_home = not changed
     print(f"[{'OK' if ok_home else 'ÉCHEC'}] HOME réel inchangé : "
           + ("oui" if ok_home else f"modifiés : {changed[:5]}"))
