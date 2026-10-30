@@ -207,6 +207,15 @@ Les cahiers R0 à R17 sont sur `main` ; le contrat de la série est dans le lot 
 
 Les cahiers V2 à V11 sont sur `main` et les questions V-Q1 à V-Q13 sont tranchées ; le contrat de la série est dans le lot T1.
 
+**Profils de joueurs et profil d'essai (série MJ)** — détail : [PLAN_SERIE_MJ.md](2.0/PLAN_SERIE_MJ.md)
+
+| Id | Exigence | Lots | Statut |
+| --- | --- | --- | --- |
+| 2.0-PRF-1 | Un profil = un dossier `~/OpenRide/Profils/<id>/` (réglages du joueur, équipement, records, plan, séances) ; le reste est à la machine | MJ1, MJ4 | Spécifié |
+| 2.0-PRF-2 | Profil d'essai `_essai` : séances simulées comptées, jamais par défaut, signalé « ESSAI », « Session simulée » du menu dessus ; le vrai profil n'est jamais modifié (garde-fou d'empreinte) | MJ2, MJ3, MJ8 | Spécifié |
+| 2.0-PRF-3 | Choix du profil « Qui roule ? » après la connexion des appareils, seulement avec au moins deux profils ; création, nom, renommage et suppression au menu (Click, clavier, souris) ; huit profils au plus | MJ6 à MJ8 | Spécifié (maquettes A à F validées le 29 octobre) |
+| 2.0-PRF-4 | Migration du profil actuel vers `principal` sans perte (contrôle X39), séances simulées et rejouées rangées dans `_essai` | MJ5, MJ10 | Spécifié |
+
 **Monde ouvert (série W)** — détail : [PLAN_SERIE_W.md](2.0/PLAN_SERIE_W.md)
 
 | Id | Exigence | Lots | Statut |

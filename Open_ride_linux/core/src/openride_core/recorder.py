@@ -58,7 +58,11 @@ class SessionRecorder:
     def _new_path(self) -> Path:
         stamp = time.strftime("%Y-%m-%d_%H-%M-%S")
         suffix = f"_reprise-{self._reopen_count}" if self._reopen_count else ""
-        return self.journal_dir / f"{stamp}{suffix}.jsonl"
+        path, n = self.journal_dir / f"{stamp}{suffix}.jsonl", 1
+        while path.exists():   # deux séances dans la même seconde : jamais dans le même journal
+            n += 1
+            path = self.journal_dir / f"{stamp}{suffix}_{n}.jsonl"
+        return path
 
     def _open(self, path: Path, header: bool = True) -> bool:
         try:
