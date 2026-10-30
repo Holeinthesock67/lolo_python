@@ -43,6 +43,7 @@ Demande du propriétaire du 30 octobre : automatiser une partie de la recette du
 
 - **Sons trop forts :** le niveau de départ bas de R18 (−18 dB) n'était pas appliqué. 20 sons sur 25, ainsi que la musique du boss, dépassaient le vent à 60 km/h (−22,8 dB), jusqu'à −14,8 dB pour la défaite. Correction : `MODE_DB = −12 dB` sur tous les lecteurs du mode (`rogue_sound_model.gd`, `rogue_audio.gd`). Avec le bus RogueSfx à 70 %, les bruitages sont à −18 dB du plein niveau, entre −26,8 et −40,7 dB. La musique est à −31,9 dB.
 - **Deux sons trop aigus :** le piratage avait 24 % de son énergie au-dessus de 4 kHz, et la relance de carte 35 %. Leur bruit est filtré comme celui du bouclier touché (coefficient 0,15) : ils passent à 6 % et 8 %. Durées, crêtes et déterminisme sont inchangés (`test_rogue_sound_synth.gd`).
+- **Firewall trop faible** (écoute du propriétaire, 30 octobre) : le ronflement n'avait que 50 et 100 Hz, peu rendus par des enceintes de PC. On ajoute des harmoniques à 150 et 200 Hz, et `HUM_MAX_DB` passe de −6 à 0 dB au contact : −28,6 dB, toujours sous le vent.
 - **IF du seuil 45 min :** 0,80 avec la graine 5 (0,7998), et 0,81 en moyenne sur 60 runs de `rogue_sim`. Le calendrier tient au bas de la plage. À juger au ressenti sur le vélo, sans retouche ici.
 
 ## 5. Fichiers

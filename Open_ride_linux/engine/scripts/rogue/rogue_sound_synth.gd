@@ -154,7 +154,9 @@ static func render(sound: String) -> PackedFloat32Array:
 		"rogue_firewall_hum":
 			for i in b.size():
 				var t := float(i) / RATE
-				b[i] = (sin(TAU * 50.0 * t) + 0.5 * sin(TAU * 100.0 * t)) * (1.0 + 0.3 * sin(TAU * 0.5 * t))
+				# Fondamentale à 50 Hz et harmoniques jusqu'à 200 Hz : le ronflement reste grave mais s'entend sur des enceintes de PC.
+				b[i] = (sin(TAU * 50.0 * t) + 0.6 * sin(TAU * 100.0 * t) + 0.5 * sin(TAU * 150.0 * t) + 0.35 * sin(TAU * 200.0 * t)) \
+						* (1.0 + 0.3 * sin(TAU * 0.5 * t))
 		"rogue_hack":
 			for q in 4:
 				_noise(b, 0.1 * q, 0.06, 0.6, 0.15, 3.0, 777 + q)
