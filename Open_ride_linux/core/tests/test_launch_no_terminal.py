@@ -88,7 +88,10 @@ def test_first_run_creates_config_and_folders_then_not_again(home: Path, monkeyp
 
     assert launcher.main(["--trainer", "mock"], message=say) == 0
     cfg = home / "config.toml"
-    assert cfg.read_text(encoding="utf-8") == (SCRIPTS / "config.example.toml").read_text(encoding="utf-8")
+    # Le modèle, réparti par la migration des profils (lot MJ5) : réglages du joueur dans principal.
+    template = config_mod.from_dict(tomllib.loads((SCRIPTS / "config.example.toml").read_text(encoding="utf-8")))
+    assert config_mod.load(cfg, home / "Profils" / "principal" / "profil.toml") == template
+    assert "ftp_w = " not in cfg.read_text(encoding="utf-8")
     assert (home / "GPX").is_dir() and (home / "Workouts").is_dir()
     assert runs[0].core_cmd[-1] == "--first-run"
     assert any("devices --save" in text and not error for text, error in messages)

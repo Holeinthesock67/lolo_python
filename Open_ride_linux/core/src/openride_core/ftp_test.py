@@ -353,9 +353,9 @@ def run(file: Path | None, accept: bool, force: bool, history: bool, as_json: bo
     if not result.reliable and not force:
         print("openride-core ftp-test : résultat douteux, rien n'est écrit (utiliser --force pour l'enregistrer quand même).")
         return 1
-    path = config_path or config_mod.DEFAULT_CONFIG_PATH
-    try:
-        changed = config_edit.update_config(path, [("rider", "ftp_w", result.ftp_w)])
+    path = config_mod.active_profile_file() or config_path or config_mod.DEFAULT_CONFIG_PATH
+    try:   # FTP : réglage du joueur, dans le profil en cours s'il y en a un (lot MJ4)
+        changed = config_edit.update_layers([("rider", "ftp_w", result.ftp_w)], config_path)
     except config_edit.ConfigEditError as exc:
         print(f"openride-core ftp-test : {exc}")
         return 1

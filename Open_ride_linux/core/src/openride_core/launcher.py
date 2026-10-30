@@ -254,6 +254,27 @@ def ensure_first_run(home: Path | None = None, template: Path | None = None) -> 
     return True
 
 
+def migrate_profiles(home: Path | None = None) -> str | None:
+    """Migration du joueur d'avant les profils vers `Profils/principal/` (série MJ, lot MJ5) ;
+    renvoie un message si elle est annulée ou impossible (OpenRide démarre alors sans profil)."""
+    from . import migration_profils as mig
+    from .config import ConfigError
+
+    if not mig.needed(home):
+        return None
+    try:
+        state = mig.migrate(home)
+    except ConfigError:
+        return None   # configuration invalide : le lanceur l'affiche ; la migration reprendra une fois corrigée
+    except (mig.MigrationError, OSError, ValueError) as exc:
+        return (f"Migration vers les profils de joueurs impossible : {exc}. OpenRide démarre sans profil ; "
+                "elle sera retentée au prochain lancement.")
+    if state == mig.CANCELLED:
+        return ("Migration vers les profils de joueurs annulée : la progression recalculée ne correspondait pas. "
+                "Tes fichiers sont remis comme avant (détail dans ~/OpenRide/Profils/.migration_ecart.txt).")
+    return None
+
+
 def _default_echo() -> bool:
     try:
         return sys.stdout.isatty()
@@ -781,11 +802,13 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
     clean_core_args, no_compile, compile_only, compile_timeout = extract_launcher_args(raw_args)
     clean_core_args = clean_core_args or list(DEFAULT_CORE_ARGS)
     config_path = _config_arg(clean_core_args)
-    cfg = config_mod.load(config_path)   # ConfigError si invalide
     # Profil de joueur (série MJ, lot MJ1) : `--profil` passe au core ; reprise et FIT dans son dossier.
+    # Activé avant la lecture de la configuration : ses réglages (caméra…) sont dans son `profil.toml` (MJ4).
     profile_id = _option_arg(clean_core_args, "--profil")
-    ctx = profiles.resolve(profile_id, env) or profiles.current()   # ProfileContextError si refusé
+    ctx = profiles.resolve(profile_id, env) or profiles.ProfileContext.legacy()   # ProfileContextError si refusé
+    profiles.activate(ctx)
     profile_args = ["--profil", ctx.id] if ctx.id is not None else []
+    cfg = config_mod.load(config_path)   # ConfigError si invalide
 
     godot = Path(env.get("GODOT") or cfg.engine.godot or DEFAULT_GODOT).expanduser()
     if not (godot.is_file() and os.access(godot, os.X_OK)):
@@ -876,6 +899,10 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
             first_run = ensure_first_run()
         except OSError as exc:
             return fail(f"création de ~/OpenRide impossible : {exc}")
+        warning = migrate_profiles()
+        if warning:
+            print(f"openride : {warning}", file=sys.stderr)
+            message(warning, True)
     try:
         sup = build_supervisor(args)
     except ConfigError as exc:
