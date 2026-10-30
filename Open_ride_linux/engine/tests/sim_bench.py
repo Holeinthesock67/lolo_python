@@ -2,7 +2,7 @@
 """Banc d'essai simulé : vrai core sur Bluetooth simulé, vrai engine, captures et rapport.
 
 Usage :
-    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|DOSSIER.world]
+    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
                  [--culling on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
@@ -211,6 +211,18 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--terrain",
                         "--out", str(routes)], check=True, env=env, stdout=subprocess.DEVNULL)
         return "demo"
+    if kind == "ouvert":
+        # Monde vivant synthétique de 20 km (W15) : même rendu que le monde ouvert, sans générateur ni réseau.
+        problem = compiler_problem(())
+        if problem:
+            print(f"ÉCHEC monde ouvert : {problem}", file=sys.stderr)
+            raise SystemExit(2)
+        work = tmp / "world-ouvert"
+        subprocess.run([sys.executable, str(TESTS_DIR / "make_sim_world.py"), "--out", str(work), "--live"],
+                       check=True, stdout=subprocess.DEVNULL)
+        world = next(work.glob("*.world"))
+        shutil.copytree(world, routes / world.name, dirs_exist_ok=True)
+        return world.stem
     if kind in ("village", "osm"):
         script = "make_sim_world.py" if kind == "village" else "make_osm_world.py"
         problem = compiler_problem(world_layers(kind))
@@ -225,7 +237,7 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return world.stem
     src = Path(kind).expanduser()
     if not (src / "manifest.json").is_file():
-        raise SystemExit(f"parcours introuvable : {kind} (demo, village, osm ou dossier .world)")
+        raise SystemExit(f"parcours introuvable : {kind} (demo, village, osm, ouvert ou dossier .world)")
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
 
@@ -1024,7 +1036,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
         "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
-    ap.add_argument("--world", help="demo (défaut), village (bâtiments, montée et descente), osm, ou dossier .world ; "
+    ap.add_argument("--world", help="demo (défaut), village (bâtiments, montée et descente), osm, ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
                     "l'emporte sur le monde du scénario")
     ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
                     "l'emporte sur le biome du scénario (scénarios biome_*)")

@@ -963,10 +963,7 @@ func _request_route(route_id) -> void:
 
 ## Exécuté dans un fil de WorkerThreadPool : lecture des fichiers et contrôles, sans toucher à la scène.
 func _load_route_job(job: Dictionary) -> void:
-	if str(job["id"]).begins_with(OW_PREFIX):
-		job["ok"] = job["route"].load_live_dir(job["path"])
-	else:
-		job["ok"] = job["route"].load_world_dir(job["path"])
+	job["ok"] = job["route"].load_world_dir(job["path"])      # un monde vivant (manifeste `live`) est reconnu par le manifeste
 
 
 func _poll_route_job() -> void:

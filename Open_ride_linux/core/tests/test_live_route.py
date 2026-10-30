@@ -196,3 +196,16 @@ def test_swap_is_atomic_for_concurrent_readers(tmp_path):
     stop.set()
     t.join()
     assert not bad
+
+
+def test_load_world_reads_a_live_world_as_a_whole_route(tmp_path):
+    """Un `.world` vivant (manifeste `live`) se charge comme un parcours : `select_route` et sim_bench (W16a)."""
+    from openride_core.route import load_world
+    whole = build_route(2500.0)
+    write_session(tmp_path, split(whole))
+    (tmp_path / "manifest.json").write_text(json.dumps(
+        {"format": "openride-world", "format_version": "1.4", "live": True, "route": {"present": True, "file": "route/"}}),
+        encoding="utf-8")
+    world = load_world(tmp_path)
+    assert world.route.length_m == pytest.approx(2500.0)
+    assert world.route.sample(1500.0).x == pytest.approx(Route(whole).sample(1500.0).x, abs=1e-9)
