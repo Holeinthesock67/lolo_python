@@ -8,6 +8,7 @@
   "hud_profile_120": {"budget_ms": 2, "ci_ms": 6, "lot": "K2"},
   "perf_probe_mark_off": {"budget_ms": 0.02, "ci_ms": 0.06, "lot": "X15"},
   "weather_evaluate": {"budget_ms": 0.05, "ci_ms": 0.15, "lot": "P8"},
+  "atmosphere_at": {"budget_ms": 0.2, "ci_ms": 0.6, "lot": "U10"},
   "traffic_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P13"},
   "traffic_view_frame": {"budget_ms": 0.1, "ci_ms": 0.3, "lot": "P13"},
   "road_traffic_frame": {"budget_ms": 0.15, "ci_ms": 0.45, "lot": "P25"},
