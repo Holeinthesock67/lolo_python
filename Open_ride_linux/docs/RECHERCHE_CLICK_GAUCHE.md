@@ -193,3 +193,23 @@ séquence d'activation complète et la réponse `ff 04 00`, comparée à une sé
   gauche chaque minute environ, et un boîtier qui redémarre en pleine séance. Le contournement
   actuel (B = « − », rien d'indispensable sur le seul gauche, spécification §7.1) reste la base.
 - **Ne pas mettre à jour le firmware** au-delà du 1.2.0 sans relire ces sources.
+
+## 9. Suivi : essai C livré (30 octobre 2026)
+
+L'essai B (déverrouillage par l'appli Zwift) est abandonné : pas d'abonnement Zwift, et l'appli
+Companion seule n'a rien changé. Le code livre à la place l'essai C, **désactivé par défaut** :
+
+- `zwift_click.parse_status` lit le message d'état `ff 05 00 ea 05` du boîtier gauche ; la trace et le
+  journal le classent en « état » et notent chaque changement de mode (`Click gauche : état du boîtier,
+  mode 1 (verrouillé par Zwift)`). Cette lecture est active tout le temps et ne change rien au
+  comportement.
+- `[drivers] click_reset_locked = true` : dès que le mode passe à 1, le core écrit l'octet `0x18` sur
+  SYNC_RX. Le boîtier redémarre, la liaison tombe, la reconnexion habituelle reprend (journal :
+  « verrouillé par Zwift, redémarrage du boîtier (0x18) »). Un seul redémarrage par connexion.
+- Risque connu : d'après zwiftboard, le droit s'appuie sur le gauche pour sa liaison ; il pourrait
+  lui aussi tomber pendant le redémarrage. À observer pendant l'essai.
+
+Essai à faire sur le PC (10 minutes) : `click_trace_raw = true` et `click_reset_locked = true`, séance
+avec appuis réguliers sur le gauche toutes les 20 s. À relever : présence des lignes « état », délai
+avant le mode 1, durée de la nouvelle fenêtre de boutons après chaque redémarrage, et si le droit
+reste connecté.

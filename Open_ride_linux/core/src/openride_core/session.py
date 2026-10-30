@@ -175,7 +175,7 @@ def build_inputs(cfg: Config, sim: Any = None) -> list[Any]:
     d = cfg.drivers
     # Réglages du lot Q6 (trace brute, boîtier muet, reprise), communs aux deux boîtiers.
     q6 = {"trace_raw": d.click_trace_raw, "mute_after_s": d.click_mute_after_s,
-          "rehandshake_s": d.click_rehandshake_s, "side_of": click_side_of(d)}
+          "rehandshake_s": d.click_rehandshake_s, "reset_locked": d.click_reset_locked, "side_of": click_side_of(d)}
     if kind == "sim":
         # Vrais fournisseurs du Click contre la paire simulée ; le clavier appuie sur le Click simulé.
         pair = ClickPair()
