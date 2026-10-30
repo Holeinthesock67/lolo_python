@@ -41,3 +41,12 @@ Aucune.
 ## 8. Hors périmètre
 
 Passage de la recette V10 sur `_essai` (MJ9).
+
+## Livraison
+
+Livré le 29 octobre 2026 (branche `claude/project-thread-grv91v-mj3`, empilée sur MJ2).
+
+- `core/src/openride_core/tools/campagne_profil.py` : programme des séances (`program`, une libre en premier, toujours une trop courte, une ERG terminée et une abandonnée, une run Cyber-Rogue à partir de 8 séances), horloge simulée (`time.time` et `time.strftime`, une séance par jour : départs distincts pour le dédoublonnage des reprises, noms de journaux et de FIT distincts), commandes du Garage par `_on_command`, relance du core au milieu, contrôles et empreinte SHA-256 (contexte historique, `Profils/*` hors `_essai`, `config.toml`).
+- Dossier temporaire par défaut : faux profil `principal` et surcharge `progression.toml` du profil d'essai (expérience ×10, pièces à l'effort ×2 : la première séance ne suffit pas à l'achat, ce qui exerce le refus `not_enough_coins`). `--reel` : vrai `~/OpenRide/Profils/_essai/`, surcharge laissée telle quelle, refus d'achat seulement noté s'il ne se présente pas.
+- Ajustement : le relief et la longueur du parcours `demo` bornent la durée des sessions libres (fin du parcours) ; la durée réellement roulée est affichée.
+- Tests : `core/tests/test_campagne_profil.py` (campagne de 8 séances verte, trois défauts injectés qui la font échouer : journal marqué d'un autre profil, achat non débité, écriture dans le vrai profil).
