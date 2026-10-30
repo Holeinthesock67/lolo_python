@@ -45,6 +45,8 @@ def test_parse_status():
     assert zwift_click.parse_status(zwift_click.STATUS_HEADER + bytes([0x00])) == 0
     assert zwift_click.parse_status(bytes([zwift_click.MSG_EMPTY, 0x00])) is None
     assert zwift_click.parse_status(zwift_click.STATUS_HEADER) is None
+    # Comme sur le vrai boîtier : un champ de longueur précède le mode.
+    assert zwift_click.parse_status(zwift_click.STATUS_HEADER + bytes([0x07, 0x0A, 0x02, 0x01, 0x02, 0x10, 0x01])) == 1
 
 
 def _locked_session(reset_locked: bool, caplog, monkeypatch):
