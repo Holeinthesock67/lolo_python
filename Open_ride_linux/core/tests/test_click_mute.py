@@ -45,6 +45,13 @@ def test_parse_status():
     assert zwift_click.parse_status(zwift_click.STATUS_HEADER + bytes([0x00])) == 0
     assert zwift_click.parse_status(bytes([zwift_click.MSG_EMPTY, 0x00])) is None
     assert zwift_click.parse_status(zwift_click.STATUS_HEADER) is None
+    # Trames reçues du vrai boîtier gauche (30/10, numéro de série du champ 1 remplacé par des zéros) :
+    # le champ de longueur 1 précède le mode.
+    real_unlocked = bytes.fromhex("ff0500ea05180a0c0000000000000000000000001000180f20082809301f")
+    real_locked = bytes.fromhex("ff0500ea05190a0c000000000000000000000000100118840720082809301f")
+    assert zwift_click.classify_message(real_locked) == "etat"
+    assert zwift_click.parse_status(real_unlocked) == 0
+    assert zwift_click.parse_status(real_locked) == 1
 
 
 def _locked_session(reset_locked: bool, caplog, monkeypatch):
@@ -375,4 +382,5 @@ def test_session_passes_q6_settings_and_side(tmp_path):
     bare = [p for p in build_inputs(from_dict({"drivers": {"input": "click"}}))
             if isinstance(p, ZwiftClickProvider)]
     assert [p.side for p in bare] == ["inconnu", "inconnu"]
-    assert all(p.trace_raw is False and p.rehandshake_s == 0.0 and not p.reset_locked for p in bare)
+    # Par défaut, le boîtier gauche verrouillé par Zwift est redémarré (essai PC du 30/10/2026)
+    assert all(p.trace_raw is False and p.rehandshake_s == 0.0 and p.reset_locked for p in bare)

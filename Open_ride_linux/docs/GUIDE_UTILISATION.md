@@ -100,6 +100,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Braquet plus un, moins un | « + » court, « − » court |
 | Braquet plus dix, moins dix (de 1 à 24) | « + » long, « − » long |
 | Pause et reprise | Y |
+| Vue de caméra suivante, précédente | flèche haut (ou A court), flèche bas |
 | Activer le bonus en réserve (mode classique) | Z |
 | Noter un décrochage du trainer au journal | Z long |
 
@@ -112,6 +113,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Bloc suivant | Z |
 | Noter un décrochage du trainer au journal | Z long |
 | Pause et reprise | Y |
+| Vue de caméra suivante, précédente | flèche haut (ou A court), flèche bas |
 
 **Z long** (ou `Maj+Z` au clavier) note un repère « décrochage » au journal quand vous sentez la résistance du trainer lâcher (sauf en Cyber-Rogue, où Z long joue la carte active). L'écran le confirme ; rien d'autre ne change. L'outil `decrochages` relit ces repères en face des chutes de puissance mesurées.
 
@@ -130,9 +132,9 @@ Le clavier double le Click touche pour touche, en menu comme en séance, avec le
 | Z | `Z` | `Maj+Z` |
 | Flèches | `Gauche`, `Droite`, `Haut`, `Bas` | — |
 
-Les lettres se lisent comme imprimées sur la touche (AZERTY comme QWERTY). Les flèches haut et bas ne changent pas le braquet : elles serviront aux vues de caméra.
+Les lettres se lisent comme imprimées sur la touche (AZERTY comme QWERTY). Les flèches haut et bas ne changent pas le braquet : en séance, elles changent la vue de caméra.
 
-Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîtier gauche ne répond plus (section 9). Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran.
+Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîtier gauche ne répond pas (section 9). Le boîtier gauche (« − » et flèches) est redémarré tout seul environ une fois par minute et reste alors 4 s environ sans boutons ; tout ce qu'il fait existe aussi sur le boîtier droit ou au clavier. Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran.
 
 ## 7. Réglages, thèmes et sons
 
@@ -161,7 +163,7 @@ Pour relire les chiffres d'une séance : `openride-core summary` (dernier bilan)
 
 **Le trainer ne répond plus ou reste « réservé ».** Une autre application (Zwift, le téléphone) le tient peut-être, ou OpenRide s'est arrêté sans le rendre. Fermez l'autre application, puis cliquez sur l'icône **OpenRide – Libérer le trainer**. En terminal : `openride-core release-trainer`. Éteindre et rallumer le trainer règle aussi la plupart des cas. Si le trainer reste réservé malgré cela, débranchez-le quelques secondes, puis relancez OpenRide ; s'il ne se connecte toujours pas, joignez le journal à une demande d'aide (voir plus bas).
 
-**Le Click ne répond plus.** Appuyez sur un bouton pour le réveiller. Sinon, déconnectez-le d'abord (`bluetoothctl disconnect` suivi de son adresse) puis rappuyez. Si seul le boîtier gauche (« − ») est muet, utilisez le bouton **B** du boîtier droit : sans passage récent par l'application Zwift (moins de 24 heures), le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion. Ce n'est pas une panne d'OpenRide.
+**Le Click ne répond plus.** Appuyez sur un bouton pour le réveiller. Sinon, déconnectez-le d'abord (`bluetoothctl disconnect` suivi de son adresse) puis rappuyez. Si seul le boîtier gauche (« − ») est muet, utilisez le bouton **B** du boîtier droit : sans passage récent par l'application Zwift (moins de 24 heures), le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion. OpenRide le redémarre alors tout seul (environ 4 s sans boutons, puis il répond de nouveau) ; un appui fait pendant ces quelques secondes est perdu. Ce n'est pas une panne d'OpenRide. Pour le laisser muet à la place : `click_reset_locked = false` dans `[drivers]`.
 
 **Écran noir, lent ou saccadé.** Passez la qualité graphique en `low` (**Réglages**). Vérifiez que le pilote de la carte graphique est installé. Les courbes de la séance en « masquées » libèrent aussi un peu de puissance.
 

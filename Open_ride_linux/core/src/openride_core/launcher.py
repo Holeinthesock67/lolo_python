@@ -254,6 +254,27 @@ def ensure_first_run(home: Path | None = None, template: Path | None = None) -> 
     return True
 
 
+def migrate_profiles(home: Path | None = None) -> str | None:
+    """Migration du joueur d'avant les profils vers `Profils/principal/` (série MJ, lot MJ5) ;
+    renvoie un message si elle est annulée ou impossible (OpenRide démarre alors sans profil)."""
+    from . import migration_profils as mig
+    from .config import ConfigError
+
+    if not mig.needed(home):
+        return None
+    try:
+        state = mig.migrate(home)
+    except ConfigError:
+        return None   # configuration invalide : le lanceur l'affiche ; la migration reprendra une fois corrigée
+    except (mig.MigrationError, OSError, ValueError) as exc:
+        return (f"Migration vers les profils de joueurs impossible : {exc}. OpenRide démarre sans profil ; "
+                "elle sera retentée au prochain lancement.")
+    if state == mig.CANCELLED:
+        return ("Migration vers les profils de joueurs annulée : la progression recalculée ne correspondait pas. "
+                "Tes fichiers sont remis comme avant (détail dans ~/OpenRide/Profils/.migration_ecart.txt).")
+    return None
+
+
 def _default_echo() -> bool:
     try:
         return sys.stdout.isatty()
@@ -294,6 +315,7 @@ class Supervisor:
     alert: Callable[[str], None] | None = None   # fenêtre d'erreur (lot N14) ; None : journal seul
     theme_name: str = ""               # thème choisi, daté au démarrage dans la bibliothèque (lot U15)
     themes_dir: Path | None = None     # ~/OpenRide/Themes ; None : rien n'est daté
+    active_profile_path: Path | None = None   # `.profil_actif` écrit par le core (lot MJ7) ; None : ignoré
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
@@ -388,6 +410,26 @@ class Supervisor:
 
     def _core_cmd(self) -> list[str]:
         return sim_core_cmd(self.core_cmd) if self.sim_mode else list(self.core_cmd)
+
+    def _follow_active_profile(self) -> None:
+        """Profil choisi au menu depuis le lancement (lot MJ7) : le core relancé (plantage, relance du
+        menu) le reprend, avec ses journaux pour la reprise. Le profil d'essai n'est jamais suivi."""
+        if self.active_profile_path is None or self.sim_mode:
+            return
+        from . import profiles
+
+        wanted = profiles.read_active(self.active_profile_path)
+        if wanted is None or wanted == profiles.TRIAL_ID or wanted == _option_arg(self.core_cmd, "--profil"):
+            return
+        try:
+            ctx = profiles.ProfileContext.for_id(wanted)
+        except profiles.ProfileContextError:
+            return
+        self.core_cmd = with_profile(self.core_cmd, wanted)
+        if self.recover_cmd is not None:
+            self.recover_cmd = with_profile(self.recover_cmd, wanted)
+        self.journal_dir = ctx.journal_dir
+        self._say(f"profil du menu repris à la relance : {wanted}.")
 
     def _engine_cmd(self) -> list[str]:
         return [*self.engine_cmd, SIM_ENGINE_ARG] if self.sim_mode else list(self.engine_cmd)
@@ -550,6 +592,7 @@ class Supervisor:
                     if code == 0:
                         self._stop_engine(engine)
                         return self._finish(core, engine, 0)
+                    self._follow_active_profile()
                     journal = self._unfinished_journal()
                     now = self.clock()
                     core_crashes = [t for t in core_crashes if now - t < self.core_restart_window_s] + [now]
@@ -585,6 +628,7 @@ class Supervisor:
                                   + " : arrêt du core puis nouveau lancement.")
                         self._join_readers()
                         self._stop_core(core)
+                        self._follow_active_profile()
                         core = self._start_core()
                         if not self._core_survives_startup(core):
                             self._say(f"le core s'est arrêté à la relance (code {core.returncode}) ; voir {self.log_path}")
@@ -781,11 +825,13 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
     clean_core_args, no_compile, compile_only, compile_timeout = extract_launcher_args(raw_args)
     clean_core_args = clean_core_args or list(DEFAULT_CORE_ARGS)
     config_path = _config_arg(clean_core_args)
-    cfg = config_mod.load(config_path)   # ConfigError si invalide
     # Profil de joueur (série MJ, lot MJ1) : `--profil` passe au core ; reprise et FIT dans son dossier.
+    # Activé avant la lecture de la configuration : ses réglages (caméra…) sont dans son `profil.toml` (MJ4).
     profile_id = _option_arg(clean_core_args, "--profil")
-    ctx = profiles.resolve(profile_id, env) or profiles.current()   # ProfileContextError si refusé
+    ctx = profiles.resolve(profile_id, env) or profiles.ProfileContext.legacy()   # ProfileContextError si refusé
+    profiles.activate(ctx)
     profile_args = ["--profil", ctx.id] if ctx.id is not None else []
+    cfg = config_mod.load(config_path)   # ConfigError si invalide
 
     godot = Path(env.get("GODOT") or cfg.engine.godot or DEFAULT_GODOT).expanduser()
     if not (godot.is_file() and os.access(godot, os.X_OK)):
@@ -827,6 +873,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
         compile_timeout_s=compile_timeout,
         theme_name=cfg.render.theme,
         themes_dir=THEMES_DIR,
+        active_profile_path=profiles.active_file(),
     )
 
 
@@ -877,6 +924,10 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
             first_run = ensure_first_run()
         except OSError as exc:
             return fail(f"création de ~/OpenRide impossible : {exc}")
+        warning = migrate_profiles()
+        if warning:
+            print(f"openride : {warning}", file=sys.stderr)
+            message(warning, True)
     try:
         sup = build_supervisor(args)
     except ConfigError as exc:

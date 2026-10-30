@@ -103,12 +103,13 @@ def plan(paired: PairedDevices, text: str) -> tuple[str, list[str]]:
 
 
 def save(paired: PairedDevices, path: Path | None = None) -> list[str]:
-    """Écrit les appareils dans `path` (défaut : `~/OpenRide/config.toml`) ; renvoie les lignes changées.
+    """Écrit les appareils dans `path` (défaut : `~/OpenRide/config.toml`) ; la ceinture cardio,
+    réglage du joueur, va dans le profil en cours s'il y en a un (lot MJ4). Renvoie les lignes changées.
 
-    Lève `PairingError` si le fichier final ne passe pas `config.validate` : rien n'est écrit.
+    Lève `PairingError` si le résultat ne passe pas `config.validate` : rien n'est écrit.
     """
     try:
-        return config_edit.update_config(path or config_mod.DEFAULT_CONFIG_PATH, _values(paired))
+        return config_edit.update_layers(_values(paired), path)
     except config_edit.ConfigEditError as exc:
         raise PairingError(str(exc)) from None
 
