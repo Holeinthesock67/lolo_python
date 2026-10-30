@@ -21,7 +21,9 @@ Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de réf�
   variables `GODOT`, `GODOT_ARGS`, `OPENRIDE_ENGINE` (dossier du projet Godot), `OPENRIDE_PERF_PROBE`
   (fichier CSV de la sonde de performance du moteur, `--perf-probe`, lot X13) et `OPENRIDE_DISPLAY`
   (`windowed`, `borderless` ou `fullscreen` : remplace `[render] display` le temps d'un lancement,
-  par exemple `OPENRIDE_DISPLAY=windowed` pour garder une fenêtre pendant un essai).
+  par exemple `OPENRIDE_DISPLAY=windowed` pour garder une fenêtre pendant un essai) ;
+- au démarrage, le thème choisi (`[render] theme`, s'il est installé dans `~/OpenRide/Themes`) est daté dans
+  `~/OpenRide/Themes/.utilisation.json` : `theme-install` retire d'abord les packs oubliés (lot U15).
 
 Supervision :
 - l'engine se ferme normalement (code 0) → arrêt propre du core (SIGINT), 10 s au plus, puis
@@ -67,6 +69,7 @@ Les commandes du core, de l'engine et de la libération du trainer sont des para
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shlex
@@ -76,6 +79,7 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import IO, Callable
 
@@ -281,6 +285,8 @@ class Supervisor:
     core_max_restarts: int = 3
     core_restart_window_s: float = 600.0
     alert: Callable[[str], None] | None = None   # fenêtre d'erreur (lot N14) ; None : journal seul
+    theme_name: str = ""               # thème choisi, daté au démarrage dans la bibliothèque (lot U15)
+    themes_dir: Path | None = None     # ~/OpenRide/Themes ; None : rien n'est daté
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
@@ -500,6 +506,8 @@ class Supervisor:
                 if self._stop_signal is not None:
                     return 0
 
+            if self.themes_dir is not None and self.theme_name:
+                record_theme_use(self.themes_dir, self.theme_name)
             core = self._start_core()
             deadline = self.clock() + self.startup_grace_s
             while self.clock() < deadline and core.poll() is None and self._stop_signal is None:
@@ -697,6 +705,30 @@ def _config_arg(args: list[str]) -> Path | None:
     return None
 
 
+THEMES_DIR = Path.home() / "OpenRide" / "Themes"
+THEME_USE_FILE = ".utilisation.json"   # lu par openride_compiler.theme_packs (bibliothèque des thèmes, lot U15)
+
+
+def record_theme_use(themes_dir: Path, theme: str, when: datetime | None = None) -> None:
+    """Date de dernière utilisation du thème choisi (`{nom: date ISO}`), pour que `theme-install` retire d'abord
+    les packs oubliés. Le thème intégré n'est pas daté (jamais retiré) ; fichier illisible : recommencé ;
+    erreur d'écriture : ignorée (la séance démarre quand même)."""
+    if theme == "default" or not (themes_dir / theme).is_dir():
+        return
+    path = themes_dir / THEME_USE_FILE
+    try:
+        uses = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):   # absent ou illisible : recommencé
+        uses = {}
+    if not isinstance(uses, dict):
+        uses = {}
+    uses[theme] = (when or datetime.now()).isoformat(timespec="seconds")
+    try:
+        path.write_text(json.dumps(uses, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
 def worldgen_command(env: dict[str, str] | None = None) -> list[str]:
     """Commande du générateur du monde ouvert (lot W9) : `OPENRIDE_WORLDGEN`, sinon le paquet du compilateur
     lancé par le même Python que le core (installé dans le même environnement, `scripts/install.sh`)."""
@@ -762,6 +794,8 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
         compile_enabled=not no_compile,
         compile_only=compile_only,
         compile_timeout_s=compile_timeout,
+        theme_name=cfg.render.theme,
+        themes_dir=THEMES_DIR,
     )
 
 

@@ -398,6 +398,7 @@ camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, f
 fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU et GPU, essais) (« Afficher les images/s » dans Réglages)
 draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« Jauge d'abri des bots »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
+theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé
 
 [ipc]
 port_state = 5005

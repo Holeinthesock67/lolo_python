@@ -1,8 +1,15 @@
-"""Gestion et installation des packs de thèmes (Lot N10, SRS §10 et §11).
+"""Gestion et installation des packs de thèmes (Lot N10, SRS §10 et §11 ; adresses et bibliothèque : lot U15).
 
 Commandes :
-- `openride-compiler theme-list [--themes-dir D] [--json]`
-- `openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]`
+- `openride-compiler theme-list [--themes-dir D] [--json]` : taille et dernière utilisation de chaque pack ;
+- `openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]` : SOURCE est un dossier,
+  une archive .zip ou une adresse `https://` d'archive .zip (téléchargée dans un dossier temporaire, contrôlée
+  par `theme-check` avant toute copie ; HTTPS seulement, jamais pendant une séance).
+
+Bibliothèque (U-Q3) : les packs installés restent dans `~/OpenRide/Themes/`. Le lanceur du core écrit la date
+de dernière utilisation du thème choisi dans `.utilisation.json` (`{nom: date ISO}`) au démarrage d'une séance.
+Au-delà de `[render] theme_library_gb` (5 Go par défaut, 1 à 50), `theme-install` retire les packs utilisés le
+moins récemment, jamais le thème choisi, le thème intégré ni celui qu'il vient d'installer.
 """
 
 from __future__ import annotations
@@ -14,8 +21,12 @@ import shutil
 import stat
 import tempfile
 import unicodedata
+import urllib.error
+import urllib.parse
+import urllib.request
 import uuid
 import zipfile
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -25,6 +36,11 @@ from .theme import DEFAULT_THEME_DIR, check_theme
 MAX_THEME_UNCOMPRESSED_BYTES = 500 * 1024 * 1024  # 500 Mo
 DEFAULT_THEMES_DIR = Path.home() / "OpenRide" / "Themes"
 DEFAULT_CONFIG_PATH = Path.home() / "OpenRide" / "config.toml"
+USE_FILE = ".utilisation.json"           # écrit par openride_core.launcher.record_theme_use
+DEFAULT_LIBRARY_GB = 5.0
+LIBRARY_GB_RANGE = (1.0, 50.0)
+DOWNLOAD_TIMEOUT_S = 60.0
+DOWNLOAD_CHUNK = 1024 * 1024
 
 
 def normalize_theme_name(text: str) -> str:
@@ -34,19 +50,48 @@ def normalize_theme_name(text: str) -> str:
     return name or "theme"
 
 
-def _read_current_config_theme(config_path: Path | None = None) -> str:
+def _read_render_config(config_path: Path | None = None) -> dict[str, Any]:
     path = config_path or DEFAULT_CONFIG_PATH
     if not path.is_file():
-        return "default"
+        return {}
     try:
         import tomllib
-        data = tomllib.loads(path.read_text(encoding="utf-8"))
-        render = data.get("render", {})
-        if isinstance(render, dict) and "theme" in render:
-            return str(render["theme"])
-    except (OSError, ValueError):   # config illisible ou TOML invalide : thème intégré
-        return "default"
-    return "default"
+        render = tomllib.loads(path.read_text(encoding="utf-8")).get("render", {})
+    except (OSError, ValueError):   # config illisible ou TOML invalide : valeurs par défaut
+        return {}
+    return render if isinstance(render, dict) else {}
+
+
+def _read_current_config_theme(config_path: Path | None = None) -> str:
+    return str(_read_render_config(config_path).get("theme", "default"))
+
+
+def library_limit_bytes(config_path: Path | None = None) -> int:
+    """Plafond de la bibliothèque : `[render] theme_library_gb` (5 Go, ramené entre 1 et 50)."""
+    gb = _read_render_config(config_path).get("theme_library_gb", DEFAULT_LIBRARY_GB)
+    if isinstance(gb, bool) or not isinstance(gb, (int, float)):
+        gb = DEFAULT_LIBRARY_GB
+    gb = min(max(float(gb), LIBRARY_GB_RANGE[0]), LIBRARY_GB_RANGE[1])
+    return int(gb * 1024 ** 3)
+
+
+def read_theme_use(themes_dir: Path) -> dict[str, str]:
+    """Dates de dernière utilisation (`.utilisation.json`) ; fichier absent ou illisible : aucune."""
+    try:
+        data = json.loads((Path(themes_dir) / USE_FILE).read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    return {str(k): str(v) for k, v in data.items()} if isinstance(data, dict) else {}
+
+
+def _last_used(theme_dir: Path, uses: dict[str, str]) -> str:
+    """Date de dernière utilisation, sinon date d'installation (dossier), au format ISO."""
+    if theme_dir.name in uses:
+        return uses[theme_dir.name]
+    try:
+        return datetime.fromtimestamp(theme_dir.stat().st_mtime).isoformat(timespec="seconds")
+    except OSError:
+        return ""
 
 
 def _dir_size_and_textures(theme_dir: Path) -> tuple[int, int]:
@@ -87,6 +132,7 @@ def list_themes(
 
     # 1. Thème intégré 'default'
     def_size, def_tex = _dir_size_and_textures(DEFAULT_THEME_DIR)
+    uses = read_theme_use(t_dir)
     out.append({
         "name": "default",
         "status": "ok",
@@ -96,6 +142,7 @@ def list_themes(
         "size_bytes": def_size,
         "size_text": _format_size(def_size),
         "path": str(DEFAULT_THEME_DIR),
+        "last_used": uses.get("default", ""),
         "issues": []
     })
 
@@ -128,6 +175,7 @@ def list_themes(
                 "size_bytes": size_bytes,
                 "size_text": _format_size(size_bytes),
                 "path": str(d),
+                "last_used": uses.get(d.name, ""),
                 "issues": [{"severity": i.severity, "message": i.message} for i in issues]
             })
 
@@ -139,9 +187,11 @@ def format_themes_text(themes: list[dict[str, Any]]) -> str:
     for t in themes:
         mark = "* " if t["active"] else "  "
         builtin_tag = " [intégré]" if t["builtin"] else ""
+        used = t.get("last_used", "")
         lines.append(
             f"{mark}{t['name']}{builtin_tag} : {t['status']}, "
-            f"{t['textures_count']} texture(s), {t['size_text']}"
+            f"{t['textures_count']} texture(s), {t['size_text']}, "
+            f"dernière utilisation : {used[:10] if used else 'jamais'}"
         )
     return "\n".join(lines)
 
@@ -184,26 +234,88 @@ def _extract_zip_securely(zip_path: Path, target_dir: Path) -> Path:
     return target_dir
 
 
+def is_url(source: Path | str) -> bool:
+    return isinstance(source, str) and "://" in source
+
+
+def download_pack(url: str, dest_dir: Path, ssl_context: Any = None,
+                  timeout_s: float = DOWNLOAD_TIMEOUT_S) -> Path:
+    """Télécharge l'archive d'un pack (HTTPS seulement) dans `dest_dir/pack.zip`, au plus
+    MAX_THEME_UNCOMPRESSED_BYTES ; réseau absent ou adresse injoignable : CompileError lisible."""
+    parts = urllib.parse.urlsplit(url)
+    if parts.scheme.lower() != "https" or not parts.netloc:
+        raise CompileError(f"Adresse refusée (https:// seulement) : {url}")
+    target = Path(dest_dir) / "pack.zip"
+    total = 0
+    try:
+        with urllib.request.urlopen(url, timeout=timeout_s, context=ssl_context) as resp, target.open("wb") as out:
+            while chunk := resp.read(DOWNLOAD_CHUNK):
+                total += len(chunk)
+                if total > MAX_THEME_UNCOMPRESSED_BYTES:
+                    raise CompileError(
+                        f"Archive trop volumineuse : dépasse {MAX_THEME_UNCOMPRESSED_BYTES // (1024 * 1024)} Mo")
+                out.write(chunk)
+    except (urllib.error.URLError, OSError, ValueError) as exc:
+        reason = getattr(exc, "reason", exc)
+        raise CompileError(f"Téléchargement impossible (réseau absent ou adresse injoignable) : {url} ({reason})") from None
+    if not zipfile.is_zipfile(target):
+        raise CompileError(f"L'adresse ne donne pas une archive .zip : {url}")
+    return target
+
+
+def enforce_library_limit(themes_dir: Path, limit_bytes: int, keep: set[str]) -> list[str]:
+    """Retire les packs utilisés le moins récemment tant que la bibliothèque dépasse `limit_bytes` ;
+    jamais ceux de `keep` (thème choisi, pack qu'on vient d'installer) ni le thème intégré. Renvoie les retirés."""
+    t_dir = Path(themes_dir)
+    if not t_dir.is_dir():
+        return []
+    uses = read_theme_use(t_dir)
+    packs = []
+    for d in t_dir.iterdir():
+        if d.is_dir() and not d.name.startswith(".") and d.name != "default":
+            packs.append((_last_used(d, uses), d.name, _dir_size_and_textures(d)[0], d))
+    total = sum(p[2] for p in packs)
+    removed: list[str] = []
+    for _used, name, size, d in sorted(packs):
+        if total <= limit_bytes:
+            break
+        if name in keep:
+            continue
+        shutil.rmtree(d, ignore_errors=True)
+        total -= size
+        removed.append(name)
+    return removed
+
+
 def install_theme(
-    source: Path,
+    source: Path | str,
     name: str | None = None,
     force: bool = False,
-    themes_dir: Path | None = None
+    themes_dir: Path | None = None,
+    config_path: Path | None = None,
+    ssl_context: Any = None,
 ) -> tuple[str, list[str]]:
-    """Installe un pack de thème depuis un dossier ou un fichier .zip.
+    """Installe un pack de thème depuis un dossier, un fichier .zip ou une adresse https:// d'archive .zip.
 
-    Effectue tous les contrôles de sécurité et de conformité avant toute copie.
-    Renvoie le nom normalisé du thème installé et la liste des avertissements.
+    Effectue tous les contrôles de sécurité et de conformité avant toute copie, puis tient la bibliothèque sous
+    son plafond (`enforce_library_limit`). Renvoie le nom normalisé du thème installé et la liste des
+    avertissements (dont les packs retirés de la bibliothèque).
     """
-    source = Path(source)
-    if not source.exists():
-        raise CompileError(f"Source introuvable : {source}")
-
     t_dir = Path(themes_dir) if themes_dir is not None else DEFAULT_THEMES_DIR
 
     with tempfile.TemporaryDirectory() as tmp_str:
         tmp_path = Path(tmp_str)
         extracted_theme_dir: Path
+        url = str(source) if is_url(source) else ""
+        if url:
+            dl_dir = tmp_path / "telechargement"
+            dl_dir.mkdir()
+            source = download_pack(url, dl_dir, ssl_context=ssl_context)
+            tmp_path = tmp_path / "pack"
+            tmp_path.mkdir()
+        source = Path(source)
+        if not source.exists():
+            raise CompileError(f"Source introuvable : {source}")
 
         if source.is_file() and source.suffix.lower() == ".zip":
             extracted_theme_dir = _extract_zip_securely(source, tmp_path)
@@ -252,7 +364,8 @@ def install_theme(
             except (OSError, ValueError):   # theme.json déjà validé par check_theme ; repli sur le dossier
                 theme_name = ""
             if not theme_name:
-                theme_name = normalize_theme_name(source.stem)
+                stem = Path(urllib.parse.urlsplit(url).path).stem if url else source.stem
+                theme_name = normalize_theme_name(stem)
 
         if theme_name == "default":
             raise CompileError("Le nom de thème 'default' est réservé au thème intégré.")
@@ -283,4 +396,9 @@ def install_theme(
             if staging_dir.exists():
                 shutil.rmtree(staging_dir, ignore_errors=True)
 
-    return theme_name, [w.message for w in warnings]
+    messages = [w.message for w in warnings]
+    keep = {theme_name, _read_current_config_theme(config_path)}
+    for gone in enforce_library_limit(t_dir, library_limit_bytes(config_path), keep):
+        messages.append(f"bibliothèque des thèmes au-delà de son plafond : pack « {gone} » retiré "
+                        "(le moins récemment utilisé)")
+    return theme_name, messages

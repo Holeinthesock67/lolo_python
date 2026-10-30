@@ -7,7 +7,7 @@
     openride-compiler list | build-all [--layers ...] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
     openride-compiler theme-list [--themes-dir D] [--json]
-    openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]
+    openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]   (SOURCE : dossier, .zip ou https://)
     openride-compiler cache-info [--json] | cache-clean [--generated | --all] [--yes]
     openride-compiler region-add <région Geofabrik> [--keep-pbf] | region-update <région> | region-list [--json]
     openride-compiler verify <dossier.world>
@@ -201,8 +201,9 @@ def build_parser() -> argparse.ArgumentParser:
                     help="dossier des thèmes (défaut : ~/OpenRide/Themes)")
     tl.add_argument("--json", action="store_true", help="sortie au format JSON")
 
-    ti = sub.add_parser("theme-install", help="installe un pack de thème depuis un dossier ou une archive .zip")
-    ti.add_argument("source", type=Path, help="dossier du pack ou archive .zip")
+    ti = sub.add_parser("theme-install",
+                        help="installe un pack de thème depuis un dossier, une archive .zip ou une adresse https://")
+    ti.add_argument("source", help="dossier du pack, archive .zip ou adresse https:// d'une archive .zip")
     ti.add_argument("--name", help="nom du thème (défaut : tiré de theme.json ou du dossier)")
     ti.add_argument("--force", action="store_true", help="remplace un thème existant")
     ti.add_argument("--themes-dir", type=Path, default=None,
@@ -489,9 +490,9 @@ def cmd_theme_list(args: argparse.Namespace) -> int:
 
 
 def cmd_theme_install(args: argparse.Namespace) -> int:
-    from .theme_packs import install_theme
+    from .theme_packs import install_theme, is_url
     name, warnings = install_theme(
-        source=args.source,
+        source=args.source if is_url(args.source) else Path(args.source),
         name=args.name,
         force=args.force,
         themes_dir=args.themes_dir,
