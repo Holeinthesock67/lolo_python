@@ -36,7 +36,7 @@ from datetime import date, datetime
 from pathlib import Path
 from typing import Any
 
-from .. import fit_export
+from .. import profiles
 from ..journal import read_journal
 from .session_summary import SummaryError, _hms, compute_summary, load_session
 
@@ -176,8 +176,9 @@ def compute_history(
     cache_path: Path | None = None,
 ) -> dict[str, Any]:
     """Calcule l'historique des séances et le cumul hebdomadaire ISO."""
-    act_dir = Path(directory) if directory is not None else fit_export.ACTIVITIES_DIR
-    cpath = Path(cache_path) if cache_path is not None else CACHE_PATH
+    ctx = profiles.current()   # séances et cache du profil en cours (série MJ, lot MJ1)
+    act_dir = Path(directory) if directory is not None else ctx.activities_dir
+    cpath = Path(cache_path) if cache_path is not None else ctx.history_cache
     weeks = max(int(weeks), 1)
 
     cache_entries = _load_cache(cpath)

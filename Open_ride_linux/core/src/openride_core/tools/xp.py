@@ -38,13 +38,14 @@ from pathlib import Path
 from typing import Any
 
 from .. import config as config_mod
-from ..journal import JOURNAL_DIR
+from .. import profiles
 from ..coins import CoinsError, balance, coin_table, coins_by_session, earned_coins
-from ..profile import PROFILE_PATH, peek_profile
+from ..profile import peek_profile
 from ..progression import ProgressionError, load_table, recompute
 from ..garage import workout_duration_finder
 
-REASONS = {"replay": "rejeu", "simulated": "séance simulée", "too_short": "moins de 5 min"}
+REASONS = {"replay": "rejeu", "simulated": "séance simulée", "too_short": "moins de 5 min",
+           "other_profile": "journal d'un autre profil"}
 
 
 def _date(ts: float | None) -> str:
@@ -56,24 +57,26 @@ def _fr(x: float, digits: int = 1) -> str:
 
 
 def run(directory: Path | None, as_json: bool, config_path: Path | None,
-        workouts_dir: Path | None = None, profile_path: Path = PROFILE_PATH,
+        workouts_dir: Path | None = None, profile_path: Path | None = None,
         save: Path | None = None, compare: Path | None = None) -> int:
     try:
         cfg = config_mod.load(config_path)
-        table = load_table()
+        ctx = profiles.current()   # profil de joueur en cours (série MJ, lot MJ1)
+        table = load_table(ctx.table_path)
         ct = coin_table(table, cfg.rider.ftp_w)
     except (config_mod.ConfigError, ProgressionError, CoinsError) as exc:
         print(f"Erreur : {exc}", file=sys.stderr)
         return 2
-    directory = directory or JOURNAL_DIR
+    directory = directory or ctx.journal_dir
     progress = recompute(directory, table,
-                         workout_duration_finder(workouts_dir or config_mod.WORKOUTS_DIR))
+                         workout_duration_finder(workouts_dir or config_mod.WORKOUTS_DIR),
+                         counted=ctx.counted_sources, owns=ctx.owns)
     lv = progress.level
     earned = earned_coins(progress, ct)
     per_session = coins_by_session(progress, ct)
     solde = balance(progress, peek_profile(profile_path), ct)
     out = {
-        "directory": str(directory), "total_xp": progress.total_xp, "level": lv.level,
+        "directory": str(directory), "profile": ctx.id, "profile_type": ctx.type, "total_xp": progress.total_xp, "level": lv.level,
         "xp_level_start": lv.xp_level_start, "xp_next_level": lv.xp_next_level,
         "coins_earned": earned, "coins_balance": solde,
         "stats": {k: round(v, 1) for k, v in progress.stats.items()},
@@ -111,6 +114,8 @@ def run(directory: Path | None, as_json: bool, config_path: Path | None,
         print(json.dumps(out, ensure_ascii=False, indent=2))
         return 0
 
+    if ctx.id is not None:
+        print(f"Profil : {ctx.name or ctx.id}" + (" (PROFIL D'ESSAI)" if ctx.is_trial else ""))
     nxt = f" / {_fr(lv.xp_next_level, 0)} pour le niveau {lv.level + 1}" if lv.xp_next_level else " (niveau maximal)"
     print(f"Niveau {lv.level} — {_fr(progress.total_xp, 0)} XP{nxt}")
     st = progress.stats

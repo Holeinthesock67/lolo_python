@@ -1,7 +1,8 @@
 extends Node3D
 
-## Silhouettes des bots sur la route (Lot O7) : forme stylisée et légère (cadre, deux roues, coureur),
-## couleur par `kind` (bots_view_model.gd), posée à `s` avec le cap de route_data.gd et décalée de
+## Bots sur la route (Lot O7) : coureur casqué et vélo de people_mesh.gd (lot Y14, comme les cyclistes du
+## décor), pédalier animé par crowd.gdshader, maillot à la couleur du bot (bots_view_model.gd) ; fantôme translucide
+## (bot_ghost.gdshader), posée à `s` avec le cap de route_data.gd et décalée de
 ## LATERAL_M vers la droite (à droite du cycliste, vers le bord : road_builder.gd, lot P32) ; nom au-dessus à moins de
 ## NAME_M. Une silhouette par bot visible (moins de 300 m), maillages et matériaux partagés ;
 ## sans bot, aucun nœud. Ne décide rien : affiche la sortie de bots_view_model.view().
@@ -9,69 +10,58 @@ extends Node3D
 
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const RoadCyclistsModel := preload("res://scripts/road_cyclists_model.gd")
+const PeopleMesh := preload("res://scripts/people_mesh.gd")
+const CrowdShader := preload("res://shaders/crowd.gdshader")
+const GhostShader := preload("res://shaders/bot_ghost.gdshader")
 
 const LATERAL_M := RoadBuilder.BOT_LATERAL_M
 const NAME_HEIGHT_M := 2.1
 const GHOST_ALPHA := 0.55
 
-var _nodes := {}        # id → Node3D
-var _materials := {}    # kind → StandardMaterial3D
-var _wheel: CylinderMesh
-var _frame: BoxMesh
-var _rider: CapsuleMesh
+var _nodes := {}        # id:kind → Node3D
+var _poses := {}        # id:kind → {phase, color} (tests : le rendu factice ne relit pas les MultiMesh)
+var _rider_mesh: ArrayMesh
+var _bike_mesh: ArrayMesh
+var _solid: ShaderMaterial
+var _ghost: ShaderMaterial
 
 
 func _init() -> void:
 	name = "BotsView"
-	_wheel = CylinderMesh.new()
-	_wheel.top_radius = 0.34
-	_wheel.bottom_radius = 0.34
-	_wheel.height = 0.04
-	_wheel.radial_segments = 16
-	_wheel.rings = 1
-	_frame = BoxMesh.new()
-	_frame.size = Vector3(0.06, 0.08, 1.05)
-	_rider = CapsuleMesh.new()
-	_rider.radius = 0.22
-	_rider.height = 1.15
-	_rider.radial_segments = 8
-	_rider.rings = 2
+	_rider_mesh = PeopleMesh.build_person(false, true)
+	_bike_mesh = PeopleMesh.build_bike()
+	_solid = ShaderMaterial.new()
+	_solid.shader = CrowdShader
+	PeopleMesh.apply_palettes(_solid)
+	_ghost = ShaderMaterial.new()
+	_ghost.shader = GhostShader
+	PeopleMesh.apply_palettes(_ghost)
+	_ghost.set_shader_parameter("ghost_alpha", GHOST_ALPHA)
 
 
-func _material(kind: String) -> StandardMaterial3D:
-	if not _materials.has(kind):
-		var m := StandardMaterial3D.new()
-		var c: Color = BotsViewModel.color_of(kind)
-		if kind == "ghost":
-			c.a = GHOST_ALPHA
-			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
-			m.shading_mode = BaseMaterial3D.SHADING_MODE_UNSHADED
-		m.albedo_color = c
-		_materials[kind] = m
-	return _materials[kind]
-
-
-func _make_node(kind: String) -> Node3D:
+## Coureur et vélo d'un bot : un MultiMesh d'une instance chacun, pour passer au shader la couleur du maillot
+## (couleur d'instance) et l'animation (INSTANCE_CUSTOM : pédalier, 7 coureur, 8 vélo, tenue).
+func _make_node(kind: String, index: int) -> Node3D:
 	var root := Node3D.new()
-	var mat := _material(kind)
-	for z in [-0.52, 0.52]:
-		var w := MeshInstance3D.new()
-		w.mesh = _wheel
-		w.material_override = mat
-		w.position = Vector3(0.0, 0.34, z)
-		w.rotation.z = PI / 2.0   # axe des roues en travers de la route
-		root.add_child(w)
-	var f := MeshInstance3D.new()
-	f.mesh = _frame
-	f.material_override = mat
-	f.position = Vector3(0.0, 0.62, 0.0)
-	root.add_child(f)
-	var r := MeshInstance3D.new()
-	r.mesh = _rider
-	r.material_override = mat
-	r.position = Vector3(0.0, 1.15, 0.12)
-	r.rotation.x = -0.75      # buste penché vers l'avant (−Z)
-	root.add_child(r)
+	var outfit := PeopleMesh.outfit(index % 4, (index * 3 + 1) % 6, PeopleMesh.RIDER_OUTFIT_TROUSERS, PeopleMesh.STYLE_STRIPE)
+	for part in ["Rider", "Bike"]:
+		var mm := MultiMesh.new()
+		mm.transform_format = MultiMesh.TRANSFORM_3D
+		mm.use_colors = true
+		mm.use_custom_data = true
+		mm.mesh = _rider_mesh if part == "Rider" else _bike_mesh
+		mm.instance_count = 1
+		mm.set_instance_transform(0, Transform3D.IDENTITY)
+		var mmi := MultiMeshInstance3D.new()
+		mmi.name = part
+		mmi.multimesh = mm
+		mmi.rotation.y = PI       # maillages face à +z, bot face à −Z (sens de la route)
+		mmi.material_override = _ghost if kind == "ghost" else _solid
+		if kind == "ghost":
+			mmi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
+		root.add_child(mmi)
+	root.set_meta("outfit", outfit)
 	var label := Label3D.new()
 	label.name = "Name"
 	label.billboard = BaseMaterial3D.BILLBOARD_ENABLED
@@ -85,6 +75,27 @@ func _make_node(kind: String) -> Node3D:
 	return root
 
 
+## Maillot (couleur du bot) et pédalier : la phase suit la distance parcourue `s` (un tour par DEVELOPMENT_M),
+## donc les jambes tournent avec la vitesse du bot et s'arrêtent avec lui.
+func _pose(key: String, color: Color, s: float) -> void:
+	var node: Node3D = _nodes[key]
+	var phase := fposmod(s / RoadCyclistsModel.DEVELOPMENT_M, 1.0)
+	var outfit: float = node.get_meta("outfit")
+	for part in ["Rider", "Bike"]:
+		var mm: MultiMesh = (node.get_node(part) as MultiMeshInstance3D).multimesh
+		mm.set_instance_color(0, color if part == "Rider" else color.darkened(0.3))
+		mm.set_instance_custom_data(0, Color(phase, 0.0, 7.0 if part == "Rider" else 8.0, outfit))
+	_poses[key] = {"phase": phase, "color": color}
+
+
+## Pédalier (phase de 0 à 1) et maillot du bot `id` affiché ; {} s'il ne l'est pas.
+func pose_of(id: String) -> Dictionary:
+	for key in _poses:
+		if str(key).get_slice(":", 0) == id:
+			return _poses[key]
+	return {}
+
+
 ## `view` : sortie de bots_view_model.view() ; `route` : route_data.gd (hauteur affichée, relief exagéré comme la
 ## caméra).
 func update_view(view: Array, route) -> void:
@@ -96,8 +107,9 @@ func update_view(view: Array, route) -> void:
 		seen[id] = true
 		var key := id + ":" + str(b["kind"])
 		if not _nodes.has(key):
-			_nodes[key] = _make_node(str(b["kind"]))
+			_nodes[key] = _make_node(str(b["kind"]), _nodes.size())
 		var node: Node3D = _nodes[key]
+		_pose(key, b.get("color", BotsViewModel.color_of(str(b["kind"]))), float(b["s"]))
 		var smp: Dictionary = route.sample(route.wrap_s(float(b["s"])))
 		var pos := Vector3(smp["x"], smp["y"], smp["z"])
 		var h := deg_to_rad(float(smp["heading_deg"]))
@@ -113,6 +125,7 @@ func update_view(view: Array, route) -> void:
 			remove_child(_nodes[key])
 			_nodes[key].queue_free()
 			_nodes.erase(key)
+			_poses.erase(key)
 
 
 ## Position dans le monde de la silhouette du bot `id` (jauge d'abri, draft_gauge.gd) ; null s'il n'est pas affiché.
