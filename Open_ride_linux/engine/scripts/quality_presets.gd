@@ -46,7 +46,8 @@ const PRESETS := {
 
 ## Qualité d'image par préréglage (lot Y13), toujours à la résolution native de l'écran (décision du
 ## propriétaire du 27 octobre : ni mise à l'échelle ni suréchantillonnage) :
-## - `msaa` : MSAA 3D (0, 2, 4 ou 8) ; `fxaa` : anticrénelage d'écran, pour `low` qui n'a pas de MSAA.
+## - `msaa` : MSAA 3D (0, 2, 4 ou 8) ; `screen_aa` : anticrénelage d'écran `off`, `fxaa` ou `smaa`, pour `low`
+##   qui n'a pas de MSAA (SMAA 1× depuis Godot 4.5, lot Y6 : bords plus nets que le FXAA, sans flou des textures).
 ## - `ssao`, `ssil` : occlusion ambiante et lumière indirecte d'écran, `off`, `low`, `medium` ou `high`
 ##   (Forward+ seulement) ; `ao_half_size` : calcul en demi-résolution.
 ## - `fog_volumetric` : brume volumétrique de près, `off`, `light` ou `full` (Forward+ seulement ;
@@ -55,11 +56,14 @@ const PRESETS := {
 ## - `shadow_atlas` : taille de l'atlas des ombres du soleil ; `shadow_splits` : 2 ou 4 cascades ;
 ##   `shadow_filter` : filtre doux `hard`, `very_low`, `low`, `medium`, `high`.
 ## - `mesh_lod_threshold` : erreur tolérée des LOD automatiques en pixels (plus petit = plus fin).
-## Le filtrage anisotrope (16×, réglage global en Godot 4.3) est dans `project.godot`.
+## - `heat_haze` : brume de chaleur au-dessus de l'horizon des déserts et de la savane (lot U10), coupée en `low`.
+## - `anisotropy` : filtrage anisotrope des textures vues en biais (route, herbe), 2, 4, 8 ou 16×
+##   (réglage du viewport depuis Godot 4.4, étape 4 d'Y13).
 const IMAGE := {
 	"low": {
+		"anisotropy": 4,
 		"msaa": 0,
-		"fxaa": true,
+		"screen_aa": "smaa",
 		"ssao": "off",
 		"ssil": "off",
 		"ao_half_size": true,
@@ -69,10 +73,12 @@ const IMAGE := {
 		"shadow_splits": 2,
 		"shadow_filter": "low",
 		"mesh_lod_threshold": 2.0,
+		"heat_haze": false,
 	},
 	"medium": {
+		"anisotropy": 8,
 		"msaa": 4,
-		"fxaa": false,
+		"screen_aa": "off",
 		"ssao": "medium",
 		"ssil": "low",
 		"ao_half_size": true,
@@ -82,10 +88,12 @@ const IMAGE := {
 		"shadow_splits": 4,
 		"shadow_filter": "medium",
 		"mesh_lod_threshold": 1.0,
+		"heat_haze": true,
 	},
 	"high": {
+		"anisotropy": 16,
 		"msaa": 4,
-		"fxaa": false,
+		"screen_aa": "off",
 		"ssao": "high",
 		"ssil": "medium",
 		"ao_half_size": true,
@@ -95,6 +103,7 @@ const IMAGE := {
 		"shadow_splits": 4,
 		"shadow_filter": "high",
 		"mesh_lod_threshold": 0.5,
+		"heat_haze": true,
 	},
 }
 

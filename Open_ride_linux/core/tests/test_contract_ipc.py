@@ -69,7 +69,7 @@ def run_steps(s, n, t0=100.0):
 def test_all_message_schemas_exist():
     for name in ("state", "cmd", "hello", "hello_ack", "heartbeat", "input", "error", "shutdown", "bye",
                  "routes", "workouts", "scan_results", "settings", "imports", "workout_saved",
-                 "segment_result", "room", "loot", "garage", "progression", "xp_result", "plans"):
+                 "segment_result", "room", "loot", "garage", "progression", "xp_result", "plans", "profiles"):
         jsonschema.Draft202012Validator.check_schema(schema(name))
 
 
@@ -404,6 +404,27 @@ def test_v1_5_free_erg_examples_are_valid():
     assert_valid_1_4_state({**state, "mode": "ERG", "erg": {**free, "kind": "free", "workout_name": "ERG libre"}})
     bad = {**cadence_erg, "cadence_zone": "inside"}
     assert list(jsonschema.Draft202012Validator(schema("state")).iter_errors({**state, "mode": "ERG", "erg": bad}))
+
+
+def test_v1_5_profiles_examples_are_valid():
+    """Révision 1.5 (lot MJ6) : exemples du §7, huit profils en moins de 1 000 octets, valeurs refusées."""
+    blocks = contract_json_blocks()
+    profiles_msg = next(b for b in blocks if b.get("type") == "profiles")
+    select = next(b for b in blocks if b.get("name") == "select_profile")
+    ack = next(b for b in blocks if b.get("type") == "hello_ack" and "profile" in b["config"])
+    for msg in (profiles_msg, select, ack):
+        assert_valid(msg)
+    full = {**profiles_msg, "items": [
+        {"id": f"cycliste-{i}-abcdefghijklmnopqrstu", "name": f"Cycliste N° {i} éèê", "type": "joueur",
+         "level": 50, "last_ride": "2026-10-30", "kit_primary": 15} for i in range(8)]}
+    assert_valid(full) and len(encode(full)) < 1000
+    validator = jsonschema.Draft202012Validator(schema("profiles"))
+    assert list(validator.iter_errors({**full, "items": full["items"] + full["items"][:1]}))   # 9 profils
+    assert list(validator.iter_errors({**profiles_msg, "items": [{**profiles_msg["items"][0], "type": "admin"}]}))
+    for code in ("profile_invalid", "name_invalid"):
+        assert_valid({"type": "error", "v": 1, "code": code, "message": "refusé"})
+    for name in ("list_profiles", "create_profile", "rename_profile", "delete_profile"):
+        assert_valid({"type": "cmd", "v": 1, "cmd_id": 1, "name": name, "args": {}})
 
 
 def test_v1_4_values_are_checked():

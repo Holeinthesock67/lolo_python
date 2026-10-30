@@ -203,3 +203,19 @@ def test_grid_100_km2_builds_fast(tmp_path) -> None:
     # Les quatre coins joignent deux bouts de voie : ce ne sont pas des nœuds, leurs deux arêtes n'en font qu'une.
     assert g.stats()["edges"] == 2 * 51 * 50 - 4 and len(g.nodes) == 51 * 51 - 4
     assert dt < 2.0 * 3          # seuil indicatif de 2 s, marge pour les machines lentes
+
+
+def test_zero_length_edge_is_internal_and_merges_its_ends(tmp_path) -> None:
+    """Points confondus (tuiles quantifiées) : l'arête n'a ni longueur ni profil, ses bouts ne font qu'un nœud."""
+    b = Builder(tmp_path / "z.sqlite")
+    a, c = b.node(0, 0), b.node(0, 0)                                # deux nœuds OSM au même endroit
+    b.way(1, [b.node(-300, 0), a])
+    b.way(2, [a, c])
+    b.way(3, [c, b.node(300, 0)])
+    b.way(4, [a, b.node(0, -300)])                                   # des carrefours aux deux bouts
+    b.way(5, [c, b.node(0, 300)])
+    g = RoadGraph.build(b.open(), BIG, FRAME)
+    zero = [e for e in g.edges.values() if e.degenerate]
+    assert len(zero) == 1 and zero[0].internal
+    assert g.cluster[a] == g.cluster[c]
+    assert all(br.edge is not zero[0] for br in g.out_edges(g.cluster[a], 90.0))

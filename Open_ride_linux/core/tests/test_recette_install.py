@@ -15,9 +15,9 @@ spec.loader.exec_module(ri)
 
 
 def fake_godot(tmp_path: Path) -> Path:
-    godot = tmp_path / "godot" / "Godot_v4.3-stable_linux.x86_64"
+    godot = tmp_path / "godot" / "Godot_v4.7.2-stable_linux.x86_64"
     godot.parent.mkdir()
-    godot.write_text("#!/bin/sh\necho 4.3.stable.official.essai\n")
+    godot.write_text("#!/bin/sh\necho 4.7.2.stable.official.essai\n")
     godot.chmod(0o755)
     return godot
 
@@ -33,6 +33,13 @@ def test_refuses_without_godot_or_docker(tmp_path, monkeypatch):
     assert ri.main(["--mode", "home", "--godot", str(tmp_path / "absent"), "--out", str(tmp_path / "o")]) == 2
     monkeypatch.setattr(ri.shutil, "which", lambda *_a, **_k: None)
     assert ri.main(["--mode", "docker", "--godot", str(fake_godot(tmp_path)), "--out", str(tmp_path / "o")]) == 2
+
+
+def test_update_runs_without_window():
+    """Avec un écran, la mise à jour de la recette ne doit pas attendre un clic dans une fenêtre zenity."""
+    check = ri.CHECK.read_text(encoding="utf-8")
+    calls = [ln for ln in check.splitlines() if 'bash "${PROJECT}/scripts/update.sh"' in ln]
+    assert calls and all(ln.startswith("OPENRIDE_NO_GUI=1 ") for ln in calls), calls
 
 
 @pytest.mark.slow   # clone, installation sans pip, premier démarrage et mise à jour : une trentaine de secondes

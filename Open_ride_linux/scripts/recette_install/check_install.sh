@@ -12,7 +12,7 @@
 #      dépôt d'origine, scripts/update.sh, puis install.sh relancé : le code avance, les données
 #      restent identiques octet pour octet.
 # Une ligne « [OK] … » ou « [ÉCHEC] … » par vérification, puis « RÉSULTAT : … ».
-# Variables : REPO_URL (dépôt à cloner, requis, inscriptible pour l'étape 5), GODOT (Godot 4.3, requis),
+# Variables : REPO_URL (dépôt à cloner, requis, inscriptible pour l'étape 5), GODOT (Godot 4.7, requis),
 # OPENRIDE_NO_PIP=1 avec OPENRIDE_PYTHON et OPENRIDE_BIN_SRC (essai rapide sans pip, comme les tests).
 # Code de sortie : 0 si tout passe, 1 sinon.
 
@@ -102,9 +102,13 @@ mkdir -p "${HOME}/OpenRide/GPX" "${HOME}/OpenRide/Activities"
 printf '<?xml version="1.0"?><gpx version="1.1"><trk><trkseg><trkpt lat="45.0" lon="6.0"/><trkpt lat="45.01" lon="6.0"/></trkseg></trk></gpx>\n' \
     > "${HOME}/OpenRide/GPX/essai.gpx"   # trace fictive
 printf 'séance factice de la recette\n' > "${HOME}/OpenRide/Activities/2026-01-01_essai.fit"
-sed -i 's/^difficulty_pct = [0-9]*/difficulty_pct = 37/' "${HOME}/OpenRide/config.toml"   # réglage à la main
-grep -q "^difficulty_pct = 37" "${HOME}/OpenRide/config.toml"
-check $? "configuration modifiée par l'utilisateur" "difficulty_pct = 37"
+# Réglage joueur à la main : depuis les profils (série MJ, lot MJ5), la difficulté est dans le profil.toml
+# du profil `principal` créé par la migration du premier lancement.
+user_cfg="${HOME}/OpenRide/Profils/principal/profil.toml"
+[[ -f "${user_cfg}" ]] || user_cfg="${HOME}/OpenRide/config.toml"
+sed -i 's/^difficulty_pct = [0-9]*/difficulty_pct = 37/' "${user_cfg}"
+grep -q "^difficulty_pct = 37" "${user_cfg}"
+check $? "configuration modifiée par l'utilisateur" "difficulty_pct = 37 (${user_cfg#"${HOME}"/})"
 before_fp="$(fingerprint)"
 before_head="$(git -C "${DEST}" rev-parse --short HEAD)"
 # Nouveau commit sur le dépôt d'origine (clone de travail à côté, puis poussée vers l'origine).
@@ -115,7 +119,8 @@ git clone --quiet "${REPO_URL}" "${work}/up" && (
         && git add -A && git commit --quiet -m "Témoin de mise à jour" && git push --quiet origin HEAD
 ) > /dev/null 2>&1
 check $? "nouveau commit publié sur le dépôt d'origine"
-bash "${PROJECT}/scripts/update.sh" > "${HOME}/update.log" 2>&1
+# Sans fenêtre : avec un écran, update.sh ouvrirait une fenêtre zenity qui attend un clic.
+OPENRIDE_NO_GUI=1 bash "${PROJECT}/scripts/update.sh" > "${HOME}/update.log" 2>&1
 rc=$?
 check ${rc} "scripts/update.sh" "$(tail -n 1 "${HOME}/update.log")"
 after_head="$(git -C "${DEST}" rev-parse --short HEAD)"
@@ -129,7 +134,7 @@ check $? "parcours, séances et config.toml inchangés" "$(echo "${after_fp}" | 
 if [[ "${before_fp}" != "${after_fp}" ]]; then
     diff <(echo "${before_fp}") <(echo "${after_fp}") | head -n 10
 fi
-grep -q "^difficulty_pct = 37" "${HOME}/OpenRide/config.toml"
+grep -q "^difficulty_pct = 37" "${user_cfg}"
 check $? "réglage de l'utilisateur gardé" "difficulty_pct = 37"
 rm -rf "${work}"
 

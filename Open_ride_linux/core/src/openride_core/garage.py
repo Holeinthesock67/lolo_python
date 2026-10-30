@@ -13,6 +13,7 @@ l'énumération des codes du contrat est fermée).
 from __future__ import annotations
 
 import logging
+from datetime import date
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -22,13 +23,16 @@ from .config import Config
 from .equipment import Catalogue, CatalogueError
 from .physics import PhysicsParams
 from .workout import WorkoutError, load_workout, workout_path
-from .profile import (PROFILE_PATH, Profile, ProfileError, ProfileTooNew, SLOTS, check_avatar,
-                      equip, load_profile, save_profile, set_avatar)
-from .progression import (USER_TABLE_PATH, FactsCache, Progress, ProgressionError, Table,
+from . import profiles
+from .profile import (Profile, ProfileError, ProfileTooNew, SLOTS, check_avatar,
+                      equip, load_profile, peek_profile, save_profile, set_avatar)
+from .tools import estimate_cp
+from .progression import (FactsCache, Progress, ProgressionError, Table,
                           WorkoutDurations, load_table, recompute)
 
 log = logging.getLogger(__name__)
 
+_FROM_PROFILE: Any = object()   # surcharge des tables du profil en cours (série MJ)
 CACHE_NAME = ".progression.json"   # cache des séances lues, dans le dossier des journaux
 MAX_UNLOCKED = 8
 MAX_CHALLENGES = 4
@@ -49,6 +53,18 @@ def workout_duration_finder(directory: Path):
     return find
 
 
+def estimate_w_prime(journal_dir: Path, ftp_w: float, cache_path: Path | None = None) -> float | None:
+    """W' estimé depuis les séances passées (FIT et journaux du dossier des activités), `None` si
+    l'historique ne suffit pas ou ne se lit pas (lot R16 : `hello_ack.config.rogue.w_prime_estimate_j`).
+    `cache_path` nul : cache des meilleures puissances du profil de joueur en cours (série MJ)."""
+    directory = journal_dir.parent if journal_dir.name == ".journal" else journal_dir
+    try:
+        return estimate_cp.estimate_w_prime(directory, ftp_w, cache_path=cache_path)
+    except Exception:
+        log.exception("Estimation de W' impossible (%s)", directory)
+        return None
+
+
 class GarageError(Exception):
     """Commande refusée ; `code` est un code d'erreur du contrat."""
 
@@ -61,13 +77,18 @@ class ProgressionService:
     """État de la progression pour la session : tables, catalogue, profil et progression."""
 
     def __init__(self, cfg: Config, journal_dir: Path, workouts: WorkoutDurations = None,
-                 profile_path: Path = PROFILE_PATH, table_path: Path | None = USER_TABLE_PATH,
+                 profile_path: Path | None = None, table_path: Path | None = _FROM_PROFILE,
                  cache_path: Path | None = None) -> None:
+        """`profile_path` et `table_path` : défaut, ceux du profil de joueur en cours (lot MJ1) ;
+        `table_path=None` : tables livrées seules."""
+        ctx = profiles.current()
         self.cfg = cfg
         self.journal_dir = journal_dir
         self.workouts = workouts
-        self.profile_path = profile_path
-        self.table_path = table_path
+        self.profile_path = profile_path if profile_path is not None else ctx.profile_path
+        self.table_path = ctx.table_path if table_path is _FROM_PROFILE else table_path
+        self.counted = ctx.counted_sources   # séances qui rapportent (profil d'essai : simulées aussi, MJ2)
+        self.owns = ctx.owns
         self.cache_path = cache_path if cache_path is not None else journal_dir / CACHE_NAME
         self.enabled = False
         self.table: Table | None = None
@@ -96,7 +117,7 @@ class ProgressionService:
 
     def _recompute(self) -> Progress:
         cache = FactsCache(self.cache_path)
-        return recompute(self.journal_dir, self.table, self.workouts, cache)
+        return recompute(self.journal_dir, self.table, self.workouts, cache, self.counted, self.owns)
 
     def refresh(self) -> Progress | None:
         """Recalcule la progression (après une séance) ; renvoie l'ancienne."""
@@ -189,6 +210,37 @@ class ProgressionService:
             self.profile = before
             raise
 
+    # --- Cyber-Rogue (lot R9) ----------------------------------------------------------------
+
+    def rogue_progress(self) -> tuple:
+        """(table des châssis, statistiques des runs, vies en réserve) ; `(None, None, 0)` si coupée.
+
+        Une table de châssis invalide laisse le seul châssis standard (avertissement au journal).
+        """
+        from .rogue import progress as rogue_progress
+
+        if not self.enabled or self.progress is None or self.table is None:
+            return None, None, 0
+        try:
+            chassis = rogue_progress.load_chassis(self.table)
+        except rogue_progress.ChassisError as exc:
+            log.warning("Châssis du Cyber-Rogue ignorés : %s", exc)
+            return None, None, 0
+        return chassis, rogue_progress.rogue_stats(self.progress), max(self.profile.lives_left, 0)
+
+    def use_lives(self, count: int) -> None:
+        """Retire du profil les vies utilisées pendant une run (défaites rattrapées, lot R9)."""
+        if not self.enabled or count <= 0:
+            return
+
+        def change(p: Profile) -> None:
+            for _ in range(count):
+                coins_mod.use_life(p)
+        try:
+            self._mutate(change)
+        except (coins_mod.CoinsError, GarageError) as exc:
+            log.warning("Vies du Cyber-Rogue non retirées du profil : %s", exc)
+
     def equip(self, slot: Any, item_id: Any) -> None:
         if not isinstance(slot, str) or not isinstance(item_id, str):
             raise GarageError("bad_args", "equip attend `slot` et `item_id` (textes)")
@@ -265,3 +317,21 @@ class ProgressionService:
 def _copy(value: Any) -> Any:
     import copy
     return copy.deepcopy(value)
+
+
+def profile_summary(ctx: "profiles.ProfileContext", workouts: WorkoutDurations = None) -> dict[str, Any]:
+    """Élément du message `profiles` (contrat révision 1.5, lot MJ6) : nom, type, niveau, date de la
+    dernière séance et couleur du maillot du profil `ctx`, sans le charger (lot MJ7)."""
+    level, last = 1, None
+    try:
+        table = load_table(ctx.table_path)
+        cache = FactsCache(ctx.journal_dir / CACHE_NAME) if ctx.journal_dir.is_dir() else None
+        progress = recompute(ctx.journal_dir, table, workouts, cache, ctx.counted_sources, ctx.owns)
+        level = progress.level.level
+        starts = [r.facts.start_ts for r in progress.sessions if r.facts.start_ts]
+        last = date.fromtimestamp(max(starts)).isoformat() if starts else None
+    except ProgressionError as exc:
+        log.warning("Profil %s : progression illisible (%s)", ctx.id, exc)
+    kit = peek_profile(ctx.profile_path).avatar.get("kit_primary", 0)
+    return {"id": ctx.id, "name": ctx.name, "type": ctx.type, "level": level, "last_ride": last,
+            "kit_primary": int(kit) if isinstance(kit, int) else 0}

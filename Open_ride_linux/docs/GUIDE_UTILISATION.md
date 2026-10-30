@@ -23,13 +23,13 @@ OpenRide est un simulateur de cyclisme indoor pour Linux. Il relie votre home tr
 
 ## 2. Installer et mettre à jour
 
-Installation, une seule fois, depuis le dossier `Open_ride_linux/` du dépôt (après `sudo apt install python3-venv bluez` et le téléchargement de Godot 4.3, version standard, pas .NET) :
+Installation, une seule fois, depuis le dossier `Open_ride_linux/` du dépôt (après `sudo apt install python3-venv bluez` et le téléchargement de Godot 4.7.2, version standard, pas .NET) :
 
 ```bash
 scripts/install.sh
 ```
 
-Le script demande le chemin de Godot 4.3 et crée trois icônes dans le menu des applications : **OpenRide**, **OpenRide – Libérer le trainer** et **OpenRide – Mettre à jour**. Il peut être relancé sans risque.
+Le script demande le chemin de Godot 4.7.2 et crée trois icônes dans le menu des applications : **OpenRide**, **OpenRide – Libérer le trainer** et **OpenRide – Mettre à jour**. Il peut être relancé sans risque.
 
 Pour mettre à jour, cliquez sur l'icône **OpenRide – Mettre à jour**. La mise à jour est refusée s'il y a des modifications locales dans le dossier du dépôt ; vos parcours, séances et réglages (dans `~/OpenRide/`) ne sont jamais touchés.
 
@@ -102,6 +102,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Braquet plus un, moins un | « + » court, « − » court |
 | Braquet plus dix, moins dix (de 1 à 24) | « + » long, « − » long |
 | Pause et reprise | Y |
+| Vue de caméra suivante, précédente | flèche haut (ou A court), flèche bas |
 | Activer le bonus en réserve (mode classique) | Z |
 | Noter un décrochage du trainer au journal | Z long |
 
@@ -114,6 +115,7 @@ Chaque bouton garde le même type d'action partout : « + » et « − » dépla
 | Bloc suivant | Z |
 | Noter un décrochage du trainer au journal | Z long |
 | Pause et reprise | Y |
+| Vue de caméra suivante, précédente | flèche haut (ou A court), flèche bas |
 
 **Z long** (ou `Maj+Z` au clavier) note un repère « décrochage » au journal quand vous sentez la résistance du trainer lâcher (sauf en Cyber-Rogue, où Z long joue la carte active). L'écran le confirme ; rien d'autre ne change. L'outil `decrochages` relit ces repères en face des chutes de puissance mesurées.
 
@@ -132,9 +134,9 @@ Le clavier double le Click touche pour touche, en menu comme en séance, avec le
 | Z | `Z` | `Maj+Z` |
 | Flèches | `Gauche`, `Droite`, `Haut`, `Bas` | — |
 
-Les lettres se lisent comme imprimées sur la touche (AZERTY comme QWERTY). Les flèches haut et bas ne changent pas le braquet : elles serviront aux vues de caméra.
+Les lettres se lisent comme imprimées sur la touche (AZERTY comme QWERTY). Les flèches haut et bas ne changent pas le braquet : en séance, elles changent la vue de caméra.
 
-Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîtier gauche ne répond plus (section 9). Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran.
+Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîtier gauche ne répond pas (section 9). Le boîtier gauche (« − » et flèches) est redémarré tout seul environ une fois par minute et reste alors 4 s environ sans boutons ; tout ce qu'il fait existe aussi sur le boîtier droit ou au clavier. Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran.
 
 ## 7. Réglages, thèmes et sons
 
@@ -149,7 +151,7 @@ Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîti
 living = false
 ```
 
-**Thèmes.** Un thème change l'apparence de la route, du terrain et du ciel. Les thèmes ajoutés se placent dans `~/OpenRide/Themes/` avec `openride-compiler theme-install DOSSIER` (et `theme-list` pour voir ceux qui sont installés), puis se choisissent dans **Réglages**.
+**Thèmes.** Un thème change l'apparence de la route, du terrain et du ciel. Les thèmes ajoutés se placent dans `~/OpenRide/Themes/` avec `openride-compiler theme-install DOSSIER` (ou une archive `.zip`, ou son adresse `https://…`), et `theme-list` montre ceux qui sont installés, avec leur taille et leur dernière utilisation ; ils se choisissent dans **Réglages**. La bibliothèque est plafonnée à 5 Go (`[render] theme_library_gb`) : au-delà, l'installation retire le pack utilisé le moins récemment, jamais le thème choisi. Recette d'un pack de textures libres pour les biomes : [3.0/PACK_BIOMES_CC0.md](3.0/PACK_BIOMES_CC0.md).
 
 **Sons.** OpenRide génère lui-même les sons du parcours (vent, roue libre, cloches, rivières). Un fichier OGG déposé dans `~/OpenRide/Sounds/` sous le nom du son (`wind.ogg`, `freewheel.ogg`, `church_bell.ogg`, `river.ogg`, `livestock.ogg`, `village.ogg`) le remplace. En mode classique, un court jingle marque le sommet d'une montée, la fin d'un sprint, le passage sous une arche de bonus et la fin de la séance ; il se remplace de la même façon (`jingle_summit.ogg`, `jingle_summit_pr.ogg` pour un record, `jingle_sprint.ogg`, `jingle_sprint_pr.ogg`, `jingle_arch.ogg`, `jingle_finish.ogg`).
 
@@ -163,7 +165,7 @@ Pour relire les chiffres d'une séance : `openride-core summary` (dernier bilan)
 
 **Le trainer ne répond plus ou reste « réservé ».** Une autre application (Zwift, le téléphone) le tient peut-être, ou OpenRide s'est arrêté sans le rendre. Fermez l'autre application, puis cliquez sur l'icône **OpenRide – Libérer le trainer**. En terminal : `openride-core release-trainer`. Éteindre et rallumer le trainer règle aussi la plupart des cas. Si le trainer reste réservé malgré cela, débranchez-le quelques secondes, puis relancez OpenRide ; s'il ne se connecte toujours pas, joignez le journal à une demande d'aide (voir plus bas).
 
-**Le Click ne répond plus.** Appuyez sur un bouton pour le réveiller. Sinon, déconnectez-le d'abord (`bluetoothctl disconnect` suivi de son adresse) puis rappuyez. Si seul le boîtier gauche (« − ») est muet, utilisez le bouton **B** du boîtier droit : sans passage récent par l'application Zwift (moins de 24 heures), le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion. Ce n'est pas une panne d'OpenRide.
+**Le Click ne répond plus.** Appuyez sur un bouton pour le réveiller. Sinon, déconnectez-le d'abord (`bluetoothctl disconnect` suivi de son adresse) puis rappuyez. Si seul le boîtier gauche (« − ») est muet, utilisez le bouton **B** du boîtier droit : sans passage récent par l'application Zwift (moins de 24 heures), le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion. OpenRide le redémarre alors tout seul (environ 4 s sans boutons, puis il répond de nouveau) ; un appui fait pendant ces quelques secondes est perdu. Ce n'est pas une panne d'OpenRide. Pour le laisser muet à la place : `click_reset_locked = false` dans `[drivers]`.
 
 **Écran noir, lent ou saccadé.** Passez la qualité graphique en `low` (**Réglages**). Vérifiez que le pilote de la carte graphique est installé. Les courbes de la séance en « masquées » libèrent aussi un peu de puissance.
 

@@ -101,7 +101,6 @@ def test_progression_off_changes_nothing(tmp_path, monkeypatch):
 def test_broken_table_switches_progression_off(tmp_path, monkeypatch):
     bad = tmp_path / "progression.toml"
     bad.write_text("[levels]\ncount = 'x'\n", encoding="utf-8")
-    monkeypatch.setattr(garage, "USER_TABLE_PATH", bad)
     svc = garage.ProgressionService(Config(), tmp_path, table_path=bad, profile_path=tmp_path / "p.json")
     assert svc.enabled is False and svc.progression_dict() is None
 

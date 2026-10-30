@@ -173,10 +173,20 @@ func _init() -> void:
 		if typeof(ref[k]) != TYPE_DICTIONARY and gp["terrain"][k] != ref[k]:
 			same_grass = false
 	_check(same_grass, "défaut 2.0 : temperate_grassland = terrain 1.x au bit près")
+	# Biome alpin au look du parcours de démonstration (choix du propriétaire, 30 octobre) : même terrain que la
+	# prairie, sapins d'avant la série U ; les 15 autres biomes ont chacun leur couleur de sol.
+	var ap: Dictionary = md.params("alpine")
+	var same_alpine := true
+	for k in ref.keys():
+		if typeof(ref[k]) != TYPE_DICTIONARY and ap["terrain"][k] != ref[k]:
+			same_alpine = false
+	_check(same_alpine and not bool(ap["vegetation"].get("has_species", true)),
+		"défaut 2.0 : alpine = terrain du parcours de démonstration, arbre d'avant la série U")
 	var flats := {}
 	for id in BiomeIds.BIOMES:
-		flats[md.params(id)["terrain"]["grass_color"].to_html()] = true
-	_check(flats.size() == 16, "défaut 2.0 : 16 couleurs de sol différentes (%d)" % flats.size())
+		if id != "alpine":
+			flats[md.params(id)["terrain"]["grass_color"].to_html()] = true
+	_check(flats.size() == 15, "défaut 2.0 : 15 couleurs de sol différentes hors alpine (%d)" % flats.size())
 	_check(md.params("sand_desert")["vegetation"]["species"][0]["kind"] == "palm" and md.params("polar")["vegetation"]["species"].is_empty(), "défaut 2.0 : espèces par biome")
 
 	# blend : 50/50

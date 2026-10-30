@@ -43,6 +43,17 @@
         "theme": {
           "type": "string"
         },
+        "profile": {
+          "type": "object",
+          "description": "Facultatif, révision 1.5 (lot MJ6) : profil de joueur en cours ; count = nombre de profils de type joueur.",
+          "required": ["id", "name", "type", "count"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^[a-z0-9_][a-z0-9-]{0,31}$"},
+            "name": {"type": "string", "minLength": 1, "maxLength": 32},
+            "type": {"type": "string", "enum": ["joueur", "essai"]},
+            "count": {"type": "integer", "minimum": 0, "maximum": 8}
+          }
+        },
         "chart": {
           "type": "string",
           "enum": ["hidden", "reduced", "full"]
@@ -138,6 +149,15 @@
                   "minLength": 1,
                   "maxLength": 32
                 }
+              }
+            },
+            "last": {
+              "type": ["object", "null"],
+              "description": "Facultatif, révision 1.5 (lot R13) : objectif et durée de la dernière run, relus dans le journal ; null avant la première run (l'engine montre alors l'avertissement du premier lancement).",
+              "required": ["objective", "duration_min"],
+              "properties": {
+                "objective": {"type": "string", "enum": ["endurance", "threshold", "vo2max"]},
+                "duration_min": {"type": "integer", "enum": [30, 45, 60, 90]}
               }
             },
             "lives": {

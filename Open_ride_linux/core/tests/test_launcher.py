@@ -305,7 +305,7 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     sup = launcher.build_supervisor(["--trainer", "mock", "--config", str(cfg)], env)
     assert sup.core_cmd[-5:] == ["run", "--trainer", "mock", "--config", str(cfg)]
     assert sup.engine_cmd[0] == str(godot) and "--verbose" in sup.engine_cmd
-    assert sup.engine_cmd[-8:] == [
+    assert sup.engine_cmd[-9:] == [
         "--ipc-state-port=6005",
         "--ipc-cmd-port=6006",
         "--quality=high",
@@ -313,6 +313,7 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
         "--visual-grade=2.5",
         "--camera=follow_near",
         "--living=on",
+        "--load-guard=on",
         "--display=fullscreen",
     ]
     assert sup.release_cmd[-3:] == ["release-trainer", "--config", str(cfg)]
@@ -323,7 +324,7 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     no_cfg = launcher.build_supervisor([], {**env})
     assert no_cfg.core_cmd[-(len(launcher.DEFAULT_CORE_ARGS) + 1):] == ["run", *launcher.DEFAULT_CORE_ARGS]
     assert "--autostart" not in launcher.DEFAULT_CORE_ARGS   # menus de l'engine (lot N6)
-    assert no_cfg.engine_cmd[-8:] == [
+    assert no_cfg.engine_cmd[-9:] == [
         "--ipc-state-port=5005",
         "--ipc-cmd-port=5006",
         "--quality=low",
@@ -331,6 +332,7 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
         "--visual-grade=2.5",
         "--camera=follow_near",
         "--living=on",
+        "--load-guard=on",
         "--display=fullscreen",
     ]
     probe = launcher.build_supervisor([], {**env, "OPENRIDE_PERF_PROBE": str(tmp_path / "sonde.csv")})
@@ -490,12 +492,12 @@ def test_openride_log_file_is_written_without_link(fake, tmp_path):
 
 def test_engine_gets_living_off(tmp_path: Path):
     cfg = tmp_path / "config.toml"
-    cfg.write_text("[render]\nliving = false\n")
+    cfg.write_text("[render]\nliving = false\nload_guard = false\n")
     godot = tmp_path / "godot"
     godot.write_text("#!/bin/sh\n")
     godot.chmod(0o755)
     sup = launcher.build_supervisor(["--config", str(cfg)], {"GODOT": str(godot), "OPENRIDE_LOG": str(tmp_path / "x.log")})
-    assert sup.engine_cmd[-2:] == ["--living=off", "--display=fullscreen"]
+    assert sup.engine_cmd[-3:] == ["--living=off", "--load-guard=off", "--display=fullscreen"]   # lot Y6
 
 
 def test_engine_display_from_config_or_environment(tmp_path: Path):
@@ -508,3 +510,37 @@ def test_engine_display_from_config_or_environment(tmp_path: Path):
     assert launcher.build_supervisor(["--config", str(cfg)], env).engine_cmd[-1] == "--display=borderless"
     forced = launcher.build_supervisor(["--config", str(cfg)], {**env, "OPENRIDE_DISPLAY": "windowed"})
     assert forced.engine_cmd[-1] == "--display=windowed"   # essais et tests visuels en fenêtre
+
+
+# --- bibliothèque des thèmes (lot U15) ---------------------------------------------------
+
+def test_record_theme_use_dates_the_chosen_pack_only(tmp_path: Path) -> None:
+    import json
+    from datetime import datetime
+    themes = tmp_path / "Themes"
+    (themes / "pack").mkdir(parents=True)
+    when = datetime(2026, 10, 30, 7, 15)
+    launcher.record_theme_use(themes, "pack", when)
+    launcher.record_theme_use(themes, "default", when)     # thème intégré : jamais daté
+    launcher.record_theme_use(themes, "absent", when)      # pas installé : rien
+    uses = json.loads((themes / launcher.THEME_USE_FILE).read_text(encoding="utf-8"))
+    assert uses == {"pack": "2026-10-30T07:15:00"}
+    (themes / launcher.THEME_USE_FILE).write_text("cassé", encoding="utf-8")
+    launcher.record_theme_use(themes, "pack", when)        # fichier illisible : réécrit
+    assert json.loads((themes / launcher.THEME_USE_FILE).read_text(encoding="utf-8")) == {"pack": "2026-10-30T07:15:00"}
+
+
+def test_theme_use_file_is_the_one_read_by_the_compiler() -> None:
+    theme_packs = pytest.importorskip("openride_compiler.theme_packs")
+    assert theme_packs.USE_FILE == launcher.THEME_USE_FILE
+
+
+def test_theme_library_gb_bounds(tmp_path: Path) -> None:
+    from openride_core import config as config_mod
+    cfg = tmp_path / "config.toml"
+    cfg.write_text("[render]\ntheme_library_gb = 12\n", encoding="utf-8")
+    assert config_mod.load(cfg).render.theme_library_gb == 12
+    for bad in ("0.5", "51"):
+        cfg.write_text(f"[render]\ntheme_library_gb = {bad}\n", encoding="utf-8")
+        with pytest.raises(config_mod.ConfigError):
+            config_mod.load(cfg)

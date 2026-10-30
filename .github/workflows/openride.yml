@@ -87,7 +87,7 @@ jobs:
           if-no-files-found: ignore
 
   engine:
-    name: engine (Godot 4.3)
+    name: engine (Godot 4.7)
     runs-on: ubuntu-latest
     steps:
       - name: Récupération du dépôt
@@ -106,36 +106,59 @@ jobs:
         # Le compilateur produit les données du test des couches OSM (lot K4, make_osm_world.py).
         run: pip install -c constraints.txt -e "core[dev]" -e compiler
 
-      - name: Cache de Godot 4.3
+      - name: Cache de Godot 4.7
         id: cache-godot
         uses: actions/cache@v4
         with:
-          path: ~/.cache/godot-4.3
-          key: godot-4.3-stable-linux-x86_64
+          path: ~/.cache/godot-4.7.2
+          key: godot-4.7.2-stable-linux-x86_64
 
-      - name: Téléchargement de Godot 4.3
+      - name: Téléchargement de Godot 4.7
         if: steps.cache-godot.outputs.cache-hit != 'true'
         run: |
-          mkdir -p ~/.cache/godot-4.3
-          curl -fsSL -o /tmp/Godot_v4.3-stable_linux.x86_64.zip \
-            https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
-          unzip -q /tmp/Godot_v4.3-stable_linux.x86_64.zip -d ~/.cache/godot-4.3
-          chmod +x ~/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64
+          mkdir -p ~/.cache/godot-4.7.2
+          curl -fsSL -o /tmp/Godot_v4.7.2-stable_linux.x86_64.zip \
+            https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+          unzip -q /tmp/Godot_v4.7.2-stable_linux.x86_64.zip -d ~/.cache/godot-4.7.2
+          chmod +x ~/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
 
       - name: Xvfb et OpenGL logiciel (tests de rendu du shader, lot E2)
         run: sudo apt-get update -q && sudo apt-get install -y --no-install-recommends xvfb xauth libgl1-mesa-dri
 
       - name: Tests de l'engine sans écran
         run: |
-          chmod +x ~/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64
-          REQUIRE_RENDER=1 ENGINE_JUNIT="$PWD/junit/engine.xml" GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_engine_tests.sh
+          chmod +x ~/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64
+          REQUIRE_RENDER=1 ENGINE_JUNIT="$PWD/junit/engine.xml" GODOT="$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" engine/tests/run_engine_tests.sh
 
       - name: Essai de bout en bout (vrai core et vrai engine, lot J8)
-        run: GODOT="$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" engine/tests/run_e2e.sh
+        run: GODOT="$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" engine/tests/run_e2e.sh
+
+      - name: Captures des flancs de colline (terrain, low, medium et high)
+        # Demandes de fusion qui touchent le terrain ou ses shaders : vraie scène sur la démo (tour « flancs »,
+        # relief de séance), captures jointes au run pour validation (règle du propriétaire du 29 octobre).
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch -q --depth=1 origin "${{ github.base_ref }}"
+          if ! git diff --name-only FETCH_HEAD HEAD | grep -qE '^Open_ride_linux/engine/(scripts/(terrain_tiles|world_streamer|living_world)\.gd|shaders/|tests/tours/flancs\.json)'; then
+            echo "Terrain inchangé : captures sautées"; exit 0
+          fi
+          for q in low medium high; do
+            python3 engine/tests/tour_visuel.py --godot "$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" \
+              --world demo --tour flancs --quality "$q" --out "$RUNNER_TEMP/captures_flancs/$q"
+          done
+
+      - name: Captures des flancs de colline (pièce jointe)
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: captures_flancs
+          path: ${{ runner.temp }}/captures_flancs
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Banc des menus (Click simulé, clavier, souris ; une voie par scénario)
         run: |
-          python3 engine/tests/menu_bench.py --godot "$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" \
+          python3 engine/tests/menu_bench.py --godot "$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" \
             --rotation --out "$RUNNER_TEMP/menu_bench"
 
       - name: Rapport du banc des menus
@@ -148,7 +171,7 @@ jobs:
 
       - name: Banc visuel du Cyber-Rogue (run X40 rejouée dans la scène, lot X41)
         run: |
-          python3 engine/tests/rogue_bench.py --godot "$HOME/.cache/godot-4.3/Godot_v4.3-stable_linux.x86_64" \
+          python3 engine/tests/rogue_bench.py --godot "$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" \
             --out "$RUNNER_TEMP/rogue_bench"
 
       - name: Rapport du banc visuel du Cyber-Rogue

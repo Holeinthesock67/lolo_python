@@ -6,7 +6,7 @@ Lance les trois suites de tests depuis `Open_ride_linux/`, en activant d'abord `
 
 1. `(cd core && pytest -q)`
 2. `(cd compiler && pytest -q)`
-3. `GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh`
+3. `GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_engine_tests.sh`
 4. `python -m openride_core.tools.route_vectors --check` (vecteurs de route à jour)
 
 Si un environnement ou Godot manque, donne la commande d'installation (voir `CLAUDE.md`) au lieu d'abandonner.

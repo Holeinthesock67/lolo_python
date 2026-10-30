@@ -37,14 +37,14 @@ from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClick
 from . import latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
-from .journal import JOURNAL_DIR, Record
+from .journal import Record
 from .progression import journal_source
 from .mock_driver import MockDriver
-from .garage import GarageError, ProgressionService, workout_duration_finder
+from .garage import GarageError, ProgressionService, estimate_w_prime, workout_duration_finder
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
 from .physics import PhysicsParams, RiderPhysics
-from . import powerups as powerups_mod, records as records_mod
+from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
 from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
@@ -79,7 +79,9 @@ WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révisio
 DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" / "default" / "theme.json"
 
 
+PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile")   # lot MJ7
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
+W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
 
 
@@ -175,7 +177,7 @@ def build_inputs(cfg: Config, sim: Any = None) -> list[Any]:
     d = cfg.drivers
     # Réglages du lot Q6 (trace brute, boîtier muet, reprise), communs aux deux boîtiers.
     q6 = {"trace_raw": d.click_trace_raw, "mute_after_s": d.click_mute_after_s,
-          "rehandshake_s": d.click_rehandshake_s, "side_of": click_side_of(d)}
+          "rehandshake_s": d.click_rehandshake_s, "reset_locked": d.click_reset_locked, "side_of": click_side_of(d)}
     if kind == "sim":
         # Vrais fournisseurs du Click contre la paire simulée ; le clavier appuie sur le Click simulé.
         pair = ClickPair()
@@ -231,11 +233,13 @@ class AutostartError(Exception):
 
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
-                 journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
+                 journal_dir: Path | None = None, routes_root: Path | None = None,
                  workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None,
                  config_path: Path | None = None, records_path: Path | None = None,
                  powerups_path: Path | None = None, profile_path: Path | None = None,
                  wtf_path: Path | None = None) -> None:
+        # Fichiers du joueur : ceux du profil en cours (série MJ, lot MJ1), sauf chemins donnés (tests).
+        self.profile_ctx = profiles.current()
         self.cfg = cfg
         self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
@@ -246,7 +250,7 @@ class CoreSession:
             self.driver.event_sink = lambda line: self._rec.ftms(line) if self._rec else None
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
         self.hr = build_hr(cfg, self.sim)
-        self.journal_dir = journal_dir
+        self.journal_dir = journal_dir if journal_dir is not None else self.profile_ctx.journal_dir
         self.routes_root = routes_root or routes_dir()
         self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
@@ -264,7 +268,7 @@ class CoreSession:
         self.route: Route | None = None
         self._segments: tuple = ()               # couche segments du parcours (série T)
         self.race: ClassicRace | None = None      # mode classique de la séance (lot T7)
-        self.records_path: Path = records_path or records_mod.RECORDS_FILE      # lot T5
+        self.records_path: Path = records_path or self.profile_ctx.records_path  # lot T5
         self.powerups_path: Path = powerups_path or powerups_mod.POWERUPS_FILE  # lot T6
         self.wtf_path: Path = wtf_path or wtf_rules.WTF_FILE   # règles du mode WTF (lot WTF2)
         self.wtf: WtfMode | None = None
@@ -326,12 +330,21 @@ class CoreSession:
         self.worldgen_args: list[str] = []
         self.gpx_dir: Path | None = None        # balades enregistrées (défaut ~/OpenRide/GPX ; essais)
         self._ow_previous = "IDLE"
-        # Mode Cyber-Rogue (lot R8) : run en cours ; `rogue_provider()` rendra (table des châssis, statistiques,
-        # vies) quand la progression sera branchée dans la séance (lot V11) ; sans lui, seul le châssis standard.
+        # Mode Cyber-Rogue (lot R8) : run en cours ; `rogue_provider()` rend (table des châssis, statistiques,
+        # vies) d'après la progression de la série V (lot R9) ; progression coupée : seul le châssis standard.
         self.rogue: rogue_mode.RogueMode | None = None
-        self.rogue_provider: Callable[[], tuple] | None = None
+        self.rogue_provider: Callable[[], tuple] | None = self.progress_svc.rogue_progress
         self._rogue_dist = 0.0
-        self.server.hello_config["rogue"] = rogue_mode.hello_block(cfg, None)
+        self.w_prime_estimate_j: float | None = None   # W' estimé des séances passées (lot R16), calculé dans run()
+        self.mmp_cache_path: Path | None = None   # None : cache du profil de joueur en cours (série MJ)
+        self._publish_rogue()
+        # Profils de joueurs (série MJ, lot MJ7) : verrou du profil en cours (posé par `openride-core run`),
+        # dossier des profils et fichier lu par le lanceur pour relancer le core sur le bon profil.
+        self.profile_lock: profiles.ProfileLock | None = None
+        self.profiles_base: Path | None = None   # None : ~/OpenRide/Profils
+        self.active_profile_path: Path | None = None   # None : ~/OpenRide/.profil_actif
+        self._last_create: tuple[int, Any] | None = None   # dernier create_profile traité (copies ignorées)
+        self._publish_profile()
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -473,14 +486,181 @@ class CoreSession:
             self._on_workout_menu_command(name, args, cmd_id)
         elif name in ("list_garage", "equip", "buy", "set_avatar"):
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name in PROFILE_COMMANDS:
+            self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
+
+    # --- profils de joueurs (série MJ, lot MJ7, contrat IPC révision 1.5) ------------------------
+
+    def _profile_block(self) -> dict[str, Any] | None:
+        """`hello_ack.config.profile` : profil en cours et nombre de profils joueur ; None sans profil."""
+        ctx = self.profile_ctx
+        if ctx.id is None:
+            return None
+        count = sum(not c.is_trial for c in profiles.list_contexts(self.profiles_base))
+        return {"id": ctx.id, "name": ctx.name or ctx.id, "type": ctx.type, "count": count}
+
+    def _publish_profile(self) -> None:
+        block = self._profile_block()
+        if block is None:
+            self.server.hello_config.pop("profile", None)
+        else:
+            self.server.hello_config["profile"] = block
+
+    def _profiles_message(self, cmd_id: int) -> dict[str, Any]:
+        """Message `profiles` : profils joueur triés par nom, le profil d'essai seulement s'il est en cours."""
+        from .garage import profile_summary
+
+        workouts = workout_duration_finder(self.workouts_dir)
+        items = [profile_summary(c, workouts) for c in profiles.list_contexts(self.profiles_base)
+                 if not c.is_trial or c.id == self.profile_ctx.id][:profiles.MAX_PROFILES]
+        return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items}
+
+    def _send_profiles(self, cmd_id: int) -> None:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : calcul sur place
+            self.server.send_raw(self._profiles_message(cmd_id))
+            return
+
+        async def send() -> None:
+            self.server.send_raw(await asyncio.to_thread(self._profiles_message, cmd_id))
+
+        self._spawn(send())
+
+    def _on_profile_command(self, name: str, args: dict, cmd_id: int) -> None:
+        if name == "list_profiles":
+            self._send_profiles(cmd_id)
+            return
+        if self.state.session_state not in ("IDLE", "READY", "FINISHED", "ERROR"):
+            self.server.send_error("busy", "Profils modifiables seulement hors séance (terminer d'abord).")
+            return
+        base = self.profiles_base
+        try:
+            if name == "select_profile":
+                self._select_profile(profiles.ProfileContext.for_id(profiles.check_id(str(args.get("id") or "")), base),
+                                     cmd_id)
+            elif name == "create_profile":
+                if self._last_create == (cmd_id, args.get("name")):
+                    self._send_profiles(cmd_id)   # copie d'une commande déjà traitée : pas de second profil
+                    return
+                ctx = profiles.create(args.get("name"), base)
+                self._last_create = (cmd_id, args.get("name"))
+                log.info("Profil créé : %s (%s).", ctx.name, ctx.id)
+                self._select_profile(ctx, cmd_id)
+                self._send_profiles(cmd_id)
+            elif name == "rename_profile":
+                ctx = profiles.rename(args.get("id"), args.get("name"), base)
+                log.info("Profil renommé : %s → %s.", ctx.id, ctx.name)
+                if ctx.id == self.profile_ctx.id:
+                    self.profile_ctx = ctx
+                    self._publish_profile()
+                self._send_profiles(cmd_id)
+            else:
+                dest = profiles.delete(args.get("id"), self.profile_ctx.id, base)
+                log.info("Profil mis à la corbeille : %s.", dest)
+                self._publish_profile()
+                self._send_profiles(cmd_id)
+        except profiles.ProfileNameError as exc:
+            log.warning("Profil : %s refusé : %s", name, exc)
+            self.server.send_error("name_invalid", str(exc))
+        except (profiles.ProfileContextError, OSError) as exc:
+            log.warning("Profil : %s refusé : %s", name, exc)
+            self.server.send_error("profile_invalid", str(exc))
+
+    def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int) -> None:
+        """Change de profil sans relancer : configuration effective, progression, records, plan et
+        dossier des séances rechargés ; liaison du trainer et du Click gardée ; `hello_ack` complet,
+        puis `settings` et `progression`. Lève `ProfileContextError` (rien n'a changé)."""
+        from . import config as config_mod
+
+        old_ctx, old_lock = self.profile_ctx, self.profile_lock
+        if ctx.id == old_ctx.id:
+            self._send_profile_reload(cmd_id)
+            return
+        lock = profiles.ProfileLock(ctx)
+        lock.acquire()   # profil déjà utilisé par une autre séance : ProfileContextError
+        profiles.activate(ctx)
+        try:
+            profiles.ensure_description(ctx)
+            cfg = config_mod.load(self.config_path)
+        except (config_mod.ConfigError, OSError) as exc:
+            profiles.activate(old_ctx)
+            lock.release()
+            raise profiles.ProfileContextError(f"profil « {ctx.label} » illisible : {exc}") from None
+        if old_lock is not None:
+            old_lock.release()
+        self.profile_lock = lock
+        self.profile_ctx = ctx
+        old_hr = (self.cfg.drivers.hr, self.cfg.drivers.hr_address)
+        self.cfg = cfg
+        self.journal_dir = ctx.journal_dir
+        self.records_path = ctx.records_path
+        self.progress_svc = self._build_progression(None)
+        self.rogue_provider = self.progress_svc.rogue_progress
+        self._base_params = self._equipped_params()
+        self.physics.p = self._base_params
+        self._build_wind()
+        self.gearing.k = min(max(cfg.gearing.start_gear, 1), self.gearing.n_gears)
+        self.difficulty_pct = float(cfg.trainer.difficulty_pct)
+        self.state.difficulty_pct = round(self.difficulty_pct)
+        if (cfg.drivers.hr, cfg.drivers.hr_address) != old_hr:
+            self._swap_hr()
+        self.server.hello_config.update(ftp_w=cfg.rider.ftp_w, hr_max_bpm=cfg.rider.hr_max_bpm, theme=cfg.render.theme,
+                                        chart=cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
+        self._publish_progression()
+        self.w_prime_estimate_j = None
+        self._publish_rogue()
+        self._note_profile()
+        log.info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root, " — PROFIL D'ESSAI" if ctx.is_trial else "")
+        self._send_profile_reload(cmd_id)
+        try:
+            asyncio.get_running_loop()
+            self._spawn(self._publish_w_prime_estimate())   # W' du nouveau profil, au hello_ack suivant
+        except RuntimeError:
+            pass
+
+    def _send_profile_reload(self, cmd_id: int) -> None:
+        self._publish_profile()
+        self.server.send_hello_ack(self.server.hello_config)
+        self._send_settings(cmd_id)
+        if self.progress_svc.enabled and self.progress_svc.progression_dict() is not None:
+            self.server.send_raw(self.progress_svc.progression_message(cmd_id))
+
+    def _note_profile(self) -> None:
+        """`.profil_actif` pour le lanceur ; `[profils] dernier` pour un profil de joueur seulement."""
+        from . import config as config_mod
+        from . import config_edit
+
+        ctx = self.profile_ctx
+        try:
+            profiles.write_active(ctx, self.active_profile_path)
+        except OSError as exc:
+            log.warning("Profil en cours non noté : %s", exc)
+        if ctx.id is None or ctx.is_trial or (self.sim is not None and self.config_path is None):
+            return
+        try:
+            config_edit.update_config(self.config_path or config_mod.DEFAULT_CONFIG_PATH, [("profils", "dernier", ctx.id)])
+        except config_edit.ConfigEditError as exc:
+            log.warning("Dernier profil non enregistré : %s", exc)
+
+    def _swap_hr(self) -> None:
+        """Ceinture cardio du nouveau profil : l'ancienne s'arrête, la nouvelle est recherchée."""
+        if self.hr is not None and hasattr(self.hr, "stop"):
+            self.hr.stop()
+        self.hr = build_hr(self.cfg, self.sim)
+        if self.hr is not None and hasattr(self.hr, "run"):
+            try:
+                asyncio.get_running_loop()
+                self._spawn(self.hr.run())
+            except RuntimeError:
+                pass
+        log.info("Ceinture cardio : %s.", self.cfg.drivers.hr if self.hr is not None else "aucune")
 
     # --- progression, Garage et bilan d'expérience (série V, lot V11, contrat IPC révision 1.4) ----
 
     def _build_progression(self, profile_path: Path | None) -> ProgressionService:
-        from .garage import PROFILE_PATH
-
         return ProgressionService(self.cfg, self.journal_dir, workout_duration_finder(self.workouts_dir),
-                                  profile_path or PROFILE_PATH)
+                                  profile_path or self.profile_ctx.profile_path, self.profile_ctx.table_path)
 
     def _equipped_params(self) -> PhysicsParams:
         """Paramètres physiques de la séance : `config.toml` et équipement choisi (cadre, roues)."""
@@ -541,6 +721,7 @@ class CoreSession:
         old = svc.refresh()
         msg = svc.xp_result(journal, old, records, PhysicsParams.from_config(self.cfg))
         self._publish_progression()
+        self._publish_rogue()   # châssis débloqués, vies et dernière run pour la prochaine connexion de l'engine
         return msg
 
     async def _send_xp_result(self, journal: str, records: list[dict] | None) -> None:
@@ -592,6 +773,24 @@ class CoreSession:
                  request.objective, request.duration_min, request.seed, request.w_prime_j, self.rogue.chassis_id,
                  self.rogue.hash)
         self._set_state("READY")
+
+    def _publish_rogue(self) -> None:
+        """`hello_ack.config.rogue` d'après la progression : châssis, vies, dernière run (lots R9, R13), W' estimé (R16)."""
+        chassis, stats, lives = self.rogue_provider() if self.rogue_provider else (None, None, 0)
+        self.server.hello_config["rogue"] = rogue_mode.hello_block(self.cfg, self.w_prime_estimate_j, chassis,
+                                                                   stats, lives)
+
+    def _estimate_w_prime(self) -> float | None:
+        """W' estimé depuis les séances passées (FIT et journaux), `None` si l'historique ne suffit pas (lot R16)."""
+        return estimate_w_prime(self.journal_dir, self.cfg.rider.ftp_w, self.mmp_cache_path)
+
+    async def _publish_w_prime_estimate(self) -> None:
+        """Calcul hors de la boucle à 50 Hz ; publié dans `hello_ack` dès qu'il est prêt."""
+        est = await asyncio.to_thread(self._estimate_w_prime)
+        if est is not None:
+            log.info("W' estimé des séances passées : %.1f kJ.", est / 1000.0)
+        self.w_prime_estimate_j = est
+        self._publish_rogue()
 
     def _drop_rogue(self) -> None:
         """Retour au mode classique : la run préparée est abandonnée."""
@@ -931,11 +1130,12 @@ class CoreSession:
             it["configured"] = it["address"] in {paired.trainer_address, paired.click_plus_address,
                                                  paired.click_minus_address, paired.hr_address}
 
-    def _spawn(self, coro: Any) -> None:
+    def _spawn(self, coro: Any) -> asyncio.Task[Any]:
         """Lance une tâche de fond en gardant sa référence jusqu'à la fin."""
         task = asyncio.create_task(coro)
         self._bg_tasks.add(task)
         task.add_done_callback(self._bg_tasks.discard)
+        return task
 
     async def _handle_list_routes(self, cmd_id: int) -> None:
         from .config import GPX_DIR
@@ -1200,6 +1400,7 @@ class CoreSession:
                                     on_failure=self._on_recording_failure,
                                     workout_id=self._workout_id, source=self._journal_source(),
                                     progression=self.progress_svc.journal_header(equipped=self.rogue is None),
+                                    profile=self.profile_ctx.journal_header(),
                                     plan=active_tag(self._workout_id, state_path=self.plan_state_path,
                                                     plans_dir=self.plans_dir, workouts_dir=self.workouts_dir))
         self._rec.event("start", time.time())
@@ -1295,6 +1496,7 @@ class CoreSession:
             if self.rogue is not None:   # ligne `rogue_run` : l'expérience, les pièces et les statistiques la lisent
                 rogue_summary = self.rogue.summary()
                 rec.game(self.rogue.run_line(time.time()))
+                self.progress_svc.use_lives(self.rogue.engine.lives_used)   # vies rattrapant une défaite (R9)
             fit_path, s, fit_error = rec.finish(save, ts=ts)
             records, events = rec.records, rec.events
             records_done = records if self.rogue is None else None   # pas d'équipement en Cyber-Rogue (V5)
@@ -1928,7 +2130,7 @@ class CoreSession:
 
         self._rec = SessionRecorder(self.journal_dir, route_id, on_failure=self._on_recording_failure,
                                     workout_id=rs.workout_id, resume_path=path, lines=rs.lines,
-                                    source=self._journal_source())
+                                    source=self._journal_source(), profile=self.profile_ctx.journal_header())
         if rs.running:
             # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
             self._rec.event("pause", rs.last_ts, "core_restarted")
@@ -1965,7 +2167,8 @@ class CoreSession:
         st.gear, st.gears_total = self.rogue.gear, self.rogue.balance.gear_max
         st.lat = st.lon = st.alt = None
         self._rec = SessionRecorder(self.journal_dir, rogue_mode.JOURNAL_ROUTE_ID, on_failure=self._on_recording_failure,
-                                    resume_path=path, lines=rs.lines, source=self._journal_source())
+                                    resume_path=path, lines=rs.lines, source=self._journal_source(),
+                                    profile=self.profile_ctx.journal_header())
         if rs.running:
             self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
@@ -2008,6 +2211,9 @@ class CoreSession:
         """
         if autostart and resume is None:
             self.check_autostart(route_id, workout_id)
+        # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
+        # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
+        await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
                  for p in self._services() if hasattr(p, "run")]  # trainer prioritaire

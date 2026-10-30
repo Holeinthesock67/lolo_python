@@ -2,10 +2,10 @@
 """Banc d'essai simulé : vrai core sur Bluetooth simulé, vrai engine, captures et rapport.
 
 Usage :
-    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|DOSSIER.world]
+    sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
-                 [--culling on|off] [--probe] [--speed-kmh V] [--out DOSSIER] [--list]
+                 [--culling on|off] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -27,10 +27,11 @@ roule une heure, relance le parcours à chaque fin et vérifie images/s, saccade
 `--display` (avec `--native`) choisit le mode d'affichage de l'engine (`display_mode.gd`) : fenêtre de
 `--size` par défaut, `borderless` ou `fullscreen` à la définition native de l'écran, pour comparer les modes
 avec la sonde. `--culling on` active le tri de ce que la caméra ne voit pas (lot S1, coupé par défaut faute de gain
-mesuré) : scénario `rendu_invisible`, à comparer avec `--culling off` (défaut).
+mesuré) : scénario `rendu_invisible`, à comparer avec `--culling off` (défaut). `--load-guard on` laisse le garde-fou
+de charge couper des effets quand le GPU sature (lot Y6) ; coupé par défaut pour mesurer les préréglages tels quels.
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
-qui peuvent fixer `world`, `workout`, `duration_s` et `difficulty_pct` dans une section
+qui peuvent fixer `world`, `biome` (lot U17), `workout`, `duration_s` et `difficulty_pct` dans une section
 `bench`), ou un fichier JSON au format de `docs/SIMULATION_BLE.md`. `--list` les énumère.
 Décor vivant (lot P30) : chaque capture relève les objets affichés par sorte et les sons du décor démarrés
 (`decor` de la ligne `screenshot`) ; le rapport les trace et `decor.csv` les garde. La section `bench` peut
@@ -103,7 +104,8 @@ POP_WARMUP_M = 100.0
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 # Mêmes tolérances que visual_check.py (avertissements connus du mode test et de Xvfb).
 GODOT_TOLERATED = re.compile(
-    r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync")
+    r"ObjectDB instances (were )?leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync|"
+    r"XOpenIM failed|XCreateIC couldn't create")   # méthode de saisie X du bureau, hors OpenRide
 # Lignes du journal du core gardées pour la frise des événements.
 CORE_EVENT = re.compile(r"Reconnexion|reconnect|perdu|coupé|déconnect|connecté|renvoi|refus|ERROR|"
                         r"PAUSED|RUNNING|FINISHED|silence|plus de données|ceinture|Click|contrôle", re.I)
@@ -210,6 +212,18 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         subprocess.run([sys.executable, "-m", "openride_core.tools.fake_world", "--demo", "--terrain",
                         "--out", str(routes)], check=True, env=env, stdout=subprocess.DEVNULL)
         return "demo"
+    if kind == "ouvert":
+        # Monde vivant synthétique de 20 km (W15) : même rendu que le monde ouvert, sans générateur ni réseau.
+        problem = compiler_problem(())
+        if problem:
+            print(f"ÉCHEC monde ouvert : {problem}", file=sys.stderr)
+            raise SystemExit(2)
+        work = tmp / "world-ouvert"
+        subprocess.run([sys.executable, str(TESTS_DIR / "make_sim_world.py"), "--out", str(work), "--live"],
+                       check=True, stdout=subprocess.DEVNULL)
+        world = next(work.glob("*.world"))
+        shutil.copytree(world, routes / world.name, dirs_exist_ok=True)
+        return world.stem
     if kind in ("village", "osm"):
         script = "make_sim_world.py" if kind == "village" else "make_osm_world.py"
         problem = compiler_problem(world_layers(kind))
@@ -224,7 +238,7 @@ def prepare_world(kind: str, routes: Path, tmp: Path) -> str:
         return world.stem
     src = Path(kind).expanduser()
     if not (src / "manifest.json").is_file():
-        raise SystemExit(f"parcours introuvable : {kind} (demo, village, osm ou dossier .world)")
+        raise SystemExit(f"parcours introuvable : {kind} (demo, village, osm, ouvert ou dossier .world)")
     shutil.copytree(src, routes / src.name, dirs_exist_ok=True)
     return src.stem
 
@@ -264,6 +278,8 @@ class Bench:
         self.scenario_arg = scenario_arg
         # --world donné explicitement l'emporte sur le monde du scénario (même scénario, autre parcours).
         self.world = str(args.world or settings.get("world") or "demo")
+        # Biome forcé (lot U17) : `--biome=` de l'engine, sur tout le parcours ; --biome l'emporte sur `bench.biome`.
+        self.biome = str(getattr(args, "biome", None) or settings.get("biome") or "")
         self.workout = settings.get("workout", args.workout)
         self.difficulty = settings.get("difficulty_pct", args.difficulty)
         # Vitesse imposée (lot X35) : le cycliste simulé (stratégie `vitesse`) tient cette vitesse sur la pente reçue, qui n'est la
@@ -385,7 +401,10 @@ class Bench:
                     "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
-                    f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}"]
+                    f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}",
+                    f"--load-guard={a.load_guard}"]
+            if self.biome:
+                cmd.append(f"--biome={self.biome}")
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
                 cmd.append(f"--perf-probe={(self.out / 'moteur.csv').resolve()}")
                 self.sampler = perf_probe.SystemSampler()
@@ -996,13 +1015,33 @@ def write_index(out: Path, results: list[tuple[str, Report]]) -> None:
         f"<th>Résultat</th></tr>{rows}</table></body></html>", encoding="utf-8")
 
 
+
+def home_changes(before: dict, after: dict, out: Path, home: Path) -> list[str]:
+    """Entrées de ~/OpenRide changées pendant le banc, hors rapports des bancs.
+
+    Le dossier des rapports et ses parents (dont la date de modification change) sont attendus,
+    comme tout ~/OpenRide/sim_bench : un autre passage de l'outil y écrit ses rapports (pré-vols
+    enchaînés, 7am du 29 octobre). La date de ~/OpenRide seule ne compte pas : un fichier ajouté ou
+    retiré apparaît de lui-même."""
+    out = out.resolve()
+    reports = (home / "OpenRide" / "sim_bench").resolve()
+    expected = {out, *out.parents, (home / "OpenRide").resolve()}
+    changed = set()
+    for p, _ in set(before.items()) ^ set(after.items()):
+        r = Path(p).resolve()
+        if not (r.is_relative_to(out) or r.is_relative_to(reports) or r in expected):
+            changed.add(p)
+    return sorted(changed)
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
-        "GODOT", Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+        "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
-    ap.add_argument("--world", help="demo (défaut), village (bâtiments, montée et descente), osm, ou dossier .world ; "
+    ap.add_argument("--world", help="demo (défaut), village (bâtiments, montée et descente), osm, ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
                     "l'emporte sur le monde du scénario")
+    ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
+                    "l'emporte sur le biome du scénario (scénarios biome_*)")
     ap.add_argument("--workout", help="ERG : erg_court (5 min 30 intégré) ou fichier .zwo")
     ap.add_argument("--duration", type=float, help="durée de chaque séance en s (défaut : fin du scénario + 15 s)")
     ap.add_argument("--every", type=float, help="intervalle des captures en s (défaut : celui du scénario, sinon 15)")
@@ -1019,6 +1058,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="off", choices=("on", "off"),
                     help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
+    ap.add_argument("--load-guard", default="off", choices=("on", "off"),
+                    help="garde-fou de charge de l'engine (lot Y6, défaut off : préréglages mesurés tels quels)")
     ap.add_argument("--latence", action="store_true",
                     help="latence des appuis du Click jusqu'à l'image (lot X7) : core et engine avec --latence")
     ap.add_argument("--probe", action="store_true",
@@ -1056,12 +1097,7 @@ def main(argv: list[str] | None = None) -> int:
         rep = bench.run()
         guide.measure(sname, "OK" if not rep.failed else f"{rep.failed} échec(s)", ok=not rep.failed)
         results.append((sname, rep))
-    after = snapshot_home(real_home)
-    # Le dossier des rapports et ses parents (dont la date de modification change) sont attendus.
-    out = args.out.resolve()
-    expected = {out, *out.parents}
-    changed = sorted({p for p, _ in set(before.items()) ^ set(after.items())
-                      if not Path(p).resolve().is_relative_to(out) and Path(p).resolve() not in expected})
+    changed = home_changes(before, snapshot_home(real_home), args.out, real_home)
     ok_home = not changed
     print(f"[{'OK' if ok_home else 'ÉCHEC'}] HOME réel inchangé : "
           + ("oui" if ok_home else f"modifiés : {changed[:5]}"))

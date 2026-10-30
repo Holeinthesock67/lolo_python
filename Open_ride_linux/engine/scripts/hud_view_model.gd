@@ -67,17 +67,19 @@ static func _clean(value: Variant, hi: float, clamp_negative := true) -> float:
 
 
 ## Rappel des commandes du Click affiché au départ de la séance et à la reprise (spécification générale
-## §7.1) ; le clavier double le Click touche pour touche (key_map.gd, lot O17). `kind` : `erg.kind` de
+## §7.1, flèches haut et bas du boîtier gauche : vue suivante, précédente) ; le clavier double le Click touche pour touche (key_map.gd, lot O17). `kind` : `erg.kind` de
 ## la trame (lot O18) ; l'ERG d'une session libre n'a pas de blocs, et en cadence verrouillée ± règlent
 ## la cadence cible.
-static func controls_text(erg: bool, kind := "workout") -> String:
+static func controls_text(erg: bool, kind := "workout", rogue := false) -> String:
+	if rogue:   # colonne Cyber-Rogue du plan des boutons (spécification générale §7.1)
+		return "Click : Y = pause · + / − = vitesse · Z = attaque, long = carte active · ↑ / ↓ = vue   (clavier : mêmes touches)"
 	if erg and kind == "cadence":
-		return "Click : Y = pause · + / − = cadence cible ± 2 %, long ± 10 %   (clavier : mêmes touches)"
+		return "Click : Y = pause · + / − = cadence cible ± 2 %, long ± 10 % · ↑ / ↓ = vue   (clavier : mêmes touches)"
 	if erg and kind == "free":
-		return "Click : Y = pause · + / − = intensité ± 2 %, long ± 10 %   (clavier : mêmes touches)"
+		return "Click : Y = pause · + / − = intensité ± 2 %, long ± 10 % · ↑ / ↓ = vue   (clavier : mêmes touches)"
 	if erg:
-		return "Click : Y = pause · + / − = intensité ± 2 %, long ± 10 % · Z = bloc suivant   (clavier : mêmes touches)"
-	return "Click : Y = pause · + / − = braquet · appui long = 10 braquets   (clavier : mêmes touches)"
+		return "Click : Y = pause · + / − = intensité ± 2 %, long ± 10 % · Z = bloc suivant · ↑ / ↓ = vue   (clavier : mêmes touches)"
+	return "Click : Y = pause · + / − = braquet · appui long = 10 braquets · ↑ / ↓ = vue   (clavier : mêmes touches)"
 
 
 ## Explication d'un appui ni court ni long (PLUS_UNCLEAR ou MINUS_UNCLEAR), menu affiché ou en séance.

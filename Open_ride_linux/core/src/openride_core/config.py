@@ -6,6 +6,11 @@ donne une configuration complète et utilisable.
 Lecture stricte sur les types et les bornes (lot J3) : une valeur invalide lève `ConfigError`,
 avec un message qui cite le fichier, la section et la clé. Une clé ou une section inconnue
 (faute de frappe) donne un avertissement au journal, sans erreur.
+
+Deux couches (série MJ, lot MJ4) : configuration effective = valeurs par défaut ← `config.toml`
+(la machine) ← `Profils/<id>/profil.toml` (le joueur en cours). Seules les clés de `PROFILE_KEYS`
+sont lues dans `profil.toml` ; une clé joueur encore présente dans `config.toml` reste lue, le
+profil l'emporte. Sans profil (contexte historique), `config.toml` seul, comme avant.
 """
 
 from __future__ import annotations
@@ -75,16 +80,18 @@ class RenderConfig:
     theme: str = "default"
     visual_grade_scale: float = 2.5   # relief affiché ×2,5 (lot Y15) ; 1,0 : relief réel ; physique et HUD inchangés
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
+    load_guard: bool = True   # garde-fou de charge (lot Y6) : coupe SSIL, SSAO, glow, MSAA quand le GPU sature ; faux pour les mesures
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
     draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
+    theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
 
 
 @dataclass
 class EngineConfig:
-    godot: str = ""   # chemin de Godot 4.3 (vide : variable GODOT ou ~/Applications/godot), lot N14
+    godot: str = ""   # chemin de Godot 4.7 (vide : variable GODOT ou ~/Applications/godot), lot N14
 
 
 @dataclass
@@ -105,6 +112,7 @@ class DriversConfig:
     click_trace_raw: bool = False
     click_mute_after_s: float = 60.0
     click_rehandshake_s: float = 0.0
+    click_reset_locked: bool = True   # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18)
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
     hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
     hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
@@ -183,11 +191,18 @@ class AudioConfig:
     ride_pct: int = 100            # vélo : vent dans les oreilles, roue libre, « clac » de reprise
     ambience_pct: int = 100        # ambiance : fonds, cloches, points sonores, véhicules, foule, passants
     events_pct: int = 100          # bips et événements : appuis du Click, bloc ERG, consignes, jingles
+    rogue_sfx_pct: int = 70        # Cyber-Rogue : bruitages de jeu (lot R18, bus RogueSfx)
+    rogue_music_pct: int = 40      # Cyber-Rogue : musique (lot R18, bus RogueMusic)
 
 
 @dataclass
 class LogConfig:
     latence: bool = False   # journal de latence des appuis du Click, `[latence]` (lot X7, docs/OUTILS_DE_TEST.md)
+
+
+@dataclass
+class ProfilsConfig:
+    dernier: str = ""   # dernier profil de joueur choisi, profil par défaut au lancement (série MJ, lot MJ7)
 
 
 @dataclass
@@ -209,6 +224,7 @@ class Config:
     bots: BotsConfig = field(default_factory=BotsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     log: LogConfig = field(default_factory=LogConfig)
+    profils: ProfilsConfig = field(default_factory=ProfilsConfig)
 
     @property
     def total_mass_kg(self) -> float:
@@ -247,6 +263,7 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("ipc", "port_state"): (1024, 65535),
     ("ipc", "port_commands"): (1024, 65535),
     ("render", "visual_grade_scale"): (1.0, 3.0),
+    ("render", "theme_library_gb"): (1, 50),
     ("drivers", "click_short_max_s"): (0.05, 5),
     ("drivers", "click_long_min_s"): (0.05, 5),
     ("open_world", "cache_max_gb"): (0.5, 500),
@@ -273,6 +290,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),
     ("audio", "events_pct"): (0, 100),
+    ("audio", "rogue_sfx_pct"): (0, 100),
+    ("audio", "rogue_music_pct"): (0, 100),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),
@@ -294,6 +313,44 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("wind", "feel"): ("grade", "ftms"),
     ("powerups", "mode"): ("on", "off"),
 }
+
+
+# Réglages qui suivent le joueur (série MJ, plan §2.2 et §10) : lus dans `profil.toml`, écrits dans
+# le profil en cours par `config_edit.update_layers` ; tous les autres restent à la machine.
+PROFILE_KEYS: tuple[tuple[str, str], ...] = (
+    ("rider", "ftp_w"), ("rider", "mass_kg"), ("rider", "hr_max_bpm"),
+    ("bike", "mass_kg"),
+    ("trainer", "difficulty_pct"),
+    ("gearing", "start_gear"),
+    ("powerups", "mode"),
+    ("bots", "level_pct"),
+    ("wind", "mode"), ("wind", "speed_kmh"), ("wind", "from_deg"), ("wind", "gust_pct"),
+    ("wind", "max_grade_offset_pct"),
+    ("render", "camera"), ("render", "chart"),
+    ("drivers", "hr"), ("drivers", "hr_address"), ("drivers", "hr_name"),
+)
+PROFILE_SECTION = "profil"   # identité du profil dans `profil.toml` (profiles.py), pas un réglage
+
+
+def is_profile_key(section: str, key: str) -> bool:
+    return (section, key) in PROFILE_KEYS
+
+
+def profile_overlay(data: dict[str, Any], source: str = "profil.toml") -> dict[str, Any]:
+    """Réglages joueur de `profil.toml` ; les autres clés sont signalées et ignorées."""
+    out: dict[str, dict[str, Any]] = {}
+    for section, values in data.items():
+        if section == PROFILE_SECTION:
+            continue
+        if not isinstance(values, dict):
+            raise ConfigError(f"{source}, [{section}] : section attendue, reçu {values!r}")
+        for key, value in values.items():
+            if is_profile_key(section, key):
+                out.setdefault(section, {})[key] = value
+            else:
+                log.warning("%s : [%s] %s ignoré (réglage de la machine, à mettre dans config.toml)",
+                            source, section, key)
+    return out
 
 
 def _convert(current: Any, value: Any, where: str) -> Any:
@@ -389,19 +446,47 @@ def from_dict(data: dict[str, Any], source: str = "config.toml") -> Config:
     return validate(_merge(Config(), data, source), source)
 
 
-def load(path: Path | None = None) -> Config:
-    """Charge la configuration ; un fichier absent donne les valeurs par défaut.
+def from_layers(machine: dict[str, Any], player: dict[str, Any] | None = None,
+                machine_source: str = "config.toml", player_source: str = "profil.toml") -> Config:
+    """Configuration effective : `machine` puis les réglages joueur de `player` par-dessus."""
+    cfg = _merge(Config(), machine, machine_source)
+    if not player:
+        return validate(cfg, machine_source)
+    _merge(cfg, profile_overlay(player, player_source), player_source)
+    return validate(cfg, f"{machine_source} + {player_source}")
 
-    Lève `ConfigError` si le fichier est illisible, mal formé ou contient une valeur invalide.
-    """
-    path = path or DEFAULT_CONFIG_PATH
-    if not path.exists():
-        return Config()
+
+def _read(path: Path) -> dict[str, Any]:
     try:
         with path.open("rb") as fh:
-            data = tomllib.load(fh)
+            return tomllib.load(fh)
     except tomllib.TOMLDecodeError as exc:
         raise ConfigError(f"{path} : TOML invalide : {exc}") from None
     except OSError as exc:
         raise ConfigError(f"{path} : lecture impossible : {exc}") from None
-    return from_dict(data, str(path))
+
+
+_ACTIVE = object()   # `load()` : profil en cours (profiles.current())
+
+
+def active_profile_file() -> Path | None:
+    """`profil.toml` du profil en cours ; None en contexte historique (sans profil)."""
+    from . import profiles
+
+    ctx = profiles.current()
+    return ctx.root / profiles.FILE_NAME if ctx.id is not None else None
+
+
+def load(path: Path | None = None, profile_path: Any = _ACTIVE) -> Config:
+    """Charge la configuration effective ; un fichier absent donne les valeurs par défaut.
+
+    `profile_path` : `profil.toml` à poser par-dessus (défaut : celui du profil en cours, aucun en
+    contexte historique ; None : `config.toml` seul). Lève `ConfigError` si un fichier est
+    illisible, mal formé ou contient une valeur invalide.
+    """
+    path = path or DEFAULT_CONFIG_PATH
+    if profile_path is _ACTIVE:
+        profile_path = active_profile_file()
+    machine = _read(path) if path.exists() else {}
+    player = _read(profile_path) if profile_path is not None and profile_path.exists() else {}
+    return from_layers(machine, player, str(path), str(profile_path))

@@ -24,6 +24,7 @@ from typing import Iterable
 
 import numpy as np
 
+from ..constants import LENGTH_EPS_M
 from ..frame import LocalFrame
 from . import osmdb
 from .osmdb import BBox, OsmDb, Road
@@ -64,6 +65,11 @@ class Edge:
     osm_nodes: list[int]
     roundabout: bool = False
     internal: bool = False           # intérieur d'un point de choix (rond-point, carrefour double)
+
+    @property
+    def degenerate(self) -> bool:
+        """Arête sans longueur (points confondus, fréquent après la quantification des tuiles) : pas de profil possible."""
+        return self.length_m < LENGTH_EPS_M
 
     def allows(self, forward: bool) -> bool:
         return self.oneway == 0 or (self.oneway == 1) == forward
@@ -336,7 +342,11 @@ class RoadGraph:
 
         for e in self.edges.values():
             short = e.length_m < MERGE_M and junction(e.raw_a) and junction(e.raw_b)
-            if (e.roundabout or short) and e.raw_a != e.raw_b:
+            if e.degenerate:                                  # jamais parcourue ni accrochée : ses bouts ne font qu'un
+                e.internal = True
+                if e.raw_a != e.raw_b:
+                    union(e.raw_a, e.raw_b)
+            elif (e.roundabout or short) and e.raw_a != e.raw_b:
                 e.internal = True
                 union(e.raw_a, e.raw_b)
             elif e.roundabout:

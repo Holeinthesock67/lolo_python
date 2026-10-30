@@ -382,6 +382,7 @@ click_long_min_s = 0.9
 click_trace_raw = false      # trace brute de chaque notification du Click (lot Q6)
 click_mute_after_s = 60.0    # boîtier déclaré muet sans appui depuis ce délai (lot Q6)
 click_rehandshake_s = 0.0    # reprise d'un boîtier muet, en secondes entre deux étapes ; 0 : jamais (lot Q6)
+click_reset_locked = true    # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18) ; false : le laisser muet
 mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
 hr = "none"                  # ceinture cardio : "none", "ble" ou "sim"
 hr_address = ""
@@ -393,11 +394,13 @@ quality = "low"      # low, medium, high
 theme = "default"
 visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lots Q2 et Y15 ; physique et HUD inchangés)
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
+load_guard = true    # garde-fou de charge (lot Y6) : coupe SSIL, SSAO, glow puis MSAA quand le GPU sature, sans baisser la résolution ; false pour les mesures
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
 fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU et GPU, essais) (« Afficher les images/s » dans Réglages)
 draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« Jauge d'abri des bots »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
+theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé
 
 [ipc]
 port_state = 5005
@@ -439,8 +442,12 @@ master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre
 ambience_pct = 100           # ambiance : fonds, cloches, véhicules, foule, passants
 events_pct = 100             # bips et événements : appuis du Click, bloc ERG, consignes, jingles
+rogue_sfx_pct = 70           # Cyber-Rogue : bruitages de jeu (lot R18, bus RogueSfx)
+rogue_music_pct = 40         # Cyber-Rogue : musique (lot R18, bus RogueMusic)
 [log]
 latence = false              # journal de latence des appuis du Click, lignes [latence] (lot X7 ; --latence)
+[profils]
+dernier = ""                 # dernier profil de joueur choisi, profil par défaut au lancement (série MJ, lot MJ7 ; écrit par le core)
 [rogue]
 w_prime_j = 20000.0          # réserve anaérobie W' du mode Cyber-Rogue, 5 000 à 60 000 J (lot R2)
 cp_w = 0.0                   # puissance critique, 0 à 1 000 W ; 0 : la FTP

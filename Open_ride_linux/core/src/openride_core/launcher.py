@@ -21,7 +21,9 @@ Remplace à terme `scripts/openride-dev.sh`, avec le même comportement de réf�
   variables `GODOT`, `GODOT_ARGS`, `OPENRIDE_ENGINE` (dossier du projet Godot), `OPENRIDE_PERF_PROBE`
   (fichier CSV de la sonde de performance du moteur, `--perf-probe`, lot X13) et `OPENRIDE_DISPLAY`
   (`windowed`, `borderless` ou `fullscreen` : remplace `[render] display` le temps d'un lancement,
-  par exemple `OPENRIDE_DISPLAY=windowed` pour garder une fenêtre pendant un essai).
+  par exemple `OPENRIDE_DISPLAY=windowed` pour garder une fenêtre pendant un essai) ;
+- au démarrage, le thème choisi (`[render] theme`, s'il est installé dans `~/OpenRide/Themes`) est daté dans
+  `~/OpenRide/Themes/.utilisation.json` : `theme-install` retire d'abord les packs oubliés (lot U15).
 
 Supervision :
 - l'engine se ferme normalement (code 0) → arrêt propre du core (SIGINT), 10 s au plus, puis
@@ -45,8 +47,10 @@ Relance demandée depuis le menu (lot N13) :
   relances de l'engine n'avance pas. En session simulée, le code 64 ramène au vrai matériel ;
 - code 65 (`EXIT_SIM`, menu « Session simulée ») → même relance, mais le core reçoit
   `--trainer sim --input sim --hr sim --sim-scenario nominal` (HomeTrainer, Click et ceinture
-  simulés, `docs/SIMULATION_BLE.md`) et l'engine `--sim-session` ; les relances après un
-  plantage gardent le mode en cours.
+  simulés, `docs/SIMULATION_BLE.md`) et `--profil _essai` (profil d'essai, série MJ, lot MJ2 :
+  les séances simulées n'écrivent rien dans le vrai profil), et l'engine `--sim-session` ; les
+  relances après un plantage gardent le mode en cours, et la reprise cherche alors les journaux
+  du profil d'essai.
 
 Lancement sans terminal (lot N14) :
 - premier démarrage : sans `~/OpenRide/config.toml`, il est créé depuis
@@ -67,6 +71,7 @@ Les commandes du core, de l'engine et de la libération du trainer sont des para
 
 from __future__ import annotations
 
+import json
 import os
 import re
 import shlex
@@ -76,12 +81,13 @@ import sys
 import threading
 import time
 from dataclasses import dataclass, field
+from datetime import datetime
 from pathlib import Path
 from typing import IO, Callable
 
 from . import __version__
 
-DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.3-stable_linux.x86_64"
+DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.7.2-stable_linux.x86_64"
 DEFAULT_LOG = Path.home() / "run_trainer.log"   # lien vers le dernier journal du lanceur
 LOGS_DIR = Path.home() / "OpenRide" / "Logs"
 LOG_PREFIX = "openride_"
@@ -94,8 +100,12 @@ DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click"]
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
 EXIT_RELAUNCH = 64
 EXIT_SIM = 65
-# Options du core en session simulée (remplacent --trainer, --input, --hr et --sim-scenario).
-SIM_CORE_ARGS = ["--trainer", "sim", "--input", "sim", "--hr", "sim", "--sim-scenario", "nominal"]
+# Options du core en session simulée (remplacent --trainer, --input, --hr, --sim-scenario et --profil) :
+# matériel simulé et profil d'essai (série MJ, lot MJ2).
+SIM_PROFILE = "_essai"
+SIM_CORE_ARGS = ["--trainer", "sim", "--input", "sim", "--hr", "sim", "--sim-scenario", "nominal",
+                 "--profil", SIM_PROFILE]
+SIM_OPTIONS = ("--trainer", "--input", "--hr", "--sim-scenario", "--profil")
 SIM_ENGINE_ARG = "--sim-session"
 
 STOP_SIGNALS = tuple(s for s in (signal.SIGINT, signal.SIGTERM, getattr(signal, "SIGHUP", None)) if s is not None)
@@ -244,6 +254,27 @@ def ensure_first_run(home: Path | None = None, template: Path | None = None) -> 
     return True
 
 
+def migrate_profiles(home: Path | None = None) -> str | None:
+    """Migration du joueur d'avant les profils vers `Profils/principal/` (série MJ, lot MJ5) ;
+    renvoie un message si elle est annulée ou impossible (OpenRide démarre alors sans profil)."""
+    from . import migration_profils as mig
+    from .config import ConfigError
+
+    if not mig.needed(home):
+        return None
+    try:
+        state = mig.migrate(home)
+    except ConfigError:
+        return None   # configuration invalide : le lanceur l'affiche ; la migration reprendra une fois corrigée
+    except (mig.MigrationError, OSError, ValueError) as exc:
+        return (f"Migration vers les profils de joueurs impossible : {exc}. OpenRide démarre sans profil ; "
+                "elle sera retentée au prochain lancement.")
+    if state == mig.CANCELLED:
+        return ("Migration vers les profils de joueurs annulée : la progression recalculée ne correspondait pas. "
+                "Tes fichiers sont remis comme avant (détail dans ~/OpenRide/Profils/.migration_ecart.txt).")
+    return None
+
+
 def _default_echo() -> bool:
     try:
         return sys.stdout.isatty()
@@ -277,10 +308,14 @@ class Supervisor:
     gpx_dir: Path | None = None
     notify: Callable[[str], None] | None = None
     journal_dir: Path | None = None    # journaux de séance (reprise après plantage, lot N8) ; None : pas de reprise
+    sim_journal_dir: Path | None = None   # journaux du profil d'essai, en session simulée (lot MJ2)
     recover_cmd: list[str] | None = None   # `openride-core recover` ; le chemin du journal est ajouté
     core_max_restarts: int = 3
     core_restart_window_s: float = 600.0
     alert: Callable[[str], None] | None = None   # fenêtre d'erreur (lot N14) ; None : journal seul
+    theme_name: str = ""               # thème choisi, daté au démarrage dans la bibliothèque (lot U15)
+    themes_dir: Path | None = None     # ~/OpenRide/Themes ; None : rien n'est daté
+    active_profile_path: Path | None = None   # `.profil_actif` écrit par le core (lot MJ7) ; None : ignoré
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
@@ -376,6 +411,26 @@ class Supervisor:
     def _core_cmd(self) -> list[str]:
         return sim_core_cmd(self.core_cmd) if self.sim_mode else list(self.core_cmd)
 
+    def _follow_active_profile(self) -> None:
+        """Profil choisi au menu depuis le lancement (lot MJ7) : le core relancé (plantage, relance du
+        menu) le reprend, avec ses journaux pour la reprise. Le profil d'essai n'est jamais suivi."""
+        if self.active_profile_path is None or self.sim_mode:
+            return
+        from . import profiles
+
+        wanted = profiles.read_active(self.active_profile_path)
+        if wanted is None or wanted == profiles.TRIAL_ID or wanted == _option_arg(self.core_cmd, "--profil"):
+            return
+        try:
+            ctx = profiles.ProfileContext.for_id(wanted)
+        except profiles.ProfileContextError:
+            return
+        self.core_cmd = with_profile(self.core_cmd, wanted)
+        if self.recover_cmd is not None:
+            self.recover_cmd = with_profile(self.recover_cmd, wanted)
+        self.journal_dir = ctx.journal_dir
+        self._say(f"profil du menu repris à la relance : {wanted}.")
+
     def _engine_cmd(self) -> list[str]:
         return [*self.engine_cmd, SIM_ENGINE_ARG] if self.sim_mode else list(self.engine_cmd)
 
@@ -387,17 +442,19 @@ class Supervisor:
 
     def _unfinished_journal(self) -> Path | None:
         """Journal d'une séance de ce lancement que le core n'a pas terminée (lot N8)."""
-        if self.journal_dir is None:
+        directory = self.sim_journal_dir if self.sim_mode else self.journal_dir
+        if directory is None:
             return None
         from .resume import find_unfinished_journal
 
-        return find_unfinished_journal(self.journal_dir, since=self._launched_at - 1.0)
+        return find_unfinished_journal(directory, since=self._launched_at - 1.0)
 
     def _recover(self, journal: Path | None) -> None:
         if journal is None or self.recover_cmd is None:
             return
+        cmd = with_profile(self.recover_cmd, SIM_PROFILE) if self.sim_mode else self.recover_cmd
         try:
-            p = self._spawn([*self.recover_cmd, str(journal)], stdin=subprocess.DEVNULL,
+            p = self._spawn([*cmd, str(journal)], stdin=subprocess.DEVNULL,
                             stdout=self._log or subprocess.DEVNULL, stderr=subprocess.STDOUT)
             if not self._wait(p, 60.0):
                 p.kill()
@@ -500,6 +557,8 @@ class Supervisor:
                 if self._stop_signal is not None:
                     return 0
 
+            if self.themes_dir is not None and self.theme_name:
+                record_theme_use(self.themes_dir, self.theme_name)
             core = self._start_core()
             deadline = self.clock() + self.startup_grace_s
             while self.clock() < deadline and core.poll() is None and self._stop_signal is None:
@@ -533,6 +592,7 @@ class Supervisor:
                     if code == 0:
                         self._stop_engine(engine)
                         return self._finish(core, engine, 0)
+                    self._follow_active_profile()
                     journal = self._unfinished_journal()
                     now = self.clock()
                     core_crashes = [t for t in core_crashes if now - t < self.core_restart_window_s] + [now]
@@ -568,6 +628,7 @@ class Supervisor:
                                   + " : arrêt du core puis nouveau lancement.")
                         self._join_readers()
                         self._stop_core(core)
+                        self._follow_active_profile()
                         core = self._start_core()
                         if not self._core_survives_startup(core):
                             self._say(f"le core s'est arrêté à la relance (code {core.returncode}) ; voir {self.log_path}")
@@ -642,21 +703,31 @@ class Supervisor:
 
 # --- ligne de commande -------------------------------------------------------------------
 
-def sim_core_cmd(core_cmd: list[str]) -> list[str]:
-    """Commande du core en session simulée : --trainer, --input, --hr et --sim-scenario remplacés."""
+def _without_options(cmd: list[str], names: tuple[str, ...]) -> list[str]:
+    """`cmd` sans les options `names` (`--nom V` et `--nom=V`)."""
     out: list[str] = []
     skip = False
-    for a in core_cmd:
+    for a in cmd:
         if skip:
             skip = False
             continue
-        if a in ("--trainer", "--input", "--hr", "--sim-scenario"):
+        if a in names:
             skip = True
             continue
-        if a.split("=", 1)[0] in ("--trainer", "--input", "--hr", "--sim-scenario"):
+        if a.split("=", 1)[0] in names:
             continue
         out.append(a)
-    return [*out, *SIM_CORE_ARGS]
+    return out
+
+
+def with_profile(cmd: list[str], profile_id: str) -> list[str]:
+    """`cmd` avec `--profil profile_id` à la place de tout `--profil` donné (série MJ)."""
+    return [*_without_options(cmd, ("--profil",)), "--profil", profile_id]
+
+
+def sim_core_cmd(core_cmd: list[str]) -> list[str]:
+    """Commande du core en session simulée : matériel simulé et profil d'essai (`SIM_CORE_ARGS`)."""
+    return [*_without_options(core_cmd, SIM_OPTIONS), *SIM_CORE_ARGS]
 
 
 def extract_launcher_args(args: list[str]) -> tuple[list[str], bool, bool, float]:
@@ -688,13 +759,43 @@ def extract_launcher_args(args: list[str]) -> tuple[list[str], bool, bool, float
     return core_args, no_compile, compile_only, compile_timeout
 
 
-def _config_arg(args: list[str]) -> Path | None:
+def _option_arg(args: list[str], name: str) -> str | None:
+    """Valeur de l'option `name` (`--nom V` ou `--nom=V`) dans les arguments du core, ou None."""
     for i, a in enumerate(args):
-        if a.startswith("--config="):
-            return Path(a.split("=", 1)[1])
-        if a == "--config" and i + 1 < len(args):
-            return Path(args[i + 1])
+        if a.startswith(name + "="):
+            return a.split("=", 1)[1]
+        if a == name and i + 1 < len(args):
+            return args[i + 1]
     return None
+
+
+THEMES_DIR = Path.home() / "OpenRide" / "Themes"
+THEME_USE_FILE = ".utilisation.json"   # lu par openride_compiler.theme_packs (bibliothèque des thèmes, lot U15)
+
+
+def record_theme_use(themes_dir: Path, theme: str, when: datetime | None = None) -> None:
+    """Date de dernière utilisation du thème choisi (`{nom: date ISO}`), pour que `theme-install` retire d'abord
+    les packs oubliés. Le thème intégré n'est pas daté (jamais retiré) ; fichier illisible : recommencé ;
+    erreur d'écriture : ignorée (la séance démarre quand même)."""
+    if theme == "default" or not (themes_dir / theme).is_dir():
+        return
+    path = themes_dir / THEME_USE_FILE
+    try:
+        uses = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):   # absent ou illisible : recommencé
+        uses = {}
+    if not isinstance(uses, dict):
+        uses = {}
+    uses[theme] = (when or datetime.now()).isoformat(timespec="seconds")
+    try:
+        path.write_text(json.dumps(uses, ensure_ascii=False, indent=1, sort_keys=True) + "\n", encoding="utf-8")
+    except OSError:
+        pass
+
+
+def _config_arg(args: list[str]) -> Path | None:
+    value = _option_arg(args, "--config")
+    return Path(value) if value is not None else None
 
 
 def worldgen_command(env: dict[str, str] | None = None) -> list[str]:
@@ -717,13 +818,19 @@ def worldmenu_command(env: dict[str, str] | None = None) -> list[str]:
 def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) -> Supervisor:
     """Construit le superviseur réel ; lève `ConfigError` ou `FileNotFoundError` avec un message lisible."""
     from . import config as config_mod
-    from .journal import JOURNAL_DIR
+    from . import profiles
 
     env = os.environ if env is None else env
     raw_args = list(core_args) if core_args else list(DEFAULT_CORE_ARGS)
     clean_core_args, no_compile, compile_only, compile_timeout = extract_launcher_args(raw_args)
     clean_core_args = clean_core_args or list(DEFAULT_CORE_ARGS)
     config_path = _config_arg(clean_core_args)
+    # Profil de joueur (série MJ, lot MJ1) : `--profil` passe au core ; reprise et FIT dans son dossier.
+    # Activé avant la lecture de la configuration : ses réglages (caméra…) sont dans son `profil.toml` (MJ4).
+    profile_id = _option_arg(clean_core_args, "--profil")
+    ctx = profiles.resolve(profile_id, env) or profiles.ProfileContext.legacy()   # ProfileContextError si refusé
+    profiles.activate(ctx)
+    profile_args = ["--profil", ctx.id] if ctx.id is not None else []
     cfg = config_mod.load(config_path)   # ConfigError si invalide
 
     godot = Path(env.get("GODOT") or cfg.engine.godot or DEFAULT_GODOT).expanduser()
@@ -751,17 +858,22 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--visual-grade={cfg.render.visual_grade_scale}",
             f"--camera={cfg.render.camera}",
             f"--living={'on' if cfg.render.living else 'off'}",
+            f"--load-guard={'on' if cfg.render.load_guard else 'off'}",
             f"--display={env.get('OPENRIDE_DISPLAY') or cfg.render.display}",
             *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),
         ],
         release_cmd=[*core, "release-trainer", *config_args],
-        recover_cmd=[*core, "recover"],
-        journal_dir=JOURNAL_DIR,
+        recover_cmd=[*core, "recover", *profile_args],
+        journal_dir=ctx.journal_dir,
+        sim_journal_dir=profiles.ProfileContext.for_id(SIM_PROFILE).journal_dir,
         log_path=Path(env["OPENRIDE_LOG"]).expanduser() if env.get("OPENRIDE_LOG") else DEFAULT_LOG,
         rotation=None if env.get("OPENRIDE_LOG") else LogRotation(),
         compile_enabled=not no_compile,
         compile_only=compile_only,
         compile_timeout_s=compile_timeout,
+        theme_name=cfg.render.theme,
+        themes_dir=THEMES_DIR,
+        active_profile_path=profiles.active_file(),
     )
 
 
@@ -812,6 +924,10 @@ def main(argv: list[str] | None = None, message: Callable[[str, bool], None] | N
             first_run = ensure_first_run()
         except OSError as exc:
             return fail(f"création de ~/OpenRide impossible : {exc}")
+        warning = migrate_profiles()
+        if warning:
+            print(f"openride : {warning}", file=sys.stderr)
+            message(warning, True)
     try:
         sup = build_supervisor(args)
     except ConfigError as exc:

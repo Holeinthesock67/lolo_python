@@ -43,11 +43,20 @@ Sous-commandes disponibles à ce stade :
     openride-core ftp-test [FICHIER] [--accept [--force]] [--history] [--json] [--config FICHIER]
                                       résultat du dernier test de FTP (ou du journal donné),
                                       enregistrement de la nouvelle FTP, historique des tests (lot O10)
+    openride-core profil list [--json] | create NOM | rename ID NOM | delete ID
+                                      profils de joueurs : liste, création, renommage, corbeille
+                                      (série MJ, lot MJ7)
+    openride-core profil essai [--vider] [--json] [--config FICHIER]
+                                      profil d'essai (séances simulées comptées) : dossier,
+                                      progression ; --vider efface ses séances (série MJ, lot MJ2)
+
+Toutes les sous-commandes prennent `--profil ID` (profil de joueur, série MJ).
 """
 
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -68,11 +77,7 @@ def cmd_recover(args: argparse.Namespace) -> int:
 
 
 def cmd_run(args: argparse.Namespace) -> int:
-    import asyncio
-
     from . import config as config_mod
-    from .session import AutostartError, CoreSession
-    from .sim_scenarios import SimScenarioError
 
     try:
         cfg = config_mod.load(args.config)
@@ -132,11 +137,41 @@ def cmd_run(args: argparse.Namespace) -> int:
     if args.first_run:
         logging.getLogger("openride_core").info(
             "Premier démarrage : configurez vos appareils avec openride-core devices --save.")
+    from . import profiles
+
+    ctx = profiles.current()
+    lock = profiles.ProfileLock(ctx) if ctx.id is not None else None
+    if lock is not None:
+        try:
+            lock.acquire()   # une seule séance par profil (rendu à l'arrêt ou au plantage du core)
+        except profiles.ProfileContextError as exc:
+            print(f"openride-core : {exc}", file=sys.stderr)
+            return 1
+        profiles.ensure_description(ctx)   # profil.toml écrit à la première séance (lot MJ2)
+        logging.getLogger("openride_core").info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root,
+                                                " — PROFIL D'ESSAI" if ctx.is_trial else "")
+    try:
+        return _run_session(cfg, bots_list, args, lock)
+    finally:
+        if lock is not None:
+            lock.release()
+
+
+def _run_session(cfg, bots_list: list, args: argparse.Namespace, lock=None) -> int:
+    import asyncio
+
+    from .session import AutostartError, CoreSession
+    from .sim_scenarios import SimScenarioError
+
     try:
         session = CoreSession(cfg, bots=bots_list, config_path=args.config)
     except SimScenarioError as exc:
         print(f"openride-core : scénario de simulation refusé : {exc}", file=sys.stderr)
         return 1
+    # Le verrou suit le profil choisi au menu (lot MJ7) ; rendu à la fin, quel que soit le profil.
+    session.profile_lock = lock
+    if lock is not None:
+        session._note_profile()
     try:
         asyncio.run(session.run(autostart=args.autostart, route_id=args.route or "demo",
                                 workout_id=args.workout, resume=args.resume))
@@ -144,6 +179,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         logging.getLogger("openride_core").error("Séance non lancée : %s", exc)
         print(f"openride-core : {exc}", file=sys.stderr)
         return 1
+    finally:
+        if session.profile_lock is not None and session.profile_lock is not lock:
+            session.profile_lock.release()
     return 0
 
 
@@ -219,17 +257,78 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return run(args)
 
 
+PROFIL_ARGS = {"essai": 0, "list": 0, "create": 1, "rename": 2, "delete": 1}
+
+
+def cmd_profil(args: argparse.Namespace) -> int:
+    """`openride-core profil essai [--vider]` : profil d'essai, sa progression, sa remise à zéro ;
+    `profil list|create|rename|delete` : profils de joueurs, pour les outils (lot MJ7)."""
+    from . import profiles
+    from .tools.xp import run as xp_run
+
+    if len(args.valeurs) != PROFIL_ARGS[args.action]:
+        print("openride-core profil : usage : profil essai [--vider] | list [--json] | create NOM | "
+              "rename ID NOM | delete ID", file=sys.stderr)
+        return 2
+    if args.action != "essai":
+        return _profil_players(args)
+    ctx = profiles.ProfileContext.for_id(profiles.TRIAL_ID)
+    profiles.activate(ctx)
+    profiles.ensure_description(ctx)
+    if args.vider:
+        with profiles.ProfileLock(ctx):   # pas pendant une séance d'essai
+            removed = profiles.clear(ctx)
+        print(f"Profil d'essai vidé ({ctx.root}) : {', '.join(removed) or 'rien à effacer'}.")
+        return 0
+    if not args.json:
+        print(f"Profil d'essai : {ctx.root}")
+        print(f"Séances comptées : {', '.join(ctx.counted_sources)}")
+    return xp_run(None, args.json, args.config)
+
+
+def _profil_players(args: argparse.Namespace) -> int:
+    from . import profiles
+    from .garage import profile_summary
+
+    try:
+        if args.action == "list":
+            active = profiles.default_id()
+            items = [profile_summary(c) for c in profiles.list_contexts()]
+            if args.json:
+                print(json.dumps({"default": active, "items": items}, ensure_ascii=False, indent=2))
+                return 0
+            for it in items:
+                mark = "*" if it["id"] == active else " "
+                print(f"{mark} {it['id']:<20} {it['name']:<16} {it['type']:<7} niveau {it['level']:>2}  "
+                      f"dernière séance {it['last_ride'] or '—'}")
+            if not items:
+                print(f"Aucun profil dans {profiles.profiles_dir()}")
+            return 0
+        if args.action == "create":
+            ctx = profiles.create(args.valeurs[0])
+            print(f"Profil créé : {ctx.name} ({ctx.root})")
+        elif args.action == "rename":
+            ctx = profiles.rename(args.valeurs[0], args.valeurs[1])
+            print(f"Profil renommé : {ctx.id} s'appelle maintenant {ctx.name}")
+        else:
+            dest = profiles.delete(args.valeurs[0], None)   # une séance en cours tient le verrou du profil
+            print(f"Profil mis à la corbeille : {dest}")
+    except profiles.ProfileContextError as exc:
+        print(f"openride-core profil {args.action} : {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
 def cmd_open_world_save(args: argparse.Namespace) -> int:
     from . import config as config_mod
     from .config import GPX_DIR
-    from .journal import JOURNAL_DIR
     from .open_world_save import MIN_SAVE_M, save_from_folder
     from .route import WorldError
 
     cfg = config_mod.load(args.config)
     try:
         path, s_end = save_from_folder(args.ride_id, cfg.open_world, args.gpx_dir or GPX_DIR,
-                                       args.journal_dir or JOURNAL_DIR,
+                                       args.journal_dir,
                                        args.km * 1000.0 if args.km else None)
     except WorldError as exc:
         print(f"openride-core open-world-save : {exc}", file=sys.stderr)
@@ -363,6 +462,19 @@ def build_parser() -> argparse.ArgumentParser:
     ows.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ows.add_argument("--gpx-dir", type=Path, help="dossier des traces (défaut : ~/OpenRide/GPX)")
     ows.add_argument("--journal-dir", type=Path, help="journaux (défaut : ~/OpenRide/Activities/.journal)")
+    prf = sub.add_parser("profil", help="profils de joueurs : liste, création, renommage, corbeille ; "
+                                        "profil d'essai (série MJ)")
+    prf.add_argument("action", choices=["essai", "list", "create", "rename", "delete"])
+    prf.add_argument("valeurs", nargs="*", metavar="ARG",
+                     help="create NOM ; rename ID NOM ; delete ID")
+    prf.add_argument("--vider", action="store_true",
+                     help="efface séances, records, plan et équipement du profil d'essai (garde profil.toml)")
+    prf.add_argument("--json", action="store_true", help="sortie JSON (progression)")
+    prf.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
+    for cmd in sub.choices.values():   # profil de joueur, sur toutes les sous-commandes (série MJ, lot MJ1)
+        cmd.add_argument("--profil", metavar="ID",
+                         help="profil de joueur ~/OpenRide/Profils/<ID>/ (défaut : $OPENRIDE_PROFIL, "
+                              "sinon les dossiers de ~/OpenRide/ d'avant les profils)")
     return p
 
 
@@ -383,12 +495,19 @@ def main(argv: list[str] | None = None) -> int:
             raise SystemExit(2)   # code d'argparse pour une ligne de commande refusée
     logging.basicConfig(level=logging.INFO, force=True,
                         format="%(asctime)s %(levelname)-7s %(name)s %(message)s")
+    from . import profiles
+
+    try:
+        profiles.activate(profiles.resolve(args.profil))
+    except profiles.ProfileContextError as exc:
+        print(f"openride-core {args.command} : erreur : {exc}", file=sys.stderr)
+        raise SystemExit(2) from None
     return {"recover": cmd_recover, "run": cmd_run,
             "release-trainer": cmd_release_trainer, "summary": cmd_summary, "session-report": cmd_session_report, "xp": cmd_xp,
             "fit-check": cmd_fit_check,
             "history": cmd_history, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
-            "open-world-save": cmd_open_world_save}[args.command](args)
+            "open-world-save": cmd_open_world_save, "profil": cmd_profil}[args.command](args)
 
 
 if __name__ == "__main__":

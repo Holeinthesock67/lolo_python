@@ -14,7 +14,7 @@ from openride_core import settings
 from openride_core.__main__ import main as core_main
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
-from openride_core.ipc_server import MAX_DATAGRAM_SIZE, IpcServer
+from openride_core.ipc_server import MAX_DATAGRAM_SIZE, MAX_LIST_DATAGRAM_SIZE, IpcServer
 from openride_core.mock_driver import MockDriver
 from openride_core.session import CoreSession
 
@@ -130,7 +130,7 @@ def test_ipc_list_and_set_setting(tmp_path: Path):
     s._on_command("list_settings", {}, 3)
     assert sent[-1]["type"] == "settings" and sent[-1]["request_cmd_id"] == 3
     validator.validate(sent[-1])
-    assert len(json.dumps(sent[-1], separators=(",", ":")).encode()) <= MAX_DATAGRAM_SIZE
+    assert len(json.dumps(sent[-1], separators=(",", ":")).encode()) <= MAX_LIST_DATAGRAM_SIZE
     s._on_command("set_setting", {"key": "rider.ftp_w", "value": 265}, 4)
     assert not errors
     validator.validate(sent[-1])
@@ -184,8 +184,8 @@ def test_wind_settings_lot_p16():
 
 
 def test_settings_with_installed_themes_is_sent(tmp_path: Path):
-    """Les thèmes installés allongent la liste des choix : `settings` passe la barre de 1 400 octets
-    et part quand même (limite de 4 096 octets pour tout message, contrat §2, révision 1.5)."""
+    """Les thèmes installés allongent la liste des choix : `settings` passe 4 096 octets et part quand
+    même, en un seul datagramme (60 000 octets au plus comme `plans`, contrat §2, depuis le 30 octobre)."""
     for i in range(12):
         (tmp_path / f"asphalte_et_herbe_{i:02d}").mkdir()
         (tmp_path / f"asphalte_et_herbe_{i:02d}" / "theme.json").write_text("{}", encoding="utf-8")
@@ -200,7 +200,7 @@ def test_settings_with_installed_themes_is_sent(tmp_path: Path):
     srv = IpcServer()
     srv._tx_sock = Sock()
     srv.send_raw(msg)
-    assert len(sent) == 1 and 1400 < len(sent[0]) <= MAX_DATAGRAM_SIZE
+    assert len(sent) == 1 and MAX_DATAGRAM_SIZE < len(sent[0]) <= MAX_LIST_DATAGRAM_SIZE
     assert json.loads(sent[0]) == msg
 
 
@@ -209,11 +209,14 @@ def test_audio_volumes_in_menu(tmp_path: Path):
     dans une section `[audio]` créée au besoin."""
     cfg = Config()
     items = {i["key"]: i for i in settings.current(cfg)}
-    keys = ["audio.master_pct", "audio.ride_pct", "audio.ambience_pct", "audio.events_pct"]
+    keys = ["audio.master_pct", "audio.ride_pct", "audio.ambience_pct", "audio.events_pct",
+            "audio.rogue_sfx_pct", "audio.rogue_music_pct"]
+    defaults = {"audio.rogue_sfx_pct": 70, "audio.rogue_music_pct": 40}   # Cyber-Rogue plus bas (lot R18)
     for key in keys:
         it = items[key]
-        assert (it["value"], it["min"], it["max"], it["step"], it["unit"], it["applies"]) == (100, 0, 100, 10, "%", "now")
-        assert len(it["label"]) <= 32
+        assert (it["value"], it["min"], it["max"], it["step"], it["unit"], it["applies"]) == (
+            defaults.get(key, 100), 0, 100, 10, "%", "now")
+        assert len(it["label"]) <= 32 and it["group"] == "sound"
     assert settings.step(cfg, "audio.master_pct", 100, +1) == 100
     assert settings.step(cfg, "audio.master_pct", 0, -1) == 0
     path = tmp_path / "config.toml"

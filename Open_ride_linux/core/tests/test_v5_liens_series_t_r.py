@@ -192,7 +192,7 @@ def test_segment_time_gain_aero_on_flat(cat):
 @pytest.fixture
 def equipped_env(tmp_path, monkeypatch):
     """Séance de `test_session_serie_t` avec un profil de progression équipé aéro (cadre et roues)."""
-    from openride_core import garage
+    from openride_core import profile as profile_mod
     from openride_core.profile import Profile, save_profile
 
     profile_path = tmp_path / "profile.json"
@@ -202,7 +202,7 @@ def equipped_env(tmp_path, monkeypatch):
         p.equipped.update(loadout)   # pièces offertes : le profil ne vérifie pas l'achat
         save_profile(p, profile_path)
 
-    monkeypatch.setattr(garage, "PROFILE_PATH", profile_path)
+    monkeypatch.setattr(profile_mod, "PROFILE_PATH", profile_path)
     return equip
 
 

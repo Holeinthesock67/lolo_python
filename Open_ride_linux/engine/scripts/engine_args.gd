@@ -13,6 +13,7 @@ extends RefCounted
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
 ##   --living=on|off          décor vivant de la série P (défaut : on) ; off : rendu de la 1.0 (lot P16)
 ##   --culling=on|off         tri de ce que la caméra ne voit pas (défaut : off, aucun gain mesuré ; on : essai, lot S1)
+##   --load-guard=on|off      garde-fou de charge (lot Y6, load_guard.gd) ; défaut : on, off avec --test-mode
 ##   --display=windowed|borderless|fullscreen  mode d'affichage (défaut : windowed ; display_mode.gd)
 ##   --camera=subjective|follow_near|follow_far|side  vue de caméra de départ (défaut : follow_near ; camera_views.gd)
 ##   --test-mode              journal « [test] clé=valeur » et messages de test (engine/tests/README.md)
@@ -41,7 +42,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, biome, visual_grade, living, culling, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, biome, visual_grade, living, culling, load_guard, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -54,12 +55,14 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"visual_grade": DEFAULT_VISUAL_GRADE,
 		"living": true,
 		"culling": false,
+		"load_guard": true,
 		"display": DisplayMode.DEFAULT,
 		"camera": CameraViews.DEFAULT_VIEW,
 		"test_mode": false,
 		"sim_session": false,
 		"perf_probe": "",
 	}
+	var guard_given := false
 	for arg in args:
 		if arg.begins_with("--ipc-state-port="):
 			out["state_port"] = _port(arg, DEFAULT_STATE_PORT)
@@ -87,6 +90,9 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["living"] = _on_off(arg, true, "décor vivant")
 		elif arg.begins_with("--culling="):
 			out["culling"] = _on_off(arg, false, "tri du visible")
+		elif arg.begins_with("--load-guard="):
+			out["load_guard"] = _on_off(arg, true, "garde-fou de charge")
+			guard_given = true
 		elif arg.begins_with("--camera="):
 			out["camera"] = _camera(arg, CameraViews.DEFAULT_VIEW)
 		elif arg.begins_with("--display="):
@@ -95,6 +101,9 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["test_mode"] = true
 		elif arg == "--sim-session":
 			out["sim_session"] = true
+	# Les outils de test mesurent les préréglages tels quels : garde-fou coupé sauf demande explicite.
+	if out["test_mode"] and not guard_given:
+		out["load_guard"] = false
 	return out
 
 

@@ -30,6 +30,8 @@ const VegetationPlacer := preload("res://scripts/vegetation_placer.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
 
 const SLOT_M := 250.0
+## Distance parcourue par tour de pédalier : braquet de 50 × 17, roue de 2,1 m (cyclistes du décor et bots).
+const DEVELOPMENT_M := 2.1 * 50.0 / 17.0
 const RATE_FLAT := 0.25
 const RATE_CLIMB := 0.75
 const RATE_VILLAGE := 0.4
@@ -565,8 +567,8 @@ func world_transform(s: float, lateral: float, dir: int) -> Transform3D:
 	return Transform3D(Basis(Vector3.UP, atan2(facing.x, facing.z)), pos)
 
 
-## Cadence (tr/min) à `v` (m/s) avec un braquet de 50 × 17 et une roue de 2,1 m ; roue libre au-delà de 55 km/h.
+## Cadence (tr/min) à `v` (m/s) avec le développement DEVELOPMENT_M ; roue libre au-delà de 55 km/h.
 static func cadence_rpm(v_mps: float) -> float:
 	if v_mps > 55.0 / 3.6:
 		return 0.0
-	return v_mps / (2.1 * 50.0 / 17.0) * 60.0
+	return v_mps / DEVELOPMENT_M * 60.0
