@@ -170,6 +170,15 @@ Réalisée pendant la recette visuelle d'Y2, qui renvoie ici. Rien de cette éta
 - Les reflets SSR de l'eau restent dans Y12 (refaits en 4.6, demi-résolution).
 - Mesure : protocole du §6 sur 4.3 puis sur 4.7 avec les mêmes réglages, puis avec ceux de l'étape 4 ; budgets du §3.
 
+**Réalisation (29 octobre, Godot 4.7.2, après Y2 #557) :**
+
+- Rendu des tons : **AgX** (`tonemap_agx_white` 16,29 et `tonemap_agx_contrast` 1,25, valeurs du moteur), exposition 1,25, contraste 1,08 et saturation 1,18 gardés. Captures Forward+ dans le cloud (`visual_check.py --native`, 1280×720) Filmic contre AgX : ciel plus bleu et moins délavé vers l'horizon (moyenne du haut de l'image +20 sur 255 environ), herbe et route presque inchangées (±5).
+- Filtrage anisotrope par préréglage sur le viewport : 4× en `low`, 8× en `medium`, 16× en `high` (clé `anisotropy` d'`IMAGE`) ; le réglage global de `project.godot` reste la valeur de départ avant l'application du préréglage.
+- Moteur Compatibility (tests sous Xvfb seulement, le jeu tourne en Forward+ dans les trois préréglages) : Filmic gardé, faute de tampon HDR AgX y blanchissait le ciel et l'herbe et effaçait les nuages (tests graphiques « ciel » et « nuages » en échec).
+- Glow inchangé (Soft Light, intensité 0,6) : aucun écart visible en 4.7 sur les captures, `low` sans glow décalant autant que `medium`.
+- SMAA de `low` : lot Y6. Occlusion spéculaire : automatique depuis 4.5.
+- Reste : banc sur le PC cible (budgets du §3) et choix du propriétaire sur les captures.
+
 ## 8. Fichiers concernés
 
 - **Modifiés (étape 1) :** `engine/scripts/quality_presets.gd`, `render_quality.gd`, `engine/project.godot`, `engine/tests/unit/test_quality_presets.gd`, `test_render_quality.gd`, ce cahier, `docs/lots/00_INDEX.md`, `docs/SUIVI_AVANCEMENT.md`, `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md`.

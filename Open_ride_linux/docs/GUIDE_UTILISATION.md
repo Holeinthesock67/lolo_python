@@ -23,13 +23,13 @@ OpenRide est un simulateur de cyclisme indoor pour Linux. Il relie votre home tr
 
 ## 2. Installer et mettre à jour
 
-Installation, une seule fois, depuis le dossier `Open_ride_linux/` du dépôt (après `sudo apt install python3-venv bluez` et le téléchargement de Godot 4.3, version standard, pas .NET) :
+Installation, une seule fois, depuis le dossier `Open_ride_linux/` du dépôt (après `sudo apt install python3-venv bluez` et le téléchargement de Godot 4.7.2, version standard, pas .NET) :
 
 ```bash
 scripts/install.sh
 ```
 
-Le script demande le chemin de Godot 4.3 et crée trois icônes dans le menu des applications : **OpenRide**, **OpenRide – Libérer le trainer** et **OpenRide – Mettre à jour**. Il peut être relancé sans risque.
+Le script demande le chemin de Godot 4.7.2 et crée trois icônes dans le menu des applications : **OpenRide**, **OpenRide – Libérer le trainer** et **OpenRide – Mettre à jour**. Il peut être relancé sans risque.
 
 Pour mettre à jour, cliquez sur l'icône **OpenRide – Mettre à jour**. La mise à jour est refusée s'il y a des modifications locales dans le dossier du dépôt ; vos parcours, séances et réglages (dans `~/OpenRide/`) ne sont jamais touchés.
 

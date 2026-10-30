@@ -43,7 +43,7 @@ func _viewport(fog: bool) -> SubViewport:
 		env.fog_enabled = true
 		env.fog_light_color = FOG
 		env.fog_density = 0.05
-		env.fog_sky_affect = 1.0
+		env.fog_sky_affect = 0.0   # fond noir : en Godot 4.7, le brouillard teinte aussi un fond uni
 	var we := WorldEnvironment.new()
 	we.environment = env
 	vp.add_child(we)

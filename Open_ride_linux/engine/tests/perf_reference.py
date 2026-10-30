@@ -141,7 +141,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--reference", type=Path, default=REFERENCE, help=f"fichier de référence (défaut {REFERENCE})")
     sub = ap.add_subparsers(dest="cmd", required=True)
     r = sub.add_parser("run", help="mesurer et comparer à la référence")
-    r.add_argument("--godot", default=os.environ.get("GODOT", str(Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+    r.add_argument("--godot", default=os.environ.get("GODOT", str(Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     r.add_argument("--duree", type=float, default=300.0, help="durée de chaque mesure en s (défaut 300)")
     r.add_argument("--qualite", type=lambda s: [q for q in s.split(",") if q], default=list(DEFAULT_QUALITIES))
     r.add_argument("--mondes", type=lambda s: [w for w in s.split(",") if w], default=list(DEFAULT_WORLDS))

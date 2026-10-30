@@ -31,6 +31,69 @@ def test_classify_message():
     assert zwift_click.classify_message(bytes([zwift_click.MSG_EMPTY, 0x00])) == "maintien"
     assert zwift_click.classify_message(bytes([0x99, 0x01])) == "inconnu"
     assert zwift_click.classify_message(b"") == "inconnu"
+    assert zwift_click.classify_message(STATUS_UNLOCKED) == "etat"
+
+
+STATUS_UNLOCKED = zwift_click.STATUS_HEADER + bytes([0x04, 0x08, 0x01, 0x10, 0x00])
+STATUS_LOCKED = zwift_click.STATUS_HEADER + bytes([0x04, 0x08, 0x01, 0x10, 0x01])
+
+
+def test_parse_status():
+    """Le champ 2 du message d'état est le mode (0 : boutons en clair, 1 : verrouillé)."""
+    assert zwift_click.parse_status(STATUS_UNLOCKED) == 0
+    assert zwift_click.parse_status(STATUS_LOCKED) == 1
+    assert zwift_click.parse_status(zwift_click.STATUS_HEADER + bytes([0x00])) == 0
+    assert zwift_click.parse_status(bytes([zwift_click.MSG_EMPTY, 0x00])) is None
+    assert zwift_click.parse_status(zwift_click.STATUS_HEADER) is None
+
+
+def _locked_session(reset_locked: bool, caplog, monkeypatch):
+    """Boîtier gauche simulé : mode 0 puis mode 1 ; renvoie les écritures sur SYNC_RX."""
+    monkeypatch.setattr(input_providers, "last_trainer_write_at", lambda: None)
+    caplog.set_level(logging.INFO, logger="input")
+    writes: list[bytes] = []
+
+    async def scenario():
+        client = FakeClient([zwift_click.ZWIFT_ASYNC, zwift_click.ZWIFT_SYNC_RX, zwift_click.ZWIFT_SYNC_TX])
+        original = client.write_gatt_char
+
+        async def tracking(char, data, response=True):
+            writes.append(bytes(data))
+            await original(char, data, response)
+
+        client.write_gatt_char = tracking
+        prov = ZwiftClickProvider(device_finder=fake_finder, client_factory=make_factory(client),
+                                  reset_locked=reset_locked, side="gauche")
+        task = asyncio.create_task(prov.run())
+        await wait_for(lambda: prov.status == "CONNECTED")
+        cb = client.cbs[zwift_click.ZWIFT_ASYNC]
+        cb(None, STATUS_UNLOCKED)
+        await asyncio.sleep(0.5)
+        assert zwift_click.RESET_POD not in writes
+        cb(None, STATUS_LOCKED)
+        cb(None, STATUS_LOCKED)
+        await asyncio.sleep(0.5)
+        prov.stop()
+        await asyncio.wait_for(task, 2.0)
+
+    asyncio.run(scenario())
+    return writes
+
+
+def test_locked_status_resets_pod_once(caplog, monkeypatch):
+    """Réglage activé : le mode 1 déclenche un seul redémarrage 0x18, noté au journal."""
+    writes = _locked_session(True, caplog, monkeypatch)
+    assert writes.count(zwift_click.RESET_POD) == 1
+    lines = [r.getMessage() for r in caplog.records]
+    assert any("mode 1 (verrouillé par Zwift)" in m for m in lines)
+    assert any("redémarrage du boîtier (0x18)" in m for m in lines)
+
+
+def test_locked_status_without_setting_only_logs(caplog, monkeypatch):
+    """Réglage désactivé (défaut) : l'état est journalisé, aucun octet 0x18 n'est écrit."""
+    writes = _locked_session(False, caplog, monkeypatch)
+    assert zwift_click.RESET_POD not in writes
+    assert any("mode 1 (verrouillé par Zwift)" in r.getMessage() for r in caplog.records)
 
 
 def test_trace_raw_disabled_log_identical(caplog, monkeypatch):
@@ -301,15 +364,15 @@ def test_session_passes_q6_settings_and_side(tmp_path):
     from openride_core.session import build_inputs
 
     cfg = from_dict({"drivers": {"input": "click", "click_trace_raw": True, "click_mute_after_s": 45.0,
-                                 "click_rehandshake_s": 30.0, "click_address": "AA:BB:CC:00:00:7F",
+                                 "click_rehandshake_s": 30.0, "click_reset_locked": True, "click_address": "AA:BB:CC:00:00:7F",
                                  "click_minus_address": "AA:BB:CC:00:00:3C"}})
     plus, minus = [p for p in build_inputs(cfg) if isinstance(p, ZwiftClickProvider)]
     for p in (plus, minus):
-        assert (p.trace_raw, p.mute_after_s, p.rehandshake_s) == (True, 45.0, 30.0)
+        assert (p.trace_raw, p.mute_after_s, p.rehandshake_s, p.reset_locked) == (True, 45.0, 30.0, True)
     assert plus.side == "droit"
     assert minus.side == "gauche"
     # Sans adresse configurée ni connexion, le côté n'est pas deviné
     bare = [p for p in build_inputs(from_dict({"drivers": {"input": "click"}}))
             if isinstance(p, ZwiftClickProvider)]
     assert [p.side for p in bare] == ["inconnu", "inconnu"]
-    assert all(p.trace_raw is False and p.rehandshake_s == 0.0 for p in bare)
+    assert all(p.trace_raw is False and p.rehandshake_s == 0.0 and not p.reset_locked for p in bare)

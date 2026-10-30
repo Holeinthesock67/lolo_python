@@ -12,7 +12,7 @@ les suites, garde chaque journal et écrit un résumé, comparé au passage pré
 
 Sortie : `~/OpenRide/recettes/<date>_<heure>/` (`--out` pour un autre dossier) avec un journal par
 étape, `resume.txt`, `resume.json` et `perf.csv` (budgets de temps de l'engine, lot X2).
-Variables : GODOT (exécutable Godot 4.3), OPENRIDE_VENV (défaut core/.venv).
+Variables : GODOT (exécutable Godot 4.7), OPENRIDE_VENV (défaut core/.venv).
 Code de sortie : 0 si toutes les étapes passent, 1 sinon, 2 si l'appel est invalide.
 Bibliothèque standard seulement.
 """
