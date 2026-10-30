@@ -245,8 +245,13 @@ def write_fit(records: list[dict], events: list[dict], path: Path, laps: list[fl
 
 
 def default_fit_path(start_ts: float, route_name: str | None) -> Path:
+    """FIT de la séance dans le dossier des séances du profil en cours (lot MJ1), suffixé `_essai`
+    pour le profil d'essai (lot MJ2)."""
+    from . import profiles
+
+    ctx = profiles.current()
     stamp = datetime.fromtimestamp(start_ts).strftime("%Y-%m-%d_%H-%M")
-    return ACTIVITIES_DIR / f"{stamp}_{route_name or 'seance'}.fit"
+    return ctx.activities_dir / f"{stamp}_{route_name or 'seance'}{ctx.fit_suffix()}.fit"
 
 
 def journal_to_fit(journal_path: Path, out_path: Path | None = None) -> tuple[Path, Summary]:
