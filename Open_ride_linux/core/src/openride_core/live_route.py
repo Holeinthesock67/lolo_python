@@ -72,6 +72,14 @@ def assemble(parts: list[dict[str, Any]]) -> Route:
     return Route({"n": len(cols["lat"]), "ds_m": ds, "length_m": length, "type": "open", **cols})
 
 
+def read_route(folder: Path) -> Route:
+    """Route entière d'un monde vivant figé (`route/part_<k>.json`, `live.json`), sans suivre de révision."""
+    n_parts = int(read_live(folder).get("route", {}).get("parts", 0))
+    if n_parts < 1:
+        raise WorldError("route_invalid", "live.json sans partie de route")
+    return assemble([_read_json(folder / "route" / f"part_{k}.json") for k in range(n_parts)])
+
+
 class LiveRoute:
     """Route engagée d'une séance en monde ouvert (mêmes lectures que `Route`)."""
 

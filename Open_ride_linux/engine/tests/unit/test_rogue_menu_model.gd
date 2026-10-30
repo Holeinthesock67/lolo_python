@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Tests sans écran du menu de départ du Cyber-Rogue (lot R13) : valeurs par défaut, configuration depuis
-## hello_ack, défilement des choix, arguments de start_run, avertissement du premier lancement.
+## hello_ack, défilement des choix, arguments de start_run, avertissement du premier lancement, dernière run reprise.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_rogue_menu_model.gd
 
 const RogueMenu := preload("res://scripts/rogue/rogue_menu_model.gd")
@@ -63,6 +63,19 @@ func _run() -> void:
 	_check(m.needs_warning(), "avertissement au premier lancement")
 	m.mark_warned()
 	_check(not m.needs_warning(), "une seule fois")
+
+	# Dernière run donnée par le core (révision 1.5) : choix repris d'une fois sur l'autre, avertissement déjà vu.
+	var again = RogueMenu.new()
+	again.configure({"w_prime_j": 20000.0, "w_prime_estimate_j": null, "cp_w": 220.0,
+		"objectives": ["endurance", "threshold", "vo2max"], "durations_min": [30.0, 45.0, 60.0, 90.0],
+		"chassis": {"unlocked": ["standard", "blinde"], "selected": "blinde"}, "lives": 1,
+		"last": {"objective": "vo2max", "duration_min": 60}})
+	_check(again.objective() == "vo2max" and again.duration_min() == 60 and again.chassis_name() == "Blinde",
+		"dernière run : objectif, durée et châssis repris")
+	_check(not again.needs_warning(), "dernière run : pas de nouvel avertissement")
+	var first = RogueMenu.new()
+	first.configure({"w_prime_j": 20000.0, "w_prime_estimate_j": null, "cp_w": 220.0, "last": null})
+	_check(first.needs_warning() and first.objective() == "endurance", "aucune run : avertissement et choix par défaut")
 
 	print("test_rogue_menu_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

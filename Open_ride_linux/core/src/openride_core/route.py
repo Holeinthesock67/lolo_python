@@ -217,8 +217,12 @@ def load_world(path: Path) -> World:
     if major > SUPPORTED_MAJOR:
         raise WorldError("route_invalid",
                          f"format_version {manifest['format_version']} trop récent (majeur {SUPPORTED_MAJOR} lu)")
-    route_file = (manifest.get("route") or {}).get("file", "route.json")
-    route = Route(_read_json(path / route_file, route_file))
+    if manifest.get("live") is True:                     # monde vivant (§13) : route en parties de 1 km, lue telle quelle
+        from .live_route import read_route
+        route = read_route(path)
+    else:
+        route_file = (manifest.get("route") or {}).get("file", "route.json")
+        route = Route(_read_json(path / route_file, route_file))
     return World(path=path, manifest=manifest, route=route, segments=load_segments(path, manifest, route))
 
 

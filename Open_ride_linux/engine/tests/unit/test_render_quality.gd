@@ -60,12 +60,15 @@ func _test_presets_application() -> void:
 			and env.ssil_enabled == (str(img["ssil"]) != "off" and fp),
 			"%s : SSAO %s, SSIL %s" % [name, img["ssao"], img["ssil"]])
 		_check(vp.msaa_3d == RenderQuality.MSAA[int(img["msaa"])]
-			and (vp.screen_space_aa == Viewport.SCREEN_SPACE_AA_FXAA) == bool(img["fxaa"]),
-			"%s : MSAA %d×, FXAA %s" % [name, img["msaa"], str(img["fxaa"])])
+			and vp.screen_space_aa == (RenderQuality.SCREEN_AA[str(img["screen_aa"])] if fp else Viewport.SCREEN_SPACE_AA_DISABLED),
+			"%s : MSAA %d×, anticrénelage d'écran %s" % [name, img["msaa"], img["screen_aa"]])
+		_check(vp.anisotropic_filtering_level == RenderQuality.ANISOTROPY[int(img["anisotropy"])],
+			"%s : filtrage anisotrope %d×" % [name, img["anisotropy"]])
 		_check(absf(vp.mesh_lod_threshold - float(img["mesh_lod_threshold"])) < 1e-4,
 			"%s : seuil LOD %.1f px" % [name, img["mesh_lod_threshold"]])
 		_check(vp.scaling_3d_scale == 1.0, "%s : résolution native, sans mise à l'échelle 3D" % name)
-		_check(env.glow_enabled == bool(img["glow"]) and env.tonemap_mode == RenderQuality.LOOK["tonemap"]
+		_check(env.glow_enabled == bool(img["glow"]) and env.tonemap_mode == (RenderQuality.LOOK["tonemap"] if fp else RenderQuality.LOOK["tonemap_compatibility"])
+			and absf(env.tonemap_agx_white - RenderQuality.LOOK["agx_white"]) < 1e-3
 			and env.adjustment_enabled,
 			"%s : glow %s, rendu des tons et étalonnage communs" % [name, str(img["glow"])])
 		_check((light.directional_shadow_mode == DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS) == (int(img["shadow_splits"]) == 4),
@@ -108,6 +111,10 @@ func _test_fog() -> void:
 	_check(env.fog_light_color == horizon, "couleur du brouillard = couleur d'horizon")
 	_check(env.fog_sky_affect == 0.0 and env.volumetric_fog_sky_affect == 0.0,
 		"le brouillard ne recouvre pas le ciel (nuages visibles en Forward+, recette P16)")
+	RenderQuality.apply_fog(env, "medium", true, horizon, 0.05, 0.6)
+	_check(absf(env.fog_depth_end - QualityPresets.fog_end_m("medium") * 0.6) < 1e-3
+		and absf(env.fog_depth_begin - QualityPresets.fog_end_m("medium") * RenderQuality.FOG_BEGIN_FRACTION * 0.6) < 1e-3,
+		"air humide (U10, facteur 0,6) : brouillard rapproché [%.0f, %.0f] m" % [env.fog_depth_begin, env.fog_depth_end])
 	RenderQuality.apply_fog(env, "inconnu_xyz", true, horizon, 0.05)
 	_check(absf(env.fog_depth_end - QualityPresets.fog_end_m("low")) < 1e-3, "brouillard : préréglage inconnu -> low")
 

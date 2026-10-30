@@ -9,8 +9,9 @@ extends Node3D
 const Palette := preload("res://scripts/rogue/neon_palette.gd")
 const Materials := preload("res://scripts/rogue/neon_materials.gd")
 
-const HOLO_UP_M := 1.2
+const HOLO_UP_M := 1.6              # bas de l'hologramme, au-dessus de la roue
 const HOLO_BACK_M := 0.9
+const GAUGES_GAP_M := 0.08           # écart entre le bas de l'hologramme et le haut des jauges
 const ARC_RADIUS_M := 1.5
 const ARC_WIDTH_M := 0.12
 const ARC_SEGMENTS := 24
@@ -35,11 +36,15 @@ var _adrenaline_drawn := -1.0
 
 
 func _ready() -> void:
-	holo = _label(64, 0.012)
+	# L'hologramme pousse vers le haut depuis HOLO_UP_M, les jauges vers le bas : deux blocs qui ne se
+	# recouvrent jamais, quelle que soit la longueur des textes (constat du banc visuel X41).
+	holo = _label(56, 0.009)
 	holo.name = "Hologram"
+	holo.vertical_alignment = VERTICAL_ALIGNMENT_BOTTOM
 	add_child(holo)
-	gauges = _label(40, 0.008)
+	gauges = _label(36, 0.007)
 	gauges.name = "Gauges"
+	gauges.vertical_alignment = VERTICAL_ALIGNMENT_TOP
 	add_child(gauges)
 	shield_arc = MeshInstance3D.new()
 	shield_arc.name = "ShieldArc"
@@ -123,8 +128,13 @@ func apply(values: Dictionary, bike_pos: Vector3, delta: float) -> void:
 	if not visible:
 		return
 	position = bike_pos
+	# Couloir : l'écran des cartes et des portes occupe le centre, l'hologramme et les jauges se retirent
+	# (ils transparaissaient sous les cartes) ; les arcs au sol restent.
+	var choosing: bool = not (values.get("corridor", {}) as Dictionary).is_empty()
+	holo.visible = not choosing
+	gauges.visible = not choosing
 	holo.position = Vector3(0.0, HOLO_UP_M, HOLO_BACK_M)
-	gauges.position = Vector3(0.0, HOLO_UP_M - 0.55, HOLO_BACK_M)
+	gauges.position = Vector3(0.0, HOLO_UP_M - GAUGES_GAP_M, HOLO_BACK_M)
 	holo.text = "%s\n%s · %s rpm" % [values["gear_text"], values["power_pct_text"], values["cadence_text"]]
 	holo.modulate = Palette.color(String(values["posture_token"]), adapted)
 	var wbal := "W' %d %%" % int(roundf(values["wbal_pct"]))

@@ -118,6 +118,12 @@ func _test_environment() -> void:
 			if env.get_glow_level(i) > 0.0:
 				lit += 1
 		_check(lit == RogueEnvironment.settings(p)["glow_levels"], "%s : %d niveaux de glow allumés" % [p, lit])
+		# La densité doit survivre au changement de mode (Godot la remet à 1,0 : brume opaque en high)
+		var st: Dictionary = RogueEnvironment.settings(p)
+		var dens := RogueEnvironment.exponential_density(st["fog_end_m"]) if st["fog_exponential"] else 1.0
+		_check(is_equal_approx(env.fog_density, dens), "%s : densité de brume %.4f (lue %.4f)" % [p, dens, env.fog_density])
+		_check(env.fog_mode == (Environment.FOG_MODE_EXPONENTIAL if st["fog_exponential"] else Environment.FOG_MODE_DEPTH),
+				"%s : mode de brume" % p)
 
 
 func _test_no_imported_assets() -> void:

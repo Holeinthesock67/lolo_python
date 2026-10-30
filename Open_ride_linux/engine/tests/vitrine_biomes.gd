@@ -1,8 +1,9 @@
 extends SceneTree
 
 ## Vitrine des biomes (série U) : pour chaque biome forcé, une route droite dans un paysage plat avec le sol (lot U6),
-## la végétation (lot U7), les animaux (lot U12), les détails de sol (rochers, herbes hautes, termitières, lot U8), le brouillard et la teinte de la lumière du biome, tirés du
-## thème par défaut 2.0 (lot U15) par biome_model.gd. Un étang à droite de la route (oasis des déserts, flamants),
+## la végétation (lot U7), les animaux (lot U12), les détails de sol (rochers, herbes hautes, termitières, lot U8), et
+## l'atmosphère du biome (lot U10, atmosphere_model.gd : brouillard, voile et teinte de la lumière, air humide,
+## brume de chaleur des déserts et de la savane hors `low`), tirés du thème par défaut 2.0 (lot U15) par biome_model.gd. Un étang à droite de la route (oasis des déserts, flamants),
 ## un bois, un pré, un champ et une prairie (zones OSM de la faune d'avant la série U). Sans core ni parcours ;
 ## captures comparables d'un biome à l'autre. La vue `faune` cadre le groupe d'animaux propre au biome.
 ##
@@ -15,7 +16,7 @@ extends SceneTree
 ## préréglage appliqué ;
 ## arbres ; triangles ; appels de dessin ; objets ; préparation des arbres en ms ; bêtes et oiseaux affichés ;
 ## espèces animales placées ; placement des animaux en ms ; rochers, herbes hautes et termitières affichés ;
-## part de pixels saturés du sol en % ; luminance moyenne du sol). Contrôles automatiques (vitrine_checks.gd) :
+## part de pixels saturés du sol en % ; luminance moyenne du sol ; brume de chaleur et humidité de l'atmosphère). Contrôles automatiques (vitrine_checks.gd) :
 ## exposition du sol (bas de l'image, sauf vue `faune`), et comparaison à des captures de référence avec
 ## --compare ; code de sortie 1 si l'un échoue. Les temps du processeur
 ## graphique se mesurent sur le PC cible, pas ici : le rendu logiciel de Xvfb ne dit rien de la GTX 1060.
@@ -33,6 +34,8 @@ const FaunaPlacer := preload("res://scripts/fauna_placer.gd")
 const FaunaRenderer := preload("res://scripts/fauna_renderer.gd")
 const GroundDetails := preload("res://scripts/ground_details.gd")
 const VitrineChecks := preload("res://tests/vitrine_checks.gd")
+const AtmosphereModel := preload("res://scripts/atmosphere_model.gd")
+const HeatHazeShader := preload("res://shaders/heat_haze.gdshader")
 
 const ROAD_WIDTH_M := 6.0
 const GROUND_Y := 100.0
@@ -84,7 +87,7 @@ func _run() -> void:
 	DirAccess.make_dir_recursive_absolute(_out_dir)
 	var theme: Dictionary = ThemeLoader.load_theme(ThemeLoader.DEFAULT_THEME_DIR)["theme"]
 	var csv := FileAccess.open(_out_dir.path_join("vitrine_biomes.csv"), FileAccess.WRITE)
-	csv.store_line("biome;vue;préréglage;qualite_appliquee;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms;rochers;herbes_hautes;termitieres;sol_sature_pct;sol_luminance")
+	csv.store_line("biome;vue;préréglage;qualite_appliquee;arbres;triangles;appels_dessin;objets;preparation_arbres_ms;betes;oiseaux;especes;placement_faune_ms;rochers;herbes_hautes;termitieres;sol_sature_pct;sol_luminance;brume_chaleur;humidite")
 	for preset in _presets:
 		var applied := VitrineChecks.applied_quality(preset, "vitrine_biomes")
 		for biome in _biomes:
@@ -99,6 +102,7 @@ func _run() -> void:
 				var cam: Camera3D = vp.get_node("Camera")
 				cam.fov = v[2]
 				cam.look_at_from_position(v[0], v[1])
+				_place_heat_haze(vp, cam)
 				var fauna: Node = vp.get_node("Fauna")
 				for f in range(SETTLE_FRAMES):
 					# Cycliste loin de tout : aucune bête ne fuit
@@ -121,9 +125,10 @@ func _run() -> void:
 				var draws := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_DRAW_CALLS_IN_FRAME)
 				var objs := RenderingServer.viewport_get_render_info(rid, vis, RenderingServer.VIEWPORT_RENDER_INFO_OBJECTS_IN_FRAME)
 				var details: Node = vp.get_node("GroundDetails")
-				csv.store_line("%s;%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f;%d;%d;%d;%.2f;%.3f" % [biome, view, preset, applied, built["trees"], tris, draws, objs, built["prep_ms"],
+				csv.store_line("%s;%s;%s;%s;%d;%d;%d;%d;%.1f;%d;%d;%s;%.1f;%d;%d;%d;%.2f;%.3f;%.2f;%.2f" % [biome, view, preset, applied, built["trees"], tris, draws, objs, built["prep_ms"],
 					n_animals, n_birds, built["species"], built["fauna_ms"], details.get_positions("rock").size(),
-					details.get_positions("grass").size(), details.get_positions("termite").size(), expo["saturated_pct"], expo["luma"]])
+					details.get_positions("grass").size(), details.get_positions("termite").size(), expo["saturated_pct"], expo["luma"],
+					built["atmo"]["heat_haze"], built["atmo"]["humidity"]])
 				print("[vitrine_biomes] %s : %d arbres, %d bêtes, %d oiseaux, %d triangles, %d appels de dessin" % [path, built["trees"], n_animals, n_birds, tris, draws])
 			vp.queue_free()
 			await process_frame
@@ -134,6 +139,8 @@ func _run() -> void:
 
 func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Dictionary:
 	var p: Dictionary = model.params(biome)
+	var atmo := AtmosphereModel.params_at(model, {biome: 1.0}, AtmosphereModel.daylight_from_theme(theme),
+		{"rain": 0.0, "snow": 0.0, "fog_boost": 0.0}, preset)
 	var vp := SubViewport.new()
 	vp.size = _size
 	vp.own_world_3d = true
@@ -142,9 +149,8 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	root.add_child(vp)
 	var env := Environment.new()
 	var sky_mat := ProceduralSkyMaterial.new()
-	var haze: float = p["sky"]["haze"]
-	var tint: Color = p["sky"]["light_tint"]
-	var horizon := RenderQuality.FOG_COLOR.lerp(RenderQuality.HAZE_COLOR, haze * 0.6) * tint
+	var tint: Color = atmo["light_tint"]
+	var horizon: Color = atmo["horizon_color"]
 	sky_mat.sky_horizon_color = horizon
 	sky_mat.ground_horizon_color = horizon
 	env.background_mode = Environment.BG_SKY
@@ -152,7 +158,7 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	env.sky.sky_material = sky_mat
 	env.ambient_light_source = Environment.AMBIENT_SOURCE_SKY
 	env.reflected_light_source = Environment.REFLECTION_SOURCE_SKY
-	RenderQuality.apply_fog(env, preset, true, horizon, float(p["sky"]["fog_density"]))
+	RenderQuality.apply_fog(env, preset, true, horizon, float(atmo["fog_density"]), float(atmo["fog_end_factor"]))
 	# Courbe Filmic (blanc 6) : sans elle, les sols clairs (neige, sable) saturent en blanc dans le rendu logiciel.
 	env.tonemap_mode = Environment.TONE_MAPPER_FILMIC
 	env.tonemap_white = 6.0
@@ -160,8 +166,9 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	we.environment = env
 	vp.add_child(we)
 	var sun := DirectionalLight3D.new()
-	sun.basis = Basis.looking_at(-(p["sky"]["sun_direction"] as Vector3), Vector3.UP)
+	sun.basis = Basis.looking_at(-(atmo["sun_direction"] as Vector3), Vector3.UP)
 	sun.light_color = tint
+	sun.light_energy *= float(atmo["light_energy_factor"])
 	sun.shadow_enabled = true
 	sun.directional_shadow_max_distance = QualityPresets.shadow_distance_m(preset)
 	vp.add_child(sun)
@@ -252,8 +259,32 @@ func _build_world(theme: Dictionary, model, biome: String, preset: String) -> Di
 	cam.far = RenderQuality.camera_far_m(preset)
 	cam.current = true
 	vp.add_child(cam)
-	return {"vp": vp, "trees": trees.get_active_tree_count(), "prep_ms": prep_ms, "fauna_ms": fauna_ms,
+	if float(atmo["heat_haze"]) > 0.0:
+		var layer := CanvasLayer.new()
+		var rect := ColorRect.new()
+		rect.name = "HeatHaze"
+		rect.set_anchors_preset(Control.PRESET_FULL_RECT)
+		rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		var mat := ShaderMaterial.new()
+		mat.shader = HeatHazeShader
+		mat.set_shader_parameter("strength", float(atmo["heat_haze"]))
+		rect.material = mat
+		layer.add_child(rect)
+		vp.add_child(layer)
+	return {"vp": vp, "atmo": atmo, "trees": trees.get_active_tree_count(), "prep_ms": prep_ms, "fauna_ms": fauna_ms,
 		"species": ",".join(PackedStringArray(species.keys())), "fauna_view": _fauna_view(groups)}
+
+
+## Brume de chaleur : bande centrée sur l'horizon de la vue (point lointain droit devant, à hauteur d'œil).
+func _place_heat_haze(vp: SubViewport, cam: Camera3D) -> void:
+	var rect: ColorRect = vp.find_child("HeatHaze", true, false)
+	if rect == null:
+		return
+	var ahead := -cam.global_transform.basis.z
+	ahead.y = 0.0
+	var far_pt := cam.global_position + ahead.normalized() * 5000.0
+	var y := cam.unproject_position(far_pt).y / float(_size.y) if not cam.is_position_behind(far_pt) else -1.0
+	(rect.material as ShaderMaterial).set_shader_parameter("horizon_y", y)
 
 
 ## Vue `faune` : le premier groupe propre au biome (BIOME_GROUPS, troupeau de préférence), sinon le premier
@@ -317,6 +348,7 @@ class StraightRoute:
 	var z := PackedFloat64Array()
 	var s := PackedFloat64Array()
 	var alt_m := PackedFloat64Array()
+	var relief_k := 1.0
 	func _init() -> void:
 		for i in range(n):
 			x.append(0.0)
@@ -327,5 +359,7 @@ class StraightRoute:
 		return Vector3(0.0, GROUND_Y, -d)
 	func is_loop() -> bool:
 		return false
+	func display_y(alt: float) -> float:
+		return alt
 	func sample(s: float) -> Dictionary:
 		return {"x": 0.0, "y": GROUND_Y, "z": -s, "heading_deg": 0.0}

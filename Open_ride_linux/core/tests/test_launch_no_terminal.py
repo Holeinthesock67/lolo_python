@@ -58,7 +58,7 @@ def home(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     home = tmp_path / "OpenRide"
     monkeypatch.setattr(config_mod, "OPENRIDE_HOME", home)
     monkeypatch.setattr(config_mod, "DEFAULT_CONFIG_PATH", home / "config.toml")
-    godot = executable(tmp_path / "godot", "#!/bin/sh\necho 4.3.stable.official\n")
+    godot = executable(tmp_path / "godot", "#!/bin/sh\necho 4.7.2.stable.official\n")
     engine = tmp_path / "engine"
     engine.mkdir()
     (engine / "project.godot").write_text("", encoding="utf-8")
@@ -88,7 +88,10 @@ def test_first_run_creates_config_and_folders_then_not_again(home: Path, monkeyp
 
     assert launcher.main(["--trainer", "mock"], message=say) == 0
     cfg = home / "config.toml"
-    assert cfg.read_text(encoding="utf-8") == (SCRIPTS / "config.example.toml").read_text(encoding="utf-8")
+    # Le modèle, réparti par la migration des profils (lot MJ5) : réglages du joueur dans principal.
+    template = config_mod.from_dict(tomllib.loads((SCRIPTS / "config.example.toml").read_text(encoding="utf-8")))
+    assert config_mod.load(cfg, home / "Profils" / "principal" / "profil.toml") == template
+    assert "ftp_w = " not in cfg.read_text(encoding="utf-8")
     assert (home / "GPX").is_dir() and (home / "Workouts").is_dir()
     assert runs[0].core_cmd[-1] == "--first-run"
     assert any("devices --save" in text and not error for text, error in messages)
@@ -339,7 +342,7 @@ def test_install_script_twice_gives_same_result(tmp_path: Path):
     bins.mkdir()
     for cmd in ("openride", "openride-core"):
         executable(bins / cmd, "#!/bin/sh\nexit 0\n")
-    godot = executable(tmp_path / "Godot_v4.3", "#!/bin/sh\necho 4.3.stable.official.77dcf97d8\n")
+    godot = executable(tmp_path / "Godot_v4.7.2", "#!/bin/sh\necho 4.7.2.stable.official.77dcf97d8\n")
     env = {"HOME": str(home), "PATH": "/usr/bin:/bin", "OPENRIDE_NO_PIP": "1",
            "OPENRIDE_PYTHON": sys.executable, "OPENRIDE_BIN_SRC": str(bins), "GODOT": str(godot),
            "PYTHONPATH": os.pathsep.join(sys.path)}
@@ -367,4 +370,9 @@ def test_install_script_twice_gives_same_result(tmp_path: Path):
     (home / "OpenRide" / "config.toml").write_text("", encoding="utf-8")
     r = subprocess.run([BASH, str(SCRIPTS / "install.sh")], env=env_bad, capture_output=True,
                        text=True, stdin=subprocess.DEVNULL)
-    assert r.returncode == 1 and "Godot 4.3 introuvable" in r.stderr
+    assert r.returncode == 1 and "Godot 4.7 introuvable" in r.stderr
+
+    old = executable(tmp_path / "Godot_v4.3", "#!/bin/sh\necho 4.3.stable.official.77dcf97d8\n")
+    r = subprocess.run([BASH, str(SCRIPTS / "install.sh")], env={**env, "GODOT": str(old)},
+                       capture_output=True, text=True, stdin=subprocess.DEVNULL)
+    assert r.returncode == 1 and "Godot 4.7 attendu" in r.stderr and "4.7.2-stable" in r.stderr

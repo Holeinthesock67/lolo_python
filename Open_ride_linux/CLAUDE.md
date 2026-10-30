@@ -9,7 +9,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
   - home trainer HomeTrainer (FTMS), annoncé en Bluetooth sous le nom « HomeTrainer 0000 » ;
   - Zwift Cog ;
   - Zwift Click V2, paire de boîtiers : gauche `C1:1C:00:00:00:01` (−, flèches), droit `C1:1C:00:00:00:03` (+, A, B, Y, Z), messages de type `0x23` (table `KEYPAD_BITS`). Le gauche est bridé une minute après la connexion sans passage récent par l'appli Zwift : B du droit fait aussi « − ».
-- **PC cible :** PC de bureau MSI (`pc-cible`), Ubuntu, GTX 1060, Python 3.14, Godot 4.3 dans `~/Applications/godot/`.
+- **PC cible :** PC de bureau MSI (`pc-cible`), Ubuntu, GTX 1060, Python 3.14, Godot 4.7 dans `~/Applications/godot/`.
   - Utilisateur `utilisateur` ; dépôt dans `/home/utilisateur/Games/lolo_python`.
   - Un lien `~/Games/Open_ride_linux` pointe vers le dossier du projet.
 - **Dépôt GitHub :** `Holeinthesock67/lolo_python`. C'est un dépôt commun à d'autres projets : **ne jamais modifier quoi que ce soit hors de `Open_ride_linux/`**.
@@ -38,7 +38,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 | --- | --- | --- |
 | `core/` | `openride-core` (Python, asyncio, bleak) | BLE (HomeTrainer, Click), physique à 50 Hz, braquets, journal, FIT, serveur IPC UDP (état à 30 Hz sur le port 5005, commandes sur le port 5006) |
 | `compiler/` | `openride-compiler` (Python, numpy, scipy, pyproj, rasterio) | GPX vers dossier `.world` : couche route et couche terrain (MNT Copernicus GLO-30 mis en cache dans `~/.cache/openride/dem/`) |
-| `engine/` | Godot 4.3 (GDScript) | Rendu, HUD, caméra interpolée et extrapolée, bips des appuis |
+| `engine/` | Godot 4.7 (GDScript) | Rendu, HUD, caméra interpolée et extrapolée, bips des appuis |
 
 **Modules clés du core** (`core/src/openride_core/`) :
 - `session.py` : boucle principale ; `jitter.py` : gigue de la boucle à 50 Hz et des trames `state` (lot X17, ligne `Gigue` par minute) ;
@@ -57,7 +57,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `hr_monitor.py` : ceinture cardio Bluetooth facultative (service 0x180D) ;
 - `journal.py`, `fit_export.py`, `ipc_server.py`, `ipc_lists.py`, `ipc_budget.py`, `config.py`, `config_edit.py`, `pairing.py`, `settings.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), découpage des listes IPC v1.1, budget de taille des trames et allègement d'une trame `state` trop grande (lot X25), configuration (types et bornes contrôlés, `ConfigError`), modification ciblée de `config.toml` qui garde les commentaires, appairage (lots N12 et N14) et réglages du menu (lots O3 et O4) ;
 - `latency_log.py` : journal de latence des appuis du Click, de la notification BLE au Control Point (lignes `[latence]`, `--latence` ou `[log] latence`, lot X7) ;
-- `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`, `--gigue`), `gigue_charge.py` (gigue de la boucle sous charge, lot X17), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `fit_check.py` (contrôle local d'un FIT réel, lot X11), `history.py` (historique des séances et cumul hebdomadaire), `xp.py` (progression recalculée, lot V2), `estimate_cp.py` (CP et W' estimés depuis les séances passées, lot R16), `rogue_sim.py` (runs Cyber-Rogue simulées et rapport d'équilibrage, lot R7), `bots_race.py` (course des bots en temps accéléré, lot X27), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py`, `seance_guidee.py` (séances guidées sur le HomeTrainer : parcours, consignes et entraînement d'essai) ;
+- `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`, `--gigue`), `gigue_charge.py` (gigue de la boucle sous charge, lot X17), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `fit_check.py` (contrôle local d'un FIT réel, lot X11), `history.py` (historique des séances et cumul hebdomadaire), `xp.py` (progression recalculée, lot V2), `estimate_cp.py` (CP et W' estimés depuis les séances passées, lot R16), `rogue_sim.py` (runs Cyber-Rogue simulées et rapport d'équilibrage, lot R7), `bots_race.py` (course des bots en temps accéléré, lot X27), `campagne_profil.py` (campagne simulée accélérée sur le profil d'essai et empreinte du vrai profil, lot MJ3), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py`, `seance_guidee.py` (séances guidées sur le HomeTrainer : parcours, consignes et entraînement d'essai) ;
 - `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties ;
 - `open_world.py`, `live_route.py`, `worldgen_client.py` : séance en monde ouvert (lot W9, 2.0) : `OpenWorld` pilote le générateur (`openride-worldgen`, dialogue en lignes JSON de `docs/contracts/worldgen_v1.md`), construit le champ `open_world` de `state` et applique les choix aux carrefours (Click ou `choose_branch`) jusqu'au verrouillage ; `LiveRoute` lit la route engagée par parties de 1 km dans un fil et la remplace d'un coup, la boucle à 50 Hz ne lit jamais le disque ; pause `world_data` quand la route connue ne suffit plus ;
 - `world_menu.py` : menu du monde ouvert (lot W11, 2.0) : réponses aux commandes `world_search` (liste embarquée `data/places.json`, puis bases locales, puis Nominatim si `[open_world] network`, à la demande et une requête par seconde au plus), `world_map`, `world_regions` et `world_pin` ; les requêtes sur les bases locales passent par `python -m openride_compiler.worldgen.menu_query` (sous-processus, le core ne dépend pas du compilateur) ; réponses en parties de 60 000 octets (`ipc_lists.build_world_messages`) ;
@@ -65,7 +65,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9) ;
 - `progression.py` : expérience, niveaux et défis de la série V recalculés depuis le journal, tables dans `data/progression.toml` (lot V2) ;
 - `profile.py` : profil local `~/OpenRide/profile.json` (équipement choisi, achats, vies, avatar), écriture sûre et migration (lot V4) ;
-- `profiles.py` : profils de joueurs (série MJ, lot MJ1) : `ProfileContext` (dossiers du joueur en cours : profil V4, records, plan actif, séances et journaux, caches), `current()` lu à l'appel par tous les modules, `--profil ID` sur toutes les sous-commandes et `OPENRIDE_PROFIL`, verrou `.verrou` d'une séance par profil ; sans profil, les chemins de `~/OpenRide/` d'avant ;
+- `profiles.py` : profils de joueurs (série MJ, lot MJ1) : `ProfileContext` (dossiers du joueur en cours : profil V4, records, plan actif, séances et journaux, caches), `current()` lu à l'appel par tous les modules, `--profil ID` sur toutes les sous-commandes et `OPENRIDE_PROFIL`, verrou `.verrou` d'une séance par profil ; sans profil, les chemins de `~/OpenRide/` d'avant ; configuration à deux couches (lot MJ4) : `config.load()` pose les clés joueur de `profil.toml` (`config.PROFILE_KEYS`) sur `config.toml` ; `config_edit.update_layers` écrit chaque clé dans le fichier de sa portée (`settings.Setting.scope`) ; migration du joueur d'avant les profils vers `Profils/principal/` au lancement (`migration_profils.py`, lot MJ5 : sauvegarde, séances simulées et rejouées vers `_essai`, contrôle de la progression, reprise après coupure), puis `principal` par défaut ; liste, choix sans relancer, création, renommage et corbeille des profils (lot MJ7 : commandes IPC de la révision 1.5, `[profils] dernier`, `.profil_actif` suivi par le lanceur) ;
 - `equipment.py` : catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain et temps gagné par l'équipement (lot V3) ;
 - `garage.py` : progression branchée dans la séance (profil, équipement appliqué à la physique, commandes du Garage, bilan `xp_result`) (lot V11) ;
 - `coins.py` : pièces (gains, solde recalculé, état des pièces, achats, vies du mode Cyber-Rogue) (lot V3b) ;
@@ -96,9 +96,9 @@ cd compiler && pip install -e ".[dev]" -e ../core   # sans ../core, les tests qu
 # Tests (tous doivent passer avant chaque commit ; l'intégration continue GitHub Actions les relance à chaque envoi)
 (cd core && pytest -q)                 # ~3 min ; `pytest -q -m "not slow"` (~20 s) pendant le développement
 (cd compiler && pytest -q)            # réseau coupé ; `pytest -m network` pour l'essai Copernicus réel
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh   # vrai core + vrai engine, ~10 s
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open   # tests graphiques (Xvfb, captures analysées, références, rapport HTML), ~2 min
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_engine_tests.sh
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_e2e.sh   # vrai core + vrai engine, ~10 s
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open   # tests graphiques (Xvfb, captures analysées, références, rapport HTML), ~2 min
 scripts/bump-version.sh X.Y.Z   # change le numéro unique (VERSION, pyproject, project.godot, CHANGELOG.md), lot O2
 python3 engine/tests/sim_bench.py --scenario coupures_village [--native]   # banc simulé : vrai core sur BLE simulé + vrai engine, captures et rapport (docs/OUTILS_DE_TEST.md)
 
@@ -141,7 +141,8 @@ openride-core history --weeks 8        # historique des séances et cumul par se
 
 # Diagnostic matériel
 openride-core devices                  # appareils classés (trainer, Click, ceinture) et bloc [drivers] à recopier ; --json ; --save : écrit dans ~/OpenRide/config.toml (pairing.py, lot N12)
-openride-core settings [--json]        # réglages du menu (FTP, poids, difficulté, braquet, qualité, thème) ; settings set CLÉ VALEUR écrit ~/OpenRide/config.toml (settings.py, lots O3 et O4)
+openride-core profil list [--json]    # profils de joueurs ; profil create NOM | rename ID NOM | delete ID (corbeille) (profiles.py, lot MJ7)
+openride-core settings [--json]        # réglages du menu (FTP, poids, difficulté, braquet, qualité, thème) ; settings set CLÉ VALEUR écrit ~/OpenRide/config.toml, ou le profil.toml du profil en cours pour un réglage du joueur (settings.py, lots O3, O4 et MJ4)
 openride-core ftp-test [--accept] [--history]   # résultat du dernier test de FTP, enregistrement de la FTP (lot O10)
 openride-core profil essai [--vider]   # profil d'essai : séances simulées comptées, remise à zéro (série MJ, lot MJ2) ; --profil ID sur toute sous-commande
 openride-ble-diag scan | trainer --name HomeTrainer --duration 30 | click --duration 60

@@ -6,7 +6,7 @@ Usage :
 
 Les captures de même nom (`NNN_étiquette.png`, écrites par `sim_bench.py`) sont appariées. Pour chaque
 paire : écart moyen de luminosité (0 à 255) et part des pixels qui changent nettement, mesurés par les
-fonctions de `visual_check.py` sur la moitié haute et le centre de l'image (le HUD, dont les images/s
+fonctions de `image_diff.py` (lot X20) sur la moitié haute et le centre de l'image (le HUD, dont les images/s
 changent d'un essai à l'autre, est en bas et sur les côtés). Une image des écarts (rouge) est écrite
 dans `--out` pour chaque paire, avec `rapport.html` (avant, après, écarts, mesures). Code de sortie 0 si toutes les paires restent sous `--max-diff`, 1 sinon,
 2 si aucune paire n'est trouvée.
@@ -22,7 +22,7 @@ import sys
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-import visual_check as vc  # noqa: E402
+import image_diff as vc  # noqa: E402
 
 
 def scene_box(img: vc.Image) -> tuple[int, int, int, int]:

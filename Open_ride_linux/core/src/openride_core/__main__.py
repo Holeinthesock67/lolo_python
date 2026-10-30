@@ -43,6 +43,9 @@ Sous-commandes disponibles à ce stade :
     openride-core ftp-test [FICHIER] [--accept [--force]] [--history] [--json] [--config FICHIER]
                                       résultat du dernier test de FTP (ou du journal donné),
                                       enregistrement de la nouvelle FTP, historique des tests (lot O10)
+    openride-core profil list [--json] | create NOM | rename ID NOM | delete ID
+                                      profils de joueurs : liste, création, renommage, corbeille
+                                      (série MJ, lot MJ7)
     openride-core profil essai [--vider] [--json] [--config FICHIER]
                                       profil d'essai (séances simulées comptées) : dossier,
                                       progression ; --vider efface ses séances (série MJ, lot MJ2)
@@ -53,6 +56,7 @@ Toutes les sous-commandes prennent `--profil ID` (profil de joueur, série MJ).
 from __future__ import annotations
 
 import argparse
+import json
 import logging
 import sys
 from pathlib import Path
@@ -147,13 +151,13 @@ def cmd_run(args: argparse.Namespace) -> int:
         logging.getLogger("openride_core").info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root,
                                                 " — PROFIL D'ESSAI" if ctx.is_trial else "")
     try:
-        return _run_session(cfg, bots_list, args)
+        return _run_session(cfg, bots_list, args, lock)
     finally:
         if lock is not None:
             lock.release()
 
 
-def _run_session(cfg, bots_list: list, args: argparse.Namespace) -> int:
+def _run_session(cfg, bots_list: list, args: argparse.Namespace, lock=None) -> int:
     import asyncio
 
     from .session import AutostartError, CoreSession
@@ -164,6 +168,10 @@ def _run_session(cfg, bots_list: list, args: argparse.Namespace) -> int:
     except SimScenarioError as exc:
         print(f"openride-core : scénario de simulation refusé : {exc}", file=sys.stderr)
         return 1
+    # Le verrou suit le profil choisi au menu (lot MJ7) ; rendu à la fin, quel que soit le profil.
+    session.profile_lock = lock
+    if lock is not None:
+        session._note_profile()
     try:
         asyncio.run(session.run(autostart=args.autostart, route_id=args.route or "demo",
                                 workout_id=args.workout, resume=args.resume))
@@ -171,6 +179,9 @@ def _run_session(cfg, bots_list: list, args: argparse.Namespace) -> int:
         logging.getLogger("openride_core").error("Séance non lancée : %s", exc)
         print(f"openride-core : {exc}", file=sys.stderr)
         return 1
+    finally:
+        if session.profile_lock is not None and session.profile_lock is not lock:
+            session.profile_lock.release()
     return 0
 
 
@@ -246,11 +257,21 @@ def cmd_plan(args: argparse.Namespace) -> int:
     return run(args)
 
 
+PROFIL_ARGS = {"essai": 0, "list": 0, "create": 1, "rename": 2, "delete": 1}
+
+
 def cmd_profil(args: argparse.Namespace) -> int:
-    """`openride-core profil essai [--vider]` : profil d'essai, sa progression, sa remise à zéro."""
+    """`openride-core profil essai [--vider]` : profil d'essai, sa progression, sa remise à zéro ;
+    `profil list|create|rename|delete` : profils de joueurs, pour les outils (lot MJ7)."""
     from . import profiles
     from .tools.xp import run as xp_run
 
+    if len(args.valeurs) != PROFIL_ARGS[args.action]:
+        print("openride-core profil : usage : profil essai [--vider] | list [--json] | create NOM | "
+              "rename ID NOM | delete ID", file=sys.stderr)
+        return 2
+    if args.action != "essai":
+        return _profil_players(args)
     ctx = profiles.ProfileContext.for_id(profiles.TRIAL_ID)
     profiles.activate(ctx)
     profiles.ensure_description(ctx)
@@ -263,6 +284,39 @@ def cmd_profil(args: argparse.Namespace) -> int:
         print(f"Profil d'essai : {ctx.root}")
         print(f"Séances comptées : {', '.join(ctx.counted_sources)}")
     return xp_run(None, args.json, args.config)
+
+
+def _profil_players(args: argparse.Namespace) -> int:
+    from . import profiles
+    from .garage import profile_summary
+
+    try:
+        if args.action == "list":
+            active = profiles.default_id()
+            items = [profile_summary(c) for c in profiles.list_contexts()]
+            if args.json:
+                print(json.dumps({"default": active, "items": items}, ensure_ascii=False, indent=2))
+                return 0
+            for it in items:
+                mark = "*" if it["id"] == active else " "
+                print(f"{mark} {it['id']:<20} {it['name']:<16} {it['type']:<7} niveau {it['level']:>2}  "
+                      f"dernière séance {it['last_ride'] or '—'}")
+            if not items:
+                print(f"Aucun profil dans {profiles.profiles_dir()}")
+            return 0
+        if args.action == "create":
+            ctx = profiles.create(args.valeurs[0])
+            print(f"Profil créé : {ctx.name} ({ctx.root})")
+        elif args.action == "rename":
+            ctx = profiles.rename(args.valeurs[0], args.valeurs[1])
+            print(f"Profil renommé : {ctx.id} s'appelle maintenant {ctx.name}")
+        else:
+            dest = profiles.delete(args.valeurs[0], None)   # une séance en cours tient le verrou du profil
+            print(f"Profil mis à la corbeille : {dest}")
+    except profiles.ProfileContextError as exc:
+        print(f"openride-core profil {args.action} : {exc}", file=sys.stderr)
+        return 1
+    return 0
 
 
 def cmd_open_world_save(args: argparse.Namespace) -> int:
@@ -408,8 +462,11 @@ def build_parser() -> argparse.ArgumentParser:
     ows.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ows.add_argument("--gpx-dir", type=Path, help="dossier des traces (défaut : ~/OpenRide/GPX)")
     ows.add_argument("--journal-dir", type=Path, help="journaux (défaut : ~/OpenRide/Activities/.journal)")
-    prf = sub.add_parser("profil", help="profil d'essai : dossier, progression, remise à zéro (série MJ)")
-    prf.add_argument("action", choices=["essai"])
+    prf = sub.add_parser("profil", help="profils de joueurs : liste, création, renommage, corbeille ; "
+                                        "profil d'essai (série MJ)")
+    prf.add_argument("action", choices=["essai", "list", "create", "rename", "delete"])
+    prf.add_argument("valeurs", nargs="*", metavar="ARG",
+                     help="create NOM ; rename ID NOM ; delete ID")
     prf.add_argument("--vider", action="store_true",
                      help="efface séances, records, plan et équipement du profil d'essai (garde profil.toml)")
     prf.add_argument("--json", action="store_true", help="sortie JSON (progression)")

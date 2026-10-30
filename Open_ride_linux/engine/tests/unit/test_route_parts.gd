@@ -181,6 +181,11 @@ func _init() -> void:
 	dead.quiet_errors = true
 	_check(not dead.load_live_dir(plain), "monde non vivant refusé")
 
+	# 4. `load_world_dir` reconnaît un monde vivant au manifeste (sim_bench, identifiant ordinaire, lot W16a).
+	var by_manifest = RouteDataScript.new()
+	_check(by_manifest.load_world_dir(dir_a) and by_manifest.live, "load_world_dir : monde vivant reconnu")
+	_check(absf(by_manifest.length_m - live_a.length_m) < 1e-9, "load_world_dir : même route que load_live_dir")
+
 	_remove_tree(base)
 	print("test_route_parts : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

@@ -1,10 +1,10 @@
 # Tests de l'engine sans écran
 
-Tous les tests se lancent depuis `Open_ride_linux/`, avec Godot 4.3 officiel
-(`godotengine/godot`, version `4.3-stable`) dont le chemin est donné par `GODOT` :
+Tous les tests se lancent depuis `Open_ride_linux/`, avec Godot 4.7 officiel
+(`godotengine/godot`, version `4.7.2-stable`) dont le chemin est donné par `GODOT` :
 
 ```bash
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 ```
 
 Le script renvoie 0 si tout passe et finit par un résumé (une ligne par test et son résultat).
@@ -31,7 +31,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
 ```bash
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
 ```
 
 Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux core (`VisualCore`, dérivé de `fake_core.py`), pour chaque configuration `résolution:qualité` (défaut `1280x720:low,1920x1080:high,1024x600:medium`). Le parcours est la démo avec terrain synthétique. À chaque scène, le script envoie le message de test `{"type": "_test", "action": "screenshot", "path": …, "tag": …}` : l'engine enregistre l'image affichée en PNG et écrit une ligne `[test] screenshot {…}` (textes, visibilité et rectangles en pixels des éléments du HUD, images par seconde, maillages visibles, position de la caméra, `ticks_ms`). PNG lus et écrits avec la bibliothèque standard de Python.
@@ -109,6 +109,8 @@ PERF_LINES=/tmp/perf.txt engine/tests/run_engine_tests.sh && python3 engine/test
 | --- | --- | --- |
 | `test_route_vectors.gd` | A | `route_data.gd` contre `docs/contracts/world/route_test_vectors.json` (42 vecteurs) |
 | `test_theme_loader.gd` | I5, U5 | Validation, fusion avec le thème `default` et chargement de textures dans `theme_loader.gd` (52 vérifications, dont la lecture d'un thème 1.0 après le passage du défaut en 1.2, et le thème 2.0 en pack de biomes : accepté, erreurs du pack refusées) |
+| `test_atmosphere_model.gd` | U10 | Atmosphère par biome (`atmosphere_model.gd`) : prairie identique à aujourd'hui (brouillard, horizon, soleil), passage prairie-désert sur 1 km continu (moins de 2 % par 10 m), brume de chaleur des déserts et de la savane l'après-midi, coupée par la pluie, la brume et en `low`, air humide de la jungle, soleil rasant au-delà de 66°, coût de `at` |
+| `test_atmosphere_view.gd` | U17 | Ciel, brouillard et soleil de la scène (`atmosphere_view.gd`) : sans biome, brouillard et soleil d'avant la série U et rien de reposé en roulant ; jungle (brouillard à 60 %, soleil à 75 %) ; brume de chaleur affichée en désert et cachée en `low` ; prairie forcée comme la première partie de U17 ; passage prairie-désert en roulant (brouillard reposé seulement quand il change), pluie qui efface la brume de chaleur |
 | `test_biome_model.gd` | U5 | Couche biome (`biome_layer.gd`) et modèle de biome (`biome_model.gd`) : validation des tuiles, exemple du contrat lu sur disque, dégradé continu à travers un bord de tuile, `top_biomes` en `low`, forçage et `--biome=`, thème 1.x identique pour les 16 biomes, thème 2.0 de l'exemple, `blend`, coût de `weights_at` |
 | `test_ground_details.gd` | U8 | Détails de sol (`ground_details.gd`) : rien sans modèle de biome, budgets de `living(preset)` et décor vivant coupé, savane (herbes hautes, termitières), montagne (rochers), prairie (rien), aucun objet à moins de 3 m du bord sur un parcours de 5 km à épingle, coût par image, placement déterministe, teinte de la variante régionale, maillages (80 faces, normales sortantes) |
 | `test_biome_textures.gd` | U6 | Sols des biomes (`biome_textures.gd`) : estimation de la mémoire vidéo et niveau retenu (2 048 px, 1 024 au-delà de 1 Go, couleurs unies), couches de sol des 16 biomes sans doublon, biomes en usage (forçage, parts du manifeste), poids d'une tuile (ordre des parts, 3 biomes en `low`, tuile absente, forçage), matériau de tuile et ombre des nuages recopiée |
@@ -268,7 +270,7 @@ Le faux core déclenche une commande par un message de test `{"type": "_test", "
 ## Bout en bout (lot J8)
 
 ```bash
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh [--keep]
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_e2e.sh [--keep]
 ```
 
 `run_e2e.sh` appelle `e2e_check.py`, qui lance le vrai core (`openride-core run --trainer mock --input none --autostart`) puis l'engine en `--test-mode`, tous deux avec un `HOME` temporaire et deux ports UDP libres. Chaque vérification imprime une ligne `[OK]` ou `[ÉCHEC]` avec sa mesure :

@@ -17,8 +17,13 @@ son, vent) ; l'engine donne les titres.
 la séance suivante, sans relancer) ou `now` (qualité, thème, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
 l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le thème et le mode d'affichage à
 l'engine aux lancements suivants).
-`apply(cfg, changes, path)` valide, écrit dans `config.toml` (commentaires et reste du fichier
-gardés, copie `.bak`) puis met à jour `cfg` en mémoire.
+`apply(cfg, changes, path)` valide, écrit chaque réglage dans son fichier (commentaires et reste du
+fichier gardés, copie `.bak`) puis met à jour `cfg` en mémoire.
+
+Portée (série MJ, lot MJ4) : `Setting.scope` vaut `profil` pour les réglages qui suivent le joueur
+(`config.PROFILE_KEYS` : cycliste, séance, vent, caméra, courbes) et `machine` pour les autres
+(graphisme, affichage, volumes) ; un réglage `profil` s'écrit dans le `profil.toml` du profil en
+cours, ou dans `config.toml` sans profil. L'engine n'en sait rien.
 """
 
 from __future__ import annotations
@@ -51,6 +56,11 @@ class Setting:
     def name(self) -> str:
         return self.key.split(".", 1)[1]
 
+    @property
+    def scope(self) -> str:
+        """« profil » (suit le joueur) ou « machine » ; tiré de `config.PROFILE_KEYS`."""
+        return "profil" if config_mod.is_profile_key(self.section, self.name) else "machine"
+
 
 SETTINGS: tuple[Setting, ...] = (
     # Cycliste
@@ -76,6 +86,8 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("audio.ride_pct", "Volume vent et roue libre", "sound", 10, "%", "now"),
     Setting("audio.ambience_pct", "Volume de l'ambiance", "sound", 10, "%", "now"),
     Setting("audio.events_pct", "Volume bips et événements", "sound", 10, "%", "now"),
+    Setting("audio.rogue_sfx_pct", "Cyber-Rogue : bruitages", "sound", 10, "%", "now"),   # lot R18
+    Setting("audio.rogue_music_pct", "Cyber-Rogue : musique", "sound", 10, "%", "now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
     Setting("wind.mode", "Vent", "wind"),
     Setting("wind.speed_kmh", "Force du vent", "wind", 5, "km/h"),
@@ -173,11 +185,12 @@ def check(cfg: config_mod.Config, key: str, value: Any, themes_dir: Path | None 
 
 def apply(cfg: config_mod.Config, changes: dict[str, Any], path: Path | None = None,
           themes_dir: Path | None = None) -> list[str]:
-    """Valide et écrit les réglages ; met `cfg` à jour ; renvoie les lignes changées."""
+    """Valide et écrit les réglages, chacun dans le fichier de sa portée ; met `cfg` à jour ;
+    renvoie les lignes changées."""
     clean = {k: check(cfg, k, v, themes_dir) for k, v in changes.items()}
     values = [(get(k).section, get(k).name, v) for k, v in clean.items()]
     try:
-        changed = config_edit.update_config(path or config_mod.DEFAULT_CONFIG_PATH, values)
+        changed = config_edit.update_layers(values, path)
     except config_edit.ConfigEditError as exc:
         raise SettingError(str(exc)) from None
     for k, v in clean.items():

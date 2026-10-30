@@ -161,8 +161,8 @@ func _test_living() -> void:
 
 # Lot Y13 : qualité d'image par préréglage, croissante de low à high, toujours un anticrénelage.
 func _test_image() -> void:
-	const KEYS := ["ao_half_size", "fog_volumetric", "fxaa", "glow", "mesh_lod_threshold", "msaa", "shadow_atlas",
-		"shadow_filter", "shadow_splits", "ssao", "ssil"]
+	const KEYS := ["anisotropy", "ao_half_size", "fog_volumetric", "glow", "heat_haze", "mesh_lod_threshold", "msaa", "screen_aa",
+		"shadow_atlas", "shadow_filter", "shadow_splits", "ssao", "ssil"]
 	var fogs := ["off", "light", "full"]
 	var levels := ["off", "low", "medium", "high"]
 	var filters := ["hard", "very_low", "low", "medium", "high"]
@@ -174,17 +174,19 @@ func _test_image() -> void:
 		_check(keys == KEYS, "image %s : les %d clés attendues" % [name, KEYS.size()])
 		_check(int(img["msaa"]) in [0, 2, 4, 8] and str(img["ssao"]) in levels and str(img["ssil"]) in levels
 			and str(img["shadow_filter"]) in filters and int(img["shadow_splits"]) in [2, 4]
-			and str(img["fog_volumetric"]) in fogs,
+			and str(img["fog_volumetric"]) in fogs and int(img["anisotropy"]) in [2, 4, 8, 16]
+			and str(img["screen_aa"]) in ["off", "fxaa", "smaa"],
 			"image %s : valeurs connues" % name)
-		_check(int(img["msaa"]) > 0 or bool(img["fxaa"]), "image %s : toujours un anticrénelage" % name)
+		_check(int(img["msaa"]) > 0 or str(img["screen_aa"]) != "off", "image %s : toujours un anticrénelage" % name)
 		if not prev.is_empty():
-			_check(int(img["msaa"]) >= int(prev["msaa"])
+			_check(int(img["msaa"]) >= int(prev["msaa"]) and int(img["anisotropy"]) >= int(prev["anisotropy"])
 				and levels.find(str(img["ssao"])) >= levels.find(str(prev["ssao"]))
 				and levels.find(str(img["ssil"])) >= levels.find(str(prev["ssil"]))
 				and fogs.find(str(img["fog_volumetric"])) >= fogs.find(str(prev["fog_volumetric"]))
 				and filters.find(str(img["shadow_filter"])) >= filters.find(str(prev["shadow_filter"]))
 				and int(img["shadow_atlas"]) >= int(prev["shadow_atlas"])
-				and float(img["mesh_lod_threshold"]) <= float(prev["mesh_lod_threshold"]),
+				and float(img["mesh_lod_threshold"]) <= float(prev["mesh_lod_threshold"])
+				and (bool(img["heat_haze"]) or not bool(prev["heat_haze"])),
 				"image %s : au moins la qualité du préréglage précédent" % name)
 		prev = img
 	_check(QualityPresets.image("inexistant") == QualityPresets.image("low"), "image : un nom inconnu renvoie low")

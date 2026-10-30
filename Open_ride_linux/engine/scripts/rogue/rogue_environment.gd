@@ -44,9 +44,9 @@ static func apply(env: Environment, preset: String) -> void:
 	env.glow_hdr_threshold = GLOW_HDR_THRESHOLD
 	env.fog_enabled = true
 	env.fog_light_color = Palette.color("night")
-	# Brume linéaire (mode « profondeur ») en low et medium, exponentielle en high ; `set` ignore une
-	# propriété absente de la version de Godot, la densité exponentielle sert alors de repli.
-	env.fog_density = exponential_density(s["fog_end_m"])
-	env.set("fog_mode", 0 if s["fog_exponential"] else 1)    # 0 : exponentielle, 1 : profondeur
-	env.set("fog_depth_begin", 0.0)
-	env.set("fog_depth_end", s["fog_end_m"])
+	# Brume linéaire (mode « profondeur ») en low et medium, exponentielle en high. Le mode d'abord : Godot
+	# remet la densité à sa valeur par défaut quand le mode change (1,0 laissait une brume opaque en high).
+	env.fog_mode = Environment.FOG_MODE_EXPONENTIAL if s["fog_exponential"] else Environment.FOG_MODE_DEPTH
+	env.fog_density = exponential_density(s["fog_end_m"]) if s["fog_exponential"] else 1.0
+	env.fog_depth_begin = 0.0
+	env.fog_depth_end = s["fog_end_m"]

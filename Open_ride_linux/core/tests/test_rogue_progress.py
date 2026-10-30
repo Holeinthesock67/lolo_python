@@ -139,9 +139,25 @@ def test_config_block_follows_the_contract():
     schema = json.loads((Path(__file__).resolve().parents[2] / "docs/contracts/ipc/hello_ack.schema.json").read_text())
     rogue = schema["properties"]["config"]["properties"]["rogue"]
     block = {"w_prime_j": 20000, "w_prime_estimate_j": None, "cp_w": 240, "objectives": ["threshold"],
-             "durations_min": [45], **rp.config_block(CHASSIS, stats(event()), "standard", 2)}
+             "durations_min": [45], **rp.config_block(CHASSIS, stats(event()), 2)}
     jsonschema.validate(block, rogue)
     assert block["chassis"]["unlocked"] == ["standard", "blinde"] and block["lives"] == 2
+    assert block["last"] == {"objective": "threshold", "duration_min": 45}
+    first = {"w_prime_j": 20000, "w_prime_estimate_j": None, "cp_w": 240, "objectives": ["threshold"],
+             "durations_min": [45], **rp.config_block(CHASSIS, rp.RogueStats(), 0)}
+    jsonschema.validate(first, rogue)
+    assert first["last"] is None and first["chassis"]["selected"] == "standard"
+
+
+def test_last_run_choices_come_back_from_the_journal():
+    """Lot R13 : objectif, durée et châssis de la dernière run reviennent au menu de départ d'une fois sur
+    l'autre ; un châssis qui n'est plus débloqué (table changée) laisse le standard."""
+    st = rp.stats_from_events([event("endurance", d=30), {**event("vo2max", d=60), "chassis": "blinde"}])
+    block = rp.config_block(CHASSIS, st, 0)
+    assert block["last"] == {"objective": "vo2max", "duration_min": 60}
+    assert block["chassis"]["selected"] == "blinde"
+    locked = rp.stats_from_events([{**event("vo2max", boss="lost", d=60), "chassis": "survolte"}])
+    assert rp.config_block(CHASSIS, locked, 0)["chassis"]["selected"] == "standard"
 
 
 # --- chassis en jeu ------------------------------------------------------------------------------
