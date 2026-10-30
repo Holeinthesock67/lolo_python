@@ -12,6 +12,7 @@ const Y_LABELS := {"home": "", "pause": "Reprendre", "confirm": "Annuler", "edit
 ## Écran de réglage d'une valeur (en place dans la liste, ou écran de la difficulté de la pause) : « edit »,
 ## clé d'aide donnée par menu_view.gd ; A maintenu enregistre, + et B règlent (menu_flow._handle_edit).
 const EDIT := "edit"
+const NAME_GRID := "profile_name"   # grille du nom d'un profil (profiles_view_model.gd, lot MJ8)
 const Y_DEFAULT := "Retour"
 ## Double légende : une ligne pour les boutons du Click, une pour les touches du clavier (key_map.gd :
 ## chaque touche double un bouton du Click). Titres des deux lignes.
@@ -35,6 +36,19 @@ static func entries(screen: String) -> Array:
 			{"keys": ["+", "A"], "hold": false, "text": "Augmenter", "main": false},
 			{"keys": ["B"], "hold": false, "text": "Diminuer", "main": false},
 		]
+	if screen == NAME_GRID:   # nom d'un profil (lot MJ8) : Z écrit, Y efface ; au clavier, on tape le nom
+		out = [
+			{"keys": ["A"], "hold": true, "text": "Valider le nom", "main": true},
+			{"keys": ["+", "A"], "hold": false, "text": "Lettre suivante", "main": false},
+			{"keys": ["B"], "hold": false, "text": "Précédente", "main": false},
+			{"keys": ["Z"], "hold": false, "text": "Écrire", "main": false},
+			{"keys": ["Y"], "hold": false, "text": "Effacer", "main": false},
+		]
+		for e in out:
+			e["kb"] = keyboard_keys(e["keys"], bool(e["hold"]))
+		out[3]["kb"] = ["lettres"]
+		out[4]["kb"] = ["Retour arrière"]
+		return out
 	var y := str(Y_LABELS.get(screen, Y_DEFAULT))
 	if y != "":
 		out.append({"keys": ["Y"], "hold": false, "text": y, "main": false})
