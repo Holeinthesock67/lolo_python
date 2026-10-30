@@ -142,6 +142,7 @@ func _test_flow() -> void:
 	f.menu.focus_item("delete")
 	f.handle("A_LONG")
 	_check(f.menu.current_screen() == MenuModel.CONFIRM and f.state()["focus"] == 0, "confirmation, « Non » par défaut")
+	_check(f.state()["title"] == "Supprimer « Cycliste B » ? (va à la corbeille)", "question courte, corbeille lisible : %s" % f.state()["title"])
 	f.handle("PLUS_SHORT")
 	_check(f.handle("A_LONG") == {"action": "delete_profile", "id": "cycliste-b"}, "« Oui » : delete_profile")
 	f.on_profiles({"active": "cycliste-a", "items": [PROFILES["items"][0]]})

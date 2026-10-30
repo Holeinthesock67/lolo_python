@@ -165,11 +165,11 @@ func manage_title() -> String:
 	return "Gérer : " + str(_find(manage_id).get("name", manage_id))
 
 
-## Question de la confirmation de suppression : rappelle ce qui part.
+## Question de la confirmation de suppression, sur une ligne : courte, pour que la corbeille se lise en entier
+## (séances, pièces et équipement y partent avec le profil).
 func delete_question() -> String:
-	var it := _find(manage_id)
-	return "Supprimer « %s » ? (%s ; séances, pièces et équipement partent à la corbeille)" % [
-		str(it.get("name", manage_id)), ride_text(it)]
+	return "Supprimer « %s » ? (va à la corbeille)" % str(
+		_find(manage_id).get("name", manage_id))
 
 
 # --- saisie du nom ---------------------------------------------------------------------------

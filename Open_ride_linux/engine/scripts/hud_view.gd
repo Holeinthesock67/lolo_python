@@ -884,7 +884,8 @@ func set_trial_badge(on: bool) -> void:
 		style.content_margin_right = 14
 		trial_badge.add_theme_stylebox_override("normal", style)
 		trial_badge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-		trial_badge.position.y = 6
 		trial_badge.name = "TrialBadge"
 		add_child(trial_badge)
+	# sous le panneau du haut, pour ne rien cacher de la pente ni du profil
+	trial_badge.position.y = (panel_center.offset_bottom if panel_center != null else 0.0) + 6.0
 	trial_badge.visible = on

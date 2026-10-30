@@ -38,6 +38,7 @@ var more_label: Label
 ## Grille de lettres (nom d'un profil, lot MJ8) : texte saisi et cases, à la place de la liste.
 var grid_text: Label
 var grid_box: GridContainer
+var grid_actions: HBoxContainer   # « Effacer » et « Valider » sous la grille : les colonnes des lettres restent égales
 var _grid_cells: Array[PanelContainer] = []
 var devices: HBoxContainer
 var summary: VBoxContainer
@@ -115,6 +116,11 @@ func _init() -> void:
 	grid_box.visible = false
 	grid_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	left.add_child(grid_box)
+	grid_actions = HBoxContainer.new()
+	grid_actions.add_theme_constant_override("separation", 6)
+	grid_actions.visible = false
+	grid_actions.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_child(grid_actions)
 	card = DetailCard.new()
 	body.add_child(card)
 	summary = SummaryView.new()
@@ -179,6 +185,7 @@ func item_rect(item_id: String) -> Rect2:
 func _show_grid(grid: Dictionary, items: Array, focus: int) -> void:
 	var on := not grid.is_empty()
 	grid_box.visible = on
+	grid_actions.visible = on
 	grid_text.visible = on
 	items_box.visible = not on
 	if not on:
@@ -198,7 +205,11 @@ func _show_grid(grid: Dictionary, items: Array, focus: int) -> void:
 		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
 		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
 		c.add_child(l)
-		grid_box.add_child(c)
+		if str(items[_grid_cells.size()].get("id", "")).begins_with("c:"):
+			grid_box.add_child(c)
+		else:   # case d'action, plus large, sur sa propre ligne
+			c.custom_minimum_size.x = UiTheme.ROW_H * 3
+			grid_actions.add_child(c)
 		_grid_cells.append(c)
 	for i in range(_grid_cells.size()):
 		var c := _grid_cells[i]
