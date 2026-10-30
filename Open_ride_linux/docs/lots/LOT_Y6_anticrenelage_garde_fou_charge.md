@@ -73,7 +73,7 @@ Le propriétaire a donné son accord le 30 octobre, après la migration Y2 vers 
 - `fps_counter.gd` : quand le compteur d'images/s est affiché, la ligne finit par « · allégé : SSIL, SSAO ». La mesure du temps GPU reste active (`measure_kept`, ancien `probe_active`).
 - Configuration : `[render] load_guard` (vrai par défaut) dans `config.py`, le lanceur (`--load-guard=on|off`), `SRS_v1.1.md` et `config.example.toml`. Avec `--test-mode`, l'engine coupe le garde-fou sauf `--load-guard=on`, pour que les outils de test mesurent les préréglages tels quels. `sim_bench.py --load-guard on` sert aux essais.
 - Tests :
-  - `test_load_guard.gd` (19 vérifications) couvre les critères du §7 :
+  - `test_load_guard.gd` (21 vérifications) couvre les critères du §7 :
     - 3 s à 15 ms coupent le SSIL, 3 s de plus coupent le SSAO ;
     - 10 s à 8 ms rendent le SSAO ;
     - cas du village : après le pic, à 10,7 ms, le SSAO revient et le SSIL reste coupé, sans oscillation ;
@@ -82,4 +82,15 @@ Le propriétaire a donné son accord le 30 octobre, après la migration Y2 vers 
     - préréglage low, Compatibility, garde-fou coupé ;
     - effets appliqués, résolution intacte.
   - `test_quality_presets` vérifie les arguments, `test_fps_counter` la fin de ligne, `test_launcher` les arguments du lanceur.
+- Le gain mesuré après chaque coupe est aussi écrit au journal : `[charge] t=45.1 s gain de SSIL : 2.1 ms (…)`.
+- **Essai 7bd** (30 octobre, f5859c99, village, 1680×1050, GTX 1060). GPU médian et p99 de chaque passage :
+
+  | Passage | GPU médian | p99 | Lignes `[charge]` |
+  | --- | --- | --- | --- |
+  | low, garde-fou actif | 5,68 ms | 6,32 ms | aucune |
+  | medium, sans garde-fou | 13,69 ms | 15,42 ms | – |
+  | medium, garde-fou actif | 11,85 ms | 15,86 ms | SSIL puis SSAO coupés ; le SSAO, qui fait gagner environ 2 ms, ne revient pas à 10,0–10,9 ms, faute de marge |
+  | high, garde-fou actif | 12,10 ms | 18,69 ms | SSIL, SSAO, glow et MSAA coupés, puis MSAA et glow rendus ; fin vers 12,9 ms |
+
+  Il n'y a eu ni oscillation ni saccade à moins de 2 s d'un changement.
 - Reste : la séance sur le PC du §7, en medium sur un parcours chargé, pour vérifier qu'aucune saccade n'est visible à un changement. Le changement de MSAA et le glow passent par les « ubershaders » de Godot 4.4 et suivants, ce qui devrait éviter toute saccade de compilation, mais cela reste à confirmer.

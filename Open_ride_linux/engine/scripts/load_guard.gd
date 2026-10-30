@@ -36,6 +36,8 @@ var _samples: Array = []   # [durée (s), temps GPU (ms)] de la fenêtre glissan
 var _window_s := 0.0
 var _low_s := 0.0
 var _since_change_s := INF
+## Gain mesuré à cette image (journal) : {"action": "gain", "effect", "gpu_ms", "gain_ms"} ou {}.
+var gain_measured := {}
 var _cost_ms := {}          # effet -> gain mesuré après sa coupe (ms)
 var _pending := ""          # effet coupé dont le gain n'est pas encore mesuré
 var _before_ms := 0.0       # moyenne qui a déclenché la coupe de `_pending`
@@ -73,8 +75,10 @@ static func is_available(e: String, img: Dictionary, forward_plus: bool) -> bool
 
 
 ## Une image de `delta_s` secondes rendue en `gpu_ms` ; renvoie {} ou le changement à appliquer :
-## {"action": "cut" ou "restore", "effect": "ssil"…, "gpu_ms": moyenne de la fenêtre}.
+## {"action": "cut" ou "restore", "effect": "ssil"…, "gpu_ms": moyenne de la fenêtre}. Le gain d'une coupe,
+## mesuré sur la fenêtre qui la suit, est posé dans `gain_measured` pour le journal.
 func step(gpu_ms: float, delta_s: float) -> Dictionary:
+	gain_measured = {}
 	if not enabled or delta_s <= 0.0:
 		return {}
 	_since_change_s += delta_s
@@ -88,6 +92,7 @@ func step(gpu_ms: float, delta_s: float) -> Dictionary:
 	var full := _window_s >= WINDOW_S - 1e-6
 	if full and _pending != "":
 		_cost_ms[_pending] = maxf(_before_ms - avg, 0.0)
+		gain_measured = {"action": "gain", "effect": _pending, "gpu_ms": avg, "gain_ms": _cost_ms[_pending]}
 		_pending = ""
 	# Le calme se compte dès la première image (le critère du gain, une fois ce gain mesuré) ; la saturation
 	# attend une fenêtre pleine.
@@ -138,6 +143,9 @@ func apply(img: Dictionary, env: Environment, viewport: Viewport, forward_plus: 
 
 ## Ligne du journal de l'engine pour un changement renvoyé par `step`, à `t_s` secondes du lancement.
 static func log_line(change: Dictionary, t_s: float) -> String:
+	if change["action"] == "gain":
+		return "[charge] t=%.1f s gain de %s : %.1f ms (GPU %.1f ms en moyenne sur %d s)" % [t_s,
+			LABELS[change["effect"]], float(change["gain_ms"]), float(change["gpu_ms"]), int(WINDOW_S)]
 	var verb := "coupé" if change["action"] == "cut" else "rendu"
 	return "[charge] t=%.1f s %s : %s (GPU %.1f ms en moyenne sur %d s)" % [t_s, verb, LABELS[change["effect"]],
 		float(change["gpu_ms"]), int(WINDOW_S)]

@@ -26,12 +26,17 @@ func _check(cond: bool, msg: String) -> void:
 		printerr("[ÉCHEC] ", msg)
 
 
+var gains: Array = []   # gains mesurés après les coupes (`gain_measured`, journal seulement)
+
+
 ## `seconds` secondes à `gpu_ms` ; renvoie les changements avec l'instant (s, depuis `t0`) où ils tombent.
 func _feed(g, gpu_ms: float, seconds: float, t0 := 0.0) -> Array:
 	var out := []
 	var n := int(round(seconds / DT))
 	for i in n:
 		var c: Dictionary = g.step(gpu_ms, DT)
+		if not g.gain_measured.is_empty():
+			gains.append(g.gain_measured)
 		if not c.is_empty():
 			c["t"] = t0 + (i + 1) * DT
 			out.append(c)
@@ -67,6 +72,10 @@ func _run() -> void:
 	_check(g.shed == ["ssil", "ssao"], "pic : SSIL puis SSAO coupés")
 	c = _feed(g, 12.0, 3.0)
 	c += _feed(g, 10.7, 15.0, 3.0)
+	_check(not gains.is_empty() and gains.back()["effect"] == "ssao" and absf(gains.back()["gain_ms"] - 1.5) < 1e-3,
+		"gain du SSAO mesuré sur la fenêtre suivant sa coupe : %s" % str(gains.back() if not gains.is_empty() else {}))
+	_check(LoadGuard.log_line(gains.back(), 9.0).begins_with("[charge] t=9.0 s gain de SSAO : 1.5 ms"),
+		"gain écrit au journal : « %s »" % LoadGuard.log_line(gains.back(), 9.0))
 	_check(c.size() == 1 and c[0]["action"] == "restore" and c[0]["effect"] == "ssao" and c[0]["t"] >= 13.0 and c[0]["t"] <= 16.1,
 		"10,7 ms après le pic : SSAO (gain 1,5 ms) rendu 10 à 13 s plus tard (%s)" % str(c))
 	c = _feed(g, 12.2, 30.0)

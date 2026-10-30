@@ -1603,11 +1603,14 @@ func _step_load_guard(delta: float) -> void:
 		return
 	var change: Dictionary = load_guard.step(
 		RenderingServer.viewport_get_measured_render_time_gpu(get_viewport().get_viewport_rid()), delta)
+	var t_s := Time.get_ticks_msec() / 1000.0
+	if not load_guard.gain_measured.is_empty():
+		print(LoadGuard.log_line(load_guard.gain_measured, t_s))
 	if change.is_empty():
 		return
 	load_guard.apply(QualityPresets.image(_quality_name), world_env.environment, get_viewport(), _forward_plus())
 	fps_counter.shed = load_guard.shed_text()
-	print(LoadGuard.log_line(change, Time.get_ticks_msec() / 1000.0))
+	print(LoadGuard.log_line(change, t_s))
 
 
 static func _forward_plus() -> bool:
