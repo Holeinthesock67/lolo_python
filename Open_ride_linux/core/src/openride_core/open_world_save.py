@@ -15,8 +15,9 @@ from pathlib import Path
 from typing import Any
 from xml.sax.saxutils import quoteattr
 
+from . import profiles
 from .config import GPX_DIR, OpenWorldConfig
-from .journal import JOURNAL_DIR, read_journal
+from .journal import read_journal
 from .live_route import LiveRoute
 from .route import WorldError
 
@@ -70,8 +71,11 @@ def save_ride(route: Any, s_end: float, ride_id: str, gpx_dir: Path = GPX_DIR,
     return path
 
 
-def journal_distance(ride_id: str, journal_dir: Path = JOURNAL_DIR) -> float | None:
-    """Distance finale de la séance `ow:<ride_id>` dans le journal le plus récent qui la porte."""
+def journal_distance(ride_id: str, journal_dir: Path | None = None) -> float | None:
+    """Distance finale de la séance `ow:<ride_id>` dans le journal le plus récent qui la porte
+    (défaut : journaux du profil en cours, lot MJ1)."""
+    if journal_dir is None:
+        journal_dir = profiles.current().journal_dir
     best: tuple[float, float] | None = None
     for path in sorted(journal_dir.glob("*.jsonl")) if journal_dir.is_dir() else []:
         try:
@@ -89,7 +93,7 @@ def journal_distance(ride_id: str, journal_dir: Path = JOURNAL_DIR) -> float | N
 
 
 def save_from_folder(ride_id: str, cfg: OpenWorldConfig, gpx_dir: Path = GPX_DIR,
-                     journal_dir: Path = JOURNAL_DIR, length_m: float | None = None) -> tuple[Path | None, float]:
+                     journal_dir: Path | None = None, length_m: float | None = None) -> tuple[Path | None, float]:
     """Après coup, depuis `<cache_dir>/seances/<id>.world`. Distance : `length_m`, sinon celle du journal,
     sinon toute la route engagée. Lève `WorldError` si le dossier manque ou est illisible."""
     folder = Path(cfg.cache_dir).expanduser() / "seances" / f"{ride_id}.world"

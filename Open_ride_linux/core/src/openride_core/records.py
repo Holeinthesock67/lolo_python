@@ -106,6 +106,12 @@ class RankEntry:
     time_s: float
 
 
+def _current_records() -> Path:
+    """`records.json` du profil de joueur en cours (série MJ, lot MJ1)."""
+    from . import profiles
+    return profiles.current().records_path
+
+
 @dataclass
 class RecordBook:
     routes: dict[str, dict[str, dict[str, list[RecordEntry]]]] = field(default_factory=dict)
@@ -115,7 +121,7 @@ class RecordBook:
     @classmethod
     def load(cls, path: Path | None = None) -> "RecordBook":
         """Lit le fichier de records ; un fichier absent donne un carnet vide."""
-        path = path or RECORDS_FILE
+        path = path or _current_records()
         if not path.is_file():
             return cls()
         try:
@@ -141,7 +147,7 @@ class RecordBook:
 
     def save(self, path: Path | None = None) -> None:
         """Écrit le fichier d'un coup (fichier temporaire puis remplacement)."""
-        path = path or RECORDS_FILE
+        path = path or _current_records()
         path.parent.mkdir(parents=True, exist_ok=True)
         data = {"version": FORMAT_VERSION, "routes": {
             r: {s: {t: [e.to_dict() for e in tables.get(t, [])] for t in TABLES}
