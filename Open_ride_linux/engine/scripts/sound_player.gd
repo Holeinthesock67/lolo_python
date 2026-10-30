@@ -398,7 +398,9 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 	if NOISE_LOWPASS.has(kind):
 		# Même fréquence de coupure qu'à MIX_RATE
 		var alpha := 1.0 - pow(1.0 - float(NOISE_LOWPASS[kind]), float(MIX_RATE) / float(rate))
-		lp = _periodic_lowpass(noise, alpha)
+		# Même niveau qu'à MIX_RATE : la variance d'un passe-bas à un pôle vaut alpha / (2 − alpha), ici doublée
+		var a0 := float(NOISE_LOWPASS[kind])
+		lp = _periodic_lowpass(noise, alpha, sqrt(a0 * (2.0 - alpha) / (alpha * (2.0 - a0))))
 	var buf := PackedFloat32Array()
 	buf.resize(n)
 	for i in range(n):
@@ -487,7 +489,7 @@ static func _lcg_noise(n: int, seed_val: int) -> PackedFloat32Array:
 ## Passe-bas à un pôle (coefficient `alpha`) d'un bruit bouclé, en régime établi : le filtre fait d'abord un
 ## tour de boucle à vide (ses 12/alpha derniers échantillons suffisent), si bien que la sortie est elle-même
 ## périodique (fin raccordée au début, sans clic).
-static func _periodic_lowpass(noise: PackedFloat32Array, alpha: float) -> PackedFloat32Array:
+static func _periodic_lowpass(noise: PackedFloat32Array, alpha: float, gain: float = 1.0) -> PackedFloat32Array:
 	var n := noise.size()
 	var out := PackedFloat32Array()
 	out.resize(n)
@@ -498,7 +500,7 @@ static func _periodic_lowpass(noise: PackedFloat32Array, alpha: float) -> Packed
 		lp += alpha * (noise[i] - lp)
 	for i in range(n):
 		lp += alpha * (noise[i] - lp)
-		out[i] = lp
+		out[i] = lp * gain
 	return out
 
 
