@@ -43,7 +43,7 @@ Avec `--input sim`, le clavier du terminal du core (`+`, `-`, `u`, `d`) appuie s
 | `controle_refuse` | Le trainer refuse le contrôle à partir de 10 s : la séance passe en ERROR après deux reprises. |
 | `realiste` | Tout se connecte en une seconde ; trainer à réponse réaliste (lot X6, voir plus bas). |
 | `pignon_unique` | Séance du 29 octobre, en valeurs génériques (lot X46) : trainer réaliste, cycliste à braquet réel 50 × 14 (pignon unique, grand plateau) à 85 rpm, soit ≈ 38 km/h au volant, au plus 600 W. La cadence annoncée suit le volant : dans une pente trop dure, elle baisse. |
-| `decrochage_trainer` | Même braquet ; relances à 100 rpm de 25 à 45 s et de 85 à 105 s ; décrochages du frein (`brake_loss`, 8 s) à 33 s, 93 s et 160 s : puissance annoncée qui tombe vers 0 W en moins de 2 s, vitesse du volant qui baisse, cadence inchangée, sans erreur ni reconnexion. Le rapport `decrochages` (lot X44) les classe « trainer ». |
+| `decrochage_trainer` | Même braquet ; relances à 100 rpm de 25 à 45 s et de 85 à 105 s ; décrochages du frein (`brake_loss`, 8 s) à 33 s, 93 s et 160 s : puissance annoncée qui tombe vers 0 W en moins de 2 s, vitesse du volant qui baisse, cadence inchangée, sans erreur ni reconnexion. Le rapport `decrochages` les classe « indéterminé » : une cadence gardée ne prouve rien (lot X49) ; avec le repère Z long du cycliste (lot X47), « trainer ». |
 
 ## Écrire un scénario (JSON)
 

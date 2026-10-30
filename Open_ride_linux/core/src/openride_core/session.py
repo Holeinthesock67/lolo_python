@@ -37,14 +37,14 @@ from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClick
 from . import latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
-from .journal import JOURNAL_DIR, Record
+from .journal import Record
 from .progression import journal_source
 from .mock_driver import MockDriver
 from .garage import GarageError, ProgressionService, workout_duration_finder
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
 from .physics import PhysicsParams, RiderPhysics
-from . import powerups as powerups_mod, records as records_mod
+from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
 from .records import RecordBook, RecordsError
 from .recorder import SessionRecorder
@@ -231,11 +231,13 @@ class AutostartError(Exception):
 
 class CoreSession:
     def __init__(self, cfg: Config, driver: Any = None, inputs: list[Any] | None = None,
-                 journal_dir: Path = JOURNAL_DIR, routes_root: Path | None = None,
+                 journal_dir: Path | None = None, routes_root: Path | None = None,
                  workouts_dir: Path = WORKOUTS_DIR, bots: list[Any] | None = None,
                  config_path: Path | None = None, records_path: Path | None = None,
                  powerups_path: Path | None = None, profile_path: Path | None = None,
                  wtf_path: Path | None = None) -> None:
+        # Fichiers du joueur : ceux du profil en cours (série MJ, lot MJ1), sauf chemins donnés (tests).
+        self.profile_ctx = profiles.current()
         self.cfg = cfg
         self.config_path = config_path   # écrit par pair_devices (lot N13) ; défaut ~/OpenRide/config.toml
         self.bots = list(bots) if bots else []
@@ -246,7 +248,7 @@ class CoreSession:
             self.driver.event_sink = lambda line: self._rec.ftms(line) if self._rec else None
         self.inputs = inputs if inputs is not None else build_inputs(cfg, self.sim)
         self.hr = build_hr(cfg, self.sim)
-        self.journal_dir = journal_dir
+        self.journal_dir = journal_dir if journal_dir is not None else self.profile_ctx.journal_dir
         self.routes_root = routes_root or routes_dir()
         self.workouts_dir = workouts_dir
         self.gearing = Gearing(cfg.gearing, cfg.trainer)
@@ -264,7 +266,7 @@ class CoreSession:
         self.route: Route | None = None
         self._segments: tuple = ()               # couche segments du parcours (série T)
         self.race: ClassicRace | None = None      # mode classique de la séance (lot T7)
-        self.records_path: Path = records_path or records_mod.RECORDS_FILE      # lot T5
+        self.records_path: Path = records_path or self.profile_ctx.records_path  # lot T5
         self.powerups_path: Path = powerups_path or powerups_mod.POWERUPS_FILE  # lot T6
         self.wtf_path: Path = wtf_path or wtf_rules.WTF_FILE   # règles du mode WTF (lot WTF2)
         self.wtf: WtfMode | None = None
@@ -477,10 +479,8 @@ class CoreSession:
     # --- progression, Garage et bilan d'expérience (série V, lot V11, contrat IPC révision 1.4) ----
 
     def _build_progression(self, profile_path: Path | None) -> ProgressionService:
-        from .garage import PROFILE_PATH
-
         return ProgressionService(self.cfg, self.journal_dir, workout_duration_finder(self.workouts_dir),
-                                  profile_path or PROFILE_PATH)
+                                  profile_path or self.profile_ctx.profile_path, self.profile_ctx.table_path)
 
     def _equipped_params(self) -> PhysicsParams:
         """Paramètres physiques de la séance : `config.toml` et équipement choisi (cadre, roues)."""
@@ -1200,6 +1200,7 @@ class CoreSession:
                                     on_failure=self._on_recording_failure,
                                     workout_id=self._workout_id, source=self._journal_source(),
                                     progression=self.progress_svc.journal_header(equipped=self.rogue is None),
+                                    profile=self.profile_ctx.journal_header(),
                                     plan=active_tag(self._workout_id, state_path=self.plan_state_path,
                                                     plans_dir=self.plans_dir, workouts_dir=self.workouts_dir))
         self._rec.event("start", time.time())
@@ -1928,7 +1929,7 @@ class CoreSession:
 
         self._rec = SessionRecorder(self.journal_dir, route_id, on_failure=self._on_recording_failure,
                                     workout_id=rs.workout_id, resume_path=path, lines=rs.lines,
-                                    source=self._journal_source())
+                                    source=self._journal_source(), profile=self.profile_ctx.journal_header())
         if rs.running:
             # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
             self._rec.event("pause", rs.last_ts, "core_restarted")
@@ -1965,7 +1966,8 @@ class CoreSession:
         st.gear, st.gears_total = self.rogue.gear, self.rogue.balance.gear_max
         st.lat = st.lon = st.alt = None
         self._rec = SessionRecorder(self.journal_dir, rogue_mode.JOURNAL_ROUTE_ID, on_failure=self._on_recording_failure,
-                                    resume_path=path, lines=rs.lines, source=self._journal_source())
+                                    resume_path=path, lines=rs.lines, source=self._journal_source(),
+                                    profile=self.profile_ctx.journal_header())
         if rs.running:
             self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())
