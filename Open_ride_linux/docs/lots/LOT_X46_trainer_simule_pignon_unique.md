@@ -33,7 +33,7 @@ Le passage à ½ · Cw · v² (Cw = ρ · CdA) dans le trainer simulé est fait 
 1. `pytest` passe :
    - 50 × 14 à 85 rpm donne ≈ 38,3 km/h ;
    - à 10 % de pente, le cycliste plafonne à 600 W, et la cadence et la vitesse baissent ;
-   - les trois décrochages de `decrochage_trainer` sont trouvés à 33, 93 et 160 s et classés « trainer » par `decrochages` (lot X44), puis la puissance revient.
+   - les trois décrochages de `decrochage_trainer` sont trouvés à 33, 93 et 160 s puis la puissance revient. Le lot X49 les classe « indéterminé » sans repère du cycliste, « trainer » avec.
 2. `trainer_steps --trainer sim --scenario decrochage_trainer --mode relances --fast` va jusqu'au rapport. Le décrochage de 33 s y est classé « trainer ».
 3. La matrice de simulation (M6) joue les deux nouveaux scénarios en ERG et en SIM sans erreur.
 

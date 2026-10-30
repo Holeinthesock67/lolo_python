@@ -33,8 +33,8 @@ F = m·g·(pente + Crr) + ½·Cw·v², avec la masse du `config.toml` local. Un 
 `relances_erg` (les mêmes en ERG). `samples.csv` garde aussi la vitesse annoncée par le trainer (volant)
 et le niveau de résistance ; `steps.csv`, la cible, la pente envoyée et la vitesse théorique du volant.
 
-Décrochages et pompage (lot X44) : le rapport dit pour chaque chute brutale de la puissance si elle vient
-du trainer (cadence inchangée) ou du cycliste (cadence d'abord), avec les statuts annoncés par le trainer
+Décrochages et pompage (lots X44, X49) : le rapport dit pour chaque chute brutale de la puissance si elle
+vient du trainer (seulement sur preuve), du cycliste (fatigue, relâchement) ou si rien ne tranche, avec les statuts annoncés par le trainer
 (lignes `ftms` du pilote, PR #580, notées `ftms` dans `events.csv`), et mesure le pompage par palier
 (module `decrochages`).
 
@@ -42,9 +42,15 @@ Suivi en direct (lot X45) : `--fenetre` ouvre une fenêtre de terminal à part (
 le palier, le compte à rebours, la puissance, la cadence et les alertes, et qui reste ouverte après la fin
 de l'essai avec le verdict et les décrochages relevés ; utile quand le banc est lancé à distance.
 
+Renvoi de la consigne (lot X49) : `--renvoi S` renvoie une consigne inchangée toutes les S secondes
+(`[trainer] resend_s`, 2 s par défaut) ; `--renvoi 0` ne la renvoie jamais, une seule écriture par palier,
+pour comparer le pompage avec et sans renvoi. Le réglage est noté dans `events.csv` et le rapport.
+
 Trainer simulé réaliste (lot X6) : `--response realiste` (frein à retard pur, serrage et relâchement,
 volant d'inertie ; `--calibration steps.csv` d'un essai réel pour reprendre ses valeurs) ; le banc compare
-alors chaque t63 mesuré à celui du modèle (retard + constante de temps), à ± 20 %. Protocoles en plus de
+alors chaque t63 mesuré à celui du modèle (retard + constante de temps), à ± 20 %, sauf aux paliers dont le
+départ n'est pas établi (palier coupé par le plafond ou qui en suit un, décrochage pendant le palier ou le
+précédent : « pas comparé »). Protocoles en plus de
 `sim` et `erg` : `marche_pente` (0 → 7 → 0 %), `erg_paliers` (150 → 250 → 150 W) et `rogue_fenetres`
 (consignes de 1,5 s, fenêtres du mode Cyber-Rogue).
 """
@@ -57,6 +63,7 @@ import csv
 import io
 import json
 import logging
+import math
 import statistics
 import struct
 import sys
@@ -343,7 +350,8 @@ svg{{background:#fff;border:1px solid #d9ddd9;max-width:100%}}polyline{{fill:non
 table{{border-collapse:collapse;margin-top:16px;font-size:13px}}td,th{{border:1px solid #d9ddd9;padding:4px 8px;text-align:right}}
 th{{background:#eef0ee}}</style>
 <h1>Latence du trainer par paliers</h1>
-<p>{datetime.now():%d/%m/%Y %H:%M}. Puissance de chaque trame Indoor Bike Data ; traits rouges : consignes.</p>
+<p>{datetime.now():%d/%m/%Y %H:%M}. Puissance de chaque trame Indoor Bike Data ; traits rouges : consignes.
+{"".join(f" Consigne inchangée renvoyée {d.removeprefix('renvoi ')}." for _, kind, d in rec.events if kind == "config")}</p>
 <svg viewBox="0 0 {width} {height}" width="{width}" height="{height}">{marks}<polyline points="{pts}"/>
 <text x="{pad}" y="{height - 10}" class="lbl" style="fill:#5d6762">0 s</text>
 <text x="{width - pad - 30}" y="{height - 10}" class="lbl" style="fill:#5d6762">{t_max:.0f} s</text>
@@ -364,7 +372,9 @@ def bench_source(rec: Recording, name: str) -> decrochages.Source:
     end = rec.samples[-1][0] if rec.samples else 0.0
     segments = [(t, rec.steps[k + 1][0] if k + 1 < len(rec.steps) else end, f"palier {k + 1}")
                 for k, (t, _) in enumerate(rec.steps)]
-    return decrochages.Source(name, [decrochages.Sample(t, p, c) for t, p, c, *_ in rec.samples],
+    grades = [(t, decrochages.step_grade(st.mode, st.value, st.grade_pct)) for t, st in rec.steps]
+    return decrochages.Source(name, [decrochages.Sample(t, p, c, v, decrochages.grade_at(grades, t))
+                                     for t, p, c, v, _ in rec.samples],
                               [(t, d) for t, kind, d in rec.events if kind == "ftms"],
                               [t for t, kind, _ in rec.events if kind == "decrochage"], segments)
 
@@ -426,6 +436,7 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
     cfg.trainer.trace_ftms = True
     rec = Recording()
     t0 = time.monotonic()
+    rec.events.append((0.0, "config", f"renvoi {resend_text(cfg.trainer.resend_s)}"))
 
     def clock() -> float:
         return time.monotonic() - t0
@@ -563,15 +574,47 @@ def load_protocol(name_or_path: str, fast: bool = False, fast_hold_s: float = 6.
     return steps
 
 
-def model_checks(results: list[StepResult], model: Any, frame_s: float = 0.25) -> list[tuple[bool, str]]:
+def resend_interval(seconds: float) -> float:
+    """`--renvoi` : 0 veut dire jamais (une seule écriture par palier), sinon l'intervalle tel quel."""
+    return math.inf if seconds == 0 else seconds
+
+
+def resend_text(seconds: float) -> str:
+    return "jamais (une écriture par palier)" if math.isinf(seconds) else f"toutes les {seconds:g} s"
+
+
+def unsettled_steps(rec: Recording, results: list[StepResult], drops: list[Any]) -> dict[int, str]:
+    """Paliers dont le départ n'est pas établi : le modèle du frein ne s'y applique pas (essais du 30 octobre,
+    retours à 150 W comparés à tort). Palier coupé par le plafond, ou qui suit un palier coupé (le frein n'a pas
+    atteint son niveau), ou décrochage de la puissance pendant ce palier ou le précédent."""
+    out: dict[int, str] = {}
+    ends = [t for t, _ in rec.steps[1:]] + [rec.samples[-1][0] if rec.samples else 0.0]
+    for k, r in enumerate(results):
+        prev_cut = k > 0 and results[k - 1].cut
+        t0 = rec.steps[k - 1][0] if k > 0 else rec.steps[k][0]
+        drop = next((d for d in drops if t0 <= d.t < ends[k]), None)
+        if r.cut or prev_cut:
+            out[r.index] = "palier coupé par le plafond" if r.cut else "le palier d'avant a été coupé par le plafond"
+        elif drop is not None:
+            out[r.index] = f"décrochage à {drop.t:.0f} s"
+    return out
+
+
+def model_checks(results: list[StepResult], model: Any, frame_s: float = 0.25,
+                 skip: dict[int, str] | None = None) -> list[tuple[bool | None, str]]:
     """t63 mesuré contre le modèle du trainer simulé réaliste (lot X6), à ± MODEL_TOL : écriture de la
     consigne, retard du frein, constante de temps de serrage (puissance qui monte) ou de relâchement (qui
     baisse), plus une trame (`frame_s`) de retard de la moyenne glissante sur 3 trames de l'analyse.
     L'écart admis ne descend pas sous deux trames : le départ et le franchissement sont chacun lus à une
-    trame près (paliers courts des tests). Paliers sans t63 ignorés."""
-    out = []
+    trame près (paliers courts des tests). Paliers sans t63 ignorés ; paliers de `skip` (`unsettled_steps`)
+    rendus avec None : pas comparés, et la raison."""
+    out: list[tuple[bool | None, str]] = []
     for r in results:
         if r.t63_s is None or r.delta_w is None:
+            continue
+        if skip and r.index in skip:
+            out.append((None, f"palier {r.index} ({step_label(Step(r.mode, r.value, 0, r.grade_pct))}) : pas comparé "
+                              f"au modèle ({skip[r.index]})"))
             continue
         want = ((r.write_ms or 0.0) / 1000.0 + frame_s + model.delay_s
                 + (model.tau_up_s if r.delta_w > 0 else model.tau_down_s))
@@ -592,6 +635,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--plateau", type=int, help="dents du plateau réel (paliers sim_w, lot X43)")
     ap.add_argument("--pignon", type=int, help="dents du pignon réel (paliers sim_w)")
     ap.add_argument("--roue", type=float, default=WHEEL_M, help=f"circonférence de la roue en m (défaut {WHEEL_M})")
+    ap.add_argument("--renvoi", type=float, metavar="S",
+                    help="renvoi d'une consigne inchangée toutes les S secondes ([trainer] resend_s, 2 s par défaut) ; "
+                         "0 : jamais, une seule écriture par palier (test du pompage avec et sans renvoi)")
     ap.add_argument("--plafond", type=float,
                     help="puissance (W, moyenne sur 3 s) qui coupe le palier ; défaut : 125 %% du plus fort palier")
     ap.add_argument("--response", choices=("instant", "realiste"), default="instant",
@@ -630,6 +676,11 @@ def main(argv: list[str] | None = None) -> int:
             print(f"Protocole illisible : {exc}", file=sys.stderr)
             return 2
         cfg = config.load(args.config) if args.config else config.load()
+        if args.renvoi is not None:
+            if args.renvoi < 0:
+                print("--renvoi : secondes positives, ou 0 pour ne jamais renvoyer", file=sys.stderr)
+                return 2
+            cfg.trainer.resend_s = resend_interval(args.renvoi)
         if (args.plateau is None) != (args.pignon is None) or any(
                 v is not None and v <= 0 for v in (args.plateau, args.pignon)) or args.roue <= 0:
             print("Braquet réel : donner --plateau et --pignon ensemble (dents > 0), --roue > 0", file=sys.stderr)
@@ -699,10 +750,11 @@ def main(argv: list[str] | None = None) -> int:
     print(f"Rapport : {write_report(rec, results, out)}")
     model = getattr(getattr(world, "trainer", None), "model", None) if not args.analyse else None
     if model is not None:
-        checks = model_checks(results, model, 1.0 / world.trainer.ibd_hz)
+        skip = unsettled_steps(rec, results, decrochages.analyse(src)[0])
+        checks = model_checks(results, model, 1.0 / world.trainer.ibd_hz, skip)
         for ok, msg in checks:
-            print(f"[{'OK' if ok else 'ÉCHEC'}] {msg}")
-        return 0 if all(ok for ok, _ in checks) else 1
+            print(f"[{'—' if ok is None else 'OK' if ok else 'ÉCHEC'}] {msg}")
+        return 0 if all(ok is not False for ok, _ in checks) else 1
     return 0
 
 
