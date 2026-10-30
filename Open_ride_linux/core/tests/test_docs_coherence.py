@@ -566,12 +566,11 @@ def check_markdown_links(text: str, doc_path: Path, root: Path = REPO_ROOT) -> l
     return errors
 
 
-# --- 8. Nombres de tests dans la documentation (lot J7) ------------------------------
+# --- 8. Nombres de tests dans la documentation (lots J7 et X52) -------------------------
 
-# Motifs, comptes et correction dans scripts/recompte_tests.py (lot X34), qui réécrit les nombres faux
-# après une fusion : `python3 scripts/recompte_tests.py`.
-from recompte_tests import (TEST_COUNT_PATTERNS, check_test_counts, collected_test_count,  # noqa: E402
-                            engine_counts, fix_test_counts)
+# Plus aucun nombre de tests écrit en dur (lot X52) : ils changeaient à chaque fusion et mettaient toutes les PR
+# ouvertes en conflit. `python3 scripts/recompte_tests.py` les compte ; la CI les écrit dans son résumé.
+from recompte_tests import DOCUMENTS, hard_counts  # noqa: E402
 
 
 # --- 9. Chemins du projet cités (lot J7) ---------------------------------------------
@@ -644,28 +643,12 @@ def test_github_anchors() -> None:
     assert markdown_anchors("# A\n## A\n```\n# pas un titre\n```\n") == {"a", "a-1"}
 
 
-def test_documented_test_counts_and_negative() -> None:
-    actual = {"core": collected_test_count(REPO_ROOT / "core"), **engine_counts(REPO_ROOT)}
-    try:
-        import openride_compiler  # noqa: F401
-    except ImportError:
-        pytest.skip("openride-compiler non installé : nombre de tests du compilateur inconnu")
-    actual["compiler"] = collected_test_count(REPO_ROOT / "compiler")
-
+def test_no_hard_coded_test_counts_and_negative() -> None:
     errors: list[str] = []
-    for doc_name in TEST_COUNT_PATTERNS:
-        errors += check_test_counts((REPO_ROOT / doc_name).read_text(encoding="utf-8"), doc_name, actual)
+    for doc_name in DOCUMENTS:
+        errors += hard_counts((REPO_ROOT / doc_name).read_text(encoding="utf-8"), doc_name)
     assert errors == []
-
-    text = "231 tests automatiques côté core (dont x) et 123 côté compilateur ; 89 fichiers de tests unitaires, 7 tests de rendu"
-    counts = {"core": 230, "compiler": 123, "engine_unit": 89, "engine_render": 11}
-    errs = check_test_counts(text, "README.md", counts)
-    assert errs == ["README.md : 231 tests core annoncés, écrire 230 (python3 scripts/recompte_tests.py)",
-                    "README.md : 7 tests de rendu de l'engine annoncés, écrire 11 (python3 scripts/recompte_tests.py)"]
-    fixed = fix_test_counts(text, "README.md", counts)
-    assert fixed == "230 tests automatiques côté core (dont x) et 123 côté compilateur ; 89 fichiers de tests unitaires, 11 tests de rendu"
-    assert check_test_counts(fixed, "README.md", counts) == []
-    assert len(check_test_counts("aucun nombre", "README.md", counts)) == 4
+    assert len(hard_counts("231 tests automatiques côté core et 7 tests de rendu", "README.md")) == 2
 
 
 def test_cited_paths_exist_and_negative() -> None:
