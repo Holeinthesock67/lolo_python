@@ -33,13 +33,19 @@ const HAZE_COLOR := Color(0.86, 0.80, 0.68)
 const FOG_SKY_AFFECT := 0.0
 
 
-## Rendu des tons et étalonnage communs à tous les préréglages (lot Y13, coût nul) : courbe « Filmic »
-## (hautes lumières du ciel adoucies au lieu d'être coupées), exposition relevée pour compenser la courbe,
-## contraste et saturation légèrement relevés. Choisi sur captures parmi Linear, Reinhard, Filmic et ACES.
+## Rendu des tons et étalonnage communs à tous les préréglages (lot Y13, coût nul) : courbe « AgX »
+## (Godot 4.4 ; étape 4, en 4.7) qui garde la couleur dans les hautes lumières du ciel et du soleil, au
+## lieu de « Filmic » choisie en 4.3 parmi Linear, Reinhard, Filmic et ACES ; exposition relevée pour
+## compenser la courbe, contraste et saturation légèrement relevés. Choisi sur captures Filmic contre AgX.
+## Le moteur Compatibility (tests sous Xvfb) n'a pas de tampon HDR : AgX y blanchit ciel et herbe et efface
+## les nuages, il garde donc Filmic (`white`), comme il se passe déjà de SSAO, SSIL et brume volumétrique.
 const LOOK := {
-	"tonemap": Environment.TONE_MAPPER_FILMIC,
-	"exposure": 1.25,
+	"tonemap": Environment.TONE_MAPPER_AGX,
+	"tonemap_compatibility": Environment.TONE_MAPPER_FILMIC,
 	"white": 6.0,
+	"exposure": 1.25,
+	"agx_white": 16.29,
+	"agx_contrast": 1.25,
 	"contrast": 1.08,
 	"saturation": 1.18,
 }
@@ -73,6 +79,8 @@ const VOLUMETRIC := {
 }
 const VOLUMETRIC_DEPTH := 64
 const MSAA := {0: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}
+const ANISOTROPY := {2: Viewport.ANISOTROPY_2X, 4: Viewport.ANISOTROPY_4X, 8: Viewport.ANISOTROPY_8X,
+	16: Viewport.ANISOTROPY_16X}
 
 
 static func apply_preset(preset_name: String, camera: Camera3D, light: DirectionalLight3D,
@@ -107,7 +115,10 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environment, viewport: Viewport,
 		forward_plus: bool) -> void:
 	viewport.msaa_3d = MSAA[int(img["msaa"])]
-	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if bool(img["fxaa"]) else Viewport.SCREEN_SPACE_AA_DISABLED
+	viewport.anisotropic_filtering_level = ANISOTROPY[int(img["anisotropy"])]
+	# Anticrénelage d'écran : Forward+ seulement, comme l'occlusion et la brume (Compatibility le refuse en 4.7)
+	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if forward_plus and bool(img["fxaa"]) \
+			else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.mesh_lod_threshold = float(img["mesh_lod_threshold"])
 	viewport.scaling_3d_scale = 1.0
 
@@ -136,9 +147,11 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 	env.glow_hdr_threshold = GLOW["hdr_threshold"]
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 
-	env.tonemap_mode = LOOK["tonemap"]
+	env.tonemap_mode = LOOK["tonemap"] if forward_plus else LOOK["tonemap_compatibility"]
 	env.tonemap_exposure = LOOK["exposure"]
 	env.tonemap_white = LOOK["white"]
+	env.tonemap_agx_white = LOOK["agx_white"]
+	env.tonemap_agx_contrast = LOOK["agx_contrast"]
 	env.adjustment_enabled = true
 	env.adjustment_contrast = LOOK["contrast"]
 	env.adjustment_saturation = LOOK["saturation"]
