@@ -40,7 +40,7 @@ Les deux dernières lignes : le lot R18 crée les bus dans l'engine (`rogue_audi
   constant : leur volume ne varie que par les modèles (vitesse, altitude, distance). Le vent d'altitude qui
   ondulait de 14 dB toutes les 2 s faisait la « vague » entendue à l'arrêt le 29/10 au-dessus de 1 200 m.
   Les sons à bruit des points sonores et du décor (rivière, voitures, foule, hélicoptère, avion, péniche) bouclent
-  sur 4 s à 11 025 Hz, chacun avec son propre bruit : un bruit figé d'une seconde se répétait et faisait une
+  sur 3 s à 11 025 Hz, chacun décalé dans un bruit commun : un bruit figé d'une seconde se répétait et faisait une
   pulsation régulière d'une seconde (mesure du 30/10, autocorrélation 0,98 à 1 s). Un son joué une fois (`ONE_SHOT_KINDS` : corne, cloche) n'est
   jamais relancé par les points sonores : la cloche ne sonne qu'aux coups de l'heure pleine.
 

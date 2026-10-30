@@ -57,8 +57,8 @@ const MIX_RATE := 22050
 const SAMPLE_COUNT := 22050   # 1 seconde de boucle
 const ONE_SHOT_KINDS := ["ship_horn", "church_bell"]   # sons joués une fois (P29 ; cloche : un coup par update_bells)
 const ONE_SHOT_TAIL_S := 0.03
-const NOISE_LOOP_S := 4.0       # boucle des sons à bruit (river et NOISE_LOWPASS), comme le vent
-const NOISE_MIX_RATE := 11025   # leur bruit est sourd : demi-fréquence, même coût qu'une boucle de 2 s
+const NOISE_LOOP_S := 3.0       # boucle des sons à bruit (river et NOISE_LOWPASS) : plus de bruit figé d'1 s
+const NOISE_MIX_RATE := 11025   # leur bruit est sourd : demi-fréquence
 ## Coefficient du passe-bas du bruit de chaque son en boucle qui en contient un (bruit périodique, sans clic).
 const NOISE_LOWPASS := {"vehicle_pass": 0.08, "crowd_cheer": 0.15, "helicopter_rotor": 0.25, "airliner_rumble": 0.02,
 	"paramotor_buzz": 0.3, "barge_engine": 0.05}
@@ -68,6 +68,7 @@ const FREEWHEEL_LOOP_CLICKS := 140.0   # coups par seconde de la boucle à pitch
 const FREEWHEEL_MIN_PITCH := 0.05
 const FREEWHEEL_JITTER := 0.08         # décalage aléatoire de chaque coup, en fraction de période
 const WIND_LOOP_SAMPLES := 88200       # boucle du vent : 4 s, sans motif qui se répète à l'oreille
+const WIND_WARM_SAMPLES := 4410        # mise en régime des filtres du vent (200 ms, bien plus que leur mémoire)
 const WIND_RUMBLE_HZ := 160.0          # grondement : bruit blanc passé deux fois dans un passe-bas
 const WIND_BAND_HZ := 600.0            # souffle : passe-bande doux, plus discret que le grondement
 const WIND_BAND_Q := 0.6
@@ -101,6 +102,7 @@ var clacs_played := 0                   # « clac » de reprise joués (tests)
 var _poi_players: Array[AudioStreamPlayer3D] = []
 
 var _streams: Dictionary = {}
+var _noise_pool := PackedFloat32Array()   # bruit commun des sons à bruit, décalé par son
 
 var ambience := AmbienceModel.new()
 var _bed_players: Dictionary = {}       # fond -> AudioStreamPlayer
@@ -378,13 +380,20 @@ func _synthesize_stream(kind: String) -> AudioStreamWAV:
 		return wav
 
 	# Sons à bruit : boucle de NOISE_LOOP_S à NOISE_MIX_RATE (un bruit figé d'une seconde se répétait et
-	# s'entendait comme une pulsation régulière d'une seconde, mesure du 30/10) ; graine propre à chaque son.
+	# s'entendait comme une pulsation régulière d'une seconde, mesure du 30/10) ; bruit commun décalé pour chaque son.
 	var noisy: bool = kind == "river" or NOISE_LOWPASS.has(kind)
 	var rate := NOISE_MIX_RATE if noisy else MIX_RATE
 	var n := int(NOISE_LOOP_S * rate) if noisy else SAMPLE_COUNT
 	wav.mix_rate = rate
 	wav.loop_end = n
-	var noise: PackedFloat32Array = _lcg_noise(n, hash(kind) & 0x7FFFFFFF) if noisy else PackedFloat32Array()
+	var noise := PackedFloat32Array()
+	if noisy:
+		# Un seul bruit tiré pour tous ces sons, lu à partir d'un décalage propre à chacun (coût de génération)
+		if _noise_pool.size() != n:
+			_noise_pool = _lcg_noise(n, 0x12345678)
+		var off: int = (hash(kind) & 0x7FFFFFFF) % n
+		noise = _noise_pool.slice(off)
+		noise.append_array(_noise_pool.slice(0, off))
 	var lp := PackedFloat32Array()
 	if NOISE_LOWPASS.has(kind):
 		# Même fréquence de coupure qu'à MIX_RATE
@@ -476,22 +485,26 @@ static func _lcg_noise(n: int, seed_val: int) -> PackedFloat32Array:
 
 
 ## Passe-bas à un pôle (coefficient `alpha`) d'un bruit bouclé, en régime établi : le filtre fait d'abord un
-## tour de boucle à vide, si bien que la sortie est elle-même périodique (fin raccordée au début, sans clic).
+## tour de boucle à vide (ses 12/alpha derniers échantillons suffisent), si bien que la sortie est elle-même
+## périodique (fin raccordée au début, sans clic).
 static func _periodic_lowpass(noise: PackedFloat32Array, alpha: float) -> PackedFloat32Array:
 	var n := noise.size()
 	var out := PackedFloat32Array()
 	out.resize(n)
 	var lp := 0.0
-	for pass_i in range(2):
-		for i in range(n):
-			lp += alpha * (noise[i] - lp)
-			out[i] = lp
+	# Mise en régime sur la fin de la boucle seulement : l'écart restant vaut (1 − alpha)^warm ≈ e^−12
+	var warm := mini(n, int(ceil(12.0 / maxf(alpha, 1e-3))))
+	for i in range(n - warm, n):
+		lp += alpha * (noise[i] - lp)
+	for i in range(n):
+		lp += alpha * (noise[i] - lp)
+		out[i] = lp
 	return out
 
 
 ## Vent (Lot P10, refait après la recette P16, puis le 28/10) : grondement grave (bruit blanc passé deux fois
 ## dans un passe-bas à WIND_RUMBLE_HZ) et souffle doux (passe-bande WIND_BAND_HZ, Q WIND_BAND_Q), de niveau
-## constant, ramenés à WIND_RMS. Les filtres font d'abord un tour de boucle à vide sur le même bruit : la sortie
+## constant, ramenés à WIND_RMS. Les filtres se mettent d'abord en régime sur la fin du même bruit : la sortie
 ## est périodique et la boucle de WIND_LOOP_SAMPLES se raccorde exactement, sans fondu enchaîné. Ni fondu ni
 ## « respiration » à 0,5 Hz : tous deux revenaient toutes les 4 s et s'entendaient comme une vague.
 static func _wind_noise_bytes() -> PackedByteArray:
@@ -519,18 +532,19 @@ static func _wind_noise_bytes() -> PackedByteArray:
 	var x2 := 0.0
 	var y1 := 0.0
 	var y2 := 0.0
-	for pass_i in range(2):
-		for i in range(n):
-			var x := noise[i]
-			lp1 += k_lp * (x - lp1)
-			lp2 += k_lp * (lp1 - lp2)
-			rumble[i] = lp2
-			var y := b0 * x - b0 * x2 - a1 * y1 - a2 * y2
-			x2 = x1
-			x1 = x
-			y2 = y1
-			y1 = y
-			band[i] = y
+	# Mise en régime sur les WIND_WARM_SAMPLES derniers échantillons, puis le tour retenu
+	for k in range(n - WIND_WARM_SAMPLES, 2 * n):
+		var i := k % n
+		var x := noise[i]
+		lp1 += k_lp * (x - lp1)
+		lp2 += k_lp * (lp1 - lp2)
+		rumble[i] = lp2
+		var y := b0 * x - b0 * x2 - a1 * y1 - a2 * y2
+		x2 = x1
+		x1 = x
+		y2 = y1
+		y1 = y
+		band[i] = y
 	var rms_r := 0.0
 	var rms_b := 0.0
 	for i in range(n):
