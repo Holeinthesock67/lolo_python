@@ -439,6 +439,8 @@ master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre
 ambience_pct = 100           # ambiance : fonds, cloches, véhicules, foule, passants
 events_pct = 100             # bips et événements : appuis du Click, bloc ERG, consignes, jingles
+rogue_sfx_pct = 70           # Cyber-Rogue : bruitages de jeu (lot R18, bus RogueSfx)
+rogue_music_pct = 40         # Cyber-Rogue : musique (lot R18, bus RogueMusic)
 [log]
 latence = false              # journal de latence des appuis du Click, lignes [latence] (lot X7 ; --latence)
 [rogue]

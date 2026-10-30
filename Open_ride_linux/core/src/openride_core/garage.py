@@ -24,6 +24,8 @@ from .physics import PhysicsParams
 from .workout import WorkoutError, load_workout, workout_path
 from .profile import (PROFILE_PATH, Profile, ProfileError, ProfileTooNew, SLOTS, check_avatar,
                       equip, load_profile, save_profile, set_avatar)
+from .tools import estimate_cp
+from .tools.estimate_cp import CACHE_PATH as MMP_CACHE_PATH   # meilleures puissances en cache (lot R16)
 from .progression import (USER_TABLE_PATH, FactsCache, Progress, ProgressionError, Table,
                           WorkoutDurations, load_table, recompute)
 
@@ -47,6 +49,17 @@ def workout_duration_finder(directory: Path):
                 cache[workout_id] = None
         return cache[workout_id]
     return find
+
+
+def estimate_w_prime(journal_dir: Path, ftp_w: float, cache_path: Path = MMP_CACHE_PATH) -> float | None:
+    """W' estimé depuis les séances passées (FIT et journaux du dossier des activités), `None` si
+    l'historique ne suffit pas ou ne se lit pas (lot R16 : `hello_ack.config.rogue.w_prime_estimate_j`)."""
+    directory = journal_dir.parent if journal_dir.name == ".journal" else journal_dir
+    try:
+        return estimate_cp.estimate_w_prime(directory, ftp_w, cache_path=cache_path)
+    except Exception:
+        log.exception("Estimation de W' impossible (%s)", directory)
+        return None
 
 
 class GarageError(Exception):
@@ -188,6 +201,37 @@ class ProgressionService:
         except Exception:
             self.profile = before
             raise
+
+    # --- Cyber-Rogue (lot R9) ----------------------------------------------------------------
+
+    def rogue_progress(self) -> tuple:
+        """(table des châssis, statistiques des runs, vies en réserve) ; `(None, None, 0)` si coupée.
+
+        Une table de châssis invalide laisse le seul châssis standard (avertissement au journal).
+        """
+        from .rogue import progress as rogue_progress
+
+        if not self.enabled or self.progress is None or self.table is None:
+            return None, None, 0
+        try:
+            chassis = rogue_progress.load_chassis(self.table)
+        except rogue_progress.ChassisError as exc:
+            log.warning("Châssis du Cyber-Rogue ignorés : %s", exc)
+            return None, None, 0
+        return chassis, rogue_progress.rogue_stats(self.progress), max(self.profile.lives_left, 0)
+
+    def use_lives(self, count: int) -> None:
+        """Retire du profil les vies utilisées pendant une run (défaites rattrapées, lot R9)."""
+        if not self.enabled or count <= 0:
+            return
+
+        def change(p: Profile) -> None:
+            for _ in range(count):
+                coins_mod.use_life(p)
+        try:
+            self._mutate(change)
+        except (coins_mod.CoinsError, GarageError) as exc:
+            log.warning("Vies du Cyber-Rogue non retirées du profil : %s", exc)
 
     def equip(self, slot: Any, item_id: Any) -> None:
         if not isinstance(slot, str) or not isinstance(item_id, str):

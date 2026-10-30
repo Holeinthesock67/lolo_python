@@ -40,7 +40,7 @@ from .ipc_server import IpcServer, IpcState
 from .journal import JOURNAL_DIR, Record
 from .progression import journal_source
 from .mock_driver import MockDriver
-from .garage import GarageError, ProgressionService, workout_duration_finder
+from .garage import MMP_CACHE_PATH, GarageError, ProgressionService, estimate_w_prime, workout_duration_finder
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
 from .physics import PhysicsParams, RiderPhysics
@@ -80,6 +80,7 @@ DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" /
 
 
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
+W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
 
 
@@ -326,12 +327,14 @@ class CoreSession:
         self.worldgen_args: list[str] = []
         self.gpx_dir: Path | None = None        # balades enregistrées (défaut ~/OpenRide/GPX ; essais)
         self._ow_previous = "IDLE"
-        # Mode Cyber-Rogue (lot R8) : run en cours ; `rogue_provider()` rendra (table des châssis, statistiques,
-        # vies) quand la progression sera branchée dans la séance (lot V11) ; sans lui, seul le châssis standard.
+        # Mode Cyber-Rogue (lot R8) : run en cours ; `rogue_provider()` rend (table des châssis, statistiques,
+        # vies) d'après la progression de la série V (lot R9) ; progression coupée : seul le châssis standard.
         self.rogue: rogue_mode.RogueMode | None = None
-        self.rogue_provider: Callable[[], tuple] | None = None
+        self.rogue_provider: Callable[[], tuple] | None = self.progress_svc.rogue_progress
         self._rogue_dist = 0.0
-        self.server.hello_config["rogue"] = rogue_mode.hello_block(cfg, None)
+        self.w_prime_estimate_j: float | None = None   # W' estimé des séances passées (lot R16), calculé dans run()
+        self.mmp_cache_path: Path = MMP_CACHE_PATH
+        self._publish_rogue()
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -541,6 +544,7 @@ class CoreSession:
         old = svc.refresh()
         msg = svc.xp_result(journal, old, records, PhysicsParams.from_config(self.cfg))
         self._publish_progression()
+        self._publish_rogue()   # châssis débloqués, vies et dernière run pour la prochaine connexion de l'engine
         return msg
 
     async def _send_xp_result(self, journal: str, records: list[dict] | None) -> None:
@@ -592,6 +596,24 @@ class CoreSession:
                  request.objective, request.duration_min, request.seed, request.w_prime_j, self.rogue.chassis_id,
                  self.rogue.hash)
         self._set_state("READY")
+
+    def _publish_rogue(self) -> None:
+        """`hello_ack.config.rogue` d'après la progression : châssis, vies, dernière run (lots R9, R13), W' estimé (R16)."""
+        chassis, stats, lives = self.rogue_provider() if self.rogue_provider else (None, None, 0)
+        self.server.hello_config["rogue"] = rogue_mode.hello_block(self.cfg, self.w_prime_estimate_j, chassis,
+                                                                   stats, lives)
+
+    def _estimate_w_prime(self) -> float | None:
+        """W' estimé depuis les séances passées (FIT et journaux), `None` si l'historique ne suffit pas (lot R16)."""
+        return estimate_w_prime(self.journal_dir, self.cfg.rider.ftp_w, self.mmp_cache_path)
+
+    async def _publish_w_prime_estimate(self) -> None:
+        """Calcul hors de la boucle à 50 Hz ; publié dans `hello_ack` dès qu'il est prêt."""
+        est = await asyncio.to_thread(self._estimate_w_prime)
+        if est is not None:
+            log.info("W' estimé des séances passées : %.1f kJ.", est / 1000.0)
+        self.w_prime_estimate_j = est
+        self._publish_rogue()
 
     def _drop_rogue(self) -> None:
         """Retour au mode classique : la run préparée est abandonnée."""
@@ -931,11 +953,12 @@ class CoreSession:
             it["configured"] = it["address"] in {paired.trainer_address, paired.click_plus_address,
                                                  paired.click_minus_address, paired.hr_address}
 
-    def _spawn(self, coro: Any) -> None:
+    def _spawn(self, coro: Any) -> asyncio.Task[Any]:
         """Lance une tâche de fond en gardant sa référence jusqu'à la fin."""
         task = asyncio.create_task(coro)
         self._bg_tasks.add(task)
         task.add_done_callback(self._bg_tasks.discard)
+        return task
 
     async def _handle_list_routes(self, cmd_id: int) -> None:
         from .config import GPX_DIR
@@ -1295,6 +1318,7 @@ class CoreSession:
             if self.rogue is not None:   # ligne `rogue_run` : l'expérience, les pièces et les statistiques la lisent
                 rogue_summary = self.rogue.summary()
                 rec.game(self.rogue.run_line(time.time()))
+                self.progress_svc.use_lives(self.rogue.engine.lives_used)   # vies rattrapant une défaite (R9)
             fit_path, s, fit_error = rec.finish(save, ts=ts)
             records, events = rec.records, rec.events
             records_done = records if self.rogue is None else None   # pas d'équipement en Cyber-Rogue (V5)
@@ -2008,6 +2032,9 @@ class CoreSession:
         """
         if autostart and resume is None:
             self.check_autostart(route_id, workout_id)
+        # W' estimé (lot R16) : attendu au plus 3 s avant d'ouvrir les ports, pour être dans le premier hello_ack ;
+        # au-delà, il arrive au hello_ack suivant (engine relancé ou reconnecté).
+        await asyncio.wait({self._spawn(self._publish_w_prime_estimate())}, timeout=W_PRIME_ESTIMATE_WAIT_S)
         self.server.start()
         tasks = [asyncio.create_task(p.run(), name=type(p).__name__)
                  for p in self._services() if hasattr(p, "run")]  # trainer prioritaire
