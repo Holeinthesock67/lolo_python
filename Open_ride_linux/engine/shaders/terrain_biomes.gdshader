@@ -43,17 +43,24 @@ void vertex() {
 	v_world_normal = normalize((MODEL_MATRIX * vec4(NORMAL, 0.0)).xyz);
 }
 
-vec4 sample_layer_a(float layer, vec3 pos, float inv_scale, vec3 tw) {
-	return texture(ground_a, vec3(pos.zy * inv_scale, layer)) * tw.x
-		+ texture(ground_a, vec3(pos.xz * inv_scale, layer)) * tw.y
-		+ texture(ground_a, vec3(pos.xy * inv_scale, layer)) * tw.z;
+// Lue dans les boucles des biomes et des couches : dérivées passées à textureGrad (voir sample_triplanar).
+vec4 sample_layer_a(float layer, vec3 pos, float inv_scale, vec3 tw, vec3 dpdx, vec3 dpdy) {
+	vec3 p = pos * inv_scale;
+	vec3 dx = dpdx * inv_scale;
+	vec3 dy = dpdy * inv_scale;
+	return textureGrad(ground_a, vec3(p.zy, layer), dx.zy, dy.zy) * tw.x
+		+ textureGrad(ground_a, vec3(p.xz, layer), dx.xz, dy.xz) * tw.y
+		+ textureGrad(ground_a, vec3(p.xy, layer), dx.xy, dy.xy) * tw.z;
 }
 
 // Normale monde d'une carte B par projection triplanaire (mélange « whiteout ») et occlusion dans .w
-vec4 sample_layer_b(float layer, vec3 pos, float inv_scale, vec3 tw, vec3 n) {
-	vec4 bx = texture(ground_b, vec3(pos.zy * inv_scale, layer));
-	vec4 by = texture(ground_b, vec3(pos.xz * inv_scale, layer));
-	vec4 bz = texture(ground_b, vec3(pos.xy * inv_scale, layer));
+vec4 sample_layer_b(float layer, vec3 pos, float inv_scale, vec3 tw, vec3 n, vec3 dpdx, vec3 dpdy) {
+	vec3 p = pos * inv_scale;
+	vec3 dx = dpdx * inv_scale;
+	vec3 dy = dpdy * inv_scale;
+	vec4 bx = textureGrad(ground_b, vec3(p.zy, layer), dx.zy, dy.zy);
+	vec4 by = textureGrad(ground_b, vec3(p.xz, layer), dx.xz, dy.xz);
+	vec4 bz = textureGrad(ground_b, vec3(p.xy, layer), dx.xy, dy.xy);
 	vec2 tx = bx.xy * 2.0 - 1.0;
 	vec2 ty = by.xy * 2.0 - 1.0;
 	vec2 tz = bz.xy * 2.0 - 1.0;
@@ -81,6 +88,8 @@ float sand_relief(vec2 q) {
 void fragment() {
 	vec3 n = normalize(v_world_normal);
 	vec2 q = v_world_pos.xz;
+	vec3 dpdx = dFdx(v_world_pos);   // hors des boucles : dérivées des textures lues dans les branches
+	vec3 dpdy = dFdy(v_world_pos);
 
 	// Poids des biomes au point : grille de la tuile (centres des texels = points de la grille)
 	vec2 uv = ((q - tile_rect.xy) / tile_rect.zw * 16.0 + 0.5) / 17.0;
@@ -131,11 +140,11 @@ void fragment() {
 			int l = int(biome_layers[b][r]);
 			vec4 lc = layer_color[l];
 			vec4 maps = layer_maps[l];
-			vec4 a = maps.x >= 0.0 ? sample_layer_a(maps.x, v_world_pos, lc.w, tri_weights) : vec4(lc.rgb, roughness);
+			vec4 a = maps.x >= 0.0 ? sample_layer_a(maps.x, v_world_pos, lc.w, tri_weights, dpdx, dpdy) : vec4(lc.rgb, roughness);
 			col[r] += a.rgb * lw[r];
 			rough += a.a * lw[r];
 			if (maps.y >= 0.0) {
-				vec4 nb = sample_layer_b(maps.y, v_world_pos, lc.w, tri_weights, n);
+				vec4 nb = sample_layer_b(maps.y, v_world_pos, lc.w, tri_weights, n, dpdx, dpdy);
 				n_maps += (nb.xyz - n) * lw[r];
 				ao += nb.w * lw[r];
 				w_maps += lw[r];
@@ -149,7 +158,7 @@ void fragment() {
 
 	vec3 normal_out;
 	ALBEDO = shade_layers(grass_c, rock_c, snow_c, w, n_shade, tri_weights,
-		sand > MIN_LAYER_WEIGHT ? sand * sand_relief(q) : 0.0, VERTEX, VIEW_MATRIX, normal_out);
+		sand * sand_relief(q), VERTEX, VIEW_MATRIX, normal_out);
 	NORMAL = normal_out;
 	ROUGHNESS = rough;
 	if (w_maps > 0.0) {

@@ -240,6 +240,15 @@ if [ "$stream_status" -ne 0 ] || grep -q -E "SCRIPT ERROR|ERROR:|WARNING:" "$STR
 record "test_world_streamer (rendu E1)" "$stream_ok"
 rm -f "$STREAM_LOG"
 
+echo "== Cohérence du terrain proche et lointain (relief réel et relief de séance) =="
+# Pipeline des tuiles de world_streamer.gd rejoué sur la démo : lointain sous le proche, tuiles jointives, lointain pas trop creusé.
+TERRAIN_OUT="$(timeout -k 5 "$UNIT_TIMEOUT" "$GODOT" --headless --path "$ENGINE_DIR" --script res://tests/test_terrain_coherence.gd -- "$ROUTES_DIR/demo.world" 2>&1)"
+terrain_rc=$?
+echo "$TERRAIN_OUT" | grep -v "^Godot Engine" || true
+terrain_count="$(echo "$TERRAIN_OUT" | grep -E "^test_terrain_coherence : [0-9]+ vérifications, [0-9]+ échecs$" | tail -1)"
+if [ -z "$terrain_count" ] || echo "$TERRAIN_OUT" | grep -q -E "SCRIPT ERROR|ERROR:"; then terrain_rc=1; fi
+record "test_terrain_coherence (terrain proche et lointain)" "$terrain_rc" "${terrain_count#*: }"
+
 echo "== Coutures du sol multi-biome en scène réelle (série U) =="
 # Démo ci-dessus avec une couche biome prairie → sable ; world_streamer.gd charge les tuiles (Xvfb).
 if command -v xvfb-run >/dev/null 2>&1; then
