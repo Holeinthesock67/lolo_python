@@ -85,7 +85,7 @@ class RenderConfig:
 
 @dataclass
 class EngineConfig:
-    godot: str = ""   # chemin de Godot 4.3 (vide : variable GODOT ou ~/Applications/godot), lot N14
+    godot: str = ""   # chemin de Godot 4.7 (vide : variable GODOT ou ~/Applications/godot), lot N14
 
 
 @dataclass

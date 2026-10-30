@@ -87,7 +87,7 @@ from typing import IO, Callable
 
 from . import __version__
 
-DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.3-stable_linux.x86_64"
+DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.7.2-stable_linux.x86_64"
 DEFAULT_LOG = Path.home() / "run_trainer.log"   # lien vers le dernier journal du lanceur
 LOGS_DIR = Path.home() / "OpenRide" / "Logs"
 LOG_PREFIX = "openride_"

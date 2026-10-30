@@ -20,7 +20,7 @@
 # (fichier CSV de la sonde de performance du moteur, lot X13).
 set -u
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.3-stable_linux.x86_64}"
+GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.7.2-stable_linux.x86_64}"
 LOG="${OPENRIDE_LOG:-$HOME/run_trainer.log}"
 
 CORE_ARGS=("$@")

@@ -54,7 +54,7 @@ from .guide import Guide
 DEFAULT_OUT = Path.home() / "OpenRide" / "coupures"
 REPO = Path(__file__).resolve().parents[4]
 ENGINE_DIR = REPO / "engine"
-DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.3-stable_linux.x86_64"
+DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.7.2-stable_linux.x86_64"
 LOG_TS_RE = re.compile(r"^(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d),(\d{3}) ")
 SLACK_S = 1.0          # horodatages du journal à la seconde près autour du début ou de la fin
 GAP_S = 20.0           # entre deux actions, sur le vélo
@@ -442,7 +442,7 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
     ap.add_argument("--sans-engine", action="store_true", help="avec --sim : core seul, sans l'action godot")
     ap.add_argument("--court", action="store_true", help="coupures raccourcies (essai rapide)")
     ap.add_argument("--ecart", type=float, help=f"secondes entre deux actions (défaut {GAP_S:g}, 6 avec --court)")
-    ap.add_argument("--godot", default=os.environ.get("GODOT", str(DEFAULT_GODOT)), help="Godot 4.3 (--sim)")
+    ap.add_argument("--godot", default=os.environ.get("GODOT", str(DEFAULT_GODOT)), help="Godot 4.7 (--sim)")
     ap.add_argument("--journal", type=Path, help="journal de séance à joindre (défaut : le dernier)")
     ap.add_argument("--lanceur", type=Path, help="journal du lanceur (défaut : ~/run_trainer.log)")
     ap.add_argument("--analyse", type=Path, metavar="DOSSIER", help="refaire la comparaison d'un dossier")
