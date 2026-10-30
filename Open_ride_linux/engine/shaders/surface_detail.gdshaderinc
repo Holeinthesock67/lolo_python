@@ -82,5 +82,6 @@ vec3 sd_bump(vec3 n, vec3 view_pos, float h) {
 	vec3 r2 = cross(n, dpdx);
 	float det = dot(dpdx, r1);
 	vec3 grad = sign(det) * (dFdx(h) * r1 + dFdy(h) * r2);
-	return normalize(abs(det) * n - grad);
+	vec3 b = abs(det) * n - grad;
+	return dot(b, b) > 1e-24 ? normalize(b) : n;   // pixel vu de profil : pas de faux relief
 }
