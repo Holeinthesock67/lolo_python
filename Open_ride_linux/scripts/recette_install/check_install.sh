@@ -12,7 +12,7 @@
 #      dépôt d'origine, scripts/update.sh, puis install.sh relancé : le code avance, les données
 #      restent identiques octet pour octet.
 # Une ligne « [OK] … » ou « [ÉCHEC] … » par vérification, puis « RÉSULTAT : … ».
-# Variables : REPO_URL (dépôt à cloner, requis, inscriptible pour l'étape 5), GODOT (Godot 4.3, requis),
+# Variables : REPO_URL (dépôt à cloner, requis, inscriptible pour l'étape 5), GODOT (Godot 4.7, requis),
 # OPENRIDE_NO_PIP=1 avec OPENRIDE_PYTHON et OPENRIDE_BIN_SRC (essai rapide sans pip, comme les tests).
 # Code de sortie : 0 si tout passe, 1 sinon.
 

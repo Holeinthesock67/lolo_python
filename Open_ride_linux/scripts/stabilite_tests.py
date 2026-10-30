@@ -37,7 +37,7 @@ from typing import Any
 PROJECT = Path(__file__).resolve().parents[1]
 SUITES = ("core", "compiler", "engine")
 DEFAULT_OUT = Path.home() / "OpenRide" / "stabilite"
-DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.3-stable_linux.x86_64"
+DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.7.2-stable_linux.x86_64"
 SLOWEST = 20
 
 
@@ -182,7 +182,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--fois", type=int, default=5, help="nombre de passages (défaut 5)")
     ap.add_argument("--suites", default=",".join(SUITES), help="suites, séparées par des virgules")
     ap.add_argument("--out", type=Path, help=f"dossier de sortie (défaut {DEFAULT_OUT}/<date>_<heure>)")
-    ap.add_argument("--godot", default=os.environ.get("GODOT", str(DEFAULT_GODOT)), help="Godot 4.3 (suite engine)")
+    ap.add_argument("--godot", default=os.environ.get("GODOT", str(DEFAULT_GODOT)), help="Godot 4.7 (suite engine)")
     ap.add_argument("--analyse", type=Path, metavar="DOSSIER", help="refaire l'analyse d'un dossier sans relancer")
     args = ap.parse_args(argv)
     if args.analyse is not None:
