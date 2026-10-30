@@ -66,15 +66,17 @@ Le propriétaire a donné son accord le 30 octobre, après la migration Y2 vers 
 
 - `engine/scripts/load_guard.gd`, sans nœud. Il lit à chaque image le temps GPU de la vue et en fait une moyenne glissante sur 3 s, pondérée par la durée des images.
   - **Coupe** : sur une fenêtre pleine dont la moyenne dépasse 13 ms, il coupe l'effet suivant de `SHED_ORDER` : SSIL, puis SSAO, puis glow, puis MSAA ramené à 2×.
-  - **Retour** : après 10 s sous 9 ms, il rend le dernier effet coupé.
+  - **Retour** : la première fenêtre pleine après une coupe mesure ce que l'effet coûtait. Le dernier effet coupé revient quand la moyenne plus ce coût reste sous 12,5 ms pendant 10 s, ce qui garantit qu'il ne refera pas dépasser 13 ms. Il revient aussi après 10 s sous 9 ms, si la scène s'est allégée depuis la coupe.
+  - **Correction du 30 octobre (essai 7bc)** : la première version ne rendait les effets qu'après 10 s sous 9 ms. Sur le village en medium, le GPU est monté à 15 ms pendant 6 s, puis s'est stabilisé à 10,7 ms. Le SSIL et le SSAO sont restés coupés toute la séance, alors que le SSAO, qui fait gagner 1,5 ms, pouvait revenir.
   - **Garde-fous** : jamais deux changements à moins de 3 s, et la fenêtre repart de zéro après chaque changement. Seuls les effets allumés par le préréglage peuvent être coupés. En Compatibility, le SSAO et le SSIL n'existent pas et ne sont donc jamais coupés. Une mesure nulle est ignorée. La résolution et la qualité des ombres ne sont jamais touchées.
-- `main.gd` fait un appel par image. À chaque changement, le garde-fou réapplique son état par-dessus le préréglage et écrit une ligne `[charge] coupé : SSIL (GPU 15.0 ms en moyenne sur 3 s)` dans le journal. Il repart de zéro quand le préréglage change et reste en pause pendant le Cyber-Rogue, qui a son propre `Environment`.
+- `main.gd` fait un appel par image. À chaque changement, le garde-fou réapplique son état par-dessus le préréglage et écrit une ligne `[charge] t=40.2 s coupé : SSIL (GPU 15.0 ms en moyenne sur 3 s)` dans le journal, horodatée en secondes depuis le lancement. Il repart de zéro quand le préréglage change et reste en pause pendant le Cyber-Rogue, qui a son propre `Environment`.
 - `fps_counter.gd` : quand le compteur d'images/s est affiché, la ligne finit par « · allégé : SSIL, SSAO ». La mesure du temps GPU reste active (`measure_kept`, ancien `probe_active`).
 - Configuration : `[render] load_guard` (vrai par défaut) dans `config.py`, le lanceur (`--load-guard=on|off`), `SRS_v1.1.md` et `config.example.toml`. Avec `--test-mode`, l'engine coupe le garde-fou sauf `--load-guard=on`, pour que les outils de test mesurent les préréglages tels quels. `sim_bench.py --load-guard on` sert aux essais.
 - Tests :
-  - `test_load_guard.gd` (16 vérifications) couvre les critères du §7 :
+  - `test_load_guard.gd` (19 vérifications) couvre les critères du §7 :
     - 3 s à 15 ms coupent le SSIL, 3 s de plus coupent le SSAO ;
     - 10 s à 8 ms rendent le SSAO ;
+    - cas du village : après le pic, à 10,7 ms, le SSAO revient et le SSIL reste coupé, sans oscillation ;
     - écart d'au moins 3 s entre deux changements ;
     - rien ne change entre les deux seuils, ni sur un pic court ;
     - préréglage low, Compatibility, garde-fou coupé ;

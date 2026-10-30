@@ -1607,7 +1607,7 @@ func _step_load_guard(delta: float) -> void:
 		return
 	load_guard.apply(QualityPresets.image(_quality_name), world_env.environment, get_viewport(), _forward_plus())
 	fps_counter.shed = load_guard.shed_text()
-	print(LoadGuard.log_line(change))
+	print(LoadGuard.log_line(change, Time.get_ticks_msec() / 1000.0))
 
 
 static func _forward_plus() -> bool:

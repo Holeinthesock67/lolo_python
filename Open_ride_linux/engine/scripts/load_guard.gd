@@ -7,15 +7,19 @@ extends RefCounted
 ##
 ## Entrée : le temps GPU de la vue à chaque image (RenderingServer.viewport_get_measured_render_time_gpu).
 ## Moyenne glissante sur WINDOW_S ; au-dessus de GPU_HIGH_MS sur une fenêtre pleine, l'effet suivant de
-## SHED_ORDER est coupé ; sous GPU_LOW_MS pendant LOW_HOLD_S, le dernier effet coupé revient. Jamais deux
-## changements à moins de MIN_GAP_S ; la fenêtre repart de zéro après chaque changement, pour mesurer le
-## nouvel état. Coupé dans config.toml par `[render] load_guard = false` (mesures des préréglages).
+## SHED_ORDER est coupé. La première fenêtre pleine après une coupe mesure ce qu'elle a fait gagner (coût de
+## l'effet) ; le dernier effet coupé revient quand la moyenne plus son coût reste sous RESTORE_MS pendant
+## LOW_HOLD_S (il ne refera pas dépasser GPU_HIGH_MS), ou, si la scène s'est allégée depuis, sous GPU_LOW_MS
+## pendant LOW_HOLD_S. Jamais deux changements à moins de MIN_GAP_S ; la fenêtre repart de zéro après chaque
+## changement, pour mesurer le nouvel état. Coupé dans config.toml par `[render] load_guard = false` (mesures des préréglages).
 ## Pas de class_name : charger par preload("res://scripts/load_guard.gd").
 
 const RenderQuality := preload("res://scripts/render_quality.gd")
 
 const GPU_HIGH_MS := 13.0   # 80 % d'une image à 60 Hz
 const GPU_LOW_MS := 9.0
+## Retour d'un effet : moyenne + coût mesuré de l'effet sous ce seuil (marge de 0,5 ms sous la coupe).
+const RESTORE_MS := 12.5
 const WINDOW_S := 3.0
 const LOW_HOLD_S := 10.0
 const MIN_GAP_S := 3.0
@@ -32,6 +36,9 @@ var _samples: Array = []   # [durée (s), temps GPU (ms)] de la fenêtre glissan
 var _window_s := 0.0
 var _low_s := 0.0
 var _since_change_s := INF
+var _cost_ms := {}          # effet -> gain mesuré après sa coupe (ms)
+var _pending := ""          # effet coupé dont le gain n'est pas encore mesuré
+var _before_ms := 0.0       # moyenne qui a déclenché la coupe de `_pending`
 
 
 ## `img` : QualityPresets.image du préréglage ; seuls ses effets allumés peuvent être coupés.
@@ -44,6 +51,8 @@ func _init(img: Dictionary = {}, on := true, forward_plus := true) -> void:
 func reset(img: Dictionary, forward_plus := true) -> void:
 	shed.clear()
 	_available.clear()
+	_cost_ms.clear()
+	_pending = ""
 	for e in SHED_ORDER:
 		if is_available(e, img, forward_plus):
 			_available.append(e)
@@ -76,19 +85,26 @@ func step(gpu_ms: float, delta_s: float) -> Dictionary:
 	while _samples.size() > 1 and _window_s - float(_samples[0][0]) >= WINDOW_S - 1e-6:
 		_window_s -= float(_samples.pop_front()[0])
 	var avg := average_ms()
-	# Le calme se compte dès la première image ; la saturation attend une fenêtre pleine.
-	if avg < GPU_LOW_MS:
+	var full := _window_s >= WINDOW_S - 1e-6
+	if full and _pending != "":
+		_cost_ms[_pending] = maxf(_before_ms - avg, 0.0)
+		_pending = ""
+	# Le calme se compte dès la première image (le critère du gain, une fois ce gain mesuré) ; la saturation
+	# attend une fenêtre pleine.
+	if not shed.is_empty() and (avg < GPU_LOW_MS
+			or _pending == "" and avg + float(_cost_ms.get(shed.back(), 0.0)) < RESTORE_MS):
 		_low_s += delta_s
 	else:
 		_low_s = 0.0
 	if _since_change_s < MIN_GAP_S - 1e-6:
 		return {}
-	var full := _window_s >= WINDOW_S - 1e-6
 	if full and avg > GPU_HIGH_MS and shed.size() < _available.size():
 		var e := _available[shed.size()]
 		shed.append(e)
+		_pending = e
+		_before_ms = avg
 		return _changed("cut", e, avg)
-	if _low_s >= LOW_HOLD_S - 1e-6 and not shed.is_empty():
+	if _low_s >= LOW_HOLD_S - 1e-6:
 		return _changed("restore", shed.pop_back(), avg)
 	return {}
 
@@ -120,10 +136,10 @@ func apply(img: Dictionary, env: Environment, viewport: Viewport, forward_plus: 
 	viewport.msaa_3d = RenderQuality.MSAA[MSAA_SHED if shed.has("msaa") else int(img["msaa"])]
 
 
-## Ligne du journal de l'engine pour un changement renvoyé par `step`.
-static func log_line(change: Dictionary) -> String:
+## Ligne du journal de l'engine pour un changement renvoyé par `step`, à `t_s` secondes du lancement.
+static func log_line(change: Dictionary, t_s: float) -> String:
 	var verb := "coupé" if change["action"] == "cut" else "rendu"
-	return "[charge] %s : %s (GPU %.1f ms en moyenne sur %d s)" % [verb, LABELS[change["effect"]],
+	return "[charge] t=%.1f s %s : %s (GPU %.1f ms en moyenne sur %d s)" % [t_s, verb, LABELS[change["effect"]],
 		float(change["gpu_ms"]), int(WINDOW_S)]
 
 
