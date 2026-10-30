@@ -89,8 +89,13 @@ func _test_button_help() -> void:
 		return ""
 	_check(y.call("home") == "" and y.call("pause") == "Reprendre" and y.call("confirm") == "Annuler"
 		and y.call("routes") == "Retour", "Y selon l'écran : rien à l'accueil, reprendre en pause, annuler, retour")
-	_check(ButtonHelp.text("routes") == "A maintenir : Valider · + A : Suivant · B : Précédent · Y : Retour · " + ButtonHelp.KEYBOARD,
-		"aide en une ligne : %s" % ButtonHelp.text("routes"))
+	_check(ButtonHelp.text("routes") == "A maintenir : Valider · + A : Suivant · B : Précédent · Y : Retour · Clavier — Entrée : Valider · + A : Suivant · − : Précédent · Échap : Retour",
+		"double légende en une ligne : %s" % ButtonHelp.text("routes"))
+	var kb_ok := true
+	for screen in ["home", "routes", "ready", "settings", "pause", "confirm", "summary", ButtonHelp.EDIT]:
+		for e in ButtonHelp.entries(screen):
+			kb_ok = kb_ok and e["kb"].size() >= 1 and e["kb"].all(func(k): return k in ["A", "+", "−", "Entrée", "Échap"])
+	_check(kb_ok, "chaque entrée de l'aide a sa touche du clavier (A maintenu = Entrée, B = −, Y = Échap)")
 
 
 func _test_icons() -> void:
@@ -189,9 +194,9 @@ func _test_cards() -> void:
 		"test de FTP en rampe : durée de 300 s + 12 paliers + 300 s = 22 min (%s)" % str(tile_texts.call(ramp)))
 	_check(ramp["blocks"].size() == 14 and absf(ramp["blocks"][12][1] - 320.0 / 250.0) < 0.001 and ramp["blocks"][13][0] == 300.0,
 		"rampe : paliers de 100 à 320 W en fraction de la FTP")
-	var twenty := CatalogModel.ftp_test_sheet("20min", "20 minutes", "x", 0.0)
-	_check(tile_texts.call(twenty)[0] == "Durée 55 min" and twenty["blocks"][7][1] == null and tile_texts.call(twenty)[1] == "FTP actuelle —",
-		"test de 20 minutes : roue libre de 20 min, FTP inconnue")
+	_check(CatalogModel.ftp_test_blocks("20min", 250.0).is_empty(), "test de 20 minutes retiré (lot O19) : aucun bloc")
+	var ramp_unknown := CatalogModel.ftp_test_sheet("ramp", "Rampe", "x", 0.0)
+	_check(tile_texts.call(ramp_unknown)[1] == "FTP actuelle —", "rampe sans FTP connue : « — »")
 	var plan := CatalogModel.plan_sheet({"id": "p", "name": "Plan", "weeks": 4, "sessions": 8, "error": null},
 		{"id": "p", "week": 2, "weeks": 4, "done_pct": 25.0, "done": 2, "total": 8, "finished": false})
 	_check(tile_texts.call(plan) == ["Semaines 4", "Séances 8", "Fait 25 %"] and plan["lines"] == ["En cours : semaine 2 / 4, 25 % fait (2 / 8)"],
@@ -295,7 +300,7 @@ func _test_theme_data() -> void:
 	var distinct := {}
 	for z in zones:
 		distinct[z.to_html()] = true
-	_check(distinct.size() == 7 and ErgView.ZONE_COLORS == zones and ErgView.FREERIDE_COLOR == UiTheme.DATA["freeride"],
+	_check(distinct.size() == 7 and ErgView.ZONE_COLORS == zones and ErgView.NEUTRAL_COLOR == UiTheme.DATA["neutral_block"],
 		"zones de Coggan : sept couleurs distinctes, celles de l'ERG et des blocs")
 	_check(HudView.COLOR_STEEP == UiTheme.DATA["grade_steep"] and WorldMenuView.ROAD_COLORS["p"] == UiTheme.DATA["road_p"]
 		and WorkoutChartView.HR_COLOR == UiTheme.DATA["heart_rate"], "les vues lisent la table (pente, routes du globe, courbes)")

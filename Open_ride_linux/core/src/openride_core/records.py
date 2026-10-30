@@ -10,13 +10,15 @@ Règles (plan de la série T §3.2, décisions T-Q1 et du 27 octobre) :
 - le fichier se recalcule depuis les journaux des séances (`RecordBook.rebuild`) ;
 - classement local d'un passage : toi, tes records passés de la même table et les bots ; le
   fantôme compte comme ton meilleur temps, pas comme un coureur de plus ;
-- écart au record en direct : chrono moins le record au prorata de la distance parcourue.
+- écart au record en direct : chrono moins le record au prorata de la distance parcourue ;
+- chaque passage garde l'équipement utilisé (`loadout` : cadre et roues de l'en-tête du journal,
+  lot V5) ; il est affiché à côté du temps, un record reste un record quel que soit l'équipement.
 
 Forme du fichier (version 1) :
 
     {"version": 1, "routes": {"<route_id>": {"<segment_id>": {
         "no_bonus": [{"time_s": 312.4, "date": "2026-10-27 18:05", "avg_power_w": 251.0,
-                      "avg_wkg": 3.4}],
+                      "avg_wkg": 3.4, "loadout": {"frame": "frame_aero", "wheels": "wheels_deep"}}],
         "bonus": []}}}}
 """
 
@@ -39,6 +41,7 @@ FORMAT_VERSION = 1
 TOP_N = 10
 TABLES = ("no_bonus", "bonus")
 DATE_FORMAT = "%Y-%m-%d %H:%M"
+LOADOUT_SLOTS = ("frame", "wheels")   # pièces qui changent la physique (série V, lot V3)
 
 
 class RecordsError(ValueError):
@@ -55,11 +58,15 @@ class RecordEntry:
     date: str                    # « AAAA-MM-JJ HH:MM », heure locale du passage
     avg_power_w: float | None = None
     avg_wkg: float | None = None
+    loadout: tuple[tuple[str, str], ...] | None = None   # (emplacement, pièce) triés ; None : inconnu
 
     def to_dict(self) -> dict:
-        return {"time_s": round(self.time_s, 2), "date": self.date,
-                "avg_power_w": None if self.avg_power_w is None else round(self.avg_power_w, 1),
-                "avg_wkg": None if self.avg_wkg is None else round(self.avg_wkg, 2)}
+        d = {"time_s": round(self.time_s, 2), "date": self.date,
+             "avg_power_w": None if self.avg_power_w is None else round(self.avg_power_w, 1),
+             "avg_wkg": None if self.avg_wkg is None else round(self.avg_wkg, 2)}
+        if self.loadout is not None:   # absent des records d'avant le lot V5 et sans progression
+            d["loadout"] = dict(self.loadout)
+        return d
 
     @classmethod
     def from_dict(cls, d: dict) -> "RecordEntry":
@@ -71,7 +78,17 @@ class RecordEntry:
         if not math.isfinite(time_s) or time_s <= 0:
             raise RecordsError(f"temps de record invalide : {time_s}")
         p, w = d.get("avg_power_w"), d.get("avg_wkg")
-        return cls(time_s, date, None if p is None else float(p), None if w is None else float(w))
+        return cls(time_s, date, None if p is None else float(p), None if w is None else float(w),
+                   loadout_key(d.get("loadout")))
+
+
+def loadout_key(loadout: object) -> tuple[tuple[str, str], ...] | None:
+    """Équipement d'un passage (`frame`, `wheels`) sous une forme figée ; None s'il est inconnu."""
+    if not isinstance(loadout, dict):
+        return None
+    out = tuple(sorted((slot, item) for slot, item in loadout.items()
+                       if slot in LOADOUT_SLOTS and isinstance(item, str)))
+    return out or None
 
 
 @dataclass(frozen=True)
@@ -152,12 +169,16 @@ class RecordBook:
         del entries[TOP_N:]
         return entries.index(entry) + 1 if entry in entries else None
 
-    def add(self, route_id: str, segment_id: str, p: SegmentPass, date: str) -> AddResult:
-        """Note un passage terminé dans la table qui lui correspond (avec ou sans bonus)."""
+    def add(self, route_id: str, segment_id: str, p: SegmentPass, date: str,
+            loadout: dict | None = None) -> AddResult:
+        """Note un passage terminé dans la table qui lui correspond (avec ou sans bonus).
+
+        `loadout` : cadre et roues utilisés (lot V5), gardés à côté du temps sans changer le rang.
+        """
         table = table_of(p.with_bonus)
         prev = self.best(route_id, segment_id, p.with_bonus)
         rank = self._insert(route_id, segment_id, table,
-                            RecordEntry(p.time_s, date, p.avg_power_w, p.avg_wkg))
+                            RecordEntry(p.time_s, date, p.avg_power_w, p.avg_wkg, loadout_key(loadout)))
         prev_s = prev.time_s if prev else None
         return AddResult(rank, rank == 1, prev_s, None if prev_s is None else p.time_s - prev_s)
 
@@ -194,11 +215,11 @@ class RecordBook:
         """Carnet d'un parcours recalculé depuis des journaux `.jsonl` (les autres sont ignorés)."""
         book = cls()
         for path in journals:
-            head, date = _journal_route_and_date(path)
+            head, date, loadout = _journal_route_and_date(path)
             if head != route_id or date is None:
                 continue
             for p in passes_from_journal(path, segments, length_m, loop, rider_mass_kg):
-                book.add(route_id, p.segment_id, p, date)
+                book.add(route_id, p.segment_id, p, date, loadout)
         return book
 
     def merge(self, other: "RecordBook") -> None:
@@ -210,16 +231,17 @@ class RecordBook:
                         self._insert(r, s, t, e)
 
 
-def _journal_route_and_date(path: Path) -> tuple[str | None, str | None]:
-    """Parcours de l'en-tête et date du premier relevé (heure locale)."""
-    route_id = None
+def _journal_route_and_date(path: Path) -> tuple[str | None, str | None, dict | None]:
+    """Parcours et équipement (`loadout`, lot V11) de l'en-tête, date du premier relevé (heure locale)."""
+    route_id, loadout = None, None
     for line in read_journal(path):
         kind = line.get("kind")
         if kind == "header":
             route_id = line.get("route_id")
+            loadout = line.get("loadout") if isinstance(line.get("loadout"), dict) else None
         elif kind == "record":
             try:
-                return route_id, datetime.fromtimestamp(float(line["ts"])).strftime(DATE_FORMAT)
+                return route_id, datetime.fromtimestamp(float(line["ts"])).strftime(DATE_FORMAT), loadout
             except (KeyError, TypeError, ValueError, OverflowError, OSError):
-                return route_id, None
-    return route_id, None
+                return route_id, None, loadout
+    return route_id, None, loadout

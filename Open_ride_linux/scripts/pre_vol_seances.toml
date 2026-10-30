@@ -50,3 +50,46 @@ parcours = ["demo"]
 appareils = ["trainer", "click"]
 poser = []
 retirer = ["~/OpenRide/powerups.toml"]
+
+# Blocs vélo encore ouverts le 29 octobre (lot X48) : leur logique passe d'abord sans vélo.
+# La consigne et la résistance réelles du trainer se vérifient sur le vélo (décision du 29 octobre).
+
+[garmin_braquets]
+titre = "Bloc 7q : rafales de braquets, montre Garmin allumée sur le trainer"
+pytest_marque = "recette_sans_velo"
+engine_unit = ["test_key_map"]
+sim_scenarios = ["montre_garmin", "rafale_0x80"]
+parcours = ["demo"]
+appareils = ["trainer", "click"]
+poser = []
+retirer = ["~/OpenRide/powerups.toml"]
+
+[erg_libre_50w]
+titre = "Bloc 7ae : ERG sans roue libre (FreeRide à 50 W, ERG libre, cadence verrouillée)"
+pytest_marque = "recette_sans_velo"
+engine_unit = ["test_erg_view", "test_free_erg_menu"]
+sim_scenarios = ["nominal"]
+parcours = ["demo"]
+appareils = ["trainer", "click"]
+poser = []
+retirer = ["~/OpenRide/powerups.toml"]
+
+[abri_as1]
+titre = "Bloc 7af : abri AS1, 3 bots à 230, 240 et 250 W"
+pytest_marque = "recette_sans_velo"
+engine_unit = ["test_bot_hud_model", "test_draft_gauge"]
+sim_scenarios = []
+parcours = ["demo"]
+appareils = ["trainer", "click"]
+poser = []
+retirer = ["~/OpenRide/powerups.toml"]
+
+[v10]
+titre = "Bloc 7ac : recette V10 (Garage au Click, bilan, vues)"
+pytest_marque = "recette_sans_velo"
+engine_unit = ["test_garage_view_model", "test_key_map"]
+sim_scenarios = []
+parcours = ["demo"]
+appareils = ["trainer", "click"]
+poser = []
+retirer = ["~/OpenRide/powerups.toml"]

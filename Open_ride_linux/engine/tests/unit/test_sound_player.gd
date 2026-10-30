@@ -13,11 +13,17 @@ extends SceneTree
 ##   reprise du pédalage.
 ## - « Tac-tac » régulier (28/10) : toutes les boucles raccordées sans saut, bruit filtré périodique, cloche
 ##   jouée une fois par coup et pas relancée par les points sonores.
+## - « Vague » (29/10) : sur trois tours de boucle, le niveau des sons continus (fenêtres de 250 ms) ne varie
+##   pas de plus de STEADY_MAX_DB.
 
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const SoundModel := preload("res://scripts/sound_model.gd")
 const PerfBudget := preload("res://tests/perf_budget.gd")
 const AmbienceModel := preload("res://scripts/ambience_model.gd")
+## Sons continus : ni coups, ni chants, ni battement voulu ; leur niveau doit rester stable d'un tour de boucle à l'autre.
+const STEADY_KINDS := ["wind", "river", "village", "vehicle_pass", "airliner_rumble", "water_flow", "village_murmur",
+	"high_wind", "rain", "wheel_hum"]
+const STEADY_MAX_DB := 3.0
 
 var _failures := 0
 var _checked := 0
@@ -33,10 +39,14 @@ func _check(cond: bool, msg: String) -> void:
 
 
 func _test_sound_synthesis_perf() -> void:
+	# Les sons sont synthétisés à la construction (_init) : temps et mémoire de SoundPlayer.new().
+	var made := {}
 	var t0 := Time.get_ticks_usec()
-	var sp = SoundPlayer.new()
-	root.add_child(sp)
+	var kb := PerfBudget.memory_kb(func(): made["sp"] = SoundPlayer.new())
 	var elapsed_ms := (Time.get_ticks_usec() - t0) / 1000.0
+	var sp = made["sp"]
+	root.add_child(sp)
+	_check(PerfBudget.check_memory("sound_generation_memory", kb), "mémoire des sons synthétisés : %.0f Ko" % kb)
 	print("Génération de tous les sons : %.2f ms" % elapsed_ms)
 	_check(PerfBudget.check("sound_generation", elapsed_ms),
 		"génération des sons au démarrage dans le budget (%.2f ms)" % elapsed_ms)
@@ -250,6 +260,32 @@ func _test_seamless_loops() -> void:
 	sp.queue_free()
 
 
+# « Vague » entendue même à l'arrêt (29/10) : niveau des sons continus stable sur trois tours de boucle.
+func _test_steady_levels() -> void:
+	var sp = SoundPlayer.new()
+	var bad := []
+	for k in STEADY_KINDS:
+		var w: AudioStreamWAV = sp.stream(k)
+		var d: PackedByteArray = w.data
+		var m := w.loop_end
+		var win := int(0.25 * w.mix_rate)
+		var lo := INF
+		var hi := 0.0
+		for start in range(0, 3 * m - win, win):
+			var e := 0.0
+			for j in range(win):
+				var v := float(d.decode_s16(((start + j) % m) * 2))
+				e += v * v
+			var r := sqrt(e / win)
+			lo = minf(lo, r)
+			hi = maxf(hi, r)
+		var spread := 20.0 * log(hi / maxf(lo, 1e-6)) / log(10.0)
+		if spread > STEADY_MAX_DB:
+			bad.append("%s %.1f dB" % [k, spread])
+	_check(bad.is_empty(), "sons continus : niveau stable à %.0f dB près sur 3 tours de boucle (en défaut : %s)" % [STEADY_MAX_DB, str(bad)])
+	sp.free()
+
+
 func _init() -> void:
 	call_deferred("_run")
 
@@ -261,5 +297,6 @@ func _run() -> void:
 	await _test_ambience_and_bells()
 	await _test_p10_wind_and_freewheel()
 	await _test_seamless_loops()
+	_test_steady_levels()
 	print("test_sound_player : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

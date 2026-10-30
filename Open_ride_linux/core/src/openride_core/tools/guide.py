@@ -12,6 +12,11 @@ combien de temps, sans qu'il ait à lire un terminal en pédalant :
     python -m openride_core.tools.guide materiel click_recette
     python -m openride_core.tools.guide bips                # écouter les bips
 
+Suivi en direct dans une fenêtre à part (lot X45) : avec `live_file`, l'état de l'écran (étape, compte à
+rebours, valeurs en direct, alertes, relevés, verdict) est écrit dans un fichier JSON au plus 5 fois par
+seconde. `suivi_direct` le lit dans sa propre fenêtre de terminal, qui reste ouverte après la fin de
+l'essai : utile quand l'outil tourne sans terminal visible (session à distance).
+
 Bibliothèque standard seulement (le script `scripts/recette_pc.py` l'importe sans le venv). Le son passe
 par pw-play, paplay ou aplay ; sinon la cloche du terminal. `OPENRIDE_GUIDE_MUET=1` coupe le son.
 Hors terminal (tests, redirection), l'écran devient de simples lignes et aucun son n'est joué.
@@ -51,12 +56,17 @@ TRIALS: dict[str, Trial] = {
     "trainer_steps": Trial(
         "Banc de latence du trainer (lot X5, essai R0)", "environ 15 min, échauffement compris",
         ("python -m openride_core.tools.trainer_steps --mode sim",
-         "python -m openride_core.tools.trainer_steps --mode erg --cadence 85"),
+         "python -m openride_core.tools.trainer_steps --mode erg --cadence 85",
+         "python -m openride_core.tools.trainer_steps --mode paliers_puissance --plateau 38 --pignon 15 --cadence 85",
+         "python -m openride_core.tools.trainer_steps --mode relances --plateau 52 --pignon 15 --cadence 85"),
         ("vélo installé sur le HomeTrainer, trainer branché",
          "Bluetooth du PC allumé, aucune autre application reliée au trainer (Zwift, téléphone)",
          "un braquet moyen choisi d'avance et gardé pendant tout l'essai",
          "bidon et serviette : 5 min d'échauffement avant de lancer"),
         ("SIM : 7 paliers de pente, environ 4 min ; ERG : 5 paliers de puissance, environ 3 min",
+         "paliers_puissance : 6 paliers SIM tenables de 150 à 300 W, environ 4 min 20 ; relances : trois fois "
+         "12 s à 470 W, environ 4 min 10 ; donner le plateau et le pignon réellement montés",
+         "un palier qui dépasse le plafond (125 % du plus fort palier) est coupé tout seul",
          "tout est chronométré par l'outil : rien à relever à la main")),
     "click_recette": Trial(
         "Recette du Zwift Click (lot X8)", "environ 35 min",
@@ -103,6 +113,15 @@ TRIALS: dict[str, Trial] = {
          "le son du PC allumé : un bip à chaque étape et à chaque appui reçu"),
         ("17 appuis demandés tour à tour, le boîtier gauche d'abord, flèches en tête (il se tait environ une minute après la connexion)",
          "chaque appui reçu s'affiche avec son action dans chaque mode (spécification générale §7.1)")),
+    "recette_v10": Trial(
+        "Recette de la série V : progression, équipement, avatar (lot V10)", "environ 30 min, dont 2 × 10 min de vélo",
+        ("python -m openride_core.tools.recette_v10",),
+        ("vélo sur le HomeTrainer, Bluetooth du PC allumé, aucune autre application reliée au trainer",
+         "les deux boîtiers Click réveillés (ou le clavier : A ou flèche haut)",
+         "écran visible et son audible depuis le vélo : bip et préavis d'une minute à chaque consigne",
+         "bidon et serviette"),
+        ("l'outil lance et ferme OpenRide lui-même, pose le vélo de chaque bloc, compte la pause de 2 min",
+         "verdict lu dans les journaux à la fin ; profil et parcours restaurés, même après Ctrl+C")),
 }
 
 
@@ -245,7 +264,7 @@ class Guide:
 
     def __init__(self, title: str, journal: Path | None = None, *, sound: bool | None = None,
                  screen: bool | None = None, out: TextIO | None = None,
-                 clock: Callable[[], float] = time.monotonic) -> None:
+                 clock: Callable[[], float] = time.monotonic, live_file: Path | None = None) -> None:
         self.title = title
         self.out = out or sys.stdout
         tty = self.out.isatty() if hasattr(self.out, "isatty") else False
@@ -263,6 +282,9 @@ class Guide:
         self.panel: list[str] = []      # encadré sous la consigne (test des boutons : appui reçu)
         self.panel_ok: bool | None = None
         self._last_draw = -1.0
+        self.live_file = live_file
+        self.verdict: tuple[bool, str] | None = None
+        self._last_publish = -1.0
 
     # journal
     def log(self, kind: str, **data: Any) -> None:
@@ -370,6 +392,7 @@ class Guide:
         self._end_step()
         self.step_ = _Step(text, "", self.clock(), None, None, None, ended=True)
         self.banner = ""
+        self.verdict = (ok, text)
         self.log("verdict", ok=ok, texte=text)
         self.sound.play("reussite" if ok else "echec")
         self.draw(force=True)
@@ -434,7 +457,35 @@ class Guide:
             lines += ["", *[f"  {n}" for n in self.notes[-3:]]]
         return lines
 
+    def state(self) -> dict[str, Any]:
+        """État de l'écran pour le suivi en direct (lot X45)."""
+        st = self.step_
+        return {
+            "title": self.title, "updated": time.time(),
+            "step": None if st is None else {"text": st.text, "detail": st.detail, "index": st.index,
+                                             "total": st.total, "remaining_s": self.remaining()},
+            "live": self.live, "banner": self.banner, "panel": self.panel, "panel_ok": self.panel_ok,
+            "measures": [[text, ok] for text, ok in self.measures], "notes": self.notes,
+            "verdict": None if self.verdict is None else {"ok": self.verdict[0], "text": self.verdict[1]},
+        }
+
+    def publish(self, force: bool = False) -> None:
+        if self.live_file is None:
+            return
+        now = self.clock()
+        if not force and now - self._last_publish < 0.2:
+            return
+        self._last_publish = now
+        tmp = self.live_file.with_suffix(".tmp")
+        try:
+            self.live_file.parent.mkdir(parents=True, exist_ok=True)
+            tmp.write_text(json.dumps(self.state(), ensure_ascii=False), encoding="utf-8")
+            os.replace(tmp, self.live_file)   # jamais un fichier à moitié écrit pour le lecteur
+        except OSError:
+            pass
+
     def draw(self, force: bool = False) -> None:
+        self.publish(force)
         if not self.screen:
             return
         now = self.clock()

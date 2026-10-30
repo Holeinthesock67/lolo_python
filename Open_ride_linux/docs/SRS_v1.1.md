@@ -141,7 +141,7 @@ G_{eff} = (G_{terrain} + G_{base}) \cdot R_k - G_{base}
 | Z court | Bonus en réserve (mode classique, série T) | Bloc suivant (lissage de 2 s ; au dernier bloc, fin de l'entraînement) |
 | Y | Pause et reprise de la séance | Pause et reprise de la séance (temps du bloc arrêté) |
 
-Dans un bloc de roue libre, + et − restent des braquets ; Z passe quand même au bloc suivant. Il n'y a qu'une pause : celle de la séance par Y (lot N6, choix du propriétaire du 25 octobre 2026) ; l'ancienne pause propre à l'ERG (− long, pente 0 %) a disparu avec le lot O17, et le champ `erg.paused` du contrat suit la pause de la séance.
+Un entraînement ERG n'a jamais de roue libre (lot O19, choix du propriétaire du 29 octobre 2026) : la consigne ne descend pas sous 50 W et un bloc FreeRide d'un `.zwo` devient un palier à 50 W. Il n'y a qu'une pause : celle de la séance par Y (lot N6, choix du propriétaire du 25 octobre 2026) ; l'ancienne pause propre à l'ERG (− long, pente 0 %) a disparu avec le lot O17, et le champ `erg.paused` du contrat suit la pause de la séance.
 
 Le demi-tour sur la route et le réglage des bots sont reportés à la 1.x, dans les menus (§14, lots N17 et N18).
 
@@ -170,6 +170,7 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 - **Vent (lots P1 et P2).** `v_vent` est la composante de face du vent le long du cap de la route à `s` (positive de face) ; elle vaut 0 quand le vent est coupé (`[wind] mode = "off"`, défaut des versions 1.x). Le vent de travers ne compte pas.
 - **Ressenti du vent et de l'aspiration.** En SIM, l'écart de résistance dû au vent et à l'aspiration est transmis au trainer comme un **supplément de pente** (`[wind] feel = "grade"`, défaut), borné à ± `max_grade_offset_pct` (4 points par défaut, réglable dans les réglages du menu), ou dans le champ vent de la commande FTMS 0x11 (`feel = "ftms"`, à essayer sur le matériel). En ERG, la puissance demandée ne change jamais : seule la vitesse virtuelle tient compte du vent et de l'aspiration.
 - Seuls les bots à puissance constante abritent ; le fantôme n'abrite pas.
+- **Abri des bots (lot AS1).** Les bots `constant` (profils compris) s'abritent avec la même courbe, le même effet de file, le même vent de travers et le même lissage, derrière les autres bots et derrière le cycliste (`draft.update_bots`), sur les positions du pas précédent : l'ordre des bots ne compte pas. La poussée vers l'avant vaut aussi pour un bot suivi par un autre bot. Un bot à profil à moins de 3 m derrière un coureur garde sa roue : il vise la vitesse de la roue corrigée de l'écart (0,5 m visé), sans dépasser la puissance de sa stratégie ni descendre sous 60 % de sa CP ; il repart pour une attaque en montée, un sprint ou si la roue roule sous 85 % de sa vitesse de croisière seul. Le fantôme ne donne ni ne reçoit d'abri. `draft` et `draft_bot` restent ceux du cycliste ; la commande ERG ne change pas.
 
 **Paramètres par défaut** (modifiables, §11)
 
@@ -339,6 +340,7 @@ Toutes les valeurs ajustables sont dans un seul fichier `~/OpenRide/config.toml`
 ```toml
 [rider]
 ftp_w = 250
+hr_max_bpm = 185
 mass_kg = 75
 
 [bike]
@@ -359,6 +361,7 @@ grade_rate_up_pct_per_s = 4.0     # vitesse maximale quand la pente envoyée aug
 grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
+resend_s = 2.0               # la consigne est renvoyée au moins toutes les resend_s secondes ; une valeur plus grande (10 à 15) limite les écritures SIM_PARAMS quand la pente dérive peu
 
 [gearing]
 n_gears = 24
@@ -392,7 +395,8 @@ visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lot
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
-fps = "off"          # compteur d'images/s du HUD : off, on (« Afficher les images/s » dans Réglages)
+fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU et GPU, essais) (« Afficher les images/s » dans Réglages)
+draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« Jauge d'abri des bots »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 
 [ipc]
@@ -435,6 +439,8 @@ master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre
 ambience_pct = 100           # ambiance : fonds, cloches, véhicules, foule, passants
 events_pct = 100             # bips et événements : appuis du Click, bloc ERG, consignes, jingles
+[log]
+latence = false              # journal de latence des appuis du Click, lignes [latence] (lot X7 ; --latence)
 [rogue]
 w_prime_j = 20000.0          # réserve anaérobie W' du mode Cyber-Rogue, 5 000 à 60 000 J (lot R2)
 cp_w = 0.0                   # puissance critique, 0 à 1 000 W ; 0 : la FTP
@@ -449,6 +455,8 @@ La section `[progression]` (lot V11) coupe, avec `enabled = false`, l'équipemen
 La section `[powerups]` (lot T7) coupe les bonus du mode classique (`mode = "off"` : ni arche, ni réserve, ni champ `powerup` dans la trame) ; les segments, records et maillots restent. Option « Bonus » du menu (clé `powerups.mode` de `set_setting`). Les valeurs des bonus sont dans `~/OpenRide/powerups.toml` (lot T6).
 
 La section `[bots]` (lot T13) donne le niveau des bots à profil : `level_pct` (50 à 150, défaut 100) est le pourcentage de ta FTP visé par le calibrage. Au départ de la séance, le core simule le parcours au pas de 0,5 s et ajuste la CP de chaque bot à profil pour qu'il finisse dans le temps d'un cycliste de ta masse roulant à ce niveau. Réglage « Niveau des bots » du menu (clé `bots.level_pct`, pas de 5) ; un bot choisi au menu à 90, 100 ou 110 % garde son propre niveau.
+
+La section `[log]` (lot X7) active avec `latence = true` (ou `openride-core run --latence`) le journal de latence des appuis du Click : une ligne `[latence]` par étage (notification, événement, envoi à l'engine, Control Point) dans le journal du core, et `recu` puis `affiche` dans celui de l'engine ; `openride-core log-report --latence` en fait la statistique (docs/OUTILS_DE_TEST.md). Sans elle, aucune ligne.
 
 La section `[audio]` donne un volume par catégorie de sons (docs/AUDIO.md), de 0 (coupé) à 100 % par pas de 10, réglables dans « Réglages » et appliqués tout de suite par l'engine sur ses bus audio (`Master`, `Ride`, `Ambience`, `Events`).
 

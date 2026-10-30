@@ -261,6 +261,7 @@ func _run() -> void:
 	_check(ws.wetness > 0.5 and absf(lw.rain - 0.6) < 1e-6, "chaussée mouillée (%.2f), pluie dans l'ambiance sonore" % ws.wetness)
 	_check(dec.fog_updates >= 1 and dec.fog_updates < frames / 5, "brume recalculée %d fois en %d images" % [dec.fog_updates, frames])
 	_check(dec.traffic.spawned_total > 0 and rider_hits == 0, "véhicules croisés : %d, jamais sur le cycliste" % dec.traffic.spawned_total)
+	_check(dec.contacts == 0, "compteur de contacts de la route (lot P32) : %d %s" % [dec.contacts, dec.last_contact])
 	_check(distant_max >= 1 and distant_max <= 24 and distant_on_route == 0 and distant_seen.has("tractor_field"),
 		"routes voisines et champs : jusqu'à %d véhicules affichés (budget 24), jamais sur le parcours, sortes %s" % [distant_max, str(distant_seen.keys())])
 	_check(dec.headlights and dec.traffic_view.lights and dec.road_traffic_view.lights and dec.boats_view.lights, "pluie : phares et feux des bateaux allumés")

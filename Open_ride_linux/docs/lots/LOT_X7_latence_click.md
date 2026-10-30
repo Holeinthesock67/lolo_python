@@ -29,3 +29,15 @@ Ligne 10 de la recette 1.0 et fenêtres de timing des séries R et T : la latenc
 ## 6. Hors périmètre
 
 Réduire la latence ; le boîtier gauche muet (reporté à la 4.0).
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x7`, sur X35 pour `sim_bench.py`).
+
+- **Core** : nouveau module `latency_log.py`. Un identifiant par appui à la notification BLE qui le termine (`input_providers.ZwiftClickProvider`, après le filtre du relais par l'autre boîtier), rangé dans une file par fournisseur dans l'ordre de ses événements ; `evenement` quand la séance le lit (`session._drain_inputs`, appui d'identification compris) ; `ipc` à l'envoi de l'événement à l'engine, avec `latence_id` et `latence_t` dans le message `input` ; `cp` à la prochaine écriture au Control Point (`ftms_driver.call`) quand l'appui a changé le braquet ou le biais ERG, attendue au plus 2 s. Heure : heure murale du démarrage plus l'horloge monotone (pas de saut d'horloge pendant la mesure). Activé par `[log] latence = true` ou `openride-core run --latence` ; sinon aucune ligne et aucun champ de plus.
+- **Contrat** : `latence_id` et `latence_t` ajoutés à `input.schema.json` et au §6 de `ipc_v1.md`, champs de diagnostic absents en usage normal, sans changement de révision.
+- **Engine** : `ipc_client.gd` émet `latency_input_received` ; `main.gd` écrit `recu` à la réception et `affiche` à la première image dessinée (`RenderingServer.frame_post_draw`) après un état dont le braquet, la cible ou le biais ERG diffèrent de ceux de la réception, attendu au plus 2 s. **Écart** : pas d'écart d'horloge mesuré au `hello` : le core et l'engine tournent sur la même machine et lisent la même horloge système.
+- **Analyse** : `log_report --latence CORE.log ENGINE.log [--json]` (appariement par identifiant, appuis incomplets et étages manquants comptés à part, médiane, p95, maximum des étages notification → événement, événement → envoi, événement → Control Point, envoi → reçu, reçu → image, et de bout en bout). Un identifiant repart de 1 à chaque lancement du core : analyser les journaux d'un seul lancement.
+- **Banc simulé** : `sim_bench.py --latence` (vérifications « appuis appariés de bout en bout » au moins 10, et p95 de bout en bout sous 150 ms, stricte avec `--native`, indicative sous Xvfb ; `latence.json` dans le dossier du scénario). Mesuré dans le conteneur (`--scenario demo --duration 120`, Xvfb) : 19 appuis appariés sur 22 ; notification → événement 17 ms, événement → Control Point 36 ms, envoi → reçu 187 ms et reçu → image 273 ms en médiane (rendu logiciel, une image toutes les 140 ms environ). La mesure qui compte se fait en fenêtre réelle sur le PC.
+- Tests : `core/tests/test_latence_click.py` (7 tests : rien sans l'option, une ligne par étage et par appui, attente du Control Point périmée, champs conformes au schéma, clé de configuration, appariement et statistiques de `log_report`, commande).
+

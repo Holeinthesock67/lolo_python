@@ -23,6 +23,7 @@ import json
 import math
 from datetime import datetime
 from pathlib import Path
+from typing import Callable
 
 from .segments import Profile, detect_segments
 
@@ -37,7 +38,9 @@ HAIRPIN_GAP_MIN_M = 250.0
 
 
 def build_route(length_m: float = 8000.0, origin_lat: float = 45.09, origin_lon: float = 6.06,
-                origin_alt: float = 1120.0) -> dict:
+                origin_alt: float = 1120.0, grade: Callable[[float], float] | None = None) -> dict:
+    """Route synthétique ; `grade(s)` (en %) remplace la pente de la démonstration (parcours d'essai des
+    outils, `tools/bots_race.py`)."""
     n = int(length_m // DS_M) + 1
     if (n - 1) * DS_M < length_m:
         n += 1
@@ -61,11 +64,13 @@ def build_route(length_m: float = 8000.0, origin_lat: float = 45.09, origin_lon:
         return rate
 
     # Pente : montée douce de 1 à 4 % qui ondule (confortable vers 150 W), replat en milieu de parcours.
-    def grade(s: float) -> float:
+    def demo_grade(s: float) -> float:
         g = 2.5 + 1.5 * math.sin(s / 900.0) + 0.5 * math.sin(s / 170.0)
         if 0.3 * length_m < s < 0.35 * length_m:
             g = 1.0
         return g
+
+    grade = grade or demo_grade
 
     xs, zs, alts, grades, headings = [0.0], [0.0], [origin_alt], [grade(0.0)], [45.0]
     h = 45.0
@@ -136,8 +141,9 @@ def build_manifest(name: str, route: dict, created: str | None = None,
     }
 
 
-def write_world(out_dir: Path, name: str, length_m: float, created: str | None = None) -> Path:
-    route = build_route(length_m)
+def write_world(out_dir: Path, name: str, length_m: float, created: str | None = None,
+                grade: Callable[[float], float] | None = None) -> Path:
+    route = build_route(length_m, grade=grade)
     world = out_dir / f"{name}.world"
     world.mkdir(parents=True, exist_ok=True)
     segments = build_segments(route)
