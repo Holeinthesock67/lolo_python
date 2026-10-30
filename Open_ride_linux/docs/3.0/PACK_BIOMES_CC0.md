@@ -8,7 +8,7 @@ Le thème par défaut reste en couleurs unies. Le pack, lui, reste hors du dép�
 
 - [ambientCG](https://ambientcg.com/) et [Poly Haven](https://polyhaven.com/) publient toutes leurs textures sous licence **CC0 1.0** : usage libre, même commercial, sans attribution obligatoire ([licence ambientCG](https://docs.ambientcg.com/license/)).
 - Pour chaque texture, prendre la version **2K JPG**, avec la couleur (albedo) et la normale au format OpenGL. Le préréglage `high` affiche du 2 048 px au plus ; `low` et `medium` affichent du 1 024 px (`QualityPresets.ground_texture_px`).
-- La provenance va dans le pack, dans `PROVENANCE.md` : nom de l'asset, adresse de la page, licence, date du téléchargement.
+- La provenance va dans le pack, dans `provenance.toml` (lot P20), une entrée `[[image]]` par image : `file`, `source = "cc0"`, `date` du téléchargement, `url` de la page, `license = "CC0-1.0"`, `tileable = true` pour une texture répétable. `theme-check` en contrôle le raccord des bords.
 
 ## 2. Textures conseillées, sol par sol
 
@@ -52,14 +52,18 @@ Choix de départ pour les biomes lointains (désert, savane, jungle, polaire, vo
 3. Dans `theme.json`, changer `name` (par exemple « Biomes CC0 »). Pour chaque couche du tableau, remplir :
    - `texture` (albedo) et `normal`, en chemins relatifs au dossier du pack ;
    - `scale_m` : taille réelle couverte par l'image, donnée sur la page de l'asset (2 m pour Gravel 033, par exemple).
-4. Écrire `PROVENANCE.md` (§1).
+4. Écrire `provenance.toml` (§1).
 5. Contrôler le pack, puis en faire une archive :
    ```
    openride-compiler theme-check ~/OpenRide/Packs/biomes-cc0
    cd ~/OpenRide/Packs && zip -r biomes-cc0.zip biomes-cc0
    ```
    `theme-check` vérifie le schéma 2.0, les images et la taille.
-6. Les niveaux de résolution par préréglage (`texture_levels`) viendront avec le lot P20. D'ici là, le pack donne une seule taille et l'engine la réduit si le préréglage le demande.
+6. Niveaux de résolution par préréglage (lot P20) :
+   ```
+   openride-compiler theme-pack ~/OpenRide/Packs/biomes-cc0 --levels 512,1024,2048
+   ```
+   `theme-pack` (Pillow nécessaire) réduit les images de la racine dans `levels/512/`, `levels/1024/` et `levels/2048/`, écrit `texture_levels` dans `theme.json` et relance `theme-check`. Avec `--fix-seams`, il fond d'abord les bords des images `tileable` de `provenance.toml` (§1). L'engine prend 1 024 px en `low` et `medium`, 2 048 en `high`, sous le budget de mémoire vidéo du préréglage.
 
 ## 4. Installer et retirer
 

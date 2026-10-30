@@ -6,6 +6,7 @@
                                 [--manual FICHIER.segments.toml]
     openride-compiler list | build-all [--layers ...] [--dry-run] [--offline]
     openride-compiler theme-check <dossier du thème>
+    openride-compiler theme-pack <dossier du thème> [--levels 512,1024,2048] [--fix-seams]   (lot P20, Pillow)
     openride-compiler theme-list [--themes-dir D] [--json]
     openride-compiler theme-install SOURCE [--name NOM] [--force] [--themes-dir D]   (SOURCE : dossier, .zip ou https://)
     openride-compiler cache-info [--json] | cache-clean [--generated | --all] [--yes]
@@ -139,6 +140,12 @@ def build_parser() -> argparse.ArgumentParser:
 
     tc = sub.add_parser("theme-check", help="contrôle un dossier de thème visuel")
     tc.add_argument("theme_dir", type=Path)
+    tp = sub.add_parser("theme-pack", help="fabrique les niveaux de textures d'un pack de thème (lot P20, Pillow)")
+    tp.add_argument("theme_dir", type=Path, help="dossier du pack (images d'origine à la racine)")
+    tp.add_argument("--levels", default="512,1024,2048",
+                    help="côtés des niveaux en pixels, séparés par des virgules (défaut : 512,1024,2048)")
+    tp.add_argument("--fix-seams", action="store_true",
+                    help="raccorde d'abord les images tileable de provenance.toml (fondu des bords opposés)")
 
     default_gpx = Path.home() / "OpenRide" / "GPX"
     ls = sub.add_parser("list", help="liste les parcours (.world et traces .gpx, .fit, .tcx, .fit.gz, .tcx.gz, .zip) et leur statut")
@@ -521,6 +528,17 @@ def cmd_theme_check(args: argparse.Namespace) -> int:
     return EXIT_OK
 
 
+def cmd_theme_pack(args: argparse.Namespace) -> int:
+    from .texture_levels import build_levels
+    try:
+        sizes = tuple(int(x) for x in args.levels.split(",") if x.strip())
+    except ValueError:
+        raise CompileError(f"--levels : côtés en pixels séparés par des virgules ({args.levels})") from None
+    levels = build_levels(args.theme_dir, sizes, seams=args.fix_seams)
+    print(f"{args.theme_dir} : {len(levels)} niveau(x) " + ", ".join(lv["name"] for lv in levels))
+    return cmd_theme_check(argparse.Namespace(theme_dir=args.theme_dir))
+
+
 DEFAULT_PACK_WORK_DIR = Path.home() / ".cache" / "openride" / "route_packs"
 
 
@@ -817,6 +835,7 @@ COMMANDS = {
     "info": cmd_info,
     "compare-garmin": cmd_compare_garmin,
     "theme-check": cmd_theme_check,
+    "theme-pack": cmd_theme_pack,
     "theme-list": cmd_theme_list,
     "theme-install": cmd_theme_install,
     "list": cmd_list,

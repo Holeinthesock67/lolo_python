@@ -32,6 +32,7 @@ const OsmLayers := preload("res://scripts/osm_layers.gd")
 const BiomeModel := preload("res://scripts/biome_model.gd")
 const BiomeLayer := preload("res://scripts/biome_layer.gd")
 const BiomeTextures := preload("res://scripts/biome_textures.gd")
+const TextureLevels := preload("res://scripts/texture_levels.gd")
 const ViewCulling := preload("res://scripts/view_culling.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 
@@ -79,14 +80,22 @@ var osm_streamer: Node3D = null
 var forced_biome := "auto"
 var biome_model = null
 var biome_textures = null
-## Préréglage de qualité (render_quality.gd) : 3 ou 4 biomes par tuile et côté des textures de sol (U-Q4).
+## Préréglage de qualité (render_quality.gd) : 3 ou 4 biomes par tuile et niveau des textures (U-Q4, P20).
 var quality_preset := "":
 	set(value):
 		if value == quality_preset:
 			return
 		quality_preset = value
-		if biome_textures != null:
-			_make_biome_textures()
+		_reload_textures()
+## Niveau des textures imposé (`[render] texture_level`, lot P20) : auto, low, medium ou high.
+var texture_level := TextureLevels.AUTO:
+	set(value):
+		if value == texture_level:
+			return
+		texture_level = value
+		_reload_textures()
+## Niveau retenu pour les textures 1.x du thème (terrain, route) : TextureLevels.choose.
+var decor_textures := {}
 
 var _near_index: Dictionary = {}     # Vector2i -> true
 var _far_index: Dictionary = {}
@@ -196,9 +205,17 @@ func _apply_relief_to_material() -> void:
 		route.alt_m[0] if route != null and route.n > 0 else 0.0)
 
 
+## Préréglage ou niveau imposé changé (lot P20) : textures 1.x du thème et sols des biomes rechargés.
+func _reload_textures() -> void:
+	if _theme_dir != "":
+		set_theme(_theme_dict, _theme_dir)
+	if biome_textures != null:
+		_make_biome_textures()
+
+
 ## Sols des biomes (lot U6) pour le préréglage courant ; les tuiles déjà affichées changent de matériau.
 func _make_biome_textures() -> void:
-	biome_textures = BiomeTextures.new(biome_model, _theme_dir, quality_preset)
+	biome_textures = BiomeTextures.new(biome_model, _theme_dir, quality_preset, texture_level)
 	biome_textures.sync_from(_terrain_material)
 	for key in _instances:
 		if not (key as String).begins_with("road:"):
@@ -733,14 +750,18 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	_theme_dir = theme_dir
 	var r_params := ThemeRenderParams.road_params(theme_dict)
 	_road_width_m = float(r_params["width_m"])
-	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture") if theme_dir != "" else null
+	var maps := ThemeLoader.decor_texture_count(theme_dict) if theme_dir != "" else 0
+	decor_textures = TextureLevels.choose(theme_dict, quality_preset, texture_level, maps)
+	if maps > 0:
+		print(TextureLevels.log_line("décor", decor_textures, maps))
+	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture", decor_textures) if theme_dir != "" else null
 	_road_color = r_params["color"]
 	_preview_material = null
 	_road_texture = road_tex
 	_rebuild_road_material()
 
 	if _terrain_material is ShaderMaterial:
-		TerrainMaterial.apply_to_material(_terrain_material, theme_dict, theme_dir)
+		TerrainMaterial.apply_to_material(_terrain_material, theme_dict, theme_dir, decor_textures)
 
 	var tu := ThemeRenderParams.terrain_uniforms(theme_dict)
 	_ground_color = tu["grass_color"]

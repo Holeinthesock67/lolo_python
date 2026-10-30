@@ -2,6 +2,7 @@
 
 - ``check_theme(theme_dir)`` : valide ``theme.json`` contre ``theme.schema.json`` (erreurs)
   et contrôle les textures ainsi que les clés inconnues (avertissements).
+- niveaux de textures et provenance des images du pack (lot P20) : ``texture_levels.py`` ;
 - ``resolve_theme(theme_dir)`` : fusionne récursivement ``theme.json`` avec le thème par
   défaut ``engine/themes/default/theme.json`` (source unique des valeurs par défaut).
 """
@@ -204,6 +205,9 @@ def check_theme(theme_dir: Path) -> list[Issue]:
     if isinstance(road, dict) and "texture" in road:
         _check_texture_field(theme_dir, "road.texture", road.get("texture"), issues)
 
+    from .texture_levels import check_levels, check_provenance
+    check_levels(theme_dir, data, issues, Issue)
+    check_provenance(theme_dir, data, issues, Issue)
     return issues
 
 
