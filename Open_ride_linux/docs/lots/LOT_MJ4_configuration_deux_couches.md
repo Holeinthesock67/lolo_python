@@ -38,3 +38,12 @@ Aucune : l'engine ne voit pas la répartition.
 ## 8. Hors périmètre
 
 Migration des clés existantes (MJ5).
+
+## Livraison
+
+Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj4`).
+
+- `config.py` : table `PROFILE_KEYS` (FTP, poids, FC max, poids du vélo, difficulté, braquet de départ, bonus, niveau des bots, vent, vue de caméra, courbes, ceinture cardio), `profile_overlay` (clés machine de `profil.toml` signalées et ignorées, section `[profil]` laissée à `profiles.py`), `from_layers`, `load(path, profile_path)` : `profil.toml` du profil en cours par défaut, aucun en contexte historique ; mêmes bornes et messages, le message cite les deux fichiers.
+- `config_edit.update_layers` : chaque clé dans son fichier, configuration effective validée avant toute écriture, copie `.bak` et remplacement atomique de chaque fichier changé.
+- `settings.py` : `Setting.scope` (« profil » ou « machine », tiré de `PROFILE_KEYS`), `apply` passe par `update_layers` ; même chemin pour `set_setting`, `openride-core settings set`, la FTP d'un test (`ftp_test.py`) et la ceinture appairée (`pairing.save`).
+- Tests : `core/tests/test_config_couches.py` (FTP d'un profil sans toucher `config.toml` ni l'autre profil, qualité dans `config.toml` seul, contexte historique inchangé, clé joueur restée dans `config.toml` lue et dominée par le profil, clé machine ignorée dans `profil.toml`, valeur refusée sans écriture, ceinture appairée dans le profil).
