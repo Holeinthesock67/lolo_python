@@ -47,8 +47,10 @@ Relance demandée depuis le menu (lot N13) :
   relances de l'engine n'avance pas. En session simulée, le code 64 ramène au vrai matériel ;
 - code 65 (`EXIT_SIM`, menu « Session simulée ») → même relance, mais le core reçoit
   `--trainer sim --input sim --hr sim --sim-scenario nominal` (HomeTrainer, Click et ceinture
-  simulés, `docs/SIMULATION_BLE.md`) et l'engine `--sim-session` ; les relances après un
-  plantage gardent le mode en cours.
+  simulés, `docs/SIMULATION_BLE.md`) et `--profil _essai` (profil d'essai, série MJ, lot MJ2 :
+  les séances simulées n'écrivent rien dans le vrai profil), et l'engine `--sim-session` ; les
+  relances après un plantage gardent le mode en cours, et la reprise cherche alors les journaux
+  du profil d'essai.
 
 Lancement sans terminal (lot N14) :
 - premier démarrage : sans `~/OpenRide/config.toml`, il est créé depuis
@@ -98,8 +100,12 @@ DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click"]
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
 EXIT_RELAUNCH = 64
 EXIT_SIM = 65
-# Options du core en session simulée (remplacent --trainer, --input, --hr et --sim-scenario).
-SIM_CORE_ARGS = ["--trainer", "sim", "--input", "sim", "--hr", "sim", "--sim-scenario", "nominal"]
+# Options du core en session simulée (remplacent --trainer, --input, --hr, --sim-scenario et --profil) :
+# matériel simulé et profil d'essai (série MJ, lot MJ2).
+SIM_PROFILE = "_essai"
+SIM_CORE_ARGS = ["--trainer", "sim", "--input", "sim", "--hr", "sim", "--sim-scenario", "nominal",
+                 "--profil", SIM_PROFILE]
+SIM_OPTIONS = ("--trainer", "--input", "--hr", "--sim-scenario", "--profil")
 SIM_ENGINE_ARG = "--sim-session"
 
 STOP_SIGNALS = tuple(s for s in (signal.SIGINT, signal.SIGTERM, getattr(signal, "SIGHUP", None)) if s is not None)
@@ -281,6 +287,7 @@ class Supervisor:
     gpx_dir: Path | None = None
     notify: Callable[[str], None] | None = None
     journal_dir: Path | None = None    # journaux de séance (reprise après plantage, lot N8) ; None : pas de reprise
+    sim_journal_dir: Path | None = None   # journaux du profil d'essai, en session simulée (lot MJ2)
     recover_cmd: list[str] | None = None   # `openride-core recover` ; le chemin du journal est ajouté
     core_max_restarts: int = 3
     core_restart_window_s: float = 600.0
@@ -393,17 +400,19 @@ class Supervisor:
 
     def _unfinished_journal(self) -> Path | None:
         """Journal d'une séance de ce lancement que le core n'a pas terminée (lot N8)."""
-        if self.journal_dir is None:
+        directory = self.sim_journal_dir if self.sim_mode else self.journal_dir
+        if directory is None:
             return None
         from .resume import find_unfinished_journal
 
-        return find_unfinished_journal(self.journal_dir, since=self._launched_at - 1.0)
+        return find_unfinished_journal(directory, since=self._launched_at - 1.0)
 
     def _recover(self, journal: Path | None) -> None:
         if journal is None or self.recover_cmd is None:
             return
+        cmd = with_profile(self.recover_cmd, SIM_PROFILE) if self.sim_mode else self.recover_cmd
         try:
-            p = self._spawn([*self.recover_cmd, str(journal)], stdin=subprocess.DEVNULL,
+            p = self._spawn([*cmd, str(journal)], stdin=subprocess.DEVNULL,
                             stdout=self._log or subprocess.DEVNULL, stderr=subprocess.STDOUT)
             if not self._wait(p, 60.0):
                 p.kill()
@@ -650,21 +659,31 @@ class Supervisor:
 
 # --- ligne de commande -------------------------------------------------------------------
 
-def sim_core_cmd(core_cmd: list[str]) -> list[str]:
-    """Commande du core en session simulée : --trainer, --input, --hr et --sim-scenario remplacés."""
+def _without_options(cmd: list[str], names: tuple[str, ...]) -> list[str]:
+    """`cmd` sans les options `names` (`--nom V` et `--nom=V`)."""
     out: list[str] = []
     skip = False
-    for a in core_cmd:
+    for a in cmd:
         if skip:
             skip = False
             continue
-        if a in ("--trainer", "--input", "--hr", "--sim-scenario"):
+        if a in names:
             skip = True
             continue
-        if a.split("=", 1)[0] in ("--trainer", "--input", "--hr", "--sim-scenario"):
+        if a.split("=", 1)[0] in names:
             continue
         out.append(a)
-    return [*out, *SIM_CORE_ARGS]
+    return out
+
+
+def with_profile(cmd: list[str], profile_id: str) -> list[str]:
+    """`cmd` avec `--profil profile_id` à la place de tout `--profil` donné (série MJ)."""
+    return [*_without_options(cmd, ("--profil",)), "--profil", profile_id]
+
+
+def sim_core_cmd(core_cmd: list[str]) -> list[str]:
+    """Commande du core en session simulée : matériel simulé et profil d'essai (`SIM_CORE_ARGS`)."""
+    return [*_without_options(core_cmd, SIM_OPTIONS), *SIM_CORE_ARGS]
 
 
 def extract_launcher_args(args: list[str]) -> tuple[list[str], bool, bool, float]:
@@ -696,12 +715,13 @@ def extract_launcher_args(args: list[str]) -> tuple[list[str], bool, bool, float
     return core_args, no_compile, compile_only, compile_timeout
 
 
-def _config_arg(args: list[str]) -> Path | None:
+def _option_arg(args: list[str], name: str) -> str | None:
+    """Valeur de l'option `name` (`--nom V` ou `--nom=V`) dans les arguments du core, ou None."""
     for i, a in enumerate(args):
-        if a.startswith("--config="):
-            return Path(a.split("=", 1)[1])
-        if a == "--config" and i + 1 < len(args):
-            return Path(args[i + 1])
+        if a.startswith(name + "="):
+            return a.split("=", 1)[1]
+        if a == name and i + 1 < len(args):
+            return args[i + 1]
     return None
 
 
@@ -729,6 +749,11 @@ def record_theme_use(themes_dir: Path, theme: str, when: datetime | None = None)
         pass
 
 
+def _config_arg(args: list[str]) -> Path | None:
+    value = _option_arg(args, "--config")
+    return Path(value) if value is not None else None
+
+
 def worldgen_command(env: dict[str, str] | None = None) -> list[str]:
     """Commande du générateur du monde ouvert (lot W9) : `OPENRIDE_WORLDGEN`, sinon le paquet du compilateur
     lancé par le même Python que le core (installé dans le même environnement, `scripts/install.sh`)."""
@@ -749,7 +774,7 @@ def worldmenu_command(env: dict[str, str] | None = None) -> list[str]:
 def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) -> Supervisor:
     """Construit le superviseur réel ; lève `ConfigError` ou `FileNotFoundError` avec un message lisible."""
     from . import config as config_mod
-    from .journal import JOURNAL_DIR
+    from . import profiles
 
     env = os.environ if env is None else env
     raw_args = list(core_args) if core_args else list(DEFAULT_CORE_ARGS)
@@ -757,6 +782,10 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
     clean_core_args = clean_core_args or list(DEFAULT_CORE_ARGS)
     config_path = _config_arg(clean_core_args)
     cfg = config_mod.load(config_path)   # ConfigError si invalide
+    # Profil de joueur (série MJ, lot MJ1) : `--profil` passe au core ; reprise et FIT dans son dossier.
+    profile_id = _option_arg(clean_core_args, "--profil")
+    ctx = profiles.resolve(profile_id, env) or profiles.current()   # ProfileContextError si refusé
+    profile_args = ["--profil", ctx.id] if ctx.id is not None else []
 
     godot = Path(env.get("GODOT") or cfg.engine.godot or DEFAULT_GODOT).expanduser()
     if not (godot.is_file() and os.access(godot, os.X_OK)):
@@ -787,8 +816,9 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),
         ],
         release_cmd=[*core, "release-trainer", *config_args],
-        recover_cmd=[*core, "recover"],
-        journal_dir=JOURNAL_DIR,
+        recover_cmd=[*core, "recover", *profile_args],
+        journal_dir=ctx.journal_dir,
+        sim_journal_dir=profiles.ProfileContext.for_id(SIM_PROFILE).journal_dir,
         log_path=Path(env["OPENRIDE_LOG"]).expanduser() if env.get("OPENRIDE_LOG") else DEFAULT_LOG,
         rotation=None if env.get("OPENRIDE_LOG") else LogRotation(),
         compile_enabled=not no_compile,

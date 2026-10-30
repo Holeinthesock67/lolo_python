@@ -37,7 +37,7 @@ from typing import Any
 
 from .. import config
 from ..demo_world import write_world
-from ..journal import JOURNAL_DIR, read_journal
+from ..journal import read_journal
 from .fake_world import add_terrain_layer
 from .seance_guidee import CREATED, ESSAIS_DIR, cues_json
 
@@ -539,7 +539,7 @@ def main(argv: list[str] | None = None, ride: Ride | None = None) -> int:
     p.add_argument("commande", nargs="?", default="tout", choices=("tout", "materiel", "pc", "bilan", "restaurer"))
     p.add_argument("--routes-dir", type=Path, default=config.ROUTES_DIR)
     p.add_argument("--essais-dir", type=Path, default=ESSAIS_DIR)
-    p.add_argument("--journal-dir", type=Path, default=JOURNAL_DIR)
+    p.add_argument("--journal-dir", type=Path, default=None)
     p.add_argument("--profile", type=Path, default=None, help="profil de progression (défaut ~/OpenRide/profile.json)")
     p.add_argument("--config", type=Path, default=None, help="config.toml (défaut ~/OpenRide/config.toml)")
     p.add_argument("--sans-terrain", action="store_true", help="route seule (plus rapide)")
@@ -548,10 +548,12 @@ def main(argv: list[str] | None = None, ride: Ride | None = None) -> int:
         print(MATERIEL, end="")
         return 0
 
-    from ..profile import PROFILE_PATH
+    from .. import profiles
     from .guide import Guide
 
-    profile_path = args.profile or PROFILE_PATH
+    ctx = profiles.current()   # profil de joueur en cours (série MJ, lot MJ1)
+    profile_path = args.profile or ctx.profile_path
+    args.journal_dir = args.journal_dir or ctx.journal_dir
     config_path = args.config or config.DEFAULT_CONFIG_PATH
     recette_dir = args.essais_dir / RECETTE
     if args.commande == "restaurer":
