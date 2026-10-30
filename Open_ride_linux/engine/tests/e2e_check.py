@@ -40,7 +40,7 @@ TOTAL_BUDGET_S = 60.0
 # Mêmes tolérances que run_engine_tests.sh (avertissements connus du mode sans écran).
 # Même tolérance que run_engine_tests.sh : le rendu factice des tests sans écran signale `Parameter "m" is null`
 # pour les maillages générés par le code (avatar du lot V6), sans conséquence.
-GODOT_TOLERATED = re.compile(r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|Parameter \"m\" is null")
+GODOT_TOLERATED = re.compile(r"ObjectDB instances (were )?leaked|resources still in use at exit|[Mm]esh.*(null|nul)|Parameter \"m\" is null")
 
 
 def now() -> float:
@@ -339,7 +339,7 @@ def schema_errors(state: dict) -> list[str]:
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    ap.add_argument("--godot", type=Path, required=True, help="exécutable Godot 4.3")
+    ap.add_argument("--godot", type=Path, required=True, help="exécutable Godot 4.7")
     ap.add_argument("--engine-routes-dir", type=Path, help="dossier de parcours de l'engine (défaut : celui du core)")
     ap.add_argument("--keep", action="store_true", help="garder le dossier temporaire même si tout passe")
     args = ap.parse_args(argv)

@@ -118,6 +118,9 @@ func _test_menu_slider() -> void:
 	_check(SettingsViewModel.format_value(diff, 50) == "■■■■■□□□□□ 50 %", "difficulté toujours en curseur")
 	var cap := {"key": "wind.max_grade_offset_pct", "type": "int", "min": 0, "max": 8, "unit": "pts"}
 	_check(SettingsViewModel.format_value(cap, 4) == "4 pts", "plafond du vent en nombre, pas en curseur")
+	var ftp := {"key": "rider.ftp_w", "type": "int", "min": 100, "max": 500, "unit": "W"}
+	_check(SettingsViewModel.format_value(ftp, 250.0) == "250 W" and SettingsViewModel.format_value(ftp, 2.5) == "2.5 W",
+		"nombre du JSON : « 250 W » sans « .0 » (Godot 4.7), décimales gardées")
 
 
 func _init() -> void:

@@ -48,3 +48,20 @@ Aucune. Le prérequis d'installation change (Godot 4.7.x au lieu de 4.3) : le gu
 
 - Nouveaux réglages d'image (AgX, SMAA, glow) : cahier Y13 §7.3 ; ombres : Y4 ; arbres lointains : Y5.
 - Moteur Mobile : Y7 ; Jolt ; export en paquet autonome de Godot (J4).
+
+## 9. Réalisation (29 octobre)
+
+Version retenue : **Godot 4.7.2-stable** (dernier correctif publié ; 4.7.3 n'existe pas le 29 octobre). Godot 4.3 reste installé sur le PC cible pour le retour arrière (§4.6).
+
+- **Import** (`--headless --import`) : aucune erreur ni avertissement ; les 280 fichiers `.uid` créés par l'éditeur sont versionnés ; `config/features` passe à « 4.7 ».
+- **Outils et installation** : chemins par défaut, CI (cache et téléchargement de 4.7.2), `install.sh` (accepte `4.7*`, refuse 4.3 en donnant le lien de 4.7.2, testé dans `test_launch_no_terminal.py`), README, CLAUDE.md, guide, outils de test.
+- **Corrections dues à 4.7** :
+  - filtre des journaux : Godot 4.7 écrit « ObjectDB instances were leaked » (toléré comme avant) ;
+  - ciel nuageux (`sky_clouds.gdshader`) : le `ProceduralSkyMaterial` de 4.7 calcule le dégradé sur les cosinus ; notre copie reprend la nouvelle formule et les mêmes conversions de réglages que le moteur (écart 0/255 avec le ciel du moteur en couverture 0) ;
+  - FXAA demandé seulement en Forward+ (le moteur Compatibility l'avertit désormais), comme l'occlusion et la brume ;
+  - `WorkoutChartModel.nice_ticks` : plus de `-0.0` (4.7 compare les tableaux bit à bit) ;
+  - test des traînées : fond uni non teinté par le brouillard (`fog_sky_affect = 0`).
+  - images de référence de `visual_check` (`tests/golden/xvfb/low/`, lot X20) refaites en 4.7.2 : ciel au nouveau dégradé, texte un peu plus large (le bandeau « Core non joignable (nouvel essai chaque seconde) » passe sur deux lignes dans sa largeur de 560 px), SSIM 0,96 contre 4.3 ;
+  - réglages chiffrés : depuis 4.4, `str()` d'un flottant entier garde « .0 » (« FTP — 250.0 W » relevé par le banc des menus en CI) ; `SettingsViewModel.number_text` rend « 250 » comme avant ; banc des menus 16/16 en 4.7.2.
+- **Résultats dans le cloud** : `run_engine_tests.sh` 126/126, `run_e2e.sh` OK, `pytest` core 1601 et compilateur 420. Captures Forward+ (`visual_check.py --native`, lavapipe, 1280×720) : image quasi identique ; couleurs un peu plus froides en 4.7 (rouge −4 à −15, bleu +5 à +10 sur 255, moyenne du bas de l'image), y compris en `low` sans glow : l'écart vient de la lumière ambiante du nouveau ciel, pas du glow. Réglages du glow inchangés (Soft Light ; l'étape 4 d'Y13 le recale avec AgX).
+- **Reste** : mesure avant et après sur le PC cible (§4.1 et §4.5) et recette du propriétaire.

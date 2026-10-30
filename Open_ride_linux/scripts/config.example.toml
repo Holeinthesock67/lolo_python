@@ -52,4 +52,4 @@ events_pct = 100              # bips du Click, bloc ERG, consignes, jingles
 latence = false               # journal de latence des appuis du Click (lot X7, docs/OUTILS_DE_TEST.md)
 
 [engine]
-godot = ""                    # chemin de Godot 4.3 (rempli par scripts/install.sh)
+godot = ""                    # chemin de Godot 4.7 (rempli par scripts/install.sh)

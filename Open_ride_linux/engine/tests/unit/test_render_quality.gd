@@ -60,7 +60,7 @@ func _test_presets_application() -> void:
 			and env.ssil_enabled == (str(img["ssil"]) != "off" and fp),
 			"%s : SSAO %s, SSIL %s" % [name, img["ssao"], img["ssil"]])
 		_check(vp.msaa_3d == RenderQuality.MSAA[int(img["msaa"])]
-			and (vp.screen_space_aa == Viewport.SCREEN_SPACE_AA_FXAA) == bool(img["fxaa"]),
+			and (vp.screen_space_aa == Viewport.SCREEN_SPACE_AA_FXAA) == (bool(img["fxaa"]) and fp),
 			"%s : MSAA %d×, FXAA %s" % [name, img["msaa"], str(img["fxaa"])])
 		_check(absf(vp.mesh_lod_threshold - float(img["mesh_lod_threshold"])) < 1e-4,
 			"%s : seuil LOD %.1f px" % [name, img["mesh_lod_threshold"]])
