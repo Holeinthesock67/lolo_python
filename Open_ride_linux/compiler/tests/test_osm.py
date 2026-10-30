@@ -137,7 +137,7 @@ def test_offline_cache_byte_for_byte_identical(fake_overpass, make_gpx, tmp_path
 
     assert run("build", gpx, "--out", out1, "--layers", "route,terrain,buildings,vegetation") == 0
     calls_after_first = len(fake_overpass.calls)
-    assert calls_after_first == 1
+    assert calls_after_first == 2          # couches OSM, puis voies du couloir de la surface (lot U20)
 
     # Seconde compilation avec --offline : aucun appel HTTP supplémentaire, fichiers identiques octet pour octet
     assert run("build", gpx, "--out", out2, "--layers", "route,terrain,buildings,vegetation", "--offline") == 0
