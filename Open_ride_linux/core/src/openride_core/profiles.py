@@ -14,6 +14,9 @@ Lot MJ2 : `profil.toml` décrit le profil (`[profil] id, nom, type, cree, seance
 d'essai `_essai` est un profil comme les autres, de type `essai`, où les séances simulées comptent
 (`seances_comptees = ["live", "simulated"]`) ; ses journaux portent `profile_id` et ne comptent
 jamais ailleurs. Un profil sans `profil.toml`, et le contexte historique, valent `joueur`, `["live"]`.
+
+Lot MJ5 : une fois la migration du joueur d'avant les profils finie (`Profils/.migration`, module
+`migration_profils`), le profil par défaut est `principal` et le contexte historique ne sert plus.
 """
 
 from __future__ import annotations
@@ -36,6 +39,9 @@ _ID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,31}$")
 TYPES = ("joueur", "essai")
 SOURCES = ("live", "simulated", "replay")   # valeurs `source` de l'en-tête du journal (lot V2)
 TRIAL_ID = "_essai"
+MAIN_ID = "principal"          # joueur d'avant les profils, après la migration (lot MJ5)
+MIGRATION_FILE = ".migration"  # étapes de la migration, dans `Profils/` (lot MJ5)
+MIGRATION_DONE = "fini"
 # Description par défaut d'un profil sans `profil.toml` : tout est donnée, aucun cas particulier
 # dans le code (le profil d'essai ne diffère que par ces valeurs).
 DEFAULTS: dict[str, dict[str, Any]] = {
@@ -251,10 +257,27 @@ def activate(ctx: ProfileContext | None) -> None:
     _active = ctx
 
 
+def migration_steps(base: Path | None = None) -> list[str]:
+    """Étapes déjà faites de la migration (lot MJ5), dans l'ordre ; vide si elle n'a pas commencé."""
+    path = (base if base is not None else profiles_dir()) / MIGRATION_FILE
+    try:
+        return [s for s in path.read_text(encoding="utf-8").split() if s]
+    except (OSError, UnicodeDecodeError):
+        return []
+
+
+def default_id(base: Path | None = None) -> str | None:
+    """Profil choisi sans `--profil` ni `OPENRIDE_PROFIL` : `principal` une fois la migration finie,
+    sinon None (contexte historique)."""
+    steps = migration_steps(base)
+    return MAIN_ID if steps and steps[-1] == MIGRATION_DONE else None
+
+
 def resolve(profile_id: str | None, env: dict[str, str] | None = None) -> ProfileContext | None:
-    """Profil demandé par `--profil`, sinon par `OPENRIDE_PROFIL` ; None sans demande."""
+    """Profil demandé par `--profil`, sinon par `OPENRIDE_PROFIL`, sinon le profil par défaut
+    (`default_id`) ; None : contexte historique."""
     env = os.environ if env is None else env
-    wanted = profile_id if profile_id else env.get(ENV_VAR, "")
+    wanted = profile_id or env.get(ENV_VAR, "") or default_id()
     return ProfileContext.for_id(wanted) if wanted else None
 
 

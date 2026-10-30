@@ -56,29 +56,21 @@ def _fr(x: float, digits: int = 1) -> str:
     return f"{x:,.{digits}f}".replace(",", " ").replace(".", ",")
 
 
-def run(directory: Path | None, as_json: bool, config_path: Path | None,
-        workouts_dir: Path | None = None, profile_path: Path | None = None,
-        save: Path | None = None, compare: Path | None = None) -> int:
-    try:
-        cfg = config_mod.load(config_path)
-        ctx = profiles.current()   # profil de joueur en cours (série MJ, lot MJ1)
-        table = load_table(ctx.table_path)
-        ct = coin_table(table, cfg.rider.ftp_w)
-    except (config_mod.ConfigError, ProgressionError, CoinsError) as exc:
-        print(f"Erreur : {exc}", file=sys.stderr)
-        return 2
-    directory = directory or ctx.journal_dir
+def snapshot(directory: Path, ctx: "profiles.ProfileContext", cfg: config_mod.Config,
+             workouts_dir: Path | None = None, profile_path: Path | None = None) -> dict[str, Any]:
+    """Sortie `xp --json` du dossier `directory` pour le profil `ctx` (aussi utilisée par la migration
+    des profils, lot MJ5) ; lève `ProgressionError` ou `CoinsError`."""
+    table = load_table(ctx.table_path)
+    ct = coin_table(table, cfg.rider.ftp_w)
     progress = recompute(directory, table,
                          workout_duration_finder(workouts_dir or config_mod.WORKOUTS_DIR),
                          counted=ctx.counted_sources, owns=ctx.owns)
     lv = progress.level
-    earned = earned_coins(progress, ct)
     per_session = coins_by_session(progress, ct)
-    solde = balance(progress, peek_profile(profile_path), ct)
-    out = {
+    return {
         "directory": str(directory), "profile": ctx.id, "profile_type": ctx.type, "total_xp": progress.total_xp, "level": lv.level,
         "xp_level_start": lv.xp_level_start, "xp_next_level": lv.xp_next_level,
-        "coins_earned": earned, "coins_balance": solde,
+        "coins_earned": earned_coins(progress, ct), "coins_balance": balance(progress, peek_profile(profile_path), ct),
         "stats": {k: round(v, 1) for k, v in progress.stats.items()},
         "challenges": [{"id": c.id, "name": c.name, "reward": c.reward, "journal": c.journal,
                         "date": _date(c.start_ts)} for c in progress.challenges],
@@ -93,7 +85,24 @@ def run(directory: Path | None, as_json: bool, config_path: Path | None,
             "gains": r.gains.as_list() if r.gains else [],
         } for r in progress.sessions],
         "errors": [{"journal": n, "error": e} for n, e in progress.errors],
+        "_progress": progress,
     }
+
+
+def run(directory: Path | None, as_json: bool, config_path: Path | None,
+        workouts_dir: Path | None = None, profile_path: Path | None = None,
+        save: Path | None = None, compare: Path | None = None) -> int:
+    try:
+        cfg = config_mod.load(config_path)
+        ctx = profiles.current()   # profil de joueur en cours (série MJ, lot MJ1)
+        directory = directory or ctx.journal_dir
+        out = snapshot(directory, ctx, cfg, workouts_dir, profile_path)
+    except (config_mod.ConfigError, ProgressionError, CoinsError) as exc:
+        print(f"Erreur : {exc}", file=sys.stderr)
+        return 2
+    progress = out.pop("_progress")
+    lv = progress.level
+    earned, solde = out["coins_earned"], out["coins_balance"]
     if compare is not None:
         try:
             before = json.loads(compare.read_text(encoding="utf-8"))

@@ -6,7 +6,8 @@ résultat doit passer `config.validate` (sinon rien n'est écrit) et le remplace
 
 `update_layers` (série MJ, lot MJ4) répartit les valeurs entre `config.toml` (la machine) et le
 `profil.toml` du profil en cours (clés de `config.PROFILE_KEYS`), mêmes garanties, et valide la
-configuration effective des deux fichiers.
+configuration effective des deux fichiers. `remove_keys` (lot MJ5) retire des clés passées au
+profil en laissant un commentaire qui dit où elles sont.
 
 En ligne de commande (utilisé par `scripts/install.sh`) :
     python -m openride_core.config_edit FICHIER SECTION CLÉ VALEUR
@@ -125,6 +126,33 @@ def update_config(path: Path, values: list[tuple[str, str, object]]) -> list[str
         raise ConfigEditError(f"écriture refusée : {exc}") from None
     _write(path, new)
     return changed
+
+
+def remove_keys(path: Path, keys: list[tuple[str, str]], note: str) -> list[str]:
+    """Remplace chaque ligne `clé = …` des `(section, clé)` donnés par `# clé : <note>` (copie `.bak`) ;
+    renvoie les clés retirées. Le fichier final doit rester un TOML valide, sinon rien n'est écrit."""
+    lines = _read_text(path).splitlines()
+    wanted = set(keys)
+    section = ""
+    removed: list[str] = []
+    for i, line in enumerate(lines):
+        m = SECTION_RE.match(line)
+        if m:
+            section = m.group(1)
+            continue
+        km = re.match(r"^\s*([A-Za-z0-9_-]+)\s*=", line)
+        if km and (section, km.group(1)) in wanted:
+            lines[i] = f"# {km.group(1)} : {note}"
+            removed.append(f"[{section}] {km.group(1)}")
+    if not removed:
+        return []
+    new = "\n".join(lines) + "\n"
+    try:
+        config_mod.from_dict(_parse(path, new), str(path))
+    except config_mod.ConfigError as exc:
+        raise ConfigEditError(f"écriture refusée : {exc}") from None
+    _write(path, new)
+    return removed
 
 
 _ACTIVE = config_mod._ACTIVE
