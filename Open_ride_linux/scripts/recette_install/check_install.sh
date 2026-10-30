@@ -119,7 +119,8 @@ git clone --quiet "${REPO_URL}" "${work}/up" && (
         && git add -A && git commit --quiet -m "Témoin de mise à jour" && git push --quiet origin HEAD
 ) > /dev/null 2>&1
 check $? "nouveau commit publié sur le dépôt d'origine"
-bash "${PROJECT}/scripts/update.sh" > "${HOME}/update.log" 2>&1
+# Sans fenêtre : avec un écran, update.sh ouvrirait une fenêtre zenity qui attend un clic.
+OPENRIDE_NO_GUI=1 bash "${PROJECT}/scripts/update.sh" > "${HOME}/update.log" 2>&1
 rc=$?
 check ${rc} "scripts/update.sh" "$(tail -n 1 "${HOME}/update.log")"
 after_head="$(git -C "${DEST}" rev-parse --short HEAD)"
