@@ -301,8 +301,8 @@
 | [MJ3](LOT_MJ3_campagne_profil.md) | Série MJ : campagne simulée accélérée (`campagne_profil`) et garde-fou d'empreinte du vrai profil | Python | MJ2 | Moyenne | **Livré le 29 octobre** (branche `claude/project-thread-grv91v-mj3`) |
 | [MJ4](LOT_MJ4_configuration_deux_couches.md) | Série MJ : configuration à deux couches `config.toml` + `profil.toml`, portée de chaque réglage | Python | MJ1 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj4`) |
 | [MJ5](LOT_MJ5_migration_profil.md) | Série MJ : migration du profil actuel vers `Profils/principal/`, séances simulées vers `_essai`, contrôle X39 | Python | MJ2, MJ4 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj5`), migration réelle dans MJ10 |
-| [MJ6](LOT_MJ6_contrat_profils.md) | Série MJ : contrat IPC des profils (ajouts compatibles) | doc, JSON | MJ0 | Petite | Prêt, validation du propriétaire |
-| [MJ7](LOT_MJ7_core_profils.md) | Série MJ : core, choisir, créer, renommer, supprimer un profil sans relancer | Python | MJ4, MJ6 | Moyenne | Prêt (version 2.0) |
+| [MJ6](LOT_MJ6_contrat_profils.md) | Série MJ : contrat IPC des profils (ajouts compatibles) | doc, JSON | MJ0 | Petite | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj6`), validation du propriétaire avant fusion |
+| [MJ7](LOT_MJ7_core_profils.md) | Série MJ : core, choisir, créer, renommer, supprimer un profil sans relancer | Python | MJ4, MJ6 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj7`, après MJ5 et MJ6) |
 | [MJ8](LOT_MJ8_ecrans_profils.md) | Série MJ : écrans « Qui roule ? », nom du profil, gestion, bandeau ESSAI (maquettes A à F validées) | GDScript | MJ7 | Moyenne | Prêt, captures à valider |
 | [MJ9](LOT_MJ9_outils_docs_profils.md) | Série MJ : recette V10 sur `_essai`, guide et outils | Python, doc | MJ7, MJ8 | Petite | Prêt (version 2.0) |
 | [MJ10](LOT_MJ10_recette_profils.md) | Série MJ : recette sur le PC (migration réelle, deux profils, séance de 10 min) | — | MJ5, MJ9 | Petite | Non : propriétaire |

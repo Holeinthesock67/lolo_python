@@ -61,7 +61,12 @@
         "world_pin",
         "set_ride_mode",
         "list_wtf_rules",
-        "set_wtf_rule"
+        "set_wtf_rule",
+        "list_profiles",
+        "select_profile",
+        "create_profile",
+        "rename_profile",
+        "delete_profile"
       ]
     },
     "args": {
