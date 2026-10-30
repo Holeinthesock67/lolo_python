@@ -91,6 +91,13 @@ def _check_route(r: dict, mroute: dict, problems: list[str]) -> None:
     if not last_regular < length <= last_regular + ds + 0.01:
         problems.append(f"route : length_m = {length} incohérent avec n = {n} et ds_m = {ds}")
 
+    surface = r.get("surface")   # facultative, depuis 1.6 (lot U20)
+    if surface is not None:
+        if not isinstance(surface, list) or len(surface) != n:
+            problems.append(f"route : « surface » doit avoir {n} valeurs")
+        elif any(v not in C.SURFACES for v in surface):
+            problems.append(f"route : « surface » hors de {', '.join(C.SURFACES)}")
+
     cols: dict[str, list] = {}
     for key in C.ROUTE_FIELDS + ("alt_raw_m",):
         col = r.get(key)
