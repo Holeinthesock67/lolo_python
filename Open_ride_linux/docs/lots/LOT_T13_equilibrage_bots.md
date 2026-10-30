@@ -60,3 +60,4 @@ Le champ `level_pct` de l'élément `{ "kind": "profile" }` de l'argument `bots`
 - **Menu de l'engine** : `BOT_CHOICES` de `menu_model.gd` gagne les quatre profils à 90, 100 et 110 % (« Grimpeur 90 % »…), dans le même cycle de A long sur l'écran Prêt, sans nouveau bouton.
 - **Contrat** : une ligne dans l'historique de la révision 1.5 ; SRS : section `[bots]`.
 - **Tests** : `core/tests/test_bots_calibration.py` (critères 2 à 6), `engine/tests/unit/test_menu_flow.gd` (profils au menu, argument de `start`).
+- **Abri (lot AS1, 29 octobre)** : le calibrage reste calculé sans abri. En séance, un bot qui roule en groupe ou dans la roue du cycliste s'abrite : il peut donc finir plus tôt que le temps visé.

@@ -20,7 +20,7 @@ from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
 
-from . import ftms
+from . import ftms, latency_log
 from .ble_util import backoff_delays, ble_lock, default_client_factory, find_device, note_trainer_write
 from .config import BikeConfig, TrainerConfig
 from .mock_driver import TrainerMetrics
@@ -30,18 +30,46 @@ log = logging.getLogger("ftms_driver")
 
 STALE_S = 3.0            # sans donnée au-delà : trainer considéré perdu (contrat IPC §6)
 FORCE_RECONNECT_S = 10.0  # sans donnée au-delà : on coupe et on reconnecte
-RESEND_S = 2.0           # la consigne est renvoyée au moins toutes les 2 s
+RESEND_S = 2.0           # valeur par défaut de [trainer] resend_s : consigne renvoyée au moins toutes les 2 s
 MIN_SEND_INTERVAL_S = 0.2
 GRADE_EPSILON_PCT = 0.1
+TRACE_IBD_EVERY_S = 0.9   # avec trace_ftms : une ligne de mesures par notification Indoor Bike Data (≈ 1 Hz)
+# Frein lâché par le trainer (29 octobre : 449 W puis 0 W en 2 s, à 73 tr/min et 31 km/h, sans erreur
+# ni statut) : puissance qui passe de plus de BRAKE_LOSS_FROM_W à moins de BRAKE_LOSS_TO_W en
+# BRAKE_LOSS_WINDOW_S, pédales et volant encore en mouvement ; une reprise de contrôle au plus
+# toutes les BRAKE_LOSS_COOLDOWN_S.
+BRAKE_LOSS_FROM_W = 200.0
+BRAKE_LOSS_TO_W = 10.0
+BRAKE_LOSS_WINDOW_S = 3.0
+BRAKE_LOSS_MIN_RPM = 40.0
+BRAKE_LOSS_MIN_KMH = 15.0
+BRAKE_LOSS_COOLDOWN_S = 10.0
+BRAKE_BACK_W = 50.0   # puissance qui revient après la reprise : le frein est revenu
+BRAKE_BACK_WINDOW_S = 15.0
 ERG_EPSILON_W = 1.0
 RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (arrêt jamais bloqué)
 CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
 MAX_CONTROL_RETRIES = 2  # reprises de contrôle tentées avant de déclarer le refus
 DEFAULT_POWER_RANGE = (0.0, 2000.0)
 ATT_RETRIES = 2          # renvois après une erreur ATT (3 essais en tout), lot M1
-ATT_RETRY_DELAY_S = 0.25
+ATT_RETRY_DELAY_S = 0.25   # doublé à chaque renvoi : 0,25 s puis 0,5 s
+CP_BUSY_GRACE_S = 0.5    # procédure précédente restée sans réponse : attente de plus avant d'écrire
+# « Control Point occupé » : 0xFE (Procedure Already In Progress, FTMS) et 0x80, erreur applicative
+# renvoyée par le HomeTrainer (24 et 28 octobre ; le 28, en même temps que la montre Garmin).
+# La liaison reste ouverte : la consigne la plus récente est réessayée avec un délai croissant.
+CP_BUSY_CODES = frozenset({0x80, ftms.ATT_PROCEDURE_IN_PROGRESS})
+CP_BUSY_BACKOFF_S = (0.5, 1.0, 2.0, 4.0)
+RELEASE_BUSY_RETRIES = 3   # relâche sur un Control Point occupé : 0,25, 0,5 puis 1 s d'attente
 
 _ATT_ERROR_RE = re.compile(r"ATT error:\s*0x([0-9a-f]{1,2})\b", re.IGNORECASE)
+
+
+class ControlPointBusy(Exception):
+    """Écriture refusée par un Control Point occupé (CP_BUSY_CODES) après tous les renvois."""
+
+    def __init__(self, op: int, code: int) -> None:
+        super().__init__(f"Control Point occupé (ATT 0x{code:02x} sur 0x{op:02x})")
+        self.op, self.code = op, code
 
 
 def att_error_code(exc: BaseException) -> int | None:
@@ -95,7 +123,7 @@ def format_cp_write(payload: bytes) -> tuple[str, str, str]:
             wind, grade, crr, cw = struct.unpack_from("<hhBB", payload, 1)
             grade_pct = grade / 100.0
             crr_val = crr / 10000.0
-            cw_val = cw / 1000.0 if cw > 50 else cw / 100.0
+            cw_val = cw / 100.0
             vals = [f"pente {grade_pct:.2f} %", f"crr {crr_val:.4f}", f"cw {cw_val:.3f}"]
             if wind != 0:
                 vals.insert(0, f"vent {wind / 1000.0:.1f} m/s")
@@ -109,7 +137,8 @@ class ControlPoint:
 
     Une procédure n'est finie qu'à l'indication de réponse (0x80) ; écrire avant expose à
     l'erreur ATT « Procedure Already In Progress ». Chaque écriture attend donc cette
-    indication, au plus `CP_RESPONSE_TIMEOUT_S`, puis on continue même sans réponse.
+    indication, au plus `CP_RESPONSE_TIMEOUT_S`, puis on continue même sans réponse ; si elle
+    manque encore, l'écriture suivante l'attend `CP_BUSY_GRACE_S` de plus avant de partir.
     """
 
     def __init__(self, client: Any,
@@ -145,6 +174,8 @@ class ControlPoint:
 
     async def call(self, payload: bytes, write_timeout: float | None = None) -> ftms.ControlResponse | None:
         """Écrit une commande et attend sa réponse ; None si le trainer n'a pas répondu à temps."""
+        if not self._idle.is_set():   # réponse de la commande précédente encore attendue
+            await self.wait_idle(CP_BUSY_GRACE_S)
         fut = asyncio.get_running_loop().create_future()
         self._waiting = (payload[0], fut)
         t_start = self._clock()
@@ -152,16 +183,23 @@ class ControlPoint:
         self.last_call_at = t_start
         try:
             note_trainer_write()
+            was_idle = self._idle.is_set()
+            latency_log.cp_written()   # lot X7 : étage « cp » des appuis qui attendent cette écriture
             self._idle.clear()
             if self.trace:
                 op_name, vals, hex_str = format_cp_write(payload)
                 args = f" {vals}" if vals else ""
                 log.info("FTMS > %s%s (%s)", op_name, args, hex_str)
             write = self.client.write_gatt_char(ftms.CONTROL_POINT, payload, response=True)
-            if write_timeout is None:
-                await write
-            else:
-                await asyncio.wait_for(write, timeout=write_timeout)
+            try:
+                if write_timeout is None:
+                    await write
+                else:
+                    await asyncio.wait_for(write, timeout=write_timeout)
+            except BaseException:
+                if was_idle:   # écriture refusée : aucune procédure lancée par celle-ci
+                    self._idle.set()
+                raise
             try:
                 resp = await asyncio.wait_for(fut, timeout=CP_RESPONSE_TIMEOUT_S)
                 if self.trace and resp is not None:
@@ -212,7 +250,7 @@ class FtmsDriver:
         self._clock = clock
         # Cw = 0,5 · ρ · CdA (kg/m), cf. ftms.cmd_set_sim_params.
         self._crr = bike.crr
-        self._cw = 0.5 * RHO0 * bike.cda_m2
+        self._cw = RHO0 * bike.cda_m2   # Cw FTMS = CdA × ρ, sans le ½ (voir ftms.cmd_set_sim_params)
         self._wind_mps = 0.0   # champ vent de la commande 0x11 ([wind] feel = "ftms", lot P2)
 
         self._want = _Want()
@@ -228,6 +266,15 @@ class FtmsDriver:
         self._raw_power = 0.0
         self._power = 0.0
         self._cadence = 0.0
+        self._trainer_speed_kmh: float | None = None
+        self._trainer_resistance: int | None = None
+        self._trace_ibd_at = float("-inf")
+        self._last_brake_loss_at = float("-inf")
+        self.event_sink: Callable[[dict], None] | None = None   # lignes `ftms` du journal (posé par la session)
+        self.brake_losses = 0   # pertes de frein détectées (reprise de contrôle tentée à chacune)
+        self._loaded_at = float("-inf")   # dernier instant à plus de BRAKE_LOSS_FROM_W
+        self._loaded_w = 0.0
+        self._brake_lost_at: float | None = None
         self._hr_ibd: int | None = None
         self._hr_service: int | None = None
         self._hr_relay_val: int | None = None
@@ -243,6 +290,11 @@ class FtmsDriver:
         self.supports_erg = True
         self.reconnect_count = 0
         self.att_retries = 0   # renvois après une erreur ATT ponctuelle (lot M1)
+        # Control Point occupé (CP_BUSY_CODES) après les renvois : consigne gardée et réessayée.
+        self.busy = False      # vrai jusqu'à la prochaine consigne acceptée (bandeau de l'engine)
+        self.busy_deferrals = 0
+        self._busy_streak = 0
+        self._busy_retry_at = 0.0
 
     # --- interface synchrone, commune avec MockDriver ---------------------------------
 
@@ -367,9 +419,72 @@ class FtmsDriver:
             self._raw_power = max(float(d.power_w), 0.0)
         if d.cadence_rpm is not None:
             self._cadence = d.cadence_rpm
+        if d.speed_kmh is not None:
+            self._trainer_speed_kmh = d.speed_kmh
+        if d.resistance_level is not None:
+            self._trainer_resistance = d.resistance_level
+        self._trace_ibd(self._last_data_at)
+        if d.power_w is not None:
+            self._check_brake_loss(self._last_data_at, max(float(d.power_w), 0.0))
         if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
             self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
+
+    def _emit(self, event: str, **fields: Any) -> None:
+        """Ligne `ftms` du journal JSONL (statuts du trainer, perte de frein) ; jamais bloquante."""
+        if self.event_sink is None:
+            return
+        try:
+            self.event_sink({"kind": "ftms", "ts": round(time.time(), 3), "event": event, **fields})
+        except Exception:
+            log.debug("Ligne ftms du journal perdue", exc_info=True)
+
+    def _check_brake_loss(self, now: float, power_w: float) -> None:
+        """Détecte un frein lâché par le trainer et tente une reprise du contrôle (voir BRAKE_LOSS_*)."""
+        if power_w >= BRAKE_LOSS_FROM_W:
+            self._loaded_at, self._loaded_w = now, power_w
+        if self._brake_lost_at is not None:
+            if power_w >= BRAKE_BACK_W and self._cadence >= BRAKE_LOSS_MIN_RPM:
+                log.info("Trainer : puissance revenue (%.0f W) %.1f s après la reprise du contrôle",
+                         power_w, now - self._brake_lost_at)
+                self._emit("power_back", after_s=round(now - self._brake_lost_at, 1), power_w=round(power_w))
+                self._brake_lost_at = None
+            elif now - self._brake_lost_at > BRAKE_BACK_WINDOW_S:
+                log.warning("Trainer : la puissance n'est pas revenue %.0f s après la reprise du contrôle",
+                            BRAKE_BACK_WINDOW_S)
+                self._emit("power_not_back", after_s=BRAKE_BACK_WINDOW_S)
+                self._brake_lost_at = None
+        want = self._want
+        loaded = want.mode == "sim" or want.value >= 100.0   # ERG à 0 W (repos d'un bloc) : pas de frein attendu
+        speed_ok = self._trainer_speed_kmh is None or self._trainer_speed_kmh >= BRAKE_LOSS_MIN_KMH
+        if (power_w < BRAKE_LOSS_TO_W and now - self._loaded_at <= BRAKE_LOSS_WINDOW_S and loaded
+                and self._cadence >= BRAKE_LOSS_MIN_RPM and speed_ok
+                and now - self._last_brake_loss_at >= BRAKE_LOSS_COOLDOWN_S):
+            self._last_brake_loss_at = now
+            self._brake_lost_at = now
+            self.brake_losses += 1
+            speed = "—" if self._trainer_speed_kmh is None else f"{self._trainer_speed_kmh:.0f} km/h"
+            log.warning("Trainer : le frein a lâché (%.0f W puis %.0f W à %.0f tr/min, volant %s) ; "
+                        "contrôle repris et consigne renvoyée", self._loaded_w, power_w, self._cadence, speed)
+            self._emit("brake_loss", from_w=round(self._loaded_w), to_w=round(power_w),
+                       cadence_rpm=round(self._cadence), speed_kmh=self._trainer_speed_kmh)
+            self._forget_sent()   # nouvelle prise de contrôle et renvoi de la consigne au prochain tour
+
+    def _trace_ibd(self, now: float) -> None:
+        """Avec trace_ftms : ce que le trainer annonce lui-même (vitesse du volant, niveau de
+        résistance) à côté de la consigne envoyée, pour séparer une chute de résistance du trainer
+        d'une consigne trop basse du core (décrochage du 29 octobre, braquet 1 après un sprint)."""
+        if not self.cfg.trace_ftms or now - self._trace_ibd_at < TRACE_IBD_EVERY_S:
+            return
+        self._trace_ibd_at = now
+        sent = self._last_sent
+        want = "aucune" if sent is None else (
+            f"{sent[1]:.0f} W" if sent[0] == "erg" else f"pente {sent[1]:.2f} %")
+        speed = "—" if self._trainer_speed_kmh is None else f"{self._trainer_speed_kmh:.1f} km/h"
+        level = "—" if self._trainer_resistance is None else str(self._trainer_resistance)
+        log.info("FTMS ~ mesures : puissance %.0f W, cadence %.0f tr/min, vitesse du trainer %s, "
+                 "niveau de résistance %s, consigne envoyée %s",
+                 self._raw_power, self._cadence, speed, level, want)
 
     def _on_hr(self, _ch: Any, data: bytearray) -> None:
         try:
@@ -397,6 +512,10 @@ class FtmsDriver:
             return (now - last_t) < 2.0
         return (now - self._cp.last_call_at) < 2.0
 
+    def _on_training_status(self, _ch: Any, data: bytearray) -> None:
+        log.info("FTMS < Training Status %s", bytes(data).hex())
+        self._emit("training_status", data=bytes(data).hex())
+
     def _on_status(self, _ch: Any, data: bytearray) -> None:
         status = ftms.parse_machine_status(bytes(data))
         if status is None:
@@ -404,6 +523,7 @@ class FtmsDriver:
         code, name = status
         now = self._clock()
         is_echo = self._is_status_echo(code, now)
+        self._emit("status", code=f"0x{code:02X}", name=name, data=bytes(data[1:]).hex(), echo=is_echo)
         if self.cfg.trace_ftms:
             valeurs = ""
             if code == 0x08 and len(data) >= 3:
@@ -412,6 +532,8 @@ class FtmsDriver:
             elif code == 0x12 and len(data) >= 7:
                 _, grade, _, _ = struct.unpack_from("<hhBB", data, 1)
                 valeurs = f"pente {grade / 100.0:.2f} %"
+            elif len(data) > 1:
+                valeurs = f"octets {bytes(data[1:]).hex()}"   # ex. Spin Down Status : 1 demandé, 2 réussi, 3 erreur, 4 arrêter de pédaler
             qualification = "écho probable de notre commande" if is_echo else "par un tiers"
             vals_str = f" {valeurs}" if valeurs else ""
             log.info("FTMS < statut %s%s (%s)", name, vals_str, qualification)
@@ -430,6 +552,10 @@ class FtmsDriver:
         elif code in (0x02, 0x03):
             # Arrêt voulu sur le trainer (ou clé de sécurité) : pas de redémarrage forcé.
             log.info("Trainer : état machine %s", name)
+        elif code == 0x14:
+            # Spin Down Status : étalonnage lancé par le trainer, volant lancé puis frein relâché
+            # (hypothèse du décrochage du 29 octobre) ; toujours au journal, pas seulement en trace.
+            log.info("Trainer : étalonnage (Spin Down Status) %s", bytes(data[1:]).hex())
         else:
             log.debug("Trainer : état machine %s %s", name, bytes(data[1:]).hex())
 
@@ -440,6 +566,10 @@ class FtmsDriver:
             if resp.request_op in (ftms.OP_SET_SIM_PARAMS, ftms.OP_SET_TARGET_POWER):
                 self._refusals = 0
                 self.control_refused = False
+                if self.busy:
+                    log.info("Control Point de nouveau libre : consigne acceptée")
+                self.busy = False
+                self._busy_streak = 0
             return
         if resp.request_op == ftms.OP_START_RESUME:
             # « Démarrer » refusé = le trainer tourne déjà (mesuré sur le HomeTrainer) : sans gravité.
@@ -483,6 +613,11 @@ class FtmsDriver:
         if self.reconnect_count or self.att_retries:
             log.info("Trainer : %d reconnexion(s), %d renvoi(s) après erreur ATT.",
                      self.reconnect_count, self.att_retries)
+        if self.brake_losses:
+            log.info("Trainer : %d perte(s) de frein détectée(s).", self.brake_losses)
+        if self.busy_deferrals:
+            log.info("Control Point occupé : %d consigne(s) reportée(s), liaison gardée.",
+                     self.busy_deferrals)
 
     async def _session(self) -> None:
         loop = asyncio.get_running_loop()
@@ -521,6 +656,11 @@ class FtmsDriver:
                 log.warning("Trainer sans Control Point FTMS : mesures seules, aucune consigne")
             if services.get_characteristic(ftms.MACHINE_STATUS) is not None:
                 await client.start_notify(ftms.MACHINE_STATUS, self._on_status)
+            if self.cfg.trace_ftms and services.get_characteristic(ftms.TRAINING_STATUS) is not None:
+                try:   # Training Status : seulement pour le journal (protection éventuelle du trainer)
+                    await client.start_notify(ftms.TRAINING_STATUS, self._on_training_status)
+                except Exception as exc:
+                    log.debug("Training Status indisponible : %s", exc)
             await client.start_notify(ftms.INDOOR_BIKE_DATA, self._on_ibd)
             if services.get_characteristic(ftms.HR_MEASUREMENT) is not None:
                 await client.start_notify(ftms.HR_MEASUREMENT, self._on_hr)
@@ -528,10 +668,14 @@ class FtmsDriver:
             self._last_data_at = self._clock()
             self._link_up = self._ever_connected = True
             self._last_sent = None
+            self.busy, self._busy_streak, self._busy_retry_at = False, 0, 0.0
             log.info("Trainer connecté (%s)", getattr(dev, "name", dev))
             try:
                 if cp is not None:
-                    await self._take_control(cp)
+                    try:
+                        await self._take_control(cp)
+                    except ControlPointBusy as exc:
+                        self._defer(exc)   # prise de contrôle refaite par _flush_command
                 while not (dropped.is_set() or self._stop.is_set()):
                     if self._clock() - (self._last_data_at or 0.0) > FORCE_RECONNECT_S:
                         raise ConnectionError("plus de données du trainer")
@@ -555,8 +699,10 @@ class FtmsDriver:
     async def _call_retrying(self, cp: ControlPoint, build: Callable[[], bytes]) -> None:
         """Écrit `build()` ; renvoie après une erreur ATT ponctuelle, au plus ATT_RETRIES fois.
 
-        `build` est rappelé à chaque essai : un renvoi porte la consigne la plus récente. Toute
-        autre exception, ou une erreur ATT au troisième essai, remonte jusqu'à `run` (reconnexion).
+        `build` est rappelé à chaque essai : un renvoi porte la consigne la plus récente. Control
+        Point toujours occupé au troisième essai (CP_BUSY_CODES) : `ControlPointBusy`, la liaison
+        reste ouverte. Toute autre exception, ou une autre erreur ATT au troisième essai, remonte
+        jusqu'à `run` (reconnexion).
         """
         attempt = 0
         while True:
@@ -567,33 +713,54 @@ class FtmsDriver:
                 raise
             except Exception as exc:
                 code = att_error_code(exc)
-                if code is None or attempt >= ATT_RETRIES:
+                if code is None:
+                    raise
+                if attempt >= ATT_RETRIES:
+                    if code in CP_BUSY_CODES:
+                        raise ControlPointBusy(payload[0], code) from exc
                     raise
                 attempt += 1
                 self.att_retries += 1
                 log.warning("Trainer : écriture 0x%02x refusée (ATT 0x%02x), renvoi %d/%d",
                             payload[0], code, attempt, ATT_RETRIES)
-                if code == ftms.ATT_PROCEDURE_IN_PROGRESS:
+                if code in CP_BUSY_CODES:
                     await cp.wait_idle()   # fin de la procédure en cours d'abord
                 elif code == ftms.ATT_CCCD_IMPROPERLY_CONFIGURED:
                     await cp.enable()      # indications à nouveau demandées
-                await asyncio.sleep(ATT_RETRY_DELAY_S)
+                await asyncio.sleep(ATT_RETRY_DELAY_S * 2 ** (attempt - 1))
                 continue
             if attempt:
                 log.info("Trainer : écriture 0x%02x acceptée au renvoi %d", payload[0], attempt)
             return
 
+    def _defer(self, exc: ControlPointBusy) -> None:
+        """Control Point occupé : la consigne attend, réessayée après un délai croissant.
+
+        La liaison n'est pas coupée : les mesures continuent d'arriver, donc pas de pause
+        automatique. Seule la consigne la plus récente partira (`_want` n'en garde qu'une).
+        """
+        delay = CP_BUSY_BACKOFF_S[min(self._busy_streak, len(CP_BUSY_BACKOFF_S) - 1)]
+        self._busy_streak += 1
+        self.busy_deferrals += 1
+        self._busy_retry_at = self._clock() + delay
+        if not self.busy:
+            log.warning("%s : autre appareil sur le trainer (montre ?) ; liaison gardée, consigne "
+                        "réessayée dans %.1f s", exc, delay)
+        else:
+            log.info("%s : nouvel essai dans %.1f s", exc, delay)
+        self.busy = True
+
     async def _flush_command(self, cp: ControlPoint) -> None:
         now = self._clock()
-        if now - self._last_sent_at < MIN_SEND_INTERVAL_S:
+        if now - self._last_sent_at < MIN_SEND_INTERVAL_S or now < self._busy_retry_at:
             return
         mode, value = self._want.mode, self._want.value
         prev = self._last_sent
         eps = GRADE_EPSILON_PCT if mode == "sim" else ERG_EPSILON_W
         changed = prev is None or prev[0] != mode or abs(prev[1] - value) >= eps
-        changed = changed or (self._immediate and mode == "sim" and prev[1] != value)
-        self._immediate = False
-        if not changed and now - self._last_sent_at < RESEND_S:
+        immediate, self._immediate = self._immediate, False
+        changed = changed or (immediate and mode == "sim" and prev[1] != value)
+        if not changed and now - self._last_sent_at < self.cfg.resend_s:
             return
         supported = self.supports_erg if mode == "erg" else self.supports_sim
         if not supported:   # opcode exclu par Fitness Machine Feature (FTMS tableau 4.15)
@@ -603,8 +770,6 @@ class FtmsDriver:
             self._last_sent, self._last_sent_at = (mode, value), now
             return
         forgotten = self._forgotten
-        if prev is None:   # première consigne ou contrôle perdu
-            await self._take_control(cp)
         sent = (mode, value)
 
         def build() -> bytes:
@@ -617,7 +782,15 @@ class FtmsDriver:
                 return ftms.cmd_set_target_power(want.value)
             return ftms.cmd_set_sim_params(want.value, self._crr, self._cw, self._wind_mps)
 
-        await self._call_retrying(cp, build)
+        try:
+            if prev is None:   # première consigne ou contrôle perdu
+                await self._take_control(cp)
+            await self._call_retrying(cp, build)
+        except ControlPointBusy as exc:
+            self._immediate = self._immediate or immediate   # consigne gardée pour le prochain essai
+            self._last_sent_at = self._clock()
+            self._defer(exc)
+            return
         self._last_sent_at = now
         if self._forgotten == forgotten:   # sinon refus ou contrôle perdu pendant l'écriture
             self._last_sent = sent
@@ -632,7 +805,7 @@ class FtmsDriver:
         await release_control(cp, self._crr, self._cw, sim=self.supports_sim)
 
 
-async def release_control(cp: ControlPoint, crr: float = 0.004, cw_kg_m: float = 0.20,
+async def release_control(cp: ControlPoint, crr: float = 0.004, cw_kg_m: float = 0.39,
                           sim: bool = True) -> bool:
     """Pente 0 % (si le mode SIM existe) puis Reset ; True si les écritures ont abouti.
 
@@ -645,13 +818,20 @@ async def release_control(cp: ControlPoint, crr: float = 0.004, cw_kg_m: float =
     if sim:
         steps.insert(0, ("pente 0 %", ftms.cmd_set_sim_params(0.0, crr, cw_kg_m)))
     for label, payload in steps:
-        try:
-            await cp.call(payload, write_timeout=RELEASE_WRITE_TIMEOUT_S)
-        except asyncio.CancelledError:
-            raise
-        except Exception as exc:
-            ok = False
-            log.warning("Relâche du trainer, %s impossible : %s", label, exc or type(exc).__name__)
+        for attempt in range(RELEASE_BUSY_RETRIES + 1):
+            try:
+                await cp.call(payload, write_timeout=RELEASE_WRITE_TIMEOUT_S)
+                break
+            except asyncio.CancelledError:
+                raise
+            except Exception as exc:
+                if att_error_code(exc) in CP_BUSY_CODES and attempt < RELEASE_BUSY_RETRIES:
+                    await cp.wait_idle()   # Control Point occupé : la relâche réessaie
+                    await asyncio.sleep(ATT_RETRY_DELAY_S * 2 ** attempt)
+                    continue
+                ok = False
+                log.warning("Relâche du trainer, %s impossible : %s", label, exc or type(exc).__name__)
+                break
     if ok:
         log.info("Trainer relâché : pente 0 %, contrôle FTMS rendu.")
     return ok
@@ -690,6 +870,6 @@ async def release_trainer(
                 raise
             except Exception as exc:
                 log.debug("Prise de contrôle avant relâche refusée : %s", exc)
-            ok = await release_control(cp, bike.crr, 0.5 * RHO0 * bike.cda_m2)
+            ok = await release_control(cp, bike.crr, RHO0 * bike.cda_m2)
     log.info("Trainer déconnecté.")
     return ok

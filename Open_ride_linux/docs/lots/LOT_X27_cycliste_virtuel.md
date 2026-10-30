@@ -28,3 +28,13 @@ Le Bluetooth simulé pédale à puissance constante (un peu plus en montée) et 
 ## 6. Hors périmètre
 
 L'équilibrage lui-même (T13, R7).
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x27`, sur X35).
+
+- `core/src/openride_core/sim_rider.py` : sept stratégies (les six du cahier et `vitesse`, qui reprend la vitesse imposée de X35). Le cycliste devient une section `rider` du scénario, au lieu des clés `rider_power_w` et `cadence_rpm` du trainer et de `target_speed_kmh` (X35) : une seule façon de décrire le cycliste. Les scénarios du banc (`difficulte.json`, `endurance.json`) et `sim_bench.py --speed-kmh` sont réécrits. Le défaut (180 W, 88 rpm, +4 % par point de pente, sinusoïde) est inchangé.
+- Le trainer simulé appuie sur le Click simulé quand la stratégie `cadence` le demande ; en ERG, il tient sa cible tant que la cadence n'est pas nulle (la rampe qui lâche coupe la puissance).
+- `tools/bots_race.py` : la vraie `CoreSession` au pas de 20 ms. Les parcours `plat` et `col` sont écrits à la volée par `demo_world.write_world`, qui accepte maintenant un profil de pente. Le FIT de fin de parcours est écrit dans un dossier temporaire. Sur `demo` au cloud : 7,5 s, écarts de +0,08 à +0,20 % au niveau du cycliste, trame `state` la plus grande à 1 289 octets.
+- Proposition du fil V5, banc de calibrage des bots : couvert par `bots_race --niveau` (80, 100, 120 % du niveau du cycliste) sur `plat`, `col` et `demo`. Les équipements (série V) restent à ajouter quand la séance les applique aux bots.
+- Tests : `test_sim_rider.py` (12), `test_bots_race.py` (6), `test_ble_sim.py` et `test_sim_bench_fiabilite.py` réécrits pour la section `rider`.

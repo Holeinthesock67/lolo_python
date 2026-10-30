@@ -2,8 +2,11 @@
   "description": "Montée du village simulé à effort constant (350 W) pour comparer la pente envoyée selon la difficulté du trainer (lancer avec --difficulty 50 puis 100).",
   "trainer": {
     "appear_at": 0.3,
-    "connect_delay_s": 0.3,
-    "rider_power_w": 350,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 350,
     "cadence_rpm": 90
   },
   "click": {

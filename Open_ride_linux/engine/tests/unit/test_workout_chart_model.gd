@@ -3,9 +3,9 @@ extends SceneTree
 ## Tests unitaires sans écran du modèle des courbes de la séance (workout_chart_model.gd, lot O13).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_workout_chart_model.gd
 
+const PerfBudget := preload("res://tests/perf_budget.gd")
 const ChartModel := preload("res://scripts/workout_chart_model.gd")
 const ErgView := preload("res://scripts/erg_view.gd")
-const PerfBudget := preload("res://tests/perf_budget.gd")
 
 ## sweet_spot_3x10.zwo tel que le core l'envoie (triplets du contrat v1.1).
 const SWEET_SPOT := [
@@ -124,8 +124,11 @@ func _test_profile() -> void:
 	m.set_ftp(200.0)
 	m.set_workout_w([[60, 150, 150], [60, null, null]], 120.0)
 	var gw: Dictionary = m.geometry(120.0, 400.0)
-	_check(gw["profile"].size() == 2 and gw["profile"][1]["zone"] == -1 and gw["profile"][1]["color"] == ErgView.FREERIDE_COLOR,
-		"profil en watts (.erg) : roue libre grise")
+	_check(gw["profile"].size() == 1, "profil en watts (.erg) : case sans cible ignorée (pas de roue libre, lot O19)")
+	var nf = ChartModel.new()
+	nf.set_workout_w([[60, 150, 150]], 60.0)
+	var gn: Dictionary = nf.geometry(60.0, 400.0)
+	_check(gn["profile"][0]["zone"] == -1 and gn["profile"][0]["color"] == ErgView.NEUTRAL_COLOR, "sans FTP connue : gris neutre")
 	_check(gw["profile"][0]["zone"] == 2, "150 W à FTP 200 (75 %) : zone 3")
 
 
@@ -143,7 +146,7 @@ func _test_long_session() -> void:
 	for line in g["curves"]["power"]:
 		drawn += line.size()
 	_check(drawn <= ChartModel.MAX_DRAWN_POINTS and g["group"] == 4, "au plus 1 800 points dessinés (%d, groupes de %d)" % [drawn, g["group"]])
-	_check(PerfBudget.check("workout_chart_geometry", dt_ms), "géométrie construite (%.2f ms)" % dt_ms)
+	_check(PerfBudget.check("workout_chart_geometry", dt_ms), "géométrie de 2 h de courbes en %.2f ms" % dt_ms)
 	var w_top: float = g["scales"]["watts"][1]
 	var slow: Array = ChartModel._polylines(m.smoothed("power", 0, 0, 7200), 0, 4, 1600.0, 300.0, 0.0, 7200.0, 0.0, w_top)
 	var fast: PackedVector2Array = g["curves"]["power"][0]

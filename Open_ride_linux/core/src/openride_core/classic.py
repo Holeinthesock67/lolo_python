@@ -6,7 +6,9 @@ du contrat IPC qui les concernent :
 - segments chronométrés (T4) pour le cycliste et pour chaque bot à puissance constante ;
 - records personnels et classement local du passage (T5), écrits hors de la boucle à 50 Hz ;
 - bonus (T6) : arches, bonus de fin de segment, activation par `Z_SHORT`, effets sur la physique ;
-- points et maillots (T14) ; écarts en temps de passage et voisins (T16).
+- points et maillots (T14) ; écarts en temps de passage et voisins (T16) ;
+- équipement de la série V (lot V5) : cadre et roues notés avec chaque record, temps gagné par
+  l'équipement (`equipment_gain_s`) calculé hors de la boucle à 50 Hz par la séance.
 
 Le fantôme (bot `ghost`) n'est ni chronométré ni classé : ton meilleur temps le représente (T5).
 Noms du contrat (révision 1.4) : le bonus `lightweight` du module s'appelle `light`, la réserve
@@ -15,6 +17,7 @@ Noms du contrat (révision 1.4) : le bonus `lightweight` du module s'appelle `li
 
 from __future__ import annotations
 
+import math
 import time
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -31,6 +34,7 @@ CONTRACT_POWERUP = {"lightweight": "light", "aero": "aero", "power": "power"}
 SEGMENT_RESULT_REPEAT = 3        # message `segment_result` répété 3 fois, à une seconde d'intervalle
 SUMMARY_PASSES = 10              # passages gardés dans `summary.segments`
 ME = "me"                        # le cycliste dans `jerseys` (contrat 1.4)
+GAIN_MODES = ("off", "zero", "compute")   # `equipment_gain_s` : null, 0 (équipement de départ), calculé
 
 
 def _contract_rider(rider_id: str | None) -> str | None:
@@ -46,6 +50,22 @@ class _Pending:
 
 
 @dataclass
+class GainJob:
+    """Temps gagné par l'équipement sur un passage, à calculer hors de la boucle (lot V5).
+
+    Le message `segment_result` attend (`at` infini) que `resolve` donne la valeur."""
+    pending: _Pending
+    t_start: float
+    t_end: float
+    s_start: float               # abscisses cumulées du passage (tour compris)
+    s_end: float
+
+    def resolve(self, gain_s: float | None) -> None:
+        self.pending.msg["equipment_gain_s"] = None if gain_s is None else round(gain_s, 1)
+        self.pending.at = -math.inf   # envoyé au pas suivant
+
+
+@dataclass
 class ClassicRace:
     """Segments, records, bonus, maillots et écarts d'une séance sur un parcours."""
 
@@ -58,6 +78,8 @@ class ClassicRace:
     table: PowerUpTable | None = None
     powerups_on: bool = True
     seed: int | None = None
+    loadout: dict | None = None                             # cadre et roues de la séance (lot V5)
+    gain_mode: str = "off"                                  # voir GAIN_MODES
     passes: list[dict] = field(default_factory=list)       # passages du cycliste, pour le bilan
     journal: list[dict] = field(default_factory=list)      # lignes à écrire au journal
     book_dirty: bool = False
@@ -77,6 +99,9 @@ class ClassicRace:
         self._pending: list[_Pending] = []
         self._gaps_report = None
         self.erg = False
+        self.gain_jobs: list[GainJob] = []
+        if self.gain_mode not in GAIN_MODES:
+            raise ValueError(f"gain_mode inconnu : {self.gain_mode}")
 
     def start(self, t: float, s: float, bots: Iterable[Any] = ()) -> None:
         """Position de départ du cycliste et des bots : un segment qui commence là est chronométré."""
@@ -147,14 +172,21 @@ class ClassicRace:
         rows = self.book.ranking(self.route_id, p.segment_id, p,
                                  self._bot_times.get((p.segment_id, p.lap), {}))
         rank = next(i for i, r in enumerate(rows, 1) if r.kind == "you")
-        added = self.book.add(self.route_id, p.segment_id, p, datetime.now().strftime(DATE_FORMAT))
+        added = self.book.add(self.route_id, p.segment_id, p, datetime.now().strftime(DATE_FORMAT),
+                              self.loadout)
         self.book_dirty = True
         msg = {"type": "segment_result", "v": 1, "segment_id": p.segment_id, "name": seg.name[:48],
                "kind": seg.type, "time_s": round(p.time_s, 2), "with_powerup": p.with_bonus,
                "pr": added.is_record, "pr_time_s": None if added.previous_best_s is None
                else round(added.previous_best_s, 2),
-               "rank": rank, "rank_total": len(rows), "points": points, "equipment_gain_s": None}
-        self._pending.append(_Pending(msg, t, SEGMENT_RESULT_REPEAT))
+               "rank": rank, "rank_total": len(rows), "points": points,
+               "equipment_gain_s": 0.0 if self.gain_mode == "zero" else None}
+        pending = _Pending(msg, t, SEGMENT_RESULT_REPEAT)
+        self._pending.append(pending)
+        if self.gain_mode == "compute":
+            pending.at = math.inf   # le message part avec son temps gagné (`GainJob.resolve`)
+            base = p.lap * self.length_m
+            self.gain_jobs.append(GainJob(pending, p.t_start, p.t_end, base + seg.s_start, base + seg.s_end))
         self.passes.append({"segment_id": p.segment_id, "kind": seg.type, "time_s": round(p.time_s, 2),
                             "with_powerup": p.with_bonus, "pr": added.is_record, "rank": rank,
                             "rank_total": len(rows), "points": points})
@@ -163,7 +195,7 @@ class ClassicRace:
                              "time_s": round(p.time_s, 2), "bonuses": list(p.bonuses), "pr": added.is_record})
 
     def pause(self, reason: str) -> None:
-        """Pause : les passages en cours du cycliste sont annulés (toutes les raisons)."""
+        """Pause : passages en cours du cycliste annulés (pause Y) ou suspendus (coupure subie, T4)."""
         self.timer.pause(reason)
         self._prev_s = None
 
@@ -231,6 +263,10 @@ class ClassicRace:
         ts = round(time.time(), 3)
         return [{"kind": "jersey", "ts": ts, "jersey": j} for j in ("sprint", "kom")
                 if self.standings.leader(j) == RIDER_ID]
+
+    def take_gain_jobs(self) -> list[GainJob]:
+        jobs, self.gain_jobs = self.gain_jobs, []
+        return jobs
 
     def take_journal(self) -> list[dict]:
         lines, self.journal = self.journal, []

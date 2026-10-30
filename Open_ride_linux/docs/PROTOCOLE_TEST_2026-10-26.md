@@ -317,8 +317,9 @@ Rappel des commandes en ERG (lot O17, plan commun) : appui court + / − = inten
 
 ### F1. FIT de séance dans Garmin Connect et GoldenCheetah (O8 ligne 21)
 
-- **Étapes :** importer le FIT de D1 ou E1 (`~/OpenRide/Activities/`) dans Garmin Connect, puis dans GoldenCheetah.
-- **Attendu :** import sans erreur, puissance, cadence et FC présentes.
+- **Étapes :** d'abord `openride-core fit-check ~/OpenRide/Activities/<séance>.fit --journal ~/OpenRide/Activities/.journal/<séance>.jsonl` (contrôle local, X11 : le fichier ne quitte pas le PC) ; puis importer le FIT de D1 ou E1 (`~/OpenRide/Activities/`) dans Garmin Connect, puis dans GoldenCheetah.
+- **Attendu :** `fit-check` sans ÉCHEC (une ATTENTION se note) ; import sans erreur, puissance, cadence et FC présentes.
+- [ ] `fit-check` sans échec
 - [ ] Garmin Connect
 - [ ] GoldenCheetah
 
@@ -472,6 +473,7 @@ Ces essais s'ajoutent aux blocs A à H ; chacun dit s'il se fait sur le vélo. L
 ### J7. Boutons de l'ERG définitifs (O17), sur le vélo
 
 - **Prérequis, faits sans vélo (automatisés le 28 octobre) :** `engine/tests/run_engine_tests.sh` avec `UNIT=test_key_map` puis en entier ; `cd core && pytest -m recette_sans_velo` (flèches du Click et du clavier relayées sans effet sur le braquet en séance libre, clavier du terminal touche pour touche comme le Click).
+- **Fait sans vélo (lot X33) :** `python3 engine/tests/sim_bench.py --scenario erg_boutons` (5 min sous Xvfb) joue tous les gestes ci-dessous au Click simulé puis au clavier (message de test `key`, vrai chemin du clavier) et vérifie au journal de séance le biais et la cible ERG de chaque appui, le bloc suivant, la pause et la reprise ; au vélo, il reste le bip et le ressenti.
 - **Étapes :** `--trainer mock` puis le vélo : séance ERG courte, au Click puis au clavier de la fenêtre : ± courts, ± longs (touche tenue une seconde, puis `Page haut` et `Page bas`), Z, Y, `Échap`.
 - **Attendu :** ± court = biais ± 2 %, ± long = biais ± 10 % (borné à 80 % et 120 %), aucun bloc sauté ; Z = bloc suivant ; Y et `Échap` = pause de la séance, reprise depuis l'écran de pause ; même bip au clavier qu'au Click ; en séance libre, flèches haut et bas sans effet sur le braquet.
 - [ ] Gestes du plan commun au Click

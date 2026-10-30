@@ -140,12 +140,14 @@ func _test_hud() -> void:
 	_check(hud.jerseys_label.visible and hud.jerseys_label.text == "Vert : toi · Pois : Grimpeur", "HUD : porteurs des maillots")
 	var right: Rect2 = hud.panel_right.get_rect()
 	var bots: Rect2 = hud.panel_bots.get_rect()
-	var bottom: float = maxf(hud.get_viewport().get_visible_rect().size.y, 720.0) - HudView.PROFILE_RESERVE
-	_check(bots.position.y >= right.end.y and bots.end.y <= bottom, "encart sous le panneau de droite, au-dessus du profil (%s)" % bots)
+	var prof: Rect2 = hud.profile_panel.get_rect()
+	var bottom: float = maxf(hud.get_viewport().get_visible_rect().size.y, 720.0) - HudView.SCREEN_BOTTOM
+	_check(prof.position.y >= right.end.y and bots.position.y >= prof.end.y and bots.end.y <= bottom,
+		"profil sous le panneau de droite, encart sous le profil et dans l'écran (%s, %s)" % [prof, bots])
 	# Blocs segment et bonus affichés en 720 lignes : l'encart descend, les lignes de bots qui ne tiennent plus
 	# sont cachées.
 	root.size = Vector2i(1280, 720)
-	bottom = 720.0 - HudView.PROFILE_RESERVE
+	bottom = 720.0 - HudView.SCREEN_BOTTOM
 	hud.update_segment({"segment": {"mode": "active", "title": "Montée 1", "main": "1:02", "detail": "", "tone": ""},
 		"powerup": {"visible": true, "held_text": "Z : Aéro", "active_text": "", "fraction": 0.0}})
 	var seg: Rect2 = hud.panel_segment.get_rect()

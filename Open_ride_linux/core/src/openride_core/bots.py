@@ -8,6 +8,9 @@
   distingue. Cahier : `docs/lots/LOT_T12_bots_profil.md`.
 - calibrate (lot T13) : échelle de la CP d'un bot à profil pour qu'il finisse le parcours dans le temps
   d'un cycliste de référence à `level_pct` % de sa FTP. Cahier : `docs/lots/LOT_T13_equilibrage_bots.md`.
+- lot AS1 : les bots `constant` s'abritent (`draft`, posé par `draft.update_bots`) ; un bot à profil
+  garde la roue du coureur devant lui (`wheel`) au lieu de le doubler. Cahier :
+  `docs/lots/LOT_AS1_abri_entre_bots.md`.
 """
 
 from __future__ import annotations
@@ -22,7 +25,7 @@ from typing import Any
 from dataclasses import dataclass
 
 from .config import BOUNDS
-from .physics import G, V_FLOOR, V_MAX, PhysicsParams, RiderPhysics, air_density
+from .physics import G, V_FLOOR, V_MAX, PhysicsParams, RiderPhysics, air_density, resistive_force
 from .rogue.wbal import WbalState, wbal_initial, wbal_step
 from .route import Route
 from .tools.session_summary import Session, load_session, running_records
@@ -61,6 +64,10 @@ class ConstantPowerBot:
         self.params = replace(p)   # copie propre au bot : son vent de face lui est propre (lot P2)
         self.physics = RiderPhysics(self.params, s=s, v=v)
         self.t = 0.0
+        self.draft = 0.0                       # abri lissé (lot AS1), posé par draft.update_bots
+        self.wheel: tuple[float, float] | None = None   # roue suivie : écart (m) et vitesse du coureur devant
+        self.push = 0.0                        # poussée du coureur qui suit de près
+        self.power_factor = 1.0                # mamie à l'attaque du mode WTF (lot WTF2)
 
     @property
     def s(self) -> float:
@@ -87,7 +94,7 @@ class ConstantPowerBot:
             grade = here.grade_pct
             alt = here.alt_m
 
-        self.physics.step(self.power_w, grade, alt, dt)
+        self.physics.step(self.power_w * self.power_factor, grade, alt, dt, alpha_draft=self.draft)
         if route is not None and not route.is_loop and self.physics.s >= route.length_m:
             self.physics.s = route.length_m
             self.physics.v = 0.0
@@ -259,6 +266,11 @@ PROFILES: dict[str, BotProfile] = {
 
 
 DEFAULT_BIKE_MASS_KG = 8.0
+FOLLOW_GAP_M = 0.5          # lot AS1 : écart visé dans la roue
+FOLLOW_GAIN = 0.5           # 1/s : vitesse visée = vitesse de la roue + gain × (écart − écart visé)
+FOLLOW_TAU_S = 2.0          # s : temps pour rattraper la vitesse visée
+FOLLOW_MIN_CP = 0.60        # puissance plancher dans la roue, en part de la CP
+FOLLOW_LEAVE_SPEED = 0.85   # la roue plus lente que 85 % de la vitesse de croisière seule : on repart
 
 
 class ProfileBot(ConstantPowerBot):
@@ -325,30 +337,63 @@ class ProfileBot(ConstantPowerBot):
                      wbal_pct: float | None = None) -> float:
         """Puissance demandée par la stratégie à la position s, avant la limite de la réserve
         (`wbal_pct` : réserve à prendre en compte, celle du bot sinon ; simulation du calibrage)."""
+        return self._strategy(s, length_m, is_loop, wbal_pct)[0]
+
+    def _strategy(self, s: float, length_m: float, is_loop: bool,
+                  wbal_pct: float | None = None) -> tuple[float, bool]:
+        """Puissance de la stratégie et vrai pour une attaque en montée ou un sprint (lot AS1 : le bot
+        quitte alors la roue qu'il suivait)."""
         spec = self.spec
         here = self._segment_here(s, length_m, is_loop)
         if here is None:
-            return spec.flat * self.cp_w
+            return spec.flat * self.cp_w, False
         seg, lap = here
         if seg.type == "climb":
             reserve = self.wbal_pct if wbal_pct is None else wbal_pct
             attack = spec.climb_attack > 0 and reserve > 100.0 * spec.climb_reserve
-            return (spec.climb_attack if attack else spec.climb) * self.cp_w
+            return (spec.climb_attack if attack else spec.climb) * self.cp_w, attack
         pos = s % length_m if is_loop and length_m > 0 else s
         if self.peak_w > 0 and seg.s_end - pos <= spec.sprint_last_m:
             key = (seg.id, lap)
             if key != self._peak_key:
                 self._peak_key, self._peak_used_s = key, 0.0
             if self._peak_used_s < spec.peak_s - 1e-9:   # 10 s pile, malgré les arrondis des pas
-                return self.peak_w
-        return spec.flat * self.cp_w
+                return self.peak_w, True
+        return spec.flat * self.cp_w, False
+
+    def _cruise_speed(self, power_w: float, grade: float, alt: float) -> float:
+        """Vitesse d'équilibre seul, sans abri, à `power_w` (dichotomie courte : un appel par pas)."""
+        lo, hi = 0.0, V_MAX
+        target = self.params.efficiency * power_w
+        for _ in range(24):
+            mid = 0.5 * (lo + hi)
+            if resistive_force(mid, grade, alt, self.params) * mid < target:
+                lo = mid
+            else:
+                hi = mid
+        return 0.5 * (lo + hi)
+
+    def _follow_power(self, power_w: float, grade: float, alt: float) -> float:
+        """Puissance pour garder la roue (lot AS1) : vitesse de la roue corrigée de l'écart, sans
+        dépasser la stratégie ni descendre sous 60 % de la CP. La stratégie si la roue est trop lente."""
+        gap, v_lead = self.wheel
+        if v_lead < FOLLOW_LEAVE_SPEED * self._cruise_speed(power_w, grade, alt):
+            return power_w
+        v = self.physics.v
+        v_want = max(v_lead + FOLLOW_GAIN * (gap - FOLLOW_GAP_M), 0.0)
+        force = resistive_force(v_want, grade, alt, self.params, self.draft)
+        need = (force * v_want + self.params.mass_kg * (v_want - v) / FOLLOW_TAU_S * v) / self.params.efficiency
+        return min(power_w, max(need, FOLLOW_MIN_CP * self.cp_w))
 
     def step(self, dt: float, route: Route | None = None) -> None:
         if dt < 0:
             return
         length = route.length_m if route is not None else 0.0
         loop = route.is_loop if route is not None else False
-        power = self.target_power(self.physics.s, length, loop)
+        power, tactical = self._strategy(self.physics.s, length, loop)
+        if self.wheel is not None and not tactical:
+            here = route.sample(self.physics.s) if route is not None else None
+            power = self._follow_power(power, here.grade_pct if here else 0.0, here.alt_m if here else 0.0)
         if power > self.cp_w and self.wbal.w_bal_j <= 0.0:
             power = self.cp_w
         if power == self.peak_w and self.peak_w > 0:
@@ -393,8 +438,8 @@ SCALE_BOUNDS = (0.2, 5.0)
 
 @dataclass(frozen=True)
 class RefRider:
-    """Cycliste de référence du calibrage : FTP et physique du cycliste (`PhysicsParams.from_config` :
-    masse totale, CdA, Crr et rendement de `config.toml`)."""
+    """Cycliste de référence du calibrage : FTP et physique du cycliste dans la séance (`config.toml`
+    et équipement de la série V : `apply_equipment`, lot V5), pour que le niveau choisi reste juste."""
 
     ftp_w: float
     params: PhysicsParams
@@ -462,9 +507,14 @@ def ride_time(prof: RouteProfile, params: PhysicsParams, power_w: float = 0.0,
 
 
 def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segments: tuple = (),
-              bike_mass_kg: float = DEFAULT_BIKE_MASS_KG, prof: RouteProfile | None = None) -> float:
+              bike_mass_kg: float = DEFAULT_BIKE_MASS_KG, prof: RouteProfile | None = None,
+              bot_params: PhysicsParams | None = None) -> float:
     """Échelle de la CP (et de W′ et du pic) du profil pour finir le parcours dans le temps du cycliste
     de référence à `level_pct` % de sa FTP, à `CALIBRATION_TOL` près. Fonction pure.
+
+    `bot_params` : physique du bot pendant la séance (CdA, Crr, rendement ; sa masse vient du profil),
+    celle du cycliste par défaut. L'équipement du cycliste (lot V5) ne s'applique qu'à lui : le bot
+    roule sans, son échelle compense.
 
     Recherche sur le logarithme de l'échelle : sécante, gardée dans l'encadrement trouvé (dichotomie
     quand la sécante en sort) ; le temps décroît avec l'échelle. `prof` : relevé du parcours à partager
@@ -474,7 +524,8 @@ def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segme
     prof = prof or RouteProfile(route)
     still = replace(rider.params, wind_mps=0.0)   # calibrage sans vent, pour le cycliste comme pour le bot
     t_ref = ride_time(prof, still, power_w=rider.ftp_w * level_pct / 100.0)
-    bot = ProfileBot(profile, params=still, segments=segments, bike_mass_kg=bike_mass_kg)
+    bot = ProfileBot(profile, params=replace(bot_params or rider.params, wind_mps=0.0), segments=segments,
+                     bike_mass_kg=bike_mass_kg)
     lo_x, hi_x = math.log(SCALE_BOUNDS[0]), math.log(SCALE_BOUNDS[1])
 
     def err(x: float) -> float:
@@ -511,9 +562,10 @@ def calibrate(profile: str, route: Any, level_pct: float, rider: RefRider, segme
 
 
 def calibrate_bots(bots: list[Any], route: Any, rider: RefRider, level_pct: float, segments: tuple = (),
-                   bike_mass_kg: float = DEFAULT_BIKE_MASS_KG) -> dict[tuple[str, float], float]:
+                   bike_mass_kg: float = DEFAULT_BIKE_MASS_KG,
+                   bot_params: PhysicsParams | None = None) -> dict[tuple[str, float], float]:
     """Calibre les bots à profil de la séance (niveau du bot, `level_pct` du réglage sinon) ; un calcul
-    par couple (profil, niveau). Renvoie les échelles trouvées."""
+    par couple (profil, niveau). Renvoie les échelles trouvées. `bot_params` : voir `calibrate`."""
     scales: dict[tuple[str, float], float] = {}
     prof: RouteProfile | None = None
     for b in bots:
@@ -522,7 +574,7 @@ def calibrate_bots(bots: list[Any], route: Any, rider: RefRider, level_pct: floa
         key = (b.profile, float(b.level_pct if b.level_pct is not None else level_pct))
         if key not in scales:
             prof = prof or RouteProfile(route)
-            scales[key] = calibrate(b.profile, route, key[1], rider, segments, bike_mass_kg, prof)
+            scales[key] = calibrate(b.profile, route, key[1], rider, segments, bike_mass_kg, prof, bot_params)
         b.set_scale(scales[key])
     return scales
 

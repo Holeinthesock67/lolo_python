@@ -242,7 +242,7 @@ ERG_ZWO = """<workout_file><name>Contrat ERG</name><workout>
 
 
 def test_state_frames_in_erg(tmp_path, monkeypatch):
-    """Lot F : trames state en ERG (blocs, pause ERG, roue libre, fin) et erreur workout_invalid."""
+    """Lot F : trames state en ERG (blocs, pause ERG, FreeRide à 50 W, fin) et erreur workout_invalid."""
     async def scenario():
         workouts = tmp_path / "Workouts"
         workouts.mkdir()
@@ -266,7 +266,9 @@ def test_state_frames_in_erg(tmp_path, monkeypatch):
             if s.state.erg:
                 types.add(s.state.erg["block_type"])
         erg_frames = [f for f in cap.of("state") if f["erg"] is not None]
-        assert {"warmup", "interval_on", "interval_off", "freeride", "cooldown"} <= types
+        assert {"warmup", "interval_on", "interval_off", "steady", "cooldown"} <= types
+        assert "freeride" not in types                              # lot O19 : jamais de roue libre en ERG
+        assert all(f["mode"] == "ERG" and f["erg"]["target_w"] >= 50 for f in erg_frames)
         assert any(f["erg"]["paused"] for f in erg_frames)
         assert any(f["mode"] == "ERG" for f in erg_frames)
         assert any(f["erg"]["next_target_w"] is None for f in erg_frames)
@@ -329,7 +331,7 @@ def test_v1_3_state_limit_rev_and_modes(tmp_path, monkeypatch):
         assert len(acks) == 2
         for ack in acks:
             assert_valid(ack)
-            assert ack["rev"] == "1.5" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue"]
+            assert ack["rev"] == "1.5" and ack["config"]["modes"] == ["ride", "erg", "open_world", "rogue", "wtf"]
         assert s.server.engine_rev is None
     asyncio.run(scenario())
     hello = jsonschema.Draft202012Validator(schema("hello"))
@@ -349,7 +351,7 @@ def test_v1_4_contract_examples_are_valid():
     """Révision 1.4 (lot T1) : exemples du §7 pour les séries R, T et V."""
     blocks = contract_json_blocks()
     state, erg, _cmd, devices = blocks[:4]
-    t_extras, rogue, segment_result, loot, xp_result, hello_ack = blocks[6:]
+    t_extras, rogue, segment_result, loot, xp_result, hello_ack = blocks[6:12]
     # Trame 1.0 inchangée, toujours valide
     assert_valid(state)
     # Trame classique : segment, bonus, maillots et 5 bots à profil
@@ -387,6 +389,21 @@ def test_v1_4_contract_examples_are_valid():
                        ("buy", {"item_id": "helmet-aero"}),
                        ("set_avatar", {"avatar": hello_ack["config"]["progression"]["avatar"]})):
         assert_valid({"type": "cmd", "v": 1, "cmd_id": 20, "name": name, "args": args})
+
+
+def test_v1_5_free_erg_examples_are_valid():
+    """Révision 1.5 (lot O18) : exemples du §7, ERG cadence d'une session libre et `set_ride_mode`."""
+    blocks = contract_json_blocks()
+    state = blocks[0]
+    cadence_erg, set_ride_mode = blocks[12:14]
+    assert cadence_erg["kind"] == "cadence" and set_ride_mode["name"] == "set_ride_mode"
+    assert_valid_1_4_state({**state, "mode": "ERG", "erg": cadence_erg})
+    assert cadence_erg["cadence_low_rpm"] < cadence_erg["cadence_target_rpm"] < cadence_erg["cadence_high_rpm"]
+    assert_valid(set_ride_mode)
+    free = {k: v for k, v in cadence_erg.items() if not k.startswith("cadence_")}
+    assert_valid_1_4_state({**state, "mode": "ERG", "erg": {**free, "kind": "free", "workout_name": "ERG libre"}})
+    bad = {**cadence_erg, "cadence_zone": "inside"}
+    assert list(jsonschema.Draft202012Validator(schema("state")).iter_errors({**state, "mode": "ERG", "erg": bad}))
 
 
 def test_v1_4_values_are_checked():

@@ -6,7 +6,7 @@ Ligne 21 de la recette 1.0 : le FIT d'une vraie séance doit s'importer dans Gar
 
 ## 2. À lire
 
-`core/src/openride_core/fit_writer.py` (ou le module FIT du core), `core/tests/test_fit_sdk.py` (SDK officiel Garmin, extra `dev`), `journal.py`.
+`core/src/openride_core/fit_export.py` (module FIT du core), `core/tests/test_fit_sdk.py` (SDK officiel Garmin, extra `dev`), `journal.py`.
 
 ## 3. Travail demandé
 
@@ -27,3 +27,13 @@ Ligne 21 de la recette 1.0 : le FIT d'une vraie séance doit s'importer dans Gar
 ## 6. Hors périmètre
 
 L'import dans Garmin Connect lui-même (fait par le propriétaire).
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x11`).
+
+- **`openride-core fit-check FICHIER.fit [--journal JOURNAL.jsonl] [--json]`** (`tools/fit_check.py`) : décodage par `garmin_fit_sdk` (FIT reconnu, CRC, erreurs du SDK), puis sept contrôles, huit avec le journal. Niveaux : ÉCHEC pour un défaut qui fausse la séance importée (message manquant, retour en arrière, trou hors pause, FC figée, total faux, écart au journal) ; ATTENTION pour des enregistrements sans puissance ou cadence hors pauses, ou écrits pendant une pause.
+- **Tolérances** : ± 1 %, jamais moins que la résolution du FIT (1 m, 1 s, 1 W, 1 bpm). Un trou est un écart de plus de 2 s entre deux enregistrements ; il est admis s'il contient une pause entière (`stop_all` puis `start`). La FC figée reprend le critère du lot Q5 : même valeur plus de 15 s pendant que la puissance varie d'au moins 5 W.
+- Sans le SDK : message « installer l'extra dev du core (pip install -e 'core[dev]') », code 2. Le fichier est lu sur place : rien n'est copié ni écrit, aucun fichier d'activité n'entre dans le dépôt (les tests fabriquent leurs FIT avec `write_fit`).
+- Tests : `core/tests/test_fit_check.py` (8 tests : séance propre, avec pause, avec trou, avec FC figée ; face au journal ; message manquant et CRC faux ; sous-commande et `--json` ; SDK absent).
+

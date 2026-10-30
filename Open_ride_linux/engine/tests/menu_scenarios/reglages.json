@@ -1,5 +1,5 @@
 {
-  "description": "Réglages en sous-écrans : FTP + 15 W enregistrée dans config.toml, annulation par Y, qualité appliquée tout de suite, ligne de version, retour à l'accueil.",
+  "description": "Réglages en sous-écrans : FTP + 15 W enregistrée dans config.toml, annulation par Y, qualité appliquée tout de suite, compteur d'images/s détaillé, ligne de version, retour à l'accueil.",
   "etapes": [
     {"ecran": "home", "delai": 15},
     {"choisir": "settings"},
@@ -26,6 +26,11 @@
     {"appui": ["PLUS_SHORT", "A_LONG"]},
     {"journal": "engine", "motif": "Qualité appliquée : medium"},
     {"config": {"render.quality": "medium"}},
+    {"note": "Compteur d'images/s détaillé (temps CPU et GPU, pour les essais) : non → oui → détaillé",
+     "choisir": "set:render.fps"},
+    {"appui": ["PLUS_SHORT", "PLUS_SHORT", "A_LONG"]},
+    {"ecran": "settings_group", "edition": false, "contient": ["Afficher les images/s — détaillé"]},
+    {"config": {"render.fps": "detail"}},
     {"appui": "Y_SHORT"},
     {"ecran": "settings", "contient": ["OpenRide "]},
     {"appui": "Y_SHORT"},

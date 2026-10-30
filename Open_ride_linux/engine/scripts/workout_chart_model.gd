@@ -8,7 +8,7 @@ extends RefCounted
 ## Le dessin est le lot O14 : il appelle `push()` à chaque trame `state` puis `geometry(w, h)`.
 ##
 ## - `set_workout(profile, ftp_w, duration_s)` : triplets du contrat `[durée_s, fraction début,
-##   fraction fin]` (fractions `null` = roue libre) ; `set_workout_w(profile_w, duration_s)` : même
+##   fraction fin]` (une case sans fraction est ignorée : pas de roue libre en ERG, lot O19) ; `set_workout_w(profile_w, duration_s)` : même
 ##   forme en watts absolus (`.erg` du lot O9), zones calculées avec `set_ftp()` ;
 ##   sans profil : parcours libre, fenêtre des 10 dernières minutes.
 ## - `push(t_s, power_w, hr_bpm, cadence_rpm, target_w)` : `t_s` = temps de séance (hors pauses).
@@ -34,7 +34,7 @@ const LEVELS := [2, 4, 8, 16, 32, 64]
 
 var ftp_w := 0.0
 var duration_s := 0.0
-## Segments du profil en watts : {t0, t1, w0, w1} (w0 = w1 = null en roue libre).
+## Segments du profil en watts : {t0, t1, w0, w1}.
 var segments: Array = []
 var has_profile := false
 var smoothing_s := 0
@@ -115,17 +115,12 @@ func _set_segments(profile: Array, scale: float, total_s: float) -> void:
 	segments = []
 	var t := 0.0
 	for item in profile:
-		if typeof(item) != TYPE_ARRAY or item.size() < 3:
+		if typeof(item) != TYPE_ARRAY or item.size() < 3 or item[1] == null or item[2] == null:
 			continue
 		var dur := maxf(0.0, float(item[0]))
 		if dur <= 0.0:
 			continue
-		var w0: Variant = null
-		var w1: Variant = null
-		if item[1] != null:
-			w0 = float(item[1]) * scale
-			w1 = float(item[2] if item[2] != null else item[1]) * scale
-		segments.append({"t0": t, "t1": t + dur, "w0": w0, "w1": w1})
+		segments.append({"t0": t, "t1": t + dur, "w0": float(item[1]) * scale, "w1": float(item[2]) * scale})
 		t += dur
 	duration_s = maxf(t, total_s)
 	has_profile = not segments.is_empty()
@@ -298,8 +293,7 @@ func current_values() -> Dictionary:
 func target_max_w() -> float:
 	var m := 0.0
 	for seg in segments:
-		if seg["w0"] != null:
-			m = maxf(m, maxf(float(seg["w0"]), float(seg["w1"])))
+		m = maxf(m, maxf(float(seg["w0"]), float(seg["w1"])))
 	return m
 
 
@@ -340,10 +334,10 @@ static func zone_of_w(w: float, ftp: float) -> int:
 	return ErgView.zone_of_frac(w / ftp) if ftp > 0.0 else -1
 
 
-static func zone_color_w(w: Variant, ftp: float) -> Color:
-	if w == null or ftp <= 0.0:
-		return ErgView.FREERIDE_COLOR
-	return ErgView.zone_color(float(w) / ftp)
+static func zone_color_w(w: float, ftp: float) -> Color:
+	if ftp <= 0.0:
+		return ErgView.NEUTRAL_COLOR
+	return ErgView.zone_color(w / ftp)
 
 
 # --- géométrie ---------------------------------------------------------------------------------
@@ -451,9 +445,6 @@ func _profile_polygons(w: float, h: float, win: Vector2, span: float, w_top: flo
 	for seg in segments:
 		var t0: float = seg["t0"]
 		var t1: float = seg["t1"]
-		if seg["w0"] == null:
-			out.append(_poly(t0, t1, 0.0, 0.0, null, w, h, win, span, w_top))
-			continue
 		var w0: float = seg["w0"]
 		var w1: float = seg["w1"]
 		var cuts: Array = [0.0, 1.0]
@@ -475,7 +466,7 @@ func _profile_polygons(w: float, h: float, win: Vector2, span: float, w_top: flo
 	return out
 
 
-func _poly(ta: float, tb: float, wa: float, wb: float, mid_w: Variant, w: float, h: float,
+func _poly(ta: float, tb: float, wa: float, wb: float, mid_w: float, w: float, h: float,
 		win: Vector2, span: float, w_top: float) -> Dictionary:
 	var xa := (ta - win.x) / span * w
 	var xb := (tb - win.x) / span * w
@@ -483,7 +474,7 @@ func _poly(ta: float, tb: float, wa: float, wb: float, mid_w: Variant, w: float,
 	var yb := h - clampf(wb / w_top, 0.0, 1.0) * h
 	return {
 		"polygon": PackedVector2Array([Vector2(xa, h), Vector2(xa, ya), Vector2(xb, yb), Vector2(xb, h)]),
-		"t0": ta, "t1": tb, "w0": wa if mid_w != null else null, "w1": wb if mid_w != null else null,
-		"zone": zone_of_w(float(mid_w), ftp_w) if mid_w != null else -1,
+		"t0": ta, "t1": tb, "w0": wa, "w1": wb,
+		"zone": zone_of_w(mid_w, ftp_w),
 		"color": zone_color_w(mid_w, ftp_w),
 	}

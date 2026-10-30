@@ -29,3 +29,14 @@ Le trainer simulé de `ble_sim.py` répond presque tout de suite : la puissance 
 ## 6. Hors périmètre
 
 Le cycliste qui réagit (X27), le réglage du lissage de pente (Q4).
+
+## 7. Livraison
+
+Livré le 28 octobre (branche `claude/project-thread-818r6t-x6`, sur X35 pour la vitesse imposée).
+
+- **`ble_sim.TrainerResponse`** : frein du 1er ordre à retard pur, serrage plus rapide que relâchement, volant d'inertie, cycliste qui tient sa cadence à braquet fixe sans dépasser `rider_max_w`, effort de la route en SIM avec la pente, le Crr, le Cw et le vent lus dans la trame SIM (le trainer simulé lit maintenant les quatre champs). `SimTrainer(response="realiste")` l'utilise ; `instant` reste le défaut, sans changement de comportement (même tirage du hasard du monde).
+- **Préréglage** (`ble_sim.REALISTE`) : retard 0,6 s, serrage 2 s, relâchement 4,9 s (90 % vers 12 s), volant 0,6 kg·m², gigue de 40 ms. `calibration` (`steps.csv` du lot X5) remplace retard et constantes de temps ; un fichier sans palier montant et descendant mesurés est refusé à la validation du scénario.
+- **Scénarios** : scénario du core `realiste` (`--sim-scenario realiste`) ; protocoles du banc de paliers `marche_pente`, `erg_paliers` et `rogue_fenetres` (`trainer_steps --mode`), qui sont des suites de consignes et non des scénarios d'appareils.
+- **Vérification** : `trainer_steps --trainer sim --response realiste [--calibration steps.csv]` compare chaque t63 au modèle (écriture de la consigne + retard + constante de temps + une trame pour la moyenne glissante de l'analyse), code 1 au-delà de ± 20 % (jamais moins de deux trames, la résolution de la mesure) ; en `--fast`, paliers de 20 s au plus pour laisser le relâchement finir. Mesuré dans le conteneur : ERG 150 → 250 → 150 W, t63 2,77 s et 5,78 s (t90 du relâchement 12,2 s) ; pente 0 → 7 → 0 %, t63 2,79 s et 5,64 s, tous à moins de 10 % du modèle.
+- Tests : `core/tests/test_ble_sim_realiste.py` (10 tests : t63 à ± 10 % du retard + τ en ERG, retard pur, relâchement plus lent et à 90 % vers 12 s, effort de la route en SIM, cycliste plafonné, volant, calibration, validation, trame SIM, mode `instant` inchangé) ; `test_trainer_steps.py` (banc sur le modèle réaliste à ± 20 %, protocoles).
+
