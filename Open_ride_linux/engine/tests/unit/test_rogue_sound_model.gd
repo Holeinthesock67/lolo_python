@@ -153,7 +153,10 @@ func _run() -> void:
 	tm = _advance(mu, _rogue({"phase": "ROOM"}), tm, 1.0, 20)
 	_check(is_equal_approx(float(mu.music()["pulse"]), 1.0) and float(mu.music()["arp"]) == 0.0, "pulsation pleine, pas d'arpège")
 	tm = _advance(mu, _rogue({"phase": "BOSS"}), tm, 2.0, 30)
-	_check(is_equal_approx(float(mu.music()["arp"]), 1.0), "boss : arpège")
+	_check(is_equal_approx(float(mu.music()["chip"]), 1.0) and float(mu.music()["bass"]) == 0.0
+			and float(mu.music()["pulse"]) == 0.0 and float(mu.music()["arp"]) == 0.0, "boss : thème 8 bits seul (R20)")
+	tm = _advance(mu, _rogue({"phase": "COOLDOWN"}), tm, 2.0, 40)
+	_check(float(mu.music()["chip"]) == 0.0 and is_equal_approx(float(mu.music()["bass"]), 1.0), "retour au calme : basse, thème 8 bits coupé")
 
 	# Volumes des bus du mode
 	AudioMix.ensure_buses()

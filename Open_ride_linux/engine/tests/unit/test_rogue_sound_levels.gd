@@ -119,21 +119,25 @@ func _run() -> void:
 		if hs > HIGH_SHARE_MAX:
 			shrill.append("%s %.0f %%" % [sound, 100.0 * hs])
 	var music_bus := AudioMix.pct_to_db(int(AudioMix.ROGUE_DEFAULTS[AudioMix.ROGUE_MUSIC])) + Model.MODE_DB
-	var mix := PackedFloat32Array()
+	var layers := {}
 	for layer in Synth.MUSIC_LAYERS:
-		var m: PackedFloat32Array = Synth.render_music(layer)
-		if mix.is_empty():
-			mix.resize(m.size())
-		for i in range(mini(m.size(), mix.size())):
-			mix[i] += m[i]
-		var hs := high_share(m, Synth.RATE)
+		layers[layer] = Synth.render_music(layer)
+		var hs := high_share(layers[layer], Synth.RATE)
 		print("  musique %-14s aigus %4.1f %%" % [layer, 100.0 * hs])
 		if hs > HIGH_SHARE_MAX:
 			shrill.append("musique %s %.0f %%" % [layer, 100.0 * hs])
-	var music_db := short_term_db(mix, Synth.RATE) + music_bus
-	print("  musique (3 couches)    %6.1f dB" % music_db)
-	if music_db > wind_db:
-		loud.append("musique %.1f dB" % music_db)
+	for phase in Model.MUSIC_BY_PHASE:             # couches mêlées comme le mode les joue à chaque phase
+		var w: Dictionary = Model.MUSIC_BY_PHASE[phase]
+		var mix := PackedFloat32Array()
+		mix.resize((layers["bass"] as PackedFloat32Array).size())
+		for layer in Synth.MUSIC_LAYERS:
+			var m: PackedFloat32Array = layers[layer]
+			for i in range(mini(m.size(), mix.size())):
+				mix[i] += m[i] * float(w.get(layer, 0.0))
+		var music_db := short_term_db(mix, Synth.RATE) + music_bus
+		print("  musique %-14s %6.1f dB" % [phase, music_db])
+		if music_db > wind_db:
+			loud.append("musique %s %.1f dB" % [phase, music_db])
 	_check(loud.is_empty(), "aucun son plus fort que le vent à %d km/h (%.1f dB) aux volumes par défaut%s"
 			% [int(SoundModel.WIND_MAX_KMH), wind_db, "" if loud.is_empty() else " : " + ", ".join(loud)])
 	_check(shrill.is_empty(), "aucun son strident : au plus %d %% de l'énergie au-dessus de %d Hz%s"

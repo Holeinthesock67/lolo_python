@@ -56,6 +56,19 @@ func _wind(kmh: float, seconds: float) -> PackedFloat32Array:
 	return _gain(out, db)
 
 
+## Couches de musique mêlées avec les poids d'une phase (rogue_sound_model.gd), crête des couches gardée.
+func _music_mix(phase: String) -> PackedFloat32Array:
+	var w: Dictionary = Model.MUSIC_BY_PHASE[phase]
+	var mix := PackedFloat32Array()
+	for layer in Synth.MUSIC_LAYERS:
+		var m: PackedFloat32Array = Synth.render_music(layer)
+		if mix.is_empty():
+			mix.resize(m.size())
+		for i in range(mini(m.size(), mix.size())):
+			mix[i] += m[i] * float(w.get(layer, 0.0))
+	return mix
+
+
 func _run() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.is_empty():
@@ -74,17 +87,8 @@ func _run() -> void:
 				b.append_array(once)
 		_save("%s/%s.wav" % [dir, sound], _gain(b, Levels.play_gain_db(sound)), rate)
 	var music_db := AudioMix.pct_to_db(int(AudioMix.ROGUE_DEFAULTS[AudioMix.ROGUE_MUSIC])) + Model.MODE_DB
-	var mix := PackedFloat32Array()
-	var two := PackedFloat32Array()
-	for layer in Synth.MUSIC_LAYERS:
-		var m: PackedFloat32Array = Synth.render_music(layer)
-		if mix.is_empty():
-			mix.resize(m.size())
-			two.resize(m.size())
-		for i in range(mini(m.size(), mix.size())):
-			mix[i] += m[i]
-			if layer != "arp":
-				two[i] += m[i]
+	var mix := _music_mix("BOSS")
+	var two := _music_mix("ROOM")
 	_save("%s/musique_boss.wav" % dir, _gain(mix, music_db), rate)
 	_save("%s/vent_30.wav" % dir, _wind(30.0, 4.0), rate)
 	_save("%s/vent_60.wav" % dir, _wind(60.0, 4.0), rate)

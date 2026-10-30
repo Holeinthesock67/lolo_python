@@ -31,7 +31,7 @@ REFERENCES = (
     ("scene_salle", "Scène de salle (20 s)", "vent à 35 km/h, deux couches de musique et les bruitages d'une salle"),
     ("vent_30", "Vent à 30 km/h", "référence : le vent du vélo, inchangé dans le mode"),
     ("vent_60", "Vent à 60 km/h", "référence : aucun son du mode ne doit être plus fort"),
-    ("musique_boss", "Musique du boss (20 s)", "les trois couches ensemble, au volume par défaut (40 %)"),
+    ("musique_boss", "Musique du boss (20 s)", "le thème 8 bits du boss, au volume par défaut (40 %)"),
 )
 
 
