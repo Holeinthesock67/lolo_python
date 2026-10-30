@@ -29,7 +29,7 @@ func _check(cond: bool, msg: String) -> void:
 
 func _run() -> void:
 	var time_re := RegEx.create_from_string("\\bTIME\\b")
-	for path in ["res://shaders/crowd.gdshader", "res://shaders/fauna.gdshader"]:
+	for path in ["res://shaders/crowd.gdshaderinc", "res://shaders/fauna.gdshader"]:
 		var code := FileAccess.get_file_as_string(path)
 		_check(code.contains("global uniform float anim_time;") and time_re.search(code) == null,
 			"%s : animé par anim_time, sans TIME" % path.get_file())

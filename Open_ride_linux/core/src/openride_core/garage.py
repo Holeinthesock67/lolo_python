@@ -22,13 +22,15 @@ from .config import Config
 from .equipment import Catalogue, CatalogueError
 from .physics import PhysicsParams
 from .workout import WorkoutError, load_workout, workout_path
-from .profile import (PROFILE_PATH, Profile, ProfileError, ProfileTooNew, SLOTS, check_avatar,
+from . import profiles
+from .profile import (Profile, ProfileError, ProfileTooNew, SLOTS, check_avatar,
                       equip, load_profile, save_profile, set_avatar)
-from .progression import (USER_TABLE_PATH, FactsCache, Progress, ProgressionError, Table,
+from .progression import (FactsCache, Progress, ProgressionError, Table,
                           WorkoutDurations, load_table, recompute)
 
 log = logging.getLogger(__name__)
 
+_FROM_PROFILE: Any = object()   # surcharge des tables du profil en cours (série MJ)
 CACHE_NAME = ".progression.json"   # cache des séances lues, dans le dossier des journaux
 MAX_UNLOCKED = 8
 MAX_CHALLENGES = 4
@@ -61,13 +63,18 @@ class ProgressionService:
     """État de la progression pour la session : tables, catalogue, profil et progression."""
 
     def __init__(self, cfg: Config, journal_dir: Path, workouts: WorkoutDurations = None,
-                 profile_path: Path = PROFILE_PATH, table_path: Path | None = USER_TABLE_PATH,
+                 profile_path: Path | None = None, table_path: Path | None = _FROM_PROFILE,
                  cache_path: Path | None = None) -> None:
+        """`profile_path` et `table_path` : défaut, ceux du profil de joueur en cours (lot MJ1) ;
+        `table_path=None` : tables livrées seules."""
+        ctx = profiles.current()
         self.cfg = cfg
         self.journal_dir = journal_dir
         self.workouts = workouts
-        self.profile_path = profile_path
-        self.table_path = table_path
+        self.profile_path = profile_path if profile_path is not None else ctx.profile_path
+        self.table_path = ctx.table_path if table_path is _FROM_PROFILE else table_path
+        self.counted = ctx.counted_sources   # séances qui rapportent (profil d'essai : simulées aussi, MJ2)
+        self.owns = ctx.owns
         self.cache_path = cache_path if cache_path is not None else journal_dir / CACHE_NAME
         self.enabled = False
         self.table: Table | None = None
@@ -96,7 +103,7 @@ class ProgressionService:
 
     def _recompute(self) -> Progress:
         cache = FactsCache(self.cache_path)
-        return recompute(self.journal_dir, self.table, self.workouts, cache)
+        return recompute(self.journal_dir, self.table, self.workouts, cache, self.counted, self.owns)
 
     def refresh(self) -> Progress | None:
         """Recalcule la progression (après une séance) ; renvoie l'ancienne."""
