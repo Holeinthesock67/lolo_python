@@ -439,7 +439,7 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	# Gravel (U22) : surface sous la roue, poussière derrière elle par temps sec et crissement des pneus
 	surface_here = world_streamer.surface_at(cam_s) if world_streamer != null and world_streamer.has_method("surface_at") else "paved"
 	var back := Vector3(-sin(h), 0.0, cos(h))
-	var wheel := _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * RoadBuilder.RIDER_LATERAL_M
+	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * RoadBuilder.RIDER_LATERAL_M
 	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
 	if sound_player != null and sound_player.get("model") != null:
 		sound_player.model.set_surface(surface_here)
