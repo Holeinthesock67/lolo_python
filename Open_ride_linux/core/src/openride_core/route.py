@@ -28,6 +28,7 @@ FORMAT_NAME = "openride-world"
 SUPPORTED_MAJOR = 1
 KNOT_EPS_M = 1e-6
 ROUTE_FIELDS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
+SURFACES = ("paved", "compacted", "gravel", "dirt")   # colonne facultative `surface` (format 1.6)
 
 
 class WorldError(Exception):
@@ -109,6 +110,13 @@ class Route:
         self.x, self.z = cols["x"], cols["z"]
         self.grade_pct, self.heading_deg = cols["grade_pct"], cols["heading_deg"]
         self.s = [i * self.ds_m for i in range(self.n - 1)] + [self.length_m]
+        surface = data.get("surface")   # facultative, depuis 1.6 (lot U1) : absente = tout en paved
+        if surface is not None:
+            if not isinstance(surface, list) or len(surface) != self.n:
+                raise WorldError("route_invalid", f"« surface » doit avoir {self.n} valeurs")
+            if any(v not in SURFACES for v in surface):
+                raise WorldError("route_invalid", f"« surface » hors de {', '.join(SURFACES)}")
+        self.surface: list[str] | None = [str(v) for v in surface] if surface is not None else None
         self.points = list(zip(self.x, self.alt_m, self.z))
         if self.type == "loop":
             gap = math.dist((self.x[0], self.z[0]), (self.x[-1], self.z[-1]))
@@ -154,6 +162,13 @@ class Route:
         i, u = self._segment(self.wrap(s))
         g = self.grade_pct
         return g[i] + (g[i + 1] - g[i]) * u
+
+    def surface_at(self, s: float) -> str:
+        """Surface en s : celle du point le plus proche en arrière, sans interpolation (lot U21)."""
+        if self.surface is None:
+            return "paved"
+        p = self.wrap(s)
+        return self.surface[self.n - 1 if p >= self.length_m else min(int(p / self.ds_m), self.n - 2)]
 
     def sample(self, s: float) -> RouteSample:
         i, u = self._segment(self.wrap(s))
