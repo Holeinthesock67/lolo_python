@@ -5,6 +5,7 @@ extends Label
 ## Petit texte en haut à droite, au-dessus du panneau droit du HUD : « 60 images/s · p99 17 ms ».
 ## Les images/s comptent les images de la dernière seconde ; le p99 est le temps d'image que 99 % des
 ## images de cette seconde ne dépassent pas (saccades visibles même quand la moyenne est bonne).
+## Quand le garde-fou de charge (lot Y6) a coupé des effets, la ligne finit par « · allégé : SSIL ».
 ## Choix `detail`, réservé aux essais : ajoute les temps CPU et GPU moyens du rendu de la vue
 ## (« · CPU 4.2 ms · GPU 10.8 ms », mêmes mesures que perf_probe.gd), mesurés seulement dans ce choix.
 ## Le texte change une fois par seconde, pour rester lisible et ne rien coûter. Enfant du HUD : caché
@@ -26,9 +27,11 @@ var _detail := false
 var _cpu_sum := 0.0
 var _gpu_sum := 0.0
 var _viewport_rid := RID()
-## Vrai quand la sonde de performance (perf_probe.gd) mesure aussi : la mesure du RenderingServer reste
-## alors active en quittant le choix `detail`.
-var probe_active := false
+## Vrai quand la sonde de performance (perf_probe.gd) ou le garde-fou de charge (load_guard.gd) mesurent
+## aussi : la mesure du RenderingServer reste alors active en quittant le choix `detail`.
+var measure_kept := false
+## Effets coupés par le garde-fou de charge (« SSIL, SSAO »), ajoutés à la fin de la ligne ; vide : rien.
+var shed := ""
 
 
 func _init() -> void:
@@ -61,7 +64,7 @@ func set_mode(mode: String) -> void:
 		text = ""
 	if detail != _detail:
 		_detail = detail
-		_measure(detail or probe_active)
+		_measure(detail or measure_kept)
 	visible = on
 
 
@@ -89,6 +92,8 @@ func add_frame(delta: float) -> void:
 	if _detail and not _frames.is_empty():
 		text += format_detail(_cpu_sum / _frames.size(), _gpu_sum / _frames.size())
 		_measure(true)   # la sonde de performance a pu couper la mesure en se fermant
+	if shed != "" and text != "":
+		text += format_shed(shed)
 	_frames.clear()
 	_elapsed_s = 0.0
 	_cpu_sum = 0.0
@@ -103,6 +108,11 @@ static func format(frames_ms: Array, elapsed_s: float) -> String:
 	sorted.sort()
 	var p99: float = sorted[mini(int(floor(sorted.size() * 0.99)), sorted.size() - 1)]
 	return "%d images/s · p99 %d ms" % [int(round(frames_ms.size() / elapsed_s)), int(round(p99))]
+
+
+## Suite du texte quand le garde-fou de charge a coupé des effets.
+static func format_shed(names: String) -> String:
+	return " · allégé : " + names
 
 
 ## Suite du texte du choix `detail` : temps CPU et GPU moyens (ms) du rendu de la vue.

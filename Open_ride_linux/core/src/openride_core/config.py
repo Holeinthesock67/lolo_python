@@ -80,6 +80,7 @@ class RenderConfig:
     theme: str = "default"
     visual_grade_scale: float = 2.5   # relief affiché ×2,5 (lot Y15) ; 1,0 : relief réel ; physique et HUD inchangés
     living: bool = True    # décor vivant de la série P (vent, nuages, sons) ; faux : rendu de la 1.0 (lot P16)
+    load_guard: bool = True   # garde-fou de charge (lot Y6) : coupe SSIL, SSAO, glow, MSAA quand le GPU sature ; faux pour les mesures
     chart: str = "reduced"  # courbes de la séance (lot O14) : hidden, reduced (cible et puissance) ou full
     camera: str = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; reprise au lancement
     fps: str = "off"        # compteur d'images/s en haut à droite du HUD : off, on ou detail (+ temps CPU et GPU, essais)
