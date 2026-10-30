@@ -112,7 +112,8 @@ def decode_protobuf_varints(payload: bytes) -> dict[int, int]:
             if wire == 0:
                 out[field_no] = varint()
             elif wire == 2:
-                i += varint()
+                n = varint()   # « i += varint() » lirait i avant que varint() ne l'avance
+                i += n
             elif wire == 1:
                 i += 8
             elif wire == 5:
