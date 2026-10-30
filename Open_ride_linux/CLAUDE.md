@@ -9,7 +9,7 @@ Propriétaire : Holeinthesock67 (francophone). **Réponds toujours en français*
   - home trainer HomeTrainer (FTMS), annoncé en Bluetooth sous le nom « HomeTrainer 0000 » ;
   - Zwift Cog ;
   - Zwift Click V2, paire de boîtiers : gauche `C1:1C:00:00:00:01` (−, flèches), droit `C1:1C:00:00:00:03` (+, A, B, Y, Z), messages de type `0x23` (table `KEYPAD_BITS`). Le gauche est bridé une minute après la connexion sans passage récent par l'appli Zwift : B du droit fait aussi « − ».
-- **PC cible :** PC de bureau MSI (`pc-cible`), Ubuntu, GTX 1060, Python 3.14, Godot 4.3 dans `~/Applications/godot/`.
+- **PC cible :** PC de bureau MSI (`pc-cible`), Ubuntu, GTX 1060, Python 3.14, Godot 4.7 dans `~/Applications/godot/`.
   - Utilisateur `utilisateur` ; dépôt dans `/home/utilisateur/Games/lolo_python`.
   - Un lien `~/Games/Open_ride_linux` pointe vers le dossier du projet.
 - **Dépôt GitHub :** `Holeinthesock67/lolo_python`. C'est un dépôt commun à d'autres projets : **ne jamais modifier quoi que ce soit hors de `Open_ride_linux/`**.
@@ -38,7 +38,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 | --- | --- | --- |
 | `core/` | `openride-core` (Python, asyncio, bleak) | BLE (HomeTrainer, Click), physique à 50 Hz, braquets, journal, FIT, serveur IPC UDP (état à 30 Hz sur le port 5005, commandes sur le port 5006) |
 | `compiler/` | `openride-compiler` (Python, numpy, scipy, pyproj, rasterio) | GPX vers dossier `.world` : couche route et couche terrain (MNT Copernicus GLO-30 mis en cache dans `~/.cache/openride/dem/`) |
-| `engine/` | Godot 4.3 (GDScript) | Rendu, HUD, caméra interpolée et extrapolée, bips des appuis |
+| `engine/` | Godot 4.7 (GDScript) | Rendu, HUD, caméra interpolée et extrapolée, bips des appuis |
 
 **Modules clés du core** (`core/src/openride_core/`) :
 - `session.py` : boucle principale ; `jitter.py` : gigue de la boucle à 50 Hz et des trames `state` (lot X17, ligne `Gigue` par minute) ;
@@ -57,7 +57,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `hr_monitor.py` : ceinture cardio Bluetooth facultative (service 0x180D) ;
 - `journal.py`, `fit_export.py`, `ipc_server.py`, `ipc_lists.py`, `ipc_budget.py`, `config.py`, `config_edit.py`, `pairing.py`, `settings.py` : journal JSONL, export FIT, serveur IPC (messages non conformes ignorés et comptés), découpage des listes IPC v1.1, budget de taille des trames et allègement d'une trame `state` trop grande (lot X25), configuration (types et bornes contrôlés, `ConfigError`), modification ciblée de `config.toml` qui garde les commentaires, appairage (lots N12 et N14) et réglages du menu (lots O3 et O4) ;
 - `latency_log.py` : journal de latence des appuis du Click, de la notification BLE au Control Point (lignes `[latence]`, `--latence` ou `[log] latence`, lot X7) ;
-- `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`, `--gigue`), `gigue_charge.py` (gigue de la boucle sous charge, lot X17), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `fit_check.py` (contrôle local d'un FIT réel, lot X11), `history.py` (historique des séances et cumul hebdomadaire), `xp.py` (progression recalculée, lot V2), `estimate_cp.py` (CP et W' estimés depuis les séances passées, lot R16), `rogue_sim.py` (runs Cyber-Rogue simulées et rapport d'équilibrage, lot R7), `bots_race.py` (course des bots en temps accéléré, lot X27), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py`, `seance_guidee.py` (séances guidées sur le HomeTrainer : parcours, consignes et entraînement d'essai) ;
+- `tools/` : `route_vectors.py` (vecteurs de route), `log_report.py` (analyse de `~/run_trainer.log`, `--gigue`), `gigue_charge.py` (gigue de la boucle sous charge, lot X17), `workouts.py` (entraînements `.zwo`), `session_summary.py` (bilan de séance), `fit_check.py` (contrôle local d'un FIT réel, lot X11), `history.py` (historique des séances et cumul hebdomadaire), `xp.py` (progression recalculée, lot V2), `estimate_cp.py` (CP et W' estimés depuis les séances passées, lot R16), `rogue_sim.py` (runs Cyber-Rogue simulées et rapport d'équilibrage, lot R7), `bots_race.py` (course des bots en temps accéléré, lot X27), `campagne_profil.py` (campagne simulée accélérée sur le profil d'essai et empreinte du vrai profil, lot MJ3), `ble_diag.py`, `fake_world.py`, `fit_demo.py`, `run_mock_session.py`, `seance_guidee.py` (séances guidées sur le HomeTrainer : parcours, consignes et entraînement d'essai) ;
 - `physics.py`, `gearing.py`, `ftms.py`, `zwift_click.py` : modules purs, sans entrées-sorties ;
 - `open_world.py`, `live_route.py`, `worldgen_client.py` : séance en monde ouvert (lot W9, 2.0) : `OpenWorld` pilote le générateur (`openride-worldgen`, dialogue en lignes JSON de `docs/contracts/worldgen_v1.md`), construit le champ `open_world` de `state` et applique les choix aux carrefours (Click ou `choose_branch`) jusqu'au verrouillage ; `LiveRoute` lit la route engagée par parties de 1 km dans un fil et la remplace d'un coup, la boucle à 50 Hz ne lit jamais le disque ; pause `world_data` quand la route connue ne suffit plus ;
 - `world_menu.py` : menu du monde ouvert (lot W11, 2.0) : réponses aux commandes `world_search` (liste embarquée `data/places.json`, puis bases locales, puis Nominatim si `[open_world] network`, à la demande et une requête par seconde au plus), `world_map`, `world_regions` et `world_pin` ; les requêtes sur les bases locales passent par `python -m openride_compiler.worldgen.menu_query` (sous-processus, le core ne dépend pas du compilateur) ; réponses en parties de 60 000 octets (`ipc_lists.build_world_messages`) ;
@@ -96,9 +96,9 @@ cd compiler && pip install -e ".[dev]" -e ../core   # sans ../core, les tests qu
 # Tests (tous doivent passer avant chaque commit ; l'intégration continue GitHub Actions les relance à chaque envoi)
 (cd core && pytest -q)                 # ~3 min ; `pytest -q -m "not slow"` (~20 s) pendant le développement
 (cd compiler && pytest -q)            # réseau coupé ; `pytest -m network` pour l'essai Copernicus réel
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh   # vrai core + vrai engine, ~10 s
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open   # tests graphiques (Xvfb, captures analysées, références, rapport HTML), ~2 min
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_engine_tests.sh
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_e2e.sh   # vrai core + vrai engine, ~10 s
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open   # tests graphiques (Xvfb, captures analysées, références, rapport HTML), ~2 min
 scripts/bump-version.sh X.Y.Z   # change le numéro unique (VERSION, pyproject, project.godot, CHANGELOG.md), lot O2
 python3 engine/tests/sim_bench.py --scenario coupures_village [--native]   # banc simulé : vrai core sur BLE simulé + vrai engine, captures et rapport (docs/OUTILS_DE_TEST.md)
 

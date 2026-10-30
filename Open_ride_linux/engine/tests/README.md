@@ -1,10 +1,10 @@
 # Tests de l'engine sans écran
 
-Tous les tests se lancent depuis `Open_ride_linux/`, avec Godot 4.3 officiel
-(`godotengine/godot`, version `4.3-stable`) dont le chemin est donné par `GODOT` :
+Tous les tests se lancent depuis `Open_ride_linux/`, avec Godot 4.7 officiel
+(`godotengine/godot`, version `4.7.2-stable`) dont le chemin est donné par `GODOT` :
 
 ```bash
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 ```
 
 Le script renvoie 0 si tout passe et finit par un résumé (une ligne par test et son résultat).
@@ -31,7 +31,7 @@ En mode `--headless`, le serveur de rendu de Godot est factice : aucun shader n'
 ## Tests graphiques de la scène principale (`visual_check.py`)
 
 ```bash
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
 ```
 
 Sans action manuelle : `visual_check.py` lance la vraie scène (`main.tscn`) sous Xvfb (OpenGL logiciel de Mesa, moteur Compatibility), face au faux core (`VisualCore`, dérivé de `fake_core.py`), pour chaque configuration `résolution:qualité` (défaut `1280x720:low,1920x1080:high,1024x600:medium`). Le parcours est la démo avec terrain synthétique. À chaque scène, le script envoie le message de test `{"type": "_test", "action": "screenshot", "path": …, "tag": …}` : l'engine enregistre l'image affichée en PNG et écrit une ligne `[test] screenshot {…}` (textes, visibilité et rectangles en pixels des éléments du HUD, images par seconde, maillages visibles, position de la caméra, `ticks_ms`). PNG lus et écrits avec la bibliothèque standard de Python.
@@ -270,7 +270,7 @@ Le faux core déclenche une commande par un message de test `{"type": "_test", "
 ## Bout en bout (lot J8)
 
 ```bash
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh [--keep]
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_e2e.sh [--keep]
 ```
 
 `run_e2e.sh` appelle `e2e_check.py`, qui lance le vrai core (`openride-core run --trainer mock --input none --autostart`) puis l'engine en `--test-mode`, tous deux avec un `HOME` temporaire et deux ports UDP libres. Chaque vérification imprime une ligne `[OK]` ou `[ÉCHEC]` avec sa mesure :

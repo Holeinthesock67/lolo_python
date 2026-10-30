@@ -139,11 +139,17 @@ class RogueStats:
     cards: Counter = field(default_factory=Counter)
     gold_total: int = 0
     lives_used: int = 0
+    last: dict | None = None             # objectif, durée et châssis de la dernière run (menu de départ, lot R13)
 
     def add(self, ev: dict) -> None:
-        """Ajoute une ligne `rogue_run` ; les lignes sans objectif (anciennes) comptent pour l'expérience seule."""
+        """Ajoute une ligne `rogue_run` ; les lignes sans objectif (anciennes) comptent pour l'expérience seule.
+
+        Les lignes arrivent dans l'ordre des séances : la dernière ajoutée donne `last`.
+        """
         if not ev.get("objective"):
             return
+        self.last = {"objective": ev["objective"], "duration_min": ev.get("duration_min"),
+                     "chassis": ev.get("chassis") or DEFAULT_CHASSIS}
         b = self.buckets.setdefault(f"{ev['objective']}/{ev.get('duration_min')}", Bucket())
         b.runs += 1
         b.finished += 1 if ev.get("result") in FINISHED else 0
@@ -174,7 +180,7 @@ class RogueStats:
     def to_dict(self) -> dict:
         return {"buckets": {k: {f.name: getattr(b, f.name) for f in fields(b)} for k, b in sorted(self.buckets.items())},
                 "cards": dict(sorted(self.cards.items())), "top_card": self.top_card,
-                "gold_total": self.gold_total, "lives_used": self.lives_used}
+                "gold_total": self.gold_total, "lives_used": self.lives_used, "last": self.last}
 
 
 def stats_from_events(events: list) -> RogueStats:
@@ -208,6 +214,15 @@ def choose_chassis(chassis: tuple[Chassis, ...], stats: RogueStats, chassis_id: 
     raise ChassisError("run_invalid", f"châssis inconnu : {wanted!r}")
 
 
-def config_block(chassis: tuple[Chassis, ...], stats: RogueStats, selected: str, lives: int) -> dict:
-    """Champs `chassis` et `lives` de `hello_ack.config.rogue` (contrat 1.4)."""
-    return {"chassis": {"unlocked": unlocked(chassis, stats), "selected": selected}, "lives": lives}
+def config_block(chassis: tuple[Chassis, ...], stats: RogueStats, lives: int) -> dict:
+    """Champs `chassis`, `lives` (contrat 1.4) et `last` (révision 1.5) de `hello_ack.config.rogue`.
+
+    Le châssis choisi par défaut est celui de la dernière run s'il est toujours débloqué, sinon le standard ;
+    `last` (objectif et durée de la dernière run, `null` avant la première) remplit le menu de départ et dit
+    à l'engine que l'avertissement du premier lancement a déjà été accepté.
+    """
+    open_ids = unlocked(chassis, stats)
+    last = stats.last
+    selected = last["chassis"] if last and last["chassis"] in open_ids else DEFAULT_CHASSIS
+    return {"chassis": {"unlocked": open_ids, "selected": selected}, "lives": lives,
+            "last": {"objective": last["objective"], "duration_min": last["duration_min"]} if last else None}

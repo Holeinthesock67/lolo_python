@@ -382,6 +382,7 @@ click_long_min_s = 0.9
 click_trace_raw = false      # trace brute de chaque notification du Click (lot Q6)
 click_mute_after_s = 60.0    # boîtier déclaré muet sans appui depuis ce délai (lot Q6)
 click_rehandshake_s = 0.0    # reprise d'un boîtier muet, en secondes entre deux étapes ; 0 : jamais (lot Q6)
+click_reset_locked = false   # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18) ; essai, désactivé par défaut
 mock_replay = ""             # chemin facultatif d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
 hr = "none"                  # ceinture cardio : "none", "ble" ou "sim"
 hr_address = ""
@@ -439,6 +440,8 @@ master_pct = 100             # volume général
 ride_pct = 100               # vent et roue libre
 ambience_pct = 100           # ambiance : fonds, cloches, véhicules, foule, passants
 events_pct = 100             # bips et événements : appuis du Click, bloc ERG, consignes, jingles
+rogue_sfx_pct = 70           # Cyber-Rogue : bruitages de jeu (lot R18, bus RogueSfx)
+rogue_music_pct = 40         # Cyber-Rogue : musique (lot R18, bus RogueMusic)
 [log]
 latence = false              # journal de latence des appuis du Click, lignes [latence] (lot X7 ; --latence)
 [rogue]

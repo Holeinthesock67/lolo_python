@@ -103,7 +103,7 @@ POP_WARMUP_M = 100.0
 GODOT_ISSUE = re.compile(r"SCRIPT ERROR|ERROR:|WARNING:")
 # Mêmes tolérances que visual_check.py (avertissements connus du mode test et de Xvfb).
 GODOT_TOLERATED = re.compile(
-    r"ObjectDB instances leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync|"
+    r"ObjectDB instances (were )?leaked|resources still in use at exit|[Mm]esh.*(null|nul)|V-Sync|set_use_vsync|"
     r"XOpenIM failed|XCreateIC couldn't create")   # méthode de saisie X du bureau, hors OpenRide
 # Lignes du journal du core gardées pour la frise des événements.
 CORE_EVENT = re.compile(r"Reconnexion|reconnect|perdu|coupé|déconnect|connecté|renvoi|refus|ERROR|"
@@ -1022,7 +1022,7 @@ def home_changes(before: dict, after: dict, out: Path, home: Path) -> list[str]:
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
-        "GODOT", Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+        "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
     ap.add_argument("--world", help="demo (défaut), village (bâtiments, montée et descente), osm, ou dossier .world ; "
                     "l'emporte sur le monde du scénario")

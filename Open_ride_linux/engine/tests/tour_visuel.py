@@ -379,7 +379,7 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description="Tour visuel guidé (lot X21).")
     ap.add_argument("--godot", type=Path, default=Path(os.environ.get(
-        "GODOT", Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+        "GODOT", Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--world", required=True, help="demo, village, osm, ou dossier .world compilé")
     ap.add_argument("--auto", action="store_true", help="points tirés du parcours")
     ap.add_argument("--tour", type=Path, help="liste de points (engine/tests/tours/*.json, ou un nom de ce dossier)")
