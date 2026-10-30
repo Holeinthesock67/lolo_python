@@ -10,7 +10,7 @@ Le propriétaire a posé la question le 29 octobre : « Parallax displacement aj
 
 - **Seulement en high** : clé `parallax_steps` de `QualityPresets.IMAGE`, à 0 en low et en medium et à 12 en high. Avec 0, le shader suit exactement le chemin d'avant.
 - **Un seul réglage global** `surface_parallax_steps` (`shader_globals` de `project.godot`), écrit par `render_quality.gd`. Il n'y a pas de matériau en plus.
-- **Seulement là où il se voit** : le relief porte sur le grain fin et moyen. Il s'éteint avec leur visibilité, ce qui le rend invisible au-delà d'environ 10 m. La profondeur est de 12 mm (`PARALLAX_DEPTH_M`).
+- **Seulement là où il se voit** : le relief porte sur le grain fin et moyen et fait 12 mm de profondeur (`PARALLAX_DEPTH_M`). Il est complet jusqu'à 2,5 m (`PARALLAX_FULL_M`). Au-delà, la profondeur et le nombre de pas décroissent jusqu'à zéro à 6 m (`PARALLAX_MAX_M`), et la normale revient en fondu à celle d'avant. Plus loin, le shader ne fait aucun calcul de plus.
 - **Pas de taches noires** : quand le point est décalé, la normale se recalcule par différences finies (5 mm) de la hauteur du grain, le long du repère de la route.
 
 ## 3. Contenu
@@ -35,4 +35,6 @@ Le propriétaire a posé la question le 29 octobre : « Parallax displacement aj
 
 En high, la vitrine compte 758 000 triangles et 17 appels de dessin sur `route_rasante`. Aucun défaut n'est visible.
 
-Il reste à mesurer en définition native (1680×1011) et en low, medium et high, pour comparer avec main en 4.7.2 (GPU en high : 13,61 ms). Le critère est un GPU en high ≤ 14 ms.
+**Mesure en 1680×1011 (7ay, 30 octobre, première version sans limite de distance)** : low 4,99 ms, medium 11,47 ms, high **18,79 ms** à 49 i/s. Le coût de +5,2 ms vient de la parallaxe calculée sur toute la route visible. Le critère n'était pas tenu, d'où la limite à 6 m ajoutée ensuite.
+
+Il reste à mesurer la version limitée à 6 m en définition native (1680×1011) et en low, medium et high, pour comparer avec main en 4.7.2 (GPU en high : 13,61 ms). Le critère est un GPU en high ≤ 14 ms.

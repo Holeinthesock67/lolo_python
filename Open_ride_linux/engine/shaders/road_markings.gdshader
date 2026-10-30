@@ -39,6 +39,10 @@ uniform float grain : hint_range(0.0, 2.0) = 1.0;
 uniform vec3 shoulder_color : source_color = vec3(0.36, 0.33, 0.27);
 global uniform int surface_parallax_steps;
 const float PARALLAX_DEPTH_M = 0.012;   // relief le plus haut du grain (gravillons et bosses), en mètres
+// Le relief ne se voit qu'à quelques mètres : au-delà de PARALLAX_FULL_M, la profondeur et le nombre de
+// pas décroissent jusqu'à zéro à PARALLAX_MAX_M (la parallaxe partout coûtait ~5 ms sur une GTX 1060)
+const float PARALLAX_FULL_M = 2.5;
+const float PARALLAX_MAX_M = 6.0;
 
 const int SEG[10] = int[](0x3F, 0x06, 0x5B, 0x4F, 0x66, 0x6D, 0x7D, 0x07, 0x7F, 0x6F);
 
@@ -76,17 +80,17 @@ float grain_height(vec2 p, float vis_fine, float vis_mid, out vec2 peb, out floa
 
 // Parallaxe : point de la surface en relief vu à travers le point `p0` du ruban, rayon de vue `vt`
 // (repère de la route : x en travers, y le long, z vers le haut). La surface est creusée sous le ruban.
-vec2 parallax(vec2 p0, vec3 vt, float vis_fine, float vis_mid) {
-	vec2 step_xy = -vt.xy / max(vt.z, 0.08) * (PARALLAX_DEPTH_M / float(surface_parallax_steps));
-	float dz = PARALLAX_DEPTH_M / float(surface_parallax_steps);
+vec2 parallax(vec2 p0, vec3 vt, float vis_fine, float vis_mid, int steps, float depth_m) {
+	vec2 step_xy = -vt.xy / max(vt.z, 0.08) * (depth_m / float(steps));
+	float dz = depth_m / float(steps);
 	vec2 peb;
 	float stone;
 	vec2 p = p0;
 	float depth = 0.0;
 	float prev_gap = 0.0;
 	for (int i = 0; i < 32; i++) {
-		if (i >= surface_parallax_steps) break;
-		float gap = (PARALLAX_DEPTH_M - grain_height(p, vis_fine, vis_mid, peb, stone)) - depth;
+		if (i >= steps) break;
+		float gap = (depth_m - grain_height(p, vis_fine, vis_mid, peb, stone) * (depth_m / PARALLAX_DEPTH_M)) - depth;
 		if (gap <= 0.0) {
 			// Entre le pas précédent et celui-ci : interpolation linéaire
 			float t = prev_gap / max(prev_gap - gap, 1e-6);
@@ -116,14 +120,16 @@ void fragment() {
 	bool shifted = false;
 	vec3 t_lat = vec3(1.0, 0.0, 0.0);
 	vec3 t_s = vec3(0.0, 0.0, 1.0);
-	if (surface_parallax_steps > 0 && vis_fine > 0.0) {
+	float near = 1.0 - smoothstep(PARALLAX_FULL_M, PARALLAX_MAX_M, length(VERTEX));
+	if (surface_parallax_steps > 0 && vis_fine > 0.0 && near > 0.0) {
 		float det = dpx.x * dpy.y - dpx.y * dpy.x;
 		if (abs(det) > 1e-12) {
 			t_lat = normalize((dvx * dpy.y - dvy * dpx.y) / det);
 			t_s = normalize((dvy * dpx.x - dvx * dpy.x) / det);
 			vec3 v = normalize(-VERTEX);
 			vec3 vt = vec3(dot(v, t_lat), dot(v, t_s), dot(v, NORMAL));
-			vec2 q = parallax(vec2(lat, s), vt, vis_fine, vis_mid);
+			int steps = max(2, int(ceil(float(surface_parallax_steps) * near)));
+			vec2 q = parallax(vec2(lat, s), vt, vis_fine, vis_mid, steps, PARALLAX_DEPTH_M * near);
 			lat = q.x;
 			s = q.y;
 			shifted = true;
@@ -159,7 +165,8 @@ void fragment() {
 	// Grain de l'enrobé (A1) : gravillons de 4 cm et bosses de 25 cm, effacés au loin
 	vec2 peb;
 	float stone;
-	float h = grain_height(p, vis_fine, vis_mid, peb, stone);
+	float h_grain = grain_height(p, vis_fine, vis_mid, peb, stone);
+	float h = h_grain;
 	// Variation lente (A2) et rapiéçages (A3)
 	float macro = sd_noise(p / 25.0) - 0.5;
 	vec2 cell = floor(p / vec2(1.5, 5.0));
@@ -180,10 +187,11 @@ void fragment() {
 		float k = (1.0 - 0.7 * paint) * (1.0 - 0.6 * patch);
 		vec2 peb2;
 		float st2;
-		float h0 = grain_height(p, vis_fine, vis_mid, peb2, st2);
+		float h0 = h_grain;
 		float d_lat = (grain_height(p + vec2(0.005, 0.0), vis_fine, vis_mid, peb2, st2) - h0) / 0.005;
 		float d_s = (grain_height(p + vec2(0.0, 0.005), vis_fine, vis_mid, peb2, st2) - h0) / 0.005;
-		n_bump = normalize(NORMAL - k * (d_lat * t_lat + d_s * t_s));
+		// Fondu vers la normale d'avant là où la parallaxe s'éteint (pas de couture à PARALLAX_MAX_M)
+		n_bump = normalize(mix(n_bump, NORMAL - k * (d_lat * t_lat + d_s * t_s), near));
 	}
 	NORMAL = n_bump;
 
