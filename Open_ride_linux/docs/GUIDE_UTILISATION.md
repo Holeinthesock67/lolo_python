@@ -60,7 +60,25 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 
 En mode **ERG**, le trainer impose la puissance visée à chaque instant ; la pente de la route ne compte plus.
 
-**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, ou **Importer un fichier** `.zwo`, `.erg` ou `.mrc` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`. Une première série d'entraînements s'installe avec `python -m openride_core.tools.workouts install` (depuis `core/`, environnement activé).
+**Choisir un entraînement.** **Session ERG** ouvre la liste de `~/OpenRide/Workouts/`. En bas de la liste : **Créer** un entraînement par intervalles, **Importer un fichier** `.zwo`, `.erg`, `.mrc` ou `.qwk` trouvé dans Téléchargements, sur le Bureau ou dans `~/OpenRide/Import`, et **Comment ça marche ?**, l'aide à l'écran qui reprend tout ce qui suit (un sujet par ligne, l'explication dans la carte de droite). Une première série d'entraînements s'installe avec `python -m openride_core.tools.workouts install` (depuis `core/`, environnement activé).
+
+**Ajouter un entraînement.** Quatre façons :
+
+- **Créer** : échauffement, répétitions d'effort et de récupération (durée et % de la FTP), retour au calme, réglés au Click ; **Enregistrer et choisir** écrit un `.zwo` et le choisit. Les mêmes réglages ne font pas de doublon, et aucun entraînement n'est remplacé : un nom déjà pris reçoit `_2`, `_3`…
+- **QWKcode de GoldenCheetah** : un fichier texte `.qwk`, une ligne par segment, `[Nx] durée@puissance[-puissance] [rdurée@puissance[-puissance]]`. Durée en `h`, `m` ou `s`, combinables (`1m30s`, `1.5m`) ; puissance en watts, ou en % de la FTP avec `%` (`50-75%`). Une ligne `#` avant le premier segment donne le nom ; `#` ailleurs commence un commentaire. Exemple :
+
+  ```
+  # Seuil 4 × 5 min
+  10m@130-220
+  5m@180
+  4x 5m@280 r3m@140
+  8x 30s@120% r30s@50%
+  10m@130
+  ```
+
+  `10m@130-220` est une rampe de 130 à 220 W ; `4x 5m@280 r3m@140` fait 4 fois 5 min à 280 W puis 3 min à 140 W. Une erreur donne le numéro de la ligne. Enregistre le fichier dans Téléchargements, puis **Importer un fichier**.
+- **Importer** : le fichier est vérifié, puis copié dans `~/OpenRide/Workouts/` ; un fichier déjà importé n'est pas recopié, un autre du même nom reçoit `_2`.
+- **À la main** : un fichier posé directement dans `~/OpenRide/Workouts/` apparaît dans la liste. `.zwo` (Zwift) et `.mrc` : puissances en % de la FTP ; `.erg` : watts fixes ; `.qwk` : watts ou %. Un bloc `FreeRide` devient un palier à 50 W. Exemples dans `core/workouts/`.
 
 **Pendant l'ERG.** Le bandeau du bas montre le bloc en cours, le temps restant, la cible et le bloc suivant. Les appuis courts sur « + » et « − » règlent l'intensité de ± 2 %, les appuis longs de ± 10 % ; **Z** passe au bloc suivant et **Y** met la séance en pause. Le détail est dans la section 6.
 
