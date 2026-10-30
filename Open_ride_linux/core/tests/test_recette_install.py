@@ -35,6 +35,13 @@ def test_refuses_without_godot_or_docker(tmp_path, monkeypatch):
     assert ri.main(["--mode", "docker", "--godot", str(fake_godot(tmp_path)), "--out", str(tmp_path / "o")]) == 2
 
 
+def test_update_runs_without_window():
+    """Avec un écran, la mise à jour de la recette ne doit pas attendre un clic dans une fenêtre zenity."""
+    check = ri.CHECK.read_text(encoding="utf-8")
+    calls = [ln for ln in check.splitlines() if 'bash "${PROJECT}/scripts/update.sh"' in ln]
+    assert calls and all(ln.startswith("OPENRIDE_NO_GUI=1 ") for ln in calls), calls
+
+
 @pytest.mark.slow   # clone, installation sans pip, premier démarrage et mise à jour : une trentaine de secondes
 @pytest.mark.skipif(shutil.which("git") is None, reason="git requis")
 def test_fresh_install_in_temporary_home(tmp_path):
