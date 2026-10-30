@@ -60,7 +60,7 @@ def test_build_writes_detected_segments(make_gpx, tmp_path):
     assert [s["type"] for s in expected] == ["climb", "sprint"]
     assert manifest["layers"]["segments"] == {"present": True, "version": "1.0", "file": "segments.json",
                                               "count": 2, "manual_count": 0}
-    assert manifest["format_version"] == "1.5"
+    assert manifest["format_version"] == "1.6"
     assert run("verify", world) == 0
 
 
