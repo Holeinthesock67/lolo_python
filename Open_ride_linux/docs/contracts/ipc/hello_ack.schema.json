@@ -43,6 +43,17 @@
         "theme": {
           "type": "string"
         },
+        "profile": {
+          "type": "object",
+          "description": "Facultatif, révision 1.5 (lot MJ6) : profil de joueur en cours ; count = nombre de profils de type joueur.",
+          "required": ["id", "name", "type", "count"],
+          "properties": {
+            "id": {"type": "string", "pattern": "^[a-z0-9_][a-z0-9-]{0,31}$"},
+            "name": {"type": "string", "minLength": 1, "maxLength": 32},
+            "type": {"type": "string", "enum": ["joueur", "essai"]},
+            "count": {"type": "integer", "minimum": 0, "maximum": 8}
+          }
+        },
         "chart": {
           "type": "string",
           "enum": ["hidden", "reduced", "full"]
