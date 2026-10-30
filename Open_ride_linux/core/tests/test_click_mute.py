@@ -45,8 +45,13 @@ def test_parse_status():
     assert zwift_click.parse_status(zwift_click.STATUS_HEADER + bytes([0x00])) == 0
     assert zwift_click.parse_status(bytes([zwift_click.MSG_EMPTY, 0x00])) is None
     assert zwift_click.parse_status(zwift_click.STATUS_HEADER) is None
-    # Comme sur le vrai boîtier : un champ de longueur précède le mode.
-    assert zwift_click.parse_status(zwift_click.STATUS_HEADER + bytes([0x07, 0x0A, 0x02, 0x01, 0x02, 0x10, 0x01])) == 1
+    # Trames reçues du vrai boîtier gauche (30/10, numéro de série du champ 1 remplacé par des zéros) :
+    # le champ de longueur 1 précède le mode.
+    real_unlocked = bytes.fromhex("ff0500ea05180a0c0000000000000000000000001000180f20082809301f")
+    real_locked = bytes.fromhex("ff0500ea05190a0c000000000000000000000000100118840720082809301f")
+    assert zwift_click.classify_message(real_locked) == "etat"
+    assert zwift_click.parse_status(real_unlocked) == 0
+    assert zwift_click.parse_status(real_locked) == 1
 
 
 def _locked_session(reset_locked: bool, caplog, monkeypatch):
