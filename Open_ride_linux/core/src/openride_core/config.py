@@ -106,6 +106,7 @@ class DriversConfig:
     click_trace_raw: bool = False
     click_mute_after_s: float = 60.0
     click_rehandshake_s: float = 0.0
+    click_reset_locked: bool = False   # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18)
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
     hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
     hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
@@ -184,6 +185,8 @@ class AudioConfig:
     ride_pct: int = 100            # vélo : vent dans les oreilles, roue libre, « clac » de reprise
     ambience_pct: int = 100        # ambiance : fonds, cloches, points sonores, véhicules, foule, passants
     events_pct: int = 100          # bips et événements : appuis du Click, bloc ERG, consignes, jingles
+    rogue_sfx_pct: int = 70        # Cyber-Rogue : bruitages de jeu (lot R18, bus RogueSfx)
+    rogue_music_pct: int = 40      # Cyber-Rogue : musique (lot R18, bus RogueMusic)
 
 
 @dataclass
@@ -275,6 +278,8 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("audio", "ride_pct"): (0, 100),
     ("audio", "ambience_pct"): (0, 100),
     ("audio", "events_pct"): (0, 100),
+    ("audio", "rogue_sfx_pct"): (0, 100),
+    ("audio", "rogue_music_pct"): (0, 100),
 }
 # Adresses Bluetooth : vides (recherche) ou de la forme AA:BB:CC:DD:EE:FF (lot N12).
 ADDRESS_KEYS = (("drivers", "trainer_address"), ("drivers", "click_address"),

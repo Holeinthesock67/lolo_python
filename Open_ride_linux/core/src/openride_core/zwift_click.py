@@ -29,6 +29,14 @@ ZWIFT_SYNC_TX = "00000004-19ca-4651-86e5-fa29dcdd09d1"
 ZWIFT_UNKNOWN_6 = "00000006-19ca-4651-86e5-fa29dcdd09d1"
 
 RIDE_ON = b"RideOn"
+# Redémarrage à distance d'un boîtier (rétro-ingénierie : zwiftboard, OpenRadlr ; à valider sur le matériel) :
+# un octet seul sur SYNC_RX, le boîtier se réannonce en quelques secondes.
+RESET_POD = b"\x18"
+# Message d'état du boîtier gauche (OpenRadlr) : en-tête, longueur, puis protobuf dont le champ 2 est le
+# « mode ». 0 : boutons en clair ; 1 : verrouillé par Zwift (environ une minute après la connexion).
+STATUS_HEADER = bytes([0xFF, 0x05, 0x00, 0xEA, 0x05])
+STATUS_MODE_FIELD = 2
+STATUS_MODE_LOCKED = 1
 
 MSG_CONTROLLER_NOTIFICATION = 0x07  # Zwift Play
 MSG_EMPTY = 0x15
@@ -134,13 +142,16 @@ class ClickButtons:
     down_pressed: bool = False
 
 
-MESSAGE_TYPES = ("boutons", "batterie", "maintien", "inconnu")
+MESSAGE_TYPES = ("boutons", "batterie", "maintien", "etat", "inconnu")
 
 
 def classify_message(data: bytes) -> str:
-    """Classe un message de notification du Click : 'boutons', 'batterie', 'maintien' ou 'inconnu'."""
+    """Classe un message de notification du Click : 'boutons', 'batterie', 'maintien', 'etat' (état du
+    boîtier gauche, voir `parse_status`) ou 'inconnu'."""
     if not data:
         return "inconnu"
+    if data.startswith(STATUS_HEADER):
+        return "etat"
     msg_type = data[0]
     if msg_type in (MSG_KEYPAD_STATUS, MSG_CLICK_NOTIFICATION, MSG_CONTROLLER_NOTIFICATION):
         return "boutons"
@@ -149,6 +160,13 @@ def classify_message(data: bytes) -> str:
     if msg_type == MSG_EMPTY:
         return "maintien"
     return "inconnu"
+
+
+def parse_status(data: bytes) -> int | None:
+    """Mode du message d'état (0 : boutons en clair, 1 : verrouillé), ou None si ce n'en est pas un."""
+    if not data.startswith(STATUS_HEADER) or len(data) < len(STATUS_HEADER) + 1:
+        return None
+    return decode_protobuf_varints(bytes(data[len(STATUS_HEADER) + 1:])).get(STATUS_MODE_FIELD, 0)
 
 
 def parse_async(data: bytes) -> tuple[int, dict[int, int]]:

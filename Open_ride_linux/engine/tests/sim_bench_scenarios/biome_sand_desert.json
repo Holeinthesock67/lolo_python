@@ -1,0 +1,28 @@
+{
+  "description": "Biome désert de sable (brume de chaleur) forcé sur le monde de test OSM (lot U17) : 3 min en SIM à 300 W, difficulté 20 %, pour tenir 55 images/s en low (p99 sous 25 ms) avec la végétation, la faune, les détails de sol et l'atmosphère du biome.",
+  "trainer": {
+    "appear_at": 0.3,
+    "connect_delay_s": 0.3
+  },
+  "rider": {
+    "strategy": "constante",
+    "watts": 300,
+    "cadence_rpm": 90
+  },
+  "click": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.3
+  },
+  "hr": {
+    "appear_at": 0.5,
+    "connect_delay_s": 0.2
+  },
+  "events": [],
+  "bench": {
+    "world": "osm",
+    "biome": "sand_desert",
+    "duration_s": 180,
+    "difficulty_pct": 20,
+    "every_s": 30
+  }
+}

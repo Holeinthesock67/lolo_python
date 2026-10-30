@@ -70,7 +70,9 @@ static func _clean(value: Variant, hi: float, clamp_negative := true) -> float:
 ## §7.1) ; le clavier double le Click touche pour touche (key_map.gd, lot O17). `kind` : `erg.kind` de
 ## la trame (lot O18) ; l'ERG d'une session libre n'a pas de blocs, et en cadence verrouillée ± règlent
 ## la cadence cible.
-static func controls_text(erg: bool, kind := "workout") -> String:
+static func controls_text(erg: bool, kind := "workout", rogue := false) -> String:
+	if rogue:   # colonne Cyber-Rogue du plan des boutons (spécification générale §7.1)
+		return "Click : Y = pause · + / − = vitesse · Z = attaque, long = carte active   (clavier : mêmes touches)"
 	if erg and kind == "cadence":
 		return "Click : Y = pause · + / − = cadence cible ± 2 %, long ± 10 %   (clavier : mêmes touches)"
 	if erg and kind == "free":

@@ -143,3 +143,16 @@ def test_bench_report_has_drops_and_pumping(tmp_path):
     assert "<h2>Décrochages</h2>" in html and "SPIN_DOWN_STATUS" in html
     again = dc.read_source(tmp_path)
     assert dc.analyse(again)[0][0].kind == "trainer" and len(again.segments) == 2
+
+
+def test_brake_back_right_after_the_control_retake_proves_the_trainer():
+    """Essais du 30 octobre (7av) : le pilote voit le frein lâcher, reprend le contrôle et la puissance revient
+    aussitôt ; c'est le trainer. Revenue tard, ou sans « frein lâché » du pilote, rien ne tranche."""
+    drops = dc.detect_drops(series(brake_loss))
+    lost = (31.5, dc.status_text({"event": "brake_loss", "from_w": 449, "to_w": 5, "cadence_rpm": 75}))
+    quick = dc.attach(drops, [lost, (32.7, dc.status_text({"event": "power_back", "after_s": 1.2, "power_w": 330}))], [])[0]
+    assert quick.kind == "trainer" and quick.back_after_s == 1.2 and "reprise du contrôle" in quick.reason
+    late = dc.attach(drops, [lost, (38.0, dc.status_text({"event": "power_back", "after_s": 6.5, "power_w": 330}))], [])[0]
+    assert late.kind == "indetermine" and late.back_after_s == 6.5
+    alone = dc.attach(drops, [(32.7, dc.status_text({"event": "power_back", "after_s": 1.2, "power_w": 330}))], [])[0]
+    assert alone.kind == "indetermine" and alone.back_after_s is None

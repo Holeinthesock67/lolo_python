@@ -265,5 +265,6 @@ func test_info() -> Dictionary:
 		"firewall": firewall.visible, "enemy": enemy_view.visible and ribbon.visible,
 		"enemy_archetype": str(enemy_view.archetype) if enemy_view.visible else "",
 		"corridor": corridor_view.visible, "hud": hud_view.visible,
-		"holo": hud_view.holo.text if hud_view.visible else "", "gauges": hud_view.gauges.text if hud_view.visible else "",
+		"holo": hud_view.holo.text if hud_view.visible and hud_view.holo.visible else "",
+		"gauges": hud_view.gauges.text if hud_view.visible and hud_view.gauges.visible else "",
 		"banner": hud_view.banner.visible}

@@ -82,6 +82,7 @@ class ZwiftClickProvider:
         trace_raw: bool | None = None,
         mute_after_s: float | None = None,
         rehandshake_s: float | None = None,
+        reset_locked: bool = False,
         side: str | None = None,
         side_of: Callable[[str], str | None] | None = None,
     ) -> None:
@@ -112,9 +113,12 @@ class ZwiftClickProvider:
         self.trace_raw: bool = False if trace_raw is None else trace_raw
         self.mute_after_s: float = 60.0 if mute_after_s is None else float(mute_after_s)
         self.rehandshake_s: float = 0.0 if rehandshake_s is None else float(rehandshake_s)
+        self.reset_locked = reset_locked
+        self._lock_mode: int | None = None   # dernier mode du message d'état (boîtier gauche)
+        self._reset_sent = False
         self._explicit_side = side
         self._side_of = side_of
-        self.msg_counts: dict[str, int] = {"boutons": 0, "batterie": 0, "maintien": 0, "inconnu": 0}
+        self.msg_counts: dict[str, int] = dict.fromkeys(zwift_click.MESSAGE_TYPES, 0)
         self._mute_reported = False
         self._rehandshake_step = 0
         self._last_rehandshake_at: float = 0.0
@@ -193,7 +197,13 @@ class ZwiftClickProvider:
             char_name = "ASYNC"
 
         buttons = None
-        if msg_type == zwift_click.MSG_BATTERY_LEVEL:
+        if category == "etat":
+            mode = zwift_click.parse_status(raw)
+            if mode != self._lock_mode:
+                self._lock_mode = mode
+                log.info("Click %s : état du boîtier, mode %s (%s)", self.side, mode,
+                         "verrouillé par Zwift" if mode == zwift_click.STATUS_MODE_LOCKED else "boutons en clair")
+        elif msg_type == zwift_click.MSG_BATTERY_LEVEL:
             self.battery_pct = fields.get(2)
         else:
             buttons = zwift_click.parse_click_buttons(raw)
@@ -257,9 +267,10 @@ class ZwiftClickProvider:
         log.warning(CLICK_DISCONNECTED_FMT, self._conn_address, connected, _ago(now, self._last_notify_at),
                     _ago(now, self._last_press_at), self._notify_count, since_write, reason or "fin de session")
         if self.trace_raw:
-            log.info("Click %s résumé : %d boutons, %d maintien, %d batterie, %d inconnu",
+            log.info("Click %s résumé : %d boutons, %d maintien, %d batterie, %d état, %d inconnu",
                      self.side, self.msg_counts.get("boutons", 0), self.msg_counts.get("maintien", 0),
-                     self.msg_counts.get("batterie", 0), self.msg_counts.get("inconnu", 0))
+                     self.msg_counts.get("batterie", 0), self.msg_counts.get("etat", 0),
+                     self.msg_counts.get("inconnu", 0))
         self._connected_at = None
         self._search_since, self._attempts = now, 0
 
@@ -306,6 +317,7 @@ class ZwiftClickProvider:
             self._connected_at = self._rate_since = now
             self._last_notify_at = self._last_press_at = None
             self._notify_count = self._rate_count = 0
+            self._lock_mode, self._reset_sent = None, False
             while not (dropped.is_set() or self._stop.is_set()):
                 await asyncio.sleep(0.2)
                 now = self._clock()
@@ -313,14 +325,26 @@ class ZwiftClickProvider:
                     span = now - self._rate_since
                     log.info(CLICK_RATE_FMT, self._rate_count, span, self._rate_count / span)
                     if self.trace_raw:
-                        log.info("Click %s résumé : %d boutons, %d maintien, %d batterie, %d inconnu",
+                        log.info("Click %s résumé : %d boutons, %d maintien, %d batterie, %d état, %d inconnu",
                                  self.side, self.msg_counts.get("boutons", 0), self.msg_counts.get("maintien", 0),
-                                 self.msg_counts.get("batterie", 0), self.msg_counts.get("inconnu", 0))
+                                 self.msg_counts.get("batterie", 0), self.msg_counts.get("etat", 0),
+                                 self.msg_counts.get("inconnu", 0))
                     self._rate_since, self._rate_count = now, 0
 
                 if self.trace_raw and self._pending_raw_count > 0 and (now - self._last_raw_trace_at >= 2.0):
                     self._flush_raw_trace()
                     self._last_raw_trace_at = now
+
+                # Boîtier gauche verrouillé par Zwift : un redémarrage (0x18) redonne des boutons en clair
+                # pendant environ une minute ; la reconnexion est celle d'une coupure ordinaire.
+                if (self.reset_locked and not self._reset_sent
+                        and self._lock_mode == zwift_click.STATUS_MODE_LOCKED):
+                    self._reset_sent = True
+                    log.warning("Click %s : verrouillé par Zwift, redémarrage du boîtier (0x18)", self.side)
+                    try:
+                        await client.write_gatt_char(zwift_click.ZWIFT_SYNC_RX, zwift_click.RESET_POD, response=True)
+                    except Exception as exc:   # le boîtier peut couper la liaison avant d'acquitter
+                        log.info("Click %s : liaison coupée pendant le redémarrage (%s)", self.side, exc)
 
                 # Détection du boîtier muet
                 if self._notify_count > 0:

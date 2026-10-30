@@ -78,3 +78,4 @@ Livré le 28 octobre (branche `claude/project-thread-818r6t-x41`, issue #544).
   - en vue subjective, l'hologramme et la ligne des jauges se superposent au centre de l'écran et se lisent mal ;
   - le HUD classique reste affiché pendant la run, y compris le profil d'altitude du parcours de démo ;
   - au couloir, les cartes et les portes recouvrent le profil, et les portes sont coupées en bas de l'écran en 1280×720.
+  - **Réglés le 30 octobre par le lot R19** : HUD classique caché pendant la run, hologramme et jauges séparés et retirés au couloir (portes en 720p déjà corrigées le 29 octobre) ; le banc le vérifie.
