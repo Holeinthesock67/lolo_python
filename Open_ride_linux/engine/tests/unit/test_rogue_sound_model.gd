@@ -139,7 +139,7 @@ func _run() -> void:
 	var mid_db: float = h.loops()["hum_db"]
 	for i in 20:
 		h.update(_rogue({"firewall_gap_m": 3.0}), 5, 30 + i, 11.0 + 0.5 * i)
-	_check(float(h.loops()["hum_db"]) > mid_db and float(h.loops()["hum_db"]) <= -6.0, "le ronflement monte quand le mur approche")
+	_check(float(h.loops()["hum_db"]) > mid_db and float(h.loops()["hum_db"]) <= SoundModel.HUM_MAX_DB, "le ronflement monte quand le mur approche")
 	h.update(_rogue({"firewall_gap_m": 1.0}), 5, 80, 22.0)
 	_check(h.loops()["beat"], "battement de l'alarme au contact")
 

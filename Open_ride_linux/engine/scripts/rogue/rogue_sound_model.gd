@@ -19,10 +19,13 @@ const SLEW_DB_PER_S := 12.0
 const SILENCE_DB := -60.0
 const HUM_FROM_M := 30.0
 const BEAT_GAP_M := 2.0              # battement de l'alarme : contact ou Firewall à moins de 2 m
-const HUM_MAX_DB := -6.0
+const HUM_MAX_DB := 0.0               # au contact ; avec MODE_DB et le bus, sous le vent à 60 km/h (X51)
 const HUM_MIN_DB := -30.0
 const OVERHEAT_DB := -12.0
 const MUSIC_FADE_S := 2.0
+## Niveau de tout le mode (R18 « doux d'abord ») : avec les bus par défaut, bruitages à −18 dB du plein niveau
+## (−12 dB et RogueSfx à 70 %) et musique à −28 dB (RogueMusic à 40 %), tous sous le vent à 60 km/h (lot X51).
+const MODE_DB := -12.0
 
 ## Événement du core -> son.
 const EVENT_SOUNDS := {

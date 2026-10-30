@@ -270,16 +270,7 @@ def simulate(objective: str, duration_min: int, seed: int, profile: Profile,
         if out.finished:
             break
     summ = e.summary()
-    # puissance normalisée : moyenne mobile de 30 s, puissance 4, racine 4
-    win, acc, q, fourth = 30, 0.0, deque(), []
-    for p in powers:
-        q.append(p)
-        acc += p
-        if len(q) > win:
-            acc -= q.popleft()
-        if len(q) == win:
-            fourth.append((acc / win) ** 4)
-    npw = (sum(fourth) / len(fourth)) ** 0.25 if fourth else 0.0
+    npw = normalized_power(powers)
     return {
         "seed": seed, "result": summ["result"], "boss": summ["boss"], "rooms_total": summ["rooms_total"],
         "rooms_won": summ["rooms_won"], "rooms_fled": summ["rooms_fled"], "rooms_skipped": summ["rooms_skipped"],
@@ -289,6 +280,20 @@ def simulate(objective: str, duration_min: int, seed: int, profile: Profile,
         "min_over_110": sum(1 for p in powers if p > 1.10 * profile.ftp_w) * DT / 60.0,
         "finished": bool(out and out.finished),
     }
+
+
+def normalized_power(powers: list[float]) -> float:
+    """Puissance normalisée d'une suite de puissances au pas d'une seconde : moyenne mobile de 30 s,
+    puissance 4, racine 4."""
+    win, acc, q, fourth = 30, 0.0, deque(), []
+    for p in powers:
+        q.append(p)
+        acc += p
+        if len(q) > win:
+            acc -= q.popleft()
+        if len(q) == win:
+            fourth.append((acc / win) ** 4)
+    return (sum(fourth) / len(fourth)) ** 0.25 if fourth else 0.0
 
 
 def _job(args: tuple) -> dict:
