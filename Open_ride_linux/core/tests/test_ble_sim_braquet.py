@@ -72,10 +72,14 @@ def test_cadence_follows_the_flywheel_when_the_rider_is_beaten():
 def test_brake_loss_is_classified_as_a_trainer_dropout():
     spec = load_scenario("decrochage_trainer")
     trace = ride(spec, 200.0)
-    samples = [decrochages.Sample(t, p, c) for t, p, c, _ in trace]
+    samples = [decrochages.Sample(t, p, c, v, 0.0) for t, p, c, v in trace]
     drops = decrochages.detect_drops(samples)
     assert [round(d.t) for d in drops] == [33, 93, 160]
-    assert all(decrochages.classify(d) == "trainer" for d in drops)
+    # Cadence gardée, volant qui baisse : sans repère du cycliste, rien ne prouve le trainer (essais du 30/10) ;
+    # avec le repère Z long (lot X47), si.
+    assert all(d.kind == "indetermine" and d.speed_change_pct < -20 for d in drops), [(d.kind, d.reason) for d in drops]
+    marked = decrochages.attach(drops, [], [d.t + 1.0 for d in drops])
+    assert all(d.kind == "trainer" for d in marked)
     during = [s for s in trace if 36 <= s[0] < 41]
     assert max(p for _, p, _, _ in during) < 20                          # puissance annoncée vers 0 W
     assert min(c for _, _, c, _ in during) > 90                          # cadence de la relance gardée
