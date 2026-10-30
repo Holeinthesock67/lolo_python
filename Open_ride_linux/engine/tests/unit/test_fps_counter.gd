@@ -4,7 +4,7 @@ extends SceneTree
 ## Vérifie : caché par défaut et pour une valeur inconnue ; texte « N images/s · p99 M ms » mis à jour
 ## une fois par seconde ; p99 tiré des images de la seconde ; police d'au moins 16 px ; aucun calcul
 ## quand il est caché ; choix `detail` : temps CPU et GPU ajoutés à la fin de la ligne, sur une seule ligne
-## dans la bande du haut, retirés en revenant à `on`.
+## dans la bande du haut, retirés en revenant à `on` ; effets coupés par le garde-fou de charge en fin de ligne.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_fps_counter.gd
 
 const FpsCounter := preload("res://scripts/fps_counter.gd")
@@ -59,6 +59,15 @@ func _run() -> void:
 	for i in range(60):
 		c.add_frame(1.0 / 60.0)
 	_check(c.text == "60 images/s · p99 17 ms", "retour à « on » : temps CPU et GPU retirés (%s)" % c.text)
+	# Garde-fou de charge (lot Y6) : effets coupés en fin de ligne, retirés quand tout est rendu.
+	c.shed = "SSIL, SSAO"
+	for i in range(60):
+		c.add_frame(1.0 / 60.0)
+	_check(c.text == "60 images/s · p99 17 ms · allégé : SSIL, SSAO", "effets coupés en fin de ligne : « %s »" % c.text)
+	c.shed = ""
+	for i in range(60):
+		c.add_frame(1.0 / 60.0)
+	_check(c.text == "60 images/s · p99 17 ms", "plus rien de coupé : ligne normale")
 	c.set_mode("oui")
 	_check(not c.visible, "valeur inconnue : caché")
 	_check(c.get_theme_font_size("font_size") >= 16, "police d'au moins 16 px")

@@ -79,6 +79,8 @@ const VOLUMETRIC := {
 }
 const VOLUMETRIC_DEPTH := 64
 const MSAA := {0: Viewport.MSAA_DISABLED, 2: Viewport.MSAA_2X, 4: Viewport.MSAA_4X, 8: Viewport.MSAA_8X}
+const SCREEN_AA := {"off": Viewport.SCREEN_SPACE_AA_DISABLED, "fxaa": Viewport.SCREEN_SPACE_AA_FXAA,
+	"smaa": Viewport.SCREEN_SPACE_AA_SMAA}
 const ANISOTROPY := {2: Viewport.ANISOTROPY_2X, 4: Viewport.ANISOTROPY_4X, 8: Viewport.ANISOTROPY_8X,
 	16: Viewport.ANISOTROPY_16X}
 
@@ -94,6 +96,7 @@ static func apply_preset(preset_name: String, camera: Camera3D, light: Direction
 	# SSAO, SSIL et brouillard volumétrique n'existent qu'en Forward+ (sans RenderingDevice : Compatibility).
 	var forward_plus := RenderingServer.get_rendering_device() != null
 	apply_image(QualityPresets.image(key), light, env, viewport, forward_plus)
+	apply_diagnostic(OS.get_environment("OPENRIDE_RENDER_DIAG"), light, env)
 
 	if streamer != null:
 		if "chunks_ahead" in streamer:
@@ -117,8 +120,7 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 	viewport.msaa_3d = MSAA[int(img["msaa"])]
 	viewport.anisotropic_filtering_level = ANISOTROPY[int(img["anisotropy"])]
 	# Anticrénelage d'écran : Forward+ seulement, comme l'occlusion et la brume (Compatibility le refuse en 4.7)
-	viewport.screen_space_aa = Viewport.SCREEN_SPACE_AA_FXAA if forward_plus and bool(img["fxaa"]) \
-			else Viewport.SCREEN_SPACE_AA_DISABLED
+	viewport.screen_space_aa = SCREEN_AA[str(img["screen_aa"])] if forward_plus else Viewport.SCREEN_SPACE_AA_DISABLED
 	viewport.mesh_lod_threshold = float(img["mesh_lod_threshold"])
 	viewport.scaling_3d_scale = 1.0
 
@@ -163,6 +165,28 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 		else RenderingServer.SHADOW_QUALITY_HARD)
 	light.directional_shadow_mode = (DirectionalLight3D.SHADOW_PARALLEL_4_SPLITS if int(img["shadow_splits"]) == 4
 		else DirectionalLight3D.SHADOW_PARALLEL_2_SPLITS)
+
+
+## Essais de rendu sur le PC (coutures des flancs, 29 octobre) : OPENRIDE_RENDER_DIAG, liste séparée par des
+## virgules, coupe un effet pour trouver celui qui dessine un défaut : `sans_ombres`, `sans_ssao`, `sans_ssil`,
+## `sans_brume` (brume volumétrique) ; `biais_ombres` essaie des biais d'ombre plus forts (acné d'ombre). Vide :
+## rien ne change. Aucun réglage du joueur ne passe par là.
+static func apply_diagnostic(diag: String, light: DirectionalLight3D, env: Environment) -> void:
+	var flags := diag.replace(" ", "").split(",", false)
+	if flags.is_empty():
+		return
+	if "sans_ombres" in flags:
+		light.shadow_enabled = false
+	if "sans_ssao" in flags:
+		env.ssao_enabled = false
+	if "sans_ssil" in flags:
+		env.ssil_enabled = false
+	if "sans_brume" in flags:
+		env.volumetric_fog_enabled = false
+	if "biais_ombres" in flags:
+		light.shadow_bias = 0.3
+		light.shadow_normal_bias = 3.0
+	print("Diagnostic de rendu : ", ", ".join(flags))
 
 
 ## Distance de vue de la caméra : fin du brouillard du préréglage plus CAMERA_FAR_MARGIN.

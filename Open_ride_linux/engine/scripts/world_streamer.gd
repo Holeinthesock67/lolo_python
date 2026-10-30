@@ -23,6 +23,8 @@ extends Node3D
 ## Pas de class_name (charger par preload).
 
 const RoadBuilder := preload("res://scripts/road_builder.gd")
+const RoadSurface := preload("res://scripts/road_surface.gd")
+const EngineArgs := preload("res://scripts/engine_args.gd")
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 const TerrainMaterial := preload("res://scripts/terrain_material.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
@@ -77,6 +79,11 @@ var osm_streamer: Node3D = null
 ## le sol plat sans terrain prend la couleur du biome sous le départ (start_biome).
 ## Modèle inactif (ni couche biome ni forçage) : rendu d'avant la série U.
 var forced_biome := "auto"
+## Option « gravel » (lot U22, road_surface.gd) : `off`, `auto` (colonne `surface` du parcours) ou surface
+## imposée ; lue sur la ligne de commande (`--gravel=`, lanceur), changée par `set_gravel_mode`. Couleurs et
+## largeurs : `surfaces` du thème (set_theme).
+var gravel_mode: String = EngineArgs.current().get("gravel", "off")
+var _surfaces: Dictionary = RoadSurface.surfaces_of({})
 var biome_model = null
 var biome_textures = null
 ## Préréglage de qualité (render_quality.gd) : 3 ou 4 biomes par tuile et côté des textures de sol (U-Q4).
@@ -263,19 +270,26 @@ func _get_osm_items(t: Vector2i, layer: String) -> Array:
 	return areas
 
 
+## Option « gravel » changée en cours de route (lot U22) : les tronçons de ruban sont reconstruits.
+func set_gravel_mode(mode: String) -> void:
+	if mode == gravel_mode or not (mode in RoadSurface.MODES):
+		return
+	gravel_mode = mode
+	_drop_road_chunks(0)
+
+
+## Surface effective sous la position `s` du parcours (lot U22) : `paved`, `compacted`, `gravel` ou `dirt`.
+func surface_at(s: float) -> String:
+	if route == null:
+		return "paved"
+	return RoadSurface.effective(route.surface_at(s), gravel_mode)
+
+
 ## Monde vivant (lot W10) : nouvelle route (prolongée ou réécrite depuis la partie `from_part`) et tuiles
 ## de terrain nouvellement écrites. Les tronçons de ruban touchés sont reconstruits, les autres gardés ;
 ## les travaux en cours gardent l'ancienne route, qui n'est plus modifiée.
 func swap_route(new_route, from_part: int) -> void:
-	for key in _jobs.keys():
-		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
-			WorkerThreadPool.wait_for_task_completion(_jobs[key]["task"])
-			_jobs.erase(key)
-	_ready = _ready.filter(func(r): return not ((r["key"] as String).begins_with("road:")
-			and int((r["key"] as String).get_slice(":", 1)) >= from_part))
-	for key in _instances.keys():
-		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
-			_free_instance(key)
+	_drop_road_chunks(from_part)
 	route = new_route
 	if has_terrain or _has_layer("terrain"):
 		var near_new := TerrainTiles.scan_index(world_dir, "near")
@@ -292,6 +306,19 @@ func swap_route(new_route, from_part: int) -> void:
 		has_terrain = not (_near_index.is_empty() and _far_index.is_empty())
 	if osm_streamer != null:
 		osm_streamer.swap_route(new_route, from_part)
+
+
+## Tronçons de ruban k ≥ `from_part` oubliés (travaux, maillages prêts, instances) : refaits au fil des images.
+func _drop_road_chunks(from_part: int) -> void:
+	for key in _jobs.keys():
+		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
+			WorkerThreadPool.wait_for_task_completion(_jobs[key]["task"])
+			_jobs.erase(key)
+	_ready = _ready.filter(func(r): return not ((r["key"] as String).begins_with("road:")
+			and int((r["key"] as String).get_slice(":", 1)) >= from_part))
+	for key in _instances.keys():
+		if (key as String).begins_with("road:") and int((key as String).get_slice(":", 1)) >= from_part:
+			_free_instance(key)
 
 
 ## Amorces voulues, telles que `live_world.previews(s)` les décrit : crée celles qui manquent, libère
@@ -522,6 +549,7 @@ func _start_jobs() -> void:
 			break
 		var job := {"key": key, "spec": _wanted[key], "arrays": [], "origin": Vector3.ZERO, "gen": _generation,
 			"route": route, "world_dir": world_dir, "road_width_m": _road_width_m,
+			"gravel": {"mode": gravel_mode, "surfaces": _surfaces},
 			"near_index": _near_index, "far_index": _far_index}
 		job["task"] = WorkerThreadPool.add_task(_build_job.bind(job), false, "maillage " + key)
 		_jobs[key] = job
@@ -537,7 +565,8 @@ func _build_job(job: Dictionary) -> void:
 	var alt_orig: float = r.alt_m[0] if r != null and r.n > 0 else 0.0
 	match spec["kind"]:
 		"road":
-			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)))
+			job["arrays"] = RoadBuilder.build_chunk_arrays(r, spec["k"], float(job.get("road_width_m", RoadBuilder.ROAD_WIDTH_M)),
+				job.get("gravel", {}))
 		"near", "far":
 			var t: Vector2i = spec["tile"]
 			var heights := TerrainTiles.load_filled(job["world_dir"], spec["kind"], t.x, t.y, r)
@@ -733,6 +762,7 @@ func set_theme(theme_dict: Dictionary, theme_dir: String = "") -> void:
 	_theme_dir = theme_dir
 	var r_params := ThemeRenderParams.road_params(theme_dict)
 	_road_width_m = float(r_params["width_m"])
+	_surfaces = RoadSurface.surfaces_of(theme_dict)
 	var road_tex: Texture2D = ThemeLoader.texture_for(theme_dict, theme_dir, "road.texture") if theme_dir != "" else null
 	_road_color = r_params["color"]
 	_preview_material = null

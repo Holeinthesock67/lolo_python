@@ -39,6 +39,8 @@ const MenuModel := preload("res://scripts/menu_model.gd")
 const KeyMap := preload("res://scripts/key_map.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
+const LoadGuard := preload("res://scripts/load_guard.gd")
+const QualityPresets := preload("res://scripts/quality_presets.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
 const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
@@ -100,6 +102,8 @@ var erg_view = ErgViewModel.new()
 var erg_panel = null
 ## Compteur d'images/s du HUD (réglage `render.fps`, caché par défaut).
 var fps_counter = null
+## Garde-fou de charge (lot Y6) : coupe les effets les plus chers quand la carte graphique sature.
+var load_guard = LoadGuard.new({}, false)
 var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
 var _beep_player: AudioStreamPlayer
 var sound_player = null
@@ -230,6 +234,10 @@ func _ready() -> void:
 		if streamer.osm_streamer != null:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+	load_guard = LoadGuard.new(QualityPresets.image(_quality_name), bool(cfg["load_guard"]), _forward_plus())
+	if load_guard.enabled:   # temps GPU de la vue lu à chaque image
+		RenderingServer.viewport_set_measure_render_time(get_viewport().get_viewport_rid(), true)
+	print("Garde-fou de charge : ", "actif" if load_guard.enabled else "coupé")
 	streamer.osm_streamer.set_preset(_quality_name)
 	atmosphere_view.name = "AtmosphereView"
 	add_child(atmosphere_view)
@@ -410,13 +418,15 @@ static func _quality_from_cli() -> bool:
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	AudioMix.apply_settings(menu_flow.settings.items)
-	fps_counter.probe_active = _probe.is_open()
+	fps_counter.measure_kept = _probe.is_open() or load_guard.enabled
 	fps_counter.set_mode(str(menu_flow.settings.item(FpsCounter.SETTING_KEY).get("value", "off")))
 	_draft_gauge_on = str(menu_flow.settings.item(DraftGaugeModel.SETTING_KEY).get("value", "off")) == "on"
 	var q := str(menu_flow.settings.item("render.quality").get("value", _quality_name))
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
 		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+		load_guard.reset(QualityPresets.image(_quality_name), _forward_plus())
+		fps_counter.shed = ""
 		atmosphere_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
@@ -783,6 +793,7 @@ func _process(delta: float) -> void:
 	_record_frame_perf(delta)
 	fps_counter.add_frame(delta)
 	_probe.frame(delta, streamer)
+	_step_load_guard(delta)
 	var now := Time.get_ticks_usec()
 	_remember_camera_view(now / 1000000.0)
 	var camera_log: String = camera_views.log_line()   # tout changement de la vue affichée, quelle qu'en soit l'origine
@@ -1582,3 +1593,24 @@ func _exit_tree() -> void:
 	if not _route_job.is_empty():
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
 	_probe.close()
+
+
+## Garde-fou de charge (load_guard.gd), une fois par image : coupe ou rend un effet du préréglage selon le
+## temps GPU de la vue. En pause pendant le Cyber-Rogue, qui a son propre Environment.
+func _step_load_guard(delta: float) -> void:
+	if not load_guard.enabled or rogue_host.is_active():
+		return
+	var change: Dictionary = load_guard.step(
+		RenderingServer.viewport_get_measured_render_time_gpu(get_viewport().get_viewport_rid()), delta)
+	var t_s := Time.get_ticks_msec() / 1000.0
+	if not load_guard.gain_measured.is_empty():
+		print(LoadGuard.log_line(load_guard.gain_measured, t_s))
+	if change.is_empty():
+		return
+	load_guard.apply(QualityPresets.image(_quality_name), world_env.environment, get_viewport(), _forward_plus())
+	fps_counter.shed = load_guard.shed_text()
+	print(LoadGuard.log_line(change, t_s))
+
+
+static func _forward_plus() -> bool:
+	return RenderingServer.get_rendering_device() != null

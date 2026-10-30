@@ -42,7 +42,9 @@
         "branch_locked",
         "unknown_junction",
         "world_unavailable",
-        "wtf_rule_invalid"
+        "wtf_rule_invalid",
+        "profile_invalid",
+        "name_invalid"
       ]
     },
     "message": {

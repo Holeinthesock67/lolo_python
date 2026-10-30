@@ -28,6 +28,11 @@ extends RefCounted
 ##   ronronnement grave (roue lenticulaire) ou un sifflement léger (jantes hautes) naît à `WHEEL_MIN_KMH = 20.0`
 ##   à `WHEEL_MIN_DB = -40.0` et monte à `WHEEL_MAX_DB = -26.0` à `WHEEL_LOUD_KMH = 50.0` km/h ; hauteur de
 ##   `WHEEL_PITCH_MIN = 0.8` à `WHEEL_PITCH_MAX = 1.3`, linéaire en vitesse. Silence en pause et sans roue sonore.
+## - Gravier (lot U22, option « gravel ») : `set_surface("paved" | "compacted" | "gravel" | "dirt")` (surface
+##   effective sous le cycliste, world_streamer.surface_at). Crissement de `GRAVEL_MIN_DB = -36.0` à
+##   `GRAVEL_MIN_KMH = 5.0` km/h jusqu'à `GRAVEL_MAX_DB = -18.0` à `GRAVEL_LOUD_KMH = 35.0` km/h, `COMPACTED_DB = -6.0`
+##   dB plus bas sur `compacted` ; hauteur de `GRAVEL_PITCH_MIN = 0.8` à `GRAVEL_PITCH_MAX = 1.25`. Silence sur
+##   le bitume, à l'arrêt et en pause ; changement de surface adouci par `SLEW_RATE_DB_PER_S`.
 ## - `HYSTERESIS_EXIT_FACTOR = 1.1` : un POI entre à `radius_m` et sort à `1,1 × radius_m`.
 ## - `SLEW_RATE_DB_PER_S = 12.0` : variation maximale de tout volume (12 dB/s, soit 1,2 dB pour 0,1 s).
 ## - `MAX_POI_SOURCES = 4` : nombre maximal de points d'intérêt audibles simultanément (les plus proches).
@@ -61,6 +66,15 @@ const WHEEL_MAX_DB := -26.0
 const WHEEL_PITCH_MIN := 0.8
 const WHEEL_PITCH_MAX := 1.3
 
+const GRAVEL_SURFACES := ["compacted", "gravel", "dirt"]
+const GRAVEL_MIN_KMH := 5.0
+const GRAVEL_LOUD_KMH := 35.0
+const GRAVEL_MIN_DB := -36.0
+const GRAVEL_MAX_DB := -18.0
+const COMPACTED_DB := -6.0
+const GRAVEL_PITCH_MIN := 0.8
+const GRAVEL_PITCH_MAX := 1.25
+
 const HYSTERESIS_EXIT_FACTOR := 1.1
 const SLEW_RATE_DB_PER_S := 12.0
 const MAX_POI_SOURCES := 4
@@ -90,6 +104,8 @@ var _freewheel_db: float = SILENCE_DB
 var _poi_db: Dictionary = {}
 var _wheel_kind := "none"
 var _wheel_db: float = SILENCE_DB
+var _surface := "paved"
+var _gravel_db: float = SILENCE_DB
 
 
 static func _is_number(v: Variant) -> bool:
@@ -279,6 +295,18 @@ func set_wheel_kind(kind: String) -> void:
 	_wheel_kind = kind if kind in ["hum", "whistle"] else "none"
 
 
+func set_surface(surface: String) -> void:
+	_surface = surface if surface in GRAVEL_SURFACES else "paved"
+
+
+## Volume cible du crissement des pneus (SILENCE_DB sur le bitume, sous GRAVEL_MIN_KMH ou en pause).
+static func _target_gravel_db(surface: String, speed_kmh: float, paused: bool) -> float:
+	if paused or not (surface in GRAVEL_SURFACES) or speed_kmh < GRAVEL_MIN_KMH:
+		return SILENCE_DB
+	var t := clampf((speed_kmh - GRAVEL_MIN_KMH) / (GRAVEL_LOUD_KMH - GRAVEL_MIN_KMH), 0.0, 1.0)
+	return lerpf(GRAVEL_MIN_DB, GRAVEL_MAX_DB, t) + (COMPACTED_DB if surface == "compacted" else 0.0)
+
+
 ## Volume cible de la roue sonore (SILENCE_DB sans roue sonore, à l'arrêt ou en pause).
 static func _target_wheel_db(kind: String, speed_kmh: float, paused: bool) -> float:
 	if paused or kind == "none" or speed_kmh < WHEEL_MIN_KMH:
@@ -316,6 +344,7 @@ func evaluate(now_s: float) -> Dictionary:
 		target_fw_db = lerpf(FREEWHEEL_MIN_DB, FREEWHEEL_MAX_DB, loud)
 	_freewheel_db = SILENCE_DB if _paused else _slew(_freewheel_db, target_fw_db, max_step)
 	_wheel_db = SILENCE_DB if _paused else _slew(_wheel_db, _target_wheel_db(_wheel_kind, _speed_kmh, _paused), max_step)
+	_gravel_db = SILENCE_DB if _paused else _slew(_gravel_db, _target_gravel_db(_surface, _speed_kmh, _paused), max_step)
 	var clac := _clac_pending and not _paused
 	_clac_pending = false
 
@@ -376,6 +405,11 @@ func evaluate(now_s: float) -> Dictionary:
 			"kind": _wheel_kind,
 			"volume_db": _wheel_db,
 			"pitch": lerpf(WHEEL_PITCH_MIN, WHEEL_PITCH_MAX, clampf(_speed_kmh / WHEEL_LOUD_KMH, 0.0, 1.0)),
+		},
+		"gravel": {
+			"surface": _surface,
+			"volume_db": _gravel_db,
+			"pitch": lerpf(GRAVEL_PITCH_MIN, GRAVEL_PITCH_MAX, clampf(_speed_kmh / GRAVEL_LOUD_KMH, 0.0, 1.0)),
 		},
 		"pois": out_pois,
 		"events": events_out,

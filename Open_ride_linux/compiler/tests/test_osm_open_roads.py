@@ -57,7 +57,7 @@ def test_query_asks_open_land_and_roads():
 
 def test_open_land_kinds_density_zero_and_edge_rule(built):
     manifest = json.loads((built / "manifest.json").read_text(encoding="utf-8"))
-    assert manifest["format_version"] == "1.5"
+    assert manifest["format_version"] == "1.6"
     jsonschema.validate(manifest, json.loads((WORLD_CONTRACTS / "manifest.schema.json").read_text(encoding="utf-8")))
     areas = {a["id"]: (k, a) for k, items in _chunks(built, "vegetation", "areas").items() for a in items}
     assert {i: a["kind"] for i, (_, a) in areas.items()} == {

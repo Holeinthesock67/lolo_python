@@ -28,7 +28,9 @@ extends Node3D
 ##   FOG_PERIOD_S, chaussée mouillée, pluie dans l'ambiance), oiseaux et animaux, éoliennes et drapeaux,
 ##   reflets de l'eau ; puis, une fois le parcours préparé, dans cet ordre (lot P27) : cyclistes du décor,
 ##   véhicules de la route, véhicules lointains, ciel et bateaux (figés en pause), spectateurs (clameur
-##   selon la puissance et les bots doublés) et passants. La météo évaluée (`weather_eval`), le vent
+##   selon la puissance et les bots doublés) et passants. Option « gravel » (U22) : `surface_here` (surface
+##   effective sous le cycliste), poussière derrière la roue (weather_particles.update_dust) et crissement des
+##   pneus (sound_model.set_surface). La météo évaluée (`weather_eval`), le vent
 ##   (`wind_eval`) et les bots de `state` sont lus une seule fois par image et passés à chacun ;
 ##   `wave2_us` / `wave2_frames` : temps moyen des lots P23 à P26, P28 et P29 (enveloppe de P27).
 ## Panneaux et animaux suivent les tronçons d'osm_streamer.gd (`chunk_loaded` / `chunk_freed`) : au plus
@@ -122,6 +124,7 @@ var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par s
 var _rider_v := 0.0
 var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
 const CONTACT_M := 300.0
+var surface_here := "paved"        # lot U22 : surface effective sous le cycliste (world_streamer.surface_at)
 var contacts := 0                  # lot P32 : contacts vus sur la route (images × paires), doit rester à 0
 var last_contact := ""             # lot P32 : qui touchait qui la dernière fois, pour le rapport des tests
 var _job: Dictionary = {}
@@ -433,6 +436,13 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 	# Météo (P8)
 	weather_eval = WeatherModel.evaluate(weather, alt_m, _valley_alt_at(cam_s), wind_eval)
 	particles.update(cam_pos, weather_eval)
+	# Gravel (U22) : surface sous la roue, poussière derrière elle par temps sec et crissement des pneus
+	surface_here = world_streamer.surface_at(cam_s) if world_streamer != null and world_streamer.has_method("surface_at") else "paved"
+	var back := Vector3(-sin(h), 0.0, cos(h))
+	var wheel: Vector3 = _route.sample_point(cam_s) + Vector3(cos(h), 0.0, sin(h)) * RoadBuilder.RIDER_LATERAL_M
+	particles.update_dust(wheel, back, 0.0 if paused else rider_v, surface_here)
+	if sound_player != null and sound_player.get("model") != null:
+		sound_player.model.set_surface(surface_here)
 	if world_streamer != null and world_streamer.has_method("set_road_wetness"):
 		world_streamer.set_road_wetness(float(weather_eval.get("wetness", 0.0)))
 	if living_world != null:

@@ -13,6 +13,7 @@ l'énumération des codes du contrat est fermée).
 from __future__ import annotations
 
 import logging
+from datetime import date
 from pathlib import Path
 from typing import Any, Iterable
 
@@ -24,7 +25,7 @@ from .physics import PhysicsParams
 from .workout import WorkoutError, load_workout, workout_path
 from . import profiles
 from .profile import (Profile, ProfileError, ProfileTooNew, SLOTS, check_avatar,
-                      equip, load_profile, save_profile, set_avatar)
+                      equip, load_profile, peek_profile, save_profile, set_avatar)
 from .tools import estimate_cp
 from .progression import (FactsCache, Progress, ProgressionError, Table,
                           WorkoutDurations, load_table, recompute)
@@ -316,3 +317,21 @@ class ProgressionService:
 def _copy(value: Any) -> Any:
     import copy
     return copy.deepcopy(value)
+
+
+def profile_summary(ctx: "profiles.ProfileContext", workouts: WorkoutDurations = None) -> dict[str, Any]:
+    """Élément du message `profiles` (contrat révision 1.5, lot MJ6) : nom, type, niveau, date de la
+    dernière séance et couleur du maillot du profil `ctx`, sans le charger (lot MJ7)."""
+    level, last = 1, None
+    try:
+        table = load_table(ctx.table_path)
+        cache = FactsCache(ctx.journal_dir / CACHE_NAME) if ctx.journal_dir.is_dir() else None
+        progress = recompute(ctx.journal_dir, table, workouts, cache, ctx.counted_sources, ctx.owns)
+        level = progress.level.level
+        starts = [r.facts.start_ts for r in progress.sessions if r.facts.start_ts]
+        last = date.fromtimestamp(max(starts)).isoformat() if starts else None
+    except ProgressionError as exc:
+        log.warning("Profil %s : progression illisible (%s)", ctx.id, exc)
+    kit = peek_profile(ctx.profile_path).avatar.get("kit_primary", 0)
+    return {"id": ctx.id, "name": ctx.name, "type": ctx.type, "level": level, "last_ride": last,
+            "kit_primary": int(kit) if isinstance(kit, int) else 0}

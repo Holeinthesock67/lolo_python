@@ -79,6 +79,7 @@ WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révisio
 DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" / "default" / "theme.json"
 
 
+PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile")   # lot MJ7
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
 XP_RESULT_PERIOD_S = 1.0
@@ -340,6 +341,13 @@ class CoreSession:
         self.w_prime_estimate_j: float | None = None   # W' estimé des séances passées (lot R16), calculé dans run()
         self.mmp_cache_path: Path | None = None   # None : cache du profil de joueur en cours (série MJ)
         self._publish_rogue()
+        # Profils de joueurs (série MJ, lot MJ7) : verrou du profil en cours (posé par `openride-core run`),
+        # dossier des profils et fichier lu par le lanceur pour relancer le core sur le bon profil.
+        self.profile_lock: profiles.ProfileLock | None = None
+        self.profiles_base: Path | None = None   # None : ~/OpenRide/Profils
+        self.active_profile_path: Path | None = None   # None : ~/OpenRide/.profil_actif
+        self._last_create: tuple[int, Any] | None = None   # dernier create_profile traité (copies ignorées)
+        self._publish_profile()
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -481,6 +489,175 @@ class CoreSession:
             self._on_workout_menu_command(name, args, cmd_id)
         elif name in ("list_garage", "equip", "buy", "set_avatar"):
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name in PROFILE_COMMANDS:
+            self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
+
+    # --- profils de joueurs (série MJ, lot MJ7, contrat IPC révision 1.5) ------------------------
+
+    def _profile_block(self) -> dict[str, Any] | None:
+        """`hello_ack.config.profile` : profil en cours et nombre de profils joueur ; None sans profil."""
+        ctx = self.profile_ctx
+        if ctx.id is None:
+            return None
+        count = sum(not c.is_trial for c in profiles.list_contexts(self.profiles_base))
+        return {"id": ctx.id, "name": ctx.name or ctx.id, "type": ctx.type, "count": count}
+
+    def _publish_profile(self) -> None:
+        block = self._profile_block()
+        if block is None:
+            self.server.hello_config.pop("profile", None)
+        else:
+            self.server.hello_config["profile"] = block
+
+    def _profiles_message(self, cmd_id: int) -> dict[str, Any]:
+        """Message `profiles` : profils joueur triés par nom, le profil d'essai seulement s'il est en cours."""
+        from .garage import profile_summary
+
+        workouts = workout_duration_finder(self.workouts_dir)
+        items = [profile_summary(c, workouts) for c in profiles.list_contexts(self.profiles_base)
+                 if not c.is_trial or c.id == self.profile_ctx.id][:profiles.MAX_PROFILES]
+        return {"type": "profiles", "v": 1, "request_cmd_id": cmd_id, "active": self.profile_ctx.id, "items": items}
+
+    def _send_profiles(self, cmd_id: int) -> None:
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : calcul sur place
+            self.server.send_raw(self._profiles_message(cmd_id))
+            return
+
+        async def send() -> None:
+            self.server.send_raw(await asyncio.to_thread(self._profiles_message, cmd_id))
+
+        self._spawn(send())
+
+    def _on_profile_command(self, name: str, args: dict, cmd_id: int) -> None:
+        if name == "list_profiles":
+            self._send_profiles(cmd_id)
+            return
+        if self.state.session_state not in ("IDLE", "READY", "FINISHED", "ERROR"):
+            self.server.send_error("busy", "Profils modifiables seulement hors séance (terminer d'abord).")
+            return
+        base = self.profiles_base
+        try:
+            if name == "select_profile":
+                self._select_profile(profiles.ProfileContext.for_id(profiles.check_id(str(args.get("id") or "")), base),
+                                     cmd_id)
+            elif name == "create_profile":
+                if self._last_create == (cmd_id, args.get("name")):
+                    self._send_profiles(cmd_id)   # copie d'une commande déjà traitée : pas de second profil
+                    return
+                ctx = profiles.create(args.get("name"), base)
+                self._last_create = (cmd_id, args.get("name"))
+                log.info("Profil créé : %s (%s).", ctx.name, ctx.id)
+                self._select_profile(ctx, cmd_id)
+                self._send_profiles(cmd_id)
+            elif name == "rename_profile":
+                ctx = profiles.rename(args.get("id"), args.get("name"), base)
+                log.info("Profil renommé : %s → %s.", ctx.id, ctx.name)
+                if ctx.id == self.profile_ctx.id:
+                    self.profile_ctx = ctx
+                    self._publish_profile()
+                self._send_profiles(cmd_id)
+            else:
+                dest = profiles.delete(args.get("id"), self.profile_ctx.id, base)
+                log.info("Profil mis à la corbeille : %s.", dest)
+                self._publish_profile()
+                self._send_profiles(cmd_id)
+        except profiles.ProfileNameError as exc:
+            log.warning("Profil : %s refusé : %s", name, exc)
+            self.server.send_error("name_invalid", str(exc))
+        except (profiles.ProfileContextError, OSError) as exc:
+            log.warning("Profil : %s refusé : %s", name, exc)
+            self.server.send_error("profile_invalid", str(exc))
+
+    def _select_profile(self, ctx: profiles.ProfileContext, cmd_id: int) -> None:
+        """Change de profil sans relancer : configuration effective, progression, records, plan et
+        dossier des séances rechargés ; liaison du trainer et du Click gardée ; `hello_ack` complet,
+        puis `settings` et `progression`. Lève `ProfileContextError` (rien n'a changé)."""
+        from . import config as config_mod
+
+        old_ctx, old_lock = self.profile_ctx, self.profile_lock
+        if ctx.id == old_ctx.id:
+            self._send_profile_reload(cmd_id)
+            return
+        lock = profiles.ProfileLock(ctx)
+        lock.acquire()   # profil déjà utilisé par une autre séance : ProfileContextError
+        profiles.activate(ctx)
+        try:
+            profiles.ensure_description(ctx)
+            cfg = config_mod.load(self.config_path)
+        except (config_mod.ConfigError, OSError) as exc:
+            profiles.activate(old_ctx)
+            lock.release()
+            raise profiles.ProfileContextError(f"profil « {ctx.label} » illisible : {exc}") from None
+        if old_lock is not None:
+            old_lock.release()
+        self.profile_lock = lock
+        self.profile_ctx = ctx
+        old_hr = (self.cfg.drivers.hr, self.cfg.drivers.hr_address)
+        self.cfg = cfg
+        self.journal_dir = ctx.journal_dir
+        self.records_path = ctx.records_path
+        self.progress_svc = self._build_progression(None)
+        self.rogue_provider = self.progress_svc.rogue_progress
+        self._base_params = self._equipped_params()
+        self.physics.p = self._base_params
+        self._build_wind()
+        self.gearing.k = min(max(cfg.gearing.start_gear, 1), self.gearing.n_gears)
+        self.difficulty_pct = float(cfg.trainer.difficulty_pct)
+        self.state.difficulty_pct = round(self.difficulty_pct)
+        if (cfg.drivers.hr, cfg.drivers.hr_address) != old_hr:
+            self._swap_hr()
+        self.server.hello_config.update(ftp_w=cfg.rider.ftp_w, hr_max_bpm=cfg.rider.hr_max_bpm, theme=cfg.render.theme,
+                                        chart=cfg.render.chart, difficulty_pct=round(self.difficulty_pct))
+        self._publish_progression()
+        self.w_prime_estimate_j = None
+        self._publish_rogue()
+        self._note_profile()
+        log.info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root, " — PROFIL D'ESSAI" if ctx.is_trial else "")
+        self._send_profile_reload(cmd_id)
+        try:
+            asyncio.get_running_loop()
+            self._spawn(self._publish_w_prime_estimate())   # W' du nouveau profil, au hello_ack suivant
+        except RuntimeError:
+            pass
+
+    def _send_profile_reload(self, cmd_id: int) -> None:
+        self._publish_profile()
+        self.server.send_hello_ack(self.server.hello_config)
+        self._send_settings(cmd_id)
+        if self.progress_svc.enabled and self.progress_svc.progression_dict() is not None:
+            self.server.send_raw(self.progress_svc.progression_message(cmd_id))
+
+    def _note_profile(self) -> None:
+        """`.profil_actif` pour le lanceur ; `[profils] dernier` pour un profil de joueur seulement."""
+        from . import config as config_mod
+        from . import config_edit
+
+        ctx = self.profile_ctx
+        try:
+            profiles.write_active(ctx, self.active_profile_path)
+        except OSError as exc:
+            log.warning("Profil en cours non noté : %s", exc)
+        if ctx.id is None or ctx.is_trial or (self.sim is not None and self.config_path is None):
+            return
+        try:
+            config_edit.update_config(self.config_path or config_mod.DEFAULT_CONFIG_PATH, [("profils", "dernier", ctx.id)])
+        except config_edit.ConfigEditError as exc:
+            log.warning("Dernier profil non enregistré : %s", exc)
+
+    def _swap_hr(self) -> None:
+        """Ceinture cardio du nouveau profil : l'ancienne s'arrête, la nouvelle est recherchée."""
+        if self.hr is not None and hasattr(self.hr, "stop"):
+            self.hr.stop()
+        self.hr = build_hr(self.cfg, self.sim)
+        if self.hr is not None and hasattr(self.hr, "run"):
+            try:
+                asyncio.get_running_loop()
+                self._spawn(self.hr.run())
+            except RuntimeError:
+                pass
+        log.info("Ceinture cardio : %s.", self.cfg.drivers.hr if self.hr is not None else "aucune")
 
     # --- progression, Garage et bilan d'expérience (série V, lot V11, contrat IPC révision 1.4) ----
 

@@ -33,16 +33,29 @@ defaults:
     working-directory: Open_ride_linux
 
 jobs:
+  # Lot X52 : une seule colonne sur les demandes de fusion (3.14, avec constraints.txt : pas de dérive des
+  # dépendances qui ferait échouer une PR sans rapport) ; les deux colonnes sur main, sur demande et chaque lundi.
+  # Filet de la 3.11 sur les PR : compilation de tout le code Python par Python 3.11 (syntaxe trop récente).
   python:
     name: python (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.14"]
+        python-version: ${{ fromJSON(github.event_name == 'pull_request' && '["3.14"]' || '["3.11", "3.14"]') }}
     steps:
       - name: Récupération du dépôt
         uses: actions/checkout@v5
+
+      - name: Python 3.11 pour la compilation (demandes de fusion)
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Code compilable par Python 3.11 (demandes de fusion)
+        if: github.event_name == 'pull_request'
+        run: python3.11 -m compileall -q core/src compiler/src scripts engine/tests
 
       - name: Installation de Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -76,6 +89,11 @@ jobs:
 
       - name: Contrôle des vecteurs de route
         run: python -m openride_core.tools.route_vectors --check
+
+      # Lot X52 : les nombres de tests ne sont plus écrits dans la doc ; ils sont donnés ici, dans le résumé du run.
+      - name: Nombre de tests (résumé du run)
+        if: matrix.python-version == '3.14'
+        run: python3 scripts/recompte_tests.py --resume "$GITHUB_STEP_SUMMARY"
 
       # Rapports JUnit gardés (lot X3) : durée et statut de chaque test, lus par scripts/stabilite_tests.py.
       - name: Rapports JUnit
@@ -132,6 +150,29 @@ jobs:
 
       - name: Essai de bout en bout (vrai core et vrai engine, lot J8)
         run: GODOT="$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" engine/tests/run_e2e.sh
+
+      - name: Captures des flancs de colline (terrain, low, medium et high)
+        # Demandes de fusion qui touchent le terrain ou ses shaders : vraie scène sur la démo (tour « flancs »,
+        # relief de séance), captures jointes au run pour validation (règle du propriétaire du 29 octobre).
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch -q --depth=1 origin "${{ github.base_ref }}"
+          if ! git diff --name-only FETCH_HEAD HEAD | grep -qE '^Open_ride_linux/engine/(scripts/(terrain_tiles|world_streamer|living_world)\.gd|shaders/|tests/tours/flancs\.json)'; then
+            echo "Terrain inchangé : captures sautées"; exit 0
+          fi
+          for q in low medium high; do
+            python3 engine/tests/tour_visuel.py --godot "$HOME/.cache/godot-4.7.2/Godot_v4.7.2-stable_linux.x86_64" \
+              --world demo --tour flancs --quality "$q" --out "$RUNNER_TEMP/captures_flancs/$q"
+          done
+
+      - name: Captures des flancs de colline (pièce jointe)
+        if: always() && github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: captures_flancs
+          path: ${{ runner.temp }}/captures_flancs
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Banc des menus (Click simulé, clavier, souris ; une voie par scénario)
         run: |

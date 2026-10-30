@@ -2,7 +2,8 @@ extends SceneTree
 
 ## Raccord du terrain proche au lointain (terrain_tiles.gd, blend_to_far et sink_under_near). Défaut vu en
 ## séance le 28 octobre (« on voit des tuiles non jointives dans le décor ») : marche d'environ 2 m là où le
-## terrain proche s'arrête, et maillage lointain qui perçait le proche au creux des collines.
+## terrain proche s'arrête, et maillage lointain qui perçait le proche au creux des collines ; le 29 octobre,
+## lointain trop creusé sur les flancs (coutures en zigzag au-delà du rayon des tuiles proches).
 
 const TerrainTiles := preload("res://scripts/terrain_tiles.gd")
 
@@ -99,6 +100,20 @@ func _run() -> void:
 		_check(poke_after <= -TerrainTiles.FAR_CARVE_MARGIN_M + 0.001,
 			"k = %.1f : lointain sous le proche partout (au plus %.2f m)" % [k, poke_after])
 		_check(edge_moved == 0.0, "k = %.1f : sommets lointains du bord de la zone proche inchangés" % k)
+	# Pente régulière (30 %) identique au proche et au lointain : le lointain est déjà sous le proche, il ne bouge
+	# pas (la règle du 28 octobre le creusait de 15 m sous chaque sommet, coutures en zigzag du 29 octobre)
+	var slope := func(x: float, z: float) -> float: return 400.0 + 0.3 * x + 0.1 * z
+	var far_slope := _grid("far", 0, 0, slope)
+	var near_slope := {}
+	for t in near_index:
+		near_slope[t] = _grid("near", t.x, t.y, slope)
+	for k in [1.0, 2.5]:
+		var kept := TerrainTiles.sink_under_near(far_slope, 0, 0, near_index, func(nx: int, nz: int) -> PackedFloat32Array:
+			return near_slope.get(Vector2i(nx, nz), PackedFloat32Array()), k)
+		var moved := 0.0
+		for idx in range(S * S):
+			moved = maxf(moved, absf(kept[idx] - far_slope[idx]))
+		_check(moved < 1e-4, "k = %.1f : pente régulière, lointain inchangé (%.4f m)" % [k, moved])
 	# Tuile entourée de tuiles proches : rien n'est modifié
 	var full := {}
 	for dj in range(-1, 2):

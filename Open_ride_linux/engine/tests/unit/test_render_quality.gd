@@ -60,8 +60,8 @@ func _test_presets_application() -> void:
 			and env.ssil_enabled == (str(img["ssil"]) != "off" and fp),
 			"%s : SSAO %s, SSIL %s" % [name, img["ssao"], img["ssil"]])
 		_check(vp.msaa_3d == RenderQuality.MSAA[int(img["msaa"])]
-			and (vp.screen_space_aa == Viewport.SCREEN_SPACE_AA_FXAA) == (bool(img["fxaa"]) and fp),
-			"%s : MSAA %d×, FXAA %s" % [name, img["msaa"], str(img["fxaa"])])
+			and vp.screen_space_aa == (RenderQuality.SCREEN_AA[str(img["screen_aa"])] if fp else Viewport.SCREEN_SPACE_AA_DISABLED),
+			"%s : MSAA %d×, anticrénelage d'écran %s" % [name, img["msaa"], img["screen_aa"]])
 		_check(vp.anisotropic_filtering_level == RenderQuality.ANISOTROPY[int(img["anisotropy"])],
 			"%s : filtrage anisotrope %d×" % [name, img["anisotropy"]])
 		_check(absf(vp.mesh_lod_threshold - float(img["mesh_lod_threshold"])) < 1e-4,

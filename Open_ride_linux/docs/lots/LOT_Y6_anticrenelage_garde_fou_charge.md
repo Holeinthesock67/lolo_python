@@ -49,3 +49,48 @@ Configuration : clé facultative `[render] load_guard` (booléen, vrai par défa
 
 - Baisse de résolution, FSR, rendu à débit variable (VRS : exclu, la GTX 1060 ne le gère pas).
 - Choix des effets de chaque préréglage : Y13.
+
+## 9. Réalisation, étape 1 : SMAA en `low` (30 octobre)
+
+Le propriétaire a donné son accord le 30 octobre, après la migration Y2 vers Godot 4.7.2.
+
+- `QualityPresets.IMAGE` remplace le booléen `fxaa` par la clé `screen_aa` (`off`, `fxaa` ou `smaa`). `low` passe à `smaa`, `medium` et `high` restent à `off` (ils ont le MSAA 4×). `RenderQuality.SCREEN_AA` fait le lien avec `Viewport.SCREEN_SPACE_AA_*`. L'anticrénelage d'écran ne s'applique qu'en Forward+, comme avant.
+- Tests : `test_quality_presets` vérifie la clé et sa valeur, et qu'il y a toujours un anticrénelage (41 vérifications). `test_render_quality` vérifie l'anticrénelage appliqué au viewport (72 vérifications).
+- Captures dans le cloud (Forward+ lavapipe, 1280×720, `low`, vitrine `route`, `village`, `arbres_temperes`, `eolienne` et `panneaux`), FXAA de main contre SMAA. Le SMAA garde le texte des panneaux, les fenêtres et les écorces nets, là où le FXAA les floute. Les bords des pales, des troncs et de la route restent lissés.
+- Reste à faire :
+  - mesure sur le PC (GTX 1060, 1680×1011) en `low`, `medium` et `high`, pour le critère d'au plus +0,3 ms en `low` ;
+  - captures montrées au propriétaire ;
+  - le garde-fou de charge, qui fera l'étape 2 avec sa propre PR.
+
+## 10. Réalisation, étape 2 : garde-fou de charge (30 octobre)
+
+- `engine/scripts/load_guard.gd`, sans nœud. Il lit à chaque image le temps GPU de la vue et en fait une moyenne glissante sur 3 s, pondérée par la durée des images.
+  - **Coupe** : sur une fenêtre pleine dont la moyenne dépasse 13 ms, il coupe l'effet suivant de `SHED_ORDER` : SSIL, puis SSAO, puis glow, puis MSAA ramené à 2×.
+  - **Retour** : la première fenêtre pleine après une coupe mesure ce que l'effet coûtait. Le dernier effet coupé revient quand la moyenne plus ce coût reste sous 12,5 ms pendant 10 s, ce qui garantit qu'il ne refera pas dépasser 13 ms. Il revient aussi après 10 s sous 9 ms, si la scène s'est allégée depuis la coupe.
+  - **Correction du 30 octobre (essai 7bc)** : la première version ne rendait les effets qu'après 10 s sous 9 ms. Sur le village en medium, le GPU est monté à 15 ms pendant 6 s, puis s'est stabilisé à 10,7 ms. Le SSIL et le SSAO sont restés coupés toute la séance, alors que le SSAO, qui fait gagner 1,5 ms, pouvait revenir.
+  - **Garde-fous** : jamais deux changements à moins de 3 s, et la fenêtre repart de zéro après chaque changement. Seuls les effets allumés par le préréglage peuvent être coupés. En Compatibility, le SSAO et le SSIL n'existent pas et ne sont donc jamais coupés. Une mesure nulle est ignorée. La résolution et la qualité des ombres ne sont jamais touchées.
+- `main.gd` fait un appel par image. À chaque changement, le garde-fou réapplique son état par-dessus le préréglage et écrit une ligne `[charge] t=40.2 s coupé : SSIL (GPU 15.0 ms en moyenne sur 3 s)` dans le journal, horodatée en secondes depuis le lancement. Il repart de zéro quand le préréglage change et reste en pause pendant le Cyber-Rogue, qui a son propre `Environment`.
+- `fps_counter.gd` : quand le compteur d'images/s est affiché, la ligne finit par « · allégé : SSIL, SSAO ». La mesure du temps GPU reste active (`measure_kept`, ancien `probe_active`).
+- Configuration : `[render] load_guard` (vrai par défaut) dans `config.py`, le lanceur (`--load-guard=on|off`), `SRS_v1.1.md` et `config.example.toml`. Avec `--test-mode`, l'engine coupe le garde-fou sauf `--load-guard=on`, pour que les outils de test mesurent les préréglages tels quels. `sim_bench.py --load-guard on` sert aux essais.
+- Tests :
+  - `test_load_guard.gd` (21 vérifications) couvre les critères du §7 :
+    - 3 s à 15 ms coupent le SSIL, 3 s de plus coupent le SSAO ;
+    - 10 s à 8 ms rendent le SSAO ;
+    - cas du village : après le pic, à 10,7 ms, le SSAO revient et le SSIL reste coupé, sans oscillation ;
+    - écart d'au moins 3 s entre deux changements ;
+    - rien ne change entre les deux seuils, ni sur un pic court ;
+    - préréglage low, Compatibility, garde-fou coupé ;
+    - effets appliqués, résolution intacte.
+  - `test_quality_presets` vérifie les arguments, `test_fps_counter` la fin de ligne, `test_launcher` les arguments du lanceur.
+- Le gain mesuré après chaque coupe est aussi écrit au journal : `[charge] t=45.1 s gain de SSIL : 2.1 ms (…)`.
+- **Essai 7bd** (30 octobre, f5859c99, village, 1680×1050, GTX 1060). GPU médian et p99 de chaque passage :
+
+  | Passage | GPU médian | p99 | Lignes `[charge]` |
+  | --- | --- | --- | --- |
+  | low, garde-fou actif | 5,68 ms | 6,32 ms | aucune |
+  | medium, sans garde-fou | 13,69 ms | 15,42 ms | – |
+  | medium, garde-fou actif | 11,85 ms | 15,86 ms | SSIL puis SSAO coupés ; le SSAO, qui fait gagner environ 2 ms, ne revient pas à 10,0–10,9 ms, faute de marge |
+  | high, garde-fou actif | 12,10 ms | 18,69 ms | SSIL, SSAO, glow et MSAA coupés, puis MSAA et glow rendus ; fin vers 12,9 ms |
+
+  Il n'y a eu ni oscillation ni saccade à moins de 2 s d'un changement.
+- Reste : la séance sur le PC du §7, en medium sur un parcours chargé, pour vérifier qu'aucune saccade n'est visible à un changement. Le changement de MSAA et le glow passent par les « ubershaders » de Godot 4.4 et suivants, ce qui devrait éviter toute saccade de compilation, mais cela reste à confirmer.

@@ -65,7 +65,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `bots.py` : bots à puissance constante et fantôme d'une séance passée (.fit ou .jsonl) (lot N9) ;
 - `progression.py` : expérience, niveaux et défis de la série V recalculés depuis le journal, tables dans `data/progression.toml` (lot V2) ;
 - `profile.py` : profil local `~/OpenRide/profile.json` (équipement choisi, achats, vies, avatar), écriture sûre et migration (lot V4) ;
-- `profiles.py` : profils de joueurs (série MJ, lot MJ1) : `ProfileContext` (dossiers du joueur en cours : profil V4, records, plan actif, séances et journaux, caches), `current()` lu à l'appel par tous les modules, `--profil ID` sur toutes les sous-commandes et `OPENRIDE_PROFIL`, verrou `.verrou` d'une séance par profil ; sans profil, les chemins de `~/OpenRide/` d'avant ;
+- `profiles.py` : profils de joueurs (série MJ, lot MJ1) : `ProfileContext` (dossiers du joueur en cours : profil V4, records, plan actif, séances et journaux, caches), `current()` lu à l'appel par tous les modules, `--profil ID` sur toutes les sous-commandes et `OPENRIDE_PROFIL`, verrou `.verrou` d'une séance par profil ; sans profil, les chemins de `~/OpenRide/` d'avant ; configuration à deux couches (lot MJ4) : `config.load()` pose les clés joueur de `profil.toml` (`config.PROFILE_KEYS`) sur `config.toml` ; `config_edit.update_layers` écrit chaque clé dans le fichier de sa portée (`settings.Setting.scope`) ; migration du joueur d'avant les profils vers `Profils/principal/` au lancement (`migration_profils.py`, lot MJ5 : sauvegarde, séances simulées et rejouées vers `_essai`, contrôle de la progression, reprise après coupure), puis `principal` par défaut ; liste, choix sans relancer, création, renommage et corbeille des profils (lot MJ7 : commandes IPC de la révision 1.5, `[profils] dernier`, `.profil_actif` suivi par le lanceur) ;
 - `equipment.py` : catalogue d'équipement, effets bornés sur `PhysicsParams`, conseil par terrain et temps gagné par l'équipement (lot V3) ;
 - `garage.py` : progression branchée dans la séance (profil, équipement appliqué à la physique, commandes du Garage, bilan `xp_result`) (lot V11) ;
 - `coins.py` : pièces (gains, solde recalculé, état des pièces, achats, vies du mode Cyber-Rogue) (lot V3b) ;
@@ -141,7 +141,8 @@ openride-core history --weeks 8        # historique des séances et cumul par se
 
 # Diagnostic matériel
 openride-core devices                  # appareils classés (trainer, Click, ceinture) et bloc [drivers] à recopier ; --json ; --save : écrit dans ~/OpenRide/config.toml (pairing.py, lot N12)
-openride-core settings [--json]        # réglages du menu (FTP, poids, difficulté, braquet, qualité, thème) ; settings set CLÉ VALEUR écrit ~/OpenRide/config.toml (settings.py, lots O3 et O4)
+openride-core profil list [--json]    # profils de joueurs ; profil create NOM | rename ID NOM | delete ID (corbeille) (profiles.py, lot MJ7)
+openride-core settings [--json]        # réglages du menu (FTP, poids, difficulté, braquet, qualité, thème) ; settings set CLÉ VALEUR écrit ~/OpenRide/config.toml, ou le profil.toml du profil en cours pour un réglage du joueur (settings.py, lots O3, O4 et MJ4)
 openride-core ftp-test [--accept] [--history]   # résultat du dernier test de FTP, enregistrement de la FTP (lot O10)
 openride-core profil essai [--vider]   # profil d'essai : séances simulées comptées, remise à zéro (série MJ, lot MJ2) ; --profil ID sur toute sous-commande
 openride-ble-diag scan | trainer --name HomeTrainer --duration 30 | click --duration 60
@@ -195,5 +196,5 @@ Vecteurs de route : après toute modification de `route.py`, lancer `python -m o
 
 - Il teste sur le vrai vélo et colle les journaux dans la conversation. Pour un problème, demander les lignes utiles : `grep -E "WARNING|ERROR|Perf|Click" ~/run_trainer.log | tail -30`.
 - Lui donner des commandes complètes, à copier-coller, en partant de `/home/utilisateur/Games/lolo_python`.
-- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, le statut dans `docs/lots/00_INDEX.md` (avec une section « Livraison » dans le lot) et `README.md` si les commandes changent. Les nombres de tests du `README.md` et du suivi (core, compilateur, fichiers de tests unitaires et tests de rendu de l'engine) doivent rester exacts : `core/tests/test_docs_coherence.py` les compare aux tests collectés ; `python3 scripts/recompte_tests.py` les réécrit (à lancer après chaque fusion de `main` dans une branche, avant de pousser).
+- Après chaque étape livrée : mettre à jour `docs/SUIVI_AVANCEMENT.md`, le statut dans `docs/lots/00_INDEX.md` (avec une section « Livraison » dans le lot) et `README.md` si les commandes changent. Ne pas écrire de nombre de tests dans le `README.md` ni dans le suivi (lot X52) : `python3 scripts/recompte_tests.py` les compte et la CI les affiche dans le résumé de chaque run ; `core/tests/test_docs_coherence.py` refuse un nombre écrit en dur.
 - Les lots de `docs/lots/` peuvent être réalisés directement ou confiés à une autre IA (modèle de message dans `00_INDEX.md` §4).
