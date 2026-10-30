@@ -146,3 +146,28 @@ def test_bench_with_speed_rides_at_difficulty_100_with_a_written_scenario(tmp_pa
     with pytest.raises(SystemExit, match="difficulté 100 %"):
         sb.Bench(_args(speed_kmh=35.0, difficulty=50.0), "nominal", spec, {}, "nominal", tmp_path)
     assert sb.Bench(_args(), "nominal", spec, {"speed_kmh": 30}, "nominal", tmp_path).speed_kmh == 30
+
+
+def test_home_check_ignores_reports_of_another_bench_run(tmp_path: Path):
+    """7am du 29 octobre : deux pré-vols enchaînés ; les rapports d'un autre passage du banc dans
+    ~/OpenRide/sim_bench ne comptent pas, un fichier changé ailleurs dans ~/OpenRide compte."""
+    home = tmp_path
+    (home / "OpenRide" / "pre_vol" / "a" / "simulee").mkdir(parents=True)
+    (home / "OpenRide" / "config.toml").write_text("[rider]\n", encoding="utf-8")
+    out = home / "OpenRide" / "pre_vol" / "a" / "simulee"
+    before = sb.snapshot_home(home)
+    (home / "OpenRide" / "sim_bench" / "2026-10-30" / "e1").mkdir(parents=True)
+    (home / "OpenRide" / "sim_bench" / "2026-10-30" / "e1" / "fps.csv").write_text("x", encoding="utf-8")
+    (out / "index.html").write_text("x", encoding="utf-8")
+    assert sb.home_changes(before, sb.snapshot_home(home), out, home) == []
+    (home / "OpenRide" / "config.toml").write_text("[rider]\nftp_w = 1\n", encoding="utf-8")
+    assert sb.home_changes(before, sb.snapshot_home(home), out, home) == [str(home / "OpenRide" / "config.toml")]
+
+
+def test_x_input_method_warnings_of_the_desktop_are_tolerated():
+    """Avertissements de la méthode de saisie X du bureau (7am du 29 octobre), hors OpenRide."""
+    vc = _load("visual_check")
+    for line in ("WARNING: XOpenIM failed", "WARNING: XCreateIC couldn't create wd.xic"):
+        assert sb.GODOT_ISSUE.search(line) and sb.GODOT_TOLERATED.search(line)
+        assert vc.GODOT_TOLERATED.search(line)
+    assert not sb.GODOT_TOLERATED.search("WARNING: something else failed")
