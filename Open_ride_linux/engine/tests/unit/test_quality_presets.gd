@@ -54,6 +54,13 @@ func _test_engine_args() -> void:
 	var p_bad_cull: Dictionary = EngineArgs.parse(PackedStringArray(["--culling=bof"]))
 	_check(p_bad_cull["culling"] == false and "tri du visible" in EngineArgs.last_error,
 		"engine_args : --culling invalide laisse le tri coupé avec message (%s)" % EngineArgs.last_error)
+	# Garde-fou de charge (lot Y6) : actif par défaut, coupé par les outils de test sauf demande explicite.
+	var p_test: Dictionary = EngineArgs.parse(PackedStringArray(["--test-mode"]))
+	var p_test_guard: Dictionary = EngineArgs.parse(PackedStringArray(["--test-mode", "--load-guard=on"]))
+	var p_guard_off: Dictionary = EngineArgs.parse(PackedStringArray(["--load-guard=off"]))
+	_check(p_def["load_guard"] == true and p_test["load_guard"] == false and p_test_guard["load_guard"] == true
+		and p_guard_off["load_guard"] == false,
+		"engine_args : garde-fou actif par défaut, coupé en mode test sauf --load-guard=on, --load-guard=off le coupe")
 
 	var p_empty_theme: Dictionary = EngineArgs.parse(PackedStringArray(["--theme="]))
 	_check(p_empty_theme["theme"] == "default" and "thème vide" in EngineArgs.last_error,

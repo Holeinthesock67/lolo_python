@@ -61,3 +61,23 @@ Le propriétaire a donné son accord le 30 octobre, après la migration Y2 vers 
   - mesure sur le PC (GTX 1060, 1680×1011) en `low`, `medium` et `high`, pour le critère d'au plus +0,3 ms en `low` ;
   - captures montrées au propriétaire ;
   - le garde-fou de charge, qui fera l'étape 2 avec sa propre PR.
+
+## 10. Réalisation, étape 2 : garde-fou de charge (30 octobre)
+
+- `engine/scripts/load_guard.gd`, sans nœud. Il lit à chaque image le temps GPU de la vue et en fait une moyenne glissante sur 3 s, pondérée par la durée des images.
+  - **Coupe** : sur une fenêtre pleine dont la moyenne dépasse 13 ms, il coupe l'effet suivant de `SHED_ORDER` : SSIL, puis SSAO, puis glow, puis MSAA ramené à 2×.
+  - **Retour** : après 10 s sous 9 ms, il rend le dernier effet coupé.
+  - **Garde-fous** : jamais deux changements à moins de 3 s, et la fenêtre repart de zéro après chaque changement. Seuls les effets allumés par le préréglage peuvent être coupés. En Compatibility, le SSAO et le SSIL n'existent pas et ne sont donc jamais coupés. Une mesure nulle est ignorée. La résolution et la qualité des ombres ne sont jamais touchées.
+- `main.gd` fait un appel par image. À chaque changement, le garde-fou réapplique son état par-dessus le préréglage et écrit une ligne `[charge] coupé : SSIL (GPU 15.0 ms en moyenne sur 3 s)` dans le journal. Il repart de zéro quand le préréglage change et reste en pause pendant le Cyber-Rogue, qui a son propre `Environment`.
+- `fps_counter.gd` : quand le compteur d'images/s est affiché, la ligne finit par « · allégé : SSIL, SSAO ». La mesure du temps GPU reste active (`measure_kept`, ancien `probe_active`).
+- Configuration : `[render] load_guard` (vrai par défaut) dans `config.py`, le lanceur (`--load-guard=on|off`), `SRS_v1.1.md` et `config.example.toml`. Avec `--test-mode`, l'engine coupe le garde-fou sauf `--load-guard=on`, pour que les outils de test mesurent les préréglages tels quels. `sim_bench.py --load-guard on` sert aux essais.
+- Tests :
+  - `test_load_guard.gd` (16 vérifications) couvre les critères du §7 :
+    - 3 s à 15 ms coupent le SSIL, 3 s de plus coupent le SSAO ;
+    - 10 s à 8 ms rendent le SSAO ;
+    - écart d'au moins 3 s entre deux changements ;
+    - rien ne change entre les deux seuils, ni sur un pic court ;
+    - préréglage low, Compatibility, garde-fou coupé ;
+    - effets appliqués, résolution intacte.
+  - `test_quality_presets` vérifie les arguments, `test_fps_counter` la fin de ligne, `test_launcher` les arguments du lanceur.
+- Reste : la séance sur le PC du §7, en medium sur un parcours chargé, pour vérifier qu'aucune saccade n'est visible à un changement. Le changement de MSAA et le glow passent par les « ubershaders » de Godot 4.4 et suivants, ce qui devrait éviter toute saccade de compilation, mais cela reste à confirmer.
