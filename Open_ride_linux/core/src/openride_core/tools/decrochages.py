@@ -16,8 +16,10 @@ lignes `ftms` du journal écrites depuis la PR #580), plus le repère du cyclist
      de son niveau ;
   3. cadence pas restée à ± `CADENCE_SAME_RPM` de son niveau d'avant : `indetermine` ;
   4. `trainer`, seulement sur une preuve : repère du cycliste à ± `MERGE_S` s, statut du trainer qui
-     arrête ou réinitialise (`TRAINER_STATUSES`) à ± `STATUS_AROUND_S` s, ou volant qui s'emballe de
-     `SPEED_RISE_PCT` % ou plus (plus rien ne freine) ;
+     arrête ou réinitialise (`TRAINER_STATUSES`) à ± `STATUS_AROUND_S` s, frein revenu au plus
+     `RETAKE_PROOF_S` s après la reprise du contrôle par le pilote (« frein lâché » puis « puissance
+     revenue », PR #580 : un cycliste qui relâche ne repart pas au moment précis où le pilote reprend la
+     main), ou volant qui s'emballe de `SPEED_RISE_PCT` % ou plus (plus rien ne freine) ;
   5. `fatigue` : effort dur juste avant (au-dessus de `HARD_W` depuis `HARD_S` s ou plus) ;
   6. `relachement` : effort facile (moins de `EASY_W` W, pente envoyée à ± `EASY_GRADE_PCT` %) : le cycliste
      tourne les jambes sans appuyer, ce qui est normal sur le plat ;
@@ -41,6 +43,7 @@ import argparse
 import csv
 import html
 import json
+import re
 import statistics
 import sys
 from dataclasses import asdict, dataclass, field
@@ -63,6 +66,8 @@ ZERO_W = 10.0             # chute à 0 W : puissance sous 10 W …
 ZERO_CADENCE_RPM = 40.0   # … cadence d'au moins 40 tr/min
 GRID_S = 0.5              # pas du rééchantillonnage
 SPEED_RISE_PCT = 5.0       # trainer : volant qui s'emballe de 5 % (plus de frein)
+RETAKE_PROOF_S = 3.0       # trainer : puissance revenue au plus 3 s après la reprise du contrôle (pilote, #580) …
+RETAKE_AFTER_S = 15.0      # … lue jusqu'à 15 s après le début de la chute
 SPEED_AFTER_S = 5.0        # vitesse d'après : médiane des 5 s qui suivent la fin de la chute
 HARD_W = 450.0             # fatigue probable : plus de 450 W …
 HARD_S = 8.0               # … tenus 8 s ou plus juste avant la chute
@@ -98,6 +103,7 @@ class Drop:
     reason: str = ""                    # ce qui a décidé le diagnostic
     statuses: list[str] = field(default_factory=list)
     marked: bool = False                # repère « décrochage » du cycliste à ± 10 s (lot X47)
+    back_after_s: float | None = None   # frein lâché vu par le pilote, puissance revenue après la reprise (s)
     stopped: bool = False               # cadence sous 20 tr/min au bout de la chute
 
 
@@ -186,6 +192,8 @@ def classify(d: Drop) -> tuple[str, str]:
     status = next((st for st in d.statuses if any(name in st for name in TRAINER_STATUSES)), None)
     if status:
         return "trainer", f"statut du trainer ({status})"
+    if d.back_after_s is not None and d.back_after_s <= RETAKE_PROOF_S:
+        return "trainer", f"frein revenu {d.back_after_s:g} s après la reprise du contrôle"
     if d.speed_change_pct is not None and d.speed_change_pct >= SPEED_RISE_PCT:
         return "trainer", f"volant qui s'emballe ({d.speed_change_pct:+g} %)"
     if d.hard_s >= HARD_S:
@@ -200,6 +208,11 @@ def attach(drops: list[Drop], statuses: list[tuple[float, str]], marks: list[flo
     for d in drops:
         d.statuses = [f"{t - d.t:+.1f} s {txt}" for t, txt in statuses if abs(t - d.t) <= STATUS_AROUND_S]
         d.marked = any(abs(t - d.t) <= MERGE_S for t in marks)
+        seen = [(t, txt) for t, txt in statuses if d.t - STATUS_AROUND_S <= t <= d.t + RETAKE_AFTER_S]
+        d.back_after_s = None
+        if any(txt.startswith(BRAKE_LOSS_TEXT) for _, txt in seen):
+            back = next((m for _, txt in seen if (m := BACK_RE.match(txt))), None)
+            d.back_after_s = float(back.group(1)) if back else None
         d.kind, d.reason = classify(d)   # statuts et repère comptent comme preuves
     return drops
 
@@ -264,6 +277,10 @@ class Source:
     segments: list[tuple[float, float, str]]   # plages du pompage (paliers du banc, ou séance entière)
 
 
+BRAKE_LOSS_TEXT = "frein lâché"
+BACK_RE = re.compile(r"puissance revenue \(.* après ([0-9.]+) s\)")
+
+
 def status_text(line: dict) -> str:
     """Texte d'une ligne `ftms` du journal (PR #580)."""
     ev = line.get("event")
@@ -272,7 +289,7 @@ def status_text(line: dict) -> str:
     if ev == "training_status":
         return f"Training Status [{line.get('data', '')}]"
     if ev == "brake_loss":
-        return f"frein lâché ({line.get('from_w')} → {line.get('to_w')} W, {line.get('cadence_rpm')} tr/min)"
+        return f"{BRAKE_LOSS_TEXT} ({line.get('from_w')} → {line.get('to_w')} W, {line.get('cadence_rpm')} tr/min)"
     if ev == "power_back":
         return f"puissance revenue ({line.get('power_w')} W après {line.get('after_s')} s)"
     if ev == "power_not_back":
@@ -395,7 +412,7 @@ def html_section(drops: list[Drop], pumps: list[tuple[str, Pumping]]) -> str:
 <p>Chute de plus de {DROP_FRAC * 100:.0f} % en {DROP_WINDOW_S:g} s depuis {DROP_MIN_W:g} W ou plus. « fatigue » : cadence
 tombée de {CADENCE_FALL_RPM:g} tr/min avant la mi-chute, ou plus de {HARD_W:g} W depuis {HARD_S:g} s. À cadence égale
 (± {CADENCE_SAME_RPM:g} tr/min), « trainer » seulement sur preuve : repère du cycliste, statut d'arrêt du trainer, volant
-qui gagne {SPEED_RISE_PCT:g} % ; « relâchement » : moins de {EASY_W:g} W sur une pente à ± {EASY_GRADE_PCT:g} % ; sinon
+qui gagne {SPEED_RISE_PCT:g} %, frein revenu au plus {RETAKE_PROOF_S:g} s après la reprise du contrôle par le pilote ; « relâchement » : moins de {EASY_W:g} W sur une pente à ± {EASY_GRADE_PCT:g} % ; sinon
 « indéterminé ».</p>
 <table class="drops"><tr><th>t (s)</th><th>Puissance (W)</th><th>Durée (s)</th><th>Cadence avant → pendant</th>
 <th>Avance de la cadence (s)</th><th>Volant (%)</th><th>Pente (%)</th><th>Diagnostic</th><th>Repère</th><th>Trainer à ± {STATUS_AROUND_S:g} s</th></tr>{rows}</table>
