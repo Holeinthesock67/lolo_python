@@ -170,3 +170,35 @@ def test_old_samples_without_speed_still_load(tmp_path):
     again = ts.load(tmp_path)
     assert again.samples[0] == (0.0, 150.0, 85.0, None, None)
     assert ts.analyse(again)[0].speed_kmh is None
+
+
+def test_renvoi_zero_means_one_write_per_step():
+    assert ts.resend_interval(0) == math.inf and ts.resend_interval(10) == 10
+    assert ts.resend_text(math.inf).startswith("jamais") and ts.resend_text(2.0) == "toutes les 2 s"
+    assert ts.main(["--trainer", "sim", "--renvoi", "-1", "--fast"]) == 2
+
+
+def test_unsettled_steps_are_not_compared_to_the_model():
+    """Essais du 30 octobre : les retours à 150 W qui suivent un palier coupé par le plafond, ou un décrochage,
+    ne se comparent pas au modèle du frein."""
+    rec = ts.Recording()
+    rec.steps = [(0.0, ts.Step("sim_w", 150, 20, 0.0)), (20.0, ts.Step("sim_w", 470, 20, 2.3)),
+                 (35.0, ts.Step("sim_w", 150, 20, 0.0)), (55.0, ts.Step("sim_w", 470, 20, 2.3)),
+                 (75.0, ts.Step("sim_w", 150, 20, 0.0))]
+    rec.samples = [(float(t), 300.0, 85.0, 38.0, None) for t in range(95)]
+    rec.events = [(34.0, "ceiling", "")]
+    results = ts.analyse(rec)
+
+    class Drop:
+        t = 60.0
+    skip = ts.unsettled_steps(rec, results, [Drop()])
+    assert skip[2].startswith("palier coupé") and "d'avant" in skip[3]
+    assert skip[4].startswith("décrochage") and skip[5].startswith("décrochage") and 1 not in skip
+
+    class Model:
+        delay_s, tau_up_s, tau_down_s = 0.6, 2.0, 4.9
+    for r in results:
+        r.t63_s, r.delta_w = 3.0, -300.0
+    checks = ts.model_checks(results, Model(), 0.25, skip)
+    assert [ok for ok, _ in checks] == [False, None, None, None, None]
+    assert "pas comparé" in checks[1][1]
