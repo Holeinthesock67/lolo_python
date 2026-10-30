@@ -231,13 +231,17 @@ def far_versions(provider: ElevationProvider) -> dict[str, Any]:
 
 def square_edges(key: SquareKey, db: OsmDb, provider: ElevationProvider,
                  frame: LocalFrame | None = None) -> tuple[RoadGraph, dict[str, EdgeProfile]]:
-    """Arêtes canoniques qui touchent le carré élargi de 50 m, et leur profil (repère de zone)."""
+    """Arêtes canoniques qui touchent le carré élargi de 50 m, et leur profil (repère de zone).
+
+    Les arêtes sans longueur n'ont pas de profil : ni terrain, ni liste d'arêtes.
+    """
     frame = frame or zone_frame(key.zone)
     x0, z0 = key.corner
     bbox = lonlat_bbox(frame, x0 - MARGIN_M, z0 - MARGIN_M, x0 + key.size_m + MARGIN_M, z0 + key.size_m + MARGIN_M)
     graph = RoadGraph.build(db, bbox, frame)
     node_alt = NodeAltitudes(provider, frame)
-    return graph, {k: edge_profile(graph.edges[k], provider, frame, node_alt) for k in sorted(graph.edges)}
+    return graph, {k: edge_profile(graph.edges[k], provider, frame, node_alt) for k in sorted(graph.edges)
+                   if not graph.edges[k].degenerate}
 
 
 def square_terrain(key: SquareKey, graph: RoadGraph, profiles: dict[str, EdgeProfile],
