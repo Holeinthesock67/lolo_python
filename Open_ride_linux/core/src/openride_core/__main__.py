@@ -43,6 +43,11 @@ Sous-commandes disponibles à ce stade :
     openride-core ftp-test [FICHIER] [--accept [--force]] [--history] [--json] [--config FICHIER]
                                       résultat du dernier test de FTP (ou du journal donné),
                                       enregistrement de la nouvelle FTP, historique des tests (lot O10)
+    openride-core profil essai [--vider] [--json] [--config FICHIER]
+                                      profil d'essai (séances simulées comptées) : dossier,
+                                      progression ; --vider efface ses séances (série MJ, lot MJ2)
+
+Toutes les sous-commandes prennent `--profil ID` (profil de joueur, série MJ).
 """
 
 from __future__ import annotations
@@ -138,7 +143,9 @@ def cmd_run(args: argparse.Namespace) -> int:
         except profiles.ProfileContextError as exc:
             print(f"openride-core : {exc}", file=sys.stderr)
             return 1
-        logging.getLogger("openride_core").info("Profil de joueur : %s (%s).", ctx.id, ctx.root)
+        profiles.ensure_description(ctx)   # profil.toml écrit à la première séance (lot MJ2)
+        logging.getLogger("openride_core").info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root,
+                                                " — PROFIL D'ESSAI" if ctx.is_trial else "")
     try:
         return _run_session(cfg, bots_list, args)
     finally:
@@ -237,6 +244,25 @@ def cmd_plan(args: argparse.Namespace) -> int:
     from .plans import run
 
     return run(args)
+
+
+def cmd_profil(args: argparse.Namespace) -> int:
+    """`openride-core profil essai [--vider]` : profil d'essai, sa progression, sa remise à zéro."""
+    from . import profiles
+    from .tools.xp import run as xp_run
+
+    ctx = profiles.ProfileContext.for_id(profiles.TRIAL_ID)
+    profiles.activate(ctx)
+    profiles.ensure_description(ctx)
+    if args.vider:
+        with profiles.ProfileLock(ctx):   # pas pendant une séance d'essai
+            removed = profiles.clear(ctx)
+        print(f"Profil d'essai vidé ({ctx.root}) : {', '.join(removed) or 'rien à effacer'}.")
+        return 0
+    if not args.json:
+        print(f"Profil d'essai : {ctx.root}")
+        print(f"Séances comptées : {', '.join(ctx.counted_sources)}")
+    return xp_run(None, args.json, args.config)
 
 
 def cmd_open_world_save(args: argparse.Namespace) -> int:
@@ -382,6 +408,12 @@ def build_parser() -> argparse.ArgumentParser:
     ows.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ows.add_argument("--gpx-dir", type=Path, help="dossier des traces (défaut : ~/OpenRide/GPX)")
     ows.add_argument("--journal-dir", type=Path, help="journaux (défaut : ~/OpenRide/Activities/.journal)")
+    prf = sub.add_parser("profil", help="profil d'essai : dossier, progression, remise à zéro (série MJ)")
+    prf.add_argument("action", choices=["essai"])
+    prf.add_argument("--vider", action="store_true",
+                     help="efface séances, records, plan et équipement du profil d'essai (garde profil.toml)")
+    prf.add_argument("--json", action="store_true", help="sortie JSON (progression)")
+    prf.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     for cmd in sub.choices.values():   # profil de joueur, sur toutes les sous-commandes (série MJ, lot MJ1)
         cmd.add_argument("--profil", metavar="ID",
                          help="profil de joueur ~/OpenRide/Profils/<ID>/ (défaut : $OPENRIDE_PROFIL, "
@@ -418,7 +450,7 @@ def main(argv: list[str] | None = None) -> int:
             "fit-check": cmd_fit_check,
             "history": cmd_history, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
-            "open-world-save": cmd_open_world_save}[args.command](args)
+            "open-world-save": cmd_open_world_save, "profil": cmd_profil}[args.command](args)
 
 
 if __name__ == "__main__":

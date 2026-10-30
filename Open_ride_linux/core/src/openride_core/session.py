@@ -1200,6 +1200,7 @@ class CoreSession:
                                     on_failure=self._on_recording_failure,
                                     workout_id=self._workout_id, source=self._journal_source(),
                                     progression=self.progress_svc.journal_header(equipped=self.rogue is None),
+                                    profile=self.profile_ctx.journal_header(),
                                     plan=active_tag(self._workout_id, state_path=self.plan_state_path,
                                                     plans_dir=self.plans_dir, workouts_dir=self.workouts_dir))
         self._rec.event("start", time.time())
@@ -1928,7 +1929,7 @@ class CoreSession:
 
         self._rec = SessionRecorder(self.journal_dir, route_id, on_failure=self._on_recording_failure,
                                     workout_id=rs.workout_id, resume_path=path, lines=rs.lines,
-                                    source=self._journal_source())
+                                    source=self._journal_source(), profile=self.profile_ctx.journal_header())
         if rs.running:
             # Le chronomètre s'arrête à la dernière ligne écrite avant le plantage.
             self._rec.event("pause", rs.last_ts, "core_restarted")
@@ -1965,7 +1966,8 @@ class CoreSession:
         st.gear, st.gears_total = self.rogue.gear, self.rogue.balance.gear_max
         st.lat = st.lon = st.alt = None
         self._rec = SessionRecorder(self.journal_dir, rogue_mode.JOURNAL_ROUTE_ID, on_failure=self._on_recording_failure,
-                                    resume_path=path, lines=rs.lines, source=self._journal_source())
+                                    resume_path=path, lines=rs.lines, source=self._journal_source(),
+                                    profile=self.profile_ctx.journal_header())
         if rs.running:
             self._rec.event("pause", rs.last_ts, "core_restarted")
         self._rec.event("resume_after_crash", time.time())

@@ -13,7 +13,8 @@ Sortes de lignes :
   séance d'un plan d'entraînement actif (lot O11), absent sinon ;
   champ facultatif `loadout` = `{"frame": ..., "wheels": ..., "mass_delta_kg": ..., "cda_delta_pct": ...}`
   (équipement du cadre et des roues, lot V11), `null` pour une run Cyber-Rogue où il ne
-  s'applique pas (lot V5) ;
+  s'applique pas (lot V5) ; champs facultatifs `profile_id` et `profile_type` (`joueur` ou
+  `essai`) : profil de joueur de la séance (série MJ, lot MJ2), absents sans profil choisi ;
 - `{"kind": "record", "ts": ..., ...}`  échantillon à 1 Hz ;
 - `{"kind": "event", "ts": ..., "event": "start" | "pause" | "resume" | "stop"}` ; une pause porte
   aussi sa raison, `"reason": "user" | "trainer_lost" | "engine_lost" | ...` (champ facultatif, absent
@@ -114,7 +115,7 @@ def record_line(rec: Record) -> dict:
 class JournalWriter:
     def __init__(self, path: Path, route_id: str | None = None, workout_id: str | None = None,
                  header: bool = True, source: str | None = None, plan: dict | None = None,
-                 progression: dict | None = None) -> None:
+                 progression: dict | None = None, profile: dict | None = None) -> None:
         """Ouvre le journal en ajout ; `header=False` continue un journal existant (reprise, lot N8)."""
         self.path = path
         path.parent.mkdir(parents=True, exist_ok=True)
@@ -128,6 +129,8 @@ class JournalWriter:
                 head["plan"] = plan
             if progression:   # `loadout` et `ftp_w` de la série V (lot V11), absents sans progression
                 head.update(progression)
+            if profile:   # `profile_id` et `profile_type` (série MJ, lot MJ2), absents sans profil choisi
+                head.update(profile)
             self._write(head)
 
     def _write(self, obj: dict) -> None:

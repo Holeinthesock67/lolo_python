@@ -73,6 +73,8 @@ class ProgressionService:
         self.workouts = workouts
         self.profile_path = profile_path if profile_path is not None else ctx.profile_path
         self.table_path = ctx.table_path if table_path is _FROM_PROFILE else table_path
+        self.counted = ctx.counted_sources   # séances qui rapportent (profil d'essai : simulées aussi, MJ2)
+        self.owns = ctx.owns
         self.cache_path = cache_path if cache_path is not None else journal_dir / CACHE_NAME
         self.enabled = False
         self.table: Table | None = None
@@ -101,7 +103,7 @@ class ProgressionService:
 
     def _recompute(self) -> Progress:
         cache = FactsCache(self.cache_path)
-        return recompute(self.journal_dir, self.table, self.workouts, cache)
+        return recompute(self.journal_dir, self.table, self.workouts, cache, self.counted, self.owns)
 
     def refresh(self) -> Progress | None:
         """Recalcule la progression (après une séance) ; renvoie l'ancienne."""
