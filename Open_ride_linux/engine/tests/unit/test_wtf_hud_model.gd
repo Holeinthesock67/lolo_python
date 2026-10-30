@@ -96,5 +96,5 @@ func _run() -> void:
 	view.update_view(WtfHudModel.view(null))
 	_check(not view.test_info()["visible"], "vue cachée hors mode WTF")
 	view.queue_free()
-	print("%d vérifications, %d échec(s)" % [_checked, _failures])
+	print("test_wtf_hud_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)

@@ -87,7 +87,7 @@ func _run() -> void:
 		"Changer les règles rouvre l'écran des règles")
 	f.menu.reset()
 	_check(f.menu.mode == "free", "retour à l'accueil : le mode WTF ne reste pas collé")
-	print("%d vérifications, %d échec(s)" % [_checked, _failures])
+	print("test_wtf_menu : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
 
 
