@@ -41,7 +41,7 @@ Aucune au-delà de MJ6.
 
 ## Livraison
 
-Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj7`, empilée sur MJ5 et MJ6).
+Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj7b`, empilée sur MJ5 et MJ6).
 
 - `profiles.py` : `list_contexts` (joueurs triés par nom, puis le profil d'essai), `check_name` (1 à 16 caractères, lettres accentuées, chiffres, espace, tiret, espaces en trop retirés, nom unique sans tenir compte de la casse), `id_from_name` (« Thérèse » → `therese`, `-2` si pris), `create` (huit profils joueur au plus), `rename` (l'identifiant reste), `delete` (corbeille `Profils/.corbeille/<id>_AAAAMMJJ-HHMMSS`, refusé pour le profil en cours, le profil d'essai, le dernier profil joueur et un profil verrouillé par une séance), `default_id` (`[profils] dernier`, sinon le seul profil joueur, sinon `principal`, une fois la migration MJ5 finie), `.profil_actif`.
 - `session.py` : commandes `list_profiles` (calcul hors de la boucle), `select_profile`, `create_profile` (copie du même datagramme ignorée), `rename_profile`, `delete_profile` ; hors séance seulement (`busy`) ; `hello_ack.config.profile` ; changement de profil : verrou pris sur le nouveau avant de rendre l'ancien, configuration effective, progression, records, journaux, vent, braquet de départ et difficulté rechargés, ceinture cardio changée si le profil en a une autre, W' estimé recalculé, puis `hello_ack`, `settings` et `progression` ; trainer et Click intacts.

@@ -41,7 +41,7 @@ Migration des clés existantes (MJ5).
 
 ## Livraison
 
-Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj4`).
+Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj4b`, PR #614).
 
 - `config.py` : table `PROFILE_KEYS` (FTP, poids, FC max, poids du vélo, difficulté, braquet de départ, bonus, niveau des bots, vent, vue de caméra, courbes, ceinture cardio), `profile_overlay` (clés machine de `profil.toml` signalées et ignorées, section `[profil]` laissée à `profiles.py`), `from_layers`, `load(path, profile_path)` : `profil.toml` du profil en cours par défaut, aucun en contexte historique ; mêmes bornes et messages, le message cite les deux fichiers.
 - `config_edit.update_layers` : chaque clé dans son fichier, configuration effective validée avant toute écriture, copie `.bak` et remplacement atomique de chaque fichier changé.

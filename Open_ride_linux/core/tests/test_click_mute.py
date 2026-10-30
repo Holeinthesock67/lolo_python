@@ -382,4 +382,5 @@ def test_session_passes_q6_settings_and_side(tmp_path):
     bare = [p for p in build_inputs(from_dict({"drivers": {"input": "click"}}))
             if isinstance(p, ZwiftClickProvider)]
     assert [p.side for p in bare] == ["inconnu", "inconnu"]
-    assert all(p.trace_raw is False and p.rehandshake_s == 0.0 and not p.reset_locked for p in bare)
+    # Par défaut, le boîtier gauche verrouillé par Zwift est redémarré (essai PC du 30/10/2026)
+    assert all(p.trace_raw is False and p.rehandshake_s == 0.0 and p.reset_locked for p in bare)

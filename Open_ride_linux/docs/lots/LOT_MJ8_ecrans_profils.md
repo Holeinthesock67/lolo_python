@@ -39,7 +39,7 @@ Recette sur le PC (MJ10).
 
 ## Livraison
 
-Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj8`, empilée sur MJ7). **Captures low, medium et high à montrer au propriétaire avant fusion** (sur le PC, via la file des mesures).
+Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj8b`, empilée sur MJ7). **Captures low, medium et high à montrer au propriétaire avant fusion** (sur le PC, via la file des mesures).
 
 - `profiles_view_model.gd` : « Qui roule ? » (profil en cours en premier et présélectionné, niveau et dernière séance, « Nouveau profil » sous huit profils, « Gérer un profil »), grille du nom (46 cases : lettres, é è ê à ç ô ï ü, tiret, espace, chiffres, puis « Effacer » et « Valider » ; majuscule en début de mot ; 16 caractères au plus ; nom proposé « Cycliste N »), gestion (renommer, supprimer : le profil en cours et le dernier profil sont grisés), titres et bandeau du profil d'essai, erreurs `name_invalid`, `profile_invalid` et `busy` sur la ligne d'état.
 - `menu_flow.gd` : écrans `profiles`, `profile_name`, `profile_manage_list`, `profile_manage` ; « Qui roule ? » après l'écran de connexion avec au moins deux profils joueur (jamais sur le profil d'essai) ; ligne « Profil : … » en tête de l'accueil ; nouveau `hello_ack` d'un autre profil : retour à l'accueil.
