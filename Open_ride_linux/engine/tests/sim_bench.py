@@ -5,7 +5,7 @@ Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
-                 [--culling on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
+                 [--culling on|off] [--load-guard on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -27,7 +27,8 @@ roule une heure, relance le parcours à chaque fin et vérifie images/s, saccade
 `--display` (avec `--native`) choisit le mode d'affichage de l'engine (`display_mode.gd`) : fenêtre de
 `--size` par défaut, `borderless` ou `fullscreen` à la définition native de l'écran, pour comparer les modes
 avec la sonde. `--culling on` active le tri de ce que la caméra ne voit pas (lot S1, coupé par défaut faute de gain
-mesuré) : scénario `rendu_invisible`, à comparer avec `--culling off` (défaut).
+mesuré) : scénario `rendu_invisible`, à comparer avec `--culling off` (défaut). `--load-guard on` laisse le garde-fou
+de charge couper des effets quand le GPU sature (lot Y6) ; coupé par défaut pour mesurer les préréglages tels quels.
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
 qui peuvent fixer `world`, `biome` (lot U17), `workout`, `duration_s` et `difficulty_pct` dans une section
@@ -400,7 +401,8 @@ class Bench:
                     "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
-                    f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}"]
+                    f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}",
+                    f"--load-guard={a.load_guard}"]
             if self.biome:
                 cmd.append(f"--biome={self.biome}")
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
@@ -1056,6 +1058,8 @@ def main(argv: list[str] | None = None) -> int:
                     help="captures tous les N mètres de route au lieu de toutes les N secondes (lot S1)")
     ap.add_argument("--culling", default="off", choices=("on", "off"),
                     help="tri de ce que la caméra ne voit pas (lot S1, défaut off faute de gain mesuré ; on : essai)")
+    ap.add_argument("--load-guard", default="off", choices=("on", "off"),
+                    help="garde-fou de charge de l'engine (lot Y6, défaut off : préréglages mesurés tels quels)")
     ap.add_argument("--latence", action="store_true",
                     help="latence des appuis du Click jusqu'à l'image (lot X7) : core et engine avec --latence")
     ap.add_argument("--probe", action="store_true",
