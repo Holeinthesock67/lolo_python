@@ -61,6 +61,7 @@ Version retenue : **Godot 4.7.2-stable** (dernier correctif publié ; 4.7.3 n'ex
   - FXAA demandé seulement en Forward+ (le moteur Compatibility l'avertit désormais), comme l'occlusion et la brume ;
   - `WorkoutChartModel.nice_ticks` : plus de `-0.0` (4.7 compare les tableaux bit à bit) ;
   - test des traînées : fond uni non teinté par le brouillard (`fog_sky_affect = 0`).
+  - images de référence de `visual_check` (`tests/golden/xvfb/low/`, lot X20) refaites en 4.7.2 : ciel au nouveau dégradé, texte un peu plus large (le bandeau « Core non joignable (nouvel essai chaque seconde) » passe sur deux lignes dans sa largeur de 560 px), SSIM 0,96 contre 4.3 ;
   - réglages chiffrés : depuis 4.4, `str()` d'un flottant entier garde « .0 » (« FTP — 250.0 W » relevé par le banc des menus en CI) ; `SettingsViewModel.number_text` rend « 250 » comme avant ; banc des menus 16/16 en 4.7.2.
 - **Résultats dans le cloud** : `run_engine_tests.sh` 126/126, `run_e2e.sh` OK, `pytest` core 1601 et compilateur 420. Captures Forward+ (`visual_check.py --native`, lavapipe, 1280×720) : image quasi identique ; couleurs un peu plus froides en 4.7 (rouge −4 à −15, bleu +5 à +10 sur 255, moyenne du bas de l'image), y compris en `low` sans glow : l'écart vient de la lumière ambiante du nouveau ciel, pas du glow. Réglages du glow inchangés (Soft Light ; l'étape 4 d'Y13 le recale avec AgX).
 - **Reste** : mesure avant et après sur le PC cible (§4.1 et §4.5) et recette du propriétaire.
