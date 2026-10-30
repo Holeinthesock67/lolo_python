@@ -48,6 +48,8 @@ signal progression_received(msg: Dictionary)
 ## Série R (lot R10, contrat 1.4) : salle du mode Cyber-Rogue (une partie) et butin proposé en couloir.
 signal room_received(msg: Dictionary)
 signal loot_received(msg: Dictionary)
+## Règles du mode « What the fuck » (révision 1.5, lot WTF2) : réponse à list_wtf_rules et set_wtf_rule.
+signal wtf_rules_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -305,6 +307,8 @@ func _poll_incoming() -> void:
 				room_received.emit(json_obj)
 			"loot":
 				loot_received.emit(json_obj)
+			"wtf_rules":
+				wtf_rules_received.emit(json_obj)
 			"_test":
 				if test_mode:
 					_on_test_message(json_obj)

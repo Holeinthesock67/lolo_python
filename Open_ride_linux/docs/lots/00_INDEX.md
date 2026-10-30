@@ -307,11 +307,11 @@
 | [CT12](LOT_CT12_recette_velo.md) | Série CT : recette de la Course tactique sur le vélo | Essai sur le vélo | CT2 à CT11 | Moyenne | Interne (propriétaire, version 5.0) |
 | [WTF1](LOT_WTF1_regles_core.md) | Série WTF : règles du mode « What the fuck » dans le core (13 règles désactivables, surprise du chef) | Python | — | Moyenne | **Livré le 29 octobre** (version 2.0) |
 | [WTF2](LOT_WTF2_seance_contrat.md) | Série WTF : mode WTF branché dans la séance et contrat IPC | Python | WTF1 | Moyenne | **Livré le 29 octobre** (version 2.0) |
-| [WTF3](LOT_WTF3_menu_regles.md) | Série WTF : menu du mode et écran des treize interrupteurs | GDScript | WTF2 | Petite | Prêt (version 2.0) |
+| [WTF3](LOT_WTF3_menu_regles.md) | Série WTF : menu du mode et écran des treize interrupteurs | GDScript | WTF2 | Petite | **En PR le 30 octobre** (version 2.0) : menu, écran des règles, scénario `mode_wtf` ; captures à montrer |
 | [WTF4](LOT_WTF4_maquettes.md) | Série WTF : maquettes cartoon des gags | Documentation et maquettes | WTF1 | Moyenne | Prêt (version 2.0), maquettes validées par le propriétaire |
 | [WTF5](LOT_WTF5_gags_physiques.md) | Série WTF : engine, gags physiques (gravité, monde à l'envers, route qui s'effondre, fromage, tempête) | GDScript | WTF2, WTF4 | Grande | Prêt (version 2.0) |
 | [WTF6](LOT_WTF6_decor_bots_camera.md) | Série WTF : engine, Katamari, peloton délirant, horloge, vélo minuscule, caméras | GDScript | WTF2, WTF4 | Grande | Prêt (version 2.0) |
-| [WTF7](LOT_WTF7_hud_chef.md) | Série WTF : engine, HUD des défis, surprise du chef, bilan et sons | GDScript | WTF2, WTF4 | Moyenne | Prêt (version 2.0) |
+| [WTF7](LOT_WTF7_hud_chef.md) | Série WTF : engine, HUD des défis, surprise du chef, bilan et sons | GDScript | WTF2, WTF4 | Moyenne | **En PR le 30 octobre** (version 2.0) : bandeau, cartes, invite du chef, Katamari, horloge, bilan ; sons à faire |
 | [WTF8](LOT_WTF8_recette.md) | Série WTF : recette du mode sur le vélo | Essai sur le vélo | WTF3 à WTF7 | Petite | Interne (propriétaire, version 2.0) |
 
 **Restent en interne** (matériel nécessaire) :

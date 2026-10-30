@@ -42,6 +42,11 @@ extends RefCounted
 ## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
 ##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
+##
+## Mode « What the fuck » (série WTF, lot WTF3, contrat 1.5) : « Mode WTF » à l'accueil (quand le core
+## l'annonce) ouvre l'écran des treize règles (action list_wtf_rules, réponse par on_wtf_rules()) ; une
+## règle validée bascule (action set_wtf_rules : une commande set_wtf_rule par règle) ; « Lancer une
+## séance WTF » prépare l'écran Prêt (select_workout null, puis `start` avec `mode` « wtf »).
 
 const MenuModel := preload("res://scripts/menu_model.gd")
 const CatalogModel := preload("res://scripts/catalog_model.gd")
@@ -54,6 +59,7 @@ const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
 const ProgressViewModel := preload("res://scripts/progress_view_model.gd")
+const WtfRulesModel := preload("res://scripts/wtf/wtf_rules_model.gd")
 
 const SUMMARY := "summary"
 const CONNECT := "connect"
@@ -148,6 +154,8 @@ var _ftp_pending := false
 ## Records (lot T10) : fichier relu à chaque ouverture ; segment et table affichés.
 var records = RecordsViewModel.new()
 var rogue = RogueMenuModel.new()
+## Règles du mode WTF (lot WTF3), telles que le core les a renvoyées.
+var wtf = WtfRulesModel.new()
 ## `start_run` accusé par le core depuis le dernier lancement : l'écran d'attente peut céder la place à Prêt.
 var _rogue_acked := false
 ## Garage (lot V8) : catalogue, progression et brouillon de l'avatar.
@@ -182,6 +190,8 @@ func _init() -> void:
 	menu.add_screen({"id": RogueMenuModel.SCREEN, "title": "Départ Cyber-Rogue", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": RogueMenuModel.LOADING, "title": "Composition de la run…", "on_back": "", "items": []})
 	menu.set_screen_items(RogueMenuModel.LOADING, [{"id": "wait", "label": "Composition de la run…", "enabled": false}])
+	menu.add_screen({"id": WtfRulesModel.SCREEN, "title": "Mode WTF", "on_back": MenuModel.HOME, "items": []})
+	_refresh_wtf()
 	menu.add_screen({"id": GarageViewModel.SCREEN, "title": "Garage", "on_back": MenuModel.HOME, "items": []})
 	for screen in [GarageViewModel.BIKE, GarageViewModel.OUTFIT, GarageViewModel.AVATAR]:
 		menu.add_screen({"id": screen, "title": "Garage", "on_back": GarageViewModel.SCREEN, "items": []})
@@ -829,6 +839,16 @@ func handle(event: String) -> Dictionary:
 		_refresh_rogue()
 		menu.push_screen(RogueMenuModel.SCREEN)
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.HOME and str(act["id"]) == "wtf":
+		_refresh_wtf()
+		menu.push_screen(WtfRulesModel.SCREEN)
+		return {"action": "list_wtf_rules"}
+	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == "wtf_rules":
+		_refresh_wtf()
+		menu.push_screen(WtfRulesModel.SCREEN)
+		return {"action": "list_wtf_rules"}
+	if act.get("action", "") == "item" and act.get("screen", "") == WtfRulesModel.SCREEN:
+		return _handle_wtf(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == RogueMenuModel.SCREEN:
 		return _handle_rogue(str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.READY and str(act["id"]) == "rogue_change":
@@ -977,6 +997,26 @@ func _handle_rogue(item_id: String) -> Dictionary:
 func _launch_rogue(act: Dictionary) -> Dictionary:
 	_rogue_acked = false
 	menu.open_screen(RogueMenuModel.LOADING)
+	return act
+
+
+## Écran des règles du mode WTF (lot WTF3).
+func _refresh_wtf() -> void:
+	menu.set_screen_items(WtfRulesModel.SCREEN, wtf.items(), wtf.title())
+
+
+## Message `wtf_rules` du core (liste, ou réponse à set_wtf_rule).
+func on_wtf_rules(msg: Dictionary) -> void:
+	wtf.on_rules(msg)
+	_refresh_wtf()
+
+
+func _handle_wtf(item_id: String) -> Dictionary:
+	var act: Dictionary = wtf.handle(item_id)
+	if act.get("action", "") == "launch":
+		menu.prepare_wtf()
+		return {"action": "select_workout", "workout_id": null}
+	_refresh_wtf()
 	return act
 
 
