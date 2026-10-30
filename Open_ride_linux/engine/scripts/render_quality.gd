@@ -179,15 +179,16 @@ static func fog_range(preset_name: String, has_terrain: bool) -> Dictionary:
 	return {"begin": minf(float(FOG_FLAT["begin"]), flat_end * FOG_BEGIN_FRACTION), "end": flat_end}
 
 
+## `fog_end_factor` (atmosphere_model.gd, lot U10) rapproche début et fin dans l'air humide (1 = préréglage).
 static func apply_fog(env: Environment, preset_name: String, has_terrain: bool,
-		horizon_color: Color = FOG_COLOR, theme_fog_density: float = 0.0) -> void:
+		horizon_color: Color = FOG_COLOR, theme_fog_density: float = 0.0, fog_end_factor: float = 1.0) -> void:
 	var fog := fog_range(preset_name, has_terrain)
 	env.fog_enabled = true
 	env.fog_mode = Environment.FOG_MODE_DEPTH
 	env.fog_light_color = horizon_color
 	env.fog_density = 1.0
-	env.fog_depth_begin = fog["begin"]
-	env.fog_depth_end = fog["end"]
+	env.fog_depth_begin = fog["begin"] * fog_end_factor
+	env.fog_depth_end = fog["end"] * fog_end_factor
 	env.fog_depth_curve = 1.0
 	env.fog_sky_affect = FOG_SKY_AFFECT
 	env.volumetric_fog_sky_affect = FOG_SKY_AFFECT

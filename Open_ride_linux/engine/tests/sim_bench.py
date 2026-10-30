@@ -5,7 +5,7 @@ Usage :
     sim_bench.py --godot CHEMIN [--scenario NOM|FICHIER.json]... [--world demo|village|osm|ouvert|DOSSIER.world]
                  [--workout erg_court|FICHIER.zwo] [--duration S] [--every S] [--difficulty PCT]
                  [--size 1280x720] [--quality low] [--native] [--display windowed|borderless|fullscreen] [--camera subjective|follow_near|follow_far|side]
-                 [--culling on|off] [--probe] [--speed-kmh V] [--out DOSSIER] [--list]
+                 [--culling on|off] [--probe] [--speed-kmh V] [--biome ID] [--out DOSSIER] [--list]
 
 Pour chaque scénario, le banc lance `openride-core run --trainer sim --input sim --hr sim
 --sim-scenario … --autostart` (vrais pilotes FTMS, Click et ceinture devant les appareils
@@ -30,7 +30,7 @@ avec la sonde. `--culling on` active le tri de ce que la caméra ne voit pas (lo
 mesuré) : scénario `rendu_invisible`, à comparer avec `--culling off` (défaut).
 
 Scénarios : ceux du core (`sim_scenarios.SCENARIOS`), ceux du banc (`sim_bench_scenarios/*.json`,
-qui peuvent fixer `world`, `workout`, `duration_s` et `difficulty_pct` dans une section
+qui peuvent fixer `world`, `biome` (lot U17), `workout`, `duration_s` et `difficulty_pct` dans une section
 `bench`), ou un fichier JSON au format de `docs/SIMULATION_BLE.md`. `--list` les énumère.
 Décor vivant (lot P30) : chaque capture relève les objets affichés par sorte et les sons du décor démarrés
 (`decor` de la ligne `screenshot`) ; le rapport les trace et `decor.csv` les garde. La section `bench` peut
@@ -277,6 +277,8 @@ class Bench:
         self.scenario_arg = scenario_arg
         # --world donné explicitement l'emporte sur le monde du scénario (même scénario, autre parcours).
         self.world = str(args.world or settings.get("world") or "demo")
+        # Biome forcé (lot U17) : `--biome=` de l'engine, sur tout le parcours ; --biome l'emporte sur `bench.biome`.
+        self.biome = str(getattr(args, "biome", None) or settings.get("biome") or "")
         self.workout = settings.get("workout", args.workout)
         self.difficulty = settings.get("difficulty_pct", args.difficulty)
         # Vitesse imposée (lot X35) : le cycliste simulé (stratégie `vitesse`) tient cette vitesse sur la pente reçue, qui n'est la
@@ -399,6 +401,8 @@ class Bench:
             cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}",
                     f"--routes-dir={routes}", "--test-mode", f"--quality={a.quality}",
                     f"--display={a.display}", f"--camera={a.camera}", f"--culling={a.culling}"]
+            if self.biome:
+                cmd.append(f"--biome={self.biome}")
             if self.probe:   # sonde de performance (lot X13) : mesures de l'engine et du système chaque seconde
                 cmd.append(f"--perf-probe={(self.out / 'moteur.csv').resolve()}")
                 self.sampler = perf_probe.SystemSampler()
@@ -1034,6 +1038,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--scenario", action="append", help="scénario (répétable ; défaut : demo)")
     ap.add_argument("--world", help="demo (défaut), village (bâtiments, montée et descente), osm, ouvert (monde vivant synthétique de 20 km, lot W16a), ou dossier .world ; "
                     "l'emporte sur le monde du scénario")
+    ap.add_argument("--biome", help="biome forcé sur tout le parcours (lot U17, ex. sand_desert) ; "
+                    "l'emporte sur le biome du scénario (scénarios biome_*)")
     ap.add_argument("--workout", help="ERG : erg_court (5 min 30 intégré) ou fichier .zwo")
     ap.add_argument("--duration", type=float, help="durée de chaque séance en s (défaut : fin du scénario + 15 s)")
     ap.add_argument("--every", type=float, help="intervalle des captures en s (défaut : celui du scénario, sinon 15)")
