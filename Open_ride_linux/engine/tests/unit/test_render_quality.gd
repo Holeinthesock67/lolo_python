@@ -108,6 +108,10 @@ func _test_fog() -> void:
 	_check(env.fog_light_color == horizon, "couleur du brouillard = couleur d'horizon")
 	_check(env.fog_sky_affect == 0.0 and env.volumetric_fog_sky_affect == 0.0,
 		"le brouillard ne recouvre pas le ciel (nuages visibles en Forward+, recette P16)")
+	RenderQuality.apply_fog(env, "medium", true, horizon, 0.05, 0.6)
+	_check(absf(env.fog_depth_end - QualityPresets.fog_end_m("medium") * 0.6) < 1e-3
+		and absf(env.fog_depth_begin - QualityPresets.fog_end_m("medium") * RenderQuality.FOG_BEGIN_FRACTION * 0.6) < 1e-3,
+		"air humide (U10, facteur 0,6) : brouillard rapproché [%.0f, %.0f] m" % [env.fog_depth_begin, env.fog_depth_end])
 	RenderQuality.apply_fog(env, "inconnu_xyz", true, horizon, 0.05)
 	_check(absf(env.fog_depth_end - QualityPresets.fog_end_m("low")) < 1e-3, "brouillard : préréglage inconnu -> low")
 

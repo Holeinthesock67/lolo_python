@@ -55,6 +55,7 @@ const PRESETS := {
 ## - `shadow_atlas` : taille de l'atlas des ombres du soleil ; `shadow_splits` : 2 ou 4 cascades ;
 ##   `shadow_filter` : filtre doux `hard`, `very_low`, `low`, `medium`, `high`.
 ## - `mesh_lod_threshold` : erreur tolérée des LOD automatiques en pixels (plus petit = plus fin).
+## - `heat_haze` : brume de chaleur au-dessus de l'horizon des déserts et de la savane (lot U10), coupée en `low`.
 ## Le filtrage anisotrope (16×, réglage global en Godot 4.3) est dans `project.godot`.
 const IMAGE := {
 	"low": {
@@ -69,6 +70,7 @@ const IMAGE := {
 		"shadow_splits": 2,
 		"shadow_filter": "low",
 		"mesh_lod_threshold": 2.0,
+		"heat_haze": false,
 	},
 	"medium": {
 		"msaa": 4,
@@ -82,6 +84,7 @@ const IMAGE := {
 		"shadow_splits": 4,
 		"shadow_filter": "medium",
 		"mesh_lod_threshold": 1.0,
+		"heat_haze": true,
 	},
 	"high": {
 		"msaa": 4,
@@ -95,6 +98,7 @@ const IMAGE := {
 		"shadow_splits": 4,
 		"shadow_filter": "high",
 		"mesh_lod_threshold": 0.5,
+		"heat_haze": true,
 	},
 }
 

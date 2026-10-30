@@ -161,7 +161,7 @@ func _test_living() -> void:
 
 # Lot Y13 : qualité d'image par préréglage, croissante de low à high, toujours un anticrénelage.
 func _test_image() -> void:
-	const KEYS := ["ao_half_size", "fog_volumetric", "fxaa", "glow", "mesh_lod_threshold", "msaa", "shadow_atlas",
+	const KEYS := ["ao_half_size", "fog_volumetric", "fxaa", "glow", "heat_haze", "mesh_lod_threshold", "msaa", "shadow_atlas",
 		"shadow_filter", "shadow_splits", "ssao", "ssil"]
 	var fogs := ["off", "light", "full"]
 	var levels := ["off", "low", "medium", "high"]
@@ -184,7 +184,8 @@ func _test_image() -> void:
 				and fogs.find(str(img["fog_volumetric"])) >= fogs.find(str(prev["fog_volumetric"]))
 				and filters.find(str(img["shadow_filter"])) >= filters.find(str(prev["shadow_filter"]))
 				and int(img["shadow_atlas"]) >= int(prev["shadow_atlas"])
-				and float(img["mesh_lod_threshold"]) <= float(prev["mesh_lod_threshold"]),
+				and float(img["mesh_lod_threshold"]) <= float(prev["mesh_lod_threshold"])
+				and (bool(img["heat_haze"]) or not bool(prev["heat_haze"])),
 				"image %s : au moins la qualité du préréglage précédent" % name)
 		prev = img
 	_check(QualityPresets.image("inexistant") == QualityPresets.image("low"), "image : un nom inconnu renvoie low")
