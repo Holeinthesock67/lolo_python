@@ -40,6 +40,16 @@ def test_truncated_last_line_is_ignored(tmp_path: Path):
     assert sum(1 for l in lines if l["kind"] == "record") == 5
 
 
+def test_two_sessions_in_the_same_second_get_two_journals(tmp_path: Path, monkeypatch):
+    """Deux séances lancées dans la même seconde : deux fichiers, chacun avec son en-tête."""
+    from openride_core import recorder
+    monkeypatch.setattr(recorder.time, "strftime", lambda fmt: "2026-10-29_18-00-00")
+    a = recorder.SessionRecorder(tmp_path, "demo")
+    b = recorder.SessionRecorder(tmp_path, "rogue")
+    assert a.path != b.path and b.path.name == "2026-10-29_18-00-00_2.jsonl"
+    assert next(read_journal(b.path))["route_id"] == "rogue"
+
+
 def test_fit_roundtrip(tmp_path: Path):
     j = make_journal(tmp_path / "j.jsonl")
     fit_path, s = journal_to_fit(j, tmp_path / "out.fit")

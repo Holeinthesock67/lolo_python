@@ -200,7 +200,8 @@ SCENARIOS: dict[str, dict[str, Any]] = {
         "Décrochages du frein (séance du 29 octobre), sur le braquet de « pignon_unique » : relances à "
         "100 rpm de 25 à 45 s et de 85 à 105 s ; à 33 s, 93 s (en pleine relance) et 160 s, la puissance "
         "annoncée tombe vers 0 W en moins de 2 s et la vitesse du volant baisse pendant 8 s, cadence "
-        "inchangée, sans erreur ni reconnexion : le rapport des décrochages (lot X44) les classe « trainer »."),
+        "inchangée, sans erreur ni reconnexion. Le rapport des décrochages les classe « indéterminé » sans repère "
+        "Z long du cycliste (lot X49)."),
         events=[
             {"t": 25.0, "device": "trainer", "action": "rider", "cadence_rpm": 100},
             {"t": 33.0, "device": "trainer", "action": "brake_loss", "seconds": 8},

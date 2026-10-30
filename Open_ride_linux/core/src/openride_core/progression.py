@@ -7,7 +7,9 @@ stocké : effacer le profil ne perd ni l'expérience ni les défis (plan V, risq
 Règles (plan V §2.1, décisions du 25 octobre 2026) :
 - seules comptent les séances enregistrées par OpenRide, `source` = `live` dans l'en-tête du
   journal (absente des journaux antérieurs au lot V2 : comptés comme `live`) ; pas de rejeu,
-  pas de séance simulée, pas de séance de moins de `min_session_s` chronométrées ;
+  pas de séance simulée, pas de séance de moins de `min_session_s` chronométrées. Les sources
+  comptées sont une donnée du profil (série MJ, lot MJ2) : le profil d'essai compte aussi les
+  séances simulées ; un journal marqué d'un autre profil (`profile_id`) ne compte pas (`other_profile`) ;
 - un journal repris après une panne d'écriture (`_reprise-N`, `recorder.py`) contient toute la
   séance : deux journaux de même heure de départ comptent une fois (le plus long) ;
 - en ERG, avec `erg_replaces_distance`, les minutes d'entraînement remplacent la distance et
@@ -225,6 +227,7 @@ class SessionFacts:
     power_s: dict[int, float] = field(default_factory=dict)   # secondes par pas de 10 W (pièces, V3b)
     ftp_w: float | None = None   # FTP de la séance si l'en-tête la donne (écrite par V11)
     best_power: dict[int, float] = field(default_factory=dict)   # meilleure moyenne par durée (s)
+    profile_id: str | None = None   # profil de joueur de la séance (série MJ) ; None : journal non marqué
 
 
 def _climb(altitudes: Iterable[float], deadband_m: float) -> float:
@@ -272,6 +275,8 @@ def session_facts(path: Path, workout_duration_s: float | None = None,
             facts.workout_id = line.get("workout_id")
             src = line.get("source")
             facts.source = src if src in SOURCES else "live"
+            pid = line.get("profile_id")
+            facts.profile_id = pid if isinstance(pid, str) else None
             ftp = line.get("ftp_w")
             if isinstance(ftp, (int, float)) and not isinstance(ftp, bool) and ftp > 0:
                 facts.ftp_w = float(ftp)
@@ -319,11 +324,14 @@ class XpGains:
         return [{"source": s, "points": p} for s, p in self.by_source.items() if p]
 
 
-def ineligible_reason(facts: SessionFacts, table: Table) -> str | None:
-    if facts.source == "replay":
-        return "replay"
-    if facts.source == "simulated":
-        return "simulated"
+DEFAULT_COUNTED = ("live",)
+
+
+def ineligible_reason(facts: SessionFacts, table: Table,
+                      counted: Iterable[str] = DEFAULT_COUNTED) -> str | None:
+    """Raison du refus d'une séance (la source si elle ne compte pas pour le profil), ou None."""
+    if facts.source not in counted:
+        return facts.source
     if facts.duration_s < table.rule("min_session_s"):
         return "too_short"
     return None
@@ -460,7 +468,7 @@ class FactsCache:
     fichier absent, abîmé ou d'une autre version est ignoré : tout se relit, rien ne se perd.
     """
 
-    VERSION = 1
+    VERSION = 2   # 2 : `profile_id` des faits (série MJ, lot MJ2)
 
     def __init__(self, path: Path) -> None:
         self.path = path
@@ -509,13 +517,22 @@ class FactsCache:
             pass
 
 
+def _unmarked_only(profile_id: str | None) -> bool:
+    return profile_id is None
+
+
 def recompute(journal_dir: Path, table: Table,
               workout_durations: WorkoutDurations = None,
-              cache: FactsCache | None = None) -> Progress:
+              cache: FactsCache | None = None,
+              counted: Iterable[str] = DEFAULT_COUNTED,
+              owns: Callable[[str | None], bool] = _unmarked_only) -> Progress:
     """Expérience, niveau, statistiques et défis depuis tous les journaux de `journal_dir`.
 
-    `cache` (lot V11) évite de relire les journaux qui n'ont pas changé.
+    `cache` (lot V11) évite de relire les journaux qui n'ont pas changé. `counted` : sources du
+    journal qui rapportent ; `owns` : le journal de ce `profile_id` est-il du profil (série MJ,
+    `ProfileContext.owns`) ? Défaut : contexte historique, séances réelles, journaux non marqués.
     """
+    counted = tuple(counted)
     lookup = _duration_lookup(workout_durations)
     facts_list: list[SessionFacts] = []
     errors: list[tuple[str, str]] = []
@@ -550,7 +567,7 @@ def recompute(journal_dir: Path, table: Table,
     results: list[SessionResult] = []
     total = 0
     for facts in facts_list:
-        reason = ineligible_reason(facts, table)
+        reason = "other_profile" if not owns(facts.profile_id) else ineligible_reason(facts, table, counted)
         if reason is not None:
             results.append(SessionResult(facts, None, reason))
             continue
