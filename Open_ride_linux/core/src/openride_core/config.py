@@ -111,7 +111,7 @@ class DriversConfig:
     click_trace_raw: bool = False
     click_mute_after_s: float = 60.0
     click_rehandshake_s: float = 0.0
-    click_reset_locked: bool = False   # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18)
+    click_reset_locked: bool = True   # redémarrer le boîtier gauche verrouillé par Zwift (octet 0x18)
     mock_replay: str = ""          # chemin d'un journal (.jsonl) ou d'un .fit à rejouer en mode mock
     hr: str = "none"               # ceinture cardio : "none", "ble" ou "sim"
     hr_address: str = ""           # adresse MAC de la ceinture (vide : recherche par nom ou service)
