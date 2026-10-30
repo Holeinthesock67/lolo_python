@@ -136,7 +136,7 @@ def test_offline_and_add_layer_water_preserves_other_layers(fake_overpass_poi_wa
 
     assert run("build", gpx, "--out", out1, "--layers", "route,terrain,poi,water") == 0
     calls_first = len(fake_overpass_poi_water.calls)
-    assert calls_first == 1
+    assert calls_first == 2                # couches OSM, puis voies du couloir de la surface (lot U20)
 
     assert run("build", gpx, "--out", out2, "--layers", "route,terrain,poi,water", "--offline") == 0
     assert len(fake_overpass_poi_water.calls) == calls_first
