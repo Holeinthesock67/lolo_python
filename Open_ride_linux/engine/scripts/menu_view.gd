@@ -35,6 +35,11 @@ var status_label: Label
 var card   # detail_card.gd
 var items_box: VBoxContainer
 var more_label: Label
+## Grille de lettres (nom d'un profil, lot MJ8) : texte saisi et cases, à la place de la liste.
+var grid_text: Label
+var grid_box: GridContainer
+var grid_actions: HBoxContainer   # « Effacer » et « Valider » sous la grille : les colonnes des lettres restent égales
+var _grid_cells: Array[PanelContainer] = []
 var devices: HBoxContainer
 var summary: VBoxContainer
 ## Aperçu 3D du Garage (lot V8), dans la carte de détail.
@@ -102,6 +107,20 @@ func _init() -> void:
 	more_label = UiTheme.label(UiTheme.SMALL_SIZE, UiTheme.DIM)
 	more_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_RIGHT
 	left.add_child(more_label)
+	grid_text = UiTheme.label(UiTheme.ITEM_SIZE + 8, UiTheme.TEXT)
+	grid_text.visible = false
+	left.add_child(grid_text)
+	grid_box = GridContainer.new()
+	grid_box.add_theme_constant_override("h_separation", 6)
+	grid_box.add_theme_constant_override("v_separation", 6)
+	grid_box.visible = false
+	grid_box.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_child(grid_box)
+	grid_actions = HBoxContainer.new()
+	grid_actions.add_theme_constant_override("separation", 6)
+	grid_actions.visible = false
+	grid_actions.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	left.add_child(grid_actions)
 	card = DetailCard.new()
 	body.add_child(card)
 	summary = SummaryView.new()
@@ -146,15 +165,63 @@ func test_rows() -> Array:
 		if p.visible:
 			out.append({"id": str(p.get_meta("item_id", "")), "text": _row_text(p), "focused": bool(p.get_meta("focused", false)),
 				"rect": p.get_global_rect()})
+	for c in _grid_cells:
+		if c.visible:
+			out.append({"id": str(c.get_meta("item_id", "")), "text": (c.get_child(0) as Label).text,
+				"focused": bool(c.get_meta("focused", false)), "rect": c.get_global_rect()})
 	return out
 
 
 ## Rectangle (repère du canevas) de la rangée affichée de l'élément `item_id` ; vide s'il n'est pas affiché.
 func item_rect(item_id: String) -> Rect2:
-	for p in _item_panels:
+	for p in _item_panels + _grid_cells:
 		if p.visible and str(p.get_meta("item_id", "")) == item_id:
 			return p.get_global_rect()
 	return Rect2()
+
+
+## Grille de lettres (`menu.grid` : {columns, text}) ; cachée sans elle. Un clic sur une case passe par
+## `item_clicked`, comme une rangée.
+func _show_grid(grid: Dictionary, items: Array, focus: int) -> void:
+	var on := not grid.is_empty()
+	grid_box.visible = on
+	grid_actions.visible = on
+	grid_text.visible = on
+	items_box.visible = not on
+	if not on:
+		for c in _grid_cells:
+			c.visible = false
+		return
+	grid_text.text = str(grid.get("text", "")) + "_"
+	grid_box.columns = int(grid.get("columns", 10))
+	while _grid_cells.size() < items.size():
+		var c := PanelContainer.new()
+		c.custom_minimum_size = Vector2(UiTheme.ROW_H, UiTheme.ROW_H)
+		c.mouse_default_cursor_shape = Control.CURSOR_POINTING_HAND
+		c.mouse_filter = Control.MOUSE_FILTER_PASS
+		c.gui_input.connect(_on_item_input.bind(c))
+		var l := UiTheme.label(UiTheme.ITEM_SIZE)
+		l.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+		l.vertical_alignment = VERTICAL_ALIGNMENT_CENTER
+		l.mouse_filter = Control.MOUSE_FILTER_IGNORE
+		c.add_child(l)
+		if str(items[_grid_cells.size()].get("id", "")).begins_with("c:"):
+			grid_box.add_child(c)
+		else:   # case d'action, plus large, sur sa propre ligne
+			c.custom_minimum_size.x = UiTheme.ROW_H * 3
+			grid_actions.add_child(c)
+		_grid_cells.append(c)
+	for i in range(_grid_cells.size()):
+		var c := _grid_cells[i]
+		c.visible = i < items.size()
+		if not c.visible:
+			continue
+		var it: Dictionary = items[i]
+		var focused := i == focus
+		(c.get_child(0) as Label).text = str(it.get("label", ""))
+		c.set_meta("item_id", str(it.get("id", "")))
+		c.set_meta("focused", focused)
+		c.add_theme_stylebox_override("panel", _focus_style if focused else _plain_style)
 
 
 ## Aide des boutons affichée, en une ligne (tests).
@@ -178,7 +245,9 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	preview.visible = not garage_preview.is_empty()
 	if preview.visible:
 		preview.show_preview(garage_preview)
-	var items: Array = menu.get("items", [])
+	var grid: Dictionary = menu.get("grid", {})
+	_show_grid(grid, menu.get("items", []), int(menu.get("focus", -1)))
+	var items: Array = [] if not grid.is_empty() else menu.get("items", [])
 	var focus := int(menu.get("focus", -1))
 	var max_items := MAX_VISIBLE_WITH_DEVICES if screen in DEVICES_SCREENS else MAX_VISIBLE_ITEMS
 	var first := 0
