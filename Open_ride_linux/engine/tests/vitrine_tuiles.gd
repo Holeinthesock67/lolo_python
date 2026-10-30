@@ -2,7 +2,7 @@ extends SceneTree
 
 ## Vitrine de l'herbe loin de l'origine du monde : le vrai WorldStreamer sur un parcours avec couche terrain (démo
 ## `fake_world --demo --terrain`), herbe vue de près à côté de la route au départ, au milieu et à la fin du parcours,
-## plus une vue de la route. Contrôle le défaut vu le 28 octobre (« les tuiles de l'herbe ne sont pas parfaitement
+## plus une vue de la route et les flancs de colline vus de la route (relief affiché comme en séance, `--relief`). Contrôle le défaut vu le 28 octobre (« les tuiles de l'herbe ne sont pas parfaitement
 ## jointives ») : le bruit de surface_detail.gdshaderinc perdait sa précision loin de l'origine et l'herbe devenait
 ## un damier de carrés flous. Mesure du détail fin : écart moyen entre pixels voisins dans le bas de l'image ; il doit
 ## rester au moins à DETAIL_MIN_RATIO de celui du départ (avant correction : 0,26 à 2,5 km, 0,08 à 4,9 km).
@@ -10,7 +10,7 @@ extends SceneTree
 ##   python -m openride_core.tools.fake_world --demo --terrain --out DOSSIER   (dans core/, PYTHONPATH=src)
 ##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
 ##     --audio-driver Dummy --script res://tests/vitrine_tuiles.gd -- --world DOSSIER/demo.world --out SORTIE \
-##     [--quality low] [--size 1280x720]
+##     [--quality low] [--size 1280x720] [--relief 2.5]
 ##
 ## Écrit SORTIE/<vue>_<préréglage>.png et SORTIE/vitrine_tuiles.csv (vue ; abscisse ; distance à l'origine ;
 ## détail fin ; rapport au départ). Code de sortie 1 si une vue d'herbe passe sous DETAIL_MIN_RATIO.
@@ -22,15 +22,19 @@ const RenderQuality := preload("res://scripts/render_quality.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
+const EngineArgs := preload("res://scripts/engine_args.gd")
 
 const GRASS_S: Array[float] = [0.0, 2500.0, 4900.0]
 const DETAIL_MIN_RATIO := 0.6
 const SETTLE_FRAMES := 8
+## Flancs de colline vus depuis la route, à gauche et à droite (coutures du terrain, essai du 29 octobre)
+const FLANK_S: Array[float] = [500.0, 1000.0, 1500.0, 2000.0, 2500.0, 3000.0, 3500.0, 4000.0, 4500.0]
 
 var _world := ""
 var _out_dir := "user://vitrine_tuiles"
 var _preset := "low"
 var _size := Vector2i(1280, 720)
+var _relief := EngineArgs.DEFAULT_VISUAL_GRADE
 
 
 func _init() -> void:
@@ -43,6 +47,8 @@ func _init() -> void:
 				_out_dir = args[i + 1]
 			"--quality":
 				_preset = args[i + 1]
+			"--relief":
+				_relief = float(args[i + 1])
 			"--size":
 				var wh: PackedStringArray = args[i + 1].split("x")
 				_size = Vector2i(int(wh[0]), int(wh[1]))
@@ -69,6 +75,7 @@ func _run() -> void:
 		printerr("Parcours illisible : ", _world)
 		quit(1)
 		return
+	route.relief_k = _relief   # relief affiché comme en séance (main.gd)
 	var vp := SubViewport.new()
 	vp.size = _size
 	vp.own_world_3d = true
@@ -119,6 +126,14 @@ func _run() -> void:
 	for s_road in [2200.0]:
 		var eye: Vector3 = route.sample_point(s_road - 5.0) + Vector3(0.0, 2.2, 0.0)
 		views.append(["camera_%d" % int(s_road), s_road, eye, route.sample_point(s_road + 20.0) + Vector3(0.0, 0.3, 0.0)])
+
+	for s in FLANK_S:
+		var eye: Vector3 = route.sample_point(s) + Vector3(0.0, 2.2, 0.0)
+		var h := deg_to_rad(route.sample_heading_deg(s))
+		var fwd := Vector3(sin(h), 0.0, -cos(h))
+		var right := Vector3(cos(h), 0.0, sin(h))
+		for side in [["gauche", -1.0], ["droite", 1.0]]:
+			views.append(["flanc_%s_%d" % [side[0], int(s)], s, eye, eye + (fwd + right * float(side[1])) * 100.0])
 
 	var csv := FileAccess.open(_out_dir.path_join("vitrine_tuiles.csv"), FileAccess.WRITE)
 	csv.store_line("vue;s_m;distance_origine_m;detail_fin;rapport_depart")

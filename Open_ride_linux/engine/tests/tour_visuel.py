@@ -3,7 +3,7 @@
 
 Usage :
     tour_visuel.py [--godot CHEMIN] (--world demo|village|osm|DOSSIER.world) [--auto] [--tour FICHIER.json]
-                   [--quality low|medium|high] [--size 1280x720] [--native] [--out DOSSIER] [--keep]
+                   [--quality low|medium|high] [--visual-grade K] [--size 1280x720] [--native] [--out DOSSIER] [--keep]
 
 Les recettes visuelles (E3/E4, P16, P17, U18, Y11/Y12) demandent de rouler jusqu'au bon endroit pour regarder.
 Ici, la vraie scène de l'engine (`main.tscn`, `--test-mode`, préréglage `--quality`) charge le parcours face au
@@ -316,6 +316,8 @@ def run_tour(args: argparse.Namespace, world_dir: Path, route_id: str, routes: P
             "--rendering-driver", "opengl3", "--rendering-method", "gl_compatibility"]
     cmd += ["--", f"--ipc-state-port={state_port}", f"--ipc-cmd-port={cmd_port}", f"--routes-dir={routes}",
             "--test-mode", f"--quality={args.quality}", "--camera=subjective"]
+    if args.visual_grade is not None:
+        cmd.append(f"--visual-grade={args.visual_grade}")   # relief affiché ; défaut de l'engine sinon (2,5)
     with log_path.open("w") as fh:
         proc = subprocess.Popen(cmd, stdout=fh, stderr=subprocess.STDOUT, start_new_session=True)
     done: list[dict[str, Any]] = []
@@ -384,6 +386,8 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--auto", action="store_true", help="points tirés du parcours")
     ap.add_argument("--tour", type=Path, help="liste de points (engine/tests/tours/*.json, ou un nom de ce dossier)")
     ap.add_argument("--quality", default="low", help="low, medium ou high (défaut low)")
+    ap.add_argument("--visual-grade", type=float, default=None,
+                    help="exagération du relief de 1.0 à 3.0 (défaut : celle de l'engine, 2.5 comme en séance)")
     ap.add_argument("--size", default="1280x720")
     ap.add_argument("--native", action="store_true", help="fenêtre sur l'écran réel, sans Xvfb")
     ap.add_argument("--out", type=Path, default=Path.home() / "OpenRide" / "tour_visuel" / time.strftime("%Y-%m-%d_%H%M%S"))
