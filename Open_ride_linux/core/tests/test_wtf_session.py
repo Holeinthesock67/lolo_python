@@ -7,7 +7,7 @@ from pathlib import Path
 import jsonschema
 import pytest
 
-from openride_core import fit_export, garage
+from openride_core import fit_export, profile
 from openride_core.bots import ConstantPowerBot
 from openride_core.config import Config
 from openride_core.input_providers import NullProvider
@@ -34,7 +34,7 @@ def validator(name: str) -> jsonschema.Draft202012Validator:
 @pytest.fixture
 def env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(fit_export, "ACTIVITIES_DIR", tmp_path / "act")
-    monkeypatch.setattr(garage, "PROFILE_PATH", tmp_path / "profile.json")
+    monkeypatch.setattr(profile, "PROFILE_PATH", tmp_path / "profile.json")
     wall = [T0_WALL]
     monkeypatch.setattr(time, "time", lambda: wall[0])
     workouts = tmp_path / "Workouts"

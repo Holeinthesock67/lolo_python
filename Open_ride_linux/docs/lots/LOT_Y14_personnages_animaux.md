@@ -18,7 +18,7 @@ Demande du propriétaire du 27 octobre : « l'herbe et les personnages sont trop
 | Élément | Avant | Après | Triangles |
 | --- | --- | --- | --- |
 | Spectateur, passant | pavés | corps articulé (cuisse, tibia, bassin, buste, cou, tête avec oreilles et yeux, cheveux courts ou longs, col, ceinture, mains avec pouce, chaussures) | 892 (au plus 1 000) |
-| Coureur des bots (O7) | capsule | casque à aérations, lunettes, maillot à bande, gants, pied sur la pédale (jambe résolue au genou), mains au cintre | 892 |
+| Coureur des bots (O7, branché le 30 octobre) | capsule | casque à aérations, lunettes, maillot à bande, gants, pied sur la pédale (jambe résolue au genou), mains au cintre | 892 |
 | Vélo des bots | deux disques | cadre, fourche, selle, cintre, bidon, chaîne, dérailleur, cassette, roues à rayons qui tournent avec la cadence | — |
 | Vache, mouton, chevreuil | pavés (72) | vache pie, mouton à toison en bosses et tête noire, chevreuil à miroir blanc et petits bois | 1 000 à 1 200 (au plus 1 500) |
 | Oiseau (nuées, rapaces, vols en V, corneilles) | corps et deux triangles (14) | corps fuselé, tête, bec, queue en éventail, ailes à rémiges écartées, 0,9 m d'envergure le long de x | 326 |
@@ -33,5 +33,5 @@ Au maximum en `high` : 160 spectateurs et 80 passants (214 000 triangles), 80 oi
 
 ## 5. Suite
 
-- Brancher le coureur et le vélo dans l'affichage des bots après la fusion d'O7 (#407).
+- Fait le 30 octobre : les bots d'O7 (`bots_view.gd`) sont ce coureur et ce vélo, maillot à la couleur du bot, pédalier calé sur la distance parcourue (`RoadCyclistsModel.DEVELOPMENT_M`, comme les cyclistes du décor P28) ; le fantôme utilise `bot_ghost.gdshader` (même corps `crowd.gdshaderinc`, translucide, sans éclairage).
 - Si la mesure dépasse : niveau de détail par distance (maillage réduit au-delà de 40 m), sans changer le reste.

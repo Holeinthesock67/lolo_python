@@ -185,7 +185,7 @@ def write_sheet(paths: list[Path], dest: Path) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--godot", default=os.environ.get(
-        "GODOT", str(Path.home() / "Applications/godot/Godot_v4.3-stable_linux.x86_64")))
+        "GODOT", str(Path.home() / "Applications/godot/Godot_v4.7.2-stable_linux.x86_64")))
     ap.add_argument("--configs", default=DEFAULT_CONFIGS, help=f"résolution:qualité, séparées par des virgules (défaut {DEFAULT_CONFIGS})")
     ap.add_argument("--out", type=Path, default=None, help="dossier des captures, des planches et du rapport")
     ap.add_argument("--cas", default="", help="cas à jouer, séparés par des virgules (défaut : tous) : "

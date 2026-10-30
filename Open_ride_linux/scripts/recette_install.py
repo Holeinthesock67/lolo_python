@@ -14,7 +14,7 @@ parcours, core sur le trainer simulé), puis données de l'utilisateur, nouveau 
 `update.sh` et `install.sh` relancé : le code avance, parcours, séances et `config.toml` restent
 identiques. Le second compte du PC reste un essai à la main (docs/OUTILS_DE_TEST.md).
 
-Variables : GODOT (Godot 4.3, défaut ~/Applications/godot/…). En conteneur, les variables de
+Variables : GODOT (Godot 4.7, défaut ~/Applications/godot/…). En conteneur, les variables de
 mandataire (HTTPS_PROXY…) sont transmises ; `--ca-bundle` ajoute un certificat racine.
 Journal et résumé : `~/OpenRide/recettes_install/<date>_<heure>/`. Code de sortie : 0 si tout passe,
 1 sinon, 2 si docker ou Godot manque.
@@ -36,7 +36,7 @@ PROJECT = Path(__file__).resolve().parents[1]          # Open_ride_linux/
 REPO = PROJECT.parent
 CHECK = PROJECT / "scripts" / "recette_install" / "check_install.sh"
 DEFAULT_OUT = Path.home() / "OpenRide" / "recettes_install"
-DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.3-stable_linux.x86_64"
+DEFAULT_GODOT = Path.home() / "Applications" / "godot" / "Godot_v4.7.2-stable_linux.x86_64"
 DEFAULT_IMAGE = "ubuntu:24.04"
 APT_PACKAGES = ("python3", "python3-venv", "python3-pip", "git", "ca-certificates", "desktop-file-utils",
                 "libfontconfig1", "libgl1", "libxi6", "libxrandr2", "libxcursor1", "libxinerama1")

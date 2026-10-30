@@ -168,8 +168,17 @@ def _read(path: Path, known_items: set[str] | None) -> Profile:
         return _from_dict(json.load(fh), known_items)
 
 
-def load_profile(path: Path = PROFILE_PATH, known_items: set[str] | None = None) -> Profile:
+def _path(path: Path | None) -> Path:
+    """Chemin donné, sinon `profile.json` du profil de joueur en cours (série MJ, lot MJ1)."""
+    if path is not None:
+        return path
+    from . import profiles
+    return profiles.current().profile_path
+
+
+def load_profile(path: Path | None = None, known_items: set[str] | None = None) -> Profile:
     """Profil lu, réparé si besoin ; `known_items` (catalogue, V3) remet à zéro les pièces retirées."""
+    path = _path(path)
     if not path.exists():
         return Profile()
     try:
@@ -193,8 +202,9 @@ def load_profile(path: Path = PROFILE_PATH, known_items: set[str] | None = None)
     return Profile()
 
 
-def peek_profile(path: Path = PROFILE_PATH, known_items: set[str] | None = None) -> Profile:
+def peek_profile(path: Path | None = None, known_items: set[str] | None = None) -> Profile:
     """Lecture seule, sans réparation (outils comme `openride-core xp`) : défauts si illisible."""
+    path = _path(path)
     for candidate in (path, path.with_name(path.name + ".bak")):
         if candidate.exists():
             try:
@@ -204,10 +214,11 @@ def peek_profile(path: Path = PROFILE_PATH, known_items: set[str] | None = None)
     return Profile()
 
 
-def save_profile(profile: Profile, path: Path = PROFILE_PATH) -> None:
+def save_profile(profile: Profile, path: Path | None = None) -> None:
     """Écrit le profil sans risque de fichier à moitié écrit ; lève `ProfileTooNew` ou `OSError`."""
     if profile.read_only:
         raise ProfileTooNew("profil écrit par une version plus récente d'OpenRide : non modifié")
+    path = _path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
     text = json.dumps(profile.to_dict(), ensure_ascii=False, indent=2) + "\n"
     fd, tmp = tempfile.mkstemp(prefix=f".{path.name}.", suffix=".tmp", dir=path.parent)

@@ -24,7 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from .. import config as config_mod
-from .. import fit_export
+from .. import profiles
 from .history import MATCH_TOLERANCE_S, _discover_files, _header_of
 from .session_summary import SummaryError, load_session, running_records
 
@@ -110,8 +110,9 @@ def _session_mmp(path: Path, entries: dict) -> tuple[dict | None, bool]:
 
 def estimate(directory: Path | None = None, ftp_w: float = 250.0, days: int = DEFAULT_DAYS,
              cache_path: Path | None = None, now: float | None = None) -> dict[str, Any]:
-    act_dir = Path(directory) if directory is not None else fit_export.ACTIVITIES_DIR
-    cpath = Path(cache_path) if cache_path is not None else CACHE_PATH
+    ctx = profiles.current()   # séances et cache du profil en cours (série MJ, lot MJ1)
+    act_dir = Path(directory) if directory is not None else ctx.activities_dir
+    cpath = Path(cache_path) if cache_path is not None else ctx.mmp_cache
     now = time.time() if now is None else now
     entries = _load_cache(cpath)
     dirty = False

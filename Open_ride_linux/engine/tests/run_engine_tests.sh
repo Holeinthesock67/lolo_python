@@ -4,9 +4,9 @@
 # sous Xvfb), rendu par tronçons, puis scénarios IPC face au faux core (parcours de démonstration avec
 # terrain synthétique).
 #
-#   GODOT=/chemin/vers/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
+#   GODOT=/chemin/vers/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_engine_tests.sh
 #
-# Variables : GODOT (exécutable Godot 4.3), STATE_PORT / CMD_PORT (ports de test, défaut 15005 / 15006),
+# Variables : GODOT (exécutable Godot 4.7), STATE_PORT / CMD_PORT (ports de test, défaut 15005 / 15006),
 # SCENARIOS (ex. « 1,2,3 »), ENGINE_LOG (journal de l'engine, défaut : fichier temporaire),
 # REQUIRE_RENDER (1 : échec si xvfb-run manque, au lieu de sauter les tests de rendu),
 # UNIT (ex. « test_route_vectors » : ne lance que ce test unitaire et saute les autres étapes),
@@ -23,7 +23,7 @@
 # Code de sortie : 0 si tout passe.
 set -u
 ENGINE_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.3-stable_linux.x86_64}"
+GODOT="${GODOT:-$HOME/Applications/godot/Godot_v4.7.2-stable_linux.x86_64}"
 STATE_PORT="${STATE_PORT:-15005}"
 CMD_PORT="${CMD_PORT:-15006}"
 ENGINE_LOG_TEMP=$([ -z "${ENGINE_LOG:-}" ] && echo 1 || echo 0)   # journal temporaire : supprimé si tout passe
@@ -79,7 +79,7 @@ write_junit() {
 }
 
 # Filtre commun (lot X34) : toute ligne SCRIPT ERROR, ERROR ou WARNING est une erreur, sauf
-# - les objets non libérés à la sortie (ObjectDB instances leaked, resources still in use at exit) ;
+# - les objets non libérés à la sortie (ObjectDB instances leaked ou were leaked en 4.7, resources still in use at exit) ;
 # - une erreur dont la ligne « at: » suivante vient du serveur de rendu factice de --headless
 #   (servers/rendering/dummy/ : « Parameter "m" is null » de mesh_get_surface_count, il ne garde aucun maillage).
 # Avant le lot X34, toute ligne contenant « mesh … null » était tolérée, d'où qu'elle vienne.
@@ -88,7 +88,7 @@ godot_issues() {
     /SCRIPT ERROR|ERROR:|WARNING:/ { if (pending != "") print pending; pending = $0; next }
     pending != "" { if ($0 !~ /servers\/rendering\/dummy\//) print pending; pending = "" }
     END { if (pending != "") print pending }
-  ' | grep -v -E "ObjectDB instances leaked|resources still in use at exit" || true
+  ' | grep -v -E "ObjectDB instances (were )?leaked|resources still in use at exit" || true
 }
 
 echo "== Tests unitaires (tests/unit/, lot K1) =="

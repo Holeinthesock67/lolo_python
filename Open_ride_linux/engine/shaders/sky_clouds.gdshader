@@ -2,7 +2,8 @@ shader_type sky;
 render_mode use_debanding;
 
 // Ciel avec nuages qui défilent au vent (Lot P6), en un seul passage, sans volume.
-// Le dégradé est celui du ProceduralSkyMaterial de Godot 4.3 (zénith, horizon, sol, soleil), avec les
+// Le dégradé est celui du ProceduralSkyMaterial de Godot 4.7 (zénith, horizon, sol, soleil, calculés
+// sur les cosinus depuis 4.6, mêmes réglages qu'en 4.3 convertis comme le fait le moteur), avec les
 // couleurs du ciel actuel : sans nuage (couverture 0), l'image est celle d'aujourd'hui.
 // Nuages : bruit fractal 2D projeté sur un plan horizontal à `altitude_m` au-dessus de la caméra
 // (ancré au monde : la caméra passe dessous),
@@ -81,9 +82,8 @@ float _layer(vec2 p, float evolve) {
 }
 
 void sky() {
-	float v_angle = acos(clamp(EYEDIR.y, -1.0, 1.0));
-	float c = (1.0 - v_angle / (PI * 0.5));
-	vec3 sky = mix(sky_horizon_color.rgb, sky_top_color.rgb, clamp(1.0 - pow(1.0 - c, 1.0 / sky_curve), 0.0, 1.0));
+	float v_angle = clamp(EYEDIR.y, -1.0, 1.0);
+	vec3 sky = mix(sky_top_color.rgb, sky_horizon_color.rgb, clamp(pow(1.0 - v_angle, 0.6 / sky_curve), 0.0, 1.0));
 	sky *= sky_energy;
 
 	// Nuages, avant le soleil : le disque solaire reste visible à travers une couche fine seulement
@@ -103,13 +103,15 @@ void sky() {
 	}
 
 	if (LIGHT0_ENABLED) {
-		float sun_angle = acos(dot(LIGHT0_DIRECTION, EYEDIR));
+		float sun_angle = dot(LIGHT0_DIRECTION, EYEDIR);
+		float sun_size = cos(LIGHT0_SIZE);
+		float sun_max = cos(sun_angle_max);
 		vec3 sun_col = LIGHT0_COLOR * LIGHT0_ENERGY;
-		if (sun_angle < LIGHT0_SIZE) {
+		if (sun_angle > sun_size) {
 			sky = sun_col;
-		} else if (sun_angle < sun_angle_max) {
-			float c2 = (sun_angle - LIGHT0_SIZE) / (sun_angle_max - LIGHT0_SIZE);
-			sky = mix(sun_col, sky, clamp(1.0 - pow(1.0 - c2, 1.0 / sun_curve), 0.0, 1.0));
+		} else if (sun_angle > sun_max) {
+			float c2 = (sun_size - sun_angle) / (sun_size - sun_max);
+			sky = mix(sky, sun_col, clamp(pow(1.0 - c2, 1.6 / pow(sun_curve, 1.4)), 0.0, 1.0));
 		}
 	}
 
@@ -120,8 +122,7 @@ void sky() {
 		sky = mix(sky, cloud, alpha * 0.95);
 	}
 
-	c = (v_angle - (PI * 0.5)) / (PI * 0.5);
-	vec3 ground = mix(ground_horizon_color.rgb, ground_bottom_color.rgb, clamp(1.0 - pow(1.0 - c, 1.0 / ground_curve), 0.0, 1.0));
+	vec3 ground = mix(ground_bottom_color.rgb, ground_horizon_color.rgb, clamp(pow(1.0 + v_angle, 0.6 / ground_curve), 0.0, 1.0));
 	ground *= ground_energy;
 
 	COLOR = mix(ground, sky, step(0.0, EYEDIR.y)) * exposure;

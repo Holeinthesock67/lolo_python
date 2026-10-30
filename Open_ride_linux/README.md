@@ -17,13 +17,13 @@ Version `0.9.0` (fichier `VERSION`) ; la 1.0 réunit les séries N et O. OpenRid
 
 ## Installation (PC Ubuntu)
 
-En une commande (lot N14), depuis `Open_ride_linux/` après `sudo apt install python3-venv bluez` et le téléchargement de Godot 4.3 :
+En une commande (lot N14), depuis `Open_ride_linux/` après `sudo apt install python3-venv bluez` et le téléchargement de Godot 4.7 :
 
 ```bash
 scripts/install.sh
 ```
 
-Le script crée l'environnement Python `core/.venv`, y installe le core et le compilateur, relie `openride` et `openride-core` dans `~/.local/bin`, crée `~/OpenRide/config.toml` depuis `scripts/config.example.toml`, demande une fois le chemin de Godot 4.3 (gardé dans `[engine] godot`) et installe trois entrées de menu : **OpenRide**, **OpenRide – Libérer le trainer** et **OpenRide – Mettre à jour** (`scripts/update.sh` : `git pull --ff-only` puis réinstallation, refusée s'il y a des modifications locales). Il peut être relancé sans dommage. Ensuite, tout se fait depuis l'icône : au premier lancement, OpenRide crée `~/OpenRide/GPX/` et `~/OpenRide/Workouts/` et rappelle de configurer les appareils ; une erreur au lancement (Godot introuvable, configuration invalide, port occupé, trainer réservé par une autre application, plantages répétés) s'affiche dans une fenêtre avec le chemin du journal.
+Le script crée l'environnement Python `core/.venv`, y installe le core et le compilateur, relie `openride` et `openride-core` dans `~/.local/bin`, crée `~/OpenRide/config.toml` depuis `scripts/config.example.toml`, demande une fois le chemin de Godot 4.7 (gardé dans `[engine] godot`) et installe trois entrées de menu : **OpenRide**, **OpenRide – Libérer le trainer** et **OpenRide – Mettre à jour** (`scripts/update.sh` : `git pull --ff-only` puis réinstallation, refusée s'il y a des modifications locales). Il peut être relancé sans dommage. Ensuite, tout se fait depuis l'icône : au premier lancement, OpenRide crée `~/OpenRide/GPX/` et `~/OpenRide/Workouts/` et rappelle de configurer les appareils ; une erreur au lancement (Godot introuvable, configuration invalide, port occupé, trainer réservé par une autre application, plantages répétés) s'affiche dans une fenêtre avec le chemin du journal.
 
 Tout le reste (appairage, parcours, entraînements, commandes, dépannage) est dans le [guide d'utilisation](docs/GUIDE_UTILISATION.md).
 
@@ -50,14 +50,14 @@ Avec Claude Code, lancer `claude` depuis `Open_ride_linux/` : le fichier `CLAUDE
 Open_ride_linux/
   docs/        spécifications, contrats, audit, lots
   core/        openride-core (Python) : BLE, physique, braquets, journal, FIT, IPC
-  engine/      openride-engine (Godot 4.3) : rendu, HUD
+  engine/      openride-engine (Godot 4.7) : rendu, HUD
   scripts/     outils de lancement (openride-dev.sh)
   compiler/    openride-compiler (Python) : GPX vers .world, couches route et terrain (lots B1 et B2)
 ```
 
 ### Tests
 
-- **Tests :** 1961 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop`, rampe de pente du trainer et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 457 côté compilateur (dont contrat des biomes (lot U1), traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, 106 fichiers de tests unitaires lancés par découverte, 16 tests de rendu, les couches OSM, l'ERG, le rendu par tronçons et 8 scénarios IPC, plus le bout en bout, les tests graphiques et le banc simulé ([docs/OUTILS_DE_TEST.md](docs/OUTILS_DE_TEST.md)). Ils se lancent sur le PC cible (`python3 scripts/recette_pc.py`) ; la configuration GitHub Actions (Python 3.11 / 3.14 et Godot 4.3) reste dans le dépôt.
+- **Tests :** 2017 tests automatiques côté core (dont conformité FTMS, cohérence documentation/code, robustesse IPC, validation de `config.toml`, catalogue des parcours, recherche BLE sans matériel, Bluetooth simulé (trainer, Click, ceinture), rejeu JSONL/FIT, endurance de 3 h, validation FIT par `garmin-fit-sdk`, analyseur de journal, historique des séances, raccourci de bureau `.desktop`, rampe de pente du trainer et outils d'entraînements `.zwo`, `.erg` et `.mrc`) et 457 côté compilateur (dont contrat des biomes (lot U1), traces FIT et TCX, mesures du monde ouvert et décodeur de tuiles vectorielles (lot W0), bibliothèque de parcours (fiches, tri, filtres, packs, lot O15), recettes de cols construites sur un graphe routier synthétique (lot O16), `list`, `build-all` avec ou sans core installé, couches OpenStreetMap `buildings`/`vegetation`/`poi`/`water` et validation et gestion des thèmes (`theme-check`, `theme-list`, `theme-install`, lot N10)) ; côté Godot, sans écran, 106 fichiers de tests unitaires lancés par découverte, 16 tests de rendu, les couches OSM, l'ERG, le rendu par tronçons et 8 scénarios IPC, plus le bout en bout, les tests graphiques et le banc simulé ([docs/OUTILS_DE_TEST.md](docs/OUTILS_DE_TEST.md)). Ils se lancent sur le PC cible (`python3 scripts/recette_pc.py`) ; la configuration GitHub Actions (Python 3.11 / 3.14 et Godot 4.7) reste dans le dépôt.
 
 ## Version
 
@@ -85,20 +85,20 @@ Compilateur de parcours (GPX vers `.world`, couches route, terrain, bâtiments, 
 
 Raccourcis de bureau et icône utilisateur (sans `sudo`, depuis `Open_ride_linux/`, appelé par `install.sh`) : `scripts/install-desktop.sh` installe `~/.local/share/applications/openride.desktop`, `openride-release.desktop` (`openride --release-trainer`), `openride-update.desktop` et l'icône `scripts/desktop/openride.svg` (`scripts/install-desktop.sh --uninstall` pour les retirer).
 
-Godot 4.3 (version standard, pas .NET) :
+Godot 4.7 (version standard, pas .NET) :
 
 ```bash
 mkdir -p ~/Applications/godot && cd ~/Applications/godot
-wget https://github.com/godotengine/godot/releases/download/4.3-stable/Godot_v4.3-stable_linux.x86_64.zip
-unzip Godot_v4.3-stable_linux.x86_64.zip && chmod +x Godot_v4.3-stable_linux.x86_64
+wget https://github.com/godotengine/godot/releases/download/4.7.2-stable/Godot_v4.7.2-stable_linux.x86_64.zip
+unzip Godot_v4.7.2-stable_linux.x86_64.zip && chmod +x Godot_v4.7.2-stable_linux.x86_64
 ```
 
 Tests côté Godot, sans écran (depuis `Open_ride_linux/`) :
 
 ```bash
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_engine_tests.sh
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_e2e.sh
-GODOT=~/Applications/godot/Godot_v4.3-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_engine_tests.sh
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_e2e.sh
+GODOT=~/Applications/godot/Godot_v4.7.2-stable_linux.x86_64 engine/tests/run_visual_tests.sh --open
 ```
 
 Le premier script lance les tests unitaires de `engine/tests/unit/` (vecteurs de route, thèmes…), le rendu par tronçons, l'ERG, puis joue 8 scénarios IPC face à un faux core (`engine/tests/README.md`). Le second fait un essai de bout en bout avec le vrai core (trainer simulé) et le vrai engine, dans un dossier personnel temporaire, en une dizaine de secondes. Le troisième fait les tests graphiques de la scène principale, sans rien à faire (deux minutes environ) : l'engine est rendu sous Xvfb en 1280×720, 1920×1080 et 1024×600, ses captures d'écran sont analysées (textes et mise en page du HUD, bandeau, ciel et sol, caméra qui avance puis se fige) et comparées aux images de référence, et `--open` ouvre le rapport (`~/OpenRide/visual_tests/<date>/rapport.html`) ; paquets : `xvfb`, `xauth`, `libgl1-mesa-dri` (détail : `engine/tests/README.md`).
@@ -208,7 +208,7 @@ openride-ble-diag click --duration 60
 openride-ble-diag trace ~/run_trainer.log   # analyse d'une trace brute du Click
 ```
 
-Diagnostic du Zwift Click V2 : `[drivers] click_trace_raw = true` (trace brute par notification), `click_mute_after_s = 60` (détection de boîtier muet) et `click_rehandshake_s = 30` (tentatives de reprise échelonnées : renvoi de RideOn, réabonnement, reconnexion). Voir `docs/DIAG_CLICK_GAUCHE.md` et la recherche publique `docs/RECHERCHE_CLICK_GAUCHE.md` (verrou du boîtier gauche par Zwift).
+Diagnostic du Zwift Click V2 : `[drivers] click_trace_raw = true` (trace brute par notification), `click_mute_after_s = 60` (détection de boîtier muet) et `click_rehandshake_s = 30` (tentatives de reprise échelonnées : renvoi de RideOn, réabonnement, reconnexion). `click_reset_locked = true` (essai : redémarre le boîtier gauche quand Zwift le verrouille, voir `docs/RECHERCHE_CLICK_GAUCHE.md` §9). Voir `docs/DIAG_CLICK_GAUCHE.md` et la recherche publique `docs/RECHERCHE_CLICK_GAUCHE.md` (verrou du boîtier gauche par Zwift).
 
 Les rapports sont écrits dans `spike_reports/`.
 
