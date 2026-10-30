@@ -645,6 +645,10 @@ def test_github_anchors() -> None:
 
 
 def test_documented_test_counts_and_negative() -> None:
+    try:
+        import hypothesis  # noqa: F401
+    except ImportError:   # test_fuzz_workouts sauté à la collecte : le compte du core serait faux
+        pytest.skip("hypothesis non installé (extra dev) : nombre de tests du core inconnu")
     actual = {"core": collected_test_count(REPO_ROOT / "core"), **engine_counts(REPO_ROOT)}
     try:
         import openride_compiler  # noqa: F401
