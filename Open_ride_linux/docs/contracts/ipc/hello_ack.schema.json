@@ -140,6 +140,15 @@
                 }
               }
             },
+            "last": {
+              "type": ["object", "null"],
+              "description": "Facultatif, révision 1.5 (lot R13) : objectif et durée de la dernière run, relus dans le journal ; null avant la première run (l'engine montre alors l'avertissement du premier lancement).",
+              "required": ["objective", "duration_min"],
+              "properties": {
+                "objective": {"type": "string", "enum": ["endurance", "threshold", "vo2max"]},
+                "duration_min": {"type": "integer", "enum": [30, 45, 60, 90]}
+              }
+            },
             "lives": {
               "type": "integer",
               "minimum": 0,
