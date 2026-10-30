@@ -94,12 +94,15 @@ class Record:
     hr_frozen: bool | None = None      # True : FC relayée par le trainer figée, ignorée (lot Q5)
     erg_kind: str | None = None        # ERG d'une session libre : `free` ou `cadence`, None sinon (lot O18)
     cadence_target_rpm: int | None = None  # cadence cible de l'ERG cadence (tr/min), None sinon (lot O18)
+    surface: str | None = None         # surface roulée (paved, compacted, gravel, dirt), None gravel coupé (lot U21)
+    gravel_grade_pct: float | None = None  # supplément de pente du gravel avant la borne commune, None gravel coupé
 
 
 # Champs facultatifs (séries P et Q, lot O18) absents de la ligne quand ils valent None (vent coupé,
-# pas de bot, pas d'ERG libre) :
+# pas de bot, pas d'ERG libre, gravel coupé) :
 # une séance sans vent ni bot garde exactement les lignes d'avant, et la mémoire de la séance aussi.
-OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen", "erg_kind", "cadence_target_rpm")
+OPTIONAL_RECORD_KEYS = ("head_mps", "wind_grade_pct", "draft", "hr_frozen", "erg_kind", "cadence_target_rpm",
+                        "surface", "gravel_grade_pct")
 
 
 # Lignes de jeu de la série T (lot T7), lues par les records (T5) et la progression (V5).
