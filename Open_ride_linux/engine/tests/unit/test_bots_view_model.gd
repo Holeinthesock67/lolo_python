@@ -5,6 +5,7 @@ extends SceneTree
 
 const BotsViewModel := preload("res://scripts/bots_view_model.gd")
 const BotsView := preload("res://scripts/bots_view.gd")
+const RoadCyclistsModel := preload("res://scripts/road_cyclists_model.gd")
 const HudView := preload("res://scripts/hud_view.gd")
 const ClimbTest := preload("res://tests/unit/test_climb_detector.gd")
 const RoadBuilder := preload("res://scripts/road_builder.gd")
@@ -102,6 +103,20 @@ func _test_nodes() -> void:
 	var label: Label3D = node.get_node("Name")
 	_check(absf(node.position.x - 1000.0) < 1.0 and absf(node.position.z - BotsView.LATERAL_M) < 0.1 and BotsView.LATERAL_M > RoadBuilder.RIDER_LATERAL_M, "posée sur la route, à droite du cycliste (lot P32) (%s)" % str(node.position))
 	_check(label.visible, "nom affiché à moins de 50 m")
+	# Lot Y14 : coureur et vélo de people_mesh.gd, pédalier qui suit la distance, fantôme translucide
+	var rider: MultiMeshInstance3D = node.get_node("Rider")
+	var bike: MultiMeshInstance3D = node.get_node("Bike")
+	_check(rider.multimesh.mesh.get_faces().size() > 1000 and bike.multimesh.mesh.get_faces().size() > 1000,
+		"coureur et vélo de people_mesh.gd")
+	var pose: Dictionary = bv.pose_of("bot1")
+	var phase := fposmod(1000.0 / RoadCyclistsModel.DEVELOPMENT_M, 1.0)
+	_check(is_equal_approx(float(pose.get("phase", -1.0)), phase), "pédalier calé sur la distance parcourue (%s)" % str(pose.get("phase")))
+	var shown: Dictionary = m.view(1000.0, 7.0, 0).filter(func(b): return b["id"] == "bot1")[0]
+	_check(Color(pose.get("color", Color.BLACK)).is_equal_approx(shown["color"]), "maillot à la couleur du bot")
+	var ghost: Node3D = bv.get_child(1)
+	var g_mat: ShaderMaterial = (ghost.get_node("Rider") as MultiMeshInstance3D).material_override
+	_check(g_mat.shader.resource_path.ends_with("bot_ghost.gdshader") and float(g_mat.get_shader_parameter("ghost_alpha")) < 1.0,
+		"fantôme translucide (bot_ghost.gdshader)")
 	bv.update_view([], route)
 	_check(bv.get_child_count() == 0, "sans bot : aucune silhouette")
 	bv.free()
