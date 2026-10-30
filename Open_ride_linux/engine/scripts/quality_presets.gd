@@ -46,7 +46,8 @@ const PRESETS := {
 
 ## Qualité d'image par préréglage (lot Y13), toujours à la résolution native de l'écran (décision du
 ## propriétaire du 27 octobre : ni mise à l'échelle ni suréchantillonnage) :
-## - `msaa` : MSAA 3D (0, 2, 4 ou 8) ; `fxaa` : anticrénelage d'écran, pour `low` qui n'a pas de MSAA.
+## - `msaa` : MSAA 3D (0, 2, 4 ou 8) ; `screen_aa` : anticrénelage d'écran `off`, `fxaa` ou `smaa`, pour `low`
+##   qui n'a pas de MSAA (SMAA 1× depuis Godot 4.5, lot Y6 : bords plus nets que le FXAA, sans flou des textures).
 ## - `ssao`, `ssil` : occlusion ambiante et lumière indirecte d'écran, `off`, `low`, `medium` ou `high`
 ##   (Forward+ seulement) ; `ao_half_size` : calcul en demi-résolution.
 ## - `fog_volumetric` : brume volumétrique de près, `off`, `light` ou `full` (Forward+ seulement ;
@@ -62,7 +63,7 @@ const IMAGE := {
 	"low": {
 		"anisotropy": 4,
 		"msaa": 0,
-		"fxaa": true,
+		"screen_aa": "smaa",
 		"ssao": "off",
 		"ssil": "off",
 		"ao_half_size": true,
@@ -77,7 +78,7 @@ const IMAGE := {
 	"medium": {
 		"anisotropy": 8,
 		"msaa": 4,
-		"fxaa": false,
+		"screen_aa": "off",
 		"ssao": "medium",
 		"ssil": "low",
 		"ao_half_size": true,
@@ -92,7 +93,7 @@ const IMAGE := {
 	"high": {
 		"anisotropy": 16,
 		"msaa": 4,
-		"fxaa": false,
+		"screen_aa": "off",
 		"ssao": "high",
 		"ssil": "medium",
 		"ao_half_size": true,
