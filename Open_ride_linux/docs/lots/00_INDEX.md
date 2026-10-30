@@ -306,8 +306,8 @@
 | [MJ5](LOT_MJ5_migration_profil.md) | Série MJ : migration du profil actuel vers `Profils/principal/`, séances simulées vers `_essai`, contrôle X39 | Python | MJ2, MJ4 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj5b`), migration réelle dans MJ10 |
 | [MJ6](LOT_MJ6_contrat_profils.md) | Série MJ : contrat IPC des profils (ajouts compatibles) | doc, JSON | MJ0 | Petite | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj6`), validé par le propriétaire et fusionné le 30 octobre (PR #611) |
 | [MJ7](LOT_MJ7_core_profils.md) | Série MJ : core, choisir, créer, renommer, supprimer un profil sans relancer | Python | MJ4, MJ6 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj7b`, après MJ5 et MJ6) |
-| [MJ8](LOT_MJ8_ecrans_profils.md) | Série MJ : écrans « Qui roule ? », nom du profil, gestion, bandeau ESSAI (maquettes A à F validées) | GDScript | MJ7 | Moyenne | Prêt, captures à valider |
-| [MJ9](LOT_MJ9_outils_docs_profils.md) | Série MJ : recette V10 sur `_essai`, guide et outils | Python, doc | MJ7, MJ8 | Petite | Prêt (version 2.0) |
+| [MJ8](LOT_MJ8_ecrans_profils.md) | Série MJ : écrans « Qui roule ? », nom du profil, gestion, bandeau ESSAI (maquettes A à F validées) | GDScript | MJ7 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj8b`), captures low, medium et high à valider sur le PC avant fusion |
+| [MJ9](LOT_MJ9_outils_docs_profils.md) | Série MJ : recette V10 sur `_essai`, guide et outils | Python, doc | MJ7, MJ8 | Petite | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj8b`, avec MJ8) |
 | [MJ10](LOT_MJ10_recette_profils.md) | Série MJ : recette sur le PC (migration réelle, deux profils, séance de 10 min) | — | MJ5, MJ9 | Petite | Non : propriétaire |
 | [CT0](LOT_CT0_simulateur_equilibrage.md) | Série CT : simulateur d'équilibrage de la Course tactique | Python | Y10, T13 | Moyenne | Prêt (version 5.0) |
 | [CT1](LOT_CT1_contrat_plan.md) | Série CT : contrat IPC et cahiers du mode Course tactique | Documentation | CT0, TT1 (4.0) | Moyenne | Prêt (version 5.0), validation du propriétaire |
