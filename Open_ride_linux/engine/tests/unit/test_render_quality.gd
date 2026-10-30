@@ -67,7 +67,7 @@ func _test_presets_application() -> void:
 		_check(absf(vp.mesh_lod_threshold - float(img["mesh_lod_threshold"])) < 1e-4,
 			"%s : seuil LOD %.1f px" % [name, img["mesh_lod_threshold"]])
 		_check(vp.scaling_3d_scale == 1.0, "%s : résolution native, sans mise à l'échelle 3D" % name)
-		_check(env.glow_enabled == bool(img["glow"]) and env.tonemap_mode == Environment.TONE_MAPPER_AGX
+		_check(env.glow_enabled == bool(img["glow"]) and env.tonemap_mode == (RenderQuality.LOOK["tonemap"] if fp else RenderQuality.LOOK["tonemap_compatibility"])
 			and absf(env.tonemap_agx_white - RenderQuality.LOOK["agx_white"]) < 1e-3
 			and env.adjustment_enabled,
 			"%s : glow %s, rendu des tons et étalonnage communs" % [name, str(img["glow"])])

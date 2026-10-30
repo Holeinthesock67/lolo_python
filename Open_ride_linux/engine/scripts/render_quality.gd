@@ -37,8 +37,12 @@ const FOG_SKY_AFFECT := 0.0
 ## (Godot 4.4 ; étape 4, en 4.7) qui garde la couleur dans les hautes lumières du ciel et du soleil, au
 ## lieu de « Filmic » choisie en 4.3 parmi Linear, Reinhard, Filmic et ACES ; exposition relevée pour
 ## compenser la courbe, contraste et saturation légèrement relevés. Choisi sur captures Filmic contre AgX.
+## Le moteur Compatibility (tests sous Xvfb) n'a pas de tampon HDR : AgX y blanchit ciel et herbe et efface
+## les nuages, il garde donc Filmic (`white`), comme il se passe déjà de SSAO, SSIL et brume volumétrique.
 const LOOK := {
 	"tonemap": Environment.TONE_MAPPER_AGX,
+	"tonemap_compatibility": Environment.TONE_MAPPER_FILMIC,
+	"white": 6.0,
 	"exposure": 1.25,
 	"agx_white": 16.29,
 	"agx_contrast": 1.25,
@@ -143,8 +147,9 @@ static func apply_image(img: Dictionary, light: DirectionalLight3D, env: Environ
 	env.glow_hdr_threshold = GLOW["hdr_threshold"]
 	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_SOFTLIGHT
 
-	env.tonemap_mode = LOOK["tonemap"]
+	env.tonemap_mode = LOOK["tonemap"] if forward_plus else LOOK["tonemap_compatibility"]
 	env.tonemap_exposure = LOOK["exposure"]
+	env.tonemap_white = LOOK["white"]
 	env.tonemap_agx_white = LOOK["agx_white"]
 	env.tonemap_agx_contrast = LOOK["agx_contrast"]
 	env.adjustment_enabled = true
