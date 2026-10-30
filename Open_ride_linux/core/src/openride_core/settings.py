@@ -76,6 +76,8 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("audio.ride_pct", "Volume vent et roue libre", "sound", 10, "%", "now"),
     Setting("audio.ambience_pct", "Volume de l'ambiance", "sound", 10, "%", "now"),
     Setting("audio.events_pct", "Volume bips et événements", "sound", 10, "%", "now"),
+    Setting("audio.rogue_sfx_pct", "Cyber-Rogue : bruitages", "sound", 10, "%", "now"),   # lot R18
+    Setting("audio.rogue_music_pct", "Cyber-Rogue : musique", "sound", 10, "%", "now"),
     # Vent (lot P16, décisions du propriétaire du 25 octobre : coupé par défaut, plafond de 4 points)
     Setting("wind.mode", "Vent", "wind"),
     Setting("wind.speed_kmh", "Force du vent", "wind", 5, "km/h"),

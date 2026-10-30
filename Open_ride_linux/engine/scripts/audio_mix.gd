@@ -10,8 +10,8 @@ extends RefCounted
 ## - `Events` : bips d'appui du Click, bip de changement de bloc ERG, consignes d'essai (main.gd),
 ##   et plus tard les jingles d'événements (sommet de col, arche, fin de sprint, fin de séance) ;
 ## - mode Cyber-Rogue (lot R18) : `RogueSfx` (`audio.rogue_sfx_pct`, bruitages de jeu, défaut 70 %) et
-##   `RogueMusic` (`audio.rogue_music_pct`, musique, défaut 40 %) ; les réglages du core arrivent avec le
-##   volume général, l'engine règle déjà les bus à ces défauts.
+##   `RogueMusic` (`audio.rogue_music_pct`, musique, défaut 40 %) ; bus réglés à ces défauts à leur création,
+##   puis aux valeurs du message `settings`.
 ## Chaque lecteur prend son bus par `bus(groupe)`, qui crée les bus à la première demande.
 ## Un volume va de 0 (bus coupé) à 100 % (niveau d'origine) ; la courbe est quadratique
 ## (50 % ≈ −12 dB), plus proche de l'oreille qu'une échelle linéaire d'amplitude.

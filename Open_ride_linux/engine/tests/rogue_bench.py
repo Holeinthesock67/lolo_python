@@ -57,6 +57,10 @@ FIGHT = ("ROOM", "BOSS")
 DARK_MIN_LUM = 0.01              # scène néon : fond sombre, mais jamais noire
 UNIFORM_MIN_STD = 0.02
 NEON_MIN = 0.002                 # part minimale de pixels vifs et saturés pendant la run
+# Échauffement, retour au calme et résultats : vide et grille seuls (rogue_scene.gd, RIBBON_PHASES), sans
+# ruban ni HUD classique (caché pendant la run depuis le lot R19) ; la grille seule fait environ 0,1 %.
+NEON_MIN_EMPTY = 0.0005
+RIBBON_PHASES = ("ROOM", "CORRIDOR", "BOSS", "RECOVERY")
 ROOM_DIFF_MIN = 1.0              # écart moyen (niveaux sur 255) entre deux salles de suite
 CONFIG = "rogue"
 
@@ -189,7 +193,8 @@ class Bench:
         self.check(name, "scène du mode active", bool(ri), json.dumps(ri, ensure_ascii=False)[:160])
         if not ri:
             return
-        self.check(name, "néons dessinés", neon >= NEON_MIN, f"{neon:.2%} de pixels vifs et saturés")
+        floor = NEON_MIN if rg.get("phase") in RIBBON_PHASES else NEON_MIN_EMPTY
+        self.check(name, "néons dessinés", neon >= floor, f"{neon:.2%} de pixels vifs et saturés (au moins {floor:.2%})")
         if name == "pause":
             self.check(name, "menu de pause affiché", menu, "")
         if rg.get("phase") in FIGHT and frame.get("session_state") == "RUNNING":
@@ -199,8 +204,14 @@ class Bench:
                        f"ruban {ri.get('ribbon')}, {ri.get('markers')} repère(s), Firewall {ri.get('firewall')}")
             self.check(name, "ennemi affiché", bool(ri.get("enemy")), f"archétype {ri.get('enemy_archetype') or '—'}")
         if frame.get("session_state") == "RUNNING":
-            self.check(name, "hologramme du HUD", bool(ri.get("hud")) and bool(ri.get("holo")),
-                       (ri.get("holo") or "").replace("\n", " · "))
+            if ri.get("corridor"):   # l'écran du couloir occupe le centre : hologramme retiré
+                self.check(name, "hologramme retiré au couloir", not ri.get("holo"), ri.get("holo") or "retiré")
+            else:
+                self.check(name, "hologramme du HUD", bool(ri.get("hud")) and bool(ri.get("holo")),
+                           (ri.get("holo") or "").replace("\n", " · "))
+            classic = [k for k in ("panel_left", "panel_right", "panel", "profile", "chart_sim")
+                       if widgets.get(k, {}).get("visible")]
+            self.check(name, "HUD classique caché pendant la run", not classic, ", ".join(classic) or "caché")
         if name == "couloir_cartes":
             self.check(name, "écran des cartes du couloir", bool(ri.get("corridor")), "")
 

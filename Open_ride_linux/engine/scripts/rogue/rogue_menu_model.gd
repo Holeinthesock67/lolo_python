@@ -6,8 +6,9 @@ extends RefCounted
 ## sont décrits ici pour le texte seulement. Pas de class_name :
 ## preload("res://scripts/rogue/rogue_menu_model.gd").
 ##
-## Les derniers choix sont gardés pour la durée du programme ; leur conservation d'une fois sur l'autre
-## demandera un réglage du core (hors de ce lot).
+## Les choix faits restent pour la durée du programme ; d'une fois sur l'autre, le core donne ceux de la
+## dernière run (`last` : objectif et durée, `chassis.selected` : châssis), relus dans son journal. `last`
+## non nul dit aussi que l'avertissement du premier lancement a déjà été accepté.
 
 const SCREEN := "rogue_start"
 const LOADING := "rogue_loading"
@@ -49,6 +50,14 @@ func configure(cfg: Variant) -> void:
 	if typeof(ch) == TYPE_DICTIONARY:
 		chassis = (ch.get("unlocked", []) as Array).duplicate()
 		selected = String(ch.get("selected", ""))
+	var last = cfg.get("last", null)
+	if typeof(last) == TYPE_DICTIONARY:   # dernière run (révision 1.5) : choix repris, avertissement déjà vu
+		warned = true
+		if objectives.has(last.get("objective", "")):
+			objective_idx = objectives.find(last["objective"])
+		for i in durations.size():   # nombres du JSON : comparés en entiers
+			if int(durations[i]) == int(last.get("duration_min", 0)):
+				duration_idx = i
 	objective_idx = clampi(objective_idx, 0, objectives.size() - 1)
 	duration_idx = clampi(duration_idx, 0, durations.size() - 1)
 	chassis_idx = chassis.find(selected) if chassis.find(selected) >= 0 else clampi(chassis_idx, 0, maxi(chassis.size() - 1, 0))
