@@ -170,6 +170,7 @@ F_{res}(v) = \tfrac{1}{2}\rho\, C_dA\,(1-\alpha_{draft})\,(v+v_{vent})\,|v+v_{ve
 - **Vent (lots P1 et P2).** `v_vent` est la composante de face du vent le long du cap de la route à `s` (positive de face) ; elle vaut 0 quand le vent est coupé (`[wind] mode = "off"`, défaut des versions 1.x). Le vent de travers ne compte pas.
 - **Ressenti du vent et de l'aspiration.** En SIM, l'écart de résistance dû au vent et à l'aspiration est transmis au trainer comme un **supplément de pente** (`[wind] feel = "grade"`, défaut), borné à ± `max_grade_offset_pct` (4 points par défaut, réglable dans les réglages du menu), ou dans le champ vent de la commande FTMS 0x11 (`feel = "ftms"`, à essayer sur le matériel). En ERG, la puissance demandée ne change jamais : seule la vitesse virtuelle tient compte du vent et de l'aspiration.
 - Seuls les bots à puissance constante abritent ; le fantôme n'abrite pas.
+- **Abri des bots (lot AS1).** Les bots `constant` (profils compris) s'abritent avec la même courbe, le même effet de file, le même vent de travers et le même lissage, derrière les autres bots et derrière le cycliste (`draft.update_bots`), sur les positions du pas précédent : l'ordre des bots ne compte pas. La poussée vers l'avant vaut aussi pour un bot suivi par un autre bot. Un bot à profil à moins de 3 m derrière un coureur garde sa roue : il vise la vitesse de la roue corrigée de l'écart (0,5 m visé), sans dépasser la puissance de sa stratégie ni descendre sous 60 % de sa CP ; il repart pour une attaque en montée, un sprint ou si la roue roule sous 85 % de sa vitesse de croisière seul. Le fantôme ne donne ni ne reçoit d'abri. `draft` et `draft_bot` restent ceux du cycliste ; la commande ERG ne change pas.
 
 **Paramètres par défaut** (modifiables, §11)
 
@@ -339,6 +340,7 @@ Toutes les valeurs ajustables sont dans un seul fichier `~/OpenRide/config.toml`
 ```toml
 [rider]
 ftp_w = 250
+hr_max_bpm = 185
 mass_kg = 75
 
 [bike]
@@ -359,6 +361,7 @@ grade_rate_up_pct_per_s = 4.0     # vitesse maximale quand la pente envoyée aug
 grade_rate_down_pct_per_s = 8.0   # vitesse maximale quand elle diminue (lot Q4)
 trace_ftms = false           # trace horodatée de chaque échange Control Point FTMS (lot Q3)
 hr_relay_freeze_s = 15.0     # FC relayée par le trainer ignorée si figée ce nombre de secondes (lot Q5)
+resend_s = 2.0               # la consigne est renvoyée au moins toutes les resend_s secondes ; une valeur plus grande (10 à 15) limite les écritures SIM_PARAMS quand la pente dérive peu
 
 [gearing]
 n_gears = 24
@@ -392,7 +395,7 @@ visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lot
 living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
-fps = "off"          # compteur d'images/s du HUD : off, on (« Afficher les images/s » dans Réglages)
+fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU et GPU, essais) (« Afficher les images/s » dans Réglages)
 draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« Jauge d'abri des bots »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 

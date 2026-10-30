@@ -50,3 +50,11 @@ Aucune. `draft` et `draft_bot` restent ceux du cycliste.
 ## 8. Hors périmètre
 
 Position sur le côté et placement automatique (AS2), bordure (AS3), plafond des groupes (AS4), véhicules et cyclistes du décor (AS6, AS7).
+
+## 9. Livraison (29 octobre 2026)
+
+- **`draft.py`** : `draft_for(rider_s, sources, …, skip)` sert à tous ; `best_draft` du cycliste l'appelle avec les bots pour sources (résultat inchangé). `Source` représente le cycliste pour les bots. `wheel_ahead` donne la roue suivie à moins de 3 m (écart négatif quand les vélos se chevauchent). `update_bots` pose `draft` (lissé), `wheel` (écart, vitesse de la roue) et `push` sur chaque bot `constant`, tous calculés avant que quiconque n'avance.
+- **`bots.py`** : `ConstantPowerBot.step` passe `alpha_draft=self.draft` à la physique. `ProfileBot._strategy` dit si la stratégie attaque (montée avec réserve, sprint) ; hors attaque, `_follow_power` vise la vitesse de la roue corrigée de l'écart (0,5 m visé, gain 0,5 /s, rattrapage en 2 s), bornée par la stratégie et 60 % de la CP, et repart si la roue roule sous 85 % de la vitesse de croisière seul.
+- **`session.py`** : `_update_draft` appelle `update_bots` (vent de travers au cap de chaque bot) ; la poussée de chaque bot vient de `bot.push`.
+- En une dimension, deux bots de même puissance finissent l'un à côté de l'autre (chevauchement, sans abri) après que celui qui suit a rattrapé l'autre ; la position sur le côté vient avec AS2.
+- **Tests** : `core/tests/test_draft.py`, section « lot AS1 » (critères 2 à 8) ; tests de P3 inchangés.

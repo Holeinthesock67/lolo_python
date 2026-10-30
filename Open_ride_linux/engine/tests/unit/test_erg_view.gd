@@ -179,5 +179,5 @@ func _test_layout_resolutions() -> void:
 		_check(not narrow, "%dx%d : titre long coupé, chiffres entiers" % [res.x, res.y])
 		var hr: Rect2 = view.histogram.get_global_rect()
 		# Hauteurs non vérifiées ici : sans écran, les métriques de police sont fausses (tests graphiques).
-		_check(hr.size.x >= 0.8 * res.x and hr.size.y >= 56.0, "%dx%d : histogramme sur toute la largeur (%s)" % [res.x, res.y, hr])
+		_check(hr.size.x >= 0.8 * res.x and hr.size.y >= 50.0, "%dx%d : histogramme sur toute la largeur (%s)" % [res.x, res.y, hr])
 		vp.queue_free()

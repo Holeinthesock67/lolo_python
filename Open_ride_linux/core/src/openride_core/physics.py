@@ -38,6 +38,22 @@ class PhysicsParams:
         )
 
 
+WHEEL_CIRCUMFERENCE_M = 2.105   # circonférence par défaut d'une roue de 700 × 28c
+
+
+def gear_speed_mps(cadence_rpm: float, chainring: float, sprocket: float,
+                   wheel_m: float = WHEEL_CIRCUMFERENCE_M) -> float:
+    """Vitesse (m/s) au braquet réel plateau × pignon (dents) : celle du volant d'un trainer à
+    entraînement direct, qui tourne avec les pédales."""
+    return cadence_rpm / 60.0 * chainring / sprocket * wheel_m
+
+
+def gear_cadence_rpm(speed_mps: float, chainring: float, sprocket: float,
+                     wheel_m: float = WHEEL_CIRCUMFERENCE_M) -> float:
+    """Cadence (rpm) qui donne `speed_mps` au braquet réel : réciproque de `gear_speed_mps`."""
+    return speed_mps * 60.0 * sprocket / (chainring * wheel_m)
+
+
 def air_density(alt_m: float) -> float:
     return RHO0 * math.exp(-alt_m / H_SCALE_M)
 

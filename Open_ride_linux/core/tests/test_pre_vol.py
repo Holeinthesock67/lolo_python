@@ -34,6 +34,19 @@ def test_known_sessions_are_valid():
     assert all(s["pytest_marque"] == "recette_sans_velo" for s in seances.values())
 
 
+def test_open_bike_blocks_have_a_pre_flight_and_known_tests():
+    """Lot X48 : chaque bloc vélo encore ouvert a sa séance du pré-vol ; ses tests Godot et ses
+    scénarios simulés existent."""
+    from openride_core.sim_scenarios import SCENARIOS
+    seances = pv.load_seances()
+    assert {"garmin_braquets", "erg_libre_50w", "abri_as1", "v10"} <= set(seances)
+    unit_dir = Path(__file__).resolve().parents[2] / "engine" / "tests" / "unit"
+    for name, s in seances.items():
+        for unit in s["engine_unit"]:
+            assert (unit_dir / f"{unit}.gd").is_file(), f"{name} : {unit}.gd introuvable"
+        assert set(s["sim_scenarios"]) <= set(SCENARIOS), name
+
+
 def test_unknown_key_in_sessions_is_refused(tmp_path: Path):
     f = tmp_path / "s.toml"
     f.write_text('[x]\ntitre = "a"\nvelo = 1\n', encoding="utf-8")

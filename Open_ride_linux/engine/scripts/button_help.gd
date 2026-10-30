@@ -13,12 +13,16 @@ const Y_LABELS := {"home": "", "pause": "Reprendre", "confirm": "Annuler", "edit
 ## clé d'aide donnée par menu_view.gd ; A maintenu enregistre, + et B règlent (menu_flow._handle_edit).
 const EDIT := "edit"
 const Y_DEFAULT := "Retour"
-## Rappel du clavier (key_map.gd : chaque touche double un bouton du Click), coupé en dernier si la place manque.
-const KEYBOARD := "Clavier : Entrée valide, Échap revient"
+## Double légende : une ligne pour les boutons du Click, une pour les touches du clavier (key_map.gd :
+## chaque touche double un bouton du Click). Titres des deux lignes.
+const CLICK_TITLE := "Click"
+const KEYBOARD_TITLE := "Clavier"
+## Touche du clavier de chaque bouton du Click (key_map.gd) : A maintenu = Entrée, B = « − », Y = Échap.
+const KEYBOARD_KEYS := {"A": ["A"], "A_HOLD": ["Entrée"], "+": ["+"], "B": ["−"], "Y": ["Échap"]}
 
 
 ## Entrées de l'aide de l'écran `screen`, dans l'ordre d'affichage :
-## [{keys: [touches], hold: appui long, text: action, main: action principale}].
+## [{keys: [boutons du Click], hold: appui long, kb: [touches du clavier], text: action, main: action principale}].
 static func entries(screen: String) -> Array:
 	var out: Array = [
 		{"keys": ["A"], "hold": true, "text": "Valider", "main": true},
@@ -34,13 +38,25 @@ static func entries(screen: String) -> Array:
 	var y := str(Y_LABELS.get(screen, Y_DEFAULT))
 	if y != "":
 		out.append({"keys": ["Y"], "hold": false, "text": y, "main": false})
+	for e in out:
+		e["kb"] = keyboard_keys(e["keys"], bool(e["hold"]))
 	return out
 
 
-## Aide en une ligne (tests et journal) : « A maintenir : Valider · + A : Suivant · … · Clavier : … ».
+## Touches du clavier qui doublent `keys` (boutons du Click) : A maintenu = Entrée, B = « − », Y = Échap.
+static func keyboard_keys(keys: Array, hold: bool) -> Array:
+	var out: Array = []
+	for k in keys:
+		out.append_array(KEYBOARD_KEYS["A_HOLD"] if (k == "A" and hold) else KEYBOARD_KEYS.get(k, [k]))
+	return out
+
+
+## Aide en une ligne (tests et journal) : « A maintenir : Valider · + A : Suivant · … · Clavier — Entrée :
+## Valider · + A : Suivant · − : Précédent · Échap : Retour ».
 static func text(screen: String) -> String:
-	var parts: Array[String] = []
+	var click: Array[String] = []
+	var keyboard: Array[String] = []
 	for e in entries(screen):
-		parts.append("%s%s : %s" % [" ".join(PackedStringArray(e["keys"])), " maintenir" if e["hold"] else "", e["text"]])
-	parts.append(KEYBOARD)
-	return " · ".join(parts)
+		click.append("%s%s : %s" % [" ".join(PackedStringArray(e["keys"])), " maintenir" if e["hold"] else "", e["text"]])
+		keyboard.append("%s : %s" % [" ".join(PackedStringArray(e["kb"])), e["text"]])
+	return " · ".join(click) + " · " + KEYBOARD_TITLE + " — " + " · ".join(keyboard)
