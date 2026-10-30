@@ -57,11 +57,15 @@ vec3 triplanar_weights(vec3 n, float sharpness) {
 	return tri_p / max(tri_tot, 1e-6);
 }
 
-vec4 sample_triplanar(sampler2D tex, vec3 pos, float inv_scale, vec3 weights) {
-	vec2 uv_x = pos.zy * inv_scale;
-	vec2 uv_y = pos.xz * inv_scale;
-	vec2 uv_z = pos.xy * inv_scale;
-	return texture(tex, uv_x) * weights.x + texture(tex, uv_y) * weights.y + texture(tex, uv_z) * weights.z;
+// `dpdx`, `dpdy` : dFdx et dFdy de `pos`, pris hors de toute branche. Les couches ne sont lues que si leur poids
+// compte : dans une branche, la carte graphique ne garantit pas les dérivées implicites de texture() (pointillés
+// le long des bords des plaques de roche sur le PC, 30 octobre) ; textureGrad reçoit donc les dérivées.
+vec4 sample_triplanar(sampler2D tex, vec3 pos, float inv_scale, vec3 weights, vec3 dpdx, vec3 dpdy) {
+	vec3 dx = dpdx * inv_scale;
+	vec3 dy = dpdy * inv_scale;
+	vec3 p = pos * inv_scale;
+	return textureGrad(tex, p.zy, dx.zy, dy.zy) * weights.x + textureGrad(tex, p.xz, dx.xz, dy.xz) * weights.y
+		+ textureGrad(tex, p.xy, dx.xy, dy.xy) * weights.z;
 }
 
 // Poids (herbe, roche, neige) de la règle de L3 (SRS §8.1) pour une normale monde et une altitude
@@ -119,10 +123,21 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 	float w_rock = w.y;
 	float w_snow = w.z;
 	vec3 final_color = vec3(0.0);
+	// Dérivées d'écran (fwidth de sd_visible, sd_bump, facettes) calculées hors des branches des couches : dans
+	// une branche que les pixels voisins ne prennent pas, elles ne sont pas définies et la carte graphique du
+	// PC dessinait des pointillés sombres au bord des plaques de roche (30 octobre).
+	vec3 p3 = v_world_pos;
+	vec2 q = p3.xz;
+	float vis_blade_0 = sd_visible(q, 0.03);
+	float vis_clump_0 = sd_visible(q, 0.3);
+	float vis_blocks_0 = sd_visible(p3.xz + p3.y, 0.6);
+	float vis_grit_0 = sd_visible(p3.xz + p3.y, 0.08);
+	float vis_strata = sd_visible(vec2(p3.y, p3.x + p3.z), 1.2);
+	float vis_drift = sd_visible(q, SNOW_DRIFT_M);
+	float vis_crust = sd_visible(q, 0.15);
 	float grass_h = 0.0;
 	if (w_grass > MIN_LAYER_WEIGHT) {
 		vec3 c = grass_c;
-		vec2 q = v_world_pos.xz;
 		float relief = grass_relief * detail_strength;
 		float gn = _grass_noise(v_world_pos);
 		float grass_mod = 1.0 + gn * 0.08 * detail_strength;
@@ -130,8 +145,8 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		float dry = smoothstep(0.45, 0.8, sd_noise(q / 120.0 + vec2(3.7, 1.9)) * 0.7 + sd_noise(q / 40.0) * 0.3) * relief;
 		vec3 g = mix(c, c * 0.55 + grass_dry_color * 0.45, dry * 0.6);
 		// Brins et mottes (H1) : relief et mouchetures, effacés au loin
-		float vis_blade = sd_visible(q, 0.03) * relief;
-		float vis_clump = sd_visible(q, 0.3) * relief;
+		float vis_blade = vis_blade_0 * relief;
+		float vis_clump = vis_clump_0 * relief;
 		float blades = sd_noise(q / vec2(0.03, 0.012));
 		float clumps = sd_noise(q / 0.3);
 		grass_h = blades * 0.006 * vis_blade + clumps * 0.02 * vis_clump;
@@ -148,14 +163,13 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		// Roche (Y11, même principe que l'herbe) : blocs de 60 cm et grain de 8 cm projetés sur les trois
 		// plans, strates horizontales plus claires ou plus sombres
 		float relief = grass_relief * detail_strength;
-		vec3 p3 = v_world_pos;
 		float blocks = sd_noise(p3.zy / 0.6) * tri_weights.x + sd_noise(p3.xz / 0.6) * tri_weights.y + sd_noise(p3.xy / 0.6) * tri_weights.z;
 		float grit = sd_noise(p3.zy / 0.08) * tri_weights.x + sd_noise(p3.xz / 0.08) * tri_weights.y + sd_noise(p3.xy / 0.08) * tri_weights.z;
-		float vis_blocks = sd_visible(p3.xz + p3.y, 0.6) * relief;
-		float vis_grit = sd_visible(p3.xz + p3.y, 0.08) * relief;
+		float vis_blocks = vis_blocks_0 * relief;
+		float vis_grit = vis_grit_0 * relief;
 		rock_h = blocks * 0.06 * vis_blocks + grit * 0.008 * vis_grit;
 		// Strates effacées quand leur pas de 1,2 m devient plus fin qu'un pixel (moirage des versants au loin)
-		float strata = (sd_noise(vec2(p3.y / 1.2, (p3.x + p3.z) / 40.0)) - 0.5) * sd_visible(vec2(p3.y, p3.x + p3.z), 1.2);
+		float strata = (sd_noise(vec2(p3.y / 1.2, (p3.x + p3.z) / 40.0)) - 0.5) * vis_strata;
 		final_color += c * (1.0 + (strata * 0.25 + (blocks - 0.5) * 0.15) * relief + (grit - 0.5) * 0.15 * vis_grit) * w_rock;
 	}
 	float snow_h = 0.0;
@@ -165,12 +179,13 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 		float relief = grass_relief * detail_strength;
 		float drifts = sd_noise(v_world_pos.xz / SNOW_DRIFT_M);
 		float crust = sd_noise(v_world_pos.xz / 0.15);
-		snow_h = drifts * 0.04 * sd_visible(v_world_pos.xz, SNOW_DRIFT_M) * relief + crust * 0.004 * sd_visible(v_world_pos.xz, 0.15) * relief;
+		snow_h = drifts * 0.04 * vis_drift * relief + crust * 0.004 * vis_crust * relief;
 		final_color += c * (1.0 - (1.0 - drifts) * 0.04 * relief) * w_snow;
 	}
 
 	// Facettes de la roche (Lot E3 / SRS §8.1)
-	vec3 flat_n = normalize(cross(dFdx(v_world_pos), dFdy(v_world_pos)));
+	vec3 flat_c = cross(dFdx(v_world_pos), dFdy(v_world_pos));
+	vec3 flat_n = length(flat_c) > 1e-12 ? normalize(flat_c) : n;
 	if (dot(flat_n, n) < 0.0) {
 		flat_n = -flat_n;
 	}
@@ -179,9 +194,7 @@ vec3 shade_layers(vec3 grass_c, vec3 rock_c, vec3 snow_c, vec3 w, vec3 n, vec3 t
 	normal_out = normalize((view * vec4(mix(n, rock_n, clamp(w_rock, 0.0, 1.0)), 0.0)).xyz);
 	// Faux relief des trois couches (Y11) : une seule perturbation de la normale
 	float surface_h = grass_h * w_grass + rock_h * w_rock + snow_h * w_snow + extra_h;
-	if (surface_h > 0.0) {
-		normal_out = sd_bump(normal_out, vertex, surface_h);
-	}
+	normal_out = sd_bump(normal_out, vertex, surface_h);   // hors branche (dérivées) ; surface_h = 0 : normale inchangée
 
 	if (cloud_shadow_enabled && cloud_shadow_coverage > 0.0) {
 		final_color *= 1.0 - cloud_shadow_strength * _cloud_density(v_world_pos.xz + cloud_shadow_offset);
