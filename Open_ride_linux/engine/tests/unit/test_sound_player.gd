@@ -14,7 +14,7 @@ extends SceneTree
 ## - « Tac-tac » régulier (28/10) : toutes les boucles raccordées sans saut, bruit filtré périodique, cloche
 ##   jouée une fois par coup et pas relancée par les points sonores.
 ## - « Vague » (29/10) : sur trois tours de boucle, le niveau des sons continus (fenêtres de 250 ms) ne varie
-##   pas de plus de STEADY_MAX_DB.
+##   pas de plus de STEADY_MAX_DB ; les sons à bruit bouclent sur au moins NOISE_LOOP_S (pulsation d'une seconde, 30/10).
 
 const SoundPlayer := preload("res://scripts/sound_player.gd")
 const SoundModel := preload("res://scripts/sound_model.gd")
@@ -283,6 +283,13 @@ func _test_steady_levels() -> void:
 		if spread > STEADY_MAX_DB:
 			bad.append("%s %.1f dB" % [k, spread])
 	_check(bad.is_empty(), "sons continus : niveau stable à %.0f dB près sur 3 tours de boucle (en défaut : %s)" % [STEADY_MAX_DB, str(bad)])
+	var short := []
+	for k in ["river"] + SoundPlayer.NOISE_LOWPASS.keys():
+		var w: AudioStreamWAV = sp.stream(k)
+		if float(w.loop_end) / w.mix_rate < SoundPlayer.NOISE_LOOP_S - 0.01:
+			short.append(k)
+	_check(short.is_empty(), "sons à bruit : boucle d'au moins %.0f s, pas de bruit figé qui pulse chaque seconde (en défaut : %s)" % [
+		SoundPlayer.NOISE_LOOP_S, str(short)])
 	sp.free()
 
 
