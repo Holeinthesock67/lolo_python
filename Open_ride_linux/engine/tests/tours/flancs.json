@@ -1,0 +1,11 @@
+{
+  "description": "Flancs de colline de la démo avec le relief de séance (coutures et bandes grises vues le 29 octobre) : à lancer en low, medium et high, avec --visual-grade 1.0 pour comparer au relief réel.",
+  "world": "demo",
+  "points": [
+    {"id": "flanc_1500", "s": 1500, "label": "Sommet de la montée, flanc à droite"},
+    {"id": "flanc_1750", "s": 1750, "camera": "follow_near", "label": "Flanc raide à droite, collines au-delà de 1,5 km"},
+    {"id": "flanc_2000", "s": 2000, "camera": "follow_near", "label": "Flancs des deux côtés"},
+    {"id": "flanc_2250", "s": 2250, "camera": "follow_near", "label": "Flanc à gauche dans le virage (capture du 29 octobre)"},
+    {"id": "flanc_2250_cote", "s": 2250, "camera": "side", "label": "Même flanc vu de côté"}
+  ]
+}
