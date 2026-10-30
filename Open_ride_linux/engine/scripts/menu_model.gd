@@ -299,7 +299,7 @@ func set_items(screen_id: String, items: Array) -> void:
 		if clean.size() == 1:
 			clean.append(_item("empty", "Aucun entraînement", false))
 		clean.append(_item(CREATE_WORKOUT_ID, "Créer un entraînement (intervalles)"))
-		clean.append(_item(IMPORT_WORKOUT_ID, "Importer un fichier (.zwo, .erg, .mrc, .qwk)"))
+		clean.append(_item(IMPORT_WORKOUT_ID, "Importer un fichier"))
 		clean.append(_item(HELP_WORKOUT_ID, "Comment ça marche ?"))
 	var focused_id := ""
 	if _screen == screen_id and _focus >= 0 and _focus < _screens[screen_id]["items"].size():
