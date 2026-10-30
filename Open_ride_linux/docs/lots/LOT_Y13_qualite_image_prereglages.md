@@ -174,6 +174,7 @@ Réalisée pendant la recette visuelle d'Y2, qui renvoie ici. Rien de cette éta
 
 - Rendu des tons : **AgX** (`tonemap_agx_white` 16,29 et `tonemap_agx_contrast` 1,25, valeurs du moteur), exposition 1,25, contraste 1,08 et saturation 1,18 gardés. Captures Forward+ dans le cloud (`visual_check.py --native`, 1280×720) Filmic contre AgX : ciel plus bleu et moins délavé vers l'horizon (moyenne du haut de l'image +20 sur 255 environ), herbe et route presque inchangées (±5).
 - Filtrage anisotrope par préréglage sur le viewport : 4× en `low`, 8× en `medium`, 16× en `high` (clé `anisotropy` d'`IMAGE`) ; le réglage global de `project.godot` reste la valeur de départ avant l'application du préréglage.
+- Moteur Compatibility (tests sous Xvfb seulement, le jeu tourne en Forward+ dans les trois préréglages) : Filmic gardé, faute de tampon HDR AgX y blanchissait le ciel et l'herbe et effaçait les nuages (tests graphiques « ciel » et « nuages » en échec).
 - Glow inchangé (Soft Light, intensité 0,6) : aucun écart visible en 4.7 sur les captures, `low` sans glow décalant autant que `medium`.
 - SMAA de `low` : lot Y6. Occlusion spéculaire : automatique depuis 4.5.
 - Reste : banc sur le PC cible (budgets du §3) et choix du propriétaire sur les captures.
