@@ -22,6 +22,7 @@ const KNOT_EPS_M := 1e-6
 const SEGMENTS_MAJOR := 1
 const MAX_SEGMENTS := 200
 const SEGMENT_TYPES := ["sprint", "climb"]
+const SURFACES := ["paved", "compacted", "gravel", "dirt"]   # colonne facultative `surface` (format 1.6)
 
 var version: String = "1.0"
 var ds_m: float = 10.0
@@ -40,6 +41,7 @@ var x: PackedFloat64Array = PackedFloat64Array()
 var z: PackedFloat64Array = PackedFloat64Array()
 var grade_pct: PackedFloat64Array = PackedFloat64Array()
 var heading_deg: PackedFloat64Array = PackedFloat64Array()
+var surface := PackedStringArray()  # colonne facultative `surface` (format 1.6, lot U22) ; vide : tout en paved
 var relief_k := 1.0                 # exagération visuelle du relief (`--visual-grade`), 1,0 : relief réel
 
 var segments: Array = []            # couche segments (série T) ; vide sans couche
@@ -190,6 +192,15 @@ func load_route_dict(data: Dictionary) -> bool:
 	for col in [lat, lon, alt_m, x, z, grade_pct, heading_deg]:
 		if col.size() != n:
 			return _fail("une colonne n'a pas n valeurs")
+	surface = PackedStringArray()
+	var raw_surface = data.get("surface", null)
+	if raw_surface != null:
+		if typeof(raw_surface) != TYPE_ARRAY or (raw_surface as Array).size() != n:
+			return _fail("« surface » doit avoir n valeurs")
+		for v in raw_surface:
+			if not (str(v) in SURFACES):
+				return _fail("« surface » inconnue : " + str(v))
+			surface.append(str(v))
 	var last_regular := (n - 2) * ds_m
 	if not (last_regular < length_m and length_m <= last_regular + ds_m + 0.01):
 		return _fail("length_m incohérent avec n et ds_m")
@@ -326,6 +337,14 @@ static func _assemble(all_parts: Array) -> Dictionary:
 
 func is_loop() -> bool:
 	return type == "loop"
+
+
+## Surface au point le plus proche en arrière de `pos` (sans interpolation, comme le core) ; `paved` sans colonne.
+func surface_at(pos: float) -> String:
+	if surface.is_empty():
+		return "paved"
+	var p := wrap_s(pos)
+	return surface[n - 1] if p >= length_m else surface[mini(int(p / ds_m), n - 2)]
 
 
 ## Boucle : s modulo la longueur ; sinon s borné à [0, longueur]. (« wrap » est déjà une fonction globale de Godot.)
