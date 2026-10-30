@@ -95,7 +95,7 @@ func _run() -> void:
 	# Chiffre 1 : segments b et c (côté droit du chiffre, vu du cycliste) sur la voie de droite
 	_check(_close(px.call(42.0, 41.2, 2.0), line) and _close(px.call(42.0, 41.2, 1.0), road),
 		"chiffre « 1 » peint sur la voie de droite à 40 m")
-	# Parallaxe du grain (lot Y16) : vue rasante, le relief déplace le motif sans trou ni pixel noir ; vue
+	# Parallaxe du grain (lot Y17) : vue rasante, le relief déplace le motif sans trou ni pixel noir ; vue
 	# de dessus, presque rien ne bouge (les marquages restent à leur place).
 	vp.debug_draw = Viewport.DEBUG_DRAW_DISABLED
 	cam.projection = Camera3D.PROJECTION_PERSPECTIVE

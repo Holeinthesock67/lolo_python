@@ -15,7 +15,7 @@ shader_type spatial;
 // variation lente de teinte (25 m) et rapiéçages plus sombres et plus rugueux ; bandes de roulement
 // plus lisses ; bas-côtés en gravillons et terre avec une limite irrégulière. `grain` règle le relief
 // (0 : chaussée lisse d'avant Y11).
-// Lot Y16 (essai) : parallaxe du grain (« parallax occlusion mapping ») en `high`, `surface_parallax_steps`
+// Lot Y17 (essai) : parallaxe du grain (« parallax occlusion mapping ») en `high`, `surface_parallax_steps`
 // pas le long du rayon de vue (0 : coupé) ; le relief masque ce qui est derrière lui en vue rasante.
 #include "res://shaders/surface_detail.gdshaderinc"
 uniform vec3 road_color : source_color = vec3(0.29, 0.29, 0.30);
