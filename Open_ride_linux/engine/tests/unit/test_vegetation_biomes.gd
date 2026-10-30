@@ -156,11 +156,11 @@ func _init() -> void:
 	var cs := _species_counts(sav.prepare_tile(0, 0, heights, null, theme, 1.0))
 	_check(cs.keys().size() == 2 and cs.has("acacia") and cs.has("baobab") and cs["acacia"] > cs["baobab"], "savane : acacias et quelques baobabs %s" % str(cs))
 
-	# 6. Limite des arbres du biome : alpin à 2 300 m, aucun arbre au-dessus de 2 100 m
+	# 6. Limite des arbres du biome : alpin à 2 300 m, aucun arbre au-dessus de 2 000 m
 	var alp := TreeRenderer.new()
 	alp.biome_model = BiomeModel.new(theme, null)
 	alp.biome_model.set_forced("alpine")
-	_check(_species_counts(alp.prepare_tile(0, 0, _flat(2300.0), null, theme, 1.0)).is_empty(), "alpin à 2 300 m : au-dessus de la limite des arbres (2 100 m)")
+	_check(_species_counts(alp.prepare_tile(0, 0, _flat(2300.0), null, theme, 1.0)).is_empty(), "alpin à 2 300 m : au-dessus de la limite des arbres (2 000 m)")
 
 	# 7. Affichage : une paire de MultiMeshInstance3D par espèce, budget respecté
 	med.add_tile(pm)

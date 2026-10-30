@@ -91,7 +91,7 @@ def test_theme_2_0_example_and_default_theme_are_valid() -> None:
 
 
 def test_default_theme_2_0_has_sixteen_biomes_and_keeps_1_x_grassland() -> None:
-    """Lot U15 : thème par défaut 2.0 en couleurs unies ; la prairie reprend exactement le 1.x."""
+    """Lot U15 : thème par défaut 2.0 en couleurs unies ; la prairie et le biome alpin reprennent exactement le 1.x."""
     default = load(DEFAULT_THEME)
     assert default["version"] == "2.0" and list(default["biomes"]) == BIOMES
     terrain = default["terrain"]
@@ -104,8 +104,19 @@ def test_default_theme_2_0_has_sixteen_biomes_and_keeps_1_x_grassland() -> None:
     veg = default["biomes"]["temperate_grassland"]["vegetation"]
     assert veg["max_density_per_ha"] == default["vegetation"]["max_density_per_ha"]
     assert veg["treeline_m"] == default["vegetation"]["treeline_m"]
-    flats = {b["ground"]["layers"][0]["color"] for b in default["biomes"].values()}
-    assert len(flats) == 16
+    # Biome alpin au look du parcours de démonstration (choix du propriétaire, 30 octobre) : terrain 1.x et
+    # arbre d'avant la série U (pas de `species`) ; les 15 autres biomes ont chacun leur couleur de sol.
+    alpine = default["biomes"]["alpine"]
+    alpine_by_role = {layer["role"]: layer for layer in alpine["ground"]["layers"]}
+    for role, key in (("flat", "grass"), ("steep", "rock"), ("high", "snow")):
+        assert {k: alpine_by_role[role][k] for k in ("color", "texture", "scale_m")} == terrain[key]
+    assert alpine["ground"]["high_line_m"] == terrain["snow_line_m"]
+    assert alpine["ground"]["slope_threshold_deg"] == terrain["slope_threshold_deg"]
+    assert "species" not in alpine["vegetation"]
+    assert alpine["vegetation"]["max_density_per_ha"] == default["vegetation"]["max_density_per_ha"]
+    assert alpine["vegetation"]["treeline_m"] == default["vegetation"]["treeline_m"]
+    flats = {b["ground"]["layers"][0]["color"] for name, b in default["biomes"].items() if name != "alpine"}
+    assert len(flats) == 15
     for biome in default["biomes"].values():
         assert sum(biome["seasons"]["durations_months"]) == 12
         for layer in biome["ground"]["layers"]:
