@@ -67,6 +67,8 @@ def test_hr_measurement():
 def test_protobuf_varints():
     # champ 1 = 1, champ 2 = 0, champ 3 = 300
     assert decode_protobuf_varints(bytes([0x08, 0x01, 0x10, 0x00, 0x18, 0xAC, 0x02])) == {1: 1, 2: 0, 3: 300}
+    # un champ de longueur (type 2) est sauté en entier : champ 1 = 3 octets, puis champ 2 = 1
+    assert decode_protobuf_varints(bytes([0x0A, 0x03, 0x41, 0x42, 0x43, 0x10, 0x01])) == {2: 1}
 
 
 def test_click_buttons():
