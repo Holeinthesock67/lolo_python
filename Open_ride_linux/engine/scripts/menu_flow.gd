@@ -1145,7 +1145,7 @@ func name_key(ch: String, enter: bool, backspace: bool) -> Dictionary:
 
 
 func on_profiles(msg: Dictionary) -> void:
-	var waiting := profiles.message == "Enregistrement…"
+	var waiting: bool = profiles.message == "Enregistrement…"
 	profiles.on_profiles(msg)
 	if waiting and menu.current_screen() == ProfilesViewModel.NAME and profiles.name_mode == "rename":
 		menu.open_screen(ProfilesViewModel.SCREEN)   # renommé : retour à la liste

@@ -73,7 +73,6 @@ const EXIT_SIM := 65
 @onready var sun: DirectionalLight3D = $DirectionalLight3D
 @onready var banner: Label = $HUD/Banner
 @onready var hud: CanvasLayer = $HUD
-var trial_badge: Label = null   # bandeau « ESSAI » du profil d'essai (lot MJ8)
 
 var route
 var routes_dir: String = ""
@@ -738,23 +737,9 @@ func _apply_profile() -> void:
 		ipc.send_command("list_profiles", {})
 
 
-## Bandeau « ESSAI » en haut du HUD sur le profil d'essai (maquette D, lot MJ8).
+## Bandeau « ESSAI » en haut du HUD sur le profil d'essai (maquette D, lot MJ8) : dessiné par le HUD.
 func _set_trial_badge(on: bool) -> void:
-	if trial_badge == null:
-		if not on:
-			return
-		trial_badge = preload("res://scripts/ui_theme.gd").label(22, Color.WHITE, "ESSAI")
-		var style := StyleBoxFlat.new()
-		style.bg_color = preload("res://scripts/ui_theme.gd").DANGER
-		style.set_corner_radius_all(6)
-		style.content_margin_left = 14
-		style.content_margin_right = 14
-		trial_badge.add_theme_stylebox_override("normal", style)
-		trial_badge.set_anchors_and_offsets_preset(Control.PRESET_CENTER_TOP)
-		trial_badge.position.y = 6
-		trial_badge.name = "TrialBadge"
-		hud.add_child(trial_badge)
-	trial_badge.visible = on
+	hud.set_trial_badge(on)
 
 
 ## Menu plein écran : rien du HUD de séance derrière lui. Run Cyber-Rogue : la scène du mode a son HUD
