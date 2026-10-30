@@ -451,3 +451,102 @@ def test_ftms_line_is_written_by_the_recorder(tmp_path):
     lines = list(read_journal(rec.path))
     assert [ln["kind"] for ln in lines] == ["header", "event", "ftms"]
     assert rec.events == [lines[1]] and lines[2]["event"] == "brake_loss"
+
+
+# --- 8. Frein d'élan : volant en avance sur les pédales après une relance (30 octobre) ------------
+
+def _sent_grade(drv) -> float:
+    """Pente de la prochaine écriture SIM (consigne + frein d'élan), comme dans _flush_command."""
+    return min(drv._want.value + drv._momentum_boost(), drv.cfg.grade_max_pct)
+
+
+def test_momentum_brake_raises_the_grade_until_the_pedals_catch_up(caplog):
+    """Sprint 600 W puis 150 W, volant à 30 km/h : +3 % jusqu'à ce que la puissance remonte à 60 % de la pointe."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    got = []
+    drv.event_sink = got.append
+    drv.set_sim_grade(0.5)
+    with caplog.at_level(logging.INFO, logger="ftms_driver"):
+        _drive(drv, now, [(0.0, 600, 95), (0.5, 580, 95), (1.0, 150, 90)])
+        assert drv.momentum_brakes == 1 and drv._immediate
+        assert _sent_grade(drv) == pytest.approx(3.5)
+        _drive(drv, now, [(1.5, 200, 85), (2.0, 380, 85)])
+    assert _sent_grade(drv) == pytest.approx(0.5) and drv._immediate
+    msgs = [r.getMessage() for r in caplog.records]
+    assert any("frein d'élan (600 W puis 150 W, volant 30 km/h) : pente +3.0 %" in m for m in msgs)
+    assert any(m.startswith("Trainer : frein d'élan relâché après 1.0 s (puissance revenue, 380 W)") for m in msgs)
+    assert [g["event"] for g in got] == ["momentum_brake", "momentum_end"]
+    assert got[0]["from_w"] == 600 and got[0]["boost_pct"] == 3.0 and got[1]["why"] == "puissance revenue"
+
+
+def test_momentum_brake_is_bounded_in_time_and_rate():
+    """Relâché après 3 s même sans reprise, puis pas de nouvelle intervention avant 5 s."""
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(1.0)
+    _drive(drv, now, [(0.0, 500, 90), (1.0, 100, 80), (2.0, 100, 80), (4.0, 100, 80)])
+    assert drv.momentum_brakes == 1 and _sent_grade(drv) == pytest.approx(1.0)
+    _drive(drv, now, [(5.0, 500, 90), (6.0, 100, 80)])
+    assert drv.momentum_brakes == 1   # 2 s après le relâchement
+    _drive(drv, now, [(9.5, 500, 90), (10.0, 100, 80)])
+    assert drv.momentum_brakes == 2
+
+
+def test_momentum_brake_respects_the_grade_ceiling():
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(grade_max_pct=10.0), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(9.0)
+    _drive(drv, now, [(0.0, 500, 90), (1.0, 100, 80)])
+    assert _sent_grade(drv) == pytest.approx(10.0)
+
+
+@pytest.mark.parametrize("cfg, mode, frames, why", [
+    (TrainerConfig(momentum_brake_pct=0.0), "sim", [(0.0, 600, 95), (1.0, 100, 90)], "réglage coupé"),
+    (TrainerConfig(), "erg", [(0.0, 600, 95), (1.0, 100, 90)], "ERG : le trainer tient la puissance"),
+    (TrainerConfig(), "sim", [(0.0, 200, 80), (1.0, 50, 80)], "pas de relance avant"),
+    (TrainerConfig(), "sim", [(0.0, 600, 95), (1.0, 300, 90)], "baisse modérée"),
+    (TrainerConfig(), "sim", [(0.0, 600, 95), (4.0, 100, 90)], "pointe trop ancienne"),
+    (TrainerConfig(), "sim", [(0.0, 600, 95), (1.0, 100, 20)], "pédalage arrêté"),
+])
+def test_no_momentum_brake_outside_a_relaunch_in_sim(cfg, mode, frames, why):
+    now = [100.0]
+    drv = FtmsDriver(cfg, BikeConfig(), clock=lambda: now[0])
+    if mode == "erg":
+        drv.set_target_power(250.0)
+    else:
+        drv.set_sim_grade(0.5)
+    _drive(drv, now, frames)
+    assert drv.momentum_brakes == 0, why
+
+
+def test_momentum_brake_skipped_when_the_flywheel_is_slow():
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(0.5)
+    for t, power in [(0.0, 600), (1.0, 100)]:
+        now[0] = 100.0 + t
+        drv._on_ibd(None, bytearray(_ibd(15.0, 80, power)))
+    assert drv.momentum_brakes == 0
+
+
+def test_momentum_brake_grade_is_written_to_the_trainer():
+    """La pente majorée part au trainer à la notification suivante, sans attendre le renvoi."""
+    sent = []
+
+    class _Cp:
+        async def write(self, payload, **_kw):
+            sent.append(bytes(payload))
+
+    now = [100.0]
+    drv = FtmsDriver(TrainerConfig(), BikeConfig(), clock=lambda: now[0])
+    drv.set_sim_grade(0.5)
+    drv._last_sent, drv._last_sent_at = ("sim", 0.5), 99.9
+
+    async def _call(cp, build):
+        await cp.write(build())
+    drv._call_retrying = _call
+    _drive(drv, now, [(0.0, 600, 95), (1.0, 150, 90)])
+    asyncio.run(drv._flush_command(_Cp()))
+    assert drv._last_sent == ("sim", pytest.approx(3.5))
+    assert sent and sent[-1] == ftms.cmd_set_sim_params(3.5, drv._crr, drv._cw, 0.0)

@@ -16,6 +16,7 @@ import math
 import struct
 import re
 import time
+from collections import deque
 from contextlib import AsyncExitStack
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
@@ -46,6 +47,22 @@ BRAKE_LOSS_MIN_KMH = 15.0
 BRAKE_LOSS_COOLDOWN_S = 10.0
 BRAKE_BACK_W = 50.0   # puissance qui revient après la reprise : le frein est revenu
 BRAKE_BACK_WINDOW_S = 15.0
+# Frein d'élan (30 octobre) : en SIM sur une faible pente, le trainer simule l'élan du vélo. Après une
+# relance, quand le cycliste relâche, le volant garde sa vitesse et décélère d'environ 1,5 km/h/s : le
+# frein paraît « plus facile » jusqu'à ce que les jambes rattrapent la roue (en mode résistance du
+# fabricant : 6 km/h/s, aucune chute). Puissance tombée sous MOMENTUM_DROP_RATIO de la pointe des
+# MOMENTUM_WINDOW_S dernières secondes (pointe ≥ MOMENTUM_FROM_W), volant et pédales encore en
+# mouvement : la pente envoyée gagne [trainer] momentum_brake_pct le temps que la puissance remonte à
+# MOMENTUM_BACK_RATIO de la pointe, au plus MOMENTUM_MAX_S. La cadence lue par le trainer a ~2 s de
+# retard (30 octobre) : la détection se fait sur la puissance et le volant, pas sur la cadence.
+MOMENTUM_FROM_W = 250.0
+MOMENTUM_WINDOW_S = 3.0
+MOMENTUM_DROP_RATIO = 0.4
+MOMENTUM_BACK_RATIO = 0.6
+MOMENTUM_MIN_KMH = 20.0
+MOMENTUM_MIN_RPM = 40.0
+MOMENTUM_MAX_S = 3.0
+MOMENTUM_COOLDOWN_S = 5.0
 ERG_EPSILON_W = 1.0
 RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (arrêt jamais bloqué)
 CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
@@ -275,6 +292,11 @@ class FtmsDriver:
         self._loaded_at = float("-inf")   # dernier instant à plus de BRAKE_LOSS_FROM_W
         self._loaded_w = 0.0
         self._brake_lost_at: float | None = None
+        self._peaks: deque[tuple[float, float]] = deque()   # puissance des MOMENTUM_WINDOW_S dernières secondes
+        self._momentum_at: float | None = None   # frein d'élan en cours depuis cet instant
+        self._momentum_peak_w = 0.0
+        self._momentum_end_at = float("-inf")
+        self.momentum_brakes = 0   # interventions du frein d'élan
         self._hr_ibd: int | None = None
         self._hr_service: int | None = None
         self._hr_relay_val: int | None = None
@@ -426,6 +448,7 @@ class FtmsDriver:
         self._trace_ibd(self._last_data_at)
         if d.power_w is not None:
             self._check_brake_loss(self._last_data_at, max(float(d.power_w), 0.0))
+            self._check_momentum(self._last_data_at, max(float(d.power_w), 0.0))
         if d.heart_rate_bpm is not None:   # absent d'une trame partielle : on garde la valeur
             self._hr_ibd = d.heart_rate_bpm or None   # 0 = pas de mesure
             self._update_relayed_hr(self._hr_service if self._hr_service is not None else self._hr_ibd)
@@ -469,6 +492,49 @@ class FtmsDriver:
             self._emit("brake_loss", from_w=round(self._loaded_w), to_w=round(power_w),
                        cadence_rpm=round(self._cadence), speed_kmh=self._trainer_speed_kmh)
             self._forget_sent()   # nouvelle prise de contrôle et renvoi de la consigne au prochain tour
+
+    def _momentum_boost(self) -> float:
+        """Pente ajoutée à la consigne SIM par le frein d'élan (0 en dehors d'une intervention)."""
+        return self.cfg.momentum_brake_pct if self._momentum_at is not None else 0.0
+
+    def _check_momentum(self, now: float, power_w: float) -> None:
+        """Frein d'élan : raffermit le frein quand le volant garde l'élan d'une relance (voir MOMENTUM_*)."""
+        peaks = self._peaks
+        while peaks and now - peaks[0][0] > MOMENTUM_WINDOW_S:
+            peaks.popleft()
+        while peaks and peaks[-1][1] <= power_w:
+            peaks.pop()
+        peaks.append((now, power_w))   # peaks[0] : pointe de la fenêtre
+        speed = self._trainer_speed_kmh
+        moving = self._cadence >= MOMENTUM_MIN_RPM and (speed is None or speed >= MOMENTUM_MIN_KMH)
+        if self._momentum_at is not None:
+            elapsed = now - self._momentum_at
+            if power_w >= MOMENTUM_BACK_RATIO * self._momentum_peak_w:
+                why = "puissance revenue"
+            elif elapsed >= MOMENTUM_MAX_S:
+                why = "durée maximale"
+            elif not moving:
+                why = "pédalage arrêté"
+            else:
+                return
+            log.info("Trainer : frein d'élan relâché après %.1f s (%s, %.0f W)", elapsed, why, power_w)
+            self._emit("momentum_end", after_s=round(elapsed, 1), power_w=round(power_w), why=why)
+            self._momentum_at, self._momentum_end_at = None, now
+            self._immediate = True
+            return
+        if (self.cfg.momentum_brake_pct <= 0.0 or self._want.mode != "sim" or not moving
+                or now - self._momentum_end_at < MOMENTUM_COOLDOWN_S):
+            return
+        peak = peaks[0][1]
+        if peak >= MOMENTUM_FROM_W and power_w < MOMENTUM_DROP_RATIO * peak:
+            self._momentum_at, self._momentum_peak_w = now, peak
+            self.momentum_brakes += 1
+            self._immediate = True   # envoyé sans attendre le renvoi
+            log.info("Trainer : frein d'élan (%.0f W puis %.0f W, volant %s) : pente +%.1f %%",
+                     peak, power_w, "—" if speed is None else f"{speed:.0f} km/h", self.cfg.momentum_brake_pct)
+            self._emit("momentum_brake", from_w=round(peak), to_w=round(power_w),
+                       cadence_rpm=round(self._cadence), speed_kmh=speed,
+                       boost_pct=self.cfg.momentum_brake_pct)
 
     def _trace_ibd(self, now: float) -> None:
         """Avec trace_ftms : ce que le trainer annonce lui-même (vitesse du volant, niveau de
@@ -755,6 +821,8 @@ class FtmsDriver:
         if now - self._last_sent_at < MIN_SEND_INTERVAL_S or now < self._busy_retry_at:
             return
         mode, value = self._want.mode, self._want.value
+        if mode == "sim":
+            value = min(value + self._momentum_boost(), self.cfg.grade_max_pct)
         prev = self._last_sent
         eps = GRADE_EPSILON_PCT if mode == "sim" else ERG_EPSILON_W
         changed = prev is None or prev[0] != mode or abs(prev[1] - value) >= eps
@@ -777,6 +845,8 @@ class FtmsDriver:
             want = self._want   # au renvoi : la consigne la plus récente, du même mode
             if want.mode != mode:
                 want = _Want(mode, value)
+            elif mode == "sim":
+                want = _Want(mode, min(want.value + self._momentum_boost(), self.cfg.grade_max_pct))
             sent = (want.mode, want.value)
             if want.mode == "erg":
                 return ftms.cmd_set_target_power(want.value)
