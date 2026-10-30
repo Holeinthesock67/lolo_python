@@ -688,13 +688,19 @@ def extract_launcher_args(args: list[str]) -> tuple[list[str], bool, bool, float
     return core_args, no_compile, compile_only, compile_timeout
 
 
-def _config_arg(args: list[str]) -> Path | None:
+def _option_arg(args: list[str], name: str) -> str | None:
+    """Valeur de l'option `name` (`--nom V` ou `--nom=V`) dans les arguments du core, ou None."""
     for i, a in enumerate(args):
-        if a.startswith("--config="):
-            return Path(a.split("=", 1)[1])
-        if a == "--config" and i + 1 < len(args):
-            return Path(args[i + 1])
+        if a.startswith(name + "="):
+            return a.split("=", 1)[1]
+        if a == name and i + 1 < len(args):
+            return args[i + 1]
     return None
+
+
+def _config_arg(args: list[str]) -> Path | None:
+    value = _option_arg(args, "--config")
+    return Path(value) if value is not None else None
 
 
 def worldgen_command(env: dict[str, str] | None = None) -> list[str]:
@@ -717,7 +723,7 @@ def worldmenu_command(env: dict[str, str] | None = None) -> list[str]:
 def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) -> Supervisor:
     """Construit le superviseur réel ; lève `ConfigError` ou `FileNotFoundError` avec un message lisible."""
     from . import config as config_mod
-    from .journal import JOURNAL_DIR
+    from . import profiles
 
     env = os.environ if env is None else env
     raw_args = list(core_args) if core_args else list(DEFAULT_CORE_ARGS)
@@ -725,6 +731,10 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
     clean_core_args = clean_core_args or list(DEFAULT_CORE_ARGS)
     config_path = _config_arg(clean_core_args)
     cfg = config_mod.load(config_path)   # ConfigError si invalide
+    # Profil de joueur (série MJ, lot MJ1) : `--profil` passe au core ; reprise et FIT dans son dossier.
+    profile_id = _option_arg(clean_core_args, "--profil")
+    ctx = profiles.resolve(profile_id, env) or profiles.current()   # ProfileContextError si refusé
+    profile_args = ["--profil", ctx.id] if ctx.id is not None else []
 
     godot = Path(env.get("GODOT") or cfg.engine.godot or DEFAULT_GODOT).expanduser()
     if not (godot.is_file() and os.access(godot, os.X_OK)):
@@ -755,8 +765,8 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             *([f"--perf-probe={env['OPENRIDE_PERF_PROBE']}"] if env.get("OPENRIDE_PERF_PROBE") else []),
         ],
         release_cmd=[*core, "release-trainer", *config_args],
-        recover_cmd=[*core, "recover"],
-        journal_dir=JOURNAL_DIR,
+        recover_cmd=[*core, "recover", *profile_args],
+        journal_dir=ctx.journal_dir,
         log_path=Path(env["OPENRIDE_LOG"]).expanduser() if env.get("OPENRIDE_LOG") else DEFAULT_LOG,
         rotation=None if env.get("OPENRIDE_LOG") else LogRotation(),
         compile_enabled=not no_compile,

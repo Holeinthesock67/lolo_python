@@ -45,3 +45,13 @@ Aucune.
 ## 8. Hors périmètre
 
 Profil d'essai (MJ2), `profil.toml` des réglages (MJ4), migration (MJ5), commandes IPC (MJ6, MJ7), écrans (MJ8).
+
+## Livraison
+
+Livré le 29 octobre 2026 (branche `claude/project-thread-grv91v-mj1`, empilée sur MJ0).
+
+- `core/src/openride_core/profiles.py` : `ProfileContext` (`for_id`, `legacy`), `current()`, `activate()`, `resolve()` (option puis `OPENRIDE_PROFIL`), `check_id()`, `ProfileLock` (`fcntl.flock` sur `.verrou`, rendu à la mort du processus).
+- Valeurs par défaut résolues à l'appel : `fit_export.default_fit_path`, `journal.latest_journal`, `profile.load_profile`/`peek_profile`/`save_profile`, `RecordBook.load`/`save`, plan actif de `plans.py`, `ProgressionService` (profil V4 et surcharge `progression.toml` du profil si elle existe), `CoreSession` (journaux, records, profil V4), `ftp_test`, `open_world_save`, `tools/xp.py`, `tools/history.py`, `tools/estimate_cp.py`, `tools/recette_v10.py`.
+- `--profil ID` ajouté à toutes les sous-commandes d'`openride-core` ; `run` prend le verrou du profil (code 1 si déjà pris). Le lanceur passe `--profil` au core et à `recover`, et cherche les journaux non terminés dans le profil.
+- Deux tests redirigeaient `garage.PROFILE_PATH` et `garage.USER_TABLE_PATH` : ils redirigent maintenant `profile.PROFILE_PATH` (le garage ne garde plus de chemin).
+- Tests : `core/tests/test_profiles.py`.

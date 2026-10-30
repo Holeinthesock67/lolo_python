@@ -206,6 +206,10 @@ def read_journal(path: Path) -> Iterator[dict]:
                 continue
 
 
-def latest_journal(directory: Path = JOURNAL_DIR) -> Path | None:
+def latest_journal(directory: Path | None = None) -> Path | None:
+    """Journal le plus récent de `directory` (défaut : journaux du profil en cours, lot MJ1)."""
+    if directory is None:
+        from . import profiles
+        directory = profiles.current().journal_dir
     files = sorted(directory.glob("*.jsonl"), key=lambda p: p.stat().st_mtime)
     return files[-1] if files else None

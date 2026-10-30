@@ -293,7 +293,7 @@
 | [AS6](LOT_AS6_abri_vehicules.md) | Série AS : circulation calculée par le core, abri derrière un véhicule lent (activé par défaut, réglable), aspiration au dépassement | Python + GDScript | AS2 | Grande | Prêt (version 2.0) |
 | [AS7](LOT_AS7_abri_cyclistes_decor.md) | Série AS : groupes de cyclistes du décor calculés par le core et sources d'abri | Python + GDScript | AS2, AS6 (AS4 conseillé) | Grande | Prêt (version 2.0) |
 | [MJ0](../2.0/PLAN_SERIE_MJ.md) | Série MJ (profils de joueurs et profil d'essai) : cahiers MJ1 à MJ10, plan de la série, lignes 2.0-PRF de la spécification | doc | étude du 29 octobre | Petite | **Livré le 29 octobre** |
-| [MJ1](LOT_MJ1_contexte_profil.md) | Série MJ : contexte de profil dans le core (`profiles.py`), fin des chemins figés, `--profil`, verrou ; sans profil, chemins d'aujourd'hui | Python | — | Moyenne | Prêt (version 2.0) |
+| [MJ1](LOT_MJ1_contexte_profil.md) | Série MJ : contexte de profil dans le core (`profiles.py`), fin des chemins figés, `--profil`, verrou ; sans profil, chemins d'aujourd'hui | Python | — | Moyenne | **Livré le 29 octobre** (branche `claude/project-thread-grv91v-mj1`) |
 | [MJ2](LOT_MJ2_profil_essai.md) | Série MJ : profil d'essai `_essai` (séances simulées comptées), `profile_id` au journal, `openride-core profil essai [--vider]`, Session simulée sur `_essai` | Python | MJ1 | Petite | Prêt (version 2.0) |
 | [MJ3](LOT_MJ3_campagne_profil.md) | Série MJ : campagne simulée accélérée (`campagne_profil`) et garde-fou d'empreinte du vrai profil | Python | MJ2 | Moyenne | Prêt (version 2.0) |
 | [MJ4](LOT_MJ4_configuration_deux_couches.md) | Série MJ : configuration à deux couches `config.toml` + `profil.toml`, portée de chaque réglage | Python | MJ1 | Moyenne | Prêt (version 2.0) |
