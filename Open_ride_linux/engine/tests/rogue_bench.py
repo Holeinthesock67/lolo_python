@@ -199,8 +199,14 @@ class Bench:
                        f"ruban {ri.get('ribbon')}, {ri.get('markers')} repère(s), Firewall {ri.get('firewall')}")
             self.check(name, "ennemi affiché", bool(ri.get("enemy")), f"archétype {ri.get('enemy_archetype') or '—'}")
         if frame.get("session_state") == "RUNNING":
-            self.check(name, "hologramme du HUD", bool(ri.get("hud")) and bool(ri.get("holo")),
-                       (ri.get("holo") or "").replace("\n", " · "))
+            if ri.get("corridor"):   # l'écran du couloir occupe le centre : hologramme retiré
+                self.check(name, "hologramme retiré au couloir", not ri.get("holo"), ri.get("holo") or "retiré")
+            else:
+                self.check(name, "hologramme du HUD", bool(ri.get("hud")) and bool(ri.get("holo")),
+                           (ri.get("holo") or "").replace("\n", " · "))
+            classic = [k for k in ("panel_left", "panel_right", "panel", "profile", "chart_sim")
+                       if widgets.get(k, {}).get("visible")]
+            self.check(name, "HUD classique caché pendant la run", not classic, ", ".join(classic) or "caché")
         if name == "couloir_cartes":
             self.check(name, "écran des cartes du couloir", bool(ri.get("corridor")), "")
 

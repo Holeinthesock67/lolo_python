@@ -99,6 +99,7 @@ var erg_view = ErgViewModel.new()
 var erg_panel = null
 ## Compteur d'images/s du HUD (réglage `render.fps`, caché par défaut).
 var fps_counter = null
+var overlay_layer: CanvasLayer = null   # compteur d'images/s, hors du HUD classique
 var _beep_player: AudioStreamPlayer
 var sound_player = null
 var _quality_name: String = "low"
@@ -318,8 +319,14 @@ func _ready() -> void:
 	hud.add_child(junction_view)
 	world_menu_view = WorldMenuView.new()
 	hud.add_child(world_menu_view)
+	# Compteur d'images/s sur sa propre couche, au niveau du HUD : il reste affiché pendant une run Cyber-Rogue,
+	# où le HUD classique est caché, et se cache avec lui sous un menu plein écran.
+	overlay_layer = CanvasLayer.new()
+	overlay_layer.name = "OverlayLayer"
+	overlay_layer.layer = hud.layer
+	add_child(overlay_layer)
 	fps_counter = FpsCounter.new()
-	hud.add_child(fps_counter)
+	overlay_layer.add_child(fps_counter)
 	ipc.world_menu_received.connect(_on_world_menu_received)
 	ipc.world_status_received.connect(func(msg: Dictionary) -> void: _world_menu_status(msg))
 	hud.show_erg_line = false   # la ligne de texte ERG du panneau central laisse la place au bandeau
@@ -697,12 +704,20 @@ func _world_menu_key(event: InputEventKey) -> bool:
 	return false
 
 
+## Menu plein écran : rien du HUD de séance derrière lui. Run Cyber-Rogue : la scène du mode a son HUD
+## diégétique (lot R11), le HUD classique (panneaux, profil, courbes) est caché ; le compteur d'images/s reste.
+func _sync_hud(menu_shown: bool) -> void:
+	hud.visible = not menu_shown and not rogue_host.is_active()
+	if overlay_layer != null:
+		overlay_layer.visible = not menu_shown
+
+
 func _refresh_menu() -> void:
 	if menu_view == null:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
-	hud.visible = not shown   # menu plein écran : rien du HUD de séance derrière lui
+	_sync_hud(shown)
 	if shown:
 		var st: Dictionary = menu_flow.state()
 		if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
@@ -1415,7 +1430,8 @@ func _on_state_received(state: Dictionary) -> void:
 		# Rappel des commandes au départ et à la reprise ; effacé hors séance.
 		if session_state == "RUNNING":
 			banner.show_message("controls", HudViewModel.controls_text(state.get("erg", null) != null,
-					str(state["erg"].get("kind", "workout")) if state.get("erg", null) is Dictionary else "workout"), CONTROLS_HINT_S)
+					str(state["erg"].get("kind", "workout")) if state.get("erg", null) is Dictionary else "workout",
+					str(state.get("mode", "")) == "ROGUE"), CONTROLS_HINT_S)
 		else:
 			banner.clear_message("controls")
 		# Une erreur reste au moins 5 s ; au-delà, elle reste tant que la séance est en ERROR.
@@ -1480,6 +1496,8 @@ func _on_state_received(state: Dictionary) -> void:
 	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
 			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
 		ipc.request_rogue_resync()
+	if menu_view != null:
+		_sync_hud(menu_view.visible)   # entrée et sortie de la run dans la même trame
 
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0
