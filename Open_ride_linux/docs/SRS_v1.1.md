@@ -445,6 +445,8 @@ rogue_sfx_pct = 70           # Cyber-Rogue : bruitages de jeu (lot R18, bus Rogu
 rogue_music_pct = 40         # Cyber-Rogue : musique (lot R18, bus RogueMusic)
 [log]
 latence = false              # journal de latence des appuis du Click, lignes [latence] (lot X7 ; --latence)
+[profils]
+dernier = ""                 # dernier profil de joueur choisi, profil par défaut au lancement (série MJ, lot MJ7 ; écrit par le core)
 [rogue]
 w_prime_j = 20000.0          # réserve anaérobie W' du mode Cyber-Rogue, 5 000 à 60 000 J (lot R2)
 cp_w = 0.0                   # puissance critique, 0 à 1 000 W ; 0 : la FTP

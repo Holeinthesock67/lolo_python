@@ -315,6 +315,7 @@ class Supervisor:
     alert: Callable[[str], None] | None = None   # fenêtre d'erreur (lot N14) ; None : journal seul
     theme_name: str = ""               # thème choisi, daté au démarrage dans la bibliothèque (lot U15)
     themes_dir: Path | None = None     # ~/OpenRide/Themes ; None : rien n'est daté
+    active_profile_path: Path | None = None   # `.profil_actif` écrit par le core (lot MJ7) ; None : ignoré
 
     started_pids: list[int] = field(default_factory=list, init=False)
     restarts: int = field(default=0, init=False)
@@ -409,6 +410,26 @@ class Supervisor:
 
     def _core_cmd(self) -> list[str]:
         return sim_core_cmd(self.core_cmd) if self.sim_mode else list(self.core_cmd)
+
+    def _follow_active_profile(self) -> None:
+        """Profil choisi au menu depuis le lancement (lot MJ7) : le core relancé (plantage, relance du
+        menu) le reprend, avec ses journaux pour la reprise. Le profil d'essai n'est jamais suivi."""
+        if self.active_profile_path is None or self.sim_mode:
+            return
+        from . import profiles
+
+        wanted = profiles.read_active(self.active_profile_path)
+        if wanted is None or wanted == profiles.TRIAL_ID or wanted == _option_arg(self.core_cmd, "--profil"):
+            return
+        try:
+            ctx = profiles.ProfileContext.for_id(wanted)
+        except profiles.ProfileContextError:
+            return
+        self.core_cmd = with_profile(self.core_cmd, wanted)
+        if self.recover_cmd is not None:
+            self.recover_cmd = with_profile(self.recover_cmd, wanted)
+        self.journal_dir = ctx.journal_dir
+        self._say(f"profil du menu repris à la relance : {wanted}.")
 
     def _engine_cmd(self) -> list[str]:
         return [*self.engine_cmd, SIM_ENGINE_ARG] if self.sim_mode else list(self.engine_cmd)
@@ -571,6 +592,7 @@ class Supervisor:
                     if code == 0:
                         self._stop_engine(engine)
                         return self._finish(core, engine, 0)
+                    self._follow_active_profile()
                     journal = self._unfinished_journal()
                     now = self.clock()
                     core_crashes = [t for t in core_crashes if now - t < self.core_restart_window_s] + [now]
@@ -606,6 +628,7 @@ class Supervisor:
                                   + " : arrêt du core puis nouveau lancement.")
                         self._join_readers()
                         self._stop_core(core)
+                        self._follow_active_profile()
                         core = self._start_core()
                         if not self._core_survives_startup(core):
                             self._say(f"le core s'est arrêté à la relance (code {core.returncode}) ; voir {self.log_path}")
@@ -849,6 +872,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
         compile_timeout_s=compile_timeout,
         theme_name=cfg.render.theme,
         themes_dir=THEMES_DIR,
+        active_profile_path=profiles.active_file(),
     )
 
 

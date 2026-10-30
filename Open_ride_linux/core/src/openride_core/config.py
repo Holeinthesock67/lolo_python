@@ -200,6 +200,11 @@ class LogConfig:
 
 
 @dataclass
+class ProfilsConfig:
+    dernier: str = ""   # dernier profil de joueur choisi, profil par défaut au lancement (série MJ, lot MJ7)
+
+
+@dataclass
 class Config:
     rider: RiderConfig = field(default_factory=RiderConfig)
     bike: BikeConfig = field(default_factory=BikeConfig)
@@ -218,6 +223,7 @@ class Config:
     bots: BotsConfig = field(default_factory=BotsConfig)
     audio: AudioConfig = field(default_factory=AudioConfig)
     log: LogConfig = field(default_factory=LogConfig)
+    profils: ProfilsConfig = field(default_factory=ProfilsConfig)
 
     @property
     def total_mass_kg(self) -> float:
