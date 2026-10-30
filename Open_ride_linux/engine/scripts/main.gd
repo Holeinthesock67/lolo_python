@@ -41,6 +41,7 @@ const MenuView := preload("res://scripts/menu_view.gd")
 const PerfProbe := preload("res://scripts/perf_probe.gd")
 const LivingWorld := preload("res://scripts/living_world.gd")
 const LivingDecor := preload("res://scripts/living_decor.gd")
+const AtmosphereView := preload("res://scripts/atmosphere_view.gd")
 const SegmentMarkers := preload("res://scripts/segment_markers.gd")
 const SegmentMarkersModel := preload("res://scripts/segment_markers_model.gd")
 const SegmentHudModel := preload("res://scripts/segment_hud_model.gd")
@@ -178,6 +179,8 @@ var _theme_dict: Dictionary = {}   # thème courant, pour le décor vivant
 var _living_enabled := true
 ## Décor vivant, deuxième vague (lot P17) : météo, animaux, éoliennes, véhicules, bord de route, foule.
 var living_decor = null
+## Ciel, brouillard et soleil, atmosphère du biome sous la caméra (atmosphere_view.gd, lots U10 et U17).
+var atmosphere_view = AtmosphereView.new()
 ## Série T (lot T8) : lignes, portiques et panneaux des segments, arches de bonus.
 var segment_markers = null
 ## Série T (lot T9) : blocs segment et bonus du HUD.
@@ -227,7 +230,11 @@ func _ready() -> void:
 			streamer.osm_streamer.sound_player = sound_player
 	RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
 	streamer.osm_streamer.set_preset(_quality_name)
-	RenderQuality.apply_fog(world_env.environment, _quality_name, false)
+	atmosphere_view.name = "AtmosphereView"
+	add_child(atmosphere_view)
+	atmosphere_view.quality = _quality_name
+	atmosphere_view.setup(world_env.environment, sun)
+	atmosphere_view.set_world(_theme_dict, null, null, false)
 	_report_quality(_quality_name, "cli" if _quality_from_cli() else "defaut")
 	# Le moteur Compatibility (OpenGL, GPU modestes, tests sous Xvfb) dessine le PhysicalSkyMaterial
 	# presque noir : ciel procédural aux couleurs du ciel d'E1 à la place.
@@ -248,6 +255,7 @@ func _ready() -> void:
 	add_child(living_decor)
 	living_decor.living_world = living_world
 	living_decor.configure(_quality_name, _living_enabled, _theme_dict, world_env.environment, sound_player, streamer)
+	atmosphere_view.living_decor = living_decor
 	living_decor.set_fog_base(world_env.environment)
 	bots_view = BotsView.new()
 	add_child(bots_view)
@@ -402,6 +410,7 @@ func _on_settings(msg: Dictionary) -> void:
 	if q != _quality_name and q in EngineArgs.VALID_QUALITIES:
 		_quality_name = q
 		RenderQuality.apply_preset(_quality_name, camera, sun, world_env.environment, get_viewport(), streamer)
+		atmosphere_view.set_quality(_quality_name)
 		if streamer.tree_renderer != null:
 			streamer.tree_renderer.set_preset(_quality_name)
 		if streamer.osm_streamer != null:
@@ -453,21 +462,10 @@ func _apply_theme(name: String) -> void:
 	print("Thème : ", name)
 
 
-## Ciel et brouillard du thème ; avec un modèle de biome actif (série U, lot U17), ceux du biome du départ :
-## densité du brouillard du biome, horizon voilé par `haze` (poussière, brume) et teinté par `light_tint`.
+## Ciel, brouillard et soleil du thème ; avec un modèle de biome actif (série U), atmosphère du biome
+## sous la caméra, en commençant par celle du départ (atmosphere_view.gd, lots U10 et U17).
 func _apply_sky_params(theme_dict: Dictionary) -> void:
-	var sky := ThemeRenderParams.sky_params(theme_dict)
-	var model = streamer.biome_model
-	if model != null and model.active():
-		sky = model.params(streamer.start_biome())["sky"]
-	if sun != null:
-		var sun_dir: Vector3 = sky["sun_direction"]
-		sun.basis = Basis.looking_at(-sun_dir, Vector3.UP)
-	var horizon: Color = sky.get("horizon_color", RenderQuality.FOG_COLOR)
-	if sky.has("haze"):
-		horizon = horizon.lerp(RenderQuality.HAZE_COLOR, float(sky["haze"]) * 0.6) * (sky["light_tint"] as Color)
-	var fog_dens: float = float(sky.get("fog_density", 0.01))
-	RenderQuality.apply_fog(world_env.environment, _quality_name, streamer.has_terrain, horizon, fog_dens)
+	atmosphere_view.set_world(theme_dict, streamer.biome_model, route, streamer.has_terrain)
 
 
 ## Latence des appuis (lot X7, core lancé avec --latence) : étage « recu » à la réception de l'événement,
@@ -834,6 +832,7 @@ func _step_living(delta: float, s_route: float, v: float) -> void:
 	if living_decor != null:
 		living_decor.step(now_s, delta, camera.global_position, s_route, v, float(smp["alt_m"]), paused,
 			living_world.last_wind, _last_state, now_s < _beep_until_s)
+	atmosphere_view.step(now_s, s_route, camera, living_decor.weather_eval if living_decor != null else {})
 
 
 ## Décor en fond des menus hors séance (accueil, choix, bilan) : la caméra avance lentement sur le
@@ -874,8 +873,10 @@ func _record_frame_perf(delta: float) -> void:
 			var max_ms: float = sorted[n - 1]
 			var trees: int = streamer.tree_renderer.get_active_tree_count() if streamer.tree_renderer != null else 0
 			var draw_calls := RenderingServer.get_rendering_info(RenderingServer.RENDERING_INFO_TOTAL_DRAW_CALLS_IN_FRAME)
-			print("[perf-rendu] images/s moy %.1f ; temps d'image p50 %.1f / p99 %.1f / max %.1f ms ; arbres %d ; appels de dessin %d ; préréglage %s" % [
-				avg_fps, p50, p99, max_ms, trees, draw_calls, _quality_name])
+			# Mémoire vidéo estimée des textures du sol des biomes (biome_textures.gd, lot U17) ; 0 sans biome.
+			var ground_mb: float = streamer.biome_textures.estimated_bytes / 1048576.0 if streamer.biome_textures != null else 0.0
+			print("[perf-rendu] images/s moy %.1f ; temps d'image p50 %.1f / p99 %.1f / max %.1f ms ; arbres %d ; appels de dessin %d ; préréglage %s ; textures du sol %.0f Mo" % [
+				avg_fps, p50, p99, max_ms, trees, draw_calls, _quality_name, ground_mb])
 		_frame_times.clear()
 		_last_perf_log_us = now
 
@@ -981,7 +982,6 @@ func _poll_route_job() -> void:
 		living_world.terrain_material = streamer.get("_terrain_material")
 	_apply_sky_params(streamer._theme_dict)
 	if living_decor != null:
-		living_decor.set_fog_base(world_env.environment)
 		living_decor.set_route(route, job["path"], float(streamer.get("_road_width_m")))
 	var arch_every_m := SegmentMarkersModel.arch_every_m_from_file()
 	segment_markers.set_route(route, arch_every_m, float(streamer.get("_road_width_m")), not route.live)
