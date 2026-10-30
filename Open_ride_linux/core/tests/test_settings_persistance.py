@@ -77,11 +77,11 @@ def test_difficulty_from_pause_survives_a_restart(tmp_path: Path):
 
 def test_a_setting_not_written_is_named(tmp_path: Path, monkeypatch):
     """Critère 1 : un réglage volontairement non écrit dans config.toml fait échouer le contrôle en le nommant."""
-    real = config_edit.update_config
+    real = config_edit.update_layers   # chemin d'écriture des réglages du menu (lot MJ4)
 
-    def forgetful(path, values):
-        return real(path, [v for v in values if (v[0], v[1]) != ("audio", "events_pct")])
+    def forgetful(values, *args, **kwargs):
+        return real([v for v in values if (v[0], v[1]) != ("audio", "events_pct")], *args, **kwargs)
 
-    monkeypatch.setattr(config_edit, "update_config", forgetful)
+    monkeypatch.setattr(config_edit, "update_layers", forgetful)
     lost, _ = lost_settings(tmp_path)
     assert lost == ["audio.events_pct"]
