@@ -7,7 +7,8 @@
   },
   "etapes": [
     {"ecran": "profiles", "titre": "Qui roule ?", "delai": 20},
-    {"ecran": "profiles", "focus": "p:cycliste-a", "elements": ["p:cycliste-a", "p:cycliste-b", "new", "manage"], "delai": 10},
+    {"ecran": "profiles", "focus": "p:cycliste-a", "elements": ["p:cycliste-a", "p:cycliste-b", "new", "manage"], "delai": 10, "voies": ["click", "clavier"]},
+    {"ecran": "profiles", "elements": ["p:cycliste-a", "p:cycliste-b", "new", "manage"], "delai": 10, "voies": ["souris"]},
     {"choisir": "p:cycliste-b"},
     {"ecran": "home", "titre": "OpenRide — Cycliste B", "contient": ["Profil : Cycliste B"], "delai": 10},
     {"fichier": "OpenRide/.profil_actif"},
