@@ -39,7 +39,7 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 
 1. Allumez le trainer (pédalez un peu pour le réveiller) et les boîtiers du Click.
 2. L'écran cherche les appareils. Quand tout est relié, il passe seul au menu. Avec un seul boîtier du Click, ou sans Click, choisissez **Passer**.
-3. Pour changer de matériel plus tard : **Réglages**, puis **Appareils : rechercher et appairer**. Appuyez sur le bouton « + » du Click quand l'écran le demande pour reconnaître ce boîtier. Les appareils trouvés sont enregistrés dans `~/OpenRide/config.toml`, puis **Relancer OpenRide** prend en compte le nouveau matériel.
+3. Pour changer de matériel plus tard : **Réglages**, puis **Appareils : rechercher et appairer**. Appuyez sur le bouton « + » du Click quand l'écran le demande pour reconnaître ce boîtier. Valider **Trainer** ou **Ceinture** passe à l'appareil suivant, puis à « aucun » pour l'oublier ; **Oublier le Click** retire les deux boîtiers. Une ceinture choisie est utilisée dès le lancement suivant. Les appareils trouvés sont enregistrés dans `~/OpenRide/config.toml`, puis **Relancer OpenRide** prend en compte le nouveau matériel.
 
 ## 4. Rouler un parcours
 

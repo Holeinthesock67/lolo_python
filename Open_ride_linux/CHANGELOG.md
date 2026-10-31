@@ -19,6 +19,7 @@ Première version complète avant la 1.0 : tout ce que contient `main` au 26 oct
 ### Zwift Click et appareils
 - Zwift Click V2 (paire de boîtiers) et Zwift Cog, appuis courts et longs ; le clavier double le Click touche pour touche, mêmes durées d'appui (lot O17).
 - Inventaire des appareils (`openride-core devices`), appairage depuis la ligne de commande et depuis le menu.
+- Écran Appareils : la ceinture choisie est vraiment utilisée (avant, elle était enregistrée sans être activée) ; « aucun » oublie le trainer ou la ceinture, « Oublier le Click » retire les deux boîtiers (lot O24).
 - Recherche de l'écran Appareils : plus d'échec « org.bluez.Error.InProgress » quand le trainer ou le Click se reconnectent ; message lisible si le Bluetooth est occupé ou éteint.
 
 ### Parcours
