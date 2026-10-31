@@ -10,8 +10,8 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §3.4
 | --- | --- |
 | O29-1 | **Pack « Cols célèbres »** (lot O16) : une ligne « à installer », « en partie installé » (cols refusés) ou « installé », avec sa taille une fois là. Il télécharge : confirmation d'abord, « Non » par défaut. Le core lance `route-pack-build cols_celebres --install`, compte l'avancement col par col (0 à 80 %), puis compile (`build-all`, 80 à 100 %) : les parcours arrivent dans la liste sans relancer. Compte rendu : « Pack installé : 15 col(s) sur 16, 1 refusé(s). » |
 | O29-2 | **Archives trouvées** : les `.zip` des dossiers de l'import ERG (Téléchargements, Bureau, `~/OpenRide/Import`, dossier personnel), 12 au plus, les plus récentes d'abord. Une archive qui contient `theme.json` est un thème ou un pack de biomes (« Thème « Forêt » », installé par `theme-install`) ; une archive avec `pack.toml` est un pack de parcours (installé par `route-pack-install` puis compilé). Les autres `.zip` sont ignorés. Taille décompressée affichée ; rien n'est téléchargé. |
-| O29-3 | **Thèmes installés** : une ligne d'information par thème de `~/OpenRide/Themes` (taille, dernière utilisation) ; un thème se choisit dans « Réglages › Graphisme » (inchangé). |
-| O29-4 | **Place disque** : dernière ligne « Place libre : 120 Go ; thèmes : 0,8 Go sur 5,0 Go » (plafond `[render] theme_library_gb`, qui reste géré par `theme-install`). |
+| O29-3 | **Thèmes et packs installés** : une ligne d'information par thème de `~/OpenRide/Themes` (nom de son `theme.json`, taille, dernière utilisation) et par pack de parcours installé ; une archive déjà installée n'a plus sa propre ligne. Un thème se choisit dans « Réglages › Graphisme » (inchangé). |
+| O29-4 | **Taille et place disque** : la ligne ne porte que l'état (« à installer », « à télécharger », « installé ») ; la carte de détail du contenu sous le focus donne sa taille et « Place libre : 120 Go ; thèmes : 0,8 Go sur 5,0 Go » (plafond `[render] theme_library_gb`, qui reste géré par `theme-install`). |
 | O29-5 | Un échec du compilateur s'affiche en rouge sur la ligne d'état avec son message (« archive refusée : … »). Sans compilateur, le pack des cols n'est pas proposé et une archive donne « compilateur absent ». |
 | O29-6 | Le core ne dépend pas du compilateur : il l'appelle en sous-processus (`launch_compile.compiler_base_cmd`), comme la compilation au lancement. |
 
@@ -25,7 +25,7 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §3.4
 
 - Core : `contents.py` (pack des cols, archives, thèmes installés, place disque, appels au compilateur), `launch_compile.py` (`compiler_base_cmd`), `session.py` (dossiers passés au service).
 - Engine : `contents_view_model.gd` (tailles en Mo et Go, ligne de la place disque).
-- Tests : `core/tests/test_contenus_packs.py` (faux compilateur, sans réseau), `engine/tests/unit/test_contents_view_model.gd`.
+- Tests : `core/tests/test_contenus_packs.py` (faux compilateur, sans réseau), `engine/tests/unit/test_contents_view_model.gd`, scénario `engine/tests/menu_scenarios/packs.json` du banc des menus (archive d'un thème construite par la nouvelle clé `archives`, installée par le vrai compilateur ; pack des cols refusé à la confirmation, rien n'est téléchargé).
 - Docs : contrat et schéma `contents`, guide d'utilisation (« Thèmes » et « Packs de parcours » passent par le menu).
 
 ## 5. Critères d'acceptation

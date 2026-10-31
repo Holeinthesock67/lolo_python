@@ -56,8 +56,10 @@ func _test_model() -> void:
 		"contenu installé : rien à faire, dit sur la ligne d'état")
 	m.on_contents(_msg([PACK]))
 	var pack: Dictionary = m.menu_items()[0]
-	_check(pack["detail"] == "à installer, 12 Mo, téléchargement", "taille et téléchargement annoncés")
-	_check(m.sheet("content:pack")["lines"][1] == "Téléchargement nécessaire", "carte : téléchargement")
+	_check(pack["detail"] == "à télécharger", "téléchargement annoncé")
+	var pack_card: Dictionary = m.sheet("content:pack")
+	_check(pack_card["lines"][1] == "Téléchargement nécessaire" and pack_card["tiles"][0]["value"] == "12 Mo",
+		"carte : téléchargement et taille")
 	var choice: Dictionary = m.handle("content:pack")
 	_check(choice.has("confirm") and choice["action"] == {"action": "install_content", "id": "pack"},
 		"téléchargement : confirmation d'abord")
@@ -70,13 +72,14 @@ func _test_model() -> void:
 	with_disk["themes_mb"] = 820.0
 	with_disk["themes_max_mb"] = 5120.0
 	m.on_contents(with_disk)
-	var last: Dictionary = m.menu_items()[-1]
-	_check(last["id"] == "disk" and not last["enabled"] and last["label"] == "Place libre : 120 Go ; thèmes : 820 Mo sur 5,0 Go",
-		"place libre et thèmes (%s)" % last["label"])
+	var disk_line: String = m.sheet("content:pack")["lines"][-1]
+	_check(disk_line == "Place libre : 120 Go ; thèmes : 820 Mo sur 5,0 Go", "carte : place libre et thèmes (%s)" % disk_line)
+	_check(ContentsViewModel.size_text(0.02) == "moins de 1 Mo", "petite taille")
 	var theme := {"id": "theme:hiver", "kind": "theme", "label": "Thème « hiver »", "detail": "jamais utilisé",
 		"state": "installed", "network": false, "size_mb": 1536.0, "progress_pct": null}
 	m.on_contents(_msg([theme]))
-	_check(m.menu_items()[0]["detail"] == "installé, 1,5 Go" and m.handle("content:theme:hiver").is_empty(),
+	_check(m.menu_items()[0]["detail"] == "installé" and m.sheet("content:theme:hiver")["tiles"][0]["value"] == "1,5 Go"
+		and m.handle("content:theme:hiver").is_empty(),
 		"thème installé : information, taille en Go")
 
 

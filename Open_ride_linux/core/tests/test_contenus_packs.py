@@ -98,7 +98,9 @@ def test_cols_pack_built_installed_and_compiled(tmp_path, monkeypatch):
     assert seen[:3] == [20, 40, 60] and 80 in seen
     names = [json.loads(line)[0] for line in calls.read_text().splitlines()]
     assert names == ["route-pack-build", "build-all"]
-    assert by_id(svc)[COLS_ID]["state"] == "partial"
+    items = by_id(svc)
+    assert items[COLS_ID]["state"] == "partial" and "routes:cols_celebres" not in [
+        i for i in items if i != COLS_ID]   # pas de seconde ligne pour le pack des cols
 
 
 def test_archives_installed(tmp_path, monkeypatch):
@@ -112,8 +114,9 @@ def test_archives_installed(tmp_path, monkeypatch):
     names = [json.loads(line)[0] for line in calls.read_text().splitlines()]
     assert names == ["theme-install", "route-pack-install", "build-all"]
     after = by_id(svc)
-    assert all(it["state"] == "installed" for i, it in after.items() if i.startswith("archive:"))
-    assert "theme:foret" in after
+    assert not [i for i in after if i.startswith("archive:")]   # remplacées par les lignes installées
+    assert after["theme:foret"]["label"] == "Thème « foret »" and after["theme:foret"]["state"] == "installed"
+    assert after["routes:vosges"]["label"] == "Pack de parcours « Vosges »"
 
 
 def test_compiler_error_reported(tmp_path, monkeypatch):

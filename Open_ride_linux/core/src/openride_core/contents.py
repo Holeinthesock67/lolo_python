@@ -13,6 +13,7 @@ message `contents` (`list_contents`), installé par `install_content`, toujours 
 - `archive:N` (lot O29) : archives `.zip` trouvées dans Téléchargements, sur le Bureau ou dans
   `~/OpenRide/Import` : pack de thème ou de biomes (`theme.json`, `theme-install`) ou pack de parcours
   (`pack.toml`, `route-pack-install` puis `build-all`). Rien n'est téléchargé.
+- `routes:DOSSIER` (lot O29) : packs de parcours déjà installés (information).
 - `theme:NOM` (lot O29) : thèmes déjà installés dans `~/OpenRide/Themes`, avec leur taille et leur
   dernière utilisation (information : un thème se choisit dans « Réglages › Graphisme »).
 
@@ -225,7 +226,8 @@ def cols_item(dirs: ContentDirs) -> dict[str, Any] | None:
     return {"id": COLS_ID, "kind": "route_pack", "label": f"Pack « {name} »",
             "detail": f"{len(recipes)} montées célèbres (Alpe d'Huez, Ventoux, Teide…) construites depuis "
                       "OpenStreetMap", "state": state, "network": True,
-            "size_mb": _mb(_dir_bytes(target)) if target else None, "progress_pct": None}
+            "size_mb": _mb(_dir_bytes(target)) if target else None, "progress_pct": None,
+            "pack_name": name}   # retiré du message : sert à ne pas lister le pack une seconde fois
 
 
 def _archive_kind(path: Path) -> tuple[str, str, int] | None:
@@ -298,6 +300,31 @@ def archive_item(index: int, a: dict[str, Any], dirs: ContentDirs) -> dict[str, 
             "network": False, "size_mb": _mb(a["size"]), "progress_pct": None}
 
 
+def route_pack_items(dirs: ContentDirs, skip: str = "") -> list[dict[str, Any]]:
+    """Packs de parcours installés dans le dossier des traces (`pack.toml`), sauf celui nommé `skip`."""
+    if dirs.gpx is None or not dirs.gpx.is_dir():
+        return []
+    out = []
+    for d in sorted(p for p in dirs.gpx.iterdir() if p.is_dir() and not p.name.startswith(".")):
+        name = _pack_name(d / "pack.toml")
+        if not name or name == skip:
+            continue
+        tracks = sum(1 for f in d.iterdir() if f.is_file() and f.suffix.lower() == ".gpx")
+        out.append({"id": f"routes:{d.name}", "kind": "route_pack", "label": f"Pack de parcours « {name} »",
+                    "detail": f"{tracks} trace(s) ; ses parcours sont dans la liste des parcours",
+                    "state": "installed", "network": False, "size_mb": _mb(_dir_bytes(d)), "progress_pct": None})
+    return out
+
+
+def _theme_name(theme_dir: Path) -> str:
+    """Nom annoncé dans `theme.json`, sinon celui du dossier."""
+    try:
+        meta = json.loads((theme_dir / "theme.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return theme_dir.name
+    return str(meta.get("name") or theme_dir.name) if isinstance(meta, dict) else theme_dir.name
+
+
 def theme_items(dirs: ContentDirs) -> list[dict[str, Any]]:
     """Thèmes installés : taille et dernière utilisation (`.utilisation.json`, écrit par le lanceur)."""
     if dirs.themes is None or not dirs.themes.is_dir():
@@ -309,8 +336,9 @@ def theme_items(dirs: ContentDirs) -> list[dict[str, Any]]:
     out = []
     for d in sorted(p for p in dirs.themes.iterdir() if p.is_dir() and (p / "theme.json").is_file()):
         used = str(uses.get(d.name, "")) if isinstance(uses, dict) else ""
+        name = _theme_name(d)
         detail = f"dernière utilisation le {used[8:10]}/{used[5:7]}/{used[:4]}" if len(used) >= 10 else "jamais utilisé"
-        out.append({"id": f"theme:{d.name}", "kind": "theme", "label": f"Thème « {d.name} »",
+        out.append({"id": f"theme:{d.name}", "kind": "theme", "label": f"Thème « {name} »",
                     "detail": detail + " ; se choisit dans Réglages › Graphisme", "state": "installed",
                     "network": False, "size_mb": _mb(_dir_bytes(d)), "progress_pct": None})
     return out
@@ -424,10 +452,13 @@ class ContentService:
                 "size_mb": None, "progress_pct": None}]
         cols = cols_item(self.dirs)
         if cols:
-            out.append(cols)
+            out.append({k: v for k, v in cols.items() if k != "pack_name"})
         if self.dirs.home is not None and not self.busy:   # liste figée pendant une installation
             self._archives = find_archives(self.dirs.home)
-        out += [archive_item(i, a, self.dirs) for i, a in enumerate(self._archives)]
+        # Archive déjà installée : la ligne du thème ou du pack installé la remplace.
+        out += [it for it in (archive_item(i, a, self.dirs) for i, a in enumerate(self._archives))
+                if it["state"] != "installed"]
+        out += route_pack_items(self.dirs, skip=cols["pack_name"] if cols else "")
         out += theme_items(self.dirs)
         out = out[:MAX_ITEMS]
         if self.busy:

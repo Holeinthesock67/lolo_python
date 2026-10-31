@@ -2,13 +2,13 @@ extends RefCounted
 
 ## Écran « Réglages › Contenus » (lot O25 ; contrat IPC révision 1.5, message `contents`). Modèle sans
 ## nœud, relié par menu_flow.gd : une ligne par contenu (libellé à gauche, état à droite) et la carte de
-## détail du contenu sous le focus (contenu, taille, téléchargement) ; A maintenu installe ce qui manque
+## détail du contenu sous le focus (contenu, taille, téléchargement, place libre) ; A maintenu installe ce qui manque
 ## (`install_content`), sans rien écraser (sur un contenu installé : « Déjà installé ») ; un contenu
 ## qui télécharge passe d'abord par une confirmation (« Non » par défaut). La ligne d'état rappelle le compte rendu de la dernière installation.
 ## Quand une installation se termine, menu_flow.gd redemande les listes (parcours, entraînements, plans).
 ## Packs (lot O29) : pack « Cols célèbres » (téléchargement), archives de thèmes, de biomes ou de parcours
 ## trouvées dans Téléchargements, sur le Bureau ou dans ~/OpenRide/Import, thèmes installés (taille et
-## dernière utilisation, information) ; une dernière ligne donne la place libre et celle des thèmes.
+## dernière utilisation, information) ; la carte donne la taille du contenu, la place libre et celle des thèmes.
 
 const SCREEN := "contents"
 const STATE_TEXTS := {"missing": "à installer", "partial": "en partie installé", "installed": "installé",
@@ -61,10 +61,8 @@ static func state_text(it: Dictionary) -> String:
 	var text := str(STATE_TEXTS.get(st, st))
 	if st == "installing" and it.get("progress_pct") != null:
 		text = "installation : %d %%" % int(it["progress_pct"])
-	if it.get("size_mb") != null and st != "installing":
-		text += ", " + size_text(float(it["size_mb"]))
-	if bool(it.get("network", false)) and st in ["missing", "partial"]:
-		text += ", téléchargement"
+	elif st == "missing" and bool(it.get("network", false)):
+		text = "à télécharger"
 	return text
 
 
@@ -79,13 +77,10 @@ func menu_items() -> Array:
 		out.append({"id": "wait", "label": "Recherche des contenus…", "enabled": false})
 	elif out.is_empty():
 		out.append({"id": "none", "label": "Aucun contenu proposé", "enabled": false})
-	var disk := disk_text()
-	if disk != "":
-		out.append({"id": "disk", "label": disk, "enabled": false})
 	return out
 
 
-## « Place libre : 120 Go ; thèmes : 0,8 Go sur 5 Go » ("" sans les champs du lot O29).
+## Ligne de la carte : « Place libre : 120 Go ; thèmes : 0,8 Go sur 5,0 Go » ("" sans les champs du lot O29).
 func disk_text() -> String:
 	var parts: Array[String] = []
 	if disk_free_mb != null:
@@ -95,8 +90,10 @@ func disk_text() -> String:
 	return " ; ".join(parts)
 
 
-## Taille lisible en français : « 850 Mo », « 1,2 Go », « 120 Go ».
+## Taille lisible en français : « moins de 1 Mo », « 850 Mo », « 1,2 Go », « 120 Go ».
 static func size_text(mb: float) -> String:
+	if mb < 0.5:
+		return "moins de 1 Mo"
 	if mb < 1000.0:
 		return "%d Mo" % int(round(mb))
 	var gb := mb / 1024.0
@@ -137,4 +134,9 @@ func sheet(item_id: String) -> Dictionary:
 		lines.append(str(it["detail"]))
 	lines.append("Téléchargement nécessaire" if bool(it.get("network", false)) else "Rien n'est téléchargé")
 	lines.append("Aucun fichier existant n'est remplacé")
-	return {"title": "Contenu", "name": str(it.get("label", "")), "lines": lines}
+	if disk_text() != "":
+		lines.append(disk_text())
+	var card := {"title": "Contenu", "name": str(it.get("label", "")), "lines": lines}
+	if it.get("size_mb") != null:
+		card["tiles"] = [{"label": "Taille", "value": size_text(float(it["size_mb"])), "unit": ""}]
+	return card
