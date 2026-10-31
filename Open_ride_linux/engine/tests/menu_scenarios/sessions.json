@@ -4,7 +4,11 @@
   "etapes": [
     {"ecran": "home", "delai": 15},
     {"choisir": "world"},
-    {"ecran": "routes", "titre": "Parcours", "elements": ["demo"]},
+    {"ecran": "routes", "titre": "Parcours", "elements": ["demo", "_add_route", "_route_help"]},
+    {"choisir": "_route_help"},
+    {"ecran": "route_help", "titre": "Aide parcours", "contient": ["Ajouter une trace", "Fiche d'un parcours (.toml)", "Sans trace : le monde ouvert"]},
+    {"appui": "Y_SHORT"},
+    {"ecran": "routes"},
     {"choisir": "demo"},
     {"ecran": "home", "focus": "world", "contient": ["Parcours : demo"]},
     {"choisir": "ride"},

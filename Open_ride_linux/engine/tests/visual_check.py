@@ -974,7 +974,10 @@ def _scenes(s: Session) -> None:
         s.check_texts("pause", info, {"menu_title": "Pause", "menu": "[Reprendre] | Terminer et enregistrer"}, contains=True)
         s.check_texts("pause", info, {"menu": "Trainer perdu : reconnexion en cours…"}, contains=True)
         s.check("pause", "HUD de séance caché derrière le menu", not info["widgets"]["power"]["visible"])
+        s.check_texts("pause", info, {"menu": "Séance en cours"}, contains=True)
+        s.check_texts("pause", info, {"menu": "Puissance moy."}, contains=True)
         s.check_layout("pause", info)
+    _confirmation_scene(s)
 
     # 6. Core muet : bandeau, caméra extrapolée puis figée.
     core.set_scene(speed=SPEED_MPS, session_state="RUNNING", pause_reason=None, trainer_status="CONNECTED",
@@ -1313,6 +1316,32 @@ def _menu_scenes(s: Session) -> None:
         s.check_texts("bilan", info, {"menu": "[Nouvelle séance]"}, contains=True)
         s.check_layout("bilan", info)
     _progress_scenes(s)
+
+
+def _confirmation_scene(s: Session) -> None:
+    """Étape 4d des menus : « Abandonner » depuis la pause ouvre une petite carte centrée sur le voile ; la question
+    est en texte courant, « Non » est sélectionné d'office et « Oui » (qui perd la séance) est en rouge ; Y revient à la pause."""
+    core = s.core
+    for event in ("PLUS_SHORT", "PLUS_SHORT", "A_LONG"):
+        core.send({"type": "input", "v": CONTRACT_VERSION, "event": event})
+        time.sleep(0.3)
+    time.sleep(0.6)
+    shot = s.capture("confirmation")
+    if shot:
+        img, info = shot
+        card = info["widgets"]["confirm_card"]
+        s.check_texts("confirmation", info, {"confirm_question": "Abandonner la séance ?", "menu": "[Non] | Oui"}, contains=True)
+        w, h = info["size"]
+        cx = card["rect"][0] + card["rect"][2] / 2
+        s.check("confirmation", "carte visible, étroite et centrée",
+                card["visible"] and card["rect"][2] <= 0.6 * w and abs(cx - w / 2) <= 0.05 * w,
+                f"rectangle {card['rect']}")
+        s.check("confirmation", "détail de la liste caché", not info["widgets"]["menu_card"]["visible"])
+        danger = fraction(img, rect_box(card["rect"]), lambda p: p[0] > 200 and p[1] < 110 and p[2] < 110, step=1)
+        s.check("confirmation", "« Oui » en rouge (danger)", danger >= 0.0005, f"{danger:.2%} de pixels rouges")
+        s.check_layout("confirmation", info)
+    core.send({"type": "input", "v": CONTRACT_VERSION, "event": "Y_SHORT"})
+    time.sleep(0.6)
 
 
 def _records_scene(s: Session) -> None:
@@ -1668,7 +1697,7 @@ def _garage_scenes(s: Session) -> None:
     press("A_LONG", wait=0.5)   # achat : confirmation
     shot = s.capture("garage_confirmation")
     if shot:
-        s.check_texts("garage_confirmation", shot[1], {"menu_title": "Acheter Profilé pour 150 pièces ? Solde après : 60"})
+        s.check_texts("garage_confirmation", shot[1], {"confirm_question": "Acheter Profilé pour 150 pièces ? Solde après : 60"})
     press("PLUS_SHORT", "A_LONG", wait=0.5)   # Oui
     time.sleep(1.2)
     shot = s.capture("garage_achat")
