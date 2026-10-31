@@ -456,20 +456,25 @@ class Run:
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
         if ok:
-            self.check_quality()
+            self.check_quality("au départ")
         return ok
 
-    def check_quality(self) -> None:
-        """Qualité réellement appliquée au départ (lot X32) : celle de config.toml, réglages du core reçus."""
+    def check_quality(self, when: str) -> None:
+        """Qualité réellement appliquée (lot X32) : celle que config.toml demande à cet instant (au départ : celle
+        passée par le lanceur ; à l'arrêt : celle d'un réglage changé au menu et enregistré)."""
         assert self.engine is not None
-        wanted = str({**BASE_CONFIG, **self.doc.get("config", {})}.get("render.quality", "low"))
-        time.sleep(1.0)   # réglages envoyés par le core après le hello_ack
+        try:
+            data = tomllib.loads(self.config.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError):
+            data = {}
+        wanted = str(config_get(data, "render.quality") or "low")
         seq = [m.group(0) for _, m in self.engine.matching(quality_guard.APPLIED.pattern)]
         ok, msg = quality_guard.check("\n".join(seq), wanted)
-        self.report.check(bool(ok), "qualité réellement appliquée au départ", msg)
+        self.report.check(bool(ok), f"qualité réellement appliquée {when}", msg)
 
     def stop(self) -> None:
         if self.engine is not None and self.engine.p.poll() is None:
+            self.check_quality("à l'arrêt")
             # xvfb-run ne transmet pas SIGTERM à Godot : le moteur et son Xvfb sont arrêtés d'abord.
             for pid in descendants(self.engine.p.pid):
                 with contextlib.suppress(ProcessLookupError):
