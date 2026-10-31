@@ -43,7 +43,7 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 
 ## 4. Rouler un parcours
 
-**Ajouter un parcours.** Déposez une trace dans le dossier `~/OpenRide/GPX/` : un fichier `.gpx`, ou l'export de Garmin Connect tel quel (`.fit`, `.tcx`, `.fit.gz`, `.tcx.gz` ou `.zip`). OpenRide compile les nouvelles traces à chaque démarrage (une notification s'affiche) : fermez-le et relancez-le avec son icône, le parcours apparaît ensuite dans la liste. Pour que la fiche d'un parcours soit plus parlante, posez à côté de la trace un petit fichier du même nom en `.toml` (nom, description, région, étiquettes).
+**Ajouter un parcours.** Déposez une trace dans le dossier `~/OpenRide/GPX/` : un fichier `.gpx`, ou l'export de Garmin Connect tel quel (`.fit`, `.tcx`, `.fit.gz`, `.tcx.gz` ou `.zip`). OpenRide compile les nouvelles traces à chaque démarrage (une notification s'affiche) : fermez-le et relancez-le avec son icône, le parcours apparaît ensuite dans la liste. Pour que la fiche d'un parcours soit plus parlante, posez à côté de la trace un petit fichier du même nom en `.toml` (nom, description, région, étiquettes). Le menu le rappelle : en bas de la liste des parcours, **Ajouter un parcours** montre où déposer la trace, et **Comment ça marche ?** ouvre l'écran **Aide parcours** (choisir un parcours, ajouter une trace, fiche `.toml`, monde ouvert), dont chaque sujet s'explique dans la carte de droite.
 
 **Lancer une séance.**
 
@@ -55,6 +55,18 @@ Lancez OpenRide avec son icône. Au premier démarrage, il crée le dossier `~/O
 **Pendant la séance.** Le HUD montre puissance, cadence, fréquence cardiaque, vitesse, distance, pente et profil d'altitude (sous le panneau de droite, en SIM). La puissance prend la couleur de sa zone de FTP (Z1 à Z7) et la fréquence cardiaque celle de sa zone de FC (Z1 à Z5, d'après la **FC max** des réglages du cycliste). La touche **Y** du Click (ou `Y`, `Échap` au clavier) met en pause : l'écran de pause propose **Reprendre**, **Terminer et enregistrer**, **Abandonner** et le curseur de **Difficulté**.
 
 **Fin de séance.** À l'arrivée d'un parcours ou avec **Terminer et enregistrer**, le bilan affiche la durée, la distance, les puissances (NP, IF, TSS) et les zones. La séance est enregistrée dans `~/OpenRide/Activities/` (section 8).
+
+## 4 bis. Monde ouvert
+
+Le **Monde ouvert** de l'accueil crée la route en roulant, d'après les cartes OpenStreetMap et le relief Copernicus, sans trace à préparer. Il faut Internet la première fois dans une région ; ensuite, la région est en cache (`~/OpenRide/Cache/monde/`, 5 Go au plus) et rien n'est retéléchargé au même endroit.
+
+1. **Globe.** Faites-le tourner jusqu'à votre région (flèches, ou « + » et « − »), ou tapez un nom de lieu au clavier : la recherche s'ouvre (liste fournie avec OpenRide, puis OpenStreetMap si Internet répond). Les régions en cache sont surlignées. A maintenu épingle la région sous le centre : une région épinglée reste toujours dans le cache. A ouvre la carte autour du centre.
+2. **Carte.** Le curseur reste accroché à la route la plus proche ; A pose le départ.
+3. **Cap et navigation.** Choisissez le cap, puis **Balade** (le jeu garde le cap et préfère les petites routes), **Destination** (A cherche le lieu) ou **Boucle** (retour au départ après la longueur choisie). A démarre le préchargement.
+4. **En roulant.** Un panneau annonce chaque carrefour : les flèches ou A choisissent la branche, A maintenu la valide, jusqu'à 30 m avant ; sinon la navigation choisit. Le monde ouvert marche aussi en ERG.
+5. **Garder la balade.** **Terminer et enregistrer** écrit la route parcourue (au-delà de 500 m) en GPX dans `~/OpenRide/GPX/` : elle devient un parcours de la liste au démarrage suivant.
+
+Chaque écran du globe explique ce qu'il fait, et le bandeau du bas donne les boutons du Click et les touches du clavier. Au clavier, les lettres tapées sur le globe ouvrent la recherche d'un lieu ; ensuite, Entrée valide (recherche, carte, cap) et Échap revient.
 
 ## 5. Entraînements ERG, plans et test de FTP
 

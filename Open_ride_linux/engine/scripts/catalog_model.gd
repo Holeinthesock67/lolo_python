@@ -207,6 +207,21 @@ static func plan_day_sheet(day: Dictionary, blocks: Array) -> Dictionary:
 	return {"title": "Séance du jour", "name": str(day.get("name", "")), "tiles": tiles, "lines": lines, "blocks": blocks}
 
 
+## Fiche de la pause (lot N20 §4.3) : chiffres de la séance en cours. `elapsed_s` et `distance_m` NAN ou négatifs :
+## tuile « — » ; `avg_w` < 0 : pas encore de mesure de puissance.
+static func pause_sheet(elapsed_s: float, distance_m: float, avg_w: float) -> Dictionary:
+	var has_t := is_finite(elapsed_s) and elapsed_s >= 0.0
+	var has_d := is_finite(distance_m) and distance_m >= 0.0
+	var h := int(elapsed_s) / 3600 if has_t else 0
+	var time_text := "—"
+	if has_t:
+		time_text = "%d:%02d:%02d" % [h, (int(elapsed_s) / 60) % 60, int(elapsed_s) % 60] if h > 0 else "%d:%02d" % [int(elapsed_s) / 60, int(elapsed_s) % 60]
+	return {"title": "Séance en cours", "name": "En pause",
+		"tiles": [_tile("Durée", time_text, ""),
+			_tile("Distance", _format_fr_1(distance_m / 1000.0) if has_d else "—", "km" if has_d else ""),
+			_tile("Puissance moy.", str(int(round(avg_w))) if avg_w >= 0.0 else "—", "W" if avg_w >= 0.0 else "")]}
+
+
 static func _tile(label: String, value: String, unit: String) -> Dictionary:
 	return {"label": label, "value": value, "unit": unit}
 
