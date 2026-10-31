@@ -84,6 +84,11 @@ MAX_FAILURES = 5   # au-delà, le passage s'arrête : les échecs suivants ne se
 # vérification, en redemandant l'état : sinon « écran home : engine sans réponse » sur le PC, jamais dans le cloud.
 ENGINE_READY_S = 60.0
 ENGINE_READY_ASK_S = 3.0   # délai de chaque demande d'état pendant cette attente
+# L'engine peut aussi se taire un moment APRÈS sa première réponse (PC, 31 octobre : prêt en 0,7 s puis « écran home :
+# engine sans réponse », sans doute la compilation des shaders du premier écran avec un HOME neuf). Une vérification
+# d'écran ne compte donc pas ce silence dans son délai : elle redemande l'état jusqu'à ENGINE_SILENT_S de silence,
+# et note la durée du silence dans le rapport.
+ENGINE_SILENT_S = 60.0
 COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
 
 # Un seul tableau bouton → geste : événement du Click -> (bouton du Click V2 simulé, durée en s),
@@ -385,17 +390,27 @@ class Run:
 
     def wait_screen(self, step: dict[str, Any]) -> None:
         deadline = now() + float(step.get("delai", 5.0))
+        silent_since: float | None = None
+        silent_s = 0.0
         while True:
-            st = self.state()
+            st = self.state(ENGINE_READY_ASK_S)
+            if st:
+                silent_since = None
+            else:
+                silent_since = silent_since if silent_since is not None else now() - ENGINE_READY_ASK_S
+                silent_s = max(silent_s, now() - silent_since)
             bad = self._screen_ok(st, step)
-            if not bad or now() >= deadline:
+            # Délai de l'étape pour un écran qui répond ; silence de l'engine toléré jusqu'à ENGINE_SILENT_S.
+            limit = deadline if st else max(deadline, silent_since + ENGINE_SILENT_S)
+            if not bad or now() >= limit or self.engine.p.poll() is not None:
                 break
             time.sleep(0.15)
         what = step.get("ecran") or ("menu caché" if step.get("menu_cache") else
                                      f"monde ouvert {step['monde']}" if "monde" in step else "menu visible")
         detail = ", ".join(f"{k}={step[k]!r}" for k in ("titre", "groupe", "focus", "contient", "elements") if k in step)
+        silence = f" (engine muet {silent_s:.1f} s)" if silent_s else ""
         self.check(not bad, f"écran {what}" + (f" ({detail})" if detail else ""),
-                   "; ".join(bad) if bad else f"« {st.get('title', '')} »")
+                   ("; ".join(bad) if bad else f"« {st.get('title', '')} »") + silence)
 
     def wait_config(self, want: dict[str, Any], delay: float) -> None:
         deadline = now() + delay
