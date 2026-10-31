@@ -31,6 +31,8 @@ from .workout_menu import IMPORT_SOURCES, MAX_IMPORT_CANDIDATES
 MAX_TRACK_BYTES = 64_000_000
 # Délai maximal d'une compilation depuis le menu : la première dans une région télécharge l'altitude.
 COMPILE_TIMEOUT_S = 900.0
+# Début des messages d'erreur du compilateur (cli.py), retiré de la ligne d'état du menu.
+COMPILER_ERROR_PREFIX = "openride-compiler : erreur : "
 
 
 class RouteImportError(Exception):
@@ -194,5 +196,5 @@ def last_error_line(output: str) -> str:
     for line in reversed(output.strip().splitlines()):
         line = line.strip()
         if line and not line.startswith("Traceback") and not line.startswith("File "):
-            return line[:200]
+            return line.removeprefix(COMPILER_ERROR_PREFIX)[:200]
     return "compilation refusée (voir le journal)"

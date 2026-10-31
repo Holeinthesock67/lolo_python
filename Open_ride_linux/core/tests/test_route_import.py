@@ -87,6 +87,7 @@ def test_build_cmd_and_error_line():
     assert route_import.build_cmd(["openride-compiler"], Path("/g/a.gpx"), Path("/r"), True) == [
         "openride-compiler", "build", "/g/a.gpx", "--out", "/r", "--force"]
     assert route_import.last_error_line("Lecture…\nerreur : trace vide\n\n") == "erreur : trace vide"
+    assert route_import.last_error_line("openride-compiler : erreur : a.gpx : trace vide\n") == "a.gpx : trace vide"
 
 
 def make_session(tmp_path: Path, port: int) -> tuple[CoreSession, list[dict]]:
@@ -130,7 +131,7 @@ def test_session_imports_compiles_and_lists_without_restart(tmp_path: Path):
         last = done[-1]
         assert last["state"] == "done" and last["route_id"] == "mon-col" and last["created"] is True
         assert last["request_cmd_id"] == 3 and last["file"] == "Mon Col.gpx"
-        assert failed[-1]["state"] == "failed" and "aucun point de trace" in failed[-1]["message"]
+        assert failed[-1]["state"] == "failed" and failed[-1]["message"] == "casse.gpx : aucun point de trace exploitable"
         assert again[-1]["state"] == "done" and again[-1]["created"] is False
         s.state.session_state = "RUNNING"
         busy = await run("list_route_imports", {}, 6)
