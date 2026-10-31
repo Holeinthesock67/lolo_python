@@ -11,9 +11,10 @@ Question du propriétaire du 31 octobre : « Le menu est explicite avec des lég
 | O22-1 | La liste **Parcours** se termine, après le tri et le filtre, par « Ajouter un parcours » et « Comment ça marche ? ». Leur carte de détail donne l'explication de leur sujet. A maintenu ouvre l'écran **Aide parcours** sur ce sujet. |
 | O22-2 | L'écran **Aide parcours** a un sujet par ligne : Choisir un parcours, Ajouter une trace, Fiche d'un parcours (`.toml`), Sans trace : le monde ouvert. L'explication du sujet sous le focus est dans la carte de droite, au Click comme au clavier. A maintenu ne fait rien. Y revient à la liste. |
 | O22-3 | Une liste vide montre « Aucun parcours », désactivé, avec « dépose une trace dans ~/OpenRide/GPX/ », puis les deux lignes d'aide. Si la liste arrive pendant l'affichage, le focus passe au premier parcours. |
-| O22-4 | L'entrée **Monde ouvert** de l'accueil porte la ligne « départ sur le globe, route créée en roulant ». |
+| O22-4 | L'entrée **Monde ouvert** de l'accueil porte la ligne « route créée en roulant ». |
 | O22-5 | Chaque écran du menu du globe (globe, recherche, carte, cap, préchargement) montre une explication sous ses lignes. Au réglage du cap, l'explication donne aussi celle de la navigation choisie (Balade, Destination, Boucle) et le choix des branches aux carrefours en roulant. |
 | O22-6 | Le menu du globe prend le bandeau des boutons des autres menus (`button_bar.gd`), avec une ligne pour le Click et une pour le clavier. Les entrées viennent de la même table, `button_help.gd` (`WORLD`). Au clavier, les lettres tapées sur le globe et dans la recherche cherchent un lieu : les touches sont données une à une, et une entrée sans bouton ou sans touche n'est montrée que sur l'autre ligne. Les attributions restent affichées pendant le préchargement, au-dessus du bandeau. |
+| O22-8 | Le menu du globe passe sur la couche des menus : comme eux, il cache le HUD de séance, qui restait visible derrière le globe (`main._full_screen_menu`). |
 | O22-7 | Le guide d'utilisation reçoit une section « 4 bis. Monde ouvert » et une phrase sur l'aide de la liste des parcours. |
 
 ## 3. Contrat

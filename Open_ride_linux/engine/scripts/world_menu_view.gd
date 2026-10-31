@@ -261,7 +261,6 @@ func _body_text() -> String:
 			var lines := ["Centre : %.1f°, %.1f°" % [vm.globe_lat, vm.globe_lon]]
 			if not r.is_empty():
 				lines.append("Région en cache : %s%s" % [r.get("name", r.get("id", "")), "  (épinglée)" if r.get("pinned", false) else ""])
-			lines.append("Taper un nom de lieu pour le chercher.")
 			return "\n".join(lines)
 		Model.SEARCH:
 			var lines := ["Recherche : " + vm.query + "_"]

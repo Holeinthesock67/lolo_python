@@ -28,11 +28,11 @@ const KEYBOARD_KEYS := {"A": ["A"], "A_HOLD": ["Entrée"], "+": ["+"], "B": ["�
 const WORLD_PREFIX := "world_"
 const WORLD := {
 	"globe": [
-		{"keys": ["A"], "hold": false, "text": "Carte du centre", "main": true, "kb": []},
-		{"keys": [], "hold": false, "text": "Chercher un lieu", "main": true, "kb": ["lettres"]},
+		{"keys": ["A"], "hold": false, "text": "Carte", "main": true, "kb": []},
+		{"keys": [], "hold": false, "text": "Chercher", "main": true, "kb": ["lettres"]},
 		{"keys": ["◀", "▶"], "hold": false, "text": "Tourner", "main": false, "kb": ["←", "→"]},
 		{"keys": ["+", "B"], "hold": true, "text": "Incliner", "main": false, "kb": ["Page haut", "Page bas"]},
-		{"keys": ["A"], "hold": true, "text": "Épingler la région", "main": false, "kb": ["Entrée"]},
+		{"keys": ["A"], "hold": true, "text": "Épingler", "main": false, "kb": ["Entrée"]},
 		{"keys": ["Y"], "hold": false, "text": "Quitter", "main": false, "kb": ["Échap"]},
 	],
 	"search": [

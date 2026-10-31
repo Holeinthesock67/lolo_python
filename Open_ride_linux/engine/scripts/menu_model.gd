@@ -65,7 +65,7 @@ const HOME_MODES := {"ride": "Session libre", "erg": "Session ERG", "open_world"
 	"rogue": "Cyber-Rogue"}
 const DEFAULT_MODES := ["ride", "erg"]
 ## Ligne d'explication d'un mode de l'accueil (lot O22), à droite de son libellé.
-const HOME_DETAILS := {"open_world": "départ sur le globe, route créée en roulant"}
+const HOME_DETAILS := {"open_world": "route créée en roulant"}
 ## Fin de la liste des entraînements (sous-menu ERG, lot N16) : créer ou importer un entraînement.
 const CREATE_WORKOUT_ID := "_create"
 const IMPORT_WORKOUT_ID := "_import"
