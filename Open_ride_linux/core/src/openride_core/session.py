@@ -21,6 +21,7 @@ import signal
 import threading
 import time
 import zlib
+from collections import deque
 from dataclasses import replace
 from datetime import date
 from pathlib import Path
@@ -307,7 +308,7 @@ class CoreSession:
 
         self._t_session = 0.0
         self._grade_sent = 0.0
-        self._power_window: list[tuple[float, float]] = []
+        self._power_window: deque[tuple[float, float]] = deque()   # (temps de séance, W) des 3 dernières s
         self._rec: SessionRecorder | None = None
         self.dropout_marks = 0   # repères « décrochage » posés au Z long (§7.1, lot X47)
         self._device_up: dict[str, bool] = {}   # dernier état écrit au journal (lignes `device`)
@@ -969,10 +970,7 @@ class CoreSession:
         self._grade_sent, shifted = rg.target_grade(cfg.grade_rate_up_pct_per_s, cfg.grade_rate_down_pct_per_s, dt)
         self.driver.set_sim_grade(self._grade_sent, immediate=shifted)
         self._rogue_dist += self.physics.v * dt
-        self._power_window.append((self._t_session, m.power_w))
-        while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
-            self._power_window.pop(0)
-        p3 = sum(p for _, p in self._power_window) / len(self._power_window)
+        p3 = self._power_3s(m.power_w)
         st = self.state
         st.t, st.s, st.v = self._t_session, self._rogue_dist, self.physics.v
         st.grade, st.grade_sent = round(out.grade_enemy, 2), round(self._grade_sent, 2)
@@ -1389,7 +1387,7 @@ class CoreSession:
                 self.state.route_id = f"ow:{ow.id}"
                 self.state.route_length_m = ow.route.length_m
                 self.physics.s = self.physics.v = 0.0
-                self._t_session = 0.0
+                self._set_session_clock(0.0)
                 log.info("Monde ouvert prêt : %.0f m de route engagée.", ow.route.length_m)
                 self._set_state("READY")
             return
@@ -1406,6 +1404,20 @@ class CoreSession:
         elif st == "PAUSED" and self.state.pause_reason == "world_data" and ow.can_resume(s):
             log.info("Route de nouveau connue (%.0f m) : reprise.", ow.known_ahead(s))
             self._set_state("RUNNING")
+
+    def _set_session_clock(self, t: float) -> None:
+        """Remet le temps de séance (nouveau parcours, reprise d'un journal) ; la fenêtre de la puissance 3 s
+        repart de zéro : gardée, ses relevés datés de l'ancienne séance ne sortaient plus jamais (endurance 7bi)."""
+        self._t_session = t
+        self._power_window.clear()
+
+    def _power_3s(self, power_w: float) -> float:
+        """Ajoute la puissance du pas et renvoie la moyenne des 3 dernières secondes de la séance."""
+        w = self._power_window
+        w.append((self._t_session, power_w))
+        while w[0][0] < self._t_session - 3.0:
+            w.popleft()
+        return sum(p for _, p in w) / len(w)
 
     def _select_route(self, route_id: str, previous: str) -> None:
         """LOADING, lecture de la couche route du .world, puis READY (contrat §7, étape 6)."""
@@ -1428,7 +1440,7 @@ class CoreSession:
         self.state.route_id = route_id
         self.state.route_length_m = world.route.length_m
         self.physics.s = self.physics.v = 0.0
-        self._t_session = 0.0
+        self._set_session_clock(0.0)
         log.info("Parcours « %s » chargé : %.0f m, type %s", route_id, world.route.length_m,
                  world.route.type)
         self._set_state("READY")
@@ -2192,10 +2204,7 @@ class CoreSession:
             for line in wtf.take_journal():
                 self._rec.game({**line, "ts": round(time.time(), 3)})
 
-        self._power_window.append((self._t_session, m.power_w))
-        while self._power_window and self._power_window[0][0] < self._t_session - 3.0:
-            self._power_window.pop(0)
-        p3 = sum(p for _, p in self._power_window) / len(self._power_window)
+        p3 = self._power_3s(m.power_w)
 
         st = self.state
         st.t, st.s, st.v = self._t_session, self.physics.s, self.physics.v
@@ -2313,7 +2322,7 @@ class CoreSession:
             if self._workout is None:
                 raise ResumeError(f"entraînement « {rs.workout_id} » du journal introuvable")
 
-        self._t_session = rs.t
+        self._set_session_clock(rs.t)
         self.physics.s, self.physics.v = rs.s, 0.0
         if rs.gear is not None and 1 <= int(rs.gear) <= self.gearing.n_gears:
             self.gearing.k = int(rs.gear)
