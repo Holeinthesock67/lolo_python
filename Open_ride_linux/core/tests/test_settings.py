@@ -274,3 +274,32 @@ def test_settings_groups_and_new_entries():
     gust = by_key["wind.gust_pct"]
     assert (gust["value"], gust["min"], gust["max"], gust["step"]) == (0, 0, 100, 10)
     assert settings.step(cfg, "wind.from_deg", 360, +1) == 360
+
+
+def test_bool_and_scaled_settings_in_the_menu(tmp_path: Path):
+    """Lot O26 : décor vivant (booléen en on / off), relief (2,5 affiché 250 %), ressenti du vent."""
+    cfg = Config()
+    items = {it["key"]: it for it in settings.current(cfg)}
+    living = items["render.living"]
+    assert living == {"key": "render.living", "label": "Décor vivant", "group": "graphics", "value": "on",
+                      "applies": "relaunch", "type": "choice", "choices": ["on", "off"]}
+    relief = items["render.visual_grade_scale"]
+    assert (relief["value"], relief["min"], relief["max"], relief["step"], relief["unit"]) == (250, 100, 300, 25, "%")
+    assert relief["applies"] == "relaunch"
+    assert items["wind.feel"]["choices"] == ["grade", "ftms"] and items["wind.feel"]["group"] == "wind"
+    assert settings.step(cfg, "render.visual_grade_scale", 250, +1) == 275
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "render.visual_grade_scale", 310)
+    with pytest.raises(settings.SettingError):
+        settings.check(cfg, "render.living", True)
+    path = tmp_path / "config.toml"
+    path.write_text(START, encoding="utf-8")
+    settings.apply(cfg, {"render.living": "off", "render.visual_grade_scale": 150, "wind.feel": "ftms"}, path)
+    data = tomllib.loads(path.read_text(encoding="utf-8"))
+    assert data["render"]["living"] is False and data["render"]["visual_grade_scale"] == 1.5
+    assert data["wind"]["feel"] == "ftms"
+    assert cfg.render.living is False and cfg.render.visual_grade_scale == 1.5
+    again = config_mod.load(path, None)
+    assert (again.render.living, again.render.visual_grade_scale) == (False, 1.5)
+    assert {it["key"]: it["value"] for it in settings.current(again)}["render.living"] == "off"
+    assert len(settings.SETTINGS) <= 32   # un seul datagramme `settings` (contrat révision 1.5)

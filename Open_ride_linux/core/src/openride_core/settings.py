@@ -14,9 +14,14 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
 son, vent) ; l'engine donne les titres.
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer) ou `now` (qualité, thème, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
+la séance suivante, sans relancer), `now` (qualité, thème, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
 l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le thème et le mode d'affichage à
-l'engine aux lancements suivants).
+l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief : passés par le lanceur à l'engine,
+pris au prochain lancement ; l'engine propose de relancer, lot O26).
+
+Deux règles de forme valent pour toutes les clés (lot O26) : un booléen du fichier est un choix `on` /
+`off` au menu ; `Setting.scale` multiplie un nombre du fichier pour l'afficher en entier au menu (relief
+2,5 affiché 250 %), et le divise à l'écriture.
 `apply(cfg, changes, path)` valide, écrit chaque réglage dans son fichier (commentaires et reste du
 fichier gardés, copie `.bak`) puis met à jour `cfg` en mémoire.
 
@@ -47,6 +52,7 @@ class Setting:
     step: float = 1
     unit: str = ""
     applies: str = "next_session"
+    scale: float = 1   # valeur du menu = valeur du fichier × scale (lot O26)
 
     @property
     def section(self) -> str:
@@ -81,6 +87,8 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
     Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
+    Setting("render.living", "Décor vivant", "graphics", applies="relaunch"),   # lot O26
+    Setting("render.visual_grade_scale", "Relief exagéré", "graphics", 25, "%", "relaunch", 100),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
     Setting("audio.master_pct", "Volume général", "sound", 10, "%", "now"),
     Setting("audio.ride_pct", "Volume vent et roue libre", "sound", 10, "%", "now"),
@@ -93,8 +101,10 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("wind.speed_kmh", "Force du vent", "wind", 5, "km/h"),
     Setting("wind.from_deg", "Direction du vent", "wind", 45, "°"),
     Setting("wind.gust_pct", "Rafales", "wind", 10, "%"),
-    Setting("wind.max_grade_offset_pct", "Plafond du vent", "wind", 1, "pts"),
+    Setting("wind.max_grade_offset_pct", "Plafond du vent", "wind", 1, "pts de pente"),
+    Setting("wind.feel", "Ressenti du vent", "wind"),   # lot O26
 )
+BOOL_CHOICES = ("on", "off")
 # Sous-écrans de « Réglages », dans l'ordre d'affichage (champ `group` de chaque élément).
 GROUPS = ("rider", "ride", "graphics", "sound", "wind")
 KEYS = tuple(s.key for s in SETTINGS)
@@ -120,9 +130,15 @@ def installed_themes(themes_dir: Path | None = None) -> list[str]:
     return names
 
 
+def _is_bool(s: Setting) -> bool:
+    return isinstance(getattr(config_mod.Config(), s.section).__dict__[s.name], bool)
+
+
 def choices(s: Setting, themes_dir: Path | None = None) -> list[str] | None:
     if s.key == "render.theme":
         return installed_themes(themes_dir)
+    if _is_bool(s):
+        return list(BOOL_CHOICES)
     found = config_mod.CHOICES.get((s.section, s.name))
     return list(found) if found else None
 
@@ -130,12 +146,24 @@ def choices(s: Setting, themes_dir: Path | None = None) -> list[str] | None:
 def bounds(s: Setting, cfg: config_mod.Config) -> tuple[float, float] | None:
     if s.key == "gearing.start_gear":
         return (1, cfg.gearing.n_gears)
-    return config_mod.BOUNDS.get((s.section, s.name))
+    found = config_mod.BOUNDS.get((s.section, s.name))
+    return (found[0] * s.scale, found[1] * s.scale) if found else None
 
 
 def _value(cfg: config_mod.Config, s: Setting) -> Any:
     v = getattr(getattr(cfg, s.section), s.name)
-    return int(round(v)) if isinstance(v, float) else v
+    if isinstance(v, bool):
+        return BOOL_CHOICES[0] if v else BOOL_CHOICES[1]
+    return int(round(v * s.scale)) if isinstance(v, float) else v
+
+
+def _to_file(s: Setting, value: Any) -> Any:
+    """Valeur du menu vers la valeur du fichier : booléen pour `on` / `off`, division par `scale`."""
+    if _is_bool(s):
+        return value == BOOL_CHOICES[0]
+    if s.scale != 1:
+        return value / s.scale
+    return value
 
 
 def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict[str, Any]]:
@@ -187,7 +215,7 @@ def apply(cfg: config_mod.Config, changes: dict[str, Any], path: Path | None = N
           themes_dir: Path | None = None) -> list[str]:
     """Valide et écrit les réglages, chacun dans le fichier de sa portée ; met `cfg` à jour ;
     renvoie les lignes changées."""
-    clean = {k: check(cfg, k, v, themes_dir) for k, v in changes.items()}
+    clean = {k: _to_file(get(k), check(cfg, k, v, themes_dir)) for k, v in changes.items()}
     values = [(get(k).section, get(k).name, v) for k, v in clean.items()]
     try:
         changed = config_edit.update_layers(values, path)
@@ -223,7 +251,7 @@ def run(as_json: bool, config_path: Path | None, set_args: list[str] | None = No
         return 0
     for it in items:
         unit = f" {it['unit']}" if it.get("unit") else ""
-        when = "séance suivante" if it["applies"] == "next_session" else "tout de suite"
+        when = {"next_session": "séance suivante", "now": "tout de suite", "relaunch": "prochain lancement"}[it["applies"]]
         print(f"{it['key']:<24} {it['label']:<20} {it['value']}{unit}  ({when})")
     return 0
 

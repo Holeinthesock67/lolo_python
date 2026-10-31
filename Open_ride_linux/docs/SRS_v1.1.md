@@ -392,8 +392,8 @@ sim_scenario = ""            # scénario du Bluetooth simulé (vide : demo), voi
 [render]
 quality = "low"      # low, medium, high
 theme = "default"
-visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lots Q2 et Y15 ; physique et HUD inchangés)
-living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0
+visual_grade_scale = 2.5   # exagération visuelle du relief, de 1,0 à 3,0 (lots Q2 et Y15 ; physique et HUD inchangés ; menu : « Relief exagéré » en %, lot O26)
+living = true        # décor vivant de la série P (vent, nuages, sons) ; false : rendu de la 1.0 (menu : « Décor vivant », lot O26)
 load_guard = true    # garde-fou de charge (lot Y6) : coupe SSIL, SSAO, glow puis MSAA quand le GPU sature, sans baisser la résolution ; false pour les mesures
 chart = "reduced"    # courbes de la séance (lot O14) : hidden, reduced (cible et puissance), full
 camera = "follow_near"   # vue de caméra (lot V12) : subjective, follow_near, follow_far ou side ; la dernière vue choisie y est écrite
@@ -426,7 +426,7 @@ speed_kmh = 0                # 0 à 60
 from_deg = 270               # d'où vient le vent, degrés depuis le nord (0 à 360) ; réglable dans le menu par pas de 45
 gust_pct = 0                 # 0 à 100, rafales en modes "gusty" et "theme" ; réglable dans le menu
 seed = 0                     # graine des rafales, pour rejouer une séance
-feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11)
+feel = "grade"               # "grade" (supplément de pente, défaut) ou "ftms" (champ vent de la commande 0x11) ; menu : « Ressenti du vent »
 max_grade_offset_pct = 4.0   # borne du supplément de pente, 0 à 8 ; réglable dans le menu
 [gravel]
 mode = "off"                 # "off" (défaut), "auto" (surface du parcours), "compacted", "gravel" ou "dirt" (tout le parcours)

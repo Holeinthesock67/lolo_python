@@ -4,6 +4,7 @@ extends SceneTree
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_menu_flow.gd
 
 const MenuFlow := preload("res://scripts/menu_flow.gd")
+const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const MenuView := preload("res://scripts/menu_view.gd")
 const MenuModel := preload("res://scripts/menu_model.gd")
 
@@ -266,6 +267,37 @@ func _test_pairing_screen() -> void:
 	_check(f.handle("A_LONG").get("action") == "relaunch", "Relancer : action relaunch")
 	f.on_error("pairing_failed", "adresse mal formée")
 	_check(not f.pairing.saved and "refusé" in f.pairing.message, "pairing_failed affiché")
+
+
+## Lot O26 : réglage pris au prochain lancement (décor vivant) : légende, carte, ligne « Relancer ».
+func _test_relaunch_setting() -> void:
+	var f = MenuFlow.new()
+	f.connect_done = true
+	f.on_state({"session_state": "IDLE", "difficulty_pct": 50})
+	var living := {"key": "render.living", "label": "Décor vivant", "group": "graphics", "type": "choice", "value": "on",
+		"choices": ["on", "off"], "applies": "relaunch"}
+	var feel := {"key": "wind.feel", "label": "Ressenti du vent", "group": "wind", "type": "choice", "value": "grade",
+		"choices": ["grade", "ftms"], "applies": "next_session"}
+	f.on_settings({"type": "settings", "request_cmd_id": 2, "items": [living, feel]})
+	f.settings_group = "graphics"
+	f._refresh_settings()
+	f.menu.push_screen(f.SETTINGS_GROUP)
+	var rows: Array = f.state()["items"]
+	_check(rows.size() == 1 and rows[0]["detail"] == "oui", "décor vivant affiché « oui », pas de relance (%s)" % str(rows))
+	_check(f.state()["card"]["lines"] == ["Choix : oui, non (rendu de la 1.0)", "S'applique au prochain lancement d'OpenRide"],
+		"carte : choix en français et prochain lancement (%s)" % str(f.state()["card"]))
+	f.on_settings({"type": "settings", "request_cmd_id": 3, "items": [living.merged({"value": "off"}, true), feel]})
+	rows = f.state()["items"]
+	_check(rows.size() == 2 and rows[1]["id"] == "relaunch" and rows[1]["detail"] == "pour appliquer : Décor vivant",
+		"valeur changée : « Relancer OpenRide maintenant » (%s)" % str(rows))
+	f.handle("PLUS_SHORT")
+	_check(f.handle("A_LONG") == {"action": "relaunch"}, "Relancer : action relaunch (code 64)")
+	f.on_settings({"type": "settings", "request_cmd_id": 4, "items": [living, feel]})
+	_check(f.state()["items"].size() == 1, "valeur du lancement remise : plus de relance")
+	_check(SettingsViewModel.format_value(feel, "ftms") == "par le trainer (essai)"
+		and SettingsViewModel.format_value({"key": "wind.mode"}, "gusty") == "en rafales"
+		and SettingsViewModel.format_value({"key": "render.theme"}, "default") == "par défaut",
+		"légendes du vent et du thème en français")
 
 
 func _test_settings_screen() -> void:
@@ -678,6 +710,7 @@ func _init() -> void:
 	_test_settings_screen()
 	_test_connect_screen()
 	_test_pairing_screen()
+	_test_relaunch_setting()
 	_test_full_session()
 	_test_abandon_and_summary_quit()
 	_test_view()

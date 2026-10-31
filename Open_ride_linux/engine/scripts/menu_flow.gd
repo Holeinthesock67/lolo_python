@@ -900,6 +900,8 @@ func handle(event: String) -> Dictionary:
 		var item_id := str(act["id"])
 		if item_id.begins_with("set:") and settings.begin(item_id.substr(4)):
 			_refresh_edit()
+		if item_id == SettingsViewModel.RELAUNCH:
+			return {"action": "relaunch"}   # lot O26 : décor vivant ou relief changés
 		return {}
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.WORKOUTS:
 		workout_message = ""
