@@ -6,7 +6,7 @@ Ajout du 24 octobre 2026. Code : `core/src/openride_core/ble_sim.py` (appareils)
 
 `--trainer mock` remplace le pilote du trainer par un générateur de puissance. Le mode `sim` garde les **vrais pilotes** (`FtmsDriver`, `ZwiftClickProvider`, `HeartRateProvider`) et remplace seulement la radio : recherche, connexion, abonnements, écritures et notifications passent par des appareils simulés. Ce qui marche en `sim` a donc de bonnes chances de marcher sur le vélo, et les pannes vues aux essais se rejouent à la demande.
 
-Les trois options sont indépendantes : `--trainer sim --input click` garde le vrai Click avec un trainer simulé, par exemple.
+Les trois options sont indépendantes : `--trainer sim --input click` garde le vrai Click avec un trainer simulé, par exemple. Le trainer simulé est toujours cherché sous son propre nom, quel que soit `[trainer] device_name` (après l'appairage, ce réglage porte le nom du vrai trainer et le cachait jusqu'au 30 octobre).
 
 ```bash
 scripts/openride-dev.sh --trainer sim --input sim --hr sim --autostart                         # scénario demo

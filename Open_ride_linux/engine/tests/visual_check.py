@@ -1464,6 +1464,70 @@ def _menus_only(s: Session) -> None:
     _menu_scenes(s)
 
 
+def _quality_guard_scenes(s: Session) -> None:
+    """`--garde-qualite` (lot X32, garde-fou de régression) : la qualité demandée par `--quality` est appliquée au
+    démarrage et à la première capture ; un réglage `render.quality` absent ou égal ne change rien ; une autre
+    valeur est appliquée tout de suite (source `reglage`) ; une valeur inconnue est notée sans rien changer ;
+    revenu à la qualité demandée, la dernière capture la porte. Le contrôle final de run_config vérifie le tout."""
+    core = s.core
+    wanted = s.name.split("_")[1]   # 1280x720_medium[_k2.5]
+    other = "high" if wanted != "high" else "medium"
+    started = core.log.wait_for(r"^quality applied=(\w+) requested=(\S+) source=(\w+)", 20.0)
+    s.check("garde_qualite", "qualité du démarrage", started is not None and started[1].groups() == (wanted, wanted, "cli"),
+            started[1].string if started else "aucune ligne « quality applied »")
+    core.set_scene(speed=0.0, s=FIXED_S, session_state="RUNNING", power=200.0, mode="SIM", erg=None, pause_reason=None,
+                   trainer_status="CONNECTED", input_status="CONNECTED")
+    core.auto_hello_ack = True
+    core.catalog_data = MENU_CATALOG
+    core.streaming = True
+    loaded = core.log.wait_for(r"^route_loaded id=demo", ROUTE_TIMEOUT_S)
+    s.check("garde_qualite", "parcours demo chargé", loaded is not None, loaded[1].string if loaded else "aucun route_loaded")
+    time.sleep(SETTLE_S)
+    shot = s.capture("garde_qualite_depart")
+    if shot:
+        s.check("garde_qualite_depart", "qualité portée par la capture", shot[1].get("quality") == wanted,
+                f"{shot[1].get('quality')!r}, attendu {wanted!r}")
+
+    def send_quality(value: str | None) -> list[str]:
+        """Réglages du core avec `render.quality` à `value` (absent si None) ; lignes « quality » qui suivent.
+        `current` : qualité appliquée d'après le journal (aucune ligne attendue si `value` l'est déjà)."""
+        items = [{"key": "render.fps", "label": "Afficher les images/s", "group": "graphics", "type": "choice",
+                  "value": "off", "choices": ["off", "on", "detail"], "applies": "now"}]
+        if value is not None:
+            items.append({"key": "render.quality", "label": "Qualité graphique", "group": "graphics", "type": "choice",
+                          "value": value, "choices": ["low", "medium", "high"], "applies": "now"})
+        mark = core.log.mark()
+        core.send({"type": "settings", "v": CONTRACT_VERSION, "request_cmd_id": 0, "items": items})
+        # Un préréglage plus lourd se met en place en plusieurs secondes sous Xvfb (rendu logiciel).
+        core.log.wait_for(r"^quality applied=", 1.5 if value in (None, current[0]) else 15.0, mark)
+        time.sleep(0.3)
+        lines = [line for _, line in core.log.since(mark) if line.startswith("quality applied=")]
+        if lines:
+            current[0] = lines[-1].split()[1].split("=")[1]
+        return lines
+
+    current = [wanted]
+
+    lines = send_quality(None)
+    s.check("garde_qualite", "réglage sans render.quality : qualité inchangée", not lines, " | ".join(lines) or "aucune ligne")
+    lines = send_quality(wanted)
+    s.check("garde_qualite", f"réglage {wanted} (déjà appliquée) : rien à refaire", not lines, " | ".join(lines) or "aucune ligne")
+    lines = send_quality(other)
+    s.check("garde_qualite", f"réglage {other} : appliquée tout de suite",
+            lines == [f"quality applied={other} requested={other} source=reglage"], " | ".join(lines) or "aucune ligne")
+    lines = send_quality("ultra")
+    s.check("garde_qualite", "réglage inconnu : noté, qualité inchangée",
+            lines == [f"quality applied={other} requested=ultra source=reglage"], " | ".join(lines) or "aucune ligne")
+    lines = send_quality(wanted)
+    s.check("garde_qualite", f"retour à {wanted}",
+            lines == [f"quality applied={wanted} requested={wanted} source=reglage"], " | ".join(lines) or "aucune ligne")
+    time.sleep(SETTLE_S)
+    shot = s.capture("garde_qualite_fin")
+    if shot:
+        s.check("garde_qualite_fin", "qualité portée par la capture", shot[1].get("quality") == wanted,
+                f"{shot[1].get('quality')!r}, attendu {wanted!r}")
+
+
 def _draft_gauge_scene(s: Session) -> None:
     """Jauge d'abri (maquette C validée le 29 octobre) : un bot à 6 m devant donne 13,5 % d'abri (« Abri 30 % ») ;
     réglage `render.draft_gauge` coupé par défaut, rien au-dessus du bot ; à « on », arc au-dessus du bot, dans le
@@ -1766,6 +1830,8 @@ def main() -> int:
                     help=f"scène figée : décor vivant, nuages, herbe et personnages arrêtés à l'instant T (défaut {FREEZE_T:g} s)")
     ap.add_argument("--decor-vivant", choices=("on", "off"), default="on",
                     help="off : décor vivant coupé, rendu de la 1.0 (références dans <préréglage>_sans_vivant)")
+    ap.add_argument("--garde-qualite", action="store_true",
+                    help="seulement le garde-fou de la qualité appliquée (démarrage, réglages du core, lot X32)")
     ap.add_argument("--lisibilite", action="store_true",
                     help="hauteur des chiffres et contraste des textes du HUD sur chaque capture (lot X22)")
     args = ap.parse_args()
@@ -1802,7 +1868,8 @@ def main() -> int:
         shutil.copytree(osm_work / f"{OSM_ROUTE_ID}.world", routes_dir / f"{OSM_ROUTE_ID}.world")
         shutil.rmtree(osm_work, ignore_errors=True)
         for config in [c.strip() for c in args.configs.split(",") if c.strip()]:
-            run_config(config, args, routes_dir, out_dir, report, _menus_only if args.menus else None)
+            scenes = _quality_guard_scenes if args.garde_qualite else _menus_only if args.menus else None
+            run_config(config, args, routes_dir, out_dir, report, scenes)
     finally:
         shutil.rmtree(routes_dir, ignore_errors=True)
     if args.update_golden:
