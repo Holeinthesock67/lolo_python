@@ -54,6 +54,27 @@
             "count": {"type": "integer", "minimum": 0, "maximum": 8}
           }
         },
+        "last_choices": {
+          "type": "object",
+          "description": "Facultatif, révision 1.5 (lot O32) : derniers choix du menu du profil en cours, chaque champ absent tant qu'il n'a pas été choisi ; le core recharge lui-même le dernier parcours, l'engine reprend les autres.",
+          "properties": {
+            "route_id": {"type": "string", "minLength": 1},
+            "workout_id": {"type": "string", "minLength": 1},
+            "bots": {"type": "array", "maxItems": 5, "items": {"type": "object", "required": ["kind"], "properties": {"kind": {"type": "string"}}}},
+            "open_world": {
+              "type": "object",
+              "required": ["lat", "lon", "nav"],
+              "properties": {
+                "lat": {"type": "number", "minimum": -90, "maximum": 90},
+                "lon": {"type": "number", "minimum": -180, "maximum": 180},
+                "nav": {"type": "string", "enum": ["ride", "destination", "loop"]},
+                "heading_deg": {"type": "number", "minimum": 0, "maximum": 360},
+                "loop_km": {"type": "number", "minimum": 1, "maximum": 1000},
+                "target": {"type": "object", "required": ["lat", "lon"], "properties": {"lat": {"type": "number"}, "lon": {"type": "number"}}}
+              }
+            }
+          }
+        },
         "chart": {
           "type": "string",
           "enum": ["hidden", "reduced", "full"]

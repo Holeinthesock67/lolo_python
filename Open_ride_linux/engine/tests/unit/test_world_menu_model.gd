@@ -146,5 +146,28 @@ func _init() -> void:
 	_check(absf(m.loading_fraction() - 0.25) < 1e-9 and m.loading_text() == "3 / 12 carrés", "sans total d'octets : carrés prêts")
 	_check(m.handle("Y_SHORT") == {"action": "cancel_loading"}, "Y pendant le préchargement : annulation demandée")
 
+	_test_last_start()
 	print("test_world_menu_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
+
+
+## Dernier départ du profil (lot O32) : globe centré dessus, mêmes cap, navigation et boucle ; A, A, A le relance.
+func _test_last_start() -> void:
+	var m = Model.new()
+	m.set_last_start({"lat": 48.9, "lon": 7.05, "heading_deg": 90, "nav": "loop", "loop_km": 40})
+	m.reset()
+	_check(absf(m.globe_lat - 48.9) < 1e-9 and absf(m.globe_lon - 7.05) < 1e-9, "globe centré sur le dernier départ")
+	_check(m.heading_deg == 90.0 and m.nav == "loop" and m.loop_km == 40.0, "cap, navigation et boucle repris")
+	m.handle("A_SHORT")   # carte au centre du globe
+	m.on_map({"lat": 48.9, "lon": 7.05, "roads": []})
+	m.state = "setup"
+	var act: Dictionary = m.handle("A_SHORT")
+	var args: Dictionary = act.get("args", {})
+	_check(act.get("action", "") == "start_open_world" and absf(float(args["lat"]) - 48.9) < 1e-6
+		and args["nav"] == "loop" and args["loop_km"] == 40.0, "même départ relancé")
+	m.set_last_start({"lat": 10.0, "lon": 20.0, "nav": "destination"})   # destination sans cible : balade
+	m.reset()
+	_check(m.nav == "ride" and m.target == null, "destination sans cible : retour à la balade")
+	m.set_last_start(null)
+	m.reset()
+	_check(m.nav == "ride", "aucun départ gardé : valeurs par défaut")

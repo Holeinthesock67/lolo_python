@@ -119,7 +119,8 @@ func _test_scenarios() -> void:
 		["A_LONG", "ready", "start", {"action": "select_workout", "workout_id": null}],
 		["PLUS_SHORT", "ready", "workout", null],
 		["PLUS_SHORT", "ready", "change_route", null],
-		["A_LONG", "routes", "galibier", null],
+		["A_LONG", "routes", "alpe", null],   # lot O32 : liste ouverte sur le parcours en cours
+		["MINUS_SHORT", "routes", "galibier", null],
 		["A_LONG", "ready", "start", {"action": "select_route", "route_id": "galibier"}],
 		["Y_SHORT", "home", "ride", null],
 	])
@@ -141,9 +142,11 @@ func _test_scenarios() -> void:
 		["A_LONG", "routes", "galibier", {"action": "select_workout", "workout_id": "vo2"}],
 		["A_LONG", "ready", "start", {"action": "select_route", "route_id": "galibier"}],
 		["PLUS_SHORT", "ready", "workout", null],
-		["A_LONG", "workouts", "_sim", null],
+		["A_LONG", "workouts", "vo2", null],   # lot O32 : liste ouverte sur le dernier entraînement
 		["Y_SHORT", "ready", "workout", null],
-		["A_LONG", "workouts", "_sim", null],
+		["A_LONG", "workouts", "vo2", null],
+		["MINUS_SHORT", "workouts", "sweet_spot", null],
+		["MINUS_SHORT", "workouts", "_sim", null],
 		["A_LONG", "ready", "workout", {"action": "select_workout", "workout_id": null}],
 		["Y_SHORT", "home", "erg", null],
 	])
@@ -333,6 +336,40 @@ func _test_button_plan() -> void:
 	_check(m.handle("Y_SHORT")["action"].get("action", "") == "resume", "Y sur l'écran de pause : reprendre")
 
 
+## Derniers choix du profil (lot O32) : bot et fantôme remis à chaque accueil, listes ouvertes sur le dernier choix.
+func _test_last_choices() -> void:
+	var m = MenuModel.new()
+	m.set_items("routes", ROUTES_4)
+	m.set_items("workouts", WORKOUTS_2)
+	m.set_last_choices({"workout_id": "vo2", "bots": [{"kind": "profile", "profile": "rouleur", "level_pct": 100.0},
+		{"kind": "ghost"}]})
+	_check(m.bot_choice == MenuModel.bot_index({"kind": "profile", "profile": "rouleur", "level_pct": 100}) and m.ghost,
+		"derniers choix : bot à profil (nombre du JSON en flottant) et fantôme repris")
+	m.focus_item("erg")
+	_check(_focus_id(m.handle("A_LONG")) == "vo2", "Session ERG : la liste s'ouvre sur le dernier entraînement")
+	m.set_world("alpe", "Alpe d'Huez")
+	m.reset()
+	m.focus_item("world")
+	_check(_focus_id(m.handle("A_LONG")) == "alpe", "Parcours : la liste s'ouvre sur le parcours en cours")
+	m.reset()
+	m.focus_item("ride")
+	m.handle("A_LONG")   # écran Prêt
+	m.focus_item("bot")
+	m.handle("A_LONG")   # bot suivant
+	m.focus_item("ghost")
+	m.handle("A_LONG")   # fantôme : non
+	m.focus_item("start")
+	var act: Dictionary = m.handle("A_LONG")["action"]
+	var bot_after: int = m.bot_choice
+	m.reset()
+	_check(act.get("action", "") == "start" and m.bot_choice == bot_after and not m.ghost,
+		"nouvel accueil : le bot et le fantôme de la séance lancée restent choisis")
+	m.set_last_choices({"bots": [{"kind": "constant", "power_w": 999}]})
+	_check(m.bot_choice == 0 and not m.ghost and m.last_workout == "", "bot inconnu et choix absents : valeurs par défaut")
+	m.set_last_choices(null)
+	_check(m.bot_choice == 0, "aucun choix gardé (core sans last_choices)")
+
+
 func _init() -> void:
 	_test_button_plan()
 	_test_modes()
@@ -340,5 +377,6 @@ func _init() -> void:
 	_test_scenarios()
 	_test_lists_and_events()
 	_test_no_nodes()
+	_test_last_choices()
 	print("test_menu_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
