@@ -91,6 +91,7 @@ STATE_DEGRADATION: list[tuple[str, Callable[[dict[str, Any]], None]]] = [
     ("devices", _drop("devices")),
     ("summary", _drop("summary")),
     ("bots", _drop("bots")),
+    ("vehicles", _drop("vehicles")),      # lot AS6 : extrapolés par l'engine, ils reviennent 100 ms plus tard
     ("open_world", _drop("open_world")),
     ("erg", _drop("erg")),
 ]
