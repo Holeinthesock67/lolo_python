@@ -5,7 +5,7 @@ extends Control
 ## « START YOUR ENGINES », cinq feux de départ (allumés selon start_wait_model.gd), barre du pédalage,
 ## cadence mesurée, étape en cours et « Y : annuler ». Voile opaque tant que le décor se charge, plus léger
 ## pendant le pédalage pour voir la route du départ ; feux verts « GO ! » à l'ouverture du départ, sans
-## le titre (le bandeau du rappel des commandes s'affiche alors en haut de l'écran).
+## voile, damier ni titre (le rappel des commandes et le texte du segment occupent alors l'écran).
 ## Ne décide rien : affiche ce que `show_wait` et `show_go` lui donnent (main.gd).
 ## Pas de class_name : charger par preload("res://scripts/start_screen.gd").
 
@@ -77,16 +77,11 @@ func _draw() -> void:
 	draw_set_transform(Vector2.ZERO, 0.0, k)
 	var go := _go_left_s > 0.0
 	var pedalling := go or (_wait is Dictionary and str(_wait.get("phase", "")) == "pedalage")
-	draw_rect(Rect2(Vector2.ZERO, BASE), Color(UiTheme.VOID, VEIL_PEDALLING if pedalling else VEIL_LOADING))
 	var font := ThemeDB.fallback_font
-	# Bandes de damier en haut et en bas, comme une ligne de départ.
-	for row in 2:
-		for i in int(BASE.x / 20.0):
-			if (i + row) % 2 == 0:
-				draw_rect(Rect2(i * 20.0, 60.0 + row * 10.0, 20.0, 10.0), Color(UiTheme.TEXT, 0.5))
-				draw_rect(Rect2(i * 20.0, 640.0 + row * 10.0, 20.0, 10.0), Color(UiTheme.TEXT, 0.5))
 	if not go:
-		# Au départ, le rappel des commandes du Click (banner.gd) prend le haut de l'écran : pas de titre.
+		# Au départ (« GO ! »), ni voile, ni damier, ni titre : la scène, le rappel des commandes du Click
+		# (banner.gd) et le texte de fond du segment (« Montée 1 · 4e catégorie ») restent entiers.
+		_draw_backdrop(pedalling)
 		_centered(font, StartWaitModel.TITLE, 190.0, TITLE_SIZE, UiTheme.FOCUS)
 	# Feux de départ sur leur portique.
 	var n := StartWaitModel.LIGHTS
@@ -112,6 +107,16 @@ func _draw() -> void:
 	if pedalling:
 		_centered(font, "Cadence : %d tr/min" % int(round(_cadence)), 530.0, TEXT_SIZE, UiTheme.GOLD)
 	_centered(font, "Y : annuler", 600.0, SMALL_SIZE, UiTheme.DIM)
+
+
+## Voile sur la scène et bandes de damier en haut et en bas, comme une ligne de départ.
+func _draw_backdrop(pedalling: bool) -> void:
+	draw_rect(Rect2(Vector2.ZERO, BASE), Color(UiTheme.VOID, VEIL_PEDALLING if pedalling else VEIL_LOADING))
+	for row in 2:
+		for i in int(BASE.x / 20.0):
+			if (i + row) % 2 == 0:
+				draw_rect(Rect2(i * 20.0, 60.0 + row * 10.0, 20.0, 10.0), Color(UiTheme.TEXT, 0.5))
+				draw_rect(Rect2(i * 20.0, 640.0 + row * 10.0, 20.0, 10.0), Color(UiTheme.TEXT, 0.5))
 
 
 func _centered(font: Font, text: String, y: float, font_size: int, col: Color) -> void:
