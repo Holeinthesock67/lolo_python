@@ -289,6 +289,9 @@ func _ready() -> void:
 	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
 		menu_flow.on_profiles(msg)
 		_refresh_menu())
+	ipc.contents_received.connect(func(msg: Dictionary) -> void:
+		_run_menu_action(menu_flow.on_contents(msg))
+		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
 	ipc.core_lost.connect(_on_core_lost)
@@ -654,6 +657,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("buy", {"item_id": str(act["item_id"])})
 		"set_avatar":
 			ipc.send_command("set_avatar", {"avatar": act["avatar"]})
+		"list_contents":   # contenus installables (lot O25, contrat 1.5)
+			ipc.send_command("list_contents", {})
+		"install_content":
+			ipc.send_command("install_content", {"id": str(act["id"])})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
 		"select_profile", "delete_profile":
