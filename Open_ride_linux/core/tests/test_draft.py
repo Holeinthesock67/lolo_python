@@ -49,11 +49,11 @@ def test_line_of_bots_and_crosswind():
     one, _ = d.best_draft(behind(0.5), [bot(100.0)])
     line = [bot(100.0, "b1"), bot(100.0 + d.BIKE_LENGTH_M + 1.0, "b2"), bot(100.0 + 2 * (d.BIKE_LENGTH_M + 1.0), "b3")]
     three, bot_id = d.best_draft(behind(0.5), line)
-    assert three > one and three <= d.ALPHA_CAP
-    assert three == pytest.approx(min(one * 1.18, 0.45))
+    assert three > one and three <= d.ALPHA_GROUP_CAP
+    assert three == pytest.approx(min(one * 1.18, 0.45), abs=0.02)   # file de P3, calcul de groupe (lot AS4)
     assert bot_id == "b1"
     two, _ = d.best_draft(behind(0.5), line[:2])
-    assert two == pytest.approx(one * 1.12)
+    assert two == pytest.approx(one * 1.12, abs=0.02)
     v = 10.0
     cross, _ = d.best_draft(behind(0.5), [bot(100.0)], rider_v=v, cross_mps=v)   # 45° de travers
     assert cross == pytest.approx(one * 0.5)

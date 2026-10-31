@@ -37,7 +37,7 @@ P1 livré. P2 n'est pas requis : le modèle se teste avec des trames écrites à
   - `speed_text` : « 18 km/h » (entier) ; `label` : « face », « dos », « travers gauche », « travers droit » (secteurs de 45° autour de l'axe, hystérésis de 5°) ;
   - **favorable ou non** (demande du propriétaire du 25 octobre) : `verdict` d'après `head_mps` lissé, `"favorable"` sous − 1 m/s (vent de dos), `"defavorable"` au-dessus de + 1 m/s (vent de face), `"neutre"` entre les deux (travers ou vent faible), hystérésis de 0,3 m/s ; `verdict_text` : « Vent favorable », « Vent défavorable », « Vent neutre » ; `tone` : `"good"` (vert), `"bad"` (rouge) ou `"neutral"` (gris), couleurs prises dans la palette du HUD ;
   - **intensité :** `level` de 0 à 4 d'après `speed_mps` (rafale comprise, lissée sur 2 s) : 0 calme sous 5 km/h, 1 faible de 5 à 15, 2 modéré de 15 à 25, 3 fort de 25 à 40, 4 très fort au-delà, hystérésis de 2 km/h ; `level_text` : « calme », « faible », « modéré », « fort », « très fort » ; affiché en barres (une à quatre) à côté de la vitesse ;
-  - `draft_text` : « Abri 30 % » (`draft / 0,45`, arrondi à 5 %), vide sans `draft` ou sous 5 % ;
+  - `draft_text` : « Abri 30 % » (`draft / 0,45`, arrondi à 5 % ; `draft / 0,55` depuis le lot AS4), vide sans `draft` ou sous 5 % ;
   - `visible = false` sans `wind` ni `draft` (pas d'indicateur inutile).
 
 ### 4.3 Budgets dans `quality_presets.gd`

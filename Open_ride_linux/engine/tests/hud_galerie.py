@@ -76,7 +76,7 @@ CAS: list[dict[str, Any]] = [
     {"name": "zones_seuil_vo2", "state": {"power": 330.0, "power_3s": 330.0, "hr": 120},
      "zones": {"power": 6, "hr": 2}},
     {"name": "sim_vent_abri", "state": {"wind": {"speed_mps": 26.0 / 3.6, "from_deg": 100.0, "gust": 0.0,
-                                                 "head_mps": 26.0 / 3.6, "grade_pct": 1.2}, "draft": 0.135},
+                                                 "head_mps": 26.0 / 3.6, "grade_pct": 1.2}, "draft": 0.165},
      "shown": ["wind", "draft"]},
     {"name": "sim_bots_segment_bonus", "bots": True,
      "state": {"bot_ahead": "b2", "bot_behind": "b3", "jerseys": {"sprint": "b3", "kom": "b1"},

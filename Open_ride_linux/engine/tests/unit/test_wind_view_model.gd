@@ -83,10 +83,11 @@ func _test_hidden_without_wind() -> void:
 # Critère 6 : abri
 func _test_draft() -> void:
 	var vm = WindViewModel.new()
-	var v: Dictionary = vm.view({"draft": 0.135}, 0.0, 0.0)
-	_check(v["draft_text"] == "Abri 30 %" and v["visible"], "draft 0,135 : « Abri 30 %% » (%s)" % v["draft_text"])
+	var v: Dictionary = vm.view({"draft": 0.165}, 0.0, 0.0)
+	_check(v["draft_text"] == "Abri 30 %" and v["visible"], "draft 0,165 : « Abri 30 %% » (%s)" % v["draft_text"])
 	_check(vm.view({"draft": 0.01}, 0.0, 0.1)["draft_text"] == "", "draft 0,01 : rien sous 5 %")
-	_check(vm.view({"draft": 0.45}, 0.0, 0.2)["draft_text"] == "Abri 100 %", "draft 0,45 : « Abri 100 % »")
+	_check(vm.view({"draft": 0.45}, 0.0, 0.2)["draft_text"] == "Abri 80 %", "draft 0,45 : « Abri 80 % » (lot AS4)")
+	_check(vm.view({"draft": 0.55}, 0.0, 0.3)["draft_text"] == "Abri 100 %", "draft 0,55, cœur d'un groupe : « Abri 100 % »")
 
 
 # Critère 7 : verdict favorable ou non

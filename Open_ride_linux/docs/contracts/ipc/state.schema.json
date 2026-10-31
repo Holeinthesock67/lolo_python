@@ -849,8 +849,8 @@
     "draft": {
       "type": "number",
       "minimum": 0,
-      "maximum": 0.45,
-      "description": "Facultatif, révision 1.3 (lot P1) : coefficient d'aspiration appliqué au cycliste (SRS §5), absent sans bot."
+      "maximum": 0.55,
+      "description": "Facultatif, révision 1.3 (lot P1) : coefficient d'aspiration appliqué au cycliste (SRS §5), absent sans bot ; jusqu'à 0,55 au cœur d'un groupe (lot AS4, 2.0)."
     },
     "draft_bot": {
       "type": "string",
