@@ -68,7 +68,7 @@ GODOT_TOLERATED = re.compile(
 CONTROLS_HINT_PREFIX = "Click : Y = pause"   # hud_view_model.controls_text()
 HUD_LABELS = ("power", "target", "speed", "cadence", "hr", "grade", "distance", "time", "erg", "status",
               "erg_title", "erg_target", "erg_remaining", "erg_next", "erg_hist",
-              "wind_speed", "wind_level", "wind_verdict", "draft", "bots_line1", "bots_line2",
+              "wind_speed", "wind_level", "wind_verdict", "draft", "draft_w", "bots_line1", "bots_line2",
               "bots_gap1", "bots_jerseys")   # bots_ahead, bots_behind : lignes de bots (lot X22)
 BANNER_RGB = (153, 26, 13)        # fond du bandeau (main.tscn : Color(0.6, 0.1, 0.05))
 GOLDEN_SSIM = 0.97                # SSIM minimale face aux images de référence (lot X20, image_diff.py)
@@ -686,8 +686,9 @@ def _scenes(s: Session) -> None:
         left = w["power"]["rect"]
         s.check("vent", "indicateur sous la colonne de gauche", w["wind"]["rect"][0] < s.width * 0.35
                 and w["wind"]["rect"][1] > left[1] + left[3], f"rectangle {w['wind']['rect']}")
-    # 3 ter. Abri (lot P17) : aspiration de 13,5 % derrière un bot, « Abri 30 % » sous l'indicateur du vent.
-    core.set_scene(draft=0.135)
+    # 3 ter. Abri (lot P17) : aspiration de 13,5 % derrière un bot, « Abri 30 % » sous l'indicateur du vent ;
+    # lot AS5 : « −48 W » économisés sous la pastille en medium et high, pastille seule en low.
+    core.set_scene(draft=0.135, draft_w=48)
     time.sleep(1.0)
     shot = s.capture("abri")
     if shot:
@@ -698,7 +699,14 @@ def _scenes(s: Session) -> None:
         s.check_layout("abri", info)
         s.check("abri", "abri sous l'indicateur du vent", w["draft"]["rect"][1] >= w["wind"]["rect"][1] + w["wind"]["rect"][3],
                 f"rectangle {w['draft']['rect']}")
-    core.set_scene(wind=None, draft=None)
+        low = info.get("quality") == "low"
+        s.check("abri", "watts économisés montrés en medium et high, cachés en low", w["draft_w"]["visible"] != low,
+                f"qualité {info.get('quality')}, visible {w['draft_w']['visible']}")
+        if not low:
+            s.check_texts("abri", info, {"draft_w": "−48 W"})
+            s.check("abri", "watts sous la pastille", w["draft_w"]["rect"][1] >= w["draft"]["rect"][1] + w["draft"]["rect"][3],
+                    f"rectangle {w['draft_w']['rect']}")
+    core.set_scene(wind=None, draft=None, draft_w=None)
     time.sleep(2.5)
 
     # 3 ter bis. Bots (lot O7) : un bot à 20 m devant, un fantôme à 60 m derrière ; silhouettes sur la route,
@@ -1670,14 +1678,14 @@ def _progress_scenes(s: Session) -> None:
         banner = info["widgets"]["banner"]
         s.check("progression", "bandeau « Niveau 10 ! » affiché", banner["visible"] and "Niveau 10 !" in banner.get("text", ""),
                 f"{banner.get('text')}")
-    # Bilan complet (dix chiffres, fichier FIT, quatre blocs ERG du bilan détaillé) et progression : la carte
-    # tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
+    # Bilan complet (dix chiffres, abri du lot AS5, fichier FIT, quatre blocs ERG du bilan détaillé) et
+    # progression : la carte tient au-dessus du bandeau des boutons (suite X22, recette ERG du 28/10).
     core.set_scene(session_state="IDLE", summary=None)
     time.sleep(0.5)
     core.set_scene(session_state="FINISHED", summary={
         "duration_s": 516.0, "distance_m": 3210.0, "avg_power_w": 139.0, "np_w": 155.0, "intensity_factor": 0.62,
         "tss": 6.0, "elevation_gain_m": 33.0, "avg_cadence_rpm": 49.0, "avg_hr_bpm": 119.0, "max_power_w": 400.0,
-        "fit_path": "/tmp/openride/2026-10-28_17-24_essai-69.fit",
+        "draft_time_s": 724, "draft_kj": 9.4, "fit_path": "/tmp/openride/2026-10-28_17-24_essai-69.fit",
         "blocks": [[1, 91.0, 141.0], [2, 149.0, 170.0], [3, 127.0, 126.0], [4, 182.0, 183.0]]})
     time.sleep(1.0)
     for _ in range(2):
@@ -1695,6 +1703,8 @@ def _progress_scenes(s: Session) -> None:
             img, info = shot
             w = info["widgets"]
             s.check_texts(scene, info, {"menu": "Puissance max : 400 W"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Dans la roue : 12 min"}, contains=True)
+            s.check_texts(scene, info, {"menu": "Énergie économisée : 9 kJ"}, contains=True)
             s.check_texts(scene, info, {"menu": "Pièces : +42 (solde 232)"}, contains=True)
             if detailed:
                 s.check_texts(scene, info, {"menu": "Bloc 4 : 182 W pour 183 W"}, contains=True)

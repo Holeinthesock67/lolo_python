@@ -81,6 +81,7 @@ Deux sockets UDP non bloquantes sur `127.0.0.1`, sans connexion : chaque program
 | `wind` | objet, facultatif | Révision 1.3 : vent ressenti au point `s`, voir ci-dessous ; envoyé 2 fois par seconde (une trame sur quinze, jamais avec `devices`) et absent quand le vent est coupé |
 | `draft` | nombre, facultatif | Révision 1.3 : coefficient d'aspiration appliqué au cycliste, de 0 à 0,45 (SRS §5) ; absent sans bot |
 | `draft_bot` | chaîne, facultatif | Révision 1.3 : `id` du bot qui abrite le cycliste ; absent quand `draft` vaut 0 ou manque |
+| `draft_w` | entier, facultatif | Révision 1.5 (lot AS5) : puissance aérodynamique économisée à l'abri, en W arrondis : sans abri moins avec abri, à la vitesse et au vent de face du moment (0 quand l'air pousse) ; absent sous 0,02 d'abri et sans bot. L'engine l'affiche sous la pastille « Abri » en medium et high |
 | `open_world` | objet, facultatif | Monde ouvert seulement : révision du monde, prochain carrefour, état des données (§4, « Monde ouvert ») |
 | `last_cmd_id` | entier | Dernier `cmd_id` traité par le core (§4) |
 
@@ -118,6 +119,8 @@ Mêmes définitions que `openride-core summary` (lot K7). Chaque champ vaut `nul
 | `max_power_w` | nombre ou `null` | Puissance maximale |
 | `blocks` | liste ou `null` | En ERG seulement : au plus 24 triplets `[index, puissance moyenne, cible moyenne ou null]`, index compté à partir de 1 ; au-delà, les premiers 24 et `blocks_truncated` vrai |
 | `blocks_truncated` | booléen | Vrai si `blocks` a été coupé |
+| `draft_time_s` | nombre, facultatif | Révision 1.5 (lot AS5) : secondes passées dans la roue (abri d'au moins 5 % de l'abri maximal, relevés à 1 Hz) ; absent sans bot |
+| `draft_kj` | nombre, facultatif | Révision 1.5 (lot AS5) : énergie économisée à l'abri, en kJ au dixième (somme des `draft_w` du journal) ; absent sans bot |
 
 **Objet `devices`**
 
@@ -610,3 +613,4 @@ Le champ `v` est la version majeure du contrat.
 | 1 (révision 1.5) | 31 octobre 2026 | Ajout compatible (lot O24, audit des options du 31 octobre validé par le propriétaire) : valeur `""` des rôles de `pair_devices` pour oublier un appareil ; une ceinture choisie active `drivers.hr` (avant, elle était enregistrée sans être lue) |
 | 1 (révision 1.5) | 31 octobre 2026 | Ajouts compatibles (lot O26, audit des options du 31 octobre) : valeur `relaunch` de `applies` ; réglages `render.living` (`on` / `off`), `render.visual_grade_scale` (100 à 300 %, pas de 25) et `wind.feel` (`grade` / `ftms`) dans `settings` (29 éléments avec `render.texture_level` du lot P20) |
 | 1 (révision 1.5) | 31 octobre 2026 | Changement compatible (lot O27, décision 2 de l'audit des options du 31 octobre, validée par le propriétaire) : `settings` en parties (`part`, `parts`, `truncated`) comme `routes`, plus de plafond de 32 réglages ; groupe `advanced` (« Avancé ») avec `open_world.network`, `open_world.cache_max_gb`, `render.theme_library_gb` (Go) et `progression.enabled` (`applies` = `relaunch`) ; un engine antérieur lit la première partie seule, le core n'envoie qu'une partie tant que la liste tient en 60 000 octets |
+| 1 (révision 1.5) | 31 octobre 2026 | Ajouts compatibles (lot AS5, ressentir l'abri, série AS de la 2.0) : champ facultatif `draft_w` (watts économisés à l'abri) dans `state` ; champs facultatifs `draft_time_s` et `draft_kj` dans `summary` ; aussi `draft_w` en champ facultatif du journal |

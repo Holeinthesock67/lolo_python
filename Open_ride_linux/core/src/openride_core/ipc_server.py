@@ -76,6 +76,7 @@ class IpcState:
     wind: dict[str, float] | None = None   # révision 1.3 (lot P2) : 2 fois par seconde, jamais avec devices
     draft: float | None = None             # révision 1.3 (lot P3) : présent dès qu'il y a un bot
     draft_bot: str | None = None
+    draft_w: int | None = None             # révision 1.5 (lot AS5) : watts économisés, abri d'au moins 0,02
     open_world: dict[str, Any] | None = None   # révision 1.5 (lot W9) : jamais dans une trame avec devices
     # Révision 1.4 (série T, lot T7) : absents sans segment, hors bonus ou sans bot.
     segment: dict[str, Any] | None = None
@@ -108,6 +109,8 @@ class IpcState:
             d.pop("draft", None)
         if self.draft_bot is None:
             d.pop("draft_bot", None)
+        if self.draft_w is None:
+            d.pop("draft_w", None)
         if self.open_world is None or self.devices is not None:
             d.pop("open_world", None)
         for key in ("segment", "powerup", "jerseys", "rogue", "wtf"):

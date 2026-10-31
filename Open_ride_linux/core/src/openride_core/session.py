@@ -44,7 +44,7 @@ from .mock_driver import MockDriver
 from .garage import GarageError, ProgressionService, estimate_w_prime, workout_duration_finder
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
-from .physics import PhysicsParams, RiderPhysics
+from .physics import PhysicsParams, RiderPhysics, draft_saving_w
 from . import surface_physics
 from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
@@ -275,6 +275,7 @@ class CoreSession:
         self._wind_pending = False    # trame `wind` décalée parce que la trame portait `devices`
         self._draft = 0.0             # abri lissé derrière un bot (lot P3)
         self._draft_bot: str | None = None
+        self._draft_w: int | None = None   # watts économisés à l'abri, à partir de 0,02 d'abri (lot AS5)
         self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
         self.route: Route | None = None
         self._segments: tuple = ()               # couche segments du parcours (série T)
@@ -956,6 +957,7 @@ class CoreSession:
         self.bots = bots
         self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
         self._draft = 0.0
+        self._draft_w = None
         log.info("Bots de la séance : %s.", ", ".join(b.name for b in self.bots) or "aucun")
 
     def _on_plan_command(self, name: str, args: dict, cmd_id: int) -> None:
@@ -2107,6 +2109,8 @@ class CoreSession:
         if wtf_eff is not None:
             power_used = wtf.power(power_used, wtf_eff)
         self.physics.step(power_used, grade, alt, dt, alpha_draft=draft)
+        self._draft_w = (round(draft_saving_w(self.physics.v, alt, self.physics.p, draft))
+                         if draft >= draft_mod.SAVED_W_MIN_DRAFT else None)
         if gcfg.mode != "off":
             ridden = self.physics.v * dt
             self._gravel_stats[1] += ridden
@@ -2141,6 +2145,7 @@ class CoreSession:
         if self.bots:
             st.draft = round(self._draft, 3)
             st.draft_bot = self._draft_bot if st.draft > 0.0 else None
+            st.draft_w = self._draft_w
 
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
@@ -2157,6 +2162,7 @@ class CoreSession:
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
                 draft=round(self._draft, 3) if self.bots else None,
+                draft_w=self._draft_w if self.bots else None,
                 surface=self._surface_here(route, st.s) if gcfg.mode != "off" else None,
                 gravel_grade_pct=round(self._gravel_offset, 2) if gcfg.mode != "off" else None,
                 hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None,

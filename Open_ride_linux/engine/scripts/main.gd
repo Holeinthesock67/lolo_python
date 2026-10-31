@@ -1277,7 +1277,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"grade_caption": hud.grade_val.get_meta("caption"),
 		"target_caption": hud.target_val.get_meta("caption"), "gear": hud.gear_val, "time": hud.time_val,
 		"wind": hud.panel_wind, "wind_speed": hud.wind_speed_label, "wind_level": hud.wind_level_label,
-		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label,
+		"wind_verdict": hud.wind_verdict_label, "draft": hud.draft_label, "draft_w": hud.draft_w_label,
 	}
 	# Rectangles en pixels de l'image : la mise à l'échelle canvas_items (base 1280×720) est appliquée.
 	var to_pixels := get_viewport().get_final_transform()
@@ -1577,7 +1577,7 @@ func _on_state_received(state: Dictionary) -> void:
 		living_world.on_state(state, wind_now_s)
 		var heading_deg: float = route.sample_heading_deg(route.wrap_s(float(state.get("s", 0.0)))) if route != null else 0.0
 		if hud != null and hud.has_method("update_wind"):
-			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s))
+			hud.update_wind(living_world.wind_hud(state, heading_deg, wind_now_s), _quality_name != "low")
 
 	rogue_host.ftp_w = float(ipc.core_config.get("ftp_w", 0.0))
 	if rogue_host.update(state, self, [streamer, sun, living_decor, segment_markers], world_env, camera,
