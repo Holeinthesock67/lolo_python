@@ -83,6 +83,7 @@ Trois programmes. Le core est le maître : il détient l'état de la séance, et
 - `surface_physics.py` : option « gravel », roulement multiplié des routes non revêtues (`[gravel]`, colonne `surface` du parcours ou surface imposée), supplément de pente en SIM sous la borne du vent, transition de 20 m, module pur (lot U21).
 - `wind.py` : vent réglable (calme, fixe, en rafales ou du thème), composante de face et supplément de pente en SIM, module pur (lot P2).
 - `draft.py` : aspiration derrière les bots (courbe exponentielle, effet de file, vent de travers, poussée du bot suivi), module pur (lot P3).
+- `road_cyclists.py` : cyclistes du décor proches calculés par le core (portage de `road_cyclists_model.gd`, même graine), sources d'abri `rider:<id>` et liste `riders` de `state`, module pur (lot AS7).
 
 **Modules clés du compilateur** (`compiler/src/openride_compiler/`) : `cli.py`, `gpx.py`, `pipeline.py` (route), `elevation.py` et `cache.py` (MNT et cache), `terrain.py`, `osm.py` et `osm_layers.py` (client Overpass et couches `buildings`, `vegetation`, `poi`, `water`), `frame.py` (repère), `segments_layer.py` (couche `segments` et fichier `<trace>.segments.toml`, série T, lot T3), `writer.py`, `verify.py`, `theme.py` (validation des thèmes).
 
