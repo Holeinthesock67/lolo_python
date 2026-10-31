@@ -1530,7 +1530,7 @@ func _on_state_received(state: Dictionary) -> void:
 	for act in menu_flow.on_state(state, Time.get_ticks_msec() / 1000.0):
 		_run_menu_action(act)
 	# Écran « Start your engines » pendant l'attente du départ ; feux verts quand la séance part.
-	var waiting := not menu_flow.start_wait.is_empty()
+	var waiting: bool = not menu_flow.start_wait.is_empty()
 	if waiting:
 		start_screen.show_wait(menu_flow.start_wait, float(state.get("cadence", 0.0)))
 	elif _was_start_waiting and str(state.get("session_state", "")) == "RUNNING":
