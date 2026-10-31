@@ -94,6 +94,8 @@ var junction_view = null
 var world_menu_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
 var _route_job: Dictionary = {}
+var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
+var _quit_code := 0
 var _test_cam_last_us := 0
 var _test_cam_last_s := NAN
 ## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : instant imposé au décor, NAN sinon.
@@ -625,11 +627,11 @@ func _run_menu_action(act: Dictionary) -> void:
 				ipc.send_command("select_route", {"route_id": act["route_id"]})
 		"quit":
 			print("Quitter demandé depuis le menu.")
-			get_tree().quit()
+			_quit(0)
 		"relaunch", "relaunch_sim":
 			var code := EXIT_SIM if name == "relaunch_sim" else EXIT_RELAUNCH
 			print("Relance d'OpenRide demandée depuis le menu (code %d)." % code)
-			get_tree().quit(code)
+			_quit(code)
 		"scan_devices":
 			ipc.scan_devices()
 		"identify_click_plus":
@@ -694,8 +696,10 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("install_content", {"id": str(act["id"])})
 		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
 			ipc.send_command("list_profiles", {})
-		"select_profile", "delete_profile":
+		"select_profile", "delete_profile", "restore_profile":
 			ipc.send_command(name, {"id": str(act["id"])})
+		"clear_trial_profile":   # lot O33
+			ipc.send_command(name, {})
 		"create_profile":
 			ipc.send_command("create_profile", {"name": str(act["name"])})
 		"rename_profile":
@@ -870,6 +874,10 @@ func _unhandled_input(event: InputEvent) -> void:
 func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
+	elif what == NOTIFICATION_PREDELETE:
+		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : au-delà, l'arrêt de Godot peut bloquer
+		# (pilote NVIDIA, lot X55) ; ils arrêtent alors le processus et retiennent ce code.
+		_quit_step("scène libérée, arrêt des serveurs de Godot (code %d)" % _quit_code)
 
 
 func _process(delta: float) -> void:
@@ -1690,10 +1698,25 @@ func _give_cues(state: Dictionary) -> void:
 		ipc.test_log("cue index=%d warn=%s s=%.1f" % [c["index"], str(c["warn"]), s])
 
 
+## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
+## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, lot X55).
+func _quit(code: int) -> void:
+	_quit_ms = Time.get_ticks_msec()
+	_quit_code = code
+	get_tree().quit(code)
+
+
+func _quit_step(what: String) -> void:
+	if _quit_ms >= 0:
+		print("Fermeture : %s, %d ms après la demande." % [what, Time.get_ticks_msec() - _quit_ms])
+
+
 func _exit_tree() -> void:
+	_quit_step("nœuds de la scène sortis (décor, monde et IPC compris)")
 	if not _route_job.is_empty():
 		WorkerThreadPool.wait_for_task_completion(_route_job["task"])
 	_probe.close()
+	_quit_step("chargement du parcours et sonde fermés")
 
 
 ## Garde-fou de charge (load_guard.gd), une fois par image : coupe ou rend un effet du préréglage selon le
