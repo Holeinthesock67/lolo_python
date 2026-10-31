@@ -319,7 +319,8 @@ class Run:
         if not st:
             return ["engine sans réponse"]
         text = " | ".join([st.get("status", "")] + [f"{it['label']} — {it['detail']}" if it["detail"] else it["label"]
-                                                     for it in st.get("items", [])] + [st.get("devices", ""), st.get("card", "")])
+                                                     for it in st.get("items", [])] + [st.get("devices", ""), st.get("card", "")]
+                         + [st.get("world_menu", {}).get(k, "") for k in ("help", "hint")])
         if "menu_cache" in step:
             if st.get("visible") == bool(step["menu_cache"]):
                 bad.append(f"menu {'visible' if st.get('visible') else 'caché'}")

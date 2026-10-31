@@ -4,7 +4,7 @@
   "etapes": [
     {"ecran": "home", "delai": 15},
     {"choisir": "open_world"},
-    {"monde": "globe", "delai": 10},
+    {"monde": "globe", "delai": 10, "contient": ["OpenStreetMap", "A : Carte du centre", "lettres : Chercher un lieu"]},
     {"capture": "globe"},
     {"voies": ["clavier"], "touche": "P"},
     {"voies": ["clavier"], "monde": "search"},

@@ -39,6 +39,8 @@ extends RefCounted
 ## - « Test de FTP » : la rampe (seul test depuis le lot O19), puis écran Prêt, `start` avec ftp_test ; au bilan,
 ##   « Accepter » (accept_ftp ; résultat douteux : confirmation puis accept_ftp avec force) ou « Garder » ;
 ## - parcours : tri et filtre par étiquette en cycle en fin de liste, fiche du parcours sur l'écran Prêt ;
+##   puis « Ajouter un parcours » et « Comment ça marche ? » (lot O22) : leur carte et l'écran « Aide
+##   parcours » (route_help.gd) expliquent où déposer une trace et le monde ouvert ;
 ## - bots (lot O7) : « Bot : … » et « Fantôme … » sur l'écran Prêt, `start` avec `bots` ; refus du
 ##   core (bot_invalid) sur la ligne d'état de l'écran Prêt ;
 ## - entraînements en watts (.erg, .mrc) : « watts fixes » et la puissance maximale.
@@ -50,6 +52,7 @@ const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
+const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
 const GarageViewModel := preload("res://scripts/garage_view_model.gd")
@@ -64,6 +67,9 @@ const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
 const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
+const ROUTE_HELP := RouteHelp.SCREEN
+## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
+const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
 const PLANS := "plans"
 const PLAN := "plan"
 const FTP_TEST := "ftp_test"
@@ -176,6 +182,8 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
+	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
+		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
 	menu.add_screen({"id": PLAN, "title": "Plan", "on_back": PLANS, "items": []})
 	menu.add_screen({"id": FTP_TEST, "title": "Test de FTP", "on_back": MenuModel.HOME, "items": []})
@@ -484,7 +492,11 @@ func card(st: Dictionary) -> Dictionary:
 	if screen == MenuModel.READY:
 		return _sheet(routes_raw, menu.world_id, func(r): return CatalogModel.route_sheet(r))
 	if screen == MenuModel.ROUTES:
+		if focused in ROUTE_HELP_TOPICS:
+			return RouteHelp.sheet(ROUTE_HELP_TOPICS[focused])
 		return _sheet(routes_raw, focused, func(r): return CatalogModel.route_sheet(r))
+	if screen == ROUTE_HELP:
+		return RouteHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
 	if screen == MenuModel.WORKOUTS:
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
 	if screen == PLANS:
@@ -878,8 +890,14 @@ func handle(event: String) -> Dictionary:
 	if act.get("action", "") == "item" and act.get("screen", "") in GarageViewModel.SCREENS:
 		return _handle_garage(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == MenuModel.ROUTES:
+		if str(act["id"]) in ROUTE_HELP_TOPICS:
+			menu.push_screen(ROUTE_HELP)
+			menu.focus_item("help:" + str(ROUTE_HELP_TOPICS[act["id"]]))
+			return {}
 		_cycle_routes(str(act["id"]))
 		return {}
+	if act.get("action", "") == "item" and act.get("screen", "") == ROUTE_HELP:
+		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") in [PLANS, PLAN]:
 		return _handle_plan_item(str(act["screen"]), str(act["id"]))
 	if act.get("action", "") == "item" and act.get("screen", "") == FTP_TEST:

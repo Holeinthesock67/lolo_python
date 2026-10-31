@@ -46,6 +46,7 @@ func _init() -> void:
 	while menu.state()["items"][menu.state()["focus"]]["id"] != "open_world" and guard < 20:
 		menu.handle("PLUS_SHORT")
 		guard += 1
+	_check(str(menu.state()["items"][menu.state()["focus"]]["detail"]).contains("globe"), "entrée de l'accueil expliquée (lot O22)")
 	_check(menu.handle("A_LONG")["action"] == {"action": "open_world_menu"}, "valider l'entrée : ouvre le menu du globe")
 
 	# Affichage de bout en bout.
@@ -54,6 +55,12 @@ func _init() -> void:
 	_check(not v.visible, "caché au départ")
 	v.open()
 	_check(v.visible and v.globe_view.visible and v.body_label.text.contains("Centre"), "globe affiché")
+	# Lot O22 : explication de l'état et double légende (Click, clavier) du bandeau des boutons.
+	_check(v.help_label.text.contains("OpenStreetMap") and v.help_label.text.contains("épinglée"), "globe : explication")
+	_check(v.hint_text().begins_with("A : Carte du centre") and v.hint_text().contains("A maintenir : Épingler la région")
+		and v.hint_text().contains("Clavier — lettres : Chercher un lieu") and v.hint_text().contains("Échap : Quitter"),
+		"globe : boutons du Click et touches du clavier")
+	_check(not v.hint_text().contains(" : Carte du centre · Clavier") and v.button_bar.visible, "globe : « Carte du centre » sur la ligne du Click seulement")
 	v.vm.type_text("ve")
 	v.vm.on_places([{"name": "Mont Ventoux", "kind": "peak", "lat": 44.17, "lon": 5.27, "cached": true, "source": "base"}])
 	v.update_display()
@@ -61,11 +68,22 @@ func _init() -> void:
 	v.vm.handle("A_SHORT")
 	v.update_display()
 	_check(v.vm.state == "map" and not v.globe_view.visible and v.body_label.text.contains("Chargement"), "carte : globe caché, attente des routes")
+	_check(v.help_label.text.contains("route la plus proche") and v.hint_text().contains("Entrée : Départ ici"), "carte : explication et légende")
 	v.vm.on_map({"roads": [{"c": "t", "xz": [0, 0, 500, 0]}]})
 	v.vm.handle("A_SHORT")
+	v.update_display()
+	_check(v.vm.state == "setup" and v.help_label.text.begins_with("Balade") and v.help_label.text.contains("carrefour")
+		and v.hint_text().contains("Changer la valeur"), "cap : navigation et carrefours expliqués")
+	v.vm.handle("PLUS_SHORT")
+	v.vm.handle("RIGHT_SHORT")
+	v.update_display()
+	_check(v.help_label.text.begins_with("Destination"), "cap : explication de la navigation choisie")
+	v.vm.handle("LEFT_SHORT")
+	v.vm.handle("MINUS_SHORT")
 	v.vm.handle("A_SHORT")
 	v.update_display()
 	_check(v.vm.state == "loading" and v.hint_label.text.contains("NASA") and v.hint_label.text.contains("Natural Earth"), "préchargement : attributions")
+	_check(v.help_label.text.contains("retéléchargé") and v.hint_text().begins_with("Y : Annuler"), "préchargement : explication et légende")
 	v.vm.on_status({"phase": "dem", "done_bytes": 5_000_000, "total_bytes": 10_000_000, "squares_ready": 0, "squares_needed": 0, "message": "relief"})
 	v.update_display()
 	_check(v.body_label.text.contains("5 Mo / 10 Mo"), "barre et octets")

@@ -1199,6 +1199,8 @@ func _test_menu_state(req: String) -> Dictionary:
 	var world := {"visible": world_menu_view != null and world_menu_view.visible}
 	if world["visible"]:
 		world["state"] = str(world_menu_view.vm.state)
+		world["help"] = world_menu_view.help_label.text
+		world["hint"] = world_menu_view.hint_text()
 	return {"req": req, "visible": menu_view.visible, "screen": st["screen"], "title": st["title"],
 		"status": st["status"], "focus": focus, "focus_id": items[focus]["id"] if focus >= 0 and focus < items.size() else "",
 		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
