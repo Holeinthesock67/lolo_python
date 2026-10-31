@@ -2,8 +2,8 @@ extends Node3D
 
 ## Bots sur la route (Lot O7) : coureur casqué et vélo de people_mesh.gd (lot Y14, comme les cyclistes du
 ## décor), pédalier animé par crowd.gdshader, maillot à la couleur du bot (bots_view_model.gd) ; fantôme translucide
-## (bot_ghost.gdshader), posée à `s` avec le cap de route_data.gd et décalée de
-## LATERAL_M vers la droite (à droite du cycliste, vers le bord : road_builder.gd, lot P32) ; nom au-dessus à moins de
+## (bot_ghost.gdshader), posée à `s` avec le cap de route_data.gd et décalée de sa place en travers `lateral`
+## (bots_view_model.gd : à droite du cycliste vers le bord, côte à côte en peloton ; lot P32) ; nom au-dessus à moins de
 ## NAME_M. Une silhouette par bot visible (moins de 300 m), maillages et matériaux partagés ;
 ## sans bot, aucun nœud. Ne décide rien : affiche la sortie de bots_view_model.view().
 ## Pas de class_name : charger par preload("res://scripts/bots_view.gd").
@@ -15,7 +15,6 @@ const PeopleMesh := preload("res://scripts/people_mesh.gd")
 const CrowdShader := preload("res://shaders/crowd.gdshader")
 const GhostShader := preload("res://shaders/bot_ghost.gdshader")
 
-const LATERAL_M := RoadBuilder.BOT_LATERAL_M
 const NAME_HEIGHT_M := 2.1
 const GHOST_ALPHA := 0.55
 
@@ -114,7 +113,7 @@ func update_view(view: Array, route) -> void:
 		var pos := Vector3(smp["x"], smp["y"], smp["z"])
 		var h := deg_to_rad(float(smp["heading_deg"]))
 		var right := Vector3(cos(h), 0.0, sin(h))
-		node.position = pos + right * LATERAL_M
+		node.position = pos + right * float(b["lateral"])
 		node.rotation = Vector3(0.0, -h, 0.0)
 		var label: Label3D = node.get_node("Name")
 		label.text = str(b["name"])
