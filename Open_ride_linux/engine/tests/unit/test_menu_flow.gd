@@ -313,7 +313,7 @@ func _test_settings_screen() -> void:
 	f.on_settings({"type": "settings", "request_cmd_id": 2, "items": [
 		{"key": "rider.ftp_w", "label": "FTP", "group": "rider", "type": "int", "value": 250, "min": 50, "max": 600,
 			"step": 5, "unit": "W", "applies": "next_session"},
-		{"key": "trainer.difficulty_pct", "label": "Difficulté en SIM", "group": "ride", "type": "int", "value": 50,
+		{"key": "trainer.difficulty_pct", "label": "Difficulté", "group": "ride", "type": "int", "value": 50,
 			"min": 0, "max": 100, "step": 10, "unit": "%", "applies": "next_session"},
 		{"key": "render.quality", "label": "Qualité graphique", "group": "graphics", "type": "choice", "value": "high",
 			"choices": ["low", "medium", "high"], "applies": "now"},

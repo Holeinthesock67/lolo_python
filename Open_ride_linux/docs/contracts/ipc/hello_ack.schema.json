@@ -63,6 +63,15 @@
           "minimum": 0,
           "maximum": 100
         },
+        "gravel": {
+          "enum": ["off", "auto", "compacted", "gravel", "dirt"],
+          "description": "Option « gravel » (lot U16) : `[gravel] mode` du core, pour information."
+        },
+        "biome": {
+          "type": "string",
+          "pattern": "^(auto|[a-z_]+)$",
+          "description": "Biome du décor (lot U16) : `[render] biome` du core, `auto` ou un des seize biomes, pour information."
+        },
         "modes": {
           "type": "array",
           "items": {

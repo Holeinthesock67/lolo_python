@@ -39,6 +39,8 @@ const APPLIES_TEXTS := {"now": "S'applique tout de suite", "next_session": "S'ap
 ## Compteur d'images/s du HUD (fps_counter.gd) : `render.fps` prend `off` / `on` / `detail` ; jauge d'abri
 ## des bots (draft_gauge.gd) : `render.draft_gauge` prend `off` / `on`.
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
+## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt` ;
+## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des seize biomes, noms du plan U §2.
 ## Lot O26 : décor vivant (booléen du fichier, `on` / `off` au menu), ressenti et mode du vent, thème par défaut.
 ## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
 const CHOICE_TEXTS := {
@@ -48,6 +50,13 @@ const CHOICE_TEXTS := {
 	"render.fps": {"off": "non", "on": "oui", "detail": "détaillé"},
 	"render.draft_gauge": {"off": "non", "on": "oui"},
 	"render.display": {"windowed": "fenêtré", "borderless": "plein écran sans bordure", "fullscreen": "plein écran"},
+	"gravel.mode": {"off": "coupé", "auto": "chemins réels", "compacted": "chemin compact", "gravel": "gravier",
+		"dirt": "terre"},
+	"render.biome": {"auto": "automatique", "temperate_grassland": "prairie tempérée", "temperate_forest": "forêt tempérée",
+		"farmland": "vignobles et cultures", "boreal_forest": "forêt boréale", "alpine": "haute montagne",
+		"tundra": "toundra", "polar": "polaire", "mediterranean": "méditerranéen", "steppe": "steppe",
+		"savanna": "savane", "sand_desert": "désert de sable", "rock_desert": "désert de roche", "jungle": "jungle",
+		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique"},
 	"render.living": {"on": "oui", "off": "non (rendu de la 1.0)"},
 	"render.theme": {"default": "par défaut"},
 	"wind.mode": {"off": "coupé", "fixed": "constant", "gusty": "en rafales", "theme": "celui du thème"},
@@ -209,12 +218,14 @@ func menu_items(group: String) -> Array:
 	return out
 
 
-## Carte de détail d'un réglage (clé sans « set: ») : valeur, plage ou choix, moment où il s'applique.
+## Carte de détail d'un réglage (clé sans « set: ») : valeur (celle en cours de modification, comme la rangée),
+## plage ou choix, légende (`help` du core, lot U16) quand il y en a une, moment où il s'applique.
 func sheet(key: String) -> Dictionary:
 	var it := item(key)
 	if it.is_empty():
 		return {}
-	var tiles: Array = [{"label": "Valeur", "value": value_text(it, it.get("value")), "unit": ""}]
+	var value = editing.get("value") if str(editing.get("key", "")) == key else it.get("value")
+	var tiles: Array = [{"label": "Valeur", "value": value_text(it, value), "unit": ""}]
 	var lines: Array = []
 	if str(it.get("type", "")) == "choice":
 		var texts: Array = []
@@ -225,6 +236,8 @@ func sheet(key: String) -> Dictionary:
 		var unit := str(it.get("unit", ""))
 		tiles.append({"label": "Plage", "value": "%d à %d" % [int(it["min"]), int(it["max"])], "unit": unit})
 		tiles.append({"label": "Pas", "value": str(int(it.get("step", 1))), "unit": unit})
+	if str(it.get("help", "")) != "":
+		lines.append(str(it["help"]))
 	lines.append(str(APPLIES_TEXTS.get(str(it.get("applies", "")), APPLIES_TEXTS["next_session"])))
 	return {"title": "Réglage", "name": str(it.get("label", key)), "tiles": tiles, "lines": lines}
 

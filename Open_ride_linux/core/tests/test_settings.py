@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+import re
 import tomllib
 from pathlib import Path
 
@@ -181,6 +182,50 @@ def test_wind_settings_lot_p16():
     assert settings.step(cfg, "wind.mode", "theme", +1) == "off"
     assert settings.step(cfg, "wind.max_grade_offset_pct", 8, +1) == 8
     assert settings.step(cfg, "wind.speed_kmh", 20, +1) == 25
+
+
+def test_gravel_setting_lot_u16(tmp_path: Path):
+    """Lot U16 (partie gravel) : `gravel.mode` dans Séance, coupé par défaut, avec sa légende ; écrit dans
+    config.toml, porté par `hello_ack.config.gravel` ; refusé pendant une séance."""
+    items = {i["key"]: i for i in settings.current(Config())}
+    g = items["gravel.mode"]
+    assert (g["group"], g["value"], g["applies"]) == ("ride", "off", "next_session")
+    assert g["choices"] == ["off", "auto", "compacted", "gravel", "dirt"]
+    assert "Chemins réels" in g["help"] and "plafond du vent" in g["help"]
+    assert "help" not in items["wind.mode"]
+    path = tmp_path / "config.toml"
+    path.write_text(START, encoding="utf-8")
+    s, _, errors = _session(tmp_path, path)
+    assert s.server.hello_config["gravel"] == "off"
+    s._on_command("set_setting", {"key": "gravel.mode", "value": "gravel"}, 2)
+    assert not errors and s.cfg.gravel.mode == "gravel" and s.server.hello_config["gravel"] == "gravel"
+    assert tomllib.loads(path.read_text(encoding="utf-8"))["gravel"]["mode"] == "gravel"
+    s.state.session_state = "RUNNING"
+    s._on_command("set_setting", {"key": "gravel.mode", "value": "dirt"}, 3)
+    assert errors[-1][0] == "busy" and s.cfg.gravel.mode == "gravel"
+
+
+def test_biome_setting_lot_u16(tmp_path: Path):
+    """Lot U16 : `render.biome` dans Graphisme, `auto` puis les seize biomes de l'engine (biome_ids.gd), appliqué
+    tout de suite ; écrit dans config.toml, porté par `hello_ack.config.biome`, permis pendant une séance."""
+    gd = (Path(__file__).resolve().parents[2] / "engine" / "scripts" / "biome_ids.gd").read_text(encoding="utf-8")
+    engine_biomes = re.findall(r'"([a-z_]+)"', gd.split("const BIOMES", 1)[1].split("= [", 1)[1].split("]", 1)[0])
+    assert list(config_mod.BIOMES) == engine_biomes and len(engine_biomes) == 16
+    b = {i["key"]: i for i in settings.current(Config())}["render.biome"]
+    assert (b["group"], b["value"], b["applies"], b["choices"]) == ("graphics", "auto", "now", ["auto", *engine_biomes])
+    assert "Automatique" in b["help"]
+    path = tmp_path / "config.toml"
+    path.write_text(START, encoding="utf-8")
+    s, _, errors = _session(tmp_path, path)
+    assert s.server.hello_config["biome"] == "auto"
+    s._on_command("set_setting", {"key": "render.biome", "value": "savanna"}, 2)
+    assert not errors and s.cfg.render.biome == "savanna" and s.server.hello_config["biome"] == "savanna"
+    assert tomllib.loads(path.read_text(encoding="utf-8"))["render"]["biome"] == "savanna"
+    s.state.session_state = "RUNNING"
+    s._on_command("set_setting", {"key": "render.biome", "value": "jungle"}, 3)
+    assert not errors and s.cfg.render.biome == "jungle"
+    s._on_command("set_setting", {"key": "render.biome", "value": "lune"}, 4)
+    assert errors[-1][0] == "setting_invalid"
 
 
 def test_settings_with_installed_themes_is_sent(tmp_path: Path):

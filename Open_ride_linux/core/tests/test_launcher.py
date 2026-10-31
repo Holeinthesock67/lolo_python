@@ -296,7 +296,8 @@ def test_signal_stops_both_cleanly(fake, sig):
 def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr("openride_core.config.DEFAULT_CONFIG_PATH", tmp_path / "absent_default.toml")
     cfg = tmp_path / "config.toml"
-    cfg.write_text("[ipc]\nport_state = 6005\nport_commands = 6006\n[render]\nquality = \"high\"\ntheme = \"alpes\"\n")
+    cfg.write_text("[ipc]\nport_state = 6005\nport_commands = 6006\n[render]\nquality = \"high\"\ntheme = \"alpes\"\nbiome = \"savanna\"\n"
+                   "[gravel]\nmode = \"dirt\"\n")
     godot = tmp_path / "godot"
     godot.write_text("#!/bin/sh\n")
     godot.chmod(0o755)
@@ -305,7 +306,7 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     sup = launcher.build_supervisor(["--trainer", "mock", "--config", str(cfg)], env)
     assert sup.core_cmd[-5:] == ["run", "--trainer", "mock", "--config", str(cfg)]
     assert sup.engine_cmd[0] == str(godot) and "--verbose" in sup.engine_cmd
-    assert sup.engine_cmd[-10:] == [
+    assert sup.engine_cmd[-12:] == [
         "--ipc-state-port=6005",
         "--ipc-cmd-port=6006",
         "--quality=high",
@@ -313,6 +314,8 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
         "--texture-level=auto",
         "--visual-grade=2.5",
         "--camera=follow_near",
+        "--gravel=dirt",
+        "--biome=savanna",
         "--living=on",
         "--load-guard=on",
         "--display=fullscreen",
@@ -325,7 +328,7 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
     no_cfg = launcher.build_supervisor([], {**env})
     assert no_cfg.core_cmd[-(len(launcher.DEFAULT_CORE_ARGS) + 1):] == ["run", *launcher.DEFAULT_CORE_ARGS]
     assert "--autostart" not in launcher.DEFAULT_CORE_ARGS   # menus de l'engine (lot N6)
-    assert no_cfg.engine_cmd[-10:] == [
+    assert no_cfg.engine_cmd[-12:] == [
         "--ipc-state-port=5005",
         "--ipc-cmd-port=5006",
         "--quality=low",
@@ -333,6 +336,8 @@ def test_build_supervisor_reads_config_and_checks_paths(tmp_path: Path, monkeypa
         "--texture-level=auto",
         "--visual-grade=2.5",
         "--camera=follow_near",
+        "--gravel=off",
+        "--biome=auto",
         "--living=on",
         "--load-guard=on",
         "--display=fullscreen",

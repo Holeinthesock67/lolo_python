@@ -104,8 +104,6 @@ ENGINE_ARGS_NOT_FROM_CONFIG: dict[str, str] = {
     "--test-mode": "outils de test",
     "--routes-dir": "outils de test",
     "--culling": "essai du lot S1, aucun gain mesuré",
-    "--gravel": "à relier : lot U16",
-    "--biome": "à relier : lot U16",
 }
 
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
@@ -870,6 +868,8 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--texture-level={cfg.render.texture_level}",
             f"--visual-grade={cfg.render.visual_grade_scale}",
             f"--camera={cfg.render.camera}",
+            f"--gravel={cfg.gravel.mode}",
+            f"--biome={cfg.render.biome}",
             f"--living={'on' if cfg.render.living else 'off'}",
             f"--load-guard={'on' if cfg.render.load_guard else 'off'}",
             f"--display={env.get('OPENRIDE_DISPLAY') or cfg.render.display}",

@@ -11,12 +11,13 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
      "max": 600, "step": 5, "unit": "W", "applies": "next_session"}
 
 `group` range le réglage dans un sous-écran de « Réglages » (`GROUPS` : cycliste, séance, graphisme,
-son, vent, avancé) ; l'engine donne les titres. Le message est envoyé en parties comme `routes` (lot O27).
+son, vent, avancé) ; l'engine donne les titres. `help` (facultatif) : légende d'un réglage dont les choix ne
+se comprennent pas seuls, montrée par l'engine sur la carte de détail (lot U16). Le message est envoyé en parties comme `routes` (lot O27).
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer), `now` (qualité, niveau des textures, thème, mode d'affichage, courbes, images/s,
+la séance suivante, sans relancer), `now` (qualité, niveau des textures, thème, biome, mode d'affichage, courbes, images/s,
 jauge d'abri et volumes : l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le niveau des
-textures, le thème et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief :
+textures, le thème, le biome, le gravel et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief :
 passés par le lanceur à l'engine ;
 progression : lue au démarrage du core ; pris au prochain lancement, l'engine propose de relancer, lot O26).
 
@@ -55,6 +56,7 @@ class Setting:
     unit: str = ""
     applies: str = "next_session"
     scale: float = 1   # valeur du menu = valeur du fichier × scale (lot O26)
+    help: str = ""
 
     @property
     def section(self) -> str:
@@ -77,10 +79,17 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("rider.hr_max_bpm", "FC max", "rider", 1, "bpm"),
     Setting("bike.mass_kg", "Poids du vélo", "rider", 1, "kg"),
     # Séance ; bonus et niveau des bots du mode classique (série T, lots T7, T10 et T13)
-    Setting("trainer.difficulty_pct", "Difficulté en SIM", "ride", 10, "%"),
+    Setting("trainer.difficulty_pct", "Difficulté", "ride", 10, "%",
+            help="Part de la pente envoyée au trainer en SIM : à 50 %, une côte de 6 % se roule à 3 %. "
+                 "Sans effet en ERG."),
     Setting("gearing.start_gear", "Braquet de départ", "ride", 1),
     Setting("powerups.mode", "Bonus", "ride"),
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
+    # Option « gravel » (lot U16, partie gravel) : coupée par défaut, roulement du core et rendu de l'engine
+    Setting("gravel.mode", "Gravel", "ride",
+            help="Coupé : bitume partout. Chemins réels : seules les portions non revêtues du parcours. "
+                 "Chemin compact, gravier ou terre : toute la route. Roulement 2 à 3 fois plus dur, "
+                 "sous le plafond du vent."),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
     Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20
@@ -90,6 +99,9 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("render.fps", "Afficher les images/s", "graphics", applies="now"),
     Setting("render.draft_gauge", "Jauge d'abri des bots", "graphics", applies="now"),
     Setting("render.camera", "Vue de caméra", "graphics", applies="now"),
+    Setting("render.biome", "Biome du décor", "graphics", applies="now",   # lot U16
+            help="Automatique : les biomes du parcours (prairie tempérée sans données). Un autre choix met "
+                 "ce biome sur tout le parcours : sol, végétation, faune et ciel."),
     Setting("render.living", "Décor vivant", "graphics", applies="relaunch"),   # lot O26
     Setting("render.visual_grade_scale", "Relief exagéré", "graphics", 25, "%", "relaunch", 100),
     # Son : volumes par catégorie (docs/AUDIO.md, bus audio de l'engine), curseur de 0 à 100 %
@@ -179,6 +191,8 @@ def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict
     for s in SETTINGS:
         item: dict[str, Any] = {"key": s.key, "label": s.label, "group": s.group, "value": _value(cfg, s),
                                 "applies": s.applies}
+        if s.help:
+            item["help"] = s.help
         ch = choices(s, themes_dir)
         if ch is not None:
             item.update(type="choice", choices=ch)
