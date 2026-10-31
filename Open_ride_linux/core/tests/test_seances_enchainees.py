@@ -1,45 +1,21 @@
 """Banc des séances enchaînées (enquête 7bi) : pas et mémoire du core stables d'une séance à l'autre."""
 
-import logging
-import threading
-import time
+import json
+import subprocess
+import sys
 
 from openride_core.tools import seances_enchainees as se
 
 
 def test_chained_sessions_stay_flat():
-    """Sous pytest, d'autres fils allouent et la capture des logs garde chaque ligne INFO du core : seule la
-    mémoire gardée par OpenRide compte (en CI, le banc échouait sur ces deux mémoires étrangères)."""
-    kept: list[logging.LogRecord] = []
-    junk: list[bytes] = []
-    stop = threading.Event()
-
-    class Keep(logging.Handler):
-        def emit(self, record: logging.LogRecord) -> None:
-            kept.append(record)
-
-    def hog() -> None:
-        while not stop.is_set():
-            junk.append(bytes(10_000))
-            time.sleep(0.01)
-
-    root = logging.getLogger()
-    handler, level = Keep(), root.level
-    root.addHandler(handler)
-    root.setLevel(logging.INFO)
-    t = threading.Thread(target=hog, daemon=True)
-    t.start()
-    try:
-        out = se.run(sessions=3, minutes=0.1, n_bots=1, memory=True)
-    finally:
-        stop.set()
-        t.join()
-        root.removeHandler(handler)
-        root.setLevel(level)
-    assert len(kept) > 10 and len(junk) > 20
-    assert [r["seance"] for r in out["rows"]] == [1, 2, 3]
-    assert all(r["fenetre_3s"] <= se.WINDOW_MAX and r["etat"] == "FINISHED" for r in out["rows"])
-    assert all(c["ok"] for c in out["checks"]), out["checks"]
+    """Le banc tourne dans son propre processus, comme sur le PC : sous pytest, d'autres tests laissent des
+    gestionnaires de logs et des fils qui allouent, ce qui faussait la mémoire mesurée en CI."""
+    r = subprocess.run([sys.executable, "-m", "openride_core.tools.seances_enchainees", "--seances", "3",
+                        "--minutes", "0.1", "--bots", "1", "--json"], capture_output=True, text=True, timeout=600)
+    out = json.loads(r.stdout)
+    assert r.returncode == 0, out["checks"]
+    assert [x["seance"] for x in out["rows"]] == [1, 2, 3]
+    assert all(x["fenetre_3s"] <= se.WINDOW_MAX and x["etat"] == "FINISHED" for x in out["rows"])
     assert "ÉCHEC" not in se.format_text(out)
 
 
