@@ -24,9 +24,9 @@ Le **rôle** dit où la couche s'affiche : `flat` sur le plat, `steep` dans les 
 | `temperate_forest` | neige (high) | Snow 006 (ambientCG) | <https://ambientcg.com/view?id=Snow006> |
 | `farmland` | champs et chaumes (flat) | Grass Ground (Poly Haven) | <https://polyhaven.com/a/grass_ground> |
 | `farmland` | talus (steep) | Ground 079 S (ambientCG) | <https://ambientcg.com/view?id=Ground079S> |
-| `alpine` | pelouse rase (flat) | Rocky Terrain 02 (Poly Haven) | <https://polyhaven.com/a/rocky_terrain_02> |
-| `alpine` | éboulis et rocher (steep) | Gravel 033 (ambientCG) | <https://ambientcg.com/view?id=Gravel033> |
-| `alpine` | neige et glacier (high) | Snow 001 (ambientCG) | <https://ambientcg.com/view?id=Snow001> |
+| `alpine` | herbe du parcours de démonstration (flat) | Grass 001 (ambientCG), comme la prairie | <https://ambientcg.com/view?id=Grass001> |
+| `alpine` | roche du parcours de démonstration (steep) | Rock 026 (ambientCG), comme la prairie | <https://ambientcg.com/view?id=Rock026> |
+| `alpine` | neige du parcours de démonstration (high) | Snow 006 (ambientCG), comme la prairie | <https://ambientcg.com/view?id=Snow006> |
 | `mediterranean` | terre ocre et garrigue (flat) | Dry Ground 01 (Poly Haven) | <https://polyhaven.com/a/dry_ground_01> |
 | `mediterranean` | calcaire (steep) | Rock 017 (ambientCG), pierre gris clair | <https://ambientcg.com/view?id=Rock017> |
 | `coast` | sable et oyats (flat) | Coast Sand 02 (Poly Haven) | <https://polyhaven.com/a/coast_sand_02> |

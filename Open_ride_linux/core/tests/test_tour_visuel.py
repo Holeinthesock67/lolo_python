@@ -105,6 +105,13 @@ def test_demo_tour_is_valid() -> None:
     assert any(p.get("weather", {}).get("kind") == "rain" for p in pts)
 
 
+def test_flancs_tour_is_valid() -> None:
+    """Tour des flancs de colline (coutures du terrain avec le relief de séance, 29 octobre)."""
+    doc = json.loads((tv.TOURS_DIR / "flancs.json").read_text(encoding="utf-8"))
+    pts = tv.validate_tour(doc, "flancs.json")
+    assert doc["world"] == "demo" and len(pts) >= 4
+
+
 @pytest.mark.parametrize("doc, msg", [
     ({"points": [{"s": -1}]}, "distance"),
     ({"points": [{"s": 10, "camera": "drone"}]}, "camera"),

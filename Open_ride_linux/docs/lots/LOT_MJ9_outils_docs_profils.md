@@ -35,3 +35,11 @@ Aucune.
 ## 8. Hors périmètre
 
 Recette PC (MJ10).
+
+## Livraison
+
+Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj8b`, même PR que MJ8 : le guide décrit les écrans).
+
+- `tools/recette_v10.py` : profil d'essai activé pendant la recette (et rendu après), OpenRide lancé avec `--profil _essai`, profil de progression et journaux du profil d'essai par défaut ; seule la copie de son `profile.json` est faite (plus de `config.toml` ni du vrai profil). Test `test_recette_rides_on_the_trial_profile`.
+- `GUIDE_UTILISATION.md` §7 : profils de joueurs, migration, « Qui roule ? », saisie du nom, gestion, `openride --profil`, profil d'essai.
+- `OUTILS_DE_TEST.md`, suivi, index.

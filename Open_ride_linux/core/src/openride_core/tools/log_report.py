@@ -121,6 +121,10 @@ CORE_FORMAT_STRINGS: dict[str, tuple[str, str]] = {
         "recorder.py",
         "Export FIT impossible : %s",
     ),
+    "gravel_summary": (
+        "session.py",
+        "Gravel : %.0f m non revêtus sur %.0f m, supplément de pente moyen %.2f points (mode %s)",
+    ),
 }
 
 LINE_RE = re.compile(
@@ -190,6 +194,10 @@ PATTERNS: dict[str, re.Pattern[str]] = {
     ),
     "journal_write_error": re.compile(r"^Écriture du journal impossible : (?P<err>.+)$"),
     "fit_export_error": re.compile(r"^Export FIT impossible : (?P<err>.+)$"),
+    "gravel_summary": re.compile(
+        r"^Gravel : (?P<unpaved>[0-9.]+) m non revêtus sur (?P<ridden>[0-9.]+) m, "
+        r"supplément de pente moyen (?P<offset>-?[0-9.]+) points \(mode (?P<mode>\w+)\)$"
+    ),
 }
 # Lignes « Trainer : … » sans coupure de liaison (renvoi après erreur ATT, bilan de fin).
 TRAINER_INFO_RE = re.compile(r"^(?:écriture 0x[0-9a-fA-F]{2} (?:refusée|acceptée)|\d+ reconnexion\(s\))")
@@ -317,6 +325,7 @@ class Report:
     unreadable_lines: int = 0
     sessions_count: int = 1
     sessions: list[dict[str, Any]] = field(default_factory=list)
+    gravel: list[dict[str, Any]] = field(default_factory=list)   # bilans « Gravel : … » (lot U21)
 
     def to_dict(self) -> dict[str, Any]:
         return asdict(self)
@@ -419,6 +428,12 @@ def _analyse_single_session(lines: list[str]) -> Report:
 
         if PATTERNS["trainer_reconnect"].match(msg):
             rep.trainer.reconnections += 1
+            continue
+
+        m_gravel = PATTERNS["gravel_summary"].match(msg)
+        if m_gravel:
+            rep.gravel.append({"unpaved_m": float(m_gravel.group("unpaved")), "ridden_m": float(m_gravel.group("ridden")),
+                               "mean_offset_pct": float(m_gravel.group("offset")), "mode": m_gravel.group("mode")})
             continue
 
         m_warn = PATTERNS["trainer_warning"].match(msg)
@@ -697,6 +712,7 @@ def _merge_reports(reports: list[Report]) -> Report:
         merged.click.since_press_at_drop_s.extend(r.click.since_press_at_drop_s)
         merged.click.notification_rates.extend(r.click.notification_rates)
         merged.click.drops.extend(r.click.drops)
+        merged.gravel.extend(r.gravel)
 
         merged.pauses.extend(r.pauses)
         merged.transitions.extend(r.transitions)
@@ -805,6 +821,9 @@ def format_report(rep: Report) -> str:
         f"Rust   : seuil SRS §14.1 atteint = {rust_str}",
         f"Alertes: {len(rep.errors)} erreur(s), {len(rep.warnings)} avertissement(s)",
     ]
+    for g in rep.gravel:
+        lines.append(f"Gravel : {g['unpaved_m']:.0f} m non revêtus sur {g['ridden_m']:.0f} m, "
+                     f"supplément moyen {g['mean_offset_pct']:.2f} points (mode {g['mode']})")
     return "\n".join(lines)
 
 

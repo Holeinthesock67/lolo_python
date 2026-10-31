@@ -9,6 +9,7 @@ extends RefCounted
 ##   --theme=NOM              thème visuel actif (défaut : default, lot L4)
 ##   --texture-level=auto|low|medium|high  niveau des textures du décor imposé (défaut : auto, lot P20)
 ##   --biome=ID|auto          biome forcé sur tout le parcours, pour les essais (défaut : auto ; série U, lot U5)
+##   --gravel=off|auto|compacted|gravel|dirt  rendu des routes non revêtues (défaut : off ; série U, lot U22)
 ##   --visual-grade=K         exagération visuelle du relief de 1.0 à 3.0 (défaut : 2.5, lots Q2 et Y15)
 ##   --perf-probe=FICHIER.csv sonde de performance : une ligne de mesures par seconde (lot X13)
 ##   --sim-session            session simulée (lanceur, code 65) : l'accueil propose de revenir au matériel
@@ -32,6 +33,7 @@ const VALID_TEXTURE_LEVELS := ["auto", "low", "medium", "high"]
 const DisplayMode := preload("res://scripts/display_mode.gd")
 const CameraViews := preload("res://scripts/camera_views.gd")
 const BiomeIds := preload("res://scripts/biome_ids.gd")
+const RoadSurface := preload("res://scripts/road_surface.gd")
 
 static var last_error := ""
 
@@ -44,7 +46,7 @@ static func default_routes_dir() -> String:
 	return _home().path_join(".local/share/openride/routes")
 
 
-## Renvoie {state_port, cmd_port, routes_dir, quality, theme, texture_level, biome, visual_grade, living, culling, load_guard, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
+## Renvoie {state_port, cmd_port, routes_dir, quality, theme, texture_level, biome, gravel, visual_grade, living, culling, load_guard, display, camera, test_mode, sim_session, perf_probe}, avec les valeurs par défaut pour ce qui manque.
 static func parse(args: PackedStringArray) -> Dictionary:
 	last_error = ""
 	var out := {
@@ -55,6 +57,7 @@ static func parse(args: PackedStringArray) -> Dictionary:
 		"theme": DEFAULT_THEME,
 		"texture_level": "auto",
 		"biome": "auto",
+		"gravel": "off",
 		"visual_grade": DEFAULT_VISUAL_GRADE,
 		"living": true,
 		"culling": false,
@@ -84,6 +87,8 @@ static func parse(args: PackedStringArray) -> Dictionary:
 			out["texture_level"] = _texture_level(arg, "auto")
 		elif arg.begins_with("--biome="):
 			out["biome"] = _biome(arg, "auto")
+		elif arg.begins_with("--gravel="):
+			out["gravel"] = _gravel(arg, "off")
 		elif arg.begins_with("--visual-grade="):
 			out["visual_grade"] = _visual_grade(arg, DEFAULT_VISUAL_GRADE)
 		elif arg.begins_with("--perf-probe="):
@@ -174,6 +179,15 @@ static func _biome(arg: String, fallback: String) -> String:
 		printerr("Argument ignoré (biome inconnu) : ", arg)
 		return fallback
 	return val
+
+
+static func _gravel(arg: String, fallback: String) -> String:
+	var val := arg.get_slice("=", 1).strip_edges()
+	if val in RoadSurface.MODES:
+		return val
+	last_error = "--gravel inconnu : « %s » (attendu %s)" % [val, ", ".join(RoadSurface.MODES)]
+	push_warning(last_error)
+	return fallback
 
 
 static func _visual_grade(arg: String, fallback: float) -> float:

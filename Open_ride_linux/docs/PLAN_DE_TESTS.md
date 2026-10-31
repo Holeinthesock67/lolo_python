@@ -10,7 +10,7 @@ Version du 29 octobre 2026 au soir. Ce document dit **quoi tester, où, comment 
 - **Aucun seuil de temps en dur** dans un test : il passe par `engine/tests/perf_budgets.json` (budget du PC et seuil de la CI) et `PerfBudget.check` ; `OPENRIDE_PERF=strict` fait échouer un dépassement.
 - **Essai graphique = captures.** Tout essai de qualité graphique rend ses captures et ses chiffres (images/s, p99, GPU) au propriétaire, et la qualité réellement appliquée est contrôlée (§3.7).
 - **Données privées.** Aucun nom, aucune position précise, aucune adresse Bluetooth réelle, aucun réglage personnel ni aucune trace réelle dans un test ou un rapport versionné (scanner du §3.11).
-- **Résultat attendu partout :** code de sortie 0, aucune ligne `[ÉCHEC]`, aucune erreur ni avertissement Godot hors tolérances connues, nombres de tests égaux à ceux du README (`python3 scripts/recompte_tests.py --verifier`).
+- **Résultat attendu partout :** code de sortie 0, aucune ligne `[ÉCHEC]`, aucune erreur ni avertissement Godot hors tolérances connues, aucun nombre de tests écrit en dur dans la doc (`python3 scripts/recompte_tests.py --verifier`).
 
 ## 2. Niveaux de test
 
@@ -27,7 +27,7 @@ Version du 29 octobre 2026 au soir. Ce document dit **quoi tester, où, comment 
 | Banc simulé | Séances complètes sur Bluetooth simulé dans la vraie scène, captures et images/s | `python3 engine/tests/sim_bench.py --scenario NOM [--native --probe]` | PC (file des mesures) | 2 à 60 min | Contrôles OK ; images/s et p99 dans les budgets |
 | Vitrines | Rendu, biomes, sols, comparés à une référence | `engine/tests/vitrine_rendu.gd`, `engine/tests/vitrine_biomes.gd`, `engine/tests/vitrine_sols.gd` | PC | 1 à 5 min | Pas de sol surexposé ; écarts sous `--max-diff` |
 | Confidentialité | Données interdites dans les fichiers et les commits | `scripts/privacy/privacy_scan.py` | Cloud (chaque PR), crochet pre-commit | < 10 s | Aucune donnée trouvée |
-| Recette PC | Toutes les suites d'un coup, comparées au passage précédent | `python3 scripts/recette_pc.py` | PC | ~25 min | Toutes les étapes OK |
+| Recette PC | Toutes les suites d'un coup, comparées au passage précédent | `python3 scripts/recette_pc.py` | PC | ~40 min | Toutes les étapes OK |
 | Pré-vol | Tout ce qui se vérifie sans pédaler avant une séance | `python3 scripts/pre_vol.py --seance NOM` | PC | ~3 min | « PRÊT À ROULER » |
 | Vélo | Ressenti, matériel réel, recettes guidées | outils du §4.3 | Vélo | 10 min par étape | Cases cochées dans le protocole |
 
@@ -155,7 +155,7 @@ Contrôles communs : démarrage, parcours chargé, captures, aucune erreur Godot
 
 ### 4.1 Recette du PC en une commande (X4)
 
-`python3 scripts/recette_pc.py` enchaîne core, compilateur, engine, bout en bout, tests graphiques, banc des menus et confidentialité ; journal par étape dans `~/OpenRide/recettes/<date>_<heure>/` avec `resume.txt`, `resume.json` et `perf.csv`, comparés au passage précédent. `--rapide` saute les tests lents, les tests graphiques et le banc des menus ; `--seulement core,engine` restreint.
+`python3 scripts/recette_pc.py` enchaîne core, compilateur, engine, bout en bout, tests graphiques, banc des menus, séances simulées de T11 et J7 (`serie_t`, `erg_boutons`, `course_bots`, lot Z2) et confidentialité ; journal par étape dans `~/OpenRide/recettes/<date>_<heure>/` avec `resume.txt`, `resume.json` et `perf.csv`, comparés au passage précédent. `--rapide` saute les tests lents, les tests graphiques, le banc des menus et les séances simulées ; `--seulement core,engine` restreint.
 
 ### 4.2 Pré-vol avant une séance sur le vélo (X36)
 
@@ -229,7 +229,7 @@ Rien de ce tableau n'est sur `main`. À la fusion, chaque PR met à jour le cata
 | Scène graphique | Fonction de scène de `engine/tests/visual_check.py` (capture, `check_texts`, `check_layout`) | Rendue dans la qualité demandée |
 | Changement de contrat | Schéma de `docs/contracts/ipc/`, ligne au journal du contrat, exemple au §7 et test dans `test_contract_ipc.py` | Ajout compatible seulement ; tableau des révisions de la [spécification générale](SPECIFICATION_GENERALE.md#61-révisions-du-contrat-ipc) |
 
-Après l'ajout : `python3 scripts/recompte_tests.py` (nombres du README et du suivi), puis `(cd core && pytest -q tests/test_docs_coherence.py)` (liens, chemins cités, lots).
+Après l'ajout : `python3 scripts/recompte_tests.py` (nombre de tests de chaque suite, rien à réécrire), puis `(cd core && pytest -q tests/test_docs_coherence.py)` (liens, chemins cités, lots).
 
 ## 9. Couverture au 29 octobre face à l'audit du 28 octobre
 

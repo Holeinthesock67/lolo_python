@@ -77,7 +77,9 @@ def test_engine_script_writes_a_valid_junit(tmp_path):
                     'echo "${n%.gd} : 3 vérifications, 0 échecs"\n')
     fake.chmod(fake.stat().st_mode | stat.S_IEXEC)
     out = tmp_path / "engine.xml"
-    env = {**os.environ, "GODOT": str(fake), "UNIT": "test_perf_probe", "ENGINE_JUNIT": str(out)}
+    # Locale française du PC : la durée doit rester « 0.260 » et non « 0,260 ».
+    env = {**os.environ, "GODOT": str(fake), "UNIT": "test_perf_probe", "ENGINE_JUNIT": str(out),
+           "LC_NUMERIC": "fr_FR.UTF-8"}
     script = PROJECT / "engine" / "tests" / "run_engine_tests.sh"
     assert subprocess.run(["bash", str(script)], env=env, capture_output=True, check=False).returncode == 0
     suite = ET.parse(out).getroot().find("testsuite")

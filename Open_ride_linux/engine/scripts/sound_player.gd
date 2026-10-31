@@ -98,6 +98,7 @@ var _wind_player: AudioStreamPlayer
 var _freewheel_player: AudioStreamPlayer
 var _clac_player: AudioStreamPlayer
 var _wheel_player: AudioStreamPlayer     # ronronnement / sifflement des roues (lot V7)
+var _gravel_player: AudioStreamPlayer    # crissement des pneus sur la terre et le gravier (lot U22)
 var clacs_played := 0                   # « clac » de reprise joués (tests)
 var _poi_players: Array[AudioStreamPlayer3D] = []
 
@@ -139,6 +140,13 @@ func _init_players() -> void:
 	_wheel_player.volume_db = SoundModel.SILENCE_DB
 	_wheel_player.bus = AudioMix.bus(AudioMix.RIDE)
 	add_child(_wheel_player)
+
+	_gravel_player = AudioStreamPlayer.new()
+	_gravel_player.name = "GravelPlayer"
+	_gravel_player.stream = _streams.get("gravel", null)
+	_gravel_player.volume_db = SoundModel.SILENCE_DB
+	_gravel_player.bus = AudioMix.bus(AudioMix.RIDE)
+	add_child(_gravel_player)
 
 	_clac_player = AudioStreamPlayer.new()
 	_clac_player.name = "ClacPlayer"
@@ -264,6 +272,16 @@ func update_audio(state: Dictionary, now_s: float, rider_pos: Vector3) -> Dictio
 		elif _wheel_player.playing:
 			_wheel_player.stop()
 
+	# Gravier (lot U22)
+	var gr: Dictionary = eval["gravel"]
+	_gravel_player.volume_db = float(gr["volume_db"])
+	_gravel_player.pitch_scale = float(gr["pitch"])
+	if is_inside_tree():
+		if float(gr["volume_db"]) > SoundModel.SILENCE_DB and not _gravel_player.playing and _gravel_player.stream != null:
+			_gravel_player.play()
+		elif float(gr["volume_db"]) <= SoundModel.SILENCE_DB and _gravel_player.playing:
+			_gravel_player.stop()
+
 	# POIs spatialisés (au plus 4)
 	var pois: Array = eval["pois"]
 	for i in range(_poi_players.size()):
@@ -341,6 +359,8 @@ func _generate_all_streams() -> void:
 		_streams[k] = custom_voice if custom_voice != null else _synthesize_voice(k)
 	_streams["wheel_hum"] = _synthesize_wheel("hum")
 	_streams["wheel_whistle"] = _synthesize_wheel("whistle")
+	var custom_gravel = _try_load_custom("gravel")
+	_streams["gravel"] = custom_gravel if custom_gravel != null else _synthesize_gravel()
 	var custom_clac = _try_load_custom("clac")
 	_streams["clac"] = custom_clac if custom_clac != null else _synthesize_clac()
 	for bed in AmbienceModel.BEDS:
@@ -588,6 +608,54 @@ static func _synthesize_wheel(kind: String) -> AudioStreamWAV:
 		else:
 			v = 0.4 * sin(TAU * 1760.0 * t) * (0.8 + 0.2 * sin(TAU * 6.0 * t))
 		bytes.encode_s16(i * 2, clampi(int(v * 0.6 * 32767.0), -32768, 32767))
+	wav.data = bytes
+	return wav
+
+
+## Crissement de gravier (lot U22), boucle d'une seconde : souffle sourd de roulement (bruit passe-bas) et
+## 260 petits grains secs par seconde (cailloux chassés par le pneu), d'intensité et de place irrégulières ;
+## les grains qui dépassent la fin reprennent au début (raccord sans clic).
+static func _synthesize_gravel() -> AudioStreamWAV:
+	var n := SAMPLE_COUNT
+	var rng := RandomNumberGenerator.new()
+	rng.seed = 0x67726176
+	# Souffle sur n + fade échantillons, puis fondu de la fin dans le début : la boucle se raccorde sans marche.
+	var fade := int(0.05 * MIX_RATE)
+	var noise := PackedFloat32Array()
+	noise.resize(n + fade)
+	var lp := 0.0
+	for i in range(n + fade):
+		lp += 0.08 * ((rng.randf() * 2.0 - 1.0) - lp)
+		noise[i] = lp * 1.6
+	var buf := PackedFloat32Array()
+	buf.resize(n)
+	for i in range(n):
+		buf[i] = noise[i]
+	for i in range(fade):
+		var w := float(i) / fade
+		buf[i] = noise[i] * w + noise[n + i] * (1.0 - w)
+	var grain_len := int(0.003 * MIX_RATE)
+	for k in range(260):
+		var at := rng.randi_range(0, n - 1)
+		var amp := rng.randf_range(0.15, 0.6)
+		var f := rng.randf_range(1800.0, 4200.0)
+		for j in range(grain_len):
+			var tt := float(j) / MIX_RATE
+			buf[(at + j) % n] += amp * sin(TAU * f * tt) * exp(-tt / 0.0008)
+	var peak := 0.0
+	for i in range(n):
+		peak = maxf(peak, absf(buf[i]))
+	var wav := AudioStreamWAV.new()
+	wav.format = AudioStreamWAV.FORMAT_16_BITS
+	wav.mix_rate = MIX_RATE
+	wav.stereo = false
+	wav.loop_mode = AudioStreamWAV.LOOP_FORWARD
+	wav.loop_begin = 0
+	wav.loop_end = n
+	var bytes := PackedByteArray()
+	bytes.resize(n * 2)
+	for i in range(n):
+		bytes.encode_s16(i * 2, clampi(int(buf[i] / maxf(peak, 1e-6) * 0.5 * 32767.0), -32768, 32767))
 	wav.data = bytes
 	return wav
 

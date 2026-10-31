@@ -150,6 +150,15 @@ class WindConfig:
 
 
 @dataclass
+class GravelConfig:
+    """Option « gravel » (lots U1 et U21, SRS §5 et §11) : roulement des routes non revêtues ; coupée par défaut."""
+    mode: str = "off"              # "off", "auto" (colonne surface du parcours), "compacted", "gravel", "dirt"
+    factor_compacted: float = 2.0  # multiplicateur du crr du bitume
+    factor_gravel: float = 2.5
+    factor_dirt: float = 3.0
+
+
+@dataclass
 class ProgressionConfig:
     """Progression de la série V (lot V11) ; faux : ni équipement ni `progression`, comme avant la 2.0."""
     enabled: bool = True
@@ -218,6 +227,7 @@ class Config:
     drivers: DriversConfig = field(default_factory=DriversConfig)
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
+    gravel: GravelConfig = field(default_factory=GravelConfig)
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
     avatar: AvatarConfig = field(default_factory=AvatarConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
@@ -280,6 +290,9 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("wind", "from_deg"): (0, 360),
     ("wind", "gust_pct"): (0, 100),
     ("wind", "max_grade_offset_pct"): (0, 8),
+    ("gravel", "factor_compacted"): (1, 3),
+    ("gravel", "factor_gravel"): (1, 3),
+    ("gravel", "factor_dirt"): (1, 3),
     ("avatar", "standing_grade_pct"): (3, 15),
     ("avatar", "standing_power_pct"): (100, 300),
     ("rogue", "w_prime_j"): (5000, 60000),
@@ -313,6 +326,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "hr"): ("none", "ble", "sim"),
     ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
     ("wind", "feel"): ("grade", "ftms"),
+    ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
     ("powerups", "mode"): ("on", "off"),
 }
 

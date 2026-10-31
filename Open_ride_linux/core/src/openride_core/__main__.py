@@ -43,6 +43,10 @@ Sous-commandes disponibles à ce stade :
     openride-core ftp-test [FICHIER] [--accept [--force]] [--history] [--json] [--config FICHIER]
                                       résultat du dernier test de FTP (ou du journal donné),
                                       enregistrement de la nouvelle FTP, historique des tests (lot O10)
+    openride-core demo-biomes [--out DOSSIER] [--json]
+                                      parcours de démonstration des biomes (tour des six biomes,
+                                      tour gravel, côte et mer, alpin) dans le dossier des parcours
+                                      (lot U19 ; compilateur requis)
     openride-core profil list [--json] | create NOM | rename ID NOM | delete ID
                                       profils de joueurs : liste, création, renommage, corbeille
                                       (série MJ, lot MJ7)
@@ -340,6 +344,31 @@ def cmd_open_world_save(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_demo_biomes(args: argparse.Namespace) -> int:
+    from . import config as config_mod
+    from .demo_world import write_biome_demo_worlds
+
+    out = args.out or config_mod.ROUTES_DIR
+    try:
+        infos = write_biome_demo_worlds(out)
+    except ImportError as exc:
+        print(f"openride-core demo-biomes : compilateur non installé ({exc}) ; pip install -e compiler",
+              file=sys.stderr)
+        return 2
+    except (FileNotFoundError, RuntimeError, ValueError) as exc:
+        print(f"openride-core demo-biomes : {exc}", file=sys.stderr)
+        return 1
+    if args.json:
+        print(json.dumps(infos, indent=2, ensure_ascii=False))
+        return 0
+    for info in infos:
+        shares = ", ".join(f"{b} {v:.0f} %" for b, v in info["shares"].items())
+        gravel = f" ; non revêtu {100.0 - info['surface_pct'].get('paved', 100.0):.0f} %" if info["surface_pct"] else ""
+        print(f"{info['route']} : {info['length_m'] / 1000.0:.1f} km, {shares}{gravel}")
+    print(f"Parcours écrits dans {out}.")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     """Analyseur de la ligne de commande ; aussi lu par `test_docs_coherence.py` (commandes citées)."""
     p = argparse.ArgumentParser(prog="openride-core")
@@ -462,6 +491,10 @@ def build_parser() -> argparse.ArgumentParser:
     ows.add_argument("--config", type=Path, help="config.toml (défaut : ~/OpenRide/config.toml)")
     ows.add_argument("--gpx-dir", type=Path, help="dossier des traces (défaut : ~/OpenRide/GPX)")
     ows.add_argument("--journal-dir", type=Path, help="journaux (défaut : ~/OpenRide/Activities/.journal)")
+    dmb = sub.add_parser("demo-biomes", help="parcours de démonstration des biomes dans le dossier des parcours "
+                                             "(lot U19, compilateur requis)")
+    dmb.add_argument("--out", type=Path, help="dossier de sortie (défaut : ~/.local/share/openride/routes)")
+    dmb.add_argument("--json", action="store_true", help="sortie JSON (parts des biomes et des surfaces)")
     prf = sub.add_parser("profil", help="profils de joueurs : liste, création, renommage, corbeille ; "
                                         "profil d'essai (série MJ)")
     prf.add_argument("action", choices=["essai", "list", "create", "rename", "delete"])
@@ -507,7 +540,7 @@ def main(argv: list[str] | None = None) -> int:
             "fit-check": cmd_fit_check,
             "history": cmd_history, "devices": cmd_devices,
             "plan": cmd_plan, "settings": cmd_settings, "ftp-test": cmd_ftp_test,
-            "open-world-save": cmd_open_world_save, "profil": cmd_profil}[args.command](args)
+            "open-world-save": cmd_open_world_save, "demo-biomes": cmd_demo_biomes, "profil": cmd_profil}[args.command](args)
 
 
 if __name__ == "__main__":

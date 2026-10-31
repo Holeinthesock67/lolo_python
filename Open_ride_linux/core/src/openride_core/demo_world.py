@@ -13,6 +13,10 @@ Le parcours de démonstration commun au core et à l'engine (`demo`, 5 000 m) es
 `write_demo_world` avec une date de création fixe, pour être identique octet pour octet :
     python -m openride_core.tools.fake_world --demo --out ../engine/demo
 
+Les quatre parcours de démonstration des biomes (lot U19) sont écrits par `write_biome_demo_worlds`, qui
+appelle le générateur `engine/tests/make_biome_world.py` (compilateur requis) :
+    openride-core demo-biomes [--out DOSSIER]
+
 La couche `segments.json` (format 1.3, lot T3) porte les montées et sprints détectés
 automatiquement par `segments.py`, sans segment manuel (décision du 27 octobre).
 """
@@ -167,3 +171,24 @@ def ensure_demo_world(routes_root: Path) -> Path:
     if not (world / "manifest.json").is_file():
         write_demo_world(routes_root)
     return world
+
+
+def write_biome_demo_worlds(out_dir: Path, engine_dir: Path | None = None) -> list[dict]:
+    """Écrit les quatre parcours de démonstration des biomes (lot U19) dans `out_dir` : tour des six biomes,
+    même tour avec un tiers de gravel, côte avec la mer, alpin. Renvoie le résumé de chacun.
+    Lève ImportError sans le compilateur, FileNotFoundError sans le générateur de l'engine."""
+    import importlib.util
+    import os
+
+    from .launcher import DEFAULT_ENGINE_DIR
+
+    engine = Path(engine_dir or os.environ.get("OPENRIDE_ENGINE") or DEFAULT_ENGINE_DIR).expanduser()
+    script = engine / "tests" / "make_biome_world.py"
+    if not script.is_file():
+        raise FileNotFoundError(f"générateur introuvable : {script} (définir OPENRIDE_ENGINE)")
+    import openride_compiler  # noqa: F401  (ImportError explicite si le compilateur manque)
+    spec = importlib.util.spec_from_file_location("make_biome_world", script)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    return module.write_demo_set(Path(out_dir))

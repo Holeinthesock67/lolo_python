@@ -19,7 +19,8 @@ Barème (documenté aussi dans `docs/contracts/world_format_v1.md`, champ `stats
 - durée à une autre puissance (la FTP de la configuration) : interpolée dans `durations_s`,
   durées rangées de 100 à 400 W par pas de 25 W ;
 - difficulté de 1 à 5 : 5 si montée HC ou plus de 2 000 m de dénivelé positif, 4 si catégorie 1
-  ou 1 200 m, 3 si catégorie 2 ou 600 m, 2 si catégorie 3 ou 4 ou 200 m, sinon 1.
+  ou 1 200 m, 3 si catégorie 2 ou 600 m, 2 si catégorie 3 ou 4 ou 200 m, sinon 1 ;
+- parts des surfaces (`surface_pct`, depuis 1.6) : en % des points de la colonne `surface`, quand elle existe.
 
 Comparaison à Garmin Connect (lot X31, recette 1.0 ligne 22) : `compare_garmin` met en face des valeurs
 lues dans Garmin Connect la pente maximale (même fenêtre glissante, 100 m par défaut), le dénivelé positif
@@ -53,6 +54,7 @@ RHO = 1.225
 G = 9.81
 V_DESCENT_MAX = 20.0
 DURATION_POWERS_W = tuple(range(100, 401, 25))
+SURFACES = ("paved", "compacted", "gravel", "dirt")
 GARMIN_GRADE_TOL_PT = 1.0
 GARMIN_GAIN_TOL = 0.05
 GARMIN_LENGTH_TOL = 0.01
@@ -189,7 +191,14 @@ def compute_stats(route: dict[str, Any], power_w: float = 200.0) -> dict[str, An
         "duration_200w_s": round(estimate_duration_s(route, power_w)),
         "durations_s": {str(w): round(estimate_duration_s(route, w)) for w in DURATION_POWERS_W},
         "difficulty": difficulty(gain, main["category"] if main else None),
+        **({"surface_pct": surface_pct(route["surface"])} if route.get("surface") else {}),
     }
+
+
+def surface_pct(surface: list[str]) -> dict[str, float]:
+    """Part de chaque surface sur le parcours, en % des points (format 1.6, lot U20)."""
+    n = len(surface)
+    return {s: round(100.0 * surface.count(s) / n, 1) for s in SURFACES if s in surface}
 
 
 def compare_garmin(route: dict[str, Any], max_grade_pct: float, gain_m: float, length_km: float | None = None,

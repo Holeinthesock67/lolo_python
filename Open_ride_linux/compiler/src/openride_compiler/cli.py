@@ -36,6 +36,7 @@ from .errors import EXIT_INPUT, EXIT_INTERNAL, EXIT_OK, CompileError
 from .frame import LocalFrame
 from .track_formats import read_track, scan_tracks, track_stem
 from .osm import OverpassClient
+from .surface import apply_surface, surface_summary
 from .osm_layers import (
     build_osm_layers,
     buildings_manifest,
@@ -110,6 +111,8 @@ def build_parser() -> argparse.ArgumentParser:
     b.add_argument("--force", action="store_true", help="remplace un .world existant")
     b.add_argument("--layers", type=parse_layers, default=DEFAULT_LAYERS,
                    help="couches à produire, séparées par des virgules (défaut : route,terrain,segments)")
+    b.add_argument("--no-surface", action="store_true",
+                   help="ne cherche pas la surface de la route dans OSM (pas de colonne surface, avant U20)")
     b.add_argument("--offline", action="store_true",
                    help="interdit le réseau : les tuiles d'altitude et OSM doivent être en cache")
 
@@ -292,6 +295,11 @@ def cmd_build(args: argparse.Namespace) -> int:
             manifest["layers"]["water"] = water_manifest(osm_res)
         if "roads" in args.layers:
             manifest["layers"]["roads"] = roads_manifest(osm_res)
+        if not args.no_surface:   # surface de la route (lot U20), avec les couches OSM
+            values = apply_surface(compiled.route, manifest, osm_client, frame)
+            print(surface_summary(values), file=sys.stderr)
+            if values is not None:
+                manifest["stats"] = compute_stats(compiled.route)
 
     def extra(folder: Path) -> None:
         if segments is not None:
@@ -809,6 +817,7 @@ def cmd_build_all(args: argparse.Namespace) -> int:
                 force=True,
                 layers=args.layers,
                 offline=args.offline,
+                no_surface=False,
             )
             cmd_build(sub_args)
             compiled_count += 1
