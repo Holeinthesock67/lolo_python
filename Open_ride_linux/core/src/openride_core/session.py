@@ -275,6 +275,7 @@ class CoreSession:
         self._wind_pending = False    # trame `wind` décalée parce que la trame portait `devices`
         self._draft = 0.0             # abri lissé derrière un bot (lot P3)
         self._draft_bot: str | None = None
+        self._lane = self._rider_lane()   # écart à l'axe du cycliste (lot AS2)
         self._bot_cda = {id(b): b.params.cda_m2 for b in self.bots if getattr(b, "params", None)}
         self.route: Route | None = None
         self._segments: tuple = ()               # couche segments du parcours (série T)
@@ -449,6 +450,7 @@ class CoreSession:
             if game_mode == "wtf":
                 self._start_wtf()
             self._new_race(classic=self.wtf is None)
+            self._lane = self._rider_lane()   # réglage « Placement dans la roue » lu à chaque départ
             self._set_state("RUNNING")
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
@@ -944,6 +946,7 @@ class CoreSession:
         sinon) ; renvoie faux (rien ne démarre, `error` `bot_invalid`) si la liste est refusée."""
         if args.get("bots") is None:
             self._set_bots(self._cli_bots)   # sans `bots` : ceux de la ligne de commande (--bot, --ghost)
+            draft_mod.start_grid(self.bots, self.physics.s)
             return True
         from .bots import BotError, bots_from_menu
 
@@ -955,6 +958,7 @@ class CoreSession:
             self.server.send_error("bot_invalid", f"Bots refusés : {exc}")
             return False
         self._set_bots(bots)
+        draft_mod.start_grid(self.bots, self.physics.s)   # grille de départ (lot AS2) : pas de bots empilés
         return True
 
     def _set_bots(self, bots: list[Any]) -> None:
@@ -2264,6 +2268,7 @@ class CoreSession:
         if self.bots:
             st.draft = round(self._draft, 3)
             st.draft_bot = self._draft_bot if st.draft > 0.0 else None
+            st.lane_m = round(self._lane.m, 2)
 
         if self._rec and self._t_session >= self._next_record:
             self._next_record += 1.0
@@ -2311,21 +2316,32 @@ class CoreSession:
                  unpaved, ridden, offsets / steps if steps else 0.0, self.cfg.gravel.mode)
         self._gravel_stats = [0.0, 0.0, 0.0, 0]
 
+    def _rider_lane(self) -> draft_mod.Lane:
+        """Écart à l'axe du cycliste (lot AS2) : 1,2 m, placement automatique selon `ride.auto_draft`."""
+        return draft_mod.Lane(draft_mod.RIDER_LANE_M, draft_mod.RIDER_LANE_M,
+                              auto=self.cfg.ride.auto_draft == "on")
+
     def _update_draft(self, dt: float, route: Route | None, heading_deg: float) -> None:
         """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; abri, roue suivie et
-        poussée des bots (lot AS1, `draft.update_bots`), tous sur les positions du pas précédent."""
+        poussée des bots (lot AS1, `draft.update_bots`), tous sur les positions du pas précédent. Avant eux,
+        placement sur la route du cycliste et des bots (lot AS2, `draft.update_lanes`)."""
         length = route.length_m if route else None
         is_loop = bool(route and route.is_loop)
+        runners = [(self.physics.s, self.physics.v, self._lane)]
+        runners += [(b.s, b.v, b.lane) for b in self.bots
+                    if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None]
+        draft_mod.update_lanes(runners, dt, length, is_loop)
         ws = self._wind_sample if self.wind.active else None
 
         def cross_at(heading: float) -> float:
             return ws.speed_mps * math.sin(math.radians(ws.from_deg - heading)) if ws else 0.0
 
         cross = cross_at(heading_deg)
-        draft_mod.update_bots(self.bots, draft_mod.Source(self.physics.s, self.physics.v), dt, length, is_loop,
+        draft_mod.update_bots(self.bots, draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m),
+                              dt, length, is_loop,
                               (lambda b: cross_at(route.sample(b.s).heading_deg)) if ws and route else None)
         target, bot_id = draft_mod.best_draft(self.physics.s, self.bots, length, is_loop,
-                                              self.physics.v, self._head_mps, cross)
+                                              self.physics.v, self._head_mps, cross, lane_m=self._lane.m)
         self._draft = draft_mod.smooth(self._draft, target, dt)
         if bot_id is not None:
             self._draft_bot = bot_id

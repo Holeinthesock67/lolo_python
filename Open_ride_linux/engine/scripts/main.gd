@@ -910,10 +910,14 @@ func _process(delta: float) -> void:
 		var s_route: float = route.wrap_s(s_disp)
 		# Cap et pente de la route (lot Q2) ; dans Godot, -Z est le nord et la rotation Y suit le cap horaire.
 		var heading: float = deg_to_rad(route.sample_heading_deg(s_route))
-		var pos := _rider_point(s_route, heading)
+		# Écart à l'axe (lot AS2) : l'avatar suit `lane_m` du core, la caméra le suit avec 0,5 s de lissage.
+		var lane = _last_state.get("lane_m", null)
+		follow.update_lane(float(lane) if (lane is float or lane is int) else RoadBuilder.RIDER_LATERAL_M, -1.0, now)
+		var pos := _rider_point(s_route, heading, follow.lane_m)
 		var pitch_deg: float = follow.pitch_deg(route, s_route, float(follow.last_frame["v"]))
 		# Vue de caméra courante (lot V12) : subjective à 1,4 m (hauteur des yeux), suivi proche ou éloigné, latérale.
-		camera.global_transform = camera_views.step(delta, camera_views.goal(pos, heading, pitch_deg))
+		camera.global_transform = camera_views.step(delta, camera_views.goal(_rider_point(s_route, heading, follow.camera_lane_m),
+			heading, pitch_deg))
 		camera.fov = CameraViews.fov_deg(_base_fov, pitch_deg)   # respire avec la pente (lot Y15)
 		avatar_view.set_visible_for_view(_avatar_view_name())
 		# Fenêtre de tronçons et de tuiles autour de la position affichée (world_streamer.gd).
@@ -1262,6 +1266,8 @@ func _avatar_info() -> Dictionary:
 	var info: Dictionary = avatar_view.test_info()
 	info["standing"] = avatar_model.standing
 	info["crank"] = avatar_model.crank_angle
+	info["lane_m"] = follow.lane_m            # écart à l'axe affiché (lot AS2)
+	info["camera_lane_m"] = follow.camera_lane_m
 	info["on_screen"] = avatar_view.visible and not camera.is_position_behind(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)) \
 		and get_viewport().get_visible_rect().has_point(camera.unproject_position(avatar_view.global_position + Vector3(0.0, 1.0, 0.0)))
 	return info
@@ -1366,10 +1372,11 @@ func _configure_avatar() -> void:
 	avatar_view.set_visible_for_view(_avatar_view_name())
 
 
-## Place du cycliste à `s` : dans la voie de droite, à RoadBuilder.RIDER_LATERAL_M de l'axe (lot P32) ; `heading`
-## en radians. La caméra, l'avatar et la vue des menus en partent.
-func _rider_point(s: float, heading: float) -> Vector3:
-	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * RoadBuilder.RIDER_LATERAL_M
+## Place du cycliste à `s` : dans la voie de droite, à `lateral` de l'axe (RoadBuilder.RIDER_LATERAL_M, lot P32 ;
+## en séance avec des bots, `lane_m` du core, lot AS2) ; `heading` en radians. La caméra, l'avatar et la vue des
+## menus en partent.
+func _rider_point(s: float, heading: float, lateral: float = RoadBuilder.RIDER_LATERAL_M) -> Vector3:
+	return route.sample_point(s) + Vector3(cos(heading), 0.0, sin(heading)) * lateral
 
 
 ## Vue de caméra courante (l'avatar est masqué en subjective) ; une caméra de contrôle de test prend le pas.
