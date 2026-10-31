@@ -15,7 +15,7 @@ Demande du propriétaire du 26 octobre : « Si on choisit le mode ERG il faudra 
 
 | Écran | Contenu |
 | --- | --- |
-| « Session ERG : entraînement » | « Sans entraînement (SIM) », les entraînements du dossier (`.zwo`, `.erg`, `.mrc`, durée), puis « Créer un entraînement (intervalles) » et « Importer un fichier (.zwo, .erg, .mrc) » ; ligne d'état sous le titre après une création ou un import |
+| « Session ERG : entraînement » | « Sans entraînement (SIM) », les entraînements du dossier (`.zwo`, `.erg`, `.mrc`, durée), puis « Créer un entraînement (intervalles) » et « Importer un fichier » ; ligne d'état sous le titre après une création ou un import |
 | « Créer un entraînement » | Échauffement (0 à 30 min), répétitions (1 à 20), effort (15 s à 20 min, pas de 15 s), puissance de l'effort (50 à 200 % de la FTP), récupération, puissance de la récupération (30 à 100 %), retour au calme ; chaque valeur se règle sur l'écran de modification des réglages (lot O4 : + / −, appui long + pour garder, appui long − pour annuler) ; « Enregistrer et choisir » (détail : nom et durée totale) |
 | « Importer un entraînement » | Fichiers `.zwo`, `.erg` et `.mrc` de `~/Téléchargements`, `~/Downloads`, `~/Bureau`, `~/Desktop`, `~/OpenRide/Import` et du dossier personnel (sans sous-dossiers), les plus récents d'abord (30 au plus), avec le dossier d'origine et « déjà importé » |
 

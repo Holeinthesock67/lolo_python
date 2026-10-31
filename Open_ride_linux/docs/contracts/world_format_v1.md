@@ -361,6 +361,10 @@ Themes/alpes-ete/
 - Ajouter un thème = ajouter un dossier ; aucune recompilation des parcours n'est nécessaire.
 - Les textures normales, rugosité et autres cartes PBR sont des extensions futures du même format.
 
+**Niveaux de textures (lot P20, ajout compatible).** Clé facultative `texture_levels` : liste `{name, max_px, dir}` (côté maximal en puissance de 2, dossier relatif au thème), par exemple `{"name": "1024 px", "max_px": 1024, "dir": "levels/1024"}`. Chaque chemin de texture est cherché d'abord sous le dossier du niveau retenu (`levels/1024/textures/grass_albedo.png`), puis sous ceux des niveaux inférieurs, puis à la racine ; absent partout : couleur unie, avec un avertissement, jamais d'échec de séance. L'engine retient le niveau du préréglage (1 024 px en `low` et `medium`, 2 048 en `high`) ou celui de `[render] texture_level`, sous un budget de mémoire vidéo (512 Mo en `low`, 1 Go en `medium` et `high`, tailles décompressées mipmaps comprises) ; sans `texture_levels` (liste vide par défaut), il réduit les images du thème au même côté. `theme-check` exige dans chaque niveau la même liste d'images, toutes au plus de `max_px` ; `theme-pack DOSSIER --levels 512,1024,2048` fabrique les niveaux.
+
+**Provenance des images (lot P20).** Fichier facultatif `provenance.toml` à la racine du pack, une entrée `[[image]]` par image : `file` (chemin à la racine du pack), `source` (`cc0` ou `gemini`), `date`, `url` et `license` (CC0) ou `prompt` (consigne exacte, Gemini), `tileable`. Une image `gen_…` sans entrée est refusée, une image `gemini` de plus de 1 024 px aussi, une image `tileable` dont les bords opposés ne se raccordent pas aussi (`theme-pack --fix-seams` les fond) ; un pack sans ce fichier et sans image `gen_` est accepté avec un avertissement.
+
 **Décor vivant (thème 1.2, lot P1).** Clés facultatives, ignorées par un engine qui ne les connaît pas ; le thème par défaut donne un été calme.
 
 | Clé | Contenu | Lot qui l'utilise |
@@ -476,6 +480,7 @@ Une tuile de 101 × 101 échantillons `float32` pèse 40 804 octets.
 | 1.4 | 27 octobre 2026 | Ajout compatible (lot W1, premier mineur libre après T1) : monde vivant du monde ouvert (§13) : `live`, `origin_kind`, `grid` dans le manifeste, `live.json`, route par parties, couches par tuile en coordonnées relatives au coin, `junctions.json` ; schémas `live`, `route_part`, `junctions` |
 | 1.5 | 27 octobre 2026 | Ajout compatible (lot P22) : terrains ouverts `meadow`, `farmland` et `grassland` de la couche végétation, de densité 0 (§7) ; couche facultative `roads/` des routes voisines (§8 ter), entrée `layers.roads` du manifeste (`present`, `version`, `count`, `osm_date`) et schéma `docs/contracts/world/roads.schema.json` ; `verify` les contrôle ; un `.world` 1.3 reste valide |
 | 1.6 | 28 octobre 2026 | Ajout compatible (lot U1, partie format, série U avancée avant la 3.0 sur décision du propriétaire) : couche facultative `biome/near` et `biome/far` (§8 quater) et entrée `layers.biome` ; couche facultative `coast/` (§8 quinquies) et entrée `layers.coast` ; aire d'eau `sea` (§8) ; colonne facultative `surface` de la route, `route.surface_source` et `stats.surface_pct` (§4) ; thème 2.0 en pack de biomes (§9). Schémas `biome.schema.json` et `coast.schema.json`, exemples dans `docs/contracts/world/examples/`. La partie IPC et configuration du lot U1 (`hello_ack.config.biome` et `.gravel`, `[render] biome`, `[gravel]`) attend le lot U16. Un `.world` 1.5 reste valide |
+| 1.6 | 30 octobre 2026 | Ajout compatible au thème (lot P20, sans changement du format `.world`) : clé `texture_levels` et fichier `provenance.toml` des packs (§9) ; sous-commande `theme-pack` |
 
 ## 13. Monde vivant (monde ouvert, série W)
 

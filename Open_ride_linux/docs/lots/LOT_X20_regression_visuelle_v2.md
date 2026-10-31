@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série X (outils de test) : Non-régression visuelle v2 : SSIM, scènes figées, références par moteur et préréglage | Python + GDScript | S1 (`compare_captures.py`) | Moyenne | Oui ; issue #218 |
+| Série X (outils de test) : Non-régression visuelle v2 : SSIM, scènes figées, références par moteur et préréglage | Python + GDScript | S1 (`compare_captures.py`) | Moyenne | Oui ; issue #218 ; complément Z3 du 31 octobre (`vitrine_compare.py` : SSIM, comptes du CSV, planche avant/après) |
 
 ## 1. Objectif
 
@@ -50,3 +50,14 @@ Les vitrines par biome (série U), le banc visuel du Cyber-Rogue (série R).
 - **CI** : `run_engine_tests.sh` passe `--fige` et, en `1280x720:low`, compare aux vignettes du dépôt.
 - Tests : `core/tests/test_image_diff.py` (6 tests : identique, bruit léger, objet déplacé, masque, vignette et format, PNG et carte, ligne de commande, ciel modifié sur une vignette du dépôt) ; `engine/tests/unit/test_scene_freeze.gd` (9 vérifications).
 - Reste : les menus en `1024×600` et `1920×1080` ont leurs scènes (`menu_accueil`, `bilan`) dans la matrice complète de `run_visual_tests.sh`, avec des références natives à créer sur le PC (`run_visual_tests.sh --native --update-golden`) ; les écrans Réglages et Pause comme scènes de référence attendent le banc des menus.
+
+## 9. Complément Z3 (31 octobre)
+
+Audit de couverture des tests du 28 octobre, lot Z3 accepté par le propriétaire le 31 octobre : les vitrines (rendu, biomes, sols) étaient comparées par l'écart moyen de `compare_captures.py`, sans regarder les comptes du CSV ni produire de planche.
+
+- **`engine/tests/vitrine_compare.py AVANT APRES`** : SSIM des vignettes de 640 pixels de chaque capture (`image_diff.py`, seuil `--seuil-ssim`, 0,97 par défaut, comme les références de `visual_check.py`), carte des écarts par capture ; comptes entiers des CSV (triangles, appels de dessin, objets, arbres, bêtes…) à `--tolerance` % près (10 % par défaut, 2 unités toujours admises) ; colonnes de texte, dont `qualite_appliquee`, identiques ; mesures décimales (temps, exposition) en information ; capture ou ligne disparue : échec. `planche_avant_apres.png` (avant, après, écarts ; les `--planche` paires les moins semblables d'abord) et `rapport.html`.
+- **Vitrines** : `--compare REF` de `vitrine_checks.gd` appelle `vitrine_compare.py` (options `--seuil-ssim` et `--tolerance` à la place de `--max-diff`) ; `vitrine_rendu.gd` gagne les mêmes options et rend le code 1 en cas d'écart. `compare_captures.py` reste l'outil des captures du banc (S1).
+- **Essai au cloud sous Xvfb** : `vitrine_rendu.gd` (vues route, herbe, foule, village en low, medium et high) et `vitrine_sols.gd` passés deux fois, le second avec `--compare` sur le premier : SSIM 1,0 partout, comptes identiques, seuls les temps de préparation changent (information).
+- Tests : `core/tests/test_vitrine_compare.py` (vitrines identiques et planche, objet déplacé, comptes dans et hors tolérance, petits comptes, qualité appliquée changée, capture ou ligne disparue, clé des CSV, rien à comparer).
+- Références natives des vitrines sur la GTX 1060 : à faire sur le PC (sortie d'une vitrine sur `main` gardée comme `REF`), via la file des mesures.
+
