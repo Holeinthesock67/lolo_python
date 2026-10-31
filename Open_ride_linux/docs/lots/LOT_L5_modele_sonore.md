@@ -1,5 +1,10 @@
 # Lot L5 – Modèle sonore sans affichage : vent, roue libre, points d'intérêt
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Modèle sonore sans affichage : vent, roue libre, points d'intérêt | GDScript | K1 (livré) | Petite | **Livré le 24 octobre** (PR #68, issue #57) |
+
 ## 1. Objectif
 
 Préparer l'audio du sprint 6 (SRS §8, « Audio ») : calculer, à partir des trames `state` et de la couche `poi`, **quels sons jouer et à quel volume**, dans un script GDScript pur testé sans écran. Le lot audio n'aura plus qu'à brancher des `AudioStreamPlayer` sur ces valeurs.

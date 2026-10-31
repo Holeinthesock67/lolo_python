@@ -1,5 +1,10 @@
 # Lot W15 – Monde ouvert synthétique pour les essais sans réseau
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Monde ouvert synthétique : relief analytique, base de routes, monde vivant et faux générateur | Python | W1 | Moyenne | Oui, après W1 (issue #270) |
+
 ## 1. Objectif
 
 Permettre de développer et de tester core (W9) et engine (W10, W12) sans le vrai générateur ni réseau : un relief analytique, une base de routes synthétique au schéma de W3, un monde vivant écrit au format de W1, et un faux `openride-worldgen` qui parle le dialogue de W1 avec des carrefours scriptés. C'est aussi la doublure du banc simulé pour le monde ouvert.

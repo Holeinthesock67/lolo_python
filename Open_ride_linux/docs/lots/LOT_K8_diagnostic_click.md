@@ -1,5 +1,10 @@
 # Lot K8 – Diagnostic des déconnexions du Zwift Click
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Diagnostic des déconnexions du Zwift Click (journal et analyseur) | Python | — | Petite | **Livré le 24 octobre** (PR #34 ; séance de 20 min avec le Click à faire) |
+
 ## 1. Objectif
 
 Le Click se déconnecte de lui-même (environ 2 fois en 3 minutes le 22 octobre, constat M8, seul constat ouvert de l'audit). La cause ne se trouvera qu'avec le matériel, mais les journaux actuels ne permettent pas de la chercher : ils disent « déconnecté » sans durée de connexion, sans délai depuis le dernier appui, sans raison BlueZ, ni ce que faisait le trainer à cet instant. Ce lot enrichit le journal et l'analyseur pour que le prochain essai du propriétaire donne des données exploitables.

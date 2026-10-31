@@ -1,5 +1,10 @@
 # Lot O9 – Entraînements au format GoldenCheetah : `.erg` et `.mrc`
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Entraînements au format GoldenCheetah : `.erg` (watts) et `.mrc` (% de FTP) | Python | F, H8 (livrés) | Petite | **Livré le 25 octobre** (issue #153) |
+
 ## 1. Objectif
 
 Le propriétaire veut utiliser ses entraînements et ses plans « de la même manière que GoldenCheetah ». GoldenCheetah lit, en plus des `.zwo` de Zwift, les fichiers texte `.erg` (cibles en watts) et `.mrc` (cibles en % de la FTP), très répandus (TrainerRoad, ErgDB, exports de GoldenCheetah lui-même). OpenRide ne lit que les `.zwo`. Ce lot ajoute la lecture des `.erg` et des `.mrc`, avec le même comportement que les `.zwo` dans la séance, la liste et les outils.

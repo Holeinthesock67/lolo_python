@@ -14,9 +14,9 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
 son, vent) ; l'engine donne les titres.
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer) ou `now` (qualité, thème, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
-l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le thème et le mode d'affichage à
-l'engine aux lancements suivants).
+la séance suivante, sans relancer) ou `now` (qualité, niveau des textures, thème, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
+l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le niveau des textures, le thème et le
+mode d'affichage à l'engine aux lancements suivants).
 `apply(cfg, changes, path)` valide, écrit chaque réglage dans son fichier (commentaires et reste du
 fichier gardés, copie `.bak`) puis met à jour `cfg` en mémoire.
 
@@ -76,6 +76,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("ride.auto_draft", "Placement dans la roue", "ride"),   # lot AS2
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
+    Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20
     Setting("render.theme", "Thème", "graphics", applies="now"),
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),

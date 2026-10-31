@@ -1,5 +1,10 @@
 # Lot X33 – Séance simulée de la série T et des boutons de l'ERG (T11, J7)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x33`) ; complément Z2 du 31 octobre (repassé sur `main`, étape `seances` de la recette du PC) |
+
 ## 1. Objectif
 
 La recette T11 (série T : montée, sprint, arches, bonus Z, records, jingles) et l'essai J7 (boutons de l'ERG au Click et au clavier, lot O17) se font aujourd'hui sur le vélo, puis en lisant les journaux à la main. Le 28 octobre, le propriétaire a demandé que tout ce qui se vérifie sans pédaler sorte de la séance (20 min de vélo au plus) : une séance simulée doit jouer ces étapes et vérifier seule ce que l'écran et les journaux montrent. Il ne reste alors au vélo que le ressenti (effort, son, lisibilité).
@@ -62,4 +67,11 @@ Livré le 28 octobre (branche `claude/project-thread-818r6t-x33`).
 - **Critère 2** : avec `input_event` coupé dans `main.gd` pour l'essai, les 8 vérifications d'effet des touches du clavier échouent (biais, bloc, pause, reprise). Les appuis du Click passent toujours.
 - **Écran « Records du parcours »** : le banc vérifie `records.json`. L'écran lui-même est couvert par le scénario `records` du banc des menus.
 - **Tests** : `core/tests/test_sim_bench_scenarios.py` (31 tests). Il vérifie que les scénarios sont lisibles et que leurs clés sont connues. Il joue les vérifications sur des journaux fabriqués, avec les cas négatifs : clavier coupé, mauvais rapport, échantillon absent, bloc changé, touche non jouée.
+
+## 9. Complément Z2 (31 octobre)
+
+Audit de couverture des tests du 28 octobre, lot Z2 accepté par le propriétaire le 31 octobre.
+
+- **Repassé sur `main`** (après O18, O19 et P32), au cloud sous Xvfb : `serie_t` et `erg_boutons` passent entièrement (segments, records, arches et bonus, jingles ; biais, bloc suivant, pause et reprise au Click et au clavier ; aucune ligne `powerup` en ERG). `course_bots` échoue sur une seule vérification, celle du décor ajoutée par P32 : « aucun contact sur la route : 24 (dernier : bot / bot à 3 m) ». Les quatre bots partent ensemble et sont tous posés à `RoadBuilder.BOT_LATERAL_M` : dans les premières secondes, deux bots à moins d'une longueur de vélo l'un de l'autre se superposent à l'écran. Défaut réel trouvé par le banc, à corriger dans un lot à part (placement latéral des bots en groupe, captures à valider) ; la vérification reste stricte.
+- **Recette du PC** : nouvelle étape `seances` de `scripts/recette_pc.py`, qui lance `sim_bench.py` avec les trois scénarios (rapport dans `seances/` du passage), sautée par `--rapide`. Test : `core/tests/test_recette_pc.py`.
 

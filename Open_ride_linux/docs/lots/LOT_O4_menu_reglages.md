@@ -1,5 +1,10 @@
 # Lot O4 – Section « Réglages » du menu : FTP, thème, qualité, version
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Section « Réglages » du menu et version affichée | GDScript + Python | N6, N13, O3 ; O2 | Moyenne | **Livré le 26 octobre** (contrat accepté le 26 octobre ; version affichée le 27 octobre, après O2) |
+
 ## 1. Objectif
 
 Changer sa FTP, son thème ou sa qualité graphique depuis le menu, au Click ou au clavier, sans ouvrir de fichier. Ce lot ajoute la section « Réglages » au menu du lot N6, appuyée sur le core du lot O3, et affiche la version d'OpenRide (lot O2).

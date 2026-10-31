@@ -1,5 +1,10 @@
 # Lot O15 – Bibliothèque de parcours : fiches, tri, filtres et packs de parcours
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Bibliothèque de parcours : fiches (dénivelé, montée, difficulté), tri, filtres, packs de parcours | Python | O5 | Moyenne | **Livré le 26 octobre** (issue #157) |
+
 ## 1. Objectif
 
 Aujourd'hui, la liste des parcours ne donne que le nom, le statut, la longueur et le type. Pour choisir comme dans une bibliothèque (« un col de 10 km », « une boucle plate d'une heure »), il faut une **fiche par parcours** (distance, dénivelé positif, pente maximale, montée principale, région, étiquettes, difficulté), le **tri et les filtres**, et de quoi **installer des packs de parcours** préparés (un dossier ou un `.zip` de traces avec leurs fiches), comme les packs de thèmes de N10. L'écran de la bibliothèque dans le menu est le lot O12.

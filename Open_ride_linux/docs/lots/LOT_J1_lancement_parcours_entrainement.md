@@ -1,5 +1,10 @@
 # Lot J1 – Lancer une séance sur un parcours et un entraînement choisis
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Lancer une séance sur un parcours et un entraînement choisis (`run --route`, `--workout`) | Python | — | Petite | **Livré le 24 octobre** (fait directement, issue #49) |
+
 ## 1. Objectif
 
 Aujourd'hui, `openride-core run --autostart` charge toujours le parcours `demo`, et rien ne permet de choisir un entraînement `.zwo` : l'engine n'envoie jamais `select_route` ni `select_workout`, et la ligne de commande n'a pas d'option pour le faire (audit J du 23 octobre, constat J-M1). Conséquences :

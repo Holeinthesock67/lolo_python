@@ -1,5 +1,10 @@
 # Lot X15 – Saccades et temps de démarrage
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Saccades avec leur cause, tâches de fond par tronçon, temps de démarrage | GDScript + Python | X13 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x15`, sur X35) ; mesure en fenêtre réelle sur le PC ; issue #213 |
+
 ## 1. Objectif
 
 Le banc du 25 octobre donnait 1 à 3 images/s pendant les 15 premières secondes, et l'essai 69 un pic de 68 ms au départ. La sonde X13 compte les images lentes, mais ne dit pas ce qui se passait. Proposition du fil bâtiments (28 octobre) : le temps des tâches de fond par tronçon.

@@ -1,5 +1,10 @@
 # Lot X26 – Fuzz des fichiers d'entrée
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Fuzz des fichiers d'entrée (.zwo, .erg, .mrc, GPX, FIT, TCX) | Python | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x26`) ; issue #224 |
+
 ## 1. Objectif
 
 Les fichiers `.zwo`, `.erg`, `.mrc`, GPX, FIT et TCX viennent d'ailleurs (GoldenCheetah, Garmin, internet). Le lot J2 ne couvre que l'IPC. Un fichier abîmé ne doit jamais faire planter le core ou le compilateur : toujours une erreur lisible.

@@ -1,5 +1,10 @@
 # Lot Q6 – Boîtier gauche du Click muet après la connexion
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Boîtier gauche du Click muet après la connexion : trace, détection, reprise | Python | — | Moyenne | Oui pour le code et la simulation ; essai sur le matériel par le propriétaire ; issue #173 |
+
 ## 1. Objectif
 
 Essai du 25 octobre : les deux boîtiers du Zwift Click V2 sont restés connectés pendant toute la séance, mais le boîtier gauche (« − ») n'a plus envoyé d'appui 5 s après sa connexion. Il a ensuite envoyé environ 22 notifications par minute, aucune ne contenant de bouton. Tous les « − » sont venus du bouton B du boîtier droit (contournement déjà en place). Le problème était connu : `zwift_click.py` signale qu'un boîtier peut cesser d'envoyer ses boutons tant que l'application Zwift ne l'a pas « débloqué ». Ce lot cherche la cause et ajoute une reprise automatique si elle est possible.

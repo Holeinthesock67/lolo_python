@@ -1,5 +1,10 @@
 # Lot U17 – Intégration des biomes dans la scène principale
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Intégration des biomes dans la scène principale, budgets par préréglage | GDScript | U5 à U15, U19, U22 | Grande | Non : interne (rendu), **version 3.0** (issue #347) |
+
 ## 1. Objectif
 
 **Version 3.0.** Brancher dans la scène principale tout ce que les lots U5 à U15 et U22 ont livré en modules : modèle de biome, terrain multi-biome, végétation, détails de sol, mer, atmosphère, sons, faune, saisons, variantes et ruban de gravel ; régler les budgets pour tenir 55 images/s en `low` sur la GTX 1060.

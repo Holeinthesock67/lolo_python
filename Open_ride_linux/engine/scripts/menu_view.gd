@@ -46,6 +46,12 @@ var summary: VBoxContainer
 var preview   # garage_preview.gd
 var button_bar: PanelContainer
 var _header: VBoxContainer
+## Confirmation : petite carte centrée sur le voile (question, puis « Non » et « Oui » ; items_box y est déplacée).
+var confirm_card: PanelContainer
+var _confirm_question: Label
+var _confirm_rows: VBoxContainer
+var _left: VBoxContainer
+var _body: HBoxContainer
 var _item_panels: Array[PanelContainer] = []
 var _focus_style := UiTheme.row_style(true)
 var _plain_style := UiTheme.row_style(false)
@@ -96,7 +102,9 @@ func _init() -> void:
 	body.add_theme_constant_override("separation", UiTheme.GAP + 16)
 	body.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	box.add_child(body)
+	_body = body
 	var left := VBoxContainer.new()
+	_left = left
 	left.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	left.add_theme_constant_override("separation", 6)
 	left.mouse_filter = Control.MOUSE_FILTER_IGNORE
@@ -129,10 +137,49 @@ func _init() -> void:
 	card.body.add_child(preview)
 	devices = DevicesView.new()
 	box.add_child(devices)
+	_build_confirm_card()
 	# Bandeau des boutons sur toute la largeur, collé en bas.
 	button_bar = ButtonBar.new()
 	button_bar.mouse_filter = Control.MOUSE_FILTER_PASS
 	root.add_child(button_bar)
+
+
+## Carte de la confirmation (lot N20, étape 4d) : centrée, étroite, question en TEXT ; construite une fois,
+## cachée hors de l'écran « confirm ».
+func _build_confirm_card() -> void:
+	confirm_card = PanelContainer.new()
+	confirm_card.name = "ConfirmCard"
+	confirm_card.visible = false
+	confirm_card.mouse_filter = Control.MOUSE_FILTER_PASS
+	confirm_card.add_theme_stylebox_override("panel", UiTheme.card_style())
+	confirm_card.custom_minimum_size.x = UiTheme.CONFIRM_W
+	confirm_card.set_anchors_and_offsets_preset(Control.PRESET_CENTER, Control.PRESET_MODE_MINSIZE)
+	confirm_card.grow_horizontal = Control.GROW_DIRECTION_BOTH
+	confirm_card.grow_vertical = Control.GROW_DIRECTION_BOTH
+	var v := VBoxContainer.new()
+	v.add_theme_constant_override("separation", UiTheme.GAP)
+	v.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	confirm_card.add_child(v)
+	_confirm_question = UiTheme.label(UiTheme.ITEM_SIZE)
+	_confirm_question.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	v.add_child(_confirm_question)
+	_confirm_rows = VBoxContainer.new()
+	_confirm_rows.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	v.add_child(_confirm_rows)
+	add_child(confirm_card)
+
+
+## Écran de confirmation : l'en-tête et la carte de détail s'effacent, la liste « Non / Oui » passe dans la carte.
+func _show_confirm(on: bool, question := "") -> void:
+	confirm_card.visible = on
+	_header.visible = not on
+	_body.visible = not on
+	var target: Control = _confirm_rows if on else _left
+	if items_box.get_parent() != target:
+		items_box.reparent(target, false)
+		if not on:
+			_left.move_child(items_box, 0)
+	_confirm_question.text = question
 
 
 ## Voile sur la scène 3D : dégradé horizontal, plus dense sous la liste.
@@ -245,6 +292,7 @@ func update_display(menu: Dictionary, state: Dictionary, summary_data: Dictionar
 	preview.visible = not garage_preview.is_empty()
 	if preview.visible:
 		preview.show_preview(garage_preview)
+	_show_confirm(screen == "confirm", title_label.text)
 	var grid: Dictionary = menu.get("grid", {})
 	_show_grid(grid, menu.get("items", []), int(menu.get("focus", -1)))
 	var items: Array = [] if not grid.is_empty() else menu.get("items", [])
@@ -352,7 +400,8 @@ func _set_row(p: PanelContainer, it: Dictionary, focused: bool) -> void:
 	p.set_meta("focused", focused)
 	p.add_theme_stylebox_override("panel", _focus_style if focused else _plain_style)
 	var color: Color = UiTheme.FOCUS if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED)
-	l.add_theme_color_override("font_color", UiTheme.TEXT if (focused or enabled) else UiTheme.DISABLED)
+	l.add_theme_color_override("font_color", UiTheme.DANGER if id == "yes" and confirm_card.visible else
+		(UiTheme.TEXT if (focused or enabled) else UiTheme.DISABLED))   # l'action qui perd des données, en DANGER
 	d.add_theme_color_override("font_color", UiTheme.FOCUS if it.get("editing", false) else
 		(UiTheme.TEXT if focused else (UiTheme.DIM if enabled else UiTheme.DISABLED)))
 	bar.visible = it.has("bar")

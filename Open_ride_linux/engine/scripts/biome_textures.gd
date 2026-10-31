@@ -8,9 +8,10 @@ extends RefCounted
 ##   occlusion dans le bleu), une couche par sol texturé des biomes présents (`layers.biome.shares` du
 ##   manifeste, biome forcé, sinon tous), mipmaps, compression en mémoire vidéo quand elle est disponible ;
 ##   sol sans texture : couleur unie (tableaux d'une couche 1 × 1 quand aucun sol n'est texturé) ;
-## - côté des textures : QualityPresets.ground_texture_px (1 024 px en low et medium, 2 048 en high),
-##   plafonné par la mémoire vidéo estimée (`estimate_bytes` : tailles décompressées, mipmaps comprises,
-##   règle de P20) sous BUDGET_BYTES (1 Go, U-Q4) : un niveau plus bas, puis couleurs unies, avec une
+## - niveau des textures : texture_levels.gd (lot P20) : côté du préréglage (1 024 px en low et medium,
+##   2 048 en high) ou du préréglage imposé par `[render] texture_level`, plafonné par la mémoire vidéo
+##   estimée sous le budget du préréglage (1 Go en medium et high, U-Q4) : niveau plus bas, puis couleurs
+##   unies ; chemins cherchés dans le dossier du niveau du pack (`texture_levels`), puis à la racine ;
 ##   ligne de journal (`log_line`) ;
 ## - `tile_material(level, ix, iz)` : copie du matériau de base avec la texture de poids 17 × 17 de la
 ##   tuile (RGBA = les 3 biomes les plus présents en low, 4 sinon) et l'indice de chaque biome.
@@ -18,6 +19,7 @@ extends RefCounted
 
 const BiomeIds := preload("res://scripts/biome_ids.gd")
 const QualityPresets := preload("res://scripts/quality_presets.gd")
+const TextureLevels := preload("res://scripts/texture_levels.gd")
 const ThemeRenderParams := preload("res://scripts/theme_render_params.gd")
 const ThemeLoader := preload("res://scripts/theme_loader.gd")
 const TerrainMaterial := preload("res://scripts/terrain_material.gd")
@@ -26,8 +28,6 @@ const SHADER := preload("res://shaders/terrain_biomes.gdshader")
 
 const GRID := 17
 const MAX_LAYERS := 48                 # 16 biomes × 3 couches (terrain_biomes.gdshader MAX_LAYERS)
-const BUDGET_BYTES := 1 << 30          # textures de sol du parcours (U-Q4)
-const LEVELS_PX: Array[int] = [2048, 1024]
 const ROLES: Array[String] = ["grass", "rock", "snow"]
 ## Force des rides et des dunes du sable par biome (lot U8, biome_rule.w du shader) ; 0 ailleurs.
 const SAND_RELIEF := {"sand_desert": 1.0, "coast": 0.6}
@@ -41,6 +41,7 @@ const SHARED_PARAMS: Array[String] = [
 
 var model
 var quality := ""
+var texture_level := TextureLevels.AUTO   # `[render] texture_level` (lot P20)
 var material: ShaderMaterial
 var texture_px := 0                    # 0 : couleurs unies
 var estimated_bytes := 0
@@ -52,42 +53,23 @@ var _tile_materials: Array[ShaderMaterial] = []
 var _shared := {}
 
 
-func _init(biome_model, theme_dir: String = "", quality_name: String = "") -> void:
+func _init(biome_model, theme_dir: String = "", quality_name: String = "", level: String = TextureLevels.AUTO) -> void:
 	model = biome_model
 	quality = quality_name
+	texture_level = level
 	_collect_layers()
-	var used := _textured_layers(theme_dir)
-	var want := QualityPresets.ground_texture_px(quality)
-	var choice := choose_size(used["a"].size() + used["b"].size(), want)
+	var refs := _texture_refs(theme_dir)
+	var maps: int = refs["a"].size() + refs["b"].size()
+	var choice := TextureLevels.choose(model.theme, quality, texture_level, maps)
 	texture_px = int(choice["px"])
 	estimated_bytes = int(choice["bytes"])
-	log_line = "[biomes] sols : %d couches, %d cartes texturées, %s, %.0f Mo estimés (%s)" % [layers.size(),
-		used["a"].size() + used["b"].size(), ("%d px" % texture_px) if texture_px > 0 else "couleurs unies",
-		estimated_bytes / 1048576.0, choice["reason"]]
+	var used := _resolve(theme_dir, refs, choice) if texture_px > 0 else {"a": [], "b": []}
+	log_line = TextureLevels.log_line("sols des biomes", choice, maps)
 	print(log_line)
 	material = ShaderMaterial.new()
 	material.shader = SHADER
 	TerrainMaterial.apply_shared(material)
-	_fill_material(used if texture_px > 0 else {"a": [], "b": []})
-
-
-## Mémoire vidéo estimée de `maps` cartes de `px` × `px` (RGBA8 décompressé, mipmaps comprises : × 4/3).
-static func estimate_bytes(maps: int, px: int) -> int:
-	return int(float(maps) * px * px * 4.0 * 4.0 / 3.0)
-
-
-## Côté retenu pour `maps` cartes : celui du préréglage s'il tient sous BUDGET_BYTES, sinon le niveau
-## inférieur, sinon 0 (couleurs unies). {px, bytes, reason}.
-static func choose_size(maps: int, preset_px: int) -> Dictionary:
-	if maps == 0:
-		return {"px": 0, "bytes": 0, "reason": "aucune texture de sol"}
-	for px in LEVELS_PX:
-		if px > preset_px:
-			continue
-		var bytes := estimate_bytes(maps, px)
-		if bytes <= BUDGET_BYTES:
-			return {"px": px, "bytes": bytes, "reason": "préréglage" if px == preset_px else "budget de 1 Go"}
-	return {"px": 0, "bytes": 0, "reason": "budget de 1 Go dépassé même à %d px" % LEVELS_PX[-1]}
+	_fill_material(used)
 
 
 ## Biomes dont les textures sont chargées : biome forcé, sinon parts du manifeste (et biome par défaut), sinon tous.
@@ -124,8 +106,8 @@ func _collect_layers() -> void:
 			float(u["blend_sharpness"]), float(SAND_RELIEF.get(b, 0.0)))}
 
 
-## Images à charger des biomes en usage : {"a": [[couche, chemin]], "b": [[couche, chemin]]}.
-func _textured_layers(theme_dir: String) -> Dictionary:
+## Textures des biomes en usage : {"a": [[couche, chemin relatif]], "b": [[couche, chemin relatif]]}.
+func _texture_refs(theme_dir: String) -> Dictionary:
 	var out := {"a": [], "b": []}
 	if theme_dir == "":
 		return out
@@ -137,13 +119,22 @@ func _textured_layers(theme_dir: String) -> Dictionary:
 			seen[l] = true
 			for m in [["a", "texture"], ["b", "normal"]]:
 				var rel = layers[l][m[1]]
-				if typeof(rel) != TYPE_STRING:
-					continue
-				var full := ThemeLoader._resolve_tex_path(theme_dir, rel)
-				if full != "" and FileAccess.file_exists(full):
-					out[m[0]].append([l, full])
-				else:
-					push_warning("[biomes] texture de sol absente : " + str(rel))
+				if typeof(rel) == TYPE_STRING:
+					out[m[0]].append([l, rel])
+	return out
+
+
+## Chemins complets au niveau retenu (dossier du niveau, niveaux inférieurs, racine) ; texture absente :
+## avertissement, couleur unie pour cette couche.
+func _resolve(theme_dir: String, refs: Dictionary, choice: Dictionary) -> Dictionary:
+	var out := {"a": [], "b": []}
+	for kind in ["a", "b"]:
+		for it in refs[kind]:
+			var full := TextureLevels.resolve(theme_dir, it[1], choice)
+			if full != "":
+				out[kind].append([it[0], full])
+			else:
+				push_warning("[biomes] texture de sol absente : " + str(it[1]))
 	return out
 
 

@@ -1,5 +1,10 @@
 # Lot T16 – Écarts en temps de passage avec le bot devant et le bot derrière
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : écarts en temps de passage avec le bot devant et derrière | Python | N9 (livré) | Petite | **Livré le 27 octobre** (PR #275, module pur ; champs `gap_s`, `bot_ahead`, `bot_behind` branchés par T7) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 25 octobre (plan de la série T §3.4) : donner en permanence l'écart avec les deux voisins immédiats, par exemple « ▲ Grimpeur +8,4 s » et « ▼ Diesel −3,1 s ». Ce lot calcule dans le core, une fois par trame, l'écart en **temps de passage** de chaque bot (`gap_s`) et les identifiants des deux voisins (`bot_ahead`, `bot_behind`). L'affichage est le lot T15 ; l'ajout des champs à la trame `state` vient avec le contrat T1.

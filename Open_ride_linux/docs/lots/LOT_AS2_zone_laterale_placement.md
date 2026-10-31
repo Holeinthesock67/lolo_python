@@ -1,5 +1,10 @@
 # Lot AS2 – Zone d'abri en deux dimensions et placement automatique dans la roue
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série AS : zone d'abri en deux dimensions (écart latéral `lane_m`) et placement automatique dans la roue, activé par défaut | Python + GDScript | AS1, P32 | Grande | En PR (version 2.0) |
+
 Série AS, version 2.0 (décision du propriétaire du 29 octobre 2026). Décision du même jour : placement automatique **activé par défaut**.
 
 ## 1. Objectif
