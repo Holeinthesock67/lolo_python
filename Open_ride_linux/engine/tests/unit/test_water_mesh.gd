@@ -1,11 +1,12 @@
 extends SceneTree
 
 ## Tests unitaires sans écran du maillage de l'eau `water_mesh.gd` (Lot L2) et de son matériau, avec ou
-## sans reflets animés (Lot P12).
+## sans reflets animés (Lot P12) ; aire `sea` du format 1.6 acceptée par `osm_layers.gd` (lot U19).
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_water_mesh.gd
 
 const WaterMesh := preload("res://scripts/water_mesh.gd")
 const OsmStreamer := preload("res://scripts/osm_streamer.gd")
+const OsmLayers := preload("res://scripts/osm_layers.gd")
 
 var _failures := 0
 var _checked := 0
@@ -171,6 +172,12 @@ func _test_invalid_cases() -> void:
 	var ra: Dictionary = WaterMesh.build_areas(bad_areas)
 	_check(ra["built"] == 0 and ra["skipped"] == 2 and ra["errors"].size() == 2,
 		"plans d'eau invalides (anneau de 2 points, level_y texte) : skipped = %d" % ra["skipped"])
+	var sea := {"id": "s0_0", "kind": "sea", "level_y": 0.0, "outer": [[0.0, 0.0], [300.0, 0.0], [300.0, 250.0]], "holes": []}
+	var bad := sea.duplicate(true)
+	bad["kind"] = "ocean"
+	_check(OsmLayers._valid_water_area(sea) and not OsmLayers._valid_water_area(bad),
+		"aire « sea » (format 1.6) acceptée, kind inconnu refusé")
+	_check(WaterMesh.build_areas([sea])["built"] == 1, "aire « sea » maillée au niveau 0 comme un plan d'eau")
 
 
 # Critère 7 : déterminisme

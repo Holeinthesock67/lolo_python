@@ -44,6 +44,7 @@ from .garage import GarageError, ProgressionService, estimate_w_prime, workout_d
 from .open_world import CHOICE_EVENTS, OpenWorld, OpenWorldError
 from .open_world_save import save_ride
 from .physics import PhysicsParams, RiderPhysics
+from . import surface_physics
 from . import powerups as powerups_mod, profiles
 from .powerups import PowerUpError, load_table
 from .records import RecordBook, RecordsError
@@ -261,6 +262,10 @@ class CoreSession:
         self._build_wind()
         self._head_mps = 0.0          # vent de face au point s (physique à 50 Hz)
         self._wind_offset = 0.0       # supplément de pente dû au vent (feel = "grade")
+        self._gravel_factor = 1.0     # roulement multiplié des routes non revêtues (lot U21)
+        self._gravel_offset = 0.0     # supplément de pente du gravel avant la borne commune
+        self._gravel_sent = 0.0       # part du gravel envoyée en SIM, après la borne commune
+        self._gravel_stats = [0.0, 0.0, 0.0, 0]   # m non revêtus, m parcourus, somme des suppléments, pas SIM
         self._wind_pending = False    # trame `wind` décalée parce que la trame portait `devices`
         self._draft = 0.0             # abri lissé derrière un bot (lot P3)
         self._draft_bot: str | None = None
@@ -1475,6 +1480,7 @@ class CoreSession:
         race, self.race = self.race, None
         wtf, self.wtf = self.wtf, None
         self.state.wtf = None
+        self._log_gravel()
         if race and self._rec:
             for line in race.take_journal() + race.jersey_lines():
                 self._rec.game(line)
@@ -1945,6 +1951,13 @@ class CoreSession:
             for bot in self.bots:
                 if hasattr(bot, "power_factor"):
                     bot.power_factor = wtf.bot_power_factor(bot.id)
+        gcfg = self.cfg.gravel
+        if gcfg.mode != "off":
+            # Gravel (lot U21) : roulement multiplié, lissé sur 20 m ; vitesse virtuelle en SIM comme en ERG.
+            params = self.physics.p if (race or wtf is not None) else self._base_params
+            self._gravel_factor = self._gravel_factor_at(route, s)
+            self.physics.p = replace(params, crr=params.crr * self._gravel_factor)
+            self._gravel_offset = surface_physics.grade_offset_pct(params.crr, self._gravel_factor, grade)
         if self.wind.active:   # vent figé en pause : son temps est celui de la séance
             self._wind_sample = self.wind.sample(self._t_session)
             self._head_mps = head_component(self._wind_sample, here.heading_deg if here else 0.0)
@@ -1972,6 +1985,14 @@ class CoreSession:
                 self._wind_offset = grade_offset_pct(self.physics.v, head, draft, alt,
                                                      self.physics.p, wcfg.max_grade_offset_pct)
                 target += self._wind_offset
+            if gcfg.mode != "off":
+                # Gravel ajouté au vent et à l'abri, le total sous la même borne (lot U21).
+                total = surface_physics.combined_offset_pct(self._wind_offset, self._gravel_offset,
+                                                            wcfg.max_grade_offset_pct)
+                self._gravel_sent = total - self._wind_offset
+                target += self._gravel_sent
+                self._gravel_stats[2] += self._gravel_sent
+                self._gravel_stats[3] += 1
             if wtf_eff is not None:   # supplément du mode WTF borné, puis bornes du mode
                 target = wtf.clamp_feel(target + wtf.feel_offset(wtf_eff))
             rate = (self.cfg.trainer.grade_rate_up_pct_per_s
@@ -1990,6 +2011,11 @@ class CoreSession:
         if wtf_eff is not None:
             power_used = wtf.power(power_used, wtf_eff)
         self.physics.step(power_used, grade, alt, dt, alpha_draft=draft)
+        if gcfg.mode != "off":
+            ridden = self.physics.v * dt
+            self._gravel_stats[1] += ridden
+            if self._gravel_factor > 1.0:
+                self._gravel_stats[0] += ridden
         for bot in self.bots:
             params = getattr(bot, "params", None)   # bots à puissance constante : même vent (lot P2)
             if self.wind.active and params is not None and route:
@@ -2038,6 +2064,8 @@ class CoreSession:
                 wind_grade_pct=round(self._wind_offset, 2)
                 if (self.wind.active and wcfg.feel == "grade") or self.bots else None,
                 draft=round(self._draft, 3) if self.bots else None,
+                surface=self._surface_here(route, st.s) if gcfg.mode != "off" else None,
+                gravel_grade_pct=round(self._gravel_offset, 2) if gcfg.mode != "off" else None,
                 hr_frozen=True if m.hr_bpm is None and getattr(m, "hr_frozen", False) else None,
                 erg_kind=free_erg.kind if free_erg else None,
                 cadence_target_rpm=free_erg.cadence_target if isinstance(free_erg, CadenceLock) else None))
@@ -2045,6 +2073,27 @@ class CoreSession:
         if route and not route.is_loop and self.openworld is None and st.s >= route.length_m:   # ni une boucle, ni le monde ouvert
             log.info("Arrivée atteinte.")
             self._finish(True)
+
+    def _gravel_factor_at(self, route: Route | None, s: float) -> float:
+        """Facteur de roulement en s (lot U21) : colonne `surface` lissée sur 20 m en `auto`, surface imposée
+        sinon ; une route sans colonne (monde ouvert compris) est revêtue en `auto`."""
+        gcfg = self.cfg.gravel
+        if route is None or not hasattr(route, "surface_at"):
+            return surface_physics.crr_factor(surface_physics.effective_surface("paved", gcfg.mode), gcfg)
+        return surface_physics.blended_factor(route, s, gcfg.mode, gcfg)
+
+    def _surface_here(self, route: Route | None, s: float) -> str:
+        here = route.surface_at(s) if route is not None and hasattr(route, "surface_at") else "paved"
+        return surface_physics.effective_surface(here, self.cfg.gravel.mode)
+
+    def _log_gravel(self) -> None:
+        """Bilan du gravel de la séance, lu par `tools/log_report.py`."""
+        unpaved, ridden, offsets, steps = self._gravel_stats
+        if self.cfg.gravel.mode == "off" or ridden <= 0.0:
+            return
+        log.info("Gravel : %.0f m non revêtus sur %.0f m, supplément de pente moyen %.2f points (mode %s)",
+                 unpaved, ridden, offsets / steps if steps else 0.0, self.cfg.gravel.mode)
+        self._gravel_stats = [0.0, 0.0, 0.0, 0]
 
     def _update_draft(self, dt: float, route: Route | None, heading_deg: float) -> None:
         """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; abri, roue suivie et

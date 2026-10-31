@@ -12,9 +12,10 @@ from pathlib import Path
 FORMAT_NAME = "openride-world"
 DS_M = 10.0
 ROUTE_FIELDS = ("lat", "lon", "alt_m", "x", "z", "grade_pct", "heading_deg")
+SURFACES = ("paved", "compacted", "gravel", "dirt")   # colonne facultative surface (1.6, lot U20)
 ROUTES_DIR = Path.home() / ".local" / "share" / "openride" / "routes"
 
-FORMAT_VERSION = "1.5"   # 1.5 : prés, champs et routes voisines (lot P22) ; 1.4 : monde vivant (W1)
+FORMAT_VERSION = "1.6"   # 1.6 : colonne surface de la route (lot U20) ; 1.5 : prés, champs et routes voisines (lot P22) ; 1.4 : monde vivant (W1)
 SUPPORTED_MAJOR = 1
 ROUTE_VERSION = "1.0"
 COMPILER_NAME = "openride-compiler"
@@ -84,7 +85,7 @@ POI_RADIUS_FLAG_M = 150
 WIND_TURBINE_DEFAULT_HEIGHT_M = 100.0
 POI_RIVER_PASSAGE_DIST_M = 50.0
 WATER_LINE_KINDS = ("river", "stream", "canal")
-WATER_AREA_KINDS = ("lake", "pond", "reservoir")
+WATER_AREA_KINDS = ("lake", "pond", "reservoir", "sea")   # 1.6 : sea (lot U1)
 WATER_WIDTH_DEFAULT_M = 2.0
 WATER_WIDTH_RIVER_M = 6.0
 WATER_WIDTH_STREAM_M = 2.0

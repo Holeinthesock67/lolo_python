@@ -115,18 +115,7 @@ def run(objective: str = "threshold", duration_min: int = 30, seed: int = 5, pro
     with tempfile.TemporaryDirectory(prefix="openride-rogue-bout-en-bout-") as tmp_s, \
             mock.patch.object(fit_export, "ACTIVITIES_DIR", Path(tmp_s) / "Activities"):
         tmp = Path(tmp_s)
-        cfg = Config()
-        cfg.rider.ftp_w = prof.ftp_w
-        cfg.rogue.w_prime_j = prof.w_prime_j
-        driver = MockDriver(base_power_w=0.0, ramp_amplitude_w=0.0)
-        s = CoreSession(cfg, driver=driver, inputs=[NullProvider()], journal_dir=tmp / "journal",
-                        routes_root=tmp / "routes", workouts_dir=tmp / "workouts", records_path=tmp / "records.json",
-                        powerups_path=tmp / "powerups.toml", profile_path=tmp / "profile.json",
-                        config_path=tmp / "config.toml")
-        sent: list[tuple[float, dict]] = []
-        s.server.send_raw = lambda m, max_size=None: sent.append((s._t_session, m))
-        s.server.send_input_event = lambda ev: sent.append(
-            (s._t_session, {"type": "input", "event": ev}))
+        s, driver, sent = new_session(tmp, prof)
         s._on_command("start_run", {"objective": objective, "duration_min": duration_min, "seed": seed}, 1)
         rg = s.rogue
         rep.add(rg is not None and s.state.session_state == "READY", "run composée (start_run)",
@@ -145,17 +134,7 @@ def run(objective: str = "threshold", duration_min: int = 30, seed: int = 5, pro
         frames = 0
         while s._t_session < limit and s.state.session_state == "RUNNING":
             e = rg.engine
-            power, cadence, buttons, _ = bot.decide()
-            for _ in range(round(abs(bot.gear - rg.gear))):   # braquet voulu : appuis courts sur + ou −
-                s._handle_input(GEAR_PRESS[1 if bot.gear > rg.gear else -1])
-                pressed["gear"] += 1
-            for b in sorted(buttons):
-                s._handle_input(InputEvent(b))
-                pressed[b[0]] += 1
-            driver.base_power_w, driver.base_cadence_rpm = power, cadence
-            s._step(DT, time.monotonic())
-            bot.gear = rg.gear                           # braquet imposé (piratage) ou refusé
-            s.server.send_state(s.state)
+            bot_step(s, bot, driver, pressed)
             frames += 1
             if not pause and e.phase == "ROOM" and s.physics.s > 0 and e.t_phase >= PAUSE_AFTER_S:
                 pause = _pause_and_resume(s, sent)
@@ -183,6 +162,39 @@ def run(objective: str = "threshold", duration_min: int = 30, seed: int = 5, pro
                     f.write(json.dumps({"t": round(t, 2), "msg": m}, ensure_ascii=False, separators=(",", ":")) + "\n")
     rep.wall_s = time.perf_counter() - t_wall
     return rep
+
+
+def new_session(tmp: Path, prof: Any, inputs: list | None = None) -> tuple[CoreSession, MockDriver, list]:
+    """Vraie séance du core sur un trainer simulé, journal et profil dans `tmp`, messages vers l'engine relevés."""
+    cfg = Config()
+    cfg.rider.ftp_w = prof.ftp_w
+    cfg.rogue.w_prime_j = prof.w_prime_j
+    driver = MockDriver(base_power_w=0.0, ramp_amplitude_w=0.0)
+    s = CoreSession(cfg, driver=driver, inputs=inputs or [NullProvider()], journal_dir=tmp / "journal",
+                    routes_root=tmp / "routes", workouts_dir=tmp / "workouts", records_path=tmp / "records.json",
+                    powerups_path=tmp / "powerups.toml", profile_path=tmp / "profile.json",
+                    config_path=tmp / "config.toml")
+    sent: list[tuple[float, dict]] = []
+    s.server.send_raw = lambda m, max_size=None: sent.append((s._t_session, m))
+    s.server.send_input_event = lambda ev: sent.append((s._t_session, {"type": "input", "event": ev}))
+    return s, driver, sent
+
+
+def bot_step(s: CoreSession, bot: Bot, driver: MockDriver, pressed: dict) -> float:
+    """Un pas d'une seconde : le cycliste simulé appuie, pédale, puis la séance avance. Renvoie sa puissance."""
+    rg = s.rogue
+    power, cadence, buttons, _ = bot.decide()
+    for _ in range(round(abs(bot.gear - rg.gear))):   # braquet voulu : appuis courts sur + ou −
+        s._handle_input(GEAR_PRESS[1 if bot.gear > rg.gear else -1])
+        pressed["gear"] = pressed.get("gear", 0) + 1
+    for b in sorted(buttons):
+        s._handle_input(InputEvent(b))
+        pressed[b[0]] = pressed.get(b[0], 0) + 1
+    driver.base_power_w, driver.base_cadence_rpm = power, cadence
+    s._step(DT, time.monotonic())
+    bot.gear = rg.gear                           # braquet imposé (piratage) ou refusé
+    s.server.send_state(s.state)
+    return power
 
 
 def _pause_and_resume(s: CoreSession, sent: list) -> dict[str, Any]:

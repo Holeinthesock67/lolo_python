@@ -4,7 +4,7 @@
     python -m openride_core.tools.recette_v10 materiel     # ce qu'il faut avoir sous la main, durées
 
 Déroulé de la commande seule (environ 30 min, le propriétaire n'a qu'à pédaler) :
-  1. sans vélo : sauvegarde de `config.toml` et `profile.json`, deux parcours plats identiques avec leurs
+  1. sans vélo : sauvegarde du `profile.json` du profil d'essai, deux parcours plats identiques avec leurs
      consignes, expérience recalculée, profil effacé puis remis ;
   2. bloc 1 : vélo de départ posé dans le profil, OpenRide lancé directement en séance (`--autostart`) sur
      `recette-v10-depart` ; l'outil suit le journal et ferme OpenRide à 10 min de séance (séance enregistrée) ;
@@ -16,6 +16,10 @@ Déroulé de la commande seule (environ 30 min, le propriétaire n'a qu'à péda
 Dans le jeu, les consignes (`cue_model.gd`) annoncent chaque geste une minute avant et restent 20 à 45 s.
 Le Garage au Click n'est pas recetté ici : le banc des menus (`menu_bench`) le couvre.
 Les étapes se lancent aussi une à une : `pc`, `bilan`, `restaurer`.
+
+Profil d'essai (série MJ, lot MJ9) : la recette roule sur `~/OpenRide/Profils/_essai/` (OpenRide lancé
+avec `--profil _essai`, journaux, profil de progression et vélo du profil d'essai) ; le vrai profil n'est
+ni lu ni écrit, il n'y a plus rien à sauvegarder de lui. Seul le vélo du profil d'essai est remis à la fin.
 
 Rien n'est écrit dans le dépôt ; parcours fictifs (même origine que `demo`), aucune donnée personnelle.
 """
@@ -42,7 +46,7 @@ from .fake_world import add_terrain_layer
 from .seance_guidee import CREATED, ESSAIS_DIR, cues_json
 
 RECETTE = "recette-v10"                      # dossier de la recette sous ~/OpenRide/Essais
-BACKUP = "sauvegarde"                        # copies de config.toml et profile.json d'avant la recette
+BACKUP = "sauvegarde"                        # copie du profile.json du profil d'essai d'avant la recette
 TRIAL_MARK = "profil_essai"                  # présent tant que l'outil a changé le vélo du profil
 ROUTE_LENGTH_M = 12_000.0
 SPRINTS_M = (1500.0, 3000.0, 4500.0)         # trois sprints de 400 m : un temps gagné par passage
@@ -347,10 +351,13 @@ def verdict(blocks: dict[str, Block], plain: Any, equipped: Any) -> tuple[bool, 
 # --- blocs sur le vélo -------------------------------------------------------------------------
 
 def launch_command(route_id: str, config_path: Path | None) -> list[str]:
-    """OpenRide par son lanceur (core, engine, libération du trainer), séance démarrée sur `route_id`."""
+    """OpenRide par son lanceur (core, engine, libération du trainer), séance démarrée sur `route_id`, sur
+    le profil d'essai (lot MJ9)."""
+    from .. import profiles
+
     cfg_args = ["--config", str(config_path)] if config_path is not None else []
     return [sys.executable, "-m", "openride_core.launcher", "--no-compile", "--trainer", "ftms", "--input", "click",
-            *cfg_args, "--autostart", "--route", route_id]
+            *cfg_args, "--profil", profiles.TRIAL_ID, "--autostart", "--route", route_id]
 
 
 def last_record(path: Path) -> dict | None:
@@ -504,7 +511,7 @@ def run_all(args: Any, cfg: Any, profile_path: Path, config_path: Path, guide: A
     """La recette entière ; profil et parcours restaurés quoi qu'il arrive."""
     recette_dir = args.essais_dir / RECETTE
     backup_dir = recette_dir / BACKUP
-    for path in backup([config_path, profile_path], backup_dir):
+    for path in backup([profile_path], backup_dir):
         guide.log("sauvegarde", chemin=str(path))
     try:
         write_all(args.routes_dir, args.essais_dir, terrain=not args.sans_terrain)
@@ -540,7 +547,8 @@ def main(argv: list[str] | None = None, ride: Ride | None = None) -> int:
     p.add_argument("--routes-dir", type=Path, default=config.ROUTES_DIR)
     p.add_argument("--essais-dir", type=Path, default=ESSAIS_DIR)
     p.add_argument("--journal-dir", type=Path, default=None)
-    p.add_argument("--profile", type=Path, default=None, help="profil de progression (défaut ~/OpenRide/profile.json)")
+    p.add_argument("--profile", type=Path, default=None,
+                   help="profil de progression (défaut : celui du profil d'essai, ~/OpenRide/Profils/_essai/profile.json)")
     p.add_argument("--config", type=Path, default=None, help="config.toml (défaut ~/OpenRide/config.toml)")
     p.add_argument("--sans-terrain", action="store_true", help="route seule (plus rapide)")
     args = p.parse_args(argv)
@@ -549,9 +557,22 @@ def main(argv: list[str] | None = None, ride: Ride | None = None) -> int:
         return 0
 
     from .. import profiles
+
+    ctx = profiles.ProfileContext.for_id(profiles.TRIAL_ID)   # profil d'essai (série MJ, lot MJ9)
+    previous = profiles._active
+    profiles.activate(ctx)
+    try:
+        return _main(args, ctx, ride)
+    finally:
+        profiles.activate(previous)
+
+
+def _main(args: Any, ctx: Any, ride: Ride | None) -> int:
+    from .. import profiles
     from .guide import Guide
 
-    ctx = profiles.current()   # profil de joueur en cours (série MJ, lot MJ1)
+    if args.profile is None:   # dossier du profil d'essai utilisé : sa description est créée s'il manque
+        profiles.ensure_description(ctx)
     profile_path = args.profile or ctx.profile_path
     args.journal_dir = args.journal_dir or ctx.journal_dir
     config_path = args.config or config.DEFAULT_CONFIG_PATH
