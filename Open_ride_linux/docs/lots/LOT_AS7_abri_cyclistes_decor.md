@@ -49,3 +49,22 @@ Liste facultative `riders` dans `state` ; `draft_bot` peut valoir `rider:<id>`. 
 ## 8. Hors périmètre
 
 Cyclistes du décor qui réagissent (relais, attaques) : ce sont des bots (AS1), pas du décor.
+
+## 9. Conception et étapes (31 octobre)
+
+Le lot dépend d'AS2 (écart latéral, `lane_m`) et d'AS6 (circulation du core, même révision du contrat `state`). Il est livré en deux étapes pour avancer sans les attendre.
+
+**Étape 1 (indépendante d'AS2 et d'AS6).**
+
+- `core/src/openride_core/road_cyclists.py` : portage ligne à ligne de `road_cyclists_model.gd` (hachage de `vegetation_placer.gd`, cases, cas, tailles, vitesses à puissance constante, voies du lot P32, bots vus comme des groupes). Entrées : la route du core, les montées `(début, sommet)`, les villages `(x, z)`, la graine (0 comme l'engine) ; la circulation d'AS6 arrive par `vehicles` (clés ou attributs `s`, `dir`).
+- Budget du core : `CORE_BUDGET = 16` (celui du préréglage high), pour que les groupes proches ne dépendent plus du préréglage.
+- Sorties : `riders()` (tous les cyclistes, `id` « `<groupe>-<rang>` »), `sources()` (ceux qui roulent dans le sens du parcours, `id` « `rider:<id>` », `kind` constant, `lane_m` lu par `draft.py` d'AS2), `state_list(s)` (au plus 6 à moins de 60 m, du plus proche au plus loin, `{id, s, v, lane_m, look}` au centimètre, `v` négative en face).
+- Groupe `overtake` dont on prend la roue : une fois rabattu, il garde sa vitesse (sa puissance au rabattement, sur la pente du moment) au lieu de suivre celle du cycliste (`hold_after_pass`, coupé pour la parité).
+- Parité (critère 2) : `engine/tests/make_road_cyclists_parity.py` écrit le relevé `engine/tests/data/road_cyclists_parity.json` (séance de `test_road_cyclists_model.gd`, 30 km, budget 16, graine 7) ; `engine/tests/unit/test_road_cyclists_parity.gd` le rejoue avec le modèle de l'engine (mêmes groupes, mêmes comptes, mêmes places à 5 cm) ; `core/tests/test_road_cyclists.py` vérifie que le relevé est à jour, reprend les garanties du test de l'engine et les critères 3 (en une dimension) et 4.
+
+**Étape 2 (après la fusion d'AS2 et d'AS6).**
+
+- `session.py` : le modèle tourne à chaque pas de la boucle (montées tirées des `segments` ou de la détection du core, villages des POI), ses `sources()` s'ajoutent aux bots dans `draft_for` et dans le placement automatique d'AS2 ; `draft_bot` peut valoir `rider:<id>`.
+- Contrat : liste facultative `riders` dans `state` à 10 Hz, dans la révision de la 2.0 d'AS6 ; trame pleine (5 bots, 4 véhicules, 6 cyclistes) sous 4 096 octets (`ipc_budget.py`).
+- Engine : `road_cyclists_model.gd` ne tire plus que les groupes au-delà de 60 m (ceux qui entrent dans la zone sont repris par la liste du core) ; `road_cyclists_renderer.gd` place les cyclistes reçus, extrapolés entre deux trames ; `draft_gauge.gd` se pose au-dessus de `rider:<id>` ; `fake_core.py` et `visual_check.py` (scène « abri derrière un groupe du décor »).
+- Critère 3 complet (écart latéral d'AS2, cœur de groupe d'AS4), mesures et captures en low, medium et high, validées par le propriétaire avant la fusion.
