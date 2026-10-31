@@ -35,7 +35,7 @@ from .hr_monitor import HeartRateProvider
 from .jitter import JitterMeter
 from .jitter import line as jitter_line
 from .input_providers import ClickPair, KeyboardProvider, NullProvider, SimClickKeyboard, ZwiftClickProvider
-from . import latency_log
+from . import last_choices, latency_log
 from .ipc_lists import summary_extras
 from .ipc_server import IpcServer, IpcState
 from .journal import Record
@@ -366,6 +366,7 @@ class CoreSession:
         self._last_create: tuple[int, Any] | None = None   # dernier create_profile traité (copies ignorées)
         self._publish_profile()
         self._resumed_journal: Path | None = None   # journal repris par `--resume`, jamais proposé (lot O34)
+        self._publish_last_choices()
 
     # --- machine à états ---------------------------------------------------------------
 
@@ -407,18 +408,23 @@ class CoreSession:
             reset = getattr(self.driver, "reset_control", None)
             if reset:
                 reset()   # sortie de ERROR : nouvelle prise de contrôle du trainer
-            self._select_route(str(args.get("route_id") or "demo"), previous=st)
+            route_id = str(args.get("route_id") or "demo")
+            self._select_route(route_id, previous=st)
+            if self.state.session_state == "READY" and self.state.route_id == route_id:
+                self._remember("route_id", route_id, cmd_id)
         elif name == "select_workout":
             # Accepté aussi après une séance (FINISHED, ERROR) : le menu choisit l'entraînement avant
             # le parcours, et le core reste en FINISHED jusqu'au select_route suivant.
             if st in ("IDLE", "READY", "FINISHED", "ERROR"):
                 self._drop_rogue()
                 self._select_workout(args.get("workout_id"))
+                if self._workout_id is not None and not ftp_test_kind(self._workout_id):
+                    self._remember("workout_id", self._workout_id, cmd_id)
             else:
                 log.warning("Entraînement « %s » refusé : séance %s.", args.get("workout_id"), st)
                 self.server.send_error("busy", "Choix de l'entraînement impossible pendant une séance.")
         elif name == "start_open_world":
-            self._start_open_world(args, st)
+            self._start_open_world(args, st, cmd_id)
         elif name == "choose_branch":
             if self.openworld is None:
                 self.server.send_error("unknown_junction", "Pas de monde ouvert en cours.")
@@ -452,6 +458,8 @@ class CoreSession:
                 self._start_wtf()
             self._new_race(classic=self.wtf is None)
             self._set_state("RUNNING")
+            if self.rogue is None:   # une run a ses propres ennemis : les bots de la séance libre restent
+                self._remember("bots", (args if isinstance(args, dict) else {}).get("bots") or [], cmd_id)
         elif name == "skip_block" and self._workout_erg() and st in ("RUNNING", "PAUSED"):
             self._skip_block()
         elif name == "set_ride_mode":
@@ -726,6 +734,7 @@ class CoreSession:
         self._note_profile()
         log.info("Profil de joueur : %s (%s)%s.", ctx.id, ctx.root, " — PROFIL D'ESSAI" if ctx.is_trial else "")
         self._send_profile_reload(cmd_id)
+        self._preselect_last_route()
         try:
             asyncio.get_running_loop()
             self._spawn(self._publish_w_prime_estimate())   # W' du nouveau profil, au hello_ack suivant
@@ -735,6 +744,7 @@ class CoreSession:
     def _send_profile_reload(self, cmd_id: int) -> None:
         self._publish_profile()
         self._publish_interrupted()
+        self._publish_last_choices()
         self.server.send_hello_ack(self.server.hello_config)
         self._send_settings(cmd_id)
         if self.progress_svc.enabled and self.progress_svc.progression_dict() is not None:
@@ -775,6 +785,40 @@ class CoreSession:
         self.server.send_raw({"type": "interrupted", "v": 1, "request_cmd_id": cmd_id, "id": sid, "saved": fit is not None,
                               "fit_path": str(fit) if fit else None,
                               "items": self.server.hello_config.get("interrupted", [])})
+    # --- derniers choix du menu, par profil (lot O32) ---------------------------------------------
+
+    def _publish_last_choices(self) -> None:
+        """`hello_ack.config.last_choices` : choix gardés du profil en cours ; absent sans profil, comme `profile`."""
+        ctx = self.profile_ctx
+        if ctx.id is None:
+            self.server.hello_config.pop("last_choices", None)
+        else:
+            self.server.hello_config["last_choices"] = last_choices.load(last_choices.path_for(ctx.root))
+
+    def _remember(self, key: str, value: Any, cmd_id: int) -> None:
+        """Note un choix fait au menu (commande de l'engine) et accepté ; pas les commandes de la ligne de
+        commande (`cmd_id` 0) ; rien sans profil ni pour les essais simulés sans configuration, comme
+        `[profils] dernier`."""
+        if cmd_id <= 0 or self.profile_ctx.id is None or (self.sim is not None and self.config_path is None):
+            return
+        try:
+            choices = last_choices.remember(last_choices.path_for(self.profile_ctx.root), key, value)
+        except OSError as exc:
+            log.warning("Dernier choix non enregistré (%s) : %s", key, exc)
+            return
+        self.server.hello_config["last_choices"] = choices
+
+    def _preselect_last_route(self) -> None:
+        """Hors séance, recharge le dernier parcours du profil s'il existe encore ; sinon rien."""
+        route_id = self.server.hello_config.get("last_choices", {}).get("route_id")
+        st = self.state.session_state
+        if not route_id or st not in ("IDLE", "READY") or route_id == self.state.route_id:
+            return
+        if route_id != "demo" and not find_world(route_id, self.routes_root).is_dir():
+            log.info("Dernier parcours « %s » introuvable : aucun parcours choisi.", route_id)
+            return
+        log.info("Dernier parcours du profil : %s.", route_id)
+        self._select_route(route_id, previous=st)
 
     def _note_profile(self) -> None:
         """`.profil_actif` pour le lanceur ; `[profils] dernier` pour un profil de joueur seulement."""
@@ -1459,7 +1503,7 @@ class CoreSession:
 
     # --- monde ouvert (lot W9, contrat IPC révision 1.5) ------------------------------------------
 
-    def _start_open_world(self, args: Any, st: str) -> None:
+    def _start_open_world(self, args: Any, st: str, cmd_id: int = 0) -> None:
         if st not in ("IDLE", "READY", "FINISHED", "ERROR"):
             self.server.send_error("busy", "Monde ouvert impossible pendant une séance.")
             return
@@ -1479,6 +1523,7 @@ class CoreSession:
             return
         self.openworld = ow
         log.info("Monde ouvert : préparation de %s.", ow.folder)
+        self._remember("open_world", args, cmd_id)
 
     def _close_open_world(self, wait: bool = False) -> None:
         """Fin du générateur ; en séance, dans un fil pour ne pas retenir la boucle à 50 Hz."""
@@ -2575,6 +2620,8 @@ class CoreSession:
             if workout_id:
                 self._on_command("select_workout", {"workout_id": workout_id}, 0)
             self._on_command("start", {}, 0)
+        else:
+            self._preselect_last_route()   # lot O32 : le menu s'ouvre sur le dernier parcours du profil
         if self.first_run:
             self._on_command("install_content", {"id": "starter"}, 0)
         log.info("Core démarré (trainer=%s, entrées=%s).", self.cfg.drivers.trainer,

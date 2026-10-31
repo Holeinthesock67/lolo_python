@@ -43,6 +43,10 @@ extends RefCounted
 ## `bots` (contrat 1.3) quand l'un des deux est choisi, sinon n'envoie rien. Un nouvel accueil les remet à zéro.
 ## Records (série T, lot T10) : l'écran Prêt finit par « Records du parcours », qui renvoie une action
 ## « item » de l'écran Prêt (écrans des records ouverts par menu_flow.gd).
+##
+## Derniers choix du profil (lot O32, hello_ack.config.last_choices, set_last_choices()) : un nouvel accueil
+## remet le bot et le fantôme de la dernière séance au lieu de « aucun » ; la liste des entraînements s'ouvre
+## sur le dernier entraînement choisi, celle des parcours sur le parcours en cours (rechargé par le core).
 
 const EVENTS := ["PLUS_SHORT", "MINUS_SHORT", "PLUS_LONG", "MINUS_LONG", "A_SHORT", "A_LONG", "Y_SHORT",
 	"LEFT_SHORT", "RIGHT_SHORT"]
@@ -127,6 +131,10 @@ var start_args: Dictionary = {}
 ## Bot choisi (index de BOT_CHOICES) et fantôme demandé, pour la séance préparée (lot O7).
 var bot_choice := 0
 var ghost := false
+## Derniers choix du profil (lot O32) : bot et fantôme remis par reset(), entraînement mis sous le focus.
+var last_bot := 0
+var last_ghost := false
+var last_workout := ""
 ## Cyber-Rogue (lot R13) : rappel des choix affiché sur l'écran Prêt quand `mode` vaut « rogue ».
 var rogue_ready := ""
 ## Garage (lot V8) : l'accueil gagne « Garage » quand le core annonce une progression (set_garage).
@@ -310,6 +318,42 @@ func set_pause_rows(rows: Array) -> void:
 		_focus = _first_enabled_from(_index_of(focused_id), 1)
 
 
+## Derniers choix du profil (`hello_ack.config.last_choices`, lot O32 ; null ou absent : aucun). Un bot
+## inconnu de BOT_CHOICES (ligne de commande, ancienne liste) revient à « aucun ».
+func set_last_choices(choices) -> void:
+	var c: Dictionary = choices if choices is Dictionary else {}
+	last_workout = str(c["workout_id"]) if c.get("workout_id") is String else ""
+	last_bot = 0
+	last_ghost = false
+	var bots = c.get("bots", [])
+	for b in (bots if bots is Array else []):
+		if b is Dictionary and str(b.get("kind", "")) == "ghost":
+			last_ghost = true
+		elif b is Dictionary and last_bot == 0:
+			last_bot = bot_index(b)
+	bot_choice = last_bot
+	ghost = last_ghost
+	_refresh_home()
+
+
+## Index de BOT_CHOICES d'un élément de `bots` (nombres du JSON comparés en valeur), 0 s'il est inconnu.
+static func bot_index(bot: Dictionary) -> int:
+	for i in range(1, BOT_CHOICES.size()):
+		var ref: Dictionary = BOT_CHOICES[i][1]
+		if ref.size() != bot.size():
+			continue
+		var same := true
+		for k in ref:
+			var v = bot.get(k)
+			if ref[k] is String:
+				same = same and v is String and v == ref[k]
+			else:
+				same = same and (v is int or v is float) and is_equal_approx(float(v), float(ref[k]))
+		if same:
+			return i
+	return 0
+
+
 func set_sim_session(on: bool) -> void:
 	sim_session = on
 	_screens[HOME]["title"] = "OpenRide — session simulée" if on else "OpenRide"
@@ -325,8 +369,8 @@ func reset() -> void:
 	_focus_stack.clear()
 	_pending = {}
 	_clear_start()
-	bot_choice = 0
-	ghost = false
+	bot_choice = last_bot
+	ghost = last_ghost
 	if mode in ["rogue", "wtf"]:
 		mode = "free"
 	_refresh_home()
@@ -525,6 +569,10 @@ func _open(screen_id: String, push := true) -> void:
 		_focus_stack.append(_focus)
 	_screen = screen_id
 	_focus = _first_enabled_from(0, 1)
+	if screen_id == WORKOUTS and last_workout != "":   # lot O32 : dernier entraînement, parcours en cours
+		focus_item(last_workout)
+	elif screen_id == ROUTES and world_id != "":
+		focus_item(world_id)
 
 
 func _back() -> Dictionary:
@@ -639,6 +687,8 @@ func _validate() -> Dictionary:
 				return {"action": "item", "screen": WORKOUTS, "id": id}
 			var workout = null if id == NO_WORKOUT_ID else id
 			mode = "free" if workout == null else "erg"
+			if workout != null:
+				last_workout = id   # noté aussi par le core (lot O32)
 			_clear_start()
 			_refresh_home()
 			if _workouts_return == READY:
@@ -652,6 +702,9 @@ func _validate() -> Dictionary:
 		READY:
 			match id:
 				"start":
+					if mode != "rogue":   # bots de la séance notés aussi par le core (lot O32)
+						last_bot = bot_choice
+						last_ghost = ghost
 					var args := _start_args()
 					if args.is_empty():
 						return {"action": "start"}
