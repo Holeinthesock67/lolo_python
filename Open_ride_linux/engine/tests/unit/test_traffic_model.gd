@@ -137,7 +137,7 @@ func _ride_mixed(route, rng_seed: int) -> Dictionary:
 	var met := 0
 	var waited := 0
 	while s < 30500.0:
-		cy.update(s, v_mps, dt, false, [bot])
+		cy.update(s, v_mps, dt, false, [{"s": bot, "lateral": RoadBuilder.BOT_LATERAL_M}])
 		var others: Array = cy.riders()
 		others.append({"s": bot, "lateral": RoadBuilder.BOT_LATERAL_M, "dir": 1})
 		tm.update(s, v_mps, dt, false, others)

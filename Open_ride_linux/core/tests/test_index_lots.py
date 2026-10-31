@@ -58,27 +58,57 @@ def test_missing_or_bad_line_is_reported(tmp_path: Path):
     assert il.main(["--verifier"], lots_dir=tmp_path) == 1
 
 
-def test_migrate_moves_rows_left_by_an_old_pr(tmp_path: Path):
-    """Rebase d'une PR d'avant X54 : ses lignes restées dans 00_INDEX.md vont dans les cahiers."""
-    neuf = _cahier(tmp_path, "LOT_O24_neuf.md", None)
-    ancien = _cahier(tmp_path, "LOT_X32_ancien.md", ["Garde-fou", "Python", "—", "Petite", "Prêt"])
-    (tmp_path / il.INDEX_NAME).write_text(
-        "# Index\n\n## 1. Liste des lots\n\n"
-        "| [O24](LOT_O24_neuf.md) | Appareils | GDScript | O4 | Petite | Prêt |\n"
-        "| [X32](LOT_X32_ancien.md) | Garde-fou | Python | — | Petite | **Livré le 31 octobre** |\n"
-        "| [Q9](LOT_Q9_absent.md) | Absent | Python | — | Petite | Prêt |\n"
-        "\n## 2. Règles\n", encoding="utf-8")
-    errors = il.migrate(tmp_path)
-    assert len(errors) == 1 and "LOT_Q9_absent.md" in errors[0]
-    index = (tmp_path / il.INDEX_NAME).read_text(encoding="utf-8")
-    assert "LOT_O24" not in index and "LOT_X32" not in index and "LOT_Q9_absent.md" in index
-    assert "## 2. Règles" in index
+INTRO_BASE = "# Index\n\n## 1. Liste des lots\n\n"
+INTRO_MAIN = "# Index\n\n## 1. Liste des lots\n\nLe tableau se calcule (lot X54).\n\n"
+ROW_O24 = "| [O24](LOT_O24_neuf.md) | Appareils | GDScript | O4 | Petite | Prêt |\n"
+ROW_X32_OLD = "| [X32](LOT_X32_ancien.md) | Garde-fou | Python | — | Petite | Prêt |\n"
+ROW_X32_LIVRE = "| [X32](LOT_X32_ancien.md) | Garde-fou | Python | — | Petite | **Livré le 31 octobre** |\n"
+ROW_X11_OLD = "| [X11](LOT_X11_vieux.md) | FIT | Python | — | Petite | Oui |\n"
 
-    text = neuf.read_text(encoding="utf-8")
-    assert text.startswith("# LOT_O24_neuf.md\n\n" + il.MARKER + "\n")   # sous le titre
+
+def _old_branch(tmp_path: Path) -> tuple[str, str]:
+    """Cahiers de main (X11 livré depuis), index de base d'avant X54 et index de main."""
+    _cahier(tmp_path, "LOT_O24_neuf.md", None)
+    _cahier(tmp_path, "LOT_X32_ancien.md", ["Garde-fou", "Python", "—", "Petite", "Prêt"])
+    _cahier(tmp_path, "LOT_X11_vieux.md", ["FIT", "Python", "—", "Petite", "**Livré le 28 octobre**"])
+    base = INTRO_BASE + ROW_X11_OLD + ROW_X32_OLD + "\n## 2. Règles\n"
+    main = INTRO_MAIN + "\n## 2. Règles\n"
+    return base, main
+
+
+def test_migrate_moves_only_rows_changed_by_the_branch(tmp_path: Path):
+    """Fusion de main dans une PR d'avant X54 : seules ses lignes vont dans les cahiers (retour du fil AS2)."""
+    base, main = _old_branch(tmp_path)
+    branch = INTRO_BASE + ROW_X11_OLD + ROW_O24 + ROW_X32_LIVRE + "\n## 2. Règles\n\nRègle de la branche.\n"
+    (tmp_path / il.INDEX_NAME).write_text(branch, encoding="utf-8")
+    assert il.migrate(tmp_path, base, main) == []
+
+    index = (tmp_path / il.INDEX_NAME).read_text(encoding="utf-8")
+    assert il.old_rows(index) == []
+    assert "Le tableau se calcule (lot X54)." in index          # introduction de main gardée
+    assert "Règle de la branche." in index                       # texte de la branche gardé
+    neuf = tmp_path / "LOT_O24_neuf.md"
+    assert neuf.read_text(encoding="utf-8").startswith("# LOT_O24_neuf.md\n\n" + il.MARKER + "\n")
     assert il.parse_lot(neuf)[0].cells == ("Appareils", "GDScript", "O4", "Petite", "Prêt")
-    lot = il.parse_lot(ancien)[0]
-    assert lot.delivered and ancien.read_text(encoding="utf-8").count(il.MARKER) == 1   # remplacée, pas doublée
+    ancien = tmp_path / "LOT_X32_ancien.md"
+    assert il.parse_lot(ancien)[0].delivered and ancien.read_text(encoding="utf-8").count(il.MARKER) == 1
+    # X11 : ancienne copie de main dans la branche, le cahier de main (livré) n'est pas écrasé
+    assert il.parse_lot(tmp_path / "LOT_X11_vieux.md")[0].status == "**Livré le 28 octobre**"
+
+
+def test_migrate_is_all_or_nothing(tmp_path: Path):
+    base, main = _old_branch(tmp_path)
+    absent = "| [Q9](LOT_Q9_absent.md) | Absent | Python | — | Petite | Prêt |\n"
+    branch = INTRO_BASE + ROW_O24 + absent + "\n## 2. Règles\n"
+    (tmp_path / il.INDEX_NAME).write_text(branch, encoding="utf-8")
+    errors = il.migrate(tmp_path, base, main)
+    assert len(errors) == 1 and "LOT_Q9_absent.md" in errors[0]
+    assert (tmp_path / il.INDEX_NAME).read_text(encoding="utf-8") == branch
+    assert il.MARKER not in (tmp_path / "LOT_O24_neuf.md").read_text(encoding="utf-8")
+
+    (tmp_path / il.INDEX_NAME).write_text("<<<<<<< HEAD\n" + ROW_O24 + "=======\n>>>>>>> origin/main\n",
+                                          encoding="utf-8")
+    assert "git checkout --ours" in il.migrate(tmp_path, base, main)[0]
 
 
 def test_duplicate_id_is_reported(tmp_path: Path):

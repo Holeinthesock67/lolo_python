@@ -67,6 +67,9 @@
         "create_profile",
         "rename_profile",
         "delete_profile",
+        "list_contents",
+        "install_content",
+        "create_plan",
         "list_history",
         "history_session"
       ]

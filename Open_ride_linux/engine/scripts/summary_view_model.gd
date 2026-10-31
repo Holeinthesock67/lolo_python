@@ -142,7 +142,34 @@ func lines(summary: Dictionary, _mode: String = "", _ftp_w: int = 0) -> Array:
 
 	if summary.get("rogue") is Dictionary:
 		out.append_array(rogue_lines(summary["rogue"]))
+	if summary.get("wtf") is Dictionary:
+		out.append_array(wtf_lines(summary["wtf"]))
 
+	return out
+
+
+## Noms des gags du bilan du mode WTF (`summary.wtf.events`), dans l'ordre des règles du core.
+const WTF_EVENTS := [["gravity", "Gravité"], ["upside_down", "Monde à l'envers"], ["collapse", "Effondrement"],
+	["cheese", "Fromage"], ["micro", "Micro-défis"], ["eggs", "Œufs"], ["tiny", "Tout petit"], ["storm", "Tempête"],
+	["camera", "Caméras"], ["chef", "Surprise du chef"]]
+
+
+## Lignes du bilan du mode « What the fuck » (lot WTF7, `summary.wtf`, maquette « Bilan » du 30 octobre) :
+## points, gags joués, Katamari ; pas de records en mode WTF.
+func wtf_lines(wtf: Dictionary) -> Array:
+	var out: Array = [{"label": "Mode WTF", "value": "%d pts" % int(wtf.get("points", 0)), "unit": ""}]
+	var events = wtf.get("events", {})
+	var played: Array = []
+	if events is Dictionary:
+		for e in WTF_EVENTS:
+			var n := int(events.get(e[0], 0))
+			if n > 0:
+				played.append("%s × %d" % [e[1], n])
+	out.append({"label": "Gags joués", "value": ", ".join(played) if not played.is_empty() else "aucun", "unit": ""})
+	if int(wtf.get("kata_count", 0)) > 0 or float(wtf.get("kata_size", 1.0)) > 1.0:
+		out.append({"label": "Katamari", "value": "× %s, %d objets" % [_format_fr_float(float(wtf.get("kata_size", 1.0)), 1),
+			int(wtf.get("kata_count", 0))], "unit": ""})
+	out.append({"label": "Records", "value": "pas de records en mode WTF", "unit": ""})
 	return out
 
 
