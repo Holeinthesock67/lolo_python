@@ -325,9 +325,9 @@ func _test_settings_screen() -> void:
 	f.handle("MINUS_SHORT")
 	f.handle("A_LONG")   # Réglages
 	var labels: Array = f.state()["items"].map(func(it): return it["label"])
-	_check(labels == ["Appareils : rechercher et appairer", "Cycliste", "Séance", "Graphisme", "Vent",
+	_check(labels == ["Appareils : rechercher et appairer", "Contenus : entraînements, plans, parcours", "Cycliste", "Séance", "Graphisme", "Vent",
 			"Autres réglages", "OpenRide " + f.engine_version], "réglages rangés en sous-écrans : %s" % str(labels))
-	_check(f.state()["items"][1]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
+	_check(f.state()["items"][2]["detail"] == "FTP", "détail d'un sous-écran : ses réglages")
 	_check(f.state()["items"][-1]["enabled"] == false, "ligne de version non sélectionnable")
 	# Version du core différente : alerte discrète dans le détail de la ligne (lots O2 et O4).
 	f.set_versions("0.9.0", "0.9.0")
@@ -338,6 +338,7 @@ func _test_settings_screen() -> void:
 			"versions différentes : %s" % str(f.state()["items"][-1]["detail"]))
 	f.set_versions("0.9.0", "")
 	_check(f.state()["items"][-1]["detail"] == "", "core pas encore connu : pas d'alerte")
+	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Cycliste
 	_check(f.state()["screen"] == "settings_group" and f.state()["title"] == "Réglages › Cycliste"
@@ -503,7 +504,7 @@ func _test_plans() -> void:
 	_check(f.handle("A_LONG") == {"action": "list_plans"} and f.state()["screen"] == "plans", "écran Plans, list_plans")
 	_check(f.state()["items"][0]["label"] == "Recherche des plans…", "en attendant la réponse")
 	f.on_plans(_plans_msg(null))
-	_check(_ids(f) == ["plan:casse", "plan:essai"] and _focus_id(f) == "plan:essai",
+	_check(_ids(f) == ["plan:casse", "plan:essai", "create"] and _focus_id(f) == "plan:essai",
 		"liste des plans, plan invalide désactivé (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "4 semaines, 8 séances", "plan : semaines et séances")
 	f.handle("A_LONG")
@@ -516,7 +517,7 @@ func _test_plans() -> void:
 		"done": 0, "total": 8, "done_pct": 0.0, "today": [DAY], "late": [], "next": NEXT, "plan_day": "ss"}
 	f.on_plans(_plans_msg(active))
 	_check(f.state()["status"] == "Plan démarré : Essai", "plan démarré (%s)" % f.state()["status"])
-	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai"], "suivi du plan actif (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai", "create"], "suivi du plan actif (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "semaine 1 / 4, 0 % fait (0 / 8)", "progression : %s" % f.state()["items"][1]["detail"])
 	f.menu.focus_item("today")
 	_check(f.state()["card"]["title"] == "Séance du jour" and f.state()["card"]["name"] == "Sweet spot"

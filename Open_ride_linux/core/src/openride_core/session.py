@@ -27,7 +27,7 @@ from pathlib import Path
 from typing import Any, Callable
 
 from .classic import ClassicRace, GainJob
-from .config import GPX_DIR, OPENRIDE_HOME, WORKOUTS_DIR, Config
+from .config import GPX_DIR, OPENRIDE_HOME, PLANS_DIR, WORKOUTS_DIR, Config
 from .equipment import segment_time_gain
 from .gearing import Gearing
 from .hr_monitor import HeartRateProvider
@@ -80,6 +80,8 @@ WIND_FRAME_EVERY = 15    # champ `wind` 2 fois par seconde (contrat IPC révisio
 DEFAULT_THEME_JSON = Path(__file__).resolve().parents[3] / "engine" / "themes" / "default" / "theme.json"
 
 
+CONTENT_COMMANDS = ("list_contents", "install_content")   # lot O25
+CONTENT_PROGRESS_PERIOD_S = 1.0   # message `contents` pendant une installation, une fois par seconde au plus
 PROFILE_COMMANDS = ("list_profiles", "select_profile", "create_profile", "rename_profile", "delete_profile")   # lot MJ7
 XP_RESULT_REPEATS = 10      # `xp_result` répété tant que la séance reste FINISHED (contrat 1.4, D7)
 W_PRIME_ESTIMATE_WAIT_S = 3.0   # attente du W' estimé avant le premier hello_ack (lot R16)
@@ -142,8 +144,11 @@ def build_sim_world(cfg: Config) -> Any:
 def build_driver(cfg: Config, sim: Any = None) -> Any:
     if cfg.drivers.trainer in ("ftms", "sim"):
         from .ftms_driver import FtmsDriver
-        if cfg.drivers.trainer == "sim":   # vrai pilote, radio simulée
-            return FtmsDriver(cfg.trainer, cfg.bike, None, device_finder=sim.find_device,
+        if cfg.drivers.trainer == "sim":
+            # Vrai pilote, radio simulée. Le trainer simulé est cherché sous son propre nom : celui de
+            # config.toml est souvent le nom du vrai trainer, écrit par l'appairage (lot N12), qui le cachait.
+            trainer = replace(cfg.trainer, device_name=sim.trainer.name) if sim.trainer else cfg.trainer
+            return FtmsDriver(trainer, cfg.bike, None, device_finder=sim.find_device,
                               client_factory=sim.client_factory)
         return FtmsDriver(cfg.trainer, cfg.bike, cfg.drivers.trainer_address or None)
     replay = None
@@ -320,6 +325,9 @@ class CoreSession:
         self._frame_count = 0
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
+        self._contents = None   # contenus du menu (lot O25), créés à la première commande
+        self.themes_dir = OPENRIDE_HOME / "Themes"   # thèmes installés, listés dans « Contenus » (lot O29)
+        self.first_run = False  # premier lancement (`run --first-run`) : contenus de départ installés seuls
         # Appairage depuis le menu (lot N13) : dernière recherche et identification du « + » en cours.
         self._scan_items: list[dict[str, Any]] = []
         # Menu ERG (lot N16, décision D4 de l'audit IPC) : dossier personnel fouillé par list_imports
@@ -483,7 +491,7 @@ class CoreSession:
             self._send_settings(cmd_id)
         elif name == "set_setting":
             self._set_setting(args, cmd_id)
-        elif name in ("list_plans", "start_plan", "stop_plan"):
+        elif name in ("list_plans", "start_plan", "stop_plan", "create_plan"):
             self._on_plan_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name == "accept_ftp":
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
@@ -493,6 +501,67 @@ class CoreSession:
             self._on_garage_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name in PROFILE_COMMANDS:
             self._on_profile_command(name, args if isinstance(args, dict) else {}, cmd_id)
+        elif name in CONTENT_COMMANDS:
+            self._on_content_command(name, args if isinstance(args, dict) else {}, cmd_id)
+
+    # --- contenus installables depuis le menu (lot O25, contrat IPC révision 1.5) ---------------
+
+    def _content_service(self):
+        from .contents import ContentDirs, ContentService
+
+        if self._contents is None:
+            plans_dir = self.plans_dir if self.plans_dir is not None else PLANS_DIR
+            self._contents = ContentService(ContentDirs(
+                self.workouts_dir, plans_dir, self.routes_root, gpx=GPX_DIR, themes=self.themes_dir,
+                home=self.import_home, themes_max_gb=self.cfg.render.theme_library_gb))
+        return self._contents
+
+    def _send_contents(self, cmd_id: int) -> None:
+        svc = self._content_service()
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:   # hors boucle (essais) : calcul sur place
+            self.server.send_raw(svc.message(cmd_id))
+            return
+
+        async def send() -> None:
+            self.server.send_raw(await asyncio.to_thread(svc.message, cmd_id))
+
+        self._spawn(send())
+
+    def _on_content_command(self, name: str, args: dict, cmd_id: int) -> None:
+        from .contents import ContentError
+
+        if name == "list_contents":
+            self._send_contents(cmd_id)
+            return
+        if self.state.session_state in ("RUNNING", "PAUSED"):
+            self.server.send_error("busy", "Contenus installables seulement hors séance (terminer d'abord).")
+            return
+        try:
+            job = self._content_service().start(str(args.get("id") or ""))
+        except ContentError as exc:
+            self.server.send_error("content_invalid", f"Contenu refusé : {exc}")
+            return
+        log.info("Installation du contenu « %s ».", job.id)
+        self._spawn(self._install_content(job, cmd_id))
+
+    async def _install_content(self, job, cmd_id: int) -> None:
+        """Installation dans un fil ; message `contents` au départ, chaque seconde puis à la fin."""
+        svc = self._content_service()
+        self.server.send_raw(svc.message(cmd_id))
+        work = asyncio.create_task(asyncio.to_thread(svc.run, job))
+        last = -1
+        while not work.done():
+            await asyncio.wait({work}, timeout=CONTENT_PROGRESS_PERIOD_S)
+            if not work.done() and job.progress_pct != last:
+                last = job.progress_pct
+                self.server.send_raw(svc.message(cmd_id))
+        await work
+        log.info("Contenu « %s » : %s", job.id, job.message)
+        if job.failed:
+            self.server.send_error("content_failed", job.message)
+        self.server.send_raw(await asyncio.to_thread(svc.message, cmd_id))
 
     # --- profils de joueurs (série MJ, lot MJ7, contrat IPC révision 1.5) ------------------------
 
@@ -894,6 +963,7 @@ class CoreSession:
     def _on_plan_command(self, name: str, args: dict, cmd_id: int) -> None:
         from . import plans
 
+        created = None
         if name != "list_plans":
             if self.state.session_state in ("RUNNING", "PAUSED"):
                 self.server.send_error("busy", "Plan impossible à changer pendant une séance.")
@@ -904,20 +974,31 @@ class CoreSession:
                     start = date.fromisoformat(raw) if isinstance(raw, str) and raw else None
                     plans.start_plan(str(args.get("id") or ""), start, self.plans_dir, self.workouts_dir,
                                      self.plan_state_path)
+                elif name == "create_plan":   # plan maison composé dans le menu (lot O30)
+                    workouts, days, weeks = args.get("workouts"), args.get("days"), args.get("weeks")
+                    if not isinstance(workouts, list) or not isinstance(days, list) or not (
+                            weeks is None or (isinstance(weeks, int) and not isinstance(weeks, bool))):
+                        raise plans.PlanError("arguments attendus : workouts, days (listes), weeks (entier ou null)")
+                    plan = plans.create_from_library(workouts, days, weeks, args.get("name") or None,
+                                                     self.plans_dir, self.workouts_dir)
+                    created = {"id": plan.id, "name": plan.name}
                 else:
                     plans.stop_plan(self.plan_state_path)
-            except (plans.PlanError, ValueError) as exc:
+            except (plans.PlanError, ValueError, TypeError) as exc:
                 self.server.send_error("plan_invalid", f"Plan refusé : {exc}")
                 return
-            log.info("Plan %s.", f"« {args.get('id')} » démarré" if name == "start_plan" else "arrêté")
-        self._spawn(self._send_plans(cmd_id))
+            log.info("Plan %s.", {"start_plan": f"« {args.get('id')} » démarré", "stop_plan": "arrêté",
+                                  "create_plan": f"« {created and created['id']} » créé"}[name])
+        self._spawn(self._send_plans(cmd_id, created))
 
-    async def _send_plans(self, cmd_id: int) -> None:
+    async def _send_plans(self, cmd_id: int, created: dict[str, str] | None = None) -> None:
         from .ipc_lists import build_plans_message
 
         try:
             msg = await asyncio.to_thread(build_plans_message, cmd_id, self.cfg.rider.ftp_w, self.plans_dir,
                                           self.workouts_dir, self.plan_state_path, self.activities_dir)
+            if created:
+                msg["created"] = created
         except Exception:
             log.exception("Erreur lors de la préparation de plans (cmd_id=%d)", cmd_id)
             return
@@ -2292,6 +2373,8 @@ class CoreSession:
             if workout_id:
                 self._on_command("select_workout", {"workout_id": workout_id}, 0)
             self._on_command("start", {}, 0)
+        if self.first_run:
+            self._on_command("install_content", {"id": "starter"}, 0)
         log.info("Core démarré (trainer=%s, entrées=%s).", self.cfg.drivers.trainer,
                  self.cfg.drivers.input)   # format lu par tools/log_report.py
         if self.hr is not None:
