@@ -1410,11 +1410,13 @@ def _draft_gauge_scene(s: Session) -> None:
 
 def _lane_scene(s: Session) -> None:
     """Lot AS2 : placement dans la roue puis dépassement, vus par la caméra de contrôle derrière l'avatar. Dans la
-    roue : `lane_m` du cycliste à 2,1 m, celui du bot (3 m devant) aussi, avatar et bot sur la même ligne ; en
-    dépassement : cycliste à 1,1 m, bot à sa hauteur à 2,1 m, côte à côte à 1 m l'un de l'autre."""
+    roue : `lane_m` du cycliste à 2,1 m, celui du bot (8 m devant) aussi, avatar et bot sur la même ligne ; en
+    dépassement : cycliste à 1,1 m, bot juste devant à 2,1 m, 1 m sur sa droite."""
     core = s.core
     core.send_raw({"type": "_test", "v": CONTRACT_VERSION, "action": "avatar_camera", "view": "follow"})
-    for tag, rider_lane, ahead_m in (("abri_dans_la_roue", 2.1, 3.0 + 1.7), ("abri_depassement", 1.1, 0.4)):
+    # Bot assez loin devant : la position affichée de la caméra, qui ne recule jamais, peut avoir pris de l'avance
+    # sur `s` de la scène pendant les scènes précédentes (rendu lent sous Xvfb), et le compteur de contacts compte.
+    for tag, rider_lane, ahead_m in (("abri_dans_la_roue", 2.1, 8.0), ("abri_depassement", 1.1, 3.0)):
         s_now = core.current_s()
         if tag == "abri_depassement":   # comme au core : on se décale d'abord, puis on arrive à la hauteur du bot
             core.set_scene(speed=0.0, lane_m=rider_lane)
