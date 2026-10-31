@@ -142,8 +142,11 @@ def build_sim_world(cfg: Config) -> Any:
 def build_driver(cfg: Config, sim: Any = None) -> Any:
     if cfg.drivers.trainer in ("ftms", "sim"):
         from .ftms_driver import FtmsDriver
-        if cfg.drivers.trainer == "sim":   # vrai pilote, radio simulée
-            return FtmsDriver(cfg.trainer, cfg.bike, None, device_finder=sim.find_device,
+        if cfg.drivers.trainer == "sim":
+            # Vrai pilote, radio simulée. Le trainer simulé est cherché sous son propre nom : celui de
+            # config.toml est souvent le nom du vrai trainer, écrit par l'appairage (lot N12), qui le cachait.
+            trainer = replace(cfg.trainer, device_name=sim.trainer.name) if sim.trainer else cfg.trainer
+            return FtmsDriver(trainer, cfg.bike, None, device_finder=sim.find_device,
                               client_factory=sim.client_factory)
         return FtmsDriver(cfg.trainer, cfg.bike, cfg.drivers.trainer_address or None)
     replay = None
