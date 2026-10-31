@@ -52,15 +52,21 @@ const CHOICE_TEXTS := {
 	"render.theme": {"default": "par défaut"},
 	"wind.mode": {"off": "coupé", "fixed": "constant", "gusty": "en rafales", "theme": "celui du thème"},
 	"wind.feel": {"grade": "par la pente", "ftms": "par le trainer (essai)"},
+	"open_world.network": {"on": "oui", "off": "non (hors ligne)"},
+	"progression.enabled": {"on": "oui", "off": "non (sans Garage)"},
 	"render.texture_level": {"auto": "selon la qualité", "low": "basses (1 024 px)", "medium": "moyennes (1 024 px)", "high": "hautes (2 048 px)"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
+
+## Tout autre booléen du fichier (choix `on` / `off`, lot O26) s'écrit oui / non (lot O27).
+const BOOL_CHOICES := ["on", "off"]
+const BOOL_TEXTS := {"on": "oui", "off": "non"}
 
 ## Sous-écrans de « Réglages » (champ `group` du message `settings`), dans l'ordre d'affichage :
 ## [groupe, titre]. Un élément sans groupe connu va dans « Autres réglages », montré seulement s'il
 ## n'est pas vide.
 const GROUPS := [["rider", "Cycliste"], ["ride", "Séance"], ["graphics", "Graphisme"], ["sound", "Son"],
-	["wind", "Vent"]]
+	["wind", "Vent"], ["advanced", "Avancé"]]
 const OTHER_GROUP := ["other", "Autres réglages"]
 ## Points cardinaux d'une direction en degrés (unité « ° »), de 45 en 45 depuis le nord.
 const COMPASS := ["nord", "nord-est", "est", "sud-est", "sud", "sud-ouest", "ouest", "nord-ouest"]
@@ -117,7 +123,7 @@ static func format_value(it: Dictionary, value) -> String:
 		return GarageViewModel.format_edit(str(it["key"]), int(value))
 	if it.has("format"):
 		return WorkoutBuilder.format_param(it, value)
-	var texts: Dictionary = CHOICE_TEXTS.get(str(it.get("key", "")), {})
+	var texts: Dictionary = CHOICE_TEXTS.get(str(it.get("key", "")), BOOL_TEXTS if it.get("choices", []) == BOOL_CHOICES else {})
 	if texts.has(str(value)):
 		return str(texts[str(value)])
 	var unit := str(it.get("unit", ""))

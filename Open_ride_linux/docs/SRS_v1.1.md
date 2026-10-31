@@ -401,7 +401,7 @@ fps = "off"          # compteur d'images/s du HUD : off, on, detail (+ temps CPU
 draft_gauge = "off"  # jauge d'abri au-dessus du bot qui t'abrite : off, on (« Jauge d'abri des bots »)
 display = "fullscreen"   # windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif), à la définition native de l'écran
 texture_level = "auto"   # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high (« Textures du décor »)
-theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé
+theme_library_gb = 5 # plafond des packs de thèmes de ~/OpenRide/Themes, de 1 à 50 Go (lot U15) : theme-install retire le moins récemment utilisé ; menu : Avancé, lot O27
 
 [ipc]
 port_state = 5005
@@ -412,13 +412,13 @@ godot = ""           # chemin de Godot 4.3, gardé par scripts/install.sh (vide 
 
 [open_world]         # monde ouvert de la 2.0 (série W, docs/contracts/worldgen_v1.md §6)
 cache_dir = "~/OpenRide/Cache/monde"
-cache_max_gb = 5.0
+cache_max_gb = 5.0   # menu : Avancé, « Cache du monde » (lot O27)
 horizon_m = 3000.0   # route engagée devant le cycliste
 offer_m = 300.0      # carrefour proposé à cette distance
 lock_m = 30.0        # choix verrouillé à cette distance du carrefour
 preview_m = 500.0    # amorce calculée pour chaque branche
 recenter_m = 10000.0
-network = true       # false : cache seulement
+network = true       # false : cache seulement (menu : Avancé, lot O27)
 prefetch_history = true
 prefetch_radius_km = 10.0
 [wind]
@@ -435,7 +435,7 @@ factor_compacted = 2.0       # roulement multiplié sur les portions compactées
 factor_gravel = 2.5          # sur le gravier, 1 à 3
 factor_dirt = 3.0            # sur la terre, 1 à 3
 [progression]
-enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0
+enabled = true               # niveau, pièces, équipement et Garage (série V) ; false : comme avant la 2.0 (menu : Avancé, lot O27)
 [avatar]
 standing_grade_pct = 8.0     # l'avatar se met en danseuse au-dessus de cette pente (3 à 15 %, lot V6)
 standing_power_pct = 150.0   # ou de cette puissance, en % de la FTP (100 à 300)

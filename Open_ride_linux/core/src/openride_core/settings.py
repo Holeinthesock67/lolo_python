@@ -11,13 +11,14 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
      "max": 600, "step": 5, "unit": "W", "applies": "next_session"}
 
 `group` range le réglage dans un sous-écran de « Réglages » (`GROUPS` : cycliste, séance, graphisme,
-son, vent) ; l'engine donne les titres.
+son, vent, avancé) ; l'engine donne les titres. Le message est envoyé en parties comme `routes` (lot O27).
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
 la séance suivante, sans relancer), `now` (qualité, niveau des textures, thème, mode d'affichage, courbes, images/s,
 jauge d'abri et volumes : l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le niveau des
 textures, le thème et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief :
-passés par le lanceur à l'engine, pris au prochain lancement ; l'engine propose de relancer, lot O26).
+passés par le lanceur à l'engine ;
+progression : lue au démarrage du core ; pris au prochain lancement, l'engine propose de relancer, lot O26).
 
 Deux règles de forme valent pour toutes les clés (lot O26) : un booléen du fichier est un choix `on` /
 `off` au menu ; `Setting.scale` multiplie un nombre du fichier pour l'afficher en entier au menu (relief
@@ -34,6 +35,7 @@ cours, ou dans `config.toml` sans profil. L'engine n'en sait rien.
 from __future__ import annotations
 
 import json
+import math
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -104,10 +106,15 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("wind.gust_pct", "Rafales", "wind", 10, "%"),
     Setting("wind.max_grade_offset_pct", "Plafond du vent", "wind", 1, "pts de pente"),
     Setting("wind.feel", "Ressenti du vent", "wind"),   # lot O26
+    # Avancé (lot O27) : monde ouvert hors ligne, plafonds de disque, progression du Garage
+    Setting("open_world.network", "Télécharger les cartes", "advanced"),
+    Setting("open_world.cache_max_gb", "Cache du monde", "advanced", 1, "Go"),
+    Setting("render.theme_library_gb", "Place pour les thèmes", "advanced", 1, "Go"),
+    Setting("progression.enabled", "Progression et Garage", "advanced", applies="relaunch"),
 )
 BOOL_CHOICES = ("on", "off")
 # Sous-écrans de « Réglages », dans l'ordre d'affichage (champ `group` de chaque élément).
-GROUPS = ("rider", "ride", "graphics", "sound", "wind")
+GROUPS = ("rider", "ride", "graphics", "sound", "wind", "advanced")
 KEYS = tuple(s.key for s in SETTINGS)
 
 
@@ -177,7 +184,7 @@ def current(cfg: config_mod.Config, themes_dir: Path | None = None) -> list[dict
             item.update(type="choice", choices=ch)
         else:
             lo, hi = bounds(s, cfg) or (0, 0)
-            item.update(type="int", min=int(lo), max=int(hi), step=int(s.step), unit=s.unit)
+            item.update(type="int", min=math.ceil(lo), max=math.floor(hi), step=int(s.step), unit=s.unit)
         out.append(item)
     return out
 
