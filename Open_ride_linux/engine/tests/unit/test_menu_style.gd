@@ -76,12 +76,14 @@ func _test_button_help() -> void:
 	_check(main["keys"] == ["A"] and main["hold"] and main["main"] and main["text"] == "Valider",
 		"valider en tête : A maintenu")
 	var keys := {}
+	var right_ok := true   # rien d'indispensable sur le seul boîtier gauche (§7.1) : un bouton du droit par entrée
 	for screen in ["home", "routes", "ready", "settings", "pause", "confirm", "summary"]:
 		for e in ButtonHelp.entries(screen):
+			right_ok = right_ok and e["keys"].any(func(k): return k in ["A", "+", "B", "Y"])
 			for k in e["keys"]:
 				keys[k] = true
-	_check(keys.keys().all(func(k): return k in ["A", "+", "B", "Y"]),
-		"seulement des boutons du boîtier droit, ni Z ni « − » seul (§7.1) : %s" % str(keys.keys()))
+	_check(right_ok and keys.keys().all(func(k): return k in ["A", "+", "B", "Y", "−", "←", "→"]),
+		"chaque action aussi sur le boîtier droit, flèches et − du gauche à côté, jamais Z (§7.1) : %s" % str(keys.keys()))
 	var y := func(screen: String) -> String:
 		for e in ButtonHelp.entries(screen):
 			if e["keys"] == ["Y"]:
@@ -89,13 +91,19 @@ func _test_button_help() -> void:
 		return ""
 	_check(y.call("home") == "" and y.call("pause") == "Reprendre" and y.call("confirm") == "Annuler"
 		and y.call("routes") == "Retour", "Y selon l'écran : rien à l'accueil, reprendre en pause, annuler, retour")
-	_check(ButtonHelp.text("routes") == "A maintenir : Valider · + A : Suivant · B : Précédent · Y : Retour · Clavier — Entrée : Valider · + A : Suivant · − : Précédent · Échap : Retour",
+	_check(ButtonHelp.text("routes") == "A maintenir : Valider · + A → : Suivant · − B ← : Précédent · Y : Retour · Clavier — Entrée : Valider · + A → : Suivant · − ← : Précédent · Échap : Retour",
 		"double légende en une ligne : %s" % ButtonHelp.text("routes"))
 	var kb_ok := true
 	for screen in ["home", "routes", "ready", "settings", "pause", "confirm", "summary", ButtonHelp.EDIT]:
 		for e in ButtonHelp.entries(screen):
-			kb_ok = kb_ok and e["kb"].size() >= 1 and e["kb"].all(func(k): return k in ["A", "+", "−", "Entrée", "Échap"])
+			kb_ok = kb_ok and e["kb"].size() >= 1 and e["kb"].all(func(k): return k in ["A", "+", "−", "→", "←", "Entrée", "Échap"])
 	_check(kb_ok, "chaque entrée de l'aide a sa touche du clavier (A maintenu = Entrée, B = −, Y = Échap)")
+	var prev_ok := true
+	for screen in ["routes", ButtonHelp.EDIT, ButtonHelp.NAME_GRID]:
+		var es: Array = ButtonHelp.entries(screen)
+		prev_ok = prev_ok and es[1]["keys"] == ["+", "A", "→"] and es[2]["keys"] == ["−", "B", "←"] \
+			and es[2]["kb"] == ["−", "←"]
+	_check(prev_ok, "flèches du boîtier gauche et − à côté de B dans l'aide (Click gauche fonctionnel, 31 octobre)")
 
 
 func _test_icons() -> void:

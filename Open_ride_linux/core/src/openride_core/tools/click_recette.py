@@ -405,6 +405,8 @@ def make_providers(rec: Recorder, cfg: Any, sim: Any = None) -> list[TracedClick
     kw: dict[str, Any] = {"device_finder": sim.find_device, "client_factory": sim.client_factory} if sim else {}
     addr_plus = None if sim else (d.click_address or None)
     addr_minus = None if sim else (d.click_minus_address or None)
+    # Comme le core : le boîtier gauche verrouillé par Zwift est redémarré (`click_reset_locked`, vrai par défaut).
+    kw["reset_locked"] = d.click_reset_locked
     return [TracedClickProvider(rec, addr_plus, d.click_short_max_s, d.click_long_min_s, pair=pair, **kw),
             TracedClickProvider(rec, addr_minus, d.click_short_max_s, d.click_long_min_s, pair=pair,
                                 optional=True, **kw)]

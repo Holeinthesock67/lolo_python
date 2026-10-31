@@ -127,6 +127,7 @@ const CONTACT_M := 300.0
 var surface_here := "paved"        # lot U22 : surface effective sous le cycliste (world_streamer.surface_at)
 var contacts := 0                  # lot P32 : contacts vus sur la route (images × paires), doit rester à 0
 var last_contact := ""             # lot P32 : qui touchait qui la dernière fois, pour le rapport des tests
+var bot_places: Array = []         # places affichées des bots [{s, lateral}] (bots_view_model.places(), lot Z2)
 var _job: Dictionary = {}
 var _generation := 0
 var _loaded_chunks: Dictionary = {}  # k -> true (tronçons OSM affichés)
@@ -465,24 +466,21 @@ func step(now_s: float, dt_s: float, cam_pos: Vector3, cam_s: float, rider_v: fl
 		WaterMesh.update_shimmer(osm_streamer.water_material(), wind_eval, dt_s)
 	if not prepared:
 		return
-	# Bots de l'état du core, lus une fois : cyclistes du décor (P28) et spectateurs (P15)
+	# Bots de l'état du core, lus une fois : spectateurs (P15) ; leurs places affichées (bot_places, posées par
+	# main.gd depuis bots_view_model.places()) : cyclistes du décor (P28), véhicules et contacts (P32)
 	var bots: Array = []
-	var bots_s := []
 	var bots_raw = state.get("bots", [])
 	if typeof(bots_raw) == TYPE_ARRAY:
 		bots = bots_raw
-		for b in bots:
-			if typeof(b) == TYPE_DICTIONARY and typeof(b.get("s")) in [TYPE_INT, TYPE_FLOAT]:
-				bots_s.append(float(b["s"]))
 	var t_wave2 := Time.get_ticks_usec()
 	# Cyclistes du décor (P28), figés en pause, qui laissent la place aux bots
-	cyclists.update(cam_s, rider_v, dt_s, paused, bots_s)
+	cyclists.update(cam_s, rider_v, dt_s, paused, bot_places)
 	cyclists_view.update(dt_s, paused)
 	# Véhicules de la route (P13), puis routes voisines et champs (P25), figés en pause ; phares (P25)
 	headlights = TrafficModel.headlights(weather_eval, _sun_elevation_deg)
 	var others: Array = cyclists.riders()
-	for b in bots_s:
-		others.append({"s": float(b), "lateral": RoadBuilder.BOT_LATERAL_M, "dir": 1})
+	for b in bot_places:
+		others.append({"s": float(b["s"]), "lateral": float(b["lateral"]), "dir": 1})
 	traffic.update(cam_s, rider_v, dt_s, paused, others)
 	if not paused:
 		_count_contacts(others)
