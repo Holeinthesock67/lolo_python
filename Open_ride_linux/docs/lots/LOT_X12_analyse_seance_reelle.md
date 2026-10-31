@@ -1,5 +1,10 @@
 # Lot X12 – Analyse automatique d'une séance réelle
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Analyse automatique d'une séance réelle (`openride-core session-report`) | Python | — | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x12`), essai sur le journal de la prochaine séance vélo ; issue #210 |
+
 ## 1. Objectif
 
 Le bilan de l'essai 69 a été fait à la main (médianes par section de pente, pente envoyée, braquet, cadence). Chaque essai sur le vélo, dont la séance T11/J7, demande ce travail. Ce lot produit le rapport automatiquement, **en local** : le journal et le FIT du propriétaire ne quittent jamais le PC.

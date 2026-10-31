@@ -1,5 +1,10 @@
 # Lot X36 – Pré-vol avant une séance vélo
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Pré-vol avant une séance vélo, verdict « prêt à rouler » | Python | X4, X33 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x36`), essai sur le PC avant la prochaine séance |
+
 ## 1. Objectif
 
 Règle du propriétaire (28 octobre) : une séance vélo tient en 20 minutes de pédalage. Tout ce qui se vérifie sans pédaler doit l'être avant, en une commande, avec un verdict « prêt à rouler » (proposition du fil des fusions).

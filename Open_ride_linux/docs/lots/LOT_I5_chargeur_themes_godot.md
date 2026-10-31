@@ -1,5 +1,10 @@
 # Lot I5 – Chargeur de thèmes en GDScript
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Chargeur de thèmes en GDScript (sans shader) | GDScript | H7 (livré), E1 fusionné | Petite | **Livré le 23 octobre** (PR #24) |
+
 ## 1. Objectif
 
 Donner à l'engine Godot la lecture des thèmes (`theme.json`) avec les mêmes règles que le validateur Python du lot H7, testée sans écran. Le shader triplanaire et l'application du thème à l'écran viendront dans le lot E2 : ce lot ne livre que la lecture, la fusion avec le thème par défaut et le chargement des textures avec repli sur une couleur unie.

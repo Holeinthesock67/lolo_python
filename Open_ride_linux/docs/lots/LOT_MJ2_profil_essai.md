@@ -1,5 +1,10 @@
 # Lot MJ2 – Profil d'essai
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : profil d'essai `_essai` (séances simulées comptées), `profile_id` au journal, `openride-core profil essai [--vider]`, Session simulée sur `_essai` | Python | MJ1 | Petite | **Livré le 29 octobre** (branche `claude/project-thread-grv91v-mj2`) |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §4.
 
 ## 1. Objectif

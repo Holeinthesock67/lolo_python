@@ -1,5 +1,10 @@
 # Lot O32 – Derniers choix du menu mémorisés par profil
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Derniers choix du menu mémorisés par profil : parcours rechargé par le core, entraînement, bot et fantôme, départ du monde ouvert (`hello_ack.config.last_choices`) | Python + GDScript | MJ7 (livré) | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §7), accepté par le propriétaire le 31 octobre : à chaque lancement, le menu repartait de zéro. Il fallait rechoisir le parcours, et l'écran Prêt revenait à « Bot : aucun ». Chaque profil retrouve désormais ses derniers choix, sans réglage ni fichier à écrire.

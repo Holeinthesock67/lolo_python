@@ -1,5 +1,10 @@
 # Lot MJ9 – Outils et documentation des profils
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : recette V10 sur `_essai`, guide et outils | Python, doc | MJ7, MJ8 | Petite | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj8b`, avec MJ8) |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §4.2.
 
 ## 1. Objectif

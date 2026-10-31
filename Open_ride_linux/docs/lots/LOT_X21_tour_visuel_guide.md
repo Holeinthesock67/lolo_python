@@ -1,5 +1,10 @@
 # Lot X21 – Tour visuel guidé
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Tour visuel guidé sur un vrai parcours, planche à cocher | GDScript + Python | — | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x21`) ; issue #219 |
+
 ## 1. Objectif
 
 Les recettes visuelles (E3/E4, P16, P17, U18, Y11/Y12) demandent de rouler jusqu'au bon endroit pour regarder. Ce lot fait le trajet : il place la caméra sur une liste de points d'un vrai parcours compilé et produit une planche à cocher. Le propriétaire juge, l'outil fait le trajet.

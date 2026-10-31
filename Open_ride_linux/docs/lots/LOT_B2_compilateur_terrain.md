@@ -1,5 +1,10 @@
 # Lot B2 – Compilateur : couche terrain (MNT Copernicus GLO-30)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Compilateur : couche terrain (MNT Copernicus, tuiles) | Python | B1 | Grande | **Livré le 23 octobre** |
+
 ## 1. Objectif
 
 Ajouter au compilateur du lot B1 :

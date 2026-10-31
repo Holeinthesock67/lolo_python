@@ -1,5 +1,10 @@
 # Lot X18 – Contrôle d'apparition et comparaison avant/après
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Contrôle d'apparition (« pop ») et comparaison avant/après (outils livrés par S1) | Python + GDScript | S1 | Petite | Non : livré par le lot S1 ; issue #216 |
+
 ## 1. Objectif
 
 S1 (culling) doit prouver qu'aucune réduction ne change l'image ni ne fait apparaître d'objet (« pop »). Les séries P et U en ont besoin aussi.

@@ -87,6 +87,7 @@ class RenderConfig:
     draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
+    texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
 
 
 @dataclass
@@ -314,6 +315,7 @@ ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 # Valeurs permises des champs textuels à choix fermé.
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
+    ("render", "texture_level"): ("auto", "low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on", "detail"),
     ("render", "draft_gauge"): ("off", "on"),
