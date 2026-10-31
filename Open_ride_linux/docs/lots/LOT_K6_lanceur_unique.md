@@ -1,5 +1,10 @@
 # Lot K6 – Lanceur unique `openride` et supervision
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Lanceur unique `openride` : core et Godot supervisés, arrêt propre | Python | — | Petite | **Livré le 23 octobre** (fait directement ; cahier rédigé le 24 octobre) |
+
 Cahier rédigé après coup (vérification du 24 octobre, constat S1) : le lot a été fait directement le 23 octobre, sans cahier préalable. Il décrit ce qui a été livré, pour que l'index des lots reste complet.
 
 ## 1. Objectif

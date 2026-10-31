@@ -1,5 +1,10 @@
 # Lot I4 – Compilateur : couches points d'intérêt et eau
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Compilateur : couches points d'intérêt et eau | Python | I3 | Petite | **Livré le 23 octobre** (PR #23) |
+
 ## 1. Objectif
 
 Ajouter les couches facultatives `poi` et `water` du format `.world`, tirées d'OpenStreetMap avec le client et le cache du lot I3. Partie compilateur du sprint 6 de la SRS (ambiances sonores, eau).

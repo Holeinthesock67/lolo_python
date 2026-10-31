@@ -1,5 +1,10 @@
 # Lot Y12 – Effets de lumière et particules
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Effets de lumière (glow, rayons, ombre des nuages, SSR) et particules (décor, pluie, foules, kit Cyber-Rogue) | Shader + GDScript | Y2, Y1, P17, R17, Y11 | Moyenne | Oui ; issue #386 |
+
 **Statut : validé par le propriétaire le 27 octobre** (« OK pour tout » aux neuf questions de `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §10) ; issue #386. Fin de projet, après Y2 (Godot 4.7.x), soumis aux budgets X2, X13 et X16.
 
 ## 1. Objectif

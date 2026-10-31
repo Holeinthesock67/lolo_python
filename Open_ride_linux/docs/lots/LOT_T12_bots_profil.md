@@ -1,5 +1,10 @@
 # Lot T12 – Bots à profil : CP, W′, masse, pic sur 10 s et stratégie par segment
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : bots à profil (Grimpeur, Rouleur, Sprinteur, Diesel : CP, W′ de R2, masse, pic sur 10 s, stratégie par segment) | Python | N9, R2, T2, T7, T14 (livrés) ; O7 pour `start` | Moyenne | Non : interne ; cahier du 27 octobre, code du 28 octobre (issue #440) |
+
 ## 1. Objectif
 
 Donner à chaque bot du mode classique un profil physiologique et une stratégie simple, pour qu'on puisse choisir comment le battre : le grimpeur attaque dans les montées, le sprinteur lance le sprint dans les 200 derniers mètres, le rouleur est fort sur le plat, le diesel roule régulier. Les profils et leurs valeurs sont ceux validés par le propriétaire le 27 octobre (plan §6).

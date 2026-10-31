@@ -1,5 +1,10 @@
 # Lot R8 – Intégration dans la session du core : mode ROGUE, formule centrée, boutons Z et A, pause Y, journal, pause et reprise
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Intégration dans la session du core : mode ROGUE, formule centrée, boutons Z et A, pause Y, journal, pause et reprise | Python | T1, R6, R15, Q4 | Grande | **Livré le 27 octobre**, **version 2.0** |
+
 ## 1. Objectif
 
 Brancher le moteur de run (R6) et le scénariste (R15) dans la session du core : commande `start_run`, mode `ROGUE`, pente envoyée selon la formule centrée de la décision Q2, lecture des boutons Z et A du Click (Y reste la pause, comme dans les autres modes), champ `rogue` de `state`, messages `room` et `loot`, journal, FIT et reprise après un plantage. Lot interne : il touche `session.py`, cœur de la boucle à 50 Hz.

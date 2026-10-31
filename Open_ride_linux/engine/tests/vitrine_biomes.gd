@@ -10,7 +10,7 @@ extends SceneTree
 ##   xvfb-run -a $GODOT --path engine --rendering-driver opengl3 --rendering-method gl_compatibility \
 ##     --audio-driver Dummy --script res://tests/vitrine_biomes.gd -- --out DOSSIER \
 ##     [--biomes alpine,savanna] [--quality low,medium,high] [--size 1680x1050] \
-##     [--compare REF] [--max-diff 3] [--max-saturated 5]
+##     [--compare REF] [--seuil-ssim 0.97] [--tolerance 10] [--max-saturated 5]
 ##
 ## Écrit DOSSIER/<biome>_<vue>_<préréglage>.png et DOSSIER/vitrine_biomes.csv (biome ; vue ; préréglage ;
 ## préréglage appliqué ;

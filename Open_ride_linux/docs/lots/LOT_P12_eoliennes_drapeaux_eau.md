@@ -1,5 +1,10 @@
 # Lot P12 – Éoliennes, drapeaux et eau qui scintille
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Éoliennes et drapeaux (compilateur et engine), eau qui scintille | Python + GDScript | P1, P4 | Moyenne | **Livré le 27 octobre** (issue #136) |
+
 ## 1. Objectif
 
 Trois objets qui montrent le vent et la lumière, à faible coût :

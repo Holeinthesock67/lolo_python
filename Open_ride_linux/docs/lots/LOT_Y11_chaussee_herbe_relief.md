@@ -1,5 +1,10 @@
 # Lot Y11 – Chaussée réaliste et faux relief de l'herbe
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Chaussée réaliste (normales, rugosité variable, deux échelles, décalques, route mouillée) et faux relief de l'herbe | Shader + GDScript | Y2, P20, P14/P17, Y1 | Moyenne à grande | En partie ; issue #385. Prototype procédural (grain de la chaussée, rapiéçages, bandes de roulement, bas-côtés, relief et plaques de l'herbe, vagues de vent, touffes en brins) en essai le 27 octobre, en attente de l'accord du propriétaire et de la mesure sur la GTX 1060 |
+
 **Statut : validé par le propriétaire le 27 octobre** (« OK pour tout » aux neuf questions de `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §10) ; issue #385. Fin de projet, comme toute la série Y : rien n'est codé avant Y2 (Godot 4.7.x), et chaque étape est soumise aux budgets X2, X13 et X16.
 
 ## 1. Objectif

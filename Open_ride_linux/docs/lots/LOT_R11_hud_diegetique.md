@@ -1,5 +1,10 @@
 # Lot R11 – Engine : HUD diégétique, arcs au sol, champ de vision et tremblement
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : HUD diégétique, arcs au sol, champ de vision et tremblement | GDScript | T1, R10 | Moyenne | Modèle oui, rendu interne ; **Livré le 28 octobre** (sauf contrôle visuel), **version 2.0** |
+
 ## 1. Objectif
 
 Afficher l'état du joueur dans la scène plutôt qu'en surimpression : hologramme au-dessus de la roue arrière (vitesse engagée, watts en % de FTP, cadence, posture), deux arcs au sol (bouclier et adrénaline), jauges de W'bal et de l'ennemi, écart au Firewall, et des effets de caméra (champ de vision, tremblement). Le modèle (calculs sans affichage) est délégable ; le rendu est interne.

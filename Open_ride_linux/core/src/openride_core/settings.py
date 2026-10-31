@@ -15,9 +15,9 @@ son, vent) ; l'engine donne les titres. `help` (facultatif) : légende d'un rég
 comprennent pas seuls, montrée par l'engine sur la carte de détail (option « gravel », lot U16).
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer) ou `now` (qualité, thème, biome, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
-l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le thème, le biome, le gravel et le mode d'affichage à
-l'engine aux lancements suivants).
+la séance suivante, sans relancer) ou `now` (qualité, niveau des textures, thème, biome, mode d'affichage, courbes,
+images/s, jauge d'abri et volumes : l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le
+niveau des textures, le thème, le biome, le gravel et le mode d'affichage à l'engine aux lancements suivants).
 `apply(cfg, changes, path)` valide, écrit chaque réglage dans son fichier (commentaires et reste du
 fichier gardés, copie `.bak`) puis met à jour `cfg` en mémoire.
 
@@ -82,6 +82,7 @@ SETTINGS: tuple[Setting, ...] = (
                  "sous le plafond du vent."),
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
+    Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20
     Setting("render.theme", "Thème", "graphics", applies="now"),
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),

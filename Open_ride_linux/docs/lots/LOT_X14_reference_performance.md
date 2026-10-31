@@ -1,5 +1,10 @@
 # Lot X14 – Référence de performance, comparaison avant/après et verdict de budget
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Référence de performance, comparateur avant/après et verdict de budget par préréglage | Python | X13, X32 | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x14`), référence à mesurer sur le PC ; issue #212 |
+
 ## 1. Objectif
 
 Aucune référence de performance n'existe : une PR peut faire perdre 10 images/s sans que personne ne le voie. Les comparaisons avant/après de la file des mesures (main contre branche, préréglage par préréglage, captures à l'appui) se font à la main, et les budgets de chaque préréglage (cahier Y13 §3) se vérifient en recalculant les médianes. Propositions des fils (28 octobre) : fusions et mesures (comparateur de bancs avec verdict), qualité d'image Y13 (verdict de budget, page de comparaison), bâtiments (comparateur des vitrines), biomes (banc par biome).

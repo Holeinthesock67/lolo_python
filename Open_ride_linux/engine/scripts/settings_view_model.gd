@@ -36,6 +36,7 @@ const RIDE_MODES := ["sim", "erg", "cadence"]
 ## Mode d'affichage (display_mode.gd) : valeurs de config.toml affichées en français.
 ## Option « gravel » (lot U16, road_surface.gd) : `gravel.mode` prend `off` / `auto` / `compacted` / `gravel` / `dirt` ;
 ## biome du décor (lot U16, biome_ids.gd) : `render.biome` prend `auto` ou un des seize biomes, noms du plan U §2.
+## Niveau des textures du décor (lot P20) : `render.texture_level` prend `auto` / `low` / `medium` / `high`.
 const CHOICE_TEXTS := {
 	"powerups.mode": {"on": "oui", "off": "non"},
 	"render.chart": {"hidden": "masquées", "reduced": "réduites (cible et puissance)", "full": "complètes"},
@@ -50,6 +51,7 @@ const CHOICE_TEXTS := {
 		"tundra": "toundra", "polar": "polaire", "mediterranean": "méditerranéen", "steppe": "steppe",
 		"savanna": "savane", "sand_desert": "désert de sable", "rock_desert": "désert de roche", "jungle": "jungle",
 		"wetland": "zones humides", "coast": "littoral", "volcanic": "volcanique"},
+	"render.texture_level": {"auto": "selon la qualité", "low": "basses (1 024 px)", "medium": "moyennes (1 024 px)", "high": "hautes (2 048 px)"},
 	PAUSE_RIDE_MODE: {"sim": "SIM", "erg": "ERG", "cadence": "ERG cadence"},
 }
 
