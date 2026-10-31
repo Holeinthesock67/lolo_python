@@ -427,6 +427,8 @@ EXPERT_KEYS: dict[tuple[str, str], str] = {
     ("rogue", "cp_w"): "puissance critique du Cyber-Rogue",
     ("rogue", "grade_rate_up_pct_per_s"): "rampe de pente du Cyber-Rogue",
     ("rogue", "grade_rate_down_pct_per_s"): "rampe de pente du Cyber-Rogue",
+    ("depart", "duree_s"): "durée de pédalage du départ (lot O36)",
+    ("depart", "attente_decor_s"): "attente maximale du décor du départ (lot O36)",
 }
 # Outils de développement et d'essai, ou valeurs posées par le lanceur et l'installation.
 DEV_KEYS: dict[tuple[str, str], str] = {
