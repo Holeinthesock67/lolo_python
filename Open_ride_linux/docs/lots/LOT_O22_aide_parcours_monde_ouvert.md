@@ -1,5 +1,10 @@
 # Lot O22 – Aide des parcours et du monde ouvert
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Aide des parcours (« Ajouter un parcours », « Comment ça marche ? ») et du menu du globe (explication par écran, boutons du Click et touches du clavier) | GDScript | O15, W11 (livrés) | Petite | Demande du propriétaire du 31 octobre ; en PR |
+
 ## 1. Objectif
 
 Question du propriétaire du 31 octobre : « Le menu est explicite avec des légendes pour ces fonctions ? » (monde ouvert et chargement de parcours). Constat sur `main` : rien n'expliquait comment ajouter un parcours (la liste vide disait seulement « Aucun parcours »). Le menu du globe n'avait qu'une ligne de touches, sans les boutons du Click ni explication du mode. Sur la carte de décision, le propriétaire a choisi « Aide puis import de traces » : ce lot fait l'aide, le lot O23 l'import depuis le menu.

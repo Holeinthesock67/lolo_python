@@ -1,11 +1,15 @@
 {
-  "description": "Sous-menu ERG : créer un entraînement par intervalles (6 répétitions) puis importer un fichier des Téléchargements.",
+  "description": "Sous-menu ERG : aide, créer un entraînement par intervalles (6 répétitions) puis importer un fichier des Téléchargements.",
   "entrainement": true,
   "telechargements": {"seuil_import.zwo": "Seuil importé"},
   "etapes": [
     {"ecran": "home", "delai": 15},
     {"choisir": "erg"},
-    {"ecran": "workouts", "elements": ["erg_court", "_create", "_import"]},
+    {"ecran": "workouts", "elements": ["erg_court", "_create", "_import", "_help"]},
+    {"choisir": "_help"},
+    {"ecran": "workout_help", "titre": "Aide ERG", "contient": ["Créer des intervalles", "Saisie QWKcode (GoldenCheetah)", "Écrire un fichier à la main"]},
+    {"appui": "Y_SHORT"},
+    {"ecran": "workouts"},
     {"choisir": "_create"},
     {"ecran": "workout_create", "titre": "Créer un entraînement", "contient": ["Répétitions — 5", "Puissance de l'effort — 105 % de la FTP"]},
     {"choisir": "param:reps"},

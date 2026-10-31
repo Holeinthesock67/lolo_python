@@ -1,5 +1,10 @@
 # Lot WTF4 – Maquettes cartoon des gags du mode WTF
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série WTF : maquettes cartoon des gags | Documentation et maquettes | WTF1 | Moyenne | Prêt (version 2.0), maquettes validées par le propriétaire |
+
 Série WTF (mode « What the fuck », demande du propriétaire du 29 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_WTF.md`.
 
 ## 1. Objectif

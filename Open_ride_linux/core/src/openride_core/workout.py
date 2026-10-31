@@ -1,10 +1,12 @@
-"""Entraînements structurés ERG (SRS §6) : lecture des fichiers `.zwo`, `.erg` et `.mrc` et calcul de la cible.
+"""Entraînements structurés ERG (SRS §6) : lecture des fichiers `.zwo`, `.erg`, `.mrc` et `.qwk` et calcul de la cible.
 
 - `load_workout` lit un `.zwo` (XML ouvert de Zwift) et le déplie en blocs simples ;
   les intervalles `IntervalsT` deviennent des paires `interval_on` / `interval_off`.
   Les `.erg` (cibles en watts) et `.mrc` (cibles en % de la FTP) de GoldenCheetah sont lus par
   `workout_formats.parse_erg` (lot O9) : un bloc `steady` ou `ramp` par segment ; les blocs
   d'un `.erg` portent des cibles absolues (`start_w`, `end_w`) que la FTP ne change pas.
+  Le QWKcode de GoldenCheetah (`.qwk`, lot O20) est lu par `workout_formats.parse_qwk` : watts
+  absolus, ou % de la FTP avec le suffixe `%`.
 - `list_workouts` liste un dossier pour le futur menu : un fichier invalide y figure avec son
   erreur et n'est pas sélectionnable.
 - `ErgController` donne, à chaque pas de 50 Hz, la cible de puissance en watts et l'objet `erg`
@@ -40,7 +42,8 @@ BIAS_STEP_PCT = 2
 BIAS_MIN_PCT, BIAS_MAX_PCT = 80, 120
 WORKOUT_ID_RE = re.compile(r"^[^/\\.][^/\\]*$")   # un nom de fichier simple, sans dossier
 # Extensions lues, par priorité : en cas de conflit de nom (`x.zwo` et `x.erg`), la première gagne.
-WORKOUT_SUFFIXES = (".zwo", ".erg", ".mrc")
+# `.qwk` : QWKcode de GoldenCheetah (lot O20, `workout_formats.parse_qwk`).
+WORKOUT_SUFFIXES = (".zwo", ".erg", ".mrc", ".qwk")
 
 # Attributs lus pour chaque balise de bloc (noms en minuscules).
 _BLOCK_ATTRS: dict[str, set[str]] = {
@@ -238,7 +241,7 @@ def parse_workout(text: str, workout_id: str, source: str = "<zwo>") -> Workout:
 
 
 def load_workout(path: Path, erg_relative: bool = False) -> Workout:
-    """Lit un fichier `.zwo`, `.erg` ou `.mrc` ; son identifiant est le nom du fichier sans extension.
+    """Lit un fichier `.zwo`, `.erg`, `.mrc` ou `.qwk` ; son identifiant est le nom du fichier sans extension.
 
     `erg_relative` : un `.erg` est converti en % de la FTP de son en-tête (`FTP = …`).
     """
@@ -252,7 +255,9 @@ def load_workout(path: Path, erg_relative: bool = False) -> Workout:
         raise WorkoutError(f"lecture impossible de {path.name} : {exc}") from None
     if suffix == ".zwo":
         return parse_workout(text, path.stem, source=path.name)
-    from .workout_formats import parse_erg
+    from .workout_formats import parse_erg, parse_qwk
+    if suffix == ".qwk":
+        return parse_qwk(text, path.stem, source=path.name)
     return parse_erg(text, path.stem, source=path.name, percent=suffix == ".mrc", relative=erg_relative)
 
 
@@ -285,8 +290,8 @@ def _chosen(workout_id: str, paths: list[Path]) -> Path:
 def list_workouts(directory: Path) -> list[WorkoutInfo]:
     """Entraînements d'un dossier (`~/OpenRide/Workouts/`), triés par identifiant.
 
-    `.zwo`, `.erg` et `.mrc` ; un même identifiant en plusieurs formats est signalé une fois
-    au journal et le `.zwo` gagne (puis `.erg`, puis `.mrc`).
+    `.zwo`, `.erg`, `.mrc` et `.qwk` ; un même identifiant en plusieurs formats est signalé une fois
+    au journal et le `.zwo` gagne (puis `.erg`, `.mrc`, `.qwk`).
     """
     if not directory.is_dir():
         return []
@@ -303,7 +308,7 @@ def list_workouts(directory: Path) -> list[WorkoutInfo]:
 
 
 def workout_path(directory: Path, workout_id: str) -> Path:
-    """Chemin de `<dossier>/<workout_id>.zwo` (ou `.erg`, `.mrc`, dans cet ordre de priorité) ;
+    """Chemin de `<dossier>/<workout_id>.zwo` (ou `.erg`, `.mrc`, `.qwk`, dans cet ordre de priorité) ;
     refuse un identifiant qui sortirait du dossier."""
     if not WORKOUT_ID_RE.match(workout_id):
         raise WorkoutError(f"identifiant d'entraînement invalide : {workout_id!r}")

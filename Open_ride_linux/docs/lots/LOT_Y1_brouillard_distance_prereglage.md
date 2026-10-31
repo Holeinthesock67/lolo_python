@@ -1,5 +1,10 @@
 # Lot Y1 – Brouillard, distance de la caméra et tuiles lointaines par préréglage
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Brouillard opaque à 4 / 6 / 9 km selon le préréglage, `camera.far` et tuiles lointaines qui suivent (avancé le 27 octobre) | GDScript | — (X13 livré) ; avant S1 | Petite | **Livré le 27 octobre** (PR #381, issue #357) ; essai `essai-69` sur le PC par le propriétaire |
+
 ## 1. Objectif
 
 Décision du propriétaire du 27 octobre (réponses aux questions de `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md`, question 3 : lot avancé, à faire tout de suite). Aujourd'hui, quel que soit le préréglage, la caméra voit à 12 km (`camera.far`), le brouillard de profondeur ne devient opaque qu'à 12 km et les tuiles lointaines du terrain sont chargées sur 12 km (`WorldStreamer.FAR_RADIUS_M`). Le propriétaire trouve le brouillard trop lointain (essai du 25 octobre) et tout ce qui est au-delà du brouillard opaque est du travail perdu.

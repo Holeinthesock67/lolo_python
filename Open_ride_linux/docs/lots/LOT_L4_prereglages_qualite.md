@@ -1,5 +1,10 @@
 # Lot L4 – Préréglages de qualité et thème transmis à l'engine
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Préréglages de qualité et thème transmis du lanceur à l'engine | GDScript + Python | K1, K6 (livrés) | Petite | **Livré le 24 octobre** (PR #67, issue #56) |
+
 ## 1. Objectif
 
 Le SRS §8 prévoit trois préréglages de qualité (bas, moyen, haut) et le choix du thème dans la configuration. `config.toml` a déjà `[render] quality` et `[render] theme` (validés par J3), mais personne ne les transmet à l'engine. Ce lot :

@@ -1,5 +1,10 @@
 # Lot T5 – Records personnels et classement local
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : records personnels par segment (`~/OpenRide/records.json`), classement local, ligne `powerup` du journal | Python | T4, N9 (livrés) | Petite | **Livré le 27 octobre** (PR #326, module pur ; branchement par T7) |
+
 ## 1. Objectif
 
 Tenir les records personnels de chaque segment (plan de la série T §3.2, décisions T-Q1 et du 27 octobre) dans un module pur du core : fichier `~/OpenRide/records.json` par parcours et par segment, 10 meilleurs temps avec leur date, tables « avec bonus » et « sans bonus » séparées, recalcul depuis les journaux, écart au record en direct et classement local du passage (toi, tes records, les bots). Le journal gagne la ligne `powerup` décidée le 27 octobre, pour que les records « avec bonus » se recalculent. Le branchement dans la séance (passage terminé, champ `segment` et message `segment_result`) vient avec le contrat T1.

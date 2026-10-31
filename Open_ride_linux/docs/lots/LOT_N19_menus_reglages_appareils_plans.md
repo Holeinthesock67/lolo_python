@@ -1,5 +1,10 @@
 # Lot N19 – Présentation des menus, étape 3 : Réglages, Appareils et connexion, plans et test de FTP
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Présentation des menus, étape 3 : Réglages (valeur alignée, édition en place, curseurs), Appareils et connexion, plans et test de FTP | GDScript | étapes 1 et 2, PR #452 | Moyenne | Non : interne (menus, captures sur le PC) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 27 octobre : les menus sont « trop basiques » et l'aide des boutons ne se voit pas. Le système commun (thème, pictogrammes, bandeau des boutons, carte de détail) est en place depuis les étapes 1 et 2 (`docs/PRESENTATION_MENUS.md`, PR #433). Cette étape l'applique aux écrans qui restent en lignes de texte :

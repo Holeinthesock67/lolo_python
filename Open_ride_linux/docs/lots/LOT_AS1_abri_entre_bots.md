@@ -1,5 +1,10 @@
 # Lot AS1 – Les bots s'abritent entre eux et derrière le cycliste
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série AS (aspiration plus fine) : les bots s'abritent entre eux et derrière le cycliste, règle de suivi des bots à profil | Python | P3, T12, T13 | Moyenne | Livré le 29 octobre (version 1.x) ; reste l'essai sur le vélo |
+
 Série AS (aspiration plus fine), demandée par le propriétaire le 29 octobre 2026. Décision du même jour : AS1 en 1.x, AS2 à AS7 en 2.0.
 
 ## 1. Objectif

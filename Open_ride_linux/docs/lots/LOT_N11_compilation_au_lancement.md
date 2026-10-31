@@ -1,5 +1,10 @@
 # Lot N11 – Compilation des nouvelles traces GPX au lancement d'OpenRide
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Compilation des nouvelles traces GPX au lancement d'OpenRide | Python | I2, M8 (livrés) | Petite | **Livré le 25 octobre** (issue #108, PR #165) |
+
 ## 1. Objectif
 
 Déposer un GPX dans `~/OpenRide/GPX/` puis cliquer sur l'icône doit suffire pour rouler dessus. Aujourd'hui il faut lancer `openride-compiler build-all` dans un terminal. Ce lot fait compiler par le lanceur `openride` les traces nouvelles ou modifiées avant de démarrer la séance, avec un retour visible sans terminal et sans bloquer indéfiniment. C'est la réponse proposée (lot N1 §4.6, question 3) à la « compilation d'un GPX depuis le menu », reportée.

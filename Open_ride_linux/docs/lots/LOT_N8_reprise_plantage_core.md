@@ -1,5 +1,10 @@
 # Lot N8 – Reprise d'une séance après un plantage du core
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Reprise d'une séance après un plantage du core | Python | N1, E3, M4, M8 (livrés) | Moyenne | **Livré le 25 octobre** (issue #105, PR #176) |
+
 ## 1. Objectif
 
 Aujourd'hui, si le core plante, le lanceur `openride` arrête Godot et rappelle `openride-core recover` : la séance est sauvée en FIT mais **terminée**. La SRS demande que la séance ne se perde jamais. Ce lot fait relancer le core par le lanceur, qui reprend la séance à partir de son journal (temps, distance, position, braquet, bloc ERG), en pause, et l'engine (resté ouvert) la rattrape au `hello` suivant. Le FIT final contient toute la séance.

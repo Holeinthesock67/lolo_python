@@ -1,5 +1,10 @@
 # Lot V8 – Menu « Garage » : équipement, achats et avatar, aperçu en 3D
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Menu « Garage » : équipement, achats, avatar, aperçu 3D | GDScript | T1, V6, V11, N6 | Moyenne | **Livré le 27 octobre** (issue #374) ; recette au Click sur le PC |
+
 ## 1. Objectif
 
 Ajouter au menu une section « Garage » pilotée au Click : choisir et acheter cadre, roues et tenues, régler l'avatar, voir la fiche de chaque pièce (masse, CdA, terrain conseillé, niveau, prix, défi) et un aperçu 3D qui tourne.

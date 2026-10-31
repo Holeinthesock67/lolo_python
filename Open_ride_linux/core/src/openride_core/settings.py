@@ -14,9 +14,10 @@ dossiers de `~/OpenRide/Themes/` qui contiennent un `theme.json` (lot N10).
 son, vent, avancé) ; l'engine donne les titres. Le message est envoyé en parties comme `routes` (lot O27).
 
 `type` vaut `int` ou `choice` (avec `choices`) ; `applies` vaut `next_session` (prise en compte à
-la séance suivante, sans relancer), `now` (qualité, thème, mode d'affichage, courbes, images/s, jauge d'abri et volumes :
-l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le thème et le mode d'affichage à
-l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief : passés par le lanceur à l'engine ;
+la séance suivante, sans relancer), `now` (qualité, niveau des textures, thème, mode d'affichage, courbes, images/s,
+jauge d'abri et volumes : l'engine les applique tout de suite ; le lanceur passe aussi la qualité, le niveau des
+textures, le thème et le mode d'affichage à l'engine aux lancements suivants) ou `relaunch` (décor vivant, relief :
+passés par le lanceur à l'engine ;
 progression : lue au démarrage du core ; pris au prochain lancement, l'engine propose de relancer, lot O26).
 
 Deux règles de forme valent pour toutes les clés (lot O26) : un booléen du fichier est un choix `on` /
@@ -82,6 +83,7 @@ SETTINGS: tuple[Setting, ...] = (
     Setting("bots.level_pct", "Niveau des bots", "ride", 5, "%"),   # lot T13
     # Graphisme
     Setting("render.quality", "Qualité graphique", "graphics", applies="now"),
+    Setting("render.texture_level", "Textures du décor", "graphics", applies="now"),   # lot P20
     Setting("render.theme", "Thème", "graphics", applies="now"),
     Setting("render.chart", "Courbes de la séance", "graphics", applies="now"),
     Setting("render.display", "Mode d'affichage", "graphics", applies="now"),

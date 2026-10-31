@@ -1,5 +1,10 @@
 # Lot O27 – Sous-écran « Avancé » et réglages en parties
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Sous-écran « Avancé » : monde ouvert hors ligne, plafonds du cache et des thèmes, progression ; `settings` en parties ; renvoi de la consigne laissé aux essais | Python + GDScript | O26 | Petite | Audit des options du 31 octobre, décision 2 validée par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, décision 2 validée par le propriétaire) : quatre clés utiles à un joueur sans terminal n'existaient que dans `config.toml`. Ce sont le monde ouvert hors ligne, les deux plafonds de disque et la progression. La liste `settings` arrivait au plafond de 32 éléments d'un seul datagramme. Elle part maintenant en parties, comme `routes`.

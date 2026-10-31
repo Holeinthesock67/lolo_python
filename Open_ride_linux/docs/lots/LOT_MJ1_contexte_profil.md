@@ -1,5 +1,10 @@
 # Lot MJ1 – Contexte de profil dans le core
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : contexte de profil dans le core (`profiles.py`), fin des chemins figés, `--profil`, verrou ; sans profil, chemins d'aujourd'hui | Python | — | Moyenne | **Livré le 29 octobre** (branche `claude/project-thread-grv91v-mj1`) |
+
 Série MJ (profils de joueurs et profil d'essai, version 2.0), plan `docs/2.0/PLAN_SERIE_MJ.md`. Demande du propriétaire du 29 octobre 2026 ; étude et maquettes validées le même jour.
 
 ## 1. Objectif

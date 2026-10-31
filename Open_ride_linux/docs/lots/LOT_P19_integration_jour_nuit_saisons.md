@@ -1,5 +1,10 @@
 # Lot P19 – Intégration du jour, de la nuit et des saisons (version 2.0)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Intégration du jour, de la nuit et des saisons | GDScript | P7, P17, P18 | Moyenne | Non : interne, **version 2.0** (issue #143) |
+
 ## 1. Objectif
 
 **Version 2.0.** Brancher dans la scène principale le jour et la nuit (P7) et les saisons (P18), puis les recetter sur le matériel. Lot interne : il modifie `main.gd` et se juge à l'œil.

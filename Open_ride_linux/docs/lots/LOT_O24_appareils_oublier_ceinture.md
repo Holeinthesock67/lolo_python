@@ -1,5 +1,10 @@
 # Lot O24 – Écran Appareils : ceinture vraiment activée, appareils oubliables
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Écran Appareils : la ceinture choisie active `drivers.hr`, « aucun » oublie le trainer ou la ceinture, « Oublier le Click » | Python + GDScript | N13 (livré) | Petite | Audit des options du 31 octobre (docs/AUDIT_OPTIONS_MENUS_2026-10-31.md), validé par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, validé par le propriétaire le 31 octobre) : la ceinture cardio choisie dans l'écran **Appareils** était enregistrée (`drivers.hr_address`, `drivers.hr_name`) sans être activée. `drivers.hr` restait à `none`, le lanceur ne passe pas `--hr` : la ceinture n'était jamais lue, sauf en éditant `config.toml` à la main. Aucun appareil ne pouvait non plus être retiré depuis le menu.

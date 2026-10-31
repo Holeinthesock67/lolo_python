@@ -1,5 +1,10 @@
 # Lot O26 – Réglages manquants : décor vivant, relief exagéré, ressenti du vent
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Réglages manquants : décor vivant, relief exagéré (pris au lancement suivant, ligne « Relancer »), ressenti du vent ; légendes du vent et du thème en français | Python + GDScript | O24, X53 | Petite | Audit des options du 31 octobre, validé par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, validé par le propriétaire) : trois réglages utiles au joueur n'existaient que dans `config.toml`. Le guide demandait même d'éditer le fichier pour couper le décor vivant. Deux légendes s'affichaient avec leur valeur technique : le mode du vent et le thème par défaut.
@@ -16,7 +21,7 @@ Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, valid
 
 ## 3. Contrat
 
-`docs/contracts/ipc_v1.md` et `settings.schema.json` : valeur `relaunch` de `applies`, booléens en `on` / `off`, échelle des nombres à virgule ; 28 réglages, sous le plafond de 32.
+`docs/contracts/ipc_v1.md` et `settings.schema.json` : valeur `relaunch` de `applies`, booléens en `on` / `off`, échelle des nombres à virgule ; 29 réglages (avec le niveau des textures du lot P20), sous le plafond de 32.
 
 ## 4. Fichiers
 

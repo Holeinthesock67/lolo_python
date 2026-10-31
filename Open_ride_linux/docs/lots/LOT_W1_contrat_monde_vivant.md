@@ -1,5 +1,10 @@
 # Lot W1 – Contrat : monde vivant, IPC du monde ouvert et dialogue avec le générateur
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Contrat : monde vivant (`live`, grille UTM, route par parties, couches par carré, `junctions.json`), IPC du monde ouvert (révision 1.5), dialogue avec `openride-worldgen` | Markdown + JSON | W0 | Petite | Non : interne (décision du propriétaire) (issue #255) |
+
 ## 1. Objectif
 
 Fixer, avant tout code de la série W, les trois contrats que les autres lots implémentent : le format du `.world` « vivant » qui s'allonge pendant la séance, les ajouts à l'IPC entre core et engine, et le dialogue entre le core et le nouveau processus `openride-worldgen`. C'est une décision du propriétaire, comme N1 et P1 : le lot rédige les ajouts, le propriétaire les valide en fusionnant.

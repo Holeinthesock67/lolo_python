@@ -1,5 +1,10 @@
 # Lot J5 – Intégration continue : vérifier `main` après chaque fusion
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Intégration continue : chaque état de `main` testé, exécution hebdomadaire, actions à jour | YAML | — | Petite | Oui (concurrence, hebdomadaire, `pip check` et actions faits ; reste JUnit) |
+
 ## 1. Objectif
 
 Le 23 octobre au soir, les fusions des PR #20 à #25 se sont suivies en quelques minutes. Le groupe de concurrence de `.github/workflows/openride.yml` (`cancel-in-progress: true`, une file par branche) a **annulé** les exécutions sur `main` des fusions de I2, I3/I4, I5 et I6 (runs 39, 42, 45 et 48). La première exécution complète sur `main` (run 49) a révélé une régression d'intégration : I2 (`build-all`) et I3 (couches OSM) passaient chacun seuls, mais ensemble `build-all` interrogeait Overpass (audit J, constat J-E1, corrigé dans la PR de l'audit). Ce lot fait en sorte que chaque état de `main` soit testé.

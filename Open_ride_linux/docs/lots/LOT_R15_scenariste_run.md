@@ -1,5 +1,10 @@
 # Lot R15 – Scénariste de run : composer échauffement, salles, couloirs et boss à partir de l'objectif et de la durée
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Scénariste de run : calendrier et salles composés à partir de l'objectif et de la durée | Python | R3, R6 | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+
 ## 1. Objectif
 
 Décision Q6 : le joueur choisit dans le menu une durée et un objectif (endurance, seuil, VO2max) ; le jeu compose le scénario de la run à partir de ces deux paramètres. Ce lot écrit ce scénariste, en module pur, et corrige le calendrier de 45 min du GDD, qui ne tenait pas (quatre salles de 5 min et quatre couloirs de 2 min font 28 min, pour une fenêtre de 22 min).

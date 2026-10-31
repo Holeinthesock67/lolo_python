@@ -1,5 +1,10 @@
 # Lot J6 – Une seule logique de catalogue des parcours
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Une seule logique de catalogue des parcours (core et repli du compilateur) | Python | — | Petite | **Livré le 23 octobre** (fait directement) |
+
 ## 1. Objectif
 
 Le statut d'un parcours (`ready`, `to_compile`, `outdated`, `invalid`) est calculé à deux endroits (audit J, constat J-F3) :

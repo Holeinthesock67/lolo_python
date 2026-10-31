@@ -1,5 +1,10 @@
 # Lot I2 – Catalogue de parcours : compilation en lot et liste
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Catalogue de parcours : `build-all` et `list` | Python | B2 (livré) | Petite | **Livré le 23 octobre** (PR #21) |
+
 ## 1. Objectif
 
 Préparer le menu des parcours (lot G) et simplifier l'usage en attendant :

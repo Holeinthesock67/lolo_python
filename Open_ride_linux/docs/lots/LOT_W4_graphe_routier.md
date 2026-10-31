@@ -1,5 +1,10 @@
 # Lot W4 – Graphe routier local : arêtes, carrefours, classes, ponts et tunnels
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Graphe routier local : arêtes, carrefours, classes, ponts et tunnels, impasses, ronds-points | Python | W3 | Moyenne | Oui, après W3 (issue #258) |
+
 ## 1. Objectif
 
 Construire, depuis la base locale (W3 ou W13), le graphe des routes qu'un cycliste peut prendre dans une emprise donnée : nœuds aux carrefours et aux impasses, arêtes avec leur géométrie, leur classe et leurs portions de pont ou de tunnel. Le navigateur (W6), les profils (W5) et le générateur (W7, W8) travaillent sur ce graphe.
