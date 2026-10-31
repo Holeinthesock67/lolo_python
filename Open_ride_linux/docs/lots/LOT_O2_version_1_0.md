@@ -1,5 +1,10 @@
 # Lot O2 – Numéro de version unique et notes de version
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Numéro de version unique (`VERSION`) et notes de version (`CHANGELOG.md`) | Python + GDScript | N3 ; de préférence fin de J4 | Petite | **Livré le 26 octobre** (issue #120) |
+
 ## 1. Objectif
 
 Le core, le compilateur et l'engine affichent tous `0.1.0`, chacun dans son fichier, et aucune note de version n'existe. Pour publier une 1.0, il faut **un seul numéro** connu des trois programmes, visible par le propriétaire (ligne de commande, journal, menu) et un fichier `CHANGELOG.md` qui dit ce que contient chaque version. Ce lot met en place le mécanisme ; le passage effectif à `1.0.0` et l'étiquette Git se font à la recette finale (lot O8).

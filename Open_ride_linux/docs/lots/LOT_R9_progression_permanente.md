@@ -1,5 +1,10 @@
 # Lot R9 – Progression permanente du mode Cyber-Rogue : châssis à bonus de jeu, statistiques de runs, vies
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Progression permanente : châssis à bonus de jeu, statistiques de runs, vies | Python | R6, V2, V3b, V4 | Petite | **Livré le 27 octobre**, **version 2.0** |
+
 ## 1. Objectif
 
 Ce qui reste d'une run à l'autre : des **châssis** débloqués aux coffres de fin, qui donnent des bonus de jeu (décision Q7), les statistiques des runs, et des **vies** achetées avec les pièces de la série V (une vie évite la dégradation du butin après une défaite). Le tout passe par le système de déblocage commun de la série V.

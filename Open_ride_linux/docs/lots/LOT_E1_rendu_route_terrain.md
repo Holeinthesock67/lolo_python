@@ -1,5 +1,10 @@
 # Lot E1 – Rendu 3D : ruban de route et terrain par tronçons
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Rendu 3D : ruban de route et terrain par tronçons | GDScript | A (livré), D ; tuiles du format (B2 ou générateur fourni) | Grande | **Livré le 24 octobre** (PR #7 ; essai sur la GTX 1060 à faire) |
+
 ## 1. Objectif
 
 Remplacer la polyligne de démonstration par :

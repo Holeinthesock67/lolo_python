@@ -1,5 +1,10 @@
 # Lot U10 – Engine : atmosphère par biome (brume de chaleur, humidité, lumière polaire)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : atmosphère par biome (brume de chaleur, humidité, lumière polaire) | GDScript + shader | U5, P7 | Petite | Oui, après U5, **version 3.0** (issue #340) |
+
 ## 1. Objectif
 
 **Version 3.0.** Faire varier le ciel, le brouillard et la lumière selon le biome où roule le cycliste : brume de chaleur au désert, air lourd et lumière diffuse en jungle, lumière rasante et ciel pâle en polaire, ciel net en montagne.

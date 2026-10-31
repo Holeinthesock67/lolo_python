@@ -1,5 +1,10 @@
 # Lot X28 – Réseau dégradé pour le monde ouvert
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Réseau dégradé pour le monde ouvert : faux serveur de tuiles | Python | W15 | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x28`) ; issue #226 |
+
 ## 1. Objectif
 
 W8 doit marcher hors ligne et W16 exige aucune pause d'attente. Sans outil, il faut couper sa box.

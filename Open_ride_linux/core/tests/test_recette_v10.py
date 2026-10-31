@@ -186,3 +186,18 @@ def test_block_cut_short_stops_and_restores(tmp_path):
 def test_restaurer_without_a_run_does_nothing(tmp_path, capsys):
     assert rv.main(["restaurer", *_dirs(tmp_path)[:-1]]) == 0
     assert "Rien à restaurer" in capsys.readouterr().out
+
+
+def test_recette_rides_on_the_trial_profile(tmp_path, monkeypatch):
+    """Lot MJ9 : OpenRide lancé sur le profil d'essai ; par défaut, profil et journaux du profil d'essai."""
+    from openride_core import config as config_mod
+    from openride_core import profiles
+
+    assert rv.launch_command("recette-v10-depart", None)[-5:-2] == ["--profil", "_essai", "--autostart"]
+    monkeypatch.setattr(config_mod, "OPENRIDE_HOME", tmp_path / "OpenRide")
+    seen = {}
+    monkeypatch.setattr(rv, "_main", lambda args, ctx, ride: seen.update(
+        profile=args.profile, journal=args.journal_dir, ctx=ctx.id, active=profiles.current().id) or 0)
+    assert rv.main(["pc"]) == 0
+    assert seen["ctx"] == seen["active"] == "_essai"
+    assert profiles.current().id is None   # contexte rendu après la recette

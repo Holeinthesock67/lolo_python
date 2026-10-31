@@ -1,5 +1,10 @@
 # Lot O1 – Arbres : préparer une tuile en moins de 150 ms
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Arbres : préparer une tuile en moins de 150 ms (210 ms mesurés sur le PC cible) | GDScript | E3, E4 (livrés) | Petite | **Livré le 27 octobre** (issue #119) |
+
 ## 1. Objectif
 
 Le cahier d'E3 fixe à 150 ms le temps CPU de préparation des arbres d'une tuile de 1 km en qualité `high`. Sur le PC cible (GTX 1060, processeur de 2017), `engine/tests/unit/test_tree_renderer.gd` mesure environ **210 ms** : le test échoue en local (la CI tolère 200 ms). Une préparation trop lente retarde l'apparition des arbres devant le cycliste et peut provoquer des à-coups quand plusieurs tuiles arrivent ensemble. Ce lot ramène la préparation sous 150 ms **sans changer le résultat** (mêmes arbres, au bit près).

@@ -1,5 +1,10 @@
 # Lot N12 – Appairage des appareils côté core : enregistrer le matériel trouvé dans la configuration locale
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Appairage côté core : enregistrer le nom et l'adresse du matériel trouvé dans `~/OpenRide/config.toml` | Python | M3 (livré) | Petite | **Livré le 25 octobre** (issue #112, PR #177) |
+
 ## 1. Objectif
 
 Le propriétaire veut, dans les futurs menus, une section « Appareils » qui recherche le home trainer, les deux boîtiers du Zwift Click et la ceinture cardio, puis **garde sur le PC** ce qu'elle a trouvé : nom annoncé et adresse Bluetooth. Depuis le nettoyage du dépôt du 24 octobre, ces valeurs réelles ne doivent plus apparaître dans le dépôt : elles vivent seulement dans `~/OpenRide/config.toml`, qui est hors du dépôt.

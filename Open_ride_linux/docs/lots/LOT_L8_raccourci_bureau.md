@@ -1,5 +1,10 @@
 # Lot L8 – Raccourci de bureau : fichier `.desktop`, icône et installation
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Raccourci de bureau : fichier `.desktop`, icône, script d'installation | Bash | — | Petite | **Livré le 24 octobre** (PR #71, issue #60) |
+
 ## 1. Objectif
 
 Le lanceur unique `openride` (lot K6) existe, mais il se lance encore depuis un terminal : il manque l'icône et le fichier `.desktop` prévus par le SRS et notés « à faire » dans le suivi. Ce lot ajoute un script d'installation pour l'utilisateur (sans `sudo`), testé sans bureau.

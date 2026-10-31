@@ -1,16 +1,17 @@
 #!/usr/bin/env python3
-"""Recompte des tests annoncés dans README.md et docs/SUIVI_AVANCEMENT.md (lot X34).
+"""Compte des tests du projet (lots X34 et X52).
 
-Les nombres de tests écrits dans la documentation sont vérifiés par `core/tests/test_docs_coherence.py`
-(lot J7). Ils changent à chaque fusion, et toutes les PR ouvertes entrent alors en conflit sur ces
-lignes. Après une fusion de `main` dans une branche, avant de pousser :
+Depuis le lot X52, `README.md` et `docs/SUIVI_AVANCEMENT.md` n'écrivent plus de nombre de tests : ces
+nombres changeaient à chaque fusion et toutes les PR ouvertes entraient alors en conflit sur ces lignes.
+Le compte se lit ici, et chaque run de la CI l'écrit dans son résumé :
 
-    python3 scripts/recompte_tests.py              # réécrit les nombres faux
-    python3 scripts/recompte_tests.py --verifier   # dit seulement ce qui diffère (code 1)
+    python3 scripts/recompte_tests.py                          # affiche les nombres
+    python3 scripts/recompte_tests.py --resume fichier.md      # les ajoute aussi en tableau Markdown
+    python3 scripts/recompte_tests.py --verifier               # code 1 si un document écrit encore un nombre
 
-Nombres comptés comme les tests les comptent : tests collectés par `pytest -q` du core et du
-compilateur (sans les tests `network`), fichiers `engine/tests/unit/test_*.gd` et
-`engine/tests/render/test_*.gd`. Bibliothèque standard seulement.
+Nombres comptés comme les suites les lancent : tests collectés par `pytest -q` du core et du compilateur
+(sans les tests `network`), fichiers `engine/tests/unit/test_*.gd` et `engine/tests/render/test_*.gd`.
+Bibliothèque standard seulement.
 """
 
 from __future__ import annotations
@@ -23,20 +24,13 @@ from pathlib import Path
 
 PROJECT = Path(__file__).resolve().parents[1]
 
-# document -> {compte : motif à un groupe}. Chaque motif doit figurer dans son document.
-TEST_COUNT_PATTERNS: dict[str, dict[str, str]] = {
-    "README.md": {
-        "core": r"(\d+) tests automatiques côté core",
-        "compiler": r"et (\d+) côté compilateur",
-        "engine_unit": r"(\d+) fichiers de tests unitaires",
-        "engine_render": r"(\d+) tests de rendu",
-    },
-    "docs/SUIVI_AVANCEMENT.md": {
-        "core": r"(\d+) tests pytest passent dans le core",
-        "compiler": r"et (\d+) dans le compilateur",
-        "engine_unit": r"(\d+) fichiers de tests unitaires",
-        "engine_render": r"(\d+) tests de rendu",
-    },
+# Documents qui décrivent les suites de tests, et phrases qui y écrivaient un nombre (à ne plus écrire).
+DOCUMENTS = ("README.md", "docs/SUIVI_AVANCEMENT.md")
+HARD_COUNT_PATTERNS: dict[str, str] = {
+    "core": r"(\d+) tests (?:automatiques côté core|pytest passent dans le core)",
+    "compiler": r"et (\d+) (?:côté compilateur|dans le compilateur)",
+    "engine_unit": r"(\d+) fichiers de tests unitaires",
+    "engine_render": r"(\d+) tests de rendu",
 }
 LABELS = {"core": "tests core", "compiler": "tests compiler", "engine_unit": "fichiers de tests unitaires de l'engine",
           "engine_render": "tests de rendu de l'engine"}
@@ -68,55 +62,47 @@ def actual_counts(project: Path = PROJECT, with_compiler: bool = True) -> dict[s
     return out
 
 
-def check_test_counts(text: str, doc_name: str, actual: dict[str, int]) -> list[str]:
-    """Erreurs de la doc `doc_name` face aux nombres réels ; un compte absent d'`actual` n'est pas vérifié."""
+def hard_counts(text: str, doc_name: str) -> list[str]:
+    """Nombres de tests encore écrits dans la doc `doc_name` (ils doivent venir de ce script)."""
     errors: list[str] = []
-    for key, pattern in TEST_COUNT_PATTERNS[doc_name].items():
-        if key not in actual:
-            continue
-        found = re.findall(pattern, text)
-        if not found:
-            errors.append(f"{doc_name} : phrase du nombre de {LABELS[key]} absente ({pattern})")
-        for value in found:
-            if int(value) != actual[key]:
-                errors.append(f"{doc_name} : {value} {LABELS[key]} annoncés, écrire {actual[key]} "
-                              f"(python3 scripts/recompte_tests.py)")
+    for key, pattern in HARD_COUNT_PATTERNS.items():
+        for value in re.findall(pattern, text):
+            errors.append(f"{doc_name} : « {value} {LABELS[key]} » écrit en dur ; le nombre vient de "
+                          f"python3 scripts/recompte_tests.py et du résumé de la CI")
     return errors
 
 
-def fix_test_counts(text: str, doc_name: str, actual: dict[str, int]) -> str:
-    """Le texte avec chaque nombre annoncé remplacé par le nombre réel."""
-    for key, pattern in TEST_COUNT_PATTERNS[doc_name].items():
-        if key in actual:
-            text = re.sub(pattern, lambda m, v=actual[key]: m.group(0).replace(m.group(1), str(v), 1), text)
-    return text
+def summary_markdown(actual: dict[str, int]) -> str:
+    rows = "".join(f"| {LABELS[k]} | {v} |\n" for k, v in actual.items())
+    return "### Nombre de tests\n\n| Suite | Nombre |\n|---|---|\n" + rows
 
 
 def main(argv: list[str] | None = None) -> int:
-    ap = argparse.ArgumentParser(description="Recompte des tests annoncés dans la documentation (lot X34).")
-    ap.add_argument("--verifier", action="store_true", help="ne rien écrire, code 1 si un nombre est faux")
+    ap = argparse.ArgumentParser(description="Compte des tests du projet (lots X34 et X52).")
+    ap.add_argument("--verifier", action="store_true",
+                    help="seulement vérifier qu'aucun document n'écrit de nombre de tests (code 1 sinon)")
+    ap.add_argument("--resume", type=Path, help="ajoute le tableau des nombres à ce fichier Markdown "
+                    "(résumé du run de la CI : $GITHUB_STEP_SUMMARY)")
     args = ap.parse_args(argv)
+    if args.verifier:
+        errors = [e for name in DOCUMENTS for e in hard_counts((PROJECT / name).read_text(encoding="utf-8"), name)]
+        for e in errors:
+            print("  " + e)
+        if not errors:
+            print("Aucun nombre de tests écrit en dur.")
+        return 1 if errors else 0
     try:
         import openride_compiler  # noqa: F401
         with_compiler = True
     except ImportError:
         with_compiler = False
-        print("openride-compiler non installé : nombre de tests du compilateur laissé tel quel")
+        print("openride-compiler non installé : tests du compilateur non comptés")
     actual = actual_counts(PROJECT, with_compiler)
     print("Comptés : " + ", ".join(f"{LABELS[k]} {v}" for k, v in actual.items()))
-    bad = 0
-    for doc_name in TEST_COUNT_PATTERNS:
-        path = PROJECT / doc_name
-        text = path.read_text(encoding="utf-8")
-        errors = check_test_counts(text, doc_name, actual)
-        for e in errors:
-            print(("  " if args.verifier else "  corrigé : ") + e)
-        bad += len(errors)
-        if errors and not args.verifier:
-            path.write_text(fix_test_counts(text, doc_name, actual), encoding="utf-8")
-    if not bad:
-        print("Nombres de tests à jour.")
-    return 1 if bad and args.verifier else 0
+    if args.resume:
+        with args.resume.open("a", encoding="utf-8") as f:
+            f.write(summary_markdown(actual))
+    return 0
 
 
 if __name__ == "__main__":

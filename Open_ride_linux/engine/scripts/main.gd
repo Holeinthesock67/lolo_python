@@ -221,6 +221,7 @@ func _ready() -> void:
 	streamer.culling = bool(cfg.get("culling", false))
 	streamer.test_log = bool(cfg["test_mode"])
 	streamer.forced_biome = str(cfg.get("biome", "auto"))
+	streamer.texture_level = str(cfg.get("texture_level", "auto"))
 	if streamer.tree_renderer == null:
 		var tree_rend = TreeRenderer.new()
 		tree_rend.name = "TreeRenderer"
@@ -290,6 +291,9 @@ func _ready() -> void:
 	ipc.garage_received.connect(_on_garage)
 	ipc.xp_result_received.connect(_on_xp_result)
 	ipc.progression_received.connect(_on_progression)
+	ipc.profiles_received.connect(func(msg: Dictionary) -> void:
+		menu_flow.on_profiles(msg)
+		_refresh_menu())
 	ipc.error_received.connect(_on_core_error)
 	ipc.shutdown_received.connect(_on_core_shutdown)
 	ipc.core_lost.connect(_on_core_lost)
@@ -359,12 +363,14 @@ func _ready() -> void:
 	menu_view = MenuView.new()
 	menu_layer.add_child(menu_view)
 	banner.reparent(menu_layer)   # le bandeau reste lisible au-dessus du menu, HUD caché ou non
+	world_menu_view.reparent(menu_layer)   # menu du globe plein écran, HUD caché derrière lui (lot O22)
 	menu_view.item_clicked.connect(func(item_id: String) -> void:
 		# Clic sur un élément : focus dessus puis validation, comme un appui long sur A.
 		print("Souris : clic sur ", item_id)
 		if menu_flow.is_visible() and menu_flow.menu.focus_item(item_id):
-			_play_tones(BEEPS["A_LONG"], BEEP_LEVEL)
-			_menu_event("A_LONG"))
+			var ev: String = menu_flow.click_event()   # grille du nom du profil : le clic écrit la lettre (MJ8)
+			_play_tones(BEEPS[ev], BEEP_LEVEL)
+			_menu_event(ev))
 	menu_view.mouse_event.connect(func(ev: String) -> void:
 		print("Souris : ", ev)
 		if menu_flow.is_visible():
@@ -422,8 +428,8 @@ static func _quality_from_cli() -> bool:
 	return false
 
 
-## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, thème et mode d'affichage appliqués tout de
-## suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
+## Réglages reçus du core (lot O4) : menu mis à jour ; qualité, niveau des textures, thème et mode d'affichage
+## appliqués tout de suite, volumes aux bus audio (audio_mix.gd), compteur d'images/s et jauge d'abri montrés ou cachés.
 func _on_settings(msg: Dictionary) -> void:
 	menu_flow.on_settings(msg)
 	AudioMix.apply_settings(menu_flow.settings.items)
@@ -444,6 +450,9 @@ func _on_settings(msg: Dictionary) -> void:
 		_report_quality(q, "reglage")
 	elif q != _quality_name:
 		_report_quality(q, "reglage")   # valeur inconnue : la qualité appliquée ne change pas, et le journal le dit
+	var tl := str(menu_flow.settings.item("render.texture_level").get("value", streamer.texture_level))
+	if tl in EngineArgs.VALID_TEXTURE_LEVELS:
+		streamer.texture_level = tl   # niveau des textures imposé (lot P20) ; rien n'est rechargé s'il ne change pas
 	var th := str(menu_flow.settings.item("render.theme").get("value", _theme_name))
 	if th != _theme_name:
 		_apply_theme(th)
@@ -664,6 +673,14 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.send_command("buy", {"item_id": str(act["item_id"])})
 		"set_avatar":
 			ipc.send_command("set_avatar", {"avatar": act["avatar"]})
+		"list_profiles":   # profils de joueurs (lot MJ8, contrat 1.5)
+			ipc.send_command("list_profiles", {})
+		"select_profile", "delete_profile":
+			ipc.send_command(name, {"id": str(act["id"])})
+		"create_profile":
+			ipc.send_command("create_profile", {"name": str(act["name"])})
+		"rename_profile":
+			ipc.send_command("rename_profile", {"id": str(act["id"]), "name": str(act["name"])})
 
 
 # --- menu « Monde ouvert » (lot W11) -----------------------------------------------------
@@ -726,6 +743,34 @@ func _world_menu_key(event: InputEventKey) -> bool:
 	return false
 
 
+## Nom d'un profil au clavier (lot MJ8) : la touche écrit au lieu d'agir comme un bouton du Click.
+func _profile_name_key(event: InputEventKey) -> bool:
+	var ch := char(event.unicode) if event.unicode > 31 else ""
+	var enter := event.keycode in [KEY_ENTER, KEY_KP_ENTER]
+	var res: Dictionary = menu_flow.name_key(ch, enter, event.keycode == KEY_BACKSPACE)
+	if not res.get("used", false):
+		return false
+	_run_menu_action(res.get("action", {}))
+	_refresh_menu()
+	return true
+
+
+## Profil en cours (`hello_ack.config.profile`, lot MJ8) : accueil, titre de la fenêtre, bandeau ESSAI ; la
+## liste des profils est demandée pour « Qui roule ? ».
+func _apply_profile() -> void:
+	var block = ipc.core_config.get("profile", {})
+	menu_flow.on_hello_profile(block)
+	DisplayServer.window_set_title(menu_flow.profiles.home_title())
+	_set_trial_badge(menu_flow.profiles.is_trial())
+	if menu_flow.profiles.enabled():
+		ipc.send_command("list_profiles", {})
+
+
+## Bandeau « ESSAI » en haut du HUD sur le profil d'essai (maquette D, lot MJ8) : dessiné par le HUD.
+func _set_trial_badge(on: bool) -> void:
+	hud.set_trial_badge(on)
+
+
 ## Menu plein écran : rien du HUD de séance derrière lui. Run Cyber-Rogue : la scène du mode a son HUD
 ## diégétique (lot R11), le HUD classique (panneaux, profil, courbes) est caché ; le compteur d'images/s reste.
 func _sync_hud(menu_shown: bool) -> void:
@@ -734,12 +779,17 @@ func _sync_hud(menu_shown: bool) -> void:
 		overlay_layer.visible = not menu_shown
 
 
+## Un menu plein écran est affiché : liste des menus ou globe du monde ouvert (lot O22).
+func _full_screen_menu() -> bool:
+	return menu_view.visible or (world_menu_view != null and world_menu_view.visible)
+
+
 func _refresh_menu() -> void:
 	if menu_view == null:
 		return
 	var shown: bool = menu_flow.is_visible() and not (world_menu_view != null and world_menu_view.visible)
 	menu_view.visible = shown
-	_sync_hud(shown)
+	_sync_hud(_full_screen_menu())
 	if shown:
 		var st: Dictionary = menu_flow.state()
 		if st["card"].has("id") and st["card"]["id"] == _route_profile.get("id"):
@@ -785,6 +835,8 @@ func _unhandled_input(event: InputEvent) -> void:
 	if key.pressed:
 		if world_menu_view != null and world_menu_view.visible and _world_menu_key(key):
 			return   # saisie de la recherche du monde ouvert : la touche est une lettre, pas un bouton
+		if menu_flow.is_visible() and _profile_name_key(key):
+			return   # saisie du nom d'un profil (lot MJ8) : lettres, Entrée valide, Retour arrière efface
 		key_map.press(key.keycode, key.shift_pressed, now_s)
 		return
 	var ev: String = key_map.release(key.keycode, now_s)
@@ -1171,6 +1223,8 @@ func _test_menu_state(req: String) -> Dictionary:
 	var world := {"visible": world_menu_view != null and world_menu_view.visible}
 	if world["visible"]:
 		world["state"] = str(world_menu_view.vm.state)
+		world["help"] = world_menu_view.help_label.text
+		world["hint"] = world_menu_view.hint_text()
 	return {"req": req, "visible": menu_view.visible, "screen": st["screen"], "title": st["title"],
 		"status": st["status"], "focus": focus, "focus_id": items[focus]["id"] if focus >= 0 and focus < items.size() else "",
 		"group": menu_flow.settings_group, "editing": st["editing"], "items": items, "rows": rows,
@@ -1200,7 +1254,7 @@ func _test_screenshot(path: String, tag: String) -> void:
 		"panel": hud.panel_center, "power": hud.power_val, "target": hud.target_val, "speed": hud.speed_val, "cadence": hud.cadence_val,
 		"hr": hud.hr_val, "grade": hud.grade_val, "distance": hud.distance_val, "erg": hud.erg_label,
 		"status": hud.status_label, "banner": banner, "menu": menu_view, "menu_title": menu_view.title_label,
-		"menu_card": menu_view.card, "garage_preview": menu_view.preview, "button_bar": menu_view.button_bar,
+		"menu_card": menu_view.card, "confirm_card": menu_view.confirm_card, "confirm_question": menu_view._confirm_question, "garage_preview": menu_view.preview, "button_bar": menu_view.button_bar,
 		"erg_title": erg_panel.title_label, "erg_target": erg_panel.target_label,
 		"erg_remaining": erg_panel.remaining_label, "erg_next": erg_panel.next_label, "erg_hist": erg_panel.histogram, "chart_erg": erg_panel.chart, "chart_sim": chart_sim,
 		"bots_panel": hud.panel_bots, "bots_line1": hud.bots_lines[0], "bots_line2": hud.bots_lines[1],
@@ -1380,6 +1434,7 @@ func _apply_equipment() -> void:
 
 func _on_hello_ack(_ack: Dictionary) -> void:
 	_configure_avatar()
+	_apply_profile()
 	var prog = ipc.core_config.get("progression", {})
 	menu_flow.on_hello_progression(prog)
 	var eq = prog.get("equipped") if prog is Dictionary else null
@@ -1520,7 +1575,7 @@ func _on_state_received(state: Dictionary) -> void:
 			_quality_name, float(Time.get_ticks_msec()) / 1000.0):
 		ipc.request_rogue_resync()
 	if menu_view != null:
-		_sync_hud(menu_view.visible)   # entrée et sortie de la run dans la même trame
+		_sync_hud(_full_screen_menu())   # entrée et sortie de la run dans la même trame
 
 	if sound_player != null and camera != null:
 		var now_s := float(Time.get_ticks_msec()) / 1000.0

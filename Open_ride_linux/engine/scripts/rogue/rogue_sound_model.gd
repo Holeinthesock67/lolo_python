@@ -19,10 +19,13 @@ const SLEW_DB_PER_S := 12.0
 const SILENCE_DB := -60.0
 const HUM_FROM_M := 30.0
 const BEAT_GAP_M := 2.0              # battement de l'alarme : contact ou Firewall à moins de 2 m
-const HUM_MAX_DB := -6.0
+const HUM_MAX_DB := 0.0               # au contact ; avec MODE_DB et le bus, sous le vent à 60 km/h (X51)
 const HUM_MIN_DB := -30.0
 const OVERHEAT_DB := -12.0
 const MUSIC_FADE_S := 2.0
+## Niveau de tout le mode (R18 « doux d'abord ») : avec les bus par défaut, bruitages à −18 dB du plein niveau
+## (−12 dB et RogueSfx à 70 %) et musique à −28 dB (RogueMusic à 40 %), tous sous le vent à 60 km/h (lot X51).
+const MODE_DB := -12.0
 
 ## Événement du core -> son.
 const EVENT_SOUNDS := {
@@ -38,15 +41,16 @@ const PRIORITY := {
 	"rogue_perfect_shift": 70, "rogue_parry": 60, "rogue_parry_miss": 60, "rogue_crit": 55, "rogue_hit": 50,
 }
 const DEFAULT_PRIORITY := 10
-## Couches de musique par phase : basse partout, pulsation en salle, arpège au boss et à la fin.
+## Couches de musique par phase : basse partout, pulsation en salle, arpège à la fin ; au boss, le thème 8 bits
+## seul (lot R20).
 const MUSIC_BY_PHASE := {
-	"WARMUP": {"bass": 1.0, "pulse": 0.0, "arp": 0.0},
-	"ROOM": {"bass": 1.0, "pulse": 1.0, "arp": 0.0},
-	"CORRIDOR": {"bass": 1.0, "pulse": 0.0, "arp": 0.0},
-	"BOSS": {"bass": 1.0, "pulse": 1.0, "arp": 1.0},
-	"RECOVERY": {"bass": 1.0, "pulse": 0.0, "arp": 0.0},
-	"COOLDOWN": {"bass": 1.0, "pulse": 0.0, "arp": 0.0},
-	"RESULTS": {"bass": 0.0, "pulse": 0.0, "arp": 1.0},
+	"WARMUP": {"bass": 1.0, "pulse": 0.0, "arp": 0.0, "chip": 0.0},
+	"ROOM": {"bass": 1.0, "pulse": 1.0, "arp": 0.0, "chip": 0.0},
+	"CORRIDOR": {"bass": 1.0, "pulse": 0.0, "arp": 0.0, "chip": 0.0},
+	"BOSS": {"bass": 0.0, "pulse": 0.0, "arp": 0.0, "chip": 1.0},
+	"RECOVERY": {"bass": 1.0, "pulse": 0.0, "arp": 0.0, "chip": 0.0},
+	"COOLDOWN": {"bass": 1.0, "pulse": 0.0, "arp": 0.0, "chip": 0.0},
+	"RESULTS": {"bass": 0.0, "pulse": 0.0, "arp": 1.0, "chip": 0.0},
 }
 
 var _active: Array = []            # [{sound, priority, end_s}]
@@ -56,7 +60,7 @@ var _prev: Dictionary = {}         # valeurs de la trame précédente
 var _last_seq: int = -1
 var _last_time_s: float = NAN
 var _loops := {"overheat_db": SILENCE_DB, "hum_db": SILENCE_DB, "beat": false}
-var _music := {"bass": 0.0, "pulse": 0.0, "arp": 0.0}
+var _music := {"bass": 0.0, "pulse": 0.0, "arp": 0.0, "chip": 0.0}
 var _corridor_id: int = -1
 var _corridor_cards: String = ""
 var in_run := false
@@ -70,7 +74,7 @@ func reset() -> void:
 	_last_seq = -1
 	_last_time_s = NAN
 	_loops = {"overheat_db": SILENCE_DB, "hum_db": SILENCE_DB, "beat": false}
-	_music = {"bass": 0.0, "pulse": 0.0, "arp": 0.0}
+	_music = {"bass": 0.0, "pulse": 0.0, "arp": 0.0, "chip": 0.0}
 	_corridor_id = -1
 	_corridor_cards = ""
 	in_run = false

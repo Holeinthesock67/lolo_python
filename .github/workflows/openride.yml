@@ -33,16 +33,29 @@ defaults:
     working-directory: Open_ride_linux
 
 jobs:
+  # Lot X52 : une seule colonne sur les demandes de fusion (3.14, avec constraints.txt : pas de dérive des
+  # dépendances qui ferait échouer une PR sans rapport) ; les deux colonnes sur main, sur demande et chaque lundi.
+  # Filet de la 3.11 sur les PR : compilation de tout le code Python par Python 3.11 (syntaxe trop récente).
   python:
     name: python (${{ matrix.python-version }})
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        python-version: ["3.11", "3.14"]
+        python-version: ${{ fromJSON(github.event_name == 'pull_request' && '["3.14"]' || '["3.11", "3.14"]') }}
     steps:
       - name: Récupération du dépôt
         uses: actions/checkout@v5
+
+      - name: Python 3.11 pour la compilation (demandes de fusion)
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-python@v6
+        with:
+          python-version: "3.11"
+
+      - name: Code compilable par Python 3.11 (demandes de fusion)
+        if: github.event_name == 'pull_request'
+        run: python3.11 -m compileall -q core/src compiler/src scripts engine/tests
 
       - name: Installation de Python ${{ matrix.python-version }}
         uses: actions/setup-python@v6
@@ -76,6 +89,16 @@ jobs:
 
       - name: Contrôle des vecteurs de route
         run: python -m openride_core.tools.route_vectors --check
+
+      # Lot X52 : les nombres de tests ne sont plus écrits dans la doc ; ils sont donnés ici, dans le résumé du run.
+      - name: Nombre de tests (résumé du run)
+        if: matrix.python-version == '3.14'
+        run: python3 scripts/recompte_tests.py --resume "$GITHUB_STEP_SUMMARY"
+
+      # Lot X54 : le tableau des lots n'est plus écrit dans 00_INDEX.md ; les nombres par série sont donnés ici.
+      - name: Lots par série (résumé du run)
+        if: matrix.python-version == '3.14'
+        run: python3 scripts/index_lots.py --resume "$GITHUB_STEP_SUMMARY"
 
       # Rapports JUnit gardés (lot X3) : durée et statut de chaque test, lus par scripts/stabilite_tests.py.
       - name: Rapports JUnit

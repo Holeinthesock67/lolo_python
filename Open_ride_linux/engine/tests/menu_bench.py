@@ -78,6 +78,11 @@ from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
 
 VOIES = ("click", "clavier", "souris")
 MAX_FAILURES = 5   # au-delà, le passage s'arrête : les échecs suivants ne seraient que des conséquences
+# Après le hello_ack, l'engine peut rester plusieurs secondes sans traiter ses messages (premières images, shaders
+# compilés sur une vraie carte : GTX 1060 du PC, 31 octobre). Le banc attend sa première réponse avant la première
+# vérification, en redemandant l'état : sinon « écran home : engine sans réponse » sur le PC, jamais dans le cloud.
+ENGINE_READY_S = 60.0
+ENGINE_READY_ASK_S = 3.0   # délai de chaque demande d'état pendant cette attente
 COURT_S, LONG_S, FLOU_S = 0.15, 1.1, 0.7
 
 # Un seul tableau bouton → geste : événement du Click -> (bouton du Click V2 simulé, durée en s),
@@ -319,7 +324,8 @@ class Run:
         if not st:
             return ["engine sans réponse"]
         text = " | ".join([st.get("status", "")] + [f"{it['label']} — {it['detail']}" if it["detail"] else it["label"]
-                                                     for it in st.get("items", [])] + [st.get("devices", ""), st.get("card", "")])
+                                                     for it in st.get("items", [])] + [st.get("devices", ""), st.get("card", "")]
+                         + [st.get("world_menu", {}).get(k, "") for k in ("help", "hint")])
         if "menu_cache" in step:
             if st.get("visible") == bool(step["menu_cache"]):
                 bad.append(f"menu {'visible' if st.get('visible') else 'caché'}")
@@ -454,7 +460,16 @@ class Run:
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
-        return ok
+        return ok and self.wait_engine_ready()
+
+    def wait_engine_ready(self) -> bool:
+        """Attend la première réponse de l'engine à une demande d'état (ENGINE_READY_S au plus)."""
+        t0 = now()
+        while not self.state(ENGINE_READY_ASK_S) and now() - t0 < ENGINE_READY_S and self.engine.p.poll() is None:
+            pass
+        ok = bool(self.last)
+        return self.report.check(ok, "engine prêt (première réponse à menu_state)",
+                                 f"{now() - t0:.1f} s" if ok else f"sans réponse en {ENGINE_READY_S:.0f} s")
 
     def stop(self) -> None:
         if self.engine is not None and self.engine.p.poll() is None:

@@ -1,5 +1,10 @@
 # Lot L6 – Cible ERG dans le journal de séance
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Cible ERG enregistrée dans le journal de séance | Python | — | Petite | **Livré le 24 octobre** (PR #69, issue #58) |
+
 ## 1. Objectif
 
 Le bilan `openride-core summary` (lot K7) sait calculer l'écart entre puissance et cible par bloc ERG, mais le journal v1 n'enregistre pas la cible : l'écart est signalé « indisponible ». Ce lot ajoute la cible au journal, pour que le bilan d'une séance ERG soit complet, et pour préparer le futur fantôme d'une séance (SRS §14).

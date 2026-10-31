@@ -87,6 +87,7 @@ class RenderConfig:
     draft_gauge: str = "off"   # jauge d'abri au-dessus du bot qui t'abrite : off ou on (coupée par défaut)
     display: str = "fullscreen"   # fenêtre de l'engine : windowed, borderless (plein écran sans bordure) ou fullscreen (exclusif)
     theme_library_gb: float = 5.0   # plafond de ~/OpenRide/Themes (lot U15) : theme-install retire le pack le moins récemment utilisé
+    texture_level: str = "auto"    # niveau des textures du décor (lot P20) : auto (selon la qualité), low, medium ou high
 
 
 @dataclass
@@ -146,6 +147,15 @@ class WindConfig:
     seed: int = 0                  # graine des rafales
     feel: str = "grade"            # "grade" (supplément de pente) ou "ftms" (champ vent de 0x11)
     max_grade_offset_pct: float = 4.0   # borne du supplément de pente, réglable dans le menu
+
+
+@dataclass
+class GravelConfig:
+    """Option « gravel » (lots U1 et U21, SRS §5 et §11) : roulement des routes non revêtues ; coupée par défaut."""
+    mode: str = "off"              # "off", "auto" (colonne surface du parcours), "compacted", "gravel", "dirt"
+    factor_compacted: float = 2.0  # multiplicateur du crr du bitume
+    factor_gravel: float = 2.5
+    factor_dirt: float = 3.0
 
 
 @dataclass
@@ -217,6 +227,7 @@ class Config:
     drivers: DriversConfig = field(default_factory=DriversConfig)
     open_world: OpenWorldConfig = field(default_factory=OpenWorldConfig)
     wind: WindConfig = field(default_factory=WindConfig)
+    gravel: GravelConfig = field(default_factory=GravelConfig)
     progression: ProgressionConfig = field(default_factory=ProgressionConfig)
     avatar: AvatarConfig = field(default_factory=AvatarConfig)
     rogue: RogueConfig = field(default_factory=RogueConfig)
@@ -279,6 +290,9 @@ BOUNDS: dict[tuple[str, str], tuple[float, float]] = {
     ("wind", "from_deg"): (0, 360),
     ("wind", "gust_pct"): (0, 100),
     ("wind", "max_grade_offset_pct"): (0, 8),
+    ("gravel", "factor_compacted"): (1, 3),
+    ("gravel", "factor_gravel"): (1, 3),
+    ("gravel", "factor_dirt"): (1, 3),
     ("avatar", "standing_grade_pct"): (3, 15),
     ("avatar", "standing_power_pct"): (100, 300),
     ("rogue", "w_prime_j"): (5000, 60000),
@@ -301,6 +315,7 @@ ADDRESS_RE = re.compile(r"^[0-9A-Fa-f]{2}(:[0-9A-Fa-f]{2}){5}$")
 # Valeurs permises des champs textuels à choix fermé.
 CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("render", "quality"): ("low", "medium", "high"),
+    ("render", "texture_level"): ("auto", "low", "medium", "high"),
     ("render", "chart"): ("hidden", "reduced", "full"),
     ("render", "fps"): ("off", "on", "detail"),
     ("render", "draft_gauge"): ("off", "on"),
@@ -311,6 +326,7 @@ CHOICES: dict[tuple[str, str], tuple[str, ...]] = {
     ("drivers", "hr"): ("none", "ble", "sim"),
     ("wind", "mode"): ("off", "fixed", "gusty", "theme"),
     ("wind", "feel"): ("grade", "ftms"),
+    ("gravel", "mode"): ("off", "auto", "compacted", "gravel", "dirt"),
     ("powerups", "mode"): ("on", "off"),
 }
 

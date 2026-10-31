@@ -1,5 +1,10 @@
 # Lot CT1 – Contrat IPC et cahiers du mode Course tactique
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série CT : contrat IPC et cahiers du mode Course tactique | Documentation | CT0, TT1 (4.0) | Moyenne | Prêt (version 5.0), validation du propriétaire |
+
 Série CT (version 5.0, mode « Course tactique »). Plan de la série : `docs/5.0/PLAN_SERIE_CT.md`.
 
 ## 1. Objectif

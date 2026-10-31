@@ -1,5 +1,10 @@
 # Lot P11 – Animaux : oiseaux en vol, bétail dans les prés, chevreuil en lisière
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Animaux : oiseaux, bétail, chevreuil | GDScript + shader | P4 | Moyenne | **Livré le 27 octobre** (issue #135) |
+
 ## 1. Objectif
 
 Peupler le paysage de quelques animaux simples et peu coûteux :

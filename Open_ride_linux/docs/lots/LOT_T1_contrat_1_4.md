@@ -1,5 +1,10 @@
 # Lot T1 – Contrat IPC 1.4 commun aux séries R, T et V : segments, bonus, bots à profil, Cyber-Rogue, progression
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Contrat IPC 1.4 commun aux séries R, T et V : segments, bonus, bots à profil, Cyber-Rogue, progression (réunit les anciens lots R1 et V1, décision D4 du 27 octobre) | Markdown + JSON | P1, PR #287 (livrés) | Moyenne | **Livré le 27 octobre** (PR #392, issue #378), **version 2.0** ; contrat validé par le propriétaire ; branchement par R8, T7 et V11 |
+
 ## 1. Objectif
 
 Fixer en **un seul lot et une seule PR**, avant tout code des séries R, T et V qui en dépend, la révision 1.4 du contrat IPC et la couche `segments` du format `.world`. Décision du propriétaire du 27 octobre (décision D4 de l'audit de cohérence) : les anciens lots de contrat R1 et V1 sont réunis ici, pour qu'il n'y ait qu'un journal, une revue et une numérotation. Le core reste le maître : il calcule les règles du jeu (invariant A2) ; l'engine affiche et demande.

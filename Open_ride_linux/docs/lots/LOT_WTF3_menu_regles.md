@@ -1,5 +1,10 @@
 # Lot WTF3 – Menu du mode WTF et écran des treize interrupteurs
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série WTF : menu du mode et écran des treize interrupteurs | GDScript | WTF2 | Petite | **Livré le 31 octobre** (version 2.0), captures validées par le propriétaire |
+
 Série WTF (mode « What the fuck », demande du propriétaire du 29 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_WTF.md`.
 
 ## 1. Objectif

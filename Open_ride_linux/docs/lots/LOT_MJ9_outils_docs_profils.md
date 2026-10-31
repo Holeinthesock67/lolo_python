@@ -1,5 +1,10 @@
 # Lot MJ9 – Outils et documentation des profils
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : recette V10 sur `_essai`, guide et outils | Python, doc | MJ7, MJ8 | Petite | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj8b`, avec MJ8) |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §4.2.
 
 ## 1. Objectif
@@ -35,3 +40,11 @@ Aucune.
 ## 8. Hors périmètre
 
 Recette PC (MJ10).
+
+## Livraison
+
+Livré le 30 octobre 2026 (branche `claude/project-thread-grv91v-mj8b`, même PR que MJ8 : le guide décrit les écrans).
+
+- `tools/recette_v10.py` : profil d'essai activé pendant la recette (et rendu après), OpenRide lancé avec `--profil _essai`, profil de progression et journaux du profil d'essai par défaut ; seule la copie de son `profile.json` est faite (plus de `config.toml` ni du vrai profil). Test `test_recette_rides_on_the_trial_profile`.
+- `GUIDE_UTILISATION.md` §7 : profils de joueurs, migration, « Qui roule ? », saisie du nom, gestion, `openride --profil`, profil d'essai.
+- `OUTILS_DE_TEST.md`, suivi, index.

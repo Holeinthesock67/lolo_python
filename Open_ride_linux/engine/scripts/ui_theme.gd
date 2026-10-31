@@ -229,6 +229,7 @@ const RADIUS := 10
 const HELP_H := 66            # bandeau des boutons : deux lignes (Click, clavier)
 const CHIPS_H := 38           # rangée des pastilles d'appareils
 const CARD_W := 520           # carte de détail à droite
+const CONFIRM_W := 640        # carte de confirmation, centrée
 const SUMMARY_CARD_W := 700   # carte du bilan de fin de séance (chiffres sur deux colonnes)
 const ICON := 28              # pictogramme d'une entrée
 const LINE_W := 2.2           # trait des pictogrammes

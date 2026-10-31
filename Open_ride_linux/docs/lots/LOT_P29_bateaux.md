@@ -1,5 +1,10 @@
 # Lot P29 – Bateaux : voiliers, barques et pédalos sur les lacs, péniches et canoës sur l'eau courante, navires en mer
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Bateaux : voiliers, barques et pédalos sur les lacs, péniches sur les canaux, canoës et kayaks sur les rivières, ferry et porte-conteneurs en mer (avec U9), sillages, diesel et corne de brume | GDScript + shader | P12, P25, P26, Y14 (U9 pour la mer) | Moyenne | **Livré le 28 octobre**, séance sur le PC à faire |
+
 ## 1. Objectif
 
 Ce lot répond à la demande du propriétaire du 28 octobre : « Il faudra des bateaux pour lacs et mers ». Il fait partie de la deuxième vague du décor vivant (P22 à P29) et vient après le ciel (P26) et les cyclistes (P28), avant l'intégration de toute la vague (P27).

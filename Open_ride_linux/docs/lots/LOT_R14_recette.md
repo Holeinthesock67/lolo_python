@@ -1,5 +1,10 @@
 # Lot R14 – Recette du mode Cyber-Rogue sur le PC et le vélo
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Recette du mode Cyber-Rogue sur le PC et le vélo | — | R8, R9, R10 à R13, R15, R16 | Moyenne | Non : propriétaire, **version 2.0** |
+
 ## 1. Objectif
 
 Vérifier par le propriétaire, sur le PC cible (GTX 1060) et sur le vélo, que le mode Cyber-Rogue est jouable, lisible, sûr et fidèle à l'objectif choisi. Lot du propriétaire ; Claude prépare la fiche et lit les journaux.
@@ -51,3 +56,7 @@ Aucune.
 ## 8. Hors périmètre
 
 - Nouvelles cartes, nouveaux archétypes (après la 2.0).
+
+## 9. Partie automatique (lot X51, 30 octobre)
+
+Les essais 2, 3, 4 (calendrier et IF), 6 (Click coupé 30 s), 7 (core tué), 8 (abandon) et 10 (FIT lu par le SDK de Garmin, un tour par salle) passent dans la vraie séance du core avec `python -m openride_core.tools.rogue_recette`, sans vélo. L'essai 5 est couvert pour la logique par la matrice des boutons (X42), et l'essai 9 par `rogue_bench.py --native` sur la GTX 1060. Restent au propriétaire : le ressenti (surchauffe, bosses, tenue du seuil, dont l'IF simulé est au bas de la plage), les vrais appuis sur le Click, l'import du FIT dans Garmin Connect et GoldenCheetah, le regard sur `engine/tests/rogue_galerie.py` et l'écoute sur `engine/tests/rogue_ecoute.py`.

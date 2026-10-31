@@ -1,5 +1,10 @@
 # Lot N1 – Contrat IPC v1.1 : listes des parcours et des entraînements, état des appareils, bilan enrichi
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Contrat IPC v1.1 : listes des parcours et des entraînements, état des appareils, bilan enrichi | Markdown + JSON | — | Petite | **Livré le 24 octobre** (interne, contrat validé par le propriétaire) |
+
 ## 1. Objectif
 
 Le menu piloté au Click (lot N6) doit remplacer `--autostart`. Pour cela, l'engine doit obtenir du core la liste des parcours et des entraînements, l'état des appareils et un bilan de fin de séance plus riche que le `summary` actuel. Ce lot écrit ces ajouts dans le contrat IPC et ses schémas JSON, **sans changer `v`** (ajouts compatibles, contrat §8).

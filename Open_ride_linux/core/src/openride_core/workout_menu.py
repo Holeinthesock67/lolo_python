@@ -4,9 +4,9 @@ Le core reste seul à écrire dans le dossier des entraînements (contrat IPC §
 paramètres d'un entraînement par intervalles (`create_workout`) ou choisit un fichier dans la liste
 que le core lui a donnée (`list_imports`, puis `import_workout`).
 
-- `build_interval_zwo()` : fichier `.zwo` (Warmup, IntervalsT, Cooldown, en % de la FTP) ;
-  mêmes paramètres, même identifiant, même fichier.
-- `import_candidates()` : fichiers `.zwo`, `.erg` et `.mrc` des dossiers habituels, sans
+- `build_interval_zwo()` : fichier `.zwo` (Warmup, IntervalsT, Cooldown, en % de la FTP) ; mêmes
+  paramètres, même fichier ; nom déjà pris par d'autres réglages : suffixe `_2`, `_3`… (lot O20).
+- `import_candidates()` : fichiers `.zwo`, `.erg`, `.mrc` et `.qwk` des dossiers habituels, sans
   sous-dossiers, les plus récents d'abord (30 au plus).
 - `import_file()` : copie validée (le core relit le fichier avant de l'écrire) ; un fichier identique
   déjà importé n'est pas recopié, un entraînement différent du même nom prend le suffixe `_2`, `_3`…
@@ -110,17 +110,34 @@ def _write(path: Path, data: bytes) -> None:
 
 
 def create_interval_workout(workouts_dir: Path, args: Any) -> dict[str, Any]:
-    """Écrit `<dossier>/intervalles_….zwo` ; renvoie {workout_id, name, created}."""
+    """Écrit `<dossier>/intervalles_….zwo` ; renvoie {workout_id, name, created}.
+
+    Mêmes réglages qu'un fichier existant : rien n'est écrit. Même nom mais réglages différents
+    (récupération, échauffement…) : suffixe `_2`, `_3`…, comme à l'import (lot O20) ; aucun
+    entraînement n'est remplacé."""
     p = check_interval_params(args)
-    workout_id = interval_id(p)
     text = build_interval_zwo(p)
-    parse_workout(text, workout_id)   # le fichier produit doit rester lisible par le core
-    path = workouts_dir / f"{workout_id}.zwo"
-    data = text.encode("utf-8")
-    created = not (path.is_file() and path.read_bytes() == data)
-    if created:
-        _write(path, data)
+    parse_workout(text, interval_id(p))   # le fichier produit doit rester lisible par le core
+    workout_id, created = _store(workouts_dir, interval_id(p), ".zwo", text.encode("utf-8"))
     return {"workout_id": workout_id, "name": interval_name(p), "created": created}
+
+
+def _store(workouts_dir: Path, stem: str, suffix: str, data: bytes) -> tuple[str, bool]:
+    """Range `data` sous `<stem><suffix>` sans écraser un autre entraînement : contenu identique
+    déjà présent, rien n'est écrit ; nom pris, suffixe `_2`, `_3`… Renvoie (identifiant, écrit)."""
+    digest = hashlib.sha256(data).digest()
+    taken = _ids_taken(workouts_dir)
+    workout_id, n = stem, 1
+    while True:
+        target = workouts_dir / f"{workout_id}{suffix}"
+        if target.is_file() and hashlib.sha256(target.read_bytes()).digest() == digest:
+            return workout_id, False
+        if workout_id not in taken:
+            break
+        n += 1
+        workout_id = f"{stem}_{n}"
+    _write(workouts_dir / f"{workout_id}{suffix}", data)
+    return workout_id, True
 
 
 def _ids_taken(workouts_dir: Path) -> set[str]:
@@ -164,17 +181,5 @@ def import_file(src: Path, workouts_dir: Path) -> dict[str, Any]:
         raise WorkoutMenuError("workout_invalid", f"{src.name} illisible : {exc}") from exc
     except WorkoutError as exc:
         raise WorkoutMenuError("workout_invalid", str(exc)) from exc
-    digest = hashlib.sha256(data).digest()
-    taken = _ids_taken(workouts_dir)
-    stem, n = src.stem, 1
-    workout_id = stem
-    while True:
-        target = workouts_dir / f"{workout_id}{suffix}"
-        if target.is_file() and hashlib.sha256(target.read_bytes()).digest() == digest:
-            return {"workout_id": workout_id, "name": workout.name, "created": False}
-        if workout_id not in taken:
-            break
-        n += 1
-        workout_id = f"{stem}_{n}"
-    _write(workouts_dir / f"{workout_id}{suffix}", data)
-    return {"workout_id": workout_id, "name": workout.name, "created": True}
+    workout_id, created = _store(workouts_dir, src.stem, suffix, data)
+    return {"workout_id": workout_id, "name": workout.name, "created": created}

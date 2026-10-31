@@ -1,5 +1,10 @@
 # Lot V2 – Moteur d'expérience : gains, niveaux, défis, recalcul depuis le journal
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Moteur d'expérience : gains, niveaux, défis, recalcul depuis le journal, commande `openride-core xp` | Python | — | Moyenne | **Livré le 27 octobre** (PR #273, issue #239) ; branchement par V11 |
+
 ## 1. Objectif
 
 Calculer l'expérience (XP), le niveau et les défis réussis **uniquement à partir des journaux de séance** écrits par OpenRide (`~/OpenRide/Activities/.journal/*.jsonl`). Le module est pur et testé en pytest ; rien n'est branché sur la séance ni sur l'IPC (lots V11 et T1). Une commande `openride-core xp` montre le résultat sur l'historique réel, pour régler la courbe avant de la figer (risque 2 du plan).

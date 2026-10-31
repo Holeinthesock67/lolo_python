@@ -1,5 +1,10 @@
 # Lot R18 – Bruitages et musique du mode Cyber-Rogue : sons de jeu synthétisés, musique d'ambiance par couches, volumes réglables
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Bruitages et musique du mode : 24 sons synthétisés, musique par couches, volumes réglables | GDScript | R8, R17 | Moyenne | Non : interne (sons du moteur) ; **Livré le 28 octobre** (sauf écoute), **version 2.0** |
+
 ## 1. Objectif
 
 Demande du propriétaire du 27 octobre : penser aux bruitages du mode Cyber-Rogue. Les cahiers R n'en prévoient que quatre (R11 §4.2 : bip de Perfect Shift, impact, parade, alarme du Firewall, plus l'échec de la salle manquée) et R12 renvoie les sons des ennemis « après la recette R14 ». Ce lot dresse la liste complète des sons du mode, les génère par synthèse (comme les autres sons du projet : aucun fichier audio dans le dépôt, aucune œuvre ni marque), règle leur budget et les rend réglables en volume.
@@ -107,3 +112,7 @@ Aucune (les événements existent déjà dans l'IPC 1.4). Réglages `[audio] rog
 Livré : synthèse de 25 sons et de 3 couches de musique (20 s, 96 battements par minute), modèle de déclenchement (un son par événement, sons dérivés des changements d'état, plafond de 8 voix, 60 ms entre deux sons identiques, priorités, boucles lissées à 12 dB/s, couches de musique avec fondu de 2 s), bus `RogueSfx` (70 %) et `RogueMusic` (40 %), remplacement par `~/OpenRide/Sounds/<nom>.ogg`.
 
 Écarts avec le cahier d'origine : les tests de synthèse sont dans `tests/unit` et non `tests/render`, un nœud séparé `rogue_audio.gd` porte les lecteurs au lieu de `sound_player.gd` ; la purge et le coffre ont un son mais aucun déclencheur (pas de signal) ; les clés `audio.rogue_sfx_pct` et `audio.rogue_music_pct` n'existaient pas côté core (ajoutées par R19 le 30 octobre) ; la mesure de synthèse est donnée par le test (limite large de 2 s), l'objectif de 300 ms se vérifie sur le PC. Reste : écoute par le propriétaire.
+
+Lot X51 (30 octobre) : le niveau de départ bas (−18 dB) n'était pas appliqué, et 20 sons sur 25 passaient au-dessus du vent à 60 km/h. `MODE_DB = −12 dB` sur tous les lecteurs du mode les ramène à −18 dB du plein niveau avec le bus à 70 %. Le piratage et la relance de carte, trop aigus (24 % et 35 % d'énergie au-dessus de 4 kHz), sont filtrés comme le bouclier touché. Mesures : `engine/tests/unit/test_rogue_sound_levels.gd` ; écoute : `engine/tests/rogue_ecoute.py`.
+
+Lot R20 (30 octobre) : pendant le boss, le thème 8 bits (couche `chip`) remplace les trois couches de musique.

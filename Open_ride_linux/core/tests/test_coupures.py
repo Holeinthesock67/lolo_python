@@ -2,6 +2,7 @@
 
 import json
 import os
+import shutil
 import signal
 import subprocess
 import time
@@ -89,8 +90,9 @@ def test_analyse_folder(tmp_path, capsys):
 
 def test_engine_kill_only_under_root(tmp_path):
     fake = tmp_path / "Godot_v4.3-test"
-    fake.symlink_to("/bin/sleep")
-    p = subprocess.Popen([str(fake), "30"])
+    # bash et non sleep : le sleep d'uutils (Ubuntu 25.10) refuse d'être lancé sous un autre nom.
+    fake.symlink_to(shutil.which("bash"))
+    p = subprocess.Popen([str(fake), "-c", "read -r _"], stdin=subprocess.PIPE)   # attend sans enfant
     try:
         time.sleep(0.2)
         assert p.pid in cp.engine_pids(os.getpid())

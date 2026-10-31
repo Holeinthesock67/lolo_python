@@ -1,5 +1,10 @@
 # Lot A – Lecteur `.world` et interpolation de route partagés (core et engine)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Lecteur `.world` et interpolation de route partagés core/engine | Python + GDScript | — | Moyenne | **Livré le 23 octobre** |
+
 ## 1. Objectif
 
 Créer **un seul** module de lecture de parcours compilés (`.world`) dans le core Python et son équivalent dans l'engine Godot, avec la même règle d'interpolation et des vecteurs de test communs qui prouvent que les deux donnent les mêmes valeurs.

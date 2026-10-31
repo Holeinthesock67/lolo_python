@@ -50,6 +50,9 @@ signal room_received(msg: Dictionary)
 signal loot_received(msg: Dictionary)
 ## Règles du mode « What the fuck » (révision 1.5, lot WTF2) : réponse à list_wtf_rules et set_wtf_rule.
 signal wtf_rules_received(msg: Dictionary)
+## Profils de joueurs (lot MJ8, contrat 1.5) : réponse à list_profiles, create_profile, rename_profile,
+## delete_profile (un seul datagramme).
+signal profiles_received(msg: Dictionary)
 
 const EngineArgs := preload("res://scripts/engine_args.gd")
 
@@ -301,6 +304,8 @@ func _poll_incoming() -> void:
 				_on_garage_part(json_obj)
 			"progression":
 				progression_received.emit(json_obj)
+			"profiles":
+				profiles_received.emit(json_obj)
 			"xp_result":
 				xp_result_received.emit(json_obj)
 			"room":

@@ -1,5 +1,10 @@
 # Lot H5 – Validation des FIT par le SDK officiel Garmin
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Validation des FIT par le SDK officiel Garmin | Python | — | Petite | **Livré le 23 octobre** (PR #15) |
+
 ## 1. Objectif
 
 Relire les fichiers FIT produits par OpenRide avec un décodeur indépendant, le SDK Python officiel de Garmin (`garmin-fit-sdk`), en plus de `fit-tool` qui sert à les écrire. Un FIT accepté par le décodeur de Garmin a de bonnes chances d'être accepté par Garmin Connect. Le contrôle manuel dans GoldenCheetah et Garmin Connect reste le critère de la SRS, mais il devient une simple confirmation.

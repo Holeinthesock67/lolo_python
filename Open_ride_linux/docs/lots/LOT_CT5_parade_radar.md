@@ -1,5 +1,10 @@
 # Lot CT5 – Parade et rétro-radar : décrocher une sangsue
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série CT : parade et rétro-radar : décrocher une sangsue | Python | AS2, CT4 | Petite | Prêt (version 5.0) |
+
 Série CT (version 5.0, mode « Course tactique »). Plan de la série : `docs/5.0/PLAN_SERIE_CT.md`.
 
 ## 1. Objectif
