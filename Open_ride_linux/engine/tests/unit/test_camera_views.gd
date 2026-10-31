@@ -1,7 +1,7 @@
 extends SceneTree
 
 ## Tests sans écran des vues de caméra (lot V12) : passage en boucle, vue par défaut, sans avatar, placements,
-## pente, transition de moins de 0,5 s et mémorisation.
+## pente, transition de moins de 0,5 s, mémorisation et journal de chaque changement.
 ## Lancement : godot --headless --path engine --script res://tests/unit/test_camera_views.gd
 
 const CameraViews := preload("res://scripts/camera_views.gd")
@@ -134,6 +134,26 @@ func _test_remember() -> void:
 	_check(not v.remember_due(20.0), "une seule écriture")
 
 
+func _test_log() -> void:
+	var v = CameraViews.new()
+	v.has_avatar = false
+	_check(v.log_line() == "Vue de caméra : subjective (sans avatar)", "journal : vue de départ sans avatar")
+	_check(v.log_line() == "", "journal : rien tant que la vue affichée ne change pas")
+	v.has_avatar = true
+	_check(v.log_line() == "Vue de caméra : follow_near (départ)", "journal : l'avatar arrive, vue affichée changée")
+	v.next_view(1.0, "UP_SHORT")
+	_check(v.log_line() == "Vue de caméra : follow_far (UP_SHORT)", "journal : flèche haut")
+	v.previous_view(2.0, "DOWN_SHORT")
+	_check(v.log_line() == "Vue de caméra : follow_near (DOWN_SHORT)", "journal : flèche bas")
+	v.set_view("side", -1.0, "message de test")
+	v.set_view("follow_near")
+	_check(v.log_line() == "", "journal : aller-retour entre deux images, vue affichée inchangée")
+	v.set_view("side")
+	_check(v.log_line() == "Vue de caméra : side (réglage)", "journal : réglage render.camera")
+	v.has_avatar = false
+	_check(v.log_line() == "Vue de caméra : subjective (sans avatar)", "journal : avatar perdu, retour à la subjective")
+
+
 func _test_args() -> void:
 	var cfg: Dictionary = EngineArgs.parse(PackedStringArray(["--camera=side"]))
 	_check(cfg["camera"] == "side", "--camera=side")
@@ -149,6 +169,7 @@ func _init() -> void:
 	_test_placement()
 	_test_transition()
 	_test_remember()
+	_test_log()
 	_test_args()
 	print("test_camera_views : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
