@@ -323,6 +323,7 @@ class CoreSession:
         self._last_devices: dict[str, Any] | None = None
         self._bg_tasks: set[asyncio.Task[Any]] = set()
         self._contents = None   # contenus du menu (lot O25), créés à la première commande
+        self.themes_dir = OPENRIDE_HOME / "Themes"   # thèmes installés, listés dans « Contenus » (lot O29)
         self.first_run = False  # premier lancement (`run --first-run`) : contenus de départ installés seuls
         # Appairage depuis le menu (lot N13) : dernière recherche et identification du « + » en cours.
         self._scan_items: list[dict[str, Any]] = []
@@ -507,7 +508,9 @@ class CoreSession:
 
         if self._contents is None:
             plans_dir = self.plans_dir if self.plans_dir is not None else PLANS_DIR
-            self._contents = ContentService(ContentDirs(self.workouts_dir, plans_dir, self.routes_root))
+            self._contents = ContentService(ContentDirs(
+                self.workouts_dir, plans_dir, self.routes_root, gpx=GPX_DIR, themes=self.themes_dir,
+                home=self.import_home, themes_max_gb=self.cfg.render.theme_library_gb))
         return self._contents
 
     def _send_contents(self, cmd_id: int) -> None:

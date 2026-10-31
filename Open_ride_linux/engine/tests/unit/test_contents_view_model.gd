@@ -65,6 +65,19 @@ func _test_model() -> void:
 	_check(not m.on_error("plan_invalid", "x"), "autres erreurs ignorées")
 	m.on_contents(_msg([]))
 	_check(m.menu_items()[0]["id"] == "none", "liste vide : ligne désactivée")
+	var with_disk := _msg([PACK])
+	with_disk["disk_free_mb"] = 122880.0
+	with_disk["themes_mb"] = 820.0
+	with_disk["themes_max_mb"] = 5120.0
+	m.on_contents(with_disk)
+	var last: Dictionary = m.menu_items()[-1]
+	_check(last["id"] == "disk" and not last["enabled"] and last["label"] == "Place libre : 120 Go ; thèmes : 820 Mo sur 5,0 Go",
+		"place libre et thèmes (%s)" % last["label"])
+	var theme := {"id": "theme:hiver", "kind": "theme", "label": "Thème « hiver »", "detail": "jamais utilisé",
+		"state": "installed", "network": false, "size_mb": 1536.0, "progress_pct": null}
+	m.on_contents(_msg([theme]))
+	_check(m.menu_items()[0]["detail"] == "installé, 1,5 Go" and m.handle("content:theme:hiver").is_empty(),
+		"thème installé : information, taille en Go")
 
 
 func _test_flow() -> void:

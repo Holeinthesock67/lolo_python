@@ -6,6 +6,9 @@ extends RefCounted
 ## (`install_content`), sans rien écraser (sur un contenu installé : « Déjà installé ») ; un contenu
 ## qui télécharge passe d'abord par une confirmation (« Non » par défaut). La ligne d'état rappelle le compte rendu de la dernière installation.
 ## Quand une installation se termine, menu_flow.gd redemande les listes (parcours, entraînements, plans).
+## Packs (lot O29) : pack « Cols célèbres » (téléchargement), archives de thèmes, de biomes ou de parcours
+## trouvées dans Téléchargements, sur le Bureau ou dans ~/OpenRide/Import, thèmes installés (taille et
+## dernière utilisation, information) ; une dernière ligne donne la place libre et celle des thèmes.
 
 const SCREEN := "contents"
 const STATE_TEXTS := {"missing": "à installer", "partial": "en partie installé", "installed": "installé",
@@ -17,6 +20,10 @@ var busy := ""
 ## Ligne d'état : compte rendu du core, refus (content_invalid, content_failed, busy) ou attente.
 var message := ""
 var received := false
+## Place sur le disque (Mo) : libre, thèmes installés et leur plafond ; null quand le core ne la donne pas.
+var disk_free_mb = null
+var themes_mb = null
+var themes_max_mb = null
 
 
 ## Message `contents` ; vrai quand une installation vient de se terminer (listes à redemander).
@@ -26,6 +33,9 @@ func on_contents(msg: Dictionary) -> bool:
 	var was_busy := busy
 	busy = str(msg["busy"]) if msg.get("busy") != null else ""
 	received = true
+	disk_free_mb = msg.get("disk_free_mb")
+	themes_mb = msg.get("themes_mb")
+	themes_max_mb = msg.get("themes_max_mb")
 	var text := str(msg.get("message", ""))
 	if text != "" or busy != "":
 		message = text
@@ -52,7 +62,7 @@ static func state_text(it: Dictionary) -> String:
 	if st == "installing" and it.get("progress_pct") != null:
 		text = "installation : %d %%" % int(it["progress_pct"])
 	if it.get("size_mb") != null and st != "installing":
-		text += ", %d Mo" % int(round(float(it["size_mb"])))
+		text += ", " + size_text(float(it["size_mb"]))
 	if bool(it.get("network", false)) and st in ["missing", "partial"]:
 		text += ", téléchargement"
 	return text
@@ -69,7 +79,30 @@ func menu_items() -> Array:
 		out.append({"id": "wait", "label": "Recherche des contenus…", "enabled": false})
 	elif out.is_empty():
 		out.append({"id": "none", "label": "Aucun contenu proposé", "enabled": false})
+	var disk := disk_text()
+	if disk != "":
+		out.append({"id": "disk", "label": disk, "enabled": false})
 	return out
+
+
+## « Place libre : 120 Go ; thèmes : 0,8 Go sur 5 Go » ("" sans les champs du lot O29).
+func disk_text() -> String:
+	var parts: Array[String] = []
+	if disk_free_mb != null:
+		parts.append("Place libre : " + size_text(float(disk_free_mb)))
+	if themes_mb != null and themes_max_mb != null:
+		parts.append("thèmes : %s sur %s" % [size_text(float(themes_mb)), size_text(float(themes_max_mb))])
+	return " ; ".join(parts)
+
+
+## Taille lisible en français : « 850 Mo », « 1,2 Go », « 120 Go ».
+static func size_text(mb: float) -> String:
+	if mb < 1000.0:
+		return "%d Mo" % int(round(mb))
+	var gb := mb / 1024.0
+	if gb < 10.0:
+		return ("%.1f Go" % gb).replace(".", ",")
+	return "%d Go" % int(round(gb))
 
 
 ## Choix d'une ligne : {"action": "install_content", "id": …}, ou une confirmation si le contenu télécharge
