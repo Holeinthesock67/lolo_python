@@ -1606,6 +1606,8 @@ func _show_bots(rider_s: float, rider_v: float) -> void:
 		hud.update_bots(view, bots_model.race())
 	if bots_view != null:
 		bots_view.update_view(view, route)
+	if living_decor != null:
+		living_decor.bot_places = bots_model.places()
 
 
 ## Jauge d'abri (draft_gauge.gd), une fois par image : au-dessus du bot `draft_bot` tant qu'il abrite le cycliste.
