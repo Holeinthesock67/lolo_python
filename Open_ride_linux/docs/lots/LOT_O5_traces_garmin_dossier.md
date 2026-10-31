@@ -1,5 +1,10 @@
 # Lot O5 – Traces FIT, TCX et archives Garmin déposées dans le dossier des traces
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Traces FIT, TCX et archives Garmin (`.zip`, `.gz`) déposées dans le dossier des traces | Python | N11 | Petite | **Livré le 26 octobre** (issue #122) |
+
 ## 1. Objectif
 
 Le lot M7 permet `openride-compiler build sortie.fit`, mais le catalogue (`catalog.list_routes`, lot I2/J6) ne regarde que les fichiers `.gpx` de `~/OpenRide/GPX/`. Un FIT ou un TCX déposé dans ce dossier n'apparaît donc ni dans `build-all`, ni dans la compilation au lancement (N11), ni dans la liste du menu. Garmin Connect livre aussi parfois une archive (`.zip`) ou un FIT compressé (`.fit.gz`), que rien ne lit. Ce lot rend tous ces fichiers utilisables par simple dépôt dans le dossier.

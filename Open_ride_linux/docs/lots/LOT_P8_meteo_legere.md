@@ -1,5 +1,10 @@
 # Lot P8 – Météo légère : brume de vallée, pluie, neige
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Météo légère : brume de vallée, pluie, neige | GDScript | P4 | Petite | **Livré le 26 octobre** (issue #132) |
+
 ## 1. Objectif
 
 Ajouter quelques ambiances météo peu coûteuses, réglées par le thème 1.2 (`weather`) : brume dans les fonds de vallée, pluie fine ou neige légère autour de la caméra, chacune poussée par le vent du modèle P4. Le nombre de particules suit `living(preset).weather_particles`.

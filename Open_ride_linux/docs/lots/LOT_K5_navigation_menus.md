@@ -1,5 +1,10 @@
 # Lot K5 – Navigation des menus au Click (machine à états, sans affichage)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Navigation des menus au Click, machine à états sans affichage (prépare G) | GDScript | K1 | Petite | **Livré le 24 octobre** (PR #42) |
+
 ## 1. Objectif
 
 Le menu du lot G se pilote avec deux boutons seulement (Click : + et −, appui court ou long) et au clavier. Ce lot écrit la logique de navigation, indépendante de l'affichage et du futur contrat IPC v1.1 : listes, focus, validation, retour, confirmation. Le lot G n'aura plus qu'à brancher les données (parcours, entraînements) et l'affichage.

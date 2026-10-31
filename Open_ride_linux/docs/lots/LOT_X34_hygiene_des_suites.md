@@ -1,5 +1,10 @@
 # Lot X34 – Hygiène des suites : recompte des tests, erreurs relevées, seuils de temps
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Hygiène des suites : recompte des tests, erreurs Godot relevées, seuils de temps | Python + Bash + GDScript | X2 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x34`) |
+
 ## 1. Objectif
 
 Trois défauts des suites signalés par les fils le 28 octobre :

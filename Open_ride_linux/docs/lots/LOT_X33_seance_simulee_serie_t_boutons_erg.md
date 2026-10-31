@@ -1,5 +1,10 @@
 # Lot X33 – Séance simulée de la série T et des boutons de l'ERG (T11, J7)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Séance simulée de la série T et des boutons de l'ERG (T11, J7) | Python | banc des menus (message `key`), T11, O17 | Moyenne | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x33`) ; complément Z2 du 31 octobre (repassé sur `main`, étape `seances` de la recette du PC) |
+
 ## 1. Objectif
 
 La recette T11 (série T : montée, sprint, arches, bonus Z, records, jingles) et l'essai J7 (boutons de l'ERG au Click et au clavier, lot O17) se font aujourd'hui sur le vélo, puis en lisant les journaux à la main. Le 28 octobre, le propriétaire a demandé que tout ce qui se vérifie sans pédaler sorte de la séance (20 min de vélo au plus) : une séance simulée doit jouer ces étapes et vérifier seule ce que l'écran et les journaux montrent. Il ne reste alors au vélo que le ressenti (effort, son, lisibilité).

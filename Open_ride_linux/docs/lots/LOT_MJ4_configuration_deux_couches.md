@@ -1,5 +1,10 @@
 # Lot MJ4 – Configuration à deux couches (machine et joueur)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : configuration à deux couches `config.toml` + `profil.toml`, portée de chaque réglage | Python | MJ1 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj4b`) |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §2.2 et §10 (réponse 1).
 
 ## 1. Objectif

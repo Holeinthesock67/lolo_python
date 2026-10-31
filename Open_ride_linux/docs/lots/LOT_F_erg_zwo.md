@@ -1,5 +1,10 @@
 # Lot F – Entraînements ERG : lecteur `.zwo` et pilotage ERG dans le core
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Entraînements ERG : lecteur `.zwo` et pilotage ERG dans le core | Python | C (livré) | Moyenne | **Livré le 23 octobre** (essai ERG sur le HomeTrainer à faire) |
+
 ## 1. Objectif
 
 Permettre de suivre un entraînement structuré au format `.zwo` (format ouvert de Zwift) :

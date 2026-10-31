@@ -1,5 +1,10 @@
 # Lot X7 – Latence appui Click → commande → écran
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Latence appui Click → commande → écran, par étage | Python + GDScript | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x7`, sur X35) ; mesure en fenêtre réelle sur le PC, puis sur le vélo ; issue #205 |
+
 ## 1. Objectif
 
 Ligne 10 de la recette 1.0 et fenêtres de timing des séries R et T : la latence entre l'appui sur le Click et le changement visible (braquet, biais ERG) n'a jamais été mesurée. Ce lot horodate chaque étage et en fait la statistique.
