@@ -84,8 +84,9 @@ const BOT_CHOICES := [["aucun", {}], ["200 W", {"kind": "constant", "power_w": 2
 ## Fin de la liste des parcours (bibliothèque, lot O12) : tri et filtre par étiquette, en cycle.
 const SORT_ROUTES_ID := "_sort"
 const FILTER_ROUTES_ID := "_filter"
-## Fin de la liste des parcours (lot O22) : « Ajouter un parcours » (sa carte dit où déposer la trace)
-## et « Comment ça marche ? », qui ouvrent l'aide des parcours (route_help.gd).
+## Fin de la liste des parcours (lot O22) : « Ajouter un parcours » (sa carte explique l'ajout, A
+## maintenu ouvre l'écran « Importer une trace », lot O23) et « Comment ça marche ? » (aide des parcours,
+## route_help.gd).
 const ADD_ROUTE_ID := "_add_route"
 const HELP_ROUTES_ID := "_route_help"
 
@@ -348,7 +349,7 @@ func set_items(screen_id: String, items: Array) -> void:
 			str(it.get("detail", ""))))
 	if screen_id == ROUTES:
 		if clean.is_empty():
-			clean.append(_item("empty", "Aucun parcours", false, "dépose une trace dans ~/OpenRide/GPX/"))
+			clean.append(_item("empty", "Aucun parcours", false, "« Ajouter un parcours » importe une trace"))
 		clean.append(_item(ADD_ROUTE_ID, "Ajouter un parcours"))
 		clean.append(_item(HELP_ROUTES_ID, "Comment ça marche ?"))
 	elif screen_id == WORKOUTS:
