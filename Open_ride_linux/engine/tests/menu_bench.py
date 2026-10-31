@@ -150,6 +150,22 @@ def descendants(pid: int) -> list[int]:
     return out[::-1]
 
 
+def threads_of(pid: int) -> list[str]:
+    """Fils d'un processus lus dans /proc, sans débogueur (ptrace refusé hors des ancêtres) : « nom (état, attente
+    dans le noyau) », regroupés avec leur nombre. Dit où un processus bloqué attend (fermeture de l'engine)."""
+    counts: dict[str, int] = {}
+    for task in sorted(Path(f"/proc/{pid}/task").glob("[0-9]*")):
+        try:
+            name = (task / "comm").read_text().strip()
+            state = (task / "stat").read_text().rsplit(")", 1)[1].split()[0]
+            wchan = (task / "wchan").read_text().strip() or "-"
+        except (OSError, IndexError):
+            continue
+        key = f"{name} ({state}, {wchan if wchan != '0' else '-'})"
+        counts[key] = counts.get(key, 0) + 1
+    return [f"{k} ×{n}" if n > 1 else k for k, n in counts.items()]
+
+
 def write_archive(path: Path, members: dict[str, Any]) -> None:
     """Archive `.zip` d'un scénario (`archives`) : `"@dossier": "chemin/du/dépôt"` y range ce dossier (sous son
     nom), les autres clés sont des fichiers texte (ou JSON) qui remplacent ceux du dossier."""
@@ -463,9 +479,14 @@ class Run:
             self.report.check(rc == code, f"l'engine sort avec le code {code}", f"code {rc} en {now() - t0:.1f} s")
             return
         steps = self.engine.matching(r"Fermeture : (.*)$")
+        godot = [pid for pid in [self.engine.p.pid, *descendants(self.engine.p.pid)]
+                 if Path(f"/proc/{pid}/comm").is_file() and Path(f"/proc/{pid}/comm").read_text().startswith("Godot")]
+        threads = threads_of(godot[0]) if godot else []
+        (self.out / "fils_engine.txt").write_text("\n".join(threads) + "\n", encoding="utf-8")
         self.report.check(False, f"l'engine sort avec le code {code}",
                           f"toujours en marche après {delay:.0f} s ; dernière étape : "
-                          + (steps[-1][1].group(1) if steps else "aucune ligne « Fermeture : »"))
+                          + (steps[-1][1].group(1) if steps else "aucune ligne « Fermeture : »")
+                          + " ; fils de Godot : " + ("; ".join(threads) or "introuvables"))
 
     # --- lancement -------------------------------------------------------------------------
 
