@@ -75,6 +75,7 @@ sys.path.insert(0, str(REPO / "core" / "src"))
 from openride_core.launcher import build_supervisor  # noqa: E402
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
+import quality_guard  # noqa: E402
 
 VOIES = ("click", "clavier", "souris")
 MAX_FAILURES = 5   # au-delà, le passage s'arrête : les échecs suivants ne seraient que des conséquences
@@ -481,6 +482,8 @@ class Run:
         self.engine = BenchProc("engine", cmd, env, self.out / f"engine{suffix}.log")
         ok = self.engine.wait_for(r"hello_ack reçu", 40.0) is not None
         self.report.check(ok, "engine relié au core", "hello_ack")
+        if ok:
+            self.check_quality("au départ")
         return ok and self.wait_engine_ready()
 
     def wait_engine_ready(self) -> bool:
@@ -492,8 +495,22 @@ class Run:
         return self.report.check(ok, "engine prêt (première réponse à menu_state)",
                                  f"{now() - t0:.1f} s" if ok else f"sans réponse en {ENGINE_READY_S:.0f} s")
 
+    def check_quality(self, when: str) -> None:
+        """Qualité réellement appliquée (lot X32) : celle que config.toml demande à cet instant (au départ : celle
+        passée par le lanceur ; à l'arrêt : celle d'un réglage changé au menu et enregistré)."""
+        assert self.engine is not None
+        try:
+            data = tomllib.loads(self.config.read_text(encoding="utf-8"))
+        except (OSError, tomllib.TOMLDecodeError):
+            data = {}
+        wanted = str(config_get(data, "render.quality") or "low")
+        seq = [m.group(0) for _, m in self.engine.matching(quality_guard.APPLIED.pattern)]
+        ok, msg = quality_guard.check("\n".join(seq), wanted)
+        self.report.check(bool(ok), f"qualité réellement appliquée {when}", msg)
+
     def stop(self) -> None:
         if self.engine is not None and self.engine.p.poll() is None:
+            self.check_quality("à l'arrêt")
             # xvfb-run ne transmet pas SIGTERM à Godot : le moteur et son Xvfb sont arrêtés d'abord.
             for pid in descendants(self.engine.p.pid):
                 with contextlib.suppress(ProcessLookupError):
