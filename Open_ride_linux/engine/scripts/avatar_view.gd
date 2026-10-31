@@ -15,6 +15,11 @@ extends Node3D
 ## - `set_visible_for_view(view)` : caché en vue subjective (la caméra est dans la tête), visible ailleurs
 ##   (vues de caméra du lot V12 et caméra de contrôle du banc visuel) ; les traînées suivent.
 ## - `set_lod(n)` : 0 cycliste, 1 intermédiaire, 2 allégé des bots (sans équipement détaillé).
+## - Bots (lot Y18, bots_view.gd) : `ghost_alpha` < 1 rend l'avatar translucide (fantôme, sans ombre) ;
+##   `shadow_max_lod` : dernier niveau qui porte une ombre ; `set_wheel_angle(a)` : roues calées sur la
+##   distance parcourue. Les maillages d'un même niveau, de mêmes mesures et de même équipement sont construits
+##   une fois et partagés (`_parts_cache`) : un bot qui revient ou change de niveau ne les reconstruit pas.
+## - Ombres portées par les seules pièces de SHADOW_PARTS (joueur et bots).
 ## Pas de class_name : charger par preload("res://scripts/avatar_view.gd").
 
 const AvatarModel := preload("res://scripts/avatar_model.gd")
@@ -25,8 +30,14 @@ const SWAY_RAD := 0.07
 const STREAK_COUNT := 6
 const STREAK_LENGTH_M := 1.6
 const STREAK_PERIOD_S := 0.5
+## Pièces qui portent une ombre (lot Y18) : la silhouette ; mains, lunettes, cheveux, chaussettes, manches,
+## cou, cuissard et pédalier sont dedans ou trop petits pour se voir dans l'ombre et coûteraient un appel de
+## dessin de plus par cascade d'ombre.
+const SHADOW_PARTS := ["torso", "thigh", "shin", "upper_arm", "forearm", "head", "helmet", "shoe", "bike", "wheel"]
 
 var lod := 0
+var ghost_alpha := 1.0
+var shadow_max_lod := 0
 var settings: Dictionary = AvatarModel.DEFAULTS.duplicate()
 var looks: Dictionary = EquipmentMeshes.DEFAULT_LOOK.duplicate()
 var view := "subjective"
@@ -42,6 +53,9 @@ var _last_speed_s := -1.0
 var _nodes := {}           # nom → MeshInstance3D (ou liste pour les pièces doubles)
 var _number: Label3D
 var _mats := {}
+
+static var _parts_cache := {}
+const PARTS_CACHE_MAX := 32
 
 
 func _init() -> void:
@@ -82,10 +96,7 @@ func set_speed(kmh: float, now_s := 0.0) -> void:
 	_speed_kmh = kmh
 	var dt := clampf(now_s - _last_speed_s, 0.0, 0.25) if _last_speed_s >= 0.0 else 0.0
 	_last_speed_s = now_s
-	_wheel_angle = fposmod(_wheel_angle + kmh / 3.6 / AvatarMesh.WHEEL_R * dt, TAU)
-	var wheels := _list("wheel")
-	for i in range(wheels.size()):
-		wheels[i].basis = AvatarMesh.spin_x(_wheel_angle + 0.7 * i)
+	set_wheel_angle(fposmod(_wheel_angle + kmh / 3.6 / AvatarMesh.WHEEL_R * dt, TAU))
 	if _streaks == null:
 		return
 	var on := kmh >= EquipmentMeshes.AIR_STREAK_KMH and lod <= 1
@@ -98,9 +109,19 @@ func set_speed(kmh: float, now_s := 0.0) -> void:
 			s.position = base + Vector3(0.0, 0.0, fmod(phase + float(i) / STREAK_COUNT, 1.0) * 1.2)
 
 
+## Roues tournées de `angle` (rad) dans le sens de la marche ; l'arrière décalé pour ne pas être en phase.
+func set_wheel_angle(angle: float) -> void:
+	_wheel_angle = angle
+	var wheels := _list("wheel")
+	for i in range(wheels.size()):
+		wheels[i].basis = AvatarMesh.spin_x(_wheel_angle + 0.7 * i)
+
+
 ## Matériau partagé ; les couleurs de sommet des maillages (avatar_mesh.gd) multiplient la couleur.
 ## `roughness` < 0 : 0,8 (mat), ou 0,25 si métallique.
 func _mat(color: Color, texture: Texture2D = null, emissive := false, metallic := 0.0, roughness := -1.0) -> StandardMaterial3D:
+	if ghost_alpha < 1.0:
+		color.a *= ghost_alpha
 	var key := "%s|%s|%s|%s|%s" % [color.to_html(true), texture.get_rid().get_id() if texture != null else 0, emissive, metallic, roughness]
 	if not _mats.has(key):
 		var m := StandardMaterial3D.new()
@@ -115,7 +136,10 @@ func _mat(color: Color, texture: Texture2D = null, emissive := false, metallic :
 			m.emission_enabled = true
 			m.emission = color
 			m.emission_energy_multiplier = 0.6
-		if color.a < 1.0:
+		if ghost_alpha < 1.0:
+			# Fantôme : une silhouette translucide d'un seul tenant (les pièces cachées ne transparaissent pas).
+			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA_DEPTH_PRE_PASS
+		elif color.a < 1.0:
 			m.transparency = BaseMaterial3D.TRANSPARENCY_ALPHA
 		_mats[key] = m
 	return _mats[key]
@@ -125,7 +149,8 @@ func _add(part: String, mesh: Mesh, material: Material, parent: Node3D) -> MeshI
 	var mi := MeshInstance3D.new()
 	mi.mesh = mesh
 	mi.material_override = material
-	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if lod >= 1 else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON if part in SHADOW_PARTS and lod <= shadow_max_lod \
+		and ghost_alpha >= 1.0 else GeometryInstance3D.SHADOW_CASTING_SETTING_OFF
 	parent.add_child(mi)
 	if _nodes.has(part):
 		if not (_nodes[part] is Array):
@@ -152,7 +177,7 @@ func _rebuild() -> void:
 	var primary: Color = AvatarModel.KIT_COLORS[int(settings["kit_primary"])]
 	var secondary: Color = AvatarModel.KIT_COLORS[int(settings["kit_secondary"])]
 	var hs := EquipmentMeshes.helmet_spec(str(looks["helmet"]))
-	var parts := AvatarMesh.build(lod, _dims, looks, {
+	var parts := _parts(lod, _dims, looks, {
 		"skin": AvatarModel.SKIN_COLORS[int(settings["skin"])], "hair": AvatarModel.HAIR_COLORS[int(settings["hair_color"])],
 		"primary": primary, "secondary": secondary,
 		"helmet": secondary if hs["color_kit"] else Color(0.92, 0.92, 0.94)})
@@ -190,6 +215,16 @@ func _rebuild() -> void:
 	_place_bike()
 	_build_streaks()
 	apply_pose(0.0, false)
+
+
+## Maillages de AvatarMesh.build, partagés entre les avatars de mêmes paramètres (joueur et bots).
+static func _parts(n: int, d: Dictionary, lk: Dictionary, colors: Dictionary) -> Dictionary:
+	var key := var_to_str([n, d, lk, colors])
+	if not _parts_cache.has(key):
+		if _parts_cache.size() >= PARTS_CACHE_MAX:
+			_parts_cache.clear()
+		_parts_cache[key] = AvatarMesh.build(n, d, lk, colors)
+	return _parts_cache[key]
 
 
 ## Roues sur leurs axes et pédalier sur le boîtier ; le reste du vélo est un seul maillage fixe.
