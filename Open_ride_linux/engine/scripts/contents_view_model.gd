@@ -3,8 +3,8 @@ extends RefCounted
 ## Écran « Réglages › Contenus » (lot O25 ; contrat IPC révision 1.5, message `contents`). Modèle sans
 ## nœud, relié par menu_flow.gd : une ligne par contenu (libellé à gauche, état à droite) et la carte de
 ## détail du contenu sous le focus (contenu, taille, téléchargement) ; A maintenu installe ce qui manque
-## (`install_content`), sans rien écraser (sur un contenu installé : « Déjà installé ») ; un contenu qui télécharge passe d'abord par une
-## confirmation (« Non » par défaut). La ligne d'état rappelle le compte rendu de la dernière installation.
+## (`install_content`), sans rien écraser (sur un contenu installé : « Déjà installé ») ; un contenu
+## qui télécharge passe d'abord par une confirmation (« Non » par défaut). La ligne d'état rappelle le compte rendu de la dernière installation.
 ## Quand une installation se termine, menu_flow.gd redemande les listes (parcours, entraînements, plans).
 
 const SCREEN := "contents"
