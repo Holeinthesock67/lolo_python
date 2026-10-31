@@ -45,13 +45,13 @@ Grand peloton de plus de 20 coureurs, mouvements de peloton (remontées, frottem
 
 ## 9. Livraison (31 octobre 2026)
 
-Branche empilée sur celle d'AS2 (position latérale, `lateral_factor`) : à fusionner après AS2.
+Branche empilée sur celle d'AS2 (PR #649 : position latérale, `lateral_factor`) : à fusionner après AS2.
 
-- **Calcul de groupe.** `draft._group_draft` : chaque source devant à moins de 15 m et à moins de `GROUP_SIDE_M` (1,5 m) sur le côté donne `α_i` = courbe de P3 × `lateral_factor` × gabarit ; la plus forte compte entière, les autres avec `K_GROUP` = 0,6, et avec `K_LINE` = 0,3 quand elles sont cachées derrière un coureur plus proche sur leur ligne (masque = `lateral_factor` de l'écart entre les deux sources). Plafond `ALPHA_GROUP_CAP` = 0,55, puis vent de travers comme avant. `ALPHA_CAP` (0,45) et `LINE_FACTORS` disparaissent.
+- **Calcul de groupe.** `draft._source_alpha` et `draft._combine` : chaque source devant à moins de 15 m et à moins de `GROUP_SIDE_M` (1,5 m) sur le côté donne `α_i` = courbe de P3 × `lateral_factor` × gabarit ; la plus forte compte entière, les autres avec `K_GROUP` = 0,6, et avec `K_LINE` = 0,3 quand elles sont cachées derrière un coureur plus proche sur leur ligne (masque = `lateral_factor` de l'écart entre les deux sources). Plafond `ALPHA_GROUP_CAP` = 0,55, puis vent de travers comme avant. `ALPHA_CAP` (0,45) et `LINE_FACTORS` disparaissent.
 - **Écart au cahier, `k`.** Avec `k` = 0,6 pour toutes les sources, une file de 3 dans l'axe sort à + 0,05 de P3 (critère 3 : ± 0,02). D'où le second coefficient `K_LINE` = 0,3 pour les sources cachées dans la file, recalé sur les facteurs de P3 (écart au plus 0,018 pour un cycliste de 0,3 à 3 m derrière une file serrée de 0,3 à 1 m) ; `K_GROUP` = 0,6 reste celui du cahier pour les diagonales, qui ne sont pas cachées.
-- **Flanc.** Une source dont les roues chevauchent celles du coureur (côte à côte, 0,9 m d'écart avec AS2) donne `FLANK_ALPHA` = 0,05, à recaler sur les mesures publiées ; en une dimension (sans `lane_m`), rien, comme P3.
+- **Pas d'abri de flanc.** Un premier essai donnait 0,05 à un coureur côte à côte (roues qui se chevauchent). Avec le placement d'AS2, chaque dépassement se fait à 0,9 m du coureur doublé : ce flanc l'accélérait, et le sprinteur de la course des bots (`test_bots_race`, plat de 1,5 km) finissait 2,2 % devant le cycliste (borne 2 %). Retiré : côte à côte, rien, comme P3. Le coureur à côté du critère 4 ne compte donc pas ; les diagonales et la file suffisent (0,54).
 - **Gabarit.** `size_factor` : `(CdA / 0,32)^0,5` borné de 0,85 à 1,15 ; CdA du cycliste (`Source.cda_m2`, sa physique) ou de la physique du bot, poussée du pas précédent retirée. Les bots à profil n'ont pas aujourd'hui de CdA selon leur masse (le cahier le supposait, T12 ne le fait pas) : ils ont tous le CdA de la configuration, gabarit 1. Le leur donner changerait leur calibrage (T13) : décision à part.
-- **Coût.** 12 coureurs (11 bots et le cycliste) : moins de 0,2 ms par pas pour tous les abris, roues suivies et poussées (`test_cost_twelve_riders`) ; `lateral_factor` garde ses constantes calculées une fois.
+- **Coût.** `update_bots` calcule une distance par paire pour l'abri, la roue suivie et la poussée. 12 coureurs (11 bots et le cycliste) : environ 0,14 ms par pas au cloud pour tout (`test_cost_twelve_riders`, borne 0,2 ms).
 - **Contrat.** Schéma `state` : `draft` jusqu'à 0,55. La jauge et la pastille gardent l'échelle `draft / 0,45` bornée à 100 % : passer à 0,55 reste une question au propriétaire.
 - **Banc.** `draft_bench` gagne la partie 4 (cœur d'un groupe de cinq). Tests : `core/tests/test_draft_group.py` (critères 2 à 6).
 
@@ -61,15 +61,15 @@ Branche empilée sur celle d'AS2 (position latérale, `lateral_factor`) : à fus
 | --- | --- | --- |
 | File à 0,5 m, derrière 1 / 2 / 3 bots | 81,8 / 91,6 / 95,5 W | 81,8 / 90,5 / 95,3 W |
 | File à 3 m, derrière 1 / 2 / 3 bots | 43,8 / 49,1 / 51,7 W | 43,8 / 49,9 / 53,2 W |
-| Cœur d'un groupe de cinq, 250 W seul | — | abri 0,531, 113,8 W gagnés (45,5 %) |
+| Cœur d'un groupe de cinq, 250 W seul | — | abri 0,541, 115,9 W gagnés (46,4 %) |
 
 Groupe libre, bots à 230, 240 et 250 W et cycliste à 240 W, 10 min, placement activé, moyenne de trois départs :
 
-| Coureur | À l'abri, AS2 seul | À l'abri, AS2 + AS4 | Watts gagnés, AS2 seul | AS2 + AS4 |
+| Coureur | À l'abri, AS2 seul | AS2 + AS4 | Watts gagnés, AS2 seul | AS2 + AS4 |
 | --- | --- | --- | --- | --- |
-| Bot 230 W | 29 % | 63 % | 15,5 W | 17,9 W |
-| Bot 240 W | 25 % | 86 % | 11,5 W | 14,5 W |
-| Bot 250 W | 11 % | 27 % | 4,2 W | 5,0 W |
-| Cycliste 240 W | 28 % | 59 % | 8,7 W | 11,6 W |
+| Bot 230 W | 29 % | 52 % | 15,5 W | 28,5 W |
+| Bot 240 W | 25 % | 40 % | 11,5 W | 19,6 W |
+| Bot 250 W | 11 % | 24 % | 4,2 W | 11,8 W |
+| Cycliste 240 W | 28 % | 48 % | 8,7 W | 22,5 W |
 
-La part du temps « à l'abri » (abri > 0,01) bondit surtout à cause du flanc : deux coureurs côte à côte se donnent désormais 0,05. Les watts gagnés, eux, ne montent que de 1 à 3 W. Contacts : 5,7 s sur 30 min placement activé, sous la borne de 1 % du banc.
+Le groupe tient mieux ensemble : un coureur derrière deux autres décalés reçoit l'abri des deux. Contrepartie : plus de dépassements (31 à 45 par coureur contre 9 à 13) et 15 s de contact sur 30 min placement activé (borne du banc : 18 s, 1 % du temps). Les courses des bots (`bots_race`, plat et col réels) restent à 0,2 % du cycliste.

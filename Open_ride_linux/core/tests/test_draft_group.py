@@ -85,10 +85,10 @@ def test_sources_aside_or_behind_give_nothing():
     assert d.best_draft(100.0, far_side + behind, lane_m=1.2) == (0.0, None)
 
 
-def test_side_by_side_gives_flank_shelter_only_in_two_dimensions():
-    alpha, best = d.best_draft(100.0, [src(100.5, 1.2 + d.SIDE_CLEAR_M, "c")], lane_m=1.2)
-    assert alpha == pytest.approx(d.FLANK_ALPHA) and best == "c"
-    assert d.best_draft(100.0, [src(100.5, None, "c")]) == (0.0, None)   # une dimension : comme P3
+def test_side_by_side_gives_nothing():
+    # Côte à côte, roues qui se chevauchent : pas d'abri de flanc (il emballait les dépassements, cahier § 9)
+    assert d.best_draft(100.0, [src(100.5, 1.2 + d.SIDE_CLEAR_M, "c")], lane_m=1.2) == (0.0, None)
+    assert d.best_draft(100.0, [src(100.5, None, "c")]) == (0.0, None)
 
 
 # --- gabarit de la source ---------------------------------------------------------------------------
