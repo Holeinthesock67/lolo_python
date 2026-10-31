@@ -1,5 +1,10 @@
 # Lot Y16 – Avatar du cycliste plus détaillé, pédalage dans le bon sens
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Avatar du cycliste plus détaillé dans le style d'Y14 (maillot, cuissard, membres effilés, casque à aérations, vélo de route complet, roues qui tournent) et pédalage remis dans le bon sens | GDScript | V6, V7, Y14 | Moyenne | **Livré le 28 octobre** (PR #538), mesuré sur la GTX 1060 en medium (57,8 images/s, comme main) |
+
 **Statut : livré le 28 octobre (PR #538)**, mesuré sur la GTX 1060 en medium.
 
 ## 1. Objectif

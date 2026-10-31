@@ -1,5 +1,10 @@
 # Lot T8 – Engine : lignes de départ et d'arrivée, arches de bonus, panneaux « Sprint » et « Montée »
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : engine, lignes de départ et d'arrivée, portiques, panneaux « Sprint » et « Montée », arches de bonus | GDScript | T1, T3 (livrés) ; T7 pour les arches en séance | Moyenne | Non : interne (rendu) ; **codé le 27 octobre** (issue #398) ; tests Godot, rendu et budget à passer sur le PC, validation à la recette T11 |
+
 ## 1. Objectif
 
 Montrer les segments et les arches de bonus dans la scène 3D : une ligne au sol et un portique au départ et à l'arrivée de chaque segment, les panneaux qui l'annoncent, et les arches de bonus aux positions fixes du core. Décision du 27 octobre : **code d'abord, sans maquette** ; le rendu se valide ensemble à la recette (T11).

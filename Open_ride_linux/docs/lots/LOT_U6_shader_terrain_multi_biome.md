@@ -1,5 +1,10 @@
 # Lot U6 – Engine : shader de terrain multi-biome à tableaux de textures
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : shader de terrain multi-biome à tableaux de textures, budget de mémoire vidéo | GDScript + shader | U5, P20 | Grande | Oui (tests de rendu), recette visuelle interne, **version 3.0** (issue #336) |
+
 ## 1. Objectif
 
 **Version 3.0.** Remplacer, quand le parcours a une couche `biome`, le mélange herbe, roche et neige d'un seul thème par un mélange de 3 à 4 biomes par tuile, chacun avec ses couches de sol, en gardant la projection triplanaire pour la roche et le budget de la GTX 1060 (U-Q4).

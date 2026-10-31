@@ -1,5 +1,10 @@
 # Lot U22 – Option « gravel » : ruban de terre et de gravier, poussière et sons
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Gravel : ruban de terre et de gravier, poussière et sons | GDScript | U1, U19, P10 | Petite | Oui, après U19, **version 3.0** (issue #352) |
+
 ## 1. Objectif
 
 **Version 3.0.** Montrer et faire entendre les portions non revêtues quand l'option « gravel » est active : ruban plus étroit aux bords irréguliers, texture de terre ou de gravier du thème, légère poussière par temps sec, crissement des pneus.

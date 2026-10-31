@@ -1,5 +1,10 @@
 # Lot W12 – Engine : HUD du carrefour et attributions
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : HUD du carrefour (branches, pente, choix, verrouillage) et attributions | GDScript | W1 | Petite | Non : interne (rendu) (issue #267) |
+
 ## 1. Objectif
 
 Montrer à l'approche d'un carrefour les branches possibles (flèche, type de route, pente des 500 premiers mètres), celle que le jeu prendra, le choix du cycliste et le verrouillage (plan §2.3) ; afficher les attributions des données pendant la séance.

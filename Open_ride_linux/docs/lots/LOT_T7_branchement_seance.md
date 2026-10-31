@@ -1,5 +1,10 @@
 # Lot T7 – Core : série T branchée dans la séance (segments, records, bonus, maillots, écarts)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : branchement dans la séance du core (segments, records, bonus et bouton Z, supplément vent et aspiration avec le CdA courant, maillots, écarts, champs de la révision 1.4, journal, option `[powerups]`) | Python | T1 à T6, T14, T16, P2, P3 (livrés) | Grande | **Livré le 27 octobre** (issue #397) ; `classic.py`, révision 1.4 annoncée par le core |
+
 ## 1. Objectif
 
 Brancher dans la séance du core les modules purs déjà livrés de la série T (T2, T4, T5, T6, T14, T16) et remplir les champs du contrat 1.4 (lot T1) qui les concernent. Le plan prévoyait pour T7 « bonus et série P : supplément vent et aspiration calculé avec le CdA courant » ; ce supplément ne se calcule qu'une fois les bonus branchés dans le pas de physique. T7 devient donc **le lot d'intégration de la série T**, comme R8 pour la série R et V11 pour la série V (un seul lot de branchement par série, sans exception). Le supplément vent et aspiration avec le CdA courant en fait partie.

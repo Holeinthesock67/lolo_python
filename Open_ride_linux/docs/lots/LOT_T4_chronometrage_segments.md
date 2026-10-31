@@ -1,5 +1,10 @@
 # Lot T4 – Chronométrage des segments
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : chronométrage des segments (franchissements interpolés, pauses, boucles, rejeu du journal) | Python | T2 | Moyenne | **Livré le 27 octobre** (PR #251, module pur ; branchement par T7) |
+
 ## 1. Objectif
 
 Chronométrer chaque passage sur un sprint ou une montée (plan de la série T §3.2), dans un module pur du core : heure d'entrée et de sortie interpolées entre deux pas de 50 Hz, annulation en cas de pause, un passage par tour sur une boucle, statistiques du passage et relecture depuis le journal des séances. Les records (T5), les points des maillots (T14), l'obtention d'un bonus en fin de segment (T6) et le HUD (T9) s'appuient dessus.

@@ -1,5 +1,10 @@
 # Lot O16 – Pack de départ : cols célèbres (Alpes, Pyrénées, Vosges, Teide, Japon…)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Pack de départ : cols célèbres (Alpe d'Huez, Ventoux, Vosges, Teide, Japon…) construits depuis OpenStreetMap, sans trace réelle dans le dépôt | Python | O15 | Moyenne | **Livré le 27 octobre** (issue #158) |
+
 ## 1. Objectif
 
 Le propriétaire veut trouver dans la bibliothèque (O15), dès l'installation, quelques cols célèbres : l'Alpe d'Huez, la montée du Teide, le Mont Ventoux, etc. Ce lot fournit ce **pack de départ**.

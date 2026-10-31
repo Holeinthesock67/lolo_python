@@ -1,5 +1,10 @@
 # Lot R12 – Engine : ennemis et boss géométriques, effets d'impact
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : ennemis et boss géométriques, effets d'impact | GDScript + shader | R10 | Moyenne | Non : interne (rendu, contrôle visuel) ; **Livré le 28 octobre** (sauf contrôle visuel et mesure), **version 2.0** |
+
 ## 1. Objectif
 
 Donner un corps aux cinq archétypes et au boss : formes géométriques simples, animées selon l'état reçu du core (PV, attaques, piratage), et des effets d'impact sobres. Peu d'assets : maillages procéduraux ou primitives Godot, shaders et particules. Lot interne : contrôle visuel.

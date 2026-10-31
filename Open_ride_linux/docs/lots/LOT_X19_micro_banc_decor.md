@@ -1,5 +1,10 @@
 # Lot X19 – Micro-banc par image et budgets par machine
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Micro-banc par image et budgets par machine (décor, synthèse des sons) | GDScript + Python | X2 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x19`) ; issue #217 |
+
 ## 1. Objectif
 
 Chaque lot du décor vivant mesure le coût de sa mise à jour par image à sa façon, et certains tests gardent un seuil de temps en dur (`test_passersby_model` < 0,2 ms échoue au cloud). Le fil R demande en plus la mesure du temps de synthèse des sons R18 et de leur mémoire, par machine (objectif 300 ms et 8 Mo sur la GTX 1060, limite large de 2 s en CI).
