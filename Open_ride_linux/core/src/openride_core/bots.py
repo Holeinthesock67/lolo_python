@@ -11,6 +11,9 @@
 - lot AS1 : les bots `constant` s'abritent (`draft`, posé par `draft.update_bots`) ; un bot à profil
   garde la roue du coureur devant lui (`wheel`) au lieu de le doubler. Cahier :
   `docs/lots/LOT_AS1_abri_entre_bots.md`.
+- lot DS3 : tactique de survie du mode « Dernier survivant » (`survival`, posé à chaque pas par la séance
+  depuis `survivor.survival_hints`) : sprint avant l'arche quand le bot est menacé, économie dans les
+  roues quand il est loin du dernier. Cahier : `docs/lots/LOT_DS3_tactique_bots.md`.
 """
 
 from __future__ import annotations
@@ -255,13 +258,16 @@ class BotProfile:
     peak_wkg: float = 0.0
     peak_s: float = 10.0
     sprint_last_m: float = 200.0
+    survival: float = 1.30         # lot DS3 : fraction de CP du sprint de survie avant une arche
 
 
 PROFILES: dict[str, BotProfile] = {
-    "climber": BotProfile("Grimpeur", 60.0, 4.0, 15000.0, flat=0.92, climb=1.00, climb_attack=1.10),
+    "climber": BotProfile("Grimpeur", 60.0, 4.0, 15000.0, flat=0.92, climb=1.00, climb_attack=1.10,
+                          survival=1.25),
     "rouleur": BotProfile("Rouleur", 72.0, 3.6, 20000.0, flat=1.00, climb=0.95),
-    "sprinter": BotProfile("Sprinteur", 80.0, 3.3, 25000.0, flat=0.90, climb=0.88, peak_wkg=12.0),
-    "diesel": BotProfile("Diesel", 75.0, 3.8, 10000.0, flat=1.00, climb=1.00),
+    "sprinter": BotProfile("Sprinteur", 80.0, 3.3, 25000.0, flat=0.90, climb=0.88, peak_wkg=12.0,
+                           survival=1.50),
+    "diesel": BotProfile("Diesel", 75.0, 3.8, 10000.0, flat=1.00, climb=1.00, survival=1.20),
 }
 
 
@@ -271,6 +277,8 @@ FOLLOW_GAIN = 0.5           # 1/s : vitesse visée = vitesse de la roue + gain �
 FOLLOW_TAU_S = 2.0          # s : temps pour rattraper la vitesse visée
 FOLLOW_MIN_CP = 0.60        # puissance plancher dans la roue, en part de la CP
 FOLLOW_LEAVE_SPEED = 0.85   # la roue plus lente que 85 % de la vitesse de croisière seule : on repart
+SURVIVAL_MIN_WBAL_PCT = 10.0   # lot DS3 : pas de sprint de survie sous 10 % de réserve
+SURVIVAL_SAFE_CP = 0.95        # lot DS3 : plafond d'un bot loin du dernier, en part de la CP
 
 
 class ProfileBot(ConstantPowerBot):
@@ -305,6 +313,8 @@ class ProfileBot(ConstantPowerBot):
         self.mass_kg = self.spec.mass_kg
         self.segments = tuple(segments)
         self.level_pct = level_pct
+        # lot DS3 : (distance à l'arche en m, menacé, à l'abri, distance de début du sprint) ; None hors mode
+        self.survival: tuple[float, bool, bool, float] | None = None
         self.set_scale(scale)
 
     def set_scale(self, scale: float) -> None:
@@ -343,6 +353,21 @@ class ProfileBot(ConstantPowerBot):
                   wbal_pct: float | None = None) -> tuple[float, bool]:
         """Puissance de la stratégie et vrai pour une attaque en montée ou un sprint (lot AS1 : le bot
         quitte alors la roue qu'il suivait)."""
+        spec = self.spec
+        if self.survival is not None:
+            d_m, danger, safe, sprint_from_m = self.survival
+            reserve = self.wbal_pct if wbal_pct is None else wbal_pct
+            if danger and d_m <= sprint_from_m and reserve > SURVIVAL_MIN_WBAL_PCT:
+                return spec.survival * self.cp_w, True
+            power, tactical = self._course_strategy(s, length_m, is_loop, wbal_pct)
+            if safe:
+                return min(power, SURVIVAL_SAFE_CP * self.cp_w), False
+            return power, tactical
+        return self._course_strategy(s, length_m, is_loop, wbal_pct)
+
+    def _course_strategy(self, s: float, length_m: float, is_loop: bool,
+                         wbal_pct: float | None = None) -> tuple[float, bool]:
+        """Stratégie par segment du lot T12 (montée, attaque, sprint ; plat ailleurs)."""
         spec = self.spec
         here = self._segment_here(s, length_m, is_loop)
         if here is None:

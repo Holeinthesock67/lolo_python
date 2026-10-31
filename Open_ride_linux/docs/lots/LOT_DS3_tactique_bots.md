@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série DS : tactique de survie des bots (sprint avant l'arche selon la réserve W′, économie quand ils sont à l'abri) | Python | DS1 | Moyenne | Prêt (version 3.0 proposée) |
+| Série DS : tactique de survie des bots (sprint avant l'arche selon la réserve W′, économie quand ils sont à l'abri) | Python | DS1 | Moyenne | **Livré le 31 octobre** (version 3.0) |
 
 Série DS (mode « Dernier survivant », demande du propriétaire du 31 octobre 2026). Plan de la série : `docs/3.0/PLAN_SERIE_DS.md`.
 
@@ -26,3 +26,9 @@ Donner aux bots à profil une règle de course à l'élimination : sprinter avan
 1. Sur 100 courses simulées (même niveau pour tous), l'ordre d'élimination n'est pas toujours le même ; avec un écart de niveau large, le bot le plus faible sort le premier dans au moins 80 % des cas.
 2. Aucun bot ne ralentit à cause de l'écart avec le joueur (test négatif).
 3. La réserve W′ d'un bot ne descend jamais sous 0.
+
+## Livraison
+
+Livré le 31 octobre 2026 (branche `claude/project-thread-ewr5b6-ds3`, après DS1) : `core/src/openride_core/survivor.py` (`SurvivorRace.survival_hints`, `sprint_from_m`, graine `seed`), `core/src/openride_core/bots.py` (champ `survival` de `ProfileBot`, fraction de sprint `survival` de chaque profil : grimpeur 1,25, rouleur 1,30, sprinteur 1,50, diesel 1,20 × CP), `core/tests/test_survivor_tactics.py`. La séance pose `bot.survival` à chaque pas au lot DS2 ; hors du mode, `survival` vaut `None` et rien ne change.
+
+Écart assumé : un bot qui a déjà passé l'arche en cours vise la suivante ; un bot entre 2 et 5 s du dernier n'est ni menacé ni à l'abri et garde la stratégie T12.
