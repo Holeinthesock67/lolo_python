@@ -1,5 +1,10 @@
 # Lot P26 – Ciel : avions de ligne et leurs traînées, hélicoptère, parapentes au-dessus des montées, montgolfières
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Ciel : avions de ligne et leurs traînées, hélicoptère, parapentes au-dessus des montées, montgolfières par vent faible, sons du rotor et des réacteurs | GDScript + shader | P6, P8, P17, Y14, P25 | Petite à moyenne | **Livré le 28 octobre**, séance sur le PC à faire |
+
 ## 1. Objectif
 
 Ce lot répond à la demande du propriétaire du 27 octobre : « ça manque de vie : animaux, oiseaux, véhicules sur terre et dans le ciel ». C'est le cinquième lot de la deuxième vague du décor vivant (P22 à P27, validée le 27 octobre au soir).

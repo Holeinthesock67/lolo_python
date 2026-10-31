@@ -1,5 +1,10 @@
 # Lot T13 – Équilibrage des bots à profil : niveau, calibrage par simulation et choix au menu
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : équilibrage des bots à profil (niveau 90, 100, 110 % ou libre, calibrage par simulation du parcours, profils au menu) | Python, GDScript | T12, O7 | Moyenne | Non : interne ; cahier du 27 octobre, code du 28 octobre (issue #441) |
+
 ## 1. Objectif
 
 Régler les bots à profil de T12 sur ta FTP. Tu choisis un niveau (90, 100 ou 110 % de ta FTP, ou une valeur libre dans les réglages). Avant le départ, le core simule le parcours et ajuste la CP de chaque bot, pour qu'il finisse dans le même temps qu'un cycliste qui roulerait à ce niveau. Le profil décide **où** le bot est fort, le niveau décide **à quel point** (plan §3.4, question T-Q6 tranchée le 25 octobre).

@@ -1,5 +1,10 @@
 # Lot O3 – Réglages côté core : lire et écrire FTP, thème et qualité dans la configuration locale
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Réglages côté core : FTP, masse, braquet de départ, thème et qualité écrits dans `~/OpenRide/config.toml` | Python | N12 ; N10 pour les thèmes | Petite | **Livré le 26 octobre** (avec O4, issue #121) |
+
 ## 1. Objectif
 
 Après la série N, OpenRide se lance et se pilote sans terminal, mais la FTP, le thème et la qualité graphique ne se changent qu'en éditant `~/OpenRide/config.toml` à la main. Ce lot écrit la partie core d'un écran « Réglages » : une liste fermée de réglages, leur lecture, leur validation et leur écriture dans la configuration locale, en conservant le reste du fichier et ses commentaires. L'écran du menu viendra au lot O4.

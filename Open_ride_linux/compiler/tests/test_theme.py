@@ -143,8 +143,9 @@ def test_png_and_jpeg_dimensions_validation(tmp_path: Path) -> None:
     (tmp_path / "theme.json").write_text(json.dumps(theme_bad), encoding="utf-8")
     issues_bad = check_theme(tmp_path)
     assert [i for i in issues_bad if i.severity == "error"] == []
-    assert len([i for i in issues_bad if i.severity == "warning"]) == 1
-    assert "100x100" in issues_bad[0].message
+    warnings = [i.message for i in issues_bad if i.severity == "warning"]
+    assert len(warnings) == 2 and "100x100" in warnings[0]
+    assert "provenance.toml absent" in warnings[1]   # pack sans provenance : avertissement (lot P20)
 
     # 64x64 PNG et 128x128 JPEG -> aucun warning
     (tex_dir / "ok.png").write_bytes(_make_png(64, 64))
@@ -155,7 +156,7 @@ def test_png_and_jpeg_dimensions_validation(tmp_path: Path) -> None:
         "terrain": {"grass": {"texture": "textures/ok.jpg"}},
     }
     (tmp_path / "theme.json").write_text(json.dumps(theme_ok), encoding="utf-8")
-    assert check_theme(tmp_path) == []
+    assert [i.message for i in check_theme(tmp_path)] == ["provenance.toml absent : provenance des images non déclarée"]
 
 
 def test_unknown_key_emits_warning(tmp_path: Path) -> None:

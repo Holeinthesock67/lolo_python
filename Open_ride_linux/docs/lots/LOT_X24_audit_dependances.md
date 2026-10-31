@@ -1,5 +1,10 @@
 # Lot X24 – Audit des dépendances
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Audit des dépendances (pip-audit, versions des actions) | Python + YAML | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x24`) ; issue #222 |
+
 ## 1. Objectif
 
 `pip-audit` a été lancé une seule fois (24 octobre) et les actions GitHub sont référencées par version, sans rappel quand une nouvelle sort.

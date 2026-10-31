@@ -1,5 +1,10 @@
 # Lot M4 – Journal de séance : biais ERG et coupures des appareils
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Journal de séance : biais ERG et coupures des appareils | Python | — | Petite | **Livré le 24 octobre** (issue #81) |
+
 ## 1. Objectif
 
 Depuis L6, le journal JSONL enregistre la cible ERG envoyée (`target_w`), mais pas la part qui vient du réglage au Click (biais ± 2 % par appui, PR #73), ni les coupures du trainer, du Click et de la ceinture. Après une séance, on ne sait donc pas si un écart à la cible vient du coureur, d'un biais volontaire ou d'une coupure. Ce lot ajoute ces deux informations au journal et au bilan `summary`.

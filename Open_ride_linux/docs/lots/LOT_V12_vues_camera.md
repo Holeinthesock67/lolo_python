@@ -1,5 +1,10 @@
 # Lot V12 – Engine : quatre vues de caméra au Click et au clavier
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : quatre vues de caméra (subjective, suivi proche, suivi éloigné, latérale) au Click et au clavier (décision D5 du 27 octobre) | GDScript | V6, PR #287, O17 ; S1 utile | Moyenne | **Livré le 28 octobre** ; banc par vue et essai au Click sur le PC |
+
 ## 1. Objectif
 
 Remplacer la caméra unique de la 1.0 (subjective, SRS §8) par quatre vues, choisies au Click et au clavier selon le plan de boutons commun (spécification générale §7.1 et §7.2, exigences 2.0-CAM-1 à 2.0-CAM-5). Décision du propriétaire du 27 octobre (décision D5 de l'audit de cohérence) : un lot dédié, après l'avatar (V6).

@@ -1,5 +1,10 @@
 # Lot O8 – Recette de la version 1.0 et publication
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Recette de la version 1.0 sur le matériel et publication (`v1.0.0`) | — | série N, O1, O2, O6 | Moyenne | Non : interne (propriétaire, matériel) |
+
 ## 1. Objectif
 
 Déclarer la 1.0 quand OpenRide a été installé, utilisé et validé de bout en bout sur le matériel de référence, sans terminal. Ce lot rassemble **en une seule liste** les essais restés ouverts (suivi d'avancement §3, recette E3/E4, critères de la SRS §13) et les étapes de publication. Il est fait par le propriétaire, avec l'aide d'une session qui lit les journaux et corrige ce qui casse.

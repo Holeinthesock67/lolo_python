@@ -1,5 +1,10 @@
 # Lot R2 – Modèle W'bal et postures de cadence avec hystérésis
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Modèle W'bal et postures de cadence avec hystérésis | Python | — | Petite | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+
 ## 1. Objectif
 
 Deux modules purs du core pour le mode Cyber-Rogue : la réserve anaérobie W'bal, calculée seconde par seconde à partir de la puissance, et la posture de combat déduite de la cadence (Roc, Fluide, Véloce). Ils ne touchent ni au trainer ni à l'IPC : la session (R8) les appelle à chaque pas.

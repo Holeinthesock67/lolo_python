@@ -1,5 +1,10 @@
 # Lot P24 – Animaux par terrain : troupeaux des prés, moutons en pente, chevaux, lièvres, cris
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Animaux par terrain : vaches et chevaux dans les prés, moutons sur les prairies en pente, lièvres des champs qui détalent, meuglements, bêlements et hennissements | GDScript | P11, P17, P22, P23, Y14 | Moyenne | **Livré le 27 octobre**, séance sur le PC à faire |
+
 ## 1. Objectif
 
 Demande du propriétaire du 27 octobre (« ça manque de vie : animaux, oiseaux, véhicules sur terre et dans le ciel »), troisième lot de la deuxième vague du décor vivant (P22 à P27). Le bétail de P11 ne vient que des rares points `livestock` d'OpenStreetMap : en campagne, les prés restent vides. Avec les terrains ouverts du format 1.5 (P22), ce lot ajoute :

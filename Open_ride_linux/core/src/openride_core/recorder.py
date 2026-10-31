@@ -10,6 +10,8 @@ protège contre une panne d'écriture (disque plein, fichier fermé) :
 
 from __future__ import annotations
 
+import ctypes
+import gc
 import logging
 import time
 from pathlib import Path
@@ -21,6 +23,22 @@ from .journal import GAME_KINDS, TIMER_EVENTS, JournalWriter, Record, record_lin
 log = logging.getLogger("recorder")
 
 WRITE_ERRORS = (OSError, ValueError)
+
+
+def release_heap() -> None:
+    """Rend au système la mémoire libérée après l'export FIT.
+
+    L'export d'un FIT (`fit_tool`, un objet par champ de chaque relevé) monte à environ 25 Mo pour
+    12 min de séance. Python libère tout, mais l'allocateur de la glibc gardait ces pages : le core
+    grossissait d'un coup à chaque fin de parcours plus longue que les précédentes (+26 Mo sur le
+    village du banc d'endurance, lu comme une fuite de +23 Mo/h). `malloc_trim` les rend ; sans
+    glibc, rien à faire.
+    """
+    gc.collect()
+    try:
+        ctypes.CDLL(None).malloc_trim(0)
+    except (OSError, AttributeError):
+        pass
 
 
 class SessionRecorder:
@@ -204,3 +222,5 @@ class SessionRecorder:
         except Exception as exc:   # le FIT ne doit jamais faire tomber le core
             log.error("Export FIT impossible : %s", exc)
             return None, summary, str(exc)
+        finally:
+            release_heap()
