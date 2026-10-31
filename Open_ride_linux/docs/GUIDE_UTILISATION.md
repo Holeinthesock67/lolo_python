@@ -188,7 +188,7 @@ Le boîtier gauche porte « − » et les quatre flèches : gauche et droite cho
 
 ## 8. Retrouver ses séances
 
-Chaque séance est écrite dans `~/OpenRide/Activities/` au format FIT, un fichier par séance, nommé avec la date. Ces fichiers s'importent tels quels dans **Garmin Connect** (Importer des données) ou dans **GoldenCheetah**. Si le core plante pendant une séance, OpenRide le relance et la séance reprend en pause au même endroit. Après un arrêt brutal du PC, `openride-core recover` transforme le dernier journal en FIT.
+Chaque séance est écrite dans `~/OpenRide/Activities/` au format FIT, un fichier par séance, nommé avec la date. Ces fichiers s'importent tels quels dans **Garmin Connect** (Importer des données) ou dans **GoldenCheetah**. Si le core plante pendant une séance, OpenRide le relance et la séance reprend en pause au même endroit. Après un arrêt brutal du PC, la séance interrompue est proposée au lancement suivant, en tête de l'accueil : **Enregistrer la séance** en fait un FIT, **Ne pas l'enregistrer** (confirmé) la laisse de côté sans la reproposer.
 
 Pour relire les chiffres d'une séance : `openride-core summary` (dernier bilan) et `openride-core history` (cumul par semaine).
 
@@ -202,6 +202,6 @@ Pour relire les chiffres d'une séance : `openride-core summary` (dernier bilan)
 
 **Un parcours n'apparaît pas.** Importez la trace par **Ajouter un parcours** (liste des parcours) : l'erreur éventuelle s'affiche sur la ligne d'état. Une trace déposée à la main dans `~/OpenRide/GPX/` n'est compilée qu'au lancement suivant ; un fichier illisible y est signalé.
 
-**Une fenêtre d'erreur s'affiche au lancement.** Elle donne la cause (Godot introuvable, configuration invalide, port occupé, trainer réservé, plantages répétés) et le chemin du journal.
+**Une fenêtre d'erreur s'affiche au lancement.** Elle donne la cause (Godot introuvable, configuration invalide, port occupé, trainer réservé, plantages répétés) et le chemin du journal. Pour un réglage invalide, la fenêtre propose de **remettre la valeur par défaut** (ou de repartir d'un fichier neuf s'il est illisible) : répondez Oui, OpenRide garde une copie `config.toml.bak` (ou `profil.toml.bak`) et démarre.
 
 **Que joindre à une demande d'aide.** Le dernier journal du lanceur dans `~/OpenRide/Logs/` (nom de la forme `openride_AAAA-MM-JJ_HH-MM-SS.log`) et, pour un problème de trainer ou de Click, le fichier `~/run_trainer.log`. Ces fichiers ne contiennent pas de mot de passe, mais relisez-les avant de les partager : ils peuvent citer les adresses Bluetooth de votre matériel.
