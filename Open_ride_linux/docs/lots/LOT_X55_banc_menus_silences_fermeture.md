@@ -27,6 +27,7 @@ Rotation du banc des menus sur le PC, `main` 12bafacc (31 octobre) : 20 scénari
 
 - `engine/tests/menu_bench.py` ;
 - `engine/scripts/main.gd` (`_quit`, `_quit_step`, `_exit_tree`, `_notification`) ;
+- `core/src/openride_core/launcher.py` (`ENGINE_DONE`, `_engine_exit`), `core/tests/test_launcher.py` ;
 - `docs/OUTILS_DE_TEST.md`.
 
 ## 4. Critères d'acceptation
@@ -42,4 +43,14 @@ Rotation du banc des menus sur le PC, `main` 12bafacc (31 octobre) : 20 scénari
 
 Sous Xvfb, tout sort en 0,6 à 0,8 s. À l'écran réel (`--native`, GTX 1060, pilote NVIDIA), seul `quitter` à la souris bloque, 151 ms après la demande, après « scène libérée, arrêt des serveurs de Godot » ; tous les fils attendent, fils du pilote compris (`[vkcf]`, `[vkrt]`, `[vkps]`, `cuda-EvtHandlr`). Le blocage est dans l'arrêt de Godot ou du pilote, pas dans le code du jeu.
 
-Contournement (X55-5) : `_quit` coupe d'abord le suivi de la souris par l'interface (`gui_disable_input`), remet le curseur visible et en flèche, puis quitte ; journal « Fermeture : curseur rendu à la flèche ». La fermeture suit ainsi le même chemin quelle que soit l'entrée. Écartée : une sortie forcée du processus après la libération de la scène, qui perdrait le code de sortie (64 et 65 relancent OpenRide) et cacherait le blocage. À confirmer en natif sur le PC ; si le blocage reste, le curseur est hors de cause et le lot suivant visera l'arrêt du rendu Vulkan.
+Premier essai (8297eff9), abandonné : curseur remis en flèche et survol coupé avant de quitter. 7cs-ter, en natif, trois passages : la souris bloque 3 fois sur 3, le Click sort 3 fois sur 3 ; le curseur est hors de cause, et ce code a été retiré.
+
+## 7. Contournement : sortie retenue après la ligne de fin (X55-5)
+
+| # | Règle |
+| --- | --- |
+| X55-5 | La dernière ligne de l'engine donne le code de sortie : « Fermeture : scène libérée, arrêt des serveurs de Godot (code N) ». À ce moment, tout le travail du jeu est fait (séance, `bye` au core, fichiers fermés). Le lanceur (`launcher.py`, `ENGINE_DONE`, `ENGINE_SHUTDOWN_S` = 3 s) : si Godot ne sort pas 3 s après cette ligne, il arrête le processus et retient le code annoncé ; 0 ferme OpenRide, 64 et 65 relancent comme d'habitude, sans compter de plantage. Le banc des menus applique la même règle à l'étape `sortie` et le note (INFO « arrêt de Godot bloqué… », avec les fils de Godot). |
+
+Ce n'est pas la correction de la cause, qui reste dans l'arrêt de Godot ou du pilote NVIDIA. Prochaine mesure : la pile `gdb` (`thread apply all bt`) du processus bloqué, prise par le fil de fusion après 7cr-bis ; selon le fil en cause, rapport à Godot ou réglage du pilote.
+
+Écarté : une sortie forcée depuis l'engine (un fil GDScript ne survit pas à l'arrêt des langages de script, qui précède celui du rendu) ; `OS.kill` sur soi-même, qui perd le code de sortie.

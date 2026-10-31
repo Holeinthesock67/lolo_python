@@ -95,6 +95,7 @@ var world_menu_view = null
 ## Chargement de parcours en tâche de fond : {id, route, path, ok, task}.
 var _route_job: Dictionary = {}
 var _quit_ms := -1   # heure de la demande de fermeture (_quit), pour les étapes de la fermeture dans le journal
+var _quit_code := 0
 var _test_cam_last_us := 0
 var _test_cam_last_s := NAN
 ## Scène figée des tests graphiques (message `_test` « freeze », lot X20) : instant imposé au décor, NAN sinon.
@@ -858,7 +859,9 @@ func _notification(what: int) -> void:
 	if what == NOTIFICATION_APPLICATION_FOCUS_OUT:
 		key_map.reset()   # le relâchement des touches enfoncées ne viendra pas
 	elif what == NOTIFICATION_PREDELETE:
-		_quit_step("scène libérée, arrêt des serveurs de Godot")
+		# Ligne lue par le lanceur et le banc (ENGINE_DONE de launcher.py) : au-delà, l'arrêt de Godot peut bloquer
+		# (pilote NVIDIA, lot X55) ; ils arrêtent alors le processus et retiennent ce code.
+		_quit_step("scène libérée, arrêt des serveurs de Godot (code %d)" % _quit_code)
 
 
 func _process(delta: float) -> void:
@@ -1676,16 +1679,10 @@ func _give_cues(state: Dictionary) -> void:
 
 
 ## Fermeture de l'engine avec le code `code` (0 : quitter, EXIT_RELAUNCH, EXIT_SIM). Le journal date ensuite chaque
-## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, 31 octobre).
-## Avant de quitter, l'interface ne suit plus la souris et le curseur reprend la flèche du système. Sur le PC (écran
-## réel, pilote NVIDIA), après un clic de souris sur « Oui », l'arrêt de Godot restait bloqué après la libération de
-## la scène ; au Click ou au clavier, il sortait (lot X55). Seul écart connu : la main du survol des rangées.
+## étape depuis la demande (« Fermeture : … ») : une fermeture lente dit où elle attend (banc des menus, lot X55).
 func _quit(code: int) -> void:
 	_quit_ms = Time.get_ticks_msec()
-	get_viewport().gui_disable_input = true   # plus de survol : la forme du curseur ne change plus
-	Input.mouse_mode = Input.MOUSE_MODE_VISIBLE
-	DisplayServer.cursor_set_shape(DisplayServer.CURSOR_ARROW)
-	_quit_step("curseur rendu à la flèche")
+	_quit_code = code
 	get_tree().quit(code)
 
 

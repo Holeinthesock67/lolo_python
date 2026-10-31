@@ -52,6 +52,12 @@ Relance demandée depuis le menu (lot N13) :
   relances après un plantage gardent le mode en cours, et la reprise cherche alors les journaux
   du profil d'essai.
 
+Fermeture bloquée de l'engine (lot X55) : l'engine écrit en dernier « Fermeture : scène libérée, arrêt des
+serveurs de Godot (code N) ». Sur le PC (écran réel, pilote NVIDIA), après un clic de souris sur « Quitter »,
+l'arrêt de Godot qui suit restait bloqué, tout le travail du jeu déjà fait (séance, `bye`). Passé
+`ENGINE_SHUTDOWN_S` après cette ligne, le lanceur arrête le processus et retient le code annoncé : 0 ferme
+OpenRide, 64 et 65 relancent comme d'habitude.
+
 Lancement sans terminal (lot N14) :
 - premier démarrage : sans `~/OpenRide/config.toml`, il est créé depuis
   `scripts/config.example.toml`, avec `~/OpenRide/GPX/` et `~/OpenRide/Workouts/`, et le core
@@ -111,6 +117,8 @@ ENGINE_ARGS_NOT_FROM_CONFIG: dict[str, str] = {
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
 EXIT_RELAUNCH = 64
 EXIT_SIM = 65
+ENGINE_DONE = re.compile(r"Fermeture : scène libérée, arrêt des serveurs de Godot \(code (\d+)\)")
+ENGINE_SHUTDOWN_S = 3.0   # attente de la sortie de Godot après sa dernière ligne (une sortie normale : < 1 s)
 # Options du core en session simulée (remplacent --trainer, --input, --hr, --sim-scenario et --profil) :
 # matériel simulé et profil d'essai (série MJ, lot MJ2).
 SIM_PROFILE = "_essai"
@@ -302,6 +310,7 @@ class Supervisor:
     log_path: Path
     stop_timeout_s: float = 10.0       # délai laissé au core pour relâcher le trainer
     engine_stop_timeout_s: float = 5.0
+    engine_shutdown_s: float = ENGINE_SHUTDOWN_S
     max_restarts: int = 3
     restart_window_s: float = 120.0
     restart_delay_s: float = 1.0
@@ -341,6 +350,7 @@ class Supervisor:
     _log: IO[bytes] | None = field(default=None, init=False)
     _log_lock: threading.Lock = field(default_factory=threading.Lock, init=False)
     _readers: list[threading.Thread] = field(default_factory=list, init=False)
+    _engine_done: tuple[float, int] | None = field(default=None, init=False)   # (heure, code) de la ligne de fin
 
     # --- journal -----------------------------------------------------------------------
 
@@ -407,6 +417,9 @@ class Supervisor:
                 if not line.endswith(b"\n"):
                     line += b"\n"
                 self._write_log(b"[engine] " + line)
+                done = ENGINE_DONE.search(line.decode("utf-8", "replace"))
+                if done:
+                    self._engine_done = (time.monotonic(), int(done.group(1)))
         except (OSError, ValueError):
             pass
         finally:
@@ -479,6 +492,7 @@ class Supervisor:
             self._say(f"`openride-core recover` impossible : {exc}")
 
     def _start_engine(self) -> subprocess.Popen:
+        self._engine_done = None
         if self._log is None:
             return self._spawn(self._engine_cmd(), stdin=subprocess.DEVNULL)
         p = self._spawn(self._engine_cmd(), stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
@@ -520,6 +534,20 @@ class Supervisor:
                 p.wait()
         except OSError as exc:
             self._say(f"libération du trainer impossible : {exc}")
+
+    def _engine_exit(self, engine: subprocess.Popen) -> int | None:
+        """Code de sortie de l'engine, None s'il tourne. Arrêt de Godot bloqué `engine_shutdown_s` après la ligne de
+        fin (scène libérée) : processus arrêté, code annoncé par cette ligne retenu."""
+        if engine.poll() is not None:
+            return engine.returncode
+        done = self._engine_done
+        if done is None or time.monotonic() - done[0] < self.engine_shutdown_s:
+            return None
+        self._say(f"l'engine ne sort pas {self.engine_shutdown_s:.0f} s après avoir libéré sa scène (arrêt de Godot "
+                  f"bloqué) : processus arrêté, code {done[1]} retenu.")
+        engine.kill()
+        engine.wait()
+        return done[1]
 
     def _stop_engine(self, engine: subprocess.Popen | None) -> None:
         if engine is None:
@@ -629,8 +657,8 @@ class Supervisor:
                     self.core_restarts += 1
                     continue
 
-                if engine.poll() is not None:
-                    code = engine.returncode
+                code = self._engine_exit(engine)
+                if code is not None:
                     if code == 0:
                         return self._finish(core, engine, 0)
                     if code in (EXIT_RELAUNCH, EXIT_SIM):

@@ -72,7 +72,7 @@ SCENARIOS_DIR = TESTS_DIR / "menu_scenarios"
 sys.path.insert(0, str(TESTS_DIR))
 sys.path.insert(0, str(REPO / "core" / "src"))
 
-from openride_core.launcher import build_supervisor  # noqa: E402
+from openride_core.launcher import ENGINE_DONE, ENGINE_SHUTDOWN_S, build_supervisor  # noqa: E402
 from e2e_check import free_udp_ports, now  # noqa: E402
 from sim_bench import ERG_SHORT_ZWO, BenchProc, Report  # noqa: E402
 import quality_guard  # noqa: E402
@@ -467,26 +467,47 @@ class Run:
                    "lu : " + ", ".join(f"{k} = {v!r}" for k, v in bad.items()) if bad else "OK")
 
     def wait_exit(self, code: int, delay: float) -> None:
-        """Code de sortie de l'engine. Sans sortie dans le délai, le rapport donne la dernière étape de la fermeture
-        écrite par l'engine (« Fermeture : … », main.gd) : l'endroit où elle attend."""
+        """Code de sortie de l'engine, avec la règle du lanceur (lot X55) : si Godot ne sort pas ENGINE_SHUTDOWN_S
+        après sa ligne de fin (scène libérée, code annoncé), le processus est arrêté et ce code retenu ; le rapport le
+        note (INFO) avec les fils de Godot. Sans ligne de fin dans le délai : échec, avec la dernière étape de la
+        fermeture écrite par l'engine (« Fermeture : … ») et les fils de Godot, pour savoir où elle attend."""
         assert self.engine is not None
         t0 = now()
         rc = None
+        done = None
         while now() < t0 + delay and rc is None:
             rc = self.engine.p.poll()
+            got = self.engine.matching(ENGINE_DONE.pattern)
+            done = got[-1] if got else None
+            if rc is None and done is not None and now() - done[0] >= ENGINE_SHUTDOWN_S:
+                break
             time.sleep(0.2)
         if rc is not None:
             self.report.check(rc == code, f"l'engine sort avec le code {code}", f"code {rc} en {now() - t0:.1f} s")
             return
+        threads = self.godot_threads()
+        if done is not None and now() - done[0] >= ENGINE_SHUTDOWN_S:
+            announced = int(done[1].group(1))
+            self.report.check(None, "arrêt de Godot bloqué après la libération de la scène",
+                              f"processus arrêté après {ENGINE_SHUTDOWN_S:.0f} s, comme par le lanceur ; fils de Godot : "
+                              + ("; ".join(threads) or "introuvables"))
+            self.report.check(announced == code, f"l'engine sort avec le code {code}", f"code {announced} annoncé")
+            self.stop_engine()
+            return
         steps = self.engine.matching(r"Fermeture : (.*)$")
-        godot = [pid for pid in [self.engine.p.pid, *descendants(self.engine.p.pid)]
-                 if Path(f"/proc/{pid}/comm").is_file() and Path(f"/proc/{pid}/comm").read_text().startswith("Godot")]
-        threads = threads_of(godot[0]) if godot else []
-        (self.out / "fils_engine.txt").write_text("\n".join(threads) + "\n", encoding="utf-8")
         self.report.check(False, f"l'engine sort avec le code {code}",
                           f"toujours en marche après {delay:.0f} s ; dernière étape : "
                           + (steps[-1][1].group(1) if steps else "aucune ligne « Fermeture : »")
                           + " ; fils de Godot : " + ("; ".join(threads) or "introuvables"))
+
+    def godot_threads(self) -> list[str]:
+        """Fils du processus Godot (sous xvfb-run ou non), aussi écrits dans fils_engine.txt."""
+        assert self.engine is not None
+        godot = [pid for pid in [self.engine.p.pid, *descendants(self.engine.p.pid)]
+                 if Path(f"/proc/{pid}/comm").is_file() and Path(f"/proc/{pid}/comm").read_text().startswith("Godot")]
+        threads = threads_of(godot[0]) if godot else []
+        (self.out / "fils_engine.txt").write_text("\n".join(threads) + "\n", encoding="utf-8")
+        return threads
 
     # --- lancement -------------------------------------------------------------------------
 
@@ -575,14 +596,18 @@ class Run:
         ok, msg = quality_guard.check("\n".join(seq), wanted)
         self.report.check(bool(ok), f"qualité réellement appliquée {when}", msg)
 
+    def stop_engine(self) -> None:
+        assert self.engine is not None
+        # xvfb-run ne transmet pas SIGTERM à Godot : le moteur et son Xvfb sont arrêtés d'abord.
+        for pid in descendants(self.engine.p.pid):
+            with contextlib.suppress(ProcessLookupError):
+                os.kill(pid, signal.SIGTERM)
+        self.engine.stop(signal.SIGTERM, timeout=5.0)
+
     def stop(self) -> None:
         if self.engine is not None and self.engine.p.poll() is None:
             self.check_quality("à l'arrêt")
-            # xvfb-run ne transmet pas SIGTERM à Godot : le moteur et son Xvfb sont arrêtés d'abord.
-            for pid in descendants(self.engine.p.pid):
-                with contextlib.suppress(ProcessLookupError):
-                    os.kill(pid, signal.SIGTERM)
-            self.engine.stop(signal.SIGTERM, timeout=5.0)
+            self.stop_engine()
         if self.core is not None:
             rc = self.core.stop(signal.SIGINT, timeout=15.0)
             self.report.check(rc == 0, "arrêt du core", f"code de sortie {rc}")
