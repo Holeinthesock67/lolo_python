@@ -5,7 +5,8 @@ extends RefCounted
 ## Côté engine, deux rôles :
 ## - dire au core que le décor du départ est prêt : le parcours demandé est chargé, plus aucune tuile
 ##   voulue autour de la caméra n'est en attente (world_streamer.gd `pending_count`) et PLAYABLE_FRAMES
-##   images de suite passent sous SLOW_FRAME_MS ; commande `scene_ready {route_id}` envoyée une fois par
+##   images de suite passent sous SLOW_FRAME_MS, ou, sur une machine lente (rendu logiciel de la CI), la
+##   vue est restée complète SETTLE_S secondes ; commande `scene_ready {route_id}` envoyée une fois par
 ##   parcours, puis de nouveau chaque seconde tant que le core attend le décor (trame `state` avec
 ##   `start_wait.phase` = `decor` : core relancé, datagramme perdu) ;
 ## - décrire l'écran d'attente « Start your engines » (start_screen.gd) : texte de l'étape (`text`), feux
@@ -18,6 +19,7 @@ extends RefCounted
 const PLAYABLE_FRAMES := 10
 const SLOW_FRAME_MS := 33.0
 const RESEND_S := 1.0
+const SETTLE_S := 2.0
 const LIGHTS := 5
 const GO_S := 1.2
 const TITLE := "START YOUR ENGINES"
@@ -26,6 +28,7 @@ const TITLE := "START YOUR ENGINES"
 var route_id := ""
 var _candidate := ""
 var _good := 0
+var _settled_s := 0.0
 var _sent_route := ""
 var _last_sent_s := -1.0e9
 
@@ -37,13 +40,16 @@ func frame(loaded_id: String, pending: int, frame_ms: float) -> bool:
 		_candidate = loaded_id
 		route_id = ""
 		_good = 0
+		_settled_s = 0.0
 	if loaded_id == "" or route_id == loaded_id:
 		return false
-	if pending > 0 or frame_ms > SLOW_FRAME_MS:
+	if pending > 0:
 		_good = 0
+		_settled_s = 0.0
 		return false
-	_good += 1
-	if _good < PLAYABLE_FRAMES:
+	_settled_s += frame_ms / 1000.0
+	_good = 0 if frame_ms > SLOW_FRAME_MS else _good + 1
+	if _good < PLAYABLE_FRAMES and _settled_s < SETTLE_S:
 		return false
 	route_id = loaded_id
 	return true
