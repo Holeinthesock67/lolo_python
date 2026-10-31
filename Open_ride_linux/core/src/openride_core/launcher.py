@@ -855,6 +855,7 @@ def build_supervisor(core_args: list[str], env: dict[str, str] | None = None) ->
             f"--ipc-cmd-port={cfg.ipc.port_commands}",
             f"--quality={cfg.render.quality}",
             f"--theme={cfg.render.theme}",
+            f"--texture-level={cfg.render.texture_level}",
             f"--visual-grade={cfg.render.visual_grade_scale}",
             f"--camera={cfg.render.camera}",
             f"--living={'on' if cfg.render.living else 'off'}",

@@ -1,5 +1,10 @@
 # Lot R6 – Run : machine à états, couloirs, deck et cartes, or, reliques, boss en trois phases
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Run : machine à états, couloirs, deck et cartes, or, reliques, boss en trois phases | Python | R5 | Grande | **Livré le 27 octobre** (module pur ; branché par R8), **version 2.0** |
+
 ## 1. Objectif
 
 Enchaîner une run complète du mode Cyber-Rogue, en module pur : échauffement, salles, couloirs avec choix de porte et de carte, boss en trois phases, retour au calme et bilan. Ce lot joue un **scénario** donné (suite de salles produite par R15, ou écrit à la main dans les tests) ; il ne choisit pas lui-même les salles.

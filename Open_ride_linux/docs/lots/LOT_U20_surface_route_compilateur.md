@@ -1,5 +1,10 @@
 # Lot U20 – Option « gravel » : surface de la route au compilateur et chemins de terre au monde ouvert
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Gravel : surface de la route d'après OSM, chemins de terre au monde ouvert (classe `g`) | Python | U1, W4, W6 | Moyenne | Oui, après U1, **version 3.0** (issue #350) |
+
 ## 1. Objectif
 
 **Version 3.0.** Donner à chaque point de la route sa surface (`paved`, `compacted`, `gravel`, `dirt`) d'après OSM, pour les traces compilées comme pour le monde ouvert, et ouvrir au monde ouvert les chemins de terre et les pistes forestières quand l'option « gravel » est active (U-G1, question W-Q2 du monde ouvert).

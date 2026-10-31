@@ -1,5 +1,10 @@
 # Lot U21 – Option « gravel » : résistance au roulement dans le core
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Gravel : résistance au roulement dans le core, supplément de pente sous le plafond du vent | Python | U1, P2 | Petite | Oui, après U1, **version 3.0** (issue #351) |
+
 ## 1. Objectif
 
 **Version 3.0.** Faire sentir le gravel sur le vélo (U-G2) : sur les portions non revêtues, résistance au roulement multipliée (2 à 3 fois celle du bitume), transmise en SIM comme supplément de pente sous le même plafond que le vent ; en ERG, seule la vitesse virtuelle baisse. Option coupée par défaut.

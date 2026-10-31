@@ -1,5 +1,10 @@
 # Lot W2 – Cache local du monde ouvert : arborescence, versions, plafond, éviction, épinglage
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Cache local du monde : arborescence, versions, plafond de 5 Go, éviction, épinglage, `cache-info`, `cache-clean` | Python | W1 | Moyenne | Oui, après W1 (issue #256) |
+
 ## 1. Objectif
 
 Tout ce que le monde ouvert télécharge ou génère reste sur le PC pour ne jamais être retéléchargé ni recalculé (demande du propriétaire, plan §4). Ce lot écrit le gestionnaire de ce cache, utilisé par tous les autres lots du générateur, et les commandes `cache-info` et `cache-clean`.

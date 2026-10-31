@@ -1,5 +1,10 @@
 # Lot M7 – Compilateur : parcours depuis un fichier FIT ou TCX
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Compilateur : parcours depuis un fichier FIT ou TCX | Python | — | Petite | **Livré le 24 octobre** (issue #84) |
+
 ## 1. Objectif
 
 Le compilateur ne lit que le GPX. Les sorties du propriétaire sont enregistrées par une montre Garmin : Garmin Connect exporte l'activité d'origine en FIT (ou TCX), et les parcours (« courses ») se téléchargent aussi en FIT. Ce lot permet `openride-compiler build sortie.fit` et `build sortie.tcx`, avec le même traitement que pour un GPX.

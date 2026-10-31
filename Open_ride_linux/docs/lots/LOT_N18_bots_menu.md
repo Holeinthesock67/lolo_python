@@ -1,5 +1,10 @@
 # Lot N18 – Bots réglés depuis les menus
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 1.x série N : bots réglés depuis les menus (réglages et écran de pause) | Python + GDScript | O3, O4 ; O7 utile | Moyenne | Non : interne (contrat et menus), **version 1.x** |
+
 ## 1. Objectif
 
 Régler les bots de la séance depuis les menus au lieu de `config.toml` : nombre, puissance de chacun, fantôme, avant la séance dans les réglages, et pendant la séance dans l'écran de pause. Demande du propriétaire du 27 octobre (décision D11 de l'audit de cohérence) : ce réglage passe par les menus, pas par un geste du Click. Version 1.x.

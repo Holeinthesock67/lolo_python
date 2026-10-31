@@ -1,5 +1,10 @@
 # Lot P32 – Circulation à droite : le cycliste dans la voie de droite, chacun à droite dans son sens
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Circulation à droite : le cycliste dans la voie de droite, véhicules et cyclistes du décor à droite dans leur sens, outil de test `decor_place` et scène `voies` | GDScript + Python | P25, P28 | Petite | **Livré le 29 octobre** (demande du 29 octobre : « roulent à droite de la route et pas au milieu ») ; complément du 31 octobre : bots côte à côte en peloton, plus de superposition (trouvée par `course_bots`) |
+
 ## 1. Objectif
 
 Demande du propriétaire du 29 octobre : « les véhicules dont les cyclistes roulent à droite de la route et pas au milieu ». Jusqu'ici, le cycliste (caméra, avatar) roulait sur la ligne médiane et tout le décor de la route se plaçait par rapport à lui : la voiture en face passait près du bord gauche, celle qui double se rabattait devant lui au milieu, les cyclistes du décor se partageaient les bords autour de l'axe.

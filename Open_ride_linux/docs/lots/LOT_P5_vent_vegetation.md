@@ -1,5 +1,10 @@
 # Lot P5 – Vent dans les arbres et touffes d'herbe
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Vent dans les arbres et touffes d'herbe (shader de balancement) | GDScript + shader | P4, O1 | Petite | **Livré le 26 octobre** (issue #129) |
+
 ## 1. Objectif
 
 Faire bouger la végétation avec le vent du modèle P4 : les arbres se balancent (fort à la cime, nul au pied), plus vivement sous les rafales ; en qualité moyenne et haute, des touffes d'herbe en bord de route ondulent avec le vent apparent (le vent qui suit la vitesse du cycliste). C'est le gain visuel le plus fort pour le moindre coût : tout se fait dans le shader de sommets, sans nouvelle instance en qualité basse.

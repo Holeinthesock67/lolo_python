@@ -1,5 +1,10 @@
 # Lot U12 – Engine : faune par biome (extension de P11)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : faune par biome (extension de P11) | GDScript | U5, P11 | Moyenne | Oui, après U5, **version 3.0** (issue #342) |
+
 ## 1. Objectif
 
 **Version 3.0.** Étendre la faune de P11 aux biomes : marmottes et bouquetins en montagne, rennes en toundra, flamants et hérons en zone humide, mouettes au littoral, zèbres et girafes au loin en savane, dromadaires près des oasis, perroquets en jungle.

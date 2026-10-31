@@ -1,5 +1,10 @@
 # Lot MJ8 – Engine : écrans des profils et bandeau ESSAI
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série MJ : écrans « Qui roule ? », nom du profil, gestion, bandeau ESSAI (maquettes A à F validées) | GDScript | MJ7 | Moyenne | **Livré le 30 octobre** (branche `claude/project-thread-grv91v-mj8b`), captures low, medium et high à valider sur le PC avant fusion |
+
 Série MJ, plan `docs/2.0/PLAN_SERIE_MJ.md` §3 et §4.4 ; maquettes A à F validées le 29 octobre (https://claude.ai/artifact/GhbjhMXyyb5GALuhhqoMqj).
 
 ## 1. Objectif
