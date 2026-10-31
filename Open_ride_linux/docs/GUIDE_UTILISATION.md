@@ -134,7 +134,7 @@ Le clavier double le Click touche pour touche, en menu comme en séance, avec le
 
 Les lettres se lisent comme imprimées sur la touche (AZERTY comme QWERTY). Les flèches haut et bas ne changent pas le braquet : en séance, elles changent la vue de caméra.
 
-Le bouton **B** du boîtier droit fait aussi « − » : il sert quand le boîtier gauche ne répond pas (section 9). Le boîtier gauche (« − » et flèches) est redémarré tout seul environ une fois par minute et reste alors 4 s environ sans boutons ; tout ce qu'il fait existe aussi sur le boîtier droit ou au clavier. Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran.
+Le boîtier gauche porte « − » et les quatre flèches : gauche et droite choisissent l'élément précédent ou suivant (menus, couloirs et cartes du Cyber-Rogue, branches d'un carrefour), haut et bas changent de vue en séance. Il est redémarré tout seul environ une fois par minute et reste alors 4 s environ sans boutons ; le bouton **B** du boîtier droit fait aussi « − », et tout ce que fait le gauche existe aussi sur le boîtier droit ou au clavier. Chaque type d'appui a son bip, ce qui permet de savoir ce qui a été compris sans regarder l'écran.
 
 ## 7. Réglages, thèmes et sons
 
@@ -167,7 +167,7 @@ Pour relire les chiffres d'une séance : `openride-core summary` (dernier bilan)
 
 **Le trainer ne répond plus ou reste « réservé ».** Une autre application (Zwift, le téléphone) le tient peut-être, ou OpenRide s'est arrêté sans le rendre. Fermez l'autre application, puis cliquez sur l'icône **OpenRide – Libérer le trainer**. En terminal : `openride-core release-trainer`. Éteindre et rallumer le trainer règle aussi la plupart des cas. Si le trainer reste réservé malgré cela, débranchez-le quelques secondes, puis relancez OpenRide ; s'il ne se connecte toujours pas, joignez le journal à une demande d'aide (voir plus bas).
 
-**Le Click ne répond plus.** Appuyez sur un bouton pour le réveiller. Sinon, déconnectez-le d'abord (`bluetoothctl disconnect` suivi de son adresse) puis rappuyez. Si seul le boîtier gauche (« − ») est muet, utilisez le bouton **B** du boîtier droit : sans passage récent par l'application Zwift (moins de 24 heures), le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion. OpenRide le redémarre alors tout seul (environ 4 s sans boutons, puis il répond de nouveau) ; un appui fait pendant ces quelques secondes est perdu. Ce n'est pas une panne d'OpenRide. Pour le laisser muet à la place : `click_reset_locked = false` dans `[drivers]`.
+**Le Click ne répond plus.** Appuyez sur un bouton pour le réveiller. Sinon, déconnectez-le d'abord (`bluetoothctl disconnect` suivi de son adresse) puis rappuyez. Si le boîtier gauche (« − » et flèches) ne répond pas pendant quelques secondes, c'est son redémarrage : sans passage récent par l'application Zwift (moins de 24 heures), Zwift le verrouille environ une minute après la connexion et OpenRide le redémarre tout seul (environ 4 s sans boutons, puis il répond de nouveau) ; un appui fait pendant ces quelques secondes est perdu, **B** du boîtier droit fait « − » en attendant. Ce n'est pas une panne d'OpenRide. Pour le laisser muet à la place : `click_reset_locked = false` dans `[drivers]`.
 
 **Écran noir, lent ou saccadé.** Passez la qualité graphique en `low` (**Réglages**). Vérifiez que le pilote de la carte graphique est installé. Les courbes de la séance en « masquées » libèrent aussi un peu de puissance.
 

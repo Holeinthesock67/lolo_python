@@ -101,17 +101,17 @@ Le core isole chaque dépendance matérielle derrière une interface (§10) : le
 | Boîtier | Bouton | Bit (0 = appuyé) | Action OpenRide |
 | --- | --- | --- | --- |
 | gauche | − | 8 | « − » |
-| gauche | flèche gauche | 0 | réservé : raccourci de choix (spécification générale §7.1) |
-| gauche | flèche haut | 1 | réservé : vue de caméra (2.0, spécification générale §7.1) |
-| gauche | flèche droite | 2 | réservé : raccourci de choix (spécification générale §7.1) |
-| gauche | flèche bas | 3 | réservé : vue de caméra (2.0, spécification générale §7.1) |
+| gauche | flèche gauche | 0 | choix précédent : élément, couloir ou carte, branche (spécification générale §7.1) |
+| gauche | flèche haut | 1 | vue de caméra suivante en séance (spécification générale §7.1) |
+| gauche | flèche droite | 2 | choix suivant : élément, couloir ou carte, branche (spécification générale §7.1) |
+| gauche | flèche bas | 3 | vue de caméra précédente en séance (spécification générale §7.1) |
 | droit | + | 12 | « + » |
 | droit | A | 4 | choisir (court) et valider (long) dans les menus (spécification générale §7.1) |
-| droit | B | 5 | « − » (sans déblocage Zwift) |
+| droit | B | 5 | « − » (double le − du boîtier gauche) |
 | droit | Y | 6 | pause et reprise (lot N6) |
-| droit | Z | 7 | action du mode : bloc suivant en ERG (§4.4) |
+| droit | Z | 7 | action du mode (spécification générale §7.1) |
 
-- **Bridage du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche cesse d'envoyer ses boutons environ une minute après la connexion ; la liaison reste active (batterie toutes les 5 s) et renvoyer `RideOn` n'y change rien. Le boîtier droit n'est pas concerné, d'où le bouton B lu comme « − ». Même constat publié par BikeControl et zwiftboard.
+- **Verrou du boîtier gauche :** sans « déblocage » par l'application Zwift dans les 24 h, le boîtier gauche se verrouille environ une minute après la connexion (message d'état `ff 05 00 ea 05`) et n'envoie plus ses boutons ; renvoyer `RideOn` n'y change rien. OpenRide le redémarre alors (octet `0x18`, `[drivers] click_reset_locked`, vrai par défaut) : il se reconnecte en 4 s environ et envoie de nouveau − et les flèches (essais sur le PC du 30 octobre 2026 : 20 « − » sur 21, 46 flèches sur 4 redémarrages). Le boîtier droit n'est pas concerné ; B y double « − » pour les quelques secondes de chaque redémarrage. Même verrou publié par BikeControl, zwiftboard et OpenRadlr (docs/RECHERCHE_CLICK_GAUCHE.md).
 - Événements normalisés (contrat IPC révision 1.3) : `PLUS_SHORT`, `MINUS_SHORT`, `PLUS_LONG`, `MINUS_LONG`, `A_SHORT`, `A_LONG`, `Z_SHORT`, `Z_LONG`, `Y_SHORT`, `LEFT_SHORT`, `RIGHT_SHORT`, `UP_SHORT`, `DOWN_SHORT`. Appui court : moins de 500 ms ; appui long : 900 ms ou plus ; entre les deux : sans effet, signalé pour + et − (`PLUS_UNCLEAR`, `MINUS_UNCLEAR`) et expliqué à l'écran. Y et les flèches n'ont qu'un événement, quelle que soit la durée. Rôle de chaque bouton : spécification générale §7.1, seule référence. Seuil abaissé de 1 200 à 900 ms le 22 octobre 2026 après essai sur le vélo (appuis longs naturels : 0,7 à 1,1 s).
 - Repli : le clavier produit les mêmes événements, touche pour touche et avec les mêmes seuils, selon le tableau du clavier de la spécification générale §7.1 (décision D6, lot O17) : `engine/scripts/key_map.gd` dans la fenêtre de l'engine, `TERMINAL_KEYS` (`input_providers.py`) dans le terminal du core, qui ne mesure pas la durée et prend les synonymes pour les appuis longs.
 
