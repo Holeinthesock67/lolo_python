@@ -42,6 +42,13 @@ func _init() -> void:
 	name = "BotsView"
 
 
+## Constructions en cours attendues avant la libération : une tâche du WorkerThreadPool jamais attendue fait
+## planter Godot à la sortie.
+func _notification(what: int) -> void:
+	if what == NOTIFICATION_PREDELETE:
+		AvatarView.wait_parts()
+
+
 ## Préréglage de qualité (low, medium, high) : niveaux de détail des bots (quality_presets.gd BOT_LOD_M).
 func set_quality(name_: String) -> void:
 	quality = QualityPresets.applied_name(name_)
