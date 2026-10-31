@@ -360,10 +360,27 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Session ERG
-	_check(_ids(f) == ["_sim", "seuil", "_create", "_import"], "sous-menu ERG : liste puis Créer et Importer (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["_sim", "seuil", "_create", "_import", "_help"],
+		"sous-menu ERG : liste puis Créer, Importer et Aide (%s)" % str(_ids(f)))
 	f.handle("MINUS_SHORT")
+	_check(_focus_id(f) == "_help" and f.state()["card"].get("name", "") == "Choisir un entraînement",
+		"focus sur Comment ça marche ? : carte de l'aide (%s)" % str(f.state()["card"]))
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help"
+		and f.state()["title"] == "Aide ERG", "écran Aide ERG")
+	_check(_ids(f) == ["help:choose", "help:create", "help:qwk", "help:import", "help:write", "help:ride"],
+		"sujets de l'aide (%s)" % str(_ids(f)))
+	f.handle("PLUS_SHORT")
+	var help_card: Dictionary = f.state()["card"]
+	_check(help_card.get("name", "") == "Créer des intervalles" and help_card.get("lines", []).size() == 4,
+		"carte du sujet sous le focus (%s)" % str(help_card))
+	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_help", "A long sur un sujet : rien")
+	f.handle("Y_SHORT")
+	_check(f.state()["screen"] == "workouts" and _focus_id(f) == "_help", "Y : retour à la liste")
+	f.handle("MINUS_SHORT")
+	_check(f.state()["card"].get("name", "") == "Importer un fichier", "Importer : carte de l'aide")
 	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_create", "focus sur Créer un entraînement")
+	_check(f.state()["card"].get("name", "") == "Créer des intervalles", "Créer : carte de l'aide")
 	_check(f.handle("A_LONG").is_empty() and f.state()["screen"] == "workout_create", "écran Créer un entraînement")
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Répétitions
@@ -404,10 +421,11 @@ func _test_erg_submenu() -> void:
 	f.handle("PLUS_SHORT")
 	f.handle("A_LONG")   # Changer d'entraînement
 	f.handle("MINUS_SHORT")
+	f.handle("MINUS_SHORT")
 	_check(_focus_id(f) == "_import", "focus sur Importer")
 	_check(f.handle("A_LONG") == {"action": "list_imports"} and f.state()["screen"] == "workout_import", "list_imports")
 	f.set_import_candidates([])
-	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg ou .mrc", "aucun fichier")
+	_check(f.state()["focus"] == -1 and f.state()["items"][0]["label"] == "Aucun fichier .zwo, .erg, .mrc ou .qwk", "aucun fichier")
 	f.set_import_candidates([{"path": "/x/Téléchargements/vo2.zwo", "file": "vo2.zwo", "source": "Téléchargements",
 		"imported": false}, {"path": "/x/b.erg", "file": "b.erg", "source": "Bureau", "imported": true}])
 	_check(f.state()["items"][1]["detail"] == "Bureau, déjà importé", "fichier déjà importé signalé")

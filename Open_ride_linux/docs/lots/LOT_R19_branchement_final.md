@@ -1,5 +1,10 @@
 # Lot R19 – Branchement final du Cyber-Rogue : progression, dernière run, volumes
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Branchement final : châssis, vies et W' estimé dans la séance, dernière run reprise au menu, volumes du mode dans Réglages | Python, GDScript | R9, R13, R16, R18 | Petite | Non : interne ; **En revue le 30 octobre**, **version 2.0** |
+
 Série R (version 2.0). Demande du propriétaire du 30 octobre : « terminer le mode rogue ». Ce lot ferme les
 écarts laissés par R9, R13, R16 et R18 côté code ; il ne change aucune règle de jeu.
 

@@ -1,5 +1,10 @@
 # Lot P28 – Cyclistes du décor sur la route du parcours
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Cyclistes du décor sur la route du parcours : seuls ou en groupes, en face, doublés ou qui doublent (« Salut ! »), plus nombreux en montée, jamais sur le cycliste ni sur un bot | GDScript | P13, P17, P21, Y14, P25 | Moyenne | **Livré le 28 octobre** (PR #469), séance sur le PC à faire (demande du 28 octobre : « plutôt plus de vélos ») |
+
 ## 1. Objectif
 
 Demande du propriétaire du 28 octobre : « plutôt plus de vélos » que plus de voitures. La deuxième vague du décor vivant (P22 à P27) met des véhicules sur la route du parcours et au loin (P25, véhicules au sol), mais aucun autre cycliste que les bots. Ce lot ajoute des cyclistes du décor sur la route : seuls ou en petits groupes, en face, qui doublent le cycliste ou qu'il double, plus nombreux dans les montées. Ils ne sont pas des bots : aucune aspiration, aucun écart dans le HUD, aucun classement.

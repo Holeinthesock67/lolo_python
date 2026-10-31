@@ -1,5 +1,10 @@
 # Lot H8 – Outils et bibliothèque d'entraînements
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Outils et bibliothèque d'entraînements `.zwo` | Python | F (livré) | Petite | **Livré le 23 octobre** (PR #18) |
+
 ## 1. Objectif
 
 En attendant le menu (lot G), permettre de préparer des séances ERG depuis le terminal :

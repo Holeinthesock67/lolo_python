@@ -1,5 +1,10 @@
 # Lot T14 – Points et maillots de la séance
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 2.0 série T : points et maillots de la séance (vert, à pois), bots compris | Python | T2, T4 (livrés) | Petite | **Livré le 27 octobre** (PR #328, module pur ; arrivées des bots avec T12, branchement par T7) |
+
 ## 1. Objectif
 
 Attribuer pendant la séance le maillot vert (sprints) et le maillot à pois (montées) à qui a le plus de points, bots compris (plan de la série T §3.4, décision T-Q5), avec le barème validé par le propriétaire le 27 octobre. Module pur du core ; le branchement (arrivées du cycliste et des bots, champ de `state`, lignes `jersey` du journal) vient avec le contrat T1 et les bots à profil (T12).

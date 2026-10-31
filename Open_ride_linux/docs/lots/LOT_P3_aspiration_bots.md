@@ -1,5 +1,10 @@
 # Lot P3 – Aspiration derrière les bots
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Aspiration derrière les bots : courbe mesurée, effet de file, vent de travers | Python | P2, N9 | Petite | **Livré le 26 octobre** (issue #127) |
+
 ## 1. Objectif
 
 Rouler dans la roue d'un bot doit soulager, comme dehors. La SRS §5 prévoit un coefficient d'aspiration `alpha_draft` de 0 à 0,45 selon la distance derrière un bot, et `physics.py` l'accepte déjà, mais personne ne le calcule. Ce lot le calcule à partir des bots de N9, l'applique à la vitesse virtuelle et à la résistance ressentie en SIM (même voie que le vent de P2), et le publie dans `draft` (contrat v1.3 du lot P1).

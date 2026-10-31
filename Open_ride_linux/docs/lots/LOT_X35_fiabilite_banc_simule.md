@@ -1,5 +1,10 @@
 # Lot X35 – Fiabilité du banc simulé
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Fiabilité du banc simulé : captures, pics de capture, couches, vitesse imposée | Python + GDScript | X13 | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x35`), essai `--speed-kmh 35` sur le PC à faire |
+
 ## 1. Objectif
 
 Défauts du banc signalés le 28 octobre par le fil des mesures et le fil du décor :

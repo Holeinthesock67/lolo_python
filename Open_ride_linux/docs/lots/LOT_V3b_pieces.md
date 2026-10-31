@@ -1,5 +1,10 @@
 # Lot V3b – Pièces : gains, prix, achats, solde et vies du mode Cyber-Rogue
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Pièces : gains, prix, achats, solde, vies du mode Cyber-Rogue | Python | V2, V3, V4 | Petite | **Livré le 27 octobre** (PR #281, issue #242) ; branchement par V11 |
+
 ## 1. Objectif
 
 Faire gagner des pièces en roulant, en même temps que l'expérience, et les dépenser au Garage (équipement) et dans le mode Cyber-Rogue (vies). Le solde se recalcule toujours : pièces gagnées d'après les journaux (V2) moins pièces dépensées d'après le profil (V4). Module pur, testé en pytest.

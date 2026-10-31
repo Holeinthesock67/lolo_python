@@ -1,5 +1,10 @@
 # Lot P10 – Sons du vélo : vent selon la vitesse dans l'air, roue libre réaliste
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Sons du vélo : vent selon la vitesse dans l'air, roue libre réaliste et « clac » à la reprise | GDScript | P4 | Petite | **Livré le 27 octobre** (issue #134) |
+
 ## 1. Objectif
 
 Demande du propriétaire (25 octobre) : le son du vent doit varier avec la vitesse, et on doit entendre la roue libre quand on arrête de pédaler. Les deux existent depuis E4 et L5, mais de façon simple :

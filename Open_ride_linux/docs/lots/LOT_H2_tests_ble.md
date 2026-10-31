@@ -1,5 +1,10 @@
 # Lot H2 – Tests de la recherche Bluetooth sans matériel
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Tests de la recherche Bluetooth sans matériel (audit F8) | Python | — | Petite | **Livré le 23 octobre** (PR #12, couverture 100 %) |
+
 ## 1. Objectif
 
 Tester `ble_util.find_device` et `ble_util.known_bluez_address` sans adaptateur Bluetooth, avec un faux scanner `bleak` et un faux bus D-Bus. Aujourd'hui, ces fonctions ne sont vérifiées que sur le vrai vélo (couverture du module : 31 %). Ce lot ferme le constat F8 de l'audit.

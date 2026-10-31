@@ -5,7 +5,7 @@ Contrôles :
 2. Modules `*.py` cités dans la section « Architecture » de `CLAUDE.md` vs fichiers sur disque.
 3. Commandes `openride-core`, `openride-compiler` et `python -m openride_core.tools.<x>`
    citées dans `README.md` et `CLAUDE.md` vs sous-commandes et options `argparse`.
-4. Statut « Livré » dans `docs/lots/00_INDEX.md` vs section « Livraison » dans chaque cahier.
+4. Ligne d'index de chaque cahier `docs/lots/LOT_*.md` (lot X54) ; statut « Livré » vs section « Livraison ».
 5. Validité JSON Schema Draft 2020-12 de tous les schémas `docs/contracts/**/*.schema.json`.
 
 Deuxième passe (lot J7) :
@@ -15,7 +15,7 @@ Deuxième passe (lot J7) :
 9. Chemins du projet cités entre accents graves (`core/…`, `docs/…`, etc.) existants.
 
 Vérification du 24 octobre :
-10. Lots numérotés cités dans `README.md`, `CLAUDE.md` et `SUIVI_AVANCEMENT.md` présents dans `00_INDEX.md`.
+10. Lots numérotés cités dans `README.md`, `CLAUDE.md` et `SUIVI_AVANCEMENT.md` présents dans `docs/lots/`.
 
 Lot O6 :
 11. Raccourcis du tableau de `docs/GUIDE_UTILISATION.md` (§6) vs touches du code Godot et boutons du Click.
@@ -32,6 +32,7 @@ import tomllib
 from dataclasses import fields
 from pathlib import Path
 
+import index_lots   # scripts/ est dans le chemin (conftest.py)
 import jsonschema
 import pytest
 
@@ -42,7 +43,6 @@ SRS_PATH = REPO_ROOT / "docs" / "SRS_v1.1.md"
 CLAUDE_MD_PATH = REPO_ROOT / "CLAUDE.md"
 README_PATH = REPO_ROOT / "README.md"
 LOTS_DIR = REPO_ROOT / "docs" / "lots"
-INDEX_PATH = LOTS_DIR / "00_INDEX.md"
 CONTRACTS_DIR = REPO_ROOT / "docs" / "contracts"
 SUIVI_PATH = REPO_ROOT / "docs" / "SUIVI_AVANCEMENT.md"
 
@@ -334,36 +334,17 @@ def check_cli_commands_in_markdown(md_text: str, doc_name: str = "README.md") ->
     return errors
 
 
-# --- 4. Statut des lots dans 00_INDEX.md ---------------------------------------------
+# --- 4. Ligne d'index de chaque cahier (lot X54) ------------------------------------
 
-def check_lots_index(index_text: str, lots_dir: Path = LOTS_DIR) -> list[str]:
-    """Vérifie la cohérence entre 00_INDEX.md et les fichiers LOT_*.md."""
-    errors: list[str] = []
-    referenced_files: set[str] = set()
-
-    for line_no, line in enumerate(index_text.splitlines(), start=1):
-        m = re.match(r"^\|\s*\[[^\]]+\]\((LOT_[^)]+\.md)\)\s*\|(.*)\|$", line.strip())
-        if not m:
-            continue
-        lot_filename = m.group(1)
-        referenced_files.add(lot_filename)
-        cols = [c.strip() for c in m.group(2).split("|")]
-        status_col = cols[-1] if cols else ""
-        lot_path = lots_dir / lot_filename
-        if not lot_path.is_file():
-            errors.append(f"00_INDEX.md:{line_no} : fichier {lot_filename} absent de docs/lots/")
-            continue
-        if "Livré" in status_col:
-            lot_text = lot_path.read_text(encoding="utf-8")
+def check_lots_index(lots_dir: Path = LOTS_DIR) -> list[str]:
+    """Chaque cahier a sa ligne d'index, 00_INDEX.md n'en contient plus, un lot « Livré » a sa livraison."""
+    errors = index_lots.check(lots_dir)
+    lots, _ = index_lots.read_lots(lots_dir)
+    for lot in lots:
+        if "Livré" in lot.status:
+            lot_text = (lots_dir / lot.filename).read_text(encoding="utf-8")
             if not re.search(r"^##\s+.*Livraison", lot_text, flags=re.MULTILINE):
-                errors.append(
-                    f"00_INDEX.md:{line_no} : {lot_filename} est noté 'Livré' mais n'a pas de section '## ... Livraison'"
-                )
-
-    for disk_file in sorted(lots_dir.glob("LOT_*.md")):
-        if disk_file.name not in referenced_files:
-            errors.append(f"docs/lots/{disk_file.name} : cahier absent du tableau de 00_INDEX.md")
-
+                errors.append(f"docs/lots/{lot.filename} : noté 'Livré' mais sans section '## ... Livraison'")
     return errors
 
 
@@ -371,20 +352,22 @@ def check_lots_index(index_text: str, lots_dir: Path = LOTS_DIR) -> list[str]:
 _LOT_CITATION_RE = re.compile(r"\b[Ll]ots?\s+((?:[A-Z]\d+(?:\s*(?:,|et|à|puis)\s*)?)+)")
 
 
-def check_cited_lots(docs: dict[str, str], index_text: str) -> list[str]:
-    """Vérifie que chaque lot numéroté cité dans la documentation figure dans 00_INDEX.md.
+def known_lot_ids(lots_dir: Path = LOTS_DIR) -> set[str]:
+    """Lots qui ont un cahier, et ceux de la liste « À rédiger plus tard » de 00_INDEX.md (« - F2 : … »)."""
+    known = {lot_id for p in lots_dir.glob("LOT_*.md") if (lot_id := index_lots.lot_id_of(p.name))}
+    index_text = (lots_dir / "00_INDEX.md").read_text(encoding="utf-8")
+    return known | set(re.findall(r"^- ([A-Z]\d+) :", index_text, flags=re.MULTILINE))
 
-    Sont connus les lots du tableau et ceux de la liste « À rédiger plus tard » (« - E2 : … »).
-    """
-    known = set(re.findall(r"^\|\s*\[([A-Z]\d*)\]\(LOT_", index_text, flags=re.MULTILINE))
-    known |= set(re.findall(r"^- ([A-Z]\d+) :", index_text, flags=re.MULTILINE))
+
+def check_cited_lots(docs: dict[str, str], known: set[str]) -> list[str]:
+    """Vérifie que chaque lot numéroté cité dans la documentation a son cahier dans docs/lots/."""
     errors: list[str] = []
     for name, text in docs.items():
         cited: set[str] = set()
         for m in _LOT_CITATION_RE.finditer(text):
             cited |= set(re.findall(r"[A-Z]\d+", m.group(1)))
         for lot_id in sorted(cited - known):
-            errors.append(f"{name} : lot {lot_id} cité mais absent de docs/lots/00_INDEX.md")
+            errors.append(f"{name} : lot {lot_id} cité mais absent de docs/lots/")
     return errors
 
 
@@ -447,31 +430,34 @@ def test_readme_and_claude_cli_commands_and_negative() -> None:
 
 
 def test_lots_index_status_and_negative(tmp_path: Path) -> None:
-    index_text = INDEX_PATH.read_text(encoding="utf-8")
-    assert check_lots_index(index_text, LOTS_DIR) == []
+    assert check_lots_index(LOTS_DIR) == []
 
-    # Test négatif : marquer un lot non livré comme 'Livré' sans section Livraison fait échouer
-    fake_lot = tmp_path / "LOT_Z9_fictif.md"
-    fake_lot.write_text("# Lot Z9\n\nSans section de livraison.\n", encoding="utf-8")
-    fake_index = "| [Z9](LOT_Z9_fictif.md) | Lot fictif | Python | — | Petite | **Livré le 23 octobre** |\n"
-    errs = check_lots_index(fake_index, tmp_path)
+    # Tests négatifs : un lot « Livré » sans section Livraison, un cahier sans ligne d'index,
+    # une ligne revenue dans 00_INDEX.md (conflits d'avant le lot X54)
+    block = "\n".join(index_lots.lot_block(["Lot fictif", "Python", "—", "Petite", "**Livré le 23 octobre**"]))
+    (tmp_path / "LOT_Z9_fictif.md").write_text(f"# Lot Z9\n\n{block}\n\nSans section de livraison.\n", encoding="utf-8")
+    (tmp_path / "LOT_Z8_sans_ligne.md").write_text("# Lot Z8\n\nPas de ligne.\n", encoding="utf-8")
+    (tmp_path / "00_INDEX.md").write_text("| [Z9](LOT_Z9_fictif.md) | a | b | c | d | Prêt |\n", encoding="utf-8")
+    errs = check_lots_index(tmp_path)
     assert any("LOT_Z9_fictif.md" in e and "Livraison" in e for e in errs)
+    assert any("LOT_Z8_sans_ligne.md" in e and "pas de ligne d'index" in e for e in errs)
+    assert any("00_INDEX.md" in e and "--migrer" in e for e in errs)
 
 
 def test_cited_lots_are_indexed_and_negative() -> None:
-    index_text = INDEX_PATH.read_text(encoding="utf-8")
+    known = known_lot_ids()
     docs = {
         "README.md": README_PATH.read_text(encoding="utf-8"),
         "CLAUDE.md": CLAUDE_MD_PATH.read_text(encoding="utf-8"),
         "SUIVI_AVANCEMENT.md": SUIVI_PATH.read_text(encoding="utf-8"),
     }
-    assert check_cited_lots(docs, index_text) == []
+    assert check_cited_lots(docs, known) == []
 
-    # Test négatif : un lot cité sans cahier dans l'index (cas de K6 et K7, vérification du 24 octobre)
-    errs = check_cited_lots({"README.md": "lanceur (lot Z9), couches (lots Z8 et I3)"}, index_text)
+    # Test négatif : un lot cité sans cahier (cas de K6 et K7, vérification du 24 octobre)
+    errs = check_cited_lots({"README.md": "lanceur (lot Z9), couches (lots Z8 et I3)"}, known)
     assert errs == [
-        "README.md : lot Z8 cité mais absent de docs/lots/00_INDEX.md",
-        "README.md : lot Z9 cité mais absent de docs/lots/00_INDEX.md",
+        "README.md : lot Z8 cité mais absent de docs/lots/",
+        "README.md : lot Z9 cité mais absent de docs/lots/",
     ]
 
 
@@ -583,14 +569,10 @@ CITED_PATH_EXCEPTIONS: dict[str, str] = {
 }
 
 
-def undelivered_lot_files(index_text: str) -> set[str]:
+def undelivered_lot_files(lots_dir: Path = LOTS_DIR) -> set[str]:
     """Cahiers dont le lot n'est pas « Livré » : ils citent les fichiers que le lot créera."""
-    names: set[str] = set()
-    for line in index_text.splitlines():
-        m = re.match(r"^\|\s*\[[^\]]+\]\((LOT_[^)]+\.md)\)\s*\|(.*)\|$", line.strip())
-        if m and "Livré" not in m.group(2).split("|")[-1]:
-            names.add(m.group(1))
-    return names
+    lots, _ = index_lots.read_lots(lots_dir)
+    return {lot.filename for lot in lots if "Livré" not in lot.status}
 
 
 def check_cited_paths(text: str, doc_name: str, root: Path = REPO_ROOT) -> list[str]:
@@ -652,7 +634,7 @@ def test_no_hard_coded_test_counts_and_negative() -> None:
 
 
 def test_cited_paths_exist_and_negative() -> None:
-    skipped = undelivered_lot_files(INDEX_PATH.read_text(encoding="utf-8"))
+    skipped = undelivered_lot_files()
     assert "LOT_J4_paquetage_autonome.md" in skipped
     errors: list[str] = []
     for f in project_files(".md"):

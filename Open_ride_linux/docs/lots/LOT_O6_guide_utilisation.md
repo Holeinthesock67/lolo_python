@@ -1,5 +1,10 @@
 # Lot O6 – Guide d'utilisation et README de la 1.0
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Guide d'utilisation sans terminal et README de la 1.0 | Markdown + Python | N6, N13, N14 | Petite | **Livré le 27 octobre** (PR du lot O6) |
+
 ## 1. Objectif
 
 Le `README.md` décrit encore l'état du 23 octobre et un lancement par terminal. Après la série N, OpenRide s'installe en une commande et s'utilise depuis l'icône. Ce lot écrit un **guide d'utilisation court, sans terminal**, et remet le `README.md` à jour pour la 1.0 : ce qu'est OpenRide, comment l'installer, où trouver le guide, et une partie « développeur » séparée.
