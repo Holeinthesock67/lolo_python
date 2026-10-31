@@ -103,5 +103,5 @@ func _test_flow() -> void:
 func _init() -> void:
 	_test_model()
 	_test_flow()
-	print("%d vérifications, %d échec(s)" % [_checked, _failures])
+	print("test_contents_view_model : %d vérifications, %d échecs" % [_checked, _failures])
 	quit(1 if _failures > 0 else 0)
