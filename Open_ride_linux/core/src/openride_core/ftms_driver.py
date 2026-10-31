@@ -51,6 +51,11 @@ RELEASE_WRITE_TIMEOUT_S = 1.5  # chaque écriture du relâchement est bornée (a
 CP_RESPONSE_TIMEOUT_S = 1.0   # attente de l'indication 0x80 avant la commande suivante
 MAX_CONTROL_RETRIES = 2  # reprises de contrôle tentées avant de déclarer le refus
 DEFAULT_POWER_RANGE = (0.0, 2000.0)
+# Consigne de résistance (lot RC1, étude « résistance calculée par le core », 31 octobre) : exprimée en %
+# de la plage annoncée (0x2AD6), comme les « 32 % » de l'appli du fabricant ; plage FTMS par défaut
+# 0 à 100 au pas de 1 si le trainer n'en annonce pas.
+DEFAULT_RESISTANCE_RANGE = (0.0, 100.0, 1.0)
+RESISTANCE_EPSILON = 0.05   # écart de niveau en dessous duquel la consigne n'est pas renvoyée
 ATT_RETRIES = 2          # renvois après une erreur ATT (3 essais en tout), lot M1
 ATT_RETRY_DELAY_S = 0.25   # doublé à chaque renvoi : 0,25 s puis 0,5 s
 CP_BUSY_GRACE_S = 0.5    # procédure précédente restée sans réponse : attente de plus avant d'écrire
@@ -86,11 +91,29 @@ def att_error_code(exc: BaseException) -> int | None:
 OP_NAMES: dict[int, str] = {
     ftms.OP_REQUEST_CONTROL: "REQUEST_CONTROL",
     ftms.OP_RESET: "RESET",
+    ftms.OP_SET_TARGET_RESISTANCE: "RESISTANCE",
     ftms.OP_SET_TARGET_POWER: "ERG",
     ftms.OP_START_RESUME: "START_RESUME",
     ftms.OP_STOP_PAUSE: "STOP_PAUSE",
     ftms.OP_SET_SIM_PARAMS: "SIM",
 }
+
+
+def resistance_level(pct: float, lo: float, hi: float, step: float) -> float:
+    """Niveau FTMS pour `pct` % de la plage [lo, hi], arrondi au pas annoncé et borné."""
+    level = lo + min(max(float(pct), 0.0), 100.0) / 100.0 * (hi - lo)
+    if step > 0:
+        level = lo + math.floor((level - lo) / step + 0.5) * step
+    return round(min(max(level, lo), hi), 1)
+
+
+def describe_want(mode: str, value: float) -> str:
+    """Consigne lisible pour le journal."""
+    if mode == "erg":
+        return f"{value:.0f} W"
+    if mode == "resistance":
+        return f"résistance niveau {value:g}"
+    return f"pente {value:.2f} %"
 
 
 def format_cp_write(payload: bytes) -> tuple[str, str, str]:
@@ -113,6 +136,12 @@ def format_cp_write(payload: bytes) -> tuple[str, str, str]:
         if len(payload) >= 2 and payload[1] == 0x02:
             return "PAUSE", "", "08 02"
         return "STOP_PAUSE", "", payload.hex(" ")
+    if op == ftms.OP_SET_TARGET_RESISTANCE:
+        if len(payload) >= 3:
+            return "RESISTANCE", f"niveau {struct.unpack_from('<h', payload, 1)[0] / 10:g}", payload.hex(" ")
+        if len(payload) == 2:
+            return "RESISTANCE", f"niveau {payload[1] / 10:g}", payload.hex(" ")
+        return "RESISTANCE", "", payload.hex(" ")
     if op == ftms.OP_SET_TARGET_POWER:
         if len(payload) >= 3:
             w = struct.unpack_from("<h", payload, 1)[0]
@@ -228,7 +257,7 @@ class ControlPoint:
 
 @dataclass
 class _Want:
-    mode: str = "sim"   # "sim" ou "erg"
+    mode: str = "sim"   # "sim" (pente %), "erg" (W) ou "resistance" (niveau FTMS)
     value: float = 0.0
 
 
@@ -288,6 +317,9 @@ class FtmsDriver:
         self.supports_sim = True
         self._cp: ControlPoint | None = None
         self.supports_erg = True
+        self.supports_resistance = False   # vrai si Fitness Machine Feature annonce resistance_target
+        self.resistance_range = DEFAULT_RESISTANCE_RANGE   # (min, max, pas), remplacée par 0x2AD6
+        self.resistance_wide = True   # niveau sur un sint16 (False : uint8 de la norme, voir ftms.cmd_set_target_resistance)
         self.reconnect_count = 0
         self.att_retries = 0   # renvois après une erreur ATT ponctuelle (lot M1)
         # Control Point occupé (CP_BUSY_CODES) après les renvois : consigne gardée et réessayée.
@@ -332,6 +364,15 @@ class FtmsDriver:
         """
         self._last_sent = None
         self._forgotten += 1
+
+    def set_resistance_pct(self, pct: float) -> bool:
+        """Consigne de résistance en % de la plage annoncée (lot RC1), arrondie au pas du trainer.
+        Refusée (False) si le trainer n'annonce pas resistance_target."""
+        if not self.supports_resistance:
+            log.warning("Trainer : consigne de résistance non annoncée (Fitness Machine Feature)")
+            return False
+        self._want = _Want("resistance", resistance_level(pct, *self.resistance_range))
+        return True
 
     def set_sim_grade(self, grade_pct: float, immediate: bool = False) -> bool:
         """`immediate` : changement de braquet, envoyé même sous GRADE_EPSILON_PCT (sans attendre
@@ -455,7 +496,7 @@ class FtmsDriver:
                 self._emit("power_not_back", after_s=BRAKE_BACK_WINDOW_S)
                 self._brake_lost_at = None
         want = self._want
-        loaded = want.mode == "sim" or want.value >= 100.0   # ERG à 0 W (repos d'un bloc) : pas de frein attendu
+        loaded = want.mode != "erg" or want.value >= 100.0   # ERG à 0 W (repos d'un bloc) : pas de frein attendu
         speed_ok = self._trainer_speed_kmh is None or self._trainer_speed_kmh >= BRAKE_LOSS_MIN_KMH
         if (power_w < BRAKE_LOSS_TO_W and now - self._loaded_at <= BRAKE_LOSS_WINDOW_S and loaded
                 and self._cadence >= BRAKE_LOSS_MIN_RPM and speed_ok
@@ -478,8 +519,7 @@ class FtmsDriver:
             return
         self._trace_ibd_at = now
         sent = self._last_sent
-        want = "aucune" if sent is None else (
-            f"{sent[1]:.0f} W" if sent[0] == "erg" else f"pente {sent[1]:.2f} %")
+        want = "aucune" if sent is None else describe_want(*sent)
         speed = "—" if self._trainer_speed_kmh is None else f"{self._trainer_speed_kmh:.1f} km/h"
         level = "—" if self._trainer_resistance is None else str(self._trainer_resistance)
         log.info("FTMS ~ mesures : puissance %.0f W, cadence %.0f tr/min, vitesse du trainer %s, "
@@ -639,6 +679,16 @@ class FtmsDriver:
             if services.get_characteristic(ftms.FEATURE) is not None:
                 feats = ftms.parse_features(bytes(await client.read_gatt_char(ftms.FEATURE)))
                 self.supports_sim, self.supports_erg = feats.supports_sim, feats.supports_erg
+                self.supports_resistance = feats.supports_resistance
+                log.info("Trainer : fonctions FTMS : %s ; consignes : %s",
+                         ", ".join(feats.machine) or "aucune", ", ".join(feats.target) or "aucune")
+            if services.get_characteristic(ftms.SUPPORTED_RESISTANCE_RANGE) is not None:
+                rr = ftms.parse_resistance_range(
+                    bytes(await client.read_gatt_char(ftms.SUPPORTED_RESISTANCE_RANGE)))
+                if rr.max_level > rr.min_level:
+                    self.resistance_range = (rr.min_level, rr.max_level, max(rr.increment, 0.1))
+                log.info("Plage de résistance du trainer : %g à %g, pas de %g",
+                         rr.min_level, rr.max_level, rr.increment)
             if services.get_characteristic(ftms.SUPPORTED_POWER_RANGE) is not None:
                 pr = ftms.parse_power_range(
                     bytes(await client.read_gatt_char(ftms.SUPPORTED_POWER_RANGE)))
@@ -756,13 +806,13 @@ class FtmsDriver:
             return
         mode, value = self._want.mode, self._want.value
         prev = self._last_sent
-        eps = GRADE_EPSILON_PCT if mode == "sim" else ERG_EPSILON_W
+        eps = {"sim": GRADE_EPSILON_PCT, "resistance": RESISTANCE_EPSILON}.get(mode, ERG_EPSILON_W)
         changed = prev is None or prev[0] != mode or abs(prev[1] - value) >= eps
         immediate, self._immediate = self._immediate, False
         changed = changed or (immediate and mode == "sim" and prev[1] != value)
         if not changed and now - self._last_sent_at < self.cfg.resend_s:
             return
-        supported = self.supports_erg if mode == "erg" else self.supports_sim
+        supported = {"erg": self.supports_erg, "resistance": self.supports_resistance}.get(mode, self.supports_sim)
         if not supported:   # opcode exclu par Fitness Machine Feature (FTMS tableau 4.15)
             if prev != (mode, value):
                 log.warning("Trainer : mode %s non annoncé (Fitness Machine Feature), consigne "
@@ -780,6 +830,8 @@ class FtmsDriver:
             sent = (want.mode, want.value)
             if want.mode == "erg":
                 return ftms.cmd_set_target_power(want.value)
+            if want.mode == "resistance":
+                return ftms.cmd_set_target_resistance(want.value, self.resistance_wide)
             return ftms.cmd_set_sim_params(want.value, self._crr, self._cw, self._wind_mps)
 
         try:

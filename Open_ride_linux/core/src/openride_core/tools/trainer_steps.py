@@ -46,6 +46,13 @@ Renvoi de la consigne (lot X49) : `--renvoi S` renvoie une consigne inchangée t
 (`[trainer] resend_s`, 2 s par défaut) ; `--renvoi 0` ne la renvoie jamais, une seule écriture par palier,
 pour comparer le pompage avec et sans renvoi. Le réglage est noté dans `events.csv` et le rapport.
 
+Étalonnage du mode résistance (lot RC1, étude « résistance calculée par le core » du 31 octobre) : un palier
+`res` envoie un niveau de résistance FTMS (opcode 0x04) en % de la plage annoncée par le trainer (0x2AD6),
+comme les « 32 % » de l'appli du fabricant. Protocole `etalonnage_resistance` (10 → 60 %, 30 s par palier),
+à refaire à plusieurs cadences : `samples.csv` donne la puissance et la vitesse du volant de chaque niveau.
+
+    python -m openride_core.tools.trainer_steps --mode etalonnage_resistance --cadence 85 --plafond 450
+
 Trainer simulé réaliste (lot X6) : `--response realiste` (frein à retard pur, serrage et relâchement,
 volant d'inertie ; `--calibration steps.csv` d'un essai réel pour reprendre ses valeurs) ; le banc compare
 alors chaque t63 mesuré à celui du modèle (retard + constante de temps), à ± 20 %, sauf aux paliers dont le
@@ -100,8 +107,14 @@ PROTOCOLS: dict[str, list[tuple[str, float, float]]] = {
                  ("sim_w", 150.0, 45), ("sim_w", 470.0, 12), ("sim_w", 150.0, 60)],
     "relances_erg": [("erg", 150.0, 60), ("erg", 470.0, 12), ("erg", 150.0, 45), ("erg", 470.0, 12),
                      ("erg", 150.0, 45), ("erg", 470.0, 12), ("erg", 150.0, 60)],
+    # Lot RC1 (31 octobre) : étalonnage du mode résistance, niveaux en % de la plage annoncée, à cadence
+    # tenue ; à refaire à 70, 85 et 100 tr/min (--cadence) pour la table puissance = f(niveau, volant).
+    "etalonnage_resistance": [("res", 10.0, 40), ("res", 15.0, 30), ("res", 25.0, 30), ("res", 32.0, 30),
+                              ("res", 40.0, 30), ("res", 50.0, 30), ("res", 60.0, 30), ("res", 10.0, 30)],
 }
-MODES = ("sim", "erg", "sim_w")   # sim : pente (%), erg : puissance (W), sim_w : SIM visant une puissance (W)
+# sim : pente (%), erg : puissance (W), sim_w : SIM visant une puissance (W),
+# res : niveau de résistance en % de la plage annoncée par le trainer (lot RC1)
+MODES = ("sim", "erg", "sim_w", "res")
 MODEL_TOL = 0.20        # t63 du trainer simulé réaliste : à ± 20 % du modèle (lot X6)
 BASELINE_S = 5.0        # fenêtre de la valeur de départ, juste avant la consigne
 FINAL_S = 5.0           # fenêtre de la valeur finale, fin du palier
@@ -307,7 +320,7 @@ def write_results(results: list[StepResult], out: Path) -> str:
     lines = ["palier  consigne        écriture  accusé   départ → final      t10     t63     t90  stable  dépass."
              "   écart   volant"]
     for r in results:
-        unit = " %" if r.mode == "sim" else " W"
+        unit = " %" if r.mode in ("sim", "res") else " W"
         cons = f"{_fmt(r.from_value)}→{_fmt(r.value)}{unit}" if r.from_value is not None else f"{_fmt(r.value)}{unit}"
         bf = f"{_fmt(r.baseline_w and round(r.baseline_w))} → {_fmt(r.final_w and round(r.final_w))} W"
         lines.append(f"{r.index:>6}  {cons:<14} {_fmt(r.write_ms, ' ms'):>9} {_fmt(r.ack_ms, ' ms'):>8}  "
@@ -401,13 +414,15 @@ class _CpLogTap(logging.Handler):
 def step_label(step: Step) -> str:
     if step.mode == "sim":
         return f"pente {step.value:g} %"
+    if step.mode == "res":
+        return f"résistance {step.value:g} %"
     if step.mode == "sim_w":
         return f"SIM {step.value:g} W" + ("" if step.grade_pct is None else f" (pente {step.grade_pct:g} %)")
     return f"ERG {step.value:g} W"
 
 
 def _step_short(step: Step) -> str:
-    return f"{step.value:g} %" if step.mode == "sim" else f"{step.value:g} W"
+    return f"{step.value:g} %" if step.mode in ("sim", "res") else f"{step.value:g} W"
 
 
 def plan_steps(steps: list[Step], cfg: config.Config, cw: float, cadence: float,
@@ -429,7 +444,8 @@ def default_ceiling(steps: list[Step]) -> float | None:
 async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = None,
                     cadence: float = 85.0, connect_timeout_s: float = 60.0,
                     guide: Guide | None = None, lead_in_s: float = LEAD_IN_S,
-                    gearing: Gearing | None = None, ceiling_w: float | None = None) -> Recording:
+                    gearing: Gearing | None = None, ceiling_w: float | None = None,
+                    resistance_wide: bool = True) -> Recording:
     from ..ftms import parse_indoor_bike_data
     from ..ftms_driver import FtmsDriver
 
@@ -446,6 +462,9 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
                          client_factory=sim_world.client_factory)
     else:
         drv = FtmsDriver(cfg.trainer, cfg.bike, cfg.drivers.trainer_address or None)
+    drv.resistance_wide = resistance_wide
+    if any(s.mode == "res" for s in steps):
+        rec.events.append((0.0, "config", "résistance sur " + ("sint16" if resistance_wide else "uint8")))
     steps = plan_steps(steps, cfg, drv._cw, cadence, gearing)
     on_ibd = drv._on_ibd
 
@@ -525,6 +544,9 @@ async def run_bench(steps: list[Step], cfg: config.Config, *, sim_world: Any = N
                 drv.set_sim_grade(step.value, immediate=True)
             elif step.mode == "sim_w":
                 drv.set_sim_grade(step.grade_pct, immediate=True)
+            elif step.mode == "res":
+                if not drv.set_resistance_pct(step.value):
+                    rec.events.append((clock(), "refused", "résistance non annoncée par le trainer"))
             else:
                 drv.set_target_power(step.value)
             await hold(step.hold_s, ceiling=True)
@@ -566,7 +588,8 @@ def load_protocol(name_or_path: str, fast: bool = False, fast_hold_s: float = 6.
         raw = json.loads(Path(name_or_path).expanduser().read_text(encoding="utf-8"))["steps"]
     steps = [Step(str(d["mode"]), float(d["value"]), float(d["hold_s"])) for d in raw]
     for s in steps:
-        if s.mode not in MODES or s.hold_s <= 0 or (s.mode in ("erg", "sim_w") and s.value <= 0):
+        if (s.mode not in MODES or s.hold_s <= 0 or (s.mode in ("erg", "sim_w") and s.value <= 0)
+                or (s.mode == "res" and not 0.0 <= s.value <= 100.0)):
             raise ValueError(f"palier invalide : {s}")
     if fast:   # essai rapide (Bluetooth simulé) : paliers de `fast_hold_s` (6 s) au plus
         steps = [Step(s.mode, s.value, min(s.hold_s, max(8.0, fast_hold_s) if i == 0 else fast_hold_s))
@@ -638,6 +661,9 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--renvoi", type=float, metavar="S",
                     help="renvoi d'une consigne inchangée toutes les S secondes ([trainer] resend_s, 2 s par défaut) ; "
                          "0 : jamais, une seule écriture par palier (test du pompage avec et sans renvoi)")
+    ap.add_argument("--resistance-uint8", action="store_true",
+                    help="paliers res : niveau sur un uint8 (FTMS 1.0 à la lettre, 25,5 au plus) au lieu du sint16 ; "
+                         "à essayer si le trainer refuse la consigne (INVALID_PARAMETER)")
     ap.add_argument("--plafond", type=float,
                     help="puissance (W, moyenne sur 3 s) qui coupe le palier ; défaut : 125 %% du plus fort palier")
     ap.add_argument("--response", choices=("instant", "realiste"), default="instant",
@@ -727,7 +753,7 @@ def main(argv: list[str] | None = None) -> int:
             guide.prepare("trainer_steps", wait=interactive, auto_s=0 if args.fast else 10.0)
             rec = asyncio.run(run_bench(steps, cfg, sim_world=world, cadence=args.cadence, guide=guide,
                                         lead_in_s=2.0 if args.fast else LEAD_IN_S, gearing=gearing,
-                                        ceiling_w=ceiling))
+                                        ceiling_w=ceiling, resistance_wide=not args.resistance_uint8))
         except (RuntimeError, KeyboardInterrupt, EOFError) as exc:
             guide.finish(False, f"Essai interrompu : {exc}")
             guide.close()
