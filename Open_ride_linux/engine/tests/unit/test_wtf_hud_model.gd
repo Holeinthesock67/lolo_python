@@ -99,7 +99,7 @@ func _run() -> void:
 	view.update_view(with_card)
 	info = view.test_info()
 	_check(info["card"] == "Œufs intacts" and info["card_top"] == WtfView.SIDE_TOP and info["kata_top"] > info["card_top"]
-		and info["clock_top"] > info["kata_top"], "vue : carte du gag à gauche, au-dessus du Katamari et de l'horloge")
+		and info["clock"] == "" and info["kata"].contains("21 h 30"), "vue : carte du gag à gauche, Katamari et heure sur une ligne dessous")
 	_check(info["kata_compact"], "vue : pendant un gag à carte, Katamari réduit à une ligne")
 	var worst: Dictionary = WtfHudModel.view({"points": 5, "event": {"id": "gravity", "planet": "jupiter", "left_s": 30},
 		"kata": {"size": 3.1, "count": 87, "last": "church"}, "clock_h": 21.5, "fish": true})

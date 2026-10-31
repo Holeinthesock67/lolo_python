@@ -8,7 +8,7 @@ extends Control
 ## - invite d'un bouton (« Z : NON MERCI, CHEF ! ») juste sous le bandeau, le temps de la révélation (au
 ##   milieu de l'écran, elle cachait le cycliste et le chef en tandem) ;
 ## - Katamari et horloge à gauche, sous la carte du gag ; les cartes s'empilent sans trou. Pendant un gag
-##   à carte, Katamari et horloge se réduisent à une ligne pour que la pile ne descende pas sur la route
+##   à carte, Katamari et horloge se réduisent à une seule ligne pour que la pile ne descende pas sur la route
 ##   (pile bornée à STACK_MAX_FRAC de la hauteur de l'écran de base 1280 × 720, vérifiée par le test).
 ## Ne décide rien : affiche la sortie de wtf_hud_model.gd (update_view). Enfant du HUD : caché avec lui
 ## quand un menu plein écran est ouvert. Pas de class_name : preload("res://scripts/wtf/wtf_view.gd").
@@ -162,10 +162,16 @@ func update_view(view: Dictionary) -> void:
 		_kata_bar.visible = not compact
 		_kata_bar.value = float(k.get("bar", 0.0))
 	var h: Dictionary = view.get("clock", {})
-	_clock.visible = not h.is_empty()
-	if _clock.visible:
+	var clock_text := ""
+	if not h.is_empty():
 		var fish := bool(h.get("fish", false))
-		_clock_text.text = str(h.get("text", "")) + (("  · poissons !" if compact else "  · poissons volants !") if fish else "")
+		clock_text = str(h.get("text", "")) + (("  · poissons !" if compact else "  · poissons volants !") if fish else "")
+	# Gag à carte avec le Katamari : l'heure rejoint la ligne du Katamari, une carte de moins à gauche.
+	var merged := compact and _kata.visible and clock_text != ""
+	if merged:
+		_kata_title.text += "  · " + clock_text
+	_clock.visible = clock_text != "" and not merged
+	_clock_text.text = clock_text
 	var y := SIDE_TOP
 	for panel in [_card, _kata, _clock]:
 		if panel.visible:
