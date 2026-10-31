@@ -88,7 +88,7 @@ func handle(item_id: String) -> Dictionary:
 	message = "Installation demandée…"
 	if bool(it.get("network", false)):
 		message = ""
-		return {"confirm": "Installer « %s » ? Téléchargement nécessaire" % str(it.get("label", id)), "action": act}
+		return {"confirm": "%s : télécharger et installer ?" % str(it.get("label", id)), "action": act}
 	return act
 
 
