@@ -9,6 +9,13 @@
 - Niveau proche seulement : fondu avec la route. `d` est la distance à l'axe moins la
   demi-largeur de chaussée ; y = y_route − 0,05 pour d ≤ 4 m, y = y_mnt pour d ≥ 25 m,
   smoothstep entre les deux. Le point de route le plus proche est cherché avec un cKDTree.
+- Garde-fou de la chaussée (demande du 31 octobre : « l'herbe ne doit pas passer par-dessus la
+  route ») : après le fondu, le maillage proche (triangles de 10 m, même découpage que l'engine)
+  est contrôlé en travers de la chaussée tous les mètres ; un triangle qui dépasserait la route
+  moins 5 cm a ses sommets abaissés (`clear_road`). Le fondu seul ne suffit pas dans une épingle,
+  un aller-retour ou un croisement : un sommet fondu sur une portion de route haute peut tenir un
+  triangle qui recouvre la portion basse. Vaut pour tout parcours compilé : trace importée,
+  parcours généré (worldgen) ou recette.
 """
 
 from __future__ import annotations
@@ -172,7 +179,146 @@ def build_level(route: dict, frame: LocalFrame, provider: ElevationProvider, lev
         y32 = y.astype("<f4").reshape(len(batch), N, N)
         for k, key in enumerate(batch):
             out[key] = y32[k]
+    if level.blend:
+        lowered = clear_road(out, x, z, route["alt_m"], level)
+        if lowered:
+            log(f"terrain {level.name} : {lowered} sommet(s) abaissé(s) sous la chaussée (épingles, croisements)")
     return out
+
+
+# --- garde-fou de la chaussée -----------------------------------------------------------------
+
+ROAD_CHECK_STEP_M = 1.0     # pas le long de la route et en travers de la chaussée
+
+
+def road_samples(x, z, alt, half_width: float = C.ROAD_HALF_WIDTH_M,
+                 step: float = ROAD_CHECK_STEP_M) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Points de la chaussée (x, z) tous les `step` mètres le long de l'axe et en travers, de bord à
+    bord, avec l'altitude de la route à leur hauteur (interpolée le long du segment)."""
+    x = np.asarray(x, dtype=float)
+    z = np.asarray(z, dtype=float)
+    alt = np.asarray(alt, dtype=float)
+    if len(x) < 2:
+        return np.empty(0), np.empty(0), np.empty(0)
+    seg = np.hypot(np.diff(x), np.diff(z))
+    s = np.concatenate(([0.0], np.cumsum(seg)))
+    keep = np.concatenate(([True], seg > 0))
+    s, x, z, alt = s[keep], x[keep], z[keep], alt[keep]
+    if len(s) < 2:
+        return np.empty(0), np.empty(0), np.empty(0)
+    sv = np.arange(0.0, s[-1] + 1e-9, step)
+    cx, cz, ca = np.interp(sv, s, x), np.interp(sv, s, z), np.interp(sv, s, alt)
+    k = np.clip(np.searchsorted(s, sv, side="right") - 1, 0, len(s) - 2)
+    dx, dz = x[k + 1] - x[k], z[k + 1] - z[k]
+    ln = np.hypot(dx, dz)
+    rx, rz = -dz / ln, dx / ln          # normale au segment (côté sans importance : bord à bord)
+    offs = np.arange(-half_width, half_width + 1e-9, step)
+    px = (cx[:, None] + rx[:, None] * offs[None, :]).ravel()
+    pz = (cz[:, None] + rz[:, None] * offs[None, :]).ravel()
+    pa = np.repeat(ca, len(offs))
+    return px, pz, pa
+
+
+def _triangles(px, pz, level: Level):
+    """Tuile, sommets (i, j) des trois coins et poids du triangle du maillage qui contient chaque point
+    (découpage de terrain_tiles.gd `mesh_height_at` : diagonale de (i + 1, j) à (i, j + 1))."""
+    cells = C.TILE_SAMPLES - 1
+    fx = np.asarray(px, dtype=float) / level.cell_m
+    fz = np.asarray(pz, dtype=float) / level.cell_m
+    gi = np.floor(fx).astype(np.int64)
+    gj = np.floor(fz).astype(np.int64)
+    u, v = fx - gi, fz - gj
+    ti, tj = np.floor_divide(gi, cells), np.floor_divide(gj, cells)
+    i, j = gi - ti * cells, gj - tj * cells
+    low = u + v <= 1.0
+    # coins (di, dj) et poids : bas (a, b, c) ou haut (d, c, b)
+    corners = np.where(low[:, None], np.array([[0, 0, 1, 0, 0, 1]]), np.array([[1, 1, 0, 1, 1, 0]]))
+    w = np.where(low[:, None], np.column_stack((1.0 - u - v, u, v)),
+                 np.column_stack((u + v - 1.0, 1.0 - u, 1.0 - v)))
+    return ti, tj, i, j, corners, w
+
+
+def terrain_excess(tiles: dict[tuple[int, int], np.ndarray], x, z, alt, level: Level = None,
+                   sink: float = C.ROAD_SINK_M) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Dépassement (m) du maillage `tiles` au-dessus de la chaussée moins `sink`, aux points de
+    `road_samples` couverts par une tuile sans NaN : (excès, x, z). Positif : terrain trop haut."""
+    level = level or NEAR
+    px, pz, pa = road_samples(x, z, alt)
+    if len(px) == 0:
+        return np.empty(0), px, pz
+    ti, tj, i, j, corners, w = _triangles(px, pz, level)
+    h = np.full(len(px), np.nan)
+    for key in set(zip(ti.tolist(), tj.tolist())):
+        g = tiles.get(key)
+        if g is None:
+            continue
+        sel = np.flatnonzero((ti == key[0]) & (tj == key[1]))
+        acc = np.zeros(len(sel))
+        for c in range(3):
+            acc += w[sel, c] * g[j[sel] + corners[sel, 2 * c + 1], i[sel] + corners[sel, 2 * c]]
+        h[sel] = acc
+    ok = np.isfinite(h)
+    return (h - (pa - sink))[ok], px[ok], pz[ok]
+
+
+def clear_road(tiles: dict[tuple[int, int], np.ndarray], x, z, alt, level: Level = None,
+               sink: float = C.ROAD_SINK_M) -> int:
+    """Abaisse (sur place), juste ce qu'il faut, les sommets des triangles qui dépassent la chaussée moins `sink`, puis
+    recopie le minimum sur les bords communs des tuiles (bords toujours identiques). Rend le nombre
+    de sommets abaissés. Abaisser ne remonte jamais un autre point : un seul passage suffit."""
+    level = level or NEAR
+    px, pz, pa = road_samples(x, z, alt)
+    if len(px) == 0:
+        return 0
+    ti, tj, i, j, corners, w = _triangles(px, pz, level)
+    limit = pa - sink
+    lowered: set[tuple[int, int, int, int]] = set()
+    for key in set(zip(ti.tolist(), tj.tolist())):
+        g = tiles.get(key)
+        if g is None:
+            continue
+        sel = np.flatnonzero((ti == key[0]) & (tj == key[1]))
+        h = np.zeros(len(sel))
+        for c in range(3):
+            h += w[sel, c] * g[j[sel] + corners[sel, 2 * c + 1], i[sel] + corners[sel, 2 * c]]
+        bad = sel[np.isfinite(h) & (h > limit[sel] + 1e-4)]
+        for p in bad.tolist():
+            # Abaissement juste suffisant : chaque coin au-dessus de la limite descend en proportion de
+            # son dépassement (les coins déjà sous la route ne bougent pas), recalculé avec les
+            # sommets déjà abaissés par les points précédents.
+            vs = [(j[p] + corners[p, 2 * c + 1], i[p] + corners[p, 2 * c], w[p, c]) for c in range(3)]
+            hp = sum(wc * float(g[vj, vi]) for vj, vi, wc in vs)
+            top = float(limit[p])
+            lim = top - 1e-3
+            if not np.isfinite(hp) or hp <= top + 1e-4:
+                continue
+            over = sum(wc * (float(g[vj, vi]) - lim) for vj, vi, wc in vs if float(g[vj, vi]) > top)
+            alpha = min((hp - lim) / over, 1.0) if over > 0 else 1.0
+            for vj, vi, wc in vs:
+                gv = float(g[vj, vi])
+                if wc > 0 and gv > top:
+                    g[vj, vi] = np.float32(gv - alpha * (gv - lim))
+                    lowered.add((key[0], key[1], int(vi), int(vj)))
+    if lowered:
+        _sync_edges(tiles)
+    return len(lowered)
+
+
+def _sync_edges(tiles: dict[tuple[int, int], np.ndarray]) -> None:
+    """Bords communs de deux tuiles voisines ramenés au plus bas des deux (coins compris : deux passes)."""
+    last = C.TILE_SAMPLES - 1
+    for _ in range(2):
+        for (ix, iz), g in tiles.items():
+            e = tiles.get((ix + 1, iz))
+            if e is not None:
+                m = np.fmin(g[:, last], e[:, 0])
+                g[:, last] = m
+                e[:, 0] = m
+            s_ = tiles.get((ix, iz + 1))
+            if s_ is not None:
+                m = np.fmin(g[last, :], s_[0, :])
+                g[last, :] = m
+                s_[0, :] = m
 
 
 def build_terrain(route: dict, frame: LocalFrame, provider: ElevationProvider,
