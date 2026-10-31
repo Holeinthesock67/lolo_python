@@ -1,5 +1,10 @@
 # Lot X47 – Repère « décrochage » au journal (Z long, Maj+Z)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : repère « décrochage » au journal par Z long au Click (§7.1, SIM, ERG, monde ouvert) et `Maj+Z` au clavier, confirmé à l'écran, relu par `decrochages` | Python, GDScript | X42, X44 | Petite | Séance du 29 octobre ; en PR |
+
 ## 1. Objectif
 
 Séance du 29 octobre : le cycliste sentait la résistance du trainer lâcher après une relance, mais rien dans le journal ne datait ce ressenti. L'outil `decrochages` (lot X44) cherche les chutes de puissance mesurées et les classe : trainer, fatigue, arrêt. Il lui manquait le repère du cycliste pour confirmer qu'une chute vue est bien celle qu'il a sentie.

@@ -1,5 +1,10 @@
 # Lot O34 – Démarrage robuste : séance interrompue et configuration invalide
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Démarrage robuste : séance interrompue d'un lancement précédent proposée à l'accueil (FIT ou non, commande `recover_session`), configuration invalide remise par défaut depuis une fenêtre du lanceur (copie `.bak`) | Python + GDScript | N8, MJ7 (livrés) | Petite | Audit des options du 31 octobre, accepté par le propriétaire ; en PR |
+
 ## 1. Objectif
 
 Audit des options du 31 octobre (`docs/AUDIT_OPTIONS_MENUS_2026-10-31.md`, §7), accepté par le propriétaire le 31 octobre. Deux cas obligeaient à ouvrir un terminal ou un fichier :

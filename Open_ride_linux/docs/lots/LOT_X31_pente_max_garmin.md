@@ -1,5 +1,10 @@
 # Lot X31 – Pente maximale face à Garmin Connect
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Série X (outils de test) : Pente maximale et D+ face à Garmin Connect, en local | Python | — | Petite | **Livré le 28 octobre** (branche `claude/project-thread-818r6t-x31`) ; issue #229 |
+
 ## 1. Objectif
 
 Ligne 22 de la recette 1.0 : la pente maximale d'un parcours compilé doit être à ± 1 point de celle de Garmin Connect sur une vraie trace de col.

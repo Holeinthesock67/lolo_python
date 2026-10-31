@@ -1,5 +1,10 @@
 # Lot V6 – Engine : avatar généré par le code, pédalage synchronisé, danseuse
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : avatar généré par le code, pédalage synchronisé, danseuse (sans caméra : V12) | GDScript | T1 ; O7 utile | Grande | **Livré le 27 octobre** (issue #372) ; recette de rendu sur le PC |
+
 ## 1. Objectif
 
 Afficher le cycliste à l'écran : une silhouette 3D générée par le code (aucun fichier 3D sous licence), réglable (morphologie, peau, cheveux, couleurs de tenue, numéro), qui pédale à la cadence réelle et se met en danseuse dans les fortes pentes ou à forte puissance. Les vues de caméra qui montrent l'avatar (suivi proche, suivi éloigné, latérale) sont toutes faites par le lot V12, qui suit ce lot (décision D5 du 27 octobre) ; V6 n'ajoute aucune caméra et se recette avec la vue de contrôle du banc visuel.

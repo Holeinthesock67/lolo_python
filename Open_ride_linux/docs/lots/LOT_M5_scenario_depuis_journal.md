@@ -1,5 +1,10 @@
 # Lot M5 – Rejouer une panne réelle : scénario de simulation tiré de `run_trainer.log`
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Rejouer une panne réelle : scénario de simulation tiré de `run_trainer.log` | Python | — | Petite | **Livré le 24 octobre** (issue #82) |
+
 ## 1. Objectif
 
 Le Bluetooth simulé (PR #74) rejoue des pannes écrites à la main. Quand une panne arrive sur le vélo (coupure du Click, erreur 0x80, trainer muet), il faut aujourd'hui relire le journal et recopier les temps dans un scénario JSON. Ce lot ajoute un outil qui **convertit un journal du core en scénario** de simulation : la même suite de connexions, coupures, erreurs et appuis, rejouable sans matériel et utilisable comme test de non-régression.

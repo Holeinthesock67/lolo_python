@@ -1,5 +1,10 @@
 # Lot Y9 – Bots à l'écran : lissage, déplacements latéraux et niveaux de détail
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Lissage des bots à l'écran (mémoire de trames, Hermite, déplacements latéraux, LOD) | GDScript | O7 | Moyenne | Oui ; issue #365 |
+
 ## 1. Objectif
 
 Série Y (fin de projet, `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §7). Le core calcule les bots à 50 Hz et envoie l'état à 30 Hz ; l'engine (`bots_view_model.gd`, lot O7) les affiche en extrapolant la dernière trame (`s + v × âge`, borné à 1 s), toujours à 1,5 m à droite de la route. D'où de petits sauts à chaque trame quand la vitesse change, et des bots qui se superposent quand ils se doublent. Décision du propriétaire du 27 octobre (§0, question 11) : **un retard d'affichage d'environ 0,1 s est accepté**.

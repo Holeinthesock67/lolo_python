@@ -1,5 +1,10 @@
 # Lot N17 – Demi-tour sur la route depuis l'écran de pause
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| 1.x série N : demi-tour sur la route depuis l'écran de pause | Python + GDScript | 1.0 publiée | Moyenne | Non : interne (contrat et écran de pause), **version 1.x** |
+
 ## 1. Objectif
 
 Faire demi-tour sur le parcours en cours, sans quitter la séance : le cycliste met en pause (Y), choisit « Faire demi-tour » dans l'écran de pause, et repart dans l'autre sens au même endroit. Demande du propriétaire du 27 octobre (décision D11 de l'audit de cohérence) : le demi-tour se fait **dans les menus**, pas par un geste du Click, pour ne pas entamer le plan de boutons commun (spécification générale §7.1). Version 1.x.

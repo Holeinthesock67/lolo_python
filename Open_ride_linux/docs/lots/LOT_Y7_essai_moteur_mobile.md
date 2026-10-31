@@ -1,5 +1,10 @@
 # Lot Y7 – Essai du moteur de rendu Mobile pour le préréglage `low` (mesure seule)
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Essai du moteur Mobile pour `low` (mesure seule, décision du propriétaire) | GDScript | Y2 | Petite | Oui (mesure) ; issue #363 |
+
 ## 1. Objectif
 
 Série Y (fin de projet, `docs/RECHERCHE_GODOT_PERFORMANCE_GRAPHISMES.md` §4, technique T13). Tous les préréglages tournent avec le moteur Forward+. Le moteur Mobile de Godot n'a pas de pré-passe de profondeur et peut être plus rapide sur une scène simple, mais il n'a ni SSAO, ni SSIL, ni brouillard volumétrique, ni TAA, ni FSR, et certains shaders peuvent s'y rendre autrement. Décision du propriétaire du 27 octobre (§0, question 8) : **essai mesuré maintenu, décision après la mesure**.

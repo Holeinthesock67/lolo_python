@@ -1,5 +1,10 @@
 # Lot S1 – Ne pas dessiner ce que le cycliste ne voit pas
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Ne pas dessiner ce que le cycliste ne voit pas : étude mesurée au banc simulé, puis réductions sans changement visible | GDScript | O1, Q2 (mêmes fichiers) | Moyenne | Oui (essai sur la GTX 1060 par le propriétaire) ; issue #190. S1a (tuiles proches et arbres hors du champ, 28 octobre) mesuré sans gain, livré coupé par défaut (`--culling=on` pour l'essayer) ; S1b (occlusion) et S1c (décor hors vue) à suivre ; étude : `docs/ETUDE_RENDU_INVISIBLE.md` |
+
 ## 1. Objectif
 
 Demande du propriétaire (25 octobre) : explorer l'optimisation du moteur graphique en ne modélisant pas ce qui est invisible pour l'utilisateur. En 1.0, la caméra regarde devant, le long de la route, à 1,4 m du sol ; en 2.0, le lot V12 ajoute trois autres vues (suivi proche, suivi éloigné en hauteur, latérale). Le brouillard et la distance de vue restent fixés par le préréglage de qualité. Une bonne partie de ce qui est construit, chargé ou dessiné ne se voit donc jamais : tuiles lointaines au-delà du brouillard, décor derrière le cycliste, arbres et bâtiments cachés par une colline, ombres hors du champ. Ce lot est d'abord une **étude mesurée**. Il recense ce qui est invisible, mesure ce que cela coûte, puis applique seulement les réductions qui font gagner des images par seconde sans aucun changement visible.

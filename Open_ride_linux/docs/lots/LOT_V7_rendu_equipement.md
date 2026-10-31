@@ -1,5 +1,10 @@
 # Lot V7 – Engine : cadres, roues et tenues sur l'avatar, sons des roues, traînées d'air
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Engine : cadres, roues et tenues sur l'avatar, sons des roues, traînées d'air | GDScript | V6 ; P10 pour les sons | Moyenne | **Livré le 27 octobre** (issue #373) ; recette de rendu sur le PC |
+
 ## 1. Objectif
 
 Rendre l'équipement visible et audible : chaque cadre et chaque paire de roues a sa forme, chaque tenue ses couleurs et motifs, la position est plus basse sur un vélo aéro, les roues ont leur son (bourdonnement de la lenticulaire, sifflement des jantes hautes) et des traînées d'air apparaissent au-delà de 45 km/h (plan §2.2, « des sensations »).

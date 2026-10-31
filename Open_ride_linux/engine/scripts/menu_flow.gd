@@ -29,6 +29,8 @@ extends RefCounted
 ## réponse `imports` arrive par set_import_candidates() et un choix renvoie import_workout {path}.
 ## Réponse `workout_saved` : on_workout_saved(), retour à la liste, focus sur le nouvel entraînement à
 ## son arrivée ; erreur du core (bad_args, busy, workout_invalid, workout_write_failed) sur la ligne d'état.
+## « Comment ça marche ? » ouvre l'écran « Aide ERG » (workout_help.gd) : un sujet par ligne, son
+## explication dans la carte ; « Créer » et « Importer » de la liste montrent aussi la leur.
 ##
 ## Plans, test de FTP et bibliothèque (lot O12, contrat 1.3) :
 ## - accueil : « Séance du jour » (nom, durée, TSS) quand le plan actif en a une, sinon « Plan : … » ou
@@ -52,6 +54,7 @@ const DevicesViewModel := preload("res://scripts/devices_view_model.gd")
 const PairingViewModel := preload("res://scripts/pairing_view_model.gd")
 const SettingsViewModel := preload("res://scripts/settings_view_model.gd")
 const WorkoutBuilder := preload("res://scripts/workout_builder.gd")
+const WorkoutHelp := preload("res://scripts/workout_help.gd")
 const RouteHelp := preload("res://scripts/route_help.gd")
 const RecordsViewModel := preload("res://scripts/records_view_model.gd")
 const RogueMenuModel := preload("res://scripts/rogue/rogue_menu_model.gd")
@@ -67,6 +70,7 @@ const SETTING_EDIT := SettingsViewModel.EDIT_SCREEN
 const SETTINGS_GROUP := "settings_group"
 const WORKOUT_CREATE := WorkoutBuilder.SCREEN
 const WORKOUT_IMPORT := "workout_import"
+const WORKOUT_HELP := WorkoutHelp.SCREEN
 const ROUTE_HELP := RouteHelp.SCREEN
 ## Lignes de la liste des parcours dont la carte est un sujet de l'aide des parcours (lot O22).
 const ROUTE_HELP_TOPICS := {MenuModel.ADD_ROUTE_ID: "add", MenuModel.HELP_ROUTES_ID: "choose"}
@@ -94,6 +98,9 @@ const PAUSE_REASONS := {"user": "", "trainer_lost": "Trainer perdu : reconnexion
 	"engine_lost": "Affichage relancé : reprends quand tu veux", "core_restarted": "OpenRide a redémarré : séance retrouvée",
 	"recording_failed": "Enregistrement impossible : la séance reste en mémoire",
 	"world_data": "Route devant toi en cours de chargement : reprise automatique"}
+## Lignes de la liste des entraînements dont la carte est un sujet de l'aide ERG.
+const WORKOUT_HELP_TOPICS := {MenuModel.CREATE_WORKOUT_ID: "create", MenuModel.IMPORT_WORKOUT_ID: "import",
+	MenuModel.HELP_WORKOUT_ID: "choose"}
 ## Tout relié depuis ce temps (s) : passage seul à l'accueil, le temps de voir les appareils connectés.
 const CONNECT_HOLD_S := 2.0
 
@@ -194,6 +201,8 @@ func _init() -> void:
 		"items": []})
 	menu.add_screen({"id": WORKOUT_IMPORT, "title": "Importer un entraînement", "on_back": MenuModel.WORKOUTS,
 		"items": []})
+	menu.add_screen({"id": WORKOUT_HELP, "title": WorkoutHelp.TITLE, "on_back": MenuModel.WORKOUTS,
+		"items": WorkoutHelp.items()})
 	menu.add_screen({"id": ROUTE_HELP, "title": RouteHelp.TITLE, "on_back": MenuModel.ROUTES,
 		"items": RouteHelp.items()})
 	menu.add_screen({"id": PLANS, "title": "Plans d'entraînement", "on_back": MenuModel.HOME, "items": []})
@@ -538,7 +547,11 @@ func card(st: Dictionary) -> Dictionary:
 	if screen == ROUTE_HELP:
 		return RouteHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
 	if screen == MenuModel.WORKOUTS:
+		if focused in WORKOUT_HELP_TOPICS:
+			return WorkoutHelp.sheet(WORKOUT_HELP_TOPICS[focused])
 		return _sheet(_workouts_raw, focused, func(w): return CatalogModel.workout_sheet(w, _ftp_w()))
+	if screen == WORKOUT_HELP:
+		return WorkoutHelp.sheet(focused.substr(5)) if focused.begins_with("help:") else {}
 	if screen == PLANS:
 		return _plan_card(focused)
 	if screen == PLAN:
@@ -818,7 +831,7 @@ func set_import_candidates(found: Array) -> void:
 		items.append({"id": "file:%d" % i, "label": str(c["file"]),
 			"detail": str(c["source"]) + (", déjà importé" if c.get("imported", false) else "")})
 	if items.is_empty():
-		items.append({"id": "none", "label": "Aucun fichier .zwo, .erg ou .mrc", "enabled": false,
+		items.append({"id": "none", "label": "Aucun fichier .zwo, .erg, .mrc ou .qwk", "enabled": false,
 			"detail": "dans Téléchargements, Bureau ou ~/OpenRide/Import"})
 	menu.set_screen_items(WORKOUT_IMPORT, items)
 
@@ -976,10 +989,15 @@ func handle(event: String) -> Dictionary:
 			_refresh_builder()
 			menu.push_screen(WORKOUT_CREATE)
 			return {}
+		if str(act["id"]) == MenuModel.HELP_WORKOUT_ID:
+			menu.push_screen(WORKOUT_HELP)
+			return {}
 		import_candidates = []
 		menu.set_screen_items(WORKOUT_IMPORT, [{"id": "none", "label": "Recherche des fichiers…", "enabled": false}])
 		menu.push_screen(WORKOUT_IMPORT)
 		return {"action": "list_imports"}
+	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_HELP:
+		return {}   # un sujet d'aide ne fait rien : son explication est dans la carte
 	if act.get("action", "") == "item" and act.get("screen", "") == WORKOUT_CREATE:
 		var item_id := str(act["id"])
 		if item_id == "save":

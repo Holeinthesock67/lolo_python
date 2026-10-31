@@ -1,5 +1,10 @@
 # Lot N9 – Bots côté core : puissance constante et fantôme d'une séance passée
 
+<!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
+| Titre | Langage | Dépend de | Taille | Statut |
+| --- | --- | --- | --- | --- |
+| Bots côté core : puissance constante et fantôme d'une séance passée | Python | E3, M3, M4 (livrés) | Moyenne | **Livré le 25 octobre** (issue #106, PR #175) |
+
 ## 1. Objectif
 
 Premier pas du sprint 7 de la SRS (optionnel) : rouler avec un partenaire virtuel. Ce lot calcule dans le core la position de bots à **puissance constante** et d'un **fantôme** rejouant une séance passée (`.fit` ou `.jsonl`) sur le même parcours, et les publie dans le champ `bots` de la trame `state`, déjà annoncé par le contrat. L'affichage (silhouette, écart en secondes) viendra dans un lot interne.
