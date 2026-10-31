@@ -1,5 +1,5 @@
 {
-  "description": "Monde ouvert : le menu s'ouvre sur le globe, une lettre tapée ouvre la recherche (les lettres y sont du texte, Échap revient), retour au globe puis menu fermé.",
+  "description": "Monde ouvert : le menu s'ouvre sur le globe, une lettre tapée ouvre la recherche (les lettres y sont du texte, Échap revient) ; au Click, Z ouvre la grille de saisie, Z écrit, Y efface (lot O31) ; retour au globe puis menu fermé.",
   "voies": ["click", "clavier"],
   "etapes": [
     {"ecran": "home", "delai": 15},
@@ -13,6 +13,18 @@
     {"voies": ["clavier"], "touche": "Escape"},
     {"voies": ["clavier"], "monde": "globe"},
     {"voies": ["clavier"], "touche": "Escape"},
+    {"voies": ["click"], "note": "Lot O31 : recherche au Click par la grille partagée avec le nom d'un profil", "appui": "Z_SHORT"},
+    {"voies": ["click"], "monde": "search", "contient": ["Z : Écrire", "A maintenir : Voir les résultats", "[A]"]},
+    {"voies": ["click"], "appui": ["PLUS_SHORT", "PLUS_SHORT", "PLUS_SHORT", "PLUS_LONG", "Z_SHORT"]},
+    {"voies": ["click"], "appui": ["MINUS_LONG", "PLUS_SHORT", "Z_SHORT"]},
+    {"voies": ["click"], "monde": "search", "contient": ["Recherche : Ne_"]},
+    {"voies": ["click"], "capture": "recherche_grille"},
+    {"voies": ["click"], "appui": "Y_SHORT"},
+    {"voies": ["click"], "monde": "search", "contient": ["Recherche : N_"]},
+    {"voies": ["click"], "appui": "Y_SHORT"},
+    {"voies": ["click"], "monde": "search", "contient": ["Recherche : _"]},
+    {"voies": ["click"], "appui": "Y_SHORT"},
+    {"voies": ["click"], "monde": "globe"},
     {"voies": ["click"], "appui": "Y_SHORT"},
     {"ecran": "home", "monde": false, "focus": "open_world", "delai": 8}
   ]
