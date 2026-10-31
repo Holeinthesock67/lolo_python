@@ -125,9 +125,8 @@ var _cam_s := 0.0                  # dernière abscisse du cycliste reçue par s
 var _rider_v := 0.0
 var _cam_lateral := 0.0            # écart de la caméra à l'axe, mesuré (positif à droite), pour les tests
 const CONTACT_M := 300.0
-## Hauteur hors tout des véhicules de vehicle_mesh.gd (jauge d'abri au-dessus d'un véhicule, lot AS6)
-const VEHICLE_HEIGHT_M := {"car_a": 1.45, "car_b": 1.5, "van": 2.0, "truck": 3.2, "bus": 3.1, "moto": 1.3, "tractor": 2.8}
-const GAUGE_BOT_TOP_M := 2.0        # haut d'un bot sous son nom : la jauge est 0,55 m au-dessus
+const GAUGE_BEHIND_M := 0.3         # jauge d'abri d'un véhicule : 0,3 m derrière sa face arrière (lot AS6)
+const GAUGE_DROP_M := -0.75         # ... et à 1,8 m du sol au lieu des 2,55 m d'un bot : sous le bandeau du haut vue de près
 var surface_here := "paved"        # lot U22 : surface effective sous le cycliste (world_streamer.surface_at)
 var contacts := 0                  # lot P32 : contacts vus sur la route (images × paires), doit rester à 0
 var last_contact := ""             # lot P32 : qui touchait qui la dernière fois, pour le rapport des tests
@@ -666,8 +665,9 @@ func _exit_tree() -> void:
 
 
 ## Point d'ancrage de la jauge d'abri au-dessus du véhicule `id` de la route (lot AS6, `draft_bot` = `veh:<id>`) :
-## sur son arrière, relevé pour que la jauge (posée par draft_gauge.gd au-dessus du nom d'un bot) passe au-dessus du
-## toit ; null s'il n'est pas sur la route.
+## juste derrière son arrière et plus bas que pour un bot : la jauge (draft_gauge.gd) se pose sur la face arrière du
+## véhicule, là où le cycliste qui le suit la voit (au-dessus du toit, elle passerait sous le bandeau du haut) ;
+## null s'il n'est pas sur la route.
 func vehicle_anchor(id: String) -> Variant:
 	if traffic.route == null:
 		return null
@@ -675,7 +675,7 @@ func vehicle_anchor(id: String) -> Variant:
 		if str(v["id"]) == id:
 			var xf: Transform3D = traffic.world_transform(v)
 			var back := -xf.basis.z * (float(TrafficModel.KINDS[v["kind"]]["length"]) * 0.5)
-			return xf.origin - back + Vector3.UP * maxf(float(VEHICLE_HEIGHT_M.get(str(v["kind"]), 1.5)) - GAUGE_BOT_TOP_M, 0.0)
+			return xf.origin - back * (1.0 + GAUGE_BEHIND_M / maxf(back.length(), 0.01)) + Vector3.UP * GAUGE_DROP_M
 	return null
 
 
