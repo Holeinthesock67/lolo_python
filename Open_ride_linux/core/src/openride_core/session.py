@@ -2108,17 +2108,23 @@ class CoreSession:
     def _update_draft(self, dt: float, route: Route | None, heading_deg: float) -> None:
         """Abri derrière les bots (lot P3) : cible de `draft.best_draft`, lissée à 1 s ; abri, roue suivie et
         poussée des bots (lot AS1, `draft.update_bots`), tous sur les positions du pas précédent. Avant eux,
-        placement sur la route du cycliste et des bots (lot AS2, `draft.update_lanes`)."""
+        placement sur la route du cycliste et des bots (lot AS2, `draft.update_lanes`), en diagonale sous un
+        vent de travers (lot AS3)."""
         length = route.length_m if route else None
         is_loop = bool(route and route.is_loop)
-        runners = [(self.physics.s, self.physics.v, self._lane)]
-        runners += [(b.s, b.v, b.lane) for b in self.bots
-                    if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None]
-        draft_mod.update_lanes(runners, dt, length, is_loop)
         ws = self._wind_sample if self.wind.active else None
 
         def cross_at(heading: float) -> float:
             return ws.speed_mps * math.sin(math.radians(ws.from_deg - heading)) if ws else 0.0
+
+        def wind_at(s: float) -> tuple[float, float]:
+            heading = route.sample(s).heading_deg
+            return head_component(ws, heading), cross_at(heading)
+
+        runners = [(self.physics.s, self.physics.v, self._lane)]
+        runners += [(b.s, b.v, b.lane) for b in self.bots
+                    if getattr(b, "kind", "constant") == "constant" and getattr(b, "lane", None) is not None]
+        draft_mod.update_lanes(runners, dt, length, is_loop, wind_at if ws and route else None)
 
         cross = cross_at(heading_deg)
         draft_mod.update_bots(self.bots, draft_mod.Source(self.physics.s, self.physics.v, lane_m=self._lane.m),

@@ -6,7 +6,9 @@ et en simulation numérique de Blocken et coll. (2013 à 2018) :
   `GAP_CUTOFF_M` et devant le bot ; il reste un abri résiduel de quelques pour cent jusqu'à 10 m ;
 - effet de file : derrière des bots espacés de moins de `LINE_GAP_M`, l'abri croît avec le rang
   (`LINE_FACTORS`), plafonné à `ALPHA_CAP` (0,45, SRS §5) ;
-- vent de travers : l'abri baisse avec l'angle du vent apparent, jusqu'à − 50 % à 45° ;
+- vent de travers (lot AS3, remplace la baisse de P3 de − 50 % à 45°) : la zone abritée glisse sous le vent
+  de `gap · tan(lacet)` (`crosswind_shift_m`, au plus 1,5 m), `lateral_factor` s'applique autour de ce
+  centre décalé ; bien placé en diagonale, on perd encore jusqu'à 20 % à 45° (`crosswind_residual`) ;
 - poussée vers l'avant : un bot suivi de près gagne `PUSH_FROM_BEHIND` de résistance en moins ;
 - le fantôme n'abrite pas (décision du propriétaire du 25 octobre) : seuls les bots `constant` comptent ;
 - lot AS1 : les bots s'abritent aussi, derrière les autres bots et derrière le cycliste (`draft_for`,
@@ -18,7 +20,10 @@ et en simulation numérique de Blocken et coll. (2013 à 2018) :
   Blocken et coll., 2018, J. Wind Eng. Ind. Aerodyn., peloton) : l'abri tombe de moitié quand la roue
   avant ne recouvre plus qu'à moitié le sillage, et disparaît à un guidon d'écart. Le placement
   automatique (`update_lanes`) range chaque coureur dans la roue du coureur devant et l'en sort pour
-  doubler ; deux coureurs qui se chevauchent gardent au moins `SIDE_CLEAR_M` d'écart latéral.
+  doubler ; deux coureurs qui se chevauchent gardent au moins `SIDE_CLEAR_M` d'écart latéral ;
+- lot AS3 : par vent de travers, le placement vise la diagonale sous le vent (`echelon_lane`), bornée à
+  la voie de droite. Derrière un groupe, chacun vise la diagonale de celui qui le précède : l'éventail
+  s'arrête au bord de la voie, les suivants roulent en file au bord, exposés (la bordure).
 
 `gap` est l'écart entre la roue arrière du bot et la roue avant du cycliste : la différence de
 position `s` moins `BIKE_LENGTH_M`.
@@ -39,8 +44,9 @@ GAP_CUTOFF_M = 15.0
 BIKE_LENGTH_M = 1.7       # d'un axe à l'autre plus les demi-roues : écart s entre deux vélos collés
 LINE_GAP_M = 3.0          # écart maximal entre deux bots d'une même file
 LINE_FACTORS = (1.00, 1.12, 1.18)   # derrière un, deux, trois bots ou plus
-CROSSWIND_FULL_DEG = 45.0
-CROSSWIND_MAX_LOSS = 0.5
+CROSSWIND_FULL_DEG = 45.0     # lacet du vent apparent où la perte résiduelle est entière
+CROSSWIND_RESIDUAL_LOSS = 0.2  # lot AS3 : abri perdu à 45° même bien placé en diagonale (tourbillon)
+CROSSWIND_SHIFT_MAX_M = 1.5    # lot AS3 : décalage maximal de la zone abritée sous le vent
 PUSH_FROM_BEHIND = 0.025  # résistance aérodynamique en moins pour un bot suivi à moins de 1 m
 PUSH_GAP_M = 1.0
 PUSH_ENABLED = True       # poussée vers l'avant (facultative) : False la coupe
@@ -128,9 +134,12 @@ def lateral_factor(dx_m: float) -> float:
     return (bell(dx) - floor) / (1.0 - floor)
 
 
-def _lateral(lane_m: float | None, other: Any) -> float:
+def _lateral(lane_m: float | None, other: Any, shift_m: float = 0.0) -> float:
+    """`lateral_factor` autour du centre de la zone abritée derrière `other`, décalé de `shift_m` sous le
+    vent (lot AS3). Un écart à l'axe inconnu vaut la ligne de l'autre : on est dans sa roue."""
     other_m = lane_of(other)
-    return 1.0 if lane_m is None or other_m is None else lateral_factor(lane_m - other_m)
+    dx = 0.0 if lane_m is None or other_m is None else lane_m - other_m
+    return lateral_factor(dx - shift_m)
 
 
 def draft_coefficient(gap_m: float) -> float:
@@ -140,13 +149,34 @@ def draft_coefficient(gap_m: float) -> float:
     return ALPHA_MAX * math.exp(-max(gap_m - GAP_MIN_M, 0.0) / DECAY_M)
 
 
-def crosswind_factor(rider_v: float, head_mps: float, cross_mps: float) -> float:
-    """Part de l'abri gardée selon l'angle du vent apparent : 1 sans vent de travers, 0,5 à 45° et plus."""
-    along = rider_v + head_mps
+def crosswind_shift_m(gap_m: float, rider_v: float, head_mps: float, cross_mps: float) -> float:
+    """Décalage latéral (m, positif à droite) du centre de la zone abritée à l'écart `gap_m` (lot AS3).
+
+    La zone glisse sous le vent de `gap · tan(lacet)`, le lacet étant l'angle du vent apparent (P2) :
+    `cross_mps` est positif pour un vent venant de droite (vitesse · sin(provenance − cap)), la zone
+    glisse alors à gauche. Borné à ± `CROSSWIND_SHIFT_MAX_M` ; 0 sans vent de travers.
+    """
+    if cross_mps == 0.0 or gap_m <= 0.0:
+        return 0.0
+    shift = -gap_m * cross_mps / max(rider_v + head_mps, 1e-6)
+    return max(-CROSSWIND_SHIFT_MAX_M, min(CROSSWIND_SHIFT_MAX_M, shift))
+
+
+def crosswind_residual(rider_v: float, head_mps: float, cross_mps: float) -> float:
+    """Part de l'abri gardée par un coureur bien placé en diagonale (lot AS3) : 1 sans vent de travers,
+    1 − `CROSSWIND_RESIDUAL_LOSS` (0,8) à 45° de lacet et au-delà."""
     if cross_mps == 0.0:
         return 1.0
-    yaw = math.degrees(math.atan2(abs(cross_mps), max(along, 1e-6)))
-    return 1.0 - CROSSWIND_MAX_LOSS * min(yaw / CROSSWIND_FULL_DEG, 1.0)
+    yaw = math.degrees(math.atan2(abs(cross_mps), max(rider_v + head_mps, 1e-6)))
+    return 1.0 - CROSSWIND_RESIDUAL_LOSS * min(yaw / CROSSWIND_FULL_DEG, 1.0)
+
+
+def echelon_lane(wheel_lane_m: float, gap_m: float, rider_v: float, head_mps: float, cross_mps: float) -> float:
+    """Écart à l'axe visé derrière la roue à `wheel_lane_m` (lot AS3) : la diagonale sous le vent, bornée
+    à la voie de droite. Au bord, le coureur reste au bord et reçoit l'abri de sa position réelle : c'est
+    la bordure. Sans vent de travers : la ligne de la roue (AS2)."""
+    target = wheel_lane_m + crosswind_shift_m(gap_m, rider_v, head_mps, cross_mps)
+    return max(LANE_MIN_M, min(LANE_MAX_M, target))
 
 
 def ahead_distance(rider_s: float, bot_s: float, length_m: float | None, is_loop: bool) -> float:
@@ -167,7 +197,8 @@ def draft_for(rider_s: float, sources: Iterable[Any], length_m: float | None = N
 
     `sources` : objets avec `s`, `id` et `kind` (bots de N9, `Source` du cycliste) ; seuls les
     `constant` abritent ; `skip` (le coureur lui-même) est ignoré. `lane_m` : écart à l'axe du
-    coureur (lot AS2) ; l'abri de chaque source est multiplié par `lateral_factor` de l'écart latéral.
+    coureur (lot AS2) ; l'abri de chaque source est multiplié par `lateral_factor` de l'écart latéral au
+    centre de sa zone abritée, décalé sous le vent de travers (lot AS3).
     """
     ahead: list[tuple[float, str, float]] = []
     for b in sources:
@@ -175,7 +206,8 @@ def draft_for(rider_s: float, sources: Iterable[Any], length_m: float | None = N
             continue
         d = ahead_distance(rider_s, b.s, length_m, is_loop)
         if 0.0 < d <= GAP_CUTOFF_M + BIKE_LENGTH_M + LINE_GAP_M * 3:
-            ahead.append((d, b.id, _lateral(lane_m, b)))
+            shift = crosswind_shift_m(d - BIKE_LENGTH_M, rider_v, head_mps, cross_mps)
+            ahead.append((d, b.id, _lateral(lane_m, b, shift)))
     if not ahead:
         return 0.0, None
     ahead.sort(key=lambda a: a[0])
@@ -195,7 +227,7 @@ def draft_for(rider_s: float, sources: Iterable[Any], length_m: float | None = N
             best, best_id = alpha, bot_id
     if best_id is None:
         return 0.0, None
-    return best * crosswind_factor(rider_v, head_mps, cross_mps), best_id
+    return best * crosswind_residual(rider_v, head_mps, cross_mps), best_id
 
 
 def best_draft(rider_s: float, bots: Iterable[Any], length_m: float | None = None, is_loop: bool = False,
@@ -271,11 +303,13 @@ def update_bots(bots: list[Any], rider: Source | None, dt: float, length_m: floa
 
 
 def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, float, Lane]],
-                length_m: float | None = None, is_loop: bool = False) -> tuple[float, bool]:
+                length_m: float | None = None, is_loop: bool = False, head_mps: float = 0.0,
+                cross_mps: float = 0.0) -> tuple[float, bool]:
     """Écart à l'axe visé par un coureur (lot AS2) et vrai s'il double.
 
     Placement automatique (`lane.auto`) : à moins de `FOLLOW_LOOK_M` derrière un coureur plus lent ou à
-    la même vitesse, sa ligne ; pour doubler (plus de `PASS_SPEED_MPS` plus vite à moins de `PASS_GAP_M`),
+    la même vitesse, sa ligne, ou par vent de travers la diagonale sous le vent bornée à la voie (lot AS3,
+    `echelon_lane` ; `head_mps`, `cross_mps` : vent au coureur) ; pour doubler (plus de `PASS_SPEED_MPS` plus vite à moins de `PASS_GAP_M`),
     `PASS_OFFSET_M` à sa gauche ; sinon `lane.home`. Puis le couloir : chaque coureur côte à côte (roues
     qui se chevauchent, ou qui se toucheront dans `SIDE_LOOK_S`, devant comme derrière) borne la cible
     à `SIDE_CLEAR_M` de lui, du côté où l'on est déjà ; à écart égal, celui de derrière (à la même place,
@@ -307,7 +341,7 @@ def lane_target(s: float, v: float, lane: Lane, others: Iterable[tuple[float, fl
         if dv > PASS_SPEED_MPS and gap < PASS_GAP_M:
             target, passing = o_lane.m - PASS_OFFSET_M, True
         elif o_v <= v + FOLLOW_SPEED_TOL_MPS:
-            target = o_lane.m
+            target = echelon_lane(o_lane.m, gap, v, head_mps, cross_mps)
     if not passing:
         target = max(target, LANE_MIN_M)
     if left_bound > right_bound:
@@ -346,14 +380,16 @@ def step_lane(lane: Lane, target: float, dt: float) -> None:
 
 
 def update_lanes(runners: list[tuple[float, float, Lane]], dt: float, length_m: float | None = None,
-                 is_loop: bool = False) -> None:
+                 is_loop: bool = False, wind_at: Callable[[float], tuple[float, float]] | None = None) -> None:
     """Placement de tous les coureurs (lot AS2) : cibles calculées sur les positions du pas précédent,
     puis chacun avance ; l'ordre de la liste ne compte pas. `runners` : (s, v, Lane) du cycliste et des
-    bots `constant` (le fantôme n'en est pas : il passe à travers)."""
+    bots `constant` (le fantôme n'en est pas : il passe à travers). `wind_at(s)` : (vent de face, vent de
+    travers) en m/s à la position `s` (lot AS3), sans vent si None."""
     targets = []
     for i, (s, v, lane) in enumerate(runners):
         others = [r for j, r in enumerate(runners) if j != i]
-        targets.append(lane_target(s, v, lane, others, length_m, is_loop))
+        head, cross = wind_at(s) if wind_at else (0.0, 0.0)
+        targets.append(lane_target(s, v, lane, others, length_m, is_loop, head, cross))
     for (_, _, lane), (target, passing) in zip(runners, targets):
         lane.target, lane.passing = target, passing
         step_lane(lane, target, dt)

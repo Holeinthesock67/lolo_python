@@ -43,3 +43,11 @@ Aucune.
 ## 8. Hors périmètre
 
 Bordure sur une route large à plusieurs voies, vent tournant au fil du parcours (déjà géré par P2 au niveau du vent).
+
+## 9. Livraison (31 octobre 2026)
+
+PR empilée sur AS2 (#649). `draft.py` : `crosswind_shift_m`, `crosswind_residual` (remplace `crosswind_factor` de P3), `echelon_lane` ; `lane_target` et `update_lanes(..., wind_at)` placent en diagonale ; `session.py` passe le vent de face et de travers de chaque coureur. Tests : `core/tests/test_draft_crosswind.py` (critères 2 à 5 et séance). Banc : partie 4 de `draft_bench` (`--vent 36`).
+
+Mesures du banc au cloud (250 W, 38,4 km/h, vent de 36 km/h de gauche, lacet 43°) : diagonale à +1,5 m du bot, abri 0,228 = 0,87 × l'abri sans vent ; resté dans la roue : 0,00. Éventail de 5 bots, vent de droite : 2,10 / 1,34 / 0,58 / 0,30 / 0,30 m, abri 0 / 0,27 / 0,31 / 0,13 / 0,07, cycliste 0,03 (3 coureurs dans l'éventail). Vent de gauche : le meneur à 2,1 m ne laisse que 0,5 m vers le bord, un seul suit à l'abri (0,25), les autres à 0,01.
+
+Choix laissé au propriétaire : le meneur garde sa place (2,1 m). Le faire passer côté vent (à l'axe par vent de gauche) donnerait toujours 3 coureurs dans l'éventail.

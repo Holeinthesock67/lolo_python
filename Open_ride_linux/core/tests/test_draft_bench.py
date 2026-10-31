@@ -1,4 +1,4 @@
-"""Banc de l'abri derrière les bots (lots X50 et AS2) : vraie séance au pas de 20 ms, sans vélo ni engine."""
+"""Banc de l'abri derrière les bots (lots X50, AS2 et AS3) : vraie séance au pas de 20 ms, sans vélo ni engine."""
 
 import json
 
@@ -45,18 +45,29 @@ def test_free_group_shelters_every_racer(out):
     assert rows["bot 230 W"]["gain_w"] > rows["bot 250 W"]["gain_w"]
 
 
+def test_crosswind_diagonal_wheel_and_echelon(out):
+    cw = out["crosswind"]
+    assert 40.0 < cw["yaw_deg"] < 50.0 and cw["shift_m"] == d.CROSSWIND_SHIFT_MAX_M
+    assert cw["diagonal"]["dx_m"] > 1.0 and cw["diagonal"]["ratio"] >= 0.8   # sous le vent, à droite
+    assert cw["wheel"]["ratio"] <= 0.4
+    right = [r["draft"] for r in cw["echelon_right"]["riders"]]
+    assert right[1] >= 0.15 and right[2] >= 0.15                # vent de droite : éventail de 3 vers l'axe
+    assert all(a < 0.15 for a in right[3:])                      # les suivants en file au bord, exposés
+
+
 def test_cli_json_and_invalid_arguments(capsys, monkeypatch):
     monkeypatch.setattr(db, "GAPS_M", (1.0, 20.0))
     monkeypatch.setattr(db, "HOLD_S", 40.0)
     monkeypatch.setattr(db, "MEASURE_S", 10.0)
     real = db.run
-    monkeypatch.setattr(db, "run", lambda *a: real(*a, gaps=db.GAPS_M))
+    monkeypatch.setattr(db, "run", lambda *a, **k: real(*a, **k, gaps=db.GAPS_M))
     code = db.main(["--duree", "60", "--json"])
     data = json.loads(capsys.readouterr().out)
     assert code in (0, 1) and len(data["positions"]) == 6 and len(data["group"]["rows"]) == 4
-    assert {"wheel", "overtake", "group_off"} <= set(data)
+    assert {"wheel", "overtake", "group_off", "crosswind"} <= set(data)
     assert db.main(["--groupe", "abc"]) == 2
     assert db.main(["--duree", "0"]) == 2
+    assert db.main(["--vent", "0"]) == 2
 
 
 # --- lot AS2 : placement dans la roue et dépassement ------------------------------------------------
