@@ -87,7 +87,8 @@
           "applies": {
             "enum": [
               "next_session",
-              "now"
+              "now",
+              "relaunch"
             ]
           }
         }
