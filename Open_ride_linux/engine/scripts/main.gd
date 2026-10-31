@@ -627,6 +627,8 @@ func _run_menu_action(act: Dictionary) -> void:
 			ipc.start_plan(str(act["id"]), act.get("start_date", null))
 		"stop_plan":
 			ipc.stop_plan()
+		"create_plan":
+			ipc.create_plan(act["workouts"], act["days"], act.get("weeks", null))
 		"accept_ftp":
 			ipc.accept_ftp(bool(act.get("force", false)))
 		"create_workout":

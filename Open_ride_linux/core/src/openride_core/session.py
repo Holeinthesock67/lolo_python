@@ -491,7 +491,7 @@ class CoreSession:
             self._send_settings(cmd_id)
         elif name == "set_setting":
             self._set_setting(args, cmd_id)
-        elif name in ("list_plans", "start_plan", "stop_plan"):
+        elif name in ("list_plans", "start_plan", "stop_plan", "create_plan"):
             self._on_plan_command(name, args if isinstance(args, dict) else {}, cmd_id)
         elif name == "accept_ftp":
             self._accept_ftp(args if isinstance(args, dict) else {}, cmd_id)
@@ -963,6 +963,7 @@ class CoreSession:
     def _on_plan_command(self, name: str, args: dict, cmd_id: int) -> None:
         from . import plans
 
+        created = None
         if name != "list_plans":
             if self.state.session_state in ("RUNNING", "PAUSED"):
                 self.server.send_error("busy", "Plan impossible à changer pendant une séance.")
@@ -973,20 +974,31 @@ class CoreSession:
                     start = date.fromisoformat(raw) if isinstance(raw, str) and raw else None
                     plans.start_plan(str(args.get("id") or ""), start, self.plans_dir, self.workouts_dir,
                                      self.plan_state_path)
+                elif name == "create_plan":   # plan maison composé dans le menu (lot O30)
+                    workouts, days, weeks = args.get("workouts"), args.get("days"), args.get("weeks")
+                    if not isinstance(workouts, list) or not isinstance(days, list) or not (
+                            weeks is None or (isinstance(weeks, int) and not isinstance(weeks, bool))):
+                        raise plans.PlanError("arguments attendus : workouts, days (listes), weeks (entier ou null)")
+                    plan = plans.create_from_library(workouts, days, weeks, args.get("name") or None,
+                                                     self.plans_dir, self.workouts_dir)
+                    created = {"id": plan.id, "name": plan.name}
                 else:
                     plans.stop_plan(self.plan_state_path)
-            except (plans.PlanError, ValueError) as exc:
+            except (plans.PlanError, ValueError, TypeError) as exc:
                 self.server.send_error("plan_invalid", f"Plan refusé : {exc}")
                 return
-            log.info("Plan %s.", f"« {args.get('id')} » démarré" if name == "start_plan" else "arrêté")
-        self._spawn(self._send_plans(cmd_id))
+            log.info("Plan %s.", {"start_plan": f"« {args.get('id')} » démarré", "stop_plan": "arrêté",
+                                  "create_plan": f"« {created and created['id']} » créé"}[name])
+        self._spawn(self._send_plans(cmd_id, created))
 
-    async def _send_plans(self, cmd_id: int) -> None:
+    async def _send_plans(self, cmd_id: int, created: dict[str, str] | None = None) -> None:
         from .ipc_lists import build_plans_message
 
         try:
             msg = await asyncio.to_thread(build_plans_message, cmd_id, self.cfg.rider.ftp_w, self.plans_dir,
                                           self.workouts_dir, self.plan_state_path, self.activities_dir)
+            if created:
+                msg["created"] = created
         except Exception:
             log.exception("Erreur lors de la préparation de plans (cmd_id=%d)", cmd_id)
             return

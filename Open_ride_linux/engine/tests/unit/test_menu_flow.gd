@@ -467,7 +467,7 @@ func _test_plans() -> void:
 	_check(f.handle("A_LONG") == {"action": "list_plans"} and f.state()["screen"] == "plans", "écran Plans, list_plans")
 	_check(f.state()["items"][0]["label"] == "Recherche des plans…", "en attendant la réponse")
 	f.on_plans(_plans_msg(null))
-	_check(_ids(f) == ["plan:casse", "plan:essai"] and _focus_id(f) == "plan:essai",
+	_check(_ids(f) == ["plan:casse", "plan:essai", "create"] and _focus_id(f) == "plan:essai",
 		"liste des plans, plan invalide désactivé (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "4 semaines, 8 séances", "plan : semaines et séances")
 	f.handle("A_LONG")
@@ -480,7 +480,7 @@ func _test_plans() -> void:
 		"done": 0, "total": 8, "done_pct": 0.0, "today": [DAY], "late": [], "next": NEXT, "plan_day": "ss"}
 	f.on_plans(_plans_msg(active))
 	_check(f.state()["status"] == "Plan démarré : Essai", "plan démarré (%s)" % f.state()["status"])
-	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai"], "suivi du plan actif (%s)" % str(_ids(f)))
+	_check(_ids(f) == ["today", "progress", "next", "stop", "plan:casse", "plan:essai", "create"], "suivi du plan actif (%s)" % str(_ids(f)))
 	_check(f.state()["items"][1]["detail"] == "semaine 1 / 4, 0 % fait (0 / 8)", "progression : %s" % f.state()["items"][1]["detail"])
 	f.menu.focus_item("today")
 	_check(f.state()["card"]["title"] == "Séance du jour" and f.state()["card"]["name"] == "Sweet spot"

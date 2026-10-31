@@ -68,7 +68,8 @@
         "rename_profile",
         "delete_profile",
         "list_contents",
-        "install_content"
+        "install_content",
+        "create_plan"
       ]
     },
     "args": {
