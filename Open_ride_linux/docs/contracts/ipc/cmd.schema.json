@@ -43,6 +43,8 @@
         "list_imports",
         "create_workout",
         "import_workout",
+        "list_route_imports",
+        "import_route",
         "start_run",
         "rogue_resync",
         "list_garage",

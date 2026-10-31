@@ -33,7 +33,7 @@ GUIDE_COMMANDS: dict[str, str] = {
     "openride-core release-trainer": "secours en terminal : l'icône « Libérer le trainer » fait la même chose",
 }
 # Éditions de fichier que le guide demande encore, avec le lot qui les remplace.
-GUIDE_FILE_EDITS: dict[str, str] = {"écrivez dans `~/OpenRide/config.toml`": "O26"}
+GUIDE_FILE_EDITS: dict[str, str] = {}
 
 CATEGORIES = {"OTHER_SCREEN_KEYS": config_mod.OTHER_SCREEN_KEYS, "EXPERT_KEYS": config_mod.EXPERT_KEYS,
               "DEV_KEYS": config_mod.DEV_KEYS, "PENDING_KEYS": config_mod.PENDING_KEYS}
@@ -120,6 +120,9 @@ def check_guide(text: str, commands: dict[str, str], edits: dict[str, str]) -> l
     for k in commands:
         if not any(cmd.startswith(k) for cmd in cited):
             errors.append(f"guide : « {k} » n'est plus cité, retirer la ligne de GUIDE_COMMANDS")
+    for phrase in re.findall(r"(?:écrivez|ajoutez|modifiez) dans `~/OpenRide/[^`]*`", text):
+        if phrase not in edits:
+            errors.append(f"guide : « {phrase} » : édition de fichier sans menu ni raison (lot X53)")
     for phrase in edits:
         if phrase not in text:
             errors.append(f"guide : « {phrase} » n'est plus cité, retirer la ligne de GUIDE_FILE_EDITS")
@@ -128,7 +131,9 @@ def check_guide(text: str, commands: dict[str, str], edits: dict[str, str]) -> l
 
 def test_guide_commands_have_a_reason_and_negative() -> None:
     assert check_guide(GUIDE.read_text(encoding="utf-8"), GUIDE_COMMANDS, GUIDE_FILE_EDITS) == []
-    errs = check_guide("Lancez `openride-core gravel on`.", {"openride-core recover": "O34"}, {"écrivez dans": "O26"})
+    errs = check_guide("Lancez `openride-core gravel on`, puis écrivez dans `~/OpenRide/config.toml` :",
+                       {"openride-core recover": "O34"}, {"ajoutez dans `~/OpenRide/powerups.toml`": "O99"})
     assert errs == ["guide : commande « openride-core gravel on » sans menu ni raison (lot X53)",
                     "guide : « openride-core recover » n'est plus cité, retirer la ligne de GUIDE_COMMANDS",
-                    "guide : « écrivez dans » n'est plus cité, retirer la ligne de GUIDE_FILE_EDITS"]
+                    "guide : « écrivez dans `~/OpenRide/config.toml` » : édition de fichier sans menu ni raison (lot X53)",
+                    "guide : « ajoutez dans `~/OpenRide/powerups.toml` » n'est plus cité, retirer la ligne de GUIDE_FILE_EDITS"]
