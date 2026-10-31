@@ -97,6 +97,8 @@ func _run() -> void:
 					"color": BotsViewModel.color_of(kind), "jersey": b[3]})
 			for f in range(SETTLE_FRAMES):
 				bots.update_view(items, route)
+				if bots.has_method("wait_builds"):
+					bots.wait_builds()   # niveaux construits dans un fil de travail : la capture montre le niveau voulu
 				await process_frame
 			var path := _out_dir.path_join("bots_%s_%s.png" % [view, preset])
 			vp.get_texture().get_image().save_png(path)

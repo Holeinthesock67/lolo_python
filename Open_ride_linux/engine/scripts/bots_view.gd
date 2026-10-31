@@ -10,7 +10,9 @@ extends Node3D
 ##
 ## - Niveau de détail selon la distance à la caméra et le préréglage (quality_presets.gd bot_lod) : niveau 0
 ##   (celui du joueur) de près en medium et high, 1 à moyenne distance, 2 (allégé) au-delà. Un avatar par
-##   niveau déjà vu, gardé caché quand il ne sert pas : changer de niveau ne reconstruit rien.
+##   niveau déjà vu, gardé caché quand il ne sert pas : changer de niveau ne reconstruit rien. Les maillages
+##   d'un niveau neuf se construisent dans un fil de travail (aucune image perdue) ; `wait_builds()` les
+##   attend (tests, vitrine).
 ## - Pédalier : la phase suit la distance parcourue `s` (un tour par DEVELOPMENT_M), les roues aussi (un tour
 ##   par 2π × rayon) : jambes et roues tournent avec la vitesse du bot et s'arrêtent avec lui. En danseuse
 ##   au-delà de la pente `standing_grade_pct` de l'avatar (8 %), comme le joueur par défaut.
@@ -68,22 +70,35 @@ func _make_node(b: Dictionary, index: int) -> Node3D:
 	return root
 
 
-## Avatar du niveau `lod` du bot (créé la première fois), les autres niveaux cachés.
+## Avatar du niveau `lod` du bot, les autres niveaux cachés. Un niveau pas encore construit l'est dans un fil
+## de travail (AvatarView.request_parts : jusqu'à 20 ms pour le niveau 0, une image perdue sinon) ; en
+## attendant, le bot garde le niveau déjà construit le plus proche, ou prend le niveau 2 (moins de 2 ms).
 func _avatar(root: Node3D, lod: int) -> AvatarView:
-	var name_ := "Lod%d" % lod
+	var st: Dictionary = root.get_meta("settings")
+	var lk: Dictionary = root.get_meta("looks")
+	var shown := lod
+	if not root.has_node("Lod%d" % lod) and lod < 2 and not AvatarView.parts_ready(lod, st, lk):
+		AvatarView.request_parts(lod, st, lk)
+		shown = 2
+		for n in [lod + 1, lod - 1, 2]:   # le plus proche déjà là
+			if n >= 0 and n <= 2 and root.has_node("Lod%d" % n):
+				shown = n
+				break
+	var name_ := "Lod%d" % shown
 	if not root.has_node(name_):
 		var av := AvatarView.new()
 		av.name = name_
 		av.shadow_max_lod = QualityPresets.BOT_SHADOW_MAX_LOD
 		if root.get_meta("ghost"):
 			av.ghost_alpha = GHOST_ALPHA
-		av.looks = (root.get_meta("looks") as Dictionary).duplicate()
-		av.configure(root.get_meta("settings"), lod)
+		av.looks = lk.duplicate()
+		av.configure(st, shown)
 		av.set_visible_for_view("follow")
 		root.add_child(av)
 	for child in root.get_children():
 		if child is AvatarView:
 			child.visible = child.name == name_
+	root.set_meta("shown_lod", shown)
 	return root.get_node(name_)
 
 
@@ -150,7 +165,7 @@ func update_view(view: Array, route) -> void:
 		av.apply_pose(phase * TAU, standing)
 		av.set_wheel_angle(fposmod(s / AvatarMesh.WHEEL_R, TAU))
 		_poses[key] = {"phase": phase, "color": b.get("color", BotsViewModel.color_of(str(b["kind"]))), "lod": lod,
-			"standing": standing, "settings": node.get_meta("settings"), "looks": node.get_meta("looks")}
+			"shown_lod": int(node.get_meta("shown_lod")), "standing": standing, "settings": node.get_meta("settings"), "looks": node.get_meta("looks")}
 		var label: Label3D = node.get_node("Name")
 		label.text = str(b["name"])
 		label.visible = bool(b["show_name"])
@@ -161,6 +176,11 @@ func update_view(view: Array, route) -> void:
 			_nodes[key].queue_free()
 			_nodes.erase(key)
 			_poses.erase(key)
+
+
+## Attend les maillages en construction ; la prochaine update_view montre alors le niveau voulu.
+func wait_builds() -> void:
+	AvatarView.wait_parts()
 
 
 ## Pédalier (phase de 0 à 1), couleur, niveau de détail, danseuse et apparence du bot `id` affiché ; {} s'il
@@ -177,7 +197,7 @@ func avatar_of(id: String) -> Variant:
 	for key in _nodes:
 		if str(key).get_slice(":", 0) == id:
 			var node: Node3D = _nodes[key]
-			return node.get_node("Lod%d" % int(node.get_meta("lod")))
+			return node.get_node("Lod%d" % int(node.get_meta("shown_lod")))
 	return null
 
 
@@ -190,7 +210,7 @@ func anchor_of(id: String) -> Variant:
 
 
 ## Pour les tests graphiques : silhouettes affichées, celles dans le champ de la caméra, et nombre par niveau
-## de détail.
+## de détail affiché.
 func test_info(camera: Camera3D) -> Dictionary:
 	var shown := 0
 	var in_view := 0
@@ -199,7 +219,7 @@ func test_info(camera: Camera3D) -> Dictionary:
 		var n: Node3D = _nodes[key]
 		if n.visible:
 			shown += 1
-			lods[int(n.get_meta("lod"))] += 1
+			lods[int(n.get_meta("shown_lod"))] += 1
 			if camera != null and _on_screen(camera, n.global_position + Vector3(0.0, 1.0, 0.0)):
 				in_view += 1
 	return {"shown": shown, "in_view": in_view, "lods": lods}

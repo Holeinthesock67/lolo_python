@@ -28,6 +28,7 @@ Avant ce lot, les bots (lot O7) étaient les coureurs du décor (`people_mesh.gd
 | medium | < 10 m | < 35 m | au-delà |
 | high | < 20 m | < 60 m | au-delà |
 
+- **Aucune image perdue en changeant de niveau** : construire les maillages d'un niveau prend de 2 à 20 ms dans le fil principal (niveau 0 : 16 à 20 ms dans le nuage), ce qui a pu donner le pic isolé de 39,5 ms en medium de l'essai 7ck. Ils se construisent donc dans un fil de travail (`AvatarView.request_parts`, WorkerThreadPool) ; en attendant, le bot garde le niveau déjà construit le plus proche (ou le niveau 2, moins de 2 ms). Une fois prêts, créer les nœuds d'un niveau coûte environ 2 ms.
 - **Ombres** : niveaux 0 et 1 (`BOT_SHADOW_MAX_LOD`), et seulement par les pièces de la silhouette (`AvatarView.SHADOW_PARTS` : tronc, cuisses, jambes, bras, tête, casque, chaussures, vélo, roues) ; mains, lunettes, cheveux, chaussettes, manches, cou, cuissard et pédalier n'en portent plus, pour le joueur aussi (invisibles dans l'ombre, un appel de dessin de moins par cascade).
 
 ## 3. Fichiers

@@ -140,6 +140,10 @@ func _test_nodes() -> void:
 	# Niveau de détail : plus de détail en high qu'en low au même endroit, aucun nœud refait au retour
 	bv.set_quality("high")
 	bv.update_view(m.view(1000.0, 7.0, 0), route)
+	_check(int(bv.pose_of("bot1")["shown_lod"]) != 0, "niveau 0 construit dans un fil : en attendant, un niveau déjà construit")
+	bv.wait_builds()
+	bv.update_view(m.view(1000.0, 7.0, 0), route)
+	_check(int(bv.pose_of("bot1")["shown_lod"]) == 0, "niveau 0 montré une fois construit")
 	var lod_high := int(bv.pose_of("bot1")["lod"])
 	bv.set_quality("low")
 	bv.update_view(m.view(1000.0, 7.0, 0), route)
