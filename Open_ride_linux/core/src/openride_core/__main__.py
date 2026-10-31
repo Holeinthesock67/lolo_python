@@ -140,7 +140,7 @@ def cmd_run(args: argparse.Namespace) -> int:
 
     if args.first_run:
         logging.getLogger("openride_core").info(
-            "Premier démarrage : configurez vos appareils avec openride-core devices --save.")
+            "Premier démarrage : contenus de départ installés, appareils à appairer dans le menu.")
     from . import profiles
 
     ctx = profiles.current()
@@ -174,6 +174,7 @@ def _run_session(cfg, bots_list: list, args: argparse.Namespace, lock=None) -> i
         return 1
     # Le verrou suit le profil choisi au menu (lot MJ7) ; rendu à la fin, quel que soit le profil.
     session.profile_lock = lock
+    session.first_run = bool(getattr(args, "first_run", False))
     if lock is not None:
         session._note_profile()
     try:
@@ -399,7 +400,7 @@ def build_parser() -> argparse.ArgumentParser:
     run.add_argument("--ghost", type=Path, metavar="FICHIER",
                      help="ajoute un fantôme rejouant une séance enregistrée (.jsonl ou .fit)")
     run.add_argument("--first-run", action="store_true",
-                     help="premier démarrage (passé par le lanceur ; le menu ouvrira « Appareils », lot N13)")
+                     help="premier démarrage (passé par le lanceur) : installe les contenus de départ (lot O25)")
     run.add_argument("--resume", type=Path, metavar="JOURNAL",
                      help="reprend en pause la séance d'un journal non terminé (après un plantage du core)")
     run.add_argument("--autostart", action="store_true",

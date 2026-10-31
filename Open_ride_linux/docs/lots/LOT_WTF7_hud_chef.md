@@ -3,7 +3,7 @@
 <!-- Ligne de l'index des lots, lue par scripts/index_lots.py (lot X54) -->
 | Titre | Langage | Dépend de | Taille | Statut |
 | --- | --- | --- | --- | --- |
-| Série WTF : engine, HUD des défis, surprise du chef, bilan et sons | GDScript | WTF2, WTF4 | Moyenne | Prêt (version 2.0) |
+| Série WTF : engine, HUD des défis, surprise du chef, bilan et sons | GDScript | WTF2, WTF4 | Moyenne | En cours (version 2.0) : HUD, invite du chef et bilan livrés le 31 octobre, sons à faire |
 
 Série WTF (mode « What the fuck », demande du propriétaire du 29 octobre 2026). Plan de la série : `docs/2.0/PLAN_SERIE_WTF.md`.
 
@@ -15,3 +15,10 @@ HUD des micro-défis (défi, cible, barre de progression, résultats), des œufs
 
 1. Tests Godot passent ; guide d'utilisation mis à jour (Z court refuse le plat).
 2. Captures montrées au propriétaire avant fusion.
+
+## 3. Livraison partielle (30 octobre)
+
+- `engine/scripts/wtf/wtf_hud_model.gd` (sans nœud) et `wtf_view.gd` (enfant du HUD) : bandeau du gag sous le panneau central (nom, temps restant, points ; « prochain gag dans … » entre deux), carte du gag (effondrement, fromage, micro-défis, œufs, tempête, plats du chef), invite « Z : NON MERCI, CHEF ! » pendant la révélation, Katamari et horloge à gauche ; style cartoon des maquettes (bord encre, ombre décalée, couleurs vives).
+- `summary_view_model.gd` : lignes du bilan `summary.wtf` (points, gags joués, Katamari, pas de records).
+- Tests : `engine/tests/unit/test_wtf_hud_model.gd`.
+- Reste : sons et jingles (bus « Events »), captures montrées au propriétaire.

@@ -255,7 +255,7 @@ Pas à pas dans [PROTOCOLE_TEST_2026-10-26.md](PROTOCOLE_TEST_2026-10-26.md) (bl
 - [ ] Arbres en `high` sans à-coup (O1, protocole J1, recette 1.0 ligne 19).
 - [ ] Test de FTP par rampe sur le HomeTrainer (O10, protocole J2, recette 1.0 ligne 12) ; puis au menu avec O12 (J3, PR #396 en revue).
 - [ ] Pack « Cols célèbres » construit sur le PC et un col roulé (O16, protocole J4).
-- [ ] Boîtier gauche du Click : silence daté, reprise essayée (Q6, protocole J5).
+- [x] Boîtier gauche du Click : silence daté, reprise par redémarrage `0x18` validée sur le PC le 30 octobre (− et flèches reçus ; Q6, PR #595, #607, #609).
 - [ ] Horizon en `medium` et `low` (Y1) et facteur de relief par défaut (Q2) sur `essai-69` (protocole J6).
 - [ ] Recettes du décor vivant (P16 puis P17, protocole J8 : [RECETTE_P16.md](RECETTE_P16.md), [RECETTE_P17.md](RECETTE_P17.md)). P16 faite le 27 octobre (vent, indicateur, nuages et sons validés après la PR #432 ; restent vent de travers et de dos, `living = false` et la mesure sur une route OSM) ; P17 à faire, puis P27 ([RECETTE_P27.md](RECETTE_P27.md) : trois blocs de moins de 10 min et la mesure en `low` au banc).
 - [ ] Mesures du monde ouvert (W0, protocole J9).

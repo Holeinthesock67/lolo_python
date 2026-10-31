@@ -96,6 +96,15 @@ MAX_LOGS_BYTES = 200 * 1024 * 1024
 DEFAULT_ENGINE_DIR = Path(__file__).resolve().parents[3] / "engine"
 # Sans --autostart depuis le lot N6 : parcours et entraînement se choisissent dans les menus de l'engine.
 DEFAULT_CORE_ARGS = ["--trainer", "ftms", "--input", "click"]
+# Arguments de l'engine (engine/scripts/engine_args.gd) que `build_supervisor` ne tire pas de config.toml,
+# avec leur raison (lot X53) : `core/tests/test_options_menus.py` vérifie que chaque argument lu par
+# l'engine est passé ici depuis la configuration ou rangé dans cette liste, jamais les deux.
+ENGINE_ARGS_NOT_FROM_CONFIG: dict[str, str] = {
+    "--sim-session": "posé par le lanceur en session simulée (code 65)",
+    "--test-mode": "outils de test",
+    "--routes-dir": "outils de test",
+    "--culling": "essai du lot S1, aucun gain mesuré",
+}
 
 # Code de sortie de l'engine : « tout relancer » (menu « Appareils », lot N13 ; engine/scripts/main.gd).
 EXIT_RELAUNCH = 64
@@ -180,8 +189,9 @@ class LogRotation:
 
 
 CONFIG_TEMPLATE = Path(__file__).resolve().parents[3] / "scripts" / "config.example.toml"
-FIRST_RUN_INFO = ("Bienvenue dans OpenRide. Configurez vos appareils : openride-core devices --save "
-                  "(la section « Appareils » du menu viendra plus tard).")
+FIRST_RUN_INFO = ("Bienvenue dans OpenRide. Au premier écran, « Rechercher et appairer » relie le home "
+                  "trainer, le Zwift Click et la ceinture cardio. Les entraînements, deux plans et des "
+                  "parcours de démonstration s'installent pendant ce temps (Réglages › Contenus).")
 PORT_IN_USE_RE = re.compile(r"Impossible de démarrer l'IPC UDP.*(Address already in use|déjà utilisée|Errno 98)")
 TRAINER_REFUSED_RE = re.compile(r"Le trainer refuse le contrôle FTMS")
 
